@@ -126,7 +126,10 @@ def test_pin_uncolored_ok() -> None:
 
 def test_solver_and_planner_use_target_pattern() -> None:
     target = parse_shape_code_list("CuCuCuCu")[0]
-    assert SolverService().solve(SolverRequest(target_pattern=target)).steps == ("target:CuCuCuCu",)
+    solver_result = SolverService().solve(SolverRequest(target_pattern=target))
+
+    assert solver_result.target_shape == "CuCuCuCu"
+    assert solver_result.steps[-1].outputs[0].shape_code == "CuCuCuCu"
     assert PlannerService().plan(
         PlannerRequest(target_pattern=target, target_rate_per_min=60.0)
     ).required_inputs == ("CuCuCuCu",)

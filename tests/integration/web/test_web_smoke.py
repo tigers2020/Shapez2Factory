@@ -28,6 +28,80 @@ def test_solver_page_renders() -> None:
     assert b"data-shape-preview-code-ref" in response.content
     assert b"SuSuSuSu" in response.content
     assert b"quick_solver_preview.js" in response.content
+    assert b"solver_timeline.js" in response.content
+    assert b"data-solver-timeline" in response.content
+    assert b"data-solver-graph-canvas" in response.content
+    assert b"data-solver-graph-empty" in response.content
+    assert b"data-solver-node-detail" in response.content
+    assert b"/api/solver/solve/" in response.content
+    assert b"data-asset-base" in response.content
+    assert b"all render with live previews in a left-to-right DAG" in response.content
+    assert b"wheel to zoom" in response.content
+
+
+def test_solve_alias_redirects_to_solver_page() -> None:
+    response = Client().get("/solve/", {"code": "SuSuSuSu"})
+
+    assert response.status_code == 302
+    assert response["Location"] == "/solver/?code=SuSuSuSu"
+
+
+def test_api_solver_solve_returns_operation_steps() -> None:
+    response = Client().post(
+        "/api/solver/solve/",
+        data={"code": "SuSuSuSu"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert data["found"] is True
+    assert data["target_shape"] == "SuSuSuSu"
+    assert data["steps"]
+    first_step = data["steps"][0]
+    assert first_step["operation"]["type"] == "cutter"
+    assert first_step["operation"]["label"] == "Cutter"
+    assert first_step["operation"]["icon"].endswith("/static/web/images/operations/cutter.png")
+    assert len(first_step["inputs"]) == 1
+    assert len(first_step["outputs"]) == 2
+    assert first_step["inputs"][0]["preview_scene"]["normalized_code"] == "CuCuCuCu"
+    assert first_step["outputs"][0]["preview_scene"]["cells"]
+
+    graph = data["graph"]
+    assert graph["layout"]["direction"] == "left-to-right"
+    assert graph["nodes"]
+    assert graph["edges"]
+
+    shape_nodes = [node for node in graph["nodes"] if node["kind"] == "shape"]
+    operation_nodes = [node for node in graph["nodes"] if node["kind"] == "operation"]
+    target_nodes = [node for node in shape_nodes if node["role"] == "target"]
+    source_nodes = [node for node in shape_nodes if node["role"] == "source"]
+    intermediate_nodes = [node for node in shape_nodes if node["role"] == "intermediate"]
+    assert shape_nodes
+    assert source_nodes
+    assert intermediate_nodes
+    assert operation_nodes
+    assert len(target_nodes) == 1
+    assert all(node["preview_scene"]["cells"] for node in source_nodes)
+    assert all(node["preview_scene"]["cells"] for node in intermediate_nodes)
+    assert target_nodes[0]["shape_code"] == "SuSuSuSu"
+    assert target_nodes[0]["preview_scene"]["normalized_code"] == "SuSuSuSu"
+    assert operation_nodes[0]["operation"]["icon"].startswith("/static/web/images/operations/")
+    assert any(edge["kind"] == "input" and edge["slot"] == "B" for edge in graph["edges"])
+    assert any(edge["label"] == "Output A" for edge in graph["edges"])
+
+
+def test_api_solver_solve_rejects_empty_code() -> None:
+    response = Client().post(
+        "/api/solver/solve/",
+        data={"code": ""},
+    )
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["ok"] is False
+    assert data["steps"] == []
+    assert "graph" not in data
 
 
 def test_api_shape_preview_ok() -> None:
@@ -124,3 +198,37 @@ def test_shape_gltf_vendor_assets_exist() -> None:
     assert (three_root / "examples" / "jsm" / "loaders" / "GLTFLoader.js").is_file()
     assert (three_root / "examples" / "jsm" / "utils" / "BufferGeometryUtils.js").is_file()
     assert (three_root / "examples" / "jsm" / "utils" / "SkeletonUtils.js").is_file()
+
+
+def test_solver_graph_viewport_has_explicit_runtime_layout_styles() -> None:
+    static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web"
+    script = (static_root / "js" / "solver_timeline.js").read_text(encoding="utf-8")
+
+    assert "data-graph-viewport" in script
+    assert 'style="height: 34rem; touch-action: none; cursor: grab;"' in script
+    assert "transform-origin: 0 0;" in script
+    assert 'viewport.style.cursor = "grabbing"' in script
+
+
+def test_operation_icon_assets_exist() -> None:
+    static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web"
+    operation_root = static_root / "images" / "operations"
+
+    for filename in (
+        "color-mixer.png",
+        "crystal-generator.png",
+        "crystal-generator2.png",
+        "cutter.png",
+        "cutter2.png",
+        "half-destroyer.png",
+        "painter.png",
+        "pin-pusher.png",
+        "pin-pusher2.png",
+        "rotator-180.png",
+        "rotator-ccw.png",
+        "rotator-cw.png",
+        "splitter.png",
+        "stacker.png",
+        "swapper.png",
+    ):
+        assert (operation_root / filename).is_file()

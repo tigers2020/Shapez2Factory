@@ -52,22 +52,39 @@
           </p>
         </section>
 
-        <section aria-labelledby="solver-build-heading">
-          <h2 id="solver-build-heading" class="text-sm font-semibold text-slate-200">Construction sequence</h2>
+        <section aria-labelledby="solver-graph-heading">
+          <h2 id="solver-graph-heading" class="text-sm font-semibold text-slate-200">Construction sequence</h2>
           <div
-            class="mt-4 rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-6 text-sm text-slate-400"
+            class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400 sm:p-5"
+            data-solver-timeline
+            data-solver-api="{% url 'shapez_solver:solve_shape' %}"
+            data-code-input="#solver-code-input"
+            data-csrf-token="{{ csrf_token }}"
+            data-asset-base="{% static 'web/vendor/shapez-vortex/models/shapes/' %}"
           >
-            <p class="font-medium text-slate-300">Ready for solver output</p>
-            <p class="mt-2 leading-relaxed">
-              When a plan exists, this panel will show ordered steps (machines, inputs, intermediate shapes).
-              Hook the solver run result here and render each step with optional thumbnails.
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="font-medium text-slate-300">Solver Graph</p>
+                <p class="mt-2 leading-relaxed">
+                  Source shapes, intermediates, and target all render with live previews in a left-to-right DAG.
+                  Drag to pan and use the mouse wheel to zoom inside the graph frame.
+                </p>
+              </div>
+              <p class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-cyan-200">
+                POST solve
+              </p>
+            </div>
+            <p class="mt-4 hidden rounded-lg border border-rose-400/25 bg-rose-950/30 px-3 py-2 text-rose-200" data-solver-timeline-error role="alert"></p>
+            <p class="mt-4 hidden rounded-lg border border-amber-400/25 bg-amber-950/20 px-3 py-2 text-amber-100" data-solver-timeline-warnings></p>
+            <div class="mt-5" data-solver-graph-canvas></div>
+            <p class="mt-4 text-xs text-slate-500" data-solver-graph-empty>
+              Enter a target shape and apply it to request a solver graph.
             </p>
+            <div class="mt-5" data-solver-node-detail></div>
             {% if shape_code %}
               <p class="mt-4 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 font-mono text-xs text-slate-300">
                 Current target: <span class="text-cyan-200/90">{{ shape_code }}</span>
               </p>
-            {% else %}
-              <p class="mt-4 text-xs text-slate-500">Enter a shape code above to anchor the future timeline.</p>
             {% endif %}
           </div>
         </section>
@@ -163,4 +180,5 @@
     }
   </script>
   <script type="module" src="{% static 'web/js/quick_solver_preview.js' %}"></script>
+  <script type="module" src="{% static 'web/js/solver_timeline.js' %}"></script>
 {% endblock %}

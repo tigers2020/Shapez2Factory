@@ -1,0 +1,113 @@
+from __future__ import annotations
+
+import pytest
+
+from shapez2_solver.application.planner_service import PlannerRequest, PlannerService
+from shapez2_solver.application.shape_code_parser import ShapeCodeParseError, parse_shape_code_list
+from shapez2_solver.application.solver_service import SolverRequest, SolverService
+from shapez2_solver.domain.shape_pattern import QuadrantPosition
+
+
+def test_parse_single_pattern_without_brackets() -> None:
+    parsed = parse_shape_code_list("SuSuSuSu")
+    assert len(parsed) == 1
+    p = parsed[0]
+    assert p.normalized_code == "SuSuSuSu"
+    assert len(p.layers) == 1
+    assert [c.position for c in p.layers[0].cells] == [
+        QuadrantPosition.NE,
+        QuadrantPosition.SE,
+        QuadrantPosition.SW,
+        QuadrantPosition.NW,
+    ]
+
+
+def test_parse_single_pattern_with_brackets() -> None:
+    parsed = parse_shape_code_list("[SuSuSuSu]")
+    assert len(parsed) == 1
+    assert parsed[0].normalized_code == "SuSuSuSu"
+
+
+def test_parse_comma_separated_patterns() -> None:
+    parsed = parse_shape_code_list("[RuRuRuRu, WrCrRgSy]")
+    assert len(parsed) == 2
+    assert parsed[0].normalized_code == "RuRuRuRu"
+    assert parsed[1].normalized_code == "WrCrRgSy"
+
+
+def test_parse_stacked_layers() -> None:
+    parsed = parse_shape_code_list("RuRuRuRu:WrCrRgSy")
+    assert len(parsed) == 1
+    p = parsed[0]
+    assert p.normalized_code == "RuRuRuRu:WrCrRgSy"
+    assert len(p.layers) == 2
+    assert p.layers[0].layer_index == 0
+    assert p.layers[1].layer_index == 1
+
+
+def test_parse_empty_quadrant_token() -> None:
+    parsed = parse_shape_code_list("--RuRuRu")
+    assert len(parsed) == 1
+    cell0 = parsed[0].layers[0].cells[0]
+    assert cell0.shape_code == "-"
+    assert cell0.color_code == "-"
+    assert cell0.shape_kind == "empty"
+    assert cell0.color_kind == "empty"
+
+
+def test_unknown_shape_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="unknown shape"):
+        parse_shape_code_list("XuXuXuXu")
+
+
+def test_unknown_color_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="unknown color"):
+        parse_shape_code_list("SzSzSzSz")
+
+
+def test_wrong_layer_length_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="must be 8 characters"):
+        parse_shape_code_list("SuSuSu")
+
+
+def test_non_colorable_shape_rejected_with_color() -> None:
+    with pytest.raises(ShapeCodeParseError, match="not colorable"):
+        parse_shape_code_list("PrPrPrPr")
+
+
+def test_emptiness_mismatch_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="emptiness mismatch"):
+        parse_shape_code_list("S-S-S-S-")
+
+
+def test_empty_input_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="empty"):
+        parse_shape_code_list("   ")
+
+
+def test_mismatched_brackets_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="mismatched"):
+        parse_shape_code_list("[SuSuSuSu")
+
+
+def test_unexpected_bracket_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="unexpected bracket"):
+        parse_shape_code_list("Su]SuSuSu")
+
+
+def test_empty_segment_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="empty pattern segment"):
+        parse_shape_code_list("[SuSuSuSu,]")
+
+
+def test_pin_uncolored_ok() -> None:
+    parsed = parse_shape_code_list("PuPuPuPu")
+    assert parsed[0].layers[0].cells[0].shape_kind == "pin"
+
+
+def test_solver_and_planner_use_target_pattern() -> None:
+    target = parse_shape_code_list("CuCuCuCu")[0]
+    assert SolverService().solve(SolverRequest(target_pattern=target)).steps == ("target:CuCuCuCu",)
+    assert PlannerService().plan(
+        PlannerRequest(target_pattern=target, target_rate_per_min=60.0)
+    ).required_inputs == ("CuCuCuCu",)

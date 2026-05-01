@@ -7,6 +7,163 @@
 <main class="min-h-screen bg-slate-950 text-slate-100">
   {% include "web/partials/site_nav.html" %}
 
+  <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8" aria-labelledby="parser-demo-heading">
+    <h2 id="parser-demo-heading" class="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+      Core parser — normalized patterns
+    </h2>
+    <p class="mt-2 max-w-3xl text-sm text-slate-400">
+      Live output from <code class="text-slate-300">shapez2_solver</code>: catalog constants, <code class="text-slate-300">parse_shape_code_list()</code>
+      , and per-quadrant cells (NE → SE → SW → NW). Stack layers use <code class="text-slate-300">:</code>
+      ; multiple patterns use commas inside optional <code class="text-slate-300">[ ]</code>
+      .
+    </p>
+
+    <form method="get" class="mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row sm:items-center" action="">
+      <label class="sr-only" for="demo-code">Shape code</label>
+      <input
+        id="demo-code"
+        type="text"
+        name="code"
+        value="{{ try_code|default:'' }}"
+        autocomplete="off"
+        placeholder="e.g. SuSuSuSu or [RuRuRuRu, WrCrRgSy]"
+        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60"
+      />
+      <button
+        type="submit"
+        class="shrink-0 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-500/15"
+      >
+        Parse (query)
+      </button>
+    </form>
+
+    <div class="mt-10 grid gap-8 lg:grid-cols-2">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+        <h3 class="text-sm font-semibold text-slate-200">Shape catalog</h3>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full min-w-[20rem] border-collapse text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-500">
+                <th class="py-2 pr-3 font-medium">Code</th>
+                <th class="py-2 pr-3 font-medium">Name</th>
+                <th class="py-2 pr-3 font-medium">Solver kind</th>
+                <th class="py-2 font-medium">Flags</th>
+              </tr>
+            </thead>
+            <tbody class="text-slate-300">
+              {% for sk in shape_catalog_rows %}
+                <tr class="border-b border-slate-800/80">
+                  <td class="py-2 pr-3 font-mono text-cyan-200/90">{{ sk.code }}</td>
+                  <td class="py-2 pr-3">{{ sk.name }}</td>
+                  <td class="py-2 pr-3 font-mono text-slate-400">{{ sk.solver_kind }}</td>
+                  <td class="py-2 text-slate-500">
+                    {% if sk.empty %}empty{% endif %}
+                    {% if sk.colorable %}colorable{% else %}fixed color{% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+        <h3 class="text-sm font-semibold text-slate-200">Color catalog</h3>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full min-w-[20rem] border-collapse text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-500">
+                <th class="py-2 pr-3 font-medium">Code</th>
+                <th class="py-2 pr-3 font-medium">Name</th>
+                <th class="py-2 font-medium">Solver kind</th>
+              </tr>
+            </thead>
+            <tbody class="text-slate-300">
+              {% for ck in color_catalog_rows %}
+                <tr class="border-b border-slate-800/80">
+                  <td class="py-2 pr-3 font-mono text-amber-200/90">{{ ck.code }}</td>
+                  <td class="py-2 pr-3">{{ ck.name }}</td>
+                  <td class="py-2 font-mono text-slate-400">{{ ck.solver_kind }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-10 space-y-6">
+      <h3 class="text-sm font-semibold text-slate-200">Parse examples</h3>
+      {% for row in parse_rows %}
+        <article
+          class="rounded-2xl border p-5 {% if row.ok %}border-slate-800 bg-slate-900/40{% else %}border-rose-500/30 bg-rose-950/20{% endif %}"
+        >
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <p class="font-mono text-sm text-white">
+              <span class="text-slate-500">Input</span>
+              <span class="ml-2">{{ row.input }}</span>
+            </p>
+            {% if row.ok %}
+              <span class="text-xs font-semibold uppercase tracking-wide text-emerald-400/90">OK</span>
+            {% else %}
+              <span class="text-xs font-semibold uppercase tracking-wide text-rose-300">Error</span>
+            {% endif %}
+          </div>
+          {% if not row.ok %}
+            <p class="mt-3 text-sm text-rose-200/90">{{ row.error }}</p>
+          {% else %}
+            <div class="mt-5 space-y-8">
+              {% for pat in row.patterns %}
+                <div class="border-t border-slate-800 pt-5 first:border-0 first:pt-0">
+                  <div class="grid gap-5 md:grid-cols-[220px_1fr]">
+                    <div class="flex justify-center rounded-3xl bg-black/30 p-4 ring-1 ring-slate-800">
+                      {{ pat.preview_svg|safe }}
+                    </div>
+
+                    <div class="min-w-0">
+                      <p class="text-xs text-slate-500">
+                        Pattern <span class="font-mono text-slate-300">{{ forloop.counter }}</span>
+                        · raw <span class="font-mono text-slate-300">{{ pat.raw_code }}</span>
+                      </p>
+                      <p class="mt-1 text-xs text-slate-500">
+                        normalized <span class="font-mono text-cyan-200/80">{{ pat.normalized_code }}</span>
+                      </p>
+                      <p class="mt-1 text-xs text-slate-500">
+                        layers <span class="font-mono text-slate-300">{{ pat.layers|length }}</span>
+                      </p>
+                      {% for layer in pat.layers %}
+                        <div class="mt-4">
+                          <p class="text-xs font-medium uppercase tracking-wider text-slate-500">
+                            Layer {{ layer.layer_index }} <span class="font-normal normal-case text-slate-600">(bottom → top)</span>
+                          </p>
+                          <div class="mt-2 grid max-w-sm grid-cols-2 gap-2">
+                            {% for cell in layer.cells %}
+                              <div class="rounded-xl border border-slate-700 bg-slate-950/80 p-3">
+                                <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                  {{ cell.position }}
+                                </p>
+                                <p class="mt-1 font-mono text-lg text-white">{{ cell.raw_token }}</p>
+                                <p class="mt-2 text-[11px] leading-snug text-slate-500">
+                                  <span class="text-slate-400">{{ cell.shape_kind }}</span>
+                                  ·
+                                  <span class="text-slate-400">{{ cell.color_kind }}</span>
+                                </p>
+                              </div>
+                            {% endfor %}
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
   <section class="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
     <div class="rounded-3xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6">
       <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

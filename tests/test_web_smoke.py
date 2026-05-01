@@ -27,6 +27,9 @@ def test_demo_page_renders() -> None:
     response = Client().get("/demo/")
 
     assert response.status_code == 200
+    assert b"Core parser" in response.content
+    assert b"parse_shape_code_list" in response.content
+    assert b"shape-preview" in response.content
     assert b"Example production plan" in response.content
     assert b"How it works" in response.content
 

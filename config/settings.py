@@ -1,8 +1,15 @@
 """Django settings for the shapez2 factory planner scaffold."""
 
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# src-layout package: ``import shapez2_solver`` works from a git checkout
+# without requiring ``pip install -e .`` first.
+_src = BASE_DIR / "src"
+if _src.is_dir() and str(_src) not in sys.path:
+    sys.path.insert(0, str(_src))
 
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True

@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
-from shapez2_solver.domain.shape import ShapeCode
+from shapez2_solver.domain.shape_pattern import NormalizedShapePattern
 
 
 @dataclass(frozen=True, slots=True)
 class SolverRequest:
-    target_shape: ShapeCode
+    target_pattern: NormalizedShapePattern
     max_depth: int = 12
 
 
@@ -17,4 +17,7 @@ class SolverResult:
 
 class SolverService:
     def solve(self, request: SolverRequest) -> SolverResult:
-        return SolverResult(found=False, steps=(f"target:{request.target_shape.normalized()}",))
+        return SolverResult(
+            found=False,
+            steps=(f"target:{request.target_pattern.normalized_code}",),
+        )

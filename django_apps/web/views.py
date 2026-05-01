@@ -1,8 +1,14 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from django.conf import settings
 from django.shortcuts import render
+
+from django_apps.web.services.shape_svg_renderer import render_shape_pattern_svg
+from shapez2_solver.application.shape_code_parser import ShapeCodeParseError, parse_shape_code_list
+from shapez2_solver.domain.shape_catalog import COLOR_KINDS, SHAPE_KINDS
+from shapez2_solver.domain.shape_pattern import NormalizedShapePattern
 
 
 @lru_cache(maxsize=8)
@@ -85,5 +91,91 @@ def gallery(request):
     )
 
 
+def _serialize_pattern(p: NormalizedShapePattern) -> dict[str, Any]:
+    return {
+        "raw_code": p.raw_code,
+        "normalized_code": p.normalized_code,
+        "layers": [
+            {
+                "layer_index": lyr.layer_index,
+                "cells": [
+                    {
+                        "quadrant_index": c.quadrant_index,
+                        "position": c.position.value,
+                        "shape_code": c.shape_code,
+                        "color_code": c.color_code,
+                        "shape_kind": c.shape_kind,
+                        "color_kind": c.color_kind,
+                        "raw_token": c.raw_token,
+                    }
+                    for c in lyr.cells
+                ],
+            }
+            for lyr in p.layers
+        ],
+    }
+
+
+def _demo_parse_row(code: str) -> dict[str, Any]:
+    try:
+        patterns = parse_shape_code_list(code)
+        return {
+            "input": code,
+            "ok": True,
+            "error": None,
+            "patterns": [
+                {
+                    **_serialize_pattern(p),
+                    "preview_svg": render_shape_pattern_svg(p, size=192),
+                }
+                for p in patterns
+            ],
+        }
+    except ShapeCodeParseError as exc:
+        return {
+            "input": code,
+            "ok": False,
+            "error": str(exc),
+            "patterns": [],
+        }
+
+
 def demo(request):
-    return render(request, "web/demo.html")
+    try_code = request.GET.get("code", "").strip()
+    fixed_samples = (
+        "SuSuSuSu",
+        "[RuRuRuRu, WrCrRgSy]",
+        "RuRuRuRu:WrCrRgSy",
+        "--RuRuRu",
+        "CuCuCuCu",
+        "PuPuPuPu",
+        "XuXuXuXu",
+        "PrPrPrPr",
+    )
+    parse_rows: list[dict[str, Any]] = []
+    if try_code:
+        parse_rows.append(_demo_parse_row(try_code))
+    for sample in fixed_samples:
+        if try_code and sample == try_code:
+            continue
+        parse_rows.append(_demo_parse_row(sample))
+
+    shape_catalog_rows = sorted(
+        SHAPE_KINDS.values(),
+        key=lambda sk: (sk.empty, sk.code.lower()),
+    )
+    color_catalog_rows = sorted(
+        COLOR_KINDS.values(),
+        key=lambda ck: (ck.empty, ck.code),
+    )
+
+    return render(
+        request,
+        "web/demo.html",
+        {
+            "try_code": try_code,
+            "parse_rows": parse_rows,
+            "shape_catalog_rows": shape_catalog_rows,
+            "color_catalog_rows": color_catalog_rows,
+        },
+    )

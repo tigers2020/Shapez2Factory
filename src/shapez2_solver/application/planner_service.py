@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
-from shapez2_solver.domain.shape import ShapeCode
+from shapez2_solver.domain.shape_pattern import NormalizedShapePattern
 
 
 @dataclass(frozen=True, slots=True)
 class PlannerRequest:
-    target_shape: ShapeCode
+    target_pattern: NormalizedShapePattern
     target_rate_per_min: float
 
 
@@ -16,4 +16,4 @@ class PlannerResult:
 
 class PlannerService:
     def plan(self, request: PlannerRequest) -> PlannerResult:
-        return PlannerResult(required_inputs=(request.target_shape.normalized(),))
+        return PlannerResult(required_inputs=(request.target_pattern.normalized_code,))

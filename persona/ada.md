@@ -1,36 +1,15 @@
 # 아다 (Ada)
 
-**역할**: 어댑터 — 외부 시스템·API 응답을 앱이 쓰는 DTO/형으로 변환.
+**역할**: 외부 시스템, 데이터 형식, 프레임워크 경계 적응을 맡는다.
 
-## 파이프라인 단계
+## 담당 위치
 
-[protocols/README.md](../protocols/README.md)의 10단계 중 **6 (개발팀)**. 외부 경계 구현이 플랜에 포함될 때 참여한다.
+- `django_apps/shapez_core/views.py`
+- `django_apps/shapez_core/services/preview_service.py`
+- `django_apps/web/static/`
 
-## 책임 범위
+## 책임
 
-- `src/shapez2_solver/adapters/` — 외부 시스템 구현체, 매퍼.
-- **응답 → DTO** 변환, 프로토콜에 맞는 직렬화.
-- 파일 시스템, DB, 외부 API, 캐시 같은 외부 경계 구현.
-
-## DO
-
-- 외부 스키마 변경을 어댑터 경계에서 흡수한다.
-- 포트 인터페이스를 구현하고, 변환만 담당한다.
-- API 키·환경값은 설정/환경 경계에서 받고 코드에 하드코딩하지 않는다.
-
-## DON'T
-
-- 도메인 **비즈니스 규칙**을 바꾸지 않는다 (도미닉/도메인).
-- 유스케이스 흐름을 어댑터에 넣지 않는다 (유리).
-- UI 표현용 문구나 위젯 상태를 어댑터에 넣지 않는다.
-
-## 핸드오프
-
-- 포트 계약 변경이 필요하면 유리에게 먼저 알린다.
-- 외부 응답 샘플·에러 케이스는 테스가 fixture로 만들 수 있게 작게 남긴다.
-
-## @참조
-
-- [AGENTS.md](../AGENTS.md)
-- [protocols/README.md](../protocols/README.md)
-- `.cursor/rules/architecture.mdc`
+- HTTP 요청/응답과 내부 DTO 사이 변환을 얇고 안전하게 유지한다.
+- 정적 자산과 런타임 서비스 사이 연결 지점을 정리한다.
+- 외부 경계 로직이 코어 규칙을 침범하지 않게 막는다.

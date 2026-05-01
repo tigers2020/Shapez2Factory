@@ -22,7 +22,8 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["django_apps*", "config"]
 
 [tool.black]
 line-length = 100
@@ -39,3 +40,28 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.12"
 strict = true
 warn_unused_configs = true
+cache_dir = "C:/tmp/shapez2solver-mypy-cache"
+exclude = "(^django_apps/.*/migrations/|^tests/integration/)"
+
+[[tool.mypy.overrides]]
+module = ["django.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "config.*",
+    "manage",
+    "django_apps.shapez_core.apps",
+    "django_apps.shapez_core.urls",
+    "django_apps.shapez_core.views",
+    "django_apps.shapez_solver.admin",
+    "django_apps.shapez_solver.apps",
+    "django_apps.shapez_solver.models",
+    "django_apps.shapez_solver.urls",
+    "django_apps.shapez_solver.views",
+    "django_apps.web.apps",
+    "django_apps.web.urls",
+    "django_apps.web.views",
+    "tests.unit.shapez_solver.*",
+]
+ignore_errors = true

@@ -38,7 +38,7 @@ alwaysApply: true
 | 유리 | [persona/yuri.md](mdc:persona/yuri.md) | `application/` |
 | 아다 | [persona/ada.md](mdc:persona/ada.md) | `adapters/` (DTO 변환, 비즈니스 규칙 변경 금지) |
 | 테스 | [persona/tess.md](mdc:persona/tess.md) | `tests/`, `test_*.py` |
-| 렉스 | [persona/rex.md](mdc:persona/rex.md) | `pytest` → `ruff check .` → `mypy src` → `black .` |
+| 렉스 | [persona/rex.md](mdc:persona/rex.md) | `pytest` → `ruff check .` → `mypy .` → `black .` |
 | 지나 | [persona/gina-gui.md](mdc:persona/gina-gui.md) | `interfaces/`, UI |
 
 인덱스: [persona/README.md](mdc:persona/README.md).
@@ -62,7 +62,7 @@ alwaysApply: true
 
 ## 검증 흐름 (렉스)
 
-구현 후: 테스가 테스트 추가 → 렉스가 `pytest` → `ruff check .` → `mypy src` → `black .` 순서로 검증.
+구현 후: 테스가 테스트 추가 → 렉스가 `pytest` → `ruff check .` → `mypy .` → `black .` 순서로 검증.
 
 - 실패 시: 실패 명령, 이유, 다음 담당 패르소나를 남긴다.
 - 미실행 시: 실행 못 한 명령, 이유, 남은 위험을 남긴다.

@@ -31,12 +31,23 @@
         <div
           id="quick-start"
           class="order-first rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-cyan-950/40 backdrop-blur sm:p-6 lg:order-last"
-          data-preview-api="{% url 'web:api_shape_preview' %}"
+          data-shape-preview-panel
+          data-preview-api="{% url 'shapez_core:shape_preview' %}"
           data-asset-base="{% static 'web/vendor/shapez-vortex/models/shapes/' %}"
+          data-solver-url="{% url 'web:solver' %}"
         >
-          <div class="mb-4 flex items-center justify-between gap-2">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-sm font-semibold text-slate-100">Quick Solver</h2>
-            <span class="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-xs text-emerald-300">MVP</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <a
+                data-solver-page-link
+                href="{% url 'web:solver' %}?code={{ initial_code|urlencode }}"
+                class="inline-flex rounded-full border border-cyan-400/45 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 no-underline hover:border-cyan-300/60 hover:bg-cyan-500/15"
+              >
+                Open solver page
+              </a>
+              <span class="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-xs text-emerald-300">MVP</span>
+            </div>
           </div>
 
           <div class="space-y-4" aria-label="Quick solver shape preview">
@@ -46,6 +57,7 @@
               </label>
               <input
                 id="quick-code"
+                data-shape-preview-code
                 type="text"
                 value="{{ initial_code }}"
                 autocomplete="off"
@@ -54,7 +66,7 @@
               />
               <p class="mt-1 text-[11px] text-slate-500">
                 Preview updates as you type (debounced). Parsed with
-                <span class="font-mono text-slate-400">shapez2_solver</span>.
+                <span class="font-mono text-slate-400">shapez_core</span>.
               </p>
             </div>
           </div>

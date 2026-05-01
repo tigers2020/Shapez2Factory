@@ -73,7 +73,7 @@ async function runPreview(panel, input, seq) {
   }
 
   clearViewerHost(viewersHost);
-  const tpl = document.getElementById("quick-solver-viewer-template");
+  const tpl = panel.querySelector("#quick-solver-viewer-template");
   if (!tpl) {
     return;
   }
@@ -111,12 +111,75 @@ function schedulePreview(panel, input, delayMs) {
   }, delayMs);
 }
 
-const panel = document.getElementById("quick-start");
-if (panel) {
-  const input = document.getElementById("quick-code");
-  if (input && panel.dataset.previewApi && panel.dataset.assetBase) {
-    input.addEventListener("input", () => schedulePreview(panel, input, DEBOUNCE_MS));
-    input.addEventListener("change", () => schedulePreview(panel, input, DEBOUNCE_MS));
-    schedulePreview(panel, input, 0);
+function findPreviewInput(panel) {
+  const scoped = panel.querySelector("[data-shape-preview-code]");
+  if (scoped) {
+    return scoped;
   }
+  const ref = panel.dataset.shapePreviewCodeRef?.trim();
+  if (ref) {
+    try {
+      return document.querySelector(ref);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
+
+/**
+ * Keep an <a data-solver-page-link> href in sync with the shape code field.
+ * Native navigation avoids lost click handlers (third-party scripts, CSP edge cases).
+ */
+function syncSolverPageLink(panel) {
+  const link = panel.querySelector("a[data-solver-page-link]");
+  const input = findPreviewInput(panel);
+  if (!link || !input) {
+    return;
+  }
+
+  let pathWithQueryBase = panel.dataset.solverUrl?.trim();
+  if (!pathWithQueryBase) {
+    const hrefAttr = link.getAttribute("href")?.trim() || "";
+    if (!hrefAttr) {
+      return;
+    }
+    try {
+      pathWithQueryBase = new URL(hrefAttr, window.location.origin).pathname;
+    } catch {
+      return;
+    }
+  }
+
+  const apply = () => {
+    const code = input.value.trim();
+    const next = new URL(pathWithQueryBase, window.location.origin);
+    if (code) {
+      next.searchParams.set("code", code);
+    } else {
+      next.searchParams.delete("code");
+    }
+    link.setAttribute("href", `${next.pathname}${next.search}`);
+  };
+
+  input.addEventListener("input", apply);
+  input.addEventListener("change", apply);
+  apply();
+}
+
+function initShapePreviewPanel(panel) {
+  syncSolverPageLink(panel);
+  const input = findPreviewInput(panel);
+  if (!input || !panel.dataset.previewApi || !panel.dataset.assetBase) {
+    return;
+  }
+  const viewersHost = panel.querySelector("[data-quick-preview-viewers]");
+  if (!viewersHost) {
+    return;
+  }
+  input.addEventListener("input", () => schedulePreview(panel, input, DEBOUNCE_MS));
+  input.addEventListener("change", () => schedulePreview(panel, input, DEBOUNCE_MS));
+  schedulePreview(panel, input, 0);
+}
+
+document.querySelectorAll("[data-shape-preview-panel]").forEach(initShapePreviewPanel);

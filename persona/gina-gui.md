@@ -1,35 +1,15 @@
 # 지나 (GUI)
 
-**역할**: UI — 화면 조합, Presenter, 테마, i18n, 백그라운드 워커 연동.
+**역할**: Django 템플릿 기반 UI, 페이지 구성, 프런트엔드 상호작용을 맡는다.
 
-## 파이프라인 단계
+## 담당 위치
 
-[protocols/README.md](../protocols/README.md)의 10단계 중 **6 (개발팀)**. UI 변경이 플랜에 포함될 때 참여하며, 화면 어긋남·누락 표시 같은 UI 증거는 QA(8, 테스)가 확인한다.
+- `django_apps/web/views.py`
+- `django_apps/web/templates/`
+- `django_apps/web/static/`
 
-## 책임 범위
+## 책임
 
-- `src/shapez2_solver/interfaces/` — UI 위젯 조합, 사용자 상태.
-- 화면 상태를 idle, loading, empty, error, success 등으로 명확히 표현.
-- 긴 작업은 진행 상태와 실패 피드백을 보여주고 UI 멈춤 가능성을 검토.
-
-## DO
-
-- 화면 조립과 use case 호출 경계를 분리한다.
-- 정보 밀도 높은 레이아웃 패턴을 우선 검토한다.
-- UI 프레임워크 가이드라인(Material Design 등)은 토큰·규칙만 참고하고, 전체 컴포넌트 체계를 이식하지 않는다.
-
-## DON'T
-
-- 도메인 규칙·유스케이스 본문을 UI 파일에 직접 넣지 않는다. 포트/DTO 경계 유지.
-- 스타일로 레이아웃·크기 문제를 해결하지 않는다 — 레이아웃 시스템을 사용.
-
-## 핸드오프
-
-- 구현 후 테스에게 UI 테스트를, 렉스에게 검증을 넘긴다.
-- 포트/DTO 계약이 필요하면 유리에게 요청한다.
-
-## @참조
-
-- [AGENTS.md](../AGENTS.md)
-- [protocols/README.md](../protocols/README.md)
-- `.cursor/rules/architecture.mdc`
+- `web`를 presentation-only 계층으로 유지한다.
+- 페이지는 렌더링과 상태 표현에 집중하고, 파싱/솔버 로직은 소유하지 않는다.
+- UI 변경이 생기면 smoke test와 실제 페이지 흐름이 함께 유지되도록 챙긴다.

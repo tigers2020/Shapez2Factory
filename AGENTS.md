@@ -55,7 +55,7 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 
 - **리뷰어(7)**: "기획대로 만들었나?" — 스펙·코드·계약 정합 검사. 유리가 주도, 시몬이 방향·누락을 보조한다.
 - **QA(8)**: "실제로 제대로 동작하나?" — 테스가 시나리오·경계·이상값을 테스트 시트와 증거(로그/캡처)로 본다.
-- **하네스(9)**: "자동 검증에 통과하나?" — 렉스가 `pytest` → `ruff check .` → `mypy src` → `black .`을 돌리고, 실패 시 담당 레이어로 되돌린다.
+- **하네스(9)**: "자동 검증에 통과하나?" — 렉스가 `pytest` → `ruff check .` → `mypy .` → `black .`을 돌리고, 실패 시 담당 레이어로 되돌린다.
 
 ---
 
@@ -80,7 +80,7 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 
 도메인·시스템 참고 요약(공식·Steam·FAQ 등 출처 표기): [`documents/research_shapez2_game_systems_2026-05-01.md`](documents/research_shapez2_game_systems_2026-05-01.md).
 
-워크플로우: `documents/`에 리서치·플랜 MD → 사람 승인 → `src/shapez2_solver/`(예정 패키지명) 레이어 구현 → 테스(QA)·렉스(하네스) 검증 → 시몬 클로징으로 `documents/` 동기화.
+워크플로우: `documents/`에 리서치·플랜 MD → 사람 승인 → `django_apps/shapez_core`, `django_apps/shapez_solver`, `django_apps/web` 기준 구현 → 테스(QA)·렉스(하네스) 검증 → 시몬 클로징으로 `documents/` 동기화.
 
 ---
 
@@ -116,7 +116,7 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 ## 하네스 엔지니어링
 
 - 프롬프트가 아니라 구조로 실수를 줄인다: 테스트, 린트, 레이어 규칙, 계획 승인 게이트.
-- 파이프라인 **9번(하네스)**은 렉스가 수행한다. `pytest` → `ruff check .` → `mypy src` → `black .`을 **통과할 때까지** 돌리고, 실패하면 실패 로그와 함께 **담당 레이어로 되돌려** 수정 루프를 강제한다.
+- 파이프라인 **9번(하네스)**은 렉스가 수행한다. `pytest` → `ruff check .` → `mypy .` → `black .`을 **통과할 때까지** 돌리고, 실패하면 실패 로그와 함께 **담당 레이어로 되돌려** 수정 루프를 강제한다.
 - 컨텍스트 지도는 `AGENTS.md`, `.cursor/rules/`, `documents/CURSOR_MEMO.md`다.
 - 재현된 실수는 테스트와 `documents/CURSOR_MEMO.md`에 남겨 반복을 줄인다.
 - 외부 기업 사례·수치·인용은 검증 가능한 출처 없이 사실처럼 단정하지 않는다.
@@ -128,9 +128,9 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 | 목적 | 명령 |
 |------|------|
 | 설치 | `pip install -e ".[dev]"` — 루트에 `pyproject.toml`을 두고 실행한다. |
-| 실행 | `python -m shapez2_solver` — 패키지 스캐폴드·엔트리포인트 추가 후 사용한다. |
+| 실행 | `python manage.py runserver` — Django 앱 기준으로 로컬 서버를 실행한다. |
 | 테스트 | `pytest` |
-| 검증 (로컬) | `ruff check .` → `mypy src` → `black .` (포맷 적용) |
+| 검증 (로컬) | `ruff check .` → `mypy .` → `black .` (포맷 적용) |
 | 검증 (CI) | 동일 순서에서 **`black --check .`** 로 포맷만 검사 (파일 변경 없음) |
 
 ---
@@ -138,9 +138,11 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 ## 파일 구조
 
 ```text
-src/shapez2_solver/
-  domain/       application/   adapters/   interfaces/   bootstrap/
-tests/  unit/  integration/  golden/
+config/
+django_apps/
+  shapez_core/  shapez_solver/  web/
+tests/
+  unit/  integration/
 ```
 
 ---

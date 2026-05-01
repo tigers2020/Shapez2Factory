@@ -34,13 +34,20 @@
             class="rounded-sm px-3 py-2 no-underline {% if current == 'demo' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
             {% if current == "demo" %}aria-current="page"{% endif %}
           >Demo</a>
+          <a
+            href="{% url 'web:solver' %}"
+            class="rounded-sm px-3 py-2 no-underline {% if current == 'solver' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
+            {% if current == "solver" %}aria-current="page"{% endif %}
+          >Solver</a>
         </nav>
 
         <div class="flex flex-1 items-center justify-end">
-          <span
-            class="inline-flex items-center justify-center rounded-sm border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-500"
-            aria-disabled="true"
-          >GitHub soon</span>
+          <a
+            href="https://github.com/tigers2020/Shapez2Factory"
+            class="inline-flex items-center justify-center rounded-sm border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 no-underline hover:border-indigo-500/50 hover:text-indigo-200"
+            target="_blank"
+            rel="noopener noreferrer"
+          >GitHub</a>
         </div>
       </div>
     </header>
@@ -78,13 +85,20 @@
             class="rounded-lg px-3 py-2 no-underline {% if current == 'demo' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
             {% if current == "demo" %}aria-current="page"{% endif %}
           >Demo</a>
+          <a
+            href="{% url 'web:solver' %}"
+            class="rounded-lg px-3 py-2 no-underline {% if current == 'solver' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+            {% if current == "solver" %}aria-current="page"{% endif %}
+          >Solver</a>
         </nav>
 
         <div class="flex flex-1 items-center justify-end">
-          <span
-            class="inline-flex items-center justify-center rounded-xl border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-500"
-            aria-disabled="true"
-          >GitHub soon</span>
+          <a
+            href="https://github.com/tigers2020/Shapez2Factory"
+            class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 no-underline hover:border-cyan-400/40 hover:text-cyan-200"
+            target="_blank"
+            rel="noopener noreferrer"
+          >GitHub</a>
         </div>
       </div>
     </header>

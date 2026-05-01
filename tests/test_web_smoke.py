@@ -11,6 +11,42 @@ def test_home_page_renders() -> None:
     assert b"Solve Shapez 2 production chains" in response.content
     assert b"Quick Solver" in response.content
     assert b"flowbite.min.js" in response.content
+    assert b"quick_solver_preview.js" in response.content
+    assert b"data-quick-preview-viewers" in response.content
+    assert b"data-preview-api" in response.content
+    assert b"Shape preview" in response.content
+
+
+def test_api_shape_preview_ok() -> None:
+    response = Client().get("/api/shape-preview/", {"code": "SuSuSuSu"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert data["warnings"] == []
+    assert len(data["patterns"]) == 1
+    assert data["patterns"][0]["preview_scene"]["normalized_code"] == "SuSuSuSu"
+    cells = data["patterns"][0]["preview_scene"]["cells"]
+    assert len(cells) == 4
+    assert all("mesh_key" in c for c in cells)
+
+
+def test_api_shape_preview_parse_error() -> None:
+    response = Client().get("/api/shape-preview/", {"code": "not_a_real_code!!!"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is False
+    assert data["patterns"] == []
+    assert data["error"]
+
+
+def test_api_shape_preview_empty_code() -> None:
+    response = Client().get("/api/shape-preview/", {"code": ""})
+
+    assert response.status_code == 400
+    data = response.json()
+    assert data["ok"] is False
 
 
 def test_gallery_page_renders() -> None:
@@ -38,7 +74,7 @@ def test_demo_page_renders() -> None:
     assert b'data-shape-gltf-mode="original"' in response.content
     assert b'data-shape-gltf-mode="layer"' in response.content
     assert b'data-shape-gltf-mode="quadrant"' in response.content
-    assert b"Three.js renderer" in response.content
+    assert b"Shape preview" in response.content
     assert b'"mesh_key": "default_rect"' in response.content
     assert b"shape-preview" not in response.content
     assert b"Example production plan" in response.content

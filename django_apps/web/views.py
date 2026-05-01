@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from django.conf import settings
+from django.http import JsonResponse
 from django.shortcuts import render
 
 from shapez2_solver.application.shape_code_parser import ShapeCodeParseError, parse_shape_code_list
@@ -50,7 +51,60 @@ def _build_gallery_assets(rel_paths: tuple[str, ...], section_label: str) -> lis
 
 
 def home(request):
-    return render(request, "web/home.html")
+    return render(
+        request,
+        "web/home.html",
+        {
+            "initial_code": "CuRuSuWu",
+        },
+    )
+
+
+def api_shape_preview(request):
+    code = request.GET.get("code", "").strip()
+    if not code:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Shape code is empty.",
+                "input": "",
+                "warnings": [],
+                "patterns": [],
+            },
+            status=400,
+        )
+
+    row = _demo_parse_row(code)
+    if not row["ok"]:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": row["error"],
+                "input": row["input"],
+                "warnings": [],
+                "patterns": [],
+            },
+            status=200,
+        )
+
+    warnings: list[str] = []
+    patterns_payload: list[dict[str, Any]] = []
+    for pat in row["patterns"]:
+        if pat["raw_code"] != pat["normalized_code"]:
+            warnings.append(
+                f"Pattern «{pat['raw_code']}» was normalized to «{pat['normalized_code']}»."
+            )
+        patterns_payload.append({"preview_scene": pat["preview_scene"]})
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "error": None,
+            "input": row["input"],
+            "warnings": warnings,
+            "patterns": patterns_payload,
+        },
+    )
 
 
 def gallery(request):

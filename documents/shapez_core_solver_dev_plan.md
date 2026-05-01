@@ -240,7 +240,7 @@ token           := shape_code color_code
 ### Quadrant order
 
 ```text
-NE -> SE -> SW -> NW
+SW -> NW -> NE -> SE
 ```
 
 ### Layer order

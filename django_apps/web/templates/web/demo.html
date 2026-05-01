@@ -13,7 +13,7 @@
     </h2>
     <p class="mt-2 max-w-3xl text-sm text-slate-400">
       Live output from <code class="text-slate-300">shapez2_solver</code>: catalog constants, <code class="text-slate-300">parse_shape_code_list()</code>
-      , and per-quadrant cells (NE → SE → SW → NW). Stack layers use <code class="text-slate-300">:</code>
+      , and per-quadrant cells (SW → NW → NE → SE). Stack layers use <code class="text-slate-300">:</code>
       ; multiple patterns use commas inside optional <code class="text-slate-300">[ ]</code>
       .
     </p>
@@ -120,11 +120,12 @@
                       <div
                         class="rounded-3xl bg-black/30 p-3 ring-1 ring-cyan-400/20"
                         data-shape-gltf-viewer
+                        data-shape-gltf-auto-mount
                         data-asset-base="{% static 'web/vendor/shapez-vortex/models/shapes/' %}"
                       >
                         <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
                           <p class="text-[10px] font-semibold uppercase tracking-wider text-cyan-200/80">
-                            Three.js renderer
+                            Shape preview
                           </p>
                           <div class="flex items-center gap-1" data-shape-gltf-mode-controls>
                             <button

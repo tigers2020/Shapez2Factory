@@ -15,11 +15,27 @@ def test_parse_single_pattern_without_brackets() -> None:
     assert p.normalized_code == "SuSuSuSu"
     assert len(p.layers) == 1
     assert [c.position for c in p.layers[0].cells] == [
-        QuadrantPosition.NE,
-        QuadrantPosition.SE,
         QuadrantPosition.SW,
         QuadrantPosition.NW,
+        QuadrantPosition.NE,
+        QuadrantPosition.SE,
     ]
+
+
+def test_parse_cr_ru_quadrants_sw_nw() -> None:
+    parsed = parse_shape_code_list("CrRu----")
+    cells = parsed[0].layers[0].cells
+    assert cells[0].raw_token == "Cr" and cells[0].position == QuadrantPosition.SW
+    assert cells[1].raw_token == "Ru" and cells[1].position == QuadrantPosition.NW
+
+
+def test_parse_ru_su_cu_wu_quadrants() -> None:
+    parsed = parse_shape_code_list("RuSuCuWu")
+    c = parsed[0].layers[0].cells
+    assert c[0].raw_token == "Ru" and c[0].position == QuadrantPosition.SW
+    assert c[1].raw_token == "Su" and c[1].position == QuadrantPosition.NW
+    assert c[2].raw_token == "Cu" and c[2].position == QuadrantPosition.NE
+    assert c[3].raw_token == "Wu" and c[3].position == QuadrantPosition.SE
 
 
 def test_parse_single_pattern_with_brackets() -> None:

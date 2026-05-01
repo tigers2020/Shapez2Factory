@@ -65,19 +65,21 @@ const QUADRANT_EXPLODE_OFFSETS = {
   NW: { x: -EXPLODED_QUADRANT_GAP, z: -EXPLODED_QUADRANT_GAP },
 };
 
+/** 북쪽(-Z) 방향에서 내려다보기, 수평면 대비 약 60° 상공 (Y축 기준 polar ≈ 30°). */
+function cameraFrame(distance, targetY) {
+  const target = new THREE.Vector3(0, targetY, 0);
+  const phi = THREE.MathUtils.degToRad(30);
+  const theta = Math.PI;
+  const position = new THREE.Vector3()
+    .setFromSpherical(new THREE.Spherical(distance, phi, theta))
+    .add(target);
+  return { position, target };
+}
+
 const CAMERA_FRAMES = {
-  original: {
-    position: new THREE.Vector3(1.35, 1.1, 1.65),
-    target: new THREE.Vector3(0, 0.12, 0),
-  },
-  layer: {
-    position: new THREE.Vector3(2.1, 2.05, 2.75),
-    target: new THREE.Vector3(0, 0.35, 0),
-  },
-  quadrant: {
-    position: new THREE.Vector3(2.8, 2.1, 3.2),
-    target: new THREE.Vector3(0, 0.24, 0),
-  },
+  original: cameraFrame(2.35, 0.12),
+  layer: cameraFrame(3.65, 0.35),
+  quadrant: cameraFrame(4.5, 0.24),
 };
 
 const modelCache = new Map();
@@ -442,7 +444,38 @@ function setupRenderer(container) {
   });
   resizeObserver.observe(container);
 
-  return { camera, controls, renderer, scene };
+  return { camera, controls, renderer, scene, resizeObserver };
+}
+
+const viewerStates = new WeakMap();
+
+function disposeViewerState(state) {
+  if (!state) {
+    return;
+  }
+  state.renderer.setAnimationLoop(null);
+  state.resizeObserver.disconnect();
+  state.controls.dispose();
+
+  state.scene.traverse((obj) => {
+    if (!obj.isMesh) {
+      return;
+    }
+    obj.geometry?.dispose();
+    const mat = obj.material;
+    if (Array.isArray(mat)) {
+      mat.forEach((m) => m.dispose());
+    } else {
+      mat?.dispose();
+    }
+  });
+  state.scene.clear();
+
+  const viewport = state.container.querySelector("[data-shape-gltf-viewport]");
+  if (viewport && state.renderer.domElement.parentNode === viewport) {
+    viewport.removeChild(state.renderer.domElement);
+  }
+  state.renderer.dispose();
 }
 
 async function renderSceneToThree(scene, loader, assetBase, renderScene, viewMode) {
@@ -521,6 +554,12 @@ function updateTransitions(state) {
 }
 
 async function mountViewer(container) {
+  const existing = viewerStates.get(container);
+  if (existing) {
+    disposeViewerState(existing);
+    viewerStates.delete(container);
+  }
+
   const viewport = container.querySelector("[data-shape-gltf-viewport]");
   const assetBase = container.dataset.assetBase;
   const renderScene = readScene(container);
@@ -549,9 +588,25 @@ async function mountViewer(container) {
     renderScene,
     state.currentViewMode
   );
+
+  viewerStates.set(container, state);
+  return state;
 }
 
-for (const container of document.querySelectorAll("[data-shape-gltf-viewer]")) {
+export async function mountShapeGltfViewer(container) {
+  return mountViewer(container);
+}
+
+export function disposeShapeGltfViewer(container) {
+  const state = viewerStates.get(container);
+  if (state) {
+    disposeViewerState(state);
+    viewerStates.delete(container);
+  }
+}
+
+const autoMountRoots = document.querySelectorAll("[data-shape-gltf-viewer][data-shape-gltf-auto-mount]");
+for (const container of autoMountRoots) {
   mountViewer(container).catch((error) => {
     console.error("Shape glTF viewer failed to mount", error);
   });

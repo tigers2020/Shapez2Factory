@@ -28,71 +28,98 @@
       </div>
 
       <div class="grid gap-10 py-10 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-20">
-        <div id="quick-start" class="order-first rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-cyan-950/40 backdrop-blur sm:p-6 lg:order-last">
+        <div
+          id="quick-start"
+          class="order-first rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-cyan-950/40 backdrop-blur sm:p-6 lg:order-last"
+          data-preview-api="{% url 'web:api_shape_preview' %}"
+          data-asset-base="{% static 'web/vendor/shapez-vortex/models/shapes/' %}"
+        >
           <div class="mb-4 flex items-center justify-between gap-2">
             <h2 class="text-sm font-semibold text-slate-100">Quick Solver</h2>
             <span class="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-xs text-emerald-300">MVP</span>
           </div>
 
-          <form class="space-y-4" action="#" method="get" aria-label="Quick solver (mock)">
+          <div class="space-y-4" aria-label="Quick solver shape preview">
             <div>
-              <label class="mb-2 block text-xs font-medium text-slate-400" for="target-shape">Target Shape</label>
+              <label class="mb-2 block text-xs font-medium text-slate-400" for="quick-code">
+                Target shape code
+              </label>
               <input
-                id="target-shape"
-                name="target_shape"
+                id="quick-code"
                 type="text"
-                value="CuRuSuWu"
+                value="{{ initial_code }}"
                 autocomplete="off"
-                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+                placeholder="e.g. CuRuSuWu or SuSuSuSu"
+                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-mono text-sm text-slate-100 outline-none focus:border-cyan-400"
               />
+              <p class="mt-1 text-[11px] text-slate-500">
+                Preview updates as you type (debounced). Parsed with
+                <span class="font-mono text-slate-400">shapez2_solver</span>.
+              </p>
             </div>
+          </div>
 
-            <div class="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label class="mb-2 block text-xs font-medium text-slate-400" for="output-rate">Output Rate / min</label>
-                <input
-                  id="output-rate"
-                  name="output_rate"
-                  type="number"
-                  value="120"
-                  min="1"
-                  class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
-                />
+          <p
+            data-quick-preview-error
+            class="mt-4 hidden text-sm text-rose-300"
+            role="alert"
+          ></p>
+          <p
+            data-quick-preview-warnings
+            class="mt-2 hidden text-sm text-rose-300"
+          ></p>
+
+          <div class="mt-6 border-t border-slate-800 pt-5" aria-live="polite">
+            <div data-quick-preview-viewers></div>
+          </div>
+
+          <template id="quick-solver-viewer-template">
+            <div
+              class="rounded-3xl bg-black/30 p-3 ring-1 ring-cyan-400/20"
+              data-shape-gltf-viewer
+              data-asset-base=""
+            >
+              <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-[10px] font-semibold uppercase tracking-wider text-cyan-200/80">
+                  Shape preview
+                </p>
+                <div class="flex items-center gap-1" data-shape-gltf-mode-controls>
+                  <button
+                    type="button"
+                    class="rounded-full border border-cyan-400/50 bg-cyan-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-cyan-100"
+                    data-shape-gltf-mode="original"
+                    aria-pressed="true"
+                  >
+                    Original
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-full border border-slate-700 bg-slate-950/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:border-cyan-400/40 hover:text-cyan-100"
+                    data-shape-gltf-mode="layer"
+                    aria-pressed="false"
+                  >
+                    Layer
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-full border border-slate-700 bg-slate-950/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:border-cyan-400/40 hover:text-cyan-100"
+                    data-shape-gltf-mode="quadrant"
+                    aria-pressed="false"
+                  >
+                    Quadrant
+                  </button>
+                </div>
               </div>
-
-              <div>
-                <label class="mb-2 block text-xs font-medium text-slate-400" for="game-version">Game Version</label>
-                <select
-                  id="game-version"
-                  name="game_version"
-                  class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
-                >
-                  <option value="shapez2_1_0" selected>shapez2_1_0</option>
-                </select>
-              </div>
+              <div
+                class="h-64 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950"
+                style="height: 16rem; min-height: 16rem;"
+                data-shape-gltf-viewport
+              ></div>
+              <script type="application/json">
+                {}
+              </script>
             </div>
-
-            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <button
-                type="button"
-                class="w-full rounded-xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-200 sm:flex-1"
-              >
-                Start Solver
-              </button>
-              <a
-                href="{% url 'web:demo' %}"
-                class="inline-flex w-full items-center justify-center rounded-xl border border-slate-700 px-5 py-3 text-center text-sm font-semibold text-slate-200 no-underline hover:border-cyan-400/40 hover:text-cyan-200 sm:flex-1"
-              >
-                View demo
-              </a>
-              <a
-                href="{% url 'web:gallery' %}"
-                class="inline-flex w-full items-center justify-center rounded-xl border border-slate-700 px-5 py-3 text-center text-sm font-semibold text-slate-200 no-underline hover:border-cyan-400/40 hover:text-cyan-200 sm:flex-1"
-              >
-                View gallery
-              </a>
-            </div>
-          </form>
+          </template>
         </div>
 
         <div class="order-last lg:order-first">
@@ -156,4 +183,17 @@
 
   {% include "web/partials/site_footer.html" %}
 </main>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "{% static 'web/vendor/three/0.184.0/build/three.module.js' %}",
+        "three/addons/": "{% static 'web/vendor/three/0.184.0/examples/jsm/' %}"
+      }
+    }
+  </script>
+  <script type="module" src="{% static 'web/js/quick_solver_preview.js' %}"></script>
 {% endblock %}

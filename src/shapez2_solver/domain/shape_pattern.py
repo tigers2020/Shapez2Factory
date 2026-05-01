@@ -5,7 +5,7 @@ from enum import Enum
 
 
 class QuadrantPosition(Enum):
-    """NE -> SE -> SW -> NW (dev plan quadrant order)."""
+    """Quadrant labels; layer string order is SW → NW → NE → SE (shapez string / in-game layout)."""
 
     NE = "NE"
     SE = "SE"
@@ -14,10 +14,10 @@ class QuadrantPosition(Enum):
 
 
 _QUADRANT_ORDER = (
-    QuadrantPosition.NE,
-    QuadrantPosition.SE,
     QuadrantPosition.SW,
     QuadrantPosition.NW,
+    QuadrantPosition.NE,
+    QuadrantPosition.SE,
 )
 
 

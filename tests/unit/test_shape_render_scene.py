@@ -43,10 +43,10 @@ def test_shape_render_scene_keys_are_stable() -> None:
     scene = _scene("RuCuSuWu")
 
     assert [(cell.mesh_key, cell.material_key, cell.transform_key) for cell in scene.cells] == [
-        ("default_rect", "u", "NE:L0"),
-        ("default_circle", "u", "SE:L0"),
-        ("default_star", "u", "SW:L0"),
-        ("default_diamond", "u", "NW:L0"),
+        ("default_rect", "u", "SW:L0"),
+        ("default_circle", "u", "NW:L0"),
+        ("default_star", "u", "NE:L0"),
+        ("default_diamond", "u", "SE:L0"),
     ]
 
 
@@ -56,14 +56,14 @@ def test_shape_render_scene_keeps_position_and_solver_kinds() -> None:
     assert scene.cells[0] == ShapeRenderCell(
         layer_index=0,
         quadrant_index=0,
-        position=QuadrantPosition.NE,
+        position=QuadrantPosition.SW,
         shape_code="W",
         color_code="r",
         shape_kind="diamond",
         color_kind="red",
         mesh_key="default_diamond",
         material_key="r",
-        transform_key="NE:L0",
+        transform_key="SW:L0",
     )
 
 

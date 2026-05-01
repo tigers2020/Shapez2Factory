@@ -80,6 +80,19 @@ env/
 .idea/
 *.iml
 
+# --- Cursor / Serena / local AI & MCP (machine-specific, not for GitHub) ---
+.cursor/
+.serena/
+mcps/
+agents/
+.claude/
+.codex/
+.continue/
+.aider.input.history
+.aider.chat.history.md
+.kilocode/
+.mcp.json
+
 # --- Misc junk ---
 *.bak
 *.tmp

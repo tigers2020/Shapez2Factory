@@ -1,0 +1,159 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block title %}shapez2 planner - Factory console{% endblock %}
+
+{% block content %}
+<main class="min-h-screen bg-slate-950 text-slate-100">
+  {% include "web/partials/site_nav.html" %}
+
+  <section class="relative overflow-hidden border-b border-cyan-400/10">
+    <div
+      class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(34,211,238,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(34,211,238,0.08)_1px,transparent_1px)] bg-size-[48px_48px]"
+    ></div>
+    <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-cyan-500/10 via-transparent to-slate-950"></div>
+
+    <div class="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+      <div class="mb-8 overflow-hidden rounded-2xl border border-cyan-400/20 bg-slate-900/40">
+        <img
+          src="{% static 'web/img/branding/header.png' %}"
+          alt="Shapez 2 header art"
+          class="w-full object-cover"
+          style="max-height: 13rem; object-position: center"
+          width="1920"
+          height="400"
+          decoding="async"
+          fetchpriority="high"
+        />
+      </div>
+
+      <div class="grid gap-10 py-10 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-20">
+        <div id="quick-start" class="order-first rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-5 shadow-2xl shadow-cyan-950/40 backdrop-blur sm:p-6 lg:order-last">
+          <div class="mb-4 flex items-center justify-between gap-2">
+            <h2 class="text-sm font-semibold text-slate-100">Quick Solver</h2>
+            <span class="shrink-0 rounded-full bg-emerald-400/10 px-2 py-1 text-xs text-emerald-300">MVP</span>
+          </div>
+
+          <form class="space-y-4" action="#" method="get" aria-label="Quick solver (mock)">
+            <div>
+              <label class="mb-2 block text-xs font-medium text-slate-400" for="target-shape">Target Shape</label>
+              <input
+                id="target-shape"
+                name="target_shape"
+                type="text"
+                value="CuRuSuWu"
+                autocomplete="off"
+                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+              />
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="mb-2 block text-xs font-medium text-slate-400" for="output-rate">Output Rate / min</label>
+                <input
+                  id="output-rate"
+                  name="output_rate"
+                  type="number"
+                  value="120"
+                  min="1"
+                  class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+                />
+              </div>
+
+              <div>
+                <label class="mb-2 block text-xs font-medium text-slate-400" for="game-version">Game Version</label>
+                <select
+                  id="game-version"
+                  name="game_version"
+                  class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+                >
+                  <option value="shapez2_1_0" selected>shapez2_1_0</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <button
+                type="button"
+                class="w-full rounded-xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 hover:bg-cyan-200 sm:flex-1"
+              >
+                Start Solver
+              </button>
+              <a
+                href="{% url 'web:demo' %}"
+                class="inline-flex w-full items-center justify-center rounded-xl border border-slate-700 px-5 py-3 text-center text-sm font-semibold text-slate-200 no-underline hover:border-cyan-400/40 hover:text-cyan-200 sm:flex-1"
+              >
+                View demo
+              </a>
+              <a
+                href="{% url 'web:gallery' %}"
+                class="inline-flex w-full items-center justify-center rounded-xl border border-slate-700 px-5 py-3 text-center text-sm font-semibold text-slate-200 no-underline hover:border-cyan-400/40 hover:text-cyan-200 sm:flex-1"
+              >
+                View gallery
+              </a>
+            </div>
+          </form>
+        </div>
+
+        <div class="order-last lg:order-first">
+          <div class="mb-5 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-200">
+            shapez 2 planner / solver / production stats / miner calculator
+          </div>
+
+          <h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-white md:text-6xl">
+            Solve Shapez 2 production chains.
+          </h1>
+
+          <p class="mt-6 max-w-2xl text-base leading-7 text-slate-400 md:text-lg">
+            Generate recipes, estimate required inputs, calculate miner counts,
+            and visualize production graphs for Shapez 2 factories.
+          </p>
+
+          <p class="mt-4 max-w-2xl text-sm leading-relaxed text-slate-500">
+            Follow one target shape from recipe breakdown to inputs per minute, miner load,
+            and bottleneck checks in a single planning surface.
+          </p>
+
+          <figure class="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/50 shadow-lg shadow-cyan-950/30">
+            <img
+              src="{% static 'web/img/branding/box-art.png' %}"
+              alt="Shapez 2 box art"
+              class="w-full object-cover"
+              width="800"
+              height="450"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+    <div class="grid gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6">
+        <h3 class="text-sm font-semibold text-cyan-200">Shape Solver</h3>
+        <p class="mt-2 text-sm text-slate-400">Find operation sequences to reach target shapes.</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6">
+        <h3 class="text-sm font-semibold text-violet-200">Production Planner</h3>
+        <p class="mt-2 text-sm text-slate-400">Derive required inputs per minute from target output rate.</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6">
+        <h3 class="text-sm font-semibold text-amber-200">Miner Calculator</h3>
+        <p class="mt-2 text-sm text-slate-400">Estimate miners and machine load from raw demand.</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6">
+        <h3 class="text-sm font-semibold text-emerald-200">Visual Graph</h3>
+        <p class="mt-2 text-sm text-slate-400">Inspect recipes, bottlenecks, and waste in a flow graph.</p>
+      </div>
+    </div>
+  </section>
+
+  {% include "web/partials/site_footer.html" %}
+</main>
+{% endblock %}

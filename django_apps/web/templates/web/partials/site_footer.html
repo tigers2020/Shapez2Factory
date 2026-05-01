@@ -1,0 +1,33 @@
+{% if nav_tone == "mono" %}
+  <footer class="border-t border-neutral-800 bg-neutral-950/90">
+    <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-10 text-sm text-neutral-500 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+      <div>
+        <span class="text-neutral-400">shapez2-solver</span>
+        <span class="mx-2 text-neutral-700" aria-hidden="true">/</span>
+        <span>v0.1.0 scaffold</span>
+      </div>
+      <div class="flex flex-wrap gap-4">
+        <span class="text-neutral-600">GitHub link pending</span>
+        <span class="max-w-prose text-xs leading-relaxed text-neutral-600">
+          Not affiliated with the official game; fan tooling for planning and analysis.
+        </span>
+      </div>
+    </div>
+  </footer>
+{% else %}
+  <footer class="border-t border-slate-800 bg-slate-950/80">
+    <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-10 text-sm text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+      <div>
+        <span class="text-slate-400">shapez2-solver</span>
+        <span class="mx-2 text-slate-700" aria-hidden="true">/</span>
+        <span>v0.1.0 scaffold</span>
+      </div>
+      <div class="flex flex-wrap gap-4">
+        <span class="text-slate-500">GitHub link pending</span>
+        <span class="max-w-prose text-xs leading-relaxed">
+          Not affiliated with the official game; fan tooling for planning and analysis.
+        </span>
+      </div>
+    </div>
+  </footer>
+{% endif %}

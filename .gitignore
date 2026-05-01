@@ -1,0 +1,89 @@
+# --- env & tooling (project) ---
+.conda/
+.venv/
+node_modules/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.nox/
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+*.mo
+*.pot
+
+# --- Django ---
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+*.sqlite3
+media/
+staticfiles/
+celerybeat-schedule
+celerybeat.pid
+
+# --- OS / editor junk ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# --- Secrets & local env (keep .env.example tracked) ---
+.env
+.env.*
+!.env.example
+
+# --- Virtualenv (common folder names) ---
+venv/
+ENV/
+env/
+
+# --- IDE (JetBrains / local) ---
+.idea/
+*.iml
+
+# --- Misc junk ---
+*.bak
+*.tmp
+*.orig
+*.swp
+*.swo
+*~

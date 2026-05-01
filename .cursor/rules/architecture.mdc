@@ -1,0 +1,44 @@
+---
+description: "shapez2Solver architecture: layer boundaries, ports, dependency direction"
+alwaysApply: true
+---
+
+# shapez2Solver Architecture
+
+## 레이어
+
+| 레이어 | 경로 | 담당 | 원칙 |
+|---|---|---|---|
+| domain | `src/shapez2_solver/domain/` | 도미닉 | 순수 규칙, 값 객체, 정책 |
+| application | `src/shapez2_solver/application/` | 유리 | use case, DTO, port 추상화 |
+| adapters | `src/shapez2_solver/adapters/` | 아다 | 외부 시스템 구현, 응답→DTO 변환 |
+| interfaces | `src/shapez2_solver/interfaces/` | 지나 | UI 화면, 사용자 상태, 위젯 조합 |
+| bootstrap | `src/shapez2_solver/bootstrap/` | 시몬 | 조립, dependency wiring |
+| tests | `tests/` | 테스 | unit/integration/golden |
+
+## 의존 방향
+
+- `domain`은 다른 레이어를 import하지 않는다.
+- `application`은 `domain`과 `application.ports`에 의존한다.
+- `adapters`는 `application.ports`를 구현하고 외부 라이브러리 세부를 숨긴다.
+- `interfaces`는 use case 또는 application DTO에 의존하되 adapter 구현 세부를 직접 알지 않는다.
+- `bootstrap`에서 구체 adapter와 UI/use case를 조립한다.
+
+## Port 규칙
+
+- port는 `src/shapez2_solver/application/ports/`에 둔다.
+- use case는 구체 클래스가 아니라 port protocol/abstract interface에 의존한다.
+- adapter는 port 계약을 만족시키고 외부 응답을 application DTO로 변환한다.
+- port 변경은 유리, adapter 구현 변경은 아다, domain 규칙 변경은 도미닉에게 책임을 나눈다.
+
+## 테스트 배치
+
+- domain 규칙: `tests/unit/` 우선.
+- use case 흐름: port fake를 사용한 unit test 우선.
+- adapter/DB/FS: 필요 시 `tests/integration/`.
+
+## 참조
+
+- [Dominic card](mdc:persona/dominic.md)
+- [Yuri card](mdc:persona/yuri.md)
+- [Ada card](mdc:persona/ada.md)

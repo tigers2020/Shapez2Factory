@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shapez2-solver"
+version = "0.1.0"
+description = "Django scaffold for a shapez 2 factory planner."
+readme = "documents/plan_django_scaffold_2026-05-01.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.2,<6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "mypy",
+    "pytest",
+    "pytest-django",
+    "ruff",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true

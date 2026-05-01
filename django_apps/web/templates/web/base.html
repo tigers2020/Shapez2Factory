@@ -1,0 +1,16 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}shapez2 planner{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'web/img/branding/logo-3.png' %}">
+    <link rel="stylesheet" href="{% static 'web/css/app.css' %}">
+  </head>
+  <body class="{% block body_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+    <script src="{% static 'web/js/flowbite.min.js' %}"></script>
+    {% block extra_scripts %}{% endblock %}
+  </body>
+</html>

@@ -100,3 +100,10 @@ agents/
 *.swp
 *.swo
 *~
+
+AGENTS.md
+.cursor/
+persona/
+.serena/
+.vscode/
+protocols/

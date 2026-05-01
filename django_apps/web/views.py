@@ -1,3 +1,4 @@
+import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -5,8 +6,8 @@ from typing import Any
 from django.conf import settings
 from django.shortcuts import render
 
-from django_apps.web.services.shape_svg_renderer import render_shape_pattern_svg
 from shapez2_solver.application.shape_code_parser import ShapeCodeParseError, parse_shape_code_list
+from shapez2_solver.application.shape_render_scene import ShapeRenderScene, build_shape_render_scene
 from shapez2_solver.domain.shape_catalog import COLOR_KINDS, SHAPE_KINDS
 from shapez2_solver.domain.shape_pattern import NormalizedShapePattern
 
@@ -116,20 +117,45 @@ def _serialize_pattern(p: NormalizedShapePattern) -> dict[str, Any]:
     }
 
 
+def _serialize_render_scene(scene: ShapeRenderScene) -> dict[str, Any]:
+    return {
+        "normalized_code": scene.normalized_code,
+        "cells": [
+            {
+                "layer_index": cell.layer_index,
+                "quadrant_index": cell.quadrant_index,
+                "position": cell.position.value,
+                "shape_code": cell.shape_code,
+                "color_code": cell.color_code,
+                "shape_kind": cell.shape_kind,
+                "color_kind": cell.color_kind,
+                "mesh_key": cell.mesh_key,
+                "material_key": cell.material_key,
+                "transform_key": cell.transform_key,
+            }
+            for cell in scene.cells
+        ],
+    }
+
+
 def _demo_parse_row(code: str) -> dict[str, Any]:
     try:
         patterns = parse_shape_code_list(code)
+        pattern_rows: list[dict[str, Any]] = []
+        for pattern in patterns:
+            scene = build_shape_render_scene(pattern)
+            pattern_rows.append(
+                {
+                    **_serialize_pattern(pattern),
+                    "preview_scene": _serialize_render_scene(scene),
+                    "preview_scene_json": json.dumps(_serialize_render_scene(scene)),
+                }
+            )
         return {
             "input": code,
             "ok": True,
             "error": None,
-            "patterns": [
-                {
-                    **_serialize_pattern(p),
-                    "preview_svg": render_shape_pattern_svg(p, size=192),
-                }
-                for p in patterns
-            ],
+            "patterns": pattern_rows,
         }
     except ShapeCodeParseError as exc:
         return {

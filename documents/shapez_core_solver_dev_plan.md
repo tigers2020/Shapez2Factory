@@ -19,8 +19,7 @@ The shape code data, official shape/color definitions, parser, validator, normal
 | Normalized pattern model | `shapez_core` | Solver should not parse raw strings repeatedly |
 | MySQL master data | `shapez_core` | Persistent canonical reference data |
 | Django Admin management | `shapez_core.admin` | Admin edits core data, but does not own the domain |
-| 2D SVG preview | `web` or `shapez_rendering` | Presentation concern |
-| Three.js 3D viewer | `web/static` | Browser rendering concern |
+| Three.js glTF viewer | `web/static` | Browser rendering concern |
 | Solver algorithms | `shapez_solver` | Uses normalized core pattern data |
 | Gallery / viewer page | `web` | Optional presentation layer only |
 
@@ -46,7 +45,7 @@ django_apps/
       validator.py
       normalizer.py
       serializers.py
-      svg_renderer.py          # optional: can move to shapez_rendering later
+      render_scene_serializer.py
 
     management/
       commands/
@@ -364,7 +363,7 @@ Features:
 [ ] Action: rebuild selected patterns
 [ ] Action: mark solver-available
 [ ] Action: mark solver-disabled
-[ ] Optional preview: 2D SVG preview
+[ ] Three.js glTF preview
 ```
 
 ## 9. MySQL Plan
@@ -405,34 +404,12 @@ pip install mysqlclient
 
 Rendering must not own the domain model.
 
-### 2D SVG
+### Three.js glTF Viewer
 
 Recommended owner:
 
 ```text
-shapez_core.services.svg_renderer
-```
-
-or, if rendering grows:
-
-```text
-django_apps/shapez_rendering/
-```
-
-Purpose:
-
-```text
-[ ] Admin preview
-[ ] Web preview
-[ ] Static documentation preview
-```
-
-### 3D Viewer
-
-Recommended owner:
-
-```text
-web/static/web/js/shape3d.js
+django_apps/web/static/web/js/shape_gltf_viewer.js
 ```
 
 Purpose:
@@ -611,11 +588,10 @@ Exit criteria:
 ### Phase 4 — Preview and inspection
 
 ```text
-[ ] Add 2D SVG preview service
 [ ] Add Pattern Inspector page
 [ ] Add Pattern Detail page
-[ ] Add 3D viewer JSON endpoint or template JSON
-[ ] Add Three.js viewer
+[ ] Add viewer JSON endpoint or template JSON
+[ ] Add Three.js glTF viewer
 [ ] Add OrbitControls rotation
 ```
 
@@ -663,8 +639,8 @@ Exit criteria:
 | SOLVER-001 | Define solver DTOs | Solver | P0 |
 | SOLVER-002 | Add solver input builder | Solver | P0 |
 | SOLVER-003 | Add placeholder solver service | Solver | P1 |
-| RENDER-001 | Add SVG preview | Rendering | P1 |
-| RENDER-002 | Add Three.js viewer | Web | P1 |
+| RENDER-001 | Add ShapeRenderScene contract | Rendering | P1 |
+| RENDER-002 | Add Three.js glTF viewer | Web | P1 |
 | WEB-001 | Rename gallery to pattern inspector | Web | P0 |
 | WEB-002 | Add pattern detail page | Web | P1 |
 | TEST-001 | Parser tests | Test | P0 |

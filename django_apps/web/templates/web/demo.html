@@ -115,9 +115,53 @@
             <div class="mt-5 space-y-8">
               {% for pat in row.patterns %}
                 <div class="border-t border-slate-800 pt-5 first:border-0 first:pt-0">
-                  <div class="grid gap-5 md:grid-cols-[220px_1fr]">
-                    <div class="flex justify-center rounded-3xl bg-black/30 p-4 ring-1 ring-slate-800">
-                      {{ pat.preview_svg|safe }}
+                  <div class="grid gap-5 md:grid-cols-[280px_1fr]">
+                    <div class="space-y-4">
+                      <div
+                        class="rounded-3xl bg-black/30 p-3 ring-1 ring-cyan-400/20"
+                        data-shape-gltf-viewer
+                        data-asset-base="{% static 'web/vendor/shapez-vortex/models/shapes/' %}"
+                      >
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
+                          <p class="text-[10px] font-semibold uppercase tracking-wider text-cyan-200/80">
+                            Three.js renderer
+                          </p>
+                          <div class="flex items-center gap-1" data-shape-gltf-mode-controls>
+                            <button
+                              type="button"
+                              class="rounded-full border border-cyan-400/50 bg-cyan-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-cyan-100"
+                              data-shape-gltf-mode="original"
+                              aria-pressed="true"
+                            >
+                              Original
+                            </button>
+                            <button
+                              type="button"
+                              class="rounded-full border border-slate-700 bg-slate-950/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:border-cyan-400/40 hover:text-cyan-100"
+                              data-shape-gltf-mode="layer"
+                              aria-pressed="false"
+                            >
+                              Layer
+                            </button>
+                            <button
+                              type="button"
+                              class="rounded-full border border-slate-700 bg-slate-950/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400 hover:border-cyan-400/40 hover:text-cyan-100"
+                              data-shape-gltf-mode="quadrant"
+                              aria-pressed="false"
+                            >
+                              Quadrant
+                            </button>
+                          </div>
+                        </div>
+                        <div
+                          class="h-64 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950"
+                          style="height: 16rem; min-height: 16rem;"
+                          data-shape-gltf-viewport
+                        ></div>
+                        <script type="application/json">
+                          {{ pat.preview_scene_json|safe }}
+                        </script>
+                      </div>
                     </div>
 
                     <div class="min-w-0">
@@ -277,4 +321,17 @@
 
   {% include "web/partials/site_footer.html" %}
 </main>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ block.super }}
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "{% static 'web/vendor/three/0.184.0/build/three.module.js' %}",
+        "three/addons/": "{% static 'web/vendor/three/0.184.0/examples/jsm/' %}"
+      }
+    }
+  </script>
+  <script type="module" src="{% static 'web/js/shape_gltf_viewer.js' %}"></script>
 {% endblock %}

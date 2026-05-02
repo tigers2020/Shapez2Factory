@@ -102,11 +102,17 @@ def gallery(request: HttpRequest) -> HttpResponse:
 
 def solver(request: HttpRequest) -> HttpResponse:
     shape_code = request.GET.get("code", "").strip()
+    target_count_value = request.GET.get("target_count", "").strip()
+    try:
+        target_count = max(1, int(target_count_value)) if target_count_value else 1
+    except ValueError:
+        target_count = 1
     return render(
         request,
         "web/solver.html",
         {
             "shape_code": shape_code,
+            "target_count": target_count,
         },
     )
 

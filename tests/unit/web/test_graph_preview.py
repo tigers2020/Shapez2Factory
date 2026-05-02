@@ -5,7 +5,6 @@ from pathlib import Path
 from django.test import override_settings
 
 from django_apps.web.services.graph_preview import (
-    LightweightGraphPreviewRenderer,
     PlaywrightPngGraphPreviewRenderer,
     get_graph_preview_renderer,
 )
@@ -45,23 +44,6 @@ _PREVIEW_SCENE = {
 }
 
 
-def test_lightweight_renderer_emits_accessible_svg_markup() -> None:
-    preview = LightweightGraphPreviewRenderer().render(_PREVIEW_SCENE)
-
-    assert preview.kind == "markup"
-    assert preview.image_url is None
-    assert preview.markup is not None
-    assert '<svg class="mx-auto h-full w-full"' in preview.markup
-    assert 'aria-label="Graph preview for CuRuSuWu"' in preview.markup
-
-
-def test_renderer_selection_can_choose_lightweight() -> None:
-    with override_settings(SOLVER_GRAPH_PREVIEW_RENDERER="lightweight"):
-        renderer = get_graph_preview_renderer()
-
-        assert isinstance(renderer, LightweightGraphPreviewRenderer)
-
-
 def test_renderer_selection_defaults_to_png_renderer() -> None:
     renderer = get_graph_preview_renderer()
 
@@ -70,7 +52,6 @@ def test_renderer_selection_defaults_to_png_renderer() -> None:
 
 def test_renderer_selection_can_choose_png_renderer() -> None:
     with override_settings(
-        SOLVER_GRAPH_PREVIEW_RENDERER="playwright_png",
         SOLVER_GRAPH_PREVIEW_CACHE_DIR=Path(
             "F:/Python_Projects/shapez2Solver/.graph_preview_cache_test"
         ),
@@ -95,7 +76,7 @@ def test_png_renderer_cache_key_is_stable_and_versioned() -> None:
     assert first != changed
 
 
-def test_png_renderer_falls_back_to_lightweight_markup() -> None:
+def test_png_renderer_returns_empty_image_preview_when_rendering_fails() -> None:
     cache_dir = Path("F:/Python_Projects/shapez2Solver/.graph_preview_cache_fallback_test")
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -110,9 +91,8 @@ def test_png_renderer_falls_back_to_lightweight_markup() -> None:
     with override_settings(SOLVER_GRAPH_PREVIEW_CACHE_DIR=cache_dir):
         preview = FailingRenderer().render(_PREVIEW_SCENE)
 
-    assert preview.kind == "markup"
     assert preview.image_url is None
-    assert preview.markup is not None
+    assert preview.alt_text == "Graph preview for CuRuSuWu"
 
 
 def test_png_renderer_uses_cached_image_when_available() -> None:

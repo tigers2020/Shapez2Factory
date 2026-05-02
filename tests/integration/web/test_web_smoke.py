@@ -225,7 +225,7 @@ def test_solver_graph_viewport_has_explicit_runtime_layout_styles() -> None:
     assert "transform-origin: 0 0;" in script
     assert 'viewport.style.cursor = "grabbing"' in script
     assert "preview_image_url" in script
-    assert "preview_markup" in script
+    assert "No preview" in script
     assert "data-graph-shape-preview" not in script
     assert "./solver_graph_layout.js" in script
 

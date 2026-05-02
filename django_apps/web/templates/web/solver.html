@@ -28,18 +28,32 @@
       <div class="space-y-8">
         <section aria-labelledby="solver-target-heading">
           <h2 id="solver-target-heading" class="text-sm font-semibold text-cyan-200">Target</h2>
-          <form method="get" class="mt-4 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-center" action="">
+          <form method="get" class="mt-4 flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-end" action="">
             <label class="sr-only" for="solver-code-input">Shape code</label>
-            <input
-              id="solver-code-input"
-              type="text"
-              name="code"
-              value="{{ shape_code }}"
-              data-shape-preview-code
-              autocomplete="off"
-              placeholder="e.g. CuRuSuWu"
-              class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50"
-            />
+            <div class="w-full">
+              <input
+                id="solver-code-input"
+                type="text"
+                name="code"
+                value="{{ shape_code }}"
+                data-shape-preview-code
+                autocomplete="off"
+                placeholder="e.g. CuRuSuWu"
+                class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50"
+              />
+            </div>
+            <div class="sm:w-36">
+              <label for="solver-target-count-input" class="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-slate-400">Target count</label>
+              <input
+                id="solver-target-count-input"
+                type="number"
+                name="target_count"
+                min="1"
+                step="1"
+                value="{{ target_count|default:1 }}"
+                class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50"
+              />
+            </div>
             <button
               type="submit"
               class="shrink-0 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-500/15"
@@ -59,6 +73,7 @@
             data-solver-timeline
             data-solver-api="{% url 'shapez_solver:solve_shape' %}"
             data-code-input="#solver-code-input"
+            data-target-count-input="#solver-target-count-input"
             data-csrf-token="{{ csrf_token }}"
             data-asset-base="{% static 'web/vendor/shapez-vortex/models/shapes/' %}"
           >
@@ -76,6 +91,7 @@
             </div>
             <p class="mt-4 hidden rounded-lg border border-rose-400/25 bg-rose-950/30 px-3 py-2 text-rose-200" data-solver-timeline-error role="alert"></p>
             <p class="mt-4 hidden rounded-lg border border-amber-400/25 bg-amber-950/20 px-3 py-2 text-amber-100" data-solver-timeline-warnings></p>
+            <div class="mt-4 hidden rounded-2xl border border-cyan-400/20 bg-slate-950/60 px-4 py-3 text-sm text-slate-200" data-solver-throughput-summary></div>
             <div class="mt-5" data-solver-graph-canvas></div>
             <p class="mt-4 text-xs text-slate-500" data-solver-graph-empty>
               Enter a target shape and apply it to request a solver graph.
@@ -84,6 +100,7 @@
             {% if shape_code %}
               <p class="mt-4 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 font-mono text-xs text-slate-300">
                 Current target: <span class="text-cyan-200/90">{{ shape_code }}</span>
+                <span class="text-slate-500">x{{ target_count|default:1 }}</span>
               </p>
             {% endif %}
           </div>

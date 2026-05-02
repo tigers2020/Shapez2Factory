@@ -16,6 +16,7 @@ class SolverShapeNode:
     label: str
     preview_scene: dict[str, Any] | None = None
     reused_count: int = 0
+    quantity: int = 1
     kind: Literal["shape"] = field(default="shape", init=False)
 
 

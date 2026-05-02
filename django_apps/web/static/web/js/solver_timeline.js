@@ -1,4 +1,5 @@
 import { TIMELINE_DEBOUNCE_MS } from "./solver_timeline/constants.js";
+import { mountGraph } from "./solver_timeline/graph_mount.js";
 import { requestTimeline } from "./solver_timeline/timeline_request.js";
 
 /*
@@ -21,19 +22,54 @@ function scheduleTimeline(panel, input) {
   }, TIMELINE_DEBOUNCE_MS);
 }
 
+function syncQuantityToggleUi(panel) {
+  const button = panel.querySelector("[data-graph-quantity-toggle]");
+  if (!button) {
+    return;
+  }
+  const on = panel.dataset.graphQuantityReplicas === "on";
+  button.setAttribute("aria-pressed", on ? "true" : "false");
+  button.classList.toggle("border-cyan-400/50", on);
+  button.classList.toggle("bg-cyan-500/10", on);
+  button.classList.toggle("text-cyan-100", on);
+  button.classList.toggle("border-slate-700", !on);
+  button.classList.toggle("bg-slate-950/60", !on);
+  button.classList.toggle("text-slate-300", !on);
+}
+
+function initQuantityReplicaToggle(panel) {
+  panel.dataset.graphQuantityReplicas = panel.dataset.graphQuantityReplicas || "off";
+  syncQuantityToggleUi(panel);
+
+  const button = panel.querySelector("[data-graph-quantity-toggle]");
+  if (!button) {
+    return;
+  }
+
+  button.addEventListener("click", async () => {
+    panel.dataset.graphQuantityReplicas =
+      panel.dataset.graphQuantityReplicas === "on" ? "off" : "on";
+    syncQuantityToggleUi(panel);
+    const graph =
+      panel.dataset.graphQuantityReplicas === "on"
+        ? panel._materializedSolverGraph || panel._rawSolverGraph
+        : panel._rawSolverGraph;
+    if (graph) {
+      await mountGraph(panel, graph);
+    }
+  });
+}
+
 function initSolverTimeline(panel) {
   const inputSelector = panel.dataset.codeInput;
   const input = inputSelector ? document.querySelector(inputSelector) : null;
-  const targetCountSelector = panel.dataset.targetCountInput;
-  const targetCountInput = targetCountSelector ? document.querySelector(targetCountSelector) : null;
   if (!input) {
     return;
   }
 
+  initQuantityReplicaToggle(panel);
   input.addEventListener("input", () => scheduleTimeline(panel, input));
   input.addEventListener("change", () => scheduleTimeline(panel, input));
-  targetCountInput?.addEventListener("input", () => scheduleTimeline(panel, input));
-  targetCountInput?.addEventListener("change", () => scheduleTimeline(panel, input));
   scheduleTimeline(panel, input);
 }
 

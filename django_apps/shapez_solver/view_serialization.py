@@ -22,11 +22,13 @@ def serialize_solver_result(
             "count": result.target_count,
         },
         "target_shape": result.target_shape,
-        "target_count": result.target_count,
         "base_demands": [serialize_base_demand(demand) for demand in result.base_demands],
         "warnings": [*warnings, *result.warnings],
         "steps": [serialize_solver_step(step) for step in result.steps],
         "graph": serialize_solver_graph(result.graph) if result.graph else None,
+        "materialized_graph": (
+            serialize_solver_graph(result.materialized_graph) if result.materialized_graph else None
+        ),
     }
 
 

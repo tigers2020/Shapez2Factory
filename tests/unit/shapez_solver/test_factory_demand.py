@@ -14,8 +14,8 @@ def _shape(code: str) -> Shape:
     return shape_from_pattern(parse_shape_code_list(code)[0])
 
 
-def test_compute_base_demands_for_cu_ru_su_su_x4() -> None:
-    demands = compute_base_demands(_shape("CuRuSuSu"), target_count=4)
+def test_compute_base_demands_for_cu_ru_su_su_auto_lcm() -> None:
+    demands = compute_base_demands(_shape("CuRuSuSu"))
 
     assert demands == (
         BaseDemand(
@@ -40,26 +40,20 @@ def test_compute_base_demands_for_cu_ru_su_su_x4() -> None:
 
 
 def test_compute_base_demands_ignores_color_and_uses_uncolored_skeleton() -> None:
-    uncolored_demands = compute_base_demands(_shape("CuRuSuSu"), target_count=3)
-    colored_demands = compute_base_demands(_shape("CrRgSbSy"), target_count=3)
+    uncolored_demands = compute_base_demands(_shape("CuRuSuSu"))
+    colored_demands = compute_base_demands(_shape("CrRgSbSy"))
 
     assert colored_demands == uncolored_demands
 
 
 def test_compute_base_demands_rejects_multi_layer_target() -> None:
     with pytest.raises(UnsupportedFactoryDemandError, match="single-layer"):
-        compute_base_demands(_shape("CuRuSuSu:WuWuWuWu"), target_count=1)
+        compute_base_demands(_shape("CuRuSuSu:WuWuWuWu"))
 
 
 def test_compute_base_demands_rejects_pin_and_crystal_materials() -> None:
     with pytest.raises(UnsupportedFactoryDemandError, match="pin or crystal"):
-        compute_base_demands(_shape("PuPuPuPu"), target_count=1)
+        compute_base_demands(_shape("PuPuPuPu"))
 
     with pytest.raises(UnsupportedFactoryDemandError, match="pin or crystal"):
-        compute_base_demands(_shape("cu----cu"), target_count=1)
-
-
-@pytest.mark.parametrize("target_count", [0, -1])
-def test_compute_base_demands_rejects_non_positive_target_count(target_count: int) -> None:
-    with pytest.raises(ValueError, match="target_count"):
-        compute_base_demands(_shape("CuRuSuSu"), target_count=target_count)
+        compute_base_demands(_shape("cu----cu"))

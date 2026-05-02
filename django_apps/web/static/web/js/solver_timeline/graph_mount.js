@@ -22,25 +22,24 @@ function initGraphPreviewFallbacks(canvas) {
   });
 }
 
-async function mountGraphShapePreviews(panel, graph, canvas) {
-  void panel;
-  void graph;
-  void canvas;
-}
-
 export async function mountGraph(panel, graph) {
   const canvas = panel.querySelector("[data-solver-graph-canvas]");
   if (!canvas) {
     return;
   }
+  panel._displayedGraph = graph;
+
   setStepsHtml(canvas, renderSolverGraph(graph));
   initGraphPreviewFallbacks(canvas);
   initGraphViewport(canvas);
 
   const selectNode = (nodeId) => {
+    panel._selectedGraphNodeId = nodeId;
     for (const el of canvas.querySelectorAll("[data-graph-node-id]")) {
-      el.classList.toggle("ring-2", el.dataset.graphNodeId === nodeId);
-      el.classList.toggle("ring-cyan-200", el.dataset.graphNodeId === nodeId);
+      const on = el.dataset.graphNodeId === nodeId;
+      el.classList.toggle("ring-2", on);
+      el.classList.toggle("ring-inset", on);
+      el.classList.toggle("ring-cyan-200", on);
     }
     renderSelectedNodeDetail(panel, graph, nodeId);
   };
@@ -55,11 +54,27 @@ export async function mountGraph(panel, graph) {
     });
   });
 
-  await mountGraphShapePreviews(panel, graph, canvas);
-
-  const targetNode = (graph.nodes || []).find((node) => node.kind === "shape" && node.role === "target");
-  const firstNode = targetNode || (graph.nodes || [])[0];
+  const selectedNodeId = resolveSelectedNodeId(graph, panel._selectedGraphNodeId);
+  const targetNode = (graph.nodes || []).find(
+    (node) => node.kind === "shape" && node.role === "target",
+  );
+  const firstNode = selectedNodeId
+    ? (graph.nodes || []).find((node) => node.id === selectedNodeId)
+    : targetNode || (graph.nodes || [])[0];
   if (firstNode) {
     selectNode(firstNode.id);
   }
+}
+
+function resolveSelectedNodeId(graph, selectedNodeId) {
+  if (!selectedNodeId) {
+    return null;
+  }
+  const exact = (graph.nodes || []).find(
+    (node) => node.id === selectedNodeId,
+  );
+  if (exact) {
+    return exact.id;
+  }
+  return null;
 }

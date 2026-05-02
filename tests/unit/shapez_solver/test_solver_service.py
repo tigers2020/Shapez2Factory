@@ -5,15 +5,23 @@ from django_apps.shapez_core.services.shape_code_parser import parse_shape_code_
 from django_apps.shapez_core.services.shape_codec import shape_from_pattern
 from django_apps.shapez_solver.domain.recipe import SolveContext
 from django_apps.shapez_solver.dto.solver_graph import SolverOperationNode, SolverShapeNode
+from django_apps.shapez_solver.services.factory_throughput_service import (
+    FactoryThroughputRequest,
+    FactoryThroughputResult,
+    FactoryThroughputService,
+)
 from django_apps.shapez_solver.services.planner_service import (
     PlannerService,
     UnsupportedTargetError,
 )
-from django_apps.shapez_solver.services.solver_service import SolverRequest, SolverService
 
 
 def _shape(code: str) -> Shape:
     return shape_from_pattern(parse_shape_code_list(code)[0])
+
+
+def _throughput(code: str) -> FactoryThroughputResult:
+    return FactoryThroughputService().solve(FactoryThroughputRequest(target_shape=_shape(code)))
 
 
 def _shape_nodes(nodes: tuple[SolverShapeNode | SolverOperationNode, ...]) -> list[SolverShapeNode]:
@@ -27,7 +35,7 @@ def _operation_nodes(
 
 
 def test_solver_builds_source_shape_graph() -> None:
-    result = SolverService().solve(SolverRequest(target_shape=_shape("CuCuCuCu")))
+    result = _throughput("CuCuCuCu")
 
     assert result.target_shape == "CuCuCuCu"
     assert result.graph is not None
@@ -37,7 +45,7 @@ def test_solver_builds_source_shape_graph() -> None:
 
 
 def test_solver_uses_rotation_rule_for_rotated_half() -> None:
-    result = SolverService().solve(SolverRequest(target_shape=_shape("--CuCu--")))
+    result = _throughput("--CuCu--")
 
     assert result.graph is not None
     operation_nodes = _operation_nodes(result.graph.nodes)
@@ -47,7 +55,7 @@ def test_solver_uses_rotation_rule_for_rotated_half() -> None:
 
 
 def test_solver_uses_painter_for_monochrome_colored_shape() -> None:
-    result = SolverService().solve(SolverRequest(target_shape=_shape("CrCrCrCr")))
+    result = _throughput("CrCrCrCr")
 
     assert result.graph is not None
     operation_nodes = _operation_nodes(result.graph.nodes)
@@ -55,7 +63,7 @@ def test_solver_uses_painter_for_monochrome_colored_shape() -> None:
 
 
 def test_solver_builds_quadrant_assembly_graph_for_mixed_single_layer_shape() -> None:
-    result = SolverService().solve(SolverRequest(target_shape=_shape("CuRuSuWu")))
+    result = _throughput("CuRuSuWu")
 
     assert result.graph is not None
     target_nodes = [node for node in _shape_nodes(result.graph.nodes) if node.role == "target"]
@@ -65,11 +73,25 @@ def test_solver_builds_quadrant_assembly_graph_for_mixed_single_layer_shape() ->
 
 
 def test_solver_builds_multi_layer_stack_graph() -> None:
-    result = SolverService().solve(SolverRequest(target_shape=_shape("CuCuCuCu:RuRuRuRu")))
+    result = _throughput("CuCuCuCu:RuRuRuRu")
 
     assert result.graph is not None
     operation_nodes = _operation_nodes(result.graph.nodes)
     assert any(node.operation_type == "stacker" for node in operation_nodes)
+
+
+def test_solver_service_applies_auto_lcm_batch_to_graph_sources() -> None:
+    result = _throughput("CuRuSuSu")
+    assert result.graph is not None
+    sources = {
+        node.shape_code: node.quantity
+        for node in _shape_nodes(result.graph.nodes)
+        if node.role == "source"
+    }
+    assert sources == {"CuCuCuCu": 1, "RuRuRuRu": 1, "SuSuSuSu": 2}
+    targets = [n for n in _shape_nodes(result.graph.nodes) if n.role == "target"]
+    assert len(targets) == 1
+    assert targets[0].quantity == 4
 
 
 def test_planner_memoizes_repeated_shape_requests() -> None:
@@ -86,7 +108,7 @@ def test_planner_memoizes_repeated_shape_requests() -> None:
 
 def test_solver_rejects_unsupported_pin_and_crystal_targets() -> None:
     with pytest.raises(UnsupportedTargetError):
-        SolverService().solve(SolverRequest(target_shape=_shape("PuPuPuPu")))
+        _throughput("PuPuPuPu")
 
     with pytest.raises(UnsupportedTargetError):
-        SolverService().solve(SolverRequest(target_shape=_shape("cu----cu")))
+        _throughput("cu----cu")

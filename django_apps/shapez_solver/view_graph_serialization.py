@@ -37,7 +37,7 @@ def serialize_graph_node(
     if isinstance(node, SolverShapeNode):
         preview_scene = node.preview_scene or build_preview_scene(node.shape_code)
         graph_preview = preview_renderer.render(preview_scene)
-        return {
+        payload = {
             "id": node.id,
             "kind": node.kind,
             "role": node.role,
@@ -49,9 +49,16 @@ def serialize_graph_node(
             "preview_alt": graph_preview.alt_text,
             "reused_count": node.reused_count,
         }
+        if node.produced_state is not None:
+            payload["produced_state"] = node.produced_state
+        if node.batch_index is not None:
+            payload["batch_index"] = node.batch_index
+        if node.batch_total is not None:
+            payload["batch_total"] = node.batch_total
+        return payload
 
     if isinstance(node, SolverOperationNode):
-        return {
+        payload = {
             "id": node.id,
             "kind": node.kind,
             "operation": {
@@ -63,6 +70,11 @@ def serialize_graph_node(
                 "description": node.description,
             },
         }
+        if node.run_index is not None:
+            payload["run_index"] = node.run_index
+        if node.run_total is not None:
+            payload["run_total"] = node.run_total
+        return payload
 
     raise TypeError(f"Unsupported graph node: {node!r}")
 

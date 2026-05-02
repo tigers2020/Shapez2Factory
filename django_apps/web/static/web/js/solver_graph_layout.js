@@ -1,7 +1,9 @@
 export const NODE_WIDTH = 190;
-export const NODE_HEIGHT = 232;
+/** Must match rendered graph card height in graph_markup (shape + preview + labels). */
+export const NODE_HEIGHT = 320;
 export const COLUMN_GAP = 270;
-export const ROW_GAP = 276;
+/** Minimum vertical gap between node tops; must be >= NODE_HEIGHT to avoid overlap. */
+export const ROW_GAP = 340;
 export const GRAPH_PADDING = 40;
 
 const ORDERING_PASSES = 4;

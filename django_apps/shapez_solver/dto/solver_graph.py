@@ -6,6 +6,7 @@ from typing import Any, Literal
 type GraphNodeKind = Literal["shape", "operation"]
 type ShapeNodeRole = Literal["source", "intermediate", "target"]
 type GraphEdgeKind = Literal["input", "output"]
+type ShapeProducedState = Literal["consumed", "unused", "target"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +18,9 @@ class SolverShapeNode:
     preview_scene: dict[str, Any] | None = None
     reused_count: int = 0
     quantity: int = 1
+    produced_state: ShapeProducedState | None = None
+    batch_index: int | None = None
+    batch_total: int | None = None
     kind: Literal["shape"] = field(default="shape", init=False)
 
 
@@ -29,6 +33,8 @@ class SolverOperationNode:
     input_count: int
     output_count: int
     description: str
+    run_index: int | None = None
+    run_total: int | None = None
     kind: Literal["operation"] = field(default="operation", init=False)
 
 

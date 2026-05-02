@@ -33,6 +33,8 @@ def test_solver_page_renders() -> None:
     assert b"data-solver-graph-canvas" in response.content
     assert b"data-solver-graph-empty" in response.content
     assert b"data-solver-node-detail" in response.content
+    assert b"data-graph-quantity-toggle" in response.content
+    assert b"Show materialized graph" in response.content
     assert b"/api/solver/solve/" in response.content
     assert b"data-asset-base" in response.content
     assert b"stable previews in a left-to-right DAG" in response.content
@@ -228,6 +230,7 @@ def test_solver_graph_viewport_has_explicit_runtime_layout_styles() -> None:
     assert "No preview" in script
     assert "data-graph-shape-preview" not in script
     assert "./solver_graph_layout.js" in script
+    assert "panel._materializedSolverGraph" in script
 
 
 def test_operation_icon_assets_exist() -> None:

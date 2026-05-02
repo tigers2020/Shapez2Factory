@@ -1,7 +1,7 @@
 import { escapeHtml } from "./dom_utils.js";
 
 function renderThroughputSummary(data) {
-  const targetCount = Number(data.target_count || 1);
+  const targetCount = Number((data.target?.count ?? null) || 1);
   const baseDemands = Array.isArray(data.base_demands) ? data.base_demands : [];
   const lines = [
     `<p class="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">Throughput summary</p>`,

@@ -29,6 +29,7 @@ class _GraphBuildState:
     used_output_keys: set[str]
     reused_counts: dict[str, int]
     target_count: int
+    base_quantity_by_shape: dict[str, int]
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,8 +41,11 @@ class RecipeGraphBuilder:
         target_count: int = 1,
         base_demands: tuple[object, ...] = (),
     ) -> SolverGraph:
-        del base_demands
-        state = _build_state(solved, target_count=target_count)
+        state = _build_state(
+            solved,
+            target_count=target_count,
+            base_quantity_by_shape=_base_quantity_map(base_demands),
+        )
 
         for recipe in solved.recipes:
             if isinstance(recipe, SourceRecipe):
@@ -57,7 +61,22 @@ class RecipeGraphBuilder:
         return SolverGraph(nodes=tuple(state.nodes), edges=tuple(state.edges))
 
 
-def _build_state(solved: SolvedRecipe, *, target_count: int) -> _GraphBuildState:
+def _base_quantity_map(base_demands: tuple[object, ...]) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for demand in base_demands:
+        code = getattr(demand, "base_shape_code", None)
+        count = getattr(demand, "full_source_count", None)
+        if isinstance(code, str) and isinstance(count, int) and count >= 1:
+            out[code] = count
+    return out
+
+
+def _build_state(
+    solved: SolvedRecipe,
+    *,
+    target_count: int,
+    base_quantity_by_shape: dict[str, int],
+) -> _GraphBuildState:
     final_key = _ref_key(solved.ref)
     return _GraphBuildState(
         nodes=[],
@@ -67,6 +86,7 @@ def _build_state(solved: SolvedRecipe, *, target_count: int) -> _GraphBuildState
         used_output_keys=_compute_used_output_keys(solved, final_key),
         reused_counts=_compute_reused_counts(solved),
         target_count=target_count,
+        base_quantity_by_shape=base_quantity_by_shape,
     )
 
 
@@ -97,7 +117,11 @@ def _append_source_shape_node(state: _GraphBuildState, recipe: SourceRecipe) -> 
             label=_target_label(state.target_count) if is_target else recipe.label,
             preview_scene=_serialize_shape_preview(recipe.shape),
             reused_count=state.reused_counts.get(node_key, 0),
-            quantity=state.target_count if is_target else 1,
+            quantity=(
+                state.target_count
+                if is_target
+                else state.base_quantity_by_shape.get(recipe.shape.canonical_code, 1)
+            ),
         )
     )
     state.seen_shape_nodes.add(node_id)

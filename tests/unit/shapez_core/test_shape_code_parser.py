@@ -13,11 +13,14 @@ from django_apps.shapez_core.services.shape_codec import (
     shape_from_pattern,
 )
 from django_apps.shapez_solver.dto.solver_graph import SolverShapeNode
+from django_apps.shapez_solver.services.factory_throughput_service import (
+    FactoryThroughputRequest,
+    FactoryThroughputService,
+)
 from django_apps.shapez_solver.services.planner_service import (
     PlannerRequest,
     PlannerService,
 )
-from django_apps.shapez_solver.services.solver_service import SolverRequest, SolverService
 
 
 def test_parse_single_pattern_without_brackets() -> None:
@@ -146,7 +149,7 @@ def test_shape_value_object_round_trips_through_pattern_codec() -> None:
 def test_solver_and_planner_use_target_shape() -> None:
     target = parse_shape_code_list("CuCuCuCu")[0]
     shape = shape_from_pattern(target)
-    solver_result = SolverService().solve(SolverRequest(target_shape=shape))
+    solver_result = FactoryThroughputService().solve(FactoryThroughputRequest(target_shape=shape))
 
     assert solver_result.target_shape == "CuCuCuCu"
     assert solver_result.graph is not None

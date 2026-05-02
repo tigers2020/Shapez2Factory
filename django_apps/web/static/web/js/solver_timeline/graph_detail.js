@@ -20,8 +20,22 @@ export async function renderSelectedNodeDetail(panel, graph, nodeId) {
   }
 
   const edges = connectedEdges(graph, node.id);
+  const batchTotal = Number(node.batch_total ?? 0);
+  const batchIndex = Number(node.batch_index ?? 0);
+  const batchNote =
+    batchTotal > 1 && batchIndex > 0
+      ? `<p class="mt-2 text-xs font-semibold uppercase tracking-wide text-fuchsia-200">Batch ${escapeHtml(batchIndex)} of ${escapeHtml(batchTotal)}</p>`
+      : "";
+  const producedStateNote =
+    typeof node.produced_state === "string"
+      ? `<p class="mt-2 text-xs font-semibold uppercase tracking-wide ${node.produced_state === "unused" ? "text-rose-200" : node.produced_state === "consumed" ? "text-emerald-200" : "text-cyan-200"}">${escapeHtml(node.produced_state)}</p>`
+      : "";
   if (node.kind === "operation") {
     const operation = node.operation || {};
+    const runNote =
+      Number(node.run_total ?? 0) > 1 && Number(node.run_index ?? 0) > 0
+        ? `<p class="mt-2 text-xs font-semibold uppercase tracking-wide text-fuchsia-200">Run ${escapeHtml(node.run_index)} of ${escapeHtml(node.run_total)}</p>`
+        : "";
     detailHost.innerHTML = `
       <div class="rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-orange-200">Selected operation</p>
@@ -32,10 +46,14 @@ export async function renderSelectedNodeDetail(panel, graph, nodeId) {
           <div>
             <h3 class="text-lg font-semibold text-slate-100">${escapeHtml(operation.label)}</h3>
             <p class="mt-1 text-sm text-slate-400">${escapeHtml(operation.description || "")}</p>
-            <p class="mt-2 text-xs text-slate-500">${escapeHtml(operation.input_count)} inputs / ${escapeHtml(operation.output_count)} outputs</p>
+            ${runNote}
+            <p class="mt-2 text-xs text-slate-500">
+              <span class="block">${escapeHtml(operation.input_count)} in / ${escapeHtml(operation.output_count)} out</span>
+              <span class="mt-0.5 block font-mono text-slate-400">${escapeHtml(operation.input_count)}:${escapeHtml(operation.output_count)} \xb7 ${escapeHtml(operation.input_count)}\u2192${escapeHtml(operation.output_count)}</span>
+            </p>
           </div>
         </div>
-        <p class="mt-4 text-xs text-slate-500">${escapeHtml(edges.map((edge) => edge.label || edge.kind).join(" 쨌 "))}</p>
+        <p class="mt-4 text-xs text-slate-500">${escapeHtml(edges.map((edge) => edge.label || edge.kind).join(" \xb7 "))}</p>
       </div>
     `;
     return;
@@ -47,8 +65,10 @@ export async function renderSelectedNodeDetail(panel, graph, nodeId) {
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Selected shape</p>
           <h3 class="mt-1 font-mono text-lg text-slate-100">${escapeHtml(node.shape_code)}</h3>
-          <p class="mt-1 text-xs uppercase tracking-wide text-slate-500">${escapeHtml(node.role)} 쨌 ${escapeHtml(node.label)}</p>
-          ${Number(node.quantity || 1) > 1 ? `<p class="mt-2 text-xs font-semibold uppercase tracking-wide text-cyan-200">Quantity x${escapeHtml(node.quantity)}</p>` : ""}
+          <p class="mt-1 text-xs uppercase tracking-wide text-slate-500">${escapeHtml(node.role)} \xb7 ${escapeHtml(node.label)}</p>
+          <p class="mt-2 text-xs font-semibold uppercase tracking-wide text-cyan-200">Quantity x${escapeHtml(Number(node.quantity ?? 1))}</p>
+          ${producedStateNote}
+          ${batchNote}
         </div>
         ${node.role === "target" ? '<span class="rounded-full bg-emerald-300 px-3 py-1 text-[11px] font-bold text-emerald-950">TARGET</span>' : ""}
       </div>
@@ -56,7 +76,7 @@ export async function renderSelectedNodeDetail(panel, graph, nodeId) {
         <div class="h-64 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950" style="height: 16rem; min-height: 16rem;" data-shape-gltf-viewport></div>
         <script type="application/json">{}</script>
       </div>
-      <p class="mt-4 text-xs text-slate-500">${escapeHtml(edges.map((edge) => edge.label || edge.kind).join(" 쨌 "))}</p>
+      <p class="mt-4 text-xs text-slate-500">${escapeHtml(edges.map((edge) => edge.label || edge.kind).join(" \xb7 "))}</p>
     </div>
   `;
 

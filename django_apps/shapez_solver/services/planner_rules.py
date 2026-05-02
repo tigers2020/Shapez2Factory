@@ -173,6 +173,27 @@ def try_assemble_quadrants(
     return current if current.ref.shape == target else None
 
 
+def _expand_cut_search_frontier(
+    queue: list[SolvedRecipe],
+    visited: set[str],
+    target: Shape,
+    ctx: SolveContext,
+    operation_engine: OperationEngine,
+) -> tuple[SolvedRecipe | None, list[SolvedRecipe]]:
+    """One BFS level: derive cut/rotation candidates from the current frontier."""
+    next_queue: list[SolvedRecipe] = []
+    for recipe in queue:
+        for candidate in _derive_cut_and_rotation_candidates(ctx, recipe, operation_engine):
+            code = candidate.ref.shape.canonical_code
+            if code in visited:
+                continue
+            if candidate.ref.shape == target:
+                return candidate, next_queue
+            visited.add(code)
+            next_queue.append(candidate)
+    return None, next_queue
+
+
 def try_cut_from_source(
     target: Shape,
     ctx: SolveContext,
@@ -192,17 +213,11 @@ def try_cut_from_source(
     queue: list[SolvedRecipe] = [source]
     visited = {source.ref.shape.canonical_code}
     for _depth in range(3):
-        next_queue: list[SolvedRecipe] = []
-        for recipe in queue:
-            for candidate in _derive_cut_and_rotation_candidates(ctx, recipe, operation_engine):
-                code = candidate.ref.shape.canonical_code
-                if code in visited:
-                    continue
-                if candidate.ref.shape == target:
-                    return candidate
-                visited.add(code)
-                next_queue.append(candidate)
-        queue = next_queue
+        found, queue = _expand_cut_search_frontier(
+            queue, visited, target, ctx, operation_engine
+        )
+        if found is not None:
+            return found
     return None
 
 

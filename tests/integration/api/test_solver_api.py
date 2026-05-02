@@ -1,17 +1,22 @@
 from django.test import Client
+from django.urls import reverse
 
 
-def test_solver_api_returns_target_count_and_base_demands() -> None:
+def test_solver_api_returns_auto_batch_target_count_and_base_demands() -> None:
+    # Same named route as solver page `data-solver-api` (see web/templates/web/solver.html).
+    solve_url = reverse("shapez_solver:solve_shape")
+    assert solve_url == "/api/solver/solve/"
+
     response = Client().post(
-        "/api/solver/solve/",
-        data='{"code":"CuRuSuSu","target_count":4}',
+        solve_url,
+        data='{"code":"CuRuSuSu"}',
         content_type="application/json",
     )
 
     assert response.status_code == 200
     payload = response.json()
     assert payload["ok"] is True
-    assert payload["target_count"] == 4
+    assert "target_count" not in payload
     assert payload["target"]["count"] == 4
     assert payload["base_demands"] == [
         {
@@ -33,6 +38,20 @@ def test_solver_api_returns_target_count_and_base_demands() -> None:
             "full_source_count": 2,
         },
     ]
+    assert payload["materialized_graph"] is not None
+    target_nodes = [
+        node
+        for node in payload["materialized_graph"]["nodes"]
+        if node["kind"] == "shape" and node["role"] == "target"
+    ]
+    assert len(target_nodes) == 4
+    source_count_by_code: dict[str, int] = {}
+    for node in payload["materialized_graph"]["nodes"]:
+        if node["kind"] != "shape" or node["role"] != "source":
+            continue
+        shape_code = node["shape_code"]
+        source_count_by_code[shape_code] = source_count_by_code.get(shape_code, 0) + 1
+    assert source_count_by_code == {"CuCuCuCu": 1, "RuRuRuRu": 1, "SuSuSuSu": 2}
     target_node = next(
         node
         for node in payload["graph"]["nodes"]
@@ -40,16 +59,9 @@ def test_solver_api_returns_target_count_and_base_demands() -> None:
     )
     assert target_node["quantity"] == 4
     assert target_node["label"] == "Target x4"
-
-
-def test_solver_api_rejects_invalid_target_count() -> None:
-    response = Client().post(
-        "/api/solver/solve/",
-        data='{"code":"CuRuSuSu","target_count":0}',
-        content_type="application/json",
-    )
-
-    assert response.status_code == 400
-    payload = response.json()
-    assert payload["ok"] is False
-    assert payload["error"]["code"] == "INVALID_TARGET_COUNT"
+    source_qty = {
+        node["shape_code"]: node["quantity"]
+        for node in payload["graph"]["nodes"]
+        if node["kind"] == "shape" and node["role"] == "source"
+    }
+    assert source_qty == {"CuCuCuCu": 1, "RuRuRuRu": 1, "SuSuSuSu": 2}

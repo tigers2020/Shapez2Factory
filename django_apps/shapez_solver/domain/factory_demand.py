@@ -36,29 +36,13 @@ class UnsupportedFactoryDemandError(Exception):
     """Raised when factory demand computation is outside the current batch scope."""
 
 
-def compute_base_demands(target: Shape, target_count: int) -> tuple[BaseDemand, ...]:
-    batch = compute_factory_batch(target, requested_target_count=target_count, auto_balance=False)
-    return batch.base_demands
+def compute_base_demands(target: Shape) -> tuple[BaseDemand, ...]:
+    return compute_factory_batch(target).base_demands
 
 
-def compute_factory_batch(
-    target: Shape,
-    *,
-    requested_target_count: int | None = None,
-    auto_balance: bool = True,
-) -> FactoryBatch:
+def compute_factory_batch(target: Shape) -> FactoryBatch:
     needs = _per_target_needs(target)
-    minimal_target_count = minimal_balanced_target_count(needs)
-
-    if requested_target_count is None:
-        target_count = minimal_target_count if auto_balance else 1
-    else:
-        if requested_target_count < 1:
-            raise ValueError("target_count must be greater than or equal to 1")
-        if auto_balance:
-            target_count = _round_up_to_multiple(requested_target_count, minimal_target_count)
-        else:
-            target_count = requested_target_count
+    target_count = minimal_balanced_target_count(needs)
 
     demands = tuple(
         BaseDemand(
@@ -106,10 +90,6 @@ def _validate_target(target: Shape) -> None:
         raise UnsupportedFactoryDemandError(
             "Factory demand MVP does not support pin or crystal targets."
         )
-
-
-def _round_up_to_multiple(value: int, factor: int) -> int:
-    return ((value + factor - 1) // factor) * factor
 
 
 def _uncolored_skeleton(target: Shape) -> Shape:

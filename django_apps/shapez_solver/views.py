@@ -13,11 +13,10 @@ from django_apps.shapez_solver.services.factory_throughput_service import (
     FactoryThroughputService,
 )
 from django_apps.shapez_solver.services.planner_service import UnsupportedTargetError
-from django_apps.shapez_solver.services.solver_service import SolverValidationError
+from django_apps.shapez_solver.services.solve_pipeline import SolverValidationError
 from django_apps.shapez_solver.view_request_parsing import (
     extract_max_depth,
     extract_shape_code,
-    extract_target_count,
 )
 from django_apps.shapez_solver.view_serialization import error_payload, serialize_solver_result
 
@@ -75,19 +74,8 @@ def solve_shape(request: HttpRequest) -> JsonResponse:
         result = FactoryThroughputService().solve(
             FactoryThroughputRequest(
                 target_shape=target_shape,
-                target_count=extract_target_count(request),
                 max_depth=extract_max_depth(request),
             )
-        )
-    except ValueError as exc:
-        return JsonResponse(
-            error_payload(
-                "INVALID_TARGET_COUNT",
-                str(exc),
-                {"target_shape_code": target_shape.canonical_code},
-                warnings,
-            ),
-            status=400,
         )
     except UnsupportedTargetError as exc:
         return JsonResponse(

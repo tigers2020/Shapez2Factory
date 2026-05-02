@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_solver.domain.recipe import SolveContext, SolvedRecipe
 from django_apps.shapez_solver.dto.solver_graph import SolverGraph
+from django_apps.shapez_solver.services.materialized_graph_builder import MaterializedGraphBuilder
 from django_apps.shapez_solver.services.operation_engine import OperationEngine
 from django_apps.shapez_solver.services.planner_service import PlannerService
 from django_apps.shapez_solver.services.recipe_graph_builder import RecipeGraphBuilder
@@ -33,6 +34,7 @@ class SolveStep:
 class SolvePipelineResult:
     solved_recipe: SolvedRecipe
     graph: SolverGraph
+    materialized_graph: SolverGraph | None
     steps: tuple[SolveStep, ...]
 
 
@@ -45,6 +47,7 @@ def solve_recipe_pipeline(
     planner = PlannerService()
     operation_engine = OperationEngine()
     graph_builder = RecipeGraphBuilder()
+    materialized_graph_builder = MaterializedGraphBuilder()
 
     solved = planner.solve_shape(target_shape, SolveContext())
     final_shape = operation_engine.evaluate(solved.recipes, solved.ref)
@@ -57,6 +60,11 @@ def solve_recipe_pipeline(
     return SolvePipelineResult(
         solved_recipe=solved,
         graph=graph_builder.build(
+            solved,
+            target_count=target_count,
+            base_demands=base_demands,
+        ),
+        materialized_graph=materialized_graph_builder.build(
             solved,
             target_count=target_count,
             base_demands=base_demands,

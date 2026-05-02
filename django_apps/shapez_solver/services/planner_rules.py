@@ -82,17 +82,13 @@ def try_stack_layers(
 ) -> SolvedRecipe | None:
     if len(target.layers) <= 1:
         return None
-    current = solve_shape(Shape(layers=(target.layers[0],)), ctx)
-    for next_layer in target.layers[1:]:
-        top = solve_shape(Shape(layers=(next_layer,)), ctx)
-        current = _build_binary_input_solution(
-            ctx,
-            operation_type=OperationType.STACKER,
-            left=current,
-            right=top,
-            operation_engine=operation_engine,
-        )
-    return current
+    solved_layers = [solve_shape(Shape(layers=(layer,)), ctx) for layer in target.layers]
+    return _merge_solutions_balanced(
+        solved_layers,
+        ctx,
+        operation_type=OperationType.STACKER,
+        operation_engine=operation_engine,
+    )
 
 
 def try_paint(
@@ -147,6 +143,48 @@ def try_assemble_halves(
     )
 
 
+def try_assemble_structured_single_layer(
+    target: Shape,
+    ctx: SolveContext,
+    *,
+    solve_shape: SolveShapeFn,
+    operation_engine: OperationEngine,
+) -> SolvedRecipe | None:
+    if not target.is_single_layer():
+        return None
+    left_half, right_half = split_halves(target)
+    left = _solve_structured_half(
+        left_half,
+        ctx,
+        solve_shape=solve_shape,
+        operation_engine=operation_engine,
+    )
+    right = _solve_structured_half(
+        right_half,
+        ctx,
+        solve_shape=solve_shape,
+        operation_engine=operation_engine,
+    )
+    if left is None and right is None:
+        return None
+    if right is None:
+        return left if left is not None and left.ref.shape == target else None
+    if left is None:
+        return right if right.ref.shape == target else None
+
+    outputs = operation_engine.apply(OperationType.SWAPPER, (left.ref.shape, right.ref.shape))
+    if outputs[0] != target:
+        return None
+    return _build_binary_input_solution(
+        ctx,
+        operation_type=OperationType.SWAPPER,
+        left=left,
+        right=right,
+        operation_engine=operation_engine,
+        outputs=outputs,
+    )
+
+
 def try_assemble_quadrants(
     target: Shape,
     ctx: SolveContext,
@@ -160,17 +198,72 @@ def try_assemble_quadrants(
     if len(quadrant_shapes) <= 1:
         return None
     solved_parts = [solve_shape(shape, ctx) for shape in quadrant_shapes]
-    current = solved_parts[0]
-    for next_part in solved_parts[1:]:
+    current = _merge_solutions_balanced(
+        solved_parts,
+        ctx,
+        operation_type=OperationType.STACKER,
+        operation_engine=operation_engine,
+        description="Merge disjoint quadrants into a buildable layer.",
+    )
+    return current if current.ref.shape == target else None
+
+
+def _solve_structured_half(
+    target: Shape,
+    ctx: SolveContext,
+    *,
+    solve_shape: SolveShapeFn,
+    operation_engine: OperationEngine,
+) -> SolvedRecipe | None:
+    if is_empty_shape(target):
+        return None
+    parts = target.non_empty_parts()
+    if len({part.kind for part in parts}) == 1:
+        return try_cut_from_source(target, ctx, operation_engine=operation_engine)
+
+    quadrant_shapes = single_quadrant_shapes(target)
+    if len(quadrant_shapes) != len(parts) or len(quadrant_shapes) > 2:
+        return None
+    current = solve_shape(quadrant_shapes[0], ctx)
+    for next_quadrant in quadrant_shapes[1:]:
         current = _build_binary_input_solution(
             ctx,
             operation_type=OperationType.STACKER,
             left=current,
-            right=next_part,
+            right=solve_shape(next_quadrant, ctx),
             operation_engine=operation_engine,
-            description="Merge disjoint quadrants into a buildable layer.",
+            description="Merge disjoint quadrants within a target half.",
         )
     return current if current.ref.shape == target else None
+
+
+def _merge_solutions_balanced(
+    solved_parts: list[SolvedRecipe],
+    ctx: SolveContext,
+    *,
+    operation_type: OperationType,
+    operation_engine: OperationEngine,
+    description: str | None = None,
+) -> SolvedRecipe:
+    current_level = solved_parts
+    while len(current_level) > 1:
+        next_level: list[SolvedRecipe] = []
+        for index in range(0, len(current_level), 2):
+            if index + 1 >= len(current_level):
+                next_level.append(current_level[index])
+                continue
+            next_level.append(
+                _build_binary_input_solution(
+                    ctx,
+                    operation_type=operation_type,
+                    left=current_level[index],
+                    right=current_level[index + 1],
+                    operation_engine=operation_engine,
+                    description=description,
+                )
+            )
+        current_level = next_level
+    return current_level[0]
 
 
 def _expand_cut_search_frontier(
@@ -213,9 +306,7 @@ def try_cut_from_source(
     queue: list[SolvedRecipe] = [source]
     visited = {source.ref.shape.canonical_code}
     for _depth in range(3):
-        found, queue = _expand_cut_search_frontier(
-            queue, visited, target, ctx, operation_engine
-        )
+        found, queue = _expand_cut_search_frontier(queue, visited, target, ctx, operation_engine)
         if found is not None:
             return found
     return None

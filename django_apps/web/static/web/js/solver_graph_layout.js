@@ -3,8 +3,9 @@ export const NODE_WIDTH = 190;
 export const NODE_HEIGHT = 320;
 export const COLUMN_GAP = 270;
 /** Minimum vertical gap between node tops; must be >= NODE_HEIGHT to avoid overlap. */
-export const ROW_GAP = 340;
+export const ROW_GAP = 356;
 export const GRAPH_PADDING = 40;
+const COLUMN_STAGGER = 26;
 
 const ORDERING_PASSES = 4;
 const POSITIONING_PASSES = 6;
@@ -258,24 +259,34 @@ export function computeHorizontalPositions(graph, columns, topPositions) {
   const adjacency = buildAdjacency(graph, nodeIndexMap);
   const rankOrder = buildNodeRankOrderMap(columns);
   const sortedDepths = [...columns.keys()].sort(compareNumbers);
-  const leftPositions = new Map(nodes.map((node) => [node.id, GRAPH_PADDING]));
+  const leftPositions = new Map();
 
-  for (const depth of sortedDepths) {
+  for (let depthIndex = sortedDepths.length - 1; depthIndex >= 0; depthIndex -= 1) {
+    const depth = sortedDepths[depthIndex];
     const nodeIds = orderNodeIdsForHorizontalPlacement(
       columns.get(depth) || [],
       topPositions,
       rankOrder,
     );
-    let nextRankLeft = GRAPH_PADDING;
+    let nextRankLeft = Infinity;
 
-    for (const nodeId of nodeIds) {
-      const predecessorLefts = (adjacency.predecessors.get(nodeId) || [])
-        .filter((predecessorId) => leftPositions.has(predecessorId))
-        .map((predecessorId) => (leftPositions.get(predecessorId) || GRAPH_PADDING) + COLUMN_GAP);
-      const constrainedLeft = Math.max(GRAPH_PADDING, nextRankLeft, ...predecessorLefts);
+    for (let nodeIndex = nodeIds.length - 1; nodeIndex >= 0; nodeIndex -= 1) {
+      const nodeId = nodeIds[nodeIndex];
+      const sameRankStagger = nodeIndex * COLUMN_STAGGER;
+      const successorLefts = (adjacency.successors.get(nodeId) || [])
+        .filter((successorId) => leftPositions.has(successorId))
+        .map((successorId) => (leftPositions.get(successorId) || 0) - COLUMN_GAP - sameRankStagger);
+      const sameRankConstraint = Number.isFinite(nextRankLeft)
+        ? nextRankLeft - NODE_WIDTH - SAME_RANK_GAP
+        : Infinity;
+      const constrainedLeft = successorLefts.length
+        ? Math.min(sameRankConstraint, ...successorLefts)
+        : Number.isFinite(sameRankConstraint)
+          ? sameRankConstraint - sameRankStagger
+          : 0;
 
       leftPositions.set(nodeId, constrainedLeft);
-      nextRankLeft = constrainedLeft + NODE_WIDTH + SAME_RANK_GAP;
+      nextRankLeft = constrainedLeft;
     }
   }
 
@@ -346,12 +357,14 @@ function computeVerticalTopPositions(orderedColumns, sortedDepths, adjacency) {
 }
 
 function buildFinalGraphLayout(nodes, leftPositions, topPositions) {
+  const rawMinLeft = Math.min(...leftPositions.values());
   const rawMinTop = Math.min(...topPositions.values());
+  const xOffset = GRAPH_PADDING - rawMinLeft;
   const yOffset = GRAPH_PADDING - rawMinTop;
   const positions = new Map();
   for (const node of nodes) {
     positions.set(node.id, {
-      x: leftPositions.get(node.id) || GRAPH_PADDING,
+      x: (leftPositions.get(node.id) || 0) + xOffset,
       y: (topPositions.get(node.id) || 0) + yOffset,
     });
   }

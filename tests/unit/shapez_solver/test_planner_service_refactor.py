@@ -29,3 +29,13 @@ def test_planner_memoizes_repeated_target_in_context() -> None:
 
     assert first is second
     assert ctx.memo[target.canonical_code] is first
+
+
+def test_planner_balances_multi_layer_stacking_depth() -> None:
+    solved = PlannerService().solve_shape(
+        _shape("CuCuCuCu:RuRuRuRu:SuSuSuSu:WuWuWuWu"),
+        SolveContext(),
+    )
+
+    assert solved.cost.operations == 3
+    assert solved.cost.depth == 3

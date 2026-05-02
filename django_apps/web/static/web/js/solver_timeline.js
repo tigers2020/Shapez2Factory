@@ -1,6 +1,6 @@
-import { TIMELINE_DEBOUNCE_MS } from "./solver_timeline/constants.js";
-import { mountGraph } from "./solver_timeline/graph_mount.js";
-import { requestTimeline } from "./solver_timeline/timeline_request.js";
+import { TIMELINE_DEBOUNCE_MS } from "./solver_timeline/constants.js?v=20260502-graph-ui-2";
+import { mountGraph } from "./solver_timeline/graph_mount.js?v=20260502-graph-ui-2";
+import { requestTimeline } from "./solver_timeline/timeline_request.js?v=20260502-graph-ui-2";
 
 /*
 Runtime graph compatibility markers for smoke tests:
@@ -38,7 +38,7 @@ function syncQuantityToggleUi(panel) {
 }
 
 function initQuantityReplicaToggle(panel) {
-  panel.dataset.graphQuantityReplicas = panel.dataset.graphQuantityReplicas || "off";
+  panel.dataset.graphQuantityReplicas = panel.dataset.graphQuantityReplicas || "on";
   syncQuantityToggleUi(panel);
 
   const button = panel.querySelector("[data-graph-quantity-toggle]");

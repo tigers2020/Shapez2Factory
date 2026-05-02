@@ -59,6 +59,7 @@
           <div
             class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400 sm:p-5"
             data-solver-timeline
+            data-graph-quantity-replicas="on"
             data-solver-api="{% url 'shapez_solver:solve_shape' %}"
             data-code-input="#solver-code-input"
             data-csrf-token="{{ csrf_token }}"
@@ -68,7 +69,7 @@
               <div>
                 <p class="font-medium text-slate-300">Solver Graph</p>
                 <p class="mt-2 leading-relaxed">
-                  Source shapes, intermediates, and target all render with stable previews in a left-to-right DAG.
+                  Base inputs stay on the left, target outputs stay on the right, and stable previews render in a right-aligned layout style.
                   Drag to pan and use the mouse wheel to zoom inside the graph frame.
                 </p>
               </div>
@@ -80,9 +81,9 @@
                   type="button"
                   class="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-100"
                   data-graph-quantity-toggle
-                  aria-pressed="false"
+                  aria-pressed="true"
                 >
-                  Show materialized graph
+                  Materialized graph
                 </button>
               </div>
             </div>
@@ -193,5 +194,5 @@
     }
   </script>
   <script type="module" src="{% static 'web/js/quick_solver_preview.js' %}"></script>
-  <script type="module" src="{% static 'web/js/solver_timeline.js' %}"></script>
+  <script type="module" src="{% static 'web/js/solver_timeline.js' %}?v=20260502-graph-ui-2"></script>
 {% endblock %}

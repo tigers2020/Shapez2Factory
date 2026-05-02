@@ -9,12 +9,14 @@ from django_apps.shapez_solver.services.operation_engine import OperationEngine
 from django_apps.shapez_solver.services.planner_rules import (
     try_assemble_halves,
     try_assemble_quadrants,
+    try_assemble_structured_single_layer,
     try_cut_from_source,
     try_paint,
     try_rotation,
     try_source,
     try_stack_layers,
 )
+from django_apps.shapez_solver.services.prebuilt_pattern_registry import try_prebuilt_pattern
 
 type RuleAttempt = Callable[
     [Shape, SolveContext, Callable[[Shape, SolveContext], SolvedRecipe], OperationEngine],
@@ -57,7 +59,9 @@ class PlannerService:
             _try_rotation,
             _try_stack_layers,
             _try_paint,
+            _try_prebuilt_pattern,
             _try_assemble_halves,
+            _try_assemble_structured_single_layer,
             _try_assemble_quadrants,
             _try_cut_from_source,
         )
@@ -89,27 +93,24 @@ class PlannerService:
             ctx.visiting.remove(key)
 
     def _best_candidate(self, target: Shape, ctx: SolveContext) -> SolvedRecipe:
-        valid = [
-            candidate
-            for candidate in self._candidate_solutions(target, ctx)
-            if self.operation_engine.evaluate(candidate.recipes, candidate.ref) == target
-        ]
-        if not valid:
+        best: SolvedRecipe | None = None
+        for rule in self.rule_attempts:
+            candidate = rule(target, ctx, self.solve_shape, self.operation_engine)
+            if candidate is None:
+                continue
+            if self.operation_engine.evaluate(candidate.recipes, candidate.ref) != target:
+                continue
+            if best is None or candidate.cost.as_sort_key() < best.cost.as_sort_key():
+                best = candidate
+            # Direct source is handled earlier, so a 1-operation solution is globally optimal here.
+            if best.cost.operations == 1:
+                return best
+        if best is None:
             raise UnsupportedTargetError(
                 "The deterministic planner could not build this target with the MVP rule set.",
                 details={"target_shape_code": target.canonical_code},
             )
-        return min(valid, key=lambda item: item.cost.as_sort_key())
-
-    def _candidate_solutions(self, target: Shape, ctx: SolveContext) -> list[SolvedRecipe]:
-        return [
-            candidate
-            for candidate in (
-                rule(target, ctx, self.solve_shape, self.operation_engine)
-                for rule in self.rule_attempts
-            )
-            if candidate is not None
-        ]
+        return best
 
 
 def _source_codes(recipe: SolvedRecipe) -> tuple[str, ...]:
@@ -184,6 +185,20 @@ def _try_assemble_halves(
     )
 
 
+def _try_prebuilt_pattern(
+    target: Shape,
+    ctx: SolveContext,
+    solve_shape: Callable[[Shape, SolveContext], SolvedRecipe],
+    operation_engine: OperationEngine,
+) -> SolvedRecipe | None:
+    return try_prebuilt_pattern(
+        target,
+        ctx,
+        solve_shape=solve_shape,
+        operation_engine=operation_engine,
+    )
+
+
 def _try_assemble_quadrants(
     target: Shape,
     ctx: SolveContext,
@@ -191,6 +206,20 @@ def _try_assemble_quadrants(
     operation_engine: OperationEngine,
 ) -> SolvedRecipe | None:
     return try_assemble_quadrants(
+        target,
+        ctx,
+        solve_shape=solve_shape,
+        operation_engine=operation_engine,
+    )
+
+
+def _try_assemble_structured_single_layer(
+    target: Shape,
+    ctx: SolveContext,
+    solve_shape: Callable[[Shape, SolveContext], SolvedRecipe],
+    operation_engine: OperationEngine,
+) -> SolvedRecipe | None:
+    return try_assemble_structured_single_layer(
         target,
         ctx,
         solve_shape=solve_shape,

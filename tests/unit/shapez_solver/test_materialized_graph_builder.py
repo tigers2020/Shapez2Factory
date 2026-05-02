@@ -1,71 +1,64 @@
 from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_core.services.shape_code_parser import parse_shape_code_list
 from django_apps.shapez_core.services.shape_codec import shape_from_pattern
-from django_apps.shapez_solver.domain.factory_demand import BaseDemand
-from django_apps.shapez_solver.domain.recipe import (
-    RecipeCost,
-    RecipeRef,
-    SolvedRecipe,
-    SourceRecipe,
+from django_apps.shapez_solver.domain.factory_demand import compute_factory_batch
+from django_apps.shapez_solver.dto.solver_graph import (
+    SolverGraph,
+    SolverOperationNode,
+    SolverShapeNode,
 )
-from django_apps.shapez_solver.dto.solver_graph import SolverOperationNode, SolverShapeNode
-from django_apps.shapez_solver.services.materialized_graph_builder import MaterializedGraphBuilder
+from django_apps.shapez_solver.services.solve_pipeline import solve_recipe_pipeline
 
 
 def _shape(code: str) -> Shape:
     return shape_from_pattern(parse_shape_code_list(code)[0])
 
 
-def _source_only_solved(code: str) -> SolvedRecipe:
-    source = SourceRecipe(id=f"source:{code}", shape=_shape(code))
-    return SolvedRecipe(
-        ref=RecipeRef(recipe_id=source.id, output_index=0, shape=source.shape),
-        recipes=(source,),
-        cost=RecipeCost(operations=0, sources=1, depth=1, reused_nodes=0),
+def _materialized_graph(code: str) -> SolverGraph:
+    shape = _shape(code)
+    batch = compute_factory_batch(shape)
+    result = solve_recipe_pipeline(
+        shape,
+        target_count=batch.target_count,
+        base_demands=batch.base_demands,
     )
+    assert result.materialized_graph is not None
+    return result.materialized_graph
 
 
-def test_materialized_graph_builder_builds_fixed_source_batch_for_half_targets() -> None:
-    graph = MaterializedGraphBuilder().build(
-        _source_only_solved("RuRu----"),
-        target_count=2,
-        base_demands=(
-            BaseDemand(
-                base_shape_code="RuRuRuRu",
-                quadrants_per_target=2,
-                total_quadrants=4,
-                full_source_count=1,
-            ),
-        ),
-    )
+def test_materialized_graph_builder_uses_half_batch_path_for_direct_half_targets() -> None:
+    graph = _materialized_graph("RuRu----")
 
-    assert graph is not None
     shape_nodes = [node for node in graph.nodes if isinstance(node, SolverShapeNode)]
     operation_nodes = [node for node in graph.nodes if isinstance(node, SolverOperationNode)]
+    operation_types = [node.operation_type for node in operation_nodes]
 
     sources = [node for node in shape_nodes if node.role == "source"]
     targets = [node for node in shape_nodes if node.role == "target"]
-    consumed = [node for node in shape_nodes if node.produced_state == "consumed"]
 
     assert len(sources) == 1
     assert len(targets) == 2
-    assert len(operation_nodes) >= 5
-    assert consumed
+    assert operation_types == ["cutter", "rotate_180"]
+    assert "stacker" not in operation_types
+
+
+def test_materialized_graph_builder_uses_swapper_for_half_pair_targets() -> None:
+    graph = _materialized_graph("CuCuRuRu")
+
+    operation_nodes = [node for node in graph.nodes if isinstance(node, SolverOperationNode)]
+    operation_types = [node.operation_type for node in operation_nodes]
+
+    assert operation_types.count("cutter") == 2
+    assert operation_types.count("swapper") == 2
+    assert operation_types.count("rotate_180") == 2
+    assert "stacker" not in operation_types
 
 
 def test_materialized_graph_builder_keeps_source_counts_fixed_for_mixed_quadrant_batch() -> None:
-    graph = MaterializedGraphBuilder().build(
-        _source_only_solved("CuRuSuSu"),
-        target_count=4,
-        base_demands=(
-            BaseDemand("CuCuCuCu", quadrants_per_target=1, total_quadrants=4, full_source_count=1),
-            BaseDemand("RuRuRuRu", quadrants_per_target=1, total_quadrants=4, full_source_count=1),
-            BaseDemand("SuSuSuSu", quadrants_per_target=2, total_quadrants=8, full_source_count=2),
-        ),
-    )
+    graph = _materialized_graph("CuRuSuSu")
 
-    assert graph is not None
     shape_nodes = [node for node in graph.nodes if isinstance(node, SolverShapeNode)]
+    operation_nodes = [node for node in graph.nodes if isinstance(node, SolverOperationNode)]
     source_count_by_code: dict[str, int] = {}
     for node in shape_nodes:
         if node.role != "source":
@@ -75,3 +68,16 @@ def test_materialized_graph_builder_keeps_source_counts_fixed_for_mixed_quadrant
     targets = [node for node in shape_nodes if node.role == "target"]
     assert source_count_by_code == {"CuCuCuCu": 1, "RuRuRuRu": 1, "SuSuSuSu": 2}
     assert len(targets) == 4
+    operation_types = [node.operation_type for node in operation_nodes]
+    assert operation_types.count("stacker") == 4
+    assert operation_types.count("swapper") == 4
+
+
+def test_materialized_graph_builder_scopes_stackers_to_target_halves() -> None:
+    graph = _materialized_graph("CuRuSuWu")
+
+    operation_nodes = [node for node in graph.nodes if isinstance(node, SolverOperationNode)]
+    operation_types = [node.operation_type for node in operation_nodes]
+
+    assert operation_types.count("stacker") == 8
+    assert operation_types.count("swapper") == 4

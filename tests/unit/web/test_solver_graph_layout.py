@@ -13,7 +13,7 @@ def _run_layout(graph: dict[str, object]) -> dict[str, Any]:
     static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web" / "js"
     module_url = (static_root / "solver_graph_layout.js").as_uri()
     script = textwrap.dedent(f"""
-        import {{ computeGraphLayout, NODE_HEIGHT, NODE_WIDTH }} from "{module_url}";
+        import {{ COLUMN_GAP, computeGraphLayout, NODE_HEIGHT, NODE_WIDTH }} from "{module_url}";
 
         const graph = {json.dumps(graph)};
         const layout = computeGraphLayout(graph);
@@ -26,6 +26,7 @@ def _run_layout(graph: dict[str, object]) -> dict[str, Any]:
           width: layout.width,
           height: layout.height,
           bounds: layout.bounds,
+          columnGap: COLUMN_GAP,
           nodeHeight: NODE_HEIGHT,
           nodeWidth: NODE_WIDTH,
         }}));
@@ -153,6 +154,15 @@ def test_grouped_layout_spreads_late_merge_branches_horizontally() -> None:
 
     assert positions["shape:left-mid"]["x"] != positions["shape:right-mid"]["x"]
     assert positions["op:left-b"]["x"] != positions["op:right-b"]["x"]
+
+
+def test_grouped_layout_right_aligns_same_depth_terminal_nodes() -> None:
+    layout = _run_layout(_sample_graph())
+    positions = layout["positions"]
+
+    assert (
+        positions["shape:target"]["x"] - positions["shape:side-target"]["x"] == layout["columnGap"]
+    )
 
 
 def test_grouped_layout_bounds_cover_all_node_boxes() -> None:

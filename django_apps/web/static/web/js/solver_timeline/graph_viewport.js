@@ -1,5 +1,9 @@
-import { GRAPH_PADDING } from "./graph_markup.js";
-import { GRAPH_ZOOM_STEP, MAX_GRAPH_SCALE, MIN_GRAPH_SCALE } from "./constants.js";
+import { GRAPH_PADDING } from "./graph_markup.js?v=20260502-graph-ui-2";
+import {
+  GRAPH_ZOOM_STEP,
+  MAX_GRAPH_SCALE,
+  MIN_GRAPH_SCALE,
+} from "./constants.js?v=20260502-graph-ui-2";
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));

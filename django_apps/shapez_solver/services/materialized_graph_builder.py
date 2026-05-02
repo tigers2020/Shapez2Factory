@@ -24,8 +24,10 @@ from django_apps.shapez_solver.dto.solver_graph import (
 )
 from django_apps.shapez_solver.services.operation_engine import OperationEngine
 from django_apps.shapez_solver.services.planner_support import (
+    is_empty_shape,
     paint_shape,
     single_quadrant_shapes,
+    split_halves,
     uniform_non_empty_color,
 )
 
@@ -44,20 +46,6 @@ class _ShapeCloneRecord:
 
 
 @dataclass(slots=True)
-class _OperationRunRecord:
-    id: str
-    recipe_id: str
-    operation_type: str
-    label: str
-    icon: str
-    input_count: int
-    output_count: int
-    description: str
-    run_index: int
-    run_total: int
-
-
-@dataclass(slots=True)
 class _MaterializedState:
     recipe_by_id: dict[str, SourceRecipe | OperationRecipe]
     nodes: list[SolverGraphNode]
@@ -68,6 +56,17 @@ class _MaterializedState:
     shape_batch_totals: dict[str, int]
     operation_run_counts: dict[str, int]
     operation_run_totals: dict[str, int]
+
+
+@dataclass(frozen=True, slots=True)
+class _HalfInventoryEntry:
+    id: str
+    shape: Shape
+
+
+@dataclass(frozen=True, slots=True)
+class _StructuredBatchStrategy:
+    kind_usage: dict[str, str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +81,13 @@ class MaterializedGraphBuilder:
         if not base_demands:
             return None
         if _supports_batch_materialization(solved.ref.shape):
+            optimized = _build_half_batch_graph(
+                solved.ref.shape,
+                target_count=target_count,
+                base_demands=base_demands,
+            )
+            if optimized is not None:
+                return optimized
             return _build_single_layer_batch_graph(
                 solved.ref.shape,
                 target_count=target_count,
@@ -142,6 +148,578 @@ def _build_source_only_graph(ref: RecipeRef, *, target_count: int) -> SolverGrap
 
 def _supports_batch_materialization(target_shape: Shape) -> bool:
     return target_shape.is_single_layer() and not target_shape.has_unsupported_materials()
+
+
+def _build_half_batch_graph(
+    target_shape: Shape,
+    *,
+    target_count: int,
+    base_demands: tuple[object, ...],
+) -> SolverGraph | None:
+    engine = OperationEngine()
+    target_color = uniform_non_empty_color(target_shape)
+    skeleton = paint_shape(target_shape, "u") if target_color is not None else target_shape
+    left_target, right_target = split_halves(skeleton)
+    strategy = _analyze_structured_batch_strategy(left_target, right_target)
+    if strategy is None:
+        return None
+
+    nodes: list[SolverGraphNode] = []
+    edges: list[SolverGraphEdge] = []
+    shape_records: dict[str, _ShapeCloneRecord] = {}
+    half_pool: dict[str, list[_HalfInventoryEntry]] = defaultdict(list)
+    quarter_pool: dict[str, list[str]] = defaultdict(list)
+    op_counters: dict[str, int] = defaultdict(int)
+    shape_counters: dict[str, int] = defaultdict(int)
+
+    for demand in base_demands:
+        base_shape_code = getattr(demand, "base_shape_code", None)
+        full_source_count = getattr(demand, "full_source_count", None)
+        if not isinstance(base_shape_code, str) or not isinstance(full_source_count, int):
+            continue
+        source_shape = shape_from_pattern(parse_shape_code_list(base_shape_code)[0])
+        source_kind = source_shape.non_empty_parts()[0].kind
+        usage = strategy.kind_usage.get(source_kind)
+        if usage is None:
+            continue
+        for source_index in range(1, full_source_count + 1):
+            source_node_id = _next_shape_id(shape_counters, f"{base_shape_code}:source")
+            shape_records[source_node_id] = _ShapeCloneRecord(
+                id=source_node_id,
+                output_key=base_shape_code,
+                role="source",
+                shape_code=source_shape.canonical_code,
+                label="Source",
+                preview_scene=_serialize_shape_preview(source_shape),
+                produced_state="consumed",
+                batch_index=source_index,
+                batch_total=full_source_count,
+            )
+            cut_op_id = _append_operation_node(
+                nodes,
+                op_counters,
+                operation_type=OperationType.CUTTER,
+                label="Cutter",
+                description="Cuts the shape into two halves.",
+            )
+            edges.append(
+                SolverGraphEdge(
+                    from_id=source_node_id,
+                    to_id=cut_op_id,
+                    kind="input",
+                    slot="Input A",
+                    label="Input A",
+                )
+            )
+            left_half, right_half = engine.cut(source_shape)
+            if usage == "half":
+                for output_index, half_shape in enumerate((left_half, right_half)):
+                    half_id = _append_shape_record(
+                        shape_records,
+                        shape_counters,
+                        key=f"{base_shape_code}:half",
+                        shape=half_shape,
+                        role="intermediate",
+                        label="Shape",
+                        produced_state="unused",
+                    )
+                    half_pool[half_shape.canonical_code].append(
+                        _HalfInventoryEntry(id=half_id, shape=half_shape)
+                    )
+                    edges.append(
+                        SolverGraphEdge(
+                            from_id=cut_op_id,
+                            to_id=half_id,
+                            kind="output",
+                            slot=_output_label(output_index),
+                            label=_output_label(output_index),
+                        )
+                    )
+            else:
+                _seed_quarter_inventory(
+                    nodes,
+                    edges,
+                    shape_records,
+                    shape_counters,
+                    op_counters,
+                    quarter_pool,
+                    base_shape_code=base_shape_code,
+                    cut_op_id=cut_op_id,
+                    left_half=left_half,
+                    right_half=right_half,
+                    engine=engine,
+                )
+
+    for target_index in range(1, target_count + 1):
+        left_acquired = _materialize_structured_half(
+            left_target,
+            half_pool=half_pool,
+            quarter_pool=quarter_pool,
+            shape_records=shape_records,
+            shape_counters=shape_counters,
+            nodes=nodes,
+            edges=edges,
+            op_counters=op_counters,
+            engine=engine,
+        )
+        right_acquired = _materialize_structured_half(
+            right_target,
+            half_pool=half_pool,
+            quarter_pool=quarter_pool,
+            shape_records=shape_records,
+            shape_counters=shape_counters,
+            nodes=nodes,
+            edges=edges,
+            op_counters=op_counters,
+            engine=engine,
+        )
+        current_shape_id: str
+        current_shape: Shape
+        if right_acquired is None:
+            if left_acquired is None:
+                return None
+            current_shape_id, current_shape = left_acquired
+        elif left_acquired is None:
+            current_shape_id, current_shape = right_acquired
+        else:
+            left_id, left_shape = left_acquired
+            right_id, right_shape = right_acquired
+            swapper_id = _append_operation_node(
+                nodes,
+                op_counters,
+                operation_type=OperationType.SWAPPER,
+                label="Swapper",
+                description="Swap left and right halves into a target layer.",
+            )
+            edges.extend(
+                [
+                    SolverGraphEdge(
+                        from_id=left_id,
+                        to_id=swapper_id,
+                        kind="input",
+                        slot="Input A",
+                        label="Input A",
+                    ),
+                    SolverGraphEdge(
+                        from_id=right_id,
+                        to_id=swapper_id,
+                        kind="input",
+                        slot="Input B",
+                        label="Input B",
+                    ),
+                ]
+            )
+            output_a, output_b = engine.swapper(left_shape, right_shape)
+            current_shape_id = _append_shape_record(
+                shape_records,
+                shape_counters,
+                key="materialized:swapper-output",
+                shape=output_a,
+                role="intermediate",
+                label="Shape",
+                produced_state="consumed",
+            )
+            current_shape = output_a
+            edges.append(
+                SolverGraphEdge(
+                    from_id=swapper_id,
+                    to_id=current_shape_id,
+                    kind="output",
+                    slot="Output A",
+                    label="Output A",
+                )
+            )
+            if output_b.non_empty_parts():
+                unused_output_id = _append_shape_record(
+                    shape_records,
+                    shape_counters,
+                    key="materialized:swapper-unused",
+                    shape=output_b,
+                    role="intermediate",
+                    label="Shape",
+                    produced_state="unused",
+                )
+                edges.append(
+                    SolverGraphEdge(
+                        from_id=swapper_id,
+                        to_id=unused_output_id,
+                        kind="output",
+                        slot="Output B",
+                        label="Output B",
+                    )
+                )
+
+        if target_color is not None:
+            painter_id = _append_operation_node(
+                nodes,
+                op_counters,
+                operation_type=OperationType.PAINTER,
+                label=f"Painter ({target_color})",
+                description=f"Paint the shape {target_color}.",
+            )
+            edges.append(
+                SolverGraphEdge(
+                    from_id=current_shape_id,
+                    to_id=painter_id,
+                    kind="input",
+                    slot="Input A",
+                    label="Input A",
+                )
+            )
+            painted_shape = engine.painter(current_shape, target_color)
+            target_shape_id = _append_shape_record(
+                shape_records,
+                shape_counters,
+                key="materialized:painted-target",
+                shape=painted_shape,
+                role="target",
+                label=_target_label(target_count),
+                produced_state="target",
+                batch_index=target_index,
+                batch_total=target_count,
+            )
+            edges.append(
+                SolverGraphEdge(
+                    from_id=painter_id,
+                    to_id=target_shape_id,
+                    kind="output",
+                    slot="Output A",
+                    label="Output A",
+                )
+            )
+        else:
+            target_record = shape_records[current_shape_id]
+            target_record.role = "target"
+            target_record.label = _target_label(target_count)
+            target_record.produced_state = "target"
+            target_record.batch_index = target_index
+            target_record.batch_total = target_count
+
+    for record in shape_records.values():
+        nodes.append(
+            SolverShapeNode(
+                id=record.id,
+                role=record.role,  # type: ignore[arg-type]
+                shape_code=record.shape_code,
+                label=record.label,
+                preview_scene=record.preview_scene,
+                quantity=1,
+                produced_state=record.produced_state,  # type: ignore[arg-type]
+                batch_index=record.batch_index,
+                batch_total=record.batch_total,
+            )
+        )
+    return SolverGraph(nodes=tuple(nodes), edges=tuple(edges))
+
+
+def _analyze_structured_batch_strategy(
+    left_target: Shape,
+    right_target: Shape,
+) -> _StructuredBatchStrategy | None:
+    kind_usage: dict[str, str] = {}
+    for half_target in (left_target, right_target):
+        if is_empty_shape(half_target):
+            continue
+        if _is_direct_source_half(half_target):
+            kind = half_target.non_empty_parts()[0].kind
+            if kind_usage.get(kind) == "quarter":
+                return None
+            kind_usage[kind] = "half"
+            continue
+        for quadrant_shape in single_quadrant_shapes(half_target):
+            kind = quadrant_shape.non_empty_parts()[0].kind
+            if kind_usage.get(kind) == "half":
+                return None
+            kind_usage[kind] = "quarter"
+    return _StructuredBatchStrategy(kind_usage=kind_usage)
+
+
+def _seed_quarter_inventory(
+    nodes: list[SolverGraphNode],
+    edges: list[SolverGraphEdge],
+    shape_records: dict[str, _ShapeCloneRecord],
+    shape_counters: dict[str, int],
+    op_counters: dict[str, int],
+    quarter_pool: dict[str, list[str]],
+    *,
+    base_shape_code: str,
+    cut_op_id: str,
+    left_half: Shape,
+    right_half: Shape,
+    engine: OperationEngine,
+) -> None:
+    left_half_id = _append_shape_record(
+        shape_records,
+        shape_counters,
+        key=f"{base_shape_code}:left-half",
+        shape=left_half,
+        role="intermediate",
+        label="Shape",
+        produced_state="consumed",
+    )
+    right_half_id = _append_shape_record(
+        shape_records,
+        shape_counters,
+        key=f"{base_shape_code}:right-half",
+        shape=right_half,
+        role="intermediate",
+        label="Shape",
+        produced_state="consumed",
+    )
+    edges.extend(
+        [
+            SolverGraphEdge(
+                from_id=cut_op_id,
+                to_id=left_half_id,
+                kind="output",
+                slot="Output A",
+                label="Output A",
+            ),
+            SolverGraphEdge(
+                from_id=cut_op_id,
+                to_id=right_half_id,
+                kind="output",
+                slot="Output B",
+                label="Output B",
+            ),
+        ]
+    )
+    for half_id, half_shape, rotation_type in (
+        (left_half_id, left_half, OperationType.ROTATE_CCW),
+        (right_half_id, right_half, OperationType.ROTATE_CCW),
+    ):
+        _, rotated_half_id = _append_unary_operation_output(
+            nodes,
+            edges,
+            shape_records,
+            shape_counters,
+            op_counters,
+            source_id=half_id,
+            source_shape=half_shape,
+            result_shape=_rotate_shape(half_shape, rotation_type, engine),
+            operation_type=rotation_type,
+            key=f"{base_shape_code}:{rotation_type.value}:half",
+            role="intermediate",
+            label="Shape",
+            produced_state="consumed",
+        )
+        rotated_half = shape_from_pattern(
+            parse_shape_code_list(shape_records[rotated_half_id].shape_code)[0]
+        )
+        half_cut_op_id = _append_operation_node(
+            nodes,
+            op_counters,
+            operation_type=OperationType.CUTTER,
+            label="Cutter",
+            description="Cuts the shape into two halves.",
+        )
+        edges.append(
+            SolverGraphEdge(
+                from_id=rotated_half_id,
+                to_id=half_cut_op_id,
+                kind="input",
+                slot="Input A",
+                label="Input A",
+            )
+        )
+        quarter_a, quarter_b = engine.cut(rotated_half)
+        for output_index, quarter_shape in enumerate((quarter_a, quarter_b)):
+            if not quarter_shape.non_empty_parts():
+                continue
+            quarter_id = _append_shape_record(
+                shape_records,
+                shape_counters,
+                key=f"{base_shape_code}:quarter",
+                shape=quarter_shape,
+                role="intermediate",
+                label="Shape",
+                produced_state="unused",
+            )
+            quarter_pool[base_shape_code].append(quarter_id)
+            edges.append(
+                SolverGraphEdge(
+                    from_id=half_cut_op_id,
+                    to_id=quarter_id,
+                    kind="output",
+                    slot=_output_label(output_index),
+                    label=_output_label(output_index),
+                )
+            )
+
+
+def _materialize_structured_half(
+    target_shape: Shape,
+    *,
+    half_pool: dict[str, list[_HalfInventoryEntry]],
+    quarter_pool: dict[str, list[str]],
+    shape_records: dict[str, _ShapeCloneRecord],
+    shape_counters: dict[str, int],
+    nodes: list[SolverGraphNode],
+    edges: list[SolverGraphEdge],
+    op_counters: dict[str, int],
+    engine: OperationEngine,
+) -> tuple[str, Shape] | None:
+    if is_empty_shape(target_shape):
+        return None
+    if _is_direct_source_half(target_shape):
+        return _acquire_half(
+            half_pool,
+            target_shape=target_shape,
+            shape_records=shape_records,
+            shape_counters=shape_counters,
+            nodes=nodes,
+            edges=edges,
+            op_counters=op_counters,
+            engine=engine,
+        )
+    quadrant_targets = single_quadrant_shapes(target_shape)
+    current_shape_id: str | None = None
+    current_shape: Shape | None = None
+    for quadrant_shape in quadrant_targets:
+        acquired = _acquire_quadrant(
+            quarter_pool,
+            target_shape=quadrant_shape,
+            shape_records=shape_records,
+            shape_counters=shape_counters,
+            nodes=nodes,
+            edges=edges,
+            op_counters=op_counters,
+            engine=engine,
+        )
+        if acquired is None:
+            return None
+        quadrant_id, aligned_quadrant_shape = acquired
+        if current_shape_id is None:
+            current_shape_id = quadrant_id
+            current_shape = aligned_quadrant_shape
+            continue
+        assert current_shape is not None
+        merged_shape = engine.stacker(current_shape, aligned_quadrant_shape)
+        stacker_id = _append_operation_node(
+            nodes,
+            op_counters,
+            operation_type=OperationType.STACKER,
+            label="Stacker",
+            description="Merge disjoint quadrants within a target half.",
+        )
+        edges.extend(
+            [
+                SolverGraphEdge(
+                    from_id=current_shape_id,
+                    to_id=stacker_id,
+                    kind="input",
+                    slot="Input A",
+                    label="Input A",
+                ),
+                SolverGraphEdge(
+                    from_id=quadrant_id,
+                    to_id=stacker_id,
+                    kind="input",
+                    slot="Input B",
+                    label="Input B",
+                ),
+            ]
+        )
+        current_shape_id = _append_shape_record(
+            shape_records,
+            shape_counters,
+            key="materialized:half-stacked",
+            shape=merged_shape,
+            role="intermediate",
+            label="Shape",
+            produced_state="consumed",
+        )
+        current_shape = merged_shape
+        edges.append(
+            SolverGraphEdge(
+                from_id=stacker_id,
+                to_id=current_shape_id,
+                kind="output",
+                slot="Output A",
+                label="Output A",
+            )
+        )
+    if current_shape_id is None or current_shape is None:
+        return None
+    return current_shape_id, current_shape
+
+
+def _acquire_quadrant(
+    quarter_pool: dict[str, list[str]],
+    *,
+    target_shape: Shape,
+    shape_records: dict[str, _ShapeCloneRecord],
+    shape_counters: dict[str, int],
+    nodes: list[SolverGraphNode],
+    edges: list[SolverGraphEdge],
+    op_counters: dict[str, int],
+    engine: OperationEngine,
+) -> tuple[str, Shape] | None:
+    source_code = _full_source_code_for_shape(target_shape)
+    available = quarter_pool.get(source_code)
+    if not available:
+        return None
+    quarter_id = available.pop(0)
+    quarter_record = shape_records[quarter_id]
+    quarter_shape = shape_from_pattern(parse_shape_code_list(quarter_record.shape_code)[0])
+    quarter_record.produced_state = "consumed"
+    return _align_quadrant_shape(
+        nodes,
+        edges,
+        shape_records,
+        shape_counters,
+        op_counters,
+        source_id=quarter_id,
+        source_shape=quarter_shape,
+        target_shape=target_shape,
+        engine=engine,
+    )
+
+
+def _is_direct_source_half(shape: Shape) -> bool:
+    parts = shape.non_empty_parts()
+    return bool(parts) and len(parts) == 2 and len({part.kind for part in parts}) == 1
+
+
+def _acquire_half(
+    half_pool: dict[str, list[_HalfInventoryEntry]],
+    *,
+    target_shape: Shape,
+    shape_records: dict[str, _ShapeCloneRecord],
+    shape_counters: dict[str, int],
+    nodes: list[SolverGraphNode],
+    edges: list[SolverGraphEdge],
+    op_counters: dict[str, int],
+    engine: OperationEngine,
+) -> tuple[str, Shape] | None:
+    exact = half_pool.get(target_shape.canonical_code)
+    if exact:
+        acquired = exact.pop(0)
+        shape_records[acquired.id].produced_state = "consumed"
+        return acquired.id, acquired.shape
+
+    rotated_target = engine.rotate_180(target_shape)
+    rotated_pool = half_pool.get(rotated_target.canonical_code)
+    if not rotated_pool:
+        return None
+    source_entry = rotated_pool.pop(0)
+    shape_records[source_entry.id].produced_state = "consumed"
+    _, rotated_id = _append_unary_operation_output(
+        nodes,
+        edges,
+        shape_records,
+        shape_counters,
+        op_counters,
+        source_id=source_entry.id,
+        source_shape=source_entry.shape,
+        result_shape=target_shape,
+        operation_type=OperationType.ROTATE_180,
+        key="materialized:rotate-half",
+        role="intermediate",
+        label="Shape",
+        produced_state="consumed",
+    )
+    return rotated_id, target_shape
 
 
 def _build_single_layer_batch_graph(
@@ -238,8 +816,7 @@ def _build_single_layer_batch_graph(
                 (left_half_id, left_half, OperationType.ROTATE_CCW),
                 (right_half_id, right_half, OperationType.ROTATE_CCW),
             ):
-                rotated_half = _rotate_shape(half_shape, rotation_type, engine)
-                rotate_op_id, rotated_half_id = _append_unary_operation_output(
+                _, rotated_half_id = _append_unary_operation_output(
                     nodes,
                     edges,
                     shape_records,
@@ -247,12 +824,15 @@ def _build_single_layer_batch_graph(
                     op_counters,
                     source_id=half_id,
                     source_shape=half_shape,
-                    result_shape=rotated_half,
+                    result_shape=_rotate_shape(half_shape, rotation_type, engine),
                     operation_type=rotation_type,
                     key=f"{base_shape_code}:{rotation_type.value}:half",
                     role="intermediate",
                     label="Shape",
                     produced_state="consumed",
+                )
+                rotated_half = shape_from_pattern(
+                    parse_shape_code_list(shape_records[rotated_half_id].shape_code)[0]
                 )
                 half_cut_op_id = _append_operation_node(
                     nodes,
@@ -449,7 +1029,7 @@ def _build_state(
     shape_clone_counts = defaultdict(int)
     shape_batch_totals = defaultdict(int)
     operation_run_counts: dict[str, int] = defaultdict(int)
-    operation_run_totals = defaultdict(int)
+    operation_run_totals: dict[str, int] = defaultdict(int)
 
     source_total_by_code = _base_quantity_map(base_demands)
     for recipe in solved.recipes:

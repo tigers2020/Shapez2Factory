@@ -1,7 +1,7 @@
-import { initGraphViewport } from "./graph_viewport.js";
-import { renderSelectedNodeDetail } from "./graph_detail.js";
-import { renderSolverGraph } from "./graph_markup.js";
-import { setStepsHtml } from "./dom_utils.js";
+import { initGraphViewport } from "./graph_viewport.js?v=20260502-graph-ui-2";
+import { renderSelectedNodeDetail } from "./graph_detail.js?v=20260502-graph-ui-2";
+import { renderSolverGraph } from "./graph_markup.js?v=20260502-graph-ui-2";
+import { setStepsHtml } from "./dom_utils.js?v=20260502-graph-ui-2";
 
 function initGraphPreviewFallbacks(canvas) {
   canvas.querySelectorAll("[data-graph-preview-image]").forEach((img) => {

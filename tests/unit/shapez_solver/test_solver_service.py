@@ -70,6 +70,19 @@ def test_solver_builds_quadrant_assembly_graph_for_mixed_single_layer_shape() ->
     assert len(target_nodes) == 1
     assert target_nodes[0].shape_code == "CuRuSuWu"
     assert any(edge.label == "Output B (unused)" for edge in result.graph.edges)
+    operation_nodes = _operation_nodes(result.graph.nodes)
+    operation_types = [node.operation_type for node in operation_nodes]
+    assert operation_types.count("stacker") == 2
+    assert operation_types.count("swapper") == 1
+
+
+def test_solver_prefers_structured_half_assembly_for_mixed_single_layer_shapes() -> None:
+    result = _throughput("CuRuSuSu")
+
+    assert result.graph is not None
+    operation_types = [node.operation_type for node in _operation_nodes(result.graph.nodes)]
+    assert operation_types.count("stacker") == 1
+    assert operation_types.count("swapper") == 1
 
 
 def test_solver_builds_multi_layer_stack_graph() -> None:

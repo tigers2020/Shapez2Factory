@@ -34,10 +34,12 @@ def test_solver_page_renders() -> None:
     assert b"data-solver-graph-empty" in response.content
     assert b"data-solver-node-detail" in response.content
     assert b"data-graph-quantity-toggle" in response.content
-    assert b"Show materialized graph" in response.content
+    assert b"Materialized graph" in response.content
+    assert b'data-graph-quantity-replicas="on"' in response.content
     assert b"/api/solver/solve/" in response.content
     assert b"data-asset-base" in response.content
-    assert b"stable previews in a left-to-right DAG" in response.content
+    assert b"Base inputs stay on the left, target outputs stay on the right" in response.content
+    assert b"right-aligned layout style" in response.content
     assert b"wheel to zoom" in response.content
 
 
@@ -221,6 +223,9 @@ def test_shape_gltf_vendor_assets_exist() -> None:
 def test_solver_graph_viewport_has_explicit_runtime_layout_styles() -> None:
     static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web"
     script = (static_root / "js" / "solver_timeline.js").read_text(encoding="utf-8")
+    markup_script = (static_root / "js" / "solver_timeline" / "graph_markup.js").read_text(
+        encoding="utf-8"
+    )
 
     assert "data-graph-viewport" in script
     assert 'style="height: 34rem; touch-action: none; cursor: grab;' in script
@@ -231,6 +236,9 @@ def test_solver_graph_viewport_has_explicit_runtime_layout_styles() -> None:
     assert "data-graph-shape-preview" not in script
     assert "./solver_graph_layout.js" in script
     assert "panel._materializedSolverGraph" in script
+    assert "overflow-y-auto" not in markup_script
+    assert "L ${geometry.elbowX} ${geometry.y1}" in markup_script
+    assert "data-graph-edge-label" in markup_script
 
 
 def test_operation_icon_assets_exist() -> None:

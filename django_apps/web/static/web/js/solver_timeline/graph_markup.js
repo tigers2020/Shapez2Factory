@@ -1,5 +1,25 @@
-import { NODE_HEIGHT, NODE_WIDTH, computeGraphLayout } from "../solver_graph_layout.js";
-import { escapeHtml } from "./dom_utils.js";
+import {
+  NODE_HEIGHT,
+  NODE_WIDTH,
+  computeGraphLayout,
+} from "../solver_graph_layout.js?v=20260502-graph-ui-2";
+
+const PREVIEW_HEIGHT = 104;
+const EDGE_ELBOW_PADDING = 44;
+const EDGE_PORT_SPACING = 30;
+const EDGE_LABEL_WIDTH = 90;
+const EDGE_LABEL_HEIGHT = 22;
+const EDGE_LANE_SPACING = 18;
+const EDGE_LABEL_STAGGER = 18;
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
 function formatQuantityBadge(node) {
   const role = node.role || "intermediate";
@@ -77,23 +97,23 @@ function renderShapeGraphNode(node, position) {
     <div
       role="button"
       tabindex="0"
-      class="absolute z-10 flex min-h-0 flex-col items-center rounded-3xl border ${isTarget ? "border-emerald-300/60 bg-emerald-400/10" : isUnused ? "border-rose-400/30 bg-rose-950/20" : "border-cyan-400/20 bg-slate-950/90"} overflow-x-hidden overflow-y-auto p-3 pb-2 text-center shadow-md shadow-slate-950/30 transition hover:border-cyan-200/60"
+      class="absolute z-10 flex flex-col items-center rounded-3xl border ${isTarget ? "border-emerald-300/60 bg-emerald-400/10" : isUnused ? "border-rose-400/30 bg-rose-950/20" : "border-cyan-400/20 bg-slate-950/90"} overflow-hidden p-3 pb-2 text-center shadow-md shadow-slate-950/30 transition hover:border-cyan-200/60"
       style="left:${position.x}px; top:${position.y}px; width:${NODE_WIDTH}px; height:${NODE_HEIGHT}px;"
       data-graph-node-id="${escapeHtml(node.id)}"
       data-graph-node-kind="shape"
     >
-      <div class="flex min-h-0 w-full min-w-0 flex-1 flex-col">
+      <div class="flex h-full w-full min-w-0 flex-col">
       ${renderShapeRoleBadge(role, isTarget)}
-      <div class="min-h-0 w-full flex-1 rounded-2xl bg-black/30 p-2 ring-1 ring-cyan-400/15">
+      <div class="w-full rounded-2xl bg-black/30 p-2 ring-1 ring-cyan-400/15">
         <div
-          class="h-full min-h-0 overflow-hidden rounded-xl border border-slate-800 bg-slate-950"
-          style="min-height: 5rem;"
+          class="overflow-hidden rounded-xl border border-slate-800 bg-slate-950"
+          style="height: ${PREVIEW_HEIGHT}px;"
         >
           ${renderShapePreview(node)}
         </div>
       </div>
-      <p class="mt-2 max-w-full shrink-0 truncate font-mono text-xs text-cyan-100" title="${escapeHtml(node.shape_code)}">${escapeHtml(node.shape_code)}</p>
-      <p class="mt-1 shrink-0 text-[10px] text-slate-500">${escapeHtml(node.label || "Shape")}</p>
+      <p class="mt-1 max-w-full shrink-0 truncate font-mono text-[11px] text-cyan-100" title="${escapeHtml(node.shape_code)}">${escapeHtml(node.shape_code)}</p>
+      <p class="mt-0.5 shrink-0 text-[10px] leading-tight text-slate-500">${escapeHtml(node.label || "Shape")}</p>
       ${formatQuantityBadge(node)}
       ${renderProducedStateBadge(node)}
       ${renderReplicaBadge(node)}
@@ -130,29 +150,82 @@ function renderOperationGraphNode(node, position) {
   `;
 }
 
-function computeEdgeGeometry(from, to) {
-  const x1 = from.x + NODE_WIDTH;
-  const y1 = from.y + NODE_HEIGHT / 2;
-  const x2 = to.x;
-  const y2 = to.y + NODE_HEIGHT / 2;
+function parsePortIndex(value) {
+  const text = String(value || "");
+  const match = text.match(/\b([A-Z])(?:\b|\s*\()/);
+  if (!match) {
+    return 0;
+  }
+  return Math.max(0, match[1].charCodeAt(0) - "A".charCodeAt(0));
+}
+
+function computePortOffset(index, count) {
+  if (!Number.isFinite(count) || count <= 1) {
+    return 0;
+  }
+  return (index - (count - 1) / 2) * EDGE_PORT_SPACING;
+}
+
+function resolveEdgeAnchor(node, edge, side) {
+  const baseY = node.position.y + NODE_HEIGHT / 2;
+
+  if (node.kind === "operation") {
+    if (side === "to" && edge.kind === "input") {
+      const inputCount = Number(node.operation?.input_count ?? 0);
+      return {
+        x: node.position.x,
+        y: baseY + computePortOffset(parsePortIndex(edge.slot || edge.label), inputCount),
+      };
+    }
+    if (side === "from" && edge.kind === "output") {
+      const outputCount = Number(node.operation?.output_count ?? 0);
+      return {
+        x: node.position.x + NODE_WIDTH,
+        y: baseY + computePortOffset(parsePortIndex(edge.slot || edge.label), outputCount),
+      };
+    }
+  }
+
   return {
-    x1,
-    y1,
-    x2,
-    y2,
-    midX: x1 + Math.max(40, (x2 - x1) / 2),
-    labelX: (x1 + x2) / 2,
-    labelY: (y1 + y2) / 2 - 8,
+    x: side === "from" ? node.position.x + NODE_WIDTH : node.position.x,
+    y: baseY,
+  };
+}
+
+export function computeEdgeGeometry(edge, fromNode, toNode, edgeIndex = 0) {
+  const fromAnchor = resolveEdgeAnchor(fromNode, edge, "from");
+  const toAnchor = resolveEdgeAnchor(toNode, edge, "to");
+  const laneDirection = edgeIndex % 2 === 0 ? 1 : -1;
+  const laneOffset = (Math.floor(edgeIndex / 2) + 1) * EDGE_LANE_SPACING * laneDirection;
+  const elbowX = Math.max(
+    fromAnchor.x + EDGE_ELBOW_PADDING + Math.max(laneOffset, 0),
+    toAnchor.x - EDGE_ELBOW_PADDING + Math.min(laneOffset, 0),
+  );
+  const labelCenterX = elbowX + (toAnchor.x - elbowX) / 2;
+  const labelOffsetDirection = parsePortIndex(edge.slot || edge.label) % 2 === 0 ? -1 : 1;
+
+  return {
+    x1: fromAnchor.x,
+    y1: fromAnchor.y,
+    x2: toAnchor.x,
+    y2: toAnchor.y,
+    elbowX,
+    labelX: labelCenterX - EDGE_LABEL_WIDTH / 2,
+    labelY:
+      toAnchor.y -
+      EDGE_LABEL_HEIGHT -
+      6 +
+      labelOffsetDirection * (Math.floor(edgeIndex / 2) * EDGE_LABEL_STAGGER),
   };
 }
 
 function renderEdgePath(geometry) {
-  return `<path d="M ${geometry.x1} ${geometry.y1} C ${geometry.midX} ${geometry.y1}, ${geometry.midX} ${geometry.y2}, ${geometry.x2} ${geometry.y2}" fill="none" stroke="rgba(34,211,238,0.45)" stroke-width="2" marker-end="url(#arrowhead)" />`;
+  return `<path d="M ${geometry.x1} ${geometry.y1} L ${geometry.elbowX} ${geometry.y1} L ${geometry.elbowX} ${geometry.y2} L ${geometry.x2} ${geometry.y2}" fill="none" stroke="rgba(34,211,238,0.45)" stroke-width="2" marker-end="url(#arrowhead)" />`;
 }
 
 function renderEdgeLabel(edge, geometry) {
   return `
-    <foreignObject x="${geometry.labelX - 42}" y="${geometry.labelY}" width="84" height="22">
+    <foreignObject x="${geometry.labelX}" y="${geometry.labelY}" width="${EDGE_LABEL_WIDTH}" height="${EDGE_LABEL_HEIGHT}" data-graph-edge-label>
       <div xmlns="http://www.w3.org/1999/xhtml" class="rounded-full border border-slate-700 bg-slate-950/90 px-2 py-0.5 text-center text-[10px] text-slate-300">
         ${escapeHtml(edge.label || edge.slot || edge.kind)}
       </div>
@@ -161,14 +234,23 @@ function renderEdgeLabel(edge, geometry) {
 }
 
 function renderGraphEdges(graph, positions) {
+  const nodeMap = new Map(
+    (graph.nodes || []).map((node) => [
+      node.id,
+      {
+        ...node,
+        position: positions.get(node.id) || { x: 0, y: 0 },
+      },
+    ]),
+  );
   return (graph.edges || [])
-    .map((edge) => {
-      const from = positions.get(edge.from);
-      const to = positions.get(edge.to);
-      if (!from || !to) {
+    .map((edge, edgeIndex) => {
+      const fromNode = nodeMap.get(edge.from);
+      const toNode = nodeMap.get(edge.to);
+      if (!fromNode || !toNode) {
         return "";
       }
-      const geometry = computeEdgeGeometry(from, to);
+      const geometry = computeEdgeGeometry(edge, fromNode, toNode, edgeIndex);
       return `
         ${renderEdgePath(geometry)}
         ${renderEdgeLabel(edge, geometry)}

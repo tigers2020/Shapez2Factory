@@ -63,15 +63,11 @@ def try_rotation(
             continue
         base = solve_shape(base_shape, ctx)
         candidates.append(
-            build_operation_solution(
+            _build_single_input_solution(
                 ctx,
                 operation_type=operation_type,
-                inputs=(base.ref,),
-                outputs=operation_engine.apply(operation_type, (base.ref.shape,)),
-                selected_output_index=0,
-                label=OPERATION_CATALOG[operation_type].label,
-                description=OPERATION_CATALOG[operation_type].description,
-                dependencies=(base,),
+                source=base,
+                operation_engine=operation_engine,
             )
         )
     return min(candidates, key=lambda item: item.cost.as_sort_key()) if candidates else None
@@ -89,18 +85,12 @@ def try_stack_layers(
     current = solve_shape(Shape(layers=(target.layers[0],)), ctx)
     for next_layer in target.layers[1:]:
         top = solve_shape(Shape(layers=(next_layer,)), ctx)
-        current = build_operation_solution(
+        current = _build_binary_input_solution(
             ctx,
             operation_type=OperationType.STACKER,
-            inputs=(current.ref, top.ref),
-            outputs=operation_engine.apply(
-                OperationType.STACKER,
-                (current.ref.shape, top.ref.shape),
-            ),
-            selected_output_index=0,
-            label=OPERATION_CATALOG[OperationType.STACKER].label,
-            description=OPERATION_CATALOG[OperationType.STACKER].description,
-            dependencies=(current, top),
+            left=current,
+            right=top,
+            operation_engine=operation_engine,
         )
     return current
 
@@ -119,16 +109,14 @@ def try_paint(
     if skeleton.canonical_code == target.canonical_code:
         return None
     base = solve_shape(skeleton, ctx)
-    return build_operation_solution(
+    return _build_single_input_solution(
         ctx,
         operation_type=OperationType.PAINTER,
-        inputs=(base.ref,),
-        outputs=operation_engine.apply(OperationType.PAINTER, (base.ref.shape,), color=color),
-        selected_output_index=0,
+        source=base,
+        operation_engine=operation_engine,
+        color=color,
         label=f"{OPERATION_CATALOG[OperationType.PAINTER].label} ({color})",
         description=f"Paint the shape {color}.",
-        dependencies=(base,),
-        color=color,
     )
 
 
@@ -149,15 +137,13 @@ def try_assemble_halves(
     outputs = operation_engine.apply(OperationType.SWAPPER, (left.ref.shape, right.ref.shape))
     if outputs[0] != target:
         return None
-    return build_operation_solution(
+    return _build_binary_input_solution(
         ctx,
         operation_type=OperationType.SWAPPER,
-        inputs=(left.ref, right.ref),
+        left=left,
+        right=right,
+        operation_engine=operation_engine,
         outputs=outputs,
-        selected_output_index=0,
-        label=OPERATION_CATALOG[OperationType.SWAPPER].label,
-        description=OPERATION_CATALOG[OperationType.SWAPPER].description,
-        dependencies=(left, right),
     )
 
 
@@ -176,19 +162,13 @@ def try_assemble_quadrants(
     solved_parts = [solve_shape(shape, ctx) for shape in quadrant_shapes]
     current = solved_parts[0]
     for next_part in solved_parts[1:]:
-        outputs = operation_engine.apply(
-            OperationType.STACKER,
-            (current.ref.shape, next_part.ref.shape),
-        )
-        current = build_operation_solution(
+        current = _build_binary_input_solution(
             ctx,
             operation_type=OperationType.STACKER,
-            inputs=(current.ref, next_part.ref),
-            outputs=outputs,
-            selected_output_index=0,
-            label=OPERATION_CATALOG[OperationType.STACKER].label,
+            left=current,
+            right=next_part,
+            operation_engine=operation_engine,
             description="Merge disjoint quadrants into a buildable layer.",
-            dependencies=(current, next_part),
         )
     return current if current.ref.shape == target else None
 
@@ -202,18 +182,7 @@ def try_cut_from_source(
     if not target.is_single_layer() or not is_uncolored_single_kind(target):
         return None
     kind = next(part.kind for part in target.non_empty_parts())
-    source_shape = Shape(
-        layers=(
-            ShapeLayer(
-                quadrants=(
-                    ShapePart(kind=kind, color="u"),
-                    ShapePart(kind=kind, color="u"),
-                    ShapePart(kind=kind, color="u"),
-                    ShapePart(kind=kind, color="u"),
-                )
-            ),
-        )
-    )
+    source_shape = _build_full_uncolored_shape(kind)
     source = try_source(source_shape, ctx)
     if source is None:
         return None
@@ -225,14 +194,7 @@ def try_cut_from_source(
     for _depth in range(3):
         next_queue: list[SolvedRecipe] = []
         for recipe in queue:
-            derived = [
-                _derive_cut_output(ctx, recipe, 0, operation_engine),
-                _derive_cut_output(ctx, recipe, 1, operation_engine),
-                _derive_rotation(ctx, recipe, OperationType.ROTATE_CW, operation_engine),
-                _derive_rotation(ctx, recipe, OperationType.ROTATE_CCW, operation_engine),
-                _derive_rotation(ctx, recipe, OperationType.ROTATE_180, operation_engine),
-            ]
-            for candidate in derived:
+            for candidate in _derive_cut_and_rotation_candidates(ctx, recipe, operation_engine):
                 code = candidate.ref.shape.canonical_code
                 if code in visited:
                     continue
@@ -250,16 +212,12 @@ def _derive_cut_output(
     output_index: int,
     operation_engine: OperationEngine,
 ) -> SolvedRecipe:
-    outputs = operation_engine.apply(OperationType.CUTTER, (recipe.ref.shape,))
-    return build_operation_solution(
+    return _build_single_input_solution(
         ctx,
         operation_type=OperationType.CUTTER,
-        inputs=(recipe.ref,),
-        outputs=outputs,
+        source=recipe,
+        operation_engine=operation_engine,
         selected_output_index=output_index,
-        label=OPERATION_CATALOG[OperationType.CUTTER].label,
-        description=OPERATION_CATALOG[OperationType.CUTTER].description,
-        dependencies=(recipe,),
     )
 
 
@@ -269,14 +227,116 @@ def _derive_rotation(
     operation_type: OperationType,
     operation_engine: OperationEngine,
 ) -> SolvedRecipe:
-    outputs = operation_engine.apply(operation_type, (recipe.ref.shape,))
+    return _build_single_input_solution(
+        ctx,
+        operation_type=operation_type,
+        source=recipe,
+        operation_engine=operation_engine,
+    )
+
+
+def _build_single_input_solution(
+    ctx: SolveContext,
+    *,
+    operation_type: OperationType,
+    source: SolvedRecipe,
+    operation_engine: OperationEngine,
+    selected_output_index: int = 0,
+    label: str | None = None,
+    description: str | None = None,
+    color: str | None = None,
+) -> SolvedRecipe:
+    return _build_catalog_solution(
+        ctx,
+        operation_type=operation_type,
+        inputs=(source.ref,),
+        outputs=operation_engine.apply(operation_type, (source.ref.shape,), color=color),
+        selected_output_index=selected_output_index,
+        dependencies=(source,),
+        label=label,
+        description=description,
+        color=color,
+    )
+
+
+def _build_binary_input_solution(
+    ctx: SolveContext,
+    *,
+    operation_type: OperationType,
+    left: SolvedRecipe,
+    right: SolvedRecipe,
+    operation_engine: OperationEngine,
+    selected_output_index: int = 0,
+    outputs: tuple[Shape, ...] | None = None,
+    label: str | None = None,
+    description: str | None = None,
+) -> SolvedRecipe:
+    resolved_outputs = outputs or operation_engine.apply(
+        operation_type,
+        (left.ref.shape, right.ref.shape),
+    )
+    return _build_catalog_solution(
+        ctx,
+        operation_type=operation_type,
+        inputs=(left.ref, right.ref),
+        outputs=resolved_outputs,
+        selected_output_index=selected_output_index,
+        dependencies=(left, right),
+        label=label,
+        description=description,
+    )
+
+
+def _build_catalog_solution(
+    ctx: SolveContext,
+    *,
+    operation_type: OperationType,
+    inputs: tuple[RecipeRef, ...],
+    outputs: tuple[Shape, ...],
+    selected_output_index: int,
+    dependencies: tuple[SolvedRecipe, ...],
+    label: str | None = None,
+    description: str | None = None,
+    color: str | None = None,
+) -> SolvedRecipe:
+    catalog_entry = OPERATION_CATALOG[operation_type]
     return build_operation_solution(
         ctx,
         operation_type=operation_type,
-        inputs=(recipe.ref,),
+        inputs=inputs,
         outputs=outputs,
-        selected_output_index=0,
-        label=OPERATION_CATALOG[operation_type].label,
-        description=OPERATION_CATALOG[operation_type].description,
-        dependencies=(recipe,),
+        selected_output_index=selected_output_index,
+        label=label or catalog_entry.label,
+        description=description or catalog_entry.description,
+        dependencies=dependencies,
+        color=color,
+    )
+
+
+def _build_full_uncolored_shape(kind: str) -> Shape:
+    return Shape(
+        layers=(
+            ShapeLayer(
+                quadrants=(
+                    ShapePart(kind=kind, color="u"),
+                    ShapePart(kind=kind, color="u"),
+                    ShapePart(kind=kind, color="u"),
+                    ShapePart(kind=kind, color="u"),
+                )
+            ),
+        )
+    )
+
+
+def _derive_cut_and_rotation_candidates(
+    ctx: SolveContext,
+    recipe: SolvedRecipe,
+    operation_engine: OperationEngine,
+) -> tuple[SolvedRecipe, ...]:
+    return (
+        _derive_cut_output(ctx, recipe, 0, operation_engine),
+        _derive_cut_output(ctx, recipe, 1, operation_engine),
+        _derive_rotation(ctx, recipe, OperationType.ROTATE_CW, operation_engine),
+        _derive_rotation(ctx, recipe, OperationType.ROTATE_CCW, operation_engine),
+        _derive_rotation(ctx, recipe, OperationType.ROTATE_180, operation_engine),
     )

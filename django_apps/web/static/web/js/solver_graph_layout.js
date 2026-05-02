@@ -280,60 +280,72 @@ export function computeHorizontalPositions(graph, columns, topPositions) {
   return leftPositions;
 }
 
-export function computeGroupedGraphLayout(graph) {
-  const nodes = getGraphNodes(graph);
-  if (!nodes.length) {
-    return {
-      positions: new Map(),
-      width: GRAPH_PADDING * 2,
-      height: GRAPH_PADDING * 2,
-      bounds: {
-        minX: GRAPH_PADDING,
-        minY: GRAPH_PADDING,
-        maxX: GRAPH_PADDING,
-        maxY: GRAPH_PADDING,
-        width: 0,
-        height: 0,
-      },
-    };
-  }
+function buildEmptyGraphLayout() {
+  return {
+    positions: new Map(),
+    width: GRAPH_PADDING * 2,
+    height: GRAPH_PADDING * 2,
+    bounds: {
+      minX: GRAPH_PADDING,
+      minY: GRAPH_PADDING,
+      maxX: GRAPH_PADDING,
+      maxY: GRAPH_PADDING,
+      width: 0,
+      height: 0,
+    },
+  };
+}
 
+function buildOrderedColumnLayout(graph, nodes) {
   const depths = computeNodeDepths(graph);
   const groupedColumns = groupNodeIdsByDepth(graph, depths);
   const orderedColumns = orderNodeIdsByBarycenter(graph, groupedColumns, depths);
-  const sortedDepths = [...orderedColumns.keys()].sort(compareNumbers);
   const nodeIndexMap = buildNodeIndexMap(nodes);
-  const adjacency = buildAdjacency(graph, nodeIndexMap);
-  let topPositions = buildInitialTopPositions(orderedColumns);
+  return {
+    orderedColumns,
+    sortedDepths: [...orderedColumns.keys()].sort(compareNumbers),
+    adjacency: buildAdjacency(graph, nodeIndexMap),
+  };
+}
+
+function applyVerticalSweep(sortedDepths, orderedColumns, neighborMap, topPositions) {
+  for (const depth of sortedDepths) {
+    const nodeIds = orderedColumns.get(depth) || [];
+    const desiredTops = nodeIds.map((nodeId) =>
+      computeDesiredTop(nodeId, neighborMap, topPositions),
+    );
+    const compactedTops = compactColumnTops(nodeIds, desiredTops);
+    nodeIds.forEach((nodeId, index) => {
+      topPositions.set(nodeId, compactedTops[index]);
+    });
+  }
+}
+
+function computeVerticalTopPositions(orderedColumns, sortedDepths, adjacency) {
+  const topPositions = buildInitialTopPositions(orderedColumns);
+  const reverseDepths = [...sortedDepths].reverse();
 
   for (let pass = 0; pass < POSITIONING_PASSES; pass += 1) {
-    for (const depth of sortedDepths) {
-      const nodeIds = orderedColumns.get(depth) || [];
-      const desiredTops = nodeIds.map((nodeId) =>
-        computeDesiredTop(nodeId, adjacency.predecessors, topPositions),
-      );
-      const compactedTops = compactColumnTops(nodeIds, desiredTops);
-      nodeIds.forEach((nodeId, index) => {
-        topPositions.set(nodeId, compactedTops[index]);
-      });
-    }
-
-    for (let index = sortedDepths.length - 1; index >= 0; index -= 1) {
-      const depth = sortedDepths[index];
-      const nodeIds = orderedColumns.get(depth) || [];
-      const desiredTops = nodeIds.map((nodeId) =>
-        computeDesiredTop(nodeId, adjacency.successors, topPositions),
-      );
-      const compactedTops = compactColumnTops(nodeIds, desiredTops);
-      nodeIds.forEach((nodeId, positionIndex) => {
-        topPositions.set(nodeId, compactedTops[positionIndex]);
-      });
-    }
+    applyVerticalSweep(
+      sortedDepths,
+      orderedColumns,
+      adjacency.predecessors,
+      topPositions,
+    );
+    applyVerticalSweep(
+      reverseDepths,
+      orderedColumns,
+      adjacency.successors,
+      topPositions,
+    );
   }
 
+  return topPositions;
+}
+
+function buildFinalGraphLayout(nodes, leftPositions, topPositions) {
   const rawMinTop = Math.min(...topPositions.values());
   const yOffset = GRAPH_PADDING - rawMinTop;
-  const leftPositions = computeHorizontalPositions(graph, orderedColumns, topPositions);
   const positions = new Map();
   for (const node of nodes) {
     positions.set(node.id, {
@@ -361,6 +373,23 @@ export function computeGroupedGraphLayout(graph) {
       height: maxY - minY,
     },
   };
+}
+
+export function computeGroupedGraphLayout(graph) {
+  const nodes = getGraphNodes(graph);
+  if (!nodes.length) {
+    return buildEmptyGraphLayout();
+  }
+
+  const { orderedColumns, sortedDepths, adjacency } = buildOrderedColumnLayout(graph, nodes);
+  const topPositions = computeVerticalTopPositions(
+    orderedColumns,
+    sortedDepths,
+    adjacency,
+  );
+  const leftPositions = computeHorizontalPositions(graph, orderedColumns, topPositions);
+
+  return buildFinalGraphLayout(nodes, leftPositions, topPositions);
 }
 
 export function computeGraphLayout(graph) {

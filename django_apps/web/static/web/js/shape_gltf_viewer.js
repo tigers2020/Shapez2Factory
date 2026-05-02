@@ -5,7 +5,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 console.info("shape_gltf_viewer view-modes v5 loaded");
 
 const COLOR_HEX = {
-  u: 0xf4f1ec,
+  u: 0x94a3b8,
   r: 0xef4444,
   g: 0x22c55e,
   b: 0x3b82f6,
@@ -125,10 +125,10 @@ function createPedestal() {
   return pedestal;
 }
 
-function createTopMaterialWithSeam(color) {
+function createTopMaterialWithSeam(color, roughness = 0.55) {
   const material = new THREE.MeshStandardMaterial({
     color,
-    roughness: 0.55,
+    roughness,
     metalness: 0.04,
   });
 
@@ -196,7 +196,8 @@ function createTopMaterialWithSeam(color) {
 
 function applyTopSideMaterials(root, materialKey) {
   const topColor = resolveMaterialColor(materialKey);
-  const topMaterial = createTopMaterialWithSeam(topColor);
+  const topRoughness = materialKey === "u" ? 0.82 : 0.55;
+  const topMaterial = createTopMaterialWithSeam(topColor, topRoughness);
   const sideMaterial = new THREE.MeshStandardMaterial({
     color: SIDE_COLOR,
     roughness: 0.82,

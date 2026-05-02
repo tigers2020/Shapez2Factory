@@ -11,6 +11,11 @@ urlpatterns = [
     path("demo/", views.demo, name="demo"),
     path("solver/", views.solver, name="solver"),
     path(
+        "internal/graph-preview-cache/<str:filename>",
+        views.graph_preview_cache,
+        name="graph_preview_cache",
+    ),
+    path(
         "solve/",
         RedirectView.as_view(pattern_name="web:solver", permanent=False, query_string=True),
     ),

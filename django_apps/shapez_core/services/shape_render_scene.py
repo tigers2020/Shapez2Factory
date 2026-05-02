@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_core.domain.shape_pattern import NormalizedShapePattern, QuadrantPosition
+from django_apps.shapez_core.services.shape_codec import pattern_from_shape
 
 SHAPE_MESH_KEYS = {
     "R": "default_rect",
@@ -34,10 +36,11 @@ class ShapeRenderScene:
     cells: tuple[ShapeRenderCell, ...]
 
 
-def build_shape_render_scene(pattern: NormalizedShapePattern) -> ShapeRenderScene:
+def build_shape_render_scene(pattern: NormalizedShapePattern | Shape) -> ShapeRenderScene:
+    normalized_pattern = pattern_from_shape(pattern) if isinstance(pattern, Shape) else pattern
     cells: list[ShapeRenderCell] = []
 
-    for layer in pattern.layers:
+    for layer in normalized_pattern.layers:
         for cell in layer.cells:
             if cell.shape_code == "-":
                 continue
@@ -57,7 +60,7 @@ def build_shape_render_scene(pattern: NormalizedShapePattern) -> ShapeRenderScen
                 )
             )
 
-    return ShapeRenderScene(normalized_code=pattern.normalized_code, cells=tuple(cells))
+    return ShapeRenderScene(normalized_code=normalized_pattern.normalized_code, cells=tuple(cells))
 
 
 def _transform_key(position: QuadrantPosition, layer_index: int) -> str:

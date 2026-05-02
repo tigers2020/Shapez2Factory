@@ -1,7 +1,7 @@
 {% extends "web/base.html" %}
 {% load static %}
 
-{% block title %}shapez2 planner — Shape solver{% endblock %}
+{% block title %}shapez2 planner | Shape solver{% endblock %}
 
 {% block content %}
 <main class="min-h-screen bg-slate-950 text-slate-100">
@@ -14,11 +14,11 @@
     <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
       <p class="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">Shape solver</p>
       <h1 id="solver-hero-heading" class="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-        From raw shapes to the target: construction steps live here.
+        From source shapes to target output: deterministic recipe graphs live here.
       </h1>
       <p class="mt-4 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
-        Set a target code below. The timeline will list cut, rotate, stack, and paint operations as the
-        planner produces them — wiring to the solver backend comes next.
+        Set a target code below. The solver plans backward, validates the recipe by replaying operations,
+        and renders the result as a forward graph with source, operation, and target nodes.
       </p>
     </div>
   </section>
@@ -53,7 +53,7 @@
         </section>
 
         <section aria-labelledby="solver-graph-heading">
-          <h2 id="solver-graph-heading" class="text-sm font-semibold text-slate-200">Construction sequence</h2>
+          <h2 id="solver-graph-heading" class="text-sm font-semibold text-slate-200">Recipe graph</h2>
           <div
             class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400 sm:p-5"
             data-solver-timeline
@@ -66,7 +66,7 @@
               <div>
                 <p class="font-medium text-slate-300">Solver Graph</p>
                 <p class="mt-2 leading-relaxed">
-                  Source shapes, intermediates, and target all render with live previews in a left-to-right DAG.
+                  Source shapes, intermediates, and target all render with stable previews in a left-to-right DAG.
                   Drag to pan and use the mouse wheel to zoom inside the graph frame.
                 </p>
               </div>

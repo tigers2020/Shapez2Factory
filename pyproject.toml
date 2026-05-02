@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "shapez2-solver"
 version = "0.1.0"
 description = "Django scaffold for a shapez 2 factory planner."
-readme = "documents/plan_django_scaffold_2026-05-01.md"
+readme = "documents/shapez_core_solver_dev_plan.md"
 requires-python = ">=3.12"
 dependencies = [
     "django>=5.2,<6.0",

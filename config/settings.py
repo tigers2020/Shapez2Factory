@@ -69,5 +69,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+SOLVER_GRAPH_PREVIEW_RENDERER = "playwright_png"
+SOLVER_GRAPH_PREVIEW_CACHE_DIR = BASE_DIR / ".graph_preview_cache"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

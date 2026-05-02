@@ -11,6 +11,7 @@ from django_apps.shapez_core.services.shape_code_parser import (
     ShapeCodeParseError,
     parse_shape_code_list,
 )
+from django_apps.shapez_core.services.shape_codec import shape_from_pattern
 from django_apps.shapez_core.services.shape_render_scene import (
     ShapeRenderScene,
     build_shape_render_scene,
@@ -23,13 +24,14 @@ from django_apps.shapez_solver.dto.solver_graph import (
     SolverOperationNode,
     SolverShapeNode,
 )
+from django_apps.shapez_solver.services.planner_service import UnsupportedTargetError
 from django_apps.shapez_solver.services.solver_service import (
-    ShapeRef,
     SolverRequest,
     SolverResult,
     SolverService,
-    SolveStep,
+    SolverValidationError,
 )
+from django_apps.web.services.graph_preview import GraphPreviewRenderer, get_graph_preview_renderer
 
 
 @require_POST
@@ -37,26 +39,24 @@ def solve_shape(request: HttpRequest) -> JsonResponse:
     code = _extract_shape_code(request)
     if code is None:
         return JsonResponse(
-            {
-                "ok": False,
-                "found": False,
-                "error": "Expected JSON object or form data with a 'code' field.",
-                "warnings": [],
-                "steps": [],
-            },
+            _error_payload(
+                "INVALID_REQUEST",
+                "Expected JSON object or form data with a 'code' field.",
+                {},
+                (),
+            ),
             status=400,
         )
 
     stripped_code = code.strip()
     if not stripped_code:
         return JsonResponse(
-            {
-                "ok": False,
-                "found": False,
-                "error": "Shape code is empty.",
-                "warnings": [],
-                "steps": [],
-            },
+            _error_payload(
+                "EMPTY_SHAPE_CODE",
+                "Shape code is empty.",
+                {},
+                (),
+            ),
             status=400,
         )
 
@@ -64,17 +64,17 @@ def solve_shape(request: HttpRequest) -> JsonResponse:
         patterns = parse_shape_code_list(stripped_code)
     except ShapeCodeParseError as exc:
         return JsonResponse(
-            {
-                "ok": False,
-                "found": False,
-                "error": str(exc),
-                "warnings": [],
-                "steps": [],
-            }
+            _error_payload(
+                "SHAPE_CODE_PARSE_ERROR",
+                str(exc),
+                {"raw_code": stripped_code},
+                (),
+            )
         )
 
     warnings: list[str] = []
     target_pattern = patterns[0]
+    target_shape = shape_from_pattern(target_pattern)
     if target_pattern.raw_code != target_pattern.normalized_code:
         warnings.append(
             f"Pattern '{target_pattern.raw_code}' was normalized to "
@@ -83,12 +83,35 @@ def solve_shape(request: HttpRequest) -> JsonResponse:
     if len(patterns) > 1:
         warnings.append("Multiple patterns were provided; only the first target was solved.")
 
-    result = SolverService().solve(
-        SolverRequest(
-            target_pattern=target_pattern,
-            max_depth=_extract_max_depth(request),
+    try:
+        result = SolverService().solve(
+            SolverRequest(
+                target_shape=target_shape,
+                max_depth=_extract_max_depth(request),
+            )
         )
-    )
+    except UnsupportedTargetError as exc:
+        return JsonResponse(
+            _error_payload(
+                exc.code,
+                exc.message,
+                exc.details or {"target_shape_code": target_shape.canonical_code},
+                warnings,
+            )
+        )
+    except SolverValidationError as exc:
+        return JsonResponse(
+            _error_payload(
+                exc.code,
+                "The generated recipe did not replay back to the requested target.",
+                {
+                    "expected": exc.expected,
+                    "actual": exc.actual,
+                },
+                warnings,
+            ),
+            status=500,
+        )
     payload = _serialize_solver_result(result, warnings=tuple(warnings))
     return JsonResponse(payload)
 
@@ -144,11 +167,10 @@ def _serialize_solver_result(
     }
 
 
-def _serialize_solver_step(step: SolveStep) -> dict[str, Any]:
+def _serialize_solver_step(step: Any) -> dict[str, Any]:
     operation = OPERATION_CATALOG[step.operation_type]
     return {
         "id": step.id,
-        "index": step.index,
         "operation": {
             "type": operation.type.value,
             "label": operation.label,
@@ -159,40 +181,50 @@ def _serialize_solver_step(step: SolveStep) -> dict[str, Any]:
         },
         "title": step.title,
         "description": step.description,
-        "inputs": [_serialize_shape_ref(item) for item in step.inputs],
-        "outputs": [_serialize_shape_ref(item) for item in step.outputs],
+        "inputs": [_serialize_shape_code(item) for item in step.input_shape_codes],
+        "outputs": [_serialize_shape_code(item) for item in step.output_shape_codes],
     }
 
 
-def _serialize_shape_ref(item: ShapeRef) -> dict[str, Any]:
-    pattern = parse_shape_code_list(item.shape_code)[0]
-    scene = build_shape_render_scene(pattern)
+def _serialize_shape_code(shape_code: str) -> dict[str, Any]:
+    preview_scene = _serialize_render_scene(
+        build_shape_render_scene(parse_shape_code_list(shape_code)[0])
+    )
     return {
-        "shape_code": item.shape_code,
-        "label": item.label,
-        "preview_scene": _serialize_render_scene(scene),
+        "shape_code": shape_code,
+        "label": None,
+        "preview_scene": preview_scene,
     }
 
 
 def _serialize_solver_graph(graph: SolverGraph) -> dict[str, Any]:
+    preview_renderer = get_graph_preview_renderer()
     return {
         "layout": {
             "direction": graph.direction,
         },
-        "nodes": [_serialize_graph_node(node) for node in graph.nodes],
+        "nodes": [_serialize_graph_node(node, preview_renderer) for node in graph.nodes],
         "edges": [_serialize_graph_edge(edge) for edge in graph.edges],
     }
 
 
-def _serialize_graph_node(node: SolverGraphNode) -> dict[str, Any]:
+def _serialize_graph_node(
+    node: SolverGraphNode,
+    preview_renderer: GraphPreviewRenderer,
+) -> dict[str, Any]:
     if isinstance(node, SolverShapeNode):
+        preview_scene = node.preview_scene or _build_preview_scene(node.shape_code)
+        graph_preview = preview_renderer.render(preview_scene)
         return {
             "id": node.id,
             "kind": node.kind,
             "role": node.role,
             "shape_code": node.shape_code,
             "label": node.label,
-            "preview_scene": node.preview_scene or _build_preview_scene(node.shape_code),
+            "preview_scene": preview_scene,
+            "preview_markup": graph_preview.markup,
+            "preview_image_url": graph_preview.image_url,
+            "preview_alt": graph_preview.alt_text,
             "reused_count": node.reused_count,
         }
 
@@ -246,4 +278,23 @@ def _serialize_render_scene(scene: ShapeRenderScene) -> dict[str, Any]:
             }
             for cell in scene.cells
         ],
+    }
+
+
+def _error_payload(
+    code: str,
+    message: str,
+    details: dict[str, str],
+    warnings: list[str] | tuple[str, ...],
+) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "found": False,
+        "error": {
+            "code": code,
+            "message": message,
+            "details": details,
+        },
+        "warnings": list(warnings),
+        "steps": [],
     }

@@ -24,7 +24,7 @@ def test_solver_page_renders() -> None:
     response = Client().get("/solver/", {"code": "SuSuSuSu"})
 
     assert response.status_code == 200
-    assert b"Construction sequence" in response.content
+    assert b"Recipe graph" in response.content
     assert b"data-shape-preview-code-ref" in response.content
     assert b"SuSuSuSu" in response.content
     assert b"quick_solver_preview.js" in response.content
@@ -35,7 +35,7 @@ def test_solver_page_renders() -> None:
     assert b"data-solver-node-detail" in response.content
     assert b"/api/solver/solve/" in response.content
     assert b"data-asset-base" in response.content
-    assert b"all render with live previews in a left-to-right DAG" in response.content
+    assert b"stable previews in a left-to-right DAG" in response.content
     assert b"wheel to zoom" in response.content
 
 
@@ -46,26 +46,18 @@ def test_solve_alias_redirects_to_solver_page() -> None:
     assert response["Location"] == "/solver/?code=SuSuSuSu"
 
 
-def test_api_solver_solve_returns_operation_steps() -> None:
+def test_api_solver_solve_returns_graph_first_result() -> None:
     response = Client().post(
         "/api/solver/solve/",
-        data={"code": "SuSuSuSu"},
+        data={"code": "CuRuSuWu"},
     )
 
     assert response.status_code == 200
     data = response.json()
     assert data["ok"] is True
     assert data["found"] is True
-    assert data["target_shape"] == "SuSuSuSu"
-    assert data["steps"]
-    first_step = data["steps"][0]
-    assert first_step["operation"]["type"] == "cutter"
-    assert first_step["operation"]["label"] == "Cutter"
-    assert first_step["operation"]["icon"].endswith("/static/web/images/operations/cutter.png")
-    assert len(first_step["inputs"]) == 1
-    assert len(first_step["outputs"]) == 2
-    assert first_step["inputs"][0]["preview_scene"]["normalized_code"] == "CuCuCuCu"
-    assert first_step["outputs"][0]["preview_scene"]["cells"]
+    assert data["target_shape"] == "CuRuSuWu"
+    assert isinstance(data["steps"], list)
 
     graph = data["graph"]
     assert graph["layout"]["direction"] == "left-to-right"
@@ -82,13 +74,14 @@ def test_api_solver_solve_returns_operation_steps() -> None:
     assert intermediate_nodes
     assert operation_nodes
     assert len(target_nodes) == 1
-    assert all(node["preview_scene"]["cells"] for node in source_nodes)
-    assert all(node["preview_scene"]["cells"] for node in intermediate_nodes)
-    assert target_nodes[0]["shape_code"] == "SuSuSuSu"
-    assert target_nodes[0]["preview_scene"]["normalized_code"] == "SuSuSuSu"
+    assert target_nodes[0]["shape_code"] == "CuRuSuWu"
+    assert target_nodes[0]["preview_scene"]["normalized_code"] == "CuRuSuWu"
+    assert target_nodes[0]["preview_alt"] == "Graph preview for CuRuSuWu"
+    assert target_nodes[0]["preview_image_url"] is None or target_nodes[0][
+        "preview_image_url"
+    ].endswith(".png")
     assert operation_nodes[0]["operation"]["icon"].startswith("/static/web/images/operations/")
-    assert any(edge["kind"] == "input" and edge["slot"] == "B" for edge in graph["edges"])
-    assert any(edge["label"] == "Output A" for edge in graph["edges"])
+    assert any(edge["label"] == "Output B (unused)" for edge in graph["edges"])
 
 
 def test_api_solver_solve_rejects_empty_code() -> None:
@@ -101,7 +94,21 @@ def test_api_solver_solve_rejects_empty_code() -> None:
     data = response.json()
     assert data["ok"] is False
     assert data["steps"] == []
+    assert data["error"]["code"] == "EMPTY_SHAPE_CODE"
     assert "graph" not in data
+
+
+def test_api_solver_solve_returns_structured_unsupported_error() -> None:
+    response = Client().post(
+        "/api/solver/solve/",
+        data={"code": "PuPuPuPu"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is False
+    assert data["error"]["code"] == "UNSUPPORTED_TARGET"
+    assert data["error"]["details"]["target_shape_code"] == "PuPuPuPu"
 
 
 def test_api_shape_preview_ok() -> None:
@@ -126,6 +133,15 @@ def test_api_shape_preview_parse_error() -> None:
     assert data["ok"] is False
     assert data["patterns"] == []
     assert data["error"]
+
+
+def test_api_solver_parse_error_is_structured() -> None:
+    response = Client().post("/api/solver/solve/", data={"code": "not_a_real_code!!!"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is False
+    assert data["error"]["code"] == "SHAPE_CODE_PARSE_ERROR"
 
 
 def test_api_shape_preview_empty_code() -> None:
@@ -205,9 +221,13 @@ def test_solver_graph_viewport_has_explicit_runtime_layout_styles() -> None:
     script = (static_root / "js" / "solver_timeline.js").read_text(encoding="utf-8")
 
     assert "data-graph-viewport" in script
-    assert 'style="height: 34rem; touch-action: none; cursor: grab;"' in script
+    assert 'style="height: 34rem; touch-action: none; cursor: grab;' in script
     assert "transform-origin: 0 0;" in script
     assert 'viewport.style.cursor = "grabbing"' in script
+    assert "preview_image_url" in script
+    assert "preview_markup" in script
+    assert "data-graph-shape-preview" not in script
+    assert "./solver_graph_layout.js" in script
 
 
 def test_operation_icon_assets_exist() -> None:

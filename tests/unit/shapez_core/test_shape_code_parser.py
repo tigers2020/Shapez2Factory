@@ -7,7 +7,16 @@ from django_apps.shapez_core.services.shape_code_parser import (
     ShapeCodeParseError,
     parse_shape_code_list,
 )
-from django_apps.shapez_solver.services.planner_service import PlannerRequest, PlannerService
+from django_apps.shapez_core.services.shape_codec import (
+    normalize_shape,
+    pattern_from_shape,
+    shape_from_pattern,
+)
+from django_apps.shapez_solver.dto.solver_graph import SolverShapeNode
+from django_apps.shapez_solver.services.planner_service import (
+    PlannerRequest,
+    PlannerService,
+)
 from django_apps.shapez_solver.services.solver_service import SolverRequest, SolverService
 
 
@@ -124,12 +133,29 @@ def test_pin_uncolored_ok() -> None:
     assert parsed[0].layers[0].cells[0].shape_kind == "pin"
 
 
-def test_solver_and_planner_use_target_pattern() -> None:
+def test_shape_value_object_round_trips_through_pattern_codec() -> None:
+    pattern = parse_shape_code_list("RuRuRuRu:WrCrRgSy")[0]
+    shape = shape_from_pattern(pattern)
+
+    assert shape.canonical_code == "RuRuRuRu:WrCrRgSy"
+    rebuilt_pattern = pattern_from_shape(shape)
+    assert rebuilt_pattern.normalized_code == "RuRuRuRu:WrCrRgSy"
+    assert normalize_shape(shape).canonical_code == "RuRuRuRu:WrCrRgSy"
+
+
+def test_solver_and_planner_use_target_shape() -> None:
     target = parse_shape_code_list("CuCuCuCu")[0]
-    solver_result = SolverService().solve(SolverRequest(target_pattern=target))
+    shape = shape_from_pattern(target)
+    solver_result = SolverService().solve(SolverRequest(target_shape=shape))
 
     assert solver_result.target_shape == "CuCuCuCu"
-    assert solver_result.steps[-1].outputs[0].shape_code == "CuCuCuCu"
+    assert solver_result.graph is not None
+    target_nodes = [
+        node
+        for node in solver_result.graph.nodes
+        if isinstance(node, SolverShapeNode) and node.role == "target"
+    ]
+    assert len(target_nodes) == 1
     assert PlannerService().plan(
-        PlannerRequest(target_pattern=target, target_rate_per_min=60.0)
+        PlannerRequest(target_shape=shape, target_rate_per_min=60.0)
     ).required_inputs == ("CuCuCuCu",)

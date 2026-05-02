@@ -1,11 +1,12 @@
 import { disposeShapeGltfViewer, mountShapeGltfViewer } from "./shape_gltf_viewer.js";
+import {
+  GRAPH_PADDING,
+  NODE_HEIGHT,
+  NODE_WIDTH,
+  computeGraphLayout,
+} from "./solver_graph_layout.js";
 
 const TIMELINE_DEBOUNCE_MS = 320;
-const NODE_WIDTH = 190;
-const NODE_HEIGHT = 232;
-const COLUMN_GAP = 270;
-const ROW_GAP = 276;
-const GRAPH_PADDING = 40;
 const MIN_GRAPH_SCALE = 0.18;
 const MAX_GRAPH_SCALE = 2.2;
 const GRAPH_ZOOM_STEP = 1.18;
@@ -47,6 +48,23 @@ function renderShapeGraphNode(node, position) {
   const role = node.role || "intermediate";
   const isTarget = role === "target";
   const reusedCount = Number(node.reused_count || 0);
+  const fallbackMarkup = node.preview_markup || `<div class="flex h-full items-center justify-center text-[10px] uppercase tracking-wide text-slate-500">No preview</div>`;
+  const previewBody = node.preview_image_url
+    ? `
+      <div class="relative h-full w-full">
+        <img
+          src="${escapeHtml(node.preview_image_url)}"
+          alt="${escapeHtml(node.preview_alt || node.shape_code || "Shape preview")}"
+          class="h-full w-full object-contain"
+          loading="lazy"
+          data-graph-preview-image
+        />
+        <div class="hidden h-full w-full" data-graph-preview-fallback>
+          ${fallbackMarkup}
+        </div>
+      </div>
+    `
+    : fallbackMarkup;
   return `
     <div
       role="button"
@@ -62,23 +80,38 @@ function renderShapeGraphNode(node, position) {
       </div>
       <div
         class="w-full rounded-2xl bg-black/30 p-2 ring-1 ring-cyan-400/15"
-        data-shape-gltf-viewer
-        data-graph-shape-preview
-        data-graph-preview-node-id="${escapeHtml(node.id)}"
-        data-asset-base=""
       >
         <div
           class="h-32 overflow-hidden rounded-xl border border-slate-800 bg-slate-950"
           style="height: 8rem; min-height: 8rem;"
-          data-shape-gltf-viewport
-        ></div>
-        <script type="application/json">{}</script>
+        >
+          ${previewBody}
+        </div>
       </div>
       <p class="mt-3 max-w-full truncate font-mono text-xs text-cyan-100" title="${escapeHtml(node.shape_code)}">${escapeHtml(node.shape_code)}</p>
       <p class="mt-1 text-[10px] text-slate-500">${escapeHtml(node.label || "Shape")}</p>
       ${reusedCount > 0 ? `<span class="mt-2 rounded-full bg-amber-300/15 px-2 py-0.5 text-[10px] font-semibold text-amber-100">REUSED x${escapeHtml(reusedCount + 1)}</span>` : ""}
     </div>
   `;
+}
+
+function initGraphPreviewFallbacks(canvas) {
+  canvas.querySelectorAll("[data-graph-preview-image]").forEach((img) => {
+    const fallback = img.parentElement?.querySelector("[data-graph-preview-fallback]");
+    if (!fallback) {
+      return;
+    }
+
+    const showFallback = () => {
+      img.classList.add("hidden");
+      fallback.classList.remove("hidden");
+    };
+
+    img.addEventListener("error", showFallback, { once: true });
+    if (img.complete && typeof img.naturalWidth === "number" && img.naturalWidth === 0) {
+      showFallback();
+    }
+  });
 }
 
 function renderOperationGraphNode(node, position) {
@@ -98,69 +131,6 @@ function renderOperationGraphNode(node, position) {
       <p class="mt-1 text-[10px] text-slate-400">${escapeHtml(operation.input_count)} in / ${escapeHtml(operation.output_count)} out</p>
     </button>
   `;
-}
-
-function computeGraphLayout(graph) {
-  const nodes = graph.nodes || [];
-  const edges = graph.edges || [];
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  const depths = new Map(nodes.map((node) => [node.id, 0]));
-
-  let remainingPasses = nodes.length;
-  while (remainingPasses > 0) {
-    remainingPasses -= 1;
-    let changed = false;
-    for (const edge of edges) {
-      if (!nodeIds.has(edge.from) || !nodeIds.has(edge.to)) {
-        continue;
-      }
-      const nextDepth = (depths.get(edge.from) || 0) + 1;
-      if (nextDepth > (depths.get(edge.to) || 0)) {
-        depths.set(edge.to, nextDepth);
-        changed = true;
-      }
-    }
-    if (!changed) {
-      break;
-    }
-  }
-
-  const columns = new Map();
-  for (const node of nodes) {
-    const depth = depths.get(node.id) || 0;
-    columns.set(depth, [...(columns.get(depth) || []), node]);
-  }
-
-  const positions = new Map();
-  for (const [depth, columnNodes] of columns) {
-    columnNodes.forEach((node, index) => {
-      positions.set(node.id, {
-        x: GRAPH_PADDING + depth * COLUMN_GAP,
-        y: GRAPH_PADDING + index * ROW_GAP,
-      });
-    });
-  }
-
-  const maxDepth = Math.max(0, ...depths.values());
-  const maxColumnSize = Math.max(1, ...[...columns.values()].map((column) => column.length));
-  const positioned = [...positions.values()];
-  const minX = Math.min(...positioned.map((position) => position.x));
-  const minY = Math.min(...positioned.map((position) => position.y));
-  const maxX = Math.max(...positioned.map((position) => position.x + NODE_WIDTH));
-  const maxY = Math.max(...positioned.map((position) => position.y + NODE_HEIGHT));
-  return {
-    positions,
-    width: GRAPH_PADDING * 2 + (maxDepth + 1) * COLUMN_GAP,
-    height: GRAPH_PADDING * 2 + maxColumnSize * ROW_GAP,
-    bounds: {
-      minX,
-      minY,
-      maxX,
-      maxY,
-      width: maxX - minX,
-      height: maxY - minY,
-    },
-  };
 }
 
 function renderGraphEdges(graph, positions) {
@@ -194,8 +164,8 @@ function renderSolverGraph(graph) {
   const layout = computeGraphLayout(graph);
   return `
     <div
-      class="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/80"
-      style="height: 34rem; touch-action: none; cursor: grab;"
+      class="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/80 select-none"
+      style="height: 34rem; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none;"
       data-graph-viewport
     >
       <div class="absolute left-3 top-3 z-30 flex overflow-hidden rounded-full border border-slate-700 bg-slate-950/90 shadow-xl shadow-slate-950/40">
@@ -301,6 +271,7 @@ function initGraphViewport(canvas) {
   if (!viewport) {
     return;
   }
+  const root = document.documentElement;
   resetGraphViewport(viewport);
 
   viewport.querySelector("[data-graph-zoom-in]")?.addEventListener("click", () => {
@@ -336,7 +307,16 @@ function initGraphViewport(canvas) {
     { passive: false },
   );
 
+  viewport.addEventListener("selectstart", (event) => {
+    event.preventDefault();
+  });
+
+  viewport.addEventListener("dragstart", (event) => {
+    event.preventDefault();
+  });
+
   viewport.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
     if (event.target.closest("[data-graph-node-id], button")) {
       return;
     }
@@ -348,6 +328,8 @@ function initGraphViewport(canvas) {
     state.originY = state.y;
     viewport.setPointerCapture(event.pointerId);
     viewport.style.cursor = "grabbing";
+    document.body.classList.add("select-none");
+    root.style.userSelect = "none";
   });
 
   viewport.addEventListener("pointermove", (event) => {
@@ -355,6 +337,7 @@ function initGraphViewport(canvas) {
     if (!state?.dragging) {
       return;
     }
+    event.preventDefault();
     state.x = state.originX + event.clientX - state.startX;
     state.y = state.originY + event.clientY - state.startY;
     applyGraphTransform(viewport);
@@ -368,6 +351,8 @@ function initGraphViewport(canvas) {
     state.dragging = false;
     viewport.releasePointerCapture?.(event.pointerId);
     viewport.style.cursor = "grab";
+    document.body.classList.remove("select-none");
+    root.style.userSelect = "";
   };
 
   viewport.addEventListener("pointerup", stopDragging);
@@ -379,19 +364,9 @@ function connectedEdges(graph, nodeId) {
 }
 
 async function mountGraphShapePreviews(panel, graph, canvas) {
-  const assetBase = panel.dataset.assetBase || "";
-  const nodesById = new Map((graph.nodes || []).map((node) => [node.id, node]));
-
-  for (const viewer of canvas.querySelectorAll("[data-graph-shape-preview]")) {
-    const node = nodesById.get(viewer.dataset.graphPreviewNodeId);
-    const script = viewer.querySelector('script[type="application/json"]');
-    if (!node?.preview_scene || !script) {
-      continue;
-    }
-    viewer.dataset.assetBase = assetBase;
-    script.textContent = JSON.stringify(node.preview_scene);
-    await mountShapeGltfViewer(viewer);
-  }
+  void panel;
+  void graph;
+  void canvas;
 }
 
 async function renderSelectedNodeDetail(panel, graph, nodeId) {
@@ -463,6 +438,7 @@ async function mountGraph(panel, graph) {
     return;
   }
   setStepsHtml(canvas, renderSolverGraph(graph));
+  initGraphPreviewFallbacks(canvas);
   initGraphViewport(canvas);
 
   const selectNode = (nodeId) => {
@@ -546,7 +522,10 @@ async function requestTimeline(panel, code, seq) {
 
   if (!data.ok) {
     clearStepsHost(graphCanvas);
-    setBanner(errorEl, data.error || "Could not solve this shape code.", true);
+    const errorText = typeof data.error === "string"
+      ? data.error
+      : data.error?.message || "Could not solve this shape code.";
+    setBanner(errorEl, errorText, true);
     setBanner(warningsEl, "", false);
     return;
   }
@@ -586,4 +565,6 @@ function initSolverTimeline(panel) {
   scheduleTimeline(panel, input);
 }
 
-document.querySelectorAll("[data-solver-timeline]").forEach(initSolverTimeline);
+if (typeof document !== "undefined") {
+  document.querySelectorAll("[data-solver-timeline]").forEach(initSolverTimeline);
+}

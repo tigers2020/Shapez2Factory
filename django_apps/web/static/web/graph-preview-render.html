@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Graph Preview Prerender</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #070b1c;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+      }
+
+      .frame {
+        width: 168px;
+        height: 168px;
+        display: grid;
+        place-items: center;
+      }
+
+      .viewer-shell {
+        width: 148px;
+        padding: 10px;
+        border-radius: 20px;
+        background: rgba(15, 23, 42, 0.05);
+      }
+
+      [data-shape-gltf-viewport] {
+        width: 128px;
+        height: 128px;
+        min-height: 128px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #070b1c;
+      }
+
+      canvas {
+        display: block;
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three/0.184.0/build/three.module.js",
+          "three/addons/": "/vendor/three/0.184.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="viewer-shell">
+        <div data-shape-gltf-viewer data-asset-base="/vendor/shapez-vortex/models/shapes/">
+          <div data-prerender-viewport data-shape-gltf-viewport></div>
+          <script type="application/json">{}</script>
+        </div>
+      </div>
+    </div>
+    <script type="module">
+      import { mountShapeGltfViewer } from "/js/shape_gltf_viewer.js";
+
+      const response = await fetch("/scene.json", { cache: "no-store" });
+      const scene = await response.json();
+      const viewer = document.querySelector("[data-shape-gltf-viewer]");
+      const script = viewer.querySelector('script[type="application/json"]');
+      script.textContent = JSON.stringify(scene);
+      await mountShapeGltfViewer(viewer);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      document.body.dataset.prerenderReady = "true";
+    </script>
+  </body>
+</html>

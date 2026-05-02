@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from django.conf import settings
-from django.http import HttpRequest, HttpResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
 
 from django_apps.shapez_core.services.preview_service import (
@@ -109,6 +109,19 @@ def solver(request: HttpRequest) -> HttpResponse:
             "shape_code": shape_code,
         },
     )
+
+
+def graph_preview_cache(request: HttpRequest, filename: str) -> FileResponse:
+    del request
+    if filename != Path(filename).name or not filename.endswith(".png"):
+        raise Http404("Unknown graph preview.")
+
+    cache_root = Path(settings.SOLVER_GRAPH_PREVIEW_CACHE_DIR)
+    target = cache_root / filename
+    if not target.is_file():
+        raise Http404("Unknown graph preview.")
+
+    return FileResponse(target.open("rb"), content_type="image/png")
 
 
 def demo(request: HttpRequest) -> HttpResponse:

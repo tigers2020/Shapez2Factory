@@ -49,6 +49,8 @@ coverage.xml
 *.log
 local_settings.py
 db.sqlite3
+.graph_preview_cache/
+.graph_preview_cache_test/
 db.sqlite3-journal
 *.sqlite3
 media/
@@ -107,3 +109,4 @@ persona/
 .serena/
 .vscode/
 protocols/
+documents/

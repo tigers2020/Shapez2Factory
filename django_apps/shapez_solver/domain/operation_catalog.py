@@ -80,9 +80,9 @@ OPERATION_CATALOG = MappingProxyType(
             type=OperationType.PAINTER,
             label="Painter",
             icon="painter.png",
-            input_count=2,
+            input_count=1,
             output_count=1,
-            description="Paints the input shape using the provided color.",
+            description="Paints the input shape with a selected color.",
         ),
         OperationType.COLOR_MIXER: OperationDefinition(
             type=OperationType.COLOR_MIXER,

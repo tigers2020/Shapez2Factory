@@ -62,6 +62,8 @@ module = [
     "django_apps.shapez_solver.urls",
     "django_apps.shapez_solver.views",
     "django_apps.web.apps",
+    "django_apps.web.social_adapter",
+    "django_apps.web.socialaccount_forms",
     "django_apps.web.urls",
     "django_apps.web.views",
     "tests.unit.shapez_solver.*",

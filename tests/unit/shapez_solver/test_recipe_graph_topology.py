@@ -4,7 +4,19 @@ from django_apps.shapez_solver.services.recipe_graph_recompute import validate_g
 from django_apps.shapez_solver.services.recipe_graph_topology import (
     assert_delivery_targets_unique,
     assert_recipe_graph_edge_topology,
+    index_recipe_graph_nodes_by_id,
 )
+
+
+def test_index_recipe_graph_nodes_by_id_matches_node_list_order() -> None:
+    nodes = [
+        {"id": "a", "kind": "shape", "role": "source"},
+        {"id": "b", "kind": "operation", "operation": "rotate_cw"},
+    ]
+    idx = index_recipe_graph_nodes_by_id(nodes)
+    assert list(idx.keys()) == ["a", "b"]
+    assert idx["a"]["kind"] == "shape"
+    assert idx["b"]["operation"] == "rotate_cw"
 
 
 def test_topology_allows_shape_op_intermediate_chain() -> None:
@@ -82,9 +94,30 @@ def test_topology_rejects_duplicate_delivery_to_same_target() -> None:
     doc = {
         "schema_version": 1,
         "nodes": [
-            {"id": "im1", "kind": "shape", "role": "intermediate", "shape_code": "", "x": 0, "y": 0},
-            {"id": "im2", "kind": "shape", "role": "intermediate", "shape_code": "", "x": 1, "y": 0},
-            {"id": "tgt", "kind": "shape", "role": "target", "shape_code": "", "x": 2, "y": 0},
+            {
+                "id": "im1",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "im2",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "x": 1,
+                "y": 0,
+            },
+            {
+                "id": "tgt",
+                "kind": "shape",
+                "role": "target",
+                "shape_code": "",
+                "x": 2,
+                "y": 0,
+            },
         ],
         "edges": [
             {"from": "im1", "to": "tgt", "kind": "delivery"},

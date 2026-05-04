@@ -7,7 +7,9 @@ from django.test import Client
 from django.urls import reverse
 
 from django_apps.shapez_solver.models import MacroRecipe, PatternFamily
-from django_apps.shapez_solver.services.recipe_graph_react_flow_adapter import domain_graph_to_react_flow
+from django_apps.shapez_solver.services.recipe_graph_react_flow_adapter import (
+    domain_graph_to_react_flow,
+)
 from django_apps.shapez_solver.services.recipe_graph_recompute import validate_graph_document
 
 
@@ -85,7 +87,7 @@ def test_macro_pattern_graph_page_staff_ok() -> None:
         assert "react_flow_initial_status" in body
         assert "macro_step_count" in body
     else:
-        assert "macro_pattern_graph_editor.js?v=" in body
+        assert "legacy/macro_pattern_graph_editor.js?v=" in body
         assert "Recipe Graph Workbench" in body
 
 

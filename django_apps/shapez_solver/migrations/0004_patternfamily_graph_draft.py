@@ -2,7 +2,6 @@
 
 from django.db import migrations
 
-
 GRAPH_DRAFT_CODE = "graph-draft"
 GRAPH_DRAFT_SIGNATURE = "________"
 

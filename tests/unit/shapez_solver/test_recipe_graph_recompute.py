@@ -204,9 +204,7 @@ def test_recompute_autocreate_second_cutter_output_uses_grid_not_stack() -> None
         for n in out["nodes"]
         if n["kind"] == "shape" and n["id"] != "s_in" and n["id"] != "s_first"
     )
-    expect_x = ox + RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET + float(
-        RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING
-    )
+    expect_x = ox + RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET + float(RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING)
     expect_y = oy
     assert auto["x"] == expect_x
     assert auto["y"] == expect_y

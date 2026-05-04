@@ -131,7 +131,15 @@ def test_domain_to_react_flow_delivery_edge_round_trip() -> None:
                 "x": 0,
                 "y": 0,
             },
-            {"id": "tgt", "kind": "shape", "role": "target", "shape_code": "", "quantity": 1, "x": 1, "y": 0},
+            {
+                "id": "tgt",
+                "kind": "shape",
+                "role": "target",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 1,
+                "y": 0,
+            },
         ],
         "edges": [{"from": "im", "to": "tgt", "kind": "delivery"}],
     }

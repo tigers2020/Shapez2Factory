@@ -290,7 +290,7 @@ def test_apply_graph_derived_catalog_fields_scales_with_operations() -> None:
         name="P",
         priority=10,
     )
-    empty_doc: dict = {"schema_version": 1, "nodes": [], "edges": []}
+    empty_doc: dict[str, object] = {"schema_version": 1, "nodes": [], "edges": []}
     apply_graph_derived_catalog_fields(macro, empty_doc)
     macro.refresh_from_db()
     base_pri = macro.priority

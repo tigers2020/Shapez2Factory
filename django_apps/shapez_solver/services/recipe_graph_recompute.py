@@ -20,6 +20,7 @@ from django_apps.shapez_solver.services.recipe_graph_constants import (
 from django_apps.shapez_solver.services.recipe_graph_topology import (
     assert_delivery_targets_unique,
     assert_recipe_graph_edge_topology,
+    index_recipe_graph_nodes_by_id,
 )
 
 
@@ -109,7 +110,7 @@ def default_empty_graph_document() -> dict[str, Any]:
 
 def _apply_delivery_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
     """연산 재계산 후 intermediate의 ``shape_code``를 delivery 링크로 target에 복사한다."""
-    node_by_id = {str(n["id"]): n for n in nodes if isinstance(n, dict) and n.get("id")}
+    node_by_id = index_recipe_graph_nodes_by_id(nodes)
     for e in edges:
         if e.get("kind") != "delivery":
             continue
@@ -123,10 +124,11 @@ def _apply_delivery_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any
 
 
 def _operation_dependency_edges(
-    nodes: list[dict[str, Any]], edges: list[dict[str, Any]]
+    edges: list[dict[str, Any]],
+    node_by_id: dict[str, dict[str, Any]],
 ) -> list[tuple[str, str]]:
     """Return list of (producer_op_id, consumer_op_id) where consumer runs after producer."""
-    node_kind = {n["id"]: n.get("kind") for n in nodes}
+    node_kind = {nid: n.get("kind") for nid, n in node_by_id.items()}
     shape_producers: dict[str, list[str]] = defaultdict(list)
     shape_consumers: dict[str, list[str]] = defaultdict(list)
     for e in edges:
@@ -185,7 +187,7 @@ def _sorted_input_codes_for_operation(
     nodes: list[dict[str, Any]],
     edges: list[dict[str, Any]],
 ) -> tuple[str, ...]:
-    node_by_id = {n["id"]: n for n in nodes}
+    node_by_id = index_recipe_graph_nodes_by_id(nodes)
     rows: list[tuple[bool, str, str, str]] = []
     for e in edges:
         if e["kind"] != "input" or e["to"] != op_id:
@@ -233,17 +235,16 @@ def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[
     work = validate_graph_document(doc)
     nodes: list[dict[str, Any]] = work["nodes"]
     edges: list[dict[str, Any]] = work["edges"]
-    node_by_id = {n["id"]: n for n in nodes}
-    op_nodes = [n for n in nodes if n.get("kind") == "operation"]
-    op_ids = [n["id"] for n in op_nodes]
-    dep_pairs = _operation_dependency_edges(nodes, edges)
+    node_by_id = index_recipe_graph_nodes_by_id(nodes)
+    op_ids = [nid for nid, n in node_by_id.items() if n.get("kind") == "operation"]
+    dep_pairs = _operation_dependency_edges(edges, node_by_id)
     try:
         topo = _topological_operation_order(op_ids, dep_pairs)
     except ValueError as exc:
         warnings.append(str(exc))
         return work, warnings
 
-    existing_ids = {n["id"] for n in nodes}
+    existing_ids = set(node_by_id)
 
     for op_id in topo:
         op_node = node_by_id.get(op_id)
@@ -312,8 +313,10 @@ def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[
                 existing_ids.add(nid)
                 col = i % grid_cols
                 row = i // grid_cols
-                nx = ox + RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET + col * float(
-                    RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING
+                nx = (
+                    ox
+                    + RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET
+                    + col * float(RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING)
                 )
                 ny = oy + row * float(RECIPE_GRAPH_AUTO_OUTPUT_ROW_SPACING)
                 new_shape: dict[str, Any] = {
@@ -369,11 +372,11 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
         return None
     nodes: list[dict[str, Any]] = work["nodes"]
     edges: list[dict[str, Any]] = work["edges"]
-    node_by_id = {n["id"]: n for n in nodes}
-    op_ids = [n["id"] for n in nodes if n.get("kind") == "operation"]
+    node_by_id = index_recipe_graph_nodes_by_id(nodes)
+    op_ids = [nid for nid, n in node_by_id.items() if n.get("kind") == "operation"]
     if not op_ids:
         return None
-    dep_pairs = _operation_dependency_edges(nodes, edges)
+    dep_pairs = _operation_dependency_edges(edges, node_by_id)
     try:
         topo = _topological_operation_order(op_ids, dep_pairs)
     except ValueError:

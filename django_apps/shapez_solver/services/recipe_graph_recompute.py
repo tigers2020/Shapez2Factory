@@ -30,6 +30,68 @@ def _as_str(value: object, *, label: str) -> str:
     return value.strip()
 
 
+def _normalize_shape_node(node: dict[str, Any]) -> None:
+    sc = node.get("shape_code", "")
+    if sc is not None and not isinstance(sc, str):
+        raise ValueError("shape.shape_code must be a string")
+    node["shape_code"] = str(sc).strip() if isinstance(sc, str) else ""
+    node.setdefault("role", "intermediate")
+    node.setdefault("quantity", 1)
+
+
+def _normalize_operation_node(node: dict[str, Any], index: int) -> None:
+    opv = _as_str(node.get("operation"), label="operation.operation")
+    try:
+        op_enum = OperationType(opv)
+    except ValueError as exc:
+        raise ValueError(f"unknown operation type: {opv}") from exc
+    if op_enum != OperationType.PAINTER:
+        return
+    pc = node.get("paint_color")
+    if not isinstance(pc, str) or len(pc.strip()) != 1:
+        raise ValueError(
+            f"nodes[{index}]: painter operation requires paint_color "
+            "(single character string, e.g. color channel letter)",
+        )
+    node["paint_color"] = pc.strip()
+
+
+def _validate_graph_node(node: object, index: int, seen_ids: set[str]) -> None:
+    if not isinstance(node, dict):
+        raise ValueError(f"nodes[{index}] must be an object")
+    nid = _as_str(node.get("id"), label="node.id")
+    if nid in seen_ids:
+        raise ValueError(f"duplicate node id: {nid}")
+    seen_ids.add(nid)
+    kind = _as_str(node.get("kind"), label="node.kind")
+    if kind not in {"shape", "operation"}:
+        raise ValueError(f"invalid node kind: {kind}")
+    if kind == "shape":
+        _normalize_shape_node(node)
+    else:
+        _normalize_operation_node(node, index)
+    node.setdefault("x", 0.0)
+    node.setdefault("y", 0.0)
+
+
+def _validate_graph_edge_row(edge: object, index: int) -> None:
+    if not isinstance(edge, dict):
+        raise ValueError(f"edges[{index}] must be an object")
+    _as_str(edge.get("from"), label="edge.from")
+    _as_str(edge.get("to"), label="edge.to")
+    ek = _as_str(edge.get("kind"), label="edge.kind")
+    if ek not in {"input", "output", "delivery"}:
+        raise ValueError(f"invalid edge kind: {ek}")
+    if edge.get("slot") is not None and not isinstance(edge["slot"], str):
+        raise ValueError("edge.slot must be a string or null")
+
+
+def _assert_edges_reference_known_nodes(edges: list[dict[str, Any]], seen_ids: set[str]) -> None:
+    for edge in edges:
+        if edge["from"] not in seen_ids or edge["to"] not in seen_ids:
+            raise ValueError(f"edge references unknown node: {edge}")
+
+
 def validate_graph_document(raw: object) -> dict[str, Any]:
     """graph_document JSON 검증. 통과 시 정규화된 dict 반환."""
     if raw is None:
@@ -48,51 +110,10 @@ def validate_graph_document(raw: object) -> dict[str, Any]:
         raise ValueError("edges must be a list")
     seen_ids: set[str] = set()
     for i, node in enumerate(nodes):
-        if not isinstance(node, dict):
-            raise ValueError(f"nodes[{i}] must be an object")
-        nid = _as_str(node.get("id"), label="node.id")
-        if nid in seen_ids:
-            raise ValueError(f"duplicate node id: {nid}")
-        seen_ids.add(nid)
-        kind = _as_str(node.get("kind"), label="node.kind")
-        if kind not in {"shape", "operation"}:
-            raise ValueError(f"invalid node kind: {kind}")
-        if kind == "shape":
-            sc = node.get("shape_code", "")
-            if sc is not None and not isinstance(sc, str):
-                raise ValueError("shape.shape_code must be a string")
-            node["shape_code"] = str(sc).strip() if isinstance(sc, str) else ""
-            node.setdefault("role", "intermediate")
-            node.setdefault("quantity", 1)
-        else:
-            opv = _as_str(node.get("operation"), label="operation.operation")
-            try:
-                op_enum = OperationType(opv)
-            except ValueError as exc:
-                raise ValueError(f"unknown operation type: {opv}") from exc
-            if op_enum == OperationType.PAINTER:
-                pc = node.get("paint_color")
-                if not isinstance(pc, str) or len(pc.strip()) != 1:
-                    raise ValueError(
-                        f"nodes[{i}]: painter operation requires paint_color "
-                        "(single character string, e.g. color channel letter)",
-                    )
-                node["paint_color"] = pc.strip()
-        node.setdefault("x", 0.0)
-        node.setdefault("y", 0.0)
+        _validate_graph_node(node, i, seen_ids)
     for i, edge in enumerate(edges):
-        if not isinstance(edge, dict):
-            raise ValueError(f"edges[{i}] must be an object")
-        _as_str(edge.get("from"), label="edge.from")
-        _as_str(edge.get("to"), label="edge.to")
-        ek = _as_str(edge.get("kind"), label="edge.kind")
-        if ek not in {"input", "output", "delivery"}:
-            raise ValueError(f"invalid edge kind: {ek}")
-        if edge.get("slot") is not None and not isinstance(edge["slot"], str):
-            raise ValueError("edge.slot must be a string or null")
-    for edge in edges:
-        if edge["from"] not in seen_ids or edge["to"] not in seen_ids:
-            raise ValueError(f"edge references unknown node: {edge}")
+        _validate_graph_edge_row(edge, i)
+    _assert_edges_reference_known_nodes(edges, seen_ids)
     doc["schema_version"] = RECIPE_GRAPH_SCHEMA_VERSION
     doc["nodes"] = nodes
     doc["edges"] = edges
@@ -123,30 +144,24 @@ def _apply_delivery_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any
             tgt["shape_code"] = code
 
 
-def _operation_dependency_edges(
-    edges: list[dict[str, Any]],
-    node_by_id: dict[str, dict[str, Any]],
+def _shape_op_edge_action(
+    e: dict[str, Any],
+    node_kind: dict[str, Any],
+) -> tuple[str, str, str] | None:
+    """Return (role, shape_id, op_id) with role ``produce`` or ``consume``, else None."""
+    fr, to = e["from"], e["to"]
+    ek = e["kind"]
+    if ek == "output" and node_kind.get(fr) == "operation" and node_kind.get(to) == "shape":
+        return ("produce", to, fr)
+    if ek == "input" and node_kind.get(fr) == "shape" and node_kind.get(to) == "operation":
+        return ("consume", fr, to)
+    return None
+
+
+def _operation_dep_pairs_from_shape_links(
+    shape_producers: dict[str, list[str]],
+    shape_consumers: dict[str, list[str]],
 ) -> list[tuple[str, str]]:
-    """Return list of (producer_op_id, consumer_op_id) where consumer runs after producer."""
-    node_kind = {nid: n.get("kind") for nid, n in node_by_id.items()}
-    shape_producers: dict[str, list[str]] = defaultdict(list)
-    shape_consumers: dict[str, list[str]] = defaultdict(list)
-    for e in edges:
-        fr, to = e["from"], e["to"]
-        is_op_to_shape = (
-            e["kind"] == "output"
-            and node_kind.get(fr) == "operation"
-            and node_kind.get(to) == "shape"
-        )
-        is_shape_to_op = (
-            e["kind"] == "input"
-            and node_kind.get(fr) == "shape"
-            and node_kind.get(to) == "operation"
-        )
-        if is_op_to_shape:
-            shape_producers[to].append(fr)
-        elif is_shape_to_op:
-            shape_consumers[fr].append(to)
     pairs: list[tuple[str, str]] = []
     for shape_id, consumers in shape_consumers.items():
         producers = shape_producers.get(shape_id, [])
@@ -157,17 +172,36 @@ def _operation_dependency_edges(
     return pairs
 
 
+def _operation_dependency_edges(
+    edges: list[dict[str, Any]],
+    node_by_id: dict[str, dict[str, Any]],
+) -> list[tuple[str, str]]:
+    """Return list of (producer_op_id, consumer_op_id) where consumer runs after producer."""
+    node_kind = {nid: n.get("kind") for nid, n in node_by_id.items()}
+    shape_producers: dict[str, list[str]] = defaultdict(list)
+    shape_consumers: dict[str, list[str]] = defaultdict(list)
+    for e in edges:
+        action = _shape_op_edge_action(e, node_kind)
+        if action is None:
+            continue
+        role, shape_id, op_id = action
+        if role == "produce":
+            shape_producers[shape_id].append(op_id)
+        else:
+            shape_consumers[shape_id].append(op_id)
+    return _operation_dep_pairs_from_shape_links(shape_producers, shape_consumers)
+
+
 def _topological_operation_order(op_ids: list[str], dep_pairs: list[tuple[str, str]]) -> list[str]:
     if not op_ids:
         return []
     succ: dict[str, set[str]] = defaultdict(set)
-    indeg: dict[str, int] = {oid: 0 for oid in op_ids}
+    indeg: dict[str, int] = dict.fromkeys(op_ids, 0)
     op_set = set(op_ids)
     for a, b in dep_pairs:
-        if a in op_set and b in op_set:
-            if b not in succ[a]:
-                succ[a].add(b)
-                indeg[b] += 1
+        if a in op_set and b in op_set and b not in succ[a]:
+            succ[a].add(b)
+            indeg[b] += 1
     q = deque([oid for oid in op_ids if indeg[oid] == 0])
     out: list[str] = []
     while q:
@@ -225,6 +259,104 @@ def _new_shape_id(existing: set[str]) -> str:
     raise RuntimeError("could not allocate shape node id")
 
 
+_TWO_INPUT_OPERATION_TYPES = frozenset(
+    {
+        OperationType.SWAPPER,
+        OperationType.STACKER,
+        OperationType.COLOR_MIXER,
+    },
+)
+
+
+def _required_input_count_for_recompute(op_type: OperationType) -> int:
+    return 2 if op_type in _TWO_INPUT_OPERATION_TYPES else 1
+
+
+def _apply_recomputed_operation(
+    op_id: str,
+    op_type: OperationType,
+    input_codes: list[str],
+    op_node: dict[str, Any],
+) -> tuple[bool, tuple[str, ...], str]:
+    """(성공 여부, 출력 shape_code 튜플, 경고 메시지). 실패 시 튜플은 빈 값."""
+    need = _required_input_count_for_recompute(op_type)
+    if len(input_codes) != need:
+        return (
+            False,
+            (),
+            f"skip op {op_id}: expected {need} inputs, got {len(input_codes)}",
+        )
+    try:
+        if op_type == OperationType.PAINTER:
+            pc = str(op_node.get("paint_color", "")).strip()
+            outputs = apply_operation(op_type, tuple(input_codes), paint_color=pc)
+        else:
+            outputs = apply_operation(op_type, tuple(input_codes))
+    except (ValueError, TypeError, KeyError) as exc:
+        return False, (), f"op {op_id} failed: {exc}"
+    return True, outputs, ""
+
+
+def _assign_operation_outputs(
+    op_id: str,
+    op_node: dict[str, Any],
+    outputs: tuple[str, ...],
+    out_edges: list[dict[str, Any]],
+    *,
+    node_by_id: dict[str, dict[str, Any]],
+    nodes: list[dict[str, Any]],
+    edges: list[dict[str, Any]],
+    existing_ids: set[str],
+    warnings: list[str],
+) -> None:
+    ox = float(op_node.get("x", 0))
+    oy = float(op_node.get("y", 0))
+    grid_cols = max(1, int(RECIPE_GRAPH_AUTO_OUTPUT_GRID_COLUMNS))
+
+    for i, out_code in enumerate(outputs):
+        if i < len(out_edges):
+            e = out_edges[i]
+            target = node_by_id.get(e["to"])
+            if target and target.get("kind") == "shape":
+                target["shape_code"] = out_code
+            continue
+        nid = _new_shape_id(existing_ids)
+        existing_ids.add(nid)
+        col = i % grid_cols
+        row = i // grid_cols
+        nx = (
+            ox
+            + RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET
+            + col * float(RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING)
+        )
+        ny = oy + row * float(RECIPE_GRAPH_AUTO_OUTPUT_ROW_SPACING)
+        new_shape: dict[str, Any] = {
+            "id": nid,
+            "kind": "shape",
+            "role": "intermediate",
+            "shape_code": out_code,
+            "quantity": 1,
+            "x": nx,
+            "y": ny,
+        }
+        nodes.append(new_shape)
+        node_by_id[nid] = new_shape
+        edges.append(
+            {
+                "from": op_id,
+                "to": nid,
+                "kind": "output",
+                "slot": str(i),
+            },
+        )
+        warnings.append(f"auto-created shape node {nid} for output {i} of {op_id}")
+
+    if len(out_edges) > len(outputs):
+        warnings.append(
+            f"op {op_id}: {len(out_edges)} output edges but only {len(outputs)} outputs",
+        )
+
+
 def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """
     연결이 갖춰진 operation에 대해 apply_operation으로 하류 shape_code를 갱신한다.
@@ -262,94 +394,66 @@ def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[
         if any(not code for code in input_codes):
             warnings.append(f"skip op with empty shape_code on input: {op_id}")
             continue
-        try:
-            if op_type in {
-                OperationType.ROTATE_CW,
-                OperationType.ROTATE_CCW,
-                OperationType.ROTATE_180,
-                OperationType.CUTTER,
-                OperationType.CUTTER_FULL,
-                OperationType.SPLITTER,
-                OperationType.PIN_PUSHER,
-                OperationType.HALF_DESTROYER,
-                OperationType.PAINTER,
-            }:
-                need = 1
-            elif op_type in (
-                OperationType.SWAPPER,
-                OperationType.STACKER,
-                OperationType.COLOR_MIXER,
-            ):
-                need = 2
-            else:
-                need = 1
-            if len(input_codes) != need:
-                warnings.append(
-                    f"skip op {op_id}: expected {need} inputs, got {len(input_codes)}",
-                )
-                continue
-            if op_type == OperationType.PAINTER:
-                pc = str(op_node.get("paint_color", "")).strip()
-                outputs = apply_operation(op_type, tuple(input_codes), paint_color=pc)
-            else:
-                outputs = apply_operation(op_type, tuple(input_codes))
-        except (ValueError, TypeError, KeyError) as exc:
-            warnings.append(f"op {op_id} failed: {exc}")
+        ok, outputs, msg = _apply_recomputed_operation(
+            op_id,
+            op_type,
+            input_codes,
+            op_node,
+        )
+        if not ok:
+            warnings.append(msg)
             continue
 
         out_edges = _output_edges_for_operation(op_id, edges)
-        ox = float(op_node.get("x", 0))
-        oy = float(op_node.get("y", 0))
-        grid_cols = max(1, int(RECIPE_GRAPH_AUTO_OUTPUT_GRID_COLUMNS))
-
-        for i, out_code in enumerate(outputs):
-            if i < len(out_edges):
-                e = out_edges[i]
-                target = node_by_id.get(e["to"])
-                if target and target.get("kind") == "shape":
-                    target["shape_code"] = out_code
-            else:
-                nid = _new_shape_id(existing_ids)
-                existing_ids.add(nid)
-                col = i % grid_cols
-                row = i // grid_cols
-                nx = (
-                    ox
-                    + RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET
-                    + col * float(RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING)
-                )
-                ny = oy + row * float(RECIPE_GRAPH_AUTO_OUTPUT_ROW_SPACING)
-                new_shape: dict[str, Any] = {
-                    "id": nid,
-                    "kind": "shape",
-                    "role": "intermediate",
-                    "shape_code": out_code,
-                    "quantity": 1,
-                    "x": nx,
-                    "y": ny,
-                }
-                nodes.append(new_shape)
-                node_by_id[nid] = new_shape
-                edges.append(
-                    {
-                        "from": op_id,
-                        "to": nid,
-                        "kind": "output",
-                        "slot": str(i),
-                    },
-                )
-                warnings.append(f"auto-created shape node {nid} for output {i} of {op_id}")
-
-        if len(out_edges) > len(outputs):
-            warnings.append(
-                f"op {op_id}: {len(out_edges)} output edges but only {len(outputs)} outputs",
-            )
+        _assign_operation_outputs(
+            op_id,
+            op_node,
+            outputs,
+            out_edges,
+            node_by_id=node_by_id,
+            nodes=nodes,
+            edges=edges,
+            existing_ids=existing_ids,
+            warnings=warnings,
+        )
 
     _apply_delivery_edges(nodes, edges)
 
     work["nodes"] = nodes
     work["edges"] = edges
     return work, warnings
+
+
+def _validated_graph_document_for_pattern_macro(raw: object) -> dict[str, Any] | None:
+    """``try_pattern_macro_step_rows_from_graph_document`` 선행 검증. 실패 시 ``None``."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        return None
+    nodes_raw = raw.get("nodes")
+    if not isinstance(nodes_raw, list) or not nodes_raw:
+        return None
+    try:
+        return validate_graph_document(raw)
+    except ValueError:
+        return None
+
+
+def _output_slots_strings_for_edges(
+    out_edges: list[dict[str, Any]],
+    node_by_id: dict[str, dict[str, Any]],
+) -> list[str]:
+    """output 엣리스트를 Pattern Macro 스텝의 ``output_slots`` 문자열 목록으로 바꾼다."""
+    output_slots_list: list[str] = []
+    for e in out_edges:
+        tid = str(e.get("to") or "")
+        shape = node_by_id.get(tid)
+        if shape and shape.get("kind") == "shape":
+            oc = str(shape.get("shape_code", "")).strip()
+            output_slots_list.append(oc)
+        else:
+            output_slots_list.append(tid or "?")
+    return output_slots_list
 
 
 def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[str, Any]] | None:
@@ -359,16 +463,8 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
     - 검증 실패·DAG 사이클·operation 노드 없음 → ``None`` (DB ``MacroRecipeStep`` 사용).
     - 성공 시 ``step_index``는 1부터 위상순으로 채운다.
     """
-    if raw is None:
-        return None
-    if not isinstance(raw, dict):
-        return None
-    nodes_raw = raw.get("nodes")
-    if not isinstance(nodes_raw, list) or not nodes_raw:
-        return None
-    try:
-        work = validate_graph_document(raw)
-    except ValueError:
+    work = _validated_graph_document_for_pattern_macro(raw)
+    if work is None:
         return None
     nodes: list[dict[str, Any]] = work["nodes"]
     edges: list[dict[str, Any]] = work["edges"]
@@ -393,15 +489,7 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
         step_index += 1
         input_codes = _sorted_input_codes_for_operation(op_id, nodes, edges)
         out_edges = _output_edges_for_operation(op_id, edges)
-        output_slots_list: list[str] = []
-        for e in out_edges:
-            tid = str(e.get("to") or "")
-            shape = node_by_id.get(tid)
-            if shape and shape.get("kind") == "shape":
-                oc = str(shape.get("shape_code", "")).strip()
-                output_slots_list.append(oc)
-            else:
-                output_slots_list.append(tid or "?")
+        output_slots_list = _output_slots_strings_for_edges(out_edges, node_by_id)
         out.append(
             {
                 "step_index": step_index,

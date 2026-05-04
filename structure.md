@@ -13,7 +13,7 @@ This repository is now organized as a Django-first project. Runtime ownership li
 | `django_apps/web/` | Templates, static assets, and page-rendering views |
 | `tests/unit/` | Fast unit tests for core and solver behavior |
 | `tests/integration/` | Django request/response and page/API integration tests |
-| `documents/` | Research (`research/`), plans (`plans/`), progress notes (`notes/`), project meta (`meta/`), attribution (`attribution/`), archive (`archive/`) |
+| `documents/` | Research (`research/`), plans (`plans/`), progress notes (`notes/`), project meta (`meta/`), attribution (`attribution/`), archive (`archive/`), AI manuals & session notes (`ai/`) |
 | `assets/css/` | Tailwind input CSS source |
 | `frontend/recipe_graph_editor/` | Vite + React Flow 편집기 소스; `npm run build` → `django_apps/web/static/web/js/recipe_graph_editor/` |
 

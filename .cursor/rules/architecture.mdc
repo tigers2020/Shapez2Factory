@@ -1,5 +1,5 @@
 ---
-description: "shapez2Solver architecture: Django-first app ownership and dependency direction"
+description: "shapez2Solver architecture: Django apps, dependency direction, solver vs graph"
 alwaysApply: true
 ---
 
@@ -33,6 +33,13 @@ Forbidden:
 - `django_apps.shapez_core -> django_apps.shapez_solver`
 - `django_apps.shapez_solver -> django_apps.web`
 
+## Solver vs recipe graph vs UI
+
+- **Solver·도메인 규칙**은 `shapez_core` / `shapez_solver`에 둔다. Django 뷰에 비즈니스 규칙을 넣지 않는다.
+- **그래프 편집·렌더링·라벨**은 웹 레이어(`django_apps/web/` 정적·템플릿)와 어댑터 경계에서 처리하고, **물리 그래프 로직**과 **요약 수치만 있는 수요 로직**을 섞지 않는다.
+- 아래를 혼동하지 않는다: demand summary · source quantity · target output · materialized nodes · visual labels · operation/intermediate structure. 요약이 맞다고 **연결 그래프**가 증명되지는 않는다.
+- 연산 출력은 **중간 도형 노드**를 거친다; 한 연산 출력을 다른 연산 입력으로 **직접 접합**하지 않는다 (프로젝트 모델 규칙).
+
 ## Placement rules
 
 - Core domain objects and canonical shape data stay in `django_apps/shapez_core/domain/`.
@@ -46,7 +53,7 @@ Forbidden:
 - Solver logic and models: `tests/unit/shapez_solver/`
 - Request/response and page smoke tests: `tests/integration/`
 
-경로가 곧 pytest 마커(`unit`/`integration`, 앱별 마커)와 대응한다. 구간만 돌리는 방법은 [AGENTS.md](mdc:AGENTS.md) **테스트 구간 실행 (pytest 마커)**.
+경로가 pytest 마커와 대응한다. 구간 실행은 [AGENTS.md](mdc:AGENTS.md).
 
 ## References
 

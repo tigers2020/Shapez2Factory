@@ -33,7 +33,7 @@
     {{ bootstrap|json_script:"macro-graph-bootstrap" }}
     {{ catalog|json_script:"macro-graph-initial-catalog" }}
     {{ recipe|json_script:"macro-graph-initial-recipe" }}
-    <p id="macro-graph-status" class="mb-3 min-h-[1.25rem] text-sm text-amber-200/90" role="status" aria-live="polite"></p>
+    <output id="macro-graph-status" class="mb-3 block min-h-5 text-sm text-amber-200/90" aria-live="polite"></output>
     <div
       id="macro-graph-editor-root"
       class="min-h-0"

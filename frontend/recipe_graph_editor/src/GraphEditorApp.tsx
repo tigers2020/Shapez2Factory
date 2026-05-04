@@ -379,9 +379,9 @@ function RecipeFlowBoard({
       proOptions={{ hideAttribution: true }}
     >
       <Background color="#444" gap={16} variant={BackgroundVariant.Dots} />
-      <Controls className="!m-2 !border-neutral-600 !bg-neutral-900/95 !shadow-lg" />
+      <Controls className="m-2! border-neutral-600! bg-neutral-900/95! shadow-lg!" />
       <MiniMap
-        className="!m-2 !border-neutral-600 !bg-neutral-900/90"
+        className="m-2! border-neutral-600! bg-neutral-900/90!"
         maskColor="rgb(15 15 15 / 0.7)"
         pannable
         zoomable
@@ -503,7 +503,7 @@ function GraphCanvasPanel({
         {emptyHint ? (
           <div
             aria-live="polite"
-            className="pointer-events-none absolute inset-0 z-[6] flex items-center justify-center p-6"
+            className="pointer-events-none absolute inset-0 z-6 flex items-center justify-center p-6"
           >
             <div className="max-w-md rounded-lg border border-amber-600/40 bg-neutral-950/90 px-4 py-3 text-center text-sm leading-relaxed text-amber-100/95 shadow-xl backdrop-blur-sm">
               {emptyHint}
@@ -533,7 +533,7 @@ function GraphCanvasPanel({
           />
         ) : null}
       </div>
-      <div className="pointer-events-none absolute left-3 top-12 z-[5] max-w-[55%] rounded border border-purple-500/30 bg-purple-950/40 px-2 py-1 font-mono text-[10px] text-purple-200/90">
+      <div className="pointer-events-none absolute left-3 top-12 z-5 max-w-[55%] rounded border border-purple-500/30 bg-purple-950/40 px-2 py-1 font-mono text-[10px] text-purple-200/90">
         Stage track (visual group) — placeholder
       </div>
     </section>
@@ -1173,7 +1173,7 @@ export function GraphEditorApp({
         </div>
       </header>
 
-      <div className="grid min-h-[min(560px,70vh)] min-h-0 flex-1 grid-cols-1 gap-2 md:grid-cols-[220px_minmax(0,1fr)_168px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 md:grid-cols-[220px_minmax(0,1fr)_168px]">
         <OperationPalettePanel
           engineOperationIds={engineOperationIds}
           onAddOperation={addOperationNode}

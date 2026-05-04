@@ -17,6 +17,52 @@ def index_recipe_graph_nodes_by_id(nodes: list[dict[str, Any]]) -> dict[str, dic
     return by_id
 
 
+def _resolved_edge_nodes(
+    by_id: dict[str, dict[str, Any]], fr: str, to: str
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    nf = by_id.get(fr)
+    nt = by_id.get(to)
+    if not nf or not nt:
+        return None
+    return nf, nt
+
+
+def _validate_input_edge(i: int, nf: dict[str, Any], nt: dict[str, Any]) -> None:
+    if nf.get("kind") != "shape" or nt.get("kind") != "operation":
+        raise ValueError(
+            f"edges[{i}]: input edge must be shape → operation, "
+            f"got {nf.get('kind')} → {nt.get('kind')}"
+        )
+
+
+def _validate_output_edge(i: int, nf: dict[str, Any], nt: dict[str, Any]) -> None:
+    if nf.get("kind") != "operation" or nt.get("kind") != "shape":
+        raise ValueError(
+            f"edges[{i}]: output edge must be operation → shape, "
+            f"got {nf.get('kind')} → {nt.get('kind')}"
+        )
+    role = str(nt.get("role") or "intermediate").strip()
+    if role != "intermediate":
+        raise ValueError(
+            f"edges[{i}]: operation output must target "
+            f"role=intermediate shape, got role={role!r}"
+        )
+
+
+def _validate_delivery_edge(i: int, nf: dict[str, Any], nt: dict[str, Any]) -> None:
+    if nf.get("kind") != "shape" or nt.get("kind") != "shape":
+        raise ValueError(
+            f"edges[{i}]: delivery edge must be shape → shape, "
+            f"got {nf.get('kind')} → {nt.get('kind')}"
+        )
+    rs = str(nf.get("role") or "intermediate").strip()
+    rt = str(nt.get("role") or "intermediate").strip()
+    if rs != "intermediate":
+        raise ValueError(f"edges[{i}]: delivery source must be role=intermediate, got role={rs!r}")
+    if rt != "target":
+        raise ValueError(f"edges[{i}]: delivery target must be role=target, got role={rt!r}")
+
+
 def assert_recipe_graph_edge_topology(doc: dict[str, Any]) -> None:
     """
     검증 통과용 graph_document에 대해 연결 규칙을 강제한다.
@@ -40,44 +86,16 @@ def assert_recipe_graph_edge_topology(doc: dict[str, Any]) -> None:
         fr = str(e.get("from", ""))
         to = str(e.get("to", ""))
         k = str(e.get("kind", ""))
-        nf = by_id.get(fr)
-        nt = by_id.get(to)
-        if not nf or not nt:
+        pair = _resolved_edge_nodes(by_id, fr, to)
+        if pair is None:
             continue
+        nf, nt = pair
         if k == "input":
-            if nf.get("kind") != "shape" or nt.get("kind") != "operation":
-                raise ValueError(
-                    f"edges[{i}]: input edge must be shape → operation, "
-                    f"got {nf.get('kind')} → {nt.get('kind')}"
-                )
+            _validate_input_edge(i, nf, nt)
         elif k == "output":
-            if nf.get("kind") != "operation" or nt.get("kind") != "shape":
-                raise ValueError(
-                    f"edges[{i}]: output edge must be operation → shape, "
-                    f"got {nf.get('kind')} → {nt.get('kind')}"
-                )
-            role = str(nt.get("role") or "intermediate").strip()
-            if role != "intermediate":
-                raise ValueError(
-                    f"edges[{i}]: operation output must target "
-                    f"role=intermediate shape, got role={role!r}"
-                )
+            _validate_output_edge(i, nf, nt)
         elif k == "delivery":
-            if nf.get("kind") != "shape" or nt.get("kind") != "shape":
-                raise ValueError(
-                    f"edges[{i}]: delivery edge must be shape → shape, "
-                    f"got {nf.get('kind')} → {nt.get('kind')}"
-                )
-            rs = str(nf.get("role") or "intermediate").strip()
-            rt = str(nt.get("role") or "intermediate").strip()
-            if rs != "intermediate":
-                raise ValueError(
-                    f"edges[{i}]: delivery source must be role=intermediate, got role={rs!r}"
-                )
-            if rt != "target":
-                raise ValueError(
-                    f"edges[{i}]: delivery target must be role=target, got role={rt!r}"
-                )
+            _validate_delivery_edge(i, nf, nt)
 
 
 def assert_delivery_targets_unique(edges: list[dict[str, Any]]) -> None:

@@ -19,22 +19,27 @@ REACT_FLOW_GRAPH_PAYLOAD_VERSION = 1
 RfNodeType = Literal["shape", "operation", "intermediate", "output"]
 
 
-def domain_graph_to_react_flow(graph_document: dict[str, Any]) -> dict[str, Any]:
-    """검증된 ``graph_document``를 React Flow 초기 요소 스냅샷으로 변환한다."""
-    nodes_raw = graph_document.get("nodes")
-    edges_raw = graph_document.get("edges")
-    if not isinstance(nodes_raw, list) or not isinstance(edges_raw, list):
-        raise ValueError("graph_document nodes/edges must be lists")
+def _nodes_raw_to_rf(nodes_raw: list[Any]) -> list[dict[str, Any]]:
     rf_nodes: list[dict[str, Any]] = []
     for n in nodes_raw:
         if not isinstance(n, dict):
             raise ValueError("each node must be an object")
         rf_nodes.append(_domain_node_to_rf(n))
+    return rf_nodes
+
+
+def _edges_raw_to_rf(edges_raw: list[Any]) -> list[dict[str, Any]]:
     rf_edges: list[dict[str, Any]] = []
     for e in edges_raw:
         if not isinstance(e, dict):
             raise ValueError("each edge must be an object")
         rf_edges.append(_domain_edge_to_rf(e))
+    return rf_edges
+
+
+def _annotate_rf_edges_for_react_flow(
+    rf_edges: list[dict[str, Any]], edges_raw: list[Any]
+) -> None:
     input_counts: dict[str, int] = {}
     for ed, raw in zip(rf_edges, edges_raw, strict=True):
         if not isinstance(raw, dict):
@@ -46,13 +51,21 @@ def domain_graph_to_react_flow(graph_document: dict[str, Any]) -> dict[str, Any]
             input_counts[tid] = idx + 1
             if idx > 0:
                 ed["targetHandle"] = f"in-{idx}"
-        elif ek == "output":
-            ed["sourceHandle"] = "out"
-            ed["targetHandle"] = "in"
-        elif ek == "delivery":
+        elif ek in ("output", "delivery"):
             ed["sourceHandle"] = "out"
             ed["targetHandle"] = "in"
         ed["type"] = "recipe"
+
+
+def domain_graph_to_react_flow(graph_document: dict[str, Any]) -> dict[str, Any]:
+    """검증된 ``graph_document``를 React Flow 초기 요소 스냅샷으로 변환한다."""
+    nodes_raw = graph_document.get("nodes")
+    edges_raw = graph_document.get("edges")
+    if not isinstance(nodes_raw, list) or not isinstance(edges_raw, list):
+        raise ValueError("graph_document nodes/edges must be lists")
+    rf_nodes = _nodes_raw_to_rf(nodes_raw)
+    rf_edges = _edges_raw_to_rf(edges_raw)
+    _annotate_rf_edges_for_react_flow(rf_edges, edges_raw)
     return {
         "version": REACT_FLOW_GRAPH_PAYLOAD_VERSION,
         "nodes": rf_nodes,

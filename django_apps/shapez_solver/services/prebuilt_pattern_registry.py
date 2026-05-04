@@ -7,16 +7,12 @@ from typing import Literal
 from django_apps.shapez_core.domain.shape import EMPTY_PART, Shape, ShapeLayer, ShapePart
 from django_apps.shapez_solver.domain.operation_catalog import OPERATION_CATALOG
 from django_apps.shapez_solver.domain.operations import OperationType
-from django_apps.shapez_solver.domain.recipe import (
-    OperationRecipe,
-    RecipeCost,
-    RecipeRef,
-    SolveContext,
-    SolvedRecipe,
-    SourceRecipe,
-)
+from django_apps.shapez_solver.domain.recipe import SolveContext, SolvedRecipe
 from django_apps.shapez_solver.services.operation_engine import OperationEngine
-from django_apps.shapez_solver.services.planner_support import build_operation_solution
+from django_apps.shapez_solver.services.planner_support import (
+    build_binary_operation_solution_overlapping_deps,
+    build_operation_solution,
+)
 
 type SolveShapeFn = Callable[[Shape, SolveContext], SolvedRecipe]
 type ColorMatchMode = Literal["exact"]
@@ -333,59 +329,13 @@ def _build_binary_operation_solution(
         (left.ref.shape, right.ref.shape),
     )
     catalog_entry = OPERATION_CATALOG[operation_type]
-    recipe = OperationRecipe(
-        id=ctx.allocate_id("op"),
+    return build_binary_operation_solution_overlapping_deps(
+        ctx,
         operation_type=operation_type,
-        inputs=(left.ref, right.ref),
+        left=left,
+        right=right,
         outputs=outputs,
+        selected_output_index=selected_output_index,
         label=label or catalog_entry.label,
         description=description or catalog_entry.description,
     )
-    combined = _merge_dependency_recipes((left, right), recipe)
-    ref = RecipeRef(
-        recipe_id=recipe.id,
-        output_index=selected_output_index,
-        shape=outputs[selected_output_index],
-    )
-    return SolvedRecipe(
-        ref=ref,
-        recipes=combined,
-        cost=RecipeCost(
-            operations=sum(isinstance(item, OperationRecipe) for item in combined),
-            sources=sum(isinstance(item, SourceRecipe) for item in combined),
-            depth=max(left.cost.depth, right.cost.depth) + 1,
-            reused_nodes=(
-                left.cost.reused_nodes
-                + right.cost.reused_nodes
-                + _count_dependency_reuse((left, right))
-            ),
-        ),
-    )
-
-
-def _merge_dependency_recipes(
-    dependencies: tuple[SolvedRecipe, ...],
-    recipe: OperationRecipe,
-) -> tuple[SourceRecipe | OperationRecipe, ...]:
-    merged: list[SourceRecipe | OperationRecipe] = []
-    seen_ids: set[str] = set()
-    for dependency in dependencies:
-        for item in dependency.recipes:
-            if item.id in seen_ids:
-                continue
-            merged.append(item)
-            seen_ids.add(item.id)
-    merged.append(recipe)
-    return tuple(merged)
-
-
-def _count_dependency_reuse(dependencies: tuple[SolvedRecipe, ...]) -> int:
-    seen_ids: set[str] = set()
-    duplicate_count = 0
-    for dependency in dependencies:
-        for item in dependency.recipes:
-            if item.id in seen_ids:
-                duplicate_count += 1
-                continue
-            seen_ids.add(item.id)
-    return duplicate_count

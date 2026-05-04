@@ -3,39 +3,36 @@ alwaysApply: true
 ---
 # Cursor Usage
 
-## 계획 먼저
+## 계획·게이트
 
-- 복잡한 작업은 구현 전 `[시몬]` 브리핑에서 범위와 담당자를 나눈다.
-- 사용자가 "플랜만" 요청하면 코드를 수정하지 않고 계획만 제시한다.
-- 스펙이 필요한 큰 변경은 `documents/`에 리서치/플랜 문서를 먼저 남긴다. (`documents/` Markdown 본문 언어는 [AGENTS.md](mdc:AGENTS.md) **`documents/` 작성 언어** 준수.)
-- 구현 전 최소 순서는 리서치 문서 → 플랜 MD → 사람 승인 → 구현이다. 전체 10단계 정본은 [protocols/README.md](mdc:protocols/README.md)를 본다.
+- 범위가 크면 구현 전 요약·담당 분배만 짧게 한다 (긴 롤플레이 금지).
+- 사용자가 「플랜만」이면 코드를 바꾸지 않는다.
+- 큰 변경은 `documents/` 리서치·플랜 → **사람 승인** → 구현. 본문 언어는 [AGENTS.md](mdc:AGENTS.md) **`documents/` 작성 언어**.
+- 10단계 정본: [protocols/README.md](mdc:protocols/README.md).
 
-## @참조
+## 참조
 
-- 캐릭터 역할은 `@persona/README.md`와 각 카드에서 확인한다.
-- UI 작업은 `@persona/gina-gui.md`를 함께 본다.
-- 아키텍처 판단은 `@.cursor/rules/architecture.mdc`를 우선한다.
-- shapez 2 도메인·시스템 참고는 `@documents/research/research_shapez2_game_systems_2026-05-01.md`를 본다.
+- 작업 유형별 매뉴얼·체크리스트: [`documents/ai/`](mdc:documents/ai/README.md) ([AGENTS.md](mdc:AGENTS.md) 라우팅 테이블).
+- 레이어·그래프/solver 구분: [.cursor/rules/architecture.mdc](mdc:.cursor/rules/architecture.mdc).
+- 구현 단계 3단계: [.cursor/rules/persona-dialogue.mdc](mdc:.cursor/rules/persona-dialogue.mdc).
+- persona 카드: `@persona/README.md`, UI는 `@persona/gina-gui.md`.
+- 도메인 참고: `@documents/research/research_shapez2_game_systems_2026-05-01.md`.
 
 ## 메모
 
-- 반복 실수, 프로젝트 결정, 다음 할 일은 사용자가 요청할 때 `documents/meta/CURSOR_MEMO.md`에 반영한다.
-- 메모를 업데이트할 때는 날짜와 짧은 이유를 남긴다.
+- 사용자가 요청할 때만 `documents/meta/CURSOR_MEMO.md` 갱신. 날짜·이유 짧게.
 
 ## 다중 채팅
 
-- 영역별로 대화가 분리된 경우에도 레이어 경계를 유지한다.
-- 다른 채팅의 결론을 적용할 때는 파일 기준으로 재확인한다.
+- 레이어 경계 유지. 다른 채팅 결론은 **파일 기준**으로 재확인.
 
-## 테스트 구간 실행
+## 테스트 구간
 
-매번 전체 `pytest`가 아니라, 변경 레이어에 맞춰 **마커 또는 경로**로 줄일 수 있다. 마커 정의·자동 부착·예시 명령은 [AGENTS.md](mdc:AGENTS.md) **테스트 구간 실행 (pytest 마커)**과 [`pytest.ini`](mdc:pytest.ini), [`tests/conftest.py`](mdc:tests/conftest.py)를 본다. 권장 실행 형태는 `python -m pytest`.
+전체 대신 마커·경로: [AGENTS.md](mdc:AGENTS.md), [`pytest.ini`](mdc:pytest.ini), [`tests/conftest.py`](mdc:tests/conftest.py). 권장: `python -m pytest`.
 
 ## 완료 보고
 
-- 변경 파일, 검증 명령, 미실행 사유를 짧게 보고한다.
-- 검증 실패가 있으면 실패 명령, 이유, 다음 담당 캐릭터를 명확히 남긴다.
-- 검증을 못 돌렸으면 실행 못 한 명령, 이유, 남은 위험을 남긴다.
-- `black .`이 파일을 바꾸면 검증 통과 여부와 별도로 포맷 변경 발생을 적는다.
-- 그다음 **이후 진행 상황**을 한 덩어리로 짧게 브리핑한다. (다음 파이프라인 단계, 미결 과제, 사용자 후속 액션 등.)
-- 요청이 실제로 끝났을 때만 완료로 표기하고, 미완·검증 미통과·부분 구현이면 그대로 밝힌다.
+- 변경 파일, 검증, 미실행 시 명령·이유·위험.
+- `black` 포맷 변경 별도 명시.
+- **이후 진행 상황** 한 덩어리.
+- 실제로 끝났을 때만 「완료」.

@@ -1,6 +1,7 @@
 from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_core.services.shape_code_parser import parse_shape_code_list
 from django_apps.shapez_core.services.shape_codec import shape_from_pattern
+from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.domain.recipe import (
     OperationRecipe,
     SolveContext,
@@ -9,6 +10,10 @@ from django_apps.shapez_solver.domain.recipe import (
 )
 from django_apps.shapez_solver.services.operation_engine import OperationEngine
 from django_apps.shapez_solver.services.planner_service import PlannerService
+from django_apps.shapez_solver.services.planner_support import (
+    build_binary_operation_solution_overlapping_deps,
+    build_operation_solution,
+)
 from django_apps.shapez_solver.services.prebuilt_pattern_registry import match_prebuilt_pattern
 
 
@@ -101,3 +106,33 @@ def test_unregistered_half_target_uses_single_half_stack() -> None:
 
     assert operation_types.count("stacker") == 1
     assert operation_types.count("swapper") == 0
+
+
+def test_disjoint_binary_prebuilt_matches_build_operation_solution_cost() -> None:
+    """의존 그래프가 겹치지 않을 때는 overlapping 빌더 비용이 build_operation_solution 과 같다."""
+    ctx = SolveContext()
+    engine = OperationEngine()
+    left = PlannerService().solve_shape(_shape("CuCuCuCu"), ctx)
+    right = PlannerService().solve_shape(_shape("RuRuRuRu"), ctx)
+    outputs = engine.apply(OperationType.SWAPPER, (left.ref.shape, right.ref.shape))
+    expected = build_operation_solution(
+        SolveContext(),
+        operation_type=OperationType.SWAPPER,
+        inputs=(left.ref, right.ref),
+        outputs=outputs,
+        selected_output_index=0,
+        label="Swapper",
+        description="Swapper",
+        dependencies=(left, right),
+    )
+    got = build_binary_operation_solution_overlapping_deps(
+        SolveContext(),
+        operation_type=OperationType.SWAPPER,
+        left=left,
+        right=right,
+        outputs=outputs,
+        selected_output_index=0,
+        label="Swapper",
+        description="Swapper",
+    )
+    assert got.cost == expected.cost

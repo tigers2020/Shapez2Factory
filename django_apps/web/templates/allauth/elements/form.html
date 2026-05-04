@@ -1,0 +1,11 @@
+{% load allauth %}
+<form
+  class="mt-6 space-y-4"
+  method="{{ attrs.method }}"
+  {% if attrs.action %}action="{{ attrs.action }}"{% endif %}
+>
+  {% slot body %}
+  {% endslot %}
+  {% slot actions %}
+  {% endslot %}
+</form>

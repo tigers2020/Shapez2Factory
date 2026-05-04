@@ -1,0 +1,59 @@
+{% extends "web/base_auth.html" %}
+
+{% block title %}Sign up - shapez2 planner{% endblock %}
+
+{% block auth_before_card %}
+  {% include "web/partials/auth_heading_card.html" with title="Sign up" subtitle="Create a username and password, or use a social account." %}
+{% endblock %}
+
+{% block auth_card %}
+  <form method="post" action="{% url 'account_signup' %}" class="space-y-5 rounded-xl border border-slate-800 bg-slate-900/95 p-6 shadow-lg shadow-black/40">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      <div class="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        {{ form.non_field_errors }}
+      </div>
+    {% endif %}
+
+    {% for field in form %}
+      <div>
+        <label class="mb-2 block text-sm font-medium text-slate-300" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <input
+          id="{{ field.id_for_label }}"
+          name="{{ field.html_name }}"
+          type="{{ field.field.widget.input_type }}"
+          value="{{ field.value|default_if_none:'' }}"
+          autocomplete="{{ field.field.widget.attrs.autocomplete|default:'off' }}"
+          class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+        />
+        {% if field.errors %}
+          <div class="mt-2 text-sm text-rose-300">{{ field.errors }}</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {% if redirect_field_value %}
+      <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+    {% endif %}
+
+    <button
+      type="submit"
+      class="w-full rounded-xl border border-cyan-400/45 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100 hover:border-cyan-300/60"
+    >Create account</button>
+  </form>
+
+  <div class="space-y-3 rounded-xl border border-slate-800 bg-slate-900/90 p-6 shadow-lg shadow-black/40">
+    <p class="text-sm font-semibold text-slate-200">Social sign up</p>
+    <div class="grid gap-3">
+      <a
+        class="rounded-xl border border-slate-700 px-4 py-3 text-center text-sm font-semibold text-slate-200 no-underline hover:border-cyan-400/40"
+        href="{% url 'google_login' %}"
+      >Google</a>
+    </div>
+  </div>
+
+  <p class="text-center text-sm text-slate-400">
+    Already have an account?
+    <a href="{% url 'account_login' %}" class="font-semibold text-cyan-200 no-underline hover:text-cyan-100">Login</a>
+  </p>
+{% endblock %}

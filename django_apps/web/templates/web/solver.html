@@ -59,6 +59,7 @@
           <div
             class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400 sm:p-5"
             data-solver-timeline
+            data-solver-mode="inventory_search"
             data-graph-quantity-replicas="on"
             data-solver-api="{% url 'shapez_solver:solve_shape' %}"
             data-code-input="#solver-code-input"
@@ -194,5 +195,5 @@
     }
   </script>
   <script type="module" src="{% static 'web/js/quick_solver_preview.js' %}"></script>
-  <script type="module" src="{% static 'web/js/solver_timeline.js' %}?v=20260502-graph-ui-2"></script>
+  <script type="module" src="{% static 'web/js/solver_timeline.js' %}?v=20260503-inventory-default"></script>
 {% endblock %}

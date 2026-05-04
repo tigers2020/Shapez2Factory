@@ -20,11 +20,23 @@ from django_apps.shapez_solver.services.planner_support import build_operation_s
 
 type SolveShapeFn = Callable[[Shape, SolveContext], SolvedRecipe]
 type ColorMatchMode = Literal["exact"]
-type PrebuiltTemplate = Literal["half_swapper", "checker_swapper"]
+type PatternTemplateId = Literal["half_swapper", "checker_swapper"]
+type PatternTemplateBuildFn = Callable[
+    [Shape, SolveContext, SolveShapeFn, OperationEngine],
+    SolvedRecipe,
+]
 type Signature = tuple[int, int, int, int]
 
 _HALF_SIGNATURE: Signature = (0, 0, 1, 1)
 _CHECKER_SIGNATURE: Signature = (0, 1, 0, 1)
+
+
+@dataclass(frozen=True, slots=True)
+class PatternTemplateDefinition:
+    template_id: PatternTemplateId
+    input_ports: tuple[str, ...]
+    output_ports: tuple[str, ...]
+    build: PatternTemplateBuildFn
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,105 +45,20 @@ class PrebuiltPatternDefinition:
     canonical_signature: Signature
     rotation_equivalent_signatures: tuple[Signature, ...]
     color_match_mode: ColorMatchMode
-    template: PrebuiltTemplate
+    template_id: PatternTemplateId
 
 
 @dataclass(frozen=True, slots=True)
 class PrebuiltPatternMatch:
     definition: PrebuiltPatternDefinition
+    template: PatternTemplateDefinition
     canonical_target: Shape
     canonicalized_by_cw_steps: int
-
-
-PREBUILT_PATTERN_REGISTRY: tuple[PrebuiltPatternDefinition, ...] = (
-    PrebuiltPatternDefinition(
-        family_id="half_and_half",
-        canonical_signature=_HALF_SIGNATURE,
-        rotation_equivalent_signatures=(
-            (0, 0, 1, 1),
-            (0, 1, 1, 0),
-            (1, 1, 0, 0),
-            (1, 0, 0, 1),
-        ),
-        color_match_mode="exact",
-        template="half_swapper",
-    ),
-    PrebuiltPatternDefinition(
-        family_id="checker",
-        canonical_signature=_CHECKER_SIGNATURE,
-        rotation_equivalent_signatures=(_CHECKER_SIGNATURE,),
-        color_match_mode="exact",
-        template="checker_swapper",
-    ),
-)
-
-
-def try_prebuilt_pattern(
-    target: Shape,
-    ctx: SolveContext,
-    *,
-    solve_shape: SolveShapeFn,
-    operation_engine: OperationEngine,
-) -> SolvedRecipe | None:
-    match = match_prebuilt_pattern(target, operation_engine=operation_engine)
-    if match is None:
-        return None
-
-    if match.definition.template == "half_swapper":
-        solved = _build_half_swapper_solution(
-            match.canonical_target,
-            ctx,
-            solve_shape=solve_shape,
-            operation_engine=operation_engine,
-        )
-    elif match.definition.template == "checker_swapper":
-        solved = _build_checker_swapper_solution(
-            match.canonical_target,
-            ctx,
-            solve_shape=solve_shape,
-            operation_engine=operation_engine,
-        )
-    else:
-        raise ValueError(f"Unsupported prebuilt template: {match.definition.template}")
-
-    return _apply_restore_rotation(
-        solved,
-        match.canonicalized_by_cw_steps,
-        ctx,
-        operation_engine=operation_engine,
-    )
-
-
-def match_prebuilt_pattern(
-    target: Shape,
-    *,
-    operation_engine: OperationEngine,
-) -> PrebuiltPatternMatch | None:
-    if not target.is_single_layer() or target.has_unsupported_materials():
-        return None
-    if len(target.non_empty_parts()) != 4:
-        return None
-
-    for definition in PREBUILT_PATTERN_REGISTRY:
-        for cw_steps in range(4):
-            rotated = _rotate_cw_steps(target, cw_steps, operation_engine)
-            signature = _shape_signature(rotated)
-            if signature is None:
-                continue
-            if signature != definition.canonical_signature:
-                continue
-            return PrebuiltPatternMatch(
-                definition=definition,
-                canonical_target=rotated,
-                canonicalized_by_cw_steps=cw_steps,
-            )
-    return None
 
 
 def _build_half_swapper_solution(
     target: Shape,
     ctx: SolveContext,
-    *,
     solve_shape: SolveShapeFn,
     operation_engine: OperationEngine,
 ) -> SolvedRecipe:
@@ -165,7 +92,6 @@ def _build_half_swapper_solution(
 def _build_checker_swapper_solution(
     target: Shape,
     ctx: SolveContext,
-    *,
     solve_shape: SolveShapeFn,
     operation_engine: OperationEngine,
 ) -> SolvedRecipe:
@@ -196,6 +122,100 @@ def _build_checker_swapper_solution(
         right=right_half,
         operation_engine=operation_engine,
     )
+
+
+PATTERN_TEMPLATE_REGISTRY: tuple[PatternTemplateDefinition, ...] = (
+    PatternTemplateDefinition(
+        template_id="half_swapper",
+        input_ports=("leftSource", "rightSource"),
+        output_ports=("targetShape",),
+        build=_build_half_swapper_solution,
+    ),
+    PatternTemplateDefinition(
+        template_id="checker_swapper",
+        input_ports=("leftHalf",),
+        output_ports=("targetShape",),
+        build=_build_checker_swapper_solution,
+    ),
+)
+
+PREBUILT_PATTERN_REGISTRY: tuple[PrebuiltPatternDefinition, ...] = (
+    PrebuiltPatternDefinition(
+        family_id="half_and_half",
+        canonical_signature=_HALF_SIGNATURE,
+        rotation_equivalent_signatures=(
+            (0, 0, 1, 1),
+            (0, 1, 1, 0),
+            (1, 1, 0, 0),
+            (1, 0, 0, 1),
+        ),
+        color_match_mode="exact",
+        template_id="half_swapper",
+    ),
+    PrebuiltPatternDefinition(
+        family_id="checker",
+        canonical_signature=_CHECKER_SIGNATURE,
+        rotation_equivalent_signatures=(_CHECKER_SIGNATURE,),
+        color_match_mode="exact",
+        template_id="checker_swapper",
+    ),
+)
+
+
+def try_prebuilt_pattern(
+    target: Shape,
+    ctx: SolveContext,
+    *,
+    solve_shape: SolveShapeFn,
+    operation_engine: OperationEngine,
+) -> SolvedRecipe | None:
+    match = match_prebuilt_pattern(target, operation_engine=operation_engine)
+    if match is None:
+        return None
+
+    solved = match.template.build(match.canonical_target, ctx, solve_shape, operation_engine)
+    return _apply_restore_rotation(
+        solved,
+        match.canonicalized_by_cw_steps,
+        ctx,
+        operation_engine=operation_engine,
+    )
+
+
+def match_prebuilt_pattern(
+    target: Shape,
+    *,
+    operation_engine: OperationEngine,
+) -> PrebuiltPatternMatch | None:
+    if not target.is_single_layer() or target.has_unsupported_materials():
+        return None
+    if len(target.non_empty_parts()) != 4:
+        return None
+
+    for definition in PREBUILT_PATTERN_REGISTRY:
+        for cw_steps in range(4):
+            rotated = _rotate_cw_steps(target, cw_steps, operation_engine)
+            signature = _shape_signature(rotated)
+            if signature is None:
+                continue
+            if signature not in definition.rotation_equivalent_signatures:
+                continue
+            if signature != definition.canonical_signature:
+                continue
+            return PrebuiltPatternMatch(
+                definition=definition,
+                template=_get_pattern_template(definition.template_id),
+                canonical_target=rotated,
+                canonicalized_by_cw_steps=cw_steps,
+            )
+    return None
+
+
+def _get_pattern_template(template_id: PatternTemplateId) -> PatternTemplateDefinition:
+    for template in PATTERN_TEMPLATE_REGISTRY:
+        if template.template_id == template_id:
+            return template
+    raise ValueError(f"Unsupported prebuilt template: {template_id}")
 
 
 def _apply_restore_rotation(

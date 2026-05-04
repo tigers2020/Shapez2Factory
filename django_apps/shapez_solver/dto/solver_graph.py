@@ -48,6 +48,7 @@ class SolverGraphEdge:
     kind: GraphEdgeKind
     slot: str | None = None
     label: str | None = None
+    quantity: int = 1
 
 
 @dataclass(frozen=True, slots=True)

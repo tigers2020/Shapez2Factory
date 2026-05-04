@@ -7,6 +7,8 @@ from django_apps.shapez_solver.domain.factory_demand import (
     BaseDemand,
     UnsupportedFactoryDemandError,
     compute_base_demands,
+    inventory_search_goal_shape_code,
+    inventory_search_rejects_target_for_missing_paint,
 )
 
 
@@ -44,6 +46,18 @@ def test_compute_base_demands_ignores_color_and_uses_uncolored_skeleton() -> Non
     colored_demands = compute_base_demands(_shape("CrRgSbSy"))
 
     assert colored_demands == uncolored_demands
+
+
+def test_inventory_search_goal_shape_code_uncolors_quadrants() -> None:
+    assert inventory_search_goal_shape_code(_shape("RcCuRcCu")) == "RuCuRuCu"
+
+
+def test_inventory_search_rejects_uniform_non_u_paint_target() -> None:
+    assert inventory_search_rejects_target_for_missing_paint(_shape("CrCrCrCr")) is True
+
+
+def test_inventory_search_accepts_mixed_kind_colored_target() -> None:
+    assert inventory_search_rejects_target_for_missing_paint(_shape("RcCuRcCu")) is False
 
 
 def test_compute_base_demands_rejects_multi_layer_target() -> None:

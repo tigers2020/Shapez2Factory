@@ -39,9 +39,38 @@
             class="rounded-sm px-3 py-2 no-underline {% if current == 'solver' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
             {% if current == "solver" %}aria-current="page"{% endif %}
           >Solver</a>
+          <a
+            href="{% url 'web:pattern-lab' %}"
+            class="rounded-sm px-3 py-2 no-underline {% if current == 'pattern-lab' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
+            {% if current == "pattern-lab" %}aria-current="page"{% endif %}
+          >Pattern Lab</a>
+          <a
+            href="{% url 'web:support' %}"
+            class="rounded-sm px-3 py-2 no-underline {% if current == 'support' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
+            {% if current == "support" %}aria-current="page"{% endif %}
+          >Support</a>
         </nav>
 
-        <div class="flex flex-1 items-center justify-end">
+        <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
+          {% if request.user.is_authenticated %}
+            <span class="hidden text-sm text-neutral-500 sm:inline">{{ request.user.username }}</span>
+            <form method="post" action="{% url 'account_logout' %}">
+              {% csrf_token %}
+              <button
+                type="submit"
+                class="inline-flex items-center justify-center rounded-sm border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 hover:border-indigo-500/50 hover:text-indigo-200"
+              >Logout</button>
+            </form>
+          {% else %}
+            <a
+              href="{% url 'account_login' %}"
+              class="inline-flex items-center justify-center rounded-sm px-3 py-2 text-sm font-semibold text-neutral-400 no-underline hover:text-indigo-200"
+            >Login</a>
+            <a
+              href="{% url 'account_signup' %}"
+              class="inline-flex items-center justify-center rounded-sm border border-indigo-500/50 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-200 no-underline hover:border-indigo-400/70 hover:text-indigo-100"
+            >Sign up</a>
+          {% endif %}
           <a
             href="https://github.com/tigers2020/Shapez2Factory"
             class="inline-flex items-center justify-center rounded-sm border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 no-underline hover:border-indigo-500/50 hover:text-indigo-200"
@@ -90,9 +119,38 @@
             class="rounded-lg px-3 py-2 no-underline {% if current == 'solver' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
             {% if current == "solver" %}aria-current="page"{% endif %}
           >Solver</a>
+          <a
+            href="{% url 'web:pattern-lab' %}"
+            class="rounded-lg px-3 py-2 no-underline {% if current == 'pattern-lab' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+            {% if current == "pattern-lab" %}aria-current="page"{% endif %}
+          >Pattern Lab</a>
+          <a
+            href="{% url 'web:support' %}"
+            class="rounded-lg px-3 py-2 no-underline {% if current == 'support' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+            {% if current == "support" %}aria-current="page"{% endif %}
+          >Support</a>
         </nav>
 
-        <div class="flex flex-1 items-center justify-end">
+        <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
+          {% if request.user.is_authenticated %}
+            <span class="hidden text-sm text-slate-400 sm:inline">{{ request.user.username }}</span>
+            <form method="post" action="{% url 'account_logout' %}">
+              {% csrf_token %}
+              <button
+                type="submit"
+                class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-cyan-400/40 hover:text-cyan-200"
+              >Logout</button>
+            </form>
+          {% else %}
+            <a
+              href="{% url 'account_login' %}"
+              class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-400 no-underline hover:text-cyan-200"
+            >Login</a>
+            <a
+              href="{% url 'account_signup' %}"
+              class="inline-flex items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 no-underline hover:border-cyan-300/60 hover:text-cyan-50"
+            >Sign up</a>
+          {% endif %}
           <a
             href="https://github.com/tigers2020/Shapez2Factory"
             class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 no-underline hover:border-cyan-400/40 hover:text-cyan-200"

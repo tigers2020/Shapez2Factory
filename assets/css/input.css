@@ -7,3 +7,13 @@
 
 @source "../../django_apps/web/templates";
 @source "../../node_modules/flowbite";
+
+/* django-allauth: primary submit cap (see also static/web/css/auth-layout.css) */
+@layer components {
+  .account-allauth-primary-btn {
+    display: block;
+    width: 100%;
+    max-width: 12rem;
+    margin-inline: auto;
+  }
+}

@@ -79,13 +79,14 @@ def serialize_graph_node(
     raise TypeError(f"Unsupported graph node: {node!r}")
 
 
-def serialize_graph_edge(edge: SolverGraphEdge) -> dict[str, str | None]:
+def serialize_graph_edge(edge: SolverGraphEdge) -> dict[str, str | int | None]:
     return {
         "from": edge.from_id,
         "to": edge.to_id,
         "kind": edge.kind,
         "slot": edge.slot,
         "label": edge.label,
+        "quantity": edge.quantity,
     }
 
 

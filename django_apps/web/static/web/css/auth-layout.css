@@ -1,0 +1,135 @@
+/**
+ * Auth pages — split layout (visual + panel) and panel-only rules.
+ * Plain CSS, loaded after app.css.
+ */
+
+/* ---- Split shell (matches mock: art left / form right on large screens) ---- */
+.auth-split-root {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+@media (min-width: 1024px) {
+  .auth-split-root {
+    flex-direction: row;
+  }
+}
+
+.auth-split-visual {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .auth-split-visual {
+    display: block;
+    flex: 1 1 55%;
+    min-width: 0;
+    min-height: 0;
+  }
+}
+
+.auth-split-visual-mobile {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .auth-split-visual-mobile {
+    display: none;
+  }
+}
+
+.auth-split-panel {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  background: rgba(2, 6, 23, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(51, 65, 85, 0.65);
+}
+
+@media (min-width: 1024px) {
+  .auth-split-panel {
+    flex: 0 0 26rem;
+    width: 26rem;
+    max-width: 26rem;
+    border-top: none;
+    border-left: 1px solid rgba(51, 65, 85, 0.85);
+  }
+}
+
+/* Subtle grid inside panel only */
+.auth-split-panel-bg {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.35;
+  background-image: linear-gradient(
+      to right,
+      rgba(34, 211, 238, 0.06) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, rgba(34, 211, 238, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.auth-split-panel-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 1.25rem 1.25rem 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .auth-split-panel-inner {
+    padding: 1.5rem 1.75rem 3rem;
+  }
+}
+
+/* Form column uses full panel width (no “floating narrow strip” in a wide panel) */
+.auth-panel-section {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+
+.auth-panel-section.flex {
+  align-items: stretch;
+}
+
+.auth-form-stack {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  min-width: 0;
+}
+
+.auth-shell-panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Messages above form — same width as panel content */
+.auth-split-messages {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 0.75rem;
+}

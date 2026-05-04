@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from functools import reduce
 from math import gcd, lcm
 
-from django_apps.shapez_core.domain.shape import Shape, ShapeLayer, ShapePart
+from django_apps.shapez_core.domain.shape import QUADRANT_COUNT, Shape, ShapeLayer, ShapePart
 
 FULL_SOURCE_CAPACITY = 4
 
@@ -38,6 +38,31 @@ class UnsupportedFactoryDemandError(Exception):
 
 def compute_base_demands(target: Shape) -> tuple[BaseDemand, ...]:
     return compute_factory_batch(target).base_demands
+
+
+def inventory_search_goal_shape_code(target: Shape) -> str:
+    """Primitive search는 색을 바꾸지 않으므로, 목표 코드는 무채색 골격과 맞춘다."""
+
+    return _uncolored_skeleton(target).canonical_code
+
+
+def inventory_search_rejects_target_for_missing_paint(target: Shape) -> bool:
+    """painter 없는 인벤토리 탐색에서, 단일 종류·단일 비-u 색만 있는 풀 레이어는 불가."""
+
+    if not target.is_single_layer():
+        return False
+    layer = target.layers[0]
+    nonempty = tuple(part for part in layer.quadrants if not part.is_empty)
+    if len(nonempty) != QUADRANT_COUNT:
+        return False
+    kinds = {part.kind for part in nonempty}
+    colors = {part.color for part in nonempty}
+    if len(kinds) != 1 or len(colors) != 1:
+        return False
+    (only_color,) = colors
+    if only_color == "u":
+        return False
+    return inventory_search_goal_shape_code(target) != target.canonical_code
 
 
 def compute_factory_batch(target: Shape) -> FactoryBatch:
@@ -120,5 +145,7 @@ __all__ = [
     "UnsupportedFactoryDemandError",
     "compute_base_demands",
     "compute_factory_batch",
+    "inventory_search_goal_shape_code",
+    "inventory_search_rejects_target_for_missing_paint",
     "minimal_balanced_target_count",
 ]

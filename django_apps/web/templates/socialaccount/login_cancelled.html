@@ -1,0 +1,30 @@
+{% extends "socialaccount/base_entrance.html" %}
+{% load i18n static %}
+{% load allauth %}
+{% block head_title %}
+  {% trans "Login Cancelled" %}
+{% endblock head_title %}
+{% block content %}
+  <div class="mx-auto flex w-full max-w-[19rem] flex-col items-center text-center">
+    <div class="mb-4 flex justify-center" aria-hidden="true">
+      <img
+        src="{% static 'web/img/branding/logo-3.png' %}"
+        alt=""
+        width="48"
+        height="48"
+        class="h-12 w-12 rounded-xl border border-cyan-400/35 bg-slate-950 object-contain p-1"
+        decoding="async"
+      />
+    </div>
+    <p class="text-xs font-semibold uppercase tracking-widest text-cyan-300">Account</p>
+    {% element h1 %}
+      {% trans "Login Cancelled" %}
+    {% endelement %}
+    {% url "account_login" as login_url %}
+    {% element p %}
+      {% blocktrans with login_url=login_url trimmed %}
+        You decided to cancel logging in to our site using one of your existing accounts. If this was a mistake, please proceed to <a href="{{ login_url }}">sign in</a>.
+      {% endblocktrans %}
+    {% endelement %}
+  </div>
+{% endblock content %}

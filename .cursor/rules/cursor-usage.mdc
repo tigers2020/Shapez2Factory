@@ -7,7 +7,7 @@ alwaysApply: true
 
 - 복잡한 작업은 구현 전 `[시몬]` 브리핑에서 범위와 담당자를 나눈다.
 - 사용자가 "플랜만" 요청하면 코드를 수정하지 않고 계획만 제시한다.
-- 스펙이 필요한 큰 변경은 `documents/`에 리서치/플랜 문서를 먼저 남긴다.
+- 스펙이 필요한 큰 변경은 `documents/`에 리서치/플랜 문서를 먼저 남긴다. (`documents/` Markdown 본문 언어는 [AGENTS.md](mdc:AGENTS.md) **`documents/` 작성 언어** 준수.)
 - 구현 전 최소 순서는 리서치 문서 → 플랜 MD → 사람 승인 → 구현이다. 전체 10단계 정본은 [protocols/README.md](mdc:protocols/README.md)를 본다.
 
 ## @참조

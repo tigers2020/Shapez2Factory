@@ -13,10 +13,10 @@ from django_apps.shapez_solver.services.factory_throughput_service import (
     FactoryThroughputService,
 )
 from django_apps.shapez_solver.services.planner_service import UnsupportedTargetError
-from django_apps.shapez_solver.services.solve_pipeline import SolverValidationError
 from django_apps.shapez_solver.view_request_parsing import (
     extract_max_depth,
     extract_shape_code,
+    extract_solver_timeout_seconds,
 )
 from django_apps.shapez_solver.view_serialization import error_payload, serialize_solver_result
 
@@ -75,6 +75,7 @@ def solve_shape(request: HttpRequest) -> JsonResponse:
             FactoryThroughputRequest(
                 target_shape=target_shape,
                 max_depth=extract_max_depth(request),
+                solver_timeout_seconds=extract_solver_timeout_seconds(request),
             )
         )
     except UnsupportedTargetError as exc:
@@ -85,19 +86,6 @@ def solve_shape(request: HttpRequest) -> JsonResponse:
                 exc.details or {"target_shape_code": target_shape.canonical_code},
                 warnings,
             )
-        )
-    except SolverValidationError as exc:
-        return JsonResponse(
-            error_payload(
-                exc.code,
-                "The generated recipe did not replay back to the requested target.",
-                {
-                    "expected": exc.expected,
-                    "actual": exc.actual,
-                },
-                warnings,
-            ),
-            status=500,
         )
     payload = serialize_solver_result(result, warnings=tuple(warnings))
     return JsonResponse(payload)

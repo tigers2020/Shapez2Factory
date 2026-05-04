@@ -7,7 +7,9 @@ from django_apps.shapez_solver.domain.recipe import (
     SolvedRecipe,
     SourceRecipe,
 )
+from django_apps.shapez_solver.services.operation_engine import OperationEngine
 from django_apps.shapez_solver.services.planner_service import PlannerService
+from django_apps.shapez_solver.services.prebuilt_pattern_registry import match_prebuilt_pattern
 
 
 def _shape(code: str) -> Shape:
@@ -38,6 +40,16 @@ def test_half_and_half_pattern_uses_prebuilt_swapper_recipe() -> None:
     assert _operation_types("CuCuRuRu") == ["cutter", "cutter", "swapper"]
 
 
+def test_half_and_half_pattern_resolves_half_swapper_template() -> None:
+    match = match_prebuilt_pattern(_shape("CuCuRuRu"), operation_engine=OperationEngine())
+
+    assert match is not None
+    assert match.definition.family_id == "half_and_half"
+    assert match.template.template_id == "half_swapper"
+    assert match.template.input_ports == ("leftSource", "rightSource")
+    assert match.template.output_ports == ("targetShape",)
+
+
 def test_half_and_half_rotated_variant_uses_prebuilt_rotation_finish() -> None:
     assert _operation_types("CuRuRuCu") == ["cutter", "cutter", "swapper", "rotate_ccw"]
 
@@ -59,6 +71,16 @@ def test_checker_pattern_uses_prebuilt_registry_without_duplicate_sources() -> N
     assert operation_types.count("rotate_180") == 1
     assert len(operation_types) == 9
     assert _source_codes("CuRuCuRu") == ["CuCuCuCu", "RuRuRuRu"]
+
+
+def test_checker_pattern_resolves_checker_swapper_template() -> None:
+    match = match_prebuilt_pattern(_shape("CuRuCuRu"), operation_engine=OperationEngine())
+
+    assert match is not None
+    assert match.definition.family_id == "checker"
+    assert match.template.template_id == "checker_swapper"
+    assert match.template.input_ports == ("leftHalf",)
+    assert match.template.output_ports == ("targetShape",)
 
 
 def test_checker_colored_variant_uses_prebuilt_registry() -> None:

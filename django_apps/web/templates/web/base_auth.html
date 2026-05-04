@@ -1,0 +1,43 @@
+{% extends "web/base.html" %}
+{% load static %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'web/css/auth-layout.css' %}">
+{% endblock extra_css %}
+{% block content %}
+  <main class="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+    <div class="relative z-20 shrink-0">
+      {% include "web/partials/site_nav.html" %}
+    </div>
+
+    <div class="auth-split-root min-h-0 flex-1 overflow-hidden">
+      {% include "web/partials/auth_split_visual.html" %}
+      {% include "web/partials/auth_split_visual_mobile.html" %}
+
+      <aside class="auth-split-panel text-slate-100">
+        <div class="auth-split-panel-bg" aria-hidden="true"></div>
+        <div class="auth-split-panel-inner">
+          {% if messages %}
+            <div class="auth-split-messages" role="status">
+              {% for message in messages %}
+                <div
+                  class="mb-3 rounded-xl border px-4 py-3 text-sm {% if 'error' in message.tags %}border-rose-500/40 bg-rose-500/10 text-rose-200{% elif 'success' in message.tags %}border-emerald-500/40 bg-emerald-500/10 text-emerald-200{% elif 'warning' in message.tags %}border-amber-400/30 bg-amber-500/10 text-amber-200{% else %}border-cyan-400/25 bg-cyan-500/10 text-cyan-100{% endif %}"
+                >
+                  {{ message }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <section class="auth-panel-section flex flex-1 flex-col gap-6 py-1">
+            <div class="auth-form-stack flex flex-col gap-6">
+              {% block auth_before_card %}
+              {% endblock auth_before_card %}
+              {% block auth_card %}
+              {% endblock %}
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </main>
+{% endblock content %}

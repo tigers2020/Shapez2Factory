@@ -1,0 +1,22 @@
+{% extends "web/base_auth.html" %}
+
+{% block title %}Logout - shapez2 planner{% endblock %}
+
+{% block auth_before_card %}
+  {% include "web/partials/auth_heading_card.html" with title="Logout" subtitle="You will need to sign in again to use account features." %}
+{% endblock %}
+
+{% block auth_card %}
+  <form method="post" action="{% url 'account_logout' %}" class="space-y-5 rounded-xl border border-slate-800 bg-slate-900/95 p-6 shadow-lg shadow-black/40">
+    {% csrf_token %}
+    <p class="text-sm text-slate-300">Are you sure you want to logout?</p>
+    <button
+      type="submit"
+      class="w-full rounded-xl border border-cyan-400/45 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100 hover:border-cyan-300/60"
+    >Logout</button>
+  </form>
+
+  <p class="text-center text-sm text-slate-400">
+    <a href="{% url 'web:home' %}" class="font-semibold text-cyan-200 no-underline hover:text-cyan-100">Back to home</a>
+  </p>
+{% endblock %}

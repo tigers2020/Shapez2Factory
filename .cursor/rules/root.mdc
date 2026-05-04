@@ -32,6 +32,7 @@ alwaysApply: true
 
 ## DO
 
+- `documents/`에 두는 프로젝트 Markdown은 [AGENTS.md](mdc:AGENTS.md)의 **`documents/` 작성 언어** 규칙대로 한국어 본문을 쓴다.
 - Python 3.12, src layout, line length 100을 전제로 한다.
 - 새 규칙이나 버그 수정에는 가능한 한 테스트를 함께 추가한다.
 - API 키와 비밀값은 `.env` 또는 설정 경계로만 다루고 코드에 하드코딩하지 않는다.

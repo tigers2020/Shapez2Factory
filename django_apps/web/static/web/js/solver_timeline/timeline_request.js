@@ -44,6 +44,7 @@ export async function requestTimeline(panel, code, seq) {
       },
       body: JSON.stringify({
         code,
+        solver_mode: panel.dataset.solverMode || "inventory_search",
       }),
     });
     data = await res.json();

@@ -24,77 +24,62 @@ def _throughput(code: str) -> FactoryThroughputResult:
     return FactoryThroughputService().solve(FactoryThroughputRequest(target_shape=_shape(code)))
 
 
-def _shape_nodes(nodes: tuple[SolverShapeNode | SolverOperationNode, ...]) -> list[SolverShapeNode]:
+def _shape_nodes(nodes: tuple[object, ...]) -> list[SolverShapeNode]:
     return [node for node in nodes if isinstance(node, SolverShapeNode)]
 
 
-def _operation_nodes(
-    nodes: tuple[SolverShapeNode | SolverOperationNode, ...],
-) -> list[SolverOperationNode]:
+def _operation_nodes(nodes: tuple[object, ...]) -> list[SolverOperationNode]:
     return [node for node in nodes if isinstance(node, SolverOperationNode)]
 
 
-def test_solver_builds_source_shape_graph() -> None:
+def test_inventory_throughput_full_source_is_no_op() -> None:
     result = _throughput("CuCuCuCu")
-
-    assert result.target_shape == "CuCuCuCu"
+    assert result.found is True
     assert result.graph is not None
+    assert result.steps == ()
     shape_nodes = _shape_nodes(result.graph.nodes)
     assert len(shape_nodes) == 1
     assert shape_nodes[0].role == "target"
 
 
-def test_solver_uses_rotation_rule_for_rotated_half() -> None:
-    result = _throughput("--CuCu--")
-
-    assert result.graph is not None
-    operation_nodes = _operation_nodes(result.graph.nodes)
-    operation_types = {node.operation_type for node in operation_nodes}
-    assert "cutter" in operation_types
-    assert "rotate_cw" in operation_types or "rotate_ccw" in operation_types
+def test_inventory_throughput_rc_cu_rc_cu_short_plan() -> None:
+    result = _throughput("RcCuRcCu")
+    assert result.found is True
+    assert result.batch_plan is not None
+    assert len(result.steps) < 12
+    assert "CHECKER_PAIR" in result.batch_plan.used_macro_kinds
 
 
-def test_solver_uses_painter_for_monochrome_colored_shape() -> None:
+def test_inventory_throughput_swap_half_pattern() -> None:
+    result = _throughput("RcRcCuCu")
+    assert result.found is True
+    op_types = [step.operation_type for step in result.steps]
+    assert "swapper" in op_types
+    assert all(t in ("swapper", "rotate_cw", "rotate_ccw", "rotate_180") for t in op_types)
+
+
+def test_inventory_cannot_paint_monochrome_target_yet() -> None:
     result = _throughput("CrCrCrCr")
-
-    assert result.graph is not None
-    operation_nodes = _operation_nodes(result.graph.nodes)
-    assert any(node.operation_type == "painter" for node in operation_nodes)
+    assert result.found is False
 
 
-def test_solver_builds_quadrant_assembly_graph_for_mixed_single_layer_shape() -> None:
-    result = _throughput("CuRuSuWu")
-
-    assert result.graph is not None
-    target_nodes = [node for node in _shape_nodes(result.graph.nodes) if node.role == "target"]
-    assert len(target_nodes) == 1
-    assert target_nodes[0].shape_code == "CuRuSuWu"
-    assert any(edge.label == "Output B (unused)" for edge in result.graph.edges)
-    operation_nodes = _operation_nodes(result.graph.nodes)
-    operation_types = [node.operation_type for node in operation_nodes]
-    assert operation_types.count("stacker") == 2
-    assert operation_types.count("swapper") == 1
-
-
-def test_solver_prefers_structured_half_assembly_for_mixed_single_layer_shapes() -> None:
-    result = _throughput("CuRuSuSu")
-
-    assert result.graph is not None
-    operation_types = [node.operation_type for node in _operation_nodes(result.graph.nodes)]
-    assert operation_types.count("stacker") == 1
-    assert operation_types.count("swapper") == 1
-
-
-def test_solver_builds_multi_layer_stack_graph() -> None:
+def test_inventory_multi_layer_target_no_batch() -> None:
     result = _throughput("CuCuCuCu:RuRuRuRu")
-
-    assert result.graph is not None
-    operation_nodes = _operation_nodes(result.graph.nodes)
-    assert any(node.operation_type == "stacker" for node in operation_nodes)
+    assert result.found is False
+    assert result.warnings
 
 
-def test_solver_service_applies_auto_lcm_batch_to_graph_sources() -> None:
+def test_inventory_cu_ru_su_su_batch_demands_and_optional_plan() -> None:
     result = _throughput("CuRuSuSu")
+    assert result.target_count == 4
+    assert tuple(d.base_shape_code for d in result.base_demands) == (
+        "CuCuCuCu",
+        "RuRuRuRu",
+        "SuSuSuSu",
+    )
+    assert result.found is True
+    assert result.batch_plan is not None
+    assert "ABCC_BATCH" in result.batch_plan.used_macro_kinds
     assert result.graph is not None
     sources = {
         node.shape_code: node.quantity
@@ -119,7 +104,7 @@ def test_planner_memoizes_repeated_shape_requests() -> None:
     assert target.canonical_code in ctx.memo
 
 
-def test_solver_rejects_unsupported_pin_and_crystal_targets() -> None:
+def test_throughput_rejects_unsupported_pin_and_crystal_targets() -> None:
     with pytest.raises(UnsupportedTargetError):
         _throughput("PuPuPuPu")
 

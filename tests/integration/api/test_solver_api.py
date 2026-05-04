@@ -17,6 +17,10 @@ def test_solver_api_returns_auto_batch_target_count_and_base_demands() -> None:
     payload = response.json()
     assert payload["ok"] is True
     assert "target_count" not in payload
+    assert payload["solver"]["mode"] == "inventory_search"
+    assert payload["solver"]["target_count"] == 4
+    assert payload["solver"]["used_macro_actions"] == ["ABCC_BATCH"]
+    assert payload["solver"]["used_macro_sources"] == ["ABCC_BATCH:builtin"]
     assert payload["target"]["count"] == 4
     assert payload["base_demands"] == [
         {
@@ -38,20 +42,9 @@ def test_solver_api_returns_auto_batch_target_count_and_base_demands() -> None:
             "full_source_count": 2,
         },
     ]
-    assert payload["materialized_graph"] is not None
-    target_nodes = [
-        node
-        for node in payload["materialized_graph"]["nodes"]
-        if node["kind"] == "shape" and node["role"] == "target"
-    ]
-    assert len(target_nodes) == 4
-    source_count_by_code: dict[str, int] = {}
-    for node in payload["materialized_graph"]["nodes"]:
-        if node["kind"] != "shape" or node["role"] != "source":
-            continue
-        shape_code = node["shape_code"]
-        source_count_by_code[shape_code] = source_count_by_code.get(shape_code, 0) + 1
-    assert source_count_by_code == {"CuCuCuCu": 1, "RuRuRuRu": 1, "SuSuSuSu": 2}
+    assert payload["materialized_graph"] is None
+    assert payload["found"] is True
+    assert not any("inventory_search_failed" in w for w in payload["warnings"])
     target_node = next(
         node
         for node in payload["graph"]["nodes"]

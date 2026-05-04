@@ -1,0 +1,28 @@
+{% load static %}
+{# Left (desktop): full-bleed factory art. Mobile: hidden; see auth_split_visual_mobile.html #}
+<div class="auth-split-visual pointer-events-none relative min-h-0 overflow-hidden" aria-hidden="true">
+  <div
+    class="absolute inset-0 bg-[linear-gradient(to_right,rgba(34,211,238,0.07)_1px,transparent_1px),linear-gradient(to_bottom,rgba(34,211,238,0.07)_1px,transparent_1px)] bg-size-[48px_48px] opacity-80"
+  ></div>
+  <img
+    src="{% static 'web/img/branding/header.png' %}"
+    alt=""
+    class="absolute inset-0 h-full w-full object-cover"
+    style="object-position: center 35%"
+    width="1920"
+    height="400"
+    decoding="async"
+    fetchpriority="low"
+  />
+  <div class="absolute inset-0 bg-linear-to-r from-slate-950 via-slate-950/55 to-slate-950/10"></div>
+  <div class="pointer-events-none absolute bottom-6 left-6 z-10 hidden lg:block">
+    <img
+      src="{% static 'web/img/branding/box-art.png' %}"
+      alt=""
+      width="200"
+      height="200"
+      class="h-auto max-h-40 w-auto max-w-[min(100%,14rem)] object-contain opacity-95 drop-shadow-2xl"
+      decoding="async"
+    />
+  </div>
+</div>

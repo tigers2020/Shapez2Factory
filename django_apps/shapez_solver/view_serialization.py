@@ -13,6 +13,22 @@ def serialize_solver_result(
     result: FactoryThroughputResult,
     warnings: tuple[str, ...] = (),
 ) -> dict[str, Any]:
+    solver_payload: dict[str, Any] = {
+        "mode": result.solver_mode,
+        "target_count": result.target_count,
+    }
+    if result.batch_plan is not None:
+        cost = result.batch_plan.cost
+        solver_payload["states_explored"] = result.batch_plan.states_explored
+        solver_payload["cost"] = {
+            "operation_runs": cost.operation_runs,
+            "factory_depth": cost.factory_depth,
+            "waste_count": cost.waste_count,
+            "graph_complexity": cost.graph_complexity,
+        }
+        solver_payload["used_macro_actions"] = list(result.batch_plan.used_macro_kinds)
+        solver_payload["used_macro_sources"] = list(result.batch_plan.used_macro_sources)
+
     return {
         "ok": True,
         "found": result.found,
@@ -29,6 +45,7 @@ def serialize_solver_result(
         "materialized_graph": (
             serialize_solver_graph(result.materialized_graph) if result.materialized_graph else None
         ),
+        "solver": solver_payload,
     }
 
 

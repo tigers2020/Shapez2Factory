@@ -37,6 +37,34 @@ def extract_max_depth(request: HttpRequest) -> int:
     return max(1, min(parsed, 64))
 
 
+def extract_solver_mode(request: HttpRequest) -> str | None:
+    payload = extract_json_payload(request)
+    if request.content_type == _JSON_CONTENT_TYPE:
+        if payload is None:
+            return None
+        mode = payload.get("solver_mode")
+        return mode if isinstance(mode, str) else None
+    mode = request.POST.get("solver_mode")
+    return mode if isinstance(mode, str) else None
+
+
+def extract_solver_timeout_seconds(request: HttpRequest) -> float | None:
+    payload = extract_json_payload(request)
+    value: Any
+    if request.content_type == _JSON_CONTENT_TYPE:
+        if payload is None:
+            return None
+        value = payload.get("solver_timeout_seconds")
+    else:
+        value = request.POST.get("solver_timeout_seconds")
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def extract_json_payload(request: HttpRequest) -> dict[str, Any] | None:
     if request.content_type != _JSON_CONTENT_TYPE:
         return None

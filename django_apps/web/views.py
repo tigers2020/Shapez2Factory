@@ -10,6 +10,7 @@ from django_apps.shapez_core.services.preview_service import (
     get_color_catalog_rows,
     get_shape_catalog_rows,
 )
+from django_apps.shapez_solver.services.pattern_lab_service import analyze_pattern_lab_shape
 
 
 @lru_cache(maxsize=8)
@@ -108,6 +109,36 @@ def solver(request: HttpRequest) -> HttpResponse:
         {
             "shape_code": shape_code,
         },
+    )
+
+
+def pattern_lab(request: HttpRequest) -> HttpResponse:
+    shape_code = request.GET.get("code", "").strip()
+    analysis = analyze_pattern_lab_shape(shape_code) if shape_code else None
+    return render(
+        request,
+        "web/pattern_lab.html",
+        {
+            "shape_code": shape_code,
+            "analysis": analysis,
+        },
+    )
+
+
+def support(request: HttpRequest) -> HttpResponse:
+    support_links: list[dict[str, str]] = []
+    if settings.SUPPORT_KOFI_URL:
+        support_links.append({"label": "Ko-fi", "url": settings.SUPPORT_KOFI_URL})
+    if settings.SUPPORT_GITHUB_SPONSORS_URL:
+        support_links.append(
+            {"label": "GitHub Sponsors", "url": settings.SUPPORT_GITHUB_SPONSORS_URL}
+        )
+    if settings.SUPPORT_PATREON_URL:
+        support_links.append({"label": "Patreon", "url": settings.SUPPORT_PATREON_URL})
+    return render(
+        request,
+        "web/support.html",
+        {"support_links": support_links},
     )
 
 

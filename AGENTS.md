@@ -72,6 +72,10 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 
 시몬은 플랜이 닫히기 전까지 3단계 구현 진입을 허용하지 않는다.
 
+### `documents/` 작성 언어
+
+`documents/`에 **새로 쓰거나 내용을 고치는** Markdown(리서치·플랜·작업 메모·조사 요약 등)은 **한국어**로 작성한다. 제목·본문·목차·표 셀 설명·체크리스트 문구 등 독자에게 보이는 설명은 모두 한국어를 쓴다. 코드 블록·파일 경로·CLI·모듈·클래스·필드 식별자·공식 API 이름·URL·외부 문헌 인용 원문은 그대로 둘 수 있다.
+
 ---
 
 ## 프로젝트 개요
@@ -81,6 +85,8 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 도메인·시스템 참고 요약(공식·Steam·FAQ 등 출처 표기): [`documents/research_shapez2_game_systems_2026-05-01.md`](documents/research_shapez2_game_systems_2026-05-01.md).
 
 워크플로우: `documents/`에 리서치·플랜 MD → 사람 승인 → `django_apps/shapez_core`, `django_apps/shapez_solver`, `django_apps/web` 기준 구현 → 테스(QA)·렉스(하네스) 검증 → 시몬 클로징으로 `documents/` 동기화.
+
+인증: 일반 회원가입·로그인과 기본 소셜 로그인은 `django-allauth` 기반으로 `accounts/` URL에 연결한다. 기본 소셜 제공자는 Google/GitHub이며, OAuth 클라이언트 ID와 secret은 코드에 넣지 않고 Django admin의 `SocialApp` 또는 환경별 설정으로 등록한다.
 
 ---
 

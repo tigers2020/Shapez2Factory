@@ -1,8 +1,12 @@
 """Django settings for the shapez2 factory planner scaffold."""
 
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True
@@ -14,7 +18,12 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "django.contrib.sites",
     "django.contrib.staticfiles",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
     "django_apps.shapez_core.apps.ShapezCoreConfig",
     "django_apps.shapez_solver.apps.ShapezSolverConfig",
     "django_apps.web.apps.WebConfig",
@@ -27,6 +36,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -35,13 +45,14 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "django_apps" / "web" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "django_apps.web.context_processors.django_debug",
             ],
         },
     },
@@ -72,4 +83,56 @@ STATIC_URL = "static/"
 SOLVER_GRAPH_PREVIEW_RENDERER = "playwright_png"
 SOLVER_GRAPH_PREVIEW_CACHE_DIR = BASE_DIR / ".graph_preview_cache"
 
+SUPPORT_KOFI_URL = os.environ.get("SUPPORT_KOFI_URL", "").strip()
+SUPPORT_GITHUB_SPONSORS_URL = os.environ.get("SUPPORT_GITHUB_SPONSORS_URL", "").strip()
+SUPPORT_PATREON_URL = os.environ.get("SUPPORT_PATREON_URL", "").strip()
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+SITE_ID = 1
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_LOGIN_METHODS = {"username"}
+# `email` must appear (optional `email` or required `email*`) so socialaccount's
+# SignupForm can pass `email_required` into BaseSignupForm (allauth raises
+# ImproperlyConfigured if the key is missing from SIGNUP_FIELDS).
+ACCOUNT_SIGNUP_FIELDS = ["username*", "email", "password1*", "password2*"]
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+# Request email from OAuth providers when available (still compatible with
+# optional `email` in ACCOUNT_SIGNUP_FIELDS).
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+SOCIALACCOUNT_FORMS = {
+    "signup": "django_apps.web.socialaccount_forms.SocialSignupForm",
+}
+
+# If a trusted OAuth provider returns a verified email that already exists on a
+# local user, log in that user and connect the social account (skip 3rdparty
+# signup). Only safe with providers you trust — we use Google only for now.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_ADAPTER = "django_apps.web.social_adapter.SocialAccountAdapter"
+
+# Social login: either add a SocialApp in admin (linked to Site SITE_ID) or set
+# OAuth env vars below. Without both client id and secret, /accounts/<provider>/login/
+# raises SocialApp.DoesNotExist.
+# Do not define the same provider twice (admin SocialApp + APP here): two apps
+# for one provider can break login (wrong client_id/secret or MultipleObjectsReturned).
+_social_providers: dict[str, dict] = {}
+_google_cid = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "").strip()
+_google_sec = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "").strip()
+if _google_cid and _google_sec:
+    _social_providers["google"] = {
+        "APP": {"client_id": _google_cid, "secret": _google_sec},
+        # openid: Google returns id_token; profile/email: userinfo + django-allauth.
+        "SCOPE": ["openid", "profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+    }
+SOCIALACCOUNT_PROVIDERS = _social_providers

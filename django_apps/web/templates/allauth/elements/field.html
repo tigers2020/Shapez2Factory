@@ -1,0 +1,53 @@
+{% load allauth %}
+{{ attrs.errors }}
+<p class="mt-3 first:mt-0 {% if attrs.type == 'checkbox' or attrs.type == 'radio' %}flex items-center gap-2{% endif %}">
+  {% if attrs.type == "textarea" %}
+    <label class="mb-2 block text-sm font-medium text-slate-300" for="{{ attrs.id }}">
+      {% slot label %}
+      {% endslot %}
+    </label>
+    <textarea
+      class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+      {% if attrs.required %}required{% endif %}
+      {% if attrs.rows %}rows="{{ attrs.rows }}"{% endif %}
+      {% if attrs.disabled %}disabled{% endif %}
+      {% if attrs.readonly %}readonly{% endif %}
+      {% if attrs.checked %}checked{% endif %}
+      {% if attrs.name %}name="{{ attrs.name }}"{% endif %}
+      {% if attrs.id %}id="{{ attrs.id }}"{% endif %}
+      {% if attrs.placeholder %}placeholder="{{ attrs.placeholder }}"{% endif %}
+    >{% slot value %}{% endslot %}</textarea>
+  {% else %}
+    {% if attrs.type != "checkbox" and attrs.type != "radio" %}
+      <label class="mb-2 block text-sm font-medium text-slate-300" for="{{ attrs.id }}">
+        {% slot label %}
+        {% endslot %}
+      </label>
+    {% endif %}
+    <input
+      class="{% if attrs.type == 'checkbox' or attrs.type == 'radio' %}h-4 w-4 shrink-0 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-400/40{% else %}w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400{% endif %}"
+      {% if attrs.required %}required{% endif %}
+      {% if attrs.disabled %}disabled{% endif %}
+      {% if attrs.readonly %}readonly{% endif %}
+      {% if attrs.checked %}checked{% endif %}
+      {% if attrs.name %}name="{{ attrs.name }}"{% endif %}
+      {% if attrs.id %}id="{{ attrs.id }}"{% endif %}
+      {% if attrs.placeholder %}placeholder="{{ attrs.placeholder }}"{% endif %}
+      {% if attrs.autocomplete %}autocomplete="{{ attrs.autocomplete }}"{% endif %}
+      {% if attrs.value is not None %}value="{{ attrs.value }}"{% endif %}
+      type="{{ attrs.type }}"
+    >
+    {% if attrs.type == "checkbox" or attrs.type == "radio" %}
+      <label class="ms-2 text-sm text-slate-300" for="{{ attrs.id }}">
+        {% slot label %}
+        {% endslot %}
+      </label>
+    {% endif %}
+  {% endif %}
+  {% if slots.help_text %}
+    <span class="mt-1 block text-xs text-slate-500">
+      {% slot help_text %}
+      {% endslot %}
+    </span>
+  {% endif %}
+</p>

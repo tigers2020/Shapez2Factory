@@ -1,0 +1,53 @@
+{% load i18n static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% translate "Sign In" %} - {{ provider }} - shapez2 planner</title>
+    <meta http-equiv="refresh" content="0;URL='{{ redirect_to }}'">
+    <link rel="icon" type="image/png" href="{% static 'web/img/branding/logo-3.png' %}">
+    <link rel="stylesheet" href="{% static 'web/css/app.css' %}">
+    <link rel="stylesheet" href="{% static 'web/css/auth-layout.css' %}">
+  </head>
+  <body>
+    <main class="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+      <div class="relative z-20 shrink-0">
+        {% include "web/partials/site_nav.html" %}
+      </div>
+
+      <div class="auth-split-root min-h-0 flex-1 overflow-hidden">
+        {% include "web/partials/auth_split_visual.html" %}
+        {% include "web/partials/auth_split_visual_mobile.html" %}
+
+        <aside class="auth-split-panel text-slate-100">
+          <div class="auth-split-panel-bg" aria-hidden="true"></div>
+          <div class="auth-split-panel-inner flex flex-1 flex-col justify-center">
+            <section class="auth-panel-section flex flex-col gap-4 py-2">
+              <div class="rounded-xl border border-slate-800 bg-slate-900/80 p-6 text-center shadow-lg shadow-black/40">
+                <div class="mb-4 flex justify-center" aria-hidden="true">
+                  <img
+                    src="{% static 'web/img/branding/logo-3.png' %}"
+                    alt=""
+                    width="40"
+                    height="40"
+                    class="h-10 w-10 rounded-lg border border-cyan-400/35 bg-slate-950 object-contain p-0.5 opacity-90"
+                    decoding="async"
+                  />
+                </div>
+                <p class="text-sm text-slate-400">{% translate "Redirecting…" %}</p>
+                <p class="mt-4">
+                  <a
+                    href="{{ redirect_to }}"
+                    class="text-sm font-semibold text-cyan-200 no-underline hover:text-cyan-100"
+                  >{% translate "Continue" %}</a>
+                </p>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </div>
+    </main>
+    <script src="{% static 'web/js/flowbite.min.js' %}"></script>
+  </body>
+</html>

@@ -1,0 +1,225 @@
+{% extends "web/base.html" %}
+
+{% block title %}shapez2 planner | Pattern Lab{% endblock %}
+
+{% block content %}
+<main class="min-h-screen bg-slate-950 text-slate-100">
+  {% include "web/partials/site_nav.html" %}
+
+  <section class="border-b border-cyan-400/15 bg-slate-950">
+    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+      <p class="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">Pattern Lab</p>
+      <h1 class="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+        Inspect pattern signatures and macro catalog candidates.
+      </h1>
+      <p class="mt-4 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
+        Pattern DB entries stay as candidate metadata. Python strategy dry-runs decide whether a macro can actually produce an inventory-search action.
+      </p>
+    </div>
+  </section>
+
+  <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+    <form method="get" class="flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-end" action="">
+      <label class="sr-only" for="pattern-lab-code-input">Shape code</label>
+      <div class="w-full">
+        <input
+          id="pattern-lab-code-input"
+          type="text"
+          name="code"
+          value="{{ shape_code }}"
+          autocomplete="off"
+          placeholder="e.g. CuRuSuSu or RcCuRcCu"
+          class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50"
+        />
+      </div>
+      <button
+        type="submit"
+        class="shrink-0 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-500/15"
+      >
+        Analyze
+      </button>
+    </form>
+
+    {% if not analysis %}
+      <p class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-5 text-sm text-slate-400">
+        Enter a shape code to inspect its symbolic signature, inventory-search skeleton, DB macro candidates, and strategy dry-run status.
+      </p>
+    {% elif analysis.error %}
+      <div class="mt-8 rounded-2xl border border-rose-400/30 bg-rose-950/20 p-5">
+        <p class="text-sm font-semibold text-rose-200">Analysis failed</p>
+        <p class="mt-2 text-sm text-rose-100/90">{{ analysis.error }}</p>
+        {% if analysis.canonical_code %}
+          <p class="mt-3 font-mono text-xs text-rose-100/70">canonical: {{ analysis.canonical_code }}</p>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="mt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5" aria-labelledby="pattern-summary-heading">
+          <h2 id="pattern-summary-heading" class="text-sm font-semibold text-cyan-200">Signature</h2>
+          <dl class="mt-4 grid gap-3 text-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <dt class="text-slate-500">Canonical</dt>
+              <dd class="font-mono text-slate-100">{{ analysis.canonical_code }}</dd>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <dt class="text-slate-500">Signature</dt>
+              <dd class="font-mono text-cyan-200">{{ analysis.signature }}</dd>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <dt class="text-slate-500">Inventory goal</dt>
+              <dd class="font-mono text-slate-100">{{ analysis.inventory_goal_code }}</dd>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <dt class="text-slate-500">Inventory signature</dt>
+              <dd class="font-mono text-cyan-200">{{ analysis.inventory_signature }}</dd>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <dt class="text-slate-500">Target batch</dt>
+              <dd class="font-mono text-slate-100">
+                {% if analysis.target_count %}x{{ analysis.target_count }}{% else %}n/a{% endif %}
+              </dd>
+            </div>
+          </dl>
+          {% if analysis.warnings %}
+            <div class="mt-5 rounded-xl border border-amber-400/25 bg-amber-950/20 p-3 text-xs text-amber-100">
+              {% for warning in analysis.warnings %}
+                <p>{{ warning }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </section>
+
+        <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5" aria-labelledby="symbol-map-heading">
+          <h2 id="symbol-map-heading" class="text-sm font-semibold text-cyan-200">Symbol map</h2>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            {% for entry in analysis.symbol_map %}
+              <div class="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3">
+                <span class="font-mono text-lg text-cyan-200">{{ entry.symbol }}</span>
+                <span class="font-mono text-sm text-slate-100">{{ entry.token }}</span>
+              </div>
+            {% endfor %}
+          </div>
+          <h3 class="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">Rotation variants</h3>
+          <div class="mt-3 overflow-x-auto">
+            <table class="w-full min-w-[24rem] border-collapse text-left text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-500">
+                  <th class="py-2 pr-3 font-medium">Shape code</th>
+                  <th class="py-2 font-medium">Signature</th>
+                </tr>
+              </thead>
+              <tbody class="text-slate-300">
+                {% for variant in analysis.rotation_variants %}
+                  <tr class="border-b border-slate-800/80">
+                    <td class="py-2 pr-3 font-mono text-slate-100">{{ variant.shape_code }}</td>
+                    <td class="py-2 font-mono text-cyan-200/90">{{ variant.signature }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-5" aria-labelledby="macro-candidates-heading">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="macro-candidates-heading" class="text-sm font-semibold text-cyan-200">Macro candidates</h2>
+          <span class="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">
+            DB matches: {{ analysis.db_candidates|length }}
+          </span>
+        </div>
+        {% if analysis.macro_results %}
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full min-w-[48rem] border-collapse text-left text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-500">
+                  <th class="py-2 pr-3 font-medium">Macro</th>
+                  <th class="py-2 pr-3 font-medium">Strategy</th>
+                  <th class="py-2 pr-3 font-medium">Family</th>
+                  <th class="py-2 pr-3 font-medium">Cost</th>
+                  <th class="py-2 pr-3 font-medium">Dry-run</th>
+                  <th class="py-2 font-medium">Primitive steps</th>
+                </tr>
+              </thead>
+              <tbody class="text-slate-300">
+                {% for result in analysis.macro_results %}
+                  <tr class="border-b border-slate-800/80">
+                    <td class="py-2 pr-3 font-mono text-slate-100">{{ result.candidate.macro_code }}</td>
+                    <td class="py-2 pr-3 font-mono text-cyan-200">{{ result.candidate.strategy_code }}</td>
+                    <td class="py-2 pr-3 font-mono text-slate-400">{{ result.candidate.family_code }}</td>
+                    <td class="py-2 pr-3 font-mono text-slate-400">
+                      op {{ result.candidate.estimated_operation_cost }} / stage {{ result.candidate.estimated_stage_cost }}
+                    </td>
+                    <td class="py-2 pr-3">
+                      {% if result.can_generate %}
+                        <span class="rounded-full bg-emerald-400/10 px-2 py-1 font-semibold text-emerald-200">ready</span>
+                      {% else %}
+                        <span class="rounded-full bg-rose-400/10 px-2 py-1 font-semibold text-rose-200">not generated</span>
+                      {% endif %}
+                    </td>
+                    <td class="py-2 font-mono text-slate-100">{{ result.primitive_step_count }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-6 grid gap-4 lg:grid-cols-2">
+            {% for result in analysis.macro_results %}
+              <article class="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <h3 class="font-mono text-sm text-slate-100">{{ result.candidate.macro_code }}</h3>
+                  <span class="rounded-full border border-slate-700 px-2 py-1 font-mono text-[10px] text-slate-400">
+                    {{ result.candidate.strategy_code }}
+                  </span>
+                </div>
+                {% if result.candidate.steps %}
+                  <ol class="mt-4 space-y-3">
+                    {% for step in result.candidate.steps %}
+                      <li class="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                          <span class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Step {{ step.step_index }}</span>
+                          <span class="font-mono text-xs text-cyan-200">{{ step.operation }}</span>
+                        </div>
+                        <p class="mt-2 font-mono text-[11px] text-slate-400">
+                          in [{{ step.input_slots|join:", " }}] -> out [{{ step.output_slots|join:", " }}]
+                        </p>
+                        {% if step.note %}
+                          <p class="mt-2 text-xs leading-relaxed text-slate-500">{{ step.note }}</p>
+                        {% endif %}
+                      </li>
+                    {% endfor %}
+                  </ol>
+                {% else %}
+                  <p class="mt-4 text-sm text-slate-500">No step metadata is registered for this macro.</p>
+                {% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="mt-4 rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-400">
+            No active DB macro matched the inventory signature. Load the seed fixture or add a MacroRecipe in admin.
+          </p>
+        {% endif %}
+      </section>
+
+      <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-5" aria-labelledby="source-counts-heading">
+        <h2 id="source-counts-heading" class="text-sm font-semibold text-cyan-200">Batch source counts</h2>
+        {% if analysis.source_counts %}
+          <div class="mt-4 grid gap-3 sm:grid-cols-3">
+            {% for shape_code, count in analysis.source_counts.items %}
+              <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3">
+                <p class="font-mono text-sm text-slate-100">{{ shape_code }}</p>
+                <p class="mt-1 text-xs text-slate-500">source x{{ count }}</p>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="mt-4 text-sm text-slate-400">No batch source count could be computed.</p>
+        {% endif %}
+      </section>
+    {% endif %}
+  </div>
+
+  {% include "web/partials/site_footer.html" %}
+</main>
+{% endblock %}

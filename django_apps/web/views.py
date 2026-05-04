@@ -1,16 +1,331 @@
-from functools import lru_cache
+import json
+from functools import lru_cache, wraps
 from pathlib import Path
+from typing import Any
 
 from django.conf import settings
-from django.http import FileResponse, Http404, HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.contrib.auth.views import redirect_to_login
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.db.models import Prefetch
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_http_methods
 
 from django_apps.shapez_core.services.preview_service import (
     build_demo_parse_rows,
     get_color_catalog_rows,
     get_shape_catalog_rows,
 )
+from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeStep
+from django_apps.shapez_solver.services.graph_document_primitive_chain import (
+    try_linear_operation_sequence,
+)
+from django_apps.shapez_solver.services.macro_recipe_graph_visual import (
+    enrich_react_flow_with_macro_visual_previews,
+    serialize_macro_recipe_visual,
+)
+from django_apps.shapez_solver.services.macro_recipe_staff_catalog import (
+    apply_graph_derived_catalog_fields,
+    build_catalog_snapshot,
+    create_draft_macro_recipe,
+    create_recipe,
+    delete_recipe,
+    serialize_recipe,
+    sync_macro_recipe_steps_from_graph_document,
+    update_recipe,
+)
 from django_apps.shapez_solver.services.pattern_lab_service import analyze_pattern_lab_shape
+from django_apps.shapez_solver.services.recipe_graph_cost_hints import graph_cost_hint_from_document
+from django_apps.shapez_solver.services.recipe_graph_react_flow_adapter import (
+    domain_graph_to_react_flow,
+    react_flow_to_domain_graph,
+)
+from django_apps.shapez_solver.services.recipe_graph_recipe_validation import (
+    annotate_visual_graph_with_issues,
+    validate_recipe_graph_context,
+)
+from django_apps.shapez_solver.services.recipe_graph_recompute import (
+    recompute_graph_document,
+    validate_graph_document,
+)
+
+
+def staff_site_required(view_func):
+    """Require login at ``settings.LOGIN_URL`` and ``is_staff`` (403 if logged-in but not staff)."""
+
+    @wraps(view_func)
+    def _wrapped(request: HttpRequest, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        if not request.user.is_staff:
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
+
+def _macro_staff_catalog_json(request: HttpRequest) -> JsonResponse:
+    del request
+    return JsonResponse(build_catalog_snapshot())
+
+
+def _macro_staff_graph_bootstrap(request: HttpRequest, recipe_pk: int) -> dict[str, Any]:
+    del request
+    return {
+        "api_catalog": reverse("web:macro-pattern-staff-api-catalog"),
+        "api_recipes": reverse("web:macro-pattern-staff-api-recipes-create"),
+        "api_recipe_detail_pattern": reverse(
+            "web:macro-pattern-staff-api-recipe-detail",
+            kwargs={"pk": recipe_pk},
+        ),
+        "api_recipe_graph_recompute": reverse(
+            "web:macro-pattern-staff-api-recipe-graph-recompute",
+            kwargs={"pk": recipe_pk},
+        ),
+        "staff_catalog_url": reverse("web:macro-pattern-staff"),
+        "staff_recipe_edit_url": reverse(
+            "web:macro-pattern-recipe-edit",
+            kwargs={"pk": recipe_pk},
+        ),
+    }
+
+
+@staff_site_required
+def macro_pattern_list(request: HttpRequest) -> HttpResponse:
+    catalog = build_catalog_snapshot()
+    return render(
+        request,
+        "web/macro_pattern_list.html",
+        {"catalog": catalog, "nav_tone": "mono", "staff_macro_nav": "list"},
+    )
+
+
+@staff_site_required
+def macro_pattern_new(request: HttpRequest) -> HttpResponse:
+    catalog = build_catalog_snapshot()
+    error: str | None = None
+    if request.method == "POST":
+        try:
+            name = (request.POST.get("name") or "").strip()
+            recipe = create_draft_macro_recipe(name=name)
+            return redirect("web:macro-pattern-graph", pk=recipe.pk)
+        except (ValueError, TypeError) as exc:
+            error = str(exc)
+    return render(
+        request,
+        "web/macro_pattern_new.html",
+        {
+            "catalog": catalog,
+            "nav_tone": "mono",
+            "staff_macro_nav": "new",
+            "form_error": error,
+        },
+    )
+
+
+@staff_site_required
+def macro_pattern_recipe_edit(request: HttpRequest, pk: int) -> HttpResponse:
+    recipe = get_object_or_404(
+        MacroRecipe.objects.select_related("family").prefetch_related(
+            Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index"))
+        ),
+        pk=pk,
+    )
+    catalog = build_catalog_snapshot()
+    serialized = serialize_recipe(recipe)
+    bootstrap = {
+        "api_recipe_detail": reverse(
+            "web:macro-pattern-staff-api-recipe-detail",
+            kwargs={"pk": pk},
+        ),
+        "api_catalog": reverse("web:macro-pattern-staff-api-catalog"),
+    }
+    return render(
+        request,
+        "web/macro_pattern_recipe_edit.html",
+        {
+            "recipe": serialized,
+            "catalog": catalog,
+            "bootstrap": bootstrap,
+            "nav_tone": "mono",
+            "staff_macro_nav": "edit",
+        },
+    )
+
+
+@staff_site_required
+def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
+    recipe = get_object_or_404(
+        MacroRecipe.objects.select_related("family").prefetch_related(
+            Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index"))
+        ),
+        pk=pk,
+    )
+    serialized = serialize_recipe(recipe)
+    bootstrap = _macro_staff_graph_bootstrap(request, pk)
+    react_flow_initial: dict[str, Any] | None = None
+    rf_status: str = "missing"
+    if recipe.graph_document:
+        try:
+            validated_doc = validate_graph_document(recipe.graph_document)
+            react_flow_initial = domain_graph_to_react_flow(validated_doc)
+            react_flow_initial = enrich_react_flow_with_macro_visual_previews(
+                react_flow_initial, validated_doc
+            )
+            rf_status = "ok"
+        except ValueError:
+            react_flow_initial = None
+            rf_status = "invalid"
+    bootstrap["react_flow_initial"] = react_flow_initial
+    bootstrap["react_flow_initial_status"] = rf_status
+    bootstrap["macro_step_count"] = len(recipe.steps.all())
+    use_react_flow_editor = getattr(settings, "RECIPE_GRAPH_USE_REACT_FLOW", False)
+    return render(
+        request,
+        "web/macro_pattern_graph.html",
+        {
+            "recipe": serialized,
+            "bootstrap": bootstrap,
+            "catalog": build_catalog_snapshot(),
+            "nav_tone": "mono",
+            "staff_macro_nav": "graph",
+            "use_react_flow_editor": use_react_flow_editor,
+            "recipe_graph_editor_asset_version": "20260504-rf18",
+        },
+    )
+
+
+@staff_site_required
+@require_http_methods(["GET"])
+def macro_pattern_staff_api_catalog(request: HttpRequest) -> JsonResponse:
+    return _macro_staff_catalog_json(request)
+
+
+@staff_site_required
+@require_http_methods(["POST"])
+def macro_pattern_staff_api_recipes_create(request: HttpRequest) -> JsonResponse:
+    try:
+        data = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "invalid JSON"}, status=400)
+    try:
+        recipe = create_recipe(data)
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+    return JsonResponse({"ok": True, "recipe": serialize_recipe(recipe)})
+
+
+@staff_site_required
+@require_http_methods(["POST"])
+def macro_pattern_staff_api_recipe_graph_recompute(request: HttpRequest, pk: int) -> JsonResponse:
+    recipe = get_object_or_404(MacroRecipe, pk=pk)
+    try:
+        data = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "invalid JSON"}, status=400)
+    has_doc = "graph_document" in data and data["graph_document"] is not None
+    has_rf = "react_flow" in data and data["react_flow"] is not None
+    if has_doc and has_rf:
+        return JsonResponse(
+            {"ok": False, "error": "provide only one of graph_document or react_flow"},
+            status=400,
+        )
+    if not has_doc and not has_rf:
+        return JsonResponse(
+            {"ok": False, "error": "graph_document or react_flow is required"},
+            status=400,
+        )
+    try:
+        if has_rf:
+            if not isinstance(data["react_flow"], dict):
+                return JsonResponse(
+                    {"ok": False, "error": "react_flow must be an object"},
+                    status=400,
+                )
+            raw_doc = react_flow_to_domain_graph(data["react_flow"])
+            validated = validate_graph_document(raw_doc)
+        else:
+            validated = validate_graph_document(data["graph_document"])
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+    doc, warnings = recompute_graph_document(validated)
+    steps_synced = False
+    if data.get("commit"):
+        with transaction.atomic():
+            locked = (
+                MacroRecipe.objects.select_for_update().select_related("family").get(pk=recipe.pk)
+            )
+            locked.graph_document = doc
+            locked.save(update_fields=["graph_document"])
+            steps_synced = sync_macro_recipe_steps_from_graph_document(locked, doc)
+            apply_graph_derived_catalog_fields(locked, doc)
+    try:
+        visual_graph = serialize_macro_recipe_visual(doc)
+    except (ValueError, TypeError, KeyError):
+        visual_graph = None
+    issues = validate_recipe_graph_context(
+        family_signature=recipe.family.signature,
+        family_allow_rotation=recipe.family.allow_rotation,
+        graph_document=doc,
+    )
+    validation_ok = not any(i.get("severity") == "error" for i in issues)
+    if isinstance(visual_graph, dict):
+        annotate_visual_graph_with_issues(visual_graph, issues)
+    cost_hint = graph_cost_hint_from_document(doc)
+    linear_ops = try_linear_operation_sequence(doc)
+    react_flow = domain_graph_to_react_flow(doc)
+    react_flow = enrich_react_flow_with_macro_visual_previews(react_flow, doc)
+    return JsonResponse(
+        {
+            "ok": True,
+            "graph_document": doc,
+            "react_flow": react_flow,
+            "warnings": warnings,
+            "visual_graph": visual_graph,
+            "validation": {"ok": validation_ok, "issues": issues},
+            "steps_synced": steps_synced,
+            "graph_cost_hint": cost_hint,
+            "graph_linear_operation_sequence": linear_ops,
+        }
+    )
+
+
+@staff_site_required
+@require_http_methods(["GET", "PATCH", "DELETE"])
+def macro_pattern_staff_api_recipe_detail(request: HttpRequest, pk: int) -> JsonResponse:
+    if request.method == "GET":
+        try:
+            recipe = (
+                MacroRecipe.objects.select_related("family")
+                .prefetch_related(
+                    Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index"))
+                )
+                .get(pk=pk)
+            )
+        except MacroRecipe.DoesNotExist:
+            return JsonResponse({"ok": False, "error": "recipe not found"}, status=404)
+        return JsonResponse({"ok": True, "recipe": serialize_recipe(recipe)})
+
+    if request.method == "DELETE":
+        try:
+            delete_recipe(pk)
+        except ValueError as exc:
+            return JsonResponse({"ok": False, "error": str(exc)}, status=404)
+        return JsonResponse({"ok": True})
+
+    try:
+        data = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "invalid JSON"}, status=400)
+    try:
+        recipe = update_recipe(pk, data)
+    except ValueError as exc:
+        msg = str(exc)
+        status = 404 if msg == "recipe not found" else 400
+        return JsonResponse({"ok": False, "error": msg}, status=status)
+    return JsonResponse({"ok": True, "recipe": serialize_recipe(recipe)})
 
 
 @lru_cache(maxsize=8)

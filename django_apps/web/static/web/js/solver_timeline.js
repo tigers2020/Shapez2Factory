@@ -1,5 +1,5 @@
 import { TIMELINE_DEBOUNCE_MS } from "./solver_timeline/constants.js?v=20260502-graph-ui-2";
-import { mountGraph } from "./solver_timeline/graph_mount.js?v=20260502-graph-ui-2";
+import { mountGraph } from "./solver_timeline/graph_mount.js?v=20260504-grid-pinned";
 import { requestTimeline } from "./solver_timeline/timeline_request.js?v=20260502-graph-ui-2";
 
 /*

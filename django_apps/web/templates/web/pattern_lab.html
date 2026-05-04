@@ -14,6 +14,7 @@
       </h1>
       <p class="mt-4 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
         Pattern DB entries stay as candidate metadata. Python strategy dry-runs decide whether a macro can actually produce an inventory-search action.
+        When a recipe has a valid <span class="font-mono text-cyan-200/90">graph_document</span> with operations, the step list below is derived from the graph (green badge); otherwise it comes from DB step rows (gray badge).
       </p>
     </div>
   </section>
@@ -130,7 +131,7 @@
         </div>
         {% if analysis.macro_results %}
           <div class="mt-4 overflow-x-auto">
-            <table class="w-full min-w-[48rem] border-collapse text-left text-xs">
+            <table class="w-full min-w-[52rem] border-collapse text-left text-xs">
               <thead>
                 <tr class="border-b border-slate-800 text-slate-500">
                   <th class="py-2 pr-3 font-medium">Macro</th>
@@ -138,6 +139,7 @@
                   <th class="py-2 pr-3 font-medium">Family</th>
                   <th class="py-2 pr-3 font-medium">Cost</th>
                   <th class="py-2 pr-3 font-medium">Dry-run</th>
+                  <th class="py-2 pr-3 font-medium">Step source</th>
                   <th class="py-2 font-medium">Primitive steps</th>
                 </tr>
               </thead>
@@ -157,6 +159,13 @@
                         <span class="rounded-full bg-rose-400/10 px-2 py-1 font-semibold text-rose-200">not generated</span>
                       {% endif %}
                     </td>
+                    <td class="py-2 pr-3">
+                      {% if result.candidate.lab_step_source == "graph_document" %}
+                        <span class="rounded-full bg-emerald-400/10 px-2 py-1 font-semibold text-emerald-200">graph</span>
+                      {% else %}
+                        <span class="rounded-full bg-slate-800 px-2 py-1 font-semibold text-slate-400">DB</span>
+                      {% endif %}
+                    </td>
                     <td class="py-2 font-mono text-slate-100">{{ result.primitive_step_count }}</td>
                   </tr>
                 {% endfor %}
@@ -171,6 +180,13 @@
                   <span class="rounded-full border border-slate-700 px-2 py-1 font-mono text-[10px] text-slate-400">
                     {{ result.candidate.strategy_code }}
                   </span>
+                </div>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  {% if result.candidate.lab_step_source == "graph_document" %}
+                    <span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">Steps from graph_document</span>
+                  {% else %}
+                    <span class="rounded-full border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Steps from database</span>
+                  {% endif %}
                 </div>
                 {% if result.candidate.steps %}
                   <ol class="mt-4 space-y-3">

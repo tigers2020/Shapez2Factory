@@ -79,6 +79,12 @@ class MacroRecipe(models.Model):
     priority = models.IntegerField(default=100, verbose_name="우선순위")
     is_active = models.BooleanField(default=True, db_index=True, verbose_name="활성")
     schema_version = models.PositiveIntegerField(default=1, verbose_name="스키마 버전")
+    graph_document = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="레시피 그래프 문서",
+        help_text="Recipe Graph Editor용 노드·엣지·좌표(JSON). null이면 스텝 테이블만 사용.",
+    )
 
     class Meta:
         verbose_name = "매크로 레시피"

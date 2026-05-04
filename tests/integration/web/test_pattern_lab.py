@@ -44,3 +44,4 @@ def test_pattern_lab_page_shows_ready_macro_candidate(db) -> None:
     assert "ready" in content
     assert "stacker" in content
     assert "AB_half" in content
+    assert "Steps from database" in content

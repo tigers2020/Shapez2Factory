@@ -1,0 +1,141 @@
+from django_apps.shapez_solver.domain.operations import OperationType
+from django_apps.shapez_solver.services.macro_recipe_graph_visual import (
+    document_to_solver_graph,
+    enrich_react_flow_with_macro_visual_previews,
+    serialize_macro_recipe_visual,
+)
+from django_apps.shapez_solver.services.recipe_graph_react_flow_adapter import (
+    domain_graph_to_react_flow,
+)
+from django_apps.shapez_solver.services.recipe_graph_recompute import validate_graph_document
+
+
+def test_serialize_macro_recipe_visual_rotate_chain() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s_in",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "o_rot",
+                "kind": "operation",
+                "operation": OperationType.ROTATE_CW.value,
+                "x": 200,
+                "y": 0,
+            },
+            {
+                "id": "s_out",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 400,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s_in", "to": "o_rot", "kind": "input"},
+            {"from": "o_rot", "to": "s_out", "kind": "output", "slot": "0"},
+        ],
+    }
+    wire = serialize_macro_recipe_visual(doc)
+    assert wire["layout"]["direction"] == "left-to-right"
+    assert len(wire["nodes"]) == 3
+    assert len(wire["edges"]) == 2
+    rot = next(n for n in wire["nodes"] if n["id"] == "o_rot")
+    assert rot.get("x") == 200
+    assert rot.get("y") == 0
+    out_shape = next(n for n in wire["nodes"] if n["id"] == "s_out")
+    assert out_shape["kind"] == "shape"
+    assert out_shape["shape_code"] == ""
+
+
+def test_document_to_solver_graph_edges() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "a",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "x": 0,
+                "y": 0,
+            },
+            {"id": "b", "kind": "operation", "operation": "rotate_cw", "x": 1, "y": 0},
+        ],
+        "edges": [{"from": "a", "to": "b", "kind": "input"}],
+    }
+    g = document_to_solver_graph(doc)
+    assert len(g.edges) == 1
+    assert g.edges[0].from_id == "a"
+
+
+def test_document_to_solver_graph_painter_description_includes_color() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCu----",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "p",
+                "kind": "operation",
+                "operation": OperationType.PAINTER.value,
+                "paint_color": "r",
+                "x": 1,
+                "y": 0,
+            },
+        ],
+        "edges": [{"from": "s", "to": "p", "kind": "input"}],
+    }
+    g = document_to_solver_graph(doc)
+    op = next(n for n in g.nodes if n.id == "p")
+    assert op.kind == "operation"
+    assert "paint_color=r" in op.description
+
+
+def test_enrich_react_flow_adds_preview_for_shapes_with_codes() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "src",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "op",
+                "kind": "operation",
+                "operation": OperationType.ROTATE_CW.value,
+                "x": 100,
+                "y": 0,
+            },
+        ],
+        "edges": [{"from": "src", "to": "op", "kind": "input"}],
+    }
+    v = validate_graph_document(doc)
+    rf = domain_graph_to_react_flow(v)
+    raw = next(n for n in rf["nodes"] if n["id"] == "src")
+    assert "preview_image_url" not in (raw.get("data") or {})
+    enriched = enrich_react_flow_with_macro_visual_previews(rf, v)
+    src_data = next(n for n in enriched["nodes"] if n["id"] == "src").get("data") or {}
+    assert isinstance(src_data.get("preview_image_url"), str)
+    assert src_data["preview_image_url"].strip()

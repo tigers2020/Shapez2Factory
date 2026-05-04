@@ -66,6 +66,20 @@ class MacroRecipeAdmin(admin.ModelAdmin):
     search_fields = ("code", "strategy_code", "name", "family__code")
     ordering = ("priority", "code")
 
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if not change and obj.graph_document is None:
+            from django_apps.shapez_solver.services.macro_recipe_staff_catalog import (
+                apply_graph_derived_catalog_fields,
+            )
+            from django_apps.shapez_solver.services.recipe_graph_recompute import (
+                default_empty_graph_document,
+            )
+
+            obj.graph_document = default_empty_graph_document()
+            obj.save(update_fields=["graph_document"])
+            apply_graph_derived_catalog_fields(obj, obj.graph_document)
+
 
 @admin.register(PatternExample)
 class PatternExampleAdmin(admin.ModelAdmin):

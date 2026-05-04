@@ -1,5 +1,7 @@
 {
   "scripts": {
+    "build": "npm run build:css && npm run build:recipe-graph-editor",
+    "build:recipe-graph-editor": "npm --prefix frontend/recipe_graph_editor run build",
     "build:css": "npx @tailwindcss/cli -i ./assets/css/input.css -o ./django_apps/web/static/web/css/app.css --minify",
     "watch:css": "npx @tailwindcss/cli -i ./assets/css/input.css -o ./django_apps/web/static/web/css/app.css --watch"
   },

@@ -222,6 +222,54 @@ def _build_rotation_variants(shape_code: str) -> tuple[RotationVariant, ...]:
     return tuple(variants)
 
 
+def explain_pattern_family_mismatch(
+    shape_code: str,
+    *,
+    family_signature: str,
+    allow_rotation: bool,
+) -> str | None:
+    """
+    Pattern Lab과 동일한 canonical / inventory / 사분면 회전 variant로
+    ``family_signature``와의 불일치를 설명한다. 일치하면 ``None``.
+
+    - ``allow_rotation``이 거짓이면 ``inventory_signature``만 사용한다.
+    - 참이면 ``inventory_signature`` 및 ``_build_rotation_variants(canonical_code)``의
+      시그니처 합집합에 ``family_signature``가 포함되는지 본다.
+    """
+    fam_sig = (family_signature or "").strip()
+    if not fam_sig:
+        return None
+    normalized = shape_code.strip()
+    if not normalized:
+        return None
+    try:
+        patterns = parse_shape_code_list(normalized)
+    except ShapeCodeParseError as exc:
+        return f"parse error: {exc}"
+
+    target_shape = shape_from_pattern(patterns[0])
+    if not target_shape.is_single_layer():
+        return "multi-layer shape is not supported for pattern family check"
+
+    canonical_code = target_shape.canonical_code
+    inv_code = inventory_search_goal_shape_code(target_shape)
+    inv_sig = pattern_signature(inv_code)
+
+    if not allow_rotation:
+        if inv_sig != fam_sig:
+            return f"inventory pattern signature {inv_sig!r} != family {fam_sig!r}"
+        return None
+
+    acceptable: set[str] = {inv_sig}
+    acceptable.update(v.signature for v in _build_rotation_variants(canonical_code))
+    if fam_sig not in acceptable:
+        return (
+            f"pattern family {fam_sig!r} not in allowed signatures "
+            f"{sorted(acceptable)!r} (inventory {inv_sig!r}, rotation allowed)"
+        )
+    return None
+
+
 def _shape_tokens(shape_code: str) -> tuple[str, ...]:
     if ":" in shape_code:
         return ()
@@ -259,4 +307,5 @@ __all__ = [
     "RotationVariant",
     "SymbolMapEntry",
     "analyze_pattern_lab_shape",
+    "explain_pattern_family_mismatch",
 ]

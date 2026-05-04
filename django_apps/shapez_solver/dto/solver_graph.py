@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 type GraphNodeKind = Literal["shape", "operation"]
 type ShapeNodeRole = Literal["source", "intermediate", "target"]
-type GraphEdgeKind = Literal["input", "output"]
+type GraphEdgeKind = Literal["input", "output", "delivery"]
 type ShapeProducedState = Literal["consumed", "unused", "target"]
 
 

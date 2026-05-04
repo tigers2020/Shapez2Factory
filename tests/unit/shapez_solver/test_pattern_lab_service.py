@@ -1,7 +1,10 @@
 import pytest
 
 from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeStep, PatternFamily
-from django_apps.shapez_solver.services.pattern_lab_service import analyze_pattern_lab_shape
+from django_apps.shapez_solver.services.pattern_lab_service import (
+    analyze_pattern_lab_shape,
+    explain_pattern_family_mismatch,
+)
 
 
 @pytest.mark.django_db
@@ -58,3 +61,33 @@ def test_pattern_lab_reports_parse_error() -> None:
 
     assert analysis.error
     assert analysis.signature == ""
+
+
+def test_explain_pattern_family_mismatch_inventory_strict() -> None:
+    assert (
+        explain_pattern_family_mismatch(
+            "CuRuSuSu",
+            family_signature="ABCC",
+            allow_rotation=False,
+        )
+        is None
+    )
+    assert (
+        explain_pattern_family_mismatch(
+            "RuSuSuCu",
+            family_signature="ABCC",
+            allow_rotation=False,
+        )
+        is not None
+    )
+
+
+def test_explain_pattern_family_mismatch_rotation_union() -> None:
+    assert (
+        explain_pattern_family_mismatch(
+            "RuSuSuCu",
+            family_signature="ABCC",
+            allow_rotation=True,
+        )
+        is None
+    )

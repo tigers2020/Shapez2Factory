@@ -12,6 +12,17 @@ SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True
 ALLOWED_HOSTS: list[str] = []
 
+# Staff macro recipe graph: Vite-built React Flow island (`frontend/recipe_graph_editor`).
+# Set RECIPE_GRAPH_USE_REACT_FLOW=0|false to load the legacy WebGL/JS editor.
+# Unset: React Flow (default). Explicit 1|true|yes|on also enables RF.
+_rf = os.environ.get("RECIPE_GRAPH_USE_REACT_FLOW", "").strip().lower()
+if _rf in {"0", "false", "no", "off"}:
+    RECIPE_GRAPH_USE_REACT_FLOW = False
+elif _rf in {"1", "true", "yes", "on"}:
+    RECIPE_GRAPH_USE_REACT_FLOW = True
+else:
+    RECIPE_GRAPH_USE_REACT_FLOW = True
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

@@ -13,6 +13,8 @@ alwaysApply: true
 2. **담당자 브리핑**: 배정받은 캐릭터가 짧게 진행 방향을 말한다 (`[이름]`).
 3. **코딩·수정**: 2단계 직후에만 구현한다. **2단계 없이 3단계로 가지 않는다.**
 
+**`[시몬]` 복잡도 재검토**: 개발팀이 넘긴 구현이 [root.mdc](mdc:.cursor/rules/root.mdc) **코드 단순성**보다 복잡하면 반송하고, 더 짧은 형태로 재작성하도록 요구한다.
+
 ## 거시 파이프라인과의 관계
 
 이 3단계는 [protocols/README.md](mdc:protocols/README.md)의 10단계 중 **6번(구현)**에서만 적용한다. 그 앞뒤 단계는 다음과 같다.
@@ -28,7 +30,7 @@ alwaysApply: true
 - 의미 있는 변경은 구현 전에 리서치 문서와 플랜 MD가 먼저 있어야 한다.
 - 사람이 플랜을 승인하기 전까지 시몬은 3단계 진입을 막는다.
 - 작은 작업이라도 이 원칙을 깨는 예외를 기본값으로 두지 않는다.
-- shapez 2 규칙을 도메인에 반영할 때는 [documents/research_shapez2_game_systems_2026-05-01.md](mdc:documents/research_shapez2_game_systems_2026-05-01.md)를 우선 참고하고, 문서에 없는 세부는 플랜에 출처·가정을 적는다.
+- shapez 2 규칙을 도메인에 반영할 때는 [documents/research/research_shapez2_game_systems_2026-05-01.md](mdc:documents/research/research_shapez2_game_systems_2026-05-01.md)를 우선 참고하고, 문서에 없는 세부는 플랜에 출처·가정을 적는다.
 
 ## 역할–레이어 (상세는 `@persona` 카드)
 
@@ -63,11 +65,19 @@ alwaysApply: true
 
 ## 검증 흐름 (렉스)
 
-구현 후: 테스가 테스트 추가 → 렉스가 `pytest` → `ruff check .` → `mypy .` → `black .` 순서로 검증.
+구현 후: 테스가 테스트 추가 → 렉스가 `python -m pytest` → `ruff check .` → `mypy .` → `black .` 순서로 검증.
+
+- 로컬·빠른 확인: [AGENTS.md](mdc:AGENTS.md) **테스트 구간 실행 (pytest 마커)**에 따라 `python -m pytest -m …` 또는 `tests/unit/...` 등 경로만 실행 가능.
+- 하네스/게이트: 전체 테스트 통과를 원칙으로 한다.
 
 - 실패 시: 실패 명령, 이유, 다음 담당 패르소나를 남긴다.
 - 미실행 시: 실행 못 한 명령, 이유, 남은 위험을 남긴다.
 - `black .`이 파일을 바꾸면 검증 결과와 별도로 포맷 변경 발생을 보고한다.
+
+## 완료 보고 직후
+
+- 표준 완료 보고(변경·검증·미실행/실패) 다음에 **이후 진행 상황**을 짧게 덧붙인다. (남은 작업, 파이프라인 다음 단계, 승인·문서·사용자 할 일.)
+- 이번 턴에서 요청 범위가 끝까지 충족되었을 때만 "완료"로 말한다. 그렇지 않으면 미완·블로커를 명시하고 완료라고 속이지 않는다.
 
 ## 관련 Cursor Rules
 

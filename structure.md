@@ -13,8 +13,9 @@ This repository is now organized as a Django-first project. Runtime ownership li
 | `django_apps/web/` | Templates, static assets, and page-rendering views |
 | `tests/unit/` | Fast unit tests for core and solver behavior |
 | `tests/integration/` | Django request/response and page/API integration tests |
-| `documents/` | Research, plans, and implementation notes |
+| `documents/` | Research (`research/`), plans (`plans/`), progress notes (`notes/`), project meta (`meta/`), attribution (`attribution/`), archive (`archive/`) |
 | `assets/css/` | Tailwind input CSS source |
+| `frontend/recipe_graph_editor/` | Vite + React Flow 편집기 소스; `npm run build` → `django_apps/web/static/web/js/recipe_graph_editor/` |
 
 Generated or local-only artifacts such as `node_modules/`, `.pytest_cache/`, `.ruff_cache/`,
 `.mypy_cache/`, and `db.sqlite3` are not part of the architectural source of truth.
@@ -38,7 +39,7 @@ Generated or local-only artifacts such as `node_modules/`, `.pytest_cache/`, `.r
 
 - `views.py`: thin page controllers for `/`, `/gallery/`, `/demo/`
 - `templates/web/`: page templates and shared partials
-- `static/web/`: CSS, JS, vendor assets, screenshots, and template images
+- `static/web/`: CSS, JS, vendor assets, screenshots, and template images (스태프 Recipe Graph는 `static/web/js/recipe_graph_editor/` Vite 산출물 로드)
 
 ## URL ownership
 
@@ -62,7 +63,8 @@ Generated or local-only artifacts such as `node_modules/`, `.pytest_cache/`, `.r
 |---|---|
 | Install dev dependencies | `pip install -e ".[dev]"` |
 | Run Django locally | `python manage.py runserver` |
-| Run tests | `pytest` |
+| Run tests | `python -m pytest` |
+| Run tests (markers) | `python -m pytest -m unit` / `-m integration` / `-m shapez_solver` / `-m shapez_core` / `-m web` / `-m api` (see `pytest.ini`, `tests/conftest.py`) |
 | Static analysis | `ruff check .` |
 | Type-check | `mypy .` |
 | Format check | `black --check .` |

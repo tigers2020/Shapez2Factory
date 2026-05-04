@@ -44,6 +44,13 @@
             class="rounded-sm px-3 py-2 no-underline {% if current == 'pattern-lab' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
             {% if current == "pattern-lab" %}aria-current="page"{% endif %}
           >Pattern Lab</a>
+          {% if request.user.is_staff %}
+            <a
+              href="{% url 'web:macro-pattern-staff' %}"
+              class="rounded-sm px-3 py-2 no-underline {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
+              {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}aria-current="page"{% endif %}
+            >Macro catalog</a>
+          {% endif %}
           <a
             href="{% url 'web:support' %}"
             class="rounded-sm px-3 py-2 no-underline {% if current == 'support' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
@@ -124,6 +131,13 @@
             class="rounded-lg px-3 py-2 no-underline {% if current == 'pattern-lab' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
             {% if current == "pattern-lab" %}aria-current="page"{% endif %}
           >Pattern Lab</a>
+          {% if request.user.is_staff %}
+            <a
+              href="{% url 'web:macro-pattern-staff' %}"
+              class="rounded-lg px-3 py-2 no-underline {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+              {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}aria-current="page"{% endif %}
+            >Macro catalog</a>
+          {% endif %}
           <a
             href="{% url 'web:support' %}"
             class="rounded-lg px-3 py-2 no-underline {% if current == 'support' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"

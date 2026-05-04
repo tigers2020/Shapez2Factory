@@ -39,9 +39,7 @@ def swap(left_shape_code: str, right_shape_code: str) -> tuple[str, str]:
     """Swapper primitive의 2-output code를 engine semantics 기준으로 반환한다."""
 
     engine = OperationEngine()
-    output_a, output_b = engine.swapper(
-        parse_shape(left_shape_code), parse_shape(right_shape_code)
-    )
+    output_a, output_b = engine.swapper(parse_shape(left_shape_code), parse_shape(right_shape_code))
     return output_a.canonical_code, output_b.canonical_code
 
 
@@ -50,15 +48,15 @@ def stack(bottom_shape_code: str, top_shape_code: str) -> tuple[str, ...]:
 
     engine = OperationEngine()
     return (
-        engine.stacker(
-            parse_shape(bottom_shape_code), parse_shape(top_shape_code)
-        ).canonical_code,
+        engine.stacker(parse_shape(bottom_shape_code), parse_shape(top_shape_code)).canonical_code,
     )
 
 
 def apply_operation(
     operation: OperationType,
     inputs: tuple[str, ...],
+    *,
+    paint_color: str | None = None,
 ) -> tuple[str, ...]:
     """Search action generator가 사용할 operation dispatch."""
 
@@ -66,8 +64,48 @@ def apply_operation(
         return rotate(inputs[0], operation)
     if operation == OperationType.CUTTER:
         return cut(inputs[0])
+    if operation == OperationType.CUTTER_FULL:
+        return cut(inputs[0])
+    if operation == OperationType.HALF_DESTROYER:
+        engine = OperationEngine()
+        return tuple(
+            output.canonical_code
+            for output in engine.apply(OperationType.HALF_DESTROYER, (parse_shape(inputs[0]),))
+        )
+    if operation == OperationType.SPLITTER:
+        engine = OperationEngine()
+        return tuple(
+            output.canonical_code
+            for output in engine.apply(OperationType.SPLITTER, (parse_shape(inputs[0]),))
+        )
+    if operation == OperationType.PIN_PUSHER:
+        engine = OperationEngine()
+        return tuple(
+            output.canonical_code
+            for output in engine.apply(OperationType.PIN_PUSHER, (parse_shape(inputs[0]),))
+        )
     if operation == OperationType.SWAPPER:
         return swap(inputs[0], inputs[1])
     if operation == OperationType.STACKER:
         return stack(inputs[0], inputs[1])
+    if operation == OperationType.COLOR_MIXER:
+        engine = OperationEngine()
+        shapes = (parse_shape(inputs[0]), parse_shape(inputs[1]))
+        mixed = engine.apply(OperationType.COLOR_MIXER, shapes)
+        return tuple(output.canonical_code for output in mixed)
+    if operation == OperationType.PAINTER:
+        if paint_color is None:
+            raise ValueError("painter requires paint_color")
+        color = str(paint_color).strip()
+        if len(color) != 1:
+            raise ValueError("paint_color must be a single character")
+        engine = OperationEngine()
+        return tuple(
+            output.canonical_code
+            for output in engine.apply(
+                OperationType.PAINTER,
+                (parse_shape(inputs[0]),),
+                color=color,
+            )
+        )
     raise ValueError(f"unsupported inventory search operation: {operation}")

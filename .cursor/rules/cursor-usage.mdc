@@ -15,11 +15,11 @@ alwaysApply: true
 - 캐릭터 역할은 `@persona/README.md`와 각 카드에서 확인한다.
 - UI 작업은 `@persona/gina-gui.md`를 함께 본다.
 - 아키텍처 판단은 `@.cursor/rules/architecture.mdc`를 우선한다.
-- shapez 2 도메인·시스템 참고는 `@documents/research_shapez2_game_systems_2026-05-01.md`를 본다.
+- shapez 2 도메인·시스템 참고는 `@documents/research/research_shapez2_game_systems_2026-05-01.md`를 본다.
 
 ## 메모
 
-- 반복 실수, 프로젝트 결정, 다음 할 일은 사용자가 요청할 때 `documents/CURSOR_MEMO.md`에 반영한다.
+- 반복 실수, 프로젝트 결정, 다음 할 일은 사용자가 요청할 때 `documents/meta/CURSOR_MEMO.md`에 반영한다.
 - 메모를 업데이트할 때는 날짜와 짧은 이유를 남긴다.
 
 ## 다중 채팅
@@ -27,9 +27,15 @@ alwaysApply: true
 - 영역별로 대화가 분리된 경우에도 레이어 경계를 유지한다.
 - 다른 채팅의 결론을 적용할 때는 파일 기준으로 재확인한다.
 
+## 테스트 구간 실행
+
+매번 전체 `pytest`가 아니라, 변경 레이어에 맞춰 **마커 또는 경로**로 줄일 수 있다. 마커 정의·자동 부착·예시 명령은 [AGENTS.md](mdc:AGENTS.md) **테스트 구간 실행 (pytest 마커)**과 [`pytest.ini`](mdc:pytest.ini), [`tests/conftest.py`](mdc:tests/conftest.py)를 본다. 권장 실행 형태는 `python -m pytest`.
+
 ## 완료 보고
 
 - 변경 파일, 검증 명령, 미실행 사유를 짧게 보고한다.
 - 검증 실패가 있으면 실패 명령, 이유, 다음 담당 캐릭터를 명확히 남긴다.
 - 검증을 못 돌렸으면 실행 못 한 명령, 이유, 남은 위험을 남긴다.
 - `black .`이 파일을 바꾸면 검증 통과 여부와 별도로 포맷 변경 발생을 적는다.
+- 그다음 **이후 진행 상황**을 한 덩어리로 짧게 브리핑한다. (다음 파이프라인 단계, 미결 과제, 사용자 후속 액션 등.)
+- 요청이 실제로 끝났을 때만 완료로 표기하고, 미완·검증 미통과·부분 구현이면 그대로 밝힌다.

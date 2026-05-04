@@ -200,3 +200,9 @@ def test_solver_graph_payload_renders_with_current_graph_markup() -> None:
     assert "overflow-y-auto" not in html
     assert " C " not in html
     assert "data-graph-edge-label" in html
+
+
+def test_graph_markup_has_no_staff_wire_hit_layer_by_default() -> None:
+    payload = _run_markup_probe()
+    html = payload["html"]
+    assert "data-graph-edge-hit" not in html

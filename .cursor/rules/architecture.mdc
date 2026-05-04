@@ -46,6 +46,8 @@ Forbidden:
 - Solver logic and models: `tests/unit/shapez_solver/`
 - Request/response and page smoke tests: `tests/integration/`
 
+경로가 곧 pytest 마커(`unit`/`integration`, 앱별 마커)와 대응한다. 구간만 돌리는 방법은 [AGENTS.md](mdc:AGENTS.md) **테스트 구간 실행 (pytest 마커)**.
+
 ## References
 
 - [AGENTS.md](mdc:AGENTS.md)

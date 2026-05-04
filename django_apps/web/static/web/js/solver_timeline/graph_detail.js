@@ -1,6 +1,44 @@
 import { mountShapeGltfViewer } from "../shape_gltf_viewer.js";
 import { disposeTimelineViewers, escapeHtml } from "./dom_utils.js";
 
+function renderGraphCopyNodeIdRow(nodeId) {
+  return `
+    <p class="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-800/80 pt-3">
+      <span class="font-mono text-[10px] text-slate-500">id</span>
+      <span class="max-w-full truncate font-mono text-xs text-slate-300">${escapeHtml(nodeId)}</span>
+      <button
+        type="button"
+        class="rounded-lg border border-slate-600 bg-slate-900/80 px-2 py-1 text-[11px] font-medium text-slate-200 hover:border-cyan-500/50 hover:text-cyan-100"
+        data-graph-copy-node-id
+        data-copy-text="${escapeHtml(nodeId)}"
+        data-default-label="Copy node id"
+      >Copy node id</button>
+    </p>`;
+}
+
+function attachGraphCopyNodeIdButton(host) {
+  const btn = host.querySelector("[data-graph-copy-node-id]");
+  if (!btn) {
+    return;
+  }
+  const defaultLabel = btn.getAttribute("data-default-label") || "Copy node id";
+  btn.addEventListener("click", async () => {
+    const text = btn.getAttribute("data-copy-text") || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = "Copied";
+      setTimeout(() => {
+        btn.textContent = defaultLabel;
+      }, 1200);
+    } catch {
+      btn.textContent = "Unavailable";
+      setTimeout(() => {
+        btn.textContent = defaultLabel;
+      }, 1200);
+    }
+  });
+}
+
 function connectedEdges(graph, nodeId) {
   return (graph.edges || []).filter((edge) => edge.from === nodeId || edge.to === nodeId);
 }
@@ -54,8 +92,10 @@ export async function renderSelectedNodeDetail(panel, graph, nodeId) {
           </div>
         </div>
         <p class="mt-4 text-xs text-slate-500">${escapeHtml(edges.map((edge) => edge.label || edge.kind).join(" \xb7 "))}</p>
+        ${renderGraphCopyNodeIdRow(node.id)}
       </div>
     `;
+    attachGraphCopyNodeIdButton(detailHost);
     return;
   }
 
@@ -77,8 +117,11 @@ export async function renderSelectedNodeDetail(panel, graph, nodeId) {
         <script type="application/json">{}</script>
       </div>
       <p class="mt-4 text-xs text-slate-500">${escapeHtml(edges.map((edge) => edge.label || edge.kind).join(" \xb7 "))}</p>
+      ${renderGraphCopyNodeIdRow(node.id)}
     </div>
   `;
+
+  attachGraphCopyNodeIdButton(detailHost);
 
   const viewer = detailHost.querySelector("[data-shape-gltf-viewer]");
   const script = viewer?.querySelector('script[type="application/json"]');
@@ -86,5 +129,27 @@ export async function renderSelectedNodeDetail(panel, graph, nodeId) {
     viewer.dataset.assetBase = assetBase;
     script.textContent = JSON.stringify(node.preview_scene);
     await mountShapeGltfViewer(viewer);
+  }
+}
+
+/**
+ * Inline `[data-solver-node-detail]` 대신 모달 등 임의 컨테이너에 동일한 상세 UI를 그린다.
+ * `targetHost`는 렌더 후에도 동일한 DOM 노드로 남는다(WebGL 뷰어 유지).
+ */
+export async function renderSelectedNodeDetailInto(targetHost, assetBase, graph, nodeId) {
+  if (!targetHost) {
+    return;
+  }
+  const parent = targetHost.parentNode;
+  const syntheticPanel = document.createElement("div");
+  syntheticPanel.dataset.assetBase = assetBase || "";
+  targetHost.innerHTML = "";
+  if (!targetHost.hasAttribute("data-solver-node-detail")) {
+    targetHost.setAttribute("data-solver-node-detail", "");
+  }
+  syntheticPanel.appendChild(targetHost);
+  await renderSelectedNodeDetail(syntheticPanel, graph, nodeId);
+  if (parent) {
+    parent.appendChild(targetHost);
   }
 }

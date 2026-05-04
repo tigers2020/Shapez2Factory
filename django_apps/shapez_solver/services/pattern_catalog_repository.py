@@ -1,8 +1,17 @@
+"""DB-backed pattern family / macro recipe catalog for Pattern Lab and solvers.
+
+Inventory search selects strategies by pattern signature; it does not evaluate
+`MacroRecipe.graph_document` as a search graph.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from django_apps.shapez_solver.models import MacroRecipe
+from django_apps.shapez_solver.services.recipe_graph_recompute import (
+    try_pattern_macro_step_rows_from_graph_document,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,7 +27,11 @@ class PatternMacroStepCandidate:
 
 @dataclass(frozen=True, slots=True)
 class PatternMacroCandidate:
-    """DB catalog에서 조회한 macro strategy 후보 메타데이터."""
+    """DB catalog에서 조회한 macro strategy 후보 메타데이터.
+
+    ``lab_step_source``가 ``graph_document``이면 Pattern Lab에 보이는 스텝 행이
+    ``graph_document``에서 파생된 것이다(아니면 DB ``MacroRecipeStep``).
+    """
 
     macro_code: str
     strategy_code: str
@@ -28,6 +41,36 @@ class PatternMacroCandidate:
     estimated_waste_cost: int
     priority: int
     steps: tuple[PatternMacroStepCandidate, ...] = ()
+    lab_step_source: str = "database"
+
+
+def _pattern_lab_steps_bundle(
+    recipe: MacroRecipe,
+) -> tuple[tuple[PatternMacroStepCandidate, ...], str]:
+    rows = try_pattern_macro_step_rows_from_graph_document(recipe.graph_document)
+    if rows is not None:
+        steps = tuple(
+            PatternMacroStepCandidate(
+                step_index=int(s["step_index"]),
+                operation=str(s["operation"]),
+                input_slots=tuple(str(x) for x in s["input_slots"]),
+                output_slots=tuple(str(x) for x in s["output_slots"]),
+                note=str(s.get("note") or ""),
+            )
+            for s in rows
+        )
+        return steps, "graph_document"
+    steps = tuple(
+        PatternMacroStepCandidate(
+            step_index=step.step_index,
+            operation=step.operation,
+            input_slots=tuple(str(item) for item in step.input_slots),
+            output_slots=tuple(str(item) for item in step.output_slots),
+            note=step.note,
+        )
+        for step in recipe.steps.all()
+    )
+    return steps, "database"
 
 
 class PatternCatalogRepository:
@@ -49,23 +92,9 @@ class PatternCatalogRepository:
                 estimated_stage_cost=recipe.estimated_stage_cost,
                 estimated_waste_cost=recipe.estimated_waste_cost,
                 priority=recipe.priority,
-                steps=tuple(
-                    PatternMacroStepCandidate(
-                        step_index=step.step_index,
-                        operation=step.operation,
-                        input_slots=tuple(str(item) for item in step.input_slots),
-                        output_slots=tuple(str(item) for item in step.output_slots),
-                        note=step.note,
-                    )
-                    for step in recipe.steps.all()
-                ),
+                steps=steps,
+                lab_step_source=source,
             )
             for recipe in recipes
+            for steps, source in (_pattern_lab_steps_bundle(recipe),)
         )
-
-
-__all__ = [
-    "PatternCatalogRepository",
-    "PatternMacroCandidate",
-    "PatternMacroStepCandidate",
-]

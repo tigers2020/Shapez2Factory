@@ -1,4 +1,4 @@
-import { GRAPH_PADDING } from "./graph_markup.js?v=20260502-graph-ui-2";
+import { GRAPH_PADDING } from "./graph_markup.js?v=20260504-grid-pinned";
 import {
   GRAPH_ZOOM_STEP,
   MAX_GRAPH_SCALE,
@@ -112,7 +112,7 @@ export function initGraphViewport(canvas) {
 
   viewport.addEventListener("pointerdown", (event) => {
     event.preventDefault();
-    if (event.target.closest("[data-graph-node-id], button")) {
+    if (event.target.closest("[data-graph-node-id], button, [data-graph-edge-hit]")) {
       return;
     }
     const state = viewport._graphTransform;

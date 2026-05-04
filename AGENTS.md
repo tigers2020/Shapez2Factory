@@ -4,6 +4,8 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 
 > 핵심: `.cursor/rules/root.mdc`가 최상위 사전 지시서. 이 문서는 원칙과 운영 게이트만 짧게 잡고, 세부 절차는 `.cursor/rules/`와 `persona/`로 위임한다.
 
+**코드 단순성(최우선)**: 필요한 최소 코드만, 추측·요청 밖 기능·불필요한 추상화·설정·「불가능 시나리오」방어 금지. 더 짧게 되면 그 형태로 다시 쓴다. `[시몬]`은 결과가 이 기준보다 복잡하면 반송한다. 정본은 `.cursor/rules/root.mdc`의 **코드 단순성** 절.
+
 ---
 
 ## 진행 방식: Persona Dialogue 3단계
@@ -82,7 +84,7 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 
 **shapez2Solver** — [shapez 2](https://shapez2.com/)의 도형 생산·가공(절단·회전·적층·색칠)·물류·연구/납품 루프를 **순수 코드로 모델링하거나 최적화/솔버 도구**로 다루는 Python 프로젝트다. 게임 밖에서 규칙을 검증·실험할 때 레이어드 아키텍처(`domain` → `application` → `adapters` → `interfaces`)를 따른다.
 
-도메인·시스템 참고 요약(공식·Steam·FAQ 등 출처 표기): [`documents/research_shapez2_game_systems_2026-05-01.md`](documents/research_shapez2_game_systems_2026-05-01.md).
+도메인·시스템 참고 요약(공식·Steam·FAQ 등 출처 표기): [`documents/research/research_shapez2_game_systems_2026-05-01.md`](documents/research/research_shapez2_game_systems_2026-05-01.md).
 
 워크플로우: `documents/`에 리서치·플랜 MD → 사람 승인 → `django_apps/shapez_core`, `django_apps/shapez_solver`, `django_apps/web` 기준 구현 → 테스(QA)·렉스(하네스) 검증 → 시몬 클로징으로 `documents/` 동기화.
 
@@ -92,7 +94,7 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 
 ## 규칙 우선순위
 
-1. `@.cursor/rules/root.mdc` — 자기 검증, 도메인 용어, DO/DON'T
+1. `@.cursor/rules/root.mdc` — 자기 검증, 도메인 용어, DO/DON'T, **코드 단순성**
 2. `@.cursor/rules/architecture.mdc` — 레이어·포트
 3. `@.cursor/rules/mcp.mdc` — MCP 활용
 4. `@.cursor/rules/cursor-usage.mdc` — 계획 선행, 메모, 다중 채팅
@@ -122,9 +124,9 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 ## 하네스 엔지니어링
 
 - 프롬프트가 아니라 구조로 실수를 줄인다: 테스트, 린트, 레이어 규칙, 계획 승인 게이트.
-- 파이프라인 **9번(하네스)**은 렉스가 수행한다. `pytest` → `ruff check .` → `mypy .` → `black .`을 **통과할 때까지** 돌리고, 실패하면 실패 로그와 함께 **담당 레이어로 되돌려** 수정 루프를 강제한다.
-- 컨텍스트 지도는 `AGENTS.md`, `.cursor/rules/`, `documents/CURSOR_MEMO.md`다.
-- 재현된 실수는 테스트와 `documents/CURSOR_MEMO.md`에 남겨 반복을 줄인다.
+- 파이프라인 **9번(하네스)**은 렉스가 수행한다. `python -m pytest` → `ruff check .` → `mypy .` → `black .`을 **통과할 때까지** 돌리고, 실패하면 실패 로그와 함께 **담당 레이어로 되돌려** 수정 루프를 강제한다. (로컬 반복은 [AGENTS.md](AGENTS.md) **테스트 구간 실행**으로 부분 실행 가능; 게이트는 전체 통과를 원칙으로 한다.)
+- 컨텍스트 지도는 `AGENTS.md`, `.cursor/rules/`, `documents/meta/CURSOR_MEMO.md`다.
+- 재현된 실수는 테스트와 `documents/meta/CURSOR_MEMO.md`에 남겨 반복을 줄인다.
 - 외부 기업 사례·수치·인용은 검증 가능한 출처 없이 사실처럼 단정하지 않는다.
 
 ---
@@ -135,9 +137,19 @@ Cursor AI용 **shapez2Solver** 프로젝트 가이드. [AGENTS.md](https://agent
 |------|------|
 | 설치 | `pip install -e ".[dev]"` — 루트에 `pyproject.toml`을 두고 실행한다. |
 | 실행 | `python manage.py runserver` — Django 앱 기준으로 로컬 서버를 실행한다. |
-| 테스트 | `pytest` |
+| 테스트 (전체) | `python -m pytest` |
+| 테스트 (구간) | `python -m pytest -m unit` · `-m integration` · `-m shapez_solver` · `-m shapez_core` · `-m web` · `-m api` — 조합: `-m "unit and shapez_core"`. 경로만: `python -m pytest tests/unit/shapez_solver/` |
 | 검증 (로컬) | `ruff check .` → `mypy .` → `black .` (포맷 적용) |
 | 검증 (CI) | 동일 순서에서 **`black --check .`** 로 포맷만 검사 (파일 변경 없음) |
+
+### 테스트 구간 실행 (pytest 마커)
+
+전체 스위트 대신 **변경 영향 구간만** 돌릴 때는 `-m` 또는 테스트 디렉터리 경로를 쓴다.
+
+- **마커 등록**: [`pytest.ini`](pytest.ini)의 `markers` 섹션.
+- **자동 부착**: [`tests/conftest.py`](tests/conftest.py)가 수집 시 파일 경로로 `unit` / `integration` 및 `shapez_core` / `shapez_solver` / `web` / `api` 마커를 붙인다. 테스트 함수에 데코레이터를 일일이 달 필요는 없다.
+- **환경**: 다른 Python과 섞이지 않도록 **`python -m pytest`**를 권장한다 (`pytest` 단독 실행과 혼용 주의).
+- **하네스(렉스)**: CI·게이트에서는 원칙적으로 **전체** `python -m pytest`(또는 동등한 전체 실행)를 통과시킨다. 로컬 반복 작업만 구간 실행으로 단축한다.
 
 ---
 
@@ -158,12 +170,15 @@ tests/
 - 변경 파일, 검증 명령, 미실행 사유를 짧게 보고한다.
 - 검증 실패 시 실패한 명령, 이유, 다음 담당 캐릭터를 남긴다.
 - `black .`이 파일을 바꿨으면 "검증 통과"와 별도로 "포맷 변경 발생"을 함께 보고한다.
+- 위 항목을 보고한 **직후**, **이후 진행 상황**을 짧게 브리핑한다. (예: 파이프라인 상 다음 단계, 남은 이슈·후속 작업, 사용자가 할 일, 문서·승인 게이트 여부.)
+- **완료 표기**: 이번 요청 범위와 검증까지 실제로 끝났을 때만 "완료"로 적는다. 남은 구현·실패한 검증·미실행 검증이 있으면 완료라고 쓰지 않고, 남은 일과 블로커를 명시한다.
 
 검증을 못 돌렸다면 최소 아래 3가지를 남긴다.
 
 - 실행 못 한 명령
 - 이유
 - 남은 위험
+
 
 ---
 

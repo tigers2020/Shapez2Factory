@@ -407,6 +407,126 @@ export function computeGroupedGraphLayout(graph) {
   return buildFinalGraphLayout(nodes, leftPositions, topPositions);
 }
 
+function rectsOverlap(ax, ay, bx, by) {
+  return !(
+    ax + NODE_WIDTH <= bx ||
+    bx + NODE_WIDTH <= ax ||
+    ay + NODE_HEIGHT <= by ||
+    by + NODE_HEIGHT <= ay
+  );
+}
+
+/** Pinned 좌표가 서로 겹치면(예: 예전 자동 생성 간격) 세로로 벌린다. */
+function resolvePinnedNodeOverlaps(positions) {
+  const ids = [...positions.keys()].sort((a, b) => {
+    const pa = positions.get(a);
+    const pb = positions.get(b);
+    if (!pa || !pb) {
+      return 0;
+    }
+    if (pa.y !== pb.y) {
+      return pa.y - pb.y;
+    }
+    if (pa.x !== pb.x) {
+      return pa.x - pb.x;
+    }
+    return String(a).localeCompare(String(b));
+  });
+  const placed = [];
+  for (const id of ids) {
+    const start = positions.get(id);
+    if (!start) {
+      continue;
+    }
+    let p = { x: start.x, y: start.y };
+    let tries = 0;
+    while (tries < 400) {
+      let overlap = false;
+      for (const q of placed) {
+        if (rectsOverlap(p.x, p.y, q.x, q.y)) {
+          overlap = true;
+          break;
+        }
+      }
+      if (!overlap) {
+        break;
+      }
+      p = { x: p.x, y: p.y + ROW_GAP };
+      tries += 1;
+    }
+    placed.push({ x: p.x, y: p.y });
+    positions.set(id, p);
+  }
+}
+
+function graphUsesPinnedPositions(graph) {
+  const nodes = getGraphNodes(graph);
+  if (!nodes.length) {
+    return false;
+  }
+  const coords = [];
+  for (const node of nodes) {
+    const x = Number(node.x);
+    const y = Number(node.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return false;
+    }
+    coords.push({ x, y });
+  }
+  if (coords.length === 1) {
+    return true;
+  }
+  const minX = Math.min(...coords.map((c) => c.x));
+  const maxX = Math.max(...coords.map((c) => c.x));
+  const minY = Math.min(...coords.map((c) => c.y));
+  const maxY = Math.max(...coords.map((c) => c.y));
+  const spread = Math.max(maxX - minX, maxY - minY);
+  return spread > 0.5;
+}
+
+function computePinnedGraphLayout(graph) {
+  const nodes = getGraphNodes(graph);
+  const positions = new Map();
+  for (const node of nodes) {
+    const x = Number(node.x);
+    const y = Number(node.y);
+    positions.set(node.id, {
+      x: Number.isFinite(x) ? x : GRAPH_PADDING,
+      y: Number.isFinite(y) ? y : GRAPH_PADDING,
+    });
+  }
+  const posVals = [...positions.values()];
+  const xOff = GRAPH_PADDING - Math.min(...posVals.map((p) => p.x));
+  const yOff = GRAPH_PADDING - Math.min(...posVals.map((p) => p.y));
+  const shifted = new Map();
+  for (const [id, p] of positions) {
+    shifted.set(id, { x: p.x + xOff, y: p.y + yOff });
+  }
+  resolvePinnedNodeOverlaps(shifted);
+  const positioned = [...shifted.values()];
+  const minX = Math.min(...positioned.map((position) => position.x));
+  const minY = Math.min(...positioned.map((position) => position.y));
+  const maxX = Math.max(...positioned.map((position) => position.x + NODE_WIDTH));
+  const maxY = Math.max(...positioned.map((position) => position.y + NODE_HEIGHT));
+
+  return {
+    positions: shifted,
+    width: maxX + GRAPH_PADDING,
+    height: maxY + GRAPH_PADDING,
+    bounds: {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: maxX - minX,
+      height: maxY - minY,
+    },
+  };
+}
+
 export function computeGraphLayout(graph) {
+  if (graphUsesPinnedPositions(graph)) {
+    return computePinnedGraphLayout(graph);
+  }
   return computeGroupedGraphLayout(graph);
 }

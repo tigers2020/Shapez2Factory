@@ -16,7 +16,7 @@ export function paletteCategoryForOperation(value: string): Exclude<PaletteCateg
   if (["cutter", "half_destroyer", "splitter"].includes(v)) {
     return "CUT";
   }
-  if (["painter", "color_mixer"].includes(v)) {
+  if (["painter", "color_mixer", "crystal_generator"].includes(v)) {
     return "COLOR";
   }
   return "FLOW";

@@ -1,33 +1,15 @@
 {% extends "web/base.html" %}
-{% load static %}
+{% load i18n static %}
 
-{% block title %}shapez2 planner | Graph: {{ recipe.code }} (staff){% endblock %}
+{% block title %}{% blocktrans with code=recipe.code %}shapez2 planner | Graph: {{ code }} (staff){% endblocktrans %}{% endblock %}
 
 {% block extra_css %}
-  {% if use_react_flow_editor %}
   <link rel="stylesheet" href="{% static 'web/js/recipe_graph_editor/recipe-graph-editor.css' %}?v={{ recipe_graph_editor_asset_version }}">
-  {% endif %}
 {% endblock %}
 
 {% block content %}
 <main class="min-h-screen bg-slate-950 text-slate-100">
   {% include "web/partials/site_nav.html" %}
-
-  {% if not use_react_flow_editor %}
-  <section class="border-b border-slate-800 bg-slate-950">
-    <div class="mx-auto flex max-w-[1600px] flex-wrap items-start justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-300/90">Staff · Recipe Graph Workbench</p>
-        <h1 class="mt-2 font-mono text-xl text-white">{{ recipe.code }}</h1>
-        <p class="mt-1 text-sm text-slate-400">{{ recipe.name }} · {{ recipe.family_code }} · {{ recipe.strategy_code }}</p>
-      </div>
-      <div class="flex flex-wrap gap-2 text-sm">
-        <a href="{% url 'web:macro-pattern-staff' %}" class="rounded-lg border border-slate-600 px-3 py-2 font-semibold text-slate-200 hover:border-cyan-600/50">Catalog</a>
-        <a href="{% url 'web:macro-pattern-recipe-edit' pk=recipe.id %}" class="rounded-lg border border-amber-600/40 px-3 py-2 font-semibold text-amber-100 hover:border-amber-500/60">Edit metadata</a>
-      </div>
-    </div>
-  </section>
-  {% endif %}
 
   <div class="mx-auto max-w-[1600px] px-4 pb-10 pt-2 sm:px-6 lg:px-8">
     {{ bootstrap|json_script:"macro-graph-bootstrap" }}
@@ -44,18 +26,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  {% if use_react_flow_editor %}
+  <script src="{% url 'javascript-catalog' %}"></script>
+  <script src="{% static 'web/js/ui_locale.js' %}"></script>
   <script type="module" src="{% static 'web/js/recipe_graph_editor/recipe-graph-editor.js' %}?v={{ recipe_graph_editor_asset_version }}"></script>
-  {% else %}
-  {# Required before graph editor: nested ES modules (shape_gltf_viewer) import three/addons/* #}
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "{% static 'web/vendor/three/0.184.0/build/three.module.js' %}",
-        "three/addons/": "{% static 'web/vendor/three/0.184.0/examples/jsm/' %}"
-      }
-    }
-  </script>
-  <script src="{% static 'web/js/legacy/macro_pattern_graph_editor.js' %}?v=20260505-theme-slate"></script>
-  {% endif %}
 {% endblock %}

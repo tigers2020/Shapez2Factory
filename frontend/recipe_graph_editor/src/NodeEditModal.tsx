@@ -84,7 +84,11 @@ export function NodeEditModal({
       const op = operation.trim();
       if (op === "painter") {
         const pc = paintColor.trim().slice(0, 1);
-        next.paint_color = pc || "r";
+        if (pc) {
+          next.paint_color = pc;
+        } else {
+          next.paint_color = undefined;
+        }
         next.crystal_color = undefined;
       } else if (op === "crystal_generator") {
         const cc = paintColor.trim().slice(0, 1);
@@ -217,6 +221,11 @@ export function NodeEditModal({
                   }}
                   value={paintColor}
                 />
+                {operation.trim() === "painter" ? (
+                  <p className="mt-1 text-[10px] leading-snug text-slate-500">
+                    {ru("paintColorFallbackHint")}
+                  </p>
+                ) : null}
               </label>
             ) : null}
           </div>

@@ -1,3 +1,8 @@
+"""Convert ``NormalizedShapePattern`` and :class:`~django_apps.shapez_core.domain.shape.Shape`.
+
+Canonical encoding: layer tokens SW, NW, NE, SE (``shape_encoding.md``).
+"""
+
 from __future__ import annotations
 
 from django_apps.shapez_core.domain.shape import EMPTY_PART, Shape, ShapeLayer, ShapePart

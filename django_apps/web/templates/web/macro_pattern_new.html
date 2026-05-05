@@ -1,7 +1,7 @@
 {% extends "web/base.html" %}
-{% load static %}
+{% load i18n static %}
 
-{% block title %}shapez2 planner | New macro recipe (staff){% endblock %}
+{% block title %}{% trans "shapez2 planner | New macro recipe (staff)" %}{% endblock %}
 
 {% block content %}
 <main class="min-h-screen bg-slate-950 text-slate-100">
@@ -9,14 +9,16 @@
 
   <section class="border-b border-amber-400/20 bg-slate-950">
     <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-300/90">Staff</p>
-      <h1 class="mt-3 text-2xl font-semibold text-white">New macro recipe</h1>
+      <p class="text-xs font-semibold uppercase tracking-[0.22em] text-amber-300/90">{% trans "Staff" %}</p>
+      <h1 class="mt-3 text-2xl font-semibold text-white">{% trans "New macro recipe" %}</h1>
       <p class="mt-2 text-sm text-slate-400">
-        Creates a <span class="font-semibold text-cyan-200">draft</span> row with the placeholder <code class="font-mono text-slate-400">graph-draft</code> pattern family (solver macro lookup uses exact pattern signature — drafts do not match real patterns until you assign a real family on the metadata page).
-        Recipe <code class="font-mono text-slate-400">code</code>, strategy, costs, and priority are set automatically or from the graph editor.
+        {% blocktrans trimmed %}
+          Creates a draft row with the placeholder graph-draft pattern family (solver macro lookup uses exact pattern signature — drafts do not match real patterns until you assign a real family on the metadata page).
+          Recipe code, strategy, costs, and priority are set automatically or from the graph editor.
+        {% endblocktrans %}
       </p>
       <p class="mt-4">
-        <a href="{% url 'web:macro-pattern-staff' %}" class="text-sm font-semibold text-cyan-300 hover:text-cyan-200">← Back to catalog</a>
+        <a href="{% url 'web:macro-pattern-staff' %}" class="text-sm font-semibold text-cyan-300 hover:text-cyan-200">{% trans "← Back to catalog" %}</a>
       </p>
     </div>
   </section>
@@ -28,13 +30,13 @@
     <form method="post" class="grid gap-4 rounded-xl border border-slate-800 bg-slate-900/40 p-6">
       {% csrf_token %}
       <label class="block text-xs text-slate-400">
-        Display name (optional)
-        <input name="name" placeholder="Untitled macro" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm" autocomplete="off" />
+        {% trans "Display name (optional)" %}
+        <input name="name" placeholder="{% trans 'Untitled macro' %}" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm" autocomplete="off" />
       </label>
       <div class="flex justify-end gap-3 pt-2">
-        <a href="{% url 'web:macro-pattern-staff' %}" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-500">Cancel</a>
+        <a href="{% url 'web:macro-pattern-staff' %}" class="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:border-slate-500">{% trans "Cancel" %}</a>
         <button type="submit" class="rounded-lg border border-amber-500/50 bg-amber-500/20 px-4 py-2 text-sm font-semibold text-amber-50 hover:bg-amber-500/30">
-          Create &amp; open graph editor
+          {% trans "Create & open graph editor" %}
         </button>
       </div>
     </form>

@@ -48,6 +48,12 @@ def _graph_node_doc_to_solver(n: dict[str, Any]) -> SolverShapeNode | SolverOper
         pc = str(n.get("paint_color", "")).strip()
         if pc:
             description = f"{description} · paint_color={pc}"
+        else:
+            description = f"{description} · fluid wire (lower port) + shape (upper port)"
+    elif op_type == OperationType.CRYSTAL_GENERATOR:
+        cc = str(n.get("crystal_color", "")).strip()
+        if cc:
+            description = f"{description} · crystal_color={cc}"
     return SolverOperationNode(
         id=str(n["id"]),
         operation_type=op_type.value,

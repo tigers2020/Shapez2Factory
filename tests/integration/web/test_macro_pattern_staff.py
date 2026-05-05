@@ -1,7 +1,6 @@
 import json
 
 import pytest
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
@@ -78,17 +77,13 @@ def test_macro_pattern_graph_page_staff_ok() -> None:
     assert response.status_code == 200
     body = response.content.decode()
     assert "macro-graph-bootstrap" in body
-    if getattr(settings, "RECIPE_GRAPH_USE_REACT_FLOW", False):
-        assert "recipe-graph-editor.js?v=" in body
-        assert "recipe-graph-editor.css?v=" in body
-        assert "macro-graph-editor-root" in body
-        assert "staff_catalog_url" in body
-        assert "react_flow_initial" in body
-        assert "react_flow_initial_status" in body
-        assert "macro_step_count" in body
-    else:
-        assert "legacy/macro_pattern_graph_editor.js?v=" in body
-        assert "Recipe Graph Workbench" in body
+    assert "recipe-graph-editor.js?v=" in body
+    assert "recipe-graph-editor.css?v=" in body
+    assert "macro-graph-editor-root" in body
+    assert "staff_catalog_url" in body
+    assert "react_flow_initial" in body
+    assert "react_flow_initial_status" in body
+    assert "macro_step_count" in body
 
 
 @pytest.mark.django_db

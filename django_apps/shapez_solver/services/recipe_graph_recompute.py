@@ -46,15 +46,26 @@ def _normalize_operation_node(node: dict[str, Any], index: int) -> None:
         op_enum = OperationType(opv)
     except ValueError as exc:
         raise ValueError(f"unknown operation type: {opv}") from exc
-    if op_enum != OperationType.PAINTER:
+    if op_enum == OperationType.PAINTER:
+        pc = node.get("paint_color")
+        if pc is not None:
+            if not isinstance(pc, str) or len(pc.strip()) != 1:
+                raise ValueError(
+                    f"nodes[{index}]: painter paint_color must be "
+                    "a single character when set (legacy fallback)",
+                )
+            node["paint_color"] = pc.strip()
         return
-    pc = node.get("paint_color")
-    if not isinstance(pc, str) or len(pc.strip()) != 1:
-        raise ValueError(
-            f"nodes[{index}]: painter operation requires paint_color "
-            "(single character string, e.g. color channel letter)",
-        )
-    node["paint_color"] = pc.strip()
+    if op_enum == OperationType.CRYSTAL_GENERATOR:
+        cc = node.get("crystal_color")
+        if cc is None:
+            return
+        if not isinstance(cc, str) or len(cc.strip()) != 1:
+            raise ValueError(
+                f"nodes[{index}]: crystal_generator crystal_color must be "
+                "a single character when set (or omit to infer from second input)",
+            )
+        node["crystal_color"] = cc.strip()
 
 
 def _validate_graph_node(node: object, index: int, seen_ids: set[str]) -> None:
@@ -284,12 +295,21 @@ _TWO_INPUT_OPERATION_TYPES = frozenset(
         OperationType.SWAPPER,
         OperationType.STACKER,
         OperationType.COLOR_MIXER,
+        OperationType.CRYSTAL_GENERATOR,
     },
 )
 
 
-def _required_input_count_for_recompute(op_type: OperationType) -> int:
-    return 2 if op_type in _TWO_INPUT_OPERATION_TYPES else 1
+def _required_input_count_for_recompute(
+    op_type: OperationType,
+    op_node: dict[str, Any],
+) -> int:
+    if op_type == OperationType.PAINTER:
+        pc = str(op_node.get("paint_color", "")).strip()
+        return 1 if pc else 2
+    if op_type in _TWO_INPUT_OPERATION_TYPES:
+        return 2
+    return 1
 
 
 def _apply_recomputed_operation(
@@ -301,7 +321,7 @@ def _apply_recomputed_operation(
     shape_parse_cache: dict[str, Shape],
 ) -> tuple[bool, tuple[str, ...], str]:
     """(성공 여부, 출력 shape_code 튜플, 경고 메시지). 실패 시 튜플은 빈 값."""
-    need = _required_input_count_for_recompute(op_type)
+    need = _required_input_count_for_recompute(op_type, op_node)
     if len(input_codes) != need:
         return (
             False,
@@ -310,11 +330,19 @@ def _apply_recomputed_operation(
         )
     try:
         if op_type == OperationType.PAINTER:
-            pc = str(op_node.get("paint_color", "")).strip()
+            pc = str(op_node.get("paint_color", "")).strip() or None
             outputs = apply_operation(
                 op_type,
                 tuple(input_codes),
                 paint_color=pc,
+                shape_parse_cache=shape_parse_cache,
+            )
+        elif op_type == OperationType.CRYSTAL_GENERATOR:
+            cc = str(op_node.get("crystal_color", "")).strip()
+            outputs = apply_operation(
+                op_type,
+                tuple(input_codes),
+                crystal_color=cc or None,
                 shape_parse_cache=shape_parse_cache,
             )
         else:

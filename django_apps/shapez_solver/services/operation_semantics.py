@@ -4,6 +4,7 @@ from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_core.services.shape_code_parser import parse_shape_code_list
 from django_apps.shapez_core.services.shape_codec import shape_from_pattern
 from django_apps.shapez_solver.domain.operations import OperationType
+from django_apps.shapez_solver.services.fluid_semantics import pure_fluid_color
 from django_apps.shapez_solver.services.operation_engine import OperationEngine
 
 _OPERATION_ENGINE = OperationEngine()
@@ -80,11 +81,34 @@ def stack(
     )
 
 
+def infer_uniform_shape_color(
+    shape_code: str,
+    *,
+    shape_parse_cache: dict[str, Shape] | None = None,
+) -> str | None:
+    """모든 비어있지 않은·비-pin 칸의 색이 동일할 때 그 한 글자 색 코드. 유체 색 추론용."""
+
+    shape = parse_shape(shape_code, cache=shape_parse_cache)
+    colors: list[str] = []
+    for layer in shape.layers:
+        for part in layer.quadrants:
+            if part.is_empty or part.is_pin:
+                continue
+            colors.append(part.color)
+    if not colors:
+        return None
+    first = colors[0]
+    if any(c != first for c in colors):
+        return None
+    return first
+
+
 def apply_operation(
     operation: OperationType,
     inputs: tuple[str, ...],
     *,
     paint_color: str | None = None,
+    crystal_color: str | None = None,
     shape_parse_cache: dict[str, Shape] | None = None,
 ) -> tuple[str, ...]:
     """Search action generator가 사용할 operation dispatch."""
@@ -123,22 +147,57 @@ def apply_operation(
     if operation == OperationType.STACKER:
         return stack(inputs[0], inputs[1], shape_parse_cache=cache)
     if operation == OperationType.COLOR_MIXER:
-        shapes = (
-            parse_shape(inputs[0], cache=cache),
-            parse_shape(inputs[1], cache=cache),
-        )
-        mixed = _OPERATION_ENGINE.apply(OperationType.COLOR_MIXER, shapes)
+        left = parse_shape(inputs[0], cache=cache)
+        right = parse_shape(inputs[1], cache=cache)
+        try:
+            pure_fluid_color(left)
+            pure_fluid_color(right)
+        except ValueError as exc:
+            raise ValueError(f"color_mixer inputs must be pure color fluids: {exc}") from exc
+        mixed = _OPERATION_ENGINE.apply(OperationType.COLOR_MIXER, (left, right))
         return tuple(output.canonical_code for output in mixed)
     if operation == OperationType.PAINTER:
+        if len(inputs) == 2:
+            # Graph edge order: slot "1" (`in-1`) before bare `in` → (fluid, target).
+            fluid_code, target_code = inputs[0], inputs[1]
+            fluid_shape = parse_shape(fluid_code, cache=cache)
+            target_shape = parse_shape(target_code, cache=cache)
+            return tuple(
+                output.canonical_code
+                for output in _OPERATION_ENGINE.apply(
+                    OperationType.PAINTER,
+                    (target_shape, fluid_shape),
+                )
+            )
         if paint_color is None:
-            raise ValueError("painter requires paint_color")
-        color = str(paint_color).strip()
-        if len(color) != 1:
+            raise ValueError("painter requires paint_color or two inputs (fluid wire + shape)")
+        ink = str(paint_color).strip()
+        if len(ink) != 1:
             raise ValueError("paint_color must be a single character")
         return tuple(
             output.canonical_code
             for output in _OPERATION_ENGINE.apply(
                 OperationType.PAINTER,
+                (parse_shape(inputs[0], cache=cache),),
+                color=ink,
+            )
+        )
+    if operation == OperationType.CRYSTAL_GENERATOR:
+        color: str | None = None
+        if crystal_color is not None and str(crystal_color).strip():
+            color = str(crystal_color).strip()
+            if len(color) != 1:
+                raise ValueError("crystal_color must be a single character")
+        elif len(inputs) >= 2:
+            color = infer_uniform_shape_color(inputs[1], shape_parse_cache=cache)
+        if color is None:
+            raise ValueError(
+                "crystal_generator requires crystal_color or a second input with uniform color",
+            )
+        return tuple(
+            output.canonical_code
+            for output in _OPERATION_ENGINE.apply(
+                OperationType.CRYSTAL_GENERATOR,
                 (parse_shape(inputs[0], cache=cache),),
                 color=color,
             )

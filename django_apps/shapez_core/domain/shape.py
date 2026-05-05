@@ -1,3 +1,10 @@
+"""Canonical shape types for shapez2Solver.
+
+One layer is eight characters (four two-character tokens). Token order and
+``ShapeLayer.quadrants`` indices are SW, NW, NE, SE for indices 0..3.
+See ``documents/game_rules/shape_encoding.md``.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,7 +32,7 @@ class ShapePart:
         return self.kind == "c"
 
     def with_color(self, color: str) -> ShapePart:
-        if self.is_empty:
+        if self.is_empty or self.is_pin:
             return self
         return ShapePart(kind=self.kind, color=color, material=self.material)
 
@@ -36,6 +43,8 @@ type ShapeQuadrants = tuple[ShapePart, ShapePart, ShapePart, ShapePart]
 
 @dataclass(frozen=True, slots=True)
 class ShapeLayer:
+    """Four quadrants per layer: index order SW, NW, NE, SE."""
+
     quadrants: ShapeQuadrants
 
     def __post_init__(self) -> None:

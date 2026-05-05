@@ -108,6 +108,35 @@ def test_document_to_solver_graph_painter_description_includes_color() -> None:
     assert "paint_color=r" in op.description
 
 
+def test_document_to_solver_graph_painter_description_without_paint_color_notes_fluid() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCu----",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "p",
+                "kind": "operation",
+                "operation": OperationType.PAINTER.value,
+                "x": 1,
+                "y": 0,
+            },
+        ],
+        "edges": [{"from": "s", "to": "p", "kind": "input"}],
+    }
+    g = document_to_solver_graph(doc)
+    op = next(n for n in g.nodes if n.id == "p")
+    assert op.kind == "operation"
+    assert "fluid wire" in op.description
+
+
 def test_enrich_react_flow_adds_preview_for_shapes_with_codes() -> None:
     doc = {
         "schema_version": 1,

@@ -1,22 +1,25 @@
 {% extends "web/base_auth.html" %}
+{% load i18n %}
 
-{% block title %}Logout - shapez2 planner{% endblock %}
+{% block title %}{% trans "Logout - shapez2 planner" %}{% endblock %}
 
 {% block auth_before_card %}
-  {% include "web/partials/auth_heading_card.html" with title="Logout" subtitle="You will need to sign in again to use account features." %}
+  {% trans "Logout" as auth_heading_title %}
+  {% trans "You will need to sign in again to use account features." as auth_heading_subtitle %}
+  {% include "web/partials/auth_heading_card.html" with title=auth_heading_title subtitle=auth_heading_subtitle %}
 {% endblock %}
 
 {% block auth_card %}
   <form method="post" action="{% url 'account_logout' %}" class="space-y-5 rounded-xl border border-slate-800 bg-slate-900/95 p-6 shadow-lg shadow-black/40">
     {% csrf_token %}
-    <p class="text-sm text-slate-300">Are you sure you want to logout?</p>
+    <p class="text-sm text-slate-300">{% trans "Are you sure you want to logout?" %}</p>
     <button
       type="submit"
       class="w-full rounded-xl border border-cyan-400/45 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-100 hover:border-cyan-300/60"
-    >Logout</button>
+    >{% trans "Logout" %}</button>
   </form>
 
   <p class="text-center text-sm text-slate-400">
-    <a href="{% url 'web:home' %}" class="font-semibold text-cyan-200 no-underline hover:text-cyan-100">Back to home</a>
+    <a href="{% url 'web:home' %}" class="font-semibold text-cyan-200 no-underline hover:text-cyan-100">{% trans "Back to home" %}</a>
   </p>
 {% endblock %}

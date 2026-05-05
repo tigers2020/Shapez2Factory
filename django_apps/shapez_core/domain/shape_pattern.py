@@ -5,7 +5,11 @@ from enum import Enum
 
 
 class QuadrantPosition(Enum):
-    """Quadrant labels; layer string order is SW -> NW -> NE -> SE."""
+    """Compass labels for each slot in a layer.
+
+    Matches ``ShapeLayer.quadrants`` index order: 0..3 = SW, NW, NE, SE.
+    The eight-character layer string is four tokens in that same order.
+    """
 
     NE = "NE"
     SE = "SE"

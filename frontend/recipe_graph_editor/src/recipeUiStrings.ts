@@ -12,6 +12,10 @@ const EN = {
   paletteSearchPh: "Search operations…",
   emptySourceRow: "Empty source material",
   emptySourceHint: "Default {code} — edit via double-click or recompute",
+  emptyFluidRow: "Empty fluid carrier",
+  emptyFluidHint: "Uniform placeholder {code} — edit code to a pure fluid (e.g. CrCrCrCr)",
+  paintColorFallbackHint:
+    "Optional legacy fallback when only one shape input is wired; prefer fluid on the lower port.",
   opRowHintGridDrag:
     "{value} — click (grid place) or drag to canvas (drop position)",
   opNotInEngine: "This operation is not in the recipe graph engine recompute list.",

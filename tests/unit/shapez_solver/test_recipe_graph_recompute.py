@@ -270,7 +270,7 @@ def test_recompute_half_destroyer_updates_downstream_shape() -> None:
     assert out_node["shape_code"] == "CuCu----"
 
 
-def test_validate_painter_requires_paint_color() -> None:
+def test_validate_painter_paint_color_optional() -> None:
     doc = {
         "schema_version": 1,
         "nodes": [
@@ -305,12 +305,58 @@ def test_validate_painter_requires_paint_color() -> None:
             {"from": "o_p", "to": "s_out", "kind": "output", "slot": "0"},
         ],
     }
-    try:
-        validate_graph_document(doc)
-    except ValueError as exc:
-        assert "paint_color" in str(exc).lower()
-    else:
-        raise AssertionError("expected ValueError")
+    validate_graph_document(doc)
+
+
+def test_recompute_painter_two_inputs_fluid_and_shape() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s_shape",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCu----",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "s_fluid",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CrCrCrCr",
+                "quantity": 1,
+                "x": 0,
+                "y": 80,
+            },
+            {
+                "id": "o_p",
+                "kind": "operation",
+                "operation": OperationType.PAINTER.value,
+                "x": 200,
+                "y": 0,
+            },
+            {
+                "id": "s_out",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 400,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s_shape", "to": "o_p", "kind": "input"},
+            {"from": "s_fluid", "to": "o_p", "kind": "input", "slot": "1"},
+            {"from": "o_p", "to": "s_out", "kind": "output", "slot": "0"},
+        ],
+    }
+    out, warnings = recompute_graph_document(doc)
+    assert not warnings, warnings
+    node = next(n for n in out["nodes"] if n["id"] == "s_out")
+    assert node["shape_code"] == "CrCr----"
 
 
 def test_recompute_painter_updates_shape() -> None:
@@ -359,6 +405,11 @@ def test_recompute_painter_updates_shape() -> None:
 def test_apply_operation_color_mixer_two_inputs() -> None:
     out = apply_operation(OperationType.COLOR_MIXER, ("CrCrCrCr", "CgCgCgCg"))
     assert out == ("CyCyCyCy",)
+
+
+def test_apply_operation_painter_two_inputs_fluid_then_shape_tuple() -> None:
+    out = apply_operation(OperationType.PAINTER, ("CrCrCrCr", "CuCu----"))
+    assert out == ("CrCr----",)
 
 
 def test_recompute_color_mixer_updates_output_shape() -> None:
@@ -516,8 +567,8 @@ def test_recompute_pin_pusher_updates_downstream_shape() -> None:
     assert node["shape_code"] == "P-P-P-P-:CuCuCuCu"
 
 
-def test_apply_operation_painter_requires_paint_color_kwarg() -> None:
-    with pytest.raises(ValueError, match="painter requires"):
+def test_apply_operation_painter_requires_color_or_two_inputs() -> None:
+    with pytest.raises(ValueError, match="paint_color or two"):
         apply_operation(OperationType.PAINTER, ("CuCu----",))
 
 

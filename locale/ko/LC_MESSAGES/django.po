@@ -1,0 +1,568 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: shapez2-solver\n"
+"Language: ko\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Login - shapez2 planner"
+msgstr "로그인 · shapez2 planner"
+
+msgid "Login"
+msgstr "로그인"
+
+msgid "Use your username or a social account."
+msgstr "아이디·비밀번호 또는 소셜 계정으로 들어옵니다."
+
+msgid "Remember me"
+msgstr "로그인 상태 유지"
+
+msgid "Social login"
+msgstr "소셜로 로그인"
+
+msgid "Need an account?"
+msgstr "처음이신가요?"
+
+msgid "Sign up"
+msgstr "회원가입"
+
+msgid "Logout - shapez2 planner"
+msgstr "로그아웃 · shapez2 planner"
+
+msgid "Logout"
+msgstr "로그아웃"
+
+msgid "You will need to sign in again to use account features."
+msgstr "계정 기능을 쓰려면 다시 로그인해야 합니다."
+
+msgid "Are you sure you want to logout?"
+msgstr "로그아웃할까요?"
+
+msgid "Back to home"
+msgstr "홈으로"
+
+msgid "Sign up - shapez2 planner"
+msgstr "회원가입 · shapez2 planner"
+
+msgid "Create a username and password, or use a social account."
+msgstr "아이디와 비밀번호를 만들거나 소셜 계정으로 가입할 수 있습니다."
+
+msgid "Create account"
+msgstr "가입하기"
+
+msgid "Social sign up"
+msgstr "소셜로 가입"
+
+msgid "Already have an account?"
+msgstr "이미 계정이 있나요?"
+
+msgid "Account"
+msgstr "계정"
+
+msgid "Third-Party Login Failure"
+msgstr "외부 로그인 실패"
+
+msgid ""
+"An error occurred while attempting to login via your third-party account."
+msgstr "외부 계정으로 로그인하는 동안 문제가 생겼습니다."
+
+msgid "Back to sign in"
+msgstr "로그인으로 돌아가기"
+
+msgid "Sign In"
+msgstr "로그인"
+
+msgid "Continue"
+msgstr "계속"
+
+msgid "Connect {{ provider }}"
+msgstr "{{ provider }} 연결"
+
+msgid ""
+"You are about to connect a new third-party account from {{ provider }}."
+msgstr "{{ provider }}에서 가져온 새 외부 계정을 연결합니다."
+
+msgid "Sign in with {{ provider }}"
+msgstr "{{ provider }}(으)로 계속"
+
+msgid "Continue to shapez2 planner with your {{ provider }} account."
+msgstr "{{ provider }} 계정으로 shapez2 planner에 들어갑니다."
+
+msgid "Login Cancelled"
+msgstr "로그인 취소됨"
+
+msgid ""
+"You decided to cancel logging in to our site using one of your existing "
+"accounts. If this was a mistake, please proceed to <a href=\"{{ login_url "
+"}}\">sign in</a>."
+msgstr "기존 계정으로 로그인을 취소했습니다. 실수였다면 <a href=\"{{ login_url }}\">로그인</a>으로 계속해 주세요."
+
+msgid "Signup"
+msgstr "회원가입"
+
+msgid "Almost there — one short form."
+msgstr "거의 다 됐어요. 짧은 정보만 더 적어 주세요."
+
+msgid "Sign Up"
+msgstr "회원가입"
+
+msgid ""
+"You are about to use your {{ provider_name }} account to login to {{ "
+"site_name }}. As a final step, please complete the following form:"
+msgstr ""
+"{{ provider_name }} 계정으로 {{ site_name }}에 로그인합니다. 마지막으로 아래 항목만 채워 주세요."
+
+msgid "shapez2 planner"
+msgstr "shapez2 planner"
+
+msgid "shapez2 planner - Demo"
+msgstr "shapez2 planner · 데모"
+
+msgid "shapez2 planner - Gallery"
+msgstr "shapez2 planner · 갤러리"
+
+msgid "shapez2 planner - Factory console"
+msgstr "shapez2 planner · 팩토리 콘솔"
+
+msgid "Quick Solver"
+msgstr "퀵 솔버"
+
+msgid "Open solver page"
+msgstr "솔버로 이동"
+
+msgid "MVP"
+msgstr "MVP"
+
+msgid "Target shape code"
+msgstr "목표 도형 코드"
+
+msgid "Shape preview"
+msgstr "도형 미리보기"
+
+msgid "Original"
+msgstr "원본"
+
+msgid "Layer"
+msgstr "레이어"
+
+msgid "Quadrant"
+msgstr "사분면"
+
+msgid "shapez 2 planner / solver / production stats / miner calculator"
+msgstr "shapez 2 planner · 솔버 · 생산 분석 · 채굴 계산"
+
+msgid "Solve Shapez 2 production chains."
+msgstr "Shapez 2 공장 라인을 여기서 설계해 보세요."
+
+msgid "Shape Solver"
+msgstr "도형 솔버"
+
+msgid "Find operation sequences to reach target shapes."
+msgstr "목표 도형까지 어떤 공정을 거치면 되는지 짚어 줍니다."
+
+msgid "Production Planner"
+msgstr "생산 플래너"
+
+msgid "Derive required inputs per minute from target output rate."
+msgstr "목표 생산량에서 분당 들어와야 할 재료를 역산합니다."
+
+msgid "Miner Calculator"
+msgstr "채굴기 계산"
+
+msgid "Estimate miners and machine load from raw demand."
+msgstr "원료 수요만 넣어도 채굴기 대수와 설비 부하를 가늠해 볼 수 있습니다."
+
+msgid "Visual Graph"
+msgstr "그래프 보기"
+
+msgid "Inspect recipes, bottlenecks, and waste in a flow graph."
+msgstr "플로우 그래프에서 레시피·병목·손실을 한 번에 훑습니다."
+
+msgid "Shapez 2 header art"
+msgstr "Shapez 2 헤더 일러스트"
+
+msgid "Quick solver shape preview"
+msgstr "도형 코드 미리보기"
+
+msgid "e.g. CuRuSuWu or SuSuSuSu"
+msgstr "예: CuRuSuWu, SuSuSuSu"
+
+msgid "Shapez 2 box art"
+msgstr "Shapez 2 패키지 아트"
+
+msgid "Preview updates as you type (debounced). Parsed with"
+msgstr "입력하는 대로 미리보기가 따라옵니다(잠깐 멈추면 반영). 파싱:"
+
+msgid ""
+"Generate recipes, estimate required inputs, calculate miner counts, and "
+"visualize production graphs for Shapez 2 factories."
+msgstr "레시피를 만들고 필요 입력을 짐작하며 채굴기 대수를 계산하고 Shapez 2 공장 생산 그래프를 그립니다."
+
+msgid ""
+"Follow one target shape from recipe breakdown to inputs per minute, miner "
+"load, and bottleneck checks in a single planning surface."
+msgstr "목표 도형 하나를 잡고 분해·분당 입력·채굴 부하·병목까지 한 화면에서 따라가 봅니다."
+
+msgid "Staff · Recipe Graph Workbench"
+msgstr "스태프 · 레시피 그래프 작업대"
+
+msgid "Catalog"
+msgstr "카탈로그"
+
+msgid "Edit metadata"
+msgstr "메타데이터 편집"
+
+msgid "shapez2 planner | Graph: {{ code }} (staff)"
+msgstr "shapez2 planner · 그래프 {{ code }}(스태프)"
+
+msgid "shapez2 planner | Macro catalog (staff)"
+msgstr "shapez2 planner · 매크로 목록(스태프)"
+
+msgid "Staff"
+msgstr "스태프"
+
+msgid "Macro pattern catalog"
+msgstr "매크로 패턴 목록"
+
+msgid "New recipe"
+msgstr "새 레시피"
+
+msgid "Code"
+msgstr "코드"
+
+msgid "Name"
+msgstr "이름"
+
+msgid "Family"
+msgstr "패밀리"
+
+msgid "Strategy"
+msgstr "전략"
+
+msgid "Active"
+msgstr "활성"
+
+msgid "Actions"
+msgstr "작업"
+
+msgid "yes"
+msgstr "예"
+
+msgid "no"
+msgstr "아니오"
+
+msgid "Graph"
+msgstr "그래프"
+
+msgid "Edit"
+msgstr "편집"
+
+msgid "Delete"
+msgstr "삭제"
+
+msgid "No macro recipes yet — create one."
+msgstr "아직 매크로 레시피가 없습니다. 새로 만드세요."
+
+msgid ""
+"Manage macro recipes for Pattern Lab and solver catalog strategies. Use "
+"separate pages for metadata vs graph canvas."
+msgstr "패턴 랩과 솔버용 매크로 레시피를 여기서 다룹니다. 메타 정보와 그래프 캔버스는 페이지가 나뉘어 있습니다."
+
+msgid "shapez2 planner | New macro recipe (staff)"
+msgstr "shapez2 planner · 새 매크로 레시피(스태프)"
+
+msgid "New macro recipe"
+msgstr "새 매크로 레시피"
+
+msgid "← Back to catalog"
+msgstr "← 카탈로그로"
+
+msgid "Display name (optional)"
+msgstr "표시 이름(선택)"
+
+msgid "Cancel"
+msgstr "취소"
+
+msgid "Create & open graph editor"
+msgstr "만들고 그래프 편집기로"
+
+msgid "Untitled macro"
+msgstr "제목 없는 매크로"
+
+msgid ""
+"Creates a draft row with the placeholder graph-draft pattern family (solver "
+"macro lookup uses exact pattern signature — drafts do not match real "
+"patterns until you assign a real family on the metadata page). Recipe code, "
+"strategy, costs, and priority are set automatically or from the graph "
+"editor."
+msgstr ""
+"placeholder graph-draft 패밀리로 초안 행을 만듭니다. 솔버 매크로 조회는 패턴 시그니처가 정확히 맞아야 하므로, 메타"
+" 페이지에서 실제 패밀리를 지정하기 전까지 초안은 실제 패턴과 맞지 않습니다. 레시피 코드·전략·비용·우선순위는 자동으로 채우거나 그래프"
+" 편집기에서 가져옵니다."
+
+msgid "Staff · Recipe metadata"
+msgstr "스태프 · 레시피 정보"
+
+msgid "← Catalog"
+msgstr "← 카탈로그"
+
+msgid "Open graph editor →"
+msgstr "그래프 편집기 열기 →"
+
+msgid "shapez2 planner | Edit: {{ code }} (staff)"
+msgstr "shapez2 planner · 편집 {{ code }}(스태프)"
+
+msgid ""
+"Family, slug code, strategy, and activation. Estimated costs and solver "
+"priority are derived from the recipe graph when you save from the graph "
+"editor (commit)."
+msgstr ""
+"패밀리·슬러그·전략·활성 여부입니다. 예상 비용과 솔버 우선순위는 그래프 편집기에서 저장(커밋)할 때 레시피 그래프에서 끌어옵니다."
+
+msgid "Language"
+msgstr "언어"
+
+msgid "v0.1.0 scaffold"
+msgstr "v0.1.0 초기 버전"
+
+msgid "GitHub · Shapez2Factory"
+msgstr "GitHub · Shapez2Factory"
+
+msgid ""
+"Not affiliated with the official game; fan tooling for planning and "
+"analysis."
+msgstr "공식 작품과 무관한 팬 메이드 도구입니다. 공장 설계와 숫자 계산을 돕습니다."
+
+msgid "Home"
+msgstr "홈"
+
+msgid "Gallery"
+msgstr "갤러리"
+
+msgid "Demo"
+msgstr "데모"
+
+msgid "Solver"
+msgstr "솔버"
+
+msgid "Pattern Lab"
+msgstr "패턴 랩"
+
+msgid "Macro catalog"
+msgstr "매크로 목록"
+
+msgid "Support"
+msgstr "후원"
+
+msgid "Primary navigation"
+msgstr "메인 메뉴"
+
+msgid "shapez2 planner | Pattern Lab"
+msgstr "shapez2 planner · 패턴 랩"
+
+msgid "Inspect pattern signatures and macro catalog candidates."
+msgstr "패턴 시그니처와 매크로 후보가 맞는지 가볍게 점검합니다."
+
+msgid "Shape code"
+msgstr "도형 코드"
+
+msgid "Analyze"
+msgstr "분석"
+
+msgid "Analysis failed"
+msgstr "분석 실패"
+
+msgid "canonical:"
+msgstr "정규 코드:"
+
+msgid "Signature"
+msgstr "시그니처"
+
+msgid "Canonical"
+msgstr "정규형"
+
+msgid "Inventory goal"
+msgstr "인벤토리 목표"
+
+msgid "Inventory signature"
+msgstr "인벤토리 시그니처"
+
+msgid "Target batch"
+msgstr "목표 배치"
+
+msgid "n/a"
+msgstr "해당 없음"
+
+msgid "Symbol map"
+msgstr "기호 매핑"
+
+msgid "Rotation variants"
+msgstr "회전 패턴"
+
+msgid "Macro candidates"
+msgstr "매크로 후보"
+
+msgid "Macro"
+msgstr "매크로"
+
+msgid "Cost"
+msgstr "비용"
+
+msgid "Dry-run"
+msgstr "드라이런"
+
+msgid "Step source"
+msgstr "단계 출처"
+
+msgid "Primitive steps"
+msgstr "기본 단계"
+
+msgid "ready"
+msgstr "준비됨"
+
+msgid "not generated"
+msgstr "아직 없음"
+
+msgid "graph"
+msgstr "그래프"
+
+msgid "DB"
+msgstr "DB"
+
+msgid "Steps from graph_document"
+msgstr "graph_document 기준 단계"
+
+msgid "Steps from database"
+msgstr "DB 단계"
+
+msgid "No step metadata is registered for this macro."
+msgstr "이 매크로에는 단계 메타데이터가 아직 없습니다."
+
+msgid "Batch source counts"
+msgstr "배치 소스 개수"
+
+msgid "No batch source count could be computed."
+msgstr "배치 소스 개수를 계산할 수 없습니다."
+
+msgid "e.g. CuRuSuSu or RcCuRcCu"
+msgstr "예: CuRuSuSu 또는 RcCuRcCu"
+
+msgid ""
+"Pattern DB entries stay as candidate metadata. Python strategy dry-runs "
+"decide whether a macro can actually produce an inventory-search action. When"
+" a recipe has a valid graph_document with operations, the step list below is"
+" derived from the graph (green badge); otherwise it comes from DB step rows "
+"(gray badge)."
+msgstr ""
+"패턴 DB 줄은 후보 메타데이터로만 남습니다. 파이썬 전략 드라이런이 매크로가 실제로 인벤토리 검색 동작을 만들 수 있는지 판별합니다. "
+"레시피에 연산이 담긴 graph_document가 유효하면 아래 단계는 그래프에서 옵니다(녹색 배지); 아니면 DB 단계 행에서 "
+"옵니다(회색 배지)."
+
+msgid ""
+"Enter a shape code to inspect its symbolic signature, inventory-search "
+"skeleton, DB macro candidates, and strategy dry-run status."
+msgstr "도형 코드를 넣으면 기호 시그니처·인벤토리 검색 뼈대·DB 매크로 후보·전략 드라이런 상태를 함께 봅니다."
+
+msgid "DB matches: {{ n }}"
+msgstr "DB 일치: {{ n }}개"
+
+msgid "op {{ oc }} / stage {{ sc }}"
+msgstr "연산 {{ oc }} / 단계 {{ sc }}"
+
+msgid "Step {{ i }}"
+msgstr "단계 {{ i }}"
+
+msgid "in [{{ in_slots }}] -> out [{{ out_slots }}]"
+msgstr "입력 [{{ in_slots }}] -> 출력 [{{ out_slots }}]"
+
+msgid ""
+"No active DB macro matched the inventory signature. Load the seed fixture or"
+" add a MacroRecipe in admin."
+msgstr "인벤토리 시그니처와 맞는 활성 매크로가 DB에 없습니다. 시드 픽스처를 넣거나 관리자에서 MacroRecipe를 추가하세요."
+
+msgid "source x{{ c }}"
+msgstr "소스 x{{ c }}"
+
+msgid "shapez2 planner | Shape solver"
+msgstr "shapez2 planner · 도형 솔버"
+
+msgid "Shape solver"
+msgstr "도형 솔버"
+
+msgid "Target"
+msgstr "목표"
+
+msgid "Apply"
+msgstr "적용"
+
+msgid "Recipe graph"
+msgstr "레시피 그래프"
+
+msgid "Solver Graph"
+msgstr "솔버 그래프"
+
+msgid "POST solve"
+msgstr "POST 솔브"
+
+msgid "Materialized graph"
+msgstr "수량 반영 그래프"
+
+msgid "Enter a target shape and apply it to request a solver graph."
+msgstr "목표 도형 코드를 넣고 적용하면 솔버 그래프를 불러옵니다."
+
+msgid "Current target:"
+msgstr "현재 목표:"
+
+msgid "Live preview"
+msgstr "실시간 미리보기"
+
+msgid "Matches the code in the target field (debounced)."
+msgstr "위 목표 칸의 코드를 따라갑니다(입력 후 잠깐 멈추면 갱신)."
+
+msgid "e.g. CuRuSuWu"
+msgstr "예: CuRuSuWu"
+
+msgid ""
+"From source shapes to target output: deterministic recipe graphs live here."
+msgstr "원료 도형에서 목표 출력까지, 결정적인 레시피 그래프를 한곳에서 봅니다."
+
+msgid ""
+"Set a target code below. The solver plans backward, validates the recipe by "
+"replaying operations, and renders the result as a forward graph with source,"
+" operation, and target nodes."
+msgstr ""
+"아래에 목표 코드를 넣으면 솔버가 역으로 설계하고, 연산을 따라가며 검증한 뒤 소스·공정·목표 노드가 이어진 정방향 그래프로 펼쳐 "
+"줍니다."
+
+msgid ""
+"Query updates this page; preview uses the same shapez_core parser as Quick "
+"Solver."
+msgstr "검색하면 이 페이지가 갱신되고, 미리보기는 퀵 솔버와 같은 shapez_core 파서를 씁니다."
+
+msgid ""
+"Base inputs stay on the left, target outputs stay on the right, and stable "
+"previews render in a right-aligned layout style. Drag to pan and use the "
+"mouse wheel to zoom inside the graph frame."
+msgstr "입력은 왼쪽, 결과는 오른쪽에 두고 미리보기는 오른쪽 정렬로 안정적으로 보입니다. 드래그로 이동하고 휠로 확대·축소하세요."
+
+msgid "shapez2 planner - Support"
+msgstr "shapez2 planner · 후원"
+
+msgid "to show support links here."
+msgstr "을 켜 두면 아래에 후원 링크가 나타납니다."
+
+msgid ""
+"This site is fan-made and not affiliated with the official game. If you "
+"would like to help with hosting and development time, you can use the "
+"channels below. Support is completely optional."
+msgstr ""
+"이 사이트는 팬이 만든 것이며 공식과 무관합니다. 서버와 개발에 보태고 싶다면 아래 채널을 이용해 주세요. 후원은 부담 없이 선택 "
+"사항입니다."
+
+msgid ""
+"Fan-made planner; not affiliated with the official game. Support is optional"
+" and helps hosting and development."
+msgstr "팬 메이드 플래너이며 공식과 무관합니다. 후원은 자유이며 서버와 개발을 돕습니다."
+
+msgid "In production, set the environment variables"
+msgstr "운영 환경에서는 다음 환경 변수를 설정하면"

@@ -56,12 +56,16 @@ import { ru } from "./recipeUiStrings";
 /** 새 소스 자재 노드에 넣을 기본 shape 코드. */
 const DEFAULT_NEW_SOURCE_SHAPE_CODE = "CuCuCuCu";
 
+/** 순색 유체 자리표시자(균일 단색으로 편집). */
+const DEFAULT_NEW_FLUID_SHAPE_CODE = "CuCuCuCu";
+
 /** ``recipeFlowNodes`` 타일 ``h-14 w-14`` (56px) 절반 — 뷰포트 중앙에 노드 중심을 맞출 때 보정. */
 const RECIPE_NODE_TILE_HALF_PX = 28;
 
 /** 팔레트 → React Flow 캔버스 커스텀 DnD MIME (브라우저 호환용 짧은 타입). */
 const RECIPE_PALETTE_DND_OP = "application/x-shapez-recipe-graph-op";
 const RECIPE_PALETTE_DND_SRC = "application/x-shapez-recipe-graph-src";
+const RECIPE_PALETTE_DND_FLUID = "application/x-shapez-recipe-graph-fluid";
 
 export type ReactFlowInitialPayload = {
   version: number;
@@ -124,6 +128,7 @@ type OperationPalettePanelProps = {
   engineOperationIds: readonly string[];
   onAddOperation: (operation: string) => void;
   onAddSourceShape: () => void;
+  onAddFluidSource: () => void;
 };
 
 function newGraphNodeId(prefix: string): string {
@@ -138,6 +143,7 @@ function paletteGridPosition(index: number): { x: number; y: number } {
 
 function OperationPalettePanel({
   engineOperationIds,
+  onAddFluidSource,
   onAddOperation,
   onAddSourceShape,
   operations,
@@ -210,6 +216,23 @@ function OperationPalettePanel({
                 <span className="font-mono text-slate-500">◇</span> {ru("emptySourceRow")}
                 <span className="mt-0.5 block text-[10px] text-slate-500">
                   {ru("emptySourceHint", { code: DEFAULT_NEW_SOURCE_SHAPE_CODE })}
+                </span>
+              </button>
+            </li>
+            <li>
+              <button
+                className="w-full rounded border border-cyan-800/50 bg-slate-900/80 px-2 py-1.5 text-left text-xs text-cyan-100/90 hover:border-cyan-500/50"
+                draggable
+                type="button"
+                onClick={onAddFluidSource}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(RECIPE_PALETTE_DND_FLUID, "1");
+                  e.dataTransfer.effectAllowed = "copy";
+                }}
+              >
+                <span className="font-mono text-slate-500">◇</span> {ru("emptyFluidRow")}
+                <span className="mt-0.5 block text-[10px] text-slate-500">
+                  {ru("emptyFluidHint", { code: DEFAULT_NEW_FLUID_SHAPE_CODE })}
                 </span>
               </button>
             </li>
@@ -328,6 +351,7 @@ type RecipeFlowBoardProps = {
   onSelectionChange: (p: { nodes: Node[]; edges: Edge[] }) => void;
   onDropOperationFromPalette: (operation: string, position: { x: number; y: number }) => void;
   onDropSourceFromPalette: (position: { x: number; y: number }) => void;
+  onDropFluidFromPalette: (position: { x: number; y: number }) => void;
   getViewportCenterFlowRef: MutableRefObject<(() => { x: number; y: number }) | null>;
 };
 
@@ -337,6 +361,7 @@ function RecipeFlowBoard({
   isValidConnection,
   nodes,
   onConnect,
+  onDropFluidFromPalette,
   onDropOperationFromPalette,
   onDropSourceFromPalette,
   onEdgesChange,
@@ -384,9 +409,13 @@ function RecipeFlowBoard({
       }
       if (e.dataTransfer.getData(RECIPE_PALETTE_DND_SRC) === "1") {
         onDropSourceFromPalette(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+        return;
+      }
+      if (e.dataTransfer.getData(RECIPE_PALETTE_DND_FLUID) === "1") {
+        onDropFluidFromPalette(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
       }
     },
-    [onDropOperationFromPalette, onDropSourceFromPalette, screenToFlowPosition],
+    [onDropFluidFromPalette, onDropOperationFromPalette, onDropSourceFromPalette, screenToFlowPosition],
   );
 
   return (
@@ -436,6 +465,7 @@ type GraphCanvasPanelProps = {
   onSelectionChange: (params: { nodes: Node[] }) => void;
   onDropOperationFromPalette: (operation: string, position: { x: number; y: number }) => void;
   onDropSourceFromPalette: (position: { x: number; y: number }) => void;
+  onDropFluidFromPalette: (position: { x: number; y: number }) => void;
   onAutoArrange: () => void;
   catalogOperations: CatalogOperationRow[];
   engineOperationIds: readonly string[];
@@ -451,6 +481,7 @@ function GraphCanvasPanel({
   isValidConnection,
   nodes,
   onConnect,
+  onDropFluidFromPalette,
   onDropOperationFromPalette,
   onDropSourceFromPalette,
   onAutoArrange,
@@ -557,6 +588,7 @@ function GraphCanvasPanel({
             isValidConnection={isValidConnection}
             nodes={nodes}
             onConnect={onConnect}
+            onDropFluidFromPalette={onDropFluidFromPalette}
             onDropOperationFromPalette={onDropOperationFromPalette}
             onDropSourceFromPalette={onDropSourceFromPalette}
             onEdgesChange={onEdgesChange}
@@ -1033,9 +1065,6 @@ export function GraphEditorApp({
         const id = newGraphNodeId("op");
         const icon = catalogIconByOp.get(operation);
         const data: Record<string, unknown> = { operation, ...(icon ? { icon } : {}) };
-        if (operation === "painter") {
-          data.paint_color = "r";
-        }
         if (operation === "crystal_generator") {
           data.crystal_color = "c";
         }
@@ -1071,9 +1100,6 @@ export function GraphEditorApp({
       const id = newGraphNodeId("op");
       const icon = catalogIconByOp.get(operation);
       const data: Record<string, unknown> = { operation, ...(icon ? { icon } : {}) };
-      if (operation === "painter") {
-        data.paint_color = "r";
-      }
       if (operation === "crystal_generator") {
         data.crystal_color = "c";
       }
@@ -1107,6 +1133,44 @@ export function GraphEditorApp({
             type: "shape",
             position: { x: position.x, y: position.y },
             data: { shape_code: DEFAULT_NEW_SOURCE_SHAPE_CODE, quantity: 1, role: "source" },
+          },
+        ];
+        queueMicrotask(() => {
+          void silentDryRunFromGraph(next, edgesRef.current);
+        });
+        return next;
+      });
+    },
+    [setNodes, silentDryRunFromGraph],
+  );
+
+  const addFluidSourceNode = useCallback(() => {
+    setNodes((nds) => {
+      const pos = getViewportCenterFlowRef.current?.() ?? paletteGridPosition(nds.length);
+      const id = newGraphNodeId("fluid");
+      return [
+        ...nds,
+        {
+          id,
+          type: "shape",
+          position: pos,
+          data: { shape_code: DEFAULT_NEW_FLUID_SHAPE_CODE, quantity: 1, role: "source" },
+        },
+      ];
+    });
+  }, [setNodes]);
+
+  const dropFluidSourceAtPosition = useCallback(
+    (position: { x: number; y: number }) => {
+      setNodes((nds) => {
+        const id = newGraphNodeId("fluid");
+        const next: Node[] = [
+          ...nds,
+          {
+            id,
+            type: "shape",
+            position: { x: position.x, y: position.y },
+            data: { shape_code: DEFAULT_NEW_FLUID_SHAPE_CODE, quantity: 1, role: "source" },
           },
         ];
         queueMicrotask(() => {
@@ -1262,6 +1326,7 @@ export function GraphEditorApp({
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 md:grid-cols-[220px_minmax(0,1fr)_168px]">
         <OperationPalettePanel
           engineOperationIds={engineOperationIds}
+          onAddFluidSource={addFluidSourceNode}
           onAddOperation={addOperationNode}
           onAddSourceShape={addSourceShapeNode}
           operations={catalogOperations}
@@ -1276,6 +1341,7 @@ export function GraphEditorApp({
           nodes={nodes}
           onConnect={onConnect}
           onAutoArrange={autoArrangeNodes}
+          onDropFluidFromPalette={dropFluidSourceAtPosition}
           onDropOperationFromPalette={dropOperationAtPosition}
           onDropSourceFromPalette={dropSourceShapeAtPosition}
           onEdgesChange={onEdgesChange}

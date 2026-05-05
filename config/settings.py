@@ -12,17 +12,6 @@ SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True
 ALLOWED_HOSTS: list[str] = []
 
-# Staff macro recipe graph: Vite-built React Flow island (`frontend/recipe_graph_editor`).
-# Set RECIPE_GRAPH_USE_REACT_FLOW=0|false to load the legacy WebGL/JS editor.
-# Unset: React Flow (default). Explicit 1|true|yes|on also enables RF.
-_rf = os.environ.get("RECIPE_GRAPH_USE_REACT_FLOW", "").strip().lower()
-if _rf in {"0", "false", "no", "off"}:
-    RECIPE_GRAPH_USE_REACT_FLOW = False
-elif _rf in {"1", "true", "yes", "on"}:
-    RECIPE_GRAPH_USE_REACT_FLOW = True
-else:
-    RECIPE_GRAPH_USE_REACT_FLOW = True
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -43,6 +32,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -61,6 +51,7 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "django.template.context_processors.i18n",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django_apps.web.context_processors.django_debug",
@@ -85,10 +76,17 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+
+LANGUAGES = [
+    ("en", "English"),
+    ("ko", "Korean"),
+]
+
+LOCALE_PATHS = [BASE_DIR / "locale"]
 
 STATIC_URL = "static/"
 SOLVER_GRAPH_PREVIEW_RENDERER = "playwright_png"

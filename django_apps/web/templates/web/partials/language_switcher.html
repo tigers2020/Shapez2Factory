@@ -1,0 +1,24 @@
+{% load i18n site_i18n %}
+<div class="flex items-center gap-1 text-xs font-medium" role="group" aria-label="{% trans 'Language' %}">
+  <form action="{% url 'set_language' %}" method="post" class="inline m-0">
+    {% csrf_token %}
+    <input name="next" type="hidden" value="{% url_for_language 'en' %}" />
+    <button
+      type="submit"
+      name="language"
+      value="en"
+      class="rounded-md px-2 py-1 no-underline {% if LANGUAGE_CODE == 'en' %}text-cyan-200 ring-1 ring-cyan-400/50{% else %}text-slate-500 hover:text-slate-300{% endif %}"
+    >EN</button>
+  </form>
+  <span class="text-slate-600" aria-hidden="true">|</span>
+  <form action="{% url 'set_language' %}" method="post" class="inline m-0">
+    {% csrf_token %}
+    <input name="next" type="hidden" value="{% url_for_language 'ko' %}" />
+    <button
+      type="submit"
+      name="language"
+      value="ko"
+      class="rounded-md px-2 py-1 no-underline {% if LANGUAGE_CODE == 'ko' %}text-cyan-200 ring-1 ring-cyan-400/50{% else %}text-slate-500 hover:text-slate-300{% endif %}"
+    >KO</button>
+  </form>
+</div>

@@ -72,9 +72,9 @@ OPERATION_CATALOG = MappingProxyType(
             type=OperationType.PAINTER,
             label="Painter",
             icon="painter.png",
-            input_count=1,
+            input_count=2,
             output_count=1,
-            description="Paints the input shape with a selected color.",
+            description="Paints the shape using pure color fluid from the fluid input.",
         ),
         OperationType.COLOR_MIXER: OperationDefinition(
             type=OperationType.COLOR_MIXER,
@@ -82,7 +82,7 @@ OPERATION_CATALOG = MappingProxyType(
             icon="color-mixer.png",
             input_count=2,
             output_count=1,
-            description="Mixes two input colors into a resulting color.",
+            description="Mixes two pure color fluids into one fluid output.",
         ),
         OperationType.PIN_PUSHER: OperationDefinition(
             type=OperationType.PIN_PUSHER,

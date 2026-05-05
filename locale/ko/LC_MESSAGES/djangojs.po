@@ -1,0 +1,190 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: shapez2-solver\n"
+"Language: ko\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "(read-only)"
+msgstr "(읽기 전용)"
+
+msgid "1 · {id}"
+msgstr "1개 · {id}"
+
+msgid ""
+"After changing shape_code, role, or operation, apply to recompute the graph."
+msgstr "shape_code·역할·연산을 바꿨다면 적용해 그래프를 다시 계산하세요."
+
+msgid "Apply"
+msgstr "적용"
+
+msgid "Cancel"
+msgstr "취소"
+
+msgid ""
+"Card <span class=\"font-semibold text-slate-400\">right-click</span> → node "
+"info / edit node. Card <span class=\"font-semibold text-slate-400\">double-"
+"click</span> → edit dialog."
+msgstr ""
+"카드 <span class=\"font-semibold text-slate-400\">우클릭</span> — 노드 정보·편집. 카드 "
+"<span class=\"font-semibold text-slate-400\">더블클릭</span> — 편집 창."
+
+msgid ""
+"Click adds to the grid slot; drag to the canvas places at the drop "
+"coordinates (operations auto-create outputs through intermediate)."
+msgstr "클릭하면 격자 칸에 들어가고, 끌어 놓으면 그 좌표에 배치됩니다 (연산은 중간 출력까지 자동으로 이어집니다)."
+
+msgid ""
+"Click or drag operations or an empty source from the left, connect handles, "
+"then Dry-run/Save."
+msgstr "왼쪽에서 연산이나 빈 소스를 클릭·드래그해 두고 핸들을 이은 뒤 드라이런이나 저장을 실행하세요."
+
+msgid "Close"
+msgstr "닫기"
+
+msgid "Close editor"
+msgstr "편집기 닫기"
+
+msgid "Connection attempt:"
+msgstr "연결 시도:"
+
+msgid ""
+"Could not load catalog operations. Refresh or check the macro-graph-initial-"
+"catalog script."
+msgstr "카탈로그 연산을 불러오지 못했습니다. 새로고침하거나 macro-graph-initial-catalog 스크립트를 확인하세요."
+
+msgid "Default {code} — edit via double-click or recompute"
+msgstr "기본값 {code} — 더블클릭이나 재계산으로 고칩니다"
+
+msgid "Delivery · {code}"
+msgstr "납품 · {code}"
+
+msgid "Delivery — shape_code unset"
+msgstr "납품 — shape_code 미정"
+
+msgid "Edit node"
+msgstr "노드 편집"
+
+msgid "Empty source material"
+msgstr "빈 소스 재료"
+
+msgid "Intermediate"
+msgstr "중간"
+
+msgid "Intermediate node"
+msgstr "중간 노드"
+
+msgid "Intermediate · {code}"
+msgstr "중간 · {code}"
+
+msgid "Intermediate — shape_code after dry-run"
+msgstr "중간 — 드라이런 뒤 shape_code 확정"
+
+msgid "Local notes (this browser · per recipe only)"
+msgstr "로컬 메모(이 브라우저·레시피별)"
+
+msgid ""
+"Multi-select — edit properties after selecting a single node (double-click)."
+msgstr "여러 개 선택 중 — 속성 편집은 노드 하나만 고른 뒤(더블클릭) 해 주세요."
+
+msgid "No issues from the last dry-run/save."
+msgstr "직전 드라이런·저장에서는 문제가 없었습니다."
+
+msgid "Node info"
+msgstr "노드 정보"
+
+msgid "Node not found."
+msgstr "노드를 찾지 못했습니다."
+
+msgid "Nodes {nodeCount} · Edges {edgeCount} · Outputs {outputCount}"
+msgstr "노드 {nodeCount} · 간선 {edgeCount} · 출력 {outputCount}"
+
+msgid ""
+"Not saved to server · only one delivery line from intermediate→output is "
+"allowed."
+msgstr "서버에 저장되지 않습니다 · 중간→출력 납품선은 한 줄만 허용됩니다."
+
+msgid "Nothing selected."
+msgstr "선택된 것이 없습니다."
+
+msgid "Operation"
+msgstr "연산"
+
+msgid "Operation node"
+msgstr "연산 노드"
+
+msgid "Operation: {op}"
+msgstr "연산: {op}"
+
+msgid ""
+"Operations not in the engine recompute list cannot be placed on the canvas."
+msgstr "엔진 재계산 목록에 없는 연산은 캔버스에 놓을 수 없습니다."
+
+msgid "Output"
+msgstr "출력"
+
+msgid "Output node"
+msgstr "출력 노드"
+
+msgid "Run Dry-run or Save for server validation."
+msgstr "드라이런이나 저장으로 서버 검증을 돌리세요."
+
+msgid "Same fields as double-click edit. role is fixed."
+msgstr "더블클릭 편집과 같은 필드입니다. 역할(role)은 고정입니다."
+
+msgid ""
+"Saved graph_document failed schema validation. Fix the JSON via Admin or "
+"API, then reopen."
+msgstr "저장된 graph_document가 스키마 검증을 통과하지 못했습니다. 관리자나 API에서 JSON을 고친 뒤 다시 여세요."
+
+msgid "Search operations…"
+msgstr "연산 검색…"
+
+msgid "Select a node on the canvas."
+msgstr "캔버스에서 노드를 골라 주세요."
+
+msgid "Select a node to see a summary."
+msgstr "노드를 고르면 요약이 보입니다."
+
+msgid "Select a node to view properties."
+msgstr "노드를 고르면 속성이 보입니다."
+
+msgid "Select a node."
+msgstr "노드를 선택해 주세요."
+
+msgid "Source"
+msgstr "소스"
+
+msgid "Source node"
+msgstr "소스 노드"
+
+msgid "Source · role {role}"
+msgstr "소스 · 역할 {role}"
+
+msgid ""
+"The canvas has no nodes. Click or drag sources and operations from the left "
+"(auto-sync with DB step rows follows separate rules on save/recompute)."
+msgstr ""
+"캔버스가 비어 있습니다. 왼쪽에서 소스·연산을 클릭하거나 끌어다 놓으세요. (DB 단계 행과 맞추는 규칙은 저장·재계산 때 따로 "
+"적용됩니다.)"
+
+msgid "This operation is not in the recipe graph engine recompute list."
+msgstr "이 연산은 레시피 그래프 엔진의 재계산 목록에 없습니다."
+
+msgid "Validation issues in the last result — check the footer message."
+msgstr "직전 결과에 검증 이슈가 있습니다. 아래 안내를 확인하세요."
+
+msgid "node"
+msgstr "노드"
+
+msgid "paint_color (single char)"
+msgstr "paint_color (한 글자)"
+
+msgid "{n} nodes selected."
+msgstr "{n}개 노드 선택됨."
+
+msgid "{t} type"
+msgstr "{t} 유형"
+
+msgid "{value} — click (grid place) or drag to canvas (drop position)"
+msgstr "{value} — 클릭하면 격자에, 끌면 캔버스에 놓습니다"

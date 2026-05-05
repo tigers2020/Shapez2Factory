@@ -3,6 +3,7 @@ from pathlib import Path
 from django.conf import settings
 from django.test import Client
 from django.test.utils import override_settings
+from django.urls import reverse
 
 
 def test_home_page_renders() -> None:
@@ -25,6 +26,7 @@ def test_solver_page_renders() -> None:
     response = Client().get("/solver/", {"code": "SuSuSuSu"})
 
     assert response.status_code == 200
+    assert b"/jsi18n/" in response.content
     assert b"Recipe graph" in response.content
     assert b"data-shape-preview-code-ref" in response.content
     assert b"SuSuSuSu" in response.content
@@ -211,7 +213,7 @@ def test_support_page_renders() -> None:
         response = Client().get("/support/")
 
         assert response.status_code == 200
-        assert "후원 안내".encode() in response.content
+        assert b"Support" in response.content
         assert b"SUPPORT_KOFI_URL" in response.content
         assert b'href="/support/"' in response.content
 
@@ -258,6 +260,18 @@ def test_solver_graph_viewport_has_explicit_runtime_layout_styles() -> None:
     assert "overflow-y-auto" not in markup_script
     assert "L ${geometry.elbowX} ${geometry.y1}" in markup_script
     assert "data-graph-edge-label" in markup_script
+
+
+def test_javascript_catalog_default_language() -> None:
+    response = Client().get(reverse("javascript-catalog"))
+    assert response.status_code == 200
+    assert b"gettext" in response.content
+
+
+def test_javascript_catalog_ko_prefixed_url() -> None:
+    response = Client().get("/ko/jsi18n/")
+    assert response.status_code == 200
+    assert b"gettext" in response.content
 
 
 def test_operation_icon_assets_exist() -> None:

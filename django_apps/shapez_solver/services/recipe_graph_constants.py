@@ -26,6 +26,7 @@ RECIPE_GRAPH_ENGINE_OPERATIONS: frozenset[str] = frozenset(
         OperationType.STACKER.value,
         OperationType.PAINTER.value,
         OperationType.COLOR_MIXER.value,
+        OperationType.CRYSTAL_GENERATOR.value,
     }
 )
 

@@ -26,12 +26,10 @@ Generated or local-only artifacts such as `node_modules/`, `.pytest_cache/`, `.r
 
 - `domain/`: shape primitives, quadrant/layer normalization, catalog constants
 - `services/`: shape code parser, render scene builder, preview response composition
-- `legacy/game_data/`: versioned YAML game data (bundled; no runtime loader yet)
 - `views.py` + `urls.py`: `/api/health/` and `/api/shape-preview/`
 
 ### `django_apps/shapez_solver/`
 
-- `legacy/`: unused or compatibility-only graph scaffolds (e.g. unused `FlowGraph` summary builder)
 - `models.py`: `SolverProject`, `SolverRun`, `SolverRunStatus`
 - `services/`: planner and solver service scaffolds
 - `dto/`: solver-facing DTO namespace for future expansion
@@ -40,7 +38,7 @@ Generated or local-only artifacts such as `node_modules/`, `.pytest_cache/`, `.r
 
 - `views.py`: thin page controllers for `/`, `/gallery/`, `/demo/`
 - `templates/web/`: page templates and shared partials
-- `static/web/`: CSS, JS, vendor assets, screenshots, and template images (스태프 Recipe Graph는 `static/web/js/recipe_graph_editor/` Vite 산출물; 레거시 폴백은 `static/web/js/legacy/`)
+- `static/web/`: CSS, JS, vendor assets, screenshots, and template images (스태프 Recipe Graph는 `static/web/js/recipe_graph_editor/` Vite 빌드 산출물)
 
 ## URL ownership
 

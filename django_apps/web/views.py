@@ -217,7 +217,6 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
     bootstrap["react_flow_initial"] = react_flow_initial
     bootstrap["react_flow_initial_status"] = rf_status
     bootstrap["macro_step_count"] = len(recipe.steps.all())
-    use_react_flow_editor = getattr(settings, "RECIPE_GRAPH_USE_REACT_FLOW", False)
     return render(
         request,
         "web/macro_pattern_graph.html",
@@ -226,7 +225,6 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
             "bootstrap": bootstrap,
             "catalog": build_catalog_snapshot(),
             "staff_macro_nav": "graph",
-            "use_react_flow_editor": use_react_flow_editor,
             "recipe_graph_editor_asset_version": "20260505-theme-slate",
         },
     )

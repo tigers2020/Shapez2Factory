@@ -1,4 +1,4 @@
-{% load static %}
+{% load i18n static %}
 {% with current=request.resolver_match.url_name|default:"" %}
   <header class="border-b border-slate-800 bg-slate-950/95 backdrop-blur">
     <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
@@ -13,51 +13,52 @@
             style="padding: 1px"
             decoding="async"
           />
-          <span class="text-sm font-semibold tracking-wide text-slate-100">shapez2 planner</span>
+          <span class="text-sm font-semibold tracking-wide text-slate-100">{% trans "shapez2 planner" %}</span>
         </a>
       </div>
 
-      <nav class="flex flex-1 flex-wrap items-center justify-center gap-1 text-sm font-medium md:gap-1" aria-label="Primary">
+      <nav class="flex flex-1 flex-wrap items-center justify-center gap-1 text-sm font-medium md:gap-1" aria-label="{% trans 'Primary navigation' %}">
         <a
           href="{% url 'web:home' %}"
           class="rounded-lg px-3 py-2 no-underline {% if current == 'home' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
           {% if current == "home" %}aria-current="page"{% endif %}
-        >Home</a>
+        >{% trans "Home" %}</a>
         <a
           href="{% url 'web:gallery' %}"
           class="rounded-lg px-3 py-2 no-underline {% if current == 'gallery' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
           {% if current == "gallery" %}aria-current="page"{% endif %}
-        >Gallery</a>
+        >{% trans "Gallery" %}</a>
         <a
           href="{% url 'web:demo' %}"
           class="rounded-lg px-3 py-2 no-underline {% if current == 'demo' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
           {% if current == "demo" %}aria-current="page"{% endif %}
-        >Demo</a>
+        >{% trans "Demo" %}</a>
         <a
           href="{% url 'web:solver' %}"
           class="rounded-lg px-3 py-2 no-underline {% if current == 'solver' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
           {% if current == "solver" %}aria-current="page"{% endif %}
-        >Solver</a>
+        >{% trans "Solver" %}</a>
         <a
           href="{% url 'web:pattern-lab' %}"
           class="rounded-lg px-3 py-2 no-underline {% if current == 'pattern-lab' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
           {% if current == "pattern-lab" %}aria-current="page"{% endif %}
-        >Pattern Lab</a>
+        >{% trans "Pattern Lab" %}</a>
         {% if request.user.is_staff %}
           <a
             href="{% url 'web:macro-pattern-staff' %}"
             class="rounded-lg px-3 py-2 no-underline {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
             {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}aria-current="page"{% endif %}
-          >Macro catalog</a>
+          >{% trans "Macro catalog" %}</a>
         {% endif %}
         <a
           href="{% url 'web:support' %}"
           class="rounded-lg px-3 py-2 no-underline {% if current == 'support' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
           {% if current == "support" %}aria-current="page"{% endif %}
-        >Support</a>
+        >{% trans "Support" %}</a>
       </nav>
 
       <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
+        {% include "web/partials/language_switcher.html" %}
         {% if request.user.is_authenticated %}
           <span class="hidden text-sm text-slate-400 sm:inline">{{ request.user.username }}</span>
           <form method="post" action="{% url 'account_logout' %}">
@@ -65,17 +66,17 @@
             <button
               type="submit"
               class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-cyan-400/40 hover:text-cyan-200"
-            >Logout</button>
+            >{% trans "Logout" %}</button>
           </form>
         {% else %}
           <a
             href="{% url 'account_login' %}"
             class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-400 no-underline hover:text-cyan-200"
-          >Login</a>
+          >{% trans "Login" %}</a>
           <a
             href="{% url 'account_signup' %}"
             class="inline-flex items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 no-underline hover:border-cyan-300/60 hover:text-cyan-50"
-          >Sign up</a>
+          >{% trans "Sign up" %}</a>
         {% endif %}
         <a
           href="https://github.com/tigers2020/Shapez2Factory"

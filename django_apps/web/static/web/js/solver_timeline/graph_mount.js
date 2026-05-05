@@ -524,10 +524,10 @@ export async function mountGraph(panel, graph, options) {
           }
           const items = [];
           if (typeof staffDetail === "function") {
-            items.push({ id: "details", label: "노드 정보" });
+            items.push({ id: "details", label: window.shapezUiT("Node info") });
           }
           if (typeof staffEdit === "function") {
-            items.push({ id: "edit", label: "노드 편집" });
+            items.push({ id: "edit", label: window.shapezUiT("Edit node") });
           }
           if (items.length === 0) {
             return;

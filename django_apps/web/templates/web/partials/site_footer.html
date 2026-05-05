@@ -1,9 +1,10 @@
+{% load i18n %}
 <footer class="border-t border-slate-800 bg-slate-950/80">
   <div class="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-10 text-sm text-slate-500 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
     <div>
       <span class="text-slate-400">shapez2-solver</span>
       <span class="mx-2 text-slate-700" aria-hidden="true">/</span>
-      <span>v0.1.0 scaffold</span>
+      <span>{% trans "v0.1.0 scaffold" %}</span>
     </div>
     <div class="flex flex-wrap gap-4">
       <a
@@ -11,9 +12,9 @@
         class="text-slate-400 underline decoration-slate-700 underline-offset-4 hover:text-cyan-200 hover:decoration-cyan-400"
         target="_blank"
         rel="noopener noreferrer"
-      >GitHub · Shapez2Factory</a>
+      >{% trans "GitHub · Shapez2Factory" %}</a>
       <span class="max-w-prose text-xs leading-relaxed">
-        Not affiliated with the official game; fan tooling for planning and analysis.
+        {% trans "Not affiliated with the official game; fan tooling for planning and analysis." %}
       </span>
     </div>
   </div>

@@ -23,6 +23,17 @@ _TESTS_ROOT = Path(__file__).resolve().parent
 _LAYER_MARKERS = frozenset({"shapez_core", "shapez_solver", "web", "api"})
 
 
+@pytest.fixture
+def without_canonical_catalog_macros() -> None:
+    """Remove migration-seeded macro recipes so tests can define their own catalog rows."""
+
+    from django_apps.shapez_solver.models import MacroRecipe
+
+    MacroRecipe.objects.filter(
+        code__in=("abcc-batch", "swap-rotate-swap-checker"),
+    ).delete()
+
+
 def pytest_collection_modifyitems(
     session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
 ) -> None:

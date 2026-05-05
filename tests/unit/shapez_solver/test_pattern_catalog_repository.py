@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from django_apps.shapez_solver.domain.inventory_state import InventoryState
@@ -15,7 +17,9 @@ from django_apps.shapez_solver.services.pattern_catalog_repository import Patter
 
 
 @pytest.mark.django_db
-def test_pattern_catalog_repository_returns_active_macro_candidates() -> None:
+def test_pattern_catalog_repository_returns_active_macro_candidates(
+    without_canonical_catalog_macros: Any,
+) -> None:
     family = PatternFamily.objects.create(
         code="abcc",
         name="ABCC",
@@ -51,7 +55,9 @@ def test_pattern_catalog_repository_returns_active_macro_candidates() -> None:
 
 
 @pytest.mark.django_db
-def test_pattern_catalog_prefers_graph_document_for_step_metadata() -> None:
+def test_pattern_catalog_prefers_graph_document_for_step_metadata(
+    without_canonical_catalog_macros: Any,
+) -> None:
     family = PatternFamily.objects.create(
         code="abcc",
         name="ABCC",
@@ -121,7 +127,9 @@ def test_pattern_catalog_prefers_graph_document_for_step_metadata() -> None:
 
 
 @pytest.mark.django_db
-def test_catalog_backed_macro_action_generator_uses_db_enabled_strategy() -> None:
+def test_catalog_backed_macro_action_generator_uses_db_enabled_strategy(
+    without_canonical_catalog_macros: Any,
+) -> None:
     family = PatternFamily.objects.create(
         code="abcc",
         name="ABCC",
@@ -146,7 +154,9 @@ def test_catalog_backed_macro_action_generator_uses_db_enabled_strategy() -> Non
 
 
 @pytest.mark.django_db
-def test_catalog_backed_macro_action_generator_returns_no_actions_without_db_match() -> None:
+def test_catalog_backed_macro_action_generator_returns_no_actions_without_db_match(
+    without_canonical_catalog_macros: Any,
+) -> None:
     request = MacroInventorySearchRequestView(
         target_code="CuRuSuSu",
         target_count=4,
@@ -160,7 +170,9 @@ def test_catalog_backed_macro_action_generator_returns_no_actions_without_db_mat
 
 
 @pytest.mark.django_db
-def test_catalog_backed_macro_generator_can_be_injected_into_inventory_search() -> None:
+def test_catalog_backed_macro_generator_can_be_injected_into_inventory_search(
+    without_canonical_catalog_macros: Any,
+) -> None:
     family = PatternFamily.objects.create(
         code="abcc",
         name="ABCC",

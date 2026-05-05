@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeStep, PatternFamily
@@ -8,7 +10,9 @@ from django_apps.shapez_solver.services.pattern_lab_service import (
 
 
 @pytest.mark.django_db
-def test_pattern_lab_analyzes_signature_without_db_candidates() -> None:
+def test_pattern_lab_analyzes_signature_without_db_candidates(
+    without_canonical_catalog_macros: Any,
+) -> None:
     analysis = analyze_pattern_lab_shape("CuRuSuSu")
 
     assert analysis.error == ""
@@ -23,7 +27,9 @@ def test_pattern_lab_analyzes_signature_without_db_candidates() -> None:
 
 
 @pytest.mark.django_db
-def test_pattern_lab_marks_db_macro_candidate_as_ready_when_strategy_generates() -> None:
+def test_pattern_lab_marks_db_macro_candidate_as_ready_when_strategy_generates(
+    without_canonical_catalog_macros: Any,
+) -> None:
     family = PatternFamily.objects.create(
         code="abcc",
         name="ABCC",

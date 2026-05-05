@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from django_apps.shapez_core.domain.shape import Shape
@@ -64,7 +66,9 @@ def test_factory_throughput_service_multi_layer_returns_not_found() -> None:
 
 
 @pytest.mark.django_db
-def test_factory_throughput_service_uses_db_catalog_macro_when_available() -> None:
+def test_factory_throughput_service_uses_db_catalog_macro_when_available(
+    without_canonical_catalog_macros: Any,
+) -> None:
     family = PatternFamily.objects.create(
         code="abcc",
         name="ABCC",

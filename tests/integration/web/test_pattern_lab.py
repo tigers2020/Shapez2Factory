@@ -13,7 +13,7 @@ def test_pattern_lab_page_renders_empty_state() -> None:
     assert "Enter a shape code" in content
 
 
-def test_pattern_lab_page_shows_ready_macro_candidate(db) -> None:
+def test_pattern_lab_page_shows_ready_macro_candidate(db, without_canonical_catalog_macros) -> None:
     family = PatternFamily.objects.create(
         code="abcc",
         name="ABCC",

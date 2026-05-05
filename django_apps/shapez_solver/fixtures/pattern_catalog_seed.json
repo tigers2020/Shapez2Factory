@@ -6,9 +6,9 @@
       "code": "full-source",
       "name": "Full Source",
       "signature": "AAAA",
-      "description": "단일 full source 패턴",
+      "description": "단일 full source 패턴 (4사분면 동일)",
       "allow_rotation": true,
-      "allow_reflection": false,
+      "allow_reflection": true,
       "priority": 10,
       "is_active": true,
       "schema_version": 1
@@ -21,9 +21,9 @@
       "code": "half-split",
       "name": "Half Split",
       "signature": "AABB",
-      "description": "두 종류가 반쪽씩 나뉜 패턴",
+      "description": "인접 2+2 (두 종류가 반쪽씩)",
       "allow_rotation": true,
-      "allow_reflection": false,
+      "allow_reflection": true,
       "priority": 20,
       "is_active": true,
       "schema_version": 1
@@ -36,9 +36,9 @@
       "code": "checker",
       "name": "Checker",
       "signature": "ABAB",
-      "description": "두 종류가 교차하는 패턴",
+      "description": "교차 2+2 (체커)",
       "allow_rotation": true,
-      "allow_reflection": false,
+      "allow_reflection": true,
       "priority": 30,
       "is_active": true,
       "schema_version": 1
@@ -48,13 +48,43 @@
     "model": "shapez_solver.patternfamily",
     "pk": 4,
     "fields": {
-      "code": "abcc-batch",
-      "name": "Pair + Double Batch",
+      "code": "pair-plus-singles",
+      "name": "Pair Plus Singles",
       "signature": "ABCC",
-      "description": "앞쪽 두 슬롯이 서로 다르고 뒤쪽 두 슬롯이 같은 배치 패턴",
+      "description": "2+1+1 Bell 클래스. 대표 문자열은 사분면 순서에 따라 ABCC·AABC 등이 될 수 있으나, 매크로·pattern_signature 연동은 ABCC 기준(문서 참조)",
       "allow_rotation": true,
-      "allow_reflection": false,
+      "allow_reflection": true,
       "priority": 40,
+      "is_active": true,
+      "schema_version": 1
+    }
+  },
+  {
+    "model": "shapez_solver.patternfamily",
+    "pk": 5,
+    "fields": {
+      "code": "single-different",
+      "name": "Single Different",
+      "signature": "AAAB",
+      "description": "3개 동일 + 1개 다른 사분면 (3+1)",
+      "allow_rotation": true,
+      "allow_reflection": true,
+      "priority": 15,
+      "is_active": true,
+      "schema_version": 1
+    }
+  },
+  {
+    "model": "shapez_solver.patternfamily",
+    "pk": 6,
+    "fields": {
+      "code": "full-mixed",
+      "name": "Full Mixed",
+      "signature": "ABCD",
+      "description": "네 사분면이 모두 다른 토큰 (4-way)",
+      "allow_rotation": true,
+      "allow_reflection": true,
+      "priority": 50,
       "is_active": true,
       "schema_version": 1
     }

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 import {
+  FLUID_TANK_CENTERED_MESH_KEYS,
   LAYER_EXPLODE_HEIGHT,
   LAYER_HEIGHT,
   LAYER_SCALE_STEP,
@@ -42,11 +43,27 @@ function getLayerScale(layerIndex) {
 }
 
 export function computeTransform(cell, viewMode = "original") {
-  const positionKey = getPositionKey(cell);
+  const meshKey = typeof cell.mesh_key === "string" ? cell.mesh_key : "";
   const layerIndex = getLayerIndex(cell);
+  const layerScale = getLayerScale(layerIndex);
+
+  if (FLUID_TANK_CENTERED_MESH_KEYS.has(meshKey)) {
+    let y = layerIndex * LAYER_HEIGHT;
+    if (viewMode === "layer") {
+      y = layerIndex * LAYER_EXPLODE_HEIGHT;
+    } else if (viewMode === "quadrant") {
+      y = layerIndex * QUADRANT_LAYER_EXPLODE_HEIGHT;
+    }
+    return {
+      position: new THREE.Vector3(0, y, 0),
+      rotationY: 0,
+      scale: layerScale,
+    };
+  }
+
+  const positionKey = getPositionKey(cell);
   const microOffset = QUADRANT_GAP_OFFSETS[positionKey] ?? { x: 0, z: 0 };
   const explodeOffset = QUADRANT_EXPLODE_OFFSETS[positionKey] ?? { x: 0, z: 0 };
-  const layerScale = getLayerScale(layerIndex);
 
   let x = microOffset.x;
   let y = layerIndex * LAYER_HEIGHT;

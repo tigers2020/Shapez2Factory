@@ -8,11 +8,12 @@ from django_apps.shapez_core.domain.crystal_geometry import (
     highest_used_layer_index,
     shatter_crystal_cluster,
 )
+from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_core.services.shape_code_parser import parse_shape_code_list
 from django_apps.shapez_core.services.shape_codec import shape_from_pattern
 
 
-def _shape(code: str):
+def _shape(code: str) -> Shape:
     return shape_from_pattern(parse_shape_code_list(code)[0])
 
 

@@ -16,6 +16,9 @@ from django_apps.shapez_solver.dto.solver_graph import (
     SolverOperationNode,
     SolverShapeNode,
 )
+from django_apps.shapez_solver.services.fluid_carrier_render_scene import (
+    build_fluid_carrier_preview_scene,
+)
 from django_apps.web.services.graph_preview import GraphPreviewRenderer, get_graph_preview_renderer
 
 
@@ -35,7 +38,10 @@ def serialize_graph_node(
     preview_renderer: GraphPreviewRenderer,
 ) -> dict[str, Any]:
     if isinstance(node, SolverShapeNode):
-        preview_scene = node.preview_scene or build_preview_scene(node.shape_code)
+        preview_scene = node.preview_scene or build_preview_scene(
+            node.shape_code,
+            source_carrier=node.source_carrier,
+        )
         graph_preview = preview_renderer.render(preview_scene)
         payload = {
             "id": node.id,
@@ -90,9 +96,13 @@ def serialize_graph_edge(edge: SolverGraphEdge) -> dict[str, str | int | None]:
     }
 
 
-def build_preview_scene(shape_code: str) -> dict[str, Any]:
+def build_preview_scene(shape_code: str, *, source_carrier: str | None = None) -> dict[str, Any]:
     pattern = parse_shape_code_list(shape_code)[0]
-    return serialize_render_scene(build_shape_render_scene(pattern))
+    if source_carrier == "fluid":
+        scene = build_fluid_carrier_preview_scene(pattern)
+    else:
+        scene = build_shape_render_scene(pattern)
+    return serialize_render_scene(scene)
 
 
 def serialize_render_scene(scene: ShapeRenderScene) -> dict[str, Any]:

@@ -7,6 +7,7 @@ type ShapeNodeData = {
   shape_code?: string;
   quantity?: number;
   role?: string;
+  source_carrier?: string;
   validationSeverity?: "error" | "warning";
   preview_image_url?: string;
   preview_alt?: string;
@@ -109,6 +110,58 @@ export function ShapeNode(props: NodeProps) {
   );
 }
 
+function operationLeftTargetHandles(inArity: number, painterTwoWireInputs: boolean) {
+  if (inArity < 2) {
+    return (
+      <Handle
+        className={socketHandleClass}
+        id="in"
+        position={Position.Left}
+        style={{ top: "50%", transform: "translateY(-50%)" }}
+        type="target"
+      />
+    );
+  }
+  if (painterTwoWireInputs) {
+    return (
+      <>
+        <Handle
+          className={socketHandleClass}
+          id="in-1"
+          position={Position.Left}
+          style={{ top: "32%" }}
+          type="target"
+        />
+        <Handle
+          className={socketHandleClass}
+          id="in"
+          position={Position.Left}
+          style={{ top: "68%" }}
+          type="target"
+        />
+      </>
+    );
+  }
+  return (
+    <>
+      <Handle
+        className={socketHandleClass}
+        id="in"
+        position={Position.Left}
+        style={{ top: "32%" }}
+        type="target"
+      />
+      <Handle
+        className={socketHandleClass}
+        id="in-1"
+        position={Position.Left}
+        style={{ top: "68%" }}
+        type="target"
+      />
+    </>
+  );
+}
+
 export function OperationNode(props: NodeProps) {
   const { data, id, selected } = props;
   const d = (data || {}) as OperationNodeData;
@@ -117,6 +170,9 @@ export function OperationNode(props: NodeProps) {
   const title = operationTitle(op);
   const inArity = getOperationInputArity(op);
   const outCount = getOperationOutputCount(op);
+  /** Painter 2-wire: fluid uses ``in-1`` (domain slot "1"). Put it above ``in`` so XYFlow does not snap fluid to the shape-only handle. */
+  const painterTwoWireInputs =
+    op.trim() === "painter" && inArity >= 2 && !String(d.paint_color ?? "").trim();
   const iconUrl = typeof d.icon === "string" ? d.icon.trim() : "";
   const tip = [id, title, d.paint_color ? `paint: ${d.paint_color}` : "", d.crystal_color ? `crystal: ${d.crystal_color}` : ""]
     .filter(Boolean)
@@ -124,32 +180,7 @@ export function OperationNode(props: NodeProps) {
   return (
     <div className={tileRing(selected, "border-purple-500/55")} title={tip}>
       {validationBadge(d.validationSeverity)}
-      {inArity >= 2 ? (
-        <>
-          <Handle
-            className={socketHandleClass}
-            id="in"
-            position={Position.Left}
-            style={{ top: "32%" }}
-            type="target"
-          />
-          <Handle
-            className={socketHandleClass}
-            id="in-1"
-            position={Position.Left}
-            style={{ top: "68%" }}
-            type="target"
-          />
-        </>
-      ) : (
-        <Handle
-          className={socketHandleClass}
-          id="in"
-          position={Position.Left}
-          style={{ top: "50%", transform: "translateY(-50%)" }}
-          type="target"
-        />
-      )}
+      {operationLeftTargetHandles(inArity, painterTwoWireInputs)}
       <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded border border-purple-600/40 bg-purple-950/50">
         {iconUrl ? (
           <img alt="" className="h-full w-full object-contain p-0.5" height={40} src={iconUrl} width={40} />

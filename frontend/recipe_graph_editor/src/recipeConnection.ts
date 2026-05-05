@@ -2,6 +2,141 @@ import type { Connection, Edge, Node } from "@xyflow/react";
 
 import { getOperationInputArity } from "./operationArity";
 
+export type WireCarrier = "material" | "fluid";
+
+export function nodeDataIsFluidCarrier(data: unknown): boolean {
+  const d =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : {};
+  return d.source_carrier === "fluid";
+}
+
+function inputSlotKeyFromTargetHandle(th: string | null | undefined): string {
+  if (typeof th === "string" && th.startsWith("in-") && th.length > 3) {
+    const suf = th.slice(3);
+    if (/^\d+$/.test(suf) && Number.parseInt(suf, 10) >= 1) {
+      return suf;
+    }
+  }
+  return "";
+}
+
+function pendingInputEdgeFromConnection(c: Connection): Edge {
+  const slot = inputSlotKeyFromTargetHandle(c.targetHandle);
+  const data: Record<string, unknown> = { domainKind: "input" };
+  if (slot) {
+    data.slot = slot;
+  }
+  return {
+    id: "__pending__",
+    source: c.source!,
+    target: c.target!,
+    sourceHandle: c.sourceHandle ?? undefined,
+    targetHandle: c.targetHandle ?? undefined,
+    type: "recipe",
+    data,
+  };
+}
+
+function inputEdgeSortKey(e: Edge): [boolean, string, string] {
+  const raw = e.data;
+  const d =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  const slotKey = typeof d.slot === "string" && d.slot.trim() ? d.slot.trim() : "";
+  const hasSlot = Boolean(slotKey);
+  return [!hasSlot, slotKey, e.source];
+}
+
+function sortedInputEdgesToOperation(edges: Edge[], nodes: Node[], opId: string): Edge[] {
+  const list = edges.filter((e) => e.target === opId && edgeDomainKind(e) === "input");
+  const rows = list
+    .map((e) => ({ e, k: inputEdgeSortKey(e) }))
+    .filter((row) => {
+      const sn = nodes.find((n) => n.id === row.e.source);
+      return Boolean(sn && (sn.type === "shape" || sn.type === "intermediate"));
+    })
+    .sort((a, b) => {
+      if (a.k[0] !== b.k[0]) {
+        return (a.k[0] ? 1 : 0) - (b.k[0] ? 1 : 0);
+      }
+      if (a.k[1] !== b.k[1]) {
+        return a.k[1].localeCompare(b.k[1]);
+      }
+      return a.k[2].localeCompare(b.k[2]);
+    });
+  return rows.map((r) => r.e);
+}
+
+function requiredInputCountForCarrier(opKey: string, paintColor: string | undefined): number {
+  const k = opKey.trim();
+  if (k === "painter" && String(paintColor ?? "").trim()) {
+    return 1;
+  }
+  return getOperationInputArity(k);
+}
+
+/** Port carrier order must match ``recipe_graph_input_carrier.expected_input_carriers`` (Python). */
+function expectedInputCarriers(opKey: string, paintColor: string | undefined): WireCarrier[] {
+  const k = opKey.trim();
+  if (k === "painter") {
+    if (String(paintColor ?? "").trim()) {
+      return ["material"];
+    }
+    return ["fluid", "material"];
+  }
+  if (k === "color_mixer") {
+    return ["fluid", "fluid"];
+  }
+  if (k === "swapper" || k === "stacker" || k === "crystal_generator") {
+    return ["material", "material"];
+  }
+  return ["material"];
+}
+
+function outputLaneFromSourceHandle(sh: string | null | undefined): number {
+  if (typeof sh === "string") {
+    const m = /^out-(\d+)$/.exec(sh);
+    if (m) {
+      return Number.parseInt(m[1], 10);
+    }
+  }
+  return 0;
+}
+
+function expectedOutputCarrier(opKey: string, lane: number): WireCarrier {
+  if (opKey.trim() === "color_mixer" && lane === 0) {
+    return "fluid";
+  }
+  return "material";
+}
+
+export function edgeToConnection(e: Edge): Connection | null {
+  if (!e.source || !e.target) {
+    return null;
+  }
+  return {
+    source: e.source,
+    target: e.target,
+    sourceHandle: e.sourceHandle ?? null,
+    targetHandle: e.targetHandle ?? null,
+  };
+}
+
+/** Drop edges that are no longer valid after node data (e.g. carrier) changes. */
+export function filterStaleRecipeEdges(nodes: Node[], edges: Edge[]): Edge[] {
+  return edges.filter((e) => {
+    const c = edgeToConnection(e);
+    if (!c) {
+      return false;
+    }
+    const rest = edges.filter((x) => x.id !== e.id);
+    return evaluateRecipeConnection(nodes, rest, c).ok;
+  });
+}
+
 function isOperationMaterialOutputSourceHandle(h: string | null | undefined): boolean {
   if (h == null || h === "") {
     return true;
@@ -34,12 +169,88 @@ export function isMaterialToOperationConnection(nodes: Node[], c: Connection): b
   return (
     (st === "shape" || st === "intermediate") &&
     tt === "operation" &&
-    c.sourceHandle === "out" &&
+    (c.sourceHandle === "out" || c.sourceHandle == null || c.sourceHandle === "") &&
     (c.targetHandle === "in" ||
       c.targetHandle == null ||
       c.targetHandle === "in-1" ||
       (typeof c.targetHandle === "string" && c.targetHandle.startsWith("in-")))
   );
+}
+
+/**
+ * XYFlow often snaps to the geometrically nearest handle; painter 2-wire still expects fluid on
+ * ``in-1`` and shape on ``in``. Derive the target handle from the source wire carrier.
+ */
+export function normalizeMaterialToPainterConnection(nodes: Node[], c: Connection): Connection {
+  if (!c.source || !c.target || !isMaterialToOperationConnection(nodes, c)) {
+    return c;
+  }
+  const tn = nodes.find((n) => n.id === c.target);
+  const sn = nodes.find((n) => n.id === c.source);
+  if (!tn || !sn) {
+    return c;
+  }
+  const opKey = String((tn.data as { operation?: string } | undefined)?.operation ?? "").trim();
+  if (opKey !== "painter") {
+    return c;
+  }
+  const opData = (tn.data as Record<string, unknown>) ?? {};
+  const paint = typeof opData.paint_color === "string" ? opData.paint_color : undefined;
+  if (String(paint ?? "").trim()) {
+    return c;
+  }
+  const handle = nodeDataIsFluidCarrier(sn.data) ? "in-1" : "in";
+  return { ...c, targetHandle: handle };
+}
+
+/**
+ * RF 스냅샷에 ``targetHandle``이 빠지면 XYFlow가 첫 번째 소켓(페인터는 ``in-1`` 상단)에 묶인다.
+ * 부트스트랩·재계산 응답 직후 재료/유체에 맞게 고친다.
+ */
+export function ensurePainterTargetHandlesOnEdges(nodes: Node[], edges: Edge[]): Edge[] {
+  return edges.map((e) => {
+    const tn = nodes.find((n) => n.id === e.target);
+    const sn = nodes.find((n) => n.id === e.source);
+    if (!tn || !sn || tn.type !== "operation") {
+      return e;
+    }
+    if (sn.type !== "shape" && sn.type !== "intermediate") {
+      return e;
+    }
+    const dk = edgeDomainKind(e);
+    if (dk !== undefined && dk !== "input") {
+      return e;
+    }
+    const opKey = String((tn.data as { operation?: string } | undefined)?.operation ?? "").trim();
+    if (opKey !== "painter") {
+      return e;
+    }
+    const opData = (tn.data as Record<string, unknown>) ?? {};
+    const paint = typeof opData.paint_color === "string" ? opData.paint_color : undefined;
+    if (String(paint ?? "").trim()) {
+      return e;
+    }
+    if (requiredInputCountForCarrier(opKey, paint) < 2) {
+      return e;
+    }
+    const want = nodeDataIsFluidCarrier(sn.data) ? "in-1" : "in";
+    if (e.targetHandle === want) {
+      return e;
+    }
+    const prev =
+      e.data && typeof e.data === "object" && !Array.isArray(e.data)
+        ? ({ ...(e.data as Record<string, unknown>) } as Record<string, unknown>)
+        : ({ domainKind: "input" } as Record<string, unknown>);
+    if (typeof prev.domainKind !== "string") {
+      prev.domainKind = "input";
+    }
+    if (want === "in-1") {
+      prev.slot = "1";
+    } else {
+      delete prev.slot;
+    }
+    return { ...e, targetHandle: want, data: prev };
+  });
 }
 
 /** intermediate(shape) → output(target) 납품 연결(RF 타입 기준). */
@@ -63,20 +274,27 @@ export function isIntermediateToOutputConnection(nodes: Node[], c: Connection): 
 export function evaluateRecipeConnection(
   nodes: Node[],
   edges: Edge[],
-  c: Connection,
+  cIn: Connection,
 ): { ok: true } | { ok: false; message: string } {
-  if (!c.source || !c.target) {
+  if (!cIn.source || !cIn.target) {
     return { ok: false, message: "Incomplete connection." };
   }
-  if (c.source === c.target) {
+  if (cIn.source === cIn.target) {
     return { ok: false, message: "Cannot connect a node to itself." };
   }
 
-  const sn = nodes.find((n) => n.id === c.source);
-  const tn = nodes.find((n) => n.id === c.target);
+  const sn = nodes.find((n) => n.id === cIn.source);
+  const tn = nodes.find((n) => n.id === cIn.target);
   if (!sn || !tn) {
     return { ok: false, message: "Unknown node." };
   }
+
+  const c = normalizeMaterialToPainterConnection(nodes, {
+    source: cIn.source,
+    target: cIn.target,
+    sourceHandle: cIn.sourceHandle ?? null,
+    targetHandle: cIn.targetHandle ?? null,
+  });
 
   const st = sn.type;
   const tt = tn.type;
@@ -116,7 +334,9 @@ export function evaluateRecipeConnection(
 
   if (isMaterialToOperationConnection(nodes, c)) {
     const opKey = String((tn.data as { operation?: string } | undefined)?.operation ?? "");
-    const need = getOperationInputArity(opKey);
+    const opData = (tn.data as Record<string, unknown>) ?? {};
+    const paint = typeof opData.paint_color === "string" ? opData.paint_color : undefined;
+    const need = requiredInputCountForCarrier(opKey, paint);
     const incoming = edges.filter((e) => e.target === c.target && edgeDomainKind(e) === "input");
     if (incoming.length >= need) {
       return { ok: false, message: "This operation already has all required inputs." };
@@ -124,6 +344,40 @@ export function evaluateRecipeConnection(
     const th = c.targetHandle ?? "in";
     if (incoming.some((e) => (e.targetHandle ?? "in") === th)) {
       return { ok: false, message: "That operation input port is already used." };
+    }
+    const expected = expectedInputCarriers(opKey, paint);
+    if (need > 0 && expected.length > 0) {
+      const k = opKey.trim();
+      let want: WireCarrier | undefined;
+      if (k === "painter" && !String(paint ?? "").trim() && expected.length === 2) {
+        want = th === "in-1" ? "fluid" : "material";
+      } else {
+        const pending = pendingInputEdgeFromConnection(c);
+        const sorted = sortedInputEdgesToOperation([...incoming, pending], nodes, c.target);
+        const idx = sorted.findIndex((e) => e.id === "__pending__");
+        if (idx >= 0 && idx < expected.length) {
+          want = expected[idx];
+        }
+      }
+      if (want !== undefined) {
+        const got: WireCarrier = nodeDataIsFluidCarrier(sn.data) ? "fluid" : "material";
+        if (got !== want) {
+          if (k === "painter" && !String(paint ?? "").trim() && expected.length === 2) {
+            const here =
+              th === "in-1"
+                ? `port 1 (upper handle in-1) — fluid only`
+                : `port 0 (lower handle in) — shape (material) only`;
+            return {
+              ok: false,
+              message: `This wire must be ${want} on ${here}. Painter: port 0 = shape on in (lower) · port 1 = fluid on in-1 (upper).`,
+            };
+          }
+          return {
+            ok: false,
+            message: `This wire must be ${want} (operation ${opKey} handle ${th}).`,
+          };
+        }
+      }
     }
     return { ok: true };
   }
@@ -135,6 +389,16 @@ export function evaluateRecipeConnection(
     (c.targetHandle === "in" || c.targetHandle == null);
 
   if (opToIntermediate) {
+    const opKey = String((sn.data as { operation?: string } | undefined)?.operation ?? "");
+    const lane = outputLaneFromSourceHandle(c.sourceHandle);
+    const want = expectedOutputCarrier(opKey, lane);
+    const got: WireCarrier = nodeDataIsFluidCarrier(tn.data) ? "fluid" : "material";
+    if (want !== got) {
+      return {
+        ok: false,
+        message: `Operation output is ${want}; intermediate node must match (got ${got}).`,
+      };
+    }
     return { ok: true };
   }
 
@@ -199,7 +463,9 @@ export function getRecipeConnectEdgeRemovals(
       ids.add(samePort[samePort.length - 1].id);
     } else {
       const opKey = String((tn.data as { operation?: string } | undefined)?.operation ?? "");
-      const need = getOperationInputArity(opKey);
+      const opData = (tn.data as Record<string, unknown>) ?? {};
+      const paint = typeof opData.paint_color === "string" ? opData.paint_color : undefined;
+      const need = requiredInputCountForCarrier(opKey, paint);
       if (incoming.length >= need) {
         ids.add(incoming[incoming.length - 1].id);
       }

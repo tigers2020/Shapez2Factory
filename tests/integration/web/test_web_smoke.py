@@ -229,6 +229,8 @@ def test_shape_gltf_vendor_assets_exist() -> None:
         "ShapeDefaultS",
         "ShapeDefaultW",
         "ShapeDefaultP",
+        "ShapeDefaultFluidTank",
+        "ShapeDefaultFluidTankFilled",
     ):
         assert (shape_root / f"{stem}.gltf").is_file()
         assert (shape_root / f"{stem}.bin").is_file()

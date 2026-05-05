@@ -75,7 +75,7 @@ def _macro_staff_catalog_json(request: HttpRequest) -> JsonResponse:
 
 def _macro_staff_graph_bootstrap(request: HttpRequest, recipe_pk: int) -> dict[str, Any]:
     del request
-    return {
+    out: dict[str, Any] = {
         "api_catalog": reverse("web:macro-pattern-staff-api-catalog"),
         "api_recipes": reverse("web:macro-pattern-staff-api-recipes-create"),
         "api_recipe_detail_pattern": reverse(
@@ -92,6 +92,7 @@ def _macro_staff_graph_bootstrap(request: HttpRequest, recipe_pk: int) -> dict[s
             kwargs={"pk": recipe_pk},
         ),
     }
+    return out
 
 
 def _recompute_graph_source_or_error(data: dict[str, Any]) -> JsonResponse | bool:
@@ -225,7 +226,7 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
             "bootstrap": bootstrap,
             "catalog": build_catalog_snapshot(),
             "staff_macro_nav": "graph",
-            "recipe_graph_editor_asset_version": "20260505-theme-slate",
+            "recipe_graph_editor_asset_version": "20260506-no-debug-instrumentation",
         },
     )
 

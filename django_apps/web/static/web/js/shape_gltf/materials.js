@@ -161,3 +161,18 @@ export function applyTopSideMaterials(root, materialKey) {
     node.receiveShadow = true;
   });
 }
+
+/** Fluid tank glTF: top/side split plus mild emissive on upward-facing material. */
+export function applyFluidTankFilledMaterials(root, materialKey) {
+  applyTopSideMaterials(root, materialKey);
+  root.traverse((node) => {
+    if (!node.isMesh || !Array.isArray(node.material)) {
+      return;
+    }
+    const top = node.material[0];
+    if (top && top.emissive && top.color) {
+      top.emissive.copy(top.color);
+      top.emissiveIntensity = 0.42;
+    }
+  });
+}

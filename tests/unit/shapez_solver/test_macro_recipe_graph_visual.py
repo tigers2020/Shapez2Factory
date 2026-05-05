@@ -1,4 +1,5 @@
 from django_apps.shapez_solver.domain.operations import OperationType
+from django_apps.shapez_solver.dto.solver_graph import SolverShapeNode
 from django_apps.shapez_solver.services.macro_recipe_graph_visual import (
     document_to_solver_graph,
     enrich_react_flow_with_macro_visual_previews,
@@ -199,3 +200,33 @@ def test_enrich_react_flow_macro_visual_reuses_precomputed_serialize() -> None:
     without_kw = enrich_react_flow_with_macro_visual_previews(rf, v)
     with_visual = enrich_react_flow_with_macro_visual_previews(rf, v, macro_visual=visual)
     assert with_visual == without_kw
+
+
+def test_serialize_macro_recipe_visual_fluid_source_uses_tank_mesh() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "src_f",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CrCrCrCr",
+                "source_carrier": "fluid",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+        ],
+        "edges": [],
+    }
+    g = document_to_solver_graph(doc)
+    src_node = next(n for n in g.nodes if n.id == "src_f")
+    assert isinstance(src_node, SolverShapeNode)
+    assert src_node.source_carrier == "fluid"
+
+    wire = serialize_macro_recipe_visual(doc)
+    src = next(n for n in wire["nodes"] if n["id"] == "src_f")
+    ps = src["preview_scene"]
+    assert len(ps["cells"]) == 1
+    assert ps["cells"][0]["mesh_key"] == "default_fluid_tank_filled"
+    assert ps["cells"][0]["material_key"] == "r"

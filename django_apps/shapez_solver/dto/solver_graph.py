@@ -21,6 +21,7 @@ class SolverShapeNode:
     produced_state: ShapeProducedState | None = None
     batch_index: int | None = None
     batch_total: int | None = None
+    source_carrier: Literal["fluid"] | None = None
     kind: Literal["shape"] = field(default="shape", init=False)
 
 

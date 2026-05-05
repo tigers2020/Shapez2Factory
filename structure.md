@@ -1,60 +1,78 @@
 # shapez2Solver repository structure
 
-This repository is now organized as a Django-first project. Runtime ownership lives under
+This repository is organized as a Django-first project. Runtime ownership lives under
 `config/`, `manage.py`, and `django_apps/`, while tests are split by unit vs integration.
 
 ## Top-level layout
 
 | Path | Purpose |
 |---|---|
+| `AGENTS.md` | Contributor/agent routing, quality gate, manual index |
 | `config/` | Django project settings, root URLs, WSGI/ASGI |
 | `django_apps/shapez_core/` | Shape parsing, normalization, preview API, canonical game data |
-| `django_apps/shapez_solver/` | Solver services and persisted solver project/run models |
-| `django_apps/web/` | Templates, static assets, and page-rendering views |
+| `django_apps/shapez_solver/` | Solver services, recipe/macro models, solver HTTP API |
+| `django_apps/web/` | Templates, static assets, thin views (pages + staff tooling) |
 | `tests/unit/` | Fast unit tests for core and solver behavior |
 | `tests/integration/` | Django request/response and page/API integration tests |
-| `documents/` | Research (`research/`), plans (`plans/`), progress notes (`notes/`), project meta (`meta/`), attribution (`attribution/`), [`archive/`](documents/archive/)(완료 세션: [`archive/2026-05-completed/`](documents/archive/2026-05-completed/README.md)), AI manuals & session notes (`ai/`). 인덱스: [`documents/README.md`](documents/README.md) |
+| `documents/` | Research (`research/`), plans (`plans/`), progress notes (`notes/`), project meta (`meta/`), attribution (`attribution/`), **game rules** (`game_rules/`), [`archive/`](documents/archive/)(완료 세션: [`archive/2026-05-completed/`](documents/archive/2026-05-completed/README.md)), AI manuals & session notes (`ai/`). 인덱스: [`documents/README.md`](documents/README.md) |
+| `protocols/` | Multi-step pipeline **canonical** procedure ([`protocols/README.md`](protocols/README.md)) |
+| `persona/` | Persona cards and role routing ([`persona/README.md`](persona/README.md)) |
+| `.cursor/` | Cursor rules and editor guidance |
 | `assets/css/` | Tailwind input CSS source |
-| `frontend/recipe_graph_editor/` | Vite + React Flow 편집기 소스; `npm run build` → `django_apps/web/static/web/js/recipe_graph_editor/` |
+| `frontend/recipe_graph_editor/` | Vite + React Flow editor; `npm run build:recipe-graph-editor` (via repo `package.json`) → `django_apps/web/static/web/js/recipe_graph_editor/` |
+| `locale/` | gettext catalogs (e.g. `locale/ko/LC_MESSAGES/django*.po`) |
+| `package.json` | Root npm scripts: `build:css` (Tailwind → `django_apps/web/static/web/css/app.css`), `build:recipe-graph-editor` |
+| `scripts/` | Ad-hoc tooling (e.g. `build_locale_ko.py`, `render_graph_preview.mjs`) |
 
 Generated or local-only artifacts such as `node_modules/`, `.pytest_cache/`, `.ruff_cache/`,
-`.mypy_cache/`, and `db.sqlite3` are not part of the architectural source of truth.
+`.mypy_cache/`, `.graph_preview_cache*/`, `db.sqlite3`, and `.env` are not part of the architectural source of truth.
 
 ## Django app ownership
 
 ### `django_apps/shapez_core/`
 
-- `domain/`: shape primitives, quadrant/layer normalization, catalog constants
-- `services/`: shape code parser, render scene builder, preview response composition
+- `domain/`: shape primitives, catalog, operations, crystal geometry, shape patterns
+- `services/`: shape code parser, codec, render scene, preview response composition
 - `views.py` + `urls.py`: `/api/health/` and `/api/shape-preview/`
 
 ### `django_apps/shapez_solver/`
 
-- `models.py`: `SolverProject`, `SolverRun`, `SolverRunStatus`
-- `services/`: planner and solver service scaffolds
-- `dto/`: solver-facing DTO namespace for future expansion
+- `models.py`: persisted solver projects/runs, macro pattern/recipe graph storage, related entities
+- `domain/`: solver-side domain helpers (e.g. operations metadata, factory demand, search cost)
+- `services/`: operation engine, recipe graph adapters/validation, planner/scaffold services, pattern lab, catalog repositories
+- `dto/`: solver-facing DTOs (e.g. solver graph shapes)
+- `views.py` + `urls.py`: `/api/solver/solve/` (POST)
 
 ### `django_apps/web/`
 
-- `views.py`: thin page controllers for `/`, `/gallery/`, `/demo/`
-- `templates/web/`: page templates and shared partials
-- `static/web/`: CSS, JS, vendor assets, screenshots, and template images (스태프 Recipe Graph는 `static/web/js/recipe_graph_editor/` Vite 빌드 산출물)
+- `views.py`: thin controllers for public pages (`/`, gallery, demo, support, solver UI, pattern lab) and **staff** macro-pattern flows under `internal/staff/macro-patterns/`
+- `services/graph_preview.py`: graph preview asset/cache helpers used by pages
+- `social_adapter.py`, `socialaccount_forms.py`: django-allauth / social account hooks
+- `templates/web/`: page templates and partials; `templates/account/`, `templates/socialaccount/`, `templates/allauth/` for auth UI overrides
+- `static/web/`: CSS (`static/web/css/app.css` from Tailwind build), JS bundles (Recipe Graph editor build under `static/web/js/recipe_graph_editor/`, solver timeline, GLTF preview, macro pattern staff scripts), vendor assets
 
 ## URL ownership
 
-- `/` -> `django_apps.web`
-- `/gallery/` -> `django_apps.web`
-- `/demo/` -> `django_apps.web`
-- `/api/health/` -> `django_apps.shapez_core`
-- `/api/shape-preview/` -> `django_apps.shapez_core`
-- `/api/solver/` -> `django_apps.shapez_solver` (e.g. `solve/` POST endpoint)
+Root routing (`config/urls.py`):
+
+- `/admin/` — Django admin
+- `/i18n/` — language switching
+- `/accounts/` — django-allauth (`allauth.urls`)
+- `/api/` — `django_apps.shapez_core` (`health/`, `shape-preview/`)
+- `/api/solver/` — `django_apps.shapez_solver` (`solve/`)
+
+Internationalized routes (`i18n_patterns`, default language without URL prefix):
+
+- `/jsi18n/` — JavaScript catalog
+- All paths from `django_apps.web` (see `django_apps/web/urls.py`), including `/`, `/gallery/`, `/demo/`, `/support/`, `/solver/`, `/solver/pattern-lab/`, staff macro-pattern URLs under `/internal/staff/macro-patterns/`, auth shortcuts (`/signup/`, `/login/`, `/logout/` redirects), `/solve/` → solver page redirect, and `/internal/graph-preview-cache/<filename>` for cached preview assets.
 
 ## Test layout
 
-- `tests/unit/shapez_core/`: parser and render-scene behavior
-- `tests/unit/shapez_solver/`: solver model/service behavior
-- `tests/integration/api/`: health and preview endpoint checks
-- `tests/integration/web/`: page rendering and asset smoke tests
+- `tests/unit/shapez_core/`: parser, render scene, geometry
+- `tests/unit/shapez_solver/`: solver engine, recipe graph, models, catalog, pattern lab
+- `tests/unit/web/`: template/markup and web-specific unit checks where used
+- `tests/integration/api/`: health and solver API checks
+- `tests/integration/web/`: page smoke, auth, pattern lab, macro-pattern staff flows
 
 ## Common commands
 
@@ -68,3 +86,4 @@ Generated or local-only artifacts such as `node_modules/`, `.pytest_cache/`, `.r
 | Type-check | `mypy .` |
 | Format check | `black --check .` |
 | Build CSS | `npm run build:css` |
+| Build Recipe Graph editor | `npm run build:recipe-graph-editor` (or `npm run build` for CSS + editor) |

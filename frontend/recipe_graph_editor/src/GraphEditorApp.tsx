@@ -38,9 +38,12 @@ import {
 } from "./recipeNodeCatalogMerge";
 import {
   connectionToRecipeEdge,
+  ensurePainterTargetHandlesOnEdges,
   evaluateRecipeConnection,
+  filterStaleRecipeEdges,
   getRecipeConnectEdgeRemovals,
   isMaterialToOperationConnection,
+  normalizeMaterialToPainterConnection,
   wouldConnectAfterRemovals,
 } from "./recipeConnection";
 import { recipeEdgeTypes } from "./recipeFlowEdges";
@@ -56,16 +59,12 @@ import { ru } from "./recipeUiStrings";
 /** 새 소스 자재 노드에 넣을 기본 shape 코드. */
 const DEFAULT_NEW_SOURCE_SHAPE_CODE = "CuCuCuCu";
 
-/** 순색 유체 자리표시자(균일 단색으로 편집). */
-const DEFAULT_NEW_FLUID_SHAPE_CODE = "CuCuCuCu";
-
 /** ``recipeFlowNodes`` 타일 ``h-14 w-14`` (56px) 절반 — 뷰포트 중앙에 노드 중심을 맞출 때 보정. */
 const RECIPE_NODE_TILE_HALF_PX = 28;
 
 /** 팔레트 → React Flow 캔버스 커스텀 DnD MIME (브라우저 호환용 짧은 타입). */
 const RECIPE_PALETTE_DND_OP = "application/x-shapez-recipe-graph-op";
 const RECIPE_PALETTE_DND_SRC = "application/x-shapez-recipe-graph-src";
-const RECIPE_PALETTE_DND_FLUID = "application/x-shapez-recipe-graph-fluid";
 
 export type ReactFlowInitialPayload = {
   version: number;
@@ -128,7 +127,6 @@ type OperationPalettePanelProps = {
   engineOperationIds: readonly string[];
   onAddOperation: (operation: string) => void;
   onAddSourceShape: () => void;
-  onAddFluidSource: () => void;
 };
 
 function newGraphNodeId(prefix: string): string {
@@ -143,7 +141,6 @@ function paletteGridPosition(index: number): { x: number; y: number } {
 
 function OperationPalettePanel({
   engineOperationIds,
-  onAddFluidSource,
   onAddOperation,
   onAddSourceShape,
   operations,
@@ -213,26 +210,9 @@ function OperationPalettePanel({
                   e.dataTransfer.effectAllowed = "copy";
                 }}
               >
-                <span className="font-mono text-slate-500">◇</span> {ru("emptySourceRow")}
+                <span className="font-mono text-slate-500">◇</span> {ru("emptyUnifiedSourceRow")}
                 <span className="mt-0.5 block text-[10px] text-slate-500">
-                  {ru("emptySourceHint", { code: DEFAULT_NEW_SOURCE_SHAPE_CODE })}
-                </span>
-              </button>
-            </li>
-            <li>
-              <button
-                className="w-full rounded border border-cyan-800/50 bg-slate-900/80 px-2 py-1.5 text-left text-xs text-cyan-100/90 hover:border-cyan-500/50"
-                draggable
-                type="button"
-                onClick={onAddFluidSource}
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(RECIPE_PALETTE_DND_FLUID, "1");
-                  e.dataTransfer.effectAllowed = "copy";
-                }}
-              >
-                <span className="font-mono text-slate-500">◇</span> {ru("emptyFluidRow")}
-                <span className="mt-0.5 block text-[10px] text-slate-500">
-                  {ru("emptyFluidHint", { code: DEFAULT_NEW_FLUID_SHAPE_CODE })}
+                  {ru("emptyUnifiedHint", { code: DEFAULT_NEW_SOURCE_SHAPE_CODE })}
                 </span>
               </button>
             </li>
@@ -351,7 +331,6 @@ type RecipeFlowBoardProps = {
   onSelectionChange: (p: { nodes: Node[]; edges: Edge[] }) => void;
   onDropOperationFromPalette: (operation: string, position: { x: number; y: number }) => void;
   onDropSourceFromPalette: (position: { x: number; y: number }) => void;
-  onDropFluidFromPalette: (position: { x: number; y: number }) => void;
   getViewportCenterFlowRef: MutableRefObject<(() => { x: number; y: number }) | null>;
 };
 
@@ -361,7 +340,6 @@ function RecipeFlowBoard({
   isValidConnection,
   nodes,
   onConnect,
-  onDropFluidFromPalette,
   onDropOperationFromPalette,
   onDropSourceFromPalette,
   onEdgesChange,
@@ -411,11 +389,8 @@ function RecipeFlowBoard({
         onDropSourceFromPalette(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
         return;
       }
-      if (e.dataTransfer.getData(RECIPE_PALETTE_DND_FLUID) === "1") {
-        onDropFluidFromPalette(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
-      }
     },
-    [onDropFluidFromPalette, onDropOperationFromPalette, onDropSourceFromPalette, screenToFlowPosition],
+    [onDropOperationFromPalette, onDropSourceFromPalette, screenToFlowPosition],
   );
 
   return (
@@ -465,7 +440,6 @@ type GraphCanvasPanelProps = {
   onSelectionChange: (params: { nodes: Node[] }) => void;
   onDropOperationFromPalette: (operation: string, position: { x: number; y: number }) => void;
   onDropSourceFromPalette: (position: { x: number; y: number }) => void;
-  onDropFluidFromPalette: (position: { x: number; y: number }) => void;
   onAutoArrange: () => void;
   catalogOperations: CatalogOperationRow[];
   engineOperationIds: readonly string[];
@@ -481,7 +455,6 @@ function GraphCanvasPanel({
   isValidConnection,
   nodes,
   onConnect,
-  onDropFluidFromPalette,
   onDropOperationFromPalette,
   onDropSourceFromPalette,
   onAutoArrange,
@@ -588,7 +561,6 @@ function GraphCanvasPanel({
             isValidConnection={isValidConnection}
             nodes={nodes}
             onConnect={onConnect}
-            onDropFluidFromPalette={onDropFluidFromPalette}
             onDropOperationFromPalette={onDropOperationFromPalette}
             onDropSourceFromPalette={onDropSourceFromPalette}
             onEdgesChange={onEdgesChange}
@@ -864,8 +836,13 @@ export function GraphEditorApp({
     [initialNodes, catalogIconByOp],
   );
 
+  const seededEdges = useMemo(
+    () => ensurePainterTargetHandlesOnEdges(seededNodes, initialEdges),
+    [seededNodes, initialEdges],
+  );
+
   const [nodes, setNodes, rfOnNodesChange] = useNodesState(seededNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(seededEdges);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   nodesRef.current = nodes;
@@ -918,12 +895,12 @@ export function GraphEditorApp({
       if (!edge.source || !edge.target) {
         return false;
       }
-      const c: Connection = {
+      const c: Connection = normalizeMaterialToPainterConnection(nodes, {
         source: edge.source,
         target: edge.target,
         sourceHandle: edge.sourceHandle ?? null,
         targetHandle: edge.targetHandle ?? null,
-      };
+      });
       const res = evaluateRecipeConnection(nodes, edges, c);
       if (res.ok) {
         clearConnectionInspectorFeedback();
@@ -955,7 +932,8 @@ export function GraphEditorApp({
           json.validation?.issues,
         );
         setNodes(enrichNodesWithCatalogIcons(withVal, catalogIconByOpRef.current));
-        const nextEdges = json.react_flow.edges as Edge[];
+        const rawEdges = json.react_flow.edges as Edge[];
+        const nextEdges = ensurePainterTargetHandlesOnEdges(withVal, rawEdges);
         setEdges(
           nextEdges.map((e) => ({
             ...e,
@@ -1025,10 +1003,17 @@ export function GraphEditorApp({
   );
 
   const onConnect = useCallback(
-    (c: Connection) => {
+    (conn: Connection) => {
       clearConnectionInspectorFeedback();
       const currentNodes = nodesRef.current;
       const currentEdges = edgesRef.current;
+      const raw: Connection = {
+        source: conn.source,
+        target: conn.target,
+        sourceHandle: conn.sourceHandle ?? null,
+        targetHandle: conn.targetHandle ?? null,
+      };
+      const c = normalizeMaterialToPainterConnection(currentNodes, raw);
       const remove = new Set(getRecipeConnectEdgeRemovals(currentNodes, currentEdges, c));
       const filtered = currentEdges.filter((e) => !remove.has(e.id));
       if (!evaluateRecipeConnection(currentNodes, filtered, c).ok) {
@@ -1144,44 +1129,6 @@ export function GraphEditorApp({
     [setNodes, silentDryRunFromGraph],
   );
 
-  const addFluidSourceNode = useCallback(() => {
-    setNodes((nds) => {
-      const pos = getViewportCenterFlowRef.current?.() ?? paletteGridPosition(nds.length);
-      const id = newGraphNodeId("fluid");
-      return [
-        ...nds,
-        {
-          id,
-          type: "shape",
-          position: pos,
-          data: { shape_code: DEFAULT_NEW_FLUID_SHAPE_CODE, quantity: 1, role: "source" },
-        },
-      ];
-    });
-  }, [setNodes]);
-
-  const dropFluidSourceAtPosition = useCallback(
-    (position: { x: number; y: number }) => {
-      setNodes((nds) => {
-        const id = newGraphNodeId("fluid");
-        const next: Node[] = [
-          ...nds,
-          {
-            id,
-            type: "shape",
-            position: { x: position.x, y: position.y },
-            data: { shape_code: DEFAULT_NEW_FLUID_SHAPE_CODE, quantity: 1, role: "source" },
-          },
-        ];
-        queueMicrotask(() => {
-          void silentDryRunFromGraph(next, edgesRef.current);
-        });
-        return next;
-      });
-    },
-    [setNodes, silentDryRunFromGraph],
-  );
-
   const autoArrangeNodes = useCallback(() => {
     setNodes((nds) => {
       if (nds.length === 0) {
@@ -1214,6 +1161,9 @@ export function GraphEditorApp({
         if ("crystal_color" in patch && patch.crystal_color === undefined) {
           delete next.crystal_color;
         }
+        if ("source_carrier" in patch && patch.source_carrier === undefined) {
+          delete next.source_carrier;
+        }
         if ("operation" in patch) {
           const op = String(patch.operation ?? "").trim();
           const ic = catalogIconByOpRef.current.get(op);
@@ -1227,7 +1177,8 @@ export function GraphEditorApp({
           "shape_code" in patch ||
           "operation" in patch ||
           "paint_color" in patch ||
-          "crystal_color" in patch
+          "crystal_color" in patch ||
+          "source_carrier" in patch
         ) {
           delete next.preview_image_url;
           delete next.preview_alt;
@@ -1243,13 +1194,22 @@ export function GraphEditorApp({
         };
         const change: NodeChange = { type: "replace", id: nodeId, item: newNode };
         const updated = applyNodeChanges([change], nds);
+        const stripStaleEdges =
+          (n.type === "shape" || n.type === "intermediate") &&
+          ("source_carrier" in patch || "shape_code" in patch);
+        const nextEdges = stripStaleEdges
+          ? filterStaleRecipeEdges(updated, edgesSnapshot)
+          : edgesSnapshot;
         queueMicrotask(() => {
-          void silentDryRunFromGraph(updated, edgesSnapshot);
+          if (stripStaleEdges) {
+            setEdges(nextEdges);
+          }
+          void silentDryRunFromGraph(updated, nextEdges);
         });
         return updated;
       });
     },
-    [setNodes, silentDryRunFromGraph],
+    [setEdges, setNodes, silentDryRunFromGraph],
   );
 
   const runRecompute = useCallback(
@@ -1326,7 +1286,6 @@ export function GraphEditorApp({
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 md:grid-cols-[220px_minmax(0,1fr)_168px]">
         <OperationPalettePanel
           engineOperationIds={engineOperationIds}
-          onAddFluidSource={addFluidSourceNode}
           onAddOperation={addOperationNode}
           onAddSourceShape={addSourceShapeNode}
           operations={catalogOperations}
@@ -1341,7 +1300,6 @@ export function GraphEditorApp({
           nodes={nodes}
           onConnect={onConnect}
           onAutoArrange={autoArrangeNodes}
-          onDropFluidFromPalette={dropFluidSourceAtPosition}
           onDropOperationFromPalette={dropOperationAtPosition}
           onDropSourceFromPalette={dropSourceShapeAtPosition}
           onEdgesChange={onEdgesChange}

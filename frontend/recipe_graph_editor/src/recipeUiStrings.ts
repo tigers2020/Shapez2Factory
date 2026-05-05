@@ -12,17 +12,29 @@ const EN = {
   paletteSearchPh: "Search operations…",
   emptySourceRow: "Empty source material",
   emptySourceHint: "Default {code} — edit via double-click or recompute",
+  /** @deprecated Use emptyUnifiedSourceRow in UI; kept for gettext catalogs. */
   emptyFluidRow: "Empty fluid carrier",
-  emptyFluidHint: "Uniform placeholder {code} — edit code to a pure fluid (e.g. CrCrCrCr)",
+  /** @deprecated Use emptyUnifiedHint in UI. */
+  emptyFluidHint:
+    "Default {code} — primary RGB only; pick R/G/B in the node editor. Secondary colors (c/m/y/w) via color_mixer.",
+  emptyUnifiedSourceRow: "Empty source (shape or fluid)",
+  emptyUnifiedHint:
+    "Default material {code} — set carrier to fluid in the node editor (RGB fluid) or wire per-port rules.",
+  fluidInkLabel: "Fluid ink (R / G / B)",
+  fluidInkHint:
+    "Encoded as uniform circle layer (e.g. CrCrCrCr). Use a color_mixer in the graph for cyan/magenta/yellow/white.",
+  carrierLabel: "Carrier",
+  carrierMaterial: "Shape (material)",
+  carrierFluid: "Fluid",
   paintColorFallbackHint:
-    "Optional legacy fallback when only one shape input is wired; prefer fluid on the lower port.",
+    "Optional legacy fallback when only one shape input is wired; two-wire painter: fluid on upper in-1, shape on lower in.",
   opRowHintGridDrag:
     "{value} — click (grid place) or drag to canvas (drop position)",
   opNotInEngine: "This operation is not in the recipe graph engine recompute list.",
   catalogLoadError:
     "Could not load catalog operations. Refresh or check the macro-graph-initial-catalog script.",
   paletteHelpP1:
-    "Click adds at the viewport center; drag onto the canvas to place at the drop point (operations auto-create outputs through intermediate).",
+    "Click adds at the viewport center; drag onto the canvas to place at the drop point (operations auto-create outputs through intermediate). Source palette entry is material by default — switch to fluid in the node editor when needed.",
   selNone: "Nothing selected.",
   selOne: "1 · {id}",
   selMulti: "{n} nodes selected.",
@@ -39,7 +51,7 @@ const EN = {
   ariaCloseEditor: "Close editor",
   titleNodeSuffix: "node",
   btnClose: "Close",
-  paintColorHint: "paint_color (single char)",
+  paintColorHint: "Legacy paint_color: r, g, or b (or unset when using two inputs + fluid wire)",
   crystalColorHint: "crystal_color (single char)",
   roleReadonly: "(read-only)",
   btnCancel: "Cancel",

@@ -18,7 +18,11 @@ export const MODEL_FILES = {
   default_diamond: "ShapeDefaultW.gltf",
   default_pin: "ShapeDefaultP.gltf",
   default_crystal: "ShapeDefaultC.gltf",
+  default_fluid_tank: "ShapeDefaultFluidTank.gltf",
+  default_fluid_tank_filled: "ShapeDefaultFluidTankFilled.gltf",
 };
+
+export const FLUID_TANK_CENTERED_MESH_KEYS = new Set(["default_fluid_tank_filled", "default_fluid_tank"]);
 
 export const BASE_RADIUS = 0.62;
 export const BASE_HEIGHT = 0.08;

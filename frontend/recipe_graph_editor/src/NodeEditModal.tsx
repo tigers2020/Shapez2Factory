@@ -1,7 +1,10 @@
 import type { Node } from "@xyflow/react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
+import type { FluidPrimaryInk } from "./fluidSourceUi";
+import { fluidShapeCodeFromInk, inkFromFluidShapeCode } from "./fluidSourceUi";
 import type { CatalogOperationRow } from "./recipeNodeCatalogMerge";
+import { nodeDataIsFluidCarrier } from "./recipeConnection";
 import { RecipeShapePreview } from "./recipeShapePreview";
 import { ru } from "./recipeUiStrings";
 
@@ -39,7 +42,16 @@ export function NodeEditModal({
   const base = useMemo(() => coerceRecord(node.data), [node.data]);
   const dataSig = useMemo(() => JSON.stringify(node.data ?? null), [node.data]);
 
+  const isShapeOrIntermediate = node.type === "shape" || node.type === "intermediate";
+
+  const [carrierMode, setCarrierMode] = useState<"material" | "fluid">(() =>
+    nodeDataIsFluidCarrier(base) ? "fluid" : "material",
+  );
+
   const [shapeCode, setShapeCode] = useState(String(base.shape_code ?? ""));
+  const [fluidInk, setFluidInk] = useState<FluidPrimaryInk>(() =>
+    nodeDataIsFluidCarrier(base) ? inkFromFluidShapeCode(String(base.shape_code ?? "")) : "r",
+  );
   const [quantity, setQuantity] = useState(String(base.quantity ?? 1));
   const [operation, setOperation] = useState(String(base.operation ?? ""));
   const [paintColor, setPaintColor] = useState(
@@ -69,6 +81,8 @@ export function NodeEditModal({
   useEffect(() => {
     const d = coerceRecord(node.data);
     setShapeCode(String(d.shape_code ?? ""));
+    setFluidInk(inkFromFluidShapeCode(String(d.shape_code ?? "")));
+    setCarrierMode(nodeDataIsFluidCarrier(d) ? "fluid" : "material");
     setQuantity(String(d.quantity ?? 1));
     setOperation(String(d.operation ?? ""));
     setPaintColor(String(d.paint_color ?? d.crystal_color ?? ""));
@@ -84,7 +98,7 @@ export function NodeEditModal({
       const op = operation.trim();
       if (op === "painter") {
         const pc = paintColor.trim().slice(0, 1);
-        if (pc) {
+        if (pc && "rgb".includes(pc)) {
           next.paint_color = pc;
         } else {
           next.paint_color = undefined;
@@ -102,11 +116,41 @@ export function NodeEditModal({
       return;
     }
     const q = Number.parseInt(quantity, 10);
-    onApply({
-      shape_code: shapeCode.trim(),
-      quantity: Number.isFinite(q) && q >= 1 ? q : 1,
-    });
-  }, [node.type, onApply, operation, paintColor, quantity, shapeCode]);
+    const qty = Number.isFinite(q) && q >= 1 ? q : 1;
+    if (node.type === "output") {
+      onApply({
+        shape_code: shapeCode.trim(),
+        quantity: qty,
+      });
+      return;
+    }
+    if (node.type !== "shape" && node.type !== "intermediate") {
+      return;
+    }
+    const patch: Record<string, unknown> = { quantity: qty };
+    if (carrierMode === "fluid") {
+      patch.source_carrier = "fluid";
+      if (node.type === "shape" && base.role === "source") {
+        patch.shape_code = fluidShapeCodeFromInk(fluidInk);
+      } else {
+        patch.shape_code = shapeCode.trim();
+      }
+    } else {
+      patch.source_carrier = undefined;
+      patch.shape_code = shapeCode.trim();
+    }
+    onApply(patch);
+  }, [
+    base.role,
+    carrierMode,
+    fluidInk,
+    node.type,
+    onApply,
+    operation,
+    paintColor,
+    quantity,
+    shapeCode,
+  ]);
 
   const modalHeading =
     node.type === "operation"
@@ -206,12 +250,36 @@ export function NodeEditModal({
                 })}
               </select>
             </label>
-            {(operation.trim() === "painter" || operation.trim() === "crystal_generator") ? (
+            {operation.trim() === "painter" ? (
               <label className="block">
                 <span className="mb-0.5 block font-mono text-[10px] text-slate-500">
-                  {operation.trim() === "crystal_generator"
-                    ? ru("crystalColorHint")
-                    : ru("paintColorHint")}
+                  {ru("paintColorHint")}
+                </span>
+                <select
+                  className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
+                  value={
+                    ["r", "g", "b"].includes(paintColor.trim().slice(0, 1))
+                      ? paintColor.trim().slice(0, 1)
+                      : ""
+                  }
+                  onChange={(e) => {
+                    setPaintColor(e.target.value);
+                  }}
+                >
+                  <option value="">— (two-wire / fluid)</option>
+                  <option value="r">r</option>
+                  <option value="g">g</option>
+                  <option value="b">b</option>
+                </select>
+                <p className="mt-1 text-[10px] leading-snug text-slate-500">
+                  {ru("paintColorFallbackHint")}
+                </p>
+              </label>
+            ) : null}
+            {operation.trim() === "crystal_generator" ? (
+              <label className="block">
+                <span className="mb-0.5 block font-mono text-[10px] text-slate-500">
+                  {ru("crystalColorHint")}
                 </span>
                 <input
                   className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
@@ -221,11 +289,6 @@ export function NodeEditModal({
                   }}
                   value={paintColor}
                 />
-                {operation.trim() === "painter" ? (
-                  <p className="mt-1 text-[10px] leading-snug text-slate-500">
-                    {ru("paintColorFallbackHint")}
-                  </p>
-                ) : null}
               </label>
             ) : null}
           </div>
@@ -247,17 +310,68 @@ export function NodeEditModal({
             {shapeHint ? (
               <p className="text-center font-mono text-[10px] text-amber-200/85">{shapeHint}</p>
             ) : null}
-            <label className="block">
-              <span className="mb-0.5 block font-mono text-[10px] text-slate-500">shape_code</span>
-              <input
-                className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
-                onChange={(e) => {
-                  setShapeCode(e.target.value);
-                }}
-                spellCheck={false}
-                value={shapeCode}
-              />
-            </label>
+            {isShapeOrIntermediate ? (
+              <label className="block">
+                <span className="mb-0.5 block font-mono text-[10px] text-slate-500">
+                  {ru("carrierLabel")}
+                </span>
+                <select
+                  className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
+                  value={carrierMode}
+                  onChange={(e) => {
+                    const v = e.target.value as "material" | "fluid";
+                    setCarrierMode(v);
+                    if (v === "fluid" && node.type === "shape" && base.role === "source") {
+                      setShapeCode(fluidShapeCodeFromInk(fluidInk));
+                    }
+                  }}
+                >
+                  <option value="material">{ru("carrierMaterial")}</option>
+                  <option value="fluid">{ru("carrierFluid")}</option>
+                </select>
+              </label>
+            ) : null}
+            {isShapeOrIntermediate && carrierMode === "fluid" && node.type === "shape" && base.role === "source" ? (
+              <>
+                <label className="block">
+                  <span className="mb-0.5 block font-mono text-[10px] text-slate-500">
+                    {ru("fluidInkLabel")}
+                  </span>
+                  <select
+                    className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
+                    value={fluidInk}
+                    onChange={(e) => {
+                      const v = e.target.value as FluidPrimaryInk;
+                      setFluidInk(v);
+                      setShapeCode(fluidShapeCodeFromInk(v));
+                    }}
+                  >
+                    <option value="r">r (red)</option>
+                    <option value="g">g (green)</option>
+                    <option value="b">b (blue)</option>
+                  </select>
+                  <p className="mt-1 text-[10px] leading-snug text-slate-500">{ru("fluidInkHint")}</p>
+                </label>
+                <p className="font-mono text-[10px] text-slate-500">
+                  shape_code{" "}
+                  <span className="break-all text-slate-400">{fluidShapeCodeFromInk(fluidInk)}</span>
+                </p>
+              </>
+            ) : null}
+            {isShapeOrIntermediate &&
+            !(carrierMode === "fluid" && node.type === "shape" && base.role === "source") ? (
+              <label className="block">
+                <span className="mb-0.5 block font-mono text-[10px] text-slate-500">shape_code</span>
+                <input
+                  className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
+                  onChange={(e) => {
+                    setShapeCode(e.target.value);
+                  }}
+                  spellCheck={false}
+                  value={shapeCode}
+                />
+              </label>
+            ) : null}
             <label className="block">
               <span className="mb-0.5 block font-mono text-[10px] text-slate-500">quantity</span>
               <input

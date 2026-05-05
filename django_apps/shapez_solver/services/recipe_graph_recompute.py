@@ -8,6 +8,7 @@ from collections import defaultdict, deque
 from typing import Any
 
 from django_apps.shapez_core.domain.shape import Shape
+from django_apps.shapez_core.domain.shape_catalog import FLUID_SOURCE_PRIMARY_COLORS
 from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.services.operation_semantics import apply_operation
 from django_apps.shapez_solver.services.recipe_graph_constants import (
@@ -17,6 +18,14 @@ from django_apps.shapez_solver.services.recipe_graph_constants import (
     RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET,
     RECIPE_GRAPH_ENGINE_OPERATIONS,
     RECIPE_GRAPH_SCHEMA_VERSION,
+)
+from django_apps.shapez_solver.services.recipe_graph_input_carrier import (
+    assert_input_output_carriers_for_document,
+    operation_output_lane_carrier,
+    sorted_shape_input_edges_to_operation,
+)
+from django_apps.shapez_solver.services.recipe_graph_source_carrier import (
+    assert_fluid_carrier_shape_for_role,
 )
 from django_apps.shapez_solver.services.recipe_graph_topology import (
     assert_delivery_targets_unique,
@@ -31,13 +40,35 @@ def _as_str(value: object, *, label: str) -> str:
     return value.strip()
 
 
-def _normalize_shape_node(node: dict[str, Any]) -> None:
+def _normalize_shape_node(node: dict[str, Any], *, index: int) -> None:
     sc = node.get("shape_code", "")
     if sc is not None and not isinstance(sc, str):
         raise ValueError("shape.shape_code must be a string")
     node["shape_code"] = str(sc).strip() if isinstance(sc, str) else ""
     node.setdefault("role", "intermediate")
     node.setdefault("quantity", 1)
+    role = str(node.get("role", "intermediate")).strip()
+    node["role"] = role
+    if role == "target":
+        node.pop("source_carrier", None)
+    raw_carrier = node.get("source_carrier")
+    if raw_carrier is None or (isinstance(raw_carrier, str) and raw_carrier.strip() == ""):
+        node.pop("source_carrier", None)
+    elif not isinstance(raw_carrier, str):
+        raise ValueError(f"nodes[{index}]: shape.source_carrier must be a string or omitted")
+    else:
+        c = raw_carrier.strip()
+        if c not in ("material", "fluid"):
+            raise ValueError(f"nodes[{index}]: invalid shape.source_carrier: {raw_carrier!r}")
+        if c == "material":
+            node.pop("source_carrier", None)
+        else:
+            node["source_carrier"] = "fluid"
+            if role not in ("source", "intermediate"):
+                raise ValueError(
+                    f"nodes[{index}]: source_carrier=fluid requires role=source or intermediate, "
+                    f"got role={role!r}",
+                )
 
 
 def _normalize_operation_node(node: dict[str, Any], index: int) -> None:
@@ -54,7 +85,13 @@ def _normalize_operation_node(node: dict[str, Any], index: int) -> None:
                     f"nodes[{index}]: painter paint_color must be "
                     "a single character when set (legacy fallback)",
                 )
-            node["paint_color"] = pc.strip()
+            ink = pc.strip()
+            if ink not in FLUID_SOURCE_PRIMARY_COLORS:
+                raise ValueError(
+                    f"nodes[{index}]: painter paint_color must be one of "
+                    f"{sorted(FLUID_SOURCE_PRIMARY_COLORS)}, got {ink!r}",
+                )
+            node["paint_color"] = ink
         return
     if op_enum == OperationType.CRYSTAL_GENERATOR:
         cc = node.get("crystal_color")
@@ -79,7 +116,14 @@ def _validate_graph_node(node: object, index: int, seen_ids: set[str]) -> None:
     if kind not in {"shape", "operation"}:
         raise ValueError(f"invalid node kind: {kind}")
     if kind == "shape":
-        _normalize_shape_node(node)
+        _normalize_shape_node(node, index=index)
+        if node.get("source_carrier") == "fluid":
+            assert_fluid_carrier_shape_for_role(
+                str(node.get("role", "intermediate")),
+                str(node.get("shape_code", "")),
+                index=index,
+                node_id=nid,
+            )
     else:
         _normalize_operation_node(node, index)
     node.setdefault("x", 0.0)
@@ -131,6 +175,7 @@ def validate_graph_document(raw: object) -> dict[str, Any]:
     doc["edges"] = edges
     assert_recipe_graph_edge_topology(doc)
     assert_delivery_targets_unique(edges)
+    assert_input_output_carriers_for_document(doc)
     return doc
 
 
@@ -258,19 +303,15 @@ def _sorted_input_codes_for_operation(
     node_by_id: dict[str, dict[str, Any]],
     input_edges: list[dict[str, Any]],
 ) -> tuple[str, ...]:
-    rows: list[tuple[bool, str, str, str]] = []
-    for e in input_edges:
-        sid = e["from"]
+    ordered = sorted_shape_input_edges_to_operation(input_edges, node_by_id)
+    codes: list[str] = []
+    for e in ordered:
+        sid = str(e.get("from", ""))
         shape = node_by_id.get(sid)
         if not shape or shape.get("kind") != "shape":
             continue
-        code = str(shape.get("shape_code", "")).strip()
-        slot = e.get("slot")
-        slot_key = slot if isinstance(slot, str) and slot.strip() else ""
-        has_slot = bool(slot_key)
-        rows.append((not has_slot, slot_key, sid, code))
-    rows.sort(key=lambda t: (t[0], t[1], t[2]))
-    return tuple(t[3] for t in rows)
+        codes.append(str(shape.get("shape_code", "")).strip())
+    return tuple(codes)
 
 
 def _sorted_output_edges_for_operation(
@@ -358,6 +399,7 @@ def _apply_recomputed_operation(
 
 def _assign_operation_outputs(
     op_id: str,
+    op_type: OperationType,
     op_node: dict[str, Any],
     outputs: tuple[str, ...],
     out_edges: list[dict[str, Any]],
@@ -379,6 +421,10 @@ def _assign_operation_outputs(
             target = node_by_id.get(e["to"])
             if target and target.get("kind") == "shape":
                 target["shape_code"] = out_code
+                if operation_output_lane_carrier(op_type, i) == "fluid":
+                    target["source_carrier"] = "fluid"
+                else:
+                    target.pop("source_carrier", None)
             continue
         nid = _new_shape_id(existing_ids)
         existing_ids.add(nid)
@@ -399,6 +445,8 @@ def _assign_operation_outputs(
             "x": nx,
             "y": ny,
         }
+        if operation_output_lane_carrier(op_type, i) == "fluid":
+            new_shape["source_carrier"] = "fluid"
         nodes.append(new_shape)
         node_by_id[nid] = new_shape
         new_edge: dict[str, Any] = {
@@ -471,6 +519,7 @@ def recompute_validated_graph_document(work: dict[str, Any]) -> tuple[dict[str, 
         out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
         _assign_operation_outputs(
             op_id,
+            op_type,
             op_node,
             outputs,
             out_edges,

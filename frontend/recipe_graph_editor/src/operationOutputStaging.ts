@@ -42,11 +42,17 @@ export function ensureOperationOutputArtifacts(
     const slotIndex = k;
     const imId = newGraphNodeId("im");
     const yOff = want > 1 ? (slotIndex - (want - 1) / 2) * dy : 0;
+    const fluidLane = opKey.trim() === "color_mixer" && slotIndex === 0;
     nextNodes.push({
       id: imId,
       type: "intermediate",
       position: { x: bx + dx, y: by + yOff },
-      data: { shape_code: "", quantity: 1, role: "intermediate" },
+      data: {
+        shape_code: "",
+        quantity: 1,
+        role: "intermediate",
+        ...(fluidLane ? { source_carrier: "fluid" } : {}),
+      },
     });
     const data: Record<string, unknown> = { domainKind: "output", slot: String(slotIndex) };
     const sourceHandle = slotIndex === 0 ? "out" : `out-${slotIndex}`;

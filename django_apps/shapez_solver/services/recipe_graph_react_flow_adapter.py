@@ -37,9 +37,7 @@ def _edges_raw_to_rf(edges_raw: list[Any]) -> list[dict[str, Any]]:
     return rf_edges
 
 
-def _annotate_rf_edges_for_react_flow(
-    rf_edges: list[dict[str, Any]], edges_raw: list[Any]
-) -> None:
+def _annotate_rf_edges_for_react_flow(rf_edges: list[dict[str, Any]], edges_raw: list[Any]) -> None:
     input_counts: dict[str, int] = {}
     output_counts: dict[str, int] = {}
     for ed, raw in zip(rf_edges, edges_raw, strict=True):
@@ -48,10 +46,23 @@ def _annotate_rf_edges_for_react_flow(
         ek = raw.get("kind")
         if ek == "input":
             tid = str(raw["to"])
-            idx = input_counts.get(tid, 0)
-            input_counts[tid] = idx + 1
-            if idx > 0:
-                ed["targetHandle"] = f"in-{idx}"
+            slot_raw = raw.get("slot")
+            if isinstance(slot_raw, int):
+                slot_txt = str(slot_raw)
+            elif isinstance(slot_raw, str):
+                slot_txt = slot_raw.strip()
+            else:
+                slot_txt = ""
+            if slot_txt.isdigit():
+                lane = int(slot_txt)
+                ed["targetHandle"] = "in" if lane == 0 else f"in-{lane}"
+            else:
+                # Legacy graphs without ``slot``: enumerate ports. Must set ``idx == 0`` to ``in``
+                # explicitly — otherwise React Flow attaches to the first Handle in DOM order
+                # (``in-1`` before ``in`` on painter), crowding both wires onto the upper port.
+                idx = input_counts.get(tid, 0)
+                input_counts[tid] = idx + 1
+                ed["targetHandle"] = "in" if idx == 0 else f"in-{idx}"
         elif ek == "output":
             src = str(raw["from"])
             slot_raw = raw.get("slot")
@@ -145,6 +156,8 @@ def _domain_node_to_rf(node: dict[str, Any]) -> dict[str, Any]:
             "quantity": int(node.get("quantity", 1) or 1),
             "role": str(node.get("role", "intermediate")),
         }
+        if str(node.get("source_carrier", "")) == "fluid":
+            data["source_carrier"] = "fluid"
     return {"id": nid, "type": ntype, "position": {"x": x, "y": y}, "data": data}
 
 
@@ -187,7 +200,7 @@ def _rf_node_to_domain(rf: dict[str, Any]) -> dict[str, Any]:
     if ntype not in role_map:
         raise ValueError(f"unsupported react flow node type: {ntype}")
     role = role_map[ntype]
-    return {
+    shape_node: dict[str, Any] = {
         "id": nid,
         "kind": "shape",
         "role": role,
@@ -196,6 +209,10 @@ def _rf_node_to_domain(rf: dict[str, Any]) -> dict[str, Any]:
         "x": x,
         "y": y,
     }
+    sc = data.get("source_carrier")
+    if isinstance(sc, str) and sc.strip() == "fluid":
+        shape_node["source_carrier"] = "fluid"
+    return shape_node
 
 
 def _rf_edge_to_domain(rf: dict[str, Any]) -> dict[str, Any]:

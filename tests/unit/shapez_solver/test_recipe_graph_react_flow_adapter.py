@@ -53,6 +53,7 @@ def test_domain_to_react_flow_minimal_chain_round_trip() -> None:
     assert rf["edges"][0]["source"] == "s1"
     assert rf["edges"][0]["target"] == "o1"
     assert rf["edges"][0]["data"]["domainKind"] == "input"
+    assert rf["edges"][0].get("targetHandle") == "in"
     back = validate_graph_document(react_flow_to_domain_graph(rf))
     assert back == doc
 
@@ -191,3 +192,70 @@ def test_domain_to_react_flow_delivery_edge_round_trip() -> None:
     assert rf["edges"][0].get("targetHandle") == "in"
     back = validate_graph_document(react_flow_to_domain_graph(rf))
     assert back["edges"][0]["kind"] == "delivery"
+
+
+def test_react_flow_round_trip_preserves_source_carrier_fluid() -> None:
+    raw = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "f1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CrCrCrCr",
+                "quantity": 1,
+                "source_carrier": "fluid",
+                "x": 0,
+                "y": 0,
+            },
+        ],
+        "edges": [],
+    }
+    doc = validate_graph_document(raw)
+    rf = domain_graph_to_react_flow(doc)
+    n0 = next(n for n in rf["nodes"] if n["id"] == "f1")
+    assert n0["data"].get("source_carrier") == "fluid"
+    back = validate_graph_document(react_flow_to_domain_graph(rf))
+    assert back["nodes"][0].get("source_carrier") == "fluid"
+
+
+def test_domain_to_react_flow_binary_input_handles_follow_slot_not_list_order() -> None:
+    """Painter 등 슬롯이 있는 입력은 edges 배열 순서와 무관하게 ``targetHandle``에 반영된다."""
+    raw = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "f1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CrCrCrCr",
+                "quantity": 1,
+                "source_carrier": "fluid",
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "s1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 1,
+            },
+            {"id": "p1", "kind": "operation", "operation": "painter", "x": 100, "y": 0},
+        ],
+        "edges": [
+            {"from": "f1", "to": "p1", "kind": "input", "slot": "1"},
+            {"from": "s1", "to": "p1", "kind": "input"},
+        ],
+    }
+    doc = validate_graph_document(raw)
+    rf = domain_graph_to_react_flow(doc)
+    inp = [e for e in rf["edges"] if e.get("data", {}).get("domainKind") == "input"]
+    assert len(inp) == 2
+    by_src = {e["source"]: e for e in inp}
+    assert by_src["f1"].get("targetHandle") == "in-1"
+    assert by_src["s1"].get("targetHandle") is None or by_src["s1"].get("targetHandle") == "in"
+    back = validate_graph_document(react_flow_to_domain_graph(rf))
+    assert back == doc

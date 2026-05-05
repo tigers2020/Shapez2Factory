@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Literal
 
 from django_apps.shapez_solver.domain.operation_catalog import OPERATION_CATALOG
 from django_apps.shapez_solver.domain.operations import OperationType
@@ -32,6 +32,10 @@ def _graph_node_doc_to_solver(n: dict[str, Any]) -> SolverShapeNode | SolverOper
     if n.get("kind") == "shape":
         role = _normalize_shape_role(n.get("role"))
         code = str(n.get("shape_code", "")).strip()
+        raw_carrier = n.get("source_carrier")
+        carrier: Literal["fluid"] | None = None
+        if isinstance(raw_carrier, str) and raw_carrier.strip() == "fluid":
+            carrier = "fluid"
         return SolverShapeNode(
             id=str(n["id"]),
             role=role,  # type: ignore[arg-type]
@@ -39,6 +43,7 @@ def _graph_node_doc_to_solver(n: dict[str, Any]) -> SolverShapeNode | SolverOper
             label=str(n.get("label") or n["id"]),
             preview_scene=None,
             quantity=int(n.get("quantity", 1)),
+            source_carrier=carrier,
         )
     op_key = str(n.get("operation", "")).strip()
     op_type = OperationType(op_key)
@@ -49,7 +54,7 @@ def _graph_node_doc_to_solver(n: dict[str, Any]) -> SolverShapeNode | SolverOper
         if pc:
             description = f"{description} · paint_color={pc}"
         else:
-            description = f"{description} · fluid wire (lower port) + shape (upper port)"
+            description = f"{description} · fluid wire (upper port in-1) + shape (lower port in)"
     elif op_type == OperationType.CRYSTAL_GENERATOR:
         cc = str(n.get("crystal_color", "")).strip()
         if cc:

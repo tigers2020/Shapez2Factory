@@ -327,6 +327,7 @@ def test_recompute_painter_two_inputs_fluid_and_shape() -> None:
                 "role": "source",
                 "shape_code": "CrCrCrCr",
                 "quantity": 1,
+                "source_carrier": "fluid",
                 "x": 0,
                 "y": 80,
             },
@@ -422,6 +423,7 @@ def test_recompute_color_mixer_updates_output_shape() -> None:
                 "role": "source",
                 "shape_code": "CrCrCrCr",
                 "quantity": 1,
+                "source_carrier": "fluid",
                 "x": 0,
                 "y": 0,
             },
@@ -431,6 +433,7 @@ def test_recompute_color_mixer_updates_output_shape() -> None:
                 "role": "source",
                 "shape_code": "CgCgCgCg",
                 "quantity": 1,
+                "source_carrier": "fluid",
                 "x": 0,
                 "y": 80,
             },
@@ -447,6 +450,7 @@ def test_recompute_color_mixer_updates_output_shape() -> None:
                 "role": "intermediate",
                 "shape_code": "",
                 "quantity": 1,
+                "source_carrier": "fluid",
                 "x": 400,
                 "y": 0,
             },
@@ -461,6 +465,7 @@ def test_recompute_color_mixer_updates_output_shape() -> None:
     assert not warnings, warnings
     node = next(n for n in out["nodes"] if n["id"] == "s_out")
     assert node["shape_code"] == "CyCyCyCy"
+    assert node.get("source_carrier") == "fluid"
 
 
 def test_apply_operation_splitter_two_identical_outputs() -> None:

@@ -336,7 +336,7 @@ export function applyFluidTankFilledMaterials(root, materialKey) {
       return;
     }
     const top = node.material[0];
-    if (top && top.emissive && top.color) {
+    if (top?.emissive && top?.color) {
       top.emissive.copy(top.color);
       top.emissiveIntensity = MATERIAL_FLUID_TANK_FILLED_EMISSIVE_INTENSITY;
     }

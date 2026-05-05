@@ -230,6 +230,54 @@ def _abcc_batch_primitive_chain(full_a: str, full_b: str, full_c: str) -> tuple[
     return (*ab_chain, *cc_chain, *_combine_abcc_primitive_chain(target_half, bottom_half))
 
 
+def _checker_pair_full_sources_if_applicable(
+    state: InventoryState,
+    request: MacroRequestView,
+) -> tuple[str, str] | None:
+    """CHECKER_PAIR 매크로가 적용되면 (full_a, full_b), 아니면 None."""
+
+    if pattern_signature(request.target_code) != "ABAB":
+        return None
+    if state.counts != InventoryState.from_counts(request.source_counts).counts:
+        return None
+    if len(state.counts) != 2:
+        return None
+    (code_a, count_a), (code_b, count_b) = state.counts
+    if count_a != 1 or count_b != 1:
+        return None
+    if not is_full_source_signature(code_a) or not is_full_source_signature(code_b):
+        return None
+    if code_a == code_b:
+        return None
+    if request.target_count != 2:
+        return None
+    return code_a, code_b
+
+
+def _abcc_batch_sources_if_applicable(
+    state: InventoryState,
+    request: MacroRequestView,
+) -> tuple[str, str, str] | None:
+    """ABCC_BATCH 매크로가 적용되면 (full_a, full_b, full_c), 아니면 None."""
+
+    if pattern_signature(request.target_code) != "ABCC":
+        return None
+    if request.target_count != 4:
+        return None
+    source_codes = _abcc_source_codes(request.target_code)
+    if source_codes is None:
+        return None
+    full_a, full_b, full_c = source_codes
+    expected_sources = {full_a: 1, full_b: 1, full_c: 2}
+    if request.source_counts != expected_sources:
+        return None
+    if state.counts != InventoryState.from_counts(expected_sources).counts:
+        return None
+    if not all(is_full_source_signature(code) for code in source_codes):
+        return None
+    return full_a, full_b, full_c
+
+
 def _wrap_macro_chain(
     chain: tuple[Action, ...],
     *,
@@ -259,23 +307,13 @@ class CheckerPairMacroStrategy:
         state: InventoryState,
         request: MacroRequestView,
     ) -> tuple[Action, ...]:
-        if pattern_signature(request.target_code) != "ABAB":
-            return ()
-        if state.counts != InventoryState.from_counts(request.source_counts).counts:
-            return ()
-        if len(state.counts) != 2:
-            return ()
-        (code_a, count_a), (code_b, count_b) = state.counts
-        if count_a != 1 or count_b != 1:
-            return ()
-        if not is_full_source_signature(code_a) or not is_full_source_signature(code_b):
-            return ()
-        if code_a == code_b:
-            return ()
-        if request.target_count != 2:
-            return ()
-        chain = _checker_pair_primitive_chain(code_a, code_b)
-        return (_wrap_macro_chain(chain, macro_kind=self.code),)
+        actions: list[Action] = []
+        pair = _checker_pair_full_sources_if_applicable(state, request)
+        if pair is not None:
+            code_a, code_b = pair
+            chain = _checker_pair_primitive_chain(code_a, code_b)
+            actions.append(_wrap_macro_chain(chain, macro_kind=self.code))
+        return tuple(actions)
 
 
 class AbccBatchMacroStrategy:
@@ -287,23 +325,13 @@ class AbccBatchMacroStrategy:
         state: InventoryState,
         request: MacroRequestView,
     ) -> tuple[Action, ...]:
-        if pattern_signature(request.target_code) != "ABCC":
-            return ()
-        if request.target_count != 4:
-            return ()
-        source_codes = _abcc_source_codes(request.target_code)
-        if source_codes is None:
-            return ()
-        full_a, full_b, full_c = source_codes
-        expected_sources = {full_a: 1, full_b: 1, full_c: 2}
-        if request.source_counts != expected_sources:
-            return ()
-        if state.counts != InventoryState.from_counts(expected_sources).counts:
-            return ()
-        if not all(is_full_source_signature(code) for code in source_codes):
-            return ()
-        chain = _abcc_batch_primitive_chain(full_a, full_b, full_c)
-        return (_wrap_macro_chain(chain, macro_kind=self.code),)
+        actions: list[Action] = []
+        triple = _abcc_batch_sources_if_applicable(state, request)
+        if triple is not None:
+            full_a, full_b, full_c = triple
+            chain = _abcc_batch_primitive_chain(full_a, full_b, full_c)
+            actions.append(_wrap_macro_chain(chain, macro_kind=self.code))
+        return tuple(actions)
 
 
 DEFAULT_MACRO_STRATEGIES: tuple[MacroStrategy, ...] = tuple(

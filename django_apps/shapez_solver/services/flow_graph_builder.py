@@ -39,35 +39,35 @@ def _preview_from_code(shape_code: str) -> dict[str, object]:
     }
 
 
-def build_solver_graph_from_batch_plan(
-    plan: BatchPlan,
-    *,
+def _target_preview(
+    display_target_shape: Shape | None,
     display_target_shape_code: str,
-    display_target_shape: Shape | None = None,
-) -> SolverGraph:
-    """BatchPlan을 연결된 SolverGraph로 변환한다."""
+) -> dict[str, object]:
+    if display_target_shape is not None:
+        return _preview_from_code(display_target_shape.canonical_code)
+    return _preview_from_code(display_target_shape_code)
 
-    graph_nodes: list[SolverGraphNode] = []
-    graph_edges: list[SolverGraphEdge] = []
 
-    if not plan.steps:
-        target_preview = (
-            _preview_from_code(display_target_shape.canonical_code)
-            if display_target_shape is not None
-            else _preview_from_code(display_target_shape_code)
-        )
-        graph_nodes.append(
-            SolverShapeNode(
-                id="inv-target-primary",
-                role="target",
-                shape_code=display_target_shape_code,
-                label=f"Target x{plan.target_count}" if plan.target_count > 1 else "Target",
-                preview_scene=target_preview,
-                quantity=plan.target_count,
-            )
-        )
-        return SolverGraph(nodes=tuple(graph_nodes), edges=tuple(graph_edges))
+def _target_shape_node(
+    display_target_shape_code: str,
+    plan: BatchPlan,
+    preview_scene: dict[str, object],
+) -> SolverShapeNode:
+    label = f"Target x{plan.target_count}" if plan.target_count > 1 else "Target"
+    return SolverShapeNode(
+        id="inv-target-primary",
+        role="target",
+        shape_code=display_target_shape_code,
+        label=label,
+        preview_scene=preview_scene,
+        quantity=plan.target_count,
+    )
 
+
+def _append_inventory_sources(
+    plan: BatchPlan,
+    graph_nodes: list[SolverGraphNode],
+) -> dict[str, deque[str]]:
     pools: dict[str, deque[str]] = defaultdict(deque)
     for shape_code, quantity in plan.sources.items():
         node_id = f"inv-src-{shape_code}"
@@ -83,7 +83,15 @@ def build_solver_graph_from_batch_plan(
                 quantity=quantity,
             )
         )
+    return pools
 
+
+def _append_steps_edges(
+    plan: BatchPlan,
+    pools: dict[str, deque[str]],
+    graph_nodes: list[SolverGraphNode],
+    graph_edges: list[SolverGraphEdge],
+) -> None:
     for run in plan.steps:
         catalog = OPERATION_CATALOG[run.operation]
         op_id = f"inv-op-{run.id}"
@@ -102,13 +110,14 @@ def build_solver_graph_from_batch_plan(
         )
         for slot_index, shape_code in enumerate(run.inputs):
             source_id = pools[shape_code].popleft()
+            slot = f"Input {chr(ord('A') + slot_index)}"
             graph_edges.append(
                 SolverGraphEdge(
                     from_id=source_id,
                     to_id=op_id,
                     kind="input",
-                    slot=f"Input {chr(ord('A') + slot_index)}",
-                    label=f"Input {chr(ord('A') + slot_index)}",
+                    slot=slot,
+                    label=slot,
                     quantity=1,
                 )
             )
@@ -125,32 +134,44 @@ def build_solver_graph_from_batch_plan(
                     quantity=1,
                 )
             )
+            slot = f"Output {chr(ord('A') + slot_index)}"
             graph_edges.append(
                 SolverGraphEdge(
                     from_id=op_id,
                     to_id=out_id,
                     kind="output",
-                    slot=f"Output {chr(ord('A') + slot_index)}",
-                    label=f"Output {chr(ord('A') + slot_index)}",
+                    slot=slot,
+                    label=slot,
                     quantity=1,
                 )
             )
 
-    target_preview = (
-        _preview_from_code(display_target_shape.canonical_code)
-        if display_target_shape is not None
-        else _preview_from_code(display_target_shape_code)
-    )
+
+def build_solver_graph_from_batch_plan(
+    plan: BatchPlan,
+    *,
+    display_target_shape_code: str,
+    display_target_shape: Shape | None = None,
+) -> SolverGraph:
+    """BatchPlan을 연결된 SolverGraph로 변환한다."""
+
+    graph_nodes: list[SolverGraphNode] = []
+    graph_edges: list[SolverGraphEdge] = []
+
+    if not plan.steps:
+        target_preview = _target_preview(display_target_shape, display_target_shape_code)
+        graph_nodes.append(
+            _target_shape_node(display_target_shape_code, plan, target_preview),
+        )
+        return SolverGraph(nodes=tuple(graph_nodes), edges=tuple(graph_edges))
+
+    pools = _append_inventory_sources(plan, graph_nodes)
+    _append_steps_edges(plan, pools, graph_nodes, graph_edges)
+
+    target_preview = _target_preview(display_target_shape, display_target_shape_code)
     target_id = "inv-target-primary"
     graph_nodes.append(
-        SolverShapeNode(
-            id=target_id,
-            role="target",
-            shape_code=display_target_shape_code,
-            label=f"Target x{plan.target_count}" if plan.target_count > 1 else "Target",
-            preview_scene=target_preview,
-            quantity=plan.target_count,
-        )
+        _target_shape_node(display_target_shape_code, plan, target_preview),
     )
     for _ in range(plan.target_count):
         donor_id = pools[plan.target_code].popleft()

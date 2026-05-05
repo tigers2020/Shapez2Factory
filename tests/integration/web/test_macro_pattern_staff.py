@@ -22,8 +22,8 @@ def test_macro_pattern_staff_redirects_anonymous() -> None:
 
 @pytest.mark.django_db
 def test_macro_pattern_staff_forbidden_non_staff() -> None:
-    User = get_user_model()
-    user = User.objects.create_user("u1", "u1@example.com", "pw", is_staff=False)
+    user_model = get_user_model()
+    user = user_model.objects.create_user("u1", "u1@example.com", "pw", is_staff=False)
     client = Client()
     client.force_login(user)
     response = client.get(reverse("web:macro-pattern-staff"))
@@ -32,8 +32,8 @@ def test_macro_pattern_staff_forbidden_non_staff() -> None:
 
 @pytest.mark.django_db
 def test_macro_pattern_new_post_creates_draft_and_redirects_to_graph() -> None:
-    User = get_user_model()
-    user = User.objects.create_user("staff_new", "sn@example.com", "pw", is_staff=True)
+    user_model = get_user_model()
+    user = user_model.objects.create_user("staff_new", "sn@example.com", "pw", is_staff=True)
     client = Client()
     client.force_login(user)
     response = client.post(
@@ -48,8 +48,8 @@ def test_macro_pattern_new_post_creates_draft_and_redirects_to_graph() -> None:
 
 @pytest.mark.django_db
 def test_macro_pattern_list_page_staff_ok() -> None:
-    User = get_user_model()
-    user = User.objects.create_user("admin", "a@example.com", "pw", is_staff=True)
+    user_model = get_user_model()
+    user = user_model.objects.create_user("admin", "a@example.com", "pw", is_staff=True)
     client = Client()
     client.force_login(user)
     response = client.get(reverse("web:macro-pattern-staff"))
@@ -62,8 +62,8 @@ def test_macro_pattern_list_page_staff_ok() -> None:
 
 @pytest.mark.django_db
 def test_macro_pattern_graph_page_staff_ok() -> None:
-    User = get_user_model()
-    user = User.objects.create_user("gstaff", "gs@example.com", "pw", is_staff=True)
+    user_model = get_user_model()
+    user = user_model.objects.create_user("gstaff", "gs@example.com", "pw", is_staff=True)
     family = PatternFamily.objects.create(code="fam-gp", name="GP", signature="ABCC")
     recipe = MacroRecipe.objects.create(
         family=family,
@@ -88,8 +88,8 @@ def test_macro_pattern_graph_page_staff_ok() -> None:
 
 @pytest.mark.django_db
 def test_macro_pattern_staff_api_crud() -> None:
-    User = get_user_model()
-    user = User.objects.create_user("staff", "s@example.com", "pw", is_staff=True)
+    user_model = get_user_model()
+    user = user_model.objects.create_user("staff", "s@example.com", "pw", is_staff=True)
     family = PatternFamily.objects.create(code="fam-x", name="Fam", signature="ABCC")
     client = Client()
     client.force_login(user)
@@ -150,8 +150,8 @@ def test_macro_pattern_staff_api_crud() -> None:
 
 @pytest.mark.django_db
 def test_macro_pattern_staff_graph_recompute_api() -> None:
-    User = get_user_model()
-    user = User.objects.create_user("staff2", "s2@example.com", "pw", is_staff=True)
+    user_model = get_user_model()
+    user = user_model.objects.create_user("staff2", "s2@example.com", "pw", is_staff=True)
     family = PatternFamily.objects.create(code="fam-g", name="G", signature="ABCC")
     recipe = MacroRecipe.objects.create(
         family=family,
@@ -258,8 +258,8 @@ def test_macro_pattern_staff_graph_recompute_api() -> None:
 
 @pytest.mark.django_db
 def test_macro_pattern_staff_graph_recompute_rejects_both_payloads() -> None:
-    User = get_user_model()
-    user = User.objects.create_user("staffboth", "sb@example.com", "pw", is_staff=True)
+    user_model = get_user_model()
+    user = user_model.objects.create_user("staffboth", "sb@example.com", "pw", is_staff=True)
     family = PatternFamily.objects.create(code="fam-both", name="Both", signature="ABCC")
     recipe = MacroRecipe.objects.create(
         family=family,

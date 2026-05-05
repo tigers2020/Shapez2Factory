@@ -1,5 +1,6 @@
 {% load i18n site_i18n %}
-<div class="flex items-center gap-1 text-xs font-medium" role="group" aria-label="{% trans 'Language' %}">
+<fieldset class="m-0 flex min-w-0 items-center gap-1 border-0 p-0 text-xs font-medium">
+  <legend class="sr-only">{% trans "Language" %}</legend>
   <form action="{% url 'set_language' %}" method="post" class="inline m-0">
     {% csrf_token %}
     <input name="next" type="hidden" value="{% url_for_language 'en' %}" />
@@ -21,4 +22,4 @@
       class="rounded-md px-2 py-1 no-underline {% if LANGUAGE_CODE == 'ko' %}text-cyan-200 ring-1 ring-cyan-400/50{% else %}text-slate-500 hover:text-slate-300{% endif %}"
     >KO</button>
   </form>
-</div>
+</fieldset>

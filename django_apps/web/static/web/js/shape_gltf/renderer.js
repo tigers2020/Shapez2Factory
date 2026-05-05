@@ -107,7 +107,7 @@ export function disposeViewerState(state) {
 
   const viewport = state.container.querySelector("[data-shape-gltf-viewport]");
   if (viewport && state.renderer.domElement.parentNode === viewport) {
-    viewport.removeChild(state.renderer.domElement);
+    state.renderer.domElement.remove();
   }
   state.renderer.dispose();
 }

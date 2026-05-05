@@ -19,7 +19,7 @@ class PrimitiveActionGenerator:
         self.max_inventory_items = max_inventory_items
         self.max_actions = max_actions
 
-    def generate(self, state: InventoryState, request: object | None = None) -> tuple[Action, ...]:
+    def generate(self, state: InventoryState) -> tuple[Action, ...]:
         if sum(count for _, count in state.counts) > self.max_inventory_items:
             return ()
 

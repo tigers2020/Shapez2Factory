@@ -26,15 +26,15 @@
             <div class="auth-split-panel-bg" aria-hidden="true"></div>
             <div class="auth-split-panel-inner">
               {% if messages %}
-                <div class="auth-split-messages" role="status">
+                <output class="auth-split-messages" aria-live="polite">
                   {% for message in messages %}
-                    <div
-                      class="mb-3 rounded-xl border px-4 py-3 text-sm {% if 'error' in message.tags %}border-rose-500/40 bg-rose-500/10 text-rose-200{% elif 'success' in message.tags %}border-emerald-500/40 bg-emerald-500/10 text-emerald-200{% elif 'warning' in message.tags %}border-amber-400/30 bg-amber-500/10 text-amber-200{% else %}border-cyan-400/25 bg-cyan-500/10 text-cyan-100{% endif %}"
+                    <span
+                      class="block mb-3 rounded-xl border px-4 py-3 text-sm {% if 'error' in message.tags %}border-rose-500/40 bg-rose-500/10 text-rose-200{% elif 'success' in message.tags %}border-emerald-500/40 bg-emerald-500/10 text-emerald-200{% elif 'warning' in message.tags %}border-amber-400/30 bg-amber-500/10 text-amber-200{% else %}border-cyan-400/25 bg-cyan-500/10 text-cyan-100{% endif %}"
                     >
                       {{ message }}
-                    </div>
+                    </span>
                   {% endfor %}
-                </div>
+                </output>
               {% endif %}
 
               <section class="auth-panel-section flex flex-1 flex-col gap-5 py-1">

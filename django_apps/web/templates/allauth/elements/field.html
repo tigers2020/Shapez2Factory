@@ -6,8 +6,18 @@
       {% slot label %}
       {% endslot %}
     </label>
-    <textarea
-      class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+    <textarea class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+      {% if attrs.autocomplete == 'nope' %}autocomplete="off"
+      {% elif attrs.autocomplete == 'off' %}autocomplete="off"
+      {% elif attrs.autocomplete == 'on' %}autocomplete="on"
+      {% elif attrs.autocomplete == 'street-address' %}autocomplete="street-address"
+      {% elif attrs.autocomplete == 'shipping street-address' %}autocomplete="shipping street-address"
+      {% elif attrs.autocomplete == 'billing street-address' %}autocomplete="billing street-address"
+      {% elif attrs.autocomplete == 'username' %}autocomplete="username"
+      {% elif attrs.autocomplete == 'email' %}autocomplete="email"
+      {% elif attrs.autocomplete == 'name' %}autocomplete="name"
+      {% elif attrs.autocomplete %}autocomplete="off"
+      {% endif %}
       {% if attrs.required %}required{% endif %}
       {% if attrs.rows %}rows="{{ attrs.rows }}"{% endif %}
       {% if attrs.disabled %}disabled{% endif %}
@@ -26,6 +36,40 @@
     {% endif %}
     <input
       class="{% if attrs.type == 'checkbox' or attrs.type == 'radio' %}h-4 w-4 shrink-0 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-400/40{% else %}w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400{% endif %}"
+      {% if attrs.type != 'checkbox' and attrs.type != 'radio' and attrs.type != 'hidden' and attrs.type != 'file' and attrs.type != 'button' and attrs.type != 'submit' and attrs.type != 'reset' and attrs.type != 'image' %}
+        {% if attrs.autocomplete == 'nope' %}autocomplete="off"
+        {% elif attrs.autocomplete == 'off' %}autocomplete="off"
+        {% elif attrs.autocomplete == 'on' %}autocomplete="on"
+        {% elif attrs.autocomplete == 'username' %}autocomplete="username"
+        {% elif attrs.autocomplete == 'email' %}autocomplete="email"
+        {% elif attrs.autocomplete == 'name' %}autocomplete="name"
+        {% elif attrs.autocomplete == 'given-name' %}autocomplete="given-name"
+        {% elif attrs.autocomplete == 'additional-name' %}autocomplete="additional-name"
+        {% elif attrs.autocomplete == 'family-name' %}autocomplete="family-name"
+        {% elif attrs.autocomplete == 'nickname' %}autocomplete="nickname"
+        {% elif attrs.autocomplete == 'new-password' %}autocomplete="new-password"
+        {% elif attrs.autocomplete == 'current-password' %}autocomplete="current-password"
+        {% elif attrs.autocomplete == 'one-time-code' %}autocomplete="one-time-code"
+        {% elif attrs.autocomplete == 'organization' %}autocomplete="organization"
+        {% elif attrs.autocomplete == 'organization-title' %}autocomplete="organization-title"
+        {% elif attrs.autocomplete == 'street-address' %}autocomplete="street-address"
+        {% elif attrs.autocomplete == 'address-line1' %}autocomplete="address-line1"
+        {% elif attrs.autocomplete == 'address-line2' %}autocomplete="address-line2"
+        {% elif attrs.autocomplete == 'address-level1' %}autocomplete="address-level1"
+        {% elif attrs.autocomplete == 'address-level2' %}autocomplete="address-level2"
+        {% elif attrs.autocomplete == 'postal-code' %}autocomplete="postal-code"
+        {% elif attrs.autocomplete == 'country' %}autocomplete="country"
+        {% elif attrs.autocomplete == 'country-name' %}autocomplete="country-name"
+        {% elif attrs.autocomplete == 'tel' %}autocomplete="tel"
+        {% elif attrs.autocomplete == 'url' %}autocomplete="url"
+        {% elif attrs.autocomplete %}autocomplete="off"
+        {% elif attrs.type == 'password' %}autocomplete="current-password"
+        {% elif attrs.type == 'email' %}autocomplete="email"
+        {% elif attrs.type == 'tel' %}autocomplete="tel"
+        {% elif attrs.type == 'url' %}autocomplete="url"
+        {% else %}autocomplete="off"
+        {% endif %}
+      {% endif %}
       {% if attrs.required %}required{% endif %}
       {% if attrs.disabled %}disabled{% endif %}
       {% if attrs.readonly %}readonly{% endif %}
@@ -33,7 +77,6 @@
       {% if attrs.name %}name="{{ attrs.name }}"{% endif %}
       {% if attrs.id %}id="{{ attrs.id }}"{% endif %}
       {% if attrs.placeholder %}placeholder="{{ attrs.placeholder }}"{% endif %}
-      {% if attrs.autocomplete %}autocomplete="{{ attrs.autocomplete }}"{% endif %}
       {% if attrs.value is not None %}value="{{ attrs.value }}"{% endif %}
       type="{{ attrs.type }}"
     >

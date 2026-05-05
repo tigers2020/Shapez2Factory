@@ -2,6 +2,9 @@ from django.db import models
 
 from django_apps.shapez_solver.domain.operations import OperationType
 
+PATTERN_FAMILY_VERBOSE_NAME = "패턴 패밀리"
+MACRO_RECIPE_VERBOSE_NAME = "매크로 레시피"
+
 
 class PatternFamily(models.Model):
     """Solver macro 후보를 묶는 symbolic pattern family."""
@@ -17,8 +20,8 @@ class PatternFamily(models.Model):
     schema_version = models.PositiveIntegerField(default=1, verbose_name="스키마 버전")
 
     class Meta:
-        verbose_name = "패턴 패밀리"
-        verbose_name_plural = "패턴 패밀리"
+        verbose_name = PATTERN_FAMILY_VERBOSE_NAME
+        verbose_name_plural = PATTERN_FAMILY_VERBOSE_NAME
         indexes = [
             models.Index(fields=["code"]),
             models.Index(fields=["signature"]),
@@ -37,7 +40,7 @@ class PatternTemplate(models.Model):
         PatternFamily,
         on_delete=models.CASCADE,
         related_name="templates",
-        verbose_name="패턴 패밀리",
+        verbose_name=PATTERN_FAMILY_VERBOSE_NAME,
     )
     template = models.CharField(max_length=32, verbose_name="템플릿")
     normalized_template = models.CharField(
@@ -68,7 +71,7 @@ class MacroRecipe(models.Model):
         PatternFamily,
         on_delete=models.CASCADE,
         related_name="macro_recipes",
-        verbose_name="패턴 패밀리",
+        verbose_name=PATTERN_FAMILY_VERBOSE_NAME,
     )
     code = models.SlugField(unique=True, verbose_name="코드")
     strategy_code = models.SlugField(db_index=True, verbose_name="Python strategy 코드")
@@ -87,8 +90,8 @@ class MacroRecipe(models.Model):
     )
 
     class Meta:
-        verbose_name = "매크로 레시피"
-        verbose_name_plural = "매크로 레시피"
+        verbose_name = MACRO_RECIPE_VERBOSE_NAME
+        verbose_name_plural = MACRO_RECIPE_VERBOSE_NAME
         indexes = [
             models.Index(fields=["code"]),
             models.Index(fields=["strategy_code"]),
@@ -107,7 +110,7 @@ class MacroRecipeStep(models.Model):
         MacroRecipe,
         on_delete=models.CASCADE,
         related_name="steps",
-        verbose_name="매크로 레시피",
+        verbose_name=MACRO_RECIPE_VERBOSE_NAME,
     )
     step_index = models.PositiveIntegerField(verbose_name="단계 번호")
     operation = models.CharField(
@@ -141,7 +144,7 @@ class PatternExample(models.Model):
         PatternFamily,
         on_delete=models.CASCADE,
         related_name="examples",
-        verbose_name="패턴 패밀리",
+        verbose_name=PATTERN_FAMILY_VERBOSE_NAME,
     )
     input_shape_code = models.CharField(max_length=64, verbose_name="입력 shape code")
     expected_signature = models.CharField(max_length=16, verbose_name="예상 시그니처")

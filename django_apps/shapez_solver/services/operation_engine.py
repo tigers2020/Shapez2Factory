@@ -26,6 +26,30 @@ class EvaluatedRecipe:
 
 
 class OperationEngine:
+    @staticmethod
+    def _apply_painter(
+        inputs: tuple[Shape, ...],
+        color: str | None,
+    ) -> tuple[Shape, ...]:
+        if len(inputs) == 2:
+            return (painter_with_fluid_target(inputs[0], inputs[1]),)
+        if color is None:
+            raise ValueError(
+                "painter requires an explicit color when only one shape input is given",
+            )
+        return (painter_output(inputs[0], color),)
+
+    @staticmethod
+    def _apply_crystal_generator(
+        inputs: tuple[Shape, ...],
+        color: str | None,
+    ) -> tuple[Shape, ...]:
+        if color is None:
+            raise ValueError("crystal_generator requires an explicit color")
+        if len(inputs) < 1:
+            raise ValueError("crystal_generator requires at least one input shape")
+        return (crystal_generator_output(inputs[0], color),)
+
     def apply(
         self,
         operation_type: OperationType,
@@ -51,21 +75,11 @@ class OperationEngine:
         if operation_type == OperationType.STACKER:
             return (stacker_output(inputs[0], inputs[1]),)
         if operation_type == OperationType.PAINTER:
-            if len(inputs) == 2:
-                return (painter_with_fluid_target(inputs[0], inputs[1]),)
-            if color is None:
-                raise ValueError(
-                    "painter requires an explicit color when only one shape input is given",
-                )
-            return (painter_output(inputs[0], color),)
+            return self._apply_painter(inputs, color)
         if operation_type == OperationType.COLOR_MIXER:
             return (color_mixer_fluids(inputs[0], inputs[1]),)
         if operation_type == OperationType.CRYSTAL_GENERATOR:
-            if color is None:
-                raise ValueError("crystal_generator requires an explicit color")
-            if len(inputs) < 1:
-                raise ValueError("crystal_generator requires at least one input shape")
-            return (crystal_generator_output(inputs[0], color),)
+            return self._apply_crystal_generator(inputs, color)
         raise ValueError(f"unsupported operation: {operation_type}")
 
     def evaluate(

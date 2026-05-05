@@ -42,35 +42,77 @@ def _as_str(value: object, *, label: str) -> str:
     return value.strip()
 
 
-def _normalize_shape_node(node: dict[str, Any], *, index: int) -> None:
+def _normalize_shape_node_shape_code(node: dict[str, Any]) -> None:
     sc = node.get("shape_code", "")
     if sc is not None and not isinstance(sc, str):
         raise ValueError("shape.shape_code must be a string")
     node["shape_code"] = str(sc).strip() if isinstance(sc, str) else ""
+
+
+def _normalize_shape_node_source_carrier(
+    node: dict[str, Any],
+    index: int,
+    role: str,
+) -> None:
+    raw_carrier = node.get("source_carrier")
+    if raw_carrier is None or (isinstance(raw_carrier, str) and raw_carrier.strip() == ""):
+        node.pop("source_carrier", None)
+        return
+    if not isinstance(raw_carrier, str):
+        raise ValueError(f"nodes[{index}]: shape.source_carrier must be a string or omitted")
+    c = raw_carrier.strip()
+    if c not in ("material", "fluid"):
+        raise ValueError(f"nodes[{index}]: invalid shape.source_carrier: {raw_carrier!r}")
+    if c == "material":
+        node.pop("source_carrier", None)
+        return
+    node["source_carrier"] = "fluid"
+    if role not in ("source", "intermediate"):
+        raise ValueError(
+            f"nodes[{index}]: source_carrier=fluid requires role=source or intermediate, "
+            f"got role={role!r}",
+        )
+
+
+def _normalize_shape_node(node: dict[str, Any], *, index: int) -> None:
+    _normalize_shape_node_shape_code(node)
     node.setdefault("role", "intermediate")
     node.setdefault("quantity", 1)
     role = str(node.get("role", "intermediate")).strip()
     node["role"] = role
     if role == "target":
         node.pop("source_carrier", None)
-    raw_carrier = node.get("source_carrier")
-    if raw_carrier is None or (isinstance(raw_carrier, str) and raw_carrier.strip() == ""):
-        node.pop("source_carrier", None)
-    elif not isinstance(raw_carrier, str):
-        raise ValueError(f"nodes[{index}]: shape.source_carrier must be a string or omitted")
-    else:
-        c = raw_carrier.strip()
-        if c not in ("material", "fluid"):
-            raise ValueError(f"nodes[{index}]: invalid shape.source_carrier: {raw_carrier!r}")
-        if c == "material":
-            node.pop("source_carrier", None)
-        else:
-            node["source_carrier"] = "fluid"
-            if role not in ("source", "intermediate"):
-                raise ValueError(
-                    f"nodes[{index}]: source_carrier=fluid requires role=source or intermediate, "
-                    f"got role={role!r}",
-                )
+    _normalize_shape_node_source_carrier(node, index, role)
+
+
+def _normalize_painter_paint_color(node: dict[str, Any], index: int) -> None:
+    pc = node.get("paint_color")
+    if pc is None:
+        return
+    if not isinstance(pc, str) or len(pc.strip()) != 1:
+        raise ValueError(
+            f"nodes[{index}]: painter paint_color must be "
+            "a single character when set (legacy fallback)",
+        )
+    ink = pc.strip()
+    if ink not in FLUID_SOURCE_PRIMARY_COLORS:
+        raise ValueError(
+            f"nodes[{index}]: painter paint_color must be one of "
+            f"{sorted(FLUID_SOURCE_PRIMARY_COLORS)}, got {ink!r}",
+        )
+    node["paint_color"] = ink
+
+
+def _normalize_crystal_generator_crystal_color(node: dict[str, Any], index: int) -> None:
+    cc = node.get("crystal_color")
+    if cc is None:
+        return
+    if not isinstance(cc, str) or len(cc.strip()) != 1:
+        raise ValueError(
+            f"nodes[{index}]: crystal_generator crystal_color must be "
+            "a single character when set (or omit to infer from second input)",
+        )
+    node["crystal_color"] = cc.strip()
 
 
 def _normalize_operation_node(node: dict[str, Any], index: int) -> None:
@@ -80,31 +122,10 @@ def _normalize_operation_node(node: dict[str, Any], index: int) -> None:
     except ValueError as exc:
         raise ValueError(f"unknown operation type: {opv}") from exc
     if op_enum == OperationType.PAINTER:
-        pc = node.get("paint_color")
-        if pc is not None:
-            if not isinstance(pc, str) or len(pc.strip()) != 1:
-                raise ValueError(
-                    f"nodes[{index}]: painter paint_color must be "
-                    "a single character when set (legacy fallback)",
-                )
-            ink = pc.strip()
-            if ink not in FLUID_SOURCE_PRIMARY_COLORS:
-                raise ValueError(
-                    f"nodes[{index}]: painter paint_color must be one of "
-                    f"{sorted(FLUID_SOURCE_PRIMARY_COLORS)}, got {ink!r}",
-                )
-            node["paint_color"] = ink
+        _normalize_painter_paint_color(node, index)
         return
     if op_enum == OperationType.CRYSTAL_GENERATOR:
-        cc = node.get("crystal_color")
-        if cc is None:
-            return
-        if not isinstance(cc, str) or len(cc.strip()) != 1:
-            raise ValueError(
-                f"nodes[{index}]: crystal_generator crystal_color must be "
-                "a single character when set (or omit to infer from second input)",
-            )
-        node["crystal_color"] = cc.strip()
+        _normalize_crystal_generator_crystal_color(node, index)
 
 
 def _validate_graph_node(node: object, index: int, seen_ids: set[str]) -> None:

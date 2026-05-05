@@ -104,15 +104,16 @@ function renderShapeGraphNode(node, position) {
   const isUnused = node.produced_state === "unused";
   const vErr = node.validation_severity === "error";
   const vWarn = node.validation_severity === "warning";
-  const borderClass = vErr
-    ? "border-rose-500/70 bg-rose-950/30 ring-2 ring-rose-400/50"
-    : vWarn
-      ? "border-amber-400/60 bg-amber-950/25 ring-2 ring-amber-300/40"
-      : isTarget
-        ? "border-emerald-300/60 bg-emerald-400/10"
-        : isUnused
-          ? "border-rose-400/30 bg-rose-950/20"
-          : "border-cyan-400/20 bg-slate-950/90";
+  let borderClass = "border-cyan-400/20 bg-slate-950/90";
+  if (vErr) {
+    borderClass = "border-rose-500/70 bg-rose-950/30 ring-2 ring-rose-400/50";
+  } else if (vWarn) {
+    borderClass = "border-amber-400/60 bg-amber-950/25 ring-2 ring-amber-300/40";
+  } else if (isTarget) {
+    borderClass = "border-emerald-300/60 bg-emerald-400/10";
+  } else if (isUnused) {
+    borderClass = "border-rose-400/30 bg-rose-950/20";
+  }
   return `
     <div
       class="absolute z-10 flex flex-col items-center rounded-3xl border ${borderClass} overflow-hidden p-3 pb-2 text-center shadow-md shadow-slate-950/30 transition hover:border-cyan-200/60"
@@ -185,21 +186,27 @@ function renderOperationGraphNode(node, position) {
   `;
 }
 
+const LETTER_PORT_RE = /\b([A-Z])(?:\b|\s*\()/;
+const DIGIT_PORT_RE = /(\d+)/;
+
 function parsePortIndex(value) {
   const raw = String(value ?? "").trim();
   if (raw === "") {
     return 0;
   }
   if (/^\d+$/.test(raw)) {
-    return Math.max(0, parseInt(raw, 10));
+    return Math.max(0, Number.parseInt(raw, 10));
   }
-  const letterMatch = raw.match(/\b([A-Z])(?:\b|\s*\()/);
+  const letterMatch = LETTER_PORT_RE.exec(raw);
   if (letterMatch) {
-    return Math.max(0, letterMatch[1].charCodeAt(0) - "A".charCodeAt(0));
+    return Math.max(
+      0,
+      letterMatch[1].codePointAt(0) - "A".codePointAt(0),
+    );
   }
-  const digitMatch = raw.match(/(\d+)/);
+  const digitMatch = DIGIT_PORT_RE.exec(raw);
   if (digitMatch) {
-    return Math.max(0, parseInt(digitMatch[1], 10));
+    return Math.max(0, Number.parseInt(digitMatch[1], 10));
   }
   return 0;
 }
@@ -296,9 +303,9 @@ function renderEdgeHitPath(geometry, edge) {
   const kind = escapeAttr(edge.kind);
   const slotRaw = edge.slot != null && String(edge.slot) !== "" ? String(edge.slot) : "";
   const slotAttr =
-    slotRaw !== ""
-      ? ` data-graph-edge-slot="${escapeAttr(slotRaw)}"`
-      : "";
+    slotRaw === ""
+      ? ""
+      : ` data-graph-edge-slot="${escapeAttr(slotRaw)}"`;
   return `<path d="${d}" fill="none" stroke="transparent" stroke-width="18" pointer-events="stroke" vector-effect="non-scaling-stroke" data-graph-edge-hit="1" data-graph-edge-from="${from}" data-graph-edge-to="${to}" data-graph-edge-kind="${kind}"${slotAttr} style="cursor:pointer" title="Remove wire (staff)" />`;
 }
 
@@ -386,7 +393,7 @@ function renderGraphStage(graph, layout, stageOptions) {
   const includeHit = Boolean(stageOptions?.includeEdgeHitForDelete);
   const edgeLayers = includeHit
     ? `<svg
-        class="absolute inset-0 z-[28] h-full w-full overflow-visible"
+        class="absolute inset-0 z-28 h-full w-full overflow-visible"
         viewBox="0 0 ${layout.width} ${layout.height}"
         aria-hidden="true"
       >
@@ -446,8 +453,9 @@ function renderGraphStage(graph, layout, stageOptions) {
  */
 export function renderSolverGraph(graph, options) {
   const layout = computeGraphLayout(graph);
-  const stageOptions =
-    options && options.includeEdgeHitForDelete ? { includeEdgeHitForDelete: true } : undefined;
+  const stageOptions = options?.includeEdgeHitForDelete
+    ? { includeEdgeHitForDelete: true }
+    : undefined;
   return `
     <div
       class="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/80 select-none"

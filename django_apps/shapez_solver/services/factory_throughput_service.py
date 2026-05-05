@@ -108,7 +108,8 @@ class FactoryThroughputService:
                 graph=None,
                 materialized_graph=None,
                 warnings=(
-                    "inventory_search_skips_monochrome_paint: " "painter not in inventory search",
+                    "Inventory_search_skips_monochrome_paint: ",
+                    "Painter not in inventory search",
                 ),
                 steps=(),
                 batch_plan=None,

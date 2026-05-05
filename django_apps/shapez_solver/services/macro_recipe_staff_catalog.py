@@ -53,7 +53,7 @@ def default_strategy_code() -> str:
     codes = allowed_strategy_codes()
     if not codes:
         raise ValueError("no macro strategies registered")
-    return sorted(codes)[0]
+    return min(codes)
 
 
 def _generate_unique_macro_code() -> str:
@@ -198,6 +198,38 @@ def build_catalog_snapshot() -> dict[str, Any]:
     }
 
 
+def _parse_one_step_dict(item: dict[str, Any]) -> dict[str, Any]:
+    try:
+        step_index = int(item["step_index"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("step_index must be a positive integer") from exc
+    if step_index < 1:
+        raise ValueError("step_index must be >= 1")
+    operation = item.get("operation")
+    if not isinstance(operation, str) or not operation.strip():
+        raise ValueError("operation is required")
+    operation = operation.strip()
+    valid_ops = {op.value for op in OperationType}
+    if operation not in valid_ops:
+        raise ValueError(f"unknown operation: {operation}")
+    input_slots = item.get("input_slots", [])
+    output_slots = item.get("output_slots", [])
+    if not isinstance(input_slots, list):
+        raise ValueError("input_slots must be a list")
+    if not isinstance(output_slots, list):
+        raise ValueError("output_slots must be a list")
+    note = item.get("note", "")
+    if note is not None and not isinstance(note, str):
+        raise ValueError("note must be a string")
+    return {
+        "step_index": step_index,
+        "operation": operation,
+        "input_slots": input_slots,
+        "output_slots": output_slots,
+        "note": note or "",
+    }
+
+
 def _parse_steps(raw: object) -> list[dict[str, Any]]:
     if raw is None:
         return []
@@ -207,37 +239,7 @@ def _parse_steps(raw: object) -> list[dict[str, Any]]:
     for item in raw:
         if not isinstance(item, dict):
             raise ValueError("each step must be an object")
-        try:
-            step_index = int(item["step_index"])
-        except (KeyError, TypeError, ValueError) as exc:
-            raise ValueError("step_index must be a positive integer") from exc
-        if step_index < 1:
-            raise ValueError("step_index must be >= 1")
-        operation = item.get("operation")
-        if not isinstance(operation, str) or not operation.strip():
-            raise ValueError("operation is required")
-        operation = operation.strip()
-        valid_ops = {op.value for op in OperationType}
-        if operation not in valid_ops:
-            raise ValueError(f"unknown operation: {operation}")
-        input_slots = item.get("input_slots", [])
-        output_slots = item.get("output_slots", [])
-        if not isinstance(input_slots, list):
-            raise ValueError("input_slots must be a list")
-        if not isinstance(output_slots, list):
-            raise ValueError("output_slots must be a list")
-        note = item.get("note", "")
-        if note is not None and not isinstance(note, str):
-            raise ValueError("note must be a string")
-        out.append(
-            {
-                "step_index": step_index,
-                "operation": operation,
-                "input_slots": input_slots,
-                "output_slots": output_slots,
-                "note": note or "",
-            }
-        )
+        out.append(_parse_one_step_dict(item))
     indices = [s["step_index"] for s in out]
     if len(set(indices)) != len(indices):
         raise ValueError("duplicate step_index")
@@ -358,13 +360,9 @@ def create_recipe(payload: dict[str, Any]) -> MacroRecipe:
     )
 
 
-@transaction.atomic  # type: ignore[untyped-decorator]
-def update_recipe(recipe_id: int, payload: dict[str, Any]) -> MacroRecipe:
-    try:
-        recipe = MacroRecipe.objects.select_for_update().get(pk=recipe_id)
-    except MacroRecipe.DoesNotExist as exc:
-        raise ValueError("recipe not found") from exc
-
+def _apply_recipe_update_fields(
+    recipe: MacroRecipe, recipe_id: int, payload: dict[str, Any]
+) -> None:
     if "family_id" in payload:
         recipe.family_id = _require_family_id(payload.get("family_id"))
     if "code" in payload:
@@ -395,6 +393,34 @@ def update_recipe(recipe_id: int, payload: dict[str, Any]) -> MacroRecipe:
     if "schema_version" in payload:
         recipe.schema_version = _non_negative_int(payload.get("schema_version"), "schema_version")
 
+
+def _replace_recipe_steps_from_payload(recipe: MacroRecipe, payload: dict[str, Any]) -> None:
+    steps = _parse_steps(payload.get("steps"))
+    recipe.steps.all().delete()
+    MacroRecipeStep.objects.bulk_create(
+        [
+            MacroRecipeStep(
+                macro=recipe,
+                step_index=s["step_index"],
+                operation=s["operation"],
+                input_slots=s["input_slots"],
+                output_slots=s["output_slots"],
+                note=s["note"],
+            )
+            for s in steps
+        ]
+    )
+
+
+@transaction.atomic  # type: ignore[untyped-decorator]
+def update_recipe(recipe_id: int, payload: dict[str, Any]) -> MacroRecipe:
+    try:
+        recipe = MacroRecipe.objects.select_for_update().get(pk=recipe_id)
+    except MacroRecipe.DoesNotExist as exc:
+        raise ValueError("recipe not found") from exc
+
+    _apply_recipe_update_fields(recipe, recipe_id, payload)
+
     if "graph_document" in payload:
         raw = payload.get("graph_document")
         recipe.graph_document = None if raw is None else validate_graph_document(raw)
@@ -407,21 +433,7 @@ def update_recipe(recipe_id: int, payload: dict[str, Any]) -> MacroRecipe:
         )
 
     if "steps" in payload:
-        steps = _parse_steps(payload.get("steps"))
-        recipe.steps.all().delete()
-        MacroRecipeStep.objects.bulk_create(
-            [
-                MacroRecipeStep(
-                    macro=recipe,
-                    step_index=s["step_index"],
-                    operation=s["operation"],
-                    input_slots=s["input_slots"],
-                    output_slots=s["output_slots"],
-                    note=s["note"],
-                )
-                for s in steps
-            ]
-        )
+        _replace_recipe_steps_from_payload(recipe, payload)
 
     return cast(
         MacroRecipe,

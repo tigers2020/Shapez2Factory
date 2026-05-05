@@ -30,22 +30,29 @@ def required_input_count(op_type: OperationType, op_node: dict[str, Any]) -> int
     return 1
 
 
-def expected_input_carriers(op_type: OperationType, op_node: dict[str, Any]) -> tuple[Carrier, ...]:
-    """Per logical input index after ``sorted_shape_input_edges_to_operation`` order."""
+def expected_input_carriers(
+    op_type: OperationType,
+    op_node: dict[str, Any],
+) -> tuple[Carrier, Carrier]:
+    """Per logical input index after ``sorted_shape_input_edges_to_operation`` order.
+
+    Always a 2-tuple; single-input operations duplicate the sole carrier in slot 1 so
+    callers only use indices ``0 .. required_input_count - 1``.
+    """
 
     if op_type == OperationType.PAINTER:
         if str(op_node.get("paint_color", "")).strip():
-            return ("material",)
+            return ("material", "material")
         return ("fluid", "material")
     if op_type == OperationType.COLOR_MIXER:
         return ("fluid", "fluid")
     if op_type == OperationType.CRYSTAL_GENERATOR:
         if str(op_node.get("crystal_color", "")).strip():
-            return ("material",)
+            return ("material", "material")
         return ("fluid", "material")
     if op_type in (OperationType.SWAPPER, OperationType.STACKER):
         return ("material", "material")
-    return ("material",)
+    return ("material", "material")
 
 
 def sorted_shape_input_edges_to_operation(
@@ -79,35 +86,63 @@ def operation_output_lane_carrier(op_type: OperationType, lane: int) -> Carrier:
     return "material"
 
 
-def assert_input_output_carriers_for_document(doc: dict[str, Any]) -> None:
-    """Raise ``ValueError`` if any input/output edge violates material/fluid rules."""
-
-    nodes = doc.get("nodes")
-    edges = doc.get("edges")
-    if not isinstance(nodes, list) or not isinstance(edges, list):
-        return
+def _index_nodes_by_id(nodes: list[Any]) -> dict[str, dict[str, Any]]:
     by_id: dict[str, dict[str, Any]] = {}
     for n in nodes:
         if isinstance(n, dict) and n.get("id") is not None:
             by_id[str(n["id"])] = n
+    return by_id
+
+
+def _group_input_and_output_edges(
+    edges: list[Any],
+) -> dict[str, list[dict[str, Any]]]:
+    """Map operation node id → incoming input edges (``kind`` == ``input``)."""
 
     input_by_to: dict[str, list[dict[str, Any]]] = {}
-    output_by_from: dict[str, list[dict[str, Any]]] = {}
-    for _i, e in enumerate(edges):
+    for e in edges:
         if not isinstance(e, dict):
             continue
-        ek = str(e.get("kind", ""))
-        if ek == "input":
-            tid = str(e.get("to", ""))
-            input_by_to.setdefault(tid, []).append(e)
-        elif ek == "output":
-            fid = str(e.get("from", ""))
-            output_by_from.setdefault(fid, []).append(e)
+        if str(e.get("kind", "")) != "input":
+            continue
+        tid = str(e.get("to", ""))
+        input_by_to.setdefault(tid, []).append(e)
+    return input_by_to
 
+
+def _parse_output_lane(slot_raw: Any) -> int:
+    if isinstance(slot_raw, str) and slot_raw.strip().isdigit():
+        return int(slot_raw.strip())
+    return 0
+
+
+def _raise_output_carrier_mismatch(
+    edge_index: int,
+    op_id: str,
+    op_key: str,
+    lane: int,
+    tgt_id: str,
+    want: Carrier,
+    got_fluid: bool,
+) -> None:
+    if want == "fluid" and not got_fluid:
+        raise ValueError(
+            f"edges[{edge_index}]: operation {op_id!r} ({op_key}) output lane {lane} is fluid; "
+            f"target {tgt_id!r} must have source_carrier=fluid",
+        )
+    if want == "material" and got_fluid:
+        raise ValueError(
+            f"edges[{edge_index}]: operation {op_id!r} ({op_key}) output lane {lane} is material; "
+            f"target {tgt_id!r} must not use source_carrier=fluid",
+        )
+
+
+def _validate_output_edge_carriers(
+    edges: list[Any],
+    by_id: dict[str, dict[str, Any]],
+) -> None:
     for i, e in enumerate(edges):
-        if not isinstance(e, dict):
-            continue
-        if str(e.get("kind", "")) != "output":
+        if not isinstance(e, dict) or str(e.get("kind", "")) != "output":
             continue
         op_id = str(e.get("from", ""))
         tgt_id = str(e.get("to", ""))
@@ -122,23 +157,65 @@ def assert_input_output_carriers_for_document(doc: dict[str, Any]) -> None:
             op_type = OperationType(op_key)
         except ValueError:
             continue
-        slot_raw = e.get("slot")
-        lane = 0
-        if isinstance(slot_raw, str) and slot_raw.strip().isdigit():
-            lane = int(slot_raw.strip())
+        lane = _parse_output_lane(e.get("slot"))
         want = operation_output_lane_carrier(op_type, lane)
-        got_fluid = shape_node_is_fluid(tgt)
-        if want == "fluid" and not got_fluid:
-            raise ValueError(
-                f"edges[{i}]: operation {op_id!r} ({op_key}) output lane {lane} is fluid; "
-                f"target {tgt_id!r} must have source_carrier=fluid",
-            )
-        if want == "material" and got_fluid:
-            raise ValueError(
-                f"edges[{i}]: operation {op_id!r} ({op_key}) output lane {lane} is material; "
-                f"target {tgt_id!r} must not use source_carrier=fluid",
-            )
+        _raise_output_carrier_mismatch(
+            i,
+            op_id,
+            op_key,
+            lane,
+            tgt_id,
+            want,
+            shape_node_is_fluid(tgt),
+        )
 
+
+def _expected_carrier_for_input_edge(
+    op_type: OperationType,
+    expected: tuple[Carrier, Carrier],
+    idx: int,
+    slot: str,
+    need: int,
+) -> Carrier:
+    if (
+        op_type in (OperationType.PAINTER, OperationType.CRYSTAL_GENERATOR)
+        and need == 2
+    ):
+        # React Flow ``in-1`` → domain ``slot`` "1" = fluid; bare ``in`` = shape (material).
+        return "fluid" if slot == "1" else "material"
+    return expected[idx]
+
+
+def _raise_if_input_carrier_wrong(
+    op_id: str,
+    op_key: str,
+    op_type: OperationType,
+    expected: tuple[Carrier, Carrier],
+    need: int,
+    idx: int,
+    edge: dict[str, Any],
+    by_id: dict[str, dict[str, Any]],
+) -> None:
+    slot_raw = edge.get("slot")
+    slot = str(slot_raw).strip() if isinstance(slot_raw, str) else ""
+    want = _expected_carrier_for_input_edge(op_type, expected, idx, slot, need)
+    from_id = str(edge.get("from", ""))
+    src = by_id.get(from_id)
+    if not src:
+        return
+    got_fluid = shape_node_is_fluid(src)
+    got: Carrier = "fluid" if got_fluid else "material"
+    if got != want:
+        raise ValueError(
+            f"edges: input to operation {op_id!r} ({op_key}) "
+            f"must be {want}, got {got} (from node {from_id!r})",
+        )
+
+
+def _validate_operation_inputs(
+    by_id: dict[str, dict[str, Any]],
+    input_by_to: dict[str, list[dict[str, Any]]],
+) -> None:
     for op_id, op_n in by_id.items():
         if op_n.get("kind") != "operation":
             continue
@@ -152,34 +229,21 @@ def assert_input_output_carriers_for_document(doc: dict[str, Any]) -> None:
         sorted_edges = sorted_shape_input_edges_to_operation(input_by_to.get(op_id, []), by_id)
         if len(sorted_edges) < need:
             continue
-        trimmed = sorted_edges[:need]
-        for idx, edge in enumerate(trimmed):
-            if idx >= len(expected):
-                break
-            slot_raw = edge.get("slot")
-            slot = str(slot_raw).strip() if isinstance(slot_raw, str) else ""
-            if (
-                op_type in (OperationType.PAINTER, OperationType.CRYSTAL_GENERATOR)
-                and len(
-                    expected,
-                )
-                == 2
-            ):
-                # React Flow ``in-1`` → domain ``slot`` "1" = fluid; bare ``in`` = shape (material).
-                want = "fluid" if slot == "1" else "material"
-            else:
-                want = expected[idx]
-            from_id = str(edge.get("from", ""))
-            src = by_id.get(from_id)
-            if not src:
-                continue
-            got_fluid = shape_node_is_fluid(src)
-            got: Carrier = "fluid" if got_fluid else "material"
-            if got != want:
-                raise ValueError(
-                    f"edges: input to operation {op_id!r} ({op_key}) "
-                    f"must be {want}, got {got} (from node {from_id!r})",
-                )
+        for idx, edge in enumerate(sorted_edges[:need]):
+            _raise_if_input_carrier_wrong(op_id, op_key, op_type, expected, need, idx, edge, by_id)
+
+
+def assert_input_output_carriers_for_document(doc: dict[str, Any]) -> None:
+    """Raise ``ValueError`` if any input/output edge violates material/fluid rules."""
+
+    nodes = doc.get("nodes")
+    edges = doc.get("edges")
+    if not isinstance(nodes, list) or not isinstance(edges, list):
+        return
+    by_id = _index_nodes_by_id(nodes)
+    input_by_to = _group_input_and_output_edges(edges)
+    _validate_output_edge_carriers(edges, by_id)
+    _validate_operation_inputs(by_id, input_by_to)
 
 
 __all__ = [

@@ -38,8 +38,8 @@ class CombinedActionGenerator:
     ) -> tuple[Action, ...]:
         macro_view = try_macro_request_view(request)
         if macro_view is None:
-            return self.primitives.generate(state, request)
+            return self.primitives.generate(state)
         macro_actions = self.macros.generate(state, macro_view)
         if macro_actions:
             return macro_actions
-        return self.primitives.generate(state, request)
+        return self.primitives.generate(state)

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class OperationType(str, Enum):
+class OperationType(StrEnum):
     CUTTER = "cutter"
     HALF_DESTROYER = "half_destroyer"
     SPLITTER = "splitter"

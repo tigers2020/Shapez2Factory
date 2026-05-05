@@ -73,36 +73,54 @@ class InventorySearchSolver:
             return self._build_plan(request, next_state, parents, total_cost, states_explored=1)
         return None
 
-    def solve(self, request: InventorySearchRequest) -> BatchPlan:
-        if request.deadline_monotonic is not None and time.monotonic() > request.deadline_monotonic:
+    def _raise_if_deadline_exceeded(self, request: InventorySearchRequest) -> None:
+        if request.deadline_monotonic is None:
+            return
+        if time.monotonic() > request.deadline_monotonic:
             raise InventorySearchError(
                 f"deadline exceeded for {request.target_code} x{request.target_count}"
             )
 
-        initial_state = InventoryState.from_counts(request.source_counts)
-        macro_plan = self._try_macro_shortcut(
-            request,
-            state=initial_state,
-            base_cost=ZERO_SEARCH_COST,
-            base_steps=0,
-        )
-        if macro_plan is not None:
-            return macro_plan
+    def _relax_outgoing_actions(
+        self,
+        request: InventorySearchRequest,
+        current_state: InventoryState,
+        current_cost: SearchCost,
+        current_steps: int,
+        *,
+        best_costs: dict[InventoryState, SearchCost],
+        parents: dict[InventoryState, _ParentPointer],
+        step_counts: dict[InventoryState, int],
+        queue: list[tuple[SearchCost, int, InventoryState]],
+        sequence: list[int],
+    ) -> None:
+        for action in self.action_generator.generate(current_state, request):
+            chain_len = len(action.primitive_chain) if action.primitive_chain else 1
+            if current_steps + chain_len > request.max_steps:
+                continue
+            next_state = apply_action(current_state, action)
+            next_cost = current_cost + action.cost
+            if next_cost >= best_costs.get(next_state, MAX_SEARCH_COST):
+                continue
+            best_costs[next_state] = next_cost
+            parents[next_state] = _ParentPointer(previous_state=current_state, action=action)
+            step_counts[next_state] = current_steps + chain_len
+            sequence[0] += 1
+            heappush(queue, (next_cost, sequence[0], next_state))
 
+    def _uniform_cost_search(
+        self, request: InventorySearchRequest, initial_state: InventoryState
+    ) -> BatchPlan:
         best_costs: dict[InventoryState, SearchCost] = {initial_state: ZERO_SEARCH_COST}
         parents: dict[InventoryState, _ParentPointer] = {}
         step_counts: dict[InventoryState, int] = {initial_state: 0}
         queue: list[tuple[SearchCost, int, InventoryState]] = []
-        sequence = 0
-        heappush(queue, (ZERO_SEARCH_COST, sequence, initial_state))
+        sequence: list[int] = [0]
+        heappush(queue, (ZERO_SEARCH_COST, sequence[0], initial_state))
         states_explored = 0
 
         while queue and states_explored < request.max_states:
-            if request.deadline_monotonic is not None:
-                if time.monotonic() > request.deadline_monotonic:
-                    raise InventorySearchError(
-                        f"deadline exceeded for {request.target_code} x{request.target_count}"
-                    )
+            self._raise_if_deadline_exceeded(request)
 
             current_cost, _, current_state = heappop(queue)
             if current_cost != best_costs[current_state]:
@@ -118,23 +136,36 @@ class InventorySearchSolver:
             if current_steps >= request.max_steps:
                 continue
 
-            for action in self.action_generator.generate(current_state, request):
-                chain_len = len(action.primitive_chain) if action.primitive_chain else 1
-                if current_steps + chain_len > request.max_steps:
-                    continue
-                next_state = apply_action(current_state, action)
-                next_cost = current_cost + action.cost
-                if next_cost >= best_costs.get(next_state, MAX_SEARCH_COST):
-                    continue
-                best_costs[next_state] = next_cost
-                parents[next_state] = _ParentPointer(previous_state=current_state, action=action)
-                step_counts[next_state] = current_steps + chain_len
-                sequence += 1
-                heappush(queue, (next_cost, sequence, next_state))
+            self._relax_outgoing_actions(
+                request,
+                current_state,
+                current_cost,
+                current_steps,
+                best_costs=best_costs,
+                parents=parents,
+                step_counts=step_counts,
+                queue=queue,
+                sequence=sequence,
+            )
 
         raise InventorySearchError(
             f"no batch plan found for {request.target_code} x{request.target_count}"
         )
+
+    def solve(self, request: InventorySearchRequest) -> BatchPlan:
+        self._raise_if_deadline_exceeded(request)
+
+        initial_state = InventoryState.from_counts(request.source_counts)
+        macro_plan = self._try_macro_shortcut(
+            request,
+            state=initial_state,
+            base_cost=ZERO_SEARCH_COST,
+            base_steps=0,
+        )
+        if macro_plan is not None:
+            return macro_plan
+
+        return self._uniform_cost_search(request, initial_state)
 
     def _flatten_actions(self, actions: list[Action]) -> tuple[OperationRun, ...]:
         runs: list[OperationRun] = []

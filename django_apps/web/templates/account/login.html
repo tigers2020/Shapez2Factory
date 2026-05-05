@@ -22,14 +22,25 @@
       {% if field.name != "remember" %}
         <div>
           <label class="mb-2 block text-sm font-medium text-slate-300" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% if field.name == "password" %}
           <input
             id="{{ field.id_for_label }}"
             name="{{ field.html_name }}"
-            type="{{ field.field.widget.input_type }}"
+            type="password"
             value="{{ field.value|default_if_none:'' }}"
-            autocomplete="{{ field.field.widget.attrs.autocomplete|default:'off' }}"
+            autocomplete="current-password"
             class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
           />
+          {% else %}
+          <input
+            id="{{ field.id_for_label }}"
+            name="{{ field.html_name }}"
+            type="text"
+            value="{{ field.value|default_if_none:'' }}"
+            autocomplete="username"
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+          />
+          {% endif %}
           {% if field.errors %}
             <div class="mt-2 text-sm text-rose-300">{{ field.errors }}</div>
           {% endif %}
@@ -38,10 +49,10 @@
     {% endfor %}
 
     {% if form.remember %}
-      <label class="flex items-center gap-2 text-sm text-slate-300">
+      <div class="flex items-center gap-2 text-sm text-slate-300">
         {{ form.remember }}
-        <span>{% trans "Remember me" %}</span>
-      </label>
+        <label class="cursor-pointer" for="{{ form.remember.id_for_label }}">{% trans "Remember me" %}</label>
+      </div>
     {% endif %}
 
     {% if redirect_field_value %}

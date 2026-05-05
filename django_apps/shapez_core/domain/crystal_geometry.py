@@ -63,6 +63,20 @@ def iter_adjacent_layer_quads(shape: Shape, layer_z: int, quad_index: int) -> li
     return out
 
 
+def _crystal_bfs_candidate(
+    shape: Shape, seen: set[LayerQuad], nz: int, nq: int
+) -> LayerQuad | None:
+    """Return ``(nz, nq)`` if it is an unseen in-bounds crystal cell, else ``None``."""
+
+    if (nz, nq) in seen:
+        return None
+    if not (0 <= nz < len(shape.layers) and 0 <= nq < 4):
+        return None
+    if not shape.layers[nz].quadrants[nq].is_crystal:
+        return None
+    return (nz, nq)
+
+
 def connected_crystal_cluster(shape: Shape, start_z: int, start_q: int) -> frozenset[LayerQuad]:
     """BFS over crystal cells using :func:`iter_adjacent_layer_quads`."""
 
@@ -77,14 +91,11 @@ def connected_crystal_cluster(shape: Shape, start_z: int, start_q: int) -> froze
     while dq:
         z, q = dq.popleft()
         for nz, nq in iter_adjacent_layer_quads(shape, z, q):
-            if (nz, nq) in seen:
+            nxt = _crystal_bfs_candidate(shape, seen, nz, nq)
+            if nxt is None:
                 continue
-            if not (0 <= nz < len(shape.layers) and 0 <= nq < 4):
-                continue
-            if not shape.layers[nz].quadrants[nq].is_crystal:
-                continue
-            seen.add((nz, nq))
-            dq.append((nz, nq))
+            seen.add(nxt)
+            dq.append(nxt)
     return frozenset(seen)
 
 

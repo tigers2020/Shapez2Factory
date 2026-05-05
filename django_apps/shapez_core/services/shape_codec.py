@@ -35,7 +35,7 @@ def pattern_from_shape(shape: Shape) -> NormalizedShapePattern:
         NormalizedShapeLayer(
             layer_index=layer_index,
             cells=tuple(
-                _cell_from_part(layer_index, quadrant_index, part)
+                _cell_from_part(quadrant_index, part)
                 for quadrant_index, part in enumerate(layer.quadrants)
             ),
         )
@@ -74,7 +74,7 @@ def _part_from_cell(cell: NormalizedShapeCell) -> ShapePart:
     return ShapePart(kind=cell.shape_code, color=cell.color_code, material=material)
 
 
-def _cell_from_part(layer_index: int, quadrant_index: int, part: ShapePart) -> NormalizedShapeCell:
+def _cell_from_part(quadrant_index: int, part: ShapePart) -> NormalizedShapeCell:
     return NormalizedShapeCell(
         quadrant_index=quadrant_index,
         position=quadrant_at_index(quadrant_index),

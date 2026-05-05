@@ -19,20 +19,44 @@
     {% endif %}
 
     {% for field in form %}
+      {% if field.is_hidden %}
+        {{ field }}
+      {% else %}
       <div>
         <label class="mb-2 block text-sm font-medium text-slate-300" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {% if field.name == "password1" or field.name == "password2" %}
         <input
           id="{{ field.id_for_label }}"
           name="{{ field.html_name }}"
-          type="{{ field.field.widget.input_type }}"
+          type="password"
           value="{{ field.value|default_if_none:'' }}"
-          autocomplete="{{ field.field.widget.attrs.autocomplete|default:'off' }}"
+          autocomplete="new-password"
           class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
         />
+        {% elif field.name == "email" %}
+        <input
+          id="{{ field.id_for_label }}"
+          name="{{ field.html_name }}"
+          type="email"
+          value="{{ field.value|default_if_none:'' }}"
+          autocomplete="email"
+          class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+        />
+        {% else %}
+        <input
+          id="{{ field.id_for_label }}"
+          name="{{ field.html_name }}"
+          type="text"
+          value="{{ field.value|default_if_none:'' }}"
+          autocomplete="username"
+          class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400"
+        />
+        {% endif %}
         {% if field.errors %}
           <div class="mt-2 text-sm text-rose-300">{{ field.errors }}</div>
         {% endif %}
       </div>
+      {% endif %}
     {% endfor %}
 
     {% if redirect_field_value %}

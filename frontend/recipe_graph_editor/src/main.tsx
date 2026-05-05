@@ -35,6 +35,30 @@ function parseReactFlowInitial(raw: unknown): { nodes: Node[]; edges: Edge[] } {
   };
 }
 
+function parseCatalogOperationRow(row: unknown): CatalogOperationRow | null {
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+  const r = row as Record<string, unknown>;
+  const value = typeof r.value === "string" ? r.value.trim() : "";
+  if (!value) {
+    return null;
+  }
+  return {
+    value,
+    label: typeof r.label === "string" ? r.label : value,
+    icon: typeof r.icon === "string" ? r.icon : "",
+  };
+}
+
+function parseRecipeGraphEngineIds(o: Record<string, unknown>): string[] {
+  const eng = o.recipe_graph_engine_operations;
+  if (!Array.isArray(eng)) {
+    return [];
+  }
+  return eng.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+}
+
 function parseCatalogOperations(raw: unknown): {
   operations: CatalogOperationRow[];
   engineIds: string[];
@@ -47,32 +71,27 @@ function parseCatalogOperations(raw: unknown): {
   const operations: CatalogOperationRow[] = [];
   if (Array.isArray(opsRaw)) {
     for (const row of opsRaw) {
-      if (!row || typeof row !== "object") {
-        continue;
+      const parsed = parseCatalogOperationRow(row);
+      if (parsed) {
+        operations.push(parsed);
       }
-      const r = row as Record<string, unknown>;
-      const value = typeof r.value === "string" ? r.value.trim() : "";
-      if (!value) {
-        continue;
-      }
-      operations.push({
-        value,
-        label: typeof r.label === "string" ? r.label : value,
-        icon: typeof r.icon === "string" ? r.icon : "",
-      });
     }
   }
-  const eng = o.recipe_graph_engine_operations;
-  const engineIds = Array.isArray(eng)
-    ? eng.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
-    : [];
-  return { operations, engineIds };
+  return { operations, engineIds: parseRecipeGraphEngineIds(o) };
+}
+
+function parseRecipeId(rid: unknown): number {
+  if (typeof rid === "number") {
+    return rid;
+  }
+  if (typeof rid === "string" && /^\d+$/.test(rid)) {
+    return Number.parseInt(rid, 10);
+  }
+  return 0;
 }
 
 const rootEl = document.getElementById("macro-graph-editor-root");
-if (!rootEl) {
-  console.warn("[recipe-graph-editor] #macro-graph-editor-root missing");
-} else {
+if (rootEl) {
   const recipe = readJsonScript("macro-graph-initial-recipe") as Record<string, unknown> | null;
   const bootstrap = readJsonScript("macro-graph-bootstrap") as GraphBootstrap | null;
   const catalogRaw = readJsonScript("macro-graph-initial-catalog");
@@ -82,13 +101,7 @@ if (!rootEl) {
   }
   const code = typeof recipe?.code === "string" ? recipe.code : "—";
   const name = typeof recipe?.name === "string" ? recipe.name : "";
-  const rid = recipe?.id;
-  const recipeId =
-    typeof rid === "number"
-      ? rid
-      : typeof rid === "string" && /^\d+$/.test(rid)
-        ? parseInt(rid, 10)
-        : 0;
+  const recipeId = parseRecipeId(recipe?.id);
   const { edges, nodes } = parseReactFlowInitial(bootstrap?.react_flow_initial ?? null);
   createRoot(rootEl).render(
     <StrictMode>
@@ -104,4 +117,6 @@ if (!rootEl) {
       />
     </StrictMode>,
   );
+} else {
+  console.warn("[recipe-graph-editor] #macro-graph-editor-root missing");
 }

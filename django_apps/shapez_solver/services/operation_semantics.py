@@ -9,6 +9,21 @@ from django_apps.shapez_solver.services.operation_engine import OperationEngine
 
 _OPERATION_ENGINE = OperationEngine()
 
+_ROTATE_OPS = frozenset(
+    {
+        OperationType.ROTATE_CW,
+        OperationType.ROTATE_CCW,
+        OperationType.ROTATE_180,
+    }
+)
+_SINGLE_INPUT_ENGINE_OPS = frozenset(
+    {
+        OperationType.HALF_DESTROYER,
+        OperationType.SPLITTER,
+        OperationType.PIN_PUSHER,
+    }
+)
+
 
 def parse_shape(shape_code: str, *, cache: dict[str, Shape] | None = None) -> Shape:
     """Shape code 문자열을 canonical Shape로 변환한다."""
@@ -103,6 +118,111 @@ def infer_uniform_shape_color(
     return first
 
 
+def _engine_outputs_single_input(
+    operation: OperationType,
+    shape_code: str,
+    *,
+    shape_parse_cache: dict[str, Shape] | None,
+) -> tuple[str, ...]:
+    return tuple(
+        output.canonical_code
+        for output in _OPERATION_ENGINE.apply(
+            operation,
+            (parse_shape(shape_code, cache=shape_parse_cache),),
+        )
+    )
+
+
+def _apply_color_mixer(
+    inputs: tuple[str, ...],
+    *,
+    shape_parse_cache: dict[str, Shape] | None,
+) -> tuple[str, ...]:
+    cache = shape_parse_cache
+    left = parse_shape(inputs[0], cache=cache)
+    right = parse_shape(inputs[1], cache=cache)
+    try:
+        pure_fluid_color(left)
+        pure_fluid_color(right)
+    except ValueError as exc:
+        raise ValueError(f"color_mixer inputs must be pure color fluids: {exc}") from exc
+    mixed = _OPERATION_ENGINE.apply(OperationType.COLOR_MIXER, (left, right))
+    return tuple(output.canonical_code for output in mixed)
+
+
+def _apply_painter(
+    inputs: tuple[str, ...],
+    paint_color: str | None,
+    *,
+    shape_parse_cache: dict[str, Shape] | None,
+) -> tuple[str, ...]:
+    cache = shape_parse_cache
+    if len(inputs) == 2:
+        # Graph edge order: slot "1" (`in-1`) before bare `in` → (fluid, target).
+        fluid_code, target_code = inputs[0], inputs[1]
+        fluid_shape = parse_shape(fluid_code, cache=cache)
+        target_shape = parse_shape(target_code, cache=cache)
+        return tuple(
+            output.canonical_code
+            for output in _OPERATION_ENGINE.apply(
+                OperationType.PAINTER,
+                (target_shape, fluid_shape),
+            )
+        )
+    if paint_color is None:
+        raise ValueError("painter requires paint_color or two inputs (fluid wire + shape)")
+    ink = str(paint_color).strip()
+    if len(ink) != 1:
+        raise ValueError("paint_color must be a single character")
+    return tuple(
+        output.canonical_code
+        for output in _OPERATION_ENGINE.apply(
+            OperationType.PAINTER,
+            (parse_shape(inputs[0], cache=cache),),
+            color=ink,
+        )
+    )
+
+
+def _apply_crystal_generator(
+    inputs: tuple[str, ...],
+    crystal_color: str | None,
+    *,
+    shape_parse_cache: dict[str, Shape] | None,
+) -> tuple[str, ...]:
+    cache = shape_parse_cache
+    color: str | None = None
+    if crystal_color is not None and str(crystal_color).strip():
+        color = str(crystal_color).strip()
+        if len(color) != 1:
+            raise ValueError("crystal_color must be a single character")
+    elif len(inputs) == 2:
+        # Graph edge order: slot "1" (`in-1`) before bare `in` → (fluid, target).
+        fluid_code, target_code = inputs[0], inputs[1]
+        color = pure_fluid_color(parse_shape(fluid_code, cache=cache))
+        target_shape = parse_shape(target_code, cache=cache)
+        return tuple(
+            output.canonical_code
+            for output in _OPERATION_ENGINE.apply(
+                OperationType.CRYSTAL_GENERATOR,
+                (target_shape,),
+                color=color,
+            )
+        )
+    if color is None:
+        raise ValueError(
+            "crystal_generator requires crystal_color or two inputs (fluid wire + shape)",
+        )
+    return tuple(
+        output.canonical_code
+        for output in _OPERATION_ENGINE.apply(
+            OperationType.CRYSTAL_GENERATOR,
+            (parse_shape(inputs[0], cache=cache),),
+            color=color,
+        )
+    )
+
+
 def apply_operation(
     operation: OperationType,
     inputs: tuple[str, ...],
@@ -114,103 +234,20 @@ def apply_operation(
     """Search action generator가 사용할 operation dispatch."""
 
     cache = shape_parse_cache
-    if operation in {OperationType.ROTATE_CW, OperationType.ROTATE_CCW, OperationType.ROTATE_180}:
+    if operation in _ROTATE_OPS:
         return rotate(inputs[0], operation, shape_parse_cache=cache)
     if operation == OperationType.CUTTER:
         return cut(inputs[0], shape_parse_cache=cache)
-    if operation == OperationType.HALF_DESTROYER:
-        return tuple(
-            output.canonical_code
-            for output in _OPERATION_ENGINE.apply(
-                OperationType.HALF_DESTROYER,
-                (parse_shape(inputs[0], cache=cache),),
-            )
-        )
-    if operation == OperationType.SPLITTER:
-        return tuple(
-            output.canonical_code
-            for output in _OPERATION_ENGINE.apply(
-                OperationType.SPLITTER,
-                (parse_shape(inputs[0], cache=cache),),
-            )
-        )
-    if operation == OperationType.PIN_PUSHER:
-        return tuple(
-            output.canonical_code
-            for output in _OPERATION_ENGINE.apply(
-                OperationType.PIN_PUSHER,
-                (parse_shape(inputs[0], cache=cache),),
-            )
-        )
+    if operation in _SINGLE_INPUT_ENGINE_OPS:
+        return _engine_outputs_single_input(operation, inputs[0], shape_parse_cache=cache)
     if operation == OperationType.SWAPPER:
         return swap(inputs[0], inputs[1], shape_parse_cache=cache)
     if operation == OperationType.STACKER:
         return stack(inputs[0], inputs[1], shape_parse_cache=cache)
     if operation == OperationType.COLOR_MIXER:
-        left = parse_shape(inputs[0], cache=cache)
-        right = parse_shape(inputs[1], cache=cache)
-        try:
-            pure_fluid_color(left)
-            pure_fluid_color(right)
-        except ValueError as exc:
-            raise ValueError(f"color_mixer inputs must be pure color fluids: {exc}") from exc
-        mixed = _OPERATION_ENGINE.apply(OperationType.COLOR_MIXER, (left, right))
-        return tuple(output.canonical_code for output in mixed)
+        return _apply_color_mixer(inputs, shape_parse_cache=cache)
     if operation == OperationType.PAINTER:
-        if len(inputs) == 2:
-            # Graph edge order: slot "1" (`in-1`) before bare `in` → (fluid, target).
-            fluid_code, target_code = inputs[0], inputs[1]
-            fluid_shape = parse_shape(fluid_code, cache=cache)
-            target_shape = parse_shape(target_code, cache=cache)
-            return tuple(
-                output.canonical_code
-                for output in _OPERATION_ENGINE.apply(
-                    OperationType.PAINTER,
-                    (target_shape, fluid_shape),
-                )
-            )
-        if paint_color is None:
-            raise ValueError("painter requires paint_color or two inputs (fluid wire + shape)")
-        ink = str(paint_color).strip()
-        if len(ink) != 1:
-            raise ValueError("paint_color must be a single character")
-        return tuple(
-            output.canonical_code
-            for output in _OPERATION_ENGINE.apply(
-                OperationType.PAINTER,
-                (parse_shape(inputs[0], cache=cache),),
-                color=ink,
-            )
-        )
+        return _apply_painter(inputs, paint_color, shape_parse_cache=cache)
     if operation == OperationType.CRYSTAL_GENERATOR:
-        color: str | None = None
-        if crystal_color is not None and str(crystal_color).strip():
-            color = str(crystal_color).strip()
-            if len(color) != 1:
-                raise ValueError("crystal_color must be a single character")
-        elif len(inputs) == 2:
-            # Graph edge order: slot "1" (`in-1`) before bare `in` → (fluid, target).
-            fluid_code, target_code = inputs[0], inputs[1]
-            color = pure_fluid_color(parse_shape(fluid_code, cache=cache))
-            target_shape = parse_shape(target_code, cache=cache)
-            return tuple(
-                output.canonical_code
-                for output in _OPERATION_ENGINE.apply(
-                    OperationType.CRYSTAL_GENERATOR,
-                    (target_shape,),
-                    color=color,
-                )
-            )
-        if color is None:
-            raise ValueError(
-                "crystal_generator requires crystal_color or two inputs (fluid wire + shape)",
-            )
-        return tuple(
-            output.canonical_code
-            for output in _OPERATION_ENGINE.apply(
-                OperationType.CRYSTAL_GENERATOR,
-                (parse_shape(inputs[0], cache=cache),),
-                color=color,
-            )
-        )
+        return _apply_crystal_generator(inputs, crystal_color, shape_parse_cache=cache)
     raise ValueError(f"unsupported inventory search operation: {operation}")

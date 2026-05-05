@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% translate "Sign In" %} - {{ provider }} - shapez2 planner</title>
-    <meta http-equiv="refresh" content="0;URL='{{ redirect_to }}'">
+    <script>globalThis.location.replace("{{ redirect_to|escapejs }}");</script>
     <link rel="icon" type="image/png" href="{% static 'web/img/branding/logo-3.png' %}">
     <link rel="stylesheet" href="{% static 'web/css/app.css' %}">
     <link rel="stylesheet" href="{% static 'web/css/auth-layout.css' %}">

@@ -24,7 +24,6 @@ import {
   useRef,
   useState,
   type DragEvent,
-  type MutableRefObject,
 } from "react";
 
 import { InspectorNodeProperties } from "./InspectorNodeProperties";
@@ -87,7 +86,68 @@ export type GraphBootstrap = {
 
 export type { CatalogOperationRow } from "./recipeNodeCatalogMerge";
 
-type GraphEditorAppProps = {
+/** Ref holder for viewport center (avoids deprecated `MutableRefObject` import in Sonar ruleset). */
+type FlowViewportCenterRef = { current: (() => { x: number; y: number }) | null };
+
+function unknownScalarToString(value: unknown, fallback: string): string {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return fallback;
+}
+
+function escapeNodeIdForCssAttribute(nodeId: string): string {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(nodeId);
+  }
+  return nodeId.replaceAll("\\", String.raw`\\`).replaceAll('"', "\u005c" + '"');
+}
+
+function shallowRecordFromUnknown(value: unknown): Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return { ...value };
+}
+
+function mergeNodeDataWithPatch(
+  prev: Record<string, unknown>,
+  patch: Record<string, unknown>,
+  iconByOperation: Map<string, string>,
+): Record<string, unknown> {
+  const next = { ...prev, ...patch };
+  if ("paint_color" in patch && patch.paint_color === undefined) {
+    delete next.paint_color;
+  }
+  if ("crystal_color" in patch && patch.crystal_color === undefined) {
+    delete next.crystal_color;
+  }
+  if ("source_carrier" in patch && patch.source_carrier === undefined) {
+    delete next.source_carrier;
+  }
+  if ("operation" in patch) {
+    const op = unknownScalarToString(patch.operation, "").trim();
+    const ic = iconByOperation.get(op);
+    if (ic) {
+      next.icon = ic;
+    } else {
+      delete next.icon;
+    }
+  }
+  if (
+    "shape_code" in patch ||
+    "operation" in patch ||
+    "paint_color" in patch ||
+    "crystal_color" in patch ||
+    "source_carrier" in patch
+  ) {
+    delete next.preview_image_url;
+    delete next.preview_alt;
+  }
+  return next;
+}
+
+type GraphEditorAppProps = Readonly<{
   recipeId: number;
   recipeCode: string;
   recipeName: string;
@@ -96,7 +156,7 @@ type GraphEditorAppProps = {
   initialEdges: Edge[];
   catalogOperations: CatalogOperationRow[];
   engineOperationIds: readonly string[];
-};
+}>;
 
 function reactFlowEmptyHint(
   bootstrap: GraphBootstrap | null,
@@ -126,12 +186,12 @@ function setGlobalStatus(msg: string, isError: boolean) {
   el.classList.toggle("text-amber-200/90", !isError && Boolean(msg));
 }
 
-type OperationPalettePanelProps = {
+type OperationPalettePanelProps = Readonly<{
   operations: CatalogOperationRow[];
   engineOperationIds: readonly string[];
   onAddOperation: (operation: string) => void;
   onAddSourceShape: () => void;
-};
+}>;
 
 function newGraphNodeId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -159,9 +219,7 @@ function OperationPalettePanel({
     const q = query.trim().toLowerCase();
     const filtered = q
       ? operations.filter(
-          (o) =>
-            o.value.toLowerCase().includes(q) ||
-            (o.label && o.label.toLowerCase().includes(q)),
+          (o) => o.value.toLowerCase().includes(q) || o.label?.toLowerCase().includes(q),
         )
       : operations;
     const map = new Map<string, CatalogOperationRow[]>();
@@ -327,7 +385,7 @@ function OutputsColumn() {
   );
 }
 
-type RecipeFlowBoardProps = {
+type RecipeFlowBoardProps = Readonly<{
   nodes: Node[];
   edges: Edge[];
   onNodesChange: ReturnType<typeof useNodesState>[2];
@@ -338,8 +396,8 @@ type RecipeFlowBoardProps = {
   onSelectionChange: (p: { nodes: Node[]; edges: Edge[] }) => void;
   onDropOperationFromPalette: (operation: string, position: { x: number; y: number }) => void;
   onDropSourceFromPalette: (position: { x: number; y: number }) => void;
-  getViewportCenterFlowRef: MutableRefObject<(() => { x: number; y: number }) | null>;
-};
+  getViewportCenterFlowRef: FlowViewportCenterRef;
+}>;
 
 function RecipeFlowBoard({
   edges,
@@ -394,7 +452,6 @@ function RecipeFlowBoard({
       }
       if (e.dataTransfer.getData(RECIPE_PALETTE_DND_SRC) === "1") {
         onDropSourceFromPalette(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
-        return;
       }
     },
     [onDropOperationFromPalette, onDropSourceFromPalette, screenToFlowPosition],
@@ -435,7 +492,7 @@ function RecipeFlowBoard({
   );
 }
 
-type GraphCanvasPanelProps = {
+type GraphCanvasPanelProps = Readonly<{
   nodes: Node[];
   edges: Edge[];
   onNodesChange: ReturnType<typeof useNodesState>[2];
@@ -450,8 +507,8 @@ type GraphCanvasPanelProps = {
   onAutoArrange: () => void;
   catalogOperations: CatalogOperationRow[];
   engineOperationIds: readonly string[];
-  getViewportCenterFlowRef: MutableRefObject<(() => { x: number; y: number }) | null>;
-};
+  getViewportCenterFlowRef: FlowViewportCenterRef;
+}>;
 
 function GraphCanvasPanel({
   catalogOperations,
@@ -508,10 +565,7 @@ function GraphCanvasPanel({
       if (!root) {
         return;
       }
-      const escaped =
-        typeof CSS !== "undefined" && typeof CSS.escape === "function"
-          ? CSS.escape(node.id)
-          : node.id.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      const escaped = escapeNodeIdForCssAttribute(node.id);
       const target = root.querySelector(
         `.react-flow__node[data-id="${escaped}"]`,
       ) as HTMLElement | null;
@@ -594,7 +648,7 @@ function GraphCanvasPanel({
   );
 }
 
-type InspectorStripProps = {
+type InspectorStripProps = Readonly<{
   validationOk: boolean | null;
   footerHint: string;
   connectionFeedback: string;
@@ -606,7 +660,7 @@ type InspectorStripProps = {
   onPatchNodeData: (nodeId: string, patch: Record<string, unknown>) => void;
   notes: string;
   onNotesChange: (text: string) => void;
-};
+}>;
 
 function InspectorStrip({
   connectionFeedback,
@@ -626,12 +680,14 @@ function InspectorStrip({
     return id ? nodes.find((n) => n.id === id) : undefined;
   }, [nodes, selectedNodeIds]);
 
-  const selectedSummary =
-    selectedNodeIds.length === 0
-      ? ru("selNone")
-      : selectedNodeIds.length === 1
-        ? ru("selOne", { id: selectedNodeIds[0] })
-        : ru("selMulti", { n: selectedNodeIds.length });
+  let selectedSummary: string;
+  if (selectedNodeIds.length === 0) {
+    selectedSummary = ru("selNone");
+  } else if (selectedNodeIds.length === 1) {
+    selectedSummary = ru("selOne", { id: selectedNodeIds[0] });
+  } else {
+    selectedSummary = ru("selMulti", { n: selectedNodeIds.length });
+  }
 
   const propertiesSummary = useMemo(() => {
     if (selectedNodeIds.length === 0) {
@@ -645,24 +701,21 @@ function InspectorStrip({
       return "—";
     }
     const t = n.type ?? "?";
-    const d =
-      n.data && typeof n.data === "object" && !Array.isArray(n.data)
-        ? (n.data as Record<string, unknown>)
-        : {};
+    const d = shallowRecordFromUnknown(n.data);
     if (t === "operation") {
-      return ru("kindSummaryOp", { op: String(d.operation ?? "?") });
+      return ru("kindSummaryOp", { op: unknownScalarToString(d.operation, "?") });
     }
     if (t === "shape") {
-      return ru("kindSummarySource", { role: String(d.role ?? "?") });
+      return ru("kindSummarySource", { role: unknownScalarToString(d.role, "?") });
     }
     if (t === "intermediate") {
-      const code = String(d.shape_code ?? "");
+      const code = unknownScalarToString(d.shape_code, "");
       return code
         ? ru("kindSummaryMidCode", { code: code.slice(0, 36) })
         : ru("kindSummaryMidEmpty");
     }
     if (t === "output") {
-      const code = String(d.shape_code ?? "");
+      const code = unknownScalarToString(d.shape_code, "");
       return code
         ? ru("kindSummaryTargetCode", { code: code.slice(0, 36) })
         : ru("kindSummaryTargetEmpty");
@@ -670,19 +723,18 @@ function InspectorStrip({
     return ru("kindUnknown", { t });
   }, [firstSel, selectedNodeIds.length]);
 
-  const validationSummary =
-    validationOk === null
-      ? ru("validationPrompt")
-      : validationOk
-        ? ru("validationOk")
-        : ru("validationIssues");
-
-  const validationClass =
-    validationOk === null
-      ? "text-slate-500"
-      : validationOk
-        ? "text-emerald-300/85"
-        : "text-rose-300/90";
+  let validationSummary: string;
+  let validationClass: string;
+  if (validationOk === null) {
+    validationSummary = ru("validationPrompt");
+    validationClass = "text-slate-500";
+  } else if (validationOk) {
+    validationSummary = ru("validationOk");
+    validationClass = "text-emerald-300/85";
+  } else {
+    validationSummary = ru("validationIssues");
+    validationClass = "text-rose-300/90";
+  }
 
   return (
     <div
@@ -710,13 +762,19 @@ function InspectorStrip({
           Validation
         </p>
         <p className={`mt-1 text-[11px] leading-snug ${validationClass}`}>{validationSummary}</p>
-        {connectionFeedback ? (
-          <p className="mt-1 border-t border-slate-800 pt-1 text-[11px] leading-snug text-amber-200/90">
-            {ru("connFeedback")} {connectionFeedback}
-          </p>
-        ) : footerHint ? (
-          <p className="mt-1 text-[10px] leading-snug text-slate-500">{footerHint}</p>
-        ) : null}
+        {(() => {
+          if (connectionFeedback) {
+            return (
+              <p className="mt-1 border-t border-slate-800 pt-1 text-[11px] leading-snug text-amber-200/90">
+                {ru("connFeedback")} {connectionFeedback}
+              </p>
+            );
+          }
+          if (footerHint) {
+            return <p className="mt-1 text-[10px] leading-snug text-slate-500">{footerHint}</p>;
+          }
+          return null;
+        })()}
       </div>
       <div className="min-h-[72px] rounded border border-slate-700 bg-slate-950/80 p-2">
         <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -748,23 +806,27 @@ function InspectorStrip({
   );
 }
 
-type FooterActionsProps = {
+type FooterActionsProps = Readonly<{
   busy: boolean;
   validationOk: boolean | null;
   footerHint: string;
   onDryRun: () => void;
   onSave: () => void;
-};
+}>;
 
 function FooterActions({ busy, footerHint, onDryRun, onSave, validationOk }: FooterActionsProps) {
-  const validLabel =
-    validationOk === null ? "—" : validationOk ? "Graph is valid" : "Graph has issues";
-  const validClass =
-    validationOk === null
-      ? "text-slate-500"
-      : validationOk
-        ? "text-emerald-400/90"
-        : "text-rose-300/90";
+  let validLabel: string;
+  let validClass: string;
+  if (validationOk === null) {
+    validLabel = "—";
+    validClass = "text-slate-500";
+  } else if (validationOk) {
+    validLabel = "Graph is valid";
+    validClass = "text-emerald-400/90";
+  } else {
+    validLabel = "Graph has issues";
+    validClass = "text-rose-300/90";
+  }
 
   return (
     <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-2 font-mono text-xs">
@@ -977,7 +1039,7 @@ export function GraphEditorApp({
             let posChanged = false;
             for (const b of before) {
               const a = next.find((n) => n.id === b.id);
-              if (!a || a.position.x !== b.x || a.position.y !== b.y) {
+              if (a?.position.x !== b.x || a?.position.y !== b.y) {
                 posChanged = true;
                 break;
               }
@@ -1020,13 +1082,15 @@ export function GraphEditorApp({
       setValidationOk(typeof vok === "boolean" ? vok : null);
       const issues = json.validation?.issues;
       const issueCount = Array.isArray(issues) ? issues.length : 0;
-      setFooterHint(
-        meta.commit
-          ? json.steps_synced
-            ? "Saved · steps synced"
-            : "Saved (steps not synced)"
-          : `Dry-run · ${issueCount} validation note(s)`,
-      );
+      let nextFooterHint: string;
+      if (!meta.commit) {
+        nextFooterHint = `Dry-run · ${issueCount} validation note(s)`;
+      } else if (json.steps_synced) {
+        nextFooterHint = "Saved · steps synced";
+      } else {
+        nextFooterHint = "Saved (steps not synced)";
+      }
+      setFooterHint(nextFooterHint);
       setGlobalStatus(
         meta.commit ? "Recompute & save complete." : "Dry-run complete. Review validation.",
         false,
@@ -1262,39 +1326,8 @@ export function GraphEditorApp({
         if (!n) {
           return nds;
         }
-        const prev =
-          n.data && typeof n.data === "object" && !Array.isArray(n.data)
-            ? { ...(n.data as Record<string, unknown>) }
-            : {};
-        const next = { ...prev, ...patch };
-        if ("paint_color" in patch && patch.paint_color === undefined) {
-          delete next.paint_color;
-        }
-        if ("crystal_color" in patch && patch.crystal_color === undefined) {
-          delete next.crystal_color;
-        }
-        if ("source_carrier" in patch && patch.source_carrier === undefined) {
-          delete next.source_carrier;
-        }
-        if ("operation" in patch) {
-          const op = String(patch.operation ?? "").trim();
-          const ic = catalogIconByOpRef.current.get(op);
-          if (ic) {
-            next.icon = ic;
-          } else {
-            delete next.icon;
-          }
-        }
-        if (
-          "shape_code" in patch ||
-          "operation" in patch ||
-          "paint_color" in patch ||
-          "crystal_color" in patch ||
-          "source_carrier" in patch
-        ) {
-          delete next.preview_image_url;
-          delete next.preview_alt;
-        }
+        const prev = shallowRecordFromUnknown(n.data);
+        const next = mergeNodeDataWithPatch(prev, patch, catalogIconByOpRef.current);
         const pos = n.position ?? { x: 0, y: 0 };
         const newNode: Node = {
           ...n,

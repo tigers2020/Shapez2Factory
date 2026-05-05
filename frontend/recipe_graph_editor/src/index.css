@@ -10,4 +10,16 @@
 .rf-editor-canvas .react-flow {
   height: 100%;
   width: 100%;
+  /*
+   * 앱 셸은 다크인데 XYFlow는 prefers-color-scheme에 맞춰 라이트 컨트롤 기본값(#fefefe)을 쓸 수 있음.
+   * 에디터 캔버스 안에서는 슬레이트 톤으로 고정한다.
+   */
+  --xy-controls-button-background-color: rgb(15 23 42 / 0.98);
+  --xy-controls-button-background-color-hover: rgb(30 41 59);
+  --xy-controls-button-color: rgb(226 232 240);
+  --xy-controls-button-color-hover: rgb(248 250 252);
+  --xy-controls-button-border-color: rgb(71 85 105);
+  --xy-controls-box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.35);
+  --xy-minimap-background-color: rgb(15 23 42 / 0.92);
+  --xy-minimap-node-background-color: rgb(71 85 105);
 }

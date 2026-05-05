@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "description": "Python recipe_graph_input_carrier vs TS recipeConnection/operationArity alignment. Keep in sync when wire rules change.",
+  "required_input_and_carriers": [
+    {
+      "id": "painter_no_preset",
+      "op_type": "painter",
+      "op_node": {},
+      "required_input_count": 2,
+      "expected_carriers": ["fluid", "material"]
+    },
+    {
+      "id": "painter_with_paint",
+      "op_type": "painter",
+      "op_node": { "paint_color": " r " },
+      "required_input_count": 1,
+      "expected_carriers": ["material", "material"]
+    },
+    {
+      "id": "color_mixer",
+      "op_type": "color_mixer",
+      "op_node": {},
+      "required_input_count": 2,
+      "expected_carriers": ["fluid", "fluid"]
+    },
+    {
+      "id": "crystal_generator_no_preset",
+      "op_type": "crystal_generator",
+      "op_node": {},
+      "required_input_count": 2,
+      "expected_carriers": ["fluid", "material"]
+    },
+    {
+      "id": "crystal_generator_with_color",
+      "op_type": "crystal_generator",
+      "op_node": { "crystal_color": "g" },
+      "required_input_count": 1,
+      "expected_carriers": ["material", "material"]
+    },
+    {
+      "id": "swapper",
+      "op_type": "swapper",
+      "op_node": {},
+      "required_input_count": 2,
+      "expected_carriers": ["material", "material"]
+    },
+    {
+      "id": "stacker",
+      "op_type": "stacker",
+      "op_node": {},
+      "required_input_count": 2,
+      "expected_carriers": ["material", "material"]
+    },
+    {
+      "id": "cutter",
+      "op_type": "cutter",
+      "op_node": {},
+      "required_input_count": 1,
+      "expected_carriers": ["material", "material"]
+    },
+    {
+      "id": "rotate_cw",
+      "op_type": "rotate_cw",
+      "op_node": {},
+      "required_input_count": 1,
+      "expected_carriers": ["material", "material"]
+    }
+  ],
+  "input_edge_sort": [
+    {
+      "id": "slot_order_then_unslotted",
+      "operation_id": "op1",
+      "shape_nodes": [
+        { "id": "s1", "kind": "shape" },
+        { "id": "s2", "kind": "shape" },
+        { "id": "s3", "kind": "shape" }
+      ],
+      "input_edges": [
+        { "from": "s1", "to": "op1", "slot": "2" },
+        { "from": "s2", "to": "op1" },
+        { "from": "s3", "to": "op1", "slot": "1" }
+      ],
+      "expected_from_order": ["s3", "s1", "s2"]
+    },
+    {
+      "id": "same_slot_tiebreak_by_source_id",
+      "operation_id": "op1",
+      "shape_nodes": [
+        { "id": "b", "kind": "shape" },
+        { "id": "a", "kind": "shape" }
+      ],
+      "input_edges": [
+        { "from": "b", "to": "op1", "slot": "1" },
+        { "from": "a", "to": "op1", "slot": "1" }
+      ],
+      "expected_from_order": ["a", "b"]
+    }
+  ]
+}

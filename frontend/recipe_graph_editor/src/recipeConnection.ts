@@ -69,7 +69,8 @@ function inputEdgeSortKey(e: Edge): [boolean, string, string] {
   return [!hasSlot, slotKey, e.source];
 }
 
-function sortedInputEdgesToOperation(edges: Edge[], nodes: Node[], opId: string): Edge[] {
+/** Exported for fixture-driven alignment tests (`tests/recipeConnection.fixture.test.ts`). */
+export function sortedInputEdgesToOperation(edges: Edge[], nodes: Node[], opId: string): Edge[] {
   const list = edges.filter((e) => e.target === opId && edgeDomainKind(e) === "input");
   const rows = list
     .map((e) => ({ e, k: inputEdgeSortKey(e) }))
@@ -104,8 +105,11 @@ function requiredInputCountForCarrier(
   return getOperationInputArity(k);
 }
 
-/** Port carrier order must match ``recipe_graph_input_carrier.expected_input_carriers`` (Python). */
-function expectedInputCarriers(
+/**
+ * Port carrier order must match ``recipe_graph_input_carrier.expected_input_carriers`` (Python).
+ * Exported for fixture-driven alignment tests (`tests/recipeConnection.fixture.test.ts`).
+ */
+export function expectedInputCarriers(
   opKey: string,
   paintColor: string | undefined,
   crystalColor?: string,
@@ -113,7 +117,7 @@ function expectedInputCarriers(
   const k = opKey.trim();
   if (k === "painter") {
     if (String(paintColor ?? "").trim()) {
-      return ["material"];
+      return ["material", "material"];
     }
     return ["fluid", "material"];
   }
@@ -122,14 +126,14 @@ function expectedInputCarriers(
   }
   if (k === "crystal_generator") {
     if (String(crystalColor ?? "").trim()) {
-      return ["material"];
+      return ["material", "material"];
     }
     return ["fluid", "material"];
   }
   if (k === "swapper" || k === "stacker") {
     return ["material", "material"];
   }
-  return ["material"];
+  return ["material", "material"];
 }
 
 function outputLaneFromSourceHandle(sh: string | null | undefined): number {

@@ -107,6 +107,27 @@ def _parse_layer(layer_index: int, layer_str: str) -> tuple[NormalizedShapeCell,
         shape_ch = token[0]
         color_ch = token[1]
         shape_kind = _require_shape(shape_ch, layer_index, quadrant)
+        if shape_kind.code == "P":
+            if color_ch != "-":
+                raise ShapeCodeParseError(
+                    f"pin quadrant must be P-, got {token!r} "
+                    f"in layer {layer_index} quadrant {quadrant}",
+                    None,
+                )
+            pin_color_kind = COLOR_KINDS["u"]
+            cells.append(
+                NormalizedShapeCell(
+                    quadrant_index=quadrant,
+                    position=quadrant_at_index(quadrant),
+                    shape_code="P",
+                    color_code="-",
+                    shape_kind=shape_kind.solver_kind,
+                    color_kind=pin_color_kind.solver_kind,
+                    raw_token="P-",
+                )
+            )
+            continue
+
         color_kind = _require_color(color_ch, layer_index, quadrant)
         _validate_token_pair(layer_index, quadrant, token, shape_kind, color_kind)
         cells.append(

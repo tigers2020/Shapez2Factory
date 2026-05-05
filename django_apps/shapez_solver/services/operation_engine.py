@@ -163,10 +163,10 @@ class OperationEngine:
 
         pin_bottom = ShapeLayer(
             quadrants=(
-                ShapePart(kind="P", color="u", material="pin"),
-                ShapePart(kind="P", color="u", material="pin"),
-                ShapePart(kind="P", color="u", material="pin"),
-                ShapePart(kind="P", color="u", material="pin"),
+                ShapePart(kind="P", color="-", material="pin"),
+                ShapePart(kind="P", color="-", material="pin"),
+                ShapePart(kind="P", color="-", material="pin"),
+                ShapePart(kind="P", color="-", material="pin"),
             )
         )
         return Shape(layers=(pin_bottom, *shape.layers)).strip_top_empty_layers()

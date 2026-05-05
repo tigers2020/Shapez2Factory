@@ -497,7 +497,7 @@ def demo(request: HttpRequest) -> HttpResponse:
         "RuRuRuRu:WrCrRgSy",
         "--RuRuRu",
         "CuCuCuCu",
-        "PuPuPuPu",
+        "P-P-P-P-",
         "XuXuXuXu",
         "PrPrPrPr",
     )

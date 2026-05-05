@@ -106,7 +106,7 @@ def test_planner_memoizes_repeated_shape_requests() -> None:
 
 def test_throughput_rejects_unsupported_pin_and_crystal_targets() -> None:
     with pytest.raises(UnsupportedTargetError):
-        _throughput("PuPuPuPu")
+        _throughput("P-P-P-P-")
 
     with pytest.raises(UnsupportedTargetError):
         _throughput("cu----cu")

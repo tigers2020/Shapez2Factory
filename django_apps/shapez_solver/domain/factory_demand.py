@@ -132,6 +132,8 @@ def _uncolored_skeleton(target: Shape) -> Shape:
 def _uncolored_part(part: ShapePart) -> ShapePart:
     if part.is_empty:
         return part
+    if part.is_pin:
+        return ShapePart(kind=part.kind, color="-", material=part.material)
     return ShapePart(kind=part.kind, color="u", material=part.material)
 
 

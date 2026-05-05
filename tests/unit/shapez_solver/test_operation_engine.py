@@ -81,4 +81,4 @@ def test_pin_pusher_adds_bottom_pin_layer() -> None:
     engine = OperationEngine()
     (out,) = engine.apply(OperationType.PIN_PUSHER, (_shape("CuCuCuCu"),))
 
-    assert out.canonical_code == "PuPuPuPu:CuCuCuCu"
+    assert out.canonical_code == "P-P-P-P-:CuCuCuCu"

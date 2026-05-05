@@ -419,7 +419,7 @@ def test_apply_operation_splitter_two_identical_outputs() -> None:
 
 def test_apply_operation_pin_pusher_prepends_pin_layer() -> None:
     out = apply_operation(OperationType.PIN_PUSHER, ("CuCuCuCu",))
-    assert out == ("PuPuPuPu:CuCuCuCu",)
+    assert out == ("P-P-P-P-:CuCuCuCu",)
 
 
 def test_recompute_splitter_fills_two_downstream_shapes() -> None:
@@ -513,7 +513,7 @@ def test_recompute_pin_pusher_updates_downstream_shape() -> None:
     out, warnings = recompute_graph_document(doc)
     assert not warnings, warnings
     node = next(n for n in out["nodes"] if n["id"] == "s_out")
-    assert node["shape_code"] == "PuPuPuPu:CuCuCuCu"
+    assert node["shape_code"] == "P-P-P-P-:CuCuCuCu"
 
 
 def test_apply_operation_painter_requires_paint_color_kwarg() -> None:

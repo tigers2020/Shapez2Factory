@@ -103,6 +103,8 @@ def _shape_kind(part: ShapePart) -> str:
 
 
 def _color_kind(part: ShapePart) -> str:
+    if part.kind == "P" and part.color == "-":
+        return "uncolored"
     return {
         "-": "empty",
         "u": "uncolored",

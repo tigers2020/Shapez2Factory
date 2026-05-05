@@ -102,8 +102,22 @@ def test_wrong_layer_length_rejected() -> None:
 
 
 def test_non_colorable_shape_rejected_with_color() -> None:
-    with pytest.raises(ShapeCodeParseError, match="not colorable"):
+    with pytest.raises(ShapeCodeParseError, match="pin quadrant must be P-"):
         parse_shape_code_list("PrPrPrPr")
+
+
+def test_pin_pu_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="pin quadrant must be P-"):
+        parse_shape_code_list("PuPuPuPu")
+
+
+def test_pin_ok() -> None:
+    parsed = parse_shape_code_list("P-P-P-P-")
+    cell0 = parsed[0].layers[0].cells[0]
+    assert cell0.shape_kind == "pin"
+    assert cell0.raw_token == "P-"
+    assert cell0.color_code == "-"
+    assert cell0.color_kind == "uncolored"
 
 
 def test_emptiness_mismatch_rejected() -> None:
@@ -131,9 +145,11 @@ def test_empty_segment_rejected() -> None:
         parse_shape_code_list("[SuSuSuSu,]")
 
 
-def test_pin_uncolored_ok() -> None:
-    parsed = parse_shape_code_list("PuPuPuPu")
-    assert parsed[0].layers[0].cells[0].shape_kind == "pin"
+def test_pin_round_trips_through_pattern_codec() -> None:
+    pattern = parse_shape_code_list("P-P-P-P-:CuCuCuCu")[0]
+    shape = shape_from_pattern(pattern)
+    assert shape.canonical_code == "P-P-P-P-:CuCuCuCu"
+    assert pattern_from_shape(shape).normalized_code == "P-P-P-P-:CuCuCuCu"
 
 
 def test_shape_value_object_round_trips_through_pattern_codec() -> None:

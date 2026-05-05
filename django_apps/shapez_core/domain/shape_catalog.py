@@ -26,6 +26,7 @@ SHAPE_KINDS: dict[str, ShapeKind] = {
     "S": ShapeKind("S", "Star", "spike", colorable=True),
     "W": ShapeKind("W", "Diamond", "diamond", colorable=True),
     "c": ShapeKind("c", "Crystal", "crystal", colorable=True),
+    # Pin quadrants are spelled P- in shape codes; "-" here is not an empty quadrant.
     "P": ShapeKind("P", "Pin", "pin", colorable=False),
     "-": ShapeKind("-", "Empty", "empty", colorable=False, empty=True),
 }

@@ -67,7 +67,7 @@ def test_compute_base_demands_rejects_multi_layer_target() -> None:
 
 def test_compute_base_demands_rejects_pin_and_crystal_materials() -> None:
     with pytest.raises(UnsupportedFactoryDemandError, match="pin or crystal"):
-        compute_base_demands(_shape("PuPuPuPu"))
+        compute_base_demands(_shape("P-P-P-P-"))
 
     with pytest.raises(UnsupportedFactoryDemandError, match="pin or crystal"):
         compute_base_demands(_shape("cu----cu"))

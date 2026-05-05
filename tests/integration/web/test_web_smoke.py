@@ -109,14 +109,14 @@ def test_api_solver_solve_rejects_empty_code() -> None:
 def test_api_solver_solve_returns_structured_unsupported_error() -> None:
     response = Client().post(
         "/api/solver/solve/",
-        data={"code": "PuPuPuPu"},
+        data={"code": "P-P-P-P-"},
     )
 
     assert response.status_code == 200
     data = response.json()
     assert data["ok"] is False
     assert data["error"]["code"] == "UNSUPPORTED_TARGET"
-    assert data["error"]["details"]["target_shape_code"] == "PuPuPuPu"
+    assert data["error"]["details"]["target_shape_code"] == "P-P-P-P-"
 
 
 def test_api_shape_preview_ok() -> None:

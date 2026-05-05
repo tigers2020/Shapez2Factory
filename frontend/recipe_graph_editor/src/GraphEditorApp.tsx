@@ -410,7 +410,7 @@ function RecipeFlowBoard({
       edges={edges}
       fitView
       isValidConnection={isValidConnection}
-      maxZoom={1.8}
+      maxZoom={3.5}
       minZoom={0.2}
       nodeTypes={nodeTypes}
       nodes={nodes}

@@ -6,9 +6,6 @@ import {
   computeGroupedGraphLayout as computeGroupedGraphLayoutCore,
   computeGraphLayout as computeGraphLayoutCore,
   computeHorizontalPositions as computeHorizontalPositionsCore,
-  computeNodeDepths,
-  groupNodeIdsByDepth,
-  orderNodeIdsByBarycenter,
 } from "./graphLayoutEngine";
 import type { GraphInput } from "./types";
 import { SOLVER_LAYOUT_METRICS } from "./metrics";
@@ -21,7 +18,11 @@ export const COLUMN_GAP = M.columnGap;
 export const ROW_GAP = M.rowGap;
 export const GRAPH_PADDING = M.graphPadding;
 
-export { computeNodeDepths, groupNodeIdsByDepth, orderNodeIdsByBarycenter };
+export {
+  computeNodeDepths,
+  groupNodeIdsByDepth,
+  orderNodeIdsByBarycenter,
+} from "./graphLayoutEngine";
 
 export function computeHorizontalPositions(
   graph: GraphInput,

@@ -18,33 +18,40 @@ function pickTrimmedString(srv: Record<string, unknown>, key: string): string | 
   return v;
 }
 
+function applyOptionalPreviewStringField(
+  prev: Record<string, unknown>,
+  srv: Record<string, unknown>,
+  key: "preview_image_url" | "preview_alt",
+): void {
+  if (!(key in srv)) {
+    return;
+  }
+  const v = srv[key];
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (t) {
+      prev[key] = t;
+    } else {
+      delete prev[key];
+    }
+  } else if (v === null) {
+    delete prev[key];
+  }
+}
+
 function applyPreviewOverlay(prev: Record<string, unknown>, srv: Record<string, unknown>): void {
-  if ("preview_image_url" in srv) {
-    const v = srv.preview_image_url;
-    if (typeof v === "string") {
-      const t = v.trim();
-      if (t) {
-        prev.preview_image_url = t;
-      } else {
-        delete prev.preview_image_url;
-      }
-    } else if (v === null) {
-      delete prev.preview_image_url;
-    }
+  applyOptionalPreviewStringField(prev, srv, "preview_image_url");
+  applyOptionalPreviewStringField(prev, srv, "preview_alt");
+}
+
+function quantityFromServerValue(q: unknown): number {
+  if (typeof q === "number") {
+    return q;
   }
-  if ("preview_alt" in srv) {
-    const v = srv.preview_alt;
-    if (typeof v === "string") {
-      const t = v.trim();
-      if (t) {
-        prev.preview_alt = t;
-      } else {
-        delete prev.preview_alt;
-      }
-    } else if (v === null) {
-      delete prev.preview_alt;
-    }
+  if (typeof q === "string") {
+    return Number.parseInt(q, 10);
   }
+  return Number.NaN;
 }
 
 /** shape / intermediate / output 타일 — 서버 재계산 결과로 덮어쓴다. */
@@ -54,8 +61,7 @@ function applyShapeLikeSemanticOverlay(prev: Record<string, unknown>, srv: Recor
     prev.shape_code = code;
   }
   if ("quantity" in srv) {
-    const q = srv.quantity;
-    const n = typeof q === "number" ? q : Number.parseInt(String(q ?? ""), 10);
+    const n = quantityFromServerValue(srv.quantity);
     if (Number.isFinite(n) && n >= 1) {
       prev.quantity = Math.floor(n);
     }

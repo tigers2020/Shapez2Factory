@@ -26,12 +26,14 @@ export const RecipeEdge = memo(function RecipeEdge(props: EdgeProps) {
     data && typeof data === "object" && "domainKind" in data
       ? String((data as { domainKind?: string }).domainKind)
       : "";
-  const stroke =
-    dk === "delivery"
-      ? "rgb(251 146 60)"
-      : dk === "output"
-        ? "rgb(192 132 252)"
-        : "rgb(45 212 191)";
+  let stroke: string;
+  if (dk === "delivery") {
+    stroke = "rgb(251 146 60)";
+  } else if (dk === "output") {
+    stroke = "rgb(192 132 252)";
+  } else {
+    stroke = "rgb(45 212 191)";
+  }
   return (
     <BaseEdge
       id={id}

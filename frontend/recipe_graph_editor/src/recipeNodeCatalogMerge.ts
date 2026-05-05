@@ -1,5 +1,9 @@
 import type { Node } from "@xyflow/react";
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export type CatalogOperationRow = { value: string; label: string; icon: string };
 
 export function catalogIconByValue(rows: readonly CatalogOperationRow[]): Map<string, string> {
@@ -24,11 +28,9 @@ export function enrichNodesWithCatalogIcons(
       return n;
     }
     const raw = n.data;
-    const d =
-      raw && typeof raw === "object" && !Array.isArray(raw)
-        ? (raw as Record<string, unknown>)
-        : {};
-    const op = String(d.operation ?? "").trim();
+    const d = isPlainRecord(raw) ? raw : {};
+    const opRaw = d.operation;
+    const op = typeof opRaw === "string" ? opRaw.trim() : "";
     if (!op) {
       return n;
     }

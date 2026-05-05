@@ -8,6 +8,14 @@ import {
 import { editorLayerSortKey } from "./editorLayerSortKey";
 import { getEffectiveOperationInputArity } from "./operationArity";
 
+function trimmedStringField(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function recordField(obj: object, key: string): unknown {
+  return (obj as Record<string, unknown>)[key];
+}
+
 /** XYFlow는 보통 node.type을 채우지만, 비어 있으면 data.operation으로 연산 노드를 구분한다. */
 function editorReactFlowKind(n: Node): string {
   const raw = n.type;
@@ -17,7 +25,7 @@ function editorReactFlowKind(n: Node): string {
   }
   const d = n.data;
   if (d && typeof d === "object" && !Array.isArray(d)) {
-    const op = String((d as Record<string, unknown>).operation ?? "").trim();
+    const op = trimmedStringField(recordField(d, "operation"));
     if (op.length > 0) {
       return "operation";
     }
@@ -25,59 +33,66 @@ function editorReactFlowKind(n: Node): string {
   return "";
 }
 
-/** Matches `recipeFlowNodes` left inputs: painter / crystal 2-wire has in-1 above in. */
-function targetPortVisualRankForRecipeEdge(
-  nodes: Node[],
-  targetNodeId: string,
-  targetHandle: string | null | undefined,
-): number {
-  const th = targetHandle ?? "in";
-  const tgt = nodes.find((n) => n.id === targetNodeId);
-  if (!tgt || tgt.type !== "operation") {
-    if (th === "in") {
-      return 0;
-    }
-    const m = /^in-(\d+)$/.exec(th);
-    if (m) {
-      return Number.parseInt(m[1], 10);
-    }
-    return 0;
-  }
-  const d = (tgt.data ?? {}) as Record<string, unknown>;
-  const op = String(d.operation ?? "").trim();
-  const inArity = getEffectiveOperationInputArity(op, d);
-  const twoWireFluidUpperShapeLower =
-    inArity >= 2 &&
-    ((op === "painter" && !String(d.paint_color ?? "").trim()) ||
-      (op === "crystal_generator" && !String(d.crystal_color ?? "").trim()));
+function parseInHandleSuffix(th: string): number | null {
+  const m = /^in-(\d+)$/.exec(th);
+  return m ? Number.parseInt(m[1], 10) : null;
+}
 
-  if (inArity < 2) {
+function targetPortRankForNonOperation(th: string): number {
+  if (th === "in") {
     return 0;
   }
-  if (twoWireFluidUpperShapeLower) {
-    if (th === "in-1") {
-      return 0;
-    }
-    if (th === "in" || th === "") {
-      return 1;
-    }
-    const m = /^in-(\d+)$/.exec(th);
-    if (m) {
-      return Number.parseInt(m[1], 10);
-    }
+  return parseInHandleSuffix(th) ?? 0;
+}
+
+function targetPortRankTwoWireFluidUpper(th: string): number {
+  if (th === "in-1") {
+    return 0;
+  }
+  if (th === "in" || th === "") {
     return 1;
   }
+  return parseInHandleSuffix(th) ?? 1;
+}
+
+function targetPortRankStandardOperation(th: string): number {
   if (th === "in" || th === "") {
     return 0;
   }
   if (th === "in-1") {
     return 1;
   }
-  const m = /^in-(\d+)$/.exec(th);
-  if (m) {
-    return Number.parseInt(m[1], 10);
+  return parseInHandleSuffix(th) ?? 0;
+}
+
+/** Matches `recipeFlowNodes` left inputs: painter / crystal 2-wire has in-1 above in. */
+function targetPortVisualRankForRecipeEdge(
+  nodes: Node[],
+  targetNodeId: string,
+  targetHandle: string = "in",
+): number {
+  const tgt = nodes.find((n) => n.id === targetNodeId);
+  if (tgt?.type !== "operation") {
+    return targetPortRankForNonOperation(targetHandle);
   }
-  return 0;
+  const rawData = tgt.data;
+  const d =
+    rawData && typeof rawData === "object" && !Array.isArray(rawData) ? rawData : {};
+  const op = trimmedStringField(recordField(d, "operation"));
+  const inArity = getEffectiveOperationInputArity(op, tgt.data);
+  const twoWireFluidUpperShapeLower =
+    inArity >= 2 &&
+    ((op === "painter" && trimmedStringField(recordField(d, "paint_color")).length === 0) ||
+      (op === "crystal_generator" &&
+        trimmedStringField(recordField(d, "crystal_color")).length === 0));
+
+  if (inArity < 2) {
+    return 0;
+  }
+  if (twoWireFluidUpperShapeLower) {
+    return targetPortRankTwoWireFluidUpper(targetHandle);
+  }
+  return targetPortRankStandardOperation(targetHandle);
 }
 
 function reactFlowToGraph(nodes: Node[], edges: Edge[]): GraphInput {
@@ -97,7 +112,11 @@ function reactFlowToGraph(nodes: Node[], edges: Edge[]): GraphInput {
           to,
           sourceHandle: e.sourceHandle ?? null,
           targetHandle: e.targetHandle ?? null,
-          targetPortVisualRank: targetPortVisualRankForRecipeEdge(nodes, to, e.targetHandle),
+          targetPortVisualRank: targetPortVisualRankForRecipeEdge(
+            nodes,
+            to,
+            e.targetHandle ?? "in",
+          ),
         };
       }),
   };

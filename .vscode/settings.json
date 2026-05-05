@@ -1,4 +1,3 @@
 {
-  "python.defaultInterpreterPath": "${env:USERPROFILE}\\miniconda3\\envs\\shapez2solver\\python.exe",
-  "python.terminal.activateEnvironment": true
+  "css.lint.unknownAtRules": "ignore"
 }

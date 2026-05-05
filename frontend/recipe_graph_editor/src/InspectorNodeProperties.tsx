@@ -2,10 +2,10 @@ import type { Node } from "@xyflow/react";
 
 import { ru } from "./recipeUiStrings";
 
-type InspectorNodePropertiesProps = {
+type InspectorNodePropertiesProps = Readonly<{
   node: Node | undefined;
   onPatch: (nodeId: string, patch: Record<string, unknown>) => void;
-};
+}>;
 
 export function InspectorNodeProperties({ node, onPatch: _onPatch }: InspectorNodePropertiesProps) {
   if (!node) {

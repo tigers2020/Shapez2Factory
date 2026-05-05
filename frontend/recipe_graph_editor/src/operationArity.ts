@@ -36,10 +36,12 @@ export function getEffectiveOperationInputArity(
   }
   const d = data && typeof data === "object" && !Array.isArray(data) ? data : {};
   if (op === "painter") {
-    return String(d.paint_color ?? "").trim() ? 1 : 2;
+    const pc = d.paint_color;
+    return typeof pc === "string" && pc.trim() ? 1 : 2;
   }
   if (op === "crystal_generator") {
-    return String(d.crystal_color ?? "").trim() ? 1 : 2;
+    const cc = d.crystal_color;
+    return typeof cc === "string" && cc.trim() ? 1 : 2;
   }
   return ARITY_2.has(op) ? 2 : 1;
 }

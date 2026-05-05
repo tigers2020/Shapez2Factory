@@ -1,8 +1,6 @@
-@import "tailwindcss" source(none);
+@import "tailwindcss";
 @source "./";
 @source "../index.html";
-
-/* Explicit @source: ./ = src (React), ../index.html = Vite HTML shell. */
 
 /* XYFlow canvas fills parent when parent has explicit height */
 .rf-editor-canvas {

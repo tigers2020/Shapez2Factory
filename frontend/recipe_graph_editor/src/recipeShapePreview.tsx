@@ -13,7 +13,7 @@ export function RecipeShapePreview({
   previewAlt,
   previewImageUrl,
   variant,
-}: RecipeShapePreviewProps) {
+}: Readonly<RecipeShapePreviewProps>) {
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => {
     setImgFailed(false);

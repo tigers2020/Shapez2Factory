@@ -3,8 +3,8 @@ function getCookie(name: string): string | null {
     return null;
   }
   const parts = document.cookie.split(";");
-  for (let i = 0; i < parts.length; i += 1) {
-    const cookie = parts[i].trim();
+  for (const element of parts) {
+    const cookie = element.trim();
     if (cookie.startsWith(name + "=")) {
       return decodeURIComponent(cookie.substring(name.length + 1));
     }

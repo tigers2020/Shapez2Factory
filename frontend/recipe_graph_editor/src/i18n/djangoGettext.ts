@@ -8,15 +8,21 @@ declare global {
 }
 
 export function t(msgid: string): string {
-  if (typeof window !== "undefined" && typeof window.gettext === "function") {
-    return window.gettext(msgid);
+  if (
+    globalThis.window !== undefined &&
+    typeof globalThis.window.gettext === "function"
+  ) {
+    return globalThis.window.gettext(msgid);
   }
   return msgid;
 }
 
 export function tn(singular: string, plural: string, count: number): string {
-  if (typeof window !== "undefined" && typeof window.ngettext === "function") {
-    return window.ngettext(singular, plural, count);
+  if (
+    globalThis.window !== undefined &&
+    typeof globalThis.window.ngettext === "function"
+  ) {
+    return globalThis.window.ngettext(singular, plural, count);
   }
   return count === 1 ? singular : plural;
 }

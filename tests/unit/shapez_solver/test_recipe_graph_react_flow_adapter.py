@@ -118,6 +118,46 @@ def test_react_flow_round_trip_preserves_fractional_positions() -> None:
     assert s1["y"] == -3.5
 
 
+def test_domain_to_react_flow_two_output_source_handles() -> None:
+    """다출력 연산은 React Flow ``sourceHandle``을 레인별로 나눈다."""
+    raw = {
+        "schema_version": 1,
+        "nodes": [
+            {"id": "o1", "kind": "operation", "operation": "cutter", "x": 0, "y": 0},
+            {
+                "id": "s1",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 1,
+                "y": 0,
+            },
+            {
+                "id": "s2",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 2,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "o1", "to": "s1", "kind": "output", "slot": "0"},
+            {"from": "o1", "to": "s2", "kind": "output", "slot": "1"},
+        ],
+    }
+    doc = validate_graph_document(raw)
+    rf = domain_graph_to_react_flow(doc)
+    out_edges = [e for e in rf["edges"] if e.get("data", {}).get("domainKind") == "output"]
+    assert len(out_edges) == 2
+    handles = {e.get("sourceHandle") for e in out_edges}
+    assert handles == {"out", "out-1"}
+    back = validate_graph_document(react_flow_to_domain_graph(rf))
+    assert back == doc
+
+
 def test_domain_to_react_flow_delivery_edge_round_trip() -> None:
     raw = {
         "schema_version": 1,

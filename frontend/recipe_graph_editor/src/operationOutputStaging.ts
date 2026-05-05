@@ -48,16 +48,14 @@ export function ensureOperationOutputArtifacts(
       position: { x: bx + dx, y: by + yOff },
       data: { shape_code: "", quantity: 1, role: "intermediate" },
     });
-    const data: Record<string, unknown> = { domainKind: "output" };
-    if (want > 1) {
-      data.slot = String(slotIndex + 1);
-    }
-    const handleKey = "out_in";
+    const data: Record<string, unknown> = { domainKind: "output", slot: String(slotIndex) };
+    const sourceHandle = slotIndex === 0 ? "out" : `out-${slotIndex}`;
+    const handleKey = `${sourceHandle}_in`;
     nextEdges.push({
       id: `e-${opId}-${imId}-output-${handleKey}`,
       source: opId,
       target: imId,
-      sourceHandle: "out",
+      sourceHandle,
       targetHandle: "in",
       type: "recipe",
       data,

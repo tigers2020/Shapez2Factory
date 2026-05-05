@@ -16,12 +16,26 @@ import {
   type Node,
   type NodeChange,
 } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type MutableRefObject,
+} from "react";
 
 import { InspectorNodeProperties } from "./InspectorNodeProperties";
 import { NodeEditModal } from "./NodeEditModal";
 import { postRecipeGraphRecompute, type RecipeGraphRecomputeResponse } from "./recipeGraphApi";
 import { ensureOperationOutputArtifacts } from "./operationOutputStaging";
+import {
+  catalogIconByValue,
+  enrichNodesWithCatalogIcons,
+  type CatalogOperationRow,
+} from "./recipeNodeCatalogMerge";
 import {
   connectionToRecipeEdge,
   evaluateRecipeConnection,
@@ -37,9 +51,13 @@ import { layoutNodesInColumns } from "./recipeGraphAutoLayout";
 import { cleanupAfterNodeRemovals } from "./recipeGraphNodeCleanup";
 import { loadRecipeNotes, saveRecipeNotes } from "./recipeGraphNotesStorage";
 import { applyValidationIssuesToNodes } from "./validationIssuesNodes";
+import { ru } from "./recipeUiStrings";
 
 /** 새 소스 자재 노드에 넣을 기본 shape 코드. */
 const DEFAULT_NEW_SOURCE_SHAPE_CODE = "CuCuCuCu";
+
+/** ``recipeFlowNodes`` 타일 ``h-14 w-14`` (56px) 절반 — 뷰포트 중앙에 노드 중심을 맞출 때 보정. */
+const RECIPE_NODE_TILE_HALF_PX = 28;
 
 /** 팔레트 → React Flow 캔버스 커스텀 DnD MIME (브라우저 호환용 짧은 타입). */
 const RECIPE_PALETTE_DND_OP = "application/x-shapez-recipe-graph-op";
@@ -60,11 +78,7 @@ export type GraphBootstrap = {
   macro_step_count?: number;
 };
 
-export type CatalogOperationRow = {
-  value: string;
-  label: string;
-  icon: string;
-};
+export type { CatalogOperationRow } from "./recipeNodeCatalogMerge";
 
 type GraphEditorAppProps = {
   recipeId: number;
@@ -86,13 +100,13 @@ function reactFlowEmptyHint(
   }
   const st = bootstrap?.react_flow_initial_status;
   if (st === "invalid") {
-    return "저장된 graph_document가 스키마 검증에 실패했습니다. Admin 또는 API로 JSON을 고친 뒤 다시 열어 주세요.";
+    return ru("rfInvalidDoc");
   }
   const steps = bootstrap?.macro_step_count;
   if (typeof steps === "number" && steps > 0) {
-    return "캔버스에 노드가 없습니다. 좌측에서 소스·연산을 클릭하거나 캔버스로 드래그해 추가하세요. (DB 스텝 행과의 자동 동기화는 저장·재계산 시 별도 규칙입니다.)";
+    return ru("rfEmptyWithSteps");
   }
-  return "좌측 목록에서 연산 또는 빈 소스를 클릭·드래그해 노드를 추가하고, 핸들로 연결한 뒤 Dry-run/저장하세요.";
+  return ru("rfEmptyDefault");
 }
 
 function setGlobalStatus(msg: string, isError: boolean) {
@@ -171,7 +185,7 @@ function OperationPalettePanel({
           onChange={(e) => {
             setQuery(e.target.value);
           }}
-          placeholder="연산 검색…"
+          placeholder={ru("paletteSearchPh")}
           type="search"
           value={query}
         />
@@ -193,9 +207,9 @@ function OperationPalettePanel({
                   e.dataTransfer.effectAllowed = "copy";
                 }}
               >
-                <span className="font-mono text-slate-500">◇</span> 빈 소스 자재
+                <span className="font-mono text-slate-500">◇</span> {ru("emptySourceRow")}
                 <span className="mt-0.5 block text-[10px] text-slate-500">
-                  기본 {DEFAULT_NEW_SOURCE_SHAPE_CODE} — 더블클릭·재계산으로 수정
+                  {ru("emptySourceHint", { code: DEFAULT_NEW_SOURCE_SHAPE_CODE })}
                 </span>
               </button>
             </li>
@@ -226,8 +240,8 @@ function OperationPalettePanel({
                           disabled={!enabled}
                           title={
                             enabled
-                              ? `${o.value} — 클릭(격자 배치) 또는 캔버스로 드래그(놓은 위치)`
-                              : "이 연산은 recipe graph 엔진 재계산 목록에 없습니다."
+                              ? ru("opRowHintGridDrag", { value: o.value })
+                              : ru("opNotInEngine")
                           }
                           type="button"
                           draggable={enabled}
@@ -270,7 +284,7 @@ function OperationPalettePanel({
         })}
         {operations.length === 0 ? (
           <p className="text-[11px] leading-snug text-amber-200/80">
-            카탈로그 연산 목록을 불러오지 못했습니다. 페이지를 새로고침하거나 `macro-graph-initial-catalog` 스크립트를 확인하세요.
+            {ru("catalogLoadError")}
           </p>
         ) : null}
       </div>
@@ -278,10 +292,7 @@ function OperationPalettePanel({
         <p className="font-mono text-[10px] uppercase tracking-wider text-amber-300/80">
           Quick access
         </p>
-        <p className="mt-1 text-[11px] leading-snug text-slate-500">
-          클릭하면 격자 위치에 추가됩니다. 캔버스로 드래그하면 놓은 좌표에 배치됩니다(연산은 출력
-          intermediate까지 자동 생성).
-        </p>
+        <p className="mt-1 text-[11px] leading-snug text-slate-500">{ru("paletteHelpP1")}</p>
       </div>
     </aside>
   );
@@ -317,10 +328,12 @@ type RecipeFlowBoardProps = {
   onSelectionChange: (p: { nodes: Node[]; edges: Edge[] }) => void;
   onDropOperationFromPalette: (operation: string, position: { x: number; y: number }) => void;
   onDropSourceFromPalette: (position: { x: number; y: number }) => void;
+  getViewportCenterFlowRef: MutableRefObject<(() => { x: number; y: number }) | null>;
 };
 
 function RecipeFlowBoard({
   edges,
+  getViewportCenterFlowRef,
   isValidConnection,
   nodes,
   onConnect,
@@ -334,6 +347,27 @@ function RecipeFlowBoard({
   const nodeTypes = useMemo(() => recipeNodeTypes, []);
   const edgeTypes = useMemo(() => recipeEdgeTypes, []);
   const { screenToFlowPosition } = useReactFlow();
+
+  useLayoutEffect(() => {
+    getViewportCenterFlowRef.current = () => {
+      const pane = document.querySelector(".rf-editor-canvas .react-flow") as HTMLElement | null;
+      if (!pane) {
+        return { x: 200, y: 160 };
+      }
+      const r = pane.getBoundingClientRect();
+      const p = screenToFlowPosition({
+        x: r.left + r.width / 2,
+        y: r.top + r.height / 2,
+      });
+      return {
+        x: p.x - RECIPE_NODE_TILE_HALF_PX,
+        y: p.y - RECIPE_NODE_TILE_HALF_PX,
+      };
+    };
+    return () => {
+      getViewportCenterFlowRef.current = null;
+    };
+  }, [getViewportCenterFlowRef, screenToFlowPosition]);
 
   const onDragOver = useCallback((e: DragEvent) => {
     e.preventDefault();
@@ -403,11 +437,17 @@ type GraphCanvasPanelProps = {
   onDropOperationFromPalette: (operation: string, position: { x: number; y: number }) => void;
   onDropSourceFromPalette: (position: { x: number; y: number }) => void;
   onAutoArrange: () => void;
+  catalogOperations: CatalogOperationRow[];
+  engineOperationIds: readonly string[];
+  getViewportCenterFlowRef: MutableRefObject<(() => { x: number; y: number }) | null>;
 };
 
 function GraphCanvasPanel({
+  catalogOperations,
   edges,
   emptyHint,
+  engineOperationIds,
+  getViewportCenterFlowRef,
   isValidConnection,
   nodes,
   onConnect,
@@ -513,6 +553,7 @@ function GraphCanvasPanel({
         <ReactFlowProvider>
           <RecipeFlowBoard
             edges={edges}
+            getViewportCenterFlowRef={getViewportCenterFlowRef}
             isValidConnection={isValidConnection}
             nodes={nodes}
             onConnect={onConnect}
@@ -527,6 +568,8 @@ function GraphCanvasPanel({
         {editingNode && editModal ? (
           <NodeEditModal
             anchor={{ left: editModal.left, top: editModal.top }}
+            catalogOperations={catalogOperations}
+            engineOperationIds={engineOperationIds}
             node={editingNode}
             onApply={handleApplyPatch}
             onClose={closeModal}
@@ -574,17 +617,17 @@ function InspectorStrip({
 
   const selectedSummary =
     selectedNodeIds.length === 0
-      ? "선택 없음."
+      ? ru("selNone")
       : selectedNodeIds.length === 1
-        ? `1개 · ${selectedNodeIds[0]}`
-        : `${selectedNodeIds.length}개 노드 선택됨.`;
+        ? ru("selOne", { id: selectedNodeIds[0] })
+        : ru("selMulti", { n: selectedNodeIds.length });
 
   const propertiesSummary = useMemo(() => {
     if (selectedNodeIds.length === 0) {
-      return "노드를 선택하면 요약이 표시됩니다.";
+      return ru("summaryPickNode");
     }
     if (selectedNodeIds.length > 1) {
-      return "다중 선택 — 속성은 노드를 하나만 선택한 뒤 더블클릭으로 편집.";
+      return ru("summaryMultiEdit");
     }
     const n = firstSel;
     if (!n) {
@@ -596,28 +639,32 @@ function InspectorStrip({
         ? (n.data as Record<string, unknown>)
         : {};
     if (t === "operation") {
-      return `연산: ${String(d.operation ?? "?")}`;
+      return ru("kindSummaryOp", { op: String(d.operation ?? "?") });
     }
     if (t === "shape") {
-      return `소스 · 역할 ${String(d.role ?? "?")}`;
+      return ru("kindSummarySource", { role: String(d.role ?? "?") });
     }
     if (t === "intermediate") {
       const code = String(d.shape_code ?? "");
-      return code ? `중간 · ${code.slice(0, 36)}` : "중간 — dry-run 후 shape_code 채움";
+      return code
+        ? ru("kindSummaryMidCode", { code: code.slice(0, 36) })
+        : ru("kindSummaryMidEmpty");
     }
     if (t === "output") {
       const code = String(d.shape_code ?? "");
-      return code ? `납품 목표 · ${code.slice(0, 36)}` : "납품 목표 — shape_code 미정";
+      return code
+        ? ru("kindSummaryTargetCode", { code: code.slice(0, 36) })
+        : ru("kindSummaryTargetEmpty");
     }
-    return `${t} 타입`;
+    return ru("kindUnknown", { t });
   }, [firstSel, selectedNodeIds.length]);
 
   const validationSummary =
     validationOk === null
-      ? "Dry-run 또는 저장으로 서버 검증을 실행하세요."
+      ? ru("validationPrompt")
       : validationOk
-        ? "마지막 dry-run/save 기준 문제 없음."
-        : "마지막 결과에 검증 이슈가 있습니다. 풋터 메시지를 확인하세요.";
+        ? ru("validationOk")
+        : ru("validationIssues");
 
   const validationClass =
     validationOk === null
@@ -654,7 +701,7 @@ function InspectorStrip({
         <p className={`mt-1 text-[11px] leading-snug ${validationClass}`}>{validationSummary}</p>
         {connectionFeedback ? (
           <p className="mt-1 border-t border-slate-800 pt-1 text-[11px] leading-snug text-amber-200/90">
-            연결 시도: {connectionFeedback}
+            {ru("connFeedback")} {connectionFeedback}
           </p>
         ) : footerHint ? (
           <p className="mt-1 text-[10px] leading-snug text-slate-500">{footerHint}</p>
@@ -665,7 +712,7 @@ function InspectorStrip({
           Stats
         </p>
         <p className="mt-1 font-mono text-[11px] leading-snug text-slate-400">
-          노드 {nodeCount} · 엣지 {edgeCount} · 출력 {outputCount}
+          {ru("statsLine", { nodeCount, edgeCount, outputCount })}
         </p>
       </div>
       <div className="flex min-h-[72px] flex-col rounded border border-slate-700 bg-slate-950/80 p-2">
@@ -678,12 +725,12 @@ function InspectorStrip({
           onChange={(e) => {
             onNotesChange(e.target.value);
           }}
-          placeholder="로컬 메모(이 브라우저·레시피별만)"
+          placeholder={ru("notesPlaceholder")}
           spellCheck={true}
           value={notes}
         />
         <p className="mt-0.5 text-[9px] text-slate-600">
-          서버 미저장 · intermediate→output 납품 연결은 한 줄(delivery)만 허용됩니다.
+          {ru("notesFooter")}
         </p>
       </div>
     </div>
@@ -771,7 +818,21 @@ export function GraphEditorApp({
   const editHref = bootstrap?.staff_recipe_edit_url ?? "#";
   const recomputeUrl = bootstrap?.api_recipe_graph_recompute ?? "";
 
-  const [nodes, setNodes, rfOnNodesChange] = useNodesState(initialNodes);
+  const catalogIconByOp = useMemo(
+    () => catalogIconByValue(catalogOperations),
+    [catalogOperations],
+  );
+  const catalogIconByOpRef = useRef(catalogIconByOp);
+  catalogIconByOpRef.current = catalogIconByOp;
+
+  const getViewportCenterFlowRef = useRef<(() => { x: number; y: number }) | null>(null);
+
+  const seededNodes = useMemo(
+    () => enrichNodesWithCatalogIcons(initialNodes, catalogIconByOp),
+    [initialNodes, catalogIconByOp],
+  );
+
+  const [nodes, setNodes, rfOnNodesChange] = useNodesState(seededNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
@@ -861,7 +922,7 @@ export function GraphEditorApp({
           json.react_flow.nodes as Node[],
           json.validation?.issues,
         );
-        setNodes(withVal);
+        setNodes(enrichNodesWithCatalogIcons(withVal, catalogIconByOpRef.current));
         const nextEdges = json.react_flow.edges as Edge[];
         setEdges(
           nextEdges.map((e) => ({
@@ -968,21 +1029,25 @@ export function GraphEditorApp({
   const addOperationNode = useCallback(
     (operation: string) => {
       setNodes((nds) => {
-        const pos = paletteGridPosition(nds.length);
+        const pos = getViewportCenterFlowRef.current?.() ?? paletteGridPosition(nds.length);
         const id = newGraphNodeId("op");
-        const data: Record<string, unknown> = { operation };
+        const icon = catalogIconByOp.get(operation);
+        const data: Record<string, unknown> = { operation, ...(icon ? { icon } : {}) };
         if (operation === "painter") {
           data.paint_color = "r";
+        }
+        if (operation === "crystal_generator") {
+          data.crystal_color = "c";
         }
         return [...nds, { id, type: "operation", position: pos, data }];
       });
     },
-    [setNodes],
+    [catalogIconByOp, setNodes],
   );
 
   const addSourceShapeNode = useCallback(() => {
     setNodes((nds) => {
-      const pos = paletteGridPosition(nds.length);
+      const pos = getViewportCenterFlowRef.current?.() ?? paletteGridPosition(nds.length);
       const id = newGraphNodeId("src");
       return [
         ...nds,
@@ -1000,13 +1065,17 @@ export function GraphEditorApp({
     (operation: string, position: { x: number; y: number }) => {
       const engineSet = new Set(engineOperationIds);
       if (!engineSet.has(operation)) {
-        setGlobalStatus("엔진 재계산 목록에 없는 연산은 캔버스에 놓을 수 없습니다.", true);
+        setGlobalStatus(ru("opDropRejected"), true);
         return;
       }
       const id = newGraphNodeId("op");
-      const data: Record<string, unknown> = { operation };
+      const icon = catalogIconByOp.get(operation);
+      const data: Record<string, unknown> = { operation, ...(icon ? { icon } : {}) };
       if (operation === "painter") {
         data.paint_color = "r";
+      }
+      if (operation === "crystal_generator") {
+        data.crystal_color = "c";
       }
       setNodes((nds) => {
         const opNode: Node = {
@@ -1024,7 +1093,7 @@ export function GraphEditorApp({
         return syn.nodes;
       });
     },
-    [engineOperationIds, setEdges, setNodes, silentDryRunFromGraph],
+    [catalogIconByOp, engineOperationIds, setEdges, setNodes, silentDryRunFromGraph],
   );
 
   const dropSourceShapeAtPosition = useCallback(
@@ -1078,7 +1147,24 @@ export function GraphEditorApp({
         if ("paint_color" in patch && patch.paint_color === undefined) {
           delete next.paint_color;
         }
-        if ("shape_code" in patch || "operation" in patch || "paint_color" in patch) {
+        if ("crystal_color" in patch && patch.crystal_color === undefined) {
+          delete next.crystal_color;
+        }
+        if ("operation" in patch) {
+          const op = String(patch.operation ?? "").trim();
+          const ic = catalogIconByOpRef.current.get(op);
+          if (ic) {
+            next.icon = ic;
+          } else {
+            delete next.icon;
+          }
+        }
+        if (
+          "shape_code" in patch ||
+          "operation" in patch ||
+          "paint_color" in patch ||
+          "crystal_color" in patch
+        ) {
           delete next.preview_image_url;
           delete next.preview_alt;
         }
@@ -1181,8 +1267,11 @@ export function GraphEditorApp({
           operations={catalogOperations}
         />
         <GraphCanvasPanel
+          catalogOperations={catalogOperations}
           edges={edges}
           emptyHint={emptyHint}
+          engineOperationIds={engineOperationIds}
+          getViewportCenterFlowRef={getViewportCenterFlowRef}
           isValidConnection={isValidConnection}
           nodes={nodes}
           onConnect={onConnect}

@@ -41,6 +41,7 @@ def _annotate_rf_edges_for_react_flow(
     rf_edges: list[dict[str, Any]], edges_raw: list[Any]
 ) -> None:
     input_counts: dict[str, int] = {}
+    output_counts: dict[str, int] = {}
     for ed, raw in zip(rf_edges, edges_raw, strict=True):
         if not isinstance(raw, dict):
             continue
@@ -51,7 +52,18 @@ def _annotate_rf_edges_for_react_flow(
             input_counts[tid] = idx + 1
             if idx > 0:
                 ed["targetHandle"] = f"in-{idx}"
-        elif ek in ("output", "delivery"):
+        elif ek == "output":
+            src = str(raw["from"])
+            slot_raw = raw.get("slot")
+            if slot_raw is not None and str(slot_raw).strip() != "" and str(slot_raw).isdigit():
+                lane = int(str(slot_raw))
+                ed["sourceHandle"] = "out" if lane == 0 else f"out-{lane}"
+            else:
+                lane = output_counts.get(src, 0)
+                output_counts[src] = lane + 1
+                ed["sourceHandle"] = "out" if lane == 0 else f"out-{lane}"
+            ed["targetHandle"] = "in"
+        elif ek == "delivery":
             ed["sourceHandle"] = "out"
             ed["targetHandle"] = "in"
         ed["type"] = "recipe"
@@ -125,6 +137,8 @@ def _domain_node_to_rf(node: dict[str, Any]) -> dict[str, Any]:
         data = {"operation": str(node["operation"])}
         if "paint_color" in node and node["paint_color"] is not None:
             data["paint_color"] = str(node["paint_color"])
+        if "crystal_color" in node and node["crystal_color"] is not None:
+            data["crystal_color"] = str(node["crystal_color"])
     else:
         data = {
             "shape_code": str(node.get("shape_code", "")),
@@ -166,6 +180,8 @@ def _rf_node_to_domain(rf: dict[str, Any]) -> dict[str, Any]:
         }
         if "paint_color" in data:
             out["paint_color"] = str(data["paint_color"])
+        if "crystal_color" in data:
+            out["crystal_color"] = str(data["crystal_color"])
         return out
     role_map = {"shape": "source", "intermediate": "intermediate", "output": "target"}
     if ntype not in role_map:

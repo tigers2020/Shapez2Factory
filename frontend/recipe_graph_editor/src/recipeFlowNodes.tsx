@@ -1,7 +1,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { useState } from "react";
 
-import { getOperationInputArity } from "./operationArity";
+import { getOperationInputArity, getOperationOutputCount } from "./operationArity";
+import { RecipeShapePreview } from "./recipeShapePreview";
 
 type ShapeNodeData = {
   shape_code?: string;
@@ -15,18 +15,20 @@ type ShapeNodeData = {
 type OperationNodeData = {
   operation?: string;
   paint_color?: string;
+  crystal_color?: string;
+  icon?: string;
   validationSeverity?: "error" | "warning";
 };
 
-/** 넓은 연결 히트 영역(카드 위에서도 잡히도록). */
-const handleClass =
-  "!flex !h-9 !w-9 !min-h-9 !min-w-9 !items-center !justify-center !border !border-slate-500/70 !bg-slate-800/90 !rounded-full";
+/** 타일 가장자리에 붙는 좁은 소켓; 히트는 connectionRadius에 의존 */
+const socketHandleClass =
+  "!h-5 !w-2 !min-h-0 !min-w-0 !rounded-sm !border !border-slate-400/85 !bg-slate-700/95 !shadow-none";
 
 function validationBadge(severity: "error" | "warning" | undefined) {
   if (severity === "error") {
     return (
       <span
-        className="absolute -right-1 -top-1 rounded border border-rose-600/80 bg-rose-950/95 px-1 font-mono text-[8px] font-semibold uppercase tracking-wide text-rose-200"
+        className="absolute -right-0.5 -top-0.5 z-10 rounded border border-rose-600/80 bg-rose-950/95 px-0.5 font-mono text-[7px] font-semibold uppercase tracking-wide text-rose-200"
         title="Validation error"
       >
         !
@@ -36,7 +38,7 @@ function validationBadge(severity: "error" | "warning" | undefined) {
   if (severity === "warning") {
     return (
       <span
-        className="absolute -right-1 -top-1 rounded border border-amber-600/70 bg-amber-950/95 px-1 font-mono text-[8px] font-semibold uppercase tracking-wide text-amber-100"
+        className="absolute -right-0.5 -top-0.5 z-10 rounded border border-amber-600/70 bg-amber-950/95 px-0.5 font-mono text-[7px] font-semibold uppercase tracking-wide text-amber-100"
         title="Validation warning"
       >
         ?
@@ -44,46 +46,6 @@ function validationBadge(severity: "error" | "warning" | undefined) {
     );
   }
   return null;
-}
-
-function MiniShapePreview({
-  code,
-  previewAlt,
-  previewImageUrl,
-}: {
-  code: string;
-  previewAlt?: string;
-  previewImageUrl?: string;
-}) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const url = typeof previewImageUrl === "string" ? previewImageUrl.trim() : "";
-  const short = code.trim().slice(0, 3) || "—";
-  if (url && !imgFailed) {
-    return (
-      <div
-        aria-hidden
-        className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-cyan-700/40 bg-slate-950"
-      >
-        <img
-          alt={previewAlt || code || "Shape preview"}
-          className="h-full w-full object-contain p-0.5"
-          loading="lazy"
-          src={url}
-          onError={() => {
-            setImgFailed(true);
-          }}
-        />
-      </div>
-    );
-  }
-  return (
-    <div
-      aria-hidden
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-cyan-700/40 bg-linear-to-br from-cyan-950/80 to-slate-900 font-mono text-[10px] font-semibold text-cyan-100/90"
-    >
-      {short}
-    </div>
-  );
 }
 
 function operationTitle(code: string): string {
@@ -108,45 +70,41 @@ const OP_ICON: Record<string, string> = {
   stacker: "⧈",
   painter: "◈",
   color_mixer: "◎",
+  crystal_generator: "✦",
 };
 
 function operationGlyph(op: string): string {
   return OP_ICON[op] ?? "◇";
 }
 
-const nodeShell = (selected: boolean, borderAccent: string) =>
+const tileRing = (selected: boolean, borderAccent: string) =>
   [
-    "relative min-w-[112px] max-w-[180px] rounded-xl border bg-slate-900/95 px-2.5 py-2 font-mono text-[10px] text-slate-100 shadow-lg transition-shadow",
+    "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border bg-slate-900/95 shadow-md transition-shadow",
     borderAccent,
     selected ? "ring-2 ring-cyan-400/75 ring-offset-1 ring-offset-slate-950" : "",
   ].join(" ");
+
+function shapeTooltip(code: string, qty: number, id: string, role?: string): string {
+  const parts = [id, role ? `role: ${role}` : "", code || "—", `×${qty}`].filter(Boolean);
+  return parts.join("\n");
+}
 
 export function ShapeNode(props: NodeProps) {
   const { data, id, selected } = props;
   const d = (data || {}) as ShapeNodeData;
   const code = String(d.shape_code ?? "");
   const qty = typeof d.quantity === "number" ? d.quantity : 1;
+  const role = typeof d.role === "string" ? d.role : "";
   return (
-    <div className={nodeShell(selected, "border-cyan-700/45")}>
+    <div className={tileRing(selected, "border-cyan-600/50")} title={shapeTooltip(code, qty, id, role)}>
       {validationBadge(d.validationSeverity)}
-      <div className="mb-1 flex items-start gap-2">
-        <MiniShapePreview
-          code={code}
-          previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
-          previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-cyan-400/90">
-            Source
-          </p>
-          <p className="truncate text-[11px] text-slate-100" title={code || "(empty)"}>
-            {code || "—"}
-          </p>
-          <p className="mt-0.5 text-[9px] text-slate-500">×{qty}</p>
-        </div>
-      </div>
-      <p className="truncate border-t border-slate-800/80 pt-1 text-[9px] text-slate-500">{id}</p>
-      <Handle className={handleClass} id="out" position={Position.Right} type="source" />
+      <RecipeShapePreview
+        code={code}
+        previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
+        previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
+        variant="tile"
+      />
+      <Handle className={socketHandleClass} id="out" position={Position.Right} type="source" />
     </div>
   );
 }
@@ -157,38 +115,26 @@ export function OperationNode(props: NodeProps) {
   const op = String(d.operation ?? "");
   const glyph = operationGlyph(op);
   const title = operationTitle(op);
-  const arity = getOperationInputArity(op);
+  const inArity = getOperationInputArity(op);
+  const outCount = getOperationOutputCount(op);
+  const iconUrl = typeof d.icon === "string" ? d.icon.trim() : "";
+  const tip = [id, title, d.paint_color ? `paint: ${d.paint_color}` : "", d.crystal_color ? `crystal: ${d.crystal_color}` : ""]
+    .filter(Boolean)
+    .join("\n");
   return (
-    <div className={nodeShell(selected, "border-purple-600/45")}>
+    <div className={tileRing(selected, "border-purple-500/55")} title={tip}>
       {validationBadge(d.validationSeverity)}
-      <div className="mb-1 flex items-center gap-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-purple-600/35 bg-purple-950/60 text-sm text-purple-100">
-          {glyph}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-purple-300/90">
-            Operation
-          </p>
-          <p className="truncate text-[11px] text-slate-100" title={op}>
-            {title}
-          </p>
-          {d.paint_color ? (
-            <p className="mt-0.5 text-[9px] text-amber-200/90">paint: {d.paint_color}</p>
-          ) : null}
-        </div>
-      </div>
-      <p className="truncate border-t border-slate-800/80 pt-1 text-[9px] text-slate-500">{id}</p>
-      {arity >= 2 ? (
+      {inArity >= 2 ? (
         <>
           <Handle
-            className={handleClass}
+            className={socketHandleClass}
             id="in"
             position={Position.Left}
             style={{ top: "32%" }}
             type="target"
           />
           <Handle
-            className={handleClass}
+            className={socketHandleClass}
             id="in-1"
             position={Position.Left}
             style={{ top: "68%" }}
@@ -197,14 +143,48 @@ export function OperationNode(props: NodeProps) {
         </>
       ) : (
         <Handle
-          className={handleClass}
+          className={socketHandleClass}
           id="in"
           position={Position.Left}
           style={{ top: "50%", transform: "translateY(-50%)" }}
           type="target"
         />
       )}
-      <Handle className={handleClass} id="out" position={Position.Right} type="source" />
+      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded border border-purple-600/40 bg-purple-950/50">
+        {iconUrl ? (
+          <img alt="" className="h-full w-full object-contain p-0.5" height={40} src={iconUrl} width={40} />
+        ) : (
+          <span className="text-lg text-purple-100/95" aria-hidden>
+            {glyph}
+          </span>
+        )}
+      </div>
+      {outCount >= 2 ? (
+        <>
+          <Handle
+            className={socketHandleClass}
+            id="out"
+            position={Position.Right}
+            style={{ top: "32%" }}
+            type="source"
+          />
+          <Handle
+            className={socketHandleClass}
+            id="out-1"
+            position={Position.Right}
+            style={{ top: "68%" }}
+            type="source"
+          />
+        </>
+      ) : (
+        <Handle
+          className={socketHandleClass}
+          id="out"
+          position={Position.Right}
+          style={{ top: "50%", transform: "translateY(-50%)" }}
+          type="source"
+        />
+      )}
     </div>
   );
 }
@@ -213,28 +193,19 @@ export function IntermediateNode(props: NodeProps) {
   const { data, id, selected } = props;
   const d = (data || {}) as ShapeNodeData;
   const code = String(d.shape_code ?? "");
+  const qty = typeof d.quantity === "number" ? d.quantity : 1;
+  const role = typeof d.role === "string" ? d.role : "intermediate";
   return (
-    <div className={nodeShell(selected, "border-teal-600/40")}>
+    <div className={tileRing(selected, "border-teal-600/50")} title={shapeTooltip(code, qty, id, role)}>
       {validationBadge(d.validationSeverity)}
-      <div className="mb-1 flex items-start gap-2">
-        <MiniShapePreview
-          code={code}
-          previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
-          previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-teal-400/90">
-            Intermediate
-          </p>
-          <p className="text-[9px] text-slate-500">Produced by upstream op</p>
-          <p className="truncate text-[11px] text-slate-100" title={code || "(pending)"}>
-            {code || "—"}
-          </p>
-        </div>
-      </div>
-      <p className="truncate border-t border-slate-800/80 pt-1 text-[9px] text-slate-500">{id}</p>
-      <Handle className={handleClass} id="in" position={Position.Left} type="target" />
-      <Handle className={handleClass} id="out" position={Position.Right} type="source" />
+      <RecipeShapePreview
+        code={code}
+        previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
+        previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
+        variant="tile"
+      />
+      <Handle className={socketHandleClass} id="in" position={Position.Left} type="target" />
+      <Handle className={socketHandleClass} id="out" position={Position.Right} type="source" />
     </div>
   );
 }
@@ -243,29 +214,18 @@ export function OutputNode(props: NodeProps) {
   const { data, id, selected } = props;
   const d = (data || {}) as ShapeNodeData;
   const code = String(d.shape_code ?? "");
+  const qty = typeof d.quantity === "number" ? d.quantity : 1;
+  const role = typeof d.role === "string" ? d.role : "target";
   return (
-    <div className={nodeShell(selected, "border-orange-500/55")}>
+    <div className={tileRing(selected, "border-orange-500/60")} title={shapeTooltip(code, qty, id, role)}>
       {validationBadge(d.validationSeverity)}
-      <div className="mb-1">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-orange-300/90">
-          Output
-        </p>
-        <p className="mt-1 text-[9px] text-slate-500">Target delivery</p>
-        <div className="mt-1 flex items-start gap-2">
-          <MiniShapePreview
-            code={code}
-            previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
-            previewImageUrl={
-              typeof d.preview_image_url === "string" ? d.preview_image_url : undefined
-            }
-          />
-          <p className="min-w-0 flex-1 truncate text-[11px] text-slate-100" title={code || "—"}>
-            {code || "—"}
-          </p>
-        </div>
-      </div>
-      <p className="truncate border-t border-slate-800/80 pt-1 text-[9px] text-slate-500">{id}</p>
-      <Handle className={handleClass} id="in" position={Position.Left} type="target" />
+      <RecipeShapePreview
+        code={code}
+        previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
+        previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
+        variant="tile"
+      />
+      <Handle className={socketHandleClass} id="in" position={Position.Left} type="target" />
     </div>
   );
 }

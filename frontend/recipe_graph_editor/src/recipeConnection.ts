@@ -2,6 +2,16 @@ import type { Connection, Edge, Node } from "@xyflow/react";
 
 import { getOperationInputArity } from "./operationArity";
 
+function isOperationMaterialOutputSourceHandle(h: string | null | undefined): boolean {
+  if (h == null || h === "") {
+    return true;
+  }
+  if (h === "out") {
+    return true;
+  }
+  return /^out-\d+$/.test(h);
+}
+
 function edgeDomainKind(e: Edge): string | undefined {
   const d = e.data;
   if (d && typeof d === "object" && "domainKind" in d) {
@@ -121,7 +131,7 @@ export function evaluateRecipeConnection(
   const opToIntermediate =
     st === "operation" &&
     tt === "intermediate" &&
-    c.sourceHandle === "out" &&
+    isOperationMaterialOutputSourceHandle(c.sourceHandle) &&
     (c.targetHandle === "in" || c.targetHandle == null);
 
   if (opToIntermediate) {
@@ -231,6 +241,19 @@ export function connectionToRecipeEdge(c: Connection, nodes: Node[]): Edge {
   const data: Record<string, unknown> = { domainKind };
   if (domainKind === "input" && slotPart && /^\d+$/.test(slotPart) && Number(slotPart) >= 1) {
     data.slot = slotPart;
+  }
+  if (domainKind === "output") {
+    const sh = typeof c.sourceHandle === "string" ? c.sourceHandle : "out";
+    let lane = 0;
+    if (sh === "out") {
+      lane = 0;
+    } else {
+      const m = /^out-(\d+)$/.exec(sh);
+      if (m) {
+        lane = Number.parseInt(m[1], 10);
+      }
+    }
+    data.slot = String(lane);
   }
   const handleKey = `${c.sourceHandle ?? ""}_${c.targetHandle ?? ""}`;
   const eid = `e-${c.source}-${c.target}-${domainKind}-${handleKey}`;

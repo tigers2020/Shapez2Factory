@@ -11,7 +11,7 @@ export function getOperationOutputCount(operation: string): number {
   return OUTPUT_2.has(op) ? 2 : 1;
 }
 
-const ARITY_2 = new Set(["swapper", "stacker", "color_mixer"]);
+const ARITY_2 = new Set(["swapper", "stacker", "color_mixer", "crystal_generator"]);
 
 export function getOperationInputArity(operation: string): number {
   const op = operation.trim();

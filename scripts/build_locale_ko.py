@@ -381,7 +381,13 @@ KO_JS: dict[str, str] = {
     "Close editor": "편집기 닫기",
     "node": "노드",
     "paint_color (single char)": "paint_color (한 글자)",
-    "crystal_color (single char)": "crystal_color (한 글자)",
+    "crystal_color (one letter, optional)": "crystal_color (한 글자·선택)",
+    (
+        "Leave empty for two-wire mode: fluid on upper in-1, target shape on lower in "
+        "(same as painter)."
+    ): (
+        "비우면 2와선: 상단 in-1에 유체, 하단 in에 대상 도형(페인터와 동일)."
+    ),
     "(read-only)": "(읽기 전용)",
     "Cancel": "취소",
     "Apply": "적용",

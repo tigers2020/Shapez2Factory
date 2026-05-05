@@ -11,6 +11,8 @@ from typing import Any, Protocol
 from django.conf import settings
 from django.urls import reverse
 
+from django_apps.web.constants import WEB_GRAPH_PREVIEW_TIMEOUT_SECONDS
+
 
 @dataclass(frozen=True, slots=True)
 class GraphPreview:
@@ -130,7 +132,6 @@ class PlaywrightPngGraphPreviewRenderer:
     VERSION = "v2"
     PRESET = "graph-tile-original"
     SIZE = "128x128"
-    TIMEOUT_SECONDS = 45
     BROKEN_PNG_SHA256 = "06677fd90bc53a5f0de1cca18046d60cae5aa72e7515aa9b6df8deb7099af9d9"
 
     def __init__(self) -> None:
@@ -139,7 +140,7 @@ class PlaywrightPngGraphPreviewRenderer:
         self._cache = _GraphPreviewCache(cache_dir, self.BROKEN_PNG_SHA256)
         self._prerenderer = _PlaywrightPrerenderer(
             script_path,
-            self.TIMEOUT_SECONDS,
+            WEB_GRAPH_PREVIEW_TIMEOUT_SECONDS,
             cache_dir,
         )
         self._generation_disabled = False

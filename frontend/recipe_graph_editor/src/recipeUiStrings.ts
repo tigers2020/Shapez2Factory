@@ -52,7 +52,9 @@ const EN = {
   titleNodeSuffix: "node",
   btnClose: "Close",
   paintColorHint: "Legacy paint_color: r, g, or b (or unset when using two inputs + fluid wire)",
-  crystalColorHint: "crystal_color (single char)",
+  crystalColorHint: "crystal_color (one letter, optional)",
+  crystalColorFallbackHint:
+    "Leave empty for two-wire mode: fluid on upper in-1, target shape on lower in (same as painter).",
   roleReadonly: "(read-only)",
   btnCancel: "Cancel",
   btnApply: "Apply",
@@ -80,6 +82,8 @@ const EN = {
   modalPreviewLabel: "Preview",
   modalNodeMeta: "Node id · role",
   modalUnknownOp: "not in catalog",
+  intermediateReadOnlyNotice:
+    "Operation outputs are determined by recompute; shape, carrier, and quantity cannot be edited here.",
 } as const;
 
 export type RecipeUiKey = keyof typeof EN;

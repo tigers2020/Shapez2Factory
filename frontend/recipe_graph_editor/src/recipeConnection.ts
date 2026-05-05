@@ -70,16 +70,27 @@ function sortedInputEdgesToOperation(edges: Edge[], nodes: Node[], opId: string)
   return rows.map((r) => r.e);
 }
 
-function requiredInputCountForCarrier(opKey: string, paintColor: string | undefined): number {
+function requiredInputCountForCarrier(
+  opKey: string,
+  paintColor: string | undefined,
+  crystalColor?: string,
+): number {
   const k = opKey.trim();
   if (k === "painter" && String(paintColor ?? "").trim()) {
+    return 1;
+  }
+  if (k === "crystal_generator" && String(crystalColor ?? "").trim()) {
     return 1;
   }
   return getOperationInputArity(k);
 }
 
 /** Port carrier order must match ``recipe_graph_input_carrier.expected_input_carriers`` (Python). */
-function expectedInputCarriers(opKey: string, paintColor: string | undefined): WireCarrier[] {
+function expectedInputCarriers(
+  opKey: string,
+  paintColor: string | undefined,
+  crystalColor?: string,
+): WireCarrier[] {
   const k = opKey.trim();
   if (k === "painter") {
     if (String(paintColor ?? "").trim()) {
@@ -90,7 +101,13 @@ function expectedInputCarriers(opKey: string, paintColor: string | undefined): W
   if (k === "color_mixer") {
     return ["fluid", "fluid"];
   }
-  if (k === "swapper" || k === "stacker" || k === "crystal_generator") {
+  if (k === "crystal_generator") {
+    if (String(crystalColor ?? "").trim()) {
+      return ["material"];
+    }
+    return ["fluid", "material"];
+  }
+  if (k === "swapper" || k === "stacker") {
     return ["material", "material"];
   }
   return ["material"];
@@ -178,8 +195,9 @@ export function isMaterialToOperationConnection(nodes: Node[], c: Connection): b
 }
 
 /**
- * XYFlow often snaps to the geometrically nearest handle; painter 2-wire still expects fluid on
- * ``in-1`` and shape on ``in``. Derive the target handle from the source wire carrier.
+ * XYFlow often snaps to the geometrically nearest handle; painter / crystal_generator 2-wire
+ * still expects fluid on ``in-1`` and shape on ``in``. Derive the target handle from the source
+ * wire carrier.
  */
 export function normalizeMaterialToPainterConnection(nodes: Node[], c: Connection): Connection {
   if (!c.source || !c.target || !isMaterialToOperationConnection(nodes, c)) {
@@ -191,12 +209,17 @@ export function normalizeMaterialToPainterConnection(nodes: Node[], c: Connectio
     return c;
   }
   const opKey = String((tn.data as { operation?: string } | undefined)?.operation ?? "").trim();
-  if (opKey !== "painter") {
+  if (opKey !== "painter" && opKey !== "crystal_generator") {
     return c;
   }
   const opData = (tn.data as Record<string, unknown>) ?? {};
   const paint = typeof opData.paint_color === "string" ? opData.paint_color : undefined;
-  if (String(paint ?? "").trim()) {
+  const crystal =
+    typeof opData.crystal_color === "string" ? opData.crystal_color : undefined;
+  if (opKey === "painter" && String(paint ?? "").trim()) {
+    return c;
+  }
+  if (opKey === "crystal_generator" && String(crystal ?? "").trim()) {
     return c;
   }
   const handle = nodeDataIsFluidCarrier(sn.data) ? "in-1" : "in";
@@ -204,7 +227,7 @@ export function normalizeMaterialToPainterConnection(nodes: Node[], c: Connectio
 }
 
 /**
- * RF 스냅샷에 ``targetHandle``이 빠지면 XYFlow가 첫 번째 소켓(페인터는 ``in-1`` 상단)에 묶인다.
+ * RF 스냅샷에 ``targetHandle``이 빠지면 XYFlow가 첫 번째 소켓(페인터·크리스털은 ``in-1`` 상단)에 묶인다.
  * 부트스트랩·재계산 응답 직후 재료/유체에 맞게 고친다.
  */
 export function ensurePainterTargetHandlesOnEdges(nodes: Node[], edges: Edge[]): Edge[] {
@@ -222,15 +245,20 @@ export function ensurePainterTargetHandlesOnEdges(nodes: Node[], edges: Edge[]):
       return e;
     }
     const opKey = String((tn.data as { operation?: string } | undefined)?.operation ?? "").trim();
-    if (opKey !== "painter") {
+    if (opKey !== "painter" && opKey !== "crystal_generator") {
       return e;
     }
     const opData = (tn.data as Record<string, unknown>) ?? {};
     const paint = typeof opData.paint_color === "string" ? opData.paint_color : undefined;
-    if (String(paint ?? "").trim()) {
+    const crystal =
+      typeof opData.crystal_color === "string" ? opData.crystal_color : undefined;
+    if (opKey === "painter" && String(paint ?? "").trim()) {
       return e;
     }
-    if (requiredInputCountForCarrier(opKey, paint) < 2) {
+    if (opKey === "crystal_generator" && String(crystal ?? "").trim()) {
+      return e;
+    }
+    if (requiredInputCountForCarrier(opKey, paint, crystal) < 2) {
       return e;
     }
     const want = nodeDataIsFluidCarrier(sn.data) ? "in-1" : "in";
@@ -336,7 +364,9 @@ export function evaluateRecipeConnection(
     const opKey = String((tn.data as { operation?: string } | undefined)?.operation ?? "");
     const opData = (tn.data as Record<string, unknown>) ?? {};
     const paint = typeof opData.paint_color === "string" ? opData.paint_color : undefined;
-    const need = requiredInputCountForCarrier(opKey, paint);
+    const crystal =
+      typeof opData.crystal_color === "string" ? opData.crystal_color : undefined;
+    const need = requiredInputCountForCarrier(opKey, paint, crystal);
     const incoming = edges.filter((e) => e.target === c.target && edgeDomainKind(e) === "input");
     if (incoming.length >= need) {
       return { ok: false, message: "This operation already has all required inputs." };
@@ -345,11 +375,14 @@ export function evaluateRecipeConnection(
     if (incoming.some((e) => (e.targetHandle ?? "in") === th)) {
       return { ok: false, message: "That operation input port is already used." };
     }
-    const expected = expectedInputCarriers(opKey, paint);
+    const expected = expectedInputCarriers(opKey, paint, crystal);
     if (need > 0 && expected.length > 0) {
       const k = opKey.trim();
       let want: WireCarrier | undefined;
-      if (k === "painter" && !String(paint ?? "").trim() && expected.length === 2) {
+      const twoWireFluidShape =
+        (k === "painter" && !String(paint ?? "").trim() && expected.length === 2) ||
+        (k === "crystal_generator" && !String(crystal ?? "").trim() && expected.length === 2);
+      if (twoWireFluidShape) {
         want = th === "in-1" ? "fluid" : "material";
       } else {
         const pending = pendingInputEdgeFromConnection(c);
@@ -362,14 +395,18 @@ export function evaluateRecipeConnection(
       if (want !== undefined) {
         const got: WireCarrier = nodeDataIsFluidCarrier(sn.data) ? "fluid" : "material";
         if (got !== want) {
-          if (k === "painter" && !String(paint ?? "").trim() && expected.length === 2) {
+          if (twoWireFluidShape) {
             const here =
               th === "in-1"
                 ? `port 1 (upper handle in-1) — fluid only`
                 : `port 0 (lower handle in) — shape (material) only`;
+            const opHint =
+              k === "painter"
+                ? "Painter"
+                : "Crystal generator (same ports as painter)";
             return {
               ok: false,
-              message: `This wire must be ${want} on ${here}. Painter: port 0 = shape on in (lower) · port 1 = fluid on in-1 (upper).`,
+              message: `This wire must be ${want} on ${here}. ${opHint}: shape on in (lower) · fluid on in-1 (upper).`,
             };
           }
           return {
@@ -465,7 +502,9 @@ export function getRecipeConnectEdgeRemovals(
       const opKey = String((tn.data as { operation?: string } | undefined)?.operation ?? "");
       const opData = (tn.data as Record<string, unknown>) ?? {};
       const paint = typeof opData.paint_color === "string" ? opData.paint_color : undefined;
-      const need = requiredInputCountForCarrier(opKey, paint);
+      const crystal =
+        typeof opData.crystal_color === "string" ? opData.crystal_color : undefined;
+      const need = requiredInputCountForCarrier(opKey, paint, crystal);
       if (incoming.length >= need) {
         ids.add(incoming[incoming.length - 1].id);
       }

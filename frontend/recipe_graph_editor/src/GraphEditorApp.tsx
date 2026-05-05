@@ -50,21 +50,25 @@ import { recipeEdgeTypes } from "./recipeFlowEdges";
 import { recipeNodeTypes } from "./recipeFlowNodes";
 import { PALETTE_CATEGORY_ORDER, paletteCategoryForOperation } from "./operationPaletteGroups";
 import { buildReactFlowSnapshot } from "./reactFlowSnapshot";
-import { layoutNodesInColumns } from "./recipeGraphAutoLayout";
+import { layoutNodesFromGraph } from "./recipeGraphAutoLayout";
 import { cleanupAfterNodeRemovals } from "./recipeGraphNodeCleanup";
 import { loadRecipeNotes, saveRecipeNotes } from "./recipeGraphNotesStorage";
+import { mergeSilentPreviewFromServer } from "./mergeSilentPreviewFromServer";
+import {
+  DEFAULT_NEW_SOURCE_SHAPE_CODE,
+  RECIPE_CONNECTION_WARN_THROTTLE_MS,
+  RECIPE_NODE_TILE_HALF_PX,
+  RECIPE_NOTES_SAVE_DEBOUNCE_MS,
+  RECIPE_PALETTE_DND_OP,
+  RECIPE_PALETTE_DND_SRC,
+  RECIPE_PALETTE_GRID_CELL_HEIGHT,
+  RECIPE_PALETTE_GRID_CELL_WIDTH,
+  RECIPE_PALETTE_GRID_COLUMNS,
+  RECIPE_PALETTE_GRID_ORIGIN_X,
+  RECIPE_PALETTE_GRID_ORIGIN_Y,
+} from "./constants";
 import { applyValidationIssuesToNodes } from "./validationIssuesNodes";
 import { ru } from "./recipeUiStrings";
-
-/** 새 소스 자재 노드에 넣을 기본 shape 코드. */
-const DEFAULT_NEW_SOURCE_SHAPE_CODE = "CuCuCuCu";
-
-/** ``recipeFlowNodes`` 타일 ``h-14 w-14`` (56px) 절반 — 뷰포트 중앙에 노드 중심을 맞출 때 보정. */
-const RECIPE_NODE_TILE_HALF_PX = 28;
-
-/** 팔레트 → React Flow 캔버스 커스텀 DnD MIME (브라우저 호환용 짧은 타입). */
-const RECIPE_PALETTE_DND_OP = "application/x-shapez-recipe-graph-op";
-const RECIPE_PALETTE_DND_SRC = "application/x-shapez-recipe-graph-src";
 
 export type ReactFlowInitialPayload = {
   version: number;
@@ -134,9 +138,12 @@ function newGraphNodeId(prefix: string): string {
 }
 
 function paletteGridPosition(index: number): { x: number; y: number } {
-  const col = index % 4;
-  const row = Math.floor(index / 4);
-  return { x: 48 + col * 200, y: 52 + row * 120 };
+  const col = index % RECIPE_PALETTE_GRID_COLUMNS;
+  const row = Math.floor(index / RECIPE_PALETTE_GRID_COLUMNS);
+  return {
+    x: RECIPE_PALETTE_GRID_ORIGIN_X + col * RECIPE_PALETTE_GRID_CELL_WIDTH,
+    y: RECIPE_PALETTE_GRID_ORIGIN_Y + row * RECIPE_PALETTE_GRID_CELL_HEIGHT,
+  };
 }
 
 function OperationPalettePanel({
@@ -876,7 +883,7 @@ export function GraphEditorApp({
     }
     notesSaveTimerRef.current = setTimeout(() => {
       saveRecipeNotes(recipeId, text);
-    }, 400);
+    }, RECIPE_NOTES_SAVE_DEBOUNCE_MS);
   }, [recipeId]);
 
   const outputCount = useMemo(() => nodes.filter((n) => n.type === "output").length, [nodes]);
@@ -915,7 +922,7 @@ export function GraphEditorApp({
         setConnectionFeedback(res.message);
       }
       const now = Date.now();
-      if (now - warnConnAtMs.current > 1200) {
+      if (now - warnConnAtMs.current > RECIPE_CONNECTION_WARN_THROTTLE_MS) {
         warnConnAtMs.current = now;
         setGlobalStatus(res.message, true);
       }
@@ -926,26 +933,91 @@ export function GraphEditorApp({
 
   const applyRecomputeJson = useCallback(
     (json: RecipeGraphRecomputeResponse, meta: { commit: boolean; silent?: boolean }) => {
+      // #region agent log
+      {
+        const srv0 = json.react_flow?.nodes?.[0] as Node | undefined;
+        fetch("http://127.0.0.1:7372/ingest/ad6134ab-fc67-480b-aac8-ecaa23f5f33d", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "56c1aa" },
+          body: JSON.stringify({
+            sessionId: "56c1aa",
+            location: "GraphEditorApp.tsx:applyRecomputeJson",
+            message: "applyRecomputeJson entry",
+            data: {
+              silent: !!meta.silent,
+              commit: meta.commit,
+              srvNodeCount: json.react_flow?.nodes?.length ?? 0,
+              srvFirstPos: srv0
+                ? { id: srv0.id, x: srv0.position?.x, y: srv0.position?.y }
+                : null,
+            },
+            timestamp: Date.now(),
+            hypothesisId: "H-C",
+          }),
+        }).catch(() => {});
+      }
+      // #endregion
+      if (meta.silent) {
+        // Do not replace server `react_flow.nodes` wholesale (positions can desync). Merge validation,
+        // server-derived node data (shape_code on intermediates, operation fields, previews), then icons.
+        setNodes((current) => {
+          const before = current.slice(0, 8).map((n) => ({
+            id: n.id,
+            x: n.position.x,
+            y: n.position.y,
+          }));
+          const withIssues = applyValidationIssuesToNodes(current, json.validation?.issues);
+          const withPreview = mergeSilentPreviewFromServer(
+            withIssues,
+            json.react_flow?.nodes as Node[] | undefined,
+          );
+          const next = enrichNodesWithCatalogIcons(withPreview, catalogIconByOpRef.current);
+          // #region agent log
+          {
+            let posChanged = false;
+            for (const b of before) {
+              const a = next.find((n) => n.id === b.id);
+              if (!a || a.position.x !== b.x || a.position.y !== b.y) {
+                posChanged = true;
+                break;
+              }
+            }
+            fetch("http://127.0.0.1:7372/ingest/ad6134ab-fc67-480b-aac8-ecaa23f5f33d", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "56c1aa" },
+              body: JSON.stringify({
+                sessionId: "56c1aa",
+                location: "GraphEditorApp.tsx:applyRecomputeJson:silent-setNodes",
+                message: "silent validation overlay on current nodes",
+                data: { beforeSample: before, posChanged },
+                timestamp: Date.now(),
+                hypothesisId: "H-A",
+              }),
+            }).catch(() => {});
+          }
+          // #endregion
+          return next;
+        });
+        const vok = json.validation?.ok;
+        setValidationOk(typeof vok === "boolean" ? vok : null);
+        return;
+      }
+
       if (json.react_flow?.nodes && Array.isArray(json.react_flow.edges)) {
-        const withVal = applyValidationIssuesToNodes(
-          json.react_flow.nodes as Node[],
-          json.validation?.issues,
-        );
-        setNodes(enrichNodesWithCatalogIcons(withVal, catalogIconByOpRef.current));
+        const serverNodes = json.react_flow.nodes as Node[];
         const rawEdges = json.react_flow.edges as Edge[];
-        const nextEdges = ensurePainterTargetHandlesOnEdges(withVal, rawEdges);
-        setEdges(
-          nextEdges.map((e) => ({
-            ...e,
-            type: e.type ?? "recipe",
-          })),
-        );
+        const issues = json.validation?.issues;
+
+        const withVal = applyValidationIssuesToNodes(serverNodes, issues);
+        setNodes(enrichNodesWithCatalogIcons(withVal, catalogIconByOpRef.current));
+        const nextEdges = ensurePainterTargetHandlesOnEdges(withVal, rawEdges).map((e) => ({
+          ...e,
+          type: e.type ?? "recipe",
+        }));
+        setEdges(nextEdges);
       }
       const vok = json.validation?.ok;
       setValidationOk(typeof vok === "boolean" ? vok : null);
-      if (meta.silent) {
-        return;
-      }
       const issues = json.validation?.issues;
       const issueCount = Array.isArray(issues) ? issues.length : 0;
       setFooterHint(
@@ -969,6 +1041,27 @@ export function GraphEditorApp({
         return;
       }
       try {
+        // #region agent log
+        {
+          const sample = nodeList.slice(0, 6).map((n) => ({
+            id: n.id,
+            x: n.position.x,
+            y: n.position.y,
+          }));
+          fetch("http://127.0.0.1:7372/ingest/ad6134ab-fc67-480b-aac8-ecaa23f5f33d", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "56c1aa" },
+            body: JSON.stringify({
+              sessionId: "56c1aa",
+              location: "GraphEditorApp.tsx:silentDryRunFromGraph",
+              message: "silent dry-run snapshot source positions",
+              data: { nodeCount: nodeList.length, sample },
+              timestamp: Date.now(),
+              hypothesisId: "H-B",
+            }),
+          }).catch(() => {});
+        }
+        // #endregion
         const rf = buildReactFlowSnapshot(nodeList, edgeList);
         const json = await postRecipeGraphRecompute(recomputeUrl, { react_flow: rf });
         applyRecomputeJson(json, { commit: false, silent: true });
@@ -1050,9 +1143,6 @@ export function GraphEditorApp({
         const id = newGraphNodeId("op");
         const icon = catalogIconByOp.get(operation);
         const data: Record<string, unknown> = { operation, ...(icon ? { icon } : {}) };
-        if (operation === "crystal_generator") {
-          data.crystal_color = "c";
-        }
         return [...nds, { id, type: "operation", position: pos, data }];
       });
     },
@@ -1085,9 +1175,6 @@ export function GraphEditorApp({
       const id = newGraphNodeId("op");
       const icon = catalogIconByOp.get(operation);
       const data: Record<string, unknown> = { operation, ...(icon ? { icon } : {}) };
-      if (operation === "crystal_generator") {
-        data.crystal_color = "c";
-      }
       setNodes((nds) => {
         const opNode: Node = {
           id,
@@ -1134,7 +1221,28 @@ export function GraphEditorApp({
       if (nds.length === 0) {
         return nds;
       }
-      const next = layoutNodesInColumns(nds);
+      const next = layoutNodesFromGraph(nds, edgesRef.current);
+      // #region agent log
+      {
+        const sample = next.slice(0, 6).map((n) => ({
+          id: n.id,
+          x: n.position.x,
+          y: n.position.y,
+        }));
+        fetch("http://127.0.0.1:7372/ingest/ad6134ab-fc67-480b-aac8-ecaa23f5f33d", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "56c1aa" },
+          body: JSON.stringify({
+            sessionId: "56c1aa",
+            location: "GraphEditorApp.tsx:autoArrangeNodes",
+            message: "after layoutNodesFromGraph",
+            data: { sample },
+            timestamp: Date.now(),
+            hypothesisId: "H-E",
+          }),
+        }).catch(() => {});
+      }
+      // #endregion
       queueMicrotask(() => {
         void silentDryRunFromGraph(next, edgesRef.current);
       });
@@ -1144,6 +1252,10 @@ export function GraphEditorApp({
 
   const patchNodeData = useCallback(
     (nodeId: string, patch: Record<string, unknown>) => {
+      const targetPre = nodesRef.current.find((x) => x.id === nodeId);
+      if (targetPre?.type === "intermediate") {
+        return;
+      }
       const edgesSnapshot = edgesRef.current;
       setNodes((nds) => {
         const n = nds.find((x) => x.id === nodeId);

@@ -98,7 +98,10 @@ OPERATION_CATALOG = MappingProxyType(
             icon="crystal-generator.png",
             input_count=2,
             output_count=1,
-            description="Generates crystals in eligible gaps using the provided color.",
+            description=(
+                "Fills gaps and pins with crystals using crystal_color on the node, "
+                "or fluid (in-1) + target shape (in) like the painter."
+            ),
         ),
     }
 )

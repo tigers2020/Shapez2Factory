@@ -4,13 +4,15 @@ import {
   computeGraphLayout,
 } from "../solver_graph_layout.js?v=20260504-pinned-overlap";
 
-const PREVIEW_HEIGHT = 104;
-const EDGE_ELBOW_PADDING = 44;
-const EDGE_PORT_SPACING = 30;
-const EDGE_LABEL_WIDTH = 90;
-const EDGE_LABEL_HEIGHT = 22;
-const EDGE_LANE_SPACING = 18;
-const EDGE_LABEL_STAGGER = 18;
+import {
+  GRAPH_MARKUP_EDGE_ELBOW_PADDING,
+  GRAPH_MARKUP_EDGE_LABEL_HEIGHT,
+  GRAPH_MARKUP_EDGE_LABEL_STAGGER,
+  GRAPH_MARKUP_EDGE_LABEL_WIDTH,
+  GRAPH_MARKUP_EDGE_LANE_SPACING,
+  GRAPH_MARKUP_EDGE_PORT_SPACING,
+  GRAPH_MARKUP_PREVIEW_HEIGHT,
+} from "./constants.js?v=20260502-graph-ui-2";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -131,7 +133,7 @@ function renderShapeGraphNode(node, position) {
       <div class="w-full rounded-2xl bg-black/30 p-2 ring-1 ring-cyan-400/15">
         <div
           class="overflow-hidden rounded-xl border border-slate-800 bg-slate-950"
-          style="height: ${PREVIEW_HEIGHT}px;"
+          style="height: ${GRAPH_MARKUP_PREVIEW_HEIGHT}px;"
         >
           ${renderShapePreview(node)}
         </div>
@@ -206,7 +208,7 @@ function computePortOffset(index, count) {
   if (!Number.isFinite(count) || count <= 1) {
     return 0;
   }
-  return (index - (count - 1) / 2) * EDGE_PORT_SPACING;
+  return (index - (count - 1) / 2) * GRAPH_MARKUP_EDGE_PORT_SPACING;
 }
 
 function renderOperationPortDots(inputCount, outputCount, nodeId) {
@@ -255,10 +257,10 @@ export function computeEdgeGeometry(edge, fromNode, toNode, edgeIndex = 0) {
   const fromAnchor = resolveEdgeAnchor(fromNode, edge, "from");
   const toAnchor = resolveEdgeAnchor(toNode, edge, "to");
   const laneDirection = edgeIndex % 2 === 0 ? 1 : -1;
-  const laneOffset = (Math.floor(edgeIndex / 2) + 1) * EDGE_LANE_SPACING * laneDirection;
+  const laneOffset = (Math.floor(edgeIndex / 2) + 1) * GRAPH_MARKUP_EDGE_LANE_SPACING * laneDirection;
   const elbowX = Math.max(
-    fromAnchor.x + EDGE_ELBOW_PADDING + Math.max(laneOffset, 0),
-    toAnchor.x - EDGE_ELBOW_PADDING + Math.min(laneOffset, 0),
+    fromAnchor.x + GRAPH_MARKUP_EDGE_ELBOW_PADDING + Math.max(laneOffset, 0),
+    toAnchor.x - GRAPH_MARKUP_EDGE_ELBOW_PADDING + Math.min(laneOffset, 0),
   );
   const labelCenterX = elbowX + (toAnchor.x - elbowX) / 2;
   const labelOffsetDirection = parsePortIndex(edge.slot || edge.label) % 2 === 0 ? -1 : 1;
@@ -269,12 +271,12 @@ export function computeEdgeGeometry(edge, fromNode, toNode, edgeIndex = 0) {
     x2: toAnchor.x,
     y2: toAnchor.y,
     elbowX,
-    labelX: labelCenterX - EDGE_LABEL_WIDTH / 2,
+    labelX: labelCenterX - GRAPH_MARKUP_EDGE_LABEL_WIDTH / 2,
     labelY:
       toAnchor.y -
-      EDGE_LABEL_HEIGHT -
+      GRAPH_MARKUP_EDGE_LABEL_HEIGHT -
       6 +
-      labelOffsetDirection * (Math.floor(edgeIndex / 2) * EDGE_LABEL_STAGGER),
+      labelOffsetDirection * (Math.floor(edgeIndex / 2) * GRAPH_MARKUP_EDGE_LABEL_STAGGER),
   };
 }
 
@@ -302,7 +304,7 @@ function renderEdgeHitPath(geometry, edge) {
 
 function renderEdgeLabel(edge, geometry) {
   return `
-    <foreignObject x="${geometry.labelX}" y="${geometry.labelY}" width="${EDGE_LABEL_WIDTH}" height="${EDGE_LABEL_HEIGHT}" pointer-events="none" data-graph-edge-label>
+    <foreignObject x="${geometry.labelX}" y="${geometry.labelY}" width="${GRAPH_MARKUP_EDGE_LABEL_WIDTH}" height="${GRAPH_MARKUP_EDGE_LABEL_HEIGHT}" pointer-events="none" data-graph-edge-label>
       <div xmlns="http://www.w3.org/1999/xhtml" class="pointer-events-none rounded-full border border-slate-700 bg-slate-950/90 px-2 py-0.5 text-center text-[10px] text-slate-300">
         ${escapeHtml(edge.label || edge.slot || edge.kind)}
       </div>

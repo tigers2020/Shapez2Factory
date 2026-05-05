@@ -1,6 +1,5 @@
 import { disposeShapeGltfViewer, mountShapeGltfViewer } from "./shape_gltf_viewer.js";
-
-const DEBOUNCE_MS = 320;
+import { TIMELINE_DEBOUNCE_MS } from "./solver_timeline/constants.js";
 
 function clearViewerHost(host) {
   for (const el of [...host.querySelectorAll("[data-shape-gltf-viewer]")]) {
@@ -177,8 +176,8 @@ function initShapePreviewPanel(panel) {
   if (!viewersHost) {
     return;
   }
-  input.addEventListener("input", () => schedulePreview(panel, input, DEBOUNCE_MS));
-  input.addEventListener("change", () => schedulePreview(panel, input, DEBOUNCE_MS));
+  input.addEventListener("input", () => schedulePreview(panel, input, TIMELINE_DEBOUNCE_MS));
+  input.addEventListener("change", () => schedulePreview(panel, input, TIMELINE_DEBOUNCE_MS));
   schedulePreview(panel, input, 0);
 }
 

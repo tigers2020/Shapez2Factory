@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 
-import { getOperationInputArity, getOperationOutputCount } from "./operationArity";
+import { getEffectiveOperationInputArity, getOperationOutputCount } from "./operationArity";
 import { RecipeShapePreview } from "./recipeShapePreview";
 
 type ShapeNodeData = {
@@ -110,7 +110,7 @@ export function ShapeNode(props: NodeProps) {
   );
 }
 
-function operationLeftTargetHandles(inArity: number, painterTwoWireInputs: boolean) {
+function operationLeftTargetHandles(inArity: number, twoWireFluidUpperShapeLower: boolean) {
   if (inArity < 2) {
     return (
       <Handle
@@ -122,7 +122,7 @@ function operationLeftTargetHandles(inArity: number, painterTwoWireInputs: boole
       />
     );
   }
-  if (painterTwoWireInputs) {
+  if (twoWireFluidUpperShapeLower) {
     return (
       <>
         <Handle
@@ -168,11 +168,13 @@ export function OperationNode(props: NodeProps) {
   const op = String(d.operation ?? "");
   const glyph = operationGlyph(op);
   const title = operationTitle(op);
-  const inArity = getOperationInputArity(op);
+  const inArity = getEffectiveOperationInputArity(op, d);
   const outCount = getOperationOutputCount(op);
-  /** Painter 2-wire: fluid uses ``in-1`` (domain slot "1"). Put it above ``in`` so XYFlow does not snap fluid to the shape-only handle. */
-  const painterTwoWireInputs =
-    op.trim() === "painter" && inArity >= 2 && !String(d.paint_color ?? "").trim();
+  /** Painter / crystal 2-wire: fluid ``in-1`` above shape ``in`` (matches domain slot "1"). */
+  const twoWireFluidUpperShapeLower =
+    inArity >= 2 &&
+    ((op.trim() === "painter" && !String(d.paint_color ?? "").trim()) ||
+      (op.trim() === "crystal_generator" && !String(d.crystal_color ?? "").trim()));
   const iconUrl = typeof d.icon === "string" ? d.icon.trim() : "";
   const tip = [id, title, d.paint_color ? `paint: ${d.paint_color}` : "", d.crystal_color ? `crystal: ${d.crystal_color}` : ""]
     .filter(Boolean)
@@ -180,7 +182,7 @@ export function OperationNode(props: NodeProps) {
   return (
     <div className={tileRing(selected, "border-purple-500/55")} title={tip}>
       {validationBadge(d.validationSeverity)}
-      {operationLeftTargetHandles(inArity, painterTwoWireInputs)}
+      {operationLeftTargetHandles(inArity, twoWireFluidUpperShapeLower)}
       <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded border border-purple-600/40 bg-purple-950/50">
         {iconUrl ? (
           <img alt="" className="h-full w-full object-contain p-0.5" height={40} src={iconUrl} width={40} />

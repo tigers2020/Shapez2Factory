@@ -42,8 +42,6 @@ export function NodeEditModal({
   const base = useMemo(() => coerceRecord(node.data), [node.data]);
   const dataSig = useMemo(() => JSON.stringify(node.data ?? null), [node.data]);
 
-  const isShapeOrIntermediate = node.type === "shape" || node.type === "intermediate";
-
   const [carrierMode, setCarrierMode] = useState<"material" | "fluid">(() =>
     nodeDataIsFluidCarrier(base) ? "fluid" : "material",
   );
@@ -93,6 +91,9 @@ export function NodeEditModal({
 
   const apply = useCallback(() => {
     const t = node.type ?? "";
+    if (t === "intermediate") {
+      return;
+    }
     if (t === "operation") {
       const next: Record<string, unknown> = { operation: operation.trim() };
       const op = operation.trim();
@@ -106,7 +107,11 @@ export function NodeEditModal({
         next.crystal_color = undefined;
       } else if (op === "crystal_generator") {
         const cc = paintColor.trim().slice(0, 1);
-        next.crystal_color = cc || "c";
+        if (cc) {
+          next.crystal_color = cc;
+        } else {
+          delete next.crystal_color;
+        }
         next.paint_color = undefined;
       } else {
         next.paint_color = undefined;
@@ -124,7 +129,7 @@ export function NodeEditModal({
       });
       return;
     }
-    if (node.type !== "shape" && node.type !== "intermediate") {
+    if (node.type !== "shape") {
       return;
     }
     const patch: Record<string, unknown> = { quantity: qty };
@@ -289,8 +294,55 @@ export function NodeEditModal({
                   }}
                   value={paintColor}
                 />
+                <p className="mt-1 text-[10px] leading-snug text-slate-500">
+                  {ru("crystalColorFallbackHint")}
+                </p>
               </label>
             ) : null}
+          </div>
+        ) : node.type === "intermediate" ? (
+          <div className="space-y-2">
+            <p className="text-[10px] leading-snug text-slate-400">{ru("intermediateReadOnlyNotice")}</p>
+            <div>
+              <p className="mb-1 font-mono text-[10px] text-slate-500">{ru("modalPreviewLabel")}</p>
+              <div className="flex justify-center">
+                <RecipeShapePreview
+                  code={shapeCode}
+                  previewAlt={typeof base.preview_alt === "string" ? base.preview_alt : undefined}
+                  previewImageUrl={
+                    typeof base.preview_image_url === "string" ? base.preview_image_url : undefined
+                  }
+                  variant="modal"
+                />
+              </div>
+            </div>
+            {shapeHint ? (
+              <p className="text-center font-mono text-[10px] text-amber-200/85">{shapeHint}</p>
+            ) : null}
+            <div className="block">
+              <span className="mb-0.5 block font-mono text-[10px] text-slate-500">
+                {ru("carrierLabel")}
+              </span>
+              <p className="rounded border border-slate-700/80 bg-slate-900/80 px-2 py-1.5 font-mono text-xs text-slate-300">
+                {nodeDataIsFluidCarrier(base) ? ru("carrierFluid") : ru("carrierMaterial")}
+              </p>
+            </div>
+            <div className="block">
+              <span className="mb-0.5 block font-mono text-[10px] text-slate-500">shape_code</span>
+              <p className="break-all rounded border border-slate-700/80 bg-slate-900/80 px-2 py-1.5 font-mono text-xs text-slate-300">
+                {String(base.shape_code ?? "")}
+              </p>
+            </div>
+            <div className="block">
+              <span className="mb-0.5 block font-mono text-[10px] text-slate-500">quantity</span>
+              <p className="rounded border border-slate-700/80 bg-slate-900/80 px-2 py-1.5 font-mono text-xs text-slate-300">
+                {String(base.quantity ?? 1)}
+              </p>
+            </div>
+            <p className="font-mono text-[10px] text-slate-500">
+              role: <span className="text-slate-400">{roleLabel}</span>
+              {roleLabel !== "source" ? <> {ru("roleReadonly")}</> : null}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -310,7 +362,7 @@ export function NodeEditModal({
             {shapeHint ? (
               <p className="text-center font-mono text-[10px] text-amber-200/85">{shapeHint}</p>
             ) : null}
-            {isShapeOrIntermediate ? (
+            {node.type === "shape" ? (
               <label className="block">
                 <span className="mb-0.5 block font-mono text-[10px] text-slate-500">
                   {ru("carrierLabel")}
@@ -331,7 +383,7 @@ export function NodeEditModal({
                 </select>
               </label>
             ) : null}
-            {isShapeOrIntermediate && carrierMode === "fluid" && node.type === "shape" && base.role === "source" ? (
+            {node.type === "shape" && carrierMode === "fluid" && base.role === "source" ? (
               <>
                 <label className="block">
                   <span className="mb-0.5 block font-mono text-[10px] text-slate-500">
@@ -358,8 +410,7 @@ export function NodeEditModal({
                 </p>
               </>
             ) : null}
-            {isShapeOrIntermediate &&
-            !(carrierMode === "fluid" && node.type === "shape" && base.role === "source") ? (
+            {node.type === "shape" && !(carrierMode === "fluid" && base.role === "source") ? (
               <label className="block">
                 <span className="mb-0.5 block font-mono text-[10px] text-slate-500">shape_code</span>
                 <input
@@ -387,29 +438,42 @@ export function NodeEditModal({
             </label>
             {typeof base.role === "string" ? (
               <p className="font-mono text-[10px] text-slate-500">
-                role: <span className="text-slate-400">{base.role}</span> {ru("roleReadonly")}
+                role: <span className="text-slate-400">{base.role}</span>
+                {base.role !== "source" ? <> {ru("roleReadonly")}</> : null}
               </p>
             ) : null}
           </div>
         )}
 
-        <div className="mt-3 flex justify-end gap-2">
-          <button
-            className="rounded border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
-            type="button"
-            onClick={onClose}
-          >
-            {ru("btnCancel")}
-          </button>
-          <button
-            className="rounded border border-cyan-600/60 bg-cyan-950/40 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:border-cyan-500"
-            disabled={node.type === "operation" && !engineSet.has(opTrim)}
-            type="button"
-            onClick={apply}
-          >
-            {ru("btnApply")}
-          </button>
-        </div>
+        {node.type === "intermediate" ? (
+          <div className="mt-3 flex justify-end">
+            <button
+              className="rounded border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
+              type="button"
+              onClick={onClose}
+            >
+              {ru("btnClose")}
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              className="rounded border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
+              type="button"
+              onClick={onClose}
+            >
+              {ru("btnCancel")}
+            </button>
+            <button
+              className="rounded border border-cyan-600/60 bg-cyan-950/40 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:border-cyan-500"
+              disabled={node.type === "operation" && !engineSet.has(opTrim)}
+              type="button"
+              onClick={apply}
+            >
+              {ru("btnApply")}
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

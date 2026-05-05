@@ -51,6 +51,15 @@ def test_shape_render_scene_keys_are_stable() -> None:
     ]
 
 
+def test_shape_render_scene_crystal_layer_maps_to_default_crystal_mesh() -> None:
+    scene = _scene("cccccccc")
+
+    assert len(scene.cells) == 4
+    assert all(c.mesh_key == "default_crystal" for c in scene.cells)
+    assert all(c.material_key == "c" for c in scene.cells)
+    assert all(c.shape_code == "c" for c in scene.cells)
+
+
 def test_shape_render_scene_keeps_position_and_solver_kinds() -> None:
     scene = _scene("WrCrRgSy")
 

@@ -10,7 +10,8 @@ from typing import Any
 from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_core.domain.shape_catalog import FLUID_SOURCE_PRIMARY_COLORS
 from django_apps.shapez_solver.domain.operations import OperationType
-from django_apps.shapez_solver.services.operation_semantics import apply_operation
+from django_apps.shapez_solver.services.fluid_semantics import pure_fluid_color
+from django_apps.shapez_solver.services.operation_semantics import apply_operation, parse_shape
 from django_apps.shapez_solver.services.recipe_graph_constants import (
     RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING,
     RECIPE_GRAPH_AUTO_OUTPUT_GRID_COLUMNS,
@@ -22,6 +23,7 @@ from django_apps.shapez_solver.services.recipe_graph_constants import (
 from django_apps.shapez_solver.services.recipe_graph_input_carrier import (
     assert_input_output_carriers_for_document,
     operation_output_lane_carrier,
+    shape_node_is_fluid,
     sorted_shape_input_edges_to_operation,
 )
 from django_apps.shapez_solver.services.recipe_graph_source_carrier import (
@@ -314,6 +316,35 @@ def _sorted_input_codes_for_operation(
     return tuple(codes)
 
 
+def _pattern_macro_input_slot_label(shape_node: dict[str, Any], shape_code: str) -> str:
+    """Pattern macro UI: fluid wire는 균일 잉크 한 글자만; 재료(shape)는 기존 shape_code."""
+
+    if not shape_node_is_fluid(shape_node):
+        return shape_code
+    if not shape_code:
+        return shape_code
+    try:
+        return pure_fluid_color(parse_shape(shape_code))
+    except (ValueError, TypeError, KeyError):
+        return shape_code
+
+
+def _sorted_pattern_macro_input_slots(
+    node_by_id: dict[str, dict[str, Any]],
+    input_edges: list[dict[str, Any]],
+) -> list[str]:
+    ordered = sorted_shape_input_edges_to_operation(input_edges, node_by_id)
+    slots: list[str] = []
+    for e in ordered:
+        sid = str(e.get("from", ""))
+        shape = node_by_id.get(sid)
+        if not shape or shape.get("kind") != "shape":
+            continue
+        code = str(shape.get("shape_code", "")).strip()
+        slots.append(_pattern_macro_input_slot_label(shape, code))
+    return slots
+
+
 def _sorted_output_edges_for_operation(
     op_id: str,
     output_edges_by_from: defaultdict[str, list[dict[str, Any]]],
@@ -336,7 +367,6 @@ _TWO_INPUT_OPERATION_TYPES = frozenset(
         OperationType.SWAPPER,
         OperationType.STACKER,
         OperationType.COLOR_MIXER,
-        OperationType.CRYSTAL_GENERATOR,
     },
 )
 
@@ -348,6 +378,9 @@ def _required_input_count_for_recompute(
     if op_type == OperationType.PAINTER:
         pc = str(op_node.get("paint_color", "")).strip()
         return 1 if pc else 2
+    if op_type == OperationType.CRYSTAL_GENERATOR:
+        cc = str(op_node.get("crystal_color", "")).strip()
+        return 1 if cc else 2
     if op_type in _TWO_INPUT_OPERATION_TYPES:
         return 2
     return 1
@@ -586,6 +619,8 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
 
     - 검증 실패·DAG 사이클·operation 노드 없음 → ``None`` (DB ``MacroRecipeStep`` 사용).
     - 성공 시 ``step_index``는 1부터 위상순으로 채운다.
+    - ``input_slots``: ``source_carrier=fluid`` 입력은 균일 잉크 한 글자(예: ``r``)만 넣는다.
+      재료(shape) 입력은 ``shape_code`` 그대로 (유체 전층 코드와 도형 코드 혼동 방지).
     """
     work = _validated_graph_document_for_pattern_macro(raw)
     if work is None:
@@ -612,14 +647,17 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
         if not op_key:
             continue
         step_index += 1
-        input_codes = _sorted_input_codes_for_operation(node_by_id, input_edges_by_to[op_id])
+        input_slots_display = _sorted_pattern_macro_input_slots(
+            node_by_id,
+            input_edges_by_to[op_id],
+        )
         out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
         output_slots_list = _output_slots_strings_for_edges(out_edges, node_by_id)
         out.append(
             {
                 "step_index": step_index,
                 "operation": op_key,
-                "input_slots": list(input_codes),
+                "input_slots": input_slots_display,
                 "output_slots": output_slots_list,
                 "note": f"graph:{op_id}",
             },

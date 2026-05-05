@@ -65,6 +65,112 @@ def test_try_pattern_macro_step_rows_from_rotate_graph() -> None:
     assert rows[0]["note"] == "graph:o_rot"
 
 
+def test_try_pattern_macro_step_rows_painter_fluid_slot_is_single_ink_letter() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s_shape",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "s_fluid",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CrCrCrCr",
+                "quantity": 1,
+                "source_carrier": "fluid",
+                "x": 0,
+                "y": 80,
+            },
+            {
+                "id": "o_p",
+                "kind": "operation",
+                "operation": OperationType.PAINTER.value,
+                "x": 200,
+                "y": 0,
+            },
+            {
+                "id": "s_out",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 400,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s_shape", "to": "o_p", "kind": "input"},
+            {"from": "s_fluid", "to": "o_p", "kind": "input", "slot": "1"},
+            {"from": "o_p", "to": "s_out", "kind": "output", "slot": "0"},
+        ],
+    }
+    rows = try_pattern_macro_step_rows_from_graph_document(doc)
+    assert rows is not None
+    assert len(rows) == 1
+    assert rows[0]["input_slots"] == ["r", "CuCuCuCu"]
+
+
+def test_try_pattern_macro_step_rows_color_mixer_fluid_slots_are_ink_letters() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s_r",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CrCrCrCr",
+                "quantity": 1,
+                "source_carrier": "fluid",
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "s_g",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CgCgCgCg",
+                "quantity": 1,
+                "source_carrier": "fluid",
+                "x": 0,
+                "y": 80,
+            },
+            {
+                "id": "o_mix",
+                "kind": "operation",
+                "operation": OperationType.COLOR_MIXER.value,
+                "x": 200,
+                "y": 0,
+            },
+            {
+                "id": "s_out",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "source_carrier": "fluid",
+                "x": 400,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s_r", "to": "o_mix", "kind": "input"},
+            {"from": "s_g", "to": "o_mix", "kind": "input", "slot": "1"},
+            {"from": "o_mix", "to": "s_out", "kind": "output", "slot": "0"},
+        ],
+    }
+    rows = try_pattern_macro_step_rows_from_graph_document(doc)
+    assert rows is not None
+    # Edge with numeric slot sorts before bare ``in`` (same as engine input order).
+    assert rows[0]["input_slots"] == ["g", "r"]
+
+
 def test_recompute_validated_matches_recompute_graph_document() -> None:
     raw = _rotate_doc()
     doc_full, w_full = recompute_graph_document(raw)

@@ -188,11 +188,22 @@ def apply_operation(
             color = str(crystal_color).strip()
             if len(color) != 1:
                 raise ValueError("crystal_color must be a single character")
-        elif len(inputs) >= 2:
-            color = infer_uniform_shape_color(inputs[1], shape_parse_cache=cache)
+        elif len(inputs) == 2:
+            # Graph edge order: slot "1" (`in-1`) before bare `in` → (fluid, target).
+            fluid_code, target_code = inputs[0], inputs[1]
+            color = pure_fluid_color(parse_shape(fluid_code, cache=cache))
+            target_shape = parse_shape(target_code, cache=cache)
+            return tuple(
+                output.canonical_code
+                for output in _OPERATION_ENGINE.apply(
+                    OperationType.CRYSTAL_GENERATOR,
+                    (target_shape,),
+                    color=color,
+                )
+            )
         if color is None:
             raise ValueError(
-                "crystal_generator requires crystal_color or a second input with uniform color",
+                "crystal_generator requires crystal_color or two inputs (fluid wire + shape)",
             )
         return tuple(
             output.canonical_code

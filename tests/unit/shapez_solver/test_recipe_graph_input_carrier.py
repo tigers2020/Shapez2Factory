@@ -232,3 +232,105 @@ def test_validate_painter_two_inputs_rejects_fluid_on_shape_port() -> None:
     )
     with pytest.raises(ValueError, match="must be material"):
         validate_graph_document(doc)
+
+
+def test_validate_crystal_generator_two_inputs_accepts_fluid_on_slot1() -> None:
+    doc = _doc(
+        [
+            {
+                "id": "fluid",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CrCrCrCr",
+                "quantity": 1,
+                "source_carrier": "fluid",
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "base",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "Ru--Ru--",
+                "quantity": 1,
+                "x": 0,
+                "y": 1,
+            },
+            {
+                "id": "cg",
+                "kind": "operation",
+                "operation": OperationType.CRYSTAL_GENERATOR.value,
+                "x": 1,
+                "y": 0,
+            },
+        ],
+        [
+            {"from": "fluid", "to": "cg", "kind": "input", "slot": "1"},
+            {"from": "base", "to": "cg", "kind": "input"},
+        ],
+    )
+    validate_graph_document(doc)
+
+
+def test_validate_crystal_generator_two_inputs_rejects_material_on_fluid_port() -> None:
+    doc = _doc(
+        [
+            {
+                "id": "a",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCu----",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "b",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CgCgCgCg",
+                "quantity": 1,
+                "x": 0,
+                "y": 1,
+            },
+            {
+                "id": "cg",
+                "kind": "operation",
+                "operation": OperationType.CRYSTAL_GENERATOR.value,
+                "x": 1,
+                "y": 0,
+            },
+        ],
+        [
+            {"from": "a", "to": "cg", "kind": "input", "slot": "1"},
+            {"from": "b", "to": "cg", "kind": "input"},
+        ],
+    )
+    with pytest.raises(ValueError, match="must be fluid"):
+        validate_graph_document(doc)
+
+
+def test_validate_crystal_generator_one_input_accepts_when_crystal_color_set() -> None:
+    doc = _doc(
+        [
+            {
+                "id": "base",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "Ru--Ru--",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "cg",
+                "kind": "operation",
+                "operation": OperationType.CRYSTAL_GENERATOR.value,
+                "crystal_color": "c",
+                "x": 1,
+                "y": 0,
+            },
+        ],
+        [{"from": "base", "to": "cg", "kind": "input"}],
+    )
+    validate_graph_document(doc)

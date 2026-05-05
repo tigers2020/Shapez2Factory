@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export type RecipeShapePreviewProps = {
   code: string;
@@ -15,6 +15,9 @@ export function RecipeShapePreview({
   variant,
 }: RecipeShapePreviewProps) {
   const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => {
+    setImgFailed(false);
+  }, [previewImageUrl, code]);
   const url = typeof previewImageUrl === "string" ? previewImageUrl.trim() : "";
   const tile = variant === "tile";
   const box = tile

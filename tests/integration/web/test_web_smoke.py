@@ -238,6 +238,7 @@ def test_shape_gltf_vendor_assets_exist() -> None:
     assert (three_root / "build" / "three.module.js").is_file()
     assert (three_root / "build" / "three.core.js").is_file()
     assert (three_root / "examples" / "jsm" / "controls" / "OrbitControls.js").is_file()
+    assert (three_root / "examples" / "jsm" / "environments" / "RoomEnvironment.js").is_file()
     assert (three_root / "examples" / "jsm" / "loaders" / "GLTFLoader.js").is_file()
     assert (three_root / "examples" / "jsm" / "utils" / "BufferGeometryUtils.js").is_file()
     assert (three_root / "examples" / "jsm" / "utils" / "SkeletonUtils.js").is_file()

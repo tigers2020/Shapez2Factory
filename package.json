@@ -1,11 +1,13 @@
 {
   "scripts": {
-    "build": "npm run build:css && npm run build:recipe-graph-editor",
+    "build": "npm run build:css && npm run build:graph-layout && npm run build:recipe-graph-editor",
+    "build:graph-layout": "esbuild frontend/graph_layout/src/solverStaticBundle.ts --bundle --format=esm --platform=neutral --target=es2022 --outfile=django_apps/web/static/web/js/solver_graph_layout.js && esbuild frontend/graph_layout/src/editorStaticBundle.ts --bundle --format=esm --platform=neutral --target=es2022 --outfile=django_apps/web/static/web/js/editor_graph_layout.js",
     "build:recipe-graph-editor": "npm --prefix frontend/recipe_graph_editor run build",
     "build:css": "npx @tailwindcss/cli -i ./assets/css/input.css -o ./django_apps/web/static/web/css/app.css --minify",
     "watch:css": "npx @tailwindcss/cli -i ./assets/css/input.css -o ./django_apps/web/static/web/css/app.css --watch"
   },
   "devDependencies": {
+    "esbuild": "^0.25.0",
     "@tailwindcss/cli": "^4.0.0",
     "flowbite": "^4.0.1",
     "playwright": "^1.59.1",

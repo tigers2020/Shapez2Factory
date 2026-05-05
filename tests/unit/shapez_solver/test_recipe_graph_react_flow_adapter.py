@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from django_apps.shapez_solver.services.recipe_graph_react_flow_adapter import (
+from django_apps.shapez_solver.services.recipe_graph_constants import (
     REACT_FLOW_GRAPH_PAYLOAD_VERSION,
+)
+from django_apps.shapez_solver.services.recipe_graph_react_flow_adapter import (
     domain_graph_to_react_flow,
     react_flow_to_domain_graph,
 )

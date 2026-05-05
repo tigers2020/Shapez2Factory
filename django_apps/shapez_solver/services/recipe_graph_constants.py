@@ -7,7 +7,13 @@ from django_apps.shapez_solver.domain.operations import OperationType
 # graph_document JSON 최상위 schema_version과 동기화한다.
 RECIPE_GRAPH_SCHEMA_VERSION = 1
 
-# graph_document 자동 생성 노드 좌표: ``solver_graph_layout.js`` 의 COLUMN_GAP / ROW_GAP 와 맞춘다
+# ``react_flow_initial`` / ``domain_graph_to_react_flow`` JSON의 ``version`` 필드.
+# ``recipe_graph_react_flow_adapter`` 가 읽고 직렬화한다.
+REACT_FLOW_GRAPH_PAYLOAD_VERSION = 1
+
+# graph_document 자동 생성 노드 좌표: ``frontend/graph_layout/src/metrics.ts`` 의
+# ``SOLVER_LAYOUT_METRICS`` (COLUMN_GAP / ROW_GAP) 및 빌드 산출물
+# ``solver_graph_layout.js`` 와 맞춘다
 # (브라우저에서 카드가 겹치지 않게)
 RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET = 280.0
 RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING = 270
@@ -31,6 +37,7 @@ RECIPE_GRAPH_ENGINE_OPERATIONS: frozenset[str] = frozenset(
 )
 
 __all__ = [
+    "REACT_FLOW_GRAPH_PAYLOAD_VERSION",
     "RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING",
     "RECIPE_GRAPH_AUTO_OUTPUT_GRID_COLUMNS",
     "RECIPE_GRAPH_AUTO_OUTPUT_ROW_SPACING",

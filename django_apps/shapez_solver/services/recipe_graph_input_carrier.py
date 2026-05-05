@@ -13,7 +13,6 @@ _TWO_INPUT_OPS = frozenset(
         OperationType.SWAPPER,
         OperationType.STACKER,
         OperationType.COLOR_MIXER,
-        OperationType.CRYSTAL_GENERATOR,
         OperationType.PAINTER,
     },
 )
@@ -24,6 +23,8 @@ def required_input_count(op_type: OperationType, op_node: dict[str, Any]) -> int
 
     if op_type == OperationType.PAINTER:
         return 1 if str(op_node.get("paint_color", "")).strip() else 2
+    if op_type == OperationType.CRYSTAL_GENERATOR:
+        return 1 if str(op_node.get("crystal_color", "")).strip() else 2
     if op_type in _TWO_INPUT_OPS:
         return 2
     return 1
@@ -38,11 +39,11 @@ def expected_input_carriers(op_type: OperationType, op_node: dict[str, Any]) -> 
         return ("fluid", "material")
     if op_type == OperationType.COLOR_MIXER:
         return ("fluid", "fluid")
-    if op_type in (
-        OperationType.SWAPPER,
-        OperationType.STACKER,
-        OperationType.CRYSTAL_GENERATOR,
-    ):
+    if op_type == OperationType.CRYSTAL_GENERATOR:
+        if str(op_node.get("crystal_color", "")).strip():
+            return ("material",)
+        return ("fluid", "material")
+    if op_type in (OperationType.SWAPPER, OperationType.STACKER):
         return ("material", "material")
     return ("material",)
 
@@ -157,7 +158,13 @@ def assert_input_output_carriers_for_document(doc: dict[str, Any]) -> None:
                 break
             slot_raw = edge.get("slot")
             slot = str(slot_raw).strip() if isinstance(slot_raw, str) else ""
-            if op_type == OperationType.PAINTER and len(expected) == 2:
+            if (
+                op_type in (OperationType.PAINTER, OperationType.CRYSTAL_GENERATOR)
+                and len(
+                    expected,
+                )
+                == 2
+            ):
                 # React Flow ``in-1`` → domain ``slot`` "1" = fluid; bare ``in`` = shape (material).
                 want = "fluid" if slot == "1" else "material"
             else:

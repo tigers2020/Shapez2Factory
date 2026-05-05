@@ -50,8 +50,11 @@ from django_apps.shapez_solver.services.recipe_graph_recompute import (
     recompute_validated_graph_document,
     validate_graph_document,
 )
-
-_ERROR_INVALID_JSON = "invalid JSON"
+from django_apps.web.constants import (
+    DEMO_FIXED_SAMPLE_CODES,
+    HOME_INITIAL_SHAPE_CODE,
+    JSON_API_ERROR_INVALID,
+)
 
 
 def staff_site_required(view_func):
@@ -243,7 +246,7 @@ def macro_pattern_staff_api_recipes_create(request: HttpRequest) -> JsonResponse
     try:
         data = json.loads(request.body.decode() or "{}")
     except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "error": _ERROR_INVALID_JSON}, status=400)
+        return JsonResponse({"ok": False, "error": JSON_API_ERROR_INVALID}, status=400)
     try:
         recipe = create_recipe(data)
     except ValueError as exc:
@@ -258,7 +261,7 @@ def macro_pattern_staff_api_recipe_graph_recompute(request: HttpRequest, pk: int
     try:
         data = json.loads(request.body.decode() or "{}")
     except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "error": _ERROR_INVALID_JSON}, status=400)
+        return JsonResponse({"ok": False, "error": JSON_API_ERROR_INVALID}, status=400)
     source = _recompute_graph_source_or_error(data)
     if isinstance(source, JsonResponse):
         return source
@@ -337,7 +340,7 @@ def macro_pattern_staff_api_recipe_detail(request: HttpRequest, pk: int) -> Json
     try:
         data = json.loads(request.body.decode() or "{}")
     except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "error": _ERROR_INVALID_JSON}, status=400)
+        return JsonResponse({"ok": False, "error": JSON_API_ERROR_INVALID}, status=400)
     try:
         recipe = update_recipe(pk, data)
     except ValueError as exc:
@@ -391,7 +394,7 @@ def home(request: HttpRequest) -> HttpResponse:
         request,
         "web/home.html",
         {
-            "initial_code": "CuRuSuWu",
+            "initial_code": HOME_INITIAL_SHAPE_CODE,
         },
     )
 
@@ -490,23 +493,15 @@ def graph_preview_cache(request: HttpRequest, filename: str) -> FileResponse:
 
 def demo(request: HttpRequest) -> HttpResponse:
     try_code = request.GET.get("code", "").strip()
-    fixed_samples = (
-        "SuSuSuSu",
-        "[RuRuRuRu, WrCrRgSy]",
-        "RuRuRuRu:WrCrRgSy",
-        "--RuRuRu",
-        "CuCuCuCu",
-        "P-P-P-P-",
-        "XuXuXuXu",
-        "PrPrPrPr",
-    )
 
     return render(
         request,
         "web/demo.html",
         {
             "try_code": try_code,
-            "parse_rows": build_demo_parse_rows(try_code=try_code, fixed_samples=fixed_samples),
+            "parse_rows": build_demo_parse_rows(
+                try_code=try_code, fixed_samples=DEMO_FIXED_SAMPLE_CODES
+            ),
             "shape_catalog_rows": get_shape_catalog_rows(),
             "color_catalog_rows": get_color_catalog_rows(),
         },

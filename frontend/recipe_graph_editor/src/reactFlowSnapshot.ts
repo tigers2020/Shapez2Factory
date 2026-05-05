@@ -1,6 +1,6 @@
 import type { Edge, Node } from "@xyflow/react";
 
-/** `django_apps.shapez_solver.services.recipe_graph_react_flow_adapter.REACT_FLOW_GRAPH_PAYLOAD_VERSION` */
+/** `django_apps.shapez_solver.services.recipe_graph_constants.REACT_FLOW_GRAPH_PAYLOAD_VERSION` */
 export const REACT_FLOW_SNAPSHOT_VERSION = 1;
 
 export type WireReactFlowSnapshot = {

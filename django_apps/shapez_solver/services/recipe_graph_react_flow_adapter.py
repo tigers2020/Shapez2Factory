@@ -12,9 +12,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from django_apps.shapez_solver.services.recipe_graph_constants import RECIPE_GRAPH_SCHEMA_VERSION
-
-REACT_FLOW_GRAPH_PAYLOAD_VERSION = 1
+from django_apps.shapez_solver.services.recipe_graph_constants import (
+    REACT_FLOW_GRAPH_PAYLOAD_VERSION,
+    RECIPE_GRAPH_SCHEMA_VERSION,
+)
 
 RfNodeType = Literal["shape", "operation", "intermediate", "output"]
 
@@ -238,7 +239,6 @@ def _rf_edge_to_domain(rf: dict[str, Any]) -> dict[str, Any]:
 
 
 __all__ = [
-    "REACT_FLOW_GRAPH_PAYLOAD_VERSION",
     "domain_graph_to_react_flow",
     "react_flow_to_domain_graph",
 ]

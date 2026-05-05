@@ -4,7 +4,6 @@ from enum import Enum
 
 class OperationType(str, Enum):
     CUTTER = "cutter"
-    CUTTER_FULL = "cutter_full"
     HALF_DESTROYER = "half_destroyer"
     SPLITTER = "splitter"
     SWAPPER = "swapper"

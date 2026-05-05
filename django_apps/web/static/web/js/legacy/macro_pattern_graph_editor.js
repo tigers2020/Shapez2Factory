@@ -290,7 +290,7 @@
       await initMacroGraphMount(host, g, wireCtx || null);
     } else {
       host.innerHTML =
-        '<p class="text-xs text-neutral-500">No nodes yet — use the <span class="font-semibold text-neutral-400">palette</span> (drag onto the canvas), <span class="font-semibold text-neutral-400">Add shape</span> / <span class="font-semibold text-neutral-400">Add operation</span>, or open <span class="font-semibold text-neutral-400">Advanced: raw JSON</span> below.</p>';
+        '<p class="text-xs text-slate-500">No nodes yet — use the <span class="font-semibold text-slate-400">palette</span> (drag onto the canvas), <span class="font-semibold text-slate-400">Add shape</span> / <span class="font-semibold text-slate-400">Add operation</span>, or open <span class="font-semibold text-slate-400">Advanced: raw JSON</span> below.</p>';
     }
   }
 
@@ -611,10 +611,10 @@
     if (ins) {
       if (!nid) {
         ins.innerHTML =
-          '<p class="text-[11px] text-neutral-500">캔버스에서 노드를 선택하세요.</p>';
+          '<p class="text-[11px] text-slate-500">캔버스에서 노드를 선택하세요.</p>';
         if (insProp) {
           insProp.innerHTML =
-            '<p class="text-[11px] text-neutral-500">노드를 선택하면 속성이 표시됩니다.</p>';
+            '<p class="text-[11px] text-slate-500">노드를 선택하면 속성이 표시됩니다.</p>';
         }
       } else {
         try {
@@ -632,14 +632,14 @@
             ins.innerHTML =
               '<p class="font-mono text-[11px] text-cyan-200/90">' +
               esc(nid) +
-              '</p><p class="mt-1 text-[10px] text-neutral-500">shape · ' +
+              '</p><p class="mt-1 text-[10px] text-slate-500">shape · ' +
               esc(String(n0.role || "intermediate")) +
               "</p>";
           } else {
             ins.innerHTML =
               '<p class="font-mono text-[11px] text-amber-200/90">' +
               esc(nid) +
-              '</p><p class="mt-1 text-[10px] text-neutral-500">operation · ' +
+              '</p><p class="mt-1 text-[10px] text-slate-500">operation · ' +
               esc(String(n0.operation || "")) +
               "</p>";
           }
@@ -659,7 +659,9 @@
     }
     if (!nid) {
       shapeBlock.classList.add("hidden");
+      shapeBlock.classList.remove("grid");
       opBlock.classList.add("hidden");
+      opBlock.classList.remove("grid");
       updateWorkbenchStats(graphSec, card);
       return;
     }
@@ -668,7 +670,9 @@
       gdoc = parseGraphTextarea(card);
     } catch (e2) {
       shapeBlock.classList.add("hidden");
+      shapeBlock.classList.remove("grid");
       opBlock.classList.add("hidden");
+      opBlock.classList.remove("grid");
       if (insProp) {
         insProp.textContent = "—";
       }
@@ -681,7 +685,9 @@
     });
     if (!node) {
       shapeBlock.classList.add("hidden");
+      shapeBlock.classList.remove("grid");
       opBlock.classList.add("hidden");
+      opBlock.classList.remove("grid");
       if (insProp) {
         insProp.innerHTML = '<p class="text-[11px] text-rose-300">노드를 찾을 수 없습니다.</p>';
       }
@@ -691,23 +697,23 @@
     if (insProp) {
       if (node.kind === "shape") {
         insProp.innerHTML =
-          '<dl class="space-y-0.5 text-[10px] text-neutral-300">' +
-          '<div><dt class="inline text-neutral-500">shape_code</dt> <dd class="inline font-mono">' +
+          '<dl class="space-y-0.5 text-[10px] text-slate-300">' +
+          '<div><dt class="inline text-slate-500">shape_code</dt> <dd class="inline font-mono">' +
           esc(String(node.shape_code != null ? node.shape_code : "")) +
           "</dd></div>" +
-          '<div><dt class="inline text-neutral-500">role</dt> <dd class="inline">' +
+          '<div><dt class="inline text-slate-500">role</dt> <dd class="inline">' +
           esc(String(node.role || "intermediate")) +
           "</dd></div></dl>";
       } else if (node.kind === "operation") {
         var pcv =
           String(node.operation || "") === "painter" && node.paint_color != null
-            ? '<div><dt class="inline text-neutral-500">paint</dt> <dd class="inline font-mono">' +
+            ? '<div><dt class="inline text-slate-500">paint</dt> <dd class="inline font-mono">' +
               esc(String(node.paint_color)) +
               "</dd></div>"
             : "";
         insProp.innerHTML =
-          '<dl class="space-y-0.5 text-[10px] text-neutral-300">' +
-          '<div><dt class="inline text-neutral-500">operation</dt> <dd class="inline font-mono">' +
+          '<dl class="space-y-0.5 text-[10px] text-slate-300">' +
+          '<div><dt class="inline text-slate-500">operation</dt> <dd class="inline font-mono">' +
           esc(String(node.operation || "")) +
           "</dd></div>" +
           pcv +
@@ -718,7 +724,9 @@
     }
     if (node.kind === "shape") {
       shapeBlock.classList.remove("hidden");
+      shapeBlock.classList.add("grid");
       opBlock.classList.add("hidden");
+      opBlock.classList.remove("grid");
       var sc = graphSec.querySelector(".macro-graph-edit-shape-code");
       var sr = graphSec.querySelector(".macro-graph-edit-shape-role");
       if (sc) {
@@ -729,7 +737,9 @@
       }
     } else if (node.kind === "operation") {
       shapeBlock.classList.add("hidden");
+      shapeBlock.classList.remove("grid");
       opBlock.classList.remove("hidden");
+      opBlock.classList.add("grid");
       var ot = graphSec.querySelector(".macro-graph-edit-op-type");
       var pc = graphSec.querySelector(".macro-graph-edit-paint-color");
       if (ot) {
@@ -741,7 +751,9 @@
       setPaintEditorVisibility(graphSec, node.operation);
     } else {
       shapeBlock.classList.add("hidden");
+      shapeBlock.classList.remove("grid");
       opBlock.classList.add("hidden");
+      opBlock.classList.remove("grid");
     }
     updateWorkbenchStats(graphSec, card);
   }
@@ -780,7 +792,7 @@
   var MACRO_PALETTE_GROUPS = [
     { title: "Shape", shape: true, ops: [] },
     { title: "Rotate", ops: ["rotate_cw", "rotate_ccw", "rotate_180"] },
-    { title: "Cut", ops: ["cutter", "cutter_full", "half_destroyer", "splitter"] },
+    { title: "Cut", ops: ["cutter", "half_destroyer", "splitter"] },
     { title: "Flow", ops: ["stacker", "swapper", "pin_pusher"] },
     { title: "Color", ops: ["painter", "color_mixer"] },
   ];
@@ -790,7 +802,7 @@
       '<div class="macro-palette-card flex min-w-0 cursor-grab select-none flex-row items-center gap-1.5 rounded border border-cyan-700/50 bg-cyan-950/40 p-1 outline-none ring-0 transition hover:bg-cyan-950/55 hover:ring-1 hover:ring-cyan-500/30 active:cursor-grabbing" draggable="true" data-palette-kind="shape" title="' +
       esc(shapeTitle) +
       '">' +
-      '<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-neutral-950/90">' +
+      '<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-slate-950/90">' +
       macroPaletteBaseShapeArt() +
       "</div>" +
       '<p class="min-w-0 flex-1 text-left text-[9px] font-medium leading-tight text-cyan-100/90">' +
@@ -817,7 +829,7 @@
       '" title="' +
       esc(opLabel) +
       '">' +
-      '<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-neutral-950/90">' +
+      '<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-slate-950/90">' +
       art +
       "</div>" +
       '<p class="min-w-0 flex-1 text-left text-[9px] font-medium leading-tight text-amber-100/90">' +
@@ -871,8 +883,8 @@
         continue;
       }
       html +=
-        '<details open class="macro-palette-group rounded border border-neutral-800/90 bg-neutral-950/70">' +
-        '<summary class="cursor-pointer select-none px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-neutral-500 hover:text-neutral-400">' +
+        '<details open class="macro-palette-group rounded border border-slate-800/90 bg-slate-950/70">' +
+        '<summary class="cursor-pointer select-none px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-400">' +
         esc(g.title) +
         "</summary>" +
         '<div class="flex flex-col gap-1 px-1 pb-1 pt-0">' +
@@ -893,8 +905,8 @@
         otherInner += macroPaletteOpCardHtml(ope, labels[ope] || ope, icons);
       }
       html +=
-        '<details open class="macro-palette-group rounded border border-neutral-800/90 bg-neutral-950/70">' +
-        '<summary class="cursor-pointer select-none px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-neutral-500 hover:text-neutral-400">Other</summary>' +
+        '<details open class="macro-palette-group rounded border border-slate-800/90 bg-slate-950/70">' +
+        '<summary class="cursor-pointer select-none px-1 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-400">Other</summary>' +
         '<div class="flex flex-col gap-1 px-1 pb-1 pt-0">' +
         otherInner +
         "</div></details>";
@@ -1512,10 +1524,10 @@
     graphSec.innerHTML =
       '<h3 class="text-xs font-semibold uppercase tracking-wide text-amber-200/80">' +
       "Recipe Graph Workbench</h3>" +
-      '<details class="mb-2 mt-1 rounded border border-neutral-800 bg-neutral-950/50 text-xs">' +
-      '<summary class="cursor-pointer select-none px-2 py-1.5 text-[11px] font-semibold text-neutral-500 hover:bg-neutral-900/60">Editor &amp; wiring (click)</summary>' +
-      '<div class="space-y-1.5 border-t border-neutral-800 px-2 py-2 text-neutral-500">' +
-      "<p>The canvas is the main editor: drag from the palette, connect ports, use <span class=\"font-semibold text-neutral-400\">Recompute</span> / <span class=\"font-semibold text-neutral-400\">save</span> for <code class=\"font-mono text-neutral-400\">graph_document</code>.</p>" +
+      '<details class="mb-2 mt-1 rounded border border-slate-800 bg-slate-950/50 text-xs">' +
+      '<summary class="cursor-pointer select-none px-2 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-900/60">Editor &amp; wiring (click)</summary>' +
+      '<div class="space-y-1.5 border-t border-slate-800 px-2 py-2 text-slate-500">' +
+      "<p>The canvas is the main editor: drag from the palette, connect ports, use <span class=\"font-semibold text-slate-400\">Recompute</span> / <span class=\"font-semibold text-slate-400\">save</span> for <code class=\"font-mono text-slate-400\">graph_document</code>.</p>" +
       '<p class="text-cyan-200/80">Wire: <span class="font-semibold text-amber-200/90">output</span> (amber) → <span class="font-semibold text-cyan-200">input</span> (cyan). Esc cancels. Click a wire to remove (confirm).</p>' +
       "</div></details>" +
       "<style type=\"text/css\">" +
@@ -1528,80 +1540,80 @@
       "</style>" +
       '<div class="flex flex-col gap-3">' +
       '<div class="macro-graph-visual-layout flex min-h-[min(68vh,860px)] flex-col gap-3 xl:flex-row">' +
-      '<aside class="macro-graph-palette-aside w-full max-w-full shrink-0 self-start rounded border border-neutral-800 bg-neutral-900/50 p-2 xl:max-w-[18rem]" data-macro-graph-palette-wrap>' +
-      '<div class="flex flex-col gap-1.5 border-b border-neutral-800/80 pb-2">' +
+      '<aside class="macro-graph-palette-aside w-full max-w-full shrink-0 self-start rounded border border-slate-800 bg-slate-900/50 p-2 xl:max-w-[18rem]" data-macro-graph-palette-wrap>' +
+      '<div class="flex flex-col gap-1.5 border-b border-slate-800/80 pb-2">' +
       '<div class="flex items-center justify-between gap-2">' +
-      '<span class="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Palette</span>' +
-      '<label class="flex shrink-0 cursor-pointer items-center gap-0.5 text-[9px] text-neutral-500" title="Canvas background grid">' +
-      '<input type="checkbox" class="macro-graph-grid-toggle h-3 w-3 rounded border-neutral-600 bg-neutral-900" /> grid</label>' +
+      '<span class="text-[9px] font-bold uppercase tracking-wide text-slate-500">Palette</span>' +
+      '<label class="flex shrink-0 cursor-pointer items-center gap-0.5 text-[9px] text-slate-500" title="Canvas background grid">' +
+      '<input type="checkbox" class="macro-graph-grid-toggle h-3 w-3 rounded border-slate-600 bg-slate-900" /> grid</label>' +
       "</div>" +
-      '<input type="search" data-macro-palette-search placeholder="Filter palette…" class="w-full rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-[10px] text-neutral-200 placeholder:text-neutral-600" />' +
+      '<input type="search" data-macro-palette-search placeholder="Filter palette…" class="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-[10px] text-slate-200 placeholder:text-slate-600" />' +
       "</div>" +
       '<div class="macro-graph-palette macro-palette-scroll mt-2 flex max-h-[min(48vh,420px)] flex-col gap-1 overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]" data-macro-graph-palette></div>' +
       "</aside>" +
       '<div class="flex min-h-[min(62vh,780px)] min-w-0 flex-1 flex-col gap-2">' +
-      '<div class="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-800/80 bg-neutral-900/40 px-2 py-1.5" data-macro-canvas-toolbar>' +
-      '<span class="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Canvas</span>' +
-      '<button type="button" data-macro-canvas-fit class="rounded border border-slate-600 bg-neutral-900 px-2 py-1 text-[10px] font-semibold text-neutral-200 hover:border-cyan-600/50">Fit</button>' +
-      '<button type="button" data-macro-canvas-zoom-in class="rounded border border-slate-600 bg-neutral-900 px-2 py-0.5 font-mono text-sm font-semibold leading-none text-neutral-200 hover:border-cyan-600/50" aria-label="Zoom in">+</button>' +
-      '<button type="button" data-macro-canvas-zoom-out class="rounded border border-slate-600 bg-neutral-900 px-2 py-0.5 font-mono text-sm font-semibold leading-none text-neutral-200 hover:border-cyan-600/50" aria-label="Zoom out">−</button>' +
-      '<span class="ml-auto inline-flex items-center rounded border border-dashed border-neutral-700 px-2 py-0.5 text-[9px] text-neutral-600" title="Reserved">Minimap</span>' +
+      '<div class="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-800/80 bg-slate-900/40 px-2 py-1.5" data-macro-canvas-toolbar>' +
+      '<span class="text-[9px] font-bold uppercase tracking-wide text-slate-500">Canvas</span>' +
+      '<button type="button" data-macro-canvas-fit class="rounded border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] font-semibold text-slate-200 hover:border-cyan-600/50">Fit</button>' +
+      '<button type="button" data-macro-canvas-zoom-in class="rounded border border-slate-600 bg-slate-900 px-2 py-0.5 font-mono text-sm font-semibold leading-none text-slate-200 hover:border-cyan-600/50" aria-label="Zoom in">+</button>' +
+      '<button type="button" data-macro-canvas-zoom-out class="rounded border border-slate-600 bg-slate-900 px-2 py-0.5 font-mono text-sm font-semibold leading-none text-slate-200 hover:border-cyan-600/50" aria-label="Zoom out">−</button>' +
+      '<span class="ml-auto inline-flex items-center rounded border border-dashed border-slate-700 px-2 py-0.5 text-[9px] text-slate-600" title="Reserved">Minimap</span>' +
       "</div>" +
-      '<div class="min-h-0 flex-1 rounded-lg border border-cyan-900/30 bg-neutral-950/50" data-macro-visual-graph-host></div>' +
+      '<div class="min-h-0 flex-1 rounded-lg border border-cyan-900/30 bg-slate-950/50" data-macro-visual-graph-host></div>' +
       "</div></div>" +
-      '<div class="rounded-lg border border-neutral-800 bg-neutral-950/60 p-3" data-macro-workbench-inspector>' +
-      '<p class="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Inspector</p>' +
+      '<div class="rounded-lg border border-slate-800 bg-slate-950/60 p-3" data-macro-workbench-inspector>' +
+      '<p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Inspector</p>' +
       '<div class="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">' +
-      "<div><p class=\"text-[9px] font-bold uppercase text-neutral-600\">Node</p>" +
-      '<div class="mt-1 min-h-[2.75rem] rounded border border-neutral-800/80 bg-neutral-950/50 p-2" data-macro-inspector-node>' +
-      '<p class="text-[11px] text-neutral-500">캔버스에서 노드를 선택하세요.</p></div></div>' +
-      "<div><p class=\"text-[9px] font-bold uppercase text-neutral-600\">Properties</p>" +
-      '<div class="mt-1 min-h-[2.75rem] rounded border border-neutral-800/80 bg-neutral-950/50 p-2" data-macro-inspector-properties>' +
-      '<p class="text-[11px] text-neutral-500">노드를 선택하면 속성이 표시됩니다.</p></div></div>' +
-      "<div><p class=\"text-[9px] font-bold uppercase text-neutral-600\">Validation</p>" +
-      '<div class="mt-1 max-h-28 min-h-[2.75rem] overflow-y-auto rounded border border-neutral-800/80 bg-neutral-950/50 p-2 text-[11px] text-amber-100/90" data-macro-inspector-validation>' +
+      "<div><p class=\"text-[9px] font-bold uppercase text-slate-600\">Node</p>" +
+      '<div class="mt-1 min-h-11 rounded border border-slate-800/80 bg-slate-950/50 p-2" data-macro-inspector-node>' +
+      '<p class="text-[11px] text-slate-500">캔버스에서 노드를 선택하세요.</p></div></div>' +
+      "<div><p class=\"text-[9px] font-bold uppercase text-slate-600\">Properties</p>" +
+      '<div class="mt-1 min-h-11 rounded border border-slate-800/80 bg-slate-950/50 p-2" data-macro-inspector-properties>' +
+      '<p class="text-[11px] text-slate-500">노드를 선택하면 속성이 표시됩니다.</p></div></div>' +
+      "<div><p class=\"text-[9px] font-bold uppercase text-slate-600\">Validation</p>" +
+      '<div class="mt-1 max-h-28 min-h-11 overflow-y-auto rounded border border-slate-800/80 bg-slate-950/50 p-2 text-[11px] text-amber-100/90" data-macro-inspector-validation>' +
       '<p class="text-[11px] text-emerald-200/90">No issues in the last recompute.</p></div></div>' +
-      "<div><p class=\"text-[9px] font-bold uppercase text-neutral-600\">Stats</p>" +
-      '<p class="mt-1 font-mono text-[11px] text-neutral-300" data-macro-inspector-stats>—</p></div>' +
-      "<div><p class=\"text-[9px] font-bold uppercase text-neutral-600\">Notes</p>" +
-      '<textarea data-macro-inspector-notes rows="2" class="mt-1 w-full rounded border border-neutral-800 bg-neutral-950 px-2 py-1 text-[11px] text-neutral-200 placeholder:text-neutral-600" placeholder="Staff notes (browser only)"></textarea></div>' +
+      "<div><p class=\"text-[9px] font-bold uppercase text-slate-600\">Stats</p>" +
+      '<p class="mt-1 font-mono text-[11px] text-slate-300" data-macro-inspector-stats>—</p></div>' +
+      "<div><p class=\"text-[9px] font-bold uppercase text-slate-600\">Notes</p>" +
+      '<textarea data-macro-inspector-notes rows="2" class="mt-1 w-full rounded border border-slate-800 bg-slate-950 px-2 py-1 text-[11px] text-slate-200 placeholder:text-slate-600" placeholder="Staff notes (browser only)"></textarea></div>' +
       "</div></div></div>" +
-      '<div class="macro-graph-crud-toolbar mt-3 flex flex-col gap-3 rounded-lg border border-neutral-700/80 bg-neutral-950/50 p-3" data-macro-graph-crud-toolbar>' +
+      '<div class="macro-graph-crud-toolbar mt-3 flex flex-col gap-3 rounded-lg border border-slate-700/80 bg-slate-950/50 p-3" data-macro-graph-crud-toolbar>' +
       '<div class="flex flex-wrap items-end gap-3">' +
-      '<div class="min-w-[8rem] flex-1">' +
-      '<p class="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Visual graph CRUD</p>' +
-      '<p class="mt-1 text-xs text-neutral-400"><span class="text-neutral-500">Selected:</span> <span class="macro-graph-selected-id font-mono text-cyan-200/90">none</span></p>' +
+      '<div class="min-w-32 flex-1">' +
+      '<p class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Visual graph CRUD</p>' +
+      '<p class="mt-1 text-xs text-slate-400"><span class="text-slate-500">Selected:</span> <span class="macro-graph-selected-id font-mono text-cyan-200/90">none</span></p>' +
       "</div>" +
       '<div class="flex flex-wrap gap-2">' +
       '<button type="button" class="macro-graph-add-shape rounded-lg border border-cyan-700/50 bg-cyan-950/40 px-3 py-2 text-xs font-semibold text-cyan-100">Add shape</button>' +
-      '<select class="macro-graph-add-op-select rounded border border-neutral-600 bg-neutral-900 px-2 py-2 text-xs"></select>' +
+      '<select class="macro-graph-add-op-select rounded border border-slate-600 bg-slate-900 px-2 py-2 text-xs"></select>' +
       '<button type="button" class="macro-graph-add-op rounded-lg border border-cyan-700/50 bg-cyan-950/40 px-3 py-2 text-xs font-semibold text-cyan-100">Add operation</button>' +
       '<button type="button" class="macro-graph-del-node rounded-lg border border-rose-700/50 bg-rose-950/40 px-3 py-2 text-xs font-semibold text-rose-100">Delete selected</button>' +
       "</div>" +
       "</div>" +
-      '<p class="mt-2 text-[11px] leading-snug text-neutral-500">' +
-      '카드 <span class="font-semibold text-neutral-400">우클릭</span> → 노드 정보 / 노드 편집. 카드 <span class="font-semibold text-neutral-400">더블클릭</span> → 노드 편집 창.</p>' +
+      '<p class="mt-2 text-[11px] leading-snug text-slate-500">' +
+      '카드 <span class="font-semibold text-slate-400">우클릭</span> → 노드 정보 / 노드 편집. 카드 <span class="font-semibold text-slate-400">더블클릭</span> → 노드 편집 창.</p>' +
       "</div>" +
-      '<details class="macro-edge-add-details mt-3 rounded-lg border border-neutral-700/80 bg-neutral-950/50 p-3">' +
-      '<summary class="cursor-pointer text-xs font-semibold text-neutral-300">Add / remove edge</summary>' +
+      '<details class="macro-edge-add-details mt-3 rounded-lg border border-slate-700/80 bg-slate-950/50 p-3">' +
+      '<summary class="cursor-pointer text-xs font-semibold text-slate-300">Add / remove edge</summary>' +
       '<div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">' +
-      '<label class="block text-xs text-neutral-500">From node id<br /><input type="text" class="macro-edge-from mt-1 w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1 font-mono text-xs" list="macro-edge-datalist-' +
+      '<label class="block text-xs text-slate-500">From node id<br /><input type="text" class="macro-edge-from mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-xs" list="macro-edge-datalist-' +
       esc(String(id)) +
       '" autocomplete="off" /></label>' +
-      '<label class="block text-xs text-neutral-500">To node id<br /><input type="text" class="macro-edge-to mt-1 w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1 font-mono text-xs" list="macro-edge-datalist-' +
+      '<label class="block text-xs text-slate-500">To node id<br /><input type="text" class="macro-edge-to mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-xs" list="macro-edge-datalist-' +
       esc(String(id)) +
       '" autocomplete="off" /></label>' +
-      '<label class="block text-xs text-neutral-500">Kind<br /><select class="macro-edge-kind mt-1 w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-xs">' +
+      '<label class="block text-xs text-slate-500">Kind<br /><select class="macro-edge-kind mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 text-xs">' +
       '<option value="input">input</option><option value="output">output</option></select></label>' +
-      '<label class="block text-xs text-neutral-500">Slot (optional)<br /><input type="text" class="macro-edge-slot mt-1 w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1 font-mono text-xs" placeholder="e.g. 0 or A" /></label>' +
+      '<label class="block text-xs text-slate-500">Slot (optional)<br /><input type="text" class="macro-edge-slot mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-xs" placeholder="e.g. 0 or A" /></label>' +
       '<div class="flex flex-col gap-2 items-stretch justify-end">' +
       '<button type="button" class="macro-edge-append w-full rounded-lg border border-emerald-700/50 bg-emerald-950/30 px-2 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-900/30">Append edge</button>' +
       '<button type="button" class="macro-edge-remove w-full rounded-lg border border-rose-700/50 bg-rose-950/30 px-2 py-2 text-xs font-semibold text-rose-100 hover:bg-rose-900/30">Remove matching edge</button>' +
       "</div>" +
       "</div>" +
       '<div class="mt-2 flex flex-wrap gap-2">' +
-      '<button type="button" class="macro-edge-fill-from rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-[11px] font-semibold text-neutral-200 hover:border-cyan-600/50">From = selected</button>' +
-      '<button type="button" class="macro-edge-fill-to rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-[11px] font-semibold text-neutral-200 hover:border-cyan-600/50">To = selected</button>' +
+      '<button type="button" class="macro-edge-fill-from rounded border border-slate-600 bg-slate-900 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-cyan-600/50">From = selected</button>' +
+      '<button type="button" class="macro-edge-fill-to rounded border border-slate-600 bg-slate-900 px-2 py-1 text-[11px] font-semibold text-slate-200 hover:border-cyan-600/50">To = selected</button>' +
       "</div>" +
       '<datalist id="macro-edge-datalist-' +
       esc(String(id)) +
@@ -1612,34 +1624,34 @@
       '<button type="button" class="macro-graph-recompute-save rounded-lg border border-amber-600/50 bg-amber-950/30 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-900/30">Recompute &amp; save graph</button>' +
       "</div>" +
       '<p class="mt-2 hidden text-xs text-amber-200/90" data-macro-graph-warnings role="status"></p>' +
-      '<div class="mt-3 hidden rounded-lg border border-neutral-700 bg-neutral-950/80 p-3 text-xs" data-macro-validation-issues></div>' +
-      '<details class="macro-graph-advanced-json mt-4 rounded-lg border border-neutral-800 bg-neutral-950/60 p-3">' +
-      '<summary class="cursor-pointer text-xs font-semibold text-neutral-400">Advanced: raw graph_document JSON</summary>' +
-      '<textarea class="macro-graph-json mt-2 block w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 font-mono text-xs leading-relaxed text-neutral-100" rows="10" spellcheck="false"></textarea>' +
+      '<div class="mt-3 hidden rounded-lg border border-slate-700 bg-slate-950/80 p-3 text-xs" data-macro-validation-issues></div>' +
+      '<details class="macro-graph-advanced-json mt-4 rounded-lg border border-slate-800 bg-slate-950/60 p-3">' +
+      '<summary class="cursor-pointer text-xs font-semibold text-slate-400">Advanced: raw graph_document JSON</summary>' +
+      '<textarea class="macro-graph-json mt-2 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-xs leading-relaxed text-slate-100" rows="10" spellcheck="false"></textarea>' +
       "</details>" +
-      '<dialog class="open:backdrop:bg-black/60 macro-staff-dlg-detail max-h-[90vh] w-[min(100%,40rem)] max-w-[100vw] rounded-2xl border border-cyan-900/50 bg-neutral-950 p-0 text-neutral-100 shadow-2xl" data-macro-staff-dialog-detail>' +
+      '<dialog class="open:backdrop:bg-black/60 macro-staff-dlg-detail max-h-[90vh] w-[min(100%,40rem)] max-w-[100vw] rounded-2xl border border-cyan-900/50 bg-slate-950 p-0 text-slate-100 shadow-2xl" data-macro-staff-dialog-detail>' +
       '<div class="flex max-h-[90vh] flex-col">' +
-      '<div class="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-4 py-3">' +
+      '<div class="flex shrink-0 items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">' +
       '<h2 class="text-sm font-semibold text-cyan-200/90">노드 정보</h2>' +
-      '<button type="button" class="macro-staff-dialog-close rounded-lg border border-neutral-600 px-2.5 py-1 text-sm text-neutral-300 hover:bg-neutral-800" aria-label="닫기">×</button>' +
+      '<button type="button" class="macro-staff-dialog-close rounded-lg border border-slate-600 px-2.5 py-1 text-sm text-slate-300 hover:bg-slate-800" aria-label="닫기">×</button>' +
       "</div>" +
       '<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3" data-macro-staff-dialog-detail-body></div>' +
       "</div></dialog>" +
-      '<dialog class="open:backdrop:bg-black/60 macro-staff-dlg-edit max-h-[90vh] w-[min(100%,28rem)] max-w-[100vw] rounded-2xl border border-amber-900/50 bg-neutral-950 p-0 text-neutral-100 shadow-2xl" data-macro-staff-dialog-edit>' +
+      '<dialog class="open:backdrop:bg-black/60 macro-staff-dlg-edit max-h-[90vh] w-[min(100%,28rem)] max-w-[100vw] rounded-2xl border border-amber-900/50 bg-slate-950 p-0 text-slate-100 shadow-2xl" data-macro-staff-dialog-edit>' +
       '<div class="flex max-h-[90vh] flex-col p-4">' +
-      '<div class="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 pb-3">' +
+      '<div class="flex shrink-0 items-center justify-between gap-2 border-b border-slate-800 pb-3">' +
       '<h2 class="text-sm font-semibold text-amber-200/90">노드 편집</h2>' +
-      '<button type="button" class="macro-staff-dialog-close rounded-lg border border-neutral-600 px-2.5 py-1 text-sm text-neutral-300 hover:bg-neutral-800" aria-label="닫기">×</button>' +
+      '<button type="button" class="macro-staff-dialog-close rounded-lg border border-slate-600 px-2.5 py-1 text-sm text-slate-300 hover:bg-slate-800" aria-label="닫기">×</button>' +
       "</div>" +
-      '<p class="mt-2 text-[11px] text-neutral-500">shape_code, role, operation 변경 후 적용하면 그래프가 다시 계산됩니다.</p>' +
-      '<div class="macro-graph-edit-shape-block mt-3 hidden grid gap-2 sm:grid-cols-2">' +
-      '<label class="text-xs text-neutral-500">shape_code<br /><input type="text" class="macro-graph-edit-shape-code mt-1 w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1 font-mono text-xs" autocomplete="off" /></label>' +
-      '<label class="text-xs text-neutral-500">role<br /><select class="macro-graph-edit-shape-role mt-1 w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-xs">' +
+      '<p class="mt-2 text-[11px] text-slate-500">shape_code, role, operation 변경 후 적용하면 그래프가 다시 계산됩니다.</p>' +
+      '<div class="macro-graph-edit-shape-block mt-3 hidden gap-2 sm:grid-cols-2">' +
+      '<label class="text-xs text-slate-500">shape_code<br /><input type="text" class="macro-graph-edit-shape-code mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-xs" autocomplete="off" /></label>' +
+      '<label class="text-xs text-slate-500">role<br /><select class="macro-graph-edit-shape-role mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 text-xs">' +
       '<option value="source">source</option><option value="intermediate">intermediate</option><option value="target">target</option></select></label>' +
       "</div>" +
-      '<div class="macro-graph-edit-op-block mt-2 hidden grid gap-2 sm:grid-cols-2">' +
-      '<label class="text-xs text-neutral-500">operation<br /><select class="macro-graph-edit-op-type mt-1 w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-xs"></select></label>' +
-      '<label class="macro-graph-edit-paint-wrap hidden text-xs text-neutral-500">paint_color (painter)<br /><input type="text" class="macro-graph-edit-paint-color mt-1 w-full max-w-[6rem] rounded border border-neutral-600 bg-neutral-900 px-2 py-1 font-mono text-xs" maxlength="4" autocomplete="off" /></label>' +
+      '<div class="macro-graph-edit-op-block mt-2 hidden gap-2 sm:grid-cols-2">' +
+      '<label class="text-xs text-slate-500">operation<br /><select class="macro-graph-edit-op-type mt-1 w-full rounded border border-slate-600 bg-slate-900 px-2 py-1 text-xs"></select></label>' +
+      '<label class="macro-graph-edit-paint-wrap hidden text-xs text-slate-500">paint_color (painter)<br /><input type="text" class="macro-graph-edit-paint-color mt-1 w-full max-w-24 rounded border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-xs" maxlength="4" autocomplete="off" /></label>' +
       "</div>" +
       '<button type="button" class="macro-graph-apply-edit mt-4 w-full rounded-lg border border-emerald-700/50 bg-emerald-950/30 px-3 py-2 text-xs font-semibold text-emerald-100">Apply edits &amp; preview</button>' +
       "</div></dialog>";

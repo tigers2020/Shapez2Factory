@@ -7,6 +7,7 @@ import uuid
 from collections import defaultdict, deque
 from typing import Any
 
+from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.services.operation_semantics import apply_operation
 from django_apps.shapez_solver.services.recipe_graph_constants import (
@@ -129,9 +130,12 @@ def default_empty_graph_document() -> dict[str, Any]:
     )
 
 
-def _apply_delivery_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
+def _apply_delivery_edges(
+    edges: list[dict[str, Any]],
+    *,
+    node_by_id: dict[str, dict[str, Any]],
+) -> None:
     """연산 재계산 후 intermediate의 ``shape_code``를 delivery 링크로 target에 복사한다."""
-    node_by_id = index_recipe_graph_nodes_by_id(nodes)
     for e in edges:
         if e.get("kind") != "delivery":
             continue
@@ -192,6 +196,21 @@ def _operation_dependency_edges(
     return _operation_dep_pairs_from_shape_links(shape_producers, shape_consumers)
 
 
+def _edge_adjacency(
+    edges: list[dict[str, Any]],
+) -> tuple[defaultdict[str, list[dict[str, Any]]], defaultdict[str, list[dict[str, Any]]]]:
+    """input: to → edges, output: from → edges (참조는 원본 edge dict와 동일)."""
+    input_edges_by_to: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
+    output_edges_by_from: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
+    for e in edges:
+        ek = e.get("kind")
+        if ek == "input":
+            input_edges_by_to[str(e["to"])].append(e)
+        elif ek == "output":
+            output_edges_by_from[str(e["from"])].append(e)
+    return input_edges_by_to, output_edges_by_from
+
+
 def _topological_operation_order(op_ids: list[str], dep_pairs: list[tuple[str, str]]) -> list[str]:
     if not op_ids:
         return []
@@ -216,16 +235,20 @@ def _topological_operation_order(op_ids: list[str], dep_pairs: list[tuple[str, s
     return out
 
 
+def _output_edge_sort_key(e: dict[str, Any]) -> tuple[bool, str, str]:
+    return (
+        e.get("slot") is None,
+        str(e.get("slot") or ""),
+        str(e.get("id") or ""),
+    )
+
+
 def _sorted_input_codes_for_operation(
-    op_id: str,
-    nodes: list[dict[str, Any]],
-    edges: list[dict[str, Any]],
+    node_by_id: dict[str, dict[str, Any]],
+    input_edges: list[dict[str, Any]],
 ) -> tuple[str, ...]:
-    node_by_id = index_recipe_graph_nodes_by_id(nodes)
     rows: list[tuple[bool, str, str, str]] = []
-    for e in edges:
-        if e["kind"] != "input" or e["to"] != op_id:
-            continue
+    for e in input_edges:
         sid = e["from"]
         shape = node_by_id.get(sid)
         if not shape or shape.get("kind") != "shape":
@@ -239,15 +262,12 @@ def _sorted_input_codes_for_operation(
     return tuple(t[3] for t in rows)
 
 
-def _output_edges_for_operation(op_id: str, edges: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    out_edges = [e for e in edges if e["kind"] == "output" and e["from"] == op_id]
-    out_edges.sort(
-        key=lambda e: (
-            e.get("slot") is None,
-            str(e.get("slot") or ""),
-            e.get("id") or "",
-        )
-    )
+def _sorted_output_edges_for_operation(
+    op_id: str,
+    output_edges_by_from: defaultdict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    out_edges = output_edges_by_from[op_id]
+    out_edges.sort(key=_output_edge_sort_key)
     return out_edges
 
 
@@ -277,6 +297,8 @@ def _apply_recomputed_operation(
     op_type: OperationType,
     input_codes: list[str],
     op_node: dict[str, Any],
+    *,
+    shape_parse_cache: dict[str, Shape],
 ) -> tuple[bool, tuple[str, ...], str]:
     """(성공 여부, 출력 shape_code 튜플, 경고 메시지). 실패 시 튜플은 빈 값."""
     need = _required_input_count_for_recompute(op_type)
@@ -289,9 +311,18 @@ def _apply_recomputed_operation(
     try:
         if op_type == OperationType.PAINTER:
             pc = str(op_node.get("paint_color", "")).strip()
-            outputs = apply_operation(op_type, tuple(input_codes), paint_color=pc)
+            outputs = apply_operation(
+                op_type,
+                tuple(input_codes),
+                paint_color=pc,
+                shape_parse_cache=shape_parse_cache,
+            )
         else:
-            outputs = apply_operation(op_type, tuple(input_codes))
+            outputs = apply_operation(
+                op_type,
+                tuple(input_codes),
+                shape_parse_cache=shape_parse_cache,
+            )
     except (ValueError, TypeError, KeyError) as exc:
         return False, (), f"op {op_id} failed: {exc}"
     return True, outputs, ""
@@ -306,6 +337,7 @@ def _assign_operation_outputs(
     node_by_id: dict[str, dict[str, Any]],
     nodes: list[dict[str, Any]],
     edges: list[dict[str, Any]],
+    output_edges_by_from: defaultdict[str, list[dict[str, Any]]],
     existing_ids: set[str],
     warnings: list[str],
 ) -> None:
@@ -341,14 +373,14 @@ def _assign_operation_outputs(
         }
         nodes.append(new_shape)
         node_by_id[nid] = new_shape
-        edges.append(
-            {
-                "from": op_id,
-                "to": nid,
-                "kind": "output",
-                "slot": str(i),
-            },
-        )
+        new_edge: dict[str, Any] = {
+            "from": op_id,
+            "to": nid,
+            "kind": "output",
+            "slot": str(i),
+        }
+        edges.append(new_edge)
+        output_edges_by_from[op_id].append(new_edge)
         warnings.append(f"auto-created shape node {nid} for output {i} of {op_id}")
 
     if len(out_edges) > len(outputs):
@@ -357,14 +389,13 @@ def _assign_operation_outputs(
         )
 
 
-def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+def recompute_validated_graph_document(work: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     """
-    연결이 갖춰진 operation에 대해 apply_operation으로 하류 shape_code를 갱신한다.
+    ``validate_graph_document`` 를 통과한 문서에 대해 재계산만 수행한다(추가 deepcopy 없음).
 
-    Returns (updated_document, warnings).
+    ``work`` 는 호출부가 소유하며 이 함수가 노드·엣지를 갱신한다.
     """
     warnings: list[str] = []
-    work = validate_graph_document(doc)
     nodes: list[dict[str, Any]] = work["nodes"]
     edges: list[dict[str, Any]] = work["edges"]
     node_by_id = index_recipe_graph_nodes_by_id(nodes)
@@ -377,6 +408,8 @@ def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[
         return work, warnings
 
     existing_ids = set(node_by_id)
+    input_edges_by_to, output_edges_by_from = _edge_adjacency(edges)
+    shape_parse_cache: dict[str, Shape] = {}
 
     for op_id in topo:
         op_node = node_by_id.get(op_id)
@@ -387,7 +420,9 @@ def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[
             warnings.append(f"skip unsupported operation: {op_key} ({op_id})")
             continue
         op_type = OperationType(op_key)
-        input_codes = list(_sorted_input_codes_for_operation(op_id, nodes, edges))
+        input_codes = list(
+            _sorted_input_codes_for_operation(node_by_id, input_edges_by_to[op_id]),
+        )
         if not input_codes:
             warnings.append(f"skip op with no inputs: {op_id}")
             continue
@@ -399,12 +434,13 @@ def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[
             op_type,
             input_codes,
             op_node,
+            shape_parse_cache=shape_parse_cache,
         )
         if not ok:
             warnings.append(msg)
             continue
 
-        out_edges = _output_edges_for_operation(op_id, edges)
+        out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
         _assign_operation_outputs(
             op_id,
             op_node,
@@ -413,15 +449,26 @@ def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[
             node_by_id=node_by_id,
             nodes=nodes,
             edges=edges,
+            output_edges_by_from=output_edges_by_from,
             existing_ids=existing_ids,
             warnings=warnings,
         )
 
-    _apply_delivery_edges(nodes, edges)
+    _apply_delivery_edges(edges, node_by_id=node_by_id)
 
     work["nodes"] = nodes
     work["edges"] = edges
     return work, warnings
+
+
+def recompute_graph_document(doc: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """
+    연결이 갖춰진 operation에 대해 apply_operation으로 하류 shape_code를 갱신한다.
+
+    Returns (updated_document, warnings).
+    """
+    work = validate_graph_document(doc)
+    return recompute_validated_graph_document(work)
 
 
 def _validated_graph_document_for_pattern_macro(raw: object) -> dict[str, Any] | None:
@@ -477,6 +524,7 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
         topo = _topological_operation_order(op_ids, dep_pairs)
     except ValueError:
         return None
+    input_edges_by_to, output_edges_by_from = _edge_adjacency(edges)
     out: list[dict[str, Any]] = []
     step_index = 0
     for op_id in topo:
@@ -487,8 +535,8 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
         if not op_key:
             continue
         step_index += 1
-        input_codes = _sorted_input_codes_for_operation(op_id, nodes, edges)
-        out_edges = _output_edges_for_operation(op_id, edges)
+        input_codes = _sorted_input_codes_for_operation(node_by_id, input_edges_by_to[op_id])
+        out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
         output_slots_list = _output_slots_strings_for_edges(out_edges, node_by_id)
         out.append(
             {
@@ -505,6 +553,7 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
 __all__ = [
     "default_empty_graph_document",
     "recompute_graph_document",
+    "recompute_validated_graph_document",
     "try_pattern_macro_step_rows_from_graph_document",
     "validate_graph_document",
 ]

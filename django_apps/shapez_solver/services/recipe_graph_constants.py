@@ -19,7 +19,6 @@ RECIPE_GRAPH_ENGINE_OPERATIONS: frozenset[str] = frozenset(
         OperationType.ROTATE_CCW.value,
         OperationType.ROTATE_180.value,
         OperationType.CUTTER.value,
-        OperationType.CUTTER_FULL.value,
         OperationType.HALF_DESTROYER.value,
         OperationType.SPLITTER.value,
         OperationType.PIN_PUSHER.value,

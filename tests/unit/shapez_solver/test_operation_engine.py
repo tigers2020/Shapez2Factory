@@ -26,14 +26,6 @@ def test_cutter_returns_stable_left_and_right_outputs() -> None:
     assert right.canonical_code == "----CuCu"
 
 
-def test_cutter_full_matches_cutter_two_outputs() -> None:
-    engine = OperationEngine()
-    via_cut = engine.cut(_shape("CuCuCuCu"))
-    via_full = engine.apply(OperationType.CUTTER_FULL, (_shape("CuCuCuCu"),))
-
-    assert tuple(s.canonical_code for s in via_full) == tuple(s.canonical_code for s in via_cut)
-
-
 def test_half_destroyer_keeps_left_cutter_lane() -> None:
     engine = OperationEngine()
     (only,) = engine.apply(OperationType.HALF_DESTROYER, (_shape("CuCuCuCu"),))

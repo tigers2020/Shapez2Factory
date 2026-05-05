@@ -12,14 +12,6 @@ OPERATION_CATALOG = MappingProxyType(
             output_count=2,
             description="Cuts the shape into two halves.",
         ),
-        OperationType.CUTTER_FULL: OperationDefinition(
-            type=OperationType.CUTTER_FULL,
-            label="Cutter",
-            icon="cutter2.png",
-            input_count=1,
-            output_count=2,
-            description="Cuts the full shape into two output lanes.",
-        ),
         OperationType.HALF_DESTROYER: OperationDefinition(
             type=OperationType.HALF_DESTROYER,
             label="Half Destroyer",

@@ -28,8 +28,6 @@ class OperationEngine:
             return (self.rotate_180(inputs[0]),)
         if operation_type == OperationType.CUTTER:
             return self.cut(inputs[0])
-        if operation_type == OperationType.CUTTER_FULL:
-            return self.cut(inputs[0])
         if operation_type == OperationType.HALF_DESTROYER:
             return (self.half_destroyer(inputs[0]),)
         if operation_type == OperationType.SPLITTER:

@@ -20,7 +20,7 @@ type OperationNodeData = {
 
 /** 넓은 연결 히트 영역(카드 위에서도 잡히도록). */
 const handleClass =
-  "!flex !h-9 !w-9 !min-h-9 !min-w-9 !items-center !justify-center !border !border-neutral-500/70 !bg-neutral-800/90 !rounded-full";
+  "!flex !h-9 !w-9 !min-h-9 !min-w-9 !items-center !justify-center !border !border-slate-500/70 !bg-slate-800/90 !rounded-full";
 
 function validationBadge(severity: "error" | "warning" | undefined) {
   if (severity === "error") {
@@ -62,7 +62,7 @@ function MiniShapePreview({
     return (
       <div
         aria-hidden
-        className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-cyan-700/40 bg-neutral-950"
+        className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded border border-cyan-700/40 bg-slate-950"
       >
         <img
           alt={previewAlt || code || "Shape preview"}
@@ -79,7 +79,7 @@ function MiniShapePreview({
   return (
     <div
       aria-hidden
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-cyan-700/40 bg-gradient-to-br from-cyan-950/80 to-neutral-900 font-mono text-[10px] font-semibold text-cyan-100/90"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-cyan-700/40 bg-linear-to-br from-cyan-950/80 to-slate-900 font-mono text-[10px] font-semibold text-cyan-100/90"
     >
       {short}
     </div>
@@ -101,7 +101,6 @@ const OP_ICON: Record<string, string> = {
   rotate_ccw: "↺",
   rotate_180: "⟲",
   cutter: "✂",
-  cutter_full: "✂",
   half_destroyer: "½",
   splitter: "⫾",
   pin_pusher: "▣",
@@ -117,9 +116,9 @@ function operationGlyph(op: string): string {
 
 const nodeShell = (selected: boolean, borderAccent: string) =>
   [
-    "relative min-w-[112px] max-w-[180px] rounded-xl border bg-neutral-900/95 px-2.5 py-2 font-mono text-[10px] text-neutral-100 shadow-lg transition-shadow",
+    "relative min-w-[112px] max-w-[180px] rounded-xl border bg-slate-900/95 px-2.5 py-2 font-mono text-[10px] text-slate-100 shadow-lg transition-shadow",
     borderAccent,
-    selected ? "ring-2 ring-cyan-400/75 ring-offset-1 ring-offset-neutral-950" : "",
+    selected ? "ring-2 ring-cyan-400/75 ring-offset-1 ring-offset-slate-950" : "",
   ].join(" ");
 
 export function ShapeNode(props: NodeProps) {
@@ -140,13 +139,13 @@ export function ShapeNode(props: NodeProps) {
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-cyan-400/90">
             Source
           </p>
-          <p className="truncate text-[11px] text-neutral-100" title={code || "(empty)"}>
+          <p className="truncate text-[11px] text-slate-100" title={code || "(empty)"}>
             {code || "—"}
           </p>
-          <p className="mt-0.5 text-[9px] text-neutral-500">×{qty}</p>
+          <p className="mt-0.5 text-[9px] text-slate-500">×{qty}</p>
         </div>
       </div>
-      <p className="truncate border-t border-neutral-800/80 pt-1 text-[9px] text-neutral-500">{id}</p>
+      <p className="truncate border-t border-slate-800/80 pt-1 text-[9px] text-slate-500">{id}</p>
       <Handle className={handleClass} id="out" position={Position.Right} type="source" />
     </div>
   );
@@ -170,7 +169,7 @@ export function OperationNode(props: NodeProps) {
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-purple-300/90">
             Operation
           </p>
-          <p className="truncate text-[11px] text-neutral-100" title={op}>
+          <p className="truncate text-[11px] text-slate-100" title={op}>
             {title}
           </p>
           {d.paint_color ? (
@@ -178,7 +177,7 @@ export function OperationNode(props: NodeProps) {
           ) : null}
         </div>
       </div>
-      <p className="truncate border-t border-neutral-800/80 pt-1 text-[9px] text-neutral-500">{id}</p>
+      <p className="truncate border-t border-slate-800/80 pt-1 text-[9px] text-slate-500">{id}</p>
       {arity >= 2 ? (
         <>
           <Handle
@@ -227,13 +226,13 @@ export function IntermediateNode(props: NodeProps) {
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-teal-400/90">
             Intermediate
           </p>
-          <p className="text-[9px] text-neutral-500">Produced by upstream op</p>
-          <p className="truncate text-[11px] text-neutral-100" title={code || "(pending)"}>
+          <p className="text-[9px] text-slate-500">Produced by upstream op</p>
+          <p className="truncate text-[11px] text-slate-100" title={code || "(pending)"}>
             {code || "—"}
           </p>
         </div>
       </div>
-      <p className="truncate border-t border-neutral-800/80 pt-1 text-[9px] text-neutral-500">{id}</p>
+      <p className="truncate border-t border-slate-800/80 pt-1 text-[9px] text-slate-500">{id}</p>
       <Handle className={handleClass} id="in" position={Position.Left} type="target" />
       <Handle className={handleClass} id="out" position={Position.Right} type="source" />
     </div>
@@ -251,7 +250,7 @@ export function OutputNode(props: NodeProps) {
         <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-orange-300/90">
           Output
         </p>
-        <p className="mt-1 text-[9px] text-neutral-500">Target delivery</p>
+        <p className="mt-1 text-[9px] text-slate-500">Target delivery</p>
         <div className="mt-1 flex items-start gap-2">
           <MiniShapePreview
             code={code}
@@ -260,12 +259,12 @@ export function OutputNode(props: NodeProps) {
               typeof d.preview_image_url === "string" ? d.preview_image_url : undefined
             }
           />
-          <p className="min-w-0 flex-1 truncate text-[11px] text-neutral-100" title={code || "—"}>
+          <p className="min-w-0 flex-1 truncate text-[11px] text-slate-100" title={code || "—"}>
             {code || "—"}
           </p>
         </div>
       </div>
-      <p className="truncate border-t border-neutral-800/80 pt-1 text-[9px] text-neutral-500">{id}</p>
+      <p className="truncate border-t border-slate-800/80 pt-1 text-[9px] text-slate-500">{id}</p>
       <Handle className={handleClass} id="in" position={Position.Left} type="target" />
     </div>
   );

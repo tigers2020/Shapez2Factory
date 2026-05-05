@@ -1,178 +1,89 @@
 {% load static %}
 {% with current=request.resolver_match.url_name|default:"" %}
-  {% if nav_tone == "mono" %}
-    <header class="border-b border-neutral-800 bg-neutral-950/95 backdrop-blur">
-      <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-        <div class="flex flex-1 items-center">
-          <a href="{% url 'web:home' %}" class="flex items-center gap-3 text-neutral-100 no-underline hover:text-indigo-300">
-            <img
-              src="{% static 'web/img/branding/logo-3.png' %}"
-              alt=""
-              width="36"
-              height="36"
-              class="h-9 w-9 shrink-0 rounded-sm border border-neutral-700 bg-neutral-900 object-contain"
-              style="padding: 1px"
-              decoding="async"
-            />
-            <span class="text-sm font-semibold tracking-wide text-neutral-100">shapez2 planner</span>
-          </a>
-        </div>
-
-        <nav class="flex flex-1 flex-wrap items-center justify-center gap-1 text-sm font-medium md:gap-1" aria-label="Primary">
-          <a
-            href="{% url 'web:home' %}"
-            class="rounded-sm px-3 py-2 no-underline {% if current == 'home' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
-            {% if current == "home" %}aria-current="page"{% endif %}
-          >Home</a>
-          <a
-            href="{% url 'web:gallery' %}"
-            class="rounded-sm px-3 py-2 no-underline {% if current == 'gallery' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
-            {% if current == "gallery" %}aria-current="page"{% endif %}
-          >Gallery</a>
-          <a
-            href="{% url 'web:demo' %}"
-            class="rounded-sm px-3 py-2 no-underline {% if current == 'demo' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
-            {% if current == "demo" %}aria-current="page"{% endif %}
-          >Demo</a>
-          <a
-            href="{% url 'web:solver' %}"
-            class="rounded-sm px-3 py-2 no-underline {% if current == 'solver' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
-            {% if current == "solver" %}aria-current="page"{% endif %}
-          >Solver</a>
-          <a
-            href="{% url 'web:pattern-lab' %}"
-            class="rounded-sm px-3 py-2 no-underline {% if current == 'pattern-lab' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
-            {% if current == "pattern-lab" %}aria-current="page"{% endif %}
-          >Pattern Lab</a>
-          {% if request.user.is_staff %}
-            <a
-              href="{% url 'web:macro-pattern-staff' %}"
-              class="rounded-sm px-3 py-2 no-underline {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
-              {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}aria-current="page"{% endif %}
-            >Macro catalog</a>
-          {% endif %}
-          <a
-            href="{% url 'web:support' %}"
-            class="rounded-sm px-3 py-2 no-underline {% if current == 'support' %}text-indigo-300{% else %}text-neutral-500{% endif %} hover:text-indigo-200"
-            {% if current == "support" %}aria-current="page"{% endif %}
-          >Support</a>
-        </nav>
-
-        <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
-          {% if request.user.is_authenticated %}
-            <span class="hidden text-sm text-neutral-500 sm:inline">{{ request.user.username }}</span>
-            <form method="post" action="{% url 'account_logout' %}">
-              {% csrf_token %}
-              <button
-                type="submit"
-                class="inline-flex items-center justify-center rounded-sm border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 hover:border-indigo-500/50 hover:text-indigo-200"
-              >Logout</button>
-            </form>
-          {% else %}
-            <a
-              href="{% url 'account_login' %}"
-              class="inline-flex items-center justify-center rounded-sm px-3 py-2 text-sm font-semibold text-neutral-400 no-underline hover:text-indigo-200"
-            >Login</a>
-            <a
-              href="{% url 'account_signup' %}"
-              class="inline-flex items-center justify-center rounded-sm border border-indigo-500/50 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-200 no-underline hover:border-indigo-400/70 hover:text-indigo-100"
-            >Sign up</a>
-          {% endif %}
-          <a
-            href="https://github.com/tigers2020/Shapez2Factory"
-            class="inline-flex items-center justify-center rounded-sm border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 no-underline hover:border-indigo-500/50 hover:text-indigo-200"
-            target="_blank"
-            rel="noopener noreferrer"
-          >GitHub</a>
-        </div>
+  <header class="border-b border-slate-800 bg-slate-950/95 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
+      <div class="flex flex-1 items-center">
+        <a href="{% url 'web:home' %}" class="flex items-center gap-3 text-slate-100 no-underline hover:text-cyan-200">
+          <img
+            src="{% static 'web/img/branding/logo-3.png' %}"
+            alt=""
+            width="36"
+            height="36"
+            class="h-9 w-9 shrink-0 rounded-xl border border-cyan-400/30 bg-slate-950 object-contain"
+            style="padding: 1px"
+            decoding="async"
+          />
+          <span class="text-sm font-semibold tracking-wide text-slate-100">shapez2 planner</span>
+        </a>
       </div>
-    </header>
-  {% else %}
-    <header class="border-b border-slate-800 bg-slate-950/95 backdrop-blur">
-      <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-        <div class="flex flex-1 items-center">
-          <a href="{% url 'web:home' %}" class="flex items-center gap-3 text-slate-100 no-underline hover:text-cyan-200">
-            <img
-              src="{% static 'web/img/branding/logo-3.png' %}"
-              alt=""
-              width="36"
-              height="36"
-              class="h-9 w-9 shrink-0 rounded-xl border border-cyan-400/30 bg-slate-950 object-contain"
-              style="padding: 1px"
-              decoding="async"
-            />
-            <span class="text-sm font-semibold tracking-wide text-slate-100">shapez2 planner</span>
-          </a>
-        </div>
 
-        <nav class="flex flex-1 flex-wrap items-center justify-center gap-1 text-sm font-medium md:gap-1" aria-label="Primary">
+      <nav class="flex flex-1 flex-wrap items-center justify-center gap-1 text-sm font-medium md:gap-1" aria-label="Primary">
+        <a
+          href="{% url 'web:home' %}"
+          class="rounded-lg px-3 py-2 no-underline {% if current == 'home' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+          {% if current == "home" %}aria-current="page"{% endif %}
+        >Home</a>
+        <a
+          href="{% url 'web:gallery' %}"
+          class="rounded-lg px-3 py-2 no-underline {% if current == 'gallery' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+          {% if current == "gallery" %}aria-current="page"{% endif %}
+        >Gallery</a>
+        <a
+          href="{% url 'web:demo' %}"
+          class="rounded-lg px-3 py-2 no-underline {% if current == 'demo' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+          {% if current == "demo" %}aria-current="page"{% endif %}
+        >Demo</a>
+        <a
+          href="{% url 'web:solver' %}"
+          class="rounded-lg px-3 py-2 no-underline {% if current == 'solver' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+          {% if current == "solver" %}aria-current="page"{% endif %}
+        >Solver</a>
+        <a
+          href="{% url 'web:pattern-lab' %}"
+          class="rounded-lg px-3 py-2 no-underline {% if current == 'pattern-lab' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+          {% if current == "pattern-lab" %}aria-current="page"{% endif %}
+        >Pattern Lab</a>
+        {% if request.user.is_staff %}
           <a
-            href="{% url 'web:home' %}"
-            class="rounded-lg px-3 py-2 no-underline {% if current == 'home' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-            {% if current == "home" %}aria-current="page"{% endif %}
-          >Home</a>
-          <a
-            href="{% url 'web:gallery' %}"
-            class="rounded-lg px-3 py-2 no-underline {% if current == 'gallery' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-            {% if current == "gallery" %}aria-current="page"{% endif %}
-          >Gallery</a>
-          <a
-            href="{% url 'web:demo' %}"
-            class="rounded-lg px-3 py-2 no-underline {% if current == 'demo' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-            {% if current == "demo" %}aria-current="page"{% endif %}
-          >Demo</a>
-          <a
-            href="{% url 'web:solver' %}"
-            class="rounded-lg px-3 py-2 no-underline {% if current == 'solver' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-            {% if current == "solver" %}aria-current="page"{% endif %}
-          >Solver</a>
-          <a
-            href="{% url 'web:pattern-lab' %}"
-            class="rounded-lg px-3 py-2 no-underline {% if current == 'pattern-lab' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-            {% if current == "pattern-lab" %}aria-current="page"{% endif %}
-          >Pattern Lab</a>
-          {% if request.user.is_staff %}
-            <a
-              href="{% url 'web:macro-pattern-staff' %}"
-              class="rounded-lg px-3 py-2 no-underline {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-              {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}aria-current="page"{% endif %}
-            >Macro catalog</a>
-          {% endif %}
-          <a
-            href="{% url 'web:support' %}"
-            class="rounded-lg px-3 py-2 no-underline {% if current == 'support' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-            {% if current == "support" %}aria-current="page"{% endif %}
-          >Support</a>
-        </nav>
+            href="{% url 'web:macro-pattern-staff' %}"
+            class="rounded-lg px-3 py-2 no-underline {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+            {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}aria-current="page"{% endif %}
+          >Macro catalog</a>
+        {% endif %}
+        <a
+          href="{% url 'web:support' %}"
+          class="rounded-lg px-3 py-2 no-underline {% if current == 'support' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+          {% if current == "support" %}aria-current="page"{% endif %}
+        >Support</a>
+      </nav>
 
-        <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
-          {% if request.user.is_authenticated %}
-            <span class="hidden text-sm text-slate-400 sm:inline">{{ request.user.username }}</span>
-            <form method="post" action="{% url 'account_logout' %}">
-              {% csrf_token %}
-              <button
-                type="submit"
-                class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-cyan-400/40 hover:text-cyan-200"
-              >Logout</button>
-            </form>
-          {% else %}
-            <a
-              href="{% url 'account_login' %}"
-              class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-400 no-underline hover:text-cyan-200"
-            >Login</a>
-            <a
-              href="{% url 'account_signup' %}"
-              class="inline-flex items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 no-underline hover:border-cyan-300/60 hover:text-cyan-50"
-            >Sign up</a>
-          {% endif %}
+      <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
+        {% if request.user.is_authenticated %}
+          <span class="hidden text-sm text-slate-400 sm:inline">{{ request.user.username }}</span>
+          <form method="post" action="{% url 'account_logout' %}">
+            {% csrf_token %}
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-cyan-400/40 hover:text-cyan-200"
+            >Logout</button>
+          </form>
+        {% else %}
           <a
-            href="https://github.com/tigers2020/Shapez2Factory"
-            class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 no-underline hover:border-cyan-400/40 hover:text-cyan-200"
-            target="_blank"
-            rel="noopener noreferrer"
-          >GitHub</a>
-        </div>
+            href="{% url 'account_login' %}"
+            class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm font-semibold text-slate-400 no-underline hover:text-cyan-200"
+          >Login</a>
+          <a
+            href="{% url 'account_signup' %}"
+            class="inline-flex items-center justify-center rounded-xl border border-cyan-400/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 no-underline hover:border-cyan-300/60 hover:text-cyan-50"
+          >Sign up</a>
+        {% endif %}
+        <a
+          href="https://github.com/tigers2020/Shapez2Factory"
+          class="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 no-underline hover:border-cyan-400/40 hover:text-cyan-200"
+          target="_blank"
+          rel="noopener noreferrer"
+        >GitHub</a>
       </div>
-    </header>
-  {% endif %}
+    </div>
+  </header>
 {% endwith %}

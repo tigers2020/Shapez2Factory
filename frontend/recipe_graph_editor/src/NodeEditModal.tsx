@@ -80,7 +80,7 @@ export function NodeEditModal({ anchor, node, onApply, onClose }: NodeEditModalP
       />
       <div
         aria-labelledby={titleId}
-        className="absolute z-50 w-[min(92vw,280px)] rounded-lg border border-cyan-700/50 bg-neutral-950/98 p-3 shadow-2xl shadow-black/60 backdrop-blur-sm"
+        className="absolute z-50 w-[min(92vw,280px)] rounded-lg border border-cyan-700/50 bg-slate-950/98 p-3 shadow-2xl shadow-black/60 backdrop-blur-sm"
         role="dialog"
         style={{
           left: anchor.left,
@@ -93,12 +93,12 @@ export function NodeEditModal({ anchor, node, onApply, onClose }: NodeEditModalP
             <p className="font-mono text-[9px] font-semibold uppercase tracking-wider text-cyan-400/90">
               {kindLabel} 노드
             </p>
-            <h2 className="mt-0.5 truncate font-mono text-xs text-neutral-100" id={titleId}>
+            <h2 className="mt-0.5 truncate font-mono text-xs text-slate-100" id={titleId}>
               {node.id}
             </h2>
           </div>
           <button
-            className="shrink-0 rounded border border-neutral-600 px-2 py-0.5 text-[11px] text-neutral-300 hover:border-rose-600/50 hover:text-rose-200"
+            className="shrink-0 rounded border border-slate-600 px-2 py-0.5 text-[11px] text-slate-300 hover:border-rose-600/50 hover:text-rose-200"
             type="button"
             onClick={onClose}
           >
@@ -109,9 +109,9 @@ export function NodeEditModal({ anchor, node, onApply, onClose }: NodeEditModalP
         {node.type === "operation" ? (
           <div className="space-y-2">
             <label className="block">
-              <span className="mb-0.5 block font-mono text-[10px] text-neutral-500">operation</span>
+              <span className="mb-0.5 block font-mono text-[10px] text-slate-500">operation</span>
               <input
-                className="w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
                 onChange={(e) => {
                   setOperation(e.target.value);
                 }}
@@ -121,11 +121,11 @@ export function NodeEditModal({ anchor, node, onApply, onClose }: NodeEditModalP
             </label>
             {operation.trim() === "painter" ? (
               <label className="block">
-                <span className="mb-0.5 block font-mono text-[10px] text-neutral-500">
+                <span className="mb-0.5 block font-mono text-[10px] text-slate-500">
                   paint_color (한 글자)
                 </span>
                 <input
-                  className="w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                  className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
                   maxLength={1}
                   onChange={(e) => {
                     setPaintColor(e.target.value);
@@ -138,9 +138,9 @@ export function NodeEditModal({ anchor, node, onApply, onClose }: NodeEditModalP
         ) : (
           <div className="space-y-2">
             <label className="block">
-              <span className="mb-0.5 block font-mono text-[10px] text-neutral-500">shape_code</span>
+              <span className="mb-0.5 block font-mono text-[10px] text-slate-500">shape_code</span>
               <input
-                className="w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
                 onChange={(e) => {
                   setShapeCode(e.target.value);
                 }}
@@ -149,9 +149,9 @@ export function NodeEditModal({ anchor, node, onApply, onClose }: NodeEditModalP
               />
             </label>
             <label className="block">
-              <span className="mb-0.5 block font-mono text-[10px] text-neutral-500">quantity</span>
+              <span className="mb-0.5 block font-mono text-[10px] text-slate-500">quantity</span>
               <input
-                className="w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1.5 font-mono text-xs text-neutral-100"
+                className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100"
                 inputMode="numeric"
                 min={1}
                 onChange={(e) => {
@@ -162,8 +162,8 @@ export function NodeEditModal({ anchor, node, onApply, onClose }: NodeEditModalP
               />
             </label>
             {typeof base.role === "string" ? (
-              <p className="font-mono text-[10px] text-neutral-500">
-                role: <span className="text-neutral-400">{base.role}</span> (읽기 전용)
+              <p className="font-mono text-[10px] text-slate-500">
+                role: <span className="text-slate-400">{base.role}</span> (읽기 전용)
               </p>
             ) : null}
           </div>
@@ -171,7 +171,7 @@ export function NodeEditModal({ anchor, node, onApply, onClose }: NodeEditModalP
 
         <div className="mt-3 flex justify-end gap-2">
           <button
-            className="rounded border border-neutral-600 px-3 py-1.5 text-xs text-neutral-300 hover:border-neutral-500"
+            className="rounded border border-slate-600 px-3 py-1.5 text-xs text-slate-300 hover:border-slate-500"
             type="button"
             onClick={onClose}
           >

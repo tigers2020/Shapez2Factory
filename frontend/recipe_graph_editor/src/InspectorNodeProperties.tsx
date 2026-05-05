@@ -55,16 +55,16 @@ export function InspectorNodeProperties({ node, onPatch }: InspectorNodeProperti
   }, [node, onPatch, operation, paintColor, quantity, shapeCode]);
 
   if (!node) {
-    return <p className="mt-1 text-[11px] leading-snug text-neutral-500">노드를 선택하세요.</p>;
+    return <p className="mt-1 text-[11px] leading-snug text-slate-500">노드를 선택하세요.</p>;
   }
 
   if (node.type === "operation") {
     return (
       <div className="mt-1 space-y-1.5">
         <label className="block">
-          <span className="font-mono text-[9px] text-neutral-500">operation</span>
+          <span className="font-mono text-[9px] text-slate-500">operation</span>
           <input
-            className="mt-0.5 w-full rounded border border-neutral-600 bg-neutral-900 px-1.5 py-1 font-mono text-[10px] text-neutral-100"
+            className="mt-0.5 w-full rounded border border-slate-600 bg-slate-900 px-1.5 py-1 font-mono text-[10px] text-slate-100"
             onChange={(e) => {
               setOperation(e.target.value);
             }}
@@ -74,9 +74,9 @@ export function InspectorNodeProperties({ node, onPatch }: InspectorNodeProperti
         </label>
         {operation.trim() === "painter" ? (
           <label className="block">
-            <span className="font-mono text-[9px] text-neutral-500">paint_color</span>
+            <span className="font-mono text-[9px] text-slate-500">paint_color</span>
             <input
-              className="mt-0.5 w-full rounded border border-neutral-600 bg-neutral-900 px-1.5 py-1 font-mono text-[10px] text-neutral-100"
+              className="mt-0.5 w-full rounded border border-slate-600 bg-slate-900 px-1.5 py-1 font-mono text-[10px] text-slate-100"
               maxLength={1}
               onChange={(e) => {
                 setPaintColor(e.target.value);
@@ -99,9 +99,9 @@ export function InspectorNodeProperties({ node, onPatch }: InspectorNodeProperti
   return (
     <div className="mt-1 space-y-1.5">
       <label className="block">
-        <span className="font-mono text-[9px] text-neutral-500">shape_code</span>
+        <span className="font-mono text-[9px] text-slate-500">shape_code</span>
         <input
-          className="mt-0.5 w-full rounded border border-neutral-600 bg-neutral-900 px-1.5 py-1 font-mono text-[10px] text-neutral-100"
+          className="mt-0.5 w-full rounded border border-slate-600 bg-slate-900 px-1.5 py-1 font-mono text-[10px] text-slate-100"
           onChange={(e) => {
             setShapeCode(e.target.value);
           }}
@@ -110,9 +110,9 @@ export function InspectorNodeProperties({ node, onPatch }: InspectorNodeProperti
         />
       </label>
       <label className="block">
-        <span className="font-mono text-[9px] text-neutral-500">quantity</span>
+        <span className="font-mono text-[9px] text-slate-500">quantity</span>
         <input
-          className="mt-0.5 w-full rounded border border-neutral-600 bg-neutral-900 px-1.5 py-1 font-mono text-[10px] text-neutral-100"
+          className="mt-0.5 w-full rounded border border-slate-600 bg-slate-900 px-1.5 py-1 font-mono text-[10px] text-slate-100"
           inputMode="numeric"
           min={1}
           onChange={(e) => {
@@ -129,7 +129,7 @@ export function InspectorNodeProperties({ node, onPatch }: InspectorNodeProperti
       >
         적용
       </button>
-      <p className="font-mono text-[9px] text-neutral-600">
+      <p className="font-mono text-[9px] text-slate-600">
         더블클릭 편집과 동일 필드입니다. role은 고정입니다.
       </p>
     </div>

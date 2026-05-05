@@ -159,14 +159,14 @@ function OperationPalettePanel({
   return (
     <aside
       aria-label="Operation palette"
-      className="flex min-h-0 flex-col gap-2 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-950/90"
+      className="flex min-h-0 flex-col gap-2 overflow-hidden rounded-lg border border-slate-700 bg-slate-950/90"
     >
-      <div className="shrink-0 border-b border-neutral-800 p-2">
+      <div className="shrink-0 border-b border-slate-800 p-2">
         <label className="sr-only" htmlFor="op-search">
           Search operations
         </label>
         <input
-          className="w-full rounded border border-neutral-600 bg-neutral-900 px-2 py-1.5 font-mono text-xs text-neutral-100 placeholder:text-neutral-500"
+          className="w-full rounded border border-slate-600 bg-slate-900 px-2 py-1.5 font-mono text-xs text-slate-100 placeholder:text-slate-500"
           id="op-search"
           onChange={(e) => {
             setQuery(e.target.value);
@@ -184,7 +184,7 @@ function OperationPalettePanel({
           <ul className="space-y-1">
             <li>
               <button
-                className="w-full rounded border border-cyan-800/50 bg-neutral-900/80 px-2 py-1.5 text-left text-xs text-cyan-100/90 hover:border-cyan-500/50"
+                className="w-full rounded border border-cyan-800/50 bg-slate-900/80 px-2 py-1.5 text-left text-xs text-cyan-100/90 hover:border-cyan-500/50"
                 draggable
                 type="button"
                 onClick={onAddSourceShape}
@@ -193,8 +193,8 @@ function OperationPalettePanel({
                   e.dataTransfer.effectAllowed = "copy";
                 }}
               >
-                <span className="font-mono text-neutral-500">◇</span> 빈 소스 자재
-                <span className="mt-0.5 block text-[10px] text-neutral-500">
+                <span className="font-mono text-slate-500">◇</span> 빈 소스 자재
+                <span className="mt-0.5 block text-[10px] text-slate-500">
                   기본 {DEFAULT_NEW_SOURCE_SHAPE_CODE} — 더블클릭·재계산으로 수정
                 </span>
               </button>
@@ -209,7 +209,7 @@ function OperationPalettePanel({
                 {cat}
               </p>
               {rows.length === 0 ? (
-                <p className="text-[10px] text-neutral-600">—</p>
+                <p className="text-[10px] text-slate-600">—</p>
               ) : (
                 <ul className="space-y-1">
                   {rows.map((o) => {
@@ -220,8 +220,8 @@ function OperationPalettePanel({
                           className={[
                             "flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-xs",
                             enabled
-                              ? "border-neutral-700 bg-neutral-900/80 text-neutral-200 hover:border-cyan-600/40"
-                              : "cursor-not-allowed border-neutral-800/80 bg-neutral-950/50 text-neutral-600",
+                              ? "border-slate-700 bg-slate-900/80 text-slate-200 hover:border-cyan-600/40"
+                              : "cursor-not-allowed border-slate-800/80 bg-slate-950/50 text-slate-600",
                           ].join(" ")}
                           disabled={!enabled}
                           title={
@@ -248,13 +248,13 @@ function OperationPalettePanel({
                           {o.icon ? (
                             <img
                               alt=""
-                              className="h-6 w-6 shrink-0 rounded border border-neutral-700 bg-neutral-900 object-contain"
+                              className="h-6 w-6 shrink-0 rounded border border-slate-700 bg-slate-900 object-contain"
                               height={24}
                               src={o.icon}
                               width={24}
                             />
                           ) : (
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-neutral-700 font-mono text-[10px] text-neutral-500">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-slate-700 font-mono text-[10px] text-slate-500">
                               ◇
                             </span>
                           )}
@@ -274,11 +274,11 @@ function OperationPalettePanel({
           </p>
         ) : null}
       </div>
-      <div className="shrink-0 border-t border-dashed border-neutral-700 p-2">
+      <div className="shrink-0 border-t border-dashed border-slate-700 p-2">
         <p className="font-mono text-[10px] uppercase tracking-wider text-amber-300/80">
           Quick access
         </p>
-        <p className="mt-1 text-[11px] leading-snug text-neutral-500">
+        <p className="mt-1 text-[11px] leading-snug text-slate-500">
           클릭하면 격자 위치에 추가됩니다. 캔버스로 드래그하면 놓은 좌표에 배치됩니다(연산은 출력
           intermediate까지 자동 생성).
         </p>
@@ -291,15 +291,15 @@ function OutputsColumn() {
   return (
     <aside
       aria-label="Outputs"
-      className="flex min-h-0 flex-col gap-2 overflow-hidden rounded-lg border border-neutral-700 bg-neutral-950/90 p-2"
+      className="flex min-h-0 flex-col gap-2 overflow-hidden rounded-lg border border-slate-700 bg-slate-950/90 p-2"
     >
       <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-purple-300/90">
         Outputs
       </p>
-      <div className="flex-1 space-y-2 overflow-y-auto rounded border border-neutral-800 bg-neutral-900/50 p-2">
-        <div className="rounded border border-orange-500/40 bg-neutral-900 px-2 py-2 text-xs text-neutral-200">
+      <div className="flex-1 space-y-2 overflow-y-auto rounded border border-slate-800 bg-slate-900/50 p-2">
+        <div className="rounded border border-orange-500/40 bg-slate-900 px-2 py-2 text-xs text-slate-200">
           <span className="font-mono text-[10px] text-orange-300/90">Output 1</span>
-          <p className="mt-1 text-[11px] text-neutral-500">Terminal (placeholder)</p>
+          <p className="mt-1 text-[11px] text-slate-500">Terminal (placeholder)</p>
         </div>
       </div>
     </aside>
@@ -379,9 +379,9 @@ function RecipeFlowBoard({
       proOptions={{ hideAttribution: true }}
     >
       <Background color="#444" gap={16} variant={BackgroundVariant.Dots} />
-      <Controls className="m-2! border-neutral-600! bg-neutral-900/95! shadow-lg!" />
+      <Controls className="m-2! border-slate-600! bg-slate-900/95! shadow-lg!" />
       <MiniMap
-        className="m-2! border-neutral-600! bg-neutral-900/90!"
+        className="m-2! border-slate-600! bg-slate-900/90!"
         maskColor="rgb(15 15 15 / 0.7)"
         pannable
         zoomable
@@ -479,10 +479,10 @@ function GraphCanvasPanel({
   return (
     <section
       aria-label="Recipe graph canvas"
-      className="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-neutral-700 bg-neutral-950"
+      className="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-slate-700 bg-slate-950"
     >
-      <div className="z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-neutral-800 bg-neutral-900/95 px-2 py-1.5 font-mono text-[11px] text-neutral-400">
-        <span className="text-neutral-500">Wire shapes into operations; outputs on the right.</span>
+      <div className="z-10 flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-800 bg-slate-900/95 px-2 py-1.5 font-mono text-[11px] text-slate-400">
+        <span className="text-slate-500">Wire shapes into operations; outputs on the right.</span>
         <span className="grow" />
         <label className="flex cursor-pointer items-center gap-1">
           <input className="accent-cyan-500" defaultChecked type="checkbox" /> Grid
@@ -505,7 +505,7 @@ function GraphCanvasPanel({
             aria-live="polite"
             className="pointer-events-none absolute inset-0 z-6 flex items-center justify-center p-6"
           >
-            <div className="max-w-md rounded-lg border border-amber-600/40 bg-neutral-950/90 px-4 py-3 text-center text-sm leading-relaxed text-amber-100/95 shadow-xl backdrop-blur-sm">
+            <div className="max-w-md rounded-lg border border-amber-600/40 bg-slate-950/90 px-4 py-3 text-center text-sm leading-relaxed text-amber-100/95 shadow-xl backdrop-blur-sm">
               {emptyHint}
             </div>
           </div>
@@ -621,7 +621,7 @@ function InspectorStrip({
 
   const validationClass =
     validationOk === null
-      ? "text-neutral-500"
+      ? "text-slate-500"
       : validationOk
         ? "text-emerald-300/85"
         : "text-rose-300/90";
@@ -629,51 +629,51 @@ function InspectorStrip({
   return (
     <div
       aria-label="Inspector"
-      className="grid shrink-0 grid-cols-5 gap-2 border-t border-neutral-800 pt-2"
+      className="grid shrink-0 grid-cols-5 gap-2 border-t border-slate-800 pt-2"
     >
-      <div className="min-h-[72px] rounded border border-neutral-700 bg-neutral-950/80 p-2">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+      <div className="min-h-[72px] rounded border border-slate-700 bg-slate-950/80 p-2">
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-500">
           Selected
         </p>
-        <p className="mt-1 text-[11px] leading-snug text-neutral-300">{selectedSummary}</p>
+        <p className="mt-1 text-[11px] leading-snug text-slate-300">{selectedSummary}</p>
       </div>
-      <div className="max-h-44 min-h-[72px] overflow-y-auto rounded border border-neutral-700 bg-neutral-950/80 p-2">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+      <div className="max-h-44 min-h-[72px] overflow-y-auto rounded border border-slate-700 bg-slate-950/80 p-2">
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-500">
           Properties
         </p>
         {selectedNodeIds.length === 1 && firstSel ? (
           <InspectorNodeProperties node={firstSel} onPatch={onPatchNodeData} />
         ) : (
-          <p className="mt-1 text-[11px] leading-snug text-neutral-400">{propertiesSummary}</p>
+          <p className="mt-1 text-[11px] leading-snug text-slate-400">{propertiesSummary}</p>
         )}
       </div>
-      <div className="min-h-[72px] rounded border border-neutral-700 bg-neutral-950/80 p-2">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+      <div className="min-h-[72px] rounded border border-slate-700 bg-slate-950/80 p-2">
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-500">
           Validation
         </p>
         <p className={`mt-1 text-[11px] leading-snug ${validationClass}`}>{validationSummary}</p>
         {connectionFeedback ? (
-          <p className="mt-1 border-t border-neutral-800 pt-1 text-[11px] leading-snug text-amber-200/90">
+          <p className="mt-1 border-t border-slate-800 pt-1 text-[11px] leading-snug text-amber-200/90">
             연결 시도: {connectionFeedback}
           </p>
         ) : footerHint ? (
-          <p className="mt-1 text-[10px] leading-snug text-neutral-500">{footerHint}</p>
+          <p className="mt-1 text-[10px] leading-snug text-slate-500">{footerHint}</p>
         ) : null}
       </div>
-      <div className="min-h-[72px] rounded border border-neutral-700 bg-neutral-950/80 p-2">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+      <div className="min-h-[72px] rounded border border-slate-700 bg-slate-950/80 p-2">
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-500">
           Stats
         </p>
-        <p className="mt-1 font-mono text-[11px] leading-snug text-neutral-400">
+        <p className="mt-1 font-mono text-[11px] leading-snug text-slate-400">
           노드 {nodeCount} · 엣지 {edgeCount} · 출력 {outputCount}
         </p>
       </div>
-      <div className="flex min-h-[72px] flex-col rounded border border-neutral-700 bg-neutral-950/80 p-2">
-        <label className="font-mono text-[10px] font-semibold uppercase tracking-wider text-neutral-500" htmlFor="inspector-notes">
+      <div className="flex min-h-[72px] flex-col rounded border border-slate-700 bg-slate-950/80 p-2">
+        <label className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-500" htmlFor="inspector-notes">
           Notes
         </label>
         <textarea
-          className="mt-1 min-h-[52px] w-full flex-1 resize-y rounded border border-neutral-700 bg-neutral-900 px-1.5 py-1 font-mono text-[10px] leading-snug text-neutral-300 placeholder:text-neutral-600"
+          className="mt-1 min-h-[52px] w-full flex-1 resize-y rounded border border-slate-700 bg-slate-900 px-1.5 py-1 font-mono text-[10px] leading-snug text-slate-300 placeholder:text-slate-600"
           id="inspector-notes"
           onChange={(e) => {
             onNotesChange(e.target.value);
@@ -682,7 +682,7 @@ function InspectorStrip({
           spellCheck={true}
           value={notes}
         />
-        <p className="mt-0.5 text-[9px] text-neutral-600">
+        <p className="mt-0.5 text-[9px] text-slate-600">
           서버 미저장 · intermediate→output 납품 연결은 한 줄(delivery)만 허용됩니다.
         </p>
       </div>
@@ -703,16 +703,16 @@ function FooterActions({ busy, footerHint, onDryRun, onSave, validationOk }: Foo
     validationOk === null ? "—" : validationOk ? "Graph is valid" : "Graph has issues";
   const validClass =
     validationOk === null
-      ? "text-neutral-500"
+      ? "text-slate-500"
       : validationOk
         ? "text-emerald-400/90"
         : "text-rose-300/90";
 
   return (
-    <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-neutral-800 pt-2 font-mono text-xs">
+    <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-2 font-mono text-xs">
       <div className="flex flex-wrap gap-2">
         <button
-          className="rounded border border-neutral-600 px-3 py-1.5 text-neutral-200 hover:border-neutral-500 disabled:opacity-40"
+          className="rounded border border-slate-600 px-3 py-1.5 text-slate-200 hover:border-slate-500 disabled:opacity-40"
           disabled={busy}
           onClick={onDryRun}
           type="button"
@@ -728,12 +728,12 @@ function FooterActions({ busy, footerHint, onDryRun, onSave, validationOk }: Foo
           Recompute &amp; save graph
         </button>
       </div>
-      <div className="max-w-[42%] text-center text-[11px] text-neutral-500">
+      <div className="max-w-[42%] text-center text-[11px] text-slate-500">
         <span className={validClass}>{validLabel}</span>
         {footerHint ? (
           <>
-            <span className="mx-2 text-neutral-600">·</span>
-            <span className="text-neutral-400">{footerHint}</span>
+            <span className="mx-2 text-slate-600">·</span>
+            <span className="text-slate-400">{footerHint}</span>
           </>
         ) : null}
       </div>
@@ -1142,24 +1142,24 @@ export function GraphEditorApp({
   }, [runRecompute]);
 
   return (
-    <div className="flex min-h-[min(85vh,920px)] flex-col gap-2 text-neutral-100">
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 rounded-lg border border-neutral-700 bg-neutral-900/60 px-3 py-2">
+    <div className="flex min-h-[min(85vh,920px)] flex-col gap-2 text-slate-100">
+      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2">
         <div>
           <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-400/90">
             Recipe graph editor
           </p>
           <h2 className="mt-0.5 font-mono text-lg text-white">RECIPE GRAPH EDITOR</h2>
-          <p className="mt-0.5 text-xs text-neutral-400">
+          <p className="mt-0.5 text-xs text-slate-400">
             Create, preview and optimize shape recipes.
           </p>
           <p className="mt-1 font-mono text-sm text-amber-200/90">
             {recipeCode}
-            {recipeName ? <span className="text-neutral-400"> · {recipeName}</span> : null}
+            {recipeName ? <span className="text-slate-400"> · {recipeName}</span> : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
           <a
-            className="rounded-lg border border-neutral-600 px-3 py-2 font-semibold text-neutral-200 hover:border-cyan-600/50"
+            className="rounded-lg border border-slate-600 px-3 py-2 font-semibold text-slate-200 hover:border-cyan-600/50"
             href={catalogHref}
           >
             Catalog

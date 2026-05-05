@@ -139,3 +139,34 @@ def test_enrich_react_flow_adds_preview_for_shapes_with_codes() -> None:
     src_data = next(n for n in enriched["nodes"] if n["id"] == "src").get("data") or {}
     assert isinstance(src_data.get("preview_image_url"), str)
     assert src_data["preview_image_url"].strip()
+
+
+def test_enrich_react_flow_macro_visual_reuses_precomputed_serialize() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "src",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "op",
+                "kind": "operation",
+                "operation": OperationType.ROTATE_CW.value,
+                "x": 100,
+                "y": 0,
+            },
+        ],
+        "edges": [{"from": "src", "to": "op", "kind": "input"}],
+    }
+    v = validate_graph_document(doc)
+    rf = domain_graph_to_react_flow(v)
+    visual = serialize_macro_recipe_visual(v)
+    without_kw = enrich_react_flow_with_macro_visual_previews(rf, v)
+    with_visual = enrich_react_flow_with_macro_visual_previews(rf, v, macro_visual=visual)
+    assert with_visual == without_kw

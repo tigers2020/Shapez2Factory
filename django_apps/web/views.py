@@ -47,9 +47,11 @@ from django_apps.shapez_solver.services.recipe_graph_recipe_validation import (
     validate_recipe_graph_context,
 )
 from django_apps.shapez_solver.services.recipe_graph_recompute import (
-    recompute_graph_document,
+    recompute_validated_graph_document,
     validate_graph_document,
 )
+
+_ERROR_INVALID_JSON = "invalid JSON"
 
 
 def staff_site_required(view_func):
@@ -92,13 +94,49 @@ def _macro_staff_graph_bootstrap(request: HttpRequest, recipe_pk: int) -> dict[s
     }
 
 
+def _recompute_graph_source_or_error(data: dict[str, Any]) -> JsonResponse | bool:
+    """Return JsonResponse on invalid input, or bool: True = react_flow, False = graph_document."""
+    has_doc = "graph_document" in data and data["graph_document"] is not None
+    has_rf = "react_flow" in data and data["react_flow"] is not None
+    if has_doc and has_rf:
+        return JsonResponse(
+            {"ok": False, "error": "provide only one of graph_document or react_flow"},
+            status=400,
+        )
+    if not has_doc and not has_rf:
+        return JsonResponse(
+            {"ok": False, "error": "graph_document or react_flow is required"},
+            status=400,
+        )
+    return has_rf
+
+
+def _validated_graph_from_recompute_body(
+    data: dict[str, Any], from_react_flow: bool
+) -> tuple[dict[str, Any] | None, JsonResponse | None]:
+    try:
+        if from_react_flow:
+            if not isinstance(data["react_flow"], dict):
+                return None, JsonResponse(
+                    {"ok": False, "error": "react_flow must be an object"},
+                    status=400,
+                )
+            raw_doc = react_flow_to_domain_graph(data["react_flow"])
+            validated = validate_graph_document(raw_doc)
+        else:
+            validated = validate_graph_document(data["graph_document"])
+    except ValueError as exc:
+        return None, JsonResponse({"ok": False, "error": str(exc)}, status=400)
+    return validated, None
+
+
 @staff_site_required
 def macro_pattern_list(request: HttpRequest) -> HttpResponse:
     catalog = build_catalog_snapshot()
     return render(
         request,
         "web/macro_pattern_list.html",
-        {"catalog": catalog, "nav_tone": "mono", "staff_macro_nav": "list"},
+        {"catalog": catalog, "staff_macro_nav": "list"},
     )
 
 
@@ -118,7 +156,6 @@ def macro_pattern_new(request: HttpRequest) -> HttpResponse:
         "web/macro_pattern_new.html",
         {
             "catalog": catalog,
-            "nav_tone": "mono",
             "staff_macro_nav": "new",
             "form_error": error,
         },
@@ -149,7 +186,6 @@ def macro_pattern_recipe_edit(request: HttpRequest, pk: int) -> HttpResponse:
             "recipe": serialized,
             "catalog": catalog,
             "bootstrap": bootstrap,
-            "nav_tone": "mono",
             "staff_macro_nav": "edit",
         },
     )
@@ -189,10 +225,9 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
             "recipe": serialized,
             "bootstrap": bootstrap,
             "catalog": build_catalog_snapshot(),
-            "nav_tone": "mono",
             "staff_macro_nav": "graph",
             "use_react_flow_editor": use_react_flow_editor,
-            "recipe_graph_editor_asset_version": "20260504-rf18",
+            "recipe_graph_editor_asset_version": "20260505-theme-slate",
         },
     )
 
@@ -209,7 +244,7 @@ def macro_pattern_staff_api_recipes_create(request: HttpRequest) -> JsonResponse
     try:
         data = json.loads(request.body.decode() or "{}")
     except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "error": "invalid JSON"}, status=400)
+        return JsonResponse({"ok": False, "error": _ERROR_INVALID_JSON}, status=400)
     try:
         recipe = create_recipe(data)
     except ValueError as exc:
@@ -224,33 +259,14 @@ def macro_pattern_staff_api_recipe_graph_recompute(request: HttpRequest, pk: int
     try:
         data = json.loads(request.body.decode() or "{}")
     except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "error": "invalid JSON"}, status=400)
-    has_doc = "graph_document" in data and data["graph_document"] is not None
-    has_rf = "react_flow" in data and data["react_flow"] is not None
-    if has_doc and has_rf:
-        return JsonResponse(
-            {"ok": False, "error": "provide only one of graph_document or react_flow"},
-            status=400,
-        )
-    if not has_doc and not has_rf:
-        return JsonResponse(
-            {"ok": False, "error": "graph_document or react_flow is required"},
-            status=400,
-        )
-    try:
-        if has_rf:
-            if not isinstance(data["react_flow"], dict):
-                return JsonResponse(
-                    {"ok": False, "error": "react_flow must be an object"},
-                    status=400,
-                )
-            raw_doc = react_flow_to_domain_graph(data["react_flow"])
-            validated = validate_graph_document(raw_doc)
-        else:
-            validated = validate_graph_document(data["graph_document"])
-    except ValueError as exc:
-        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
-    doc, warnings = recompute_graph_document(validated)
+        return JsonResponse({"ok": False, "error": _ERROR_INVALID_JSON}, status=400)
+    source = _recompute_graph_source_or_error(data)
+    if isinstance(source, JsonResponse):
+        return source
+    validated, err = _validated_graph_from_recompute_body(data, source)
+    if err is not None:
+        return err
+    doc, warnings = recompute_validated_graph_document(validated)
     steps_synced = False
     if data.get("commit"):
         with transaction.atomic():
@@ -276,7 +292,11 @@ def macro_pattern_staff_api_recipe_graph_recompute(request: HttpRequest, pk: int
     cost_hint = graph_cost_hint_from_document(doc)
     linear_ops = try_linear_operation_sequence(doc)
     react_flow = domain_graph_to_react_flow(doc)
-    react_flow = enrich_react_flow_with_macro_visual_previews(react_flow, doc)
+    react_flow = enrich_react_flow_with_macro_visual_previews(
+        react_flow,
+        doc,
+        macro_visual=visual_graph if isinstance(visual_graph, dict) else None,
+    )
     return JsonResponse(
         {
             "ok": True,
@@ -318,7 +338,7 @@ def macro_pattern_staff_api_recipe_detail(request: HttpRequest, pk: int) -> Json
     try:
         data = json.loads(request.body.decode() or "{}")
     except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "error": "invalid JSON"}, status=400)
+        return JsonResponse({"ok": False, "error": _ERROR_INVALID_JSON}, status=400)
     try:
         recipe = update_recipe(pk, data)
     except ValueError as exc:
@@ -411,7 +431,6 @@ def gallery(request: HttpRequest) -> HttpResponse:
             "screenshot_count": len(screenshots),
             "factory_template_count": len(factory_templates),
             "gallery_sections": gallery_sections,
-            "nav_tone": "mono",
         },
     )
 

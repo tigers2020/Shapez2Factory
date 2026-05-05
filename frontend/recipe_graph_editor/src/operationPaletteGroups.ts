@@ -13,7 +13,7 @@ export function paletteCategoryForOperation(value: string): Exclude<PaletteCateg
   if (["rotate_cw", "rotate_ccw", "rotate_180"].includes(v)) {
     return "ROTATE";
   }
-  if (["cutter", "cutter_full", "half_destroyer", "splitter"].includes(v)) {
+  if (["cutter", "half_destroyer", "splitter"].includes(v)) {
     return "CUT";
   }
   if (["painter", "color_mixer"].includes(v)) {

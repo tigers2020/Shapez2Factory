@@ -2,7 +2,7 @@
 
 `MacroRecipe.graph_document` is not read by this module; graph-derived planning is
 optional and lives in :mod:`graph_document_primitive_chain` (see
-``documents/plan_recipe_graph_editor_phases_2026-05-04.md``).
+``documents/archive/2026-05-completed/recipe-graph-editor/plan_recipe_graph_editor_phases_2026-05-04.md``).
 """
 
 from __future__ import annotations

@@ -11,6 +11,7 @@ from django_apps.shapez_solver.services.recipe_graph_constants import (
 from django_apps.shapez_solver.services.recipe_graph_recompute import (
     default_empty_graph_document,
     recompute_graph_document,
+    recompute_validated_graph_document,
     try_pattern_macro_step_rows_from_graph_document,
     validate_graph_document,
 )
@@ -64,6 +65,15 @@ def test_try_pattern_macro_step_rows_from_rotate_graph() -> None:
     assert rows[0]["note"] == "graph:o_rot"
 
 
+def test_recompute_validated_matches_recompute_graph_document() -> None:
+    raw = _rotate_doc()
+    doc_full, w_full = recompute_graph_document(raw)
+    validated = validate_graph_document(raw)
+    doc_val, w_val = recompute_validated_graph_document(validated)
+    assert w_full == w_val
+    assert doc_full == doc_val
+
+
 def test_validate_graph_document_ok() -> None:
     doc = validate_graph_document(_rotate_doc())
     assert doc["schema_version"] == 1
@@ -107,7 +117,7 @@ def test_recompute_rotate_updates_downstream_shape() -> None:
     assert out_node["shape_code"] == expected
 
 
-def test_recompute_cutter_full_updates_two_output_shapes() -> None:
+def test_recompute_cutter_updates_two_output_shapes() -> None:
     doc = {
         "schema_version": 1,
         "nodes": [
@@ -121,9 +131,9 @@ def test_recompute_cutter_full_updates_two_output_shapes() -> None:
                 "y": 0,
             },
             {
-                "id": "o_cf",
+                "id": "o_c",
                 "kind": "operation",
-                "operation": OperationType.CUTTER_FULL.value,
+                "operation": OperationType.CUTTER.value,
                 "x": 200,
                 "y": 0,
             },
@@ -147,9 +157,9 @@ def test_recompute_cutter_full_updates_two_output_shapes() -> None:
             },
         ],
         "edges": [
-            {"from": "s_in", "to": "o_cf", "kind": "input"},
-            {"from": "o_cf", "to": "s_l", "kind": "output", "slot": "0"},
-            {"from": "o_cf", "to": "s_r", "kind": "output", "slot": "1"},
+            {"from": "s_in", "to": "o_c", "kind": "input"},
+            {"from": "o_c", "to": "s_l", "kind": "output", "slot": "0"},
+            {"from": "o_c", "to": "s_r", "kind": "output", "slot": "1"},
         ],
     }
     out, warnings = recompute_graph_document(doc)

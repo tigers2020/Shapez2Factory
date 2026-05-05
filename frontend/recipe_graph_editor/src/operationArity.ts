@@ -1,7 +1,7 @@
 /** Mirrors ``recipe_graph_recompute.recompute_graph_document`` input counts (unary vs binary). */
 
 /** Mirrors ``recipe_graph_recompute`` / catalog output lanes. */
-const OUTPUT_2 = new Set(["cutter", "cutter_full", "splitter", "swapper"]);
+const OUTPUT_2 = new Set(["cutter", "splitter", "swapper"]);
 
 export function getOperationOutputCount(operation: string): number {
   const op = operation.trim();

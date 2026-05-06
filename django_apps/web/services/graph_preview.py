@@ -124,10 +124,6 @@ class _PlaywrightPrerenderer:
             scene_path.unlink(missing_ok=True)
 
 
-def get_graph_preview_renderer() -> GraphPreviewRenderer:
-    return PlaywrightPngGraphPreviewRenderer()
-
-
 class PlaywrightPngGraphPreviewRenderer:
     VERSION = "v2"
     PRESET = "graph-tile-original"
@@ -187,3 +183,29 @@ class PlaywrightPngGraphPreviewRenderer:
         cache_path: Path,
     ) -> bool:
         return self._prerenderer.render_png(preview_scene, cache_path)
+
+
+class NoopGraphPreviewRenderer:
+    """Skip server-side PNG generation (Playwright). Use on hosts without node/Chromium."""
+
+    def render(self, preview_scene: dict[str, Any]) -> GraphPreview:
+        alt = f"Graph preview for {preview_scene.get('normalized_code', 'shape preview')}"
+        return GraphPreview(alt_text=alt, image_url=None)
+
+    def cache_key(self, preview_scene: dict[str, Any]) -> str:
+        return _GraphPreviewCache(
+            Path(settings.SOLVER_GRAPH_PREVIEW_CACHE_DIR),
+            PlaywrightPngGraphPreviewRenderer.BROKEN_PNG_SHA256,
+        ).cache_key(
+            preview_scene,
+            version=PlaywrightPngGraphPreviewRenderer.VERSION,
+            preset=PlaywrightPngGraphPreviewRenderer.PRESET,
+            size=PlaywrightPngGraphPreviewRenderer.SIZE,
+        )
+
+
+def get_graph_preview_renderer() -> GraphPreviewRenderer:
+    mode = getattr(settings, "SOLVER_GRAPH_PREVIEW_RENDERER", "playwright_png")
+    if isinstance(mode, str) and mode.strip().lower() == "noop":
+        return NoopGraphPreviewRenderer()
+    return PlaywrightPngGraphPreviewRenderer()

@@ -114,7 +114,11 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
-SOLVER_GRAPH_PREVIEW_RENDERER = "playwright_png"
+# playwright_png: Node + Playwright (render_graph_preview.mjs). Often missing on PaaS runtime.
+# noop: skip PNG graph thumbnails; Quick Solver 3D still uses /api/shape-preview/ in the browser.
+SOLVER_GRAPH_PREVIEW_RENDERER = os.environ.get(
+    "SOLVER_GRAPH_PREVIEW_RENDERER", "playwright_png"
+).strip().lower()
 SOLVER_GRAPH_PREVIEW_CACHE_DIR = BASE_DIR / ".graph_preview_cache"
 
 SUPPORT_KOFI_URL = os.environ.get("SUPPORT_KOFI_URL", "").strip()

@@ -5,6 +5,7 @@ from pathlib import Path
 from django.test import override_settings
 
 from django_apps.web.services.graph_preview import (
+    NoopGraphPreviewRenderer,
     PlaywrightPngGraphPreviewRenderer,
     get_graph_preview_renderer,
 )
@@ -48,6 +49,28 @@ def test_renderer_selection_defaults_to_png_renderer() -> None:
     renderer = get_graph_preview_renderer()
 
     assert isinstance(renderer, PlaywrightPngGraphPreviewRenderer)
+
+
+def test_renderer_selection_noop_via_settings() -> None:
+    with override_settings(SOLVER_GRAPH_PREVIEW_RENDERER="noop"):
+        renderer = get_graph_preview_renderer()
+
+    assert isinstance(renderer, NoopGraphPreviewRenderer)
+
+
+def test_noop_renderer_has_no_image_url() -> None:
+    with override_settings(
+        SOLVER_GRAPH_PREVIEW_RENDERER="noop",
+        SOLVER_GRAPH_PREVIEW_CACHE_DIR=Path(
+            "F:/Python_Projects/shapez2Solver/.graph_preview_cache_test"
+        ),
+    ):
+        renderer = get_graph_preview_renderer()
+        assert isinstance(renderer, NoopGraphPreviewRenderer)
+        preview = renderer.render(_PREVIEW_SCENE)
+
+    assert preview.image_url is None
+    assert preview.alt_text == "Graph preview for CuRuSuWu"
 
 
 def test_renderer_selection_can_choose_png_renderer() -> None:

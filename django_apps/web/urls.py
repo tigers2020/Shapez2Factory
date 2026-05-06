@@ -38,6 +38,11 @@ urlpatterns = [
         name="macro-pattern-staff-api-graph-preview-warm",
     ),
     path(
+        "internal/staff/shape-part-sprites/manifest/",
+        views.shape_part_sprite_manifest,
+        name="shape-part-sprite-manifest",
+    ),
+    path(
         "internal/staff/macro-patterns/api/catalog/",
         views.macro_pattern_staff_api_catalog,
         name="macro-pattern-staff-api-catalog",

@@ -82,7 +82,7 @@ function operationGlyph(op: string): string {
 
 const tileRing = (selected: boolean, borderAccent: string) =>
   [
-    "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border bg-slate-900/95 shadow-md transition-shadow",
+    "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border bg-slate-900/95 shadow-md transition-shadow",
     borderAccent,
     selected ? "ring-2 ring-cyan-400/75 ring-offset-1 ring-offset-slate-950" : "",
   ].join(" ");

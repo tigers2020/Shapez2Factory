@@ -103,6 +103,44 @@ class MacroRecipe(models.Model):
         return f"{self.name} [{self.strategy_code}]"
 
 
+class MacroRecipeCompiledBoundary(models.Model):
+    """매크로 그래프 compile 시 경계(source/target) 패턴 시그니처 캐시."""
+
+    class Boundary(models.TextChoices):
+        START = "start", "start"
+        END = "end", "end"
+
+    macro = models.ForeignKey(
+        MacroRecipe,
+        on_delete=models.CASCADE,
+        related_name="compiled_boundaries",
+        verbose_name=MACRO_RECIPE_VERBOSE_NAME,
+    )
+    graph_shape_id = models.CharField(max_length=128, verbose_name="그래프 shape 노드 id")
+    pattern_signature = models.CharField(max_length=16, verbose_name="패턴 시그니처")
+    boundary = models.CharField(
+        max_length=8,
+        choices=Boundary.choices,
+        verbose_name="경계",
+    )
+
+    class Meta:
+        verbose_name = "매크로 컴파일 경계"
+        verbose_name_plural = "매크로 컴파일 경계"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["macro", "graph_shape_id"],
+                name="unique_macro_compiled_boundary_shape_id",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["macro", "boundary", "pattern_signature"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.macro.code} {self.boundary} {self.pattern_signature}"
+
+
 class MacroRecipeStep(models.Model):
     """Admin과 Pattern Lab에 표시할 macro recipe 설명용 step."""
 

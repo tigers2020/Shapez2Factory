@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from django_apps.shapez_core.services.shape_code_parser import (
+    ShapeCodeParseError,
+    parse_shape_code_list,
+)
 from django_apps.shapez_solver.domain.operation_catalog import OPERATION_CATALOG
 from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.services.pattern_classifier import pattern_signature
 from django_apps.shapez_solver.services.pattern_lab_service import explain_pattern_family_mismatch
+
+MAX_GRAPH_SHAPE_LAYERS_PER_PATTERN = 4
 
 
 def _issue(
@@ -23,6 +29,28 @@ def _issue(
         "message": message,
         "node_ids": list(node_ids),
     }
+
+
+def _shape_code_structural_error(shape_code: str) -> str | None:
+    """레시피 그래프 shape_code 구조 검사. 문제가 있으면 메시지, 없으면 ``None``."""
+    try:
+        patterns = parse_shape_code_list(shape_code.strip())
+    except ShapeCodeParseError as exc:
+        return f"parse error: {exc}"
+    for pi, pattern in enumerate(patterns):
+        n_layers = len(pattern.layers)
+        if n_layers < 1 or n_layers > MAX_GRAPH_SHAPE_LAYERS_PER_PATTERN:
+            return (
+                f"multi-layer: pattern {pi} has {n_layers} layers; "
+                f"max {MAX_GRAPH_SHAPE_LAYERS_PER_PATTERN} allowed"
+            )
+        for layer in pattern.layers:
+            layer_str = "".join(cell.raw_token for cell in layer.cells)
+            try:
+                pattern_signature(layer_str)
+            except ValueError as exc:
+                return str(exc)
+    return None
 
 
 def validate_recipe_graph_context(
@@ -120,18 +148,16 @@ def validate_recipe_graph_context(
                     )
             continue
 
-        try:
-            pattern_signature(code)
-        except ValueError as exc:
+        structural = _shape_code_structural_error(code)
+        if structural:
             issues.append(
                 _issue(
                     "error",
                     "shape_code_invalid",
-                    f"shape node {nid}: {exc}",
+                    f"shape node {nid}: {structural}",
                     node_ids=(nid,),
                 ),
             )
-            continue
 
     if not target_ids:
         issues.append(

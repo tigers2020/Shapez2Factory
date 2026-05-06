@@ -63,10 +63,18 @@ class MacroActionGenerator:
         self,
         state: InventoryState,
         request: MacroInventorySearchRequestView,
+        *,
+        target_pattern_signature: str | None = None,
     ) -> tuple[Action, ...]:
         actions: list[Action] = []
         for strategy in self.strategies:
-            actions.extend(strategy.generate(state, request))
+            actions.extend(
+                strategy.generate(
+                    state,
+                    request,
+                    target_pattern_signature=target_pattern_signature,
+                )
+            )
         return tuple(actions)
 
 
@@ -87,14 +95,25 @@ class CatalogBackedMacroActionGenerator:
         self,
         state: InventoryState,
         request: MacroInventorySearchRequestView,
+        *,
+        target_pattern_signature: str | None = None,
     ) -> tuple[Action, ...]:
-        strategy_codes = self._find_strategy_codes(pattern_signature(request.target_code))
+        sig = (
+            target_pattern_signature
+            if target_pattern_signature is not None
+            else pattern_signature(request.target_code)
+        )
+        strategy_codes = self._find_strategy_codes(sig)
         if not strategy_codes:
             return ()
         selected_strategies = tuple(
             strategy for strategy in self.strategies if strategy.code in strategy_codes
         )
-        actions = MacroActionGenerator(strategies=selected_strategies).generate(state, request)
+        actions = MacroActionGenerator(strategies=selected_strategies).generate(
+            state,
+            request,
+            target_pattern_signature=sig,
+        )
         return tuple(
             replace(action, macro_source="db") if action.macro_kind else action
             for action in actions
@@ -133,11 +152,18 @@ class CatalogAwareMacroActionGenerator:
         self,
         state: InventoryState,
         request: MacroInventorySearchRequestView,
+        *,
+        target_pattern_signature: str | None = None,
     ) -> tuple[Action, ...]:
-        catalog_actions = self.catalog.generate(state, request)
+        sig = (
+            target_pattern_signature
+            if target_pattern_signature is not None
+            else pattern_signature(request.target_code)
+        )
+        catalog_actions = self.catalog.generate(state, request, target_pattern_signature=sig)
         if catalog_actions:
             return catalog_actions
-        return self.fallback.generate(state, request)
+        return self.fallback.generate(state, request, target_pattern_signature=sig)
 
 
 __all__ = [

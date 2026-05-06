@@ -30,10 +30,26 @@ def test_cutter_returns_west_then_east_halves() -> None:
     assert east.canonical_code == "----CuCu"
 
 
+def test_cutter_splits_each_layer_independently() -> None:
+    engine = OperationEngine()
+    west, east = engine.cut(_shape("CuCuCuCu:RuRuRuRu"))
+
+    assert west.canonical_code == "CuCu----:RuRu----"
+    assert east.canonical_code == "----CuCu:----RuRu"
+
+
 def test_half_destroyer_keeps_west_half() -> None:
     engine = OperationEngine()
     (only,) = engine.apply(OperationType.HALF_DESTROYER, (_shape("CuCuCuCu"),))
     west, _east = engine.cut(_shape("CuCuCuCu"))
+
+    assert only.canonical_code == west.canonical_code
+
+
+def test_half_destroyer_keeps_west_half_on_each_layer() -> None:
+    engine = OperationEngine()
+    (only,) = engine.apply(OperationType.HALF_DESTROYER, (_shape("CuCuCuCu:RuRuRuRu"),))
+    west, _east = engine.cut(_shape("CuCuCuCu:RuRuRuRu"))
 
     assert only.canonical_code == west.canonical_code
 
@@ -44,6 +60,41 @@ def test_swapper_combines_left_and_right_halves() -> None:
 
     assert output_a.canonical_code == "CuCuRuRu"
     assert output_b.canonical_code == "--------"
+
+
+def test_swapper_swaps_each_layer_when_layer_counts_match() -> None:
+    engine = OperationEngine()
+    left = _shape("CuCu----:RuRu----")
+    right = _shape("----SgSg:----SbSb")
+    output_a, output_b = engine.swapper(left, right)
+
+    assert output_a.canonical_code == "CuCuSgSg:RuRuSbSb"
+    assert output_b.canonical_code == "--------:--------"
+
+
+def test_swapper_requires_matching_layer_counts() -> None:
+    engine = OperationEngine()
+    with pytest.raises(ValueError, match="same number of layers"):
+        engine.swapper(_shape("CuCu----"), _shape("CuCu----:RuRu----"))
+
+
+def test_stacker_concat_when_first_layers_do_not_merge_disjoint() -> None:
+    engine = OperationEngine()
+    bottom = _shape("CuWu----:CuRc----")
+    top = _shape("CuWuSuRu")
+    result = engine.stacker(bottom, top)
+
+    # merge_disjoint fails on first layers; concat then column gravity settles quadrants.
+    assert result.canonical_code == "CuWuSuRu:CuRc----:CuWu----"
+
+
+def test_stacker_merges_bottom_and_top_first_layers_when_disjoint() -> None:
+    engine = OperationEngine()
+    bottom = _shape("----SuRu:----SuWb")
+    top = _shape("SuRu----")
+    result = engine.stacker(bottom, top)
+
+    assert result.canonical_code == "SuRuSuRu:----SuWb"
 
 
 def test_stacker_merges_disjoint_quadrants_before_creating_new_layer() -> None:

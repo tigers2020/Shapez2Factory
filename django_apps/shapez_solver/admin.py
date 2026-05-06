@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from django_apps.shapez_solver.models import (
     MacroRecipe,
+    MacroRecipeCompiledBoundary,
     MacroRecipeStep,
     PatternExample,
     PatternFamily,
@@ -9,6 +10,18 @@ from django_apps.shapez_solver.models import (
     SolverProject,
     SolverRun,
 )
+
+
+class MacroRecipeCompiledBoundaryInline(admin.TabularInline):
+    model = MacroRecipeCompiledBoundary
+    extra = 0
+    fields = ("graph_shape_id", "pattern_signature", "boundary")
+    readonly_fields = ("graph_shape_id", "pattern_signature", "boundary")
+    can_delete = False
+    ordering = ("boundary", "graph_shape_id")
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 class MacroRecipeStepInline(admin.TabularInline):
@@ -51,7 +64,7 @@ class PatternTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(MacroRecipe)
 class MacroRecipeAdmin(admin.ModelAdmin):
-    inlines = (MacroRecipeStepInline,)
+    inlines = (MacroRecipeStepInline, MacroRecipeCompiledBoundaryInline)
     list_display = (
         "code",
         "strategy_code",
@@ -79,6 +92,19 @@ class MacroRecipeAdmin(admin.ModelAdmin):
             obj.graph_document = default_empty_graph_document()
             obj.save(update_fields=["graph_document"])
             apply_graph_derived_catalog_fields(obj, obj.graph_document)
+
+
+@admin.register(MacroRecipeCompiledBoundary)
+class MacroRecipeCompiledBoundaryAdmin(admin.ModelAdmin):
+    list_display = ("macro", "graph_shape_id", "pattern_signature", "boundary")
+    list_select_related = ("macro",)
+    list_filter = ("boundary",)
+    search_fields = ("graph_shape_id", "pattern_signature", "macro__code", "macro__name")
+    ordering = ("macro_id", "boundary", "graph_shape_id")
+    readonly_fields = ("macro", "graph_shape_id", "pattern_signature", "boundary")
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(PatternExample)

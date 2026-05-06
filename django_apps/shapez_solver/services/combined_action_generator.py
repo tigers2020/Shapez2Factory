@@ -10,6 +10,7 @@ from django_apps.shapez_solver.services.macro_action_generator import (
     MacroInventorySearchRequestView,
     try_macro_request_view,
 )
+from django_apps.shapez_solver.services.pattern_classifier import pattern_signature
 
 
 class _MacroGenerator(Protocol):
@@ -17,6 +18,8 @@ class _MacroGenerator(Protocol):
         self,
         state: InventoryState,
         request: MacroInventorySearchRequestView,
+        *,
+        target_pattern_signature: str | None = None,
     ) -> tuple[Action, ...]: ...
 
 
@@ -39,7 +42,8 @@ class CombinedActionGenerator:
         macro_view = try_macro_request_view(request)
         if macro_view is None:
             return self.primitives.generate(state)
-        macro_actions = self.macros.generate(state, macro_view)
+        sig = pattern_signature(macro_view.target_code)
+        macro_actions = self.macros.generate(state, macro_view, target_pattern_signature=sig)
         if macro_actions:
             return macro_actions
         return self.primitives.generate(state)

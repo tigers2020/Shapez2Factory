@@ -39,6 +39,8 @@ class MacroStrategy(Protocol):
         self,
         state: InventoryState,
         request: MacroRequestView,
+        *,
+        target_pattern_signature: str | None = None,
     ) -> tuple[Action, ...]: ...
 
 
@@ -233,10 +235,17 @@ def _abcc_batch_primitive_chain(full_a: str, full_b: str, full_c: str) -> tuple[
 def _checker_pair_full_sources_if_applicable(
     state: InventoryState,
     request: MacroRequestView,
+    *,
+    target_pattern_signature: str | None = None,
 ) -> tuple[str, str] | None:
     """CHECKER_PAIR 매크로가 적용되면 (full_a, full_b), 아니면 None."""
 
-    if pattern_signature(request.target_code) != "ABAB":
+    sig = (
+        target_pattern_signature
+        if target_pattern_signature is not None
+        else pattern_signature(request.target_code)
+    )
+    if sig != "ABAB":
         return None
     if state.counts != InventoryState.from_counts(request.source_counts).counts:
         return None
@@ -257,10 +266,17 @@ def _checker_pair_full_sources_if_applicable(
 def _abcc_batch_sources_if_applicable(
     state: InventoryState,
     request: MacroRequestView,
+    *,
+    target_pattern_signature: str | None = None,
 ) -> tuple[str, str, str] | None:
     """ABCC_BATCH 매크로가 적용되면 (full_a, full_b, full_c), 아니면 None."""
 
-    if pattern_signature(request.target_code) != "ABCC":
+    sig = (
+        target_pattern_signature
+        if target_pattern_signature is not None
+        else pattern_signature(request.target_code)
+    )
+    if sig != "ABCC":
         return None
     if request.target_count != 4:
         return None
@@ -306,9 +322,15 @@ class CheckerPairMacroStrategy:
         self,
         state: InventoryState,
         request: MacroRequestView,
+        *,
+        target_pattern_signature: str | None = None,
     ) -> tuple[Action, ...]:
         actions: list[Action] = []
-        pair = _checker_pair_full_sources_if_applicable(state, request)
+        pair = _checker_pair_full_sources_if_applicable(
+            state,
+            request,
+            target_pattern_signature=target_pattern_signature,
+        )
         if pair is not None:
             code_a, code_b = pair
             chain = _checker_pair_primitive_chain(code_a, code_b)
@@ -324,9 +346,15 @@ class AbccBatchMacroStrategy:
         self,
         state: InventoryState,
         request: MacroRequestView,
+        *,
+        target_pattern_signature: str | None = None,
     ) -> tuple[Action, ...]:
         actions: list[Action] = []
-        triple = _abcc_batch_sources_if_applicable(state, request)
+        triple = _abcc_batch_sources_if_applicable(
+            state,
+            request,
+            target_pattern_signature=target_pattern_signature,
+        )
         if triple is not None:
             full_a, full_b, full_c = triple
             chain = _abcc_batch_primitive_chain(full_a, full_b, full_c)

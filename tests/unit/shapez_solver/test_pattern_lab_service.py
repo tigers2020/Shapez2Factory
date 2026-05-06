@@ -97,3 +97,21 @@ def test_explain_pattern_family_mismatch_rotation_union() -> None:
         )
         is None
     )
+
+
+def test_explain_pattern_family_mismatch_multi_layer_each_layer_must_match() -> None:
+    assert (
+        explain_pattern_family_mismatch(
+            "CuCuCuCu:CuCuCuCu",
+            family_signature="AAAA",
+            allow_rotation=False,
+        )
+        is None
+    )
+    detail = explain_pattern_family_mismatch(
+        "CuCuCuCu:RcRcCuCu",
+        family_signature="AAAA",
+        allow_rotation=False,
+    )
+    assert detail is not None
+    assert detail.startswith("layer 1:")

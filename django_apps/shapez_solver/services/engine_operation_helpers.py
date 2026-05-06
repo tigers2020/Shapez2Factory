@@ -50,20 +50,22 @@ def splitter_outputs(shape: Shape) -> tuple[Shape, Shape]:
 
 
 def swapper_outputs(left_shape: Shape, right_shape: Shape) -> tuple[Shape, Shape]:
-    if len(left_shape.layers) != 1 or len(right_shape.layers) != 1:
-        raise ValueError("swapper MVP supports only single-layer shapes")
-    output_a_layer, output_b_layer = swap_half_planes_single_layer(
-        left_shape.layers[0],
-        right_shape.layers[0],
-    )
-    return Shape(layers=(output_a_layer,)), Shape(layers=(output_b_layer,))
+    if len(left_shape.layers) != len(right_shape.layers):
+        raise ValueError("swapper requires shapes with the same number of layers")
+    out_a: list[ShapeLayer] = []
+    out_b: list[ShapeLayer] = []
+    for left_layer, right_layer in zip(left_shape.layers, right_shape.layers, strict=True):
+        layer_a, layer_b = swap_half_planes_single_layer(left_layer, right_layer)
+        out_a.append(layer_a)
+        out_b.append(layer_b)
+    return Shape(layers=tuple(out_a)), Shape(layers=tuple(out_b))
 
 
 def stacker_output(bottom: Shape, top: Shape) -> Shape:
-    if len(bottom.layers) == 1 and len(top.layers) == 1:
-        merged = merge_disjoint_shape_layers(bottom.layers[0], top.layers[0])
-        if merged is not None:
-            return Shape(layers=(merged,)).strip_top_empty_layers()
+    merged = merge_disjoint_shape_layers(bottom.layers[0], top.layers[0])
+    if merged is not None:
+        combined = Shape(layers=(merged, *bottom.layers[1:], *top.layers[1:]))
+        return post_stack_physics(combined)
     combined = Shape(layers=(*bottom.layers, *top.layers))
     return post_stack_physics(combined)
 

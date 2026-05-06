@@ -1,5 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import { TILE_PREVIEW_PX } from "./shapePartSpriteCompose";
+import { ShapePartSpriteTileLayers } from "./shapePartSpriteTileLayers";
+
 const PREVIEW_IMAGE_MAX_RETRIES = 3;
 const PREVIEW_GLTF_MAX_RETRIES = 3;
 
@@ -192,18 +195,46 @@ export function RecipeShapePreview({
       : null;
 
   const tile = variant === "tile";
+
+  const tileBox =
+    "isolate flex shrink-0 items-center justify-center overflow-hidden rounded border border-slate-600/50 bg-slate-950 [transform:translate3d(0,0,0)]";
   const box = tile
-    ? "isolate flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-slate-600/50 bg-slate-950 [transform:translate3d(0,0,0)]"
+    ? tileBox
     : "flex h-28 w-full max-w-[200px] items-center justify-center overflow-hidden rounded border border-slate-600/50 bg-slate-950";
 
   const short = code.trim().slice(0, 3) || "—";
 
+  if (tile && scene) {
+    return (
+      <div
+        aria-hidden
+        className={box}
+        style={{ width: TILE_PREVIEW_PX, height: TILE_PREVIEW_PX }}
+      >
+        <ShapePartSpriteTileLayers
+          fallbackImageUrl={url || undefined}
+          fallbackLabel={short}
+          previewScene={scene}
+          onDisplayReady={firePreviewReady}
+        />
+      </div>
+    );
+  }
+
   if (url && !imgFailed) {
     return (
-      <div aria-hidden className={box}>
+      <div
+        aria-hidden
+        className={box}
+        style={tile ? { width: TILE_PREVIEW_PX, height: TILE_PREVIEW_PX } : undefined}
+      >
         <img
           alt={previewAlt || code || "Shape preview"}
-          className={tile ? "h-full w-full object-contain p-0.5" : "max-h-full max-w-full object-contain p-1"}
+          className={
+            tile
+              ? "h-full w-full object-contain p-0.5"
+              : "max-h-full max-w-full object-contain p-1"
+          }
           loading={tile ? "eager" : "lazy"}
           src={imgSrc}
           onLoad={firePreviewReady}
@@ -243,9 +274,10 @@ export function RecipeShapePreview({
       aria-hidden
       className={
         tile
-          ? "flex h-10 w-10 shrink-0 items-center justify-center rounded border border-slate-600/50 bg-linear-to-br from-cyan-950/80 to-slate-900 font-mono text-[10px] font-semibold text-cyan-100/90"
+          ? "flex shrink-0 items-center justify-center rounded border border-slate-600/50 bg-linear-to-br from-cyan-950/80 to-slate-900 font-mono text-[10px] font-semibold text-cyan-100/90"
           : "flex h-28 w-full max-w-[200px] items-center justify-center rounded border border-slate-600/50 bg-linear-to-br from-cyan-950/80 to-slate-900 font-mono text-xs font-semibold text-cyan-100/90"
       }
+      style={tile ? { width: TILE_PREVIEW_PX, height: TILE_PREVIEW_PX } : undefined}
     >
       {short}
     </div>

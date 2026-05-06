@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from django_apps.shapez_solver.models import MacroRecipe
+from django.db.models import Exists, OuterRef
+
+from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeCompiledBoundary
 from django_apps.shapez_solver.services.recipe_graph_recompute import (
     try_pattern_macro_step_rows_from_graph_document,
 )
@@ -77,10 +79,17 @@ class PatternCatalogRepository:
     """Pattern DB에서 활성 macro 후보를 조회한다."""
 
     def find_macro_candidates(self, *, signature: str) -> tuple[PatternMacroCandidate, ...]:
+        has_boundary = MacroRecipeCompiledBoundary.objects.filter(macro_id=OuterRef("pk"))
+        end_matches_sig = MacroRecipeCompiledBoundary.objects.filter(
+            macro_id=OuterRef("pk"),
+            boundary=MacroRecipeCompiledBoundary.Boundary.END,
+            pattern_signature=signature,
+        )
         recipes = (
             MacroRecipe.objects.select_related("family")
-            .prefetch_related("steps")
+            .prefetch_related("steps", "compiled_boundaries")
             .filter(is_active=True, family__is_active=True, family__signature=signature)
+            .filter(~Exists(has_boundary) | Exists(end_matches_sig))
             .order_by("priority", "code")
         )
         return tuple(

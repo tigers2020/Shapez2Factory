@@ -14,6 +14,11 @@ const staticOutDir = path.resolve(
 export default defineConfig({
   plugins: [tailwindcss(), react()],
   base: "/static/web/js/recipe_graph_editor/",
+  server: {
+    proxy: {
+      "/internal": { changeOrigin: true, target: "http://127.0.0.1:8000" },
+    },
+  },
   build: {
     outDir: staticOutDir,
     emptyOutDir: true,

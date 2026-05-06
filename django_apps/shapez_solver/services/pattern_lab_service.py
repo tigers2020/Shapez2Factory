@@ -171,7 +171,11 @@ def _build_macro_results(
         source_counts=source_counts,
     )
     state = InventoryState.from_counts(source_counts)
-    actions = generator.generate(state, request)
+    actions = generator.generate(
+        state,
+        request,
+        target_pattern_signature=pattern_signature(target_code),
+    )
     action_by_kind = {action.macro_kind: action for action in actions}
     return tuple(
         PatternLabMacroResult(
@@ -222,32 +226,25 @@ def _build_rotation_variants(shape_code: str) -> tuple[RotationVariant, ...]:
     return tuple(variants)
 
 
-def explain_pattern_family_mismatch(
-    shape_code: str,
+MAX_PATTERN_FAMILY_LAYERS = 4
+
+
+def _inventory_family_mismatch_for_layer_code(
+    layer_code: str,
     *,
     family_signature: str,
     allow_rotation: bool,
 ) -> str | None:
-    """
-    Pattern Lab과 동일한 canonical / inventory / 사분면 회전 variant로
-    ``family_signature``와의 불일치를 설명한다. 일치하면 ``None``.
-
-    - ``allow_rotation``이 거짓이면 ``inventory_signature``만 사용한다.
-    - 참이면 ``inventory_signature`` 및 ``_build_rotation_variants(canonical_code)``의
-      시그니처 합집합에 ``family_signature``가 포함되는지 본다.
-    """
+    """단일 레이어(8자)에 대해 family와 불일치 시 이유 문자열, 아니면 None."""
     fam_sig = (family_signature or "").strip()
     if not fam_sig:
         return None
-    normalized = shape_code.strip()
-    if not normalized:
-        return None
     try:
-        patterns = parse_shape_code_list(normalized)
+        layer_patterns = parse_shape_code_list(layer_code.strip())
     except ShapeCodeParseError as exc:
         return f"parse error: {exc}"
 
-    target_shape = shape_from_pattern(patterns[0])
+    target_shape = shape_from_pattern(layer_patterns[0])
     if not target_shape.is_single_layer():
         return "multi-layer shape is not supported for pattern family check"
 
@@ -267,6 +264,50 @@ def explain_pattern_family_mismatch(
             f"pattern family {fam_sig!r} not in allowed signatures "
             f"{sorted(acceptable)!r} (inventory {inv_sig!r}, rotation allowed)"
         )
+    return None
+
+
+def explain_pattern_family_mismatch(
+    shape_code: str,
+    *,
+    family_signature: str,
+    allow_rotation: bool,
+) -> str | None:
+    """
+    Pattern Lab과 동일한 canonical / inventory / 사분면 회전 variant로
+    ``family_signature``와의 불일치를 설명한다. 일치하면 ``None``.
+
+    - ``allow_rotation``이 거짓이면 ``inventory_signature``만 사용한다.
+    - 참이면 ``inventory_signature`` 및 ``_build_rotation_variants(canonical_code)``의
+      시그니처 합집합에 ``family_signature``가 포함되는지 본다.
+    - 다층(``:``) 코드는 레이어당 위 규칙을 적용. 레이어 수 최대
+      ``MAX_PATTERN_FAMILY_LAYERS``.
+    """
+    fam_sig = (family_signature or "").strip()
+    if not fam_sig:
+        return None
+    normalized = shape_code.strip()
+    if not normalized:
+        return None
+    try:
+        patterns = parse_shape_code_list(normalized)
+    except ShapeCodeParseError as exc:
+        return f"parse error: {exc}"
+
+    target_shape = shape_from_pattern(patterns[0])
+    layer_count = len(target_shape.layers)
+    if layer_count > MAX_PATTERN_FAMILY_LAYERS:
+        return f"multi-layer shape exceeds maximum of {MAX_PATTERN_FAMILY_LAYERS} layers"
+
+    for layer_index, layer in enumerate(target_shape.layers):
+        layer_code = "".join(f"{part.kind}{part.color}" for part in layer.quadrants)
+        detail = _inventory_family_mismatch_for_layer_code(
+            layer_code,
+            family_signature=fam_sig,
+            allow_rotation=allow_rotation,
+        )
+        if detail:
+            return f"layer {layer_index}: {detail}"
     return None
 
 

@@ -25,6 +25,7 @@ alwaysApply: true
 ## 다중 채팅
 
 - 레이어 경계 유지. 다른 채팅 결론은 **파일 기준**으로 재확인.
+- 토큰·컨텍스트·요금 절약 요약: [`documents/ai/manuals/cursor_usage.md`](mdc:documents/ai/manuals/cursor_usage.md).
 
 ## 테스트 구간
 

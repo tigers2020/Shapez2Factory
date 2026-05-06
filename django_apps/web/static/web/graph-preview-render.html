@@ -18,27 +18,43 @@
         place-items: center;
       }
 
+      /* Prerender PNG size follows [data-shape-gltf-viewport] (512×512); Playwright viewport must fit `.frame`. */
       .frame {
-        width: 168px;
-        height: 168px;
+        width: 672px;
+        height: 672px;
         display: grid;
         place-items: center;
       }
 
       .viewer-shell {
-        width: 148px;
-        padding: 10px;
-        border-radius: 20px;
+        width: 592px;
+        padding: 40px;
+        border-radius: 80px;
         background: rgba(15, 23, 42, 0.05);
       }
 
       [data-shape-gltf-viewport] {
-        width: 128px;
-        height: 128px;
-        min-height: 128px;
+        width: 512px;
+        height: 512px;
+        min-height: 512px;
         overflow: hidden;
         border-radius: 999px;
         background: #070b1c;
+      }
+
+      html.shape-prerender-transparent,
+      html.shape-prerender-transparent body {
+        background: transparent;
+      }
+
+      html.shape-prerender-transparent .viewer-shell {
+        background: transparent;
+      }
+
+      html.shape-prerender-transparent [data-shape-gltf-viewport] {
+        background: transparent;
+        /* Square bake for atomic sprites — avoid circular clip from border-radius. */
+        border-radius: 0;
       }
 
       canvas {
@@ -68,6 +84,9 @@
 
       const response = await fetch("/scene.json", { cache: "no-store" });
       const scene = await response.json();
+      if (scene.transparent_background) {
+        document.documentElement.classList.add("shape-prerender-transparent");
+      }
       const viewer = document.querySelector("[data-shape-gltf-viewer]");
       const script = viewer.querySelector('script[type="application/json"]');
       script.textContent = JSON.stringify(scene);

@@ -3,7 +3,12 @@ from unittest.mock import patch
 import pytest
 from django.test.utils import override_settings
 
-from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeStep, PatternFamily
+from django_apps.shapez_solver.models import (
+    MacroRecipe,
+    MacroRecipeCompiledBoundary,
+    MacroRecipeStep,
+    PatternFamily,
+)
 from django_apps.shapez_solver.services.macro_recipe_staff_catalog import (
     apply_graph_derived_catalog_fields,
     create_draft_macro_recipe,
@@ -118,6 +123,304 @@ def test_create_recipe_with_steps() -> None:
     assert recipe.graph_document is not None
     assert recipe.graph_document["nodes"] == []
     assert recipe.graph_document["edges"] == []
+    assert recipe.compiled_boundaries.count() == 0
+
+
+@pytest.mark.django_db
+def test_apply_graph_derived_catalog_fields_syncs_compiled_boundaries() -> None:
+    family = PatternFamily.objects.create(code="cb-f", name="CB", signature="ABCC")
+    macro = MacroRecipe.objects.create(
+        family=family,
+        code="cb-mac",
+        strategy_code="ABCC_BATCH",
+        name="CB",
+    )
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "t1",
+                "kind": "shape",
+                "role": "target",
+                "shape_code": "CuRuSuSu",
+                "quantity": 1,
+                "x": 100,
+                "y": 0,
+            },
+        ],
+        "edges": [],
+    }
+    apply_graph_derived_catalog_fields(macro, doc)
+    rows = list(macro.compiled_boundaries.order_by("boundary", "graph_shape_id"))
+    assert len(rows) == 2
+    assert {(r.graph_shape_id, r.pattern_signature, r.boundary) for r in rows} == {
+        ("s1", "AAAA", MacroRecipeCompiledBoundary.Boundary.START),
+        ("t1", "ABCC", MacroRecipeCompiledBoundary.Boundary.END),
+    }
+
+
+@pytest.mark.django_db
+def test_serialize_recipe_includes_compiled_boundaries() -> None:
+    from django_apps.shapez_solver.services.macro_recipe_staff_catalog import serialize_recipe
+
+    family = PatternFamily.objects.create(code="cb-ser", name="S", signature="ABCC")
+    macro = MacroRecipe.objects.create(
+        family=family,
+        code="cb-ser-mac",
+        strategy_code="ABCC_BATCH",
+        name="S",
+    )
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "t1",
+                "kind": "shape",
+                "role": "target",
+                "shape_code": "CuRuSuSu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+        ],
+        "edges": [],
+    }
+    apply_graph_derived_catalog_fields(macro, doc)
+    macro.refresh_from_db()
+    data = serialize_recipe(macro)
+    assert len(data["compiled_boundaries"]) == 1
+    assert data["compiled_boundaries"][0]["graph_shape_id"] == "t1"
+    assert data["compiled_boundaries"][0]["pattern_signature"] == "ABCC"
+    assert data["compiled_boundaries"][0]["boundary"] == MacroRecipeCompiledBoundary.Boundary.END
+
+
+@pytest.mark.django_db
+def test_compiled_boundaries_sink_intermediate_is_end_without_explicit_target() -> None:
+    family = PatternFamily.objects.create(code="sink-f", name="Sink", signature="ABCC")
+    macro = MacroRecipe.objects.create(
+        family=family,
+        code="sink-mac",
+        strategy_code="ABCC_BATCH",
+        name="Sink",
+    )
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {"id": "o1", "kind": "operation", "operation": "rotate_cw", "x": 100, "y": 0},
+            {
+                "id": "im1",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "CuRuSuSu",
+                "quantity": 1,
+                "x": 200,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s1", "to": "o1", "kind": "input"},
+            {"from": "o1", "to": "im1", "kind": "output", "slot": "0"},
+        ],
+    }
+    apply_graph_derived_catalog_fields(macro, doc)
+    ends = list(macro.compiled_boundaries.filter(boundary=MacroRecipeCompiledBoundary.Boundary.END))
+    assert len(ends) == 1
+    assert ends[0].graph_shape_id == "im1"
+    assert ends[0].pattern_signature == "ABCC"
+
+
+@pytest.mark.django_db
+def test_compiled_boundaries_sink_loses_end_when_wired_to_next_operation() -> None:
+    family = PatternFamily.objects.create(code="chain-f", name="Chain", signature="ABCC")
+    macro = MacroRecipe.objects.create(
+        family=family,
+        code="chain-mac",
+        strategy_code="ABCC_BATCH",
+        name="Chain",
+    )
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {"id": "o1", "kind": "operation", "operation": "rotate_cw", "x": 100, "y": 0},
+            {
+                "id": "im1",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "CuRuSuSu",
+                "quantity": 1,
+                "x": 200,
+                "y": 0,
+            },
+            {"id": "o2", "kind": "operation", "operation": "rotate_ccw", "x": 300, "y": 0},
+            {
+                "id": "im2",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "CuRuSuSu",
+                "quantity": 1,
+                "x": 400,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s1", "to": "o1", "kind": "input"},
+            {"from": "o1", "to": "im1", "kind": "output", "slot": "0"},
+            {"from": "im1", "to": "o2", "kind": "input"},
+            {"from": "o2", "to": "im2", "kind": "output", "slot": "0"},
+        ],
+    }
+    apply_graph_derived_catalog_fields(macro, doc)
+    ends = {r.graph_shape_id for r in macro.compiled_boundaries.filter(boundary="end")}
+    assert "im1" not in ends
+    assert "im2" in ends
+
+
+@pytest.mark.django_db
+def test_compiled_boundaries_delivery_source_intermediate_not_end_target_only() -> None:
+    family = PatternFamily.objects.create(code="del-f", name="Del", signature="ABCC")
+    macro = MacroRecipe.objects.create(
+        family=family,
+        code="del-mac",
+        strategy_code="ABCC_BATCH",
+        name="Del",
+    )
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {"id": "o1", "kind": "operation", "operation": "rotate_cw", "x": 100, "y": 0},
+            {
+                "id": "im1",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "CuRuSuSu",
+                "quantity": 1,
+                "x": 200,
+                "y": 0,
+            },
+            {
+                "id": "t1",
+                "kind": "shape",
+                "role": "target",
+                "shape_code": "CuRuSuSu",
+                "quantity": 1,
+                "x": 300,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s1", "to": "o1", "kind": "input"},
+            {"from": "o1", "to": "im1", "kind": "output", "slot": "0"},
+            {"from": "im1", "to": "t1", "kind": "delivery"},
+        ],
+    }
+    apply_graph_derived_catalog_fields(macro, doc)
+    ends = list(macro.compiled_boundaries.filter(boundary=MacroRecipeCompiledBoundary.Boundary.END))
+    assert len(ends) == 1
+    assert ends[0].graph_shape_id == "t1"
+
+
+@pytest.mark.django_db
+def test_compiled_boundaries_end_rows_capped_at_four() -> None:
+    from django_apps.shapez_solver.services.macro_recipe_compiled_boundary import (
+        MAX_COMPILED_END_BOUNDARIES,
+    )
+
+    family = PatternFamily.objects.create(code="cap-f", name="Cap", signature="ABCC")
+    macro = MacroRecipe.objects.create(
+        family=family,
+        code="cap-mac",
+        strategy_code="ABCC_BATCH",
+        name="Cap",
+    )
+    nodes = [
+        {
+            "id": "end-e",
+            "kind": "shape",
+            "role": "target",
+            "shape_code": "CuRuSuSu",
+            "quantity": 1,
+            "x": 0,
+            "y": 0,
+        },
+        {
+            "id": "end-d",
+            "kind": "shape",
+            "role": "target",
+            "shape_code": "CuRuSuSu",
+            "quantity": 1,
+            "x": 50,
+            "y": 0,
+        },
+        {
+            "id": "end-c",
+            "kind": "shape",
+            "role": "target",
+            "shape_code": "CuRuSuSu",
+            "quantity": 1,
+            "x": 100,
+            "y": 0,
+        },
+        {
+            "id": "end-b",
+            "kind": "shape",
+            "role": "target",
+            "shape_code": "CuRuSuSu",
+            "quantity": 1,
+            "x": 150,
+            "y": 0,
+        },
+        {
+            "id": "end-a",
+            "kind": "shape",
+            "role": "target",
+            "shape_code": "CuRuSuSu",
+            "quantity": 1,
+            "x": 200,
+            "y": 0,
+        },
+    ]
+    doc = {"schema_version": 1, "nodes": nodes, "edges": []}
+    apply_graph_derived_catalog_fields(macro, doc)
+    ends = list(macro.compiled_boundaries.filter(boundary=MacroRecipeCompiledBoundary.Boundary.END))
+    assert len(ends) == MAX_COMPILED_END_BOUNDARIES
+    chosen = sorted(r.graph_shape_id for r in ends)
+    assert chosen == ["end-a", "end-b", "end-c", "end-d"]
 
 
 @pytest.mark.django_db

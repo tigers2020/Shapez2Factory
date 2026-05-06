@@ -9,7 +9,10 @@ import { applyTransform } from "./transform.js";
 
 export async function renderSceneToThree(scene, loader, assetBase, renderScene, viewMode) {
   const records = [];
-  scene.add(createPedestal());
+  const showPedestal = renderScene.include_pedestal !== false;
+  if (showPedestal) {
+    scene.add(createPedestal());
+  }
 
   for (const cell of renderScene.cells) {
     const model = await loadModel(loader, assetBase, cell.mesh_key);

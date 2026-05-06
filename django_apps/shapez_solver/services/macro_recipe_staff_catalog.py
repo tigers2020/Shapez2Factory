@@ -11,7 +11,15 @@ from django.templatetags.static import static
 
 from django_apps.shapez_solver.domain.operation_catalog import OPERATION_CATALOG
 from django_apps.shapez_solver.domain.operations import OperationType
-from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeStep, PatternFamily
+from django_apps.shapez_solver.models import (
+    MacroRecipe,
+    MacroRecipeCompiledBoundary,
+    MacroRecipeStep,
+    PatternFamily,
+)
+from django_apps.shapez_solver.services.macro_recipe_compiled_boundary import (
+    sync_macro_recipe_compiled_boundaries,
+)
 from django_apps.shapez_solver.services.macro_recipe_graph_visual import (
     serialize_macro_recipe_visual,
 )
@@ -25,6 +33,14 @@ from django_apps.shapez_solver.services.recipe_graph_recompute import (
 )
 
 GRAPH_DRAFT_FAMILY_CODE = "graph-draft"
+
+MACRO_RECIPE_DETAIL_PREFETCHES = (
+    Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index")),
+    Prefetch(
+        "compiled_boundaries",
+        queryset=MacroRecipeCompiledBoundary.objects.order_by("boundary", "graph_shape_id"),
+    ),
+)
 
 
 def allowed_strategy_codes() -> tuple[str, ...]:
@@ -96,6 +112,9 @@ def apply_graph_derived_catalog_fields(
             "priority",
         ]
     )
+    sync_macro_recipe_compiled_boundaries(
+        macro, graph_document if isinstance(graph_document, dict) else None
+    )
 
 
 @transaction.atomic  # type: ignore[untyped-decorator]
@@ -130,9 +149,7 @@ def create_draft_macro_recipe(*, name: str) -> MacroRecipe:
     return cast(
         MacroRecipe,
         MacroRecipe.objects.select_related("family")
-        .prefetch_related(
-            Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index")),
-        )
+        .prefetch_related(*MACRO_RECIPE_DETAIL_PREFETCHES)
         .get(pk=recipe.pk),
     )
 
@@ -145,6 +162,14 @@ def _serialize_step(step: MacroRecipeStep) -> dict[str, Any]:
         "input_slots": step.input_slots,
         "output_slots": step.output_slots,
         "note": step.note,
+    }
+
+
+def _serialize_compiled_boundary(row: MacroRecipeCompiledBoundary) -> dict[str, Any]:
+    return {
+        "graph_shape_id": row.graph_shape_id,
+        "pattern_signature": row.pattern_signature,
+        "boundary": row.boundary,
     }
 
 
@@ -175,6 +200,13 @@ def serialize_recipe(recipe: MacroRecipe, *, sync_png: bool = True) -> dict[str,
         "visual_graph": visual_graph,
         "pattern_lab_steps": lab_rows,
         "steps": [_serialize_step(s) for s in steps],
+        "compiled_boundaries": [
+            _serialize_compiled_boundary(b)
+            for b in sorted(
+                recipe.compiled_boundaries.all(),
+                key=lambda x: (x.boundary, x.graph_shape_id),
+            )
+        ],
     }
 
 
@@ -188,7 +220,7 @@ def build_catalog_snapshot(*, sync_png: bool = False) -> dict[str, Any]:
         "is_active",
     )
     recipes = MacroRecipe.objects.select_related("family").prefetch_related(
-        Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index"))
+        *MACRO_RECIPE_DETAIL_PREFETCHES,
     )
     return {
         "families": list(families),
@@ -356,9 +388,7 @@ def create_recipe(payload: dict[str, Any]) -> MacroRecipe:
     return cast(
         MacroRecipe,
         MacroRecipe.objects.select_related("family")
-        .prefetch_related(
-            Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index")),
-        )
+        .prefetch_related(*MACRO_RECIPE_DETAIL_PREFETCHES)
         .get(pk=recipe.pk),
     )
 
@@ -441,9 +471,7 @@ def update_recipe(recipe_id: int, payload: dict[str, Any]) -> MacroRecipe:
     return cast(
         MacroRecipe,
         MacroRecipe.objects.select_related("family")
-        .prefetch_related(
-            Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index")),
-        )
+        .prefetch_related(*MACRO_RECIPE_DETAIL_PREFETCHES)
         .get(pk=recipe.pk),
     )
 
@@ -488,6 +516,7 @@ def sync_macro_recipe_steps_from_graph_document(
 
 __all__ = [
     "GRAPH_DRAFT_FAMILY_CODE",
+    "MACRO_RECIPE_DETAIL_PREFETCHES",
     "allowed_strategy_codes",
     "apply_graph_derived_catalog_fields",
     "build_catalog_snapshot",

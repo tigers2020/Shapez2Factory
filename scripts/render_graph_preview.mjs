@@ -98,8 +98,8 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
 
   try {
-    // Viewport fits the prerender layout; 128×128 CSS preview → 128px PNG (deviceScaleFactor 1).
-    const page = await browser.newPage({ viewport: { width: 320, height: 320 }, deviceScaleFactor: 1 });
+    // Viewport fits graph-preview-render.html; 512×512 CSS preview → 512px PNG (deviceScaleFactor 1).
+    const page = await browser.newPage({ viewport: { width: 800, height: 800 }, deviceScaleFactor: 1 });
     await page.goto(`${server.origin}/`, { waitUntil: "networkidle" });
     await page.waitForSelector('[data-prerender-ready="true"]', { timeout: 20000 });
     await page.waitForTimeout(250);

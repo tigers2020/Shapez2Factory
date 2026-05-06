@@ -13,6 +13,7 @@ alwaysApply: true
 
 - 신규 라이브러리, 프레임워크 API 사용법처럼 최신 문서가 필요한 경우 우선 검토한다.
 - 외부 API 예제를 그대로 복사하지 말고 프로젝트 레이어 경계에 맞게 application port와 adapter로 분리한다.
+- 호출할 때는 MCP 도구 계약을 따른다: 사용자가 `/org/project` 또는 `/org/project/version` 형식의 library ID를 직접 주지 않으면 **`resolve-library-id` → `query-docs`** 순서. 질문당 각 도구 **최대 3회**. `query`에 API 키·비밀·민감 코드를 넣지 않는다.
 
 ## GitLens
 

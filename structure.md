@@ -14,12 +14,13 @@ This repository is organized as a Django-first project. Runtime ownership lives 
 | `django_apps/web/` | Templates, static assets, thin views (pages + staff tooling) |
 | `tests/unit/` | Fast unit tests for core and solver behavior |
 | `tests/integration/` | Django request/response and page/API integration tests |
-| `documents/` | Research (`research/`), plans (`plans/`), progress notes (`notes/`), project meta (`meta/`), attribution (`attribution/`), **game rules** (`game_rules/`), [`archive/`](documents/archive/)(완료 세션: [`archive/2026-05-completed/`](documents/archive/2026-05-completed/README.md)), AI manuals & session notes (`ai/`). 인덱스: [`documents/README.md`](documents/README.md) |
+| `documents/` | Research (`research/`), plans (`plans/`), progress notes (`notes/`), project meta (`meta/`), attribution (`attribution/`), **game rules** (`game_rules/`), [`archive/`](documents/archive/) (completed sessions: [`archive/2026-05-completed/`](documents/archive/2026-05-completed/README.md)), AI manuals & session notes (`ai/`). Index and document comparison notes: [`documents/README.md`](documents/README.md) |
 | `protocols/` | Multi-step pipeline **canonical** procedure ([`protocols/README.md`](protocols/README.md)) |
 | `persona/` | Persona cards and role routing ([`persona/README.md`](persona/README.md)) |
 | `.cursor/` | Cursor rules and editor guidance |
 | `assets/css/` | Tailwind input CSS source |
 | `frontend/recipe_graph_editor/` | Vite + React Flow editor; `npm run build:recipe-graph-editor` (via repo `package.json`) → `django_apps/web/static/web/js/recipe_graph_editor/` |
+| `frontend/graph_layout/` | TypeScript graph layout engine and static bundle sources for solver/editor graph rendering |
 | `locale/` | gettext catalogs (e.g. `locale/ko/LC_MESSAGES/django*.po`) |
 | `package.json` | Root npm scripts: `build:css` (Tailwind → `django_apps/web/static/web/css/app.css`), `build:recipe-graph-editor` |
 | `scripts/` | Ad-hoc tooling (e.g. `build_locale_ko.py`, `render_graph_preview.mjs`) |
@@ -32,7 +33,7 @@ Generated or local-only artifacts such as `node_modules/`, `.pytest_cache/`, `.r
 ### `django_apps/shapez_core/`
 
 - `domain/`: shape primitives, catalog, operations, crystal geometry, shape patterns
-- `services/`: shape code parser, codec, render scene, preview response composition
+- `services/`: shape code parser, codec, render scene, SVG preview thumbnails, preview response composition
 - `views.py` + `urls.py`: `/api/health/` and `/api/shape-preview/`
 
 ### `django_apps/shapez_solver/`
@@ -68,7 +69,7 @@ Internationalized routes (`i18n_patterns`, default language without URL prefix):
 
 ## Test layout
 
-- `tests/unit/shapez_core/`: parser, render scene, geometry
+- `tests/unit/shapez_core/`: parser, render scene, SVG preview thumbnails, geometry
 - `tests/unit/shapez_solver/`: solver engine, recipe graph, models, catalog, pattern lab
 - `tests/unit/web/`: template/markup and web-specific unit checks where used
 - `tests/integration/api/`: health and solver API checks

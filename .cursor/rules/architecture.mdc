@@ -1,8 +1,7 @@
 ---
 description: "shapez2Solver architecture: Django apps, dependency direction, solver vs graph"
-alwaysApply: true
+alwaysApply: false
 ---
-
 # shapez2Solver Architecture
 
 ## App ownership

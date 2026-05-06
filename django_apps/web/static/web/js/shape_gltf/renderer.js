@@ -14,14 +14,20 @@ import {
   RENDERER_TONE_MAPPING_EXPOSURE,
 } from "./constants.js";
 
-export function setupRenderer(container) {
+export function setupRenderer(container, options = {}) {
+  const transparentBackground = Boolean(options.transparentBackground);
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x09090f);
+  if (!transparentBackground) {
+    scene.background = new THREE.Color(0x09090f);
+  }
 
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
   camera.position.copy(CAMERA_FRAMES.original.position);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: transparentBackground,
+  });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.shadowMap.enabled = true;

@@ -182,6 +182,105 @@ def test_validate_quantity_bool_error() -> None:
     assert any(i["code"] == "shape_quantity_type" for i in issues)
 
 
+def test_validate_multi_layer_source_ok() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "WrCrRgSy:RcRcRrRr",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+        ],
+        "edges": [],
+    }
+    issues = validate_recipe_graph_context(
+        family_signature="ABCC",
+        family_allow_rotation=False,
+        graph_document=doc,
+    )
+    assert not any(i["code"] == "shape_code_invalid" for i in issues)
+
+
+def test_validate_shape_code_too_many_layers_error() -> None:
+    five = ":".join(["CuCuCuCu"] * 5)
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": five,
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+        ],
+        "edges": [],
+    }
+    issues = validate_recipe_graph_context(
+        family_signature="ABCC",
+        family_allow_rotation=False,
+        graph_document=doc,
+    )
+    assert any(i["code"] == "shape_code_invalid" for i in issues)
+    assert any("layers" in i["message"] for i in issues)
+
+
+def test_validate_multi_layer_target_family_per_layer() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "t1",
+                "kind": "shape",
+                "role": "target",
+                "shape_code": "CuCuCuCu:CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+        ],
+        "edges": [],
+    }
+    issues = validate_recipe_graph_context(
+        family_signature="AAAA",
+        family_allow_rotation=False,
+        graph_document=doc,
+    )
+    assert not any(i["severity"] == "error" for i in issues)
+
+
+def test_validate_multi_layer_target_family_mismatch_second_layer() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "t1",
+                "kind": "shape",
+                "role": "target",
+                "shape_code": "CuCuCuCu:RcRcCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+        ],
+        "edges": [],
+    }
+    issues = validate_recipe_graph_context(
+        family_signature="AAAA",
+        family_allow_rotation=False,
+        graph_document=doc,
+    )
+    assert any(i["code"] == "target_signature_mismatch" for i in issues)
+    assert any("layer 1" in i["message"] for i in issues)
+
+
 def test_validate_multi_output_operation_warns_missing_edges() -> None:
     doc = {
         "schema_version": 1,

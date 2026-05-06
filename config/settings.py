@@ -107,6 +107,10 @@ LOCALE_PATHS = [BASE_DIR / "locale"]
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# User uploads (ShapePartSprite PNGs). Ephemeral on many PaaS unless backed by volume/S3.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -117,14 +121,14 @@ STORAGES = {
 }
 # playwright_png: Node + Playwright (render_graph_preview.mjs). Often missing on PaaS runtime.
 # noop: skip PNG graph thumbnails; Quick Solver 3D still uses /api/shape-preview/ in the browser.
-SOLVER_GRAPH_PREVIEW_RENDERER = os.environ.get(
-    "SOLVER_GRAPH_PREVIEW_RENDERER", "playwright_png"
-).strip().lower()
+SOLVER_GRAPH_PREVIEW_RENDERER = (
+    os.environ.get("SOLVER_GRAPH_PREVIEW_RENDERER", "playwright_png").strip().lower()
+)
 # filesystem: PNG files under SOLVER_GRAPH_PREVIEW_CACHE_DIR (ephemeral on many PaaS).
 # database: store PNG bytes in web.GraphPreviewImage (Render Free friendly).
-SOLVER_GRAPH_PREVIEW_STORAGE = os.environ.get(
-    "SOLVER_GRAPH_PREVIEW_STORAGE", "filesystem"
-).strip().lower()
+SOLVER_GRAPH_PREVIEW_STORAGE = (
+    os.environ.get("SOLVER_GRAPH_PREVIEW_STORAGE", "filesystem").strip().lower()
+)
 SOLVER_GRAPH_PREVIEW_CACHE_DIR = BASE_DIR / ".graph_preview_cache"
 
 SUPPORT_KOFI_URL = os.environ.get("SUPPORT_KOFI_URL", "").strip()

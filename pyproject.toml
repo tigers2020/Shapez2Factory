@@ -11,6 +11,7 @@ requires-python = ">=3.12"
 dependencies = [
     "dj-database-url>=2.3,<3.0",
     "django>=5.2,<6.0",
+    "pillow>=10,<12",
     "django-allauth[socialaccount]>=65.0,<66.0",
     "gunicorn>=23.0,<24.0",
     "psycopg[binary]>=3.2,<4.0",
@@ -65,6 +66,7 @@ module = [
     "django_apps.shapez_solver.models",
     "django_apps.shapez_solver.urls",
     "django_apps.shapez_solver.views",
+    "django_apps.web.admin",
     "django_apps.web.apps",
     "django_apps.web.social_adapter",
     "django_apps.web.socialaccount_forms",

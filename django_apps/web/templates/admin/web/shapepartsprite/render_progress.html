@@ -1,0 +1,121 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Sprite render progress" %} | {{ block.super }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{{ changelist_url }}">Shape part sprite</a>
+  &rsaquo; {% trans "Progress" %}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{% trans "Rendering missing sprites" %}</h1>
+
+<p class="help" id="job-help">{% trans "Polling job status…" %}</p>
+
+<div style="margin: 1em 0;">
+  <progress
+    id="shape-sprite-progress"
+    max="100"
+    value="0"
+    style="width: min(480px, 100%); height: 20px;"
+  ></progress>
+</div>
+
+<p id="job-stats" style="font-family: monospace; white-space: pre-wrap;"></p>
+
+<p id="job-done-actions" style="display: none;">
+  <a class="button" href="{{ changelist_url }}">{% trans "Back to sprite list" %}</a>
+</p>
+
+<script>
+(function () {
+  const pollUrl = "{{ poll_url|escapejs }}";
+  const bar = document.getElementById("shape-sprite-progress");
+  const help = document.getElementById("job-help");
+  const stats = document.getElementById("job-stats");
+  const doneBox = document.getElementById("job-done-actions");
+  const MSG_HTTP = "{% filter escapejs %}{% trans "Could not load job status (HTTP error)." %}{% endfilter %}";
+  const MSG_NET = "{% filter escapejs %}{% trans "Network error while polling." %}{% endfilter %}";
+  const MSG_DONE = "{% filter escapejs %}{% trans "Finished." %}{% endfilter %}";
+  const MSG_FAIL = "{% filter escapejs %}{% trans "Job failed." %}{% endfilter %}";
+  const L_PROGRESS = "{% filter escapejs %}{% trans "Progress" %}{% endfilter %}";
+  const L_SKIP = "{% filter escapejs %}{% trans "Skipped (already had file)" %}{% endfilter %}";
+  const L_OK = "{% filter escapejs %}{% trans "Rendered OK" %}{% endfilter %}";
+  const L_ERR = "{% filter escapejs %}{% trans "Errors" %}{% endfilter %}";
+  let timer = null;
+
+  function pct(data) {
+    const t = Number(data.total) || 0;
+    const c = Number(data.current) || 0;
+    if (t <= 0) {
+      return data.status === "done" ? 100 : 0;
+    }
+    return Math.min(100, Math.round((100 * c) / t));
+  }
+
+  async function tick() {
+    try {
+      const r = await fetch(pollUrl, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      if (!r.ok) {
+        help.textContent = MSG_HTTP;
+        stop();
+        return;
+      }
+      const data = await r.json();
+      if (data.error) {
+        help.textContent = data.error;
+        stop();
+        return;
+      }
+      const p = pct(data);
+      bar.value = p;
+      const skipped = data.skipped != null ? data.skipped : "—";
+      const rend = data.rendered != null ? data.rendered : "—";
+      const err = data.errors != null ? data.errors : "—";
+      const cur = data.current != null ? data.current : "—";
+      const tot = data.total != null ? data.total : "—";
+      stats.textContent =
+        L_PROGRESS + ": " + cur + " / " + tot + "\n" +
+        L_SKIP + ": " + skipped + "\n" +
+        L_OK + ": " + rend + "\n" +
+        L_ERR + ": " + err;
+
+      if (data.status === "done") {
+        help.textContent = MSG_DONE;
+        bar.value = 100;
+        doneBox.style.display = "";
+        stop();
+        return;
+      }
+      if (data.status === "error") {
+        help.textContent = data.message || MSG_FAIL;
+        bar.removeAttribute("value");
+        doneBox.style.display = "";
+        stop();
+        return;
+      }
+    } catch (e) {
+      help.textContent = MSG_NET;
+      stop();
+    }
+  }
+
+  function stop() {
+    if (timer !== null) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  timer = setInterval(tick, 400);
+  tick();
+})();
+</script>
+{% endblock %}

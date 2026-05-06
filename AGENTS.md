@@ -51,6 +51,7 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 | 테스트·pytest·마커 | [`documents/ai/manuals/testing.md`](documents/ai/manuals/testing.md) |
 | 리팩터·삭제·최소 침습 | [`documents/ai/manuals/refactor.md`](documents/ai/manuals/refactor.md) |
 | 모델·마이그레이션·DB | [`documents/ai/manuals/database.md`](documents/ai/manuals/database.md) |
+| Cursor 사용 습관·컨텍스트·요금 절약 | [`documents/ai/manuals/cursor_usage.md`](documents/ai/manuals/cursor_usage.md) |
 
 추가 인덱스: [`documents/ai/README.md`](documents/ai/README.md).
 

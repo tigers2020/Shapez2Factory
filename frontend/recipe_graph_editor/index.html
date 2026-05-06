@@ -6,9 +6,15 @@
     <title>Recipe graph editor (dev)</title>
   </head>
   <body class="m-0 min-h-screen bg-slate-950 text-slate-100">
-    <div id="macro-graph-editor-root" class="min-h-screen"></div>
+    <div
+      id="macro-graph-editor-root"
+      class="min-h-screen"
+      data-shape-part-sprite-manifest-url="/internal/staff/shape-part-sprites/manifest/"
+    ></div>
     <script type="application/json" id="macro-graph-bootstrap">
-      {}
+      {
+        "api_shape_part_sprite_manifest": "/internal/staff/shape-part-sprites/manifest/"
+      }
     </script>
     <script type="application/json" id="macro-graph-initial-recipe">
       {"code": "DEV", "name": "Local dev", "family_code": "", "strategy_code": ""}

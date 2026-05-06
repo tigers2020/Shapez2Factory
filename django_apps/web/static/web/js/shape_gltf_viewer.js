@@ -28,7 +28,9 @@ async function mountViewer(container) {
   const assetBase = container.dataset.assetBase;
   const renderScene = readScene(container);
 
-  const rendererContext = setupRenderer(viewport);
+  const rendererContext = setupRenderer(viewport, {
+    transparentBackground: renderScene.transparent_background === true,
+  });
   const state = {
     ...rendererContext,
     cameraTransition: null,

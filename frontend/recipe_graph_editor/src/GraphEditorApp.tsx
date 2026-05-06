@@ -84,6 +84,8 @@ export type GraphBootstrap = {
   api_recipe_graph_recompute?: string;
   /** Staff macro graph: POST one Playwright PNG at a time */
   api_graph_preview_warm?: string;
+  /** Staff GET atomic part sprite manifest for Canvas2D tiles */
+  api_shape_part_sprite_manifest?: string;
   csrf_token?: string;
   staff_catalog_url?: string;
   staff_recipe_edit_url?: string;

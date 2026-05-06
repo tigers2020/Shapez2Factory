@@ -6,10 +6,7 @@ from django_apps.shapez_solver.domain.inventory_state import InventoryState
 from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.domain.search_action import Action
 from django_apps.shapez_solver.domain.search_cost import DEFAULT_OPERATION_COST
-from django_apps.shapez_solver.services.operation_semantics import (
-    apply_operation,
-    is_single_layer_shape_code,
-)
+from django_apps.shapez_solver.services.operation_semantics import apply_operation
 
 
 class PrimitiveActionGenerator:
@@ -73,11 +70,6 @@ class PrimitiveActionGenerator:
             return ()
 
         for operation in (OperationType.SWAPPER, OperationType.STACKER):
-            if operation == OperationType.SWAPPER and (
-                not is_single_layer_shape_code(left_shape_code)
-                or not is_single_layer_shape_code(right_shape_code)
-            ):
-                continue
             try:
                 outputs = apply_operation(operation, inputs)
             except ValueError:

@@ -3,7 +3,12 @@ from typing import Any
 import pytest
 
 from django_apps.shapez_solver.domain.inventory_state import InventoryState
-from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeStep, PatternFamily
+from django_apps.shapez_solver.models import (
+    MacroRecipe,
+    MacroRecipeCompiledBoundary,
+    MacroRecipeStep,
+    PatternFamily,
+)
 from django_apps.shapez_solver.services.combined_action_generator import CombinedActionGenerator
 from django_apps.shapez_solver.services.inventory_search_solver import (
     InventorySearchRequest,
@@ -199,3 +204,43 @@ def test_catalog_backed_macro_generator_can_be_injected_into_inventory_search(
     assert plan.final_inventory.get("CuRuSuSu") == 4
     assert "ABCC_BATCH" in plan.used_macro_kinds
     assert "ABCC_BATCH:db" in plan.used_macro_sources
+
+
+@pytest.mark.django_db
+def test_find_macro_candidates_includes_legacy_macro_without_compiled_rows(
+    without_canonical_catalog_macros: Any,
+) -> None:
+    family = PatternFamily.objects.create(code="leg", name="L", signature="ABCC")
+    MacroRecipe.objects.create(
+        family=family,
+        code="legacy-mac",
+        strategy_code="ABCC_BATCH",
+        name="Legacy",
+    )
+    candidates = PatternCatalogRepository().find_macro_candidates(signature="ABCC")
+    assert len(candidates) == 1
+    assert candidates[0].macro_code == "legacy-mac"
+
+
+@pytest.mark.django_db
+def test_find_macro_candidates_requires_matching_end_when_compiled_rows_exist(
+    without_canonical_catalog_macros: Any,
+) -> None:
+    family = PatternFamily.objects.create(code="cmp", name="C", signature="ABCC")
+    macro = MacroRecipe.objects.create(
+        family=family,
+        code="compiled-mac",
+        strategy_code="ABCC_BATCH",
+        name="Compiled",
+    )
+    MacroRecipeCompiledBoundary.objects.create(
+        macro=macro,
+        graph_shape_id="t1",
+        pattern_signature="AAAA",
+        boundary=MacroRecipeCompiledBoundary.Boundary.END,
+    )
+    assert PatternCatalogRepository().find_macro_candidates(signature="ABCC") == ()
+
+    MacroRecipeCompiledBoundary.objects.filter(macro=macro).update(pattern_signature="ABCC")
+    candidates = PatternCatalogRepository().find_macro_candidates(signature="ABCC")
+    assert len(candidates) == 1

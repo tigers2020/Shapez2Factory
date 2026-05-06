@@ -38,12 +38,6 @@ def parse_shape(shape_code: str, *, cache: dict[str, Shape] | None = None) -> Sh
     return shape
 
 
-def is_single_layer_shape_code(shape_code: str) -> bool:
-    """Swapper 등 single-layer 전제 연산에서 사용한다."""
-
-    return len(parse_shape(shape_code).layers) == 1
-
-
 def rotate(
     shape_code: str,
     operation: OperationType,

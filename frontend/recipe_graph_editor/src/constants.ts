@@ -16,8 +16,8 @@ export function pickCycledBaseFullSourceShapeCode(
   return BASE_FULL_SOURCE_SHAPE_CODES[insertIndex % BASE_FULL_SOURCE_SHAPE_CODES.length];
 }
 
-/** ``recipeFlowNodes`` 타일 ``h-14 w-14`` (56px) 절반 — 뷰포트 중앙 정렬 보정. */
-export const RECIPE_NODE_TILE_HALF_PX = 28;
+/** ``recipeFlowNodes`` shape tile ring ``h-16 w-16`` (64px) 절반 — 뷰포트 중앙 정렬 보정. */
+export const RECIPE_NODE_TILE_HALF_PX = 32;
 
 /** 팔레트 → React Flow 캔버스 커스텀 DnD MIME. */
 export const RECIPE_PALETTE_DND_OP = "application/x-shapez-recipe-graph-op";

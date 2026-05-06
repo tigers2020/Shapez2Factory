@@ -1,0 +1,40 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="module" style="margin-bottom: 16px;">
+  <form method="post" action="{% url 'admin:web_shapepartsprite_start_missing_job' %}">
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      <h2>{% trans "Generate missing part sprites" %}</h2>
+      <p class="help">
+        {% trans "Pedestal-only image is rendered first, then the Playwright pass for any missing mesh × color × quadrant rows (skips complete rows with an on-disk image)." %}
+      </p>
+      <div class="form-row">
+        <label for="id_renderer_version_admin">{% trans "Renderer version" %}:</label>
+        <input id="id_renderer_version_admin" type="text" name="renderer_version" value="v1" maxlength="32" />
+      </div>
+      <div class="submit-row">
+        <input type="submit" class="default" value="{% trans 'Render missing sprites only' %}" />
+      </div>
+    </fieldset>
+  </form>
+  <form method="post" action="{% url 'admin:web_shapepartsprite_start_sample_quadrants_job' %}">
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      <h2>{% trans "Sample: four quadrants" %}</h2>
+      <p class="help">
+        {% trans "Pedestal first, then default_rect + red for quadrants 0–3. Skips complete rows. Same renderer version field as above." %}
+      </p>
+      <div class="form-row">
+        <label for="id_renderer_version_sample">{% trans "Renderer version" %}:</label>
+        <input id="id_renderer_version_sample" type="text" name="renderer_version" value="v1" maxlength="32" />
+      </div>
+      <div class="submit-row">
+        <input type="submit" value="{% trans 'Render sample (4 quadrants)' %}" />
+      </div>
+    </fieldset>
+  </form>
+</div>
+{{ block.super }}
+{% endblock %}

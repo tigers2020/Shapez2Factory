@@ -9,9 +9,8 @@ from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Prefetch
-from django.middleware.csrf import get_token
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -21,7 +20,7 @@ from django_apps.shapez_core.services.preview_service import (
     get_color_catalog_rows,
     get_shape_catalog_rows,
 )
-from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeStep
+from django_apps.shapez_solver.models import MacroRecipe
 from django_apps.shapez_solver.services.graph_document_primitive_chain import (
     try_linear_operation_sequence,
 )
@@ -30,6 +29,7 @@ from django_apps.shapez_solver.services.macro_recipe_graph_visual import (
     serialize_macro_recipe_visual,
 )
 from django_apps.shapez_solver.services.macro_recipe_staff_catalog import (
+    MACRO_RECIPE_DETAIL_PREFETCHES,
     apply_graph_derived_catalog_fields,
     build_catalog_snapshot,
     create_draft_macro_recipe,
@@ -58,7 +58,7 @@ from django_apps.web.constants import (
     HOME_INITIAL_SHAPE_CODE,
     JSON_API_ERROR_INVALID,
 )
-from django_apps.web.models import GraphPreviewImage
+from django_apps.web.models import GraphPreviewImage, ShapePartSprite
 from django_apps.web.services.graph_preview import (
     NoopGraphPreviewRenderer,
     PlaywrightPngGraphPreviewRenderer,
@@ -99,6 +99,7 @@ def _macro_staff_graph_bootstrap(request: HttpRequest, recipe_pk: int) -> dict[s
             kwargs={"pk": recipe_pk},
         ),
         "api_graph_preview_warm": reverse("web:macro-pattern-staff-api-graph-preview-warm"),
+        "api_shape_part_sprite_manifest": reverse("web:shape-part-sprite-manifest"),
         "csrf_token": get_token(request),
         "staff_catalog_url": reverse("web:macro-pattern-staff"),
         "staff_recipe_edit_url": reverse(
@@ -181,7 +182,7 @@ def macro_pattern_new(request: HttpRequest) -> HttpResponse:
 def macro_pattern_recipe_edit(request: HttpRequest, pk: int) -> HttpResponse:
     recipe = get_object_or_404(
         MacroRecipe.objects.select_related("family").prefetch_related(
-            Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index"))
+            *MACRO_RECIPE_DETAIL_PREFETCHES,
         ),
         pk=pk,
     )
@@ -210,7 +211,7 @@ def macro_pattern_recipe_edit(request: HttpRequest, pk: int) -> HttpResponse:
 def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
     recipe = get_object_or_404(
         MacroRecipe.objects.select_related("family").prefetch_related(
-            Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index"))
+            *MACRO_RECIPE_DETAIL_PREFETCHES,
         ),
         pk=pk,
     )
@@ -270,7 +271,10 @@ def macro_pattern_staff_api_graph_preview_warm(request: HttpRequest) -> JsonResp
             status=503,
         )
     if renderer.cache_key(preview_scene) != cache_key:
-        return JsonResponse({"ok": False, "error": "cache_key does not match preview_scene"}, status=400)
+        return JsonResponse(
+            {"ok": False, "error": "cache_key does not match preview_scene"},
+            status=400,
+        )
     gp = renderer.render(preview_scene)
     if not gp.image_url:
         return JsonResponse(
@@ -289,6 +293,24 @@ def macro_pattern_staff_api_graph_preview_warm(request: HttpRequest) -> JsonResp
             "preview_alt": gp.alt_text,
         }
     )
+
+
+@staff_site_required
+@require_http_methods(["GET"])
+def shape_part_sprite_manifest(request: HttpRequest) -> JsonResponse:
+    """JSON manifest of baked atomic part PNGs (for recipe graph tile Canvas2D composition)."""
+    renderer_version = (request.GET.get("renderer_version") or "v1").strip()
+    sprites: dict[str, dict[str, int | str]] = {}
+    qs = ShapePartSprite.objects.filter(renderer_version=renderer_version).order_by(
+        "sprite_key",
+    )
+    for row in qs:
+        sprites[row.sprite_key] = {
+            "url": row.image.url,
+            "width": row.image_width,
+            "height": row.image_height,
+        }
+    return JsonResponse({"renderer_version": renderer_version, "sprites": sprites})
 
 
 @staff_site_required
@@ -378,9 +400,7 @@ def macro_pattern_staff_api_recipe_detail(request: HttpRequest, pk: int) -> Json
         try:
             recipe = (
                 MacroRecipe.objects.select_related("family")
-                .prefetch_related(
-                    Prefetch("steps", queryset=MacroRecipeStep.objects.order_by("step_index"))
-                )
+                .prefetch_related(*MACRO_RECIPE_DETAIL_PREFETCHES)
                 .get(pk=pk)
             )
         except MacroRecipe.DoesNotExist:

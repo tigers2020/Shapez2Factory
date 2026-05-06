@@ -13,4 +13,5 @@ else
   PYTHON="python3"
 fi
 "$PYTHON" manage.py migrate --noinput
-exec "$PYTHON" -m gunicorn config.wsgi:application
+# Default Gunicorn/Render worker limit is often ~120s; Playwright per graph can exceed that.
+exec "$PYTHON" -m gunicorn config.wsgi:application --timeout 300

@@ -218,8 +218,11 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
         try:
             validated_doc = validate_graph_document(recipe.graph_document)
             react_flow_initial = domain_graph_to_react_flow(validated_doc)
+            visual_cached = serialized.get("visual_graph")
             react_flow_initial = enrich_react_flow_with_macro_visual_previews(
-                react_flow_initial, validated_doc
+                react_flow_initial,
+                validated_doc,
+                macro_visual=visual_cached if isinstance(visual_cached, dict) else None,
             )
             rf_status = "ok"
         except ValueError:

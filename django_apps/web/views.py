@@ -10,6 +10,7 @@ from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Prefetch
+from django.middleware.csrf import get_token
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -59,7 +60,9 @@ from django_apps.web.constants import (
 )
 from django_apps.web.models import GraphPreviewImage
 from django_apps.web.services.graph_preview import (
+    NoopGraphPreviewRenderer,
     PlaywrightPngGraphPreviewRenderer,
+    get_graph_preview_renderer,
     png_bytes_are_valid,
 )
 
@@ -84,7 +87,6 @@ def _macro_staff_catalog_json(request: HttpRequest) -> JsonResponse:
 
 
 def _macro_staff_graph_bootstrap(request: HttpRequest, recipe_pk: int) -> dict[str, Any]:
-    del request
     out: dict[str, Any] = {
         "api_catalog": reverse("web:macro-pattern-staff-api-catalog"),
         "api_recipes": reverse("web:macro-pattern-staff-api-recipes-create"),
@@ -96,6 +98,8 @@ def _macro_staff_graph_bootstrap(request: HttpRequest, recipe_pk: int) -> dict[s
             "web:macro-pattern-staff-api-recipe-graph-recompute",
             kwargs={"pk": recipe_pk},
         ),
+        "api_graph_preview_warm": reverse("web:macro-pattern-staff-api-graph-preview-warm"),
+        "csrf_token": get_token(request),
         "staff_catalog_url": reverse("web:macro-pattern-staff"),
         "staff_recipe_edit_url": reverse(
             "web:macro-pattern-recipe-edit",
@@ -210,7 +214,7 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
         ),
         pk=pk,
     )
-    serialized = serialize_recipe(recipe)
+    serialized = serialize_recipe(recipe, sync_png=False)
     bootstrap = _macro_staff_graph_bootstrap(request, pk)
     react_flow_initial: dict[str, Any] | None = None
     rf_status: str = "missing"
@@ -241,6 +245,49 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
             "staff_macro_nav": "graph",
             "recipe_graph_editor_asset_version": "20260506-macro-preview-scene-fallback",
         },
+    )
+
+
+@staff_site_required
+@require_http_methods(["POST"])
+def macro_pattern_staff_api_graph_preview_warm(request: HttpRequest) -> JsonResponse:
+    """Generate one graph-preview PNG (Playwright) from ``preview_scene``; staff-only."""
+    try:
+        data = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": JSON_API_ERROR_INVALID}, status=400)
+    cache_key = str(data.get("cache_key") or "").strip()
+    preview_scene = data.get("preview_scene")
+    if not cache_key or not isinstance(preview_scene, dict):
+        return JsonResponse(
+            {"ok": False, "error": "cache_key and preview_scene object required"},
+            status=400,
+        )
+    renderer = get_graph_preview_renderer()
+    if isinstance(renderer, NoopGraphPreviewRenderer):
+        return JsonResponse(
+            {"ok": False, "error": "graph preview renderer is noop"},
+            status=503,
+        )
+    if renderer.cache_key(preview_scene) != cache_key:
+        return JsonResponse({"ok": False, "error": "cache_key does not match preview_scene"}, status=400)
+    gp = renderer.render(preview_scene)
+    if not gp.image_url:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "preview generation failed",
+                "cache_key": cache_key,
+            },
+            status=500,
+        )
+    return JsonResponse(
+        {
+            "ok": True,
+            "cache_key": cache_key,
+            "preview_image_url": gp.image_url,
+            "preview_alt": gp.alt_text,
+        }
     )
 
 

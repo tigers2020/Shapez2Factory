@@ -82,6 +82,9 @@ export type ReactFlowInitialPayload = {
 
 export type GraphBootstrap = {
   api_recipe_graph_recompute?: string;
+  /** Staff macro graph: POST one Playwright PNG at a time */
+  api_graph_preview_warm?: string;
+  csrf_token?: string;
   staff_catalog_url?: string;
   staff_recipe_edit_url?: string;
   react_flow_initial?: ReactFlowInitialPayload | null;
@@ -924,6 +927,24 @@ export function GraphEditorApp({
     [seededNodes, initialEdges],
   );
 
+  const macroPreviewWarmQueue = useMemo(() => {
+    const out: { id: string; cache_key: string; scene: Record<string, unknown> }[] = [];
+    for (const n of seededNodes) {
+      const d = n.data;
+      if (!d || typeof d !== "object" || Array.isArray(d)) {
+        continue;
+      }
+      const rec = d as Record<string, unknown>;
+      if (rec.needs_warm === true && typeof rec.preview_cache_key === "string") {
+        const ps = rec.preview_scene;
+        if (ps && typeof ps === "object" && !Array.isArray(ps)) {
+          out.push({ id: n.id, cache_key: rec.preview_cache_key, scene: ps as Record<string, unknown> });
+        }
+      }
+    }
+    return out;
+  }, [seededNodes]);
+
   const [nodes, setNodes, rfOnNodesChange] = useNodesState(seededNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(seededEdges);
   const nodesRef = useRef(nodes);
@@ -967,6 +988,72 @@ export function GraphEditorApp({
       saveRecipeNotes(recipeId, text);
     }, RECIPE_NOTES_SAVE_DEBOUNCE_MS);
   }, [recipeId]);
+
+  useEffect(() => {
+    const url = bootstrap?.api_graph_preview_warm;
+    const csrf = bootstrap?.csrf_token;
+    if (!url || !csrf || macroPreviewWarmQueue.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      for (const item of macroPreviewWarmQueue) {
+        if (cancelled) {
+          break;
+        }
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrf,
+            },
+            body: JSON.stringify({
+              cache_key: item.cache_key,
+              preview_scene: item.scene,
+            }),
+          });
+          const j = (await res.json()) as {
+            ok?: boolean;
+            preview_image_url?: string;
+            preview_alt?: string;
+          };
+          if (cancelled) {
+            break;
+          }
+          if (j.ok && typeof j.preview_image_url === "string") {
+            setNodes((prev) =>
+              prev.map((node) =>
+                node.id === item.id
+                  ? {
+                      ...node,
+                      data: {
+                        ...shallowRecordFromUnknown(node.data),
+                        preview_image_url: j.preview_image_url,
+                        ...(typeof j.preview_alt === "string" ? { preview_alt: j.preview_alt } : {}),
+                        needs_warm: false,
+                      },
+                    }
+                  : node,
+              ),
+            );
+          }
+        } catch {
+          /* continue */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    bootstrap?.api_graph_preview_warm,
+    bootstrap?.csrf_token,
+    macroPreviewWarmQueue,
+    recipeId,
+    setNodes,
+  ]);
 
   const outputCount = useMemo(() => nodes.filter((n) => n.type === "output").length, [nodes]);
 

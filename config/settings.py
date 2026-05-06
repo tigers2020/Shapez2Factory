@@ -69,6 +69,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "django_apps.web.context_processors.django_debug",
+                "django_apps.web.context_processors.google_social_login_enabled",
             ],
         },
     },

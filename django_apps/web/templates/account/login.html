@@ -65,6 +65,7 @@
     >{% trans "Login" %}</button>
   </form>
 
+  {% if google_social_login_enabled %}
   <div class="space-y-3 rounded-xl border border-slate-800 bg-slate-900/90 p-6 shadow-lg shadow-black/40">
     <p class="text-sm font-semibold text-slate-200">{% trans "Social login" %}</p>
     <div class="grid gap-3">
@@ -74,6 +75,7 @@
       >Google</a>
     </div>
   </div>
+  {% endif %}
 
   <p class="text-center text-sm text-slate-400">
     {% trans "Need an account?" %}

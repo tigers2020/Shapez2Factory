@@ -28,7 +28,9 @@ def serialize_solver_graph(graph: SolverGraph) -> dict[str, Any]:
         "layout": {
             "direction": graph.direction,
         },
-        "nodes": [serialize_graph_node(node, preview_renderer) for node in graph.nodes],
+        "nodes": [
+            serialize_graph_node(node, preview_renderer, sync_png=True) for node in graph.nodes
+        ],
         "edges": [serialize_graph_edge(edge) for edge in graph.edges],
     }
 
@@ -36,25 +38,46 @@ def serialize_solver_graph(graph: SolverGraph) -> dict[str, Any]:
 def serialize_graph_node(
     node: SolverGraphNode,
     preview_renderer: GraphPreviewRenderer,
+    *,
+    sync_png: bool = True,
 ) -> dict[str, Any]:
     if isinstance(node, SolverShapeNode):
         preview_scene = node.preview_scene or build_preview_scene(
             node.shape_code,
             source_carrier=node.source_carrier,
         )
-        graph_preview = preview_renderer.render(preview_scene)
-        payload = {
-            "id": node.id,
-            "kind": node.kind,
-            "role": node.role,
-            "shape_code": node.shape_code,
-            "label": node.label,
-            "quantity": node.quantity,
-            "preview_scene": preview_scene,
-            "preview_image_url": graph_preview.image_url,
-            "preview_alt": graph_preview.alt_text,
-            "reused_count": node.reused_count,
-        }
+        if sync_png:
+            graph_preview = preview_renderer.render(preview_scene)
+            payload = {
+                "id": node.id,
+                "kind": node.kind,
+                "role": node.role,
+                "shape_code": node.shape_code,
+                "label": node.label,
+                "quantity": node.quantity,
+                "preview_scene": preview_scene,
+                "preview_image_url": graph_preview.image_url,
+                "preview_alt": graph_preview.alt_text,
+                "reused_count": node.reused_count,
+            }
+        else:
+            graph_preview = preview_renderer.render_cached_only(preview_scene)
+            payload = {
+                "id": node.id,
+                "kind": node.kind,
+                "role": node.role,
+                "shape_code": node.shape_code,
+                "label": node.label,
+                "quantity": node.quantity,
+                "preview_scene": preview_scene,
+                "preview_alt": graph_preview.alt_text,
+                "reused_count": node.reused_count,
+            }
+            if graph_preview.image_url:
+                payload["preview_image_url"] = graph_preview.image_url
+            else:
+                payload["preview_cache_key"] = preview_renderer.cache_key(preview_scene)
+                payload["needs_warm"] = True
         if node.produced_state is not None:
             payload["produced_state"] = node.produced_state
         if node.batch_index is not None:

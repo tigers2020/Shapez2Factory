@@ -148,12 +148,12 @@ def _serialize_step(step: MacroRecipeStep) -> dict[str, Any]:
     }
 
 
-def serialize_recipe(recipe: MacroRecipe) -> dict[str, Any]:
+def serialize_recipe(recipe: MacroRecipe, *, sync_png: bool = True) -> dict[str, Any]:
     steps = sorted(recipe.steps.all(), key=lambda s: s.step_index)
     visual_graph = None
     if recipe.graph_document:
         try:
-            visual_graph = serialize_macro_recipe_visual(recipe.graph_document)
+            visual_graph = serialize_macro_recipe_visual(recipe.graph_document, sync_png=sync_png)
         except (ValueError, TypeError, KeyError):
             visual_graph = None
     lab_rows = try_pattern_macro_step_rows_from_graph_document(recipe.graph_document)

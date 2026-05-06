@@ -1,8 +1,24 @@
 import pytest
 from allauth.account import app_settings as account_app_settings
+from allauth.socialaccount.models import SocialApp
 from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
+
+
+@pytest.fixture
+def google_social_app(db):  # noqa: ARG001
+    """So login/signup templates show Google when ``GOOGLE_OAUTH_*`` env vars are unset."""
+    site = Site.objects.get(pk=1)
+    app = SocialApp.objects.create(
+        provider="google",
+        name="Google",
+        client_id="test-client-id.apps.googleusercontent.com",
+        secret="test-secret",
+    )
+    app.sites.add(site)
+    return app
 
 
 def test_signup_fields_include_email_for_social_signup_form() -> None:
@@ -19,7 +35,7 @@ def test_social_email_authentication_enabled_for_existing_local_users() -> None:
 
 
 @pytest.mark.django_db
-def test_signup_page_renders_password_and_social_options() -> None:
+def test_signup_page_renders_password_and_social_options(google_social_app) -> None:
     response = Client().get(reverse("account_signup"))
 
     assert response.status_code == 200
@@ -31,7 +47,7 @@ def test_signup_page_renders_password_and_social_options() -> None:
 
 
 @pytest.mark.django_db
-def test_login_page_renders_password_and_social_options() -> None:
+def test_login_page_renders_password_and_social_options(google_social_app) -> None:
     response = Client().get(reverse("account_login"))
 
     assert response.status_code == 200

@@ -37,6 +37,10 @@ class GraphPreview:
 class GraphPreviewRenderer(Protocol):
     def render(self, preview_scene: dict[str, Any]) -> GraphPreview: ...
 
+    def render_cached_only(self, preview_scene: dict[str, Any]) -> GraphPreview: ...
+
+    def cache_key(self, preview_scene: dict[str, Any]) -> str: ...
+
 
 @dataclass(frozen=True, slots=True)
 class _RenderTarget:
@@ -187,7 +191,8 @@ class PlaywrightPngGraphPreviewRenderer:
         )
         self._generation_disabled = False
 
-    def render(self, preview_scene: dict[str, Any]) -> GraphPreview:
+    def render_cached_only(self, preview_scene: dict[str, Any]) -> GraphPreview:
+        """Return PNG URL only when DB/filesystem already has a valid image (no Playwright)."""
         target = self._cache.build_target(
             preview_scene,
             version=self.VERSION,
@@ -203,6 +208,21 @@ class PlaywrightPngGraphPreviewRenderer:
             self._cache.ensure_dir()
             if self._cache.has_valid_png(target.cache_path):
                 return GraphPreview(alt_text=target.alt_text, image_url=target.image_url)
+
+        return GraphPreview(alt_text=target.alt_text)
+
+    def render(self, preview_scene: dict[str, Any]) -> GraphPreview:
+        cached = self.render_cached_only(preview_scene)
+        if cached.image_url:
+            return cached
+
+        target = self._cache.build_target(
+            preview_scene,
+            version=self.VERSION,
+            preset=self.PRESET,
+            size=self.SIZE,
+        )
+        use_db = _graph_preview_storage_is_database()
 
         if self._generation_disabled:
             return GraphPreview(alt_text=target.alt_text)
@@ -267,9 +287,12 @@ class PlaywrightPngGraphPreviewRenderer:
 class NoopGraphPreviewRenderer:
     """Skip server-side PNG generation (Playwright). Use on hosts without node/Chromium."""
 
-    def render(self, preview_scene: dict[str, Any]) -> GraphPreview:
+    def render_cached_only(self, preview_scene: dict[str, Any]) -> GraphPreview:
         alt = f"Graph preview for {preview_scene.get('normalized_code', 'shape preview')}"
         return GraphPreview(alt_text=alt, image_url=None)
+
+    def render(self, preview_scene: dict[str, Any]) -> GraphPreview:
+        return self.render_cached_only(preview_scene)
 
     def cache_key(self, preview_scene: dict[str, Any]) -> str:
         return _GraphPreviewCache(

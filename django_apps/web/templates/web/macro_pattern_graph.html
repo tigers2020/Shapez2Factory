@@ -11,7 +11,8 @@
 <main class="min-h-screen bg-slate-950 text-slate-100">
   {% include "web/partials/site_nav.html" %}
 
-  <div class="mx-auto max-w-[1600px] px-4 pb-10 pt-2 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-[1600px] px-4 pb-10 pt-2 sm:px-6 lg:px-8">
+    <form class="hidden" aria-hidden="true">{% csrf_token %}</form>
     {{ bootstrap|json_script:"macro-graph-bootstrap" }}
     {{ catalog|json_script:"macro-graph-initial-catalog" }}
     {{ recipe|json_script:"macro-graph-initial-recipe" }}

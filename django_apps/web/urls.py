@@ -33,6 +33,11 @@ urlpatterns = [
         name="macro-pattern-graph",
     ),
     path(
+        "internal/staff/macro-patterns/api/graph-preview/warm/",
+        views.macro_pattern_staff_api_graph_preview_warm,
+        name="macro-pattern-staff-api-graph-preview-warm",
+    ),
+    path(
         "internal/staff/macro-patterns/api/catalog/",
         views.macro_pattern_staff_api_catalog,
         name="macro-pattern-staff-api-catalog",

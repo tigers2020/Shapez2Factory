@@ -118,6 +118,8 @@ def _collect_node_xy(nodes: list[Any]) -> dict[str, tuple[float, float]]:
 def _macro_payload_for_node(
     node: SolverShapeNode | SolverOperationNode,
     renderer: Any,
+    *,
+    sync_png: bool = True,
 ) -> dict[str, Any]:
     if isinstance(node, SolverShapeNode) and not str(node.shape_code).strip():
         return {
@@ -129,10 +131,10 @@ def _macro_payload_for_node(
             "quantity": node.quantity,
             "reused_count": node.reused_count,
         }
-    return serialize_graph_node(node, renderer)
+    return serialize_graph_node(node, renderer, sync_png=sync_png)
 
 
-def serialize_macro_recipe_visual(doc: dict[str, Any]) -> dict[str, Any]:
+def serialize_macro_recipe_visual(doc: dict[str, Any], *, sync_png: bool = True) -> dict[str, Any]:
     """graph_document를 ``renderSolverGraph`` / ``mountGraph``가 기대하는 JSON으로 직렬화한다."""
     v = validate_graph_document(doc)
     graph = document_to_solver_graph(doc)
@@ -140,7 +142,7 @@ def serialize_macro_recipe_visual(doc: dict[str, Any]) -> dict[str, Any]:
     node_xy = _collect_node_xy(v["nodes"])
     nodes_payload: list[dict[str, Any]] = []
     for node in graph.nodes:
-        payload = _macro_payload_for_node(node, renderer)
+        payload = _macro_payload_for_node(node, renderer, sync_png=sync_png)
         xy = node_xy.get(str(node.id))
         if xy is not None:
             payload["x"] = xy[0]
@@ -191,6 +193,11 @@ def _shape_visual_overlay_by_node_id(
         alt = item.get("preview_alt")
         if isinstance(alt, str) and alt.strip():
             entry["preview_alt"] = alt.strip()
+        ck = item.get("preview_cache_key")
+        if isinstance(ck, str) and ck.strip():
+            entry["preview_cache_key"] = ck.strip()
+        if item.get("needs_warm") is True:
+            entry["needs_warm"] = True
         if entry:
             out[nid] = entry
     return out
@@ -215,6 +222,10 @@ def _merge_preview_into_react_node(
         merged.pop("preview_image_url", None)
     if "preview_alt" in overlay:
         merged["preview_alt"] = overlay["preview_alt"]
+    if "preview_cache_key" in overlay:
+        merged["preview_cache_key"] = overlay["preview_cache_key"]
+    if "needs_warm" in overlay:
+        merged["needs_warm"] = overlay["needs_warm"]
     return {**n, "data": merged}
 
 

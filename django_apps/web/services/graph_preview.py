@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -16,6 +17,15 @@ from django_apps.web.constants import WEB_GRAPH_PREVIEW_TIMEOUT_SECONDS
 from django_apps.web.models import GraphPreviewImage
 
 logger = logging.getLogger(__name__)
+
+
+def _playwright_subprocess_env() -> dict[str, str]:
+    """Browsers from ``scripts/render_build.sh`` live under ``BASE_DIR/.cache/ms-playwright``."""
+    env = dict(os.environ)
+    browsers = Path(settings.BASE_DIR) / ".cache" / "ms-playwright"
+    if browsers.is_dir():
+        env["PLAYWRIGHT_BROWSERS_PATH"] = str(browsers)
+    return env
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +147,7 @@ class _PlaywrightPrerenderer:
                 ],
                 capture_output=True,
                 cwd=settings.BASE_DIR,
+                env=_playwright_subprocess_env(),
                 text=True,
                 timeout=self._timeout_seconds,
                 check=False,

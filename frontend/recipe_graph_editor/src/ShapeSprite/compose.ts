@@ -4,7 +4,7 @@ export const TILE_PREVIEW_PX = 64;
 /** Each overlay tier above the bottom is scaled by this factor (10% size reduction per tier). */
 export const STACK_OVERLAY_SCALE_STEP = 0.9;
 
-/** Scale for the ``tierIndex``-th sprite in stack paint order (0 = bottom / full size). */
+/** Scale by vertical ``layer_index`` tier (0 = full size); not z-order / paint index. */
 export function overlayStackScaleFromBottom(tierIndex: number): number {
   const i = Number.isFinite(tierIndex) ? Math.max(0, Math.floor(tierIndex)) : 0;
   return STACK_OVERLAY_SCALE_STEP ** i;

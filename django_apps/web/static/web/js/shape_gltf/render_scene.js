@@ -1,3 +1,5 @@
+import * as THREE from "three";
+
 import {
   applyCrystalMaterials,
   applyFluidTankFilledMaterials,
@@ -6,6 +8,23 @@ import {
 } from "./materials.js";
 import { loadModel } from "./model_loader.js";
 import { applyTransform } from "./transform.js";
+
+/** When glTF root origin != mesh centroid, Y-rotation orbits look non-rigid; pivot at AABB center. */
+function wrapModelAtBoundingBoxCenter(model) {
+  const box = new THREE.Box3().setFromObject(model);
+  if (box.isEmpty()) {
+    return model;
+  }
+  const center = new THREE.Vector3();
+  box.getCenter(center);
+  if (center.lengthSq() < 1e-12) {
+    return model;
+  }
+  const pivot = new THREE.Group();
+  model.position.sub(center);
+  pivot.add(model);
+  return pivot;
+}
 
 export async function renderSceneToThree(scene, loader, assetBase, renderScene, viewMode) {
   const records = [];
@@ -27,9 +46,10 @@ export async function renderSceneToThree(scene, loader, assetBase, renderScene, 
     } else {
       applyTopSideMaterials(model, cell.material_key);
     }
-    applyTransform(model, cell, viewMode);
-    scene.add(model);
-    records.push({ cell, model, transition: null });
+    const pivot = wrapModelAtBoundingBoxCenter(model);
+    applyTransform(pivot, cell, viewMode);
+    scene.add(pivot);
+    records.push({ cell, model: pivot, transition: null });
   }
 
   return records;

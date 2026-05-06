@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -36,7 +37,7 @@ def test_build_catalog_snapshot_includes_operation_icon_urls() -> None:
 
 
 @pytest.mark.django_db
-def test_build_catalog_snapshot_default_skips_png_generation(tmp_path) -> None:
+def test_build_catalog_snapshot_default_skips_png_generation(tmp_path: Path) -> None:
     """Catalog lists many recipes; sync Playwright would time out in production."""
     from django_apps.shapez_solver.services.macro_recipe_staff_catalog import (
         build_catalog_snapshot,

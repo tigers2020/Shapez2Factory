@@ -5,6 +5,7 @@ from typing import Any
 from django.templatetags.static import static
 
 from django_apps.shapez_solver.domain.operation_catalog import OPERATION_CATALOG
+from django_apps.shapez_solver.ports.graph_preview import GraphPreviewRenderer
 from django_apps.shapez_solver.services.factory_throughput_service import FactoryThroughputResult
 from django_apps.shapez_solver.view_graph_serialization import serialize_solver_graph
 
@@ -12,6 +13,8 @@ from django_apps.shapez_solver.view_graph_serialization import serialize_solver_
 def serialize_solver_result(
     result: FactoryThroughputResult,
     warnings: tuple[str, ...] = (),
+    *,
+    preview_renderer: GraphPreviewRenderer,
 ) -> dict[str, Any]:
     solver_payload: dict[str, Any] = {
         "mode": result.solver_mode,
@@ -41,9 +44,11 @@ def serialize_solver_result(
         "base_demands": [serialize_base_demand(demand) for demand in result.base_demands],
         "warnings": [*warnings, *result.warnings],
         "steps": [serialize_solver_step(step) for step in result.steps],
-        "graph": serialize_solver_graph(result.graph) if result.graph else None,
+        "graph": (serialize_solver_graph(result.graph, preview_renderer) if result.graph else None),
         "materialized_graph": (
-            serialize_solver_graph(result.materialized_graph) if result.materialized_graph else None
+            serialize_solver_graph(result.materialized_graph, preview_renderer)
+            if result.materialized_graph
+            else None
         ),
         "solver": solver_payload,
     }

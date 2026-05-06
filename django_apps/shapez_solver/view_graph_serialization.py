@@ -16,14 +16,16 @@ from django_apps.shapez_solver.dto.solver_graph import (
     SolverOperationNode,
     SolverShapeNode,
 )
+from django_apps.shapez_solver.ports.graph_preview import GraphPreviewRenderer
 from django_apps.shapez_solver.services.fluid_carrier_render_scene import (
     build_fluid_carrier_preview_scene,
 )
-from django_apps.web.services.graph_preview import GraphPreviewRenderer, get_graph_preview_renderer
 
 
-def serialize_solver_graph(graph: SolverGraph) -> dict[str, Any]:
-    preview_renderer = get_graph_preview_renderer()
+def serialize_solver_graph(
+    graph: SolverGraph,
+    preview_renderer: GraphPreviewRenderer,
+) -> dict[str, Any]:
     return {
         "layout": {
             "direction": graph.direction,
@@ -35,6 +37,65 @@ def serialize_solver_graph(graph: SolverGraph) -> dict[str, Any]:
     }
 
 
+def _serialize_solver_shape_node(
+    node: SolverShapeNode,
+    preview_renderer: GraphPreviewRenderer,
+    *,
+    sync_png: bool,
+) -> dict[str, Any]:
+    preview_scene = node.preview_scene or build_preview_scene(
+        node.shape_code,
+        source_carrier=node.source_carrier,
+    )
+    graph_preview = (
+        preview_renderer.render(preview_scene)
+        if sync_png
+        else preview_renderer.render_cached_only(preview_scene)
+    )
+    payload: dict[str, Any] = {
+        "id": node.id,
+        "kind": node.kind,
+        "role": node.role,
+        "shape_code": node.shape_code,
+        "label": node.label,
+        "quantity": node.quantity,
+        "preview_scene": preview_scene,
+        "preview_alt": graph_preview.alt_text,
+        "reused_count": node.reused_count,
+    }
+    if sync_png or graph_preview.image_url:
+        payload["preview_image_url"] = graph_preview.image_url
+    # Omit needs_warm / preview_cache_key: macro graph tiles compose sprites from
+    # preview_scene client-side; server-side Playwright warm was blocking page loads.
+    if node.produced_state is not None:
+        payload["produced_state"] = node.produced_state
+    if node.batch_index is not None:
+        payload["batch_index"] = node.batch_index
+    if node.batch_total is not None:
+        payload["batch_total"] = node.batch_total
+    return payload
+
+
+def _serialize_solver_operation_node(node: SolverOperationNode) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "id": node.id,
+        "kind": node.kind,
+        "operation": {
+            "type": node.operation_type,
+            "label": node.label,
+            "icon": static(f"web/images/operations/{node.icon}"),
+            "input_count": node.input_count,
+            "output_count": node.output_count,
+            "description": node.description,
+        },
+    }
+    if node.run_index is not None:
+        payload["run_index"] = node.run_index
+    if node.run_total is not None:
+        payload["run_total"] = node.run_total
+    return payload
+
+
 def serialize_graph_node(
     node: SolverGraphNode,
     preview_renderer: GraphPreviewRenderer,
@@ -42,68 +103,9 @@ def serialize_graph_node(
     sync_png: bool = True,
 ) -> dict[str, Any]:
     if isinstance(node, SolverShapeNode):
-        preview_scene = node.preview_scene or build_preview_scene(
-            node.shape_code,
-            source_carrier=node.source_carrier,
-        )
-        if sync_png:
-            graph_preview = preview_renderer.render(preview_scene)
-            payload = {
-                "id": node.id,
-                "kind": node.kind,
-                "role": node.role,
-                "shape_code": node.shape_code,
-                "label": node.label,
-                "quantity": node.quantity,
-                "preview_scene": preview_scene,
-                "preview_image_url": graph_preview.image_url,
-                "preview_alt": graph_preview.alt_text,
-                "reused_count": node.reused_count,
-            }
-        else:
-            graph_preview = preview_renderer.render_cached_only(preview_scene)
-            payload = {
-                "id": node.id,
-                "kind": node.kind,
-                "role": node.role,
-                "shape_code": node.shape_code,
-                "label": node.label,
-                "quantity": node.quantity,
-                "preview_scene": preview_scene,
-                "preview_alt": graph_preview.alt_text,
-                "reused_count": node.reused_count,
-            }
-            if graph_preview.image_url:
-                payload["preview_image_url"] = graph_preview.image_url
-            # Omit needs_warm / preview_cache_key: macro graph tiles compose sprites from
-            # preview_scene client-side; server-side Playwright warm was blocking page loads.
-        if node.produced_state is not None:
-            payload["produced_state"] = node.produced_state
-        if node.batch_index is not None:
-            payload["batch_index"] = node.batch_index
-        if node.batch_total is not None:
-            payload["batch_total"] = node.batch_total
-        return payload
-
+        return _serialize_solver_shape_node(node, preview_renderer, sync_png=sync_png)
     if isinstance(node, SolverOperationNode):
-        payload = {
-            "id": node.id,
-            "kind": node.kind,
-            "operation": {
-                "type": node.operation_type,
-                "label": node.label,
-                "icon": static(f"web/images/operations/{node.icon}"),
-                "input_count": node.input_count,
-                "output_count": node.output_count,
-                "description": node.description,
-            },
-        }
-        if node.run_index is not None:
-            payload["run_index"] = node.run_index
-        if node.run_total is not None:
-            payload["run_total"] = node.run_total
-        return payload
-
+        return _serialize_solver_operation_node(node)
     raise TypeError(f"Unsupported graph node: {node!r}")
 
 

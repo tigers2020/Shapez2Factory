@@ -7,7 +7,6 @@ import pytest
 from django.test import override_settings
 
 from django_apps.web.models import GraphPreviewImage
-
 from django_apps.web.services.graph_preview import (
     NoopGraphPreviewRenderer,
     PlaywrightPngGraphPreviewRenderer,

@@ -3,6 +3,7 @@
 import os
 
 from django.conf import settings
+from django.db import DatabaseError
 from django.http import HttpRequest
 
 
@@ -18,8 +19,14 @@ def google_social_login_enabled(_request: HttpRequest) -> dict[str, bool]:
     if cid and sec:
         return {"google_social_login_enabled": True}
     # Admin-created Social applications (no env vars).
-    from allauth.socialaccount.models import SocialApp
+    from allauth.socialaccount.models import SocialApp  # type: ignore[import-untyped]
 
     site_id = getattr(settings, "SITE_ID", 1)
-    enabled = SocialApp.objects.filter(provider="google", sites__id=site_id).exists()
+    try:
+        enabled = SocialApp.objects.filter(provider="google", sites__id=site_id).exists()
+    except RuntimeError:
+        # pytest-django blocks DB outside @django_db (template Client smoke tests).
+        enabled = False
+    except DatabaseError:
+        enabled = False
     return {"google_social_login_enabled": enabled}

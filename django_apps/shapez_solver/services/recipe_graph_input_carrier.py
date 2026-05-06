@@ -178,10 +178,7 @@ def _expected_carrier_for_input_edge(
     slot: str,
     need: int,
 ) -> Carrier:
-    if (
-        op_type in (OperationType.PAINTER, OperationType.CRYSTAL_GENERATOR)
-        and need == 2
-    ):
+    if op_type in (OperationType.PAINTER, OperationType.CRYSTAL_GENERATOR) and need == 2:
         # React Flow ``in-1`` → domain ``slot`` "1" = fluid; bare ``in`` = shape (material).
         return "fluid" if slot == "1" else "material"
     return expected[idx]

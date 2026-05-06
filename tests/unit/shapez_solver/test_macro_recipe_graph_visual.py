@@ -1,9 +1,12 @@
-from unittest.mock import MagicMock, patch
+from typing import Any
+from unittest.mock import MagicMock
 
-from django.test.utils import override_settings
+import pytest
 
 from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.dto.solver_graph import SolverShapeNode
+from django_apps.shapez_solver.ports.graph_preview import NoopGraphPreviewRenderer
+from django_apps.shapez_solver.services import macro_recipe_graph_visual
 from django_apps.shapez_solver.services.macro_recipe_graph_visual import (
     document_to_solver_graph,
     enrich_react_flow_with_macro_visual_previews,
@@ -51,7 +54,7 @@ def test_serialize_macro_recipe_visual_rotate_chain() -> None:
             {"from": "o_rot", "to": "s_out", "kind": "output", "slot": "0"},
         ],
     }
-    wire = serialize_macro_recipe_visual(doc)
+    wire = serialize_macro_recipe_visual(doc, preview_renderer=NoopGraphPreviewRenderer())
     assert wire["layout"]["direction"] == "left-to-right"
     assert len(wire["nodes"]) == 3
     assert len(wire["edges"]) == 2
@@ -61,6 +64,61 @@ def test_serialize_macro_recipe_visual_rotate_chain() -> None:
     out_shape = next(n for n in wire["nodes"] if n["id"] == "s_out")
     assert out_shape["kind"] == "shape"
     assert out_shape["shape_code"] == ""
+
+
+def test_serialize_macro_recipe_visual_validates_document_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """회귀 방지: 직렬화 경로에서 ``validate_graph_document``·deepcopy 이중 호출 금지."""
+    calls = 0
+    real_validate = macro_recipe_graph_visual.validate_graph_document
+
+    def counting_validate(raw: object) -> dict[str, Any]:
+        nonlocal calls
+        calls += 1
+        return real_validate(raw)
+
+    monkeypatch.setattr(
+        macro_recipe_graph_visual,
+        "validate_graph_document",
+        counting_validate,
+    )
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s_in",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "o_rot",
+                "kind": "operation",
+                "operation": OperationType.ROTATE_CW.value,
+                "x": 200,
+                "y": 0,
+            },
+            {
+                "id": "s_out",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 400,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s_in", "to": "o_rot", "kind": "input"},
+            {"from": "o_rot", "to": "s_out", "kind": "output", "slot": "0"},
+        ],
+    }
+    serialize_macro_recipe_visual(doc, preview_renderer=NoopGraphPreviewRenderer())
+    assert calls == 1
 
 
 def test_document_to_solver_graph_edges() -> None:
@@ -143,7 +201,6 @@ def test_document_to_solver_graph_painter_description_without_paint_color_notes_
     assert "fluid wire" in op.description
 
 
-@override_settings(SOLVER_GRAPH_PREVIEW_RENDERER="noop")
 def test_enrich_react_flow_adds_preview_scene_when_png_disabled() -> None:
     doc = {
         "schema_version": 1,
@@ -169,7 +226,8 @@ def test_enrich_react_flow_adds_preview_scene_when_png_disabled() -> None:
     }
     v = validate_graph_document(doc)
     rf = domain_graph_to_react_flow(v)
-    enriched = enrich_react_flow_with_macro_visual_previews(rf, v)
+    noop = NoopGraphPreviewRenderer()
+    enriched = enrich_react_flow_with_macro_visual_previews(rf, v, preview_renderer=noop)
     src_data = next(n for n in enriched["nodes"] if n["id"] == "src").get("data") or {}
     assert src_data.get("preview_image_url") in (None, "")
     ps = src_data.get("preview_scene")
@@ -177,14 +235,12 @@ def test_enrich_react_flow_adds_preview_scene_when_png_disabled() -> None:
     assert ps.get("normalized_code")
 
 
-@patch("django_apps.shapez_solver.services.macro_recipe_graph_visual.get_graph_preview_renderer")
-def test_enrich_react_flow_adds_preview_for_shapes_with_codes(mock_get_renderer: MagicMock) -> None:
+def test_enrich_react_flow_adds_preview_for_shapes_with_codes() -> None:
     mock_renderer = MagicMock()
     mock_renderer.render.return_value = GraphPreview(
         alt_text="Graph preview for CuCuCuCu",
         image_url="/internal/graph-preview-cache/fakecache.png",
     )
-    mock_get_renderer.return_value = mock_renderer
     doc = {
         "schema_version": 1,
         "nodes": [
@@ -211,7 +267,7 @@ def test_enrich_react_flow_adds_preview_for_shapes_with_codes(mock_get_renderer:
     rf = domain_graph_to_react_flow(v)
     raw = next(n for n in rf["nodes"] if n["id"] == "src")
     assert "preview_image_url" not in (raw.get("data") or {})
-    enriched = enrich_react_flow_with_macro_visual_previews(rf, v)
+    enriched = enrich_react_flow_with_macro_visual_previews(rf, v, preview_renderer=mock_renderer)
     src_data = next(n for n in enriched["nodes"] if n["id"] == "src").get("data") or {}
     assert isinstance(src_data.get("preview_image_url"), str)
     assert src_data["preview_image_url"].strip()
@@ -242,9 +298,12 @@ def test_enrich_react_flow_macro_visual_reuses_precomputed_serialize() -> None:
     }
     v = validate_graph_document(doc)
     rf = domain_graph_to_react_flow(v)
-    visual = serialize_macro_recipe_visual(v)
-    without_kw = enrich_react_flow_with_macro_visual_previews(rf, v)
-    with_visual = enrich_react_flow_with_macro_visual_previews(rf, v, macro_visual=visual)
+    noop = NoopGraphPreviewRenderer()
+    visual = serialize_macro_recipe_visual(v, preview_renderer=noop)
+    without_kw = enrich_react_flow_with_macro_visual_previews(rf, v, preview_renderer=noop)
+    with_visual = enrich_react_flow_with_macro_visual_previews(
+        rf, v, preview_renderer=noop, macro_visual=visual
+    )
     assert with_visual == without_kw
 
 
@@ -270,7 +329,7 @@ def test_serialize_macro_recipe_visual_fluid_source_uses_tank_mesh() -> None:
     assert isinstance(src_node, SolverShapeNode)
     assert src_node.source_carrier == "fluid"
 
-    wire = serialize_macro_recipe_visual(doc)
+    wire = serialize_macro_recipe_visual(doc, preview_renderer=NoopGraphPreviewRenderer())
     src = next(n for n in wire["nodes"] if n["id"] == "src_f")
     ps = src["preview_scene"]
     assert len(ps["cells"]) == 1

@@ -8,7 +8,7 @@ from django.core.management.base import BaseCommand
 from django.db import connection
 
 
-class Command(BaseCommand):
+class Command(BaseCommand):  # type: ignore[misc]
     help = (
         "Open the default database connection and print vendor/name/host. "
         "Does not print passwords."
@@ -25,9 +25,7 @@ class Command(BaseCommand):
         if vendor == "sqlite":
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"OK: default DB reachable ({vendor})\n"
-                    f"  ENGINE={engine}\n"
-                    f"  NAME={name}"
+                    f"OK: default DB reachable ({vendor})\n  ENGINE={engine}\n  NAME={name}"
                 )
             )
             return
@@ -36,10 +34,10 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 "OK: default DB reachable\n"
-                f"  vendor={vendor}\n"
-                f"  ENGINE={engine}\n"
-                f"  NAME={name}\n"
-                f"  HOST={host}\n"
-                f"  PORT={port}"
+                + f"  vendor={vendor}\n"
+                + f"  ENGINE={engine}\n"
+                + f"  NAME={name}\n"
+                + f"  HOST={host}\n"
+                + f"  PORT={port}"
             )
         )

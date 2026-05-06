@@ -3,7 +3,7 @@ import type { Edge, Node } from "@xyflow/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { type CatalogOperationRow, type GraphBootstrap, GraphEditorApp } from "./GraphEditorApp";
+import { type CatalogOperationRow, type GraphBootstrap, GraphEditorApp } from "./GraphEditor/App";
 import "./index.css";
 
 function readJsonScript(id: string): unknown {

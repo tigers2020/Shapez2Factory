@@ -8,11 +8,12 @@ import tempfile
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from django.conf import settings
 from django.urls import reverse
 
+from django_apps.shapez_solver.ports.graph_preview import GraphPreviewRenderer
 from django_apps.web.constants import WEB_GRAPH_PREVIEW_TIMEOUT_SECONDS
 from django_apps.web.models import GraphPreviewImage
 
@@ -32,14 +33,6 @@ def _playwright_subprocess_env() -> dict[str, str]:
 class GraphPreview:
     alt_text: str
     image_url: str | None = None
-
-
-class GraphPreviewRenderer(Protocol):
-    def render(self, preview_scene: dict[str, Any]) -> GraphPreview: ...
-
-    def render_cached_only(self, preview_scene: dict[str, Any]) -> GraphPreview: ...
-
-    def cache_key(self, preview_scene: dict[str, Any]) -> str: ...
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,7 +7,7 @@ from django.db import models
 from django_apps.web.shape_part_sprite_storage import shape_part_sprite_storage
 
 
-class ShapePartSprite(models.Model):
+class ShapePartSprite(models.Model):  # type: ignore[misc]
     """Single-quadrant atomic shape PNG for Canvas2D tile composition."""
 
     sprite_key = models.CharField(max_length=192, unique=True)
@@ -40,10 +40,10 @@ class ShapePartSprite(models.Model):
         ]
 
     def __str__(self) -> str:
-        return self.sprite_key
+        return str(self.sprite_key)
 
 
-class GraphPreviewImage(models.Model):
+class GraphPreviewImage(models.Model):  # type: ignore[misc]
     """PNG bytes for macro graph node previews (survives ephemeral PaaS filesystem)."""
 
     cache_key = models.CharField(max_length=24, primary_key=True)

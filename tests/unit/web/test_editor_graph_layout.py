@@ -63,9 +63,9 @@ def test_editor_two_source_painter_between_sources_vertically() -> None:
     paint_y = positions["paint"]["y"]
     low = min(mat_y, flu_y)
     high = max(mat_y, flu_y)
-    assert low <= paint_y <= high, (
-        f"painter y should lie between source ys: paint_y={paint_y} range=[{low},{high}]"
-    )
+    assert (
+        low <= paint_y <= high
+    ), f"painter y should lie between source ys: paint_y={paint_y} range=[{low},{high}]"
 
 
 def test_editor_layout_deterministic() -> None:

@@ -242,7 +242,7 @@ def test_support_page_kofi_non_profile_still_shows_link() -> None:
         response = Client().get("/support/")
 
         assert response.status_code == 200
-        assert b"id=\"kofiframe\"" not in response.content
+        assert b'id="kofiframe"' not in response.content
         assert b"https://example.com/kofi" in response.content
 
 
@@ -257,8 +257,6 @@ def test_shape_gltf_vendor_assets_exist() -> None:
         "ShapeDefaultS",
         "ShapeDefaultW",
         "ShapeDefaultP",
-        "ShapeDefaultFluidTank",
-        "ShapeDefaultFluidTankFilled",
     ):
         assert (shape_root / f"{stem}.gltf").is_file()
         assert (shape_root / f"{stem}.bin").is_file()

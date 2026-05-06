@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { operationChangeGroupId, paletteCategoryForOperation } from "../src/operationPaletteGroups";
+import { operationChangeGroupId, paletteCategoryForOperation } from "../src/Operation/paletteGroups";
 
 describe("operationChangeGroupId", () => {
   it("groups painter with color_mixer and crystal_generator", () => {

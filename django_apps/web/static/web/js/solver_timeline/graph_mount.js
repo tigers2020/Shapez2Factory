@@ -3,6 +3,11 @@ import { renderSelectedNodeDetail } from "./graph_detail.js?v=20260504-modal";
 import { renderSolverGraph } from "./graph_markup.js?v=20260504-grid-pinned";
 import { setStepsHtml } from "./dom_utils.js?v=20260502-graph-ui-2";
 
+/** Shared `Promise#catch` handler so deep listeners stay shallow. */
+function swallowPromiseRejection() {
+  /* intentionally empty */
+}
+
 function initGraphPreviewFallbacks(canvas) {
   const maxPreviewRetries = 3;
 
@@ -25,13 +30,13 @@ function initGraphPreviewFallbacks(canvas) {
 
     const onError = () => {
       if (retryTimerId !== undefined) {
-        window.clearTimeout(retryTimerId);
+        globalThis.clearTimeout(retryTimerId);
         retryTimerId = undefined;
       }
       if (attemptIndex < maxPreviewRetries) {
         const delayMs = previewRetryDelayMs(attemptIndex);
         attemptIndex += 1;
-        retryTimerId = window.setTimeout(() => {
+        retryTimerId = globalThis.setTimeout(() => {
           retryTimerId = undefined;
           const sep = baseSrc.includes("?") ? "&" : "?";
           img.src = `${baseSrc}${sep}_sgPvRetry=${attemptIndex}`;
@@ -67,8 +72,8 @@ function showStaffNodeContextMenu(clientX, clientY, items, onPick) {
   menu.id = "macro-staff-graph-ctx-menu";
   menu.className =
     "fixed z-[200] min-w-[10rem] rounded-lg border border-slate-600 bg-slate-900 py-1 text-sm shadow-xl";
-  menu.style.left = `${Math.min(clientX, window.innerWidth - 16)}px`;
-  menu.style.top = `${Math.min(clientY, window.innerHeight - 16)}px`;
+  menu.style.left = `${Math.min(clientX, globalThis.innerWidth - 16)}px`;
+  menu.style.top = `${Math.min(clientY, globalThis.innerHeight - 16)}px`;
   menu.setAttribute("role", "menu");
   for (const item of items) {
     const btn = document.createElement("button");
@@ -161,7 +166,7 @@ function initRecipeCanvasDrop(canvas, onDrop) {
           graphY: gy,
         }),
       ),
-    ).catch(() => {});
+    ).catch(swallowPromiseRejection);
   });
 }
 
@@ -317,7 +322,7 @@ function initRecipeGraphPortWire(canvas, panel, onConnect) {
       if (!edge) {
         return;
       }
-      void Promise.resolve(onConnect(edge)).catch(() => {});
+      void Promise.resolve(onConnect(edge)).catch(swallowPromiseRejection);
     };
 
     document.addEventListener("pointermove", onMove, { capture: true, passive: false });
@@ -358,7 +363,7 @@ function initRecipeGraphWireDelete(canvas, panel, onDelete) {
     if (sl != null && sl !== "") {
       draft.slot = sl;
     }
-    void Promise.resolve(onDelete(draft)).catch(() => {});
+    void Promise.resolve(onDelete(draft)).catch(swallowPromiseRejection);
   });
 }
 
@@ -402,8 +407,8 @@ function initRecipeGraphNodeDrag(canvas, panel, onCommit) {
       const scale = state.scale || 1;
       const startRawX = Number(node.x);
       const startRawY = Number(node.y);
-      const startLeft = parseFloat(nodeEl.style.left || "0");
-      const startTop = parseFloat(nodeEl.style.top || "0");
+      const startLeft = Number.parseFloat(nodeEl.style.left || "0");
+      const startTop = Number.parseFloat(nodeEl.style.top || "0");
       let moved = false;
 
       nodeEl.setPointerCapture(event.pointerId);
@@ -446,7 +451,9 @@ function initRecipeGraphNodeDrag(canvas, panel, onCommit) {
         const dy = (ev.clientY - startClientY) / scale;
         const newRawX = startRawX + dx;
         const newRawY = startRawY + dy;
-        void Promise.resolve(onCommit({ nodeId, x: newRawX, y: newRawY })).catch(() => {});
+        void Promise.resolve(onCommit({ nodeId, x: newRawX, y: newRawY })).catch(
+          swallowPromiseRejection,
+        );
       };
 
       document.addEventListener("pointermove", onMove, { capture: true, passive: false });
@@ -550,10 +557,10 @@ export async function mountGraph(panel, graph, options) {
           }
           const items = [];
           if (typeof staffDetail === "function") {
-            items.push({ id: "details", label: window.shapezUiT("Node info") });
+            items.push({ id: "details", label: globalThis.shapezUiT("Node info") });
           }
           if (typeof staffEdit === "function") {
-            items.push({ id: "edit", label: window.shapezUiT("Edit node") });
+            items.push({ id: "edit", label: globalThis.shapezUiT("Edit node") });
           }
           if (items.length === 0) {
             return;
@@ -561,7 +568,7 @@ export async function mountGraph(panel, graph, options) {
           showStaffNodeContextMenu(e.clientX, e.clientY, items, (actionId) => {
             selectNode(nid);
             if (actionId === "details" && typeof staffDetail === "function") {
-              void Promise.resolve(staffDetail(nid)).catch(() => {});
+              void Promise.resolve(staffDetail(nid)).catch(swallowPromiseRejection);
             }
             if (actionId === "edit" && typeof staffEdit === "function") {
               staffEdit(nid);

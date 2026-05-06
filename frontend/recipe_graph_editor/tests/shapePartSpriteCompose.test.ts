@@ -9,7 +9,7 @@ import {
   quadrantOverlayStackTier,
   shapePartSpriteKey,
   sortCellsForStackedOverlay,
-} from "../src/shapePartSpriteCompose";
+} from "../src/ShapeSprite/compose";
 
 describe("shapePartSpriteCompose", () => {
   it("atomicLayerGameCode matches single-layer game notation", () => {

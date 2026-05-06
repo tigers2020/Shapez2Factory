@@ -13,12 +13,12 @@ from django_apps.shapez_solver.dto.solver_graph import (
     SolverOperationNode,
     SolverShapeNode,
 )
+from django_apps.shapez_solver.ports.graph_preview import GraphPreviewRenderer
 from django_apps.shapez_solver.services.recipe_graph_recompute import validate_graph_document
 from django_apps.shapez_solver.view_graph_serialization import (
     serialize_graph_edge,
     serialize_graph_node,
 )
-from django_apps.web.services.graph_preview import get_graph_preview_renderer
 
 
 def _normalize_shape_role(role_raw: Any) -> str:
@@ -85,9 +85,8 @@ def _edge_doc_to_solver_edge(e: dict[str, Any]) -> SolverGraphEdge | None:
     )
 
 
-def document_to_solver_graph(doc: dict[str, Any]) -> SolverGraph:
-    """검증된 graph_document를 SolverGraph DTO로 변환한다."""
-    v = validate_graph_document(doc)
+def _solver_graph_from_validated_document(v: dict[str, Any]) -> SolverGraph:
+    """``validate_graph_document`` 결과 dict만 받는다(추가 검증·deepcopy 없음)."""
     nodes_out = [_graph_node_doc_to_solver(n) for n in v["nodes"]]
     edges_out: list[SolverGraphEdge] = []
     for e in v["edges"]:
@@ -95,6 +94,12 @@ def document_to_solver_graph(doc: dict[str, Any]) -> SolverGraph:
         if edge is not None:
             edges_out.append(edge)
     return SolverGraph(nodes=tuple(nodes_out), edges=tuple(edges_out))
+
+
+def document_to_solver_graph(doc: dict[str, Any]) -> SolverGraph:
+    """graph_document JSON을 검증한 뒤 SolverGraph DTO로 변환한다."""
+    v = validate_graph_document(doc)
+    return _solver_graph_from_validated_document(v)
 
 
 def _collect_node_xy(nodes: list[Any]) -> dict[str, tuple[float, float]]:
@@ -117,7 +122,7 @@ def _collect_node_xy(nodes: list[Any]) -> dict[str, tuple[float, float]]:
 
 def _macro_payload_for_node(
     node: SolverShapeNode | SolverOperationNode,
-    renderer: Any,
+    renderer: GraphPreviewRenderer,
     *,
     sync_png: bool = True,
 ) -> dict[str, Any]:
@@ -134,15 +139,19 @@ def _macro_payload_for_node(
     return serialize_graph_node(node, renderer, sync_png=sync_png)
 
 
-def serialize_macro_recipe_visual(doc: dict[str, Any], *, sync_png: bool = True) -> dict[str, Any]:
+def serialize_macro_recipe_visual(
+    doc: dict[str, Any],
+    *,
+    sync_png: bool = True,
+    preview_renderer: GraphPreviewRenderer,
+) -> dict[str, Any]:
     """graph_document를 ``renderSolverGraph`` / ``mountGraph``가 기대하는 JSON으로 직렬화한다."""
     v = validate_graph_document(doc)
-    graph = document_to_solver_graph(doc)
-    renderer = get_graph_preview_renderer()
+    graph = _solver_graph_from_validated_document(v)
     node_xy = _collect_node_xy(v["nodes"])
     nodes_payload: list[dict[str, Any]] = []
     for node in graph.nodes:
-        payload = _macro_payload_for_node(node, renderer, sync_png=sync_png)
+        payload = _macro_payload_for_node(node, preview_renderer, sync_png=sync_png)
         xy = node_xy.get(str(node.id))
         if xy is not None:
             payload["x"] = xy[0]
@@ -158,13 +167,47 @@ def serialize_macro_recipe_visual(doc: dict[str, Any], *, sync_png: bool = True)
 def _load_macro_visual_payload(
     graph_doc: dict[str, Any],
     macro_visual: dict[str, Any] | None,
+    preview_renderer: GraphPreviewRenderer,
 ) -> dict[str, Any] | None:
     try:
         if isinstance(macro_visual, dict):
             return macro_visual
-        return serialize_macro_recipe_visual(graph_doc)
+        return serialize_macro_recipe_visual(graph_doc, preview_renderer=preview_renderer)
     except (ValueError, TypeError, KeyError):
         return None
+
+
+def _build_shape_overlay_entry_fields(item: dict[str, Any]) -> dict[str, Any]:
+    entry: dict[str, Any] = {}
+    ps = item.get("preview_scene")
+    if isinstance(ps, dict):
+        entry["preview_scene"] = ps
+    url = item.get("preview_image_url")
+    if isinstance(url, str) and url.strip():
+        entry["preview_image_url"] = url.strip()
+    alt = item.get("preview_alt")
+    if isinstance(alt, str) and alt.strip():
+        entry["preview_alt"] = alt.strip()
+    ck = item.get("preview_cache_key")
+    if isinstance(ck, str) and ck.strip():
+        entry["preview_cache_key"] = ck.strip()
+    if item.get("needs_warm") is True:
+        entry["needs_warm"] = True
+    return entry
+
+
+def _shape_overlay_pair_from_visual_item(
+    item: dict[str, Any],
+) -> tuple[str, dict[str, Any]] | None:
+    if str(item.get("kind", "")) != "shape":
+        return None
+    nid = str(item.get("id") or "")
+    if not nid:
+        return None
+    entry = _build_shape_overlay_entry_fields(item)
+    if not entry:
+        return None
+    return (nid, entry)
 
 
 def _shape_visual_overlay_by_node_id(
@@ -178,28 +221,11 @@ def _shape_visual_overlay_by_node_id(
     for item in vn:
         if not isinstance(item, dict):
             continue
-        if str(item.get("kind", "")) != "shape":
+        pair = _shape_overlay_pair_from_visual_item(item)
+        if pair is None:
             continue
-        nid = str(item.get("id") or "")
-        if not nid:
-            continue
-        entry: dict[str, Any] = {}
-        ps = item.get("preview_scene")
-        if isinstance(ps, dict):
-            entry["preview_scene"] = ps
-        url = item.get("preview_image_url")
-        if isinstance(url, str) and url.strip():
-            entry["preview_image_url"] = url.strip()
-        alt = item.get("preview_alt")
-        if isinstance(alt, str) and alt.strip():
-            entry["preview_alt"] = alt.strip()
-        ck = item.get("preview_cache_key")
-        if isinstance(ck, str) and ck.strip():
-            entry["preview_cache_key"] = ck.strip()
-        if item.get("needs_warm") is True:
-            entry["needs_warm"] = True
-        if entry:
-            out[nid] = entry
+        nid, entry = pair
+        out[nid] = entry
     return out
 
 
@@ -233,13 +259,14 @@ def enrich_react_flow_with_macro_visual_previews(
     react_flow: dict[str, Any],
     graph_doc: dict[str, Any],
     *,
+    preview_renderer: GraphPreviewRenderer,
     macro_visual: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """React Flow 스냅샷에 macro visual 미리보기(PNG URL, preview_scene, alt)를 합친다."""
     nodes = react_flow.get("nodes")
     if not isinstance(nodes, list):
         return react_flow
-    visual = _load_macro_visual_payload(graph_doc, macro_visual)
+    visual = _load_macro_visual_payload(graph_doc, macro_visual, preview_renderer)
     if visual is None:
         return react_flow
     overlay_by_id = _shape_visual_overlay_by_node_id(visual)
@@ -258,4 +285,5 @@ __all__ = [
     "document_to_solver_graph",
     "enrich_react_flow_with_macro_visual_previews",
     "serialize_macro_recipe_visual",
+    "validate_graph_document",
 ]

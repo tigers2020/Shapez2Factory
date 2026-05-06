@@ -48,7 +48,7 @@ python_version = "3.12"
 strict = true
 warn_unused_configs = true
 cache_dir = "C:/tmp/shapez2solver-mypy-cache"
-exclude = "(^django_apps/.*/migrations/|^tests/integration/)"
+exclude = "(^django_apps/.*/migrations/|^tests/integration/|^build/)"
 
 [[tool.mypy.overrides]]
 module = ["django.*"]
@@ -64,14 +64,15 @@ module = [
     "django_apps.shapez_solver.admin",
     "django_apps.shapez_solver.apps",
     "django_apps.shapez_solver.models",
-    "django_apps.shapez_solver.urls",
-    "django_apps.shapez_solver.views",
+    "django_apps.web.urls_shapez_solver_api",
+    "django_apps.web.views_solver_api",
     "django_apps.web.admin",
     "django_apps.web.apps",
     "django_apps.web.social_adapter",
     "django_apps.web.socialaccount_forms",
     "django_apps.web.urls",
     "django_apps.web.views",
-    "tests.unit.shapez_solver.*",
+    "django_apps.web.views.macro_staff",
+    "django_apps.web.views.public_pages",
 ]
 ignore_errors = true

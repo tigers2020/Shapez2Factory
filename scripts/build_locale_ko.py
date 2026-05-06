@@ -253,10 +253,7 @@ KO: dict[str, str] = {
     (
         "Follow one target shape from recipe breakdown to inputs per minute, miner load, "
         "and bottleneck checks in a single planning surface."
-    ): (
-        "목표 도형 하나를 잡고 분해·분당 입력·채굴 부하·병목까지 "
-        "한 화면에서 따라가 봅니다."
-    ),
+    ): ("목표 도형 하나를 잡고 분해·분당 입력·채굴 부하·병목까지 " "한 화면에서 따라가 봅니다."),
     (
         "This site is fan-made and not affiliated with the official game. If you would like to help "
         "with hosting and development time, you can use the channels below. Support is completely optional."
@@ -267,9 +264,7 @@ KO: dict[str, str] = {
     (
         "Fan-made planner; not affiliated with the official game. Support is optional and "
         "helps hosting and development."
-    ): (
-        "팬 메이드 플래너이며 공식과 무관합니다. 후원은 자유이며 서버와 개발을 돕습니다."
-    ),
+    ): ("팬 메이드 플래너이며 공식과 무관합니다. 후원은 자유이며 서버와 개발을 돕습니다."),
     ("In production, set the environment variables"): ("운영 환경에서는 다음 환경 변수를 설정하면"),
     (
         "Pattern DB entries stay as candidate metadata. Python strategy dry-runs decide whether a macro can actually produce an inventory-search action. "
@@ -385,9 +380,7 @@ KO_JS: dict[str, str] = {
     (
         "Leave empty for two-wire mode: fluid on upper in-1, target shape on lower in "
         "(same as painter)."
-    ): (
-        "비우면 2와선: 상단 in-1에 유체, 하단 in에 대상 도형(페인터와 동일)."
-    ),
+    ): ("비우면 2와선: 상단 in-1에 유체, 하단 in에 대상 도형(페인터와 동일)."),
     "(read-only)": "(읽기 전용)",
     "Cancel": "취소",
     "Apply": "적용",

@@ -43,6 +43,17 @@ def merge_job_state(cache_key: str, updates: dict[str, Any]) -> None:
     cache.set(cache_key, merged, timeout=JOB_CACHE_TIMEOUT_SECONDS)
 
 
+def _write_stream(msg: str, stream: TextIO | None) -> None:
+    if stream is None:
+        return
+    stream.write(msg)
+
+
+def _merge_job_error(progress_cache_key: str | None, message: str) -> None:
+    if progress_cache_key:
+        merge_job_state(progress_cache_key, {"status": "error", "message": message})
+
+
 @dataclass(frozen=True, slots=True)
 class ShapePartSpriteGenerationStats:
     rendered: int
@@ -96,7 +107,7 @@ def _variant_row_exists_with_image(
     if not name:
         return False
     try:
-        return row.image.storage.exists(name)
+        return bool(row.image.storage.exists(name))
     except OSError:
         return False
 
@@ -183,6 +194,211 @@ def build_sample_quadrant_work_queue(
     )
 
 
+def _resolve_generation_specs(
+    *,
+    work_queue: list[tuple[str, str, str, int]] | None,
+    renderer_version: str,
+    skip_existing: bool,
+    limit: int | None,
+    pre_skipped: int | None,
+) -> tuple[list[tuple[str, str, str, int]], int]:
+    if work_queue is not None:
+        skipped = pre_skipped if pre_skipped is not None else 0
+        return work_queue, skipped
+    return _build_work_queue(
+        renderer_version=renderer_version,
+        skip_existing=skip_existing,
+        limit=limit,
+    )
+
+
+def _merge_job_done_empty(progress_cache_key: str | None, skipped: int) -> None:
+    if not progress_cache_key:
+        return
+    merge_job_state(
+        progress_cache_key,
+        {
+            "status": "done",
+            "total": 0,
+            "current": 0,
+            "skipped": skipped,
+            "rendered": 0,
+            "errors": 0,
+        },
+    )
+
+
+def _merge_job_running(progress_cache_key: str | None, total: int, skipped: int) -> None:
+    if not progress_cache_key:
+        return
+    merge_job_state(
+        progress_cache_key,
+        {
+            "status": "running",
+            "total": total,
+            "current": 0,
+            "skipped": skipped,
+            "rendered": 0,
+            "errors": 0,
+        },
+    )
+
+
+def _check_sprite_renderer_prerequisites(
+    script_path: Path,
+    node_bin: str | None,
+    *,
+    skipped: int,
+    progress_cache_key: str | None,
+    stderr: TextIO | None,
+) -> ShapePartSpriteGenerationStats | None:
+    if not script_path.is_file():
+        _write_stream(f"Missing renderer script: {script_path}\n", stderr)
+        _merge_job_error(progress_cache_key, f"Missing renderer script: {script_path}")
+        return ShapePartSpriteGenerationStats(rendered=0, skipped=skipped, errors=0)
+    if node_bin is None:
+        _write_stream("node executable not found on PATH.\n", stderr)
+        _merge_job_error(progress_cache_key, "node executable not found on PATH.")
+        return ShapePartSpriteGenerationStats(rendered=0, skipped=skipped, errors=0)
+    return None
+
+
+def _import_pillow_image(stderr: TextIO | None) -> Any:
+    try:
+        from PIL import Image  # noqa: PLC0415
+    except ImportError as exc:
+        _write_stream("Pillow is required (pip install pillow).\n", stderr)
+        raise RuntimeError("Pillow is required (pip install pillow).") from exc
+    return Image
+
+
+def _sprite_key_and_scene_for_spec(
+    mesh_key: str,
+    color_code: str,
+    material_key: str,
+    quadrant_index: int,
+    renderer_version: str,
+) -> tuple[str, dict[str, Any]]:
+    if mesh_key == PEDESTAL_ONLY_MESH_KEY:
+        return (
+            make_pedestal_sprite_key(renderer_version),
+            build_pedestal_only_preview_scene(),
+        )
+    shape_code = MESH_KEY_TO_SHAPE_CODE.get(mesh_key)
+    if shape_code is None:
+        raise ValueError(f"unknown mesh_key for sprite bake: {mesh_key!r}")
+    sprite_key = make_sprite_key(shape_code, color_code, quadrant_index, renderer_version)
+    scene = build_atomic_preview_scene(mesh_key, color_code, material_key, quadrant_index)
+    return sprite_key, scene
+
+
+def _run_node_scene_to_png_bytes(
+    *,
+    node_bin: str,
+    script_path: Path,
+    scene: dict[str, Any],
+    env: dict[str, str],
+    base_dir: Path,
+) -> bytes:
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        suffix=".json",
+        delete=False,
+        encoding="utf-8",
+    ) as tf:
+        json.dump(scene, tf, separators=(",", ":"))
+        scene_path = Path(tf.name)
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as pf:
+        png_path = Path(pf.name)
+    try:
+        subprocess.run(
+            [
+                node_bin,
+                str(script_path),
+                "--scene-file",
+                str(scene_path),
+                "--out",
+                str(png_path),
+            ],
+            check=True,
+            env=env,
+            timeout=120,
+            cwd=str(base_dir),
+        )
+    finally:
+        scene_path.unlink(missing_ok=True)
+
+    png_bytes = png_path.read_bytes()
+    png_path.unlink(missing_ok=True)
+    return png_bytes
+
+
+def _persist_sprite_variant_row(
+    *,
+    mesh_key: str,
+    color_code: str,
+    material_key: str,
+    quadrant_index: int,
+    renderer_version: str,
+    sprite_key: str,
+    png_bytes: bytes,
+    pil_image: Any,
+) -> None:
+    with pil_image.open(io.BytesIO(png_bytes)) as im:
+        w, h = im.size
+
+    safe_name = sprite_key.replace(":", "_") + ".png"
+    defaults = {
+        "sprite_key": sprite_key,
+        "image_width": w,
+        "image_height": h,
+        "image": ContentFile(png_bytes, name=safe_name),
+    }
+    ShapePartSprite.objects.update_or_create(
+        mesh_key=mesh_key,
+        color_code=color_code,
+        material_key=material_key,
+        quadrant_index=quadrant_index,
+        renderer_version=renderer_version,
+        defaults=defaults,
+    )
+
+
+def _merge_job_progress_slice(
+    progress_cache_key: str | None,
+    *,
+    current: int,
+    rendered: int,
+    errors: int,
+) -> None:
+    if not progress_cache_key:
+        return
+    merge_job_state(
+        progress_cache_key,
+        {"current": current, "rendered": rendered, "errors": errors},
+    )
+
+
+def _merge_job_done_final(
+    progress_cache_key: str | None,
+    *,
+    total: int,
+    rendered: int,
+    errors: int,
+) -> None:
+    if not progress_cache_key:
+        return
+    merge_job_state(
+        progress_cache_key,
+        {
+            "status": "done",
+            "current": total,
+            "rendered": rendered,
+            "errors": errors,
+        },
+    )
+
+
 def generate_shape_part_sprites(
     *,
     renderer_version: str = "v1",
@@ -200,175 +416,93 @@ def generate_shape_part_sprites(
     If ``work_queue`` is set (e.g. admin background job), it is used as-is and
     ``skip_existing`` / ``limit`` are ignored.
     """
-    out = stdout
-    err = stderr
-
-    def _write(msg: str, stream: TextIO | None) -> None:
-        if stream is None:
-            return
-        stream.write(msg)
-
-    if work_queue is not None:
-        specs = work_queue
-        skipped = pre_skipped if pre_skipped is not None else 0
-    else:
-        specs, skipped = _build_work_queue(
-            renderer_version=renderer_version,
-            skip_existing=skip_existing,
-            limit=limit,
-        )
+    specs, skipped = _resolve_generation_specs(
+        work_queue=work_queue,
+        renderer_version=renderer_version,
+        skip_existing=skip_existing,
+        limit=limit,
+        pre_skipped=pre_skipped,
+    )
 
     if dry_run:
         would = len(specs)
-        _write(
+        _write_stream(
             f"Would process {would} sprite variants (skipped_existing={skipped}, dry-run).\n",
-            out,
+            stdout,
         )
         return ShapePartSpriteGenerationStats(rendered=0, skipped=skipped, errors=0)
 
     total = len(specs)
     if total == 0:
-        if progress_cache_key:
-            merge_job_state(
-                progress_cache_key,
-                {
-                    "status": "done",
-                    "total": 0,
-                    "current": 0,
-                    "skipped": skipped,
-                    "rendered": 0,
-                    "errors": 0,
-                },
-            )
+        _merge_job_done_empty(progress_cache_key, skipped)
         return ShapePartSpriteGenerationStats(rendered=0, skipped=skipped, errors=0)
 
-    if progress_cache_key:
-        merge_job_state(
-            progress_cache_key,
-            {
-                "status": "running",
-                "total": total,
-                "current": 0,
-                "skipped": skipped,
-                "rendered": 0,
-                "errors": 0,
-            },
-        )
+    _merge_job_running(progress_cache_key, total, skipped)
 
     script_path = Path(settings.BASE_DIR) / "scripts" / "render_part_sprite.mjs"
-    if not script_path.is_file():
-        _write(f"Missing renderer script: {script_path}\n", err)
-        if progress_cache_key:
-            merge_job_state(
-                progress_cache_key,
-                {"status": "error", "message": f"Missing renderer script: {script_path}"},
-            )
-        return ShapePartSpriteGenerationStats(rendered=0, skipped=skipped, errors=0)
-
     node_bin = _which_node()
-    if node_bin is None:
-        _write("node executable not found on PATH.\n", err)
-        if progress_cache_key:
-            merge_job_state(
-                progress_cache_key,
-                {"status": "error", "message": "node executable not found on PATH."},
-            )
-        return ShapePartSpriteGenerationStats(rendered=0, skipped=skipped, errors=0)
+    early = _check_sprite_renderer_prerequisites(
+        script_path,
+        node_bin,
+        skipped=skipped,
+        progress_cache_key=progress_cache_key,
+        stderr=stderr,
+    )
+    if early is not None:
+        return early
+    assert node_bin is not None  # validated in _check_sprite_renderer_prerequisites
 
-    try:
-        from PIL import Image  # noqa: PLC0415
-    except ImportError as exc:
-        _write("Pillow is required (pip install pillow).\n", err)
-        raise RuntimeError("Pillow is required (pip install pillow).") from exc
+    pil_image = _import_pillow_image(stderr)
 
     env = _playwright_subprocess_env()
     ok = 0
     n_err = 0
+    base_dir = Path(settings.BASE_DIR)
+
     for i, (mesh_key, color_code, material_key, quadrant_index) in enumerate(specs, start=1):
-        if mesh_key == PEDESTAL_ONLY_MESH_KEY:
-            sprite_key = make_pedestal_sprite_key(renderer_version)
-            scene = build_pedestal_only_preview_scene()
-        else:
-            shape_code = MESH_KEY_TO_SHAPE_CODE.get(mesh_key)
-            if shape_code is None:
-                raise ValueError(f"unknown mesh_key for sprite bake: {mesh_key!r}")
-            sprite_key = make_sprite_key(shape_code, color_code, quadrant_index, renderer_version)
-            scene = build_atomic_preview_scene(mesh_key, color_code, material_key, quadrant_index)
+        sprite_key, scene = _sprite_key_and_scene_for_spec(
+            mesh_key,
+            color_code,
+            material_key,
+            quadrant_index,
+            renderer_version,
+        )
         try:
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                suffix=".json",
-                delete=False,
-                encoding="utf-8",
-            ) as tf:
-                json.dump(scene, tf, separators=(",", ":"))
-                scene_path = Path(tf.name)
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as pf:
-                png_path = Path(pf.name)
-            try:
-                subprocess.run(
-                    [
-                        node_bin,
-                        str(script_path),
-                        "--scene-file",
-                        str(scene_path),
-                        "--out",
-                        str(png_path),
-                    ],
-                    check=True,
-                    env=env,
-                    timeout=120,
-                    cwd=str(settings.BASE_DIR),
-                )
-            finally:
-                scene_path.unlink(missing_ok=True)
-
-            png_bytes = png_path.read_bytes()
-            png_path.unlink(missing_ok=True)
-
-            with Image.open(io.BytesIO(png_bytes)) as im:
-                w, h = im.size
-
-            safe_name = sprite_key.replace(":", "_") + ".png"
-            defaults = {
-                "sprite_key": sprite_key,
-                "image_width": w,
-                "image_height": h,
-                "image": ContentFile(png_bytes, name=safe_name),
-            }
-            ShapePartSprite.objects.update_or_create(
+            png_bytes = _run_node_scene_to_png_bytes(
+                node_bin=node_bin,
+                script_path=script_path,
+                scene=scene,
+                env=env,
+                base_dir=base_dir,
+            )
+            _persist_sprite_variant_row(
                 mesh_key=mesh_key,
                 color_code=color_code,
                 material_key=material_key,
                 quadrant_index=quadrant_index,
                 renderer_version=renderer_version,
-                defaults=defaults,
+                sprite_key=sprite_key,
+                png_bytes=png_bytes,
+                pil_image=pil_image,
             )
             ok += 1
         except (OSError, subprocess.CalledProcessError, ValueError) as e:
-            _write(f"{sprite_key}: {e}\n", err)
+            _write_stream(f"{sprite_key}: {e}\n", stderr)
             n_err += 1
 
-        if progress_cache_key:
-            merge_job_state(
-                progress_cache_key,
-                {
-                    "current": i,
-                    "rendered": ok,
-                    "errors": n_err,
-                },
-            )
-
-    if progress_cache_key:
-        merge_job_state(
+        _merge_job_progress_slice(
             progress_cache_key,
-            {
-                "status": "done",
-                "current": total,
-                "rendered": ok,
-                "errors": n_err,
-            },
+            current=i,
+            rendered=ok,
+            errors=n_err,
         )
+
+    _merge_job_done_final(
+        progress_cache_key,
+        total=total,
+        rendered=ok,
+        errors=n_err,
+    )
 
     return ShapePartSpriteGenerationStats(rendered=ok, skipped=skipped, errors=n_err)
 

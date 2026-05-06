@@ -1,26 +1,11 @@
+/* GENERATED — do not edit by hand. Source: frontend/graph_layout/src/*.ts | Rebuild: npm run build:graph-layout */
+
 // frontend/graph_layout/src/constants.ts
 var ORDERING_PASSES = 4;
 var POSITIONING_PASSES = 6;
 var EDITOR_LAYOUT_CONSOLE_DEBUG_LS_KEY = "shapezDebugGraphLayout";
 
-// frontend/graph_layout/src/graphLayoutEngine.ts
-function average(values) {
-  if (!values.length) {
-    return 0;
-  }
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-function compareNumbers(a, b) {
-  return a - b;
-}
-function median(values) {
-  if (!values.length) {
-    return 0;
-  }
-  const sorted = [...values].sort(compareNumbers);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
+// frontend/graph_layout/src/graphLayoutDebug.ts
 function isEditorGraphLayoutConsoleDebugEnabled() {
   if (typeof globalThis === "undefined") {
     return false;
@@ -53,37 +38,81 @@ function isEditorGraphLayoutConsoleDebugEnabled() {
   }
   return false;
 }
+
+// frontend/graph_layout/src/graphLayoutBounds.ts
+function buildEmptyGraphLayout(metrics) {
+  const p = metrics.graphPadding;
+  return {
+    positions: /* @__PURE__ */ new Map(),
+    width: p * 2,
+    height: p * 2,
+    bounds: {
+      minX: p,
+      minY: p,
+      maxX: p,
+      maxY: p,
+      width: 0,
+      height: 0
+    }
+  };
+}
+function buildFinalGraphLayout(nodes, leftPositions, topPositions, metrics) {
+  const rawMinLeft = Math.min(...leftPositions.values());
+  const rawMinTop = Math.min(...topPositions.values());
+  const xOffset = metrics.graphPadding - rawMinLeft;
+  const yOffset = metrics.graphPadding - rawMinTop;
+  const positions = /* @__PURE__ */ new Map();
+  for (const node of nodes) {
+    positions.set(node.id, {
+      x: (leftPositions.get(node.id) || 0) + xOffset,
+      y: (topPositions.get(node.id) || 0) + yOffset
+    });
+  }
+  const positioned = [...positions.values()];
+  const minX = Math.min(...positioned.map((position) => position.x));
+  const minY = Math.min(...positioned.map((position) => position.y));
+  const maxX = Math.max(...positioned.map((position) => position.x + metrics.nodeWidth));
+  const maxY = Math.max(...positioned.map((position) => position.y + metrics.nodeHeight));
+  return {
+    positions,
+    width: maxX + metrics.graphPadding,
+    height: maxY + metrics.graphPadding,
+    bounds: {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: maxX - minX,
+      height: maxY - minY
+    }
+  };
+}
+
+// frontend/graph_layout/src/graphLayoutMath.ts
+function average(values) {
+  if (!values.length) {
+    return 0;
+  }
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+function compareNumbers(a, b) {
+  return a - b;
+}
+function median(values) {
+  if (!values.length) {
+    return 0;
+  }
+  const sorted = [...values].sort(compareNumbers);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+// frontend/graph_layout/src/graphLayoutInput.ts
 function getGraphNodes(graph) {
   return Array.isArray(graph?.nodes) ? graph.nodes : [];
 }
 function getGraphEdges(graph) {
   return Array.isArray(graph?.edges) ? graph.edges : [];
-}
-function sourceHandleLaneOrder(h) {
-  if (h == null || h === "") {
-    return 0;
-  }
-  if (h === "out") {
-    return 0;
-  }
-  const m = /^out-(\d+)$/.exec(h);
-  if (m) {
-    return Number.parseInt(m[1], 10);
-  }
-  return 0;
-}
-function targetHandleSlotOrder(h) {
-  if (h == null || h === "") {
-    return 0;
-  }
-  if (h === "in") {
-    return 0;
-  }
-  const m = /^in-(\d+)$/.exec(h);
-  if (m) {
-    return Number.parseInt(m[1], 10);
-  }
-  return 0;
 }
 function buildNodeIndexMap(nodes) {
   return new Map(nodes.map((node, index) => [node.id, index]));
@@ -123,6 +152,34 @@ function groupNodeIdsByDepth(graph, depths) {
   }
   return new Map([...columns.entries()].sort((a, b) => compareNumbers(a[0], b[0])));
 }
+
+// frontend/graph_layout/src/graphLayoutPorts.ts
+function sourceHandleLaneOrder(h) {
+  if (h == null || h === "") {
+    return 0;
+  }
+  if (h === "out") {
+    return 0;
+  }
+  const m = /^out-(\d+)$/.exec(h);
+  if (m) {
+    return Number.parseInt(m[1], 10);
+  }
+  return 0;
+}
+function targetHandleSlotOrder(h) {
+  if (h == null || h === "") {
+    return 0;
+  }
+  if (h === "in") {
+    return 0;
+  }
+  const m = /^in-(\d+)$/.exec(h);
+  if (m) {
+    return Number.parseInt(m[1], 10);
+  }
+  return 0;
+}
 function edgeTargetPortRank(e) {
   const v = e.targetPortVisualRank;
   if (v != null && Number.isFinite(v)) {
@@ -130,45 +187,8 @@ function edgeTargetPortRank(e) {
   }
   return targetHandleSlotOrder(e.targetHandle);
 }
-function buildMergeTargetNodeIds(graph) {
-  const counts = /* @__PURE__ */ new Map();
-  for (const edge of getGraphEdges(graph)) {
-    counts.set(edge.to, (counts.get(edge.to) ?? 0) + 1);
-  }
-  return new Set([...counts.entries()].filter(([, n]) => n >= 2).map(([id]) => id));
-}
-function outgoingPortRankToMergeTargets(nodeId, graph, mergeTargets) {
-  const m = /* @__PURE__ */ new Map();
-  for (const edge of getGraphEdges(graph)) {
-    if (edge.from === nodeId && mergeTargets.has(edge.to)) {
-      m.set(edge.to, edgeTargetPortRank(edge));
-    }
-  }
-  return m;
-}
-function compareEditorColumnOrder(a, b, graph, mergeTargets, meta) {
-  const oa = outgoingPortRankToMergeTargets(a, graph, mergeTargets);
-  const ob = outgoingPortRankToMergeTargets(b, graph, mergeTargets);
-  const shared = [...oa.keys()].filter((t) => ob.has(t)).sort((x, y) => x.localeCompare(y));
-  for (const t of shared) {
-    const ra = oa.get(t) ?? 0;
-    const rb = ob.get(t) ?? 0;
-    if (ra !== rb) {
-      return compareNumbers(ra, rb);
-    }
-  }
-  const ya = editorStableInitialY(meta.get(a));
-  const yb = editorStableInitialY(meta.get(b));
-  if (ya !== yb) {
-    return compareNumbers(ya, yb);
-  }
-  const ka = meta.get(a)?.layerSortKey ?? 0;
-  const kb = meta.get(b)?.layerSortKey ?? 0;
-  if (ka !== kb) {
-    return compareNumbers(ka, kb);
-  }
-  return a.localeCompare(b);
-}
+
+// frontend/graph_layout/src/graphLayoutAdjacency.ts
 function buildAdjacency(graph, nodeIndexMap) {
   const predTags = /* @__PURE__ */ new Map();
   const succTags = /* @__PURE__ */ new Map();
@@ -209,6 +229,68 @@ function buildAdjacency(graph, nodeIndexMap) {
   }
   return { predecessors, successors };
 }
+
+// frontend/graph_layout/src/graphLayoutMergeOrdering.ts
+function buildMergeTargetNodeIds(graph) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const edge of getGraphEdges(graph)) {
+    counts.set(edge.to, (counts.get(edge.to) ?? 0) + 1);
+  }
+  return new Set([...counts.entries()].filter(([, n]) => n >= 2).map(([id]) => id));
+}
+function outgoingPortRankToMergeTargets(nodeId, graph, mergeTargets) {
+  const m = /* @__PURE__ */ new Map();
+  for (const edge of getGraphEdges(graph)) {
+    if (edge.from === nodeId && mergeTargets.has(edge.to)) {
+      m.set(edge.to, edgeTargetPortRank(edge));
+    }
+  }
+  return m;
+}
+function editorStableInitialY(node) {
+  const y = node?.initialY;
+  if (y == null || !Number.isFinite(y)) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return y;
+}
+function compareEditorColumnOrder(a, b, graph, mergeTargets, meta) {
+  const oa = outgoingPortRankToMergeTargets(a, graph, mergeTargets);
+  const ob = outgoingPortRankToMergeTargets(b, graph, mergeTargets);
+  const shared = [...oa.keys()].filter((t) => ob.has(t)).sort((x, y) => x.localeCompare(y));
+  for (const t of shared) {
+    const ra = oa.get(t) ?? 0;
+    const rb = ob.get(t) ?? 0;
+    if (ra !== rb) {
+      return compareNumbers(ra, rb);
+    }
+  }
+  const ya = editorStableInitialY(meta.get(a));
+  const yb = editorStableInitialY(meta.get(b));
+  if (ya !== yb) {
+    return compareNumbers(ya, yb);
+  }
+  const ka = meta.get(a)?.layerSortKey ?? 0;
+  const kb = meta.get(b)?.layerSortKey ?? 0;
+  if (ka !== kb) {
+    return compareNumbers(ka, kb);
+  }
+  return a.localeCompare(b);
+}
+function orderEditorLayersBySortKey(groupedColumns, graph) {
+  const meta = new Map(graph.nodes.map((n) => [n.id, n]));
+  const mergeTargets = buildMergeTargetNodeIds(graph);
+  const out = /* @__PURE__ */ new Map();
+  for (const [depth, ids] of groupedColumns) {
+    const sorted = [...ids].sort(
+      (a, b) => compareEditorColumnOrder(a, b, graph, mergeTargets, meta)
+    );
+    out.set(depth, sorted);
+  }
+  return out;
+}
+
+// frontend/graph_layout/src/graphLayoutBarycenter.ts
 function buildOrderIndexMap(columns) {
   const orderIndex = /* @__PURE__ */ new Map();
   for (const nodeIds of columns.values()) {
@@ -293,54 +375,21 @@ function orderNodeIdsByBarycenter(graph, columns, _depths) {
   }
   return orderedColumns;
 }
-function enforceNonDecreasingDesiredTopsForColumnOrder(desiredTops) {
-  if (!desiredTops.length) {
-    return desiredTops;
-  }
-  const out = [...desiredTops];
-  for (let i = 1; i < out.length; i += 1) {
-    const prev = out[i - 1];
-    const cur = out[i];
-    if (prev !== void 0 && cur !== void 0 && cur < prev) {
-      out[i] = prev;
-    }
-  }
-  return out;
+
+// frontend/graph_layout/src/graphLayoutColumnPlan.ts
+function buildOrderedColumnLayout(graph, nodes, metrics) {
+  const depths = computeNodeDepths(graph);
+  const groupedColumns = groupNodeIdsByDepth(graph, depths);
+  const orderedColumns = metrics.horizontalPlacement === "editor" ? orderEditorLayersBySortKey(groupedColumns, graph) : orderNodeIdsByBarycenter(graph, groupedColumns, depths);
+  const nodeIndexMap = buildNodeIndexMap(nodes);
+  return {
+    orderedColumns,
+    sortedDepths: [...orderedColumns.keys()].sort(compareNumbers),
+    adjacency: buildAdjacency(graph, nodeIndexMap)
+  };
 }
-function compactColumnTops(nodeIds, desiredTops, rowGap) {
-  if (!nodeIds.length) {
-    return [];
-  }
-  const placed = [];
-  for (let index = 0; index < nodeIds.length; index += 1) {
-    const desiredTop = desiredTops[index];
-    if (index === 0) {
-      placed.push(desiredTop);
-      continue;
-    }
-    placed.push(Math.max(desiredTop, placed[index - 1] + rowGap));
-  }
-  for (let index = placed.length - 2; index >= 0; index -= 1) {
-    placed[index] = Math.min(placed[index], placed[index + 1] - rowGap);
-  }
-  return placed;
-}
-function buildInitialTopPositions(columns, rowGap) {
-  const positions = /* @__PURE__ */ new Map();
-  for (const nodeIds of columns.values()) {
-    nodeIds.forEach((nodeId, index) => {
-      positions.set(nodeId, index * rowGap);
-    });
-  }
-  return positions;
-}
-function computeDesiredTop(nodeId, neighborMap, topPositions) {
-  const neighborTops = (neighborMap.get(nodeId) || []).filter((neighborId) => topPositions.has(neighborId)).map((neighborId) => topPositions.get(neighborId) || 0);
-  if (!neighborTops.length) {
-    return topPositions.get(nodeId) || 0;
-  }
-  return average(neighborTops);
-}
+
+// frontend/graph_layout/src/graphLayoutHorizontal.ts
 function buildNodeRankOrderMap(columns) {
   const rankOrder = /* @__PURE__ */ new Map();
   for (const nodeIds of columns.values()) {
@@ -409,51 +458,55 @@ function computeHorizontalPositionsEditor(columns, metrics) {
   }
   return leftPositions;
 }
-function buildEmptyGraphLayout(metrics) {
-  const p = metrics.graphPadding;
-  return {
-    positions: /* @__PURE__ */ new Map(),
-    width: p * 2,
-    height: p * 2,
-    bounds: {
-      minX: p,
-      minY: p,
-      maxX: p,
-      maxY: p,
-      width: 0,
-      height: 0
-    }
-  };
-}
-function editorStableInitialY(node) {
-  const y = node?.initialY;
-  if (y == null || !Number.isFinite(y)) {
-    return Number.POSITIVE_INFINITY;
+
+// frontend/graph_layout/src/graphLayoutVertical.ts
+function enforceNonDecreasingDesiredTopsForColumnOrder(desiredTops) {
+  if (!desiredTops.length) {
+    return desiredTops;
   }
-  return y;
-}
-function orderEditorLayersBySortKey(groupedColumns, graph) {
-  const meta = new Map(graph.nodes.map((n) => [n.id, n]));
-  const mergeTargets = buildMergeTargetNodeIds(graph);
-  const out = /* @__PURE__ */ new Map();
-  for (const [depth, ids] of groupedColumns) {
-    const sorted = [...ids].sort(
-      (a, b) => compareEditorColumnOrder(a, b, graph, mergeTargets, meta)
-    );
-    out.set(depth, sorted);
+  const out = [...desiredTops];
+  for (let i = 1; i < out.length; i += 1) {
+    const prev = out[i - 1];
+    const cur = out[i];
+    if (prev !== void 0 && cur !== void 0 && cur < prev) {
+      out[i] = prev;
+    }
   }
   return out;
 }
-function buildOrderedColumnLayout(graph, nodes, metrics) {
-  const depths = computeNodeDepths(graph);
-  const groupedColumns = groupNodeIdsByDepth(graph, depths);
-  const orderedColumns = metrics.horizontalPlacement === "editor" ? orderEditorLayersBySortKey(groupedColumns, graph) : orderNodeIdsByBarycenter(graph, groupedColumns, depths);
-  const nodeIndexMap = buildNodeIndexMap(nodes);
-  return {
-    orderedColumns,
-    sortedDepths: [...orderedColumns.keys()].sort(compareNumbers),
-    adjacency: buildAdjacency(graph, nodeIndexMap)
-  };
+function compactColumnTops(nodeIds, desiredTops, rowGap) {
+  if (!nodeIds.length) {
+    return [];
+  }
+  const placed = [];
+  for (let index = 0; index < nodeIds.length; index += 1) {
+    const desiredTop = desiredTops[index];
+    if (index === 0) {
+      placed.push(desiredTop);
+      continue;
+    }
+    placed.push(Math.max(desiredTop, placed[index - 1] + rowGap));
+  }
+  for (let index = placed.length - 2; index >= 0; index -= 1) {
+    placed[index] = Math.min(placed[index], placed[index + 1] - rowGap);
+  }
+  return placed;
+}
+function buildInitialTopPositions(columns, rowGap) {
+  const positions = /* @__PURE__ */ new Map();
+  for (const nodeIds of columns.values()) {
+    nodeIds.forEach((nodeId, index) => {
+      positions.set(nodeId, index * rowGap);
+    });
+  }
+  return positions;
+}
+function computeDesiredTop(nodeId, neighborMap, topPositions) {
+  const neighborTops = (neighborMap.get(nodeId) || []).filter((neighborId) => topPositions.has(neighborId)).map((neighborId) => topPositions.get(neighborId) || 0);
+  if (!neighborTops.length) {
+    return topPositions.get(nodeId) || 0;
+  }
+  return average(neighborTops);
 }
 function applyVerticalSweep(sortedDepths, orderedColumns, neighborMap, topPositions, rowGap, editorClampColumnOrder) {
   for (const depth of sortedDepths) {
@@ -538,37 +591,8 @@ function editorReflowColumnVerticalGaps(orderedColumns, topPositions, rowGap) {
     });
   }
 }
-function buildFinalGraphLayout(nodes, leftPositions, topPositions, metrics) {
-  const rawMinLeft = Math.min(...leftPositions.values());
-  const rawMinTop = Math.min(...topPositions.values());
-  const xOffset = metrics.graphPadding - rawMinLeft;
-  const yOffset = metrics.graphPadding - rawMinTop;
-  const positions = /* @__PURE__ */ new Map();
-  for (const node of nodes) {
-    positions.set(node.id, {
-      x: (leftPositions.get(node.id) || 0) + xOffset,
-      y: (topPositions.get(node.id) || 0) + yOffset
-    });
-  }
-  const positioned = [...positions.values()];
-  const minX = Math.min(...positioned.map((position) => position.x));
-  const minY = Math.min(...positioned.map((position) => position.y));
-  const maxX = Math.max(...positioned.map((position) => position.x + metrics.nodeWidth));
-  const maxY = Math.max(...positioned.map((position) => position.y + metrics.nodeHeight));
-  return {
-    positions,
-    width: maxX + metrics.graphPadding,
-    height: maxY + metrics.graphPadding,
-    bounds: {
-      minX,
-      minY,
-      maxX,
-      maxY,
-      width: maxX - minX,
-      height: maxY - minY
-    }
-  };
-}
+
+// frontend/graph_layout/src/graphLayoutGrouped.ts
 function computeGroupedGraphLayout(graph, metrics) {
   const nodes = getGraphNodes(graph);
   if (!nodes.length) {

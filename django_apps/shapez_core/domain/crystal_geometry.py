@@ -104,15 +104,12 @@ def shatter_crystal_cluster(shape: Shape, cluster: frozenset[LayerQuad]) -> Shap
 
     if not cluster:
         return shape
-    mutable: list[list[ShapePart]] = [
-        list(layer.quadrants) for layer in shape.layers
-    ]
+    mutable: list[list[ShapePart]] = [list(layer.quadrants) for layer in shape.layers]
     for z, q in cluster:
         mutable[z][q] = EMPTY_PART
     return Shape(
         layers=tuple(
-            ShapeLayer(quadrants=(layer[0], layer[1], layer[2], layer[3]))
-            for layer in mutable
+            ShapeLayer(quadrants=(layer[0], layer[1], layer[2], layer[3])) for layer in mutable
         )
     ).strip_top_empty_layers()
 

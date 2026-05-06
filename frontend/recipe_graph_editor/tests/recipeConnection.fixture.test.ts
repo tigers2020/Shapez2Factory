@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 import type { Edge, Node } from "@xyflow/react";
 import { describe, it } from "vitest";
 
-import { getEffectiveOperationInputArity } from "../src/operationArity";
-import { expectedInputCarriers, sortedInputEdgesToOperation } from "../src/recipeConnection";
+import { getEffectiveOperationInputArity } from "../src/Operation/arity";
+import { expectedInputCarriers, sortedInputEdgesToOperation } from "../src/RecipeConnection";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturePath = join(__dirname, "../../../tests/fixtures/recipe_connection_rule_scenarios.json");

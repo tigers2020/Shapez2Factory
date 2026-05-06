@@ -6,7 +6,7 @@ import {
   remapClipboardPayloadForPaste,
   serializeRecipeGraphClipboard,
   tryParseRecipeGraphClipboard,
-} from "../src/recipeGraphClipboard";
+} from "../src/RecipeGraph/clipboard";
 
 function nid(prefix: string, i: number): string {
   return `${prefix}-${i}`;

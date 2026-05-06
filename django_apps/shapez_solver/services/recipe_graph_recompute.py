@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import uuid
 from collections import defaultdict, deque
+from dataclasses import dataclass
 from typing import Any
 
 from django_apps.shapez_core.domain.shape import Shape
@@ -326,7 +327,8 @@ def _shape_quantity_int(shape_node: dict[str, Any]) -> int:
     raw_q = shape_node.get("quantity", 1)
     if isinstance(raw_q, bool) or not isinstance(raw_q, int):
         return 1
-    return max(1, raw_q)
+    q: int = raw_q
+    return max(1, q)
 
 
 def _merge_input_quantity_sum(
@@ -382,7 +384,12 @@ def _sorted_input_codes_for_operation(
     return tuple(codes)
 
 
-def _pattern_macro_input_slot_label(shape_node: dict[str, Any], shape_code: str) -> str:
+def _pattern_macro_input_slot_label(
+    shape_node: dict[str, Any],
+    shape_code: str,
+    *,
+    shape_parse_cache: dict[str, Shape] | None = None,
+) -> str:
     """Pattern macro UI: fluid wire는 균일 잉크 한 글자만; 재료(shape)는 기존 shape_code."""
 
     if not shape_node_is_fluid(shape_node):
@@ -390,7 +397,7 @@ def _pattern_macro_input_slot_label(shape_node: dict[str, Any], shape_code: str)
     if not shape_code:
         return shape_code
     try:
-        return pure_fluid_color(parse_shape(shape_code))
+        return pure_fluid_color(parse_shape(shape_code, cache=shape_parse_cache))
     except (ValueError, TypeError, KeyError):
         return shape_code
 
@@ -398,6 +405,8 @@ def _pattern_macro_input_slot_label(shape_node: dict[str, Any], shape_code: str)
 def _sorted_pattern_macro_input_slots(
     node_by_id: dict[str, dict[str, Any]],
     input_edges: list[dict[str, Any]],
+    *,
+    shape_parse_cache: dict[str, Shape] | None = None,
 ) -> list[str]:
     ordered = sorted_shape_input_edges_to_operation(input_edges, node_by_id)
     slots: list[str] = []
@@ -407,7 +416,9 @@ def _sorted_pattern_macro_input_slots(
         if not shape or shape.get("kind") != "shape":
             continue
         code = str(shape.get("shape_code", "")).strip()
-        slots.append(_pattern_macro_input_slot_label(shape, code))
+        slots.append(
+            _pattern_macro_input_slot_label(shape, code, shape_parse_cache=shape_parse_cache),
+        )
     return slots
 
 
@@ -497,6 +508,88 @@ def _apply_recomputed_operation(
     return True, outputs, ""
 
 
+def _apply_operation_output_lane_to_shape_node(
+    shape_node: dict[str, Any],
+    op_type: OperationType,
+    lane_index: int,
+) -> None:
+    if operation_output_lane_carrier(op_type, lane_index) == "fluid":
+        shape_node["source_carrier"] = "fluid"
+    else:
+        shape_node.pop("source_carrier", None)
+
+
+@dataclass
+class _RecomputeGraphMutation:
+    node_by_id: dict[str, dict[str, Any]]
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
+    output_edges_by_from: defaultdict[str, list[dict[str, Any]]]
+    existing_ids: set[str]
+    warnings: list[str]
+
+
+def _fill_linked_shape_from_operation_output(
+    edge: dict[str, Any],
+    out_code: str,
+    op_type: OperationType,
+    lane_index: int,
+    *,
+    node_by_id: dict[str, dict[str, Any]],
+    output_quantities: tuple[int, ...] | None,
+) -> None:
+    target = node_by_id.get(edge["to"])
+    if not target or target.get("kind") != "shape":
+        return
+    target["shape_code"] = out_code
+    if output_quantities is not None and lane_index < len(output_quantities):
+        target["quantity"] = max(1, int(output_quantities[lane_index]))
+    _apply_operation_output_lane_to_shape_node(target, op_type, lane_index)
+
+
+def _append_auto_created_operation_output_shape(
+    op_id: str,
+    op_type: OperationType,
+    lane_index: int,
+    out_code: str,
+    ox: float,
+    oy: float,
+    grid_cols: int,
+    mutation: _RecomputeGraphMutation,
+    output_quantities: tuple[int, ...] | None,
+) -> None:
+    nid = _new_shape_id(mutation.existing_ids)
+    mutation.existing_ids.add(nid)
+    col = lane_index % grid_cols
+    row = lane_index // grid_cols
+    nx = ox + RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET + col * float(RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING)
+    ny = oy + row * float(RECIPE_GRAPH_AUTO_OUTPUT_ROW_SPACING)
+    q_new = 1
+    if output_quantities is not None and lane_index < len(output_quantities):
+        q_new = max(1, int(output_quantities[lane_index]))
+    new_shape: dict[str, Any] = {
+        "id": nid,
+        "kind": "shape",
+        "role": "intermediate",
+        "shape_code": out_code,
+        "quantity": q_new,
+        "x": nx,
+        "y": ny,
+    }
+    _apply_operation_output_lane_to_shape_node(new_shape, op_type, lane_index)
+    mutation.nodes.append(new_shape)
+    mutation.node_by_id[nid] = new_shape
+    new_edge: dict[str, Any] = {
+        "from": op_id,
+        "to": nid,
+        "kind": "output",
+        "slot": str(lane_index),
+    }
+    mutation.edges.append(new_edge)
+    mutation.output_edges_by_from[op_id].append(new_edge)
+    mutation.warnings.append(f"auto-created shape node {nid} for output {lane_index} of {op_id}")
+
+
 def _assign_operation_outputs(
     op_id: str,
     op_type: OperationType,
@@ -515,60 +608,121 @@ def _assign_operation_outputs(
     ox = float(op_node.get("x", 0))
     oy = float(op_node.get("y", 0))
     grid_cols = max(1, int(RECIPE_GRAPH_AUTO_OUTPUT_GRID_COLUMNS))
+    mutation = _RecomputeGraphMutation(
+        node_by_id=node_by_id,
+        nodes=nodes,
+        edges=edges,
+        output_edges_by_from=output_edges_by_from,
+        existing_ids=existing_ids,
+        warnings=warnings,
+    )
 
     for i, out_code in enumerate(outputs):
         if i < len(out_edges):
-            e = out_edges[i]
-            target = node_by_id.get(e["to"])
-            if target and target.get("kind") == "shape":
-                target["shape_code"] = out_code
-                if output_quantities is not None and i < len(output_quantities):
-                    target["quantity"] = max(1, int(output_quantities[i]))
-                if operation_output_lane_carrier(op_type, i) == "fluid":
-                    target["source_carrier"] = "fluid"
-                else:
-                    target.pop("source_carrier", None)
+            _fill_linked_shape_from_operation_output(
+                out_edges[i],
+                out_code,
+                op_type,
+                i,
+                node_by_id=node_by_id,
+                output_quantities=output_quantities,
+            )
             continue
-        nid = _new_shape_id(existing_ids)
-        existing_ids.add(nid)
-        col = i % grid_cols
-        row = i // grid_cols
-        nx = (
-            ox
-            + RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET
-            + col * float(RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING)
+        _append_auto_created_operation_output_shape(
+            op_id,
+            op_type,
+            i,
+            out_code,
+            ox,
+            oy,
+            grid_cols,
+            mutation,
+            output_quantities,
         )
-        ny = oy + row * float(RECIPE_GRAPH_AUTO_OUTPUT_ROW_SPACING)
-        q_new = 1
-        if output_quantities is not None and i < len(output_quantities):
-            q_new = max(1, int(output_quantities[i]))
-        new_shape: dict[str, Any] = {
-            "id": nid,
-            "kind": "shape",
-            "role": "intermediate",
-            "shape_code": out_code,
-            "quantity": q_new,
-            "x": nx,
-            "y": ny,
-        }
-        if operation_output_lane_carrier(op_type, i) == "fluid":
-            new_shape["source_carrier"] = "fluid"
-        nodes.append(new_shape)
-        node_by_id[nid] = new_shape
-        new_edge: dict[str, Any] = {
-            "from": op_id,
-            "to": nid,
-            "kind": "output",
-            "slot": str(i),
-        }
-        edges.append(new_edge)
-        output_edges_by_from[op_id].append(new_edge)
-        warnings.append(f"auto-created shape node {nid} for output {i} of {op_id}")
 
     if len(out_edges) > len(outputs):
         warnings.append(
             f"op {op_id}: {len(out_edges)} output edges but only {len(outputs)} outputs",
         )
+
+
+def _output_quantities_for_recomputed_op(
+    op_type: OperationType,
+    op_node: dict[str, Any],
+    *,
+    node_by_id: dict[str, dict[str, Any]],
+    input_edges: list[dict[str, Any]],
+) -> tuple[int, ...] | None:
+    """MERGE/STACKER/CUTTER 등 출력 레인별 수량이 필요할 때만 튜플을 반환한다."""
+    need_in = _required_input_count_for_recompute(op_type, op_node)
+    if op_type in (OperationType.MERGE, OperationType.STACKER):
+        return (_merge_input_quantity_sum(node_by_id, input_edges, need=need_in),)
+    if op_type == OperationType.CUTTER:
+        return _cutter_output_quantities(node_by_id, input_edges)
+    return None
+
+
+def _recompute_one_operation_in_topo(
+    op_id: str,
+    *,
+    node_by_id: dict[str, dict[str, Any]],
+    nodes: list[dict[str, Any]],
+    edges: list[dict[str, Any]],
+    input_edges_by_to: defaultdict[str, list[dict[str, Any]]],
+    output_edges_by_from: defaultdict[str, list[dict[str, Any]]],
+    existing_ids: set[str],
+    warnings: list[str],
+    shape_parse_cache: dict[str, Shape],
+) -> None:
+    op_node = node_by_id.get(op_id)
+    if not op_node or op_node.get("kind") != "operation":
+        return
+    op_key = str(op_node.get("operation", "")).strip()
+    if op_key not in RECIPE_GRAPH_ENGINE_OPERATIONS:
+        warnings.append(f"skip unsupported operation: {op_key} ({op_id})")
+        return
+    op_type = OperationType(op_key)
+    input_codes = list(
+        _sorted_input_codes_for_operation(node_by_id, input_edges_by_to[op_id]),
+    )
+    if not input_codes:
+        warnings.append(f"skip op with no inputs: {op_id}")
+        return
+    if any(not code for code in input_codes):
+        warnings.append(f"skip op with empty shape_code on input: {op_id}")
+        return
+    ok, outputs, msg = _apply_recomputed_operation(
+        op_id,
+        op_type,
+        input_codes,
+        op_node,
+        shape_parse_cache=shape_parse_cache,
+    )
+    if not ok:
+        warnings.append(msg)
+        return
+
+    out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
+    output_quantities = _output_quantities_for_recomputed_op(
+        op_type,
+        op_node,
+        node_by_id=node_by_id,
+        input_edges=input_edges_by_to[op_id],
+    )
+    _assign_operation_outputs(
+        op_id,
+        op_type,
+        op_node,
+        outputs,
+        out_edges,
+        node_by_id=node_by_id,
+        nodes=nodes,
+        edges=edges,
+        output_edges_by_from=output_edges_by_from,
+        existing_ids=existing_ids,
+        warnings=warnings,
+        output_quantities=output_quantities,
+    )
 
 
 def recompute_validated_graph_document(work: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
@@ -594,56 +748,16 @@ def recompute_validated_graph_document(work: dict[str, Any]) -> tuple[dict[str, 
     shape_parse_cache: dict[str, Shape] = {}
 
     for op_id in topo:
-        op_node = node_by_id.get(op_id)
-        if not op_node or op_node.get("kind") != "operation":
-            continue
-        op_key = str(op_node.get("operation", "")).strip()
-        if op_key not in RECIPE_GRAPH_ENGINE_OPERATIONS:
-            warnings.append(f"skip unsupported operation: {op_key} ({op_id})")
-            continue
-        op_type = OperationType(op_key)
-        input_codes = list(
-            _sorted_input_codes_for_operation(node_by_id, input_edges_by_to[op_id]),
-        )
-        if not input_codes:
-            warnings.append(f"skip op with no inputs: {op_id}")
-            continue
-        if any(not code for code in input_codes):
-            warnings.append(f"skip op with empty shape_code on input: {op_id}")
-            continue
-        ok, outputs, msg = _apply_recomputed_operation(
+        _recompute_one_operation_in_topo(
             op_id,
-            op_type,
-            input_codes,
-            op_node,
-            shape_parse_cache=shape_parse_cache,
-        )
-        if not ok:
-            warnings.append(msg)
-            continue
-
-        out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
-        output_quantities: tuple[int, ...] | None = None
-        need_in = _required_input_count_for_recompute(op_type, op_node)
-        if op_type in (OperationType.MERGE, OperationType.STACKER):
-            output_quantities = (
-                _merge_input_quantity_sum(node_by_id, input_edges_by_to[op_id], need=need_in),
-            )
-        elif op_type == OperationType.CUTTER:
-            output_quantities = _cutter_output_quantities(node_by_id, input_edges_by_to[op_id])
-        _assign_operation_outputs(
-            op_id,
-            op_type,
-            op_node,
-            outputs,
-            out_edges,
             node_by_id=node_by_id,
             nodes=nodes,
             edges=edges,
+            input_edges_by_to=input_edges_by_to,
             output_edges_by_from=output_edges_by_from,
             existing_ids=existing_ids,
             warnings=warnings,
-            output_quantities=output_quantities,
+            shape_parse_cache=shape_parse_cache,
         )
 
     _apply_delivery_edges(edges, node_by_id=node_by_id)
@@ -719,6 +833,7 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
     except ValueError:
         return None
     input_edges_by_to, output_edges_by_from = _edge_adjacency(edges)
+    shape_parse_cache: dict[str, Shape] = {}
     out: list[dict[str, Any]] = []
     step_index = 0
     for op_id in topo:
@@ -732,6 +847,7 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
         input_slots_display = _sorted_pattern_macro_input_slots(
             node_by_id,
             input_edges_by_to[op_id],
+            shape_parse_cache=shape_parse_cache,
         )
         out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
         output_slots_list = _output_slots_strings_for_edges(out_edges, node_by_id)

@@ -42,6 +42,14 @@ function applyOptionalPreviewStringField(
 function applyPreviewOverlay(prev: Record<string, unknown>, srv: Record<string, unknown>): void {
   applyOptionalPreviewStringField(prev, srv, "preview_image_url");
   applyOptionalPreviewStringField(prev, srv, "preview_alt");
+  if ("preview_scene" in srv) {
+    const v = srv.preview_scene;
+    if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+      prev.preview_scene = v;
+    } else if (v === null) {
+      delete prev.preview_scene;
+    }
+  }
 }
 
 function quantityFromServerValue(q: unknown): number {

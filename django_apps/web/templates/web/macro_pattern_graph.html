@@ -26,6 +26,19 @@
 {% endblock %}
 
 {% block extra_scripts %}
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "{% static 'web/vendor/three/0.184.0/build/three.module.js' %}",
+        "three/addons/": "{% static 'web/vendor/three/0.184.0/examples/jsm/' %}"
+      }
+    }
+  </script>
+  <script type="module">
+    import { disposeShapeGltfViewer, mountShapeGltfViewer } from "{% static 'web/js/shape_gltf_viewer.js' %}";
+    window.__shapeGltfMount = mountShapeGltfViewer;
+    window.__shapeGltfDispose = disposeShapeGltfViewer;
+  </script>
   <script src="{% url 'javascript-catalog' %}"></script>
   <script src="{% static 'web/js/ui_locale.js' %}"></script>
   <script type="module" src="{% static 'web/js/recipe_graph_editor/recipe-graph-editor.js' %}?v={{ recipe_graph_editor_asset_version }}"></script>

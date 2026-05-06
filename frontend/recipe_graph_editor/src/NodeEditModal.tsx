@@ -56,6 +56,14 @@ function scalarQuantityToUiString(value: unknown, fallback: number): string {
   return String(fallback);
 }
 
+function previewSceneFromBase(base: Record<string, unknown>): Record<string, unknown> | undefined {
+  const v = base.preview_scene;
+  if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+    return v as Record<string, unknown>;
+  }
+  return undefined;
+}
+
 function paintOrCrystalToUiString(base: Record<string, unknown>): string {
   const chosen = base.paint_color ?? base.crystal_color;
   return scalarToUiString(chosen, "");
@@ -242,6 +250,7 @@ function IntermediatePanel({ base, roleLabel, shapeCode, shapeHint }: Intermedia
             previewImageUrl={
               typeof base.preview_image_url === "string" ? base.preview_image_url : undefined
             }
+            previewScene={previewSceneFromBase(base)}
             variant="modal"
           />
         </div>
@@ -318,6 +327,7 @@ function ShapeOutputPanel({
             previewImageUrl={
               typeof base.preview_image_url === "string" ? base.preview_image_url : undefined
             }
+            previewScene={previewSceneFromBase(base)}
             variant="modal"
           />
         </div>

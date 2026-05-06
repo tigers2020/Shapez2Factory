@@ -231,7 +231,7 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
             "bootstrap": bootstrap,
             "catalog": build_catalog_snapshot(),
             "staff_macro_nav": "graph",
-            "recipe_graph_editor_asset_version": "20260506-no-debug-instrumentation",
+            "recipe_graph_editor_asset_version": "20260506-macro-preview-scene-fallback",
         },
     )
 

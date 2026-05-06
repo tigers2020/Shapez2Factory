@@ -148,6 +148,7 @@ function mergeNodeDataWithPatch(
   ) {
     delete next.preview_image_url;
     delete next.preview_alt;
+    delete next.preview_scene;
   }
   return next;
 }

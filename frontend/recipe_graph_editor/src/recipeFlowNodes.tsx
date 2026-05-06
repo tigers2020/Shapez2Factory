@@ -11,6 +11,7 @@ type ShapeNodeData = {
   validationSeverity?: "error" | "warning";
   preview_image_url?: string;
   preview_alt?: string;
+  preview_scene?: Record<string, unknown>;
 };
 
 type OperationNodeData = {
@@ -103,6 +104,13 @@ export function ShapeNode(props: NodeProps) {
         code={code}
         previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
         previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
+        previewScene={
+          d.preview_scene !== null &&
+          typeof d.preview_scene === "object" &&
+          !Array.isArray(d.preview_scene)
+            ? d.preview_scene
+            : undefined
+        }
         variant="tile"
       />
       <Handle className={socketHandleClass} id="out" position={Position.Right} type="source" />
@@ -235,6 +243,13 @@ export function IntermediateNode(props: NodeProps) {
         code={code}
         previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
         previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
+        previewScene={
+          d.preview_scene !== null &&
+          typeof d.preview_scene === "object" &&
+          !Array.isArray(d.preview_scene)
+            ? d.preview_scene
+            : undefined
+        }
         variant="tile"
       />
       <Handle className={socketHandleClass} id="in" position={Position.Left} type="target" />
@@ -256,6 +271,13 @@ export function OutputNode(props: NodeProps) {
         code={code}
         previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
         previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
+        previewScene={
+          d.preview_scene !== null &&
+          typeof d.preview_scene === "object" &&
+          !Array.isArray(d.preview_scene)
+            ? d.preview_scene
+            : undefined
+        }
         variant="tile"
       />
       <Handle className={socketHandleClass} id="in" position={Position.Left} type="target" />

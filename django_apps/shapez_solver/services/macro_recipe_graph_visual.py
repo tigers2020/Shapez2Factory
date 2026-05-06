@@ -165,39 +165,56 @@ def _load_macro_visual_payload(
         return None
 
 
-def _shape_preview_urls_by_node_id(visual: dict[str, Any]) -> dict[str, tuple[str, str | None]]:
+def _shape_visual_overlay_by_node_id(
+    visual: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Wire 노드(kind=shape)의 PNG URL·scene·alt를 React 노드 id 기준으로 묶는다."""
     vn = visual.get("nodes")
     if not isinstance(vn, list):
         return {}
-    url_by_id: dict[str, tuple[str, str | None]] = {}
+    out: dict[str, dict[str, Any]] = {}
     for item in vn:
         if not isinstance(item, dict):
             continue
         if str(item.get("kind", "")) != "shape":
             continue
         nid = str(item.get("id") or "")
-        url = item.get("preview_image_url")
-        if not nid or not isinstance(url, str) or not url.strip():
+        if not nid:
             continue
+        entry: dict[str, Any] = {}
+        ps = item.get("preview_scene")
+        if isinstance(ps, dict):
+            entry["preview_scene"] = ps
+        url = item.get("preview_image_url")
+        if isinstance(url, str) and url.strip():
+            entry["preview_image_url"] = url.strip()
         alt = item.get("preview_alt")
-        url_by_id[nid] = (url.strip(), str(alt) if isinstance(alt, str) else None)
-    return url_by_id
+        if isinstance(alt, str) and alt.strip():
+            entry["preview_alt"] = alt.strip()
+        if entry:
+            out[nid] = entry
+    return out
 
 
 def _merge_preview_into_react_node(
     n: dict[str, Any],
-    url_by_id: dict[str, tuple[str, str | None]],
+    overlay_by_id: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
     nid = str(n.get("id") or "")
     ntype = str(n.get("type") or "")
-    if nid not in url_by_id or ntype not in ("shape", "intermediate"):
+    if nid not in overlay_by_id or ntype not in ("shape", "intermediate", "output"):
         return n
-    url, alt = url_by_id[nid]
+    overlay = overlay_by_id[nid]
     data_raw = n.get("data")
     merged: dict[str, Any] = dict(data_raw) if isinstance(data_raw, dict) else {}
-    merged["preview_image_url"] = url
-    if alt:
-        merged["preview_alt"] = alt
+    if "preview_scene" in overlay:
+        merged["preview_scene"] = overlay["preview_scene"]
+    if "preview_image_url" in overlay:
+        merged["preview_image_url"] = overlay["preview_image_url"]
+    elif "preview_scene" in overlay:
+        merged.pop("preview_image_url", None)
+    if "preview_alt" in overlay:
+        merged["preview_alt"] = overlay["preview_alt"]
     return {**n, "data": merged}
 
 
@@ -207,22 +224,22 @@ def enrich_react_flow_with_macro_visual_previews(
     *,
     macro_visual: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """``domain_graph_to_react_flow`` 스냅샷에 macro visual의 미리보기 URL을 합친다."""
+    """React Flow 스냅샷에 macro visual 미리보기(PNG URL, preview_scene, alt)를 합친다."""
     nodes = react_flow.get("nodes")
     if not isinstance(nodes, list):
         return react_flow
     visual = _load_macro_visual_payload(graph_doc, macro_visual)
     if visual is None:
         return react_flow
-    url_by_id = _shape_preview_urls_by_node_id(visual)
-    if not url_by_id:
+    overlay_by_id = _shape_visual_overlay_by_node_id(visual)
+    if not overlay_by_id:
         return react_flow
     new_nodes: list[Any] = []
     for n in nodes:
         if not isinstance(n, dict):
             new_nodes.append(n)
             continue
-        new_nodes.append(_merge_preview_into_react_node(n, url_by_id))
+        new_nodes.append(_merge_preview_into_react_node(n, overlay_by_id))
     return {**react_flow, "nodes": new_nodes}
 
 

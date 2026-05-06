@@ -1,3 +1,5 @@
+from django.test.utils import override_settings
+
 from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.dto.solver_graph import SolverShapeNode
 from django_apps.shapez_solver.services.macro_recipe_graph_visual import (
@@ -136,6 +138,40 @@ def test_document_to_solver_graph_painter_description_without_paint_color_notes_
     op = next(n for n in g.nodes if n.id == "p")
     assert op.kind == "operation"
     assert "fluid wire" in op.description
+
+
+@override_settings(SOLVER_GRAPH_PREVIEW_RENDERER="noop")
+def test_enrich_react_flow_adds_preview_scene_when_png_disabled() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "src",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "op",
+                "kind": "operation",
+                "operation": OperationType.ROTATE_CW.value,
+                "x": 100,
+                "y": 0,
+            },
+        ],
+        "edges": [{"from": "src", "to": "op", "kind": "input"}],
+    }
+    v = validate_graph_document(doc)
+    rf = domain_graph_to_react_flow(v)
+    enriched = enrich_react_flow_with_macro_visual_previews(rf, v)
+    src_data = next(n for n in enriched["nodes"] if n["id"] == "src").get("data") or {}
+    assert src_data.get("preview_image_url") in (None, "")
+    ps = src_data.get("preview_scene")
+    assert isinstance(ps, dict)
+    assert ps.get("normalized_code")
 
 
 def test_enrich_react_flow_adds_preview_for_shapes_with_codes() -> None:

@@ -1,4 +1,5 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
+import { useCallback } from "react";
 
 import { getEffectiveOperationInputArity, getOperationOutputCount } from "./operationArity";
 import { RecipeShapePreview } from "./recipeShapePreview";
@@ -97,10 +98,15 @@ export function ShapeNode(props: NodeProps) {
   const code = String(d.shape_code ?? "");
   const qty = typeof d.quantity === "number" ? d.quantity : 1;
   const role = typeof d.role === "string" ? d.role : "";
+  const updateNodeInternals = useUpdateNodeInternals();
+  const onPreviewDisplayReady = useCallback(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals]);
   return (
     <div className={tileRing(selected, "border-cyan-600/50")} title={shapeTooltip(code, qty, id, role)}>
       {validationBadge(d.validationSeverity)}
       <RecipeShapePreview
+        key={`pv-${id}-${typeof d.preview_image_url === "string" ? d.preview_image_url : ""}-${d.preview_scene ? "s" : "n"}`}
         code={code}
         previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
         previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
@@ -112,6 +118,7 @@ export function ShapeNode(props: NodeProps) {
             : undefined
         }
         variant="tile"
+        onPreviewDisplayReady={onPreviewDisplayReady}
       />
       <Handle className={socketHandleClass} id="out" position={Position.Right} type="source" />
     </div>
@@ -236,10 +243,15 @@ export function IntermediateNode(props: NodeProps) {
   const code = String(d.shape_code ?? "");
   const qty = typeof d.quantity === "number" ? d.quantity : 1;
   const role = typeof d.role === "string" ? d.role : "intermediate";
+  const updateNodeInternals = useUpdateNodeInternals();
+  const onPreviewDisplayReady = useCallback(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals]);
   return (
     <div className={tileRing(selected, "border-teal-600/50")} title={shapeTooltip(code, qty, id, role)}>
       {validationBadge(d.validationSeverity)}
       <RecipeShapePreview
+        key={`pv-${id}-${typeof d.preview_image_url === "string" ? d.preview_image_url : ""}-${d.preview_scene ? "s" : "n"}`}
         code={code}
         previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
         previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
@@ -251,6 +263,7 @@ export function IntermediateNode(props: NodeProps) {
             : undefined
         }
         variant="tile"
+        onPreviewDisplayReady={onPreviewDisplayReady}
       />
       <Handle className={socketHandleClass} id="in" position={Position.Left} type="target" />
       <Handle className={socketHandleClass} id="out" position={Position.Right} type="source" />
@@ -264,10 +277,15 @@ export function OutputNode(props: NodeProps) {
   const code = String(d.shape_code ?? "");
   const qty = typeof d.quantity === "number" ? d.quantity : 1;
   const role = typeof d.role === "string" ? d.role : "target";
+  const updateNodeInternals = useUpdateNodeInternals();
+  const onPreviewDisplayReady = useCallback(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals]);
   return (
     <div className={tileRing(selected, "border-orange-500/60")} title={shapeTooltip(code, qty, id, role)}>
       {validationBadge(d.validationSeverity)}
       <RecipeShapePreview
+        key={`pv-${id}-${typeof d.preview_image_url === "string" ? d.preview_image_url : ""}-${d.preview_scene ? "s" : "n"}`}
         code={code}
         previewAlt={typeof d.preview_alt === "string" ? d.preview_alt : undefined}
         previewImageUrl={typeof d.preview_image_url === "string" ? d.preview_image_url : undefined}
@@ -279,6 +297,7 @@ export function OutputNode(props: NodeProps) {
             : undefined
         }
         variant="tile"
+        onPreviewDisplayReady={onPreviewDisplayReady}
       />
       <Handle className={socketHandleClass} id="in" position={Position.Left} type="target" />
     </div>

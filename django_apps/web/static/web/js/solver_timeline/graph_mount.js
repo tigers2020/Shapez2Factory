@@ -4,6 +4,8 @@ import { renderSolverGraph } from "./graph_markup.js?v=20260504-grid-pinned";
 import { setStepsHtml } from "./dom_utils.js?v=20260502-graph-ui-2";
 
 function initGraphPreviewFallbacks(canvas) {
+  const maxPreviewRetries = 3;
+
   canvas.querySelectorAll("[data-graph-preview-image]").forEach((img) => {
     const fallback = img.parentElement?.querySelector("[data-graph-preview-fallback]");
     if (!fallback) {
@@ -15,9 +17,33 @@ function initGraphPreviewFallbacks(canvas) {
       fallback.classList.remove("hidden");
     };
 
-    img.addEventListener("error", showFallback, { once: true });
-    if (img.complete && typeof img.naturalWidth === "number" && img.naturalWidth === 0) {
+    const baseSrc = img.getAttribute("src") || "";
+    let attemptIndex = 0;
+    let retryTimerId;
+
+    const previewRetryDelayMs = (attemptZeroBased) => 200 * 2 ** attemptZeroBased;
+
+    const onError = () => {
+      if (retryTimerId !== undefined) {
+        window.clearTimeout(retryTimerId);
+        retryTimerId = undefined;
+      }
+      if (attemptIndex < maxPreviewRetries) {
+        const delayMs = previewRetryDelayMs(attemptIndex);
+        attemptIndex += 1;
+        retryTimerId = window.setTimeout(() => {
+          retryTimerId = undefined;
+          const sep = baseSrc.includes("?") ? "&" : "?";
+          img.src = `${baseSrc}${sep}_sgPvRetry=${attemptIndex}`;
+        }, delayMs);
+        return;
+      }
       showFallback();
+    };
+
+    img.addEventListener("error", onError);
+    if (img.complete && typeof img.naturalWidth === "number" && img.naturalWidth === 0) {
+      onError();
     }
   });
 }

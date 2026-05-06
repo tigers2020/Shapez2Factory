@@ -233,11 +233,10 @@ function OperationFields({
 type IntermediatePanelProps = Readonly<{
   base: Record<string, unknown>;
   roleLabel: string;
-  shapeCode: string;
   shapeHint: string;
 }>;
 
-function IntermediatePanel({ base, roleLabel, shapeCode, shapeHint }: IntermediatePanelProps) {
+function IntermediatePanel({ base, roleLabel, shapeHint }: IntermediatePanelProps) {
   return (
     <div className="space-y-2">
       <p className="text-[10px] leading-snug text-slate-400">{ru("intermediateReadOnlyNotice")}</p>
@@ -245,7 +244,7 @@ function IntermediatePanel({ base, roleLabel, shapeCode, shapeHint }: Intermedia
         <p className="mb-1 font-mono text-[10px] text-slate-500">{ru("modalPreviewLabel")}</p>
         <div className="flex justify-center">
           <RecipeShapePreview
-            code={shapeCode}
+            code={scalarToUiString(base.shape_code, "")}
             previewAlt={typeof base.preview_alt === "string" ? base.preview_alt : undefined}
             previewImageUrl={
               typeof base.preview_image_url === "string" ? base.preview_image_url : undefined
@@ -551,7 +550,7 @@ export function NodeEditModal({
     );
   } else if (node.type === "intermediate") {
     mainBody = (
-      <IntermediatePanel base={base} roleLabel={roleLabel} shapeCode={shapeCode} shapeHint={shapeHint} />
+      <IntermediatePanel base={base} roleLabel={roleLabel} shapeHint={shapeHint} />
     );
   } else {
     mainBody = (

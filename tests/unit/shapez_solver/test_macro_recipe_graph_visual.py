@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 from django.test.utils import override_settings
 
 from django_apps.shapez_solver.domain.operations import OperationType
@@ -11,6 +13,7 @@ from django_apps.shapez_solver.services.recipe_graph_react_flow_adapter import (
     domain_graph_to_react_flow,
 )
 from django_apps.shapez_solver.services.recipe_graph_recompute import validate_graph_document
+from django_apps.web.services.graph_preview import GraphPreview
 
 
 def test_serialize_macro_recipe_visual_rotate_chain() -> None:
@@ -174,7 +177,14 @@ def test_enrich_react_flow_adds_preview_scene_when_png_disabled() -> None:
     assert ps.get("normalized_code")
 
 
-def test_enrich_react_flow_adds_preview_for_shapes_with_codes() -> None:
+@patch("django_apps.shapez_solver.services.macro_recipe_graph_visual.get_graph_preview_renderer")
+def test_enrich_react_flow_adds_preview_for_shapes_with_codes(mock_get_renderer: MagicMock) -> None:
+    mock_renderer = MagicMock()
+    mock_renderer.render.return_value = GraphPreview(
+        alt_text="Graph preview for CuCuCuCu",
+        image_url="/internal/graph-preview-cache/fakecache.png",
+    )
+    mock_get_renderer.return_value = mock_renderer
     doc = {
         "schema_version": 1,
         "nodes": [

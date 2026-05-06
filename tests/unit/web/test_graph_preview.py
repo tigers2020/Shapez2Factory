@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
+import pytest
 from django.test import override_settings
+
+from django_apps.web.models import GraphPreviewImage
 
 from django_apps.web.services.graph_preview import (
     NoopGraphPreviewRenderer,
@@ -104,11 +108,14 @@ def test_png_renderer_returns_empty_image_preview_when_rendering_fails() -> None
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     class FailingRenderer(PlaywrightPngGraphPreviewRenderer):
-        def _invoke_playwright_prerender(
-            self, preview_scene: dict[str, object], cache_path: Path
+        def _generate_and_store(
+            self,
+            preview_scene: dict[str, Any],
+            target: object,
+            *,
+            use_db: bool,
         ) -> bool:
-            del preview_scene
-            del cache_path
+            del preview_scene, target, use_db
             return False
 
     with override_settings(SOLVER_GRAPH_PREVIEW_CACHE_DIR=cache_dir):
@@ -130,3 +137,20 @@ def test_png_renderer_uses_cached_image_when_available() -> None:
 
     assert image_url is not None
     assert image_url.endswith(".png")
+
+
+@pytest.mark.django_db
+def test_png_renderer_database_storage_hits_db_without_png_file() -> None:
+    cache_dir = Path("F:/Python_Projects/shapez2Solver/.graph_preview_cache_db_test")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    with override_settings(
+        SOLVER_GRAPH_PREVIEW_CACHE_DIR=cache_dir,
+        SOLVER_GRAPH_PREVIEW_STORAGE="database",
+    ):
+        renderer = PlaywrightPngGraphPreviewRenderer()
+        cache_key = renderer.cache_key(_PREVIEW_SCENE)
+        GraphPreviewImage.objects.create(cache_key=cache_key, png=b"png-bytes")
+        preview = renderer.render(_PREVIEW_SCENE)
+
+    assert preview.image_url is not None
+    assert preview.image_url.endswith(f"{cache_key}.png")

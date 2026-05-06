@@ -18,7 +18,7 @@ export type RecipeShapePreviewProps = {
   code: string;
   previewAlt?: string;
   previewImageUrl?: string;
-  /** 서버 macro visual의 ``preview_scene`` — PNG가 없을 때(예: noop) WebGL 폴백 */
+  /** 서버 macro visual의 ``preview_scene`` — 모달에서만 PNG 실패 시 WebGL 폴백; 타일은 다중 WebGL 컨텍스트 방지 */
   previewScene?: Record<string, unknown> | null;
   variant: "tile" | "modal";
   /** React Flow 타일 등: 미리보기가 실제로 그려진 뒤 노드 치수·합성을 다시 잡기 위해 호출 */
@@ -226,7 +226,7 @@ export function RecipeShapePreview({
     );
   }
 
-  if (scene && shapeGltfBridgeReady()) {
+  if (!tile && scene && shapeGltfBridgeReady()) {
     return (
       <div aria-hidden className={box}>
         <ShapeGltfMountTile

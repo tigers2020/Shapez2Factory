@@ -57,6 +57,11 @@ from django_apps.web.constants import (
     HOME_INITIAL_SHAPE_CODE,
     JSON_API_ERROR_INVALID,
 )
+from django_apps.web.models import GraphPreviewImage
+from django_apps.web.services.graph_preview import (
+    PlaywrightPngGraphPreviewRenderer,
+    png_bytes_are_valid,
+)
 
 
 def staff_site_required(view_func):
@@ -504,10 +509,20 @@ def support(request: HttpRequest) -> HttpResponse:
     )
 
 
-def graph_preview_cache(request: HttpRequest, filename: str) -> FileResponse:
+def graph_preview_cache(request: HttpRequest, filename: str) -> FileResponse | HttpResponse:
     del request
     if filename != Path(filename).name or not filename.endswith(".png"):
         raise Http404("Unknown graph preview.")
+
+    cache_key = filename.removesuffix(".png")
+    row = GraphPreviewImage.objects.filter(pk=cache_key).first()
+    if row is not None and row.png:
+        data = bytes(row.png)
+        if png_bytes_are_valid(
+            data,
+            broken_sha256_hex=PlaywrightPngGraphPreviewRenderer.BROKEN_PNG_SHA256,
+        ):
+            return HttpResponse(data, content_type="image/png")
 
     cache_root = Path(settings.SOLVER_GRAPH_PREVIEW_CACHE_DIR)
     target = cache_root / filename

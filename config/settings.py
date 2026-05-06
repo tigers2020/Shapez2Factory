@@ -119,6 +119,11 @@ STORAGES = {
 SOLVER_GRAPH_PREVIEW_RENDERER = os.environ.get(
     "SOLVER_GRAPH_PREVIEW_RENDERER", "playwright_png"
 ).strip().lower()
+# filesystem: PNG files under SOLVER_GRAPH_PREVIEW_CACHE_DIR (ephemeral on many PaaS).
+# database: store PNG bytes in web.GraphPreviewImage (Render Free friendly).
+SOLVER_GRAPH_PREVIEW_STORAGE = os.environ.get(
+    "SOLVER_GRAPH_PREVIEW_STORAGE", "filesystem"
+).strip().lower()
 SOLVER_GRAPH_PREVIEW_CACHE_DIR = BASE_DIR / ".graph_preview_cache"
 
 SUPPORT_KOFI_URL = os.environ.get("SUPPORT_KOFI_URL", "").strip()

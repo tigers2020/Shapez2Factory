@@ -218,6 +218,34 @@ def test_support_page_renders() -> None:
         assert b'href="/support/"' in response.content
 
 
+def test_support_page_kofi_widget_from_profile_url() -> None:
+    with override_settings(
+        SUPPORT_KOFI_URL="https://ko-fi.com/shapez2factory/",
+        SUPPORT_GITHUB_SPONSORS_URL="",
+        SUPPORT_PATREON_URL="",
+    ):
+        response = Client().get("/support/")
+
+        assert response.status_code == 200
+        assert b'id="kofiframe"' in response.content
+        assert b"ko-fi.com/shapez2factory/?hidefeed=true&amp;widget=true&amp;embed=true" in (
+            response.content
+        )
+
+
+def test_support_page_kofi_non_profile_still_shows_link() -> None:
+    with override_settings(
+        SUPPORT_KOFI_URL="https://example.com/kofi",
+        SUPPORT_GITHUB_SPONSORS_URL="",
+        SUPPORT_PATREON_URL="",
+    ):
+        response = Client().get("/support/")
+
+        assert response.status_code == 200
+        assert b"id=\"kofiframe\"" not in response.content
+        assert b"https://example.com/kofi" in response.content
+
+
 def test_shape_gltf_vendor_assets_exist() -> None:
     static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web"
     shape_root = static_root / "vendor" / "shapez-vortex" / "models" / "shapes"

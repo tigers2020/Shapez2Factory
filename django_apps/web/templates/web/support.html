@@ -27,6 +27,21 @@
       {% endblocktrans %}
     </p>
 
+    {% if kofi_widget_embed_src %}
+      <div class="mt-8 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
+        <iframe
+          id="kofiframe"
+          src="{{ kofi_widget_embed_src }}"
+          class="w-full border-0 bg-[#f9f9f9]"
+          style="padding: 4px; background: #f9f9f9"
+          height="712"
+          title="Ko-fi"
+          loading="lazy"
+          referrerpolicy="strict-origin-when-cross-origin"
+        ></iframe>
+      </div>
+    {% endif %}
+
     {% if support_links %}
       <div class="mt-8 grid gap-3 sm:grid-cols-1 sm:gap-4">
         {% for link in support_links %}

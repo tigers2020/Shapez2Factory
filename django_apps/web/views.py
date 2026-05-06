@@ -1,7 +1,9 @@
 import json
+import re
 from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
@@ -461,9 +463,30 @@ def pattern_lab(request: HttpRequest) -> HttpResponse:
     )
 
 
+_KOFI_HOSTS = frozenset({"ko-fi.com", "www.ko-fi.com"})
+_KOFI_SLUG = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _kofi_widget_embed_src(profile_url: str) -> str | None:
+    """Return Ko-fi HTML5 widget src for a profile URL, or None if not a Ko-fi profile."""
+    if not profile_url:
+        return None
+    try:
+        parsed = urlparse(profile_url)
+    except ValueError:
+        return None
+    if (parsed.hostname or "").lower() not in _KOFI_HOSTS:
+        return None
+    segment = (parsed.path.strip("/").split("/") or [""])[0]
+    if not segment or not _KOFI_SLUG.fullmatch(segment):
+        return None
+    return f"https://ko-fi.com/{segment}/?hidefeed=true&widget=true&embed=true"
+
+
 def support(request: HttpRequest) -> HttpResponse:
     support_links: list[dict[str, str]] = []
-    if settings.SUPPORT_KOFI_URL:
+    kofi_widget_embed_src = _kofi_widget_embed_src(settings.SUPPORT_KOFI_URL)
+    if settings.SUPPORT_KOFI_URL and not kofi_widget_embed_src:
         support_links.append({"label": "Ko-fi", "url": settings.SUPPORT_KOFI_URL})
     if settings.SUPPORT_GITHUB_SPONSORS_URL:
         support_links.append(
@@ -474,7 +497,10 @@ def support(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "web/support.html",
-        {"support_links": support_links},
+        {
+            "support_links": support_links,
+            "kofi_widget_embed_src": kofi_widget_embed_src,
+        },
     )
 
 

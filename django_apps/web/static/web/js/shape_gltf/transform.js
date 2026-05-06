@@ -65,16 +65,18 @@ export function computeTransform(cell, viewMode = "original") {
   const microOffset = QUADRANT_GAP_OFFSETS[positionKey] ?? { x: 0, z: 0 };
   const explodeOffset = QUADRANT_EXPLODE_OFFSETS[positionKey] ?? { x: 0, z: 0 };
 
-  let x = microOffset.x;
+  // Pivot offsets are in world units; mesh scale shrinks per layer_index. Without
+  // scaling offsets, upper layers look pushed to the outer ring (huge center gap).
+  let x = microOffset.x * layerScale;
   let y = layerIndex * LAYER_HEIGHT;
-  let z = microOffset.z;
+  let z = microOffset.z * layerScale;
 
   if (viewMode === "layer") {
     y = layerIndex * LAYER_EXPLODE_HEIGHT;
   } else if (viewMode === "quadrant") {
-    x = explodeOffset.x;
+    x = explodeOffset.x * layerScale;
     y = layerIndex * QUADRANT_LAYER_EXPLODE_HEIGHT;
-    z = explodeOffset.z;
+    z = explodeOffset.z * layerScale;
   }
 
   return {

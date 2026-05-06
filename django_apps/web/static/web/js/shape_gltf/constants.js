@@ -87,7 +87,12 @@ export const LAYER_HEIGHT = 0.102;
 export const MODEL_SCALE = 1;
 export const LAYER_SCALE_STEP = 0.2;
 export const MIN_LAYER_SCALE = 0.72;
-export const QUADRANT_GAP = 0.048;
+/**
+ * XZ offset from origin to each quadrant pivot in "original" / "layer" views.
+ * Must be on the order of mesh half-extent (see BASE_RADIUS); values like 0.048
+ * place four full-size parts almost at the same point (overlap + z-fighting).
+ */
+export const QUADRANT_GAP = BASE_RADIUS * 0.35;
 export const LAYER_EXPLODE_HEIGHT = 0.42;
 export const EXPLODED_QUADRANT_GAP = 0.38;
 export const QUADRANT_LAYER_EXPLODE_HEIGHT = 0.28;
@@ -96,7 +101,8 @@ export const VIEW_MODE_TRANSITION_MS = 450;
 export const SEAM_COLOR = new THREE.Color(0x020204);
 export const SEAM_WIDTH = 0.022;
 export const SEAM_FEATHER = 0.006;
-export const SEAM_OPACITY = 0;
+/** Top-face seam mix strength; 0 disables the dark edge entirely. */
+export const SEAM_OPACITY = 1;
 
 export const QUADRANT_ROTATIONS = {
   NE: Math.PI,

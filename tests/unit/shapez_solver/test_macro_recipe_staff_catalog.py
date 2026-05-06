@@ -1,4 +1,7 @@
+from unittest.mock import patch
+
 import pytest
+from django.test.utils import override_settings
 
 from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeStep, PatternFamily
 from django_apps.shapez_solver.services.macro_recipe_staff_catalog import (
@@ -9,6 +12,7 @@ from django_apps.shapez_solver.services.macro_recipe_staff_catalog import (
     sync_macro_recipe_steps_from_graph_document,
     update_recipe,
 )
+from django_apps.web.services.graph_preview import PlaywrightPngGraphPreviewRenderer
 
 
 @pytest.mark.django_db
@@ -24,6 +28,57 @@ def test_build_catalog_snapshot_includes_operation_icon_urls() -> None:
     assert "cutter" in by_val
     assert by_val["cutter"].get("icon", "").endswith("cutter.png")
     assert by_val["cutter"]["icon"].startswith("/static/")
+
+
+@pytest.mark.django_db
+def test_build_catalog_snapshot_default_skips_png_generation(tmp_path) -> None:
+    """Catalog lists many recipes; sync Playwright would time out in production."""
+    from django_apps.shapez_solver.services.macro_recipe_staff_catalog import (
+        build_catalog_snapshot,
+    )
+
+    family = PatternFamily.objects.create(code="cat-fam", name="C", signature="ABCC")
+    graph_doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s1",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 1,
+                "x": 0,
+                "y": 0,
+            },
+        ],
+        "edges": [],
+    }
+    MacroRecipe.objects.create(
+        family=family,
+        code="cat-mac",
+        strategy_code="ABCC_BATCH",
+        name="Cat",
+        graph_document=graph_doc,
+    )
+    with override_settings(
+        SOLVER_GRAPH_PREVIEW_RENDERER="playwright_png",
+        SOLVER_GRAPH_PREVIEW_CACHE_DIR=str(tmp_path),
+    ):
+        with patch.object(
+            PlaywrightPngGraphPreviewRenderer,
+            "_generate_and_store",
+            autospec=True,
+        ) as mock_gen:
+            snap = build_catalog_snapshot()
+            mock_gen.assert_not_called()
+    recipes = snap.get("recipes")
+    assert isinstance(recipes, list)
+    by_code = {r["code"]: r for r in recipes if isinstance(r, dict)}
+    cat = by_code["cat-mac"]
+    vg = cat.get("visual_graph")
+    assert isinstance(vg, dict)
+    shape_nodes = [n for n in vg["nodes"] if n.get("kind") == "shape" and n.get("shape_code")]
+    assert shape_nodes and shape_nodes[0].get("needs_warm") is True
 
 
 @pytest.mark.django_db

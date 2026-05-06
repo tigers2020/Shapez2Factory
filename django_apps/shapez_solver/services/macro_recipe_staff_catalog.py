@@ -178,7 +178,8 @@ def serialize_recipe(recipe: MacroRecipe, *, sync_png: bool = True) -> dict[str,
     }
 
 
-def build_catalog_snapshot() -> dict[str, Any]:
+def build_catalog_snapshot(*, sync_png: bool = False) -> dict[str, Any]:
+    """Bulk catalog JSON/HTML. Default ``sync_png=False`` avoids Playwright per node (timeouts)."""
     families = PatternFamily.objects.order_by("priority", "code").values(
         "id",
         "code",
@@ -191,7 +192,9 @@ def build_catalog_snapshot() -> dict[str, Any]:
     )
     return {
         "families": list(families),
-        "recipes": [serialize_recipe(r) for r in recipes.order_by("priority", "code")],
+        "recipes": [
+            serialize_recipe(r, sync_png=sync_png) for r in recipes.order_by("priority", "code")
+        ],
         "strategy_codes": list(allowed_strategy_codes()),
         "operations": catalog_operations_payload(),
         "recipe_graph_engine_operations": sorted(RECIPE_GRAPH_ENGINE_OPERATIONS),

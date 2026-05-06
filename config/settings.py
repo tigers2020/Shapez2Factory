@@ -10,7 +10,19 @@ load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True
-ALLOWED_HOSTS: list[str] = []
+
+
+def _split_hosts(raw: str) -> list[str]:
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
+# Render sets RENDER_EXTERNAL_HOSTNAME (e.g. app.onrender.com). Optional comma-separated
+# DJANGO_ALLOWED_HOSTS for extra domains (custom hostnames on Render, local overrides).
+_extra_hosts = _split_hosts(os.environ.get("DJANGO_ALLOWED_HOSTS", ""))
+_render_host = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip()
+ALLOWED_HOSTS: list[str] = list(
+    dict.fromkeys(_extra_hosts + ([_render_host] if _render_host else []))
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",

@@ -12,7 +12,8 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
+# Repo-root Python/setuptools build dir only; do not ignore e.g. static vendor three.js build/
+/build/
 develop-eggs/
 dist/
 downloads/

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import type { FluidPrimaryInk } from "./fluidSourceUi";
 import { fluidShapeCodeFromInk, inkFromFluidShapeCode } from "./fluidSourceUi";
+import { operationChangeGroupId } from "./operationPaletteGroups";
 import type { CatalogOperationRow } from "./recipeNodeCatalogMerge";
 import { nodeDataIsFluidCarrier } from "./recipeConnection";
 import { RecipeShapePreview } from "./recipeShapePreview";
@@ -440,6 +441,15 @@ export function NodeEditModal({
     );
   }, [catalogOperations]);
 
+  const persistedOperation = scalarToUiString(base.operation, "");
+  const operationSwapGroup = operationChangeGroupId(persistedOperation);
+  const catalogSortedForOperationEdit = useMemo(() => {
+    if (operationSwapGroup === null) {
+      return catalogSorted;
+    }
+    return catalogSorted.filter((row) => operationChangeGroupId(row.value) === operationSwapGroup);
+  }, [catalogSorted, operationSwapGroup]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -519,7 +529,7 @@ export function NodeEditModal({
   if (node.type === "operation") {
     mainBody = (
       <OperationFields
-        catalogSorted={catalogSorted}
+        catalogSorted={catalogSortedForOperationEdit}
         engineSet={engineSet}
         operation={operation}
         opKnownInCatalog={opKnownInCatalog}

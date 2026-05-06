@@ -68,6 +68,14 @@ def stacker_output(bottom: Shape, top: Shape) -> Shape:
     return post_stack_physics(combined)
 
 
+def merge_identical_shapes(left: Shape, right: Shape) -> Shape:
+    """동일 canonical 도형만 허용; 수량 합산은 그래프 재계산 레이어에서 처리."""
+
+    if left.canonical_code != right.canonical_code:
+        raise ValueError("merge requires identical canonical shapes")
+    return left
+
+
 def pin_pusher_output(shape: Shape) -> Shape:
     pin_bottom = ShapeLayer(
         quadrants=(
@@ -118,6 +126,7 @@ __all__ = [
     "crystal_generator_output",
     "cutter_halves",
     "half_destroyer_shape",
+    "merge_identical_shapes",
     "painter_output",
     "painter_with_fluid_target",
     "pin_pusher_output",

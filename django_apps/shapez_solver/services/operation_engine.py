@@ -10,6 +10,7 @@ from django_apps.shapez_solver.services.engine_operation_helpers import (
     crystal_generator_output,
     cutter_halves,
     half_destroyer_shape,
+    merge_identical_shapes,
     painter_output,
     painter_with_fluid_target,
     pin_pusher_output,
@@ -74,6 +75,8 @@ class OperationEngine:
             return swapper_outputs(inputs[0], inputs[1])
         if operation_type == OperationType.STACKER:
             return (stacker_output(inputs[0], inputs[1]),)
+        if operation_type == OperationType.MERGE:
+            return (merge_identical_shapes(inputs[0], inputs[1]),)
         if operation_type == OperationType.PAINTER:
             return self._apply_painter(inputs, color)
         if operation_type == OperationType.COLOR_MIXER:

@@ -12,6 +12,7 @@ _TWO_INPUT_OPS = frozenset(
     {
         OperationType.SWAPPER,
         OperationType.STACKER,
+        OperationType.MERGE,
         OperationType.COLOR_MIXER,
         OperationType.PAINTER,
     },
@@ -50,7 +51,7 @@ def expected_input_carriers(
         if str(op_node.get("crystal_color", "")).strip():
             return ("material", "material")
         return ("fluid", "material")
-    if op_type in (OperationType.SWAPPER, OperationType.STACKER):
+    if op_type in (OperationType.SWAPPER, OperationType.STACKER, OperationType.MERGE):
         return ("material", "material")
     return ("material", "material")
 

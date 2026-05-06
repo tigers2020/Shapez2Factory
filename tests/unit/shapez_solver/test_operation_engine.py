@@ -109,6 +109,20 @@ def test_color_mixer_merges_primary_rgb_on_matching_geometry() -> None:
     assert result.canonical_code == "CyCyCyCy"
 
 
+def test_merge_accepts_identical_canonical_shapes() -> None:
+    engine = OperationEngine()
+    a = _shape("CuCuCuCu")
+    b = _shape("CuCuCuCu")
+    (out,) = engine.apply(OperationType.MERGE, (a, b))
+    assert out.canonical_code == "CuCuCuCu"
+
+
+def test_merge_rejects_different_shapes() -> None:
+    engine = OperationEngine()
+    with pytest.raises(ValueError, match="identical canonical"):
+        engine.apply(OperationType.MERGE, (_shape("CuCuCuCu"), _shape("RuRuRuRu")))
+
+
 def test_color_mixer_preserves_shape_when_one_side_uncolored() -> None:
     engine = OperationEngine()
     result = engine.color_mixer(_shape("CuCuCuCu"), _shape("CrCrCrCr"))

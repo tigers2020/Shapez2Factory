@@ -66,7 +66,21 @@ OPERATION_CATALOG = MappingProxyType(
             icon="stacker.png",
             input_count=2,
             output_count=1,
-            description="Stacks one shape on top of another shape.",
+            description=(
+                "Stacks one shape on top of another shape. "
+                "Recipe graph quantity on the output is the sum of the two input quantities."
+            ),
+        ),
+        OperationType.MERGE: OperationDefinition(
+            type=OperationType.MERGE,
+            label="Merge",
+            icon="merger.png",
+            input_count=2,
+            output_count=1,
+            description=(
+                "When both inputs are the same canonical shape, outputs that shape once "
+                "with quantity equal to the sum of input quantities."
+            ),
         ),
         OperationType.PAINTER: OperationDefinition(
             type=OperationType.PAINTER,

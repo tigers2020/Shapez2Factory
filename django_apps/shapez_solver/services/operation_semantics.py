@@ -96,6 +96,23 @@ def stack(
     )
 
 
+def merge_flow(
+    left_shape_code: str,
+    right_shape_code: str,
+    *,
+    shape_parse_cache: dict[str, Shape] | None = None,
+) -> tuple[str, ...]:
+    cache = shape_parse_cache
+    out = _OPERATION_ENGINE.apply(
+        OperationType.MERGE,
+        (
+            parse_shape(left_shape_code, cache=cache),
+            parse_shape(right_shape_code, cache=cache),
+        ),
+    )
+    return tuple(s.canonical_code for s in out)
+
+
 def infer_uniform_shape_color(
     shape_code: str,
     *,
@@ -244,6 +261,8 @@ def apply_operation(
         return swap(inputs[0], inputs[1], shape_parse_cache=cache)
     if operation == OperationType.STACKER:
         return stack(inputs[0], inputs[1], shape_parse_cache=cache)
+    if operation == OperationType.MERGE:
+        return merge_flow(inputs[0], inputs[1], shape_parse_cache=cache)
     if operation == OperationType.COLOR_MIXER:
         return _apply_color_mixer(inputs, shape_parse_cache=cache)
     if operation == OperationType.PAINTER:

@@ -287,6 +287,7 @@ def test_operation_icon_assets_exist() -> None:
         "crystal-generator2.png",
         "cutter.png",
         "half-destroyer.png",
+        "merger.png",
         "painter.png",
         "pin-pusher.png",
         "pin-pusher2.png",

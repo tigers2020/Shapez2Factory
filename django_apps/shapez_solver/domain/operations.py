@@ -13,6 +13,7 @@ class OperationType(StrEnum):
     ROTATE_180 = "rotate_180"
 
     STACKER = "stacker"
+    MERGE = "merge"
     PAINTER = "painter"
     COLOR_MIXER = "color_mixer"
     PIN_PUSHER = "pin_pusher"

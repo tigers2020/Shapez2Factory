@@ -19,7 +19,7 @@ const EN = {
     "Default {code} — primary RGB only; pick R/G/B in the node editor. Secondary colors (c/m/y/w) via color_mixer.",
   emptyUnifiedSourceRow: "Empty source (shape or fluid)",
   emptyUnifiedHint:
-    "Default material {code} — set carrier to fluid in the node editor (RGB fluid) or wire per-port rules.",
+    "New shape sources cycle the four full base materials (Cu/Ru/Su/Wu) — set carrier to fluid in the node editor (RGB) or wire per-port rules.",
   fluidInkLabel: "Fluid ink (R / G / B)",
   fluidInkHint:
     "Encoded as uniform circle layer (e.g. CrCrCrCr). Use a color_mixer in the graph for cyan/magenta/yellow/white.",

@@ -8,8 +8,14 @@ export const PALETTE_CATEGORY_ORDER = ["SHAPE", "COLOR", "ROTATE", "CUT", "FLOW"
 
 export type PaletteCategoryId = (typeof PALETTE_CATEGORY_ORDER)[number];
 
-export function paletteCategoryForOperation(value: string): Exclude<PaletteCategoryId, "SHAPE"> {
-  const v = value.trim();
+export type OperationChangeGroup = Exclude<PaletteCategoryId, "SHAPE">;
+
+/** 엔진에 정의된 연산만. 알 수 없는 값은 `null`(모달에서는 전체 카탈로그 표시). */
+export function operationChangeGroupId(value: string): OperationChangeGroup | null {
+  const v = value.trim().toLowerCase();
+  if (!v) {
+    return null;
+  }
   if (["rotate_cw", "rotate_ccw", "rotate_180"].includes(v)) {
     return "ROTATE";
   }
@@ -19,5 +25,12 @@ export function paletteCategoryForOperation(value: string): Exclude<PaletteCateg
   if (["painter", "color_mixer", "crystal_generator"].includes(v)) {
     return "COLOR";
   }
-  return "FLOW";
+  if (["stacker", "swapper", "merge", "pin_pusher"].includes(v)) {
+    return "FLOW";
+  }
+  return null;
+}
+
+export function paletteCategoryForOperation(value: string): Exclude<PaletteCategoryId, "SHAPE"> {
+  return operationChangeGroupId(value) ?? "FLOW";
 }

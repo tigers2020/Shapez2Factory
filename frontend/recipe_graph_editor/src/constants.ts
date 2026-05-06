@@ -1,5 +1,20 @@
-/** 새 소스 자재 노드 기본 shape 코드. */
-export const DEFAULT_NEW_SOURCE_SHAPE_CODE = "CuCuCuCu";
+/** 한 레이어 풀 소스(기본 광물 4종, 미채색 u). 빈 소스 삽입 시 순환. */
+export const BASE_FULL_SOURCE_SHAPE_CODES = [
+  "CuCuCuCu",
+  "RuRuRuRu",
+  "SuSuSuSu",
+  "WuWuWuWu",
+] as const;
+
+/** 첫 번째 기본 광물; 하위 호환·힌트용. */
+export const DEFAULT_NEW_SOURCE_SHAPE_CODE = BASE_FULL_SOURCE_SHAPE_CODES[0];
+
+/** `insertIndex`마다 4종 풀 소스를 번갈아 돌린다. */
+export function pickCycledBaseFullSourceShapeCode(
+  insertIndex: number,
+): (typeof BASE_FULL_SOURCE_SHAPE_CODES)[number] {
+  return BASE_FULL_SOURCE_SHAPE_CODES[insertIndex % BASE_FULL_SOURCE_SHAPE_CODES.length];
+}
 
 /** ``recipeFlowNodes`` 타일 ``h-14 w-14`` (56px) 절반 — 뷰포트 중앙 정렬 보정. */
 export const RECIPE_NODE_TILE_HALF_PX = 28;

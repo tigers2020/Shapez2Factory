@@ -149,7 +149,7 @@ function outgoingPortRankToMergeTargets(nodeId, graph, mergeTargets) {
 function compareEditorColumnOrder(a, b, graph, mergeTargets, meta) {
   const oa = outgoingPortRankToMergeTargets(a, graph, mergeTargets);
   const ob = outgoingPortRankToMergeTargets(b, graph, mergeTargets);
-  const shared = [...oa.keys()].filter((t) => ob.has(t)).sort();
+  const shared = [...oa.keys()].filter((t) => ob.has(t)).sort((x, y) => x.localeCompare(y));
   for (const t of shared) {
     const ra = oa.get(t) ?? 0;
     const rb = ob.get(t) ?? 0;
@@ -383,7 +383,14 @@ function computeHorizontalPositions(graph, columns, topPositions, metrics) {
         (successorId) => (leftPositions.get(successorId) || 0) - metrics.columnGap - sameRankStagger
       );
       const sameRankConstraint = Number.isFinite(nextRankLeft) ? nextRankLeft - metrics.nodeWidth - sameRankGap : Infinity;
-      const constrainedLeft = successorLefts.length ? Math.min(sameRankConstraint, ...successorLefts) : Number.isFinite(sameRankConstraint) ? sameRankConstraint - sameRankStagger : 0;
+      let constrainedLeft;
+      if (successorLefts.length) {
+        constrainedLeft = Math.min(sameRankConstraint, ...successorLefts);
+      } else if (Number.isFinite(sameRankConstraint)) {
+        constrainedLeft = sameRankConstraint - sameRankStagger;
+      } else {
+        constrainedLeft = 0;
+      }
       leftPositions.set(nodeId, constrainedLeft);
       nextRankLeft = constrainedLeft;
     }

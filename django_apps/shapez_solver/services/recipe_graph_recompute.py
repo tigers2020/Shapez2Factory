@@ -322,6 +322,51 @@ def _output_edge_sort_key(e: dict[str, Any]) -> tuple[bool, str, str]:
     )
 
 
+def _shape_quantity_int(shape_node: dict[str, Any]) -> int:
+    raw_q = shape_node.get("quantity", 1)
+    if isinstance(raw_q, bool) or not isinstance(raw_q, int):
+        return 1
+    return max(1, raw_q)
+
+
+def _merge_input_quantity_sum(
+    node_by_id: dict[str, dict[str, Any]],
+    input_edges: list[dict[str, Any]],
+    *,
+    need: int,
+) -> int:
+    ordered = sorted_shape_input_edges_to_operation(input_edges, node_by_id)
+    total = 0
+    for edge in ordered[:need]:
+        sid = str(edge.get("from", ""))
+        src = node_by_id.get(sid)
+        if not src or src.get("kind") != "shape":
+            continue
+        total += _shape_quantity_int(src)
+    return max(1, total)
+
+
+def _cutter_output_quantities(
+    node_by_id: dict[str, dict[str, Any]],
+    input_edges: list[dict[str, Any]],
+) -> tuple[int, int]:
+    """세로 컷: 조각 수를 반으로 나눈다(풀 4 → 2+2). ``quantity``<2 는 레거시로 (1,1)."""
+
+    ordered = sorted_shape_input_edges_to_operation(input_edges, node_by_id)
+    if not ordered:
+        return (1, 1)
+    sid = str(ordered[0].get("from", ""))
+    src = node_by_id.get(sid)
+    if not src or src.get("kind") != "shape":
+        return (1, 1)
+    q_in = _shape_quantity_int(src)
+    if q_in < 2:
+        return (1, 1)
+    q_left = q_in // 2
+    q_right = q_in - q_left
+    return (q_left, q_right)
+
+
 def _sorted_input_codes_for_operation(
     node_by_id: dict[str, dict[str, Any]],
     input_edges: list[dict[str, Any]],
@@ -387,6 +432,7 @@ _TWO_INPUT_OPERATION_TYPES = frozenset(
     {
         OperationType.SWAPPER,
         OperationType.STACKER,
+        OperationType.MERGE,
         OperationType.COLOR_MIXER,
     },
 )
@@ -464,6 +510,7 @@ def _assign_operation_outputs(
     output_edges_by_from: defaultdict[str, list[dict[str, Any]]],
     existing_ids: set[str],
     warnings: list[str],
+    output_quantities: tuple[int, ...] | None = None,
 ) -> None:
     ox = float(op_node.get("x", 0))
     oy = float(op_node.get("y", 0))
@@ -475,6 +522,8 @@ def _assign_operation_outputs(
             target = node_by_id.get(e["to"])
             if target and target.get("kind") == "shape":
                 target["shape_code"] = out_code
+                if output_quantities is not None and i < len(output_quantities):
+                    target["quantity"] = max(1, int(output_quantities[i]))
                 if operation_output_lane_carrier(op_type, i) == "fluid":
                     target["source_carrier"] = "fluid"
                 else:
@@ -490,12 +539,15 @@ def _assign_operation_outputs(
             + col * float(RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING)
         )
         ny = oy + row * float(RECIPE_GRAPH_AUTO_OUTPUT_ROW_SPACING)
+        q_new = 1
+        if output_quantities is not None and i < len(output_quantities):
+            q_new = max(1, int(output_quantities[i]))
         new_shape: dict[str, Any] = {
             "id": nid,
             "kind": "shape",
             "role": "intermediate",
             "shape_code": out_code,
-            "quantity": 1,
+            "quantity": q_new,
             "x": nx,
             "y": ny,
         }
@@ -571,6 +623,14 @@ def recompute_validated_graph_document(work: dict[str, Any]) -> tuple[dict[str, 
             continue
 
         out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
+        output_quantities: tuple[int, ...] | None = None
+        need_in = _required_input_count_for_recompute(op_type, op_node)
+        if op_type in (OperationType.MERGE, OperationType.STACKER):
+            output_quantities = (
+                _merge_input_quantity_sum(node_by_id, input_edges_by_to[op_id], need=need_in),
+            )
+        elif op_type == OperationType.CUTTER:
+            output_quantities = _cutter_output_quantities(node_by_id, input_edges_by_to[op_id])
         _assign_operation_outputs(
             op_id,
             op_type,
@@ -583,6 +643,7 @@ def recompute_validated_graph_document(work: dict[str, Any]) -> tuple[dict[str, 
             output_edges_by_from=output_edges_by_from,
             existing_ids=existing_ids,
             warnings=warnings,
+            output_quantities=output_quantities,
         )
 
     _apply_delivery_edges(edges, node_by_id=node_by_id)

@@ -274,6 +274,61 @@ def test_recompute_cutter_updates_two_output_shapes() -> None:
     rnode = next(n for n in out["nodes"] if n["id"] == "s_r")
     assert lnode["shape_code"] == "CuCu----"
     assert rnode["shape_code"] == "----CuCu"
+    assert lnode["quantity"] == 1
+    assert rnode["quantity"] == 1
+
+
+def test_recompute_cutter_splits_quantity_evenly_when_ge_two() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s_in",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 4,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "o_c",
+                "kind": "operation",
+                "operation": OperationType.CUTTER.value,
+                "x": 200,
+                "y": 0,
+            },
+            {
+                "id": "s_l",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 400,
+                "y": 0,
+            },
+            {
+                "id": "s_r",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 400,
+                "y": 40,
+            },
+        ],
+        "edges": [
+            {"from": "s_in", "to": "o_c", "kind": "input"},
+            {"from": "o_c", "to": "s_l", "kind": "output", "slot": "0"},
+            {"from": "o_c", "to": "s_r", "kind": "output", "slot": "1"},
+        ],
+    }
+    out, warnings = recompute_graph_document(doc)
+    assert not warnings, warnings
+    lnode = next(n for n in out["nodes"] if n["id"] == "s_l")
+    rnode = next(n for n in out["nodes"] if n["id"] == "s_r")
+    assert lnode["quantity"] == 2
+    assert rnode["quantity"] == 2
 
 
 def test_recompute_autocreate_second_cutter_output_uses_grid_not_stack() -> None:
@@ -287,7 +342,7 @@ def test_recompute_autocreate_second_cutter_output_uses_grid_not_stack() -> None
                 "kind": "shape",
                 "role": "source",
                 "shape_code": "CuCuCuCu",
-                "quantity": 1,
+                "quantity": 4,
                 "x": 0,
                 "y": 0,
             },
@@ -333,6 +388,8 @@ def test_recompute_autocreate_second_cutter_output_uses_grid_not_stack() -> None
     s_first = next(n for n in out["nodes"] if n["id"] == "s_first")
     # 첫 번째 슬롯(갱신)은 이전 x,y 유지, 두 번째는 열 1 → 가로로 분리
     assert abs(s_first["x"] - auto["x"]) >= float(RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING) * 0.9
+    assert s_first["quantity"] == 2
+    assert auto["quantity"] == 2
 
 
 def test_recompute_half_destroyer_updates_downstream_shape() -> None:
@@ -514,9 +571,123 @@ def test_apply_operation_color_mixer_two_inputs() -> None:
     assert out == ("CyCyCyCy",)
 
 
+def test_apply_operation_merge_identical_shapes() -> None:
+    out = apply_operation(OperationType.MERGE, ("CuCuCuCu", "CuCuCuCu"))
+    assert out == ("CuCuCuCu",)
+
+
+def test_apply_operation_merge_rejects_mismatch() -> None:
+    with pytest.raises(ValueError, match="identical canonical"):
+        apply_operation(OperationType.MERGE, ("CuCuCuCu", "RuRuRuRu"))
+
+
 def test_apply_operation_painter_two_inputs_fluid_then_shape_tuple() -> None:
     out = apply_operation(OperationType.PAINTER, ("CrCrCrCr", "CuCu----"))
     assert out == ("CrCr----",)
+
+
+def test_recompute_merge_same_shape_sums_quantities() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s_a",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 2,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "s_b",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCuCuCu",
+                "quantity": 3,
+                "x": 0,
+                "y": 80,
+            },
+            {
+                "id": "o_m",
+                "kind": "operation",
+                "operation": OperationType.MERGE.value,
+                "x": 200,
+                "y": 0,
+            },
+            {
+                "id": "s_out",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 400,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s_a", "to": "o_m", "kind": "input"},
+            {"from": "s_b", "to": "o_m", "kind": "input", "slot": "1"},
+            {"from": "o_m", "to": "s_out", "kind": "output", "slot": "0"},
+        ],
+    }
+    out, warnings = recompute_graph_document(doc)
+    assert not warnings, warnings
+    node = next(n for n in out["nodes"] if n["id"] == "s_out")
+    assert node["shape_code"] == "CuCuCuCu"
+    assert node["quantity"] == 5
+
+
+def test_recompute_stacker_sums_input_quantities() -> None:
+    doc = {
+        "schema_version": 1,
+        "nodes": [
+            {
+                "id": "s_bot",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "CuCu----",
+                "quantity": 2,
+                "x": 0,
+                "y": 0,
+            },
+            {
+                "id": "s_top",
+                "kind": "shape",
+                "role": "source",
+                "shape_code": "----CuCu",
+                "quantity": 2,
+                "x": 0,
+                "y": 80,
+            },
+            {
+                "id": "o_s",
+                "kind": "operation",
+                "operation": OperationType.STACKER.value,
+                "x": 200,
+                "y": 0,
+            },
+            {
+                "id": "s_out",
+                "kind": "shape",
+                "role": "intermediate",
+                "shape_code": "",
+                "quantity": 1,
+                "x": 400,
+                "y": 0,
+            },
+        ],
+        "edges": [
+            {"from": "s_bot", "to": "o_s", "kind": "input", "slot": "0"},
+            {"from": "s_top", "to": "o_s", "kind": "input", "slot": "1"},
+            {"from": "o_s", "to": "s_out", "kind": "output", "slot": "0"},
+        ],
+    }
+    out, warnings = recompute_graph_document(doc)
+    assert not warnings, warnings
+    node = next(n for n in out["nodes"] if n["id"] == "s_out")
+    assert node["shape_code"] == "CuCuCuCu"
+    assert node["quantity"] == 4
 
 
 def test_recompute_color_mixer_updates_output_shape() -> None:

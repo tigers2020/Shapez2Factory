@@ -11,7 +11,7 @@ export function getOperationOutputCount(operation: string): number {
   return OUTPUT_2.has(op) ? 2 : 1;
 }
 
-const ARITY_2 = new Set(["swapper", "stacker", "color_mixer", "crystal_generator", "painter"]);
+const ARITY_2 = new Set(["swapper", "stacker", "merge", "color_mixer", "crystal_generator", "painter"]);
 
 /** Max input handles when node ``data`` is unknown (e.g. connection rules default). */
 export function getOperationInputArity(operation: string): number {

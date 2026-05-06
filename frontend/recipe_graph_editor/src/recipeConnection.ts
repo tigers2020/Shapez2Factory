@@ -130,7 +130,7 @@ export function expectedInputCarriers(
     }
     return ["fluid", "material"];
   }
-  if (k === "swapper" || k === "stacker") {
+  if (k === "swapper" || k === "stacker" || k === "merge") {
     return ["material", "material"];
   }
   return ["material", "material"];

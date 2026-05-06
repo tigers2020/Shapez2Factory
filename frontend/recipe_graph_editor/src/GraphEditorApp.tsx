@@ -48,13 +48,18 @@ import {
 import { recipeEdgeTypes } from "./recipeFlowEdges";
 import { recipeNodeTypes } from "./recipeFlowNodes";
 import { PALETTE_CATEGORY_ORDER, paletteCategoryForOperation } from "./operationPaletteGroups";
+import {
+  useRecipeGraphClipboardShortcuts,
+  type RecipeGraphClipboardPayload,
+  type RecipeGraphClipboardShortcutDepsNoScreen,
+} from "./recipeGraphClipboard";
 import { buildReactFlowSnapshot } from "./reactFlowSnapshot";
 import { layoutNodesFromGraph } from "./recipeGraphAutoLayout";
 import { cleanupAfterNodeRemovals } from "./recipeGraphNodeCleanup";
 import { loadRecipeNotes, saveRecipeNotes } from "./recipeGraphNotesStorage";
 import { mergeSilentPreviewFromServer } from "./mergeSilentPreviewFromServer";
 import {
-  DEFAULT_NEW_SOURCE_SHAPE_CODE,
+  pickCycledBaseFullSourceShapeCode,
   RECIPE_CONNECTION_WARN_THROTTLE_MS,
   RECIPE_NODE_TILE_HALF_PX,
   RECIPE_NOTES_SAVE_DEBOUNCE_MS,
@@ -277,7 +282,7 @@ function OperationPalettePanel({
               >
                 <span className="font-mono text-slate-500">◇</span> {ru("emptyUnifiedSourceRow")}
                 <span className="mt-0.5 block text-[10px] text-slate-500">
-                  {ru("emptyUnifiedHint", { code: DEFAULT_NEW_SOURCE_SHAPE_CODE })}
+                  {ru("emptyUnifiedHint")}
                 </span>
               </button>
             </li>
@@ -386,6 +391,7 @@ function OutputsColumn() {
 }
 
 type RecipeFlowBoardProps = Readonly<{
+  clipboardShortcutDeps: RecipeGraphClipboardShortcutDepsNoScreen;
   nodes: Node[];
   edges: Edge[];
   onNodesChange: ReturnType<typeof useNodesState>[2];
@@ -400,6 +406,7 @@ type RecipeFlowBoardProps = Readonly<{
 }>;
 
 function RecipeFlowBoard({
+  clipboardShortcutDeps,
   edges,
   getViewportCenterFlowRef,
   isValidConnection,
@@ -415,6 +422,8 @@ function RecipeFlowBoard({
   const nodeTypes = useMemo(() => recipeNodeTypes, []);
   const edgeTypes = useMemo(() => recipeEdgeTypes, []);
   const { screenToFlowPosition } = useReactFlow();
+
+  useRecipeGraphClipboardShortcuts({ ...clipboardShortcutDeps, screenToFlowPosition });
 
   useLayoutEffect(() => {
     getViewportCenterFlowRef.current = () => {
@@ -464,6 +473,7 @@ function RecipeFlowBoard({
       defaultViewport={{ x: 0, y: 0, zoom: 1 }}
       deleteKeyCode={["Backspace", "Delete"]}
       edgeTypes={edgeTypes}
+      multiSelectionKeyCode="Shift"
       edges={edges}
       fitView
       isValidConnection={isValidConnection}
@@ -493,6 +503,7 @@ function RecipeFlowBoard({
 }
 
 type GraphCanvasPanelProps = Readonly<{
+  clipboardShortcutDeps: RecipeGraphClipboardShortcutDepsNoScreen;
   nodes: Node[];
   edges: Edge[];
   onNodesChange: ReturnType<typeof useNodesState>[2];
@@ -512,6 +523,7 @@ type GraphCanvasPanelProps = Readonly<{
 
 function GraphCanvasPanel({
   catalogOperations,
+  clipboardShortcutDeps,
   edges,
   emptyHint,
   engineOperationIds,
@@ -617,6 +629,7 @@ function GraphCanvasPanel({
         ) : null}
         <ReactFlowProvider>
           <RecipeFlowBoard
+            clipboardShortcutDeps={clipboardShortcutDeps}
             edges={edges}
             getViewportCenterFlowRef={getViewportCenterFlowRef}
             isValidConnection={isValidConnection}
@@ -921,10 +934,16 @@ export function GraphEditorApp({
   const [footerHint, setFooterHint] = useState("");
   const [connectionFeedback, setConnectionFeedback] = useState("");
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const lastClipboardPayloadRef = useRef<RecipeGraphClipboardPayload | null>(null);
+  const enrichNodesWithIcons = useCallback(
+    (nds: Node[]) => enrichNodesWithCatalogIcons(nds, catalogIconByOpRef.current),
+    [],
+  );
   const [notes, setNotes] = useState("");
   const notesSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const connInspectorMsgRef = useRef("");
   const warnConnAtMs = useRef(0);
+  const newSourceShapeSeqRef = useRef(0);
   const emptyHint = useMemo(
     () => reactFlowEmptyHint(bootstrap, nodes.length),
     [bootstrap, nodes.length],
@@ -1159,6 +1178,22 @@ export function GraphEditorApp({
     [rfOnNodesChange, setEdges, setNodes, silentDryRunFromGraph],
   );
 
+  const clipboardShortcutDeps = useMemo(
+    (): RecipeGraphClipboardShortcutDepsNoScreen => ({
+      selectedNodeIds,
+      nodesRef,
+      edgesRef,
+      lastPayloadRef: lastClipboardPayloadRef,
+      setNodes,
+      setEdges,
+      onNodesChange,
+      enrichNodesWithIcons,
+      silentDryRunFromGraph,
+      newGraphNodeId,
+    }),
+    [enrichNodesWithIcons, onNodesChange, selectedNodeIds, silentDryRunFromGraph],
+  );
+
   const onConnect = useCallback(
     (conn: Connection) => {
       clearConnectionInspectorFeedback();
@@ -1214,6 +1249,9 @@ export function GraphEditorApp({
   );
 
   const addSourceShapeNode = useCallback(() => {
+    const seq = newSourceShapeSeqRef.current;
+    newSourceShapeSeqRef.current = seq + 1;
+    const shapeCode = pickCycledBaseFullSourceShapeCode(seq);
     setNodes((nds) => {
       const pos = getViewportCenterFlowRef.current?.() ?? paletteGridPosition(nds.length);
       const id = newGraphNodeId("src");
@@ -1223,7 +1261,7 @@ export function GraphEditorApp({
           id,
           type: "shape",
           position: pos,
-          data: { shape_code: DEFAULT_NEW_SOURCE_SHAPE_CODE, quantity: 1, role: "source" },
+          data: { shape_code: shapeCode, quantity: 1, role: "source" },
         },
       ];
     });
@@ -1260,6 +1298,9 @@ export function GraphEditorApp({
 
   const dropSourceShapeAtPosition = useCallback(
     (position: { x: number; y: number }) => {
+      const seq = newSourceShapeSeqRef.current;
+      newSourceShapeSeqRef.current = seq + 1;
+      const shapeCode = pickCycledBaseFullSourceShapeCode(seq);
       setNodes((nds) => {
         const id = newGraphNodeId("src");
         const next: Node[] = [
@@ -1268,7 +1309,7 @@ export function GraphEditorApp({
             id,
             type: "shape",
             position: { x: position.x, y: position.y },
-            data: { shape_code: DEFAULT_NEW_SOURCE_SHAPE_CODE, quantity: 1, role: "source" },
+            data: { shape_code: shapeCode, quantity: 1, role: "source" },
           },
         ];
         queueMicrotask(() => {
@@ -1437,6 +1478,7 @@ export function GraphEditorApp({
         />
         <GraphCanvasPanel
           catalogOperations={catalogOperations}
+          clipboardShortcutDeps={clipboardShortcutDeps}
           edges={edges}
           emptyHint={emptyHint}
           engineOperationIds={engineOperationIds}

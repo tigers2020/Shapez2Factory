@@ -82,8 +82,6 @@ export type ReactFlowInitialPayload = {
 
 export type GraphBootstrap = {
   api_recipe_graph_recompute?: string;
-  /** Staff macro graph: POST one Playwright PNG at a time */
-  api_graph_preview_warm?: string;
   /** Staff GET atomic part sprite manifest for Canvas2D tiles */
   api_shape_part_sprite_manifest?: string;
   csrf_token?: string;
@@ -929,24 +927,6 @@ export function GraphEditorApp({
     [seededNodes, initialEdges],
   );
 
-  const macroPreviewWarmQueue = useMemo(() => {
-    const out: { id: string; cache_key: string; scene: Record<string, unknown> }[] = [];
-    for (const n of seededNodes) {
-      const d = n.data;
-      if (!d || typeof d !== "object" || Array.isArray(d)) {
-        continue;
-      }
-      const rec = d as Record<string, unknown>;
-      if (rec.needs_warm === true && typeof rec.preview_cache_key === "string") {
-        const ps = rec.preview_scene;
-        if (ps && typeof ps === "object" && !Array.isArray(ps)) {
-          out.push({ id: n.id, cache_key: rec.preview_cache_key, scene: ps as Record<string, unknown> });
-        }
-      }
-    }
-    return out;
-  }, [seededNodes]);
-
   const [nodes, setNodes, rfOnNodesChange] = useNodesState(seededNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(seededEdges);
   const nodesRef = useRef(nodes);
@@ -990,72 +970,6 @@ export function GraphEditorApp({
       saveRecipeNotes(recipeId, text);
     }, RECIPE_NOTES_SAVE_DEBOUNCE_MS);
   }, [recipeId]);
-
-  useEffect(() => {
-    const url = bootstrap?.api_graph_preview_warm;
-    const csrf = bootstrap?.csrf_token;
-    if (!url || !csrf || macroPreviewWarmQueue.length === 0) {
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      for (const item of macroPreviewWarmQueue) {
-        if (cancelled) {
-          break;
-        }
-        try {
-          const res = await fetch(url, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRFToken": csrf,
-            },
-            body: JSON.stringify({
-              cache_key: item.cache_key,
-              preview_scene: item.scene,
-            }),
-          });
-          const j = (await res.json()) as {
-            ok?: boolean;
-            preview_image_url?: string;
-            preview_alt?: string;
-          };
-          if (cancelled) {
-            break;
-          }
-          if (j.ok && typeof j.preview_image_url === "string") {
-            setNodes((prev) =>
-              prev.map((node) =>
-                node.id === item.id
-                  ? {
-                      ...node,
-                      data: {
-                        ...shallowRecordFromUnknown(node.data),
-                        preview_image_url: j.preview_image_url,
-                        ...(typeof j.preview_alt === "string" ? { preview_alt: j.preview_alt } : {}),
-                        needs_warm: false,
-                      },
-                    }
-                  : node,
-              ),
-            );
-          }
-        } catch {
-          /* continue */
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    bootstrap?.api_graph_preview_warm,
-    bootstrap?.csrf_token,
-    macroPreviewWarmQueue,
-    recipeId,
-    setNodes,
-  ]);
 
   const outputCount = useMemo(() => nodes.filter((n) => n.type === "output").length, [nodes]);
 
@@ -1104,70 +1018,16 @@ export function GraphEditorApp({
 
   const applyRecomputeJson = useCallback(
     (json: RecipeGraphRecomputeResponse, meta: { commit: boolean; silent?: boolean }) => {
-      // #region agent log
-      {
-        const srv0 = json.react_flow?.nodes?.[0] as Node | undefined;
-        fetch("http://127.0.0.1:7372/ingest/ad6134ab-fc67-480b-aac8-ecaa23f5f33d", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "56c1aa" },
-          body: JSON.stringify({
-            sessionId: "56c1aa",
-            location: "GraphEditorApp.tsx:applyRecomputeJson",
-            message: "applyRecomputeJson entry",
-            data: {
-              silent: !!meta.silent,
-              commit: meta.commit,
-              srvNodeCount: json.react_flow?.nodes?.length ?? 0,
-              srvFirstPos: srv0
-                ? { id: srv0.id, x: srv0.position?.x, y: srv0.position?.y }
-                : null,
-            },
-            timestamp: Date.now(),
-            hypothesisId: "H-C",
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
       if (meta.silent) {
         // Do not replace server `react_flow.nodes` wholesale (positions can desync). Merge validation,
         // server-derived node data (shape_code on intermediates, operation fields, previews), then icons.
         setNodes((current) => {
-          const before = current.slice(0, 8).map((n) => ({
-            id: n.id,
-            x: n.position.x,
-            y: n.position.y,
-          }));
           const withIssues = applyValidationIssuesToNodes(current, json.validation?.issues);
           const withPreview = mergeSilentPreviewFromServer(
             withIssues,
             json.react_flow?.nodes as Node[] | undefined,
           );
-          const next = enrichNodesWithCatalogIcons(withPreview, catalogIconByOpRef.current);
-          // #region agent log
-          {
-            let posChanged = false;
-            for (const b of before) {
-              const a = next.find((n) => n.id === b.id);
-              if (a?.position.x !== b.x || a?.position.y !== b.y) {
-                posChanged = true;
-                break;
-              }
-            }
-            fetch("http://127.0.0.1:7372/ingest/ad6134ab-fc67-480b-aac8-ecaa23f5f33d", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "56c1aa" },
-              body: JSON.stringify({
-                sessionId: "56c1aa",
-                location: "GraphEditorApp.tsx:applyRecomputeJson:silent-setNodes",
-                message: "silent validation overlay on current nodes",
-                data: { beforeSample: before, posChanged },
-                timestamp: Date.now(),
-                hypothesisId: "H-A",
-              }),
-            }).catch(() => {});
-          }
-          // #endregion
-          return next;
+          return enrichNodesWithCatalogIcons(withPreview, catalogIconByOpRef.current);
         });
         const vok = json.validation?.ok;
         setValidationOk(typeof vok === "boolean" ? vok : null);
@@ -1214,27 +1074,6 @@ export function GraphEditorApp({
         return;
       }
       try {
-        // #region agent log
-        {
-          const sample = nodeList.slice(0, 6).map((n) => ({
-            id: n.id,
-            x: n.position.x,
-            y: n.position.y,
-          }));
-          fetch("http://127.0.0.1:7372/ingest/ad6134ab-fc67-480b-aac8-ecaa23f5f33d", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "56c1aa" },
-            body: JSON.stringify({
-              sessionId: "56c1aa",
-              location: "GraphEditorApp.tsx:silentDryRunFromGraph",
-              message: "silent dry-run snapshot source positions",
-              data: { nodeCount: nodeList.length, sample },
-              timestamp: Date.now(),
-              hypothesisId: "H-B",
-            }),
-          }).catch(() => {});
-        }
-        // #endregion
         const rf = buildReactFlowSnapshot(nodeList, edgeList);
         const json = await postRecipeGraphRecompute(recomputeUrl, { react_flow: rf });
         applyRecomputeJson(json, { commit: false, silent: true });
@@ -1417,27 +1256,6 @@ export function GraphEditorApp({
         return nds;
       }
       const next = layoutNodesFromGraph(nds, edgesRef.current);
-      // #region agent log
-      {
-        const sample = next.slice(0, 6).map((n) => ({
-          id: n.id,
-          x: n.position.x,
-          y: n.position.y,
-        }));
-        fetch("http://127.0.0.1:7372/ingest/ad6134ab-fc67-480b-aac8-ecaa23f5f33d", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "56c1aa" },
-          body: JSON.stringify({
-            sessionId: "56c1aa",
-            location: "GraphEditorApp.tsx:autoArrangeNodes",
-            message: "after layoutNodesFromGraph",
-            data: { sample },
-            timestamp: Date.now(),
-            hypothesisId: "H-E",
-          }),
-        }).catch(() => {});
-      }
-      // #endregion
       queueMicrotask(() => {
         void silentDryRunFromGraph(next, edgesRef.current);
       });

@@ -23,8 +23,8 @@ from django_apps.web.services.graph_preview import (
 )
 
 
-def test_sync_png_false_adds_warm_when_cache_miss() -> None:
-    cache_dir = Path("F:/Python_Projects/shapez2Solver/.graph_preview_cache_sync_test")
+def test_sync_png_false_omits_warm_when_cache_miss(tmp_path: Path) -> None:
+    cache_dir = tmp_path / "graph_preview_cache_miss"
     cache_dir.mkdir(parents=True, exist_ok=True)
     with override_settings(SOLVER_GRAPH_PREVIEW_CACHE_DIR=cache_dir):
         renderer = PlaywrightPngGraphPreviewRenderer()
@@ -37,16 +37,15 @@ def test_sync_png_false_adds_warm_when_cache_miss() -> None:
         )
         out = serialize_graph_node(node, renderer, sync_png=False)
 
-    assert out["needs_warm"] is True
-    assert isinstance(out["preview_cache_key"], str)
-    assert len(out["preview_cache_key"]) == 24
+    assert out.get("needs_warm") is not True
+    assert "preview_cache_key" not in out
     assert "preview_scene" in out
     assert out.get("preview_image_url") is None
 
 
 @pytest.mark.django_db
-def test_sync_png_false_hit_cached_png_db() -> None:
-    cache_dir = Path("F:/Python_Projects/shapez2Solver/.graph_preview_cache_sync_hit_test")
+def test_sync_png_false_hit_cached_png_db(tmp_path: Path) -> None:
+    cache_dir = tmp_path / "graph_preview_cache_hit"
     cache_dir.mkdir(parents=True, exist_ok=True)
     with override_settings(
         SOLVER_GRAPH_PREVIEW_CACHE_DIR=cache_dir,
@@ -114,7 +113,7 @@ def test_merge_preview_into_react_preserves_warm() -> None:
     assert data.get("preview_cache_key") == "k"
 
 
-def test_noop_sync_png_false_always_warm() -> None:
+def test_noop_sync_png_false_has_scene_without_warm() -> None:
     r = NoopGraphPreviewRenderer()
     node = SolverShapeNode(
         id="n1",
@@ -124,4 +123,5 @@ def test_noop_sync_png_false_always_warm() -> None:
         quantity=1,
     )
     out = serialize_graph_node(node, r, sync_png=False)
-    assert out["needs_warm"] is True
+    assert out.get("needs_warm") is not True
+    assert "preview_scene" in out

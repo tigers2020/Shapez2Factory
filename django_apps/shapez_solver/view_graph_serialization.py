@@ -75,9 +75,8 @@ def serialize_graph_node(
             }
             if graph_preview.image_url:
                 payload["preview_image_url"] = graph_preview.image_url
-            else:
-                payload["preview_cache_key"] = preview_renderer.cache_key(preview_scene)
-                payload["needs_warm"] = True
+            # Omit needs_warm / preview_cache_key: macro graph tiles compose sprites from
+            # preview_scene client-side; server-side Playwright warm was blocking page loads.
         if node.produced_state is not None:
             payload["produced_state"] = node.produced_state
         if node.batch_index is not None:

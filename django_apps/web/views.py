@@ -98,7 +98,6 @@ def _macro_staff_graph_bootstrap(request: HttpRequest, recipe_pk: int) -> dict[s
             "web:macro-pattern-staff-api-recipe-graph-recompute",
             kwargs={"pk": recipe_pk},
         ),
-        "api_graph_preview_warm": reverse("web:macro-pattern-staff-api-graph-preview-warm"),
         "api_shape_part_sprite_manifest": reverse("web:shape-part-sprite-manifest"),
         "csrf_token": get_token(request),
         "staff_catalog_url": reverse("web:macro-pattern-staff"),
@@ -244,7 +243,7 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
             "bootstrap": bootstrap,
             "catalog": build_catalog_snapshot(),
             "staff_macro_nav": "graph",
-            "recipe_graph_editor_asset_version": "20260506-macro-preview-scene-fallback",
+            "recipe_graph_editor_asset_version": "20260507-graph-editor-no-warm",
         },
     )
 

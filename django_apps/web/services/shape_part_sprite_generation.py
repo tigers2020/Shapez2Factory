@@ -13,7 +13,6 @@ from typing import Any, TextIO
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 
 from django_apps.web.models import ShapePartSprite
 from django_apps.web.services.graph_preview import _playwright_subprocess_env
@@ -97,7 +96,7 @@ def _variant_row_exists_with_image(
     if not name:
         return False
     try:
-        return default_storage.exists(name)
+        return row.image.storage.exists(name)
     except OSError:
         return False
 

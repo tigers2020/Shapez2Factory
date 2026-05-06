@@ -157,10 +157,13 @@ class _PlaywrightPrerenderer:
                 check=False,
             )
             if completed.returncode != 0 or not cache_path.is_file():
+                err_tail = (completed.stderr or "").strip()
+                if len(err_tail) > 600:
+                    err_tail = err_tail[:600] + "…"
                 logger.warning(
-                    "Graph preview render failed: returncode=%s stderr=%s stdout=%s",
+                    "Graph preview render failed: returncode=%s stderr_tail=%r stdout=%s",
                     completed.returncode,
-                    completed.stderr,
+                    err_tail,
                     completed.stdout,
                 )
                 return False

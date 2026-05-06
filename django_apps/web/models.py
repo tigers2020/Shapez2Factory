@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from django.db import models
 
+from django_apps.web.shape_part_sprite_storage import shape_part_sprite_storage
+
 
 class ShapePartSprite(models.Model):
     """Single-quadrant atomic shape PNG for Canvas2D tile composition."""
@@ -13,7 +15,10 @@ class ShapePartSprite(models.Model):
     color_code = models.CharField(max_length=16, blank=True)
     material_key = models.CharField(max_length=64, blank=True)
     quadrant_index = models.PositiveSmallIntegerField()
-    image = models.ImageField(upload_to="shape_part_sprites/")
+    image = models.ImageField(
+        upload_to="assets/shape_part_sprites/",
+        storage=shape_part_sprite_storage,
+    )
     image_width = models.PositiveSmallIntegerField()
     image_height = models.PositiveSmallIntegerField()
     renderer_version = models.CharField(max_length=32, default="v1")

@@ -83,7 +83,8 @@ def test_build_catalog_snapshot_default_skips_png_generation(tmp_path) -> None:
     vg = cat.get("visual_graph")
     assert isinstance(vg, dict)
     shape_nodes = [n for n in vg["nodes"] if n.get("kind") == "shape" and n.get("shape_code")]
-    assert shape_nodes and shape_nodes[0].get("needs_warm") is True
+    assert shape_nodes and shape_nodes[0].get("needs_warm") is not True
+    assert isinstance(shape_nodes[0].get("preview_scene"), dict)
 
 
 @pytest.mark.django_db

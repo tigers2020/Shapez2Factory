@@ -107,9 +107,13 @@ LOCALE_PATHS = [BASE_DIR / "locale"]
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# User uploads (ShapePartSprite PNGs). Ephemeral on many PaaS unless backed by volume/S3.
+# General user uploads (not shape part sprites; see SHAPE_PART_SPRITE_*).
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Baked atomic part PNGs live under app static so they can be versioned like other assets.
+SHAPE_PART_SPRITE_STATIC_ROOT = BASE_DIR / "django_apps" / "web" / "static" / "web"
+SHAPE_PART_SPRITE_URL_PREFIX = "/static/web/"
 
 STORAGES = {
     "default": {
@@ -121,6 +125,8 @@ STORAGES = {
 }
 # playwright_png: Node + Playwright (render_graph_preview.mjs). Often missing on PaaS runtime.
 # noop: skip PNG graph thumbnails; Quick Solver 3D still uses /api/shape-preview/ in the browser.
+# Macro graph tiles use preview_scene + sprite composition; warm PNG is optional — set noop on
+# hosts without Node/Chromium to avoid timeouts (see graph_preview Playwright subprocess).
 SOLVER_GRAPH_PREVIEW_RENDERER = (
     os.environ.get("SOLVER_GRAPH_PREVIEW_RENDERER", "playwright_png").strip().lower()
 )

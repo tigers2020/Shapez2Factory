@@ -53,9 +53,12 @@ def test_manifest_requires_staff(tmp_path: Path) -> None:
 
 @pytest.mark.django_db
 def test_manifest_json_shape(tmp_path: Path) -> None:
-    media = tmp_path / "media"
-    media.mkdir()
-    with override_settings(MEDIA_ROOT=media):
+    sprite_root = tmp_path / "shape_static_web"
+    sprite_root.mkdir(parents=True)
+    with override_settings(
+        SHAPE_PART_SPRITE_STATIC_ROOT=sprite_root,
+        SHAPE_PART_SPRITE_URL_PREFIX="/static/web/",
+    ):
         staff = User.objects.create_user("staff", password="pass-word-123", is_staff=True)
         sprite_key = make_sprite_key("R", "r", 0, "v1")
         png = _minimal_png_bytes()
@@ -80,7 +83,7 @@ def test_manifest_json_shape(tmp_path: Path) -> None:
         entry = data["sprites"][sprite_key]
         assert entry["width"] == 16
         assert entry["height"] == 16
-        assert entry["url"].startswith("/media/")
+        assert entry["url"].startswith("/static/web/")
 
 
 def test_make_sprite_key_stable() -> None:
@@ -147,9 +150,12 @@ def test_build_work_queue_prepends_pedestal() -> None:
 
 @pytest.mark.django_db
 def test_shape_part_sprite_unique_constraint(tmp_path: Path) -> None:
-    media = tmp_path / "media"
-    media.mkdir()
-    with override_settings(MEDIA_ROOT=media):
+    sprite_root = tmp_path / "shape_static_web"
+    sprite_root.mkdir(parents=True)
+    with override_settings(
+        SHAPE_PART_SPRITE_STATIC_ROOT=sprite_root,
+        SHAPE_PART_SPRITE_URL_PREFIX="/static/web/",
+    ):
         png = _minimal_png_bytes()
         ShapePartSprite.objects.create(
             sprite_key=make_sprite_key("C", "g", 2, "v1"),

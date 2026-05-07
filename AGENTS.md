@@ -114,3 +114,16 @@ tests/
 documents/
   ai/           ← AI 매뉴얼·현재 계획·체크리스트
 ```
+
+---
+
+## Cursor Cloud specific instructions
+
+- **Single service**: Django dev server only. No Docker, Redis, Celery, or external DB required.
+- **Database**: SQLite (default). Run `python3 manage.py migrate` after first install to create `db.sqlite3`. Migrations are idempotent.
+- **Dev server**: `python3 manage.py runserver 0.0.0.0:8000`. Use `python3` (not `python`) as `python` is not on PATH in the Cloud VM.
+- **PATH**: Dev tool binaries (`black`, `ruff`, `mypy`, `pytest`) install to `/home/ubuntu/.local/bin`. Prepend to PATH: `export PATH="/home/ubuntu/.local/bin:$PATH"`.
+- **Solver API** (`POST /api/solver/solve/`): Requires CSRF token. Fetch a page first to get `csrftoken` cookie, then send `X-CSRFToken` header + cookie.
+- **Pre-built frontend assets**: CSS/JS bundles are committed. `npm install` / `npm run build` only needed if modifying frontend source (`assets/css/`, `frontend/`).
+- **Graph preview renderer**: Defaults to `playwright_png` which requires Node + Playwright. Set `SOLVER_GRAPH_PREVIEW_RENDERER=noop` in `.env` to skip (3D preview still works in-browser). Tests pass without Playwright.
+- **Lint/test commands**: See **빌드 · 테스트 · 검증** table above. `black --check .` currently reports 1 pre-existing formatting issue in `django_apps/web/views/macro_staff.py`.

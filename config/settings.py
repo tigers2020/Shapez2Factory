@@ -9,6 +9,9 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+# If set, successful POST /api/asteroid/copy-preview/ writes encrypt code + decoded JSON here.
+SHAPEZ_COPY_DEBUG_DIR = (os.environ.get("SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
+
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True
 

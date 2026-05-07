@@ -42,6 +42,9 @@ def test_asteroid_page_renders() -> None:
     assert b"Asteroid mining" in response.content
     assert b"/asteroid/" in response.content
     assert b"/api/asteroid/health/" in response.content
+    assert b"data-asteroid-copy-root" in response.content
+    assert b"/api/asteroid/copy-preview/" in response.content
+    assert b"data-asteroid-plot-svg" in response.content
 
 
 def test_solve_alias_redirects_to_solver_page() -> None:

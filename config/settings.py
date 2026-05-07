@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "django_apps.shapez_core.apps.ShapezCoreConfig",
     "django_apps.shapez_solver.apps.ShapezSolverConfig",
+    "django_apps.shapez_asteroid.apps.ShapezAsteroidConfig",
     "django_apps.web.apps.WebConfig",
 ]
 

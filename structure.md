@@ -10,9 +10,10 @@ This repository is organized as a Django-first project. Runtime ownership lives 
 | `AGENTS.md` | Contributor/agent routing, quality gate, manual index |
 | `config/` | Django project settings, root URLs, WSGI/ASGI |
 | `django_apps/shapez_core/` | Shape parsing, normalization, preview API, canonical game data |
-| `django_apps/shapez_solver/` | Solver services, recipe/macro models, solver HTTP API |
+| `django_apps/shapez_solver/` | Solver services, recipe/macro models |
+| `django_apps/shapez_asteroid/` | Asteroid miner / pump layout optimization (separate app; MIP 등은 후속) |
 | `django_apps/web/` | Templates, static assets, thin views (pages + staff tooling) |
-| `tests/unit/` | Fast unit tests for core and solver behavior |
+| `tests/unit/` | Fast unit tests for core, solver, asteroid, and web behavior |
 | `tests/integration/` | Django request/response and page/API integration tests |
 | `documents/` | Research (`research/`), plans (`plans/`), progress notes (`notes/`), project meta (`meta/`), attribution (`attribution/`), **game rules** (`game_rules/`), [`archive/`](documents/archive/) (completed sessions: [`archive/2026-05-completed/`](documents/archive/2026-05-completed/README.md)), AI manuals & session notes (`ai/`). Index and document comparison notes: [`documents/README.md`](documents/README.md) |
 | `protocols/` | Multi-step pipeline **canonical** procedure ([`protocols/README.md`](protocols/README.md)) |
@@ -42,11 +43,16 @@ Generated or local-only artifacts such as `node_modules/`, `.pytest_cache/`, `.r
 - `domain/`: solver-side domain helpers (e.g. operations metadata, factory demand, search cost)
 - `services/`: operation engine, recipe graph adapters/validation, planner/scaffold services, pattern lab, catalog repositories
 - `dto/`: solver-facing DTOs (e.g. solver graph shapes)
-- `views.py` + `urls.py`: `/api/solver/solve/` (POST)
+- Solver UI and related JSON are reached via `django_apps.web` (see `django_apps/web/urls.py`), not via a dedicated `/api/solver/` mount in `config/urls.py`.
+
+### `django_apps/shapez_asteroid/`
+
+- `services/`·`ports/`: (스켈레톤) 향후 MIP·입력·청사진 연동
+- `views.py` + `urls.py`: `/api/asteroid/health/`
 
 ### `django_apps/web/`
 
-- `views.py`: thin controllers for public pages (`/`, gallery, demo, support, solver UI, pattern lab) and **staff** macro-pattern flows under `internal/staff/macro-patterns/`
+- `views.py`: thin controllers for public pages (`/`, gallery, demo, support, asteroid mining placeholder, solver UI, pattern lab) and **staff** macro-pattern flows under `internal/staff/macro-patterns/`
 - `services/graph_preview.py`: graph preview asset/cache helpers used by pages
 - `social_adapter.py`, `socialaccount_forms.py`: django-allauth / social account hooks
 - `templates/web/`: page templates and partials; `templates/account/`, `templates/socialaccount/`, `templates/allauth/` for auth UI overrides
@@ -60,19 +66,20 @@ Root routing (`config/urls.py`):
 - `/i18n/` — language switching
 - `/accounts/` — django-allauth (`allauth.urls`)
 - `/api/` — `django_apps.shapez_core` (`health/`, `shape-preview/`)
-- `/api/solver/` — `django_apps.shapez_solver` (`solve/`)
+- `/api/asteroid/` — `django_apps.shapez_asteroid` (`health/`)
 
 Internationalized routes (`i18n_patterns`, default language without URL prefix):
 
 - `/jsi18n/` — JavaScript catalog
-- All paths from `django_apps.web` (see `django_apps/web/urls.py`), including `/`, `/gallery/`, `/demo/`, `/support/`, `/solver/`, `/solver/pattern-lab/`, staff macro-pattern URLs under `/internal/staff/macro-patterns/`, auth shortcuts (`/signup/`, `/login/`, `/logout/` redirects), `/solve/` → solver page redirect, and `/internal/graph-preview-cache/<filename>` for cached preview assets.
+- All paths from `django_apps.web` (see `django_apps/web/urls.py`), including `/`, `/gallery/`, `/demo/`, `/support/`, `/asteroid/`, `/solver/`, `/solver/pattern-lab/`, staff macro-pattern URLs under `/internal/staff/macro-patterns/`, auth shortcuts (`/signup/`, `/login/`, `/logout/` redirects), `/solve/` → solver page redirect, and `/internal/graph-preview-cache/<filename>` for cached preview assets.
 
 ## Test layout
 
 - `tests/unit/shapez_core/`: parser, render scene, SVG preview thumbnails, geometry
 - `tests/unit/shapez_solver/`: solver engine, recipe graph, models, catalog, pattern lab
+- `tests/unit/shapez_asteroid/`: asteroid optimizer API/services (스켈레톤)
 - `tests/unit/web/`: template/markup and web-specific unit checks where used
-- `tests/integration/api/`: health and solver API checks
+- `tests/integration/api/`: health and related API checks
 - `tests/integration/web/`: page smoke, auth, pattern lab, macro-pattern staff flows
 
 ## Common commands

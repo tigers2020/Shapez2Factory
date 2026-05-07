@@ -12,6 +12,7 @@ urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),
     path("accounts/", include("allauth.urls")),
     path("api/", include("django_apps.shapez_core.urls")),
+    path("api/asteroid/", include("django_apps.shapez_asteroid.urls")),
 ]
 
 urlpatterns += i18n_patterns(

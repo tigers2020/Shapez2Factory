@@ -137,6 +137,10 @@ def pattern_lab(request: HttpRequest) -> HttpResponse:
     )
 
 
+def asteroid_optimizer(request: HttpRequest) -> HttpResponse:
+    return render(request, "web/asteroid_optimizer.html")
+
+
 _KOFI_HOSTS = frozenset({"ko-fi.com", "www.ko-fi.com"})
 _KOFI_SLUG = re.compile(r"^[A-Za-z0-9_-]+$")
 

@@ -35,6 +35,15 @@ def test_solver_page_renders() -> None:
     assert b"data-quick-preview-viewers" in response.content
 
 
+def test_asteroid_page_renders() -> None:
+    response = Client().get("/asteroid/")
+
+    assert response.status_code == 200
+    assert b"Asteroid mining" in response.content
+    assert b"/asteroid/" in response.content
+    assert b"/api/asteroid/health/" in response.content
+
+
 def test_solve_alias_redirects_to_solver_page() -> None:
     response = Client().get("/solve/", {"code": "SuSuSuSu"})
 

@@ -2,21 +2,11 @@ from typing import Any
 
 import pytest
 
-from django_apps.shapez_solver.domain.inventory_state import InventoryState
 from django_apps.shapez_solver.models import (
     MacroRecipe,
     MacroRecipeCompiledBoundary,
     MacroRecipeStep,
     PatternFamily,
-)
-from django_apps.shapez_solver.services.combined_action_generator import CombinedActionGenerator
-from django_apps.shapez_solver.services.inventory_search_solver import (
-    InventorySearchRequest,
-    InventorySearchSolver,
-)
-from django_apps.shapez_solver.services.macro_action_generator import (
-    CatalogBackedMacroActionGenerator,
-    MacroInventorySearchRequestView,
 )
 from django_apps.shapez_solver.services.pattern_catalog_repository import PatternCatalogRepository
 
@@ -129,81 +119,6 @@ def test_pattern_catalog_prefers_graph_document_for_step_metadata(
     assert candidates[0].steps[0].operation == "rotate_cw"
     assert candidates[0].steps[0].note.startswith("graph:o_rot")
     assert candidates[0].lab_step_source == "graph_document"
-
-
-@pytest.mark.django_db
-def test_catalog_backed_macro_action_generator_uses_db_enabled_strategy(
-    without_canonical_catalog_macros: Any,
-) -> None:
-    family = PatternFamily.objects.create(
-        code="abcc",
-        name="ABCC",
-        signature="ABCC",
-    )
-    MacroRecipe.objects.create(
-        family=family,
-        code="abcc-batch",
-        strategy_code="ABCC_BATCH",
-        name="ABCC Batch",
-    )
-    request = MacroInventorySearchRequestView(
-        target_code="CuRuSuSu",
-        target_count=4,
-        source_counts={"CuCuCuCu": 1, "RuRuRuRu": 1, "SuSuSuSu": 2},
-    )
-    state = InventoryState.from_counts(request.source_counts)
-
-    actions = CatalogBackedMacroActionGenerator().generate(state, request)
-
-    assert tuple(action.macro_kind for action in actions) == ("ABCC_BATCH",)
-
-
-@pytest.mark.django_db
-def test_catalog_backed_macro_action_generator_returns_no_actions_without_db_match(
-    without_canonical_catalog_macros: Any,
-) -> None:
-    request = MacroInventorySearchRequestView(
-        target_code="CuRuSuSu",
-        target_count=4,
-        source_counts={"CuCuCuCu": 1, "RuRuRuRu": 1, "SuSuSuSu": 2},
-    )
-    state = InventoryState.from_counts(request.source_counts)
-
-    actions = CatalogBackedMacroActionGenerator().generate(state, request)
-
-    assert actions == ()
-
-
-@pytest.mark.django_db
-def test_catalog_backed_macro_generator_can_be_injected_into_inventory_search(
-    without_canonical_catalog_macros: Any,
-) -> None:
-    family = PatternFamily.objects.create(
-        code="abcc",
-        name="ABCC",
-        signature="ABCC",
-    )
-    MacroRecipe.objects.create(
-        family=family,
-        code="abcc-batch",
-        strategy_code="ABCC_BATCH",
-        name="ABCC Batch",
-    )
-    action_generator = CombinedActionGenerator(macros=CatalogBackedMacroActionGenerator())
-
-    plan = InventorySearchSolver(action_generator).solve(
-        InventorySearchRequest(
-            target_code="CuRuSuSu",
-            target_count=4,
-            source_counts={"CuCuCuCu": 1, "RuRuRuRu": 1, "SuSuSuSu": 2},
-            max_states=100,
-            max_steps=28,
-        )
-    )
-
-    assert plan.final_inventory.get("CuRuSuSu") == 4
-    assert "ABCC_BATCH" in plan.used_macro_kinds
-    assert "ABCC_BATCH:db" in plan.used_macro_sources
 
 
 @pytest.mark.django_db

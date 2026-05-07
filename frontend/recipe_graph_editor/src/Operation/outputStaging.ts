@@ -1,5 +1,7 @@
 import type { Edge, Node } from "@xyflow/react";
 
+import { DEFAULT_SOURCE_SHAPE_QUANTITY_FLUID } from "../EditorFoundation/constants";
+
 import { getOperationOutputCount } from "./arity";
 
 function edgeDomainKind(e: Edge): string | undefined {
@@ -49,7 +51,7 @@ export function ensureOperationOutputArtifacts(
       position: { x: bx + dx, y: by + yOff },
       data: {
         shape_code: "",
-        quantity: 1,
+        quantity: fluidLane ? DEFAULT_SOURCE_SHAPE_QUANTITY_FLUID : 1,
         role: "intermediate",
         ...(fluidLane ? { source_carrier: "fluid" } : {}),
       },

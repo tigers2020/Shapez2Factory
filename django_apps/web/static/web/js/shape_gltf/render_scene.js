@@ -3,6 +3,7 @@ import * as THREE from "three";
 import {
   applyCrystalMaterials,
   applyFluidTankFilledMaterials,
+  applyFluidTankVortexMaterials,
   applyTopSideMaterials,
   createPedestal,
 } from "./materials.js";
@@ -41,6 +42,8 @@ export async function renderSceneToThree(scene, loader, assetBase, renderScene, 
 
     if (cell.mesh_key === "default_fluid_tank_filled") {
       applyFluidTankFilledMaterials(model, cell.material_key);
+    } else if (cell.mesh_key === "default_fluid_tank_vortex") {
+      applyFluidTankVortexMaterials(model, cell.material_key);
     } else if (cell.mesh_key === "default_crystal") {
       applyCrystalMaterials(model, cell.material_key);
     } else {

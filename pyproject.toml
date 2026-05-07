@@ -64,8 +64,6 @@ module = [
     "django_apps.shapez_solver.admin",
     "django_apps.shapez_solver.apps",
     "django_apps.shapez_solver.models",
-    "django_apps.web.urls_shapez_solver_api",
-    "django_apps.web.views_solver_api",
     "django_apps.web.admin",
     "django_apps.web.apps",
     "django_apps.web.social_adapter",

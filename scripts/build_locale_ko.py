@@ -77,6 +77,14 @@ KO: dict[str, str] = {
     # Solver
     "shapez2 planner | Shape solver": "shapez2 planner · 도형 솔버",
     "Shape solver": "도형 솔버",
+    "Under construction": "공사 중",
+    (
+        "The public shape solver and recipe graph are temporarily unavailable while the planning stack is being redesigned. "
+        "You can still preview a shape code on this page using the live preview panel."
+    ): (
+        "플래닝 스택을 다시 짜는 동안 공개 솔버와 레시피 그래프는 잠시 닫혀 있습니다. "
+        "이 페이지 오른쪽 라이브 미리보기로 도형 코드는 계속 볼 수 있습니다."
+    ),
     "Target": "목표",
     "Shape code": "도형 코드",
     "e.g. CuRuSuWu": "예: CuRuSuWu",
@@ -97,6 +105,13 @@ KO: dict[str, str] = {
     "shapez2 planner | Pattern Lab": "shapez2 planner · 패턴 랩",
     "Inspect pattern signatures and macro catalog candidates.": (
         "패턴 시그니처와 매크로 후보가 맞는지 가볍게 점검합니다."
+    ),
+    (
+        "Pattern DB entries are candidate metadata for staff workflows. Catalog lookup uses the canonical pattern signature below. "
+        "When a recipe has a valid graph_document with operations, step lists show graph-derived steps (green badge); otherwise DB step rows (gray badge)."
+    ): (
+        "패턴 DB 줄은 스태프 워크플로용 후보 메타데이터입니다. 카탈로그 조회는 아래 정규형 패턴 시그니처를 씁니다. "
+        "레시피에 연산이 담긴 graph_document가 유효하면 단계 목록은 그래프에서 옵니다(녹색 배지); 아니면 DB 단계 행에서 옵니다(회색 배지)."
     ),
     "e.g. CuRuSuSu or RcCuRcCu": "예: CuRuSuSu 또는 RcCuRcCu",
     "Analyze": "분석",
@@ -267,21 +282,12 @@ KO: dict[str, str] = {
     ): ("팬 메이드 플래너이며 공식과 무관합니다. 후원은 자유이며 서버와 개발을 돕습니다."),
     ("In production, set the environment variables"): ("운영 환경에서는 다음 환경 변수를 설정하면"),
     (
-        "Pattern DB entries stay as candidate metadata. Python strategy dry-runs decide whether a macro can actually produce an inventory-search action. "
-        "When a recipe has a valid graph_document with operations, the step list below is derived from the graph (green badge); otherwise it comes from DB step rows (gray badge)."
-    ): (
-        "패턴 DB 줄은 후보 메타데이터로만 남습니다. 파이썬 전략 드라이런이 매크로가 실제로 인벤토리 검색 동작을 만들 수 있는지 판별합니다. "
-        "레시피에 연산이 담긴 graph_document가 유효하면 아래 단계는 그래프에서 옵니다(녹색 배지); 아니면 DB 단계 행에서 옵니다(회색 배지)."
-    ),
+        "Enter a shape code to inspect its symbolic signature, rotation variants, and DB macro candidates."
+    ): ("도형 코드를 넣으면 기호 시그니처·회전 패턴·DB 매크로 후보를 함께 봅니다."),
     (
-        "Enter a shape code to inspect its symbolic signature, inventory-search skeleton, DB macro candidates, and strategy dry-run status."
+        "No active DB macro matched this signature. Load the seed fixture or add a MacroRecipe in admin."
     ): (
-        "도형 코드를 넣으면 기호 시그니처·인벤토리 검색 뼈대·DB 매크로 후보·전략 드라이런 상태를 함께 봅니다."
-    ),
-    (
-        "No active DB macro matched the inventory signature. Load the seed fixture or add a MacroRecipe in admin."
-    ): (
-        "인벤토리 시그니처와 맞는 활성 매크로가 DB에 없습니다. 시드 픽스처를 넣거나 관리자에서 MacroRecipe를 추가하세요."
+        "이 시그니처와 맞는 활성 매크로가 DB에 없습니다. 시드 픽스처를 넣거나 관리자에서 MacroRecipe를 추가하세요."
     ),
     (
         "Creates a draft row with the placeholder graph-draft pattern family (solver macro lookup uses exact pattern signature — drafts do not match real patterns until you assign a real family on the metadata page). "

@@ -7,6 +7,8 @@ from django_apps.shapez_solver.services.operation_semantics import apply_operati
 from django_apps.shapez_solver.services.recipe_graph_constants import (
     RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING,
     RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET,
+    RECIPE_GRAPH_DEFAULT_SOURCE_QUANTITY_FLUID,
+    RECIPE_GRAPH_DEFAULT_SOURCE_QUANTITY_MATERIAL,
 )
 from django_apps.shapez_solver.services.recipe_graph_recompute import (
     default_empty_graph_document,
@@ -910,3 +912,41 @@ def test_recompute_rejects_cycle() -> None:
     }
     _, warnings = recompute_graph_document(doc)
     assert any("cycle" in w.lower() for w in warnings)
+
+
+def test_validate_graph_document_defaults_source_quantity_material_and_fluid() -> None:
+    base = {"schema_version": 1, "edges": []}
+    mat = validate_graph_document(
+        {
+            **base,
+            "nodes": [
+                {
+                    "id": "sm",
+                    "kind": "shape",
+                    "role": "source",
+                    "shape_code": "CuCuCuCu",
+                    "x": 0,
+                    "y": 0,
+                },
+            ],
+        },
+    )
+    assert mat["nodes"][0]["quantity"] == RECIPE_GRAPH_DEFAULT_SOURCE_QUANTITY_MATERIAL
+
+    fl = validate_graph_document(
+        {
+            **base,
+            "nodes": [
+                {
+                    "id": "sf",
+                    "kind": "shape",
+                    "role": "source",
+                    "shape_code": "CrCrCrCr",
+                    "source_carrier": "fluid",
+                    "x": 0,
+                    "y": 0,
+                },
+            ],
+        },
+    )
+    assert fl["nodes"][0]["quantity"] == RECIPE_GRAPH_DEFAULT_SOURCE_QUANTITY_FLUID

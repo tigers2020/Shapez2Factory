@@ -1,6 +1,7 @@
 import { Handle, Position, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
 import { useCallback } from "react";
 
+import { defaultQuantityForShapeNodeData } from "../EditorFoundation/constants";
 import { getEffectiveOperationInputArity, getOperationOutputCount } from "../Operation/arity";
 import { RecipeShapePreview } from "../ShapeSprite/RecipeShapePreview";
 
@@ -96,7 +97,8 @@ export function ShapeNode(props: NodeProps) {
   const { data, id, selected } = props;
   const d = (data || {}) as ShapeNodeData;
   const code = String(d.shape_code ?? "");
-  const qty = typeof d.quantity === "number" ? d.quantity : 1;
+  const qty =
+    typeof d.quantity === "number" ? d.quantity : defaultQuantityForShapeNodeData(d);
   const role = typeof d.role === "string" ? d.role : "";
   const updateNodeInternals = useUpdateNodeInternals();
   const onPreviewDisplayReady = useCallback(() => {
@@ -241,7 +243,8 @@ export function IntermediateNode(props: NodeProps) {
   const { data, id, selected } = props;
   const d = (data || {}) as ShapeNodeData;
   const code = String(d.shape_code ?? "");
-  const qty = typeof d.quantity === "number" ? d.quantity : 1;
+  const qty =
+    typeof d.quantity === "number" ? d.quantity : defaultQuantityForShapeNodeData(d);
   const role = typeof d.role === "string" ? d.role : "intermediate";
   const updateNodeInternals = useUpdateNodeInternals();
   const onPreviewDisplayReady = useCallback(() => {
@@ -275,7 +278,8 @@ export function OutputNode(props: NodeProps) {
   const { data, id, selected } = props;
   const d = (data || {}) as ShapeNodeData;
   const code = String(d.shape_code ?? "");
-  const qty = typeof d.quantity === "number" ? d.quantity : 1;
+  const qty =
+    typeof d.quantity === "number" ? d.quantity : defaultQuantityForShapeNodeData(d);
   const role = typeof d.role === "string" ? d.role : "target";
   const updateNodeInternals = useUpdateNodeInternals();
   const onPreviewDisplayReady = useCallback(() => {

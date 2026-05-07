@@ -79,7 +79,8 @@ def _parse_single_pattern(raw_pattern: str) -> NormalizedShapePattern:
 
     layers: list[NormalizedShapeLayer] = []
     for layer_index, layer_str in enumerate(layer_specs):
-        cells = _parse_layer(layer_index, layer_str)
+        expanded = _expand_color_ink_shorthand_layer(layer_str, layer_index)
+        cells = _parse_layer(layer_index, expanded)
         layers.append(NormalizedShapeLayer(layer_index=layer_index, cells=cells))
 
     normalized_code = ":".join(_layer_to_code(layer) for layer in layers)
@@ -92,6 +93,27 @@ def _parse_single_pattern(raw_pattern: str) -> NormalizedShapePattern:
 
 def _layer_to_code(layer: NormalizedShapeLayer) -> str:
     return "".join(cell.raw_token for cell in layer.cells)
+
+
+def _expand_color_ink_shorthand_layer(layer_str: str, layer_index: int) -> str:
+    """``color-r`` → uniform ink layer ``-r-r-r-r`` (no geometric shape letter)."""
+    if len(layer_str) == 8:
+        return layer_str
+    low = layer_str.strip().lower()
+    prefix = "color-"
+    if not low.startswith(prefix) or len(low) != len(prefix) + 1:
+        raise ShapeCodeParseError(
+            f"layer {layer_index} must be 8 characters or {prefix}{{ink}} (one letter), "
+            f"got {layer_str!r}",
+            None,
+        )
+    ink = low[len(prefix) :]
+    if ink not in COLOR_KINDS or COLOR_KINDS[ink].empty:
+        raise ShapeCodeParseError(
+            f"unknown color ink {ink!r} in layer {layer_index}",
+            None,
+        )
+    return f"-{ink}" * 4
 
 
 def _parse_layer(layer_index: int, layer_str: str) -> tuple[NormalizedShapeCell, ...]:
@@ -171,13 +193,15 @@ def _validate_token_pair(
     shape_kind: ShapeKind,
     color_kind: ColorKind,
 ) -> None:
-    if shape_kind.empty != color_kind.empty:
+    if shape_kind.empty and not color_kind.empty:
+        return
+    if not shape_kind.empty and color_kind.empty:
         raise ShapeCodeParseError(
-            f"shape/color emptiness mismatch for token {token!r} "
+            f"non-empty shape requires a color for token {token!r} "
             f"in layer {layer_index} quadrant {quadrant}",
             None,
         )
-    if shape_kind.empty:
+    if shape_kind.empty and color_kind.empty:
         return
     if not shape_kind.colorable and color_kind.code != "u":
         raise ShapeCodeParseError(

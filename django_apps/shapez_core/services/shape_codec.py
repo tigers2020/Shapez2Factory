@@ -65,12 +65,16 @@ def normalize_shape(shape: Shape) -> Shape:
 
 def _part_from_cell(cell: NormalizedShapeCell) -> ShapePart:
     if cell.shape_code == "-":
-        return EMPTY_PART
+        if cell.color_code == "-":
+            return EMPTY_PART
+        return ShapePart(kind="-", color=cell.color_code, material="fluid_ink")
     material = "solid"
     if cell.shape_code == "P":
         material = "pin"
     elif cell.shape_code == "c":
         material = "crystal"
+    elif cell.shape_code == "t":
+        material = "fluid_tank"
     return ShapePart(kind=cell.shape_code, color=cell.color_code, material=material)
 
 
@@ -99,6 +103,8 @@ def _shape_kind(part: ShapePart) -> str:
         return "pin"
     if part.kind == "c":
         return "crystal"
+    if part.kind == "t":
+        return "fluid_tank"
     return {
         "C": "circle",
         "R": "rectangle",

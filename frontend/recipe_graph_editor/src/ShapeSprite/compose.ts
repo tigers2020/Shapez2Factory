@@ -81,7 +81,7 @@ export function atomicLayerGameCode(shapeCode: string, colorCode: string, quadra
   return slots.join("");
 }
 
-/** Manifest key: ``{8-char layer}:{renderer_version}`` (matches ``ShapePartSprite.sprite_key``). */
+/** Manifest key: ``{8-char layer}:{rv}`` for parts; ``color-{ink}:{rv}`` for paint-can ``t``. */
 export function shapePartSpriteKey(cell: Record<string, unknown>, rendererVersion: string): string {
   const shapeRaw = cell.shape_code;
   const ccRaw = cell.color_code;
@@ -97,6 +97,10 @@ export function shapePartSpriteKey(cell: Record<string, unknown>, rendererVersio
   } else if (typeof ccRaw === "number") {
     colorCode = String(ccRaw);
   }
+  const rv = typeof rendererVersion === "string" ? rendererVersion.trim() : "";
+  if (shapeCode === "t") {
+    return `color-${colorCode}:${rv || "v1"}`;
+  }
   const qiRaw = cell.quadrant_index;
   let qi = 0;
   if (typeof qiRaw === "number") {
@@ -105,7 +109,6 @@ export function shapePartSpriteKey(cell: Record<string, unknown>, rendererVersio
     qi = Number.parseInt(qiRaw, 10);
   }
   const qiSafe = Number.isFinite(qi) ? Math.min(3, Math.max(0, qi)) : 0;
-  const rv = typeof rendererVersion === "string" ? rendererVersion.trim() : "";
   const layer = atomicLayerGameCode(shapeCode, colorCode, qiSafe);
   return `${layer}:${rv || "v1"}`;
 }

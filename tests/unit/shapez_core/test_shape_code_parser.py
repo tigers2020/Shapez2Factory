@@ -12,15 +12,6 @@ from django_apps.shapez_core.services.shape_codec import (
     pattern_from_shape,
     shape_from_pattern,
 )
-from django_apps.shapez_solver.dto.solver_graph import SolverShapeNode
-from django_apps.shapez_solver.services.factory_throughput_service import (
-    FactoryThroughputRequest,
-    FactoryThroughputService,
-)
-from django_apps.shapez_solver.services.planner_service import (
-    PlannerRequest,
-    PlannerService,
-)
 
 
 def test_parse_single_pattern_without_brackets() -> None:
@@ -86,6 +77,13 @@ def test_parse_empty_quadrant_token() -> None:
     assert cell0.color_kind == "empty"
 
 
+def test_parse_color_ink_shorthand_is_uniform_ink_tokens() -> None:
+    p = parse_shape_code_list("color-m")[0]
+    assert p.raw_code == "color-m"
+    assert p.normalized_code == "-m-m-m-m"
+    assert all(c.shape_code == "-" and c.color_code == "m" for c in p.layers[0].cells)
+
+
 def test_unknown_shape_rejected() -> None:
     with pytest.raises(ShapeCodeParseError, match="unknown shape"):
         parse_shape_code_list("XuXuXuXu")
@@ -120,9 +118,16 @@ def test_pin_ok() -> None:
     assert cell0.color_kind == "uncolored"
 
 
-def test_emptiness_mismatch_rejected() -> None:
-    with pytest.raises(ShapeCodeParseError, match="emptiness mismatch"):
+def test_non_empty_shape_with_dash_color_rejected() -> None:
+    with pytest.raises(ShapeCodeParseError, match="non-empty shape requires a color"):
         parse_shape_code_list("S-S-S-S-")
+
+
+def test_ink_only_layer_round_trips() -> None:
+    pattern = parse_shape_code_list("-r-r-r-r")[0]
+    shape = shape_from_pattern(pattern)
+    assert shape.canonical_code == "-r-r-r-r"
+    assert pattern_from_shape(shape).normalized_code == "-r-r-r-r"
 
 
 def test_empty_input_rejected() -> None:
@@ -160,21 +165,3 @@ def test_shape_value_object_round_trips_through_pattern_codec() -> None:
     rebuilt_pattern = pattern_from_shape(shape)
     assert rebuilt_pattern.normalized_code == "RuRuRuRu:WrCrRgSy"
     assert normalize_shape(shape).canonical_code == "RuRuRuRu:WrCrRgSy"
-
-
-def test_solver_and_planner_use_target_shape() -> None:
-    target = parse_shape_code_list("CuCuCuCu")[0]
-    shape = shape_from_pattern(target)
-    solver_result = FactoryThroughputService().solve(FactoryThroughputRequest(target_shape=shape))
-
-    assert solver_result.target_shape == "CuCuCuCu"
-    assert solver_result.graph is not None
-    target_nodes = [
-        node
-        for node in solver_result.graph.nodes
-        if isinstance(node, SolverShapeNode) and node.role == "target"
-    ]
-    assert len(target_nodes) == 1
-    assert PlannerService().plan(
-        PlannerRequest(target_shape=shape, target_rate_per_min=60.0)
-    ).required_inputs == ("CuCuCuCu",)

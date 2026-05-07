@@ -183,25 +183,6 @@ def test_graph_markup_separates_multi_input_ports_by_lane() -> None:
     assert geometry_a["labelY"] != geometry_b["labelY"]
 
 
-def test_solver_graph_payload_renders_with_current_graph_markup() -> None:
-    from django.test import Client
-
-    response = Client().post("/api/solver/solve/", data={"code": "RcCuRcCu"})
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["found"] is True
-    graph = payload["graph"]
-    assert graph is not None
-
-    rendered = _render_graph_markup(cast(dict[str, object], graph))
-    html = rendered["html"]
-
-    assert "overflow-y-auto" not in html
-    assert " C " not in html
-    assert "data-graph-edge-label" in html
-
-
 def test_graph_markup_has_no_staff_wire_hit_layer_by_default() -> None:
     payload = _run_markup_probe()
     html = payload["html"]

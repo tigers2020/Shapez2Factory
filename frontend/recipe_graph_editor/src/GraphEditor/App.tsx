@@ -36,7 +36,10 @@ import {
 import { layoutNodesFromGraph } from "../RecipeGraph/autoLayout";
 import type { RecipeGraphClipboardPayload, RecipeGraphClipboardShortcutDepsNoScreen } from "../RecipeGraph/clipboard";
 import { cleanupAfterNodeRemovals } from "../RecipeGraph/nodeCleanup";
-import { pickCycledBaseFullSourceShapeCode } from "../EditorFoundation/constants";
+import {
+  DEFAULT_SOURCE_SHAPE_QUANTITY_MATERIAL,
+  pickCycledBaseFullSourceShapeCode,
+} from "../EditorFoundation/constants";
 import { ru } from "../EditorFoundation/recipeUiStrings";
 import { useRecipeGraphConnectionFeedback } from "../Hooks/useRecipeGraphConnectionFeedback";
 import { useRecipeGraphNotes } from "../Hooks/useRecipeGraphNotes";
@@ -276,7 +279,7 @@ export function GraphEditorApp({
           id,
           type: "shape",
           position: pos,
-          data: { shape_code: shapeCode, quantity: 1, role: "source" },
+          data: { shape_code: shapeCode, quantity: DEFAULT_SOURCE_SHAPE_QUANTITY_MATERIAL, role: "source" },
         },
       ];
     });
@@ -324,7 +327,7 @@ export function GraphEditorApp({
             id,
             type: "shape",
             position: { x: position.x, y: position.y },
-            data: { shape_code: shapeCode, quantity: 1, role: "source" },
+            data: { shape_code: shapeCode, quantity: DEFAULT_SOURCE_SHAPE_QUANTITY_MATERIAL, role: "source" },
           },
         ];
         queueMicrotask(() => {

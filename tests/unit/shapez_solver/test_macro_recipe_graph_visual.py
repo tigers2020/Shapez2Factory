@@ -7,6 +7,7 @@ from django_apps.shapez_solver.domain.operations import OperationType
 from django_apps.shapez_solver.dto.solver_graph import SolverShapeNode
 from django_apps.shapez_solver.ports.graph_preview import NoopGraphPreviewRenderer
 from django_apps.shapez_solver.services import macro_recipe_graph_visual
+from django_apps.shapez_solver.services.fluid_carrier_render_scene import FLUID_CARRIER_MESH_KEY
 from django_apps.shapez_solver.services.macro_recipe_graph_visual import (
     document_to_solver_graph,
     enrich_react_flow_with_macro_visual_previews,
@@ -333,5 +334,6 @@ def test_serialize_macro_recipe_visual_fluid_source_uses_tank_mesh() -> None:
     src = next(n for n in wire["nodes"] if n["id"] == "src_f")
     ps = src["preview_scene"]
     assert len(ps["cells"]) == 1
-    assert ps["cells"][0]["mesh_key"] == "default_fluid_tank_filled"
+    assert ps["cells"][0]["mesh_key"] == FLUID_CARRIER_MESH_KEY
+    assert ps["cells"][0]["shape_code"] == "t"
     assert ps["cells"][0]["material_key"] == "r"

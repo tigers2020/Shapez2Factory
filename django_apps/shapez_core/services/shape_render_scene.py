@@ -12,6 +12,7 @@ SHAPE_MESH_KEYS = {
     "S": "default_star",
     "W": "default_diamond",
     "P": "default_pin",
+    "t": "default_fluid_tank_vortex",
     "c": "default_crystal",
 }
 
@@ -42,9 +43,14 @@ def build_shape_render_scene(pattern: NormalizedShapePattern | Shape) -> ShapeRe
 
     for layer in normalized_pattern.layers:
         for cell in layer.cells:
-            if cell.shape_code == "-":
+            if cell.shape_code == "-" and cell.color_code == "-":
                 continue
 
+            mesh_key = (
+                SHAPE_MESH_KEYS["C"]
+                if cell.shape_code == "-"
+                else SHAPE_MESH_KEYS.get(cell.shape_code, "unknown")
+            )
             cells.append(
                 ShapeRenderCell(
                     layer_index=layer.layer_index,
@@ -54,7 +60,7 @@ def build_shape_render_scene(pattern: NormalizedShapePattern | Shape) -> ShapeRe
                     color_code=cell.color_code,
                     shape_kind=cell.shape_kind,
                     color_kind=cell.color_kind,
-                    mesh_key=SHAPE_MESH_KEYS.get(cell.shape_code, "unknown"),
+                    mesh_key=mesh_key,
                     material_key=cell.color_code,
                     transform_key=_transform_key(cell.position, layer.layer_index),
                 )

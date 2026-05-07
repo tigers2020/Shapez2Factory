@@ -11,6 +11,21 @@ export const COLOR_HEX = {
   w: 0xffffff,
 };
 
+/** Mirrors ``vendor/shapez-vortex/models/shapes/defaultFluidTank.gltf`` ``extras.script`` (255 RGB). */
+function rgb8(r, g, b) {
+  return (r << 16) | (g << 8) | b;
+}
+
+export const FLUID_TANK_VORTEX_SCRIPT_COLORS = {
+  r: rgb8(239, 68, 68),
+  g: rgb8(34, 197, 94),
+  b: rgb8(59, 130, 246),
+  c: rgb8(46, 196, 182),
+  m: rgb8(217, 70, 239),
+  y: rgb8(250, 204, 21),
+  w: rgb8(255, 255, 255),
+};
+
 export const MODEL_FILES = {
   default_rect: "ShapeDefaultR.gltf",
   default_circle: "ShapeDefaultC.gltf",
@@ -20,9 +35,14 @@ export const MODEL_FILES = {
   default_crystal: "ShapeDefaultC.gltf",
   default_fluid_tank: "ShapeDefaultFluidTank.gltf",
   default_fluid_tank_filled: "ShapeDefaultFluidTankFilled.gltf",
+  default_fluid_tank_vortex: "defaultFluidTank.gltf",
 };
 
-export const FLUID_TANK_CENTERED_MESH_KEYS = new Set(["default_fluid_tank_filled", "default_fluid_tank"]);
+export const FLUID_TANK_CENTERED_MESH_KEYS = new Set([
+  "default_fluid_tank_filled",
+  "default_fluid_tank",
+  "default_fluid_tank_vortex",
+]);
 
 export const BASE_RADIUS = 0.62;
 export const BASE_HEIGHT = 0.08;

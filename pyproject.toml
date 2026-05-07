@@ -63,6 +63,7 @@ module = [
     "django_apps.shapez_core.views",
     "django_apps.shapez_asteroid.admin",
     "django_apps.shapez_asteroid.apps",
+    "django_apps.shapez_asteroid.models",
     "django_apps.shapez_asteroid.urls",
     "django_apps.shapez_asteroid.views",
     "django_apps.shapez_solver.admin",

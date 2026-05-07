@@ -4,6 +4,8 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 
 **역할**: 짧은 헌법 + **매뉴얼 라우팅** + 완료 기준. 긴 설명·persona는 넣지 않는다. 상세는 [`documents/ai/manuals/`](documents/ai/manuals/)와 [`.cursor/rules/`](.cursor/rules/root.mdc)를 읽는다.
 
+**Cursor 하네스(요약)**: 역할 카드는 [`persona/`](persona/), 절차·규칙은 매뉴얼 + `.cursor/rules/*.mdc`, 단계·핸드오프는 [`protocols/README.md`](protocols/README.md)가 정본이다. 채팅에서 전체 워크플로를 한꺼번에 적용할 때는 선택적으로 프로젝트 Skill [`.cursor/skills/shapez2-harness/SKILL.md`](.cursor/skills/shapez2-harness/SKILL.md)를 연다.
+
 ---
 
 ## Core Rules (항상)

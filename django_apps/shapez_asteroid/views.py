@@ -6,15 +6,17 @@ from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 
-from django_apps.shapez_asteroid.services.blueprint_map_summary import (
-    list_island_entry_plot_points,
-    list_island_patch_fill_points,
-    summarize_island_entries_map,
+from django_apps.shapez_asteroid.services.asteroid_map_cells import (
+    list_map_cells_json,
+    parse_bbox,
 )
-from django_apps.shapez_asteroid.services.style_classifier import asteroid_map_style_catalog
+from django_apps.shapez_asteroid.services.blueprint_map_summary import (
+    build_copy_preview_mining,
+)
 from django_apps.shapez_asteroid.services.copy_preview_debug_dump import (
     dump_copy_preview_debug,
 )
+from django_apps.shapez_asteroid.services.style_classifier import asteroid_map_style_catalog
 from django_apps.shapez_core.services.shapez_copy_decode import (
     ShapezCopyDecodeError,
     decode_shapez2_copy,
@@ -24,6 +26,16 @@ from django_apps.shapez_core.services.shapez_copy_decode import (
 @require_GET
 def health(request: HttpRequest) -> JsonResponse:
     return JsonResponse({"status": "ok"})
+
+
+@require_GET
+def map_cells(request: HttpRequest) -> JsonResponse:
+    err, bbox = parse_bbox(request.GET)
+    if err is not None:
+        return JsonResponse(err, status=400)
+    assert bbox is not None
+    x_min, x_max, y_min, y_max = bbox
+    return JsonResponse(list_map_cells_json(x_min, x_max, y_min, y_max))
 
 
 @require_POST
@@ -46,15 +58,12 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
     if debug_dir:
         dump_copy_preview_debug(code, decoded, debug_dir)
 
-    summary = summarize_island_entries_map(decoded)
-    plot_points = list_island_entry_plot_points(decoded)
-    patch_fill_points = list_island_patch_fill_points(decoded)
+    summary, mining_map = build_copy_preview_mining(decoded)
     return JsonResponse(
         {
             "ok": True,
             "summary": summary,
-            "plot_points": plot_points,
-            "patch_fill_points": patch_fill_points,
+            "mining_map": mining_map,
             "style_catalog": asteroid_map_style_catalog(),
         }
     )

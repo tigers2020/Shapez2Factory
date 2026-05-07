@@ -10,6 +10,19 @@
 
 문서 운영 예시(리서치·플랜·메모): [documents/research_pipeline_update_2026-04-17.md](../documents/research_pipeline_update_2026-04-17.md), [documents/plan_pipeline_update_2026-04-17.md](../documents/plan_pipeline_update_2026-04-17.md), [documents/CURSOR_MEMO.md](../documents/CURSOR_MEMO.md).
 
+## 하네스 엔지니어링 4요소와 본 레포 (Cursor)
+
+외부 예시는 Claude Code용 `.claude/agents/`·`.claude/skills/`로 역할과 절차를 나눈다([dingcodingco/youtube-minsim-with-harness](https://github.com/dingcodingco/youtube-minsim-with-harness)). **Cursor에서는 아래처럼 같은 4요소를 다른 파일로 둔다.**
+
+| 4요소 | 의미 | 본 레포에서의 위치 |
+|--------|------|---------------------|
+| 에이전트 정의 | 누가 무엇을 맡는가 | [persona/*.md](../persona/) 카드 |
+| 스킬(절차) | 어떻게 일하는가 | [documents/ai/manuals/](../documents/ai/manuals/) + [.cursor/rules/*.mdc](../.cursor/rules/) (항상 적용 규칙·Persona Dialogue) |
+| 오케스트레이션 | 단계·핸드오프 | 본 문서 **10단계**·아래 Mermaid |
+| 품질 게이트 | 경계·자동 검증 | **7~10단계**(리뷰어 → QA → 렉스 하네스 → 시몬 최종·문서) |
+
+선택: 채팅에서 절차를 한 번에 불러올 때는 프로젝트 Skill [`.cursor/skills/shapez2-harness/SKILL.md`](../.cursor/skills/shapez2-harness/SKILL.md)를 `@shapez2-harness` 등으로 연다.
+
 ## 기획과 코딩의 분리 ([AGENTS.md](../AGENTS.md))
 
 1. **리서치**: 관련 코드·규칙을 읽고 조사 메모를 [documents/](../documents/)에 남긴다.
@@ -31,7 +44,7 @@
 6. **개발팀** — Persona Dialogue **3단계**로 구현. 레이어는 [architecture.mdc](../.cursor/rules/architecture.mdc). 도미닉·유리·아다·지나가 각 레이어에서 동시에 움직인다. → [.cursor/rules/persona-dialogue.mdc](../.cursor/rules/persona-dialogue.mdc)
 7. **리뷰어(유리 주도, 시몬 보조)** — **기획 대비 구현·계약 정합성** 점검. 플랜·포트·유스케이스와의 일치를 본다. 스펙·코드 정합 문제를 찾고 수정 루프를 돌린다.
 8. **QA(테스)** — **실제 동작·시나리오·경계값·이상 입력**을 테스트 시트·증거(로그/캡처) 기반으로 검증. → [persona/tess.md](../persona/tess.md)
-9. **하네스(렉스)** — **자동 파이프라인**(`pytest` → `ruff check .` → `mypy src` → `black .`). 실패 시 담당 레이어로 **강제 반복**. → [persona/rex.md](../persona/rex.md)
+9. **하네스(렉스)** — **자동 파이프라인**(`pytest` → `ruff check .` → `mypy .` → `black .`). 실패 시 담당 레이어로 **강제 반복**. → [persona/rex.md](../persona/rex.md)
 10. **최종 디렉터(시몬) → 위키** — 하네스 통과 후에도 **의도·스코프**를 최종 점검하고, 구조·결정 요약을 [documents/](../documents/)에 동기화해 다음 작업의 맥락 비용을 낮춘다.
 
 한 줄 정리: **3단계 Persona Dialogue는 6번(구현) 안에서만** 적용한다. 1~5는 설계·승인, 7~10은 리뷰·검증·자동화·클로징이다.

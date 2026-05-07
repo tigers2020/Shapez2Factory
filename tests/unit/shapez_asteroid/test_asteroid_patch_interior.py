@@ -3,7 +3,7 @@ from __future__ import annotations
 from django_apps.shapez_asteroid.services.asteroid_patch_interior import (
     compute_patch_interior_cells,
 )
-from django_apps.shapez_asteroid.services.blueprint_map_summary import list_island_patch_fill_points
+from django_apps.shapez_asteroid.services.blueprint_map_summary import list_island_mining_map
 
 
 def test_interior_closed_3x3_ring() -> None:
@@ -81,7 +81,7 @@ def test_interior_wide_chamber_keeps_one_cell_thick_core() -> None:
     assert len(interior) == 3 * 5  # x=1..3, y=1..5 void
 
 
-def test_list_island_patch_fill_ring() -> None:
+def test_list_island_mining_map_includes_inferred_ring() -> None:
     t = "Layout_ShapeMiner"
     entries = [
         {"X": 10, "Y": 10, "T": t},
@@ -94,6 +94,6 @@ def test_list_island_patch_fill_ring() -> None:
         {"X": 12, "Y": 12, "T": t},
     ]
     decoded = {"BP": {"Entries": entries}}
-    assert list_island_patch_fill_points(decoded) == [
-        {"x": 11, "y": 11, "t": None, "style": "patch_interior"},
-    ]
+    m = list_island_mining_map(decoded)
+    assert {"x": 11, "y": 11, "role": "inferred", "surface": "shape"} in m
+    assert sum(1 for c in m if c.get("role") == "occupied") == 8

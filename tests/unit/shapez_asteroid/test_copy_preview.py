@@ -50,12 +50,12 @@ def test_copy_preview_success() -> None:
         "y_min": 2,
         "y_max": 2,
     }
-    assert body["plot_points"] == [
-        {"x": 1, "y": 2, "t": "Layout_ShapeMiner", "style": "miner"},
+    assert body["mining_map"] == [
+        {"x": 1, "y": 2, "role": "occupied", "surface": "shape", "t": "Layout_ShapeMiner"},
     ]
-    assert body["patch_fill_points"] == []
     assert body["style_catalog"] == asteroid_map_style_catalog()
-    assert "patch_interior" in body["style_catalog"]
+    assert "occupied" in body["style_catalog"]
+    assert "inferred" in body["style_catalog"]
 
 
 def test_copy_preview_unknown_t_zero_extraction() -> None:
@@ -70,8 +70,7 @@ def test_copy_preview_unknown_t_zero_extraction() -> None:
     body = response.json()
     assert body["ok"] is True
     assert body["summary"]["entry_count"] == 0
-    assert body["plot_points"] == []
-    assert body["patch_fill_points"] == []
+    assert body["mining_map"] == []
     assert "style_catalog" in body
 
 

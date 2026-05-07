@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.blueprint_map_summary import (
-    list_island_entry_plot_points,
+    list_island_mining_map,
     summarize_island_entries_map,
 )
 from django_apps.shapez_asteroid.services.style_classifier import PlotStyle, classify_layout_type
@@ -39,13 +39,13 @@ def test_unknown_type_yields_zero_extraction() -> None:
         "y_min": None,
         "y_max": None,
     }
-    assert list_island_entry_plot_points(decoded) == []
+    assert list_island_mining_map(decoded) == []
 
 
 def test_symmetric_layout_non_extraction_yields_empty() -> None:
     decoded = {"BP": {"Entries": [{"X": -1, "Y": 0}, {"X": 1, "Y": 0}]}}
     assert summarize_island_entries_map(decoded)["entry_count"] == 0
-    assert list_island_entry_plot_points(decoded) == []
+    assert list_island_mining_map(decoded) == []
 
 
 def test_negative_coords_extraction() -> None:
@@ -124,7 +124,7 @@ def test_non_dict_entry_ignored_for_bounds() -> None:
     }
 
 
-def test_list_plot_points_unknown_layouts() -> None:
+def test_list_mining_map_unknown_layouts() -> None:
     decoded = {
         "BP": {
             "Entries": [
@@ -134,15 +134,15 @@ def test_list_plot_points_unknown_layouts() -> None:
             ]
         }
     }
-    assert list_island_entry_plot_points(decoded) == []
+    assert list_island_mining_map(decoded) == []
 
 
-def test_list_plot_points_non_string_t_unknown() -> None:
+def test_list_mining_map_non_string_t_unknown() -> None:
     decoded = {"BP": {"Entries": [{"X": 5, "Y": 0, "T": 42}]}}
-    assert list_island_entry_plot_points(decoded) == []
+    assert list_island_mining_map(decoded) == []
 
 
-def test_x_zero_excluded_from_bounds_and_plot() -> None:
+def test_x_zero_excluded_from_bounds_and_map() -> None:
     decoded = {
         "BP": {
             "Entries": [
@@ -159,9 +159,9 @@ def test_x_zero_excluded_from_bounds_and_plot() -> None:
         "y_min": 1,
         "y_max": 1,
     }
-    assert list_island_entry_plot_points(decoded) == [
-        {"x": -2, "y": 1, "t": "Layout_ShapeMiner", "style": "miner"},
-        {"x": 3, "y": 1, "t": "Layout_ShapeMiner", "style": "miner"},
+    assert list_island_mining_map(decoded) == [
+        {"x": -2, "y": 1, "role": "occupied", "surface": "shape", "t": "Layout_ShapeMiner"},
+        {"x": 3, "y": 1, "role": "occupied", "surface": "shape", "t": "Layout_ShapeMiner"},
     ]
 
 
@@ -174,10 +174,10 @@ def test_only_x_zero_entries_yields_no_bounds() -> None:
         "y_min": None,
         "y_max": None,
     }
-    assert list_island_entry_plot_points(decoded) == []
+    assert list_island_mining_map(decoded) == []
 
 
-def test_belt_pipe_not_in_plot_fluid_extension_only() -> None:
+def test_belt_pipe_not_in_map_fluid_extension_only() -> None:
     decoded = {
         "BP": {
             "Entries": [
@@ -187,19 +187,20 @@ def test_belt_pipe_not_in_plot_fluid_extension_only() -> None:
             ]
         }
     }
-    pts = list_island_entry_plot_points(decoded)
+    pts = list_island_mining_map(decoded)
     assert len(pts) == 1
     assert pts[0] == {
         "x": 3,
         "y": 0,
+        "role": "occupied",
+        "surface": "fluid",
         "t": "Layout_FluidMinerExtension",
-        "style": "fluid_extension",
         "r": 2,
     }
     assert summarize_island_entries_map(decoded)["entry_count"] == 1
 
 
-def test_plot_style_extractor_vs_fluid_extension() -> None:
+def test_unified_map_extractor_and_extension_same_role() -> None:
     decoded = {
         "BP": {
             "Entries": [
@@ -208,26 +209,31 @@ def test_plot_style_extractor_vs_fluid_extension() -> None:
             ]
         }
     }
-    pts = list_island_entry_plot_points(decoded)
-    assert pts[0]["style"] == "extractor"
-    assert pts[1]["style"] == "fluid_extension"
-    assert list_island_entry_plot_points({}) == []
+    pts = list_island_mining_map(decoded)
+    assert pts[0]["role"] == "occupied"
+    assert pts[1]["role"] == "occupied"
+    assert pts[0]["surface"] == "fluid"
+    assert pts[1]["surface"] == "fluid"
+    assert pts[0]["t"] == "Layout_FluidExtractor"
+    assert pts[1]["t"] == "Layout_FluidMinerExtension"
+    assert list_island_mining_map({}) == []
 
 
-def test_plot_style_shape_miner() -> None:
+def test_shape_miner_on_map() -> None:
     decoded = {"BP": {"Entries": [{"X": 4, "Y": 0, "T": "Layout_ShapeMiner", "R": 1}]}}
-    assert list_island_entry_plot_points(decoded) == [
-        {"x": 4, "y": 0, "t": "Layout_ShapeMiner", "style": "miner", "r": 1},
+    assert list_island_mining_map(decoded) == [
+        {"x": 4, "y": 0, "role": "occupied", "surface": "shape", "t": "Layout_ShapeMiner", "r": 1},
     ]
 
 
-def test_shape_miner_extension_is_extension_not_miner() -> None:
+def test_shape_miner_extension_classified_for_filter_only() -> None:
     decoded = {"BP": {"Entries": [{"X": 1, "Y": 0, "T": "Layout_ShapeMinerExtension"}]}}
-    pts = list_island_entry_plot_points(decoded)
+    pts = list_island_mining_map(decoded)
     assert len(pts) == 1
-    assert pts[0]["style"] == "extension"
+    assert pts[0]["role"] == "occupied"
+    assert pts[0]["surface"] == "shape"
+    assert pts[0]["t"] == "Layout_ShapeMinerExtension"
     assert classify_layout_type("Layout_ShapeMinerExtension") == PlotStyle.extension
-    assert classify_layout_type("Layout_ShapeMinerExtension") != PlotStyle.miner
 
 
 def test_fluid_miner_layout_before_fluid_extension_prefix() -> None:
@@ -235,10 +241,12 @@ def test_fluid_miner_layout_before_fluid_extension_prefix() -> None:
     assert classify_layout_type("Layout_FluidMinerExtension") == PlotStyle.fluid_extension
 
 
-def test_plot_style_fluid_pump_maps_extractor() -> None:
+def test_fluid_pump_maps_extraction_filter() -> None:
     decoded = {"BP": {"Entries": [{"X": 2, "Y": 1, "T": "Layout_FluidPump", "R": 0}]}}
-    pts = list_island_entry_plot_points(decoded)
-    assert pts[0]["style"] == "extractor"
+    pts = list_island_mining_map(decoded)
+    assert pts[0]["role"] == "occupied"
+    assert pts[0]["surface"] == "fluid"
+    assert pts[0]["t"] == "Layout_FluidPump"
 
 
 def test_foundation_not_extraction() -> None:
@@ -250,12 +258,56 @@ def test_foundation_not_extraction() -> None:
             ]
         }
     }
-    assert list_island_entry_plot_points(decoded) == []
+    assert list_island_mining_map(decoded) == []
     assert summarize_island_entries_map(decoded)["entry_count"] == 0
 
 
-def test_booster_extraction() -> None:
+def test_booster_on_map() -> None:
     decoded = {"BP": {"Entries": [{"X": 1, "Y": 2, "T": "Layout_SomeBoost_Module"}]}}
-    pts = list_island_entry_plot_points(decoded)
+    pts = list_island_mining_map(decoded)
     assert len(pts) == 1
-    assert pts[0]["style"] == "booster"
+    assert pts[0]["role"] == "occupied"
+    assert pts[0]["surface"] == "shape"
+
+
+def test_inferred_patch_surface_follows_fluid_if_any_fluid_miner() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 1, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 1, "T": "Layout_FluidMiner"},
+                {"X": 3, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 2, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 2, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 3, "T": "Layout_ShapeMiner"},
+            ]
+        }
+    }
+    m = list_island_mining_map(decoded)
+    inf = [c for c in m if c.get("role") == "inferred"]
+    assert len(inf) == 1
+    assert inf[0]["surface"] == "fluid"
+
+
+def test_duplicate_coords_last_entry_wins() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 5, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 5, "Y": 1, "T": "Layout_FluidExtractor", "R": 2},
+            ]
+        }
+    }
+    assert summarize_island_entries_map(decoded)["entry_count"] == 1
+    assert list_island_mining_map(decoded) == [
+        {
+            "x": 5,
+            "y": 1,
+            "role": "occupied",
+            "surface": "fluid",
+            "t": "Layout_FluidExtractor",
+            "r": 2,
+        },
+    ]

@@ -1,4 +1,4 @@
-"""Blueprint entry ``T`` → plot style for asteroid extraction semantic map."""
+"""Blueprint entry ``T`` → layout class for filtering mining-relevant BP rows."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ class PlotStyle(StrEnum):
     miner = "miner"
     extractor = "extractor"
     booster = "booster"
-    patch_interior = "patch_interior"
     belt = "belt"
     pipe = "pipe"
     platform = "platform"
@@ -36,14 +35,11 @@ EXTRACTION_STYLES: frozenset[PlotStyle] = frozenset(
     }
 )
 
-STYLE_METADATA: dict[PlotStyle, dict[str, str]] = {
-    PlotStyle.fluid_miner: {"color": "#4ea1ff", "legend_group": "fluid"},
-    PlotStyle.fluid_extension: {"color": "#6bb8ff", "legend_group": "fluid"},
-    PlotStyle.extractor: {"color": "#3d8dff", "legend_group": "fluid"},
-    PlotStyle.miner: {"color": "#ff6464", "legend_group": "shape"},
-    PlotStyle.extension: {"color": "#ff8d8d", "legend_group": "shape"},
-    PlotStyle.booster: {"color": "#b26bff", "legend_group": "boost"},
-    PlotStyle.patch_interior: {"color": "#38bdf8", "legend_group": "patch"},
+# Single fluid-mining tile look for all map cells (blueprint + inferred interior).
+_FLUID_MINING_TILE: dict[str, str] = {"color": "#4f8fc4", "opacity": "0.52"}
+MINING_MAP_STYLE_CATALOG: dict[str, dict[str, str]] = {
+    "occupied": dict(_FLUID_MINING_TILE),
+    "inferred": dict(_FLUID_MINING_TILE),
 }
 
 
@@ -78,20 +74,7 @@ def is_extraction_style(style: PlotStyle | None) -> bool:
     return style is not None and style in EXTRACTION_STYLES
 
 
-def extraction_style_catalog() -> dict[str, dict[str, str]]:
-    """JSON-serializable palette for extraction ``PlotStyle`` values only."""
-
-    return {
-        style.value: dict(meta)
-        for style, meta in STYLE_METADATA.items()
-        if style in EXTRACTION_STYLES
-    }
-
-
 def asteroid_map_style_catalog() -> dict[str, dict[str, str]]:
-    """Palette for map rendering: extraction buildings + inferred patch interior."""
+    """Palette for unified mining map roles (``occupied`` / ``inferred``)."""
 
-    out = extraction_style_catalog()
-    if PlotStyle.patch_interior in STYLE_METADATA:
-        out[PlotStyle.patch_interior.value] = dict(STYLE_METADATA[PlotStyle.patch_interior])
-    return out
+    return {k: dict(v) for k, v in MINING_MAP_STYLE_CATALOG.items()}

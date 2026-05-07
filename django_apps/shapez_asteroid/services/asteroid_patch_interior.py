@@ -134,20 +134,16 @@ def compute_patch_interior_cells(
             outside.add((nx, ny))
             q.append((nx, ny))
 
-    cand: set[tuple[int, int]] = set()
+    interior: list[tuple[int, int]] = []
     for x in range(x_min, x_max + 1):
         for y in range(y_min, y_max + 1):
             if (x, y) in occupied or (x, y) in outside:
                 continue
-            cand.add((x, y))
+            if any((x + dx, y + dy) in outside for dx, dy in _NEI4):
+                continue
+            if _slit_touching_outside((x, y), occupied, outside):
+                continue
+            interior.append((x, y))
 
-    cand -= {
-        c
-        for c in cand
-        if any((c[0] + dx, c[1] + dy) in outside for dx, dy in _NEI4)
-    }
-
-    cand -= {c for c in cand if _slit_touching_outside(c, occupied, outside)}
-
-    interior = sorted(cand, key=lambda c: (c[1], c[0]))
+    interior.sort(key=lambda c: (c[1], c[0]))
     return interior

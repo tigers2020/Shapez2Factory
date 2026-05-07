@@ -1,10 +1,10 @@
-"""Summarize 2D extraction map from decoded Shapez 2 copy payloads (island BP.Entries).
+"""Summarize 2D asteroid mining coordinates from decoded Shapez 2 copy payloads (island BP.Entries).
 
-Only **extraction-relevant** entries appear in bounds and plot (miners, extensions, pumps,
-extractors, boosters). Transport (belt, pipe) and foundations are classified but filtered out.
+Mining-relevant entries (miners, extensions, pumps, extractors, boosters) form **one map**
+with ``role: "occupied"``. Enclosed voids inferred from that perimeter use ``role: "inferred"``.
 
-Layout math assumes **no placement at X == 0**: entries with ``X == 0`` are ignored.
-See .cursor/rules/architecture.mdc (Asteroid grid).
+Transport (belt, pipe) and foundations are ignored. Layout math assumes **no placement at X == 0**:
+entries with ``X == 0`` are skipped.
 """
 
 from __future__ import annotations
@@ -15,23 +15,47 @@ from django_apps.shapez_asteroid.services.asteroid_patch_interior import (
     compute_patch_interior_cells,
 )
 from django_apps.shapez_asteroid.services.style_classifier import (
-    PlotStyle,
     classify_layout_type,
     is_extraction_style,
 )
 
 
 def summarize_island_entries_map(decoded: dict[str, Any]) -> dict[str, Any]:
-    """Return extraction-only entry count and X/Y bounds for ``BP["Entries"]``."""
+    """Return mining-only entry count and X/Y bounds for ``BP["Entries"]``."""
 
-    cells = _collect_extraction_cells(decoded)
-    if not cells:
+    return _summary_from_rows(_mining_occupied_rows(decoded))
+
+
+def list_island_mining_map(decoded: dict[str, Any]) -> list[dict[str, Any]]:
+    """Single asteroid mining coordinate map: occupied blueprint cells + inferred interior.
+
+    Each item has ``x``, ``y``, ``role`` (``"occupied"`` | ``"inferred"``), ``surface``
+    (``"shape"`` | ``"fluid"``) from layout ``T`` substrings. Occupied rows may include ``t``
+    and ``r`` when present in the blueprint.
+    """
+
+    return _mining_map_from_rows(_mining_occupied_rows(decoded))
+
+
+def build_copy_preview_mining(
+    decoded: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """One BP scan: summary + unified mining map (for copy-preview API)."""
+
+    rows = _mining_occupied_rows(decoded)
+    return _summary_from_rows(rows), _mining_map_from_rows(rows)
+
+
+def _summary_from_rows(
+    rows: list[tuple[int, int, str | None, int | None]],
+) -> dict[str, Any]:
+    if not rows:
         return _empty_summary(0)
 
-    xs = [c[0] for c in cells]
-    ys = [c[1] for c in cells]
+    xs = [c[0] for c in rows]
+    ys = [c[1] for c in rows]
     return {
-        "entry_count": len(cells),
+        "entry_count": len(rows),
         "x_min": min(xs),
         "x_max": max(xs),
         "y_min": min(ys),
@@ -39,43 +63,68 @@ def summarize_island_entries_map(decoded: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def list_island_entry_plot_points(decoded: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return extraction-only plot points (non-zero ``X``).
+def _mining_map_from_rows(
+    rows: list[tuple[int, int, str | None, int | None]],
+) -> list[dict[str, Any]]:
+    if not rows:
+        return []
 
-    Each item includes ``x``, ``y``, ``t``, ``style``, and optional ``r``.
-    """
-
+    dominant = _dominant_mining_surface(rows)
+    occupied_set = {(x, y) for x, y, _, _ in rows}
     out: list[dict[str, Any]] = []
-    for x_val, y_val, t_str, style, r_val in _collect_extraction_cells(decoded):
-        row: dict[str, Any] = {
-            "x": x_val,
-            "y": y_val,
-            "t": t_str,
-            "style": style.value,
-        }
+
+    for x, y in compute_patch_interior_cells(occupied_set):
+        out.append({"x": x, "y": y, "role": "inferred", "surface": dominant})
+
+    for x, y, t_str, r_val in rows:
+        surf = _occupied_surface(t_str, dominant)
+        row: dict[str, Any] = {"x": x, "y": y, "role": "occupied", "surface": surf}
+        if t_str is not None:
+            row["t"] = t_str
         if r_val is not None:
             row["r"] = r_val
         out.append(row)
+
     return out
 
 
-def list_island_patch_fill_points(decoded: dict[str, Any]) -> list[dict[str, Any]]:
-    """Inferred patch interior cells (no BP entry); style ``patch_interior``."""
+def _surface_hint_from_layout_type(t: str | None) -> str | None:
+    """Rough shape vs fluid hint from blueprint ``T`` (substring)."""
 
-    cells = _collect_extraction_cells(decoded)
-    if not cells:
-        return []
-    occupied = {(c[0], c[1]) for c in cells}
-    style_val = PlotStyle.patch_interior.value
-    return [
-        {"x": x, "y": y, "t": None, "style": style_val}
-        for x, y in compute_patch_interior_cells(occupied)
-    ]
+    if not t:
+        return None
+    low = t.lower()
+    if "fluid" in low or "pump" in low:
+        return "fluid"
+    if "shape" in low:
+        return "shape"
+    return None
 
 
-def _collect_extraction_cells(
+def _dominant_mining_surface(
+    rows: list[tuple[int, int, str | None, int | None]],
+) -> str:
+    """Patch-wide surface for inferred cells; prefers fluid if any fluid mining layout."""
+
+    hints: list[str] = []
+    for _x, _y, t_str, _r in rows:
+        h = _surface_hint_from_layout_type(t_str)
+        if h:
+            hints.append(h)
+    if "fluid" in hints:
+        return "fluid"
+    if "shape" in hints:
+        return "shape"
+    return "shape"
+
+
+def _occupied_surface(t_str: str | None, dominant: str) -> str:
+    return _surface_hint_from_layout_type(t_str) or dominant
+
+
+def _mining_occupied_rows(
     decoded: dict[str, Any],
-) -> list[tuple[int, int, str | None, PlotStyle, int | None]]:
+) -> list[tuple[int, int, str | None, int | None]]:
     bp = decoded.get("BP")
     if not isinstance(bp, dict):
         return []
@@ -83,7 +132,8 @@ def _collect_extraction_cells(
     raw_entries = bp.get("Entries")
     entries: list[Any] = raw_entries if isinstance(raw_entries, list) else []
 
-    result: list[tuple[int, int, str | None, PlotStyle, int | None]] = []
+    # Last occurrence per (x, y) wins; deterministic order by (y, x) for output.
+    by_coord: dict[tuple[int, int], tuple[str | None, int | None]] = {}
     for item in entries:
         if not isinstance(item, dict):
             continue
@@ -103,10 +153,13 @@ def _collect_extraction_cells(
         style = classify_layout_type(t_str)
         if not is_extraction_style(style):
             continue
-        assert style is not None
         r_val = _int_or_none(item.get("R"))
-        result.append((x_val, y_val, t_str, style, r_val))
-    return result
+        by_coord[(x_val, y_val)] = (t_str, r_val)
+
+    return sorted(
+        ((x, y, t, r) for (x, y), (t, r) in by_coord.items()),
+        key=lambda row: (row[1], row[0]),
+    )
 
 
 def _empty_summary(entry_count: int) -> dict[str, Any]:

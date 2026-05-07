@@ -16,4 +16,19 @@
     max-width: 12rem;
     margin-inline: auto;
   }
+
+  /* Support / BCH·ETH: card + address row width (see support_crypto_tab_panel.html) */
+  .support-crypto-card-stack {
+    @apply mx-auto mt-5 w-2/3 max-w-full space-y-4;
+  }
+
+  /* Support / Ko-fi: dark shell; iframe content is still Ko-fi (light). color-scheme avoids halo on dark pages. */
+  .support-kofi-embed-shell {
+    @apply bg-slate-900;
+  }
+
+  .support-kofi-embed-frame {
+    @apply block w-full border-0 bg-transparent;
+    color-scheme: light;
+  }
 }

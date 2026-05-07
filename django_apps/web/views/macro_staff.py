@@ -347,8 +347,12 @@ def macro_pattern_staff_api_recipe_graph_recompute(request: HttpRequest, pk: int
             steps_synced = sync_macro_recipe_steps_from_graph_document(locked, doc)
             apply_graph_derived_catalog_fields(locked, doc)
     renderer = get_graph_preview_renderer()
+    # Recipe graph tiles use client-side sprite composition + preview_scene; do not
+    # spawn Playwright PNG renders on every recompute (sync_png=False → render_cached_only).
     try:
-        visual_graph = serialize_macro_recipe_visual(doc, preview_renderer=renderer)
+        visual_graph = serialize_macro_recipe_visual(
+            doc, preview_renderer=renderer, sync_png=False
+        )
     except (ValueError, TypeError, KeyError):
         visual_graph = None
     issues = validate_recipe_graph_context(

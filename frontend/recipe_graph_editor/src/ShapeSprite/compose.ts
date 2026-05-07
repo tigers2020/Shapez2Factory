@@ -182,21 +182,34 @@ export function sortCellsForStackedOverlay(cells: Record<string, unknown>[]): Re
   });
 }
 
+/** Align with ``MAX_GRAPH_SHAPE_LAYERS_PER_PATTERN`` (recipe graph): layers 0..3, ≤16 cells. */
+const MAX_TILE_SCENE_LAYER_INDEX = 3;
+const MAX_TILE_SCENE_CELLS = (MAX_TILE_SCENE_LAYER_INDEX + 1) * 4;
+
 export function canComposeTileScene(cells: Record<string, unknown>[]): boolean {
-  if (cells.length === 0 || cells.length > 4) {
+  if (cells.length === 0 || cells.length > MAX_TILE_SCENE_CELLS) {
     return false;
   }
-  const seen = new Set<number>();
+  const seen = new Set<string>();
   for (const cell of cells) {
     const layer = Number(cell.layer_index ?? 0);
-    if (layer !== 0) {
-      return false;
-    }
     const qi = Number(cell.quadrant_index ?? 0);
-    if (seen.has(qi)) {
+    if (
+      !Number.isFinite(layer) ||
+      !Number.isFinite(qi) ||
+      !Number.isInteger(layer) ||
+      !Number.isInteger(qi)
+    ) {
       return false;
     }
-    seen.add(qi);
+    if (layer < 0 || layer > MAX_TILE_SCENE_LAYER_INDEX || qi < 0 || qi > 3) {
+      return false;
+    }
+    const key = `${layer}:${qi}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
   }
   return true;
 }

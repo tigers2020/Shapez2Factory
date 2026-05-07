@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { macroGraphDebug } from "../EditorFoundation/macroGraphDebug";
 import {
   TILE_PREVIEW_PX,
   canComposeTileScene,
@@ -12,6 +13,11 @@ import {
   shapePartSpriteKey,
   sortCellsForStackedOverlay,
 } from "./compose";
+import {
+  ShapeGltfMountTile,
+  previewSceneHasDepthLayers,
+  shapeGltfBridgeReady,
+} from "./ShapeGltfMountTile";
 
 type TileLayerRow = { key: string; url: string; zIndex: number; scale: number };
 
@@ -43,7 +49,24 @@ export function ShapePartSpriteTileLayers(
   useEffect(() => {
     const cells = sceneCells(props.previewScene);
     const manifestUrl = readShapePartSpriteManifestUrl();
+    const norm =
+      typeof props.previewScene.normalized_code === "string"
+        ? props.previewScene.normalized_code
+        : "";
+    macroGraphDebug("TileLayers scene", {
+      normalized_code: norm,
+      cellCount: cells?.length ?? 0,
+      hasManifestUrl: Boolean(manifestUrl?.trim()),
+      canCompose: Boolean(cells && canComposeTileScene(cells)),
+    });
     if (!cells || !canComposeTileScene(cells) || !manifestUrl) {
+      let reason: "no_cells" | "canComposeTileScene_false" | "no_manifest_url" = "no_manifest_url";
+      if (!cells) {
+        reason = "no_cells";
+      } else if (!canComposeTileScene(cells)) {
+        reason = "canComposeTileScene_false";
+      }
+      macroGraphDebug("TileLayers → fallback (no sprite path)", { reason });
       setLayers(null);
       setShowFallback(true);
       return;
@@ -53,6 +76,7 @@ export function ShapePartSpriteTileLayers(
     void (async () => {
       const manifest = await loadSpriteManifest(manifestUrl);
       if (cancelled || !manifest) {
+        macroGraphDebug("TileLayers → fallback manifest fetch failed", { manifestUrl });
         setLayers(null);
         setShowFallback(true);
         return;
@@ -62,6 +86,7 @@ export function ShapePartSpriteTileLayers(
       const cellKeys = stackedCells.map((c) => shapePartSpriteKey(c, rv));
       for (const k of cellKeys) {
         if (!manifest.sprites[k]) {
+          macroGraphDebug("TileLayers → fallback missing sprite key", { key: k, rendererVersion: rv });
           setLayers(null);
           setShowFallback(true);
           return;
@@ -98,6 +123,7 @@ export function ShapePartSpriteTileLayers(
       loadedCountRef.current = 0;
       setLayers(rows);
       setShowFallback(false);
+      macroGraphDebug("TileLayers sprite stack ok", { rowCount: rows.length, rendererVersion: rv });
     })();
 
     return () => {
@@ -116,8 +142,31 @@ export function ShapePartSpriteTileLayers(
   };
 
   if (showFallback) {
+    if (shapeGltfBridgeReady() && previewSceneHasDepthLayers(props.previewScene)) {
+      macroGraphDebug("TileLayers render fallback → WebGL (depth)", {
+        normalized_code: props.previewScene.normalized_code,
+      });
+      return (
+        <div
+          aria-hidden
+          className="relative shrink-0 overflow-hidden"
+          style={{ width: TILE_PREVIEW_PX, height: TILE_PREVIEW_PX }}
+        >
+          <ShapeGltfMountTile
+            previewScene={props.previewScene}
+            variant="tile"
+            onMountSuccess={() => {
+              queueMicrotask(() => {
+                onReadyRef.current?.();
+              });
+            }}
+          />
+        </div>
+      );
+    }
     const fallbackSrc = typeof props.fallbackImageUrl === "string" ? props.fallbackImageUrl.trim() : "";
     if (fallbackSrc) {
+      macroGraphDebug("TileLayers render fallback → PNG", { urlPrefix: fallbackSrc.slice(0, 96) });
       return (
         <img
           alt=""
@@ -133,6 +182,7 @@ export function ShapePartSpriteTileLayers(
         />
       );
     }
+    macroGraphDebug("TileLayers render fallback → label only", { label: props.fallbackLabel });
     return <span className="font-mono text-[10px] font-semibold text-cyan-100/90">{props.fallbackLabel}</span>;
   }
 

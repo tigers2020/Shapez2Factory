@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from django_apps.shapez_core.domain.crystal_geometry import crystal_fill_gaps_and_pins
-from django_apps.shapez_core.domain.shape import Shape, ShapeLayer, ShapePart
+from django_apps.shapez_core.domain.shape import Shape, ShapeLayer, ShapePart, empty_layer
 from django_apps.shapez_core.domain.shape_operations import (
     cut_vertical_halves,
     merge_disjoint_shape_layers,
@@ -49,12 +49,25 @@ def splitter_outputs(shape: Shape) -> tuple[Shape, Shape]:
     return (shape, shape)
 
 
+def _pad_shape_to_layer_count(shape: Shape, target_layers: int) -> Shape:
+    """Pad **above** existing layers with empty planes so stacks align (bottom at index 0)."""
+
+    n = len(shape.layers)
+    if n > target_layers:
+        raise ValueError("cannot pad shape to fewer layers than it already has")
+    if n == target_layers:
+        return shape
+    pad = target_layers - n
+    return Shape(layers=(*shape.layers, *(empty_layer() for _ in range(pad))))
+
+
 def swapper_outputs(left_shape: Shape, right_shape: Shape) -> tuple[Shape, Shape]:
-    if len(left_shape.layers) != len(right_shape.layers):
-        raise ValueError("swapper requires shapes with the same number of layers")
+    depth = max(len(left_shape.layers), len(right_shape.layers))
+    left_adj = _pad_shape_to_layer_count(left_shape, depth)
+    right_adj = _pad_shape_to_layer_count(right_shape, depth)
     out_a: list[ShapeLayer] = []
     out_b: list[ShapeLayer] = []
-    for left_layer, right_layer in zip(left_shape.layers, right_shape.layers, strict=True):
+    for left_layer, right_layer in zip(left_adj.layers, right_adj.layers, strict=True):
         layer_a, layer_b = swap_half_planes_single_layer(left_layer, right_layer)
         out_a.append(layer_a)
         out_b.append(layer_b)

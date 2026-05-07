@@ -1,11 +1,13 @@
 import re
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 from django.conf import settings
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.utils.translation import gettext as _
 
 from django_apps.shapez_core.services.preview_service import (
     build_demo_parse_rows,
@@ -139,6 +141,11 @@ _KOFI_HOSTS = frozenset({"ko-fi.com", "www.ko-fi.com"})
 _KOFI_SLUG = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
+def _support_tab_id(label: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")
+    return slug[:48] if slug else "link"
+
+
 def _kofi_widget_embed_src(profile_url: str) -> str | None:
     """Return Ko-fi HTML5 widget src for a profile URL, or None if not a Ko-fi profile."""
     if not profile_url:
@@ -166,12 +173,69 @@ def support(request: HttpRequest) -> HttpResponse:
         )
     if settings.SUPPORT_PATREON_URL:
         support_links.append({"label": "Patreon", "url": settings.SUPPORT_PATREON_URL})
+
+    support_tabs: list[dict[str, Any]] = []
+    if settings.SUPPORT_BCH_ADDRESS:
+        support_tabs.append(
+            {
+                "id": "bch",
+                "label": _("Bitcoin Cash (BCH)"),
+                "kind": "bch",
+                "address": settings.SUPPORT_BCH_ADDRESS,
+                "qr_static": "web/images/support/bch_qr.png",
+                "logo_static": "web/images/support/bch_logo.png",
+                "badge_short": "BCH",
+            }
+        )
+    if settings.SUPPORT_ETH_ADDRESS:
+        support_tabs.append(
+            {
+                "id": "ethereum",
+                "label": _("Ethereum (ETH)"),
+                "kind": "eth",
+                "address": settings.SUPPORT_ETH_ADDRESS,
+                "qr_static": "web/images/support/eth_qr.png",
+                "logo_static": "web/images/support/eth_logo.png",
+                "badge_short": "ETH",
+            }
+        )
+    if kofi_widget_embed_src:
+        support_tabs.append(
+            {
+                "id": "kofi",
+                "label": _("Ko-fi"),
+                "kind": "kofi_embed",
+                "embed_src": kofi_widget_embed_src,
+            }
+        )
+    elif settings.SUPPORT_KOFI_URL:
+        support_tabs.append(
+            {
+                "id": "kofi",
+                "label": _("Ko-fi"),
+                "kind": "kofi_link",
+                "url": settings.SUPPORT_KOFI_URL,
+            }
+        )
+    for link in support_links:
+        if link["label"] == "Ko-fi":
+            continue
+        support_tabs.append(
+            {
+                "id": _support_tab_id(link["label"]),
+                "label": link["label"],
+                "kind": "external",
+                "url": link["url"],
+            }
+        )
+
     return render(
         request,
         "web/support.html",
         {
             "support_links": support_links,
             "kofi_widget_embed_src": kofi_widget_embed_src,
+            "support_tabs": support_tabs,
         },
     )
 

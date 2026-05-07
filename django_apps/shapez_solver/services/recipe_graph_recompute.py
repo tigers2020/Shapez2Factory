@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass
@@ -35,6 +36,8 @@ from django_apps.shapez_solver.services.recipe_graph_topology import (
     assert_recipe_graph_edge_topology,
     index_recipe_graph_nodes_by_id,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _as_str(value: object, *, label: str) -> str:
@@ -699,9 +702,23 @@ def _recompute_one_operation_in_topo(
         shape_parse_cache=shape_parse_cache,
     )
     if not ok:
+        if op_type == OperationType.SWAPPER:
+            logger.warning(
+                "recipe_graph swapper failed op_id=%s msg=%r inputs=%s",
+                op_id,
+                msg,
+                input_codes,
+            )
         warnings.append(msg)
         return
 
+    if op_type == OperationType.SWAPPER:
+        logger.info(
+            "recipe_graph swapper ok op_id=%s inputs=%s outputs=%s",
+            op_id,
+            input_codes,
+            outputs,
+        )
     out_edges = _sorted_output_edges_for_operation(op_id, output_edges_by_from)
     output_quantities = _output_quantities_for_recomputed_op(
         op_type,

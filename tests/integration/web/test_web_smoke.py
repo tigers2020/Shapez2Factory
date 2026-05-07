@@ -216,6 +216,9 @@ def test_support_page_renders() -> None:
         assert b"Support" in response.content
         assert b"SUPPORT_KOFI_URL" in response.content
         assert b'href="/support/"' in response.content
+        assert b"1CYVnLMkGq9u8u1JDnH4aCFWXLTTZ6be2j" in response.content
+        assert b"0xa921081Bf8B548987188f3a87e7728F047301CfE" in response.content
+        assert b"data-support-tabs" in response.content
 
 
 def test_support_page_kofi_widget_from_profile_url() -> None:
@@ -231,6 +234,10 @@ def test_support_page_kofi_widget_from_profile_url() -> None:
         assert b"ko-fi.com/shapez2factory/?hidefeed=true&amp;widget=true&amp;embed=true" in (
             response.content
         )
+        assert b"In production, set the environment variables" not in response.content
+        assert b"data-support-tabs" in response.content
+        assert b"support-panel-bch" in response.content
+        assert b"support-panel-ethereum" in response.content
 
 
 def test_support_page_kofi_non_profile_still_shows_link() -> None:

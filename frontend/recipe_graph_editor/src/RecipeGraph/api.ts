@@ -25,6 +25,7 @@ export type RecipeGraphRecomputeResponse = {
 export async function postRecipeGraphRecompute(
   url: string,
   body: Record<string, unknown>,
+  options?: { signal?: AbortSignal },
 ): Promise<RecipeGraphRecomputeResponse> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -38,6 +39,7 @@ export async function postRecipeGraphRecompute(
     headers,
     credentials: "same-origin",
     body: JSON.stringify(body),
+    signal: options?.signal,
   });
   const text = await res.text();
   let data: RecipeGraphRecomputeResponse = { ok: false, error: res.statusText };

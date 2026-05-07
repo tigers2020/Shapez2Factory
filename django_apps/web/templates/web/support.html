@@ -1,5 +1,5 @@
 {% extends "web/base.html" %}
-{% load i18n static %}
+{% load i18n %}
 
 {% block title %}{% trans "shapez2 planner - Support" %}{% endblock %}
 
@@ -27,36 +27,93 @@
       {% endblocktrans %}
     </p>
 
-    {% if kofi_widget_embed_src %}
-      <div class="mt-8 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40">
-        <iframe
-          id="kofiframe"
-          src="{{ kofi_widget_embed_src }}"
-          class="w-full border-0 bg-[#f9f9f9]"
-          style="padding: 4px; background: #f9f9f9"
-          height="712"
-          title="Ko-fi"
-          loading="lazy"
-          referrerpolicy="strict-origin-when-cross-origin"
-        ></iframe>
+    {% if support_tabs %}
+      <div
+        class="mt-8 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40 shadow-lg shadow-slate-950/40"
+        data-support-tabs
+      >
+        <div
+          role="tablist"
+          aria-label="{% trans 'Support options' %}"
+          class="flex flex-wrap gap-1 border-b border-slate-800 bg-slate-950/90 p-2 sm:gap-2"
+        >
+          {% for tab in support_tabs %}
+            <button
+              type="button"
+              role="tab"
+              id="support-tab-{{ tab.id }}"
+              data-tab="{{ tab.id }}"
+              aria-controls="support-panel-{{ tab.id }}"
+              aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+              tabindex="{% if forloop.first %}0{% else %}-1{% endif %}"
+              class="rounded-lg px-3 py-2 text-xs font-semibold text-slate-400 outline-none ring-cyan-400/40 transition hover:text-slate-200 focus-visible:ring-2 sm:px-4 sm:text-sm aria-selected:bg-cyan-600 aria-selected:text-white aria-selected:shadow-md aria-selected:shadow-cyan-900/30"
+            >
+              {{ tab.label }}
+            </button>
+          {% endfor %}
+        </div>
+
+        {% for tab in support_tabs %}
+          <div
+            id="support-panel-{{ tab.id }}"
+            role="tabpanel"
+            aria-labelledby="support-tab-{{ tab.id }}"
+            {% if not forloop.first %}hidden{% endif %}
+            class="{% if not forloop.first %}hidden {% endif %}border-t border-slate-800/80 bg-slate-950/30"
+          >
+            {% if tab.kind == "bch" or tab.kind == "eth" %}
+              {% include "web/partials/support_crypto_tab_panel.html" %}
+            {% elif tab.kind == "kofi_embed" %}
+              <div class="support-kofi-embed-shell">
+                <iframe
+                  id="kofiframe"
+                  src="{{ tab.embed_src }}"
+                  class="support-kofi-embed-frame"
+                  height="712"
+                  title="Ko-fi"
+                  loading="lazy"
+                  referrerpolicy="strict-origin-when-cross-origin"
+                ></iframe>
+              </div>
+            {% elif tab.kind == "kofi_link" %}
+              <div class="space-y-4 p-6 sm:p-8">
+                <p class="text-sm text-slate-400">
+                  {% trans "Open Ko-fi in a new tab to chip in for hosting and development." %}
+                </p>
+                <a
+                  href="{{ tab.url }}"
+                  class="inline-flex items-center justify-center rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-6 py-4 text-sm font-semibold text-cyan-100 no-underline transition hover:border-cyan-400/55 hover:bg-cyan-500/15"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {% trans "Open Ko-fi" %}
+                  <span class="ml-2 text-xs font-normal text-cyan-300/80" aria-hidden="true">↗</span>
+                </a>
+              </div>
+            {% elif tab.kind == "external" %}
+              <div class="space-y-4 p-6 sm:p-8">
+                <p class="text-sm text-slate-400">
+                  {% blocktrans with label=tab.label trimmed %}
+                    Continue on {{ label }} (opens in a new tab).
+                  {% endblocktrans %}
+                </p>
+                <a
+                  href="{{ tab.url }}"
+                  class="inline-flex items-center justify-center rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-6 py-4 text-sm font-semibold text-cyan-100 no-underline transition hover:border-cyan-400/55 hover:bg-cyan-500/15"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ tab.label }}
+                  <span class="ml-2 text-xs font-normal text-cyan-300/80" aria-hidden="true">↗</span>
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
       </div>
     {% endif %}
 
-    {% if support_links %}
-      <div class="mt-8 grid gap-3 sm:grid-cols-1 sm:gap-4">
-        {% for link in support_links %}
-          <a
-            href="{{ link.url }}"
-            class="flex items-center justify-between rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-5 py-4 text-sm font-semibold text-cyan-100 no-underline transition hover:border-cyan-400/55 hover:bg-cyan-500/15"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span>{{ link.label }}</span>
-            <span class="text-xs font-normal text-cyan-300/80" aria-hidden="true">↗</span>
-          </a>
-        {% endfor %}
-      </div>
-    {% else %}
+    {% if not support_links and not kofi_widget_embed_src %}
       <p class="mt-8 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3 text-sm text-slate-400">
         {% blocktrans trimmed %}
           In production, set the environment variables
@@ -71,4 +128,64 @@
 
   {% include "web/partials/site_footer.html" %}
 </main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  var root = document.querySelector("[data-support-tabs]");
+  if (!root) return;
+
+  function activate(tabId) {
+    var tabs = root.querySelectorAll('[role="tab"]');
+    var panels = root.querySelectorAll('[role="tabpanel"]');
+    tabs.forEach(function (btn) {
+      var on = btn.getAttribute("data-tab") === tabId;
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+      btn.tabIndex = on ? 0 : -1;
+    });
+    panels.forEach(function (panel) {
+      var match = panel.id === "support-panel-" + tabId;
+      panel.hidden = !match;
+      panel.classList.toggle("hidden", !match);
+    });
+  }
+
+  root.addEventListener("click", function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest('[role="tab"]') : null;
+    if (!btn || !root.contains(btn)) return;
+    var id = btn.getAttribute("data-tab");
+    if (id) activate(id);
+  });
+
+  var first = root.querySelector('[role="tab"][aria-selected="true"]');
+  if (first) {
+    var fid = first.getAttribute("data-tab");
+    if (fid) activate(fid);
+  }
+
+  document.querySelectorAll("[data-copy-address]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var addr = btn.getAttribute("data-copy-address") || "";
+      var card = btn.closest("[data-address-card]");
+      var feedback = card && card.querySelector(".support-copy-feedback");
+      var copiedMsg = btn.getAttribute("data-copied-label") || "Copied.";
+
+      function showCopied() {
+        if (!feedback) return;
+        feedback.textContent = copiedMsg;
+        feedback.classList.remove("hidden");
+        window.setTimeout(function () {
+          feedback.classList.add("hidden");
+        }, 2000);
+      }
+
+      if (!addr) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(addr).then(showCopied).catch(function () {});
+      }
+    });
+  });
+})();
+</script>
 {% endblock %}

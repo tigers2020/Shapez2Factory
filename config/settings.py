@@ -137,9 +137,22 @@ SOLVER_GRAPH_PREVIEW_STORAGE = (
 )
 SOLVER_GRAPH_PREVIEW_CACHE_DIR = BASE_DIR / ".graph_preview_cache"
 
-SUPPORT_KOFI_URL = os.environ.get("SUPPORT_KOFI_URL", "").strip()
+# Public Ko-fi profile when SUPPORT_KOFI_URL is unset or blank (set to another URL to override).
+SUPPORT_KOFI_URL = (
+    os.environ.get("SUPPORT_KOFI_URL", "").strip() or "https://ko-fi.com/shapez2factory/"
+)
 SUPPORT_GITHUB_SPONSORS_URL = os.environ.get("SUPPORT_GITHUB_SPONSORS_URL", "").strip()
 SUPPORT_PATREON_URL = os.environ.get("SUPPORT_PATREON_URL", "").strip()
+# Support page crypto tabs; QR files: django_apps/web/static/web/images/support/{bch,eth}_qr.png
+SUPPORT_BCH_ADDRESS = (
+    os.environ.get("SUPPORT_BCH_ADDRESS", "").strip()
+    or os.environ.get("SUPPORT_BITCOIN_ADDRESS", "").strip()
+    or "1CYVnLMkGq9u8u1JDnH4aCFWXLTTZ6be2j"
+)
+SUPPORT_ETH_ADDRESS = (
+    os.environ.get("SUPPORT_ETH_ADDRESS", "").strip()
+    or "0xa921081Bf8B548987188f3a87e7728F047301CfE"
+)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

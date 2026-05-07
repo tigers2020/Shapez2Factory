@@ -54,13 +54,13 @@ describe("shapePartSpriteCompose", () => {
     expect(overlayStackScaleFromBottom(2)).toBeCloseTo(0.81, 6);
   });
 
-  it("canComposeTileScene rejects multi-layer or duplicate quadrants", () => {
+  it("canComposeTileScene allows multi-layer cells with distinct (layer, quadrant) keys", () => {
     expect(
       canComposeTileScene([
         { layer_index: 0, quadrant_index: 0 },
         { layer_index: 1, quadrant_index: 1 },
       ]),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       canComposeTileScene([
         { layer_index: 0, quadrant_index: 0 },
@@ -68,5 +68,19 @@ describe("shapePartSpriteCompose", () => {
       ]),
     ).toBe(false);
     expect(canComposeTileScene([{ layer_index: 0, quadrant_index: 0 }])).toBe(true);
+    expect(canComposeTileScene([{ layer_index: 3, quadrant_index: 3 }])).toBe(true);
+    expect(canComposeTileScene([{ layer_index: 4, quadrant_index: 0 }])).toBe(false);
+    expect(canComposeTileScene([{ layer_index: 0, quadrant_index: 4 }])).toBe(false);
+    const fullGrid: { layer_index: number; quadrant_index: number }[] = [];
+    for (let layer = 0; layer <= 3; layer += 1) {
+      for (let q = 0; q <= 3; q += 1) {
+        fullGrid.push({ layer_index: layer, quadrant_index: q });
+      }
+    }
+    expect(fullGrid.length).toBe(16);
+    expect(canComposeTileScene(fullGrid)).toBe(true);
+    expect(
+      canComposeTileScene([...fullGrid, { layer_index: 0, quadrant_index: 0 }]),
+    ).toBe(false);
   });
 });

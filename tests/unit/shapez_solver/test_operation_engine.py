@@ -72,10 +72,25 @@ def test_swapper_swaps_each_layer_when_layer_counts_match() -> None:
     assert output_b.canonical_code == "--------:--------"
 
 
-def test_swapper_requires_matching_layer_counts() -> None:
+def test_swapper_pads_shorter_shape_with_empty_top_layers() -> None:
     engine = OperationEngine()
-    with pytest.raises(ValueError, match="same number of layers"):
-        engine.swapper(_shape("CuCu----"), _shape("CuCu----:RuRu----"))
+    output_a, output_b = engine.swapper(_shape("CuCu----"), _shape("CuCu----:RuRu----"))
+
+    assert output_a.canonical_code == "CuCu----:--------"
+    assert output_b.canonical_code == "CuCu----:RuRu----"
+
+
+def test_swapper_preserves_multi_layer_when_other_input_is_single_layer() -> None:
+    """Regression: misaligned depth must not degenerate to single-layer swap semantics."""
+
+    engine = OperationEngine()
+    output_a, output_b = engine.swapper(
+        _shape("WrCrRgSy:RcRcRrRr"),
+        _shape("RuRuRuRu"),
+    )
+
+    assert output_a.canonical_code == "WrCrRuRu:RcRc----"
+    assert output_b.canonical_code == "RuRuRgSy:----RrRr"
 
 
 def test_stacker_concat_when_first_layers_do_not_merge_disjoint() -> None:

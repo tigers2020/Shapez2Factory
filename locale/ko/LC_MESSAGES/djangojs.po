@@ -80,6 +80,11 @@ msgstr "중간 · {code}"
 msgid "Intermediate — shape_code after dry-run"
 msgstr "중간 — 드라이런 뒤 shape_code 확정"
 
+msgid ""
+"Leave empty for two-wire mode: fluid on upper in-1, target shape on lower in"
+" (same as painter)."
+msgstr "비우면 2와선: 상단 in-1에 유체, 하단 in에 대상 도형(페인터와 동일)."
+
 msgid "Local notes (this browser · per recipe only)"
 msgstr "로컬 메모(이 브라우저·레시피별)"
 
@@ -173,6 +178,9 @@ msgstr "이 연산은 레시피 그래프 엔진의 재계산 목록에 없습�
 
 msgid "Validation issues in the last result — check the footer message."
 msgstr "직전 결과에 검증 이슈가 있습니다. 아래 안내를 확인하세요."
+
+msgid "crystal_color (one letter, optional)"
+msgstr "crystal_color (한 글자·선택)"
 
 msgid "node"
 msgstr "노드"

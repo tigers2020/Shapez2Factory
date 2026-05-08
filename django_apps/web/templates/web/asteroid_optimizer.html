@@ -4,184 +4,410 @@
 
 {% block title %}{% trans "shapez2 planner | Asteroid mining" %}{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'web/css/asteroid_optimizer.css' %}">
+{% endblock %}
+
 {% block content %}
-<main class="min-h-screen bg-slate-950 text-slate-100">
+<div class="asteroid-mine-page">
   {% include "web/partials/site_nav.html" %}
 
-  <section
-    class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8"
-    aria-labelledby="asteroid-heading"
-    data-asteroid-copy-root
-    data-copy-preview-url="{% url 'shapez_asteroid:copy_preview' %}"
-    data-map-cells-url="{% url 'shapez_asteroid:map_cells' %}"
-    data-msg-no-bounds="{% trans 'No XY bounds from entries.' %}"
-    data-msg-network="{% trans 'Network error' %}"
-    data-msg-failed="{% trans 'Request failed' %}"
-    data-msg-fluid-mining="{% trans 'Fluid mining' %}"
-    data-msg-shape-mining="{% trans 'Shape mining' %}"
-    data-demo-blueprint-url="{% static 'web/asteroid_demo_blueprint.txt' %}"
-  >
-    <p class="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">
-      {% trans "Asteroid mining" %}
-    </p>
-    <h1 id="asteroid-heading" class="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-      {% trans "Asteroid mining map" %}
-    </h1>
-    <p class="mt-4 max-w-3xl text-sm leading-relaxed text-slate-400">
-      {% blocktrans trimmed %}
-        Paste a blueprint copy string to decode it and preview mining coordinates on the map.
-      {% endblocktrans %}
-    </p>
-    <p class="mt-4 text-xs text-slate-500">
-      {% trans "API probe" %}:
-      <a
-        href="/api/asteroid/health/"
-        class="font-mono text-cyan-300/90 underline decoration-cyan-500/40 underline-offset-2 hover:text-cyan-200"
-      >/api/asteroid/health/</a>
-    </p>
-
-    <form class="hidden" aria-hidden="true" data-asteroid-csrf>{% csrf_token %}</form>
-
-    <div class="mt-10 grid gap-8 lg:grid-cols-2 lg:items-start">
-      <div class="flex flex-col gap-3">
-        <label for="asteroid-copy-input" class="text-sm font-semibold text-cyan-200/90">
-          {% trans "Blueprint copy code" %}
-        </label>
-        <textarea
-          id="asteroid-copy-input"
-          rows="8"
-          autocomplete="off"
-          spellcheck="false"
-          placeholder="SHAPEZ2-4-…"
-          class="min-h-[180px] w-full resize-y rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 sm:text-sm"
-        ></textarea>
-        <div class="mt-1 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <button
-            type="button"
-            id="asteroid-demo-fill-btn"
-            class="w-full shrink-0 rounded-xl border border-slate-600 bg-slate-800/80 px-4 py-3 text-sm font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800 sm:w-auto"
-          >
-            {% trans "Demo" %}
-          </button>
-          <button
-            type="button"
-            id="asteroid-decode-btn"
-            class="w-full shrink-0 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-500/15 sm:w-auto"
-          >
-            {% trans "Decode" %}
-          </button>
-        </div>
-        <p class="text-[11px] leading-relaxed text-slate-500">
+  <main class="page">
+    <section class="hero" aria-labelledby="asteroid-heading">
+      <div>
+        <div class="eyebrow">{% trans "Asteroid mining" %}</div>
+        <h1 id="asteroid-heading">{% trans "Asteroid mining map" %}</h1>
+        <p class="lead">
           {% blocktrans trimmed %}
-            Paste the in-game copy string. Decoding runs on the server; a short map summary appears on the right.
+            Paste a blueprint copy string to decode it and preview mining coordinates on the map.
           {% endblocktrans %}
+        </p>
+        <p class="health">
+          {% trans "API probe" %}:
+          <a href="/api/asteroid/health/" class="am-health-code">/api/asteroid/health/</a>
         </p>
       </div>
+      <div class="solver-badges" aria-label="{% trans 'Map hints' %}">
+        <span class="badge cyan">{% trans "Distinct X columns (no X=0)" %}</span>
+        <span class="badge">{% trans "North-up; Y increases downward" %}</span>
+        <span class="badge warn">{% trans "Decode on server" %}</span>
+      </div>
+    </section>
 
-      <div
-        class="rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-5 shadow-lg shadow-cyan-950/30 sm:p-6"
-        aria-labelledby="asteroid-map-heading"
-      >
-        <h2 id="asteroid-map-heading" class="text-sm font-semibold text-slate-100">
-          {% trans "Asteroid mining coordinate map" %}
-        </h2>
-        <p class="mt-1 text-xs leading-relaxed text-slate-500">
-          {% blocktrans trimmed %}
-            Only entries with X ≠ 0; columns are distinct game X values (no synthetic X = 0 column).
-            North-up like the in-game map: smaller Y toward the top of this panel; vertical axis increases downward.
-          {% endblocktrans %}
-        </p>
-        <p class="mt-2 text-[11px] leading-snug text-slate-500">
-          {% trans "Semi-transparent tiles: shape vs fluid labels follow blueprint layout names; inferred patch interior matches the surrounding ring." %}
-        </p>
+    <section
+      class="layout"
+      aria-label="{% trans 'Asteroid blueprint and map' %}"
+      data-asteroid-copy-root
+      data-copy-preview-url="{% url 'shapez_asteroid:copy_preview' %}"
+      data-map-cells-url="{% url 'shapez_asteroid:map_cells' %}"
+      data-msg-no-bounds="{% trans 'No XY bounds from entries.' %}"
+      data-msg-network="{% trans 'Network error' %}"
+      data-msg-failed="{% trans 'Request failed' %}"
+      data-msg-fluid-mining="{% trans 'Fluid mining' %}"
+      data-msg-shape-mining="{% trans 'Shape mining' %}"
+      data-msg-belt="{% trans 'Belt' %}"
+      data-msg-pipe="{% trans 'Pipe' %}"
+      data-msg-layout-fluid-extension="{% filter escapejs %}{% trans 'Fluid extension' %}{% endfilter %}"
+      data-msg-layout-extension="{% filter escapejs %}{% trans 'Extension' %}{% endfilter %}"
+      data-msg-layout-fluid-miner="{% filter escapejs %}{% trans 'Fluid miner' %}{% endfilter %}"
+      data-msg-layout-miner="{% filter escapejs %}{% trans 'Miner' %}{% endfilter %}"
+      data-msg-layout-extractor="{% filter escapejs %}{% trans 'Extractor' %}{% endfilter %}"
+      data-msg-layout-booster="{% filter escapejs %}{% trans 'Booster' %}{% endfilter %}"
+      data-msg-layout-asteroid-field="{% filter escapejs %}{% trans 'Asteroid field' %}{% endfilter %}"
+      data-demo-blueprint-url="{% static 'web/asteroid_demo_blueprint.txt' %}"
+      data-map-phase-idle-title="{% filter escapejs %}{% trans 'Solver phase' %}{% endfilter %}"
+      data-map-phase-idle-desc="{% filter escapejs %}{% trans 'Boundary scan and pipe overlay when the solver API is available.' %}{% endfilter %}"
+      data-map-phase-map-title="{% filter escapejs %}{% trans 'Map build' %}{% endfilter %}"
+      data-map-phase-decode-title="{% filter escapejs %}{% trans 'Copy decode' %}{% endfilter %}"
+      data-map-badge-idle="{% filter escapejs %}{% trans 'Timeline: 0 / 0 (preview)' %}{% endfilter %}"
+      data-map-badge-step-prefix="{% filter escapejs %}{% trans 'Map step' %}{% endfilter %}"
+      data-map-badge-decode-prefix="{% filter escapejs %}{% trans 'Decode step' %}{% endfilter %}"
+      data-map-step-with_transport="{% filter escapejs %}{% trans 'Blueprint with belt & pipe' %}{% endfilter %}"
+      data-map-step-extraction_shell="{% filter escapejs %}{% trans 'Transport removed (mining shell)' %}{% endfilter %}"
+      data-map-step-strip_extractors="{% filter escapejs %}{% trans 'Destroy extractors — asteroid field' %}{% endfilter %}"
+      data-map-step-strip_extensions="{% filter escapejs %}{% trans 'Destroy extensions — asteroid field' %}{% endfilter %}"
+      data-map-step-fill_interior="{% filter escapejs %}{% trans 'Fill enclosed patch interior' %}{% endfilter %}"
+      data-map-step-final="{% filter escapejs %}{% trans 'Final mining map' %}{% endfilter %}"
+      data-map-viz-stage-0="{% filter escapejs %}{% trans 'Prepare string' %}{% endfilter %}"
+      data-map-viz-stage-1="{% filter escapejs %}{% trans 'Binary payload' %}{% endfilter %}"
+      data-map-viz-stage-2="{% filter escapejs %}{% trans 'Parse JSON' %}{% endfilter %}"
+      data-map-viz-stage-3="{% filter escapejs %}{% trans 'Layout object' %}{% endfilter %}"
+    >
+      <form class="hidden" aria-hidden="true" data-asteroid-csrf>{% csrf_token %}</form>
 
-        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch">
-          <div
-            class="inline-flex w-full overflow-hidden rounded-xl border border-slate-600 bg-slate-900/90 shadow-sm shadow-black/20 sm:w-auto"
-            role="group"
-            aria-label="{% trans 'Map orientation (north up by default)' %}"
-          >
-            <button
-              type="button"
-              data-map-orientation="N"
-              aria-pressed="true"
-              title="{% trans 'North up' %}"
-              class="min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-cyan-500/25 px-3 py-2.5 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/35 sm:flex-initial"
-            >{% trans "N" %}</button>
-            <button
-              type="button"
-              data-map-orientation="E"
-              aria-pressed="false"
-              title="{% trans 'East up' %}"
-              class="min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial"
-            >{% trans "E" %}</button>
-            <button
-              type="button"
-              data-map-orientation="S"
-              aria-pressed="false"
-              title="{% trans 'South up' %}"
-              class="min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial"
-            >{% trans "S" %}</button>
-            <button
-              type="button"
-              data-map-orientation="W"
-              aria-pressed="false"
-              title="{% trans 'West up' %}"
-              class="min-w-[2.75rem] flex-1 border-0 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial"
-            >{% trans "W" %}</button>
+      <div class="stack">
+        <article class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">{% trans "Blueprint copy code" %}</div>
+              <div class="card-sub">
+                {% blocktrans trimmed %}
+                  Server decode keeps the original coordinate map; the grid is drawn in the browser.
+                {% endblocktrans %}
+              </div>
+            </div>
           </div>
-        </div>
-
-        <div
-          class="mt-4 cursor-crosshair rounded-xl border border-slate-700/80 bg-slate-950/60 p-2"
-          data-asteroid-map-surface
-        >
-          <div
-            class="relative min-h-[280px] w-full overflow-hidden rounded-lg bg-[length:20px_20px] pb-28 sm:pb-32"
-            style="background-image: linear-gradient(to right, rgb(51 65 85 / 0.35) 1px, transparent 1px), linear-gradient(to bottom, rgb(51 65 85 / 0.35) 1px, transparent 1px); background-color: rgb(2 6 23 / 0.65)"
-          >
-            <svg
-              data-asteroid-plot-svg
-              class="block h-[min(52vh,360px)] min-h-[280px] w-full"
-              preserveAspectRatio="xMidYMid meet"
-              xmlns="http://www.w3.org/2000/svg"
-              role="img"
-              aria-label="{% trans 'Blueprint layout grid' %}"
-            ></svg>
+          <div class="card-body">
+            <label class="am-label" for="asteroid-copy-input">{% trans "Blueprint copy code" %}</label>
+            <textarea
+              id="asteroid-copy-input"
+              class="am-textarea"
+              rows="8"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="SHAPEZ2-4-…"
+            ></textarea>
+            <div class="actions">
+              <button type="button" id="asteroid-demo-fill-btn" class="btn">{% trans "Demo" %}</button>
+              <button type="button" id="asteroid-decode-btn" class="btn primary">{% trans "Decode" %}</button>
+            </div>
+            <p class="hint">
+              {% blocktrans trimmed %}
+                Paste the in-game copy string. Decoding runs on the server; a short map summary appears on the right.
+              {% endblocktrans %}
+            </p>
             <div
-              class="pointer-events-none absolute inset-x-0 bottom-4 flex flex-col items-center gap-2 px-3 text-center"
+              class="am-decode-playback hidden"
+              data-am-decode-playback
+              aria-label="{% trans 'Map step playback' %}"
             >
-              <p class="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                {% trans "Pointer" %}
+              <div class="am-decode-playback-head">
+                <span class="am-decode-playback-title">{% trans "Map steps" %}</span>
+                <span class="am-decode-playback-pos" data-am-decode-pos aria-live="polite"></span>
+              </div>
+              <ol class="am-decode-steps" data-am-decode-steps></ol>
+              <div class="am-decode-controls">
+                <button type="button" class="btn" data-am-decode-prev>{% trans "Prev" %}</button>
+                <button type="button" class="btn primary" data-am-decode-play>{% trans "Play" %}</button>
+                <button type="button" class="btn" data-am-decode-pause hidden>{% trans "Pause" %}</button>
+                <button type="button" class="btn" data-am-decode-next>{% trans "Next" %}</button>
+              </div>
+              <label class="am-decode-slider-label">
+                <span>{% trans "Step" %}</span>
+                <input type="range" data-am-decode-slider min="0" max="0" value="0" />
+              </label>
+              <pre class="am-decode-detail" data-am-decode-detail></pre>
+            </div>
+          </div>
+        </article>
+
+        <article
+          class="card hot am-future-panel"
+          aria-labelledby="asteroid-solver-heading"
+          data-am-solver-shell
+        >
+          <div class="card-head">
+            <div>
+              <h2 class="card-title" id="asteroid-solver-heading">{% trans "Solver controls" %}</h2>
+              <div class="card-sub">
+                {% blocktrans trimmed %}
+                  Placeholder for future merge routing, trunk direction, and step metrics from Django or JSON APIs.
+                {% endblocktrans %}
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p class="am-placeholder-note">
+              {% blocktrans trimmed %}
+                REST views or action endpoints can populate these controls later; everything here is disabled.
+              {% endblocktrans %}
+            </p>
+            <div class="am-future-fields">
+              <p class="am-future-field-label">{% trans "Trunk direction & scan order" %}</p>
+              <p class="am-future-field-value">
+                {% trans "Not connected — values will come from the API later." %}
               </p>
-              <p
-                class="min-h-[1.35rem] text-sm font-medium leading-snug text-slate-200"
-                data-asteroid-pointer-status
-              >
-                --
+            </div>
+            <div class="option">
+              <div class="option-name">{% trans "Map step playback" %}</div>
+              <p class="am-future-field-value">
+                {% trans "After a successful decode, use the timeline under the blueprint copy field to step through how the map is built." %}
               </p>
-              <p class="font-mono text-base text-cyan-200/95 drop-shadow-[0_1px_2px_rgb(0_0_0/0.8)]">
-                (<span data-asteroid-pointer-x>--</span>, <span data-asteroid-pointer-y>--</span>)
-              </p>
+            </div>
+            <div class="metrics" aria-hidden="true">
+              <div class="metric">
+                <div class="metric-value">—</div>
+                <div class="metric-label">{% trans "Extractors" %}</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">—</div>
+                <div class="metric-label">{% trans "Extensions" %}</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">—</div>
+                <div class="metric-label">{% trans "Pipe cells" %}</div>
+              </div>
+              <div class="metric">
+                <div class="metric-value">—</div>
+                <div class="metric-label">{% trans "Merges" %}</div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <details class="card hot am-build-rules">
+          <summary class="card-head am-build-rules-summary">
+            <div class="am-build-rules-summary-text">
+              <div class="card-title">{% trans "Build rules" %}</div>
+              <div class="card-sub">{% trans "How entries are shown on the coordinate map." %}</div>
+            </div>
+          </summary>
+          <div class="card-body">
+            <div class="rule-list">
+              <div class="rule">
+                <span class="check" aria-hidden="true">✓</span>
+                <span>{% trans "Only cells with game X ≠ 0 appear as columns." %}</span>
+              </div>
+              <div class="rule">
+                <span class="check" aria-hidden="true">✓</span>
+                <span>{% trans "North-up: smaller Y toward the top of the panel." %}</span>
+              </div>
+              <div class="rule">
+                <span class="check" aria-hidden="true">✓</span>
+                <span>{% trans "Semi-transparent tiles follow blueprint layout names." %}</span>
+              </div>
+              <div class="rule">
+                <span class="check" aria-hidden="true">✓</span>
+                <span>{% trans "Inferred patch interior matches the surrounding ring where applicable." %}</span>
+              </div>
+              <div class="rule">
+                <span class="check" aria-hidden="true">✓</span>
+                <span>{% trans "Hover a cell to see layout labels when map cells have been loaded." %}</span>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <article class="card hot map-card" aria-labelledby="asteroid-map-heading">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title" id="asteroid-map-heading">{% trans "Asteroid mining coordinate map" %}</h2>
+            <div class="map-copy">
+              {% blocktrans trimmed %}
+                Only entries with X ≠ 0; columns are distinct game X values (no synthetic X = 0 column).
+                North-up like the in-game map: smaller Y toward the top of this panel; vertical axis increases downward.
+              {% endblocktrans %}
             </div>
           </div>
         </div>
-
-        <div class="mt-5 border-t border-slate-800 pt-4">
-          <h3 class="text-xs font-semibold text-slate-400">{% trans "Decoded layout summary" %}</h3>
-          <p
-            class="mt-2 text-sm text-slate-300"
-            data-asteroid-summary
-            data-idle-msg="{% trans 'Paste a copy string and choose Decode to see entry bounds.' %}"
-          >
-            {% trans "Paste a copy string and choose Decode to see entry bounds." %}
+        <div class="card-body">
+          <p class="map-copy">
+            {% trans "Semi-transparent tiles: shape vs fluid labels follow blueprint layout names; inferred patch interior matches the surrounding ring." %}
           </p>
-          <p class="mt-2 hidden text-sm text-rose-300" data-asteroid-error role="alert"></p>
+
+          <p class="am-orient-label">{% trans "Rotate map panel (which edge faces up)" %}</p>
+          <div class="map-toolbar">
+            <div
+              class="segmented"
+              role="group"
+              aria-label="{% trans 'Map orientation (north up by default)' %}"
+            >
+              <button
+                type="button"
+                data-map-orientation="N"
+                aria-pressed="true"
+                title="{% trans 'North up' %}"
+                class="active"
+              >{% trans "N" %}</button>
+              <button
+                type="button"
+                data-map-orientation="E"
+                aria-pressed="false"
+                title="{% trans 'East up' %}"
+              >{% trans "E" %}</button>
+              <button
+                type="button"
+                data-map-orientation="S"
+                aria-pressed="false"
+                title="{% trans 'South up' %}"
+              >{% trans "S" %}</button>
+              <button
+                type="button"
+                data-map-orientation="W"
+                aria-pressed="false"
+                title="{% trans 'West up' %}"
+              >{% trans "W" %}</button>
+            </div>
+          </div>
+
+          <div class="map-toolbar am-map-toolbar-secondary">
+            <p class="am-map-hint">
+              {% blocktrans trimmed %}
+                Solver scan order and trunk controls will show here when connected; they are not the same as map rotation above.
+              {% endblocktrans %}
+            </p>
+            <div class="solver-badges">
+              <span class="badge cyan">{% trans "Scan pass (preview)" %}</span>
+              <span class="badge" data-am-decode-map-badge>{% trans "Timeline: 0 / 0 (preview)" %}</span>
+            </div>
+          </div>
+
+          <div class="map-shell">
+            <div class="am-map-surface" data-asteroid-map-surface>
+              <div class="map-overlay-top">
+                <div class="phase-box" data-am-map-phase-box>
+                  <strong data-am-map-phase-title>{% trans "Solver phase" %}</strong>
+                  <span data-am-map-phase-desc>{% trans "Boundary scan and pipe overlay when the solver API is available." %}</span>
+                </div>
+                <div class="coord-box">
+                  <strong>{% trans "Pointer" %}</strong>
+                  <span class="am-pointer-status" data-asteroid-pointer-status>--</span>
+                  <span class="am-pointer-xy">(<span data-asteroid-pointer-x>--</span>, <span data-asteroid-pointer-y>--</span>)</span>
+                </div>
+              </div>
+              <div class="am-plot-inner">
+                <div
+                  class="am-decode-map-viz hidden"
+                  data-am-decode-map-viz
+                  role="status"
+                  aria-live="polite"
+                  aria-label="{% trans 'Decode progress on map' %}"
+                >
+                  <div class="am-decode-viz-meta">
+                    <span class="am-decode-viz-step-label" data-am-decode-viz-label></span>
+                    <span class="am-decode-viz-fraction" data-am-decode-viz-fraction></span>
+                  </div>
+                  <div class="am-decode-viz-bar" aria-hidden="true">
+                    <div class="am-decode-viz-bar-fill" data-am-decode-viz-bar></div>
+                  </div>
+                  <div class="am-decode-viz-stages" data-am-decode-viz-stages></div>
+                  <div class="am-decode-viz-track" data-am-decode-viz-track></div>
+                  <pre class="am-decode-viz-detail" data-am-decode-viz-detail></pre>
+                </div>
+                <svg
+                  data-asteroid-plot-svg
+                  preserveAspectRatio="xMidYMid meet"
+                  xmlns="http://www.w3.org/2000/svg"
+                  role="img"
+                  aria-label="{% trans 'Blueprint layout grid' %}"
+                ></svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="legend" aria-label="{% trans 'Tile legend' %}">
+            <span class="legend-item">
+              <span class="swatch occupied" aria-hidden="true"></span>{% trans "Occupied (blueprint)" %}
+            </span>
+            <span class="legend-item">
+              <span class="swatch inferred" aria-hidden="true"></span>{% trans "Inferred interior" %}
+            </span>
+            <span class="legend-item">
+              <span class="swatch am-swatch-belt" aria-hidden="true"></span>{% trans "Belt (blueprint)" %}
+            </span>
+            <span class="legend-item">
+              <span class="swatch am-swatch-pipe-map" aria-hidden="true"></span>{% trans "Pipe (blueprint)" %}
+            </span>
+            <span class="legend-item legend-layout-kinds" aria-hidden="false">
+              <span class="legend-layout-inline">
+                <span class="swatch am-swatch-miner" aria-hidden="true"></span>{% trans "Miner" %}
+              </span>
+              <span class="legend-layout-inline">
+                <span class="swatch am-swatch-fluid-miner" aria-hidden="true"></span>{% trans "Fluid miner" %}
+              </span>
+              <span class="legend-layout-inline">
+                <span class="swatch am-swatch-extractor" aria-hidden="true"></span>{% trans "Extractor" %}
+              </span>
+              <span class="legend-layout-inline">
+                <span class="swatch am-swatch-extension" aria-hidden="true"></span>{% trans "Extension" %}
+              </span>
+              <span class="legend-layout-inline">
+                <span class="swatch am-swatch-fluid-extension" aria-hidden="true"></span>{% trans "Fluid extension" %}
+              </span>
+              <span class="legend-layout-inline">
+                <span class="swatch am-swatch-booster" aria-hidden="true"></span>{% trans "Booster" %}
+              </span>
+              <span class="legend-layout-inline">
+                <span class="swatch am-swatch-asteroid-field" aria-hidden="true"></span>{% trans "Asteroid field" %}
+              </span>
+            </span>
+            <span class="legend-item">
+              <span class="swatch am-swatch-pipe" aria-hidden="true"></span>{% trans "Merge pipe (solver preview)" %}
+            </span>
+            <span class="legend-item">
+              <span class="swatch am-swatch-trunk" aria-hidden="true"></span>{% trans "Final trunk (solver preview)" %}
+            </span>
+          </div>
+
+          <div class="timeline am-timeline-placeholder" aria-label="{% trans 'Build timeline (preview)' %}">
+            <div class="timeline-head">
+              <span>{% trans "Build playback (not connected)" %}</span>
+              <span>0 / 0</span>
+            </div>
+            <div class="track" role="presentation">
+              <div class="tick extractor"></div>
+              <div class="tick merge"></div>
+              <div class="tick trunk"></div>
+              <div class="tick merge"></div>
+              <div class="tick extractor"></div>
+              <div class="tick merge"></div>
+              <div class="tick trunk"></div>
+            </div>
+          </div>
+
+          <div class="map-footer am-map-footer">
+            <div>
+              <div class="summary-title">{% trans "Decoded layout summary" %}</div>
+              <p
+                class="summary-line"
+                data-asteroid-summary
+                data-idle-msg="{% trans 'Paste a copy string and choose Decode to see entry bounds.' %}"
+              >
+                {% trans "Paste a copy string and choose Decode to see entry bounds." %}
+              </p>
+              <p class="am-error hidden" data-asteroid-error role="alert"></p>
+            </div>
+            <div class="solver-badges am-footer-badges">
+              <span class="badge cyan">{% trans "Layout API" %}</span>
+              <span class="badge">{% trans "Output" %}: —</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </section>
-</main>
+      </article>
+    </section>
+  </main>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -205,14 +431,6 @@
   var orientBtns = root.querySelectorAll("[data-map-orientation]");
   var mapOrientation = "N";
   var ORIENT_TRANSFORM = { N: "", E: "rotate(-90deg)", S: "rotate(180deg)", W: "rotate(90deg)" };
-  var ORIENT_ACTIVE =
-    "min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-cyan-500/25 px-3 py-2.5 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/35 sm:flex-initial";
-  var ORIENT_INACTIVE =
-    "min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial";
-  var ORIENT_INACTIVE_LAST =
-    "min-w-[2.75rem] flex-1 border-0 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial";
-  var ORIENT_ACTIVE_LAST =
-    "min-w-[2.75rem] flex-1 border-0 bg-cyan-500/25 px-3 py-2.5 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/35 sm:flex-initial";
   var SPAN = 10;
   var plotCompact = null;
   var svgNs = "http://www.w3.org/2000/svg";
@@ -224,6 +442,430 @@
   var lastMiningMap = [];
   var lastStyleCatalog = {};
   var decodeSummaryText = "";
+  var decodePlayback = root.querySelector("[data-am-decode-playback]");
+  var decodeStepsEl = root.querySelector("[data-am-decode-steps]");
+  var decodeDetailEl = root.querySelector("[data-am-decode-detail]");
+  var decodePosEl = root.querySelector("[data-am-decode-pos]");
+  var decodeSlider = root.querySelector("[data-am-decode-slider]");
+  var decodePrevBtn = root.querySelector("[data-am-decode-prev]");
+  var decodeNextBtn = root.querySelector("[data-am-decode-next]");
+  var decodePlayBtn = root.querySelector("[data-am-decode-play]");
+  var decodePauseBtn = root.querySelector("[data-am-decode-pause]");
+  var decodeStepsList = [];
+  var mapTimelineList = [];
+  var decodeStepIndex = 0;
+  var decodePlayTimer = null;
+  var mapPhaseTitleEl = root.querySelector("[data-am-map-phase-title]");
+  var mapPhaseDescEl = root.querySelector("[data-am-map-phase-desc]");
+  var mapDecodeBadgeEl = root.querySelector("[data-am-decode-map-badge]");
+  var mapDecodeViz = root.querySelector("[data-am-decode-map-viz]");
+  var mapVizLabel = root.querySelector("[data-am-decode-viz-label]");
+  var mapVizFraction = root.querySelector("[data-am-decode-viz-fraction]");
+  var mapVizBar = root.querySelector("[data-am-decode-viz-bar]");
+  var mapVizStages = root.querySelector("[data-am-decode-viz-stages]");
+  var mapVizTrack = root.querySelector("[data-am-decode-viz-track]");
+  var mapVizDetail = root.querySelector("[data-am-decode-viz-detail]");
+  var STEP_LABELS = {
+    validate_input_type: "{% filter escapejs %}{% trans 'Validate input type' %}{% endfilter %}",
+    normalize_whitespace: "{% filter escapejs %}{% trans 'Normalize whitespace' %}{% endfilter %}",
+    check_non_empty: "{% filter escapejs %}{% trans 'Check non-empty' %}{% endfilter %}",
+    check_prefix: "{% filter escapejs %}{% trans 'Check SHAPEZ2 prefix' %}{% endfilter %}",
+    extract_payload: "{% filter escapejs %}{% trans 'Extract payload after prefix' %}{% endfilter %}",
+    trim_base64: "{% filter escapejs %}{% trans 'Trim trailing non-base64' %}{% endfilter %}",
+    pad_base64: "{% filter escapejs %}{% trans 'Pad base64' %}{% endfilter %}",
+    base64_decode: "{% filter escapejs %}{% trans 'Base64 decode' %}{% endfilter %}",
+    verify_gzip_magic: "{% filter escapejs %}{% trans 'Verify gzip magic' %}{% endfilter %}",
+    gzip_decompress: "{% filter escapejs %}{% trans 'Gzip decompress' %}{% endfilter %}",
+    utf8_decode: "{% filter escapejs %}{% trans 'UTF-8 decode' %}{% endfilter %}",
+    json_parse: "{% filter escapejs %}{% trans 'JSON parse' %}{% endfilter %}",
+    validate_top_level_object: "{% filter escapejs %}{% trans 'Validate top-level object' %}{% endfilter %}",
+  };
+
+  var MAP_STEP_LABELS = {
+    with_transport: root.getAttribute("data-map-step-with_transport") || "",
+    extraction_shell: root.getAttribute("data-map-step-extraction_shell") || "",
+    strip_extractors: root.getAttribute("data-map-step-strip_extractors") || "",
+    strip_extensions: root.getAttribute("data-map-step-strip_extensions") || "",
+    fill_interior: root.getAttribute("data-map-step-fill_interior") || "",
+    final: root.getAttribute("data-map-step-final") || "",
+  };
+
+  function decodeStepLabel(stepId) {
+    return STEP_LABELS[stepId] || stepId;
+  }
+
+  function mapStepLabel(stepId) {
+    return MAP_STEP_LABELS[stepId] || stepId;
+  }
+
+  function playbackStepCount() {
+    if (mapTimelineList.length) return mapTimelineList.length;
+    return decodeStepsList.length;
+  }
+
+  function layoutKindLabel(kind) {
+    if (!kind) return "";
+    var slug = String(kind).replace(/_/g, "-");
+    return root.getAttribute("data-msg-layout-" + slug) || "";
+  }
+
+  /** Post-demolition cells use layout_kind asteroid_field; label by surface (mining field), not generic asteroid. */
+  function demolishedMiningFieldLabel(entry) {
+    if (!entry || entry.layout_kind !== "asteroid_field") return null;
+    if (entry.surface === "fluid") {
+      return root.getAttribute("data-msg-fluid-mining") || "Fluid mining";
+    }
+    return root.getAttribute("data-msg-shape-mining") || "Shape mining";
+  }
+
+  function stopDecodePlay() {
+    if (decodePlayTimer) {
+      clearInterval(decodePlayTimer);
+      decodePlayTimer = null;
+    }
+    if (decodePlayBtn && decodePauseBtn) {
+      decodePlayBtn.hidden = false;
+      decodePauseBtn.hidden = true;
+    }
+  }
+
+  function formatDecodeDetail(step) {
+    if (!step) return "";
+    if (step.error) {
+      return step.error;
+    }
+    if (step.detail && typeof step.detail === "object") {
+      try {
+        return JSON.stringify(step.detail, null, 2);
+      } catch (e) {
+        return String(step.detail);
+      }
+    }
+    return "";
+  }
+
+  function stageLabel(si) {
+    return root.getAttribute("data-map-viz-stage-" + si) || "";
+  }
+
+  function decodeStageIndex(stepId) {
+    if (!stepId) return 0;
+    if (stepId === "validate_top_level_object") return 3;
+    if (stepId === "utf8_decode" || stepId === "json_parse") return 2;
+    if (
+      stepId === "base64_decode" ||
+      stepId === "verify_gzip_magic" ||
+      stepId === "gzip_decompress"
+    ) {
+      return 1;
+    }
+    return 0;
+  }
+
+  function renderDecodeMapViz(st, idx, n, steps) {
+    if (!mapDecodeViz) return;
+    var pct = n ? ((idx + 1) / n) * 100 : 0;
+    if (mapVizBar) mapVizBar.style.width = pct + "%";
+    if (mapVizLabel) mapVizLabel.textContent = decodeStepLabel(st && st.id ? st.id : "");
+    if (mapVizFraction) mapVizFraction.textContent = idx + 1 + " / " + n;
+    var detailText = formatDecodeDetail(st);
+    if (mapVizDetail) {
+      mapVizDetail.textContent = detailText;
+      mapVizDetail.classList.toggle("hidden", !detailText);
+    }
+    var si = decodeStageIndex(st && st.id);
+    if (mapVizStages) {
+      mapVizStages.innerHTML = "";
+      var sg;
+      for (sg = 0; sg < 4; sg++) {
+        var sd = document.createElement("div");
+        sd.className = "am-decode-viz-stage";
+        if (sg < si) sd.classList.add("done");
+        else if (sg === si) sd.classList.add("active");
+        else sd.classList.add("todo");
+        var lab = document.createElement("span");
+        lab.className = "am-decode-viz-stage-label";
+        lab.textContent = stageLabel(sg);
+        sd.appendChild(lab);
+        mapVizStages.appendChild(sd);
+      }
+    }
+    if (mapVizTrack) {
+      mapVizTrack.innerHTML = "";
+      var ti;
+      for (ti = 0; ti < n; ti++) {
+        var tick = document.createElement("div");
+        tick.className = "am-decode-viz-tick";
+        if (ti < idx) tick.classList.add("past");
+        else if (ti === idx) tick.classList.add("current");
+        else tick.classList.add("future");
+        if (steps[ti] && steps[ti].ok === false) tick.classList.add("bad");
+        tick.title = decodeStepLabel(steps[ti].id);
+        mapVizTrack.appendChild(tick);
+      }
+    }
+  }
+
+  function syncMapTimelineStep() {
+    var idleTitle = root.getAttribute("data-map-phase-idle-title") || "";
+    var idleDesc = root.getAttribute("data-map-phase-idle-desc") || "";
+    var idleBadge = root.getAttribute("data-map-badge-idle") || "";
+    var mapTitle = root.getAttribute("data-map-phase-map-title") || "";
+    var badgePrefix = root.getAttribute("data-map-badge-step-prefix") || "";
+
+    var n = mapTimelineList.length;
+    if (!n) {
+      if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = idleTitle;
+      if (mapPhaseDescEl) mapPhaseDescEl.textContent = idleDesc;
+      if (mapDecodeBadgeEl) mapDecodeBadgeEl.textContent = idleBadge;
+      if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
+      if (surface) surface.classList.remove("am-map-decode-active");
+      clearPlot();
+      if (plotSvg) applyMapOrientation(mapOrientation);
+      return;
+    }
+
+    var st = mapTimelineList[decodeStepIndex];
+    if (surface) surface.classList.remove("am-map-decode-active");
+    if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
+    if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = mapTitle;
+    if (mapPhaseDescEl) {
+      mapPhaseDescEl.textContent = mapStepLabel(st && st.id ? st.id : "");
+    }
+    if (mapDecodeBadgeEl) {
+      mapDecodeBadgeEl.textContent = badgePrefix + ": " + (decodeStepIndex + 1) + " / " + n;
+    }
+
+    rebuildMiningIndex(st.mining_map || []);
+    renderPlot(st.summary, st.mining_map || [], lastStyleCatalog);
+    applyMapOrientation(mapOrientation);
+    loadCellsForSummary(st.summary);
+  }
+
+  function syncDecodeStepMap() {
+    if (mapTimelineList.length) {
+      syncMapTimelineStep();
+      return;
+    }
+
+    var idleTitle = root.getAttribute("data-map-phase-idle-title") || "";
+    var idleDesc = root.getAttribute("data-map-phase-idle-desc") || "";
+    var idleBadge = root.getAttribute("data-map-badge-idle") || "";
+    var decodeTitle = root.getAttribute("data-map-phase-decode-title") || "";
+    var badgePrefix = root.getAttribute("data-map-badge-decode-prefix") || "";
+
+    if (!decodeStepsList.length) {
+      if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = idleTitle;
+      if (mapPhaseDescEl) mapPhaseDescEl.textContent = idleDesc;
+      if (mapDecodeBadgeEl) mapDecodeBadgeEl.textContent = idleBadge;
+      if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
+      if (surface) surface.classList.remove("am-map-decode-active");
+      clearPlot();
+      if (plotSvg) applyMapOrientation(mapOrientation);
+      return;
+    }
+
+    var n = decodeStepsList.length;
+    var st = decodeStepsList[decodeStepIndex];
+    var last = decodeStepsList[n - 1];
+
+    if (surface) surface.classList.add("am-map-decode-active");
+    if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = decodeTitle;
+    if (mapPhaseDescEl) {
+      var d1 = decodeStepLabel(st && st.id ? st.id : "");
+      var d2 = formatDecodeDetail(st);
+      if (d2.length > 100) d2 = d2.slice(0, 97) + "...";
+      mapPhaseDescEl.textContent = d2 ? d1 + " · " + d2 : d1;
+    }
+    if (mapDecodeBadgeEl) {
+      mapDecodeBadgeEl.textContent = badgePrefix + ": " + (decodeStepIndex + 1) + " / " + n;
+    }
+
+    var layoutReady =
+      last &&
+      last.ok &&
+      last.id === "validate_top_level_object" &&
+      decodeStepIndex === n - 1 &&
+      lastSummary;
+
+    if (layoutReady) {
+      if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
+      rebuildMiningIndex(lastMiningMap || []);
+      renderPlot(lastSummary, lastMiningMap || [], lastStyleCatalog);
+      applyMapOrientation(mapOrientation);
+      loadCellsForSummary(lastSummary);
+      return;
+    }
+
+    if (mapDecodeViz) {
+      mapDecodeViz.classList.remove("hidden");
+      renderDecodeMapViz(st, decodeStepIndex, n, decodeStepsList);
+    }
+    clearPlot();
+    if (plotSvg) applyMapOrientation(mapOrientation);
+  }
+
+  function renderDecodeStepsUi() {
+    var mapMode = mapTimelineList.length > 0;
+    var n = playbackStepCount();
+    if (decodeStepsEl) {
+      decodeStepsEl.innerHTML = "";
+      var i;
+      for (i = 0; i < n; i++) {
+        var st = mapMode ? mapTimelineList[i] : decodeStepsList[i];
+        var li = document.createElement("li");
+        li.className = "am-decode-step";
+        if (i < decodeStepIndex) li.classList.add("past");
+        else if (i === decodeStepIndex) li.classList.add("active");
+        else li.classList.add("future");
+        if (!mapMode && st && st.ok === false) li.classList.add("bad");
+        var title = document.createElement("span");
+        title.className = "am-decode-step-title";
+        title.textContent = mapMode
+          ? mapStepLabel(st && st.id ? st.id : "")
+          : decodeStepLabel(st && st.id ? st.id : "");
+        li.appendChild(title);
+        if (!mapMode && st && st.ok === false) {
+          var err = document.createElement("span");
+          err.className = "am-decode-step-err";
+          err.textContent = st.error || "";
+          li.appendChild(err);
+        }
+        decodeStepsEl.appendChild(li);
+      }
+    }
+    if (decodePosEl) {
+      decodePosEl.textContent = n ? decodeStepIndex + 1 + " / " + n : "";
+    }
+    if (decodeDetailEl) {
+      decodeDetailEl.textContent =
+        mapMode || !decodeStepsList.length
+          ? ""
+          : formatDecodeDetail(decodeStepsList[decodeStepIndex]);
+    }
+    if (decodeSlider) {
+      decodeSlider.max = String(Math.max(0, n - 1));
+      decodeSlider.value = String(decodeStepIndex);
+      decodeSlider.disabled = n <= 1;
+    }
+    if (decodePrevBtn) decodePrevBtn.disabled = decodeStepIndex <= 0;
+    if (decodeNextBtn) decodeNextBtn.disabled = n === 0 || decodeStepIndex >= n - 1;
+    syncDecodeStepMap();
+  }
+
+  function setDecodeStepIndex(idx) {
+    var n = playbackStepCount();
+    if (n === 0) return;
+    var i = idx;
+    if (i < 0) i = 0;
+    if (i > n - 1) i = n - 1;
+    decodeStepIndex = i;
+    renderDecodeStepsUi();
+  }
+
+  function applyMapTimeline(timeline, opts) {
+    mapTimelineList = Array.isArray(timeline) ? timeline : [];
+    decodeStepsList = [];
+    stopDecodePlay();
+    if (!decodePlayback) return;
+    if (!mapTimelineList.length) {
+      decodePlayback.classList.add("hidden");
+      decodeStepIndex = 0;
+      renderDecodeStepsUi();
+      return;
+    }
+    decodePlayback.classList.remove("hidden");
+    var n = mapTimelineList.length;
+    if (opts && opts.startAtEnd) {
+      decodeStepIndex = n - 1;
+    } else {
+      decodeStepIndex = 0;
+    }
+    renderDecodeStepsUi();
+    if (opts && opts.autoPlayOnce && n > 0) {
+      window.setTimeout(function () {
+        if (!mapTimelineList.length) return;
+        startDecodePlay();
+      }, 80);
+    }
+  }
+
+  function applyDecodeSteps(steps, opts) {
+    decodeStepsList = Array.isArray(steps) ? steps : [];
+    mapTimelineList = [];
+    stopDecodePlay();
+    if (!decodePlayback) return;
+    if (!decodeStepsList.length) {
+      decodePlayback.classList.add("hidden");
+      decodeStepIndex = 0;
+      renderDecodeStepsUi();
+      return;
+    }
+    decodePlayback.classList.remove("hidden");
+    var n = decodeStepsList.length;
+    var last = decodeStepsList[n - 1];
+    if (opts && opts.startAtEnd) {
+      decodeStepIndex = n - 1;
+    } else if (last && last.ok === false) {
+      decodeStepIndex = n - 1;
+    } else {
+      decodeStepIndex = 0;
+    }
+    renderDecodeStepsUi();
+  }
+
+  function startDecodePlay() {
+    var n = playbackStepCount();
+    if (!n) return;
+    stopDecodePlay();
+    /* 항상 step 0부터 재생 (디코드 직후 마지막 스텝에 있어도 리셋). */
+    setDecodeStepIndex(0);
+    if (decodePlayBtn) decodePlayBtn.hidden = true;
+    if (decodePauseBtn) decodePauseBtn.hidden = false;
+    var playMs = 1200;
+    decodePlayTimer = setInterval(function () {
+      if (decodeStepIndex >= n - 1) {
+        stopDecodePlay();
+        return;
+      }
+      var next = decodeStepIndex + 1;
+      setDecodeStepIndex(next);
+      if (decodeStepsList.length) {
+        var st = decodeStepsList[next];
+        if (st && st.ok === false) {
+          stopDecodePlay();
+        }
+      }
+    }, playMs);
+  }
+
+  if (decodeSlider) {
+    decodeSlider.addEventListener("input", function () {
+      setDecodeStepIndex(parseInt(decodeSlider.value, 10) || 0);
+    });
+  }
+  if (decodePrevBtn) {
+    decodePrevBtn.addEventListener("click", function () {
+      stopDecodePlay();
+      setDecodeStepIndex(decodeStepIndex - 1);
+    });
+  }
+  if (decodeNextBtn) {
+    decodeNextBtn.addEventListener("click", function () {
+      stopDecodePlay();
+      setDecodeStepIndex(decodeStepIndex + 1);
+    });
+  }
+  if (decodePlayBtn) {
+    decodePlayBtn.addEventListener("click", function () {
+      startDecodePlay();
+    });
+  }
+  if (decodePauseBtn) {
+    decodePauseBtn.addEventListener("click", function () {
+      stopDecodePlay();
+    });
+  }
 
   function rebuildMiningIndex(miningMap) {
     miningByCoord = Object.create(null);
@@ -237,6 +879,16 @@
 
   function miningStatusLabel(entry) {
     if (!entry) return voidLabel;
+    if (entry.role === "belt") {
+      return root.getAttribute("data-msg-belt") || "Belt";
+    }
+    if (entry.role === "pipe") {
+      return root.getAttribute("data-msg-pipe") || "Pipe";
+    }
+    var dem = demolishedMiningFieldLabel(entry);
+    if (dem !== null) return dem;
+    var lkFull = entry.layout_kind ? layoutKindLabel(entry.layout_kind) : "";
+    if (lkFull) return lkFull;
     if (entry.surface === "fluid") {
       return root.getAttribute("data-msg-fluid-mining") || "Fluid mining";
     }
@@ -335,12 +987,13 @@
       return;
     }
     var k = x + "," + y;
-    if (cellMap[k]) {
-      pStatus.textContent = cellMap[k].label;
-      return;
-    }
+    /* Blueprint preview wins over static map cell labels (terrain may say e.g. fluid field). */
     if (miningByCoord[k]) {
       pStatus.textContent = miningStatusLabel(miningByCoord[k]);
+      return;
+    }
+    if (cellMap[k]) {
+      pStatus.textContent = cellMap[k].label;
       return;
     }
     if (!pointInLoadedRegions(x, y)) {
@@ -372,10 +1025,9 @@
     for (var ob = 0; ob < orientBtns.length; ob++) {
       var b = orientBtns[ob];
       var key = b.getAttribute("data-map-orientation") || "";
-      var isLast = key === "W";
       var active = key === mapOrientation;
       b.setAttribute("aria-pressed", active ? "true" : "false");
-      b.className = active ? (isLast ? ORIENT_ACTIVE_LAST : ORIENT_ACTIVE) : isLast ? ORIENT_INACTIVE_LAST : ORIENT_INACTIVE;
+      b.classList.toggle("active", active);
     }
   }
 
@@ -414,6 +1066,16 @@
     var catalog = styleCatalog && typeof styleCatalog === "object" ? styleCatalog : {};
     function mapEntryTitle(entry) {
       if (!entry) return "";
+      if (entry.role === "belt") {
+        return root.getAttribute("data-msg-belt") || "Belt";
+      }
+      if (entry.role === "pipe") {
+        return root.getAttribute("data-msg-pipe") || "Pipe";
+      }
+      var dem = demolishedMiningFieldLabel(entry);
+      if (dem !== null) return dem;
+      var lkTip = entry.layout_kind ? layoutKindLabel(entry.layout_kind) : "";
+      if (lkTip) return lkTip;
       if (entry.surface === "fluid") {
         return root.getAttribute("data-msg-fluid-mining") || "Fluid mining";
       }
@@ -428,6 +1090,22 @@
       var row = catalog[role];
       if (row && row.opacity != null && row.opacity !== "") return String(row.opacity);
       return "0.5";
+    }
+    /** Filled (inferred) and demolished mining fields share fluid_miner / miner palette by surface. */
+    function paintRoleForSurfaceMining(surface) {
+      var s = surface === "fluid" ? "fluid" : "shape";
+      if (s === "fluid") {
+        return catalog.fluid_miner ? "fluid_miner" : "inferred";
+      }
+      return catalog.miner ? "miner" : "occupied";
+    }
+    function paintRoleForOccupiedCell(cell) {
+      var lk = cell.layout_kind;
+      if (lk === "asteroid_field") {
+        return paintRoleForSurfaceMining(cell.surface);
+      }
+      if (lk && catalog[lk]) return lk;
+      return "occupied";
     }
     if (!summary || summary.x_min == null || !miningMap || miningMap.length === 0) {
       plotSvg.removeAttribute("viewBox");
@@ -519,6 +1197,10 @@
 
     var gUnder = document.createElementNS(svgNs, "g");
     gUnder.setAttribute("class", "asteroid-plot-inferred");
+    var gBelt = document.createElementNS(svgNs, "g");
+    gBelt.setAttribute("class", "asteroid-plot-belt");
+    var gPipe = document.createElementNS(svgNs, "g");
+    gPipe.setAttribute("class", "asteroid-plot-pipe");
     var gTop = document.createElementNS(svgNs, "g");
     gTop.setAttribute("class", "asteroid-plot-occupied");
 
@@ -527,7 +1209,21 @@
       var cell = filtered[i];
       var role = cell.role || "occupied";
       if (role === "inferred") {
-        appendCellRect(gUnder, cell, "inferred", mapEntryTitle(cell));
+        appendCellRect(gUnder, cell, paintRoleForSurfaceMining(cell.surface), mapEntryTitle(cell));
+      }
+    }
+    for (i = 0; i < filtered.length; i++) {
+      var beltCell = filtered[i];
+      var beltRole = beltCell.role || "occupied";
+      if (beltRole === "belt") {
+        appendCellRect(gBelt, beltCell, "belt", mapEntryTitle(beltCell));
+      }
+    }
+    for (i = 0; i < filtered.length; i++) {
+      var pipeCell = filtered[i];
+      var pipeRole = pipeCell.role || "occupied";
+      if (pipeRole === "pipe") {
+        appendCellRect(gPipe, pipeCell, "pipe", mapEntryTitle(pipeCell));
       }
     }
     for (i = 0; i < filtered.length; i++) {
@@ -535,10 +1231,12 @@
       if (oc.x === 0) continue;
       if ((oc.role || "occupied") !== "occupied") continue;
       var tip = mapEntryTitle(oc);
-      appendCellRect(gTop, oc, "occupied", tip);
+      appendCellRect(gTop, oc, paintRoleForOccupiedCell(oc), tip);
     }
 
     plotSvg.appendChild(gUnder);
+    plotSvg.appendChild(gBelt);
+    plotSvg.appendChild(gPipe);
     plotSvg.appendChild(gTop);
   }
 
@@ -629,6 +1327,9 @@
       errEl.classList.add("hidden");
       errEl.textContent = "";
       clearPlot();
+      stopDecodePlay();
+      applyMapTimeline([]);
+      applyDecodeSteps([]);
       btn.disabled = true;
       fetch(apiUrl, {
         method: "POST",
@@ -651,6 +1352,8 @@
             var idle = summaryEl.getAttribute("data-idle-msg") || "";
             summaryEl.textContent = idle;
             decodeSummaryText = "";
+            applyMapTimeline([]);
+            applyDecodeSteps([]);
             return;
           }
           decodeSummaryText = formatSummary(x.data.summary);
@@ -658,11 +1361,12 @@
           lastSummary = x.data.summary;
           lastMiningMap = x.data.mining_map || [];
           lastStyleCatalog = x.data.style_catalog || {};
-          rebuildMiningIndex(lastMiningMap);
-          renderPlot(lastSummary, lastMiningMap, lastStyleCatalog);
-          return loadCellsForSummary(x.data.summary);
+          applyDecodeSteps([]);
+          applyMapTimeline(x.data.map_timeline || [], { autoPlayOnce: true });
         })
         .catch(function () {
+          applyMapTimeline([]);
+          applyDecodeSteps([]);
           errEl.textContent = root.getAttribute("data-msg-network") || "";
           errEl.classList.remove("hidden");
         })

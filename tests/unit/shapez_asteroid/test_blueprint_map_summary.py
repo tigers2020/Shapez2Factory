@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.blueprint_map_summary import (
+    MAP_TIMELINE_STEP_IDS,
+    build_map_timeline,
     list_island_mining_map,
     summarize_island_entries_map,
 )
@@ -160,8 +162,20 @@ def test_x_zero_excluded_from_bounds_and_map() -> None:
         "y_max": 1,
     }
     assert list_island_mining_map(decoded) == [
-        {"x": -2, "y": 1, "role": "occupied", "surface": "shape", "t": "Layout_ShapeMiner"},
-        {"x": 3, "y": 1, "role": "occupied", "surface": "shape", "t": "Layout_ShapeMiner"},
+        {
+            "x": -2,
+            "y": 1,
+            "role": "occupied",
+            "surface": "shape",
+            "layout_kind": "asteroid_field",
+        },
+        {
+            "x": 3,
+            "y": 1,
+            "role": "occupied",
+            "surface": "shape",
+            "layout_kind": "asteroid_field",
+        },
     ]
 
 
@@ -175,6 +189,59 @@ def test_only_x_zero_entries_yields_no_bounds() -> None:
         "y_max": None,
     }
     assert list_island_mining_map(decoded) == []
+
+
+def test_build_map_timeline_final_matches_list_island_mining_map() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 1, "Y": 2, "T": "Layout_ShapeMiner"},
+                {"X": -2, "Y": 1, "T": "Layout_UndergroundBelt"},
+                {"X": 3, "Y": 1, "T": "Layout_FluidPipe"},
+            ]
+        }
+    }
+    tl = build_map_timeline(decoded)
+    assert len(tl) == len(MAP_TIMELINE_STEP_IDS)
+    assert [s["id"] for s in tl] == list(MAP_TIMELINE_STEP_IDS)
+    assert tl[-1]["mining_map"] == list_island_mining_map(decoded)
+    assert tl[-1]["summary"] == summarize_island_entries_map(decoded)
+
+
+def test_build_map_timeline_first_step_has_belt_and_pipe_roles() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 1, "Y": 0, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 0, "T": "Layout_UndergroundBelt"},
+                {"X": 3, "Y": 0, "T": "Layout_FluidPipe"},
+            ]
+        }
+    }
+    first = build_map_timeline(decoded)[0]
+    assert first["id"] == "with_transport"
+    roles = {(c["x"], c["y"]): c["role"] for c in first["mining_map"]}
+    assert roles[(2, 0)] == "belt"
+    assert roles[(3, 0)] == "pipe"
+    assert roles[(1, 0)] == "occupied"
+
+
+def test_strip_extractors_step_marks_removed_cells_as_asteroid_field() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 5, "Y": 1, "T": "Layout_FluidPump"},
+                {"X": 6, "Y": 1, "T": "Layout_ShapeMiner"},
+            ]
+        }
+    }
+    tl = build_map_timeline(decoded)
+    strip_ex = next(s for s in tl if s["id"] == "strip_extractors")
+    by_xy = {(c["x"], c["y"]): c for c in strip_ex["mining_map"] if c.get("role") == "occupied"}
+    assert by_xy[(5, 1)]["layout_kind"] == "asteroid_field"
+    assert "t" not in by_xy[(5, 1)]
+    assert by_xy[(6, 1)]["layout_kind"] == "asteroid_field"
+    assert by_xy[(6, 1)]["surface"] == "shape"
 
 
 def test_belt_pipe_not_in_map_fluid_extension_only() -> None:
@@ -194,8 +261,8 @@ def test_belt_pipe_not_in_map_fluid_extension_only() -> None:
         "y": 0,
         "role": "occupied",
         "surface": "fluid",
-        "t": "Layout_FluidMinerExtension",
         "r": 2,
+        "layout_kind": "asteroid_field",
     }
     assert summarize_island_entries_map(decoded)["entry_count"] == 1
 
@@ -214,15 +281,24 @@ def test_unified_map_extractor_and_extension_same_role() -> None:
     assert pts[1]["role"] == "occupied"
     assert pts[0]["surface"] == "fluid"
     assert pts[1]["surface"] == "fluid"
-    assert pts[0]["t"] == "Layout_FluidExtractor"
-    assert pts[1]["t"] == "Layout_FluidMinerExtension"
+    assert pts[0]["layout_kind"] == "asteroid_field"
+    assert pts[1]["layout_kind"] == "asteroid_field"
+    assert "t" not in pts[0]
+    assert "t" not in pts[1]
     assert list_island_mining_map({}) == []
 
 
 def test_shape_miner_on_map() -> None:
     decoded = {"BP": {"Entries": [{"X": 4, "Y": 0, "T": "Layout_ShapeMiner", "R": 1}]}}
     assert list_island_mining_map(decoded) == [
-        {"x": 4, "y": 0, "role": "occupied", "surface": "shape", "t": "Layout_ShapeMiner", "r": 1},
+        {
+            "x": 4,
+            "y": 0,
+            "role": "occupied",
+            "surface": "shape",
+            "r": 1,
+            "layout_kind": "asteroid_field",
+        },
     ]
 
 
@@ -232,7 +308,8 @@ def test_shape_miner_extension_classified_for_filter_only() -> None:
     assert len(pts) == 1
     assert pts[0]["role"] == "occupied"
     assert pts[0]["surface"] == "shape"
-    assert pts[0]["t"] == "Layout_ShapeMinerExtension"
+    assert pts[0]["layout_kind"] == "asteroid_field"
+    assert "t" not in pts[0]
     assert classify_layout_type("Layout_ShapeMinerExtension") == PlotStyle.extension
 
 
@@ -246,7 +323,9 @@ def test_fluid_pump_maps_extraction_filter() -> None:
     pts = list_island_mining_map(decoded)
     assert pts[0]["role"] == "occupied"
     assert pts[0]["surface"] == "fluid"
-    assert pts[0]["t"] == "Layout_FluidPump"
+    assert pts[0]["layout_kind"] == "asteroid_field"
+    assert pts[0]["r"] == 0
+    assert "t" not in pts[0]
 
 
 def test_foundation_not_extraction() -> None:
@@ -268,6 +347,7 @@ def test_booster_on_map() -> None:
     assert len(pts) == 1
     assert pts[0]["role"] == "occupied"
     assert pts[0]["surface"] == "shape"
+    assert pts[0]["layout_kind"] == "asteroid_field"
 
 
 def test_inferred_patch_surface_follows_fluid_if_any_fluid_miner() -> None:
@@ -307,7 +387,54 @@ def test_duplicate_coords_last_entry_wins() -> None:
             "y": 1,
             "role": "occupied",
             "surface": "fluid",
-            "t": "Layout_FluidExtractor",
             "r": 2,
+            "layout_kind": "asteroid_field",
         },
     ]
+
+
+def test_map_timeline_six_steps_fill_interior_equals_final() -> None:
+    decoded = {"BP": {"Entries": [{"X": 1, "Y": 0, "T": "Layout_ShapeMiner"}]}}
+    tl = build_map_timeline(decoded)
+    assert len(tl) == 6
+    assert [s["id"] for s in tl] == list(MAP_TIMELINE_STEP_IDS)
+    assert tl[-1]["id"] == "final"
+    assert tl[-2]["mining_map"] == tl[-1]["mining_map"]
+
+
+def test_strip_extensions_removes_booster() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 1, "Y": 0, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 0, "T": "Layout_SomeBoost_Module"},
+            ]
+        }
+    }
+    tl = build_map_timeline(decoded)
+    strip_ex = next(s for s in tl if s["id"] == "strip_extractors")
+    kinds_ex = {c.get("layout_kind") for c in strip_ex["mining_map"] if c.get("role") == "occupied"}
+    assert "booster" in kinds_ex
+    strip_ext = next(s for s in tl if s["id"] == "strip_extensions")
+    kinds_ext = {
+        c.get("layout_kind") for c in strip_ext["mining_map"] if c.get("role") == "occupied"
+    }
+    assert kinds_ext == {"asteroid_field"}
+
+
+def test_final_timeline_step_has_only_field_and_inferred_roles() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 1, "Y": 0, "T": "Layout_FluidMiner"},
+                {"X": 2, "Y": 0, "T": "Layout_FluidMinerExtension"},
+                {"X": 3, "Y": 0, "T": "Layout_SomeBoost_Module"},
+            ]
+        }
+    }
+    final = build_map_timeline(decoded)[-1]["mining_map"]
+    for c in final:
+        role = c.get("role")
+        assert role in ("occupied", "inferred")
+        if role == "occupied":
+            assert c.get("layout_kind") == "asteroid_field"

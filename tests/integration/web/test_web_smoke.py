@@ -12,6 +12,7 @@ def test_home_page_renders() -> None:
     assert response.status_code == 200
     assert b"Solve Shapez 2 production chains" in response.content
     assert b"Quick Solver" in response.content
+    assert b"/jsi18n/" in response.content
     assert b"flowbite.min.js" in response.content
     assert b"quick_solver_preview.js" in response.content
     assert b"data-quick-preview-viewers" in response.content
@@ -228,6 +229,12 @@ def test_javascript_catalog_ko_prefixed_url() -> None:
     response = Client().get("/ko/jsi18n/")
     assert response.status_code == 200
     assert b"gettext" in response.content
+
+
+def test_ko_gallery_contains_korean_label() -> None:
+    response = Client().get("/ko/gallery/")
+    assert response.status_code == 200
+    assert "스크린샷".encode() in response.content
 
 
 def test_operation_icon_assets_exist() -> None:

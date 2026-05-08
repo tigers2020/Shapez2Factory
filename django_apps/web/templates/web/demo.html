@@ -9,45 +9,44 @@
 
   <section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8" aria-labelledby="parser-demo-heading">
     <h2 id="parser-demo-heading" class="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-      Core parser — normalized patterns
+      {% trans "Core parser — normalized patterns" %}
     </h2>
     <p class="mt-2 max-w-3xl text-sm text-slate-400">
-      Live output from <code class="text-slate-300">shapez_core</code>: catalog constants, <code class="text-slate-300">parse_shape_code_list()</code>
-      , and per-quadrant cells (SW → NW → NE → SE). Stack layers use <code class="text-slate-300">:</code>
-      ; multiple patterns use commas inside optional <code class="text-slate-300">[ ]</code>
-      .
+      {% blocktrans trimmed %}
+        Live output from shapez_core: catalog constants, parse_shape_code_list(), and per-quadrant cells (SW → NW → NE → SE). Stack layers use ':' ; multiple patterns use commas inside optional '[ ]'.
+      {% endblocktrans %}
     </p>
 
     <form method="get" class="mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row sm:items-center" action="">
-      <label class="sr-only" for="demo-code">Shape code</label>
+      <label class="sr-only" for="demo-code">{% trans "Shape code" %}</label>
       <input
         id="demo-code"
         type="text"
         name="code"
         value="{{ try_code|default:'' }}"
         autocomplete="off"
-        placeholder="e.g. SuSuSuSu or [RuRuRuRu, WrCrRgSy]"
+        placeholder="{% trans 'e.g. SuSuSuSu or [RuRuRuRu, WrCrRgSy]' %}"
         class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/60"
       />
       <button
         type="submit"
         class="shrink-0 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-500/15"
       >
-        Parse (query)
+        {% trans "Parse (query)" %}
       </button>
     </form>
 
     <div class="mt-10 grid gap-8 lg:grid-cols-2">
       <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-        <h3 class="text-sm font-semibold text-slate-200">Shape catalog</h3>
+        <h3 class="text-sm font-semibold text-slate-200">{% trans "Shape catalog" %}</h3>
         <div class="mt-3 overflow-x-auto">
           <table class="w-full min-w-[20rem] border-collapse text-left text-xs">
             <thead>
               <tr class="border-b border-slate-800 text-slate-500">
-                <th class="py-2 pr-3 font-medium">Code</th>
-                <th class="py-2 pr-3 font-medium">Name</th>
-                <th class="py-2 pr-3 font-medium">Solver kind</th>
-                <th class="py-2 font-medium">Flags</th>
+                <th class="py-2 pr-3 font-medium">{% trans "Code" %}</th>
+                <th class="py-2 pr-3 font-medium">{% trans "Name" %}</th>
+                <th class="py-2 pr-3 font-medium">{% trans "Solver kind" %}</th>
+                <th class="py-2 font-medium">{% trans "Flags" %}</th>
               </tr>
             </thead>
             <tbody class="text-slate-300">
@@ -57,8 +56,8 @@
                   <td class="py-2 pr-3">{{ sk.name }}</td>
                   <td class="py-2 pr-3 font-mono text-slate-400">{{ sk.solver_kind }}</td>
                   <td class="py-2 text-slate-500">
-                    {% if sk.empty %}empty{% endif %}
-                    {% if sk.colorable %}colorable{% else %}fixed color{% endif %}
+                    {% if sk.empty %}{% trans "empty" %}{% endif %}
+                    {% if sk.colorable %}{% trans "colorable" %}{% else %}{% trans "fixed color" %}{% endif %}
                   </td>
                 </tr>
               {% endfor %}
@@ -68,14 +67,14 @@
       </div>
 
       <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-        <h3 class="text-sm font-semibold text-slate-200">Color catalog</h3>
+        <h3 class="text-sm font-semibold text-slate-200">{% trans "Color catalog" %}</h3>
         <div class="mt-3 overflow-x-auto">
           <table class="w-full min-w-[20rem] border-collapse text-left text-xs">
             <thead>
               <tr class="border-b border-slate-800 text-slate-500">
-                <th class="py-2 pr-3 font-medium">Code</th>
-                <th class="py-2 pr-3 font-medium">Name</th>
-                <th class="py-2 font-medium">Solver kind</th>
+                <th class="py-2 pr-3 font-medium">{% trans "Code" %}</th>
+                <th class="py-2 pr-3 font-medium">{% trans "Name" %}</th>
+                <th class="py-2 font-medium">{% trans "Solver kind" %}</th>
               </tr>
             </thead>
             <tbody class="text-slate-300">
@@ -93,20 +92,20 @@
     </div>
 
     <div class="mt-10 space-y-6">
-      <h3 class="text-sm font-semibold text-slate-200">Parse examples</h3>
+      <h3 class="text-sm font-semibold text-slate-200">{% trans "Parse examples" %}</h3>
       {% for row in parse_rows %}
         <article
           class="rounded-2xl border p-5 {% if row.ok %}border-slate-800 bg-slate-900/40{% else %}border-rose-500/30 bg-rose-950/20{% endif %}"
         >
           <div class="flex flex-wrap items-baseline justify-between gap-2">
             <p class="font-mono text-sm text-white">
-              <span class="text-slate-500">Input</span>
+              <span class="text-slate-500">{% trans "Input" %}</span>
               <span class="ml-2">{{ row.input }}</span>
             </p>
             {% if row.ok %}
-              <span class="text-xs font-semibold uppercase tracking-wide text-emerald-400/90">OK</span>
+              <span class="text-xs font-semibold uppercase tracking-wide text-emerald-400/90">{% trans "OK" %}</span>
             {% else %}
-              <span class="text-xs font-semibold uppercase tracking-wide text-rose-300">Error</span>
+              <span class="text-xs font-semibold uppercase tracking-wide text-rose-300">{% trans "Error" %}</span>
             {% endif %}
           </div>
           {% if not row.ok %}
@@ -125,7 +124,7 @@
                       >
                         <div class="mb-2 flex flex-wrap items-center justify-between gap-3">
                           <p class="text-[10px] font-semibold uppercase tracking-wider text-cyan-200/80">
-                            Shape preview
+                            {% trans "Shape preview" %}
                           </p>
                           <div class="flex items-center gap-1" data-shape-gltf-mode-controls>
                             <button
@@ -134,7 +133,7 @@
                               data-shape-gltf-mode="original"
                               aria-pressed="true"
                             >
-                              Original
+                              {% trans "Original" %}
                             </button>
                             <button
                               type="button"
@@ -142,7 +141,7 @@
                               data-shape-gltf-mode="layer"
                               aria-pressed="false"
                             >
-                              Layer
+                              {% trans "Layer" %}
                             </button>
                             <button
                               type="button"
@@ -150,7 +149,7 @@
                               data-shape-gltf-mode="quadrant"
                               aria-pressed="false"
                             >
-                              Quadrant
+                              {% trans "Quadrant" %}
                             </button>
                           </div>
                         </div>
@@ -167,19 +166,22 @@
 
                     <div class="min-w-0">
                       <p class="text-xs text-slate-500">
-                        Pattern <span class="font-mono text-slate-300">{{ forloop.counter }}</span>
-                        · raw <span class="font-mono text-slate-300">{{ pat.raw_code }}</span>
+                        {% trans "Pattern" %} <span class="font-mono text-slate-300">{{ forloop.counter }}</span>
+                        <span class="text-slate-600"> · </span>
+                        {% trans "raw" %}
+                        <span class="font-mono text-slate-300">{{ pat.raw_code }}</span>
                       </p>
                       <p class="mt-1 text-xs text-slate-500">
-                        normalized <span class="font-mono text-cyan-200/80">{{ pat.normalized_code }}</span>
+                        {% trans "normalized" %} <span class="font-mono text-cyan-200/80">{{ pat.normalized_code }}</span>
                       </p>
                       <p class="mt-1 text-xs text-slate-500">
-                        layers <span class="font-mono text-slate-300">{{ pat.layers|length }}</span>
+                        {% trans "layers" %} <span class="font-mono text-slate-300">{{ pat.layers|length }}</span>
                       </p>
                       {% for layer in pat.layers %}
                         <div class="mt-4">
                           <p class="text-xs font-medium uppercase tracking-wider text-slate-500">
-                            Layer {{ layer.layer_index }} <span class="font-normal normal-case text-slate-600">(bottom → top)</span>
+                            {% blocktrans with idx=layer.layer_index %}Layer {{ idx }}{% endblocktrans %}
+                            <span class="font-normal normal-case text-slate-600">{% trans "(bottom → top)" %}</span>
                           </p>
                           <div class="mt-2 grid max-w-sm grid-cols-2 gap-2">
                             {% for cell in layer.cells %}
@@ -213,71 +215,75 @@
     <div class="rounded-3xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6">
       <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 class="text-xl font-semibold text-white">Example production plan</h2>
-          <p class="mt-1 text-sm text-slate-400">Mock output wiring to <code class="text-slate-300">/solver/new</code> comes later.</p>
+          <h2 class="text-xl font-semibold text-white">{% trans "Example production plan" %}</h2>
+          <p class="mt-1 text-sm text-slate-400">
+            {% blocktrans trimmed %}Mock output wiring to /solver/new comes later.{% endblocktrans %}
+          </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <span class="rounded-full border border-cyan-400/20 px-3 py-1 text-xs text-cyan-200">Target: CuRuSuWu</span>
-          <span class="rounded-full border border-amber-400/20 px-3 py-1 text-xs text-amber-200">120 / min</span>
+          <span class="rounded-full border border-cyan-400/20 px-3 py-1 text-xs text-cyan-200">{% trans "Target: CuRuSuWu" %}</span>
+          <span class="rounded-full border border-amber-400/20 px-3 py-1 text-xs text-amber-200">{% trans "120 / min" %}</span>
         </div>
       </div>
 
       <div class="grid gap-6 sm:gap-8 lg:grid-cols-[1fr_1.4fr_1fr]">
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-5">
-          <h3 class="mb-3 text-sm font-semibold text-slate-200">Required inputs</h3>
+          <h3 class="mb-3 text-sm font-semibold text-slate-200">{% trans "Required inputs" %}</h3>
           <div class="space-y-3 text-sm">
             <div class="flex flex-col gap-1 border-b border-slate-800 pb-3 sm:flex-row sm:items-center sm:justify-between">
               <span class="font-mono text-xs text-slate-400">CuCuCuCu</span>
               <div class="text-right">
                 <span class="block text-cyan-200">360/min</span>
-                <span class="text-xs text-amber-300">2 miners</span>
+                <span class="text-xs text-amber-300">{% trans "2 miners" %}</span>
               </div>
             </div>
             <div class="flex flex-col gap-1 border-b border-slate-800 pb-3 sm:flex-row sm:items-center sm:justify-between">
               <span class="font-mono text-xs text-slate-400">RuRuRuRu</span>
               <div class="text-right">
                 <span class="block text-cyan-200">180/min</span>
-                <span class="text-xs text-amber-300">1 miner</span>
+                <span class="text-xs text-amber-300">{% trans "1 miner" %}</span>
               </div>
             </div>
           </div>
         </div>
 
         <div class="rounded-2xl border border-cyan-400/20 bg-slate-950/70 p-5">
-          <h3 class="mb-4 text-sm font-semibold text-slate-200">Recipe graph</h3>
+          <h3 class="mb-4 text-sm font-semibold text-slate-200">{% trans "Recipe graph" %}</h3>
           <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300 md:flex-nowrap md:gap-3">
-            <div class="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 md:px-3 md:py-3">Raw circle</div>
+            <div class="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 md:px-3 md:py-3">{% trans "Raw circle" %}</div>
             <div class="hidden h-px flex-1 bg-cyan-400/40 md:block"></div>
-            <div class="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 md:px-3 md:py-3">Cutter</div>
+            <div class="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 md:px-3 md:py-3">{% trans "Cutter" %}</div>
             <div class="hidden h-px flex-1 bg-cyan-400/40 md:block"></div>
-            <div class="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 md:px-3 md:py-3">Rotator</div>
+            <div class="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 md:px-3 md:py-3">{% trans "Rotator" %}</div>
             <div class="hidden h-px flex-1 bg-cyan-400/40 md:block"></div>
-            <div class="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 md:px-3 md:py-3">Stacker</div>
+            <div class="rounded-xl border border-slate-700 bg-slate-900 px-2 py-2 md:px-3 md:py-3">{% trans "Stacker" %}</div>
             <div class="hidden h-px flex-1 bg-violet-400/40 md:block"></div>
-            <div class="rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-2 py-2 font-medium text-cyan-200 md:px-3 md:py-3">Target</div>
+            <div class="rounded-xl border border-cyan-400/40 bg-cyan-400/10 px-2 py-2 font-medium text-cyan-200 md:px-3 md:py-3">{% trans "Target" %}</div>
           </div>
           <p class="mt-4 text-center text-xs text-slate-500">
-            Required throughput example: <span class="text-amber-300/90">360/min</span> on raw branch (mock).
+            {% blocktrans trimmed %}Required throughput example:{% endblocktrans %}
+            <span class="text-amber-300/90">360/min</span>
+            {% blocktrans trimmed %}on raw branch (mock).{% endblocktrans %}
           </p>
         </div>
 
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-5">
-          <h3 class="mb-3 text-sm font-semibold text-slate-200">Machine stats</h3>
+          <h3 class="mb-3 text-sm font-semibold text-slate-200">{% trans "Machine stats" %}</h3>
           <div class="space-y-3 text-sm">
             <div class="flex justify-between border-b border-slate-800 pb-2">
-              <span class="text-slate-400">Cutters</span>
+              <span class="text-slate-400">{% trans "Cutters" %}</span>
               <span class="text-amber-200">4</span>
             </div>
             <div class="flex justify-between border-b border-slate-800 pb-2">
-              <span class="text-slate-400">Rotators</span>
+              <span class="text-slate-400">{% trans "Rotators" %}</span>
               <span class="text-amber-200">2</span>
             </div>
             <div class="flex justify-between border-b border-slate-800 pb-2">
-              <span class="text-slate-400">Stackers</span>
+              <span class="text-slate-400">{% trans "Stackers" %}</span>
               <span class="text-amber-200">3</span>
             </div>
             <div class="flex justify-between pb-1">
-              <span class="text-slate-400">Miners (total)</span>
+              <span class="text-slate-400">{% trans "Miners (total)" %}</span>
               <span class="text-amber-200">3</span>
             </div>
           </div>
@@ -287,34 +293,34 @@
   </section>
 
   <section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 sm:pb-20 lg:px-8" aria-labelledby="how-heading">
-    <h2 id="how-heading" class="mb-6 text-lg font-semibold text-white">How it works</h2>
+    <h2 id="how-heading" class="mb-6 text-lg font-semibold text-white">{% trans "How it works" %}</h2>
     <ol class="grid gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-4">
       <li class="flex gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-sm font-semibold text-violet-200">1</span>
         <div>
-          <p class="text-sm font-medium text-slate-200">Enter target shape</p>
-          <p class="mt-1 text-xs text-slate-500">Encode the goal shape string the factory must output.</p>
+          <p class="text-sm font-medium text-slate-200">{% trans "Enter target shape" %}</p>
+          <p class="mt-1 text-xs text-slate-500">{% trans "Encode the goal shape string the factory must output." %}</p>
         </div>
       </li>
       <li class="flex gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-sm font-semibold text-violet-200">2</span>
         <div>
-          <p class="text-sm font-medium text-slate-200">Select operations</p>
-          <p class="mt-1 text-xs text-slate-500">Constrain or weight cutters, stackers, painters, and logistics.</p>
+          <p class="text-sm font-medium text-slate-200">{% trans "Select operations" %}</p>
+          <p class="mt-1 text-xs text-slate-500">{% trans "Constrain or weight cutters, stackers, painters, and logistics." %}</p>
         </div>
       </li>
       <li class="flex gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-sm font-semibold text-violet-200">3</span>
         <div>
-          <p class="text-sm font-medium text-slate-200">Run solver</p>
-          <p class="mt-1 text-xs text-slate-500">Execute the planner against the pure Python core (coming soon).</p>
+          <p class="text-sm font-medium text-slate-200">{% trans "Run solver" %}</p>
+          <p class="mt-1 text-xs text-slate-500">{% trans "Execute the planner against the pure Python core (coming soon)." %}</p>
         </div>
       </li>
       <li class="flex gap-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
         <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 text-sm font-semibold text-violet-200">4</span>
         <div>
-          <p class="text-sm font-medium text-slate-200">Inspect production stats</p>
-          <p class="mt-1 text-xs text-slate-500">Review inputs, machines, graph, and bottlenecks.</p>
+          <p class="text-sm font-medium text-slate-200">{% trans "Inspect production stats" %}</p>
+          <p class="mt-1 text-xs text-slate-500">{% trans "Review inputs, machines, graph, and bottlenecks." %}</p>
         </div>
       </li>
     </ol>

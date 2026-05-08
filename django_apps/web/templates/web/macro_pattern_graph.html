@@ -41,7 +41,5 @@
     window.__shapeGltfMount = mountShapeGltfViewer;
     window.__shapeGltfDispose = disposeShapeGltfViewer;
   </script>
-  <script src="{% url 'javascript-catalog' %}"></script>
-  <script src="{% static 'web/js/ui_locale.js' %}"></script>
   <script type="module" src="{% static 'web/js/recipe_graph_editor/recipe-graph-editor.js' %}?v={{ recipe_graph_editor_asset_version }}"></script>
 {% endblock %}

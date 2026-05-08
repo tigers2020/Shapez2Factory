@@ -42,6 +42,8 @@ alwaysApply: true
 | 렉스 | [persona/rex.md](mdc:persona/rex.md) | `pytest` → `ruff` → `mypy` → `black` |
 | 지나 | [persona/gina-gui.md](mdc:persona/gina-gui.md) | UI·`interfaces/` |
 
+**Serena MCP**: 광역 탐색·영향 범위는 [시몬] 브리핑에 Serena 활용을 둘 수 있다. [도미닉]·[유리]·[아다]·[지나]는 심볼·호출 관계 확인 시 Serena를 우선 고려한다. 절차는 [mcp.mdc](mdc:.cursor/rules/mcp.mdc) Serena 절·[AGENTS.md](mdc:AGENTS.md) MCP 절.
+
 인덱스: [persona/README.md](mdc:persona/README.md).
 
 ## 검증 (렉스)

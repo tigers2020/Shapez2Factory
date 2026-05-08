@@ -28,6 +28,7 @@
 - 하네스(9) 통과 후에도 **의도·스코프** 관점에서 한 번 더 본다.
 - 클로징에서 [documents/](../documents/)의 구조·결정 요약(위키)을 최신으로 유지한다.
 - 새 규칙·외부 API·UI 변경처럼 리스크가 있으면 먼저 확인할 문서를 지정한다.
+- 영향 범위가 넓거나 호출·상속 관계를 구조적으로 파악해야 하면 브리핑에 **Serena MCP** 활용을 명시한다(가능할 때). Serena 사용 시 **`initial_instructions`** 선행은 [AGENTS.md](../AGENTS.md) MCP 절·[mcp.mdc](../.cursor/rules/mcp.mdc)를 따른다.
 
 ## DON'T
 

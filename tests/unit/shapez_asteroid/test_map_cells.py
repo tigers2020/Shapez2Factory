@@ -76,6 +76,8 @@ def test_map_cells_api_400_and_200() -> None:
     client = Client()
     r = client.get("/api/asteroid/map-cells/")
     assert r.status_code == 400
+    err = r.json()
+    assert err["error_code"] == "bbox_missing_params"
     r2 = client.get("/api/asteroid/map-cells/?x_min=1&x_max=3&y_min=0&y_max=1")
     assert r2.status_code == 200
     data = r2.json()

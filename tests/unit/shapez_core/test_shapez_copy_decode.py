@@ -11,6 +11,7 @@ from django_apps.shapez_core.services.shapez_copy_decode import (
     SHAPEZ2_COPY_PREFIX_V4,
     ShapezCopyDecodeError,
     decode_shapez2_copy,
+    decode_shapez2_copy_trace,
 )
 
 
@@ -72,7 +73,21 @@ def test_rejects_json_array_top_level() -> None:
         decode_shapez2_copy(f"{SHAPEZ2_COPY_PREFIX_V4}{b64}")
 
 
-def test_decode_accepts_trailing_non_base64_after_payload() -> None:
-    data = {"V": 1, "BP": {}}
-    code = _encode_copy(data) + "$"
-    assert decode_shapez2_copy(code) == data
+def test_decode_trace_success_step_ids() -> None:
+    data = {"V": 1137, "BP": {"$type": "Island", "Icon": "x", "Entries": []}}
+    code = _encode_copy(data)
+    trace = decode_shapez2_copy_trace(code)
+    assert trace.success is True
+    assert trace.data == data
+    ids = [s["id"] for s in trace.steps]
+    assert ids[0] == "normalize_whitespace"
+    assert ids[-1] == "validate_top_level_object"
+    assert all(s.get("ok") is True for s in trace.steps)
+
+
+def test_decode_trace_invalid_base64_partial_steps() -> None:
+    trace = decode_shapez2_copy_trace(f"{SHAPEZ2_COPY_PREFIX_V4}@@@@YYYY")
+    assert trace.success is False
+    assert trace.error == "invalid base64 payload"
+    assert trace.steps[-1]["id"] == "base64_decode"
+    assert trace.steps[-1]["ok"] is False

@@ -78,14 +78,16 @@ def home(request: HttpRequest) -> HttpResponse:
 def gallery(request: HttpRequest) -> HttpResponse:
     screenshots = _list_web_static_images("screenshots")
     factory_templates = _list_web_static_images("factory-templates")
-    screenshot_assets = _build_gallery_assets(screenshots, "Screenshots")
-    factory_template_assets = _build_gallery_assets(factory_templates, "Factory templates")
+    screenshot_section_label = _("Screenshots")
+    factory_section_label = _("Factory templates")
+    screenshot_assets = _build_gallery_assets(screenshots, screenshot_section_label)
+    factory_template_assets = _build_gallery_assets(factory_templates, factory_section_label)
     gallery_sections = [
         {
             "id": "screenshots",
             "index_label": "01",
-            "title": "Screenshots",
-            "description": "Gameplay UI and factory moments from recent runs.",
+            "title": screenshot_section_label,
+            "description": _("Gameplay UI and factory moments from recent runs."),
             "group": "screenshots",
             "count": len(screenshot_assets),
             "featured": screenshot_assets[0] if screenshot_assets else None,
@@ -94,8 +96,8 @@ def gallery(request: HttpRequest) -> HttpResponse:
         {
             "id": "factory-templates",
             "index_label": "02",
-            "title": "Factory templates",
-            "description": "Layout references captured from the in-game template browser.",
+            "title": factory_section_label,
+            "description": _("Layout references captured from the in-game template browser."),
             "group": "factory-templates",
             "count": len(factory_template_assets),
             "featured": factory_template_assets[0] if factory_template_assets else None,

@@ -51,11 +51,49 @@ def test_copy_preview_success() -> None:
         "y_max": 2,
     }
     assert body["mining_map"] == [
-        {"x": 1, "y": 2, "role": "occupied", "surface": "shape", "t": "Layout_ShapeMiner"},
+        {
+            "x": 1,
+            "y": 2,
+            "role": "occupied",
+            "surface": "shape",
+            "layout_kind": "asteroid_field",
+        },
     ]
     assert body["style_catalog"] == asteroid_map_style_catalog()
     assert "occupied" in body["style_catalog"]
     assert "inferred" in body["style_catalog"]
+    assert "belt" in body["style_catalog"]
+    assert "pipe" in body["style_catalog"]
+    assert "miner" in body["style_catalog"]
+    assert "extractor" in body["style_catalog"]
+    assert "asteroid_field" in body["style_catalog"]
+    assert body["map_timeline"][-1]["mining_map"] == body["mining_map"]
+    assert "decode_steps" not in body
+
+
+def test_copy_preview_map_timeline_first_step_shows_transport() -> None:
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": 5, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 6, "Y": 1, "T": "Layout_UndergroundBelt"},
+                {"X": 7, "Y": 1, "T": "Layout_FluidPipe"},
+            ],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)})
+    assert response.status_code == 200
+    body = response.json()
+    first = body["map_timeline"][0]
+    assert first["id"] == "with_transport"
+    by_xy = {(c["x"], c["y"]): c["role"] for c in first["mining_map"]}
+    assert by_xy[(6, 1)] == "belt"
+    assert by_xy[(7, 1)] == "pipe"
+    assert by_xy[(5, 1)] == "occupied"
 
 
 def test_copy_preview_unknown_t_zero_extraction() -> None:
@@ -77,10 +115,13 @@ def test_copy_preview_unknown_t_zero_extraction() -> None:
 def test_copy_preview_invalid_copy() -> None:
     client = Client()
     client.get("/asteroid/")
-    response = _post_json(client, {"code": "SHAPEZ2-4-@@@@"})
+    response = _post_json(client, {"code": "SHAPEZ2-4-@@@@YYYY"})
 
     assert response.status_code == 400
-    assert response.json()["ok"] is False
+    err = response.json()
+    assert err["ok"] is False
+    assert err["error_code"] == "decode_trace_error"
+    assert "decode_steps" not in err
 
 
 def test_copy_preview_invalid_json() -> None:
@@ -96,7 +137,9 @@ def test_copy_preview_invalid_json() -> None:
     )
 
     assert response.status_code == 400
-    assert response.json()["error"] == "invalid json"
+    body = response.json()
+    assert body["error"] == "invalid json"
+    assert body["error_code"] == "invalid_json"
 
 
 def test_copy_preview_code_not_string() -> None:
@@ -105,7 +148,9 @@ def test_copy_preview_code_not_string() -> None:
     response = _post_json(client, {"code": 1})
 
     assert response.status_code == 400
-    assert response.json()["error"] == "code must be a string"
+    body = response.json()
+    assert body["error"] == "code must be a string"
+    assert body["error_code"] == "code_not_string"
 
 
 def test_copy_preview_debug_dump_writes_encrypt_and_json(tmp_path) -> None:

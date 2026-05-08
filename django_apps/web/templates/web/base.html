@@ -12,6 +12,8 @@
   </head>
   <body class="{% block body_class %}{% endblock %}">
     {% block content %}{% endblock %}
+    <script src="{% url 'javascript-catalog' %}"></script>
+    <script src="{% static 'web/js/ui_locale.js' %}"></script>
     <script src="{% static 'web/js/flowbite.min.js' %}"></script>
     {% block extra_scripts %}{% endblock %}
   </body>

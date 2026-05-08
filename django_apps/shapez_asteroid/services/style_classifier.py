@@ -35,11 +35,25 @@ EXTRACTION_STYLES: frozenset[PlotStyle] = frozenset(
     }
 )
 
-# Single fluid-mining tile look for all map cells (blueprint + inferred interior).
+# Single fluid-mining tile look for inferred patch interior (matches fluid-heavy patches).
 _FLUID_MINING_TILE: dict[str, str] = {"color": "#4f8fc4", "opacity": "0.52"}
+
+_LAYOUT_KIND_TILES: dict[str, dict[str, str]] = {
+    "miner": {"color": "#34d399", "opacity": "0.55"},
+    "fluid_miner": {"color": "#38bdf8", "opacity": "0.55"},
+    "extractor": {"color": "#fb923c", "opacity": "0.55"},
+    "extension": {"color": "#c084fc", "opacity": "0.55"},
+    "fluid_extension": {"color": "#2dd4bf", "opacity": "0.55"},
+    "booster": {"color": "#f472b6", "opacity": "0.55"},
+    "asteroid_field": {"color": "#78716c", "opacity": "0.58"},
+}
+
 MINING_MAP_STYLE_CATALOG: dict[str, dict[str, str]] = {
-    "occupied": dict(_FLUID_MINING_TILE),
+    "occupied": {"color": "#64748b", "opacity": "0.52"},
     "inferred": dict(_FLUID_MINING_TILE),
+    "belt": {"color": "#ca8a04", "opacity": "0.55"},
+    "pipe": {"color": "#94a3b8", "opacity": "0.55"},
+    **_LAYOUT_KIND_TILES,
 }
 
 
@@ -93,6 +107,6 @@ def mining_surface_from_layout(layout_type: str | None) -> str | None:
 
 
 def asteroid_map_style_catalog() -> dict[str, dict[str, str]]:
-    """Palette for unified mining map roles (``occupied`` / ``inferred``)."""
+    """Palette for map roles and per-``layout_kind`` extraction tiles."""
 
     return {k: dict(v) for k, v in MINING_MAP_STYLE_CATALOG.items()}

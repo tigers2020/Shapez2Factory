@@ -3,13 +3,19 @@
 # ruff: noqa: E501 — long English/Korean msgids and msgstrs in KO dict
 from __future__ import annotations
 
+import argparse
 import re
+import sys
 from pathlib import Path
 
 import polib  # type: ignore[import-untyped]
 
 BASE = Path(__file__).resolve().parents[1]
 TEMPLATE_ROOT = BASE / "django_apps" / "web" / "templates"
+STRICT_LOCALE_PY = (
+    BASE / "django_apps" / "shapez_asteroid" / "views.py",
+    BASE / "django_apps" / "web" / "views" / "public_pages.py",
+)
 PO_PATH = BASE / "locale" / "ko" / "LC_MESSAGES" / "django.po"
 MO_PATH = BASE / "locale" / "ko" / "LC_MESSAGES" / "django.mo"
 PO_JS_PATH = BASE / "locale" / "ko" / "LC_MESSAGES" / "djangojs.po"
@@ -308,6 +314,59 @@ KO: dict[str, str] = {
     "source x{{ c }}": "소스 x{{ c }}",
     "shapez2 planner - Gallery": "shapez2 planner · 갤러리",
     "shapez2 planner - Demo": "shapez2 planner · 데모",
+    # shapez_asteroid API + bbox (msgids match parse_bbox literals)
+    "invalid json": "JSON이 올바르지 않습니다",
+    "code must be a string": "code는 문자열이어야 합니다",
+    "decode failed": "디코드에 실패했습니다",
+    "missing x_min, x_max, y_min, or y_max": "x_min, x_max, y_min, y_max가 필요합니다",
+    "bounds must be integers": "범위는 정수여야 합니다",
+    "min must be <= max for each axis": "각 축에서 최소값은 최대값 이하여야 합니다",
+    "bbox span too large": "범위가 너무 큽니다",
+    "bbox must not include x=0": "x=0을 포함할 수 없습니다",
+    # Gallery view (public_pages)
+    "Screenshots": "스크린샷",
+    "Factory templates": "공장 템플릿",
+    "Gameplay UI and factory moments from recent runs.": "최근 플레이·공장 화면을 모았습니다.",
+    "Layout references captured from the in-game template browser.": "게임 내 템플릿 브라우저에서 가져온 배치 참고용입니다.",
+    # Gallery / demo / support (templates) — bulk entries below
+    "Generate missing part sprites": "빠진 부품 스프라이트 생성",
+    (
+        "Pedestal-only image is rendered first, then the Playwright pass for any missing mesh × color × quadrant rows (skips complete rows with an on-disk image)."
+    ): (
+        "먼저 받침대만 렌더한 뒤, 빠진 메시×색×사분면 행에 대해 Playwright를 돌립니다(이미 파일이 있는 완성 행은 건너뜁니다)."
+    ),
+    "Renderer version": "렌더러 버전",
+    "Fluid tank (vortex glTF) sprites": "유체 탱크(vortex glTF) 스프라이트",
+    (
+        "Render missing rows only: manifest keys color-{ink}:version (e.g. color-y:v1), one PNG per ink; pedestal when needed. Lid uses glTF script RGB."
+    ): (
+        "빠진 행만 렌더: manifest 키 color-{ink}:version(예: color-y:v1), 잉크당 PNG 하나; 필요 시 받침대. 뚜껑은 glTF 스크립트 RGB."
+    ),
+    "Sample: four quadrants": "샘플: 네 사분면",
+    (
+        "Pedestal first, then default_rect + red for quadrants 0–3. Skips complete rows. Same renderer version field as above."
+    ): (
+        "먼저 받침대, 이후 사분면 0–3에 default_rect+빨강. 완성 행은 건너뜀. 렌더러 버전 필드는 위와 동일."
+    ),
+    "Render missing sprites only": "빠진 스프라이트만 렌더",
+    "Render missing tank sprites only": "빠진 탱크 스프라이트만 렌더",
+    "Render sample (4 quadrants)": "샘플 렌더(4 사분면)",
+    "Sprite render progress": "스프라이트 렌더 진행",
+    "Progress": "진행",
+    "Rendering missing sprites": "빠진 스프라이트 렌더 중",
+    "Polling job status…": "작업 상태 확인 중…",
+    "Back to sprite list": "스프라이트 목록으로",
+    "Could not load job status (HTTP error).": "작업 상태를 불러오지 못했습니다(HTTP 오류).",
+    "Network error while polling.": "폴링 중 네트워크 오류.",
+    "Finished.": "완료.",
+    "Job failed.": "작업 실패.",
+    "Skipped (already had file)": "건너뜀(이미 파일 있음)",
+    "Rendered OK": "렌더 성공",
+    "Errors": "오류",
+    "Bitcoin Cash (BCH)": "비트코인 캐시(BCH)",
+    "Ethereum (ETH)": "이더리움(ETH)",
+    "Ko-fi": "Ko-fi",
+    "Close": "닫기",
 }
 
 # djangojs domain: legacy JS + React msgids (English -> Korean). Keys must match gettext/shapezUiT/t().
@@ -454,6 +513,39 @@ def collect_msgids() -> list[str]:
     return ordered
 
 
+def collect_python_msgids(paths: tuple[Path, ...]) -> list[str]:
+    """Literal ``_(\"...\")`` msgids only (same-line)."""
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for m in re.finditer(r'_\(\s*"([^"]*)"\s*\)', text):
+            s = m.group(1)
+            if s and s not in seen:
+                seen.add(s)
+                ordered.append(s)
+    return ordered
+
+
+def merge_django_msgids() -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for s in collect_msgids() + collect_python_msgids(STRICT_LOCALE_PY):
+        if s not in seen:
+            seen.add(s)
+            ordered.append(s)
+    return ordered
+
+
+def effective_ko_map(msgids: list[str], hand_ko: dict[str, str]) -> dict[str, str]:
+    d = {m: m for m in msgids}
+    d.update(hand_ko)
+    return d
+
+
 def extract_js_double_quoted_calls(src: str) -> list[str]:
     """Best-effort: gettext(\"...\") and shapezUiT(\"...\")."""
     out: list[str] = []
@@ -489,11 +581,11 @@ def collect_js_catalog_msgids() -> list[str]:
 
 def write_po_file(
     msgids: list[str],
-    ko_map: dict[str, str],
+    hand_ko: dict[str, str],
     po_path: Path,
     mo_path: Path,
     domain_label: str,
-) -> None:
+) -> int:
     po_path.parent.mkdir(parents=True, exist_ok=True)
     po = polib.POFile()
     po.metadata = {
@@ -501,20 +593,17 @@ def write_po_file(
         "Language": "ko",
         "Content-Type": "text/plain; charset=UTF-8",
     }
-    missing: list[str] = []
+    effective = effective_ko_map(msgids, hand_ko)
+    missing = [m for m in msgids if m not in hand_ko]
     for mid in msgids:
-        ko = ko_map.get(mid)
-        if ko is None:
-            missing.append(mid)
-            ko = mid
-        po.append(polib.POEntry(msgid=mid, msgstr=ko))
+        po.append(polib.POEntry(msgid=mid, msgstr=effective[mid]))
     po.save(str(po_path))
     po.save_as_mofile(str(mo_path))
     if missing:
         print(
             f"WARN [{domain_label}]: missing KO mapping for",
             len(missing),
-            "strings (using English)",
+            "strings (using English msgid as msgstr)",
             flush=True,
         )
         for m in missing[:40]:
@@ -522,15 +611,36 @@ def write_po_file(
             print(" -", safe[:200], flush=True)
         if len(missing) > 40:
             print(" ...", flush=True)
+    return len(missing)
 
 
-def main() -> None:
-    msgids = collect_msgids()
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Build locale/ko django(.po|.mo) and djangojs catalogs."
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit 1 if literal gettext in STRICT_LOCALE_PY files lacks an explicit KO entry.",
+    )
+    args = parser.parse_args()
+
+    msgids = merge_django_msgids()
     write_po_file(msgids, KO, PO_PATH, MO_PATH, "django")
 
     js_msgids = collect_js_catalog_msgids()
     write_po_file(js_msgids, KO_JS, PO_JS_PATH, MO_JS_PATH, "djangojs")
 
+    if args.strict:
+        py_msgids = collect_python_msgids(STRICT_LOCALE_PY)
+        bad = [m for m in py_msgids if m not in KO]
+        if bad:
+            print("STRICT: add KO entries for Python gettext msgids:", file=sys.stderr)
+            for m in bad:
+                print(" ", repr(m), file=sys.stderr)
+            return 1
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

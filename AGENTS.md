@@ -59,6 +59,16 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 
 ---
 
+## MCP: Serena (코드베이스)
+
+**Serena** (`user-serena` MCP)는 로컬에서 LSP 기반 시맨틱 분석(클래스·함수·호출·상속), 심볼 단위 삽입·수정·리네임, 필요한 심볼만 선택 전달로 컨텍스트를 줄이는 도구다. 코드는 외부로 나가지 않는다.
+
+- **계약**: 코딩 작업에 Serena를 쓸 때는 서버 지시에 따라 **`initial_instructions`** 도구로 Serena 매뉴얼을 **먼저** 읽는다. 도구 스키마는 `mcps/user-serena/tools/`를 본다.
+- **페르소나**: **[시몬]**이 영향 범위·광역 탐색이 필요하면 브리핑에 Serena 활용을 명시한다. **[도미닉·유리·아다]**는 담당 레이어에서 호출·참조·경계를 잡을 때 전 파일 로드·무차별 검색보다 Serena를 **우선 고려**한다.
+- 다른 MCP·선택 사용 원칙: [`.cursor/rules/mcp.mdc`](.cursor/rules/mcp.mdc).
+
+---
+
 ## 상세 매뉴얼 · 규칙 파일
 
 - AI 작업 기억·체크리스트: [`documents/ai/`](documents/ai/)

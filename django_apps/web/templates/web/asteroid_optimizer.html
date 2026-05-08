@@ -111,11 +111,20 @@
               data-am-decode-playback
               aria-label="{% trans 'Map step playback' %}"
             >
-              <div class="am-decode-playback-head">
-                <span class="am-decode-playback-title">{% trans "Map steps" %}</span>
-                <span class="am-decode-playback-pos" data-am-decode-pos aria-live="polite"></span>
-              </div>
-              <ol class="am-decode-steps" data-am-decode-steps></ol>
+              <details class="am-decode-log-details">
+                <summary class="am-decode-log-summary">
+                  <span class="am-decode-log-summary-main">
+                    <span class="am-decode-playback-title">{% trans "Map steps" %}</span>
+                    <span class="am-decode-playback-pos" data-am-decode-pos aria-live="polite"></span>
+                  </span>
+                  <span class="am-decode-log-preview" data-am-decode-log-preview></span>
+                </summary>
+                <div class="am-decode-log-collapse-inner">
+                  <div class="am-decode-steps-scroll">
+                    <ol class="am-decode-steps am-decode-steps-log" data-am-decode-steps></ol>
+                  </div>
+                </div>
+              </details>
               <div class="am-decode-controls">
                 <button type="button" class="btn" data-am-decode-prev>{% trans "Prev" %}</button>
                 <button type="button" class="btn primary" data-am-decode-play>{% trans "Play" %}</button>
@@ -446,6 +455,7 @@
   var decodeStepsEl = root.querySelector("[data-am-decode-steps]");
   var decodeDetailEl = root.querySelector("[data-am-decode-detail]");
   var decodePosEl = root.querySelector("[data-am-decode-pos]");
+  var decodeLogPreviewEl = root.querySelector("[data-am-decode-log-preview]");
   var decodeSlider = root.querySelector("[data-am-decode-slider]");
   var decodePrevBtn = root.querySelector("[data-am-decode-prev]");
   var decodeNextBtn = root.querySelector("[data-am-decode-next]");
@@ -737,6 +747,16 @@
     if (decodePosEl) {
       decodePosEl.textContent = n ? decodeStepIndex + 1 + " / " + n : "";
     }
+    if (decodeLogPreviewEl) {
+      var curLabel = "";
+      if (n > 0) {
+        var curSt = mapMode ? mapTimelineList[decodeStepIndex] : decodeStepsList[decodeStepIndex];
+        curLabel = mapMode
+          ? mapStepLabel(curSt && curSt.id ? curSt.id : "")
+          : decodeStepLabel(curSt && curSt.id ? curSt.id : "");
+      }
+      decodeLogPreviewEl.textContent = curLabel ? " · " + curLabel : "";
+    }
     if (decodeDetailEl) {
       decodeDetailEl.textContent =
         mapMode || !decodeStepsList.length
@@ -864,6 +884,15 @@
   if (decodePauseBtn) {
     decodePauseBtn.addEventListener("click", function () {
       stopDecodePlay();
+    });
+  }
+  if (decodeStepsEl) {
+    decodeStepsEl.addEventListener("click", function (ev) {
+      var li = ev.target.closest(".am-decode-step");
+      if (!li || !decodeStepsEl.contains(li)) return;
+      stopDecodePlay();
+      var idx = Array.prototype.indexOf.call(decodeStepsEl.children, li);
+      if (idx >= 0) setDecodeStepIndex(idx);
     });
   }
 

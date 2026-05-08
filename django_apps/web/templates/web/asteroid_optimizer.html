@@ -95,6 +95,43 @@
           {% trans "Semi-transparent tiles: shape vs fluid labels follow blueprint layout names; inferred patch interior matches the surrounding ring." %}
         </p>
 
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-stretch">
+          <div
+            class="inline-flex w-full overflow-hidden rounded-xl border border-slate-600 bg-slate-900/90 shadow-sm shadow-black/20 sm:w-auto"
+            role="group"
+            aria-label="{% trans 'Map orientation (north up by default)' %}"
+          >
+            <button
+              type="button"
+              data-map-orientation="N"
+              aria-pressed="true"
+              title="{% trans 'North up' %}"
+              class="min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-cyan-500/25 px-3 py-2.5 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/35 sm:flex-initial"
+            >{% trans "N" %}</button>
+            <button
+              type="button"
+              data-map-orientation="E"
+              aria-pressed="false"
+              title="{% trans 'East up' %}"
+              class="min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial"
+            >{% trans "E" %}</button>
+            <button
+              type="button"
+              data-map-orientation="S"
+              aria-pressed="false"
+              title="{% trans 'South up' %}"
+              class="min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial"
+            >{% trans "S" %}</button>
+            <button
+              type="button"
+              data-map-orientation="W"
+              aria-pressed="false"
+              title="{% trans 'West up' %}"
+              class="min-w-[2.75rem] flex-1 border-0 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial"
+            >{% trans "W" %}</button>
+          </div>
+        </div>
+
         <div
           class="mt-4 cursor-crosshair rounded-xl border border-slate-700/80 bg-slate-950/60 p-2"
           data-asteroid-map-surface
@@ -165,6 +202,17 @@
   var demoBtn = root.querySelector("#asteroid-demo-fill-btn");
   var demoUrl = root.getAttribute("data-demo-blueprint-url") || "";
   var btn = root.querySelector("#asteroid-decode-btn");
+  var orientBtns = root.querySelectorAll("[data-map-orientation]");
+  var mapOrientation = "N";
+  var ORIENT_TRANSFORM = { N: "", E: "rotate(-90deg)", S: "rotate(180deg)", W: "rotate(90deg)" };
+  var ORIENT_ACTIVE =
+    "min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-cyan-500/25 px-3 py-2.5 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/35 sm:flex-initial";
+  var ORIENT_INACTIVE =
+    "min-w-[2.75rem] flex-1 border-0 border-r border-slate-600/90 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial";
+  var ORIENT_INACTIVE_LAST =
+    "min-w-[2.75rem] flex-1 border-0 bg-slate-800/80 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-800 sm:flex-initial";
+  var ORIENT_ACTIVE_LAST =
+    "min-w-[2.75rem] flex-1 border-0 bg-cyan-500/25 px-3 py-2.5 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/35 sm:flex-initial";
   var SPAN = 10;
   var plotCompact = null;
   var svgNs = "http://www.w3.org/2000/svg";
@@ -313,6 +361,22 @@
       line += " · " + (root.getAttribute("data-msg-no-bounds") || "");
     }
     return line;
+  }
+
+  function applyMapOrientation(next) {
+    mapOrientation = next || "N";
+    if (plotSvg) {
+      plotSvg.style.transformOrigin = "center center";
+      plotSvg.style.transform = ORIENT_TRANSFORM[mapOrientation] || "";
+    }
+    for (var ob = 0; ob < orientBtns.length; ob++) {
+      var b = orientBtns[ob];
+      var key = b.getAttribute("data-map-orientation") || "";
+      var isLast = key === "W";
+      var active = key === mapOrientation;
+      b.setAttribute("aria-pressed", active ? "true" : "false");
+      b.className = active ? (isLast ? ORIENT_ACTIVE_LAST : ORIENT_ACTIVE) : isLast ? ORIENT_INACTIVE_LAST : ORIENT_INACTIVE;
+    }
   }
 
   function clearPlot() {
@@ -476,6 +540,17 @@
 
     plotSvg.appendChild(gUnder);
     plotSvg.appendChild(gTop);
+  }
+
+  if (orientBtns.length && plotSvg) {
+    applyMapOrientation("N");
+    for (var oi = 0; oi < orientBtns.length; oi++) {
+      orientBtns[oi].addEventListener("click", function () {
+        var k = this.getAttribute("data-map-orientation");
+        if (!k) return;
+        applyMapOrientation(k);
+      });
+    }
   }
 
   if (surface && px && py) {

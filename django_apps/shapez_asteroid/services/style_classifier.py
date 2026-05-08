@@ -57,6 +57,11 @@ def classify_layout_type(layout_type: str | None) -> PlotStyle | None:
             return style
 
     lowered = t.lower()
+    if "shapeminer" in lowered and "fluid" not in lowered:
+        return PlotStyle.miner
+    if "fluidminer" in lowered.replace("_", ""):
+        return PlotStyle.fluid_miner
+
     if "boost" in lowered:
         return PlotStyle.booster
     if "extractor" in lowered or "pump" in lowered:
@@ -72,6 +77,19 @@ def classify_layout_type(layout_type: str | None) -> PlotStyle | None:
 
 def is_extraction_style(style: PlotStyle | None) -> bool:
     return style is not None and style in EXTRACTION_STYLES
+
+
+def mining_surface_from_layout(layout_type: str | None) -> str | None:
+    """Return ``shape`` / ``fluid`` for mining-relevant layouts, else ``None``."""
+
+    style = classify_layout_type(layout_type)
+    if style is None:
+        return None
+    if style in (PlotStyle.fluid_miner, PlotStyle.fluid_extension):
+        return "fluid"
+    if style in (PlotStyle.miner, PlotStyle.extension, PlotStyle.extractor, PlotStyle.booster):
+        return "shape"
+    return None
 
 
 def asteroid_map_style_catalog() -> dict[str, dict[str, str]]:

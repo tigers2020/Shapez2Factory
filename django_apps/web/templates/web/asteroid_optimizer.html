@@ -1,5 +1,6 @@
 {% extends "web/base.html" %}
 {% load i18n %}
+{% load static %}
 
 {% block title %}{% trans "shapez2 planner | Asteroid mining" %}{% endblock %}
 
@@ -18,17 +19,17 @@
     data-msg-failed="{% trans 'Request failed' %}"
     data-msg-fluid-mining="{% trans 'Fluid mining' %}"
     data-msg-shape-mining="{% trans 'Shape mining' %}"
+    data-demo-blueprint-url="{% static 'web/asteroid_demo_blueprint.txt' %}"
   >
     <p class="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">
       {% trans "Asteroid mining" %}
     </p>
     <h1 id="asteroid-heading" class="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-      {% trans "Miner & pump layout optimization" %}
+      {% trans "Asteroid mining map" %}
     </h1>
     <p class="mt-4 max-w-3xl text-sm leading-relaxed text-slate-400">
       {% blocktrans trimmed %}
-        This section will host tools for asteroid extraction and fluid pump throughput layout.
-        The optimizer backend is being wired up; the public page is available for navigation early.
+        Paste a blueprint copy string to decode it and preview mining coordinates on the map.
       {% endblocktrans %}
     </p>
     <p class="mt-4 text-xs text-slate-500">
@@ -54,13 +55,22 @@
           placeholder="SHAPEZ2-4-…"
           class="min-h-[180px] w-full resize-y rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 sm:text-sm"
         ></textarea>
-        <button
-          type="button"
-          id="asteroid-decode-btn"
-          class="w-full shrink-0 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-500/15 sm:w-auto sm:self-start"
-        >
-          {% trans "Decode" %}
-        </button>
+        <div class="mt-1 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <button
+            type="button"
+            id="asteroid-demo-fill-btn"
+            class="w-full shrink-0 rounded-xl border border-slate-600 bg-slate-800/80 px-4 py-3 text-sm font-semibold text-slate-200 hover:border-slate-500 hover:bg-slate-800 sm:w-auto"
+          >
+            {% trans "Demo" %}
+          </button>
+          <button
+            type="button"
+            id="asteroid-decode-btn"
+            class="w-full shrink-0 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-500/15 sm:w-auto"
+          >
+            {% trans "Decode" %}
+          </button>
+        </div>
         <p class="text-[11px] leading-relaxed text-slate-500">
           {% blocktrans trimmed %}
             Paste the in-game copy string. Decoding runs on the server; a short map summary appears on the right.
@@ -152,6 +162,8 @@
   var summaryEl = root.querySelector("[data-asteroid-summary]");
   var errEl = root.querySelector("[data-asteroid-error]");
   var ta = root.querySelector("#asteroid-copy-input");
+  var demoBtn = root.querySelector("#asteroid-demo-fill-btn");
+  var demoUrl = root.getAttribute("data-demo-blueprint-url") || "";
   var btn = root.querySelector("#asteroid-decode-btn");
   var SPAN = 10;
   var plotCompact = null;
@@ -160,6 +172,10 @@
   var bboxRegions = [];
   var voidLabel = "void";
   var miningByCoord = Object.create(null);
+  var lastSummary = null;
+  var lastMiningMap = [];
+  var lastStyleCatalog = {};
+  var decodeSummaryText = "";
 
   function rebuildMiningIndex(miningMap) {
     miningByCoord = Object.create(null);
@@ -510,6 +526,29 @@
     });
   }
 
+  if (demoBtn && ta && demoUrl && errEl) {
+    demoBtn.addEventListener("click", function () {
+      errEl.classList.add("hidden");
+      errEl.textContent = "";
+      demoBtn.disabled = true;
+      fetch(demoUrl)
+        .then(function (res) {
+          if (!res.ok) throw new Error("demo fetch failed");
+          return res.text();
+        })
+        .then(function (text) {
+          ta.value = text.replace(/\r\n/g, "\n").trim();
+        })
+        .catch(function () {
+          errEl.textContent = root.getAttribute("data-msg-network") || "";
+          errEl.classList.remove("hidden");
+        })
+        .finally(function () {
+          demoBtn.disabled = false;
+        });
+    });
+  }
+
   if (btn && ta && apiUrl && summaryEl && errEl) {
     btn.addEventListener("click", function () {
       errEl.classList.add("hidden");
@@ -536,15 +575,16 @@
             errEl.classList.remove("hidden");
             var idle = summaryEl.getAttribute("data-idle-msg") || "";
             summaryEl.textContent = idle;
+            decodeSummaryText = "";
             return;
           }
-          summaryEl.textContent = formatSummary(x.data.summary);
-          rebuildMiningIndex(x.data.mining_map || []);
-          renderPlot(
-            x.data.summary,
-            x.data.mining_map || [],
-            x.data.style_catalog || {}
-          );
+          decodeSummaryText = formatSummary(x.data.summary);
+          summaryEl.textContent = decodeSummaryText;
+          lastSummary = x.data.summary;
+          lastMiningMap = x.data.mining_map || [];
+          lastStyleCatalog = x.data.style_catalog || {};
+          rebuildMiningIndex(lastMiningMap);
+          renderPlot(lastSummary, lastMiningMap, lastStyleCatalog);
           return loadCellsForSummary(x.data.summary);
         })
         .catch(function () {

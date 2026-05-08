@@ -48,6 +48,16 @@ def test_asteroid_page_renders() -> None:
     assert b"data-asteroid-plot-svg" in response.content
 
 
+def test_asteroid_page_renders_korean() -> None:
+    response = Client().get("/ko/asteroid/")
+
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "소행성 채굴 맵" in body
+    assert "청사진 복사 코드" in body
+    assert "data-asteroid-copy-root" in body
+
+
 def test_solve_alias_redirects_to_solver_page() -> None:
     response = Client().get("/solve/", {"code": "SuSuSuSu"})
 

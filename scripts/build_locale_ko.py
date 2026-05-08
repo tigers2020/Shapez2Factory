@@ -369,6 +369,151 @@ KO: dict[str, str] = {
     "Close": "닫기",
 }
 
+# Asteroid mining map (`web/asteroid_optimizer.html`) + nav link "Asteroid mining"
+KO.update(
+    {
+        "shapez2 planner | Asteroid mining": "shapez2 planner | 소행성 채굴",
+        "Asteroid mining": "소행성 채굴",
+        "Asteroid mining map": "소행성 채굴 맵",
+        "Paste a blueprint copy string to decode it and preview mining coordinates on the map.": (
+            "게임에서 복사한 청사진 문자열을 붙여 넣으면 서버가 해석하고, 맵에서 채굴 좌표를 미리 볼 수 있습니다."
+        ),
+        "API probe": "API 확인",
+        "Map hints": "맵 안내",
+        "Distinct X columns (no X=0)": "X열은 게임 좌표 X≠0만 (X=0 열 없음)",
+        "North-up; Y increases downward": "북쪽 위; Y는 아래로 증가",
+        "Decode on server": "서버에서 해석",
+        "Asteroid blueprint and map": "소행성 청사진과 맵",
+        "No XY bounds from entries.": "항목에서 XY 범위를 얻지 못했습니다.",
+        "Network error": "네트워크 오류",
+        "Request failed": "요청 실패",
+        "Fluid mining": "유체 채굴",
+        "Shape mining": "도형 채굴",
+        "Belt": "벨트",
+        "Pipe": "파이프",
+        "Fluid extension": "유체 확장기",
+        "Extension": "확장기",
+        "Fluid miner": "유체 채굴기",
+        "Miner": "채굴기",
+        "Extractor": "추출기",
+        "Booster": "부스터",
+        "Asteroid field": "소행성 채굴장",
+        "Solver phase": "솔버 단계",
+        "Boundary scan and pipe overlay when the solver API is available.": (
+            "솔버 API가 연결되면 경계 스캔과 파이프 오버레이를 표시합니다."
+        ),
+        "Map build": "맵 구성",
+        "Copy decode": "복사본 해석",
+        "Timeline: 0 / 0 (preview)": "타임라인: 0 / 0(미리보기)",
+        "Map step": "맵 단계",
+        "Decode step": "해석 단계",
+        "Blueprint with belt & pipe": "벨트·파이프가 있는 청사진",
+        "Transport removed (mining shell)": "이송 제거(채굴 껍질)",
+        "Destroy extractors — asteroid field": "추출기 제거 — 소행성 채굴장",
+        "Destroy extensions — asteroid field": "확장기 제거 — 소행성 채굴장",
+        "Fill enclosed patch interior": "둘러싼 패치 내부 채우기",
+        "Final mining map": "최종 채굴 맵",
+        "Prepare string": "문자열 준비",
+        "Binary payload": "바이너리 페이로드",
+        "Parse JSON": "JSON 파싱",
+        "Layout object": "레이아웃 객체",
+        "Blueprint copy code": "청사진 복사 코드",
+        "Server decode keeps the original coordinate map; the grid is drawn in the browser.": (
+            "서버 해석은 원본 좌표 맵을 유지하고, 격자는 브라우저에서 그립니다."
+        ),
+        "Decode": "해석",
+        "Map steps": "맵 단계 목록",
+        "Prev": "이전",
+        "Play": "재생",
+        "Pause": "일시정지",
+        "Next": "다음",
+        "Step": "단계",
+        "Solver controls": "솔버 조작",
+        "Placeholder for future merge routing, trunk direction, and step metrics from Django or JSON APIs.": (
+            "추후 병합 경로·트렁크 방향·단계 지표를 Django나 JSON API에서 받아올 자리입니다."
+        ),
+        "REST views or action endpoints can populate these controls later; everything here is disabled.": (
+            "이후 REST 뷰나 액션 엔드포인트로 채울 수 있으며, 지금은 모두 비활성입니다."
+        ),
+        "Trunk direction & scan order": "트렁크 방향·스캔 순서",
+        "Not connected — values will come from the API later.": "미연결 — 값은 나중에 API에서 옵니다.",
+        "Map step playback": "맵 단계 재생",
+        "After a successful decode, use the timeline under the blueprint copy field to step through how the map is built.": (
+            "해석에 성공하면 청사진 입력 아래 타임라인으로 맵이 쌓이는 과정을 단계별로 볼 수 있습니다."
+        ),
+        "Extractors": "추출기",
+        "Extensions": "확장기",
+        "Pipe cells": "파이프 칸",
+        "Merges": "병합",
+        "Build rules": "표시 규칙",
+        "How entries are shown on the coordinate map.": "좌표 맵에 항목이 어떻게 나타나는지입니다.",
+        "Only cells with game X ≠ 0 appear as columns.": "게임 X≠0인 칸만 열로 나옵니다.",
+        "North-up: smaller Y toward the top of the panel.": "북쪽 위: Y가 작을수록 패널 위쪽입니다.",
+        "Semi-transparent tiles follow blueprint layout names.": "반투명 칸은 청사진 레이아웃 이름을 따릅니다.",
+        "Inferred patch interior matches the surrounding ring where applicable.": (
+            "추론된 패치 내부는 가능한 경우 둘러싼 링과 맞춥니다."
+        ),
+        "Hover a cell to see layout labels when map cells have been loaded.": (
+            "맵 셀을 불러온 뒤 칸 위에 올리면 레이아웃 이름이 보입니다."
+        ),
+        "Asteroid mining coordinate map": "소행성 채굴 좌표 맵",
+        "Semi-transparent tiles: shape vs fluid labels follow blueprint layout names; inferred patch interior matches the surrounding ring.": (
+            "반투명 칸: 도형·유체 구분은 청사진 레이아웃 이름을 따르며, 추론 내부는 둘러싼 링과 맞춥니다."
+        ),
+        "Only entries with X ≠ 0; columns are distinct game X values (no synthetic X = 0 column). North-up like the in-game map: smaller Y toward the top of this panel; vertical axis increases downward.": (
+            "X≠0인 항목만 표시하고, 열은 서로 다른 게임 X값입니다(가짜 X=0 열 없음). 게임 맵처럼 북쪽 위: Y가 작을수록 패널 위쪽, 세로는 아래로 증가합니다."
+        ),
+        "Rotate map panel (which edge faces up)": "맵 패널 회전(어느 변이 위인지)",
+        "N": "N",
+        "E": "E",
+        "S": "S",
+        "W": "W",
+        "Map orientation (north up by default)": "맵 방향(기본 북쪽 위)",
+        "North up": "북쪽 위",
+        "East up": "동쪽 위",
+        "South up": "남쪽 위",
+        "West up": "서쪽 위",
+        "Solver scan order and trunk controls will show here when connected; they are not the same as map rotation above.": (
+            "연결되면 솔버 스캔 순서·트렁크 조작이 여기 표시됩니다. 위의 맵 회전과는 다릅니다."
+        ),
+        "Scan pass (preview)": "스캔 패스(미리보기)",
+        "Pointer": "포인터",
+        "Occupied (blueprint)": "점유(청사진)",
+        "Inferred interior": "추론 내부",
+        "Belt (blueprint)": "벨트(청사진)",
+        "Pipe (blueprint)": "파이프(청사진)",
+        "Merge pipe (solver preview)": "병합 파이프(솔버 미리보기)",
+        "Final trunk (solver preview)": "최종 트렁크(솔버 미리보기)",
+        "Decode progress on map": "맵 위 해석 진행",
+        "Blueprint layout grid": "청사진 레이아웃 격자",
+        "Tile legend": "타일 범례",
+        "Build timeline (preview)": "구축 타임라인(미리보기)",
+        "Build playback (not connected)": "구축 재생(미연결)",
+        "Decoded layout summary": "해석된 레이아웃 요약",
+        "Paste a copy string and choose Decode to see entry bounds.": (
+            "복사 문자열을 붙이고 해석을 누르면 항목 범위가 보입니다."
+        ),
+        "Layout API": "레이아웃 API",
+        "Output": "출력",
+        "Paste the in-game copy string. Decoding runs on the server; a short map summary appears on the right.": (
+            "게임 안에서 복사한 문자열을 붙여 주세요. 해석은 서버에서 돌고, 오른쪽에 짧은 맵 요약이 나옵니다."
+        ),
+        "Validate input type": "입력 형식 검사",
+        "Normalize whitespace": "공백 정규화",
+        "Check non-empty": "비어 있지 않은지 확인",
+        "Check SHAPEZ2 prefix": "SHAPEZ2 접두사 확인",
+        "Extract payload after prefix": "접두사 뒤 페이로드 추출",
+        "Trim trailing non-base64": "끝의 비 base64 제거",
+        "Pad base64": "base64 패딩",
+        "Base64 decode": "Base64 디코드",
+        "Verify gzip magic": "gzip 시그니처 확인",
+        "Gzip decompress": "gzip 압축 해제",
+        "UTF-8 decode": "UTF-8 디코드",
+        "JSON parse": "JSON 파싱",
+        "Validate top-level object": "최상위 객체 검증",
+    }
+)
+
 # djangojs domain: legacy JS + React msgids (English -> Korean). Keys must match gettext/shapezUiT/t().
 KO_JS: dict[str, str] = {
     # Legacy solver timeline / macro graph

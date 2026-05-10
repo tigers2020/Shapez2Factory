@@ -31,6 +31,15 @@ def output_offset_r(r: int) -> tuple[int, int]:
     return _OUTPUT_UNIT[r % 4]
 
 
+def rotation_r_for_output_direction(dx: int, dy: int) -> int:
+    """Return miner rotation ``r`` such that ``output_offset_r(r) == (dx, dy)``."""
+
+    for r in range(4):
+        if output_offset_r(r) == (dx, dy):
+            return r
+    raise ValueError(f"non-cardinal output direction {(dx, dy)!r}")
+
+
 def shape_miner_output_cell(core: Coord, r: int) -> Coord | None:
     dx, dy = output_offset_r(r)
     return step_cardinal(core[0], core[1], dx, dy)

@@ -126,3 +126,7 @@ tests/
 documents/
   ai/           ← AI 매뉴얼·현재 계획·체크리스트
 ```
+
+## 블루프린트 격자 좌표 (공통 전제)
+
+게임 블루프린트 **`X == 0`인 열·타일은 없다.** 동서 인접은 **`1`과 `-1`이 물리적으로 이웃**(0을 거치지 않음). 코드 `(x, y)`에서도 **`x == 0` 불가**; 경로·인접은 `django_apps/shapez_asteroid/extraction/shapez_grid.py`가 정본이다. 상세: [`documents/research/research_blueprint_grid_coordinates_2026-05-10.md`](documents/research/research_blueprint_grid_coordinates_2026-05-10.md).

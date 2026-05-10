@@ -69,11 +69,7 @@ def cheap_transport_escape_exists(
     if start is None or start in blocked_cells:
         return False
 
-    if (
-        use_pipe
-        and rec.solver_pipe_network_cells
-        and start in rec.solver_pipe_network_cells
-    ):
+    if use_pipe and rec.solver_pipe_network_cells and start in rec.solver_pipe_network_cells:
         return True
 
     q: deque[Coord] = deque([start])

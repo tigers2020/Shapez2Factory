@@ -1,4 +1,9 @@
-"""Blueprint grid helpers: **no tile at x == 0** (columns -1 and +1 are physically adjacent).
+"""Blueprint grid helpers: **no tile at x == 0**.
+
+양의 열과 음의 열 사이에 **0열이 없다**.
+동서 이웃은 ``x == 1`` 과 ``x == -1`` 만 해당한다.
+한 칸 이동으로 ``-1 ↔ 1`` 만 허용된다(``0`` 경유 없음).
+남북은 ``x == 0`` 세로선이 존재하지 않으므로, 해당 선상에서의 북·남 스텝은 불가하다.
 
 Pathfinding, reachability, and miner extension lines must use these steps so routes
 never visit ``(0, y)`` and east/west moves across the missing column jump ``-1 ↔ 1``.

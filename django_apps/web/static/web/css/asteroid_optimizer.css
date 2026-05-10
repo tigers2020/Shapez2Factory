@@ -241,6 +241,26 @@
   margin-top: 14px;
 }
 
+.asteroid-mine-page .am-solver-overlay-option {
+  margin-top: 12px;
+}
+
+.asteroid-mine-page .am-inline-check {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  user-select: none;
+}
+
+.asteroid-mine-page .am-inline-check input {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
 .asteroid-mine-page .btn {
   border: 1px solid #31415f;
   background: #111827;
@@ -758,6 +778,74 @@
   margin: 0 0 16px;
 }
 
+/* Solver timeline replay (STEP10 MVP) */
+.asteroid-mine-page .am-solver-replay {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #081126;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.asteroid-mine-page .am-solver-replay-pos {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+.asteroid-mine-page .am-solver-replay-meta {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: rgba(5, 8, 22, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #cbd5e1;
+  max-height: 7.5rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.asteroid-mine-page .am-solver-replay-meta.hidden {
+  display: none;
+}
+
+.asteroid-mine-page .am-solver-replay-warn {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.asteroid-mine-page .am-solver-replay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.asteroid-mine-page .am-solver-replay-slider-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.asteroid-mine-page .am-solver-replay-slider-label input[type="range"] {
+  width: 100%;
+  accent-color: var(--cyan-2);
+}
+
+.asteroid-mine-page .am-solver-replay-hint-block {
+  margin-bottom: 0;
+}
+
 .asteroid-mine-page .am-future-fields {
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -1103,6 +1191,17 @@
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
+/* Unified map + solver timeline: solver rows sit below the fold in the default strip. */
+.asteroid-mine-page .am-decode-steps-scroll--with-solver {
+  max-height: min(15rem, 42vh);
+}
+
+.asteroid-mine-page .am-decode-step-solver-phase-start {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(94, 234, 212, 0.22);
+}
+
 .asteroid-mine-page .am-decode-steps {
   margin: 0;
   padding: 0;
@@ -1205,4 +1304,34 @@
   max-height: 9rem;
   overflow: auto;
   white-space: pre-wrap;
+}
+
+/* P4 reclaim replay: last B2 route / soft corridor (not blueprint tiles) */
+.asteroid-mine-page .am-p4-last-commit-overlay {
+  pointer-events: none;
+}
+
+.asteroid-mine-page .am-p4-overlay-soft-cell {
+  fill: rgb(234 179 8 / 0.14);
+  stroke: rgb(202 138 4 / 0.72);
+  stroke-width: 0.055;
+}
+
+.asteroid-mine-page .am-p4-overlay-route-cell {
+  fill: rgb(217 70 239 / 0.1);
+  stroke: rgb(147 51 234 / 0.82);
+  stroke-width: 0.07;
+}
+
+.asteroid-mine-page .am-p4-overlay-soft-replace-old-cell {
+  fill: rgb(239 68 68 / 0.12);
+  stroke: rgb(220 38 38 / 0.82);
+  stroke-dasharray: 0.12 0.08;
+  stroke-width: 0.075;
+}
+
+.asteroid-mine-page .am-p4-overlay-soft-replace-new-cell {
+  fill: rgb(34 197 94 / 0.12);
+  stroke: rgb(22 163 74 / 0.82);
+  stroke-width: 0.075;
 }

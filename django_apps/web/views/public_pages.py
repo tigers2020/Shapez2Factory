@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from django.conf import settings
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from django_apps.shapez_core.services.preview_service import (
@@ -140,7 +141,15 @@ def pattern_lab(request: HttpRequest) -> HttpResponse:
 
 
 def asteroid_optimizer(request: HttpRequest) -> HttpResponse:
-    return render(request, "web/asteroid_optimizer.html")
+    return render(
+        request,
+        "web/asteroid_optimizer.html",
+        {
+            "asteroid_copy_preview_url": reverse("shapez_asteroid:copy_preview"),
+            "asteroid_map_cells_url": reverse("shapez_asteroid:map_cells"),
+            "asteroid_health_url": reverse("shapez_asteroid:health"),
+        },
+    )
 
 
 _KOFI_HOSTS = frozenset({"ko-fi.com", "www.ko-fi.com"})

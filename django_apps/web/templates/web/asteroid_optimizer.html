@@ -68,6 +68,21 @@
       data-map-step-strip_extensions="{% filter escapejs %}{% trans 'Destroy extensions — asteroid field' %}{% endfilter %}"
       data-map-step-fill_interior="{% filter escapejs %}{% trans 'Fill enclosed patch interior' %}{% endfilter %}"
       data-map-step-final="{% filter escapejs %}{% trans 'Final mining map' %}{% endfilter %}"
+      data-map-step-solver_init="{% filter escapejs %}{% trans 'Solver: baseline (init)' %}{% endfilter %}"
+      data-map-step-solver_pass1_outer="{% filter escapejs %}{% trans 'Solver: Pass1 outer' %}{% endfilter %}"
+      data-map-step-solver_pass2_internal="{% filter escapejs %}{% trans 'Solver: Pass2 internal' %}{% endfilter %}"
+      data-map-step-solver_step4_routing="{% filter escapejs %}{% trans 'Solver: Step4 routing' %}{% endfilter %}"
+      data-map-step-solver_pass3_transport="{% filter escapejs %}{% trans 'Solver: Pass3 transport' %}{% endfilter %}"
+      data-map-step-solver_validate="{% filter escapejs %}{% trans 'Solver: Final validation' %}{% endfilter %}"
+      data-msg-solver-timeline-missing="{% filter escapejs %}{% trans 'Solver timeline was not returned (solver may have failed). Check the server or try Decode again.' %}{% endfilter %}"
+      data-msg-solver-replay-no-mining-map="{% filter escapejs %}{% trans 'This solver frame has no mining_map; map may be empty until another frame is selected.' %}{% endfilter %}"
+      data-playback-title-map-only="{% filter escapejs %}{% trans 'Map steps' %}{% endfilter %}"
+      data-playback-title-map-solver="{% filter escapejs %}{% trans 'Map + solver steps' %}{% endfilter %}"
+      data-msg-solver-redecode-hint="{% filter escapejs %}{% trans 'With “Show solver overlay” on, click Decode again to append solver timeline steps after the six map-build steps.' %}{% endfilter %}"
+      data-msg-p4-route-overlay="{% filter escapejs %}{% trans 'P4 reclaim last B2 route cells' %}{% endfilter %}"
+      data-msg-p4-soft-overlay="{% filter escapejs %}{% trans 'P4 soft protected candidates (last commit)' %}{% endfilter %}"
+      data-msg-p4-soft-replace-old-overlay="{% filter escapejs %}{% trans 'P4 soft repair old cells (last session)' %}{% endfilter %}"
+      data-msg-p4-soft-replace-new-overlay="{% filter escapejs %}{% trans 'P4 soft repair new cells (last session)' %}{% endfilter %}"
       data-map-viz-stage-0="{% filter escapejs %}{% trans 'Prepare string' %}{% endfilter %}"
       data-map-viz-stage-1="{% filter escapejs %}{% trans 'Binary payload' %}{% endfilter %}"
       data-map-viz-stage-2="{% filter escapejs %}{% trans 'Parse JSON' %}{% endfilter %}"
@@ -101,6 +116,17 @@
               <button type="button" id="asteroid-demo-fill-btn" class="btn">{% trans "Demo" %}</button>
               <button type="button" id="asteroid-decode-btn" class="btn primary">{% trans "Decode" %}</button>
             </div>
+            <div class="am-solver-overlay-option">
+              <label class="am-inline-check" for="asteroid-solver-overlay-toggle">
+                <input
+                  type="checkbox"
+                  id="asteroid-solver-overlay-toggle"
+                  data-asteroid-solver-overlay
+                />
+                <span>{% trans "Show solver overlay" %}</span>
+              </label>
+            </div>
+            <p class="hint hidden" data-am-solver-redecode-hint></p>
             <p class="hint">
               {% blocktrans trimmed %}
                 Paste the in-game copy string. Decoding runs on the server; a short map summary appears on the right.
@@ -114,13 +140,13 @@
               <details class="am-decode-log-details">
                 <summary class="am-decode-log-summary">
                   <span class="am-decode-log-summary-main">
-                    <span class="am-decode-playback-title">{% trans "Map steps" %}</span>
+                    <span class="am-decode-playback-title" data-am-playback-title>{% trans "Map steps" %}</span>
                     <span class="am-decode-playback-pos" data-am-decode-pos aria-live="polite"></span>
                   </span>
                   <span class="am-decode-log-preview" data-am-decode-log-preview></span>
                 </summary>
                 <div class="am-decode-log-collapse-inner">
-                  <div class="am-decode-steps-scroll">
+                  <div class="am-decode-steps-scroll" data-am-decode-steps-scroll>
                     <ol class="am-decode-steps am-decode-steps-log" data-am-decode-steps></ol>
                   </div>
                 </div>
@@ -150,46 +176,72 @@
               <h2 class="card-title" id="asteroid-solver-heading">{% trans "Solver controls" %}</h2>
               <div class="card-sub">
                 {% blocktrans trimmed %}
-                  Placeholder for future merge routing, trunk direction, and step metrics from Django or JSON APIs.
+                  Solver timeline replay (after Decode with solver overlay). Scrub or play to drive the map; decode playback pauses here.
                 {% endblocktrans %}
               </div>
             </div>
           </div>
           <div class="card-body">
-            <p class="am-placeholder-note">
-              {% blocktrans trimmed %}
-                REST views or action endpoints can populate these controls later; everything here is disabled.
-              {% endblocktrans %}
-            </p>
-            <div class="am-future-fields">
-              <p class="am-future-field-label">{% trans "Trunk direction & scan order" %}</p>
-              <p class="am-future-field-value">
-                {% trans "Not connected — values will come from the API later." %}
-              </p>
+            <div
+              class="am-solver-replay"
+              data-am-solver-replay-panel
+              aria-label="{% trans 'Solver timeline replay' %}"
+            >
+              <p class="am-solver-replay-pos" data-am-solver-replay-pos aria-live="polite"></p>
+              <pre
+                class="am-solver-replay-meta"
+                data-am-solver-replay-meta
+                aria-live="polite"
+              ></pre>
+              <p
+                class="hint am-solver-replay-warn hidden"
+                data-am-solver-replay-warn
+                role="status"
+              ></p>
+              <div class="am-solver-replay-controls">
+                <button
+                  type="button"
+                  class="btn"
+                  data-am-solver-replay-prev
+                  disabled
+                >{% trans "Prev" %}</button>
+                <button
+                  type="button"
+                  class="btn primary"
+                  data-am-solver-replay-play
+                  disabled
+                >{% trans "Play" %}</button>
+                <button
+                  type="button"
+                  class="btn"
+                  data-am-solver-replay-pause
+                  hidden
+                  disabled
+                >{% trans "Pause" %}</button>
+                <button
+                  type="button"
+                  class="btn"
+                  data-am-solver-replay-next
+                  disabled
+                >{% trans "Next" %}</button>
+              </div>
+              <label class="am-solver-replay-slider-label">
+                <span>{% trans "Solver frame" %}</span>
+                <input
+                  type="range"
+                  data-am-solver-replay-slider
+                  min="0"
+                  max="0"
+                  value="0"
+                  disabled
+                />
+              </label>
             </div>
-            <div class="option">
-              <div class="option-name">{% trans "Map step playback" %}</div>
+            <div class="option am-solver-replay-hint-block">
+              <div class="option-name">{% trans "Unified map + solver playback" %}</div>
               <p class="am-future-field-value">
-                {% trans "After a successful decode, use the timeline under the blueprint copy field to step through how the map is built." %}
+                {% trans "Use the timeline under the blueprint field for full map-build and solver steps together; use this card for solver-only frames and replay metadata." %}
               </p>
-            </div>
-            <div class="metrics" aria-hidden="true">
-              <div class="metric">
-                <div class="metric-value">—</div>
-                <div class="metric-label">{% trans "Extractors" %}</div>
-              </div>
-              <div class="metric">
-                <div class="metric-value">—</div>
-                <div class="metric-label">{% trans "Extensions" %}</div>
-              </div>
-              <div class="metric">
-                <div class="metric-value">—</div>
-                <div class="metric-label">{% trans "Pipe cells" %}</div>
-              </div>
-              <div class="metric">
-                <div class="metric-value">—</div>
-                <div class="metric-label">{% trans "Merges" %}</div>
-              </div>
             </div>
           </div>
         </article>
@@ -425,6 +477,24 @@
   var root = document.querySelector("[data-asteroid-copy-root]");
   if (!root) return;
   var apiUrl = root.getAttribute("data-copy-preview-url") || "";
+  var solverOverlayCb = root.querySelector("[data-asteroid-solver-overlay]");
+  var solverRedecodeHintEl = root.querySelector("[data-am-solver-redecode-hint]");
+  if (solverOverlayCb && solverRedecodeHintEl) {
+    var redecodeMsg = root.getAttribute("data-msg-solver-redecode-hint") || "";
+    solverOverlayCb.addEventListener("change", function () {
+      if (solverOverlayCb.checked && redecodeMsg) {
+        solverRedecodeHintEl.textContent = redecodeMsg;
+        solverRedecodeHintEl.classList.remove("hidden");
+      } else {
+        solverRedecodeHintEl.textContent = "";
+        solverRedecodeHintEl.classList.add("hidden");
+      }
+    });
+    if (solverOverlayCb.checked && redecodeMsg) {
+      solverRedecodeHintEl.textContent = redecodeMsg;
+      solverRedecodeHintEl.classList.remove("hidden");
+    }
+  }
   var mapCellsUrl = root.getAttribute("data-map-cells-url") || "";
   var surface = root.querySelector("[data-asteroid-map-surface]");
   var plotSvg = root.querySelector("[data-asteroid-plot-svg]");
@@ -450,9 +520,20 @@
   var lastSummary = null;
   var lastMiningMap = [];
   var lastStyleCatalog = {};
+  var lastSolverReplay = null;
+  /** Solver-only replay (STEP10); map rows come from ``solver_timeline``; meta may use ``solver_replay.ui_frames``. */
+  var lastSolverTimeline = [];
+  var lastReplayUiFrames = [];
+  var currentReplayIndex = 0;
+  var replayTimer = null;
+  var isReplayPlaying = false;
+  /** After Decode, slider starts at last frame without overwriting map until user uses solver replay (decode may autoplay). */
+  var solverReplayOwnsMap = false;
   var decodeSummaryText = "";
   var decodePlayback = root.querySelector("[data-am-decode-playback]");
   var decodeStepsEl = root.querySelector("[data-am-decode-steps]");
+  var decodeStepsScrollEl = root.querySelector("[data-am-decode-steps-scroll]");
+  var playbackTitleEl = root.querySelector("[data-am-playback-title]");
   var decodeDetailEl = root.querySelector("[data-am-decode-detail]");
   var decodePosEl = root.querySelector("[data-am-decode-pos]");
   var decodeLogPreviewEl = root.querySelector("[data-am-decode-log-preview]");
@@ -461,8 +542,18 @@
   var decodeNextBtn = root.querySelector("[data-am-decode-next]");
   var decodePlayBtn = root.querySelector("[data-am-decode-play]");
   var decodePauseBtn = root.querySelector("[data-am-decode-pause]");
+  var replaySlider = root.querySelector("[data-am-solver-replay-slider]");
+  var replayPrevBtn = root.querySelector("[data-am-solver-replay-prev]");
+  var replayNextBtn = root.querySelector("[data-am-solver-replay-next]");
+  var replayPlayBtn = root.querySelector("[data-am-solver-replay-play]");
+  var replayPauseBtn = root.querySelector("[data-am-solver-replay-pause]");
+  var replayPosEl = root.querySelector("[data-am-solver-replay-pos]");
+  var replayMetaEl = root.querySelector("[data-am-solver-replay-meta]");
+  var replayWarnEl = root.querySelector("[data-am-solver-replay-warn]");
   var decodeStepsList = [];
   var mapTimelineList = [];
+  /** Index in unified ``mapTimelineList`` where solver frames start; -1 if map-only. */
+  var solverPhaseStartIndex = -1;
   var decodeStepIndex = 0;
   var decodePlayTimer = null;
   var mapPhaseTitleEl = root.querySelector("[data-am-map-phase-title]");
@@ -475,6 +566,73 @@
   var mapVizStages = root.querySelector("[data-am-decode-viz-stages]");
   var mapVizTrack = root.querySelector("[data-am-decode-viz-track]");
   var mapVizDetail = root.querySelector("[data-am-decode-viz-detail]");
+  function copyPreviewUrlWithOptions() {
+    var base = apiUrl || "";
+    if (!solverOverlayCb || !solverOverlayCb.checked) {
+      return base;
+    }
+    try {
+      var u = new URL(base, window.location.href);
+      u.searchParams.set("include_solver_overlay", "1");
+      u.searchParams.set("include_solver_replay", "1");
+      return u.pathname + u.search;
+    } catch (e) {
+      var sep = base.indexOf("?") === -1 ? "?" : "&";
+      return (
+        base +
+        sep +
+        "include_solver_overlay=1&include_solver_replay=1"
+      );
+    }
+  }
+
+  var SOLVER_REPLAY_KNOWN_KINDS = {
+    frame_checkpoint: true,
+    pass12_bundle_commit: true,
+    step4_route_commit: true,
+    pass3_transport_commit: true,
+    pass3_layout_snapshot: true,
+    p4_reclaim_iteration: true,
+    p4_soft_replace: true,
+    recovery_branch: true,
+    transaction_begin: true,
+    map_diff_committed: true,
+    rollback: true,
+    route_replaced: true,
+    placement_state_changed: true,
+  };
+
+  function normalizeSolverReplayPayload(raw) {
+    var replay = raw && typeof raw === "object" ? raw : null;
+    var version =
+      replay && typeof replay.contract_version === "number"
+        ? replay.contract_version
+        : 1;
+    var events = replay && Array.isArray(replay.events) ? replay.events : [];
+    return { replay: replay, contractVersion: version, events: events };
+  }
+
+  function warnUnknownSolverReplayKinds(events) {
+    if (
+      typeof console === "undefined" ||
+      !console.warn ||
+      !Array.isArray(events)
+    ) {
+      return;
+    }
+    var seen = Object.create(null);
+    for (var i = 0; i < events.length; i++) {
+      var e = events[i];
+      if (!e || typeof e.kind !== "string") {
+        continue;
+      }
+      if (SOLVER_REPLAY_KNOWN_KINDS[e.kind] || seen[e.kind]) {
+        continue;
+      }
+      seen[e.kind] = true;
+      console.warn("[solver_replay] unknown event kind:", e.kind);
+    }
+  }
   var STEP_LABELS = {
     validate_input_type: "{% filter escapejs %}{% trans 'Validate input type' %}{% endfilter %}",
     normalize_whitespace: "{% filter escapejs %}{% trans 'Normalize whitespace' %}{% endfilter %}",
@@ -505,6 +663,10 @@
   }
 
   function mapStepLabel(stepId) {
+    if (!stepId) return "";
+    var slug = String(stepId).replace(/[^a-zA-Z0-9]+/g, "_");
+    var fromRoot = root.getAttribute("data-map-step-" + slug);
+    if (fromRoot) return fromRoot;
     return MAP_STEP_LABELS[stepId] || stepId;
   }
 
@@ -725,6 +887,9 @@
         var st = mapMode ? mapTimelineList[i] : decodeStepsList[i];
         var li = document.createElement("li");
         li.className = "am-decode-step";
+        if (mapMode && solverPhaseStartIndex >= 0 && i === solverPhaseStartIndex) {
+          li.classList.add("am-decode-step-solver-phase-start");
+        }
         if (i < decodeStepIndex) li.classList.add("past");
         else if (i === decodeStepIndex) li.classList.add("active");
         else li.classList.add("future");
@@ -743,6 +908,20 @@
         }
         decodeStepsEl.appendChild(li);
       }
+    }
+    if (playbackTitleEl) {
+      var mapOnlyTitle = root.getAttribute("data-playback-title-map-only") || "";
+      var mapSolverTitle = root.getAttribute("data-playback-title-map-solver") || "";
+      playbackTitleEl.textContent =
+        mapMode && solverPhaseStartIndex >= 0 && n > solverPhaseStartIndex && mapSolverTitle
+          ? mapSolverTitle
+          : mapOnlyTitle || playbackTitleEl.textContent;
+    }
+    if (decodeStepsScrollEl) {
+      decodeStepsScrollEl.classList.toggle(
+        "am-decode-steps-scroll--with-solver",
+        Boolean(mapMode && solverPhaseStartIndex >= 0 && n > solverPhaseStartIndex)
+      );
     }
     if (decodePosEl) {
       decodePosEl.textContent = n ? decodeStepIndex + 1 + " / " + n : "";
@@ -785,6 +964,9 @@
 
   function applyMapTimeline(timeline, opts) {
     mapTimelineList = Array.isArray(timeline) ? timeline : [];
+    if (!mapTimelineList.length) {
+      solverPhaseStartIndex = -1;
+    }
     decodeStepsList = [];
     stopDecodePlay();
     if (!decodePlayback) return;
@@ -813,6 +995,7 @@
   function applyDecodeSteps(steps, opts) {
     decodeStepsList = Array.isArray(steps) ? steps : [];
     mapTimelineList = [];
+    solverPhaseStartIndex = -1;
     stopDecodePlay();
     if (!decodePlayback) return;
     if (!decodeStepsList.length) {
@@ -1042,6 +1225,24 @@
     } else {
       line += " · " + (root.getAttribute("data-msg-no-bounds") || "");
     }
+    var softSessions = Number(s.p4_soft_replace_attempt_count || 0);
+    var softCommits = Number(s.p4_soft_replace_commit_count || 0);
+    var softJobCount = Number(s.p4_soft_replace_job_count || 0);
+    var softJobsAttempted = Number(s.p4_soft_replace_jobs_attempted || 0);
+    if (softSessions > 0 || softJobCount > 0) {
+      line += " · Soft repair: " + softSessions + " sessions / " + softCommits + " committed";
+      if (softJobCount > 0) {
+        var selectedJob = s.p4_soft_replace_selected_job_index;
+        if (typeof selectedJob === "number" && selectedJob >= 0) {
+          line += " · Last job: selected #" + (selectedJob + 1) + " of " + softJobCount;
+        } else {
+          line += " · Last job: none of " + softJobCount;
+        }
+        if (softJobsAttempted > 0) {
+          line += " (" + softJobsAttempted + " probed)";
+        }
+      }
+    }
     return line;
   }
 
@@ -1147,7 +1348,48 @@
       plotSvg.removeAttribute("viewBox");
       return;
     }
-    var ux = uniqueSortedXs(filtered);
+    function p4OverlayCells(summaryObj) {
+      var route = [];
+      var soft = [];
+      var softReplaceOld = [];
+      var softReplaceNew = [];
+      if (!summaryObj || typeof summaryObj !== "object") {
+        return { route: route, soft: soft, softReplaceOld: softReplaceOld, softReplaceNew: softReplaceNew };
+      }
+      function collectInto(lst, dest) {
+        if (!Array.isArray(lst)) return;
+        var j;
+        for (j = 0; j < lst.length; j++) {
+          var it = lst[j];
+          var px;
+          var py;
+          if (Array.isArray(it) && it.length >= 2) {
+            px = it[0];
+            py = it[1];
+          } else if (it && typeof it === "object") {
+            px = it.x;
+            py = it.y;
+          } else {
+            continue;
+          }
+          if (typeof px !== "number" || typeof py !== "number") continue;
+          if (px === 0) continue;
+          dest.push({ x: px, y: py });
+        }
+      }
+      collectInto(summaryObj.p4_reclaim_last_soft_protected_candidate_cells, soft);
+      collectInto(summaryObj.p4_reclaim_last_commit_route_cells, route);
+      collectInto(summaryObj.p4_soft_replace_old_cells, softReplaceOld);
+      collectInto(summaryObj.p4_soft_replace_new_cells, softReplaceNew);
+      return { route: route, soft: soft, softReplaceOld: softReplaceOld, softReplaceNew: softReplaceNew };
+    }
+    var p4Cells = p4OverlayCells(summary);
+    var p4All = p4Cells.route
+      .concat(p4Cells.soft)
+      .concat(p4Cells.softReplaceOld)
+      .concat(p4Cells.softReplaceNew);
+    var forUx = filtered.concat(p4All);
+    var ux = uniqueSortedXs(forUx);
     if (ux.length === 0) {
       plotSvg.removeAttribute("viewBox");
       return;
@@ -1155,6 +1397,12 @@
     var mar = 2;
     var minY = summary.y_min - mar;
     var maxY = summary.y_max + mar;
+    var oi;
+    for (oi = 0; oi < p4All.length; oi++) {
+      var oy = p4All[oi].y;
+      minY = Math.min(minY, oy - mar);
+      maxY = Math.max(maxY, oy + mar);
+    }
     var ch = maxY - minY + 1;
     var n = ux.length;
     var W = n + 2;
@@ -1198,6 +1446,28 @@
       xi[ux[j]] = j;
     }
 
+    function appendP4OutlineRect(parent, p, cellClass, titleText) {
+      var idx = xi[p.x];
+      if (idx === undefined) return;
+      var pad = 0.07;
+      var x0 = 1 + idx + pad;
+      var y0 = p.y - minY + pad;
+      var size = 1 - 2 * pad;
+      var r = document.createElementNS(svgNs, "rect");
+      r.setAttribute("class", cellClass);
+      r.setAttribute("x", String(x0));
+      r.setAttribute("y", String(y0));
+      r.setAttribute("width", String(size));
+      r.setAttribute("height", String(size));
+      r.setAttribute("rx", "0.05");
+      r.setAttribute("ry", "0.05");
+      if (titleText) {
+        var t = document.createElementNS(svgNs, "title");
+        t.textContent = titleText;
+        r.appendChild(t);
+      }
+      parent.appendChild(r);
+    }
     function appendCellRect(parent, p, role, titleText) {
       var idx = xi[p.x];
       if (idx === undefined) return;
@@ -1267,6 +1537,57 @@
     plotSvg.appendChild(gBelt);
     plotSvg.appendChild(gPipe);
     plotSvg.appendChild(gTop);
+    if (
+      p4Cells.route.length ||
+      p4Cells.soft.length ||
+      p4Cells.softReplaceOld.length ||
+      p4Cells.softReplaceNew.length
+    ) {
+      var p4RouteTitle = root.getAttribute("data-msg-p4-route-overlay") || "";
+      var p4SoftTitle = root.getAttribute("data-msg-p4-soft-overlay") || "";
+      var p4SoftReplaceOldTitle =
+        root.getAttribute("data-msg-p4-soft-replace-old-overlay") || "";
+      var p4SoftReplaceNewTitle =
+        root.getAttribute("data-msg-p4-soft-replace-new-overlay") || "";
+      var gP4 = document.createElementNS(svgNs, "g");
+      gP4.setAttribute("class", "am-p4-last-commit-overlay");
+      var gP4Soft = document.createElementNS(svgNs, "g");
+      gP4Soft.setAttribute("class", "am-p4-overlay-soft");
+      var gP4Route = document.createElementNS(svgNs, "g");
+      gP4Route.setAttribute("class", "am-p4-overlay-route");
+      var gP4SoftReplaceOld = document.createElementNS(svgNs, "g");
+      gP4SoftReplaceOld.setAttribute("class", "am-p4-overlay-soft-replace-old");
+      var gP4SoftReplaceNew = document.createElementNS(svgNs, "g");
+      gP4SoftReplaceNew.setAttribute("class", "am-p4-overlay-soft-replace-new");
+      var pi;
+      for (pi = 0; pi < p4Cells.soft.length; pi++) {
+        appendP4OutlineRect(gP4Soft, p4Cells.soft[pi], "am-p4-overlay-soft-cell", p4SoftTitle);
+      }
+      for (pi = 0; pi < p4Cells.route.length; pi++) {
+        appendP4OutlineRect(gP4Route, p4Cells.route[pi], "am-p4-overlay-route-cell", p4RouteTitle);
+      }
+      for (pi = 0; pi < p4Cells.softReplaceOld.length; pi++) {
+        appendP4OutlineRect(
+          gP4SoftReplaceOld,
+          p4Cells.softReplaceOld[pi],
+          "am-p4-overlay-soft-replace-old-cell",
+          p4SoftReplaceOldTitle
+        );
+      }
+      for (pi = 0; pi < p4Cells.softReplaceNew.length; pi++) {
+        appendP4OutlineRect(
+          gP4SoftReplaceNew,
+          p4Cells.softReplaceNew[pi],
+          "am-p4-overlay-soft-replace-new-cell",
+          p4SoftReplaceNewTitle
+        );
+      }
+      gP4.appendChild(gP4Soft);
+      gP4.appendChild(gP4Route);
+      gP4.appendChild(gP4SoftReplaceOld);
+      gP4.appendChild(gP4SoftReplaceNew);
+      plotSvg.appendChild(gP4);
+    }
   }
 
   if (orientBtns.length && plotSvg) {
@@ -1357,10 +1678,12 @@
       errEl.textContent = "";
       clearPlot();
       stopDecodePlay();
+      lastSolverReplay = null;
+      solverPhaseStartIndex = -1;
       applyMapTimeline([]);
       applyDecodeSteps([]);
       btn.disabled = true;
-      fetch(apiUrl, {
+      fetch(copyPreviewUrlWithOptions(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1381,6 +1704,7 @@
             var idle = summaryEl.getAttribute("data-idle-msg") || "";
             summaryEl.textContent = idle;
             decodeSummaryText = "";
+            lastSolverReplay = null;
             applyMapTimeline([]);
             applyDecodeSteps([]);
             return;
@@ -1390,10 +1714,46 @@
           lastSummary = x.data.summary;
           lastMiningMap = x.data.mining_map || [];
           lastStyleCatalog = x.data.style_catalog || {};
+          var replayNorm = normalizeSolverReplayPayload(x.data.solver_replay);
+          lastSolverReplay = replayNorm.replay;
+          if (replayNorm.contractVersion >= 2) {
+            warnUnknownSolverReplayKinds(replayNorm.events);
+          }
           applyDecodeSteps([]);
-          applyMapTimeline(x.data.map_timeline || [], { autoPlayOnce: true });
+          var mapSteps = x.data.map_timeline || [];
+          var solverSteps = x.data.solver_timeline || [];
+          solverPhaseStartIndex =
+            Array.isArray(solverSteps) && solverSteps.length && Array.isArray(mapSteps)
+              ? mapSteps.length
+              : -1;
+          var unifiedTimeline =
+            Array.isArray(solverSteps) && solverSteps.length
+              ? mapSteps.concat(solverSteps)
+              : mapSteps;
+          applyMapTimeline(unifiedTimeline, { autoPlayOnce: true });
+          if (solverRedecodeHintEl) {
+            if (
+              solverOverlayCb &&
+              solverOverlayCb.checked &&
+              Array.isArray(solverSteps) &&
+              solverSteps.length
+            ) {
+              solverRedecodeHintEl.classList.add("hidden");
+              solverRedecodeHintEl.textContent = "";
+            }
+          }
+          if (solverOverlayCb && solverOverlayCb.checked) {
+            var stCheck = x.data.solver_timeline;
+            if (!Array.isArray(stCheck) || !stCheck.length) {
+              var miss = root.getAttribute("data-msg-solver-timeline-missing") || "";
+              if (miss) {
+                summaryEl.textContent = decodeSummaryText + " — " + miss;
+              }
+            }
+          }
         })
         .catch(function () {
+          lastSolverReplay = null;
           applyMapTimeline([]);
           applyDecodeSteps([]);
           errEl.textContent = root.getAttribute("data-msg-network") || "";

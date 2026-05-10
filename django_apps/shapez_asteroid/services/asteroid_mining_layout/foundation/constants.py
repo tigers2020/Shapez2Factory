@@ -1,0 +1,138 @@
+"""Central literals for mining layout solver: replay contracts, trace ids, tuning knobs.
+
+Algorithm modules import from here; this module must not import sibling package modules
+(avoid cycles). Enum-keyed maps stay next to their enums (e.g. route_zone).
+"""
+
+from __future__ import annotations
+
+# --- Recovery chain segments / trigger reasons (replay contract, §13) ---
+RECOVERY_SEGMENT_P4_RECLAIM = "p4_reclaim"
+RECOVERY_SEGMENT_SOFT_REPLACE_V2 = "soft_replace_v2"
+RECOVERY_SEGMENT_POST_RECLAIM_PASS3 = "post_reclaim_pass3"
+RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM = "post_pass3_p4_reclaim_entry"
+
+# --- Trace ``location`` strings (STEP10 NDJSON) ---
+SOLVER_SERVICE_BUILD_SOLVER_TIMELINE_LOCATION = (
+    "django_apps.shapez_asteroid.services.asteroid_mining_layout."
+    "solver_service.build_solver_timeline"
+)
+
+PASS12_TRY_COMMIT_PASS1_BUNDLE_TRACE_LOCATION = "pass12_bundle_commit.try_commit_pass1_bundle"
+PASS12_TRY_COMMIT_PASS2_BUNDLE_TRACE_LOCATION = "pass12_bundle_commit.try_commit_pass2_bundle"
+
+# --- P4 reclaim tuning (§12.2); values only may change ---
+DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD = 1.5
+MAX_RECLAIM_INTERNAL_TRANSPORT_SPEND_RATIO = 0.35
+MIN_INTERNAL_TRANSPORT_SPEND_WHEN_NO_PASS3_SAVINGS = 1
+
+# Expected mining throughput gain (slots) for a minimal miner + extension shadow bundle.
+RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS = 2.0
+
+# §12.6 — P4 commit loop vs per-scan bundle-eval cap (separate contracts).
+MAX_RECLAIM_ITERATIONS = 3
+MAX_RECLAIM_SHADOW_SCAN_LIMIT = 16
+
+P4_REJECT_FINAL_ROUTE_OVERLAP = "rejected_by_final_route_overlap"
+P4_REJECT_HARD_PROTECTED_CORRIDOR = "rejected_by_hard_protected_corridor"
+P4_REJECT_SOFT_PROTECTED_CORRIDOR = "rejected_by_soft_protected_corridor"
+P4_REJECT_NO_OUTPUT_STUB = "rejected_by_no_output_stub"
+P4_REJECT_NO_INCREMENTAL_ROUTE = "rejected_by_no_incremental_route"
+P4_REJECT_GAIN_RATIO = "rejected_by_gain_ratio"
+P4_REJECT_INTERNAL_TRANSPORT_BUDGET = "rejected_by_internal_transport_budget"
+P4_REJECT_VALIDATION = "rejected_by_validation"
+
+P4_REJECT_NO_SHADOW_CANDIDATE = "rejected_by_no_shadow_candidate"
+P4_ROLLBACK_AFTER_PROVISIONAL_VALIDATION_FAILURE = "rollback_after_provisional_validation_failure"
+
+# §14.3 soft corridor atomic replacement (replacement-first; no old-only removal path).
+P4_SOFT_REPLACE_REJECT_OLD_NOT_SOFT_PROTECTED = "rejected_by_old_not_soft_protected"
+P4_SOFT_REPLACE_REJECT_OLD_NOT_TRANSPORT = "rejected_by_old_not_transport_on_map"
+P4_SOFT_REPLACE_REJECT_NO_ROUTING_JOB = "rejected_by_no_routing_job"
+P4_SOFT_REPLACE_REJECT_NO_REPLACEMENT_ROUTE = "rejected_by_no_replacement_route"
+P4_SOFT_REPLACE_REJECT_REPLACEMENT_NOT_CONNECTED = "rejected_by_replacement_not_connected"
+P4_SOFT_REPLACE_REJECT_VALIDATION = "rejected_by_soft_replace_validation"
+
+P4_SOFT_REPLACE_ROUTE_PLACEMENT_ID = "p4_soft_replace_route"
+
+# §14.3 P4 loop hook: documented scope of _try_atomic_replace_soft_corridor.
+P4_SOFT_REPLACE_V1_CONTRACT = (
+    "soft replace v1 = single selected soft corridor + first routing job only"
+)
+P4_SOFT_REPLACE_V2_CONTRACT = (
+    "soft replace v2 = deterministic all routing jobs + first valid replacement"
+)
+
+P4_RECLAIM_CORRIDOR_SOURCE_SOLVER_POOL = "solver_pool"
+P4_RECLAIM_CORRIDOR_SOURCE_PASS3_TRACE = "pass3_trace"
+P4_RECLAIM_CORRIDOR_SOURCE_P3E3_TOUCHED_FALLBACK = "p3e3_touched_fallback"
+P4_RECLAIM_CORRIDOR_SOURCE_EMPTY = "empty"
+
+P4_RECLAIM_PROVISIONAL_PLACEMENT_ID = "p4_reclaim_provisional"
+P4_RECLAIM_INCREMENTAL_ROUTE_PLACEMENT_ID = "p4_reclaim_incremental_route"
+
+P4_ROLLBACK_AFTER_INCREMENTAL_ROUTE_FAILED = "rollback_after_incremental_route_failed"
+
+# --- Pass3 shared (reject reasons, defaults, ratio bounds) ---
+MAX_ROUTE_LENGTH_RATIO = 1.35
+
+COMMIT_REASON_GUARDED_ATOMIC = "guarded_atomic_candidate"
+
+# P3-E3b-1: atomic guarded-commit gate reasons (namespace separate from rollback / commit_reason).
+P3E3_REJECT_NONE = "none"
+P3E3_REJECT_PRECHECK_NO_CANDIDATE = "precheck_no_candidate"
+P3E3_REJECT_PRECHECK_NO_REPLACEMENT_ROUTE = "precheck_no_replacement_route"
+P3E3_REJECT_FIXED_STUB_REMOVAL = "rejected_by_fixed_stub_removal"
+P3E3_REJECT_HARD_PROTECTED_CORRIDOR = "rejected_by_hard_protected_corridor"
+P3E3_REJECT_NO_REPLACEMENT_ROUTE = "rejected_by_no_replacement_route"
+P3E3_REJECT_ROUTE_LENGTH_RATIO = "rejected_by_route_length_ratio"
+P3E3_REJECT_CONNECTIVITY = "rejected_by_connectivity"
+P3E3_REJECT_GEOMETRY = "rejected_by_geometry"
+P3E3_REJECT_VALIDATION = "rejected_by_validation"
+
+P3E2_SHADOW_ENABLED_DEFAULT = True
+P3E3_GUARDED_COMMIT_ENABLED_DEFAULT = False
+P3E3_ATOMIC_SKIPPED_SHADOW_LEX_INCOMPLETE = "shadow_lex_incomplete_greedy_only"
+
+# --- build_solver_timeline frame ids (replay / trace); order matches pipeline stages ---
+SOLVER_FRAME_INIT = "solver_init"
+SOLVER_FRAME_PASS1_OUTER = "solver_pass1_outer"
+SOLVER_FRAME_PASS2_INTERNAL = "solver_pass2_internal"
+SOLVER_FRAME_STEP4_ROUTING = "solver_step4_routing"
+SOLVER_FRAME_PASS3_TRANSPORT = "solver_pass3_transport"
+# Trace checkpoint after P4 reclaim loop (no separate timeline frame; map lives in pass3 frame).
+SOLVER_FRAME_P4_RECLAIM = "solver_p4"
+SOLVER_FRAME_VALIDATE = "solver_validate"
+
+SOLVER_TIMELINE_FRAME_ORDER: tuple[str, ...] = (
+    SOLVER_FRAME_INIT,
+    SOLVER_FRAME_PASS1_OUTER,
+    SOLVER_FRAME_PASS2_INTERNAL,
+    SOLVER_FRAME_STEP4_ROUTING,
+    SOLVER_FRAME_PASS3_TRANSPORT,
+    SOLVER_FRAME_VALIDATE,
+)
+
+# --- Solver state hash (STEP4 routing subset) ---
+ROUTING_STATE_KEYS_STEP4_HASH: tuple[str, ...] = (
+    "hard_protected_corridors",
+    "soft_protected_corridors",
+)
+
+# --- Post-P4 Pass3 reruns ---
+MAX_POST_RECLAIM_PASS3_RERUNS = 1
+
+# --- Replay NDJSON contract ---
+SOLVER_REPLAY_CONTRACT_VERSION = 3
+
+# --- Lexicographic router (mining opportunity penalty) ---
+MINING_OPPORTUNITY_LOSS_PER_CANDIDATE = 40
+
+# --- Repair / demolition cost grid (separate from Pass3 mining-priority costs) ---
+INF_COST = 10**9
+MINEABLE_ROUTE_COST = 60
+
+# --- Mining-map layout_kind sets (extractors / extensions) ---
+EXTRACTORS_SHAPE = frozenset({"miner", "extractor"})
+EXTRACTORS_FLUID = frozenset({"fluid_miner"})
+EXTENSIONS = frozenset({"extension", "fluid_extension"})

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse
@@ -11,12 +12,61 @@ from django_apps.shapez_asteroid.services.asteroid_map_cells import (
     list_map_cells_json,
     parse_bbox,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout import (
+    existing_layout_analysis as existing_layout_analysis_mod,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+    final_validation,
+)
 from django_apps.shapez_asteroid.services.blueprint_map_summary import build_map_timeline
 from django_apps.shapez_asteroid.services.copy_preview_debug_dump import (
     dump_copy_preview_debug,
 )
 from django_apps.shapez_asteroid.services.style_classifier import asteroid_map_style_catalog
 from django_apps.shapez_core.services.shapez_copy_decode import decode_shapez2_copy_trace
+
+
+def _truthy_query_param(raw: str | None) -> bool:
+    if raw is None:
+        return False
+    v = raw.strip().lower()
+    return v in ("1", "true", "yes", "on")
+
+
+def _merge_p4_pass3_overlay_into_map_timeline(
+    map_timeline: list[dict[str, Any]],
+    solver_out: dict[str, Any],
+) -> None:
+    """Merge Pass3 P4 reclaim replay fields from ``build_solver_timeline`` into map summaries."""
+
+    if not map_timeline:
+        return
+    frames = solver_out.get("solver_timeline") or []
+    p3 = next(
+        (f for f in frames if isinstance(f, dict) and f.get("id") == "solver_pass3_transport"),
+        None,
+    )
+    if not isinstance(p3, dict):
+        return
+    summ = p3.get("summary")
+    if not isinstance(summ, dict):
+        return
+    patch: dict[str, Any] = {
+        "p4_reclaim_route_zone_excluded_cumulative_count": int(
+            summ.get("p4_reclaim_route_zone_excluded_cumulative_count") or 0
+        ),
+        "p4_reclaim_last_commit_route_cells": summ.get("p4_reclaim_last_commit_route_cells") or [],
+        "p4_reclaim_last_soft_protected_candidate_cells": summ.get(
+            "p4_reclaim_last_soft_protected_candidate_cells"
+        )
+        or [],
+    }
+    for step in map_timeline:
+        if not isinstance(step, dict):
+            continue
+        s = step.setdefault("summary", {})
+        if isinstance(s, dict):
+            s.update(patch)
 
 
 def _map_cells_error_code(message: str) -> str:
@@ -54,6 +104,16 @@ def map_cells(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 def copy_preview(request: HttpRequest) -> JsonResponse:
+    """Return map timeline from ``build_map_timeline`` only.
+
+    Pass ``GET include_solver_overlay=1`` (or ``true``/``yes``/``on``) to merge Pass3 P4
+    reclaim overlay fields via ``build_solver_timeline`` (extra solver cost).
+
+    Pass ``GET include_solver_replay=1`` to include ``solver_replay`` (replay contract: frames,
+    ``events``, ``computation_cycle``; v3 adds per-event cycle + Pass3 layout snapshots);
+    shares one ``build_solver_timeline`` run with ``include_solver_overlay`` when both are set.
+    """
+
     try:
         body = json.loads(request.body.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -92,15 +152,45 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
         dump_copy_preview_debug(code, decoded, debug_dir)
 
     map_timeline = build_map_timeline(decoded)
+    include_solver_overlay = _truthy_query_param(request.GET.get("include_solver_overlay"))
+    include_solver_replay = _truthy_query_param(request.GET.get("include_solver_replay"))
+
+    solver_out: dict[str, Any] | None = None
+    if include_solver_overlay or include_solver_replay:
+        from django_apps.shapez_asteroid.services.asteroid_mining_layout import (
+            build_solver_timeline,
+        )
+
+        try:
+            solver_out = build_solver_timeline(decoded)
+        except Exception:
+            solver_out = None
+
+    if include_solver_overlay and solver_out is not None:
+        _merge_p4_pass3_overlay_into_map_timeline(map_timeline, solver_out)
     fin = map_timeline[-1]
     summary = fin["summary"]
     mining_map = fin["mining_map"]
-    return JsonResponse(
-        {
-            "ok": True,
-            "summary": summary,
-            "mining_map": mining_map,
-            "map_timeline": map_timeline,
-            "style_catalog": asteroid_map_style_catalog(),
-        }
+    transport_map = map_timeline[0]["mining_map"]
+    is_ext = final_validation.external_predicate_for_mining_map(map_timeline[1]["mining_map"])
+    existing_layout_analysis = existing_layout_analysis_mod.analyze_existing_layout_from_mining_map(
+        transport_map,
+        is_external=is_ext,
     )
+    payload: dict[str, Any] = {
+        "ok": True,
+        "summary": summary,
+        "mining_map": mining_map,
+        "map_timeline": map_timeline,
+        "style_catalog": asteroid_map_style_catalog(),
+        "existing_layout_analysis": existing_layout_analysis,
+    }
+    if include_solver_replay and solver_out is not None:
+        sr = solver_out.get("solver_replay")
+        if isinstance(sr, dict):
+            payload["solver_replay"] = sr
+    if solver_out is not None and (include_solver_overlay or include_solver_replay):
+        st = solver_out.get("solver_timeline")
+        if isinstance(st, list):
+            payload["solver_timeline"] = st
+    return JsonResponse(payload)

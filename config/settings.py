@@ -12,6 +12,22 @@ load_dotenv(BASE_DIR / ".env")
 # If set, successful POST /api/asteroid/copy-preview/ writes encrypt code + decoded JSON here.
 SHAPEZ_COPY_DEBUG_DIR = (os.environ.get("SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
 
+# Optional mining-layout invariant checks (env: 1/true/yes/on).
+# Default is OFF: zero overhead on normal requests; turn on in dev/CI when debugging
+# split-brain between scratch transport, map rows, or routing_state vs belts on map.
+_truthy_env = {"1", "true", "yes", "on"}
+SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET = (
+    os.environ.get("SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET", "").strip().lower()
+    in _truthy_env
+)
+# When True: before returning from build_solver_timeline, assert protected corridors in
+# routing_state match shape_belt/fluid_pipe cells on the final map (STEP9 assertion gate).
+# Default OFF so production/copy-preview is not killed by a bad corner case; enable locally
+# or in CI via SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE=1. Tests use @override_settings(True).
+SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE = (
+    os.environ.get("SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE", "").strip().lower() in _truthy_env
+)
+
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True
 

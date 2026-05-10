@@ -1,7 +1,8 @@
 """DB-backed pattern family / macro recipe catalog for Pattern Lab.
 
 Catalog matches `MacroRecipe` / `PatternFamily` rows by pattern signature.
-`MacroRecipe.graph_document` is used for step metadata (see recompute helpers), not as a search graph here.
+`MacroRecipe.graph_document` is used for step metadata (see recompute helpers),
+not as a search graph here.
 """
 
 from __future__ import annotations

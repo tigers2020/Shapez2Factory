@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import gzip
 import json
+from unittest.mock import patch
 
 from django.test import Client, override_settings
 
@@ -17,11 +18,14 @@ def _encode_copy(obj: object) -> str:
     return f"{SHAPEZ2_COPY_PREFIX_V4}{b64}"
 
 
-def _post_json(client: Client, payload: dict) -> object:
+def _post_json(client: Client, payload: dict, *, query: str = "") -> object:
     token = client.cookies.get("csrftoken")
     assert token is not None
+    path = "/api/asteroid/copy-preview/"
+    if query:
+        path = f"{path}?{query.lstrip('?')}"
     return client.post(
-        "/api/asteroid/copy-preview/",
+        path,
         data=json.dumps(payload),
         content_type="application/json",
         HTTP_X_CSRFTOKEN=token.value,
@@ -43,13 +47,15 @@ def test_copy_preview_success() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
-    assert body["summary"] == {
-        "entry_count": 1,
-        "x_min": 1,
-        "x_max": 1,
-        "y_min": 2,
-        "y_max": 2,
-    }
+    summary = body["summary"]
+    assert summary["entry_count"] == 1
+    assert summary["x_min"] == 1
+    assert summary["x_max"] == 1
+    assert summary["y_min"] == 2
+    assert summary["y_max"] == 2
+    assert "p4_reclaim_route_zone_excluded_cumulative_count" not in summary
+    assert "p4_reclaim_last_commit_route_cells" not in summary
+    assert "p4_reclaim_last_soft_protected_candidate_cells" not in summary
     assert body["mining_map"] == [
         {
             "x": 1,
@@ -69,6 +75,11 @@ def test_copy_preview_success() -> None:
     assert "asteroid_field" in body["style_catalog"]
     assert body["map_timeline"][-1]["mining_map"] == body["mining_map"]
     assert "decode_steps" not in body
+    assert body["existing_layout_analysis"]["source_kind"] == "raw_asteroid_field"
+    s0 = body["map_timeline"][0]["summary"]
+    assert "p4_reclaim_route_zone_excluded_cumulative_count" not in s0
+    assert "p4_reclaim_last_commit_route_cells" not in s0
+    assert "p4_reclaim_last_soft_protected_candidate_cells" not in s0
 
 
 def test_copy_preview_map_timeline_first_step_shows_transport() -> None:
@@ -94,6 +105,93 @@ def test_copy_preview_map_timeline_first_step_shows_transport() -> None:
     assert by_xy[(6, 1)] == "belt"
     assert by_xy[(7, 1)] == "pipe"
     assert by_xy[(5, 1)] == "occupied"
+    ela = body["existing_layout_analysis"]
+    assert ela["source_kind"] == "existing_shape_layout"
+    assert ela["transport_by_kind"] is not None
+    assert "shape_belt" in ela["transport_by_kind"]
+    assert "fluid_pipe" in ela["transport_by_kind"]
+    for step in body["map_timeline"]:
+        s = step["summary"]
+        assert "p4_reclaim_last_commit_route_cells" not in s
+
+
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_skips_solver_overlay_by_default(mock_solver: object) -> None:
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)})
+    assert response.status_code == 200
+    mock_solver.assert_not_called()
+
+
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_includes_solver_overlay_when_enabled(mock_solver: object) -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service import (
+        build_solver_timeline as real_build,
+    )
+
+    mock_solver.side_effect = real_build
+
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)}, query="include_solver_overlay=1")
+    assert response.status_code == 200
+    mock_solver.assert_called_once()
+    body = response.json()
+    summary = body["summary"]
+    assert summary.get("p4_reclaim_route_zone_excluded_cumulative_count") == 0
+    assert summary.get("p4_reclaim_last_commit_route_cells") == []
+    assert summary.get("p4_reclaim_last_soft_protected_candidate_cells") == []
+    s0 = body["map_timeline"][0]["summary"]
+    assert "p4_reclaim_route_zone_excluded_cumulative_count" in s0
+    assert isinstance(s0["p4_reclaim_last_commit_route_cells"], list)
+
+
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_includes_solver_replay_when_flag(mock_solver: object) -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service import (
+        build_solver_timeline as real_build,
+    )
+
+    mock_solver.side_effect = real_build
+
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)}, query="include_solver_replay=1")
+    assert response.status_code == 200
+    mock_solver.assert_called_once()
+    body = response.json()
+    assert "solver_replay" in body
+    assert body["solver_replay"]["contract_version"] == 3
+    assert isinstance(body["solver_replay"]["events"], list)
+    assert "solver_timeline" in body
+    assert isinstance(body["solver_timeline"], list)
+    assert len(body["solver_timeline"]) >= 1
+    assert isinstance(body["solver_replay"].get("ui_frames"), list)
+    assert len(body["solver_replay"]["ui_frames"]) == len(body["solver_timeline"])
+    s0 = body["map_timeline"][0]["summary"]
+    assert "p4_reclaim_route_zone_excluded_cumulative_count" not in s0
 
 
 def test_copy_preview_unknown_t_zero_extraction() -> None:

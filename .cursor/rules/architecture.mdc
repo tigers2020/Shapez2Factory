@@ -57,10 +57,12 @@ Forbidden:
 ## Asteroid · blueprint copy grid (`BP.Entries`)
 
 - 디코드된 Island **`Entries`**의 좌표는 정수 격자 `X` / `Y`를 쓴다.
-- **소행성 레이아웃·요약·플롯 알고리즘 전제: `X == 0`인 칸은 존재하지 않는다.** 서버에서는 `X == 0`인 엔트리를 **모든 계산·API 출력에서 제외**한다(방어적 필터).
+- **프로젝트 절대 전제: `X == 0`인 타일·열은 존재하지 않는다.** 양수 열과 음수 열 사이에 0이 없이 **`X == 1`과 `X == -1`이 동서로 물리 인접**(한 칸 이동으로 `1 ↔ -1` 점프; `0`을 경유하지 않음). 코드 좌표 `(x, y)`에서도 **`x == 0`은 항상 불법**이며, 라우팅은 [`shapez_grid.step_cardinal`](../../django_apps/shapez_asteroid/extraction/shapez_grid.py) 규약을 따른다.
+- 서버는 디코드 후 **`X == 0`인 엔트리를 모든 계산·API 출력에서 제외**한다(데이터·모델과 정합).
 - **시각화(X축)**는 게임 정수 X 전 구간이 아니라 **실제로 등장하는 고유 X 값만 열로 쓴다**(연속 슬롯). 이렇게 해서 데이터에 `X = 0`이 없을 때 생기던 가운데 빈 열을 그리드에서 접는다. (`shapez_asteroid` 페이지 스크립트)
-
 - **시각화(Y축)** 게임 `Y`는 **아래로 증가**하는 것으로 두고 SVG 행을 맞춘다(인게임 상단·하단과 동일한 방향). 예전과 반대로 보이면 이 규칙을 바꾼 것이다.
+
+정본 설명(한국어): [`documents/research/research_blueprint_grid_coordinates_2026-05-10.md`](../../documents/research/research_blueprint_grid_coordinates_2026-05-10.md).
 
 ## Test placement
 

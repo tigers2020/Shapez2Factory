@@ -1,0 +1,164 @@
+"""Timeline helpers: layout counts, post-reclaim Pass3 run-once, internal transport tallies."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any
+
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    EXTENSIONS,
+    EXTRACTORS_FLUID,
+    EXTRACTORS_SHAPE,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    collect_routing_jobs,
+    layout_kind,
+    mineable_and_asteroid_coords,
+    want_role,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
+    cells_dict_from_mining_map,
+    validate_final_mining_layout,
+)
+
+_EXTRACTORS = EXTRACTORS_SHAPE | EXTRACTORS_FLUID
+_EXTENSIONS = EXTENSIONS
+
+
+def _internal_transport_count_for_pass3_kind(
+    mining_map: list[dict[str, Any]],
+    *,
+    final_mining_map: list[dict[str, Any]],
+) -> int | None:
+    """Count interior transport tiles for Pass3's single ``transport_kind`` (belt or pipe).
+
+    Mirrors the head of ``run_pass3_transport_minimization_from_maps``: ``None`` when there
+    are no routing jobs or mixed transport kinds (Pass3 would skip).
+    """
+
+    raw = cells_dict_from_mining_map(mining_map)
+    cells = {k: dict(v) for k, v in raw.items()}
+    jobs = collect_routing_jobs(cells)
+    if not jobs:
+        return None
+    if len({j[2] for j in jobs}) != 1:
+        return None
+    tk = jobs[0][2]
+    wr = want_role(tk)
+    _, asteroid = mineable_and_asteroid_coords(final_mining_map)
+    asteroid_f = frozenset(asteroid)
+    return sum(1 for c, row in cells.items() if row.get("role") == wr and c in asteroid_f)
+
+
+def _attach_post_reclaim_pass3_count_aliases(out: dict[str, Any]) -> None:
+    """Stable short names on top of ``post_reclaim_pass3_before_internal_transport_count`` etc."""
+
+    bi = out.get("post_reclaim_pass3_before_internal_transport_count")
+    ai = out.get("post_reclaim_pass3_after_internal_transport_count")
+    if bi is not None:
+        out["post_reclaim_pass3_before_count"] = int(bi)
+    if ai is not None:
+        out["post_reclaim_pass3_after_count"] = int(ai)
+    if bi is not None and ai is not None:
+        out["post_reclaim_pass3_delta"] = int(bi) - int(ai)
+
+
+def _run_post_reclaim_pass3_once(
+    mining_map: list[dict[str, Any]],
+    *,
+    final_mining_map: list[dict[str, Any]],
+    is_external: Callable[[Coord], bool],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """One Pass3 pass on ``mining_map``; emit ``post_reclaim_pass3_*`` summary fields."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
+        solver_service as _solver,
+    )
+
+    map_try, _p3_res, p3_trace = _solver.run_pass3_transport_minimization_from_maps(
+        mining_map,
+        final_mining_map=final_mining_map,
+        is_external=is_external,
+    )
+    out: dict[str, Any] = {
+        "post_reclaim_pass3_reruns_used": 1,
+        "post_reclaim_pass3_attempted": True,
+        "post_reclaim_pass3_ran": True,
+    }
+    for k, v in p3_trace.items():
+        if k.startswith("p3e2_") or k.startswith("p3e3_") or k == "pass3_greedy_committed":
+            out[f"post_reclaim_pass3_{k}"] = v
+    metric_keys = (
+        "before_transport_count",
+        "after_transport_count",
+        "pass3_transport_cells_removed_total",
+        "pass3_internal_transport_saved",
+        "before_internal_transport_count",
+        "after_internal_transport_count",
+        "gain",
+        "pass3_committed",
+    )
+    for kk in metric_keys:
+        if kk in p3_trace:
+            out[f"post_reclaim_pass3_{kk}"] = p3_trace[kk]
+    _attach_post_reclaim_pass3_count_aliases(out)
+
+    if p3_trace.get("pass3_skipped"):
+        out["post_reclaim_pass3_executed"] = False
+        out["post_reclaim_pass3_map_accepted"] = False
+        out["post_reclaim_pass3_skip_reason"] = str(
+            p3_trace.get("pass3_skip_reason") or "pass3_skipped"
+        )
+        return mining_map, out
+
+    report_try = validate_final_mining_layout(map_try)
+    if report_try.geometry_valid and report_try.connectivity_valid:
+        out["post_reclaim_pass3_executed"] = True
+        out["post_reclaim_pass3_map_accepted"] = True
+        out["post_reclaim_pass3_skip_reason"] = None
+        if p3_trace.get("pass3_committed"):
+            if "commit_reason" in p3_trace:
+                out["post_reclaim_pass3_pass3_commit_reason"] = p3_trace["commit_reason"]
+        else:
+            rr = p3_trace.get("rejected_reason")
+            if rr is not None:
+                out["post_reclaim_pass3_pass3_rejected_reason"] = rr
+        return map_try, out
+
+    out["post_reclaim_pass3_executed"] = False
+    out["post_reclaim_pass3_map_accepted"] = False
+    out["post_reclaim_pass3_skip_reason"] = "final_validation_failed_after_post_reclaim_pass3"
+    out["post_reclaim_pass3_pass3_reverted"] = True
+    return mining_map, out
+
+
+def count_layout_cells(mining_map: list[dict[str, Any]]) -> dict[str, int]:
+    """Count extractors, extensions, and belt/pipe transport tiles."""
+
+    ex = ext = tr = 0
+    for row in mining_map:
+        lk = layout_kind(row)
+        role = row.get("role")
+        if role == "belt" or role == "pipe":
+            tr += 1
+        elif lk in _EXTRACTORS:
+            ex += 1
+        elif lk in _EXTENSIONS:
+            ext += 1
+    return {"extractors": ex, "extensions": ext, "transport_cells": tr}
+
+
+def _pre_pass12_reference_counts(map_timeline: list[dict[str, Any]]) -> dict[str, int]:
+    """Counts before Pass1/Pass2: shell bodies (timeline index 1) plus ``with_transport`` belts."""
+
+    shell = map_timeline[1]["mining_map"]
+    transport = map_timeline[0]["mining_map"]
+    bodies = count_layout_cells(shell)
+    bodies["transport_cells"] = count_layout_cells(transport)["transport_cells"]
+    return bodies
+
+
+def _solver_stats_by_prefix(stats: dict[str, Any], prefix: str) -> dict[str, Any]:
+    """solver summary에서 특정 prefix metric만 추출한다 (§4 pipeline control flow)."""
+    return {k: v for k, v in stats.items() if k.startswith(prefix)}

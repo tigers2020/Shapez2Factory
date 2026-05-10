@@ -222,6 +222,9 @@ msgstr "데모"
 msgid "Decode"
 msgstr "해석"
 
+msgid "Show solver overlay"
+msgstr "Show solver overlay"
+
 msgid "Map steps"
 msgstr "맵 단계 목록"
 
@@ -438,6 +441,18 @@ msgstr "둘러싼 패치 내부 채우기"
 
 msgid "Final mining map"
 msgstr "최종 채굴 맵"
+
+msgid "P4 reclaim last B2 route cells"
+msgstr "P4 reclaim last B2 route cells"
+
+msgid "P4 soft protected candidates (last commit)"
+msgstr "P4 soft protected candidates (last commit)"
+
+msgid "P4 soft repair old cells (last session)"
+msgstr "P4 soft repair old cells (last session)"
+
+msgid "P4 soft repair new cells (last session)"
+msgstr "P4 soft repair new cells (last session)"
 
 msgid "Prepare string"
 msgstr "문자열 준비"

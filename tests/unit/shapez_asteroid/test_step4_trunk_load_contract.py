@@ -17,6 +17,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_mer
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
     TRUNK_LOAD_CONTRACT_VERSION,
+    build_step4_trunk_load,
+    build_step4_trunk_load_pipeline_exception_stub,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     external_predicate_for_mining_map,
@@ -41,6 +43,61 @@ def _assert_trunk_load_nested_matches_legacy(tl: dict) -> None:
     )
 
 
+def test_pipeline_exception_stub_distinguishes_from_pass12_skipped() -> None:
+    tl = build_step4_trunk_load_pipeline_exception_stub()
+    assert tl.get("skipped") is False
+    assert tl.get("step4_result_state") == "pipeline_exception"
+    assert tl["trunk_load_contract_version"] == 1
+
+
+def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_v1_keys() -> None:
+    malicious = {
+        "route_revalidation_passed": False,
+        "route_metrics": {"route_cell_visits": 999, "unique_route_cell_count": 999},
+        "trunk_load_by_kind": {},
+        "transport_usage_load": {"existing_transport_cell_crossings": {}, "trunk_edge_load": {}},
+        "edges": {"9,9": 1},
+        "trunk_load_contract_version": 99,
+        "mode": "wrong",
+        "step4_accumulated_route_cell_visits": 999,
+        "step4_final_route_cell_count": 999,
+        "step4_committed_trunk_cell_count_by_kind": {"shape_belt": 999},
+    }
+    tl = build_step4_trunk_load(
+        trunk_edge_hits={},
+        route_cell_visits=3,
+        final_route_cells={(1, 1), (2, 2)},
+        committed_trunk_by_kind={"shape_belt": {(1, 1)}},
+        route_visits_by_kind={"shape_belt": 3},
+        unique_cells_by_kind={"shape_belt": {(1, 1), (2, 2)}},
+        p2c_metrics=malicious,
+        trace={
+            "step4_route_count": 0,
+            "step4_route_commit_count": 0,
+            "step4_routing_failure_count": 0,
+            "initial_trunk_cells": 0,
+            "placement_commit_counts": {},
+            "unfinalized_placement_count": 0,
+            "step4_routed_count": 0,
+            "step4_routed_stub_count": 0,
+            "step4_total_stub_count": 0,
+            "step4_quarantined_count": 0,
+            "step4_quarantined_unrouted_count": 0,
+            "step4_rolled_back_count": 0,
+            "step4_trunk_seed_candidate_count_by_kind": {},
+            "step4_trunk_seed_candidate_count": 0,
+            "step4_goal_set_size_peak": 0,
+            "routes_by_placement_id": {},
+        },
+    )
+    assert tl["trunk_load_contract_version"] == TRUNK_LOAD_CONTRACT_VERSION
+    assert tl["mode"] == "accumulate_only"
+    assert tl["route_metrics"]["route_cell_visits"] == 3
+    assert tl["route_metrics"]["unique_route_cell_count"] == 2
+    assert tl["route_revalidation_passed"] is False
+    assert tl["edges"] == {}
+
+
 def test_step4_trunk_load_skipped_has_contract_version_and_nested_blocks() -> None:
     r = step4_routing_skipped_result([])
     tl = r.trunk_load
@@ -51,6 +108,7 @@ def test_step4_trunk_load_skipped_has_contract_version_and_nested_blocks() -> No
     assert tl["transport_usage_load"]["existing_transport_cell_crossings"] == {}
     assert tl["transport_usage_load"]["trunk_edge_load"] == {}
     assert "shape_belt" in tl["trunk_load_by_kind"] and "fluid_pipe" in tl["trunk_load_by_kind"]
+    assert tl.get("step4_result_state") != "pipeline_exception"
     _assert_trunk_load_nested_matches_legacy(tl)
 
 

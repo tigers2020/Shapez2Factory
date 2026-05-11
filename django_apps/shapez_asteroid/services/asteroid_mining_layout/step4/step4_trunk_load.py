@@ -16,6 +16,11 @@ Nested blocks (v1):
   route-cell load and **not** graph edge load.
   - ``trunk_edge_load``: reserved for future true edge-keyed load; always ``{}`` in v1.
 
+Merge safety:
+
+- ``p2c_metrics`` keys in ``_TRUNK_LOAD_V1_P2C_SAFEGUARD_KEYS`` are ignored so corrective
+  metrics cannot overwrite the v1 contract block or legacy route counters.
+
 Legacy:
 
 - ``edges`` is a **deprecated** alias of
@@ -34,6 +39,21 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
 )
 
 TRUNK_LOAD_CONTRACT_VERSION = 1
+
+# v1 keys that must not be overwritten by ``p2c_metrics`` (defensive; P2-C keys use other names).
+_TRUNK_LOAD_V1_P2C_SAFEGUARD_KEYS: frozenset[str] = frozenset(
+    {
+        "trunk_load_contract_version",
+        "mode",
+        "route_metrics",
+        "trunk_load_by_kind",
+        "transport_usage_load",
+        "edges",
+        "step4_accumulated_route_cell_visits",
+        "step4_final_route_cell_count",
+        "step4_committed_trunk_cell_count_by_kind",
+    }
+)
 
 # Stable keys for per-kind trunk load (extend with any extra ``transport_kind`` seen in-run).
 _DEFAULT_TRUNK_KINDS: tuple[str, ...] = ("shape_belt", "fluid_pipe")
@@ -101,7 +121,10 @@ def build_step4_trunk_load(
         if key == "mode":
             continue
         out[key] = val
-    out.update(p2c_metrics)
+    for key, val in p2c_metrics.items():
+        if key in _TRUNK_LOAD_V1_P2C_SAFEGUARD_KEYS:
+            continue
+        out[key] = val
     return out
 
 
@@ -144,8 +167,15 @@ def _zero_trace_common(*, pass12_skipped: bool) -> dict[str, Any]:
 
 
 def build_step4_trunk_load_pipeline_exception_stub() -> dict[str, Any]:
-    """Contract-aligned empty ``trunk_load`` before STEP4 (orchestration exception path)."""
+    """Contract-aligned empty ``trunk_load`` before STEP4 (orchestration exception path).
 
+    Distinguishable from Pass12-skipped STEP4: ``skipped`` is false and ``step4_result_state``
+    is ``pipeline_exception`` (no STEP4 run; placeholder summary only).
+    """
+
+    trace = dict(_zero_trace_common(pass12_skipped=False))
+    trace["skipped"] = False
+    trace["step4_result_state"] = "pipeline_exception"
     return build_step4_trunk_load(
         trunk_edge_hits={},
         route_cell_visits=0,
@@ -154,7 +184,7 @@ def build_step4_trunk_load_pipeline_exception_stub() -> dict[str, Any]:
         route_visits_by_kind={},
         unique_cells_by_kind={},
         p2c_metrics=_empty_p2c_metrics(),
-        trace=_zero_trace_common(pass12_skipped=False),
+        trace=trace,
     )
 
 

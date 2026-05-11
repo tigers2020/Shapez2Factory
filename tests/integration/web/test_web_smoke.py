@@ -46,6 +46,8 @@ def test_asteroid_page_renders() -> None:
     assert b"data-asteroid-copy-root" in response.content
     assert b"/api/asteroid/copy-preview/" in response.content
     assert b"data-asteroid-plot-svg" in response.content
+    assert b"data-am-plot-panzoom" in response.content
+    assert b"data-am-map-reset-view" in response.content
     assert b"data-asteroid-solver-overlay" in response.content
     assert b"include_solver_overlay=1" in response.content
     assert b"include_solver_replay=1" in response.content

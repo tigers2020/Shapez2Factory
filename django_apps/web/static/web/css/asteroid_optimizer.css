@@ -460,6 +460,12 @@
   min-height: 280px;
 }
 
+.asteroid-mine-page .am-pipe-cell .am-pipe-junction-glyph {
+  font-family: Consolas, "Noto Sans Mono", ui-monospace, monospace;
+  pointer-events: none;
+  paint-order: stroke fill;
+}
+
 .asteroid-mine-page .am-map-surface.am-map-decode-active .phase-box strong {
   color: var(--cyan);
 }

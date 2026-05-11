@@ -1782,6 +1782,35 @@
     return out;
   }
 
+  /** Mirrors ``django_apps/shapez_asteroid.extraction.shapez_grid`` (no x==0; ±1 east-west jump). */
+  function shapezStepCardinal(x, y, dx, dy) {
+    if (dx === 0 && dy === 0) return null;
+    var nx = x + dx;
+    var ny = y + dy;
+    if (dx === 0) {
+      if (nx === 0) return null;
+      return [nx, ny];
+    }
+    if (nx !== 0) return [nx, ny];
+    if (dx === 1 && x === -1) return [1, ny];
+    if (dx === -1 && x === 1) return [-1, ny];
+    return null;
+  }
+  function shapezNeighbors4(x, y) {
+    var out = [];
+    var dirs = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ];
+    for (var di = 0; di < dirs.length; di++) {
+      var c = shapezStepCardinal(x, y, dirs[di][0], dirs[di][1]);
+      if (c) out.push(c);
+    }
+    return out;
+  }
+
   function renderPlot(summary, miningMap, styleCatalog, replayOverlay) {
     if (!plotSvg) return;
     plotSvg.innerHTML = "";
@@ -2016,6 +2045,88 @@
       xi[ux[j]] = j;
     }
 
+    var cellAt = Object.create(null);
+    for (var ci = 0; ci < filtered.length; ci++) {
+      var ce = filtered[ci];
+      if (ce && typeof ce.x === "number" && typeof ce.y === "number") {
+        cellAt[ce.x + "," + ce.y] = ce;
+      }
+    }
+    /** Pipe + fluid_miner + fluid_extension only; shape belts could reuse ``shapezNeighbors4`` similarly. */
+    function isFluidClusterNode(row) {
+      if (!row) return false;
+      if (row.role === "pipe") return true;
+      if ((row.role || "occupied") !== "occupied") return false;
+      if (row.surface !== "fluid") return false;
+      var lk = row.layout_kind;
+      return lk === "fluid_miner" || lk === "fluid_extension";
+    }
+    function fluidClusterHsl(compId) {
+      var hue = (compId * 67) % 360;
+      return "hsl(" + hue + ", 88%, 58%)";
+    }
+    var coordToComp = Object.create(null);
+    var compSeq = 0;
+    for (var cj = 0; cj < filtered.length; cj++) {
+      var rowj = filtered[cj];
+      if (!isFluidClusterNode(rowj)) continue;
+      var keyj = rowj.x + "," + rowj.y;
+      if (coordToComp[keyj] !== undefined) continue;
+      var cid = compSeq++;
+      var q = [rowj];
+      coordToComp[keyj] = cid;
+      var head = 0;
+      while (head < q.length) {
+        var cur = q[head++];
+        var nbs = shapezNeighbors4(cur.x, cur.y);
+        for (var nb = 0; nb < nbs.length; nb++) {
+          var px = nbs[nb][0];
+          var py = nbs[nb][1];
+          var k = px + "," + py;
+          var nbRow = cellAt[k];
+          if (!isFluidClusterNode(nbRow)) continue;
+          if (coordToComp[k] === undefined) {
+            coordToComp[k] = cid;
+            q.push(nbRow);
+          }
+        }
+      }
+    }
+    function clusterColorForCoord(x, y) {
+      var k2 = x + "," + y;
+      if (coordToComp[k2] === undefined) return null;
+      return fluidClusterHsl(coordToComp[k2]);
+    }
+    function layoutColumnXForDir(xx) {
+      return xx > 0 ? xx - 1 : xx;
+    }
+    function classifyNeighborDir(wx, wy, nx, ny) {
+      if (ny < wy) return "n";
+      if (ny > wy) return "s";
+      if (layoutColumnXForDir(nx) > layoutColumnXForDir(wx)) return "e";
+      if (layoutColumnXForDir(nx) < layoutColumnXForDir(wx)) return "w";
+      return null;
+    }
+    function pipeJunctionGlyph(n, e, s, w) {
+      var cnt = (n ? 1 : 0) + (e ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0);
+      if (cnt <= 1) return "·";
+      if (cnt === 2) {
+        if (n && s) return "│";
+        if (e && w) return "─";
+        if (n && e) return "└";
+        if (n && w) return "┘";
+        if (s && e) return "┌";
+        if (s && w) return "┐";
+      }
+      if (cnt === 3) {
+        if (!n) return "┬";
+        if (!e) return "├";
+        if (!s) return "┴";
+        if (!w) return "┤";
+      }
+      return "╳";
+    }
+
     function appendP4OutlineRect(parent, p, cellClass, titleText) {
       var idx = xi[p.x];
       if (idx === undefined) return;
@@ -2062,7 +2173,7 @@
       }
       parent.appendChild(r);
     }
-    function appendCellRect(parent, p, role, titleText) {
+    function appendCellRect(parent, p, role, titleText, fluidClusterStroke) {
       var idx = xi[p.x];
       if (idx === undefined) return;
       var pad = 0.12;
@@ -2078,14 +2189,93 @@
       r.setAttribute("ry", "0.06");
       r.setAttribute("fill", fillForRole(role));
       r.setAttribute("fill-opacity", opacityForRole(role));
-      r.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
-      r.setAttribute("stroke-width", "0.04");
+      if (fluidClusterStroke) {
+        r.setAttribute("stroke", fluidClusterStroke);
+        r.setAttribute("stroke-width", "0.14");
+      } else {
+        r.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
+        r.setAttribute("stroke-width", "0.04");
+      }
       if (titleText) {
         var title = document.createElementNS(svgNs, "title");
         title.textContent = titleText;
         r.appendChild(title);
       }
       parent.appendChild(r);
+    }
+    /** Pipe blueprint cells: faint fill + cluster-colored stubs + junction glyph (belt can reuse helpers later). */
+    function appendPipeCell(parent, p, titleText) {
+      var idx = xi[p.x];
+      if (idx === undefined) return;
+      var pad = 0.12;
+      var x0 = 1 + idx + pad;
+      var y0 = p.y - minY + pad;
+      var size = 1 - 2 * pad;
+      var cx = x0 + size / 2;
+      var cy = y0 + size / 2;
+      var strokeCluster = clusterColorForCoord(p.x, p.y);
+      var strokeUse = strokeCluster || fillForRole("pipe");
+      var g = document.createElementNS(svgNs, "g");
+      g.setAttribute("class", "am-pipe-cell");
+      var rect = document.createElementNS(svgNs, "rect");
+      rect.setAttribute("x", String(x0));
+      rect.setAttribute("y", String(y0));
+      rect.setAttribute("width", String(size));
+      rect.setAttribute("height", String(size));
+      rect.setAttribute("rx", "0.06");
+      rect.setAttribute("ry", "0.06");
+      rect.setAttribute("fill", fillForRole("pipe"));
+      rect.setAttribute("fill-opacity", opacityForRole("pipe"));
+      rect.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
+      rect.setAttribute("stroke-width", "0.04");
+      var n = false;
+      var e = false;
+      var s = false;
+      var w = false;
+      var pn = shapezNeighbors4(p.x, p.y);
+      for (var pi = 0; pi < pn.length; pi++) {
+        var qx = pn[pi][0];
+        var qy = pn[pi][1];
+        var neighbor = cellAt[qx + "," + qy];
+        if (!neighbor || (neighbor.role || "occupied") !== "pipe") continue;
+        var d = classifyNeighborDir(p.x, p.y, qx, qy);
+        if (d === "n") n = true;
+        else if (d === "e") e = true;
+        else if (d === "s") s = true;
+        else if (d === "w") w = true;
+      }
+      g.appendChild(rect);
+      function addLine(x1, y1, x2, y2) {
+        var ln = document.createElementNS(svgNs, "line");
+        ln.setAttribute("x1", String(x1));
+        ln.setAttribute("y1", String(y1));
+        ln.setAttribute("x2", String(x2));
+        ln.setAttribute("y2", String(y2));
+        ln.setAttribute("stroke", strokeUse);
+        ln.setAttribute("stroke-width", "0.08");
+        ln.setAttribute("stroke-linecap", "round");
+        g.appendChild(ln);
+      }
+      if (n) addLine(cx, cy, cx, y0);
+      if (s) addLine(cx, cy, cx, y0 + size);
+      if (e) addLine(cx, cy, x0 + size, cy);
+      if (w) addLine(cx, cy, x0, cy);
+      var jt = document.createElementNS(svgNs, "text");
+      jt.setAttribute("class", "am-pipe-junction-glyph");
+      jt.setAttribute("x", String(cx));
+      jt.setAttribute("y", String(cy));
+      jt.setAttribute("text-anchor", "middle");
+      jt.setAttribute("dominant-baseline", "central");
+      jt.setAttribute("fill", strokeUse);
+      jt.setAttribute("font-size", String(size * 0.52));
+      jt.textContent = pipeJunctionGlyph(n, e, s, w);
+      g.appendChild(jt);
+      if (titleText) {
+        var tt = document.createElementNS(svgNs, "title");
+        tt.textContent = titleText;
+        g.appendChild(tt);
+      }
+      parent.appendChild(g);
     }
 
     var gUnder = document.createElementNS(svgNs, "g");
@@ -2116,7 +2306,7 @@
       var pipeCell = filtered[i];
       var pipeRole = pipeCell.role || "occupied";
       if (pipeRole === "pipe") {
-        appendCellRect(gPipe, pipeCell, "pipe", mapEntryTitle(pipeCell));
+        appendPipeCell(gPipe, pipeCell, mapEntryTitle(pipeCell));
       }
     }
     for (i = 0; i < filtered.length; i++) {
@@ -2124,7 +2314,15 @@
       if (oc.x === 0) continue;
       if ((oc.role || "occupied") !== "occupied") continue;
       var tip = mapEntryTitle(oc);
-      appendCellRect(gTop, oc, paintRoleForOccupiedCell(oc), tip);
+      var lkOc = oc.layout_kind;
+      var fluidStroke = null;
+      if (
+        (lkOc === "fluid_miner" || lkOc === "fluid_extension") &&
+        oc.surface === "fluid"
+      ) {
+        fluidStroke = clusterColorForCoord(oc.x, oc.y);
+      }
+      appendCellRect(gTop, oc, paintRoleForOccupiedCell(oc), tip, fluidStroke);
     }
 
     plotSvg.appendChild(gUnder);

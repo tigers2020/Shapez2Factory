@@ -25,6 +25,7 @@ def pass3_permission_snapshot(
     pass12_skipped: bool,
     unfinalized_placement_count: int,
     report_step4: Any,
+    step4_committed: bool = True,
 ) -> dict[str, Any]:
     """Pass3 실행 권한과 trace용 판정 근거를 한 곳에서 만든다."""
 
@@ -32,6 +33,7 @@ def pass3_permission_snapshot(
     connectivity_valid = bool(getattr(report_step4, "connectivity_valid", False))
     eligible = (
         not pass12_skipped
+        and step4_committed
         and unfinalized_placement_count == 0
         and geometry_valid
         and connectivity_valid
@@ -39,11 +41,13 @@ def pass3_permission_snapshot(
     return {
         "eligible": eligible,
         "pass12_skipped": pass12_skipped,
+        "step4_committed": step4_committed,
         "unfinalized_placement_count": unfinalized_placement_count,
         "pre_pass3_geometry_valid": geometry_valid,
         "pre_pass3_connectivity_valid": connectivity_valid,
         "skip_reason": _pass3_skip_reason(
             pass12_skipped=pass12_skipped,
+            step4_committed=step4_committed,
             unfinalized_placement_count=unfinalized_placement_count,
             geometry_valid=geometry_valid,
             connectivity_valid=connectivity_valid,
@@ -110,6 +114,7 @@ def post_reclaim_pass3_gate(pass3_summary: dict[str, Any]) -> tuple[bool, str | 
 def _pass3_skip_reason(
     *,
     pass12_skipped: bool,
+    step4_committed: bool,
     unfinalized_placement_count: int,
     geometry_valid: bool,
     connectivity_valid: bool,
@@ -118,6 +123,8 @@ def _pass3_skip_reason(
 
     if pass12_skipped:
         return "pass12_skipped"
+    if not step4_committed:
+        return "step4_not_committed"
     if unfinalized_placement_count > 0:
         return "unfinalized_placement"
     if not geometry_valid or not connectivity_valid:

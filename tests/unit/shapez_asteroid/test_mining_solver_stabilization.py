@@ -222,6 +222,8 @@ def test_build_solver_timeline_empty_bp() -> None:
     decoded: dict = {"BP": {"Entries": []}}
     out = build_solver_timeline(decoded)
     assert out["return_reason"] == "ok"
+    assert out["solver_termination"] == "success"
+    assert out["solver_summary"]["solver_termination"] == "success"
     assert out["solver_summary"]["capacity_mode"] == "accumulate_only"
     assert out["solver_summary"]["geometry_valid"] is True
 
@@ -571,6 +573,7 @@ def test_build_solver_timeline_step9_routing_state_assert_passes() -> None:
     }
     out = build_solver_timeline(decoded)
     assert out["return_reason"] == "ok"
+    assert out["solver_termination"] == "success"
 
 
 def test_build_solver_timeline_summary_p4_and_recovery_fields_consistent() -> None:

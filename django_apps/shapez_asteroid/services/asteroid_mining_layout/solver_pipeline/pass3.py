@@ -142,8 +142,10 @@ def run_pass3_stage(
     if validation_recovery_attempt > 0:
         append_recovery_contract_phase(pass3_summary, RECOVERY_PHASE_VALIDATION_RECOVERY)
         extend_recovery_chain(pass3_summary, RECOVERY_SEGMENT_VALIDATION_RETRY)
+    step4_committed = bool((step4_trunk_load or {}).get("step4_committed", True))
     pass3_permission = pass3_permission_snapshot(
         pass12_skipped=pass12_skipped,
+        step4_committed=step4_committed,
         unfinalized_placement_count=unfinalized_placement_count,
         report_step4=report_step4,
     )

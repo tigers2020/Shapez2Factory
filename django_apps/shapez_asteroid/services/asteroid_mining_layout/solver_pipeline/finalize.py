@@ -61,6 +61,12 @@ from django_apps.shapez_asteroid.services.blueprint_map_summary import (
     merge_with_transport_and_final_mining_map,
 )
 
+SOLVER_TERMINATION_SUCCESS = "success"
+SOLVER_TERMINATION_PARTIAL_SUCCESS = "partial_success"
+SOLVER_TERMINATION_FAILURE = "solver_failure"
+
+RETURN_REASON_STEP4_PARTIAL_FAILURE = "step4_partial_failure"
+
 
 def _validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> Any:
     """기존 ``solver_service`` validation patch 지점을 유지한다."""
@@ -148,7 +154,32 @@ def build_final_solver_output(
     report = _validate_final_mining_layout(map_final)
     post_routing_counts = count_layout_cells(map_final)
     layout_ok = report.geometry_valid and report.connectivity_valid
-    if unfinalized_placement_count > 0:
+
+    step4_routing_failure_count = int(
+        step4_result.trunk_load.get("step4_routing_failure_count", 0) or 0
+    )
+    step4_partial_failure = (not pass12_skipped) and (
+        (not step4_result.committed)
+        or step4_routing_failure_count > 0
+        or len(step4_result.rolled_back_placement_ids) > 0
+        or len(step4_result.quarantined_placement_ids) > 0
+    )
+
+    # Termination tier is the authoritative contract; ok/return_reason are mapped from it.
+    if (
+        unfinalized_placement_count > 0
+        or not report.geometry_valid
+        or not report.connectivity_valid
+    ):
+        solver_termination = SOLVER_TERMINATION_FAILURE
+    elif step4_partial_failure:
+        solver_termination = SOLVER_TERMINATION_PARTIAL_SUCCESS
+    else:
+        solver_termination = SOLVER_TERMINATION_SUCCESS
+
+    if solver_termination == SOLVER_TERMINATION_PARTIAL_SUCCESS:
+        return_reason = RETURN_REASON_STEP4_PARTIAL_FAILURE
+    elif unfinalized_placement_count > 0:
         return_reason = "validation_unfinalized_placement_failed"
     elif layout_ok:
         return_reason = "ok"
@@ -215,6 +246,7 @@ def build_final_solver_output(
     summary_fields = {
         "run_id": run_id,
         "return_reason": return_reason,
+        "solver_termination": solver_termination,
         "after_pass2_baseline_counts": post_pass2_counts,
         "final_counts": post_routing_counts,
         "solver_state_hash": solver_state_hash,
@@ -405,8 +437,10 @@ def build_final_solver_output(
         optimization_metrics=optimization_replay_metrics,
     )
     out = {
-        "ok": return_reason == "ok",
+        # Backward-compatible: only full SUCCESS maps to ok=True.
+        "ok": solver_termination == SOLVER_TERMINATION_SUCCESS,
         "return_reason": return_reason,
+        "solver_termination": solver_termination,
         "solver_timeline": frames,
         "solver_replay": solver_replay,
         "solver_summary": summary_fields,
@@ -475,6 +509,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("missing_extractor_rotation_count", 0)
     summary_fields.setdefault("layout_degraded", True)
     summary_fields.setdefault("pass12_phase", "exception")
+    summary_fields.setdefault("solver_termination", SOLVER_TERMINATION_FAILURE)
     summary_fields.setdefault("routing_state", None)
     summary_fields.setdefault("step4_route_count", 0)
     summary_fields.setdefault("step4_routing_failure_count", 0)

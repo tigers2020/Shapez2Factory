@@ -228,6 +228,9 @@ msgstr "Show solver overlay"
 msgid "Show protected corridors (read-only)"
 msgstr "보호 코리도 표시(읽기 전용)"
 
+msgid "Show trunk load heatmap (STEP4 observation)"
+msgstr "Show trunk load heatmap (STEP4 observation)"
+
 msgid "Map steps"
 msgstr "맵 단계 목록"
 

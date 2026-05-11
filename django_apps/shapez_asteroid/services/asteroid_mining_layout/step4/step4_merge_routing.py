@@ -39,6 +39,13 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     want_role as _want_role,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace import (
+    debug_log_event,
+    trace_enabled,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_route_failure_detail as _s4_fail_detail,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4Route,
     Step4RoutingResult,
@@ -251,6 +258,7 @@ def run_step4_merge_aware_routing(
             goal_cells = frozenset(raw_goal | set(trunk_cells))
             goal_set_sizes.append(len(goal_cells))
 
+            search_stats: dict[str, Any] = {}
             path = _dijkstra_route(
                 stub_cell,
                 want_role=want_role,
@@ -262,8 +270,35 @@ def run_step4_merge_aware_routing(
                 trunk=trunk_cells,
                 goal_cells=goal_cells,
                 cheap_reuse_cells=cheap_reuse_cells,
+                search_stats=search_stats,
             )
             if path is None:
+                detail = _s4_fail_detail.build_step4_route_failure_detail(
+                    placement_id=placement_id,
+                    extractor_cell=ext_cell,
+                    stub_cell=stub_cell,
+                    transport_kind=tk,
+                    want_role=want_role,
+                    blocked=blocked,
+                    hard_extras=hard_extras,
+                    trunk_cells=trunk_cells,
+                    goal_cells=goal_cells,
+                    margin_cells=margin_cells,
+                    transport_now=transport_now,
+                    cells=cells,
+                    mineable=mineable,
+                    asteroid=asteroid,
+                    is_external=is_external,
+                    cheap_reuse_cells=cheap_reuse_cells,
+                    search_stats=search_stats,
+                )
+                if trace_enabled():
+                    debug_log_event(
+                        "django_apps.shapez_asteroid.services.asteroid_mining_layout."
+                        "step4.step4_merge_routing",
+                        "step4_route_failure_detail",
+                        {"step4_route_failure_detail": detail},
+                    )
                 if placement_id is not None and placement_id in work_records:
                     rec = work_records[placement_id]
                     _rollback_placement_cells(cells, rec, final_cells, mineable)
@@ -273,12 +308,13 @@ def run_step4_merge_aware_routing(
                         rollback_reason="no_route",
                     )
                     quarantined.append(placement_id)
-                    failures.append(
-                        placement_record_to_failure_dict(
-                            work_records[placement_id],
-                            reason="no_route",
-                        )
+                    fd = placement_record_to_failure_dict(
+                        work_records[placement_id],
+                        reason="no_route",
                     )
+                    fd["step4_route_failure_detail"] = detail
+                    fd["last_error"] = detail["last_error"]
+                    failures.append(fd)
                 else:
                     unrecoverable = True
                     failures.append(
@@ -288,6 +324,8 @@ def run_step4_merge_aware_routing(
                             "transport_kind": tk,
                             "reason": "no_route",
                             "unrecoverable": True,
+                            "last_error": detail["last_error"],
+                            "step4_route_failure_detail": detail,
                         }
                     )
                 continue

@@ -28,11 +28,15 @@ def dijkstra_route_step4(
     trunk: frozenset[Coord],
     goal_cells: frozenset[Coord] | None = None,
     cheap_reuse_cells: frozenset[Coord] | None = None,
+    search_stats: dict[str, Any] | None = None,
 ) -> tuple[Coord, ...] | None:
     """Shortest path (positive costs) from ``stub_cell``; path[0] == stub_cell.
 
     When ``goal_cells`` is set, termination is ``u in goal_cells`` (still §9.2 trunk/external).
     Otherwise the legacy ``step4_is_routing_goal`` predicate is used.
+
+    If ``search_stats`` is a dict, it is filled on exit: ``expanded_nodes`` (visited count),
+    ``heap_pops``, ``stop_reason`` in ``success`` | ``exhausted`` | ``budget``.
     """
 
     dist: dict[Coord, float] = {stub_cell: 0.0}
@@ -44,6 +48,10 @@ def dijkstra_route_step4(
     while heap:
         pops += 1
         if pops > _MAX_STEP4_DIJKSTRA_POPS:
+            if search_stats is not None:
+                search_stats["expanded_nodes"] = len(visited)
+                search_stats["heap_pops"] = pops
+                search_stats["stop_reason"] = "budget"
             return None
         d, u = heapq.heappop(heap)
         if u in visited:
@@ -67,6 +75,10 @@ def dijkstra_route_step4(
                 chain.append(cur)
                 cur = prev[cur]
             chain.reverse()
+            if search_stats is not None:
+                search_stats["expanded_nodes"] = len(visited)
+                search_stats["heap_pops"] = pops
+                search_stats["stop_reason"] = "success"
             return tuple(chain)
 
         x, y = u
@@ -89,4 +101,8 @@ def dijkstra_route_step4(
                 dist[v] = nd
                 prev[v] = u
                 heapq.heappush(heap, (nd, v))
+    if search_stats is not None:
+        search_stats["expanded_nodes"] = len(visited)
+        search_stats["heap_pops"] = pops
+        search_stats["stop_reason"] = "exhausted"
     return None

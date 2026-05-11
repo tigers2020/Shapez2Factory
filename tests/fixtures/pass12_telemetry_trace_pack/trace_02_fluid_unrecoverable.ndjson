@@ -1,0 +1,1 @@
+{"run_id":"telemetry_pack_r02","kind":"trace","message":"solver_summary","data":{"solver_summary":{"existing_layout_source_kind":"existing_fluid_layout","pass12_recoverability_class_counts":{"UNRECOVERABLE":5,"TRIVIAL":1},"pass12_preserve_drop_reason_counts":{"STUB_GEOMETRY_BLOCKED":4},"preserve_quality_score":0.35,"preserve_quality_score_version":1}}}

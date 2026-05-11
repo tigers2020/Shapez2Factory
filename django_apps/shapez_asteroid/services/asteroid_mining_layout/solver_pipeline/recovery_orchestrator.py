@@ -332,6 +332,10 @@ def run_solver_timeline_pipeline(
 
     routing_snapshot = solver_mut_txn.copy_mining_map_rows(step4.map_after_routing)
     max_cycles = MAX_VALIDATION_RECOVERY_ATTEMPTS if is_validation_recovery_loop_enabled() else 1
+    # Tests may patch only this module's MAX to 0 (single forward leg) while
+    # ``is_validation_recovery_loop_enabled()`` still reads foundation constants — without
+    # a floor, ``range(max_cycles)`` runs zero iterations and ``out`` stays None.
+    max_cycles = max(1, int(max_cycles))
     pass3_recovery_context = False
     out: dict[str, Any] | None = None
     summary_fields: dict[str, Any] | None = None

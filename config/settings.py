@@ -27,6 +27,12 @@ SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET = (
 SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE = (
     os.environ.get("SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE", "").strip().lower() in _truthy_env
 )
+# Pass12 merged-seed: optional relaxed stub + rotation recovery for preserved miners.
+# Default OFF; enable locally via SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=1.
+SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY = (
+    os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", "").strip().lower()
+    in _truthy_env
+)
 
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True

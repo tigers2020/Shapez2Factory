@@ -1,0 +1,1 @@
+{"run_id":"telemetry_pack_r05","kind":"trace","message":"solver_summary","data":{"solver_summary":{"existing_layout_source_kind":"existing_fluid_layout","pass12_recoverability_class_counts":{"LOCAL_ROTATION":6,"TRIVIAL":1},"pass12_preserve_drop_reason_counts":{"NO_MATCHING_STUB":2},"preserve_quality_score":0.88,"preserve_quality_score_version":1}}}

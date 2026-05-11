@@ -282,6 +282,10 @@ def integrate_pass12_placement_into_working_map(
         "pass12_preserved_equipment_groups": 0,
         "pass12_preserved_routed_placement_records": 0,
         "pass12_preserved_missing_stub_drop_details": [],
+        "pass12_merged_seed_miner_count": 0,
+        "pass12_preserve_drop_reason_counts": {},
+        "pass12_preserved_recovery_traces": [],
+        "pass12_preserved_recovery_success_count": 0,
         "pass12_placement_loops_suppressed": False,
         **ela_empty_meta,
     }
@@ -302,6 +306,10 @@ def integrate_pass12_placement_into_working_map(
             "pass12_preserved_equipment_groups": 0,
             "pass12_preserved_routed_placement_records": 0,
             "pass12_preserved_missing_stub_drop_details": [],
+            "pass12_merged_seed_miner_count": 0,
+            "pass12_preserve_drop_reason_counts": {},
+            "pass12_preserved_recovery_traces": [],
+            "pass12_preserved_recovery_success_count": 0,
             "pass12_placement_loops_suppressed": False,
         }
         return unchanged, unchanged, skip_stats

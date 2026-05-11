@@ -63,18 +63,31 @@ def run_pass12_stage(
             suppress_pass1_pass2_loops=suppress_loops,
         )
     )
+    _p12s = {
+        k: v
+        for k, v in pass12_stats.items()
+        if k != "placement_records" and k != "_replay_pass12_transaction_id"
+    }
+    _dd = _p12s.get("pass12_preserved_missing_stub_drop_details") or []
+    _rc = _p12s.get("pass12_preserve_drop_reason_counts") or {}
     debug_log_event(
         debug_location,
         "pass12_completed",
         {
-            "pass12_stats": {
-                k: v
-                for k, v in pass12_stats.items()
-                if k != "placement_records" and k != "_replay_pass12_transaction_id"
-            },
+            "pass12_stats": _p12s,
             "placement_record_count": len(pass12_stats.get("placement_records", {}) or {}),
             "after_pass1_counts": count_layout_cells(map_after_pass1),
             "after_pass2_counts": count_layout_cells(map_after_pass2),
+            "pass12_preserve_drop_trace": {
+                "drop_count": int(
+                    _p12s.get("pass12_preserved_missing_stub_drop_extractor_count") or 0
+                ),
+                "reason_counts": dict(_rc) if isinstance(_rc, dict) else {},
+                "sample": _dd[:3] if isinstance(_dd, list) else [],
+                "recovery_success_count": int(
+                    _p12s.get("pass12_preserved_recovery_success_count") or 0
+                ),
+            },
         },
     )
     pass12_skipped = bool(

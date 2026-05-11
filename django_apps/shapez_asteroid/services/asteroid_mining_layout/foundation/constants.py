@@ -61,6 +61,12 @@ LAYOUT_PRESERVE_HARD_GATE_REASON_TRANSPORT_REGRESSION = (
     "final_internal_transport_above_solver_input_baseline"
 )
 
+# Pass12 merged-seed: optional stub recovery (``SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY``).
+MAX_PASS12_RECOVERY_PROBES_PER_MINER = 4
+MAX_PASS12_RECOVERY_BFS_HOPS = 8
+# Drop-trace BFS: nearest same-role transport for taxonomy (separate from recovery hop cap).
+MAX_PASS12_NEAREST_TRANSPORT_TRACE_HOPS = 256
+
 # Counterfactual shortest-feasible baseline (geometry + STEP4 Dijkstra; sequential trunk v1).
 OPTIMIZATION_COUNTERFACTUAL_AGGREGATION_SEQUENTIAL_TRUNK_V1 = "sequential_trunk_v1"
 

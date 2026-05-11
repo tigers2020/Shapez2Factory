@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from django.conf import settings
@@ -77,6 +78,9 @@ SOLVER_TERMINATION_TIER_SOLVER_FAILURE = "SOLVER_FAILURE"
 
 RETURN_REASON_STEP4_PARTIAL_FAILURE = "step4_partial_failure"
 
+# Bump when ``preserve_quality_score`` formula or inputs change (A/B / NDJSON comparability).
+PRESERVE_QUALITY_SCORE_VERSION = 1
+
 
 def _validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> Any:
     """기존 ``solver_service`` validation patch 지점을 유지한다."""
@@ -116,6 +120,34 @@ def _baseline_extension_count(mining_map: list[dict[str, Any]]) -> int:
         if layout_kind_value in EXTENSIONS:
             n += 1
     return n
+
+
+def preserve_quality_bundle_from_pass12(
+    pass12_stats: Mapping[str, Any],
+) -> tuple[dict[str, Any], float | None]:
+    """Aggregate preserve-first seed metrics + scalar score for regression / dashboards."""
+
+    orig = int(pass12_stats.get("pass12_merged_seed_miner_count") or 0)
+    preserved = int(pass12_stats.get("pass12_preserved_bundle_extractor_cells") or 0)
+    dropped = int(pass12_stats.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
+    recovered = int(pass12_stats.get("pass12_preserved_recovery_success_count") or 0)
+    bundle: dict[str, Any] = {
+        "original_extractor_count": orig,
+        "preserved_valid_count": preserved,
+        "dropped_invalid_count": dropped,
+        "recovered_stub_count": recovered,
+        "recovered_rotation_count": recovered,
+        "preserve_quality_score_version": PRESERVE_QUALITY_SCORE_VERSION,
+    }
+    if orig <= 0:
+        return bundle, None
+    denominator = float(max(orig, 1))
+    preserved_ratio = preserved / denominator
+    dropped_ratio = dropped / denominator
+    recovered_ratio = recovered / denominator
+    score = preserved_ratio - dropped_ratio + 0.5 * recovered_ratio
+    score_clamped = round(max(-1.0, min(1.0, score)), 6)
+    return bundle, score_clamped
 
 
 def _protected_corridor_counts_from_routing_state(
@@ -172,9 +204,7 @@ def build_final_solver_output(
     map_fsm_unfinalized = int(report.provisional_placed_row_count) + int(
         report.quarantined_unrouted_count
     )
-    summary_unfinalized_placement_count = max(
-        map_fsm_unfinalized, int(unfinalized_placement_count)
-    )
+    summary_unfinalized_placement_count = max(map_fsm_unfinalized, int(unfinalized_placement_count))
 
     step4_routing_failure_count = int(
         step4_result.trunk_load.get("step4_routing_failure_count", 0) or 0
@@ -258,6 +288,12 @@ def build_final_solver_output(
     }
 
     pass12_trace_fields = {k: v for k, v in pass12_stats.items() if k != "placement_records"}
+    _drop_n = int(
+        pass12_trace_fields.get("pass12_preserved_missing_stub_drop_extractor_count") or 0
+    )
+    _rcounts = pass12_trace_fields.get("pass12_preserve_drop_reason_counts") or {}
+    _ddetails = pass12_trace_fields.get("pass12_preserved_missing_stub_drop_details") or []
+    _sample = _ddetails[:3] if isinstance(_ddetails, list) else []
     debug_log_event(
         debug_location,
         "final_validation_completed",
@@ -272,6 +308,14 @@ def build_final_solver_output(
             "missing_stub_count": report.missing_stub_count,
             "unfinalized_placement_count": summary_unfinalized_placement_count,
             "final_counts": post_routing_counts,
+            "pass12_preserve_drop_trace": {
+                "drop_count": _drop_n,
+                "reason_counts": dict(_rcounts) if isinstance(_rcounts, dict) else {},
+                "sample": _sample,
+                "recovery_success_count": int(
+                    pass12_trace_fields.get("pass12_preserved_recovery_success_count") or 0
+                ),
+            },
         },
     )
     removed = removed_counts_distribution(
@@ -334,6 +378,10 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    _pq, _pqs = preserve_quality_bundle_from_pass12(pass12_trace_fields)
+    summary_fields["preserve_quality"] = _pq
+    summary_fields["preserve_quality_score"] = _pqs
+    summary_fields["preserve_quality_score_version"] = PRESERVE_QUALITY_SCORE_VERSION
     t_pass2 = _transport_cell_coords_from_map_rows(map_after_pass2)
     t_final = _transport_cell_coords_from_map_rows(map_final)
     summary_fields["existing_transport_reuse_ratio_final_vs_pass2"] = round(
@@ -582,6 +630,10 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("step4_committed", False)
     summary_fields.setdefault("step4_skipped", False)
     summary_fields.setdefault("pass12_mixed_surface_skipped", False)
+    summary_fields.setdefault("pass12_preserve_drop_reason_counts", {})
+    summary_fields.setdefault("preserve_quality", {})
+    summary_fields.setdefault("preserve_quality_score", None)
+    summary_fields.setdefault("preserve_quality_score_version", PRESERVE_QUALITY_SCORE_VERSION)
     summary_fields.setdefault("placement_commit_counts", {})
     summary_fields.setdefault("rolled_back_placement_ids", [])
     summary_fields.setdefault("step4_rolled_back_count", 0)
@@ -709,9 +761,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("recovery_validation_recovery_eligible", False)
     summary_fields.setdefault("recovery_bounded_loop_configured", False)
     summary_fields.setdefault("max_total_recovery_attempts", MAX_TOTAL_RECOVERY_ATTEMPTS)
-    summary_fields.setdefault(
-        "max_validation_recovery_attempts", MAX_VALIDATION_RECOVERY_ATTEMPTS
-    )
+    summary_fields.setdefault("max_validation_recovery_attempts", MAX_VALIDATION_RECOVERY_ATTEMPTS)
     summary_fields.setdefault("validation_recovery_cycles_used", 0)
     summary_fields.setdefault(
         "recovery_validation_outcome",

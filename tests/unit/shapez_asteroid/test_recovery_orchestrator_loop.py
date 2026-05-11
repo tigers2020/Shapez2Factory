@@ -103,7 +103,7 @@ def _minimal_p4() -> P4ReclaimStageResult:
 
 
 def test_three_pass3_p4_finalize_cycles_when_validation_cap_is_two() -> None:
-    """``MAX_VALIDATION_RECOVERY_ATTEMPTS == 2`` ⇒ ``max_cycles = 3`` (N+1 off-by-one guard)."""
+    """``MAX_VALIDATION_RECOVERY_ATTEMPTS == 2`` ⇒ two full Pass3→P4→finalize passes (``max_cycles``)."""
 
     calls = {"p3": 0, "p4": 0, "fin": 0}
 
@@ -227,9 +227,9 @@ def test_three_pass3_p4_finalize_cycles_when_validation_cap_is_two() -> None:
                                                                 run_id="loop-count-guard",
                                                             )
 
-    assert calls["p3"] == 3
-    assert calls["p4"] == 3
-    assert calls["fin"] == 3
+    assert calls["p3"] == 2
+    assert calls["p4"] == 2
+    assert calls["fin"] == 2
 
 
 def test_recovery_branch_includes_planned_actions_after_first_failure() -> None:
@@ -308,8 +308,8 @@ def test_recovery_branch_includes_planned_actions_after_first_failure() -> None:
             step_hash_pass3="0" * 64,
         )
 
-    with patch.object(ro, "MAX_VALIDATION_RECOVERY_ATTEMPTS", 1):
-        with patch.object(recovery_policy, "MAX_VALIDATION_RECOVERY_ATTEMPTS", 1):
+    with patch.object(ro, "MAX_VALIDATION_RECOVERY_ATTEMPTS", 2):
+        with patch.object(recovery_policy, "MAX_VALIDATION_RECOVERY_ATTEMPTS", 2):
             with patch(
                 "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
                 "pass12.run_pass12_stage",

@@ -11,14 +11,28 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass1
 )
 
 
-def test_seed_blocks_two_unrouted_miners_when_existing_fluid_layout() -> None:
-    """Hard gate applies to ``existing_fluid_layout``: all unrouted miner bundles are blocked."""
+def test_seed_drops_unrouted_miners_without_adjacent_stub_when_existing_fluid_layout() -> None:
+    """Hard gate + multi-miner: unrouted bundles with no adjacent pipe/belt are not preserved."""
 
     mineable: frozenset[Coord] = frozenset({(1, 1), (2, 1), (1, 2), (2, 2), (3, 1), (3, 2)})
     rows: list[dict[str, object]] = [
-        {"x": 1, "y": 1, "role": "occupied", "layout_kind": "fluid_miner", "r": 0, "surface": "fluid"},
+        {
+            "x": 1,
+            "y": 1,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+        },
         {"x": 2, "y": 1, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
-        {"x": 3, "y": 1, "role": "occupied", "layout_kind": "fluid_miner", "r": 0, "surface": "fluid"},
+        {
+            "x": 3,
+            "y": 1,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+        },
         {"x": 3, "y": 2, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
     ]
     scratch = Pass12LayoutScratch(transport_kind="fluid_pipe")
@@ -28,7 +42,8 @@ def test_seed_blocks_two_unrouted_miners_when_existing_fluid_layout() -> None:
         scratch=scratch,
         existing_layout_source_kind="existing_fluid_layout",
     )
-    assert (1, 1) in scratch.blocked_cells
-    assert (3, 1) in scratch.blocked_cells
-    assert stats["pass12_preserved_bundle_extractor_cells"] == 2
-    assert stats["pass12_preserved_bundle_extension_cells"] == 2
+    assert (1, 1) not in scratch.blocked_cells
+    assert (3, 1) not in scratch.blocked_cells
+    assert stats["pass12_preserved_bundle_extractor_cells"] == 0
+    assert stats["pass12_preserved_bundle_extension_cells"] == 0
+    assert stats["pass12_preserved_missing_stub_drop_extractor_count"] == 2

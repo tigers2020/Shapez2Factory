@@ -22,7 +22,8 @@ RECOVERY_VALIDATION_LOOP_DISABLED = 0
 RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED = 0
 
 MAX_TOTAL_RECOVERY_ATTEMPTS = RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED
-# Bounded Pass3→P4 validation retry cycles (see recovery_orchestrator ``max_cycles``).
+# Bounded Pass3→P4 timeline: total forward finalize passes when the validation recovery loop
+# is enabled (``recovery_orchestrator`` sets ``max_cycles`` to this value; not ``N + 1`` retries).
 MAX_VALIDATION_RECOVERY_ATTEMPTS = 3
 
 RECOVERY_TERMINAL_TOTAL_ATTEMPTS_EXCEEDED = "recovery_terminal_total_attempts_exceeded"

@@ -192,6 +192,8 @@ def validation_recovery_allowed(pipeline_out: dict[str, Any]) -> bool:
     geometry_ok = bool(fv.get("geometry_valid", True))
     overlap = int(fv.get("overlap_violation_count") or 0)
     quarantine = int(fv.get("quarantined_unrouted_count") or 0)
+    if int(fv.get("missing_stub_count") or 0) > 0:
+        return False
     if not connectivity_ok:
         return True
     if overlap > 0:

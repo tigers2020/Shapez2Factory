@@ -12,6 +12,7 @@ from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import (
     output_offset_r,
+    rotation_r_for_output_direction,
     shape_miner_output_cell,
 )
 from django_apps.shapez_asteroid.extraction.shapez_grid import (
@@ -79,6 +80,40 @@ def _first_rotation_with_matching_stub(
         st = cells.get(sc)
         if st is not None and st.get("role") == wr:
             return cand_r
+    return None
+
+
+def _neighbor_stub_coords_for_kind(
+    miner: Coord,
+    cells: Mapping[Coord, dict[str, Any]],
+    transport_kind: str,
+) -> tuple[Coord, ...]:
+    """Cardinal neighbours whose mining-map role matches this extractor transport kind."""
+
+    wr = want_role(transport_kind)
+    x, y = miner
+    found: list[Coord] = []
+    for nxt in neighbors4(x, y):
+        row = cells.get(nxt)
+        if row is not None and row.get("role") == wr:
+            found.append(nxt)
+    return tuple(sorted(found, key=lambda p: (p[1], p[0])))
+
+
+def _rotation_from_sorted_neighbor_stub(
+    miner: Coord,
+    neighbor_stubs: tuple[Coord, ...],
+) -> int | None:
+    """Pick deterministic stub among cardinally adjacent belt/pipe cells and yield ``r``."""
+
+    for stub in neighbor_stubs:
+        dx, dy = stub[0] - miner[0], stub[1] - miner[1]
+        if dx != 0 and dy != 0:
+            continue
+        try:
+            return rotation_r_for_output_direction(dx, dy)
+        except ValueError:
+            continue
     return None
 
 
@@ -200,17 +235,24 @@ def seed_pass12_scratch_from_merged_existing(
     seeded_routed_records = 0
     preserved_bundle_extractor_cells = 0
     preserved_bundle_extension_cells = 0
+    preserved_unrouted_extractor_count = 0
+    preserved_missing_stub_drop_extractor_count = 0
+    preserved_stripped_rotation_fallback_count = 0
     for miner in miners:
         exts = _bfs_extensions_from_miner(miner, cells, mineable, extension_owner)
         parent_by_cell = _parent_tree_for_miner_and_extensions(miner, exts, cells, mineable)
 
         row_m = cells[miner]
         tk = transport_kind_for_extractor(row_m)
+        neighbor_stub_coords: tuple[Coord, ...] = ()
         eff_r: int | None = None
         stub_cell: Coord | None = None
         routed_ok = False
         if tk is not None:
             eff_r = _first_rotation_with_matching_stub(miner, cells, tk, row_m.get("r"))
+            neighbor_stub_coords = _neighbor_stub_coords_for_kind(miner, cells, tk)
+            if eff_r is None:
+                eff_r = _rotation_from_sorted_neighbor_stub(miner, neighbor_stub_coords)
             if eff_r is not None:
                 stub_cell = shape_miner_output_cell(miner, eff_r)
                 wr = want_role(tk)
@@ -250,9 +292,24 @@ def seed_pass12_scratch_from_merged_existing(
             # Fluid existing maps: block every unrouted bundle (multi-miner half-preserve guard).
             # Any map with a single merged miner: always block the bundle when not ROUTED_CONFIRMED
             # so Pass1 cannot erase the lone body (``raw_asteroid_field`` and legacy behavior).
+            drop_unrecoverable = (
+                _preserve_first_hard_gate(existing_layout_source_kind)
+                and len(miners) > 1
+                and tk is not None
+                and not routed_ok
+                and len(neighbor_stub_coords) == 0
+            )
+            if drop_unrecoverable:
+                preserved_missing_stub_drop_extractor_count += 1
+                seeded_groups += 1
+                continue
+
             scratch.blocked_cells |= {miner} | set(exts)
             miner_row = _strip_provisional_placement_row_keys(row_m)
-            if eff_r is not None:
+            if tk is not None and neighbor_stub_coords and not routed_ok:
+                miner_row.pop("r", None)
+                preserved_stripped_rotation_fallback_count += 1
+            elif eff_r is not None:
                 miner_row["r"] = eff_r
             scratch.preserved_mining_row_overrides[miner] = miner_row
             for ext in exts:
@@ -261,6 +318,7 @@ def seed_pass12_scratch_from_merged_existing(
                 )
             preserved_bundle_extractor_cells += 1
             preserved_bundle_extension_cells += len(exts)
+            preserved_unrouted_extractor_count += 1
         seeded_groups += 1
 
     for c, row in cells.items():
@@ -291,4 +349,11 @@ def seed_pass12_scratch_from_merged_existing(
         "pass12_preserved_bundle_extractor_cells": preserved_bundle_extractor_cells,
         "pass12_preserved_bundle_extension_cells": preserved_bundle_extension_cells,
         "pass12_preserved_routed_confirmed_count": seeded_routed_records,
+        "pass12_preserved_unrouted_extractor_count": preserved_unrouted_extractor_count,
+        "pass12_preserved_missing_stub_drop_extractor_count": (
+            preserved_missing_stub_drop_extractor_count
+        ),
+        "pass12_preserved_stripped_rotation_fallback_count": (
+            preserved_stripped_rotation_fallback_count
+        ),
     }

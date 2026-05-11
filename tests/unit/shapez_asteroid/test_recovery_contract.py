@@ -151,6 +151,22 @@ def test_validation_recovery_allowed_ok_false() -> None:
         assert validation_recovery_allowed(ok_out) is False
 
 
+def test_validation_recovery_allowed_missing_stub_blocked() -> None:
+    """STEP9 missing-stub geometry cannot be repaired by degraded Pass3→P4 retries."""
+
+    with patch.object(recovery_policy, "MAX_VALIDATION_RECOVERY_ATTEMPTS", 2):
+        assert (
+            validation_recovery_allowed(
+                {
+                    "ok": False,
+                    "return_reason": "validation_geometry_failed",
+                    "final_validation": _fv(geometry_valid=False, missing_stub_count=2),
+                }
+            )
+            is False
+        )
+
+
 def test_synthesize_recovery_validation_outcome_rollup() -> None:
     s = {
         "return_reason": "validation_connectivity_failed",
@@ -313,7 +329,7 @@ def _run_e2e_real_map_first_validation_fails(
         return actions
 
     wrapped = _wrap_validate_first_call_with_mutated_map(mutator)
-    with _patch_max_validation_recovery_attempts(1):
+    with _patch_max_validation_recovery_attempts(2):
         with patch.object(recovery_orch, "route_validation_recovery_actions", _route_wrapped):
             with patch(
                 "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
@@ -344,7 +360,7 @@ def _run_e2e_with_validate_stub(
         return actions
 
     stub = _stub_validate_two_phase(first_report)
-    with _patch_max_validation_recovery_attempts(1):
+    with _patch_max_validation_recovery_attempts(2):
         with patch.object(recovery_orch, "route_validation_recovery_actions", _route_wrapped):
             with patch(
                 "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
@@ -451,7 +467,7 @@ def test_validation_recovery_attempt_limit_returns_terminal() -> None:
     def _always_fail(_mining_map: list) -> FinalValidationReport:
         return fail
 
-    with _patch_max_validation_recovery_attempts(1):
+    with _patch_max_validation_recovery_attempts(2):
         with patch(
             "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
             "finalize._validate_final_mining_layout",

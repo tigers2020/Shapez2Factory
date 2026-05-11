@@ -184,7 +184,7 @@ def _apply_layout_preserve_hard_gate(
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
         SolverMutationEventKind,
     )
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (  # noqa: E501
         _append_optimization_warnings,
     )
 
@@ -331,9 +331,7 @@ def run_solver_timeline_pipeline(
     )
 
     routing_snapshot = solver_mut_txn.copy_mining_map_rows(step4.map_after_routing)
-    max_cycles = (
-        MAX_VALIDATION_RECOVERY_ATTEMPTS + 1 if is_validation_recovery_loop_enabled() else 1
-    )
+    max_cycles = MAX_VALIDATION_RECOVERY_ATTEMPTS if is_validation_recovery_loop_enabled() else 1
     pass3_recovery_context = False
     out: dict[str, Any] | None = None
     summary_fields: dict[str, Any] | None = None
@@ -450,8 +448,6 @@ def run_solver_timeline_pipeline(
 
         last_pipeline_out = out
         if out.get("ok"):
-            break
-        if va >= MAX_VALIDATION_RECOVERY_ATTEMPTS:
             break
         if not validation_recovery_allowed(out):
             break

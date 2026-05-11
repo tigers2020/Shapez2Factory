@@ -26,6 +26,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
     EXTENSIONS,
     layout_kind,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.metrics_contract import (
+    OPTIMIZATION_REPLAY_METRIC_KEYS,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_corridors import (  # noqa: E501
     protected_corridors_overlay_from_routing_state,
 )
@@ -48,6 +51,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.trunk_load_observation_soft import (  # noqa: E501
+    trunk_load_observation_soft_warnings,
 )
 from django_apps.shapez_asteroid.services.blueprint_map_summary import (
     merge_with_transport_and_final_mining_map,
@@ -279,7 +285,11 @@ def build_final_solver_output(
         step4_result=step4_result,
     )
     _append_optimization_warnings(summary_fields)
-    optimization_replay_metrics: dict[str, Any] = {
+    if getattr(settings, "SHAPEZ_MINING_TRUNK_OBSERVATION_SOFT_CHECK", False):
+        tw = trunk_load_observation_soft_warnings(map_final, step4_result.trunk_load)
+        if tw:
+            summary_fields["trunk_observation_soft_warnings"] = tw
+    _replay_vals: dict[str, Any] = {
         "baseline_snapshot_kind": OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4,
         "baseline_internal_transport_count": optimization_baseline_internal_transport,
         "baseline_internal_transport_post_step4_count": (
@@ -296,6 +306,9 @@ def build_final_solver_output(
         "placement_candidate_blocked_count": _placement_candidate_blocked_count_from_pass12(
             pass12_stats
         ),
+    }
+    optimization_replay_metrics: dict[str, Any] = {
+        k: _replay_vals[k] for k in OPTIMIZATION_REPLAY_METRIC_KEYS
     }
     solver_init_map = merge_with_transport_and_final_mining_map(
         map_timeline[0]["mining_map"],

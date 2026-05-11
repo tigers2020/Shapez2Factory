@@ -151,6 +151,16 @@
                 <span>{% trans "Show protected corridors (read-only)" %}</span>
               </label>
             </div>
+            <div class="am-solver-overlay-option">
+              <label class="am-inline-check" for="asteroid-trunk-heatmap-overlay-toggle">
+                <input
+                  type="checkbox"
+                  id="asteroid-trunk-heatmap-overlay-toggle"
+                  data-am-trunk-heatmap-overlay
+                />
+                <span>{% trans "Show trunk load heatmap (STEP4 observation)" %}</span>
+              </label>
+            </div>
             <p class="hint hidden" data-am-solver-redecode-hint></p>
             <p class="hint">
               {% blocktrans trimmed %}
@@ -519,6 +529,7 @@
   var apiUrl = root.getAttribute("data-copy-preview-url") || "";
   var solverOverlayCb = root.querySelector("[data-asteroid-solver-overlay]");
   var corridorOverlayCb = root.querySelector("[data-am-corridor-overlay]");
+  var trunkHeatmapCb = root.querySelector("[data-am-trunk-heatmap-overlay]");
   var solverRedecodeHintEl = root.querySelector("[data-am-solver-redecode-hint]");
   if (solverOverlayCb && solverRedecodeHintEl) {
     var redecodeMsg = root.getAttribute("data-msg-solver-redecode-hint") || "";
@@ -812,7 +823,7 @@
     return "solver_init";
   }
 
-  function buildSolverCycleTimeline(mapSteps, solverSteps, replay) {
+  function buildSolverCycleTimeline(mapSteps, solverSteps, replay, serverUiFrames) {
     var events = replay && Array.isArray(replay.events) ? replay.events : [];
     if (!Array.isArray(solverSteps) || !solverSteps.length || !events.length) {
       return { timeline: solverSteps || [], uiFrames: [] };
@@ -843,13 +854,27 @@
         summary: summary,
         mining_map: cloneMiningMapRows(currentRows),
       });
+      var mergedPc = null;
+      var mergedTrunk = null;
+      if (Array.isArray(serverUiFrames)) {
+        var sfi;
+        for (sfi = 0; sfi < serverUiFrames.length; sfi++) {
+          var sf = serverUiFrames[sfi];
+          if (sf && sf.timeline_frame_id === ownerId) {
+            mergedPc = sf.protected_corridors != null ? sf.protected_corridors : null;
+            mergedTrunk = sf.trunk_load_overlay != null ? sf.trunk_load_overlay : null;
+            break;
+          }
+        }
+      }
       uiFrames.push({
         timeline_index: timeline.length - 1,
         timeline_frame_id: ownerId,
         event_indices: [i],
         overlay_event_indices: [i],
         primary_for_step10_ui: true,
-        protected_corridors: null,
+        protected_corridors: mergedPc,
+        trunk_load_overlay: mergedTrunk,
         computation_cycle_ui_tick_start: cycle,
         computation_cycle_ui_tick_end: cycle,
         computation_cycle_ui_stride: 1,
@@ -1175,6 +1200,12 @@
       }
       if (ps.length) parts.push("p3_hash " + ps.join(", "));
     }
+    if (uiRow && uiRow.trunk_load_overlay && typeof uiRow.trunk_load_overlay === "object") {
+      var tbk = uiRow.trunk_load_overlay.by_kind;
+      if (tbk && typeof tbk === "object" && Object.keys(tbk).length) {
+        parts.push("trunk_overlay " + Object.keys(tbk).join(","));
+      }
+    }
     return {
       overlayEvents: overlayEvents,
       counts: counts,
@@ -1354,6 +1385,11 @@
     if (uir && uir.protected_corridors && typeof uir.protected_corridors === "object") {
       overlayDetail = Object.assign({}, overlayDetail || {}, {
         protected_corridors: uir.protected_corridors,
+      });
+    }
+    if (uir && uir.trunk_load_overlay && typeof uir.trunk_load_overlay === "object") {
+      overlayDetail = Object.assign({}, overlayDetail || {}, {
+        trunk_load_overlay: uir.trunk_load_overlay,
       });
     }
     if (mapPhaseDescEl) {
@@ -2185,11 +2221,46 @@
       pushPcPairs(pcd.soft);
       pushPcPairs(pcd.hard);
     }
+    var trunkHiPoints = [];
+    if (trunkHeatmapCb && trunkHeatmapCb.checked && replayOverlay && replayOverlay.trunk_load_overlay) {
+      var tloR = replayOverlay.trunk_load_overlay;
+      var bkR = tloR && tloR.by_kind;
+      if (bkR && typeof bkR === "object") {
+        var tkR;
+        for (tkR in bkR) {
+          if (!Object.prototype.hasOwnProperty.call(bkR, tkR)) continue;
+          var blkR = bkR[tkR];
+          if (!blkR || typeof blkR !== "object") continue;
+          var teR = blkR.top_edges;
+          if (!Array.isArray(teR)) continue;
+          var eiR;
+          for (eiR = 0; eiR < teR.length; eiR++) {
+            var erow = teR[eiR];
+            if (!erow || typeof erow !== "object") continue;
+            var eks = erow.edge;
+            var ecn = erow.count;
+            if (typeof eks !== "string" || typeof ecn !== "number") continue;
+            var segp = eks.split("--");
+            if (segp.length !== 2) continue;
+            var pa = segp[0].split(",");
+            var pb = segp[1].split(",");
+            if (pa.length < 2 || pb.length < 2) continue;
+            var axR = parseInt(pa[0], 10);
+            var ayR = parseInt(pa[1], 10);
+            var bxR = parseInt(pb[0], 10);
+            var byR = parseInt(pb[1], 10);
+            if (!(axR > 0) || !(bxR > 0)) continue;
+            trunkHiPoints.push({ x: axR, y: ayR, w: ecn });
+            trunkHiPoints.push({ x: bxR, y: byR, w: ecn });
+          }
+        }
+      }
+    }
     var p4All = p4Cells.route
       .concat(p4Cells.soft)
       .concat(p4Cells.softReplaceOld)
       .concat(p4Cells.softReplaceNew);
-    var forUx = filtered.concat(p4All).concat(rrAll).concat(pcPoints);
+    var forUx = filtered.concat(p4All).concat(rrAll).concat(pcPoints).concat(trunkHiPoints);
     var ux = uniqueSortedXs(forUx);
     if (ux.length === 0) {
       plotSvg.removeAttribute("viewBox");
@@ -2213,6 +2284,11 @@
       var pcy = pcPoints[oi].y;
       minY = Math.min(minY, pcy - mar);
       maxY = Math.max(maxY, pcy + mar);
+    }
+    for (oi = 0; oi < trunkHiPoints.length; oi++) {
+      var thy = trunkHiPoints[oi].y;
+      minY = Math.min(minY, thy - mar);
+      maxY = Math.max(maxY, thy + mar);
     }
     var ch = maxY - minY + 1;
     var n = ux.length;
@@ -2921,6 +2997,30 @@
       plotSvg.appendChild(gPc);
     }
     if (
+      trunkHeatmapCb &&
+      trunkHeatmapCb.checked &&
+      replayOverlay &&
+      replayOverlay.trunk_load_overlay &&
+      trunkHiPoints.length
+    ) {
+      var gTh = document.createElementNS(svgNs, "g");
+      gTh.setAttribute("class", "am-trunk-heatmap-overlay");
+      var thTitle =
+        root.getAttribute("data-msg-trunk-edge-heatmap") || "Trunk edge load (STEP4 observation)";
+      var hi;
+      for (hi = 0; hi < trunkHiPoints.length; hi++) {
+        var hp = trunkHiPoints[hi];
+        var opa = Math.min(1, 0.2 + Math.min(hp.w, 12) * 0.06);
+        appendRouteReplayOutline(
+          gTh,
+          { x: hp.x, y: hp.y },
+          "rgba(124, 58, 237, " + String(opa) + ")",
+          thTitle + " ×" + String(hp.w)
+        );
+      }
+      plotSvg.appendChild(gTh);
+    }
+    if (
       p4Cells.route.length ||
       p4Cells.soft.length ||
       p4Cells.softReplaceOld.length ||
@@ -3311,7 +3411,12 @@
           lastSolverReplay = replayNorm.replay;
           var rawUi = replayNorm.replay && replayNorm.replay.ui_frames;
           lastReplayUiFrames = Array.isArray(rawUi) ? rawUi : [];
-          var cycleReplay = buildSolverCycleTimeline(mapSteps, solverSteps, replayNorm.replay);
+          var cycleReplay = buildSolverCycleTimeline(
+            mapSteps,
+            solverSteps,
+            replayNorm.replay,
+            lastReplayUiFrames
+          );
           var solverPlaybackSteps =
             cycleReplay && Array.isArray(cycleReplay.timeline) && cycleReplay.timeline.length
               ? cycleReplay.timeline
@@ -3398,6 +3503,13 @@
 
   if (corridorOverlayCb) {
     corridorOverlayCb.addEventListener("change", function () {
+      if (mapTimelineList.length) {
+        setDecodeStepIndex(decodeStepIndex);
+      }
+    });
+  }
+  if (trunkHeatmapCb) {
+    trunkHeatmapCb.addEventListener("change", function () {
       if (mapTimelineList.length) {
         setDecodeStepIndex(decodeStepIndex);
       }

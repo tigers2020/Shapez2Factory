@@ -167,7 +167,12 @@ ROUTING_STATE_KEYS_STEP4_HASH: tuple[str, ...] = (
 MAX_POST_RECLAIM_PASS3_RERUNS = 1
 
 # --- Replay NDJSON contract ---
-SOLVER_REPLAY_CONTRACT_VERSION = 7
+SOLVER_REPLAY_CONTRACT_VERSION = 8
+
+# v8: ``ui_frames[].trunk_load_overlay`` (STEP4 trunk observation slice for STEP10 UI).
+
+# Pass3 lexicographic search: multiply STEP4 ``trunk_edge_load`` counts per canonical edge key.
+PASS3_TRUNK_EDGE_CONGESTION_WEIGHT_PER_TRAVERSAL = 1
 
 # --- P3-F: Topology Branch Replacement MVP (branch semantics + trace; no new engine) ---
 # Detector kind ordering (deterministic priority for ``p3f_best_candidate_kind`` and the
@@ -211,3 +216,6 @@ MINEABLE_ROUTE_COST = 60
 EXTRACTORS_SHAPE = frozenset({"miner", "extractor"})
 EXTRACTORS_FLUID = frozenset({"fluid_miner"})
 EXTENSIONS = frozenset({"extension", "fluid_extension"})
+
+# Pass1/Pass2 extension chain cap (maximized extractor+extension group size minus core).
+PASS12_MAX_EXTENSION_TILES = 3

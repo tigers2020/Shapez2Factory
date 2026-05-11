@@ -1,12 +1,13 @@
 """STEP4 ``trunk_load`` payload contract (accumulate-only metrics, no capacity gates).
 
 Contract version ``trunk_load_contract_version`` (int) identifies the nested schema for
-replay/UI consumers.
+replay/UI consumers. **Observation fields do not reject routes or enforce capacity**; they are
+diagnostic / replay-friendly summaries only (no hard constraints).
 
 **v1**: nested ``route_metrics`` / ``trunk_load_by_kind`` / ``transport_usage_load`` (raw counts).
 
 **v2** adds ``trunk_edge_load_observation``: deterministic summary derived from
-``transport_usage_load["trunk_edge_load"]`` (no capacity gates; observation-only).
+``transport_usage_load["trunk_edge_load"]`` (same facts as raw edge load; no extra gates).
 
 Nested blocks (v2 = v1 blocks plus observation):
 
@@ -24,8 +25,11 @@ Nested blocks (v2 = v1 blocks plus observation):
     ``existing_transport_cell_crossings`` / legacy ``edges`` (pre-existing transport cell entries).
 - ``trunk_edge_load_observation``: ``observation_version``, ``top_n``, ``shared_threshold``,
   and ``by_kind`` with ``shape_belt`` / ``fluid_pipe`` (and any extra kinds aligned with
-  ``trunk_edge_load`` keys) each holding ``traversal_count_total``, ``max_sharing``,
-  ``shared_edge_count`` (edges with count >= ``shared_threshold``), ``edge_count``, ``top_edges``.
+  ``trunk_edge_load`` keys). Per kind: ``traversal_count_total`` is the **sum of integer values**
+  in that kind's ``trunk_edge_load`` map (i.e. total traversals of **canonical undirected** edges
+  along returned routes; reverse steps increment the same key as forward). ``top_edges`` entries
+  use the **same string edge key** as ``trunk_edge_load`` (not directed ``->`` keys; not nested
+  coord lists).
 
 Merge safety:
 
@@ -45,6 +49,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    PASS3_TRUNK_EDGE_CONGESTION_WEIGHT_PER_TRAVERSAL,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     placement_commit_counts_by_state,
@@ -112,7 +119,11 @@ def build_trunk_edge_load_observation(
     *,
     kind_keys: tuple[str, ...],
 ) -> dict[str, Any]:
-    """Deterministic per-kind summary from normalized ``trunk_edge_load`` (observation-only)."""
+    """Summarize ``trunk_edge_load`` per kind (observation-only; no routing or capacity effects).
+
+    ``traversal_count_total`` = sum of counts for that kind's ``trunk_edge_load`` map (undirected
+    canonical keys ``"x1,y1--x2,y2"``). ``top_edges[].edge`` uses that same key string.
+    """
 
     by_kind: dict[str, Any] = {}
     for kind in kind_keys:
@@ -291,3 +302,100 @@ def build_step4_trunk_load_skipped() -> dict[str, Any]:
         p2c_metrics=_empty_p2c_metrics(),
         trace=_zero_trace_common(pass12_skipped=True),
     )
+
+
+def pass3_edge_congestion_weights_from_trunk_load(
+    trunk_load: Mapping[str, Any] | None,
+    *,
+    transport_kind: str,
+    weight_per_traversal: int | None = None,
+) -> dict[str, int] | None:
+    """Map STEP4 ``trunk_edge_load`` counts to Pass3 lex **congestion** edge weights (int, ≥0).
+
+    Keys match :func:`canonical_trunk_edge_key`. Returns ``None`` when ``trunk_load`` is missing
+    or has no per-kind edge map (Pass3 behaves as before).
+    """
+
+    if not isinstance(trunk_load, Mapping):
+        return None
+    raw_tul = trunk_load.get("transport_usage_load")
+    if not isinstance(raw_tul, Mapping):
+        return None
+    raw_edges = raw_tul.get("trunk_edge_load")
+    if not isinstance(raw_edges, Mapping):
+        return None
+    em = raw_edges.get(transport_kind)
+    if not isinstance(em, Mapping) or not em:
+        return None
+    w = (
+        int(weight_per_traversal)
+        if weight_per_traversal is not None
+        else int(PASS3_TRUNK_EDGE_CONGESTION_WEIGHT_PER_TRAVERSAL)
+    )
+    if w <= 0:
+        return {str(k): int(v) for k, v in em.items() if int(v) > 0}
+    return {str(k): int(v) * w for k, v in em.items() if int(v) > 0}
+
+
+def cells_on_high_sharing_trunk_edges(
+    trunk_load: Mapping[str, Any] | None,
+    *,
+    transport_kind: str,
+    shared_threshold: int | None = None,
+) -> frozenset[Coord]:
+    """Endpoint cells of trunk edges whose STEP4 traversal count ≥ ``shared_threshold``."""
+
+    thr = int(shared_threshold if shared_threshold is not None else TRUNK_EDGE_SHARED_THRESHOLD)
+    wmap = pass3_edge_congestion_weights_from_trunk_load(
+        trunk_load, transport_kind=transport_kind, weight_per_traversal=1
+    )
+    if not wmap:
+        return frozenset()
+    out: set[Coord] = set()
+    for ek, c in wmap.items():
+        if int(c) < thr:
+            continue
+        parts = str(ek).split("--", 1)
+        if len(parts) != 2:
+            continue
+        try:
+            a0, a1 = parts[0].split(",", 1)
+            b0, b1 = parts[1].split(",", 1)
+            out.add((int(a0), int(a1)))
+            out.add((int(b0), int(b1)))
+        except (TypeError, ValueError):
+            continue
+    return frozenset(out)
+
+
+def compact_trunk_load_overlay_for_replay(
+    trunk_load: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Small STEP10 overlay blob: observation ``by_kind`` + shared_threshold (no raw full maps)."""
+
+    if not isinstance(trunk_load, Mapping):
+        return None
+    obs = trunk_load.get("trunk_edge_load_observation")
+    if not isinstance(obs, Mapping):
+        return None
+    by_kind = obs.get("by_kind")
+    if not isinstance(by_kind, Mapping) or not by_kind:
+        return None
+    slim: dict[str, Any] = {}
+    for kind, block in sorted(by_kind.items()):
+        if not isinstance(block, Mapping):
+            continue
+        slim[str(kind)] = {
+            "traversal_count_total": int(block.get("traversal_count_total", 0) or 0),
+            "max_sharing": int(block.get("max_sharing", 0) or 0),
+            "shared_edge_count": int(block.get("shared_edge_count", 0) or 0),
+            "top_edges": block.get("top_edges") if isinstance(block.get("top_edges"), list) else [],
+        }
+    return {
+        "overlay_version": 1,
+        "observation_version": int(obs.get("observation_version", 0) or 0),
+        "top_n": int(obs.get("top_n", 0) or 0),
+        "shared_threshold": int(obs.get("shared_threshold", TRUNK_EDGE_SHARED_THRESHOLD) or 0),
+        "by_kind": slim,
+        "corridor_state_note": "hard/soft/candidate cells: replay corridor_added + ui_frames",
+    }

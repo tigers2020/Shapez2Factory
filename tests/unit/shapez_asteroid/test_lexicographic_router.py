@@ -228,6 +228,28 @@ def test_transport_kind_from_solver_value_unknown() -> None:
         transport_kind_from_solver_value("belt")
 
 
+def test_edge_congestion_weights_accumulate_in_lex_priority() -> None:
+    """Lex tuple index 3 (congestion) sums ``edge_congestion_weights`` per canonical edge step."""
+
+    zm: dict[tuple[int, int], RouteZone] = {}
+    allowed = frozenset({(1, 0), (2, 0), (3, 0)})
+    res = find_lexicographic_route(
+        start=(1, 0),
+        goals=frozenset({(3, 0)}),
+        route_zone_map=zm,
+        transport_kind=TransportKind.SHAPE_BELT,
+        blocked_cells=frozenset(),
+        existing_transport_cells=frozenset(),
+        asteroid_cells=frozenset(),
+        placement_candidate_cells=frozenset(),
+        allowed_cells=allowed,
+        edge_congestion_weights={"1,0--2,0": 4, "2,0--3,0": 1},
+    )
+    assert res.found
+    assert res.priority is not None
+    assert res.priority[3] == 5
+
+
 def test_merge_cell_incoming_direction_affects_continuation_turns() -> None:
     """Two equal-length corridors to a merge; prefer heading into the tail with fewer turns.
 

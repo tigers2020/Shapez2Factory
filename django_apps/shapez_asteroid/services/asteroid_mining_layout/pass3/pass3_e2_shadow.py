@@ -27,6 +27,7 @@ def _p3e2_shadow_trace(
     asteroid_f: frozenset[Coord],
     is_external: Callable[[Coord], bool],
     shadow_enabled: bool,
+    trunk_load: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Lex vs mining-priority greedy stub→anchor (per outlet); observation-only (P3-E2).
 
@@ -34,6 +35,24 @@ def _p3e2_shadow_trace(
     not be interpreted as safe to apply lex routes or replace greedy Pass3 until that phase
     wires validation, protected corridors, and rollback.
     """
+
+    base: dict[str, Any] = {
+        "p3e2_shadow_enabled": shadow_enabled,
+        "p3e2_lex_found": False,
+        "p3e2_lex_internal_transport_count": 0,
+        "p3e2_lex_path_length": 0,
+        "p3e2_greedy_internal_transport_count": 0,
+        "p3e2_greedy_path_length": 0,
+        "p3e2_shadow_would_commit": False,
+        "p3e2_shadow_rejected_reason": "shadow_disabled" if not shadow_enabled else None,
+        "p3e2_outlet_count": 0,
+        "p3e2_lex_success_count": 0,
+        "p3e2_greedy_success_count": 0,
+        "p3e2_hard_protected_guard_state": None,
+        "p3e2_step4_trunk_edge_congestion_wired": False,
+    }
+    if not shadow_enabled:
+        return base
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.lexicographic_router import (  # noqa: E501
         find_lexicographic_route,
@@ -49,26 +68,16 @@ def _p3e2_shadow_trace(
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
         blocked_cells,
     )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (  # noqa: E501
+        pass3_edge_congestion_weights_from_trunk_load,
+    )
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
         transport_cells_reaching_external,
     )
 
-    base: dict[str, Any] = {
-        "p3e2_shadow_enabled": shadow_enabled,
-        "p3e2_lex_found": False,
-        "p3e2_lex_internal_transport_count": 0,
-        "p3e2_lex_path_length": 0,
-        "p3e2_greedy_internal_transport_count": 0,
-        "p3e2_greedy_path_length": 0,
-        "p3e2_shadow_would_commit": False,
-        "p3e2_shadow_rejected_reason": "shadow_disabled" if not shadow_enabled else None,
-        "p3e2_outlet_count": 0,
-        "p3e2_lex_success_count": 0,
-        "p3e2_greedy_success_count": 0,
-        "p3e2_hard_protected_guard_state": None,
-    }
-    if not shadow_enabled:
-        return base
+    edge_congestion_weights = pass3_edge_congestion_weights_from_trunk_load(
+        trunk_load, transport_kind=transport_kind
+    )
 
     if not outlets_order:
         base.update(
@@ -131,6 +140,7 @@ def _p3e2_shadow_trace(
             asteroid_cells=set(asteroid_f),
             placement_candidate_cells=mineable_s,
             allowed_cells=set(ad_out.allowed_cells),
+            edge_congestion_weights=edge_congestion_weights,
         )
         if lex_res.found:
             lex_outlets_ok += 1
@@ -218,6 +228,7 @@ def _p3e2_shadow_trace(
             "p3e2_lex_success_count": lex_outlets_ok,
             "p3e2_greedy_success_count": greedy_outlets_ok,
             "p3e2_hard_protected_guard_state": hard_guard_state,
+            "p3e2_step4_trunk_edge_congestion_wired": edge_congestion_weights is not None,
         }
     )
     return base

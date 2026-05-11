@@ -17,6 +17,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_contracts import (
     Pass3TransportResult,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
+    cells_on_high_sharing_trunk_edges,
+)
 
 __all__ = [
     "Pass3TransportResult",
@@ -132,6 +135,7 @@ def _try_remove_one_transport_cell(
     asteroid_cells: set[Coord],
     outlets_order: list[Coord],
     anchor: Coord,
+    skip_victim_cells: frozenset[Coord] | None = None,
 ) -> tuple[dict[Coord, str], int]:
     """transport 셀 하나를 제거해 stub connectivity가 유지되는지 시험한다.
 
@@ -159,6 +163,8 @@ def _try_remove_one_transport_cell(
         ),
     )
     for victim in cands:
+        if skip_victim_cells and victim in skip_victim_cells:
+            continue
         trial = {k: v for k, v in tc.items() if k != victim}
         if transport_connects_outlets_to_anchor(
             trial,
@@ -187,6 +193,7 @@ def _compress_transport_greedy(
     asteroid_cells: set[Coord],
     outlets_order: list[Coord],
     anchor: Coord,
+    skip_victim_cells: frozenset[Coord] | None = None,
 ) -> tuple[dict[Coord, str], int]:
     """고정 output stub을 보존하며 불필요한 transport를 greedy로 제거한다 (§11 Pass3 transport)."""
     tc = dict(transport_cells)
@@ -198,6 +205,7 @@ def _compress_transport_greedy(
             asteroid_cells=asteroid_cells,
             outlets_order=outlets_order,
             anchor=anchor,
+            skip_victim_cells=skip_victim_cells,
         )
         if gain == 0:
             break
@@ -216,12 +224,18 @@ def reconstruct_mining_priority_transport(
     outlets_order: list[Coord],
     transport_role: str,
     allow_degraded_connected_commit: bool = False,
+    trunk_load: dict[str, Any] | None = None,
+    recovery_skip_high_sharing_transport_removals: bool = False,
 ) -> Pass3TransportResult:
     """Remove redundant interior transport while preserving stub→anchor connectivity."""
 
     _ = buildings
-    _ = transport_role
     metrics_base: dict[str, Any] = {"over_capacity_segments": 0, "bottleneck_count": 0}
+    skip_victims: frozenset[Coord] | None = None
+    if recovery_skip_high_sharing_transport_removals and isinstance(trunk_load, dict):
+        skip_victims = cells_on_high_sharing_trunk_edges(trunk_load, transport_kind=transport_role)
+        if skip_victims:
+            metrics_base["pass3_recovery_skip_high_sharing_cell_count"] = len(skip_victims)
 
     new_cells, gain_total = _compress_transport_greedy(
         transport_cells,
@@ -229,6 +243,7 @@ def reconstruct_mining_priority_transport(
         asteroid_cells=asteroid_cells,
         outlets_order=outlets_order,
         anchor=anchor,
+        skip_victim_cells=skip_victims,
     )
 
     if gain_total > 0:

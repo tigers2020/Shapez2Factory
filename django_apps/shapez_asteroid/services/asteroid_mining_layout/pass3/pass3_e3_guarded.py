@@ -66,6 +66,7 @@ def _p3e3_run_atomic_candidate_phase(
     mineable_f: frozenset[Coord],
     asteroid_f: frozenset[Coord],
     is_external: Callable[[Coord], bool],
+    trunk_load: dict[str, Any] | None = None,
 ) -> tuple[P3E3GuardedCommitCandidate, dict[str, Any]]:
     """P3-E3b-1: build + validate candidate; never mutates caller maps."""
 
@@ -89,6 +90,7 @@ def _p3e3_run_atomic_candidate_phase(
         mineable_f=mineable_f,
         asteroid_f=asteroid_f,
         is_external=is_external,
+        trunk_load=trunk_load,
     )
 
     if collect_err is not None:

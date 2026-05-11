@@ -25,6 +25,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_tru
     build_step4_trunk_load_pipeline_exception_stub,
     build_trunk_edge_load_observation,
     canonical_trunk_edge_key,
+    cells_on_high_sharing_trunk_edges,
+    compact_trunk_load_overlay_for_replay,
+    pass3_edge_congestion_weights_from_trunk_load,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     external_predicate_for_mining_map,
@@ -130,7 +133,10 @@ def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_contract_keys() -> Non
 
 
 def test_trunk_edge_load_observation_top_edges_order_and_cap() -> None:
-    """``count`` desc, ``edge`` asc tie-break; at most ``top_n`` entries."""
+    """``top_edges[].edge`` matches ``trunk_edge_load`` undirected keys ``x,y--x,y`` (not ``->``).
+
+    Sort: ``count`` desc, ``edge`` asc tie-break; at most ``top_n`` entries.
+    """
 
     block = {
         "shape_belt": {
@@ -292,3 +298,47 @@ def test_solver_timeline_step4_frame_summary_includes_full_trunk_load() -> None:
     tl_ss = out["solver_summary"]["trunk_load"]
     assert tl_frame == tl_ss
     _assert_trunk_load_nested_matches_legacy(tl_frame)
+
+
+def test_pass3_edge_congestion_weights_from_trunk_load() -> None:
+    tl = {
+        "transport_usage_load": {
+            "trunk_edge_load": {"shape_belt": {"1,0--2,0": 3, "2,0--3,0": 1}},
+        },
+    }
+    w = pass3_edge_congestion_weights_from_trunk_load(tl, transport_kind="shape_belt")
+    assert w == {"1,0--2,0": 3, "2,0--3,0": 1}
+    assert pass3_edge_congestion_weights_from_trunk_load(None, transport_kind="shape_belt") is None
+
+
+def test_compact_trunk_load_overlay_for_replay_minimal() -> None:
+    tl = {
+        "trunk_edge_load_observation": {
+            "observation_version": 1,
+            "top_n": 10,
+            "shared_threshold": 2,
+            "by_kind": {
+                "shape_belt": {
+                    "traversal_count_total": 2,
+                    "max_sharing": 2,
+                    "shared_edge_count": 1,
+                    "top_edges": [{"edge": "1,0--2,0", "count": 2}],
+                }
+            },
+        },
+    }
+    ov = compact_trunk_load_overlay_for_replay(tl)
+    assert ov is not None
+    assert ov["overlay_version"] == 1
+    assert ov["by_kind"]["shape_belt"]["top_edges"][0]["edge"] == "1,0--2,0"
+
+
+def test_cells_on_high_sharing_trunk_edges() -> None:
+    tl = {
+        "transport_usage_load": {
+            "trunk_edge_load": {"shape_belt": {"1,0--2,0": 2, "3,0--4,0": 1}},
+        },
+    }
+    cells = cells_on_high_sharing_trunk_edges(tl, transport_kind="shape_belt")
+    assert (1, 0) in cells and (2, 0) in cells
+    assert (3, 0) not in cells

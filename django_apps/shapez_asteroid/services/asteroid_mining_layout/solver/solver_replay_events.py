@@ -36,6 +36,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 # v7: protected corridor delta kinds — ``corridor_added``, ``corridor_removed``,
 # ``corridor_promoted``, ``corridor_replaced`` (see ``corridor_*_replay_payload`` helpers;
 # MVP may emit only a subset).
+# v8: ``ui_frames[].trunk_load_overlay`` — compact STEP4 trunk observation slice for STEP10 UI.
 
 
 class SolverMutationEventKind(StrEnum):

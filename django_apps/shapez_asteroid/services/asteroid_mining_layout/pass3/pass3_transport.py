@@ -80,6 +80,7 @@ def run_pass3_transport_minimization_from_maps(
     is_external: Callable[[Coord], bool],
     p3e3_guarded_commit_enabled: bool | None = None,
     pass3_recovery_context: bool = False,
+    trunk_load: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], Pass3TransportResult | None, dict[str, Any]]:
     """Run greedy Pass3 compression on an existing layout (typically post-STEP4).
 
@@ -91,6 +92,11 @@ def run_pass3_transport_minimization_from_maps(
     ``pass3_recovery_context``: when True, ``reconstruct_mining_priority_transport`` may use
     ``allow_degraded_connected_commit`` (gain 0 but connectivity preserved). Default False so
     ``commit_reason=degraded_connected_recovery`` never appears on the main solver path.
+
+    ``trunk_load``: optional STEP4 ``trunk_load`` dict; when present, P3-E2/E3 lex search uses
+    ``transport_usage_load["trunk_edge_load"]`` as Pass3 congestion weights (see
+    :func:`pass3_edge_congestion_weights_from_trunk_load`), and recovery-mode greedy removal may
+    defer cells on high-sharing trunk edges.
     """
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
@@ -170,6 +176,7 @@ def run_pass3_transport_minimization_from_maps(
         asteroid_f=asteroid_f,
         is_external=is_external,
         shadow_enabled=P3E2_SHADOW_ENABLED_DEFAULT,
+        trunk_load=trunk_load,
     )
     p3e3_trace = p3e3_emit_guarded_trace(
         guarded_enabled=guarded_on,
@@ -199,6 +206,7 @@ def run_pass3_transport_minimization_from_maps(
                 mineable_f=mineable_f,
                 asteroid_f=asteroid_f,
                 is_external=is_external,
+                trunk_load=trunk_load,
             )
             atomic_search_ms = int(round((time.perf_counter() - t0) * 1000.0))
             p3e3_trace.update(atomic_trace)
@@ -214,6 +222,8 @@ def run_pass3_transport_minimization_from_maps(
         outlets_order=outlets_order,
         transport_role=tk,
         allow_degraded_connected_commit=bool(pass3_recovery_context),
+        trunk_load=trunk_load,
+        recovery_skip_high_sharing_transport_removals=bool(pass3_recovery_context),
     )
     # Greedy Pass3 output before optional guarded swap (P3-E3b-2b rollback restores this snapshot).
     known_good_transport_snapshot = dict(greedy_result.transport_cells)

@@ -159,7 +159,7 @@ def count_internal_new_transport_steps_on_path(
             prev = None
             continue
         frm = path[i - 1]
-        di, _, _, _, _ = _step_deltas(
+        di, _, _, _, _, _ = _step_deltas(
             prev=prev,
             cur=frm,
             nxt=cur,
@@ -167,6 +167,7 @@ def count_internal_new_transport_steps_on_path(
             transport_kind=transport_kind,
             existing_transport_cells=existing_transport_cells,
             placement_candidate_cells=placement_candidate_cells,
+            congestion_step=0,
         )
         total += di
         prev = frm

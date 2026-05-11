@@ -19,6 +19,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_corridors import (  # noqa: E501
     effective_routing_state_at_timeline_index,
+    effective_trunk_load_overlay_at_timeline_index,
     protected_corridors_overlay_from_routing_state,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
@@ -116,6 +117,7 @@ def build_replay_ui_frames(
 
         rs_eff = effective_routing_state_at_timeline_index(solver_timeline, idx)
         pc_overlay = protected_corridors_overlay_from_routing_state(rs_eff)
+        trunk_overlay = effective_trunk_load_overlay_at_timeline_index(solver_timeline, idx)
 
         out.append(
             {
@@ -131,6 +133,7 @@ def build_replay_ui_frames(
                 "overlay_event_indices": overlay_indices,
                 "pass3_layout_snapshots": p3_snaps,
                 "protected_corridors": pc_overlay,
+                "trunk_load_overlay": trunk_overlay,
             }
         )
     return out
@@ -150,6 +153,7 @@ def _empty_ui_frame(*, timeline_index: int, timeline_frame_id: str) -> dict[str,
         "overlay_event_indices": [],
         "pass3_layout_snapshots": [],
         "protected_corridors": protected_corridors_overlay_from_routing_state(None),
+        "trunk_load_overlay": None,
     }
 
 

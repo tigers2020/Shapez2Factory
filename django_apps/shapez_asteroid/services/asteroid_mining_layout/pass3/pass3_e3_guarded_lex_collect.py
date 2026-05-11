@@ -27,6 +27,7 @@ def _p3e3_collect_guarded_lex_replacement(
     mineable_f: frozenset[Coord],
     asteroid_f: frozenset[Coord],
     is_external: Callable[[Coord], bool],
+    trunk_load: dict[str, Any] | None = None,
 ) -> tuple[
     frozenset[Coord],
     frozenset[Coord],
@@ -51,6 +52,9 @@ def _p3e3_collect_guarded_lex_replacement(
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
         blocked_cells,
     )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (  # noqa: E501
+        pass3_edge_congestion_weights_from_trunk_load,
+    )
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
         transport_cells_reaching_external,
     )
@@ -69,6 +73,9 @@ def _p3e3_collect_guarded_lex_replacement(
     fixed_stubs = frozenset(outlets_order)
     tk_enum = transport_kind_from_solver_value(transport_kind)
     mineable_s = set(mineable_f)
+    edge_congestion_weights = pass3_edge_congestion_weights_from_trunk_load(
+        trunk_load, transport_kind=transport_kind
+    )
 
     replacement_union: set[Coord] = set()
     hard_u: set[Coord] = set()
@@ -103,6 +110,7 @@ def _p3e3_collect_guarded_lex_replacement(
             asteroid_cells=set(asteroid_f),
             placement_candidate_cells=mineable_s,
             allowed_cells=set(ad_out.allowed_cells),
+            edge_congestion_weights=edge_congestion_weights,
         )
         g_path = placement_stub_route_probe_path(
             outlet_stub=stub,

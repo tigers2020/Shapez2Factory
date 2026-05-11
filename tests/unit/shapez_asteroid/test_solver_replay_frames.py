@@ -33,6 +33,33 @@ def test_normalize_replay_transport_kind_aliases_and_passthrough() -> None:
     assert normalize_replay_transport_kind("   ") is None
 
 
+def test_build_replay_ui_frames_trunk_load_overlay_from_step4_summary() -> None:
+    trunk_load = {
+        "trunk_edge_load_observation": {
+            "observation_version": 1,
+            "top_n": 10,
+            "shared_threshold": 2,
+            "by_kind": {
+                "shape_belt": {
+                    "traversal_count_total": 2,
+                    "max_sharing": 2,
+                    "shared_edge_count": 1,
+                    "edge_count": 1,
+                    "top_edges": [{"edge": "1,0--2,0", "count": 2}],
+                }
+            },
+        },
+    }
+    timeline = [
+        {"id": SOLVER_FRAME_STEP4_ROUTING, "summary": {"trunk_load": trunk_load}, "mining_map": []},
+        {"id": SOLVER_FRAME_PASS3_TRANSPORT, "summary": {}, "mining_map": []},
+    ]
+    frames = build_replay_ui_frames(solver_timeline=timeline, events=[])
+    assert frames[0]["trunk_load_overlay"] is not None
+    assert frames[0]["trunk_load_overlay"]["by_kind"]["shape_belt"]["max_sharing"] == 2
+    assert frames[1]["trunk_load_overlay"] is not None
+
+
 def test_build_replay_ui_frames_pass3_snapshots_attached_to_pass3_frame() -> None:
     timeline = [
         {"id": SOLVER_FRAME_PASS2_INTERNAL, "summary": {}, "mining_map": []},

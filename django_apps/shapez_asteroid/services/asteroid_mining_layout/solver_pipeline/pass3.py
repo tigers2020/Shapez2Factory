@@ -133,6 +133,7 @@ def run_pass3_stage(
     pass3_recovery_context: bool = False,
     validation_recovery_attempt: int = 0,
     debug_location: str,
+    step4_trunk_load: dict[str, Any] | None = None,
 ) -> Pass3StageResult:
     """Pass3 transport minimization을 실행하고 기존 accept/reject 의미를 유지한다."""
 
@@ -191,6 +192,7 @@ def run_pass3_stage(
                 final_mining_map=final_map,
                 is_external=is_external,
                 pass3_recovery_context=pass3_recovery_context,
+                trunk_load=step4_trunk_load,
             )
         except BaseException:
             if replay_events is not None and p3_txn_id is not None:

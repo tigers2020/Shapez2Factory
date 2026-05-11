@@ -24,6 +24,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_z
     TransportKind,
     route_zone_for_cell,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
+    canonical_trunk_edge_key,
+)
 
 # (current cell, previous cell on the path). ``previous is None`` only for the start state.
 type SearchState = tuple[Coord, Coord | None]
@@ -60,8 +63,9 @@ def _step_deltas(
     transport_kind: TransportKind,
     existing_transport_cells: Set[Coord],
     placement_candidate_cells: Set[Coord],
-) -> tuple[int, int, int, int, int]:
-    """Per-step deltas: internal, opportunity, route_cost, turn, +1 path cell."""
+    congestion_step: int,
+) -> tuple[int, int, int, int, int, int]:
+    """Per-step deltas: internal, opportunity, route_cost, congestion, turn, +1 path cell."""
 
     mult = KIND_COST_MULTIPLIER[transport_kind]
     zone = route_zone_for_cell(nxt, route_zone_map)
@@ -75,18 +79,18 @@ def _step_deltas(
     )
     route_step = ROUTE_ZONE_COST[zone] * mult
     turn_step = _turn_delta(prev, cur, nxt)
-    return internal_step, opp_step, route_step, turn_step, 1
+    return internal_step, opp_step, route_step, congestion_step, turn_step, 1
 
 
 def _add_lex_prefix(
-    a: LexTuple, di: int, dop: int, dr: int, dt: int, dlen: int, nxt: Coord
+    a: LexTuple, di: int, dop: int, dr: int, dc: int, dt: int, dlen: int, nxt: Coord
 ) -> LexTuple:
     """lexicographic priority tuple에 한 step 비용을 누적한다 (§11.1 lex 차원 순서)."""
     return (
         a[0] + di,
         a[1] + dop,
         a[2] + dr,
-        a[3],
+        a[3] + dc,
         a[4] + dt,
         a[5] + dlen,
         nxt[0],
@@ -106,10 +110,14 @@ def find_lexicographic_route(
     placement_candidate_cells: Set[Coord],
     max_expanded_nodes: int = 20_000,
     allowed_cells: Set[Coord] | None = None,
+    edge_congestion_weights: Mapping[str, int] | None = None,
 ) -> RouteSearchResult:
-    """Minimize lexicographic path cost (internal, opportunity, route, …).
+    """Minimize lexicographic path cost (internal, opportunity, route, congestion, turns, …).
 
-    ``path[0]`` is always ``start`` (fixed stub). Congestion is always 0 in P3-E1.
+    ``path[0]`` is always ``start`` (fixed stub). Lex index 3 is **congestion**: per-step
+    weight from ``edge_congestion_weights`` keyed by :func:`canonical_trunk_edge_key` for
+    ``(cur, nxt)`` when a mapping is provided; otherwise 0.
+
     The last two tuple components are the path tip coordinates (the goal when found).
 
     If ``allowed_cells`` is set, only those cells may be entered (bounded search).
@@ -120,6 +128,9 @@ def find_lexicographic_route(
     """
 
     _ = asteroid_cells
+    ecw: Mapping[str, int] | None = (
+        edge_congestion_weights if isinstance(edge_congestion_weights, Mapping) else None
+    )
 
     if start in blocked_cells and start not in goals:
         return RouteSearchResult(
@@ -188,7 +199,10 @@ def find_lexicographic_route(
             if nxt == start:
                 continue
 
-            di, dop, dr, dt, dlen = _step_deltas(
+            dc_step = 0
+            if ecw is not None:
+                dc_step = int(ecw.get(canonical_trunk_edge_key(cur, nxt), 0))
+            di, dop, dr, dc, dt, dlen = _step_deltas(
                 prev=p_prev,
                 cur=cur,
                 nxt=nxt,
@@ -196,8 +210,9 @@ def find_lexicographic_route(
                 transport_kind=transport_kind,
                 existing_transport_cells=existing_transport_cells,
                 placement_candidate_cells=placement_candidate_cells,
+                congestion_step=dc_step,
             )
-            new_t = _add_lex_prefix(t_cur, di, dop, dr, dt, dlen, nxt)
+            new_t = _add_lex_prefix(t_cur, di, dop, dr, dc, dt, dlen, nxt)
 
             nxt_state: SearchState = (nxt, cur)
             old_t = best.get(nxt_state)

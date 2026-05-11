@@ -400,6 +400,35 @@ def analyze_existing_layout_from_mining_map(
     }
 
 
+def existing_layout_heuristic_suppress_pass12_loops(
+    existing_layout_analysis: dict[str, Any] | None,
+) -> bool:
+    """Return True to skip Pass1/Pass2 placement loops while keeping STEP4 (preserve-first).
+
+    Conservative: requires classified existing layout, main transport trunk, miners+extensions,
+    and no STEP 0.5 issues at severity ``error``.
+    """
+
+    if not existing_layout_analysis or not isinstance(existing_layout_analysis, dict):
+        return False
+    sk = existing_layout_analysis.get("source_kind")
+    if sk in ("raw_asteroid_field", "unknown", "mixed_existing_layout"):
+        return False
+    eq = existing_layout_analysis.get("equipment") or {}
+    if int(eq.get("miner_count") or 0) <= 0:
+        return False
+    if int(eq.get("extension_count") or 0) <= 0:
+        return False
+    tp = existing_layout_analysis.get("transport") or {}
+    if not isinstance(tp, dict) or tp.get("main_component_id") is None:
+        return False
+    for iss in existing_layout_analysis.get("issues") or []:
+        if isinstance(iss, dict) and iss.get("severity") == "error":
+            return False
+    return True
+
+
 __all__ = [
     "analyze_existing_layout_from_mining_map",
+    "existing_layout_heuristic_suppress_pass12_loops",
 ]

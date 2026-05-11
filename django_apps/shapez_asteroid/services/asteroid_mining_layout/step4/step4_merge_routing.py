@@ -161,6 +161,7 @@ def run_step4_merge_aware_routing(
         mineable=mineable, asteroid=asteroid, cells=cells, is_external=is_external
     )
     hint_union = trunk_seed_union_from_existing_layout(existing_layout_analysis)
+    cheap_reuse_cells = frozenset(set(initial_trunk) | set(hint_union))
     trunk_seed_by_kind = build_trunk_seed_candidates_by_kind(
         exterior_margin=margin_cells,
         hint_union=hint_union,
@@ -259,6 +260,7 @@ def run_step4_merge_aware_routing(
                 is_external=is_external,
                 trunk=trunk_cells,
                 goal_cells=goal_cells,
+                cheap_reuse_cells=cheap_reuse_cells,
             )
             if path is None:
                 if placement_id is not None and placement_id in work_records:
@@ -370,11 +372,11 @@ def run_step4_merge_aware_routing(
         # rollback already ran; align FSM with P2-C cascade rollbacks — terminal ROLLED_BACK only.
         if quarantined:
             for pid in list(quarantined):
-                rec = work_records.get(pid)
-                if rec is None or rec.state != PlacementCommitState.QUARANTINED_UNROUTED:
+                qrec = work_records.get(pid)
+                if qrec is None or qrec.state != PlacementCommitState.QUARANTINED_UNROUTED:
                     continue
                 work_records[pid] = replace(
-                    rec,
+                    qrec,
                     state=PlacementCommitState.ROLLED_BACK,
                     route_id=None,
                 )

@@ -55,6 +55,11 @@ OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH = "internal_transport
 # Baseline snapshot: Pass1·Pass2 committed map immediately before STEP4 merge/routing.
 OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4 = "pass1_pass2_pre_step4"
 
+# Preserve-first: solver output internal transport worse than merged input baseline (STEP 0.5).
+LAYOUT_PRESERVE_HARD_GATE_REASON_TRANSPORT_REGRESSION = (
+    "final_internal_transport_above_solver_input_baseline"
+)
+
 # Counterfactual shortest-feasible baseline (geometry + STEP4 Dijkstra; sequential trunk v1).
 OPTIMIZATION_COUNTERFACTUAL_AGGREGATION_SEQUENTIAL_TRUNK_V1 = "sequential_trunk_v1"
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
@@ -22,6 +23,7 @@ class Pass12LayoutScratch:
     transport_kind: str = "shape_belt"
     next_placement_seq: int = 0
     placement_records: dict[str, PlacementCommitRecord] = field(default_factory=dict)
+    preserved_mining_row_overrides: dict[Coord, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,7 @@ class Pass12ScratchBaseline:
     transport_kind: str
     next_placement_seq: int
     placement_records: dict[str, PlacementCommitRecord]
+    preserved_mining_row_overrides: dict[Coord, dict[str, Any]]
 
 
 @dataclass(frozen=True)

@@ -3,6 +3,13 @@
 Single ``solver_summary`` payload per run: see ``build_solver_timeline`` output and
 ``documents/Algorithm/cursor_agent_tier1_prompts_2026-05-10.md`` §Trace contract (recovery
 chain, Pass3/P4 fields, ``before_return_validate``, STEP 0.5 ``existing_layout_analysis``).
+
+Debug NDJSON under ``var/asteroid_mining_layout_debug`` includes:
+
+- ``run_start`` / ``run_end`` with ``debug_session`` (env overrides, resolved paths) and
+  ``elapsed_s`` on end.
+- ``bundle_reject_no_route`` rows include ``transport_probe`` / ``cheap_escape_probe`` diagnosis
+  from ``routing/route_probe.py`` (component size, skip reasons, visit caps).
 """
 
 from __future__ import annotations
@@ -173,14 +180,34 @@ def trace_run_scope() -> Iterator[None]:
     run_id = new_trace_run_id()
     token = trace_run_id_set(run_id)
     summary_tok = _summary_emitted_var.set(False)
+    started = time.perf_counter()
     if trace_enabled():
         _truncate_trace_files()
         _prepare_debug_log_files(run_id)
-        debug_log_event("solver_trace.trace_run_scope", "run_start", {"run_id": run_id})
+        debug_log_event(
+            "solver_trace.trace_run_scope",
+            "run_start",
+            {
+                "run_id": run_id,
+                "debug_session": {
+                    "django_debug": bool(getattr(settings, "DEBUG", False)),
+                    "algo_debug_env": os.environ.get(_ALGO_DBG_ENV, ""),
+                    "placement_verbose": trace_placement_verbose(),
+                    "trace_path_override": os.environ.get(_TRACE_PATH_ENV, ""),
+                    "debug_dir_override": os.environ.get(_DEBUG_DIR_ENV, ""),
+                    "resolved_debug_dir": str(_debug_log_dir()),
+                },
+            },
+        )
     try:
         yield
     finally:
-        debug_log_event("solver_trace.trace_run_scope", "run_end", {"run_id": run_id})
+        elapsed = time.perf_counter() - started
+        debug_log_event(
+            "solver_trace.trace_run_scope",
+            "run_end",
+            {"run_id": run_id, "elapsed_s": round(elapsed, 6)},
+        )
         _summary_emitted_var.reset(summary_tok)
         trace_run_id_reset(token)
 

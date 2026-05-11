@@ -27,6 +27,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 
 # Positive costs for Dijkstra; ``None`` means the step is not permitted.
 _COST_SAME_ROLE_TRANSPORT = 10.0
+_COST_SAME_ROLE_TRUNK_REUSE = 0.5
 _COST_EXTERNAL_REACH = 15.0
 _COST_MINEABLE = 100.0
 _COST_ASTEROID_FIELD = 60.0
@@ -43,6 +44,7 @@ def step4_step_cost(
     mineable: frozenset[Coord],
     asteroid: frozenset[Coord],
     is_external: Callable[[Coord], bool],
+    cheap_reuse_cells: frozenset[Coord] | None = None,
 ) -> float | None:
     """Cost to occupy ``c`` with ``want_role`` transport; ``None`` if illegal."""
 
@@ -53,6 +55,8 @@ def step4_step_cost(
     if row is not None:
         role = row.get("role")
         if role == want_role:
+            if cheap_reuse_cells is not None and c in cheap_reuse_cells:
+                return _COST_SAME_ROLE_TRUNK_REUSE
             return _COST_SAME_ROLE_TRANSPORT
         if role in ("belt", "pipe"):
             return None

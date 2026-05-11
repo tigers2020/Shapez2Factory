@@ -112,6 +112,7 @@ def snapshot_pass12_scratch(state: Pass12LayoutScratch) -> Pass12ScratchBaseline
         transport_kind=state.transport_kind,
         next_placement_seq=state.next_placement_seq,
         placement_records=dict(state.placement_records),
+        preserved_mining_row_overrides=dict(state.preserved_mining_row_overrides),
     )
 
 
@@ -124,6 +125,7 @@ def restore_pass12_scratch(state: Pass12LayoutScratch, baseline: Pass12ScratchBa
     state.transport_kind = baseline.transport_kind
     state.next_placement_seq = baseline.next_placement_seq
     state.placement_records = dict(baseline.placement_records)
+    state.preserved_mining_row_overrides = dict(baseline.preserved_mining_row_overrides)
 
 
 def try_commit_pass1_bundle(
@@ -192,6 +194,10 @@ def _commit_after_probe(
             payload: dict[str, Any] = dict(bundle_hint or {})
             payload["reason"] = "stub_cell_missing_from_merged_transport"
             payload["stub_cell"] = candidate.stub_cell
+            payload["route_probe_context"] = {
+                "transport_cell_count": len(transport_after),
+                "blocked_cell_count": len(blocked_after),
+            }
             trace_bundle_reject_invalid_stub(trace_location, payload)
             return False
         if not bundle_route_probe_or_reject(

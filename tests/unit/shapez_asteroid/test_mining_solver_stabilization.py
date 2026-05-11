@@ -24,6 +24,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass1
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_probe import (
     probe_stub_cheap_escape_to_external,
     probe_stub_to_external,
+    probe_stub_to_external_detail,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
     SolverMutationEventKind,
@@ -79,6 +80,10 @@ def test_trace_event_writes_run_debug_log_folder(tmp_path, monkeypatch, settings
         "run_start",
         "run_end",
     ]
+    start = next(r for r in records if r.get("action") == "run_start")
+    assert "debug_session" in start["data"]
+    end = next(r for r in records if r.get("action") == "run_end")
+    assert "elapsed_s" in end["data"]
     trace_records = [r for r in records if r.get("kind") == "trace"]
     assert trace_records
     assert trace_records[0]["message"] == "test_message"
@@ -128,6 +133,14 @@ def test_probe_stub_dead_end() -> None:
         blocked_cells=blocked,
         is_external=is_ext,
     )
+    ok, detail = probe_stub_to_external_detail(
+        stub_cell=(2, 0),
+        transport_cells=transport,
+        blocked_cells=blocked,
+        is_external=is_ext,
+    )
+    assert not ok
+    assert detail["transport_probe"]["reachable_cells_in_component"] == 2
 
 
 def test_probe_cheap_escape_void_reaches_external_when_transport_only_dead_end() -> None:
@@ -216,6 +229,10 @@ def test_bundle_route_probe_or_reject_traces_failure() -> None:
         )
     assert not ok
     assert rejected and rejected[0]["loc"] == "test.bundle"
+    payload = rejected[0]["data"]
+    assert payload["transport_probe"]["failure"] == "no_transport_path_to_external"
+    assert payload["cheap_escape_probe"]["skipped"] is True
+    assert "route_probe_context" in payload
 
 
 def test_build_solver_timeline_empty_bp() -> None:

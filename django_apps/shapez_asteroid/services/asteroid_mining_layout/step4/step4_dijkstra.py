@@ -27,6 +27,7 @@ def dijkstra_route_step4(
     is_external: Callable[[Coord], bool],
     trunk: frozenset[Coord],
     goal_cells: frozenset[Coord] | None = None,
+    cheap_reuse_cells: frozenset[Coord] | None = None,
 ) -> tuple[Coord, ...] | None:
     """Shortest path (positive costs) from ``stub_cell``; path[0] == stub_cell.
 
@@ -79,6 +80,7 @@ def dijkstra_route_step4(
                 mineable=mineable,
                 asteroid=asteroid,
                 is_external=is_external,
+                cheap_reuse_cells=cheap_reuse_cells,
             )
             if step is None:
                 continue

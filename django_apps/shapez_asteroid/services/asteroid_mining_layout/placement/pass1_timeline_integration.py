@@ -35,6 +35,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass2
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_bundle_commit import (  # noqa: E501
     Pass12LayoutScratch,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_merged_layout_seed import (  # noqa: E501
+    seed_pass12_scratch_from_merged_existing,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     layout_kind,
     mineable_and_asteroid_coords,
@@ -51,6 +54,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_r
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
 )
+from django_apps.shapez_asteroid.services.blueprint_map_summary import (
+    merge_with_transport_and_final_mining_map,
+)
 
 
 def _clone_scratch(scratch: Pass12LayoutScratch) -> Pass12LayoutScratch:
@@ -65,6 +71,7 @@ def _clone_scratch(scratch: Pass12LayoutScratch) -> Pass12LayoutScratch:
         transport_kind=scratch.transport_kind,
         next_placement_seq=scratch.next_placement_seq,
         placement_records=dict(scratch.placement_records),
+        preserved_mining_row_overrides=dict(scratch.preserved_mining_row_overrides),
     )
 
 
@@ -171,6 +178,9 @@ def _merge_pass1_into_rows(
             pid_by_cell[ec] = rec.placement_id
     for x, y in new_bodies:
         c = (x, y)
+        if c in scratch.preserved_mining_row_overrides:
+            cells[c] = dict(scratch.preserved_mining_row_overrides[c])
+            continue
         if c in scratch.extractor_cells:
             row = dict(miner_row)
             row.update({"x": x, "y": y})
@@ -221,6 +231,7 @@ def integrate_pass12_placement_into_working_map(
     existing_layout_analysis: dict[str, Any] | None = None,
     replay_events: list[dict[str, Any]] | None = None,
     pass2_spine_priority_enabled: bool = False,
+    suppress_pass1_pass2_loops: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """Run Pass1 outer then Pass2 internal placement; merge each stage into row lists.
 
@@ -233,6 +244,10 @@ def integrate_pass12_placement_into_working_map(
     ``pass2_spine_priority_enabled``가 True면 Pass1 직후 계산한 spine 시드를 Pass2
     ``mineable_inner_first_order``의 soft 우선순위로 흘려 인접 셀을 그룹 선두로 끌어온다
     (정본: 07_step3_pass2_placement.md §8.5). 기본값은 False (기존 동작 동일).
+
+    ``suppress_pass1_pass2_loops``: True면 시드 이후 Pass1/Pass2 배치 루프를 실행하지 않고
+    병합만 수행한다(기존 연결 레이아웃 preserve-first). ``pass12_skipped``(혼합 면)와 달리
+    STEP4는 계속 실행된다.
     """
 
     mineable, asteroid = mineable_and_asteroid_coords(final_mining_map)
@@ -257,6 +272,9 @@ def integrate_pass12_placement_into_working_map(
         "pass12_mixed_surface_skipped": False,
         "placement_records": {},
         "placement_candidate_blocked_count": 0,
+        "pass12_preserved_equipment_groups": 0,
+        "pass12_preserved_routed_placement_records": 0,
+        "pass12_placement_loops_suppressed": False,
         **ela_empty_meta,
     }
     if not mineable:
@@ -273,6 +291,9 @@ def integrate_pass12_placement_into_working_map(
             "pass12_mixed_surface_skipped": True,
             "placement_records": {},
             "placement_candidate_blocked_count": 0,
+            "pass12_preserved_equipment_groups": 0,
+            "pass12_preserved_routed_placement_records": 0,
+            "pass12_placement_loops_suppressed": False,
         }
         return unchanged, unchanged, skip_stats
 
@@ -286,6 +307,14 @@ def integrate_pass12_placement_into_working_map(
     )
     surface = dominant_surface_from_map(final_mining_map)
     scratch.transport_kind = "fluid_pipe" if surface == "fluid" else "shape_belt"
+    merged_for_seed = merge_with_transport_and_final_mining_map(working_map, final_mining_map)
+    preserve_seed_stats = seed_pass12_scratch_from_merged_existing(
+        merged_for_seed,
+        mineable=mineable,
+        scratch=scratch,
+    )
+    extractors_after_seed = len(scratch.extractor_cells)
+    extensions_after_seed = len(scratch.extension_facings)
     extra_transport_blocks = pass12_transport_related_block_extra_cells(existing_layout_analysis)
     placement_transport_blocked_counter: list[int] = [0]
 
@@ -302,44 +331,56 @@ def integrate_pass12_placement_into_working_map(
             }
         )
     try:
-        placed = run_pass1_outer_placement_mvp(
-            mineable_cells=mineable,
-            asteroid_cells=asteroid,
-            scratch=scratch,
-            is_external=is_external,
-            existing_layout_analysis=existing_layout_analysis,
-            replay_events=replay_events,
-            extra_transport_block_cells=extra_transport_blocks,
-            placement_transport_blocked_counter=placement_transport_blocked_counter,
-        )
-        scratch_after_pass1 = _clone_scratch(scratch)
-        ex_before_p2 = len(scratch.extractor_cells)
-        ext_before_p2 = len(scratch.extension_facings)
-        tr_before_p2 = len(scratch.transport_cells)
-        # Pass2 spine seeds: extension-인접 void cells (Pass2 진입 직전 관측). 동작 변경 없음;
-        # 후속 단계에서 우선순위/힌트로 활용 가능. 정본: 07_step3_pass2_placement.md §8.
-        ext_role = "fluid_extension" if surface == "fluid" else "extension"
-        buildings_for_spine: dict[Coord, str] = {
-            cell: ext_role for cell in scratch.extension_facings
-        }
-        spine_seeds = spine_seed_voids_adjacent_extensions(
-            buildings_for_spine,
-            set(asteroid),
-        )
-        priority_seeds_arg: frozenset[Coord] | None = (
-            frozenset(spine_seeds) if pass2_spine_priority_enabled and spine_seeds else None
-        )
-        placed_p2 = run_pass2_internal_placement_mvp(
-            mineable_cells=mineable,
-            asteroid_cells=asteroid,
-            scratch=scratch,
-            is_external=is_external,
-            hard_barrier_cells=pass2_hard_barriers,
-            replay_events=replay_events,
-            priority_seeds=priority_seeds_arg,
-            extra_transport_block_cells=extra_transport_blocks,
-            placement_transport_blocked_counter=placement_transport_blocked_counter,
-        )
+        priority_seeds_arg: frozenset[Coord] | None = None
+        spine_seeds: frozenset[Coord] = frozenset()
+        if suppress_pass1_pass2_loops:
+            scratch_after_pass1 = _clone_scratch(scratch)
+            ex_before_p2 = len(scratch.extractor_cells)
+            ext_before_p2 = len(scratch.extension_facings)
+            tr_before_p2 = len(scratch.transport_cells)
+            placed = 0
+            placed_p2 = 0
+        else:
+            placed = run_pass1_outer_placement_mvp(
+                mineable_cells=mineable,
+                asteroid_cells=asteroid,
+                scratch=scratch,
+                is_external=is_external,
+                existing_layout_analysis=existing_layout_analysis,
+                replay_events=replay_events,
+                extra_transport_block_cells=extra_transport_blocks,
+                placement_transport_blocked_counter=placement_transport_blocked_counter,
+            )
+            scratch_after_pass1 = _clone_scratch(scratch)
+            ex_before_p2 = len(scratch.extractor_cells)
+            ext_before_p2 = len(scratch.extension_facings)
+            tr_before_p2 = len(scratch.transport_cells)
+            # Pass2 spine seeds: extension-인접 void cells (Pass2 진입 직전 관측). 동작 변경 없음;
+            # 후속 단계에서 우선순위/힌트로 활용 가능. 정본: 07_step3_pass2_placement.md §8.
+            ext_role = "fluid_extension" if surface == "fluid" else "extension"
+            buildings_for_spine: dict[Coord, str] = {
+                cell: ext_role for cell in scratch.extension_facings
+            }
+            spine_seeds = frozenset(
+                spine_seed_voids_adjacent_extensions(
+                    buildings_for_spine,
+                    set(asteroid),
+                )
+            )
+            priority_seeds_arg = (
+                spine_seeds if pass2_spine_priority_enabled and spine_seeds else None
+            )
+            placed_p2 = run_pass2_internal_placement_mvp(
+                mineable_cells=mineable,
+                asteroid_cells=asteroid,
+                scratch=scratch,
+                is_external=is_external,
+                hard_barrier_cells=pass2_hard_barriers,
+                replay_events=replay_events,
+                priority_seeds=priority_seeds_arg,
+                extra_transport_block_cells=extra_transport_blocks,
+                placement_transport_blocked_counter=placement_transport_blocked_counter,
+            )
         merged_pass1 = _merge_pass1_into_rows(
             working_map,
             final_mining_map,
@@ -363,8 +404,8 @@ def integrate_pass12_placement_into_working_map(
         pass1_new_transport_cells = tr_before_p2 - len(transport_init)
         stats: dict[str, Any] = {
             "pass1_outer_placements": placed,
-            "pass1_new_extractor_cells": ex_before_p2,
-            "pass1_new_extension_cells": ext_before_p2,
+            "pass1_new_extractor_cells": ex_before_p2 - extractors_after_seed,
+            "pass1_new_extension_cells": ext_before_p2 - extensions_after_seed,
             "pass1_preserved_transport_cells": len(transport_init),
             "pass1_new_transport_cells": pass1_new_transport_cells,
             "pass1_total_transport_cells_after": tr_before_p2,
@@ -379,6 +420,8 @@ def integrate_pass12_placement_into_working_map(
             "pass12_mixed_surface_skipped": False,
             "placement_records": dict(scratch.placement_records),
             "placement_candidate_blocked_count": int(placement_transport_blocked_counter[0]),
+            "pass12_placement_loops_suppressed": suppress_pass1_pass2_loops,
+            **preserve_seed_stats,
             **ela_meta,
         }
         if replay_events is not None and pass12_txn_id is not None:

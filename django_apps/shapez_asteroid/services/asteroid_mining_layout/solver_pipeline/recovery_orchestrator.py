@@ -162,6 +162,75 @@ def recovery_timeline_envelope() -> dict[str, Any]:
     }
 
 
+def _apply_layout_preserve_hard_gate(
+    out: dict[str, Any],
+    summary_fields: dict[str, Any],
+    *,
+    step05_baseline_map: list[dict[str, Any]],
+    existing_layout_analysis: dict[str, Any] | None,
+    existing_input_internal_transport: int | None,
+    replay_events: list[dict[str, Any]],
+) -> None:
+    """If non-raw input regressed internal transport vs merged baseline, restore timeline maps."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+        LAYOUT_PRESERVE_HARD_GATE_REASON_TRANSPORT_REGRESSION,
+        SOLVER_FRAME_PASS3_TRANSPORT,
+        SOLVER_FRAME_VALIDATE,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
+        solver_mutation_transaction as solver_mut_txn,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
+        SolverMutationEventKind,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
+        _append_optimization_warnings,
+    )
+
+    sk = (
+        existing_layout_analysis.get("source_kind")
+        if isinstance(existing_layout_analysis, dict)
+        else None
+    )
+    if sk in (None, "raw_asteroid_field"):
+        summary_fields.setdefault("layout_preserve_hard_gate_triggered", False)
+        return
+    fin = summary_fields.get("after_internal_transport_count")
+    if not isinstance(existing_input_internal_transport, int) or not isinstance(fin, int):
+        summary_fields.setdefault("layout_preserve_hard_gate_triggered", False)
+        return
+    if fin <= existing_input_internal_transport:
+        summary_fields.setdefault("layout_preserve_hard_gate_triggered", False)
+        return
+
+    preserved = solver_mut_txn.copy_mining_map_rows(step05_baseline_map)
+    for fr in out.get("solver_timeline") or []:
+        if fr.get("id") in (SOLVER_FRAME_PASS3_TRANSPORT, SOLVER_FRAME_VALIDATE):
+            fr["mining_map"] = preserved
+    summary_fields["layout_preserve_hard_gate_triggered"] = True
+    summary_fields["layout_preserve_hard_gate_reason"] = (
+        LAYOUT_PRESERVE_HARD_GATE_REASON_TRANSPORT_REGRESSION
+    )
+    summary_fields["existing_input_internal_transport_count"] = existing_input_internal_transport
+    summary_fields["after_internal_transport_count"] = existing_input_internal_transport
+    fv = out.get("final_validation")
+    if isinstance(fv, dict):
+        fv["optimization_final_internal_transport_count"] = existing_input_internal_transport
+    _append_optimization_warnings(summary_fields)
+    replay_events.append(
+        {
+            "kind": SolverMutationEventKind.FRAME_CHECKPOINT.value,
+            "phase": "layout_preserve_hard_gate",
+            "payload": {
+                "reason": LAYOUT_PRESERVE_HARD_GATE_REASON_TRANSPORT_REGRESSION,
+                "prior_after_internal_transport_count": fin,
+                "restored_to_input_internal_transport_count": existing_input_internal_transport,
+            },
+        }
+    )
+
+
 def run_solver_timeline_pipeline(
     *,
     decoded: dict[str, Any],
@@ -217,6 +286,10 @@ def run_solver_timeline_pipeline(
     existing_layout_analysis = analyze_existing_layout_from_mining_map(
         step05_baseline_map,
         is_external=is_external,
+    )
+    existing_input_internal_transport = optimization_baseline_internal_transport_at_map(
+        step05_baseline_map,
+        final_mining_map=final_map,
     )
 
     pass12 = run_pass12_stage(
@@ -360,6 +433,14 @@ def run_solver_timeline_pipeline(
             optimization_counterfactual_aggregation=counterfactual_routing.aggregation,
         )
         assert summary_fields is not None
+        _apply_layout_preserve_hard_gate(
+            out,
+            summary_fields,
+            step05_baseline_map=step05_baseline_map,
+            existing_layout_analysis=existing_layout_analysis,
+            existing_input_internal_transport=existing_input_internal_transport,
+            replay_events=replay_events,
+        )
         if is_validation_recovery_loop_enabled():
             c = va + 1
             summary_fields["validation_recovery_cycles_used"] = c

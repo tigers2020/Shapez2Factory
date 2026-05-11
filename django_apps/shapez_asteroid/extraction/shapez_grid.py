@@ -38,6 +38,43 @@ def step_cardinal(x: int, y: int, dx: int, dy: int) -> Coord | None:
     return None
 
 
+def _try_cardinal_unit_toward(from_xy: Coord, to_xy: Coord) -> tuple[int, int] | None:
+    x, y = from_xy
+    for udx, udy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        if step_cardinal(x, y, udx, udy) == to_xy:
+            return (udx, udy)
+    return None
+
+
+def require_cardinal_unit_toward(from_xy: Coord, to_xy: Coord) -> tuple[int, int]:
+    """One legal cardinal step from ``from_xy`` that lands on ``to_xy``; else raise.
+
+    Use for rotation, extension facing, path-segment direction, and turn detection so invalid
+    topology fails fast. Raw ``(to_xy[0]-from_xy[0], …)`` is wrong across the missing ``x==0``
+    column (e.g. adjacent ``-1`` and ``1`` with raw Δx ``2``).
+    """
+
+    r = _try_cardinal_unit_toward(from_xy, to_xy)
+    if r is None:
+        raw = (to_xy[0] - from_xy[0], to_xy[1] - from_xy[1])
+        raise ValueError(
+            f"no legal cardinal step from {from_xy!r} to {to_xy!r} (raw delta {raw!r}); "
+            "not shapez-grid-adjacent"
+        )
+    return r
+
+
+def cardinal_unit_toward(from_xy: Coord, to_xy: Coord) -> tuple[int, int]:
+    """Tolerant: same as ``require_cardinal_unit_toward`` when adjacent; else ``(1, 0)``.
+
+    Prefer ``require_cardinal_unit_toward`` anywhere invalid adjacency should surface
+    (facing, rotation, path turns). Keep this only for legacy or UI paths that must not raise.
+    """
+
+    r = _try_cardinal_unit_toward(from_xy, to_xy)
+    return r if r is not None else (1, 0)
+
+
 def neighbors4(x: int, y: int) -> tuple[Coord, ...]:
     out: list[Coord] = []
     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):

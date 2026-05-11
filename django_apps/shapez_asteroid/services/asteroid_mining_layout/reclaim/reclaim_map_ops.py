@@ -7,6 +7,7 @@ import math
 from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
+from django_apps.shapez_asteroid.extraction.shapez_grid import require_cardinal_unit_toward
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     MAX_RECLAIM_INTERNAL_TRANSPORT_SPEND_RATIO,
     MIN_INTERNAL_TRANSPORT_SPEND_WHEN_NO_PASS3_SAVINGS,
@@ -66,7 +67,7 @@ def _provisional_reclaim_layout_rows(
         transport_role = "pipe"
     else:
         raise ValueError(f"unknown transport_kind {transport_kind!r}")
-    edx, edy = anchor[0] - extension[0], anchor[1] - extension[1]
+    edx, edy = require_cardinal_unit_toward(extension, anchor)
     ext_r = rotation_r_for_extension_facing_parent((edx, edy))
     miner_row: dict[str, Any] = {
         "x": anchor[0],

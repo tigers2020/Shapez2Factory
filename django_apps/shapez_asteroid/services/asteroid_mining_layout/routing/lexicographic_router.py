@@ -8,7 +8,10 @@ from __future__ import annotations
 import heapq
 from collections.abc import Mapping, Set
 
-from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
+from django_apps.shapez_asteroid.extraction.shapez_grid import (
+    neighbors4,
+    require_cardinal_unit_toward,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     MINING_OPPORTUNITY_LOSS_PER_CANDIDATE,
     PASS3_INTERIOR_DEPTH_PENALTY_MAX_DEPTH,
@@ -37,10 +40,11 @@ type SearchState = tuple[Coord, Coord | None]
 
 def _turn_delta(prev: Coord | None, cur: Coord, nxt: Coord) -> int:
     """이전 heading과 다음 heading의 turn cost 증가분을 계산한다 (§11.1 lex 차원 순서)."""
+
     if prev is None:
         return 0
-    v1 = (cur[0] - prev[0], cur[1] - prev[1])
-    v2 = (nxt[0] - cur[0], nxt[1] - cur[1])
+    v1 = require_cardinal_unit_toward(prev, cur)
+    v2 = require_cardinal_unit_toward(cur, nxt)
     return 1 if v1 != v2 else 0
 
 

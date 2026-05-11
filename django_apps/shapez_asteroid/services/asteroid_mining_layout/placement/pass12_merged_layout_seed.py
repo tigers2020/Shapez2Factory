@@ -10,8 +10,14 @@ from collections import deque
 from collections.abc import Mapping
 from typing import Any
 
-from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
-from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4, step_cardinal
+from django_apps.shapez_asteroid.extraction.shape_miner_rotation import (
+    output_offset_r,
+    shape_miner_output_cell,
+)
+from django_apps.shapez_asteroid.extraction.shapez_grid import (
+    neighbors4,
+    require_cardinal_unit_toward,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_contracts import (
     Pass12LayoutScratch,
@@ -91,21 +97,11 @@ def _bfs_extensions_from_miner(
     return frozenset(found)
 
 
-def _extension_unit_facing_toward(ext: Coord, parent: Coord) -> tuple[int, int]:
-    """Unit cardinal from ext toward parent (no x==0 column; raw Δx may be ±2)."""
-
-    x, y = ext
-    for udx, udy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        if step_cardinal(x, y, udx, udy) == parent:
-            return (udx, udy)
-    return (1, 0)
-
-
 def _extension_facing_parent(ext: Coord, parent_by_cell: dict[Coord, Coord]) -> tuple[int, int]:
     p = parent_by_cell[ext]
     if p == ext:
         return (1, 0)
-    return _extension_unit_facing_toward(ext, p)
+    return require_cardinal_unit_toward(ext, p)
 
 
 def _parent_tree_for_miner_and_extensions(
@@ -186,12 +182,10 @@ def seed_pass12_scratch_from_merged_existing(
 
         ext_tuple = tuple(sorted(exts, key=lambda p: (p[1], p[0])))
 
-        if routed_ok and tk is not None and stub_cell is not None:
+        if routed_ok and tk is not None and stub_cell is not None and eff_r is not None:
             scratch.blocked_cells |= {miner} | set(exts)
             scratch.extractor_cells.add(miner)
-            dx, dy = stub_cell[0] - miner[0], stub_cell[1] - miner[1]
-            if dx != 0 or dy != 0:
-                scratch.extractor_output_dirs[miner] = (dx, dy)
+            scratch.extractor_output_dirs[miner] = output_offset_r(eff_r)
             for ext in sorted(exts, key=lambda p: (p[1], p[0])):
                 if ext in parent_by_cell and parent_by_cell[ext] != ext:
                     scratch.extension_facings[ext] = _extension_facing_parent(ext, parent_by_cell)
@@ -234,7 +228,7 @@ def seed_pass12_scratch_from_merged_existing(
                 parent = n
                 break
         if parent is not None:
-            scratch.extension_facings[c] = _extension_unit_facing_toward(c, parent)
+            scratch.extension_facings[c] = require_cardinal_unit_toward(c, parent)
         else:
             scratch.extension_facings[c] = (1, 0)
 

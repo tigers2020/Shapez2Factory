@@ -14,7 +14,9 @@ Nested blocks (v1):
   - ``existing_transport_cell_crossings``: counts **entries onto pre-existing transport cells**
     of the routed role during path paint (same map as legacy ``edges``). This is **not** full
   route-cell load and **not** graph edge load.
-  - ``trunk_edge_load``: reserved for future true edge-keyed load; always ``{}`` in v1.
+  - ``trunk_edge_load``: per ``transport_kind`` undirected corridor edge keys
+    ``"x1,y1--x2,y2"`` (sorted endpoints) counting route path step traversals. Separate from
+    ``existing_transport_cell_crossings`` / legacy ``edges`` (pre-existing transport cell entries).
 
 Merge safety:
 
@@ -30,6 +32,7 @@ Legacy:
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
@@ -40,7 +43,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
 
 TRUNK_LOAD_CONTRACT_VERSION = 1
 
-# v1 keys that must not be overwritten by ``p2c_metrics`` (defensive; P2-C keys use other names).
+# v1 keys that must not be overwritten by ``p2c_metrics`` (defensive merge).
+# P2-C metrics must use ``p2c_*`` or other non-contract diagnostic keys — not these names.
 _TRUNK_LOAD_V1_P2C_SAFEGUARD_KEYS: frozenset[str] = frozenset(
     {
         "trunk_load_contract_version",
@@ -57,6 +61,36 @@ _TRUNK_LOAD_V1_P2C_SAFEGUARD_KEYS: frozenset[str] = frozenset(
 
 # Stable keys for per-kind trunk load (extend with any extra ``transport_kind`` seen in-run).
 _DEFAULT_TRUNK_KINDS: tuple[str, ...] = ("shape_belt", "fluid_pipe")
+
+
+def canonical_trunk_edge_key(a: Coord, b: Coord) -> str:
+    """Undirected edge key: sorted endpoints ``x,y`` match legacy cell string order."""
+
+    lo, hi = sorted([a, b])
+    return f"{lo[0]},{lo[1]}--{hi[0]},{hi[1]}"
+
+
+def accumulate_trunk_edge_load(
+    trunk_edge_load_by_kind: dict[str, dict[str, int]],
+    transport_kind: str,
+    path: Sequence[Coord],
+) -> None:
+    """Add one traversal count per consecutive cell pair in ``path`` (``len(path) < 2``: no-op)."""
+
+    if len(path) < 2:
+        return
+    bucket = trunk_edge_load_by_kind.setdefault(transport_kind, {})
+    for u, v in zip(path, path[1:], strict=True):
+        ek = canonical_trunk_edge_key(u, v)
+        bucket[ek] = bucket.get(ek, 0) + 1
+
+
+def _normalized_trunk_edge_load_block(
+    trunk_edge_load_by_kind: Mapping[str, Mapping[str, int]] | None,
+    kind_keys: tuple[str, ...],
+) -> dict[str, dict[str, int]]:
+    src = trunk_edge_load_by_kind or {}
+    return {k: dict(sorted((src.get(k) or {}).items())) for k in kind_keys}
 
 
 def _ordered_kind_keys(
@@ -80,6 +114,7 @@ def build_step4_trunk_load(
     unique_cells_by_kind: dict[str, set[Coord]],
     p2c_metrics: dict[str, Any],
     trace: dict[str, Any],
+    trunk_edge_load_by_kind: Mapping[str, Mapping[str, int]] | None = None,
 ) -> dict[str, Any]:
     """Assemble the STEP4 ``trunk_load`` dict (nested contract + legacy flat keys + P2-C)."""
 
@@ -89,6 +124,10 @@ def build_step4_trunk_load(
     kind_keys = _ordered_kind_keys(
         committed_trunk_by_kind, route_visits_by_kind, unique_cells_by_kind
     )
+    edge_only_kinds = set((trunk_edge_load_by_kind or {}).keys()) - set(kind_keys)
+    if edge_only_kinds:
+        kind_keys = tuple(dict.fromkeys((*kind_keys, *sorted(edge_only_kinds))))
+    trunk_edge_block = _normalized_trunk_edge_load_block(trunk_edge_load_by_kind, kind_keys)
     for k in kind_keys:
         cells_k = unique_cells_by_kind.get(k) or set()
         by_kind_out[k] = {
@@ -107,7 +146,7 @@ def build_step4_trunk_load(
         "trunk_load_by_kind": by_kind_out,
         "transport_usage_load": {
             "existing_transport_cell_crossings": crossings_sorted,
-            "trunk_edge_load": {},
+            "trunk_edge_load": trunk_edge_block,
         },
         # Deprecated legacy aliases (keep one release; values mirror nested blocks above).
         "edges": crossings_sorted,

@@ -17,8 +17,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_mer
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
     TRUNK_LOAD_CONTRACT_VERSION,
+    accumulate_trunk_edge_load,
     build_step4_trunk_load,
     build_step4_trunk_load_pipeline_exception_stub,
+    canonical_trunk_edge_key,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     external_predicate_for_mining_map,
@@ -27,6 +29,10 @@ from django_apps.shapez_asteroid.services.blueprint_map_summary import build_map
 from tests.unit.shapez_asteroid.test_step4_merge_routing import (
     _decoded_shape_miners_with_belt_escape,
 )
+
+
+def _empty_trunk_edge_load_by_kind() -> dict[str, dict[str, int]]:
+    return {"shape_belt": {}, "fluid_pipe": {}}
 
 
 def _assert_trunk_load_nested_matches_legacy(tl: dict) -> None:
@@ -48,6 +54,7 @@ def test_pipeline_exception_stub_distinguishes_from_pass12_skipped() -> None:
     assert tl.get("skipped") is False
     assert tl.get("step4_result_state") == "pipeline_exception"
     assert tl["trunk_load_contract_version"] == 1
+    assert tl["transport_usage_load"]["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
 
 
 def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_v1_keys() -> None:
@@ -96,6 +103,74 @@ def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_v1_keys() -> None:
     assert tl["route_metrics"]["unique_route_cell_count"] == 2
     assert tl["route_revalidation_passed"] is False
     assert tl["edges"] == {}
+    assert tl["transport_usage_load"]["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
+
+
+def test_canonical_trunk_edge_key_is_symmetric_under_reverse() -> None:
+    a, b = (1, 2), (1, 3)
+    assert canonical_trunk_edge_key(a, b) == canonical_trunk_edge_key(b, a)
+    assert canonical_trunk_edge_key(a, b) == "1,2--1,3"
+
+
+def test_accumulate_trunk_edge_load_single_path() -> None:
+    acc: dict[str, dict[str, int]] = {}
+    accumulate_trunk_edge_load(acc, "shape_belt", [(1, 1), (1, 2), (1, 3)])
+    assert acc["shape_belt"] == {"1,1--1,2": 1, "1,2--1,3": 1}
+
+
+def test_accumulate_trunk_edge_load_shared_segment() -> None:
+    acc: dict[str, dict[str, int]] = {}
+    accumulate_trunk_edge_load(acc, "shape_belt", [(1, 1), (1, 2), (1, 3)])
+    accumulate_trunk_edge_load(acc, "shape_belt", [(2, 1), (1, 2), (1, 3)])
+    assert acc["shape_belt"]["1,2--1,3"] == 2
+
+
+def test_accumulate_trunk_edge_load_reverse_paths_merge() -> None:
+    acc: dict[str, dict[str, int]] = {}
+    accumulate_trunk_edge_load(acc, "shape_belt", [(1, 2), (1, 3)])
+    accumulate_trunk_edge_load(acc, "shape_belt", [(1, 3), (1, 2)])
+    assert acc["shape_belt"] == {"1,2--1,3": 2}
+
+
+def test_accumulate_trunk_edge_load_kind_isolation() -> None:
+    acc: dict[str, dict[str, int]] = {}
+    accumulate_trunk_edge_load(acc, "shape_belt", [(1, 2), (1, 3)])
+    accumulate_trunk_edge_load(acc, "fluid_pipe", [(1, 2), (1, 3)])
+    assert acc["shape_belt"] == {"1,2--1,3": 1}
+    assert acc["fluid_pipe"] == {"1,2--1,3": 1}
+
+
+def test_trunk_edge_visit_sum_relates_to_route_cell_visits() -> None:
+    """sum(edge traversals) = sum(max(len(path)-1,0)) over accumulated paths."""
+
+    acc: dict[str, dict[str, int]] = {}
+    paths = (
+        ("shape_belt", [(1, 1), (1, 2), (1, 3)]),
+        ("shape_belt", [(1, 3), (1, 2)]),
+        ("shape_belt", [(5, 5)]),
+    )
+    visits = 0
+    edge_steps = 0
+    for kind, path in paths:
+        accumulate_trunk_edge_load(acc, kind, path)
+        visits += len(path)
+        edge_steps += max(len(path) - 1, 0)
+    total_edges = sum(sum(d.values()) for d in acc.values())
+    assert total_edges == edge_steps
+    tl = build_step4_trunk_load(
+        trunk_edge_hits={},
+        route_cell_visits=visits,
+        final_route_cells={(1, 1), (1, 2), (1, 3), (5, 5)},
+        committed_trunk_by_kind={"shape_belt": {(1, 1), (1, 2), (1, 3), (5, 5)}},
+        route_visits_by_kind={"shape_belt": visits},
+        unique_cells_by_kind={"shape_belt": {(1, 1), (1, 2), (1, 3), (5, 5)}},
+        p2c_metrics={},
+        trace={"mode": "accumulate_only"},
+        trunk_edge_load_by_kind=acc,
+    )
+    assert tl["route_metrics"]["route_cell_visits"] == visits
+    tel = tl["transport_usage_load"]["trunk_edge_load"]
+    assert sum(sum(d.values()) for d in tel.values()) == total_edges
 
 
 def test_step4_trunk_load_skipped_has_contract_version_and_nested_blocks() -> None:
@@ -106,7 +181,7 @@ def test_step4_trunk_load_skipped_has_contract_version_and_nested_blocks() -> No
     assert tl["route_metrics"]["route_cell_visits"] == 0
     assert tl["route_metrics"]["unique_route_cell_count"] == 0
     assert tl["transport_usage_load"]["existing_transport_cell_crossings"] == {}
-    assert tl["transport_usage_load"]["trunk_edge_load"] == {}
+    assert tl["transport_usage_load"]["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
     assert "shape_belt" in tl["trunk_load_by_kind"] and "fluid_pipe" in tl["trunk_load_by_kind"]
     assert tl.get("step4_result_state") != "pipeline_exception"
     _assert_trunk_load_nested_matches_legacy(tl)
@@ -129,6 +204,8 @@ def test_step4_trunk_load_keeps_legacy_edges_alias_for_one_release() -> None:
     )
     tl = r.trunk_load
     assert tl["trunk_load_contract_version"] == 1
+    tel = tl["transport_usage_load"]["trunk_edge_load"]
+    assert set(tel) == {"shape_belt", "fluid_pipe"}
     _assert_trunk_load_nested_matches_legacy(tl)
 
 

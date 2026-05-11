@@ -76,6 +76,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_rou
     _routing_state_from_committed_routes,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
+    accumulate_trunk_edge_load,
     build_step4_trunk_load,
     build_step4_trunk_load_skipped,
 )
@@ -174,6 +175,16 @@ def run_step4_merge_aware_routing(
     routes_out: list[Step4Route] = []
     failures: list[dict[str, Any]] = []
     trunk_edge_hits: dict[str, int] = {}
+    trunk_edge_load_by_kind: dict[str, dict[str, int]] = {}
+    p2c_metrics: dict[str, Any] = {
+        "route_revalidation_passed": True,
+        "broken_routed_route_count": 0,
+        "cascade_corrective_attempts": 0,
+        "cascade_reroute_count": 0,
+        "cascade_rollback_count": 0,
+        "cascade_rolled_back_placement_ids": tuple(),
+        "cascade_route_replay_detail": [],
+    }
     rolled_back: list[str] = []
     quarantined: list[str] = []
     unrecoverable = False
@@ -324,6 +335,10 @@ def run_step4_merge_aware_routing(
             trunk_edge_hits=trunk_edge_hits,
         )
 
+        trunk_edge_load_by_kind.clear()
+        for rt in routes_out:
+            accumulate_trunk_edge_load(trunk_edge_load_by_kind, rt.transport_kind, rt.path)
+
         _stamp_placement_commit_on_map_rows(cells, work_records)
 
         out_rows = _rows_from_cells(cells)
@@ -376,6 +391,7 @@ def run_step4_merge_aware_routing(
         unique_cells_by_kind=unique_cells_by_kind,
         p2c_metrics=p2c_metrics,
         trace=trace_tl,
+        trunk_edge_load_by_kind=trunk_edge_load_by_kind,
     )
 
     committed = not unrecoverable

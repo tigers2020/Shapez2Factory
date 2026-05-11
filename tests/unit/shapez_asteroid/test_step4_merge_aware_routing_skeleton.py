@@ -28,6 +28,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_goa
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_merge_routing import (
     run_step4_merge_aware_routing,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
+    accumulate_trunk_edge_load,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
     external_predicate_for_mining_map,
@@ -188,6 +191,29 @@ def test_trunk_load_accumulates_without_capacity_hard_gate() -> None:
     cap_ref = 1
     assert acc > cap_ref or acc == acc
     assert r.trunk_load.get("mode") == "accumulate_only"
+
+
+def test_trunk_edge_load_matches_final_route_paths() -> None:
+    """``trunk_edge_load`` is derived from the same ``Step4Route.path`` tuples returned."""
+
+    decoded = _decoded_shape_miners_with_belt_escape()
+    mt = build_map_timeline(decoded)
+    wm, fm = mt[0]["mining_map"], mt[-1]["mining_map"]
+    is_ext = external_predicate_for_mining_map(mt[1]["mining_map"])
+    _p1, m2, stats = integrate_pass12_placement_into_working_map(
+        working_map=wm, final_mining_map=fm, is_external=is_ext
+    )
+    pr = stats.get("placement_records")
+    r = run_step4_merge_aware_routing(
+        m2, final_mining_map=fm, is_external=is_ext, placement_records=pr
+    )
+    recomputed: dict[str, dict[str, int]] = {}
+    for rt in r.routes:
+        accumulate_trunk_edge_load(recomputed, rt.transport_kind, rt.path)
+    tel = r.trunk_load["transport_usage_load"]["trunk_edge_load"]
+    assert set(tel) == {"shape_belt", "fluid_pipe"}
+    for kind in ("shape_belt", "fluid_pipe"):
+        assert dict(sorted(recomputed.get(kind, {}).items())) == tel[kind]
 
 
 def test_exterior_margin_union_trunk_seed_in_candidates() -> None:

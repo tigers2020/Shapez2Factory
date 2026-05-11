@@ -18,6 +18,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     want_role as _want_role,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
+    solver_replay_events as _solver_replay_events,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4Route,
 )
@@ -30,6 +33,23 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
 )
 
 _MAX_P2C_CORRECTIVE_ATTEMPTS = 64
+
+
+def _path_cells_diff_xy(
+    old_path: tuple[Coord, ...], new_path: tuple[Coord, ...]
+) -> tuple[list[list[int]], list[list[int]], list[list[int]]]:
+    """JSON-friendly cell lists for replay v5 ``route_replaced`` (deterministic sort)."""
+
+    old_s = frozenset(old_path)
+    new_s = frozenset(new_path)
+    removed = sorted(old_s - new_s)
+    added = sorted(new_s - old_s)
+    kept = sorted(old_s & new_s)
+    return (
+        [[c[0], c[1]] for c in removed],
+        [[c[0], c[1]] for c in added],
+        [[c[0], c[1]] for c in kept],
+    )
 
 
 def _facade_dijkstra(*args: Any, **kwargs: Any) -> tuple[Coord, ...] | None:
@@ -190,18 +210,26 @@ def p2c_revalidate_and_correct(
                     work_records[pid].route_id if pid is not None and pid in work_records else None
                 )
                 stable_rid = f"route-{pid}" if pid is not None else None
+                cells_removed, cells_added, cells_kept = _path_cells_diff_xy(br.path, path)
                 replay_rows.append(
                     {
                         "placement_id": pid,
                         "old_route_id": old_rid or stable_rid,
                         "new_route_id": stable_rid,
                         "reason": "p2c_cascade_reroute",
+                        "replacement_reason": "p2c_cascade_reroute",
                         "old_path_cell_count": len(br.path),
                         "new_path_cell_count": len(path),
                         "replacement_search_mode": "p2c_dijkstra_trunk",
                         "replacement_connectivity_preserved": bool(new_rt.reached_external),
                         "replacement_path_cell_delta": len(path) - len(br.path),
                         "replacement_cost_delta": None,
+                        "cells_removed": cells_removed,
+                        "cells_added": cells_added,
+                        "cells_kept": cells_kept,
+                        "transport_kind": _solver_replay_events.normalize_replay_transport_kind(
+                            br.transport_kind
+                        ),
                     }
                 )
                 progress = True

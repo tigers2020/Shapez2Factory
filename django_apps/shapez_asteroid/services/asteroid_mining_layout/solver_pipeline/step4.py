@@ -17,6 +17,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
     SolverMutationEventKind,
     new_replay_transaction_id,
+    normalize_replay_transport_kind,
     replay_transaction_payload,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_state_hash import (
@@ -53,6 +54,46 @@ class Step4StageResult:
     step4_replay_transaction_id: str | None
     unfinalized_placement_count: int
     report_step4: FinalValidationReport
+
+
+def _route_replaced_payload_geo(detail: list[Any]) -> dict[str, Any]:
+    """Union cell diff across P2-C replacement rows for replay v5 ``route_replaced``."""
+
+    rem: set[tuple[int, int]] = set()
+    add: set[tuple[int, int]] = set()
+    tk0: str | None = None
+    rr0: str | None = None
+    for row in detail:
+        if not isinstance(row, dict):
+            continue
+        for pair in row.get("cells_removed") or []:
+            if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+                x, y = int(pair[0]), int(pair[1])
+                if x != 0:
+                    rem.add((x, y))
+        for pair in row.get("cells_added") or []:
+            if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+                x, y = int(pair[0]), int(pair[1])
+                if x != 0:
+                    add.add((x, y))
+        if tk0 is None:
+            tkv = row.get("transport_kind")
+            if isinstance(tkv, str):
+                tk0 = normalize_replay_transport_kind(tkv)
+        if rr0 is None:
+            rrv = row.get("replacement_reason") or row.get("reason")
+            if isinstance(rrv, str) and rrv:
+                rr0 = rrv
+    out: dict[str, Any] = {
+        "cells_removed": [[a, b] for a, b in sorted(rem)],
+        "cells_added": [[a, b] for a, b in sorted(add)],
+        "cells_kept": None,
+    }
+    if tk0:
+        out["transport_kind"] = tk0
+    if rr0 is not None:
+        out["replacement_reason"] = rr0
+    return out
 
 
 def _validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValidationReport:
@@ -151,6 +192,8 @@ def run_step4_stage(
                 rr_detail = step4_result.trunk_load.get("cascade_route_replay_detail")
                 if isinstance(rr_detail, list):
                     rr_payload["replacements"] = rr_detail
+                    if rr_detail:
+                        rr_payload.update(_route_replaced_payload_geo(rr_detail))
                 replay_events.append(
                     {
                         "kind": SolverMutationEventKind.ROUTE_REPLACED.value,

@@ -83,6 +83,8 @@
       data-msg-p4-soft-overlay="{% filter escapejs %}{% trans 'P4 soft protected candidates (last commit)' %}{% endfilter %}"
       data-msg-p4-soft-replace-old-overlay="{% filter escapejs %}{% trans 'P4 soft repair old cells (last session)' %}{% endfilter %}"
       data-msg-p4-soft-replace-new-overlay="{% filter escapejs %}{% trans 'P4 soft repair new cells (last session)' %}{% endfilter %}"
+      data-msg-route-replay-removed="{% filter escapejs %}{% trans 'Replay: route cells removed (cascade reroute)' %}{% endfilter %}"
+      data-msg-route-replay-added="{% filter escapejs %}{% trans 'Replay: route cells added (cascade reroute)' %}{% endfilter %}"
       data-map-viz-stage-0="{% filter escapejs %}{% trans 'Prepare string' %}{% endfilter %}"
       data-map-viz-stage-1="{% filter escapejs %}{% trans 'Binary payload' %}{% endfilter %}"
       data-map-viz-stage-2="{% filter escapejs %}{% trans 'Parse JSON' %}{% endfilter %}"
@@ -513,6 +515,18 @@
   var SPAN = 10;
   var plotCompact = null;
   var svgNs = "http://www.w3.org/2000/svg";
+  /** Replay v5 ``route_replaced`` / UI boundary: belt|pipe aliases → shape_belt|fluid_pipe. */
+  function normalizeReplayTransportKind(kind) {
+    if (kind == null || kind === "") return null;
+    var s = String(kind).trim();
+    if (!s) return null;
+    var t = s.toLowerCase();
+    if (t === "belt") return "shape_belt";
+    if (t === "pipe") return "fluid_pipe";
+    if (t === "shape_belt") return "shape_belt";
+    if (t === "fluid_pipe") return "fluid_pipe";
+    return s;
+  }
   var cellMap = Object.create(null);
   var bboxRegions = [];
   var voidLabel = "void";
@@ -521,8 +535,9 @@
   var lastMiningMap = [];
   var lastStyleCatalog = {};
   var lastSolverReplay = null;
-  /** Solver-only replay (STEP10); map rows come from ``solver_timeline``; meta may use ``solver_replay.ui_frames``. */
+  /** Solver-only replay (STEP10); map rows come from ``solver_timeline``; contract v4 ``ui_frames`` aligns with solver slice. */
   var lastSolverTimeline = [];
+  /** One row per ``solver_timeline`` index (same order as unified timeline from ``solverPhaseStartIndex``). */
   var lastReplayUiFrames = [];
   var currentReplayIndex = 0;
   var replayTimer = null;
@@ -778,6 +793,146 @@
     }
   }
 
+  function solverTimelineUiRow(mapTimelineIndex) {
+    if (
+      solverPhaseStartIndex < 0 ||
+      !Array.isArray(lastReplayUiFrames) ||
+      !lastReplayUiFrames.length
+    ) {
+      return null;
+    }
+    if (mapTimelineIndex < solverPhaseStartIndex) return null;
+    var si = mapTimelineIndex - solverPhaseStartIndex;
+    if (si < 0 || si >= lastReplayUiFrames.length) return null;
+    var row = lastReplayUiFrames[si];
+    return row && typeof row === "object" ? row : null;
+  }
+
+  function buildReplayOverlayDetail(uiRow) {
+    if (!uiRow || typeof uiRow !== "object") return null;
+    var replay = lastSolverReplay;
+    var events = replay && Array.isArray(replay.events) ? replay.events : [];
+    var overlayEvents = [];
+    var ov = uiRow.overlay_event_indices;
+    if (Array.isArray(ov)) {
+      for (var oi = 0; oi < ov.length; oi++) {
+        var ix = ov[oi];
+        if (typeof ix !== "number" || ix < 0 || ix >= events.length) continue;
+        var ev = events[ix];
+        if (ev && typeof ev === "object") overlayEvents.push(ev);
+      }
+    }
+    var counts = { recovery_branch: 0, rollback: 0, route_replaced: 0 };
+    var recoveryAttempt = null;
+    var firstRouteReplayTransportKindCanon = null;
+    for (var i = 0; i < overlayEvents.length; i++) {
+      var k = overlayEvents[i].kind;
+      if (k === "recovery_branch") {
+        counts.recovery_branch++;
+        var p = overlayEvents[i].payload;
+        if (
+          recoveryAttempt == null &&
+          p &&
+          typeof p === "object" &&
+          typeof p.validation_recovery_attempt === "number"
+        ) {
+          recoveryAttempt = p.validation_recovery_attempt;
+        }
+      } else if (k === "rollback") {
+        counts.rollback++;
+      } else if (k === "route_replaced") {
+        counts.route_replaced++;
+        if (firstRouteReplayTransportKindCanon == null) {
+          var plTk = overlayEvents[i].payload;
+          firstRouteReplayTransportKindCanon = normalizeReplayTransportKind(
+            plTk && plTk.transport_kind
+          );
+        }
+      }
+    }
+    var parts = [];
+    if (counts.recovery_branch) {
+      var rlab = "recovery×" + counts.recovery_branch;
+      if (recoveryAttempt != null) rlab += " (attempt " + recoveryAttempt + ")";
+      parts.push(rlab);
+    }
+    if (counts.rollback) parts.push("rollback×" + counts.rollback);
+    if (counts.route_replaced) {
+      var rrMsg = "route_replaced×" + counts.route_replaced;
+      for (var j = 0; j < overlayEvents.length; j++) {
+        if (overlayEvents[j].kind !== "route_replaced") continue;
+        var pl = overlayEvents[j].payload;
+        if (
+          pl &&
+          typeof pl === "object" &&
+          typeof pl.cascade_reroute_count === "number" &&
+          pl.cascade_reroute_count > 0
+        ) {
+          rrMsg += " (cascade " + pl.cascade_reroute_count + ")";
+          break;
+        }
+      }
+      parts.push(rrMsg);
+    }
+    var snaps = uiRow.pass3_layout_snapshots;
+    if (Array.isArray(snaps) && snaps.length) {
+      var ps = [];
+      for (var si = 0; si < snaps.length; si++) {
+        var srow = snaps[si];
+        if (!srow || typeof srow !== "object") continue;
+        var mk = srow.marker;
+        var h = srow.layout_state_sha256;
+        if (typeof h === "string") {
+          ps.push((typeof mk === "string" ? mk : "?") + ":" + h.slice(0, 8));
+        }
+      }
+      if (ps.length) parts.push("p3_hash " + ps.join(", "));
+    }
+    return {
+      overlayEvents: overlayEvents,
+      counts: counts,
+      summaryLine: parts.join(" · "),
+      firstRouteReplayTransportKindCanon: firstRouteReplayTransportKindCanon,
+    };
+  }
+
+  function formatReplayUiFrameMeta(row, overlayDetail) {
+    if (!row || typeof row !== "object") return "";
+    var parts = [];
+    if (
+      typeof row.computation_cycle_ui_tick_start === "number" &&
+      typeof row.computation_cycle_ui_tick_end === "number"
+    ) {
+      parts.push(
+        "cc_tick " +
+          row.computation_cycle_ui_tick_start +
+          (row.computation_cycle_ui_tick_end !== row.computation_cycle_ui_tick_start
+            ? "–" + row.computation_cycle_ui_tick_end
+            : "")
+      );
+    }
+    if (typeof row.computation_cycle_ui_stride === "number") {
+      parts.push("stride " + row.computation_cycle_ui_stride);
+    }
+    if (overlayDetail && overlayDetail.summaryLine) {
+      parts.push(overlayDetail.summaryLine);
+    } else {
+      var ov = row.overlay_event_indices;
+      if (Array.isArray(ov) && ov.length) {
+        parts.push("overlay " + ov.length);
+      }
+    }
+    var p3 = row.pass3_layout_snapshots;
+    var hasP3InSummary =
+      overlayDetail &&
+      overlayDetail.summaryLine &&
+      overlayDetail.summaryLine.indexOf("p3_hash") !== -1;
+    if (Array.isArray(p3) && p3.length && !hasP3InSummary) {
+      parts.push("p3_snap " + p3.length);
+    }
+    return parts.join(" · ");
+  }
+
   function syncMapTimelineStep() {
     var idleTitle = root.getAttribute("data-map-phase-idle-title") || "";
     var idleDesc = root.getAttribute("data-map-phase-idle-desc") || "";
@@ -794,6 +949,7 @@
       if (surface) surface.classList.remove("am-map-decode-active");
       clearPlot();
       if (plotSvg) applyMapOrientation(mapOrientation);
+      if (replayMetaEl) replayMetaEl.textContent = "";
       return;
     }
 
@@ -801,15 +957,26 @@
     if (surface) surface.classList.remove("am-map-decode-active");
     if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
     if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = mapTitle;
+    var uir = solverTimelineUiRow(decodeStepIndex);
+    var overlayDetail = buildReplayOverlayDetail(uir);
     if (mapPhaseDescEl) {
-      mapPhaseDescEl.textContent = mapStepLabel(st && st.id ? st.id : "");
+      var baseLbl = mapStepLabel(st && st.id ? st.id : "");
+      if (overlayDetail && overlayDetail.summaryLine && baseLbl) {
+        mapPhaseDescEl.textContent = baseLbl + " · " + overlayDetail.summaryLine;
+      } else {
+        mapPhaseDescEl.textContent = baseLbl;
+      }
     }
     if (mapDecodeBadgeEl) {
       mapDecodeBadgeEl.textContent = badgePrefix + ": " + (decodeStepIndex + 1) + " / " + n;
     }
 
+    if (replayMetaEl) {
+      replayMetaEl.textContent = uir ? formatReplayUiFrameMeta(uir, overlayDetail) : "";
+    }
+
     rebuildMiningIndex(st.mining_map || []);
-    renderPlot(st.summary, st.mining_map || [], lastStyleCatalog);
+    renderPlot(st.summary, st.mining_map || [], lastStyleCatalog, overlayDetail);
     applyMapOrientation(mapOrientation);
     loadCellsForSummary(st.summary);
   }
@@ -1289,7 +1456,7 @@
     return out;
   }
 
-  function renderPlot(summary, miningMap, styleCatalog) {
+  function renderPlot(summary, miningMap, styleCatalog, replayOverlay) {
     if (!plotSvg) return;
     plotSvg.innerHTML = "";
     plotCompact = null;
@@ -1384,11 +1551,55 @@
       return { route: route, soft: soft, softReplaceOld: softReplaceOld, softReplaceNew: softReplaceNew };
     }
     var p4Cells = p4OverlayCells(summary);
+    function routeReplayCellPoints(overlay) {
+      var removed = [];
+      var added = [];
+      if (!overlay || !overlay.overlayEvents) {
+        return { removed: removed, added: added };
+      }
+      function collectPairs(arr, dest) {
+        if (!Array.isArray(arr)) return;
+        var j;
+        for (j = 0; j < arr.length; j++) {
+          var it = arr[j];
+          if (Array.isArray(it) && it.length >= 2 && typeof it[0] === "number") {
+            if (it[0] === 0) continue;
+            dest.push({ x: it[0], y: it[1] });
+          }
+        }
+      }
+      var ei;
+      for (ei = 0; ei < overlay.overlayEvents.length; ei++) {
+        var ev = overlay.overlayEvents[ei];
+        if (!ev || ev.kind !== "route_replaced") continue;
+        var pl = ev.payload;
+        if (!pl || typeof pl !== "object") continue;
+        var hasTop =
+          (Array.isArray(pl.cells_removed) && pl.cells_removed.length) ||
+          (Array.isArray(pl.cells_added) && pl.cells_added.length);
+        collectPairs(pl.cells_removed, removed);
+        collectPairs(pl.cells_added, added);
+        if (!hasTop) {
+          var reps = pl.replacements;
+          if (Array.isArray(reps)) {
+            var r;
+            for (r = 0; r < reps.length; r++) {
+              if (!reps[r] || typeof reps[r] !== "object") continue;
+              collectPairs(reps[r].cells_removed, removed);
+              collectPairs(reps[r].cells_added, added);
+            }
+          }
+        }
+      }
+      return { removed: removed, added: added };
+    }
+    var rrPts = routeReplayCellPoints(replayOverlay);
+    var rrAll = rrPts.removed.concat(rrPts.added);
     var p4All = p4Cells.route
       .concat(p4Cells.soft)
       .concat(p4Cells.softReplaceOld)
       .concat(p4Cells.softReplaceNew);
-    var forUx = filtered.concat(p4All);
+    var forUx = filtered.concat(p4All).concat(rrAll);
     var ux = uniqueSortedXs(forUx);
     if (ux.length === 0) {
       plotSvg.removeAttribute("viewBox");
@@ -1402,6 +1613,11 @@
       var oy = p4All[oi].y;
       minY = Math.min(minY, oy - mar);
       maxY = Math.max(maxY, oy + mar);
+    }
+    for (oi = 0; oi < rrAll.length; oi++) {
+      var rry = rrAll[oi].y;
+      minY = Math.min(minY, rry - mar);
+      maxY = Math.max(maxY, rry + mar);
     }
     var ch = maxY - minY + 1;
     var n = ux.length;
@@ -1465,6 +1681,30 @@
         var t = document.createElementNS(svgNs, "title");
         t.textContent = titleText;
         r.appendChild(t);
+      }
+      parent.appendChild(r);
+    }
+    function appendRouteReplayOutline(parent, p, strokeColor, titleText) {
+      var idx = xi[p.x];
+      if (idx === undefined) return;
+      var pad = 0.06;
+      var x0 = 1 + idx + pad;
+      var y0 = p.y - minY + pad;
+      var size = 1 - 2 * pad;
+      var r = document.createElementNS(svgNs, "rect");
+      r.setAttribute("fill", "none");
+      r.setAttribute("stroke", strokeColor);
+      r.setAttribute("stroke-width", "0.1");
+      r.setAttribute("x", String(x0));
+      r.setAttribute("y", String(y0));
+      r.setAttribute("width", String(size));
+      r.setAttribute("height", String(size));
+      r.setAttribute("rx", "0.06");
+      r.setAttribute("ry", "0.06");
+      if (titleText) {
+        var tt = document.createElementNS(svgNs, "title");
+        tt.textContent = titleText;
+        r.appendChild(tt);
       }
       parent.appendChild(r);
     }
@@ -1588,6 +1828,84 @@
       gP4.appendChild(gP4SoftReplaceNew);
       plotSvg.appendChild(gP4);
     }
+    if (rrPts.removed.length || rrPts.added.length) {
+      var titleRouteRm =
+        root.getAttribute("data-msg-route-replay-removed") || "";
+      var titleRouteAd =
+        root.getAttribute("data-msg-route-replay-added") || "";
+      var gRR = document.createElementNS(svgNs, "g");
+      gRR.setAttribute("class", "am-route-replay-cells-overlay");
+      var gRRm = document.createElementNS(svgNs, "g");
+      gRRm.setAttribute("class", "am-route-replay-removed");
+      var gRRa = document.createElementNS(svgNs, "g");
+      gRRa.setAttribute("class", "am-route-replay-added");
+      var pri;
+      for (pri = 0; pri < rrPts.removed.length; pri++) {
+        appendRouteReplayOutline(gRRm, rrPts.removed[pri], "#ea580c", titleRouteRm);
+      }
+      for (pri = 0; pri < rrPts.added.length; pri++) {
+        appendRouteReplayOutline(gRRa, rrPts.added[pri], "#0d9488", titleRouteAd);
+      }
+      gRR.appendChild(gRRm);
+      gRR.appendChild(gRRa);
+      plotSvg.appendChild(gRR);
+    }
+    if (
+      replayOverlay &&
+      replayOverlay.overlayEvents &&
+      replayOverlay.overlayEvents.length
+    ) {
+      var cts = replayOverlay.counts || {};
+      var legendRows = [];
+      if (cts.recovery_branch) {
+        legendRows.push({
+          label: "recovery",
+          n: cts.recovery_branch,
+          fill: "#f59e0b",
+        });
+      }
+      if (cts.rollback) {
+        legendRows.push({ label: "rollback", n: cts.rollback, fill: "#dc2626" });
+      }
+      if (cts.route_replaced) {
+        legendRows.push({
+          label: "route",
+          n: cts.route_replaced,
+          fill: "#2563eb",
+        });
+      }
+      if (legendRows.length) {
+        var g10 = document.createElementNS(svgNs, "g");
+        g10.setAttribute("class", "am-step10-replay-overlay");
+        var rowH = 0.42;
+        var padR = 0.15;
+        var x0 = W - 2.35;
+        var li;
+        for (li = 0; li < legendRows.length; li++) {
+          var lr = legendRows[li];
+          var yb = padR + li * rowH;
+          var sq = document.createElementNS(svgNs, "rect");
+          sq.setAttribute("x", String(x0));
+          sq.setAttribute("y", String(yb));
+          sq.setAttribute("width", "0.28");
+          sq.setAttribute("height", "0.28");
+          sq.setAttribute("fill", lr.fill);
+          sq.setAttribute("fill-opacity", "0.85");
+          var tLegend = document.createElementNS(svgNs, "title");
+          tLegend.textContent = lr.label + " ×" + lr.n;
+          sq.appendChild(tLegend);
+          g10.appendChild(sq);
+          var tx = document.createElementNS(svgNs, "text");
+          tx.setAttribute("x", String(x0 + 0.38));
+          tx.setAttribute("y", String(yb + 0.24));
+          tx.setAttribute("font-size", "0.22");
+          tx.setAttribute("fill", "rgb(15 23 42 / 0.9)");
+          tx.textContent = lr.label + "×" + lr.n;
+          g10.appendChild(tx);
+        }
+        plotSvg.appendChild(g10);
+      }
+    }
   }
 
   if (orientBtns.length && plotSvg) {
@@ -1679,6 +1997,7 @@
       clearPlot();
       stopDecodePlay();
       lastSolverReplay = null;
+      lastReplayUiFrames = [];
       solverPhaseStartIndex = -1;
       applyMapTimeline([]);
       applyDecodeSteps([]);
@@ -1705,6 +2024,7 @@
             summaryEl.textContent = idle;
             decodeSummaryText = "";
             lastSolverReplay = null;
+            lastReplayUiFrames = [];
             applyMapTimeline([]);
             applyDecodeSteps([]);
             return;
@@ -1716,6 +2036,8 @@
           lastStyleCatalog = x.data.style_catalog || {};
           var replayNorm = normalizeSolverReplayPayload(x.data.solver_replay);
           lastSolverReplay = replayNorm.replay;
+          var rawUi = replayNorm.replay && replayNorm.replay.ui_frames;
+          lastReplayUiFrames = Array.isArray(rawUi) ? rawUi : [];
           if (replayNorm.contractVersion >= 2) {
             warnUnknownSolverReplayKinds(replayNorm.events);
           }
@@ -1754,6 +2076,7 @@
         })
         .catch(function () {
           lastSolverReplay = null;
+          lastReplayUiFrames = [];
           applyMapTimeline([]);
           applyDecodeSteps([]);
           errEl.textContent = root.getAttribute("data-msg-network") || "";

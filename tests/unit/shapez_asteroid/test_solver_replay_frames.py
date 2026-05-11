@@ -3,17 +3,34 @@
 from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    RECOVERY_PHASE_VALIDATION_RECOVERY,
     SOLVER_FRAME_PASS2_INTERNAL,
     SOLVER_FRAME_PASS3_TRANSPORT,
+    SOLVER_FRAME_STEP4_ROUTING,
+    SOLVER_FRAME_VALIDATE,
     SOLVER_REPLAY_CONTRACT_VERSION,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
     SolverMutationEventKind,
     build_solver_replay_snapshot,
+    normalize_replay_transport_kind,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_frames import (  # noqa: E501
     build_replay_ui_frames,
 )
+
+
+def test_normalize_replay_transport_kind_aliases_and_passthrough() -> None:
+    assert normalize_replay_transport_kind("belt") == "shape_belt"
+    assert normalize_replay_transport_kind("Belt") == "shape_belt"
+    assert normalize_replay_transport_kind("pipe") == "fluid_pipe"
+    assert normalize_replay_transport_kind("shape_belt") == "shape_belt"
+    assert normalize_replay_transport_kind("fluid_pipe") == "fluid_pipe"
+    assert normalize_replay_transport_kind("Shape_Belt") == "shape_belt"
+    assert normalize_replay_transport_kind("custom_tk") == "custom_tk"
+    assert normalize_replay_transport_kind(None) is None
+    assert normalize_replay_transport_kind("") is None
+    assert normalize_replay_transport_kind("   ") is None
 
 
 def test_build_replay_ui_frames_pass3_snapshots_attached_to_pass3_frame() -> None:
@@ -76,7 +93,161 @@ def test_build_replay_ui_frames_pass3_snapshots_attached_to_pass3_frame() -> Non
     assert snaps[1]["marker"] == "after"
 
 
-def test_build_solver_replay_snapshot_includes_ui_frames_contract_v4() -> None:
+def test_build_replay_ui_frames_overlay_indices_per_phase() -> None:
+    """Overlay kinds attach to the frame whose phase map includes the event (step4 vs pass3/p4)."""
+
+    timeline = [
+        {"id": SOLVER_FRAME_STEP4_ROUTING, "summary": {}, "mining_map": []},
+        {"id": SOLVER_FRAME_PASS3_TRANSPORT, "summary": {}, "mining_map": []},
+    ]
+    events: list[dict] = [
+        {"phase": "step4", "kind": SolverMutationEventKind.MAP_DIFF_COMMITTED.value},
+        {
+            "phase": "step4",
+            "kind": SolverMutationEventKind.ROUTE_REPLACED.value,
+            "payload": {"cascade_reroute_count": 2},
+        },
+        {
+            "phase": "pass3",
+            "kind": SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value,
+            "payload": {
+                "marker": "before",
+                "layout_state_sha256": "abc",
+                "transaction_id": "p3",
+            },
+        },
+        {"phase": "pass3", "kind": SolverMutationEventKind.ROLLBACK.value, "payload": {}},
+        {
+            "phase": "p4_reclaim",
+            "kind": SolverMutationEventKind.RECOVERY_BRANCH.value,
+            "payload": {"validation_recovery_attempt": 1},
+        },
+    ]
+    frames = build_replay_ui_frames(solver_timeline=timeline, events=events)
+    assert frames[0]["event_indices"] == [0, 1]
+    assert frames[0]["overlay_event_indices"] == [1]
+    assert events[frames[0]["overlay_event_indices"][0]]["kind"] == (
+        SolverMutationEventKind.ROUTE_REPLACED.value
+    )
+
+    assert frames[1]["event_indices"] == [2, 3, 4]
+    assert frames[1]["overlay_event_indices"] == [3, 4]
+    kinds_p3 = {events[i]["kind"] for i in frames[1]["overlay_event_indices"]}
+    assert SolverMutationEventKind.ROLLBACK.value in kinds_p3
+    assert SolverMutationEventKind.RECOVERY_BRANCH.value in kinds_p3
+
+
+def test_build_replay_ui_frames_maps_validation_recovery_events() -> None:
+    """Orchestrator phase ``validation_recovery`` maps to the validate timeline frame."""
+
+    timeline = [
+        {"id": SOLVER_FRAME_PASS2_INTERNAL, "summary": {}, "mining_map": []},
+        {"id": SOLVER_FRAME_PASS3_TRANSPORT, "summary": {}, "mining_map": []},
+        {"id": SOLVER_FRAME_VALIDATE, "summary": {}, "mining_map": []},
+    ]
+    events: list[dict] = [
+        {
+            "phase": "pass12",
+            "kind": SolverMutationEventKind.TRANSACTION_BEGIN.value,
+        },
+        {
+            "phase": RECOVERY_PHASE_VALIDATION_RECOVERY,
+            "kind": SolverMutationEventKind.FRAME_CHECKPOINT.value,
+            "payload": {"validation_recovery_attempt": 0},
+        },
+    ]
+    frames = build_replay_ui_frames(solver_timeline=timeline, events=events)
+    assert frames[2]["timeline_frame_id"] == SOLVER_FRAME_VALIDATE
+    assert frames[2]["event_indices"] == [1]
+
+
+def test_build_replay_ui_frames_recovery_branch_event_indices_visible() -> None:
+    """``recovery_branch`` + ``phase=validation_recovery`` appears on validate row overlays."""
+
+    timeline = [
+        {"id": SOLVER_FRAME_PASS3_TRANSPORT, "summary": {}, "mining_map": []},
+        {"id": SOLVER_FRAME_VALIDATE, "summary": {}, "mining_map": []},
+    ]
+    events: list[dict] = [
+        {
+            "phase": "pass3",
+            "kind": SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value,
+            "payload": {
+                "marker": "before",
+                "layout_state_sha256": "aaa",
+                "transaction_id": "t",
+            },
+        },
+        {
+            "phase": RECOVERY_PHASE_VALIDATION_RECOVERY,
+            "kind": SolverMutationEventKind.RECOVERY_BRANCH.value,
+            "payload": {"validation_recovery_attempt": 1},
+        },
+    ]
+    frames = build_replay_ui_frames(solver_timeline=timeline, events=events)
+    validate_row = frames[1]
+    assert validate_row["timeline_frame_id"] == SOLVER_FRAME_VALIDATE
+    assert validate_row["event_indices"] == [1]
+    assert validate_row["overlay_event_indices"] == [1]
+    assert (
+        events[validate_row["overlay_event_indices"][0]]["kind"]
+        == SolverMutationEventKind.RECOVERY_BRANCH.value
+    )
+
+
+def test_route_replaced_v5_cells_on_step4_frame_from_payload() -> None:
+    """v5 ``route_replaced`` may carry aggregate ``cells_*`` on the event (STEP4 overlay)."""
+
+    timeline = [
+        {"id": SOLVER_FRAME_STEP4_ROUTING, "summary": {}, "mining_map": []},
+    ]
+    events: list[dict] = [
+        {
+            "phase": "step4",
+            "kind": SolverMutationEventKind.ROUTE_REPLACED.value,
+            "payload": {
+                "cascade_reroute_count": 1,
+                "cells_removed": [[5, 1]],
+                "cells_added": [[7, 1]],
+                "cells_kept": None,
+                "transport_kind": "shape_belt",
+                "replacement_reason": "p2c_cascade_reroute",
+                "transaction_id": "abc",
+            },
+        },
+    ]
+    frames = build_replay_ui_frames(solver_timeline=timeline, events=events)
+    assert frames[0]["event_indices"] == [0]
+    assert frames[0]["overlay_event_indices"] == [0]
+    pl = events[frames[0]["overlay_event_indices"][0]]["payload"]
+    assert pl["cells_removed"] == [[5, 1]]
+    assert pl["cells_added"] == [[7, 1]]
+
+
+def test_route_replaced_v5_payload_accepts_belt_alias_transport_kind() -> None:
+    """Frame builder tolerates legacy ``belt`` in payload (normalization is emitter-side)."""
+
+    timeline = [
+        {"id": SOLVER_FRAME_STEP4_ROUTING, "summary": {}, "mining_map": []},
+    ]
+    events: list[dict] = [
+        {
+            "phase": "step4",
+            "kind": SolverMutationEventKind.ROUTE_REPLACED.value,
+            "payload": {
+                "cascade_reroute_count": 1,
+                "cells_removed": [[5, 1]],
+                "cells_added": [[7, 1]],
+                "transport_kind": "belt",
+                "transaction_id": "abc",
+            },
+        },
+    ]
+    frames = build_replay_ui_frames(solver_timeline=timeline, events=events)
+    assert frames[0]["overlay_event_indices"] == [0]
+
+
+def test_build_solver_replay_snapshot_includes_ui_frames_contract_v5() -> None:
     timeline = [
         {"id": SOLVER_FRAME_PASS2_INTERNAL, "summary": {}, "mining_map": []},
         {"id": SOLVER_FRAME_PASS3_TRANSPORT, "summary": {}, "mining_map": []},
@@ -90,7 +261,7 @@ def test_build_solver_replay_snapshot_includes_ui_frames_contract_v4() -> None:
     ]
     snap = build_solver_replay_snapshot(frames=timeline, run_id="r1", events=events)
     assert snap["contract_version"] == SOLVER_REPLAY_CONTRACT_VERSION
-    assert snap["contract_version"] >= 4
+    assert snap["contract_version"] >= 5
     assert "ui_frames" in snap
     assert isinstance(snap["ui_frames"], list)
     assert len(snap["ui_frames"]) == len(timeline)

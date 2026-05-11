@@ -26,8 +26,13 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 # v4: ``ui_frames`` — one UI row per ``solver_timeline`` index (event_indices, computation_cycle
 # bounds, pass3_layout_snapshots); built from the same normalized ``events`` list.
 # v4: ``ui_frames`` STEP10 primary hints — ``primary_for_step10_ui``, ``computation_cycle_ui_*``,
-# ``overlay_event_indices`` (see ``solver_replay_frames.build_replay_ui_frames``). P5 recovery
-# summary keys are emitted on ``solver_summary`` (not replay root).
+# ``overlay_event_indices`` (see ``solver_replay_frames.build_replay_ui_frames``). Events with
+# ``phase=validation_recovery`` (e.g. ``recovery_branch``) map to the ``solver_validate`` timeline
+# row. P5 recovery summary keys are emitted on ``solver_summary`` (not replay root).
+# v5: ``route_replaced`` payload adds optional cell diff for STEP10 map overlay:
+# ``cells_removed`` / ``cells_added`` (list of ``[x, y]``), ``cells_kept`` (null or list),
+# ``transport_kind`` (``shape_belt`` | ``fluid_pipe``), ``replacement_reason``; per-row detail
+# remains in ``replacements[]``. Aggregates on the event mirror the union of replacement rows.
 
 
 class SolverMutationEventKind(StrEnum):
@@ -82,6 +87,30 @@ def layout_snapshot_payload(
     return p
 
 
+def normalize_replay_transport_kind(kind: str | None) -> str | None:
+    """Canonical replay v5 ``route_replaced`` ``transport_kind`` for UI and JSON.
+
+    Maps legacy aliases ``belt`` / ``pipe`` to ``shape_belt`` / ``fluid_pipe``. Other non-empty
+    strings are returned trimmed unchanged; ``None`` or blank → ``None`` (omit in payloads).
+    """
+
+    if kind is None:
+        return None
+    s = kind.strip()
+    if not s:
+        return None
+    tl = s.lower()
+    if tl == "belt":
+        return "shape_belt"
+    if tl == "pipe":
+        return "fluid_pipe"
+    if tl == "shape_belt":
+        return "shape_belt"
+    if tl == "fluid_pipe":
+        return "fluid_pipe"
+    return s
+
+
 def normalize_replay_events_computation_cycles(events: list[dict[str, Any]]) -> int:
     """Assign monotonic ``computation_cycle`` (1..n) in list order.
 
@@ -102,6 +131,7 @@ def build_solver_replay_snapshot(
     frames: list[dict[str, Any]],
     run_id: str,
     events: list[dict[str, Any]] | None = None,
+    optimization_metrics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Deterministic replay snapshot: frame order, summary keys, optional mutation ``events``."""
 
@@ -120,7 +150,7 @@ def build_solver_replay_snapshot(
     )
 
     ui_frames = build_replay_ui_frames(solver_timeline=frames, events=ev)
-    return {
+    snap: dict[str, Any] = {
         "contract_version": SOLVER_REPLAY_CONTRACT_VERSION,
         "run_id": run_id,
         "frame_order": frame_order,
@@ -129,3 +159,6 @@ def build_solver_replay_snapshot(
         "events": ev,
         "ui_frames": ui_frames,
     }
+    if optimization_metrics is not None:
+        snap["optimization_metrics"] = optimization_metrics
+    return snap

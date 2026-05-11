@@ -11,3 +11,15 @@ def test_asteroid_optimizer_page_get_includes_copy_preview_url() -> None:
 
     assert response.status_code == 200
     assert expected_preview.encode() in response.content
+    assert b"data-am-solver-replay-meta" in response.content
+
+
+def test_asteroid_optimizer_recovery_overlay_meta_smoke() -> None:
+    """STEP10 replay SVG overlay group class is wired in the optimizer template."""
+
+    response = Client().get(reverse("web:asteroid"))
+    assert response.status_code == 200
+    assert b"am-step10-replay-overlay" in response.content
+    assert b"data-msg-route-replay-removed" in response.content
+    assert b"am-route-replay-cells-overlay" in response.content
+    assert b"normalizeReplayTransportKind" in response.content

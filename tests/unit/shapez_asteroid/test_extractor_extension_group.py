@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from django_apps.shapez_asteroid.extraction.shape_miner_rotation import rotation_r_for_output_direction
+from django_apps.shapez_asteroid.extraction.shape_miner_rotation import (
+    rotation_r_for_output_direction,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     PASS12_MAX_EXTENSION_TILES,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.extractor_extension_group import (
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.extractor_extension_group import (  # noqa: E501
     extension_parent_coord,
     owned_extension_cells_for_extractor,
     route_extractor_is_maximized_group,

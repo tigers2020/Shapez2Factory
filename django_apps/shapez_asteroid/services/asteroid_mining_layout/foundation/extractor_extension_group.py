@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import output_offset_r
 from django_apps.shapez_asteroid.extraction.shapez_grid import step_cardinal
@@ -31,7 +31,8 @@ __all__ = [
 def extension_parent_coord(cell: Coord, row: Mapping[str, Any]) -> Coord | None:
     """Parent cell of an extension row using ``r`` → cardinal step; ``None`` if unresolved."""
 
-    if layout_kind(row) not in EXTENSIONS:
+    lk = layout_kind(cast(dict[str, Any], row))
+    if lk is None or lk not in EXTENSIONS:
         return None
     raw_r = row.get("r")
     if not isinstance(raw_r, int):
@@ -57,7 +58,8 @@ def owned_extension_cells_for_extractor(
             row = cells.get(c)
             if row is None:
                 continue
-            if layout_kind(row) not in EXTENSIONS:
+            lk = layout_kind(cast(dict[str, Any], row))
+            if lk is None or lk not in EXTENSIONS:
                 continue
             p = extension_parent_coord(c, row)
             if p is None:
@@ -85,4 +87,5 @@ def route_extractor_is_maximized_group(
         if ext_cells is None:
             return False
         return len(tuple(ext_cells)) == PASS12_MAX_EXTENSION_TILES
-    return len(owned_extension_cells_for_extractor(cells, extractor_cell)) == PASS12_MAX_EXTENSION_TILES
+    owned = owned_extension_cells_for_extractor(cells, extractor_cell)
+    return len(owned) == PASS12_MAX_EXTENSION_TILES

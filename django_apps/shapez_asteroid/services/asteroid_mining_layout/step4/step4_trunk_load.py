@@ -9,6 +9,12 @@ diagnostic / replay-friendly summaries only (no hard constraints).
 **v2** adds ``trunk_edge_load_observation``: deterministic summary derived from
 ``transport_usage_load["trunk_edge_load"]`` (same facts as raw edge load; no extra gates).
 
+**v3** adds ``transport_usage_load["trunk_edge_load_from_maximized_placements"]``: same key
+schema as ``trunk_edge_load`` but counts only traversals from routes whose extractor is a
+**maximized** group (exactly three owned extensions / placement record). Pass3 lex congestion
+uses ``v_eff = (v_all - v_max) + v_max**2`` per edge when this block is present; otherwise
+``v_eff = v_all`` (replay backward compatibility).
+
 Nested blocks (v2 = v1 blocks plus observation):
 
 - ``route_metrics``: ``route_cell_visits`` (sum of committed path lengths; double-counts
@@ -23,6 +29,8 @@ Nested blocks (v2 = v1 blocks plus observation):
   - ``trunk_edge_load``: per ``transport_kind`` undirected corridor edge keys
     ``"x1,y1--x2,y2"`` (sorted endpoints) counting route path step traversals. Separate from
     ``existing_transport_cell_crossings`` / legacy ``edges`` (pre-existing transport cell entries).
+  - ``trunk_edge_load_from_maximized_placements`` (**v3**): same structure as ``trunk_edge_load``;
+    observation summaries still use ``trunk_edge_load`` only (linear totals).
 - ``trunk_edge_load_observation``: ``observation_version``, ``top_n``, ``shared_threshold``,
   and ``by_kind`` with ``shape_belt`` / ``fluid_pipe`` (and any extra kinds aligned with
   ``trunk_edge_load`` keys). Per kind: ``traversal_count_total`` is the **sum of integer values**
@@ -58,7 +66,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
     unfinalized_placement_count_from_counts,
 )
 
-TRUNK_LOAD_CONTRACT_VERSION = 2
+TRUNK_LOAD_CONTRACT_VERSION = 3
 TRUNK_EDGE_LOAD_OBSERVATION_VERSION = 1
 TRUNK_EDGE_LOAD_OBSERVATION_TOP_N = 10
 TRUNK_EDGE_SHARED_THRESHOLD = 2
@@ -162,6 +170,18 @@ def _ordered_kind_keys(
     return tuple(dict.fromkeys((*_DEFAULT_TRUNK_KINDS, *sorted(extra))))
 
 
+def _pass3_effective_edge_traversal_count(v_all: int, v_max: int | None) -> int:
+    """Pass3 congestion edge step count: linear ``v_all``, or split when maximized map is wired."""
+
+    va = int(v_all)
+    if va <= 0:
+        return 0
+    if v_max is None:
+        return va
+    vm = min(int(v_max), va)
+    return (va - vm) + vm * vm
+
+
 def build_step4_trunk_load(
     *,
     trunk_edge_hits: dict[str, int],
@@ -173,6 +193,7 @@ def build_step4_trunk_load(
     p2c_metrics: dict[str, Any],
     trace: dict[str, Any],
     trunk_edge_load_by_kind: Mapping[str, Mapping[str, int]] | None = None,
+    trunk_edge_load_maximized_by_kind: Mapping[str, Mapping[str, int]] | None = None,
 ) -> dict[str, Any]:
     """Assemble the STEP4 ``trunk_load`` dict (nested contract + legacy flat keys + P2-C)."""
 
@@ -186,6 +207,9 @@ def build_step4_trunk_load(
     if edge_only_kinds:
         kind_keys = tuple(dict.fromkeys((*kind_keys, *sorted(edge_only_kinds))))
     trunk_edge_block = _normalized_trunk_edge_load_block(trunk_edge_load_by_kind, kind_keys)
+    trunk_max_block = _normalized_trunk_edge_load_block(
+        trunk_edge_load_maximized_by_kind, kind_keys
+    )
     trunk_edge_load_observation = build_trunk_edge_load_observation(
         trunk_edge_block, kind_keys=kind_keys
     )
@@ -208,6 +232,7 @@ def build_step4_trunk_load(
         "transport_usage_load": {
             "existing_transport_cell_crossings": crossings_sorted,
             "trunk_edge_load": trunk_edge_block,
+            "trunk_edge_load_from_maximized_placements": trunk_max_block,
         },
         "trunk_edge_load_observation": trunk_edge_load_observation,
         # Deprecated legacy aliases (keep one release; values mirror nested blocks above).
@@ -312,8 +337,13 @@ def pass3_edge_congestion_weights_from_trunk_load(
 ) -> dict[str, int] | None:
     """Map STEP4 ``trunk_edge_load`` counts to Pass3 lex **congestion** edge weights (int, ≥0).
 
-    Keys match :func:`canonical_trunk_edge_key`. Returns ``None`` when ``trunk_load`` is missing
-    or has no per-kind edge map (Pass3 behaves as before).
+    Keys match :func:`canonical_trunk_edge_key`. When
+    ``transport_usage_load["trunk_edge_load_from_maximized_placements"]`` carries a non-empty
+    per-kind map, each edge uses :func:`_pass3_effective_edge_traversal_count` with ``v_max`` from
+    that map; otherwise ``v_eff = v_all`` (older replays or no maximized traversals).
+
+    Returns ``None`` when ``trunk_load`` is missing or has no per-kind edge map (Pass3 behaves as
+    before).
     """
 
     if not isinstance(trunk_load, Mapping):
@@ -332,9 +362,30 @@ def pass3_edge_congestion_weights_from_trunk_load(
         if weight_per_traversal is not None
         else int(PASS3_TRUNK_EDGE_CONGESTION_WEIGHT_PER_TRAVERSAL)
     )
-    if w <= 0:
-        return {str(k): int(v) for k, v in em.items() if int(v) > 0}
-    return {str(k): int(v) * w for k, v in em.items() if int(v) > 0}
+    v_max_map: dict[str, int] | None = None
+    raw_mx = raw_tul.get("trunk_edge_load_from_maximized_placements")
+    if isinstance(raw_mx, Mapping):
+        mx_kind = raw_mx.get(transport_kind)
+        if isinstance(mx_kind, Mapping) and mx_kind:
+            v_max_map = {str(k): int(v) for k, v in mx_kind.items() if int(v) > 0}
+
+    def eff_weight(edge_key: str, v_all: int) -> int:
+        v_max = v_max_map.get(edge_key) if v_max_map is not None else None
+        ve = _pass3_effective_edge_traversal_count(v_all, v_max)
+        if w <= 0:
+            return ve
+        return ve * w
+
+    out: dict[str, int] = {}
+    for k, v_all in em.items():
+        key = str(k)
+        va = int(v_all)
+        if va <= 0:
+            continue
+        ew = eff_weight(key, va)
+        if ew > 0:
+            out[key] = ew
+    return out or None
 
 
 def cells_on_high_sharing_trunk_edges(

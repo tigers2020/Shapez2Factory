@@ -18,6 +18,9 @@ from django_apps.shapez_asteroid.extraction.shape_miner_rotation import (
     rotation_r_for_output_direction,
 )
 from django_apps.shapez_asteroid.extraction.shapez_grid import step_cardinal
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    PASS12_MAX_EXTENSION_TILES,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 
 # Deterministic cardinal order (matches Pass1 output scan).
@@ -172,7 +175,7 @@ def enumerate_extension_topologies(
     blocked_cells: frozenset[Coord],
     transport_cells: frozenset[Coord],
     *,
-    max_extensions: int = 3,
+    max_extensions: int = PASS12_MAX_EXTENSION_TILES,
 ) -> tuple[ExtensionTopologyCandidate, ...]:
     """All distinct extension sets (0..max_extensions) with valid parent chains.
 

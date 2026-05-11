@@ -15,6 +15,9 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.extractor_extension_group import (  # noqa: E501
+    route_extractor_is_maximized_group,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
@@ -176,6 +179,8 @@ def run_step4_merge_aware_routing(
     failures: list[dict[str, Any]] = []
     trunk_edge_hits: dict[str, int] = {}
     trunk_edge_load_by_kind: dict[str, dict[str, int]] = {}
+    trunk_edge_load_maximized_by_kind: dict[str, dict[str, int]] = {}
+    maximized_extractor_cache: dict[Coord, bool] = {}
     p2c_metrics: dict[str, Any] = {
         "route_revalidation_passed": True,
         "broken_routed_route_count": 0,
@@ -338,8 +343,27 @@ def run_step4_merge_aware_routing(
         # Edge load is derived from final routes_out after P2-C corrections so
         # trunk_load/replay reflects returned route paths, not provisional commits.
         trunk_edge_load_by_kind.clear()
+        trunk_edge_load_maximized_by_kind.clear()
+        maximized_extractor_cache.clear()
+
+        def _route_extractor_maximized(ext_cell: Coord, pid: str | None) -> bool:
+            if ext_cell in maximized_extractor_cache:
+                return maximized_extractor_cache[ext_cell]
+            v = route_extractor_is_maximized_group(
+                extractor_cell=ext_cell,
+                placement_id=pid,
+                placement_records=work_records,
+                cells=cells,
+            )
+            maximized_extractor_cache[ext_cell] = v
+            return v
+
         for rt in routes_out:
             accumulate_trunk_edge_load(trunk_edge_load_by_kind, rt.transport_kind, rt.path)
+            if _route_extractor_maximized(rt.extractor_cell, rt.placement_id):
+                accumulate_trunk_edge_load(
+                    trunk_edge_load_maximized_by_kind, rt.transport_kind, rt.path
+                )
 
         _stamp_placement_commit_on_map_rows(cells, work_records)
 
@@ -394,6 +418,7 @@ def run_step4_merge_aware_routing(
         p2c_metrics=p2c_metrics,
         trace=trace_tl,
         trunk_edge_load_by_kind=trunk_edge_load_by_kind,
+        trunk_edge_load_maximized_by_kind=trunk_edge_load_maximized_by_kind,
     )
 
     committed = not unrecoverable

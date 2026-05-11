@@ -16,6 +16,9 @@ from django_apps.shapez_asteroid.extraction.shapez_grid import step_cardinal
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.boundary import (
     cells_touching_void,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    PASS12_MAX_EXTENSION_TILES,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.extension_topology import (  # noqa: E501
     enumerate_extension_topologies,
 )
@@ -121,7 +124,7 @@ def try_place_pass1_outer_bundle(
             mineable_cells,
             blocked_for_topo,
             transport_for_topo,
-            max_extensions=3,
+            max_extensions=PASS12_MAX_EXTENSION_TILES,
         )
         for topo in topologies:
             ext_cells = topo.extension_cells

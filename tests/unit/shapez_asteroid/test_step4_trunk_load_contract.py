@@ -1,4 +1,4 @@
-"""STEP4 ``trunk_load`` nested schema + legacy alias contract (v2)."""
+"""STEP4 ``trunk_load`` nested schema + legacy alias contract (v3)."""
 
 from __future__ import annotations
 
@@ -42,6 +42,11 @@ def _empty_trunk_edge_load_by_kind() -> dict[str, dict[str, int]]:
     return {"shape_belt": {}, "fluid_pipe": {}}
 
 
+def _assert_transport_usage_dual_edge_maps(tul: dict) -> None:
+    assert tul["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
+    assert tul["trunk_edge_load_from_maximized_placements"] == _empty_trunk_edge_load_by_kind()
+
+
 def _assert_empty_kind_observation_block(obs: dict) -> None:
     assert obs["observation_version"] == TRUNK_EDGE_LOAD_OBSERVATION_VERSION
     assert obs["top_n"] == TRUNK_EDGE_LOAD_OBSERVATION_TOP_N
@@ -74,7 +79,7 @@ def test_pipeline_exception_stub_distinguishes_from_pass12_skipped() -> None:
     assert tl.get("skipped") is False
     assert tl.get("step4_result_state") == "pipeline_exception"
     assert tl["trunk_load_contract_version"] == TRUNK_LOAD_CONTRACT_VERSION
-    assert tl["transport_usage_load"]["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
+    _assert_transport_usage_dual_edge_maps(tl["transport_usage_load"])
     _assert_empty_kind_observation_block(tl["trunk_edge_load_observation"])
 
 
@@ -125,7 +130,7 @@ def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_contract_keys() -> Non
     assert tl["route_metrics"]["unique_route_cell_count"] == 2
     assert tl["route_revalidation_passed"] is False
     assert tl["edges"] == {}
-    assert tl["transport_usage_load"]["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
+    _assert_transport_usage_dual_edge_maps(tl["transport_usage_load"])
     obs = tl["trunk_edge_load_observation"]
     assert obs["observation_version"] == TRUNK_EDGE_LOAD_OBSERVATION_VERSION
     assert "bogus" not in obs
@@ -256,7 +261,7 @@ def test_step4_trunk_load_skipped_has_contract_version_and_nested_blocks() -> No
     assert tl["route_metrics"]["route_cell_visits"] == 0
     assert tl["route_metrics"]["unique_route_cell_count"] == 0
     assert tl["transport_usage_load"]["existing_transport_cell_crossings"] == {}
-    assert tl["transport_usage_load"]["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
+    _assert_transport_usage_dual_edge_maps(tl["transport_usage_load"])
     _assert_empty_kind_observation_block(tl["trunk_edge_load_observation"])
     assert "shape_belt" in tl["trunk_load_by_kind"] and "fluid_pipe" in tl["trunk_load_by_kind"]
     assert tl.get("step4_result_state") != "pipeline_exception"
@@ -280,8 +285,13 @@ def test_step4_trunk_load_keeps_legacy_edges_alias_for_one_release() -> None:
     )
     tl = r.trunk_load
     assert tl["trunk_load_contract_version"] == TRUNK_LOAD_CONTRACT_VERSION
-    tel = tl["transport_usage_load"]["trunk_edge_load"]
-    assert set(tel) == {"shape_belt", "fluid_pipe"}
+    tul = tl["transport_usage_load"]
+    tel = tul["trunk_edge_load"]
+    tmax = tul["trunk_edge_load_from_maximized_placements"]
+    assert set(tel) == {"shape_belt", "fluid_pipe"} == set(tmax)
+    for kind in ("shape_belt", "fluid_pipe"):
+        for ek, c in tmax[kind].items():
+            assert int(c) <= int(tel[kind][ek])
     obs = tl["trunk_edge_load_observation"]
     assert obs["observation_version"] == TRUNK_EDGE_LOAD_OBSERVATION_VERSION
     for kind in ("shape_belt", "fluid_pipe"):
@@ -309,6 +319,19 @@ def test_pass3_edge_congestion_weights_from_trunk_load() -> None:
     w = pass3_edge_congestion_weights_from_trunk_load(tl, transport_kind="shape_belt")
     assert w == {"1,0--2,0": 3, "2,0--3,0": 1}
     assert pass3_edge_congestion_weights_from_trunk_load(None, transport_kind="shape_belt") is None
+
+
+def test_pass3_edge_congestion_weights_squares_maximized_contribution() -> None:
+    """``v_eff = (v_all - v_max) + v_max**2`` on edges touched by maximized-only routes."""
+
+    tl = {
+        "transport_usage_load": {
+            "trunk_edge_load": {"shape_belt": {"1,0--2,0": 3}},
+            "trunk_edge_load_from_maximized_placements": {"shape_belt": {"1,0--2,0": 2}},
+        },
+    }
+    w = pass3_edge_congestion_weights_from_trunk_load(tl, transport_kind="shape_belt")
+    assert w == {"1,0--2,0": 5}
 
 
 def test_compact_trunk_load_overlay_for_replay_minimal() -> None:

@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
-from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
+from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4, step_cardinal
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_contracts import (
     Pass12LayoutScratch,
@@ -91,9 +91,21 @@ def _bfs_extensions_from_miner(
     return frozenset(found)
 
 
+def _extension_unit_facing_toward(ext: Coord, parent: Coord) -> tuple[int, int]:
+    """Unit cardinal from ext toward parent (no x==0 column; raw Δx may be ±2)."""
+
+    x, y = ext
+    for udx, udy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        if step_cardinal(x, y, udx, udy) == parent:
+            return (udx, udy)
+    return (1, 0)
+
+
 def _extension_facing_parent(ext: Coord, parent_by_cell: dict[Coord, Coord]) -> tuple[int, int]:
     p = parent_by_cell[ext]
-    return (p[0] - ext[0], p[1] - ext[1])
+    if p == ext:
+        return (1, 0)
+    return _extension_unit_facing_toward(ext, p)
 
 
 def _parent_tree_for_miner_and_extensions(
@@ -222,7 +234,7 @@ def seed_pass12_scratch_from_merged_existing(
                 parent = n
                 break
         if parent is not None:
-            scratch.extension_facings[c] = (parent[0] - c[0], parent[1] - c[1])
+            scratch.extension_facings[c] = _extension_unit_facing_toward(c, parent)
         else:
             scratch.extension_facings[c] = (1, 0)
 

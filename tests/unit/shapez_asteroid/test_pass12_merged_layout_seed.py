@@ -50,6 +50,58 @@ def test_integrate_pass12_seeded_miner_on_mineable_skips_pass1_outer() -> None:
     assert stats["pass1_new_extractor_cells"] == 0
 
 
+def test_integrate_pass12_extension_facing_across_missing_x0_column() -> None:
+    """Extension west of miner can be raw Δx=2 on the no-x0 grid; merge must stay cardinal."""
+
+    y = 3
+    fm = [
+        {
+            "x": -1,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "asteroid_field",
+            "surface": "shape",
+        },
+        {
+            "x": 1,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "asteroid_field",
+            "surface": "shape",
+        },
+    ]
+    wm = [
+        {
+            "x": -1,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "extension",
+            "surface": "shape",
+            "t": "Layout_ShapeMinerExtension",
+            "r": 0,
+        },
+        {
+            "x": 1,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "miner",
+            "surface": "shape",
+            "t": "Layout_ShapeMiner",
+            "r": 0,
+        },
+        {"x": 2, "y": y, "role": "belt", "surface": "shape"},
+    ]
+    m1, _m2, stats = p12_tl.integrate_pass12_placement_into_working_map(
+        working_map=wm,
+        final_mining_map=fm,
+        is_external=lambda c: c[0] > 10,
+    )
+    by_xy = {(r["x"], r["y"]): r for r in m1}
+    ext = by_xy.get((-1, y))
+    assert ext is not None and ext.get("layout_kind") == "extension"
+    assert stats["pass12_preserved_routed_placement_records"] >= 1
+
+
 def test_existing_layout_heuristic_suppress_pass12_loops_true() -> None:
     ela = {
         "source_kind": "existing_shape_layout",

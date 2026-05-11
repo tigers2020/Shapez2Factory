@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    RECOVERY_PHASE_VALIDATION_RECOVERY,
+    RECOVERY_SEGMENT_VALIDATION_RETRY,
     ROUTING_STATE_KEYS_STEP4_HASH,
     SOLVER_FRAME_PASS3_TRANSPORT,
 )
@@ -17,6 +19,13 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_tra
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
     solver_mutation_transaction as solver_mut_txn,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_context import (
+    extend_recovery_chain,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_policy import (
+    append_recovery_contract_phase,
+    apply_recovery_contract_defaults,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_permission import (
     pass3_permission_snapshot,
@@ -79,7 +88,7 @@ def _validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalVali
 def initial_pass3_summary() -> dict[str, Any]:
     """Pass3 기본 summary 계약 필드를 만든다."""
 
-    return {
+    d: dict[str, Any] = {
         "pass3_skipped": True,
         "pass3_skip_reason": None,
         "pass3_committed": False,
@@ -101,6 +110,8 @@ def initial_pass3_summary() -> dict[str, Any]:
         **p3e2_pass3_summary_placeholder(rejected_reason="pass3_not_eligible"),
         **p3e3_pass3_summary_placeholder(rejected_reason="pass3_not_eligible"),
     }
+    apply_recovery_contract_defaults(d)
+    return d
 
 
 def run_pass3_stage(
@@ -115,12 +126,17 @@ def run_pass3_stage(
     routing_state_summary: dict[str, Any] | None,
     replay_events: list[dict[str, Any]] | None = None,
     step4_replay_transaction_id: str | None = None,
+    pass3_recovery_context: bool = False,
+    validation_recovery_attempt: int = 0,
     debug_location: str,
 ) -> Pass3StageResult:
     """Pass3 transport minimization을 실행하고 기존 accept/reject 의미를 유지한다."""
 
     map_final = map_after_routing
     pass3_summary = initial_pass3_summary()
+    if validation_recovery_attempt > 0:
+        append_recovery_contract_phase(pass3_summary, RECOVERY_PHASE_VALIDATION_RECOVERY)
+        extend_recovery_chain(pass3_summary, RECOVERY_SEGMENT_VALIDATION_RETRY)
     pass3_permission = pass3_permission_snapshot(
         pass12_skipped=pass12_skipped,
         unfinalized_placement_count=unfinalized_placement_count,
@@ -170,6 +186,7 @@ def run_pass3_stage(
                 map_after_routing,
                 final_mining_map=final_map,
                 is_external=is_external,
+                pass3_recovery_context=pass3_recovery_context,
             )
         except BaseException:
             if replay_events is not None and p3_txn_id is not None:

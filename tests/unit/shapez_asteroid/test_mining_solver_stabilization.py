@@ -232,7 +232,8 @@ def test_build_solver_timeline_replay_v3_emits_step4_transaction_events() -> Non
     }
     out = build_solver_timeline(decoded)
     sr = out["solver_replay"]
-    assert sr["contract_version"] == 3
+    assert sr["contract_version"] == 4
+    assert isinstance(sr.get("ui_frames"), list)
     assert sr.get("computation_cycle") == len(sr["events"])
     for ev in sr["events"]:
         assert isinstance(ev, dict)

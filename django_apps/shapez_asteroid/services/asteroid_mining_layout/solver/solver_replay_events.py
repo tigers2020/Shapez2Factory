@@ -23,6 +23,11 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 # v3: top-level ``computation_cycle`` (max index) + each event ``computation_cycle`` (1..n in
 # append order). Adds ``pass3_layout_snapshot`` (payload.marker before|after,
 # payload.layout_state_sha256).
+# v4: ``ui_frames`` — one UI row per ``solver_timeline`` index (event_indices, computation_cycle
+# bounds, pass3_layout_snapshots); built from the same normalized ``events`` list.
+# v4: ``ui_frames`` STEP10 primary hints — ``primary_for_step10_ui``, ``computation_cycle_ui_*``,
+# ``overlay_event_indices`` (see ``solver_replay_frames.build_replay_ui_frames``). P5 recovery
+# summary keys are emitted on ``solver_summary`` (not replay root).
 
 
 class SolverMutationEventKind(StrEnum):
@@ -110,6 +115,11 @@ def build_solver_replay_snapshot(
         per_frame.append({"id": f.get("id"), "summary_keys": keys})
     ev = list(events) if events is not None else []
     max_cycle = normalize_replay_events_computation_cycles(ev)
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_frames import (  # noqa: E501
+        build_replay_ui_frames,
+    )
+
+    ui_frames = build_replay_ui_frames(solver_timeline=frames, events=ev)
     return {
         "contract_version": SOLVER_REPLAY_CONTRACT_VERSION,
         "run_id": run_id,
@@ -117,4 +127,5 @@ def build_solver_replay_snapshot(
         "frames": per_frame,
         "computation_cycle": max_cycle,
         "events": ev,
+        "ui_frames": ui_frames,
     }

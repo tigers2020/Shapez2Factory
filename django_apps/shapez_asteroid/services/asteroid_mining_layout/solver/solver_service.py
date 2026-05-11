@@ -5,9 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.existing_layout_analysis import (  # noqa: E501
-    analyze_existing_layout_from_mining_map,
-)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     SOLVER_SERVICE_BUILD_SOLVER_TIMELINE_LOCATION,
 )
@@ -29,19 +26,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
     apply_exception_summary_defaults,
-    build_final_solver_output,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.p4_reclaim import (
-    run_p4_reclaim_stage,
-)
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.pass3 import (
-    run_pass3_stage,
-)
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.pass12 import (
-    run_pass12_stage,
-)
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.step4 import (
-    run_step4_stage,
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.recovery_orchestrator import (  # noqa: E501
+    run_solver_timeline_pipeline,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     external_predicate_for_mining_map,
@@ -78,16 +65,10 @@ def build_solver_timeline(decoded: dict[str, Any]) -> dict[str, Any]:
         debug_log_event(_DEBUG_LOC, "pipeline_start", {"run_id": run_id})
         summary_fields = _initial_summary_fields(run_id)
         out: dict[str, Any] = {}
-        replay_events: list[dict[str, Any]] = []
         try:
             map_timeline = build_map_timeline(decoded)
             working_map = map_timeline[0]["mining_map"]
             final_map = map_timeline[-1]["mining_map"]
-            is_external = external_predicate_for_mining_map(map_timeline[1]["mining_map"])
-            existing_layout_analysis = analyze_existing_layout_from_mining_map(
-                working_map,
-                is_external=is_external,
-            )
             debug_log_event(
                 _DEBUG_LOC,
                 "map_timeline_built",
@@ -99,79 +80,10 @@ def build_solver_timeline(decoded: dict[str, Any]) -> dict[str, Any]:
                     "final_counts": count_layout_cells(final_map),
                 },
             )
-
-            pass12 = run_pass12_stage(
-                working_map=working_map,
-                final_map=final_map,
-                is_external=is_external,
-                existing_layout_analysis=existing_layout_analysis,
-                replay_events=replay_events,
-                map_timeline=map_timeline,
+            out, summary_fields = run_solver_timeline_pipeline(
+                decoded=decoded,
                 debug_location=_DEBUG_LOC,
-            )
-            step4 = run_step4_stage(
-                map_after_pass2=pass12.map_after_pass2,
-                final_map=final_map,
-                is_external=is_external,
-                placement_records=pass12.placement_records,
-                pass12_skipped=pass12.pass12_skipped,
-                pass12_replay_txn_id=pass12.pass12_replay_txn_id,
-                replay_events=replay_events,
-                debug_location=_DEBUG_LOC,
-            )
-            pass3 = run_pass3_stage(
-                map_after_routing=step4.map_after_routing,
-                final_map=final_map,
-                is_external=is_external,
-                pass12_skipped=pass12.pass12_skipped,
-                unfinalized_placement_count=step4.unfinalized_placement_count,
-                report_step4=step4.report_step4,
-                post_step4_counts=step4.post_step4_counts,
-                routing_state_summary=step4.routing_state_summary,
-                replay_events=replay_events,
-                step4_replay_transaction_id=step4.step4_replay_transaction_id,
-                debug_location=_DEBUG_LOC,
-            )
-            p4 = run_p4_reclaim_stage(
-                map_after_routing=step4.map_after_routing,
-                map_final=pass3.map_final,
-                final_map=final_map,
-                is_external=is_external,
-                existing_layout_analysis=existing_layout_analysis,
-                eligible_pass3=pass3.eligible_pass3,
-                pass3_summary=pass3.pass3_summary,
-                p3_trace=pass3.p3_trace,
-                step4_result=step4.step4_result,
-                step4_replay_transaction_id=step4.step4_replay_transaction_id,
-                replay_events=replay_events,
-                routing_state_summary=step4.routing_state_summary,
-                debug_location=_DEBUG_LOC,
-            )
-            out, summary_fields = build_final_solver_output(
                 run_id=run_id,
-                map_timeline=map_timeline,
-                map_after_pass1=pass12.map_after_pass1,
-                map_after_pass2=pass12.map_after_pass2,
-                map_after_routing=step4.map_after_routing,
-                map_final=p4.map_final,
-                pass12_status_fields=pass12.pass12_status_fields,
-                pass12_stats=pass12.pass12_stats,
-                pass12_phase=pass12.pass12_phase,
-                pass12_skipped=pass12.pass12_skipped,
-                pre_counts=pass12.pre_counts,
-                post_pass2_counts=pass12.post_pass2_counts,
-                step4_result=step4.step4_result,
-                routing_state_summary=step4.routing_state_summary,
-                post_step4_counts=step4.post_step4_counts,
-                unfinalized_placement_count=step4.unfinalized_placement_count,
-                pass3_summary=p4.pass3_summary,
-                existing_layout_analysis=existing_layout_analysis,
-                step_hash_step4=step4.step_hash_step4,
-                step_hash_pass3=pass3.step_hash_pass3,
-                step_hash_p4=p4.step_hash_p4,
-                solver_state_hash=p4.solver_state_hash,
-                replay_events=replay_events,
-                debug_location=_DEBUG_LOC,
             )
         except Exception:
             debug_log_event(

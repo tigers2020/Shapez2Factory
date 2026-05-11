@@ -72,9 +72,9 @@ def run_pass3_transport_minimization_from_maps(
 ) -> tuple[list[dict[str, Any]], Pass3TransportResult | None, dict[str, Any]]:
     """Run greedy Pass3 compression on an existing layout (typically post-STEP4).
 
-    ``p3e3_guarded_commit_enabled`` overrides the default off-switch for P3-E3 guarded
-    lex commit. When enabled, emits precheck trace + atomic candidate validation; if the
-    candidate passes pre-commit checks, applies a live swap and runs post-commit
+    ``p3e3_guarded_commit_enabled`` overrides ``P3E3_GUARDED_COMMIT_ENABLED_DEFAULT`` for
+    P3-E3 guarded lex commit. When enabled, emits precheck trace and atomic candidate validation;
+    if the candidate passes pre-commit checks, applies a live swap and runs post-commit
     ``validate_final_mining_layout`` (rollback to greedy snapshot on failure).
 
     ``pass3_recovery_context``: when True, ``reconstruct_mining_priority_transport`` may use

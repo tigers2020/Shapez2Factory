@@ -1,7 +1,7 @@
 """Replay UI frames: map ``solver_timeline`` rows to replay ``events`` slices (STEP10 bridge).
 
-Layout maps stay on ``solver_timeline[i].mining_map``; ``ui_frames`` only carries indices,
-computation_cycle bounds, and Pass3 snapshot metadata so the UI does not parse raw kinds.
+Layout maps stay on ``solver_timeline[i].mining_map``; ``ui_frames`` carries indices,
+computation_cycle bounds, Pass3 snapshot metadata, and overlay hints (contract v4+).
 """
 
 from __future__ import annotations
@@ -21,6 +21,16 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_r
 )
 
 # Timeline frame id -> replay event ``phase`` strings contributing to that frame.
+_UI_COMPUTATION_CYCLE_STRIDE = 10
+
+_OVERLAY_KINDS: frozenset[str] = frozenset(
+    {
+        SolverMutationEventKind.RECOVERY_BRANCH.value,
+        SolverMutationEventKind.ROLLBACK.value,
+        SolverMutationEventKind.ROUTE_REPLACED.value,
+    }
+)
+
 _FRAME_ID_TO_EVENT_PHASES: dict[str, tuple[str, ...]] = {
     SOLVER_FRAME_INIT: (),
     SOLVER_FRAME_PASS1_OUTER: (),
@@ -66,6 +76,18 @@ def build_replay_ui_frames(
         c_start = min(cycles) if cycles else None
         c_end = max(cycles) if cycles else None
 
+        tick_start: int | None = None
+        tick_end: int | None = None
+        if isinstance(c_start, int) and isinstance(c_end, int):
+            tick_start = (c_start - 1) // _UI_COMPUTATION_CYCLE_STRIDE + 1
+            tick_end = (c_end - 1) // _UI_COMPUTATION_CYCLE_STRIDE + 1
+
+        overlay_indices = sorted(
+            j
+            for j in indices
+            if isinstance(events[j], dict) and events[j].get("kind") in _OVERLAY_KINDS
+        )
+
         p3_snaps: list[dict[str, Any]] = []
         for j in indices:
             ev = events[j]
@@ -92,6 +114,11 @@ def build_replay_ui_frames(
                 "event_indices": indices,
                 "computation_cycle_start": c_start,
                 "computation_cycle_end": c_end,
+                "computation_cycle_ui_stride": _UI_COMPUTATION_CYCLE_STRIDE,
+                "computation_cycle_ui_tick_start": tick_start,
+                "computation_cycle_ui_tick_end": tick_end,
+                "primary_for_step10_ui": True,
+                "overlay_event_indices": overlay_indices,
                 "pass3_layout_snapshots": p3_snaps,
             }
         )
@@ -105,6 +132,11 @@ def _empty_ui_frame(*, timeline_index: int, timeline_frame_id: str) -> dict[str,
         "event_indices": [],
         "computation_cycle_start": None,
         "computation_cycle_end": None,
+        "computation_cycle_ui_stride": _UI_COMPUTATION_CYCLE_STRIDE,
+        "computation_cycle_ui_tick_start": None,
+        "computation_cycle_ui_tick_end": None,
+        "primary_for_step10_ui": True,
+        "overlay_event_indices": [],
         "pass3_layout_snapshots": [],
     }
 

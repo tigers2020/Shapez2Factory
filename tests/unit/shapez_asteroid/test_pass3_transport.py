@@ -41,6 +41,16 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
 )
 
 
+def _patch_validation_recovery_attempts_zero():
+    """Solvers tests assume one Pass3→P4 leg (no validation retry loop)."""
+
+    return patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
+        "recovery_orchestrator.MAX_VALIDATION_RECOVERY_ATTEMPTS",
+        0,
+    )
+
+
 def test_transport_connects_outlets_requires_adjacent_tiles_no_void_jump() -> None:
     """Gap cells are not belt/pipe — graph must not jump void (Pass3 commit safety)."""
 
@@ -1086,6 +1096,7 @@ def test_build_solver_timeline_sets_post_reclaim_skip_when_reclaim_did_not_commi
         return run_pass3_transport_minimization_from_maps(mm, **kwargs)
 
     with (
+        _patch_validation_recovery_attempts_zero(),
         patch(
             "django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow."
             "run_p4_reclaim_loop_after_pass3",
@@ -1182,6 +1193,7 @@ def _solver_summary_post_reclaim_gate_passes() -> tuple[dict[str, object], list[
         return m, res, tr
 
     with (
+        _patch_validation_recovery_attempts_zero(),
         patch(
             "django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow."
             "run_p4_reclaim_loop_after_pass3",

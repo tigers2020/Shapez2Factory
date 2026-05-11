@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    RECOVERY_SKIP_P4_TOTAL_CAP,
     ROUTING_STATE_KEYS_STEP4_HASH,
     SOLVER_FRAME_P4_RECLAIM,
 )
@@ -22,6 +23,11 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery
     RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM,
     extend_recovery_chain,
     finalize_recovery_terminal_reason,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_policy import (
+    p4_reclaim_cap_blocks_entry,
+    tag_post_reclaim_pass3_connectivity_break,
+    tag_reclaim_incremental_failure_from_summary,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_permission import (
     p4_reclaim_permission_snapshot,
@@ -90,6 +96,8 @@ def run_p4_reclaim_stage(
         p4_trace = p4_shadow.p4_reclaim_shadow_placeholder(
             skip_reason=str(p4_permission["skip_reason"])
         )
+    elif p4_reclaim_cap_blocks_entry(pass3_summary):
+        p4_trace = p4_shadow.p4_reclaim_shadow_placeholder(skip_reason=RECOVERY_SKIP_P4_TOTAL_CAP)
     else:
         pass3_summary["recovery_trigger_reason"] = (
             pass3_summary.get("recovery_trigger_reason") or RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM
@@ -161,6 +169,7 @@ def run_p4_reclaim_stage(
                 }
             )
     pass3_summary.update(p4_trace)
+    tag_reclaim_incremental_failure_from_summary(pass3_summary)
     if post_reclaim_pass3_permission(
         eligible_pass3=eligible_pass3,
         pass3_summary=pass3_summary,
@@ -181,6 +190,7 @@ def run_p4_reclaim_stage(
             )
             pass3_summary.update(post_reclaim_update)
             extend_recovery_chain(pass3_summary, RECOVERY_SEGMENT_POST_RECLAIM_PASS3)
+    tag_post_reclaim_pass3_connectivity_break(pass3_summary)
     finalize_recovery_terminal_reason(pass3_summary)
     attach_net_internal_transport_saved_after_reclaim(
         pass3_summary,

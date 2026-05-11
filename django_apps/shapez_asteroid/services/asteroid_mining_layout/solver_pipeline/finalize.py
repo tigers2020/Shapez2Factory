@@ -25,9 +25,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
     build_solver_replay_snapshot,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_frames import (  # noqa: E501
-    build_replay_ui_frames,
-)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_size_distribution import (  # noqa: E501
     removed_counts_distribution,
 )
@@ -37,6 +34,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace import (
     debug_log_event,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.recovery_orchestrator import (  # noqa: E501
+    enrich_solver_summary_recovery,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
@@ -104,6 +104,8 @@ def build_final_solver_output(
     solver_state_hash: str | None,
     replay_events: list[dict[str, Any]],
     debug_location: str,
+    optimization_baseline_internal_transport: int | None = None,
+    optimization_baseline_internal_transport_post_step4: int | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """최종 validation, summary, timeline, replay payload를 기존 schema로 조립한다."""
 
@@ -214,6 +216,17 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    summary_fields["optimization_baseline_internal_transport"] = (
+        optimization_baseline_internal_transport
+    )
+    summary_fields["optimization_baseline_internal_transport_post_step4"] = (
+        optimization_baseline_internal_transport_post_step4
+    )
+    enrich_solver_summary_recovery(
+        summary_fields,
+        report=report,
+        step4_result=step4_result,
+    )
     frames: list[dict[str, Any]] = [
         {
             "id": SOLVER_FRAME_INIT,
@@ -296,10 +309,6 @@ def build_final_solver_output(
         },
     ]
     solver_replay = build_solver_replay_snapshot(frames=frames, run_id=run_id, events=replay_events)
-    solver_replay["ui_frames"] = build_replay_ui_frames(
-        solver_timeline=frames,
-        events=solver_replay["events"],
-    )
     out = {
         "ok": return_reason == "ok",
         "return_reason": return_reason,
@@ -468,3 +477,16 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("post_reclaim_pass3_before_count", None)
     summary_fields.setdefault("post_reclaim_pass3_after_count", None)
     summary_fields.setdefault("post_reclaim_pass3_delta", None)
+    summary_fields.setdefault("optimization_baseline_internal_transport", None)
+    summary_fields.setdefault("optimization_baseline_internal_transport_post_step4", None)
+    summary_fields.setdefault("recovery_contract_phases", [])
+    summary_fields.setdefault("recovery_total_attempts_used", 0)
+    summary_fields.setdefault("validation_recovery_attempts_used", 0)
+    summary_fields.setdefault("recovery_action_plan", [])
+    summary_fields.setdefault("recovery_reclaim_incremental_failure", False)
+    summary_fields.setdefault("recovery_merge_partial_failure", False)
+    summary_fields.setdefault("recovery_post_reclaim_pass3_connectivity_break", False)
+    summary_fields.setdefault("recovery_validation_recovery_eligible", False)
+    summary_fields.setdefault("recovery_bounded_loop_configured", False)
+    summary_fields.setdefault("max_total_recovery_attempts", 0)
+    summary_fields.setdefault("max_validation_recovery_attempts", 0)

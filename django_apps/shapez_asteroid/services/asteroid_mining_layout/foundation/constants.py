@@ -12,6 +12,21 @@ RECOVERY_SEGMENT_SOFT_REPLACE_V2 = "soft_replace_v2"
 RECOVERY_SEGMENT_POST_RECLAIM_PASS3 = "post_reclaim_pass3"
 RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM = "post_pass3_p4_reclaim_entry"
 
+# --- P5 recovery contract (attempt caps; 0 = disabled / single forward pass) ---
+MAX_TOTAL_RECOVERY_ATTEMPTS = 0
+MAX_VALIDATION_RECOVERY_ATTEMPTS = 0
+
+RECOVERY_TERMINAL_TOTAL_ATTEMPTS_EXCEEDED = "recovery_terminal_total_attempts_exceeded"
+RECOVERY_TERMINAL_VALIDATION_EXHAUSTED = "recovery_terminal_validation_recovery_exhausted"
+RECOVERY_SKIP_P4_TOTAL_CAP = "recovery_skip_p4_total_cap"
+RECOVERY_SEGMENT_VALIDATION_RETRY = "validation_recovery_retry"
+
+# Named recovery phases (summary / replay contract; append-only lists on solver_summary).
+RECOVERY_PHASE_VALIDATION_RECOVERY = "validation_recovery"
+RECOVERY_PHASE_MERGE_PARTIAL_FAILURE = "merge_partial_failure"
+RECOVERY_PHASE_RECLAIM_INCREMENTAL_FAILURE = "reclaim_incremental_failure"
+RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK = "post_reclaim_pass3_connectivity_break"
+
 # --- Trace ``location`` strings (STEP10 NDJSON) ---
 SOLVER_SERVICE_BUILD_SOLVER_TIMELINE_LOCATION = (
     "django_apps.shapez_asteroid.services.asteroid_mining_layout."
@@ -123,7 +138,7 @@ ROUTING_STATE_KEYS_STEP4_HASH: tuple[str, ...] = (
 MAX_POST_RECLAIM_PASS3_RERUNS = 1
 
 # --- Replay NDJSON contract ---
-SOLVER_REPLAY_CONTRACT_VERSION = 3
+SOLVER_REPLAY_CONTRACT_VERSION = 4
 
 # --- Lexicographic router (mining opportunity penalty) ---
 MINING_OPPORTUNITY_LOSS_PER_CANDIDATE = 40

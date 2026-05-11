@@ -183,7 +183,7 @@ def test_copy_preview_includes_solver_replay_when_flag(mock_solver: object) -> N
     mock_solver.assert_called_once()
     body = response.json()
     assert "solver_replay" in body
-    assert body["solver_replay"]["contract_version"] == 3
+    assert body["solver_replay"]["contract_version"] == 4
     assert isinstance(body["solver_replay"]["events"], list)
     assert "solver_timeline" in body
     assert isinstance(body["solver_timeline"], list)

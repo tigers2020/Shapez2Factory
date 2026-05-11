@@ -104,8 +104,8 @@ def test_first_route_commit_populates_trunk_trace_and_routed_state() -> None:
     )
     assert r.trunk_load.get("step4_final_route_cell_count", 0) >= 1
     assert r.trunk_load.get("step4_route_commit_count", 0) >= 1
-    assert r.trunk_load.get("step4_accumulated_route_cell_steps", 0) >= 1
-    by_kind = r.trunk_load.get("step4_existing_trunk_cell_count_by_kind") or {}
+    assert r.trunk_load.get("step4_accumulated_route_cell_visits", 0) >= 1
+    by_kind = r.trunk_load.get("step4_committed_trunk_cell_count_by_kind") or {}
     assert sum(int(v) for v in by_kind.values()) >= 1
     assert any(
         s == PlacementCommitState.ROUTED_CONFIRMED.value for s in r.placement_commit_by_id.values()
@@ -183,7 +183,7 @@ def test_trunk_load_accumulates_without_capacity_hard_gate() -> None:
     r = run_step4_merge_aware_routing(
         m2, final_mining_map=fm, is_external=is_ext, placement_records=pr
     )
-    acc = int(r.trunk_load.get("step4_accumulated_route_cell_steps", 0) or 0)
+    acc = int(r.trunk_load.get("step4_accumulated_route_cell_visits", 0) or 0)
     assert acc >= len(r.routes)
     cap_ref = 1
     assert acc > cap_ref or acc == acc

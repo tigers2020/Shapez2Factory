@@ -161,7 +161,8 @@ def run_step4_merge_aware_routing(
     final_route_cells: set[Coord] = set()
     routes_by_placement_id: dict[str, list[list[int]]] = {}
     goal_set_sizes: list[int] = []
-    accumulated_route_cell_steps = 0
+    # Sum of len(path) over committed routes (merge stub counts as 1); shared cells double-count.
+    accumulated_route_cell_visits = 0
     hard_extras = frozenset(hard_protected_cells or ())
 
     routes_out: list[Step4Route] = []
@@ -211,7 +212,7 @@ def run_step4_merge_aware_routing(
                     committed_trunk_by_kind.setdefault(tk, set()).add(stub_cell)
                     final_route_cells.add(stub_cell)
                     routes_by_placement_id[placement_id] = [list(stub_cell)]
-                    accumulated_route_cell_steps += 1
+                    accumulated_route_cell_visits += 1
                 continue
 
             raw_goal = build_step4_goal_set(
@@ -290,7 +291,7 @@ def run_step4_merge_aware_routing(
             )
             committed_trunk_by_kind.setdefault(tk, set()).update(path)
             final_route_cells.update(path)
-            accumulated_route_cell_steps += len(path)
+            accumulated_route_cell_visits += len(path)
             if placement_id is not None:
                 routes_by_placement_id[placement_id] = [[int(a), int(b)] for a, b in path]
             if placement_id is not None and placement_id in work_records:
@@ -331,6 +332,9 @@ def run_step4_merge_aware_routing(
     placement_commit_by_id = {pid: rec.state.value for pid, rec in work_records.items()}
     pcounts = placement_commit_counts_by_state(placement_commit_by_id)
 
+    # Trace keys (trunk_load): goal_set peak = max |goal_cells| per routing attempt;
+    # committed_trunk_* = cells promoted into per-kind trunk during STEP4 (excludes pre-STEP4
+    # initial_trunk_cells); route_cell_visits = placeholder capacity metric (sum path lengths).
     trunk_load: dict[str, Any] = {
         "mode": "accumulate_only",
         "edges": dict(sorted(trunk_edge_hits.items())),
@@ -353,12 +357,12 @@ def run_step4_merge_aware_routing(
             (len(trunk_seed_by_kind.get(k, ())) for k in ("shape_belt", "fluid_pipe")),
             default=0,
         ),
-        "step4_goal_set_size_max": max(goal_set_sizes) if goal_set_sizes else 0,
-        "step4_existing_trunk_cell_count_by_kind": {
+        "step4_goal_set_size_peak": max(goal_set_sizes) if goal_set_sizes else 0,
+        "step4_committed_trunk_cell_count_by_kind": {
             k: len(v) for k, v in committed_trunk_by_kind.items()
         },
         "step4_final_route_cell_count": len(final_route_cells),
-        "step4_accumulated_route_cell_steps": accumulated_route_cell_steps,
+        "step4_accumulated_route_cell_visits": accumulated_route_cell_visits,
         "routes_by_placement_id": dict(routes_by_placement_id),
         **p2c_metrics,
     }
@@ -404,13 +408,13 @@ def step4_routing_skipped_result(map_after_pass2: list[dict[str, Any]]) -> Step4
             "step4_quarantined_unrouted_count": 0,
             "step4_trunk_seed_candidate_count_by_kind": {},
             "step4_trunk_seed_candidate_count": 0,
-            "step4_goal_set_size_max": 0,
-            "step4_existing_trunk_cell_count_by_kind": {},
+            "step4_goal_set_size_peak": 0,
+            "step4_committed_trunk_cell_count_by_kind": {},
             "step4_final_route_cell_count": 0,
             "step4_route_commit_count": 0,
             "step4_routed_stub_count": 0,
             "step4_total_stub_count": 0,
-            "step4_accumulated_route_cell_steps": 0,
+            "step4_accumulated_route_cell_visits": 0,
             "routes_by_placement_id": {},
             "route_revalidation_passed": True,
             "broken_routed_route_count": 0,

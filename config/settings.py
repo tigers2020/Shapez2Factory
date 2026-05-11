@@ -33,6 +33,15 @@ SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY = (
     os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", "").strip().lower()
     in _truthy_env
 )
+# existing_fluid_layout: allow Pass2 internal fill on mineable voids while keeping Pass1
+# suppression (preserve-first). Default ON so internal mineable voids can be filled while
+# preserve bundles stay protected by ``blocked_cells``; set
+# ``SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED=0`` (or false/no/off) to fall back to the
+# legacy "skip both loops" behavior.
+SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED = (
+    os.environ.get("SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED", "true").strip().lower()
+    not in {"0", "false", "no", "off"}
+)
 
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True

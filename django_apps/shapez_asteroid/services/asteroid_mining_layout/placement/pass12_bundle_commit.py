@@ -149,6 +149,7 @@ def try_commit_pass1_bundle(
         trace_location=_PASS1_TRACE,
         bundle_hint=bundle_hint,
         replay_events=replay_events,
+        adjacent_preserve_trunk_baseline_cells=None,
     )
 
 
@@ -159,6 +160,7 @@ def try_commit_pass2_bundle(
     is_external: Callable[[Coord], bool],
     bundle_hint: dict[str, Any] | None = None,
     replay_events: list[dict[str, Any]] | None = None,
+    adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None = None,
 ) -> bool:
     """Same gate as Pass1 for spine/merge transport bundles."""
 
@@ -169,6 +171,7 @@ def try_commit_pass2_bundle(
         trace_location=_PASS2_TRACE,
         bundle_hint=bundle_hint,
         replay_events=replay_events,
+        adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
     )
 
 
@@ -180,6 +183,7 @@ def _commit_after_probe(
     trace_location: str,
     bundle_hint: dict[str, Any] | None,
     replay_events: list[dict[str, Any]] | None,
+    adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None,
 ) -> bool:
     """Pass1/Pass2 bundle을 route probe 성공 후에만 commit한다.
 
@@ -209,6 +213,9 @@ def _commit_after_probe(
             bundle_hint=bundle_hint,
             pass1_allow_cheap_escape=(trace_location == _PASS1_TRACE),
             p1_cheap_void_cells=candidate.p1_cheap_void_cells,
+            pass2_adjacent_preserve_trunk_baseline_cells=(
+                adjacent_preserve_trunk_baseline_cells if trace_location == _PASS2_TRACE else None
+            ),
         ):
             return False
         state.transport_cells |= set(candidate.new_transport)

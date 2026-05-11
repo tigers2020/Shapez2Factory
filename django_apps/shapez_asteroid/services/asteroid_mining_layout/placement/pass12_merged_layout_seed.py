@@ -6,8 +6,9 @@ treating them as empty slots (see ``scratch_from_working_map`` mineable-only blo
 
 from __future__ import annotations
 
+import heapq
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any
 
@@ -26,6 +27,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     MAX_PASS12_NEAREST_TRANSPORT_TRACE_HOPS,
     MAX_PASS12_RECOVERY_BFS_HOPS,
     MAX_PASS12_RECOVERY_PROBES_PER_MINER,
+    PASS12_MAX_EXTENSION_TILES,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.extension_topology import (  # noqa: E501
+    rotation_r_for_extension_facing_parent,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_contracts import (
@@ -542,44 +547,75 @@ def _mining_building_neighbors(
     return tuple(sorted(out, key=lambda p: (p[1], p[0])))
 
 
-def _bfs_extensions_from_miner(
-    miner: Coord,
+_ClaimKey = tuple[int, int, int, int]  # (dist, miner_scan_index, root_miner_y, root_miner_x)
+
+
+def _merged_seed_extension_claims(
+    miners: Sequence[Coord],
     cells: Mapping[Coord, dict[str, Any]],
     mineable: frozenset[Coord],
-    extension_owner: dict[Coord, Coord],
-) -> frozenset[Coord]:
-    """Extensions reachable from ``miner`` without crossing another extractor."""
+) -> dict[Coord, _ClaimKey]:
+    """Multi-source shortest-path claims on extension cells (no crossing other extractors).
 
-    found: set[Coord] = set()
-    q: deque[Coord] = deque()
-    for n in _mining_building_neighbors(miner, cells, mineable):
-        lk = layout_kind(cells[n])
-        if lk not in EXTENSIONS:
+    Each extension cell gets the lexicographically minimum tuple
+    ``(dist, miner_scan_index, root_y, root_x)`` among paths from any root miner.
+    """
+
+    best: dict[Coord, _ClaimKey] = {}
+    heap: list[tuple[int, int, int, int, Coord]] = []
+    for miner_idx, root in enumerate(miners):
+        my, mx = root[1], root[0]
+        for n in _mining_building_neighbors(root, cells, mineable):
+            if layout_kind(cells[n]) not in EXTENSIONS:
+                continue
+            heapq.heappush(heap, (1, miner_idx, my, mx, n))
+    while heap:
+        dist, miner_idx, my, mx, cur = heapq.heappop(heap)
+        tkey = (dist, miner_idx, my, mx)
+        prev = best.get(cur)
+        if prev is not None and prev <= tkey:
             continue
-        prev = extension_owner.get(n)
-        if prev is not None and prev != miner:
-            continue
-        extension_owner[n] = miner
-        found.add(n)
-        q.append(n)
-    while q:
-        cur = q.popleft()
-        for n in _mining_building_neighbors(cur, cells, mineable):
-            lk = layout_kind(cells[n])
+        best[cur] = tkey
+        root = miners[miner_idx]
+        for nb in _mining_building_neighbors(cur, cells, mineable):
+            lk = layout_kind(cells[nb])
             if lk in EXTRACTORS_SHAPE | EXTRACTORS_FLUID:
-                if n != miner:
+                if nb != root:
                     continue
+                continue
             if lk not in EXTENSIONS:
                 continue
-            prev = extension_owner.get(n)
-            if prev is not None and prev != miner:
-                continue
-            if n not in extension_owner:
-                extension_owner[n] = miner
-            if n not in found:
-                found.add(n)
-                q.append(n)
-    return frozenset(found)
+            nd = dist + 1
+            nkey: _ClaimKey = (nd, miner_idx, my, mx)
+            if nb not in best or nkey < best[nb]:
+                heapq.heappush(heap, (nd, miner_idx, my, mx, nb))
+    return best
+
+
+def _merged_seed_extension_sets_by_miner(
+    miners: Sequence[Coord],
+    cells: Mapping[Coord, dict[str, Any]],
+    mineable: frozenset[Coord],
+) -> dict[Coord, frozenset[Coord]]:
+    """Per-root extension sets: multi-owner BFS, then cap at ``PASS12_MAX_EXTENSION_TILES``."""
+
+    if not miners:
+        return {}
+    claims = _merged_seed_extension_claims(miners, cells, mineable)
+    raw_by_miner: dict[Coord, list[Coord]] = {m: [] for m in miners}
+    for ext_cell, tkey in claims.items():
+        _, miner_idx, _, _ = tkey
+        raw_by_miner[miners[miner_idx]].append(ext_cell)
+    out: dict[Coord, frozenset[Coord]] = {}
+    cap = PASS12_MAX_EXTENSION_TILES
+    for m in miners:
+        owned = raw_by_miner.get(m, [])
+        if len(owned) <= cap:
+            out[m] = frozenset(owned)
+            continue
+        owned.sort(key=lambda p: (claims[p][0], p[1], p[0]))
+        out[m] = frozenset(owned[:cap])
+    return out
 
 
 def _extension_facing_parent(ext: Coord, parent_by_cell: dict[Coord, Coord]) -> tuple[int, int]:
@@ -649,7 +685,7 @@ def seed_pass12_scratch_from_merged_existing(
             ),
         )
 
-    extension_owner: dict[Coord, Coord] = {}
+    extension_sets_by_miner = _merged_seed_extension_sets_by_miner(miners, cells, mineable)
     seeded_groups = 0
     seeded_routed_records = 0
     preserved_bundle_extractor_cells = 0
@@ -661,8 +697,10 @@ def seed_pass12_scratch_from_merged_existing(
     preserve_drop_reason_counts: dict[str, int] = {}
     recoverability_class_counts: dict[str, int] = {}
     preserved_recovery_traces: list[dict[str, Any]] = []
+    preserved_bundle_extension_count_histogram: dict[int, int] = {}
+    preserved_orphan_extension_count = 0
     for miner in miners:
-        exts = _bfs_extensions_from_miner(miner, cells, mineable, extension_owner)
+        exts = extension_sets_by_miner.get(miner, frozenset())
         parent_by_cell = _parent_tree_for_miner_and_extensions(miner, exts, cells, mineable)
 
         row_m = cells[miner]
@@ -729,6 +767,9 @@ def seed_pass12_scratch_from_merged_existing(
             seeded_routed_records += 1
             preserved_bundle_extractor_cells += 1
             preserved_bundle_extension_cells += len(exts)
+            preserved_bundle_extension_count_histogram[len(exts)] = (
+                preserved_bundle_extension_count_histogram.get(len(exts), 0) + 1
+            )
         elif _preserve_first_hard_gate(existing_layout_source_kind) or len(miners) == 1:
             # Fluid existing maps: block every unrouted bundle (multi-miner half-preserve guard).
             # Any map with a single merged miner: always block the bundle when not ROUTED_CONFIRMED
@@ -804,12 +845,18 @@ def seed_pass12_scratch_from_merged_existing(
                 miner_row["r"] = eff_r
             scratch.preserved_mining_row_overrides[miner] = miner_row
             for ext in exts:
-                scratch.preserved_mining_row_overrides[ext] = _strip_provisional_placement_row_keys(
-                    dict(cells[ext])
-                )
+                ext_row = _strip_provisional_placement_row_keys(dict(cells[ext]))
+                if ext in parent_by_cell and parent_by_cell[ext] != ext:
+                    ext_facing = _extension_facing_parent(ext, parent_by_cell)
+                    ext_row["r"] = rotation_r_for_extension_facing_parent(ext_facing)
+                    scratch.extension_facings[ext] = ext_facing
+                scratch.preserved_mining_row_overrides[ext] = ext_row
             preserved_bundle_extractor_cells += 1
             preserved_bundle_extension_cells += len(exts)
             preserved_unrouted_extractor_count += 1
+            preserved_bundle_extension_count_histogram[len(exts)] = (
+                preserved_bundle_extension_count_histogram.get(len(exts), 0) + 1
+            )
         seeded_groups += 1
 
     for c, row in cells.items():
@@ -823,14 +870,19 @@ def seed_pass12_scratch_from_merged_existing(
         nbrs = _mining_building_neighbors(c, cells, mineable)
         parent: Coord | None = None
         for n in nbrs:
-            lk_n = layout_kind(cells[n])
-            if lk_n in EXTRACTORS_SHAPE | EXTRACTORS_FLUID | EXTENSIONS:
+            if layout_kind(cells[n]) in EXTRACTORS_SHAPE | EXTRACTORS_FLUID:
                 parent = n
                 break
+        if parent is None:
+            for n in nbrs:
+                if layout_kind(cells[n]) in EXTENSIONS:
+                    parent = n
+                    break
         if parent is not None:
             scratch.extension_facings[c] = require_cardinal_unit_toward(c, parent)
         else:
             scratch.extension_facings[c] = (1, 0)
+        preserved_orphan_extension_count += 1
 
     sk = existing_layout_source_kind or "unspecified"
     return {
@@ -857,4 +909,13 @@ def seed_pass12_scratch_from_merged_existing(
         "pass12_preserved_stripped_rotation_fallback_count": (
             preserved_stripped_rotation_fallback_count
         ),
+        "pass12_preserved_bundle_extension_count_histogram": dict(
+            sorted(preserved_bundle_extension_count_histogram.items())
+        ),
+        "pass12_preserved_extension_per_extractor_avg": (
+            round(preserved_bundle_extension_cells / preserved_bundle_extractor_cells, 6)
+            if preserved_bundle_extractor_cells > 0
+            else 0.0
+        ),
+        "pass12_preserved_orphan_extension_count": preserved_orphan_extension_count,
     }

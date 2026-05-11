@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from django.test import override_settings
+
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.existing_layout_analysis import (  # noqa: E501
+    effective_suppress_pass1_loop,
+    effective_suppress_pass2_loop,
     effective_suppress_pass12_placement_loops,
     existing_layout_heuristic_suppress_pass12_loops,
 )
@@ -132,8 +136,8 @@ def test_existing_layout_heuristic_suppress_pass12_loops_raw_false() -> None:
     assert existing_layout_heuristic_suppress_pass12_loops(ela) is False
 
 
-def test_effective_suppress_pass12_loops_fluid_overrides_heuristic_false() -> None:
-    """``existing_fluid_layout`` must suppress Pass1/Pass2 even without trunk / extensions."""
+def test_effective_suppress_pass1_loop_fluid_overrides_heuristic_false() -> None:
+    """``existing_fluid_layout``: Pass1 stays suppressed even without trunk / extensions."""
 
     ela = {
         "source_kind": "existing_fluid_layout",
@@ -142,6 +146,35 @@ def test_effective_suppress_pass12_loops_fluid_overrides_heuristic_false() -> No
         "issues": [],
     }
     assert existing_layout_heuristic_suppress_pass12_loops(ela) is False
+    assert effective_suppress_pass1_loop(ela) is True
+
+
+def test_effective_suppress_pass2_loop_fluid_default_allows_pass2() -> None:
+    """Default flag ON: Pass1 stays suppressed but Pass2 may run on ``existing_fluid_layout``."""
+
+    ela = {
+        "source_kind": "existing_fluid_layout",
+        "equipment": {"miner_count": 1, "extension_count": 0},
+        "transport": {},
+        "issues": [],
+    }
+    assert effective_suppress_pass1_loop(ela) is True
+    assert effective_suppress_pass2_loop(ela) is False
+    assert effective_suppress_pass12_placement_loops(ela) is False
+
+
+@override_settings(SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED=False)
+def test_effective_suppress_pass2_loop_fluid_flag_off_suppresses_pass2() -> None:
+    """Flag OFF: legacy preserve-first behavior — both Pass1 and Pass2 suppressed."""
+
+    ela = {
+        "source_kind": "existing_fluid_layout",
+        "equipment": {"miner_count": 1, "extension_count": 0},
+        "transport": {},
+        "issues": [],
+    }
+    assert effective_suppress_pass1_loop(ela) is True
+    assert effective_suppress_pass2_loop(ela) is True
     assert effective_suppress_pass12_placement_loops(ela) is True
 
 
@@ -212,6 +245,115 @@ def test_integrate_pass12_fluid_infer_miner_r_when_row_omits_rotation() -> None:
     assert stats["pass1_outer_placements"] == 0
     assert report.missing_stub_count == 0
     assert report.missing_extractor_rotation_count == 0
+
+
+def test_integrate_pass12_per_pass_suppression_flags_propagate_to_stats() -> None:
+    """Per-pass split: explicit Pass1/Pass2 suppress flags must propagate to pass12_stats."""
+
+    fm = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        },
+    ]
+    wm = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "surface": "fluid",
+            "t": "Layout_FluidMiner",
+        },
+        {"x": 6, "y": 5, "role": "pipe", "surface": "fluid"},
+    ]
+    _m1, _m2, stats_both = p12_tl.integrate_pass12_placement_into_working_map(
+        working_map=wm,
+        final_mining_map=fm,
+        is_external=lambda c: c[0] > 5,
+        suppress_pass1_pass2_loops=True,
+    )
+    assert stats_both["pass12_pass1_loop_suppressed"] is True
+    assert stats_both["pass12_pass2_loop_suppressed"] is True
+    assert stats_both["pass12_placement_loops_suppressed"] is True
+
+    _m1, _m2, stats_split = p12_tl.integrate_pass12_placement_into_working_map(
+        working_map=wm,
+        final_mining_map=fm,
+        is_external=lambda c: c[0] > 5,
+        suppress_pass1_loop=True,
+        suppress_pass2_loop=False,
+    )
+    assert stats_split["pass12_pass1_loop_suppressed"] is True
+    assert stats_split["pass12_pass2_loop_suppressed"] is False
+    assert stats_split["pass12_placement_loops_suppressed"] is False
+    assert stats_split["pass1_outer_placements"] == 0
+
+
+def test_integrate_pass12_fluid_pass2_enters_spine_when_flag_enables_pass2() -> None:
+    """Flag ON: Pass2 enters spine-seed computation on ``existing_fluid_layout`` voids."""
+
+    y = 5
+    fm = [
+        {
+            "x": x,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        }
+        for x in (1, 2, 3, 4)
+    ]
+    wm = [
+        {
+            "x": 1,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+            "t": "Layout_FluidMiner",
+        },
+        {
+            "x": 2,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "fluid_extension",
+            "r": 2,
+            "surface": "fluid",
+            "t": "Layout_FluidMinerExtension",
+        },
+        {"x": 1, "y": y - 1, "role": "pipe", "surface": "fluid"},
+    ]
+    ela = {
+        "source_kind": "existing_fluid_layout",
+        "equipment": {"miner_count": 1, "extension_count": 1},
+        "transport": {},
+        "issues": [],
+    }
+    _m1, _m2, stats_off = p12_tl.integrate_pass12_placement_into_working_map(
+        working_map=wm,
+        final_mining_map=fm,
+        is_external=lambda c: c[0] > 4,
+        existing_layout_analysis=ela,
+        suppress_pass1_loop=True,
+        suppress_pass2_loop=True,
+    )
+    _m1, _m2, stats_on = p12_tl.integrate_pass12_placement_into_working_map(
+        working_map=wm,
+        final_mining_map=fm,
+        is_external=lambda c: c[0] > 4,
+        existing_layout_analysis=ela,
+        suppress_pass1_loop=True,
+        suppress_pass2_loop=False,
+    )
+    assert stats_off["pass12_pass2_loop_suppressed"] is True
+    assert stats_off["pass2_spine_seed_count"] == 0
+    assert stats_on["pass12_pass2_loop_suppressed"] is False
+    assert stats_on["pass2_spine_seed_count"] >= 1
 
 
 def test_step4_step_cost_trunk_reuse_tier() -> None:

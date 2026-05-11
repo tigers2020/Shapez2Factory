@@ -428,14 +428,13 @@ def existing_layout_heuristic_suppress_pass12_loops(
     return True
 
 
-def effective_suppress_pass12_placement_loops(
+def effective_suppress_pass1_loop(
     existing_layout_analysis: dict[str, Any] | None,
 ) -> bool:
-    """Whether Pass1/Pass2 loops should be skipped (STEP4 still runs).
+    """Whether the Pass1 outer placement loop should be skipped.
 
-    ``existing_fluid_layout`` always suppresses: preserve-first must not add new Pass1 bundles
-    inside the working footprint even when the conservative heuristic is False (e.g. missing
-    trunk metadata or extension_count == 0 in Step 0.5).
+    ``existing_fluid_layout`` always suppresses Pass1 (preserve-first guard). Other
+    classifications follow the conservative heuristic.
     """
 
     if isinstance(existing_layout_analysis, dict):
@@ -444,8 +443,41 @@ def effective_suppress_pass12_placement_loops(
     return existing_layout_heuristic_suppress_pass12_loops(existing_layout_analysis)
 
 
+def effective_suppress_pass2_loop(
+    existing_layout_analysis: dict[str, Any] | None,
+) -> bool:
+    """Whether the Pass2 internal placement loop should be skipped.
+
+    For ``existing_fluid_layout``, Pass2 stays suppressed by default to preserve legacy
+    behavior; setting ``SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED=1`` re-enables
+    Pass2 so internal mineable voids can be filled while preserve bundles stay protected
+    via ``blocked_cells``. Other classifications follow the conservative heuristic.
+    """
+
+    if isinstance(existing_layout_analysis, dict):
+        if existing_layout_analysis.get("source_kind") == "existing_fluid_layout":
+            from django.conf import settings
+
+            if getattr(settings, "SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED", False):
+                return False
+            return True
+    return existing_layout_heuristic_suppress_pass12_loops(existing_layout_analysis)
+
+
+def effective_suppress_pass12_placement_loops(
+    existing_layout_analysis: dict[str, Any] | None,
+) -> bool:
+    """Whether both Pass1 and Pass2 loops should be skipped (legacy aggregate flag)."""
+
+    sp1 = effective_suppress_pass1_loop(existing_layout_analysis)
+    sp2 = effective_suppress_pass2_loop(existing_layout_analysis)
+    return sp1 and sp2
+
+
 __all__ = [
     "analyze_existing_layout_from_mining_map",
     "effective_suppress_pass12_placement_loops",
+    "effective_suppress_pass1_loop",
+    "effective_suppress_pass2_loop",
     "existing_layout_heuristic_suppress_pass12_loops",
 ]

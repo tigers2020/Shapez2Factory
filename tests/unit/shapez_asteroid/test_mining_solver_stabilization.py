@@ -538,6 +538,7 @@ def test_pass2_commit_uses_pass2_trace_location() -> None:
         bundle_hint: dict | None = None,
         pass1_allow_cheap_escape: bool = False,
         p1_cheap_void_cells: frozenset[tuple[int, int]] | None = None,
+        pass2_adjacent_preserve_trunk_baseline_cells: frozenset[tuple[int, int]] | None = None,
     ) -> bool:
         locations.append(trace_location)
         return True

@@ -83,6 +83,7 @@ def try_place_pass2_internal_bundle(
     replay_events: list[dict[str, Any]] | None = None,
     extra_transport_block_cells: frozenset[Coord] = frozenset(),
     placement_transport_blocked_counter: list[int] | None = None,
+    adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None = None,
 ) -> bool:
     """Try output directions; commit at most one bundle via ``try_commit_pass2_bundle``."""
 
@@ -133,6 +134,7 @@ def try_place_pass2_internal_bundle(
                 is_external=is_external,
                 bundle_hint=bundle_hint,
                 replay_events=replay_events,
+                adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
             ):
                 return True
     return False
@@ -149,6 +151,7 @@ def run_pass2_internal_placement_mvp(
     priority_seeds: frozenset[Coord] | None = None,
     extra_transport_block_cells: frozenset[Coord] = frozenset(),
     placement_transport_blocked_counter: list[int] | None = None,
+    adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None = None,
 ) -> int:
     """Inner-first Pass2 sweep; returns how many extractors were committed.
 
@@ -178,6 +181,7 @@ def run_pass2_internal_placement_mvp(
             replay_events=replay_events,
             extra_transport_block_cells=extra_transport_block_cells,
             placement_transport_blocked_counter=placement_transport_blocked_counter,
+            adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
         ):
             placed += 1
     return placed

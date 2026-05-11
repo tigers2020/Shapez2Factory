@@ -186,7 +186,11 @@ def _merge_pass1_into_rows(
     for x, y in new_bodies:
         c = (x, y)
         if c in scratch.preserved_mining_row_overrides:
-            cells[c] = dict(scratch.preserved_mining_row_overrides[c])
+            ov_row = dict(scratch.preserved_mining_row_overrides[c])
+            if c in scratch.extension_facings:
+                edx, edy = scratch.extension_facings[c]
+                ov_row["r"] = rotation_r_for_extension_facing_parent((edx, edy))
+            cells[c] = ov_row
             continue
         if c in scratch.extractor_cells:
             row = dict(miner_row)
@@ -239,6 +243,8 @@ def integrate_pass12_placement_into_working_map(
     replay_events: list[dict[str, Any]] | None = None,
     pass2_spine_priority_enabled: bool = False,
     suppress_pass1_pass2_loops: bool = False,
+    suppress_pass1_loop: bool | None = None,
+    suppress_pass2_loop: bool | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """Run Pass1 outer then Pass2 internal placement; merge each stage into row lists.
 
@@ -252,10 +258,14 @@ def integrate_pass12_placement_into_working_map(
     ``mineable_inner_first_order``의 soft 우선순위로 흘려 인접 셀을 그룹 선두로 끌어온다
     (정본: 07_step3_pass2_placement.md §8.5). 기본값은 False (기존 동작 동일).
 
-    ``suppress_pass1_pass2_loops``: True면 시드 이후 Pass1/Pass2 배치 루프를 실행하지 않고
-    병합만 수행한다(기존 연결 레이아웃 preserve-first). ``pass12_skipped``(혼합 면)와 달리
-    STEP4는 계속 실행된다.
+    ``suppress_pass1_pass2_loops``: True면 시드 이후 Pass1/Pass2 배치 루프를 모두 건너뛴다
+    (기존 연결 레이아웃 preserve-first 동작과 호환). 더 세밀한 분기는 ``suppress_pass1_loop`` /
+    ``suppress_pass2_loop``로 패스를 따로 끈다(설정되지 않으면 ``suppress_pass1_pass2_loops``
+    값을 그대로 사용). ``pass12_skipped``(혼합 면)와 달리 STEP4는 계속 실행된다.
     """
+
+    sp1 = suppress_pass1_loop if suppress_pass1_loop is not None else suppress_pass1_pass2_loops
+    sp2 = suppress_pass2_loop if suppress_pass2_loop is not None else suppress_pass1_pass2_loops
 
     mineable, asteroid = mineable_and_asteroid_coords(final_mining_map)
     _, ela_empty_meta = pass12_existing_layout_barrier_meta(
@@ -287,6 +297,11 @@ def integrate_pass12_placement_into_working_map(
         "pass12_preserved_recovery_traces": [],
         "pass12_preserved_recovery_success_count": 0,
         "pass12_placement_loops_suppressed": False,
+        "pass12_pass1_loop_suppressed": False,
+        "pass12_pass2_loop_suppressed": False,
+        "pass12_preserved_bundle_extension_count_histogram": {},
+        "pass12_preserved_extension_per_extractor_avg": 0.0,
+        "pass12_preserved_orphan_extension_count": 0,
         **ela_empty_meta,
     }
     if not mineable:
@@ -353,13 +368,8 @@ def integrate_pass12_placement_into_working_map(
     try:
         priority_seeds_arg: frozenset[Coord] | None = None
         spine_seeds: frozenset[Coord] = frozenset()
-        if suppress_pass1_pass2_loops:
-            scratch_after_pass1 = _clone_scratch(scratch)
-            ex_before_p2 = len(scratch.extractor_cells)
-            ext_before_p2 = len(scratch.extension_facings)
-            tr_before_p2 = len(scratch.transport_cells)
+        if sp1:
             placed = 0
-            placed_p2 = 0
         else:
             placed = run_pass1_outer_placement_mvp(
                 mineable_cells=mineable,
@@ -371,10 +381,13 @@ def integrate_pass12_placement_into_working_map(
                 extra_transport_block_cells=extra_transport_blocks,
                 placement_transport_blocked_counter=placement_transport_blocked_counter,
             )
-            scratch_after_pass1 = _clone_scratch(scratch)
-            ex_before_p2 = len(scratch.extractor_cells)
-            ext_before_p2 = len(scratch.extension_facings)
-            tr_before_p2 = len(scratch.transport_cells)
+        scratch_after_pass1 = _clone_scratch(scratch)
+        ex_before_p2 = len(scratch.extractor_cells)
+        ext_before_p2 = len(scratch.extension_facings)
+        tr_before_p2 = len(scratch.transport_cells)
+        if sp2:
+            placed_p2 = 0
+        else:
             # Pass2 spine seeds: extension-인접 void cells (Pass2 진입 직전 관측). 동작 변경 없음;
             # 후속 단계에서 우선순위/힌트로 활용 가능. 정본: 07_step3_pass2_placement.md §8.
             ext_role = "fluid_extension" if surface == "fluid" else "extension"
@@ -390,6 +403,9 @@ def integrate_pass12_placement_into_working_map(
             priority_seeds_arg = (
                 spine_seeds if pass2_spine_priority_enabled and spine_seeds else None
             )
+            pass2_preserve_trunk_baseline: frozenset[Coord] | None = None
+            if isinstance(ela_sk, str) and ela_sk == "existing_fluid_layout":
+                pass2_preserve_trunk_baseline = frozenset(scratch.transport_cells)
             placed_p2 = run_pass2_internal_placement_mvp(
                 mineable_cells=mineable,
                 asteroid_cells=asteroid,
@@ -400,6 +416,7 @@ def integrate_pass12_placement_into_working_map(
                 priority_seeds=priority_seeds_arg,
                 extra_transport_block_cells=extra_transport_blocks,
                 placement_transport_blocked_counter=placement_transport_blocked_counter,
+                adjacent_preserve_trunk_baseline_cells=pass2_preserve_trunk_baseline,
             )
         merged_pass1 = _merge_pass1_into_rows(
             working_map,
@@ -451,7 +468,9 @@ def integrate_pass12_placement_into_working_map(
             "pass12_mixed_surface_skipped": False,
             "placement_records": dict(scratch.placement_records),
             "placement_candidate_blocked_count": int(placement_transport_blocked_counter[0]),
-            "pass12_placement_loops_suppressed": suppress_pass1_pass2_loops,
+            "pass12_placement_loops_suppressed": bool(sp1 and sp2),
+            "pass12_pass1_loop_suppressed": bool(sp1),
+            "pass12_pass2_loop_suppressed": bool(sp2),
             "existing_transport_cell_count_baseline": ex_base_n,
             "existing_transport_reuse_ratio_after_pass12": round(reuse_vs_baseline, 6),
             "existing_transport_reuse_ratio_vs_working_initial_after_pass12": round(

@@ -1180,6 +1180,17 @@
     if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = mapTitle;
     var uir = solverTimelineUiRow(decodeStepIndex);
     var overlayDetail = buildReplayOverlayDetail(uir);
+    var mapStepId = st && st.id ? st.id : "";
+    if (
+      mapStepId === "strip_extractors" ||
+      mapStepId === "strip_extensions" ||
+      mapStepId === "fill_interior" ||
+      mapStepId === "final"
+    ) {
+      overlayDetail = Object.assign({}, overlayDetail || {}, {
+        hideFacingArrows: true,
+      });
+    }
     if (uir && uir.protected_corridors && typeof uir.protected_corridors === "object") {
       overlayDetail = Object.assign({}, overlayDetail || {}, {
         protected_corridors: uir.protected_corridors,
@@ -2175,8 +2186,42 @@
       if (coordToCluster[k2] === undefined) return null;
       return fluidClusterHsl(coordToCluster[k2]);
     }
+    function headOutputsToTransport(head_row, transport_row) {
+      if (!head_row || !transport_row) return false;
+      var rRaw = head_row.r;
+      if (rRaw == null || rRaw === "") return false;
+      var rNum = typeof rRaw === "number" ? rRaw : parseInt(String(rRaw), 10);
+      if (!isFinite(rNum)) return false;
+      var od = outputOffsetFromRotation(rNum);
+      var output_coord = shapezStepCardinal(head_row.x, head_row.y, od[0], od[1]);
+      if (!output_coord) return false;
+      return output_coord[0] === transport_row.x && output_coord[1] === transport_row.y;
+    }
+    function transportConnectsToNeighbor(transport_row, neighbor_row, transport_role) {
+      if (!neighbor_row) return false;
+      var neighbor_role = neighbor_row.role || "occupied";
+      if (neighbor_role === transport_role) return true;
+      if (transport_role === "pipe") {
+        return isFluidHeadTile(neighbor_row) && headOutputsToTransport(neighbor_row, transport_row);
+      }
+      if (transport_role === "belt") {
+        return isShapeHeadTile(neighbor_row) && headOutputsToTransport(neighbor_row, transport_row);
+      }
+      return false;
+    }
     function appendStationPerimeterOutlines(parent, is_head_tile, is_extension_tile) {
       var assigned_extension = Object.create(null);
+      function extensionFacesParent(extension_row, parent_row) {
+        if (!extension_row || !parent_row) return false;
+        var rRaw = extension_row.r;
+        if (rRaw == null || rRaw === "") return false;
+        var rNum = typeof rRaw === "number" ? rRaw : parseInt(String(rRaw), 10);
+        if (!isFinite(rNum)) return false;
+        var od = outputOffsetFromRotation(rNum);
+        var parent_coord = shapezStepCardinal(extension_row.x, extension_row.y, od[0], od[1]);
+        if (!parent_coord) return false;
+        return parent_coord[0] === parent_row.x && parent_coord[1] === parent_row.y;
+      }
       for (var sri = 0; sri < sorted_cluster_rows.length; sri++) {
         var start_station = sorted_cluster_rows[sri];
         if (!is_head_tile(start_station)) continue;
@@ -2184,20 +2229,23 @@
         var station_queue = [start_station];
         var start_station_key = start_station.x + "," + start_station.y;
         station_members[start_station_key] = start_station;
+        var station_member_count = 1;
         var station_head = 0;
-        while (station_head < station_queue.length && Object.keys(station_members).length < 4) {
+        while (station_head < station_queue.length && station_member_count < 4) {
           var cur_station = station_queue[station_head++];
           var station_nbs = shapezNeighbors4(cur_station.x, cur_station.y);
           for (var sni = 0; sni < station_nbs.length; sni++) {
-            if (Object.keys(station_members).length >= 4) break;
+            if (station_member_count >= 4) break;
             var sx = station_nbs[sni][0];
             var sy = station_nbs[sni][1];
             var sk = sx + "," + sy;
             if (assigned_extension[sk] || station_members[sk]) continue;
             var station_nb = cellAt[sk];
             if (!is_extension_tile(station_nb)) continue;
+            if (!extensionFacesParent(station_nb, cur_station)) continue;
             assigned_extension[sk] = true;
             station_members[sk] = station_nb;
+            station_member_count += 1;
             station_queue.push(station_nb);
           }
         }
@@ -2417,9 +2465,7 @@
         var qx = pn[pi][0];
         var qy = pn[pi][1];
         var neighbor = cellAt[qx + "," + qy];
-        if (!neighbor) continue;
-        var nr = neighbor.role || "occupied";
-        if (nr !== "pipe" && !isFluidStationTile(neighbor)) continue;
+        if (!transportConnectsToNeighbor(p, neighbor, "pipe")) continue;
         var d = classifyNeighborDir(p.x, p.y, qx, qy);
         if (d === "n") n = true;
         else if (d === "e") e = true;
@@ -2503,9 +2549,7 @@
         var qxb = pnb[pbi][0];
         var qyb = pnb[pbi][1];
         var neighborB = cellAt[qxb + "," + qyb];
-        if (!neighborB) continue;
-        var nbrB = neighborB.role || "occupied";
-        if (nbrB !== "belt" && !isShapeStationTile(neighborB)) continue;
+        if (!transportConnectsToNeighbor(p, neighborB, "belt")) continue;
         var db = classifyNeighborDir(p.x, p.y, qxb, qyb);
         if (db === "n") nb = true;
         else if (db === "e") eb = true;
@@ -2550,6 +2594,76 @@
       parent.appendChild(gB);
     }
 
+    /** Matches ``shape_miner_rotation._OUTPUT_UNIT``: R%4 → (dx,dy), +Y south. */
+    function outputOffsetFromRotation(r) {
+      var unit = [
+        [1, 0],
+        [0, 1],
+        [-1, 0],
+        [0, -1],
+      ];
+      var k = ((Number(r) | 0) % 4 + 4) % 4;
+      return unit[k];
+    }
+    /**
+     * Output / parent-facing from ``r`` (shape_miner_rotation table).
+     * Extension rows use ``rotation_r_for_extension_facing_parent`` in the solver — same table, do not negate.
+     * Pass12 extractor cores are emitted as miner / fluid_miner rows (same ``r`` table).
+     */
+    function appendExtractorExtensionArrow(parent, p, cell, xi, minYLocal) {
+      var rRaw = cell.r;
+      if (rRaw == null || rRaw === "") return;
+      var rNum = typeof rRaw === "number" ? rRaw : parseInt(String(rRaw), 10);
+      if (!isFinite(rNum)) return;
+      var lk = cell.layout_kind;
+      var isExtLayout =
+        lk === "extension" ||
+        lk === "fluid_extension";
+      var isHeadOut =
+        lk === "extractor" ||
+        lk === "miner" ||
+        lk === "fluid_miner";
+      if (!isExtLayout && !isHeadOut) return;
+      var idxA = xi[p.x];
+      if (idxA === undefined) return;
+      var padA = 0.12;
+      var x0a = 1 + idxA + padA;
+      var y0a = p.y - minYLocal + padA;
+      var sizeA = 1 - 2 * padA;
+      var cxa = x0a + sizeA / 2;
+      var cya = y0a + sizeA / 2;
+      var od = outputOffsetFromRotation(rNum);
+      var dx = od[0];
+      var dy = od[1];
+      var tipDist = sizeA * 0.4;
+      var halfW = sizeA * 0.1;
+      var tx = cxa + dx * tipDist;
+      var ty = cya + dy * tipDist;
+      var px = -dy;
+      var py = dx;
+      var bx1 = cxa + dx * (tipDist - halfW * 1.4) + px * halfW;
+      var by1 = cya + dy * (tipDist - halfW * 1.4) + py * halfW;
+      var bx2 = cxa + dx * (tipDist - halfW * 1.4) - px * halfW;
+      var by2 = cya + dy * (tipDist - halfW * 1.4) - py * halfW;
+      var poly = document.createElementNS(svgNs, "polygon");
+      poly.setAttribute(
+        "points",
+        String(tx) + "," + String(ty) + " " + String(bx1) + "," + String(by1) + " " + String(bx2) + "," + String(by2)
+      );
+      poly.setAttribute("class", "am-extractor-extension-facing");
+      poly.setAttribute("fill", "rgb(248 250 252)");
+      poly.setAttribute("stroke", "rgb(15 23 42 / 0.55)");
+      poly.setAttribute("stroke-width", "0.035");
+      poly.setAttribute("stroke-linejoin", "round");
+      var tip = mapEntryTitle(cell);
+      if (tip) {
+        var tAr = document.createElementNS(svgNs, "title");
+        tAr.textContent = tip;
+        poly.appendChild(tAr);
+      }
+      parent.appendChild(poly);
+    }
+
     var gUnder = document.createElementNS(svgNs, "g");
     gUnder.setAttribute("class", "asteroid-plot-inferred");
     var gBelt = document.createElementNS(svgNs, "g");
@@ -2558,6 +2672,8 @@
     gPipe.setAttribute("class", "asteroid-plot-pipe");
     var gTop = document.createElementNS(svgNs, "g");
     gTop.setAttribute("class", "asteroid-plot-occupied");
+    var gFacing = document.createElementNS(svgNs, "g");
+    gFacing.setAttribute("class", "asteroid-plot-facing-arrows");
 
     var i;
     for (i = 0; i < filtered.length; i++) {
@@ -2593,6 +2709,9 @@
         tip,
         null
       );
+      if (!replayOverlay || !replayOverlay.hideFacingArrows) {
+        appendExtractorExtensionArrow(gFacing, oc, oc, xi, minY);
+      }
     }
     var gStationPerimeters = document.createElementNS(svgNs, "g");
     gStationPerimeters.setAttribute("class", "am-station-perimeter-outlines");
@@ -2603,6 +2722,7 @@
     plotSvg.appendChild(gBelt);
     plotSvg.appendChild(gPipe);
     plotSvg.appendChild(gTop);
+    plotSvg.appendChild(gFacing);
     plotSvg.appendChild(gStationPerimeters);
     if (
       corridorOverlayCb &&

@@ -66,6 +66,7 @@ def test_copy_preview_success() -> None:
             "role": "occupied",
             "surface": "shape",
             "layout_kind": "asteroid_field",
+            "source_layout_kind": "miner",
         },
     ]
     assert body["style_catalog"] == asteroid_map_style_catalog()

@@ -50,7 +50,7 @@ def test_prefers_longer_void_path_when_internal_transport_lower() -> None:
     assert res.found
     assert res.path[0] == start
     assert res.path[-1] == goal
-    interior_hops = sum(1 for c in res.path[1:] if zm.get(c) is RouteZone.ASTEROID_INTERIOR)
+    interior_hops = sum(1 for c in res.path[1:] if zm.get(c) is RouteZone.ASTEROID_INTERIOR_VOID)
     assert interior_hops == 0, "expected perimeter/void only, not interior corridor"
 
 
@@ -211,10 +211,11 @@ def test_pipe_and_belt_share_kind_cost_multiplier_canonical() -> None:
     assert pipe.priority[2] == belt.priority[2]
 
 
-def test_canonical_route_zone_costs_three_zone_map() -> None:
+def test_canonical_route_zone_costs_four_zone_map() -> None:
     assert ROUTE_ZONE_COST[RouteZone.EXTERIOR_VOID] == 1
     assert ROUTE_ZONE_COST[RouteZone.ASTEROID_PERIMETER] == 5
-    assert ROUTE_ZONE_COST[RouteZone.ASTEROID_INTERIOR] == 50
+    assert ROUTE_ZONE_COST[RouteZone.ASTEROID_INTERIOR_VOID] == 50
+    assert ROUTE_ZONE_COST[RouteZone.FILLABLE_INTERIOR] == 150
 
 
 def test_transport_kind_from_solver_value_roundtrip() -> None:

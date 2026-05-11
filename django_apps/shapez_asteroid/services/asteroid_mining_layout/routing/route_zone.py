@@ -38,38 +38,55 @@ class RouteZone(Enum):
 
     EXTERIOR_VOID = "exterior_void"
     ASTEROID_PERIMETER = "asteroid_perimeter"
-    ASTEROID_INTERIOR = "asteroid_interior"
+    ASTEROID_INTERIOR_VOID = "asteroid_interior_void"
+    FILLABLE_INTERIOR = "fillable_interior"
 
 
 ROUTE_ZONE_COST: dict[RouteZone, int] = {
-    # Aligned with mining_solver_cursor_sessions DTO: outside cheap, interior expensive
-    # so lex route_cost (3rd axis) pushes paths toward exterior/boundary after internal_min.
+    # Outside / boundary cheap; rock interior medium; mineable interior expensive
+    # (push routes toward exterior / void trunk; preserve mining footprint).
     RouteZone.EXTERIOR_VOID: 1,
     RouteZone.ASTEROID_PERIMETER: 5,
-    RouteZone.ASTEROID_INTERIOR: 50,
+    RouteZone.ASTEROID_INTERIOR_VOID: 50,
+    RouteZone.FILLABLE_INTERIOR: 150,
 }
+
+# Lex axis ``internal``: new transport on these zones (not on existing transport).
+ROUTE_ZONES_LEX_COUNT_AS_INTERNAL: frozenset[RouteZone] = frozenset(
+    {RouteZone.ASTEROID_INTERIOR_VOID, RouteZone.FILLABLE_INTERIOR}
+)
 
 
 def build_route_zone_map(
-    *, asteroid_cells: frozenset[Coord] | set[Coord]
+    *,
+    asteroid_cells: frozenset[Coord] | set[Coord],
+    mineable_cells: frozenset[Coord] | set[Coord] | None = None,
 ) -> dict[Coord, RouteZone]:
-    """Assign ``RouteZone`` to each asteroid cell.
+    """Assign :class:`RouteZone` to each asteroid cell.
 
-    Any coordinate not in the map is treated as ``EXTERIOR_VOID``.
-    Interior = all four neighbors inside the asteroid; otherwise perimeter.
+    Any coordinate not in the returned map is treated as ``EXTERIOR_VOID`` by
+    :func:`route_zone_for_cell`.
+
+    ``mineable_cells``: cells that are both mineable and in ``asteroid_cells`` become
+    ``FILLABLE_INTERIOR`` (including perimeter-adjacent mineable). Other asteroid cells
+    use void-touching perimeter vs four-neighbor interior void classification.
     """
 
     ac = frozenset(asteroid_cells)
+    mine = frozenset(mineable_cells) if mineable_cells is not None else frozenset()
     perimeter = cells_touching_void(set(ac))
     out: dict[Coord, RouteZone] = {}
     for c in ac:
-        x, y = c
+        if c in mine:
+            out[c] = RouteZone.FILLABLE_INTERIOR
+            continue
         if c in perimeter:
             out[c] = RouteZone.ASTEROID_PERIMETER
             continue
+        x, y = c
         nbs = ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
         if all(n in ac for n in nbs):
-            out[c] = RouteZone.ASTEROID_INTERIOR
+            out[c] = RouteZone.ASTEROID_INTERIOR_VOID
         else:
             out[c] = RouteZone.ASTEROID_PERIMETER
     return out

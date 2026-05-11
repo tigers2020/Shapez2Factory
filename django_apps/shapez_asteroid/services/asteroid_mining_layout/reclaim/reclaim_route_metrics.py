@@ -15,6 +15,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
     mining_priority_route_cell_cost,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_zone import (
+    build_route_zone_map,
+)
 
 
 def _path_additional_route_cost(
@@ -33,6 +36,10 @@ def _path_additional_route_cost(
     boundary = cells_touching_void(set(asteroid_cells))
     route_tree = {c for c in transport_cells if c != outlet_stub}
     opp: dict[Coord, int] = {}
+    route_zone_map = build_route_zone_map(
+        asteroid_cells=frozenset(asteroid_cells),
+        mineable_cells=frozenset(mineable_cells),
+    )
     total = 0
     for i in range(len(path) - 1):
         _frm, to = path[i], path[i + 1]
@@ -45,6 +52,7 @@ def _path_additional_route_cost(
             fixed_stubs=fixed_stubs,
             route_tree=route_tree,
             opportunity_score=opp,
+            route_zone_map=route_zone_map,
         )
         if ec >= INF_COST:
             return INF_COST

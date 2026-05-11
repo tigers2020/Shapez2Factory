@@ -58,7 +58,7 @@ def test_mining_priority_route_cell_cost_outside_and_mineable() -> None:
             route_tree=route_tree,
             opportunity_score=opp,
         )
-        == 120 + 80
+        == 150
     )
 
 

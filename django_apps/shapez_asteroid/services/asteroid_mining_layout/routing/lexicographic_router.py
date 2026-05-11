@@ -20,6 +20,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.lexicog
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_zone import (
     KIND_COST_MULTIPLIER,
     ROUTE_ZONE_COST,
+    ROUTE_ZONES_LEX_COUNT_AS_INTERNAL,
     RouteZone,
     TransportKind,
     route_zone_for_cell,
@@ -69,15 +70,23 @@ def _step_deltas(
 
     mult = KIND_COST_MULTIPLIER[transport_kind]
     zone = route_zone_for_cell(nxt, route_zone_map)
-    internal_step = (
-        1 if zone is RouteZone.ASTEROID_INTERIOR and nxt not in existing_transport_cells else 0
+    _new_on_interior = (
+        zone in ROUTE_ZONES_LEX_COUNT_AS_INTERNAL and nxt not in existing_transport_cells
     )
+    internal_step = 1 if _new_on_interior else 0
+    # ``FILLABLE_INTERIOR`` route cost already penalizes mineable; avoid double-count vs axis 2.
     opp_step = (
         MINING_OPPORTUNITY_LOSS_PER_CANDIDATE
-        if nxt in placement_candidate_cells and nxt not in existing_transport_cells
+        if (
+            nxt in placement_candidate_cells
+            and nxt not in existing_transport_cells
+            and zone is not RouteZone.FILLABLE_INTERIOR
+        )
         else 0
     )
     route_step = ROUTE_ZONE_COST[zone] * mult
+    if nxt in existing_transport_cells:
+        route_step = min(route_step, 10)
     turn_step = _turn_delta(prev, cur, nxt)
     return internal_step, opp_step, route_step, congestion_step, turn_step, 1
 

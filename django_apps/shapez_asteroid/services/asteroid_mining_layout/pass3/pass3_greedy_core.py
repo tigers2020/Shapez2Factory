@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import heapq
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.boundary import (
@@ -16,6 +16,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_contracts import (
     Pass3TransportResult,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_zone import (
+    ROUTE_ZONE_COST,
+    RouteZone,
+    build_route_zone_map,
+    route_zone_for_cell,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
     cells_on_high_sharing_trunk_edges,
@@ -43,24 +49,32 @@ def mining_priority_route_cell_cost(
     fixed_stubs: frozenset[Coord],
     route_tree: set[Coord],
     opportunity_score: dict[Coord, int],
+    route_zone_map: Mapping[Coord, RouteZone] | None = None,
 ) -> int:
     """Pass3 mining-priority transport reconstruction의 한 칸 route cost를 계산한다.
 
-        mineable 내부 transport는 높은 비용으로 밀어낸다 (§11 STEP5 Pass3 transport).
+    Zone scalar는 :data:`ROUTE_ZONE_COST`와 동일 계열이다 (Pass3 lex ``route_step``과 정합).
+    ``boundary_cells``는 하위 호환용으로만 받으며, 구역은 ``build_route_zone_map``이 결정한다.
 
     상세: documents/Algorithm/mining_solver_cursor_sessions/09_step5_pass3_transport.md"""
+
+    _ = boundary_cells
     if cell in buildings:
         return INF_COST
     if cell in fixed_stubs or cell in route_tree:
         return 0
-    if cell not in asteroid_cells:
-        return 1
-    if cell not in mineable_cells:
-        return 60
-    opp = opportunity_score.get(cell, 0)
-    if cell in boundary_cells:
-        return 120 + 20 + opp
-    return 120 + 80 + opp
+    zm: Mapping[Coord, RouteZone]
+    if route_zone_map is not None:
+        zm = route_zone_map
+    else:
+        zm = build_route_zone_map(
+            asteroid_cells=frozenset(asteroid_cells),
+            mineable_cells=frozenset(mineable_cells),
+        )
+    base = ROUTE_ZONE_COST[route_zone_for_cell(cell, zm)]
+    if cell in mineable_cells:
+        base += opportunity_score.get(cell, 0)
+    return base
 
 
 def _transport_adjacent(cell: Coord, transport_cells: dict[Coord, str]) -> list[Coord]:
@@ -282,6 +296,10 @@ def placement_stub_route_probe_path(
     boundary = cells_touching_void(set(asteroid_cells))
     route_tree = {c for c in transport_cells if c != outlet_stub}
     opp: dict[Coord, int] = {}
+    route_zone_map = build_route_zone_map(
+        asteroid_cells=frozenset(asteroid_cells),
+        mineable_cells=frozenset(mineable_cells),
+    )
 
     def edge_cost(frm: Coord, to: Coord) -> int:
         """placement stub probe에서 mineable 통과 비용을 계산한다 (§11 Pass3 route probe)."""
@@ -295,6 +313,7 @@ def placement_stub_route_probe_path(
             fixed_stubs=fixed_stubs,
             route_tree=route_tree,
             opportunity_score=opp,
+            route_zone_map=route_zone_map,
         )
 
     pq: list[tuple[int, Coord]] = [(0, outlet_stub)]

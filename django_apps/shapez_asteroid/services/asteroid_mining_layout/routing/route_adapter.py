@@ -49,7 +49,9 @@ class RouteAdapterOutput:
 def build_route_adapter_output(inp: RouteAdapterInput) -> RouteAdapterOutput:
     """Derive router sets from :class:`RouteAdapterInput` (pure, no I/O)."""
 
-    zone = build_route_zone_map(asteroid_cells=inp.asteroid_cells)
+    zone = build_route_zone_map(
+        asteroid_cells=inp.asteroid_cells, mineable_cells=inp.mineable_cells
+    )
     blocked = (
         frozenset(inp.extractor_cells)
         | frozenset(inp.extension_cells)

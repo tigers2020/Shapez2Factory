@@ -7,7 +7,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_a
     build_route_adapter_output,
     route_adapter_input_for_pass3_stub,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_zone import RouteZone
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_zone import (
+    RouteZone,
+    build_route_zone_map,
+)
 
 
 def test_build_route_adapter_output_bbox_and_blocked() -> None:
@@ -38,7 +41,17 @@ def test_build_route_adapter_output_bbox_and_blocked() -> None:
     assert (3, 3) in out.blocked_cells
     assert (4, 4) in out.protected_cells and (3, 3) in out.protected_cells
     assert stub in out.allowed_cells and anchor in out.allowed_cells
-    assert out.zone_by_cell[(2, 2)] is RouteZone.ASTEROID_INTERIOR
+    assert out.zone_by_cell[(2, 2)] is RouteZone.FILLABLE_INTERIOR
+
+
+def test_build_route_zone_map_splits_fillable_from_interior_void() -> None:
+    """Full-interior rock vs same-topology mineable cell get distinct zones."""
+
+    ast = frozenset((x, y) for x in range(1, 6) for y in range(1, 6))
+    mineable = frozenset({(3, 3)})
+    zm = build_route_zone_map(asteroid_cells=ast, mineable_cells=mineable)
+    assert zm[(3, 3)] is RouteZone.FILLABLE_INTERIOR
+    assert zm[(3, 2)] is RouteZone.ASTEROID_INTERIOR_VOID
 
 
 def test_route_adapter_input_for_pass3_stub_collects_extractors() -> None:

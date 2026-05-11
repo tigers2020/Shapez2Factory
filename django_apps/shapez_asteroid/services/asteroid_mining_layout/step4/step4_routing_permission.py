@@ -30,7 +30,9 @@ _COST_SAME_ROLE_TRANSPORT = 10.0
 _COST_EXTERNAL_REACH = 15.0
 _COST_MINEABLE = 100.0
 _COST_ASTEROID_FIELD = 60.0
-_COST_DEFAULT_OPEN = 25.0
+# Must not be cheaper than asteroid rock (``_COST_ASTEROID_FIELD``); otherwise Dijkstra
+# prefers "open" coordinates over in-asteroid cells and cuts straight across interiors.
+_COST_DEFAULT_OPEN = 60.0
 
 
 def step4_step_cost(

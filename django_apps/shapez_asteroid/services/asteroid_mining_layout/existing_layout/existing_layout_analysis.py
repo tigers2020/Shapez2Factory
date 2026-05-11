@@ -428,7 +428,24 @@ def existing_layout_heuristic_suppress_pass12_loops(
     return True
 
 
+def effective_suppress_pass12_placement_loops(
+    existing_layout_analysis: dict[str, Any] | None,
+) -> bool:
+    """Whether Pass1/Pass2 loops should be skipped (STEP4 still runs).
+
+    ``existing_fluid_layout`` always suppresses: preserve-first must not add new Pass1 bundles
+    inside the working footprint even when the conservative heuristic is False (e.g. missing
+    trunk metadata or extension_count == 0 in Step 0.5).
+    """
+
+    if isinstance(existing_layout_analysis, dict):
+        if existing_layout_analysis.get("source_kind") == "existing_fluid_layout":
+            return True
+    return existing_layout_heuristic_suppress_pass12_loops(existing_layout_analysis)
+
+
 __all__ = [
     "analyze_existing_layout_from_mining_map",
+    "effective_suppress_pass12_placement_loops",
     "existing_layout_heuristic_suppress_pass12_loops",
 ]

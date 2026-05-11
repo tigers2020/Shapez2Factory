@@ -49,10 +49,10 @@ def run_pass12_stage(
     """Pass1/Pass2 배치 단계를 실행하고 기존 상태 필드를 조립한다."""
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.existing_layout_analysis import (  # noqa: E501
-        existing_layout_heuristic_suppress_pass12_loops,
+        effective_suppress_pass12_placement_loops,
     )
 
-    suppress_loops = existing_layout_heuristic_suppress_pass12_loops(existing_layout_analysis)
+    suppress_loops = effective_suppress_pass12_placement_loops(existing_layout_analysis)
     map_after_pass1, map_after_pass2, pass12_stats = (
         p1_timeline_integration.integrate_pass12_placement_into_working_map(
             working_map=working_map,

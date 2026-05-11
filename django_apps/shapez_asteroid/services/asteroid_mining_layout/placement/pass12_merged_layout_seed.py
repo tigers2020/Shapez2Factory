@@ -46,6 +46,42 @@ def _preserve_first_hard_gate(existing_layout_source_kind: str | None) -> bool:
     return existing_layout_source_kind == "existing_fluid_layout"
 
 
+def _strip_provisional_placement_row_keys(row: dict[str, Any]) -> dict[str, Any]:
+    """Remove row FSM markers that would fail final geometry validation on preserved copies."""
+
+    out = dict(row)
+    for key in ("placement_state", "placement_commit_state"):
+        v = out.get(key)
+        if isinstance(v, str) and v.lower() in ("quarantined_unrouted", "provisional_placed"):
+            out.pop(key, None)
+    return out
+
+
+def _first_rotation_with_matching_stub(
+    miner: Coord,
+    cells: Mapping[Coord, dict[str, Any]],
+    transport_kind: str,
+    raw_r: Any,
+) -> int | None:
+    """Prefer declared ``r`` when its stub matches; else first ``r`` in 0..3 with matching stub."""
+
+    wr = want_role(transport_kind)
+    order: list[int] = []
+    if isinstance(raw_r, int):
+        order.append(raw_r % 4)
+    for r in range(4):
+        if r not in order:
+            order.append(r)
+    for cand_r in order:
+        sc = shape_miner_output_cell(miner, cand_r)
+        if sc is None:
+            continue
+        st = cells.get(sc)
+        if st is not None and st.get("role") == wr:
+            return cand_r
+    return None
+
+
 def _mining_building_neighbors(
     c: Coord, cells: Mapping[Coord, dict[str, Any]], mineable: frozenset[Coord]
 ) -> tuple[Coord, ...]:
@@ -169,25 +205,22 @@ def seed_pass12_scratch_from_merged_existing(
         parent_by_cell = _parent_tree_for_miner_and_extensions(miner, exts, cells, mineable)
 
         row_m = cells[miner]
-        raw_r = row_m.get("r")
         tk = transport_kind_for_extractor(row_m)
-        eff_r: int | None = int(raw_r) if isinstance(raw_r, int) else None
-        if eff_r is None and tk is not None:
-            wr_probe = want_role(tk)
-            for cand_r in range(4):
-                sc = shape_miner_output_cell(miner, cand_r)
-                if sc and cells.get(sc, {}).get("role") == wr_probe:
-                    eff_r = cand_r
-                    break
+        eff_r: int | None = None
         stub_cell: Coord | None = None
         routed_ok = False
-        if eff_r is not None and tk is not None:
-            stub_cell = shape_miner_output_cell(miner, eff_r)
-            if stub_cell is not None:
-                st = cells.get(stub_cell)
+        if tk is not None:
+            eff_r = _first_rotation_with_matching_stub(miner, cells, tk, row_m.get("r"))
+            if eff_r is not None:
+                stub_cell = shape_miner_output_cell(miner, eff_r)
                 wr = want_role(tk)
-                if st is not None and st.get("role") == wr:
-                    routed_ok = True
+                st = cells.get(stub_cell) if stub_cell is not None else None
+                routed_ok = st is not None and st.get("role") == wr
+        else:
+            raw_only = row_m.get("r")
+            if isinstance(raw_only, int):
+                eff_r = raw_only % 4
+                stub_cell = shape_miner_output_cell(miner, eff_r)
 
         ext_tuple = tuple(sorted(exts, key=lambda p: (p[1], p[0])))
 
@@ -218,9 +251,14 @@ def seed_pass12_scratch_from_merged_existing(
             # Any map with a single merged miner: always block the bundle when not ROUTED_CONFIRMED
             # so Pass1 cannot erase the lone body (``raw_asteroid_field`` and legacy behavior).
             scratch.blocked_cells |= {miner} | set(exts)
-            scratch.preserved_mining_row_overrides[miner] = dict(row_m)
+            miner_row = _strip_provisional_placement_row_keys(row_m)
+            if eff_r is not None:
+                miner_row["r"] = eff_r
+            scratch.preserved_mining_row_overrides[miner] = miner_row
             for ext in exts:
-                scratch.preserved_mining_row_overrides[ext] = dict(cells[ext])
+                scratch.preserved_mining_row_overrides[ext] = _strip_provisional_placement_row_keys(
+                    dict(cells[ext])
+                )
             preserved_bundle_extractor_cells += 1
             preserved_bundle_extension_cells += len(exts)
         seeded_groups += 1

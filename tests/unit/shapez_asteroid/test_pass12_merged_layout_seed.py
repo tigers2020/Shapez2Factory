@@ -3,16 +3,26 @@
 from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.existing_layout_analysis import (  # noqa: E501
+    effective_suppress_pass12_placement_loops,
     existing_layout_heuristic_suppress_pass12_loops,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
     pass1_timeline_integration as p12_tl,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_bundle_commit import (  # noqa: E501
+    Pass12LayoutScratch,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_merged_layout_seed import (  # noqa: E501
+    seed_pass12_scratch_from_merged_existing,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.recovery_orchestrator import (  # noqa: E501
     _apply_layout_preserve_hard_gate,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_routing_permission as s4rp,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+    final_validation as final_val,
 )
 
 
@@ -120,6 +130,88 @@ def test_existing_layout_heuristic_suppress_pass12_loops_raw_false() -> None:
         "issues": [],
     }
     assert existing_layout_heuristic_suppress_pass12_loops(ela) is False
+
+
+def test_effective_suppress_pass12_loops_fluid_overrides_heuristic_false() -> None:
+    """``existing_fluid_layout`` must suppress Pass1/Pass2 even without trunk / extensions."""
+
+    ela = {
+        "source_kind": "existing_fluid_layout",
+        "equipment": {"miner_count": 1, "extension_count": 0},
+        "transport": {},
+        "issues": [],
+    }
+    assert existing_layout_heuristic_suppress_pass12_loops(ela) is False
+    assert effective_suppress_pass12_placement_loops(ela) is True
+
+
+def test_seed_aligns_rotation_to_adjacent_pipe_when_raw_r_points_elsewhere() -> None:
+    """Wrong ``r`` on the merged row must not block inferring the stub-aligned rotation."""
+
+    mineable = frozenset({(1, 1), (2, 1), (1, 2), (2, 2)})
+    rows: list[dict[str, object]] = [
+        {
+            "x": 1,
+            "y": 1,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "surface": "fluid",
+            "r": 1,
+        },
+        {"x": 2, "y": 1, "role": "pipe", "surface": "fluid"},
+    ]
+    scratch = Pass12LayoutScratch(transport_kind="fluid_pipe")
+    seed_pass12_scratch_from_merged_existing(
+        rows,
+        mineable=mineable,
+        scratch=scratch,
+        existing_layout_source_kind="existing_fluid_layout",
+    )
+    assert (1, 1) in scratch.extractor_cells
+    assert scratch.extractor_output_dirs.get((1, 1)) == (1, 0)
+    assert len(scratch.placement_records) >= 1
+
+
+def test_integrate_pass12_fluid_infer_miner_r_when_row_omits_rotation() -> None:
+    """Merged seed + merge must emit ``r`` so final validation does not count missing_stub."""
+
+    fm = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        },
+    ]
+    wm = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "surface": "fluid",
+            "t": "Layout_FluidMiner",
+        },
+        {"x": 6, "y": 5, "role": "pipe", "surface": "fluid"},
+    ]
+    _m1, m2, stats = p12_tl.integrate_pass12_placement_into_working_map(
+        working_map=wm,
+        final_mining_map=fm,
+        is_external=lambda c: c[0] > 5,
+        existing_layout_analysis={
+            "source_kind": "existing_fluid_layout",
+            "equipment": {"miner_count": 1, "extension_count": 0},
+            "transport": {},
+            "issues": [],
+        },
+        suppress_pass1_pass2_loops=True,
+    )
+    report = final_val.validate_final_mining_layout(m2)
+    assert stats["pass12_placement_loops_suppressed"] is True
+    assert stats["pass1_outer_placements"] == 0
+    assert report.missing_stub_count == 0
+    assert report.missing_extractor_rotation_count == 0
 
 
 def test_step4_step_cost_trunk_reuse_tier() -> None:

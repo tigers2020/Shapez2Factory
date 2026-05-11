@@ -414,11 +414,20 @@ def integrate_pass12_placement_into_working_map(
         pass1_new_transport_cells = tr_before_p2 - len(transport_init)
         final_transport_cells = _transport_cell_coords_from_map_rows(merged_pass2)
         ex_base_n = len(existing_transport_baseline)
+        tr_init_n = len(transport_init)
+        reuse_vs_baseline = len(existing_transport_baseline & final_transport_cells) / max(
+            1, ex_base_n
+        )
+        reuse_vs_working = len(frozenset(transport_init) & final_transport_cells) / max(
+            1, tr_init_n
+        )
         stats: dict[str, Any] = {
             "pass1_outer_placements": placed,
             "pass1_new_extractor_cells": ex_before_p2 - extractors_after_seed,
             "pass1_new_extension_cells": ext_before_p2 - extensions_after_seed,
-            "pass1_preserved_transport_cells": len(transport_init),
+            "pass1_preserved_transport_cells": tr_init_n,
+            "pass12_working_map_transport_cells_initial": tr_init_n,
+            "pass12_merged_seed_transport_cells_baseline": ex_base_n,
             "pass1_new_transport_cells": pass1_new_transport_cells,
             "pass1_total_transport_cells_after": tr_before_p2,
             "pass2_internal_placements": placed_p2,
@@ -434,8 +443,9 @@ def integrate_pass12_placement_into_working_map(
             "placement_candidate_blocked_count": int(placement_transport_blocked_counter[0]),
             "pass12_placement_loops_suppressed": suppress_pass1_pass2_loops,
             "existing_transport_cell_count_baseline": ex_base_n,
-            "existing_transport_reuse_ratio_after_pass12": round(
-                len(existing_transport_baseline & final_transport_cells) / max(1, ex_base_n), 6
+            "existing_transport_reuse_ratio_after_pass12": round(reuse_vs_baseline, 6),
+            "existing_transport_reuse_ratio_vs_working_initial_after_pass12": round(
+                reuse_vs_working, 6
             ),
             **preserve_seed_stats,
             **ela_meta,

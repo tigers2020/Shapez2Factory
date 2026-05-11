@@ -1,8 +1,10 @@
 """P4 protected corridor parsing, Pass3 touched fallback, canonical pool selection.
 
 **Write authority (P3-C):** merged Step4 corridor payloads handed to P4 should be built via
-:func:`solver_routing_state_for_p4_reclaim` so ``routing_state`` and ``trunk_load`` fallbacks
-stay consistent with reclaim + replay overlays.
+:func:`solver_routing_state_for_p4_reclaim` (or :func:`merge_step4_corridor_routing_mapping` with
+the same ``routing_state`` / ``trunk_load`` halves) so ``routing_state`` and ``trunk_load``
+fallbacks stay consistent with reclaim + replay overlays. Pass3-E2 uses the same merge before
+:func:`reclaim_corridor_read_factory.protected_corridors_read_from_routing_state`.
 """
 
 from __future__ import annotations
@@ -79,21 +81,19 @@ def _corridor_payload_non_empty(merged: Mapping[str, object]) -> bool:
     return False
 
 
-def solver_routing_state_for_p4_reclaim(step4_result: object) -> Mapping[str, object] | None:
-    """Merge Step4 ``routing_state`` corridor fields, then ``trunk_load`` legacy keys.
+def merge_step4_corridor_routing_mapping(
+    *,
+    routing_state: Mapping[str, object] | None,
+    trunk_load: Mapping[str, object] | None,
+) -> dict[str, object] | None:
+    """Merge STEP4 ``routing_state`` corridor keys with ``trunk_load`` bridge (P4 / Pass3 SSOT).
 
-    Prefer semantic ``routing_state`` (protected pool / policy). When ``routing_state``
-    declares any corridor key (``hard_protected_corridors``, ``soft_protected_corridors``,
-    or ``protected_corridors``), those values win **unless every list is empty** — then
-    ``trunk_load`` legacy corridor keys still bridge into P4 (stub-in-trunk gaps, §12).
-
-    If ``routing_state`` omits corridor keys entirely, ``trunk_load`` supplies legacy
-    ``hard_protected_corridors`` / ``soft_protected_corridors`` / nested
-    ``protected_corridors`` as a temporary bridge.
+    Same merge semantics as :func:`solver_routing_state_for_p4_reclaim`, but accepts the two
+    dict halves so Pass3-E2 can read corridors without a full :class:`Step4RoutingResult`.
     """
 
     merged: dict[str, object] = {}
-    rs = getattr(step4_result, "routing_state", None)
+    rs = routing_state if isinstance(routing_state, Mapping) else None
     rs_has_corridor_keys = False
     if isinstance(rs, dict):
         rs_has_corridor_keys = any(
@@ -106,7 +106,7 @@ def solver_routing_state_for_p4_reclaim(step4_result: object) -> Mapping[str, ob
         for k in ("hard_protected_corridors", "soft_protected_corridors"):
             if k in rs:
                 merged[k] = rs[k]
-    tl_raw = getattr(step4_result, "trunk_load", None)
+    tl_raw = trunk_load if isinstance(trunk_load, Mapping) else None
     if isinstance(tl_raw, dict):
         use_trunk_bridge = not rs_has_corridor_keys or not _corridor_payload_non_empty(merged)
         if use_trunk_bridge:
@@ -140,6 +140,27 @@ def solver_routing_state_for_p4_reclaim(step4_result: object) -> Mapping[str, ob
                 "soft": list(ss) if isinstance(ss, list) else [],
             }
     return merged if merged else None
+
+
+def solver_routing_state_for_p4_reclaim(step4_result: object) -> Mapping[str, object] | None:
+    """Merge Step4 ``routing_state`` corridor fields, then ``trunk_load`` legacy keys.
+
+    Prefer semantic ``routing_state`` (protected pool / policy). When ``routing_state``
+    declares any corridor key (``hard_protected_corridors``, ``soft_protected_corridors``,
+    or ``protected_corridors``), those values win **unless every list is empty** — then
+    ``trunk_load`` legacy corridor keys still bridge into P4 (stub-in-trunk gaps, §12).
+
+    If ``routing_state`` omits corridor keys entirely, ``trunk_load`` supplies legacy
+    ``hard_protected_corridors`` / ``soft_protected_corridors`` / nested
+    ``protected_corridors`` as a temporary bridge.
+    """
+
+    rs = getattr(step4_result, "routing_state", None)
+    tl_raw = getattr(step4_result, "trunk_load", None)
+    return merge_step4_corridor_routing_mapping(
+        routing_state=rs if isinstance(rs, dict) else None,
+        trunk_load=tl_raw if isinstance(tl_raw, dict) else None,
+    )
 
 
 def _solver_pool_corridors_available(solver_routing_state: Mapping[str, object]) -> bool:

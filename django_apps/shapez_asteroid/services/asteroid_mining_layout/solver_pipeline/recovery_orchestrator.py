@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -14,6 +15,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     RECOVERY_ACTION_ROLLBACK_OR_FAIL_QUARANTINED,
     RECOVERY_PHASE_VALIDATION_RECOVERY,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.baseline_routing import (
     compute_shortest_feasible_transport_baseline,
 )
@@ -90,11 +92,12 @@ def optimization_baseline_internal_transport_at_map(
     mining_map: list[dict[str, Any]],
     *,
     final_mining_map: list[dict[str, Any]],
+    is_external: Callable[[Coord], bool],
 ) -> int | None:
     """Pass3-compatible internal transport count at a frozen layout (Pass1·Pass2 or STEP4)."""
 
     return optimization_baseline_internal_transport_pre_step4(
-        mining_map, final_mining_map=final_mining_map
+        mining_map, final_mining_map=final_mining_map, is_external=is_external
     )
 
 
@@ -290,6 +293,7 @@ def run_solver_timeline_pipeline(
     existing_input_internal_transport = optimization_baseline_internal_transport_at_map(
         step05_baseline_map,
         final_mining_map=final_map,
+        is_external=is_external,
     )
 
     pass12 = run_pass12_stage(
@@ -315,11 +319,13 @@ def run_solver_timeline_pipeline(
     optimization_baseline_internal_transport = optimization_baseline_internal_transport_at_map(
         pass12.map_after_pass2,
         final_mining_map=final_map,
+        is_external=is_external,
     )
     optimization_baseline_internal_transport_post_step4 = (
         optimization_baseline_internal_transport_at_map(
             step4.map_after_routing,
             final_mining_map=final_map,
+            is_external=is_external,
         )
     )
     counterfactual_routing = compute_shortest_feasible_transport_baseline(

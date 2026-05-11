@@ -65,6 +65,7 @@ def _expected_pre_post_step4_baselines(decoded: dict) -> tuple[int | None, int |
     pre = optimization_baseline_internal_transport_pre_step4(
         pass12.map_after_pass2,
         final_mining_map=final_map,
+        is_external=is_external,
     )
     step4 = run_step4_stage(
         map_after_pass2=pass12.map_after_pass2,
@@ -79,6 +80,7 @@ def _expected_pre_post_step4_baselines(decoded: dict) -> tuple[int | None, int |
     post = optimization_baseline_internal_transport_pre_step4(
         step4.map_after_routing,
         final_mining_map=final_map,
+        is_external=is_external,
     )
     return pre, post
 

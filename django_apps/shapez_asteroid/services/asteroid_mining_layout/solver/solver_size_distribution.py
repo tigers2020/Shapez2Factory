@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_timeline import (
     _internal_transport_count_for_pass3_kind,
     count_layout_cells,
@@ -47,15 +49,17 @@ def attach_net_internal_transport_saved_after_reclaim(
     *,
     map_final: list[dict[str, Any]],
     final_mining_map: list[dict[str, Any]],
+    is_external: Callable[[Coord], bool],
 ) -> None:
     """P4 reclaim 이후 내부 transport 절감량을 summary에 채운다."""
 
     baseline_entry = pass3_summary.get("baseline_internal_transport_at_reclaim_entry")
     if not isinstance(baseline_entry, int):
         return
+    _ = final_mining_map
     final_internal_transport = _internal_transport_count_for_pass3_kind(
         map_final,
-        final_mining_map=final_mining_map,
+        is_external=is_external,
     )
     if isinstance(final_internal_transport, int):
         pass3_summary["net_internal_transport_saved_after_reclaim"] = int(baseline_entry) - int(

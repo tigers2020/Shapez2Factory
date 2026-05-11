@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from unittest.mock import patch
 
 import pytest
@@ -33,6 +34,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_s
     build_solver_timeline,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace import (
+    _prune_var_logging_files,
     emit_solver_summary_once,
     trace_event,
     trace_run_id_current,
@@ -89,6 +91,25 @@ def test_trace_event_writes_run_debug_log_folder(tmp_path, monkeypatch, settings
     assert trace_records[0]["message"] == "test_message"
     assert trace_records[0]["data"]["value"] == 3
     assert latest_path.read_text(encoding="utf-8") == run_path.read_text(encoding="utf-8")
+
+
+def test_prune_var_logs_drop_oldest_from_ten_ndjson(tmp_path, settings) -> None:
+    settings.BASE_DIR = tmp_path
+    var_debug = tmp_path / "var" / "asteroid_mining_layout_debug"
+    var_debug.mkdir(parents=True)
+    base_t = 1_700_000_000.0
+    for i in range(10):
+        path = var_debug / f"run{i:02d}.ndjson"
+        path.write_text("{}", encoding="utf-8")
+        t = base_t + float(i)
+        os.utime(path, (t, t))
+
+    _prune_var_logging_files()
+
+    names = sorted(p.name for p in var_debug.glob("*.ndjson"))
+    assert len(names) == 9
+    assert "run00.ndjson" not in names
+    assert "run09.ndjson" in names
 
 
 def test_validate_overlap_miner_and_belt_same_cell_invalid() -> None:

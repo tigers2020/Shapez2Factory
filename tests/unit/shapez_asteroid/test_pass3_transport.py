@@ -7,7 +7,7 @@ from dataclasses import replace
 from unittest.mock import patch
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
-    P3E2_GUARD_EMPTY_POOL_NOT_WIRED,
+    P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (
     MAX_ROUTE_LENGTH_RATIO,
@@ -295,7 +295,7 @@ def test_pass3_timeline_frame_includes_before_after_counts_when_eligible() -> No
         assert "p3e2_shadow_would_commit" in s
         assert "p3e2_outlet_count" in s
         assert "p3e2_hard_protected_guard_state" in s
-        assert s.get("p3e2_hard_protected_guard_state") == P3E2_GUARD_EMPTY_POOL_NOT_WIRED
+        assert s.get("p3e2_hard_protected_guard_state") == P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL
 
 
 def test_p3e3_rollback_guarded_transport_cells_copies_role_map() -> None:

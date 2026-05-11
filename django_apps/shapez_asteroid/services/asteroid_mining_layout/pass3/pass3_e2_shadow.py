@@ -18,6 +18,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_gre
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridor_read_factory import (  # noqa: E501
     protected_corridors_read_from_routing_state,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
+    merge_step4_corridor_routing_mapping,
+)
 
 
 def _p3e2_shadow_trace(
@@ -34,6 +37,7 @@ def _p3e2_shadow_trace(
     is_external: Callable[[Coord], bool],
     shadow_enabled: bool,
     trunk_load: dict[str, Any] | None = None,
+    routing_state_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Lex vs mining-priority greedy stub→anchor (per outlet); observation-only (P3-E2).
 
@@ -85,9 +89,11 @@ def _p3e2_shadow_trace(
         trunk_load, transport_kind=transport_kind
     )
 
-    corridor_dto = protected_corridors_read_from_routing_state(
-        trunk_load if isinstance(trunk_load, dict) else None
+    corridor_mapping = merge_step4_corridor_routing_mapping(
+        routing_state=routing_state_summary if isinstance(routing_state_summary, dict) else None,
+        trunk_load=trunk_load if isinstance(trunk_load, dict) else None,
     )
+    corridor_dto = protected_corridors_read_from_routing_state(corridor_mapping)
 
     if not outlets_order:
         base.update(

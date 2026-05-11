@@ -36,6 +36,10 @@ _PLACEMENT_VERBOSE_ENV = "SHAPEZ_SOLVER_TRACE_PLACEMENT_VERBOSE"
 
 _logger = logging.getLogger("shapez_asteroid.mining_layout_solver")
 
+# ``var/`` 아래 NDJSON·``.log``가 이 개수 이상이면 mtime 오래된 순으로 지워 최대 (값-1)개만 남긴다.
+_VAR_LOG_PRUNE_THRESHOLD = 10
+_VAR_LOG_SUFFIXES = frozenset({".ndjson", ".log"})
+
 _run_id_var: ContextVar[str | None] = ContextVar("mining_layout_solver_run_id", default=None)
 _summary_emitted_var: ContextVar[bool] = ContextVar(
     "mining_layout_solver_summary_emitted",
@@ -134,6 +138,44 @@ def _debug_log_paths(run_id: str | None) -> list[Path]:
     return [root / f"{name}.ndjson", root / "latest.ndjson"]
 
 
+def _var_log_file_candidates(var_root: Path) -> list[Path]:
+    """``var/`` 이하의 NDJSON·``.log`` 파일 경로를 수집한다 (디렉터리 제외)."""
+
+    if not var_root.is_dir():
+        return []
+    out: list[Path] = []
+    for path in var_root.rglob("*"):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in _VAR_LOG_SUFFIXES:
+            continue
+        out.append(path)
+    return out
+
+
+def _prune_var_logging_files() -> None:
+    """``var/`` 로그가 ``_VAR_LOG_PRUNE_THRESHOLD``개 이상이면 mtime 오래된 순으로 삭제한다."""
+
+    var_root = Path(settings.BASE_DIR) / "var"
+    try:
+        candidates = _var_log_file_candidates(var_root)
+        if len(candidates) < _VAR_LOG_PRUNE_THRESHOLD:
+            return
+        max_retained = _VAR_LOG_PRUNE_THRESHOLD - 1
+        delete_count = len(candidates) - max_retained
+        ordered = sorted(
+            candidates,
+            key=lambda p: (p.stat().st_mtime_ns, str(p)),
+        )
+        for path in ordered[:delete_count]:
+            try:
+                path.unlink()
+            except OSError as exc:
+                _logger.warning("var log prune unlink failed path=%s err=%s", path, exc)
+    except OSError as exc:
+        _logger.warning("var log prune scan failed root=%s err=%s", var_root, exc)
+
+
 def _truncate_trace_files() -> None:
     """Clear trace NDJSON targets so each traced solver run starts from an empty file."""
     for path in _trace_paths():
@@ -182,6 +224,7 @@ def trace_run_scope() -> Iterator[None]:
     summary_tok = _summary_emitted_var.set(False)
     started = time.perf_counter()
     if trace_enabled():
+        _prune_var_logging_files()
         _truncate_trace_files()
         _prepare_debug_log_files(run_id)
         debug_log_event(

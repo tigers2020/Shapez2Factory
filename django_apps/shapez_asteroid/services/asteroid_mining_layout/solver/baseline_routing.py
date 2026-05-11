@@ -255,7 +255,7 @@ def compute_shortest_feasible_transport_baseline(
     internal_n = count_internal_transport_tiles_for_kind(
         cells_sim,
         transport_kind=tk,
-        final_mining_map=final_mining_map,
+        is_external=is_external,
     )
     return BaselineRoutingResult(
         internal_transport_count=internal_n,

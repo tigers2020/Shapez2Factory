@@ -106,7 +106,7 @@ def run_p4_reclaim_stage(
         pass3_summary["baseline_internal_transport_at_reclaim_entry"] = (
             _internal_transport_count_for_pass3_kind(
                 map_final,
-                final_mining_map=final_map,
+                is_external=is_external,
             )
         )
         solver_rt = p4_shadow.solver_routing_state_for_p4_reclaim(step4_result)
@@ -213,6 +213,7 @@ def run_p4_reclaim_stage(
         pass3_summary,
         map_final=map_final,
         final_mining_map=final_map,
+        is_external=is_external,
     )
     step_hash_p4 = solver_state_sha256_hex(
         map_final,

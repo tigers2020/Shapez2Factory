@@ -200,6 +200,7 @@ def run_pass3_stage(
                 is_external=is_external,
                 pass3_recovery_context=pass3_recovery_context,
                 trunk_load=step4_trunk_load,
+                routing_state_summary=routing_state_summary,
             )
         except BaseException:
             if replay_events is not None and p3_txn_id is not None:

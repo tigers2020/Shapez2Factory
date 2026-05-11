@@ -11,10 +11,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     EXTRACTORS_SHAPE,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.internal_transport_metrics import (  # noqa: E501
+    count_internal_transport_tiles_for_role,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     collect_routing_jobs,
     layout_kind,
-    mineable_and_asteroid_coords,
     want_role,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
@@ -30,20 +32,18 @@ def count_internal_transport_tiles_for_kind(
     cells: dict[Coord, dict[str, Any]],
     *,
     transport_kind: str,
-    final_mining_map: list[dict[str, Any]],
+    is_external: Callable[[Coord], bool],
 ) -> int:
-    """Count ``want_role(transport_kind)`` tiles inside ``final_mining_map`` asteroid patch."""
+    """Count ``want_role(transport_kind)`` tiles not marked external (Pass3 metric)."""
 
     wr = want_role(transport_kind)
-    _, asteroid = mineable_and_asteroid_coords(final_mining_map)
-    asteroid_f = frozenset(asteroid)
-    return sum(1 for c, row in cells.items() if row.get("role") == wr and c in asteroid_f)
+    return count_internal_transport_tiles_for_role(cells, want_role=wr, is_external=is_external)
 
 
 def _internal_transport_count_for_pass3_kind(
     mining_map: list[dict[str, Any]],
     *,
-    final_mining_map: list[dict[str, Any]],
+    is_external: Callable[[Coord], bool],
 ) -> int | None:
     """Count interior transport tiles for Pass3's single ``transport_kind`` (belt or pipe).
 
@@ -60,7 +60,7 @@ def _internal_transport_count_for_pass3_kind(
         return None
     tk = jobs[0][2]
     return count_internal_transport_tiles_for_kind(
-        cells, transport_kind=tk, final_mining_map=final_mining_map
+        cells, transport_kind=tk, is_external=is_external
     )
 
 
@@ -68,17 +68,18 @@ def optimization_baseline_internal_transport_pre_step4(
     map_after_pass2: list[dict[str, Any]],
     *,
     final_mining_map: list[dict[str, Any]],
+    is_external: Callable[[Coord], bool],
 ) -> int | None:
     """Pass1·Pass2 확정 직후(STEP4 이전) 스냅샷의 내부 transport baseline 카운트.
 
     Pass3 ``before_internal_transport_count``와 동일 계약: 단일 ``transport_kind`` 라우팅
-    job이 있을 때만 정수를 반환하고, job 없음·혼합 transport면 ``None``. mineable 교집합
-    영역은 ``final_mining_map``의 mineable+asteroid 좌표에서 정의한다(목표 레이아웃 고정).
+    job이 있을 때만 정수를 반환하고, job 없음·혼합 transport면 ``None``. 내부 타일은
+    ``not is_external(c)`` 인 동종 belt/pipe 셀 수(``final_mining_map`` 인자는 API 호환용으로
+    유지되며 내부 카운트에는 사용하지 않음).
     """
 
-    return _internal_transport_count_for_pass3_kind(
-        map_after_pass2, final_mining_map=final_mining_map
-    )
+    _ = final_mining_map
+    return _internal_transport_count_for_pass3_kind(map_after_pass2, is_external=is_external)
 
 
 def _attach_post_reclaim_pass3_count_aliases(out: dict[str, Any]) -> None:
@@ -110,6 +111,7 @@ def _run_post_reclaim_pass3_once(
         mining_map,
         final_mining_map=final_mining_map,
         is_external=is_external,
+        routing_state_summary=None,
     )
     out: dict[str, Any] = {
         "post_reclaim_pass3_reruns_used": 1,

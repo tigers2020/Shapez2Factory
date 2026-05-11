@@ -84,7 +84,7 @@ def test_counterfactual_single_miner_shortest_path_count() -> None:
     assert res.aggregation == fc.OPTIMIZATION_COUNTERFACTUAL_AGGREGATION_SEQUENTIAL_TRUNK_V1
     assert len(res.per_job) == 1
     assert res.per_job[0].ok is True
-    assert res.internal_transport_count == 15
+    assert res.internal_transport_count == 16
 
 
 def test_counterfactual_no_jobs() -> None:

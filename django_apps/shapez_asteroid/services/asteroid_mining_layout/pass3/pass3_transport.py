@@ -57,6 +57,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_gre
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_trace_summary import (
     pass3_skip_summary,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.internal_transport_metrics import (  # noqa: E501
+    count_internal_transport_cells,
+    internal_transport_cell_frozenset,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     blocked_cells,
     collect_routing_jobs,
@@ -81,6 +85,7 @@ def run_pass3_transport_minimization_from_maps(
     p3e3_guarded_commit_enabled: bool | None = None,
     pass3_recovery_context: bool = False,
     trunk_load: dict[str, Any] | None = None,
+    routing_state_summary: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], Pass3TransportResult | None, dict[str, Any]]:
     """Run greedy Pass3 compression on an existing layout (typically post-STEP4).
 
@@ -97,6 +102,9 @@ def run_pass3_transport_minimization_from_maps(
     ``transport_usage_load["trunk_edge_load"]`` as Pass3 congestion weights (see
     :func:`pass3_edge_congestion_weights_from_trunk_load`), and recovery-mode greedy removal may
     defer cells on high-sharing trunk edges.
+
+    ``routing_state_summary``: optional STEP4 ``routing_state`` copy for P3-E2 protected corridor
+    pool (merged with ``trunk_load`` via :func:`merge_step4_corridor_routing_mapping`, same as P4).
     """
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
@@ -161,7 +169,10 @@ def run_pass3_transport_minimization_from_maps(
     before_transport_count = len(tc)
     mineable, asteroid = mineable_and_asteroid_coords(final_mining_map)
     asteroid_set = set(asteroid)
-    before_internal_transport_count = len(set(tc) & asteroid_set)
+    before_internal_transport_count = count_internal_transport_cells(
+        tc.keys(),
+        is_external=is_external,
+    )
     mineable_f = frozenset(mineable)
     asteroid_f = frozenset(asteroid)
     shadow_trace = _p3e2_shadow_trace(
@@ -177,6 +188,7 @@ def run_pass3_transport_minimization_from_maps(
         is_external=is_external,
         shadow_enabled=P3E2_SHADOW_ENABLED_DEFAULT,
         trunk_load=trunk_load,
+        routing_state_summary=routing_state_summary,
     )
     p3e3_trace = p3e3_emit_guarded_trace(
         guarded_enabled=guarded_on,
@@ -301,7 +313,10 @@ def run_pass3_transport_minimization_from_maps(
         target_role=wr,
     )
     after_transport_count = len(result.transport_cells)
-    after_internal_transport_count = len(set(result.transport_cells) & asteroid_set)
+    after_internal_transport_count = count_internal_transport_cells(
+        result.transport_cells.keys(),
+        is_external=is_external,
+    )
     pass3_transport_cells_removed_total = max(0, before_transport_count - after_transport_count)
     pass3_internal_transport_saved = max(
         0, before_internal_transport_count - after_internal_transport_count
@@ -315,7 +330,10 @@ def run_pass3_transport_minimization_from_maps(
             is_external,
         )
         candidate_internal_transport_count = len(
-            atomic_dto.candidate_transport_cells & frozenset(asteroid_set)
+            internal_transport_cell_frozenset(
+                atomic_dto.candidate_transport_cells,
+                is_external=is_external,
+            )
         )
         p3f_trace = p3f_build_trace(
             dto=atomic_dto,

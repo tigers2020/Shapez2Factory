@@ -38,3 +38,6 @@ class Step4RoutingResult:
     placement_commit_by_id: dict[str, str]
     rolled_back_placement_ids: tuple[str, ...]
     quarantined_placement_ids: tuple[str, ...]
+    complete_routing_success: bool = True
+    degraded: bool = False
+    quarantined_placement_ids_peak: tuple[str, ...] = ()

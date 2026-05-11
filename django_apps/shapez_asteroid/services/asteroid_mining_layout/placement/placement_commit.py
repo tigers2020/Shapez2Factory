@@ -71,6 +71,25 @@ def unfinalized_placement_count_from_counts(counts: Mapping[str, int] | None) ->
     return int(counts.get(p, 0) + counts.get(q, 0))
 
 
+def placement_state_counts(placement_commit_by_id: Mapping[str, str]) -> dict[str, int]:
+    """Canonical FSM counts from ``placement_id -> state`` (P2-B); ``unfinalized`` = prov + quarantine."""
+
+    raw = placement_commit_counts_by_state(dict(placement_commit_by_id))
+    p = PlacementCommitState.PROVISIONAL_PLACED.value
+    q = PlacementCommitState.QUARANTINED_UNROUTED.value
+    r = PlacementCommitState.ROUTED_CONFIRMED.value
+    b = PlacementCommitState.ROLLED_BACK.value
+    prov = int(raw.get(p, 0))
+    qua = int(raw.get(q, 0))
+    return {
+        "provisional_placed": prov,
+        "quarantined_unrouted": qua,
+        "routed_confirmed": int(raw.get(r, 0)),
+        "rolled_back": int(raw.get(b, 0)),
+        "unfinalized": prov + qua,
+    }
+
+
 def placement_record_to_failure_dict(
     rec: PlacementCommitRecord,
     *,

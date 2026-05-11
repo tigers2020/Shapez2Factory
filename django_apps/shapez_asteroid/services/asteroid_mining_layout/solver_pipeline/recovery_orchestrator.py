@@ -380,6 +380,7 @@ def run_solver_timeline_pipeline(
             pass3_recovery_context=pass3_recovery_context,
             validation_recovery_attempt=va,
             debug_location=debug_location,
+            step4_committed=step4.step4_result.committed,
             step4_trunk_load=dict(step4.step4_result.trunk_load),
         )
         p4 = _p4_mod.run_p4_reclaim_stage(

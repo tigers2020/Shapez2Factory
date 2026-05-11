@@ -30,6 +30,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
 
 __all__ = [
     "FinalValidationReport",
+    "count_placement_fsm_rows_on_cells",
     "cells_dict_from_mining_map",
     "external_margin_from_bbox",
     "external_predicate_for_mining_map",
@@ -195,6 +196,28 @@ def _overlap_violations_list(mining_map: list[dict[str, Any]]) -> int:
     return sum(1 for s in by.values() if "building" in s and "transport" in s)
 
 
+def count_placement_fsm_rows_on_cells(
+    cells: dict[Coord, dict[str, Any]],
+) -> tuple[int, int]:
+    """Count rows carrying non-terminal placement FSM markers (dedupe keys per row)."""
+
+    quarantined_unrouted_count = 0
+    provisional_placed_row_count = 0
+    for row in cells.values():
+        for key in ("placement_state", "placement_commit_state"):
+            ps = row.get(key)
+            if not isinstance(ps, str):
+                continue
+            pl = ps.lower()
+            if pl == "quarantined_unrouted":
+                quarantined_unrouted_count += 1
+                break
+            if pl == "provisional_placed":
+                provisional_placed_row_count += 1
+                break
+    return quarantined_unrouted_count, provisional_placed_row_count
+
+
 def validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValidationReport:
     """최종 mining layout의 geometry/connectivity hard invariant를 검증한다.
 
@@ -219,20 +242,9 @@ def validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValid
 
     overlap_violation_count = _overlap_violations_list(mining_map)
 
-    quarantined_unrouted_count = 0
-    provisional_placed_row_count = 0
-    for row in cells.values():
-        for key in ("placement_state", "placement_commit_state"):
-            ps = row.get(key)
-            if not isinstance(ps, str):
-                continue
-            pl = ps.lower()
-            if pl == "quarantined_unrouted":
-                quarantined_unrouted_count += 1
-                break
-            if pl == "provisional_placed":
-                provisional_placed_row_count += 1
-                break
+    quarantined_unrouted_count, provisional_placed_row_count = count_placement_fsm_rows_on_cells(
+        cells
+    )
 
     bbox = mineable_bbox(cells)
     missing_stub_count = 0

@@ -18,6 +18,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass1
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
     PlacementCommitState,
+    placement_state_counts,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
     solver_mutation_transaction as mut_txn,
@@ -37,6 +38,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_mer
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
+    count_placement_fsm_rows_on_cells,
     external_predicate_for_mining_map,
     validate_final_mining_layout,
 )
@@ -484,7 +486,9 @@ def test_step4_cascade_revalidates_route_after_neighbor_rollback() -> None:
     assert r.placement_commit_by_id.get("p1-000001") == PlacementCommitState.ROUTED_CONFIRMED.value
     assert r.placement_commit_by_id.get("p1-000002") == PlacementCommitState.ROLLED_BACK.value
     assert "p1-000002" in r.rolled_back_placement_ids
-    assert not r.quarantined_placement_ids
+    assert "p1-000002" in r.quarantined_placement_ids_peak
+    assert r.quarantined_placement_ids == r.quarantined_placement_ids_peak
+    assert not r.complete_routing_success
     assert not r.committed
 
     rep = validate_final_mining_layout(r.map_after_routing)
@@ -545,9 +549,11 @@ def test_step4_second_stub_route_failure_quarantines_that_bundle() -> None:
         pytest.skip("target stub still trunk-connected; Dijkstra not invoked for failure path")
 
     assert not r.committed
+    assert not r.complete_routing_success
     pid = r.rolled_back_placement_ids[0]
     assert r.placement_commit_by_id[pid] == PlacementCommitState.ROLLED_BACK.value
-    assert not r.quarantined_placement_ids
+    assert pid in r.quarantined_placement_ids_peak
+    assert r.quarantined_placement_ids == r.quarantined_placement_ids_peak
     assert any(
         s == PlacementCommitState.ROUTED_CONFIRMED.value for s in r.placement_commit_by_id.values()
     )
@@ -612,8 +618,13 @@ def test_build_solver_timeline_step4_frame_has_placement_commit_counts() -> None
     assert top.get("unfinalized_placement_count") == 0
 
 
-def test_build_solver_timeline_step4_partial_failure_is_partial_success() -> None:
-    """Contract: STEP4 partial rollback surfaces as PARTIAL_SUCCESS termination."""
+def test_timeline_step4_partial_skips_pass3() -> None:
+    """Partial STEP4 sets ``step4_committed`` false so Pass3 does not run (no trunk default).
+
+    Final validation may still report geometry/connectivity OK on this fixture; finalize then
+    maps incomplete routing to ``step4_partial_failure`` / partial termination instead of
+    masking via Pass3.
+    """
 
     decoded = _decoded_shape_miners_with_belt_escape()
     mt = build_map_timeline(decoded)
@@ -653,7 +664,9 @@ def test_build_solver_timeline_step4_partial_failure_is_partial_success() -> Non
     assert out["ok"] is False
     assert out["solver_termination"] == "partial_success"
     assert out["termination"]["tier"] == "PARTIAL_SUCCESS"
-    assert "step4_partial_failure" in (out["termination"]["degradation_causes"] or [])
+    summ = out.get("solver_summary") or {}
+    assert summ.get("step4_committed") is False
+    assert summ.get("pass3_skip_reason") == "step4_not_committed"
 
 
 def test_step4_orphan_provisional_record_increments_unfinalized_trunk_count() -> None:
@@ -741,3 +754,29 @@ def test_build_solver_timeline_unfinalized_return_reason_orphan_placement_record
     assert out["ok"] is False
     assert out["solver_summary"]["unfinalized_placement_count"] >= 1
     assert out["final_validation"]["unfinalized_placement_count"] >= 1
+
+
+def test_placement_state_counts_unfinalized_equals_provisional_plus_quarantine() -> None:
+    m = {
+        "a": PlacementCommitState.PROVISIONAL_PLACED.value,
+        "b": PlacementCommitState.QUARANTINED_UNROUTED.value,
+        "c": PlacementCommitState.ROUTED_CONFIRMED.value,
+    }
+    c = placement_state_counts(m)
+    assert c["unfinalized"] == 2
+    assert c["routed_confirmed"] == 1
+
+
+def test_count_placement_fsm_rows_on_cells_counts_distinct_rows() -> None:
+    mining_map = [
+        {"x": 10, "y": 10, "role": "belt", "placement_commit_state": "provisional_placed"},
+        {
+            "x": 11,
+            "y": 10,
+            "role": "belt",
+            "placement_commit_state": "quarantined_unrouted",
+        },
+    ]
+    cells = cells_dict_from_mining_map(mining_map)
+    q, p = count_placement_fsm_rows_on_cells(cells)
+    assert p == 1 and q == 1

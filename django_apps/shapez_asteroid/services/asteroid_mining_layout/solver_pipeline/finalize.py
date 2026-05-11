@@ -20,6 +20,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     SOLVER_FRAME_STEP4_ROUTING,
     SOLVER_FRAME_VALIDATE,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (  # noqa: E501
+    placement_state_counts,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.spatial_authority import (  # noqa: E501
     assert_protected_corridors_agree_with_transport_map,
     infer_transport_kind_from_mining_map,
@@ -53,6 +56,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
+    cells_dict_from_mining_map,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.trunk_load_observation_soft import (  # noqa: E501
     trunk_load_observation_soft_warnings,
@@ -94,6 +100,11 @@ def _append_optimization_warnings(summary_fields: dict[str, Any]) -> None:
     if isinstance(ratio, (int, float)) and float(ratio) > OPTIMIZATION_QUALITY_RATIO_WARN_THRESHOLD:
         warnings.append(OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH)
     summary_fields["optimization_warnings"] = warnings
+
+
+def _transport_cell_coords_from_map_rows(rows: list[dict[str, Any]]) -> frozenset[tuple[int, int]]:
+    cells = cells_dict_from_mining_map(rows)
+    return frozenset(c for c, r in cells.items() if r.get("role") in ("belt", "pipe"))
 
 
 def _baseline_extension_count(mining_map: list[dict[str, Any]]) -> int:
@@ -158,12 +169,19 @@ def build_final_solver_output(
     report = _validate_final_mining_layout(map_final)
     post_routing_counts = count_layout_cells(map_final)
     layout_ok = report.geometry_valid and report.connectivity_valid
+    map_fsm_unfinalized = int(report.provisional_placed_row_count) + int(
+        report.quarantined_unrouted_count
+    )
+    summary_unfinalized_placement_count = max(
+        map_fsm_unfinalized, int(unfinalized_placement_count)
+    )
 
     step4_routing_failure_count = int(
         step4_result.trunk_load.get("step4_routing_failure_count", 0) or 0
     )
     step4_partial_failure = (not pass12_skipped) and (
         (not step4_result.committed)
+        or not step4_result.complete_routing_success
         or step4_routing_failure_count > 0
         or len(step4_result.rolled_back_placement_ids) > 0
         or len(step4_result.quarantined_placement_ids) > 0
@@ -215,7 +233,7 @@ def build_final_solver_output(
         degradation_causes.append(return_reason)
     if layout_degraded and solver_termination != SOLVER_TERMINATION_FAILURE:
         degradation_causes.append("layout_degraded")
-    summary_geometry_valid = report.geometry_valid and unfinalized_placement_count == 0
+    summary_geometry_valid = report.geometry_valid and map_fsm_unfinalized == 0
 
     if getattr(settings, "SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE", False):
         assert_protected_corridors_agree_with_transport_map(
@@ -252,7 +270,7 @@ def build_final_solver_output(
             "orphan_transport_count": report.orphan_transport_count,
             "overlap_violation_count": report.overlap_violation_count,
             "missing_stub_count": report.missing_stub_count,
-            "unfinalized_placement_count": unfinalized_placement_count,
+            "unfinalized_placement_count": summary_unfinalized_placement_count,
             "final_counts": post_routing_counts,
         },
     )
@@ -303,7 +321,9 @@ def build_final_solver_output(
         "placement_commit_counts": dict(step4_result.trunk_load.get("placement_commit_counts", {})),
         "rolled_back_placement_ids": list(step4_result.rolled_back_placement_ids),
         "step4_rolled_back_count": step4_rollback_count,
-        "unfinalized_placement_count": unfinalized_placement_count,
+        "unfinalized_placement_count": summary_unfinalized_placement_count,
+        "unfinalized_placement_count_map_fsm_rows": map_fsm_unfinalized,
+        "unfinalized_placement_count_step4_trunk": unfinalized_placement_count,
         "route_revalidation_passed": step4_result.trunk_load.get("route_revalidation_passed", True),
         "broken_routed_route_count": step4_result.trunk_load.get("broken_routed_route_count", 0),
         "cascade_corrective_attempts": step4_result.trunk_load.get(
@@ -314,6 +334,14 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    t_pass2 = _transport_cell_coords_from_map_rows(map_after_pass2)
+    t_final = _transport_cell_coords_from_map_rows(map_final)
+    summary_fields["existing_transport_reuse_ratio_final_vs_pass2"] = round(
+        len(t_pass2 & t_final) / max(1, len(t_pass2)), 6
+    )
+    summary_fields["placement_state_counts"] = placement_state_counts(
+        step4_result.placement_commit_by_id
+    )
     summary_fields["transport_connected"] = report.transport_connectivity_ok
     summary_fields["optimization_baseline_internal_transport"] = (
         optimization_baseline_internal_transport
@@ -484,7 +512,7 @@ def build_final_solver_output(
             "missing_extractor_rotation_count": report.missing_extractor_rotation_count,
             "quarantined_unrouted_count": report.quarantined_unrouted_count,
             "provisional_placed_row_count": report.provisional_placed_row_count,
-            "unfinalized_placement_count": unfinalized_placement_count,
+            "unfinalized_placement_count": summary_unfinalized_placement_count,
             "extractor_count": report.extractor_count,
             "extension_count": report.extension_count,
             "transport_cell_count": report.transport_cell_count,

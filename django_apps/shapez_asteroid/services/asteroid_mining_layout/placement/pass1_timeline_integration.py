@@ -80,6 +80,13 @@ _BUILDING_LAYOUT_KINDS = frozenset(
 )
 
 
+def _transport_cell_coords_from_map_rows(rows: list[dict[str, Any]]) -> frozenset[Coord]:
+    """Belt/pipe coords (last row wins per cell, ``x==0`` excluded)."""
+
+    cells = cells_dict_from_mining_map(rows)
+    return frozenset(c for c, r in cells.items() if r.get("role") in ("belt", "pipe"))
+
+
 def is_mixed_surface_mining_map(mining_map: list[dict[str, Any]]) -> bool:
     """True when both surfaces appear; one global dominant miner/transport kind would be wrong."""
 
@@ -308,10 +315,13 @@ def integrate_pass12_placement_into_working_map(
     surface = dominant_surface_from_map(final_mining_map)
     scratch.transport_kind = "fluid_pipe" if surface == "fluid" else "shape_belt"
     merged_for_seed = merge_with_transport_and_final_mining_map(working_map, final_mining_map)
+    existing_transport_baseline = _transport_cell_coords_from_map_rows(merged_for_seed)
+    ela_sk = ela_meta.get("existing_layout_source_kind")
     preserve_seed_stats = seed_pass12_scratch_from_merged_existing(
         merged_for_seed,
         mineable=mineable,
         scratch=scratch,
+        existing_layout_source_kind=ela_sk if isinstance(ela_sk, str) else None,
     )
     extractors_after_seed = len(scratch.extractor_cells)
     extensions_after_seed = len(scratch.extension_facings)
@@ -402,6 +412,8 @@ def integrate_pass12_placement_into_working_map(
                 scratch, merged_pass2, context="post_pass2_merge"
             )
         pass1_new_transport_cells = tr_before_p2 - len(transport_init)
+        final_transport_cells = _transport_cell_coords_from_map_rows(merged_pass2)
+        ex_base_n = len(existing_transport_baseline)
         stats: dict[str, Any] = {
             "pass1_outer_placements": placed,
             "pass1_new_extractor_cells": ex_before_p2 - extractors_after_seed,
@@ -421,6 +433,10 @@ def integrate_pass12_placement_into_working_map(
             "placement_records": dict(scratch.placement_records),
             "placement_candidate_blocked_count": int(placement_transport_blocked_counter[0]),
             "pass12_placement_loops_suppressed": suppress_pass1_pass2_loops,
+            "existing_transport_cell_count_baseline": ex_base_n,
+            "existing_transport_reuse_ratio_after_pass12": round(
+                len(existing_transport_baseline & final_transport_cells) / max(1, ex_base_n), 6
+            ),
             **preserve_seed_stats,
             **ela_meta,
         }

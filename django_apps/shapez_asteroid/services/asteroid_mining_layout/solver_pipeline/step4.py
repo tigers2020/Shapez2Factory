@@ -241,13 +241,20 @@ def run_step4_stage(
         "step4_completed",
         {
             "committed": step4_result.committed,
+            "complete_routing_success": step4_result.complete_routing_success,
+            "degraded": step4_result.degraded,
             "skipped": bool(pass12_skipped),
             "route_count": step4_result.trunk_load.get("step4_route_count", 0),
             "routing_failure_count": step4_result.trunk_load.get("step4_routing_failure_count", 0),
             "rolled_back_placement_ids": list(step4_result.rolled_back_placement_ids),
             "quarantined_placement_ids": list(step4_result.quarantined_placement_ids),
+            "quarantined_placement_ids_peak": list(step4_result.quarantined_placement_ids_peak),
             "after_routing_counts": post_step4_counts,
             "step_hash_step4": step_hash_step4,
+            "step4_state_source": {
+                "committed_from": "step4_result",
+                "trunk_load_metrics_only": True,
+            },
         },
     )
     debug_trace_event(

@@ -289,6 +289,13 @@ def _zero_trace_common(*, pass12_skipped: bool) -> dict[str, Any]:
     }
     if pass12_skipped:
         trace["skipped"] = True
+        trace["step4_committed"] = True
+        trace["step4_complete_routing_success"] = True
+        trace["step4_degraded"] = False
+        trace["step4_state_source"] = {
+            "committed_from": "step4_skipped_no_work",
+            "trunk_load_mirrors_result": True,
+        }
     return trace
 
 

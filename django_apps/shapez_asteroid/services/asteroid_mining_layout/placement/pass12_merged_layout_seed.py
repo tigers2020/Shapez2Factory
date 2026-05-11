@@ -40,6 +40,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation impo
 )
 
 
+def _preserve_first_hard_gate(existing_layout_source_kind: str | None) -> bool:
+    """True when Pass1 must not clear unrouted merged bundles (fluid existing maps only)."""
+
+    return existing_layout_source_kind == "existing_fluid_layout"
+
+
 def _mining_building_neighbors(
     c: Coord, cells: Mapping[Coord, dict[str, Any]], mineable: frozenset[Coord]
 ) -> tuple[Coord, ...]:
@@ -133,7 +139,8 @@ def seed_pass12_scratch_from_merged_existing(
     *,
     mineable: frozenset[Coord],
     scratch: Pass12LayoutScratch,
-) -> dict[str, int]:
+    existing_layout_source_kind: str | None = None,
+) -> dict[str, Any]:
     """Populate scratch with extractors/extensions already on mineable in ``merged_mining_map``.
 
     Creates ``PlacementCommitRecord`` rows in ``ROUTED_CONFIRMED`` when stub transport matches
@@ -155,6 +162,8 @@ def seed_pass12_scratch_from_merged_existing(
     extension_owner: dict[Coord, Coord] = {}
     seeded_groups = 0
     seeded_routed_records = 0
+    preserved_bundle_extractor_cells = 0
+    preserved_bundle_extension_cells = 0
     for miner in miners:
         exts = _bfs_extensions_from_miner(miner, cells, mineable, extension_owner)
         parent_by_cell = _parent_tree_for_miner_and_extensions(miner, exts, cells, mineable)
@@ -202,14 +211,18 @@ def seed_pass12_scratch_from_merged_existing(
                 route_id="preserve_merged_seed",
             )
             seeded_routed_records += 1
-        elif len(miners) == 1:
-            # Single mineable extractor with no confirmed stub link: block Pass1/Pass2 and
-            # keep merged rows. (Multi-miner maps leave cells unblocked when unrouted so Pass1
-            # can still replace misaligned miners without perturbing belt fixtures.)
+            preserved_bundle_extractor_cells += 1
+            preserved_bundle_extension_cells += len(exts)
+        elif _preserve_first_hard_gate(existing_layout_source_kind) or len(miners) == 1:
+            # Fluid existing maps: block every unrouted bundle (multi-miner half-preserve guard).
+            # Any map with a single merged miner: always block the bundle when not ROUTED_CONFIRMED
+            # so Pass1 cannot erase the lone body (``raw_asteroid_field`` and legacy behavior).
             scratch.blocked_cells |= {miner} | set(exts)
             scratch.preserved_mining_row_overrides[miner] = dict(row_m)
             for ext in exts:
                 scratch.preserved_mining_row_overrides[ext] = dict(cells[ext])
+            preserved_bundle_extractor_cells += 1
+            preserved_bundle_extension_cells += len(exts)
         seeded_groups += 1
 
     for c, row in cells.items():
@@ -232,7 +245,12 @@ def seed_pass12_scratch_from_merged_existing(
         else:
             scratch.extension_facings[c] = (1, 0)
 
+    sk = existing_layout_source_kind or "unspecified"
     return {
         "pass12_preserved_equipment_groups": seeded_groups,
         "pass12_preserved_routed_placement_records": seeded_routed_records,
+        "pass12_preserve_first_source_kind": sk,
+        "pass12_preserved_bundle_extractor_cells": preserved_bundle_extractor_cells,
+        "pass12_preserved_bundle_extension_cells": preserved_bundle_extension_cells,
+        "pass12_preserved_routed_confirmed_count": seeded_routed_records,
     }

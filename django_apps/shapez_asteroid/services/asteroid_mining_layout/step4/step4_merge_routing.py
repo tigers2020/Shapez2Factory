@@ -194,6 +194,7 @@ def run_step4_merge_aware_routing(
     }
     rolled_back: list[str] = []
     quarantined: list[str] = []
+    quarantined_placement_ids_peak: tuple[str, ...] = ()
     unrecoverable = False
 
     try:
@@ -370,6 +371,7 @@ def run_step4_merge_aware_routing(
 
         # QUARANTINED_UNROUTED is non-terminal (unfinalized_placement_count / STEP9). Spatial
         # rollback already ran; align FSM with P2-C cascade rollbacks — terminal ROLLED_BACK only.
+        quarantined_placement_ids_peak = tuple(quarantined)
         if quarantined:
             for pid in list(quarantined):
                 qrec = work_records.get(pid)
@@ -407,22 +409,39 @@ def run_step4_merge_aware_routing(
 
     placement_commit_by_id = {pid: rec.state.value for pid, rec in work_records.items()}
     pcounts = placement_commit_counts_by_state(placement_commit_by_id)
+    routing_failure_count = len(failures)
+    rolled_back_n = len(rolled_back)
+    complete_routing_success = (
+        not unrecoverable and routing_failure_count == 0 and rolled_back_n == 0
+    )
+    committed = complete_routing_success
+    step4_degraded = not unrecoverable and routing_failure_count == 0 and rolled_back_n > 0
+    q_peak_n = len(quarantined_placement_ids_peak)
 
     # trunk_load schema: ``step4_trunk_load`` (route_metrics vs legacy aliases, per-kind blocks).
     trace_tl: dict[str, Any] = {
         "mode": "accumulate_only",
         "step4_route_count": len(routes_out),
         "step4_route_commit_count": len(routes_out),
-        "step4_routing_failure_count": len(failures),
+        "step4_routing_failure_count": routing_failure_count,
         "initial_trunk_cells": len(initial_trunk),
         "placement_commit_counts": pcounts,
         "unfinalized_placement_count": unfinalized_placement_count_from_counts(pcounts),
         "step4_routed_count": pcounts.get(PlacementCommitState.ROUTED_CONFIRMED.value, 0),
         "step4_routed_stub_count": pcounts.get(PlacementCommitState.ROUTED_CONFIRMED.value, 0),
         "step4_total_stub_count": len(jobs),
-        "step4_quarantined_count": len(quarantined),
-        "step4_quarantined_unrouted_count": len(quarantined),
-        "step4_rolled_back_count": len(rolled_back),
+        "step4_quarantined_peak_count": q_peak_n,
+        "step4_quarantined_placement_ids_peak": list(quarantined_placement_ids_peak),
+        "step4_quarantined_count": q_peak_n,
+        "step4_quarantined_unrouted_count": q_peak_n,
+        "step4_rolled_back_count": rolled_back_n,
+        "step4_committed": committed,
+        "step4_complete_routing_success": complete_routing_success,
+        "step4_degraded": step4_degraded,
+        "step4_state_source": {
+            "committed_from": "step4_merge_routing",
+            "trunk_load_mirrors_result": True,
+        },
         "step4_trunk_seed_candidate_count_by_kind": {
             k: len(v) for k, v in trunk_seed_by_kind.items()
         },
@@ -446,8 +465,6 @@ def run_step4_merge_aware_routing(
         trunk_edge_load_maximized_by_kind=trunk_edge_load_maximized_by_kind,
     )
 
-    committed = not unrecoverable and len(failures) == 0
-
     return Step4RoutingResult(
         committed=committed,
         map_after_routing=map_after_routing,
@@ -461,7 +478,10 @@ def run_step4_merge_aware_routing(
         ),
         placement_commit_by_id=dict(placement_commit_by_id),
         rolled_back_placement_ids=tuple(rolled_back),
-        quarantined_placement_ids=tuple(quarantined),
+        quarantined_placement_ids=quarantined_placement_ids_peak,
+        complete_routing_success=complete_routing_success,
+        degraded=step4_degraded,
+        quarantined_placement_ids_peak=quarantined_placement_ids_peak,
     )
 
 
@@ -478,4 +498,7 @@ def step4_routing_skipped_result(map_after_pass2: list[dict[str, Any]]) -> Step4
         placement_commit_by_id={},
         rolled_back_placement_ids=tuple(),
         quarantined_placement_ids=tuple(),
+        complete_routing_success=True,
+        degraded=False,
+        quarantined_placement_ids_peak=tuple(),
     )

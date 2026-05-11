@@ -133,6 +133,7 @@ def run_pass3_stage(
     pass3_recovery_context: bool = False,
     validation_recovery_attempt: int = 0,
     debug_location: str,
+    step4_committed: bool,
     step4_trunk_load: dict[str, Any] | None = None,
 ) -> Pass3StageResult:
     """Pass3 transport minimization을 실행하고 기존 accept/reject 의미를 유지한다."""
@@ -142,7 +143,6 @@ def run_pass3_stage(
     if validation_recovery_attempt > 0:
         append_recovery_contract_phase(pass3_summary, RECOVERY_PHASE_VALIDATION_RECOVERY)
         extend_recovery_chain(pass3_summary, RECOVERY_SEGMENT_VALIDATION_RETRY)
-    step4_committed = bool((step4_trunk_load or {}).get("step4_committed", True))
     pass3_permission = pass3_permission_snapshot(
         pass12_skipped=pass12_skipped,
         step4_committed=step4_committed,
@@ -150,10 +150,15 @@ def run_pass3_stage(
         report_step4=report_step4,
     )
     eligible_pass3 = bool(pass3_permission["eligible"])
+    perm_log = {k: v for k, v in pass3_permission.items() if k != "skip_reason"}
+    perm_log["step4_state_source"] = {
+        "committed_from": "step4_result",
+        "pass3_gate_source": "explicit_arg",
+    }
     debug_log_event(
         debug_location,
         "pass3_eligibility_checked",
-        {k: v for k, v in pass3_permission.items() if k != "skip_reason"},
+        perm_log,
     )
     p3_trace: dict[str, Any] = {}
     p3_txn_id: str | None = None

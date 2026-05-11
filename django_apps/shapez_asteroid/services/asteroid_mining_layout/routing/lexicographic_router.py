@@ -9,6 +9,8 @@ import heapq
 from collections.abc import Mapping, Set
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import (
+    cores_shapez_adjacent,
+    is_legal_xy,
     neighbors4,
     require_cardinal_unit_toward,
 )
@@ -42,6 +44,16 @@ def _turn_delta(prev: Coord | None, cur: Coord, nxt: Coord) -> int:
     """이전 heading과 다음 heading의 turn cost 증가분을 계산한다 (§11.1 lex 차원 순서)."""
 
     if prev is None:
+        return 0
+    # Copy-preview / merged maps may still contain ``x == 0`` rows (non-shapez tiles) or
+    # non-adjacent consecutive path entries; skip strict cardinal in those cases.
+    if not (
+        is_legal_xy(prev[0], prev[1])
+        and is_legal_xy(cur[0], cur[1])
+        and is_legal_xy(nxt[0], nxt[1])
+    ):
+        return 0
+    if not (cores_shapez_adjacent(prev, cur) and cores_shapez_adjacent(cur, nxt)):
         return 0
     v1 = require_cardinal_unit_toward(prev, cur)
     v2 = require_cardinal_unit_toward(cur, nxt)

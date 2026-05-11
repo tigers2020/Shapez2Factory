@@ -11,6 +11,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.lexicographic_router import (  # noqa: E501
     RouteSearchResult,
     _step_deltas,
+    _turn_delta,
     find_lexicographic_route,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_zone import (
@@ -361,3 +362,13 @@ def test_merge_cell_incoming_direction_affects_continuation_turns() -> None:
         (4, 2),
         (5, 2),
     )
+
+
+def test_turn_delta_zero_when_middle_cell_is_illegal_x0() -> None:
+    """Copy-preview paths may list x==0 rows; do not require_cardinal (no shapez edge)."""
+
+    assert _turn_delta((1, -12), (0, -12), (2, -12)) == 0
+
+
+def test_turn_delta_across_missing_x0_column() -> None:
+    assert _turn_delta((-1, 2), (1, 2), (1, 3)) == 1

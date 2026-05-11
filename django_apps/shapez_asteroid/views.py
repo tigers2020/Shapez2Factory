@@ -22,7 +22,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_r
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
     final_validation,
 )
-from django_apps.shapez_asteroid.services.blueprint_map_summary import build_map_timeline
+from django_apps.shapez_asteroid.services.blueprint_map_summary import (
+    build_map_timeline,
+    merge_with_transport_and_final_mining_map,
+)
 from django_apps.shapez_asteroid.services.copy_preview_debug_dump import (
     dump_copy_preview_debug,
 )
@@ -246,9 +249,10 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
     summary = fin["summary"]
     mining_map = fin["mining_map"]
     transport_map = map_timeline[0]["mining_map"]
+    step05_baseline_map = merge_with_transport_and_final_mining_map(transport_map, mining_map)
     is_ext = final_validation.external_predicate_for_mining_map(map_timeline[1]["mining_map"])
     existing_layout_analysis = existing_layout_analysis_mod.analyze_existing_layout_from_mining_map(
-        transport_map,
+        step05_baseline_map,
         is_external=is_ext,
     )
     payload: dict[str, Any] = {

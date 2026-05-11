@@ -6,6 +6,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     external_predicate_for_mining_map,
 )
+from django_apps.shapez_asteroid.services.blueprint_map_summary import (
+    build_map_timeline,
+    merge_with_transport_and_final_mining_map,
+)
 
 
 def test_raw_asteroid_no_transport_classifies_raw_field() -> None:
@@ -38,6 +42,33 @@ def test_belt_single_component_classifies_shape_layout() -> None:
     assert belt["component_count"] == 1
     st = belt["components"][0]["status"]
     assert st in ("main_trunk_candidate", "orphan_component", "cleanup_candidate")
+
+
+def test_step05_merge_baseline_includes_inferred_for_analysis() -> None:
+    """STEP 0.5 uses merged with_transport + final map (same contract as solver_init)."""
+
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 1, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 2, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 2, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 10, "Y": 2, "T": "Layout_UndergroundBelt", "R": 0},
+            ]
+        }
+    }
+    tl = build_map_timeline(decoded)
+    merged = merge_with_transport_and_final_mining_map(tl[0]["mining_map"], tl[-1]["mining_map"])
+    assert any(c.get("role") == "inferred" for c in merged)
+    is_ext = external_predicate_for_mining_map(tl[1]["mining_map"])
+    out = analyze_existing_layout_from_mining_map(merged, is_external=is_ext)
+    assert "source_kind" in out
+    assert "transport" in out
 
 
 def test_isolated_belt_component_is_orphan_issue() -> None:

@@ -100,6 +100,40 @@ MAP_TIMELINE_STEP_IDS: tuple[str, ...] = (
 )
 
 
+def merge_with_transport_and_final_mining_map(
+    with_transport_mining_map: list[dict[str, Any]],
+    final_mining_map: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Transport shell from ``with_transport`` plus mineable patch rows from ``final_mining_map``.
+
+    Used for solver replay ``solver_init`` and STEP 0.5 ``analyze_existing_layout_from_mining_map``.
+
+    Overlays ``role: inferred`` interior from ``final_mining_map`` and fills mineable coords that
+    are absent from ``with_transport``; does **not** replace existing with_transport rows with
+    final ``asteroid_field`` rows (preserves active miners for analysis).
+    """
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing import routing_cells
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+        final_validation,
+    )
+
+    raw_w = final_validation.cells_dict_from_mining_map(with_transport_mining_map)
+    cells: dict[tuple[int, int], dict[str, Any]] = {k: dict(v) for k, v in raw_w.items()}
+    final_cells = final_validation.cells_dict_from_mining_map(final_mining_map)
+    mineable, _ = routing_cells.mineable_and_asteroid_coords(final_mining_map)
+    for c in mineable:
+        fc = final_cells.get(c)
+        if fc is None:
+            continue
+        if fc.get("role") == "inferred":
+            cells[c] = dict(fc)
+        elif c not in cells:
+            cells[c] = dict(fc)
+    ordered = sorted(cells.keys(), key=lambda p: (p[1], p[0]))
+    return [dict(cells[k]) for k in ordered]
+
+
 def build_map_timeline(decoded: dict[str, Any]) -> list[dict[str, Any]]:
     """Six UI steps from BP entries; last step matches ``list_island_mining_map`` output."""
 
@@ -212,6 +246,8 @@ def _mining_map_reconstructed(
             _attach_layout_kind(cell, row.t)
         else:
             cell["layout_kind"] = "asteroid_field"
+        if row.source_layout_kind is not None:
+            cell["source_layout_kind"] = row.source_layout_kind
         out.append(cell)
 
     return out
@@ -395,6 +431,8 @@ def _mining_map_occupied_only(
             _attach_layout_kind(cell, row.t)
         else:
             cell["layout_kind"] = "asteroid_field"
+        if row.source_layout_kind is not None:
+            cell["source_layout_kind"] = row.source_layout_kind
         out.append(cell)
     return out
 

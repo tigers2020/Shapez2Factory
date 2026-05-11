@@ -48,6 +48,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
 )
+from django_apps.shapez_asteroid.services.blueprint_map_summary import (
+    merge_with_transport_and_final_mining_map,
+)
 
 
 def _validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> Any:
@@ -285,11 +288,15 @@ def build_final_solver_output(
         "counterfactual_failure_reason": optimization_counterfactual_failure_reason,
         "internal_transport_quality_ratio": _quality_ratio,
     }
+    solver_init_map = merge_with_transport_and_final_mining_map(
+        map_timeline[0]["mining_map"],
+        map_timeline[-1]["mining_map"],
+    )
     frames: list[dict[str, Any]] = [
         {
             "id": SOLVER_FRAME_INIT,
             "summary": {"step": "init", **pass12_status_fields},
-            "mining_map": map_timeline[0]["mining_map"],
+            "mining_map": solver_init_map,
         },
         {
             "id": SOLVER_FRAME_PASS1_OUTER,

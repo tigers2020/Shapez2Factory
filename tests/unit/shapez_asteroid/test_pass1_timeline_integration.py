@@ -27,6 +27,24 @@ def _decoded_miners_with_belt_escape() -> dict:
     return {"BP": {"Entries": entries}}
 
 
+def _decoded_ring_with_interior() -> dict:
+    return {
+        "BP": {
+            "Entries": [
+                {"X": 1, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 2, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 2, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 10, "Y": 2, "T": "Layout_UndergroundBelt", "R": 0},
+            ]
+        }
+    }
+
+
 def test_build_solver_timeline_runs_pass1_outer_mvp() -> None:
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
         pass1_outer_placement as p1_mod,
@@ -95,6 +113,13 @@ def test_build_solver_timeline_simple_map_has_extractors_and_stub_transport() ->
         assert fr["summary"]["pass12_skipped"] is False
         assert fr["summary"]["pass12_skip_reason"] is None
         assert fr["summary"]["pass12_mixed_surface_skipped"] is False
+
+
+def test_build_solver_timeline_solver_init_includes_inferred_interior() -> None:
+    out = build_solver_timeline(_decoded_ring_with_interior())
+    init = next(f for f in out["solver_timeline"] if f["id"] == "solver_init")
+    by_xy = {(r["x"], r["y"]): r for r in init["mining_map"]}
+    assert by_xy.get((2, 2), {}).get("role") == "inferred"
 
 
 def test_build_solver_timeline_route_impossible_no_pass1_residue() -> None:

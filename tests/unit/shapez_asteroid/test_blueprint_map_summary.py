@@ -4,6 +4,7 @@ from django_apps.shapez_asteroid.services.blueprint_map_summary import (
     MAP_TIMELINE_STEP_IDS,
     build_map_timeline,
     list_island_mining_map,
+    merge_with_transport_and_final_mining_map,
     summarize_island_entries_map,
 )
 from django_apps.shapez_asteroid.services.style_classifier import PlotStyle, classify_layout_type
@@ -168,6 +169,7 @@ def test_x_zero_excluded_from_bounds_and_map() -> None:
             "role": "occupied",
             "surface": "shape",
             "layout_kind": "asteroid_field",
+            "source_layout_kind": "miner",
         },
         {
             "x": 3,
@@ -175,6 +177,7 @@ def test_x_zero_excluded_from_bounds_and_map() -> None:
             "role": "occupied",
             "surface": "shape",
             "layout_kind": "asteroid_field",
+            "source_layout_kind": "miner",
         },
     ]
 
@@ -227,7 +230,7 @@ def test_build_map_timeline_first_step_has_belt_and_pipe_roles() -> None:
 
 
 def test_with_transport_transport_over_void_on_extraction_shell() -> None:
-    """Belt/pipe on extraction footprint keep fill; lone transport off shell is void (UI transparent)."""
+    """Belt/pipe on extraction shell keep fill; lone transport off shell is void (UI)."""
 
     decoded = {
         "BP": {
@@ -284,6 +287,7 @@ def test_belt_pipe_not_in_map_fluid_extension_only() -> None:
         "surface": "fluid",
         "r": 2,
         "layout_kind": "asteroid_field",
+        "source_layout_kind": "fluid_extension",
     }
     assert summarize_island_entries_map(decoded)["entry_count"] == 1
 
@@ -304,6 +308,8 @@ def test_unified_map_extractor_and_extension_same_role() -> None:
     assert pts[1]["surface"] == "fluid"
     assert pts[0]["layout_kind"] == "asteroid_field"
     assert pts[1]["layout_kind"] == "asteroid_field"
+    assert pts[0]["source_layout_kind"] == "extractor"
+    assert pts[1]["source_layout_kind"] == "fluid_extension"
     assert "t" not in pts[0]
     assert "t" not in pts[1]
     assert list_island_mining_map({}) == []
@@ -319,6 +325,7 @@ def test_shape_miner_on_map() -> None:
             "surface": "shape",
             "r": 1,
             "layout_kind": "asteroid_field",
+            "source_layout_kind": "miner",
         },
     ]
 
@@ -330,6 +337,7 @@ def test_shape_miner_extension_classified_for_filter_only() -> None:
     assert pts[0]["role"] == "occupied"
     assert pts[0]["surface"] == "shape"
     assert pts[0]["layout_kind"] == "asteroid_field"
+    assert pts[0]["source_layout_kind"] == "extension"
     assert "t" not in pts[0]
     assert classify_layout_type("Layout_ShapeMinerExtension") == PlotStyle.extension
 
@@ -346,6 +354,7 @@ def test_fluid_pump_maps_extraction_filter() -> None:
     assert pts[0]["surface"] == "fluid"
     assert pts[0]["layout_kind"] == "asteroid_field"
     assert pts[0]["r"] == 0
+    assert pts[0]["source_layout_kind"] == "extractor"
     assert "t" not in pts[0]
 
 
@@ -369,6 +378,7 @@ def test_booster_on_map() -> None:
     assert pts[0]["role"] == "occupied"
     assert pts[0]["surface"] == "shape"
     assert pts[0]["layout_kind"] == "asteroid_field"
+    assert pts[0]["source_layout_kind"] == "booster"
 
 
 def test_inferred_patch_surface_follows_fluid_if_any_fluid_miner() -> None:
@@ -410,8 +420,36 @@ def test_duplicate_coords_last_entry_wins() -> None:
             "surface": "fluid",
             "r": 2,
             "layout_kind": "asteroid_field",
+            "source_layout_kind": "extractor",
         },
     ]
+
+
+def test_merge_with_transport_and_final_includes_inferred_interior() -> None:
+    """STEP0.5 / solver_init baseline: mineable interior from final overlaid on with_transport."""
+
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 1, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 1, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 2, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 2, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 3, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 3, "T": "Layout_ShapeMiner"},
+            ]
+        }
+    }
+    tl = build_map_timeline(decoded)
+    wt = tl[0]["mining_map"]
+    fin = tl[-1]["mining_map"]
+    merged = merge_with_transport_and_final_mining_map(wt, fin)
+    by_xy = {(c["x"], c["y"]): c for c in merged}
+    assert by_xy[(2, 2)]["role"] == "inferred"
+    assert by_xy[(2, 2)]["surface"] == "shape"
+    assert sum(1 for c in merged if c.get("role") == "inferred") == 1
 
 
 def test_map_timeline_six_steps_fill_interior_equals_final() -> None:

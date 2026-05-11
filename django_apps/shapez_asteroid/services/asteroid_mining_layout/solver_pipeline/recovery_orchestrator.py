@@ -151,15 +151,19 @@ def run_solver_timeline_pipeline(
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
         external_predicate_for_mining_map,
     )
-    from django_apps.shapez_asteroid.services.blueprint_map_summary import build_map_timeline
+    from django_apps.shapez_asteroid.services.blueprint_map_summary import (
+        build_map_timeline,
+        merge_with_transport_and_final_mining_map,
+    )
 
     replay_events: list[dict[str, Any]] = []
     map_timeline = build_map_timeline(decoded)
     working_map = map_timeline[0]["mining_map"]
     final_map = map_timeline[-1]["mining_map"]
     is_external = external_predicate_for_mining_map(map_timeline[1]["mining_map"])
+    step05_baseline_map = merge_with_transport_and_final_mining_map(working_map, final_map)
     existing_layout_analysis = analyze_existing_layout_from_mining_map(
-        working_map,
+        step05_baseline_map,
         is_external=is_external,
     )
 

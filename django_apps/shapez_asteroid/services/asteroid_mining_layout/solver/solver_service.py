@@ -30,6 +30,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.recovery_orchestrator import (  # noqa: E501
     run_solver_timeline_pipeline,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
+    build_step4_trunk_load_pipeline_exception_stub,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     external_predicate_for_mining_map,
     validate_final_mining_layout,
@@ -47,7 +50,7 @@ def _initial_summary_fields(run_id: str) -> dict[str, Any]:
         "run_id": run_id,
         "return_reason": "exception",
         "capacity_mode": "accumulate_only",
-        "trunk_load": {"mode": "accumulate_only", "edges": {}},
+        "trunk_load": build_step4_trunk_load_pipeline_exception_stub(),
         "existing_layout_analysis": None,
         "before_return_validate": None,
         "solver_state_hash": None,

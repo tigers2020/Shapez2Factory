@@ -75,6 +75,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_p2c
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_state import (
     _routing_state_from_committed_routes,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
+    build_step4_trunk_load,
+    build_step4_trunk_load_skipped,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
     transport_cells_reaching_external,
@@ -159,6 +163,8 @@ def run_step4_merge_aware_routing(
     )
     committed_trunk_by_kind: dict[str, set[Coord]] = {}
     final_route_cells: set[Coord] = set()
+    route_visits_by_kind: dict[str, int] = {}
+    unique_cells_by_kind: dict[str, set[Coord]] = {}
     routes_by_placement_id: dict[str, list[list[int]]] = {}
     goal_set_sizes: list[int] = []
     # Sum of len(path) over committed routes (merge stub counts as 1); shared cells double-count.
@@ -213,6 +219,8 @@ def run_step4_merge_aware_routing(
                     final_route_cells.add(stub_cell)
                     routes_by_placement_id[placement_id] = [list(stub_cell)]
                     accumulated_route_cell_visits += 1
+                    route_visits_by_kind[tk] = route_visits_by_kind.get(tk, 0) + 1
+                    unique_cells_by_kind.setdefault(tk, set()).add(stub_cell)
                 continue
 
             raw_goal = build_step4_goal_set(
@@ -292,6 +300,8 @@ def run_step4_merge_aware_routing(
             committed_trunk_by_kind.setdefault(tk, set()).update(path)
             final_route_cells.update(path)
             accumulated_route_cell_visits += len(path)
+            route_visits_by_kind[tk] = route_visits_by_kind.get(tk, 0) + len(path)
+            unique_cells_by_kind.setdefault(tk, set()).update(path)
             if placement_id is not None:
                 routes_by_placement_id[placement_id] = [[int(a), int(b)] for a, b in path]
             if placement_id is not None and placement_id in work_records:
@@ -332,12 +342,9 @@ def run_step4_merge_aware_routing(
     placement_commit_by_id = {pid: rec.state.value for pid, rec in work_records.items()}
     pcounts = placement_commit_counts_by_state(placement_commit_by_id)
 
-    # Trace keys (trunk_load): goal_set peak = max |goal_cells| per routing attempt;
-    # committed_trunk_* = cells promoted into per-kind trunk during STEP4 (excludes pre-STEP4
-    # initial_trunk_cells); route_cell_visits = placeholder capacity metric (sum path lengths).
-    trunk_load: dict[str, Any] = {
+    # trunk_load schema: ``step4_trunk_load`` (route_metrics vs legacy aliases, per-kind blocks).
+    trace_tl: dict[str, Any] = {
         "mode": "accumulate_only",
-        "edges": dict(sorted(trunk_edge_hits.items())),
         "step4_route_count": len(routes_out),
         "step4_route_commit_count": len(routes_out),
         "step4_routing_failure_count": len(failures),
@@ -358,14 +365,18 @@ def run_step4_merge_aware_routing(
             default=0,
         ),
         "step4_goal_set_size_peak": max(goal_set_sizes) if goal_set_sizes else 0,
-        "step4_committed_trunk_cell_count_by_kind": {
-            k: len(v) for k, v in committed_trunk_by_kind.items()
-        },
-        "step4_final_route_cell_count": len(final_route_cells),
-        "step4_accumulated_route_cell_visits": accumulated_route_cell_visits,
         "routes_by_placement_id": dict(routes_by_placement_id),
-        **p2c_metrics,
     }
+    trunk_load = build_step4_trunk_load(
+        trunk_edge_hits=trunk_edge_hits,
+        route_cell_visits=accumulated_route_cell_visits,
+        final_route_cells=final_route_cells,
+        committed_trunk_by_kind=committed_trunk_by_kind,
+        route_visits_by_kind=route_visits_by_kind,
+        unique_cells_by_kind=unique_cells_by_kind,
+        p2c_metrics=p2c_metrics,
+        trace=trace_tl,
+    )
 
     committed = not unrecoverable
 
@@ -394,36 +405,7 @@ def step4_routing_skipped_result(map_after_pass2: list[dict[str, Any]]) -> Step4
         map_after_routing=[dict(r) for r in map_after_pass2],
         routes=tuple(),
         routing_failures=tuple(),
-        trunk_load={
-            "mode": "accumulate_only",
-            "edges": {},
-            "step4_route_count": 0,
-            "step4_routing_failure_count": 0,
-            "skipped": True,
-            "placement_commit_counts": placement_commit_counts_by_state({}),
-            "unfinalized_placement_count": 0,
-            "step4_routed_count": 0,
-            "step4_rolled_back_count": 0,
-            "step4_quarantined_count": 0,
-            "step4_quarantined_unrouted_count": 0,
-            "step4_trunk_seed_candidate_count_by_kind": {},
-            "step4_trunk_seed_candidate_count": 0,
-            "step4_goal_set_size_peak": 0,
-            "step4_committed_trunk_cell_count_by_kind": {},
-            "step4_final_route_cell_count": 0,
-            "step4_route_commit_count": 0,
-            "step4_routed_stub_count": 0,
-            "step4_total_stub_count": 0,
-            "step4_accumulated_route_cell_visits": 0,
-            "routes_by_placement_id": {},
-            "route_revalidation_passed": True,
-            "broken_routed_route_count": 0,
-            "cascade_corrective_attempts": 0,
-            "cascade_reroute_count": 0,
-            "cascade_rollback_count": 0,
-            "cascade_rolled_back_placement_ids": tuple(),
-            "cascade_route_replay_detail": [],
-        },
+        trunk_load=build_step4_trunk_load_skipped(),
         routing_state=None,
         placement_commit_by_id={},
         rolled_back_placement_ids=tuple(),

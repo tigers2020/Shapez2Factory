@@ -355,6 +355,7 @@ def build_final_solver_output(
                 "cascade_rollback_count": step4_result.trunk_load.get("cascade_rollback_count", 0),
                 "after_routing_counts": post_step4_counts,
                 "routing_state": routing_state_summary,
+                "trunk_load": dict(step4_result.trunk_load),
             },
             "mining_map": map_after_routing,
         },

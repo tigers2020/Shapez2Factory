@@ -1,4 +1,9 @@
-"""P4 protected corridor parsing, Pass3 touched fallback, canonical pool selection."""
+"""P4 protected corridor parsing, Pass3 touched fallback, canonical pool selection.
+
+**Write authority (P3-C):** merged Step4 corridor payloads handed to P4 should be built via
+:func:`solver_routing_state_for_p4_reclaim` so ``routing_state`` and ``trunk_load`` fallbacks
+stay consistent with reclaim + replay overlays.
+"""
 
 from __future__ import annotations
 
@@ -13,6 +18,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridor_contracts import (  # noqa: E501
+    ProtectedCorridors,
     ProtectedCorridorSets,
 )
 
@@ -296,6 +302,27 @@ def protected_corridors_for_reclaim(
                     existing_layout_hints_cells=frozenset(),
                 )
     return _merge_existing_layout_solver_hints_into_soft(base, existing_layout_solver_hints)
+
+
+def protected_corridors_read_for_reclaim(
+    *,
+    pass3_trace: Mapping[str, object],
+    solver_routing_state: Mapping[str, object] | None = None,
+    existing_layout_solver_hints: Mapping[str, object] | None = None,
+) -> ProtectedCorridors:
+    """Same pool selection as :func:`protected_corridors_for_reclaim`, unified read DTO (P3-B)."""
+
+    pcs = protected_corridors_for_reclaim(
+        pass3_trace=pass3_trace,
+        solver_routing_state=solver_routing_state,
+        existing_layout_solver_hints=existing_layout_solver_hints,
+    )
+    return ProtectedCorridors(
+        hard=pcs.hard,
+        soft=pcs.soft,
+        candidate=pcs.existing_layout_hints_cells,
+        source=pcs.source,
+    )
 
 
 protected_corridors_for_reclaim_from_solver_state = protected_corridors_for_reclaim

@@ -20,7 +20,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
-    protected_corridors_for_reclaim,
+    protected_corridors_read_for_reclaim,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_map_ops import (
     _all_transport_cells,
@@ -98,7 +98,7 @@ def run_p4_reclaim_provisional_commit_after_pass3(
     mineable, _ = _mineable_and_asteroid_coords(final_mining_map)
     final_route_cells = _all_transport_cells(mining_map)
     committed = _committed_building_cells(mining_map)
-    pcs = protected_corridors_for_reclaim(
+    pcs = protected_corridors_read_for_reclaim(
         pass3_trace=pass3_trace,
         solver_routing_state=solver_routing_state,
         existing_layout_solver_hints=existing_layout_solver_hints,

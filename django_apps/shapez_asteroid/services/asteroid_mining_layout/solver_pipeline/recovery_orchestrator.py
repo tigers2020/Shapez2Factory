@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
@@ -19,6 +20,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.baseline
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_policy import (
     append_recovery_contract_phase,
     apply_recovery_contract_defaults,
+    is_total_recovery_cap_bounded,
+    is_validation_recovery_loop_enabled,
     synthesize_recovery_validation_outcome,
     tag_merge_partial_failure_from_step4,
     tag_post_reclaim_pass3_connectivity_break,
@@ -35,7 +38,45 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
     FinalValidationReport,
 )
 
+# Current bounded loop applies Pass3 ``pass3_recovery_context`` relaxations then the same
+# P4/finalize path; ``recovery_action_plan`` ids are an ordered checklist (planning), not
+# per-id automatic mutation executors yet.
+RECOVERY_APPLIED_PASS_DEGRADED_PASS3_P4_FINALIZE = "degraded_pass3_then_p4_finalize_repeat"
+
+
+@dataclass
+class RecoveryLoopState:
+    """Mutable validation-recovery loop slice (orchestrator + replay visibility)."""
+
+    cycle_index: int
+    pass3_recovery_context: bool
+    planned_actions: list[str]
+
+
+def _final_validation_report_from_pipeline_dict(fv: Any) -> FinalValidationReport | None:
+    """Build ``FinalValidationReport`` from ``out[\"final_validation\"]`` summary dict."""
+
+    if not isinstance(fv, dict):
+        return None
+    return FinalValidationReport(
+        geometry_valid=bool(fv.get("geometry_valid", True)),
+        connectivity_valid=bool(fv.get("connectivity_valid", True)),
+        disconnected_stub_count=int(fv.get("disconnected_stub_count") or 0),
+        quarantined_unrouted_count=int(fv.get("quarantined_unrouted_count") or 0),
+        provisional_placed_row_count=int(fv.get("provisional_placed_row_count") or 0),
+        orphan_transport_count=int(fv.get("orphan_transport_count") or 0),
+        overlap_violation_count=int(fv.get("overlap_violation_count") or 0),
+        missing_stub_count=int(fv.get("missing_stub_count") or 0),
+        missing_extractor_rotation_count=int(fv.get("missing_extractor_rotation_count") or 0),
+        extractor_count=int(fv.get("extractor_count") or 0),
+        extension_count=int(fv.get("extension_count") or 0),
+        transport_cell_count=int(fv.get("transport_cell_count") or 0),
+        transport_connectivity_ok=bool(fv.get("transport_connectivity_ok", True)),
+    )
+
+
 __all__ = [
+    "RecoveryLoopState",
     "enrich_solver_summary_recovery",
     "optimization_baseline_internal_transport_at_map",
     "optimization_baseline_internal_transport_pre_step4",
@@ -99,10 +140,10 @@ def enrich_solver_summary_recovery(
         append_recovery_contract_phase(summary_fields, RECOVERY_PHASE_VALIDATION_RECOVERY)
 
     summary_fields["recovery_validation_recovery_eligible"] = bool(actions) and (
-        MAX_VALIDATION_RECOVERY_ATTEMPTS > 0
+        is_validation_recovery_loop_enabled()
     )
     summary_fields["recovery_bounded_loop_configured"] = (
-        MAX_TOTAL_RECOVERY_ATTEMPTS > 0 or MAX_VALIDATION_RECOVERY_ATTEMPTS > 0
+        is_total_recovery_cap_bounded() or is_validation_recovery_loop_enabled()
     )
     synthesize_recovery_validation_outcome(summary_fields)
 
@@ -113,7 +154,11 @@ def recovery_timeline_envelope() -> dict[str, Any]:
     return {
         "max_total_recovery_attempts": MAX_TOTAL_RECOVERY_ATTEMPTS,
         "max_validation_recovery_attempts": MAX_VALIDATION_RECOVERY_ATTEMPTS,
-        "validation_recovery_execution_enabled": MAX_VALIDATION_RECOVERY_ATTEMPTS > 0,
+        "validation_recovery_execution_enabled": is_validation_recovery_loop_enabled(),
+        "total_recovery_cap_mode": "bounded" if is_total_recovery_cap_bounded() else "unlimited",
+        "validation_recovery_loop_mode": (
+            "enabled" if is_validation_recovery_loop_enabled() else "disabled"
+        ),
     }
 
 
@@ -123,7 +168,13 @@ def run_solver_timeline_pipeline(
     debug_location: str,
     run_id: str,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Pass12 → STEP4 → (bounded Pass3→P4→finalize loop) mining solver timeline."""
+    """Pass12 → STEP4 → (bounded Pass3→P4→finalize loop) mining solver timeline.
+
+    When validation recovery is enabled, each retry uses ``pass3_recovery_context`` (degraded
+    greedy Pass3) then the same P4 and finalize path. ``recovery_action_plan`` on the summary
+    lists intended STEP9-driven actions (planning); replay records ``planned_actions`` on
+    ``RECOVERY_BRANCH`` for visibility, not a separate executor per action id.
+    """
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.existing_layout_analysis import (  # noqa: E501
         analyze_existing_layout_from_mining_map,
@@ -207,18 +258,38 @@ def run_solver_timeline_pipeline(
     )
 
     routing_snapshot = solver_mut_txn.copy_mining_map_rows(step4.map_after_routing)
-    max_cycles = MAX_VALIDATION_RECOVERY_ATTEMPTS + 1 if MAX_VALIDATION_RECOVERY_ATTEMPTS > 0 else 1
+    max_cycles = (
+        MAX_VALIDATION_RECOVERY_ATTEMPTS + 1 if is_validation_recovery_loop_enabled() else 1
+    )
     pass3_recovery_context = False
     out: dict[str, Any] | None = None
     summary_fields: dict[str, Any] | None = None
+    last_pipeline_out: dict[str, Any] | None = None
 
     for va in range(max_cycles):
         if va > 0:
+            planned_actions: list[str] = []
+            if last_pipeline_out is not None:
+                rpt = _final_validation_report_from_pipeline_dict(
+                    last_pipeline_out.get("final_validation")
+                )
+                if rpt is not None:
+                    planned_actions = route_validation_recovery_actions(rpt)
+            loop_state = RecoveryLoopState(
+                cycle_index=va,
+                pass3_recovery_context=pass3_recovery_context,
+                planned_actions=planned_actions,
+            )
             replay_events.append(
                 {
                     "kind": SolverMutationEventKind.RECOVERY_BRANCH.value,
                     "phase": "validation_recovery",
-                    "payload": {"validation_recovery_attempt": va},
+                    "payload": {
+                        "validation_recovery_attempt": loop_state.cycle_index,
+                        "planned_actions": loop_state.planned_actions,
+                        "applied_recovery_pass": RECOVERY_APPLIED_PASS_DEGRADED_PASS3_P4_FINALIZE,
+                        "pass3_recovery_context": loop_state.pass3_recovery_context,
+                    },
                 }
             )
         map_for_pass3 = solver_mut_txn.copy_mining_map_rows(routing_snapshot)
@@ -289,12 +360,13 @@ def run_solver_timeline_pipeline(
             optimization_counterfactual_aggregation=counterfactual_routing.aggregation,
         )
         assert summary_fields is not None
-        if MAX_VALIDATION_RECOVERY_ATTEMPTS > 0:
+        if is_validation_recovery_loop_enabled():
             c = va + 1
             summary_fields["validation_recovery_cycles_used"] = c
             summary_fields["validation_recovery_attempts_used"] = c
             summary_fields["solver_replay_contract_envelope"] = recovery_timeline_envelope()
 
+        last_pipeline_out = out
         if out.get("ok"):
             break
         if va >= MAX_VALIDATION_RECOVERY_ATTEMPTS:

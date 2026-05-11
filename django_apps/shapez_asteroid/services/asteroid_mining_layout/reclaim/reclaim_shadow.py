@@ -52,6 +52,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
     protected_corridors_for_reclaim,
+    protected_corridors_read_for_reclaim,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
     solver_routing_state_for_p4_reclaim as solver_routing_state_for_p4_reclaim,
@@ -138,6 +139,7 @@ __all__ = [
     "p4_reclaim_provisional_commit_neutral_trace",
     "p4_reclaim_shadow_placeholder",
     "protected_corridors_for_reclaim",
+    "protected_corridors_read_for_reclaim",
     "reclaim_shadow_scan_core_after_pass3",
     "run_p4_reclaim_loop_after_pass3",
     "run_p4_reclaim_provisional_commit_after_pass3",

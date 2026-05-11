@@ -10,11 +10,15 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     RECOVERY_PHASE_MERGE_PARTIAL_FAILURE,
     RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_PHASE_RECLAIM_INCREMENTAL_FAILURE,
+    RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED,
+    RECOVERY_VALIDATION_LOOP_DISABLED,
 )
 
 __all__ = [
     "append_recovery_contract_phase",
     "apply_recovery_contract_defaults",
+    "is_total_recovery_cap_bounded",
+    "is_validation_recovery_loop_enabled",
     "p4_reclaim_cap_blocks_entry",
     "sync_recovery_total_attempts_used_from_chain",
     "synthesize_recovery_validation_outcome",
@@ -23,6 +27,18 @@ __all__ = [
     "tag_reclaim_incremental_failure_from_summary",
     "validation_recovery_allowed",
 ]
+
+
+def is_validation_recovery_loop_enabled() -> bool:
+    """True when Pass3→P4 validation recovery may run more than a single forward pass."""
+
+    return MAX_VALIDATION_RECOVERY_ATTEMPTS > RECOVERY_VALIDATION_LOOP_DISABLED
+
+
+def is_total_recovery_cap_bounded() -> bool:
+    """True when recovery chain length can block P4 (see ``p4_reclaim_cap_blocks_entry``)."""
+
+    return MAX_TOTAL_RECOVERY_ATTEMPTS > RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED
 
 
 def append_recovery_contract_phase(target: dict[str, Any], phase: str) -> None:
@@ -93,10 +109,11 @@ def tag_post_reclaim_pass3_connectivity_break(pass3_summary: dict[str, Any]) -> 
 def p4_reclaim_cap_blocks_entry(pass3_summary: dict[str, Any]) -> bool:
     """True when ``recovery_context_chain`` has reached ``MAX_TOTAL_RECOVERY_ATTEMPTS`` (no P4).
 
-    ``MAX_TOTAL_RECOVERY_ATTEMPTS <= 0`` disables the cap (unlimited).
+    When ``MAX_TOTAL_RECOVERY_ATTEMPTS == RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED`` (0), the cap
+    is off (unlimited chain length for this gate).
     """
 
-    if MAX_TOTAL_RECOVERY_ATTEMPTS <= 0:
+    if not is_total_recovery_cap_bounded():
         return False
     chain = pass3_summary.get("recovery_context_chain")
     if not isinstance(chain, list):
@@ -164,7 +181,7 @@ def validation_recovery_allowed(pipeline_out: dict[str, Any]) -> bool:
     Unfinalized placements are not recoverable in this loop.
     """
 
-    if MAX_VALIDATION_RECOVERY_ATTEMPTS <= 0:
+    if not is_validation_recovery_loop_enabled():
         return False
     if pipeline_out.get("ok"):
         return False

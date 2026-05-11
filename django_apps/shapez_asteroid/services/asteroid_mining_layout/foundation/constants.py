@@ -13,9 +13,15 @@ RECOVERY_SEGMENT_POST_RECLAIM_PASS3 = "post_reclaim_pass3"
 RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM = "post_pass3_p4_reclaim_entry"
 RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE = "step4_routing_failure"
 
-# --- P5 recovery contract (attempt caps; 0 = disabled / single forward pass) ---
-MAX_TOTAL_RECOVERY_ATTEMPTS = 0
-MAX_VALIDATION_RECOVERY_ATTEMPTS = 0
+# --- P5 recovery contract (attempt caps) ---
+# Sentinels: numeric 0; semantics differ by knob (see recovery_timeline_envelope).
+# RECOVERY_VALIDATION_LOOP_DISABLED: MAX_VALIDATION == this → no extra Pass3→P4 cycles.
+RECOVERY_VALIDATION_LOOP_DISABLED = 0
+# RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED: MAX_TOTAL == this → no P4 skip by chain-length cap.
+RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED = 0
+
+MAX_TOTAL_RECOVERY_ATTEMPTS = RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED
+MAX_VALIDATION_RECOVERY_ATTEMPTS = RECOVERY_VALIDATION_LOOP_DISABLED
 
 RECOVERY_TERMINAL_TOTAL_ATTEMPTS_EXCEEDED = "recovery_terminal_total_attempts_exceeded"
 RECOVERY_TERMINAL_VALIDATION_EXHAUSTED = "recovery_terminal_validation_recovery_exhausted"
@@ -99,7 +105,8 @@ P4_SOFT_REPLACE_REJECT_VALIDATION = "rejected_by_soft_replace_validation"
 
 P4_SOFT_REPLACE_ROUTE_PLACEMENT_ID = "p4_soft_replace_route"
 
-# §14.3 P4 loop hook: documented scope of _try_atomic_replace_soft_corridor.
+# §14.3 soft corridor atomic replace (P4 reclaim loop + shared routing primitive; see
+# routing.protected_corridor_replace.try_atomic_replace_soft_corridor).
 P4_SOFT_REPLACE_V1_CONTRACT = (
     "soft replace v1 = single selected soft corridor + first routing job only"
 )

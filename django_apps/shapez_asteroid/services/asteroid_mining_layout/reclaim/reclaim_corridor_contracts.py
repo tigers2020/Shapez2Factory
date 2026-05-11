@@ -18,3 +18,20 @@ class ProtectedCorridorSets:
     #: ``existing_layout_analysis["solver_hints"]`` when those keys contributed cells
     #: (diagnostics; merged into ``soft`` only, never into ``hard``).
     existing_layout_hints_cells: frozenset[Coord] = frozenset()
+
+
+@dataclass(frozen=True)
+class ProtectedCorridors:
+    """Read-only hard/soft pools plus layout-hint *candidate* cells (P3-A read model)."""
+
+    hard: frozenset[Coord]
+    soft: frozenset[Coord]
+    candidate: frozenset[Coord]
+    #: Same diagnostic ``source`` string as :class:`ProtectedCorridorSets`.
+    source: str = ""
+
+    @property
+    def existing_layout_hints_cells(self) -> frozenset[Coord]:
+        """Alias of ``candidate`` for code paths that used :class:`ProtectedCorridorSets`."""
+
+        return self.candidate

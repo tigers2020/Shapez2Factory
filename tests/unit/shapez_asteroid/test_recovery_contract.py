@@ -495,6 +495,33 @@ def test_validation_recovery_real_map_connectivity_uses_replacement_first() -> N
     _assert_validate_ui_frame_links_validation_recovery(out)
 
 
+def test_recovery_timeline_envelope_interpretation_fields() -> None:
+    """Envelope exposes cap/loop modes so ``0`` is not confused across knobs."""
+
+    env = recovery_orch.recovery_timeline_envelope()
+    assert env["total_recovery_cap_mode"] == "unlimited"
+    assert env["validation_recovery_loop_mode"] == "disabled"
+    assert env["validation_recovery_execution_enabled"] is False
+
+
+def test_protected_corridors_read_matches_for_reclaim() -> None:
+    """P3-B: ``protected_corridors_read_for_reclaim`` mirrors ``protected_corridors_for_reclaim``."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
+        protected_corridors_for_reclaim,
+        protected_corridors_read_for_reclaim,
+    )
+
+    trace = {"protected_corridors": {"hard": [[1, 0]], "soft": [[2, 0]]}}
+    pcs = protected_corridors_for_reclaim(pass3_trace=trace, solver_routing_state=None)
+    read = protected_corridors_read_for_reclaim(pass3_trace=trace, solver_routing_state=None)
+    assert read.hard == pcs.hard
+    assert read.soft == pcs.soft
+    assert read.candidate == pcs.existing_layout_hints_cells
+    assert read.existing_layout_hints_cells == pcs.existing_layout_hints_cells
+    assert read.source == pcs.source
+
+
 def test_validation_recovery_real_map_quarantine_terminates_or_rolls_back() -> None:
     """Quarantine flag on a real row → geometry invalid; recovery loop repairs then ok."""
 

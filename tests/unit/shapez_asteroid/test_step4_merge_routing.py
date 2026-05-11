@@ -477,12 +477,12 @@ def test_step4_cascade_revalidates_route_after_neighbor_rollback() -> None:
     rer = int(tl.get("cascade_reroute_count", 0))
     crb = int(tl.get("cascade_rollback_count", 0))
     assert rer == 1 or crb == 1
-    assert int(tl.get("unfinalized_placement_count", 0)) == 1
+    assert int(tl.get("unfinalized_placement_count", 0)) == 0
     assert r.placement_commit_by_id.get("p1-000001") == PlacementCommitState.ROUTED_CONFIRMED.value
-    assert (
-        r.placement_commit_by_id.get("p1-000002") == PlacementCommitState.QUARANTINED_UNROUTED.value
-    )
-    assert "p1-000002" in r.quarantined_placement_ids
+    assert r.placement_commit_by_id.get("p1-000002") == PlacementCommitState.ROLLED_BACK.value
+    assert "p1-000002" in r.rolled_back_placement_ids
+    assert not r.quarantined_placement_ids
+    assert not r.committed
 
     rep = validate_final_mining_layout(r.map_after_routing)
     assert rep.geometry_valid
@@ -538,14 +538,13 @@ def test_step4_second_stub_route_failure_quarantines_that_bundle() -> None:
             m2, final_mining_map=fm, is_external=is_ext, placement_records=pr
         )
 
-    if not r.quarantined_placement_ids:
+    if not r.rolled_back_placement_ids:
         pytest.skip("target stub still trunk-connected; Dijkstra not invoked for failure path")
 
-    assert r.committed
-    assert not r.rolled_back_placement_ids
-    assert r.trunk_load.get("step4_rolled_back_count") == 0
-    pid = r.quarantined_placement_ids[0]
-    assert r.placement_commit_by_id[pid] == PlacementCommitState.QUARANTINED_UNROUTED.value
+    assert not r.committed
+    pid = r.rolled_back_placement_ids[0]
+    assert r.placement_commit_by_id[pid] == PlacementCommitState.ROLLED_BACK.value
+    assert not r.quarantined_placement_ids
     assert any(
         s == PlacementCommitState.ROUTED_CONFIRMED.value for s in r.placement_commit_by_id.values()
     )
@@ -553,15 +552,15 @@ def test_step4_second_stub_route_failure_quarantines_that_bundle() -> None:
     fail = r.routing_failures[0]
     assert fail["extractor_id"] == pid
     assert fail["attempt_count"] == 1
-    assert fail["final_state"] == PlacementCommitState.QUARANTINED_UNROUTED.value
+    assert fail["final_state"] == PlacementCommitState.ROLLED_BACK.value
     assert fail["last_error"] == "no_route"
     assert fail.get("recovery_trigger") == "step4_routing_failure"
     assert not any(row.get("placement_id") == pid for row in r.map_after_routing)
 
     pcounts = r.trunk_load.get("placement_commit_counts") or {}
     assert pcounts.get(PlacementCommitState.ROUTED_CONFIRMED.value, 0) >= 1
-    assert pcounts.get(PlacementCommitState.ROLLED_BACK.value, 0) == 0
-    assert pcounts.get(PlacementCommitState.QUARANTINED_UNROUTED.value, 0) >= 1
+    assert pcounts.get(PlacementCommitState.ROLLED_BACK.value, 0) >= 1
+    assert pcounts.get(PlacementCommitState.QUARANTINED_UNROUTED.value, 0) == 0
 
 
 def test_final_validation_rejects_quarantined_placement_commit_state() -> None:

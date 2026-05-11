@@ -153,6 +153,13 @@ def _solver_pool_corridors_available(solver_routing_state: Mapping[str, object])
     return isinstance(nested, Mapping) and ("hard" in nested or "soft" in nested)
 
 
+# NOTE: Reclaim corridor merging intentionally differs from replay overlay merging
+# (:mod:`reclaim_corridor_read_factory`). Replay preserves UI-facing flat-key precedence when
+# both flat lists and nested ``protected_corridors`` exist. Reclaim uses nested ``hard``/``soft``
+# keys when present (runtime reclaim / §12.2 pool). Do not unify without P3-C write-authority
+# review.
+
+
 def _corridors_from_solver_routing_state(
     solver_routing_state: Mapping[str, object],
 ) -> ProtectedCorridorSets:

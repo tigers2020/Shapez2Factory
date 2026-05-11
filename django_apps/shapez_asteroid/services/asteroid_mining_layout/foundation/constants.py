@@ -21,7 +21,8 @@ RECOVERY_VALIDATION_LOOP_DISABLED = 0
 RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED = 0
 
 MAX_TOTAL_RECOVERY_ATTEMPTS = RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED
-MAX_VALIDATION_RECOVERY_ATTEMPTS = RECOVERY_VALIDATION_LOOP_DISABLED
+# Bounded Pass3→P4 validation retry cycles (see recovery_orchestrator ``max_cycles``).
+MAX_VALIDATION_RECOVERY_ATTEMPTS = 3
 
 RECOVERY_TERMINAL_TOTAL_ATTEMPTS_EXCEEDED = "recovery_terminal_total_attempts_exceeded"
 RECOVERY_TERMINAL_VALIDATION_EXHAUSTED = "recovery_terminal_validation_recovery_exhausted"
@@ -140,6 +141,11 @@ P3E3_REJECT_ROUTE_LENGTH_RATIO = "rejected_by_route_length_ratio"
 P3E3_REJECT_CONNECTIVITY = "rejected_by_connectivity"
 P3E3_REJECT_GEOMETRY = "rejected_by_geometry"
 P3E3_REJECT_VALIDATION = "rejected_by_validation"
+
+# P3-E2 shadow trace: ``p3e2_hard_protected_guard_state`` (string contract; keep values stable).
+P3E2_GUARD_EMPTY_POOL_NOT_WIRED = "empty_corridor_pool_not_wired"
+P3E2_GUARD_FROM_ADAPTER_INPUT = "from_adapter_input"
+P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL = "from_routing_corridor_pool"
 
 P3E2_SHADOW_ENABLED_DEFAULT = True
 P3E3_GUARDED_COMMIT_ENABLED_DEFAULT = True

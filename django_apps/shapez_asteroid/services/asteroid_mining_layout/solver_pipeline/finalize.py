@@ -7,6 +7,8 @@ from typing import Any
 from django.conf import settings
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    MAX_TOTAL_RECOVERY_ATTEMPTS,
+    MAX_VALIDATION_RECOVERY_ATTEMPTS,
     OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4,
     OPTIMIZATION_QUALITY_RATIO_WARN_THRESHOLD,
     OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE,
@@ -605,8 +607,10 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("recovery_post_reclaim_pass3_connectivity_break", False)
     summary_fields.setdefault("recovery_validation_recovery_eligible", False)
     summary_fields.setdefault("recovery_bounded_loop_configured", False)
-    summary_fields.setdefault("max_total_recovery_attempts", 0)
-    summary_fields.setdefault("max_validation_recovery_attempts", 0)
+    summary_fields.setdefault("max_total_recovery_attempts", MAX_TOTAL_RECOVERY_ATTEMPTS)
+    summary_fields.setdefault(
+        "max_validation_recovery_attempts", MAX_VALIDATION_RECOVERY_ATTEMPTS
+    )
     summary_fields.setdefault("validation_recovery_cycles_used", 0)
     summary_fields.setdefault(
         "recovery_validation_outcome",

@@ -53,6 +53,13 @@ def _fv(**kwargs: object) -> dict[str, object]:
     return base
 
 
+def test_default_validation_recovery_attempts_positive_enables_loop() -> None:
+    """Prod defaults: validation retry cap > 0 so timeline may run bounded Pass3→P4 retries."""
+
+    assert fc.MAX_VALIDATION_RECOVERY_ATTEMPTS > fc.RECOVERY_VALIDATION_LOOP_DISABLED
+    assert recovery_policy.is_validation_recovery_loop_enabled()
+
+
 def test_route_validation_recovery_actions_order_and_constants() -> None:
     rpt = FinalValidationReport(
         geometry_valid=False,
@@ -500,8 +507,8 @@ def test_recovery_timeline_envelope_interpretation_fields() -> None:
 
     env = recovery_orch.recovery_timeline_envelope()
     assert env["total_recovery_cap_mode"] == "unlimited"
-    assert env["validation_recovery_loop_mode"] == "disabled"
-    assert env["validation_recovery_execution_enabled"] is False
+    assert env["validation_recovery_loop_mode"] == "enabled"
+    assert env["validation_recovery_execution_enabled"] is True
 
 
 def test_protected_corridors_read_matches_for_reclaim() -> None:

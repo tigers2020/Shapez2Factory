@@ -2,8 +2,9 @@
 
 Trunk seed / goal-set skeleton (§08): ``step4_goal_trunk_seed`` + per-job ``goal_cells``;
 successful commits promote cells into ``committed_trunk_by_kind`` for subsequent merge goals.
-On routing failure, FSM becomes ``QUARANTINED_UNROUTED`` while provisional extractor/extension/stub
-cells are spatially restored from ``final_mining_map`` mineable rows (no ``ROLLED_BACK`` state).
+On routing failure, cells are spatially restored from ``final_mining_map`` mineable rows; the FSM
+passes through ``QUARANTINED_UNROUTED`` then is finalized to ``ROLLED_BACK`` so Pass3/guards never
+see a non-terminal placement state on the returned map.
 
 권한(셀 점유·목표 판정): ``step4_routing_permission``. 그래프 탐색: ``step4_dijkstra``.
 P2-C 교정: ``step4_p2c_corrective``. 맵 조작·스냅샷: ``step4_map_ops``.
@@ -365,6 +366,28 @@ def run_step4_merge_aware_routing(
                     trunk_edge_load_maximized_by_kind, rt.transport_kind, rt.path
                 )
 
+        # QUARANTINED_UNROUTED is non-terminal (unfinalized_placement_count / STEP9). Spatial
+        # rollback already ran; align FSM with P2-C cascade rollbacks — terminal ROLLED_BACK only.
+        if quarantined:
+            for pid in list(quarantined):
+                rec = work_records.get(pid)
+                if rec is None or rec.state != PlacementCommitState.QUARANTINED_UNROUTED:
+                    continue
+                work_records[pid] = replace(
+                    rec,
+                    state=PlacementCommitState.ROLLED_BACK,
+                    route_id=None,
+                )
+                rolled_back.append(pid)
+            quarantined.clear()
+
+        for fd in failures:
+            eid = fd.get("extractor_id")
+            if isinstance(eid, str) and eid in work_records:
+                st = work_records[eid].state.value
+                fd["final_state"] = st
+                fd["state"] = st
+
         _stamp_placement_commit_on_map_rows(cells, work_records)
 
         out_rows = _rows_from_cells(cells)
@@ -421,7 +444,7 @@ def run_step4_merge_aware_routing(
         trunk_edge_load_maximized_by_kind=trunk_edge_load_maximized_by_kind,
     )
 
-    committed = not unrecoverable
+    committed = not unrecoverable and len(failures) == 0
 
     return Step4RoutingResult(
         committed=committed,

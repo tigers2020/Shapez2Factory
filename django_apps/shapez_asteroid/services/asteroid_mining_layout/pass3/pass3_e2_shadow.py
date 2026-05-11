@@ -7,10 +7,16 @@ from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     MAX_ROUTE_LENGTH_RATIO,
+    P3E2_GUARD_EMPTY_POOL_NOT_WIRED,
+    P3E2_GUARD_FROM_ADAPTER_INPUT,
+    P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
     placement_stub_route_probe_path,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridor_read_factory import (  # noqa: E501
+    protected_corridors_read_from_routing_state,
 )
 
 
@@ -79,13 +85,17 @@ def _p3e2_shadow_trace(
         trunk_load, transport_kind=transport_kind
     )
 
+    corridor_dto = protected_corridors_read_from_routing_state(
+        trunk_load if isinstance(trunk_load, dict) else None
+    )
+
     if not outlets_order:
         base.update(
             {
                 "p3e2_lex_found": False,
                 "p3e2_shadow_would_commit": False,
                 "p3e2_shadow_rejected_reason": "no_outlets",
-                "p3e2_hard_protected_guard_state": "empty_corridor_pool_not_wired",
+                "p3e2_hard_protected_guard_state": P3E2_GUARD_EMPTY_POOL_NOT_WIRED,
             }
         )
         return base
@@ -113,7 +123,11 @@ def _p3e2_shadow_trace(
     greedy_outlets_ok = 0
     lex_outlets_ok = 0
     reject_reason: str | None = None
-    hard_guard_state = "empty_corridor_pool_not_wired"
+    hard_guard_state = (
+        P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL
+        if corridor_dto.hard
+        else P3E2_GUARD_EMPTY_POOL_NOT_WIRED
+    )
 
     for stub in outlets_order:
         rad_in = route_adapter_input_for_pass3_stub(
@@ -128,7 +142,7 @@ def _p3e2_shadow_trace(
             trunk_cells=trunk_cells,
         )
         if rad_in.hard_protected_cells:
-            hard_guard_state = "from_adapter_input"
+            hard_guard_state = P3E2_GUARD_FROM_ADAPTER_INPUT
         ad_out = build_route_adapter_output(rad_in)
         lex_res = find_lexicographic_route(
             start=ad_out.start_stub,

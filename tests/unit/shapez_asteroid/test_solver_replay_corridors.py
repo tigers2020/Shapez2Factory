@@ -4,6 +4,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     SOLVER_FRAME_PASS3_TRANSPORT,
     SOLVER_FRAME_STEP4_ROUTING,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridor_read_factory import (  # noqa: E501
+    protected_corridors_read_from_routing_state,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_corridors import (  # noqa: E501
     effective_routing_state_at_timeline_index,
     protected_corridors_overlay_from_routing_state,
@@ -11,6 +14,33 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_r
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_frames import (  # noqa: E501
     build_replay_ui_frames,
 )
+
+
+def test_overlay_flat_hard_wins_over_nested_protected_corridors() -> None:
+    """Flat ``hard_protected_corridors`` is kept when nested ``protected_corridors.hard`` exists."""
+
+    rs = {
+        "hard_protected_corridors": [[9, 9]],
+        "protected_corridors": {"hard": [[1, 2]], "soft": []},
+    }
+    o = protected_corridors_overlay_from_routing_state(rs)
+    assert o["hard"] == [[9, 9]]
+    assert o["counts"]["hard"] == 1
+    dto = protected_corridors_read_from_routing_state(rs)
+    assert dto.hard == {(9, 9)}
+
+
+def test_protected_corridors_read_matches_overlay_cell_sets() -> None:
+    rs = {
+        "hard_protected_corridors": [[1, 2]],
+        "soft_protected_corridors": [[3, 4]],
+        "soft_protected_candidate_corridors": [[5, 6]],
+    }
+    o = protected_corridors_overlay_from_routing_state(rs)
+    dto = protected_corridors_read_from_routing_state(rs)
+    assert {(p[0], p[1]) for p in o["hard"]} == dto.hard
+    assert {(p[0], p[1]) for p in o["soft"]} == dto.soft
+    assert {(p[0], p[1]) for p in o["candidate"]} == dto.candidate
 
 
 def test_protected_corridors_overlay_from_nested_routing_state() -> None:

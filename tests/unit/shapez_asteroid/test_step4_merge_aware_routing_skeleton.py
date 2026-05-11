@@ -164,14 +164,16 @@ def test_routing_failure_quarantine_no_trunk_promotion() -> None:
         r = run_step4_merge_aware_routing(
             m2, final_mining_map=fm, is_external=is_ext, placement_records=pr
         )
-    if not r.quarantined_placement_ids:
+    if not r.rolled_back_placement_ids:
         pytest.skip("target stub still trunk-connected; Dijkstra not invoked for failure path")
 
     assert r.trunk_load.get("step4_routing_failure_count", 0) >= 1
     fail = r.routing_failures[0]
-    assert fail["final_state"] == PlacementCommitState.QUARANTINED_UNROUTED.value
+    assert fail["final_state"] == PlacementCommitState.ROLLED_BACK.value
     assert fail.get("recovery_trigger") == RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE
-    assert not r.rolled_back_placement_ids
+    assert r.rolled_back_placement_ids
+    assert not r.quarantined_placement_ids
+    assert not r.committed
 
 
 def test_trunk_load_accumulates_without_capacity_hard_gate() -> None:

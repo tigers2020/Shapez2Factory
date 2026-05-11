@@ -306,6 +306,12 @@ msgstr "S"
 msgid "W"
 msgstr "W"
 
+msgid "Reset view"
+msgstr "Reset view"
+
+msgid "Wheel: zoom in/out. Drag: pan. Reset restores fit."
+msgstr "Wheel: zoom in/out. Drag: pan. Reset restores fit."
+
 msgid "Scan pass (preview)"
 msgstr "스캔 패스(미리보기)"
 
@@ -563,6 +569,9 @@ msgstr "남쪽 위"
 
 msgid "West up"
 msgstr "서쪽 위"
+
+msgid "Reset map zoom and pan"
+msgstr "Reset map zoom and pan"
 
 msgid "Decode progress on map"
 msgstr "맵 위 해석 진행"
@@ -1304,6 +1313,9 @@ msgstr "code는 문자열이어야 합니다"
 
 msgid "decode failed"
 msgstr "디코드에 실패했습니다"
+
+msgid "solver timeline failed"
+msgstr "솔버 타임라인 실패"
 
 msgid "Factory templates"
 msgstr "공장 템플릿"

@@ -1,4 +1,4 @@
-"""STEP4 ``trunk_load`` nested schema + legacy alias contract (v1)."""
+"""STEP4 ``trunk_load`` nested schema + legacy alias contract (v2)."""
 
 from __future__ import annotations
 
@@ -16,10 +16,14 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_mer
     step4_routing_skipped_result,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
+    TRUNK_EDGE_LOAD_OBSERVATION_TOP_N,
+    TRUNK_EDGE_LOAD_OBSERVATION_VERSION,
+    TRUNK_EDGE_SHARED_THRESHOLD,
     TRUNK_LOAD_CONTRACT_VERSION,
     accumulate_trunk_edge_load,
     build_step4_trunk_load,
     build_step4_trunk_load_pipeline_exception_stub,
+    build_trunk_edge_load_observation,
     canonical_trunk_edge_key,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
@@ -33,6 +37,19 @@ from tests.unit.shapez_asteroid.test_step4_merge_routing import (
 
 def _empty_trunk_edge_load_by_kind() -> dict[str, dict[str, int]]:
     return {"shape_belt": {}, "fluid_pipe": {}}
+
+
+def _assert_empty_kind_observation_block(obs: dict) -> None:
+    assert obs["observation_version"] == TRUNK_EDGE_LOAD_OBSERVATION_VERSION
+    assert obs["top_n"] == TRUNK_EDGE_LOAD_OBSERVATION_TOP_N
+    assert obs["shared_threshold"] == TRUNK_EDGE_SHARED_THRESHOLD
+    for kind in ("shape_belt", "fluid_pipe"):
+        bk = obs["by_kind"][kind]
+        assert bk["traversal_count_total"] == 0
+        assert bk["max_sharing"] == 0
+        assert bk["shared_edge_count"] == 0
+        assert bk["edge_count"] == 0
+        assert bk["top_edges"] == []
 
 
 def _assert_trunk_load_nested_matches_legacy(tl: dict) -> None:
@@ -53,11 +70,12 @@ def test_pipeline_exception_stub_distinguishes_from_pass12_skipped() -> None:
     tl = build_step4_trunk_load_pipeline_exception_stub()
     assert tl.get("skipped") is False
     assert tl.get("step4_result_state") == "pipeline_exception"
-    assert tl["trunk_load_contract_version"] == 1
+    assert tl["trunk_load_contract_version"] == TRUNK_LOAD_CONTRACT_VERSION
     assert tl["transport_usage_load"]["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
+    _assert_empty_kind_observation_block(tl["trunk_edge_load_observation"])
 
 
-def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_v1_keys() -> None:
+def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_contract_keys() -> None:
     malicious = {
         "route_revalidation_passed": False,
         "route_metrics": {"route_cell_visits": 999, "unique_route_cell_count": 999},
@@ -69,6 +87,7 @@ def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_v1_keys() -> None:
         "step4_accumulated_route_cell_visits": 999,
         "step4_final_route_cell_count": 999,
         "step4_committed_trunk_cell_count_by_kind": {"shape_belt": 999},
+        "trunk_edge_load_observation": {"bogus": True},
     }
     tl = build_step4_trunk_load(
         trunk_edge_hits={},
@@ -104,6 +123,56 @@ def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_v1_keys() -> None:
     assert tl["route_revalidation_passed"] is False
     assert tl["edges"] == {}
     assert tl["transport_usage_load"]["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
+    obs = tl["trunk_edge_load_observation"]
+    assert obs["observation_version"] == TRUNK_EDGE_LOAD_OBSERVATION_VERSION
+    assert "bogus" not in obs
+    _assert_empty_kind_observation_block(obs)
+
+
+def test_trunk_edge_load_observation_top_edges_order_and_cap() -> None:
+    """``count`` desc, ``edge`` asc tie-break; at most ``top_n`` entries."""
+
+    block = {
+        "shape_belt": {
+            "1,1--1,2": 3,
+            "1,2--1,3": 2,
+            "9,9--9,10": 2,
+            "0,0--0,1": 1,
+        },
+        "fluid_pipe": {},
+    }
+    obs = build_trunk_edge_load_observation(block, kind_keys=("shape_belt", "fluid_pipe"))
+    sb = obs["by_kind"]["shape_belt"]
+    assert sb["traversal_count_total"] == 8
+    assert sb["edge_count"] == 4
+    assert sb["max_sharing"] == 3
+    assert sb["shared_edge_count"] == 3
+    assert [e["edge"] for e in sb["top_edges"]] == [
+        "1,1--1,2",
+        "1,2--1,3",
+        "9,9--9,10",
+        "0,0--0,1",
+    ]
+    assert len(sb["top_edges"]) <= TRUNK_EDGE_LOAD_OBSERVATION_TOP_N
+
+
+def test_trunk_edge_load_observation_top_n_truncates_with_tie_breaker() -> None:
+    edges = {f"{i},0--{i},1": 1 for i in range(TRUNK_EDGE_LOAD_OBSERVATION_TOP_N + 3)}
+    obs = build_trunk_edge_load_observation(
+        {"shape_belt": edges, "fluid_pipe": {}},
+        kind_keys=("shape_belt", "fluid_pipe"),
+    )
+    te = obs["by_kind"]["shape_belt"]["top_edges"]
+    assert len(te) == TRUNK_EDGE_LOAD_OBSERVATION_TOP_N
+    keys_sorted = sorted(edges)
+    assert [e["edge"] for e in te] == keys_sorted[:TRUNK_EDGE_LOAD_OBSERVATION_TOP_N]
+
+
+def test_shared_edge_count_uses_shared_threshold_constant() -> None:
+    block = {"shape_belt": {"1,1--1,2": 1, "2,2--2,3": 2}, "fluid_pipe": {}}
+    obs = build_trunk_edge_load_observation(block, kind_keys=("shape_belt", "fluid_pipe"))
+    assert obs["by_kind"]["shape_belt"]["shared_edge_count"] == 1
+    assert obs["shared_threshold"] == TRUNK_EDGE_SHARED_THRESHOLD
 
 
 def test_canonical_trunk_edge_key_is_symmetric_under_reverse() -> None:
@@ -176,12 +245,13 @@ def test_trunk_edge_visit_sum_relates_to_route_cell_visits() -> None:
 def test_step4_trunk_load_skipped_has_contract_version_and_nested_blocks() -> None:
     r = step4_routing_skipped_result([])
     tl = r.trunk_load
-    assert tl["trunk_load_contract_version"] == TRUNK_LOAD_CONTRACT_VERSION == 1
+    assert tl["trunk_load_contract_version"] == TRUNK_LOAD_CONTRACT_VERSION
     assert tl["skipped"] is True
     assert tl["route_metrics"]["route_cell_visits"] == 0
     assert tl["route_metrics"]["unique_route_cell_count"] == 0
     assert tl["transport_usage_load"]["existing_transport_cell_crossings"] == {}
     assert tl["transport_usage_load"]["trunk_edge_load"] == _empty_trunk_edge_load_by_kind()
+    _assert_empty_kind_observation_block(tl["trunk_edge_load_observation"])
     assert "shape_belt" in tl["trunk_load_by_kind"] and "fluid_pipe" in tl["trunk_load_by_kind"]
     assert tl.get("step4_result_state") != "pipeline_exception"
     _assert_trunk_load_nested_matches_legacy(tl)
@@ -203,9 +273,14 @@ def test_step4_trunk_load_keeps_legacy_edges_alias_for_one_release() -> None:
         placement_records=pr,
     )
     tl = r.trunk_load
-    assert tl["trunk_load_contract_version"] == 1
+    assert tl["trunk_load_contract_version"] == TRUNK_LOAD_CONTRACT_VERSION
     tel = tl["transport_usage_load"]["trunk_edge_load"]
     assert set(tel) == {"shape_belt", "fluid_pipe"}
+    obs = tl["trunk_edge_load_observation"]
+    assert obs["observation_version"] == TRUNK_EDGE_LOAD_OBSERVATION_VERSION
+    for kind in ("shape_belt", "fluid_pipe"):
+        assert sum(tel[kind].values()) == obs["by_kind"][kind]["traversal_count_total"]
+        assert len(obs["by_kind"][kind]["top_edges"]) <= TRUNK_EDGE_LOAD_OBSERVATION_TOP_N
     _assert_trunk_load_nested_matches_legacy(tl)
 
 

@@ -994,9 +994,9 @@ def test_guarded_commit_accepts_real_layout_candidate_snapshot() -> None:
     assert cand["rejected_reason"] is None
     assert cand["baseline_route_length"] == cand["candidate_route_length"]
     assert cand["route_length_ratio"] == 1.0
-    assert len(cand["candidate_transport_cells"]) == 37
-    assert len(cand["removed_transport_cells"]) == 2
-    assert len(cand["added_transport_cells"]) == 18
+    assert len(cand["candidate_transport_cells"]) == 39
+    assert len(cand["removed_transport_cells"]) == 17
+    assert len(cand["added_transport_cells"]) == 35
     assert len(cand["preserved_stub_cells"]) == 2
     assert cand["touched_hard_protected_cells"] == []
 

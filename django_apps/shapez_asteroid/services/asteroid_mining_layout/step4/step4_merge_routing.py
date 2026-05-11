@@ -335,6 +335,8 @@ def run_step4_merge_aware_routing(
             trunk_edge_hits=trunk_edge_hits,
         )
 
+        # Edge load is derived from final routes_out after P2-C corrections so
+        # trunk_load/replay reflects returned route paths, not provisional commits.
         trunk_edge_load_by_kind.clear()
         for rt in routes_out:
             accumulate_trunk_edge_load(trunk_edge_load_by_kind, rt.transport_kind, rt.path)

@@ -95,6 +95,8 @@ def try_place_pass1_outer_bundle(
     is_external: Callable[[Coord], bool],
     bundle_hint: dict[str, Any] | None = None,
     replay_events: list[dict[str, Any]] | None = None,
+    extra_transport_block_cells: frozenset[Coord] = frozenset(),
+    placement_transport_blocked_counter: list[int] | None = None,
 ) -> bool:
     """Try output directions in order; commit at most one bundle via ``try_commit_pass1_bundle``."""
 
@@ -106,6 +108,10 @@ def try_place_pass1_outer_bundle(
     for dx, dy in _OUTPUT_DIRS:
         stub_cell = step_cardinal(x, y, dx, dy)
         if stub_cell is None:
+            continue
+        if stub_cell in scratch.transport_cells or stub_cell in extra_transport_block_cells:
+            if placement_transport_blocked_counter is not None:
+                placement_transport_blocked_counter[0] += 1
             continue
         if stub_cell in scratch.blocked_cells:
             continue
@@ -158,6 +164,8 @@ def run_pass1_outer_placement_mvp(
     is_external: Callable[[Coord], bool],
     existing_layout_analysis: Mapping[str, Any] | None = None,
     replay_events: list[dict[str, Any]] | None = None,
+    extra_transport_block_cells: frozenset[Coord] = frozenset(),
+    placement_transport_blocked_counter: list[int] | None = None,
 ) -> int:
     """Outer-first Pass1 sweep; returns how many extractors were committed."""
 
@@ -183,6 +191,8 @@ def run_pass1_outer_placement_mvp(
             is_external=is_external,
             bundle_hint=hint,
             replay_events=replay_events,
+            extra_transport_block_cells=extra_transport_block_cells,
+            placement_transport_blocked_counter=placement_transport_blocked_counter,
         ):
             placed += 1
     return placed

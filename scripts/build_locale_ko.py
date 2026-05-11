@@ -527,6 +527,7 @@ KO.update(
         "Protected corridor: soft": "보호 코리도: 소프트",
         "Protected corridor: candidate": "보호 코리도: 후보",
         "Corridors (hard/soft/candidate)": "코리도(하드/소프트/후보)",
+        "solver timeline failed": "솔버 타임라인 실패",
     }
 )
 

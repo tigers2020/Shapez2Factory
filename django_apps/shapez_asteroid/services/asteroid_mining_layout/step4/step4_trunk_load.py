@@ -3,25 +3,35 @@
 Contract version ``trunk_load_contract_version`` (int) identifies the nested schema for
 replay/UI consumers.
 
-Nested blocks (v1):
+**v1**: nested ``route_metrics`` / ``trunk_load_by_kind`` / ``transport_usage_load`` (raw counts).
+
+**v2** adds ``trunk_edge_load_observation``: deterministic summary derived from
+``transport_usage_load["trunk_edge_load"]`` (no capacity gates; observation-only).
+
+Nested blocks (v2 = v1 blocks plus observation):
 
 - ``route_metrics``: ``route_cell_visits`` (sum of committed path lengths; double-counts
   shared cells) vs ``unique_route_cell_count`` (``|union of committed path cells|``).
 - ``trunk_load_by_kind``: per ``transport_kind`` committed trunk size, visits, and kind-local
-  unique path cells (diagnostic; global unique may differ if kinds ever overlap — not expected
+  unique path cells (diagnostic; global unique may differ if kinds ever overlap; not expected
   for shape vs fluid in the MVP split).
 - ``transport_usage_load``:
   - ``existing_transport_cell_crossings``: counts **entries onto pre-existing transport cells**
     of the routed role during path paint (same map as legacy ``edges``). This is **not** full
-  route-cell load and **not** graph edge load.
+    route-cell load and **not** graph edge load.
   - ``trunk_edge_load``: per ``transport_kind`` undirected corridor edge keys
     ``"x1,y1--x2,y2"`` (sorted endpoints) counting route path step traversals. Separate from
     ``existing_transport_cell_crossings`` / legacy ``edges`` (pre-existing transport cell entries).
+- ``trunk_edge_load_observation``: ``observation_version``, ``top_n``, ``shared_threshold``,
+  and ``by_kind`` with ``shape_belt`` / ``fluid_pipe`` (and any extra kinds aligned with
+  ``trunk_edge_load`` keys) each holding ``traversal_count_total``, ``max_sharing``,
+  ``shared_edge_count`` (edges with count >= ``shared_threshold``), ``edge_count``, ``top_edges``.
 
 Merge safety:
 
-- ``p2c_metrics`` keys in ``_TRUNK_LOAD_V1_P2C_SAFEGUARD_KEYS`` are ignored so corrective
-  metrics cannot overwrite the v1 contract block or legacy route counters.
+- ``p2c_metrics`` keys in ``_TRUNK_LOAD_CONTRACT_P2C_SAFEGUARD_KEYS`` are ignored so corrective
+  metrics cannot overwrite contract blocks, legacy route counters, or
+  ``trunk_edge_load_observation``.
 
 Legacy:
 
@@ -41,17 +51,21 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
     unfinalized_placement_count_from_counts,
 )
 
-TRUNK_LOAD_CONTRACT_VERSION = 1
+TRUNK_LOAD_CONTRACT_VERSION = 2
+TRUNK_EDGE_LOAD_OBSERVATION_VERSION = 1
+TRUNK_EDGE_LOAD_OBSERVATION_TOP_N = 10
+TRUNK_EDGE_SHARED_THRESHOLD = 2
 
-# v1 keys that must not be overwritten by ``p2c_metrics`` (defensive merge).
-# P2-C metrics must use ``p2c_*`` or other non-contract diagnostic keys — not these names.
-_TRUNK_LOAD_V1_P2C_SAFEGUARD_KEYS: frozenset[str] = frozenset(
+# Contract keys that must not be overwritten by ``p2c_metrics`` (defensive merge).
+# P2-C metrics must use ``p2c_*`` or other non-contract diagnostic keys; not these names.
+_TRUNK_LOAD_CONTRACT_P2C_SAFEGUARD_KEYS: frozenset[str] = frozenset(
     {
         "trunk_load_contract_version",
         "mode",
         "route_metrics",
         "trunk_load_by_kind",
         "transport_usage_load",
+        "trunk_edge_load_observation",
         "edges",
         "step4_accumulated_route_cell_visits",
         "step4_final_route_cell_count",
@@ -80,7 +94,7 @@ def accumulate_trunk_edge_load(
     if len(path) < 2:
         return
     bucket = trunk_edge_load_by_kind.setdefault(transport_kind, {})
-    for u, v in zip(path, path[1:], strict=True):
+    for u, v in zip(path[:-1], path[1:], strict=True):
         ek = canonical_trunk_edge_key(u, v)
         bucket[ek] = bucket.get(ek, 0) + 1
 
@@ -91,6 +105,39 @@ def _normalized_trunk_edge_load_block(
 ) -> dict[str, dict[str, int]]:
     src = trunk_edge_load_by_kind or {}
     return {k: dict(sorted((src.get(k) or {}).items())) for k in kind_keys}
+
+
+def build_trunk_edge_load_observation(
+    trunk_edge_block: Mapping[str, Mapping[str, int]],
+    *,
+    kind_keys: tuple[str, ...],
+) -> dict[str, Any]:
+    """Deterministic per-kind summary from normalized ``trunk_edge_load`` (observation-only)."""
+
+    by_kind: dict[str, Any] = {}
+    for kind in kind_keys:
+        em = trunk_edge_block.get(kind) or {}
+        traversal_total = sum(em.values())
+        edge_count = len(em)
+        max_sharing = max(em.values()) if em else 0
+        shared_edge_count = sum(1 for c in em.values() if c >= TRUNK_EDGE_SHARED_THRESHOLD)
+        ordered = sorted(em.items(), key=lambda kv: (-kv[1], kv[0]))[
+            :TRUNK_EDGE_LOAD_OBSERVATION_TOP_N
+        ]
+        top_edges = [{"edge": ek, "count": int(c)} for ek, c in ordered]
+        by_kind[kind] = {
+            "traversal_count_total": int(traversal_total),
+            "max_sharing": int(max_sharing),
+            "shared_edge_count": int(shared_edge_count),
+            "edge_count": int(edge_count),
+            "top_edges": top_edges,
+        }
+    return {
+        "observation_version": TRUNK_EDGE_LOAD_OBSERVATION_VERSION,
+        "top_n": TRUNK_EDGE_LOAD_OBSERVATION_TOP_N,
+        "shared_threshold": TRUNK_EDGE_SHARED_THRESHOLD,
+        "by_kind": by_kind,
+    }
 
 
 def _ordered_kind_keys(
@@ -128,6 +175,9 @@ def build_step4_trunk_load(
     if edge_only_kinds:
         kind_keys = tuple(dict.fromkeys((*kind_keys, *sorted(edge_only_kinds))))
     trunk_edge_block = _normalized_trunk_edge_load_block(trunk_edge_load_by_kind, kind_keys)
+    trunk_edge_load_observation = build_trunk_edge_load_observation(
+        trunk_edge_block, kind_keys=kind_keys
+    )
     for k in kind_keys:
         cells_k = unique_cells_by_kind.get(k) or set()
         by_kind_out[k] = {
@@ -148,6 +198,7 @@ def build_step4_trunk_load(
             "existing_transport_cell_crossings": crossings_sorted,
             "trunk_edge_load": trunk_edge_block,
         },
+        "trunk_edge_load_observation": trunk_edge_load_observation,
         # Deprecated legacy aliases (keep one release; values mirror nested blocks above).
         "edges": crossings_sorted,
         "step4_accumulated_route_cell_visits": int(route_cell_visits),
@@ -161,7 +212,7 @@ def build_step4_trunk_load(
             continue
         out[key] = val
     for key, val in p2c_metrics.items():
-        if key in _TRUNK_LOAD_V1_P2C_SAFEGUARD_KEYS:
+        if key in _TRUNK_LOAD_CONTRACT_P2C_SAFEGUARD_KEYS:
             continue
         out[key] = val
     return out

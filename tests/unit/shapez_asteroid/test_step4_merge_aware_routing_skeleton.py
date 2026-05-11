@@ -214,6 +214,12 @@ def test_trunk_edge_load_matches_final_route_paths() -> None:
     assert set(tel) == {"shape_belt", "fluid_pipe"}
     for kind in ("shape_belt", "fluid_pipe"):
         assert dict(sorted(recomputed.get(kind, {}).items())) == tel[kind]
+    obs = r.trunk_load["trunk_edge_load_observation"]
+    for kind in ("shape_belt", "fluid_pipe"):
+        edge_sum = sum(recomputed.get(kind, {}).values())
+        edge_steps = sum(max(len(rt.path) - 1, 0) for rt in r.routes if rt.transport_kind == kind)
+        assert edge_sum == edge_steps
+        assert obs["by_kind"][kind]["traversal_count_total"] == edge_sum
 
 
 def test_exterior_margin_union_trunk_seed_in_candidates() -> None:

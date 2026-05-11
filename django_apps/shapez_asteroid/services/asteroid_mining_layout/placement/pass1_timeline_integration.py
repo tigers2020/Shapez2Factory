@@ -17,6 +17,7 @@ from django_apps.shapez_asteroid.extraction.shape_miner_rotation import (
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.pass12_existing_layout_hints import (  # noqa: E501
     pass12_existing_layout_barrier_meta,
+    pass12_transport_related_block_extra_cells,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.extension_topology import (  # noqa: E501
     rotation_r_for_extension_facing_parent,
@@ -255,6 +256,7 @@ def integrate_pass12_placement_into_working_map(
         "pass12_skip_reason": None,
         "pass12_mixed_surface_skipped": False,
         "placement_records": {},
+        "placement_candidate_blocked_count": 0,
         **ela_empty_meta,
     }
     if not mineable:
@@ -270,6 +272,7 @@ def integrate_pass12_placement_into_working_map(
             # Backward-compatible flag name (same meaning as pass12_skipped here).
             "pass12_mixed_surface_skipped": True,
             "placement_records": {},
+            "placement_candidate_blocked_count": 0,
         }
         return unchanged, unchanged, skip_stats
 
@@ -283,6 +286,8 @@ def integrate_pass12_placement_into_working_map(
     )
     surface = dominant_surface_from_map(final_mining_map)
     scratch.transport_kind = "fluid_pipe" if surface == "fluid" else "shape_belt"
+    extra_transport_blocks = pass12_transport_related_block_extra_cells(existing_layout_analysis)
+    placement_transport_blocked_counter: list[int] = [0]
 
     pass12_txn_id: str | None = None
     map_before_pass12: list[dict[str, Any]] | None = None
@@ -304,6 +309,8 @@ def integrate_pass12_placement_into_working_map(
             is_external=is_external,
             existing_layout_analysis=existing_layout_analysis,
             replay_events=replay_events,
+            extra_transport_block_cells=extra_transport_blocks,
+            placement_transport_blocked_counter=placement_transport_blocked_counter,
         )
         scratch_after_pass1 = _clone_scratch(scratch)
         ex_before_p2 = len(scratch.extractor_cells)
@@ -330,6 +337,8 @@ def integrate_pass12_placement_into_working_map(
             hard_barrier_cells=pass2_hard_barriers,
             replay_events=replay_events,
             priority_seeds=priority_seeds_arg,
+            extra_transport_block_cells=extra_transport_blocks,
+            placement_transport_blocked_counter=placement_transport_blocked_counter,
         )
         merged_pass1 = _merge_pass1_into_rows(
             working_map,
@@ -369,6 +378,7 @@ def integrate_pass12_placement_into_working_map(
             "pass12_skip_reason": None,
             "pass12_mixed_surface_skipped": False,
             "placement_records": dict(scratch.placement_records),
+            "placement_candidate_blocked_count": int(placement_transport_blocked_counter[0]),
             **ela_meta,
         }
         if replay_events is not None and pass12_txn_id is not None:

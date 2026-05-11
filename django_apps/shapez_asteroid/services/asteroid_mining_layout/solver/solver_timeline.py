@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
@@ -192,3 +192,14 @@ def _pre_pass12_reference_counts(map_timeline: list[dict[str, Any]]) -> dict[str
 def _solver_stats_by_prefix(stats: dict[str, Any], prefix: str) -> dict[str, Any]:
     """solver summary에서 특정 prefix metric만 추출한다 (§4 pipeline control flow)."""
     return {k: v for k, v in stats.items() if k.startswith(prefix)}
+
+
+def _placement_candidate_blocked_count_from_pass12(pass12_stats: Mapping[str, Any] | None) -> int:
+    """Pass12 ``placement_candidate_blocked_count`` for summary / replay metrics (default 0)."""
+
+    if pass12_stats is None:
+        return 0
+    v = pass12_stats.get("placement_candidate_blocked_count")
+    if isinstance(v, int) and not isinstance(v, bool):
+        return v
+    return 0

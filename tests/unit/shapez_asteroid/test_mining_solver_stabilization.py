@@ -223,7 +223,10 @@ def test_build_solver_timeline_empty_bp() -> None:
     out = build_solver_timeline(decoded)
     assert out["return_reason"] == "ok"
     assert out["solver_termination"] == "success"
+    assert out["termination"]["tier"] == "SUCCESS"
+    assert out["termination"]["ok"] is True
     assert out["solver_summary"]["solver_termination"] == "success"
+    assert out["solver_summary"]["termination"]["tier"] == "SUCCESS"
     assert out["solver_summary"]["capacity_mode"] == "accumulate_only"
     assert out["solver_summary"]["geometry_valid"] is True
 

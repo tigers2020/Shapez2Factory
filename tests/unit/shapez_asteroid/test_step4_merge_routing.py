@@ -25,6 +25,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service import (
     build_solver_timeline,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline import (
+    step4 as step4_stage,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_merge_routing as step4_mod,
 )
@@ -196,10 +199,10 @@ def test_step4_routing_state_protected_pool_covers_every_committed_path_cell() -
     mt = build_map_timeline(decoded)
     wm, fm = mt[0]["mining_map"], mt[-1]["mining_map"]
     is_ext = external_predicate_for_mining_map(mt[1]["mining_map"])
-    _p1, m2, stats = integrate_pass12_placement_into_working_map(
+    _p1, m2, _stats = integrate_pass12_placement_into_working_map(
         working_map=wm, final_mining_map=fm, is_external=is_ext
     )
-    pr = stats.get("placement_records")
+    pr = _stats.get("placement_records")
     r = run_step4_merge_aware_routing(
         m2, final_mining_map=fm, is_external=is_ext, placement_records=pr
     )
@@ -607,6 +610,50 @@ def test_build_solver_timeline_step4_frame_has_placement_commit_counts() -> None
     top = out.get("solver_summary") or {}
     assert "placement_commit_counts" in top
     assert top.get("unfinalized_placement_count") == 0
+
+
+def test_build_solver_timeline_step4_partial_failure_is_partial_success() -> None:
+    """Contract: STEP4 partial rollback surfaces as PARTIAL_SUCCESS termination."""
+
+    decoded = _decoded_shape_miners_with_belt_escape()
+    mt = build_map_timeline(decoded)
+    wm, fm = mt[0]["mining_map"], mt[-1]["mining_map"]
+    is_ext = external_predicate_for_mining_map(mt[1]["mining_map"])
+    _p1, m2, _stats = integrate_pass12_placement_into_working_map(
+        working_map=wm, final_mining_map=fm, is_external=is_ext
+    )
+    jobs = step4_mod._collect_routing_jobs(dict(cells_dict_from_mining_map(m2)))
+    if not jobs:
+        pytest.skip("no routing jobs in fixture")
+    _ext_cell, fail_stub, _tk, fail_pid = jobs[-1]
+    if not isinstance(fail_pid, str) or not fail_pid:
+        pytest.skip("fixture job missing placement_id")
+
+    real = step4_mod._dijkstra_route
+
+    def wrapped(stub_cell: Coord, *args: Any, **kwargs: Any) -> tuple[Coord, ...] | None:
+        if stub_cell == fail_stub:
+            return None
+        return real(stub_cell, *args, **kwargs)
+
+    real_run_step4 = step4_mod.run_step4_merge_aware_routing
+
+    def forced_step4(*args: Any, **kwargs: Any) -> Any:
+        # Force a real Dijkstra attempt even if the stub becomes trunk-connected during routing.
+        kwargs["force_route_attempt_placement_ids"] = frozenset({fail_pid})
+        return real_run_step4(*args, **kwargs)
+
+    with (
+        patch.object(step4_mod, "_dijkstra_route", new=wrapped),
+        patch.object(step4_stage, "run_step4_merge_aware_routing", new=forced_step4),
+    ):
+        out = build_solver_timeline(decoded)
+
+    assert out["return_reason"] == "step4_partial_failure"
+    assert out["ok"] is False
+    assert out["solver_termination"] == "partial_success"
+    assert out["termination"]["tier"] == "PARTIAL_SUCCESS"
+    assert "step4_partial_failure" in (out["termination"]["degradation_causes"] or [])
 
 
 def test_step4_orphan_provisional_record_increments_unfinalized_trunk_count() -> None:

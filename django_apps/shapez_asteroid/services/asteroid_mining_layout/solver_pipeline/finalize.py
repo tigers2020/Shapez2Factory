@@ -65,6 +65,10 @@ SOLVER_TERMINATION_SUCCESS = "success"
 SOLVER_TERMINATION_PARTIAL_SUCCESS = "partial_success"
 SOLVER_TERMINATION_FAILURE = "solver_failure"
 
+SOLVER_TERMINATION_TIER_SUCCESS = "SUCCESS"
+SOLVER_TERMINATION_TIER_PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+SOLVER_TERMINATION_TIER_SOLVER_FAILURE = "SOLVER_FAILURE"
+
 RETURN_REASON_STEP4_PARTIAL_FAILURE = "step4_partial_failure"
 
 
@@ -198,6 +202,19 @@ def build_final_solver_output(
         or broken_routed_n > 0
         or cascade_rb_n > 0
     )
+
+    if solver_termination == SOLVER_TERMINATION_SUCCESS:
+        termination_tier = SOLVER_TERMINATION_TIER_SUCCESS
+    elif solver_termination == SOLVER_TERMINATION_PARTIAL_SUCCESS:
+        termination_tier = SOLVER_TERMINATION_TIER_PARTIAL_SUCCESS
+    else:
+        termination_tier = SOLVER_TERMINATION_TIER_SOLVER_FAILURE
+
+    degradation_causes: list[str] = []
+    if solver_termination == SOLVER_TERMINATION_PARTIAL_SUCCESS:
+        degradation_causes.append(return_reason)
+    if layout_degraded and solver_termination != SOLVER_TERMINATION_FAILURE:
+        degradation_causes.append("layout_degraded")
     summary_geometry_valid = report.geometry_valid and unfinalized_placement_count == 0
 
     if getattr(settings, "SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE", False):
@@ -247,6 +264,12 @@ def build_final_solver_output(
         "run_id": run_id,
         "return_reason": return_reason,
         "solver_termination": solver_termination,
+        "termination": {
+            "tier": termination_tier,
+            "return_reason": return_reason,
+            "degradation_causes": list(degradation_causes),
+            "ok": solver_termination == SOLVER_TERMINATION_SUCCESS,
+        },
         "after_pass2_baseline_counts": post_pass2_counts,
         "final_counts": post_routing_counts,
         "solver_state_hash": solver_state_hash,
@@ -441,6 +464,12 @@ def build_final_solver_output(
         "ok": solver_termination == SOLVER_TERMINATION_SUCCESS,
         "return_reason": return_reason,
         "solver_termination": solver_termination,
+        "termination": {
+            "tier": termination_tier,
+            "return_reason": return_reason,
+            "degradation_causes": list(degradation_causes),
+            "ok": solver_termination == SOLVER_TERMINATION_SUCCESS,
+        },
         "solver_timeline": frames,
         "solver_replay": solver_replay,
         "solver_summary": summary_fields,
@@ -510,6 +539,15 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("layout_degraded", True)
     summary_fields.setdefault("pass12_phase", "exception")
     summary_fields.setdefault("solver_termination", SOLVER_TERMINATION_FAILURE)
+    summary_fields.setdefault(
+        "termination",
+        {
+            "tier": SOLVER_TERMINATION_TIER_SOLVER_FAILURE,
+            "return_reason": str(summary_fields.get("return_reason") or "exception"),
+            "degradation_causes": ["exception"],
+            "ok": False,
+        },
+    )
     summary_fields.setdefault("routing_state", None)
     summary_fields.setdefault("step4_route_count", 0)
     summary_fields.setdefault("step4_routing_failure_count", 0)

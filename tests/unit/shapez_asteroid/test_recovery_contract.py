@@ -466,8 +466,10 @@ def test_validation_recovery_attempt_limit_returns_terminal() -> None:
     assert out["ok"] is False
     assert out["return_reason"] == "validation_connectivity_failed"
     assert out["solver_termination"] == "solver_failure"
+    assert out["termination"]["tier"] == "SOLVER_FAILURE"
     assert summary["return_reason"] == "validation_connectivity_failed"
     assert summary["solver_termination"] == "solver_failure"
+    assert summary["termination"]["tier"] == "SOLVER_FAILURE"
     assert summary["validation_recovery_attempts_used"] == 2
     kinds = [e.get("kind") for e in out["solver_replay"].get("events") or []]
     assert kinds.count(solver_replay_ev.SolverMutationEventKind.RECOVERY_BRANCH.value) == 1

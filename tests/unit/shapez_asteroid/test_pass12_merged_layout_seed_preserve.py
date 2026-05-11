@@ -47,3 +47,11 @@ def test_seed_drops_unrouted_miners_without_adjacent_stub_when_existing_fluid_la
     assert stats["pass12_preserved_bundle_extractor_cells"] == 0
     assert stats["pass12_preserved_bundle_extension_cells"] == 0
     assert stats["pass12_preserved_missing_stub_drop_extractor_count"] == 2
+    details = stats["pass12_preserved_missing_stub_drop_details"]
+    assert len(details) == 2
+    dropped = {tuple(d["miner_cell"]) for d in details}
+    assert dropped == {(1, 1), (3, 1)}
+    assert all(d["reason"] == "no_adjacent_matching_stub" for d in details)
+    assert all(d["transport_kind"] == "fluid_pipe" for d in details)
+    assert all(d["expected_stub_role"] == "pipe" for d in details)
+    assert all(d["adjacent_transport_cells"] == [] for d in details)

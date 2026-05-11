@@ -83,6 +83,31 @@ def _first_rotation_with_matching_stub(
     return None
 
 
+def _cardinal_neighbor_cell_summaries(
+    miner: Coord,
+    cells: Mapping[Coord, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """All existing cardinal neighbors with role/layout_kind (debug / drop trace)."""
+
+    x, y = miner
+    out: list[dict[str, Any]] = []
+    for nxt in neighbors4(x, y):
+        row = cells.get(nxt)
+        if row is None:
+            continue
+        rv = row.get("role")
+        role_s = str(rv) if isinstance(rv, str) else None
+        out.append(
+            {
+                "cell": [int(nxt[0]), int(nxt[1])],
+                "role": role_s,
+                "layout_kind": layout_kind(row),
+            }
+        )
+    out.sort(key=lambda e: (e["cell"][1], e["cell"][0]))
+    return out
+
+
 def _neighbor_stub_coords_for_kind(
     miner: Coord,
     cells: Mapping[Coord, dict[str, Any]],
@@ -238,6 +263,7 @@ def seed_pass12_scratch_from_merged_existing(
     preserved_unrouted_extractor_count = 0
     preserved_missing_stub_drop_extractor_count = 0
     preserved_stripped_rotation_fallback_count = 0
+    missing_stub_drop_details: list[dict[str, Any]] = []
     for miner in miners:
         exts = _bfs_extensions_from_miner(miner, cells, mineable, extension_owner)
         parent_by_cell = _parent_tree_for_miner_and_extensions(miner, exts, cells, mineable)
@@ -301,6 +327,26 @@ def seed_pass12_scratch_from_merged_existing(
             )
             if drop_unrecoverable:
                 preserved_missing_stub_drop_extractor_count += 1
+                wr_exp = want_role(tk)
+                cardinals = _cardinal_neighbor_cell_summaries(miner, cells)
+                transport_adj = [e for e in cardinals if e.get("role") in ("belt", "pipe")]
+                raw_rr = row_m.get("r")
+                existing_row_r = int(raw_rr) % 4 if isinstance(raw_rr, int) else None
+                missing_stub_drop_details.append(
+                    {
+                        "miner_cell": [int(miner[0]), int(miner[1])],
+                        "reason": "no_adjacent_matching_stub",
+                        "transport_kind": tk,
+                        "expected_stub_role": wr_exp,
+                        "matching_adjacent_stub_coords": [
+                            [int(c[0]), int(c[1])] for c in neighbor_stub_coords
+                        ],
+                        "adjacent_transport_cells": transport_adj,
+                        "adjacent_cardinal_cells": cardinals,
+                        "existing_row_r": existing_row_r,
+                        "recovered_r": eff_r,
+                    }
+                )
                 seeded_groups += 1
                 continue
 
@@ -353,6 +399,7 @@ def seed_pass12_scratch_from_merged_existing(
         "pass12_preserved_missing_stub_drop_extractor_count": (
             preserved_missing_stub_drop_extractor_count
         ),
+        "pass12_preserved_missing_stub_drop_details": missing_stub_drop_details,
         "pass12_preserved_stripped_rotation_fallback_count": (
             preserved_stripped_rotation_fallback_count
         ),

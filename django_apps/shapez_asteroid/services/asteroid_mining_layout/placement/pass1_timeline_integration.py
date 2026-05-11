@@ -281,6 +281,7 @@ def integrate_pass12_placement_into_working_map(
         "placement_candidate_blocked_count": 0,
         "pass12_preserved_equipment_groups": 0,
         "pass12_preserved_routed_placement_records": 0,
+        "pass12_preserved_missing_stub_drop_details": [],
         "pass12_placement_loops_suppressed": False,
         **ela_empty_meta,
     }
@@ -300,6 +301,7 @@ def integrate_pass12_placement_into_working_map(
             "placement_candidate_blocked_count": 0,
             "pass12_preserved_equipment_groups": 0,
             "pass12_preserved_routed_placement_records": 0,
+            "pass12_preserved_missing_stub_drop_details": [],
             "pass12_placement_loops_suppressed": False,
         }
         return unchanged, unchanged, skip_stats

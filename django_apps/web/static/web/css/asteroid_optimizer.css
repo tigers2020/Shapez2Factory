@@ -643,6 +643,7 @@
   font-size: 15px;
   font-weight: 900;
   color: #cbd5e1;
+  white-space: pre-line;
 }
 
 .asteroid-mine-page .am-error {
@@ -650,6 +651,8 @@
   font-size: 14px;
   font-weight: 800;
   color: var(--danger);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .asteroid-mine-page .rule-list {

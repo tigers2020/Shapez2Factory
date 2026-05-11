@@ -89,6 +89,19 @@
       data-map-viz-stage-1="{% filter escapejs %}{% trans 'Binary payload' %}{% endfilter %}"
       data-map-viz-stage-2="{% filter escapejs %}{% trans 'Parse JSON' %}{% endfilter %}"
       data-map-viz-stage-3="{% filter escapejs %}{% trans 'Layout object' %}{% endfilter %}"
+      data-msg-opt-counterfactual-baseline="{% filter escapejs %}{% trans 'Counterfactual baseline' %}{% endfilter %}"
+      data-msg-opt-final-internal="{% filter escapejs %}{% trans 'Final internal transport' %}{% endfilter %}"
+      data-msg-opt-internal-tiles="{% filter escapejs %}{% trans 'internal tiles' %}{% endfilter %}"
+      data-msg-opt-quality-ratio="{% filter escapejs %}{% trans 'Quality ratio' %}{% endfilter %}"
+      data-msg-opt-times="{% filter escapejs %}{% trans '×' %}{% endfilter %}"
+      data-msg-opt-aggregation="{% filter escapejs %}{% trans 'Aggregation' %}{% endfilter %}"
+      data-msg-opt-counterfactual-failed="{% filter escapejs %}{% trans 'Counterfactual baseline unavailable' %}{% endfilter %}"
+      data-msg-opt-warn-ratio-high="{% filter escapejs %}{% trans 'Internal transport quality ratio is high versus the counterfactual baseline (over 1.35×). Consider route tuning before using this as a hard gate.' %}{% endfilter %}"
+      data-am-opt-ratio-warn-threshold="1.35"
+      data-msg-pc-hard="{% filter escapejs %}{% trans 'Protected corridor: hard' %}{% endfilter %}"
+      data-msg-pc-soft="{% filter escapejs %}{% trans 'Protected corridor: soft' %}{% endfilter %}"
+      data-msg-pc-candidate="{% filter escapejs %}{% trans 'Protected corridor: candidate' %}{% endfilter %}"
+      data-msg-pc-counts="{% filter escapejs %}{% trans 'Corridors (hard/soft/candidate)' %}{% endfilter %}"
     >
       <form class="hidden" aria-hidden="true" data-asteroid-csrf>{% csrf_token %}</form>
 
@@ -126,6 +139,16 @@
                   data-asteroid-solver-overlay
                 />
                 <span>{% trans "Show solver overlay" %}</span>
+              </label>
+            </div>
+            <div class="am-solver-overlay-option">
+              <label class="am-inline-check" for="asteroid-corridor-overlay-toggle">
+                <input
+                  type="checkbox"
+                  id="asteroid-corridor-overlay-toggle"
+                  data-am-corridor-overlay
+                />
+                <span>{% trans "Show protected corridors (read-only)" %}</span>
               </label>
             </div>
             <p class="hint hidden" data-am-solver-redecode-hint></p>
@@ -480,6 +503,7 @@
   if (!root) return;
   var apiUrl = root.getAttribute("data-copy-preview-url") || "";
   var solverOverlayCb = root.querySelector("[data-asteroid-solver-overlay]");
+  var corridorOverlayCb = root.querySelector("[data-am-corridor-overlay]");
   var solverRedecodeHintEl = root.querySelector("[data-am-solver-redecode-hint]");
   if (solverOverlayCb && solverRedecodeHintEl) {
     var redecodeMsg = root.getAttribute("data-msg-solver-redecode-hint") || "";
@@ -583,21 +607,22 @@
   var mapVizDetail = root.querySelector("[data-am-decode-viz-detail]");
   function copyPreviewUrlWithOptions() {
     var base = apiUrl || "";
-    if (!solverOverlayCb || !solverOverlayCb.checked) {
-      return base;
-    }
     try {
       var u = new URL(base, window.location.href);
-      u.searchParams.set("include_solver_overlay", "1");
       u.searchParams.set("include_solver_replay", "1");
+      if (solverOverlayCb && solverOverlayCb.checked) {
+        u.searchParams.set("include_solver_overlay", "1");
+      } else {
+        u.searchParams.delete("include_solver_overlay");
+      }
       return u.pathname + u.search;
     } catch (e) {
       var sep = base.indexOf("?") === -1 ? "?" : "&";
-      return (
-        base +
-        sep +
-        "include_solver_overlay=1&include_solver_replay=1"
-      );
+      var extra = "include_solver_replay=1";
+      if (solverOverlayCb && solverOverlayCb.checked) {
+        extra += "&include_solver_overlay=1";
+      }
+      return base + sep + extra;
     }
   }
 
@@ -615,6 +640,10 @@
     rollback: true,
     route_replaced: true,
     placement_state_changed: true,
+    corridor_added: true,
+    corridor_removed: true,
+    corridor_promoted: true,
+    corridor_replaced: true,
   };
 
   function normalizeSolverReplayPayload(raw) {
@@ -808,6 +837,81 @@
     return row && typeof row === "object" ? row : null;
   }
 
+  function solverReplayFrameCount() {
+    return Array.isArray(lastReplayUiFrames) ? lastReplayUiFrames.length : 0;
+  }
+
+  function syncSolverReplayControls() {
+    var n = solverReplayFrameCount();
+    var has =
+      solverPhaseStartIndex >= 0 &&
+      n > 0 &&
+      mapTimelineList.length > solverPhaseStartIndex;
+    if (has && decodeStepIndex >= solverPhaseStartIndex) {
+      currentReplayIndex = decodeStepIndex - solverPhaseStartIndex;
+      if (currentReplayIndex < 0) currentReplayIndex = 0;
+      if (currentReplayIndex > n - 1) currentReplayIndex = n - 1;
+    } else if (has) {
+      currentReplayIndex = 0;
+    }
+    var sliderIx = has ? Math.min(Math.max(currentReplayIndex, 0), Math.max(0, n - 1)) : 0;
+    if (replaySlider) {
+      replaySlider.disabled = !has;
+      replaySlider.max = String(Math.max(0, n - 1));
+      replaySlider.value = String(sliderIx);
+    }
+    if (replayPrevBtn) {
+      replayPrevBtn.disabled = !has || decodeStepIndex <= solverPhaseStartIndex;
+    }
+    if (replayNextBtn) {
+      replayNextBtn.disabled =
+        !has || decodeStepIndex >= solverPhaseStartIndex + n - 1;
+    }
+    if (replayPlayBtn) {
+      replayPlayBtn.disabled = !has || n <= 1;
+      replayPlayBtn.hidden = isReplayPlaying;
+    }
+    if (replayPauseBtn) {
+      replayPauseBtn.hidden = !isReplayPlaying;
+      replayPauseBtn.disabled = !has || n <= 1;
+    }
+    if (replayPosEl) {
+      replayPosEl.textContent = has ? sliderIx + 1 + " / " + n : "";
+    }
+  }
+
+  function stopReplayPlay() {
+    if (replayTimer) {
+      clearInterval(replayTimer);
+      replayTimer = null;
+    }
+    isReplayPlaying = false;
+    syncSolverReplayControls();
+  }
+
+  function startReplayPlay() {
+    var n = solverReplayFrameCount();
+    if (!n || solverPhaseStartIndex < 0) return;
+    stopDecodePlay();
+    var maxUnified = solverPhaseStartIndex + n - 1;
+    isReplayPlaying = true;
+    if (replayPlayBtn) replayPlayBtn.hidden = true;
+    if (replayPauseBtn) replayPauseBtn.hidden = false;
+    if (decodeStepIndex < solverPhaseStartIndex || decodeStepIndex > maxUnified) {
+      setDecodeStepIndex(solverPhaseStartIndex);
+    } else {
+      syncSolverReplayControls();
+    }
+    var playMs = 1200;
+    replayTimer = setInterval(function () {
+      if (decodeStepIndex >= maxUnified) {
+        stopReplayPlay();
+        return;
+      }
+      setDecodeStepIndex(decodeStepIndex + 1);
+    }, playMs);
+  }
+
   function buildReplayOverlayDetail(uiRow) {
     if (!uiRow || typeof uiRow !== "object") return null;
     var replay = lastSolverReplay;
@@ -896,6 +1000,83 @@
     };
   }
 
+  function normalizeOptimizationDisplaySource(src) {
+    if (!src || typeof src !== "object") return null;
+    var cf =
+      typeof src.optimization_counterfactual_internal_transport_sequential_v1 === "number"
+        ? src.optimization_counterfactual_internal_transport_sequential_v1
+        : typeof src.counterfactual_internal_transport_sequential_v1 === "number"
+          ? src.counterfactual_internal_transport_sequential_v1
+          : null;
+    var fin =
+      typeof src.optimization_final_internal_transport_count === "number"
+        ? src.optimization_final_internal_transport_count
+        : typeof src.final_internal_transport_count === "number"
+          ? src.final_internal_transport_count
+          : null;
+    var ratio =
+      typeof src.optimization_internal_transport_quality_ratio === "number"
+        ? src.optimization_internal_transport_quality_ratio
+        : typeof src.internal_transport_quality_ratio === "number"
+          ? src.internal_transport_quality_ratio
+          : null;
+    var agg =
+      src.optimization_counterfactual_aggregation != null
+        ? src.optimization_counterfactual_aggregation
+        : src.counterfactual_aggregation;
+    var fail =
+      src.optimization_counterfactual_failure_reason != null
+        ? src.optimization_counterfactual_failure_reason
+        : src.counterfactual_failure_reason;
+    if (cf == null && fin == null && ratio == null && (agg == null || agg === "") && !fail) {
+      return null;
+    }
+    return { cf: cf, fin: fin, ratio: ratio, agg: agg, fail: fail };
+  }
+
+  function formatInternalTransportOptimizationBlock(src) {
+    var o = normalizeOptimizationDisplaySource(src);
+    if (!o) return "";
+    var lbCb = root.getAttribute("data-msg-opt-counterfactual-baseline") || "Counterfactual baseline";
+    var lbFin = root.getAttribute("data-msg-opt-final-internal") || "Final internal transport";
+    var lbTiles = root.getAttribute("data-msg-opt-internal-tiles") || "internal tiles";
+    var lbRatio = root.getAttribute("data-msg-opt-quality-ratio") || "Quality ratio";
+    var lbAgg = root.getAttribute("data-msg-opt-aggregation") || "Aggregation";
+    var times = root.getAttribute("data-msg-opt-times") || "×";
+    var lbFail = root.getAttribute("data-msg-opt-counterfactual-failed") || "Counterfactual unavailable";
+    var lines = [];
+    if (typeof o.cf === "number") {
+      lines.push(lbCb + ": " + o.cf + " " + lbTiles);
+    }
+    if (typeof o.fin === "number") {
+      lines.push(lbFin + ": " + o.fin + " " + lbTiles);
+    }
+    if (typeof o.ratio === "number") {
+      var rDisp = o.ratio;
+      if (typeof rDisp === "number" && rDisp % 1 !== 0) {
+        rDisp = Math.round(rDisp * 100) / 100;
+      }
+      lines.push(lbRatio + ": " + rDisp + times);
+    }
+    if (typeof o.agg === "string" && o.agg) {
+      lines.push(lbAgg + ": " + o.agg);
+    }
+    if (typeof o.fail === "string" && o.fail) {
+      lines.push(lbFail + ": " + o.fail);
+    }
+    return lines.join("\n");
+  }
+
+  function formatReplayCorridorCountsLine(counts) {
+    if (!counts || typeof counts !== "object") return "";
+    var h = counts.hard,
+      sf = counts.soft,
+      cd = counts.candidate;
+    if (typeof h !== "number" && typeof sf !== "number" && typeof cd !== "number") return "";
+    var prefix = root.getAttribute("data-msg-pc-counts") || "Corridors (hard/soft/candidate)";
+    return prefix + ": " + h + " / " + sf + " / " + cd;
+  }
+
   function formatReplayUiFrameMeta(row, overlayDetail) {
     if (!row || typeof row !== "object") return "";
     var parts = [];
@@ -930,7 +1111,20 @@
     if (Array.isArray(p3) && p3.length && !hasP3InSummary) {
       parts.push("p3_snap " + p3.length);
     }
-    return parts.join(" · ");
+    var base = parts.join(" · ");
+    var replay = lastSolverReplay;
+    var om = replay && replay.optimization_metrics;
+    var opt = formatInternalTransportOptimizationBlock(om || {});
+    var extras = [];
+    if (opt) extras.push(opt);
+    if (row && row.protected_corridors && row.protected_corridors.counts) {
+      var pcl = formatReplayCorridorCountsLine(row.protected_corridors.counts);
+      if (pcl) extras.push(pcl);
+    }
+    if (extras.length) {
+      return base ? base + "\n\n" + extras.join("\n") : extras.join("\n");
+    }
+    return base;
   }
 
   function syncMapTimelineStep() {
@@ -950,6 +1144,10 @@
       clearPlot();
       if (plotSvg) applyMapOrientation(mapOrientation);
       if (replayMetaEl) replayMetaEl.textContent = "";
+      if (replayWarnEl) {
+        replayWarnEl.textContent = "";
+        replayWarnEl.classList.add("hidden");
+      }
       return;
     }
 
@@ -959,6 +1157,11 @@
     if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = mapTitle;
     var uir = solverTimelineUiRow(decodeStepIndex);
     var overlayDetail = buildReplayOverlayDetail(uir);
+    if (uir && uir.protected_corridors && typeof uir.protected_corridors === "object") {
+      overlayDetail = Object.assign({}, overlayDetail || {}, {
+        protected_corridors: uir.protected_corridors,
+      });
+    }
     if (mapPhaseDescEl) {
       var baseLbl = mapStepLabel(st && st.id ? st.id : "");
       if (overlayDetail && overlayDetail.summaryLine && baseLbl) {
@@ -974,11 +1177,32 @@
     if (replayMetaEl) {
       replayMetaEl.textContent = uir ? formatReplayUiFrameMeta(uir, overlayDetail) : "";
     }
+    if (replayWarnEl) {
+      var thrRaw = root.getAttribute("data-am-opt-ratio-warn-threshold") || "1.35";
+      var thr = parseFloat(thrRaw, 10);
+      if (!(thr > 0)) thr = 1.35;
+      var warns =
+        lastSummary && Array.isArray(lastSummary.optimization_warnings)
+          ? lastSummary.optimization_warnings
+          : [];
+      var ratio =
+        lastSummary && typeof lastSummary.optimization_internal_transport_quality_ratio === "number"
+          ? lastSummary.optimization_internal_transport_quality_ratio
+          : null;
+      var hi = warns.indexOf("internal_transport_quality_ratio_high") >= 0;
+      if (hi || (typeof ratio === "number" && ratio > thr)) {
+        replayWarnEl.textContent = root.getAttribute("data-msg-opt-warn-ratio-high") || "";
+        replayWarnEl.classList.remove("hidden");
+      } else {
+        replayWarnEl.textContent = "";
+        replayWarnEl.classList.add("hidden");
+      }
+    }
 
     rebuildMiningIndex(st.mining_map || []);
     renderPlot(st.summary, st.mining_map || [], lastStyleCatalog, overlayDetail);
     applyMapOrientation(mapOrientation);
-    loadCellsForSummary(st.summary);
+    loadCellsForSummary(st.summary, st.mining_map || []);
   }
 
   function syncDecodeStepMap() {
@@ -1032,7 +1256,7 @@
       rebuildMiningIndex(lastMiningMap || []);
       renderPlot(lastSummary, lastMiningMap || [], lastStyleCatalog);
       applyMapOrientation(mapOrientation);
-      loadCellsForSummary(lastSummary);
+      loadCellsForSummary(lastSummary, lastMiningMap || []);
       return;
     }
 
@@ -1117,6 +1341,7 @@
     if (decodePrevBtn) decodePrevBtn.disabled = decodeStepIndex <= 0;
     if (decodeNextBtn) decodeNextBtn.disabled = n === 0 || decodeStepIndex >= n - 1;
     syncDecodeStepMap();
+    syncSolverReplayControls();
   }
 
   function setDecodeStepIndex(idx) {
@@ -1136,6 +1361,7 @@
     }
     decodeStepsList = [];
     stopDecodePlay();
+    stopReplayPlay();
     if (!decodePlayback) return;
     if (!mapTimelineList.length) {
       decodePlayback.classList.add("hidden");
@@ -1164,6 +1390,7 @@
     mapTimelineList = [];
     solverPhaseStartIndex = -1;
     stopDecodePlay();
+    stopReplayPlay();
     if (!decodePlayback) return;
     if (!decodeStepsList.length) {
       decodePlayback.classList.add("hidden");
@@ -1188,6 +1415,7 @@
     var n = playbackStepCount();
     if (!n) return;
     stopDecodePlay();
+    stopReplayPlay();
     /* 항상 step 0부터 재생 (디코드 직후 마지막 스텝에 있어도 리셋). */
     setDecodeStepIndex(0);
     if (decodePlayBtn) decodePlayBtn.hidden = true;
@@ -1211,18 +1439,22 @@
 
   if (decodeSlider) {
     decodeSlider.addEventListener("input", function () {
+      stopDecodePlay();
+      stopReplayPlay();
       setDecodeStepIndex(parseInt(decodeSlider.value, 10) || 0);
     });
   }
   if (decodePrevBtn) {
     decodePrevBtn.addEventListener("click", function () {
       stopDecodePlay();
+      stopReplayPlay();
       setDecodeStepIndex(decodeStepIndex - 1);
     });
   }
   if (decodeNextBtn) {
     decodeNextBtn.addEventListener("click", function () {
       stopDecodePlay();
+      stopReplayPlay();
       setDecodeStepIndex(decodeStepIndex + 1);
     });
   }
@@ -1241,8 +1473,54 @@
       var li = ev.target.closest(".am-decode-step");
       if (!li || !decodeStepsEl.contains(li)) return;
       stopDecodePlay();
+      stopReplayPlay();
       var idx = Array.prototype.indexOf.call(decodeStepsEl.children, li);
       if (idx >= 0) setDecodeStepIndex(idx);
+    });
+  }
+
+  if (replaySlider) {
+    replaySlider.addEventListener("input", function () {
+      stopReplayPlay();
+      stopDecodePlay();
+      var n = solverReplayFrameCount();
+      if (!n || solverPhaseStartIndex < 0) return;
+      var idx = parseInt(replaySlider.value, 10) || 0;
+      var mx = Math.max(0, n - 1);
+      if (idx < 0) idx = 0;
+      if (idx > mx) idx = mx;
+      setDecodeStepIndex(solverPhaseStartIndex + idx);
+    });
+  }
+  if (replayPrevBtn) {
+    replayPrevBtn.addEventListener("click", function () {
+      stopReplayPlay();
+      stopDecodePlay();
+      var n = solverReplayFrameCount();
+      if (!n || solverPhaseStartIndex < 0) return;
+      if (decodeStepIndex <= solverPhaseStartIndex) return;
+      setDecodeStepIndex(decodeStepIndex - 1);
+    });
+  }
+  if (replayNextBtn) {
+    replayNextBtn.addEventListener("click", function () {
+      stopReplayPlay();
+      stopDecodePlay();
+      var n = solverReplayFrameCount();
+      if (!n || solverPhaseStartIndex < 0) return;
+      var lastSol = solverPhaseStartIndex + n - 1;
+      if (decodeStepIndex >= lastSol) return;
+      setDecodeStepIndex(decodeStepIndex + 1);
+    });
+  }
+  if (replayPlayBtn) {
+    replayPlayBtn.addEventListener("click", function () {
+      startReplayPlay();
+    });
+  }
+  if (replayPauseBtn) {
+    replayPauseBtn.addEventListener("click", function () {
+      stopReplayPlay();
     });
   }
 
@@ -1307,17 +1585,56 @@
     }
   }
 
-  function loadCellsForSummary(summary) {
+  /** Map-timeline summaries include bbox; solver_timeline frames often omit it — derive from cells. */
+  function effectiveSummaryForPlot(summary, miningMap) {
+    if (
+      summary &&
+      summary.x_min != null &&
+      summary.x_max != null &&
+      summary.y_min != null &&
+      summary.y_max != null
+    ) {
+      return summary;
+    }
+    var pts = (miningMap || []).filter(function (p) {
+      return p && typeof p.x === "number" && typeof p.y === "number" && p.x !== 0;
+    });
+    if (!pts.length) {
+      return summary || null;
+    }
+    var xMin = pts[0].x;
+    var xMax = pts[0].x;
+    var yMin = pts[0].y;
+    var yMax = pts[0].y;
+    var j;
+    for (j = 1; j < pts.length; j++) {
+      var px = pts[j].x;
+      var py = pts[j].y;
+      if (px < xMin) xMin = px;
+      if (px > xMax) xMax = px;
+      if (py < yMin) yMin = py;
+      if (py > yMax) yMax = py;
+    }
+    var base = summary && typeof summary === "object" ? Object.assign({}, summary) : {};
+    base.x_min = xMin;
+    base.x_max = xMax;
+    base.y_min = yMin;
+    base.y_max = yMax;
+    return base;
+  }
+
+  function loadCellsForSummary(summary, miningMap) {
     cellMap = Object.create(null);
     bboxRegions = [];
-    if (!mapCellsUrl || !summary || summary.x_min == null) {
+    var eff = effectiveSummaryForPlot(summary, miningMap);
+    if (!mapCellsUrl || !eff || eff.x_min == null) {
       return Promise.resolve();
     }
     var m = 3;
-    var xMin = summary.x_min - m;
-    var xMax = summary.x_max + m;
-    var yMin = summary.y_min - m;
-    var yMax = summary.y_max + m;
+    var xMin = eff.x_min - m;
+    var xMax = eff.x_max + m;
+    var yMin = eff.y_min - m;
+    var yMax = eff.y_max + m;
     var boxes = bboxesAvoidingZero(xMin, xMax, yMin, yMax);
     if (!boxes.length) return Promise.resolve();
     var fetches = boxes.map(function (b) {
@@ -1409,6 +1726,15 @@
           line += " (" + softJobsAttempted + " probed)";
         }
       }
+    }
+    var opt = formatInternalTransportOptimizationBlock(s);
+    if (opt) {
+      line += "\n" + opt;
+    }
+    var rpc = s.replay_protected_corridor_counts;
+    if (rpc && typeof rpc === "object") {
+      var pcL = formatReplayCorridorCountsLine(rpc);
+      if (pcL) line += "\n" + pcL;
     }
     return line;
   }
@@ -1504,7 +1830,12 @@
       if (lk && catalog[lk]) return lk;
       return "occupied";
     }
-    if (!summary || summary.x_min == null || !miningMap || miningMap.length === 0) {
+    if (!summary || !miningMap || miningMap.length === 0) {
+      plotSvg.removeAttribute("viewBox");
+      return;
+    }
+    var effSummary = effectiveSummaryForPlot(summary, miningMap);
+    if (!effSummary || effSummary.x_min == null) {
       plotSvg.removeAttribute("viewBox");
       return;
     }
@@ -1550,7 +1881,7 @@
       collectInto(summaryObj.p4_soft_replace_new_cells, softReplaceNew);
       return { route: route, soft: soft, softReplaceOld: softReplaceOld, softReplaceNew: softReplaceNew };
     }
-    var p4Cells = p4OverlayCells(summary);
+    var p4Cells = p4OverlayCells(effSummary);
     function routeReplayCellPoints(overlay) {
       var removed = [];
       var added = [];
@@ -1595,19 +1926,37 @@
     }
     var rrPts = routeReplayCellPoints(replayOverlay);
     var rrAll = rrPts.removed.concat(rrPts.added);
+    var pcPoints = [];
+    if (corridorOverlayCb && corridorOverlayCb.checked && replayOverlay && replayOverlay.protected_corridors) {
+      var pcd = replayOverlay.protected_corridors;
+      function pushPcPairs(arr) {
+        if (!Array.isArray(arr)) return;
+        var qi;
+        for (qi = 0; qi < arr.length; qi++) {
+          var pr = arr[qi];
+          if (Array.isArray(pr) && pr.length >= 2 && typeof pr[0] === "number" && typeof pr[1] === "number") {
+            if (pr[0] === 0) continue;
+            pcPoints.push({ x: pr[0], y: pr[1] });
+          }
+        }
+      }
+      pushPcPairs(pcd.candidate);
+      pushPcPairs(pcd.soft);
+      pushPcPairs(pcd.hard);
+    }
     var p4All = p4Cells.route
       .concat(p4Cells.soft)
       .concat(p4Cells.softReplaceOld)
       .concat(p4Cells.softReplaceNew);
-    var forUx = filtered.concat(p4All).concat(rrAll);
+    var forUx = filtered.concat(p4All).concat(rrAll).concat(pcPoints);
     var ux = uniqueSortedXs(forUx);
     if (ux.length === 0) {
       plotSvg.removeAttribute("viewBox");
       return;
     }
     var mar = 2;
-    var minY = summary.y_min - mar;
-    var maxY = summary.y_max + mar;
+    var minY = effSummary.y_min - mar;
+    var maxY = effSummary.y_max + mar;
     var oi;
     for (oi = 0; oi < p4All.length; oi++) {
       var oy = p4All[oi].y;
@@ -1618,6 +1967,11 @@
       var rry = rrAll[oi].y;
       minY = Math.min(minY, rry - mar);
       maxY = Math.max(maxY, rry + mar);
+    }
+    for (oi = 0; oi < pcPoints.length; oi++) {
+      var pcy = pcPoints[oi].y;
+      minY = Math.min(minY, pcy - mar);
+      maxY = Math.max(maxY, pcy + mar);
     }
     var ch = maxY - minY + 1;
     var n = ux.length;
@@ -1777,6 +2131,42 @@
     plotSvg.appendChild(gBelt);
     plotSvg.appendChild(gPipe);
     plotSvg.appendChild(gTop);
+    if (
+      corridorOverlayCb &&
+      corridorOverlayCb.checked &&
+      replayOverlay &&
+      replayOverlay.protected_corridors &&
+      pcPoints.length
+    ) {
+      var pcd2 = replayOverlay.protected_corridors;
+      var tHard = root.getAttribute("data-msg-pc-hard") || "";
+      var tSoft = root.getAttribute("data-msg-pc-soft") || "";
+      var tCand = root.getAttribute("data-msg-pc-candidate") || "";
+      var gPc = document.createElementNS(svgNs, "g");
+      gPc.setAttribute("class", "am-protected-corridor-overlay");
+      var gC = document.createElementNS(svgNs, "g");
+      gC.setAttribute("class", "am-pc-candidate");
+      var gS = document.createElementNS(svgNs, "g");
+      gS.setAttribute("class", "am-pc-soft");
+      var gH = document.createElementNS(svgNs, "g");
+      gH.setAttribute("class", "am-pc-hard");
+      function drawPcGroup(parent, arr, strokeHex, titleMsg) {
+        if (!Array.isArray(arr)) return;
+        var ki;
+        for (ki = 0; ki < arr.length; ki++) {
+          var pr2 = arr[ki];
+          if (!Array.isArray(pr2) || pr2.length < 2) continue;
+          appendRouteReplayOutline(parent, { x: pr2[0], y: pr2[1] }, strokeHex, titleMsg);
+        }
+      }
+      drawPcGroup(gC, pcd2.candidate, "#0891b2", tCand);
+      drawPcGroup(gS, pcd2.soft, "#ca8a04", tSoft);
+      drawPcGroup(gH, pcd2.hard, "#dc2626", tHard);
+      gPc.appendChild(gC);
+      gPc.appendChild(gS);
+      gPc.appendChild(gH);
+      plotSvg.appendChild(gPc);
+    }
     if (
       p4Cells.route.length ||
       p4Cells.soft.length ||
@@ -1996,9 +2386,14 @@
       errEl.textContent = "";
       clearPlot();
       stopDecodePlay();
+      stopReplayPlay();
       lastSolverReplay = null;
       lastReplayUiFrames = [];
       solverPhaseStartIndex = -1;
+      if (replayWarnEl) {
+        replayWarnEl.textContent = "";
+        replayWarnEl.classList.add("hidden");
+      }
       applyMapTimeline([]);
       applyDecodeSteps([]);
       btn.disabled = true;
@@ -2018,6 +2413,12 @@
         .then(function (x) {
           if (!x.res.ok || !x.data.ok) {
             var msg = (x.data && x.data.error) ? x.data.error : (root.getAttribute("data-msg-failed") || "");
+            if (x.data && x.data.error_code) {
+              msg += "\n[" + String(x.data.error_code) + "]";
+            }
+            if (x.data && x.data.detail) {
+              msg += "\n" + String(x.data.detail);
+            }
             errEl.textContent = msg;
             errEl.classList.remove("hidden");
             var idle = summaryEl.getAttribute("data-idle-msg") || "";
@@ -2027,6 +2428,10 @@
             lastReplayUiFrames = [];
             applyMapTimeline([]);
             applyDecodeSteps([]);
+            if (replayWarnEl) {
+              replayWarnEl.textContent = "";
+              replayWarnEl.classList.add("hidden");
+            }
             return;
           }
           decodeSummaryText = formatSummary(x.data.summary);
@@ -2034,16 +2439,32 @@
           lastSummary = x.data.summary;
           lastMiningMap = x.data.mining_map || [];
           lastStyleCatalog = x.data.style_catalog || {};
+          var mapSteps = x.data.map_timeline || [];
+          var solverSteps = x.data.solver_timeline || [];
           var replayNorm = normalizeSolverReplayPayload(x.data.solver_replay);
           lastSolverReplay = replayNorm.replay;
           var rawUi = replayNorm.replay && replayNorm.replay.ui_frames;
           lastReplayUiFrames = Array.isArray(rawUi) ? rawUi : [];
+          if (
+            !lastReplayUiFrames.length &&
+            Array.isArray(solverSteps) &&
+            solverSteps.length
+          ) {
+            lastReplayUiFrames = solverSteps.map(function (st, i) {
+              return {
+                timeline_index: i,
+                timeline_frame_id: st && st.id ? st.id : "",
+                event_indices: [],
+                overlay_event_indices: [],
+                primary_for_step10_ui: true,
+                protected_corridors: null,
+              };
+            });
+          }
           if (replayNorm.contractVersion >= 2) {
             warnUnknownSolverReplayKinds(replayNorm.events);
           }
           applyDecodeSteps([]);
-          var mapSteps = x.data.map_timeline || [];
-          var solverSteps = x.data.solver_timeline || [];
           solverPhaseStartIndex =
             Array.isArray(solverSteps) && solverSteps.length && Array.isArray(mapSteps)
               ? mapSteps.length
@@ -2052,25 +2473,24 @@
             Array.isArray(solverSteps) && solverSteps.length
               ? mapSteps.concat(solverSteps)
               : mapSteps;
+          console.log("[solver replay debug]", {
+            solver_replay: x.data.solver_replay,
+            ui_frames_len: lastReplayUiFrames.length,
+            solver_timeline_len: Array.isArray(solverSteps) ? solverSteps.length : -1,
+            map_timeline_len: Array.isArray(mapSteps) ? mapSteps.length : -1,
+            solverPhaseStartIndex: solverPhaseStartIndex,
+          });
           applyMapTimeline(unifiedTimeline, { autoPlayOnce: true });
           if (solverRedecodeHintEl) {
-            if (
-              solverOverlayCb &&
-              solverOverlayCb.checked &&
-              Array.isArray(solverSteps) &&
-              solverSteps.length
-            ) {
+            if (Array.isArray(solverSteps) && solverSteps.length) {
               solverRedecodeHintEl.classList.add("hidden");
               solverRedecodeHintEl.textContent = "";
             }
           }
-          if (solverOverlayCb && solverOverlayCb.checked) {
-            var stCheck = x.data.solver_timeline;
-            if (!Array.isArray(stCheck) || !stCheck.length) {
-              var miss = root.getAttribute("data-msg-solver-timeline-missing") || "";
-              if (miss) {
-                summaryEl.textContent = decodeSummaryText + " — " + miss;
-              }
+          if (!Array.isArray(solverSteps) || !solverSteps.length) {
+            var miss = root.getAttribute("data-msg-solver-timeline-missing") || "";
+            if (miss) {
+              summaryEl.textContent = decodeSummaryText + " — " + miss;
             }
           }
         })
@@ -2079,12 +2499,24 @@
           lastReplayUiFrames = [];
           applyMapTimeline([]);
           applyDecodeSteps([]);
+          if (replayWarnEl) {
+            replayWarnEl.textContent = "";
+            replayWarnEl.classList.add("hidden");
+          }
           errEl.textContent = root.getAttribute("data-msg-network") || "";
           errEl.classList.remove("hidden");
         })
         .finally(function () {
           btn.disabled = false;
         });
+    });
+  }
+
+  if (corridorOverlayCb) {
+    corridorOverlayCb.addEventListener("change", function () {
+      if (mapTimelineList.length) {
+        setDecodeStepIndex(decodeStepIndex);
+      }
     });
   }
 })();

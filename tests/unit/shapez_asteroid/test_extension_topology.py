@@ -101,6 +101,19 @@ def test_rotation_r_for_extension_facing_parent_inverse_of_output_offset() -> No
     assert rotation_r_for_extension_facing_parent((0, -1)) == 3
 
 
+def test_extension_across_missing_x0_column_facing_is_unit_cardinal() -> None:
+    """Raw parent−cell x delta can be ±2 across the missing x==0 column; facings must be ±1."""
+
+    ex = (-1, 0)
+    out_north = (0, -1)
+    mineable = frozenset({ex, (1, 0), (-2, 0), (-1, -1), (-1, 1)})
+    tops = enumerate_extension_topologies(ex, out_north, mineable, frozenset(), frozenset())
+    one = next(t for t in tops if t.extension_cells == frozenset({(1, 0)}))
+    facings = {c: (dx, dy) for c, dx, dy in one.facings}
+    assert facings[(1, 0)] == (-1, 0)
+    assert rotation_r_for_extension_facing_parent(facings[(1, 0)]) == 2
+
+
 def test_try_place_pass1_commits_extractor_with_three_extensions_when_route_ok() -> None:
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass1_outer_placement import (  # noqa: E501
         try_place_pass1_outer_bundle,

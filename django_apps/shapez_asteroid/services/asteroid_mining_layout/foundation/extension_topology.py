@@ -47,6 +47,16 @@ def rotation_r_for_extension_facing_parent(toward_parent: tuple[int, int]) -> in
     return rotation_r_for_output_direction(toward_parent[0], toward_parent[1])
 
 
+def _parent_facing_cardinal(cell: Coord, parent: Coord) -> tuple[int, int]:
+    """Unit (dx, dy) such that ``step_cardinal(cell, dx, dy) == parent`` (handles no-x0 grid)."""
+
+    cx, cy = cell
+    for dx, dy in _CARD_ORDER:
+        if step_cardinal(cx, cy, dx, dy) == parent:
+            return (dx, dy)
+    raise ValueError(f"parent {parent!r} is not a grid cardinal neighbor of extension {cell!r}")
+
+
 def _facings_from_placed(placed: list[tuple[Coord, Coord]]) -> frozenset[tuple[Coord, int, int]]:
     """placed parent chain을 parent-facing extension signature로 변환한다.
 
@@ -55,7 +65,8 @@ def _facings_from_placed(placed: list[tuple[Coord, Coord]]) -> frozenset[tuple[C
     상세: documents/Algorithm/mining_solver_cursor_sessions/01_project_overview.md"""
     out: list[tuple[Coord, int, int]] = []
     for cell, parent in placed:
-        out.append((cell, parent[0] - cell[0], parent[1] - cell[1]))
+        dx, dy = _parent_facing_cardinal(cell, parent)
+        out.append((cell, dx, dy))
     return frozenset(out)
 
 

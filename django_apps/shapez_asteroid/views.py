@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from django.conf import settings
@@ -15,6 +16,9 @@ from django_apps.shapez_asteroid.services.asteroid_map_cells import (
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout import (
     existing_layout_analysis as existing_layout_analysis_mod,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_corridors import (  # noqa: E501
+    protected_corridors_overlay_from_routing_state,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
     final_validation,
 )
@@ -24,6 +28,8 @@ from django_apps.shapez_asteroid.services.copy_preview_debug_dump import (
 )
 from django_apps.shapez_asteroid.services.style_classifier import asteroid_map_style_catalog
 from django_apps.shapez_core.services.shapez_copy_decode import decode_shapez2_copy_trace
+
+logger = logging.getLogger(__name__)
 
 
 def _truthy_query_param(raw: str | None) -> bool:
@@ -67,6 +73,62 @@ def _merge_p4_pass3_overlay_into_map_timeline(
         s = step.setdefault("summary", {})
         if isinstance(s, dict):
             s.update(patch)
+
+
+def _merge_final_validation_optimization_into_last_map_summary(
+    map_timeline: list[dict[str, Any]],
+    solver_out: dict[str, Any],
+) -> None:
+    """Expose counterfactual / quality ratio on the last map step summary for copy-preview UI."""
+
+    if not map_timeline:
+        return
+    fv = solver_out.get("final_validation")
+    if not isinstance(fv, dict):
+        return
+    last = map_timeline[-1]
+    s = last.setdefault("summary", {})
+    if not isinstance(s, dict):
+        return
+    keys = (
+        "optimization_final_internal_transport_count",
+        "optimization_counterfactual_internal_transport_sequential_v1",
+        "optimization_counterfactual_failure_reason",
+        "optimization_counterfactual_aggregation",
+        "optimization_internal_transport_quality_ratio",
+        "optimization_warnings",
+    )
+    for k in keys:
+        if k not in fv:
+            continue
+        val = fv[k]
+        if val is None:
+            continue
+        if k == "optimization_warnings" and not val:
+            continue
+        s[k] = val
+
+
+def _merge_replay_corridor_counts_into_last_map_summary(
+    map_timeline: list[dict[str, Any]],
+    solver_out: dict[str, Any],
+) -> None:
+    """Expose protected corridor pool counts on the last map summary (copy-preview UI)."""
+
+    if not map_timeline:
+        return
+    ss = solver_out.get("solver_summary")
+    if not isinstance(ss, dict):
+        return
+    rs = ss.get("routing_state")
+    overlay = protected_corridors_overlay_from_routing_state(rs if isinstance(rs, dict) else None)
+    counts = overlay.get("counts")
+    if not isinstance(counts, dict):
+        return
+    last = map_timeline[-1]
+    s = last.setdefault("summary", {})
+    if isinstance(s, dict):
+        s["replay_protected_corridor_counts"] = dict(counts)
 
 
 def _map_cells_error_code(message: str) -> str:
@@ -163,11 +225,23 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
 
         try:
             solver_out = build_solver_timeline(decoded)
-        except Exception:
-            solver_out = None
+        except Exception as exc:
+            logger.exception("copy_preview: build_solver_timeline failed")
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "error": _("solver timeline failed"),
+                    "error_code": "solver_timeline_failed",
+                    "detail": str(exc),
+                },
+                status=500,
+            )
 
     if include_solver_overlay and solver_out is not None:
         _merge_p4_pass3_overlay_into_map_timeline(map_timeline, solver_out)
+    if solver_out is not None and (include_solver_overlay or include_solver_replay):
+        _merge_final_validation_optimization_into_last_map_summary(map_timeline, solver_out)
+        _merge_replay_corridor_counts_into_last_map_summary(map_timeline, solver_out)
     fin = map_timeline[-1]
     summary = fin["summary"]
     mining_map = fin["mining_map"]

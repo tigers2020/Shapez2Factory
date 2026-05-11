@@ -7,6 +7,9 @@ from unittest.mock import patch
 
 from django.test import Client, override_settings
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    SOLVER_REPLAY_CONTRACT_VERSION,
+)
 from django_apps.shapez_asteroid.services.style_classifier import asteroid_map_style_catalog
 from django_apps.shapez_core.services.shapez_copy_decode import SHAPEZ2_COPY_PREFIX_V4
 
@@ -183,7 +186,7 @@ def test_copy_preview_includes_solver_replay_when_flag(mock_solver: object) -> N
     mock_solver.assert_called_once()
     body = response.json()
     assert "solver_replay" in body
-    assert body["solver_replay"]["contract_version"] == 4
+    assert body["solver_replay"]["contract_version"] == SOLVER_REPLAY_CONTRACT_VERSION
     assert isinstance(body["solver_replay"]["events"], list)
     assert "solver_timeline" in body
     assert isinstance(body["solver_timeline"], list)
@@ -208,6 +211,78 @@ def test_copy_preview_unknown_t_zero_extraction() -> None:
     assert body["summary"]["entry_count"] == 0
     assert body["mining_map"] == []
     assert "style_catalog" in body
+
+
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_merges_final_validation_optimization_into_last_summary(
+    mock_solver: object,
+) -> None:
+    def fake(_decoded: dict) -> dict:
+        return {
+            "solver_timeline": [],
+            "final_validation": {
+                "optimization_final_internal_transport_count": 38,
+                "optimization_counterfactual_internal_transport_sequential_v1": 32,
+                "optimization_internal_transport_quality_ratio": 1.1875,
+                "optimization_counterfactual_aggregation": "sequential_trunk_v1",
+                "optimization_counterfactual_failure_reason": None,
+                "optimization_warnings": [],
+            },
+            "solver_summary": {
+                "routing_state": {
+                    "hard_protected_corridors": [[1, 2]],
+                    "soft_protected_corridors": [[3, 4]],
+                },
+            },
+        }
+
+    mock_solver.side_effect = fake
+
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)}, query="include_solver_replay=1")
+    assert response.status_code == 200
+    mock_solver.assert_called_once()
+    body = response.json()
+    summ = body["summary"]
+    assert summ.get("optimization_final_internal_transport_count") == 38
+    assert summ.get("optimization_counterfactual_internal_transport_sequential_v1") == 32
+    assert summ.get("optimization_internal_transport_quality_ratio") == 1.1875
+    assert summ.get("optimization_counterfactual_aggregation") == "sequential_trunk_v1"
+    assert "optimization_internal_transport_quality_ratio" not in body["map_timeline"][0]["summary"]
+    assert body["summary"].get("replay_protected_corridor_counts") == {
+        "hard": 1,
+        "soft": 1,
+        "candidate": 0,
+    }
+
+
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_solver_timeline_raises_returns_500(mock_solver: object) -> None:
+    mock_solver.side_effect = RuntimeError("boom")
+
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)}, query="include_solver_replay=1")
+    assert response.status_code == 500
+    err = response.json()
+    assert err["ok"] is False
+    assert err["error_code"] == "solver_timeline_failed"
+    assert err["detail"] == "boom"
 
 
 def test_copy_preview_invalid_copy() -> None:

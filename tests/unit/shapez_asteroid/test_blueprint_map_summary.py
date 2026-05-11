@@ -226,6 +226,27 @@ def test_build_map_timeline_first_step_has_belt_and_pipe_roles() -> None:
     assert roles[(1, 0)] == "occupied"
 
 
+def test_with_transport_transport_over_void_on_extraction_shell() -> None:
+    """Belt/pipe on extraction footprint keep fill; lone transport off shell is void (UI transparent)."""
+
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 1, "Y": 0, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 0, "T": "Layout_UndergroundBelt"},
+                {"X": 5, "Y": 0, "T": "Layout_UndergroundBelt"},
+                {"X": 6, "Y": 0, "T": "Layout_FluidPipe"},
+            ]
+        }
+    }
+    first = build_map_timeline(decoded)[0]["mining_map"]
+    by_xy = {(c["x"], c["y"]): c for c in first}
+    assert by_xy[(1, 0)]["role"] == "belt"
+    assert by_xy[(1, 0)]["transport_over_void"] is False
+    assert by_xy[(5, 0)]["transport_over_void"] is True
+    assert by_xy[(6, 0)]["transport_over_void"] is True
+
+
 def test_strip_extractors_step_marks_removed_cells_as_asteroid_field() -> None:
     decoded = {
         "BP": {

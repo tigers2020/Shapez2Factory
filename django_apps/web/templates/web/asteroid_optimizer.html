@@ -355,9 +355,18 @@
                 title="{% trans 'West up' %}"
               >{% trans "W" %}</button>
             </div>
+            <button
+              type="button"
+              class="am-map-reset-view-btn"
+              data-am-map-reset-view
+              title="{% trans 'Reset map zoom and pan' %}"
+            >{% trans "Reset view" %}</button>
           </div>
 
           <div class="map-toolbar am-map-toolbar-secondary">
+            <p class="am-map-hint am-map-panzoom-hint">
+              {% trans "Wheel: zoom in/out. Drag: pan. Reset restores fit." %}
+            </p>
             <p class="am-map-hint">
               {% blocktrans trimmed %}
                 Solver scan order and trunk controls will show here when connected; they are not the same as map rotation above.
@@ -401,13 +410,19 @@
                   <div class="am-decode-viz-track" data-am-decode-viz-track></div>
                   <pre class="am-decode-viz-detail" data-am-decode-viz-detail></pre>
                 </div>
-                <svg
-                  data-asteroid-plot-svg
-                  preserveAspectRatio="xMidYMid meet"
-                  xmlns="http://www.w3.org/2000/svg"
-                  role="img"
-                  aria-label="{% trans 'Blueprint layout grid' %}"
-                ></svg>
+                <div
+                  class="am-plot-panzoom"
+                  data-am-plot-panzoom
+                  aria-hidden="true"
+                >
+                  <svg
+                    data-asteroid-plot-svg
+                    preserveAspectRatio="xMidYMid meet"
+                    xmlns="http://www.w3.org/2000/svg"
+                    role="img"
+                    aria-label="{% trans 'Blueprint layout grid' %}"
+                  ></svg>
+                </div>
               </div>
             </div>
           </div>
@@ -523,7 +538,15 @@
   }
   var mapCellsUrl = root.getAttribute("data-map-cells-url") || "";
   var surface = root.querySelector("[data-asteroid-map-surface]");
+  var plotInner = root.querySelector(".am-plot-inner");
+  var plotPanzoomEl = root.querySelector("[data-am-plot-panzoom]");
+  var resetViewBtn = root.querySelector("[data-am-map-reset-view]");
   var plotSvg = root.querySelector("[data-asteroid-plot-svg]");
+  var plotPanZoom = { scale: 1, panX: 0, panY: 0 };
+  var ZOOM_MIN = 0.25;
+  var ZOOM_MAX = 4;
+  var panDrag = null;
+  var touchPan = null;
   var px = root.querySelector("[data-asteroid-pointer-x]");
   var py = root.querySelector("[data-asteroid-pointer-y]");
   var pStatus = root.querySelector("[data-asteroid-pointer-status]");
@@ -1739,6 +1762,22 @@
     return line;
   }
 
+  function applyPlotViewTransform() {
+    if (!plotPanzoomEl) return;
+    var z = plotPanZoom.scale;
+    var tx = plotPanZoom.panX;
+    var ty = plotPanZoom.panY;
+    plotPanzoomEl.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + z + ")";
+  }
+
+  function resetPlotView() {
+    plotPanZoom.scale = 1;
+    plotPanZoom.panX = 0;
+    plotPanZoom.panY = 0;
+    applyPlotViewTransform();
+    if (plotInner) plotInner.classList.remove("am-panning");
+  }
+
   function applyMapOrientation(next) {
     mapOrientation = next || "N";
     if (plotSvg) {
@@ -1760,9 +1799,11 @@
     bboxRegions = [];
     miningByCoord = Object.create(null);
     if (pStatus) pStatus.textContent = "--";
-    if (!plotSvg) return;
-    plotSvg.innerHTML = "";
-    plotSvg.removeAttribute("viewBox");
+    if (plotSvg) {
+      plotSvg.innerHTML = "";
+      plotSvg.removeAttribute("viewBox");
+    }
+    resetPlotView();
   }
 
   function uniqueSortedXs(points) {
@@ -2052,50 +2093,178 @@
         cellAt[ce.x + "," + ce.y] = ce;
       }
     }
-    /** Pipe + fluid_miner + fluid_extension only; shape belts could reuse ``shapezNeighbors4`` similarly. */
-    function isFluidClusterNode(row) {
-      if (!row) return false;
-      if (row.role === "pipe") return true;
-      if ((row.role || "occupied") !== "occupied") return false;
+    function isFluidHeadTile(row) {
+      if (!row || (row.role || "occupied") !== "occupied") return false;
       if (row.surface !== "fluid") return false;
-      var lk = row.layout_kind;
-      return lk === "fluid_miner" || lk === "fluid_extension";
+      return row.layout_kind === "fluid_miner";
+    }
+    function isFluidExtensionTile(row) {
+      if (!row || (row.role || "occupied") !== "occupied") return false;
+      if (row.surface !== "fluid") return false;
+      return row.layout_kind === "fluid_extension";
+    }
+    function isShapeHeadTile(row) {
+      if (!row || (row.role || "occupied") !== "occupied") return false;
+      if (row.surface !== "shape") return false;
+      var lkH = row.layout_kind;
+      return lkH === "miner" || lkH === "extractor";
+    }
+    function isShapeExtensionTile(row) {
+      if (!row || (row.role || "occupied") !== "occupied") return false;
+      if (row.surface !== "shape") return false;
+      return row.layout_kind === "extension";
+    }
+    function isFluidStationTile(row) {
+      return isFluidHeadTile(row) || isFluidExtensionTile(row);
+    }
+    function isShapeStationTile(row) {
+      return isShapeHeadTile(row) || isShapeExtensionTile(row);
     }
     function fluidClusterHsl(compId) {
       var hue = (compId * 67) % 360;
       return "hsl(" + hue + ", 88%, 58%)";
     }
-    var coordToComp = Object.create(null);
+    function isFluidClusterNode(row) {
+      if (!row) return false;
+      if ((row.role || "occupied") === "pipe") return true;
+      return isFluidStationTile(row);
+    }
+    function isShapeClusterNode(row) {
+      if (!row) return false;
+      if ((row.role || "occupied") === "belt") return true;
+      return isShapeStationTile(row);
+    }
+    var sorted_cluster_rows = filtered.slice().sort(function (a, b) {
+      if (a.y !== b.y) return a.y - b.y;
+      return a.x - b.x;
+    });
+    var coordToCluster = Object.create(null);
     var compSeq = 0;
-    for (var cj = 0; cj < filtered.length; cj++) {
-      var rowj = filtered[cj];
-      if (!isFluidClusterNode(rowj)) continue;
-      var keyj = rowj.x + "," + rowj.y;
-      if (coordToComp[keyj] !== undefined) continue;
-      var cid = compSeq++;
-      var q = [rowj];
-      coordToComp[keyj] = cid;
-      var head = 0;
-      while (head < q.length) {
-        var cur = q[head++];
-        var nbs = shapezNeighbors4(cur.x, cur.y);
-        for (var nb = 0; nb < nbs.length; nb++) {
-          var px = nbs[nb][0];
-          var py = nbs[nb][1];
-          var k = px + "," + py;
-          var nbRow = cellAt[k];
-          if (!isFluidClusterNode(nbRow)) continue;
-          if (coordToComp[k] === undefined) {
-            coordToComp[k] = cid;
-            q.push(nbRow);
+    function assignConnectedClusters(is_cluster_node) {
+      var local_seen = Object.create(null);
+      for (var sj = 0; sj < sorted_cluster_rows.length; sj++) {
+        var start_row = sorted_cluster_rows[sj];
+        var start_key = start_row.x + "," + start_row.y;
+        if (local_seen[start_key] || !is_cluster_node(start_row)) continue;
+        var cid = compSeq++;
+        var queue = [start_row];
+        local_seen[start_key] = true;
+        coordToCluster[start_key] = cid;
+        var queue_head = 0;
+        while (queue_head < queue.length) {
+          var cur_row = queue[queue_head++];
+          var nbs = shapezNeighbors4(cur_row.x, cur_row.y);
+          for (var nbi = 0; nbi < nbs.length; nbi++) {
+            var nx = nbs[nbi][0];
+            var ny = nbs[nbi][1];
+            var nk = nx + "," + ny;
+            if (local_seen[nk]) continue;
+            var nb_row = cellAt[nk];
+            if (!is_cluster_node(nb_row)) continue;
+            local_seen[nk] = true;
+            coordToCluster[nk] = cid;
+            queue.push(nb_row);
           }
         }
       }
     }
+    assignConnectedClusters(isFluidClusterNode);
+    assignConnectedClusters(isShapeClusterNode);
     function clusterColorForCoord(x, y) {
       var k2 = x + "," + y;
-      if (coordToComp[k2] === undefined) return null;
-      return fluidClusterHsl(coordToComp[k2]);
+      if (coordToCluster[k2] === undefined) return null;
+      return fluidClusterHsl(coordToCluster[k2]);
+    }
+    function appendStationPerimeterOutlines(parent, is_head_tile, is_extension_tile) {
+      var assigned_extension = Object.create(null);
+      for (var sri = 0; sri < sorted_cluster_rows.length; sri++) {
+        var start_station = sorted_cluster_rows[sri];
+        if (!is_head_tile(start_station)) continue;
+        var station_members = Object.create(null);
+        var station_queue = [start_station];
+        var start_station_key = start_station.x + "," + start_station.y;
+        station_members[start_station_key] = start_station;
+        var station_head = 0;
+        while (station_head < station_queue.length && Object.keys(station_members).length < 4) {
+          var cur_station = station_queue[station_head++];
+          var station_nbs = shapezNeighbors4(cur_station.x, cur_station.y);
+          for (var sni = 0; sni < station_nbs.length; sni++) {
+            if (Object.keys(station_members).length >= 4) break;
+            var sx = station_nbs[sni][0];
+            var sy = station_nbs[sni][1];
+            var sk = sx + "," + sy;
+            if (assigned_extension[sk] || station_members[sk]) continue;
+            var station_nb = cellAt[sk];
+            if (!is_extension_tile(station_nb)) continue;
+            assigned_extension[sk] = true;
+            station_members[sk] = station_nb;
+            station_queue.push(station_nb);
+          }
+        }
+        var outline_g = document.createElementNS(svgNs, "g");
+        outline_g.setAttribute("class", "am-station-perimeter-outline");
+        for (var member_key in station_members) {
+          if (!Object.prototype.hasOwnProperty.call(station_members, member_key)) continue;
+          var member = station_members[member_key];
+          var member_idx = xi[member.x];
+          if (member_idx === undefined) continue;
+          var pad_station = 0.11;
+          var tile_x0_station = 1 + member_idx;
+          var tile_y0_station = member.y - minY;
+          var x0_station = tile_x0_station + pad_station;
+          var y0_station = tile_y0_station + pad_station;
+          var size_station = 1 - 2 * pad_station;
+          var member_nbs = shapezNeighbors4(member.x, member.y);
+          var has_n = false;
+          var has_e = false;
+          var has_s = false;
+          var has_w = false;
+          for (var mni = 0; mni < member_nbs.length; mni++) {
+            var nbx = member_nbs[mni][0];
+            var nby = member_nbs[mni][1];
+            if (!station_members[nbx + "," + nby]) continue;
+            var ndir = classifyNeighborDir(member.x, member.y, nbx, nby);
+            if (ndir === "n") has_n = true;
+            else if (ndir === "e") has_e = true;
+            else if (ndir === "s") has_s = true;
+            else if (ndir === "w") has_w = true;
+          }
+          function addOutlineEdge(x1, y1, x2, y2) {
+            var edge = document.createElementNS(svgNs, "line");
+            edge.setAttribute("x1", String(x1));
+            edge.setAttribute("y1", String(y1));
+            edge.setAttribute("x2", String(x2));
+            edge.setAttribute("y2", String(y2));
+            edge.setAttribute("stroke", "rgb(255 255 255 / 0.96)");
+            edge.setAttribute("stroke-width", "0.12");
+            edge.setAttribute("stroke-linecap", "round");
+            outline_g.appendChild(edge);
+          }
+          var edge_left = has_w ? tile_x0_station : x0_station;
+          var edge_right = has_e ? tile_x0_station + 1 : x0_station + size_station;
+          var edge_top = has_n ? tile_y0_station : y0_station;
+          var edge_bottom = has_s ? tile_y0_station + 1 : y0_station + size_station;
+          if (!has_n) addOutlineEdge(edge_left, y0_station, edge_right, y0_station);
+          if (!has_s) {
+            addOutlineEdge(
+              edge_left,
+              y0_station + size_station,
+              edge_right,
+              y0_station + size_station
+            );
+          }
+          if (!has_e) {
+            addOutlineEdge(
+              x0_station + size_station,
+              edge_top,
+              x0_station + size_station,
+              edge_bottom
+            );
+          }
+          if (!has_w) addOutlineEdge(x0_station, edge_top, x0_station, edge_bottom);
+        }
+        parent.appendChild(outline_g);
+      }
     }
     function layoutColumnXForDir(xx) {
       return xx > 0 ? xx - 1 : xx;
@@ -2124,7 +2293,7 @@
         if (!s) return "┴";
         if (!w) return "┤";
       }
-      return "╳";
+      return "";
     }
 
     function appendP4OutlineRect(parent, p, cellClass, titleText) {
@@ -2173,7 +2342,7 @@
       }
       parent.appendChild(r);
     }
-    function appendCellRect(parent, p, role, titleText, fluidClusterStroke) {
+    function appendCellRect(parent, p, role, titleText, fluidClusterStroke, transportOverVoid) {
       var idx = xi[p.x];
       if (idx === undefined) return;
       var pad = 0.12;
@@ -2187,8 +2356,13 @@
       r.setAttribute("height", String(size));
       r.setAttribute("rx", "0.06");
       r.setAttribute("ry", "0.06");
-      r.setAttribute("fill", fillForRole(role));
-      r.setAttribute("fill-opacity", opacityForRole(role));
+      if (transportOverVoid && role === "belt") {
+        r.setAttribute("fill", "none");
+        r.setAttribute("fill-opacity", "0");
+      } else {
+        r.setAttribute("fill", fillForRole(role));
+        r.setAttribute("fill-opacity", opacityForRole(role));
+      }
       if (fluidClusterStroke) {
         r.setAttribute("stroke", fluidClusterStroke);
         r.setAttribute("stroke-width", "0.14");
@@ -2224,8 +2398,14 @@
       rect.setAttribute("height", String(size));
       rect.setAttribute("rx", "0.06");
       rect.setAttribute("ry", "0.06");
-      rect.setAttribute("fill", fillForRole("pipe"));
-      rect.setAttribute("fill-opacity", opacityForRole("pipe"));
+      var pipeOverVoid = !!p.transport_over_void;
+      if (pipeOverVoid) {
+        rect.setAttribute("fill", "none");
+        rect.setAttribute("fill-opacity", "0");
+      } else {
+        rect.setAttribute("fill", fillForRole("pipe"));
+        rect.setAttribute("fill-opacity", opacityForRole("pipe"));
+      }
       rect.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
       rect.setAttribute("stroke-width", "0.04");
       var n = false;
@@ -2237,7 +2417,9 @@
         var qx = pn[pi][0];
         var qy = pn[pi][1];
         var neighbor = cellAt[qx + "," + qy];
-        if (!neighbor || (neighbor.role || "occupied") !== "pipe") continue;
+        if (!neighbor) continue;
+        var nr = neighbor.role || "occupied";
+        if (nr !== "pipe" && !isFluidStationTile(neighbor)) continue;
         var d = classifyNeighborDir(p.x, p.y, qx, qy);
         if (d === "n") n = true;
         else if (d === "e") e = true;
@@ -2254,28 +2436,118 @@
         ln.setAttribute("stroke", strokeUse);
         ln.setAttribute("stroke-width", "0.08");
         ln.setAttribute("stroke-linecap", "round");
+        ln.setAttribute("stroke-dasharray", "0.14 0.1");
         g.appendChild(ln);
       }
       if (n) addLine(cx, cy, cx, y0);
       if (s) addLine(cx, cy, cx, y0 + size);
       if (e) addLine(cx, cy, x0 + size, cy);
       if (w) addLine(cx, cy, x0, cy);
-      var jt = document.createElementNS(svgNs, "text");
-      jt.setAttribute("class", "am-pipe-junction-glyph");
-      jt.setAttribute("x", String(cx));
-      jt.setAttribute("y", String(cy));
-      jt.setAttribute("text-anchor", "middle");
-      jt.setAttribute("dominant-baseline", "central");
-      jt.setAttribute("fill", strokeUse);
-      jt.setAttribute("font-size", String(size * 0.52));
-      jt.textContent = pipeJunctionGlyph(n, e, s, w);
-      g.appendChild(jt);
+      var glyphPipe = pipeJunctionGlyph(n, e, s, w);
+      if (glyphPipe) {
+        var jt = document.createElementNS(svgNs, "text");
+        jt.setAttribute("class", "am-pipe-junction-glyph");
+        jt.setAttribute("x", String(cx));
+        jt.setAttribute("y", String(cy));
+        jt.setAttribute("text-anchor", "middle");
+        jt.setAttribute("dominant-baseline", "central");
+        jt.setAttribute("fill", strokeUse);
+        jt.setAttribute("font-size", String(size * 0.52));
+        jt.textContent = glyphPipe;
+        g.appendChild(jt);
+      }
       if (titleText) {
         var tt = document.createElementNS(svgNs, "title");
         tt.textContent = titleText;
         g.appendChild(tt);
       }
       parent.appendChild(g);
+    }
+    /** Shape belts: same stub rules as pipes, toward belts or shape station tiles. */
+    function appendBeltCell(parent, p, titleText) {
+      var idxB = xi[p.x];
+      if (idxB === undefined) return;
+      var padB = 0.12;
+      var x0b = 1 + idxB + padB;
+      var y0b = p.y - minY + padB;
+      var sizeB = 1 - 2 * padB;
+      var cxb = x0b + sizeB / 2;
+      var cyb = y0b + sizeB / 2;
+      var strokeClusterB = clusterColorForCoord(p.x, p.y);
+      var strokeUseB = strokeClusterB || fillForRole("belt");
+      var gB = document.createElementNS(svgNs, "g");
+      gB.setAttribute("class", "am-belt-cell");
+      var rectB = document.createElementNS(svgNs, "rect");
+      rectB.setAttribute("x", String(x0b));
+      rectB.setAttribute("y", String(y0b));
+      rectB.setAttribute("width", String(sizeB));
+      rectB.setAttribute("height", String(sizeB));
+      rectB.setAttribute("rx", "0.06");
+      rectB.setAttribute("ry", "0.06");
+      var beltVoid = !!p.transport_over_void;
+      if (beltVoid) {
+        rectB.setAttribute("fill", "none");
+        rectB.setAttribute("fill-opacity", "0");
+      } else {
+        rectB.setAttribute("fill", fillForRole("belt"));
+        rectB.setAttribute("fill-opacity", opacityForRole("belt"));
+      }
+      rectB.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
+      rectB.setAttribute("stroke-width", "0.04");
+      var nb = false;
+      var eb = false;
+      var sb = false;
+      var wb = false;
+      var pnb = shapezNeighbors4(p.x, p.y);
+      for (var pbi = 0; pbi < pnb.length; pbi++) {
+        var qxb = pnb[pbi][0];
+        var qyb = pnb[pbi][1];
+        var neighborB = cellAt[qxb + "," + qyb];
+        if (!neighborB) continue;
+        var nbrB = neighborB.role || "occupied";
+        if (nbrB !== "belt" && !isShapeStationTile(neighborB)) continue;
+        var db = classifyNeighborDir(p.x, p.y, qxb, qyb);
+        if (db === "n") nb = true;
+        else if (db === "e") eb = true;
+        else if (db === "s") sb = true;
+        else if (db === "w") wb = true;
+      }
+      gB.appendChild(rectB);
+      function addLineB(x1, y1, x2, y2) {
+        var lnB = document.createElementNS(svgNs, "line");
+        lnB.setAttribute("x1", String(x1));
+        lnB.setAttribute("y1", String(y1));
+        lnB.setAttribute("x2", String(x2));
+        lnB.setAttribute("y2", String(y2));
+        lnB.setAttribute("stroke", strokeUseB);
+        lnB.setAttribute("stroke-width", "0.08");
+        lnB.setAttribute("stroke-linecap", "round");
+        lnB.setAttribute("stroke-dasharray", "0.14 0.1");
+        gB.appendChild(lnB);
+      }
+      if (nb) addLineB(cxb, cyb, cxb, y0b);
+      if (sb) addLineB(cxb, cyb, cxb, y0b + sizeB);
+      if (eb) addLineB(cxb, cyb, x0b + sizeB, cyb);
+      if (wb) addLineB(cxb, cyb, x0b, cyb);
+      var glyphBelt = pipeJunctionGlyph(nb, eb, sb, wb);
+      if (glyphBelt) {
+        var jtB = document.createElementNS(svgNs, "text");
+        jtB.setAttribute("class", "am-pipe-junction-glyph");
+        jtB.setAttribute("x", String(cxb));
+        jtB.setAttribute("y", String(cyb));
+        jtB.setAttribute("text-anchor", "middle");
+        jtB.setAttribute("dominant-baseline", "central");
+        jtB.setAttribute("fill", strokeUseB);
+        jtB.setAttribute("font-size", String(sizeB * 0.52));
+        jtB.textContent = glyphBelt;
+        gB.appendChild(jtB);
+      }
+      if (titleText) {
+        var ttB = document.createElementNS(svgNs, "title");
+        ttB.textContent = titleText;
+        gB.appendChild(ttB);
+      }
+      parent.appendChild(gB);
     }
 
     var gUnder = document.createElementNS(svgNs, "g");
@@ -2299,7 +2571,7 @@
       var beltCell = filtered[i];
       var beltRole = beltCell.role || "occupied";
       if (beltRole === "belt") {
-        appendCellRect(gBelt, beltCell, "belt", mapEntryTitle(beltCell));
+        appendBeltCell(gBelt, beltCell, mapEntryTitle(beltCell));
       }
     }
     for (i = 0; i < filtered.length; i++) {
@@ -2314,21 +2586,24 @@
       if (oc.x === 0) continue;
       if ((oc.role || "occupied") !== "occupied") continue;
       var tip = mapEntryTitle(oc);
-      var lkOc = oc.layout_kind;
-      var fluidStroke = null;
-      if (
-        (lkOc === "fluid_miner" || lkOc === "fluid_extension") &&
-        oc.surface === "fluid"
-      ) {
-        fluidStroke = clusterColorForCoord(oc.x, oc.y);
-      }
-      appendCellRect(gTop, oc, paintRoleForOccupiedCell(oc), tip, fluidStroke);
+      appendCellRect(
+        gTop,
+        oc,
+        paintRoleForOccupiedCell(oc),
+        tip,
+        null
+      );
     }
+    var gStationPerimeters = document.createElementNS(svgNs, "g");
+    gStationPerimeters.setAttribute("class", "am-station-perimeter-outlines");
+    appendStationPerimeterOutlines(gStationPerimeters, isFluidHeadTile, isFluidExtensionTile);
+    appendStationPerimeterOutlines(gStationPerimeters, isShapeHeadTile, isShapeExtensionTile);
 
     plotSvg.appendChild(gUnder);
     plotSvg.appendChild(gBelt);
     plotSvg.appendChild(gPipe);
     plotSvg.appendChild(gTop);
+    plotSvg.appendChild(gStationPerimeters);
     if (
       corridorOverlayCb &&
       corridorOverlayCb.checked &&
@@ -2505,6 +2780,119 @@
         applyMapOrientation(k);
       });
     }
+  }
+
+  if (plotInner && plotPanzoomEl) {
+    applyPlotViewTransform();
+
+    function onWheelPlotZoom(e) {
+      var rect = plotInner.getBoundingClientRect();
+      var mx = e.clientX - rect.left;
+      var my = e.clientY - rect.top;
+      var inside =
+        rect.width > 0 &&
+        rect.height > 0 &&
+        mx >= 0 &&
+        my >= 0 &&
+        mx <= rect.width &&
+        my <= rect.height;
+      if (!inside) return;
+      e.preventDefault();
+      var prev = plotPanZoom.scale;
+      var factor = Math.exp(-e.deltaY * 0.0018);
+      var nextS = prev * factor;
+      if (nextS < ZOOM_MIN) nextS = ZOOM_MIN;
+      if (nextS > ZOOM_MAX) nextS = ZOOM_MAX;
+      var lx = (mx - plotPanZoom.panX) / prev;
+      var ly = (my - plotPanZoom.panY) / prev;
+      plotPanZoom.scale = nextS;
+      plotPanZoom.panX = mx - nextS * lx;
+      plotPanZoom.panY = my - nextS * ly;
+      applyPlotViewTransform();
+    }
+
+    plotInner.addEventListener("wheel", onWheelPlotZoom, { passive: false });
+
+    function endPanMouse() {
+      panDrag = null;
+      if (plotInner) plotInner.classList.remove("am-panning");
+    }
+
+    plotInner.addEventListener("mousedown", function (e) {
+      if (e.button !== 0) return;
+      panDrag = {
+        startX: e.clientX,
+        startY: e.clientY,
+        pan0X: plotPanZoom.panX,
+        pan0Y: plotPanZoom.panY,
+      };
+      plotInner.classList.add("am-panning");
+      e.preventDefault();
+    });
+
+    document.addEventListener("mousemove", function (e) {
+      if (!panDrag) return;
+      plotPanZoom.panX = panDrag.pan0X + (e.clientX - panDrag.startX);
+      plotPanZoom.panY = panDrag.pan0Y + (e.clientY - panDrag.startY);
+      applyPlotViewTransform();
+    });
+
+    document.addEventListener("mouseup", endPanMouse);
+    window.addEventListener("blur", endPanMouse);
+
+    plotInner.addEventListener(
+      "touchstart",
+      function (e) {
+        if (e.touches.length !== 1) return;
+        var t0 = e.touches[0];
+        touchPan = {
+          id: t0.identifier,
+          startX: t0.clientX,
+          startY: t0.clientY,
+          pan0X: plotPanZoom.panX,
+          pan0Y: plotPanZoom.panY,
+        };
+        plotInner.classList.add("am-panning");
+      },
+      { passive: true }
+    );
+
+    plotInner.addEventListener(
+      "touchmove",
+      function (e) {
+        if (!touchPan || e.touches.length !== 1) return;
+        var t1 = e.touches[0];
+        if (t1.identifier !== touchPan.id) return;
+        plotPanZoom.panX = touchPan.pan0X + (t1.clientX - touchPan.startX);
+        plotPanZoom.panY = touchPan.pan0Y + (t1.clientY - touchPan.startY);
+        applyPlotViewTransform();
+        e.preventDefault();
+      },
+      { passive: false }
+    );
+
+    function endTouchPan() {
+      touchPan = null;
+      if (plotInner) plotInner.classList.remove("am-panning");
+    }
+
+    plotInner.addEventListener("touchend", function (e) {
+      if (!touchPan) return;
+      var ci;
+      for (ci = 0; ci < e.changedTouches.length; ci++) {
+        if (e.changedTouches[ci].identifier === touchPan.id) {
+          endTouchPan();
+          return;
+        }
+      }
+    });
+    plotInner.addEventListener("touchcancel", endTouchPan);
+  }
+
+  if (resetViewBtn) {
+    resetViewBtn.addEventListener("click", function () {
+      resetPlotView();
+    });
   }
 
   if (surface && px && py) {

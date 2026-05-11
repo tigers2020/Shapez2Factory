@@ -379,6 +379,29 @@
   color: var(--cyan);
 }
 
+.asteroid-mine-page .am-map-reset-view-btn {
+  border: 1px solid #334155;
+  border-radius: 11px;
+  background: #0f172a;
+  color: var(--muted);
+  padding: 9px 14px;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.asteroid-mine-page .am-map-reset-view-btn:hover {
+  color: var(--cyan);
+  border-color: rgba(34, 211, 238, 0.38);
+}
+
+.asteroid-mine-page .am-map-panzoom-hint {
+  flex-basis: 100%;
+  margin: 0 0 8px;
+}
+
 .asteroid-mine-page .map-shell {
   margin-top: 16px;
   border: 1px solid #22304b;
@@ -435,7 +458,7 @@
 }
 
 .asteroid-mine-page .am-map-surface {
-  cursor: crosshair;
+  cursor: default;
   position: relative;
   min-height: 280px;
 }
@@ -445,12 +468,27 @@
   min-height: 280px;
   width: 100%;
   overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
   border-radius: 0;
   background-image: linear-gradient(to right, rgb(51 65 85 / 0.35) 1px, transparent 1px),
     linear-gradient(to bottom, rgb(51 65 85 / 0.35) 1px, transparent 1px);
   background-size: 20px 20px;
   background-color: rgb(2 6 23 / 0.65);
   padding-bottom: 0;
+}
+
+.asteroid-mine-page .am-plot-inner.am-panning {
+  cursor: grabbing;
+}
+
+.asteroid-mine-page .am-plot-panzoom {
+  display: block;
+  width: 100%;
+  transform-origin: 0 0;
+  pointer-events: auto;
 }
 
 .asteroid-mine-page .am-plot-inner svg[data-asteroid-plot-svg] {

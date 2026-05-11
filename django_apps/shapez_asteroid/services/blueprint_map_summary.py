@@ -109,12 +109,16 @@ def build_map_timeline(decoded: dict[str, Any]) -> list[dict[str, Any]]:
     rows_strip_all = _strip_layout_rows(rows_ext, strip_extractors=True, strip_extensions=True)
 
     final_map = _mining_map_reconstructed(rows_ext, rows_strip_all)
+    extraction_shell = _extraction_shell_coords_from_entries(decoded)
 
     return [
         {
             "id": MAP_TIMELINE_STEP_IDS[0],
             "summary": _summary_from_rows(rows_transport),
-            "mining_map": _mining_map_with_transport(rows_transport),
+            "mining_map": _mining_map_with_transport(
+                rows_transport,
+                extraction_shell=extraction_shell,
+            ),
         },
         {
             "id": MAP_TIMELINE_STEP_IDS[1],
@@ -213,6 +217,41 @@ def _mining_map_reconstructed(
     return out
 
 
+def _extraction_shell_coords_from_entries(decoded: dict[str, Any]) -> frozenset[tuple[int, int]]:
+    """Coords that ever carry an extraction layout (belt/pipe may share coords in ``by_coord``)."""
+
+    bp = decoded.get("BP")
+    if not isinstance(bp, dict):
+        return frozenset()
+
+    raw_entries = bp.get("Entries")
+    entries: list[Any] = raw_entries if isinstance(raw_entries, list) else []
+
+    shell: set[tuple[int, int]] = set()
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        x_val = _int_or_none(item.get("X"))
+        if x_val is None or x_val == 0:
+            continue
+        y_val = _int_or_none(item.get("Y"))
+        if y_val is None:
+            y_val = 0
+        t_raw = item.get("T")
+        if isinstance(t_raw, str):
+            t_str: str | None = t_raw
+        elif t_raw is None:
+            t_str = None
+        else:
+            t_str = str(t_raw)
+        style = classify_layout_type(t_str)
+        if style == PlotStyle.platform or style is None:
+            continue
+        if is_extraction_style(style):
+            shell.add((x_val, y_val))
+    return frozenset(shell)
+
+
 def _mining_with_transport_rows(
     decoded: dict[str, Any],
 ) -> list[tuple[int, int, str | None, int | None]]:
@@ -286,6 +325,8 @@ def _strip_layout_rows(
 
 def _mining_map_with_transport(
     rows: list[tuple[int, int, str | None, int | None]],
+    *,
+    extraction_shell: frozenset[tuple[int, int]],
 ) -> list[dict[str, Any]]:
     if not rows:
         return []
@@ -297,9 +338,27 @@ def _mining_map_with_transport(
     for x, y, t_str, r_val in sorted(rows, key=lambda row: (row[1], row[0])):
         st = classify_layout_type(t_str)
         if st == PlotStyle.belt:
-            out.append({"x": x, "y": y, "role": "belt", "surface": dominant})
+            over_void = (x, y) not in extraction_shell
+            out.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "role": "belt",
+                    "surface": dominant,
+                    "transport_over_void": over_void,
+                }
+            )
         elif st == PlotStyle.pipe:
-            out.append({"x": x, "y": y, "role": "pipe", "surface": dominant})
+            over_void = (x, y) not in extraction_shell
+            out.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "role": "pipe",
+                    "surface": dominant,
+                    "transport_over_void": over_void,
+                }
+            )
         else:
             surf = _occupied_surface(t_str, dominant)
             row: dict[str, Any] = {"x": x, "y": y, "role": "occupied", "surface": surf}

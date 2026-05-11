@@ -700,6 +700,163 @@
       console.warn("[solver_replay] unknown event kind:", e.kind);
     }
   }
+
+  function cloneMiningMapRows(rows) {
+    if (!Array.isArray(rows)) return [];
+    return rows.map(function (row) {
+      return row && typeof row === "object" ? Object.assign({}, row) : row;
+    });
+  }
+
+  function coordKey(x, y) {
+    return String(x) + "," + String(y);
+  }
+
+  function upsertMiningMapRow(rows, row) {
+    if (!row || typeof row !== "object") return rows;
+    var x = Number(row.x);
+    var y = Number(row.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return rows;
+    var key = coordKey(x, y);
+    for (var i = 0; i < rows.length; i++) {
+      var cur = rows[i];
+      if (!cur || typeof cur !== "object") continue;
+      if (coordKey(Number(cur.x), Number(cur.y)) === key) {
+        rows[i] = Object.assign({}, cur, row);
+        return rows;
+      }
+    }
+    rows.push(Object.assign({}, row));
+    return rows;
+  }
+
+  function replaySurfaceFromTransportKind(kind) {
+    var s = kind == null ? "" : String(kind).toLowerCase();
+    if (s.indexOf("pipe") !== -1 || s.indexOf("fluid") !== -1) {
+      return "fluid";
+    }
+    return "shape";
+  }
+
+  function applyPass12CommitEventToMap(rows, ev) {
+    var p = ev && ev.payload && typeof ev.payload === "object" ? ev.payload : null;
+    if (!p || !p.extractor_cell) return rows;
+    var surface = replaySurfaceFromTransportKind(p.transport_kind);
+    var transportRole = surface === "fluid" ? "pipe" : "belt";
+    var minerLayout = surface === "fluid" ? "fluid_miner" : "miner";
+    var minerType = surface === "fluid" ? "Layout_FluidMiner" : "Layout_ShapeMiner";
+    var extLayout = surface === "fluid" ? "fluid_extension" : "extension";
+    var extType = surface === "fluid" ? "Layout_FluidMinerExtension" : "Layout_ShapeMinerExtension";
+    var pid = p.placement_id || "";
+    var ec = p.extractor_cell;
+    if (Array.isArray(ec) && ec.length >= 2) {
+      var extractorRow = {
+        x: Number(ec[0]),
+        y: Number(ec[1]),
+        role: "occupied",
+        surface: surface,
+        layout_kind: minerLayout,
+        t: minerType,
+        placement_id: pid,
+      };
+      if (typeof p.extractor_r === "number") extractorRow.r = p.extractor_r;
+      upsertMiningMapRow(rows, extractorRow);
+    }
+    var extensions = Array.isArray(p.extension_cells) ? p.extension_cells : [];
+    for (var ei = 0; ei < extensions.length; ei++) {
+      var er = extensions[ei];
+      if (!er || typeof er !== "object") continue;
+      var extRow = {
+        x: Number(er.x),
+        y: Number(er.y),
+        role: "occupied",
+        surface: surface,
+        layout_kind: extLayout,
+        t: extType,
+        placement_id: pid,
+      };
+      if (typeof er.r === "number") extRow.r = er.r;
+      upsertMiningMapRow(rows, extRow);
+    }
+    var transports = Array.isArray(p.new_transport_cells) ? p.new_transport_cells : [];
+    for (var ti = 0; ti < transports.length; ti++) {
+      var tc = transports[ti];
+      if (!Array.isArray(tc) || tc.length < 2) continue;
+      upsertMiningMapRow(rows, {
+        x: Number(tc[0]),
+        y: Number(tc[1]),
+        role: transportRole,
+        surface: surface,
+        placement_id: pid,
+      });
+    }
+    return rows;
+  }
+
+  function solverStepById(solverSteps) {
+    var byId = Object.create(null);
+    if (!Array.isArray(solverSteps)) return byId;
+    for (var i = 0; i < solverSteps.length; i++) {
+      var st = solverSteps[i];
+      if (st && st.id) byId[st.id] = st;
+    }
+    return byId;
+  }
+
+  function solverCycleOwnerStepId(ev) {
+    var phase = ev && ev.phase ? String(ev.phase) : "";
+    if (phase === "pass12") return "solver_pass2_internal";
+    if (phase === "step4") return "solver_step4_routing";
+    if (phase === "pass3") return "solver_pass3_transport";
+    if (phase === "p4_reclaim" || phase === "validation_recovery") return "solver_validate";
+    return "solver_init";
+  }
+
+  function buildSolverCycleTimeline(mapSteps, solverSteps, replay) {
+    var events = replay && Array.isArray(replay.events) ? replay.events : [];
+    if (!Array.isArray(solverSteps) || !solverSteps.length || !events.length) {
+      return { timeline: solverSteps || [], uiFrames: [] };
+    }
+    var byId = solverStepById(solverSteps);
+    var seedStep = byId.solver_init || solverSteps[0];
+    var currentRows = cloneMiningMapRows(seedStep && seedStep.mining_map);
+    var timeline = [];
+    var uiFrames = [];
+    for (var i = 0; i < events.length; i++) {
+      var ev = events[i];
+      if (!ev || typeof ev !== "object") continue;
+      var cycle = typeof ev.computation_cycle === "number" ? ev.computation_cycle : i + 1;
+      var ownerId = solverCycleOwnerStepId(ev);
+      var owner = byId[ownerId] || seedStep;
+      if (ev.kind === "pass12_bundle_commit") {
+        currentRows = applyPass12CommitEventToMap(cloneMiningMapRows(currentRows), ev);
+      } else if (ev.kind === "map_diff_committed" && owner && Array.isArray(owner.mining_map)) {
+        currentRows = cloneMiningMapRows(owner.mining_map);
+      }
+      var summary = Object.assign({}, (owner && owner.summary) || {});
+      summary.replay_cycle = cycle;
+      summary.replay_event_kind = ev.kind || "";
+      summary.replay_phase = ev.phase || "";
+      timeline.push({
+        id: "solver_cycle_" + cycle,
+        ok: owner ? owner.ok : true,
+        summary: summary,
+        mining_map: cloneMiningMapRows(currentRows),
+      });
+      uiFrames.push({
+        timeline_index: timeline.length - 1,
+        timeline_frame_id: ownerId,
+        event_indices: [i],
+        overlay_event_indices: [i],
+        primary_for_step10_ui: true,
+        protected_corridors: null,
+        computation_cycle_ui_tick_start: cycle,
+        computation_cycle_ui_tick_end: cycle,
+        computation_cycle_ui_stride: 1,
+      });
+    }
+    return { timeline: timeline, uiFrames: uiFrames };
+  }
   var STEP_LABELS = {
     validate_input_type: "{% filter escapejs %}{% trans 'Validate input type' %}{% endfilter %}",
     normalize_whitespace: "{% filter escapejs %}{% trans 'Normalize whitespace' %}{% endfilter %}",
@@ -731,6 +888,9 @@
 
   function mapStepLabel(stepId) {
     if (!stepId) return "";
+    if (String(stepId).indexOf("solver_cycle_") === 0) {
+      return "Solver cycle " + String(stepId).replace("solver_cycle_", "");
+    }
     var slug = String(stepId).replace(/[^a-zA-Z0-9]+/g, "_");
     var fromRoot = root.getAttribute("data-map-step-" + slug);
     if (fromRoot) return fromRoot;
@@ -3151,12 +3311,24 @@
           lastSolverReplay = replayNorm.replay;
           var rawUi = replayNorm.replay && replayNorm.replay.ui_frames;
           lastReplayUiFrames = Array.isArray(rawUi) ? rawUi : [];
+          var cycleReplay = buildSolverCycleTimeline(mapSteps, solverSteps, replayNorm.replay);
+          var solverPlaybackSteps =
+            cycleReplay && Array.isArray(cycleReplay.timeline) && cycleReplay.timeline.length
+              ? cycleReplay.timeline
+              : solverSteps;
+          if (
+            cycleReplay &&
+            Array.isArray(cycleReplay.uiFrames) &&
+            cycleReplay.uiFrames.length
+          ) {
+            lastReplayUiFrames = cycleReplay.uiFrames;
+          }
           if (
             !lastReplayUiFrames.length &&
-            Array.isArray(solverSteps) &&
-            solverSteps.length
+            Array.isArray(solverPlaybackSteps) &&
+            solverPlaybackSteps.length
           ) {
-            lastReplayUiFrames = solverSteps.map(function (st, i) {
+            lastReplayUiFrames = solverPlaybackSteps.map(function (st, i) {
               return {
                 timeline_index: i,
                 timeline_frame_id: st && st.id ? st.id : "",
@@ -3171,18 +3343,24 @@
             warnUnknownSolverReplayKinds(replayNorm.events);
           }
           applyDecodeSteps([]);
+          lastSolverTimeline = Array.isArray(solverPlaybackSteps) ? solverPlaybackSteps : [];
           solverPhaseStartIndex =
-            Array.isArray(solverSteps) && solverSteps.length && Array.isArray(mapSteps)
+            Array.isArray(solverPlaybackSteps) &&
+            solverPlaybackSteps.length &&
+            Array.isArray(mapSteps)
               ? mapSteps.length
               : -1;
           var unifiedTimeline =
-            Array.isArray(solverSteps) && solverSteps.length
-              ? mapSteps.concat(solverSteps)
+            Array.isArray(solverPlaybackSteps) && solverPlaybackSteps.length
+              ? mapSteps.concat(solverPlaybackSteps)
               : mapSteps;
           console.log("[solver replay debug]", {
             solver_replay: x.data.solver_replay,
             ui_frames_len: lastReplayUiFrames.length,
             solver_timeline_len: Array.isArray(solverSteps) ? solverSteps.length : -1,
+            solver_playback_timeline_len: Array.isArray(solverPlaybackSteps)
+              ? solverPlaybackSteps.length
+              : -1,
             map_timeline_len: Array.isArray(mapSteps) ? mapSteps.length : -1,
             solverPhaseStartIndex: solverPhaseStartIndex,
           });

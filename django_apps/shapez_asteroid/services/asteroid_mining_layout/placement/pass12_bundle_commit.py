@@ -11,9 +11,15 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+from django_apps.shapez_asteroid.extraction.shape_miner_rotation import (
+    rotation_r_for_output_direction,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     PASS12_TRY_COMMIT_PASS1_BUNDLE_TRACE_LOCATION,
     PASS12_TRY_COMMIT_PASS2_BUNDLE_TRACE_LOCATION,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.extension_topology import (  # noqa: E501
+    rotation_r_for_extension_facing_parent,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_contracts import (
@@ -48,6 +54,50 @@ __all__ = [
     "try_commit_pass1_bundle",
     "try_commit_pass2_bundle",
 ]
+
+
+def _coord_payload(c: Coord | None) -> list[int] | None:
+    if c is None:
+        return None
+    return [int(c[0]), int(c[1])]
+
+
+def _pass12_commit_replay_payload(
+    *,
+    pid: str,
+    state: Pass12LayoutScratch,
+    candidate: Pass12BundleCandidate,
+    trace_location: str,
+) -> dict[str, Any]:
+    output_dir = candidate.extractor_output_dir
+    extension_cells = []
+    for c, edx, edy in sorted(candidate.extension_facings, key=lambda row: (row[0][1], row[0][0])):
+        extension_cells.append(
+            {
+                "x": int(c[0]),
+                "y": int(c[1]),
+                "facing_parent": [int(edx), int(edy)],
+                "r": rotation_r_for_extension_facing_parent((edx, edy)),
+            }
+        )
+    return {
+        "placement_id": pid,
+        "placement_pass": candidate.placement_pass,
+        "trace_location": trace_location,
+        "transport_kind": state.transport_kind,
+        "extractor_cell": _coord_payload(candidate.extractor_cell),
+        "extractor_output_dir": [int(output_dir[0]), int(output_dir[1])] if output_dir else None,
+        "extractor_r": (
+            rotation_r_for_output_direction(output_dir[0], output_dir[1])
+            if output_dir is not None
+            else None
+        ),
+        "extension_cells": extension_cells,
+        "stub_cell": _coord_payload(candidate.stub_cell),
+        "new_transport_cells": [
+            _coord_payload(c) for c in sorted(candidate.new_transport, key=lambda t: (t[1], t[0]))
+        ],
+    }
 
 
 def snapshot_pass12_scratch(state: Pass12LayoutScratch) -> Pass12ScratchBaseline:
@@ -186,11 +236,12 @@ def _commit_after_probe(
                     {
                         "kind": SolverMutationEventKind.PASS12_BUNDLE_COMMIT.value,
                         "phase": "pass12",
-                        "payload": {
-                            "placement_id": pid,
-                            "placement_pass": candidate.placement_pass,
-                            "trace_location": trace_location,
-                        },
+                        "payload": _pass12_commit_replay_payload(
+                            pid=pid,
+                            state=state,
+                            candidate=candidate,
+                            trace_location=trace_location,
+                        ),
                     }
                 )
                 replay_events.append(

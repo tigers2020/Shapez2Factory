@@ -26,8 +26,13 @@ def dijkstra_route_step4(
     asteroid: frozenset[Coord],
     is_external: Callable[[Coord], bool],
     trunk: frozenset[Coord],
+    goal_cells: frozenset[Coord] | None = None,
 ) -> tuple[Coord, ...] | None:
-    """Shortest path (positive costs) from ``stub_cell``; path[0] == stub_cell."""
+    """Shortest path (positive costs) from ``stub_cell``; path[0] == stub_cell.
+
+    When ``goal_cells`` is set, termination is ``u in goal_cells`` (still §9.2 trunk/external).
+    Otherwise the legacy ``step4_is_routing_goal`` predicate is used.
+    """
 
     dist: dict[Coord, float] = {stub_cell: 0.0}
     prev: dict[Coord, Coord | None] = {stub_cell: None}
@@ -45,7 +50,16 @@ def dijkstra_route_step4(
         if d > dist.get(u, float("inf")):
             continue
         visited.add(u)
-        if step4_is_routing_goal(u, want_role=want_role, trunk=trunk, is_external=is_external):
+        if goal_cells is not None:
+            legacy_goal = step4_is_routing_goal(
+                u, want_role=want_role, trunk=trunk, is_external=is_external
+            )
+            reached = u != stub_cell and (u in goal_cells or legacy_goal)
+        else:
+            reached = step4_is_routing_goal(
+                u, want_role=want_role, trunk=trunk, is_external=is_external
+            )
+        if reached:
             chain: list[Coord] = []
             cur: Coord | None = u
             while cur is not None:

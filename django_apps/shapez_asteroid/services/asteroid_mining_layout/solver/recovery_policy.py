@@ -70,10 +70,12 @@ def tag_merge_partial_failure_from_step4(
     *,
     step4_rolled_back_count: int,
     rolled_back_placement_ids: list[Any],
+    quarantined_placement_ids: list[Any] | None = None,
 ) -> None:
     """STEP4 partial rollback / quarantine-style merge failure tagging."""
 
-    if step4_rolled_back_count > 0 or len(rolled_back_placement_ids) > 0:
+    q = quarantined_placement_ids or []
+    if step4_rolled_back_count > 0 or len(rolled_back_placement_ids) > 0 or len(q) > 0:
         summary["recovery_merge_partial_failure"] = True
         append_recovery_contract_phase(summary, RECOVERY_PHASE_MERGE_PARTIAL_FAILURE)
 

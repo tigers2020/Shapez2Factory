@@ -11,6 +11,7 @@ RECOVERY_SEGMENT_P4_RECLAIM = "p4_reclaim"
 RECOVERY_SEGMENT_SOFT_REPLACE_V2 = "soft_replace_v2"
 RECOVERY_SEGMENT_POST_RECLAIM_PASS3 = "post_reclaim_pass3"
 RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM = "post_pass3_p4_reclaim_entry"
+RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE = "step4_routing_failure"
 
 # --- P5 recovery contract (attempt caps; 0 = disabled / single forward pass) ---
 MAX_TOTAL_RECOVERY_ATTEMPTS = 0

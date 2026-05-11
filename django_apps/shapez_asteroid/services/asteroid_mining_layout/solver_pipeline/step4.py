@@ -120,6 +120,7 @@ def run_step4_stage(
     pass12_replay_txn_id: str | None,
     replay_events: list[dict[str, Any]],
     debug_location: str,
+    existing_layout_analysis: dict[str, Any] | None = None,
 ) -> Step4StageResult:
     """STEP4 route transaction을 실행하고 replay transaction 계약을 유지한다."""
 
@@ -149,6 +150,7 @@ def run_step4_stage(
                 is_external=is_external,
                 placement_records=placement_records,
                 mutate_input_map=True,
+                existing_layout_analysis=existing_layout_analysis,
             )
         except BaseException:
             replay_events.append(

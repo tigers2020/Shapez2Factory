@@ -36,6 +36,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_s
     removed_counts_distribution,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_timeline import (
+    _placement_candidate_blocked_count_from_pass12,
     _solver_stats_by_prefix,
     count_layout_cells,
 )
@@ -225,6 +226,10 @@ def build_final_solver_output(
         "connectivity_valid": report.connectivity_valid,
         "capacity_mode": "accumulate_only",
         "trunk_load": dict(step4_result.trunk_load),
+        "routed_stub_count": int(step4_result.trunk_load.get("step4_routed_stub_count", 0)),
+        "total_stub_count": int(step4_result.trunk_load.get("step4_total_stub_count", 0)),
+        "route_cell_count": int(step4_result.trunk_load.get("step4_final_route_cell_count", 0)),
+        "routing_failures": [dict(x) for x in step4_result.routing_failures],
         "routing_state": routing_state_summary,
         "step4_route_count": step4_result.trunk_load.get("step4_route_count", 0),
         "step4_routing_failure_count": step4_result.trunk_load.get(
@@ -246,6 +251,7 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    summary_fields["transport_connected"] = report.transport_connectivity_ok
     summary_fields["optimization_baseline_internal_transport"] = (
         optimization_baseline_internal_transport
     )
@@ -287,6 +293,9 @@ def build_final_solver_output(
         "counterfactual_aggregation": optimization_counterfactual_aggregation,
         "counterfactual_failure_reason": optimization_counterfactual_failure_reason,
         "internal_transport_quality_ratio": _quality_ratio,
+        "placement_candidate_blocked_count": _placement_candidate_blocked_count_from_pass12(
+            pass12_stats
+        ),
     }
     solver_init_map = merge_with_transport_and_final_mining_map(
         map_timeline[0]["mining_map"],
@@ -470,6 +479,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("existing_layout_barrier_cell_count", 0)
     summary_fields.setdefault("pass2_spine_seed_count", 0)
     summary_fields.setdefault("pass2_spine_priority_applied", False)
+    summary_fields.setdefault("placement_candidate_blocked_count", 0)
     summary_fields.setdefault("before_return_validate", None)
     summary_fields.setdefault("step_hash_step4", None)
     summary_fields.setdefault("step_hash_pass3", None)

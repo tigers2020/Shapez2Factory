@@ -7,6 +7,9 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 
 
@@ -68,7 +71,12 @@ def unfinalized_placement_count_from_counts(counts: Mapping[str, int] | None) ->
     return int(counts.get(p, 0) + counts.get(q, 0))
 
 
-def placement_record_to_failure_dict(rec: PlacementCommitRecord, *, reason: str) -> dict[str, Any]:
+def placement_record_to_failure_dict(
+    rec: PlacementCommitRecord,
+    *,
+    reason: str,
+    recovery_trigger: str | None = None,
+) -> dict[str, Any]:
     """STEP4 ``routing_failures`` entry: row-friendly coords + trace contract fields."""
 
     d = asdict(rec)
@@ -82,4 +90,5 @@ def placement_record_to_failure_dict(rec: PlacementCommitRecord, *, reason: str)
     d["attempt_count"] = 1
     d["final_state"] = d["state"]
     d["last_error"] = reason
+    d["recovery_trigger"] = recovery_trigger or RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE
     return d

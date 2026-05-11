@@ -90,6 +90,7 @@ def enrich_solver_summary_recovery(
         summary_fields,
         step4_rolled_back_count=len(step4_result.rolled_back_placement_ids),
         rolled_back_placement_ids=list(step4_result.rolled_back_placement_ids),
+        quarantined_placement_ids=list(step4_result.quarantined_placement_ids),
     )
 
     actions = route_validation_recovery_actions(report)
@@ -185,6 +186,7 @@ def run_solver_timeline_pipeline(
         pass12_replay_txn_id=pass12.pass12_replay_txn_id,
         replay_events=replay_events,
         debug_location=debug_location,
+        existing_layout_analysis=existing_layout_analysis,
     )
     optimization_baseline_internal_transport = optimization_baseline_internal_transport_at_map(
         pass12.map_after_pass2,

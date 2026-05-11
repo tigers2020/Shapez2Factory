@@ -17,6 +17,7 @@ __all__ = [
     "apply_recovery_contract_defaults",
     "p4_reclaim_cap_blocks_entry",
     "sync_recovery_total_attempts_used_from_chain",
+    "synthesize_recovery_validation_outcome",
     "tag_merge_partial_failure_from_step4",
     "tag_post_reclaim_pass3_connectivity_break",
     "tag_reclaim_incremental_failure_from_summary",
@@ -49,6 +50,11 @@ def apply_recovery_contract_defaults(target: dict[str, Any]) -> None:
     target.setdefault("recovery_merge_partial_failure", False)
     target.setdefault("recovery_post_reclaim_pass3_connectivity_break", False)
     target.setdefault("recovery_action_plan", [])
+    target.setdefault(
+        "recovery_validation_outcome",
+        {"commit_reason": None, "rollback_reason": None, "rejected_reason": None},
+    )
+    target.setdefault("validation_recovery_cycles_used", 0)
 
 
 def tag_reclaim_incremental_failure_from_summary(pass3_summary: dict[str, Any]) -> None:
@@ -96,6 +102,51 @@ def p4_reclaim_cap_blocks_entry(pass3_summary: dict[str, Any]) -> bool:
     return len(chain) >= MAX_TOTAL_RECOVERY_ATTEMPTS
 
 
+def synthesize_recovery_validation_outcome(summary: dict[str, Any]) -> None:
+    """Fill ``recovery_validation_outcome`` top-level commit / rollback / rejected summary.
+
+    Per-stage ``pass3_*`` / ``p4_*`` fields stay authoritative; this is a P5 rollup only.
+    """
+
+    out: dict[str, Any] = {
+        "commit_reason": None,
+        "rollback_reason": None,
+        "rejected_reason": None,
+    }
+    rr = str(summary.get("return_reason") or "")
+
+    for key in (
+        "pass3_rollback_reason",
+        "p4_reclaim_provisional_commit_rollback_reason",
+        "p4_reclaim_incremental_route_rollback_reason",
+    ):
+        v = summary.get(key)
+        if v:
+            out["rollback_reason"] = str(v)
+            break
+
+    for key in (
+        "pass3_rejected_reason",
+        "p3e3_guarded_commit_rejected_reason",
+        "p3e3_guarded_rejected_reason",
+        "p4_soft_replace_rejected_reason",
+    ):
+        v = summary.get(key)
+        if v:
+            out["rejected_reason"] = str(v)
+            break
+    if out["rejected_reason"] is None and rr and rr != "ok":
+        out["rejected_reason"] = rr
+
+    if rr == "ok":
+        out["commit_reason"] = str(summary.get("pass3_commit_reason") or "validation_ok")
+    else:
+        cr = summary.get("pass3_commit_reason")
+        out["commit_reason"] = str(cr) if cr else None
+
+    summary["recovery_validation_outcome"] = out
+
+
 def sync_recovery_total_attempts_used_from_chain(pass3_summary: dict[str, Any]) -> None:
     """Mirror chain length into ``recovery_total_attempts_used`` (replay summary contract)."""
 
@@ -105,7 +156,11 @@ def sync_recovery_total_attempts_used_from_chain(pass3_summary: dict[str, Any]) 
 
 
 def validation_recovery_allowed(pipeline_out: dict[str, Any]) -> bool:
-    """Whether bounded validation recovery may retry Pass3→P4 with degraded Pass3."""
+    """Whether bounded validation recovery may retry Pass3→P4 (degraded Pass3 when enabled).
+
+    Capacity is not a STEP9 hard fail; it does not drive this gate (trace / warnings only).
+    Unfinalized placements are not recoverable in this loop.
+    """
 
     if MAX_VALIDATION_RECOVERY_ATTEMPTS <= 0:
         return False
@@ -114,10 +169,16 @@ def validation_recovery_allowed(pipeline_out: dict[str, Any]) -> bool:
     if pipeline_out.get("return_reason") == "validation_unfinalized_placement_failed":
         return False
     fv = pipeline_out.get("final_validation") or {}
-    if not fv.get("geometry_valid", True):
-        return False
-    if int(fv.get("quarantined_unrouted_count") or 0) > 0:
-        return False
-    if fv.get("connectivity_valid", True):
-        return False
-    return True
+    connectivity_ok = bool(fv.get("connectivity_valid", True))
+    geometry_ok = bool(fv.get("geometry_valid", True))
+    overlap = int(fv.get("overlap_violation_count") or 0)
+    quarantine = int(fv.get("quarantined_unrouted_count") or 0)
+    if not connectivity_ok:
+        return True
+    if overlap > 0:
+        return True
+    if quarantine > 0:
+        return True
+    if not geometry_ok:
+        return True
+    return False

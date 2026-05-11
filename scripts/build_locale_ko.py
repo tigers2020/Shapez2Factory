@@ -511,6 +511,22 @@ KO.update(
         "UTF-8 decode": "UTF-8 디코드",
         "JSON parse": "JSON 파싱",
         "Validate top-level object": "최상위 객체 검증",
+        "Counterfactual baseline": "반사실 기준선",
+        "Final internal transport": "최종 내부 이송",
+        "internal tiles": "내부 타일",
+        "Quality ratio": "품질 비율",
+        "×": "×",
+        "Aggregation": "집계 방식",
+        "Counterfactual baseline unavailable": "반사실 기준선을 계산하지 못함",
+        "Internal transport quality ratio is high versus the counterfactual baseline (over 1.35×). Consider route tuning before using this as a hard gate.": (
+            "반사실 기준선 대비 내부 이송 품질 비율이 높습니다(1.35× 초과). "
+            "하드 게이트로 쓰기 전에 경로 튜닝을 검토하는 것이 좋습니다."
+        ),
+        "Show protected corridors (read-only)": "보호 코리도 표시(읽기 전용)",
+        "Protected corridor: hard": "보호 코리도: 하드",
+        "Protected corridor: soft": "보호 코리도: 소프트",
+        "Protected corridor: candidate": "보호 코리도: 후보",
+        "Corridors (hard/soft/candidate)": "코리도(하드/소프트/후보)",
     }
 )
 

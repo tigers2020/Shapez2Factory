@@ -21,6 +21,34 @@ RECOVERY_TERMINAL_VALIDATION_EXHAUSTED = "recovery_terminal_validation_recovery_
 RECOVERY_SKIP_P4_TOTAL_CAP = "recovery_skip_p4_total_cap"
 RECOVERY_SEGMENT_VALIDATION_RETRY = "validation_recovery_retry"
 
+# §13 pass3_summary ``recovery_terminal_reason`` (docs alias: terminal_reason).
+RECOVERY_TERMINAL_POST_RECLAIM_PASS3_SUCCESS = "post_reclaim_pass3_success"
+RECOVERY_TERMINAL_FINAL_VALIDATION_FAILED_AFTER_POST_RECLAIM_PASS3 = (
+    "final_validation_failed_after_post_reclaim_pass3"
+)
+RECOVERY_TERMINAL_P4_RECLAIM_COMPLETE = "p4_reclaim_complete"
+
+# P5 STEP9 → recovery action plan ids (planning; bounded loop in recovery_orchestrator only).
+RECOVERY_ACTION_ROLLBACK_LOWEST_PRIORITY_PLACEMENT = "rollback_lowest_priority_placement"
+RECOVERY_ACTION_PRECALCULATE_REPLACEMENT_ROUTE_SOFT_CORRIDOR = (
+    "precalculate_replacement_route_soft_corridor"
+)
+RECOVERY_ACTION_ROLLBACK_OR_FAIL_QUARANTINED = "rollback_or_fail_quarantined"
+RECOVERY_ACTION_GEOMETRY_REPAIR_OR_FAIL = "geometry_repair_or_fail"
+
+# P5 solver_summary: baseline vs final internal transport (Pass1·Pass2 snapshot).
+OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE = (
+    "internal_transport_above_pass2_baseline"
+)
+# Counterfactual sequential-trunk v1: warn when final / counterfactual exceeds this ratio.
+OPTIMIZATION_QUALITY_RATIO_WARN_THRESHOLD = 1.35
+OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH = "internal_transport_quality_ratio_high"
+# Baseline snapshot: Pass1·Pass2 committed map immediately before STEP4 merge/routing.
+OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4 = "pass1_pass2_pre_step4"
+
+# Counterfactual shortest-feasible baseline (geometry + STEP4 Dijkstra; sequential trunk v1).
+OPTIMIZATION_COUNTERFACTUAL_AGGREGATION_SEQUENTIAL_TRUNK_V1 = "sequential_trunk_v1"
+
 # Named recovery phases (summary / replay contract; append-only lists on solver_summary).
 RECOVERY_PHASE_VALIDATION_RECOVERY = "validation_recovery"
 RECOVERY_PHASE_MERGE_PARTIAL_FAILURE = "merge_partial_failure"
@@ -106,7 +134,7 @@ P3E3_REJECT_GEOMETRY = "rejected_by_geometry"
 P3E3_REJECT_VALIDATION = "rejected_by_validation"
 
 P3E2_SHADOW_ENABLED_DEFAULT = True
-P3E3_GUARDED_COMMIT_ENABLED_DEFAULT = False
+P3E3_GUARDED_COMMIT_ENABLED_DEFAULT = True
 P3E3_ATOMIC_SKIPPED_SHADOW_LEX_INCOMPLETE = "shadow_lex_incomplete_greedy_only"
 
 # --- build_solver_timeline frame ids (replay / trace); order matches pipeline stages ---
@@ -138,7 +166,7 @@ ROUTING_STATE_KEYS_STEP4_HASH: tuple[str, ...] = (
 MAX_POST_RECLAIM_PASS3_RERUNS = 1
 
 # --- Replay NDJSON contract ---
-SOLVER_REPLAY_CONTRACT_VERSION = 4
+SOLVER_REPLAY_CONTRACT_VERSION = 7
 
 # --- Lexicographic router (mining opportunity penalty) ---
 MINING_OPPORTUNITY_LOSS_PER_CANDIDATE = 40

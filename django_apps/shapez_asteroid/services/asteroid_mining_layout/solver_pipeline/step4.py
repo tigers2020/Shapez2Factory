@@ -14,8 +14,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
     solver_mutation_transaction as solver_mut_txn,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_corridors import (  # noqa: E501
+    protected_corridors_overlay_from_routing_state,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
     SolverMutationEventKind,
+    corridor_added_replay_payload,
     new_replay_transaction_id,
     normalize_replay_transport_kind,
     replay_transaction_payload,
@@ -201,6 +205,25 @@ def run_step4_stage(
                         "payload": rr_payload,
                     }
                 )
+            rs_step4 = getattr(step4_result, "routing_state", None)
+            pc_overlay = protected_corridors_overlay_from_routing_state(
+                rs_step4 if isinstance(rs_step4, dict) else None
+            )
+            for tier in ("hard", "soft", "candidate"):
+                cap = corridor_added_replay_payload(
+                    transaction_id=s4_txn_id,
+                    parent_txn_id=pass12_replay_txn_id,
+                    tier=tier,
+                    cells_raw=pc_overlay.get(tier),
+                )
+                if cap is not None:
+                    replay_events.append(
+                        {
+                            "kind": SolverMutationEventKind.CORRIDOR_ADDED.value,
+                            "phase": "step4",
+                            "payload": cap,
+                        }
+                    )
 
     map_after_routing = step4_result.map_after_routing
     post_step4_counts = count_layout_cells(map_after_routing)

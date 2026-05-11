@@ -9,12 +9,17 @@ from __future__ import annotations
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    RECOVERY_PHASE_VALIDATION_RECOVERY,
     SOLVER_FRAME_INIT,
     SOLVER_FRAME_PASS1_OUTER,
     SOLVER_FRAME_PASS2_INTERNAL,
     SOLVER_FRAME_PASS3_TRANSPORT,
     SOLVER_FRAME_STEP4_ROUTING,
     SOLVER_FRAME_VALIDATE,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_corridors import (  # noqa: E501
+    effective_routing_state_at_timeline_index,
+    protected_corridors_overlay_from_routing_state,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
     SolverMutationEventKind,
@@ -37,7 +42,9 @@ _FRAME_ID_TO_EVENT_PHASES: dict[str, tuple[str, ...]] = {
     SOLVER_FRAME_PASS2_INTERNAL: ("pass12",),
     SOLVER_FRAME_STEP4_ROUTING: ("step4",),
     SOLVER_FRAME_PASS3_TRANSPORT: ("pass3", "p4_reclaim"),
-    SOLVER_FRAME_VALIDATE: (),
+    # P5 orchestrator emits ``recovery_branch`` with ``phase="validation_recovery"`` (see
+    # ``recovery_orchestrator``); attach to the final validation timeline row for STEP10 UI.
+    SOLVER_FRAME_VALIDATE: (RECOVERY_PHASE_VALIDATION_RECOVERY,),
 }
 
 
@@ -107,6 +114,9 @@ def build_replay_ui_frames(
                     row["transaction_id"] = tid
                 p3_snaps.append(row)
 
+        rs_eff = effective_routing_state_at_timeline_index(solver_timeline, idx)
+        pc_overlay = protected_corridors_overlay_from_routing_state(rs_eff)
+
         out.append(
             {
                 "timeline_frame_id": fid,
@@ -120,6 +130,7 @@ def build_replay_ui_frames(
                 "primary_for_step10_ui": True,
                 "overlay_event_indices": overlay_indices,
                 "pass3_layout_snapshots": p3_snaps,
+                "protected_corridors": pc_overlay,
             }
         )
     return out
@@ -138,6 +149,7 @@ def _empty_ui_frame(*, timeline_index: int, timeline_frame_id: str) -> dict[str,
         "primary_for_step10_ui": True,
         "overlay_event_indices": [],
         "pass3_layout_snapshots": [],
+        "protected_corridors": protected_corridors_overlay_from_routing_state(None),
     }
 
 

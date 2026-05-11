@@ -250,11 +250,12 @@ def test_pass3_final_validation_failure_sets_rollback_reason() -> None:
     ):
         out = build_solver_timeline(decoded)
     ss = out["solver_summary"]
+    assert ss.get("pass3_skipped") is False
     assert ss.get("pass3_reverted") is True
     assert ss.get("pass3_rollback_reason") == "final_validation_failed_after_pass3"
     assert ss.get("pass3_attempted_commit") is True
     assert ss.get("pass3_final_committed") is False
-    assert ss.get("pass3_committed") is False
+    assert ss.get("pass3_committed") is True
     assert ss.get("pass3_map_accepted") is False
     assert ss.get("pass3_greedy_committed") is True
     assert ss.get("p4_reclaim_shadow_enabled") is False
@@ -269,6 +270,7 @@ def test_pass3_timeline_frame_includes_before_after_counts_when_eligible() -> No
     out = build_solver_timeline(_decoded_miners_with_belt_escape())
     p3f = next(f for f in out["solver_timeline"] if f["id"] == "solver_pass3_transport")
     s = p3f["summary"]
+    ss = out["solver_summary"]
     assert s.get("before_pass3_counts") is not None
     assert s.get("after_pass3_counts") is not None
     assert "pass3_transport_cells_removed" in s
@@ -280,6 +282,10 @@ def test_pass3_timeline_frame_includes_before_after_counts_when_eligible() -> No
         tot = int(s["pass3_transport_cells_removed_total"])
         internal = int(s.get("pass3_internal_transport_saved") or 0)
         assert internal <= tot
+    assert ss.get("p3e3_guarded_commit_enabled") is True
+    assert ss.get("p3e3_guarded_commit_attempted") is True
+    assert ss.get("p3e3_guarded_rejected_reason") != "guarded_disabled"
+    assert isinstance(ss.get("p3e3_guarded_committed"), bool)
     if not s.get("pass3_skipped"):
         assert s.get("p3e2_shadow_enabled") is True
         assert "p3e2_lex_found" in s
@@ -287,11 +293,6 @@ def test_pass3_timeline_frame_includes_before_after_counts_when_eligible() -> No
         assert "p3e2_outlet_count" in s
         assert "p3e2_hard_protected_guard_state" in s
         assert s.get("p3e2_hard_protected_guard_state") == "empty_corridor_pool_not_wired"
-        assert s.get("p3e3_guarded_commit_enabled") is False
-        assert s.get("p3e3_guarded_commit_attempted") is False
-        assert s.get("p3e3_guarded_committed") is False
-        assert s.get("p3e3_guarded_rejected_reason") == "guarded_disabled"
-        assert s.get("p3e3_guarded_post_commit_validation_passed") is None
 
 
 def test_p3e3_rollback_guarded_transport_cells_copies_role_map() -> None:
@@ -349,20 +350,24 @@ def test_run_pass3_p3e3_guarded_enabled_emits_precheck_trace() -> None:
     assert trace.get("p3e3_guarded_precheck_shadow_rejected_reason") == trace.get(
         "p3e2_shadow_rejected_reason"
     )
-    assert trace.get("p3e3_guarded_commit_rollback_performed") is False
-    assert trace.get("p3e3_guarded_commit_rollback_reason") is None
     assert trace.get("p3e3_atomic_candidate_built") is not None
     assert trace.get("p3e3_candidate_validation_passed") is not None
     assert wa is not None
     assert isinstance(trace.get("p3e3_guarded_commit_candidate"), dict)
     assert isinstance(trace.get("p3e3_guarded_known_good_transport_cell_count"), int)
-    if wa:
+    if wa and post:
+        assert trace.get("p3e3_guarded_commit_rollback_performed") is False
+        assert trace.get("p3e3_guarded_commit_rollback_reason") is None
         assert trace.get("p3e3_guarded_commit_mode") == "atomic_candidate_swap"
         assert trace.get("commit_reason") == "guarded_atomic_candidate"
-        assert trace.get("p3e3_guarded_post_commit_validation_passed") is True
         assert res is not None and res.committed is True
+    elif wa and not post:
+        assert trace.get("p3e3_guarded_commit_mode") == "atomic_candidate_swap"
+        assert trace.get("p3e3_guarded_commit_rollback_performed") is True
+        assert trace.get("p3e3_guarded_commit_rollback_reason") == P3E3_REJECT_CONNECTIVITY
     else:
         assert trace.get("p3e3_guarded_commit_mode") is None
+        assert trace.get("p3e3_guarded_commit_rollback_performed") is False
 
 
 def test_pass3_guarded_skips_atomic_when_shadow_lex_incomplete() -> None:
@@ -588,7 +593,7 @@ def test_guarded_atomic_swap_applies_candidate_transport_cells() -> None:
         patch.object(p3_mod, "_p3e3_run_atomic_candidate_phase", fake_phase),
         patch.object(
             p3_mod,
-            "_p3e3_validate_post_commit_transport_map",
+            "_p3e3_validate_guarded_swap_mining_map",
             return_value=(True, None),
         ),
     ):
@@ -832,7 +837,7 @@ def test_guarded_post_commit_validation_failure_restores_greedy_snapshot() -> No
         patch.object(p3_mod, "_p3e3_run_atomic_candidate_phase", fake_phase),
         patch.object(
             p3_mod,
-            "_p3e3_validate_post_commit_transport_map",
+            "_p3e3_validate_guarded_swap_mining_map",
             return_value=(False, P3E3_REJECT_CONNECTIVITY),
         ),
     ):
@@ -922,7 +927,7 @@ def test_guarded_post_commit_success_keeps_candidate_when_would_accept() -> None
         patch.object(p3_mod, "_p3e3_run_atomic_candidate_phase", fake_phase),
         patch.object(
             p3_mod,
-            "_p3e3_validate_post_commit_transport_map",
+            "_p3e3_validate_guarded_swap_mining_map",
             return_value=(True, None),
         ),
     ):
@@ -940,10 +945,10 @@ def test_guarded_post_commit_success_keeps_candidate_when_would_accept() -> None
 
 
 def test_guarded_commit_accepts_real_layout_candidate_snapshot() -> None:
-    """E3b-3: real-layout fixture naturally reaches would_accept + post-commit success.
+    """E3b-3: belt fixture builds atomic candidate; post-commit validates reconstructed map.
 
-    Locks the deterministic snapshot for the *successful* guarded commit path so future
-    refactors (lex router, route adapter, validation gate) cannot silently regress it.
+    Lex/greedy-equal candidate can still break full-layout connectivity on
+    ``mining_map_after_transport_reconstruction``; gate must rollback (no false accept).
     """
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
@@ -978,12 +983,11 @@ def test_guarded_commit_accepts_real_layout_candidate_snapshot() -> None:
     assert trace["p3e3_atomic_candidate_built"] is True
     assert trace["p3e3_candidate_validation_passed"] is True
     assert trace["p3e3_guarded_commit_would_accept"] is True
-    assert trace["p3e3_guarded_post_commit_validation_passed"] is True
-    assert trace["p3e3_guarded_commit_committed"] is True
-    assert trace["p3e3_guarded_commit_rollback_performed"] is False
-    assert trace["p3e3_guarded_commit_rollback_reason"] is None
+    assert trace["p3e3_guarded_post_commit_validation_passed"] is False
+    assert trace["p3e3_guarded_commit_committed"] is False
+    assert trace["p3e3_guarded_commit_rollback_performed"] is True
+    assert trace["p3e3_guarded_commit_rollback_reason"] == P3E3_REJECT_CONNECTIVITY
     assert trace["p3e3_guarded_commit_mode"] == "atomic_candidate_swap"
-    assert trace["commit_reason"] == "guarded_atomic_candidate"
 
     cand = trace["p3e3_guarded_commit_candidate"]
     assert cand["precheck_passed"] is True
@@ -997,11 +1001,7 @@ def test_guarded_commit_accepts_real_layout_candidate_snapshot() -> None:
     assert cand["touched_hard_protected_cells"] == []
 
     assert res_on is not None and res_off is not None
-    assert len(res_on.transport_cells) == 37
-    assert frozenset(res_on.transport_cells) != frozenset(res_off.transport_cells)
-    assert frozenset(res_on.transport_cells) == frozenset(
-        tuple(c) for c in cand["candidate_transport_cells"]
-    )
+    assert frozenset(res_on.transport_cells) == frozenset(res_off.transport_cells)
     assert all(role == "belt" for role in res_on.transport_cells.values())
 
 

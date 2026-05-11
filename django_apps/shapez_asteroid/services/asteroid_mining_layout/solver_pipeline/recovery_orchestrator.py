@@ -7,18 +7,26 @@ from typing import Any
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     MAX_TOTAL_RECOVERY_ATTEMPTS,
     MAX_VALIDATION_RECOVERY_ATTEMPTS,
+    RECOVERY_ACTION_GEOMETRY_REPAIR_OR_FAIL,
+    RECOVERY_ACTION_PRECALCULATE_REPLACEMENT_ROUTE_SOFT_CORRIDOR,
+    RECOVERY_ACTION_ROLLBACK_LOWEST_PRIORITY_PLACEMENT,
+    RECOVERY_ACTION_ROLLBACK_OR_FAIL_QUARANTINED,
     RECOVERY_PHASE_VALIDATION_RECOVERY,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.baseline_routing import (
+    compute_shortest_feasible_transport_baseline,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_policy import (
     append_recovery_contract_phase,
     apply_recovery_contract_defaults,
+    synthesize_recovery_validation_outcome,
     tag_merge_partial_failure_from_step4,
     tag_post_reclaim_pass3_connectivity_break,
     tag_reclaim_incremental_failure_from_summary,
     validation_recovery_allowed,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_timeline import (
-    _internal_transport_count_for_pass3_kind,
+    optimization_baseline_internal_transport_pre_step4,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
@@ -30,6 +38,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
 __all__ = [
     "enrich_solver_summary_recovery",
     "optimization_baseline_internal_transport_at_map",
+    "optimization_baseline_internal_transport_pre_step4",
     "recovery_timeline_envelope",
     "route_validation_recovery_actions",
     "run_solver_timeline_pipeline",
@@ -41,23 +50,28 @@ def optimization_baseline_internal_transport_at_map(
     *,
     final_mining_map: list[dict[str, Any]],
 ) -> int | None:
-    """Pass3-compatible internal transport count at a frozen layout (Pass1·Pass2 / STEP4)."""
+    """Pass3-compatible internal transport count at a frozen layout (Pass1·Pass2 or STEP4)."""
 
-    return _internal_transport_count_for_pass3_kind(mining_map, final_mining_map=final_mining_map)
+    return optimization_baseline_internal_transport_pre_step4(
+        mining_map, final_mining_map=final_mining_map
+    )
 
 
 def route_validation_recovery_actions(report: FinalValidationReport) -> list[str]:
-    """Map STEP9 ``FinalValidationReport`` to ordered recovery action ids (planning only)."""
+    """Map STEP9 ``FinalValidationReport`` to ordered recovery action ids (planning only).
+
+    Order: overlap → connectivity → quarantine → geometry. Capacity stays trace-only (STEP9).
+    """
 
     actions: list[str] = []
     if report.overlap_violation_count > 0:
-        actions.append("rollback_lowest_priority_placement")
+        actions.append(RECOVERY_ACTION_ROLLBACK_LOWEST_PRIORITY_PLACEMENT)
     if not report.connectivity_valid:
-        actions.append("precalculate_replacement_route_soft_corridor")
+        actions.append(RECOVERY_ACTION_PRECALCULATE_REPLACEMENT_ROUTE_SOFT_CORRIDOR)
     if report.quarantined_unrouted_count > 0:
-        actions.append("rollback_or_fail_quarantined")
+        actions.append(RECOVERY_ACTION_ROLLBACK_OR_FAIL_QUARANTINED)
     if not report.geometry_valid:
-        actions.append("geometry_repair_or_fail")
+        actions.append(RECOVERY_ACTION_GEOMETRY_REPAIR_OR_FAIL)
     return actions
 
 
@@ -89,6 +103,7 @@ def enrich_solver_summary_recovery(
     summary_fields["recovery_bounded_loop_configured"] = (
         MAX_TOTAL_RECOVERY_ATTEMPTS > 0 or MAX_VALIDATION_RECOVERY_ATTEMPTS > 0
     )
+    synthesize_recovery_validation_outcome(summary_fields)
 
 
 def recovery_timeline_envelope() -> dict[str, Any]:
@@ -177,6 +192,13 @@ def run_solver_timeline_pipeline(
             final_mining_map=final_map,
         )
     )
+    counterfactual_routing = compute_shortest_feasible_transport_baseline(
+        mining_map=pass12.map_after_pass2,
+        routing_jobs=None,
+        transport_kind=None,
+        final_mining_map=final_map,
+        is_external=is_external,
+    )
 
     routing_snapshot = solver_mut_txn.copy_mining_map_rows(step4.map_after_routing)
     max_cycles = MAX_VALIDATION_RECOVERY_ATTEMPTS + 1 if MAX_VALIDATION_RECOVERY_ATTEMPTS > 0 else 1
@@ -253,10 +275,17 @@ def run_solver_timeline_pipeline(
             optimization_baseline_internal_transport_post_step4=(
                 optimization_baseline_internal_transport_post_step4
             ),
+            optimization_counterfactual_internal_transport_sequential_v1=(
+                counterfactual_routing.internal_transport_count
+            ),
+            optimization_counterfactual_failure_reason=counterfactual_routing.failure_reason,
+            optimization_counterfactual_aggregation=counterfactual_routing.aggregation,
         )
         assert summary_fields is not None
         if MAX_VALIDATION_RECOVERY_ATTEMPTS > 0:
-            summary_fields["validation_recovery_cycles_used"] = va + 1
+            c = va + 1
+            summary_fields["validation_recovery_cycles_used"] = c
+            summary_fields["validation_recovery_attempts_used"] = c
             summary_fields["solver_replay_contract_envelope"] = recovery_timeline_envelope()
 
         if out.get("ok"):

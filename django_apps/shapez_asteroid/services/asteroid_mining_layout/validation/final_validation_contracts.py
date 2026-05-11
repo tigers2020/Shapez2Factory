@@ -7,7 +7,11 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class FinalValidationReport:
-    """STEP9 final validation 결과 DTO."""
+    """STEP9 final validation 결과 DTO.
+
+    Capacity / trunk rated limits are not represented here; they stay trace-only in STEP4
+    ``trunk_load`` (see ``validate_final_mining_layout`` module docstring).
+    """
 
     geometry_valid: bool
     connectivity_valid: bool

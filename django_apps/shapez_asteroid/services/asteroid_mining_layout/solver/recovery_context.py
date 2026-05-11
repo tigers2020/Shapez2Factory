@@ -12,6 +12,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     RECOVERY_SEGMENT_P4_RECLAIM,
     RECOVERY_SEGMENT_POST_RECLAIM_PASS3,
     RECOVERY_SEGMENT_SOFT_REPLACE_V2,
+    RECOVERY_TERMINAL_FINAL_VALIDATION_FAILED_AFTER_POST_RECLAIM_PASS3,
+    RECOVERY_TERMINAL_P4_RECLAIM_COMPLETE,
+    RECOVERY_TERMINAL_POST_RECLAIM_PASS3_SUCCESS,
     RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_policy import (
@@ -54,7 +57,7 @@ def finalize_recovery_terminal_reason(pass3_summary: dict[str, Any]) -> None:
         sync_recovery_total_attempts_used_from_chain(pass3_summary)
         return
     if pass3_summary.get("post_reclaim_pass3_map_accepted"):
-        pass3_summary["recovery_terminal_reason"] = "post_reclaim_pass3_success"
+        pass3_summary["recovery_terminal_reason"] = RECOVERY_TERMINAL_POST_RECLAIM_PASS3_SUCCESS
         sync_recovery_total_attempts_used_from_chain(pass3_summary)
         return
     pr_skip = pass3_summary.get("post_reclaim_pass3_skip_reason")
@@ -64,11 +67,12 @@ def finalize_recovery_terminal_reason(pass3_summary: dict[str, Any]) -> None:
         return
     if pass3_summary.get("post_reclaim_pass3_pass3_reverted"):
         pass3_summary["recovery_terminal_reason"] = (
-            "final_validation_failed_after_post_reclaim_pass3"
+            RECOVERY_TERMINAL_FINAL_VALIDATION_FAILED_AFTER_POST_RECLAIM_PASS3
         )
         sync_recovery_total_attempts_used_from_chain(pass3_summary)
         return
     pass3_summary["recovery_terminal_reason"] = str(
-        pass3_summary.get("p4_reclaim_loop_terminated_reason") or "p4_reclaim_complete"
+        pass3_summary.get("p4_reclaim_loop_terminated_reason")
+        or RECOVERY_TERMINAL_P4_RECLAIM_COMPLETE
     )
     sync_recovery_total_attempts_used_from_chain(pass3_summary)

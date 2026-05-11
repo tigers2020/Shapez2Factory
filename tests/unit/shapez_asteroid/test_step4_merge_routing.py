@@ -432,6 +432,15 @@ def test_p2c_corrective_reroute_increments_when_stub_check_flaky_then_ok() -> No
         "old_path_cell_count", 0
     )
     assert row0.get("replacement_cost_delta") is None
+    rm = row0.get("cells_removed")
+    ad = row0.get("cells_added")
+    kf = row0.get("cells_kept")
+    assert isinstance(rm, list) and isinstance(ad, list) and isinstance(kf, list)
+    assert all(isinstance(p, list) and len(p) == 2 for p in rm + ad + kf)
+    assert len(rm) + len(kf) == row0["old_path_cell_count"]
+    assert len(ad) + len(kf) == row0["new_path_cell_count"]
+    assert row0.get("transport_kind") == "shape_belt"
+    assert row0.get("replacement_reason") == "p2c_cascade_reroute"
 
 
 def test_step4_cascade_revalidates_route_after_neighbor_rollback() -> None:

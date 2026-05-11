@@ -142,6 +142,7 @@ def test_build_solver_timeline_final_validation_reports_geometry_connectivity() 
     brv = ss.get("before_return_validate")
     assert isinstance(brv, dict)
     assert "hard_protected_count" in brv and "soft_protected_count" in brv
+    assert "candidate_protected_corridor_count" in brv
     assert out.get("existing_layout_analysis") is ss.get("existing_layout_analysis")
     val_frame = next(f for f in out["solver_timeline"] if f["id"] == "solver_validate")
     assert val_frame["summary"].get("before_return_validate") == brv

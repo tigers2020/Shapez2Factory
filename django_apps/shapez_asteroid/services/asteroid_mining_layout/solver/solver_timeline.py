@@ -26,6 +26,20 @@ _EXTRACTORS = EXTRACTORS_SHAPE | EXTRACTORS_FLUID
 _EXTENSIONS = EXTENSIONS
 
 
+def count_internal_transport_tiles_for_kind(
+    cells: dict[Coord, dict[str, Any]],
+    *,
+    transport_kind: str,
+    final_mining_map: list[dict[str, Any]],
+) -> int:
+    """Count ``want_role(transport_kind)`` tiles inside ``final_mining_map`` asteroid patch."""
+
+    wr = want_role(transport_kind)
+    _, asteroid = mineable_and_asteroid_coords(final_mining_map)
+    asteroid_f = frozenset(asteroid)
+    return sum(1 for c, row in cells.items() if row.get("role") == wr and c in asteroid_f)
+
+
 def _internal_transport_count_for_pass3_kind(
     mining_map: list[dict[str, Any]],
     *,
@@ -45,10 +59,26 @@ def _internal_transport_count_for_pass3_kind(
     if len({j[2] for j in jobs}) != 1:
         return None
     tk = jobs[0][2]
-    wr = want_role(tk)
-    _, asteroid = mineable_and_asteroid_coords(final_mining_map)
-    asteroid_f = frozenset(asteroid)
-    return sum(1 for c, row in cells.items() if row.get("role") == wr and c in asteroid_f)
+    return count_internal_transport_tiles_for_kind(
+        cells, transport_kind=tk, final_mining_map=final_mining_map
+    )
+
+
+def optimization_baseline_internal_transport_pre_step4(
+    map_after_pass2: list[dict[str, Any]],
+    *,
+    final_mining_map: list[dict[str, Any]],
+) -> int | None:
+    """Pass1·Pass2 확정 직후(STEP4 이전) 스냅샷의 내부 transport baseline 카운트.
+
+    Pass3 ``before_internal_transport_count``와 동일 계약: 단일 ``transport_kind`` 라우팅
+    job이 있을 때만 정수를 반환하고, job 없음·혼합 transport면 ``None``. mineable 교집합
+    영역은 ``final_mining_map``의 mineable+asteroid 좌표에서 정의한다(목표 레이아웃 고정).
+    """
+
+    return _internal_transport_count_for_pass3_kind(
+        map_after_pass2, final_mining_map=final_mining_map
+    )
 
 
 def _attach_post_reclaim_pass3_count_aliases(out: dict[str, Any]) -> None:

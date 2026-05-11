@@ -32,10 +32,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_e3_
     _p3e3_run_atomic_candidate_phase,
     _p3e3_should_commit_guarded_candidate,
     _p3e3_transport_dict_from_candidate_cells,
-    _p3e3_validate_post_commit_transport_map,
     p3e2_pass3_summary_placeholder,
     p3e3_emit_guarded_trace,
     p3e3_pass3_summary_placeholder,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_e3_guarded_transport_trial import (  # noqa: E501
+    _p3e3_validate_guarded_swap_mining_map,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
     Pass3TransportResult,
@@ -220,8 +222,9 @@ def run_pass3_transport_minimization_from_maps(
             atomic_dto.candidate_transport_cells,
             want_role=wr,
         )
-        post_ok, post_fail_reason = _p3e3_validate_post_commit_transport_map(
-            cells_base=cells,
+        post_ok, post_fail_reason = _p3e3_validate_guarded_swap_mining_map(
+            mining_map=mining_map,
+            transport_cells=candidate_tc,
             want_role=wr,
             candidate_transport_cells=atomic_dto.candidate_transport_cells,
             fixed_output_stubs=frozenset(outlets_order),

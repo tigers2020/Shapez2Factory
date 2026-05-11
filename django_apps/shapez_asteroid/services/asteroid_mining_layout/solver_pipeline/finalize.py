@@ -7,6 +7,10 @@ from typing import Any
 from django.conf import settings
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4,
+    OPTIMIZATION_QUALITY_RATIO_WARN_THRESHOLD,
+    OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE,
+    OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH,
     SOLVER_FRAME_INIT,
     SOLVER_FRAME_PASS1_OUTER,
     SOLVER_FRAME_PASS2_INTERNAL,
@@ -21,6 +25,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.spati
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     EXTENSIONS,
     layout_kind,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_corridors import (  # noqa: E501
+    protected_corridors_overlay_from_routing_state,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
     build_solver_replay_snapshot,
@@ -51,6 +58,20 @@ def _validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> Any:
     )
 
     return solver_service.validate_final_mining_layout(mining_map)
+
+
+def _append_optimization_warnings(summary_fields: dict[str, Any]) -> None:
+    """Compare Pass1·Pass2 baseline internal transport to final Pass3 count (P5 summary)."""
+
+    warnings: list[str] = []
+    baseline = summary_fields.get("optimization_baseline_internal_transport")
+    after = summary_fields.get("after_internal_transport_count")
+    if isinstance(baseline, int) and isinstance(after, int) and after > baseline:
+        warnings.append(OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE)
+    ratio = summary_fields.get("optimization_internal_transport_quality_ratio")
+    if isinstance(ratio, (int, float)) and float(ratio) > OPTIMIZATION_QUALITY_RATIO_WARN_THRESHOLD:
+        warnings.append(OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH)
+    summary_fields["optimization_warnings"] = warnings
 
 
 def _baseline_extension_count(mining_map: list[dict[str, Any]]) -> int:
@@ -106,6 +127,9 @@ def build_final_solver_output(
     debug_location: str,
     optimization_baseline_internal_transport: int | None = None,
     optimization_baseline_internal_transport_post_step4: int | None = None,
+    optimization_counterfactual_internal_transport_sequential_v1: int | None = None,
+    optimization_counterfactual_failure_reason: str | None = None,
+    optimization_counterfactual_aggregation: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """최종 validation, summary, timeline, replay payload를 기존 schema로 조립한다."""
 
@@ -142,6 +166,8 @@ def build_final_solver_output(
         )
 
     hard_pc, soft_pc, pool_pc = _protected_corridor_counts_from_routing_state(routing_state_summary)
+    _pc_overlay_brv = protected_corridors_overlay_from_routing_state(routing_state_summary)
+    _cand_n = int((_pc_overlay_brv.get("counts") or {}).get("candidate") or 0)
     before_return_validate: dict[str, Any] = {
         "extractor_count": report.extractor_count,
         "extension_count": report.extension_count,
@@ -149,6 +175,7 @@ def build_final_solver_output(
         "protected_corridor_pool_len": pool_pc,
         "hard_protected_count": hard_pc,
         "soft_protected_count": soft_pc,
+        "candidate_protected_corridor_count": _cand_n,
         "transport_connected": report.transport_connectivity_ok,
     }
 
@@ -222,11 +249,42 @@ def build_final_solver_output(
     summary_fields["optimization_baseline_internal_transport_post_step4"] = (
         optimization_baseline_internal_transport_post_step4
     )
+    summary_fields["optimization_counterfactual_internal_transport_sequential_v1"] = (
+        optimization_counterfactual_internal_transport_sequential_v1
+    )
+    summary_fields["optimization_counterfactual_failure_reason"] = (
+        optimization_counterfactual_failure_reason
+    )
+    summary_fields["optimization_counterfactual_aggregation"] = (
+        optimization_counterfactual_aggregation
+    )
+    _cf_it = optimization_counterfactual_internal_transport_sequential_v1
+    _after_it = summary_fields.get("after_internal_transport_count")
+    _quality_ratio: float | None = None
+    if isinstance(_after_it, int) and isinstance(_cf_it, int) and _cf_it > 0:
+        _quality_ratio = round(float(_after_it) / float(_cf_it), 6)
+    summary_fields["optimization_internal_transport_quality_ratio"] = _quality_ratio
     enrich_solver_summary_recovery(
         summary_fields,
         report=report,
         step4_result=step4_result,
     )
+    _append_optimization_warnings(summary_fields)
+    optimization_replay_metrics: dict[str, Any] = {
+        "baseline_snapshot_kind": OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4,
+        "baseline_internal_transport_count": optimization_baseline_internal_transport,
+        "baseline_internal_transport_post_step4_count": (
+            optimization_baseline_internal_transport_post_step4
+        ),
+        "final_internal_transport_count": summary_fields.get("after_internal_transport_count"),
+        "optimization_warnings": list(summary_fields.get("optimization_warnings") or []),
+        "counterfactual_internal_transport_sequential_v1": (
+            optimization_counterfactual_internal_transport_sequential_v1
+        ),
+        "counterfactual_aggregation": optimization_counterfactual_aggregation,
+        "counterfactual_failure_reason": optimization_counterfactual_failure_reason,
+        "internal_transport_quality_ratio": _quality_ratio,
+    }
     frames: list[dict[str, Any]] = [
         {
             "id": SOLVER_FRAME_INIT,
@@ -308,7 +366,12 @@ def build_final_solver_output(
             "mining_map": map_final,
         },
     ]
-    solver_replay = build_solver_replay_snapshot(frames=frames, run_id=run_id, events=replay_events)
+    solver_replay = build_solver_replay_snapshot(
+        frames=frames,
+        run_id=run_id,
+        events=replay_events,
+        optimization_metrics=optimization_replay_metrics,
+    )
     out = {
         "ok": return_reason == "ok",
         "return_reason": return_reason,
@@ -331,6 +394,25 @@ def build_final_solver_output(
             "extension_count": report.extension_count,
             "transport_cell_count": report.transport_cell_count,
             "transport_connectivity_ok": report.transport_connectivity_ok,
+            "optimization_warnings": list(summary_fields.get("optimization_warnings") or []),
+            "optimization_baseline_snapshot_kind": (
+                OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4
+            ),
+            "optimization_baseline_internal_transport": optimization_baseline_internal_transport,
+            "optimization_baseline_internal_transport_post_step4": (
+                optimization_baseline_internal_transport_post_step4
+            ),
+            "optimization_final_internal_transport_count": summary_fields.get(
+                "after_internal_transport_count"
+            ),
+            "optimization_counterfactual_internal_transport_sequential_v1": (
+                optimization_counterfactual_internal_transport_sequential_v1
+            ),
+            "optimization_counterfactual_failure_reason": (
+                optimization_counterfactual_failure_reason
+            ),
+            "optimization_counterfactual_aggregation": (optimization_counterfactual_aggregation),
+            "optimization_internal_transport_quality_ratio": _quality_ratio,
         },
     }
     debug_log_event(
@@ -479,6 +561,10 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("post_reclaim_pass3_delta", None)
     summary_fields.setdefault("optimization_baseline_internal_transport", None)
     summary_fields.setdefault("optimization_baseline_internal_transport_post_step4", None)
+    summary_fields.setdefault("optimization_counterfactual_internal_transport_sequential_v1", None)
+    summary_fields.setdefault("optimization_counterfactual_failure_reason", None)
+    summary_fields.setdefault("optimization_counterfactual_aggregation", None)
+    summary_fields.setdefault("optimization_internal_transport_quality_ratio", None)
     summary_fields.setdefault("recovery_contract_phases", [])
     summary_fields.setdefault("recovery_total_attempts_used", 0)
     summary_fields.setdefault("validation_recovery_attempts_used", 0)
@@ -490,3 +576,9 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("recovery_bounded_loop_configured", False)
     summary_fields.setdefault("max_total_recovery_attempts", 0)
     summary_fields.setdefault("max_validation_recovery_attempts", 0)
+    summary_fields.setdefault("validation_recovery_cycles_used", 0)
+    summary_fields.setdefault(
+        "recovery_validation_outcome",
+        {"commit_reason": None, "rollback_reason": None, "rejected_reason": None},
+    )
+    summary_fields.setdefault("optimization_warnings", [])

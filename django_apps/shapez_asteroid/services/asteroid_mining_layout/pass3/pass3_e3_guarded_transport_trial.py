@@ -102,3 +102,46 @@ def _p3e3_validate_post_commit_transport_map(
         fixed_output_stubs=fixed_output_stubs,
         hard_protected_corridors=hard_protected_corridors,
     )
+
+
+def _p3e3_validate_guarded_swap_mining_map(
+    *,
+    mining_map: list[dict[str, Any]],
+    transport_cells: dict[Coord, str],
+    want_role: str,
+    candidate_transport_cells: frozenset[Coord],
+    fixed_output_stubs: frozenset[Coord],
+    hard_protected_corridors: frozenset[Coord],
+) -> tuple[bool, str | None]:
+    """Post-swap gate on the **same** rows as :func:`mining_map_after_transport_reconstruction`.
+
+    Greedy Pass3 may mutate the live ``cells`` dict while the committed layout is derived from the
+    original ``mining_map`` list; validating only ``cells`` can false-accept swaps that break
+    connectivity on the reconstructed map.
+    """
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (  # noqa: E501
+        mining_map_after_transport_reconstruction,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
+        validate_final_mining_layout,
+    )
+
+    if not fixed_output_stubs.issubset(candidate_transport_cells):
+        return False, P3E3_REJECT_FIXED_STUB_REMOVAL
+    if hard_protected_corridors and not hard_protected_corridors.issubset(
+        candidate_transport_cells
+    ):
+        return False, P3E3_REJECT_HARD_PROTECTED_CORRIDOR
+
+    trial_map = mining_map_after_transport_reconstruction(
+        mining_map,
+        transport_cells,
+        target_role=want_role,
+    )
+    report = validate_final_mining_layout(trial_map)
+    if report.geometry_valid and report.connectivity_valid:
+        return True, None
+    if not report.geometry_valid:
+        return False, P3E3_REJECT_GEOMETRY
+    return False, P3E3_REJECT_CONNECTIVITY

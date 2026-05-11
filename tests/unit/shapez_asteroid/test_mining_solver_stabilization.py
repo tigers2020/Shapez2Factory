@@ -8,6 +8,9 @@ from unittest.mock import patch
 import pytest
 from django.test import override_settings
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    SOLVER_REPLAY_CONTRACT_VERSION,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_bundle_commit import (  # noqa: E501
     Pass12BundleCandidate,
     Pass12LayoutScratch,
@@ -232,7 +235,7 @@ def test_build_solver_timeline_replay_v3_emits_step4_transaction_events() -> Non
     }
     out = build_solver_timeline(decoded)
     sr = out["solver_replay"]
-    assert sr["contract_version"] == 4
+    assert sr["contract_version"] == SOLVER_REPLAY_CONTRACT_VERSION
     assert isinstance(sr.get("ui_frames"), list)
     assert sr.get("computation_cycle") == len(sr["events"])
     for ev in sr["events"]:
@@ -242,6 +245,7 @@ def test_build_solver_timeline_replay_v3_emits_step4_transaction_events() -> Non
     kinds = [e.get("kind") for e in sr["events"]]
     assert SolverMutationEventKind.TRANSACTION_BEGIN.value in kinds
     assert SolverMutationEventKind.MAP_DIFF_COMMITTED.value in kinds
+    assert SolverMutationEventKind.CORRIDOR_ADDED.value in kinds
     snap_kinds = [
         e.get("kind") for e in sr["events"] if isinstance(e, dict) and e.get("phase") == "pass3"
     ]

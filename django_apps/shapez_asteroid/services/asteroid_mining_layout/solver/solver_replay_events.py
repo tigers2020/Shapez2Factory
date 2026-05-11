@@ -33,6 +33,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 # ``cells_removed`` / ``cells_added`` (list of ``[x, y]``), ``cells_kept`` (null or list),
 # ``transport_kind`` (``shape_belt`` | ``fluid_pipe``), ``replacement_reason``; per-row detail
 # remains in ``replacements[]``. Aggregates on the event mirror the union of replacement rows.
+# v7: protected corridor delta kinds — ``corridor_added``, ``corridor_removed``,
+# ``corridor_promoted``, ``corridor_replaced`` (see ``corridor_*_replay_payload`` helpers;
+# MVP may emit only a subset).
 
 
 class SolverMutationEventKind(StrEnum):
@@ -51,6 +54,114 @@ class SolverMutationEventKind(StrEnum):
     ROLLBACK = "rollback"
     ROUTE_REPLACED = "route_replaced"
     PLACEMENT_STATE_CHANGED = "placement_state_changed"
+    CORRIDOR_ADDED = "corridor_added"
+    CORRIDOR_REMOVED = "corridor_removed"
+    CORRIDOR_PROMOTED = "corridor_promoted"
+    CORRIDOR_REPLACED = "corridor_replaced"
+
+
+CORRIDOR_REPLAY_TIERS: frozenset[str] = frozenset({"hard", "soft", "candidate"})
+
+
+def sorted_corridor_replay_cells(raw: object) -> list[list[int]]:
+    """Normalize ``[x, y]`` pairs: drop ``x==0``, dedupe, sort by (y, x) like STEP4 pools."""
+
+    pairs: set[tuple[int, int]] = set()
+    if isinstance(raw, list):
+        for it in raw:
+            if isinstance(it, (list, tuple)) and len(it) >= 2:
+                try:
+                    x, y = int(it[0]), int(it[1])
+                except (TypeError, ValueError):
+                    continue
+                if x == 0:
+                    continue
+                pairs.add((x, y))
+    return [[a, b] for a, b in sorted(pairs, key=lambda p: (p[1], p[0]))]
+
+
+def corridor_added_replay_payload(
+    *,
+    transaction_id: str,
+    parent_txn_id: str | None,
+    tier: str,
+    cells_raw: object,
+) -> dict[str, Any] | None:
+    """Payload for ``corridor_added``; ``None`` if tier invalid or no cells after normalize."""
+
+    if tier not in CORRIDOR_REPLAY_TIERS:
+        return None
+    cells = sorted_corridor_replay_cells(cells_raw)
+    if not cells:
+        return None
+    out = replay_transaction_payload(transaction_id=transaction_id, parent_txn_id=parent_txn_id)
+    out["tier"] = tier
+    out["cells"] = cells
+    return out
+
+
+def corridor_removed_replay_payload(
+    *,
+    transaction_id: str,
+    parent_txn_id: str | None,
+    tier: str,
+    cells_raw: object,
+) -> dict[str, Any] | None:
+    """Payload for ``corridor_removed``; same shape as ``corridor_added``."""
+
+    return corridor_added_replay_payload(
+        transaction_id=transaction_id,
+        parent_txn_id=parent_txn_id,
+        tier=tier,
+        cells_raw=cells_raw,
+    )
+
+
+def corridor_promoted_replay_payload(
+    *,
+    transaction_id: str,
+    parent_txn_id: str | None,
+    from_tier: str,
+    to_tier: str,
+    cells_raw: object,
+) -> dict[str, Any] | None:
+    """Payload for ``corridor_promoted``; ``None`` if tiers invalid, equal, or no cells."""
+
+    if from_tier not in CORRIDOR_REPLAY_TIERS or to_tier not in CORRIDOR_REPLAY_TIERS:
+        return None
+    if from_tier == to_tier:
+        return None
+    cells = sorted_corridor_replay_cells(cells_raw)
+    if not cells:
+        return None
+    out = replay_transaction_payload(transaction_id=transaction_id, parent_txn_id=parent_txn_id)
+    out["from_tier"] = from_tier
+    out["to_tier"] = to_tier
+    out["cells"] = cells
+    return out
+
+
+def corridor_replaced_replay_payload(
+    *,
+    transaction_id: str,
+    parent_txn_id: str | None,
+    tier: str,
+    cells_removed_raw: object,
+    cells_added_raw: object,
+) -> dict[str, Any] | None:
+    """Payload for ``corridor_replaced`` (v7); ``None`` if tier invalid or both sides empty."""
+
+    if tier not in CORRIDOR_REPLAY_TIERS:
+        return None
+    rem = sorted_corridor_replay_cells(cells_removed_raw)
+    add = sorted_corridor_replay_cells(cells_added_raw)
+    if not rem and not add:
+        return None
+    out = replay_transaction_payload(transaction_id=transaction_id, parent_txn_id=parent_txn_id)
+    out["tier"] = tier
+    out["cells_removed"] = rem
+    out["cells_added"] = add
+    return out
 
 
 def new_replay_transaction_id() -> str:

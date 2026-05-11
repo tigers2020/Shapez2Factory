@@ -36,6 +36,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_p
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
     SolverMutationEventKind,
+    corridor_replaced_replay_payload,
     new_replay_transaction_id,
     replay_transaction_payload,
 )
@@ -168,6 +169,22 @@ def run_p4_reclaim_stage(
                     "payload": p4_diff,
                 }
             )
+            if bool(p4_trace.get("p4_soft_replace_committed")):
+                cr_pl = corridor_replaced_replay_payload(
+                    transaction_id=p4_txn_id,
+                    parent_txn_id=step4_replay_transaction_id,
+                    tier="soft",
+                    cells_removed_raw=p4_trace.get("p4_soft_replace_old_cells"),
+                    cells_added_raw=p4_trace.get("p4_soft_replace_new_cells"),
+                )
+                if cr_pl is not None:
+                    replay_events.append(
+                        {
+                            "kind": SolverMutationEventKind.CORRIDOR_REPLACED.value,
+                            "phase": "p4_reclaim",
+                            "payload": cr_pl,
+                        }
+                    )
     pass3_summary.update(p4_trace)
     tag_reclaim_incremental_failure_from_summary(pass3_summary)
     if post_reclaim_pass3_permission(

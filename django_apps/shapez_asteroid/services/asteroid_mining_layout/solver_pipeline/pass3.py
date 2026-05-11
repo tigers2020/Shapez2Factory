@@ -239,11 +239,26 @@ def run_pass3_stage(
                         upd[k] = p3_trace[k]
                 pass3_summary.update(upd)
             else:
-                pass3_summary["pass3_reverted"] = True
-                pass3_summary["pass3_rollback_reason"] = "final_validation_failed_after_pass3"
-                pass3_summary["pass3_map_accepted"] = False
-                pass3_summary["pass3_attempted_commit"] = bool(p3_trace.get("pass3_committed"))
-                pass3_summary["pass3_final_committed"] = False
+                upd_rev: dict[str, Any] = {
+                    "pass3_skipped": False,
+                    "pass3_skip_reason": None,
+                    "pass3_committed": bool(p3_trace.get("pass3_committed")),
+                    "pass3_reverted": True,
+                    "pass3_rollback_reason": "final_validation_failed_after_pass3",
+                    "pass3_map_accepted": False,
+                    "pass3_attempted_commit": bool(p3_trace.get("pass3_committed")),
+                    "pass3_final_committed": False,
+                    "pass3_gain": int(p3_trace.get("gain", 0) or 0),
+                    "pass3_bottleneck_count": p3_trace.get("bottleneck_count", 0),
+                    "pass3_over_capacity_segments": p3_trace.get("over_capacity_segments", 0),
+                }
+                if p3_trace.get("pass3_committed"):
+                    upd_rev["pass3_commit_reason"] = p3_trace.get("commit_reason")
+                else:
+                    rejected_reason = p3_trace.get("rejected_reason")
+                    if rejected_reason is not None:
+                        upd_rev["pass3_rejected_reason"] = rejected_reason
+                pass3_summary.update(upd_rev)
                 for k in (
                     "before_transport_count",
                     "after_transport_count",

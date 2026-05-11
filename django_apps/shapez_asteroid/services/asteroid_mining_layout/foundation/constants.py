@@ -168,6 +168,37 @@ MAX_POST_RECLAIM_PASS3_RERUNS = 1
 # --- Replay NDJSON contract ---
 SOLVER_REPLAY_CONTRACT_VERSION = 7
 
+# --- P3-F: Topology Branch Replacement MVP (branch semantics + trace; no new engine) ---
+# Detector kind ordering (deterministic priority for ``p3f_best_candidate_kind`` and the
+# ``p3f_candidate_kinds`` list itself).
+P3F_KIND_NONE = "none"
+P3F_KIND_MINEABLE_HEAVY = "mineable_heavy_branch"
+P3F_KIND_LONG_PERIMETER_DETOUR = "long_perimeter_detour"
+P3F_KIND_PARALLEL_DUPLICATE = "parallel_duplicate_branch"
+P3F_KIND_LOW_REUSE = "low_reuse_branch"
+P3F_KIND_PRIORITY_ORDER: tuple[str, ...] = (
+    P3F_KIND_MINEABLE_HEAVY,
+    P3F_KIND_LONG_PERIMETER_DETOUR,
+    P3F_KIND_PARALLEL_DUPLICATE,
+    P3F_KIND_LOW_REUSE,
+)
+# Detector thresholds (MVP heuristics; tunable, unit-tested).
+P3F_MINEABLE_HEAVY_RATIO_MIN = 0.35
+P3F_LONG_DETOUR_RATIO_MIN = 1.15
+P3F_PARALLEL_ENDPOINT_MANHATTAN_MAX = 2
+P3F_PARALLEL_OVERLAP_RATIO_MAX = 0.25
+P3F_LOW_REUSE_RATIO_MAX = 0.10
+
+# Replacement search mode (fixed for MVP; future expansions may add new strings).
+P3F_REPLACEMENT_SEARCH_MODE_LEX_PER_STUB = "p3e3_lex_per_stub"
+
+# Commit reasons (alias namespace separate from existing ``COMMIT_REASON_GUARDED_ATOMIC``).
+P3F_COMMIT_REASON_NORMAL_GAIN = "normal_gain"
+
+# Rejected reason mapping fallback when a P3-E3 reason is not in the table.
+P3F_REJECTED_REASON_UNMAPPED = "rejected_unmapped"
+P3F_REJECTED_NO_REPLACEMENT_ROUTE = "rejected_by_no_replacement_route"
+
 # --- Lexicographic router (mining opportunity penalty) ---
 MINING_OPPORTUNITY_LOSS_PER_CANDIDATE = 40
 

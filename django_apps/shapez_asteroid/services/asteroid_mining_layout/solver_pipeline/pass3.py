@@ -13,6 +13,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     SOLVER_FRAME_PASS3_TRANSPORT,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_f_branch_candidate import (  # noqa: E501
+    p3f_pass3_summary_placeholder,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (
     p3e2_pass3_summary_placeholder,
     p3e3_pass3_summary_placeholder,
@@ -109,6 +112,7 @@ def initial_pass3_summary() -> dict[str, Any]:
         "recovery_terminal_reason": None,
         **p3e2_pass3_summary_placeholder(rejected_reason="pass3_not_eligible"),
         **p3e3_pass3_summary_placeholder(rejected_reason="pass3_not_eligible"),
+        **p3f_pass3_summary_placeholder(rejected_reason="pass3_not_eligible"),
     }
     apply_recovery_contract_defaults(d)
     return d
@@ -202,7 +206,12 @@ def run_pass3_stage(
                 )
             raise
         for k, v in p3_trace.items():
-            if k.startswith("p3e2_") or k.startswith("p3e3_") or k == "pass3_greedy_committed":
+            if (
+                k.startswith("p3e2_")
+                or k.startswith("p3e3_")
+                or k.startswith("p3f_")
+                or k == "pass3_greedy_committed"
+            ):
                 pass3_summary[k] = v
         if p3_trace.get("pass3_skipped"):
             pass3_summary["pass3_skip_reason"] = p3_trace.get("pass3_skip_reason")

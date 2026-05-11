@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -39,6 +40,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_e3_
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_e3_guarded_transport_trial import (  # noqa: E501
     _p3e3_validate_guarded_swap_mining_map,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_f_branch_candidate import (  # noqa: E501
+    p3f_build_trace,
+    p3f_disabled_trace,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
     Pass3TransportResult,
     mining_map_after_transport_reconstruction,
@@ -53,6 +58,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_tra
     pass3_skip_summary,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    blocked_cells,
     collect_routing_jobs,
     mineable_and_asteroid_coords,
 )
@@ -61,6 +67,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_permission import (
     p3e3_guarded_commit_effective_enabled,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
+    transport_cells_reaching_external,
 )
 
 
@@ -170,12 +179,14 @@ def run_pass3_transport_minimization_from_maps(
     atomic_dto: P3E3GuardedCommitCandidate | None = None
     candidate_validation_passed: bool | None = None
     would_accept_flag: bool | None = None
+    atomic_search_ms: int = 0
     if guarded_on:
         if _p3e3_atomic_phase_deferred_by_shadow_alignment(shadow_trace):
             p3e3_trace["p3e3_guarded_atomic_skipped_reason"] = (
                 P3E3_ATOMIC_SKIPPED_SHADOW_LEX_INCOMPLETE
             )
         else:
+            t0 = time.perf_counter()
             atomic_dto, atomic_trace = _p3e3_run_atomic_candidate_phase(
                 mining_map=mining_map,
                 cells=cells,
@@ -189,6 +200,7 @@ def run_pass3_transport_minimization_from_maps(
                 asteroid_f=asteroid_f,
                 is_external=is_external,
             )
+            atomic_search_ms = int(round((time.perf_counter() - t0) * 1000.0))
             p3e3_trace.update(atomic_trace)
             candidate_validation_passed = atomic_trace.get("p3e3_candidate_validation_passed")
             would_accept_flag = atomic_trace.get("p3e3_guarded_commit_would_accept")
@@ -284,12 +296,49 @@ def run_pass3_transport_minimization_from_maps(
     pass3_internal_transport_saved = max(
         0, before_internal_transport_count - after_internal_transport_count
     )
+
+    if atomic_dto is not None:
+        blocked_set = blocked_cells(cells)
+        baseline_trunk = transport_cells_reaching_external(
+            set(tc),
+            blocked_set,
+            is_external,
+        )
+        candidate_internal_transport_count = len(
+            atomic_dto.candidate_transport_cells & frozenset(asteroid_set)
+        )
+        p3f_trace = p3f_build_trace(
+            dto=atomic_dto,
+            baseline_internal_transport_count=before_internal_transport_count,
+            candidate_internal_transport_count=candidate_internal_transport_count,
+            fixed_output_stubs=frozenset(outlets_order),
+            hard_protected_corridors=atomic_dto.hard_protected_corridors,
+            trunk_cells=frozenset(baseline_trunk),
+            mineable=mineable_f,
+            asteroid=asteroid_f,
+            sum_lex_len=shadow_trace.get("p3e2_lex_path_length"),
+            sum_gr_len=shadow_trace.get("p3e2_greedy_path_length"),
+            greedy_paths=None,
+            committed=guarded_committed_outcome,
+            rejected_reason_raw=(
+                rollback_reason
+                if rollback_performed and rollback_reason
+                else (atomic_dto.rejected_reason if atomic_dto else None)
+            ),
+            internal_transport_saved=pass3_internal_transport_saved,
+            search_ms=atomic_search_ms,
+            expanded_nodes=None,
+        )
+    else:
+        p3f_trace = p3f_disabled_trace()
+
     trace = {
         "pass3_skipped": False,
         "pass3_committed": result.committed,
         "pass3_greedy_committed": greedy_result.committed,
         **shadow_trace,
         **p3e3_trace,
+        **p3f_trace,
         "before_transport_count": before_transport_count,
         "after_transport_count": after_transport_count,
         "before_internal_transport_count": before_internal_transport_count,

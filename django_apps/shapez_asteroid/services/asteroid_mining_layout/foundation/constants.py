@@ -172,7 +172,12 @@ SOLVER_REPLAY_CONTRACT_VERSION = 8
 # v8: ``ui_frames[].trunk_load_overlay`` (STEP4 trunk observation slice for STEP10 UI).
 
 # Pass3 lexicographic search: multiply STEP4 ``trunk_edge_load`` counts per canonical edge key.
-PASS3_TRUNK_EDGE_CONGESTION_WEIGHT_PER_TRAVERSAL = 1
+PASS3_TRUNK_EDGE_CONGESTION_WEIGHT_PER_TRAVERSAL = 10
+
+# Pass3 lex ``route_step``: extra cost on ``ASTEROID_INTERIOR_VOID`` by BFS depth from void-touching
+# boundary (encourages perimeter-hugging without a new lex axis).
+PASS3_INTERIOR_DEPTH_ROUTE_PENALTY_PER_UNIT = 3
+PASS3_INTERIOR_DEPTH_PENALTY_MAX_DEPTH = 12
 
 # --- P3-F: Topology Branch Replacement MVP (branch semantics + trace; no new engine) ---
 # Detector kind ordering (deterministic priority for ``p3f_best_candidate_kind`` and the

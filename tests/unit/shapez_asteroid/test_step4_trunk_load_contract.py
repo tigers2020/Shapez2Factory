@@ -317,7 +317,7 @@ def test_pass3_edge_congestion_weights_from_trunk_load() -> None:
         },
     }
     w = pass3_edge_congestion_weights_from_trunk_load(tl, transport_kind="shape_belt")
-    assert w == {"1,0--2,0": 3, "2,0--3,0": 1}
+    assert w == {"1,0--2,0": 30, "2,0--3,0": 10}
     assert pass3_edge_congestion_weights_from_trunk_load(None, transport_kind="shape_belt") is None
 
 
@@ -331,7 +331,7 @@ def test_pass3_edge_congestion_weights_squares_maximized_contribution() -> None:
         },
     }
     w = pass3_edge_congestion_weights_from_trunk_load(tl, transport_kind="shape_belt")
-    assert w == {"1,0--2,0": 5}
+    assert w == {"1,0--2,0": 50}
 
 
 def test_compact_trunk_load_overlay_for_replay_minimal() -> None:

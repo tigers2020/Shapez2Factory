@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import pytest
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    PASS3_INTERIOR_DEPTH_PENALTY_MAX_DEPTH,
+    PASS3_INTERIOR_DEPTH_ROUTE_PENALTY_PER_UNIT,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.lexicographic_router import (  # noqa: E501
     RouteSearchResult,
+    _step_deltas,
     find_lexicographic_route,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_zone import (
@@ -13,6 +18,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_z
     ROUTE_ZONE_COST,
     RouteZone,
     TransportKind,
+    build_asteroid_boundary_depth_by_cell,
     build_route_zone_map,
     transport_kind_from_solver_value,
 )
@@ -227,6 +233,68 @@ def test_transport_kind_from_solver_value_roundtrip() -> None:
 def test_transport_kind_from_solver_value_unknown() -> None:
     with pytest.raises(ValueError, match="unknown transport_kind"):
         transport_kind_from_solver_value("belt")
+
+
+def test_step_deltas_interior_depth_adds_route_cost_only_on_interior_void() -> None:
+    """Interior void + depth map increases lex axis 2; exterior cells ignore depth."""
+
+    zm = {(2, 2): RouteZone.ASTEROID_INTERIOR_VOID}
+    depth = {(2, 2): 4}
+    _, _, dr_int, _, _, _ = _step_deltas(
+        prev=None,
+        cur=(1, 2),
+        nxt=(2, 2),
+        route_zone_map=zm,
+        transport_kind=TransportKind.SHAPE_BELT,
+        existing_transport_cells=set(),
+        placement_candidate_cells=set(),
+        congestion_step=0,
+        interior_depth_by_cell=depth,
+    )
+    cap = min(4, PASS3_INTERIOR_DEPTH_PENALTY_MAX_DEPTH)
+    assert dr_int == ROUTE_ZONE_COST[RouteZone.ASTEROID_INTERIOR_VOID] + (
+        PASS3_INTERIOR_DEPTH_ROUTE_PENALTY_PER_UNIT * cap
+    )
+
+    _, _, dr_ext, _, _, _ = _step_deltas(
+        prev=None,
+        cur=(1, 2),
+        nxt=(9, 2),
+        route_zone_map=zm,
+        transport_kind=TransportKind.SHAPE_BELT,
+        existing_transport_cells=set(),
+        placement_candidate_cells=set(),
+        congestion_step=0,
+        interior_depth_by_cell={(9, 2): 99},
+    )
+    assert dr_ext == ROUTE_ZONE_COST[RouteZone.EXTERIOR_VOID]
+
+
+def test_find_lexicographic_route_avoids_interior_spine_asteroid_only_allowed() -> None:
+    """With search confined to the asteroid, depth penalty discourages the central column."""
+
+    ast = frozenset((x, y) for x in range(1, 6) for y in range(1, 6))
+    zm = build_route_zone_map(asteroid_cells=ast, mineable_cells=frozenset())
+    depth = build_asteroid_boundary_depth_by_cell(asteroid_cells=ast)
+    start = (2, 1)
+    goal = (2, 5)
+    goals = frozenset({goal})
+
+    res = find_lexicographic_route(
+        start=start,
+        goals=goals,
+        route_zone_map=zm,
+        transport_kind=TransportKind.SHAPE_BELT,
+        blocked_cells=frozenset(),
+        existing_transport_cells=frozenset(),
+        asteroid_cells=set(ast),
+        placement_candidate_cells=frozenset(),
+        allowed_cells=set(ast),
+        interior_depth_by_cell=depth,
+    )
+    assert res.found
+    assert (2, 3) not in res.path, "expected to avoid deep interior spine column"
+    assert all(c in ast for c in res.path)
 
 
 def test_edge_congestion_weights_accumulate_in_lex_priority() -> None:

@@ -111,6 +111,7 @@ def _p3e3_collect_guarded_lex_replacement(
             placement_candidate_cells=mineable_s,
             allowed_cells=set(ad_out.allowed_cells),
             edge_congestion_weights=edge_congestion_weights,
+            interior_depth_by_cell=ad_out.interior_depth_by_cell,
         )
         g_path = placement_stub_route_probe_path(
             outlet_stub=stub,

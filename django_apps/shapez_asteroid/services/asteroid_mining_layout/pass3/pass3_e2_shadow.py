@@ -141,6 +141,7 @@ def _p3e2_shadow_trace(
             placement_candidate_cells=mineable_s,
             allowed_cells=set(ad_out.allowed_cells),
             edge_congestion_weights=edge_congestion_weights,
+            interior_depth_by_cell=ad_out.interior_depth_by_cell,
         )
         if lex_res.found:
             lex_outlets_ok += 1

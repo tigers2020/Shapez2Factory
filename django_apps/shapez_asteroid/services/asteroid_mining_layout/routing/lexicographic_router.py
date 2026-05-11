@@ -11,6 +11,8 @@ from collections.abc import Mapping, Set
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     MINING_OPPORTUNITY_LOSS_PER_CANDIDATE,
+    PASS3_INTERIOR_DEPTH_PENALTY_MAX_DEPTH,
+    PASS3_INTERIOR_DEPTH_ROUTE_PENALTY_PER_UNIT,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.lexicographic_router_contracts import (  # noqa: E501
@@ -65,6 +67,7 @@ def _step_deltas(
     existing_transport_cells: Set[Coord],
     placement_candidate_cells: Set[Coord],
     congestion_step: int,
+    interior_depth_by_cell: Mapping[Coord, int] | None = None,
 ) -> tuple[int, int, int, int, int, int]:
     """Per-step deltas: internal, opportunity, route_cost, congestion, turn, +1 path cell."""
 
@@ -87,6 +90,15 @@ def _step_deltas(
     route_step = ROUTE_ZONE_COST[zone] * mult
     if nxt in existing_transport_cells:
         route_step = min(route_step, 10)
+    if (
+        interior_depth_by_cell is not None
+        and zone is RouteZone.ASTEROID_INTERIOR_VOID
+        and nxt not in existing_transport_cells
+    ):
+        raw_d = interior_depth_by_cell.get(nxt)
+        if raw_d is not None:
+            dcap = min(int(raw_d), int(PASS3_INTERIOR_DEPTH_PENALTY_MAX_DEPTH))
+            route_step += int(PASS3_INTERIOR_DEPTH_ROUTE_PENALTY_PER_UNIT) * dcap
     turn_step = _turn_delta(prev, cur, nxt)
     return internal_step, opp_step, route_step, congestion_step, turn_step, 1
 
@@ -120,12 +132,16 @@ def find_lexicographic_route(
     max_expanded_nodes: int = 20_000,
     allowed_cells: Set[Coord] | None = None,
     edge_congestion_weights: Mapping[str, int] | None = None,
+    interior_depth_by_cell: Mapping[Coord, int] | None = None,
 ) -> RouteSearchResult:
     """Minimize lexicographic path cost (internal, opportunity, route, congestion, turns, …).
 
     ``path[0]`` is always ``start`` (fixed stub). Lex index 3 is **congestion**: per-step
     weight from ``edge_congestion_weights`` keyed by :func:`canonical_trunk_edge_key` for
     ``(cur, nxt)`` when a mapping is provided; otherwise 0.
+
+    ``interior_depth_by_cell``: optional BFS depth from void boundary within the asteroid;
+    adds ``route_step`` penalty on ``ASTEROID_INTERIOR_VOID`` when not reusing transport.
 
     The last two tuple components are the path tip coordinates (the goal when found).
 
@@ -220,6 +236,7 @@ def find_lexicographic_route(
                 existing_transport_cells=existing_transport_cells,
                 placement_candidate_cells=placement_candidate_cells,
                 congestion_step=dc_step,
+                interior_depth_by_cell=interior_depth_by_cell,
             )
             new_t = _add_lex_prefix(t_cur, di, dop, dr, dc, dt, dlen, nxt)
 

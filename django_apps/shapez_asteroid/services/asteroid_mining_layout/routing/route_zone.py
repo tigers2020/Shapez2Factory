@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Mapping
 from enum import Enum
 
+from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.boundary import (
     cells_touching_void,
 )
@@ -55,6 +57,37 @@ ROUTE_ZONE_COST: dict[RouteZone, int] = {
 ROUTE_ZONES_LEX_COUNT_AS_INTERNAL: frozenset[RouteZone] = frozenset(
     {RouteZone.ASTEROID_INTERIOR_VOID, RouteZone.FILLABLE_INTERIOR}
 )
+
+
+def build_asteroid_boundary_depth_by_cell(
+    *, asteroid_cells: frozenset[Coord] | set[Coord]
+) -> dict[Coord, int]:
+    """Shortest graph distance from void-touching boundary cells within ``asteroid_cells``.
+
+    Depth ``0`` on :func:`cells_touching_void` members; increases for cardinal steps inward.
+    Unreachable cells (isolated cavities) are omitted from the map; callers should treat
+    missing keys as depth ``0`` for penalties.
+    """
+
+    ac = frozenset(asteroid_cells)
+    if not ac:
+        return {}
+    boundary = cells_touching_void(set(ac))
+    depth: dict[Coord, int] = {}
+    q: deque[Coord] = deque()
+    for c in boundary:
+        depth[c] = 0
+        q.append(c)
+    while q:
+        cur = q.popleft()
+        d0 = depth[cur]
+        x, y = cur
+        for nxt in neighbors4(x, y):
+            if nxt not in ac or nxt in depth:
+                continue
+            depth[nxt] = d0 + 1
+            q.append(nxt)
+    return depth
 
 
 def build_route_zone_map(

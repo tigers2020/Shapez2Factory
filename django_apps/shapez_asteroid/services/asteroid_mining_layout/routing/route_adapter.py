@@ -10,6 +10,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_zone import (
     RouteZone,
     TransportKind,
+    build_asteroid_boundary_depth_by_cell,
     build_route_zone_map,
 )
 
@@ -44,6 +45,7 @@ class RouteAdapterOutput:
     goal_cells: frozenset[Coord]
     existing_trunk_cells: frozenset[Coord]
     protected_cells: frozenset[Coord]
+    interior_depth_by_cell: Mapping[Coord, int]
 
 
 def build_route_adapter_output(inp: RouteAdapterInput) -> RouteAdapterOutput:
@@ -52,6 +54,7 @@ def build_route_adapter_output(inp: RouteAdapterInput) -> RouteAdapterOutput:
     zone = build_route_zone_map(
         asteroid_cells=inp.asteroid_cells, mineable_cells=inp.mineable_cells
     )
+    depth = build_asteroid_boundary_depth_by_cell(asteroid_cells=inp.asteroid_cells)
     blocked = (
         frozenset(inp.extractor_cells)
         | frozenset(inp.extension_cells)
@@ -86,6 +89,7 @@ def build_route_adapter_output(inp: RouteAdapterInput) -> RouteAdapterOutput:
         goal_cells=frozenset(inp.external_goal_cells),
         existing_trunk_cells=frozenset(inp.existing_trunk_cells),
         protected_cells=protected,
+        interior_depth_by_cell=depth,
     )
 
 
@@ -170,6 +174,7 @@ def count_internal_new_transport_steps_on_path(
             existing_transport_cells=existing_transport_cells,
             placement_candidate_cells=placement_candidate_cells,
             congestion_step=0,
+            interior_depth_by_cell=None,
         )
         total += di
         prev = frm

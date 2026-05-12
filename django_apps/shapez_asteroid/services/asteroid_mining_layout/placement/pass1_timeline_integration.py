@@ -302,6 +302,14 @@ def integrate_pass12_placement_into_working_map(
         "pass12_preserved_bundle_extension_count_histogram": {},
         "pass12_preserved_extension_per_extractor_avg": 0.0,
         "pass12_preserved_orphan_extension_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_attempted_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_success_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_nearest_hops_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_no_stub_space_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count": 0,
         **ela_empty_meta,
     }
     if not mineable:
@@ -325,6 +333,14 @@ def integrate_pass12_placement_into_working_map(
             "pass12_preserve_drop_reason_counts": {},
             "pass12_preserved_recovery_traces": [],
             "pass12_preserved_recovery_success_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_attempted_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_success_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_nearest_hops_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_no_stub_space_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count": 0,
             "pass12_placement_loops_suppressed": False,
         }
         return unchanged, unchanged, skip_stats

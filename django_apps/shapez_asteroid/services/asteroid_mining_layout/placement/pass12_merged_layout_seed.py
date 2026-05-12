@@ -27,6 +27,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     MAX_PASS12_NEAREST_TRANSPORT_TRACE_HOPS,
     MAX_PASS12_RECOVERY_BFS_HOPS,
     MAX_PASS12_RECOVERY_PROBES_PER_MINER,
+    MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS,
     PASS12_MAX_EXTENSION_TILES,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.extension_topology import (  # noqa: E501
@@ -35,6 +36,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.exte
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_contracts import (
     Pass12LayoutScratch,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_preserve_stub_route_recovery import (  # noqa: E501
+    try_preserve_stub_route_recovery,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
@@ -674,7 +678,9 @@ def seed_pass12_scratch_from_merged_existing(
             miners.append(c)
     miners.sort(key=lambda p: (p[1], p[0]))
     merged_seed_miner_count = len(miners)
-    if getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", False):
+    if getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", False) or getattr(
+        settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", False
+    ):
         miners = sorted(
             miners,
             key=lambda m: _recovery_proximity_sort_key(
@@ -699,7 +705,16 @@ def seed_pass12_scratch_from_merged_existing(
     preserved_recovery_traces: list[dict[str, Any]] = []
     preserved_bundle_extension_count_histogram: dict[int, int] = {}
     preserved_orphan_extension_count = 0
+    rr_attempted = 0
+    rr_success = 0
+    rr_rej_nearest_hops = 0
+    rr_rej_no_stub_space = 0
+    rr_rej_no_same_kind_route = 0
+    rr_rej_route_len = 0
+    rr_rej_new_transport_cells = 0
+    rr_rej_extension_carve = 0
     for miner in miners:
+        seed_route_id = "preserve_merged_seed"
         exts = extension_sets_by_miner.get(miner, frozenset())
         parent_by_cell = _parent_tree_for_miner_and_extensions(miner, exts, cells, mineable)
 
@@ -734,8 +749,18 @@ def seed_pass12_scratch_from_merged_existing(
             and not routed_ok
             and len(neighbor_stub_coords) == 0
         )
+        nhops_seed: int | None = None
+        ncell_seed: Coord | None = None
+        stub_route_trace_for_drop: dict[str, Any] | None = None
         if would_drop_unrecoverable:
             assert tk is not None
+            wr_seed = want_role(tk)
+            nhops_seed, ncell_seed = _nearest_same_role_transport_bfs(
+                miner,
+                want_wr=wr_seed,
+                cells=cells,
+                max_hops=MAX_PASS12_NEAREST_TRANSPORT_TRACE_HOPS,
+            )
             rec = _attempt_preserve_stub_recovery(
                 miner, cells, tk, row_m, neighbor_stub_coords, eff_r, routed_ok
             )
@@ -744,6 +769,64 @@ def seed_pass12_scratch_from_merged_existing(
                 preserved_recovery_traces.append(dict(_prov))
                 if routed_ok and eff_r is not None and tk is not None:
                     stub_cell = shape_miner_output_cell(miner, eff_r)
+            if (
+                getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", False)
+                and not routed_ok
+            ):
+                if nhops_seed is None or nhops_seed > MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS:
+                    rr_rej_nearest_hops += 1
+                    stub_route_trace_for_drop = {
+                        "preserve_stub_recovery": {
+                            "attempted": False,
+                            "accepted": False,
+                            "rejected_reason": (
+                                "nearest_hops_none"
+                                if nhops_seed is None
+                                else "nearest_hops_over_cap"
+                            ),
+                            "nearest_same_kind_transport_hops": nhops_seed,
+                        }
+                    }
+                else:
+                    rr_attempted += 1
+                    rr_res = try_preserve_stub_route_recovery(
+                        miner=miner,
+                        extensions=frozenset(exts),
+                        transport_kind=tk,
+                        cells=cells,
+                        mineable=mineable,
+                        scratch_transport_cells=frozenset(scratch.transport_cells),
+                        scratch_blocked_cells=frozenset(scratch.blocked_cells),
+                        nearest_same_kind_transport_hops=nhops_seed,
+                        row_r_raw=row_m.get("r"),
+                    )
+                    stub_route_trace_for_drop = rr_res.trace
+                    psr = rr_res.trace.get("preserve_stub_recovery")
+                    if rr_res.accepted:
+                        rr_success += 1
+                        scratch.transport_cells |= set(rr_res.new_transport_coords)
+                        eff_r = rr_res.chosen_r
+                        stub_cell = rr_res.stub_cell
+                        routed_ok = True
+                        seed_route_id = "preserve_stub_route_recovery"
+                        prov_rt = dict(rr_res.trace)
+                        prov_rt["recovery_mode"] = ["stub_route_to_trunk"]
+                        prov_rt["miner_cell"] = [int(miner[0]), int(miner[1])]
+                        preserved_recovery_traces.append(prov_rt)
+                    elif isinstance(psr, dict):
+                        rj = psr.get("rejected_reason")
+                        if rj == "extension_carve_disabled":
+                            rr_rej_extension_carve += 1
+                        elif rj == "route_len_over_cap":
+                            rr_rej_route_len += 1
+                        elif rj == "new_transport_cells_over_cap":
+                            rr_rej_new_transport_cells += 1
+                        elif rj in ("visit_cap", "no_same_kind_route"):
+                            rr_rej_no_same_kind_route += 1
+                        elif rj == "no_stub_space":
+                            rr_rej_no_stub_space += 1
+                        else:
+                            rr_rej_no_stub_space += 1
 
         if routed_ok and tk is not None and stub_cell is not None and eff_r is not None:
             scratch.blocked_cells |= {miner} | set(exts)
@@ -762,7 +845,7 @@ def seed_pass12_scratch_from_merged_existing(
                 stub_cell=stub_cell,
                 transport_kind=tk,
                 state=PlacementCommitState.ROUTED_CONFIRMED,
-                route_id="preserve_merged_seed",
+                route_id=seed_route_id,
             )
             seeded_routed_records += 1
             preserved_bundle_extractor_cells += 1
@@ -787,12 +870,8 @@ def seed_pass12_scratch_from_merged_existing(
                 wr_exp = want_role(tk)
                 cardinals = _cardinal_neighbor_cell_summaries(miner, cells)
                 transport_adj = [e for e in cardinals if e.get("role") in ("belt", "pipe")]
-                nhops, ncell = _nearest_same_role_transport_bfs(
-                    miner,
-                    want_wr=wr_exp,
-                    cells=cells,
-                    max_hops=MAX_PASS12_NEAREST_TRANSPORT_TRACE_HOPS,
-                )
+                nhops = nhops_seed
+                ncell = ncell_seed
                 pdr = _classify_preserve_drop_reason(
                     want_wr=wr_exp,
                     cardinals=cardinals,
@@ -832,6 +911,8 @@ def seed_pass12_scratch_from_merged_existing(
                 recoverability_class_counts[_rc.value] = (
                     recoverability_class_counts.get(_rc.value, 0) + 1
                 )
+                if stub_route_trace_for_drop is not None:
+                    detail_row.update(stub_route_trace_for_drop)
                 missing_stub_drop_details.append(detail_row)
                 seeded_groups += 1
                 continue
@@ -918,4 +999,24 @@ def seed_pass12_scratch_from_merged_existing(
             else 0.0
         ),
         "pass12_preserved_orphan_extension_count": preserved_orphan_extension_count,
+        "pass12_preserved_missing_stub_route_recovery_attempted_count": rr_attempted,
+        "pass12_preserved_missing_stub_route_recovery_success_count": rr_success,
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_nearest_hops_count": (
+            rr_rej_nearest_hops
+        ),
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_no_stub_space_count": (
+            rr_rej_no_stub_space
+        ),
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count": (
+            rr_rej_no_same_kind_route
+        ),
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count": (
+            rr_rej_route_len
+        ),
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count": (
+            rr_rej_new_transport_cells
+        ),
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count": (
+            rr_rej_extension_carve
+        ),
     }

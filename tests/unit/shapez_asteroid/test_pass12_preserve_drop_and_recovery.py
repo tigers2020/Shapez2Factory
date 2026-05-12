@@ -195,8 +195,12 @@ def test_preserve_quality_bundle_and_score() -> None:
             "pass12_preserved_bundle_extractor_cells": 7,
             "pass12_preserved_missing_stub_drop_extractor_count": 2,
             "pass12_preserved_recovery_success_count": 2,
+            "pass12_preserved_missing_stub_route_recovery_attempted_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_success_count": 0,
         }
     )
+    assert bundle["stub_route_recovery_attempted_count"] == 0
+    assert bundle["stub_route_recovery_success_count"] == 0
     assert bundle["original_extractor_count"] == 10
     assert bundle["preserved_valid_count"] == 7
     assert bundle["dropped_invalid_count"] == 2

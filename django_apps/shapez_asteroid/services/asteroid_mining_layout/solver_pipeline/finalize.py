@@ -82,7 +82,7 @@ SOLVER_TERMINATION_TIER_SOLVER_FAILURE = "SOLVER_FAILURE"
 RETURN_REASON_STEP4_PARTIAL_FAILURE = "step4_partial_failure"
 
 # Bump when ``preserve_quality_score`` formula or inputs change (A/B / NDJSON comparability).
-PRESERVE_QUALITY_SCORE_VERSION = 1
+PRESERVE_QUALITY_SCORE_VERSION = 2
 
 
 def _append_optimization_warnings(summary_fields: dict[str, Any]) -> None:
@@ -124,12 +124,18 @@ def preserve_quality_bundle_from_pass12(
     preserved = int(pass12_stats.get("pass12_preserved_bundle_extractor_cells") or 0)
     dropped = int(pass12_stats.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
     recovered = int(pass12_stats.get("pass12_preserved_recovery_success_count") or 0)
+    rr_att = int(
+        pass12_stats.get("pass12_preserved_missing_stub_route_recovery_attempted_count") or 0
+    )
+    rr_ok = int(pass12_stats.get("pass12_preserved_missing_stub_route_recovery_success_count") or 0)
     bundle: dict[str, Any] = {
         "original_extractor_count": orig,
         "preserved_valid_count": preserved,
         "dropped_invalid_count": dropped,
         "recovered_stub_count": recovered,
         "recovered_rotation_count": recovered,
+        "stub_route_recovery_attempted_count": rr_att,
+        "stub_route_recovery_success_count": rr_ok,
         "preserve_quality_score_version": PRESERVE_QUALITY_SCORE_VERSION,
     }
     if orig <= 0:
@@ -729,6 +735,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("p4_soft_replace_selected_job_index", None)
     summary_fields.setdefault("p4_soft_replace_rejected_reasons_by_job", [])
     summary_fields.setdefault("post_reclaim_pass3_greedy_local_replacement", None)
+    summary_fields.setdefault("post_reclaim_pass3_pass3_greedy_local_replacement", None)
     summary_fields.setdefault("post_reclaim_pass3_reruns_used", 0)
     summary_fields.setdefault("post_reclaim_pass3_attempted", False)
     summary_fields.setdefault("post_reclaim_pass3_executed", False)

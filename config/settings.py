@@ -33,6 +33,12 @@ SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY = (
     os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", "").strip().lower()
     in _truthy_env
 )
+# Pass12 merged-seed: inferred/empty stub → same-kind trunk까지 제한 BFS 후 scratch 반영.
+# relaxed recovery(위 플래그)와 별도. 기본 OFF — ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=1`` 로 켬.
+SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = (
+    os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", "").strip().lower()
+    in _truthy_env
+)
 # existing_fluid_layout: allow Pass2 internal fill on mineable voids while keeping Pass1
 # suppression (preserve-first). Default ON so internal mineable voids can be filled while
 # preserve bundles stay protected by ``blocked_cells``; set

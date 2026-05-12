@@ -73,6 +73,17 @@ def run_pass12_stage(
     }
     _dd = _p12s.get("pass12_preserved_missing_stub_drop_details") or []
     _rc = _p12s.get("pass12_preserve_drop_reason_counts") or {}
+    _hop_hist: dict[str, int] = {}
+    if isinstance(_dd, list):
+        for _row in _dd:
+            if not isinstance(_row, dict):
+                continue
+            if str(_row.get("preserve_drop_reason") or "") != "NO_MATCHING_STUB":
+                continue
+            _h = _row.get("nearest_same_kind_transport_hops")
+            if isinstance(_h, int):
+                _k = str(_h)
+                _hop_hist[_k] = _hop_hist.get(_k, 0) + 1
     debug_log_event(
         debug_location,
         "pass12_completed",
@@ -89,6 +100,13 @@ def run_pass12_stage(
                 "sample": _dd[:3] if isinstance(_dd, list) else [],
                 "recovery_success_count": int(
                     _p12s.get("pass12_preserved_recovery_success_count") or 0
+                ),
+                "no_matching_stub_nearest_hops_histogram": _hop_hist,
+                "stub_route_recovery_attempted": int(
+                    _p12s.get("pass12_preserved_missing_stub_route_recovery_attempted_count") or 0
+                ),
+                "stub_route_recovery_success": int(
+                    _p12s.get("pass12_preserved_missing_stub_route_recovery_success_count") or 0
                 ),
             },
         },

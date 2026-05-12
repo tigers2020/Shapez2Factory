@@ -22,6 +22,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
     SOLVER_TERMINATION_PARTIAL_SUCCESS,
     SOLVER_TERMINATION_SUCCESS,
     _append_optimization_warnings,
+    _append_stub_route_recovery_disabled_warning,
     _compute_solver_quality_tier,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.pass12 import (
@@ -278,3 +279,29 @@ def test_optimization_no_quality_ratio_warning_at_threshold() -> None:
     _append_optimization_warnings(summary)
     warns = list(summary.get("optimization_warnings") or [])
     assert fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH not in warns
+
+
+def test_stub_route_recovery_disabled_while_eligible_warning() -> None:
+    summary = {
+        "optimization_warnings": [],
+        "optimization_warning_count": 0,
+        "pass12_stub_route_recovery_enabled": False,
+        "pass12_stub_route_recovery_eligible_count": 3,
+    }
+    _append_stub_route_recovery_disabled_warning(summary)
+    assert (
+        fc.OPTIMIZATION_WARNING_PASS12_STUB_ROUTE_RECOVERY_DISABLED_WHILE_ELIGIBLE
+        in summary["optimization_warnings"]
+    )
+    assert summary["optimization_warning_count"] == 1
+
+
+def test_stub_route_recovery_disabled_while_eligible_no_op_when_enabled() -> None:
+    summary = {
+        "optimization_warnings": [],
+        "optimization_warning_count": 0,
+        "pass12_stub_route_recovery_enabled": True,
+        "pass12_stub_route_recovery_eligible_count": 3,
+    }
+    _append_stub_route_recovery_disabled_warning(summary)
+    assert summary["optimization_warnings"] == []

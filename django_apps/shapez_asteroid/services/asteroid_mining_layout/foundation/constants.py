@@ -53,6 +53,10 @@ OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE = (
 # Counterfactual sequential-trunk v1: warn when final / counterfactual exceeds this ratio.
 OPTIMIZATION_QUALITY_RATIO_WARN_THRESHOLD = 1.35
 OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH = "internal_transport_quality_ratio_high"
+# Pass12: stub-route recovery off while miners were eligible (telemetry / UI; tier already fixed).
+OPTIMIZATION_WARNING_PASS12_STUB_ROUTE_RECOVERY_DISABLED_WHILE_ELIGIBLE = (
+    "pass12_stub_route_recovery_disabled_while_eligible"
+)
 # Baseline snapshot: Pass1·Pass2 committed map immediately before STEP4 merge/routing.
 OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4 = "pass1_pass2_pre_step4"
 

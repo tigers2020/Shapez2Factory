@@ -1071,6 +1071,15 @@
   justify-content: flex-end;
 }
 
+.asteroid-mine-page .am-tier-badge-line {
+  margin: 0 0 0.35rem;
+  min-height: 1.25rem;
+}
+
+.asteroid-mine-page .am-tier-badge-line .am-tier-badge.hidden {
+  display: none;
+}
+
 @media (max-width: 1180px) {
   .asteroid-mine-page .layout {
     grid-template-columns: 1fr;

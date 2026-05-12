@@ -186,10 +186,12 @@ def test_no_route_exhausted_breakdown_empty_failures() -> None:
         "expanded_nodes": {"min": None, "max": None, "mean": None},
         "by_breaker_category": {},
         "dominant_blocker_category": None,
+        "sample_rows": [],
     }
 
 
 def _nr_diag_row(**diag_kw: Any) -> dict[str, Any]:
+    pid = diag_kw.pop("placement_id", "placement_nr_test")
     base: dict[str, Any] = {
         "failure_reason": s4frd.Step4RouteFailureReason.no_route_exhausted.value,
         "transport_kind": "fluid_pipe",
@@ -204,6 +206,7 @@ def _nr_diag_row(**diag_kw: Any) -> dict[str, Any]:
     }
     base.update(diag_kw)
     return {
+        "placement_id": pid,
         "step4_route_failure_diagnostic": base,
         "step4_route_failure_detail": {
             "blocked_reason_near_stub": [{"cell": (1, 2), "reason": "ok"}],
@@ -221,8 +224,12 @@ def test_no_route_exhausted_breakdown_filters_other_reasons() -> None:
             "placement_pass": 1,
         },
     }
-    narrow = _nr_diag_row(expanded_nodes=5, exterior_goal_count=1, existing_trunk_goal_count=0)
-    wide = _nr_diag_row(expanded_nodes=25, exterior_goal_count=1, existing_trunk_goal_count=0)
+    narrow = _nr_diag_row(
+        placement_id="narrow1", expanded_nodes=5, exterior_goal_count=1, existing_trunk_goal_count=0
+    )
+    wide = _nr_diag_row(
+        placement_id="wide1", expanded_nodes=25, exterior_goal_count=1, existing_trunk_goal_count=0
+    )
     b = s4frd.build_step4_no_route_exhausted_breakdown(
         [_nr_diag_row(), _nr_diag_row(), other, narrow, wide]
     )
@@ -233,12 +240,22 @@ def test_no_route_exhausted_breakdown_filters_other_reasons() -> None:
     assert b["by_breaker_category"]["wide_search_exhausted"] == 1
     assert b["by_breaker_category"]["trunk_union_goals_unreachable_from_stub"] == 2
     assert b["dominant_blocker_category"] == "trunk_union_goals_unreachable_from_stub"
+    assert [r["placement_id"] for r in b["sample_rows"]] == [
+        "placement_nr_test",
+        "placement_nr_test",
+        "narrow1",
+        "wide1",
+    ]
+    for r in b["sample_rows"]:
+        assert "breaker_category" in r
+        assert r["transport_kind"] == "fluid_pipe"
 
 
 def test_no_route_exhausted_breakdown_trunk_union_breaker() -> None:
     """``exterior_goal_count==0`` and ``existing_trunk_goal_count>0`` without geometry/hard ring."""
 
     row = {
+        "placement_id": "trunk-union-1",
         "step4_route_failure_detail": {
             "step4_route_failure_diagnostic": {
                 "failure_reason": s4frd.Step4RouteFailureReason.no_route_exhausted.value,
@@ -260,6 +277,20 @@ def test_no_route_exhausted_breakdown_trunk_union_breaker() -> None:
     assert b["count"] == 1
     assert b["by_breaker_category"] == {"trunk_union_goals_unreachable_from_stub": 1}
     assert b["dominant_blocker_category"] == "trunk_union_goals_unreachable_from_stub"
+    assert b["sample_rows"] == [
+        {
+            "placement_id": "trunk-union-1",
+            "stub_cell": None,
+            "extractor_cell": None,
+            "transport_kind": "fluid_pipe",
+            "placement_pass": 1,
+            "breaker_category": "trunk_union_goals_unreachable_from_stub",
+            "goal_count": 5,
+            "existing_trunk_goal_count": 3,
+            "exterior_goal_count": 0,
+            "blocked_near_stub": [{"x": 0, "y": 0, "reason": "ok"}],
+        }
+    ]
 
 
 def test_no_route_exhausted_breakdown_expanded_nodes_stats_and_buckets() -> None:
@@ -277,4 +308,5 @@ def test_no_route_exhausted_breakdown_expanded_nodes_stats_and_buckets() -> None
     assert b["by_expanded_nodes_bucket"] == {"0-1": 1, "8-32": 1, "33+": 1}
     assert b["expanded_nodes"]["min"] == 1
     assert b["expanded_nodes"]["max"] == 40
+    assert len(b["sample_rows"]) == 3
     assert b["expanded_nodes"]["mean"] == round((1 + 10 + 40) / 3.0, 4)

@@ -17,6 +17,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_r
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_frames import (  # noqa: E501
     build_replay_ui_frames,
+    verify_replay_ui_frames_computation_cycles,
 )
 
 
@@ -57,7 +58,9 @@ def test_build_replay_ui_frames_trunk_load_overlay_from_step4_summary() -> None:
     frames = build_replay_ui_frames(solver_timeline=timeline, events=[])
     assert frames[0]["trunk_load_overlay"] is not None
     assert frames[0]["trunk_load_overlay"]["by_kind"]["shape_belt"]["max_sharing"] == 2
+    assert frames[0]["trunk_load_overlay"].get("trunk_observation_layer") == "committed_step4_routes"
     assert frames[1]["trunk_load_overlay"] is not None
+    assert verify_replay_ui_frames_computation_cycles(events=[], ui_frames=frames) == []
 
 
 def test_build_replay_ui_frames_pass3_snapshots_attached_to_pass3_frame() -> None:
@@ -118,6 +121,7 @@ def test_build_replay_ui_frames_pass3_snapshots_attached_to_pass3_frame() -> Non
     assert snaps[0]["marker"] == "before"
     assert snaps[0]["layout_state_sha256"] == "abc"
     assert snaps[1]["marker"] == "after"
+    assert verify_replay_ui_frames_computation_cycles(events=events, ui_frames=frames) == []
 
 
 def test_build_replay_ui_frames_overlay_indices_per_phase() -> None:
@@ -292,3 +296,21 @@ def test_build_solver_replay_snapshot_includes_ui_frames_contract_v5() -> None:
     assert "ui_frames" in snap
     assert isinstance(snap["ui_frames"], list)
     assert len(snap["ui_frames"]) == len(timeline)
+    assert verify_replay_ui_frames_computation_cycles(
+        events=snap["events"], ui_frames=snap["ui_frames"]
+    ) == []
+
+
+def test_verify_replay_ui_frames_computation_cycles_detects_mismatched_bounds() -> None:
+    events: list[dict] = [
+        {"phase": "x", "computation_cycle": 1},
+        {"phase": "x", "computation_cycle": 2},
+    ]
+    bad_row = {
+        "timeline_index": 0,
+        "event_indices": [0, 1],
+        "computation_cycle_start": 1,
+        "computation_cycle_end": 99,
+    }
+    errs = verify_replay_ui_frames_computation_cycles(events=events, ui_frames=[bad_row])
+    assert errs and "99" in errs[0]

@@ -61,6 +61,7 @@
       data-map-phase-decode-title="{% filter escapejs %}{% trans 'Copy decode' %}{% endfilter %}"
       data-map-badge-idle="{% filter escapejs %}{% trans 'Timeline: 0 / 0 (preview)' %}{% endfilter %}"
       data-map-badge-step-prefix="{% filter escapejs %}{% trans 'Map step' %}{% endfilter %}"
+      data-map-badge-solver-prefix="{% filter escapejs %}{% trans 'Solver' %}{% endfilter %}"
       data-map-badge-decode-prefix="{% filter escapejs %}{% trans 'Decode step' %}{% endfilter %}"
       data-map-step-with_transport="{% filter escapejs %}{% trans 'Blueprint with belt & pipe' %}{% endfilter %}"
       data-map-step-extraction_shell="{% filter escapejs %}{% trans 'Transport removed (mining shell)' %}{% endfilter %}"
@@ -99,12 +100,18 @@
       data-msg-opt-warn-ratio-high="{% filter escapejs %}{% trans 'Internal transport quality ratio is high versus the counterfactual baseline (over 1.35×). Consider route tuning before using this as a hard gate.' %}{% endfilter %}"
       data-am-opt-ratio-warn-threshold="1.35"
       data-msg-step4-partial-replay="{% filter escapejs %}{% trans 'STEP4 not committed — Pass3/P4 overlay metrics hidden for this frame.' %}{% endfilter %}"
+      data-msg-step4-partial-phase-title="{% filter escapejs %}{% trans 'STEP4 not committed' %}{% endfilter %}"
+      data-msg-step4-partial-step-suffix="{% filter escapejs %}{% trans '(not committed)' %}{% endfilter %}"
       data-msg-pass3-skipped-replay="{% filter escapejs %}{% trans 'Pass3 skipped or not eligible — optimization metrics hidden for this frame.' %}{% endfilter %}"
+      data-msg-pass3-skipped-summary-opt="{% filter escapejs %}{% trans 'Pass3 skipped — internal transport optimization metrics do not apply to this run (Pass3/P4 did not commit).' %}{% endfilter %}"
       data-msg-validate-partial-replay="{% filter escapejs %}{% trans 'Partial validation result — optimization metrics hidden for this frame.' %}{% endfilter %}"
       data-msg-pc-hard="{% filter escapejs %}{% trans 'Protected corridor: hard' %}{% endfilter %}"
       data-msg-pc-soft="{% filter escapejs %}{% trans 'Protected corridor: soft' %}{% endfilter %}"
       data-msg-pc-candidate="{% filter escapejs %}{% trans 'Protected corridor: candidate' %}{% endfilter %}"
       data-msg-pc-counts="{% filter escapejs %}{% trans 'Corridors (hard/soft/candidate)' %}{% endfilter %}"
+      data-tier-badge-partial="{% filter escapejs %}{% trans 'PARTIAL — preserve/routing loss' %}{% endfilter %}"
+      data-msg-trunk-edge-heatmap="{% filter escapejs %}{% trans 'Trunk edge load (STEP4 committed routes)' %}{% endfilter %}"
+      data-msg-trunk-edge-heatmap-committed-only="{% filter escapejs %}{% trans 'Counts traversals on routes STEP4 already painted; not corridor probe tiers.' %}{% endfilter %}"
     >
       <form class="hidden" aria-hidden="true" data-asteroid-csrf>{% csrf_token %}</form>
 
@@ -503,6 +510,9 @@
           <div class="map-footer am-map-footer">
             <div>
               <div class="summary-title">{% trans "Decoded layout summary" %}</div>
+              <p class="am-tier-badge-line">
+                <span class="badge warn hidden am-tier-badge" data-asteroid-tier-badge aria-live="polite"></span>
+              </p>
               <p
                 class="summary-line"
                 data-asteroid-summary
@@ -565,6 +575,7 @@
   var py = root.querySelector("[data-asteroid-pointer-y]");
   var pStatus = root.querySelector("[data-asteroid-pointer-status]");
   var summaryEl = root.querySelector("[data-asteroid-summary]");
+  var tierBadgeEl = root.querySelector("[data-asteroid-tier-badge]");
   var errEl = root.querySelector("[data-asteroid-error]");
   var ta = root.querySelector("#asteroid-copy-input");
   var demoBtn = root.querySelector("#asteroid-demo-fill-btn");
@@ -852,7 +863,34 @@
         bboxEcho[ek] = summ[ek];
       }
     }
+    var ls = lastSummary && typeof lastSummary === "object" ? lastSummary : {};
+    var srcArr =
+      solverPhaseStartIndex < 0
+        ? "unified_unknown"
+        : typeof mapIx === "number" && mapIx < solverPhaseStartIndex
+          ? "map_timeline_segment"
+          : "solver_timeline_segment";
+    var tc =
+      summ.transport_connected != null
+        ? summ.transport_connected
+        : ls.transport_connected != null
+          ? ls.transport_connected
+          : null;
+    var extc =
+      summ.final_extractor_count != null
+        ? summ.final_extractor_count
+        : ls.final_extractor_count != null
+          ? ls.final_extractor_count
+          : null;
     return {
+      frame_id: st && st.id ? st.id : null,
+      source_array: srcArr,
+      unified_step_index: typeof mapIx === "number" ? mapIx : null,
+      solver_result_tier: ls.solver_result_tier != null ? String(ls.solver_result_tier) : "",
+      p4_reclaim_shadow_skip_reason:
+        ls.p4_reclaim_shadow_skip_reason != null ? String(ls.p4_reclaim_shadow_skip_reason) : "",
+      transport_connected: tc,
+      extractor_count: extc,
       map_step_index: mapIx,
       timeline_row_id: st && st.id,
       timeline_frame_id: uir && uir.timeline_frame_id,
@@ -1338,6 +1376,12 @@
     var fs = frameSummary && typeof frameSummary === "object" ? frameSummary : {};
     var fid = row.timeline_frame_id ? String(row.timeline_frame_id) : "";
     var hidePass34OptMeta = amHidePass34OptimizationMeta(fid, fs);
+    if (fs.pass3_skipped === true) {
+      hidePass34OptMeta = true;
+    }
+    if (lastSummary && lastSummary.pass3_skipped === true) {
+      hidePass34OptMeta = true;
+    }
     var parts = [];
     if (
       typeof row.computation_cycle_ui_tick_start === "number" &&
@@ -1397,6 +1441,24 @@
     return base;
   }
 
+  function formatUnifiedPlaybackStepLabel(idx, n) {
+    if (!n || idx < 0 || idx >= n) return "";
+    if (solverPhaseStartIndex < 0 || solverPhaseStartIndex > n) {
+      return idx + 1 + " / " + n;
+    }
+    var mL = solverPhaseStartIndex;
+    var solLen = n - mL;
+    if (solLen < 0) {
+      return idx + 1 + " / " + n;
+    }
+    var mapPrefix = root.getAttribute("data-map-badge-step-prefix") || "Map step";
+    var solPrefix = root.getAttribute("data-map-badge-solver-prefix") || "Solver";
+    if (idx < mL) {
+      return mapPrefix + " " + (idx + 1) + " / " + mL;
+    }
+    return solPrefix + " " + (idx - mL + 1) + " / " + Math.max(0, solLen);
+  }
+
   function syncMapTimelineStep() {
     var idleTitle = root.getAttribute("data-map-phase-idle-title") || "";
     var idleDesc = root.getAttribute("data-map-phase-idle-desc") || "";
@@ -1424,7 +1486,6 @@
     var st = mapTimelineList[decodeStepIndex];
     if (surface) surface.classList.remove("am-map-decode-active");
     if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
-    if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = mapTitle;
     var uir = solverTimelineUiRow(decodeStepIndex);
     var overlayDetail = buildReplayOverlayDetail(uir);
     var mapStepId = st && st.id ? st.id : "";
@@ -1472,8 +1533,20 @@
         __amSuppressStep4Pass34Viz: true,
       });
     }
+    if (mapPhaseTitleEl) {
+      var phaseTitle = mapTitle;
+      if (step4Partial) {
+        var ptt = root.getAttribute("data-msg-step4-partial-phase-title") || "";
+        if (ptt) phaseTitle = mapTitle + " · " + ptt;
+      }
+      mapPhaseTitleEl.textContent = phaseTitle;
+    }
     if (mapPhaseDescEl) {
       var baseLbl = mapStepLabel(st && st.id ? st.id : "");
+      if (step4Partial) {
+        var sfx4 = root.getAttribute("data-msg-step4-partial-step-suffix") || "";
+        if (sfx4) baseLbl = baseLbl + " " + sfx4;
+      }
       var partialNotes = [];
       if (step4Partial) {
         var n4 = root.getAttribute("data-msg-step4-partial-replay") || "";
@@ -1496,9 +1569,8 @@
       }
     }
     if (mapDecodeBadgeEl) {
-      mapDecodeBadgeEl.textContent = badgePrefix + ": " + (decodeStepIndex + 1) + " / " + n;
+      mapDecodeBadgeEl.textContent = formatUnifiedPlaybackStepLabel(decodeStepIndex, n);
     }
-
     if (replayMetaEl) {
       replayMetaEl.textContent = uir ? formatReplayUiFrameMeta(uir, overlayDetail, st.summary) : "";
     }
@@ -1643,7 +1715,9 @@
       );
     }
     if (decodePosEl) {
-      decodePosEl.textContent = n ? decodeStepIndex + 1 + " / " + n : "";
+      decodePosEl.textContent = mapMode ? formatUnifiedPlaybackStepLabel(decodeStepIndex, n) : n
+        ? decodeStepIndex + 1 + " / " + n
+        : "";
     }
     if (decodeLogPreviewEl) {
       var curLabel = "";
@@ -2027,6 +2101,17 @@
     pStatus.textContent = voidLabel;
   }
 
+  function syncTierBadge(summary) {
+    if (!tierBadgeEl) return;
+    tierBadgeEl.classList.add("hidden");
+    tierBadgeEl.textContent = "";
+    if (!summary || typeof summary !== "object") return;
+    if (String(summary.solver_result_tier || "") === "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS") {
+      tierBadgeEl.textContent = root.getAttribute("data-tier-badge-partial") || "PARTIAL";
+      tierBadgeEl.classList.remove("hidden");
+    }
+  }
+
   function formatSummary(s) {
     if (!s || s.entry_count === 0) {
       return "Entries: 0";
@@ -2036,6 +2121,45 @@
       line += " · X " + s.x_min + "…" + s.x_max + " · Y " + s.y_min + "…" + s.y_max;
     } else {
       line += " · " + (root.getAttribute("data-msg-no-bounds") || "");
+    }
+    if (String(s.solver_result_tier || "") === "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS") {
+      line +=
+        "\n--- " +
+        (s.solver_quality_summary != null ? String(s.solver_quality_summary) : "PARTIAL") +
+        " ---";
+      if ("step4_committed" in s) {
+        line += "\nSTEP4 committed: " + String(Boolean(s.step4_committed));
+      }
+      if (
+        s.pass3_skipped === true ||
+        (typeof s.pass3_skip_reason === "string" && s.pass3_skip_reason.length > 0)
+      ) {
+        line +=
+          "\nPass3 skipped: " +
+          String(s.pass3_skipped === true) +
+          (s.pass3_skip_reason != null ? " (" + String(s.pass3_skip_reason) + ")" : "");
+      }
+      if (s.p4_reclaim_shadow_skip_reason != null && String(s.p4_reclaim_shadow_skip_reason)) {
+        line += "\nP4 reclaim shadow: " + String(s.p4_reclaim_shadow_skip_reason);
+      }
+      var fo = s.original_extractor_count;
+      var fe = s.final_extractor_count;
+      var ed = s.extractor_drop_count;
+      if (typeof fo === "number" && typeof fe === "number") {
+        line +=
+          "\nExtractors: " + fe + " / " + fo + (typeof ed === "number" ? " (drop " + ed + ")" : "");
+      } else if (typeof fe === "number") {
+        line += "\nExtractors (final): " + fe;
+      }
+      if (typeof s.preserve_quality_score === "number") {
+        line += "\nPreserve score: " + s.preserve_quality_score;
+      }
+    }
+    var rf = s.mining_layout_runtime_flags;
+    if (rf && typeof rf === "object") {
+      line +=
+        "\nRuntime SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY: " +
+        String(rf.shapez_mining_pass12_preserve_stub_route_recovery === true);
     }
     var softSessions = Number(s.p4_soft_replace_attempt_count || 0);
     var softCommits = Number(s.p4_soft_replace_commit_count || 0);
@@ -2055,9 +2179,23 @@
         }
       }
     }
-    var opt = formatInternalTransportOptimizationBlock(s);
+    var opt = "";
+    if (s.pass3_skipped === true) {
+      opt = root.getAttribute("data-msg-pass3-skipped-summary-opt") || "";
+    } else {
+      opt = formatInternalTransportOptimizationBlock(s);
+    }
     if (opt) {
       line += "\n" + opt;
+    }
+    var bd = s.step4_no_route_exhausted_breakdown;
+    if (bd && typeof bd === "object" && Array.isArray(bd.sample_rows) && bd.sample_rows.length) {
+      line += "\nSTEP4 no_route_exhausted samples:";
+      for (var si = 0; si < bd.sample_rows.length; si++) {
+        try {
+          line += "\n  " + JSON.stringify(bd.sample_rows[si]);
+        } catch (e) {}
+      }
     }
     var rpc = s.replay_protected_corridor_counts;
     if (rpc && typeof rpc === "object") {
@@ -3109,8 +3247,14 @@
     ) {
       var gTh = document.createElementNS(svgNs, "g");
       gTh.setAttribute("class", "am-trunk-heatmap-overlay");
-      var thTitle =
+      var tloRHeat = replayOverlay.trunk_load_overlay;
+      var layerNote = "";
+      if (tloRHeat && tloRHeat.trunk_observation_layer === "committed_step4_routes") {
+        layerNote = root.getAttribute("data-msg-trunk-edge-heatmap-committed-only") || "";
+      }
+      var thTitleBase =
         root.getAttribute("data-msg-trunk-edge-heatmap") || "Trunk edge load (STEP4 observation)";
+      var thTitle = layerNote ? thTitleBase + " — " + layerNote : thTitleBase;
       var hi;
       for (hi = 0; hi < trunkHiPoints.length; hi++) {
         var hp = trunkHiPoints[hi];
@@ -3461,6 +3605,8 @@
       lastSolverReplay = null;
       lastReplayUiFrames = [];
       solverPhaseStartIndex = -1;
+      lastSummary = null;
+      syncTierBadge(null);
       if (replayWarnEl) {
         replayWarnEl.textContent = "";
         replayWarnEl.classList.add("hidden");
@@ -3495,19 +3641,32 @@
             var idle = summaryEl.getAttribute("data-idle-msg") || "";
             summaryEl.textContent = idle;
             decodeSummaryText = "";
+            lastSummary = null;
             lastSolverReplay = null;
             lastReplayUiFrames = [];
             applyMapTimeline([]);
             applyDecodeSteps([]);
+            syncTierBadge(null);
             if (replayWarnEl) {
               replayWarnEl.textContent = "";
               replayWarnEl.classList.add("hidden");
             }
             return;
           }
-          decodeSummaryText = formatSummary(x.data.summary);
+          var summIn = x.data.summary || {};
+          if (
+            x.data.mining_layout_runtime_flags &&
+            typeof x.data.mining_layout_runtime_flags === "object"
+          ) {
+            lastSummary = Object.assign({}, summIn, {
+              mining_layout_runtime_flags: x.data.mining_layout_runtime_flags,
+            });
+          } else {
+            lastSummary = summIn;
+          }
+          decodeSummaryText = formatSummary(lastSummary);
           summaryEl.textContent = decodeSummaryText;
-          lastSummary = x.data.summary;
+          syncTierBadge(lastSummary);
           lastMiningMap = x.data.mining_map || [];
           lastStyleCatalog = x.data.style_catalog || {};
           var mapSteps = x.data.map_timeline || [];
@@ -3577,6 +3736,8 @@
         .catch(function () {
           lastSolverReplay = null;
           lastReplayUiFrames = [];
+          lastSummary = null;
+          syncTierBadge(null);
           applyMapTimeline([]);
           applyDecodeSteps([]);
           if (replayWarnEl) {

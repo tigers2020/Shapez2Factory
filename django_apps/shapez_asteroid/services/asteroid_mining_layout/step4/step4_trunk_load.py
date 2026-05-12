@@ -458,5 +458,8 @@ def compact_trunk_load_overlay_for_replay(
         "top_n": int(obs.get("top_n", 0) or 0),
         "shared_threshold": int(obs.get("shared_threshold", TRUNK_EDGE_SHARED_THRESHOLD) or 0),
         "by_kind": slim,
+        # Replay ``protected_corridors`` tiers (hard/soft/candidate) are routing_state pools;
+        # this overlay counts only committed STEP4 painted route traversals (trunk_edge_load).
+        "trunk_observation_layer": "committed_step4_routes",
         "corridor_state_note": "hard/soft/candidate cells: replay corridor_added + ui_frames",
     }

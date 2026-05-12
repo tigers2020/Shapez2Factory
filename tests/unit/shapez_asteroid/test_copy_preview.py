@@ -345,6 +345,69 @@ def test_copy_preview_merges_final_validation_optimization_into_last_summary(
 
 
 @patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_merges_solver_summary_ui_fields_and_runtime_flags(
+    mock_solver: object,
+) -> None:
+    def fake(_decoded: dict) -> dict:
+        return {
+            "solver_timeline": [],
+            "final_validation": {
+                "optimization_warnings": [],
+                "solver_quality_tier": "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS",
+                "solver_result_tier": "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS",
+                "solver_quality_summary": "Valid layout, preserve or routing degradation",
+            },
+            "solver_summary": {
+                "routing_state": None,
+                "step4_committed": False,
+                "step4_partial_failure": True,
+                "pass3_skipped": True,
+                "pass3_skip_reason": "step4_not_committed",
+                "p4_reclaim_shadow_skip_reason": "pass3_not_eligible",
+                "preserve_quality_score": 0.612,
+                "transport_connected": True,
+                "pass12_stub_route_recovery_enabled": False,
+                "pass12_stub_route_recovery_eligible_count": 13,
+                "step4_no_route_exhausted_breakdown": {
+                    "count": 2,
+                    "dominant_blocker_category": "trunk_union_goals_unreachable_from_stub",
+                    "sample_rows": [{"placement_id": "p1"}],
+                },
+            },
+        }
+
+    mock_solver.side_effect = fake
+
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)}, query="include_solver_replay=1")
+    assert response.status_code == 200
+    body = response.json()
+    summ = body["summary"]
+    assert summ["pass3_skipped"] is True
+    assert summ["pass3_skip_reason"] == "step4_not_committed"
+    assert summ["p4_reclaim_shadow_skip_reason"] == "pass3_not_eligible"
+    assert summ["step4_committed"] is False
+    assert summ["preserve_quality_score"] == 0.612
+    assert summ["transport_connected"] is True
+    assert summ["pass12_stub_route_recovery_eligible_count"] == 13
+    bd = summ["step4_no_route_exhausted_breakdown"]
+    assert isinstance(bd, dict)
+    assert bd["count"] == 2
+    assert bd["sample_rows"] == [{"placement_id": "p1"}]
+    flags = body["mining_layout_runtime_flags"]
+    assert "shapez_mining_pass12_preserve_stub_route_recovery" in flags
+    assert isinstance(flags["shapez_mining_pass12_preserve_stub_route_recovery"], bool)
+
+
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
 def test_copy_preview_solver_timeline_raises_returns_500(mock_solver: object) -> None:
     mock_solver.side_effect = RuntimeError("boom")
 

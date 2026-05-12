@@ -157,7 +157,10 @@ _STEP4_NO_ROUTE_EXHAUSTED_EMPTY: dict[str, Any] = {
     "expanded_nodes": {"min": None, "max": None, "mean": None},
     "by_breaker_category": {},
     "dominant_blocker_category": None,
+    "sample_rows": [],
 }
+
+_STEP4_NO_ROUTE_SAMPLE_MAX = 6
 
 _BREAKER_CATEGORY_ORDER: tuple[str, ...] = (
     "hard_protected_ring",
@@ -275,6 +278,61 @@ def _dominant_breaker_category(by_breaker: Counter[str]) -> str | None:
     return tied[0]
 
 
+def _no_route_exhausted_sample_row(
+    row: Mapping[str, Any], diag: dict[str, Any], detail: dict[str, Any]
+) -> dict[str, Any]:
+    """Human-readable subset for UI / NDJSON (not used by routing)."""
+
+    pid = row.get("placement_id")
+    if pid is None:
+        pid = row.get("extractor_id")
+    sc = row.get("stub_cell")
+    ec = row.get("extractor_cell")
+    stub_cell: list[int] | None = None
+    extractor_cell: list[int] | None = None
+    if isinstance(sc, (list, tuple)) and len(sc) == 2:
+        try:
+            stub_cell = [int(sc[0]), int(sc[1])]
+        except (TypeError, ValueError):
+            stub_cell = None
+    if isinstance(ec, (list, tuple)) and len(ec) == 2:
+        try:
+            extractor_cell = [int(ec[0]), int(ec[1])]
+        except (TypeError, ValueError):
+            extractor_cell = None
+    near_raw = detail.get("blocked_reason_near_stub")
+    blocked_near_stub: list[dict[str, Any]] = []
+    if isinstance(near_raw, list):
+        for e in near_raw[:4]:
+            if not isinstance(e, dict):
+                continue
+            cell = e.get("cell")
+            if not isinstance(cell, (list, tuple)) or len(cell) != 2:
+                continue
+            try:
+                blocked_near_stub.append(
+                    {
+                        "x": int(cell[0]),
+                        "y": int(cell[1]),
+                        "reason": str(e.get("reason", "")),
+                    }
+                )
+            except (TypeError, ValueError):
+                continue
+    return {
+        "placement_id": pid,
+        "stub_cell": stub_cell,
+        "extractor_cell": extractor_cell,
+        "transport_kind": diag.get("transport_kind"),
+        "placement_pass": diag.get("placement_pass"),
+        "breaker_category": _row_breaker_category_no_route_exhausted(diag, detail),
+        "goal_count": diag.get("goal_count"),
+        "existing_trunk_goal_count": diag.get("existing_trunk_goal_count"),
+        "exterior_goal_count": diag.get("exterior_goal_count"),
+        "blocked_near_stub": blocked_near_stub,
+    }
+
+
 def breaker_category_for_no_route_exhausted(
     diag: Mapping[str, Any], detail: Mapping[str, Any]
 ) -> str:
@@ -292,7 +350,7 @@ def build_step4_no_route_exhausted_breakdown(
 ) -> dict[str, Any]:
     """Aggregate routing failure rows with ``failure_reason=no_route_exhausted`` (telemetry)."""
 
-    rows: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    rows: list[tuple[Mapping[str, Any], dict[str, Any], dict[str, Any]]] = []
     for row in failures:
         diag = _extract_step4_failure_diagnostic(row)
         if diag is None:
@@ -300,7 +358,7 @@ def build_step4_no_route_exhausted_breakdown(
         if diag.get("failure_reason") != Step4RouteFailureReason.no_route_exhausted.value:
             continue
         detail = _extract_step4_failure_detail(row)
-        rows.append((diag, detail))
+        rows.append((row, diag, detail))
 
     n = len(rows)
     if n == 0:
@@ -318,7 +376,8 @@ def build_step4_no_route_exhausted_breakdown(
     by_breaker: Counter[str] = Counter()
     exp_vals: list[int] = []
 
-    for diag, detail in rows:
+    sample_rows: list[dict[str, Any]] = []
+    for row, diag, detail in rows:
         tk = diag.get("transport_kind")
         by_tk[_hist_str_key_scalar(tk if isinstance(tk, str) and tk else None)] += 1
 
@@ -343,6 +402,8 @@ def build_step4_no_route_exhausted_breakdown(
             exp_vals.append(exn)
 
         by_breaker[_row_breaker_category_no_route_exhausted(diag, detail)] += 1
+        if len(sample_rows) < _STEP4_NO_ROUTE_SAMPLE_MAX:
+            sample_rows.append(_no_route_exhausted_sample_row(row, diag, detail))
 
     if exp_vals:
         mn, mx = min(exp_vals), max(exp_vals)
@@ -368,6 +429,7 @@ def build_step4_no_route_exhausted_breakdown(
         },
         "by_breaker_category": _sorted_histogram(by_breaker),
         "dominant_blocker_category": _dominant_breaker_category(by_breaker),
+        "sample_rows": sample_rows,
     }
 
 

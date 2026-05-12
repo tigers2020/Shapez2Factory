@@ -353,6 +353,7 @@ def test_compact_trunk_load_overlay_for_replay_minimal() -> None:
     ov = compact_trunk_load_overlay_for_replay(tl)
     assert ov is not None
     assert ov["overlay_version"] == 1
+    assert ov.get("trunk_observation_layer") == "committed_step4_routes"
     assert ov["by_kind"]["shape_belt"]["top_edges"][0]["edge"] == "1,0--2,0"
 
 

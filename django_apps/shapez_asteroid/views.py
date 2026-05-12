@@ -124,6 +124,57 @@ def _merge_final_validation_optimization_into_last_map_summary(
         s[k] = val
 
 
+# Copy-preview: last map step ``summary`` fields merged from ``solver_summary`` for UI / NDJSON
+# parity (display-only; not read by the solver during a run).
+_COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS: tuple[str, ...] = (
+    "step4_committed",
+    "step4_partial_failure",
+    "step4_skipped",
+    "pass3_skipped",
+    "pass3_skip_reason",
+    "p4_reclaim_shadow_skip_reason",
+    "post_reclaim_pass3_skip_reason",
+    "preserve_quality_score",
+    "preserve_quality_score_version",
+    "preserve_quality",
+    "step4_no_route_exhausted_breakdown",
+    "step4_hard_protected_no_route_breakdown",
+    "pass12_stub_route_recovery_enabled",
+    "pass12_stub_route_recovery_disabled_by_flag",
+    "pass12_stub_route_recovery_eligible_count",
+    "pass12_stub_route_recovery_attempted_count",
+    "pass12_stub_route_recovery_queue_rounds",
+    "transport_connected",
+    "final_extractor_count",
+    "original_extractor_count",
+    "extractor_drop_count",
+    "solver_termination",
+    "optimization_warnings",
+    "optimization_warning_count",
+)
+
+
+def _merge_solver_summary_ui_fields_into_last_map_summary(
+    map_timeline: list[dict[str, Any]],
+    solver_out: dict[str, Any],
+) -> None:
+    """Merge pipeline status from ``solver_summary`` onto the last map step (optimizer UI)."""
+
+    if not map_timeline:
+        return
+    ss = solver_out.get("solver_summary")
+    if not isinstance(ss, dict):
+        return
+    last = map_timeline[-1]
+    s = last.setdefault("summary", {})
+    if not isinstance(s, dict):
+        return
+    for k in _COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS:
+        if k not in ss:
+            continue
+        s[k] = ss[k]
+
+
 def _merge_replay_corridor_counts_into_last_map_summary(
     map_timeline: list[dict[str, Any]],
     solver_out: dict[str, Any],
@@ -256,6 +307,7 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
         _merge_p4_pass3_overlay_into_map_timeline(map_timeline, solver_out)
     if solver_out is not None and (include_solver_overlay or include_solver_replay):
         _merge_final_validation_optimization_into_last_map_summary(map_timeline, solver_out)
+        _merge_solver_summary_ui_fields_into_last_map_summary(map_timeline, solver_out)
         _merge_replay_corridor_counts_into_last_map_summary(map_timeline, solver_out)
     fin = map_timeline[-1]
     summary = fin["summary"]
@@ -275,6 +327,15 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
         "style_catalog": asteroid_map_style_catalog(),
         "existing_layout_analysis": existing_layout_analysis,
     }
+    if solver_out is not None and (include_solver_overlay or include_solver_replay):
+        payload["mining_layout_runtime_flags"] = {
+            "shapez_mining_pass12_preserve_stub_route_recovery": bool(
+                getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", True)
+            ),
+            "shapez_mining_pass12_preserve_stub_recovery": bool(
+                getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", False)
+            ),
+        }
     if include_solver_replay and solver_out is not None:
         sr = solver_out.get("solver_replay")
         if isinstance(sr, dict):

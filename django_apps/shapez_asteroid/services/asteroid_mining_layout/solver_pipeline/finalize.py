@@ -14,6 +14,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     OPTIMIZATION_QUALITY_RATIO_WARN_THRESHOLD,
     OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE,
     OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH,
+    OPTIMIZATION_WARNING_PASS12_STUB_ROUTE_RECOVERY_DISABLED_WHILE_ELIGIBLE,
     SOLVER_FRAME_INIT,
     SOLVER_FRAME_PASS1_OUTER,
     SOLVER_FRAME_PASS2_INTERNAL,
@@ -146,6 +147,24 @@ def _append_optimization_warnings(summary_fields: dict[str, Any]) -> None:
     if isinstance(ratio, (int, float)) and float(ratio) > OPTIMIZATION_QUALITY_RATIO_WARN_THRESHOLD:
         warnings.append(OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH)
     summary_fields["optimization_warnings"] = warnings
+
+
+def _append_stub_route_recovery_disabled_warning(
+    summary_fields: dict[str, Any],
+) -> None:
+    """After quality tier: flag eligible preserve miners when stub-route recovery was disabled."""
+
+    elig = int(summary_fields.get("pass12_stub_route_recovery_eligible_count") or 0)
+    if elig <= 0:
+        return
+    if bool(summary_fields.get("pass12_stub_route_recovery_enabled")):
+        return
+    ow = list(summary_fields.get("optimization_warnings") or [])
+    code = OPTIMIZATION_WARNING_PASS12_STUB_ROUTE_RECOVERY_DISABLED_WHILE_ELIGIBLE
+    if code not in ow:
+        ow.append(code)
+    summary_fields["optimization_warnings"] = ow
+    summary_fields["optimization_warning_count"] = len(ow)
 
 
 def _transport_cell_coords_from_map_rows(rows: list[dict[str, Any]]) -> frozenset[tuple[int, int]]:
@@ -576,6 +595,7 @@ def build_final_solver_output(
     summary_fields["solver_quality_tier"] = _qual_tier
     summary_fields["solver_result_tier"] = _qual_tier
     summary_fields["solver_quality_summary"] = _solver_quality_summary_for_tier(_qual_tier)
+    _append_stub_route_recovery_disabled_warning(summary_fields)
     _term_d = summary_fields.get("termination")
     if isinstance(_term_d, dict):
         _term_d["quality_tier"] = _qual_tier

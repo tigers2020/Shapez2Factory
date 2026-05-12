@@ -139,6 +139,61 @@ def build_replay_ui_frames(
     return out
 
 
+def verify_replay_ui_frames_computation_cycles(
+    *,
+    events: list[dict[str, Any]],
+    ui_frames: list[dict[str, Any]],
+) -> list[str]:
+    """Return human-readable issues if ``ui_frames`` cycle bounds disagree with indexed events.
+
+    Call from tests (or debug) after ``normalize_replay_events_computation_cycles`` so every
+    dict event has a monotonic ``computation_cycle``. Empty list means OK.
+    """
+
+    errs: list[str] = []
+    for row in ui_frames:
+        if not isinstance(row, dict):
+            errs.append("ui_frames row is not a dict")
+            continue
+        tix = row.get("timeline_index")
+        eix = row.get("event_indices")
+        if not isinstance(eix, list):
+            continue
+        cycles: list[int] = []
+        for j in eix:
+            if not isinstance(j, int):
+                errs.append(f"timeline_index={tix!r}: event_index not int ({j!r})")
+                continue
+            if j < 0 or j >= len(events):
+                errs.append(f"timeline_index={tix!r}: event_index out of range ({j})")
+                continue
+            ev = events[j]
+            if not isinstance(ev, dict):
+                errs.append(f"timeline_index={tix!r}: events[{j}] not dict")
+                continue
+            cyc = ev.get("computation_cycle")
+            if not isinstance(cyc, int):
+                errs.append(f"timeline_index={tix!r}: events[{j}] missing int computation_cycle")
+            else:
+                cycles.append(cyc)
+        c_start = row.get("computation_cycle_start")
+        c_end = row.get("computation_cycle_end")
+        if cycles:
+            mn, mx = min(cycles), max(cycles)
+            if c_start != mn or c_end != mx:
+                errs.append(
+                    f"timeline_index={tix!r}: computation_cycle_start/end "
+                    f"({c_start!r}/{c_end!r}) != min/max of event_indices ({mn}/{mx})"
+                )
+        else:
+            if c_start is not None or c_end is not None:
+                errs.append(
+                    f"timeline_index={tix!r}: empty event_indices but "
+                    f"computation_cycle_start/end are {c_start!r}/{c_end!r}"
+                )
+    return errs
+
+
 def _empty_ui_frame(*, timeline_index: int, timeline_frame_id: str) -> dict[str, Any]:
     return {
         "timeline_frame_id": timeline_frame_id,
@@ -157,4 +212,4 @@ def _empty_ui_frame(*, timeline_index: int, timeline_frame_id: str) -> dict[str,
     }
 
 
-__all__ = ["build_replay_ui_frames"]
+__all__ = ["build_replay_ui_frames", "verify_replay_ui_frames_computation_cycles"]

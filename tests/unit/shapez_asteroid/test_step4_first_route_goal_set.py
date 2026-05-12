@@ -109,7 +109,7 @@ def test_universe_extra_restores_margin_when_belt_missing_from_cells_keys() -> N
     )
     assert belt_edge not in goals_no_extra
     assert n1 == 0
-    assert t1["rejected_reason"] == str(s4frd.Step4RouteFailureReason.empty_goal_set)
+    assert t1["rejected_reason"] == str(s4frd.Step4RouteFailureReason.no_exterior_margin_for_probe)
 
     goals, kind, n, trace = p12rp.build_pass2_step4_aligned_routing_goals(
         transport_kind="shape_belt",

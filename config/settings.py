@@ -38,6 +38,8 @@ SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY = (
 SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = os.environ.get(
     "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", "true"
 ).strip().lower() not in {"0", "false", "no", "off"}
+# NDJSON: ``pass12_stub_route_recovery_disabled_by_flag=true`` ↔ 이 값이 False일 때;
+# ``attempted_count=0``은 stub-route recovery 미시도로 정상일 수 있음.
 # existing_fluid_layout: allow Pass2 internal fill on mineable voids while keeping Pass1
 # suppression (preserve-first). Default ON so internal mineable voids can be filled while
 # preserve bundles stay protected by ``blocked_cells``; set

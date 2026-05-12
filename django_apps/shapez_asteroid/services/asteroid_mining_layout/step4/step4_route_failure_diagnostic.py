@@ -20,6 +20,7 @@ class Step4RouteFailureReason(StrEnum):
     """Stable taxonomy for STEP4 routing failures (telemetry / replay)."""
 
     empty_goal_set = "empty_goal_set"
+    no_exterior_margin_for_probe = "no_exterior_margin_for_probe"
     no_exterior_goal = "no_exterior_goal"
     no_trunk_seed_goal = "no_trunk_seed_goal"
     no_same_kind_route = "no_same_kind_route"
@@ -28,6 +29,7 @@ class Step4RouteFailureReason(StrEnum):
     blocked_by_hard_protected = "blocked_by_hard_protected"
     route_length_ratio_exceeded = "route_length_ratio_exceeded"
     search_budget_exhausted = "search_budget_exhausted"
+    no_route_exhausted = "no_route_exhausted"
     unknown_route_failure = "unknown_route_failure"
 
 
@@ -86,23 +88,41 @@ def classify_step4_route_failure_reason(
     detail: dict[str, Any],
     route_length_ratio_exceeded: bool,
 ) -> Step4RouteFailureReason:
-    """Best-effort single reason (first strong signal wins)."""
+    """Best-effort single reason (first strong signal wins).
+
+    Search exhaustion and ``last_error=no_route_exhausted`` are classified **before**
+    ``mixed_transport_kind`` so void ``inferred`` stub roles do not mask real routing failures.
+    """
+
+    le = detail.get("last_error")
+    last_err_s = str(le) if le is not None else ""
 
     if goal_count == 0:
         return Step4RouteFailureReason.empty_goal_set
-    if not stub_cell_role_ok:
-        return Step4RouteFailureReason.mixed_transport_kind
     if route_length_ratio_exceeded:
         return Step4RouteFailureReason.route_length_ratio_exceeded
     if stop_reason == "budget":
         return Step4RouteFailureReason.search_budget_exhausted
     if nearest_transport_hops is None:
         return Step4RouteFailureReason.no_same_kind_route
+
+    exhausted = stop_reason == "exhausted" or last_err_s == "no_route_exhausted"
+    if exhausted:
+        if _stub_neighbors_all_hard_protected(detail):
+            return Step4RouteFailureReason.blocked_by_hard_protected
+        if exterior_goal_count == 0 and existing_trunk_goal_count == 0:
+            return Step4RouteFailureReason.no_exterior_goal
+        if _stub_neighbors_geometry_blocked(detail):
+            return Step4RouteFailureReason.blocked_by_geometry
+        return Step4RouteFailureReason.no_route_exhausted
+
+    if not stub_cell_role_ok:
+        return Step4RouteFailureReason.mixed_transport_kind
     if _stub_neighbors_all_hard_protected(detail):
         return Step4RouteFailureReason.blocked_by_hard_protected
     if exterior_goal_count == 0 and existing_trunk_goal_count == 0:
         return Step4RouteFailureReason.no_exterior_goal
-    if stop_reason == "exhausted" or _stub_neighbors_geometry_blocked(detail):
+    if _stub_neighbors_geometry_blocked(detail):
         return Step4RouteFailureReason.blocked_by_geometry
     if stop_reason not in (None, "exhausted", "budget", "success"):
         return Step4RouteFailureReason.unknown_route_failure
@@ -171,6 +191,8 @@ def build_step4_route_failure_diagnostic(
 
     ratio_exceeded = bool(search_stats.get("route_length_ratio_exceeded"))
 
+    last_error = str(detail.get("last_error") or "no_route")
+
     failure_reason = classify_step4_route_failure_reason(
         goal_count=goal_count,
         exterior_goal_count=exterior_goal_count,
@@ -182,7 +204,7 @@ def build_step4_route_failure_diagnostic(
         route_length_ratio_exceeded=ratio_exceeded,
     )
 
-    search_exhausted = stop_reason == "exhausted"
+    search_exhausted = stop_reason == "exhausted" or last_error == "no_route_exhausted"
     search_mode = str(search_stats.get("search_mode") or "goal_cells_union_legacy")
     expanded_nodes = int(search_stats.get("expanded_nodes", 0))
     search_time_ms = search_stats.get("search_time_ms")
@@ -190,8 +212,6 @@ def build_step4_route_failure_diagnostic(
         search_time_ms_f = float(search_time_ms)
     else:
         search_time_ms_f = 0.0
-
-    last_error = str(detail.get("last_error") or "no_route")
 
     placement_id = rec.placement_id if rec is not None else detail.get("placement_id")
     placement_pass = rec.placement_pass if rec is not None else None
@@ -226,6 +246,19 @@ def build_step4_route_failure_diagnostic(
         "search_exhausted": search_exhausted,
         "final_state": st_final,
         "last_error": last_error,
+        "stub_cell_role_ok": stub_role_ok,
+        "stub_role": None if stub_row is None else stub_row.get("role"),
+        "expected_stub_role": want_role,
+        "classifier_inputs": {
+            "goal_count": goal_count,
+            "exterior_goal_count": exterior_goal_count,
+            "existing_trunk_goal_count": existing_trunk_goal_count,
+            "stub_cell_role_ok": stub_role_ok,
+            "nearest_transport_hops": nearest_hops,
+            "stop_reason": stop_reason,
+            "last_error": last_error,
+            "route_length_ratio_exceeded": ratio_exceeded,
+        },
     }
 
 

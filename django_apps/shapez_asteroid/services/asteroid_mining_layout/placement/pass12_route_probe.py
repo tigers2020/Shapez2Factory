@@ -28,6 +28,17 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation impo
 Pass2RouteProbeOutcome = Literal["routed", "uncertain"]
 
 
+def _mineable_asteroid_bbox(
+    mineable: frozenset[Coord], asteroid: frozenset[Coord]
+) -> dict[str, int] | None:
+    cells = (*mineable, *asteroid)
+    if not cells:
+        return None
+    xs = [c[0] for c in cells]
+    ys = [c[1] for c in cells]
+    return {"x_min": min(xs), "x_max": max(xs), "y_min": min(ys), "y_max": max(ys)}
+
+
 def new_pass2_route_probe_stats_sink() -> dict[str, Any]:
     """Default counters merged into Pass12 stats (Pass2 STEP4-aligned probe gate)."""
 
@@ -114,6 +125,9 @@ def build_pass2_step4_aligned_routing_goals(
     )
     full_goal = frozenset(set(raw_goal) | trunk_now)
     seeds_for_kind = set(trunk_seed_by_kind.get(transport_kind, ()))
+    universe_for_probe = (
+        set(cells.keys()) | set(mineable) | set(asteroid) | set(transport_cells_probe)
+    )
     trace: dict[str, Any] = {
         "goal_set_kind": goal_set_kind,
         "exterior_margin_cell_count": len(margin),
@@ -124,10 +138,24 @@ def build_pass2_step4_aligned_routing_goals(
         "trunk_reaching_probe_count": len(trunk_now),
         "final_goal_count": len(full_goal),
         "external_margin_bbox_source": "universe_keys_mineable_asteroid_probe_transport_union",
+        "universe_cell_count": len(universe_for_probe),
+        "mineable_cell_count": len(mineable),
+        "asteroid_cell_count": len(asteroid),
+        "mineable_asteroid_bbox": _mineable_asteroid_bbox(mineable, asteroid),
         "rejected_reason": None,
     }
     if not full_goal:
-        trace["rejected_reason"] = str(s4frd.Step4RouteFailureReason.empty_goal_set)
+        if (
+            goal_set_kind == "first_route"
+            and len(margin) == 0
+            and len(raw_goal) == 0
+            and len(trunk_now) == 0
+        ):
+            trace["rejected_reason"] = str(
+                s4frd.Step4RouteFailureReason.no_exterior_margin_for_probe
+            )
+        else:
+            trace["rejected_reason"] = str(s4frd.Step4RouteFailureReason.empty_goal_set)
     if stats_sink is not None:
         stats_sink["pass2_probe_last_goal_trace"] = dict(trace)
     return full_goal, goal_set_kind, len(full_goal), trace

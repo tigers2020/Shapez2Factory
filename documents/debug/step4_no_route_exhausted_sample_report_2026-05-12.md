@@ -20,7 +20,7 @@
 
 ## 대표 샘플 (최대 5건)
 
-다음 JSON은 `python scripts/extract_step4_no_route_exhausted_samples.py` 출력을 그대로 옮긴 것이다.
+다음 JSON은 `python scripts/debug/extract_step4_no_route_exhausted_samples.py` 출력을 그대로 옮긴 것이다.
 
 ```json
 [
@@ -198,8 +198,8 @@
 ## 재생성 명령
 
 ```text
-python scripts/extract_step4_no_route_exhausted_samples.py
-python scripts/extract_step4_no_route_exhausted_samples.py --path var/asteroid_mining_layout_debug/latest.ndjson --limit 5
+python scripts/debug/extract_step4_no_route_exhausted_samples.py
+python scripts/debug/extract_step4_no_route_exhausted_samples.py --path var/asteroid_mining_layout_debug/latest.ndjson --limit 5
 ```
 
 중복 행까지 보고 싶으면 `--no-dedupe`.
@@ -207,4 +207,4 @@ python scripts/extract_step4_no_route_exhausted_samples.py --path var/asteroid_m
 ## 검증
 
 - 본 변경: **문서 + `scripts/` 도구**만. pytest 생략.
-- `ruff check scripts/extract_step4_no_route_exhausted_samples.py` 통과.
+- `ruff check scripts/debug/extract_step4_no_route_exhausted_samples.py` 통과.

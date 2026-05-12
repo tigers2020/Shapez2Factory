@@ -74,7 +74,7 @@ todos:
 
 **추출 필드 (샘플당):** `placement_id`, `stub_cell`, `extractor_cell`, `transport_kind`, `blocked_reason_near_stub`, `step4_route_failure_diagnostic`의 `protected_hard_count` 등.
 
-**도구:** 기존 `scripts/extract_step4_no_route_exhausted_samples.py`를 **breaker_category == hard_protected_ring** 필터로 확장하거나, 동일 패턴의 소스 전용 스크립트 1개(진단 전용).
+**도구:** 기존 `scripts/debug/extract_step4_no_route_exhausted_samples.py`를 **breaker_category == hard_protected_ring** 필터로 확장하거나, 동일 패턴의 소스 전용 스크립트 1개(진단 전용).
 
 ---
 

@@ -56,10 +56,10 @@
 | `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/finalize.py` | `summary_fields.setdefault("step4_committed", False)` 등 backward-compatible 요약 기본값 | `documents/Algorithm/mining_solver_cursor_sessions/08_step4_routing.md` **§9.6** `pass3_gate_source` / **`explicit_arg`** — Pass3는 `trunk_load` 추론이 아니라 명시 인자가 권위. | uncertain | REPLACE | 정본은 **추론 키 혼선**을 금지. 요약 기본값이 소비자에게 “거짓 committed”를 심으면 §9.6 위반 소지 → 별칭·기본값 축소는 **D5**에서 처리. | trunk_load·pass3 gate 통합 테스트 |
 | `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_service.py` | 예외 시 `build_step4_trunk_load_pipeline_exception_stub` | `documents/Algorithm/mining_solver_cursor_sessions/01_project_overview.md` **§0** 백지 구현 전제; 정본은 예외 스텁을 두지 않으나 **관측·안전 반환**으로 범위外. | not_in_algorithm_scope | KEEP | 알고리즘 입력이 아닌 서비스 경계 예외 요약. | 예외 경로 emit 테스트 |
 | `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_replay_frames.py` | `build_replay_ui_frames` 등 | `documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md` **§16.1–§16.2** replay·스냅샷. | not_in_algorithm_scope | KEEP | UI·replay는 solver 본경로 입력이 아님. | replay 프레임 단위 |
-| `scripts/p4_pass3_trace_review.py` | NDJSON에서 `solver_summary` 등 읽기 | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** 파이프라인은 `decoded`/맵 입력이 권위이며, **디스크 NDJSON을 읽어 본경로에 주입**하는 단계는 없음(도구는 범위外). | not_in_algorithm_scope | ISOLATE | D1: `scripts/debug/` 등으로 격리 권고. | 스크립트 스모크(선택) |
-| `scripts/aggregate_pass12_recoverability_from_ndjson.py` | NDJSON 스캔 | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** (위와 동일: 런타임 입력 아님). | not_in_algorithm_scope | ISOLATE | D1. | 스크립트 단위 |
-| `scripts/pass12_preserve_recovery_ab.py` | trace에서 `solver_summary` 발췌 | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** (위와 동일). | not_in_algorithm_scope | ISOLATE | D1. | 없음 또는 경량 |
-| `scripts/extract_step4_no_route_exhausted_samples.py` | NDJSON/샘플 추출(도구) | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** (위와 동일). | not_in_algorithm_scope | ISOLATE | D1. | 선택 |
+| `scripts/debug/p4_pass3_trace_review.py` | NDJSON에서 `solver_summary` 등 읽기 | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** 파이프라인은 `decoded`/맵 입력이 권위이며, **디스크 NDJSON을 읽어 본경로에 주입**하는 단계는 없음(도구는 범위外). | not_in_algorithm_scope | ISOLATE | D1: `scripts/debug/`에 격리 완료. | 스크립트 스모크(선택) |
+| `scripts/debug/aggregate_pass12_recoverability_from_ndjson.py` | NDJSON 스캔 | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** (위와 동일: 런타임 입력 아님). | not_in_algorithm_scope | ISOLATE | D1. | 스크립트 단위 |
+| `scripts/debug/pass12_preserve_recovery_ab.py` | trace에서 `solver_summary` 발췌 | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** (위와 동일). | not_in_algorithm_scope | ISOLATE | D1. | 없음 또는 경량 |
+| `scripts/debug/extract_step4_no_route_exhausted_samples.py` | NDJSON/샘플 추출(도구) | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** (위와 동일). | not_in_algorithm_scope | ISOLATE | D1. | 선택 |
 | `django_apps/web/` (copy-preview 등) | UI가 `solver_summary` 병합 | `documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md` **§16** 표시 계약. | not_in_algorithm_scope | KEEP | 알고리즘 결정과 분리된 표시층. | UI 계약 테스트 |
 
 ---
@@ -83,7 +83,7 @@
 
 | 큐 | 내용 | 표·심볼 참조 |
 |----|------|----------------|
-| **D1** | NDJSON·trace 전용 스크립트 **격리**(삭제보다 우선) | 메인 표 `scripts/*.py` ISOLATE 행 4건 |
+| **D1** | NDJSON·trace 전용 스크립트 **격리**(삭제보다 우선) | 메인 표 `scripts/debug/*.py` ISOLATE 행 4건 + [`scripts/debug/README.md`](../../scripts/debug/README.md) |
 | **D2** | Recovery **제어 흐름**을 §4.3·§4.3.1·§13과 동치로 맞춤(오케스트레이터·Pass3·STEP4 재시도 경계) | §4.3 표 REPLACE 3행 + `run_solver_timeline_pipeline`·`pass3_transport` NEEDS_DECISION 해소 후 REPLACE/KEEP 확정 |
 | **D3** | Protected corridor **생명주기**·reclaim merge가 §14·§10과 완전 동치인지 정리 | `reclaim_corridors.py` NEEDS_DECISION, `step4_routing_state.py` 소비자 정리 |
 | **D4** | Placement·route **shortcut**이 정본 §7·§9.6과 어긋나면 치환 | 메인 표에서 현재는 대부분 **KEEP**(§9.6 no-op 등); 새 위반 발견 시 이 큐로 이동 |
@@ -94,7 +94,7 @@
 ## First deletion PR 권고
 
 - **권장 첫 PR:** **D1** — `refactor(tools): isolate NDJSON debug scripts`  
-  - 대상: `scripts/p4_pass3_trace_review.py`, `scripts/aggregate_pass12_recoverability_from_ndjson.py`, `scripts/pass12_preserve_recovery_ab.py`, `scripts/extract_step4_no_route_exhausted_samples.py` → 예: `scripts/debug/` 하위로 이동 + 문서·import 경로만 정리.  
+  - 대상(완료 시 경로): `scripts/debug/p4_pass3_trace_review.py`, `scripts/debug/aggregate_pass12_recoverability_from_ndjson.py`, `scripts/debug/pass12_preserve_recovery_ab.py`, `scripts/debug/extract_step4_no_route_exhausted_samples.py` 및 [`scripts/debug/README.md`](../../scripts/debug/README.md).  
   - **런타임 솔버 비침습**, 회귀 범위 최소.  
 - **두 번째 이후:** **D2** (`refactor(solver): …`)는 §4.3·§13 정합으로 **동작 변경** → `test_recovery_return_paths_algorithm.py`, PR4-D 계열을 **필수**로 확장할 것.
 

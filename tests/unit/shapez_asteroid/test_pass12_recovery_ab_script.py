@@ -1,4 +1,4 @@
-"""CLI smoke for ``scripts/pass12_preserve_recovery_ab.py`` (stub-route A/B + probe)."""
+"""CLI smoke for ``scripts/debug/pass12_preserve_recovery_ab.py`` (stub-route A/B + probe)."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ def test_probe_replay_input_nonreplayable(tmp_path: Path) -> None:
     p.write_text('{"kind": "x", "data": 1}\n', encoding="utf-8")
     cmd = [
         sys.executable,
-        str(ROOT / "scripts" / "pass12_preserve_recovery_ab.py"),
+        str(ROOT / "scripts" / "debug" / "pass12_preserve_recovery_ab.py"),
         "--probe-replay-input",
         str(p),
     ]
@@ -30,7 +30,7 @@ def test_probe_replay_input_nonreplayable(tmp_path: Path) -> None:
 def test_stub_route_recovery_ab_striped_smoke() -> None:
     cmd = [
         sys.executable,
-        str(ROOT / "scripts" / "pass12_preserve_recovery_ab.py"),
+        str(ROOT / "scripts" / "debug" / "pass12_preserve_recovery_ab.py"),
         "--stub-route-recovery-ab",
     ]
     proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, check=False)
@@ -47,7 +47,7 @@ def test_probe_replay_striped_fixture_replayable() -> None:
     bp = ROOT / "tests" / "fixtures" / "pass12_telemetry_trace_pack" / "striped_greenfield_bp.json"
     cmd = [
         sys.executable,
-        str(ROOT / "scripts" / "pass12_preserve_recovery_ab.py"),
+        str(ROOT / "scripts" / "debug" / "pass12_preserve_recovery_ab.py"),
         "--probe-replay-input",
         str(bp),
     ]
@@ -61,7 +61,7 @@ def test_stub_route_recovery_ab_bp_json_striped_fixture() -> None:
     bp = ROOT / "tests" / "fixtures" / "pass12_telemetry_trace_pack" / "striped_greenfield_bp.json"
     cmd = [
         sys.executable,
-        str(ROOT / "scripts" / "pass12_preserve_recovery_ab.py"),
+        str(ROOT / "scripts" / "debug" / "pass12_preserve_recovery_ab.py"),
         "--stub-route-recovery-ab",
         "--bp-json",
         str(bp),
@@ -78,7 +78,7 @@ def test_probe_replay_fluid_striped_fixture_replayable() -> None:
     bp = _FLUID_STRIPED_BP
     cmd = [
         sys.executable,
-        str(ROOT / "scripts" / "pass12_preserve_recovery_ab.py"),
+        str(ROOT / "scripts" / "debug" / "pass12_preserve_recovery_ab.py"),
         "--probe-replay-input",
         str(bp),
     ]
@@ -94,7 +94,7 @@ def test_stub_route_recovery_ab_fluid_striped_ne_stub_attempts_route_on() -> Non
     bp = _FLUID_STRIPED_BP
     cmd = [
         sys.executable,
-        str(ROOT / "scripts" / "pass12_preserve_recovery_ab.py"),
+        str(ROOT / "scripts" / "debug" / "pass12_preserve_recovery_ab.py"),
         "--stub-route-recovery-ab",
         "--bp-json",
         str(bp),

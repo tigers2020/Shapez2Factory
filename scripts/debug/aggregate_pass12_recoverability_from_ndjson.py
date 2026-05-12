@@ -8,15 +8,15 @@ Each **production** NDJSON line with ``kind`` == ``trace`` and ``message`` ==
 
 - ``recovery_rate_by_class`` and per-class OFF→ON **recovered** counts require the
   same blueprint run twice (recovery OFF vs ON). A single production trace cannot
-  compute that; use ``scripts/pass12_preserve_recovery_ab.py`` for A/B join metrics.
+  compute that; use ``scripts/debug/pass12_preserve_recovery_ab.py`` for A/B join metrics.
 - This script only aggregates **per-run summaries**: class histograms, drop reason
   counts, ``preserve_quality_score`` distribution, ``existing_layout_source_kind``
   breakdown, and PQS version histograms.
 
 Examples (from repo root)::
 
-  python scripts/aggregate_pass12_recoverability_from_ndjson.py PATH.ndjson
-  python scripts/aggregate_pass12_recoverability_from_ndjson.py DEBUG_DIR --max-files 50
+  python scripts/debug/aggregate_pass12_recoverability_from_ndjson.py PATH.ndjson
+  python scripts/debug/aggregate_pass12_recoverability_from_ndjson.py DEBUG_DIR --max-files 50
 
 Optional ``--run-id`` filters lines whose top-level ``run_id`` matches.
 

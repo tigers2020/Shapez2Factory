@@ -5,8 +5,9 @@ Reads ``var/asteroid_mining_layout_debug/latest.ndjson`` by default (repo-relati
 Diagnostics only; does not import Django apps.
 
 Usage:
-  python scripts/extract_step4_no_route_exhausted_samples.py
-  python scripts/extract_step4_no_route_exhausted_samples.py --path path/to/run.ndjson --limit 5
+  python scripts/debug/extract_step4_no_route_exhausted_samples.py
+  python scripts/debug/extract_step4_no_route_exhausted_samples.py
+    --path path/to/run.ndjson --limit 5
 """
 
 from __future__ import annotations

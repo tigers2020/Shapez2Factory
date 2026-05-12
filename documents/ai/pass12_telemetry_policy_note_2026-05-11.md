@@ -23,15 +23,15 @@
 실제 운영 NDJSON이 있으면 동일 명령으로 교체하면 된다.
 
 ```bash
-python scripts/aggregate_pass12_recoverability_from_ndjson.py path/to/debug_dir --split-by-ndjson-run-id
-python scripts/pass12_preserve_recovery_ab.py --ndjson path/to/decoded_with_BP.json
+python scripts/debug/aggregate_pass12_recoverability_from_ndjson.py path/to/debug_dir --split-by-ndjson-run-id
+python scripts/debug/pass12_preserve_recovery_ab.py --ndjson path/to/decoded_with_BP.json
 ```
 
 ## 3. Production aggregate 요약 (5 synthetic runs)
 
 명령:
 
-`python scripts/aggregate_pass12_recoverability_from_ndjson.py tests/fixtures/pass12_telemetry_trace_pack --split-by-ndjson-run-id`
+`python scripts/debug/aggregate_pass12_recoverability_from_ndjson.py tests/fixtures/pass12_telemetry_trace_pack --split-by-ndjson-run-id`
 
 | 지표 | 값 |
 |------|-----|
@@ -47,7 +47,7 @@ python scripts/pass12_preserve_recovery_ab.py --ndjson path/to/decoded_with_BP.j
 
 명령:
 
-`python scripts/pass12_preserve_recovery_ab.py --ndjson tests/fixtures/pass12_telemetry_trace_pack/striped_greenfield_bp.json`
+`python scripts/debug/pass12_preserve_recovery_ab.py --ndjson tests/fixtures/pass12_telemetry_trace_pack/striped_greenfield_bp.json`
 
 출력: [`var/pass12_recovery_ab_experiment.json`](../../var/pass12_recovery_ab_experiment.json) (로컬 생성)
 

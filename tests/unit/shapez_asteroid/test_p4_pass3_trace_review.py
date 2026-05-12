@@ -1,4 +1,4 @@
-"""Tests for scripts/p4_pass3_trace_review.py (loaded via importlib; script is not a package)."""
+"""Tests for scripts/debug/p4_pass3_trace_review.py (loaded via importlib; script is not a package)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 _REPO = Path(__file__).resolve().parents[3]
-_SCRIPT = _REPO / "scripts" / "p4_pass3_trace_review.py"
+_SCRIPT = _REPO / "scripts" / "debug" / "p4_pass3_trace_review.py"
 
 
 def _load_script():

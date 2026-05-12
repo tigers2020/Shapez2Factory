@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = REPO_ROOT / "scripts" / "aggregate_pass12_recoverability_from_ndjson.py"
+SCRIPT = REPO_ROOT / "scripts" / "debug" / "aggregate_pass12_recoverability_from_ndjson.py"
 
 
 @pytest.mark.unit

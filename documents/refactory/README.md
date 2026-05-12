@@ -11,6 +11,8 @@ shapez2Solver **채굴 레이아웃 솔버** 관련, 문서 정본(`documents/Al
 | C | [corridor-state-machine-refactor.md](./corridor-state-machine-refactor.md) | candidate/soft/hard·atomic replace | 04, 14 |
 | D | [trace-layer-isolation.md](./trace-layer-isolation.md) | replay·NDJSON·summary = 출력 계층 | 06, 16 |
 
+**Epic A(운영):** mini-audit §5.3에 **A 행이 확정될 때까지** Epic A **코드 전용 PR**은 열지 않는다. 근거·예외·스코프는 [epic_a_implementation_scope.md](./epic_a_implementation_scope.md)를 본다.
+
 **Cursor 실행 순서(YAML 스케치):** [cursor_work_phases.md](./cursor_work_phases.md) (Phase 0–4 + Placement FSM 안내)
 
 **Phase 0 산출물(읽기 전용 drift matrix):** [phase0_drift_matrix.md](./phase0_drift_matrix.md) — PR #2 병합 후 **증거 보강**은 브랜치 `audit/phase0-drift-evidence`에서 진행 가능.

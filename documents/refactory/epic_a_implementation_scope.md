@@ -4,6 +4,8 @@
 **선행:** [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md)(§4.3 vs 코드 감사·A/B/Info), [epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md)(B-only 고정 표).  
 **갱신:** 2026-05-12 — PR #7(MVP 예외 문서화) 이후 스코프 트래커 초안.
 
+**운영:** §5.3 기준 **A-classified 행이 0건**인 동안에는 Epic A **코드 변경 전용 PR**을 열지 않는다(제어 흐름 **문서·거버넌스** 단계만 유지). [epic_a_active_rows.md](./epic_a_active_rows.md)에 **A 행이 합의·문서로 추가**된 뒤에만 구현 PR을 연다.
+
 ---
 
 ## 분류 고정 (판단 원칙)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import gzip
 import json
+import time
 from unittest.mock import patch
 
 from django.test import Client, override_settings
@@ -10,7 +11,10 @@ from django.test import Client, override_settings
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     SOLVER_REPLAY_CONTRACT_VERSION,
 )
-from django_apps.shapez_asteroid.services.copy_preview_debug_dump import dump_copy_preview_debug
+from django_apps.shapez_asteroid.services.copy_preview_debug_dump import (
+    _COPY_PREVIEW_DEBUG_MAX_STEMS,
+    dump_copy_preview_debug,
+)
 from django_apps.shapez_asteroid.services.style_classifier import asteroid_map_style_catalog
 from django_apps.shapez_core.services.shapez_copy_decode import SHAPEZ2_COPY_PREFIX_V4
 
@@ -199,6 +203,73 @@ def test_copy_preview_includes_solver_replay_when_flag(mock_solver: object) -> N
     assert "p4_reclaim_route_zone_excluded_cumulative_count" not in s0
 
 
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_solver_replay_one_ui_row_per_timeline_frame(mock_solver: object) -> None:
+    """STEP10 UI는 ``solver_timeline`` 행당 ``ui_frames`` 한 줄(길이 일치); 이벤트 개수는 별도."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+        SOLVER_FRAME_INIT,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service import (
+        build_solver_timeline as real_build,
+    )
+
+    mock_solver.side_effect = real_build
+
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)}, query="include_solver_replay=1")
+    assert response.status_code == 200
+    body = response.json()
+    tl = body["solver_timeline"]
+    ui = body["solver_replay"]["ui_frames"]
+    ev = body["solver_replay"]["events"]
+    assert len(ui) == len(tl) >= 1
+    assert tl[0].get("id") == SOLVER_FRAME_INIT
+    assert isinstance(ev, list)
+
+
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_solver_timeline_mining_map_roles_sane(mock_solver: object) -> None:
+    """``mining_map`` 셀 ``role``은 허용 집합만 사용한다.
+
+    미커밋 probe가 belt로 섞이는 회귀 방지.
+    """
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service import (
+        build_solver_timeline as real_build,
+    )
+
+    mock_solver.side_effect = real_build
+
+    allowed = frozenset({None, "", "occupied", "belt", "pipe", "blocked"})
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)}, query="include_solver_replay=1")
+    assert response.status_code == 200
+    body = response.json()
+    for frame in body["solver_timeline"]:
+        assert isinstance(frame, dict)
+        for cell in frame.get("mining_map") or []:
+            assert isinstance(cell, dict)
+            role = cell.get("role")
+            assert role in allowed, f"unexpected role {role!r} in frame {frame.get('id')}"
+
+
 def test_copy_preview_unknown_t_zero_extraction() -> None:
     client = Client()
     client.get("/asteroid/")
@@ -361,14 +432,17 @@ def test_copy_preview_debug_dump_prunes_to_ten_stems(tmp_path) -> None:
         "V": 1,
         "BP": {"$type": "Island", "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}]},
     }
-    for i in range(11):
+    n = _COPY_PREVIEW_DEBUG_MAX_STEMS
+    for i in range(n + 1):
         payload = {**base, "seq": i}
         code = _encode_copy(payload)
         dump_copy_preview_debug(code, payload, tmp_path)
+        if i < n:
+            time.sleep(0.002)
 
     txt_files = sorted(tmp_path.glob("copy_preview_*_encrypt_code.txt"))
     json_files = sorted(tmp_path.glob("copy_preview_*_decoded.json"))
-    assert len(txt_files) == 10
-    assert len(json_files) == 10
+    assert len(txt_files) == n
+    assert len(json_files) == n
     seqs = sorted(json.loads(p.read_text(encoding="utf-8"))["seq"] for p in json_files)
-    assert seqs == list(range(1, 11))
+    assert seqs == list(range(1, n + 1))

@@ -98,6 +98,9 @@
       data-msg-opt-counterfactual-failed="{% filter escapejs %}{% trans 'Counterfactual baseline unavailable' %}{% endfilter %}"
       data-msg-opt-warn-ratio-high="{% filter escapejs %}{% trans 'Internal transport quality ratio is high versus the counterfactual baseline (over 1.35×). Consider route tuning before using this as a hard gate.' %}{% endfilter %}"
       data-am-opt-ratio-warn-threshold="1.35"
+      data-msg-step4-partial-replay="{% filter escapejs %}{% trans 'STEP4 not committed — Pass3/P4 overlay metrics hidden for this frame.' %}{% endfilter %}"
+      data-msg-pass3-skipped-replay="{% filter escapejs %}{% trans 'Pass3 skipped or not eligible — optimization metrics hidden for this frame.' %}{% endfilter %}"
+      data-msg-validate-partial-replay="{% filter escapejs %}{% trans 'Partial validation result — optimization metrics hidden for this frame.' %}{% endfilter %}"
       data-msg-pc-hard="{% filter escapejs %}{% trans 'Protected corridor: hard' %}{% endfilter %}"
       data-msg-pc-soft="{% filter escapejs %}{% trans 'Protected corridor: soft' %}{% endfilter %}"
       data-msg-pc-candidate="{% filter escapejs %}{% trans 'Protected corridor: candidate' %}{% endfilter %}"
@@ -593,7 +596,7 @@
   var lastMiningMap = [];
   var lastStyleCatalog = {};
   var lastSolverReplay = null;
-  /** Solver-only replay (STEP10); map rows come from ``solver_timeline``; contract v4 ``ui_frames`` aligns with solver slice. */
+  /** Solver-only replay (STEP10): unified timeline uses ``map_timeline`` then ``solver_timeline`` rows; ``ui_frames`` is one meta row per solver row (not per replay event). */
   var lastSolverTimeline = [];
   /** One row per ``solver_timeline`` index (same order as unified timeline from ``solverPhaseStartIndex``). */
   var lastReplayUiFrames = [];
@@ -741,146 +744,158 @@
     return rows;
   }
 
-  function replaySurfaceFromTransportKind(kind) {
-    var s = kind == null ? "" : String(kind).toLowerCase();
-    if (s.indexOf("pipe") !== -1 || s.indexOf("fluid") !== -1) {
-      return "fluid";
+  /** Opt-in: ``localStorage.setItem("am_replay_frame_debug","1")`` or ``window.AM_SOLVER_REPLAY_FRAME_DEBUG=true``. */
+  function amSolverReplayFrameDebugEnabled() {
+    try {
+      if (typeof window !== "undefined" && window.AM_SOLVER_REPLAY_FRAME_DEBUG) {
+        return true;
+      }
+      if (typeof localStorage !== "undefined" && localStorage.getItem("am_replay_frame_debug") === "1") {
+        return true;
+      }
+    } catch (e) {
+      return false;
     }
-    return "shape";
+    return false;
   }
 
-  function applyPass12CommitEventToMap(rows, ev) {
-    var p = ev && ev.payload && typeof ev.payload === "object" ? ev.payload : null;
-    if (!p || !p.extractor_cell) return rows;
-    var surface = replaySurfaceFromTransportKind(p.transport_kind);
-    var transportRole = surface === "fluid" ? "pipe" : "belt";
-    var minerLayout = surface === "fluid" ? "fluid_miner" : "miner";
-    var minerType = surface === "fluid" ? "Layout_FluidMiner" : "Layout_ShapeMiner";
-    var extLayout = surface === "fluid" ? "fluid_extension" : "extension";
-    var extType = surface === "fluid" ? "Layout_FluidMinerExtension" : "Layout_ShapeMinerExtension";
-    var pid = p.placement_id || "";
-    var ec = p.extractor_cell;
-    if (Array.isArray(ec) && ec.length >= 2) {
-      var extractorRow = {
-        x: Number(ec[0]),
-        y: Number(ec[1]),
-        role: "occupied",
-        surface: surface,
-        layout_kind: minerLayout,
-        t: minerType,
-        placement_id: pid,
-      };
-      if (typeof p.extractor_r === "number") extractorRow.r = p.extractor_r;
-      upsertMiningMapRow(rows, extractorRow);
+  function countMiningMapTransportCells(rows) {
+    if (!Array.isArray(rows)) return 0;
+    var c = 0;
+    for (var ri = 0; ri < rows.length; ri++) {
+      var rw = rows[ri];
+      if (!rw || typeof rw !== "object") continue;
+      if (rw.x === 0) continue;
+      var role = rw.role || "occupied";
+      if (role === "belt" || role === "pipe") c++;
     }
-    var extensions = Array.isArray(p.extension_cells) ? p.extension_cells : [];
-    for (var ei = 0; ei < extensions.length; ei++) {
-      var er = extensions[ei];
-      if (!er || typeof er !== "object") continue;
-      var extRow = {
-        x: Number(er.x),
-        y: Number(er.y),
-        role: "occupied",
-        surface: surface,
-        layout_kind: extLayout,
-        t: extType,
-        placement_id: pid,
-      };
-      if (typeof er.r === "number") extRow.r = er.r;
-      upsertMiningMapRow(rows, extRow);
-    }
-    var transports = Array.isArray(p.new_transport_cells) ? p.new_transport_cells : [];
-    for (var ti = 0; ti < transports.length; ti++) {
-      var tc = transports[ti];
-      if (!Array.isArray(tc) || tc.length < 2) continue;
-      upsertMiningMapRow(rows, {
-        x: Number(tc[0]),
-        y: Number(tc[1]),
-        role: transportRole,
-        surface: surface,
-        placement_id: pid,
-      });
-    }
-    return rows;
+    return c;
   }
 
-  function solverStepById(solverSteps) {
-    var byId = Object.create(null);
-    if (!Array.isArray(solverSteps)) return byId;
-    for (var i = 0; i < solverSteps.length; i++) {
-      var st = solverSteps[i];
-      if (st && st.id) byId[st.id] = st;
-    }
-    return byId;
-  }
-
-  function solverCycleOwnerStepId(ev) {
-    var phase = ev && ev.phase ? String(ev.phase) : "";
-    if (phase === "pass12") return "solver_pass2_internal";
-    if (phase === "step4") return "solver_step4_routing";
-    if (phase === "pass3") return "solver_pass3_transport";
-    if (phase === "p4_reclaim" || phase === "validation_recovery") return "solver_validate";
-    return "solver_init";
-  }
-
-  function buildSolverCycleTimeline(mapSteps, solverSteps, replay, serverUiFrames) {
-    var events = replay && Array.isArray(replay.events) ? replay.events : [];
-    if (!Array.isArray(solverSteps) || !solverSteps.length || !events.length) {
-      return { timeline: solverSteps || [], uiFrames: [] };
-    }
-    var byId = solverStepById(solverSteps);
-    var seedStep = byId.solver_init || solverSteps[0];
-    var currentRows = cloneMiningMapRows(seedStep && seedStep.mining_map);
-    var timeline = [];
-    var uiFrames = [];
-    for (var i = 0; i < events.length; i++) {
-      var ev = events[i];
+  function summarizeReplayEventsForIndices(events, indices) {
+    var out = {
+      kinds: [],
+      committed_flags: [],
+      route_cell_count_sum: 0,
+      routes_added_len: 0,
+      routes_removed_len: 0,
+      placements_added_len: 0,
+      any_committed_false: false,
+    };
+    if (!Array.isArray(events) || !Array.isArray(indices)) return out;
+    var ki;
+    for (ki = 0; ki < indices.length; ki++) {
+      var ix = indices[ki];
+      if (typeof ix !== "number" || ix < 0 || ix >= events.length) continue;
+      var ev = events[ix];
       if (!ev || typeof ev !== "object") continue;
-      var cycle = typeof ev.computation_cycle === "number" ? ev.computation_cycle : i + 1;
-      var ownerId = solverCycleOwnerStepId(ev);
-      var owner = byId[ownerId] || seedStep;
-      if (ev.kind === "pass12_bundle_commit") {
-        currentRows = applyPass12CommitEventToMap(cloneMiningMapRows(currentRows), ev);
-      } else if (ev.kind === "map_diff_committed" && owner && Array.isArray(owner.mining_map)) {
-        currentRows = cloneMiningMapRows(owner.mining_map);
+      if (typeof ev.kind === "string") out.kinds.push(ev.kind);
+      if ("committed" in ev) {
+        out.committed_flags.push(ev.committed);
+        if (ev.committed === false) out.any_committed_false = true;
       }
-      var summary = Object.assign({}, (owner && owner.summary) || {});
-      summary.replay_cycle = cycle;
-      summary.replay_event_kind = ev.kind || "";
-      summary.replay_phase = ev.phase || "";
-      timeline.push({
-        id: "solver_cycle_" + cycle,
-        ok: owner ? owner.ok : true,
-        summary: summary,
-        mining_map: cloneMiningMapRows(currentRows),
-      });
-      var mergedPc = null;
-      var mergedTrunk = null;
-      if (Array.isArray(serverUiFrames)) {
-        var sfi;
-        for (sfi = 0; sfi < serverUiFrames.length; sfi++) {
-          var sf = serverUiFrames[sfi];
-          if (sf && sf.timeline_frame_id === ownerId) {
-            mergedPc = sf.protected_corridors != null ? sf.protected_corridors : null;
-            mergedTrunk = sf.trunk_load_overlay != null ? sf.trunk_load_overlay : null;
-            break;
-          }
-        }
+      var pl = ev.payload && typeof ev.payload === "object" ? ev.payload : null;
+      if (pl) {
+        if (Array.isArray(pl.routes_added)) out.routes_added_len += pl.routes_added.length;
+        if (Array.isArray(pl.routes_removed)) out.routes_removed_len += pl.routes_removed.length;
+        if (Array.isArray(pl.placements_added)) out.placements_added_len += pl.placements_added.length;
+        if (Array.isArray(pl.final_route_cells)) out.route_cell_count_sum += pl.final_route_cells.length;
       }
-      uiFrames.push({
-        timeline_index: timeline.length - 1,
-        timeline_frame_id: ownerId,
-        event_indices: [i],
-        overlay_event_indices: [i],
-        primary_for_step10_ui: true,
-        protected_corridors: mergedPc,
-        trunk_load_overlay: mergedTrunk,
-        computation_cycle_ui_tick_start: cycle,
-        computation_cycle_ui_tick_end: cycle,
-        computation_cycle_ui_stride: 1,
-      });
     }
-    return { timeline: timeline, uiFrames: uiFrames };
+    return out;
+  }
+
+  /** First ``event_indices`` entry only — console evidence, not algorithm input. */
+  function amFirstMappedReplayEventEvidence(events, indices) {
+    if (!Array.isArray(events) || !Array.isArray(indices) || !indices.length) return null;
+    var ix = indices[0];
+    if (typeof ix !== "number" || ix < 0 || ix >= events.length) return null;
+    var ev = events[ix];
+    if (!ev || typeof ev !== "object") return null;
+    var row = { index: ix, kind: ev.kind, phase: ev.phase };
+    if (typeof ev.computation_cycle === "number") row.computation_cycle = ev.computation_cycle;
+    if ("committed" in ev) row.committed = ev.committed;
+    return row;
+  }
+
+  function buildAmReplayFrameDebugPayload(st, uir, mapIx) {
+    var replay = lastSolverReplay;
+    var events = replay && Array.isArray(replay.events) ? replay.events : [];
+    var summ = st && st.summary && typeof st.summary === "object" ? st.summary : {};
+    var mm = st && Array.isArray(st.mining_map) ? st.mining_map : [];
+    var evIx = uir && Array.isArray(uir.event_indices) ? uir.event_indices : [];
+    var ovIx = uir && Array.isArray(uir.overlay_event_indices) ? uir.overlay_event_indices : [];
+    var evSum = summarizeReplayEventsForIndices(events, evIx);
+    var ovSum = summarizeReplayEventsForIndices(events, ovIx);
+    var pc = uir && uir.protected_corridors && uir.protected_corridors.counts;
+    var cand =
+      pc && typeof pc.candidate === "number"
+        ? pc.candidate
+        : uir && uir.protected_corridors && Array.isArray(uir.protected_corridors.candidate)
+          ? uir.protected_corridors.candidate.length
+          : 0;
+    var bboxEcho = {};
+    var echoKeys = [
+      "x_min",
+      "x_max",
+      "y_min",
+      "y_max",
+      "entry_count",
+      "mineable_cell_count",
+      "external_margin",
+      "extraction_shell_cell_count",
+    ];
+    var bi;
+    for (bi = 0; bi < echoKeys.length; bi++) {
+      var ek = echoKeys[bi];
+      if (Object.prototype.hasOwnProperty.call(summ, ek) && summ[ek] != null) {
+        bboxEcho[ek] = summ[ek];
+      }
+    }
+    return {
+      map_step_index: mapIx,
+      timeline_row_id: st && st.id,
+      timeline_frame_id: uir && uir.timeline_frame_id,
+      phase: summ.replay_phase != null ? summ.replay_phase : "",
+      step_index: typeof uir.timeline_index === "number" ? uir.timeline_index : null,
+      computation_cycle: typeof summ.replay_cycle === "number" ? summ.replay_cycle : null,
+      computation_cycle_start: uir && uir.computation_cycle_start != null ? uir.computation_cycle_start : null,
+      computation_cycle_end: uir && uir.computation_cycle_end != null ? uir.computation_cycle_end : null,
+      computation_cycle_ui_tick_start:
+        uir && typeof uir.computation_cycle_ui_tick_start === "number"
+          ? uir.computation_cycle_ui_tick_start
+          : null,
+      computation_cycle_ui_tick_end:
+        uir && typeof uir.computation_cycle_ui_tick_end === "number"
+          ? uir.computation_cycle_ui_tick_end
+          : null,
+      computation_cycle_ui_stride:
+        uir && typeof uir.computation_cycle_ui_stride === "number"
+          ? uir.computation_cycle_ui_stride
+          : null,
+      first_mapped_event: amFirstMappedReplayEventEvidence(events, evIx),
+      event_type: summ.replay_event_kind != null ? summ.replay_event_kind : "",
+      layout_snapshot_phase: summ.layout_snapshot_phase != null ? summ.layout_snapshot_phase : "",
+      committed: summ.step4_committed,
+      step4_committed: summ.step4_committed,
+      pass3_skip_reason: summ.pass3_skip_reason != null ? String(summ.pass3_skip_reason) : "",
+      pass3_skipped: summ.pass3_skipped === true,
+      route_cell_count: countMiningMapTransportCells(mm),
+      final_route_cells_count:
+        Array.isArray(summ.p4_reclaim_final_route_cells_added) ? summ.p4_reclaim_final_route_cells_added.length : null,
+      candidate_corridor_count: cand,
+      event_indices_len: evIx.length,
+      overlay_indices_len: ovIx.length,
+      event_slice: evSum,
+      overlay_slice: ovSum,
+      bbox: {
+        x_min: summ.x_min,
+        x_max: summ.x_max,
+        y_min: summ.y_min,
+        y_max: summ.y_max,
+      },
+      summary_bbox_echo: bboxEcho,
+    };
   }
   var STEP_LABELS = {
     validate_input_type: "{% filter escapejs %}{% trans 'Validate input type' %}{% endfilter %}",
@@ -1084,7 +1099,14 @@
       replayPauseBtn.disabled = !has || n <= 1;
     }
     if (replayPosEl) {
-      replayPosEl.textContent = has ? sliderIx + 1 + " / " + n : "";
+      var rowId = "";
+      if (has && Array.isArray(lastReplayUiFrames) && sliderIx >= 0 && sliderIx < lastReplayUiFrames.length) {
+        var fr = lastReplayUiFrames[sliderIx];
+        if (fr && fr.timeline_frame_id) rowId = String(fr.timeline_frame_id);
+      }
+      replayPosEl.textContent = has
+        ? sliderIx + 1 + " / " + n + (rowId ? " · " + rowId : "")
+        : "";
     }
   }
 
@@ -1281,6 +1303,26 @@
     return lines.join("\n");
   }
 
+  function amHidePass34OptimizationMeta(fid, fs) {
+    if (!fid || !fs || typeof fs !== "object") return false;
+    if (fid === "solver_step4_routing") {
+      return (
+        Object.prototype.hasOwnProperty.call(fs, "step4_committed") && fs.step4_committed === false
+      );
+    }
+    if (fid === "solver_pass3_transport") {
+      if (fs.pass3_skipped === true) return true;
+      if (typeof fs.pass3_skip_reason === "string" && fs.pass3_skip_reason.length > 0) {
+        return true;
+      }
+      return false;
+    }
+    if (fid === "solver_validate") {
+      return fs.step4_partial_failure === true;
+    }
+    return false;
+  }
+
   function formatReplayCorridorCountsLine(counts) {
     if (!counts || typeof counts !== "object") return "";
     var h = counts.hard,
@@ -1291,8 +1333,11 @@
     return prefix + ": " + h + " / " + sf + " / " + cd;
   }
 
-  function formatReplayUiFrameMeta(row, overlayDetail) {
+  function formatReplayUiFrameMeta(row, overlayDetail, frameSummary) {
     if (!row || typeof row !== "object") return "";
+    var fs = frameSummary && typeof frameSummary === "object" ? frameSummary : {};
+    var fid = row.timeline_frame_id ? String(row.timeline_frame_id) : "";
+    var hidePass34OptMeta = amHidePass34OptimizationMeta(fid, fs);
     var parts = [];
     if (
       typeof row.computation_cycle_ui_tick_start === "number" &&
@@ -1322,15 +1367,26 @@
       overlayDetail &&
       overlayDetail.summaryLine &&
       overlayDetail.summaryLine.indexOf("p3_hash") !== -1;
-    if (Array.isArray(p3) && p3.length && !hasP3InSummary) {
+    if (Array.isArray(p3) && p3.length && !hasP3InSummary && !hidePass34OptMeta) {
       parts.push("p3_snap " + p3.length);
     }
     var base = parts.join(" · ");
     var replay = lastSolverReplay;
     var om = replay && replay.optimization_metrics;
-    var opt = formatInternalTransportOptimizationBlock(om || {});
+    var opt = hidePass34OptMeta ? "" : formatInternalTransportOptimizationBlock(om || {});
     var extras = [];
     if (opt) extras.push(opt);
+    if (hidePass34OptMeta) {
+      var partialMsg = "";
+      if (fid === "solver_step4_routing") {
+        partialMsg = root.getAttribute("data-msg-step4-partial-replay") || "";
+      } else if (fid === "solver_pass3_transport") {
+        partialMsg = root.getAttribute("data-msg-pass3-skipped-replay") || "";
+      } else if (fid === "solver_validate") {
+        partialMsg = root.getAttribute("data-msg-validate-partial-replay") || "";
+      }
+      if (partialMsg) extras.push(partialMsg);
+    }
     if (row && row.protected_corridors && row.protected_corridors.counts) {
       var pcl = formatReplayCorridorCountsLine(row.protected_corridors.counts);
       if (pcl) extras.push(pcl);
@@ -1392,12 +1448,51 @@
         trunk_load_overlay: uir.trunk_load_overlay,
       });
     }
+    var step4Partial =
+      mapStepId === "solver_step4_routing" &&
+      st &&
+      st.summary &&
+      Object.prototype.hasOwnProperty.call(st.summary, "step4_committed") &&
+      st.summary.step4_committed === false;
+    var pass3SkippedPartial =
+      mapStepId === "solver_pass3_transport" &&
+      st &&
+      st.summary &&
+      (st.summary.pass3_skipped === true ||
+        (typeof st.summary.pass3_skip_reason === "string" &&
+          st.summary.pass3_skip_reason.length > 0));
+    var validatePartial =
+      mapStepId === "solver_validate" &&
+      st &&
+      st.summary &&
+      st.summary.step4_partial_failure === true;
+    var suppressPass34Viz = step4Partial || pass3SkippedPartial || validatePartial;
+    if (suppressPass34Viz) {
+      overlayDetail = Object.assign({}, overlayDetail || {}, {
+        __amSuppressStep4Pass34Viz: true,
+      });
+    }
     if (mapPhaseDescEl) {
       var baseLbl = mapStepLabel(st && st.id ? st.id : "");
+      var partialNotes = [];
+      if (step4Partial) {
+        var n4 = root.getAttribute("data-msg-step4-partial-replay") || "";
+        if (n4) partialNotes.push(n4);
+      }
+      if (pass3SkippedPartial) {
+        var n3 = root.getAttribute("data-msg-pass3-skipped-replay") || "";
+        if (n3) partialNotes.push(n3);
+      }
+      if (validatePartial) {
+        var nv = root.getAttribute("data-msg-validate-partial-replay") || "";
+        if (nv) partialNotes.push(nv);
+      }
+      var extraNote = partialNotes.join(" · ");
       if (overlayDetail && overlayDetail.summaryLine && baseLbl) {
-        mapPhaseDescEl.textContent = baseLbl + " · " + overlayDetail.summaryLine;
+        mapPhaseDescEl.textContent =
+          baseLbl + " · " + overlayDetail.summaryLine + (extraNote ? " · " + extraNote : "");
       } else {
-        mapPhaseDescEl.textContent = baseLbl;
+        mapPhaseDescEl.textContent = baseLbl + (extraNote ? " · " + extraNote : "");
       }
     }
     if (mapDecodeBadgeEl) {
@@ -1405,7 +1500,7 @@
     }
 
     if (replayMetaEl) {
-      replayMetaEl.textContent = uir ? formatReplayUiFrameMeta(uir, overlayDetail) : "";
+      replayMetaEl.textContent = uir ? formatReplayUiFrameMeta(uir, overlayDetail, st.summary) : "";
     }
     if (replayWarnEl) {
       var thrRaw = root.getAttribute("data-am-opt-ratio-warn-threshold") || "1.35";
@@ -1430,6 +1525,9 @@
     }
 
     rebuildMiningIndex(st.mining_map || []);
+    if (amSolverReplayFrameDebugEnabled() && typeof console !== "undefined" && console.debug) {
+      console.debug("[am replay frame]", buildAmReplayFrameDebugPayload(st, uir, decodeStepIndex));
+    }
     renderPlot(st.summary, st.mining_map || [], lastStyleCatalog, overlayDetail);
     applyMapOrientation(mapOrientation);
     loadCellsForSummary(st.summary, st.mining_map || []);
@@ -2158,7 +2256,11 @@
       collectInto(summaryObj.p4_soft_replace_new_cells, softReplaceNew);
       return { route: route, soft: soft, softReplaceOld: softReplaceOld, softReplaceNew: softReplaceNew };
     }
-    var p4Cells = p4OverlayCells(effSummary);
+    var suppressS4P34 =
+      replayOverlay && replayOverlay.__amSuppressStep4Pass34Viz === true;
+    var p4Cells = suppressS4P34
+      ? { route: [], soft: [], softReplaceOld: [], softReplaceNew: [] }
+      : p4OverlayCells(effSummary);
     function routeReplayCellPoints(overlay) {
       var removed = [];
       var added = [];
@@ -2201,7 +2303,9 @@
       }
       return { removed: removed, added: added };
     }
-    var rrPts = routeReplayCellPoints(replayOverlay);
+    var rrPts = suppressS4P34
+      ? { removed: [], added: [] }
+      : routeReplayCellPoints(replayOverlay);
     var rrAll = rrPts.removed.concat(rrPts.added);
     var pcPoints = [];
     if (corridorOverlayCb && corridorOverlayCb.checked && replayOverlay && replayOverlay.protected_corridors) {
@@ -3096,7 +3200,8 @@
     if (
       replayOverlay &&
       replayOverlay.overlayEvents &&
-      replayOverlay.overlayEvents.length
+      replayOverlay.overlayEvents.length &&
+      !replayOverlay.__amSuppressStep4Pass34Viz
     ) {
       var cts = replayOverlay.counts || {};
       var legendRows = [];
@@ -3411,23 +3516,7 @@
           lastSolverReplay = replayNorm.replay;
           var rawUi = replayNorm.replay && replayNorm.replay.ui_frames;
           lastReplayUiFrames = Array.isArray(rawUi) ? rawUi : [];
-          var cycleReplay = buildSolverCycleTimeline(
-            mapSteps,
-            solverSteps,
-            replayNorm.replay,
-            lastReplayUiFrames
-          );
-          var solverPlaybackSteps =
-            cycleReplay && Array.isArray(cycleReplay.timeline) && cycleReplay.timeline.length
-              ? cycleReplay.timeline
-              : solverSteps;
-          if (
-            cycleReplay &&
-            Array.isArray(cycleReplay.uiFrames) &&
-            cycleReplay.uiFrames.length
-          ) {
-            lastReplayUiFrames = cycleReplay.uiFrames;
-          }
+          var solverPlaybackSteps = Array.isArray(solverSteps) ? solverSteps : [];
           if (
             !lastReplayUiFrames.length &&
             Array.isArray(solverPlaybackSteps) &&
@@ -3459,16 +3548,18 @@
             Array.isArray(solverPlaybackSteps) && solverPlaybackSteps.length
               ? mapSteps.concat(solverPlaybackSteps)
               : mapSteps;
-          console.log("[solver replay debug]", {
-            solver_replay: x.data.solver_replay,
-            ui_frames_len: lastReplayUiFrames.length,
-            solver_timeline_len: Array.isArray(solverSteps) ? solverSteps.length : -1,
-            solver_playback_timeline_len: Array.isArray(solverPlaybackSteps)
-              ? solverPlaybackSteps.length
-              : -1,
-            map_timeline_len: Array.isArray(mapSteps) ? mapSteps.length : -1,
-            solverPhaseStartIndex: solverPhaseStartIndex,
-          });
+          if (amSolverReplayFrameDebugEnabled() && typeof console !== "undefined" && console.debug) {
+            console.debug("[solver replay load]", {
+              ui_frames_len: lastReplayUiFrames.length,
+              solver_timeline_len: Array.isArray(solverSteps) ? solverSteps.length : -1,
+              solver_playback_timeline_len: Array.isArray(solverPlaybackSteps)
+                ? solverPlaybackSteps.length
+                : -1,
+              map_timeline_len: Array.isArray(mapSteps) ? mapSteps.length : -1,
+              solverPhaseStartIndex: solverPhaseStartIndex,
+              replay_event_count: replayNorm.events.length,
+            });
+          }
           applyMapTimeline(unifiedTimeline, { autoPlayOnce: true });
           if (solverRedecodeHintEl) {
             if (Array.isArray(solverSteps) && solverSteps.length) {

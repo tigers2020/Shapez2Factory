@@ -13,12 +13,14 @@ logger = logging.getLogger(__name__)
 
 _CODE_SUFFIX = "_encrypt_code.txt"
 _JSON_SUFFIX = "_decoded.json"
-# stem(한 번의 덤프 = txt+json 한 쌍) 기준으로 이 개수만 남기고 오래된 것부터 삭제한다.
+# stem(한 번의 덤프 = txt+json 한 쌍) 기준으로 아래 상한만 남기고 오래된 것부터 삭제한다.
 _COPY_PREVIEW_DEBUG_MAX_STEMS = 10
 
 
 def _prune_copy_preview_debug_dir(root: Path) -> None:
-    """``copy_preview_*`` stem 수가 상한을 넘으면 mtime 오래된 stem부터 삭제한다."""
+    """``copy_preview_*`` stem 수가 `_COPY_PREVIEW_DEBUG_MAX_STEMS`를 넘으면
+    mtime 오래된 stem부터 삭제한다.
+    """
 
     stems: dict[str, int] = {}
     try:
@@ -59,7 +61,7 @@ def _prune_copy_preview_debug_dir(root: Path) -> None:
 def dump_copy_preview_debug(code: str, decoded: dict[str, Any], dump_dir: str | Path) -> None:
     """Write ``*_encrypt_code.txt`` and ``*_decoded.json`` under ``dump_dir``.
 
-    성공 후 stem(한 쌍)이 10개를 넘으면 mtime이 오래된 stem부터 삭제한다.
+    성공 후 stem(한 쌍)이 `_COPY_PREVIEW_DEBUG_MAX_STEMS`를 넘으면 mtime이 오래된 stem부터 삭제한다.
 
     Failures are logged and swallowed so the HTTP handler keeps returning 200.
     """

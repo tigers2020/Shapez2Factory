@@ -1892,6 +1892,10 @@ def test_apply_exception_summary_defaults_includes_greedy_local_replacement_keys
     assert "reclaim_anchor_candidate_count" not in d
     assert "reclaim_anchor_failure_samples" not in d
     assert "nearest_freed_cell_to_candidate_sample" not in d
+    # D5-4: soft-replace payload from reclaim_soft_replace_trace, not exception defaults.
+    assert "p4_soft_replace_old_cells" not in d
+    assert "p4_soft_replace_new_cells" not in d
+    assert "p4_soft_replace_selected_job_index" not in d
 
     p3 = initial_pass3_summary()
     assert "pass3_greedy_local_replacement" in p3

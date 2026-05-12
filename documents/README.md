@@ -49,7 +49,7 @@
 - `documents/adr/`는 bounded recovery, protected corridor, final validation, replay cycle stream의 결정 이유를 기록한다.
 - `documents/ai/README.md`, `manuals/cursor_usage.md`, `manuals/testing.md`가 최신 작업 허브·검증 지침을 반영한다.
 - `documents/ai/plan_pass12_stub_route_recovery_decision.md`, `documents/ai/pass12_telemetry_policy_note_2026-05-11.md`, `documents/plans/plan_corridor_runtime_contract_2026-05-11.md`, `documents/plans/plan_pass3_f_topology_branch_mvp_2026-05-11.md`는 최근 pass12/pass3/route 계약 문서다.
-- `documents/Algorithm/mining_solver_cursor_sessions/`는 01~14 단계 브리프가 모두 존재하며, `08_step4_routing.md`가 최근 갱신됐다.
+- `documents/Algorithm/mining_solver_cursor_sessions/`에 **01~14** 단계 브리프(`01_project_overview.md` … `14_step10_replay_ui.md`)가 있다. 한 페이지 인덱스는 [`Algorithm/mining_solver_cursor_sessions/README.md`](Algorithm/mining_solver_cursor_sessions/README.md), 경로 표는 [`refactory/01_canonical_doc_paths.md`](refactory/01_canonical_doc_paths.md)를 본다. (IDE에서 해당 폴더가 비어 보이면 워크스페이스 제외·동기화를 확인한다.)
 - `documents/research/research_blueprint_grid_coordinates_2026-05-10.md`는 블루프린트 격자 좌표 정본이며, `AGENTS.md`의 `X == 0` 불가 전제와 연결된다.
 
 ## 알려진 불일치·정리 메모

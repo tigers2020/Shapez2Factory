@@ -1632,7 +1632,10 @@ def test_normal_pass3_internal_transport_delta_gate_skips_guarded_validation_pos
 
 
 def test_recovery_pass3_non_negative_internal_delta_degraded_commit_reason() -> None:
-    """Recovery skips internal-delta gate; guarded commit uses degraded_connected_recovery."""
+    """Recovery skips internal-delta gate; guarded commit uses degraded_connected_recovery.
+
+    See ``degraded_connected_recovery`` in Pass3 E3 guarded trace.
+    """
 
     import django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport as p3_mod  # noqa: E501
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (

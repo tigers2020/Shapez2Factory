@@ -23,7 +23,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_r
     protected_corridors_overlay_from_routing_state,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
+    OVERLAY_REPLAY_EVENT_TYPES,
+    REPLAY_EVENT_TYPE_PASS3_LAYOUT_SNAPSHOT,
     SolverMutationEventKind,
+    enrich_replay_events_event_types,
 )
 
 # Timeline frame id -> replay event ``phase`` strings contributing to that frame.
@@ -56,6 +59,7 @@ def build_replay_ui_frames(
 ) -> list[dict[str, Any]]:
     """One UI meta row per ``solver_timeline`` entry; ``event_indices`` reference ``events``."""
 
+    enrich_replay_events_event_types(events)
     phase_to_indices: dict[str, list[int]] = {}
     for i, ev in enumerate(events):
         if not isinstance(ev, dict):
@@ -93,7 +97,11 @@ def build_replay_ui_frames(
         overlay_indices = sorted(
             j
             for j in indices
-            if isinstance(events[j], dict) and events[j].get("kind") in _OVERLAY_KINDS
+            if isinstance(events[j], dict)
+            and (
+                events[j].get("kind") in _OVERLAY_KINDS
+                or events[j].get("event_type") in OVERLAY_REPLAY_EVENT_TYPES
+            )
         )
 
         p3_snaps: list[dict[str, Any]] = []
@@ -101,7 +109,9 @@ def build_replay_ui_frames(
             ev = events[j]
             if not isinstance(ev, dict):
                 continue
-            if ev.get("kind") != SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value:
+            if ev.get("kind") != SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value and ev.get(
+                "event_type"
+            ) != REPLAY_EVENT_TYPE_PASS3_LAYOUT_SNAPSHOT:
                 continue
             pl = ev.get("payload")
             if not isinstance(pl, dict):

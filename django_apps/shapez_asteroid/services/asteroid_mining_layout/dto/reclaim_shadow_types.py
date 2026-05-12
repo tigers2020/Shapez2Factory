@@ -26,6 +26,14 @@ class _P4BundleEval:
     extension: Coord
     rotation: int
     shadow_route_path: tuple[Coord, ...] | None = None
+    # Spatial diversity (search pressure; gain_ratio threshold uses raw gain_ratio only).
+    p4_cluster_penalty: float = 0.0
+    p4_route_zone_overlap_cells: int = 0
+    p4_route_zone_penalty: float = 0.0
+    p4_local_cluster_density: float = 0.0
+    p4_min_anchor_distance_to_prior: int | None = None
+    p4_total_diversity_penalty: float = 0.0
+    gain_ratio_adjusted: float | None = None
 
 
 @dataclass(frozen=True)

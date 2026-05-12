@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Set
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.reclaim_shadow_types import (
@@ -51,6 +51,34 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
     cells_dict_from_mining_map,
 )
 
+
+def _p4_sort_reclaim_anchor_cells(cells: Set[Coord], priors: frozenset[Coord]) -> list[Coord]:
+    """Deterministic anchor order: far from prior reclaim anchors first when priors exist."""
+    lst = list(cells)
+    if not priors:
+        return sorted(lst, key=lambda p: (p[1], p[0]))
+    return sorted(
+        lst,
+        key=lambda a: (
+            -min(abs(a[0] - p[0]) + abs(a[1] - p[1]) for p in priors),
+            a[1],
+            a[0],
+        ),
+    )
+
+
+def _p4_diversity_trace_dict(e: _P4BundleEval) -> dict[str, Any]:
+    return {
+        "min_anchor_distance_to_prior": e.p4_min_anchor_distance_to_prior,
+        "local_cluster_density": e.p4_local_cluster_density,
+        "route_zone_overlap_cells": e.p4_route_zone_overlap_cells,
+        "cluster_penalty": e.p4_cluster_penalty,
+        "route_zone_penalty": e.p4_route_zone_penalty,
+        "total_diversity_penalty": e.p4_total_diversity_penalty,
+        "gain_ratio_adjusted": e.gain_ratio_adjusted,
+    }
+
+
 __all__ = (
     "_evaluate_one_shadow_bundle",
     "reclaim_shadow_scan_core_after_pass3",
@@ -71,6 +99,7 @@ def reclaim_shadow_scan_core_after_pass3(
     gain_ratio_threshold: float = DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD,
     reclaim_internal_transport_spent_prior: int = 0,
     p4_committed_route_cells_for_zone: frozenset[Coord] | None = None,
+    p4_prior_reclaim_anchors: frozenset[Coord] | None = None,
 ) -> ReclaimShadowScanResult:
     """P4-A scan: trace dict plus eval list + ``transport_kind`` for P4-B1."""
 
@@ -79,6 +108,7 @@ def reclaim_shadow_scan_core_after_pass3(
 
     mineable, asteroid = _mineable_and_asteroid_coords(final_mining_map)
     zone_extra = frozenset(p4_committed_route_cells_for_zone or ())
+    priors = frozenset(p4_prior_reclaim_anchors or ())
     final_route_cells = _all_transport_cells(map_after_pass3) | zone_extra
     committed = _committed_building_cells(map_after_pass3)
     pcs = protected_corridors_read_for_reclaim(
@@ -137,7 +167,7 @@ def reclaim_shadow_scan_core_after_pass3(
         asteroid=asteroid,
     )
 
-    anchor_cells = sorted(mineable_cur & reclaimed, key=lambda p: (p[1], p[0]))
+    anchor_cells = _p4_sort_reclaim_anchor_cells(mineable_cur & reclaimed, priors)
     evals: list[_P4BundleEval] = []
     n_eval = 0
     for anchor in anchor_cells:
@@ -170,6 +200,8 @@ def reclaim_shadow_scan_core_after_pass3(
                         gain_slots=RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS,
                         gain_ratio_threshold=gain_ratio_threshold,
                         shared=shared,
+                        prior_reclaim_anchors=priors if priors else None,
+                        route_zone_cells_for_overlap=zone_extra if zone_extra else None,
                     )
                 )
             if n_eval >= MAX_RECLAIM_SHADOW_SCAN_LIMIT:
@@ -188,6 +220,9 @@ def reclaim_shadow_scan_core_after_pass3(
         elif best_any is not None and math.isclose(e.gain_ratio, best_any.gain_ratio):
             if e.additional_route_cost < best_any.additional_route_cost:
                 best_any = e
+            elif math.isclose(e.additional_route_cost, best_any.additional_route_cost):
+                if e.p4_total_diversity_penalty < best_any.p4_total_diversity_penalty:
+                    best_any = e
 
     best_for_trace = best_accepted if best_accepted is not None else best_any
 
@@ -211,6 +246,7 @@ def reclaim_shadow_scan_core_after_pass3(
                 if best_for_trace.shadow_route_path
                 else None
             ),
+            "p4_diversity": _p4_diversity_trace_dict(best_for_trace),
         }
         if best_for_trace.accepted_shadow:
             projected_added = spent_prior + int(best_for_trace.incremental_internal_transport_added)
@@ -244,6 +280,7 @@ def run_reclaim_shadow_scan_after_pass3(
     gain_ratio_threshold: float = DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD,
     reclaim_internal_transport_spent_prior: int = 0,
     p4_committed_route_cells_for_zone: frozenset[Coord] | None = None,
+    p4_prior_reclaim_anchors: frozenset[Coord] | None = None,
 ) -> dict[str, Any]:
     """Scan shadow reclaim bundles after Pass3; emit trace only (no commits)."""
 
@@ -259,4 +296,5 @@ def run_reclaim_shadow_scan_after_pass3(
         gain_ratio_threshold=gain_ratio_threshold,
         reclaim_internal_transport_spent_prior=reclaim_internal_transport_spent_prior,
         p4_committed_route_cells_for_zone=p4_committed_route_cells_for_zone,
+        p4_prior_reclaim_anchors=p4_prior_reclaim_anchors,
     ).trace

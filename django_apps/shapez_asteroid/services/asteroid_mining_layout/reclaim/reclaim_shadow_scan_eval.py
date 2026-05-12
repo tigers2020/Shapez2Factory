@@ -21,6 +21,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P4_REJECT_NO_OUTPUT_STUB,
     P4_REJECT_SOFT_PROTECTED_CORRIDOR,
     P4_REJECT_VALIDATION,
+    RECLAIM_DIVERSITY_CLUSTER_FALLOFF_K,
+    RECLAIM_DIVERSITY_CLUSTER_RADIUS,
+    RECLAIM_ROUTE_ZONE_OVERLAP_PENALTY,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
@@ -56,6 +59,44 @@ class _P4ShadowScanShared:
     asteroid_cells: set[Coord]
     anchor_cell: Coord | None
     existing_transport: frozenset[Coord]
+
+
+def _p4_reclaim_diversity_fields(
+    anchor: Coord,
+    gain_ratio: float,
+    *,
+    prior_reclaim_anchors: frozenset[Coord] | None,
+    route_zone_cells_for_overlap: frozenset[Coord] | None,
+    shadow_route_path: tuple[Coord, ...],
+) -> dict[str, Any]:
+    """Anchor falloff vs prior commits + weak overlap with committed incremental route zone."""
+    priors = prior_reclaim_anchors or frozenset()
+    min_d: int | None = None
+    local_density = 0.0
+    cluster_penalty = 0.0
+    if priors:
+        distances = [abs(anchor[0] - p[0]) + abs(anchor[1] - p[1]) for p in priors]
+        min_d = min(distances)
+        for d in distances:
+            local_density += float(max(0, RECLAIM_DIVERSITY_CLUSTER_RADIUS - d))
+        cluster_penalty = local_density * RECLAIM_DIVERSITY_CLUSTER_FALLOFF_K
+    rz = route_zone_cells_for_overlap or frozenset()
+    overlap_cells = sum(1 for c in shadow_route_path if c in rz)
+    route_zone_penalty = float(overlap_cells) * RECLAIM_ROUTE_ZONE_OVERLAP_PENALTY
+    total = cluster_penalty + route_zone_penalty
+    if math.isinf(gain_ratio):
+        gr_adj: float | None = None
+    else:
+        gr_adj = gain_ratio / (1.0 + total) if total > 0.0 else gain_ratio
+    return {
+        "p4_cluster_penalty": cluster_penalty,
+        "p4_route_zone_overlap_cells": overlap_cells,
+        "p4_route_zone_penalty": route_zone_penalty,
+        "p4_local_cluster_density": local_density,
+        "p4_min_anchor_distance_to_prior": min_d,
+        "p4_total_diversity_penalty": total,
+        "gain_ratio_adjusted": gr_adj,
+    }
 
 
 def _build_p4_shadow_scan_shared(
@@ -113,6 +154,8 @@ def _evaluate_one_shadow_bundle(
     gain_slots: float,
     gain_ratio_threshold: float,
     shared: _P4ShadowScanShared | None = None,
+    prior_reclaim_anchors: frozenset[Coord] | None = None,
+    route_zone_cells_for_overlap: frozenset[Coord] | None = None,
 ) -> _P4BundleEval:
     """P4 shadow bundle 하나의 gain_ratio와 budget 적합성을 평가한다 (§12.2 Reclaim loop)."""
     if anchor not in mineable_cur or extension not in mineable_cur:
@@ -256,6 +299,13 @@ def _evaluate_one_shadow_bundle(
         )
     )
     if add_cost >= float(INF_COST):
+        div_kw = _p4_reclaim_diversity_fields(
+            anchor,
+            0.0,
+            prior_reclaim_anchors=prior_reclaim_anchors,
+            route_zone_cells_for_overlap=route_zone_cells_for_overlap,
+            shadow_route_path=route_path,
+        )
         return _p4_bundle_eval(
             gain=gain_slots,
             additional_route_cost=add_cost,
@@ -267,6 +317,7 @@ def _evaluate_one_shadow_bundle(
             extension=extension,
             rotation=rotation,
             shadow_route_path=route_path,
+            **div_kw,
         )
 
     incr = _incremental_internal_transport_on_path(
@@ -281,6 +332,14 @@ def _evaluate_one_shadow_bundle(
     else:
         gain_ratio = gain_slots / add_cost
 
+    div_kw = _p4_reclaim_diversity_fields(
+        anchor,
+        gain_ratio,
+        prior_reclaim_anchors=prior_reclaim_anchors,
+        route_zone_cells_for_overlap=route_zone_cells_for_overlap,
+        shadow_route_path=route_path,
+    )
+
     if not (math.isinf(gain_ratio) or gain_ratio >= gain_ratio_threshold):
         return _p4_bundle_eval(
             gain=gain_slots,
@@ -293,6 +352,7 @@ def _evaluate_one_shadow_bundle(
             extension=extension,
             rotation=rotation,
             shadow_route_path=route_path,
+            **div_kw,
         )
 
     projected = spent_prior + incr
@@ -308,6 +368,7 @@ def _evaluate_one_shadow_bundle(
             extension=extension,
             rotation=rotation,
             shadow_route_path=route_path,
+            **div_kw,
         )
 
     if pass3_raw_saved > 0 and (pass3_raw_saved - projected) <= 0:
@@ -322,6 +383,7 @@ def _evaluate_one_shadow_bundle(
             extension=extension,
             rotation=rotation,
             shadow_route_path=route_path,
+            **div_kw,
         )
 
     return _p4_bundle_eval(
@@ -335,4 +397,5 @@ def _evaluate_one_shadow_bundle(
         extension=extension,
         rotation=rotation,
         shadow_route_path=route_path,
+        **div_kw,
     )

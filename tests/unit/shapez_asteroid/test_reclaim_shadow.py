@@ -8,6 +8,9 @@ from unittest.mock import patch
 
 import pytest
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim import (
+    reclaim_shadow_scan as _reclaim_shadow_scan_mod,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow import (
     DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD,
     MAX_RECLAIM_ITERATIONS,
@@ -61,6 +64,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
     FinalValidationReport,
     cells_dict_from_mining_map,
 )
+
+_p4_sort_reclaim_anchor_cells = _reclaim_shadow_scan_mod._p4_sort_reclaim_anchor_cells
 
 
 def _never_external(_c: tuple[int, int]) -> bool:
@@ -408,6 +413,8 @@ def test_p4_scan_finds_accepted_bundle_on_reclaimed_cell_with_savings() -> None:
     bc = trace["p4_reclaim_best_candidate"]
     assert bc is not None
     assert bc.get("rejected_reason") is None
+    assert "p4_diversity" in bc
+    assert "cluster_penalty" in bc["p4_diversity"]
 
 
 def test_p4_scan_zero_accepted_when_spent_prior_exhausts_internal_budget() -> None:
@@ -2288,3 +2295,49 @@ def test_select_best_accepted_deterministic_tie_break() -> None:
     best = select_best_accepted_p4_bundle([b, a])
     assert best is not None
     assert best.anchor == (10, 4)
+
+
+def test_p4_sort_reclaim_anchor_cells_prefers_far_from_priors() -> None:
+    cells = {(1, 1), (100, 100), (5, 5)}
+    priors = frozenset({(1, 1)})
+    ordered = _p4_sort_reclaim_anchor_cells(cells, priors)
+    assert ordered[0] == (100, 100)
+    assert ordered[-1] == (1, 1)
+
+
+def test_p4_sort_reclaim_anchor_cells_no_priors_matches_legacy_yx() -> None:
+    cells = {(3, 1), (2, 2), (2, 0)}
+    ordered = _p4_sort_reclaim_anchor_cells(cells, frozenset())
+    assert ordered == sorted(cells, key=lambda p: (p[1], p[0]))
+
+
+def test_select_best_accepted_prefers_lower_diversity_penalty_at_same_gain() -> None:
+    a = _p4_bundle_eval(
+        gain=2.0,
+        additional_route_cost=1.0,
+        gain_ratio=2.0,
+        incremental_internal_transport_added=1,
+        rejected_reason=None,
+        accepted_shadow=True,
+        anchor=(10, 4),
+        extension=(10, 3),
+        rotation=0,
+        p4_total_diversity_penalty=5.0,
+        p4_cluster_penalty=5.0,
+    )
+    b = _p4_bundle_eval(
+        gain=2.0,
+        additional_route_cost=1.0,
+        gain_ratio=2.0,
+        incremental_internal_transport_added=1,
+        rejected_reason=None,
+        accepted_shadow=True,
+        anchor=(10, 5),
+        extension=(10, 6),
+        rotation=0,
+        p4_total_diversity_penalty=0.05,
+        p4_cluster_penalty=0.05,
+    )
+    best = select_best_accepted_p4_bundle([a, b])
+    assert best is not None
+    assert best.anchor == (10, 5)

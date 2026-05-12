@@ -22,6 +22,13 @@ def _p4_bundle_eval(
     extension: Coord,
     rotation: int,
     shadow_route_path: tuple[Coord, ...] | None = None,
+    p4_cluster_penalty: float = 0.0,
+    p4_route_zone_overlap_cells: int = 0,
+    p4_route_zone_penalty: float = 0.0,
+    p4_local_cluster_density: float = 0.0,
+    p4_min_anchor_distance_to_prior: int | None = None,
+    p4_total_diversity_penalty: float = 0.0,
+    gain_ratio_adjusted: float | None = None,
 ) -> _P4BundleEval:
     """P4 후보 dict를 정렬 가능한 _P4BundleEval로 변환한다 (§12.2 gain_ratio)."""
     return _P4BundleEval(
@@ -35,6 +42,13 @@ def _p4_bundle_eval(
         extension=extension,
         rotation=rotation,
         shadow_route_path=shadow_route_path,
+        p4_cluster_penalty=p4_cluster_penalty,
+        p4_route_zone_overlap_cells=p4_route_zone_overlap_cells,
+        p4_route_zone_penalty=p4_route_zone_penalty,
+        p4_local_cluster_density=p4_local_cluster_density,
+        p4_min_anchor_distance_to_prior=p4_min_anchor_distance_to_prior,
+        p4_total_diversity_penalty=p4_total_diversity_penalty,
+        gain_ratio_adjusted=gain_ratio_adjusted,
     )
 
 
@@ -48,6 +62,7 @@ def _p4_accepted_sort_key(e: _P4BundleEval) -> tuple[int | float, ...]:
     return (
         gr_key[0],
         gr_key[1],
+        e.p4_total_diversity_penalty,
         e.additional_route_cost,
         e.anchor[1],
         e.anchor[0],
@@ -76,6 +91,7 @@ def _p4_selected_candidate_rank(evals: list[_P4BundleEval], selected: _P4BundleE
             and e.rotation == selected.rotation
             and math.isclose(e.gain_ratio, selected.gain_ratio)
             and math.isclose(e.additional_route_cost, selected.additional_route_cost)
+            and math.isclose(e.p4_total_diversity_penalty, selected.p4_total_diversity_penalty)
         ):
             return i
     return 0

@@ -82,6 +82,16 @@ def run_p4_reclaim_loop_after_pass3(
     extend_recovery_chain(merged, RECOVERY_SEGMENT_P4_RECLAIM)
 
     for i in range(max_loop_iterations):
+        prior_anchor_cells: frozenset[Coord] = frozenset()
+        if acc_ex:
+            ps: set[Coord] = set()
+            for cell in acc_ex:
+                if isinstance(cell, (list, tuple)) and len(cell) == 2:
+                    xa, ya = cell[0], cell[1]
+                    if isinstance(xa, int) and isinstance(ya, int) and xa != 0:
+                        ps.add((xa, ya))
+            prior_anchor_cells = frozenset(ps)
+
         scan = _p4f.reclaim_shadow_scan_core_after_pass3(
             map_before_pass3,
             map_cur,
@@ -92,6 +102,7 @@ def run_p4_reclaim_loop_after_pass3(
             existing_layout_solver_hints=existing_layout_solver_hints,
             reclaim_internal_transport_spent_prior=spent,
             p4_committed_route_cells_for_zone=frozenset(acc_route_zone) if acc_route_zone else None,
+            p4_prior_reclaim_anchors=prior_anchor_cells if prior_anchor_cells else None,
         )
         merged.update(scan.trace)
         merged["p4_reclaim_loop_iterations_executed"] = i + 1

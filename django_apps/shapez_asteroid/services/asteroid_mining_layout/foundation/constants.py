@@ -97,6 +97,17 @@ RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS = 2.0
 MAX_RECLAIM_ITERATIONS = 3
 MAX_RECLAIM_SHADOW_SCAN_LIMIT = 16
 
+# P4 reclaim spatial diversity (search pressure only; gain_ratio threshold stays raw).
+# Anchor falloff: per prior p, contribution = max(0, R - manhattan(anchor,p)) * K_FALL.
+# At d=0 one prior: contribution = R * K_FALL = RECLAIM_DIVERSITY_CLUSTER_MAX_PRIOR_PENALTY.
+RECLAIM_DIVERSITY_CLUSTER_RADIUS = 12
+RECLAIM_DIVERSITY_CLUSTER_MAX_PRIOR_PENALTY = 0.08
+RECLAIM_DIVERSITY_CLUSTER_FALLOFF_K = (
+    RECLAIM_DIVERSITY_CLUSTER_MAX_PRIOR_PENALTY / float(RECLAIM_DIVERSITY_CLUSTER_RADIUS)
+)
+# Shadow stub path cells already committed as incremental route (weak vs cluster penalty).
+RECLAIM_ROUTE_ZONE_OVERLAP_PENALTY = 0.015
+
 P4_REJECT_FINAL_ROUTE_OVERLAP = "rejected_by_final_route_overlap"
 P4_REJECT_HARD_PROTECTED_CORRIDOR = "rejected_by_hard_protected_corridor"
 P4_REJECT_SOFT_PROTECTED_CORRIDOR = "rejected_by_soft_protected_corridor"

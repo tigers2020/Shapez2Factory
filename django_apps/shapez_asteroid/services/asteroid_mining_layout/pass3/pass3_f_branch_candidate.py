@@ -10,6 +10,7 @@ See ``documents/plans/plan_pass3_f_topology_branch_mvp_2026-05-11.md``.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
@@ -198,14 +199,16 @@ def _route_cell_delta_within_budget(
     *,
     baseline_route_length: int | None,
     candidate_route_length: int | None,
+    max_route_length_ratio: float = MAX_ROUTE_LENGTH_RATIO,
 ) -> bool | None:
-    """Mirror of ``_p3e3_route_length_ratio_allowed`` (independent for trace clarity)."""
+    """Mirror of ``_p3e3_route_length_ratio_allowed`` (ceil baseline * max_ratio)."""
 
     if baseline_route_length is None or candidate_route_length is None:
         return None
     if baseline_route_length <= 0:
         return candidate_route_length <= 0
-    return candidate_route_length <= int(MAX_ROUTE_LENGTH_RATIO * baseline_route_length)
+    allowed = int(math.ceil(float(baseline_route_length) * float(max_route_length_ratio)))
+    return candidate_route_length <= allowed
 
 
 def p3f_pass3_summary_placeholder(*, rejected_reason: str | None) -> dict[str, Any]:
@@ -288,6 +291,7 @@ def p3f_build_trace(
     internal_transport_saved: int,
     search_ms: int,
     expanded_nodes: int | None,
+    route_length_ratio_max: float = MAX_ROUTE_LENGTH_RATIO,
 ) -> dict[str, Any]:
     """Compose the ``p3f_*`` trace from the existing P3-E3 DTO and Pass3 context."""
 
@@ -313,6 +317,7 @@ def p3f_build_trace(
     route_cell_delta_within_budget = _route_cell_delta_within_budget(
         baseline_route_length=dto.baseline_route_length,
         candidate_route_length=dto.candidate_route_length,
+        max_route_length_ratio=route_length_ratio_max,
     )
 
     fixed_stub_preserved = fixed_output_stubs.issubset(candidate_tc) if candidate_tc else False

@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    MAX_ROUTE_LENGTH_RATIO,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_e3_guarded_dto import (
     P3E3GuardedCommitCandidate,
@@ -41,6 +45,9 @@ def _p3e3_atomic_trace_disabled() -> dict[str, Any]:
         "p3e3_guarded_commit_mode": None,
         "p3e3_guarded_known_good_transport_cell_count": None,
         "p3e3_guarded_post_commit_validation_passed": None,
+        "p3e3_route_length_ratio_cap": None,
+        "p3e3_route_allowed_max_length": None,
+        "p3e3_route_length_slack_cells": None,
     }
 
 
@@ -51,8 +58,19 @@ def _p3e3_atomic_trace_from_dto(
     validation_passed: bool,
     would_accept: bool,
     atomic_rejected: str | None,
+    route_length_ratio_cap: float | None = None,
 ) -> dict[str, Any]:
     """P3-E3 atomic candidate DTO를 trace-friendly dict로 변환한다 (§11.3 guarded commit)."""
+    cap = float(
+        MAX_ROUTE_LENGTH_RATIO if route_length_ratio_cap is None else route_length_ratio_cap
+    )
+    allowed_max: int | None = None
+    slack: int | None = None
+    bl = dto.baseline_route_length
+    cl = dto.candidate_route_length
+    if bl is not None and int(bl) > 0 and cl is not None:
+        allowed_max = int(math.ceil(float(bl) * cap))
+        slack = int(allowed_max) - int(cl)
     return {
         "p3e3_atomic_candidate_built": atomic_candidate_built,
         "p3e3_candidate_validation_passed": validation_passed,
@@ -65,6 +83,9 @@ def _p3e3_atomic_trace_from_dto(
         "p3e3_guarded_commit_mode": None,
         "p3e3_guarded_known_good_transport_cell_count": None,
         "p3e3_guarded_post_commit_validation_passed": None,
+        "p3e3_route_length_ratio_cap": cap,
+        "p3e3_route_allowed_max_length": allowed_max,
+        "p3e3_route_length_slack_cells": slack,
     }
 
 
@@ -140,6 +161,9 @@ def p3e3_pass3_summary_placeholder(*, rejected_reason: str | None) -> dict[str, 
         "p3e3_guarded_commit_mode": None,
         "p3e3_guarded_known_good_transport_cell_count": None,
         "p3e3_guarded_post_commit_validation_passed": None,
+        "p3e3_route_length_ratio_cap": None,
+        "p3e3_route_allowed_max_length": None,
+        "p3e3_route_length_slack_cells": None,
     }
 
 

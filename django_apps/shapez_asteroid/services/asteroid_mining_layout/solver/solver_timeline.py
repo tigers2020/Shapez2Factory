@@ -9,6 +9,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     EXTENSIONS,
     EXTRACTORS_FLUID,
     EXTRACTORS_SHAPE,
+    post_reclaim_p3e3_route_ratio_max,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.internal_transport_metrics import (  # noqa: E501
@@ -100,6 +101,7 @@ def _run_post_reclaim_pass3_once(
     *,
     final_mining_map: list[dict[str, Any]],
     is_external: Callable[[Coord], bool],
+    pass3_summary: Mapping[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """One Pass3 pass on ``mining_map``; emit ``post_reclaim_pass3_*`` summary fields."""
 
@@ -107,11 +109,16 @@ def _run_post_reclaim_pass3_once(
         solver_service as _solver,
     )
 
+    ps = pass3_summary or {}
+    pr_cap = post_reclaim_p3e3_route_ratio_max(
+        pass3_internal_transport_saved=int(ps.get("pass3_internal_transport_saved") or 0),
+    )
     map_try, _p3_res, p3_trace = _solver.run_pass3_transport_minimization_from_maps(
         mining_map,
         final_mining_map=final_mining_map,
         is_external=is_external,
         routing_state_summary=None,
+        p3e3_atomic_route_ratio_max=pr_cap,
     )
     out: dict[str, Any] = {
         "post_reclaim_pass3_reruns_used": 1,

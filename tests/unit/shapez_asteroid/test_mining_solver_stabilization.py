@@ -638,6 +638,8 @@ def test_build_solver_timeline_summary_p4_and_recovery_fields_consistent() -> No
     }
     out = build_solver_timeline(decoded)
     ss = out["solver_summary"]
+    assert "pass3_reclaim_projected_net_internal_saved" in ss
+    assert isinstance(ss["pass3_reclaim_projected_net_internal_saved"], int)
 
     p4_loop_fields = (
         "p4_reclaim_loop_max_iterations",

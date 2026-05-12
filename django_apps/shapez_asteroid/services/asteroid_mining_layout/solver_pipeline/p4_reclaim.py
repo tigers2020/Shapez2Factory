@@ -186,6 +186,9 @@ def run_p4_reclaim_stage(
                         }
                     )
     pass3_summary.update(p4_trace)
+    p3_sv = int(pass3_summary.get("pass3_internal_transport_saved") or 0)
+    p4_cum = int(pass3_summary.get("p4_reclaim_loop_internal_transport_cumulative_added") or 0)
+    pass3_summary["pass3_reclaim_projected_net_internal_saved"] = p3_sv - p4_cum
     tag_reclaim_incremental_failure_from_summary(pass3_summary)
     if post_reclaim_pass3_permission(
         eligible_pass3=eligible_pass3,
@@ -204,6 +207,7 @@ def run_p4_reclaim_stage(
                 map_final,
                 final_mining_map=final_map,
                 is_external=is_external,
+                pass3_summary=pass3_summary,
             )
             pass3_summary.update(post_reclaim_update)
             extend_recovery_chain(pass3_summary, RECOVERY_SEGMENT_POST_RECLAIM_PASS3)
@@ -238,6 +242,9 @@ def run_p4_reclaim_stage(
             ),
             "net_internal_transport_saved_after_reclaim": pass3_summary.get(
                 "net_internal_transport_saved_after_reclaim"
+            ),
+            "pass3_reclaim_projected_net_internal_saved": pass3_summary.get(
+                "pass3_reclaim_projected_net_internal_saved"
             ),
             "post_reclaim_pass3_delta": pass3_summary.get("post_reclaim_pass3_delta"),
             "step_hash_p4": step_hash_p4,

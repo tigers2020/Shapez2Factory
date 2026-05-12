@@ -20,12 +20,13 @@ def _p3e3_route_length_ratio_allowed(
     *,
     baseline_route_length: int | None,
     candidate_route_length: int | None,
+    max_route_length_ratio: float = MAX_ROUTE_LENGTH_RATIO,
 ) -> bool:
-    """STEP 5 Pass3 reroute bound: ``candidate <= ceil(baseline * 1.35)``."""
+    """STEP 5 Pass3 reroute bound: ``candidate <= ceil(baseline * max_route_length_ratio)``."""
 
     if baseline_route_length is None or candidate_route_length is None:
         return False
-    allowed = math.ceil(float(baseline_route_length) * MAX_ROUTE_LENGTH_RATIO)
+    allowed = math.ceil(float(baseline_route_length) * float(max_route_length_ratio))
     return candidate_route_length <= allowed
 
 

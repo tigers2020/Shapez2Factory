@@ -86,6 +86,7 @@ def run_pass3_transport_minimization_from_maps(
     pass3_recovery_context: bool = False,
     trunk_load: dict[str, Any] | None = None,
     routing_state_summary: dict[str, Any] | None = None,
+    p3e3_atomic_route_ratio_max: float | None = None,
 ) -> tuple[list[dict[str, Any]], Pass3TransportResult | None, dict[str, Any]]:
     """Run greedy Pass3 compression on an existing layout (typically post-STEP4).
 
@@ -105,6 +106,9 @@ def run_pass3_transport_minimization_from_maps(
 
     ``routing_state_summary``: optional STEP4 ``routing_state`` copy for P3-E2 protected corridor
     pool (merged with ``trunk_load`` via :func:`merge_step4_corridor_routing_mapping`, same as P4).
+
+    ``p3e3_atomic_route_ratio_max``: when set, P3-E3b route-length gate uses this instead of
+    ``MAX_ROUTE_LENGTH_RATIO`` (post-reclaim Pass3 adaptive cap).
     """
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
@@ -112,6 +116,11 @@ def run_pass3_transport_minimization_from_maps(
     )
 
     guarded_on = p3e3_guarded_commit_effective_enabled(p3e3_guarded_commit_enabled)
+    effective_atomic_route_ratio_max = (
+        float(p3e3_atomic_route_ratio_max)
+        if p3e3_atomic_route_ratio_max is not None
+        else float(MAX_ROUTE_LENGTH_RATIO)
+    )
 
     raw = cells_dict_from_mining_map(mining_map)
     cells = {k: dict(v) for k, v in raw.items()}
@@ -219,6 +228,7 @@ def run_pass3_transport_minimization_from_maps(
                 asteroid_f=asteroid_f,
                 is_external=is_external,
                 trunk_load=trunk_load,
+                route_length_ratio_max=effective_atomic_route_ratio_max,
             )
             atomic_search_ms = int(round((time.perf_counter() - t0) * 1000.0))
             p3e3_trace.update(atomic_trace)
@@ -356,6 +366,7 @@ def run_pass3_transport_minimization_from_maps(
             internal_transport_saved=pass3_internal_transport_saved,
             search_ms=atomic_search_ms,
             expanded_nodes=None,
+            route_length_ratio_max=effective_atomic_route_ratio_max,
         )
     else:
         p3f_trace = p3f_disabled_trace()

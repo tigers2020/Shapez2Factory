@@ -7,6 +7,7 @@ from dataclasses import replace
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    MAX_ROUTE_LENGTH_RATIO,
     P3E3_REJECT_ROUTE_LENGTH_RATIO,
     P3E3_REJECT_VALIDATION,
 )
@@ -67,6 +68,7 @@ def _p3e3_run_atomic_candidate_phase(
     asteroid_f: frozenset[Coord],
     is_external: Callable[[Coord], bool],
     trunk_load: dict[str, Any] | None = None,
+    route_length_ratio_max: float = MAX_ROUTE_LENGTH_RATIO,
 ) -> tuple[P3E3GuardedCommitCandidate, dict[str, Any]]:
     """P3-E3b-1: build + validate candidate; never mutates caller maps."""
 
@@ -116,6 +118,7 @@ def _p3e3_run_atomic_candidate_phase(
             validation_passed=False,
             would_accept=False,
             atomic_rejected=collect_err,
+            route_length_ratio_cap=route_length_ratio_max,
         )
         return dto, trace
 
@@ -135,6 +138,7 @@ def _p3e3_run_atomic_candidate_phase(
     ratio_ok = _p3e3_route_length_ratio_allowed(
         baseline_route_length=baseline_len,
         candidate_route_length=candidate_len,
+        max_route_length_ratio=route_length_ratio_max,
     )
     if dto.precheck_passed and not ratio_ok:
         dto = replace(
@@ -164,5 +168,6 @@ def _p3e3_run_atomic_candidate_phase(
         validation_passed=validation_passed,
         would_accept=would_accept,
         atomic_rejected=atomic_rejected,
+        route_length_ratio_cap=route_length_ratio_max,
     )
     return dto, trace

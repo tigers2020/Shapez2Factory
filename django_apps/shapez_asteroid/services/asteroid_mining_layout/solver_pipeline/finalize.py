@@ -673,6 +673,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("before_transport_count", None)
     summary_fields.setdefault("after_transport_count", None)
     summary_fields.setdefault("pass3_internal_transport_saved", None)
+    summary_fields.setdefault("pass3_reclaim_projected_net_internal_saved", None)
     summary_fields.setdefault("pass3_commit_reason", None)
     summary_fields.setdefault("pass3_rejected_reason", None)
     summary_fields.setdefault("p4_reclaim_shadow_enabled", False)

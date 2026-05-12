@@ -6,6 +6,8 @@ import math
 from dataclasses import replace
 from unittest.mock import patch
 
+import pytest
+
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL,
 )
@@ -677,6 +679,108 @@ def test_p3e3_route_length_ratio_ceil_policy() -> None:
     )
     allowed = math.ceil(100 * MAX_ROUTE_LENGTH_RATIO)
     assert allowed == 135
+    assert _p3e3_route_length_ratio_allowed(
+        baseline_route_length=100,
+        candidate_route_length=122,
+        max_route_length_ratio=1.22,
+    )
+    assert not _p3e3_route_length_ratio_allowed(
+        baseline_route_length=100,
+        candidate_route_length=123,
+        max_route_length_ratio=1.22,
+    )
+
+
+def test_p3e3_atomic_trace_route_ratio_telemetry() -> None:
+    """Reject path exposes cap, allowed max length, slack (cells)."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_e3_guarded_dto import (  # noqa: E501
+        P3E3GuardedCommitCandidate,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_e3_guarded_trace import (  # noqa: E501
+        _p3e3_atomic_trace_from_dto,
+    )
+
+    dto = P3E3GuardedCommitCandidate(
+        attempted=True,
+        candidate_transport_cells=frozenset(),
+        removed_transport_cells=frozenset(),
+        added_transport_cells=frozenset(),
+        preserved_stub_cells=frozenset(),
+        touched_hard_protected_cells=frozenset(),
+        touched_soft_protected_cells=frozenset(),
+        replacement_route_cells=frozenset(),
+        baseline_route_length=10,
+        candidate_route_length=50,
+        route_length_ratio=5.0,
+        precheck_passed=True,
+        rejected_reason="rejected_by_route_length_ratio",
+        hard_protected_corridors=frozenset(),
+    )
+    tr = _p3e3_atomic_trace_from_dto(
+        dto,
+        atomic_candidate_built=True,
+        validation_passed=False,
+        would_accept=False,
+        atomic_rejected="rejected_by_route_length_ratio",
+        route_length_ratio_cap=MAX_ROUTE_LENGTH_RATIO,
+    )
+    assert tr["p3e3_route_length_ratio_cap"] == MAX_ROUTE_LENGTH_RATIO
+    assert tr["p3e3_route_allowed_max_length"] == math.ceil(10 * MAX_ROUTE_LENGTH_RATIO)
+    assert tr["p3e3_route_length_slack_cells"] == tr["p3e3_route_allowed_max_length"] - 50
+
+
+def test_post_reclaim_p3e3_route_ratio_max_formula() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+        POST_RECLAIM_P3E3_ROUTE_RATIO_BASE,
+        POST_RECLAIM_P3E3_ROUTE_RATIO_CAP,
+        POST_RECLAIM_P3E3_ROUTE_RATIO_K,
+        post_reclaim_p3e3_route_ratio_max,
+    )
+
+    assert post_reclaim_p3e3_route_ratio_max(pass3_internal_transport_saved=0) == pytest.approx(
+        POST_RECLAIM_P3E3_ROUTE_RATIO_BASE
+    )
+    assert post_reclaim_p3e3_route_ratio_max(pass3_internal_transport_saved=10) == pytest.approx(
+        POST_RECLAIM_P3E3_ROUTE_RATIO_BASE + 10 * POST_RECLAIM_P3E3_ROUTE_RATIO_K
+    )
+    assert post_reclaim_p3e3_route_ratio_max(
+        pass3_internal_transport_saved=10**9
+    ) == pytest.approx(float(POST_RECLAIM_P3E3_ROUTE_RATIO_CAP))
+
+
+def test_run_post_reclaim_pass3_forwards_adaptive_route_cap() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+        post_reclaim_p3e3_route_ratio_max,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_timeline import (
+        _run_post_reclaim_pass3_once,
+    )
+
+    kw: dict[str, object] = {}
+
+    def fake_pass3(mm: object, **kwargs: object) -> tuple:
+        kw.update(kwargs)
+        return (
+            mm,
+            None,
+            {"pass3_skipped": True, "pass3_skip_reason": "unit_stub"},
+        )
+
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service."
+        "run_pass3_transport_minimization_from_maps",
+        side_effect=fake_pass3,
+    ):
+        _run_post_reclaim_pass3_once(
+            [],
+            final_mining_map=[],
+            is_external=lambda c: False,
+            pass3_summary={"pass3_internal_transport_saved": 20},
+        )
+    assert kw.get("p3e3_atomic_route_ratio_max") == post_reclaim_p3e3_route_ratio_max(
+        pass3_internal_transport_saved=20
+    )
 
 
 def test_p3e3_atomic_phase_collect_abort_trace() -> None:
@@ -723,6 +827,9 @@ def test_p3e3_atomic_phase_collect_abort_trace() -> None:
         tr.get("p3e3_guarded_commit_rejected_reason") == P3E3_REJECT_PRECHECK_NO_REPLACEMENT_ROUTE
     )
     assert tr.get("p3e3_guarded_commit_would_accept") is False
+    assert tr.get("p3e3_route_length_ratio_cap") == MAX_ROUTE_LENGTH_RATIO
+    assert tr.get("p3e3_route_allowed_max_length") is None
+    assert tr.get("p3e3_route_length_slack_cells") is None
 
 
 def test_p3e3_atomic_phase_route_length_ratio_reject() -> None:
@@ -771,6 +878,9 @@ def test_p3e3_atomic_phase_route_length_ratio_reject() -> None:
     assert tr.get("p3e3_atomic_candidate_built") is True
     assert tr.get("p3e3_guarded_commit_rejected_reason") == P3E3_REJECT_ROUTE_LENGTH_RATIO
     assert tr.get("p3e3_guarded_commit_would_accept") is False
+    assert tr.get("p3e3_route_length_ratio_cap") == MAX_ROUTE_LENGTH_RATIO
+    assert tr.get("p3e3_route_allowed_max_length") == math.ceil(10 * MAX_ROUTE_LENGTH_RATIO)
+    assert tr.get("p3e3_route_length_slack_cells") == tr.get("p3e3_route_allowed_max_length") - 50
 
 
 def test_guarded_post_commit_validation_failure_restores_greedy_snapshot() -> None:

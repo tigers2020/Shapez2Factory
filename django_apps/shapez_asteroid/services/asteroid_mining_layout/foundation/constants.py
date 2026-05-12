@@ -192,6 +192,22 @@ ROUTING_STATE_KEYS_STEP4_HASH: tuple[str, ...] = (
 # --- Post-P4 Pass3 reruns ---
 MAX_POST_RECLAIM_PASS3_RERUNS = 1
 
+# Post-reclaim Pass3 P3-E3b atomic route-length ratio (메인 Pass3는 ``MAX_ROUTE_LENGTH_RATIO``).
+POST_RECLAIM_P3E3_ROUTE_RATIO_BASE = 1.20
+POST_RECLAIM_P3E3_ROUTE_RATIO_CAP = 1.35
+POST_RECLAIM_P3E3_ROUTE_RATIO_K = 0.004
+
+
+def post_reclaim_p3e3_route_ratio_max(*, pass3_internal_transport_saved: int) -> float:
+    """Adaptive cap: BASE + K * saved, 상한 CAP (post-reclaim Pass3 전용)."""
+
+    saved = max(0, int(pass3_internal_transport_saved))
+    raw = float(POST_RECLAIM_P3E3_ROUTE_RATIO_BASE) + float(saved) * float(
+        POST_RECLAIM_P3E3_ROUTE_RATIO_K
+    )
+    return min(raw, float(POST_RECLAIM_P3E3_ROUTE_RATIO_CAP))
+
+
 # --- Replay NDJSON contract ---
 SOLVER_REPLAY_CONTRACT_VERSION = 8
 

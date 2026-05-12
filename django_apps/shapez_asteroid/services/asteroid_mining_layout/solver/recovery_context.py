@@ -1,4 +1,4 @@
-"""§13 recovery context: trigger vs commit vs rollback semantics (solver summary / trace).
+"""§13 recovery context: P4 orchestration segment vs bounded ``recovery_trigger_reason`` (summary).
 
 Chain segments are append-only stage markers for post–Pass3 orchestration (P4 reclaim,
 soft replace, post-reclaim Pass3). See project step docs §13.
@@ -52,7 +52,10 @@ def finalize_recovery_terminal_reason(pass3_summary: dict[str, Any]) -> None:
     Kept separate from per-commit ``rollback_reason`` fields on the summary.
     """
 
-    if not pass3_summary.get("recovery_trigger_reason"):
+    orchestration = pass3_summary.get("p4_orchestration_entry_segment") or pass3_summary.get(
+        "recovery_trigger_reason"
+    )
+    if not orchestration:
         pass3_summary["recovery_terminal_reason"] = None
         sync_recovery_total_attempts_used_from_chain(pass3_summary)
         return

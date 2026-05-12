@@ -677,8 +677,10 @@ def test_build_solver_timeline_summary_p4_and_recovery_fields_consistent() -> No
             assert chain[i] != chain[i + 1]
 
     trigger = ss.get("recovery_trigger_reason")
+    p4_orch = ss.get("p4_orchestration_entry_segment")
+    orchestration = p4_orch or trigger
     terminal = ss.get("recovery_terminal_reason")
-    if trigger is None:
+    if orchestration is None:
         assert terminal is None
     else:
         assert isinstance(terminal, str) and terminal
@@ -689,4 +691,5 @@ def test_build_solver_timeline_summary_p4_and_recovery_fields_consistent() -> No
     vs = validate_frame["summary"]
     assert vs.get("recovery_context_chain") == (chain if chain is not None else [])
     assert vs.get("recovery_trigger_reason") == trigger
+    assert vs.get("p4_orchestration_entry_segment") == p4_orch
     assert vs.get("recovery_terminal_reason") == terminal

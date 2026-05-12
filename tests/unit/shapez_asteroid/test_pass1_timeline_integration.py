@@ -194,6 +194,7 @@ def test_build_solver_timeline_solver_summary_trace_contract_keys() -> None:
         "before_return_validate",
         "recovery_context_chain",
         "recovery_trigger_reason",
+        "p4_orchestration_entry_segment",
         "recovery_terminal_reason",
         "recovery_action_plan",
         "recovery_contract_phases",
@@ -211,6 +212,7 @@ def test_build_solver_timeline_solver_summary_trace_contract_keys() -> None:
     for key in (
         "recovery_context_chain",
         "recovery_trigger_reason",
+        "p4_orchestration_entry_segment",
         "recovery_terminal_reason",
         "before_return_validate",
     ):

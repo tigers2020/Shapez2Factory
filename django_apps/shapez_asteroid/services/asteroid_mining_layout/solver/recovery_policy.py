@@ -5,13 +5,24 @@ from __future__ import annotations
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    COMMIT_REASON_GUARDED_ATOMIC,
     MAX_TOTAL_RECOVERY_ATTEMPTS,
     MAX_VALIDATION_RECOVERY_ATTEMPTS,
+    P3F_COMMIT_REASON_NORMAL_GAIN,
     RECOVERY_PHASE_MERGE_PARTIAL_FAILURE,
     RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_PHASE_RECLAIM_INCREMENTAL_FAILURE,
     RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED,
     RECOVERY_VALIDATION_LOOP_DISABLED,
+)
+
+# §13.5 rollup: ``recovery_validation_outcome.commit_reason`` only (성공 경로).
+_ROLLUP_SEMANTIC_COMMIT_REASONS: frozenset[str] = frozenset(
+    {
+        P3F_COMMIT_REASON_NORMAL_GAIN,
+        COMMIT_REASON_GUARDED_ATOMIC,
+        "degraded_connected_recovery",
+    }
 )
 
 __all__ = [
@@ -65,6 +76,7 @@ def apply_recovery_contract_defaults(target: dict[str, Any]) -> None:
     target.setdefault("recovery_reclaim_incremental_failure", False)
     target.setdefault("recovery_merge_partial_failure", False)
     target.setdefault("recovery_post_reclaim_pass3_connectivity_break", False)
+    target.setdefault("p4_orchestration_entry_segment", None)
     target.setdefault("recovery_action_plan", [])
     target.setdefault(
         "recovery_validation_outcome",
@@ -158,10 +170,21 @@ def synthesize_recovery_validation_outcome(summary: dict[str, Any]) -> None:
         out["rejected_reason"] = rr
 
     if rr == "ok":
-        out["commit_reason"] = str(summary.get("pass3_commit_reason") or "validation_ok")
-    else:
         cr = summary.get("pass3_commit_reason")
-        out["commit_reason"] = str(cr) if cr else None
+        if cr is None:
+            cr_s = ""
+        elif isinstance(cr, str):
+            cr_s = cr.strip()
+        else:
+            cr_s = str(cr).strip()
+        if cr_s in _ROLLUP_SEMANTIC_COMMIT_REASONS:
+            out["commit_reason"] = cr_s
+        elif cr_s in {"", "validation_ok"}:
+            out["commit_reason"] = P3F_COMMIT_REASON_NORMAL_GAIN
+        else:
+            out["commit_reason"] = P3F_COMMIT_REASON_NORMAL_GAIN
+    else:
+        out["commit_reason"] = None
 
     summary["recovery_validation_outcome"] = out
 

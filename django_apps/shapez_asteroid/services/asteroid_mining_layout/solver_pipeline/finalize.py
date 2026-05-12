@@ -712,6 +712,9 @@ def build_final_solver_output(
                 "before_return_validate": before_return_validate,
                 "recovery_context_chain": pass3_summary.get("recovery_context_chain", []),
                 "recovery_trigger_reason": pass3_summary.get("recovery_trigger_reason"),
+                "p4_orchestration_entry_segment": pass3_summary.get(
+                    "p4_orchestration_entry_segment"
+                ),
                 "recovery_terminal_reason": pass3_summary.get("recovery_terminal_reason"),
             },
             "mining_map": map_final,
@@ -901,6 +904,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("pass3_internal_transport_saved", None)
     summary_fields.setdefault("pass3_reclaim_projected_net_internal_saved", None)
     summary_fields.setdefault("pass3_commit_reason", None)
+    summary_fields.setdefault("p4_orchestration_entry_segment", None)
     summary_fields.setdefault("pass3_rejected_reason", None)
     summary_fields.setdefault("p4_reclaim_shadow_enabled", False)
     summary_fields.setdefault("p4_reclaim_shadow_skip_reason", "exception")

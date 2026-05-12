@@ -1,3 +1,4 @@
+import { defaultQuantityForShapeNodeData } from "../EditorFoundation/constants";
 import type { FluidPrimaryInk } from "../EditorFoundation/fluidSourceUi";
 import { inkFromFluidShapeCode } from "../EditorFoundation/fluidSourceUi";
 import { nodeDataIsFluidCarrier } from "../RecipeConnection";
@@ -24,7 +25,7 @@ export function formFieldsFromNodeData(d: Record<string, unknown>): NodeEditForm
     fluidInk: nodeDataIsFluidCarrier(d)
       ? inkFromFluidShapeCode(scalarToUiString(d.shape_code, ""))
       : "r",
-    quantity: scalarQuantityToUiString(d.quantity, 1),
+    quantity: scalarQuantityToUiString(d.quantity, defaultQuantityForShapeNodeData(d)),
     operation: scalarToUiString(d.operation, ""),
     paintColor: paintOrCrystalToUiString(d),
   };

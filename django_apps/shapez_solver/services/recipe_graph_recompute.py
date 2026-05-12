@@ -19,6 +19,8 @@ from django_apps.shapez_solver.services.recipe_graph_constants import (
     RECIPE_GRAPH_AUTO_OUTPUT_GRID_COLUMNS,
     RECIPE_GRAPH_AUTO_OUTPUT_ROW_SPACING,
     RECIPE_GRAPH_AUTO_OUTPUT_X_OFFSET,
+    RECIPE_GRAPH_DEFAULT_SOURCE_QUANTITY_FLUID,
+    RECIPE_GRAPH_DEFAULT_SOURCE_QUANTITY_MATERIAL,
     RECIPE_GRAPH_ENGINE_OPERATIONS,
     RECIPE_GRAPH_SCHEMA_VERSION,
 )
@@ -81,12 +83,18 @@ def _normalize_shape_node_source_carrier(
 def _normalize_shape_node(node: dict[str, Any], *, index: int) -> None:
     _normalize_shape_node_shape_code(node)
     node.setdefault("role", "intermediate")
-    node.setdefault("quantity", 1)
     role = str(node.get("role", "intermediate")).strip()
     node["role"] = role
     if role == "target":
         node.pop("source_carrier", None)
     _normalize_shape_node_source_carrier(node, index, role)
+    if "quantity" not in node:
+        if node.get("source_carrier") == "fluid":
+            node["quantity"] = RECIPE_GRAPH_DEFAULT_SOURCE_QUANTITY_FLUID
+        elif role == "source":
+            node["quantity"] = RECIPE_GRAPH_DEFAULT_SOURCE_QUANTITY_MATERIAL
+        else:
+            node["quantity"] = 1
 
 
 def _normalize_painter_paint_color(node: dict[str, Any], index: int) -> None:

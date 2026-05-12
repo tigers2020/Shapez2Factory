@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_solver.domain.operations import OperationType
-from django_apps.shapez_solver.domain.recipe import OperationRecipe, RecipeRef, SourceRecipe
 from django_apps.shapez_solver.services.engine_operation_helpers import (
     color_mixer_fluids,
     crystal_generator_output,
@@ -19,11 +16,6 @@ from django_apps.shapez_solver.services.engine_operation_helpers import (
     stacker_output,
     swapper_outputs,
 )
-
-
-@dataclass(frozen=True, slots=True)
-class EvaluatedRecipe:
-    output: Shape
 
 
 class OperationEngine:
@@ -84,33 +76,6 @@ class OperationEngine:
         if operation_type == OperationType.CRYSTAL_GENERATOR:
             return self._apply_crystal_generator(inputs, color)
         raise ValueError(f"unsupported operation: {operation_type}")
-
-    def evaluate(
-        self,
-        recipes: tuple[SourceRecipe | OperationRecipe, ...],
-        ref: RecipeRef,
-    ) -> Shape:
-        outputs: dict[tuple[str, int], Shape] = {}
-        recipes_by_id = {recipe.id: recipe for recipe in recipes}
-
-        def resolve(target: RecipeRef) -> Shape:
-            key = (target.recipe_id, target.output_index)
-            cached = outputs.get(key)
-            if cached is not None:
-                return cached
-
-            recipe = recipes_by_id[target.recipe_id]
-            if isinstance(recipe, SourceRecipe):
-                outputs[key] = recipe.shape
-                return recipe.shape
-
-            input_shapes = tuple(resolve(input_ref) for input_ref in recipe.inputs)
-            result_shapes = self.apply(recipe.operation_type, input_shapes, color=recipe.color)
-            for index, result in enumerate(result_shapes):
-                outputs[(recipe.id, index)] = result
-            return outputs[key]
-
-        return resolve(ref)
 
     def rotate_cw(self, shape: Shape) -> Shape:
         return rotate_shape(shape, OperationType.ROTATE_CW)

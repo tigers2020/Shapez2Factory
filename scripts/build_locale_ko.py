@@ -3,13 +3,19 @@
 # ruff: noqa: E501 — long English/Korean msgids and msgstrs in KO dict
 from __future__ import annotations
 
+import argparse
 import re
+import sys
 from pathlib import Path
 
 import polib  # type: ignore[import-untyped]
 
 BASE = Path(__file__).resolve().parents[1]
 TEMPLATE_ROOT = BASE / "django_apps" / "web" / "templates"
+STRICT_LOCALE_PY = (
+    BASE / "django_apps" / "shapez_asteroid" / "views.py",
+    BASE / "django_apps" / "web" / "views" / "public_pages.py",
+)
 PO_PATH = BASE / "locale" / "ko" / "LC_MESSAGES" / "django.po"
 MO_PATH = BASE / "locale" / "ko" / "LC_MESSAGES" / "django.mo"
 PO_JS_PATH = BASE / "locale" / "ko" / "LC_MESSAGES" / "djangojs.po"
@@ -77,6 +83,14 @@ KO: dict[str, str] = {
     # Solver
     "shapez2 planner | Shape solver": "shapez2 planner · 도형 솔버",
     "Shape solver": "도형 솔버",
+    "Under construction": "공사 중",
+    (
+        "The public shape solver and recipe graph are temporarily unavailable while the planning stack is being redesigned. "
+        "You can still preview a shape code on this page using the live preview panel."
+    ): (
+        "플래닝 스택을 다시 짜는 동안 공개 솔버와 레시피 그래프는 잠시 닫혀 있습니다. "
+        "이 페이지 오른쪽 라이브 미리보기로 도형 코드는 계속 볼 수 있습니다."
+    ),
     "Target": "목표",
     "Shape code": "도형 코드",
     "e.g. CuRuSuWu": "예: CuRuSuWu",
@@ -97,6 +111,13 @@ KO: dict[str, str] = {
     "shapez2 planner | Pattern Lab": "shapez2 planner · 패턴 랩",
     "Inspect pattern signatures and macro catalog candidates.": (
         "패턴 시그니처와 매크로 후보가 맞는지 가볍게 점검합니다."
+    ),
+    (
+        "Pattern DB entries are candidate metadata for staff workflows. Catalog lookup uses the canonical pattern signature below. "
+        "When a recipe has a valid graph_document with operations, step lists show graph-derived steps (green badge); otherwise DB step rows (gray badge)."
+    ): (
+        "패턴 DB 줄은 스태프 워크플로용 후보 메타데이터입니다. 카탈로그 조회는 아래 정규형 패턴 시그니처를 씁니다. "
+        "레시피에 연산이 담긴 graph_document가 유효하면 단계 목록은 그래프에서 옵니다(녹색 배지); 아니면 DB 단계 행에서 옵니다(회색 배지)."
     ),
     "e.g. CuRuSuSu or RcCuRcCu": "예: CuRuSuSu 또는 RcCuRcCu",
     "Analyze": "분석",
@@ -267,21 +288,12 @@ KO: dict[str, str] = {
     ): ("팬 메이드 플래너이며 공식과 무관합니다. 후원은 자유이며 서버와 개발을 돕습니다."),
     ("In production, set the environment variables"): ("운영 환경에서는 다음 환경 변수를 설정하면"),
     (
-        "Pattern DB entries stay as candidate metadata. Python strategy dry-runs decide whether a macro can actually produce an inventory-search action. "
-        "When a recipe has a valid graph_document with operations, the step list below is derived from the graph (green badge); otherwise it comes from DB step rows (gray badge)."
-    ): (
-        "패턴 DB 줄은 후보 메타데이터로만 남습니다. 파이썬 전략 드라이런이 매크로가 실제로 인벤토리 검색 동작을 만들 수 있는지 판별합니다. "
-        "레시피에 연산이 담긴 graph_document가 유효하면 아래 단계는 그래프에서 옵니다(녹색 배지); 아니면 DB 단계 행에서 옵니다(회색 배지)."
-    ),
+        "Enter a shape code to inspect its symbolic signature, rotation variants, and DB macro candidates."
+    ): ("도형 코드를 넣으면 기호 시그니처·회전 패턴·DB 매크로 후보를 함께 봅니다."),
     (
-        "Enter a shape code to inspect its symbolic signature, inventory-search skeleton, DB macro candidates, and strategy dry-run status."
+        "No active DB macro matched this signature. Load the seed fixture or add a MacroRecipe in admin."
     ): (
-        "도형 코드를 넣으면 기호 시그니처·인벤토리 검색 뼈대·DB 매크로 후보·전략 드라이런 상태를 함께 봅니다."
-    ),
-    (
-        "No active DB macro matched the inventory signature. Load the seed fixture or add a MacroRecipe in admin."
-    ): (
-        "인벤토리 시그니처와 맞는 활성 매크로가 DB에 없습니다. 시드 픽스처를 넣거나 관리자에서 MacroRecipe를 추가하세요."
+        "이 시그니처와 맞는 활성 매크로가 DB에 없습니다. 시드 픽스처를 넣거나 관리자에서 MacroRecipe를 추가하세요."
     ),
     (
         "Creates a draft row with the placeholder graph-draft pattern family (solver macro lookup uses exact pattern signature — drafts do not match real patterns until you assign a real family on the metadata page). "
@@ -302,7 +314,222 @@ KO: dict[str, str] = {
     "source x{{ c }}": "소스 x{{ c }}",
     "shapez2 planner - Gallery": "shapez2 planner · 갤러리",
     "shapez2 planner - Demo": "shapez2 planner · 데모",
+    # shapez_asteroid API + bbox (msgids match parse_bbox literals)
+    "invalid json": "JSON이 올바르지 않습니다",
+    "code must be a string": "code는 문자열이어야 합니다",
+    "decode failed": "디코드에 실패했습니다",
+    "missing x_min, x_max, y_min, or y_max": "x_min, x_max, y_min, y_max가 필요합니다",
+    "bounds must be integers": "범위는 정수여야 합니다",
+    "min must be <= max for each axis": "각 축에서 최소값은 최대값 이하여야 합니다",
+    "bbox span too large": "범위가 너무 큽니다",
+    "bbox must not include x=0": "x=0을 포함할 수 없습니다",
+    # Gallery view (public_pages)
+    "Screenshots": "스크린샷",
+    "Factory templates": "공장 템플릿",
+    "Gameplay UI and factory moments from recent runs.": "최근 플레이·공장 화면을 모았습니다.",
+    "Layout references captured from the in-game template browser.": "게임 내 템플릿 브라우저에서 가져온 배치 참고용입니다.",
+    # Gallery / demo / support (templates) — bulk entries below
+    "Generate missing part sprites": "빠진 부품 스프라이트 생성",
+    (
+        "Pedestal-only image is rendered first, then the Playwright pass for any missing mesh × color × quadrant rows (skips complete rows with an on-disk image)."
+    ): (
+        "먼저 받침대만 렌더한 뒤, 빠진 메시×색×사분면 행에 대해 Playwright를 돌립니다(이미 파일이 있는 완성 행은 건너뜁니다)."
+    ),
+    "Renderer version": "렌더러 버전",
+    "Fluid tank (vortex glTF) sprites": "유체 탱크(vortex glTF) 스프라이트",
+    (
+        "Render missing rows only: manifest keys color-{ink}:version (e.g. color-y:v1), one PNG per ink; pedestal when needed. Lid uses glTF script RGB."
+    ): (
+        "빠진 행만 렌더: manifest 키 color-{ink}:version(예: color-y:v1), 잉크당 PNG 하나; 필요 시 받침대. 뚜껑은 glTF 스크립트 RGB."
+    ),
+    "Sample: four quadrants": "샘플: 네 사분면",
+    (
+        "Pedestal first, then default_rect + red for quadrants 0–3. Skips complete rows. Same renderer version field as above."
+    ): (
+        "먼저 받침대, 이후 사분면 0–3에 default_rect+빨강. 완성 행은 건너뜀. 렌더러 버전 필드는 위와 동일."
+    ),
+    "Render missing sprites only": "빠진 스프라이트만 렌더",
+    "Render missing tank sprites only": "빠진 탱크 스프라이트만 렌더",
+    "Render sample (4 quadrants)": "샘플 렌더(4 사분면)",
+    "Sprite render progress": "스프라이트 렌더 진행",
+    "Progress": "진행",
+    "Rendering missing sprites": "빠진 스프라이트 렌더 중",
+    "Polling job status…": "작업 상태 확인 중…",
+    "Back to sprite list": "스프라이트 목록으로",
+    "Could not load job status (HTTP error).": "작업 상태를 불러오지 못했습니다(HTTP 오류).",
+    "Network error while polling.": "폴링 중 네트워크 오류.",
+    "Finished.": "완료.",
+    "Job failed.": "작업 실패.",
+    "Skipped (already had file)": "건너뜀(이미 파일 있음)",
+    "Rendered OK": "렌더 성공",
+    "Errors": "오류",
+    "Bitcoin Cash (BCH)": "비트코인 캐시(BCH)",
+    "Ethereum (ETH)": "이더리움(ETH)",
+    "Ko-fi": "Ko-fi",
+    "Close": "닫기",
 }
+
+# Asteroid mining map (`web/asteroid_optimizer.html`) + nav link "Asteroid mining"
+KO.update(
+    {
+        "shapez2 planner | Asteroid mining": "shapez2 planner | 소행성 채굴",
+        "Asteroid mining": "소행성 채굴",
+        "Asteroid mining map": "소행성 채굴 맵",
+        "Paste a blueprint copy string to decode it and preview mining coordinates on the map.": (
+            "게임에서 복사한 청사진 문자열을 붙여 넣으면 서버가 해석하고, 맵에서 채굴 좌표를 미리 볼 수 있습니다."
+        ),
+        "API probe": "API 확인",
+        "Map hints": "맵 안내",
+        "Distinct X columns (no X=0)": "X열은 게임 좌표 X≠0만 (X=0 열 없음)",
+        "North-up; Y increases downward": "북쪽 위; Y는 아래로 증가",
+        "Decode on server": "서버에서 해석",
+        "Asteroid blueprint and map": "소행성 청사진과 맵",
+        "No XY bounds from entries.": "항목에서 XY 범위를 얻지 못했습니다.",
+        "Network error": "네트워크 오류",
+        "Request failed": "요청 실패",
+        "Fluid mining": "유체 채굴",
+        "Shape mining": "도형 채굴",
+        "Belt": "벨트",
+        "Pipe": "파이프",
+        "Fluid extension": "유체 확장기",
+        "Extension": "확장기",
+        "Fluid miner": "유체 채굴기",
+        "Miner": "채굴기",
+        "Extractor": "추출기",
+        "Booster": "부스터",
+        "Asteroid field": "소행성 채굴장",
+        "Solver phase": "솔버 단계",
+        "Boundary scan and pipe overlay when the solver API is available.": (
+            "솔버 API가 연결되면 경계 스캔과 파이프 오버레이를 표시합니다."
+        ),
+        "Map build": "맵 구성",
+        "Copy decode": "복사본 해석",
+        "Timeline: 0 / 0 (preview)": "타임라인: 0 / 0(미리보기)",
+        "Map step": "맵 단계",
+        "Decode step": "해석 단계",
+        "Blueprint with belt & pipe": "벨트·파이프가 있는 청사진",
+        "Transport removed (mining shell)": "이송 제거(채굴 껍질)",
+        "Destroy extractors — asteroid field": "추출기 제거 — 소행성 채굴장",
+        "Destroy extensions — asteroid field": "확장기 제거 — 소행성 채굴장",
+        "Fill enclosed patch interior": "둘러싼 패치 내부 채우기",
+        "Final mining map": "최종 채굴 맵",
+        "Prepare string": "문자열 준비",
+        "Binary payload": "바이너리 페이로드",
+        "Parse JSON": "JSON 파싱",
+        "Layout object": "레이아웃 객체",
+        "Blueprint copy code": "청사진 복사 코드",
+        "Server decode keeps the original coordinate map; the grid is drawn in the browser.": (
+            "서버 해석은 원본 좌표 맵을 유지하고, 격자는 브라우저에서 그립니다."
+        ),
+        "Decode": "해석",
+        "Map steps": "맵 단계 목록",
+        "Prev": "이전",
+        "Play": "재생",
+        "Pause": "일시정지",
+        "Next": "다음",
+        "Step": "단계",
+        "Solver controls": "솔버 조작",
+        "Placeholder for future merge routing, trunk direction, and step metrics from Django or JSON APIs.": (
+            "추후 병합 경로·트렁크 방향·단계 지표를 Django나 JSON API에서 받아올 자리입니다."
+        ),
+        "REST views or action endpoints can populate these controls later; everything here is disabled.": (
+            "이후 REST 뷰나 액션 엔드포인트로 채울 수 있으며, 지금은 모두 비활성입니다."
+        ),
+        "Trunk direction & scan order": "트렁크 방향·스캔 순서",
+        "Not connected — values will come from the API later.": "미연결 — 값은 나중에 API에서 옵니다.",
+        "Map step playback": "맵 단계 재생",
+        "After a successful decode, use the timeline under the blueprint copy field to step through how the map is built.": (
+            "해석에 성공하면 청사진 입력 아래 타임라인으로 맵이 쌓이는 과정을 단계별로 볼 수 있습니다."
+        ),
+        "Extractors": "추출기",
+        "Extensions": "확장기",
+        "Pipe cells": "파이프 칸",
+        "Merges": "병합",
+        "Build rules": "표시 규칙",
+        "How entries are shown on the coordinate map.": "좌표 맵에 항목이 어떻게 나타나는지입니다.",
+        "Only cells with game X ≠ 0 appear as columns.": "게임 X≠0인 칸만 열로 나옵니다.",
+        "North-up: smaller Y toward the top of the panel.": "북쪽 위: Y가 작을수록 패널 위쪽입니다.",
+        "Semi-transparent tiles follow blueprint layout names.": "반투명 칸은 청사진 레이아웃 이름을 따릅니다.",
+        "Inferred patch interior matches the surrounding ring where applicable.": (
+            "추론된 패치 내부는 가능한 경우 둘러싼 링과 맞춥니다."
+        ),
+        "Hover a cell to see layout labels when map cells have been loaded.": (
+            "맵 셀을 불러온 뒤 칸 위에 올리면 레이아웃 이름이 보입니다."
+        ),
+        "Asteroid mining coordinate map": "소행성 채굴 좌표 맵",
+        "Semi-transparent tiles: shape vs fluid labels follow blueprint layout names; inferred patch interior matches the surrounding ring.": (
+            "반투명 칸: 도형·유체 구분은 청사진 레이아웃 이름을 따르며, 추론 내부는 둘러싼 링과 맞춥니다."
+        ),
+        "Only entries with X ≠ 0; columns are distinct game X values (no synthetic X = 0 column). North-up like the in-game map: smaller Y toward the top of this panel; vertical axis increases downward.": (
+            "X≠0인 항목만 표시하고, 열은 서로 다른 게임 X값입니다(가짜 X=0 열 없음). 게임 맵처럼 북쪽 위: Y가 작을수록 패널 위쪽, 세로는 아래로 증가합니다."
+        ),
+        "Rotate map panel (which edge faces up)": "맵 패널 회전(어느 변이 위인지)",
+        "N": "N",
+        "E": "E",
+        "S": "S",
+        "W": "W",
+        "Map orientation (north up by default)": "맵 방향(기본 북쪽 위)",
+        "North up": "북쪽 위",
+        "East up": "동쪽 위",
+        "South up": "남쪽 위",
+        "West up": "서쪽 위",
+        "Solver scan order and trunk controls will show here when connected; they are not the same as map rotation above.": (
+            "연결되면 솔버 스캔 순서·트렁크 조작이 여기 표시됩니다. 위의 맵 회전과는 다릅니다."
+        ),
+        "Scan pass (preview)": "스캔 패스(미리보기)",
+        "Pointer": "포인터",
+        "Occupied (blueprint)": "점유(청사진)",
+        "Inferred interior": "추론 내부",
+        "Belt (blueprint)": "벨트(청사진)",
+        "Pipe (blueprint)": "파이프(청사진)",
+        "Merge pipe (solver preview)": "병합 파이프(솔버 미리보기)",
+        "Final trunk (solver preview)": "최종 트렁크(솔버 미리보기)",
+        "Decode progress on map": "맵 위 해석 진행",
+        "Blueprint layout grid": "청사진 레이아웃 격자",
+        "Tile legend": "타일 범례",
+        "Build timeline (preview)": "구축 타임라인(미리보기)",
+        "Build playback (not connected)": "구축 재생(미연결)",
+        "Decoded layout summary": "해석된 레이아웃 요약",
+        "Paste a copy string and choose Decode to see entry bounds.": (
+            "복사 문자열을 붙이고 해석을 누르면 항목 범위가 보입니다."
+        ),
+        "Layout API": "레이아웃 API",
+        "Output": "출력",
+        "Paste the in-game copy string. Decoding runs on the server; a short map summary appears on the right.": (
+            "게임 안에서 복사한 문자열을 붙여 주세요. 해석은 서버에서 돌고, 오른쪽에 짧은 맵 요약이 나옵니다."
+        ),
+        "Validate input type": "입력 형식 검사",
+        "Normalize whitespace": "공백 정규화",
+        "Check non-empty": "비어 있지 않은지 확인",
+        "Check SHAPEZ2 prefix": "SHAPEZ2 접두사 확인",
+        "Extract payload after prefix": "접두사 뒤 페이로드 추출",
+        "Trim trailing non-base64": "끝의 비 base64 제거",
+        "Pad base64": "base64 패딩",
+        "Base64 decode": "Base64 디코드",
+        "Verify gzip magic": "gzip 시그니처 확인",
+        "Gzip decompress": "gzip 압축 해제",
+        "UTF-8 decode": "UTF-8 디코드",
+        "JSON parse": "JSON 파싱",
+        "Validate top-level object": "최상위 객체 검증",
+        "Counterfactual baseline": "반사실 기준선",
+        "Final internal transport": "최종 내부 이송",
+        "internal tiles": "내부 타일",
+        "Quality ratio": "품질 비율",
+        "×": "×",
+        "Aggregation": "집계 방식",
+        "Counterfactual baseline unavailable": "반사실 기준선을 계산하지 못함",
+        "Internal transport quality ratio is high versus the counterfactual baseline (over 1.35×). Consider route tuning before using this as a hard gate.": (
+            "반사실 기준선 대비 내부 이송 품질 비율이 높습니다(1.35× 초과). "
+            "하드 게이트로 쓰기 전에 경로 튜닝을 검토하는 것이 좋습니다."
+        ),
+        "Show protected corridors (read-only)": "보호 코리도 표시(읽기 전용)",
+        "Protected corridor: hard": "보호 코리도: 하드",
+        "Protected corridor: soft": "보호 코리도: 소프트",
+        "Protected corridor: candidate": "보호 코리도: 후보",
+        "Corridors (hard/soft/candidate)": "코리도(하드/소프트/후보)",
+        "solver timeline failed": "솔버 타임라인 실패",
+    }
+)
 
 # djangojs domain: legacy JS + React msgids (English -> Korean). Keys must match gettext/shapezUiT/t().
 KO_JS: dict[str, str] = {
@@ -448,6 +675,39 @@ def collect_msgids() -> list[str]:
     return ordered
 
 
+def collect_python_msgids(paths: tuple[Path, ...]) -> list[str]:
+    """Literal ``_(\"...\")`` msgids only (same-line)."""
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for m in re.finditer(r'_\(\s*"([^"]*)"\s*\)', text):
+            s = m.group(1)
+            if s and s not in seen:
+                seen.add(s)
+                ordered.append(s)
+    return ordered
+
+
+def merge_django_msgids() -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for s in collect_msgids() + collect_python_msgids(STRICT_LOCALE_PY):
+        if s not in seen:
+            seen.add(s)
+            ordered.append(s)
+    return ordered
+
+
+def effective_ko_map(msgids: list[str], hand_ko: dict[str, str]) -> dict[str, str]:
+    d = {m: m for m in msgids}
+    d.update(hand_ko)
+    return d
+
+
 def extract_js_double_quoted_calls(src: str) -> list[str]:
     """Best-effort: gettext(\"...\") and shapezUiT(\"...\")."""
     out: list[str] = []
@@ -483,11 +743,11 @@ def collect_js_catalog_msgids() -> list[str]:
 
 def write_po_file(
     msgids: list[str],
-    ko_map: dict[str, str],
+    hand_ko: dict[str, str],
     po_path: Path,
     mo_path: Path,
     domain_label: str,
-) -> None:
+) -> int:
     po_path.parent.mkdir(parents=True, exist_ok=True)
     po = polib.POFile()
     po.metadata = {
@@ -495,20 +755,17 @@ def write_po_file(
         "Language": "ko",
         "Content-Type": "text/plain; charset=UTF-8",
     }
-    missing: list[str] = []
+    effective = effective_ko_map(msgids, hand_ko)
+    missing = [m for m in msgids if m not in hand_ko]
     for mid in msgids:
-        ko = ko_map.get(mid)
-        if ko is None:
-            missing.append(mid)
-            ko = mid
-        po.append(polib.POEntry(msgid=mid, msgstr=ko))
+        po.append(polib.POEntry(msgid=mid, msgstr=effective[mid]))
     po.save(str(po_path))
     po.save_as_mofile(str(mo_path))
     if missing:
         print(
             f"WARN [{domain_label}]: missing KO mapping for",
             len(missing),
-            "strings (using English)",
+            "strings (using English msgid as msgstr)",
             flush=True,
         )
         for m in missing[:40]:
@@ -516,15 +773,36 @@ def write_po_file(
             print(" -", safe[:200], flush=True)
         if len(missing) > 40:
             print(" ...", flush=True)
+    return len(missing)
 
 
-def main() -> None:
-    msgids = collect_msgids()
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Build locale/ko django(.po|.mo) and djangojs catalogs."
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit 1 if literal gettext in STRICT_LOCALE_PY files lacks an explicit KO entry.",
+    )
+    args = parser.parse_args()
+
+    msgids = merge_django_msgids()
     write_po_file(msgids, KO, PO_PATH, MO_PATH, "django")
 
     js_msgids = collect_js_catalog_msgids()
     write_po_file(js_msgids, KO_JS, PO_JS_PATH, MO_JS_PATH, "djangojs")
 
+    if args.strict:
+        py_msgids = collect_python_msgids(STRICT_LOCALE_PY)
+        bad = [m for m in py_msgids if m not in KO]
+        if bad:
+            print("STRICT: add KO entries for Python gettext msgids:", file=sys.stderr)
+            for m in bad:
+                print(" ", repr(m), file=sys.stderr)
+            return 1
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

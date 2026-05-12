@@ -110,8 +110,6 @@ persona/
 .serena/
 .vscode/
 protocols/
-documents/
 persona/
+*.zip
 
-shapez2Solver.zip
-shapez2Solver_*.zip

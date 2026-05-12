@@ -1,0 +1,341 @@
+"""Final layout validation: geometry + connectivity assertion gate (Stabilization-P0).
+
+Capacity rated limits are **not** hard failures here; trunk accumulation is trace-only elsewhere.
+"""
+
+from __future__ import annotations
+
+import math
+from collections import deque
+from collections.abc import Callable
+from typing import Any
+
+from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
+from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_probe import (
+    probe_stub_to_external,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    EXTENSIONS,
+    EXTRACTORS_FLUID,
+    EXTRACTORS_SHAPE,
+    blocked_cells,
+    layout_kind,
+    transport_kind_for_extractor,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation_contracts import (  # noqa: E501
+    FinalValidationReport,
+)
+
+__all__ = [
+    "FinalValidationReport",
+    "count_placement_fsm_rows_on_cells",
+    "cells_dict_from_mining_map",
+    "external_margin_from_bbox",
+    "external_predicate_for_mining_map",
+    "mineable_bbox",
+    "transport_cells_reaching_external",
+    "validate_final_mining_layout",
+]
+
+
+def _parse_cells(mining_map: list[dict[str, Any]]) -> dict[Coord, dict[str, Any]]:
+    """Last row wins per coordinate."""
+
+    cells: dict[Coord, dict[str, Any]] = {}
+    for row in mining_map:
+        x, y = row.get("x"), row.get("y")
+        if not isinstance(x, int) or not isinstance(y, int):
+            continue
+        if x == 0:
+            continue
+        cells[(x, y)] = row
+    return cells
+
+
+def external_margin_from_bbox(width: int, height: int) -> int:
+    """mineable bbox 크기에서 동적 external margin을 계산한다 (§3.5 dynamic margin).
+
+    상세: documents/Algorithm/mining_solver_cursor_sessions/01_project_overview.md"""
+    return max(3, min(7, math.ceil(max(width, height) * 0.15)))
+
+
+def mineable_bbox(cells: dict[Coord, dict[str, Any]]) -> tuple[int, int, int, int] | None:
+    """extractor/extension/inferred 셀 기준 validation bbox를 구한다 (§15 hard invariant).
+
+    상세: documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md"""
+    mineable: list[Coord] = []
+    for c, row in cells.items():
+        role = row.get("role")
+        lk = layout_kind(row)
+        if role == "inferred":
+            mineable.append(c)
+            continue
+        if role != "occupied":
+            continue
+        if lk in EXTRACTORS_SHAPE | EXTRACTORS_FLUID | EXTENSIONS:
+            mineable.append(c)
+    if not mineable:
+        return None
+    xs = [p[0] for p in mineable]
+    ys = [p[1] for p in mineable]
+    return min(xs), max(xs), min(ys), max(ys)
+
+
+def cells_dict_from_mining_map(mining_map: list[dict[str, Any]]) -> dict[Coord, dict[str, Any]]:
+    """mining_map rows를 좌표 keyed dict로 변환한다 (§15 final validation)."""
+    return _parse_cells(mining_map)
+
+
+def external_predicate_for_mining_map(
+    mining_map: list[dict[str, Any]],
+) -> Callable[[Coord], bool]:
+    """mining_map bbox에서 external predicate를 생성한다 (§3.5 dynamic margin)."""
+    cells = _parse_cells(mining_map)
+    bbox = mineable_bbox(cells)
+    if bbox is None:
+        return lambda _: False
+    x_min, x_max, y_min, y_max = bbox
+    margin = external_margin_from_bbox(x_max - x_min + 1, y_max - y_min + 1)
+    return _external_predicate(bbox, margin)
+
+
+def _external_predicate(bbox: tuple[int, int, int, int], margin: int) -> Callable[[Coord], bool]:
+    """bbox와 margin 밖을 external로 판정하는 predicate를 만든다 (§15 connectivity invariant)."""
+    x_min, x_max, y_min, y_max = bbox
+
+    def pred(c: Coord) -> bool:
+        """좌표 하나가 external margin 밖인지 판정한다 (§15 connectivity invariant)."""
+        x, y = c
+        return bool(
+            x != 0
+            and (
+                x < x_min - margin or x > x_max + margin or y < y_min - margin or y > y_max + margin
+            )
+        )
+
+    return pred
+
+
+def _neighbor_transport_cells(
+    cells: dict[Coord, dict[str, Any]],
+    extractor_coord: Coord,
+    want_kind: str,
+) -> list[Coord]:
+    """rotation 정보가 없을 때 인접 belt/pipe stub 후보를 수집한다 (§15 connectivity invariant)."""
+    x, y = extractor_coord
+    out: list[Coord] = []
+    for nxt in neighbors4(x, y):
+        row = cells.get(nxt)
+        if row is None:
+            continue
+        role = row.get("role")
+        if want_kind == "shape_belt" and role == "belt":
+            out.append(nxt)
+        elif want_kind == "fluid_pipe" and role == "pipe":
+            out.append(nxt)
+    return out
+
+
+def _transport_cell_set(cells: dict[Coord, dict[str, Any]]) -> set[Coord]:
+    """validation 대상 belt/pipe 좌표 집합을 만든다 (§15 hard invariant)."""
+    s: set[Coord] = set()
+    for c, row in cells.items():
+        role = row.get("role")
+        if role in ("belt", "pipe"):
+            s.add(c)
+    return s
+
+
+def transport_cells_reaching_external(
+    transport_cells: set[Coord],
+    blocked: set[Coord],
+    is_external: Callable[[Coord], bool],
+) -> set[Coord]:
+    """Transport cells in a component that reaches some cell adjacent to ``is_external`` (BFS)."""
+
+    seeds: list[Coord] = []
+    for t in transport_cells:
+        x, y = t
+        for nxt in neighbors4(x, y):
+            if is_external(nxt):
+                seeds.append(t)
+                break
+    q: deque[Coord] = deque(seeds)
+    seen: set[Coord] = set(seeds)
+    while q:
+        cur = q.popleft()
+        x, y = cur
+        for nxt in neighbors4(x, y):
+            if nxt not in transport_cells or nxt in blocked or nxt in seen:
+                continue
+            seen.add(nxt)
+            q.append(nxt)
+    return seen
+
+
+def _overlap_violations_list(mining_map: list[dict[str, Any]]) -> int:
+    """Detect extractor/extension sharing a cell with belt/pipe (multi-row map allowed)."""
+
+    by: dict[Coord, set[str]] = {}
+    for row in mining_map:
+        x, y = row.get("x"), row.get("y")
+        if not isinstance(x, int) or not isinstance(y, int) or x == 0:
+            continue
+        lk = layout_kind(row)
+        role = row.get("role")
+        kind: str | None = None
+        if role == "belt" or role == "pipe":
+            kind = "transport"
+        elif lk in EXTRACTORS_SHAPE | EXTRACTORS_FLUID | EXTENSIONS:
+            kind = "building"
+        if kind is None:
+            continue
+        by.setdefault((x, y), set()).add(kind)
+    return sum(1 for s in by.values() if "building" in s and "transport" in s)
+
+
+def count_placement_fsm_rows_on_cells(
+    cells: dict[Coord, dict[str, Any]],
+) -> tuple[int, int]:
+    """Count rows carrying non-terminal placement FSM markers (dedupe keys per row)."""
+
+    quarantined_unrouted_count = 0
+    provisional_placed_row_count = 0
+    for row in cells.values():
+        for key in ("placement_state", "placement_commit_state"):
+            ps = row.get(key)
+            if not isinstance(ps, str):
+                continue
+            pl = ps.lower()
+            if pl == "quarantined_unrouted":
+                quarantined_unrouted_count += 1
+                break
+            if pl == "provisional_placed":
+                provisional_placed_row_count += 1
+                break
+    return quarantined_unrouted_count, provisional_placed_row_count
+
+
+def validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValidationReport:
+    """최종 mining layout의 geometry/connectivity hard invariant를 검증한다.
+
+        Pass1/Pass2/STEP4/Pass3/Reclaim 이후 반환 직전 gate다 (§15).
+
+    상세: documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md"""
+    cells = _parse_cells(mining_map)
+    transport_cells = _transport_cell_set(cells)
+    blocked = blocked_cells(cells)
+
+    extractor_count = 0
+    extension_count = 0
+    for row in cells.values():
+        if row.get("role") != "occupied":
+            continue
+        lk = layout_kind(row)
+        if lk in EXTRACTORS_SHAPE | EXTRACTORS_FLUID:
+            extractor_count += 1
+        elif lk in EXTENSIONS:
+            extension_count += 1
+    transport_cell_count = len(transport_cells)
+
+    overlap_violation_count = _overlap_violations_list(mining_map)
+
+    quarantined_unrouted_count, provisional_placed_row_count = count_placement_fsm_rows_on_cells(
+        cells
+    )
+
+    bbox = mineable_bbox(cells)
+    missing_stub_count = 0
+    disconnected_stub_count = 0
+
+    def never_external(_c: Coord) -> bool:
+        """bbox가 없을 때 external 도달을 항상 실패 처리하는 fallback predicate다 (§15)."""
+        return False
+
+    is_external: Callable[[Coord], bool] = never_external
+    if bbox is not None:
+        x_min, x_max, y_min, y_max = bbox
+        w = x_max - x_min + 1
+        h = y_max - y_min + 1
+        margin = external_margin_from_bbox(w, h)
+        is_external = _external_predicate(bbox, margin)
+
+    fc_transport = frozenset(transport_cells)
+    fc_blocked = frozenset(blocked)
+    missing_extractor_rotation_count = 0
+    for c, row in cells.items():
+        lk = layout_kind(row)
+        if lk not in EXTRACTORS_SHAPE | EXTRACTORS_FLUID:
+            continue
+        tk = transport_kind_for_extractor(row)
+        if tk is None:
+            missing_stub_count += 1
+            continue
+        raw_r = row.get("r")
+        r_known = raw_r if isinstance(raw_r, int) else None
+        if r_known is not None:
+            stub_cell = shape_miner_output_cell(c, r_known)
+            if stub_cell is None:
+                missing_stub_count += 1
+                continue
+            st = cells.get(stub_cell)
+            ok_kind = st is not None and (
+                (tk == "shape_belt" and st.get("role") == "belt")
+                or (tk == "fluid_pipe" and st.get("role") == "pipe")
+            )
+            if not ok_kind:
+                missing_stub_count += 1
+                continue
+            if bbox is None or not probe_stub_to_external(
+                stub_cell=stub_cell,
+                transport_cells=fc_transport,
+                blocked_cells=fc_blocked,
+                is_external=is_external,
+            ):
+                disconnected_stub_count += 1
+        else:
+            missing_extractor_rotation_count += 1
+            stubs = _neighbor_transport_cells(cells, c, tk)
+            if not stubs:
+                missing_stub_count += 1
+                continue
+            if bbox is None or not any(
+                probe_stub_to_external(
+                    stub_cell=s,
+                    transport_cells=fc_transport,
+                    blocked_cells=fc_blocked,
+                    is_external=is_external,
+                )
+                for s in stubs
+            ):
+                disconnected_stub_count += 1
+
+    connected_exit = transport_cells_reaching_external(transport_cells, blocked, is_external)
+    orphan_transport_count = len(transport_cells - connected_exit)
+    transport_connectivity_ok = orphan_transport_count == 0
+
+    geometry_valid = (
+        overlap_violation_count == 0
+        and quarantined_unrouted_count == 0
+        and provisional_placed_row_count == 0
+        and missing_stub_count == 0
+    )
+    connectivity_valid = disconnected_stub_count == 0 and orphan_transport_count == 0
+
+    return FinalValidationReport(
+        geometry_valid=geometry_valid,
+        connectivity_valid=connectivity_valid,
+        disconnected_stub_count=disconnected_stub_count,
+        quarantined_unrouted_count=quarantined_unrouted_count,
+        provisional_placed_row_count=provisional_placed_row_count,
+        orphan_transport_count=orphan_transport_count,
+        overlap_violation_count=overlap_violation_count,
+        missing_stub_count=missing_stub_count,
+        missing_extractor_rotation_count=missing_extractor_rotation_count,
+        extractor_count=extractor_count,
+        extension_count=extension_count,
+        transport_cell_count=transport_cell_count,
+        transport_connectivity_ok=transport_connectivity_ok,
+    )

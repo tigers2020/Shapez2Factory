@@ -22,7 +22,7 @@ const EN = {
     "New shape sources cycle the four full base materials (Cu/Ru/Su/Wu) — set carrier to fluid in the node editor (RGB) or wire per-port rules.",
   fluidInkLabel: "Fluid ink (R / G / B)",
   fluidInkHint:
-    "Encoded as uniform circle layer (e.g. CrCrCrCr). Use a color_mixer in the graph for cyan/magenta/yellow/white.",
+    "Stored code is uniform ink (e.g. ``-r-r-r-r``). ``color-r`` / ``color-g`` / ``color-b`` are parser aliases. Legacy ``CrCrCrCr`` still parses. Tiles: tank sprites (color-*) from fluid preview scene.",
   carrierLabel: "Carrier",
   carrierMaterial: "Shape (material)",
   carrierFluid: "Fluid",

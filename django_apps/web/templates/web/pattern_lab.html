@@ -15,8 +15,8 @@
       </h1>
       <p class="mt-4 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
         {% blocktrans trimmed %}
-          Pattern DB entries stay as candidate metadata. Python strategy dry-runs decide whether a macro can actually produce an inventory-search action.
-          When a recipe has a valid graph_document with operations, the step list below is derived from the graph (green badge); otherwise it comes from DB step rows (gray badge).
+          Pattern DB entries are candidate metadata for staff workflows. Catalog lookup uses the canonical pattern signature below.
+          When a recipe has a valid graph_document with operations, step lists show graph-derived steps (green badge); otherwise DB step rows (gray badge).
         {% endblocktrans %}
       </p>
     </div>
@@ -47,7 +47,7 @@
     {% if not analysis %}
       <p class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-5 text-sm text-slate-400">
         {% blocktrans trimmed %}
-          Enter a shape code to inspect its symbolic signature, inventory-search skeleton, DB macro candidates, and strategy dry-run status.
+          Enter a shape code to inspect its symbolic signature, rotation variants, and DB macro candidates.
         {% endblocktrans %}
       </p>
     {% elif analysis.error %}
@@ -67,23 +67,9 @@
               <dt class="text-slate-500">{% trans "Canonical" %}</dt>
               <dd class="font-mono text-slate-100">{{ analysis.canonical_code }}</dd>
             </div>
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
               <dt class="text-slate-500">{% trans "Signature" %}</dt>
               <dd class="font-mono text-cyan-200">{{ analysis.signature }}</dd>
-            </div>
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <dt class="text-slate-500">{% trans "Inventory goal" %}</dt>
-              <dd class="font-mono text-slate-100">{{ analysis.inventory_goal_code }}</dd>
-            </div>
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <dt class="text-slate-500">{% trans "Inventory signature" %}</dt>
-              <dd class="font-mono text-cyan-200">{{ analysis.inventory_signature }}</dd>
-            </div>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <dt class="text-slate-500">{% trans "Target batch" %}</dt>
-              <dd class="font-mono text-slate-100">
-                {% if analysis.target_count %}x{{ analysis.target_count }}{% else %}{% trans "n/a" %}{% endif %}
-              </dd>
             </div>
           </dl>
           {% if analysis.warnings %}
@@ -134,68 +120,58 @@
             {% blocktrans with n=analysis.db_candidates|length %}DB matches: {{ n }}{% endblocktrans %}
           </span>
         </div>
-        {% if analysis.macro_results %}
+        {% if analysis.db_candidates %}
           <div class="mt-4 overflow-x-auto">
-            <table class="w-full min-w-208 border-collapse text-left text-xs">
+            <table class="w-full min-w-[28rem] border-collapse text-left text-xs">
               <thead>
                 <tr class="border-b border-slate-800 text-slate-500">
                   <th class="py-2 pr-3 font-medium">{% trans "Macro" %}</th>
                   <th class="py-2 pr-3 font-medium">{% trans "Strategy" %}</th>
                   <th class="py-2 pr-3 font-medium">{% trans "Family" %}</th>
                   <th class="py-2 pr-3 font-medium">{% trans "Cost" %}</th>
-                  <th class="py-2 pr-3 font-medium">{% trans "Dry-run" %}</th>
-                  <th class="py-2 pr-3 font-medium">{% trans "Step source" %}</th>
-                  <th class="py-2 font-medium">{% trans "Primitive steps" %}</th>
+                  <th class="py-2 font-medium">{% trans "Step source" %}</th>
                 </tr>
               </thead>
               <tbody class="text-slate-300">
-                {% for result in analysis.macro_results %}
+                {% for candidate in analysis.db_candidates %}
                   <tr class="border-b border-slate-800/80">
-                    <td class="py-2 pr-3 font-mono text-slate-100">{{ result.candidate.macro_code }}</td>
-                    <td class="py-2 pr-3 font-mono text-cyan-200">{{ result.candidate.strategy_code }}</td>
-                    <td class="py-2 pr-3 font-mono text-slate-400">{{ result.candidate.family_code }}</td>
+                    <td class="py-2 pr-3 font-mono text-slate-100">{{ candidate.macro_code }}</td>
+                    <td class="py-2 pr-3 font-mono text-cyan-200">{{ candidate.strategy_code }}</td>
+                    <td class="py-2 pr-3 font-mono text-slate-400">{{ candidate.family_code }}</td>
                     <td class="py-2 pr-3 font-mono text-slate-400">
-                      {% blocktrans with oc=result.candidate.estimated_operation_cost sc=result.candidate.estimated_stage_cost %}op {{ oc }} / stage {{ sc }}{% endblocktrans %}
+                      {% blocktrans with oc=candidate.estimated_operation_cost sc=candidate.estimated_stage_cost %}op {{ oc }} / stage {{ sc }}{% endblocktrans %}
                     </td>
-                    <td class="py-2 pr-3">
-                      {% if result.can_generate %}
-                        <span class="rounded-full bg-emerald-400/10 px-2 py-1 font-semibold text-emerald-200">{% trans "ready" %}</span>
-                      {% else %}
-                        <span class="rounded-full bg-rose-400/10 px-2 py-1 font-semibold text-rose-200">{% trans "not generated" %}</span>
-                      {% endif %}
-                    </td>
-                    <td class="py-2 pr-3">
-                      {% if result.candidate.lab_step_source == "graph_document" %}
+                    <td class="py-2">
+                      {% if candidate.lab_step_source == "graph_document" %}
                         <span class="rounded-full bg-emerald-400/10 px-2 py-1 font-semibold text-emerald-200">{% trans "graph" %}</span>
                       {% else %}
                         <span class="rounded-full bg-slate-800 px-2 py-1 font-semibold text-slate-400">{% trans "DB" %}</span>
                       {% endif %}
                     </td>
-                    <td class="py-2 font-mono text-slate-100">{{ result.primitive_step_count }}</td>
                   </tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
           <div class="mt-6 grid gap-4 lg:grid-cols-2">
-            {% for result in analysis.macro_results %}
+            {% for candidate in analysis.db_candidates %}
               <article class="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                  <h3 class="font-mono text-sm text-slate-100">{{ result.candidate.macro_code }}</h3>
+                  <h3 class="font-mono text-sm text-slate-100">{{ candidate.macro_code }}</h3>
                   <span class="rounded-full border border-slate-700 px-2 py-1 font-mono text-[10px] text-slate-400">
-                    {{ result.candidate.strategy_code }}
+                    {{ candidate.strategy_code }}
                   </span>
                 </div>
                 <div class="mt-2 flex flex-wrap items-center gap-2">
-                  {% if result.candidate.lab_step_source == "graph_document" %}
+                  {% if candidate.lab_step_source == "graph_document" %}
                     <span class="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">{% trans "Steps from graph_document" %}</span>
                   {% else %}
                     <span class="rounded-full border border-slate-600 bg-slate-900 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{% trans "Steps from database" %}</span>
                   {% endif %}
                 </div>
-                {% if result.candidate.steps %}
+                {% if candidate.steps %}
                   <ol class="mt-4 space-y-3">
-                    {% for step in result.candidate.steps %}
+                    {% for step in candidate.steps %}
                       <li class="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                           <span class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{% blocktrans with i=step.step_index %}Step {{ i }}{% endblocktrans %}</span>
@@ -223,25 +199,9 @@
         {% else %}
           <p class="mt-4 rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-400">
             {% blocktrans trimmed %}
-              No active DB macro matched the inventory signature. Load the seed fixture or add a MacroRecipe in admin.
+              No active DB macro matched this signature. Load the seed fixture or add a MacroRecipe in admin.
             {% endblocktrans %}
           </p>
-        {% endif %}
-      </section>
-
-      <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-5" aria-labelledby="source-counts-heading">
-        <h2 id="source-counts-heading" class="text-sm font-semibold text-cyan-200">{% trans "Batch source counts" %}</h2>
-        {% if analysis.source_counts %}
-          <div class="mt-4 grid gap-3 sm:grid-cols-3">
-            {% for shape_code, count in analysis.source_counts.items %}
-              <div class="rounded-xl border border-slate-800 bg-slate-950/70 px-4 py-3">
-                <p class="font-mono text-sm text-slate-100">{{ shape_code }}</p>
-                <p class="mt-1 text-xs text-slate-500">{% blocktrans with c=count %}source x{{ c }}{% endblocktrans %}</p>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="mt-4 text-sm text-slate-400">{% trans "No batch source count could be computed." %}</p>
         {% endif %}
       </section>
     {% endif %}

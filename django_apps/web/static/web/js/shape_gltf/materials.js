@@ -5,6 +5,7 @@ import {
   BASE_HEIGHT,
   BASE_RADIUS,
   COLOR_HEX,
+  FLUID_TANK_VORTEX_SCRIPT_COLORS,
   MATERIAL_CRYSTAL_ATTENUATION_DISTANCE,
   MATERIAL_CRYSTAL_CLEARCOAT,
   MATERIAL_CRYSTAL_CLEARCOAT_ROUGHNESS,
@@ -186,8 +187,10 @@ function createTopMaterialWithSeam(color, roughness = MATERIAL_TOP_SEAM_DEFAULT_
  * @param {THREE.Object3D} root
  * @param {THREE.Material} topMaterial
  * @param {THREE.Material} sideMaterial
+ * @param {{ swapNormalBucket?: boolean }} [opts] If true, low-Y (slot 0) vs high-Y (slot 1) buckets are swapped — needed when a mesh labels the paint lid with normals that read as "side".
  */
-function applyTwoFaceMaterials(root, topMaterial, sideMaterial) {
+function applyTwoFaceMaterials(root, topMaterial, sideMaterial, opts = {}) {
+  const swap = Boolean(opts.swapNormalBucket);
   root.traverse((node) => {
     if (!node.isMesh || !node.geometry) {
       return;
@@ -212,7 +215,8 @@ function applyTwoFaceMaterials(root, topMaterial, sideMaterial) {
 
     for (let i = 0; i < normals.count; i += 3) {
       const avgNormalY = (normals.getY(i) + normals.getY(i + 1) + normals.getY(i + 2)) / 3;
-      const materialIndex = avgNormalY > MATERIAL_TWO_FACE_UP_NORMAL_Y_THRESHOLD ? 0 : 1;
+      const high = avgNormalY > MATERIAL_TWO_FACE_UP_NORMAL_Y_THRESHOLD;
+      const materialIndex = swap ? (high ? 1 : 0) : (high ? 0 : 1);
 
       if (currentMaterialIndex === null) {
         currentMaterialIndex = materialIndex;
@@ -326,6 +330,40 @@ export function applyCrystalMaterials(root, materialKey) {
 
   applyTwoFaceMaterials(root, topMaterial, sideMaterial);
   addCrystalGlowShell(root, baseColor);
+}
+
+/** Tank from ``defaultFluidTank.gltf``: script-mapped inks use exact RGB; other keys use preview punch. */
+export function applyFluidTankVortexMaterials(root, materialKey) {
+  const scriptHex = FLUID_TANK_VORTEX_SCRIPT_COLORS[materialKey];
+  const topHex = scriptHex !== undefined ? scriptHex : resolveMaterialColor(materialKey);
+  const topColorThree = new THREE.Color(topHex);
+  if (scriptHex === undefined) {
+    punchPreviewColor(topColorThree, materialKey);
+  }
+  const topRoughness = materialKey === "u" ? MATERIAL_TOP_ROUGHNESS_UNCUT : MATERIAL_TOP_SEAM_DEFAULT_ROUGHNESS;
+  const topMaterial = createTopMaterialWithSeam(topColorThree, topRoughness);
+  topMaterial.envMapIntensity =
+    materialKey === "w" ? MATERIAL_TOP_ENV_INTENSITY_WHITE : MATERIAL_TOP_ENV_INTENSITY_DEFAULT;
+  topMaterial.emissive.setRGB(0, 0, 0);
+  topMaterial.emissiveIntensity = 0;
+  const sideMaterial = new THREE.MeshStandardMaterial({
+    color: SIDE_COLOR,
+    roughness: MATERIAL_SIDE_ROUGHNESS,
+    metalness: MATERIAL_SIDE_METALNESS,
+    envMapIntensity: MATERIAL_SIDE_ENV_INTENSITY,
+  });
+
+  applyTwoFaceMaterials(root, topMaterial, sideMaterial, { swapNormalBucket: true });
+  root.traverse((node) => {
+    if (!node.isMesh || !Array.isArray(node.material)) {
+      return;
+    }
+    const top = node.material[0];
+    if (top?.emissive && top?.color) {
+      top.emissive.copy(top.color);
+      top.emissiveIntensity = MATERIAL_FLUID_TANK_FILLED_EMISSIVE_INTENSITY;
+    }
+  });
 }
 
 /** Fluid tank glTF: top/side split plus mild emissive on upward-facing material. */

@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from django_apps.shapez_core.services.shape_code_parser import (
+    ShapeCodeParseError,
+    parse_shape_code_list,
+)
 from django_apps.shapez_solver.models import MacroRecipe, MacroRecipeCompiledBoundary
 from django_apps.shapez_solver.services.pattern_classifier import pattern_signature
 from django_apps.shapez_solver.services.recipe_graph_recompute import validate_graph_document
@@ -68,7 +72,14 @@ def _pattern_for_node(node: dict[str, Any]) -> str | None:
     if not code:
         return None
     try:
-        return pattern_signature(code)
+        pattern = parse_shape_code_list(code)[0]
+    except ShapeCodeParseError:
+        return None
+    if not pattern.layers:
+        return None
+    layer_str = "".join(cell.raw_token for cell in pattern.layers[0].cells)
+    try:
+        return pattern_signature(layer_str)
     except ValueError:
         return None
 

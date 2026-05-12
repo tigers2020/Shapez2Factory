@@ -10,27 +10,34 @@ alwaysApply: false
 |---|---|---|---|
 | shapez_core | `django_apps/shapez_core/` | 도미닉 | shape rules, parsing, normalization, preview serialization |
 | shapez_solver | `django_apps/shapez_solver/` | 유리 | solver use cases, planner/solver services, persisted solver runs |
+| shapez_asteroid | `django_apps/shapez_asteroid/` | 유리 | asteroid miner / pump layout optimization (separate from recipe solver) |
 | web | `django_apps/web/` | 지나 | page composition, templates, static assets, thin view controllers |
 | tests | `tests/` | 테스 | unit and integration coverage |
 
 ## Dependency direction
 
-- `shapez_core` imports no `web` and no `shapez_solver`.
-- `shapez_solver` may import `shapez_core`.
-- `web` may import `shapez_core` and `shapez_solver`.
+- `shapez_core` imports no `web`, no `shapez_solver`, and no `shapez_asteroid`.
+- `shapez_solver` may import `shapez_core` only (not `shapez_asteroid`).
+- `shapez_asteroid` may import `shapez_core` only (not `shapez_solver`); 스켈레톤 단계에서는 `shapez_core` 미사용 가능.
+- `web` may import `shapez_core`, `shapez_solver`, and `shapez_asteroid`.
 - HTTP endpoints belong to the app that owns the behavior, not to a generic API hub.
 
 Allowed:
 
 - `django_apps.shapez_solver -> django_apps.shapez_core`
+- `django_apps.shapez_asteroid -> django_apps.shapez_core` (향후 청사진·도형 연동 시)
 - `django_apps.web -> django_apps.shapez_core`
 - `django_apps.web -> django_apps.shapez_solver`
+- `django_apps.web -> django_apps.shapez_asteroid`
 
 Forbidden:
 
 - `django_apps.shapez_core -> django_apps.web`
 - `django_apps.shapez_core -> django_apps.shapez_solver`
+- `django_apps.shapez_core -> django_apps.shapez_asteroid`
 - `django_apps.shapez_solver -> django_apps.web`
+- `django_apps.shapez_solver <-> django_apps.shapez_asteroid` (서로 import 금지)
+- `django_apps.shapez_asteroid -> django_apps.web`
 
 ## Solver vs recipe graph vs UI
 
@@ -44,12 +51,24 @@ Forbidden:
 - Core domain objects and canonical shape data stay in `django_apps/shapez_core/domain/`.
 - Parsing and preview response composition stay in `django_apps/shapez_core/services/`.
 - Solver persistence and orchestration stay in `django_apps/shapez_solver/`.
+- Asteroid / pump layout optimization services stay in `django_apps/shapez_asteroid/`.
 - HTML rendering and browser assets stay in `django_apps/web/`.
+
+## Asteroid · blueprint copy grid (`BP.Entries`)
+
+- 디코드된 Island **`Entries`**의 좌표는 정수 격자 `X` / `Y`를 쓴다.
+- **프로젝트 절대 전제: `X == 0`인 타일·열은 존재하지 않는다.** 양수 열과 음수 열 사이에 0이 없이 **`X == 1`과 `X == -1`이 동서로 물리 인접**(한 칸 이동으로 `1 ↔ -1` 점프; `0`을 경유하지 않음). 코드 좌표 `(x, y)`에서도 **`x == 0`은 항상 불법**이며, 라우팅은 [`shapez_grid.step_cardinal`](../../django_apps/shapez_asteroid/extraction/shapez_grid.py) 규약을 따른다.
+- 서버는 디코드 후 **`X == 0`인 엔트리를 모든 계산·API 출력에서 제외**한다(데이터·모델과 정합).
+- **시각화(X축)**는 게임 정수 X 전 구간이 아니라 **실제로 등장하는 고유 X 값만 열로 쓴다**(연속 슬롯). 이렇게 해서 데이터에 `X = 0`이 없을 때 생기던 가운데 빈 열을 그리드에서 접는다. (`shapez_asteroid` 페이지 스크립트)
+- **시각화(Y축)** 게임 `Y`는 **아래로 증가**하는 것으로 두고 SVG 행을 맞춘다(인게임 상단·하단과 동일한 방향). 예전과 반대로 보이면 이 규칙을 바꾼 것이다.
+
+정본 설명(한국어): [`documents/research/research_blueprint_grid_coordinates_2026-05-10.md`](../../documents/research/research_blueprint_grid_coordinates_2026-05-10.md).
 
 ## Test placement
 
 - Core parsing/rendering logic: `tests/unit/shapez_core/`
 - Solver logic and models: `tests/unit/shapez_solver/`
+- Asteroid optimizer services: `tests/unit/shapez_asteroid/`
 - Request/response and page smoke tests: `tests/integration/`
 
 경로가 pytest 마커와 대응한다. 구간 실행은 [AGENTS.md](mdc:AGENTS.md).

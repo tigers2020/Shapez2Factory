@@ -9,6 +9,23 @@ export const BASE_FULL_SOURCE_SHAPE_CODES = [
 /** 첫 번째 기본 광물; 하위 호환·힌트용. */
 export const DEFAULT_NEW_SOURCE_SHAPE_CODE = BASE_FULL_SOURCE_SHAPE_CODES[0];
 
+/** 매크로 그래프 shape 기본 수량 — 규약 고정. 백엔드 RECIPE_GRAPH_DEFAULT_* 와 동일 수식. */
+export const DEFAULT_SOURCE_SHAPE_QUANTITY_MATERIAL = 480 * 12;
+export const DEFAULT_SOURCE_SHAPE_QUANTITY_FLUID = 28000 * 12;
+
+export function defaultQuantityForShapeNodeData(data: {
+  role?: unknown;
+  source_carrier?: unknown;
+}): number {
+  if (data.source_carrier === "fluid") {
+    return DEFAULT_SOURCE_SHAPE_QUANTITY_FLUID;
+  }
+  if (String(data.role ?? "") === "source") {
+    return DEFAULT_SOURCE_SHAPE_QUANTITY_MATERIAL;
+  }
+  return 1;
+}
+
 /** `insertIndex`마다 4종 풀 소스를 번갈아 돌린다. */
 export function pickCycledBaseFullSourceShapeCode(
   insertIndex: number,

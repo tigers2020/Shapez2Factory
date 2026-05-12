@@ -10,13 +10,17 @@ from django_apps.shapez_core.services.shape_render_scene import (
     SHAPE_MESH_KEYS,
     ShapeRenderCell,
     ShapeRenderScene,
+    serialize_render_scene,
 )
-from django_apps.shapez_solver.view_graph_serialization import serialize_render_scene
 
 MESH_KEY_TO_SHAPE_CODE: dict[str, str] = {v: k for k, v in SHAPE_MESH_KEYS.items()}
 """Inverse of ``SHAPE_MESH_KEYS`` (game letter → glTF id)."""
 
 PIN_MESH_KEY = SHAPE_MESH_KEYS["P"]
+
+# Vendor ``defaultFluidTank.gltf`` (shape letter ``t``).
+# Distinct from ``default_fluid_tank`` viewer paths.
+TANK_VORTEX_MESH_KEY = SHAPE_MESH_KEYS["t"]
 
 # Reserved DB row: pedestal-only bake (not a game mesh). See build_pedestal_only_preview_scene.
 PEDESTAL_ONLY_MESH_KEY = "pedestal"
@@ -31,6 +35,11 @@ def atomic_layer_game_code(shape_code: str, color_code: str, quadrant_index: int
     else:
         slots[qi] = shape_code + color_code
     return "".join(slots)
+
+
+def make_tank_vortex_sprite_key(color_code: str, renderer_version: str) -> str:
+    """Manifest / file key aligned with glTF ``extras.script`` naming: ``color-{letter}:v``."""
+    return f"color-{color_code}:{renderer_version}"
 
 
 def make_sprite_key(
@@ -54,9 +63,10 @@ def iter_atomic_sprite_specs(
     n = 0
     for mesh_key in mesh_keys:
         palette = ("-",) if mesh_key == PIN_MESH_KEY else tuple(color_codes)
+        quadrants = (0,) if mesh_key == TANK_VORTEX_MESH_KEY else tuple(range(4))
         for color_code in palette:
             material_key = color_code
-            for quadrant_index in range(4):
+            for quadrant_index in quadrants:
                 if limit is not None and n >= limit:
                     return
                 yield mesh_key, color_code, material_key, quadrant_index
@@ -91,6 +101,8 @@ def build_atomic_preview_scene(
     if sk is None or ck is None:
         msg = f"invalid shape/color for atomic sprite: {shape_code!r} / {color_code!r}"
         raise ValueError(msg)
+    if mesh_key == TANK_VORTEX_MESH_KEY:
+        quadrant_index = 0
     pos = quadrant_at_index(quadrant_index)
     layer_index = 0
     cell = ShapeRenderCell(
@@ -117,10 +129,12 @@ __all__ = [
     "MESH_KEY_TO_SHAPE_CODE",
     "PEDESTAL_ONLY_MESH_KEY",
     "PIN_MESH_KEY",
+    "TANK_VORTEX_MESH_KEY",
     "atomic_layer_game_code",
     "build_atomic_preview_scene",
     "build_pedestal_only_preview_scene",
     "iter_atomic_sprite_specs",
     "make_pedestal_sprite_key",
     "make_sprite_key",
+    "make_tank_vortex_sprite_key",
 ]

@@ -19,6 +19,22 @@
       </div>
     </fieldset>
   </form>
+  <form method="post" action="{% url 'admin:web_shapepartsprite_start_tank_missing_job' %}">
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      <h2>{% trans "Fluid tank (vortex glTF) sprites" %}</h2>
+      <p class="help">
+        {% trans "Render missing rows only: manifest keys color-{ink}:version (e.g. color-y:v1), one PNG per ink; pedestal when needed. Lid uses glTF script RGB." %}
+      </p>
+      <div class="form-row">
+        <label for="id_renderer_version_tank">{% trans "Renderer version" %}:</label>
+        <input id="id_renderer_version_tank" type="text" name="renderer_version" value="v1" maxlength="32" />
+      </div>
+      <div class="submit-row">
+        <input type="submit" value="{% trans 'Render missing tank sprites only' %}" />
+      </div>
+    </fieldset>
+  </form>
   <form method="post" action="{% url 'admin:web_shapepartsprite_start_sample_quadrants_job' %}">
     {% csrf_token %}
     <fieldset class="module aligned">

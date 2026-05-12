@@ -28,6 +28,12 @@ describe("shapePartSpriteCompose", () => {
     expect(shapePartSpriteKey({ shape_code: "W", color_code: "b", quadrant_index: 2 }, "v1")).toBe(
       "----Wb--:v1",
     );
+    expect(shapePartSpriteKey({ shape_code: "t", color_code: "r", quadrant_index: 0 }, "v1")).toBe(
+      "color-r:v1",
+    );
+    expect(shapePartSpriteKey({ shape_code: "t", color_code: "r", quadrant_index: 3 }, "v1")).toBe(
+      "color-r:v1",
+    );
   });
 
   it("quadrantDestRect packs four quadrants into a square", () => {

@@ -22,7 +22,6 @@ from django_apps.shapez_solver.ports.graph_preview import (
 from django_apps.shapez_solver.services.macro_recipe_graph_visual import (
     serialize_macro_recipe_visual,
 )
-from django_apps.shapez_solver.services.macro_strategy_registry import DEFAULT_MACRO_STRATEGIES
 from django_apps.shapez_solver.services.recipe_graph_constants import RECIPE_GRAPH_ENGINE_OPERATIONS
 from django_apps.shapez_solver.services.recipe_graph_recompute import (
     try_pattern_macro_step_rows_from_graph_document,
@@ -38,7 +37,7 @@ MACRO_RECIPE_DETAIL_PREFETCHES = (
 
 
 def allowed_strategy_codes() -> tuple[str, ...]:
-    return tuple(sorted({strategy.code for strategy in DEFAULT_MACRO_STRATEGIES}))
+    return ("ABCC_BATCH", "CHECKER_PAIR")
 
 
 def operation_choices() -> tuple[tuple[str, str], ...]:

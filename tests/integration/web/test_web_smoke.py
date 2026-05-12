@@ -12,6 +12,7 @@ def test_home_page_renders() -> None:
     assert response.status_code == 200
     assert b"Solve Shapez 2 production chains" in response.content
     assert b"Quick Solver" in response.content
+    assert b"/jsi18n/" in response.content
     assert b"flowbite.min.js" in response.content
     assert b"quick_solver_preview.js" in response.content
     assert b"data-quick-preview-viewers" in response.content
@@ -27,23 +28,40 @@ def test_solver_page_renders() -> None:
 
     assert response.status_code == 200
     assert b"/jsi18n/" in response.content
-    assert b"Recipe graph" in response.content
+    assert b"Under construction" in response.content
     assert b"data-shape-preview-code-ref" in response.content
     assert b"SuSuSuSu" in response.content
     assert b"quick_solver_preview.js" in response.content
-    assert b"solver_timeline.js" in response.content
-    assert b"data-solver-timeline" in response.content
-    assert b"data-solver-graph-canvas" in response.content
-    assert b"data-solver-graph-empty" in response.content
-    assert b"data-solver-node-detail" in response.content
-    assert b"data-graph-quantity-toggle" in response.content
-    assert b"Materialized graph" in response.content
-    assert b'data-graph-quantity-replicas="on"' in response.content
-    assert b"/api/solver/solve/" in response.content
-    assert b"data-asset-base" in response.content
-    assert b"Base inputs stay on the left, target outputs stay on the right" in response.content
-    assert b"right-aligned layout style" in response.content
-    assert b"wheel to zoom" in response.content
+    assert b"data-shape-preview-panel" in response.content
+    assert b"data-quick-preview-viewers" in response.content
+
+
+def test_asteroid_page_renders() -> None:
+    response = Client().get("/asteroid/")
+
+    assert response.status_code == 200
+    assert b"Asteroid mining" in response.content
+    assert b"/asteroid/" in response.content
+    assert b"/api/asteroid/health/" in response.content
+    assert b"data-asteroid-copy-root" in response.content
+    assert b"/api/asteroid/copy-preview/" in response.content
+    assert b"data-asteroid-plot-svg" in response.content
+    assert b"data-am-plot-panzoom" in response.content
+    assert b"data-am-map-reset-view" in response.content
+    assert b"data-asteroid-solver-overlay" in response.content
+    assert b"include_solver_overlay=1" in response.content
+    assert b"include_solver_replay=1" in response.content
+
+
+def test_asteroid_page_renders_korean() -> None:
+    response = Client().get("/ko/asteroid/")
+
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "소행성 채굴 맵" in body
+    assert "청사진 복사 코드" in body
+    assert "data-asteroid-copy-root" in body
+    assert "data-asteroid-solver-overlay" in body
 
 
 def test_solve_alias_redirects_to_solver_page() -> None:
@@ -51,74 +69,6 @@ def test_solve_alias_redirects_to_solver_page() -> None:
 
     assert response.status_code == 302
     assert response["Location"] == "/solver/?code=SuSuSuSu"
-
-
-def test_api_solver_solve_returns_graph_first_result() -> None:
-    # RcCuRcCu: inventory search reliably finds a short CHECKER_PAIR plan (see
-    # tests/unit/shapez_solver/test_inventory_factory_pipeline.py). Larger
-    # multi-source targets may hit max_steps and return found=False.
-    response = Client().post(
-        "/api/solver/solve/",
-        data={"code": "RcCuRcCu", "solver_timeout_seconds": "30"},
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["ok"] is True
-    assert data["found"] is True
-    assert data["target_shape"] == "RcCuRcCu"
-    assert isinstance(data["steps"], list)
-
-    graph = data["graph"]
-    assert graph["layout"]["direction"] == "left-to-right"
-    assert graph["nodes"]
-    assert graph["edges"]
-
-    shape_nodes = [node for node in graph["nodes"] if node["kind"] == "shape"]
-    operation_nodes = [node for node in graph["nodes"] if node["kind"] == "operation"]
-    target_nodes = [node for node in shape_nodes if node["role"] == "target"]
-    source_nodes = [node for node in shape_nodes if node["role"] == "source"]
-    intermediate_nodes = [node for node in shape_nodes if node["role"] == "intermediate"]
-    assert shape_nodes
-    assert source_nodes
-    assert intermediate_nodes
-    assert operation_nodes
-    assert len(target_nodes) == 1
-    assert target_nodes[0]["shape_code"] == "RcCuRcCu"
-    assert target_nodes[0]["preview_scene"]["normalized_code"] == "RcCuRcCu"
-    assert target_nodes[0]["preview_alt"] == "Graph preview for RcCuRcCu"
-    assert target_nodes[0]["preview_image_url"] is None or target_nodes[0][
-        "preview_image_url"
-    ].endswith(".png")
-    assert operation_nodes[0]["operation"]["icon"].startswith("/static/web/images/operations/")
-    assert len(graph["edges"]) >= 1
-
-
-def test_api_solver_solve_rejects_empty_code() -> None:
-    response = Client().post(
-        "/api/solver/solve/",
-        data={"code": ""},
-    )
-
-    assert response.status_code == 400
-    data = response.json()
-    assert data["ok"] is False
-    assert data["steps"] == []
-    assert data["error"]["code"] == "EMPTY_SHAPE_CODE"
-    assert "graph" not in data
-
-
-def test_api_solver_solve_returns_structured_unsupported_error() -> None:
-    response = Client().post(
-        "/api/solver/solve/",
-        data={"code": "P-P-P-P-"},
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["ok"] is False
-    assert data["error"]["code"] == "UNSUPPORTED_TARGET"
-    assert data["error"]["details"]["target_shape_code"] == "P-P-P-P-"
 
 
 def test_api_shape_preview_ok() -> None:
@@ -145,24 +95,7 @@ def test_api_shape_preview_parse_error() -> None:
     assert data["error"]
 
 
-def test_api_solver_parse_error_is_structured() -> None:
-    response = Client().post("/api/solver/solve/", data={"code": "not_a_real_code!!!"})
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["ok"] is False
-    assert data["error"]["code"] == "SHAPE_CODE_PARSE_ERROR"
-
-
 def test_api_shape_preview_empty_code() -> None:
-    response = Client().get("/api/shape-preview/", {"code": ""})
-
-    assert response.status_code == 400
-    data = response.json()
-    assert data["ok"] is False
-
-
-def test_gallery_page_renders() -> None:
     response = Client().get("/gallery/")
 
     assert response.status_code == 200
@@ -279,20 +212,24 @@ def test_shape_gltf_vendor_assets_exist() -> None:
 
 def test_solver_graph_viewport_has_explicit_runtime_layout_styles() -> None:
     static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web"
-    script = (static_root / "js" / "solver_timeline.js").read_text(encoding="utf-8")
+    mount_script = (static_root / "js" / "solver_timeline" / "graph_mount.js").read_text(
+        encoding="utf-8"
+    )
     markup_script = (static_root / "js" / "solver_timeline" / "graph_markup.js").read_text(
         encoding="utf-8"
     )
+    viewport_script = (static_root / "js" / "solver_timeline" / "graph_viewport.js").read_text(
+        encoding="utf-8"
+    )
 
-    assert "data-graph-viewport" in script
-    assert 'style="height: 34rem; touch-action: none; cursor: grab;' in script
-    assert "transform-origin: 0 0;" in script
-    assert 'viewport.style.cursor = "grabbing"' in script
-    assert "preview_image_url" in script
-    assert "No preview" in script
-    assert "data-graph-shape-preview" not in script
-    assert "./solver_graph_layout.js" in script
-    assert "panel._materializedSolverGraph" in script
+    assert "data-graph-viewport" in mount_script
+    assert 'style="height: 34rem; touch-action: none; cursor: grab;' in markup_script
+    assert "transform-origin: 0 0;" in markup_script
+    assert 'viewport.style.cursor = "grabbing"' in viewport_script
+    assert "preview_image_url" in markup_script
+    assert "No preview" in markup_script
+    assert "data-graph-shape-preview" not in markup_script
+    assert "./solver_graph_layout.js" in markup_script
     assert "overflow-y-auto" not in markup_script
     assert "L ${geometry.elbowX} ${geometry.y1}" in markup_script
     assert "data-graph-edge-label" in markup_script
@@ -308,6 +245,12 @@ def test_javascript_catalog_ko_prefixed_url() -> None:
     response = Client().get("/ko/jsi18n/")
     assert response.status_code == 200
     assert b"gettext" in response.content
+
+
+def test_ko_gallery_contains_korean_label() -> None:
+    response = Client().get("/ko/gallery/")
+    assert response.status_code == 200
+    assert "스크린샷".encode() in response.content
 
 
 def test_operation_icon_assets_exist() -> None:

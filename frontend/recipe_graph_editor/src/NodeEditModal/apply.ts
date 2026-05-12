@@ -1,3 +1,4 @@
+import { defaultQuantityForShapeNodeData } from "../EditorFoundation/constants";
 import type { FluidPrimaryInk } from "../EditorFoundation/fluidSourceUi";
 import { fluidShapeCodeFromInk } from "../EditorFoundation/fluidSourceUi";
 
@@ -51,7 +52,9 @@ export function buildNodeEditApplyPayload(input: NodeEditApplyInput): Record<str
     return buildOperationApplyPayload(input.operation, input.paintColor);
   }
   const q = Number.parseInt(input.quantity, 10);
-  const qty = Number.isFinite(q) && q >= 1 ? q : 1;
+  const fallbackQty =
+    input.nodeType === "shape" ? defaultQuantityForShapeNodeData(input.base) : 1;
+  const qty = Number.isFinite(q) && q >= 1 ? q : fallbackQty;
   if (input.nodeType === "output") {
     return {
       shape_code: input.shapeCode.trim(),

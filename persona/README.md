@@ -25,3 +25,5 @@ Persona Dialogue: 요청을 `[시몬]`이 나누고, 레이어 담당이 한두 
 - **하네스** = 렉스 (9번)
 
 전체 표와 3단계 규칙은 [AGENTS.md](../AGENTS.md)를 본다. UI 화면 세부 카드는 [gina-gui.md](gina-gui.md).
+
+**Serena MCP**: 시맨틱 코드베이스 탐색·심볼 단위 작업은 [AGENTS.md](../AGENTS.md) **MCP: Serena**와 [mcp.mdc](../.cursor/rules/mcp.mdc)를 본다. 브리핑에서 광역 탐색이 필요하면 시몬이 활용을 명시하고, 도미닉·유리·아다·지나는 담당 구현에서 적극 고려한다.

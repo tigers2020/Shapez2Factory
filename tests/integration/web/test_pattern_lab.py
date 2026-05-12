@@ -41,7 +41,6 @@ def test_pattern_lab_page_shows_ready_macro_candidate(db, without_canonical_cata
     content = response.content.decode()
     assert "CuRuSuSu" in content
     assert "ABCC_BATCH" in content
-    assert "ready" in content
     assert "stacker" in content
     assert "AB_half" in content
     assert "Steps from database" in content

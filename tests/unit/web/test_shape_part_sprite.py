@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -15,17 +16,37 @@ from django_apps.web.models import ShapePartSprite
 from django_apps.web.services.shape_part_sprite_generation import (
     SAMPLE_QUADRANT_MESH_KEY,
     build_sample_quadrant_work_queue,
+    build_tank_sprite_work_queue,
 )
 from django_apps.web.services.shape_part_sprites import (
     PEDESTAL_ONLY_MESH_KEY,
+    TANK_VORTEX_MESH_KEY,
     atomic_layer_game_code,
     build_atomic_preview_scene,
     build_pedestal_only_preview_scene,
     iter_atomic_sprite_specs,
     make_sprite_key,
+    make_tank_vortex_sprite_key,
 )
 
 User = get_user_model()
+
+
+@pytest.fixture(autouse=True)
+def cleanup_shape_part_sprite_files() -> Iterator[None]:
+    """테스트가 실제 정적 스프라이트 디렉터리에 남긴 파일을 정리한다."""
+
+    image_field = ShapePartSprite._meta.get_field("image")
+    storage_root = Path(image_field.storage.location)
+    sprite_dir = storage_root.joinpath(*str(image_field.upload_to).strip("/").split("/"))
+    before_files = set(sprite_dir.iterdir()) if sprite_dir.is_dir() else set()
+
+    yield
+
+    after_files = set(sprite_dir.iterdir()) if sprite_dir.is_dir() else set()
+    for created_file in after_files - before_files:
+        if created_file.is_file():
+            created_file.unlink()
 
 
 def _minimal_png_bytes() -> bytes:
@@ -86,6 +107,10 @@ def test_manifest_json_shape(tmp_path: Path) -> None:
         assert entry["url"].startswith("/static/web/")
 
 
+def test_make_tank_vortex_sprite_key() -> None:
+    assert make_tank_vortex_sprite_key("y", "v1") == "color-y:v1"
+
+
 def test_make_sprite_key_stable() -> None:
     assert make_sprite_key("R", "r", 0, "v1") == "Rr------:v1"
 
@@ -107,6 +132,17 @@ def test_build_atomic_preview_scene_single_cell() -> None:
     assert c0["quadrant_index"] == 0
 
 
+def test_build_atomic_preview_scene_fluid_tank_vortex() -> None:
+    scene = build_atomic_preview_scene(TANK_VORTEX_MESH_KEY, "c", "c", 1)
+    assert scene["normalized_code"] == "tc------"
+    cells = scene["cells"]
+    assert len(cells) == 1
+    assert cells[0]["mesh_key"] == TANK_VORTEX_MESH_KEY
+    assert cells[0]["shape_code"] == "t"
+    assert cells[0]["shape_kind"] == "fluid_tank"
+    assert cells[0]["quadrant_index"] == 0
+
+
 def test_build_pedestal_only_preview_scene() -> None:
     scene = build_pedestal_only_preview_scene()
     assert scene["normalized_code"] == "--------"
@@ -118,6 +154,17 @@ def test_build_pedestal_only_preview_scene() -> None:
 def test_iter_atomic_sprite_specs_limit() -> None:
     specs = list(iter_atomic_sprite_specs(limit=3))
     assert len(specs) == 3
+
+
+@pytest.mark.django_db
+def test_build_tank_sprite_work_queue_pedestal_first() -> None:
+    specs, skipped = build_tank_sprite_work_queue(renderer_version="v1", skip_existing=False)
+    assert skipped == 0
+    assert specs[0][0] == PEDESTAL_ONLY_MESH_KEY
+    rest = specs[1:]
+    assert len(rest) == 8
+    assert all(t[0] == TANK_VORTEX_MESH_KEY for t in rest)
+    assert all(t[3] == 0 for t in rest)
 
 
 @pytest.mark.django_db

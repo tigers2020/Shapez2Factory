@@ -21,7 +21,8 @@ class ShapePart:
 
     @property
     def is_empty(self) -> bool:
-        return self.kind == "-"
+        """``--`` only; ``-r`` etc. are ink-only slots (fluid / shorthand), not geometric empty."""
+        return self.kind == "-" and self.color == "-"
 
     @property
     def is_pin(self) -> bool:

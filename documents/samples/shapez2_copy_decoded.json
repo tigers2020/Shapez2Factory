@@ -1,0 +1,5761 @@
+{
+  "V": 1137,
+  "BP": {
+    "$type": "Island",
+    "Icon": {
+      "Data": [
+        "icon:Platforms",
+        null,
+        null,
+        "shape:RuRuRuRu"
+      ]
+    },
+    "Entries": [
+      {
+        "X": -1,
+        "T": "Foundation_1x2",
+        "B": {
+          "$type": "Building",
+          "Icon": {
+            "Data": [
+              "icon:Platforms",
+              null,
+              null,
+              "shape:RuRuRuRu"
+            ]
+          },
+          "Entries": [
+            {
+              "X": 2,
+              "Y": 11,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 10,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 9,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 8,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 11,
+              "L": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 10,
+              "L": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 9,
+              "L": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 8,
+              "L": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 9,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 8,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 8,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 9,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 10,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 9,
+              "L": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 10,
+              "L": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 6,
+              "R": 2,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 6,
+              "L": 1,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 7,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1UpLeftInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 7,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 7,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 8,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 8,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 12,
+              "Y": 6,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 7,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 6,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 11,
+              "Y": 7,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 8,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 8,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 8,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 16,
+              "Y": 6,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 7,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 6,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 15,
+              "Y": 7,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 7,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 8,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 19,
+              "Y": 6,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 8,
+              "Y": 9,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 9,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 9,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 9,
+              "Y": 9,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 9,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 9,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 9,
+              "Y": 7,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 8,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 9,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 8,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 8,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 9,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 9,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 7,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 8,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 9,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 11,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 8,
+              "L": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 8,
+              "L": 1,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 9,
+              "L": 1,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 5,
+              "Y": 8,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 5,
+              "Y": 9,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 9,
+              "L": 2,
+              "T": "Lift2DownForwardInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 8,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 7,
+              "L": 2,
+              "R": 3,
+              "T": "Lift2DownLeftInternalVariantMirrored"
+            },
+            {
+              "X": 4,
+              "Y": 7,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 7,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 11,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 5,
+              "Y": 9,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 5,
+              "Y": 8,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 6,
+              "Y": 8,
+              "L": 1,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 2,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 10,
+              "R": 3,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 6,
+              "R": 3,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 9,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 19,
+              "Y": 8,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 6,
+              "L": 2,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 5,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 5,
+              "R": 3,
+              "T": "Lift2UpLeftInternalVariantMirrored"
+            },
+            {
+              "X": 5,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 7,
+              "Y": 11,
+              "R": 2,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 11,
+              "L": 1,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 10,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1UpLeftInternalVariantMirrored"
+            },
+            {
+              "X": 14,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 10,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 18,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 11,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 10,
+              "R": 3,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 11,
+              "Y": 11,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 10,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 11,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 10,
+              "R": 3,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 15,
+              "Y": 11,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 10,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 11,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 10,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 10,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 5,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 10,
+              "L": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 5,
+              "Y": 10,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 11,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 3,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1UpLeftInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 5,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 10,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 18,
+              "Y": 7,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 10,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 10,
+              "Y": 7,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 10,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 14,
+              "Y": 7,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 13,
+              "Y": 11,
+              "L": 1,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 10,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 11,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 14,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 6,
+              "L": 1,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 7,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 14,
+              "Y": 6,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 6,
+              "L": 1,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 7,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 18,
+              "Y": 6,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 17,
+              "Y": 11,
+              "L": 1,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 10,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 11,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 10,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 6,
+              "L": 1,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 7,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 10,
+              "Y": 6,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 9,
+              "Y": 11,
+              "L": 1,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 10,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 11,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 8,
+              "Y": 4,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 4,
+              "L": 1,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 4,
+              "L": 1,
+              "R": 2,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 4,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 5,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 10,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 11,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 13,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 8,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 19,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 16,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 13,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 14,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 4,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 9,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 10,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 4,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 13,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 6,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 19,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 19,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 16,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 4,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 15,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 12,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 4,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 11,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 18,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 4,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 17,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 8,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 5,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 13,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 13,
+              "Y": 6,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 5,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 13,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 7,
+              "Y": 12,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 12,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 13,
+              "R": 1,
+              "T": "Lift1UpLeftInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 13,
+              "L": 1,
+              "R": 3,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 12,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1UpLeftInternalVariantMirrored"
+            },
+            {
+              "X": 8,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 14,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 15,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 16,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 15,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 14,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 15,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 15,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 15,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 18,
+              "Y": 16,
+              "R": 1,
+              "T": "Lift1UpLeftInternalVariant"
+            },
+            {
+              "X": 19,
+              "Y": 16,
+              "L": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 16,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 16,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 16,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 16,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 16,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 16,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 16,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 17,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 16,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 17,
+              "L": 1,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 16,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 17,
+              "L": 1,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 9,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 13,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 10,
+              "Y": 14,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 16,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 15,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 11,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 13,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 12,
+              "Y": 14,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 15,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 14,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 14,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 13,
+              "Y": 13,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 14,
+              "Y": 14,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 13,
+              "L": 1,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 14,
+              "L": 1,
+              "R": 2,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 14,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 8,
+              "Y": 15,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 15,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 9,
+              "Y": 16,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 17,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 17,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "Lift1DownLeftInternalVariant"
+            },
+            {
+              "X": 6,
+              "Y": 16,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 16,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 16,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 8,
+              "Y": 17,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 13,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 17,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 14,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 13,
+              "L": 1,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 18,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 18,
+              "Y": 15,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 5,
+              "Y": 15,
+              "L": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 15,
+              "L": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 16,
+              "L": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 16,
+              "L": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 9,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 14,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 5,
+              "Y": 14,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 14,
+              "L": 2,
+              "R": 2,
+              "T": "Lift1DownLeftInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 15,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 8,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 13,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 14,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 15,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 3,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 3,
+              "Y": 16,
+              "L": 2,
+              "R": 1,
+              "T": "Lift1DownLeftInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 16,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 8,
+              "Y": 17,
+              "L": 1,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 15,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 9,
+              "Y": 16,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 17,
+              "L": 1,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 12,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 16,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 11,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 8,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 13,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 14,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 14,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 14,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 14,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 14,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 16,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 16,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 13,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 14,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 15,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 7,
+              "Y": 16,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 16,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 8,
+              "Y": 17,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 16,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 17,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 17,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 17,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 17,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 10,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 9,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 15,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 14,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 13,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 11,
+              "Y": 13,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 8,
+              "Y": 13,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 13,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 3,
+              "Y": 9,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 5,
+              "Y": 9,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 9,
+              "L": 2,
+              "R": 3,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 7,
+              "L": 2,
+              "R": 3,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 4,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 10,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 12,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 12,
+              "Y": 11,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 10,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 11,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 10,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 11,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 8,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 10,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 37,
+              "Y": 11,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 6,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 7,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 22,
+              "Y": 6,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 6,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 7,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 26,
+              "Y": 6,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 7,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 5,
+              "L": 1,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 5,
+              "R": 3,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 6,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 7,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 30,
+              "Y": 6,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 7,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 7,
+              "L": 2,
+              "T": "Lift2DownLeftInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 32,
+              "Y": 6,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 6,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 20,
+              "Y": 6,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 7,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 7,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 10,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 23,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 24,
+              "Y": 6,
+              "L": 1,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 7,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 6,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 20,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 21,
+              "Y": 11,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 10,
+              "R": 3,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 11,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 26,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 25,
+              "Y": 11,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 10,
+              "R": 3,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 11,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 21,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 12,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 29,
+              "Y": 11,
+              "R": 2,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 10,
+              "R": 3,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 11,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 30,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 10,
+              "L": 2,
+              "T": "Lift2DownLeftInternalVariantMirrored"
+            },
+            {
+              "X": 31,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 11,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 11,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 11,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 10,
+              "R": 3,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 20,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 11,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 10,
+              "L": 2,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 11,
+              "L": 1,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 10,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 23,
+              "Y": 11,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 10,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 30,
+              "Y": 7,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 11,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 10,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 7,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 28,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 9,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 8,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 22,
+              "Y": 7,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 10,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 7,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 7,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 7,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 8,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 33,
+              "Y": 9,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 10,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 36,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 10,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 11,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 12,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 35,
+              "Y": 12,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 35,
+              "Y": 11,
+              "R": 3,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 6,
+              "R": 3,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 5,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 36,
+              "Y": 5,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 36,
+              "Y": 6,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 7,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 33,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 10,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 34,
+              "Y": 9,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 35,
+              "Y": 12,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 35,
+              "Y": 10,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 11,
+              "L": 1,
+              "R": 3,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 7,
+              "L": 1,
+              "R": 3,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 6,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 7,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 8,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 33,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 9,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 8,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 8,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 9,
+              "L": 2,
+              "R": 3,
+              "T": "Lift2DownLeftInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 11,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 12,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 35,
+              "Y": 12,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 35,
+              "Y": 10,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 35,
+              "Y": 11,
+              "L": 2,
+              "R": 3,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 7,
+              "L": 2,
+              "R": 3,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 8,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 8,
+              "L": 2,
+              "R": 2,
+              "T": "Lift2DownForwardInternalVariant"
+            },
+            {
+              "X": 35,
+              "Y": 6,
+              "L": 2,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 6,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 8,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 27,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 8,
+              "L": 2,
+              "R": 2,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 4,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 4,
+              "L": 1,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 4,
+              "L": 1,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 4,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 33,
+              "Y": 5,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 6,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 11,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 13,
+              "L": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 12,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 20,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 13,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 27,
+              "Y": 4,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 23,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 4,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 7,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 7,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 6,
+              "L": 1,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 28,
+              "Y": 6,
+              "L": 1,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 7,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 6,
+              "R": 3,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 6,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 26,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 27,
+              "Y": 6,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 10,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 11,
+              "L": 1,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 11,
+              "L": 1,
+              "T": "SplitterTShapeInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 10,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 11,
+              "R": 1,
+              "T": "Splitter1To2LInternalVariantMirrored"
+            },
+            {
+              "X": 27,
+              "Y": 11,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 11,
+              "L": 2,
+              "R": 3,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 10,
+              "L": 2,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 6,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 8,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 24,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 13,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 4,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 21,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 4,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 12,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 16,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 17,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 25,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 4,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 30,
+              "Y": 4,
+              "L": 1,
+              "R": 3,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 3,
+              "L": 1,
+              "R": 3,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 4,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 4,
+              "R": 3,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 29,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpBackwardInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 3,
+              "R": 3,
+              "T": "Lift2UpLeftInternalVariantMirrored"
+            },
+            {
+              "X": 25,
+              "Y": 3,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 3,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 8,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 8,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 30,
+              "Y": 9,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 29,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 5,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 10,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 3,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 3,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 3,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 34,
+              "Y": 4,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 11,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 15,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 16,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 33,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 17,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 6,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 10,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 11,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 14,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 15,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 32,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 17,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 6,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 5,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 21,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 10,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 11,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 16,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 17,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 14,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 16,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 17,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 6,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 32,
+              "Y": 7,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 12,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 13,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 14,
+              "L": 2,
+              "R": 1,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 15,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 16,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 31,
+              "Y": 16,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 17,
+              "L": 1,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 16,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 17,
+              "L": 1,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 27,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 13,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 28,
+              "Y": 13,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 13,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 30,
+              "Y": 14,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 14,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 14,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 14,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 14,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 33,
+              "Y": 15,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 32,
+              "Y": 15,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 15,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 15,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 16,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 17,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 15,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 15,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 15,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 29,
+              "Y": 16,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 17,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 14,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 15,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 16,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 28,
+              "Y": 17,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 16,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 15,
+              "L": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 15,
+              "L": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 15,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 15,
+              "T": "Lift1UpForwardInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 15,
+              "L": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 16,
+              "L": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 28,
+              "Y": 16,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 28,
+              "Y": 17,
+              "L": 1,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 16,
+              "L": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 16,
+              "L": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 15,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 29,
+              "Y": 16,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 17,
+              "L": 1,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 16,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 16,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 16,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 16,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1UpForwardInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 15,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 28,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 27,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "Lift2DownForwardInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 15,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 15,
+              "R": 2,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 16,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 24,
+              "Y": 16,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 16,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 15,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 15,
+              "L": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 26,
+              "Y": 16,
+              "L": 1,
+              "R": 1,
+              "T": "Lift1UpLeftInternalVariantMirrored"
+            },
+            {
+              "X": 25,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 24,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 23,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 16,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 13,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 26,
+              "Y": 14,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 13,
+              "L": 1,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 25,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 15,
+              "L": 1,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 8,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 13,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 13,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 13,
+              "R": 1,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 22,
+              "Y": 14,
+              "R": 1,
+              "T": "Lift1UpBackwardInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 13,
+              "L": 1,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 13,
+              "L": 1,
+              "R": 1,
+              "T": "Merger2To1LInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 14,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 15,
+              "L": 1,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 22,
+              "Y": 9,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 14,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 8,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 16,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 15,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 22,
+              "Y": 16,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 25,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 14,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 26,
+              "Y": 15,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 25,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 21,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 20,
+              "Y": 9,
+              "L": 2,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 36,
+              "Y": 10,
+              "R": 2,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 34,
+              "Y": 10,
+              "R": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 12,
+              "R": 1,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 33,
+              "Y": 13,
+              "L": 1,
+              "T": "Lift1DownBackwardInternalVariant"
+            },
+            {
+              "X": 32,
+              "Y": 13,
+              "R": 2,
+              "T": "Merger2To1LInternalVariantMirrored"
+            },
+            {
+              "X": 33,
+              "Y": 5,
+              "L": 2,
+              "R": 1,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 33,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            },
+            {
+              "X": 32,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 4,
+              "L": 2,
+              "T": "BeltDefaultForwardInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 13,
+              "L": 1,
+              "R": 2,
+              "T": "MergerTShapeInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 12,
+              "L": 1,
+              "R": 1,
+              "T": "HalvesSwapperDefaultInternalVariant"
+            },
+            {
+              "X": 31,
+              "Y": 15,
+              "L": 2,
+              "R": 2,
+              "T": "Lift1DownForwardInternalVariant"
+            },
+            {
+              "X": 29,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 13,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortSenderInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 16,
+              "L": 2,
+              "R": 1,
+              "T": "BeltPortReceiverInternalVariant"
+            },
+            {
+              "X": 30,
+              "Y": 12,
+              "L": 2,
+              "T": "BeltDefaultLeftInternalVariantMirrored"
+            }
+          ],
+          "BinaryVersion": 1137
+        }
+      }
+    ],
+    "BinaryVersion": 1137
+  }
+}

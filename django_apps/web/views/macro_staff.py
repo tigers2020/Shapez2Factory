@@ -230,7 +230,7 @@ def macro_pattern_graph(request: HttpRequest, pk: int) -> HttpResponse:
             "bootstrap": bootstrap,
             "catalog": build_catalog_snapshot(),
             "staff_macro_nav": "graph",
-            "recipe_graph_editor_asset_version": "20260507-graph-editor-no-warm",
+            "recipe_graph_editor_asset_version": "20260507-shape-qty-fixed-480x12",
         },
     )
 
@@ -350,9 +350,7 @@ def macro_pattern_staff_api_recipe_graph_recompute(request: HttpRequest, pk: int
     # Recipe graph tiles use client-side sprite composition + preview_scene; do not
     # spawn Playwright PNG renders on every recompute (sync_png=False → render_cached_only).
     try:
-        visual_graph = serialize_macro_recipe_visual(
-            doc, preview_renderer=renderer, sync_png=False
-        )
+        visual_graph = serialize_macro_recipe_visual(doc, preview_renderer=renderer, sync_png=False)
     except (ValueError, TypeError, KeyError):
         visual_graph = None
     issues = validate_recipe_graph_context(

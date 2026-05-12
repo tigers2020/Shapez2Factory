@@ -14,14 +14,12 @@
     <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
       <p class="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">{% trans "Shape solver" %}</p>
       <h1 id="solver-hero-heading" class="mt-3 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-        {% blocktrans trimmed %}
-          From source shapes to target output: deterministic recipe graphs live here.
-        {% endblocktrans %}
+        {% trans "Under construction" %}
       </h1>
       <p class="mt-4 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
         {% blocktrans trimmed %}
-          Set a target code below. The solver plans backward, validates the recipe by replaying operations,
-          and renders the result as a forward graph with source, operation, and target nodes.
+          The public shape solver and recipe graph are temporarily unavailable while the planning stack is being redesigned.
+          You can still preview a shape code on this page using the live preview panel.
         {% endblocktrans %}
       </p>
     </div>
@@ -29,89 +27,40 @@
 
   <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
     <div class="grid gap-10 lg:grid-cols-[1fr_1.05fr] lg:items-start">
-      <div class="space-y-8">
-        <section aria-labelledby="solver-target-heading">
-          <h2 id="solver-target-heading" class="text-sm font-semibold text-cyan-200">{% trans "Target" %}</h2>
-          <form method="get" class="mt-4 flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-end" action="">
-            <label class="sr-only" for="solver-code-input">{% trans "Shape code" %}</label>
-            <div class="w-full">
-              <input
-                id="solver-code-input"
-                type="text"
-                name="code"
-                value="{{ shape_code }}"
-                data-shape-preview-code
-                autocomplete="off"
-                placeholder="{% trans 'e.g. CuRuSuWu' %}"
-                class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50"
-              />
-            </div>
-            <button
-              type="submit"
-              class="shrink-0 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-500/15"
-            >
-              {% trans "Apply" %}
-            </button>
-          </form>
-          <p class="mt-2 text-[11px] text-slate-500">
-            {% blocktrans trimmed %}
-              Query updates this page; preview uses the same shapez_core parser as Quick Solver.
-            {% endblocktrans %}
-          </p>
-        </section>
-
-        <section aria-labelledby="solver-graph-heading">
-          <h2 id="solver-graph-heading" class="text-sm font-semibold text-slate-200">{% trans "Recipe graph" %}</h2>
-          <div
-            class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400 sm:p-5"
-            data-solver-timeline
-            data-solver-mode="inventory_search"
-            data-graph-quantity-replicas="on"
-            data-solver-api="{% url 'shapez_solver:solve_shape' %}"
-            data-code-input="#solver-code-input"
-            data-csrf-token="{{ csrf_token }}"
-            data-asset-base="{% static 'web/vendor/shapez-vortex/models/shapes/' %}"
-          >
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <p class="font-medium text-slate-300">{% trans "Solver Graph" %}</p>
-                <p class="mt-2 leading-relaxed">
-                  {% blocktrans trimmed %}
-                    Base inputs stay on the left, target outputs stay on the right, and stable previews render in a right-aligned layout style.
-                    Drag to pan and use the mouse wheel to zoom inside the graph frame.
-                  {% endblocktrans %}
-                </p>
-              </div>
-              <div class="flex shrink-0 flex-col items-end gap-2">
-                <p class="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-cyan-200">
-                  {% trans "POST solve" %}
-                </p>
-                <button
-                  type="button"
-                  class="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-100"
-                  data-graph-quantity-toggle
-                  aria-pressed="true"
-                >
-                  {% trans "Materialized graph" %}
-                </button>
-              </div>
-            </div>
-            <p class="mt-4 hidden rounded-lg border border-rose-400/25 bg-rose-950/30 px-3 py-2 text-rose-200" data-solver-timeline-error role="alert"></p>
-            <p class="mt-4 hidden rounded-lg border border-amber-400/25 bg-amber-950/20 px-3 py-2 text-amber-100" data-solver-timeline-warnings></p>
-            <div class="mt-4 hidden rounded-2xl border border-cyan-400/20 bg-slate-950/60 px-4 py-3 text-sm text-slate-200" data-solver-throughput-summary></div>
-            <div class="mt-5" data-solver-graph-canvas></div>
-            <p class="mt-4 text-xs text-slate-500" data-solver-graph-empty>
-              {% trans "Enter a target shape and apply it to request a solver graph." %}
-            </p>
-            <div class="mt-5" data-solver-node-detail></div>
-            {% if shape_code %}
-              <p class="mt-4 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 font-mono text-xs text-slate-300">
-                {% trans "Current target:" %} <span class="text-cyan-200/90">{{ shape_code }}</span>
-              </p>
-            {% endif %}
+      <section aria-labelledby="solver-target-heading">
+        <h2 id="solver-target-heading" class="text-sm font-semibold text-cyan-200">{% trans "Target" %}</h2>
+        <form method="get" class="mt-4 flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-end" action="">
+          <label class="sr-only" for="solver-code-input">{% trans "Shape code" %}</label>
+          <div class="w-full">
+            <input
+              id="solver-code-input"
+              type="text"
+              name="code"
+              value="{{ shape_code }}"
+              data-shape-preview-code
+              autocomplete="off"
+              placeholder="{% trans 'e.g. CuRuSuWu' %}"
+              class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-mono text-sm text-slate-100 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50"
+            />
           </div>
-        </section>
-      </div>
+          <button
+            type="submit"
+            class="shrink-0 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm font-semibold text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-500/15"
+          >
+            {% trans "Apply" %}
+          </button>
+        </form>
+        <p class="mt-2 text-[11px] text-slate-500">
+          {% blocktrans trimmed %}
+            Query updates this page; preview uses the same shapez_core parser as Quick Solver.
+          {% endblocktrans %}
+        </p>
+        {% if shape_code %}
+          <p class="mt-6 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 font-mono text-xs text-slate-300">
+            {% trans "Current target:" %} <span class="text-cyan-200/90">{{ shape_code }}</span>
+          </p>
+        {% endif %}
+      </section>
 
       <div
         class="rounded-2xl border border-cyan-400/20 bg-slate-900/80 p-5 shadow-lg shadow-cyan-950/30 sm:p-6"
@@ -194,8 +143,6 @@
 
 {% block extra_scripts %}
   {{ block.super }}
-  <script src="{% url 'javascript-catalog' %}"></script>
-  <script src="{% static 'web/js/ui_locale.js' %}"></script>
   <script type="importmap">
     {
       "imports": {
@@ -205,5 +152,4 @@
     }
   </script>
   <script type="module" src="{% static 'web/js/quick_solver_preview.js' %}"></script>
-  <script type="module" src="{% static 'web/js/solver_timeline.js' %}?v=20260503-inventory-default"></script>
 {% endblock %}

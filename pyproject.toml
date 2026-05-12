@@ -11,6 +11,7 @@ requires-python = ">=3.12"
 dependencies = [
     "dj-database-url>=2.3,<3.0",
     "django>=5.2,<6.0",
+    "polib>=1.2,<2.0",
     "pillow>=10,<12",
     "django-allauth[socialaccount]>=65.0,<66.0",
     "gunicorn>=23.0,<24.0",
@@ -23,7 +24,6 @@ dependencies = [
 dev = [
     "black",
     "mypy",
-    "polib",
     "pytest",
     "pytest-django",
     "ruff",
@@ -55,17 +55,28 @@ module = ["django.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = ["dj_database_url"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
 module = [
     "config.*",
     "manage",
     "django_apps.shapez_core.apps",
     "django_apps.shapez_core.urls",
     "django_apps.shapez_core.views",
+    "django_apps.shapez_asteroid.admin",
+    "django_apps.shapez_asteroid.apps",
+    "django_apps.shapez_asteroid.models",
+    "django_apps.shapez_asteroid.urls",
+    "django_apps.shapez_asteroid.views",
     "django_apps.shapez_solver.admin",
     "django_apps.shapez_solver.apps",
     "django_apps.shapez_solver.models",
-    "django_apps.web.urls_shapez_solver_api",
-    "django_apps.web.views_solver_api",
     "django_apps.web.admin",
     "django_apps.web.apps",
     "django_apps.web.social_adapter",

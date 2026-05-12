@@ -4,6 +4,10 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 
 **역할**: 짧은 헌법 + **매뉴얼 라우팅** + 완료 기준. 긴 설명·persona는 넣지 않는다. 상세는 [`documents/ai/manuals/`](documents/ai/manuals/)와 [`.cursor/rules/`](.cursor/rules/root.mdc)를 읽는다.
 
+**Cursor 하네스(요약)**: 역할 카드는 [`persona/`](persona/), 절차·규칙은 매뉴얼 + `.cursor/rules/*.mdc`, 단계·핸드오프는 [`protocols/README.md`](protocols/README.md)가 정본이다. 채팅에서 전체 워크플로를 한꺼번에 적용할 때는 선택적으로 프로젝트 Skill [`.cursor/skills/shapez2-harness/SKILL.md`](.cursor/skills/shapez2-harness/SKILL.md)를 연다.
+
+**에이전트 네이티브 엔지니어링(요약)**: 인간의 역할은 타이핑보다 **의도·아키텍처·검증·디버깅**에 두는 것을 전제로 한다. 의도를 구체화(파일·심볼·완료 조건·제약)하고, **이해·재현 없이 수정하지 않으며**, 스레드·서브에이전트로 **컨텍스트를 분리**하고, 계측·가설·회귀 테스트로 검증한다. **규칙(Rules)** 은 상시 지시, **스킬(Skills)** 은 온디맨드 워크플로다. 상세·체크리스트: [`documents/ai/manuals/cursor_usage.md`](documents/ai/manuals/cursor_usage.md).
+
 ---
 
 ## Core Rules (항상)
@@ -17,6 +21,12 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 ---
 
 ## Workflow Rules
+
+### 문서 Authority
+
+- 문서 context를 잡을 때는 먼저 [`documents/ai/START_HERE.md`](documents/ai/START_HERE.md), [`documents/index/document_inventory.md`](documents/index/document_inventory.md), [`documents/index/document_lifecycle.md`](documents/index/document_lifecycle.md)를 확인한다.
+- `CANON` 문서만 현재 시스템 계약으로 본다. `ACTIVE`는 진행 중 플랜, `RESEARCH`는 근거, `REPORT`는 관측 결과이며 정본이 아니다.
+- `ARCHIVED`·`SUPERSEDED` 문서는 역사 확인용으로만 읽고, 구현 판단에 쓰지 않는다.
 
 ### 작업 전 (Before)
 
@@ -54,6 +64,16 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 | Cursor 사용 습관·컨텍스트·요금 절약 | [`documents/ai/manuals/cursor_usage.md`](documents/ai/manuals/cursor_usage.md) |
 
 추가 인덱스: [`documents/ai/README.md`](documents/ai/README.md).
+
+---
+
+## MCP: Serena (코드베이스)
+
+**Serena** (`user-serena` MCP)는 로컬에서 LSP 기반 시맨틱 분석(클래스·함수·호출·상속), 심볼 단위 삽입·수정·리네임, 필요한 심볼만 선택 전달로 컨텍스트를 줄이는 도구다. 코드는 외부로 나가지 않는다.
+
+- **계약**: 코딩 작업에 Serena를 쓸 때는 서버 지시에 따라 **`initial_instructions`** 도구로 Serena 매뉴얼을 **먼저** 읽는다. 도구 스키마는 `mcps/user-serena/tools/`를 본다.
+- **페르소나**: **[시몬]**이 영향 범위·광역 탐색이 필요하면 브리핑에 Serena 활용을 명시한다. **[도미닉·유리·아다]**는 담당 레이어에서 호출·참조·경계를 잡을 때 전 파일 로드·무차별 검색보다 Serena를 **우선 고려**한다.
+- 다른 MCP·선택 사용 원칙: [`.cursor/rules/mcp.mdc`](.cursor/rules/mcp.mdc).
 
 ---
 

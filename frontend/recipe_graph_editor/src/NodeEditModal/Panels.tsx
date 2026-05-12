@@ -1,4 +1,5 @@
 import type { Node } from "@xyflow/react";
+import { defaultQuantityForShapeNodeData } from "../EditorFoundation/constants";
 import type { FluidPrimaryInk } from "../EditorFoundation/fluidSourceUi";
 import { fluidShapeCodeFromInk } from "../EditorFoundation/fluidSourceUi";
 import type { CatalogOperationRow } from "../Operation/nodeCatalogMerge";
@@ -150,7 +151,7 @@ export function IntermediatePanel({ base, roleLabel, shapeHint }: IntermediatePa
       <div className="block">
         <span className="mb-0.5 block font-mono text-[10px] text-slate-500">quantity</span>
         <p className="rounded border border-slate-700/80 bg-slate-900/80 px-2 py-1.5 font-mono text-xs text-slate-300">
-          {scalarQuantityToUiString(base.quantity, 1)}
+          {scalarQuantityToUiString(base.quantity, defaultQuantityForShapeNodeData(base))}
         </p>
       </div>
       <p className="font-mono text-[10px] text-slate-500">

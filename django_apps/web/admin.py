@@ -19,6 +19,7 @@ from django_apps.web.services.shape_part_sprite_generation import (
     JOB_CACHE_TIMEOUT_SECONDS,
     _build_work_queue,
     build_sample_quadrant_work_queue,
+    build_tank_sprite_work_queue,
     generate_shape_part_sprites,
     job_cache_key,
     merge_job_state,
@@ -94,6 +95,11 @@ class ShapePartSpriteAdmin(admin.ModelAdmin):
                 "start-sample-quadrants-job/",
                 self.admin_site.admin_view(self.start_sample_quadrants_job_view),
                 name=f"{info[0]}_{info[1]}_start_sample_quadrants_job",
+            ),
+            path(
+                "start-tank-missing-job/",
+                self.admin_site.admin_view(self.start_tank_missing_job_view),
+                name=f"{info[0]}_{info[1]}_start_tank_missing_job",
             ),
             path(
                 "render-progress/",
@@ -207,6 +213,72 @@ class ShapePartSpriteAdmin(admin.ModelAdmin):
             self.message_user(
                 request,
                 _("Sample quadrants already complete; skipped %(n)d.") % {"n": skipped},
+                level=messages.SUCCESS,
+            )
+            return redirect(reverse("admin:web_shapepartsprite_changelist"))
+
+        job_id = str(uuid.uuid4())
+        ck = job_cache_key(job_id)
+        cache.set(
+            ck,
+            {
+                "status": "queued",
+                "total": len(specs),
+                "current": 0,
+                "skipped": skipped,
+                "rendered": 0,
+                "errors": 0,
+                "user_id": request.user.pk,
+            },
+            timeout=JOB_CACHE_TIMEOUT_SECONDS,
+        )
+
+        thread = threading.Thread(
+            target=_run_sprite_job_background,
+            args=(ck, renderer_version, specs, skipped),
+            daemon=True,
+        )
+        thread.start()
+
+        url = (
+            reverse("admin:web_shapepartsprite_render_progress")
+            + "?job_id="
+            + quote(job_id, safe="")
+        )
+        return redirect(url)
+
+    def start_tank_missing_job_view(self, request):
+        if not self.has_change_permission(request):
+            raise PermissionDenied
+
+        if request.method != "POST":
+            self.message_user(
+                request,
+                _("Use the button on the changelist to run tank-only generation."),
+                level=messages.INFO,
+            )
+            return redirect(reverse("admin:web_shapepartsprite_changelist"))
+
+        renderer_version = (request.POST.get("renderer_version") or "v1").strip() or "v1"
+
+        try:
+            import PIL  # noqa: F401 — ensure Pillow is installed before heavy job
+        except ImportError:
+            self.message_user(
+                request,
+                _("Pillow is required (pip install pillow)."),
+                level=messages.ERROR,
+            )
+            return redirect(reverse("admin:web_shapepartsprite_changelist"))
+
+        specs, skipped = build_tank_sprite_work_queue(
+            renderer_version=renderer_version,
+            skip_existing=True,
+        )
+        if not specs:
+            self.message_user(
+                request,
+                _("No missing tank sprites; skipped %(n)d existing rows.") % {"n": skipped},
                 level=messages.SUCCESS,
             )
             return redirect(reverse("admin:web_shapepartsprite_changelist"))

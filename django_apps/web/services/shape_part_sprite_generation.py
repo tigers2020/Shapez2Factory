@@ -19,11 +19,13 @@ from django_apps.web.services.graph_preview import _playwright_subprocess_env
 from django_apps.web.services.shape_part_sprites import (
     MESH_KEY_TO_SHAPE_CODE,
     PEDESTAL_ONLY_MESH_KEY,
+    TANK_VORTEX_MESH_KEY,
     build_atomic_preview_scene,
     build_pedestal_only_preview_scene,
     iter_atomic_sprite_specs,
     make_pedestal_sprite_key,
     make_sprite_key,
+    make_tank_vortex_sprite_key,
 )
 
 JOB_CACHE_PREFIX = "shape_part_sprite_job:"
@@ -194,6 +196,36 @@ def build_sample_quadrant_work_queue(
     )
 
 
+def build_tank_sprite_work_queue(
+    *,
+    renderer_version: str,
+    skip_existing: bool,
+) -> tuple[list[tuple[str, str, str, int]], int]:
+    """``default_fluid_tank_vortex`` (``t``) × colors × quadrants; skip complete rows."""
+    skipped = 0
+    work: list[tuple[str, str, str, int]] = []
+    for tup in iter_atomic_sprite_specs(limit=None):
+        mesh_key, color_code, material_key, quadrant_index = tup
+        if mesh_key != TANK_VORTEX_MESH_KEY:
+            continue
+        if skip_existing and _variant_row_exists_with_image(
+            mesh_key=mesh_key,
+            color_code=color_code,
+            material_key=material_key,
+            quadrant_index=quadrant_index,
+            renderer_version=renderer_version,
+        ):
+            skipped += 1
+        else:
+            work.append(tup)
+    return _prepend_pedestal_if_needed(
+        work,
+        skipped,
+        renderer_version=renderer_version,
+        skip_existing=skip_existing,
+    )
+
+
 def _resolve_generation_specs(
     *,
     work_queue: list[tuple[str, str, str, int]] | None,
@@ -283,6 +315,11 @@ def _sprite_key_and_scene_for_spec(
         return (
             make_pedestal_sprite_key(renderer_version),
             build_pedestal_only_preview_scene(),
+        )
+    if mesh_key == TANK_VORTEX_MESH_KEY:
+        return (
+            make_tank_vortex_sprite_key(color_code, renderer_version),
+            build_atomic_preview_scene(mesh_key, color_code, material_key, quadrant_index),
         )
     shape_code = MESH_KEY_TO_SHAPE_CODE.get(mesh_key)
     if shape_code is None:
@@ -518,6 +555,7 @@ __all__ = [
     "JOB_CACHE_TIMEOUT_SECONDS",
     "ShapePartSpriteGenerationStats",
     "build_sample_quadrant_work_queue",
+    "build_tank_sprite_work_queue",
     "generate_shape_part_sprites",
     "job_cache_key",
     "merge_job_state",

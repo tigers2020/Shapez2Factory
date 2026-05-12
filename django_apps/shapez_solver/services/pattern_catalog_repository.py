@@ -1,7 +1,8 @@
-"""DB-backed pattern family / macro recipe catalog for Pattern Lab and solvers.
+"""DB-backed pattern family / macro recipe catalog for Pattern Lab.
 
-Inventory search selects strategies by pattern signature; it does not evaluate
-`MacroRecipe.graph_document` as a search graph.
+Catalog matches `MacroRecipe` / `PatternFamily` rows by pattern signature.
+`MacroRecipe.graph_document` is used for step metadata (see recompute helpers),
+not as a search graph here.
 """
 
 from __future__ import annotations

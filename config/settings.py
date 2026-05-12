@@ -9,6 +9,46 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+# If set, successful POST /api/asteroid/copy-preview/ writes encrypt code + decoded JSON here.
+SHAPEZ_COPY_DEBUG_DIR = (os.environ.get("SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
+
+# Optional mining-layout invariant checks (env: 1/true/yes/on).
+# Default is OFF: zero overhead on normal requests; turn on in dev/CI when debugging
+# split-brain between scratch transport, map rows, or routing_state vs belts on map.
+_truthy_env = {"1", "true", "yes", "on"}
+SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET = (
+    os.environ.get("SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET", "").strip().lower()
+    in _truthy_env
+)
+# When True: before returning from build_solver_timeline, assert protected corridors in
+# routing_state match shape_belt/fluid_pipe cells on the final map (STEP9 assertion gate).
+# Default OFF so production/copy-preview is not killed by a bad corner case; enable locally
+# or in CI via SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE=1. Tests use @override_settings(True).
+SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE = (
+    os.environ.get("SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE", "").strip().lower() in _truthy_env
+)
+# Pass12 merged-seed: optional relaxed stub + rotation recovery for preserved miners.
+# Default OFF; enable locally via SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=1.
+SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY = (
+    os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", "").strip().lower() in _truthy_env
+)
+# Pass12 merged-seed: inferred stub → same-kind trunk BFS + NEAR_TRANSPORT defer-queue retries.
+# Relaxed rotation recovery(위 ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY``)와 별개.
+# Asteroid/플래너 기본 ON; 끄려면 ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=0`` 등.
+SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = os.environ.get(
+    "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", "true"
+).strip().lower() not in {"0", "false", "no", "off"}
+# NDJSON: ``pass12_stub_route_recovery_disabled_by_flag=true`` ↔ 이 값이 False일 때;
+# ``attempted_count=0``은 stub-route recovery 미시도로 정상일 수 있음.
+# existing_fluid_layout: allow Pass2 internal fill on mineable voids while keeping Pass1
+# suppression (preserve-first). Default ON so internal mineable voids can be filled while
+# preserve bundles stay protected by ``blocked_cells``; set
+# ``SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED=0`` (or false/no/off) to fall back to the
+# legacy "skip both loops" behavior.
+SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED = os.environ.get(
+    "SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED", "true"
+).strip().lower() not in {"0", "false", "no", "off"}
+
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True
 
@@ -39,6 +79,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "django_apps.shapez_core.apps.ShapezCoreConfig",
     "django_apps.shapez_solver.apps.ShapezSolverConfig",
+    "django_apps.shapez_asteroid.apps.ShapezAsteroidConfig",
     "django_apps.web.apps.WebConfig",
 ]
 

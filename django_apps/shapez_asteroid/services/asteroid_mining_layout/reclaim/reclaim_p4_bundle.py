@@ -1,0 +1,120 @@
+"""P4 reclaim: bundle evaluation DTO helpers (gain_ratio ordering)."""
+
+from __future__ import annotations
+
+import math
+
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.reclaim_shadow_types import (
+    _P4BundleEval,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+
+
+def _p4_bundle_eval(
+    *,
+    gain: float,
+    additional_route_cost: float,
+    gain_ratio: float,
+    incremental_internal_transport_added: int,
+    rejected_reason: str | None,
+    accepted_shadow: bool,
+    anchor: Coord,
+    extension: Coord,
+    rotation: int,
+    shadow_route_path: tuple[Coord, ...] | None = None,
+    p4_cluster_penalty: float = 0.0,
+    p4_route_zone_overlap_cells: int = 0,
+    p4_route_zone_penalty: float = 0.0,
+    p4_local_cluster_density: float = 0.0,
+    p4_min_anchor_distance_to_prior: int | None = None,
+    p4_total_diversity_penalty: float = 0.0,
+    gain_ratio_adjusted: float | None = None,
+    p4_continuity_bonus: float = 0.0,
+    p4_min_recent_anchor_distance: int | None = None,
+    p4_continuity_band_state: str = "no_recent",
+    p4_continuity_winning_index: int | None = None,
+    p4_continuity_window_size: int = 0,
+    p4_continuity_max_weighted_t: float = 0.0,
+    p4_continuity_mean_t: float = 0.0,
+    p4_final_diversity_score: float | None = None,
+    p4_distance_bucket: str = "none",
+) -> _P4BundleEval:
+    """P4 후보 dict를 정렬 가능한 _P4BundleEval로 변환한다 (§12.2 gain_ratio)."""
+    final_div = (
+        p4_total_diversity_penalty - p4_continuity_bonus
+        if p4_final_diversity_score is None
+        else p4_final_diversity_score
+    )
+    return _P4BundleEval(
+        gain=gain,
+        additional_route_cost=additional_route_cost,
+        gain_ratio=gain_ratio,
+        incremental_internal_transport_added=incremental_internal_transport_added,
+        rejected_reason=rejected_reason,
+        accepted_shadow=accepted_shadow,
+        anchor=anchor,
+        extension=extension,
+        rotation=rotation,
+        shadow_route_path=shadow_route_path,
+        p4_cluster_penalty=p4_cluster_penalty,
+        p4_route_zone_overlap_cells=p4_route_zone_overlap_cells,
+        p4_route_zone_penalty=p4_route_zone_penalty,
+        p4_local_cluster_density=p4_local_cluster_density,
+        p4_min_anchor_distance_to_prior=p4_min_anchor_distance_to_prior,
+        p4_total_diversity_penalty=p4_total_diversity_penalty,
+        gain_ratio_adjusted=gain_ratio_adjusted,
+        p4_continuity_bonus=p4_continuity_bonus,
+        p4_min_recent_anchor_distance=p4_min_recent_anchor_distance,
+        p4_continuity_band_state=p4_continuity_band_state,
+        p4_continuity_winning_index=p4_continuity_winning_index,
+        p4_continuity_window_size=p4_continuity_window_size,
+        p4_continuity_max_weighted_t=p4_continuity_max_weighted_t,
+        p4_continuity_mean_t=p4_continuity_mean_t,
+        p4_final_diversity_score=final_div,
+        p4_distance_bucket=p4_distance_bucket,
+    )
+
+
+def _p4_accepted_sort_key(e: _P4BundleEval) -> tuple[int | float, ...]:
+    """Deterministic ascending sort key: lower is better."""
+
+    if math.isinf(e.gain_ratio):
+        gr_key: tuple[int, float] = (0, 0.0)
+    else:
+        gr_key = (1, -e.gain_ratio)
+    return (
+        gr_key[0],
+        gr_key[1],
+        e.p4_final_diversity_score,
+        e.additional_route_cost,
+        e.anchor[1],
+        e.anchor[0],
+        e.extension[1],
+        e.extension[0],
+        e.rotation,
+    )
+
+
+def select_best_accepted_p4_bundle(evals: list[_P4BundleEval]) -> _P4BundleEval | None:
+    """accepted P4 후보 중 gain_ratio와 tie-break로 최선 후보를 고른다 (§12.2)."""
+    accepted = [e for e in evals if e.accepted_shadow]
+    if not accepted:
+        return None
+    return min(accepted, key=_p4_accepted_sort_key)
+
+
+def _p4_selected_candidate_rank(evals: list[_P4BundleEval], selected: _P4BundleEval) -> int:
+    """선택된 P4 후보가 전체 후보 중 몇 번째인지 계산한다 (§12.2 gain_ratio)."""
+    accepted = [e for e in evals if e.accepted_shadow]
+    ordered = sorted(accepted, key=_p4_accepted_sort_key)
+    for i, e in enumerate(ordered):
+        if (
+            e.anchor == selected.anchor
+            and e.extension == selected.extension
+            and e.rotation == selected.rotation
+            and math.isclose(e.gain_ratio, selected.gain_ratio)
+            and math.isclose(e.additional_route_cost, selected.additional_route_cost)
+            and math.isclose(e.p4_final_diversity_score, selected.p4_final_diversity_score)
+        ):
+            return i
+    return 0

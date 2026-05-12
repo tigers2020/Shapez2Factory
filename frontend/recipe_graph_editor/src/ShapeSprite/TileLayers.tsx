@@ -108,8 +108,9 @@ export function ShapePartSpriteTileLayers(
         const cell = stackedCells[i];
         const k = cellKeys[i];
         const layerTier = Number(cell.layer_index ?? 0);
+        const qi = Number(cell.quadrant_index ?? 0);
         rows.push({
-          key: k,
+          key: `${layerTier}:${qi}:${k}`,
           url: manifest.sprites[k].url,
           zIndex: cellOverlayZIndex(cell),
           // Use layer depth, not draw-order index: same-layer quadrants must stay scale 1 (matches glTF tile).

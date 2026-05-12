@@ -2,8 +2,11 @@
 
 Placement must mutate ``transport_cells`` / ``blocked_cells`` (and Pass1 extension
 metadata on ``Pass12LayoutScratch``) only through ``try_commit_pass1_bundle`` and
-``try_commit_pass2_bundle`` so a failed stub→external probe never leaves new occupied
+``try_commit_pass2_bundle`` so a failed Pass1 stub→external probe never leaves new occupied
 bodies or stub transport on the scratch layout.
+
+Pass2 with ``Pass2RouteProbePack`` may still commit ``PROVISIONAL_PLACED`` when the route is
+uncertain (STEP4 merge-aware routing decides later); Pass1 behavior is unchanged.
 """
 
 from __future__ import annotations
@@ -28,7 +31,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass1
     Pass12ScratchBaseline,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_route_probe import (  # noqa: E501
+    Pass2RouteProbePack,
+    build_pass2_step4_aligned_routing_goals,
     bundle_route_probe_or_reject,
+    pass2_bundle_route_probe_decision,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
@@ -49,6 +55,7 @@ __all__ = [
     "Pass12BundleCandidate",
     "Pass12LayoutScratch",
     "Pass12ScratchBaseline",
+    "Pass2RouteProbePack",
     "restore_pass12_scratch",
     "snapshot_pass12_scratch",
     "try_commit_pass1_bundle",
@@ -150,6 +157,7 @@ def try_commit_pass1_bundle(
         bundle_hint=bundle_hint,
         replay_events=replay_events,
         adjacent_preserve_trunk_baseline_cells=None,
+        pass2_route_probe_pack=None,
     )
 
 
@@ -161,6 +169,7 @@ def try_commit_pass2_bundle(
     bundle_hint: dict[str, Any] | None = None,
     replay_events: list[dict[str, Any]] | None = None,
     adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None = None,
+    pass2_route_probe_pack: Pass2RouteProbePack | None = None,
 ) -> bool:
     """Same gate as Pass1 for spine/merge transport bundles."""
 
@@ -172,6 +181,7 @@ def try_commit_pass2_bundle(
         bundle_hint=bundle_hint,
         replay_events=replay_events,
         adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
+        pass2_route_probe_pack=pass2_route_probe_pack,
     )
 
 
@@ -184,6 +194,7 @@ def _commit_after_probe(
     bundle_hint: dict[str, Any] | None,
     replay_events: list[dict[str, Any]] | None,
     adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None,
+    pass2_route_probe_pack: Pass2RouteProbePack | None,
 ) -> bool:
     """Pass1/Pass2 bundle을 route probe 성공 후에만 commit한다.
 
@@ -203,21 +214,55 @@ def _commit_after_probe(
                 "blocked_cell_count": len(blocked_after),
             }
             trace_bundle_reject_invalid_stub(trace_location, payload)
+            if trace_location == _PASS2_TRACE and pass2_route_probe_pack is not None:
+                sink = pass2_route_probe_pack.stats_sink
+                sink["pass2_hard_geometry_reject_count"] = (
+                    int(sink.get("pass2_hard_geometry_reject_count", 0)) + 1
+                )
             return False
-        if not bundle_route_probe_or_reject(
-            candidate.stub_cell,
-            transport_cells=transport_after,
-            blocked_cells=blocked_after,
-            is_external=is_external,
-            trace_location=trace_location,
-            bundle_hint=bundle_hint,
-            pass1_allow_cheap_escape=(trace_location == _PASS1_TRACE),
-            p1_cheap_void_cells=candidate.p1_cheap_void_cells,
-            pass2_adjacent_preserve_trunk_baseline_cells=(
-                adjacent_preserve_trunk_baseline_cells if trace_location == _PASS2_TRACE else None
-            ),
-        ):
-            return False
+        pass2_outcome: str | None = None
+        if trace_location == _PASS2_TRACE and pass2_route_probe_pack is not None:
+            pack = pass2_route_probe_pack
+            goals, gkind, gn = build_pass2_step4_aligned_routing_goals(
+                transport_kind=state.transport_kind,
+                mineable=pack.mineable,
+                asteroid=pack.asteroid,
+                cells=pack.cells,
+                is_external=is_external,
+                existing_layout_analysis=pack.existing_layout_analysis,
+                transport_cells_before=frozenset(baseline.transport_cells),
+                blocked_for_probe=blocked_after,
+            )
+            p2_out, _diag = pass2_bundle_route_probe_decision(
+                candidate.stub_cell,
+                transport_cells=transport_after,
+                blocked_cells=blocked_after,
+                is_external=is_external,
+                routing_goal_cells=goals,
+                goal_set_kind=gkind,
+                goal_count=gn,
+                adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
+                stats_sink=pack.stats_sink,
+            )
+            pass2_outcome = p2_out
+        else:
+            if not bundle_route_probe_or_reject(
+                candidate.stub_cell,
+                transport_cells=transport_after,
+                blocked_cells=blocked_after,
+                is_external=is_external,
+                trace_location=trace_location,
+                bundle_hint=bundle_hint,
+                pass1_allow_cheap_escape=(trace_location == _PASS1_TRACE),
+                p1_cheap_void_cells=candidate.p1_cheap_void_cells,
+                pass2_adjacent_preserve_trunk_baseline_cells=(
+                    adjacent_preserve_trunk_baseline_cells
+                    if trace_location == _PASS2_TRACE
+                    else None
+                ),
+            ):
+                return False
+            pass2_outcome = "routed"
         state.transport_cells |= set(candidate.new_transport)
         state.blocked_cells |= set(candidate.blocked_cells)
         if candidate.extractor_cell is not None:
@@ -244,6 +289,15 @@ def _commit_after_probe(
                 transport_kind=state.transport_kind,
                 state=PlacementCommitState.PROVISIONAL_PLACED,
             )
+            if (
+                trace_location == _PASS2_TRACE
+                and pass2_route_probe_pack is not None
+                and pass2_outcome == "uncertain"
+            ):
+                sink = pass2_route_probe_pack.stats_sink
+                sink["pass2_provisional_unrouted_count"] = (
+                    int(sink.get("pass2_provisional_unrouted_count", 0)) + 1
+                )
             if replay_events is not None:
                 replay_events.append(
                     {

@@ -228,6 +228,10 @@ def test_copy_preview_merges_final_validation_optimization_into_last_summary(
                 "optimization_counterfactual_aggregation": "sequential_trunk_v1",
                 "optimization_counterfactual_failure_reason": None,
                 "optimization_warnings": [],
+                "solver_quality_tier": "SUCCESS_VALID_WITH_OPTIMIZATION_WARNING",
+                "solver_result_tier": "SUCCESS_VALID_WITH_OPTIMIZATION_WARNING",
+                "solver_quality_summary": "Valid layout, optimization warning",
+                "optimization_warning_count": 1,
             },
             "solver_summary": {
                 "routing_state": {
@@ -257,6 +261,9 @@ def test_copy_preview_merges_final_validation_optimization_into_last_summary(
     assert summ.get("optimization_counterfactual_internal_transport_sequential_v1") == 32
     assert summ.get("optimization_internal_transport_quality_ratio") == 1.1875
     assert summ.get("optimization_counterfactual_aggregation") == "sequential_trunk_v1"
+    assert summ.get("solver_quality_tier") == "SUCCESS_VALID_WITH_OPTIMIZATION_WARNING"
+    assert summ.get("solver_quality_summary") == "Valid layout, optimization warning"
+    assert summ.get("optimization_warning_count") == 1
     assert "optimization_internal_transport_quality_ratio" not in body["map_timeline"][0]["summary"]
     assert body["summary"].get("replay_protected_corridor_counts") == {
         "hard": 1,

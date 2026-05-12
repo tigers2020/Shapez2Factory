@@ -33,10 +33,15 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass2
     spine_seed_voids_adjacent_extensions,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_bundle_commit import (  # noqa: E501
+    Pass2RouteProbePack,
     Pass12LayoutScratch,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_merged_layout_seed import (  # noqa: E501
     seed_pass12_scratch_from_merged_existing,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_route_probe import (  # noqa: E501
+    finalize_pass2_route_probe_stats,
+    new_pass2_route_probe_stats_sink,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     layout_kind,
@@ -313,6 +318,11 @@ def integrate_pass12_placement_into_working_map(
             "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_"
             "disabled_count"
         ): 0,
+        "pass12_preserved_rotation_recovery_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_queue_rounds": 0,
+        "pass12_preserved_recovered_stub_samples": [],
+        "pass12_preserved_unrecovered_stub_drop_samples": [],
+        **new_pass2_route_probe_stats_sink(),
         **ela_empty_meta,
     }
     if not mineable:
@@ -347,6 +357,10 @@ def integrate_pass12_placement_into_working_map(
                 "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_"
                 "disabled_count"
             ): 0,
+            "pass12_preserved_rotation_recovery_count": 0,
+            "pass12_preserved_missing_stub_route_recovery_queue_rounds": 0,
+            "pass12_preserved_recovered_stub_samples": [],
+            "pass12_preserved_unrecovered_stub_drop_samples": [],
             "pass12_placement_loops_suppressed": False,
         }
         return unchanged, unchanged, skip_stats
@@ -404,6 +418,26 @@ def integrate_pass12_placement_into_working_map(
                 placement_transport_blocked_counter=placement_transport_blocked_counter,
             )
         scratch_after_pass1 = _clone_scratch(scratch)
+        merged_rows_pass1_for_probe = _merge_pass1_into_rows(
+            working_map,
+            final_mining_map,
+            scratch_after_pass1,
+            transport_init,
+            blocked_init,
+            mineable,
+            surface,
+        )
+        cells_for_pass2_probe = {
+            k: dict(v) for k, v in cells_dict_from_mining_map(merged_rows_pass1_for_probe).items()
+        }
+        pass2_probe_stats = new_pass2_route_probe_stats_sink()
+        pass2_route_probe_pack = Pass2RouteProbePack(
+            mineable=mineable,
+            asteroid=asteroid,
+            cells=cells_for_pass2_probe,
+            existing_layout_analysis=existing_layout_analysis,
+            stats_sink=pass2_probe_stats,
+        )
         ex_before_p2 = len(scratch.extractor_cells)
         ext_before_p2 = len(scratch.extension_facings)
         tr_before_p2 = len(scratch.transport_cells)
@@ -439,7 +473,9 @@ def integrate_pass12_placement_into_working_map(
                 extra_transport_block_cells=extra_transport_blocks,
                 placement_transport_blocked_counter=placement_transport_blocked_counter,
                 adjacent_preserve_trunk_baseline_cells=pass2_preserve_trunk_baseline,
+                pass2_route_probe_pack=pass2_route_probe_pack,
             )
+        finalize_pass2_route_probe_stats(pass2_probe_stats)
         merged_pass1 = _merge_pass1_into_rows(
             working_map,
             final_mining_map,
@@ -498,6 +534,7 @@ def integrate_pass12_placement_into_working_map(
             "existing_transport_reuse_ratio_vs_working_initial_after_pass12": round(
                 reuse_vs_working, 6
             ),
+            **pass2_probe_stats,
             **preserve_seed_stats,
             **ela_meta,
         }

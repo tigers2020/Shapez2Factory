@@ -9,8 +9,12 @@ from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     P3E3_REJECT_CONNECTIVITY,
+    P3E3_REJECT_DISCONNECTED_STUB,
+    P3E3_REJECT_EXTERNAL_UNREACHABLE_TRANSPORT,
     P3E3_REJECT_HARD_PROTECTED_CORRIDOR,
+    P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN,
     P3E3_REJECT_NO_REPLACEMENT_ROUTE,
+    P3E3_REJECT_ORPHAN_TRANSPORT,
     P3E3_REJECT_PRECHECK_NO_REPLACEMENT_ROUTE,
     P3F_COMMIT_REASON_NORMAL_GAIN,
     P3F_KIND_LONG_PERIMETER_DETOUR,
@@ -76,6 +80,14 @@ def test_p3f_map_rejected_reason_known_constants_route_to_namespace() -> None:
     mapped3, raw3 = p3f_map_rejected_reason(P3E3_REJECT_CONNECTIVITY)
     assert mapped3 == P3E3_REJECT_CONNECTIVITY
     assert raw3 is None
+    for sub in (
+        P3E3_REJECT_DISCONNECTED_STUB,
+        P3E3_REJECT_ORPHAN_TRANSPORT,
+        P3E3_REJECT_EXTERNAL_UNREACHABLE_TRANSPORT,
+        P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN,
+    ):
+        ms, rs = p3f_map_rejected_reason(sub)
+        assert ms == sub and rs is None
     assert P3E3_REJECT_HARD_PROTECTED_CORRIDOR in P3F_REJECT_REASON_TABLE
 
 

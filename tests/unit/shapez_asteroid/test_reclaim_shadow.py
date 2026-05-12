@@ -9,6 +9,8 @@ from unittest.mock import patch
 import pytest
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    P4_RECLAIM_ZERO_ALL_TRANSPORT_PROTECTED,
+    P4_RECLAIM_ZERO_NO_RECLAIMED_CELLS,
     RECLAIM_CONTINUITY_BONUS_MAX,
     RECLAIM_CONTINUITY_DECAY,
     RECLAIM_CONTINUITY_IDEAL_DISTANCE,
@@ -57,6 +59,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow_scan import (  # noqa: E501
     _p4_bucketed_anchor_lists_for_scan,
     _p4_min_manhattan_to_priors,
+    _p4_reclaim_zero_candidate_diag,
     _p4_scan_distance_bucket_name,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow_scan_eval import (  # noqa: E501
@@ -192,6 +195,32 @@ def test_p4_zero_candidates_when_no_interior_reclaim_and_maps_match() -> None:
     assert pre["routing_jobs_count"] >= 1
     assert pre["reclaim_anchor_candidate_count"] == 0
     assert trace.get("p4_reclaim_entry_mining_map_state_hash") is not None
+    assert P4_RECLAIM_ZERO_NO_RECLAIMED_CELLS in trace.get("p4_reclaim_zero_candidate_reasons", [])
+    assert trace.get("mineable_base_count", 0) > 0
+    assert isinstance(trace.get("reclaim_anchor_failure_samples"), list)
+
+
+def test_p4_zero_candidate_diag_all_transport_protected_reason() -> None:
+    """All belt/pipe cells are in hard|soft protected → all_transport_protected in diagnostics."""
+
+    d = _p4_reclaim_zero_candidate_diag(
+        mineable_base=frozenset({(1, 1)}),
+        mineable_cur=frozenset({(1, 1)}),
+        final_route_cells=frozenset(),
+        hard=frozenset({(10, 10)}),
+        soft=frozenset({(11, 11)}),
+        committed=frozenset(),
+        reclaimed=frozenset(),
+        reclaim_anchor_cells=set(),
+        transport_cells=frozenset({(10, 10), (11, 11)}),
+        internal_budget=5,
+        spent_prior=0,
+        anchor_specs_empty_all=False,
+        has_routing_jobs=True,
+    )
+    assert P4_RECLAIM_ZERO_ALL_TRANSPORT_PROTECTED in d["p4_reclaim_zero_candidate_reasons"]
+    assert d["p4_reclaim_unprotected_transport_count"] == 0
+    assert P4_RECLAIM_ZERO_NO_RECLAIMED_CELLS in d["p4_reclaim_zero_candidate_reasons"]
 
 
 def test_p4_scan_preconditions_no_routing_jobs_includes_zero_routing_count() -> None:
@@ -206,6 +235,8 @@ def test_p4_scan_preconditions_no_routing_jobs_includes_zero_routing_count() -> 
     assert trace.get("p4_reclaim_shadow_skip_reason") == "no_routing_jobs"
     pre = trace["p4_reclaim_scan_preconditions"]
     assert pre["routing_jobs_count"] == 0
+    assert trace.get("p4_reclaim_zero_candidate_reasons") == []
+    assert trace.get("mineable_base_count") is not None
 
 
 def test_reclaim_continuity_multi_window_disabled_uses_single_anchor_tail() -> None:

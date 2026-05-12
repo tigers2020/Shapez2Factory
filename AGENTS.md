@@ -6,6 +6,8 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 
 **Cursor 하네스(요약)**: 역할 카드는 [`persona/`](persona/), 절차·규칙은 매뉴얼 + `.cursor/rules/*.mdc`, 단계·핸드오프는 [`protocols/README.md`](protocols/README.md)가 정본이다. 채팅에서 전체 워크플로를 한꺼번에 적용할 때는 선택적으로 프로젝트 Skill [`.cursor/skills/shapez2-harness/SKILL.md`](.cursor/skills/shapez2-harness/SKILL.md)를 연다.
 
+**에이전트 네이티브 엔지니어링(요약)**: 인간의 역할은 타이핑보다 **의도·아키텍처·검증·디버깅**에 두는 것을 전제로 한다. 의도를 구체화(파일·심볼·완료 조건·제약)하고, **이해·재현 없이 수정하지 않으며**, 스레드·서브에이전트로 **컨텍스트를 분리**하고, 계측·가설·회귀 테스트로 검증한다. **규칙(Rules)** 은 상시 지시, **스킬(Skills)** 은 온디맨드 워크플로다. 상세·체크리스트: [`documents/ai/manuals/cursor_usage.md`](documents/ai/manuals/cursor_usage.md).
+
 ---
 
 ## Core Rules (항상)

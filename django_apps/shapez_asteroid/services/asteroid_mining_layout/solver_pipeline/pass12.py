@@ -108,6 +108,9 @@ def run_pass12_stage(
                 "stub_route_recovery_success": int(
                     _p12s.get("pass12_preserved_missing_stub_route_recovery_success_count") or 0
                 ),
+                "stub_route_recovery_queue_rounds": int(
+                    _p12s.get("pass12_preserved_missing_stub_route_recovery_queue_rounds") or 0
+                ),
             },
         },
     )

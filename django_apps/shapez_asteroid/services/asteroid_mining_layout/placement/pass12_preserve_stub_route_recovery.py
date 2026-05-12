@@ -93,6 +93,23 @@ def _rotation_order(raw_r: Any) -> list[int]:
     return order
 
 
+def _stub_cell_recovery_priority(
+    stub_cell: Coord,
+    cells: dict[Coord, dict[str, Any]],
+) -> tuple[int, int, int]:
+    """Sort key: void, inferred, asteroid_field, then other stub contexts."""
+
+    row = cells.get(stub_cell)
+    if row is None:
+        return (0, stub_cell[1], stub_cell[0])
+    role = row.get("role")
+    if role == "inferred":
+        return (1, stub_cell[1], stub_cell[0])
+    if role == "occupied" and layout_kind(row) == "asteroid_field":
+        return (2, stub_cell[1], stub_cell[0])
+    return (3, stub_cell[1], stub_cell[0])
+
+
 def _stub_space_mvp(
     stub_cell: Coord,
     *,
@@ -325,6 +342,7 @@ def try_preserve_stub_route_recovery(
     saw_new_transport_over = False
     saw_extension_carve = False
     saw_stub_other = False
+    rotation_candidates: list[tuple[tuple[int, int, int], int, Coord]] = []
     for cand_r in order:
         stub = shape_miner_output_cell(miner, cand_r)
         if stub is None:
@@ -342,7 +360,10 @@ def try_preserve_stub_route_recovery(
             else:
                 saw_stub_other = True
             continue
-
+        pri = _stub_cell_recovery_priority(stub, cells)
+        rotation_candidates.append((pri, cand_r, stub))
+    rotation_candidates.sort(key=lambda t: (t[0][0], t[0][1], t[0][2], t[1]))
+    for _pri, cand_r, stub in rotation_candidates:
         saw_ok_stub = True
         path, diag = _bfs_shortest_path(
             stub,

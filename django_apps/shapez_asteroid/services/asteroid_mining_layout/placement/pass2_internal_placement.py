@@ -5,8 +5,9 @@ Candidates exclude Pass1 extractor/extension bodies, committed transport (includ
 stubs), and optional hard barriers. P1 cheap-escape void tiles are never on ``scratch`` and
 are not treated as occupied.
 
-Commits only through ``try_commit_pass2_bundle`` (no cheap escape; same route probe gate as
-Pass1 minus void feasibility).
+Commits only through ``try_commit_pass2_bundle`` (no Pass1 cheap-escape envelope). When a
+``Pass2RouteProbePack`` is supplied, the gate uses STEP4-aligned goal voids and may commit
+``PROVISIONAL_PLACED`` even when the transport-only stub graph does not yet reach external.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.exte
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_bundle_commit import (  # noqa: E501
+    Pass2RouteProbePack,
     Pass12BundleCandidate,
     Pass12LayoutScratch,
     try_commit_pass2_bundle,
@@ -84,6 +86,7 @@ def try_place_pass2_internal_bundle(
     extra_transport_block_cells: frozenset[Coord] = frozenset(),
     placement_transport_blocked_counter: list[int] | None = None,
     adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None = None,
+    pass2_route_probe_pack: Pass2RouteProbePack | None = None,
 ) -> bool:
     """Try output directions; commit at most one bundle via ``try_commit_pass2_bundle``."""
 
@@ -135,6 +138,7 @@ def try_place_pass2_internal_bundle(
                 bundle_hint=bundle_hint,
                 replay_events=replay_events,
                 adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
+                pass2_route_probe_pack=pass2_route_probe_pack,
             ):
                 return True
     return False
@@ -152,6 +156,7 @@ def run_pass2_internal_placement_mvp(
     extra_transport_block_cells: frozenset[Coord] = frozenset(),
     placement_transport_blocked_counter: list[int] | None = None,
     adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None = None,
+    pass2_route_probe_pack: Pass2RouteProbePack | None = None,
 ) -> int:
     """Inner-first Pass2 sweep; returns how many extractors were committed.
 
@@ -182,6 +187,7 @@ def run_pass2_internal_placement_mvp(
             extra_transport_block_cells=extra_transport_block_cells,
             placement_transport_blocked_counter=placement_transport_blocked_counter,
             adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
+            pass2_route_probe_pack=pass2_route_probe_pack,
         ):
             placed += 1
     return placed

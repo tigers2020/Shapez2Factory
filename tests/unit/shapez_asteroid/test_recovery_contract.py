@@ -105,6 +105,23 @@ def test_validation_recovery_allowed_unfinalized_blocked() -> None:
         assert validation_recovery_allowed(out) is False
 
 
+def test_validation_recovery_not_triggered_when_ok_true_even_with_quality_warning_tier() -> None:
+    """``ok`` True (full solver success): optimization warnings must not enable validation retry."""
+
+    out = {
+        "ok": True,
+        "return_reason": "ok",
+        "final_validation": _fv(
+            connectivity_valid=True,
+            geometry_valid=True,
+            solver_quality_tier=fc.SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING,
+            optimization_warnings=[fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE],
+        ),
+    }
+    with patch.object(recovery_policy, "MAX_VALIDATION_RECOVERY_ATTEMPTS", 2):
+        assert validation_recovery_allowed(out) is False
+
+
 def test_validation_recovery_allowed_connectivity_overlap_quarantine_geometry() -> None:
     with patch.object(recovery_policy, "MAX_VALIDATION_RECOVERY_ATTEMPTS", 2):
         assert (

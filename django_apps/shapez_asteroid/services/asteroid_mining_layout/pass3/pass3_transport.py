@@ -12,9 +12,13 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P3E2_SHADOW_ENABLED_DEFAULT,
     P3E3_ATOMIC_SKIPPED_SHADOW_LEX_INCOMPLETE,
     P3E3_REJECT_CONNECTIVITY,
+    P3E3_REJECT_DISCONNECTED_STUB,
+    P3E3_REJECT_EXTERNAL_UNREACHABLE_TRANSPORT,
     P3E3_REJECT_FIXED_STUB_REMOVAL,
     P3E3_REJECT_HARD_PROTECTED_CORRIDOR,
+    P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN,
     P3E3_REJECT_NO_REPLACEMENT_ROUTE,
+    P3E3_REJECT_ORPHAN_TRANSPORT,
     P3E3_REJECT_PRECHECK_NO_REPLACEMENT_ROUTE,
     P3E3_REJECT_ROUTE_LENGTH_RATIO,
     P3E3_REJECT_VALIDATION,
@@ -212,6 +216,12 @@ def run_pass3_transport_minimization_from_maps(
     candidate_validation_passed: bool | None = None
     would_accept_flag: bool | None = None
     atomic_search_ms: int = 0
+    skip_guarded_for_internal_transport = False
+    p3e3_internal_delta_gate_trace: dict[str, Any] = {
+        "p3e3_internal_transport_delta_gate_evaluated": False,
+        "p3e3_candidate_internal_transport_delta": None,
+        "p3e3_internal_transport_delta_gate_reject": None,
+    }
     if guarded_on:
         if _p3e3_atomic_phase_deferred_by_shadow_alignment(shadow_trace):
             p3e3_trace["p3e3_guarded_atomic_skipped_reason"] = (
@@ -238,6 +248,30 @@ def run_pass3_transport_minimization_from_maps(
             p3e3_trace.update(atomic_trace)
             candidate_validation_passed = atomic_trace.get("p3e3_candidate_validation_passed")
             would_accept_flag = atomic_trace.get("p3e3_guarded_commit_would_accept")
+            if (
+                atomic_dto is not None
+                and atomic_dto.precheck_passed
+                and candidate_validation_passed is True
+                and would_accept_flag is True
+            ):
+                cand_int_ct = len(
+                    internal_transport_cell_frozenset(
+                        atomic_dto.candidate_transport_cells, is_external=is_external
+                    )
+                )
+                delta_int = cand_int_ct - before_internal_transport_count
+                p3e3_internal_delta_gate_trace["p3e3_internal_transport_delta_gate_evaluated"] = (
+                    True
+                )
+                p3e3_internal_delta_gate_trace["p3e3_candidate_internal_transport_delta"] = int(
+                    delta_int
+                )
+                if not pass3_recovery_context and delta_int >= 0:
+                    skip_guarded_for_internal_transport = True
+                    p3e3_internal_delta_gate_trace["p3e3_internal_transport_delta_gate_reject"] = (
+                        P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN
+                    )
+        p3e3_trace.update(p3e3_internal_delta_gate_trace)
 
     greedy_result = reconstruct_mining_priority_transport(
         anchor=anchor,
@@ -260,41 +294,56 @@ def run_pass3_transport_minimization_from_maps(
         candidate=atomic_dto,
         candidate_validation_passed=candidate_validation_passed,
         would_accept=would_accept_flag,
-    )
+    ) and (not skip_guarded_for_internal_transport)
     post_commit_passed: bool | None = None
     rollback_performed = False
     rollback_reason: str | None = None
     guarded_committed_outcome = False
+    post_swap_connectivity_diag: dict[str, Any] | None = None
 
     if should_commit and atomic_dto is not None:
         candidate_tc = _p3e3_transport_dict_from_candidate_cells(
             atomic_dto.candidate_transport_cells,
             want_role=wr,
         )
-        post_ok, post_fail_reason = _p3e3_validate_guarded_swap_mining_map(
+        post_ok, post_fail_reason, post_diag = _p3e3_validate_guarded_swap_mining_map(
             mining_map=mining_map,
             transport_cells=candidate_tc,
             want_role=wr,
             candidate_transport_cells=atomic_dto.candidate_transport_cells,
             fixed_output_stubs=frozenset(outlets_order),
             hard_protected_corridors=atomic_dto.hard_protected_corridors,
+            transport_kind=tk,
         )
         post_commit_passed = post_ok
         if post_ok:
             final_tc = candidate_tc
             gain_atomic = max(0, before_transport_count - len(final_tc))
+            cand_int_for_commit = len(
+                internal_transport_cell_frozenset(
+                    atomic_dto.candidate_transport_cells, is_external=is_external
+                )
+            )
+            commit_reason = COMMIT_REASON_GUARDED_ATOMIC
+            if (
+                pass3_recovery_context
+                and cand_int_for_commit - before_internal_transport_count >= 0
+            ):
+                commit_reason = "degraded_connected_recovery"
             result = Pass3TransportResult(
                 True,
                 final_tc,
                 {
                     "over_capacity_segments": 0,
                     "bottleneck_count": 0,
-                    "commit_reason": COMMIT_REASON_GUARDED_ATOMIC,
+                    "commit_reason": commit_reason,
                     "gain": gain_atomic,
                 },
             )
             guarded_committed_outcome = True
         else:
+            if post_diag:
+                post_swap_connectivity_diag = post_diag
             final_tc = _p3e3_rollback_guarded_transport_cells(
                 known_good_transport_snapshot=known_good_transport_snapshot,
             )
@@ -310,17 +359,26 @@ def run_pass3_transport_minimization_from_maps(
         result = greedy_result
 
     if guarded_on:
-        p3e3_trace.update(
-            {
-                "p3e3_guarded_commit_committed": guarded_committed_outcome,
-                "p3e3_guarded_committed": guarded_committed_outcome,
-                "p3e3_guarded_commit_rollback_performed": rollback_performed,
-                "p3e3_guarded_commit_rollback_reason": rollback_reason,
-                "p3e3_guarded_commit_mode": "atomic_candidate_swap" if should_commit else None,
-                "p3e3_guarded_known_good_transport_cell_count": len(known_good_transport_snapshot),
-                "p3e3_guarded_post_commit_validation_passed": post_commit_passed,
-            }
-        )
+        _p3e3_guarded_tail: dict[str, Any] = {
+            "p3e3_guarded_commit_committed": guarded_committed_outcome,
+            "p3e3_guarded_committed": guarded_committed_outcome,
+            "p3e3_guarded_commit_rollback_performed": rollback_performed,
+            "p3e3_guarded_commit_rollback_reason": rollback_reason,
+            "p3e3_guarded_commit_mode": (
+                "atomic_candidate_swap"
+                if should_commit
+                else (
+                    "internal_transport_delta_gate" if skip_guarded_for_internal_transport else None
+                )
+            ),
+            "p3e3_guarded_known_good_transport_cell_count": len(known_good_transport_snapshot),
+            "p3e3_guarded_post_commit_validation_passed": post_commit_passed,
+        }
+        if post_swap_connectivity_diag:
+            _p3e3_guarded_tail["p3e3_guarded_post_swap_connectivity_reject_diagnostics"] = (
+                post_swap_connectivity_diag
+            )
+        p3e3_trace.update(_p3e3_guarded_tail)
 
     new_map = mining_map_after_transport_reconstruction(
         mining_map,
@@ -364,9 +422,13 @@ def run_pass3_transport_minimization_from_maps(
             greedy_paths=None,
             committed=guarded_committed_outcome,
             rejected_reason_raw=(
-                rollback_reason
-                if rollback_performed and rollback_reason
-                else (atomic_dto.rejected_reason if atomic_dto else None)
+                p3e3_internal_delta_gate_trace.get("p3e3_internal_transport_delta_gate_reject")
+                if skip_guarded_for_internal_transport
+                else (
+                    rollback_reason
+                    if rollback_performed and rollback_reason
+                    else (atomic_dto.rejected_reason if atomic_dto else None)
+                )
             ),
             internal_transport_saved=pass3_internal_transport_saved,
             search_ms=atomic_search_ms,
@@ -411,9 +473,13 @@ __all__ = [
     "P3E3_ATOMIC_SKIPPED_SHADOW_LEX_INCOMPLETE",
     "P3E3GuardedCommitCandidate",
     "P3E3_REJECT_CONNECTIVITY",
+    "P3E3_REJECT_DISCONNECTED_STUB",
+    "P3E3_REJECT_EXTERNAL_UNREACHABLE_TRANSPORT",
     "P3E3_REJECT_FIXED_STUB_REMOVAL",
     "P3E3_REJECT_HARD_PROTECTED_CORRIDOR",
+    "P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN",
     "P3E3_REJECT_NO_REPLACEMENT_ROUTE",
+    "P3E3_REJECT_ORPHAN_TRANSPORT",
     "P3E3_REJECT_PRECHECK_NO_REPLACEMENT_ROUTE",
     "P3E3_REJECT_ROUTE_LENGTH_RATIO",
     "Pass3TransportResult",

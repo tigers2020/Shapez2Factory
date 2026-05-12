@@ -92,6 +92,7 @@ _DROP_DETAILS_LIMIT = 32
 _STUB_ROUTE_AB_SUMMARY_KEYS = (
     "pass12_preserved_missing_stub_route_recovery_attempted_count",
     "pass12_preserved_missing_stub_route_recovery_success_count",
+    "pass12_preserved_missing_stub_route_recovery_queue_rounds",
     "pass12_preserved_missing_stub_drop_extractor_count",
     "pass12_preserved_missing_stub_route_recovery_rejected_by_nearest_hops_count",
     "pass12_preserved_missing_stub_route_recovery_rejected_by_no_stub_space_count",
@@ -99,6 +100,7 @@ _STUB_ROUTE_AB_SUMMARY_KEYS = (
     "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count",
     "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count",
     "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count",
+    "pass12_preserved_rotation_recovery_count",
     "geometry_valid",
     "connectivity_valid",
     "missing_stub_count",

@@ -20,6 +20,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     SOLVER_FRAME_PASS3_TRANSPORT,
     SOLVER_FRAME_STEP4_ROUTING,
     SOLVER_FRAME_VALIDATE,
+    SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS,
+    SOLVER_QUALITY_TIER_SOLVER_FAILURE,
+    SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED,
+    SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (  # noqa: E501
     placement_state_counts,
@@ -81,6 +85,46 @@ SOLVER_TERMINATION_TIER_SOLVER_FAILURE = "SOLVER_FAILURE"
 
 RETURN_REASON_STEP4_PARTIAL_FAILURE = "step4_partial_failure"
 
+
+def _solver_quality_summary_for_tier(tier: str) -> str:
+    """Short English line for copy-preview / UI (not gettext; API-stable literal)."""
+
+    if tier == SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED:
+        return "Valid layout, fully optimized"
+    if tier == SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING:
+        return "Valid layout, optimization warning"
+    if tier == SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS:
+        return "Valid layout, preserve or routing degradation"
+    if tier == SOLVER_QUALITY_TIER_SOLVER_FAILURE:
+        return "Layout validation failed"
+    return "Unknown solver quality tier"
+
+
+def _compute_solver_quality_tier(
+    *,
+    layout_hard_valid: bool,
+    solver_termination: str,
+    optimization_warnings: list[str],
+    extractor_drop_count: int,
+) -> str:
+    """Separate hard validity from optimization / preserve quality (reporting only).
+
+    Precedence when hard-valid and termination is full success: extractor drop (vs merged seed)
+    before optimization-only warnings, so ``PARTIAL_SUCCESS_VALID_PRESERVE_LOSS`` wins when both
+    apply.
+    """
+
+    if not layout_hard_valid or solver_termination == SOLVER_TERMINATION_FAILURE:
+        return SOLVER_QUALITY_TIER_SOLVER_FAILURE
+    if solver_termination == SOLVER_TERMINATION_PARTIAL_SUCCESS:
+        return SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+    if extractor_drop_count > 0:
+        return SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+    if optimization_warnings:
+        return SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING
+    return SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED
+
+
 # Bump when ``preserve_quality_score`` formula or inputs change (A/B / NDJSON comparability).
 PRESERVE_QUALITY_SCORE_VERSION = 2
 
@@ -123,19 +167,28 @@ def preserve_quality_bundle_from_pass12(
     orig = int(pass12_stats.get("pass12_merged_seed_miner_count") or 0)
     preserved = int(pass12_stats.get("pass12_preserved_bundle_extractor_cells") or 0)
     dropped = int(pass12_stats.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
-    recovered = int(pass12_stats.get("pass12_preserved_recovery_success_count") or 0)
+    recovered_total = int(pass12_stats.get("pass12_preserved_recovery_success_count") or 0)
+    rot_rec = int(pass12_stats.get("pass12_preserved_rotation_recovery_count") or 0)
     rr_att = int(
         pass12_stats.get("pass12_preserved_missing_stub_route_recovery_attempted_count") or 0
     )
     rr_ok = int(pass12_stats.get("pass12_preserved_missing_stub_route_recovery_success_count") or 0)
+    stub_samples = pass12_stats.get("pass12_preserved_recovered_stub_samples")
+    if not isinstance(stub_samples, list):
+        stub_samples = []
+    unrec_samples = pass12_stats.get("pass12_preserved_unrecovered_stub_drop_samples")
+    if not isinstance(unrec_samples, list):
+        unrec_samples = []
     bundle: dict[str, Any] = {
         "original_extractor_count": orig,
         "preserved_valid_count": preserved,
         "dropped_invalid_count": dropped,
-        "recovered_stub_count": recovered,
-        "recovered_rotation_count": recovered,
+        "recovered_stub_count": rr_ok,
+        "recovered_rotation_count": rot_rec,
         "stub_route_recovery_attempted_count": rr_att,
         "stub_route_recovery_success_count": rr_ok,
+        "recovered_stub_samples": stub_samples,
+        "unrecovered_stub_drop_samples": unrec_samples,
         "preserve_quality_score_version": PRESERVE_QUALITY_SCORE_VERSION,
     }
     if orig <= 0:
@@ -143,7 +196,7 @@ def preserve_quality_bundle_from_pass12(
     denominator = float(max(orig, 1))
     preserved_ratio = preserved / denominator
     dropped_ratio = dropped / denominator
-    recovered_ratio = recovered / denominator
+    recovered_ratio = recovered_total / denominator
     score = preserved_ratio - dropped_ratio + 0.5 * recovered_ratio
     score_clamped = round(max(-1.0, min(1.0, score)), 6)
     return bundle, score_clamped
@@ -417,6 +470,39 @@ def build_final_solver_output(
         step4_result=step4_result,
     )
     _append_optimization_warnings(summary_fields)
+    _pq_b = summary_fields.get("preserve_quality")
+    _orig_ext = (
+        int((_pq_b or {}).get("original_extractor_count") or 0) if isinstance(_pq_b, dict) else 0
+    )
+    _final_ext = int(report.extractor_count)
+    summary_fields["original_extractor_count"] = _orig_ext
+    summary_fields["final_extractor_count"] = _final_ext
+    summary_fields["extractor_drop_count"] = max(0, _orig_ext - _final_ext)
+    _bl_it = summary_fields.get("optimization_baseline_internal_transport")
+    _af_it = summary_fields.get("after_internal_transport_count")
+    if isinstance(_bl_it, int) and isinstance(_af_it, int):
+        summary_fields["internal_transport_delta_vs_baseline"] = int(_af_it) - int(_bl_it)
+    else:
+        summary_fields["internal_transport_delta_vs_baseline"] = None
+    _ow_list = list(summary_fields.get("optimization_warnings") or [])
+    summary_fields["optimization_warning_count"] = len(_ow_list)
+    _layout_hard_valid = (
+        bool(report.geometry_valid)
+        and bool(report.connectivity_valid)
+        and int(summary_unfinalized_placement_count) == 0
+    )
+    _qual_tier = _compute_solver_quality_tier(
+        layout_hard_valid=_layout_hard_valid,
+        solver_termination=solver_termination,
+        optimization_warnings=_ow_list,
+        extractor_drop_count=int(summary_fields["extractor_drop_count"]),
+    )
+    summary_fields["solver_quality_tier"] = _qual_tier
+    summary_fields["solver_result_tier"] = _qual_tier
+    summary_fields["solver_quality_summary"] = _solver_quality_summary_for_tier(_qual_tier)
+    _term_d = summary_fields.get("termination")
+    if isinstance(_term_d, dict):
+        _term_d["quality_tier"] = _qual_tier
     if getattr(settings, "SHAPEZ_MINING_TRUNK_OBSERVATION_SOFT_CHECK", False):
         tw = trunk_load_observation_soft_warnings(map_final, step4_result.trunk_load)
         if tw:
@@ -583,8 +669,20 @@ def build_final_solver_output(
             ),
             "optimization_counterfactual_aggregation": (optimization_counterfactual_aggregation),
             "optimization_internal_transport_quality_ratio": _quality_ratio,
+            "original_extractor_count": summary_fields.get("original_extractor_count"),
+            "final_extractor_count": summary_fields.get("final_extractor_count"),
+            "extractor_drop_count": summary_fields.get("extractor_drop_count"),
+            "optimization_warning_count": summary_fields.get("optimization_warning_count"),
+            "internal_transport_delta_vs_baseline": summary_fields.get(
+                "internal_transport_delta_vs_baseline"
+            ),
+            "solver_quality_tier": summary_fields.get("solver_quality_tier"),
+            "solver_result_tier": summary_fields.get("solver_result_tier"),
+            "solver_quality_summary": summary_fields.get("solver_quality_summary"),
         },
     }
+    if isinstance(out.get("termination"), dict):
+        out["termination"]["quality_tier"] = summary_fields.get("solver_quality_tier")
     debug_log_event(
         debug_location,
         "pipeline_return",
@@ -721,6 +819,19 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("p4_reclaim_loop_successful_commits", 0)
     summary_fields.setdefault("p4_reclaim_loop_internal_transport_cumulative_added", 0)
     summary_fields.setdefault("p4_reclaim_loop_terminated_reason", None)
+    summary_fields.setdefault("p4_reclaim_zero_candidate_reasons", None)
+    summary_fields.setdefault("mineable_base_count", None)
+    summary_fields.setdefault("excluded_by_final_route_count", None)
+    summary_fields.setdefault("excluded_by_hard_protected_count", None)
+    summary_fields.setdefault("excluded_by_soft_protected_count", None)
+    summary_fields.setdefault("excluded_by_committed_placement_count", None)
+    summary_fields.setdefault("mineable_cur_count", None)
+    summary_fields.setdefault("p4_reclaim_transport_total", None)
+    summary_fields.setdefault("p4_reclaim_unprotected_transport_count", None)
+    summary_fields.setdefault("p4_reclaim_final_route_count", None)
+    summary_fields.setdefault("reclaim_anchor_candidate_count", None)
+    summary_fields.setdefault("reclaim_anchor_failure_samples", None)
+    summary_fields.setdefault("nearest_freed_cell_to_candidate_sample", None)
     summary_fields.setdefault("p4_soft_replace_attempted", False)
     summary_fields.setdefault("p4_soft_replace_committed", False)
     summary_fields.setdefault("p4_soft_replace_rejected_reason", None)
@@ -771,3 +882,17 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
         {"commit_reason": None, "rollback_reason": None, "rejected_reason": None},
     )
     summary_fields.setdefault("optimization_warnings", [])
+    summary_fields.setdefault("original_extractor_count", 0)
+    summary_fields.setdefault("final_extractor_count", 0)
+    summary_fields.setdefault("extractor_drop_count", 0)
+    summary_fields.setdefault("optimization_warning_count", 0)
+    summary_fields.setdefault("internal_transport_delta_vs_baseline", None)
+    summary_fields.setdefault("solver_quality_tier", SOLVER_QUALITY_TIER_SOLVER_FAILURE)
+    summary_fields.setdefault("solver_result_tier", SOLVER_QUALITY_TIER_SOLVER_FAILURE)
+    summary_fields.setdefault(
+        "solver_quality_summary",
+        _solver_quality_summary_for_tier(SOLVER_QUALITY_TIER_SOLVER_FAILURE),
+    )
+    _term_exc = summary_fields.get("termination")
+    if isinstance(_term_exc, dict):
+        _term_exc.setdefault("quality_tier", summary_fields.get("solver_quality_tier"))

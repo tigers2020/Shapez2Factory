@@ -6,13 +6,27 @@ from django.test import override_settings
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
+    pass1_timeline_integration as p12_tl,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
     pass12_bundle_commit,
     pass12_merged_layout_seed,
     pass12_preserve_stub_route_recovery,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
+    PlacementCommitState,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    EXTRACTORS_FLUID,
+    EXTRACTORS_SHAPE,
+    layout_kind,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
     PRESERVE_QUALITY_SCORE_VERSION,
     preserve_quality_bundle_from_pass12,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+    final_validation as final_val,
 )
 
 try_preserve_stub_route_recovery = (
@@ -77,8 +91,14 @@ def test_stub_route_recovery_success_mvp() -> None:
     assert stats["pass12_preserved_missing_stub_route_recovery_success_count"] >= 1
     assert stats["pass12_preserved_missing_stub_drop_extractor_count"] == 0
     assert stats["pass12_preserved_routed_placement_records"] == 2
+    assert stats["pass12_preserved_missing_stub_route_recovery_queue_rounds"] >= 0
+    assert isinstance(stats.get("pass12_preserved_recovered_stub_samples"), list)
+    assert len(stats["pass12_preserved_recovered_stub_samples"]) >= 1
     assert (5, 4) in scratch.transport_cells
     assert (5, 3) in scratch.transport_cells
+    for _pid, rec in scratch.placement_records.items():
+        if rec.route_id == "preserve_stub_route_recovery":
+            assert rec.state == PlacementCommitState.PROVISIONAL_PLACED
 
 
 def test_goal_transport_cells_filters_scratch_by_opposite_role() -> None:
@@ -392,11 +412,93 @@ def test_preserve_quality_bundle_includes_stub_route_counters() -> None:
             "pass12_preserved_bundle_extractor_cells": 3,
             "pass12_preserved_missing_stub_drop_extractor_count": 1,
             "pass12_preserved_recovery_success_count": 1,
+            "pass12_preserved_rotation_recovery_count": 0,
             "pass12_preserved_missing_stub_route_recovery_attempted_count": 2,
             "pass12_preserved_missing_stub_route_recovery_success_count": 1,
         }
     )
     assert bundle["stub_route_recovery_attempted_count"] == 2
     assert bundle["stub_route_recovery_success_count"] == 1
+    assert bundle["recovered_stub_count"] == 1
+    assert bundle["recovered_rotation_count"] == 0
     assert bundle["preserve_quality_score_version"] == PRESERVE_QUALITY_SCORE_VERSION
     assert score is not None
+
+
+@override_settings(
+    SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True,
+    SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED=False,
+)
+def test_integrate_pass12_stub_route_recovery_two_miners_missing_stub_zero() -> None:
+    """Two fluid miners: stub-route recovery, missing_stub zero, no overlap, no belt/pipe mix."""
+
+    mineable_cells = [
+        (5, 3),
+        (5, 4),
+        (5, 5),
+        (5, 6),
+        (6, 5),
+        (10, 10),
+    ]
+    fm = [
+        {
+            "x": x,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        }
+        for x, y in mineable_cells
+    ]
+    wm = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 3,
+            "surface": "fluid",
+            "t": "Layout_FluidMiner",
+        },
+        {"x": 6, "y": 5, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        {"x": 5, "y": 6, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        {"x": 5, "y": 4, "role": "inferred", "surface": "fluid"},
+        {"x": 5, "y": 3, "role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        {"x": 5, "y": 2, "role": "pipe", "surface": "fluid"},
+        {
+            "x": 10,
+            "y": 10,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+            "t": "Layout_FluidMiner",
+        },
+        {"x": 11, "y": 10, "role": "pipe", "surface": "fluid"},
+    ]
+    _m1, m2, stats = p12_tl.integrate_pass12_placement_into_working_map(
+        working_map=wm,
+        final_mining_map=fm,
+        is_external=lambda _c: True,
+        existing_layout_analysis={
+            "source_kind": "existing_fluid_layout",
+            "equipment": {"miner_count": 2, "extension_count": 0},
+            "transport": {},
+            "issues": [],
+        },
+        suppress_pass1_pass2_loops=True,
+    )
+    report = final_val.validate_final_mining_layout(m2)
+    assert report.missing_stub_count == 0
+    assert stats["pass12_preserved_missing_stub_route_recovery_success_count"] >= 1
+    bundle, _bscore = preserve_quality_bundle_from_pass12(stats)
+    assert bundle["recovered_stub_count"] > 0
+    cells = final_val.cells_dict_from_mining_map(m2)
+    extractors = {
+        c for c, r in cells.items() if layout_kind(r) in EXTRACTORS_SHAPE | EXTRACTORS_FLUID
+    }
+    transport_cells = {c for c, r in cells.items() if r.get("role") in ("belt", "pipe")}
+    assert not (extractors & transport_cells)
+    belt_cells = {c for c, r in cells.items() if r.get("role") == "belt"}
+    pipe_cells = {c for c, r in cells.items() if r.get("role") == "pipe"}
+    assert not (belt_cells & pipe_cells)

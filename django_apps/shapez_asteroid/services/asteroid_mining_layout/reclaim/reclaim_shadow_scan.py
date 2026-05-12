@@ -13,6 +13,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.reclaim_sha
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD,
     MAX_RECLAIM_SHADOW_SCAN_LIMIT,
+    P4_RECLAIM_ZERO_ALL_TRANSPORT_PROTECTED,
+    P4_RECLAIM_ZERO_BUDGET_TOO_LOW,
+    P4_RECLAIM_ZERO_GEOMETRY_BLOCKED,
+    P4_RECLAIM_ZERO_NO_ANCHOR_NEAR_FREED_CELL,
+    P4_RECLAIM_ZERO_NO_MINEABLE_AFTER_EXCLUSIONS,
+    P4_RECLAIM_ZERO_NO_RECLAIMED_CELLS,
     RECLAIM_DIVERSITY_MID_RADIUS,
     RECLAIM_DIVERSITY_NEAR_RADIUS,
     RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS,
@@ -124,6 +130,149 @@ def _p4_effective_recent_reclaim_anchors(
     if p4_last_reclaim_anchor is not None:
         return (p4_last_reclaim_anchor,)
     return None
+
+
+def _p4_nearest_mineable_cur_sample(
+    origin: Coord,
+    mineable_cur: frozenset[Coord],
+) -> dict[str, Any] | None:
+    """Nearest mineable_cur cell to a freed interior-transport cell (Manhattan, deterministic)."""
+
+    if not mineable_cur:
+        return None
+    best_t: Coord | None = None
+    best_d: int | None = None
+    for t in mineable_cur:
+        d = abs(t[0] - origin[0]) + abs(t[1] - origin[1])
+        if (
+            best_d is None
+            or d < best_d
+            or (d == best_d and best_t is not None and (t[1], t[0]) < (best_t[1], best_t[0]))
+        ):
+            best_d = d
+            best_t = t
+    assert best_t is not None and best_d is not None
+    return {
+        "freed_cell": [origin[0], origin[1]],
+        "nearest_mineable_cur_cell": [best_t[0], best_t[1]],
+        "manhattan_distance": int(best_d),
+    }
+
+
+def _p4_mineable_exclusion_sequential_counts(
+    mineable_base: frozenset[Coord],
+    *,
+    final_route_cells: frozenset[Coord],
+    hard: frozenset[Coord],
+    soft: frozenset[Coord],
+    committed: frozenset[Coord],
+) -> tuple[int, int, int, int, int]:
+    """Exclusive sequential exclusions matching :func:`_mineable_cur_for_reclaim`."""
+
+    m = mineable_base
+    ex_route = len(m & final_route_cells)
+    after_route = m - final_route_cells
+    ex_hard = len(after_route & hard)
+    after_hard = after_route - hard
+    ex_soft = len(after_hard & soft)
+    after_soft = after_hard - soft
+    ex_comm = len(after_soft & committed)
+    cur = len(after_soft - committed)
+    return ex_route, ex_hard, ex_soft, ex_comm, cur
+
+
+def _p4_reclaim_zero_candidate_diag(
+    *,
+    mineable_base: frozenset[Coord],
+    mineable_cur: frozenset[Coord],
+    final_route_cells: frozenset[Coord],
+    hard: frozenset[Coord],
+    soft: frozenset[Coord],
+    committed: frozenset[Coord],
+    reclaimed: frozenset[Coord],
+    reclaim_anchor_cells: set[Coord],
+    transport_cells: frozenset[Coord],
+    internal_budget: int,
+    spent_prior: int,
+    anchor_specs_empty_all: bool,
+    has_routing_jobs: bool,
+) -> dict[str, Any]:
+    """Structured diagnostics when the P4-A scan emits zero bundle evaluations (trace only)."""
+
+    ex_route, ex_hard, ex_soft, ex_comm, cur_check = _p4_mineable_exclusion_sequential_counts(
+        mineable_base,
+        final_route_cells=final_route_cells,
+        hard=hard,
+        soft=soft,
+        committed=committed,
+    )
+    assert cur_check == len(mineable_cur)
+
+    transport_total = len(transport_cells)
+    unprotected_ct = len(transport_cells - hard - soft)
+
+    reasons: list[str] = []
+
+    def _add(r: str) -> None:
+        if r not in reasons:
+            reasons.append(r)
+
+    if has_routing_jobs:
+        if not reclaimed:
+            _add(P4_RECLAIM_ZERO_NO_RECLAIMED_CELLS)
+        if not mineable_base:
+            _add(P4_RECLAIM_ZERO_NO_MINEABLE_AFTER_EXCLUSIONS)
+        elif not mineable_cur:
+            _add(P4_RECLAIM_ZERO_NO_MINEABLE_AFTER_EXCLUSIONS)
+        if reclaimed and not reclaim_anchor_cells and mineable_cur:
+            _add(P4_RECLAIM_ZERO_NO_ANCHOR_NEAR_FREED_CELL)
+        if transport_total > 0 and unprotected_ct == 0:
+            _add(P4_RECLAIM_ZERO_ALL_TRANSPORT_PROTECTED)
+        if reclaim_anchor_cells and anchor_specs_empty_all:
+            _add(P4_RECLAIM_ZERO_GEOMETRY_BLOCKED)
+        if reclaim_anchor_cells and spent_prior >= internal_budget >= 0:
+            _add(P4_RECLAIM_ZERO_BUDGET_TOO_LOW)
+
+    nearest: dict[str, Any] | None = None
+    if reclaimed and mineable_cur:
+        origin = min(reclaimed, key=lambda c: (c[1], c[0]))
+        nearest = _p4_nearest_mineable_cur_sample(origin, mineable_cur)
+
+    failure_samples: list[dict[str, Any]] = []
+    if has_routing_jobs and reclaimed and not reclaim_anchor_cells and mineable_cur:
+        cell = min(reclaimed, key=lambda c: (c[1], c[0]))
+        failure_samples.append(
+            {
+                "reason_code": P4_RECLAIM_ZERO_NO_ANCHOR_NEAR_FREED_CELL,
+                "reclaimed_sample": [cell[0], cell[1]],
+            }
+        )
+    elif has_routing_jobs and reclaim_anchor_cells and anchor_specs_empty_all:
+        for a in sorted(reclaim_anchor_cells, key=lambda c: (c[1], c[0]))[:5]:
+            failure_samples.append(
+                {
+                    "reason_code": P4_RECLAIM_ZERO_GEOMETRY_BLOCKED,
+                    "anchor": [a[0], a[1]],
+                }
+            )
+
+    return {
+        "p4_reclaim_zero_candidate_reasons": reasons,
+        "mineable_base_count": len(mineable_base),
+        "excluded_by_final_route_count": ex_route,
+        "excluded_by_hard_protected_count": ex_hard,
+        "excluded_by_soft_protected_count": ex_soft,
+        "excluded_by_committed_placement_count": ex_comm,
+        "mineable_cur_count": len(mineable_cur),
+        "p4_reclaim_transport_total": transport_total,
+        "p4_reclaim_hard_protected_count": len(hard),
+        "p4_reclaim_soft_protected_count": len(soft),
+        "p4_reclaim_final_route_count": len(final_route_cells),
+        "p4_reclaim_unprotected_transport_count": unprotected_ct,
+        "reclaim_anchor_candidate_count": len(reclaim_anchor_cells),
+        "reclaim_anchor_failure_samples": failure_samples,
+        "nearest_freed_cell_to_candidate_sample": nearest,
+    }
 
 
 def _p4_reclaim_scan_preconditions_dict(
@@ -287,11 +436,29 @@ def reclaim_shadow_scan_core_after_pass3(
             p4_baseline_internal_transport_at_reclaim_entry=p4_baseline_internal_transport_at_reclaim_entry,
             p4_compare_baseline_internal_to_scan_entry=p4_compare_baseline_internal_to_scan_entry,
         )
+        pass3_saved_nr = int(pass3_trace.get("pass3_internal_transport_saved") or 0)
+        budget_nr = _allowed_internal_transport_budget(pass3_saved_nr)
+        spent_nr = max(0, int(reclaim_internal_transport_spent_prior))
+        zero_nr = _p4_reclaim_zero_candidate_diag(
+            mineable_base=frozenset(mineable),
+            mineable_cur=mineable_cur,
+            final_route_cells=final_route_cells,
+            hard=hard,
+            soft=soft,
+            committed=committed,
+            reclaimed=reclaimed,
+            reclaim_anchor_cells=set(reclaim_cells_nr),
+            transport_cells=_all_transport_cells(map_after_pass3),
+            internal_budget=budget_nr,
+            spent_prior=spent_nr,
+            anchor_specs_empty_all=False,
+            has_routing_jobs=False,
+        )
         return reclaim_shadow_scan_result_no_routing_jobs(
             zone_route_rebuilt=bool(zone_extra),
             mineable_excluded_by_route_cells=len(mineable & final_route_cells),
             corridor_trace=corridor_trace,
-            extra_trace=extra_nr,
+            extra_trace={**extra_nr, **zero_nr},
         )
 
     reclaim_cells = mineable_cur & reclaimed
@@ -474,6 +641,27 @@ def reclaim_shadow_scan_core_after_pass3(
         "p4_reclaim_frontier_orbit_streak_prior": p4_frontier_orbit_streak_prior,
         **corridor_trace,
     }
+    if not evals:
+        anchor_specs_empty_all = bool(reclaim_cells) and all(
+            len(specs.get(a, ())) == 0 for a in reclaim_cells
+        )
+        trace.update(
+            _p4_reclaim_zero_candidate_diag(
+                mineable_base=frozenset(mineable),
+                mineable_cur=mineable_cur,
+                final_route_cells=final_route_cells,
+                hard=hard,
+                soft=soft,
+                committed=committed,
+                reclaimed=reclaimed,
+                reclaim_anchor_cells=set(reclaim_cells),
+                transport_cells=_all_transport_cells(map_after_pass3),
+                internal_budget=internal_budget,
+                spent_prior=spent_prior,
+                anchor_specs_empty_all=anchor_specs_empty_all,
+                has_routing_jobs=True,
+            )
+        )
     return ReclaimShadowScanResult(trace=trace, evals=evals, transport_kind=tk)
 
 

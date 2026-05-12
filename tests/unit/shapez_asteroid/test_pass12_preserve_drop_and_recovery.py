@@ -195,6 +195,7 @@ def test_preserve_quality_bundle_and_score() -> None:
             "pass12_preserved_bundle_extractor_cells": 7,
             "pass12_preserved_missing_stub_drop_extractor_count": 2,
             "pass12_preserved_recovery_success_count": 2,
+            "pass12_preserved_rotation_recovery_count": 2,
             "pass12_preserved_missing_stub_route_recovery_attempted_count": 0,
             "pass12_preserved_missing_stub_route_recovery_success_count": 0,
         }
@@ -204,7 +205,10 @@ def test_preserve_quality_bundle_and_score() -> None:
     assert bundle["original_extractor_count"] == 10
     assert bundle["preserved_valid_count"] == 7
     assert bundle["dropped_invalid_count"] == 2
-    assert bundle["recovered_stub_count"] == 2
+    assert bundle["recovered_stub_count"] == 0
+    assert bundle["recovered_rotation_count"] == 2
+    assert bundle["recovered_stub_samples"] == []
+    assert bundle["unrecovered_stub_drop_samples"] == []
     assert bundle["preserve_quality_score_version"] == PRESERVE_QUALITY_SCORE_VERSION
     assert score is not None
     assert score == pytest.approx(0.6, rel=0, abs=1e-6)

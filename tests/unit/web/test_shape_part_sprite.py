@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 import io
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest

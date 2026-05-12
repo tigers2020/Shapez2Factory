@@ -18,7 +18,11 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
     optimization_baseline_internal_transport_pre_step4,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
+    SOLVER_TERMINATION_FAILURE,
+    SOLVER_TERMINATION_PARTIAL_SUCCESS,
+    SOLVER_TERMINATION_SUCCESS,
     _append_optimization_warnings,
+    _compute_solver_quality_tier,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.pass12 import (
     run_pass12_stage,
@@ -116,9 +120,103 @@ def test_optimization_warning_when_final_internal_transport_above_baseline() -> 
     assert warns == fv_warns == replay_warns
     if isinstance(base, int) and isinstance(fin, int) and fin > base:
         assert fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE in warns
+        drop_n = int(summ.get("extractor_drop_count") or 0)
+        if drop_n > 0:
+            assert (
+                summ.get("solver_quality_tier")
+                == fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+            )
+            assert (
+                summ.get("solver_quality_summary")
+                == "Valid layout, preserve or routing degradation"
+            )
+        else:
+            assert (
+                summ.get("solver_quality_tier")
+                == fc.SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING
+            )
+            assert summ.get("solver_quality_summary") == "Valid layout, optimization warning"
+        assert summ.get("solver_result_tier") == summ.get("solver_quality_tier")
+        assert int(summ.get("optimization_warning_count") or 0) >= 1
+        assert isinstance(summ.get("internal_transport_delta_vs_baseline"), int)
+        assert out["termination"].get("quality_tier") == summ.get("solver_quality_tier")
     else:
         assert base is None or fin is None or fin <= base
         assert fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE not in warns
+
+
+def test_compute_solver_quality_tier_extractor_drop_beats_optimization_warning() -> None:
+    """Preserve/extractor loss is reported as partial tier even if optimization warnings exist."""
+
+    assert (
+        _compute_solver_quality_tier(
+            layout_hard_valid=True,
+            solver_termination=SOLVER_TERMINATION_SUCCESS,
+            optimization_warnings=[fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE],
+            extractor_drop_count=1,
+        )
+        == fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+    )
+
+
+def test_compute_solver_quality_tier_optimization_warning_branch() -> None:
+    assert (
+        _compute_solver_quality_tier(
+            layout_hard_valid=True,
+            solver_termination=SOLVER_TERMINATION_SUCCESS,
+            optimization_warnings=[fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE],
+            extractor_drop_count=0,
+        )
+        == fc.SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING
+    )
+
+
+def test_compute_solver_quality_tier_extractor_drop_partial() -> None:
+    assert (
+        _compute_solver_quality_tier(
+            layout_hard_valid=True,
+            solver_termination=SOLVER_TERMINATION_SUCCESS,
+            optimization_warnings=[],
+            extractor_drop_count=1,
+        )
+        == fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+    )
+
+
+def test_compute_solver_quality_tier_hard_layout_invalid() -> None:
+    assert (
+        _compute_solver_quality_tier(
+            layout_hard_valid=False,
+            solver_termination=SOLVER_TERMINATION_SUCCESS,
+            optimization_warnings=[],
+            extractor_drop_count=0,
+        )
+        == fc.SOLVER_QUALITY_TIER_SOLVER_FAILURE
+    )
+
+
+def test_compute_solver_quality_tier_partial_success_maps_partial_tier() -> None:
+    assert (
+        _compute_solver_quality_tier(
+            layout_hard_valid=True,
+            solver_termination=SOLVER_TERMINATION_PARTIAL_SUCCESS,
+            optimization_warnings=[],
+            extractor_drop_count=0,
+        )
+        == fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+    )
+
+
+def test_compute_solver_quality_tier_solver_failure() -> None:
+    assert (
+        _compute_solver_quality_tier(
+            layout_hard_valid=True,
+            solver_termination=SOLVER_TERMINATION_FAILURE,
+            optimization_warnings=[],
+            extractor_drop_count=0,
+        )
+        == fc.SOLVER_QUALITY_TIER_SOLVER_FAILURE
+    )
 
 
 def test_optimization_baseline_is_reported_in_solver_replay_metrics() -> None:
@@ -157,6 +255,18 @@ def test_optimization_warning_when_quality_ratio_above_counterfactual_threshold(
     warns = list(summary.get("optimization_warnings") or [])
     assert fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH in warns
     assert fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE not in warns
+
+
+def test_compute_solver_quality_tier_fully_optimized() -> None:
+    assert (
+        _compute_solver_quality_tier(
+            layout_hard_valid=True,
+            solver_termination=SOLVER_TERMINATION_SUCCESS,
+            optimization_warnings=[],
+            extractor_drop_count=0,
+        )
+        == fc.SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED
+    )
 
 
 def test_optimization_no_quality_ratio_warning_at_threshold() -> None:

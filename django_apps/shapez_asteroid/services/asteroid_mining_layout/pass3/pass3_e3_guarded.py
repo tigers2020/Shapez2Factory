@@ -149,13 +149,15 @@ def _p3e3_run_atomic_candidate_phase(
 
     validation_passed = False
     val_reason: str | None = None
+    val_diag: dict[str, Any] = {}
     if dto.precheck_passed and ratio_ok:
-        validation_passed, val_reason = _p3e3_validate_candidate_transport_map(
+        validation_passed, val_reason, val_diag = _p3e3_validate_candidate_transport_map(
             cells_base=cells,
             want_role=want_role,
             candidate_transport_cells=dto.candidate_transport_cells,
             fixed_output_stubs=fixed_stubs,
             hard_protected_corridors=hard_union,
+            transport_kind=transport_kind,
         )
         if not validation_passed:
             atomic_rejected = val_reason or P3E3_REJECT_VALIDATION
@@ -170,4 +172,6 @@ def _p3e3_run_atomic_candidate_phase(
         atomic_rejected=atomic_rejected,
         route_length_ratio_cap=route_length_ratio_max,
     )
+    if val_diag:
+        trace["p3e3_candidate_connectivity_reject_diagnostics"] = val_diag
     return dto, trace

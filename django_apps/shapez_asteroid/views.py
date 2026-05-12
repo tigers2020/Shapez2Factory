@@ -100,6 +100,14 @@ def _merge_final_validation_optimization_into_last_map_summary(
         "optimization_counterfactual_aggregation",
         "optimization_internal_transport_quality_ratio",
         "optimization_warnings",
+        "optimization_warning_count",
+        "internal_transport_delta_vs_baseline",
+        "original_extractor_count",
+        "final_extractor_count",
+        "extractor_drop_count",
+        "solver_quality_tier",
+        "solver_result_tier",
+        "solver_quality_summary",
     )
     for k in keys:
         if k not in fv:
@@ -108,6 +116,10 @@ def _merge_final_validation_optimization_into_last_map_summary(
         if val is None:
             continue
         if k == "optimization_warnings" and not val:
+            continue
+        if k == "optimization_warning_count" and int(val or 0) == 0:
+            continue
+        if k == "extractor_drop_count" and int(val or 0) == 0:
             continue
         s[k] = val
 

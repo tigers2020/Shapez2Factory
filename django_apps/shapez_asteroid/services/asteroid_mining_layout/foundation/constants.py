@@ -56,6 +56,14 @@ OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH = "internal_transport
 # Baseline snapshot: Pass1·Pass2 committed map immediately before STEP4 merge/routing.
 OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4 = "pass1_pass2_pre_step4"
 
+# P5: hard layout validity vs optimization / preserve (``solver_quality_tier`` / copy-preview).
+SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED = "SUCCESS_VALID_OPTIMIZED"
+SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING = (
+    "SUCCESS_VALID_WITH_OPTIMIZATION_WARNING"
+)
+SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS = "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS"
+SOLVER_QUALITY_TIER_SOLVER_FAILURE = "SOLVER_FAILURE"
+
 # Preserve-first: solver output internal transport worse than merged input baseline (STEP 0.5).
 LAYOUT_PRESERVE_HARD_GATE_REASON_TRANSPORT_REGRESSION = (
     "final_internal_transport_above_solver_input_baseline"
@@ -191,6 +199,14 @@ P4_RECLAIM_INCREMENTAL_ROUTE_PLACEMENT_ID = "p4_reclaim_incremental_route"
 
 P4_ROLLBACK_AFTER_INCREMENTAL_ROUTE_FAILED = "rollback_after_incremental_route_failed"
 
+# P4-A reclaim shadow: ``p4_reclaim_zero_candidate_reasons`` (trace-only diagnostics).
+P4_RECLAIM_ZERO_NO_RECLAIMED_CELLS = "no_reclaimed_cells"
+P4_RECLAIM_ZERO_ALL_TRANSPORT_PROTECTED = "all_transport_protected"
+P4_RECLAIM_ZERO_NO_ANCHOR_NEAR_FREED_CELL = "no_anchor_near_freed_cell"
+P4_RECLAIM_ZERO_BUDGET_TOO_LOW = "budget_too_low"
+P4_RECLAIM_ZERO_GEOMETRY_BLOCKED = "geometry_blocked"
+P4_RECLAIM_ZERO_NO_MINEABLE_AFTER_EXCLUSIONS = "no_mineable_cells_after_exclusions"
+
 # --- Pass3 shared (reject reasons, defaults, ratio bounds) ---
 MAX_ROUTE_LENGTH_RATIO = 1.35
 
@@ -205,6 +221,12 @@ P3E3_REJECT_HARD_PROTECTED_CORRIDOR = "rejected_by_hard_protected_corridor"
 P3E3_REJECT_NO_REPLACEMENT_ROUTE = "rejected_by_no_replacement_route"
 P3E3_REJECT_ROUTE_LENGTH_RATIO = "rejected_by_route_length_ratio"
 P3E3_REJECT_CONNECTIVITY = "rejected_by_connectivity"
+# Connectivity subreasons (guarded swap / candidate validation; prefer over bare CONNECTIVITY).
+P3E3_REJECT_DISCONNECTED_STUB = "rejected_by_disconnected_stub"
+P3E3_REJECT_ORPHAN_TRANSPORT = "rejected_by_orphan_transport"
+P3E3_REJECT_EXTERNAL_UNREACHABLE_TRANSPORT = "rejected_by_external_unreachable_transport"
+# Normal Pass3: guarded candidate must strictly reduce internal transport count.
+P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN = "rejected_by_no_internal_transport_gain"
 P3E3_REJECT_GEOMETRY = "rejected_by_geometry"
 P3E3_REJECT_VALIDATION = "rejected_by_validation"
 

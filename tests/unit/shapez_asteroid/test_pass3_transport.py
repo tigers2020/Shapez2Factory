@@ -1888,6 +1888,10 @@ def test_apply_exception_summary_defaults_includes_greedy_local_replacement_keys
         d["post_reclaim_pass3_greedy_local_replacement"]
         == d["post_reclaim_pass3_pass3_greedy_local_replacement"]
     )
+    # D5-3: reclaim shadow diagnostics are produced by reclaim_shadow_scan, not exception defaults.
+    assert "reclaim_anchor_candidate_count" not in d
+    assert "reclaim_anchor_failure_samples" not in d
+    assert "nearest_freed_cell_to_candidate_sample" not in d
 
     p3 = initial_pass3_summary()
     assert "pass3_greedy_local_replacement" in p3

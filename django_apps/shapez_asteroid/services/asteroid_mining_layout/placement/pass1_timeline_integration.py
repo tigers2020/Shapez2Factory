@@ -322,6 +322,11 @@ def integrate_pass12_placement_into_working_map(
         "pass12_preserved_missing_stub_route_recovery_queue_rounds": 0,
         "pass12_preserved_recovered_stub_samples": [],
         "pass12_preserved_unrecovered_stub_drop_samples": [],
+        "pass12_stub_route_recovery_enabled": False,
+        "pass12_stub_route_recovery_disabled_by_flag": True,
+        "pass12_stub_route_recovery_eligible_count": 0,
+        "pass12_stub_route_recovery_queue_rounds": 0,
+        "pass12_stub_route_recovery_attempted_count": 0,
         **new_pass2_route_probe_stats_sink(),
         **ela_empty_meta,
     }

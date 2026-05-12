@@ -32,13 +32,12 @@ SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE = (
 SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY = (
     os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", "").strip().lower() in _truthy_env
 )
-# Pass12 merged-seed: inferred/empty stub → same-kind trunk까지 제한 BFS 후 scratch 반영.
-# relaxed recovery(위 플래그)와 별도. 기본 OFF — 환경변수
-# ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=1`` 로 켬.
-SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = (
-    os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", "").strip().lower()
-    in _truthy_env
-)
+# Pass12 merged-seed: inferred stub → same-kind trunk BFS + NEAR_TRANSPORT defer-queue retries.
+# Relaxed rotation recovery(위 ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY``)와 별개.
+# Asteroid/플래너 기본 ON; 끄려면 ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=0`` 등.
+SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = os.environ.get(
+    "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", "true"
+).strip().lower() not in {"0", "false", "no", "off"}
 # existing_fluid_layout: allow Pass2 internal fill on mineable voids while keeping Pass1
 # suppression (preserve-first). Default ON so internal mineable voids can be filled while
 # preserve bundles stay protected by ``blocked_cells``; set

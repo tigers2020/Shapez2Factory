@@ -44,6 +44,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
     trace_enabled,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_failed_pass2_route_recovery as _s4_p2_rec,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_route_failure_detail as _s4_fail_detail,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
@@ -82,6 +85,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_map
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_p2c_corrective import (
     p2c_revalidate_and_correct as _p2c_revalidate_and_correct,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_route_failure_diagnostic import (  # noqa: E501
+    build_step4_route_failure_diagnostic,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_state import (
     _routing_state_from_committed_routes,
@@ -203,9 +209,16 @@ def run_step4_merge_aware_routing(
     quarantined: list[str] = []
     quarantined_placement_ids_peak: tuple[str, ...] = ()
     unrecoverable = False
+    recovery_attempted = 0
+    recovery_success = 0
+    recovery_rejected = 0
+    recovery_last_error: str | None = None
+    recovery_last_mode: str | None = None
+    recovery_variant_eval_sum = 0
 
     try:
         for ext_cell, stub_cell, tk, placement_id in jobs:
+            recovered = False
             want_role = _want_role(tk)
             blocked_set = set(_blocked_cells(cells)) | set(hard_extras)
             blocked_set.discard(stub_cell)
@@ -258,7 +271,7 @@ def run_step4_merge_aware_routing(
             goal_cells = frozenset(raw_goal | set(trunk_cells))
             goal_set_sizes.append(len(goal_cells))
 
-            search_stats: dict[str, Any] = {}
+            search_stats: dict[str, Any] = {"search_mode": "goal_cells_union_legacy"}
             path = _dijkstra_route(
                 stub_cell,
                 want_role=want_role,
@@ -272,6 +285,8 @@ def run_step4_merge_aware_routing(
                 cheap_reuse_cells=cheap_reuse_cells,
                 search_stats=search_stats,
             )
+            recovery_out = None
+            recovery_eval_count = 0
             if path is None:
                 detail = _s4_fail_detail.build_step4_route_failure_detail(
                     placement_id=placement_id,
@@ -299,26 +314,111 @@ def run_step4_merge_aware_routing(
                         "step4_route_failure_detail",
                         {"step4_route_failure_detail": detail},
                     )
+                recovery_tried_pass2 = False
+                job_recovery_last_mode: str | None = None
+                job_recovery_last_err: str | None = None
                 if placement_id is not None and placement_id in work_records:
-                    rec = work_records[placement_id]
-                    _rollback_placement_cells(cells, rec, final_cells, mineable)
-                    work_records[placement_id] = replace(
-                        rec,
-                        state=PlacementCommitState.QUARANTINED_UNROUTED,
-                        rollback_reason="no_route",
-                    )
-                    quarantined.append(placement_id)
-                    fd = placement_record_to_failure_dict(
-                        work_records[placement_id],
-                        reason="no_route",
-                    )
-                    fd["step4_route_failure_detail"] = detail
-                    fd["last_error"] = detail["last_error"]
-                    failures.append(fd)
-                else:
-                    unrecoverable = True
-                    failures.append(
-                        {
+                    rec0 = work_records[placement_id]
+                    if (
+                        rec0.placement_pass == "pass2"
+                        and rec0.state == PlacementCommitState.PROVISIONAL_PLACED
+                    ):
+                        recovery_attempted += 1
+                        recovery_tried_pass2 = True
+                        recovery_out, recovery_eval_count = (
+                            _s4_p2_rec.try_step4_failed_pass2_route_recovery(
+                                ext_cell=ext_cell,
+                                stub_cell=stub_cell,
+                                tk=tk,
+                                rec=rec0,
+                                cells=cells,
+                                final_cells=final_cells,
+                                mineable=mineable,
+                                asteroid=asteroid,
+                                is_external=is_external,
+                                committed_trunk_by_kind=committed_trunk_by_kind,
+                                margin_cells=margin_cells,
+                                trunk_seed_by_kind=trunk_seed_by_kind,
+                                cheap_reuse_cells=cheap_reuse_cells,
+                                hard_extras=hard_extras,
+                                raw_goal_primary=set(raw_goal),
+                                dijkstra_fn=_dijkstra_route,
+                            )
+                        )
+                        recovery_variant_eval_sum += recovery_eval_count
+                        if recovery_out is not None:
+                            recovery_success += 1
+                            job_recovery_last_mode = recovery_out.recovery_search_mode
+                            job_recovery_last_err = recovery_out.recovery_last_error
+                            recovery_last_mode = job_recovery_last_mode
+                            recovery_last_error = job_recovery_last_err
+                            path = recovery_out.path
+                            stub_cell = recovery_out.new_stub_cell
+                            work_records[placement_id] = replace(
+                                rec0,
+                                stub_cell=stub_cell,
+                            )
+                            recovered = True
+                        else:
+                            recovery_rejected += 1
+                            job_recovery_last_mode = "pass2_recovery:exhausted"
+                            job_recovery_last_err = str(detail.get("last_error") or "no_route")
+                            recovery_last_mode = job_recovery_last_mode
+                            recovery_last_error = job_recovery_last_err
+                if recovered and recovery_out is not None:
+                    search_stats = {
+                        "search_mode": f"pass2_recovery:{recovery_out.recovery_search_mode}"
+                    }
+                if not recovered:
+                    if placement_id is not None and placement_id in work_records:
+                        rec = work_records[placement_id]
+                        _rollback_placement_cells(cells, rec, final_cells, mineable)
+                        work_records[placement_id] = replace(
+                            rec,
+                            state=PlacementCommitState.QUARANTINED_UNROUTED,
+                            rollback_reason="no_route",
+                        )
+                        quarantined.append(placement_id)
+                        fd = placement_record_to_failure_dict(
+                            work_records[placement_id],
+                            reason="no_route",
+                        )
+                        fd["step4_route_failure_detail"] = detail
+                        fd["last_error"] = detail["last_error"]
+                        fd["step4_route_failure_diagnostic"] = build_step4_route_failure_diagnostic(
+                            rec=work_records[placement_id],
+                            extractor_cell=ext_cell,
+                            stub_cell=stub_cell,
+                            transport_kind=tk,
+                            want_role=want_role,
+                            raw_goal=set(raw_goal),
+                            goal_cells=goal_cells,
+                            trunk_cells=trunk_cells,
+                            trunk_seed_candidates_by_kind=trunk_seed_by_kind,
+                            margin_cells=margin_cells,
+                            committed_trunk_for_kind=set(committed_trunk_by_kind.get(tk, ())),
+                            blocked=blocked,
+                            hard_extras=hard_extras,
+                            cells=cells,
+                            mineable=mineable,
+                            asteroid=asteroid,
+                            is_external=is_external,
+                            cheap_reuse_cells=cheap_reuse_cells,
+                            search_stats=search_stats,
+                            detail=detail,
+                            final_state=None,
+                        )
+                        fd["step4_failed_route_recovery"] = {
+                            "attempted": recovery_tried_pass2,
+                            "success": False,
+                            "recovery_search_mode": job_recovery_last_mode,
+                            "recovery_last_error": job_recovery_last_err,
+                            "recovery_variant_eval_count": recovery_eval_count,
+                        }
+                        failures.append(fd)
+                    else:
+                        unrecoverable = True
+                        fd_unrec: dict[str, Any] = {
                             "extractor_cell": list(ext_cell),
                             "stub_cell": list(stub_cell),
                             "transport_kind": tk,
@@ -327,22 +427,57 @@ def run_step4_merge_aware_routing(
                             "last_error": detail["last_error"],
                             "step4_route_failure_detail": detail,
                         }
+                        fd_unrec["step4_route_failure_diagnostic"] = (
+                            build_step4_route_failure_diagnostic(
+                                rec=None,
+                                extractor_cell=ext_cell,
+                                stub_cell=stub_cell,
+                                transport_kind=tk,
+                                want_role=want_role,
+                                raw_goal=set(raw_goal),
+                                goal_cells=goal_cells,
+                                trunk_cells=trunk_cells,
+                                trunk_seed_candidates_by_kind=trunk_seed_by_kind,
+                                margin_cells=margin_cells,
+                                committed_trunk_for_kind=set(committed_trunk_by_kind.get(tk, ())),
+                                blocked=blocked,
+                                hard_extras=hard_extras,
+                                cells=cells,
+                                mineable=mineable,
+                                asteroid=asteroid,
+                                is_external=is_external,
+                                cheap_reuse_cells=cheap_reuse_cells,
+                                search_stats=search_stats,
+                                detail=detail,
+                                final_state=None,
+                            )
+                        )
+                        failures.append(fd_unrec)
+                    continue
+
+            if recovered:
+                blocked_m = set(_blocked_cells(cells)) | set(hard_extras)
+                blocked_m.discard(stub_cell)
+                transport_m = _same_kind_transport_cells(cells, want_role)
+                trunk_for_merge = frozenset(
+                    transport_cells_reaching_external(
+                        transport_m, set(frozenset(blocked_m)), is_external
                     )
-                continue
+                )
+            else:
+                trunk_for_merge = trunk_cells
 
             merged = any(p != stub_cell and p in transport_before for p in path) or bool(
-                trunk_cells.intersection(path)
+                trunk_for_merge.intersection(path)
             )
 
-            for p in path:
-                if p == stub_cell:
-                    continue
-                row = cells.get(p)
-                if row is not None and row.get("role") == want_role:
-                    key = f"{p[0]},{p[1]}"
-                    trunk_edge_hits[key] = trunk_edge_hits.get(key, 0) + 1
-                    continue
-                cells[p] = {"x": p[0], "y": p[1], "role": want_role, "surface": surface}
+            _s4_p2_rec.apply_pass2_recovery_path_paint(
+                path=path,
+                want_role=want_role,
+                surface=surface,
+                cells=cells,
+                trunk_edge_hits=trunk_edge_hits,
+            )
 
             routes_out.append(
                 Step4Route(
@@ -429,6 +564,9 @@ def run_step4_merge_aware_routing(
                 st = work_records[eid].state.value
                 fd["final_state"] = st
                 fd["state"] = st
+                dig = fd.get("step4_route_failure_diagnostic")
+                if isinstance(dig, dict):
+                    dig["final_state"] = st
 
         _stamp_placement_commit_on_map_rows(cells, work_records)
 
@@ -488,6 +626,12 @@ def run_step4_merge_aware_routing(
             default=0,
         ),
         "step4_goal_set_size_peak": max(goal_set_sizes) if goal_set_sizes else 0,
+        "step4_failed_route_recovery_attempted_count": recovery_attempted,
+        "step4_failed_route_recovery_success_count": recovery_success,
+        "step4_failed_route_recovery_rejected_count": recovery_rejected,
+        "recovery_search_mode": recovery_last_mode,
+        "recovery_last_error": recovery_last_error,
+        "step4_failed_route_recovery_variant_eval_sum": recovery_variant_eval_sum,
         "routes_by_placement_id": dict(routes_by_placement_id),
     }
     trunk_load = build_step4_trunk_load(

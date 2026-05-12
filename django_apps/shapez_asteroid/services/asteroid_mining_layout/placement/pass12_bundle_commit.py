@@ -223,7 +223,7 @@ def _commit_after_probe(
         pass2_outcome: str | None = None
         if trace_location == _PASS2_TRACE and pass2_route_probe_pack is not None:
             pack = pass2_route_probe_pack
-            goals, gkind, gn = build_pass2_step4_aligned_routing_goals(
+            goals, gkind, gn, goal_trace = build_pass2_step4_aligned_routing_goals(
                 transport_kind=state.transport_kind,
                 mineable=pack.mineable,
                 asteroid=pack.asteroid,
@@ -231,7 +231,9 @@ def _commit_after_probe(
                 is_external=is_external,
                 existing_layout_analysis=pack.existing_layout_analysis,
                 transport_cells_before=frozenset(baseline.transport_cells),
+                transport_cells_probe=transport_after,
                 blocked_for_probe=blocked_after,
+                stats_sink=pack.stats_sink,
             )
             p2_out, _diag = pass2_bundle_route_probe_decision(
                 candidate.stub_cell,
@@ -243,6 +245,7 @@ def _commit_after_probe(
                 goal_count=gn,
                 adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
                 stats_sink=pack.stats_sink,
+                goal_build_trace=goal_trace,
             )
             pass2_outcome = p2_out
         else:

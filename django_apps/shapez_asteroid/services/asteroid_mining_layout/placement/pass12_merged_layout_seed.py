@@ -805,8 +805,11 @@ def seed_pass12_scratch_from_merged_existing(
             miners.append(c)
     miners.sort(key=lambda p: (p[1], p[0]))
     merged_seed_miner_count = len(miners)
-    if getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", False) or getattr(
-        settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", False
+    stub_route_recovery_enabled = bool(
+        getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", True)
+    )
+    if getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", False) or (
+        stub_route_recovery_enabled
     ):
         miners = sorted(
             miners,
@@ -841,6 +844,7 @@ def seed_pass12_scratch_from_merged_existing(
     rr_rej_new_transport_cells = 0
     rr_rej_extension_carve = 0
     recovery_queue: list[_DeferredNearTransportStubRecovery] = []
+    stub_route_recovery_eligible_count = 0
     rotation_recovery_count = 0
     recovered_stub_samples: list[dict[str, Any]] = []
     unrecovered_stub_samples: list[dict[str, Any]] = []
@@ -902,10 +906,7 @@ def seed_pass12_scratch_from_merged_existing(
                 rotation_recovery_count += 1
                 if routed_ok and eff_r is not None and tk is not None:
                     stub_cell = shape_miner_output_cell(miner, eff_r)
-            if (
-                getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", False)
-                and not routed_ok
-            ):
+            if stub_route_recovery_enabled and not routed_ok:
                 if nhops_seed is None or nhops_seed > MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS:
                     rr_rej_nearest_hops += 1
                     stub_route_trace_for_drop = {
@@ -1020,8 +1021,21 @@ def seed_pass12_scratch_from_merged_existing(
                     cardinals=cardinals,
                     nearest_hops=nhops_seed,
                 )
+                if (
+                    pdr_pre == PreserveDropReason.NO_MATCHING_STUB
+                    and nhops_seed is not None
+                    and recoverability_class_for_preserve_drop_detail(
+                        {
+                            "preserve_drop_reason": pdr_pre.value,
+                            "nearest_same_kind_transport_hops": nhops_seed,
+                            "expected_stub_role": wr_exp,
+                        }
+                    )
+                    == RecoverabilityClass.NEAR_TRANSPORT
+                ):
+                    stub_route_recovery_eligible_count += 1
                 defer_this = (
-                    getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", False)
+                    stub_route_recovery_enabled
                     and pdr_pre == PreserveDropReason.NO_MATCHING_STUB
                     and nhops_seed is not None
                     and 2 <= nhops_seed <= MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS
@@ -1295,4 +1309,9 @@ def seed_pass12_scratch_from_merged_existing(
         "pass12_preserved_missing_stub_route_recovery_queue_rounds": rr_stub_queue_rounds,
         "pass12_preserved_recovered_stub_samples": recovered_stub_samples,
         "pass12_preserved_unrecovered_stub_drop_samples": unrecovered_stub_samples,
+        "pass12_stub_route_recovery_enabled": stub_route_recovery_enabled,
+        "pass12_stub_route_recovery_disabled_by_flag": not stub_route_recovery_enabled,
+        "pass12_stub_route_recovery_eligible_count": stub_route_recovery_eligible_count,
+        "pass12_stub_route_recovery_queue_rounds": rr_stub_queue_rounds,
+        "pass12_stub_route_recovery_attempted_count": rr_attempted,
     }

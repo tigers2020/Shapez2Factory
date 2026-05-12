@@ -33,10 +33,15 @@ def exterior_margin_cells(
     asteroid: frozenset[Coord],
     cells: dict[Coord, dict[str, Any]],
     is_external: Callable[[Coord], bool],
+    universe_extra: frozenset[Coord] = frozenset(),
 ) -> set[Coord]:
-    """Cells in the routing universe with at least one ``is_external`` 4-neighbor."""
+    """Cells in the routing universe with at least one ``is_external`` 4-neighbor.
 
-    universe = set(cells.keys()) | set(mineable) | set(asteroid)
+    ``universe_extra``: coordinates not guaranteed under ``cells`` keys / mineable / asteroid
+    (e.g. Pass2 probe-time belt tiles) that must still be considered for margin adjacency.
+    """
+
+    universe = set(cells.keys()) | set(mineable) | set(asteroid) | set(universe_extra)
     out: set[Coord] = set()
     for c in universe:
         x, y = c

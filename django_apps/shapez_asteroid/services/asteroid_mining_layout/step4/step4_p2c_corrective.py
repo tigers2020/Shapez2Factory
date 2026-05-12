@@ -28,6 +28,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_map
     rollback_placement_cells,
     same_kind_transport_cells,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_route_failure_diagnostic import (  # noqa: E501
+    build_step4_route_failure_diagnostic_p2c,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     transport_cells_reaching_external,
 )
@@ -250,6 +253,13 @@ def p2c_revalidate_and_correct(
                     placement_record_to_failure_dict(
                         work_records[pid], reason="p2c_trunk_disconnect"
                     )
+                    | {
+                        "step4_route_failure_diagnostic": build_step4_route_failure_diagnostic_p2c(
+                            rec=work_records[pid],
+                            reason="p2c_trunk_disconnect",
+                            final_state=PlacementCommitState.ROLLED_BACK.value,
+                        ),
+                    }
                 )
                 routes_out = [x for x in routes_out if x.placement_id != pid]
                 progress = True

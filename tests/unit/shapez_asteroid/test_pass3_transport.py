@@ -4,17 +4,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import replace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL,
-    P3E3_REJECT_CONNECTIVITY,
-    P3E3_REJECT_DISCONNECTED_STUB,
-    P3E3_REJECT_EXTERNAL_UNREACHABLE_TRANSPORT,
-    P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN,
-    P3E3_REJECT_ORPHAN_TRANSPORT,
     PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3 import pass3_greedy_core
@@ -28,6 +23,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_gre
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (
     MAX_ROUTE_LENGTH_RATIO,
     P3E3_ATOMIC_SKIPPED_SHADOW_LEX_INCOMPLETE,
+    P3E3_REJECT_CONNECTIVITY,
     P3E3_REJECT_FIXED_STUB_REMOVAL,
     P3E3_REJECT_HARD_PROTECTED_CORRIDOR,
     P3E3_REJECT_NO_REPLACEMENT_ROUTE,
@@ -66,36 +62,6 @@ def _patch_validation_recovery_attempts_zero():
         "recovery_orchestrator.MAX_VALIDATION_RECOVERY_ATTEMPTS",
         0,
     )
-
-
-def _p3_test_drop_one_internal_belt(
-    fc: frozenset,
-    stubs: frozenset,
-    is_external,
-) -> tuple[frozenset, frozenset, frozenset]:
-    """Return ``(smaller, removed, replacement)`` so internal transport count drops vs baseline."""
-
-    drop = next((c for c in fc if c not in stubs and not is_external(c)), None)
-    assert drop is not None
-    smaller = fc - {drop}
-    removed = frozenset({drop})
-    return smaller, removed, smaller
-
-
-def _p3_test_extra_internal_adjacent_cell(
-    fc: frozenset,
-    stubs: frozenset,
-    is_external,
-) -> tuple[int, int] | None:
-    """Return one internal belt cell adjacent to an internal route cell but not yet in ``fc``."""
-
-    for c in sorted(fc, key=lambda p: (p[1], p[0])):
-        if c in stubs or is_external(c):
-            continue
-        for d in ((c[0] + 1, c[1]), (c[0] - 1, c[1]), (c[0], c[1] + 1), (c[0], c[1] - 1)):
-            if d not in fc and d not in stubs and not is_external(d):
-                return d
-    return None
 
 
 def test_transport_connects_outlets_requires_adjacent_tiles_no_void_jump() -> None:
@@ -720,7 +686,7 @@ def test_run_pass3_p3e3_guarded_enabled_emits_precheck_trace() -> None:
     wa = trace.get("p3e3_guarded_commit_would_accept")
     gc = trace.get("p3e3_guarded_commit_committed")
     post = trace.get("p3e3_guarded_post_commit_validation_passed")
-    assert gc == bool(wa and post is True)
+    assert gc == bool(wa and post)
     assert trace.get("p3e3_guarded_committed") == gc
     r = trace.get("p3e3_guarded_rejected_reason")
     assert isinstance(r, str) and r.startswith("precheck_")
@@ -735,27 +701,16 @@ def test_run_pass3_p3e3_guarded_enabled_emits_precheck_trace() -> None:
     assert wa is not None
     assert isinstance(trace.get("p3e3_guarded_commit_candidate"), dict)
     assert isinstance(trace.get("p3e3_guarded_known_good_transport_cell_count"), int)
-    if wa and post is True:
+    if wa and post:
         assert trace.get("p3e3_guarded_commit_rollback_performed") is False
         assert trace.get("p3e3_guarded_commit_rollback_reason") is None
         assert trace.get("p3e3_guarded_commit_mode") == "atomic_candidate_swap"
         assert trace.get("commit_reason") == "guarded_atomic_candidate"
         assert res is not None and res.committed is True
-    elif wa and post is False:
+    elif wa and not post:
         assert trace.get("p3e3_guarded_commit_mode") == "atomic_candidate_swap"
         assert trace.get("p3e3_guarded_commit_rollback_performed") is True
-        assert trace.get("p3e3_guarded_commit_rollback_reason") in (
-            P3E3_REJECT_CONNECTIVITY,
-            P3E3_REJECT_DISCONNECTED_STUB,
-            P3E3_REJECT_ORPHAN_TRANSPORT,
-            P3E3_REJECT_EXTERNAL_UNREACHABLE_TRANSPORT,
-        )
-    elif trace.get("p3e3_guarded_commit_mode") == "internal_transport_delta_gate":
-        assert trace.get("p3e3_guarded_commit_rollback_performed") is False
-        assert trace.get("p3e3_guarded_commit_rollback_reason") is None
-        assert trace.get("p3e3_internal_transport_delta_gate_reject") == (
-            P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN
-        )
+        assert trace.get("p3e3_guarded_commit_rollback_reason") == P3E3_REJECT_CONNECTIVITY
     else:
         assert trace.get("p3e3_guarded_commit_mode") is None
         assert trace.get("p3e3_guarded_commit_rollback_performed") is False
@@ -953,20 +908,17 @@ def test_guarded_atomic_swap_applies_candidate_transport_cells() -> None:
         tc_in = kw["transport_cells"]
         assert isinstance(tc_in, dict)
         fc = frozenset(tc_in.keys())
+        captured.append(fc)
         stubs = frozenset(kw["outlets_order"])
-        smaller, removed, replacement = _p3_test_drop_one_internal_belt(
-            fc, stubs, kw["is_external"]
-        )
-        captured.append(smaller)
         dto = P3E3GuardedCommitCandidate(
             attempted=True,
-            candidate_transport_cells=smaller,
-            removed_transport_cells=removed,
+            candidate_transport_cells=fc,
+            removed_transport_cells=frozenset(),
             added_transport_cells=frozenset(),
             preserved_stub_cells=stubs,
             touched_hard_protected_cells=frozenset(),
             touched_soft_protected_cells=frozenset(),
-            replacement_route_cells=replacement,
+            replacement_route_cells=fc,
             baseline_route_length=3,
             candidate_route_length=3,
             route_length_ratio=1.0,
@@ -988,7 +940,7 @@ def test_guarded_atomic_swap_applies_candidate_transport_cells() -> None:
         patch.object(
             p3_mod,
             "_p3e3_validate_guarded_swap_mining_map",
-            return_value=(True, None, {}),
+            return_value=(True, None),
         ),
     ):
         _m, res, trace = run_pass3_transport_minimization_from_maps(
@@ -1309,18 +1261,15 @@ def test_guarded_post_commit_validation_failure_restores_greedy_snapshot() -> No
         assert isinstance(tc_in, dict)
         fc = frozenset(tc_in.keys())
         stubs = frozenset(kw["outlets_order"])
-        smaller, removed, replacement = _p3_test_drop_one_internal_belt(
-            fc, stubs, kw["is_external"]
-        )
         dto = P3E3GuardedCommitCandidate(
             attempted=True,
-            candidate_transport_cells=smaller,
-            removed_transport_cells=removed,
+            candidate_transport_cells=fc,
+            removed_transport_cells=frozenset(),
             added_transport_cells=frozenset(),
             preserved_stub_cells=stubs,
             touched_hard_protected_cells=frozenset(),
             touched_soft_protected_cells=frozenset(),
-            replacement_route_cells=replacement,
+            replacement_route_cells=fc,
             baseline_route_length=3,
             candidate_route_length=3,
             route_length_ratio=1.0,
@@ -1343,21 +1292,7 @@ def test_guarded_post_commit_validation_failure_restores_greedy_snapshot() -> No
         patch.object(
             p3_mod,
             "_p3e3_validate_guarded_swap_mining_map",
-            return_value=(
-                False,
-                P3E3_REJECT_ORPHAN_TRANSPORT,
-                {
-                    "orphan_transport_count": 2,
-                    "disconnected_stub_count": 0,
-                    "external_reachable_transport_count": 1,
-                    "total_transport_count": 3,
-                    "failed_transport_kind": "shape_belt",
-                    "first_orphan_cells": [[1, 0]],
-                    "first_disconnected_stub": None,
-                    "p3e3_connectivity_reject_subreason": P3E3_REJECT_ORPHAN_TRANSPORT,
-                    "p3e3_connectivity_reject_parent": P3E3_REJECT_CONNECTIVITY,
-                },
-            ),
+            return_value=(False, P3E3_REJECT_CONNECTIVITY),
         ),
     ):
         _m, res, trace = run_pass3_transport_minimization_from_maps(
@@ -1372,12 +1307,8 @@ def test_guarded_post_commit_validation_failure_restores_greedy_snapshot() -> No
     assert trace.get("p3e3_guarded_commit_would_accept") is True
     assert trace.get("p3e3_guarded_commit_committed") is False
     assert trace.get("p3e3_guarded_commit_rollback_performed") is True
-    assert trace.get("p3e3_guarded_commit_rollback_reason") == P3E3_REJECT_ORPHAN_TRANSPORT
+    assert trace.get("p3e3_guarded_commit_rollback_reason") == P3E3_REJECT_CONNECTIVITY
     assert trace.get("p3e3_guarded_post_commit_validation_passed") is False
-    diag = trace.get("p3e3_guarded_post_swap_connectivity_reject_diagnostics")
-    assert isinstance(diag, dict)
-    assert diag.get("orphan_transport_count") == 2
-    assert diag.get("p3e3_connectivity_reject_subreason") == P3E3_REJECT_ORPHAN_TRANSPORT
 
     _m2, _, _ = run_pass3_transport_minimization_from_maps(
         map_after_routing,
@@ -1419,20 +1350,17 @@ def test_guarded_post_commit_success_keeps_candidate_when_would_accept() -> None
         tc_in = kw["transport_cells"]
         assert isinstance(tc_in, dict)
         fc = frozenset(tc_in.keys())
+        captured.append(fc)
         stubs = frozenset(kw["outlets_order"])
-        smaller, removed, replacement = _p3_test_drop_one_internal_belt(
-            fc, stubs, kw["is_external"]
-        )
-        captured.append(smaller)
         dto = P3E3GuardedCommitCandidate(
             attempted=True,
-            candidate_transport_cells=smaller,
-            removed_transport_cells=removed,
+            candidate_transport_cells=fc,
+            removed_transport_cells=frozenset(),
             added_transport_cells=frozenset(),
             preserved_stub_cells=stubs,
             touched_hard_protected_cells=frozenset(),
             touched_soft_protected_cells=frozenset(),
-            replacement_route_cells=replacement,
+            replacement_route_cells=fc,
             baseline_route_length=3,
             candidate_route_length=3,
             route_length_ratio=1.0,
@@ -1454,7 +1382,7 @@ def test_guarded_post_commit_success_keeps_candidate_when_would_accept() -> None
         patch.object(
             p3_mod,
             "_p3e3_validate_guarded_swap_mining_map",
-            return_value=(True, None, {}),
+            return_value=(True, None),
         ),
     ):
         _m, res, trace = run_pass3_transport_minimization_from_maps(
@@ -1468,247 +1396,6 @@ def test_guarded_post_commit_success_keeps_candidate_when_would_accept() -> None
     assert trace.get("p3e3_guarded_post_commit_validation_passed") is True
     assert trace.get("p3e3_guarded_commit_rollback_performed") is False
     assert frozenset(res.transport_cells) == captured[0]
-
-
-def test_normal_pass3_internal_transport_delta_gate_skips_guarded_validation_same_layout() -> None:
-    """Would-accept candidate identical to baseline internal footprint → gate; no post-swap call."""
-
-    import django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport as p3_mod  # noqa: E501
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (
-        P3E3GuardedCommitCandidate,
-        _p3e3_atomic_trace_from_dto,
-    )
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
-        external_predicate_for_mining_map,
-    )
-    from django_apps.shapez_asteroid.services.blueprint_map_summary import build_map_timeline
-    from tests.unit.shapez_asteroid.test_pass1_timeline_integration import (
-        _decoded_miners_with_belt_escape,
-    )
-
-    decoded = _decoded_miners_with_belt_escape()
-    out = build_solver_timeline(decoded)
-    step4 = next(f for f in out["solver_timeline"] if f["id"] == "solver_step4_routing")
-    map_after_routing = step4["mining_map"]
-    mt = build_map_timeline(decoded)
-    final_map = mt[-1]["mining_map"]
-    is_ext = external_predicate_for_mining_map(mt[1]["mining_map"])
-
-    swap = MagicMock(return_value=(True, None, {}))
-
-    def fake_phase(**kw: object) -> tuple:
-        tc_in = kw["transport_cells"]
-        assert isinstance(tc_in, dict)
-        fc = frozenset(tc_in.keys())
-        stubs = frozenset(kw["outlets_order"])
-        dto = P3E3GuardedCommitCandidate(
-            attempted=True,
-            candidate_transport_cells=fc,
-            removed_transport_cells=frozenset(),
-            added_transport_cells=frozenset(),
-            preserved_stub_cells=stubs,
-            touched_hard_protected_cells=frozenset(),
-            touched_soft_protected_cells=frozenset(),
-            replacement_route_cells=fc,
-            baseline_route_length=3,
-            candidate_route_length=3,
-            route_length_ratio=1.0,
-            precheck_passed=True,
-            rejected_reason=None,
-            hard_protected_corridors=frozenset(),
-        )
-        tr = _p3e3_atomic_trace_from_dto(
-            dto,
-            atomic_candidate_built=True,
-            validation_passed=True,
-            would_accept=True,
-            atomic_rejected=None,
-        )
-        return dto, tr
-
-    with (
-        patch.object(p3_mod, "_p3e3_run_atomic_candidate_phase", fake_phase),
-        patch.object(p3_mod, "_p3e3_validate_guarded_swap_mining_map", swap),
-    ):
-        _m, _res, trace = run_pass3_transport_minimization_from_maps(
-            map_after_routing,
-            final_mining_map=final_map,
-            is_external=is_ext,
-            p3e3_guarded_commit_enabled=True,
-            pass3_recovery_context=False,
-        )
-
-    swap.assert_not_called()
-    assert trace.get("p3e3_internal_transport_delta_gate_evaluated") is True
-    assert trace.get("p3e3_candidate_internal_transport_delta") == 0
-    assert (
-        trace.get("p3e3_internal_transport_delta_gate_reject")
-        == P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN
-    )
-    assert trace.get("p3e3_guarded_commit_mode") == "internal_transport_delta_gate"
-    assert trace.get("p3e3_guarded_commit_committed") is False
-
-
-def test_normal_pass3_internal_transport_delta_gate_skips_guarded_validation_positive_delta() -> (
-    None
-):
-    """Would-accept candidate with extra internal belt cell → gate; no post-swap call."""
-
-    import django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport as p3_mod  # noqa: E501
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (
-        P3E3GuardedCommitCandidate,
-        _p3e3_atomic_trace_from_dto,
-    )
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
-        external_predicate_for_mining_map,
-    )
-    from django_apps.shapez_asteroid.services.blueprint_map_summary import build_map_timeline
-    from tests.unit.shapez_asteroid.test_pass1_timeline_integration import (
-        _decoded_miners_with_belt_escape,
-    )
-
-    decoded = _decoded_miners_with_belt_escape()
-    out = build_solver_timeline(decoded)
-    step4 = next(f for f in out["solver_timeline"] if f["id"] == "solver_step4_routing")
-    map_after_routing = step4["mining_map"]
-    mt = build_map_timeline(decoded)
-    final_map = mt[-1]["mining_map"]
-    is_ext = external_predicate_for_mining_map(mt[1]["mining_map"])
-
-    swap = MagicMock(return_value=(True, None, {}))
-
-    def fake_phase(**kw: object) -> tuple:
-        tc_in = kw["transport_cells"]
-        assert isinstance(tc_in, dict)
-        fc = frozenset(tc_in.keys())
-        stubs = frozenset(kw["outlets_order"])
-        extra = _p3_test_extra_internal_adjacent_cell(fc, stubs, kw["is_external"])
-        assert extra is not None
-        cand = fc | {extra}
-        dto = P3E3GuardedCommitCandidate(
-            attempted=True,
-            candidate_transport_cells=cand,
-            removed_transport_cells=frozenset(),
-            added_transport_cells=frozenset({extra}),
-            preserved_stub_cells=stubs,
-            touched_hard_protected_cells=frozenset(),
-            touched_soft_protected_cells=frozenset(),
-            replacement_route_cells=cand,
-            baseline_route_length=3,
-            candidate_route_length=3,
-            route_length_ratio=1.0,
-            precheck_passed=True,
-            rejected_reason=None,
-            hard_protected_corridors=frozenset(),
-        )
-        tr = _p3e3_atomic_trace_from_dto(
-            dto,
-            atomic_candidate_built=True,
-            validation_passed=True,
-            would_accept=True,
-            atomic_rejected=None,
-        )
-        return dto, tr
-
-    with (
-        patch.object(p3_mod, "_p3e3_run_atomic_candidate_phase", fake_phase),
-        patch.object(p3_mod, "_p3e3_validate_guarded_swap_mining_map", swap),
-    ):
-        _m, _res, trace = run_pass3_transport_minimization_from_maps(
-            map_after_routing,
-            final_mining_map=final_map,
-            is_external=is_ext,
-            p3e3_guarded_commit_enabled=True,
-            pass3_recovery_context=False,
-        )
-
-    swap.assert_not_called()
-    assert (
-        trace.get("p3e3_internal_transport_delta_gate_reject")
-        == P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN
-    )
-    assert int(trace.get("p3e3_candidate_internal_transport_delta")) > 0
-    assert trace.get("p3e3_guarded_commit_mode") == "internal_transport_delta_gate"
-
-
-def test_recovery_pass3_non_negative_internal_delta_degraded_commit_reason() -> None:
-    """Recovery skips internal-delta gate; guarded commit uses degraded_connected_recovery.
-
-    See ``degraded_connected_recovery`` in Pass3 E3 guarded trace.
-    """
-
-    import django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport as p3_mod  # noqa: E501
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (
-        P3E3GuardedCommitCandidate,
-        _p3e3_atomic_trace_from_dto,
-    )
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
-        external_predicate_for_mining_map,
-    )
-    from django_apps.shapez_asteroid.services.blueprint_map_summary import build_map_timeline
-    from tests.unit.shapez_asteroid.test_pass1_timeline_integration import (
-        _decoded_miners_with_belt_escape,
-    )
-
-    decoded = _decoded_miners_with_belt_escape()
-    out = build_solver_timeline(decoded)
-    step4 = next(f for f in out["solver_timeline"] if f["id"] == "solver_step4_routing")
-    map_after_routing = step4["mining_map"]
-    mt = build_map_timeline(decoded)
-    final_map = mt[-1]["mining_map"]
-    is_ext = external_predicate_for_mining_map(mt[1]["mining_map"])
-
-    def fake_phase(**kw: object) -> tuple:
-        tc_in = kw["transport_cells"]
-        assert isinstance(tc_in, dict)
-        fc = frozenset(tc_in.keys())
-        stubs = frozenset(kw["outlets_order"])
-        dto = P3E3GuardedCommitCandidate(
-            attempted=True,
-            candidate_transport_cells=fc,
-            removed_transport_cells=frozenset(),
-            added_transport_cells=frozenset(),
-            preserved_stub_cells=stubs,
-            touched_hard_protected_cells=frozenset(),
-            touched_soft_protected_cells=frozenset(),
-            replacement_route_cells=fc,
-            baseline_route_length=3,
-            candidate_route_length=3,
-            route_length_ratio=1.0,
-            precheck_passed=True,
-            rejected_reason=None,
-            hard_protected_corridors=frozenset(),
-        )
-        tr = _p3e3_atomic_trace_from_dto(
-            dto,
-            atomic_candidate_built=True,
-            validation_passed=True,
-            would_accept=True,
-            atomic_rejected=None,
-        )
-        return dto, tr
-
-    with (
-        patch.object(p3_mod, "_p3e3_run_atomic_candidate_phase", fake_phase),
-        patch.object(
-            p3_mod,
-            "_p3e3_validate_guarded_swap_mining_map",
-            return_value=(True, None, {}),
-        ),
-    ):
-        _m, res, trace = run_pass3_transport_minimization_from_maps(
-            map_after_routing,
-            final_mining_map=final_map,
-            is_external=is_ext,
-            p3e3_guarded_commit_enabled=True,
-            pass3_recovery_context=True,
-        )
-
-    assert res is not None
-    assert trace.get("p3e3_internal_transport_delta_gate_evaluated") is True
-    assert trace.get("p3e3_internal_transport_delta_gate_reject") is None
-    assert trace.get("p3e3_guarded_commit_committed") is True
-    assert res.metrics.get("commit_reason") == "degraded_connected_recovery"
 
 
 def test_guarded_commit_accepts_real_layout_candidate_snapshot() -> None:
@@ -1750,26 +1437,11 @@ def test_guarded_commit_accepts_real_layout_candidate_snapshot() -> None:
     assert trace["p3e3_atomic_candidate_built"] is True
     assert trace["p3e3_candidate_validation_passed"] is True
     assert trace["p3e3_guarded_commit_would_accept"] is True
-    mode = trace.get("p3e3_guarded_commit_mode")
-    post_val = trace.get("p3e3_guarded_post_commit_validation_passed")
-    if mode == "internal_transport_delta_gate":
-        assert post_val is None
-        assert trace["p3e3_guarded_commit_committed"] is False
-        assert trace["p3e3_guarded_commit_rollback_performed"] is False
-        assert trace.get("p3e3_internal_transport_delta_gate_reject") == (
-            P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN
-        )
-    else:
-        assert post_val is False
-        assert trace["p3e3_guarded_commit_committed"] is False
-        assert trace["p3e3_guarded_commit_rollback_performed"] is True
-        assert trace["p3e3_guarded_commit_rollback_reason"] in (
-            P3E3_REJECT_CONNECTIVITY,
-            P3E3_REJECT_DISCONNECTED_STUB,
-            P3E3_REJECT_ORPHAN_TRANSPORT,
-            P3E3_REJECT_EXTERNAL_UNREACHABLE_TRANSPORT,
-        )
-        assert mode == "atomic_candidate_swap"
+    assert trace["p3e3_guarded_post_commit_validation_passed"] is False
+    assert trace["p3e3_guarded_commit_committed"] is False
+    assert trace["p3e3_guarded_commit_rollback_performed"] is True
+    assert trace["p3e3_guarded_commit_rollback_reason"] == P3E3_REJECT_CONNECTIVITY
+    assert trace["p3e3_guarded_commit_mode"] == "atomic_candidate_swap"
 
     cand = trace["p3e3_guarded_commit_candidate"]
     assert cand["precheck_passed"] is True

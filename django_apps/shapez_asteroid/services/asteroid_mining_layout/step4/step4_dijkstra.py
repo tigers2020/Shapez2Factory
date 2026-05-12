@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import heapq
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -39,11 +40,16 @@ def dijkstra_route_step4(
     ``heap_pops``, ``stop_reason`` in ``success`` | ``exhausted`` | ``budget``.
     """
 
+    t0 = time.perf_counter()
     dist: dict[Coord, float] = {stub_cell: 0.0}
     prev: dict[Coord, Coord | None] = {stub_cell: None}
     heap: list[tuple[float, Coord]] = [(0.0, stub_cell)]
     visited: set[Coord] = set()
     pops = 0
+
+    def _stamp_time() -> None:
+        if search_stats is not None:
+            search_stats["search_time_ms"] = (time.perf_counter() - t0) * 1000.0
 
     while heap:
         pops += 1
@@ -52,6 +58,7 @@ def dijkstra_route_step4(
                 search_stats["expanded_nodes"] = len(visited)
                 search_stats["heap_pops"] = pops
                 search_stats["stop_reason"] = "budget"
+                _stamp_time()
             return None
         d, u = heapq.heappop(heap)
         if u in visited:
@@ -79,6 +86,7 @@ def dijkstra_route_step4(
                 search_stats["expanded_nodes"] = len(visited)
                 search_stats["heap_pops"] = pops
                 search_stats["stop_reason"] = "success"
+                _stamp_time()
             return tuple(chain)
 
         x, y = u
@@ -105,4 +113,5 @@ def dijkstra_route_step4(
         search_stats["expanded_nodes"] = len(visited)
         search_stats["heap_pops"] = pops
         search_stats["stop_reason"] = "exhausted"
+        _stamp_time()
     return None

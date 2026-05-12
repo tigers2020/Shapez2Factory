@@ -72,9 +72,9 @@ LAYOUT_PRESERVE_HARD_GATE_REASON_TRANSPORT_REGRESSION = (
 # Pass12 merged-seed: optional stub recovery (``SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY``).
 MAX_PASS12_RECOVERY_PROBES_PER_MINER = 4
 MAX_PASS12_RECOVERY_BFS_HOPS = 8
-# ``recoverability_class_for_preserve_drop_detail`` NO_MATCHING_STUB 밴드에 쓰임.
-# ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY`` eligibility 상한과는 별도
-# (더 좁게 둘 수 있음).
+# ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY`` (Django ``config.settings`` 기본 ON) 시
+# defer-queue·인라인 시도의 nearest-hop 상한. ``recoverability_class_for_preserve_drop_detail``의
+# NO_MATCHING_STUB NEAR_TRANSPORT 밴드(``MAX_PASS12_RECOVERY_BFS_HOPS``)와는 별개(더 좁을 수 있음).
 MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS = 6
 # stub→트렁크 경로: edge 수(``len(path_cells) - 1``) 상한.
 MAX_PASS12_STUB_ROUTE_RECOVERY_PATH_LEN = 8

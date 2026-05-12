@@ -85,6 +85,11 @@ SOLVER_TERMINATION_TIER_SOLVER_FAILURE = "SOLVER_FAILURE"
 
 RETURN_REASON_STEP4_PARTIAL_FAILURE = "step4_partial_failure"
 
+# ``solver_summary`` / ``final_validation`` — STEP4 returned layout lineage (API-stable literals).
+STEP4_RETURNED_LAYOUT_SOURCE_FULL_STEP4_COMMIT = "full_step4_commit"
+STEP4_RETURNED_LAYOUT_SOURCE_KNOWN_GOOD_AFTER_ROLLBACK = "known_good_after_rollback"
+STEP4_RETURNED_LAYOUT_SOURCE_PRE_STEP4_BASELINE = "pre_step4_baseline"
+
 
 def _solver_quality_summary_for_tier(tier: str) -> str:
     """Short English line for copy-preview / UI (not gettext; API-stable literal)."""
@@ -248,7 +253,15 @@ def build_final_solver_output(
     optimization_counterfactual_failure_reason: str | None = None,
     optimization_counterfactual_aggregation: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """최종 validation, summary, timeline, replay payload를 기존 schema로 조립한다."""
+    """최종 validation, summary, timeline, replay payload를 기존 schema로 조립한다.
+
+    STEP4 semantics: ``step4_committed`` / ``Step4RoutingResult.committed`` is false whenever
+    STEP4 did not achieve a full no-failure commit, but the returned ``map_final`` may still be
+    **geometry/connectivity valid** with **zero unfinalized placements** after successful spatial
+    rollback (``solver_termination=partial_success``, ``return_reason=step4_partial_failure``).
+    In that case ``step4_returned_layout_source`` is ``known_good_after_rollback`` even though
+    ``step4_committed`` remains false for backward compatibility.
+    """
 
     report = _validate_final_mining_layout(map_final)
     post_routing_counts = count_layout_cells(map_final)
@@ -257,6 +270,12 @@ def build_final_solver_output(
         report.quarantined_unrouted_count
     )
     summary_unfinalized_placement_count = max(map_fsm_unfinalized, int(unfinalized_placement_count))
+
+    _layout_hard_valid = (
+        bool(report.geometry_valid)
+        and bool(report.connectivity_valid)
+        and int(summary_unfinalized_placement_count) == 0
+    )
 
     step4_routing_failure_count = int(
         step4_result.trunk_load.get("step4_routing_failure_count", 0) or 0
@@ -282,6 +301,21 @@ def build_final_solver_output(
         solver_termination = SOLVER_TERMINATION_SUCCESS
 
     if solver_termination == SOLVER_TERMINATION_PARTIAL_SUCCESS:
+        assert (
+            int(summary_unfinalized_placement_count) == 0
+        ), "partial_success implies a finalized returned layout (no unfinalized placements)"
+
+    if pass12_skipped:
+        step4_returned_layout_source = STEP4_RETURNED_LAYOUT_SOURCE_PRE_STEP4_BASELINE
+    elif not step4_partial_failure:
+        step4_returned_layout_source = STEP4_RETURNED_LAYOUT_SOURCE_FULL_STEP4_COMMIT
+    elif _layout_hard_valid:
+        step4_returned_layout_source = STEP4_RETURNED_LAYOUT_SOURCE_KNOWN_GOOD_AFTER_ROLLBACK
+    else:
+        # Partial STEP4 without a hard-valid returned map (rare); not ``known_good_after_rollback``.
+        step4_returned_layout_source = STEP4_RETURNED_LAYOUT_SOURCE_PRE_STEP4_BASELINE
+
+    if solver_termination == SOLVER_TERMINATION_PARTIAL_SUCCESS:
         return_reason = RETURN_REASON_STEP4_PARTIAL_FAILURE
     elif unfinalized_placement_count > 0:
         return_reason = "validation_unfinalized_placement_failed"
@@ -295,6 +329,30 @@ def build_final_solver_output(
     step4_rollback_count = len(step4_result.rolled_back_placement_ids)
     broken_routed_n = int(step4_result.trunk_load.get("broken_routed_route_count", 0) or 0)
     cascade_rb_n = int(step4_result.trunk_load.get("cascade_rollback_count", 0) or 0)
+
+    after_pass2_extractor_count = int(post_pass2_counts.get("extractors", 0) or 0)
+    post_step4_extractor_count = int(post_step4_counts.get("extractors", 0) or 0)
+    step4_known_good_route_count = len(step4_result.routes)
+    step4_failed_route_count = step4_routing_failure_count
+    step4_rolled_back_placement_count = step4_rollback_count
+    step4_quarantined_placement_count = len(step4_result.quarantined_placement_ids)
+    internal_quarantined_count = int(
+        step4_result.trunk_load.get("step4_quarantined_peak_count", 0)
+        or step4_result.trunk_load.get("step4_quarantined_count", 0)
+        or 0
+    )
+    step4_total_stub_count = int(step4_result.trunk_load.get("step4_total_stub_count", 0) or 0)
+    if pass12_skipped:
+        extractor_loss_due_to_step4_rollback = 0
+        route_loss_due_to_step4_rollback = 0
+    else:
+        extractor_loss_due_to_step4_rollback = max(
+            0, after_pass2_extractor_count - post_step4_extractor_count
+        )
+        route_loss_due_to_step4_rollback = max(
+            0, step4_total_stub_count - step4_known_good_route_count
+        )
+
     layout_degraded = (
         (not layout_ok)
         or unfinalized_placement_count > 0
@@ -359,6 +417,10 @@ def build_final_solver_output(
             "overlap_violation_count": report.overlap_violation_count,
             "missing_stub_count": report.missing_stub_count,
             "unfinalized_placement_count": summary_unfinalized_placement_count,
+            "final_unfinalized_placement_count": int(summary_unfinalized_placement_count),
+            "step4_partial_failure": bool(step4_partial_failure),
+            "step4_returned_layout_source": step4_returned_layout_source,
+            "internal_quarantined_count": int(internal_quarantined_count),
             "final_counts": post_routing_counts,
             "pass12_preserve_drop_trace": {
                 "drop_count": _drop_n,
@@ -412,6 +474,19 @@ def build_final_solver_output(
         "step4_routing_failure_count": step4_result.trunk_load.get(
             "step4_routing_failure_count", 0
         ),
+        "step4_complete_commit_success": bool(step4_result.committed),
+        "step4_partial_failure": bool(step4_partial_failure),
+        "step4_known_good_route_count": int(step4_known_good_route_count),
+        "step4_failed_route_count": int(step4_failed_route_count),
+        "step4_rolled_back_placement_count": int(step4_rolled_back_placement_count),
+        "step4_quarantined_placement_count": int(step4_quarantined_placement_count),
+        "step4_returned_layout_source": step4_returned_layout_source,
+        "internal_quarantined_count": int(internal_quarantined_count),
+        "final_unfinalized_placement_count": int(summary_unfinalized_placement_count),
+        "after_pass2_extractor_count": int(after_pass2_extractor_count),
+        "post_step4_extractor_count": int(post_step4_extractor_count),
+        "extractor_loss_due_to_step4_rollback": int(extractor_loss_due_to_step4_rollback),
+        "route_loss_due_to_step4_rollback": int(route_loss_due_to_step4_rollback),
         "step4_committed": step4_result.committed,
         "step4_skipped": bool(pass12_skipped),
         "placement_commit_counts": dict(step4_result.trunk_load.get("placement_commit_counts", {})),
@@ -486,11 +561,6 @@ def build_final_solver_output(
         summary_fields["internal_transport_delta_vs_baseline"] = None
     _ow_list = list(summary_fields.get("optimization_warnings") or [])
     summary_fields["optimization_warning_count"] = len(_ow_list)
-    _layout_hard_valid = (
-        bool(report.geometry_valid)
-        and bool(report.connectivity_valid)
-        and int(summary_unfinalized_placement_count) == 0
-    )
     _qual_tier = _compute_solver_quality_tier(
         layout_hard_valid=_layout_hard_valid,
         solver_termination=solver_termination,
@@ -569,6 +639,10 @@ def build_final_solver_output(
                     "step4_routing_failure_count", 0
                 ),
                 "step4_routed_count": step4_result.trunk_load.get("step4_routed_count", 0),
+                "step4_known_good_route_count": int(step4_known_good_route_count),
+                "step4_failed_route_count": int(step4_failed_route_count),
+                "step4_partial_failure": bool(step4_partial_failure),
+                "internal_quarantined_count": int(internal_quarantined_count),
                 "step4_rolled_back_count": step4_result.trunk_load.get(
                     "step4_rolled_back_count", 0
                 ),
@@ -606,6 +680,9 @@ def build_final_solver_output(
                 "step": "final_validation",
                 "geometry_valid": summary_geometry_valid,
                 "connectivity_valid": report.connectivity_valid,
+                "final_unfinalized_placement_count": int(summary_unfinalized_placement_count),
+                "step4_returned_layout_source": step4_returned_layout_source,
+                "step4_partial_failure": bool(step4_partial_failure),
                 "before_return_validate": before_return_validate,
                 "recovery_context_chain": pass3_summary.get("recovery_context_chain", []),
                 "recovery_trigger_reason": pass3_summary.get("recovery_trigger_reason"),
@@ -646,6 +723,13 @@ def build_final_solver_output(
             "quarantined_unrouted_count": report.quarantined_unrouted_count,
             "provisional_placed_row_count": report.provisional_placed_row_count,
             "unfinalized_placement_count": summary_unfinalized_placement_count,
+            "final_unfinalized_placement_count": int(summary_unfinalized_placement_count),
+            "step4_partial_failure": bool(step4_partial_failure),
+            "step4_returned_layout_source": step4_returned_layout_source,
+            "internal_quarantined_count": int(internal_quarantined_count),
+            "after_pass2_extractor_count": int(after_pass2_extractor_count),
+            "extractor_loss_due_to_step4_rollback": int(extractor_loss_due_to_step4_rollback),
+            "route_loss_due_to_step4_rollback": int(route_loss_due_to_step4_rollback),
             "extractor_count": report.extractor_count,
             "extension_count": report.extension_count,
             "transport_cell_count": report.transport_cell_count,
@@ -681,8 +765,9 @@ def build_final_solver_output(
             "solver_quality_summary": summary_fields.get("solver_quality_summary"),
         },
     }
-    if isinstance(out.get("termination"), dict):
-        out["termination"]["quality_tier"] = summary_fields.get("solver_quality_tier")
+    _term_out = out.get("termination")
+    if isinstance(_term_out, dict):
+        _term_out["quality_tier"] = summary_fields.get("solver_quality_tier")
     debug_log_event(
         debug_location,
         "pipeline_return",
@@ -724,6 +809,21 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("routing_state", None)
     summary_fields.setdefault("step4_route_count", 0)
     summary_fields.setdefault("step4_routing_failure_count", 0)
+    summary_fields.setdefault("step4_complete_commit_success", False)
+    summary_fields.setdefault("step4_partial_failure", True)
+    summary_fields.setdefault("step4_known_good_route_count", 0)
+    summary_fields.setdefault("step4_failed_route_count", 0)
+    summary_fields.setdefault("step4_rolled_back_placement_count", 0)
+    summary_fields.setdefault("step4_quarantined_placement_count", 0)
+    summary_fields.setdefault(
+        "step4_returned_layout_source", STEP4_RETURNED_LAYOUT_SOURCE_PRE_STEP4_BASELINE
+    )
+    summary_fields.setdefault("internal_quarantined_count", 0)
+    summary_fields.setdefault("final_unfinalized_placement_count", 0)
+    summary_fields.setdefault("after_pass2_extractor_count", 0)
+    summary_fields.setdefault("post_step4_extractor_count", 0)
+    summary_fields.setdefault("extractor_loss_due_to_step4_rollback", 0)
+    summary_fields.setdefault("route_loss_due_to_step4_rollback", 0)
     summary_fields.setdefault("step4_committed", False)
     summary_fields.setdefault("step4_skipped", False)
     summary_fields.setdefault("pass12_mixed_surface_skipped", False)

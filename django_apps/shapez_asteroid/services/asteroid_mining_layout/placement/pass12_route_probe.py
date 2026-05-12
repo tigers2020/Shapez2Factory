@@ -18,6 +18,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_goal_trunk_seed as s4_goal,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_route_failure_diagnostic as s4frd,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
     final_validation as finval,
 )
@@ -34,6 +37,9 @@ def new_pass2_route_probe_stats_sink() -> dict[str, Any]:
         "pass2_probe_goal_count": 0,
         "pass2_probe_goal_count_max": 0,
         "pass2_probe_goal_count_sum": 0,
+        "pass2_probe_last_final_goal_count": None,
+        "pass2_probe_last_goal_trace": None,
+        "pass2_probe_empty_goal_set_count": 0,
         "pass2_probe_goal_eval_count": 0,
         "pass2_route_uncertain_count": 0,
         "pass2_provisional_unrouted_count": 0,
@@ -62,12 +68,25 @@ def build_pass2_step4_aligned_routing_goals(
     is_external: Callable[[Coord], bool],
     existing_layout_analysis: dict[str, Any] | None,
     transport_cells_before: frozenset[Coord],
+    transport_cells_probe: frozenset[Coord],
     blocked_for_probe: frozenset[Coord],
-) -> tuple[frozenset[Coord], Literal["first_route", "subsequent_route"], int]:
-    """Return ``(goal_cells, goal_set_kind, goal_count)`` mirroring STEP4 §3.2."""
+    stats_sink: dict[str, Any] | None = None,
+) -> tuple[frozenset[Coord], Literal["first_route", "subsequent_route"], int, dict[str, Any]]:
+    """Return ``(goal_cells, goal_set_kind, final_goal_count, trace)`` aligned with STEP4 §3.2.
+
+    ``transport_cells_probe`` is the merged transport graph for the candidate under probe (Pass2
+    commit snapshot). Exterior margin uses the same predicate as STEP4, plus ``universe_extra`` so
+    probe-time belt coordinates participate even when absent from the frozen Pass1 ``cells``
+    dict. Like ``step4_merge_routing`` per-job goals, ``raw_goal ∪ trunk_reaching(probe)`` is used
+    (trunk slice is a no-op for first-route void assist when those cells are already transport).
+    """
 
     margin = s4_goal.exterior_margin_cells(
-        mineable=mineable, asteroid=asteroid, cells=cells, is_external=is_external
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        is_external=is_external,
+        universe_extra=transport_cells_probe,
     )
     hint_union = s4_goal.trunk_seed_union_from_existing_layout(existing_layout_analysis)
     trunk_seed_by_kind = s4_goal.build_trunk_seed_candidates_by_kind(
@@ -90,7 +109,28 @@ def build_pass2_step4_aligned_routing_goals(
         exterior_margin_cells=margin,
         trunk_seed_candidates_by_kind=trunk_seed_by_kind,
     )
-    return frozenset(raw_goal), goal_set_kind, len(raw_goal)
+    trunk_now = finval.transport_cells_reaching_external(
+        set(transport_cells_probe), set(blocked_for_probe), is_external
+    )
+    full_goal = frozenset(set(raw_goal) | trunk_now)
+    seeds_for_kind = set(trunk_seed_by_kind.get(transport_kind, ()))
+    trace: dict[str, Any] = {
+        "goal_set_kind": goal_set_kind,
+        "exterior_margin_cell_count": len(margin),
+        "trunk_seed_candidate_count": len(seeds_for_kind),
+        "same_kind_trunk_seed_count": len(seeds_for_kind - margin),
+        "existing_trunk_goal_count": len(existing_reaching),
+        "raw_goal_count": len(raw_goal),
+        "trunk_reaching_probe_count": len(trunk_now),
+        "final_goal_count": len(full_goal),
+        "external_margin_bbox_source": "universe_keys_mineable_asteroid_probe_transport_union",
+        "rejected_reason": None,
+    }
+    if not full_goal:
+        trace["rejected_reason"] = str(s4frd.Step4RouteFailureReason.empty_goal_set)
+    if stats_sink is not None:
+        stats_sink["pass2_probe_last_goal_trace"] = dict(trace)
+    return full_goal, goal_set_kind, len(full_goal), trace
 
 
 def _pass2_stats_touch_goal_eval(
@@ -107,6 +147,7 @@ def _pass2_stats_touch_goal_eval(
     stats_sink["pass2_probe_goal_count_sum"] = int(
         stats_sink.get("pass2_probe_goal_count_sum", 0)
     ) + int(goal_count)
+    stats_sink["pass2_probe_last_final_goal_count"] = int(goal_count)
 
 
 def _pass2_stats_note_transport_failure(
@@ -133,7 +174,11 @@ def finalize_pass2_route_probe_stats(stats_sink: dict[str, Any]) -> None:
     else:
         dominant = max(counts.items(), key=lambda kv: (kv[1], kv[0]))[0]
         stats_sink["pass2_probe_goal_set_kind"] = dominant
-    stats_sink["pass2_probe_goal_count"] = int(stats_sink.get("pass2_probe_goal_count_max", 0))
+    last = stats_sink.get("pass2_probe_last_final_goal_count")
+    if isinstance(last, int):
+        stats_sink["pass2_probe_goal_count"] = last
+    else:
+        stats_sink["pass2_probe_goal_count"] = int(stats_sink.get("pass2_probe_goal_count_max", 0))
 
 
 def _pass2_stub_adjacent_baseline_trunk_reaches_external(
@@ -184,6 +229,7 @@ def pass2_bundle_route_probe_decision(
     goal_count: int,
     adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None,
     stats_sink: dict[str, Any] | None,
+    goal_build_trace: dict[str, Any] | None = None,
 ) -> tuple[Pass2RouteProbeOutcome, dict[str, Any]]:
     """Pass2 gate: ``routed`` when a definite reach exists; else ``uncertain`` (STEP4 decides).
 
@@ -193,6 +239,10 @@ def pass2_bundle_route_probe_decision(
 
     if stats_sink is not None:
         _pass2_stats_touch_goal_eval(stats_sink, goal_kind=goal_set_kind, goal_count=goal_count)
+        if goal_count == 0:
+            stats_sink["pass2_probe_empty_goal_set_count"] = (
+                int(stats_sink.get("pass2_probe_empty_goal_set_count", 0)) + 1
+            )
 
     ok_transport, transport_diag = probe_stub_to_external_detail(
         stub_cell=stub_cell,
@@ -201,7 +251,10 @@ def pass2_bundle_route_probe_decision(
         is_external=is_external,
     )
     if ok_transport:
-        return "routed", transport_diag
+        out = dict(transport_diag)
+        if goal_build_trace is not None:
+            out["pass2_goal_set_trace"] = dict(goal_build_trace)
+        return "routed", out
 
     if stats_sink is not None:
         _pass2_stats_note_transport_failure(stats_sink, transport_diag)
@@ -217,6 +270,8 @@ def pass2_bundle_route_probe_decision(
         allowed_void_cells=goal_void_cells,
     )
     merged_goal = dict(transport_diag)
+    if goal_build_trace is not None:
+        merged_goal["pass2_goal_set_trace"] = dict(goal_build_trace)
     merged_goal["pass2_goal_assisted_probe"] = {
         "allowed_goal_void_cell_count": len(goal_void_cells),
         "success": ok_goal_void,

@@ -12,7 +12,7 @@
 
 **구현 반영(2026-05-12, PR4-A):** `step4_routing_state.py` — STEP4 committed-route `routing_state`에서 `soft_protected_candidate_corridors`를 빈 리스트로 직렬화. 단위 테스트: `test_protected_corridor_step4_snapshot.py`, `test_step4_merge_routing.py` 갱신.
 
-**구현 반영(2026-05-12, PR4-B):** `routing/protected_corridor_replace.py` — 소프트 치환 시 `old_soft_corridor_cells ∩ hard`이면 `P4_REJECT_HARD_PROTECTED_CORRIDOR`로 즉시 거절. 테스트: `test_reclaim_shadow.test_soft_replace_rejects_hard_protected_corridor_map_unchanged`.
+**구현 반영(2026-05-12, PR4-B):** `routing/protected_corridor_replace.py` — 소프트 치환 시 `old_soft_corridor_cells ∩ hard`이면 `P4_REJECT_HARD_PROTECTED_CORRIDOR`로 즉시 거절. 테스트: `test_reclaim_shadow.test_soft_replace_rejects_hard_protected_corridor_map_unchanged`. 커밋 `c2a5d838`.
 
 ---
 
@@ -151,5 +151,5 @@ Algorithm §14 세부 문구는 저장소의 [`documents/refactory/04_protected_
 | Phase | 내용 | 상태 |
 |-------|------|------|
 | PR4-A | STEP4 committed 스냅샷 candidate `[]` / confirmed·compat 동일 soft 풀 | 완료 (`947b671e`, origin 반영) |
-| PR4-B | Pass3·P4·소프트 치환에서 hard 제거/치환 시도 거절 + 테스트 | 이번 패치로 소프트 치환 hard 교차 보강; 나머지는 상기 기존 가드 |
+| PR4-B | Pass3·P4·소프트 치환에서 hard 제거/치환 시도 거절 + 테스트 | 완료 (`c2a5d838`: 소프트 치환 hard 교차; Pass3/P4 overlap 등 기존 가드 유지) |
 | PR4-C | ELA trunk seed vs `routing_state` hard 경계 | 예정 |

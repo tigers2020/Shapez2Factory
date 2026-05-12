@@ -132,6 +132,9 @@ def _run_post_reclaim_pass3_once(
             or k in ("pass3_greedy_committed", "pass3_greedy_local_replacement")
         ):
             out[f"post_reclaim_pass3_{k}"] = v
+            if k == "pass3_greedy_local_replacement":
+                # Shorter alias (avoids ``post_reclaim_pass3_pass3_*`` duplication); keep long key.
+                out["post_reclaim_pass3_greedy_local_replacement"] = v
     metric_keys = (
         "before_transport_count",
         "after_transport_count",

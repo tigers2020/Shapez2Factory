@@ -12,7 +12,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL,
     PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3 import pass3_greedy_core
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
+    _new_pass3_greedy_local_replacement_stats,
+    _try_greedy_local_replacement_reroute,
     reconstruct_mining_priority_transport,
     transport_connects_outlets_to_anchor,
     transport_outlets_disconnected_from_anchor,
@@ -496,6 +499,83 @@ def test_reconstruct_mining_priority_transport_local_reroute_preserves_other_pip
     )
     pipe_rows = [r for r in new_map if r.get("x") == 20 and r.get("y") == 0]
     assert pipe_rows and pipe_rows[0].get("role") == "pipe"
+
+
+def test_try_greedy_local_replacement_no_net_internal_gain_rejects() -> None:
+    """Reroute may connect, but zero internal tiles (all external) cannot satisfy strict gain."""
+
+    def all_external(_c: tuple[int, int]) -> bool:
+        return True
+
+    mineable = {(x, y) for x in range(1, 12) for y in range(0, 3)}
+    asteroid = set(mineable)
+    pre = {(i, 0): "belt" for i in range(1, 6)}
+    trial = {k: v for k, v in pre.items() if k != (3, 0)}
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core."
+        "PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED",
+        True,
+    ):
+        stats = _new_pass3_greedy_local_replacement_stats()
+        out = _try_greedy_local_replacement_reroute(
+            pre,
+            trial,
+            wr="belt",
+            anchor=(5, 0),
+            outlets_order=[(1, 0)],
+            mineable_cells=mineable,
+            asteroid_cells=asteroid,
+            buildings={},
+            is_external=all_external,
+            stats=stats,
+        )
+    assert out is None
+    assert stats["attempted_count"] == 1
+    assert stats["accepted_count"] == 0
+    assert int(stats["rejected_by_no_net_internal_gain"]) >= 1
+
+
+def test_try_greedy_local_replacement_path_len_reject_does_not_merge_path() -> None:
+    """``rejected_by_path_len`` returns ``None`` before writing the too-long path to ``merged``."""
+
+    mineable = {(x, y) for x in range(1, 12) for y in range(0, 3)}
+    asteroid = set(mineable)
+    pre = {(i, 0): "belt" for i in range(1, 6)}
+    trial = {k: v for k, v in pre.items() if k != (3, 0)}
+
+    def long_path(**_kwargs: object) -> list[tuple[int, int]]:
+        return [(1, 0), (1, 1), (2, 1), (3, 1)]
+
+    with (
+        patch(
+            "django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core."
+            "PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED",
+            True,
+        ),
+        patch(
+            "django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core."
+            "PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_PATH_LEN",
+            2,
+        ),
+        patch.object(pass3_greedy_core, "placement_stub_route_probe_path", long_path),
+    ):
+        stats = _new_pass3_greedy_local_replacement_stats()
+        out = _try_greedy_local_replacement_reroute(
+            pre,
+            trial,
+            wr="belt",
+            anchor=(5, 0),
+            outlets_order=[(1, 0)],
+            mineable_cells=mineable,
+            asteroid_cells=asteroid,
+            buildings={},
+            is_external=lambda _c: False,
+            stats=stats,
+        )
+    assert out is None
+    assert stats["accepted_count"] == 0
+    assert stats["rejected_by_path_len"] == 1
+    assert (1, 1) not in trial
 
 
 def test_pass3_internal_saved_implies_reclaimed_interior_nonempty() -> None:
@@ -1618,3 +1698,63 @@ def test_post_reclaim_pass3_keeps_recovery_context_chain() -> None:
         RECOVERY_SEGMENT_POST_RECLAIM_PASS3,
     ]
     assert ss.get("recovery_terminal_reason") == "post_reclaim_pass3_success"
+
+
+def test_run_post_reclaim_pass3_once_greedy_local_replacement_telemetry_and_alias() -> None:
+    """``p3_trace`` telemetry is copied under long and short ``post_reclaim_pass3_*`` keys."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import solver_service
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_timeline import (
+        _run_post_reclaim_pass3_once,
+    )
+
+    lr: dict[str, object] = {
+        "enabled": True,
+        "attempted_count": 2,
+        "accepted_count": 0,
+        "rejected_by_path_len": 0,
+        "rejected_by_disconnected_stub_limit": 0,
+        "rejected_by_no_path": 0,
+        "rejected_by_no_net_internal_gain": 1,
+    }
+    trace = {
+        "pass3_skipped": True,
+        "pass3_skip_reason": "fixture_skip",
+        "pass3_greedy_local_replacement": lr,
+    }
+
+    def _fake_run(
+        *_a: object,
+        **_kw: object,
+    ) -> tuple[list[dict[str, object]], object, dict[str, object]]:
+        return ([], object(), trace)
+
+    with patch.object(solver_service, "run_pass3_transport_minimization_from_maps", _fake_run):
+        _map, out = _run_post_reclaim_pass3_once(
+            [],
+            final_mining_map=[],
+            is_external=lambda _c: False,
+        )
+    assert _map == []
+    assert out["post_reclaim_pass3_pass3_greedy_local_replacement"] == lr
+    assert out["post_reclaim_pass3_greedy_local_replacement"] == lr
+
+
+def test_apply_exception_summary_defaults_includes_greedy_local_replacement_keys() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline import (
+        finalize as finalize_mod,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.pass3 import (
+        initial_pass3_summary,
+    )
+
+    d: dict[str, object] = {}
+    finalize_mod.apply_exception_summary_defaults(d)
+    assert "pass3_greedy_local_replacement" in d
+    assert d["pass3_greedy_local_replacement"] is None
+    assert "post_reclaim_pass3_greedy_local_replacement" in d
+    assert d["post_reclaim_pass3_greedy_local_replacement"] is None
+
+    p3 = initial_pass3_summary()
+    assert "pass3_greedy_local_replacement" in p3
+    assert p3.get("pass3_greedy_local_replacement") is None

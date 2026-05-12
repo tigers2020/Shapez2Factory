@@ -130,6 +130,12 @@ PASS3_GREEDY_REJECT_DETAIL_ROUTE_LENGTH_RATIO = "rejected_by_route_length_ratio"
 
 # Pass3 greedy: optional delete + bounded local replacement (same kind) when pure delete breaks
 # connectivity. Default off — overlaps P3-E3 atomic guarded search; keep small caps when enabling.
+#
+# Layering vs §14.3: ``try_atomic_replace_soft_corridor`` (routing.protected_corridor_replace)
+# runs on full ``mining_map`` with soft-corridor membership and post-swap validation. Pass3 local
+# replacement only patches the greedy ``dict[Coord,str]`` transport graph for a single routing
+# job kind; telemetry ``accepted_count`` means “returned merged dict adopted by caller”, not a
+# §14.3 map commit.
 PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED = False
 # Max cells in stub→anchor replacement path (inclusive of endpoints); ~8 edges.
 PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_PATH_LEN = 9

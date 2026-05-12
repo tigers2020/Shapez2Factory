@@ -1,4 +1,13 @@
-"""Pass3 greedy compression, route probe, anchor pick, map apply."""
+"""Pass3 greedy compression, route probe, anchor pick, map apply.
+
+Pass3 optional **greedy local replacement** (same ``wr`` as the active routing job) mutates only
+the in-memory ``transport_cells`` dict: callers adopt the returned dict only after reroute
+succeeds. This is **not** P4 §14.3 ``try_atomic_replace_soft_corridor`` on ``mining_map`` (see
+``routing.protected_corridor_replace``); that primitive stays in the reclaim layer. Terminology
+overlaps (“replacement-first”, no partial commit to caller state) but the contracts differ; see
+``_try_greedy_local_replacement_reroute`` and ``foundation.constants`` for Pass3 local replacement
+flags.
+"""
 
 from __future__ import annotations
 
@@ -193,7 +202,19 @@ def _pass3_connectivity_reject_sample_dict(
 
 
 def _new_pass3_greedy_local_replacement_stats() -> dict[str, Any]:
-    """NDJSON-friendly counters for optional delete + local same-kind reroute (Pass3 greedy)."""
+    """NDJSON-friendly counters for optional delete + local same-kind reroute (Pass3 greedy).
+
+    Semantics (telemetry contract):
+
+    * ``attempted_count`` — :func:`_try_greedy_local_replacement_reroute` entered (one victim’s
+      reroute evaluation started).
+    * ``accepted_count`` — reroute returned a ``merged`` dict that the caller adopted: outlets
+      reach ``anchor``, only ``wr`` cells were added on probe paths, and **internal** transport
+      count (per ``is_external``) **strictly decreased** vs ``pre_delete_tc``. Same instant as
+      caller ``tc`` update; not a pre-check “looks good”.
+    * ``rejected_by_*`` — reroute returned ``None``; the caller’s transport dict for that attempt
+      is unchanged (no partial commit).
+    """
 
     return {
         "enabled": bool(PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED),
@@ -219,9 +240,23 @@ def _try_greedy_local_replacement_reroute(
     is_external: Callable[[Coord], bool],
     stats: dict[str, Any],
 ) -> dict[Coord, str] | None:
-    """If enabled, add same-kind transport along stub→anchor probe paths until connected.
+    """If enabled, add same-kind ``wr`` along stub→anchor probe paths until connected.
 
-    Commits only when canonical internal transport count strictly decreases vs ``pre_delete_tc``.
+    **Caller atomicity:** returns ``None`` on any reject; only a full success returns ``merged``.
+    The caller must not merge partial state (see ``rejected_by_*`` counters).
+
+    **Internal transport:** ``accepted_count`` increments only when
+    ``count_internal_transport_cells(merged) < count_internal_transport_cells(pre_delete_tc)``.
+    If the graph connects but that strict inequality fails, increments
+    ``rejected_by_no_net_internal_gain`` and returns ``None``.
+
+    **§14.3:** This path does not read soft/hard protected corridors on ``mining_map``; it is the
+    Pass3 ``transport_cells`` compression helper. P4 §14.3 remains
+    ``try_atomic_replace_soft_corridor``.
+
+    ``rejected_by_disconnected_stub_limit`` — disconnected outlet stubs from anchor exceed
+    :data:`PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS` (per-attempt budget), or the BFS
+    limit branch fired with an empty/oversized disconnect set.
     """
 
     if not PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED:
@@ -250,6 +285,7 @@ def _try_greedy_local_replacement_reroute(
             limit=PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS + 1,
         )
         if not disc or len(disc) > PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS:
+            # Budget: at most MAX_DISCONNECTED_STUBS stubs may need patching per victim attempt.
             stats["rejected_by_disconnected_stub_limit"] = (
                 int(stats["rejected_by_disconnected_stub_limit"]) + 1
             )

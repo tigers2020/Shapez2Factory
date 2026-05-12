@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    P4_REJECT_HARD_PROTECTED_CORRIDOR,
     P4_SOFT_REPLACE_REJECT_NO_REPLACEMENT_ROUTE,
     P4_SOFT_REPLACE_REJECT_NO_ROUTING_JOB,
     P4_SOFT_REPLACE_REJECT_OLD_NOT_SOFT_PROTECTED,
@@ -96,6 +97,9 @@ def try_atomic_replace_soft_corridor(
     Returns ``(committed_map, trace)`` on success; ``(None, trace)`` on failure so the
     caller keeps the original ``mining_map`` unchanged. Never removes old corridor before a
     validated replacement exists.
+
+    If ``old_soft_corridor_cells`` intersects the read hard pool, rejects with
+    ``P4_REJECT_HARD_PROTECTED_CORRIDOR`` before the soft-pool subset check (§14.3).
     """
 
     def _cells_coord_list(cells: frozenset[Coord] | set[Coord]) -> list[list[int]]:
@@ -118,6 +122,15 @@ def try_atomic_replace_soft_corridor(
         solver_routing_state=solver_routing_state,
         existing_layout_solver_hints=existing_layout_solver_hints,
     )
+    if old_set & corridors.hard:
+        return None, _p4_soft_replace_neutral_trace(
+            attempted=True,
+            committed=False,
+            rejected_reason=P4_REJECT_HARD_PROTECTED_CORRIDOR,
+            old_cells=_cells_coord_list(old_set),
+            new_cells=[],
+            connected=None,
+        )
     if not old_set <= corridors.soft:
         return None, _p4_soft_replace_neutral_trace(
             attempted=True,

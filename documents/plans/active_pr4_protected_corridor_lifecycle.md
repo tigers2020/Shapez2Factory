@@ -6,7 +6,13 @@
 
 **사람 승인:** 프로젝트 게이트상 의미 있는 계약 변경은 승인 후 본문에 날짜·승인자를 기록한다.
 
-**구현 반영(2026-05-12, 1차):** `step4_routing_state.py` — STEP4 committed-route `routing_state`에서 `soft_protected_candidate_corridors`를 빈 리스트로 직렬화. 단위 테스트: `test_protected_corridor_step4_snapshot.py`, `test_step4_merge_routing.py` 갱신.
+**PR4-A (1차, 완료):** STEP4 committed 스냅샷에서 `soft_protected_candidate_corridors` vs confirmed/compat 의미 분리 — 커밋 `947b671e`, **원격 `origin/master` 반영됨 (2026-05-12).** PR 제목 예: `refactor(solver): align committed corridor snapshot semantics` (본문에서 “PR4 전체 완료”가 아니라 **PR4-A 1차**임을 명시).
+
+**PR4-B (이번 패치):** `hard_protected` 교집합·제거·치환 경로 가드 보강 및 회귀 테스트 — 아래 §6–§7.
+
+**구현 반영(2026-05-12, PR4-A):** `step4_routing_state.py` — STEP4 committed-route `routing_state`에서 `soft_protected_candidate_corridors`를 빈 리스트로 직렬화. 단위 테스트: `test_protected_corridor_step4_snapshot.py`, `test_step4_merge_routing.py` 갱신.
+
+**구현 반영(2026-05-12, PR4-B):** `routing/protected_corridor_replace.py` — 소프트 치환 시 `old_soft_corridor_cells ∩ hard`이면 `P4_REJECT_HARD_PROTECTED_CORRIDOR`로 즉시 거절. 테스트: `test_reclaim_shadow.test_soft_replace_rejects_hard_protected_corridor_map_unchanged`.
 
 ---
 
@@ -21,9 +27,6 @@ overview: >
   or replay UI behavior.
 
 canonical_documents:
-  - documents/Algorithm/mining_solver_cursor_sessions/12_protected_corridor.md
-  - documents/Algorithm/mining_solver_cursor_sessions/09_step5_pass3_transport.md
-  - documents/Algorithm/mining_solver_cursor_sessions/10_step6_reclaim_loop.md
   - documents/refactory/corridor-state-machine-refactor.md
   - documents/refactory/04_protected_corridor_lifecycle.md
   - documents/refactory/14_soft_corridor_atomic_replace.md
@@ -123,3 +126,30 @@ validation:
 commit:
   message: "refactor(solver): align protected corridor lifecycle with Algorithm §14"
 ```
+
+Algorithm §14 세부 문구는 저장소의 [`documents/refactory/04_protected_corridor_lifecycle.md`](../refactory/04_protected_corridor_lifecycle.md) 등 refactory 노트와 외부 세션 정본을 함께 본다.
+
+---
+
+## 6. PR4-B: `hard_protected` 가드 경로 맵 (코드 SSOT)
+
+| 경로 | 모듈 | 거절/불변 |
+|------|------|-----------|
+| P3-E3 원자 precheck | `pass3/pass3_e3_guarded_atomic_map.py::_p3e3_build_atomic_candidate_map` | `cells_to_remove ∩ hard` → `P3E3_REJECT_HARD_PROTECTED_CORRIDOR`, candidate 비어 있음 |
+| P3-E3 trial 맵 | `pass3/pass3_e3_guarded_transport_trial.py` | trial transport에 hard ⊆ 검증 |
+| P4 후보 overlap | `reclaim/reclaim_map_ops.py::_p4_overlap_reject_reason` | `placed ∩ hard` → `P4_REJECT_HARD_PROTECTED_CORRIDOR` |
+| P4 shadow stub 경로 | `reclaim/reclaim_shadow_scan_eval.py` | stub/anchor/extension ∈ hard → `P4_REJECT_HARD_PROTECTED_CORRIDOR` |
+| §14.3 소프트 원자 치환 | `routing/protected_corridor_replace.py::try_atomic_replace_soft_corridor` | `old_cells ∩ hard` → `P4_REJECT_HARD_PROTECTED_CORRIDOR` (soft 풀 검사 전) |
+| Pass3-F trace | `pass3/pass3_f_branch_candidate.py` | `p3f_hard_protected_preserved` 요약(원자 거절은 위 atomic_map) |
+
+**회귀 테스트 (PR4-B):** `test_pass3_transport.test_p3e3_build_rejects_hard_protected_corridor`, `test_reclaim_shadow` 내 hard reclaim·`test_soft_replace_rejects_hard_protected_corridor_map_unchanged`.
+
+---
+
+## 7. Phase 체크리스트
+
+| Phase | 내용 | 상태 |
+|-------|------|------|
+| PR4-A | STEP4 committed 스냅샷 candidate `[]` / confirmed·compat 동일 soft 풀 | 완료 (`947b671e`, origin 반영) |
+| PR4-B | Pass3·P4·소프트 치환에서 hard 제거/치환 시도 거절 + 테스트 | 이번 패치로 소프트 치환 hard 교차 보강; 나머지는 상기 기존 가드 |
+| PR4-C | ELA trunk seed vs `routing_state` hard 경계 | 예정 |

@@ -2071,6 +2071,25 @@ def test_soft_replace_reject_not_soft_protected_map_unchanged() -> None:
     assert cells_dict_from_mining_map(m) == before_cells
 
 
+def test_soft_replace_rejects_hard_protected_corridor_map_unchanged() -> None:
+    """§14.3 / PR4-B: hard 풀과 겹치는 치환 대상은 거절하고 입력 맵은 그대로다."""
+
+    m = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False)
+    before_cells = cells_dict_from_mining_map(copy.deepcopy(m))
+    out_map, tr = _try_atomic_replace_soft_corridor(
+        m,
+        final_mining_map=_base_final_mining_map(),
+        pass3_trace={"protected_corridors": {"hard": [[5, 5]], "soft": [[14, 2]]}},
+        solver_routing_state=None,
+        old_soft_corridor_cells=[(5, 5)],
+        is_external=_external_east,
+    )
+    assert out_map is None
+    assert tr["p4_soft_replace_attempted"] is True
+    assert tr["p4_soft_replace_rejected_reason"] == P4_REJECT_HARD_PROTECTED_CORRIDOR
+    assert cells_dict_from_mining_map(m) == before_cells
+
+
 def test_soft_corridor_replace_rejects_without_replacement_route() -> None:
     m = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False)
     before = copy.deepcopy(m)

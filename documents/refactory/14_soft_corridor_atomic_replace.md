@@ -7,6 +7,7 @@
 ## 현재 상태
 
 - P4에 `P4_SOFT_REPLACE_REJECT_NO_REPLACEMENT_ROUTE`, `_try_atomic_replace_soft_corridor` 등 계약·거절 사유가 있다(`reclaim_shadow.py` re-export).
+- **(2026-05-12, PR4-B)** `try_atomic_replace_soft_corridor`: 치환 대상 셀이 읽힌 **hard** 풀과 겹치면 `P4_REJECT_HARD_PROTECTED_CORRIDOR`로 즉시 거절(소프트 풀 부분집합 검사보다 먼저). 테스트: `test_soft_replace_rejects_hard_protected_corridor_map_unchanged`.
 
 ## 목표 상태
 
@@ -25,5 +26,5 @@
 
 ## 참고 코드
 
-- `reclaim/reclaim_soft_replace.py`, `reclaim/reclaim_shadow.py`
+- `routing/protected_corridor_replace.py`, `reclaim/reclaim_soft_replace.py`, `reclaim/reclaim_shadow.py`
 - `foundation/constants.py` (P4 soft replace 상수)

@@ -286,6 +286,9 @@ def _zero_trace_common(*, pass12_skipped: bool) -> dict[str, Any]:
         "step4_total_stub_count": 0,
         "initial_trunk_cells": 0,
         "routes_by_placement_id": {},
+        "step4_search_goal_ordering_applied": False,
+        "step4_search_goal_ordering_mode": "none",
+        "step4_search_diagnostics_samples": [],
     }
     if pass12_skipped:
         trace["skipped"] = True

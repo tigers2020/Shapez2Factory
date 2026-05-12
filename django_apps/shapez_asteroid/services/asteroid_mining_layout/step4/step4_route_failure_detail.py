@@ -11,6 +11,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_routing_permission as _s4_perm,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_search_diagnostics as _s4sd,
+)
 
 _MAX_NEAREST_TRANSPORT_BFS_VISITS = 50_000
 
@@ -166,7 +169,7 @@ def build_step4_route_failure_detail(
 
     ext_goal_ct = len(goal_cells & margin_cells)
 
-    return {
+    out: dict[str, Any] = {
         "placement_id": placement_id,
         "extractor_cell": [int(extractor_cell[0]), int(extractor_cell[1])],
         "stub_cell": [int(stub_cell[0]), int(stub_cell[1])],
@@ -178,8 +181,10 @@ def build_step4_route_failure_detail(
         "existing_trunk_goal_count": len(trunk_cells),
         "external_goal_count": ext_goal_ct,
         "blocked_reason_near_stub": near,
-        "search_mode": "goal_cells_union_legacy",
+        "search_mode": str(search_stats.get("search_mode") or "goal_cells_union_legacy"),
         "expanded_nodes": int(search_stats.get("expanded_nodes", 0)),
         "fallback_reason": None,
         "last_error": last_error,
     }
+    _s4sd.copy_search_diagnostics_to_detail(out, search_stats)
+    return out

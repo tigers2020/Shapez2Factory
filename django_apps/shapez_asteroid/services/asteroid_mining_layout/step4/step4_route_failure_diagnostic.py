@@ -15,6 +15,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
     PlacementCommitRecord,
     PlacementCommitState,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_search_diagnostics as _s4sd,
+)
 
 
 class Step4RouteFailureReason(StrEnum):
@@ -67,6 +70,14 @@ def _stub_neighbors_all_hard_protected(detail: dict[str, Any]) -> bool:
         return False
     reasons = [str(x.get("reason", "")) for x in near if isinstance(x, dict)]
     return bool(reasons) and all(r == "hard_protected" for r in reasons)
+
+
+def is_hard_protected_stub_ring_failure(detail: Mapping[str, Any] | None) -> bool:
+    """True when every stub-adjacent cell is classified ``hard_protected`` (ring / cage class)."""
+
+    if not isinstance(detail, Mapping):
+        return False
+    return _stub_neighbors_all_hard_protected(dict(detail))
 
 
 def _stub_neighbors_geometry_blocked(detail: dict[str, Any]) -> bool:
@@ -264,6 +275,14 @@ def _dominant_breaker_category(by_breaker: Counter[str]) -> str | None:
     return tied[0]
 
 
+def breaker_category_for_no_route_exhausted(
+    diag: Mapping[str, Any], detail: Mapping[str, Any]
+) -> str:
+    """Stable breaker label for ``no_route_exhausted`` rows (local bridge trigger audit)."""
+
+    return _row_breaker_category_no_route_exhausted(dict(diag), dict(detail))
+
+
 def _sorted_histogram(counter: Counter[str]) -> dict[str, int]:
     return dict(sorted(counter.items(), key=lambda kv: (-kv[1], kv[0])))
 
@@ -349,6 +368,94 @@ def build_step4_no_route_exhausted_breakdown(
         },
         "by_breaker_category": _sorted_histogram(by_breaker),
         "dominant_blocker_category": _dominant_breaker_category(by_breaker),
+    }
+
+
+_STEP4_HARD_PROTECTED_NO_ROUTE_EMPTY: dict[str, Any] = {
+    "count": 0,
+    "by_transport_kind": {},
+    "by_placement_pass": {},
+    "same_kind_trunk_beyond_protected": {"true": 0, "false": 0},
+    "hard_protected_neighbors_near_stub": {"min": None, "max": None, "mean": None},
+    "bypass_candidate_total": 0,
+    "soft_replace_candidate_total": 0,
+    "sample_traces": [],
+}
+
+
+def build_step4_hard_protected_no_route_breakdown(
+    failures: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Aggregate ``step4_hard_protected_no_route_trace`` rows (hard stub ring telemetry)."""
+
+    rows: list[tuple[dict[str, Any], Mapping[str, Any]]] = []
+    for row in failures:
+        tr = row.get("step4_hard_protected_no_route_trace")
+        if isinstance(tr, dict) and tr:
+            rows.append((tr, row))
+
+    n = len(rows)
+    if n == 0:
+        return dict(_STEP4_HARD_PROTECTED_NO_ROUTE_EMPTY)
+
+    by_tk: Counter[str] = Counter()
+    by_pass: Counter[str] = Counter()
+    beyond_t = 0
+    beyond_f = 0
+    hard_vals: list[int] = []
+    bypass_sum = 0
+    soft_sum = 0
+    sample_traces: list[dict[str, Any]] = []
+
+    for tr, row in rows:
+        tk = row.get("transport_kind")
+        by_tk[_hist_str_key_scalar(tk if isinstance(tk, str) and tk else None)] += 1
+
+        diag = _extract_step4_failure_diagnostic(row)
+        pp = diag.get("placement_pass") if isinstance(diag, dict) else None
+        if pp is None:
+            by_pass["missing"] += 1
+        else:
+            by_pass[str(pp)] += 1
+
+        if tr.get("same_kind_trunk_beyond_protected") is True:
+            beyond_t += 1
+        else:
+            beyond_f += 1
+
+        hn = tr.get("hard_protected_neighbors_near_stub")
+        if type(hn) is int:
+            hard_vals.append(hn)
+        bypass_sum += int(tr.get("bypass_candidate_count") or 0)
+        soft_sum += int(tr.get("soft_replace_candidate_count") or 0)
+
+        if len(sample_traces) < 6:
+            smp = dict(tr)
+            pid = row.get("extractor_id")
+            if isinstance(diag, dict) and diag.get("placement_id") is not None:
+                pid = diag.get("placement_id")
+            smp["placement_id"] = pid
+            sample_traces.append(smp)
+
+    if hard_vals:
+        mn, mx = min(hard_vals), max(hard_vals)
+        mean_f = round(sum(hard_vals) / len(hard_vals), 4)
+    else:
+        mn = mx = mean_f = None  # type: ignore[assignment]
+
+    return {
+        "count": n,
+        "by_transport_kind": _sorted_histogram(by_tk),
+        "by_placement_pass": _sorted_histogram(by_pass),
+        "same_kind_trunk_beyond_protected": {"true": beyond_t, "false": beyond_f},
+        "hard_protected_neighbors_near_stub": {
+            "min": mn if hard_vals else None,
+            "max": mx if hard_vals else None,
+            "mean": mean_f if hard_vals else None,
+        },
+        "bypass_candidate_total": bypass_sum,
+        "soft_replace_candidate_total": soft_sum,
+        "sample_traces": sample_traces,
     }
 
 
@@ -442,7 +549,7 @@ def build_step4_route_failure_diagnostic(
         st = rec.state
         st_final = st.value if isinstance(st, PlacementCommitState) else str(st)
 
-    return {
+    out: dict[str, Any] = {
         "failure_reason": failure_reason.value,
         "placement_id": placement_id,
         "placement_pass": placement_pass,
@@ -481,6 +588,8 @@ def build_step4_route_failure_diagnostic(
             "route_length_ratio_exceeded": ratio_exceeded,
         },
     }
+    out.update(_s4sd.search_stats_diagnostic_extras(search_stats))
+    return out
 
 
 def build_step4_route_failure_diagnostic_p2c(

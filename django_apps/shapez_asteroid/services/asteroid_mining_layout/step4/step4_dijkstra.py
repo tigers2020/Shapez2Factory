@@ -9,6 +9,9 @@ from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_search_diagnostics as _s4sd,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_permission import (  # noqa: E501
     step4_is_routing_goal,
     step4_step_cost,
@@ -30,6 +33,7 @@ def dijkstra_route_step4(
     goal_cells: frozenset[Coord] | None = None,
     cheap_reuse_cells: frozenset[Coord] | None = None,
     search_stats: dict[str, Any] | None = None,
+    max_heap_pops: int | None = None,
 ) -> tuple[Coord, ...] | None:
     """Shortest path (positive costs) from ``stub_cell``; path[0] == stub_cell.
 
@@ -38,26 +42,36 @@ def dijkstra_route_step4(
 
     If ``search_stats`` is a dict, it is filled on exit: ``expanded_nodes`` (visited count),
     ``heap_pops``, ``stop_reason`` in ``success`` | ``exhausted`` | ``budget``.
+
+    ``max_heap_pops``: optional heap pop cap (defaults to ``_MAX_STEP4_DIJKSTRA_POPS``).
     """
 
     t0 = time.perf_counter()
+    pop_cap = _MAX_STEP4_DIJKSTRA_POPS if max_heap_pops is None else int(max_heap_pops)
     dist: dict[Coord, float] = {stub_cell: 0.0}
     prev: dict[Coord, Coord | None] = {stub_cell: None}
     heap: list[tuple[float, Coord]] = [(0.0, stub_cell)]
     visited: set[Coord] = set()
     pops = 0
+    max_frontier_size = 0
+
+    if search_stats is not None:
+        _s4sd.fill_goal_geometry_search_stats(stub_cell, goal_cells, search_stats)
 
     def _stamp_time() -> None:
         if search_stats is not None:
             search_stats["search_time_ms"] = (time.perf_counter() - t0) * 1000.0
 
     while heap:
+        max_frontier_size = max(max_frontier_size, len(heap))
         pops += 1
-        if pops > _MAX_STEP4_DIJKSTRA_POPS:
+        if pops > pop_cap:
             if search_stats is not None:
                 search_stats["expanded_nodes"] = len(visited)
                 search_stats["heap_pops"] = pops
                 search_stats["stop_reason"] = "budget"
+                search_stats["max_frontier_size"] = max_frontier_size
+                search_stats["frontier_stop_reason"] = search_stats["stop_reason"]
                 _stamp_time()
             return None
         d, u = heapq.heappop(heap)
@@ -86,6 +100,8 @@ def dijkstra_route_step4(
                 search_stats["expanded_nodes"] = len(visited)
                 search_stats["heap_pops"] = pops
                 search_stats["stop_reason"] = "success"
+                search_stats["max_frontier_size"] = max_frontier_size
+                search_stats["frontier_stop_reason"] = search_stats["stop_reason"]
                 _stamp_time()
             return tuple(chain)
 
@@ -109,9 +125,12 @@ def dijkstra_route_step4(
                 dist[v] = nd
                 prev[v] = u
                 heapq.heappush(heap, (nd, v))
+        max_frontier_size = max(max_frontier_size, len(heap))
     if search_stats is not None:
         search_stats["expanded_nodes"] = len(visited)
         search_stats["heap_pops"] = pops
         search_stats["stop_reason"] = "exhausted"
+        search_stats["max_frontier_size"] = max_frontier_size
+        search_stats["frontier_stop_reason"] = search_stats["stop_reason"]
         _stamp_time()
     return None

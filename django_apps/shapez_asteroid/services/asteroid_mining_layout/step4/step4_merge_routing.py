@@ -47,7 +47,16 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_failed_pass2_route_recovery as _s4_p2_rec,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_hard_protected_no_route_diagnostics as _s4_hp_diag,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_local_bridge_recovery as _s4_lb,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_route_failure_detail as _s4_fail_detail,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_search_diagnostics as _s4sd,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4Route,
@@ -87,8 +96,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_p2c
     p2c_revalidate_and_correct as _p2c_revalidate_and_correct,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_route_failure_diagnostic import (  # noqa: E501
+    build_step4_hard_protected_no_route_breakdown,
     build_step4_no_route_exhausted_breakdown,
     build_step4_route_failure_diagnostic,
+    is_hard_protected_stub_ring_failure,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_state import (
     _routing_state_from_committed_routes,
@@ -216,6 +227,14 @@ def run_step4_merge_aware_routing(
     recovery_last_error: str | None = None
     recovery_last_mode: str | None = None
     recovery_variant_eval_sum = 0
+    lb_attempted = 0
+    lb_success = 0
+    lb_rejected = 0
+    lb_failure_reasons: dict[str, int] = {}
+    lb_samples: list[dict[str, Any]] = []
+    search_diag_samples: list[dict[str, Any]] = []
+    search_goal_ordering_applied_any = False
+    search_goal_ordering_mode = "none"
 
     try:
         for ext_cell, stub_cell, tk, placement_id in jobs:
@@ -269,10 +288,21 @@ def run_step4_merge_aware_routing(
                 exterior_margin_cells=margin_cells,
                 trunk_seed_candidates_by_kind=trunk_seed_by_kind,
             )
-            goal_cells = frozenset(raw_goal | set(trunk_cells))
+            goal_cells, goal_order_meta = _s4sd.merge_goal_union_meta(
+                stub_cell,
+                raw_goal=set(raw_goal),
+                trunk_cells=trunk_cells,
+                margin_cells=margin_cells,
+            )
+            if goal_order_meta.get("applied"):
+                search_goal_ordering_applied_any = True
+                search_goal_ordering_mode = str(goal_order_meta.get("mode") or "none")
             goal_set_sizes.append(len(goal_cells))
 
-            search_stats: dict[str, Any] = {"search_mode": "goal_cells_union_legacy"}
+            search_stats: dict[str, Any] = {
+                "search_mode": "goal_cells_union_legacy",
+                "step4_search_goal_priority_head": goal_order_meta.get("priority_head", ()),
+            }
             path = _dijkstra_route(
                 stub_cell,
                 want_role=want_role,
@@ -289,6 +319,10 @@ def run_step4_merge_aware_routing(
             recovery_out = None
             recovery_eval_count = 0
             if path is None:
+                bridge_out = None
+                bridge_attempted_flag = False
+                bridge_reason: str | None = None
+                bridge_meta: dict[str, Any] | None = None
                 detail = _s4_fail_detail.build_step4_route_failure_detail(
                     placement_id=placement_id,
                     extractor_cell=ext_cell,
@@ -314,6 +348,25 @@ def run_step4_merge_aware_routing(
                         "step4.step4_merge_routing",
                         "step4_route_failure_detail",
                         {"step4_route_failure_detail": detail},
+                    )
+                if len(search_diag_samples) < 8:
+                    exn = int(search_stats.get("expanded_nodes") or 0)
+                    search_diag_samples.append(
+                        {
+                            "placement_id": placement_id,
+                            "transport_kind": tk,
+                            "expanded_nodes": exn,
+                            "nearest_goal_distance_estimate": search_stats.get(
+                                "nearest_goal_distance_estimate"
+                            ),
+                            "goal_count_by_distance_bucket": dict(
+                                search_stats.get("goal_count_by_distance_bucket") or {}
+                            ),
+                            "first_goal_candidate": search_stats.get("first_goal_candidate"),
+                            "max_frontier_size": search_stats.get("max_frontier_size"),
+                            "frontier_stop_reason": search_stats.get("frontier_stop_reason"),
+                            "wide_search_exhausted_guess": exn >= 20,
+                        }
                     )
                 recovery_tried_pass2 = False
                 job_recovery_last_mode: str | None = None
@@ -366,10 +419,65 @@ def run_step4_merge_aware_routing(
                             job_recovery_last_err = str(detail.get("last_error") or "no_route")
                             recovery_last_mode = job_recovery_last_mode
                             recovery_last_error = job_recovery_last_err
+                if not recovered and placement_id is not None and placement_id in work_records:
+                    rec_bridge = work_records[placement_id]
+                    if (
+                        rec_bridge.placement_pass == "pass2"
+                        and rec_bridge.state == PlacementCommitState.PROVISIONAL_PLACED
+                    ):
+                        bridge_out, bridge_reason, bridge_attempted_flag, bridge_meta = (
+                            _s4_lb.try_step4_local_bridge_recovery(
+                                ext_cell=ext_cell,
+                                stub_cell=stub_cell,
+                                tk=tk,
+                                rec=rec_bridge,
+                                cells=cells,
+                                mineable=mineable,
+                                asteroid=asteroid,
+                                is_external=is_external,
+                                blocked=blocked,
+                                trunk_cells=trunk_cells,
+                                goal_cells=goal_cells,
+                                raw_goal=set(raw_goal),
+                                margin_cells=margin_cells,
+                                trunk_seed_by_kind=trunk_seed_by_kind,
+                                committed_trunk_by_kind=committed_trunk_by_kind,
+                                cheap_reuse_cells=cheap_reuse_cells,
+                                hard_extras=hard_extras,
+                                detail=detail,
+                                search_stats=search_stats,
+                                want_role=want_role,
+                                committed_trunk_for_kind=set(committed_trunk_by_kind.get(tk, ())),
+                            )
+                        )
+                        if bridge_attempted_flag:
+                            lb_attempted += 1
+                        if bridge_out is not None:
+                            lb_success += 1
+                            recovery_out = bridge_out
+                            path = bridge_out.path
+                            stub_cell = bridge_out.new_stub_cell
+                            recovered = True
+                            job_recovery_last_mode = bridge_out.recovery_search_mode
+                            job_recovery_last_err = None
+                            recovery_last_mode = job_recovery_last_mode
+                            recovery_last_error = job_recovery_last_err
+                            recovery_variant_eval_sum += bridge_out.recovery_variant_eval_count
+                        elif bridge_attempted_flag:
+                            lb_rejected += 1
+                            rk = bridge_reason or "unknown"
+                            lb_failure_reasons[rk] = lb_failure_reasons.get(rk, 0) + 1
+                            if len(lb_samples) < 8 and bridge_meta is not None:
+                                smp = dict(bridge_meta)
+                                smp["placement_id"] = placement_id
+                                lb_samples.append(smp)
                 if recovered and recovery_out is not None:
-                    search_stats = {
-                        "search_mode": f"pass2_recovery:{recovery_out.recovery_search_mode}"
-                    }
+                    if recovery_out.recovery_search_mode.startswith("local_bridge"):
+                        search_stats = {"search_mode": recovery_out.recovery_search_mode}
+                    else:
+                        search_stats = {
+                            "search_mode": f"pass2_recovery:{recovery_out.recovery_search_mode}"
+                        }
                 if not recovered:
                     if placement_id is not None and placement_id in work_records:
                         rec = work_records[placement_id]
@@ -416,6 +524,22 @@ def run_step4_merge_aware_routing(
                             "recovery_last_error": job_recovery_last_err,
                             "recovery_variant_eval_count": recovery_eval_count,
                         }
+                        fd["step4_local_bridge_recovery"] = {
+                            "attempted": bridge_attempted_flag,
+                            "success": False,
+                            "reason": bridge_reason,
+                            "meta": bridge_meta,
+                        }
+                        if is_hard_protected_stub_ring_failure(detail):
+                            fd["step4_hard_protected_no_route_trace"] = (
+                                _s4_hp_diag.build_step4_hard_protected_ring_trace_fields(
+                                    detail=detail,
+                                    stub_cell=stub_cell,
+                                    trunk_cells=trunk_cells,
+                                    hard_extras=hard_extras,
+                                    existing_layout_analysis=existing_layout_analysis,
+                                )
+                            )
                         failures.append(fd)
                     else:
                         unrecoverable = True
@@ -453,6 +577,16 @@ def run_step4_merge_aware_routing(
                                 final_state=None,
                             )
                         )
+                        if is_hard_protected_stub_ring_failure(detail):
+                            fd_unrec["step4_hard_protected_no_route_trace"] = (
+                                _s4_hp_diag.build_step4_hard_protected_ring_trace_fields(
+                                    detail=detail,
+                                    stub_cell=stub_cell,
+                                    trunk_cells=trunk_cells,
+                                    hard_extras=hard_extras,
+                                    existing_layout_analysis=existing_layout_analysis,
+                                )
+                            )
                         failures.append(fd_unrec)
                     continue
 
@@ -536,7 +670,7 @@ def run_step4_merge_aware_routing(
                 cells=cells,
             )
             maximized_extractor_cache[ext_cell] = v
-            return v
+            return bool(v)
 
         for rt in routes_out:
             accumulate_trunk_edge_load(trunk_edge_load_by_kind, rt.transport_kind, rt.path)
@@ -636,9 +770,20 @@ def run_step4_merge_aware_routing(
         "recovery_last_error": recovery_last_error,
         "step4_failed_route_recovery_variant_eval_sum": recovery_variant_eval_sum,
         "routes_by_placement_id": dict(routes_by_placement_id),
+        "step4_local_bridge_recovery_attempted_count": lb_attempted,
+        "step4_local_bridge_recovery_success_count": lb_success,
+        "step4_local_bridge_recovery_rejected_count": lb_rejected,
+        "step4_local_bridge_recovery_failure_reasons": dict(lb_failure_reasons),
+        "step4_local_bridge_recovery_samples": list(lb_samples),
+        "step4_search_goal_ordering_applied": bool(search_goal_ordering_applied_any),
+        "step4_search_goal_ordering_mode": search_goal_ordering_mode,
+        "step4_search_diagnostics_samples": list(search_diag_samples),
     }
     trace_tl["step4_no_route_exhausted_breakdown"] = build_step4_no_route_exhausted_breakdown(
         failures
+    )
+    trace_tl["step4_hard_protected_no_route_breakdown"] = (
+        build_step4_hard_protected_no_route_breakdown(failures)
     )
     trunk_load = build_step4_trunk_load(
         trunk_edge_hits=trunk_edge_hits,

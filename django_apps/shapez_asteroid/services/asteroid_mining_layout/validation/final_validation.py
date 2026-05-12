@@ -1,5 +1,9 @@
 """Final layout validation: geometry + connectivity assertion gate (Stabilization-P0).
 
+Algorithm §15 (STEP9): assertion gate only — this module does **not** create routes, trunks,
+or protected-corridor state, does not read or write ``routing_state``, and does not promote
+ELA trunk seed or candidate corridors to ``hard_protected_corridors``.
+
 Capacity rated limits are **not** hard failures here; trunk accumulation is trace-only elsewhere.
 """
 

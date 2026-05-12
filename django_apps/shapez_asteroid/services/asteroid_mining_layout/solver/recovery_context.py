@@ -2,6 +2,9 @@
 
 Chain segments are append-only stage markers for post–Pass3 orchestration (P4 reclaim,
 soft replace, post-reclaim Pass3). See project step docs §13.
+
+Algorithm §11 / §15: bounded ``validation_recovery`` (Pass3→P4→finalize retry) is separate from
+these P4-orchestration markers and does not re-enter STEP4; see ``recovery_policy`` / timeline loop.
 """
 
 from __future__ import annotations

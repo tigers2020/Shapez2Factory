@@ -420,6 +420,9 @@ msgstr "복사본 해석"
 msgid "Map step"
 msgstr "맵 단계"
 
+msgid "Solver"
+msgstr "솔버"
+
 msgid "Decode step"
 msgstr "해석 단계"
 
@@ -540,6 +543,32 @@ msgid ""
 msgstr ""
 "반사실 기준선 대비 내부 이송 품질 비율이 높습니다(1.35× 초과). 하드 게이트로 쓰기 전에 경로 튜닝을 검토하는 것이 좋습니다."
 
+msgid "STEP4 not committed — Pass3/P4 overlay metrics hidden for this frame."
+msgstr "STEP4 not committed — Pass3/P4 overlay metrics hidden for this frame."
+
+msgid "STEP4 not committed"
+msgstr "STEP4 not committed"
+
+msgid "(not committed)"
+msgstr "(not committed)"
+
+msgid ""
+"Pass3 skipped or not eligible — optimization metrics hidden for this frame."
+msgstr ""
+"Pass3 skipped or not eligible — optimization metrics hidden for this frame."
+
+msgid ""
+"Pass3 skipped — internal transport optimization metrics do not apply to this"
+" run (Pass3/P4 did not commit)."
+msgstr ""
+"Pass3 skipped — internal transport optimization metrics do not apply to this"
+" run (Pass3/P4 did not commit)."
+
+msgid ""
+"Partial validation result — optimization metrics hidden for this frame."
+msgstr ""
+"Partial validation result — optimization metrics hidden for this frame."
+
 msgid "Protected corridor: hard"
 msgstr "보호 코리도: 하드"
 
@@ -551,6 +580,17 @@ msgstr "보호 코리도: 후보"
 
 msgid "Corridors (hard/soft/candidate)"
 msgstr "코리도(하드/소프트/후보)"
+
+msgid "PARTIAL — preserve/routing loss"
+msgstr "PARTIAL — preserve/routing loss"
+
+msgid "Trunk edge load (STEP4 committed routes)"
+msgstr "Trunk edge load (STEP4 committed routes)"
+
+msgid ""
+"Counts traversals on routes STEP4 already painted; not corridor probe tiers."
+msgstr ""
+"Counts traversals on routes STEP4 already painted; not corridor probe tiers."
 
 msgid "Map step playback"
 msgstr "맵 단계 재생"
@@ -1106,9 +1146,6 @@ msgid ""
 "Not affiliated with the official game; fan tooling for planning and "
 "analysis."
 msgstr "공식 작품과 무관한 팬 메이드 도구입니다. 공장 설계와 숫자 계산을 돕습니다."
-
-msgid "Solver"
-msgstr "솔버"
 
 msgid "Pattern Lab"
 msgstr "패턴 랩"

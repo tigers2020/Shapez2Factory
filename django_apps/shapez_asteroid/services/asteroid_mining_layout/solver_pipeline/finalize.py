@@ -1,4 +1,10 @@
-"""Final validation, frame assembly, and summary contract helpers."""
+"""Final validation, frame assembly, and summary contract helpers.
+
+Algorithm §14 / §15: this module assembles STEP9 reports and summaries only. It must not create
+or promote protected corridors (including ``ela_trunk_seed_candidate_corridors`` → hard), and
+must not mutate the semantic ``routing_state`` dict passed in as ``routing_state_summary`` (same
+object is echoed under ``solver_summary[\"routing_state\"]``).
+"""
 
 from __future__ import annotations
 
@@ -402,6 +408,7 @@ def build_final_solver_output(
             context="pre_return_step9",
         )
 
+    # Read-only: counts and overlay derive from upstream STEP4/Reclaim routing_state only.
     hard_pc, soft_pc, pool_pc = _protected_corridor_counts_from_routing_state(routing_state_summary)
     _pc_overlay_brv = protected_corridors_overlay_from_routing_state(routing_state_summary)
     _cand_n = int((_pc_overlay_brv.get("counts") or {}).get("candidate") or 0)
@@ -488,6 +495,7 @@ def build_final_solver_output(
         "total_stub_count": int(step4_result.trunk_load.get("step4_total_stub_count", 0)),
         "route_cell_count": int(step4_result.trunk_load.get("step4_final_route_cell_count", 0)),
         "routing_failures": [dict(x) for x in step4_result.routing_failures],
+        # Same dict reference as upstream STEP4 snapshot (Algorithm §14: no semantic mutation).
         "routing_state": routing_state_summary,
         "step4_route_count": step4_result.trunk_load.get("step4_route_count", 0),
         "step4_routing_failure_count": step4_result.trunk_load.get(

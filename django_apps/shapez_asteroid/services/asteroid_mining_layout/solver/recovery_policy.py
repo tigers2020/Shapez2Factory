@@ -22,6 +22,7 @@ __all__ = [
     "is_total_recovery_cap_bounded",
     "is_validation_recovery_loop_enabled",
     "p4_reclaim_cap_blocks_entry",
+    "step9_reports_hard_invariant_failure_for_bounded_recovery",
     "sync_recovery_total_attempts_used_from_chain",
     "synthesize_recovery_validation_outcome",
     "tag_merge_partial_failure_from_step4",
@@ -204,20 +205,18 @@ def sync_recovery_total_attempts_used_from_chain(pass3_summary: dict[str, Any]) 
         pass3_summary["recovery_total_attempts_used"] = len(chain)
 
 
-def validation_recovery_allowed(pipeline_out: dict[str, Any]) -> bool:
-    """Whether bounded validation recovery may retry Pass3→P4 (degraded Pass3 when enabled).
+def step9_reports_hard_invariant_failure_for_bounded_recovery(
+    final_validation: dict[str, Any] | None,
+) -> bool:
+    """True when STEP9 ``final_validation`` fields indicate a bounded Pass3→P4 retry may apply.
 
-    Capacity is not a STEP9 hard fail; it does not drive this gate (trace / warnings only).
-    Unfinalized placements are not recoverable in this loop.
+    Algorithm §15: validation recovery reacts to STEP9 **hard invariant** signals only.
+    Optimization / quality tiers are carried on ``solver_summary`` and must not flip this
+    predicate alone. Missing-stub geometry is treated as non-recoverable in this loop
+    (degraded Pass3 cannot invent stubs).
     """
 
-    if not is_validation_recovery_loop_enabled():
-        return False
-    if pipeline_out.get("ok"):
-        return False
-    if pipeline_out.get("return_reason") == "validation_unfinalized_placement_failed":
-        return False
-    fv = pipeline_out.get("final_validation") or {}
+    fv = final_validation if isinstance(final_validation, dict) else {}
     connectivity_ok = bool(fv.get("connectivity_valid", True))
     geometry_ok = bool(fv.get("geometry_valid", True))
     overlap = int(fv.get("overlap_violation_count") or 0)
@@ -233,3 +232,22 @@ def validation_recovery_allowed(pipeline_out: dict[str, Any]) -> bool:
     if not geometry_ok:
         return True
     return False
+
+
+def validation_recovery_allowed(pipeline_out: dict[str, Any]) -> bool:
+    """Whether bounded validation recovery may retry Pass3→P4 (degraded Pass3 when enabled).
+
+    Algorithm §11 / §15: the timeline loop does **not** re-enter STEP4; recovery is
+    Pass3→P4→finalize only. Capacity is not a STEP9 hard fail here. Unfinalized placements are not
+    recoverable in this loop. ``ok`` False from partial success with a STEP9-clean report does not
+    enable retry (see :func:`step9_reports_hard_invariant_failure_for_bounded_recovery`).
+    """
+
+    if not is_validation_recovery_loop_enabled():
+        return False
+    if pipeline_out.get("ok"):
+        return False
+    if pipeline_out.get("return_reason") == "validation_unfinalized_placement_failed":
+        return False
+    fv = pipeline_out.get("final_validation") or {}
+    return step9_reports_hard_invariant_failure_for_bounded_recovery(fv)

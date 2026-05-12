@@ -29,8 +29,22 @@ def _p4_bundle_eval(
     p4_min_anchor_distance_to_prior: int | None = None,
     p4_total_diversity_penalty: float = 0.0,
     gain_ratio_adjusted: float | None = None,
+    p4_continuity_bonus: float = 0.0,
+    p4_min_recent_anchor_distance: int | None = None,
+    p4_continuity_band_state: str = "no_recent",
+    p4_continuity_winning_index: int | None = None,
+    p4_continuity_window_size: int = 0,
+    p4_continuity_max_weighted_t: float = 0.0,
+    p4_continuity_mean_t: float = 0.0,
+    p4_final_diversity_score: float | None = None,
+    p4_distance_bucket: str = "none",
 ) -> _P4BundleEval:
     """P4 후보 dict를 정렬 가능한 _P4BundleEval로 변환한다 (§12.2 gain_ratio)."""
+    final_div = (
+        p4_total_diversity_penalty - p4_continuity_bonus
+        if p4_final_diversity_score is None
+        else p4_final_diversity_score
+    )
     return _P4BundleEval(
         gain=gain,
         additional_route_cost=additional_route_cost,
@@ -49,6 +63,15 @@ def _p4_bundle_eval(
         p4_min_anchor_distance_to_prior=p4_min_anchor_distance_to_prior,
         p4_total_diversity_penalty=p4_total_diversity_penalty,
         gain_ratio_adjusted=gain_ratio_adjusted,
+        p4_continuity_bonus=p4_continuity_bonus,
+        p4_min_recent_anchor_distance=p4_min_recent_anchor_distance,
+        p4_continuity_band_state=p4_continuity_band_state,
+        p4_continuity_winning_index=p4_continuity_winning_index,
+        p4_continuity_window_size=p4_continuity_window_size,
+        p4_continuity_max_weighted_t=p4_continuity_max_weighted_t,
+        p4_continuity_mean_t=p4_continuity_mean_t,
+        p4_final_diversity_score=final_div,
+        p4_distance_bucket=p4_distance_bucket,
     )
 
 
@@ -62,7 +85,7 @@ def _p4_accepted_sort_key(e: _P4BundleEval) -> tuple[int | float, ...]:
     return (
         gr_key[0],
         gr_key[1],
-        e.p4_total_diversity_penalty,
+        e.p4_final_diversity_score,
         e.additional_route_cost,
         e.anchor[1],
         e.anchor[0],
@@ -91,7 +114,7 @@ def _p4_selected_candidate_rank(evals: list[_P4BundleEval], selected: _P4BundleE
             and e.rotation == selected.rotation
             and math.isclose(e.gain_ratio, selected.gain_ratio)
             and math.isclose(e.additional_route_cost, selected.additional_route_cost)
-            and math.isclose(e.p4_total_diversity_penalty, selected.p4_total_diversity_penalty)
+            and math.isclose(e.p4_final_diversity_score, selected.p4_final_diversity_score)
         ):
             return i
     return 0

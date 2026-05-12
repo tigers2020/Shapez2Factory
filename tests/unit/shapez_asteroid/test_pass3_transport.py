@@ -10,6 +10,10 @@ import pytest
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL,
+    PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
+    reconstruct_mining_priority_transport,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (
     MAX_ROUTE_LENGTH_RATIO,
@@ -298,6 +302,69 @@ def test_pass3_timeline_frame_includes_before_after_counts_when_eligible() -> No
         assert "p3e2_outlet_count" in s
         assert "p3e2_hard_protected_guard_state" in s
         assert s.get("p3e2_hard_protected_guard_state") == P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL
+
+
+def test_pass3_internal_saved_implied_matches_saved_on_timeline_frame() -> None:
+    from tests.unit.shapez_asteroid.test_pass1_timeline_integration import (
+        _decoded_miners_with_belt_escape,
+    )
+
+    out = build_solver_timeline(_decoded_miners_with_belt_escape())
+    p3f = next(f for f in out["solver_timeline"] if f["id"] == "solver_pass3_transport")
+    s = p3f["summary"]
+    if s.get("pass3_skipped"):
+        pytest.skip("pass3 skipped in fixture")
+    implied = int(s.get("pass3_internal_transport_saved_implied") or 0)
+    saved = int(s.get("pass3_internal_transport_saved") or 0)
+    assert implied == saved
+
+
+def test_pass3_run_emits_exit_transport_count_and_map_hash() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service import (
+        build_solver_timeline,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
+        external_predicate_for_mining_map,
+    )
+    from django_apps.shapez_asteroid.services.blueprint_map_summary import build_map_timeline
+    from tests.unit.shapez_asteroid.test_pass1_timeline_integration import (
+        _decoded_miners_with_belt_escape,
+    )
+
+    decoded = _decoded_miners_with_belt_escape()
+    out = build_solver_timeline(decoded)
+    step4 = next(f for f in out["solver_timeline"] if f["id"] == "solver_step4_routing")
+    map_after_routing = step4["mining_map"]
+    mt = build_map_timeline(decoded)
+    final_map = mt[-1]["mining_map"]
+    is_ext = external_predicate_for_mining_map(mt[1]["mining_map"])
+    _m, _res, trace = run_pass3_transport_minimization_from_maps(
+        map_after_routing,
+        final_mining_map=final_map,
+        is_external=is_ext,
+    )
+    if trace.get("pass3_skipped"):
+        pytest.skip("pass3 skipped in fixture")
+    implied_sv = trace["pass3_internal_transport_saved_implied"]
+    assert implied_sv == trace["pass3_internal_transport_saved"]
+    assert isinstance(trace.get("pass3_exit_mining_map_state_hash"), str)
+    assert isinstance(trace.get("pass3_exit_transport_cell_count"), int)
+
+
+def test_reconstruct_mining_priority_transport_reject_detail_connectivity_spine() -> None:
+    """Single interior belt cell: removal breaks stub→anchor connectivity → detail taxonomy."""
+
+    res = reconstruct_mining_priority_transport(
+        anchor=(3, 0),
+        asteroid_cells=set(),
+        mineable_cells={(1, 0), (2, 0), (3, 0)},
+        buildings={},
+        transport_cells={(1, 0): "belt", (2, 0): "belt", (3, 0): "belt"},
+        outlets_order=[(1, 0)],
+        transport_role="belt",
+    )
+    assert res.committed is False
+    assert res.metrics.get("pass3_greedy_reject_detail") == PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY
 
 
 def test_p3e3_rollback_guarded_transport_cells_copies_role_map() -> None:

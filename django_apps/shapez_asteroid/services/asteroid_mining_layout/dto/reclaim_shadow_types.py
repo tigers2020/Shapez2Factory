@@ -34,6 +34,16 @@ class _P4BundleEval:
     p4_min_anchor_distance_to_prior: int | None = None
     p4_total_diversity_penalty: float = 0.0
     gain_ratio_adjusted: float | None = None
+    # Recent-anchor continuity (sort / trace; gain_ratio threshold stays raw).
+    p4_continuity_bonus: float = 0.0
+    p4_min_recent_anchor_distance: int | None = None
+    p4_continuity_band_state: str = "no_recent"
+    p4_continuity_winning_index: int | None = None
+    p4_continuity_window_size: int = 0
+    p4_continuity_max_weighted_t: float = 0.0
+    p4_continuity_mean_t: float = 0.0
+    p4_final_diversity_score: float = 0.0
+    p4_distance_bucket: str = "none"
 
 
 @dataclass(frozen=True)

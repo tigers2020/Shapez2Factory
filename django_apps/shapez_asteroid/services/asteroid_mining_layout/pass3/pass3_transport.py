@@ -72,6 +72,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_permission import (
     p3e3_guarded_commit_effective_enabled,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_state_hash import (
+    mining_map_state_hash,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     transport_cells_reaching_external,
 )
@@ -386,6 +389,14 @@ def run_pass3_transport_minimization_from_maps(
         "pass3_internal_transport_saved": pass3_internal_transport_saved,
         **result.metrics,
     }
+    _implied = max(0, before_internal_transport_count - after_internal_transport_count)
+    trace["pass3_internal_transport_saved_implied"] = _implied
+    # Greedy reject / rollback: internal counts stay at baseline (``pass3_committed`` False).
+    trace["pass3_internal_count_unchanged"] = (
+        before_internal_transport_count == after_internal_transport_count
+    )
+    trace["pass3_exit_transport_cell_count"] = after_transport_count
+    trace["pass3_exit_mining_map_state_hash"] = mining_map_state_hash(new_map)
     return new_map, result, trace
 
 

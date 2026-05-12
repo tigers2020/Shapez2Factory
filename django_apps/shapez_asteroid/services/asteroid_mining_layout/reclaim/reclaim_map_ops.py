@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import math
+from collections.abc import Callable
 from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
@@ -21,6 +22,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.exte
     rotation_r_for_extension_facing_parent,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.internal_transport_metrics import (  # noqa: E501
+    internal_transport_cell_frozenset,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     layout_kind as _layout_kind,
 )
@@ -122,18 +126,18 @@ def _p4_overlap_reject_reason(
 def _interior_transport_cells(
     mining_map: list[dict[str, Any]],
     *,
-    mineable: frozenset[Coord],
-    asteroid: frozenset[Coord],
+    is_external: Callable[[Coord], bool],
 ) -> frozenset[Coord]:
-    """현재 map에서 asteroid interior transport 셀을 수집한다 (§12 Reclaim loop)."""
+    """Return non-external belt/pipe cells using the canonical internal transport contract."""
+
     cells = cells_dict_from_mining_map(mining_map)
-    out: set[Coord] = set()
-    for c, row in cells.items():
-        if row.get("role") not in ("belt", "pipe"):
-            continue
-        if c in mineable and c in asteroid:
-            out.add(c)
-    return frozenset(out)
+    transport_cells = frozenset(
+        coord for coord, row in cells.items() if row.get("role") in {"belt", "pipe"}
+    )
+    return internal_transport_cell_frozenset(
+        transport_cells,
+        is_external=is_external,
+    )
 
 
 def _all_transport_cells(mining_map: list[dict[str, Any]]) -> frozenset[Coord]:
@@ -161,12 +165,12 @@ def _reclaimed_interior_transport_cells(
     map_before_pass3: list[dict[str, Any]],
     map_after_pass3: list[dict[str, Any]],
     *,
-    mineable: frozenset[Coord],
-    asteroid: frozenset[Coord],
+    is_external: Callable[[Coord], bool],
 ) -> frozenset[Coord]:
     """baseline 대비 회수된 interior transport 셀을 계산한다 (§12.2 gain_ratio)."""
-    before = _interior_transport_cells(map_before_pass3, mineable=mineable, asteroid=asteroid)
-    after = _interior_transport_cells(map_after_pass3, mineable=mineable, asteroid=asteroid)
+
+    before = _interior_transport_cells(map_before_pass3, is_external=is_external)
+    after = _interior_transport_cells(map_after_pass3, is_external=is_external)
     return frozenset(before - after)
 
 

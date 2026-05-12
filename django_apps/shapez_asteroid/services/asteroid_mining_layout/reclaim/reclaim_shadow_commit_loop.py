@@ -11,6 +11,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P4_REJECT_NO_SHADOW_CANDIDATE,
     P4_REJECT_SOFT_PROTECTED_CORRIDOR,
     P4_SOFT_REPLACE_V2_CONTRACT,
+    RECLAIM_CONTINUITY_MULTI_WINDOW_ENABLED,
+    RECLAIM_CONTINUITY_WINDOW,
+    RECLAIM_DIVERSITY_NEAR_RADIUS,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_p4_bundle import (
@@ -31,6 +34,47 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery
 from .reclaim_shadow_commit_trace import p4_reclaim_provisional_commit_neutral_trace
 
 
+def _p4_extractor_coords_across_commits(acc_ex: list[list[int]]) -> list[Coord]:
+    out: list[Coord] = []
+    for cell in acc_ex:
+        if isinstance(cell, (list, tuple)) and len(cell) == 2:
+            xa, ya = cell[0], cell[1]
+            if isinstance(xa, int) and isinstance(ya, int) and xa != 0:
+                out.append((xa, ya))
+    return out
+
+
+def _p4_recent_reclaim_window_newest_first(
+    acc_ex: list[list[int]],
+    *,
+    max_window: int,
+) -> tuple[Coord, ...] | None:
+    coords = _p4_extractor_coords_across_commits(acc_ex)
+    if not coords:
+        return None
+    tail = coords[-max_window:]
+    return tuple(reversed(tail))
+
+
+def _p4_frontier_orbit_streak_consecutive(acc_ex: list[list[int]], *, radius: int) -> int:
+    """Trailing commits whose anchor stays within ``radius`` (Manhattan) of the previous.
+
+    Snapshot **before** the next P4-A scan; emitted as ``p4_reclaim_frontier_orbit_streak_prior``
+    and copied into best-candidate ``p4_diversity.frontier_orbit_score`` for NDJSON diagnostics.
+    """
+    coords = _p4_extractor_coords_across_commits(acc_ex)
+    if len(coords) < 2:
+        return len(coords)
+    streak = 1
+    for j in range(len(coords) - 1, 0, -1):
+        a, b = coords[j], coords[j - 1]
+        if abs(a[0] - b[0]) + abs(a[1] - b[1]) <= radius:
+            streak += 1
+        else:
+            break
+    return streak
+
+
 def run_p4_reclaim_loop_after_pass3(
     map_before_pass3: list[dict[str, Any]],
     map_after_pass3_initial: list[dict[str, Any]],
@@ -43,6 +87,7 @@ def run_p4_reclaim_loop_after_pass3(
     p4_reclaim_incremental_route_commit_enabled: bool = True,
     max_loop_iterations: int = MAX_RECLAIM_ITERATIONS,
     existing_layout_solver_hints: Mapping[str, object] | None = None,
+    p4_baseline_internal_transport_at_reclaim_entry: int | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """§12.6 reclaim loop: rescan after each commit; cumulative internal-transport spend (§12.2).
 
@@ -92,6 +137,20 @@ def run_p4_reclaim_loop_after_pass3(
                         ps.add((xa, ya))
             prior_anchor_cells = frozenset(ps)
 
+        continuity_window = (
+            RECLAIM_CONTINUITY_WINDOW if RECLAIM_CONTINUITY_MULTI_WINDOW_ENABLED else 1
+        )
+        p4_recent_reclaim_anchors = _p4_recent_reclaim_window_newest_first(
+            acc_ex,
+            max_window=continuity_window,
+        )
+        p4_last_reclaim_anchor = p4_recent_reclaim_anchors[0] if p4_recent_reclaim_anchors else None
+
+        orbit_prior = _p4_frontier_orbit_streak_consecutive(
+            acc_ex,
+            radius=RECLAIM_DIVERSITY_NEAR_RADIUS,
+        )
+
         scan = _p4f.reclaim_shadow_scan_core_after_pass3(
             map_before_pass3,
             map_cur,
@@ -103,6 +162,11 @@ def run_p4_reclaim_loop_after_pass3(
             reclaim_internal_transport_spent_prior=spent,
             p4_committed_route_cells_for_zone=frozenset(acc_route_zone) if acc_route_zone else None,
             p4_prior_reclaim_anchors=prior_anchor_cells if prior_anchor_cells else None,
+            p4_last_reclaim_anchor=p4_last_reclaim_anchor,
+            p4_recent_reclaim_anchors=p4_recent_reclaim_anchors,
+            p4_frontier_orbit_streak_prior=orbit_prior,
+            p4_baseline_internal_transport_at_reclaim_entry=p4_baseline_internal_transport_at_reclaim_entry,
+            p4_compare_baseline_internal_to_scan_entry=(i == 0),
         )
         merged.update(scan.trace)
         merged["p4_reclaim_loop_iterations_executed"] = i + 1

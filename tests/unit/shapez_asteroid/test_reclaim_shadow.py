@@ -8,8 +8,12 @@ from unittest.mock import patch
 
 import pytest
 
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim import (
-    reclaim_shadow_scan as _reclaim_shadow_scan_mod,
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    RECLAIM_CONTINUITY_BONUS_MAX,
+    RECLAIM_CONTINUITY_DECAY,
+    RECLAIM_CONTINUITY_IDEAL_DISTANCE,
+    RECLAIM_CONTINUITY_MULTI_WINDOW_ENABLED,
+    RECLAIM_CONTINUITY_WINDOW,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow import (
     DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD,
@@ -50,6 +54,14 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
     select_best_accepted_p4_bundle,
     solver_routing_state_for_p4_reclaim,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow_scan import (  # noqa: E501
+    _p4_bucketed_anchor_lists_for_scan,
+    _p4_min_manhattan_to_priors,
+    _p4_scan_distance_bucket_name,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow_scan_eval import (  # noqa: E501
+    _p4_reclaim_diversity_fields,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_context import (
     RECOVERY_SEGMENT_P4_RECLAIM,
     RECOVERY_SEGMENT_SOFT_REPLACE_V2,
@@ -64,8 +76,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
     FinalValidationReport,
     cells_dict_from_mining_map,
 )
-
-_p4_sort_reclaim_anchor_cells = _reclaim_shadow_scan_mod._p4_sort_reclaim_anchor_cells
 
 
 def _never_external(_c: tuple[int, int]) -> bool:
@@ -144,12 +154,23 @@ def test_mineable_cur_excludes_final_route_hard_soft_committed() -> None:
 
 
 def test_reclaimed_interior_transport_is_before_minus_after() -> None:
-    mineable = frozenset({(8, 4), (10, 2)})
-    asteroid = frozenset({(8, 4), (10, 2), (11, 2)})
     before = _minimal_routed_shape_map(include_orphan_belt_at_8_4=True)
     after = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False)
-    r = _reclaimed_interior_transport_cells(before, after, mineable=mineable, asteroid=asteroid)
+    r = _reclaimed_interior_transport_cells(before, after, is_external=_never_external)
     assert r == frozenset({(8, 4)})
+
+
+def test_reclaimed_interior_transport_excludes_external_belt() -> None:
+    """Belt cells classified external are not interior, so removal does not count as reclaimed."""
+
+    before = _minimal_routed_shape_map(include_orphan_belt_at_8_4=True)
+    after = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False)
+
+    def _external_only_8_4(c: tuple[int, int]) -> bool:
+        return c == (8, 4)
+
+    r = _reclaimed_interior_transport_cells(before, after, is_external=_external_only_8_4)
+    assert r == frozenset()
 
 
 def test_p4_zero_candidates_when_no_interior_reclaim_and_maps_match() -> None:
@@ -166,6 +187,63 @@ def test_p4_zero_candidates_when_no_interior_reclaim_and_maps_match() -> None:
     assert trace["p4_reclaim_accepted_shadow_count"] == 0
     assert trace["p4_reclaim_rejected_shadow_count"] == 0
     assert trace["p4_reclaim_best_candidate"] is None
+    pre = trace.get("p4_reclaim_scan_preconditions")
+    assert isinstance(pre, dict)
+    assert pre["routing_jobs_count"] >= 1
+    assert pre["reclaim_anchor_candidate_count"] == 0
+    assert trace.get("p4_reclaim_entry_mining_map_state_hash") is not None
+
+
+def test_p4_scan_preconditions_no_routing_jobs_includes_zero_routing_count() -> None:
+    base = _base_final_mining_map()
+    trace = run_reclaim_shadow_scan_after_pass3(
+        base,
+        base,
+        final_mining_map=base,
+        is_external=_never_external,
+        pass3_trace={"pass3_internal_transport_saved": 0},
+    )
+    assert trace.get("p4_reclaim_shadow_skip_reason") == "no_routing_jobs"
+    pre = trace["p4_reclaim_scan_preconditions"]
+    assert pre["routing_jobs_count"] == 0
+
+
+def test_reclaim_continuity_multi_window_disabled_uses_single_anchor_tail() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow_commit_loop import (  # noqa: E501
+        _p4_recent_reclaim_window_newest_first,
+    )
+
+    assert RECLAIM_CONTINUITY_MULTI_WINDOW_ENABLED is False
+    assert RECLAIM_CONTINUITY_WINDOW > 1
+    acc = [[10, 2], [11, 2], [12, 2], [13, 2]]
+    w1 = _p4_recent_reclaim_window_newest_first(acc, max_window=1)
+    w_full = _p4_recent_reclaim_window_newest_first(acc, max_window=RECLAIM_CONTINUITY_WINDOW)
+    assert w1 is not None and len(w1) == 1
+    assert w_full is not None and len(w_full) == RECLAIM_CONTINUITY_WINDOW
+
+
+def test_p4_scan_entry_baseline_matches_when_compare_enabled() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_timeline import (  # noqa: E501
+        _internal_transport_count_for_pass3_kind,
+    )
+
+    m = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False)
+    bl = _internal_transport_count_for_pass3_kind(m, is_external=_external_east)
+    if bl is None:
+        pytest.skip("fixture has no single-kind internal transport baseline")
+    r = reclaim_shadow_scan_core_after_pass3(
+        m,
+        m,
+        final_mining_map=_base_final_mining_map(),
+        is_external=_external_east,
+        pass3_trace={"pass3_internal_transport_saved": 100},
+        p4_baseline_internal_transport_at_reclaim_entry=bl,
+        p4_compare_baseline_internal_to_scan_entry=True,
+    )
+    if r.trace.get("p4_reclaim_shadow_skip_reason"):
+        pytest.skip(str(r.trace.get("p4_reclaim_shadow_skip_reason")))
+    assert r.trace.get("p4_reclaim_scan_entry_baseline_mismatch") is False
+    assert r.trace.get("p4_reclaim_internal_transport_at_scan_entry") == bl
 
 
 def test_p4_rejects_stub_in_soft_protected_corridor() -> None:
@@ -415,6 +493,22 @@ def test_p4_scan_finds_accepted_bundle_on_reclaimed_cell_with_savings() -> None:
     assert bc.get("rejected_reason") is None
     assert "p4_diversity" in bc
     assert "cluster_penalty" in bc["p4_diversity"]
+    assert "distance_bucket" in bc["p4_diversity"]
+    assert "continuity_bonus" in bc["p4_diversity"]
+    assert "final_diversity_score" in bc["p4_diversity"]
+    assert "continuity_band_state" in bc["p4_diversity"]
+    assert "continuity_winning_index" in bc["p4_diversity"]
+    assert "continuity_window_size" in bc["p4_diversity"]
+    assert "frontier_orbit_score" in bc["p4_diversity"]
+    assert bc["p4_diversity"]["frontier_orbit_score"] == 0
+    assert trace.get("p4_reclaim_frontier_orbit_streak_prior") == 0
+    slot_order = trace["p4_reclaim_scan_slot_order"]
+    assert len(slot_order) == trace["p4_reclaim_candidate_count"]
+    assert slot_order[0]["slot_index"] == 0
+    assert "rr_bucket_cycle" in slot_order[0]
+    assert "distance_bucket" in slot_order[0]
+    for row in slot_order:
+        assert row["distance_bucket"] == "all"
 
 
 def test_p4_scan_zero_accepted_when_spent_prior_exhausts_internal_budget() -> None:
@@ -2297,18 +2391,174 @@ def test_select_best_accepted_deterministic_tie_break() -> None:
     assert best.anchor == (10, 4)
 
 
-def test_p4_sort_reclaim_anchor_cells_prefers_far_from_priors() -> None:
-    cells = {(1, 1), (100, 100), (5, 5)}
-    priors = frozenset({(1, 1)})
-    ordered = _p4_sort_reclaim_anchor_cells(cells, priors)
-    assert ordered[0] == (100, 100)
-    assert ordered[-1] == (1, 1)
+def test_p4_scan_distance_bucket_near_mid_far() -> None:
+    priors = frozenset({(10, 1)})
+    d11 = _p4_min_manhattan_to_priors((11, 1), priors)
+    d25 = _p4_min_manhattan_to_priors((25, 1), priors)
+    d50 = _p4_min_manhattan_to_priors((50, 1), priors)
+    assert _p4_scan_distance_bucket_name(d11, has_priors=True) == "near"
+    assert _p4_scan_distance_bucket_name(d25, has_priors=True) == "mid"
+    assert _p4_scan_distance_bucket_name(d50, has_priors=True) == "far"
 
 
-def test_p4_sort_reclaim_anchor_cells_no_priors_matches_legacy_yx() -> None:
+def test_p4_bucketed_anchor_lists_sorted_yx_within_each_bucket() -> None:
+    reclaim = {(11, 2), (11, 0), (50, 1), (25, 1)}
+    priors = frozenset({(10, 1)})
+    bm, order = _p4_bucketed_anchor_lists_for_scan(reclaim, priors)
+    assert order == ("near", "mid", "far")
+    assert bm["near"] == [(11, 0), (11, 2)]
+    assert bm["mid"] == [(25, 1)]
+    assert bm["far"] == [(50, 1)]
+
+
+def test_p4_bucketed_anchor_lists_no_priors_single_all_stream() -> None:
     cells = {(3, 1), (2, 2), (2, 0)}
-    ordered = _p4_sort_reclaim_anchor_cells(cells, frozenset())
-    assert ordered == sorted(cells, key=lambda p: (p[1], p[0]))
+    bm, order = _p4_bucketed_anchor_lists_for_scan(cells, frozenset())
+    assert order == ("all",)
+    assert bm["all"] == sorted(cells, key=lambda p: (p[1], p[0]))
+
+
+def test_p4_reclaim_diversity_triangular_continuity_peak_at_ideal() -> None:
+    recent = (10, 1)
+    anchor = (10 + RECLAIM_CONTINUITY_IDEAL_DISTANCE, 1)
+    r = _p4_reclaim_diversity_fields(
+        anchor,
+        2.0,
+        prior_reclaim_anchors=frozenset({recent}),
+        route_zone_cells_for_overlap=frozenset(),
+        shadow_route_path=(),
+        recent_reclaim_anchors=(recent,),
+        scan_distance_bucket="mid",
+    )
+    assert r["p4_continuity_band_state"] == "peak"
+    assert abs(r["p4_continuity_bonus"] - RECLAIM_CONTINUITY_BONUS_MAX) < 1e-9
+    assert r["p4_min_recent_anchor_distance"] == RECLAIM_CONTINUITY_IDEAL_DISTANCE
+    assert r["p4_continuity_winning_index"] == 0
+    assert r["p4_continuity_window_size"] == 1
+    assert r["p4_continuity_max_weighted_t"] == pytest.approx(1.0)
+
+
+def test_p4_reclaim_diversity_continuity_out_of_band_zero_bonus() -> None:
+    recent = (10, 1)
+    anchor = (50, 1)
+    r = _p4_reclaim_diversity_fields(
+        anchor,
+        2.0,
+        prior_reclaim_anchors=frozenset({recent}),
+        route_zone_cells_for_overlap=frozenset(),
+        shadow_route_path=(),
+        recent_reclaim_anchors=(recent,),
+        scan_distance_bucket="far",
+    )
+    assert r["p4_continuity_band_state"] == "out_of_band"
+    assert r["p4_continuity_bonus"] == 0.0
+    assert r["p4_continuity_winning_index"] == 0
+    assert r["p4_continuity_window_size"] == 1
+
+
+def test_p4_reclaim_diversity_window_older_anchor_can_win_under_decay() -> None:
+    recent = ((10, 1), (23, 1))
+    anchor = (36, 1)
+    r = _p4_reclaim_diversity_fields(
+        anchor,
+        2.0,
+        prior_reclaim_anchors=frozenset(recent),
+        route_zone_cells_for_overlap=frozenset(),
+        shadow_route_path=(),
+        recent_reclaim_anchors=recent,
+        scan_distance_bucket="mid",
+    )
+    assert r["p4_continuity_winning_index"] == 1
+    assert r["p4_continuity_window_size"] == 2
+    exp_bonus = RECLAIM_CONTINUITY_BONUS_MAX * RECLAIM_CONTINUITY_DECAY
+    assert r["p4_continuity_bonus"] == pytest.approx(exp_bonus)
+
+
+def test_p4_reclaim_diversity_decay_lowers_bonus_when_old_frontier_wins_max() -> None:
+    anchor = (36, 1)
+    base = dict(
+        gain_ratio=2.0,
+        prior_reclaim_anchors=frozenset({(10, 1), (23, 1)}),
+        route_zone_cells_for_overlap=frozenset(),
+        shadow_route_path=(),
+        scan_distance_bucket="mid",
+    )
+    r_only_prior_peak = _p4_reclaim_diversity_fields(
+        anchor,
+        **base,
+        recent_reclaim_anchors=((23, 1),),
+    )
+    r_window = _p4_reclaim_diversity_fields(
+        anchor,
+        **base,
+        recent_reclaim_anchors=((10, 1), (23, 1)),
+    )
+    assert r_window["p4_continuity_winning_index"] == 1
+    assert r_only_prior_peak["p4_continuity_bonus"] == pytest.approx(RECLAIM_CONTINUITY_BONUS_MAX)
+    exp_decayed = RECLAIM_CONTINUITY_BONUS_MAX * RECLAIM_CONTINUITY_DECAY
+    assert r_window["p4_continuity_bonus"] == pytest.approx(exp_decayed)
+    assert r_only_prior_peak["p4_continuity_bonus"] > r_window["p4_continuity_bonus"]
+
+
+def test_p4_recent_reclaim_window_newest_first() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+        RECLAIM_CONTINUITY_WINDOW,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim import (
+        reclaim_shadow_commit_loop as _loop,
+    )
+
+    acc = [[1, 1], [2, 1], [3, 1]]
+    w = _loop._p4_recent_reclaim_window_newest_first(acc, max_window=RECLAIM_CONTINUITY_WINDOW)
+    assert w == ((3, 1), (2, 1), (1, 1))
+
+
+def test_p4_frontier_orbit_streak_counts_trailing_near_previous() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+        RECLAIM_DIVERSITY_NEAR_RADIUS,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim import (
+        reclaim_shadow_commit_loop as _loop,
+    )
+
+    acc = [[10, 1], [11, 1], [12, 1]]
+    r_rad = RECLAIM_DIVERSITY_NEAR_RADIUS
+    assert _loop._p4_frontier_orbit_streak_consecutive(acc, radius=r_rad) == 3
+    acc_break = [[10, 1], [50, 1], [51, 1]]
+    assert _loop._p4_frontier_orbit_streak_consecutive(acc_break, radius=r_rad) == 2
+    a = _p4_bundle_eval(
+        gain=2.0,
+        additional_route_cost=1.0,
+        gain_ratio=2.0,
+        incremental_internal_transport_added=1,
+        rejected_reason=None,
+        accepted_shadow=True,
+        anchor=(10, 4),
+        extension=(10, 3),
+        rotation=0,
+        p4_total_diversity_penalty=1.0,
+        p4_cluster_penalty=1.0,
+        p4_continuity_bonus=0.0,
+    )
+    b = _p4_bundle_eval(
+        gain=2.0,
+        additional_route_cost=1.0,
+        gain_ratio=2.0,
+        incremental_internal_transport_added=1,
+        rejected_reason=None,
+        accepted_shadow=True,
+        anchor=(10, 5),
+        extension=(10, 6),
+        rotation=0,
+        p4_total_diversity_penalty=1.0,
+        p4_cluster_penalty=1.0,
+        p4_continuity_bonus=0.5,
+    )
+    assert a.p4_final_diversity_score == 1.0
+    assert b.p4_final_diversity_score == 0.5
+    best = select_best_accepted_p4_bundle([a, b])
+    assert best is not None
+    assert best.anchor == (10, 5)
 
 
 def test_select_best_accepted_prefers_lower_diversity_penalty_at_same_gain() -> None:

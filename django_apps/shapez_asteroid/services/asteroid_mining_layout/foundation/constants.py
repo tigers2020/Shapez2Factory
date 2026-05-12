@@ -102,11 +102,31 @@ MAX_RECLAIM_SHADOW_SCAN_LIMIT = 16
 # At d=0 one prior: contribution = R * K_FALL = RECLAIM_DIVERSITY_CLUSTER_MAX_PRIOR_PENALTY.
 RECLAIM_DIVERSITY_CLUSTER_RADIUS = 12
 RECLAIM_DIVERSITY_CLUSTER_MAX_PRIOR_PENALTY = 0.08
-RECLAIM_DIVERSITY_CLUSTER_FALLOFF_K = (
-    RECLAIM_DIVERSITY_CLUSTER_MAX_PRIOR_PENALTY / float(RECLAIM_DIVERSITY_CLUSTER_RADIUS)
+RECLAIM_DIVERSITY_CLUSTER_FALLOFF_K = RECLAIM_DIVERSITY_CLUSTER_MAX_PRIOR_PENALTY / float(
+    RECLAIM_DIVERSITY_CLUSTER_RADIUS
 )
 # Shadow stub path cells already committed as incremental route (weak vs cluster penalty).
 RECLAIM_ROUTE_ZONE_OVERLAP_PENALTY = 0.015
+
+# P4 shadow scan: prior-anchor distance buckets (Manhattan to nearest prior; scan order only).
+RECLAIM_DIVERSITY_NEAR_RADIUS = 8
+RECLAIM_DIVERSITY_MID_RADIUS = 18
+# Continuity vs recent committed reclaim anchors (triangular bonus; sort key / trace only).
+# Window: newest-first tuple; per-anchor weight w_i = RECLAIM_CONTINUITY_DECAY ** i; bonus scale
+# uses max_i(w_i * t_i) vs triangular t_i in [0, 1].
+RECLAIM_CONTINUITY_IDEAL_DISTANCE = 13
+RECLAIM_CONTINUITY_IDEAL_HALF_WIDTH = 6
+RECLAIM_CONTINUITY_BONUS_MAX = 0.03
+RECLAIM_CONTINUITY_WINDOW = 4
+RECLAIM_CONTINUITY_DECAY = 0.65
+# Multi-anchor continuity (P4 tie-break). Default off until Pass3–P4 handoff / candidate gen stable.
+RECLAIM_CONTINUITY_MULTI_WINDOW_ENABLED = False
+
+# Pass3 greedy: ``pass3_greedy_reject_detail`` (``rejected_by_gain_or_length`` 세분화).
+PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA = "rejected_by_no_internal_delta"
+PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY = "rejected_by_connectivity"
+PASS3_GREEDY_REJECT_DETAIL_ZERO_GAIN = "rejected_by_zero_gain"
+PASS3_GREEDY_REJECT_DETAIL_ROUTE_LENGTH_RATIO = "rejected_by_route_length_ratio"
 
 P4_REJECT_FINAL_ROUTE_OVERLAP = "rejected_by_final_route_overlap"
 P4_REJECT_HARD_PROTECTED_CORRIDOR = "rejected_by_hard_protected_corridor"

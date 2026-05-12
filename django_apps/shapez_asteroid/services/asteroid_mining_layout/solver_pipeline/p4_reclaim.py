@@ -58,6 +58,18 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_con
     Step4RoutingResult,
 )
 
+_PASS3_PRIMARY_METRICS_KEYS: frozenset[str] = frozenset(
+    {
+        "pass3_internal_transport_saved",
+        "pass3_internal_transport_saved_implied",
+        "pass3_internal_count_unchanged",
+        "before_internal_transport_count",
+        "after_internal_transport_count",
+        "pass3_exit_transport_cell_count",
+        "pass3_exit_mining_map_state_hash",
+    }
+)
+
 
 @dataclass(frozen=True)
 class P4ReclaimStageResult:
@@ -109,6 +121,12 @@ def run_p4_reclaim_stage(
                 is_external=is_external,
             )
         )
+        baseline_raw = pass3_summary.get("baseline_internal_transport_at_reclaim_entry")
+        p4_baseline_for_scan = (
+            int(baseline_raw)
+            if isinstance(baseline_raw, int) and not isinstance(baseline_raw, bool)
+            else None
+        )
         solver_rt = p4_shadow.solver_routing_state_for_p4_reclaim(step4_result)
         existing_layout_solver_hints: dict[str, Any] | None = None
         if isinstance(existing_layout_analysis, dict):
@@ -138,6 +156,7 @@ def run_p4_reclaim_stage(
                 solver_routing_state=solver_rt,
                 is_external=is_external,
                 existing_layout_solver_hints=existing_layout_solver_hints,
+                p4_baseline_internal_transport_at_reclaim_entry=p4_baseline_for_scan,
             )
         except BaseException:
             replay_events.append(
@@ -185,7 +204,9 @@ def run_p4_reclaim_stage(
                             "payload": cr_pl,
                         }
                     )
-    pass3_summary.update(p4_trace)
+    pass3_summary.update(
+        {k: v for k, v in p4_trace.items() if k not in _PASS3_PRIMARY_METRICS_KEYS},
+    )
     p3_sv = int(pass3_summary.get("pass3_internal_transport_saved") or 0)
     p4_cum = int(pass3_summary.get("p4_reclaim_loop_internal_transport_cumulative_added") or 0)
     pass3_summary["pass3_reclaim_projected_net_internal_saved"] = p3_sv - p4_cum

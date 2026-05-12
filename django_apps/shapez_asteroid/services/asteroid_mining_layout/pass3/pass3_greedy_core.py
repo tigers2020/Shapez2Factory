@@ -12,6 +12,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.boun
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     INF_COST,
+    PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
+    PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA,
+    PASS3_GREEDY_REJECT_DETAIL_ZERO_GAIN,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_contracts import (
@@ -150,10 +153,11 @@ def _try_remove_one_transport_cell(
     outlets_order: list[Coord],
     anchor: Coord,
     skip_victim_cells: frozenset[Coord] | None = None,
-) -> tuple[dict[Coord, str], int]:
+) -> tuple[dict[Coord, str], int, str | None]:
     """transport 셀 하나를 제거해 stub connectivity가 유지되는지 시험한다.
 
     §11 Pass3 compression 맥락이다.
+    세 번째 반환값: 제거 실패 시 ``pass3_greedy_reject_detail`` 후보(성공 시 ``None``).
     """
     before = len(
         _interior_transport_candidates(
@@ -176,9 +180,13 @@ def _try_remove_one_transport_cell(
             -(abs(c[0] - anchor[0]) + abs(c[1] - anchor[1])),
         ),
     )
+    if not cands:
+        return tc, 0, PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA
+    any_unskipped_attempt = False
     for victim in cands:
         if skip_victim_cells and victim in skip_victim_cells:
             continue
+        any_unskipped_attempt = True
         trial = {k: v for k, v in tc.items() if k != victim}
         if transport_connects_outlets_to_anchor(
             trial,
@@ -189,6 +197,10 @@ def _try_remove_one_transport_cell(
         ):
             tc = trial
             break
+    else:
+        if not any_unskipped_attempt:
+            return tc, 0, PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA
+        return tc, 0, PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY
     after = len(
         _interior_transport_candidates(
             tc,
@@ -197,7 +209,7 @@ def _try_remove_one_transport_cell(
             anchor=anchor,
         )
     )
-    return tc, max(0, before - after)
+    return tc, max(0, before - after), None
 
 
 def _compress_transport_greedy(
@@ -208,12 +220,13 @@ def _compress_transport_greedy(
     outlets_order: list[Coord],
     anchor: Coord,
     skip_victim_cells: frozenset[Coord] | None = None,
-) -> tuple[dict[Coord, str], int]:
+) -> tuple[dict[Coord, str], int, str]:
     """고정 output stub을 보존하며 불필요한 transport를 greedy로 제거한다 (§11 Pass3 transport)."""
     tc = dict(transport_cells)
     gain_total = 0
+    last_fail_detail = PASS3_GREEDY_REJECT_DETAIL_ZERO_GAIN
     while True:
-        tc_next, gain = _try_remove_one_transport_cell(
+        tc_next, gain, fail_detail = _try_remove_one_transport_cell(
             tc,
             mineable_cells=mineable_cells,
             asteroid_cells=asteroid_cells,
@@ -222,10 +235,12 @@ def _compress_transport_greedy(
             skip_victim_cells=skip_victim_cells,
         )
         if gain == 0:
+            if fail_detail is not None:
+                last_fail_detail = fail_detail
             break
         tc = tc_next
         gain_total += gain
-    return tc, gain_total
+    return tc, gain_total, last_fail_detail
 
 
 def reconstruct_mining_priority_transport(
@@ -251,7 +266,7 @@ def reconstruct_mining_priority_transport(
         if skip_victims:
             metrics_base["pass3_recovery_skip_high_sharing_cell_count"] = len(skip_victims)
 
-    new_cells, gain_total = _compress_transport_greedy(
+    new_cells, gain_total, greedy_reject_detail = _compress_transport_greedy(
         transport_cells,
         mineable_cells=mineable_cells,
         asteroid_cells=asteroid_cells,
@@ -271,13 +286,23 @@ def reconstruct_mining_priority_transport(
         return Pass3TransportResult(
             True,
             dict(transport_cells),
-            {**metrics_base, "commit_reason": "degraded_connected_recovery", "gain": 0},
+            {
+                **metrics_base,
+                "commit_reason": "degraded_connected_recovery",
+                "gain": 0,
+                "pass3_greedy_reject_detail": greedy_reject_detail,
+            },
         )
 
     return Pass3TransportResult(
         False,
         dict(transport_cells),
-        {**metrics_base, "rejected_reason": "rejected_by_gain_or_length", "gain": 0},
+        {
+            **metrics_base,
+            "rejected_reason": "rejected_by_gain_or_length",
+            "gain": 0,
+            "pass3_greedy_reject_detail": greedy_reject_detail,
+        },
     )
 
 

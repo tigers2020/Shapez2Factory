@@ -21,6 +21,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P4_REJECT_NO_OUTPUT_STUB,
     P4_REJECT_SOFT_PROTECTED_CORRIDOR,
     P4_REJECT_VALIDATION,
+    RECLAIM_CONTINUITY_BONUS_MAX,
+    RECLAIM_CONTINUITY_DECAY,
+    RECLAIM_CONTINUITY_IDEAL_DISTANCE,
+    RECLAIM_CONTINUITY_IDEAL_HALF_WIDTH,
     RECLAIM_DIVERSITY_CLUSTER_FALLOFF_K,
     RECLAIM_DIVERSITY_CLUSTER_RADIUS,
     RECLAIM_ROUTE_ZONE_OVERLAP_PENALTY,
@@ -68,8 +72,14 @@ def _p4_reclaim_diversity_fields(
     prior_reclaim_anchors: frozenset[Coord] | None,
     route_zone_cells_for_overlap: frozenset[Coord] | None,
     shadow_route_path: tuple[Coord, ...],
+    recent_reclaim_anchors: tuple[Coord, ...] | None,
+    scan_distance_bucket: str,
 ) -> dict[str, Any]:
-    """Anchor falloff vs prior commits + weak overlap with committed incremental route zone."""
+    """Anchor falloff vs prior commits + route zone overlap.
+
+    Triangular continuity: ``t_i`` vs each recent reclaim anchor; weight ``w_i = decay**i``
+    (newest ``i == 0``); bonus ``RECLAIM_CONTINUITY_BONUS_MAX * max_i(w_i * t_i)``.
+    """
     priors = prior_reclaim_anchors or frozenset()
     min_d: int | None = None
     local_density = 0.0
@@ -84,6 +94,52 @@ def _p4_reclaim_diversity_fields(
     overlap_cells = sum(1 for c in shadow_route_path if c in rz)
     route_zone_penalty = float(overlap_cells) * RECLAIM_ROUTE_ZONE_OVERLAP_PENALTY
     total = cluster_penalty + route_zone_penalty
+
+    recent = recent_reclaim_anchors or ()
+    window_size = len(recent)
+    d_recent: int | None = None
+    continuity_bonus = 0.0
+    band_state = "no_recent"
+    winning_index: int | None = None
+    max_weighted_t = 0.0
+    mean_t = 0.0
+    if recent:
+        ideal = float(RECLAIM_CONTINUITY_IDEAL_DISTANCE)
+        width = float(RECLAIM_CONTINUITY_IDEAL_HALF_WIDTH)
+        ts: list[float] = []
+        ds: list[int] = []
+        best_i = 0
+        best_wt = -1.0
+        for i, ra in enumerate(recent):
+            d_i = abs(anchor[0] - ra[0]) + abs(anchor[1] - ra[1])
+            ds.append(d_i)
+            if width > 0.0:
+                t_i = max(0.0, 1.0 - abs(float(d_i) - ideal) / width)
+            else:
+                t_i = 0.0
+            ts.append(t_i)
+            wt = (RECLAIM_CONTINUITY_DECAY**i) * t_i
+            if wt > best_wt + 1e-15 or (abs(wt - best_wt) <= 1e-15 and i < best_i):
+                best_wt = wt
+                best_i = i
+        winning_index = best_i
+        max_weighted_t = max(0.0, best_wt)
+        mean_t = sum(ts) / float(len(ts)) if ts else 0.0
+        winner_t = ts[best_i]
+        d_recent = ds[best_i]
+        if max_weighted_t <= 0.0:
+            continuity_bonus = 0.0
+            band_state = "out_of_band"
+        else:
+            continuity_bonus = RECLAIM_CONTINUITY_BONUS_MAX * max_weighted_t
+            if winner_t >= 1.0 - 1e-15:
+                band_state = "peak"
+            elif winner_t <= 0.0:
+                band_state = "out_of_band"
+            else:
+                band_state = "shoulder"
+
+    final_diversity = total - continuity_bonus
     if math.isinf(gain_ratio):
         gr_adj: float | None = None
     else:
@@ -96,6 +152,15 @@ def _p4_reclaim_diversity_fields(
         "p4_min_anchor_distance_to_prior": min_d,
         "p4_total_diversity_penalty": total,
         "gain_ratio_adjusted": gr_adj,
+        "p4_continuity_bonus": continuity_bonus,
+        "p4_min_recent_anchor_distance": d_recent,
+        "p4_continuity_band_state": band_state,
+        "p4_continuity_winning_index": winning_index,
+        "p4_continuity_window_size": window_size,
+        "p4_continuity_max_weighted_t": max_weighted_t,
+        "p4_continuity_mean_t": mean_t,
+        "p4_final_diversity_score": final_diversity,
+        "p4_distance_bucket": scan_distance_bucket,
     }
 
 
@@ -156,6 +221,8 @@ def _evaluate_one_shadow_bundle(
     shared: _P4ShadowScanShared | None = None,
     prior_reclaim_anchors: frozenset[Coord] | None = None,
     route_zone_cells_for_overlap: frozenset[Coord] | None = None,
+    recent_reclaim_anchors: tuple[Coord, ...] | None = None,
+    scan_distance_bucket: str = "none",
 ) -> _P4BundleEval:
     """P4 shadow bundle 하나의 gain_ratio와 budget 적합성을 평가한다 (§12.2 Reclaim loop)."""
     if anchor not in mineable_cur or extension not in mineable_cur:
@@ -305,6 +372,8 @@ def _evaluate_one_shadow_bundle(
             prior_reclaim_anchors=prior_reclaim_anchors,
             route_zone_cells_for_overlap=route_zone_cells_for_overlap,
             shadow_route_path=route_path,
+            recent_reclaim_anchors=recent_reclaim_anchors,
+            scan_distance_bucket=scan_distance_bucket,
         )
         return _p4_bundle_eval(
             gain=gain_slots,
@@ -338,6 +407,8 @@ def _evaluate_one_shadow_bundle(
         prior_reclaim_anchors=prior_reclaim_anchors,
         route_zone_cells_for_overlap=route_zone_cells_for_overlap,
         shadow_route_path=route_path,
+        recent_reclaim_anchors=recent_reclaim_anchors,
+        scan_distance_bucket=scan_distance_bucket,
     )
 
     if not (math.isinf(gain_ratio) or gain_ratio >= gain_ratio_threshold):

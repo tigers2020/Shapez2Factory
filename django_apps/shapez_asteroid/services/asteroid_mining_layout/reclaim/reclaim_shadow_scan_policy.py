@@ -55,25 +55,29 @@ def reclaim_shadow_scan_result_no_routing_jobs(
     zone_route_rebuilt: bool,
     mineable_excluded_by_route_cells: int,
     corridor_trace: dict[str, Any],
+    extra_trace: dict[str, Any] | None = None,
 ) -> ReclaimShadowScanResult:
     """Pass3 map has no routing jobs after corridor context is known."""
 
+    trace: dict[str, Any] = {
+        "p4_reclaim_shadow_enabled": True,
+        "p4_reclaim_shadow_skip_reason": "no_routing_jobs",
+        "p4_reclaim_shadow_scan_limit": MAX_RECLAIM_SHADOW_SCAN_LIMIT,
+        **_p4_reclaim_shadow_scan_empty_route_trace_fields(),
+        "p4_reclaim_route_zone_rebuilt": zone_route_rebuilt,
+        "p4_reclaim_mineable_excluded_by_route_cells": mineable_excluded_by_route_cells,
+        "p4_reclaim_candidate_count": 0,
+        "p4_reclaim_accepted_shadow_count": 0,
+        "p4_reclaim_rejected_shadow_count": 0,
+        "p4_reclaim_internal_transport_budget": _allowed_internal_transport_budget(0),
+        "p4_reclaim_internal_transport_projected_added": 0,
+        "p4_reclaim_best_candidate": None,
+        **corridor_trace,
+    }
+    if extra_trace:
+        trace.update(extra_trace)
     return ReclaimShadowScanResult(
-        trace={
-            "p4_reclaim_shadow_enabled": True,
-            "p4_reclaim_shadow_skip_reason": "no_routing_jobs",
-            "p4_reclaim_shadow_scan_limit": MAX_RECLAIM_SHADOW_SCAN_LIMIT,
-            **_p4_reclaim_shadow_scan_empty_route_trace_fields(),
-            "p4_reclaim_route_zone_rebuilt": zone_route_rebuilt,
-            "p4_reclaim_mineable_excluded_by_route_cells": mineable_excluded_by_route_cells,
-            "p4_reclaim_candidate_count": 0,
-            "p4_reclaim_accepted_shadow_count": 0,
-            "p4_reclaim_rejected_shadow_count": 0,
-            "p4_reclaim_internal_transport_budget": _allowed_internal_transport_budget(0),
-            "p4_reclaim_internal_transport_projected_added": 0,
-            "p4_reclaim_best_candidate": None,
-            **corridor_trace,
-        },
+        trace=trace,
         evals=[],
         transport_kind=None,
     )

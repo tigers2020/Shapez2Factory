@@ -1,6 +1,6 @@
 # Algorithm deviation deletion audit
 
-**갱신:** 2026-05-12 (Stage 1 감사 + D2-B2-DEL 오케스트레이터 반영)  
+**갱신:** 2026-05-12 (Stage 1 감사 + D2-B2-DEL + **D2-C 정책 잔재 삭제**)  
 **성격:** 삭제·치환 **전** 감사 스냅샷이며, D2-B2-DEL 등 코드 PR 시 **본 문서 표·큐를 동기**한다.  
 **1차 권위:** `documents/Algorithm/mining_solver_cursor_sessions/` (`01_project_overview.md` … `14_step10_replay_ui.md`). 인덱스: [`01_canonical_doc_paths.md`](./01_canonical_doc_paths.md), [`../Algorithm/mining_solver_cursor_sessions/README.md`](../Algorithm/mining_solver_cursor_sessions/README.md).  
 **2차(참고):** [`02_pipeline_recovery_control_flow.md`](./02_pipeline_recovery_control_flow.md), [`04_protected_corridor_lifecycle.md`](./04_protected_corridor_lifecycle.md), [`15_final_validation_assertion_only.md`](./15_final_validation_assertion_only.md) 등 — **Conflict·Action·Reason은 정본 문장과의 대조로만** 적는다. “B-class” 같은 refactory 전용 라벨과, **이전 감사의 ‘소스 점검 대기’ 토큰**은 쓰지 않는다.
@@ -9,12 +9,12 @@
 
 ## Top-level summary (Action 건수)
 
-아래는 본 문서 **두 표**(메인 매트릭스 + §4.3 트리거 표)의 **Action 열 합계**다(메인 22행 + 트리거 6행).
+아래는 본 문서 **두 표**(메인 매트릭스 + §4.3 트리거 표)의 **Action 열 합계**다(메인 22행 + 트리거 **5**행).
 
 | Action | 건수 |
 |--------|-----:|
-| **DELETE** | 0 |
-| **REPLACE** | 4 |
+| **DELETE** | 1 |
+| **REPLACE** | 3 |
 | **ISOLATE** | 4 |
 | **KEEP** | 15 |
 | **NEEDS_DECISION** | 5 |
@@ -72,10 +72,19 @@
 |---------|-----------------------------------|----------------|--------|
 | `step4_routing_failure` | `02_pipeline_control_flow.md` **§4.3** 표: STEP 4 route 실패 → 재시도·rollback·alternate trunk | 오케스트레이터: 정책 조회 + (정책 허용 시) STEP4 **최대 1회 추가**·snapshot 갱신; **검증-only 추가 사이클 차단**. alternate trunk·rollback 본구현은 STEP4 패키지 측 잔여. | REPLACE |
 | `step4_capacity_failure` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표: capacity split/additional trunk 실패 → STEP 4 재시도·trunk split 후보 변경 | (`step4_routing_failure`와 동일 계열) | REPLACE |
-| `pass3_connectivity_break` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표 + **§4.3.1**: rollback → 복귀 **STEP 6**; 선택 remedial은 §4.3.1 3번 한도 | Pass3·Reclaim·(선택) STEP4 remedial 체인이 표·§4.3.1과 동일한지 D2에서 검증. | REPLACE |
+| `pass3_connectivity_break` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표 + **§4.3.1** (정본 문서) | **코드 삭제(2026-05-12):** `RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK` 상수·`recovery_return_policy._POLICY_TABLE` 행·`ROLLBACK_PASS3_THEN_STEP6_RECLAIM` 제거. 오케스트레이터에 본경로 미배선이었던 **표-only 잔재**; 보강(replay·permission·트리거 연결)은 하지 않음. `post_reclaim_pass3_connectivity_break`는 변경 없음. | **DELETE** |
 | `post_reclaim_pass3_connectivity_break` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3.2**: rerun rollback → **STEP 9**, 추가 rerun 없음 | `recovery_policy.tag_post_reclaim_pass3_connectivity_break` 등으로 플래그·트리거 기록. | KEEP |
 | `reclaim_incremental_failure` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표: 후보 rollback → **STEP 6** 계속 / exhausted → Final validation | `tag_reclaim_incremental_failure_from_summary`와 P4 reclaim 단계와 연결. | KEEP |
 | `final_validation_failure` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표 + `documents/Algorithm/mining_solver_cursor_sessions/11_step8_recovery.md` **§13.3**: recovery 후 **STEP 9 재검증**, STEP 4 자동 재진입 없음 / 최소 repair | 메인 표의 `run_solver_timeline_pipeline`·`pass3_recovery_context`와 **동일 규범 이슈**. | NEEDS_DECISION |
+
+---
+
+## D2-C: main-path `pass3_connectivity_break` 코드 잔재 삭제 (2026-05-12)
+
+- **제거:** `foundation.constants`의 `RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK`, `recovery_return_policy`의 해당 `_POLICY_TABLE` 행, `RecoveryReturnPolicyId.ROLLBACK_PASS3_THEN_STEP6_RECLAIM`.
+- **추가 없음:** permission 예외·`RECOVERY_BRANCH`·오케스트레이터 트리거 연결·새 상수·새 파일 없음(보강형 D2-C 시도는 **되돌림**).
+- **유지:** `post_reclaim_pass3_connectivity_break` / `RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK` 및 관련 `tag_*` 동작.
+- **회귀:** `test_recovery_return_paths_algorithm.test_pass3_connectivity_break_string_not_in_return_policy_table`.
 
 ---
 
@@ -84,7 +93,7 @@
 | 큐 | 내용 | 표·심볼 참조 |
 |----|------|----------------|
 | **D1** | NDJSON·trace 전용 스크립트 **격리**(삭제보다 우선) | 메인 표 `scripts/debug/*.py` ISOLATE 행 4건 + [`scripts/debug/README.md`](../../scripts/debug/README.md) |
-| **D2** | Recovery 제어 흐름 §4.3 정렬. **D2-A:** `recovery_return_policy` 테이블. **D2-B1(완료):** `step4_recovery_trigger`·`trunk_load["step4_primary_recovery_trigger"]`·용량 신호 예약·계약 테스트. **D2-B2-DEL(완료):** routing 실패 시 정책 + STEP4 최대 1회 추가·bad snapshot 위 `validation_recovery` 반복 제거(보정 상한은 `MAX_VALIDATION_RECOVERY_ATTEMPTS`와 **무관**). **D2-C:** Pass3 connectivity 등. | §4.3 REPLACE·NEEDS_DECISION |
+| **D2** | Recovery 제어 흐름 §4.3 정렬. **D2-A:** `recovery_return_policy` 테이블(메인 경로 `pass3_connectivity_break` **표 행 삭제**·2026-05-12). **D2-B1(완료):** `step4_recovery_trigger`·`trunk_load["step4_primary_recovery_trigger"]`·용량 신호 예약·계약 테스트. **D2-B2-DEL(완료):** routing 실패 시 정책 + STEP4 최대 1회 추가·bad snapshot 위 `validation_recovery` 반복 제거. **D2-C(삭제만):** unwired 정책·상수 제거; 예외·replay·연결 **미추가**. | §4.3 REPLACE·NEEDS_DECISION |
 | **D3** | Protected corridor **생명주기**·reclaim merge가 §14·§10과 완전 동치인지 정리 | `reclaim_corridors.py` NEEDS_DECISION, `step4_routing_state.py` 소비자 정리 |
 | **D4** | Placement·route **shortcut**이 정본 §7·§9.6과 어긋나면 치환 | 메인 표에서 현재는 대부분 **KEEP**(§9.6 no-op 등); 새 위반 발견 시 이 큐로 이동 |
 | **D5** | Algorithm이 요구하지 않는 **legacy 호환·기본값** 제거 | `finalize.py` `setdefault("step4_committed", …)` **REPLACE** 행, `search_mode` 라벨 정합은 선택 |

@@ -18,7 +18,6 @@ P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE = RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM
 RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE = "step4_routing_failure"
 # Algorithm ``02_pipeline_control_flow`` §4.3 표 trigger id (replay·정책 테이블과 동일 문자열).
 RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE = "step4_capacity_failure"
-RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK = "pass3_connectivity_break"
 RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE = "final_validation_failure"
 
 # --- P5 recovery contract (attempt caps) ---

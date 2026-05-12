@@ -14,7 +14,6 @@ import pytest
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE,
-    RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_TRIGGER_RECLAIM_INCREMENTAL_FAILURE,
     RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE,
@@ -94,17 +93,23 @@ def test_p4_reclaim_stage_invokes_post_reclaim_pass3_hook_at_most_once() -> None
     assert src.count("_run_post_reclaim_pass3_once(") == 1
 
 
-def test_recovery_return_policy_triggers_exactly_six() -> None:
+def test_recovery_return_policy_triggers_exactly_five() -> None:
     assert rrp.recovery_return_policy_triggers() == frozenset(
         {
             RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
             RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE,
-            RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK,
             RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
             RECOVERY_TRIGGER_RECLAIM_INCREMENTAL_FAILURE,
             RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE,
         }
     )
+
+
+def test_pass3_connectivity_break_string_not_in_return_policy_table() -> None:
+    """D2-C deletion: unwired main-path trigger must not pretend to have a policy row."""
+
+    with pytest.raises(ValueError, match="unknown recovery trigger"):
+        rrp.recovery_return_policy_for_trigger("pass3_connectivity_break")
 
 
 def test_recovery_return_policy_table_matches_algorithm() -> None:

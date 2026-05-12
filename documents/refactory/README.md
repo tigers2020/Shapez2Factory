@@ -13,7 +13,7 @@ shapez2Solver **채굴 레이아웃 솔버** 관련, 문서 정본(`documents/Al
 
 **Cursor 실행 순서(YAML 스케치):** [cursor_work_phases.md](./cursor_work_phases.md) (Phase 0–4 + Placement FSM 안내)
 
-**Phase 0 산출물(읽기 전용 drift matrix):** [phase0_drift_matrix.md](./phase0_drift_matrix.md)
+**Phase 0 산출물(읽기 전용 drift matrix):** [phase0_drift_matrix.md](./phase0_drift_matrix.md) — PR #2 병합 후 **증거 보강**은 브랜치 `audit/phase0-drift-evidence`에서 진행 가능.
 
 ## 리뷰어 합의: 회귀 우선순위(요약)
 

@@ -2,6 +2,11 @@
 
 에이전트·인간이 동일한 Phase 순서를 쓰기 위한 스케치다. **플랜 승인 후** 구현에 넣는다.
 
+## GitHub PR
+
+- Base: **`master`**. PR 자동 생성이 `main`을 쓰면 실패할 수 있음 → 웹에서 base 수동 선택.
+- Phase 0 산출물: [phase0_drift_matrix.md](./phase0_drift_matrix.md)
+
 ## Phase 0 — 코드 변경 없는 drift 매트릭스
 
 ```yaml
@@ -12,6 +17,7 @@ overview: >
   Produce a drift matrix only.
 todos:
   - Find all uses of recovery_trigger, commit_reason, rollback_reason, rejected_reason, event_type.
+  - Map trace schema — code uses replay event key ``kind``; compare with §16.3 ``event_type`` naming.
   - Find all recovery_orchestrator branch return paths and compare with §4.3 trigger table.
   - Find all protected corridor state transitions and classify candidate/soft/hard lifecycle gaps.
   - Find all reads of solver_summary, replay_events, latest.ndjson, or debug trace from algorithm code paths.

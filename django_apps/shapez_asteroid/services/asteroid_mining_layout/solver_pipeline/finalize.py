@@ -505,6 +505,9 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    summary_fields["step4_no_route_exhausted_breakdown"] = summary_fields["trunk_load"].get(
+        "step4_no_route_exhausted_breakdown"
+    )
     _pq, _pqs = preserve_quality_bundle_from_pass12(pass12_trace_fields)
     summary_fields["preserve_quality"] = _pq
     summary_fields["preserve_quality_score"] = _pqs
@@ -809,6 +812,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("routing_state", None)
     summary_fields.setdefault("step4_route_count", 0)
     summary_fields.setdefault("step4_routing_failure_count", 0)
+    summary_fields.setdefault("step4_no_route_exhausted_breakdown", None)
     summary_fields.setdefault("step4_complete_commit_success", False)
     summary_fields.setdefault("step4_partial_failure", True)
     summary_fields.setdefault("step4_known_good_route_count", 0)

@@ -184,7 +184,7 @@ def try_step4_failed_pass2_route_recovery(
             str,
             int | None,
             Coord,
-            dict[str, Any],
+            dict[Coord, Any],
         ]
     ] = []
 
@@ -210,7 +210,7 @@ def try_step4_failed_pass2_route_recovery(
             transport_cells_reaching_external(transport_now, set(blocked), is_external)
         )
         search_stats: dict[str, Any] = {"search_mode": f"pass2_recovery:{mode}"}
-        path = dijkstra_fn(
+        path_raw = dijkstra_fn(
             start_stub,
             want_role=want_role,
             cells=cells,
@@ -223,6 +223,7 @@ def try_step4_failed_pass2_route_recovery(
             cheap_reuse_cells=cheap,
             search_stats=search_stats,
         )
+        path: tuple[Coord, ...] | None = path_raw
         if path is None:
             last_error = str(search_stats.get("stop_reason") or "no_route")
             return

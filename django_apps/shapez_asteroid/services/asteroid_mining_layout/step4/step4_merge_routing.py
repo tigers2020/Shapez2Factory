@@ -87,6 +87,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_p2c
     p2c_revalidate_and_correct as _p2c_revalidate_and_correct,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_route_failure_diagnostic import (  # noqa: E501
+    build_step4_no_route_exhausted_breakdown,
     build_step4_route_failure_diagnostic,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_state import (
@@ -455,6 +456,8 @@ def run_step4_merge_aware_routing(
                         failures.append(fd_unrec)
                     continue
 
+            assert path is not None
+
             if recovered:
                 blocked_m = set(_blocked_cells(cells)) | set(hard_extras)
                 blocked_m.discard(stub_cell)
@@ -634,6 +637,9 @@ def run_step4_merge_aware_routing(
         "step4_failed_route_recovery_variant_eval_sum": recovery_variant_eval_sum,
         "routes_by_placement_id": dict(routes_by_placement_id),
     }
+    trace_tl["step4_no_route_exhausted_breakdown"] = build_step4_no_route_exhausted_breakdown(
+        failures
+    )
     trunk_load = build_step4_trunk_load(
         trunk_edge_hits=trunk_edge_hits,
         route_cell_visits=accumulated_route_cell_visits,

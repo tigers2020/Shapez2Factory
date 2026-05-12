@@ -166,3 +166,115 @@ def test_build_diagnostic_includes_classifier_fields() -> None:
     assert d["expected_stub_role"] == "pipe"
     assert d["classifier_inputs"]["last_error"] == "no_route_exhausted"
     assert d["search_exhausted"] is True
+
+
+def test_no_route_exhausted_breakdown_empty_failures() -> None:
+    """Empty ``failures`` → fixed zero skeleton (contract keys + types)."""
+
+    b = s4frd.build_step4_no_route_exhausted_breakdown([])
+    assert b == {
+        "count": 0,
+        "by_transport_kind": {},
+        "by_placement_pass": {},
+        "by_nearest_transport_hops": {},
+        "by_blocked_reason_near_stub": {},
+        "by_goal_count": {},
+        "by_existing_trunk_goal_count": {},
+        "by_protected_hard_count": {},
+        "by_protected_soft_count": {},
+        "by_expanded_nodes_bucket": {},
+        "expanded_nodes": {"min": None, "max": None, "mean": None},
+        "by_breaker_category": {},
+        "dominant_blocker_category": None,
+    }
+
+
+def _nr_diag_row(**diag_kw: Any) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "failure_reason": s4frd.Step4RouteFailureReason.no_route_exhausted.value,
+        "transport_kind": "fluid_pipe",
+        "placement_pass": 2,
+        "goal_count": 3,
+        "existing_trunk_goal_count": 2,
+        "exterior_goal_count": 0,
+        "protected_hard_count": 0,
+        "protected_soft_count": 0,
+        "expanded_nodes": 5,
+        "classifier_inputs": {"nearest_transport_hops": 1},
+    }
+    base.update(diag_kw)
+    return {
+        "step4_route_failure_diagnostic": base,
+        "step4_route_failure_detail": {
+            "blocked_reason_near_stub": [{"cell": (1, 2), "reason": "ok"}],
+        },
+    }
+
+
+def test_no_route_exhausted_breakdown_filters_other_reasons() -> None:
+    """Only ``no_route_exhausted`` rows count; dominant uses declaration-order tie-break."""
+
+    other = {
+        "step4_route_failure_diagnostic": {
+            "failure_reason": s4frd.Step4RouteFailureReason.no_same_kind_route.value,
+            "transport_kind": "shape_belt",
+            "placement_pass": 1,
+        },
+    }
+    narrow = _nr_diag_row(expanded_nodes=5, exterior_goal_count=1, existing_trunk_goal_count=0)
+    wide = _nr_diag_row(expanded_nodes=25, exterior_goal_count=1, existing_trunk_goal_count=0)
+    b = s4frd.build_step4_no_route_exhausted_breakdown(
+        [_nr_diag_row(), _nr_diag_row(), other, narrow, wide]
+    )
+    assert b["count"] == 4
+    assert b["by_transport_kind"] == {"fluid_pipe": 4}
+    assert b["by_placement_pass"] == {"2": 4}
+    assert b["by_breaker_category"]["narrow_search_exhausted"] == 1
+    assert b["by_breaker_category"]["wide_search_exhausted"] == 1
+    assert b["by_breaker_category"]["trunk_union_goals_unreachable_from_stub"] == 2
+    assert b["dominant_blocker_category"] == "trunk_union_goals_unreachable_from_stub"
+
+
+def test_no_route_exhausted_breakdown_trunk_union_breaker() -> None:
+    """``exterior_goal_count==0`` and ``existing_trunk_goal_count>0`` without geometry/hard ring."""
+
+    row = {
+        "step4_route_failure_detail": {
+            "step4_route_failure_diagnostic": {
+                "failure_reason": s4frd.Step4RouteFailureReason.no_route_exhausted.value,
+                "transport_kind": "fluid_pipe",
+                "placement_pass": 1,
+                "goal_count": 5,
+                "exterior_goal_count": 0,
+                "existing_trunk_goal_count": 3,
+                "protected_hard_count": 0,
+                "protected_soft_count": 0,
+                "expanded_nodes": 15,
+                "classifier_inputs": {},
+            },
+            "nearest_existing_transport_distance": 4,
+            "blocked_reason_near_stub": [{"cell": (0, 0), "reason": "ok"}],
+        },
+    }
+    b = s4frd.build_step4_no_route_exhausted_breakdown([row])
+    assert b["count"] == 1
+    assert b["by_breaker_category"] == {"trunk_union_goals_unreachable_from_stub": 1}
+    assert b["dominant_blocker_category"] == "trunk_union_goals_unreachable_from_stub"
+
+
+def test_no_route_exhausted_breakdown_expanded_nodes_stats_and_buckets() -> None:
+    """Integer ``expanded_nodes`` only → buckets + min/max/mean."""
+
+    def one(expanded: int) -> dict[str, Any]:
+        return _nr_diag_row(
+            expanded_nodes=expanded,
+            exterior_goal_count=1,
+            existing_trunk_goal_count=0,
+        )
+
+    b = s4frd.build_step4_no_route_exhausted_breakdown([one(1), one(10), one(40)])
+    assert b["count"] == 3
+    assert b["by_expanded_nodes_bucket"] == {"0-1": 1, "8-32": 1, "33+": 1}
+    assert b["expanded_nodes"]["min"] == 1
+    assert b["expanded_nodes"]["max"] == 40
+    assert b["expanded_nodes"]["mean"] == round((1 + 10 + 40) / 3.0, 4)

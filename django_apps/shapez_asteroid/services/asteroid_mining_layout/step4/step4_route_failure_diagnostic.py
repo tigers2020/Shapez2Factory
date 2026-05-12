@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections import Counter
+from collections.abc import Callable, Mapping, Sequence
 from enum import StrEnum
 from typing import Any
 
@@ -129,6 +130,226 @@ def classify_step4_route_failure_reason(
     if stop_reason == "success":
         return Step4RouteFailureReason.unknown_route_failure
     return Step4RouteFailureReason.unknown_route_failure
+
+
+_STEP4_NO_ROUTE_EXHAUSTED_EMPTY: dict[str, Any] = {
+    "count": 0,
+    "by_transport_kind": {},
+    "by_placement_pass": {},
+    "by_nearest_transport_hops": {},
+    "by_blocked_reason_near_stub": {},
+    "by_goal_count": {},
+    "by_existing_trunk_goal_count": {},
+    "by_protected_hard_count": {},
+    "by_protected_soft_count": {},
+    "by_expanded_nodes_bucket": {},
+    "expanded_nodes": {"min": None, "max": None, "mean": None},
+    "by_breaker_category": {},
+    "dominant_blocker_category": None,
+}
+
+_BREAKER_CATEGORY_ORDER: tuple[str, ...] = (
+    "hard_protected_ring",
+    "stub_local_geometry_or_corridor",
+    "trunk_union_goals_unreachable_from_stub",
+    "wide_search_exhausted",
+    "narrow_search_exhausted",
+    "other_no_route_exhausted",
+)
+
+
+def _extract_step4_failure_diagnostic(row: Mapping[str, Any]) -> dict[str, Any] | None:
+    d = row.get("step4_route_failure_diagnostic")
+    if isinstance(d, dict):
+        return d
+    det = row.get("step4_route_failure_detail")
+    if isinstance(det, dict):
+        d2 = det.get("step4_route_failure_diagnostic")
+        if isinstance(d2, dict):
+            return d2
+    return None
+
+
+def _extract_step4_failure_detail(row: Mapping[str, Any]) -> dict[str, Any]:
+    det = row.get("step4_route_failure_detail")
+    if isinstance(det, dict):
+        return det
+    return {}
+
+
+def _hist_str_key_scalar(val: Any) -> str:
+    if val is None:
+        return "missing"
+    if type(val) is int and not isinstance(val, bool):
+        return str(val)
+    if isinstance(val, str) and val:
+        return val
+    return "missing"
+
+
+def _nearest_transport_hops_hist_key(diag: dict[str, Any], detail: dict[str, Any]) -> str:
+    ci = diag.get("classifier_inputs")
+    if isinstance(ci, dict):
+        h = ci.get("nearest_transport_hops")
+        if type(h) is int and not isinstance(h, bool):
+            return str(h)
+    d = detail.get("nearest_existing_transport_distance")
+    if type(d) is int and not isinstance(d, bool):
+        return str(d)
+    return "missing"
+
+
+def _blocked_near_stub_signature(detail: dict[str, Any]) -> str:
+    near = detail.get("blocked_reason_near_stub")
+    if not isinstance(near, list) or not near:
+        return "missing"
+    items: list[tuple[int, int, str]] = []
+    for e in near:
+        if not isinstance(e, dict):
+            return "missing"
+        cell = e.get("cell")
+        if not isinstance(cell, (list, tuple)) or len(cell) != 2:
+            return "missing"
+        try:
+            x, y = int(cell[0]), int(cell[1])
+        except (TypeError, ValueError):
+            return "missing"
+        items.append((y, x, str(e.get("reason", ""))))
+    if not items:
+        return "missing"
+    items.sort(key=lambda t: (t[0], t[1], t[2]))
+    return "|".join(f"{x},{y}:{reason}" for y, x, reason in items)
+
+
+def _expanded_nodes_bucket(n: int) -> str:
+    if n <= 1:
+        return "0-1"
+    if n <= 7:
+        return "2-7"
+    if n <= 32:
+        return "8-32"
+    return "33+"
+
+
+def _expanded_nodes_int(diag: dict[str, Any]) -> int | None:
+    v = diag.get("expanded_nodes")
+    return v if type(v) is int and not isinstance(v, bool) else None
+
+
+def _row_breaker_category_no_route_exhausted(diag: dict[str, Any], detail: dict[str, Any]) -> str:
+    if _stub_neighbors_all_hard_protected(detail):
+        return "hard_protected_ring"
+    if _stub_neighbors_geometry_blocked(detail):
+        return "stub_local_geometry_or_corridor"
+    ext = int(diag.get("exterior_goal_count") or 0)
+    et = int(diag.get("existing_trunk_goal_count") or 0)
+    if ext == 0 and et > 0:
+        return "trunk_union_goals_unreachable_from_stub"
+    exn = _expanded_nodes_int(diag)
+    if exn is not None and exn >= 20:
+        return "wide_search_exhausted"
+    if exn is not None and exn <= 7:
+        return "narrow_search_exhausted"
+    return "other_no_route_exhausted"
+
+
+def _dominant_breaker_category(by_breaker: Counter[str]) -> str | None:
+    if not by_breaker:
+        return None
+    max_n = max(by_breaker.values())
+    tied = [k for k, v in by_breaker.items() if v == max_n]
+    for cat in _BREAKER_CATEGORY_ORDER:
+        if cat in tied:
+            return cat
+    return tied[0]
+
+
+def _sorted_histogram(counter: Counter[str]) -> dict[str, int]:
+    return dict(sorted(counter.items(), key=lambda kv: (-kv[1], kv[0])))
+
+
+def build_step4_no_route_exhausted_breakdown(
+    failures: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Aggregate routing failure rows with ``failure_reason=no_route_exhausted`` (telemetry)."""
+
+    rows: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for row in failures:
+        diag = _extract_step4_failure_diagnostic(row)
+        if diag is None:
+            continue
+        if diag.get("failure_reason") != Step4RouteFailureReason.no_route_exhausted.value:
+            continue
+        detail = _extract_step4_failure_detail(row)
+        rows.append((diag, detail))
+
+    n = len(rows)
+    if n == 0:
+        return dict(_STEP4_NO_ROUTE_EXHAUSTED_EMPTY)
+
+    by_tk: Counter[str] = Counter()
+    by_pass: Counter[str] = Counter()
+    by_hops: Counter[str] = Counter()
+    by_sig: Counter[str] = Counter()
+    by_goal: Counter[str] = Counter()
+    by_trunk_goal: Counter[str] = Counter()
+    by_hard: Counter[str] = Counter()
+    by_soft: Counter[str] = Counter()
+    by_bucket: Counter[str] = Counter()
+    by_breaker: Counter[str] = Counter()
+    exp_vals: list[int] = []
+
+    for diag, detail in rows:
+        tk = diag.get("transport_kind")
+        by_tk[_hist_str_key_scalar(tk if isinstance(tk, str) and tk else None)] += 1
+
+        pp = diag.get("placement_pass")
+        if pp is None:
+            by_pass["missing"] += 1
+        else:
+            by_pass[str(pp)] += 1
+
+        by_hops[_nearest_transport_hops_hist_key(diag, detail)] += 1
+        by_sig[_blocked_near_stub_signature(detail)] += 1
+        by_goal[_hist_str_key_scalar(diag.get("goal_count"))] += 1
+        by_trunk_goal[_hist_str_key_scalar(diag.get("existing_trunk_goal_count"))] += 1
+        by_hard[_hist_str_key_scalar(diag.get("protected_hard_count"))] += 1
+        by_soft[_hist_str_key_scalar(diag.get("protected_soft_count"))] += 1
+
+        exn = _expanded_nodes_int(diag)
+        if exn is None:
+            by_bucket["missing"] += 1
+        else:
+            by_bucket[_expanded_nodes_bucket(exn)] += 1
+            exp_vals.append(exn)
+
+        by_breaker[_row_breaker_category_no_route_exhausted(diag, detail)] += 1
+
+    if exp_vals:
+        mn, mx = min(exp_vals), max(exp_vals)
+        mean_f = round(sum(exp_vals) / len(exp_vals), 4)
+    else:
+        mn = mx = mean_f = None  # type: ignore[assignment]
+
+    return {
+        "count": n,
+        "by_transport_kind": _sorted_histogram(by_tk),
+        "by_placement_pass": _sorted_histogram(by_pass),
+        "by_nearest_transport_hops": _sorted_histogram(by_hops),
+        "by_blocked_reason_near_stub": _sorted_histogram(by_sig),
+        "by_goal_count": _sorted_histogram(by_goal),
+        "by_existing_trunk_goal_count": _sorted_histogram(by_trunk_goal),
+        "by_protected_hard_count": _sorted_histogram(by_hard),
+        "by_protected_soft_count": _sorted_histogram(by_soft),
+        "by_expanded_nodes_bucket": _sorted_histogram(by_bucket),
+        "expanded_nodes": {
+            "min": mn if exp_vals else None,
+            "max": mx if exp_vals else None,
+            "mean": mean_f if exp_vals else None,
+        },
+        "by_breaker_category": _sorted_histogram(by_breaker),
+        "dominant_blocker_category": _dominant_breaker_category(by_breaker),
+    }
 
 
 def build_step4_route_failure_diagnostic(

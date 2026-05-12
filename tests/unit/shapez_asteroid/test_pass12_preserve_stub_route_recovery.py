@@ -95,6 +95,54 @@ def test_goal_transport_cells_filters_scratch_by_opposite_role() -> None:
     assert (9, 9) in goals
 
 
+def test_try_preserve_rejects_invalid_transport_kind() -> None:
+    res = try_preserve_stub_route_recovery(
+        miner=(1, 1),
+        extensions=frozenset(),
+        transport_kind="bogus_kind",
+        cells={(2, 0): {"role": "pipe"}},
+        mineable=frozenset({(1, 1), (2, 0)}),
+        scratch_transport_cells=frozenset({(2, 0)}),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=2,
+        row_r_raw=0,
+    )
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr["rejected_reason"] == "rejected_by_invalid_want_role"
+    assert psr["attempted"] is False
+
+
+def test_try_preserve_scratch_goal_counters_on_trace() -> None:
+    cells = {
+        (10, 10): {
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+        },
+        (1, 0): {"role": "belt"},
+        (2, 0): {"role": "pipe"},
+    }
+    scratch = frozenset({(1, 0), (2, 0), (99, 99)})
+    res = try_preserve_stub_route_recovery(
+        miner=(10, 10),
+        extensions=frozenset(),
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=frozenset(cells.keys()) | scratch,
+        scratch_transport_cells=scratch,
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=99,
+        row_r_raw=0,
+    )
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr["scratch_transport_input_count"] == 3
+    assert psr["scratch_goal_without_map_row_count"] == 1
+    assert psr["scratch_goal_wrong_role_excluded_count"] == 1
+    assert psr["scratch_goal_count"] == 2
+    assert psr["rejected_reason"] == "nearest_hops_over_cap"
+
+
 def test_stub_route_recovery_rejects_mixed_kind_trunk() -> None:
     """Belt on corridor blocks pipe BFS → no_same_kind_route."""
 

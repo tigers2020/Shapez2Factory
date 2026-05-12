@@ -1754,6 +1754,12 @@ def test_apply_exception_summary_defaults_includes_greedy_local_replacement_keys
     assert d["pass3_greedy_local_replacement"] is None
     assert "post_reclaim_pass3_greedy_local_replacement" in d
     assert d["post_reclaim_pass3_greedy_local_replacement"] is None
+    assert "post_reclaim_pass3_pass3_greedy_local_replacement" in d
+    assert d["post_reclaim_pass3_pass3_greedy_local_replacement"] is None
+    assert (
+        d["post_reclaim_pass3_greedy_local_replacement"]
+        == d["post_reclaim_pass3_pass3_greedy_local_replacement"]
+    )
 
     p3 = initial_pass3_summary()
     assert "pass3_greedy_local_replacement" in p3

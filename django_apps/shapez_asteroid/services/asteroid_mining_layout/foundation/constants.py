@@ -64,8 +64,9 @@ LAYOUT_PRESERVE_HARD_GATE_REASON_TRANSPORT_REGRESSION = (
 # Pass12 merged-seed: optional stub recovery (``SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY``).
 MAX_PASS12_RECOVERY_PROBES_PER_MINER = 4
 MAX_PASS12_RECOVERY_BFS_HOPS = 8
-# ``recoverability_class_for_preserve_drop_detail`` NO_MATCHING_STUB 밴드(NEAR_TRANSPORT 등)에 쓰임.
-# ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY`` eligibility 상한과는 별도(더 좁게 둘 수 있음).
+# ``recoverability_class_for_preserve_drop_detail`` NO_MATCHING_STUB 밴드에 쓰임.
+# ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY`` eligibility 상한과는 별도
+# (더 좁게 둘 수 있음).
 MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS = 6
 # stub→트렁크 경로: edge 수(``len(path_cells) - 1``) 상한.
 MAX_PASS12_STUB_ROUTE_RECOVERY_PATH_LEN = 8

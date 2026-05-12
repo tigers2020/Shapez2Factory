@@ -72,7 +72,10 @@ def unfinalized_placement_count_from_counts(counts: Mapping[str, int] | None) ->
 
 
 def placement_state_counts(placement_commit_by_id: Mapping[str, str]) -> dict[str, int]:
-    """Canonical FSM counts from ``placement_id -> state`` (P2-B); ``unfinalized`` = prov + quarantine."""
+    """Canonical FSM counts from ``placement_id -> state`` (P2-B).
+
+    ``unfinalized`` = prov + quarantine.
+    """
 
     raw = placement_commit_counts_by_state(dict(placement_commit_by_id))
     p = PlacementCommitState.PROVISIONAL_PLACED.value

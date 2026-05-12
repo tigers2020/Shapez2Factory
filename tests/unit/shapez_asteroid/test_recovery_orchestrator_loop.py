@@ -103,7 +103,7 @@ def _minimal_p4() -> P4ReclaimStageResult:
 
 
 def test_three_pass3_p4_finalize_cycles_when_validation_cap_is_two() -> None:
-    """``MAX_VALIDATION_RECOVERY_ATTEMPTS == 2`` ⇒ two full Pass3→P4→finalize passes (``max_cycles``)."""
+    """Cap 2 ⇒ two full Pass3→P4→finalize passes (``max_cycles``)."""
 
     calls = {"p3": 0, "p4": 0, "fin": 0}
 

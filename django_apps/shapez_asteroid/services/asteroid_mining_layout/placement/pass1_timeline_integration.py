@@ -309,7 +309,10 @@ def integrate_pass12_placement_into_working_map(
         "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count": 0,
         "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count": 0,
         "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count": 0,
-        "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count": 0,
+        (
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_"
+            "disabled_count"
+        ): 0,
         **ela_empty_meta,
     }
     if not mineable:
@@ -340,7 +343,10 @@ def integrate_pass12_placement_into_working_map(
             "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count": 0,
             "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count": 0,
             "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count": 0,
-            "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count": 0,
+            (
+                "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_"
+                "disabled_count"
+            ): 0,
             "pass12_placement_loops_suppressed": False,
         }
         return unchanged, unchanged, skip_stats

@@ -252,9 +252,40 @@ def try_preserve_stub_route_recovery(
 ) -> StubRouteRecoveryResult:
     """Pure probe: same-kind trunk reachable from an inferred/empty output stub (MVP)."""
 
-    want_wr = want_role(transport_kind)
     psr = _empty_psr(nearest_same_kind_transport_hops)
     base_trace: dict[str, Any] = {"preserve_stub_recovery": psr}
+    try:
+        want_wr = want_role(transport_kind)
+    except ValueError:
+        psr["attempted"] = False
+        psr["rejected_reason"] = "rejected_by_invalid_want_role"
+        psr["scratch_transport_input_count"] = len(scratch_transport_cells)
+        psr["scratch_goal_count"] = 0
+        psr["scratch_goal_without_map_row_count"] = 0
+        psr["scratch_goal_wrong_role_excluded_count"] = 0
+        return StubRouteRecoveryResult(
+            accepted=False,
+            trace=base_trace,
+            new_transport_coords=frozenset(),
+            chosen_r=None,
+            stub_cell=None,
+        )
+
+    without_map = 0
+    wrong_role_excluded = 0
+    for c in scratch_transport_cells:
+        row = cells.get(c)
+        if row is None:
+            without_map += 1
+        elif row.get("role") != want_wr:
+            wrong_role_excluded += 1
+    goal_from_scratch = scratch_same_kind_goal_cells(
+        scratch_transport_cells, cells=cells, want_wr=want_wr
+    )
+    psr["scratch_transport_input_count"] = len(scratch_transport_cells)
+    psr["scratch_goal_count"] = len(goal_from_scratch)
+    psr["scratch_goal_without_map_row_count"] = without_map
+    psr["scratch_goal_wrong_role_excluded_count"] = wrong_role_excluded
 
     if nearest_same_kind_transport_hops is None:
         psr["attempted"] = False

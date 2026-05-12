@@ -6,11 +6,14 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
     pass1_timeline_integration as p12_tl,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_bundle_commit import (
-    Pass12LayoutScratch,
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
+    pass12_bundle_commit,
+    pass12_merged_layout_seed,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_merged_layout_seed import (
-    seed_pass12_scratch_from_merged_existing,
+
+Pass12LayoutScratch = pass12_bundle_commit.Pass12LayoutScratch
+seed_pass12_scratch_from_merged_existing = (
+    pass12_merged_layout_seed.seed_pass12_scratch_from_merged_existing
 )
 
 

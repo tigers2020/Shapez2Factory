@@ -30,11 +30,11 @@ SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE = (
 # Pass12 merged-seed: optional relaxed stub + rotation recovery for preserved miners.
 # Default OFF; enable locally via SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=1.
 SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY = (
-    os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", "").strip().lower()
-    in _truthy_env
+    os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", "").strip().lower() in _truthy_env
 )
 # Pass12 merged-seed: inferred/empty stub → same-kind trunk까지 제한 BFS 후 scratch 반영.
-# relaxed recovery(위 플래그)와 별도. 기본 OFF — ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=1`` 로 켬.
+# relaxed recovery(위 플래그)와 별도. 기본 OFF — 환경변수
+# ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=1`` 로 켬.
 SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = (
     os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", "").strip().lower()
     in _truthy_env
@@ -44,10 +44,9 @@ SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = (
 # preserve bundles stay protected by ``blocked_cells``; set
 # ``SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED=0`` (or false/no/off) to fall back to the
 # legacy "skip both loops" behavior.
-SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED = (
-    os.environ.get("SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED", "true").strip().lower()
-    not in {"0", "false", "no", "off"}
-)
+SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED = os.environ.get(
+    "SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED", "true"
+).strip().lower() not in {"0", "false", "no", "off"}
 
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True

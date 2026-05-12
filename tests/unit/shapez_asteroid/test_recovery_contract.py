@@ -9,6 +9,10 @@ from typing import Any
 from unittest.mock import patch
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation import constants as fc
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
+    protected_corridors_for_reclaim,
+    protected_corridors_read_for_reclaim,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     EXTRACTORS_FLUID,
     EXTRACTORS_SHAPE,
@@ -534,12 +538,7 @@ def test_recovery_timeline_envelope_interpretation_fields() -> None:
 
 
 def test_protected_corridors_read_matches_for_reclaim() -> None:
-    """P3-B: ``protected_corridors_read_for_reclaim`` mirrors ``protected_corridors_for_reclaim``."""
-
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
-        protected_corridors_for_reclaim,
-        protected_corridors_read_for_reclaim,
-    )
+    """P3-B: read variant mirrors write variant for protected reclaim corridors."""
 
     trace = {"protected_corridors": {"hard": [[1, 0]], "soft": [[2, 0]]}}
     pcs = protected_corridors_for_reclaim(pass3_trace=trace, solver_routing_state=None)

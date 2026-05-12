@@ -6,6 +6,11 @@ Default: synthetic merged-seed fixture + greenfield striped ``build_solver_timel
 With ``--copy-code-file`` or ``--ndjson``: runs full ``build_solver_timeline(decoded)`` twice
 (recovery OFF vs ON) and writes comparison to ``var/pass12_recovery_ab_experiment.json``.
 
+With ``--stub-route-recovery-ab``: same inputs, but compares
+``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=False`` vs ``True`` while holding
+``SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=True`` (isolates stub-route recovery). Writes
+``var/pass12_stub_route_recovery_ab_experiment.json``.
+
 ``--ndjson`` accepts (1) a single JSON object with top-level ``BP``, or (2) NDJSON where at
 least one line parses to an object containing ``BP`` (e.g. a pasted decoded line). Standard
 solver debug NDJSON without a ``BP`` line cannot be replayed; use ``*_decoded.json`` or
@@ -14,6 +19,7 @@ solver debug NDJSON without a ``BP`` line cannot be replayed; use ``*_decoded.js
 ``--solver-trace PATH`` scans the same way for a ``BP`` object (optional ``--run-id`` filters
 lines that carry ``run_id``). If the trace file has no blueprint line, pair with
 ``--bp-json PATH`` (decoded blueprint) while still attaching trace metadata when possible.
+``--bp-json`` alone loads a single decoded JSON object (same shape as ``*_decoded.json``).
 
 Use ``--full`` to write untruncated ``pass12_preserved_missing_stub_drop_details`` and
 ``pass12_preserved_recovery_traces`` in the JSON (default caps: see module constants).
@@ -22,11 +28,12 @@ Use ``--full`` to write untruncated ``pass12_preserved_missing_stub_drop_details
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -78,8 +85,30 @@ _STRIPED_BP: dict[str, object] = {
 }
 
 _OUT_PATH = ROOT / "var" / "pass12_recovery_ab_experiment.json"
+_OUT_PATH_STUB_ROUTE_AB = ROOT / "var" / "pass12_stub_route_recovery_ab_experiment.json"
 _TRACE_LIST_LIMIT = 32
 _DROP_DETAILS_LIMIT = 32
+
+_STUB_ROUTE_AB_SUMMARY_KEYS = (
+    "pass12_preserved_missing_stub_route_recovery_attempted_count",
+    "pass12_preserved_missing_stub_route_recovery_success_count",
+    "pass12_preserved_missing_stub_drop_extractor_count",
+    "pass12_preserved_missing_stub_route_recovery_rejected_by_nearest_hops_count",
+    "pass12_preserved_missing_stub_route_recovery_rejected_by_no_stub_space_count",
+    "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count",
+    "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count",
+    "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count",
+    "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count",
+    "geometry_valid",
+    "connectivity_valid",
+    "missing_stub_count",
+    "orphan_transport_count",
+    "transport_connected",
+    "preserve_quality_score_version",
+    "preserve_quality_score",
+    "extractor_count",
+    "pass12_preserved_recovery_success_count",
+)
 
 
 def _has_bp(obj: Any) -> bool:
@@ -202,6 +231,12 @@ def load_decoded_from_solver_trace_ndjson(
             "pass12_preserved_missing_stub_drop_extractor_count": solver_summary.get(
                 "pass12_preserved_missing_stub_drop_extractor_count"
             ),
+            "pass12_preserved_missing_stub_route_recovery_attempted_count": solver_summary.get(
+                "pass12_preserved_missing_stub_route_recovery_attempted_count"
+            ),
+            "pass12_preserved_missing_stub_route_recovery_success_count": solver_summary.get(
+                "pass12_preserved_missing_stub_route_recovery_success_count"
+            ),
             "pass12_preserve_drop_reason_counts": dict(
                 solver_summary.get("pass12_preserve_drop_reason_counts") or {}
             ),
@@ -251,25 +286,24 @@ def _relaxed_recovery_fixture() -> tuple[frozenset[Coord], list[dict[str, object
     return mineable, rows
 
 
-def _metrics(stats: dict[str, object]) -> dict[str, object]:
-    drop = int(stats.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
-    rec = int(stats.get("pass12_preserved_recovery_success_count") or 0)
-    pq, pqs = preserve_quality_bundle_from_pass12(stats)
+def _metrics(stats: dict[str, object]) -> dict[str, Any]:
+    s = cast(dict[str, Any], stats)
+    drop = int(s.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
+    rec = int(s.get("pass12_preserved_recovery_success_count") or 0)
+    pq, pqs = preserve_quality_bundle_from_pass12(s)
     return {
         "pass12_preserved_missing_stub_drop_extractor_count": drop,
         "pass12_preserve_drop_reason_counts": dict(
-            stats.get("pass12_preserve_drop_reason_counts") or {}
+            s.get("pass12_preserve_drop_reason_counts") or {}
         ),
         "pass12_preserved_recovery_success_count": rec,
-        "pass12_preserved_recovery_traces": list(
-            stats.get("pass12_preserved_recovery_traces") or []
-        ),
+        "pass12_preserved_recovery_traces": list(s.get("pass12_preserved_recovery_traces") or []),
         "preserve_quality": pq,
         "preserve_quality_score": pqs,
     }
 
 
-def _run_merged_seed_synthetic(recovery_flag: bool) -> dict[str, object]:
+def _run_merged_seed_synthetic(recovery_flag: bool) -> dict[str, Any]:
     mineable, rows = _relaxed_recovery_fixture()
     scratch = Pass12LayoutScratch(transport_kind="fluid_pipe")
     with override_settings(SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=recovery_flag):
@@ -316,6 +350,198 @@ def _timeline_guard_fields(decoded: dict[str, Any], recovery_flag: bool) -> dict
         "pass12_preserved_recovery_traces": list(traces),
         "pass12_preserved_missing_stub_drop_details": list(drops),
     }
+
+
+def _stub_route_ab_timeline_row(decoded: dict[str, Any], *, route_flag: bool) -> dict[str, Any]:
+    """Timeline row with relaxed stub recovery ON; toggles stub-route recovery only."""
+
+    with override_settings(
+        SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=True,
+        SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=route_flag,
+    ):
+        out = build_solver_timeline(decoded)
+    s = out["solver_summary"]
+    drops = s.get("pass12_preserved_missing_stub_drop_details") or []
+    traces = s.get("pass12_preserved_recovery_traces") or []
+    row: dict[str, Any] = {
+        "return_reason": s.get("return_reason"),
+        "solver_termination": s.get("solver_termination"),
+        "geometry_valid": s.get("geometry_valid"),
+        "connectivity_valid": s.get("connectivity_valid"),
+        "missing_stub_count": s.get("missing_stub_count"),
+        "step4_routing_failure_count": s.get("step4_routing_failure_count"),
+        "step4_committed": s.get("step4_committed"),
+        "preserve_quality_score": s.get("preserve_quality_score"),
+        "preserve_quality": s.get("preserve_quality"),
+        "preserve_quality_score_version": s.get(
+            "preserve_quality_score_version", PRESERVE_QUALITY_SCORE_VERSION
+        ),
+        "pass12_preserved_missing_stub_drop_extractor_count": s.get(
+            "pass12_preserved_missing_stub_drop_extractor_count"
+        ),
+        "pass12_preserve_drop_reason_counts": dict(
+            s.get("pass12_preserve_drop_reason_counts") or {}
+        ),
+        "pass12_recoverability_class_counts": dict(
+            s.get("pass12_recoverability_class_counts") or {}
+        ),
+        "pass12_preserved_recovery_success_count": s.get("pass12_preserved_recovery_success_count"),
+        "pass12_preserved_recovery_traces": list(traces),
+        "pass12_preserved_missing_stub_drop_details": list(drops),
+        "extractor_count": s.get("extractor_count"),
+        "orphan_transport_count": s.get("orphan_transport_count"),
+        "transport_connected": s.get("transport_connected"),
+    }
+    for k in _STUB_ROUTE_AB_SUMMARY_KEYS:
+        if k not in row and k in s:
+            row[k] = s.get(k)
+    pq = s.get("preserve_quality")
+    if isinstance(pq, dict):
+        row["preserve_quality_stub_route_recovery_success_count"] = pq.get(
+            "stub_route_recovery_success_count"
+        )
+    return row
+
+
+def _diff_stub_route_ab(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+    keys = (
+        "return_reason",
+        "geometry_valid",
+        "connectivity_valid",
+        "missing_stub_count",
+        "orphan_transport_count",
+        "transport_connected",
+        "step4_routing_failure_count",
+        "step4_committed",
+        "preserve_quality_score",
+        "preserve_quality_score_version",
+        "pass12_preserved_missing_stub_drop_extractor_count",
+        "pass12_preserved_recovery_success_count",
+        "pass12_preserved_missing_stub_route_recovery_attempted_count",
+        "pass12_preserved_missing_stub_route_recovery_success_count",
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_nearest_hops_count",
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_no_stub_space_count",
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count",
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count",
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count",
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count",
+        "extractor_count",
+        "preserve_quality_stub_route_recovery_success_count",
+    )
+    out: dict[str, Any] = {}
+    for k in keys:
+        if a.get(k) != b.get(k):
+            out[k] = {"route_off": a.get(k), "route_on": b.get(k)}
+    return out
+
+
+def _stub_route_ab_decision_hint(b_off: dict[str, Any], b_on: dict[str, Any]) -> str:
+    att = int(b_on.get("pass12_preserved_missing_stub_route_recovery_attempted_count") or 0)
+    ok = int(b_on.get("pass12_preserved_missing_stub_route_recovery_success_count") or 0)
+    geo = b_on.get("geometry_valid") is True
+    conn = b_on.get("connectivity_valid") is True
+    ms = int(b_on.get("missing_stub_count") or 0)
+    ot = int(b_on.get("orphan_transport_count") or 0)
+    tc = b_on.get("transport_connected")
+    tc_ok = tc is True or tc is None
+    if att == 0:
+        return "no_route_recovery_attempts_on_input_check_eligibility"
+    if ok == 0:
+        return "attempted_but_no_success_review_rejection_histogram"
+    if not (geo and conn and ms == 0 and ot == 0 and tc_ok):
+        return "success_but_invariant_failed_revisit_commit_gate"
+    return "success_and_invariants_ok_consider_shrunk_fixture"
+
+
+def _stub_route_trace_spotcheck(b_on: dict[str, Any]) -> dict[str, Any]:
+    traces = b_on.get("pass12_preserved_recovery_traces") or []
+    samples: list[dict[str, Any]] = []
+    if not isinstance(traces, list):
+        return {"stub_route_trace_samples": [], "note": "no_traces_list"}
+    for tr in traces:
+        if not isinstance(tr, dict):
+            continue
+        rm = tr.get("recovery_mode")
+        modes = rm if isinstance(rm, list) else []
+        if "stub_route_to_trunk" in modes:
+            samples.append(
+                {
+                    "miner_cell": tr.get("miner_cell"),
+                    "path_cells": tr.get("path_cells"),
+                    "new_transport_cell_count": tr.get("new_transport_cell_count"),
+                    "selected_stub_cell": tr.get("selected_stub_cell"),
+                }
+            )
+        if len(samples) >= 16:
+            break
+    return {
+        "stub_route_trace_samples": samples,
+        "note": "Compare path_cells roles to mining_map offline if needed.",
+    }
+
+
+def _write_stub_route_ab(
+    payload: dict[str, Any], diff: dict[str, Any], summary_diff: dict[str, Any]
+) -> int:
+    out_dir = ROOT / "var"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    _OUT_PATH_STUB_ROUTE_AB.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(
+        json.dumps(
+            {"written": str(_OUT_PATH_STUB_ROUTE_AB), "diff": diff, "summary": summary_diff},
+            indent=2,
+        )
+    )
+    return 0
+
+
+def _main_stub_route_recovery_ab(
+    decoded: dict[str, Any], source: dict[str, Any], *, full: bool = False
+) -> int:
+    decoded_off = copy.deepcopy(decoded)
+    decoded_on = copy.deepcopy(decoded)
+    b_off = _stub_route_ab_timeline_row(decoded_off, route_flag=False)
+    b_on = _stub_route_ab_timeline_row(decoded_on, route_flag=True)
+    diff = _diff_stub_route_ab(b_off, b_on)
+    drop_off = int(b_off.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
+    drop_on = int(b_on.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
+    rr_ok_off = int(b_off.get("pass12_preserved_missing_stub_route_recovery_success_count") or 0)
+    rr_ok_on = int(b_on.get("pass12_preserved_missing_stub_route_recovery_success_count") or 0)
+    ext_off = b_off.get("extractor_count")
+    ext_on = b_on.get("extractor_count")
+    summary_diff = {
+        "stub_route_drop_delta": drop_on - drop_off,
+        "stub_route_recovery_success_delta": rr_ok_on - rr_ok_off,
+        "extractor_count_off": ext_off,
+        "extractor_count_on": ext_on,
+        "decision_hint": _stub_route_ab_decision_hint(b_off, b_on),
+    }
+    spot = _stub_route_trace_spotcheck(b_on)
+    payload = {
+        "ab_mode": "stub_route_recovery",
+        "settings_note": (
+            "SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=True for both runs; "
+            "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY toggled False/True."
+        ),
+        "input_source": source,
+        "baseline_route_recovery_off": _trim_timeline_heavy(b_off, full=full),
+        "route_recovery_on": _trim_timeline_heavy(b_on, full=full),
+        "diff_route_off_vs_on": diff,
+        "summary_diff": summary_diff,
+        "spotcheck": spot,
+    }
+    return _write_stub_route_ab(payload, diff, summary_diff)
+
+
+def _probe_replay_input(path: Path) -> dict[str, Any]:
+    """Return whether ``path`` can supply a decoded blueprint (BP.Entries) without running solve."""
+
+    p = path.resolve()
+    try:
+        load_decoded_from_ndjson_or_json(p)
+        return {"path": str(p), "replayable": True, "reason": "found_top_level_BP"}
+    except (OSError, ValueError) as e:
+        return {"path": str(p), "replayable": False, "reason": str(e)}
 
 
 def _trim_timeline_heavy(row: dict[str, Any], *, full: bool) -> dict[str, Any]:
@@ -446,11 +672,13 @@ def _write_and_print(payload: dict[str, Any], diff: dict[str, Any]) -> int:
 def _main_default(*, full: bool = False) -> int:
     baseline = _run_merged_seed_synthetic(False)
     recovery_on = _run_merged_seed_synthetic(True)
+    drop_on = int(recovery_on.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
+    drop_off = int(baseline.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
+    rec_on = int(recovery_on.get("pass12_preserved_recovery_success_count") or 0)
+    rec_off = int(baseline.get("pass12_preserved_recovery_success_count") or 0)
     diff = {
-        "drop_delta": int(recovery_on["pass12_preserved_missing_stub_drop_extractor_count"])
-        - int(baseline["pass12_preserved_missing_stub_drop_extractor_count"]),
-        "recovery_success_delta": int(recovery_on["pass12_preserved_recovery_success_count"])
-        - int(baseline["pass12_preserved_recovery_success_count"]),
+        "drop_delta": drop_on - drop_off,
+        "recovery_success_delta": rec_on - rec_off,
         "preserve_quality_score_baseline": baseline["preserve_quality_score"],
         "preserve_quality_score_recovery_on": recovery_on["preserve_quality_score"],
     }
@@ -547,20 +775,20 @@ def _main_decoded(decoded: dict[str, Any], source: dict[str, Any], *, full: bool
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    src = parser.add_mutually_exclusive_group()
-    src.add_argument(
+    src_group = parser.add_mutually_exclusive_group()
+    src_group.add_argument(
         "--copy-code-file",
         type=Path,
         metavar="PATH",
         help="Text file with SHAPEZ2-4-... copy string (whitespace allowed).",
     )
-    src.add_argument(
+    src_group.add_argument(
         "--ndjson",
         type=Path,
         metavar="PATH",
         help="Single JSON with BP, or NDJSON containing a line with BP (e.g. *_decoded.json).",
     )
-    src.add_argument(
+    src_group.add_argument(
         "--solver-trace",
         type=Path,
         metavar="PATH",
@@ -578,16 +806,49 @@ def main() -> int:
         type=Path,
         default=None,
         metavar="PATH",
-        help="Decoded blueprint JSON when --solver-trace has no embedded BP line.",
+        help=(
+            "Decoded blueprint JSON (single object with BP.Entries), alone or with "
+            "--solver-trace when the trace has no embedded BP line."
+        ),
     )
     parser.add_argument(
         "--full",
         action="store_true",
         help="Include full pass12 drop_details and recovery_traces in JSON (default: truncated).",
     )
+    parser.add_argument(
+        "--stub-route-recovery-ab",
+        action="store_true",
+        help=(
+            "Compare SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY False vs True "
+            "(SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=True). Writes "
+            "var/pass12_stub_route_recovery_ab_experiment.json. Use with --ndjson / "
+            "--copy-code-file / --solver-trace, or alone for striped BP smoke."
+        ),
+    )
+    parser.add_argument(
+        "--probe-replay-input",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Exit after checking whether PATH contains a replayable top-level BP (no solve).",
+    )
     args = parser.parse_args()
 
+    if args.probe_replay_input is not None:
+        probe = _probe_replay_input(args.probe_replay_input.resolve())
+        print(json.dumps(probe, indent=2))
+        return 0 if probe.get("replayable") else 3
+
+    has_input = bool(args.solver_trace or args.copy_code_file or args.ndjson or args.bp_json)
+
     try:
+        if args.stub_route_recovery_ab and not has_input:
+            return _main_stub_route_recovery_ab(
+                copy.deepcopy(_STRIPED_BP),
+                {"kind": "synthetic_striped_bp_stub_route_ab"},
+                full=args.full,
+            )
         if args.solver_trace:
             decoded, trace_meta = load_decoded_from_solver_trace_ndjson(
                 args.solver_trace.resolve(),
@@ -599,21 +860,33 @@ def main() -> int:
                 "path": str(args.solver_trace.resolve()),
             }
             src_meta.update(trace_meta)
+            if args.stub_route_recovery_ab:
+                return _main_stub_route_recovery_ab(decoded, src_meta, full=args.full)
             return _main_decoded(decoded, src_meta, full=args.full)
         if args.copy_code_file:
             decoded = load_decoded_from_copy_code_file(args.copy_code_file.resolve())
-            return _main_decoded(
-                decoded,
-                {"kind": "copy_code_file", "path": str(args.copy_code_file.resolve())},
-                full=args.full,
-            )
+            input_src: dict[str, Any] = {
+                "kind": "copy_code_file",
+                "path": str(args.copy_code_file.resolve()),
+            }
+            if args.stub_route_recovery_ab:
+                return _main_stub_route_recovery_ab(decoded, input_src, full=args.full)
+            return _main_decoded(decoded, input_src, full=args.full)
         if args.ndjson:
             decoded = load_decoded_from_ndjson_or_json(args.ndjson.resolve())
-            return _main_decoded(
-                decoded,
-                {"kind": "ndjson_or_json", "path": str(args.ndjson.resolve())},
-                full=args.full,
-            )
+            input_src = {
+                "kind": "ndjson_or_json",
+                "path": str(args.ndjson.resolve()),
+            }
+            if args.stub_route_recovery_ab:
+                return _main_stub_route_recovery_ab(decoded, input_src, full=args.full)
+            return _main_decoded(decoded, input_src, full=args.full)
+        if args.bp_json:
+            decoded = load_decoded_from_ndjson_or_json(args.bp_json.resolve())
+            input_src = {"kind": "bp_json", "path": str(args.bp_json.resolve())}
+            if args.stub_route_recovery_ab:
+                return _main_stub_route_recovery_ab(decoded, input_src, full=args.full)
+            return _main_decoded(decoded, input_src, full=args.full)
     except (OSError, ValueError, ShapezCopyDecodeError, json.JSONDecodeError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2

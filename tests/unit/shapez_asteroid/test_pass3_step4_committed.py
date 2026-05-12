@@ -1,17 +1,17 @@
-"""Pass3 eligibility must use explicit ``step4_committed`` (no trunk_load default-True inference)."""
+"""Pass3 eligibility uses explicit ``step4_committed`` (no trunk_load default-True)."""
 
 from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_permission import (
     pass3_permission_snapshot,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation_contracts import (
-    FinalValidationReport,
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+    final_validation_contracts as fvc,
 )
 
 
-def _ok_report() -> FinalValidationReport:
-    return FinalValidationReport(
+def _ok_report() -> fvc.FinalValidationReport:
+    return fvc.FinalValidationReport(
         geometry_valid=True,
         connectivity_valid=True,
         disconnected_stub_count=0,

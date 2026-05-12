@@ -2,10 +2,10 @@
 
 에이전트·인간이 동일한 Phase 순서를 쓰기 위한 스케치다. **플랜 승인 후** 구현에 넣는다.
 
-## GitHub PR (참고)
+## GitHub PR
 
-- 원격 기본 브랜치는 **`master`**이다. PR 자동 생성이 `main`을 base로 쓰면 실패할 수 있으므로, **웹에서 base = `master`**로 수동 지정한다.
-- Phase 0 전용 산출물: [phase0_drift_matrix.md](./phase0_drift_matrix.md)
+- Base: **`master`**. PR 자동 생성이 `main`을 쓰면 실패할 수 있음 → 웹에서 base 수동 선택.
+- Phase 0 산출물: [phase0_drift_matrix.md](./phase0_drift_matrix.md)
 
 ## Phase 0 — 코드 변경 없는 drift 매트릭스
 

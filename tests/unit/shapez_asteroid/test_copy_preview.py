@@ -10,6 +10,7 @@ from django.test import Client, override_settings
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     SOLVER_REPLAY_CONTRACT_VERSION,
 )
+from django_apps.shapez_asteroid.services.copy_preview_debug_dump import dump_copy_preview_debug
 from django_apps.shapez_asteroid.services.style_classifier import asteroid_map_style_catalog
 from django_apps.shapez_core.services.shapez_copy_decode import SHAPEZ2_COPY_PREFIX_V4
 
@@ -353,3 +354,21 @@ def test_copy_preview_debug_dump_writes_encrypt_and_json(tmp_path) -> None:
     assert txt_files[0].read_text(encoding="utf-8").strip() == code.strip()
     saved = json.loads(json_files[0].read_text(encoding="utf-8"))
     assert saved == data
+
+
+def test_copy_preview_debug_dump_prunes_to_ten_stems(tmp_path) -> None:
+    base = {
+        "V": 1,
+        "BP": {"$type": "Island", "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}]},
+    }
+    for i in range(11):
+        payload = {**base, "seq": i}
+        code = _encode_copy(payload)
+        dump_copy_preview_debug(code, payload, tmp_path)
+
+    txt_files = sorted(tmp_path.glob("copy_preview_*_encrypt_code.txt"))
+    json_files = sorted(tmp_path.glob("copy_preview_*_decoded.json"))
+    assert len(txt_files) == 10
+    assert len(json_files) == 10
+    seqs = sorted(json.loads(p.read_text(encoding="utf-8"))["seq"] for p in json_files)
+    assert seqs == list(range(1, 11))

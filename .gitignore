@@ -110,7 +110,6 @@ persona/
 .serena/
 .vscode/
 protocols/
-documents/
 persona/
 *.zip
 

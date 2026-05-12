@@ -7,6 +7,8 @@
 | 경로 | 용도 |
 |------|------|
 | [`ai/`](ai/) | 에이전트용 현재 계획·체크리스트·작업 유형별 매뉴얼 |
+| [`index/`](index/) | 문서 상태 enum·inventory·정본/활성/보관 읽기 우선순위 |
+| [`adr/`](adr/) | 승인된 아키텍처 결정 기록. 정본 spec의 "왜"를 보강 |
 | [`plans/`](plans/) | 승인 게이트 대상 **활성 실행 플랜** (주제별 `plan_*.md`; 구현 완료·참고용 쌍은 [`archive/completed-implementation/`](archive/completed-implementation/README.md)) |
 | [`research/`](research/) | 플랜 선행 **조사·근거** (`research_*.md`; 1:1 쌍은 위와 동일 규칙) |
 | [`notes/`](notes/) | 진행 메모·요약(장기 보관 가치가 낮은 초안) |
@@ -42,6 +44,9 @@
 
 ## 최신 업데이트 기준 (2026-05-12)
 
+- `documents/index/document_inventory.md`가 현재 정본·활성·연구·보고·보관 문서를 구분하는 1차 라우팅 표다. 새 작업은 먼저 [`documents/index/document_lifecycle.md`](index/document_lifecycle.md)의 상태 enum을 따른다.
+- `documents/ai/START_HERE.md`는 새 AI 세션·서브에이전트의 context 진입점이다.
+- `documents/adr/`는 bounded recovery, protected corridor, final validation, replay cycle stream의 결정 이유를 기록한다.
 - `documents/ai/README.md`, `manuals/cursor_usage.md`, `manuals/testing.md`가 최신 작업 허브·검증 지침을 반영한다.
 - `documents/ai/plan_pass12_stub_route_recovery_decision.md`, `documents/ai/pass12_telemetry_policy_note_2026-05-11.md`, `documents/plans/plan_corridor_runtime_contract_2026-05-11.md`, `documents/plans/plan_pass3_f_topology_branch_mvp_2026-05-11.md`는 최근 pass12/pass3/route 계약 문서다.
 - `documents/Algorithm/mining_solver_cursor_sessions/`는 01~14 단계 브리프가 모두 존재하며, `08_step4_routing.md`가 최근 갱신됐다.

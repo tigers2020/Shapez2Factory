@@ -22,6 +22,12 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 
 ## Workflow Rules
 
+### 문서 Authority
+
+- 문서 context를 잡을 때는 먼저 [`documents/ai/START_HERE.md`](documents/ai/START_HERE.md), [`documents/index/document_inventory.md`](documents/index/document_inventory.md), [`documents/index/document_lifecycle.md`](documents/index/document_lifecycle.md)를 확인한다.
+- `CANON` 문서만 현재 시스템 계약으로 본다. `ACTIVE`는 진행 중 플랜, `RESEARCH`는 근거, `REPORT`는 관측 결과이며 정본이 아니다.
+- `ARCHIVED`·`SUPERSEDED` 문서는 역사 확인용으로만 읽고, 구현 판단에 쓰지 않는다.
+
 ### 작업 전 (Before)
 
 1. **작업 유형**을 하나 고른다: django · solver · graph UI · frontend · tests · refactor · database.

@@ -5,6 +5,10 @@
 - 정본: `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` §4.1–§4.3, `11_step8_recovery.md` §13.2.
 - 구현: `recovery_orchestrator.run_solver_timeline_pipeline`이 STEP4 이후 **고정 `routing_snapshot` 기준**으로 Pass3→P4→finalize를 반복하고, 실패 시 주로 `validation_recovery` 루프로 처리한다.
 
+## Mini-audit 산출물 (구현 전)
+
+- **1차 표·식별자 사전·A/B 초안:** [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) (2026-05-12). Epic A 코드 착수 전에 표의 Expected 열을 정본 인용으로 맞출 것.
+
 ## 현재 상태
 
 - 트리거별 복귀(예: `pass3_connectivity_break` → Pass3 rollback 후 **STEP 6 Reclaim** 등)가 문서 표와 **1:1 대응**하지 않을 수 있다.
@@ -18,7 +22,7 @@
 
 ## 작업 항목
 
-1. 트리거 목록(`step4_routing_failure`, `pass3_connectivity_break`, `reclaim_incremental_failure`, `post_reclaim_pass3_connectivity_break`, `final_validation_failure`)마다 **현 코드 경로**를 표로 적는다(감사용).
+1. 트리거 목록(`step4_routing_failure`, `pass3_connectivity_break`, `reclaim_incremental_failure`, `post_reclaim_pass3_connectivity_break`, `final_validation_failure`)마다 **현 코드 경로**를 표로 적는다(감사용). → **초안:** [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) §5.
 2. 차이가 큰 항목부터: §4.3.1 Reclaim 복귀 vs 현 루프 — 의도 확인 후 A 또는 B.
 3. `recovery_contract_phases` / replay에 “문서 표 행 ID”를 남길지 결정한다.
 

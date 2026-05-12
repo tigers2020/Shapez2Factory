@@ -292,8 +292,9 @@ def post_reclaim_p3e3_route_ratio_max(*, pass3_internal_transport_saved: int) ->
 
 
 # --- Replay NDJSON contract ---
-SOLVER_REPLAY_CONTRACT_VERSION = 8
+SOLVER_REPLAY_CONTRACT_VERSION = 9
 
+# v9: replay ``events[]`` carry ``event_type`` (canonical category) alongside legacy ``kind``.
 # v8: ``ui_frames[].trunk_load_overlay`` (STEP4 trunk observation slice for STEP10 UI).
 
 # Pass3 lexicographic search: multiply STEP4 ``trunk_edge_load`` counts per canonical edge key.

@@ -1,4 +1,8 @@
-"""P5 recovery contract: attempt caps, named phases, and trace-derived failure tags."""
+"""P5 recovery contract: attempt caps, named phases, and trace-derived failure tags.
+
+Algorithm §4.3 canonical return-path rows (spec only): ``solver.recovery_return_policy``;
+orchestrator alignment is D2-B/C.
+"""
 
 from __future__ import annotations
 
@@ -237,10 +241,12 @@ def step9_reports_hard_invariant_failure_for_bounded_recovery(
 def validation_recovery_allowed(pipeline_out: dict[str, Any]) -> bool:
     """Whether bounded validation recovery may retry Pass3→P4 (degraded Pass3 when enabled).
 
-    Algorithm §11 / §15: the timeline loop does **not** re-enter STEP4; recovery is
-    Pass3→P4→finalize only. Capacity is not a STEP9 hard fail here. Unfinalized placements are not
-    recoverable in this loop. ``ok`` False from partial success with a STEP9-clean report does not
-    enable retry (see :func:`step9_reports_hard_invariant_failure_for_bounded_recovery`).
+    Algorithm §11 / §15: recovery is Pass3→P4→finalize only (no STEP4 re-entry for **final
+    validation** failure). ``step4_routing_failure`` bounded STEP4 retries and the no-loop gate
+    live in :func:`run_solver_timeline_pipeline`. Capacity is not a STEP9 hard fail here.
+    Unfinalized placements are not recoverable in this loop. ``ok`` False from partial success
+    with a STEP9-clean report does not enable retry (see
+    :func:`step9_reports_hard_invariant_failure_for_bounded_recovery`).
     """
 
     if not is_validation_recovery_loop_enabled():

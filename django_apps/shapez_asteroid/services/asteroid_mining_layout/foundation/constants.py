@@ -16,6 +16,10 @@ RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM = "post_pass3_p4_reclaim_entry"
 # ``recovery_trigger_reason``은 bounded recovery(예: STEP4 실패) 전용으로 둔다.
 P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE = RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM
 RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE = "step4_routing_failure"
+# Algorithm ``02_pipeline_control_flow`` §4.3 표 trigger id (replay·정책 테이블과 동일 문자열).
+RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE = "step4_capacity_failure"
+RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK = "pass3_connectivity_break"
+RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE = "final_validation_failure"
 
 # --- P5 recovery contract (attempt caps) ---
 # Sentinels: numeric 0; semantics differ by knob (see recovery_timeline_envelope).
@@ -99,6 +103,7 @@ RECOVERY_PHASE_VALIDATION_RECOVERY = "validation_recovery"
 RECOVERY_PHASE_MERGE_PARTIAL_FAILURE = "merge_partial_failure"
 RECOVERY_PHASE_RECLAIM_INCREMENTAL_FAILURE = "reclaim_incremental_failure"
 RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK = "post_reclaim_pass3_connectivity_break"
+RECOVERY_TRIGGER_RECLAIM_INCREMENTAL_FAILURE = RECOVERY_PHASE_RECLAIM_INCREMENTAL_FAILURE
 
 # §13.5 bounded recovery **entry** triggers (solver_summary / replay). Not ``commit_reason``.
 RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY = RECOVERY_PHASE_VALIDATION_RECOVERY

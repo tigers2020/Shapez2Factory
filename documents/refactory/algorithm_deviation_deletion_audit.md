@@ -1,7 +1,7 @@
 # Algorithm deviation deletion audit
 
-**갱신:** 2026-05-12 (Stage 1 — 정본 절 인용 바인딩)  
-**성격:** 삭제·치환 **전** 감사. 본 패스는 **문서만** 갱신했으며 **Python·스크립트 경로 변경 없음**.  
+**갱신:** 2026-05-12 (Stage 1 감사 + D2-B2-DEL 오케스트레이터 반영)  
+**성격:** 삭제·치환 **전** 감사 스냅샷이며, D2-B2-DEL 등 코드 PR 시 **본 문서 표·큐를 동기**한다.  
 **1차 권위:** `documents/Algorithm/mining_solver_cursor_sessions/` (`01_project_overview.md` … `14_step10_replay_ui.md`). 인덱스: [`01_canonical_doc_paths.md`](./01_canonical_doc_paths.md), [`../Algorithm/mining_solver_cursor_sessions/README.md`](../Algorithm/mining_solver_cursor_sessions/README.md).  
 **2차(참고):** [`02_pipeline_recovery_control_flow.md`](./02_pipeline_recovery_control_flow.md), [`04_protected_corridor_lifecycle.md`](./04_protected_corridor_lifecycle.md), [`15_final_validation_assertion_only.md`](./15_final_validation_assertion_only.md) 등 — **Conflict·Action·Reason은 정본 문장과의 대조로만** 적는다. “B-class” 같은 refactory 전용 라벨과, **이전 감사의 ‘소스 점검 대기’ 토큰**은 쓰지 않는다.
 
@@ -39,7 +39,7 @@
 
 | File | Code path | Canonical Algorithm source | Conflict | Action | Reason | Test needed |
 |------|-----------|---------------------------|----------|--------|--------|-------------|
-| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/recovery_orchestrator.py` | `run_solver_timeline_pipeline` (고정 `routing_snapshot`, `MAX_VALIDATION_RECOVERY_ATTEMPTS` 루프, `pass3_recovery_context` 토글) | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표 `final_validation_failure` 행: 「recovery 후 STEP 9 재검증 (**STEP 4 재진입 없음**)」. `documents/Algorithm/mining_solver_cursor_sessions/11_step8_recovery.md` **§13.3** `validation_recovery`: 「새 최적화(Pass3 재탐색 등)를 하지 않고 invalid 원인만 rollback 또는 최소 repair.」 | uncertain | NEEDS_DECISION | STEP 4 비재진입은 충족하나, 매 사이클 **Pass3→P4→finalize** 전체를 도는 bounded 루프가 §13.3의 “Pass3 재탐색 금지”와 동일 범위인지 해석이 갈린다. PR 전 **정본 문장 하나로 규범 확정** 후 REPLACE 또는 KEEP으로 닫을 것. | `tests/unit/.../test_recovery_return_paths_algorithm.py` 등 validation recovery 루프·replay payload |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/recovery_orchestrator.py` | `run_solver_timeline_pipeline` (`step4_routing_failure` 시 `recovery_return_policy_for_trigger` + 정책 `reenters_step4`면 STEP4 **최대 1회 추가** 후 `routing_snapshot` 고정; 동일 트리거면 `validation_recovery` 추가 사이클 없음; `MAX_VALIDATION_RECOVERY_ATTEMPTS`는 `for va`만) | `02_pipeline_control_flow.md` **§4.3**·`11_step8_recovery.md` **§13.3** | uncertain | NEEDS_DECISION | `step4_routing_failure` 경로는 D2-B2-DEL로 **고정 bad snapshot 위의 검증-only 반복** 제거. §13.3과 Pass3→P4 전체 재실행 해석은 **별도 규범 확정** 필요. | `test_recovery_return_paths_algorithm.py` |
 | `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/recovery_orchestrator.py` | `_apply_layout_preserve_hard_gate` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** STEP 목록의 STEP 0.5: 「Existing layout analysis (read-only context; 배치 변경 없음)」. `documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md` **§15.4**: counterfactual baseline·optimization 경고는 hard invariant와 분리. | uncertain | NEEDS_DECISION | 비-raw 입력에서 내부 transport가 악화되면 Pass3/Validate **타임라인 프레임**을 baseline으로 되돌림. 정본이 “타임라인 프레임 단위 복원”을 허용하는지 명시가 없어 **계약(관측 vs 본경로)** 판단 필요. | preserve·gate 회귀(기존 `_apply_layout_preserve_hard_gate` 단위) |
 | `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/recovery_policy.py` | `validation_recovery_allowed`, `step9_reports_hard_invariant_failure_for_bounded_recovery` | `documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md` **§15.3**: 「capacity overflow … Final validation에서는 새 route를 만들지 않는다」「Final validation recovery는 MAX_VALIDATION_RECOVERY_ATTEMPTS를 초과할 수 없다」. `documents/Algorithm/mining_solver_cursor_sessions/11_step8_recovery.md` **§13.1** attempt limit. | telemetry_or_ui_only | KEEP | STEP9 hard invariant만으로 bounded 루프 허용·missing stub 시 차단 등은 §15·§13과 정합. | `test_pr4d_algorithm_final_validation_boundary.py` 등 |
 | `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/recovery_policy.py` | `tag_*`, `synthesize_recovery_validation_outcome`, `append_recovery_contract_phase` | `documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md` **§16.3** trace event schema(`recovery_trigger` 등). `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.2** bounded 상수·요약 필드. | telemetry_or_ui_only | KEEP | 요약·페이즈는 **다음 패스의 유일한 분기 입력**이 되면 안 되나, 현 구조는 STEP9 게이트와 병행하는 **관측·계약**에 가깝다. 이상 시 D2에서 분기 의존도만 축소. | recovery summary·PR4 계약 테스트 |
@@ -70,7 +70,7 @@
 
 | Trigger | Canonical Algorithm source (요약) | 구현 정렬 메모 | Action |
 |---------|-----------------------------------|----------------|--------|
-| `step4_routing_failure` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표: STEP 4 route 실패 → 「STEP 4 재시도, 해당 placement rollback 또는 alternate trunk」 / 실패 시 unrouted rollback 후 STEP 4 재시도 | 복귀·재시도는 **`solver_pipeline/step4.py`·`step4_merge_routing.py`** 등 STEP4 패키지에 집중; 오케스트레이터는 단일 `routing_snapshot` 이후 STEP4 비재진입. **표와의 1:1 추적**은 코드 PR(D2)에서 검증. | REPLACE |
+| `step4_routing_failure` | `02_pipeline_control_flow.md` **§4.3** 표: STEP 4 route 실패 → 재시도·rollback·alternate trunk | 오케스트레이터: 정책 조회 + (정책 허용 시) STEP4 **최대 1회 추가**·snapshot 갱신; **검증-only 추가 사이클 차단**. alternate trunk·rollback 본구현은 STEP4 패키지 측 잔여. | REPLACE |
 | `step4_capacity_failure` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표: capacity split/additional trunk 실패 → STEP 4 재시도·trunk split 후보 변경 | (`step4_routing_failure`와 동일 계열) | REPLACE |
 | `pass3_connectivity_break` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표 + **§4.3.1**: rollback → 복귀 **STEP 6**; 선택 remedial은 §4.3.1 3번 한도 | Pass3·Reclaim·(선택) STEP4 remedial 체인이 표·§4.3.1과 동일한지 D2에서 검증. | REPLACE |
 | `post_reclaim_pass3_connectivity_break` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3.2**: rerun rollback → **STEP 9**, 추가 rerun 없음 | `recovery_policy.tag_post_reclaim_pass3_connectivity_break` 등으로 플래그·트리거 기록. | KEEP |
@@ -84,7 +84,7 @@
 | 큐 | 내용 | 표·심볼 참조 |
 |----|------|----------------|
 | **D1** | NDJSON·trace 전용 스크립트 **격리**(삭제보다 우선) | 메인 표 `scripts/debug/*.py` ISOLATE 행 4건 + [`scripts/debug/README.md`](../../scripts/debug/README.md) |
-| **D2** | Recovery **제어 흐름**을 §4.3·§4.3.1·§13과 동치로 맞춤(오케스트레이터·Pass3·STEP4 재시도 경계) | §4.3 표 REPLACE 3행 + `run_solver_timeline_pipeline`·`pass3_transport` NEEDS_DECISION 해소 후 REPLACE/KEEP 확정 |
+| **D2** | Recovery 제어 흐름 §4.3 정렬. **D2-A:** `recovery_return_policy` 테이블. **D2-B1(완료):** `step4_recovery_trigger`·`trunk_load["step4_primary_recovery_trigger"]`·용량 신호 예약·계약 테스트. **D2-B2-DEL(완료):** routing 실패 시 정책 + STEP4 최대 1회 추가·bad snapshot 위 `validation_recovery` 반복 제거(보정 상한은 `MAX_VALIDATION_RECOVERY_ATTEMPTS`와 **무관**). **D2-C:** Pass3 connectivity 등. | §4.3 REPLACE·NEEDS_DECISION |
 | **D3** | Protected corridor **생명주기**·reclaim merge가 §14·§10과 완전 동치인지 정리 | `reclaim_corridors.py` NEEDS_DECISION, `step4_routing_state.py` 소비자 정리 |
 | **D4** | Placement·route **shortcut**이 정본 §7·§9.6과 어긋나면 치환 | 메인 표에서 현재는 대부분 **KEEP**(§9.6 no-op 등); 새 위반 발견 시 이 큐로 이동 |
 | **D5** | Algorithm이 요구하지 않는 **legacy 호환·기본값** 제거 | `finalize.py` `setdefault("step4_committed", …)` **REPLACE** 행, `search_mode` 라벨 정합은 선택 |
@@ -107,16 +107,35 @@
 
 ---
 
+## D2-B2-DEL: Net impact (tracked `git diff --numstat` vs `origin/master`, 2026-05-12)
+
+| Phase | Deleted | Added | Net |
+|-------|--------:|------:|----:|
+| 초안(중첩 mock 중심) | ~35 | ~640 | ~+605 |
+| 다이어트 후 | 61 | 210 | +149 |
+
+제거 스캐폴딩: `test_recovery_return_paths_algorithm.py`의 다중 `patch` 블록 2건 → `test_d2_b2_orchestrator_step4_routing_contract_in_source`로 대체; `test_pr4d_…test_recovery_timeline_loop_does_not_call_step4_twice` 제거(동일 단언 중복).
+
+## Remaining deviations
+
+| Deviation | Action |
+|-----------|--------|
+| alternate trunk·placement rollback을 §4.3 표와 1:1로 구현 | 다음 PR(STEP4 패키지·오케스트레이터 확장) |
+| `step4_capacity_failure` 오케스트레이터 분기 | 용량 판별 신호 구현 후 |
+| §13.3 vs Pass3→P4 전체 validation recovery 루프 | NEEDS_DECISION 행·정본 규범 확정 |
+
+---
+
 ## 검증 (본 패스)
 
 - `rg "documents/Algorithm/mining_solver_cursor_sessions" documents/refactory/algorithm_deviation_deletion_audit.md`  
 - 과거 감사용 「소스 점검 대기」 라벨(구 `NEEDS_*` 계열)은 본문에서 제거함 → 해당 문자열 **grep 0건** 목표.  
-- 문서만 변경 → **pytest 미실행**(정책상 생략).
+- 코드 PR(D2-B2-DEL 등) 시: `python -m pytest tests/unit/shapez_asteroid/test_recovery_return_paths_algorithm.py` 등 해당 구간 필수.
 
 ---
 
 ## 이후 진행 상황
 
 1. Stage 1 본 문서 **정본 바인딩** 완료.  
-2. 다음: D1 PR(스크립트 격리) → D2(§4.3·§13 정합 코드 PR, 사람 승인·테스트 확대) → D3–D5.  
+2. D1 완료 후 **D2-A**(`recovery_return_policy`)로 정책 스펙 고정 → **D2-B/C**에서 오케스트레이터·Pass3 drift 치환 → D3–D5.  
 3. 코드 변경 시 [`AGENTS.md`](../../AGENTS.md) 게이트·플랜 승인 절차 준수.

@@ -69,6 +69,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.validation_bridge import (  # noqa: E501
     validate_final_mining_layout_bridge as _validate_final_mining_layout,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_recovery_trigger as _s4_rt,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
 )
@@ -532,6 +535,9 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    summary_fields["step4_recovery_trigger"] = _s4_rt.step4_primary_recovery_trigger_from_result(
+        step4_result
+    )
     _rtr = summary_fields.get("recovery_trigger_reason")
     _rt = summary_fields.get("recovery_trigger")
     if _rt or _rtr:
@@ -922,6 +928,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("p4_orchestration_entry_segment", None)
     summary_fields.setdefault("recovery_trigger", None)
     summary_fields.setdefault("recovery_trigger_reason", None)
+    summary_fields.setdefault("step4_recovery_trigger", None)
     summary_fields.setdefault("pass3_rejected_reason", None)
     summary_fields.setdefault("p4_reclaim_shadow_enabled", False)
     summary_fields.setdefault("p4_reclaim_shadow_skip_reason", "exception")

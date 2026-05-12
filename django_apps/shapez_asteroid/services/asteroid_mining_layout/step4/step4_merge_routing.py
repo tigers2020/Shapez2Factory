@@ -16,6 +16,9 @@ from collections.abc import Callable
 from dataclasses import replace
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.extractor_extension_group import (  # noqa: E501
     route_extractor_is_maximized_group,
 )
@@ -52,6 +55,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_local_bridge_recovery as _s4_lb,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_recovery_trigger as _s4_rt,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_route_failure_detail as _s4_fail_detail,
@@ -551,6 +557,7 @@ def run_step4_merge_aware_routing(
                             "reason": "no_route",
                             "unrecoverable": True,
                             "last_error": detail["last_error"],
+                            "recovery_trigger": RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
                             "step4_route_failure_detail": detail,
                         }
                         fd_unrec["step4_route_failure_diagnostic"] = (
@@ -795,7 +802,7 @@ def run_step4_merge_aware_routing(
         trunk_edge_load_maximized_by_kind=trunk_edge_load_maximized_by_kind,
     )
 
-    return Step4RoutingResult(
+    result = Step4RoutingResult(
         committed=committed,
         map_after_routing=map_after_routing,
         routes=tuple(routes_out),
@@ -814,6 +821,12 @@ def run_step4_merge_aware_routing(
         degraded=step4_degraded,
         quarantined_placement_ids_peak=quarantined_placement_ids_peak,
     )
+    tid = _s4_rt.step4_primary_recovery_trigger_from_result(result)
+    if tid is not None:
+        tl_m = dict(result.trunk_load)
+        tl_m["step4_primary_recovery_trigger"] = tid
+        return replace(result, trunk_load=tl_m)
+    return result
 
 
 def step4_routing_skipped_result(map_after_pass2: list[dict[str, Any]]) -> Step4RoutingResult:

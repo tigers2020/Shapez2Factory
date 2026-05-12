@@ -160,14 +160,3 @@ def test_finalize_preserves_routing_state_and_does_not_promote_ela_to_hard() -> 
     hard = routing_state.get("hard_protected_corridors")
     assert isinstance(ela, list) and isinstance(hard, list)
     assert [9, 9] not in hard
-
-
-def test_recovery_timeline_loop_does_not_call_step4_twice() -> None:
-    """§11/§15: validation recovery does not re-enter STEP4 (single ``run_step4_stage`` call)."""
-
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline import (
-        recovery_orchestrator as ro,
-    )
-
-    src = inspect.getsource(ro.run_solver_timeline_pipeline)
-    assert src.count("run_step4_stage(") == 1

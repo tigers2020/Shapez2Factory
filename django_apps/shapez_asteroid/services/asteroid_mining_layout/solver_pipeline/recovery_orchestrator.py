@@ -1,4 +1,7 @@
-"""P5 bounded recovery: validation routing, baselines, optional Pass3→P4 retry loop."""
+"""P5 bounded recovery: validation routing, baselines, optional Pass3→P4 retry loop.
+
+Algorithm §4.3 return policy (spec table): ``solver.recovery_return_policy``; branch wiring D2-B/C.
+"""
 
 from __future__ import annotations
 
@@ -14,9 +17,13 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     RECOVERY_ACTION_ROLLBACK_LOWEST_PRIORITY_PLACEMENT,
     RECOVERY_ACTION_ROLLBACK_OR_FAIL_QUARANTINED,
     RECOVERY_PHASE_VALIDATION_RECOVERY,
+    RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
     RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
+    recovery_return_policy as _recovery_return_policy,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.baseline_routing import (
     compute_shortest_feasible_transport_baseline,
 )
@@ -33,6 +40,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_timeline import (
     optimization_baseline_internal_transport_pre_step4,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_recovery_trigger as _step4_recovery_trigger,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
@@ -243,10 +253,19 @@ def run_solver_timeline_pipeline(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Pass12 → STEP4 → (bounded Pass3→P4→finalize loop) mining solver timeline.
 
+    Algorithm §4.3: ``step4_routing_failure`` consults ``recovery_return_policy``. **At most one**
+    extra ``run_step4_stage`` follows the first STEP4 when the trigger is still routing failure
+    (remedial retry is **not** capped by ``MAX_VALIDATION_RECOVERY_ATTEMPTS``; that constant is
+    only for the Pass3→P4 validation loop — see refactory notes). ``routing_snapshot`` is taken
+    from the last STEP4 result.
+
     When validation recovery is enabled, each retry uses ``pass3_recovery_context`` (degraded
-    greedy Pass3) then the same P4 and finalize path. ``recovery_action_plan`` on the summary
-    lists intended STEP9-driven actions (planning); replay records ``planned_actions`` on
-    ``RECOVERY_BRANCH`` for visibility, not a separate executor per action id.
+    greedy Pass3) then the same P4 and finalize path — except no extra validation-only cycles
+    when ``step4_recovery_trigger`` stays ``step4_routing_failure`` (no frozen bad snapshot loop).
+
+    ``recovery_action_plan`` on the summary lists intended STEP9-driven actions (planning);
+    replay records ``planned_actions`` on ``RECOVERY_BRANCH`` for visibility, not a separate
+    executor per action id.
     """
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.existing_layout_analysis import (  # noqa: E501
@@ -317,6 +336,25 @@ def run_solver_timeline_pipeline(
         debug_location=debug_location,
         existing_layout_analysis=existing_layout_analysis,
     )
+    s4_primary = _step4_recovery_trigger.step4_primary_recovery_trigger_from_result(
+        step4.step4_result,
+    )
+    if s4_primary == RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE:
+        s4_return = _recovery_return_policy.recovery_return_policy_for_trigger(
+            RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
+        )
+        if s4_return.reenters_step4:
+            step4 = run_step4_stage(
+                map_after_pass2=pass12.map_after_pass2,
+                final_map=final_map,
+                is_external=is_external,
+                placement_records=pass12.placement_records,
+                pass12_skipped=pass12.pass12_skipped,
+                pass12_replay_txn_id=pass12.pass12_replay_txn_id,
+                replay_events=replay_events,
+                debug_location=debug_location,
+                existing_layout_analysis=existing_layout_analysis,
+            )
     optimization_baseline_internal_transport = optimization_baseline_internal_transport_at_map(
         pass12.map_after_pass2,
         final_mining_map=final_map,
@@ -462,6 +500,8 @@ def run_solver_timeline_pipeline(
         if out.get("ok"):
             break
         if not validation_recovery_allowed(out):
+            break
+        if summary_fields.get("step4_recovery_trigger") == RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE:
             break
         pass3_recovery_context = True
 

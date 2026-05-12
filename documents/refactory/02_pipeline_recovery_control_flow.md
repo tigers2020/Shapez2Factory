@@ -3,7 +3,7 @@
 ## 배경
 
 - 정본: `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` §4.1–§4.3, `11_step8_recovery.md` §13.2.
-- 구현: `recovery_orchestrator.run_solver_timeline_pipeline`이 STEP4 이후 **고정 `routing_snapshot` 기준**으로 Pass3→P4→finalize를 반복하고, 실패 시 주로 `validation_recovery` 루프로 처리한다.
+- 구현: `recovery_orchestrator.run_solver_timeline_pipeline`은 Pass12 이후 STEP4를 실행하고, **`step4_routing_failure`이면 `recovery_return_policy_for_trigger`를 읽은 뒤 정책이 `reenters_step4`일 때 STEP4를 최대 1회 더 호출**한다(D2-B2-DEL; `MAX_VALIDATION_RECOVERY_ATTEMPTS`와 **별개** — 그 상수는 Pass3→P4 `for va` 루프에만 쓴다). 그 다음 **마지막 STEP4 결과**로 `routing_snapshot`을 고정하고 Pass3→P4→finalize를 돈다. `step4_recovery_trigger`가 여전히 `step4_routing_failure`이면 **검증 전용 `validation_recovery` 추가 사이클은 하지 않는다**(고정 bad snapshot 반복 제거).
 
 ## Mini-audit 산출물 (구현 전)
 
@@ -13,26 +13,11 @@
 
 `recovery_orchestrator.run_solver_timeline_pipeline`:
 
-1. **한 번:** Pass12 → STEP4 → `routing_snapshot` 고정
-2. **루프(`max_cycles`):** `routing_snapshot` 복사 → Pass3 → P4 → finalize(STEP9)
-3. `out["ok"]` 이면 종료. 아니면 `validation_recovery_allowed(out)`이면 `pass3_recovery_context=True`로 **동일 루프** 재실행.
-4. STEP4는 루프 안에서 **재호출되지 않음.**
-
-```mermaid
-flowchart TD
-  pass12[Pass12]
-  step4[STEP4 once]
-  snap[routing_snapshot frozen]
-  loop[for va in max_cycles]
-  p3[Pass3 from snap copy]
-  p4[P4 reclaim]
-  fin[finalize STEP9]
-  gate{ok or not validation_recovery_allowed}
-  pass12 --> step4 --> snap --> loop
-  loop --> p3 --> p4 --> fin --> gate
-  gate -->|break| out[return out summary]
-  gate -->|retry| loop
-```
+1. **Pass12** → **STEP4**(최초 1회 + `step4_routing_failure` 시 정책 기반 **최대 1회** 동일 입력 재호출)
+2. **고정:** 마지막 STEP4의 `map_after_routing`으로 `routing_snapshot` 생성
+3. **루프(`max_cycles`):** `routing_snapshot` 복사 → Pass3 → P4 → finalize(STEP9)
+4. `out["ok"]` 이면 종료. `validation_recovery_allowed(out)`이 **아니면** 종료. **`step4_recovery_trigger == step4_routing_failure`이면** 검증 루프 추가 진입 없이 종료. 그 외에는 `pass3_recovery_context=True`로 **동일 루프** 재실행.
+5. **`for va` 루프 본문 안에서는 `run_step4_stage`를 호출하지 않음**(STEP4 재시도는 루프 **앞**에서만).
 
 ## §4.3 Recovery trigger별 복귀 경로 — drift 표 (구현 매핑)
 
@@ -40,7 +25,7 @@ flowchart TD
 
 | Trigger | Current code path | Algorithm return path | Drift | Change/Test |
 |--------|-------------------|------------------------|-------|-------------|
-| `step4_routing_failure` | STEP4 스테이지 내부(`step4_merge_routing` 등)·`placement_commit`의 `RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE`. 오케스트레이터는 STEP4 **단일** 호출; 전용 외부 STEP4 재시도 루프 없음. | 표: STEP4 재시도·rollback·alternate trunk | **yes** | **B (MVP 예외):** 오케스트레이터 1:1 아님 → [epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md)와 동기. |
+| `step4_routing_failure` | STEP4 내부 + 오케스트레이터: `recovery_return_policy_for_trigger` 후 **정책 `reenters_step4`면 STEP4 최대 1회 추가**; 동일 트리거면 **검증 루프만의 추가 사이클 없음**. alternate trunk·rollback 본구현은 미완. | 표: STEP4 재시도·rollback·alternate trunk | **부분** | **D2-B2-DEL:** bad snapshot 위 validation-only 반복 제거. 잔여: alternate trunk 등. |
 | `step4_capacity_failure` | 별도 canonical `recovery_trigger` 문자열 없음. 용량·cascade는 STEP4 내부(`step4_p2c_corrective` 등) `cascade_corrective_attempts`로만 관측. `validation_recovery_allowed`는 용량을 게이트에 넣지 않음. | 표: STEP4 재시도·offending rollback | **yes** | **B:** 예외·매핑 문서화. **카운터:** `cascade_corrective_attempts`(STEP4)는 `validation_recovery_attempts_used` / `recovery_total_attempts_used`(recovery 체인)와 **별도 필드** — 혼동 시 코드 수정. |
 | `pass3_connectivity_break` | `pass3.py`: bridge 실패 시 `pass3_reverted`, `map_final=map_after_routing` 후 **동일 사이클**에서 P4(reclaim 경로) 진행. | 표: §4.3.1 → STEP6 Reclaim; remedial STEP4는 별도 분기 | **부분** | **B:** “STEP6 = reclaim 루프” 해석이면 근접. canonical vs `pass3_connectivity_reject_sample` 구분은 mini-audit §2. |
 | `post_reclaim_pass3_connectivity_break` | `solver_timeline._run_post_reclaim_pass3_once`: 검증 실패 시 **입력 맵 return**·`post_reclaim_pass3_pass3_reverted`. `p4_reclaim.run_p4_reclaim_stage`는 해당 호출을 **한 블록에서 1회**만 수행; 동일 rerun 블록 내 재탐색 루프 없음. | 표: rollback → STEP9; 추가 rerun 없음 | **no**(STEP7 블록) | 회귀: `p4_reclaim` 소스 단일 호출·gate `post_reclaim_pass3_reruns_used`. 이후 `validation_recovery`는 **STEP9 hard invariant**(`final_validation_failure`)일 때만 별 트리거. |
@@ -59,12 +44,25 @@ flowchart TD
 
 - **문서:** 본 절 drift 표를 정본 대비 **현 상태**로 고정; A/B는 epic §5.3·[epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md)와 정렬.
 - **코드:** `validation_recovery_allowed`는 `ok`·unfinalized·`final_validation` hard invariant만 사용 — `recovery_post_reclaim_pass3_connectivity_break` 플래그만으로는 루프를 켜지 않음(STEP9 clean이면 종료).
-- **테스트:** [`test_recovery_return_paths_algorithm.py`](../../tests/unit/shapez_asteroid/test_recovery_return_paths_algorithm.py) — post-reclaim 플래그·STEP9 clean, `p4_reclaim` 단일 `_run_post_reclaim_pass3_once` 호출, STEP4 단일 호출(기존 PR4-D와 병행).
+- **테스트:** [`test_recovery_return_paths_algorithm.py`](../../tests/unit/shapez_asteroid/test_recovery_return_paths_algorithm.py) — post-reclaim·STEP9 clean·`p4_reclaim` 단일 hook·`run_solver_timeline_pipeline` 소스 계약(정책 호출·`for va` 본문에 `run_step4_stage` 없음·routing 게이트).
 
-## 현재 상태(요약)
+## D2-A: Algorithm §4.3 return policy table (코드 계약, 2026-05-12)
 
-- 트리거별 복귀가 정본 표와 **1:1이 아닌 행**은 위 표 **Drift=yes/부분** + **B**로 문서화한다.
-- 오케스트레이터 독스트링은 “bounded Pass3→P4→finalize”로 요약되어 있다.
+- **목적:** 정본 `02_pipeline_control_flow` §4.3·§4.3.1·§4.3.2 및 `13_step9_validation` §15에 대응하는 **트리거별 복귀 정책**을 코드에 명시 테이블로 고정하고, 단위 테스트로 스냅샷한다. **`step4_routing_failure`는 오케스트레이터가 `recovery_return_policy_for_trigger`를 호출해 분기**(D2-B2-DEL). 그 외 트리거는 테이블만 유지하고 본경로 강제는 D2-C 등 후속.
+- **구현:** [`django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/recovery_return_policy.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/recovery_return_policy.py) — `recovery_return_policy_for_trigger`, `RecoveryReturnPolicyId`, `RecoveryReturnPolicy` 플래그(`reenters_step4`, `allows_extra_post_reclaim_pass3_rerun`, `allows_one_time_remedial_step4` 등). 트리거 문자열 상수는 [`foundation/constants.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/foundation/constants.py).
+- **연결:** `recovery_policy`·`recovery_orchestrator` 모듈 독스트링에 정책 모듈 참조만 추가. 트리거×정책 id 매핑 표는 `recovery_return_policy.py`의 `_POLICY_TABLE`과 `test_recovery_return_policy_table_matches_algorithm`가 단일 권위로 고정한다.
+
+## D2-B1: STEP4 recovery trigger 계약 (2026-05-12)
+
+- **범위:** §4.3 `step4_routing_failure` / `step4_capacity_failure`를 **코드에서 구분 가능한 계약**으로 정렬. **오케스트레이터 STEP4 재시도는 D2-B2-DEL에서 분리**(아래).
+- **구현:** [`step4/step4_recovery_trigger.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/step4/step4_recovery_trigger.py) — `step4_primary_recovery_trigger_from_result`는 `Step4RoutingResult`·`trunk_load`·`routing_failures[]`만 사용(`commit_reason`·replay·NDJSON·solver_summary 입력 금지). 용량은 `trunk_load["step4_capacity_failure_signal"]`(예약 bool, merge에서 미설정) 또는 실패 행 `recovery_trigger == step4_capacity_failure`일 때만 `step4_capacity_failure`로 분류.
+- **전파:** [`step4_merge_routing.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/step4/step4_merge_routing.py)가 `trunk_load["step4_primary_recovery_trigger"]`를 기록; unrecoverable 실패 행에 `recovery_trigger` 추가. [`finalize.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/finalize.py)가 요약 `step4_recovery_trigger` 설정(Pass3 병합 후에도 STEP4 전용).
+- **테스트:** [`test_step4_recovery_trigger_contract.py`](../../tests/unit/shapez_asteroid/test_step4_recovery_trigger_contract.py). 실패 유형×트리거 표는 해당 테스트·merge 모듈 주석을 본다.
+
+## D2-B2-DEL (상태, 2026-05-12)
+
+- **코드:** [`recovery_orchestrator.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/recovery_orchestrator.py) — `step4_routing_failure` → `recovery_return_policy_for_trigger`; `reenters_step4`이면 **STEP4 1회 추가** 후 snapshot·baseline 갱신. `step4_recovery_trigger`가 routing 실패로 남으면 **`validation_recovery`로 Pass3→P4만 반복하지 않음**. 보정 STEP4 상한은 **`MAX_VALIDATION_RECOVERY_ATTEMPTS`와 분리**(해당 상수는 `for va`만).
+- **테스트:** `test_recovery_return_paths_algorithm.test_d2_b2_orchestrator_step4_routing_contract_in_source` + 기존 정책·P4 hook 행.
 
 ## 목표 상태
 
@@ -94,4 +92,5 @@ flowchart TD
 - `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/recovery_orchestrator.py`
 - `solver_pipeline/pass3.py`, `p4_reclaim.py`, `finalize.py`
 - `solver/solver_timeline.py` (`_run_post_reclaim_pass3_once`)
+- `step4/step4_recovery_trigger.py` (D2-B1 §4.3 트리거 분류)
 - `solver/recovery_policy.py`, `solver/recovery_context.py`

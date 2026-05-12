@@ -1,4 +1,7 @@
-"""Tests for scripts/debug/p4_pass3_trace_review.py (loaded via importlib; script is not a package)."""
+"""Tests for scripts/debug/p4_pass3_trace_review.py.
+
+Loaded via importlib; the script is not a package.
+"""
 
 from __future__ import annotations
 

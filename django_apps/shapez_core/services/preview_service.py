@@ -15,8 +15,8 @@ from django_apps.shapez_core.services.shape_code_parser import (
     parse_shape_code_list,
 )
 from django_apps.shapez_core.services.shape_render_scene import (
-    ShapeRenderScene,
     build_shape_render_scene,
+    serialize_render_scene,
 )
 
 
@@ -97,7 +97,7 @@ def build_demo_parse_row(code: str) -> dict[str, Any]:
         pattern_rows: list[dict[str, Any]] = []
         for pattern in patterns:
             scene = build_shape_render_scene(pattern)
-            serialized_scene = _serialize_render_scene(scene)
+            serialized_scene = serialize_render_scene(scene)
             pattern_rows.append(
                 {
                     **_serialize_pattern(pattern),
@@ -141,26 +141,5 @@ def _serialize_pattern(pattern: NormalizedShapePattern) -> dict[str, Any]:
                 ],
             }
             for layer in pattern.layers
-        ],
-    }
-
-
-def _serialize_render_scene(scene: ShapeRenderScene) -> dict[str, Any]:
-    return {
-        "normalized_code": scene.normalized_code,
-        "cells": [
-            {
-                "layer_index": cell.layer_index,
-                "quadrant_index": cell.quadrant_index,
-                "position": cell.position.value,
-                "shape_code": cell.shape_code,
-                "color_code": cell.color_code,
-                "shape_kind": cell.shape_kind,
-                "color_kind": cell.color_kind,
-                "mesh_key": cell.mesh_key,
-                "material_key": cell.material_key,
-                "transform_key": cell.transform_key,
-            }
-            for cell in scene.cells
         ],
     }

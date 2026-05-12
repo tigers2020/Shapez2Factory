@@ -34,6 +34,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
     debug_log_event,
     debug_trace_event,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.validation_bridge import (  # noqa: E501
+    validate_final_mining_layout_bridge as _validate_final_mining_layout,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
 )
@@ -98,16 +101,6 @@ def _route_replaced_payload_geo(detail: list[Any]) -> dict[str, Any]:
     if rr0 is not None:
         out["replacement_reason"] = rr0
     return out
-
-
-def _validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValidationReport:
-    """기존 ``solver_service`` validation patch 지점을 유지한다."""
-
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
-        solver_service,
-    )
-
-    return solver_service.validate_final_mining_layout(mining_map)
 
 
 def run_step4_stage(

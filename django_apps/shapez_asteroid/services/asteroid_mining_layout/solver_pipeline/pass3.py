@@ -49,6 +49,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
     debug_log_event,
     debug_trace_event,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.validation_bridge import (  # noqa: E501
+    validate_final_mining_layout_bridge as _validate_final_mining_layout,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     FinalValidationReport,
 )
@@ -76,16 +79,6 @@ def _run_pass3_transport_minimization_from_maps(
     )
 
     return solver_service.run_pass3_transport_minimization_from_maps(mining_map, **kwargs)
-
-
-def _validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValidationReport:
-    """기존 ``solver_service`` validation patch 지점을 유지한다."""
-
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
-        solver_service,
-    )
-
-    return solver_service.validate_final_mining_layout(mining_map)
 
 
 def initial_pass3_summary() -> dict[str, Any]:

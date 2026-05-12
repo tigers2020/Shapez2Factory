@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from django_apps.shapez_core.domain.shape import Shape
 from django_apps.shapez_core.domain.shape_pattern import NormalizedShapePattern, QuadrantPosition
@@ -37,6 +38,10 @@ class ShapeRenderScene:
     cells: tuple[ShapeRenderCell, ...]
 
 
+def _transform_key(position: QuadrantPosition, layer_index: int) -> str:
+    return f"{position.value}:L{layer_index}"
+
+
 def build_shape_render_scene(pattern: NormalizedShapePattern | Shape) -> ShapeRenderScene:
     normalized_pattern = pattern_from_shape(pattern) if isinstance(pattern, Shape) else pattern
     cells: list[ShapeRenderCell] = []
@@ -69,5 +74,23 @@ def build_shape_render_scene(pattern: NormalizedShapePattern | Shape) -> ShapeRe
     return ShapeRenderScene(normalized_code=normalized_pattern.normalized_code, cells=tuple(cells))
 
 
-def _transform_key(position: QuadrantPosition, layer_index: int) -> str:
-    return f"{position.value}:L{layer_index}"
+def serialize_render_scene(scene: ShapeRenderScene) -> dict[str, Any]:
+    """Single JSON payload contract for graph preview, modal preview, and sprite builders."""
+    return {
+        "normalized_code": scene.normalized_code,
+        "cells": [
+            {
+                "layer_index": cell.layer_index,
+                "quadrant_index": cell.quadrant_index,
+                "position": cell.position.value,
+                "shape_code": cell.shape_code,
+                "color_code": cell.color_code,
+                "shape_kind": cell.shape_kind,
+                "color_kind": cell.color_kind,
+                "mesh_key": cell.mesh_key,
+                "material_key": cell.material_key,
+                "transform_key": cell.transform_key,
+            }
+            for cell in scene.cells
+        ],
+    }

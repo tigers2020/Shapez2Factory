@@ -17,6 +17,7 @@ from typing import Any
 from django_apps.shapez_asteroid.services.asteroid_patch_interior import (
     compute_patch_interior_cells,
 )
+from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_none as _int_or_none
 from django_apps.shapez_asteroid.services.style_classifier import (
     PlotStyle,
     classify_layout_type,
@@ -550,16 +551,3 @@ def _empty_summary(entry_count: int) -> dict[str, Any]:
         "y_min": None,
         "y_max": None,
     }
-
-
-def _int_or_none(value: Any) -> int | None:
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int):
-        return value
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None

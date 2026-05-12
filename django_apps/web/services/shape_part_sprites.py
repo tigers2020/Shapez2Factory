@@ -10,8 +10,8 @@ from django_apps.shapez_core.services.shape_render_scene import (
     SHAPE_MESH_KEYS,
     ShapeRenderCell,
     ShapeRenderScene,
+    serialize_render_scene,
 )
-from django_apps.shapez_solver.view_graph_serialization import serialize_render_scene
 
 MESH_KEY_TO_SHAPE_CODE: dict[str, str] = {v: k for k, v in SHAPE_MESH_KEYS.items()}
 """Inverse of ``SHAPE_MESH_KEYS`` (game letter → glTF id)."""

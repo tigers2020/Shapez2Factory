@@ -8,6 +8,7 @@ from typing import Any
 from django_apps.shapez_asteroid.services.asteroid_patch_interior import (
     compute_patch_interior_cells,
 )
+from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_none as _int_or_none
 from django_apps.shapez_asteroid.services.style_classifier import (
     PlotStyle,
     classify_layout_type,
@@ -197,16 +198,3 @@ def mining_surfaces_from_shell(decoded: dict[str, Any]) -> frozenset[str]:
         if surface is not None:
             hints.add(surface)
     return frozenset(hints)
-
-
-def _int_or_none(value: Any) -> int | None:
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int):
-        return value
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None

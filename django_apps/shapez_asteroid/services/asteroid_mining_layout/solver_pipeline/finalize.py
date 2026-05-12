@@ -55,6 +55,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.recovery_orchestrator import (  # noqa: E501
     enrich_solver_summary_recovery,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.validation_bridge import (  # noqa: E501
+    validate_final_mining_layout_bridge as _validate_final_mining_layout,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
 )
@@ -80,16 +83,6 @@ RETURN_REASON_STEP4_PARTIAL_FAILURE = "step4_partial_failure"
 
 # Bump when ``preserve_quality_score`` formula or inputs change (A/B / NDJSON comparability).
 PRESERVE_QUALITY_SCORE_VERSION = 1
-
-
-def _validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> Any:
-    """기존 ``solver_service`` validation patch 지점을 유지한다."""
-
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
-        solver_service,
-    )
-
-    return solver_service.validate_final_mining_layout(mining_map)
 
 
 def _append_optimization_warnings(summary_fields: dict[str, Any]) -> None:
@@ -735,6 +728,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("p4_soft_replace_jobs_attempted", 0)
     summary_fields.setdefault("p4_soft_replace_selected_job_index", None)
     summary_fields.setdefault("p4_soft_replace_rejected_reasons_by_job", [])
+    summary_fields.setdefault("post_reclaim_pass3_greedy_local_replacement", None)
     summary_fields.setdefault("post_reclaim_pass3_reruns_used", 0)
     summary_fields.setdefault("post_reclaim_pass3_attempted", False)
     summary_fields.setdefault("post_reclaim_pass3_executed", False)

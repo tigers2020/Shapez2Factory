@@ -6,7 +6,7 @@ shapez2Solver **채굴 레이아웃 솔버** 관련, 문서 정본(`documents/Al
 
 | Epic | 파일 | 다루는 범위 | 하위 상세 문서 |
 |------|------|-------------|----------------|
-| A | [control-flow-refactor.md](./control-flow-refactor.md) | §4.3 복귀·오케스트레이터·attempt 분리 | 02, [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) |
+| A | [control-flow-refactor.md](./control-flow-refactor.md) | §4.3 복귀·오케스트레이터·attempt 분리 | 02, [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md), [epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md) |
 | B | [semantic-fields-refactor.md](./semantic-fields-refactor.md) | `recovery_trigger` / `commit_reason` / rollback·reject | 03, 07 |
 | C | [corridor-state-machine-refactor.md](./corridor-state-machine-refactor.md) | candidate/soft/hard·atomic replace | 04, 14 |
 | D | [trace-layer-isolation.md](./trace-layer-isolation.md) | replay·NDJSON·summary = 출력 계층 | 06, 16 |
@@ -32,6 +32,7 @@ shapez2Solver **채굴 레이아웃 솔버** 관련, 문서 정본(`documents/Al
 | [01_canonical_doc_paths.md](./01_canonical_doc_paths.md) | 정본 문서 경로 혼동 제거·인덱스 |
 | [02_pipeline_recovery_control_flow.md](./02_pipeline_recovery_control_flow.md) | §4.3 트리거별 복귀 vs 오케스트레이터 단순화 정렬 |
 | [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) | Epic A 진입 전 §4.3 vs 코드 1차 감사 표·식별자 사전 |
+| [epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md) | §4.3 대비 **B(MVP 예외)** 트리거만 고정 표 |
 | [03_recovery_trace_namespaces.md](./03_recovery_trace_namespaces.md) | `recovery_trigger` / `commit_reason` / `rollback_reason` 계약 |
 | [04_protected_corridor_lifecycle.md](./04_protected_corridor_lifecycle.md) | hard/soft/candidate 생명주기·STEP4 요약 블록 |
 | [05_placement_fsm_merged_seed.md](./05_placement_fsm_merged_seed.md) | merged seed 시 `ROUTED_CONFIRMED` 예외·§9.6 정합 |

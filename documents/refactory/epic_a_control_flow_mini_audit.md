@@ -1,8 +1,8 @@
 # Epic A — 제어 흐름 mini-audit (§4.3 vs 구현)
 
 **성격:** 읽기 전용 감사 산출물. **코드·휴리스틱·검증 알고리즘 변경 없음.**  
-**정본(표):** `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` §4.3, `11_step8_recovery.md` §13.2 (저장소에 파일이 없을 수 있음 → 인용 경로만 정본으로 둔다).  
-**갱신:** 2026-05-12.
+**정본(표):** `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` §4.3 (`11_step8_recovery.md` §13.2와 연계). 로컬 미보유 시 **GitHub `master` 원문**을 인용한다(§5.1).  
+**갱신:** 2026-05-12 — §5에 정본 표 전문·Expected 인용·PR 리뷰 **A/B/Info** 확정 반영.
 
 ---
 
@@ -12,7 +12,7 @@
 |------|------|
 | Epic B 시맨틱 필드·replay bridge 안정화 | 완료 관점(별도 PR·머지 기준은 리뷰어) |
 | 본 mini-audit | **구현 전** 단계 산출물 |
-| 다음 단계 | 표의 **A/B 결정** 후 `02_pipeline_recovery_control_flow.md` 목표 상태(A 또는 B)를 확정하고 구현 PR 분리 |
+| 다음 단계 | §5.4 **PR 리뷰 분류** 확정 후 `02_pipeline_recovery_control_flow.md` 목표(A/B)를 고정하고 Epic A **구현** PR 분리 |
 
 ---
 
@@ -62,18 +62,68 @@
 
 ---
 
-## 5. §4.3 트리거 × 구현 대응표 (1차 감사)
+## 5. §4.3 정본 인용 및 구현 대비 (PR 리뷰용)
 
-**Expected §4.3 Path** 열은 리뷰·계획에서 합의된 정본 의도를 요약한 것이다. 정본 파일 미보유 시 **문서 합의 후 수정**.
+### 5.1 정본 출처 (authoritative)
 
-| Canonical Trigger | Current Identifier(s) | Current Return Path | Expected §4.3 Path | Drift? | A / B 초안 | Notes |
-|-------------------|----------------------|---------------------|-------------------|--------|------------|-------|
-| `step4_routing_failure` | `step4_routing_failure_count`, `step4_result.routing_failures`, `step4_partial_failure`, `return_reason=step4_partial_failure` | STEP4는 파이프라인에서 **단일 실행**. 부분 실패 시에도 `map_after_routing`이 나오면 이후 **Pass3→P4→finalize**가 같은 사이클에서 진행. STEP4 전용 “재시도 루프” 없음. | STEP4 retry / rollback 등 표 기재 | **yes** | **B** 후보 | `finalize.py`가 `solver_termination=partial_success`와 `step4_returned_layout_source`로 의미를 쪼갬(약 275–335행). 표가 “STEP4만 재실행”을 요구하면 오케스트레이터 구조와 불일치. |
-| `step4_capacity_failure` | Pass3 trace의 `pass3_over_capacity_segments` 등; `validation_recovery_allowed`는 용량을 루프 게이트에 **포함하지 않음**(`recovery_policy.py` 주석·200–228행). | 별도 `return_reason=…capacity…` **트리거 미분리**. | 표에 행이 있으면 STEP4/Pass3 정책과 매핑 필요 | **yes** (또는 표에서 제외) | **B** 후보 | “용량”이 trace-only인지 정본에서 명시 필요. |
-| `pass3_connectivity_break` | Greedy: `pass3_connectivity_reject_sample`. 최종 revert: `pass3_reverted`, `pass3_rollback_reason=final_validation_failed_after_pass3` | Greedy 실패 샘플은 **지표**. 맵 revert 시 `map_final`은 **STEP4 라우팅 맵**으로 유지(`pass3.py` 227–293행). 이어서 **동일 사이클에서 P4 reclaim** 실행. | rollback → STEP6(reclaim) 등 | **부분 일치 / 명명 drift** | **B** 후보 | 구조상 “Pass3 롤백 후 P4”는 한 사이클 안에서 성립. 표의 “STEP6”이 P4 reclaim을 가리키면 **기능은 근접**, 트리거 이름·단계 번호는 **정렬 필요**. |
-| `post_reclaim_pass3_connectivity_break` | `post_reclaim_pass3_pass3_reverted`, `recovery_post_reclaim_pass3_connectivity_break`, `recovery_contract_phases`에 `post_reclaim_pass3_connectivity_break` | `solver_timeline._run_post_reclaim_pass3_once`: 검증 실패 시 **입력 `mining_map`으로 return**(약 179–183행). 이후 **같은 P4 스테이지**가 끝나고 finalize로 진행. | rollback → STEP9 only, no extra rerun | **yes** | **B** 후보 | “STEP9 only”가 **finalize 한 번**을 뜻하면 부분 일치. **validation_recovery**가 켜지면 다음 사이클에서 **전체 Pass3→P4→finalize**가 다시 돈다(정본이 금지하면 drift). |
-| `reclaim_incremental_failure` | `p4_reclaim_incremental_route_rollback_performed`, `recovery_reclaim_incremental_failure`, phase `reclaim_incremental_failure` | P4 루프 내부에서 후보 롤백 후 **루프 지속**(`p4_reclaim.py`에서 `run_p4_reclaim_loop_after_pass3` 호출, `tag_reclaim_incremental_failure_from_summary`). | candidate rollback → STEP6 루프 지속 | **대체로 align** | **A** 후보 | 세부는 `reclaim` shadow 구현과 정본 문장 1:1 대조 필요. |
-| `final_validation_failure` | `final_validation` dict, `return_reason` (`validation_geometry_failed` 등), `validation_recovery_allowed` | `ok`가 아니고 게이트 통과 시 **추가 사이클**: `pass3_recovery_context=True`로 **Pass3→P4→finalize 전체 반복**(`recovery_orchestrator.py` 453–464행). `recovery_action_plan`은 **계획·가시성**(`route_validation_recovery_actions`). | recovery → STEP9 revalidation only | **yes** | **B** 후보 | 현 MVP는 “STEP9에서 파생된 액션만 단독 재실행”이 아니라 **동일 거대 스테이지 블록** 재실행. |
+- **Blob(가독):** [github.com/tigers2020/Shapez2Factory/blob/master/documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md](https://github.com/tigers2020/Shapez2Factory/blob/master/documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md)  
+- **Raw(복제 기준):** [raw.githubusercontent.com/.../02_pipeline_control_flow.md](https://raw.githubusercontent.com/tigers2020/Shapez2Factory/master/documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md)  
+- 인용 시점: **`master` HEAD**와 동기. 정본이 이동·수정되면 본 절 표를 **재복제**해야 한다.
+
+### 5.2 §4.3 Recovery trigger별 복귀 경로 (정본 표 전문)
+
+아래는 정본 **§4.3 표**를 문자 그대로 옮긴 것이다(렌더링은 정본과 동일).
+
+```text
+| Trigger | 발생 지점 | Recovery 후 복귀 | 실패 시 |
+| ----------------------------- | ----------------------------------------- | ------------------------------------------------------- | ---------------------------------------------- |
+| `step4_routing_failure` | STEP 4 route 생성 실패 | STEP 4 재시도, 해당 placement rollback 또는 alternate trunk 사용 | unrouted placement rollback 후 STEP 4 재시도 |
+| `step4_capacity_failure` | STEP 4 capacity split/additional trunk 실패 | STEP 4 재시도, trunk split 후보 변경 | offending placement rollback |
+| `pass3_connectivity_break` | STEP 5 Pass3가 연결성 파괴 | **§4.3.1** 절차 적용 → 복귀 **STEP 6 Reclaim placement loop** | Pass3 변경 rollback 후 마지막 known-good 유지 |
+| `post_reclaim_pass3_connectivity_break` | STEP 7 post-reclaim Pass3 rerun이 연결성 파괴 | rerun 변경 rollback → STEP 9(**추가 rerun 없음**, §4.3.2) | 기존 connected layout 유지, partial success 가능 |
+| `reclaim_incremental_failure` | STEP 6 신규 placement routing 실패 | 해당 reclaim candidate rollback 후 STEP 6 계속 | 후보 exhausted 시 Final validation |
+| `final_validation_failure` | STEP 9 invariant 실패 | recovery 후 STEP 9 재검증 (**STEP 4 재진입 없음**) | attempt 초과 시 partial success 또는 solver failure |
+```
+
+정본 표 직후 문장(동일 출처):
+
+```text
+`final_validation_failure` 복구로 STEP 4 본 파이프라인을 자동 재실행하지 않는다. 용량 재설계가 필요하면 상위 오케스트레이터가 별도 실행한다.
+```
+
+§4.3.2 요지(STEP 7 실패; 동일 출처 요약):
+
+```text
+- 연결성 파괴: trigger=post_reclaim_pass3_connectivity_break
+- 복귀: STEP 6 재진입이 아니라, rerun으로 깬 Pass3 변경만 rollback하고 STEP 9 Final validation.
+- 동일 rerun 블록 안에서 실패 → rollback 후 재탐색 루프를 또 도는 것이 아니라, 즉시 known-good으로 복구하고 STEP 9로 진행(추가 rerun 없음).
+```
+
+### 5.3 구현 대비 매핑표 (Expected = §5.2 인용 요약)
+
+**판별:** return path·rollback·`run_solver_timeline_pipeline` 루프만 본다(trace 필드명만으로 제어 의미 추론 금지).
+
+| Canonical Trigger | Expected §4.3 (인용 요약) | Current Return Path (구현) | Drift? | PR 리뷰 (A/B/Info) | Notes |
+|--------------------|---------------------------|------------------------------|--------|-------------------|-------|
+| `step4_routing_failure` | Recovery 후 **STEP 4 재시도** 등(표 “Recovery 후 복귀”·“실패 시” 열). | `run_solver_timeline_pipeline`에서 STEP4는 **루프 밖 1회**. 부분 실패는 `finalize.py`에서 `partial_success`·`step4_partial_failure` 등으로 정리; **전용 STEP4 재시도 루프 없음**. | **yes** | **B** | 오케스트레이터가 표의 “STEP 4 재시도”와 1:1이 아님 → **MVP 예외 문서화(B)** 권고. |
+| `step4_capacity_failure` | STEP 4 capacity 실패 시 **STEP 4 재시도**·rollback(표). | 별도 `return_reason=…capacity…` 트리거 미분리; `validation_recovery_allowed`는 용량을 루프 게이트에 넣지 않음(`recovery_policy.py`). | **yes** | **B** | 정본 표에는 행이 있음 → **예외·매핑 문서화(B)**. |
+| `pass3_connectivity_break` | §4.3.1·**STEP 6 Reclaim** 복귀; 실패 시 Pass3 rollback·known-good. | Pass3 revert 시 `map_final`은 STEP4 스냅샷 유지 후 **동일 사이클에서 P4(reclaim 경로)** 진행(`pass3.py`). §4.3.1의 **remedial STEP4 한 번** 등은 코드상 별도 분기로 명시되지 않음. | **부분** | **B** | “STEP6 = reclaim 루프” 해석이면 경로는 근접; §4.3.1 세부는 **정본 대비 예외(B)** 검토. |
+| `post_reclaim_pass3_connectivity_break` | rerun rollback → **STEP 9**, 추가 rerun 없음(§4.3.2). | `_run_post_reclaim_pass3_once`가 검증 실패 시 **이전 맵 return** 후 P4 스테이지 종료·finalize(`solver_timeline.py`). **동일 rerun 블록** 내 재탐색 루프 없음. | **no** (STEP7 의미) | **Info** | STEP7 블록 의미에서는 정본과 정합. 이후 `validation_recovery`로 Pass3→P4→finalize가 **다시** 도는 것은 **별 트리거**(`final_validation_failure` 행)와 분리해 논의. |
+| `reclaim_incremental_failure` | candidate rollback 후 **STEP 6 계속**; exhausted 시 Final validation. | P4 루프 내 롤백 후 루프 지속·태깅(`p4_reclaim.py`, `recovery_policy.py`). | **no** | **Info** | 정본과 방향 일치; 세부 한도는 §4.2·§12와 별도 대조. |
+| `final_validation_failure` | recovery 후 **STEP 9 재검증**; **STEP 4 자동 재실행 없음**(표·직후 문장). | STEP4는 재진입하지 않음(**정합**). 다만 `validation_recovery_allowed` 시 **Pass3→P4→finalize 전체**를 추가 사이클로 반복(`recovery_orchestrator.py` 350–464행). 표의 “STEP 9 재검증만”을 **좁게** 읽으면(STEP9 단독 재실행) **불일치**. | **부분** | **B** | **가장 중요한 행:** “STEP4 없음”은 만족; “STEP9만” 좁은 해석과의 차이는 **MVP 예외·용어 정렬(B)** 로 문서화하는 편이 안전. |
+
+### 5.4 PR #6 follow-up 게이트 (확정 분류)
+
+| 게이트 | 상태 |
+|--------|------|
+| canonical §4.3 citation 확보 | **완료** (§5.1–5.2) |
+| §5 Expected authoritative citation화 | **완료** (§5.3 “Expected” = §5.2 인용 요약) |
+| 각 행 A/B/Info | **완료** (§5.3 마지막 열) |
+| `final_validation_failure` 분류 | **B** (STEP4 비재진입은 Info 성격이나, **STEP9-only 좁은 해석**과의 차로 **B**로 예외 문서화 권고) |
+
+**B 행 단일 출처(표):** [epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md)
+
+**Epic A 구현 브랜치:** §5.4가 본 저장소에 머지된 뒤, 팀이 **B 문구**를 정본 또는 본 `refactory` 플랜에 반영하기로 합의하면 연다(리뷰 코멘트와 동일).
 
 ---
 
@@ -82,18 +132,21 @@
 | 분류 | 의미 | 다음 액션 |
 |------|------|-----------|
 | **A** | 정본 표가 맞고, 구현을 표에 맞출 계획이 현실적 | Epic A 구현 PR에서 **제어 흐름만** 조정(회귀·NDJSON·계약 동반) |
-| **B** | 현 동작을 유지하되, 정본에 **MVP 예외** 절·표 열(“구현 매핑”) 추가 | `02_pipeline_control_flow.md`(저장소 외 정본) 또는 본 저장소 요약 문서에 **공식 deviation** 기록 |
+| **B** | 현 동작을 유지하되, 정본에 **MVP 예외** 절·표 열(“구현 매핑”) 추가 | 우선 [epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md)에 **B** 행을 고정하고, 필요 시 `02_pipeline_control_flow.md`(저장소 외 정본) 또는 `02_pipeline_recovery_control_flow.md`에 **공식 deviation**을 동기한다. |
 
 **Epic A에서 금지(리마인더):** reroute 휴리스틱·혼잡 튜닝·reclaim 전략·corridor 교체 정책·검증 알고리즘 재설계. **control-flow normalization / 문서·계약 정렬만.**
+
+**PR 리뷰 게이트:** §5.3·§5.4의 분류가 팀 합의와 함께 머지되면, Epic A **구현** 착수 전 문서 단계는 종료로 본다(정본 `master` 변경 시 §5.2 재복제).
 
 ---
 
 ## 7. 권장 후속 (구현 아님)
 
-1. 정본 `02_pipeline_control_flow.md` §4.3 **원문 표**를 복사해 “Expected” 열을 **인용 기반**으로 고친다.  
-2. `step4_capacity_failure` 행을 정본에 실제로 두는지 확인; 없으면 표에서 제거해 혼동 방지.  
-3. `recovery_contract_phases`에 **canonical trigger id**를 넣을지(옵션) 별도 티켓으로 결정.  
-4. 단위 테스트: “한 트리거에 대해 **스테이지 순서** 스냅샷”은 `02_pipeline_recovery_control_flow.md` 검증 절에 정렬.
+1. **정본 동기:** `master`의 §4.3 표가 바뀌면 §5.2 **전문을 재복제**하고 §5.3 Expected 요약을 맞춘다.  
+2. **B 분류 문서화:** 우선 [epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md)에 **B** 행 표를 고정한다. 필요 시 `02_pipeline_recovery_control_flow.md` 또는 정본 저장소에 **MVP 구현 매핑** 절을 추가해 `step4_*`·`final_validation_failure`·`pass3_connectivity_break`의 **B** 근거를 정본 측과 동기한다.  
+3. `step4_capacity_failure` 행이 정본 표에 실제로 있는지 주기적으로 확인한다(없으면 표·Expected를 정리해 혼동 방지).  
+4. `recovery_contract_phases`에 **canonical trigger id**를 넣을지(옵션) 별도 티켓으로 결정한다.  
+5. 단위 테스트: “한 트리거에 대해 **스테이지 순서** 스냅샷”은 `02_pipeline_recovery_control_flow.md` 검증 절에 정렬한다.
 
 ---
 
@@ -113,5 +166,5 @@
 ## 9. `02_pipeline_recovery_control_flow.md`와의 관계
 
 - **02:** 목표·위험·참고 코드(에픽 플랜).  
-- **본 문서:** §4.3 대비 **1차 표·식별자 사전·A/B 초안**.  
-- Epic A 구현 착수 전에 **02의 “작업 항목 1”을 본 표로 대체·동기화**하면 된다.
+- **본 문서:** §4.3 **정본 인용**(§5.2)·구현 대비 표·**A/B/Info** 확정(§5.3–5.4).  
+- Epic A 구현 착수 전에 **02**에 MVP 예외(B) 문단을 반영하고, 정본 측에도 필요 시 동일 **B** 근거를 기록한다.

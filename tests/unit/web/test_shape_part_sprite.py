@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 import io
 from pathlib import Path
 
@@ -29,6 +30,23 @@ from django_apps.web.services.shape_part_sprites import (
 )
 
 User = get_user_model()
+
+
+@pytest.fixture(autouse=True)
+def cleanup_shape_part_sprite_files() -> Iterator[None]:
+    """테스트가 실제 정적 스프라이트 디렉터리에 남긴 파일을 정리한다."""
+
+    image_field = ShapePartSprite._meta.get_field("image")
+    storage_root = Path(image_field.storage.location)
+    sprite_dir = storage_root.joinpath(*str(image_field.upload_to).strip("/").split("/"))
+    before_files = set(sprite_dir.iterdir()) if sprite_dir.is_dir() else set()
+
+    yield
+
+    after_files = set(sprite_dir.iterdir()) if sprite_dir.is_dir() else set()
+    for created_file in after_files - before_files:
+        if created_file.is_file():
+            created_file.unlink()
 
 
 def _minimal_png_bytes() -> bytes:

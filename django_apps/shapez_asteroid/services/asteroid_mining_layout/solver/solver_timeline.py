@@ -141,6 +141,10 @@ def _run_post_reclaim_pass3_once(
     for kk in metric_keys:
         if kk in p3_trace:
             out[f"post_reclaim_pass3_{kk}"] = p3_trace[kk]
+    if "pass3_connectivity_reject_sample" in p3_trace:
+        out["post_reclaim_pass3_pass3_connectivity_reject_sample"] = p3_trace[
+            "pass3_connectivity_reject_sample"
+        ]
     _attach_post_reclaim_pass3_count_aliases(out)
 
     if p3_trace.get("pass3_skipped"):

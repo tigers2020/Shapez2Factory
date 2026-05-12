@@ -14,6 +14,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
     reconstruct_mining_priority_transport,
+    transport_connects_outlets_to_anchor,
+    transport_outlets_disconnected_from_anchor,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (
     MAX_ROUTE_LENGTH_RATIO,
@@ -28,7 +30,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_tra
     _p3e3_route_length_ratio_allowed,
     mining_map_after_transport_reconstruction,
     run_pass3_transport_minimization_from_maps,
-    transport_connects_outlets_to_anchor,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_context import (
     RECOVERY_SEGMENT_P4_RECLAIM,
@@ -351,6 +352,21 @@ def test_pass3_run_emits_exit_transport_count_and_map_hash() -> None:
     assert isinstance(trace.get("pass3_exit_transport_cell_count"), int)
 
 
+def test_transport_outlets_disconnected_from_anchor_matches_bfs() -> None:
+    transport = {
+        (0, 0): "belt",
+        (1, 0): "belt",
+        (2, 0): "belt",
+        (10, 0): "belt",
+    }
+    assert transport_outlets_disconnected_from_anchor(
+        transport,
+        outlets_order=[(0, 0), (10, 0)],
+        anchor=(2, 0),
+        limit=5,
+    ) == [(10, 0)]
+
+
 def test_reconstruct_mining_priority_transport_reject_detail_connectivity_spine() -> None:
     """Single interior belt cell: removal breaks stub→anchor connectivity → detail taxonomy."""
 
@@ -365,6 +381,60 @@ def test_reconstruct_mining_priority_transport_reject_detail_connectivity_spine(
     )
     assert res.committed is False
     assert res.metrics.get("pass3_greedy_reject_detail") == PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY
+    sample = res.metrics.get("pass3_connectivity_reject_sample")
+    assert isinstance(sample, dict)
+    assert sample["victim_cell"] == [2, 0]
+    assert sample["affected_stub_count"] == 1
+    assert sample["disconnected_stub_samples"] == [[1, 0]]
+    assert sample["nearest_anchor_distance"] == 1
+    assert sample["transport_cell_count_before_trial"] == 3
+    assert sample["transport_cell_count_after_trial"] == 2
+
+
+def test_reconstruct_mining_priority_transport_local_reroute_saves_internal_when_enabled() -> None:
+    """Delete-only breaks spine; detour on y=1 (external) restores link and drops internal count."""
+
+    def is_ext_y_ne_0(c: tuple[int, int]) -> bool:
+        return c[1] != 0
+
+    mineable = {(x, y) for x in range(1, 8) for y in range(0, 3)}
+    asteroid = set(mineable)
+    tc = {
+        (1, 0): "belt",
+        (2, 0): "belt",
+        (3, 0): "belt",
+        (4, 0): "belt",
+        (5, 0): "belt",
+    }
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core."
+        "PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED",
+        True,
+    ):
+        res = reconstruct_mining_priority_transport(
+            anchor=(5, 0),
+            asteroid_cells=asteroid,
+            mineable_cells=mineable,
+            buildings={},
+            transport_cells=dict(tc),
+            outlets_order=[(1, 0)],
+            transport_role="shape_belt",
+            is_external=is_ext_y_ne_0,
+        )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.internal_transport_metrics import (  # noqa: E501
+        count_internal_transport_cells,
+    )
+
+    before_i = count_internal_transport_cells(tc.keys(), is_external=is_ext_y_ne_0)
+    after_i = count_internal_transport_cells(res.transport_cells.keys(), is_external=is_ext_y_ne_0)
+    assert res.committed is True
+    assert res.metrics.get("commit_reason") == "normal_gain"
+    assert after_i < before_i
+    assert transport_connects_outlets_to_anchor(
+        res.transport_cells,
+        outlets_order=[(1, 0)],
+        anchor=(5, 0),
+    )
 
 
 def test_p3e3_rollback_guarded_transport_cells_copies_role_map() -> None:

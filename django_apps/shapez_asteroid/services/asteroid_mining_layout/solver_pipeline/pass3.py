@@ -107,6 +107,7 @@ def initial_pass3_summary() -> dict[str, Any]:
         "pass3_transport_cells_removed_total": None,
         "before_internal_transport_count": None,
         "after_internal_transport_count": None,
+        "pass3_connectivity_reject_sample": None,
         "recovery_context_chain": [],
         "recovery_trigger_reason": None,
         "recovery_terminal_reason": None,
@@ -221,6 +222,7 @@ def run_pass3_stage(
                 or k.startswith("p3e3_")
                 or k.startswith("p3f_")
                 or k == "pass3_greedy_committed"
+                or k == "pass3_connectivity_reject_sample"
             ):
                 pass3_summary[k] = v
         if p3_trace.get("pass3_skipped"):
@@ -253,6 +255,7 @@ def run_pass3_stage(
                     "pass3_internal_transport_saved",
                     "before_internal_transport_count",
                     "after_internal_transport_count",
+                    "pass3_connectivity_reject_sample",
                 ):
                     if k in p3_trace:
                         upd[k] = p3_trace[k]
@@ -285,6 +288,7 @@ def run_pass3_stage(
                     "pass3_internal_transport_saved",
                     "before_internal_transport_count",
                     "after_internal_transport_count",
+                    "pass3_connectivity_reject_sample",
                 ):
                     if k in p3_trace:
                         pass3_summary[k] = p3_trace[k]

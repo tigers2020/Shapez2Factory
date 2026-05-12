@@ -12,6 +12,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.boun
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     INF_COST,
+    PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED,
+    PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS,
+    PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_PATH_LEN,
     PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
     PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA,
     PASS3_GREEDY_REJECT_DETAIL_ZERO_GAIN,
@@ -19,6 +22,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_contracts import (
     Pass3TransportResult,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.internal_transport_metrics import (  # noqa: E501
+    count_internal_transport_cells,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_zone import (
     ROUTE_ZONE_COST,
@@ -39,6 +45,7 @@ __all__ = [
     "placement_stub_route_to_trunk_feasible",
     "reconstruct_mining_priority_transport",
     "transport_connects_outlets_to_anchor",
+    "transport_outlets_disconnected_from_anchor",
 ]
 
 
@@ -129,6 +136,118 @@ def transport_connects_outlets_to_anchor(
     return required.issubset(seen)
 
 
+def transport_outlets_disconnected_from_anchor(
+    transport_cells: dict[Coord, str],
+    *,
+    outlets_order: list[Coord],
+    anchor: Coord,
+    limit: int = 5,
+) -> list[Coord]:
+    """Outlets not reachable from ``anchor`` via cardinal transport edges (BFS ``seen``).
+
+    Preconditions match :func:`transport_connects_outlets_to_anchor` (anchor and outlets in graph).
+    """
+
+    required = frozenset(outlets_order)
+    if anchor not in transport_cells or not required or not required.issubset(transport_cells):
+        return []
+    q: deque[Coord] = deque([anchor])
+    seen: set[Coord] = {anchor}
+    while q:
+        cur = q.popleft()
+        for nxt in _transport_adjacent(cur, transport_cells):
+            if nxt not in seen:
+                seen.add(nxt)
+                q.append(nxt)
+    out: list[Coord] = []
+    for o in outlets_order:
+        if o not in seen:
+            out.append(o)
+            if len(out) >= limit:
+                break
+    return out
+
+
+def _pass3_connectivity_reject_sample_dict(
+    *,
+    victim: Coord,
+    anchor: Coord,
+    tc_before_trial: dict[Coord, str],
+    trial: dict[Coord, str],
+    outlets_order: list[Coord],
+) -> dict[str, Any]:
+    disc = transport_outlets_disconnected_from_anchor(
+        trial,
+        outlets_order=outlets_order,
+        anchor=anchor,
+        limit=8,
+    )
+    return {
+        "victim_cell": [victim[0], victim[1]],
+        "affected_stub_count": len(disc),
+        "disconnected_stub_samples": [[c[0], c[1]] for c in disc],
+        "nearest_anchor_distance": abs(victim[0] - anchor[0]) + abs(victim[1] - anchor[1]),
+        "transport_cell_count_before_trial": len(tc_before_trial),
+        "transport_cell_count_after_trial": len(trial),
+    }
+
+
+def _try_greedy_local_replacement_reroute(
+    pre_delete_tc: dict[Coord, str],
+    trial: dict[Coord, str],
+    *,
+    wr: str,
+    anchor: Coord,
+    outlets_order: list[Coord],
+    mineable_cells: set[Coord],
+    asteroid_cells: set[Coord],
+    buildings: dict[Coord, str],
+    is_external: Callable[[Coord], bool],
+) -> dict[Coord, str] | None:
+    """If enabled, add same-kind transport along stub→anchor probe paths until connected.
+
+    Commits only when canonical internal transport count strictly decreases vs ``pre_delete_tc``.
+    """
+
+    if not PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED:
+        return None
+    before_i = count_internal_transport_cells(pre_delete_tc.keys(), is_external=is_external)
+    merged = dict(trial)
+    for _ in range(PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS + 2):
+        if transport_connects_outlets_to_anchor(
+            merged,
+            outlets_order=outlets_order,
+            anchor=anchor,
+        ):
+            after_i = count_internal_transport_cells(merged.keys(), is_external=is_external)
+            if before_i > after_i:
+                return merged
+            return None
+        disc = transport_outlets_disconnected_from_anchor(
+            merged,
+            outlets_order=outlets_order,
+            anchor=anchor,
+            limit=PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS + 1,
+        )
+        if not disc or len(disc) > PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS:
+            return None
+        stub = disc[0]
+        path = placement_stub_route_probe_path(
+            outlet_stub=stub,
+            anchor=anchor,
+            asteroid_cells=asteroid_cells,
+            mineable_cells=mineable_cells,
+            buildings=buildings,
+            transport_cells=merged,
+            fixed_stubs=frozenset(outlets_order),
+        )
+        if path is None or len(path) > PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_PATH_LEN:
+            return None
+        for cell in path:
+            merged[cell] = wr
+    return None
+
+
 def _interior_transport_candidates(
     transport_cells: dict[Coord, str],
     *,
@@ -152,12 +271,16 @@ def _try_remove_one_transport_cell(
     asteroid_cells: set[Coord],
     outlets_order: list[Coord],
     anchor: Coord,
+    layout_role: str,
+    buildings: dict[Coord, str],
+    is_external: Callable[[Coord], bool] | None,
     skip_victim_cells: frozenset[Coord] | None = None,
-) -> tuple[dict[Coord, str], int, str | None]:
+) -> tuple[dict[Coord, str], int, str | None, dict[str, Any] | None]:
     """transport 셀 하나를 제거해 stub connectivity가 유지되는지 시험한다.
 
     §11 Pass3 compression 맥락이다.
     세 번째 반환값: 제거 실패 시 ``pass3_greedy_reject_detail`` 후보(성공 시 ``None``).
+    넷째: 첫 connectivity-only 실패 시 ``pass3_connectivity_reject_sample`` (성공 시 ``None``).
     """
     before = len(
         _interior_transport_candidates(
@@ -181,8 +304,9 @@ def _try_remove_one_transport_cell(
         ),
     )
     if not cands:
-        return tc, 0, PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA
+        return tc, 0, PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA, None
     any_unskipped_attempt = False
+    first_connectivity_sample: dict[str, Any] | None = None
     for victim in cands:
         if skip_victim_cells and victim in skip_victim_cells:
             continue
@@ -197,10 +321,33 @@ def _try_remove_one_transport_cell(
         ):
             tc = trial
             break
+        if is_external is not None:
+            rerouted = _try_greedy_local_replacement_reroute(
+                tc,
+                trial,
+                wr=layout_role,
+                anchor=anchor,
+                outlets_order=outlets_order,
+                mineable_cells=mineable_cells,
+                asteroid_cells=asteroid_cells,
+                buildings=buildings,
+                is_external=is_external,
+            )
+            if rerouted is not None:
+                tc = rerouted
+                break
+        if first_connectivity_sample is None:
+            first_connectivity_sample = _pass3_connectivity_reject_sample_dict(
+                victim=victim,
+                anchor=anchor,
+                tc_before_trial=tc,
+                trial=trial,
+                outlets_order=outlets_order,
+            )
     else:
         if not any_unskipped_attempt:
-            return tc, 0, PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA
-        return tc, 0, PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY
+            return tc, 0, PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA, None
+        return tc, 0, PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY, first_connectivity_sample
     after = len(
         _interior_transport_candidates(
             tc,
@@ -209,7 +356,15 @@ def _try_remove_one_transport_cell(
             anchor=anchor,
         )
     )
-    return tc, max(0, before - after), None
+    gain_spine = max(0, before - after)
+    if is_external is not None:
+        bi0 = count_internal_transport_cells(transport_cells.keys(), is_external=is_external)
+        ai0 = count_internal_transport_cells(tc.keys(), is_external=is_external)
+        gain_internal = max(0, bi0 - ai0)
+        gain = max(gain_spine, gain_internal)
+    else:
+        gain = gain_spine
+    return tc, gain, None, None
 
 
 def _compress_transport_greedy(
@@ -219,28 +374,37 @@ def _compress_transport_greedy(
     asteroid_cells: set[Coord],
     outlets_order: list[Coord],
     anchor: Coord,
+    layout_role: str,
+    buildings: dict[Coord, str],
+    is_external: Callable[[Coord], bool] | None,
     skip_victim_cells: frozenset[Coord] | None = None,
-) -> tuple[dict[Coord, str], int, str]:
+) -> tuple[dict[Coord, str], int, str, dict[str, Any] | None]:
     """고정 output stub을 보존하며 불필요한 transport를 greedy로 제거한다 (§11 Pass3 transport)."""
     tc = dict(transport_cells)
     gain_total = 0
     last_fail_detail = PASS3_GREEDY_REJECT_DETAIL_ZERO_GAIN
+    first_connectivity_sample: dict[str, Any] | None = None
     while True:
-        tc_next, gain, fail_detail = _try_remove_one_transport_cell(
+        tc_next, gain, fail_detail, conn_s = _try_remove_one_transport_cell(
             tc,
             mineable_cells=mineable_cells,
             asteroid_cells=asteroid_cells,
             outlets_order=outlets_order,
             anchor=anchor,
+            layout_role=layout_role,
+            buildings=buildings,
+            is_external=is_external,
             skip_victim_cells=skip_victim_cells,
         )
+        if conn_s is not None and first_connectivity_sample is None:
+            first_connectivity_sample = conn_s
         if gain == 0:
             if fail_detail is not None:
                 last_fail_detail = fail_detail
             break
         tc = tc_next
         gain_total += gain
-    return tc, gain_total, last_fail_detail
+    return tc, gain_total, last_fail_detail, first_connectivity_sample
 
 
 def reconstruct_mining_priority_transport(
@@ -255,10 +419,11 @@ def reconstruct_mining_priority_transport(
     allow_degraded_connected_commit: bool = False,
     trunk_load: dict[str, Any] | None = None,
     recovery_skip_high_sharing_transport_removals: bool = False,
+    is_external: Callable[[Coord], bool] | None = None,
 ) -> Pass3TransportResult:
     """Remove redundant interior transport while preserving stub→anchor connectivity."""
 
-    _ = buildings
+    _ = transport_role
     metrics_base: dict[str, Any] = {"over_capacity_segments": 0, "bottleneck_count": 0}
     skip_victims: frozenset[Coord] | None = None
     if recovery_skip_high_sharing_transport_removals and isinstance(trunk_load, dict):
@@ -266,14 +431,20 @@ def reconstruct_mining_priority_transport(
         if skip_victims:
             metrics_base["pass3_recovery_skip_high_sharing_cell_count"] = len(skip_victims)
 
-    new_cells, gain_total, greedy_reject_detail = _compress_transport_greedy(
+    layout_role = next(iter(transport_cells.values())) if transport_cells else "belt"
+    new_cells, gain_total, greedy_reject_detail, connectivity_sample = _compress_transport_greedy(
         transport_cells,
         mineable_cells=mineable_cells,
         asteroid_cells=asteroid_cells,
         outlets_order=outlets_order,
         anchor=anchor,
+        layout_role=layout_role,
+        buildings=buildings,
+        is_external=is_external,
         skip_victim_cells=skip_victims,
     )
+    if connectivity_sample is not None and gain_total == 0:
+        metrics_base["pass3_connectivity_reject_sample"] = connectivity_sample
 
     if gain_total > 0:
         return Pass3TransportResult(

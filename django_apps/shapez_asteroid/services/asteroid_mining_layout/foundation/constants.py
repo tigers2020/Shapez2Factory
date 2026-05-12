@@ -128,6 +128,14 @@ PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY = "rejected_by_connectivity"
 PASS3_GREEDY_REJECT_DETAIL_ZERO_GAIN = "rejected_by_zero_gain"
 PASS3_GREEDY_REJECT_DETAIL_ROUTE_LENGTH_RATIO = "rejected_by_route_length_ratio"
 
+# Pass3 greedy: optional delete + bounded local replacement (same kind) when pure delete breaks
+# connectivity. Default off — overlaps P3-E3 atomic guarded search; keep small caps when enabling.
+PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED = False
+# Max cells in stub→anchor replacement path (inclusive of endpoints); ~8 edges.
+PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_PATH_LEN = 9
+# Max disconnected outlet stubs to patch per victim attempt (see P3-E3 role split in plan).
+PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS = 2
+
 P4_REJECT_FINAL_ROUTE_OVERLAP = "rejected_by_final_route_overlap"
 P4_REJECT_HARD_PROTECTED_CORRIDOR = "rejected_by_hard_protected_corridor"
 P4_REJECT_SOFT_PROTECTED_CORRIDOR = "rejected_by_soft_protected_corridor"

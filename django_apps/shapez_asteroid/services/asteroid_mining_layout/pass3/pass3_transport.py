@@ -53,6 +53,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_gre
     placement_stub_route_to_trunk_feasible,
     reconstruct_mining_priority_transport,
     transport_connects_outlets_to_anchor,
+    transport_outlets_disconnected_from_anchor,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_trace_summary import (
     pass3_skip_summary,
@@ -242,13 +243,14 @@ def run_pass3_transport_minimization_from_maps(
         anchor=anchor,
         asteroid_cells=asteroid_set,
         mineable_cells=set(mineable),
-        buildings={},
+        buildings={c: "occupied" for c in blocked_cells(cells)},
         transport_cells=tc,
         outlets_order=outlets_order,
         transport_role=tk,
         allow_degraded_connected_commit=bool(pass3_recovery_context),
         trunk_load=trunk_load,
         recovery_skip_high_sharing_transport_removals=bool(pass3_recovery_context),
+        is_external=is_external,
     )
     # Greedy Pass3 output before optional guarded swap (P3-E3b-2b rollback restores this snapshot).
     known_good_transport_snapshot = dict(greedy_result.transport_cells)
@@ -389,6 +391,10 @@ def run_pass3_transport_minimization_from_maps(
         "pass3_internal_transport_saved": pass3_internal_transport_saved,
         **result.metrics,
     }
+    if "pass3_connectivity_reject_sample" in greedy_result.metrics:
+        trace["pass3_connectivity_reject_sample"] = greedy_result.metrics[
+            "pass3_connectivity_reject_sample"
+        ]
     _implied = max(0, before_internal_transport_count - after_internal_transport_count)
     trace["pass3_internal_transport_saved_implied"] = _implied
     # Greedy reject / rollback: internal counts stay at baseline (``pass3_committed`` False).
@@ -426,4 +432,5 @@ __all__ = [
     "reconstruct_mining_priority_transport",
     "run_pass3_transport_minimization_from_maps",
     "transport_connects_outlets_to_anchor",
+    "transport_outlets_disconnected_from_anchor",
 ]

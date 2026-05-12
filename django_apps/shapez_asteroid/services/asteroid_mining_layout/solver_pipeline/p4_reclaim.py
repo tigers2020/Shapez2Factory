@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE,
     RECOVERY_SKIP_P4_TOTAL_CAP,
     ROUTING_STATE_KEYS_STEP4_HASH,
     SOLVER_FRAME_P4_RECLAIM,
@@ -20,7 +21,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_context import (
     RECOVERY_SEGMENT_POST_RECLAIM_PASS3,
-    RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM,
     extend_recovery_chain,
     finalize_recovery_terminal_reason,
 )
@@ -112,8 +112,9 @@ def run_p4_reclaim_stage(
     elif p4_reclaim_cap_blocks_entry(pass3_summary):
         p4_trace = p4_shadow.p4_reclaim_shadow_placeholder(skip_reason=RECOVERY_SKIP_P4_TOTAL_CAP)
     else:
-        pass3_summary["recovery_trigger_reason"] = (
-            pass3_summary.get("recovery_trigger_reason") or RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM
+        pass3_summary["p4_orchestration_entry_segment"] = (
+            pass3_summary.get("p4_orchestration_entry_segment")
+            or P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE
         )
         pass3_summary["baseline_internal_transport_at_reclaim_entry"] = (
             _internal_transport_count_for_pass3_kind(

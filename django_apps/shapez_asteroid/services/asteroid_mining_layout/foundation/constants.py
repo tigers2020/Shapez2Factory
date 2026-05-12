@@ -11,6 +11,10 @@ RECOVERY_SEGMENT_P4_RECLAIM = "p4_reclaim"
 RECOVERY_SEGMENT_SOFT_REPLACE_V2 = "soft_replace_v2"
 RECOVERY_SEGMENT_POST_RECLAIM_PASS3 = "post_reclaim_pass3"
 RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM = "post_pass3_p4_reclaim_entry"
+# P4 정상 진입 마커(문자열은 레거시와 동일).
+# ``pass3_summary``에는 ``p4_orchestration_entry_segment``로만 기록하고
+# ``recovery_trigger_reason``은 bounded recovery(예: STEP4 실패) 전용으로 둔다.
+P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE = RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM
 RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE = "step4_routing_failure"
 
 # --- P5 recovery contract (attempt caps) ---

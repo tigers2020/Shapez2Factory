@@ -104,6 +104,7 @@ def initial_pass3_summary() -> dict[str, Any]:
         "pass3_greedy_local_replacement": None,
         "recovery_context_chain": [],
         "recovery_trigger_reason": None,
+        "p4_orchestration_entry_segment": None,
         "recovery_terminal_reason": None,
         **p3e2_pass3_summary_placeholder(rejected_reason="pass3_not_eligible"),
         **p3e3_pass3_summary_placeholder(rejected_reason="pass3_not_eligible"),

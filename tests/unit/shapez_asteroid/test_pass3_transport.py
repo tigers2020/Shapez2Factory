@@ -10,6 +10,7 @@ import pytest
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL,
+    P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE,
     PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3 import pass3_greedy_core
@@ -40,7 +41,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery
     RECOVERY_SEGMENT_P4_RECLAIM,
     RECOVERY_SEGMENT_POST_RECLAIM_PASS3,
     RECOVERY_SEGMENT_SOFT_REPLACE_V2,
-    RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service import (
     _post_reclaim_pass3_gate,
@@ -1686,7 +1686,8 @@ def test_build_solver_timeline_sets_post_reclaim_skip_when_reclaim_did_not_commi
     assert ss.get("post_reclaim_pass3_ran") is False
     assert isinstance(ss.get("baseline_internal_transport_at_reclaim_entry"), int)
     assert ss.get("net_internal_transport_saved_after_reclaim") == 0
-    assert ss.get("recovery_trigger_reason") == RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM
+    assert ss.get("p4_orchestration_entry_segment") == P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE
+    assert ss.get("recovery_trigger_reason") is None
     assert ss.get("recovery_context_chain") == [RECOVERY_SEGMENT_P4_RECLAIM]
     assert ss.get("recovery_terminal_reason") == "reclaim_commits_zero"
 
@@ -1807,7 +1808,8 @@ def test_post_reclaim_pass3_keeps_recovery_context_chain() -> None:
     """§13: solver appends ``post_reclaim_pass3`` after P4 merge chain (stubbed trace)."""
 
     ss, _ = _solver_summary_post_reclaim_gate_passes()
-    assert ss.get("recovery_trigger_reason") == RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM
+    assert ss.get("p4_orchestration_entry_segment") == P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE
+    assert ss.get("recovery_trigger_reason") is None
     assert ss.get("recovery_context_chain") == [
         RECOVERY_SEGMENT_P4_RECLAIM,
         RECOVERY_SEGMENT_SOFT_REPLACE_V2,

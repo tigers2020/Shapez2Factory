@@ -5,16 +5,15 @@
 ## 배경
 
 - 정본: `08_step4_routing.md` §9.6, `03_data_schema_dto.md` §B — Pass2 직후 `PROVISIONAL_PLACED`, STEP4 성공 후 `ROUTED_CONFIRMED`.
-- 구현: `pass12_merged_layout_seed.seed_pass12_scratch_from_merged_existing`에서 기존 트렁크 재사용 시 **STEP4 전에** `ROUTED_CONFIRMED`를 부여할 수 있다(독스트링에 “STEP4 treats them as finalized bundles” 명시).
+- 구현(이전): `seed_pass12_scratch_from_merged_existing`에서 기존 트렁크 재사용 시 **STEP4 전에** `ROUTED_CONFIRMED`를 부여할 수 있었다.
 
 ## 현재 상태
 
-- 의도적 최적화/예외이나, 엄격한 §9.6 문장과 읽기 충돌이 난다.
+- **코드 회귀(2026-05-12):** merged/preserve seed는 **항상** `PROVISIONAL_PLACED`만 기록하고, `ROUTED_CONFIRMED`는 STEP4(필요 시 stub∈trunk **no-op route commit**)에서만 승격한다 — §9.6 처리 규칙 1–2와 정렬.
 
 ## 목표 상태
 
-- **문서**에 “merged seed / preserve layout” 예외 절을 추가하거나,
-- **코드**에서 항상 `PROVISIONAL_PLACED`로 두고 STEP4에서 no-op 확정으로 `ROUTED_CONFIRMED` 승격(동작 동치 유지 여부 검증).
+- 코드가 §9.6 기본안을 따른다(merged seed도 Pass12 직후 `PROVISIONAL_PLACED`만). 본 문서는 감사·위험 메모로 유지한다.
 
 ## 작업 항목
 

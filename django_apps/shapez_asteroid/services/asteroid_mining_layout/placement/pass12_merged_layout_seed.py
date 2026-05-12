@@ -97,23 +97,6 @@ class _DeferredNearTransportStubRecovery:
     stub_route_trace_last: dict[str, Any] | None
 
 
-def _placement_commit_state_for_stub_route_recovery(
-    stub_cell: Coord,
-    *,
-    want_wr: str,
-    cells: Mapping[Coord, dict[str, Any]],
-    new_transport_coords: frozenset[Coord],
-) -> PlacementCommitState:
-    """PROVISIONAL when new transport is used; else confirmed if map row is same-role."""
-
-    if len(new_transport_coords) > 0:
-        return PlacementCommitState.PROVISIONAL_PLACED
-    row = cells.get(stub_cell)
-    if row is not None and row.get("role") == want_wr:
-        return PlacementCommitState.ROUTED_CONFIRMED
-    return PlacementCommitState.PROVISIONAL_PLACED
-
-
 def _append_bounded_stub_sample(
     samples: list[dict[str, Any]],
     *,
@@ -788,9 +771,8 @@ def seed_pass12_scratch_from_merged_existing(
 ) -> dict[str, Any]:
     """Populate scratch with extractors/extensions already on mineable in ``merged_mining_map``.
 
-    Creates ``PlacementCommitRecord`` rows in ``ROUTED_CONFIRMED`` or ``PROVISIONAL_PLACED``
-    (stub-route recovery with new transport) when stub transport matches the extractor kind so
-    STEP4 treats them as finalized bundles.
+    Creates ``PlacementCommitRecord`` rows in ``PROVISIONAL_PLACED`` until STEP4 promotes to
+    ``ROUTED_CONFIRMED`` (Algorithm §9.6); merged/preserve paths do not pre-confirm routes.
 
     Returns count stats for solver summary (caller merges into pass12_stats).
     """
@@ -849,7 +831,6 @@ def seed_pass12_scratch_from_merged_existing(
     recovered_stub_samples: list[dict[str, Any]] = []
     unrecovered_stub_samples: list[dict[str, Any]] = []
     for miner in miners:
-        stub_rr_res_for_commit: StubRouteRecoveryResult | None = None
         seed_route_id = "preserve_merged_seed"
         exts = extension_sets_by_miner.get(miner, frozenset())
         parent_by_cell = _parent_tree_for_miner_and_extensions(miner, exts, cells, mineable)
@@ -938,7 +919,6 @@ def seed_pass12_scratch_from_merged_existing(
                     psr = rr_res.trace.get("preserve_stub_recovery")
                     if rr_res.accepted:
                         rr_success += 1
-                        stub_rr_res_for_commit = rr_res
                         scratch.transport_cells |= set(rr_res.new_transport_coords)
                         eff_r = rr_res.chosen_r
                         stub_cell = rr_res.stub_cell
@@ -975,16 +955,7 @@ def seed_pass12_scratch_from_merged_existing(
                     scratch.extension_facings[ext] = _extension_facing_parent(ext, parent_by_cell)
             scratch.next_placement_seq += 1
             pid = make_placement_id("pass1", scratch.next_placement_seq)
-            wrr = want_role(tk)
-            if stub_rr_res_for_commit is not None:
-                commit_state = _placement_commit_state_for_stub_route_recovery(
-                    stub_cell,
-                    want_wr=wrr,
-                    cells=cells,
-                    new_transport_coords=stub_rr_res_for_commit.new_transport_coords,
-                )
-            else:
-                commit_state = PlacementCommitState.ROUTED_CONFIRMED
+            commit_state = PlacementCommitState.PROVISIONAL_PLACED
             scratch.placement_records[pid] = PlacementCommitRecord(
                 placement_id=pid,
                 placement_pass="pass1",
@@ -1003,8 +974,9 @@ def seed_pass12_scratch_from_merged_existing(
             )
         elif _preserve_first_hard_gate(existing_layout_source_kind) or len(miners) == 1:
             # Fluid existing maps: block every unrouted bundle (multi-miner half-preserve guard).
-            # Any map with a single merged miner: always block the bundle when not ROUTED_CONFIRMED
-            # so Pass1 cannot erase the lone body (``raw_asteroid_field`` and legacy behavior).
+            # Any map with a single merged miner: block the bundle when still provisional (STEP4
+            # not yet confirmed) so Pass1 cannot erase the lone body
+            # (``raw_asteroid_field`` / legacy).
             drop_unrecoverable = (
                 _preserve_first_hard_gate(existing_layout_source_kind)
                 and merged_seed_miner_count > 1
@@ -1154,13 +1126,7 @@ def seed_pass12_scratch_from_merged_existing(
                         scratch.extension_facings[ext] = _extension_facing_parent(ext, parent_q)
                 scratch.next_placement_seq += 1
                 pid_q = make_placement_id("pass1", scratch.next_placement_seq)
-                wrr_q = want_role(tk_q)
-                cq_st = _placement_commit_state_for_stub_route_recovery(
-                    stub_cell_q,
-                    want_wr=wrr_q,
-                    cells=cells,
-                    new_transport_coords=rr_q.new_transport_coords,
-                )
+                cq_st = PlacementCommitState.PROVISIONAL_PLACED
                 scratch.placement_records[pid_q] = PlacementCommitRecord(
                     placement_id=pid_q,
                     placement_pass="pass1",

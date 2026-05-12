@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import replace
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
@@ -11,6 +10,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
     PlacementCommitRecord,
     PlacementCommitState,
     placement_record_to_failure_dict,
+    transition_placement_record_to_rolled_back,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     blocked_cells as _blocked_cells,
@@ -241,11 +241,9 @@ def p2c_revalidate_and_correct(
             if pid is not None and pid in work_records:
                 rec = work_records[pid]
                 rollback_placement_cells(cells, rec, final_cells, mineable)
-                work_records[pid] = replace(
+                work_records[pid] = transition_placement_record_to_rolled_back(
                     rec,
-                    state=PlacementCommitState.ROLLED_BACK,
                     rollback_reason="p2c_trunk_disconnect",
-                    route_id=None,
                 )
                 cascade_ids.append(pid)
                 metrics["cascade_rollback_count"] += 1

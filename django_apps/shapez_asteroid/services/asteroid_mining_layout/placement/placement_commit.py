@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 from typing import Any
 
@@ -44,6 +44,24 @@ class PlacementCommitRecord:
     state: PlacementCommitState
     route_id: str | None = None
     rollback_reason: str | None = None
+
+
+def transition_placement_record_to_rolled_back(
+    rec: PlacementCommitRecord,
+    *,
+    rollback_reason: str | None = None,
+    clear_route_id: bool = True,
+) -> PlacementCommitRecord:
+    """Single entry point for terminal ``ROLLED_BACK`` (STEP4 quarantine finalize + P2-C)."""
+
+    rr = rec.rollback_reason if rollback_reason is None else rollback_reason
+    rid: str | None = None if clear_route_id else rec.route_id
+    return replace(
+        rec,
+        state=PlacementCommitState.ROLLED_BACK,
+        rollback_reason=rr,
+        route_id=rid,
+    )
 
 
 def make_placement_id(placement_pass: str, seq: int) -> str:

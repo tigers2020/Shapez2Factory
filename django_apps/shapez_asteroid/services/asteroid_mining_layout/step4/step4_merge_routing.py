@@ -25,6 +25,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
     PlacementCommitState,
     placement_commit_counts_by_state,
     placement_record_to_failure_dict,
+    transition_placement_record_to_rolled_back,
     unfinalized_placement_count_from_counts,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
@@ -687,11 +688,7 @@ def run_step4_merge_aware_routing(
                 qrec = work_records.get(pid)
                 if qrec is None or qrec.state != PlacementCommitState.QUARANTINED_UNROUTED:
                     continue
-                work_records[pid] = replace(
-                    qrec,
-                    state=PlacementCommitState.ROLLED_BACK,
-                    route_id=None,
-                )
+                work_records[pid] = transition_placement_record_to_rolled_back(qrec)
                 rolled_back.append(pid)
             quarantined.clear()
 

@@ -42,7 +42,7 @@ seed_pass12_scratch_from_merged_existing = (
 
 @override_settings(SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True)
 def test_stub_route_recovery_success_mvp() -> None:
-    """Inferred output stub + pipe trunk within hop cap → ROUTED_CONFIRMED, drop avoided."""
+    """Inferred output stub + pipe trunk within hop cap → provisional seed; STEP4 confirms route."""
 
     mineable: frozenset[Coord] = frozenset(
         {
@@ -97,8 +97,7 @@ def test_stub_route_recovery_success_mvp() -> None:
     assert (5, 4) in scratch.transport_cells
     assert (5, 3) in scratch.transport_cells
     for _pid, rec in scratch.placement_records.items():
-        if rec.route_id == "preserve_stub_route_recovery":
-            assert rec.state == PlacementCommitState.PROVISIONAL_PLACED
+        assert rec.state == PlacementCommitState.PROVISIONAL_PLACED
 
 
 def test_goal_transport_cells_filters_scratch_by_opposite_role() -> None:

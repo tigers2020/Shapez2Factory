@@ -202,6 +202,8 @@ ROUTED_CONFIRMED          (terminal — placement 단위로는 정상 확정; §
 
 **Placement 상태 vs route 자원**: `ROUTED_CONFIRMED`는 **해당 placement의 라우팅 성공 확정**을 뜻한다. 인접 placement가 `ROLLED_BACK`되어 **이미 commit된 route가 점유하던 셀이 해제·차단 집합에서 빠지는** 등으로, 그 route가 더 이상 유효한 geometry·연결성을 만족하지 않으면 **route 단위 재검증·corrective reroute 또는 `cascade_corrective_recovery`**가 여전히 필요하다. “cascade 보정 대상에서 제외”는 **동일 placement를 다시 quarantine 대상으로 흔들지 않는다**는 의미이지, **고아·파손 route segment를 방치**한다는 뜻이 아니다.
 
+**Stub가 이미 external trunk에 포함된 경우:** 해당 stub 셀은 같은 transport kind의 trunk로 **이미 외부까지 연결된 것으로 확정**된다. STEP4에서는 별도 Dijkstra 확장 없이 **no-op route commit**(예: path를 stub 단일 셀로 기록)으로 `PROVISIONAL_PLACED` → `ROUTED_CONFIRMED` 승격할 수 있다. 이는 처리 규칙 2의 “output route와 capacity가 확정”과 **동일 의미의 최적화**다(탐색 생략 ≠ 규칙 위반).
+
 처리 규칙:
 
 ```text

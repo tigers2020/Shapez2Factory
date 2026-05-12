@@ -123,6 +123,7 @@ def test_integrate_pass12_then_step4_no_quarantine_valid_layout() -> None:
     )
     pr = stats.get("placement_records") or {}
     assert pr
+    assert all(rec.state == PlacementCommitState.PROVISIONAL_PLACED for rec in pr.values())
     assert "pass2_probe_goal_set_kind" in stats
     assert "reachable_component_sample_by_size" in stats
     r = s4mr.run_step4_merge_aware_routing(
@@ -132,6 +133,7 @@ def test_integrate_pass12_then_step4_no_quarantine_valid_layout() -> None:
     assert all(
         s == PlacementCommitState.ROUTED_CONFIRMED.value for s in r.placement_commit_by_id.values()
     )
+    assert PlacementCommitState.QUARANTINED_UNROUTED.value not in r.placement_commit_by_id.values()
     cells = finval.cells_dict_from_mining_map(r.map_after_routing)
     qc, _pc = finval.count_placement_fsm_rows_on_cells(cells)
     assert qc == 0

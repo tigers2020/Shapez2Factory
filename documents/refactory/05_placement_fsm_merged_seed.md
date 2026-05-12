@@ -1,5 +1,7 @@
 # 목표: PlacementCommitState와 merged existing seed 예외 정합
 
+**선행 감사(권장):** [placement_fsm_mini_audit.md](./placement_fsm_mini_audit.md) — 네 상태 전이·정본 대비 읽기 전용 표를 채운 뒤 본 문서의 코드/문서 선택을 확정한다.
+
 ## 배경
 
 - 정본: `08_step4_routing.md` §9.6, `03_data_schema_dto.md` §B — Pass2 직후 `PROVISIONAL_PLACED`, STEP4 성공 후 `ROUTED_CONFIRMED`.

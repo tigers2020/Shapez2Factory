@@ -38,6 +38,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 # MVP may emit only a subset).
 # v8: ``ui_frames[].trunk_load_overlay`` — compact STEP4 trunk observation slice for STEP10 UI
 # (includes ``trunk_observation_layer`` = committed route traversals; corridor tiers are separate).
+# v9: each replay ``events[]`` entry includes ``event_type`` (canonical category) derived from
+# ``kind``; ``kind`` remains the wire-stable legacy label (STEP10 / NDJSON backward compatibility).
 
 
 class SolverMutationEventKind(StrEnum):
@@ -60,6 +62,68 @@ class SolverMutationEventKind(StrEnum):
     CORRIDOR_REMOVED = "corridor_removed"
     CORRIDOR_PROMOTED = "corridor_promoted"
     CORRIDOR_REPLACED = "corridor_replaced"
+
+
+# Canonical ``event_type`` per legacy ``kind`` (Epic B Part 2). Unknown ``kind`` → passthrough.
+REPLAY_EVENT_TYPE_BY_KIND: dict[str, str] = {
+    SolverMutationEventKind.FRAME_CHECKPOINT.value: "frame_checkpoint",
+    SolverMutationEventKind.PASS12_BUNDLE_COMMIT.value: "placement_bundle_commit",
+    SolverMutationEventKind.STEP4_ROUTE_COMMIT.value: "route_added",
+    SolverMutationEventKind.PASS3_TRANSPORT_COMMIT.value: "pass3_transport_commit",
+    SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value: "layout_snapshot",
+    SolverMutationEventKind.P4_RECLAIM_ITERATION.value: "reclaim_iteration",
+    SolverMutationEventKind.P4_SOFT_REPLACE.value: "reclaim_soft_replace",
+    SolverMutationEventKind.RECOVERY_BRANCH.value: "recovery_entered",
+    SolverMutationEventKind.TRANSACTION_BEGIN.value: "transaction_begin",
+    SolverMutationEventKind.MAP_DIFF_COMMITTED.value: "map_diff_committed",
+    SolverMutationEventKind.ROLLBACK.value: "transaction_rollback",
+    SolverMutationEventKind.ROUTE_REPLACED.value: "route_replaced",
+    SolverMutationEventKind.PLACEMENT_STATE_CHANGED.value: "placement_state_changed",
+    SolverMutationEventKind.CORRIDOR_ADDED.value: "corridor_added",
+    SolverMutationEventKind.CORRIDOR_REMOVED.value: "corridor_removed",
+    SolverMutationEventKind.CORRIDOR_PROMOTED.value: "corridor_promoted",
+    SolverMutationEventKind.CORRIDOR_REPLACED.value: "corridor_replaced",
+}
+
+OVERLAY_REPLAY_EVENT_TYPES: frozenset[str] = frozenset(
+    {
+        REPLAY_EVENT_TYPE_BY_KIND[SolverMutationEventKind.RECOVERY_BRANCH.value],
+        REPLAY_EVENT_TYPE_BY_KIND[SolverMutationEventKind.ROLLBACK.value],
+        REPLAY_EVENT_TYPE_BY_KIND[SolverMutationEventKind.ROUTE_REPLACED.value],
+    }
+)
+
+REPLAY_EVENT_TYPE_PASS3_LAYOUT_SNAPSHOT = REPLAY_EVENT_TYPE_BY_KIND[
+    SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value
+]
+
+
+def replay_event_type_for_kind(kind: str | None) -> str | None:
+    """Map legacy ``kind`` to canonical ``event_type``.
+
+    Unknown kinds return the trimmed ``kind`` string (forward-compatible passthrough).
+    """
+
+    if kind is None:
+        return None
+    s = str(kind).strip()
+    if not s:
+        return None
+    return REPLAY_EVENT_TYPE_BY_KIND.get(s, s)
+
+
+def enrich_replay_events_event_types(events: list[dict[str, Any]]) -> None:
+    """Set ``event_type`` on each dict event from ``kind`` (idempotent for same ``kind``)."""
+
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        raw = ev.get("kind")
+        if not isinstance(raw, str):
+            continue
+        et = replay_event_type_for_kind(raw)
+        if et is not None:
+            ev["event_type"] = et
 
 
 CORRIDOR_REPLAY_TIERS: frozenset[str] = frozenset({"hard", "soft", "candidate"})

@@ -22,3 +22,28 @@
 
 - `test_recovery_contract.py`: 롤업·finalize P4 마커 분리.
 - `test_pass3_transport.py`, `test_mining_solver_stabilization.py`, `test_pass1_timeline_integration.py`: 계약 키·요약 정합.
+
+---
+
+# Epic B — Part 2 (`event_type` vs `kind`)
+
+**범위:** `solver_replay`의 `events[]`에만 적용. `SOLVER_REPLAY_CONTRACT_VERSION = 9`. 이벤트 생산부(STEP4/Pass3/P4 등)의 `kind` 문자열은 **변경 없음**; 스냅샷/UI 프레임 빌드 직전에 `event_type`을 파생해 채움.
+
+## 매핑(요약)
+
+| legacy `kind` | canonical `event_type` |
+|---------------|------------------------|
+| `recovery_branch` | `recovery_entered` |
+| `rollback` | `transaction_rollback` |
+| `step4_route_commit` | `route_added` |
+| `pass12_bundle_commit` | `placement_bundle_commit` |
+| `pass3_layout_snapshot` | `layout_snapshot` |
+| (기타) | `REPLAY_EVENT_TYPE_BY_KIND` 참조 |
+
+## 소비자
+
+- `build_replay_ui_frames`: Pass3 스냅·오버레이 인덱스는 `kind` **또는** `event_type`으로 매칭(레거시 전용 이벤트·순방향 호환).
+
+## 테스트
+
+- `test_solver_replay_frames.py`: `test_contract_*` — 매핑 완전성, 스냅샷 enrich, `event_type` 단독 이벤트.

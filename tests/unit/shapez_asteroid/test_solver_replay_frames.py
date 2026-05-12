@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     RECOVERY_PHASE_VALIDATION_RECOVERY,
+    SOLVER_FRAME_INIT,
     SOLVER_FRAME_PASS2_INTERNAL,
     SOLVER_FRAME_PASS3_TRANSPORT,
     SOLVER_FRAME_STEP4_ROUTING,
@@ -11,8 +12,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     SOLVER_REPLAY_CONTRACT_VERSION,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
+    REPLAY_EVENT_TYPE_BY_KIND,
     SolverMutationEventKind,
     build_solver_replay_snapshot,
+    enrich_replay_events_event_types,
     normalize_replay_transport_kind,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_frames import (  # noqa: E501
@@ -58,7 +61,8 @@ def test_build_replay_ui_frames_trunk_load_overlay_from_step4_summary() -> None:
     frames = build_replay_ui_frames(solver_timeline=timeline, events=[])
     assert frames[0]["trunk_load_overlay"] is not None
     assert frames[0]["trunk_load_overlay"]["by_kind"]["shape_belt"]["max_sharing"] == 2
-    assert frames[0]["trunk_load_overlay"].get("trunk_observation_layer") == "committed_step4_routes"
+    tlo = frames[0]["trunk_load_overlay"]
+    assert tlo.get("trunk_observation_layer") == "committed_step4_routes"
     assert frames[1]["trunk_load_overlay"] is not None
     assert verify_replay_ui_frames_computation_cycles(events=[], ui_frames=frames) == []
 
@@ -314,3 +318,63 @@ def test_verify_replay_ui_frames_computation_cycles_detects_mismatched_bounds() 
     }
     errs = verify_replay_ui_frames_computation_cycles(events=events, ui_frames=[bad_row])
     assert errs and "99" in errs[0]
+
+
+def test_contract_replay_event_type_mapping_covers_all_solver_mutation_kinds() -> None:
+    missing = [m.value for m in SolverMutationEventKind if m.value not in REPLAY_EVENT_TYPE_BY_KIND]
+    assert not missing
+
+
+def test_contract_build_solver_replay_snapshot_adds_event_type_from_kind() -> None:
+    events: list[dict] = [{"phase": "step4", "kind": SolverMutationEventKind.ROLLBACK.value}]
+    snap = build_solver_replay_snapshot(
+        frames=[{"id": SOLVER_FRAME_INIT, "summary": {}, "mining_map": []}],
+        run_id="r_contract_1",
+        events=events,
+    )
+    assert snap["events"][0]["kind"] == SolverMutationEventKind.ROLLBACK.value
+    assert snap["events"][0]["event_type"] == "transaction_rollback"
+
+
+def test_contract_unknown_replay_kind_passthrough_event_type() -> None:
+    ev: list[dict] = [{"phase": "x", "kind": "future_experimental_kind"}]
+    enrich_replay_events_event_types(ev)
+    assert ev[0]["event_type"] == "future_experimental_kind"
+
+
+def test_contract_pass3_layout_snapshot_detected_by_event_type_only() -> None:
+    """Forward-compat: consumers may emit canonical ``layout_snapshot`` without legacy ``kind``."""
+
+    timeline = [
+        {"id": SOLVER_FRAME_PASS2_INTERNAL, "summary": {}, "mining_map": []},
+        {"id": SOLVER_FRAME_PASS3_TRANSPORT, "summary": {}, "mining_map": []},
+    ]
+    layout_et = REPLAY_EVENT_TYPE_BY_KIND[SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value]
+    events: list[dict] = [
+        {
+            "phase": "pass3",
+            "event_type": layout_et,
+            "computation_cycle": 4,
+            "payload": {
+                "marker": "before",
+                "layout_state_sha256": "abc",
+                "transaction_id": "p3",
+            },
+        },
+    ]
+    frames = build_replay_ui_frames(solver_timeline=timeline, events=events)
+    assert len(frames[1]["pass3_layout_snapshots"]) == 1
+
+
+def test_contract_overlay_indices_accept_event_type_without_legacy_kind() -> None:
+    timeline = [{"id": SOLVER_FRAME_VALIDATE, "summary": {}, "mining_map": []}]
+    events: list[dict] = [
+        {
+            "phase": RECOVERY_PHASE_VALIDATION_RECOVERY,
+            "event_type": "recovery_entered",
+            "computation_cycle": 1,
+            "payload": {},
+        }
+    ]
+    frames = build_replay_ui_frames(solver_timeline=timeline, events=events)
+    assert frames[0]["overlay_event_indices"] == [0]

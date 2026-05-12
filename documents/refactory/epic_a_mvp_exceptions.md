@@ -1,9 +1,11 @@
 # Epic A — §4.3 MVP 예외 목록 (B-classified)
 
-**역할:** `02_pipeline_control_flow.md` §4.3 정본 대비 구현 차이 중, **의도적으로 유지(MVP exception)** 로 합의된 행만 한곳에 고정한다.  
+**스코프(필독):** 본 문서는 **`02_pipeline_control_flow.md` §4.3 canonical trigger** 행만 다룬다. **전역 “B = 코드 수정 금지” 모델이 아니다.** Placement `PlacementCommitState`·§9.6 등은 Algorithm `08_step4_routing.md` 및 [placement_fsm_drift_classification.md](./placement_fsm_drift_classification.md)를 본다. **B**는 “영구 면제”가 아니라 **정본과 구현 충돌이 보류된 상태(decision required)** 이며, 종착은 코드 회귀 또는 Algorithm 정본의 **명시적** 갱신이다.
+
+**역할:** §4.3 정본 대비 구현 차이 중, **당장 Epic A control-flow PR에서 정렬하지 않기로 한** 행을 표로 고정한다(재분류 시 §5.3·본 표를 먼저 갱신).  
 **정본 인용·감사 근거:** [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) §5.2–5.4(Expected = §4.3 인용 요약, PR #6 follow-up 분류).  
 **범위:** 본 표의 **B** 행만 기술한다. **Info**(`post_reclaim_pass3_connectivity_break`, `reclaim_incremental_failure`)는 정합·관측 정리용이므로 여기서 다루지 않는다.  
-**갱신:** 2026-05-12 — PR #4–#6 머지 후 고정 초안.
+**갱신:** 2026-05-12 — PR #4–#6 머지 후 고정 초안. **2026-05-12** — 스코프 노트·B 의미 정렬(거버넌스 PR).
 
 ---
 

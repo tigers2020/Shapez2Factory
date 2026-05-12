@@ -2,6 +2,8 @@
 
 shapez2Solver **채굴 레이아웃 솔버** 관련, 문서 정본(`documents/Algorithm/mining_solver_cursor_sessions/`)·코드 감사·아키텍처 리뷰를 바탕으로 한 **목표별 리팩토링/정렬** 메모다. 구현 전 플랜 승인·범위 확정이 필요하다.
 
+**Authority:** Algorithm 폴더가 알고리즘·FSM·파이프라인 **정본**이다. `refactory/`는 **감사·분류·구현 순서·리뷰 체크리스트**용이며 정본을 덮어쓰지 않는다. A/B/Info는 구현 차단 상위 권한이 아니라 **작업 분류 라벨**이며, **B**는 “영구 MVP 면제”가 아니라 **Algorithm과의 충돌 보류(decision required)** 이다.
+
 ## 상위 Epic(묶음) → 상세 티켓
 
 | Epic | 파일 | 다루는 범위 | 하위 상세 문서 |
@@ -11,9 +13,11 @@ shapez2Solver **채굴 레이아웃 솔버** 관련, 문서 정본(`documents/Al
 | C | [corridor-state-machine-refactor.md](./corridor-state-machine-refactor.md) | candidate/soft/hard·atomic replace | 04, 14 |
 | D | [trace-layer-isolation.md](./trace-layer-isolation.md) | replay·NDJSON·summary = 출력 계층 | 06, 16 |
 
-**Epic A(운영):** mini-audit §5.3에 **A 행이 확정될 때까지** Epic A **코드 전용 PR**은 열지 않는다. 근거·예외·스코프는 [epic_a_implementation_scope.md](./epic_a_implementation_scope.md)를 본다.
+**Epic A(운영):** mini-audit §5.3에 **A 행이 확정될 때까지** Epic A **§4.3 control-flow 코드 전용 PR**은 열지 않는다. 근거·스코프는 [epic_a_implementation_scope.md](./epic_a_implementation_scope.md)를 본다. **Placement FSM §9.6** 등 다른 타일은 Epic A 활성 A 행과 **독립**으로 PR을 연다.
 
-**다음 구현 타일(권장):** **Placement FSM normalization** — 코드 변경 전 감사 산출물 [placement_fsm_mini_audit.md](./placement_fsm_mini_audit.md). (corridor lifecycle보다 기반 상태 전이를 먼저 고정하는 편이 회귀 반경이 작다.)
+**다음 구현 타일(권장):** **Placement FSM normalization** — 감사 [placement_fsm_mini_audit.md](./placement_fsm_mini_audit.md) + 분류 [placement_fsm_drift_classification.md](./placement_fsm_drift_classification.md). (corridor lifecycle보다 기반 상태 전이를 먼저 고정하는 편이 회귀 반경이 작다.)
+
+**Phase 3(후속 PR·별 브랜치):** Epic **C** [04_protected_corridor_lifecycle.md](./04_protected_corridor_lifecycle.md)·[14_soft_corridor_atomic_replace.md](./14_soft_corridor_atomic_replace.md)(Algorithm §14). Epic **A** 연계: [15_final_validation_assertion_only.md](./15_final_validation_assertion_only.md)·`finalize.py`의 `validation_recovery` vs Algorithm `08_step4_routing.md` §9.6 L227–231(STEP9 vs STEP4 재진입 구분).
 
 **Cursor 실행 순서(YAML 스케치):** [cursor_work_phases.md](./cursor_work_phases.md) (Phase 0–4 + Placement FSM 안내)
 
@@ -36,10 +40,11 @@ shapez2Solver **채굴 레이아웃 솔버** 관련, 문서 정본(`documents/Al
 | [01_canonical_doc_paths.md](./01_canonical_doc_paths.md) | 정본 문서 경로 혼동 제거·인덱스 |
 | [02_pipeline_recovery_control_flow.md](./02_pipeline_recovery_control_flow.md) | §4.3 트리거별 복귀 vs 오케스트레이터 단순화 정렬 |
 | [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) | Epic A 진입 전 §4.3 vs 코드 1차 감사 표·식별자 사전 |
-| [epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md) | §4.3 대비 **B(MVP 예외)** 트리거만 고정 표 |
+| [epic_a_mvp_exceptions.md](./epic_a_mvp_exceptions.md) | §4.3 대비 **B** 트리거만 고정 표(§4.3 스코프; 전역 면제 모델 아님) |
 | [epic_a_implementation_scope.md](./epic_a_implementation_scope.md) | Epic A **구현 PR** 허용·금지·정본 근거(스코프 drift 방지) |
 | [epic_a_active_rows.md](./epic_a_active_rows.md) | Epic A **현재 A 행만**(§5.3 스냅샷·0건 시 명시) |
 | [placement_fsm_mini_audit.md](./placement_fsm_mini_audit.md) | `PlacementCommitState` 네 상태 전이·정본 대비 **읽기 전용** 감사(구현 전) |
+| [placement_fsm_drift_classification.md](./placement_fsm_drift_classification.md) | Placement drift **A/B/Info** 분류·구현 PR 게이트·정본 대조·A 행 스냅샷 |
 | [03_recovery_trace_namespaces.md](./03_recovery_trace_namespaces.md) | `recovery_trigger` / `commit_reason` / `rollback_reason` 계약 |
 | [04_protected_corridor_lifecycle.md](./04_protected_corridor_lifecycle.md) | hard/soft/candidate 생명주기·STEP4 요약 블록 |
 | [05_placement_fsm_merged_seed.md](./05_placement_fsm_merged_seed.md) | merged seed 시 `ROUTED_CONFIRMED` 예외·§9.6 정합 |

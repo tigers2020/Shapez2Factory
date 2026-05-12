@@ -7,7 +7,7 @@
 
 ## Mini-audit 산출물 (구현 전)
 
-- **1차 표·식별자 사전·A/B 초안:** [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) (2026-05-12). Epic A 코드 착수 전에 표의 Expected 열을 정본 인용으로 맞출 것.
+- **1차 표·정본 인용:** [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) §5 (GitHub `master` §4.3 표 전문 + 구현 매핑 + PR 리뷰 A/B/Info).
 
 ## 현재 상태
 
@@ -22,7 +22,7 @@
 
 ## 작업 항목
 
-1. 트리거 목록(`step4_routing_failure`, `pass3_connectivity_break`, `reclaim_incremental_failure`, `post_reclaim_pass3_connectivity_break`, `final_validation_failure`)마다 **현 코드 경로**를 표로 적는다(감사용). → **초안:** [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) §5.
+1. 트리거별 **현 코드 경로** 표: [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) **§5.3**(정본 §5.2 인용과 함께). PR 리뷰 **A/B/Info**는 **§5.4**에 확정.
 2. 차이가 큰 항목부터: §4.3.1 Reclaim 복귀 vs 현 루프 — 의도 확인 후 A 또는 B.
 3. `recovery_contract_phases` / replay에 “문서 표 행 ID”를 남길지 결정한다.
 

@@ -10,6 +10,8 @@
 - `soft_protected_candidate_corridors`와 `soft_protected_confirmed_corridors`에 **동일 집합**이 들어가, probe 단계와 commit 후 단계의 구분이 요약 블록에서 사라진다.
 - **(2026-05-12, PR4-A 1차)** `step4_routing_state._routing_state_from_committed_routes` 한정: commit 스냅샷에서는 후보 풀이 없으므로 **candidate는 `[]`**, confirmed·`soft_protected_corridors`는 동일 soft 풀. 상세·PR4-B 가드 맵: [`documents/plans/active_pr4_protected_corridor_lifecycle.md`](../plans/active_pr4_protected_corridor_lifecycle.md).
 
+- **(2026-05-12, PR4-C)** ELA `main_trunk_candidate` → `solver_hints.trunk_seed_cell_union`은 STEP4 `hard_protected_corridors`에 자동 승격되지 않는다. `step4_routing_state`가 `ela_trunk_seed_candidate_corridors`(관측용, `ROUTING_STATE_KEYS_STEP4_HASH` 비포함)로 직렬화하고, hard는 stub·path 끝점 규칙만 유지한다. 상세: [`documents/plans/active_pr4_protected_corridor_lifecycle.md`](../plans/active_pr4_protected_corridor_lifecycle.md) §3.4·§8.
+
 ## 목표 상태
 
 - 다음 중 하나.

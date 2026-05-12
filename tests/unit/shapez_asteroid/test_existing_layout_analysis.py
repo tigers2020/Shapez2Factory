@@ -83,3 +83,43 @@ def test_isolated_belt_component_is_orphan_issue() -> None:
     out = analyze_existing_layout_from_mining_map(mining_map, is_external=is_ext)
     codes = {i["code"] for i in out["issues"]}
     assert "ORPHAN_TRANSPORT_COMPONENT" in codes
+
+
+def test_ela_trunk_seed_excludes_orphan_belt_cells() -> None:
+    """Orphan belt component cells belong in cleanup union only, not trunk_seed (PR4-C)."""
+
+    mining_map = [
+        {"x": 1, "y": 1, "role": "occupied", "surface": "shape", "layout_kind": "miner", "r": 0},
+        {"x": 2, "y": 1, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+        {"x": 3, "y": 1, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+        {"x": 4, "y": 1, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+        {"x": 5, "y": 1, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+        {"x": 80, "y": 80, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+        {"x": 81, "y": 80, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+    ]
+    is_ext = external_predicate_for_mining_map(mining_map)
+    out = analyze_existing_layout_from_mining_map(mining_map, is_external=is_ext)
+    sh = out["solver_hints"]
+    trunk = {(int(p[0]), int(p[1])) for p in sh["trunk_seed_cell_union"]}
+    cleanup = {(int(p[0]), int(p[1])) for p in sh["cleanup_candidate_cell_union"]}
+    assert (80, 80) in cleanup and (81, 80) in cleanup
+    assert (80, 80) not in trunk and (81, 80) not in trunk
+    assert (2, 1) in trunk
+
+
+def test_ela_single_cell_belt_not_in_trunk_seed() -> None:
+    """Single-cell belt artifact is cleanup-only, never ``trunk_seed_cell_union`` (PR4-C)."""
+
+    mining_map = [
+        {"x": 1, "y": 1, "role": "occupied", "surface": "shape", "layout_kind": "miner", "r": 0},
+        {"x": 2, "y": 1, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+        {"x": 3, "y": 1, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+        {"x": 4, "y": 1, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+        {"x": 50, "y": 50, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+    ]
+    is_ext = external_predicate_for_mining_map(mining_map)
+    out = analyze_existing_layout_from_mining_map(mining_map, is_external=is_ext)
+    trunk = {(int(p[0]), int(p[1])) for p in out["solver_hints"]["trunk_seed_cell_union"]}
+    cleanup = {(int(p[0]), int(p[1])) for p in out["solver_hints"]["cleanup_candidate_cell_union"]}
+    assert (50, 50) in cleanup
+    assert (50, 50) not in trunk

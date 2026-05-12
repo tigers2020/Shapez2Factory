@@ -5,6 +5,11 @@ route만 받는다. 미검증 probe/shadow 후보는 여기서 생기지 않으�
 ``soft_protected_candidate_corridors``는 빈 리스트로 둔다.
 ``soft_protected_confirmed_corridors``·``soft_protected_corridors``는 동일한
 commit 확정 soft 풀(``soft_cells``)을 반영한다.
+
+§14 / PR4-C: ``existing_layout_analysis``가 주어지면 ELA ``main_trunk_candidate`` 출처인
+``solver_hints.trunk_seed_cell_union``을 ``ela_trunk_seed_candidate_corridors``에만
+직렬화한다(관측·candidate 분리). 이 키는 ``hard_protected_corridors``에 합쳐지지 않으며
+``ROUTING_STATE_KEYS_STEP4_HASH``에 포함되지 않는다.
 """
 
 from __future__ import annotations
@@ -21,11 +26,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     want_role as _want_role,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import step4_goal_trunk_seed
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4Route,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
-    transport_cells_reaching_external,
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+    final_validation as _finval,
 )
 
 
@@ -77,7 +83,7 @@ def _soft_cells_for_merged_stub_route(
     want_role = _want_role(route.transport_kind)
     transport_now = _same_kind_transport_cells(cells, want_role)
     blocked = set(_blocked_cells(cells))
-    trunk_cells = transport_cells_reaching_external(transport_now, blocked, is_external)
+    trunk_cells = _finval.transport_cells_reaching_external(transport_now, blocked, is_external)
     if stub not in trunk_cells:
         return frozenset()
     comp = _bfs_transport_component(stub, transport_now, blocked)
@@ -89,10 +95,15 @@ def _routing_state_from_committed_routes(
     *,
     cells: dict[Coord, dict[str, Any]] | None = None,
     is_external: Callable[[Coord], bool] | None = None,
+    existing_layout_analysis: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Step4 committed route에서 P4 reclaim용 hard/soft protected corridor pool을 만든다.
 
     ``soft_protected_candidate_corridors``는 commit 스냅샷에서 후보가 없으므로 항상 ``[]``.
+
+    ``hard``는 각 route의 ``stub_cell``과 ``path[-1]``(있을 때)만 포함한다. ELA
+    ``trunk_seed_cell_union``은 ``hard``에 승격되지 않으며, ``existing_layout_analysis``가
+    주어지면 ``ela_trunk_seed_candidate_corridors``에 별도 직렬화한다.
     """
 
     if not routes:
@@ -118,7 +129,7 @@ def _routing_state_from_committed_routes(
     soft = soft_confirmed - hard
     hard_cells = frozenset(hard)
     soft_cells = frozenset(soft)
-    return {
+    out: dict[str, Any] = {
         "source": "step4_committed_routes",
         "step4_route_count": len(routes),
         "protected_corridors": {
@@ -130,3 +141,9 @@ def _routing_state_from_committed_routes(
         "soft_protected_candidate_corridors": [],
         "soft_protected_confirmed_corridors": _coord_lists(soft_cells),
     }
+    if existing_layout_analysis is not None:
+        ela_seeds = step4_goal_trunk_seed.trunk_seed_union_from_existing_layout(
+            existing_layout_analysis
+        )
+        out["ela_trunk_seed_candidate_corridors"] = _coord_lists(frozenset(ela_seeds))
+    return out

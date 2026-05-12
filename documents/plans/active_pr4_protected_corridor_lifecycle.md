@@ -14,6 +14,8 @@
 
 **구현 반영(2026-05-12, PR4-B):** `routing/protected_corridor_replace.py` — 소프트 치환 시 `old_soft_corridor_cells ∩ hard`이면 `P4_REJECT_HARD_PROTECTED_CORRIDOR`로 즉시 거절. 테스트: `test_reclaim_shadow.test_soft_replace_rejects_hard_protected_corridor_map_unchanged`. 커밋 `c2a5d838`.
 
+**구현 반영(2026-05-12, PR4-C):** `step4_routing_state` / `step4_merge_routing` — ELA trunk seed 관측 키 `ela_trunk_seed_candidate_corridors` 및 단위 테스트(§8).
+
 ---
 
 ## 1. 개요 (YAML)
@@ -62,6 +64,7 @@ scope:
 | `soft_protected_corridors` | 동상 + `pass3_e3_guarded_atomic_map` / `reclaim_map_ops` |
 | `soft_protected_candidate_corridors` | `reclaim_corridor_read_factory` replay overlay 병합, `finalize` 후보 카운트(overlay `counts.candidate`) |
 | `soft_protected_confirmed_corridors` | `test_step4_merge_routing` 등 STEP4 계약 검증 |
+| `ela_trunk_seed_candidate_corridors` | 관측·NDJSON(해시 제외); P4·Pass3·finalize 기본 경로 미소비 |
 
 **결정 (STEP4 `_routing_state_from_committed_routes` 한정):**
 
@@ -91,6 +94,16 @@ scope:
 | [`pass3_e3_guarded_atomic_map.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/pass3/pass3_e3_guarded_atomic_map.py) | hard/soft + replacement 가드 |
 | [`placement/spatial_authority.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/placement/spatial_authority.py) | hard, soft |
 | [`existing_layout/pass12_existing_layout_hints.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/existing_layout/pass12_existing_layout_hints.py) | ELA는 `pass12_*` 별도 키; `routing_state`와 직접 합치지 않음 |
+
+### 3.4 ELA trunk seed → 보호 코어 흐름 (PR4-C)
+
+| Source (ELA) | 소비 경로 | hard 승격 |
+|----------------|-----------|-----------|
+| `solver_hints.trunk_seed_cell_union` (`main_trunk_candidate`) | Pass12 `pass12_existing_layout_barrier_meta` (mineable barrier), STEP4 `trunk_seed_union_from_existing_layout`·goal/cheap_reuse, P4 `existing_layout_solver_hints` → **soft 병합** | STEP4 `_routing_state_from_committed_routes`는 stub·`path[-1]`만 hard; trunk seed 본선은 `ela_trunk_seed_candidate_corridors`로만 직렬화(해시 미포함) |
+| `solver_hints.cleanup_candidate_cell_union` | 동상 P4 soft 병합 | hard 자동 승격 없음 |
+| `pass12_hard_protected_corridor_cells` 등 (선택 replay 오버레이) | `pass12_transport_related_block_extra_cells` | `routing_state` 생산과 별개; 수동 하드 증명 시에만 사용 |
+
+**예외(geometry):** 커밋 route의 `stub_cell` 또는 `path[-1]`이 trunk seed와 겹치면 해당 좌표는 hard에 들어간다(끝점 규칙).
 
 ### 3.3 테스트·픽스처
 
@@ -152,4 +165,43 @@ Algorithm §14 세부 문구는 저장소의 [`documents/refactory/04_protected_
 |-------|------|------|
 | PR4-A | STEP4 committed 스냅샷 candidate `[]` / confirmed·compat 동일 soft 풀 | 완료 (`947b671e`, origin 반영) |
 | PR4-B | Pass3·P4·소프트 치환에서 hard 제거/치환 시도 거절 + 테스트 | 완료 (`c2a5d838`: 소프트 치환 hard 교차; Pass3/P4 overlap 등 기존 가드 유지) |
-| PR4-C | ELA trunk seed vs `routing_state` hard 경계 | 예정 |
+| PR4-C | ELA trunk seed vs `routing_state` hard 경계 | 완료 (`ela_trunk_seed_candidate_corridors` + 단위 테스트) |
+
+---
+
+## 8. PR4-C: ELA trunk seed vs hard (구현 체크리스트)
+
+**목표:** `ExistingLayoutAnalysis` / `solver_hints.trunk_seed_cell_union`(`main_trunk_candidate`)이 STEP4 commit 증명 **이전**에 `hard_protected_corridors`로 승격되지 않도록 계약·테스트로 고정한다.
+
+### 8.1 코드 변경 (요약)
+
+1. [`step4_routing_state.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/step4/step4_routing_state.py)  
+   - `_routing_state_from_committed_routes(..., existing_layout_analysis=None)` 추가.  
+   - `existing_layout_analysis is not None`이면 `trunk_seed_union_from_existing_layout`으로 집합을 구해 **`ela_trunk_seed_candidate_corridors`** 키에 좌표 리스트 직렬화(관측·§14 candidate와 hard 분리). **`hard` 집합에는 합치지 않음.**  
+   - 모듈 상단 docstring에 §14 / `ROUTING_STATE_KEYS_STEP4_HASH` 비포함 명시.
+
+2. [`step4_merge_routing.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/step4/step4_merge_routing.py)  
+   - `_routing_state_from_committed_routes(..., existing_layout_analysis=existing_layout_analysis)` 전달.
+
+### 8.2 테스트
+
+- [`test_protected_corridor_step4_snapshot.py`](../../tests/unit/shapez_asteroid/test_protected_corridor_step4_snapshot.py) 또는 전용 모듈:  
+  - path **중간** 셀이 ELA `trunk_seed_cell_union`에 있어도 `hard_protected_corridors`에 없고 `soft`에 있음.  
+  - stub / `path[-1]`이 trunk_seed와 겹치면 hard에 있을 수 있음(geometry endpoint).  
+  - ELA 전달 시 `ela_trunk_seed_candidate_corridors`가 `trunk_seed_cell_union`과 일치.  
+  - `existing_layout_analysis=None`이면 키 `ela_trunk_seed_candidate_corridors` 없음(기존 호환).
+
+- [`test_existing_layout_analysis.py`](../../tests/unit/shapez_asteroid/test_existing_layout_analysis.py):  
+  - 고립 orphan belt 좌표는 `cleanup_candidate_cell_union`에만 있고 `trunk_seed_cell_union`에 없음(기존 `test_isolated_belt_component_is_orphan_issue` 픽스처 활용 가능).
+
+### 8.3 검증 명령
+
+`python -m pytest tests/unit/shapez_asteroid/` → `ruff check .` → `mypy .` → `black --check .`
+
+### 8.4 완료 보고용 표
+
+| Source | Flow target | Before | After | Test |
+|--------|----------------|--------|--------|------|
+| main_trunk_candidate | trunk_seed_cell_union | candidate; `routing_state`에 ELA 전용 키 없음 | candidate; `ela_trunk_seed_candidate_corridors`로 관측, `hard` 비포함 | `test_routing_state_el_trunk_seed_mid_path_not_hard`, `test_routing_state_el_trunk_seed_candidate_key` |
+| orphan_component | cleanup_candidate_cell_union | cleanup | trunk_seed / hard 비포함 유지 | `test_ela_trunk_seed_excludes_orphan_belt_cells`, `test_ela_single_cell_belt_not_in_trunk_seed` |
+| committed STEP4 route | soft/confirmed pool | confirmed | PR4-A와 동일 | `test_routing_state_from_committed_routes_leaves_soft_candidate_pool_empty` |

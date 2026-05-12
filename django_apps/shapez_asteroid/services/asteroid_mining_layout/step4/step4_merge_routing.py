@@ -805,6 +805,7 @@ def run_step4_merge_aware_routing(
             tuple(routes_out),
             cells=cells,
             is_external=is_external,
+            existing_layout_analysis=existing_layout_analysis,
         ),
         placement_commit_by_id=dict(placement_commit_by_id),
         rolled_back_placement_ids=tuple(rolled_back),

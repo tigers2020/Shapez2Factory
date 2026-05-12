@@ -1,125 +1,122 @@
 # Algorithm deviation deletion audit
 
-**갱신:** 2026-05-12 (Stage 0 문서 정합)  
-**성격:** 삭제 **전** 감사 **초안** — 삭제 실행 플랜이 아니다. 본 패스에서는 **코드 변경 없음** (문서만).  
-**1차 권위(원문):** `documents/Algorithm/mining_solver_cursor_sessions/` — **Stage 0에서 레포 내 존재를 확인**했다([`01_canonical_doc_paths.md`](./01_canonical_doc_paths.md) 표·[`../Algorithm/mining_solver_cursor_sessions/README.md`](../Algorithm/mining_solver_cursor_sessions/README.md)). `01`…`14` 분할 정본이 있으므로, **원문 대 비교는 가능**하다. 다만 본 문서의 매트릭스 **「Algorithm requirement」 열은 아직 2차 요약·`refactory` 링크에 묶여 있으며**, 행마다 **정본 파일 + 절번호 인용으로 바꾸는 작업은 Stage 1**에서 수행한다 → 현재 Action 열의 `NEEDS_SOURCE_CHECK` 는 **「절단위 인용 대기(pending line-level citation)」** 로 읽는다.  
-**2차 권위(감사·요약·임시 인용):** [`02_pipeline_recovery_control_flow.md`](./02_pipeline_recovery_control_flow.md), [`04_protected_corridor_lifecycle.md`](./04_protected_corridor_lifecycle.md), [`15_final_validation_assertion_only.md`](./15_final_validation_assertion_only.md), [`placement_fsm_drift_classification.md`](./placement_fsm_drift_classification.md), [`epic_a_mvp_exceptions.md`](./epic_a_mvp_exceptions.md), [`16_replay_trace_solver_summary_layer.md`](./16_replay_trace_solver_summary_layer.md) 등.
+**갱신:** 2026-05-12 (Stage 1 — 정본 절 인용 바인딩)  
+**성격:** 삭제·치환 **전** 감사. 본 패스는 **문서만** 갱신했으며 **Python·스크립트 경로 변경 없음**.  
+**1차 권위:** `documents/Algorithm/mining_solver_cursor_sessions/` (`01_project_overview.md` … `14_step10_replay_ui.md`). 인덱스: [`01_canonical_doc_paths.md`](./01_canonical_doc_paths.md), [`../Algorithm/mining_solver_cursor_sessions/README.md`](../Algorithm/mining_solver_cursor_sessions/README.md).  
+**2차(참고):** [`02_pipeline_recovery_control_flow.md`](./02_pipeline_recovery_control_flow.md), [`04_protected_corridor_lifecycle.md`](./04_protected_corridor_lifecycle.md), [`15_final_validation_assertion_only.md`](./15_final_validation_assertion_only.md) 등 — **Conflict·Action·Reason은 정본 문장과의 대조로만** 적는다. “B-class” 같은 refactory 전용 라벨과, **이전 감사의 ‘소스 점검 대기’ 토큰**은 쓰지 않는다.
 
 ---
 
-## Top-level summary (deletion policy 버킷)
+## Top-level summary (Action 건수)
 
-| 버킷 | 요약 |
-|------|------|
-| **immediate_delete** | 런타임 솔버 파이프라인에서 **디스크 NDJSON / 과거 `solver_summary`를 읽어 라우팅·배치 분기**하는 경로는 발견되지 않았다. **즉시 파일 단위 삭제** 대상은 정본 원문 없이 확정하지 않음(오삭제 위험). CLI·스크립트는 `ISOLATE`로 분리 권고. |
-| **replace_with_algorithm_behavior** | [`epic_a_mvp_exceptions.md`](./epic_a_mvp_exceptions.md)에 고정된 **§4.3 B-class**와 정본 표가 1:1이 될 때까지, 오케스트레이터·트리거 매핑·STEP4 재진입 정책은 **“MVP 예외”가 아니라 “정본 미정렬 구현”**으로 보면 **REPLACE** 후보다(삭제가 아닌 동작 치환·루프 추가/분기 정리). |
-| **isolate_to_debug_or_report** | NDJSON·`latest.ndjson`·집계 스크립트·`solver_summary` **라인 파싱**만 하는 도구는 알고리즘 코어 밖으로 격리([`16_replay_trace_solver_summary_layer.md`](./16_replay_trace_solver_summary_layer.md) 목표와 합치). |
-| **keep** | STEP9가 `mining_map`만 받는 경계, `replay_events` **emit**, Pass2가 Pass1 cheap-escape 비사용, trunk_load 관측 계약 등 **관측·UI·계약 유지**로 명시된 경로. |
-| **needs_source_check** | 정본 폴더는 **확보됨**; 매트릭스 각 행을 `01`…`14` 중 해당 파일의 **절번호·문장**으로 재대조하는 **Stage 1 작업이 남음**. 특히 STEP4 재시도·§4.3.1·§14 후보/확정 분리·§9.6 merged seed. |
+아래는 본 문서 **두 표**(메인 매트릭스 + §4.3 트리거 표)의 **Action 열 합계**다(메인 22행 + 트리거 6행).
+
+| Action | 건수 |
+|--------|-----:|
+| **DELETE** | 0 |
+| **REPLACE** | 4 |
+| **ISOLATE** | 4 |
+| **KEEP** | 15 |
+| **NEEDS_DECISION** | 5 |
 
 ---
 
 ## 감사 방법
 
-1. `refactory`·`epic_a` 문서의 drift/B 표와 코드 경로 대조.  
-2. `rg` 키워드: `MVP`, `compat`, `legacy`, `fallback`, `shortcut`, `no-op`, `degraded`, `debug`, `latest.ndjson`, `solver_summary`, `replay_events`, `cheap_escape`, `pass3_recovery`, `validation_recovery`.  
-3. 런타임 파이프라인: `build_solver_timeline` → `run_solver_timeline_pipeline` 입력이 `decoded`(블루프린트)인지 확인; NDJSON **읽기**는 `django_apps/.../solver` 트리 밖·`scripts/` 위주인지 확인.
+1. **정본 읽기 순서(권장):** `02_pipeline_control_flow.md`(§4 전체) → `11_step8_recovery.md`(§13) → `12_protected_corridor.md`(§14) → `08_step4_routing.md` / `09_step5_pass3_transport.md` / `10_step6_reclaim_loop.md` → `13_step9_validation.md`(§15) → `14_step10_replay_ui.md`(§16) → 나머지 `01`·`03`·`04`·`05`·`06`·`07`.  
+2. **구현 경로(레포 루트 기준):** `django_apps/shapez_asteroid/services/asteroid_mining_layout/` 이하 `solver_pipeline/`·`solver/`·`pass3/`·`step4/`·`placement/`·`reclaim/` 등.  
+3. **키워드 보조:** `rg`로 `fallback|legacy|compat|degraded|cheap_escape|ndjson|solver_summary|pass3_recovery` 등을 찾되, **판정은 정본 절 인용 후**에만 확정한다.
+
+**정본 14파일 인덱스(경로 고정):**  
+`documents/Algorithm/mining_solver_cursor_sessions/01_project_overview.md` · `02_pipeline_control_flow.md` · `03_data_schema_dto.md` · `04_step0_decode.md` · `05_step1_reconstruction.md` · `06_step2_pass1_placement.md` · `07_step3_pass2_placement.md` · `08_step4_routing.md` · `09_step5_pass3_transport.md` · `10_step6_reclaim_loop.md` · `11_step8_recovery.md` · `12_protected_corridor.md` · `13_step9_validation.md` · `14_step10_replay_ui.md` (공통 접두사 `documents/Algorithm/mining_solver_cursor_sessions/`).
 
 ---
 
-## Deletion matrix (핵심 타깃)
+## Deletion matrix (메인)
 
-표기: **Conflict** = `contradicts_algorithm` | `mvp_exception_documented` | `trace_derived_contract` | `uncertain`  
-**Action** = `DELETE` | `REPLACE` | `ISOLATE` | `KEEP` | `NEEDS_SOURCE_CHECK` *(Stage 1에서 정본 절 인용 후 `NEEDS_DECISION` 등으로 세분화 가능)*
+**Conflict:** `contradicts_algorithm` | `not_in_algorithm_scope` | `telemetry_or_ui_only` | `uncertain`  
+**Action:** `DELETE` | `REPLACE` | `ISOLATE` | `KEEP` | `NEEDS_DECISION`
 
-| File | Function / path | Current behavior | Original Algorithm requirement (2차 요약) | Conflict | Action | Required tests |
-|------|-----------------|--------------|---------------------------------------------|----------|--------|----------------|
-| `solver_pipeline/recovery_orchestrator.py` | `run_solver_timeline_pipeline` | Pass12 → STEP4 **1회** → `routing_snapshot` 고정 루프에서 Pass3→P4→finalize; 실패 시 `validation_recovery_allowed`면 `pass3_recovery_context=True`로 **동일 루프** 반복. STEP4 루프 내 비재진입. | [`02`](./02_pipeline_recovery_control_flow.md): 정본 §4.3은 STEP4 재시도·rollback 등과 **1:1 아님** 가능; B로 문서화됨. | `mvp_exception_documented` | **REPLACE** (정본 선택 시) / 그 전 **KEEP** + 문서 유지 | `test_recovery_return_paths_algorithm.py`, orchestrator 단일 STEP4·루프 상한 |
-| `solver_pipeline/recovery_orchestrator.py` | `_apply_layout_preserve_hard_gate` | 비-raw 입력에서 내부 transport가 merged baseline보다 악화되면 Pass3/Validate 프레임 맵을 baseline으로 되돌리고 요약·`final_validation` 일부 필드·`replay_events`에 체크포인트 기록. | preserve-first 하드 게이트는 `constants`/문서에 존재; §4.3 표와의 정렬은 정본 절 확인 필요. | `uncertain` | **NEEDS_SOURCE_CHECK** (정본 §0.5·§11과 문장 대조) | preserve 회귀·내부 transport 비교 단위 |
-| `solver/recovery_policy.py` | `validation_recovery_allowed` | `ok`·unfinalized·STEP9 hard invariant만으로 bounded 루프 허용; `missing_stub`이면 hard fail로 recovery 비허용. | [`15`](./15_final_validation_assertion_only.md)·[`epic_a`](./epic_a_mvp_exceptions.md): STEP4 비재진입·§15 경계와 정합으로 기술됨. | (낮음) | **KEEP** | `test_pr4d_algorithm_final_validation_boundary.py` |
-| `solver/recovery_policy.py` | `tag_reclaim_incremental_failure_from_summary` 등 | `pass3_summary`에 이미 병합된 P4 trace 플래그를 읽어 `recovery_*`·`recovery_contract_phases`를 채움. | [`16`](./16_replay_trace_solver_summary_layer.md): 요약이 **다음 패스의 유일한 분기 입력**이 되면 계층 위반; 현재 `validation_recovery_allowed`는 해당 플래그만으로 루프를 켜지 않도록 정리됨([`02`](./02_pipeline_recovery_control_flow.md)). | `trace_derived_contract` (낮은 위험, 계약 감시) | **KEEP** + 계약 주석 유지 / 이상 시 **REPLACE** (분기 제거) | recovery summary·PR4-D |
-| `pass3/pass3_transport.py` | `pass3_recovery_context` 분기 | degraded greedy·`allow_degraded_connected_commit`·내부 transport 델타 게이트 완화·`COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY`. | §11 bounded recovery와 연계된 **구현 선택**; 정본 문장 대조 필요. | `mvp_exception_documented` / `uncertain` | **NEEDS_SOURCE_CHECK** | Pass3 recovery context 단위 |
-| `pass3/pass3_transport.py` | `_p3e3_validate_guarded_swap_mining_map` … `fixed_output_stubs` | 고정 stub 집합을 가드 스왑 검증에 전달. | [`13_fixed_output_stub_preservation.md`](./13_fixed_output_stub_preservation.md) 정렬 목표. | (낮음) | **KEEP** | stub 보존 회귀 |
-| `step4/step4_routing_state.py` | `_routing_state_from_committed_routes` | commit 스냅샷에서 `soft_protected_candidate_corridors=[]`, confirmed·`soft_protected_corridors` 동일 풀; ELA trunk seed는 `ela_trunk_seed_candidate_corridors`만. | [`04`](./04_protected_corridor_lifecycle.md): 정본 §14.2 후보/확정 분리와 **drift**; PR4-A/C로 **문서화된 구현 상태**. | `mvp_exception_documented` | **REPLACE** (정본 A 선택 시) / **KEEP** (B 유지 시 문서만) | protected corridor·P4 소비 키 회귀 |
-| `reclaim/reclaim_corridors.py` | corridor merge·`P3E3_TOUCHED_FALLBACK` | Pass3 trace·solver pool 등 출처별 merge; soft/hard 소비. | §14·P4와의 중복·출처 표는 [`04`](./04_protected_corridor_lifecycle.md) 잔여 작업. | `uncertain` | **NEEDS_SOURCE_CHECK** | `test_reclaim_shadow.py` 등 |
-| `placement/pass12_merged_layout_seed.py` | `seed_pass12_scratch_from_merged_existing` | `routed_ok`인 merged seed도 **`PlacementCommitState.PROVISIONAL_PLACED`**로 기록(독스트링에 §9.6 준수 명시). | [`placement_fsm_drift_classification.md`](./placement_fsm_drift_classification.md) P2는 과거 `ROUTED_CONFIRMED` 선부여 충돌이었으나 **현 코드는 PROVISIONAL** — 정본과의 잔여 차이는 원문 필요. | `uncertain` | **NEEDS_SOURCE_CHECK** (정본 §9.6 문장 확정) | merged seed·placement FSM 테스트 |
-| `placement/pass12_bundle_commit.py` | `try_commit_pass1_bundle` + `pass1_allow_cheap_escape` | Pass1만 cheap void envelope 허용; Pass2는 `try_commit_pass2_bundle`만 사용. | [`09_pass12_cheap_escape_probe_contract.md`](./09_pass12_cheap_escape_probe_contract.md) — probe가 맵에 belt/pipe로 남지 않음. | (낮음) | **KEEP** | Pass1/2 probe·commit 분리 회귀 |
-| `placement/pass12_route_probe.py` | `bundle_route_probe_or_reject` | Pass2는 `pass2_no_p1_cheap_escape_envelope`; goal·cheap 진단 병합. | 정본 §9.2와의 정렬은 [`09`](./09_pass12_cheap_escape_probe_contract.md) 참조. | `uncertain` | **NEEDS_SOURCE_CHECK** | route probe 계약 테스트 |
-| `step4/step4_merge_routing.py` | stub·shortcut·`goal_cells_union_legacy` | stub-in-trunk 시 Dijkstra 생략·`ROUTED_CONFIRMED` 승격; 진단에 `search_mode` legacy 문자열. | placement 표 P3·P6·[`02`](./02_pipeline_recovery_control_flow.md) 연계; legacy 라벨은 계약/진단. | `trace_derived_contract`(telemetry) | **KEEP** (라벨) / **REPLACE** (알고리즘이 금지 시 검색 모드 정리) | step4 routing·stub 회귀 |
-| `solver_pipeline/finalize.py` | `layout_degraded`·`ok` vs partial success | degraded가 `solver_termination`과 결합되어 `return_reason`·trace에 반영. | §15 assertion-only와 “부분 성공”의 관계는 정본 재확인 필요. | `uncertain` | **NEEDS_SOURCE_CHECK** | 타임라인·summary 계약 테스트 |
-| `solver/solver_service.py` | 예외 시 `build_step4_trunk_load_pipeline_exception_stub` | 파이프라인 예외 시 최소 summary. | 관측용 stub; 알고리즘 본경로와 분리되어야 함. | `uncertain` | **KEEP** (예외 계약) | 예외 경로 emit 테스트 |
-| `solver/solver_replay_frames.py` | `build_replay_ui_frames` 등 | 타임라인→UI 프레임·이벤트 enrich. | [`16`](./16_replay_trace_solver_summary_layer.md): 알고리즘 입력 아님. | 없음 | **KEEP** | replay 프레임 단위 |
-| `scripts/p4_pass3_trace_review.py` | NDJSON 마지막 `solver_summary` | 파일에서 metrics 읽어 리뷰 출력. | 알고리즘 입력 아님. | 없음 | **ISOLATE** | 스크립트 스모크(선택) |
-| `scripts/aggregate_pass12_recoverability_from_ndjson.py` | NDJSON 스캔 | `solver_summary` 행 집계. | 디버그/리포트. | 없음 | **ISOLATE** | 스크립트 단위 |
-| `scripts/pass12_preserve_recovery_ab.py` | trace에서 `solver_summary` 발췌 | A/B 실험·리포트. | 디버그. | 없음 | **ISOLATE** | 없음 또는 경량 |
-| `django_apps/web/...` (copy-preview 등) | UI가 `solver_summary` 병합 | 표시용. | 알고리즘 결정과 분리. | 없음 | **KEEP** | UI 계약 테스트 |
-
----
-
-## B-classified (§4.3) 재평가 — 정본 대비 삭제 정책
-
-[`epic_a_mvp_exceptions.md`](./epic_a_mvp_exceptions.md) 표를 **삭제 감사 관점**에서만 재해석한다.
-
-| Trigger (문서상) | 삭제 정책 관점 | 권고 Action |
-|------------------|----------------|-------------|
-| `step4_routing_failure` | “MVP 예외 보존”만으로 **코드 삭제**는 부적절 — 동작 자체가 정본 표와 어긋남. | **REPLACE** (STEP4 재시도·rollback 계약 구현) 또는 Algorithm 정본에 **명시 예외** 추가 후 **KEEP** |
-| `step4_capacity_failure` | 용량 트리거·게이트 희석. | **REPLACE** (트리거·요약 분리) + **NEEDS_SOURCE_CHECK** |
-| `pass3_connectivity_break` | remedial STEP4 등 세부 미정렬. | **REPLACE** (normalization) 또는 정본 완화 |
-| `final_validation_failure` | STEP9-only 해석 vs Pass3→P4 루프. | **REPLACE** 또는 정본에 bounded 루프 명시 |
-
-**요약:** B는 “당장 삭제”가 아니라 **정본 채택 시 치환 대상**으로 보는 것이 본 감사의 `deletion_policy`와 맞다. “MVP 예외 코드를 무조건 DELETE”는 정본 개정 없이는 **회귀 위험**이 크므로 **REPLACE/문서 동기**를 우선 순위에 둔다.
+| File | Code path | Canonical Algorithm source | Conflict | Action | Reason | Test needed |
+|------|-----------|---------------------------|----------|--------|--------|-------------|
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/recovery_orchestrator.py` | `run_solver_timeline_pipeline` (고정 `routing_snapshot`, `MAX_VALIDATION_RECOVERY_ATTEMPTS` 루프, `pass3_recovery_context` 토글) | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표 `final_validation_failure` 행: 「recovery 후 STEP 9 재검증 (**STEP 4 재진입 없음**)」. `documents/Algorithm/mining_solver_cursor_sessions/11_step8_recovery.md` **§13.3** `validation_recovery`: 「새 최적화(Pass3 재탐색 등)를 하지 않고 invalid 원인만 rollback 또는 최소 repair.」 | uncertain | NEEDS_DECISION | STEP 4 비재진입은 충족하나, 매 사이클 **Pass3→P4→finalize** 전체를 도는 bounded 루프가 §13.3의 “Pass3 재탐색 금지”와 동일 범위인지 해석이 갈린다. PR 전 **정본 문장 하나로 규범 확정** 후 REPLACE 또는 KEEP으로 닫을 것. | `tests/unit/.../test_recovery_return_paths_algorithm.py` 등 validation recovery 루프·replay payload |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/recovery_orchestrator.py` | `_apply_layout_preserve_hard_gate` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** STEP 목록의 STEP 0.5: 「Existing layout analysis (read-only context; 배치 변경 없음)」. `documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md` **§15.4**: counterfactual baseline·optimization 경고는 hard invariant와 분리. | uncertain | NEEDS_DECISION | 비-raw 입력에서 내부 transport가 악화되면 Pass3/Validate **타임라인 프레임**을 baseline으로 되돌림. 정본이 “타임라인 프레임 단위 복원”을 허용하는지 명시가 없어 **계약(관측 vs 본경로)** 판단 필요. | preserve·gate 회귀(기존 `_apply_layout_preserve_hard_gate` 단위) |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/recovery_policy.py` | `validation_recovery_allowed`, `step9_reports_hard_invariant_failure_for_bounded_recovery` | `documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md` **§15.3**: 「capacity overflow … Final validation에서는 새 route를 만들지 않는다」「Final validation recovery는 MAX_VALIDATION_RECOVERY_ATTEMPTS를 초과할 수 없다」. `documents/Algorithm/mining_solver_cursor_sessions/11_step8_recovery.md` **§13.1** attempt limit. | telemetry_or_ui_only | KEEP | STEP9 hard invariant만으로 bounded 루프 허용·missing stub 시 차단 등은 §15·§13과 정합. | `test_pr4d_algorithm_final_validation_boundary.py` 등 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/recovery_policy.py` | `tag_*`, `synthesize_recovery_validation_outcome`, `append_recovery_contract_phase` | `documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md` **§16.3** trace event schema(`recovery_trigger` 등). `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.2** bounded 상수·요약 필드. | telemetry_or_ui_only | KEEP | 요약·페이즈는 **다음 패스의 유일한 분기 입력**이 되면 안 되나, 현 구조는 STEP9 게이트와 병행하는 **관측·계약**에 가깝다. 이상 시 D2에서 분기 의존도만 축소. | recovery summary·PR4 계약 테스트 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/pass3/pass3_transport.py` | `pass3_recovery_context` → `allow_degraded_connected_commit`·내부 transport 델타 게이트·`COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY` | `documents/Algorithm/mining_solver_cursor_sessions/11_step8_recovery.md` **§13.3** `validation_recovery` + `documents/Algorithm/mining_solver_cursor_sessions/09_step5_pass3_transport.md` STEP 5(내부 transport 최소화) 목표. | uncertain | NEEDS_DECISION | 오케스트레이터 행과 동일 이슈: **완화된 Pass3 재실행**이 §13.3 “최소 repair”에 포함되는지 규범 확정 필요. | Pass3 recovery context 단위 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/pass3/pass3_transport.py` | `_p3e3_validate_guarded_swap_mining_map` + `fixed_output_stubs` | `documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md` **§15.1**: 「fixed output stub가 Pass3에서 제거되지 않았다」 | (없음) | KEEP | 고정 stub 보존은 hard invariant 정본과 직접 대응. | stub 보존 회귀 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/step4/step4_routing_state.py` | `_routing_state_from_committed_routes` (`ela_trunk_seed_candidate_corridors`, `soft_protected_candidate_corridors=[]`) | `documents/Algorithm/mining_solver_cursor_sessions/12_protected_corridor.md` **§14.2.3** `ExistingLayoutAnalysis` 힌트: `main_trunk_candidate` → `candidate_corridor` 또는 `soft_protected_candidate` — STEP 4 commit 전까지 확정 아님. **§14.2.1** candidate 생명주기. | uncertain | KEEP | ELA trunk seed를 hard와 분리 직렬화하는 것은 §14.2.3과 **방향 일치**; 소비자·해시 제외는 계약 문서화 이슈. | protected corridor·P4 소비 키 회귀 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/step4/step4_routing_state.py` | `_soft_cells_for_merged_stub_route` (stub-in-trunk soft 풀) | `documents/Algorithm/mining_solver_cursor_sessions/08_step4_routing.md` **§9.6**: 「Stub가 이미 external trunk에 포함된 경우… **no-op route commit**… `PROVISIONAL_PLACED` → `ROUTED_CONFIRMED` 승격」 | (없음) | KEEP | 정본이 명시한 최적화(no-op commit) 경로. | step4 routing·stub 회귀 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/reclaim/reclaim_corridors.py` | corridor merge·`P3E3_TOUCHED_FALLBACK` 등 | `documents/Algorithm/mining_solver_cursor_sessions/12_protected_corridor.md` **§14.2–§14.3** + `documents/Algorithm/mining_solver_cursor_sessions/10_step6_reclaim_loop.md` reclaim 맥락. | uncertain | NEEDS_DECISION | 출처별 merge·fallback이 §14의 hard/soft/replacement 순서와 **완전 동치**인지는 reclaim+P4 통합 리뷰가 필요. | `test_reclaim_shadow.py` 등 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/placement/pass12_merged_layout_seed.py` | `seed_pass12_scratch_from_merged_existing` + `PlacementCommitState.PROVISIONAL_PLACED` | `documents/Algorithm/mining_solver_cursor_sessions/08_step4_routing.md` **§9.6**: Pass1도 Pass2와 동일하게 「routing 미확정 배치」·`PROVISIONAL_PLACED`. | (없음) | KEEP | merged seed의 provisional 기록은 정본 FSM과 합치. | merged seed·placement FSM 테스트 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/placement/pass12_bundle_commit.py` | `try_commit_pass1_bundle` + `pass1_allow_cheap_escape` | `documents/Algorithm/mining_solver_cursor_sessions/06_step2_pass1_placement.md` **§7.3**: cheap escape path는 Pass2 occupied에 넣지 않음. | (없음) | KEEP | Pass1-only cheap void envelope는 정본 경계와 일치. | Pass1/2 probe·commit 분리 회귀 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/placement/pass12_route_probe.py` | `bundle_route_probe_or_reject` (`pass2_no_p1_cheap_escape_envelope`) | `documents/Algorithm/mining_solver_cursor_sessions/06_step2_pass1_placement.md` **§7.2–§7.4** escape feasibility·probe. | (없음) | KEEP | Pass2가 Pass1 cheap envelope를 쓰지 않는 계약은 정본 “실제 route는 STEP 4”와 합치. | route probe 계약 테스트 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/step4/step4_merge_routing.py` | stub-in-trunk no-op·`step4_degraded`·진단 `search_mode` 기본 `goal_cells_union_legacy` | `documents/Algorithm/mining_solver_cursor_sessions/08_step4_routing.md` **§9.6** no-op commit·**§9.6 State authority** (`step4.degraded` 정의). `documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md` **§16.3** `search.search_mode` 허용 값 목록. | telemetry_or_ui_only | KEEP | no-op·degraded는 정본에 명시. `goal_cells_union_legacy` 문자열은 스키마에 없는 관측 라벨일 수 있어 **추후** §16.3 확장 또는 REPLACE 후보이나, 알고리즘 **본경로 위반**으로 보지 않음. | step4 merge·진단 스냅샷 테스트 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/finalize.py` | `layout_degraded`·`ok` vs partial success·`solver_termination` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.4** `PARTIAL_SUCCESS` / `SOLVER_FAILURE`. `documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md` **§15.4** optimization-only 실패는 solver failure 아님. | (없음) | KEEP | 등급·경고는 §4.4·§15.4와 연동 가능한 관측 계약. | 타임라인·summary 계약 테스트 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/finalize.py` | `summary_fields.setdefault("step4_committed", False)` 등 backward-compatible 요약 기본값 | `documents/Algorithm/mining_solver_cursor_sessions/08_step4_routing.md` **§9.6** `pass3_gate_source` / **`explicit_arg`** — Pass3는 `trunk_load` 추론이 아니라 명시 인자가 권위. | uncertain | REPLACE | 정본은 **추론 키 혼선**을 금지. 요약 기본값이 소비자에게 “거짓 committed”를 심으면 §9.6 위반 소지 → 별칭·기본값 축소는 **D5**에서 처리. | trunk_load·pass3 gate 통합 테스트 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_service.py` | 예외 시 `build_step4_trunk_load_pipeline_exception_stub` | `documents/Algorithm/mining_solver_cursor_sessions/01_project_overview.md` **§0** 백지 구현 전제; 정본은 예외 스텁을 두지 않으나 **관측·안전 반환**으로 범위外. | not_in_algorithm_scope | KEEP | 알고리즘 입력이 아닌 서비스 경계 예외 요약. | 예외 경로 emit 테스트 |
+| `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_replay_frames.py` | `build_replay_ui_frames` 등 | `documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md` **§16.1–§16.2** replay·스냅샷. | not_in_algorithm_scope | KEEP | UI·replay는 solver 본경로 입력이 아님. | replay 프레임 단위 |
+| `scripts/p4_pass3_trace_review.py` | NDJSON에서 `solver_summary` 등 읽기 | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** 파이프라인은 `decoded`/맵 입력이 권위이며, **디스크 NDJSON을 읽어 본경로에 주입**하는 단계는 없음(도구는 범위外). | not_in_algorithm_scope | ISOLATE | D1: `scripts/debug/` 등으로 격리 권고. | 스크립트 스모크(선택) |
+| `scripts/aggregate_pass12_recoverability_from_ndjson.py` | NDJSON 스캔 | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** (위와 동일: 런타임 입력 아님). | not_in_algorithm_scope | ISOLATE | D1. | 스크립트 단위 |
+| `scripts/pass12_preserve_recovery_ab.py` | trace에서 `solver_summary` 발췌 | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** (위와 동일). | not_in_algorithm_scope | ISOLATE | D1. | 없음 또는 경량 |
+| `scripts/extract_step4_no_route_exhausted_samples.py` | NDJSON/샘플 추출(도구) | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4** (위와 동일). | not_in_algorithm_scope | ISOLATE | D1. | 선택 |
+| `django_apps/web/` (copy-preview 등) | UI가 `solver_summary` 병합 | `documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md` **§16** 표시 계약. | not_in_algorithm_scope | KEEP | 알고리즘 결정과 분리된 표시층. | UI 계약 테스트 |
 
 ---
 
-## 키워드 검색 요약
+## §4.3 트리거 대비 구현 정렬 (정본 표 기준)
 
-| 패턴 | 대표 위치 | 감사 결론 |
-|------|-----------|-----------|
-| `legacy` / `backward compat` | `finalize.py` (`step4_committed` 호환), `pass1_timeline_integration` deprecated 이름, `step4_trunk_load` edges 별칭 | 계약·호환층 → **KEEP** 또는 장기 **REPLACE**(별칭 제거는 마이그레이션) |
-| `degraded` | `finalize.py` `layout_degraded`, `recovery_orchestrator` `RECOVERY_APPLIED_PASS_DEGRADED_*`, `step4_merge` `step4_degraded` | 관측·recovery 모드 → **NEEDS_SOURCE_CHECK** (§11·§15와의 관계) |
-| `shortcut` | `step4_merge_routing.py` (진단적 full Dijkstra 강제) | 알고리즘 위반이 아니면 **KEEP** |
-| `cheap_escape` / `pass1_allow_cheap_escape` | `pass12_bundle_commit`, `pass12_route_probe`, `route_probe` | [`09`](./09_pass12_cheap_escape_probe_contract.md) 범위 → **KEEP** |
-| `latest.ndjson` / NDJSON read | `scripts/p4_pass3_trace_review.py` | 런타임 입력 아님 → **ISOLATE** |
-| `solver_summary` / `replay_events` in pipeline | emit·요약 병합; `validation_recovery`는 NDJSON 미사용 | [`16`](./16_replay_trace_solver_summary_layer.md) 부합 → 핵심 **KEEP**; 플래그가 분기를 증가시키면 **REPLACE** |
+**정본 출처:** `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표(Trigger / 발생 지점 / Recovery 후 복귀 / 실패 시).
 
----
-
-## FSM·recovery 우회 여부
-
-- **Pass12 → STEP4 → Pass3→P4→finalize** 순서를 `run_solver_timeline_pipeline`이 한 체인으로 묶어 **STEP4를 validation 루프에 재주입하지 않음** — FSM “우회”라기보다 **고정 스냅샷 재플레이**에 가깝다. 정본이 “매 사이클 STEP4”를 요구하면 **REPLACE** 대상.  
-- **PlacementCommitState**: merged seed 경로는 코드상 **PROVISIONAL** 우선(§9.6 메모와 일치). 우회로 판정하지 않음.
+| Trigger | Canonical Algorithm source (요약) | 구현 정렬 메모 | Action |
+|---------|-----------------------------------|----------------|--------|
+| `step4_routing_failure` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표: STEP 4 route 실패 → 「STEP 4 재시도, 해당 placement rollback 또는 alternate trunk」 / 실패 시 unrouted rollback 후 STEP 4 재시도 | 복귀·재시도는 **`solver_pipeline/step4.py`·`step4_merge_routing.py`** 등 STEP4 패키지에 집중; 오케스트레이터는 단일 `routing_snapshot` 이후 STEP4 비재진입. **표와의 1:1 추적**은 코드 PR(D2)에서 검증. | REPLACE |
+| `step4_capacity_failure` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표: capacity split/additional trunk 실패 → STEP 4 재시도·trunk split 후보 변경 | (`step4_routing_failure`와 동일 계열) | REPLACE |
+| `pass3_connectivity_break` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표 + **§4.3.1**: rollback → 복귀 **STEP 6**; 선택 remedial은 §4.3.1 3번 한도 | Pass3·Reclaim·(선택) STEP4 remedial 체인이 표·§4.3.1과 동일한지 D2에서 검증. | REPLACE |
+| `post_reclaim_pass3_connectivity_break` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3.2**: rerun rollback → **STEP 9**, 추가 rerun 없음 | `recovery_policy.tag_post_reclaim_pass3_connectivity_break` 등으로 플래그·트리거 기록. | KEEP |
+| `reclaim_incremental_failure` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표: 후보 rollback → **STEP 6** 계속 / exhausted → Final validation | `tag_reclaim_incremental_failure_from_summary`와 P4 reclaim 단계와 연결. | KEEP |
+| `final_validation_failure` | `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` **§4.3** 표 + `documents/Algorithm/mining_solver_cursor_sessions/11_step8_recovery.md` **§13.3**: recovery 후 **STEP 9 재검증**, STEP 4 자동 재진입 없음 / 최소 repair | 메인 표의 `run_solver_timeline_pipeline`·`pass3_recovery_context`와 **동일 규범 이슈**. | NEEDS_DECISION |
 
 ---
 
-## trace/report가 알고리즘 결정을 만드는 경로
+## Deletion queue (D1–D5)
 
-- **직접:** 런타임에서 NDJSON 파일을 읽어 Pass3/STEP4에 주입하는 코드는 **핵심 트리에서 미발견**.  
-- **간접:** `pass3_summary`에 쌓인 P4 플래그 → `tag_*` → `solver_summary`에 노출. **Bounded recovery 게이트**는 `final_validation` 중심([`02`](./02_pipeline_recovery_control_flow.md) §4.3 표 주석). → 현재는 **허용**; 향후 게이트가 trace 필드에 더 의존하면 **DELETE_OR_ISOLATE** 대상으로 재분류.
+| 큐 | 내용 | 표·심볼 참조 |
+|----|------|----------------|
+| **D1** | NDJSON·trace 전용 스크립트 **격리**(삭제보다 우선) | 메인 표 `scripts/*.py` ISOLATE 행 4건 |
+| **D2** | Recovery **제어 흐름**을 §4.3·§4.3.1·§13과 동치로 맞춤(오케스트레이터·Pass3·STEP4 재시도 경계) | §4.3 표 REPLACE 3행 + `run_solver_timeline_pipeline`·`pass3_transport` NEEDS_DECISION 해소 후 REPLACE/KEEP 확정 |
+| **D3** | Protected corridor **생명주기**·reclaim merge가 §14·§10과 완전 동치인지 정리 | `reclaim_corridors.py` NEEDS_DECISION, `step4_routing_state.py` 소비자 정리 |
+| **D4** | Placement·route **shortcut**이 정본 §7·§9.6과 어긋나면 치환 | 메인 표에서 현재는 대부분 **KEEP**(§9.6 no-op 등); 새 위반 발견 시 이 큐로 이동 |
+| **D5** | Algorithm이 요구하지 않는 **legacy 호환·기본값** 제거 | `finalize.py` `setdefault("step4_committed", …)` **REPLACE** 행, `search_mode` 라벨 정합은 선택 |
 
 ---
 
-## Staged deletion / PR 순서 (가장 작고 안전한 단위)
+## First deletion PR 권고
 
-1. **Stage 0 — 정본 경로·인덱스:** ~~`documents/Algorithm/mining_solver_cursor_sessions/` 확보~~ **문서 정합 완료(2026-05-12):** 레포에 `01`…`14` 존재 확인, [`01_canonical_doc_paths.md`](./01_canonical_doc_paths.md) 표 갱신, 정본 [`README.md`](../Algorithm/mining_solver_cursor_sessions/README.md) 추가. *(로컬에서 경로가 안 보이면 워크스페이스·동기화 설정을 점검.)*  
-2. **Stage 1 — 삭제 감사를 정본 절 인용으로 재작성:** [`algorithm_deviation_deletion_audit.md`](./algorithm_deviation_deletion_audit.md) 매트릭스의 Algorithm requirement 열을 `mining_solver_cursor_sessions` 원문 절번호로 치환, Action 재분류. **문서만.**  
-3. **Stage 1-lite (선택) — scripts 격리:** NDJSON·`solver_summary` 소비 스크립트를 `scripts/debug/` 등으로 이동 — **삭제가 아니라 격리.**  
-4. **Stage 2 — 계약 정리:** `solver_summary`에서 recovery 루프에 쓰이는 키만 allowlist 문서화([`16`](./16_replay_trace_solver_summary_layer.md) 작업 항목). 코드 삭제 최소.  
-5. **Stage 3 — B→REPLACE(코드):** `epic_a_mvp_exceptions` 행별로 **STEP4 재진입 / capacity 트리거 / Pass3 connectivity 세부 / validation 루프 해석** 중 하나씩 PR 분리 + 회귀 `test_recovery_return_paths_algorithm.py`·PR4-D 확장.  
-6. **Stage 4 — corridor A안:** [`04`](./04_protected_corridor_lifecycle.md) 목표 A 선택 시에만 후보/확정 필드·소비자 전면 수정(대형 PR).  
+- **권장 첫 PR:** **D1** — `refactor(tools): isolate NDJSON debug scripts`  
+  - 대상: `scripts/p4_pass3_trace_review.py`, `scripts/aggregate_pass12_recoverability_from_ndjson.py`, `scripts/pass12_preserve_recovery_ab.py`, `scripts/extract_step4_no_route_exhausted_samples.py` → 예: `scripts/debug/` 하위로 이동 + 문서·import 경로만 정리.  
+  - **런타임 솔버 비침습**, 회귀 범위 최소.  
+- **두 번째 이후:** **D2** (`refactor(solver): …`)는 §4.3·§13 정합으로 **동작 변경** → `test_recovery_return_paths_algorithm.py`, PR4-D 계열을 **필수**로 확장할 것.
 
-**원칙:** 한 PR에 “오케스트레이터 + corridor + placement FSM”을 섞지 않는다 ([`placement_fsm_drift_classification.md`](./placement_fsm_drift_classification.md) 금지 사항과 합치).
+---
+
+## 키워드·FSM·trace (정본 링크)
+
+- **FSM:** `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` §4.1 다이어그램이 단일 권위; 오케스트레이터의 “고정 스냅샷 + Pass3→P4 루프”는 §4.3 `final_validation_failure`·§13과 **한 줄씩** 대조할 것.  
+- **trace가 결정을 바꾸는가:** `documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md` §16.3; 런타임에서 NDJSON **파일 읽기**로 Pass3/STEP4에 주입하는 경로는 메인 표 기준 **범위外**(스크립트는 ISOLATE).
 
 ---
 
 ## 검증 (본 패스)
 
-- 문서만 작성; **pytest / ruff / mypy / black 미실행** (요구사항: documentation-only).
-- **Stage 0(정본 경로):** `documents/Algorithm/mining_solver_cursor_sessions/` 디렉터리 존재 및 `01`…`14` 파일명 전부 존재(셸·리포 파일 트리로 확인). `rg mining_solver_cursor_sessions documents` 로 교차 확인 권장.
+- `rg "documents/Algorithm/mining_solver_cursor_sessions" documents/refactory/algorithm_deviation_deletion_audit.md`  
+- 과거 감사용 「소스 점검 대기」 라벨(구 `NEEDS_*` 계열)은 본문에서 제거함 → 해당 문자열 **grep 0건** 목표.  
+- 문서만 변경 → **pytest 미실행**(정책상 생략).
 
 ---
 
 ## 이후 진행 상황
 
-1. ~~Algorithm 정본 디렉터리를 저장소에 넣은 뒤~~ **Stage 0 완료** — 다음은 **Stage 1(문서):** 매트릭스 **Algorithm requirement**·**Action** 열을 정본 **파일 + 절** 인용으로 **덮어쓰기**.  
-2. `immediate_delete` 후보를 정본 대조로 **구체 파일/함수**까지 좁힌다(현재는 보수적으로 비움).  
-3. Stage 1 문서 완료 후, 코드 변경은 플랜 승인 하에 Stage 2~4·[`AGENTS.md`](../../AGENTS.md) 게이트.
+1. Stage 1 본 문서 **정본 바인딩** 완료.  
+2. 다음: D1 PR(스크립트 격리) → D2(§4.3·§13 정합 코드 PR, 사람 승인·테스트 확대) → D3–D5.  
+3. 코드 변경 시 [`AGENTS.md`](../../AGENTS.md) 게이트·플랜 승인 절차 준수.

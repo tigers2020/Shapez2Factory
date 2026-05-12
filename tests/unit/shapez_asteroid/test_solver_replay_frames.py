@@ -300,9 +300,12 @@ def test_build_solver_replay_snapshot_includes_ui_frames_contract_v5() -> None:
     assert "ui_frames" in snap
     assert isinstance(snap["ui_frames"], list)
     assert len(snap["ui_frames"]) == len(timeline)
-    assert verify_replay_ui_frames_computation_cycles(
-        events=snap["events"], ui_frames=snap["ui_frames"]
-    ) == []
+    assert (
+        verify_replay_ui_frames_computation_cycles(
+            events=snap["events"], ui_frames=snap["ui_frames"]
+        )
+        == []
+    )
 
 
 def test_verify_replay_ui_frames_computation_cycles_detects_mismatched_bounds() -> None:

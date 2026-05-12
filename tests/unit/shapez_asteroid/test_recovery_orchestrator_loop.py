@@ -283,7 +283,9 @@ def test_recovery_branch_includes_planned_actions_after_first_failure() -> None:
         }
         summary = {
             "return_reason": out["return_reason"],
-            "pass3_commit_reason": "ok" if ok else None,
+            "pass3_commit_reason": fc.P3F_COMMIT_REASON_NORMAL_GAIN if ok else None,
+            "pass3_final_committed": ok,
+            "pass3_committed": ok,
             "after_internal_transport_count": 0,
             "optimization_warnings": [],
             "recovery_context_chain": [],
@@ -378,5 +380,6 @@ def test_recovery_branch_includes_planned_actions_after_first_failure() -> None:
         if e.get("kind") == solver_replay_ev.SolverMutationEventKind.RECOVERY_BRANCH.value
     ]
     assert len(branch_payloads) >= 1
+    assert branch_payloads[0]["recovery_trigger"] == fc.RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY
     assert "planned_actions" in branch_payloads[0]
     assert fc.RECOVERY_ACTION_GEOMETRY_REPAIR_OR_FAIL in branch_payloads[0]["planned_actions"]

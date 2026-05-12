@@ -100,6 +100,12 @@ RECOVERY_PHASE_MERGE_PARTIAL_FAILURE = "merge_partial_failure"
 RECOVERY_PHASE_RECLAIM_INCREMENTAL_FAILURE = "reclaim_incremental_failure"
 RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK = "post_reclaim_pass3_connectivity_break"
 
+# §13.5 bounded recovery **entry** triggers (solver_summary / replay). Not ``commit_reason``.
+RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY = RECOVERY_PHASE_VALIDATION_RECOVERY
+RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK = (
+    RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK
+)
+
 # --- Trace ``location`` strings (STEP10 NDJSON) ---
 SOLVER_SERVICE_BUILD_SOLVER_TIMELINE_LOCATION = (
     "django_apps.shapez_asteroid.services.asteroid_mining_layout."
@@ -331,6 +337,11 @@ P3F_REPLACEMENT_SEARCH_MODE_LEX_PER_STUB = "p3e3_lex_per_stub"
 
 # Commit reasons (alias namespace separate from existing ``COMMIT_REASON_GUARDED_ATOMIC``).
 P3F_COMMIT_REASON_NORMAL_GAIN = "normal_gain"
+# §13.5 canonical success ``commit_reason`` / rollup (only these two on success path).
+COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY = "degraded_connected_recovery"
+ROLLUP_COMMIT_REASONS_CANONICAL: frozenset[str] = frozenset(
+    {P3F_COMMIT_REASON_NORMAL_GAIN, COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY}
+)
 
 # Rejected reason mapping fallback when a P3-E3 reason is not in the table.
 P3F_REJECTED_REASON_UNMAPPED = "rejected_unmapped"

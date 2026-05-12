@@ -676,7 +676,7 @@ def test_build_solver_timeline_summary_p4_and_recovery_fields_consistent() -> No
         for i in range(len(chain) - 1):
             assert chain[i] != chain[i + 1]
 
-    trigger = ss.get("recovery_trigger_reason")
+    trigger = ss.get("recovery_trigger_reason") or ss.get("recovery_trigger")
     p4_orch = ss.get("p4_orchestration_entry_segment")
     orchestration = p4_orch or trigger
     terminal = ss.get("recovery_terminal_reason")

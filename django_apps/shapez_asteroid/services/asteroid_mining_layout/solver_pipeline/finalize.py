@@ -524,6 +524,10 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    _rtr = summary_fields.get("recovery_trigger_reason")
+    _rt = summary_fields.get("recovery_trigger")
+    if _rt or _rtr:
+        summary_fields["recovery_trigger_reason"] = str(_rtr or _rt)
     summary_fields["step4_no_route_exhausted_breakdown"] = summary_fields["trunk_load"].get(
         "step4_no_route_exhausted_breakdown"
     )
@@ -711,7 +715,9 @@ def build_final_solver_output(
                 "step4_partial_failure": bool(step4_partial_failure),
                 "before_return_validate": before_return_validate,
                 "recovery_context_chain": pass3_summary.get("recovery_context_chain", []),
-                "recovery_trigger_reason": pass3_summary.get("recovery_trigger_reason"),
+                "recovery_trigger": pass3_summary.get("recovery_trigger"),
+                "recovery_trigger_reason": pass3_summary.get("recovery_trigger_reason")
+                or pass3_summary.get("recovery_trigger"),
                 "p4_orchestration_entry_segment": pass3_summary.get(
                     "p4_orchestration_entry_segment"
                 ),
@@ -904,7 +910,10 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("pass3_internal_transport_saved", None)
     summary_fields.setdefault("pass3_reclaim_projected_net_internal_saved", None)
     summary_fields.setdefault("pass3_commit_reason", None)
+    summary_fields.setdefault("pass3_commit_subtype", None)
     summary_fields.setdefault("p4_orchestration_entry_segment", None)
+    summary_fields.setdefault("recovery_trigger", None)
+    summary_fields.setdefault("recovery_trigger_reason", None)
     summary_fields.setdefault("pass3_rejected_reason", None)
     summary_fields.setdefault("p4_reclaim_shadow_enabled", False)
     summary_fields.setdefault("p4_reclaim_shadow_skip_reason", "exception")
@@ -1011,7 +1020,13 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("validation_recovery_cycles_used", 0)
     summary_fields.setdefault(
         "recovery_validation_outcome",
-        {"commit_reason": None, "rollback_reason": None, "rejected_reason": None},
+        {
+            "commit_reason": None,
+            "rollback_reason": None,
+            "rejected_reason": None,
+            "recovery_trigger": None,
+            "pass3_commit_subtype": None,
+        },
     )
     summary_fields.setdefault("optimization_warnings", [])
     summary_fields.setdefault("original_extractor_count", 0)

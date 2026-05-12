@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY,
     COMMIT_REASON_GUARDED_ATOMIC,
     MAX_ROUTE_LENGTH_RATIO,
     P3E2_SHADOW_ENABLED_DEFAULT,
@@ -22,6 +23,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P3E3_REJECT_PRECHECK_NO_REPLACEMENT_ROUTE,
     P3E3_REJECT_ROUTE_LENGTH_RATIO,
     P3E3_REJECT_VALIDATION,
+    P3F_COMMIT_REASON_NORMAL_GAIN,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_e2_shadow import (
@@ -324,19 +326,20 @@ def run_pass3_transport_minimization_from_maps(
                     atomic_dto.candidate_transport_cells, is_external=is_external
                 )
             )
-            commit_reason = COMMIT_REASON_GUARDED_ATOMIC
+            canon = P3F_COMMIT_REASON_NORMAL_GAIN
             if (
                 pass3_recovery_context
                 and cand_int_for_commit - before_internal_transport_count >= 0
             ):
-                commit_reason = "degraded_connected_recovery"
+                canon = COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY
             result = Pass3TransportResult(
                 True,
                 final_tc,
                 {
                     "over_capacity_segments": 0,
                     "bottleneck_count": 0,
-                    "commit_reason": commit_reason,
+                    "commit_reason": canon,
+                    "pass3_commit_subtype": COMMIT_REASON_GUARDED_ATOMIC,
                     "gain": gain_atomic,
                 },
             )

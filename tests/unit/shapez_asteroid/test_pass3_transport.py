@@ -9,7 +9,10 @@ from unittest.mock import patch
 import pytest
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY,
+    COMMIT_REASON_GUARDED_ATOMIC,
     P3E2_GUARD_FROM_ROUTING_CORRIDOR_POOL,
+    P3F_COMMIT_REASON_NORMAL_GAIN,
     P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE,
     PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
 )
@@ -716,7 +719,8 @@ def test_run_pass3_p3e3_guarded_enabled_emits_precheck_trace() -> None:
         assert trace.get("p3e3_guarded_commit_rollback_performed") is False
         assert trace.get("p3e3_guarded_commit_rollback_reason") is None
         assert trace.get("p3e3_guarded_commit_mode") == "atomic_candidate_swap"
-        assert trace.get("commit_reason") == "guarded_atomic_candidate"
+        assert trace.get("commit_reason") == P3F_COMMIT_REASON_NORMAL_GAIN
+        assert trace.get("pass3_commit_subtype") == COMMIT_REASON_GUARDED_ATOMIC
         assert res is not None and res.committed is True
     elif wa is True and post is False:
         assert trace.get("p3e3_guarded_commit_mode") == "atomic_candidate_swap"
@@ -979,7 +983,8 @@ def test_guarded_atomic_swap_applies_candidate_transport_cells() -> None:
     assert res is not None
     assert trace.get("p3e3_guarded_commit_committed") is True
     assert frozenset(res.transport_cells) == captured[0]
-    assert trace.get("commit_reason") == "guarded_atomic_candidate"
+    assert trace.get("commit_reason") == P3F_COMMIT_REASON_NORMAL_GAIN
+    assert trace.get("pass3_commit_subtype") == COMMIT_REASON_GUARDED_ATOMIC
 
 
 def test_guarded_recovery_atomic_non_negative_internal_delta_commit_reason() -> None:
@@ -1057,7 +1062,8 @@ def test_guarded_recovery_atomic_non_negative_internal_delta_commit_reason() -> 
     assert trace.get("p3e3_internal_transport_delta_gate_reject") is None
     d = trace.get("p3e3_candidate_internal_transport_delta")
     assert isinstance(d, int) and d >= 0
-    assert trace.get("commit_reason") == "degraded_connected_recovery"
+    assert trace.get("commit_reason") == COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY
+    assert trace.get("pass3_commit_subtype") == COMMIT_REASON_GUARDED_ATOMIC
 
 
 def test_p3e3_build_rejects_fixed_stub_removal() -> None:

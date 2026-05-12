@@ -14,6 +14,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     RECOVERY_ACTION_ROLLBACK_LOWEST_PRIORITY_PLACEMENT,
     RECOVERY_ACTION_ROLLBACK_OR_FAIL_QUARANTINED,
     RECOVERY_PHASE_VALIDATION_RECOVERY,
+    RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.baseline_routing import (
@@ -366,6 +367,7 @@ def run_solver_timeline_pipeline(
                     "kind": SolverMutationEventKind.RECOVERY_BRANCH.value,
                     "phase": "validation_recovery",
                     "payload": {
+                        "recovery_trigger": RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY,
                         "validation_recovery_attempt": loop_state.cycle_index,
                         "planned_actions": loop_state.planned_actions,
                         "applied_recovery_pass": RECOVERY_APPLIED_PASS_DEGRADED_PASS3_P4_FINALIZE,

@@ -170,6 +170,8 @@ def _run_post_reclaim_pass3_once(
         if p3_trace.get("pass3_committed"):
             if "commit_reason" in p3_trace:
                 out["post_reclaim_pass3_pass3_commit_reason"] = p3_trace["commit_reason"]
+            if "pass3_commit_subtype" in p3_trace:
+                out["post_reclaim_pass3_pass3_commit_subtype"] = p3_trace["pass3_commit_subtype"]
         else:
             rr = p3_trace.get("rejected_reason")
             if rr is not None:

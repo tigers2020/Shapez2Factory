@@ -5,24 +5,15 @@ from __future__ import annotations
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
-    COMMIT_REASON_GUARDED_ATOMIC,
     MAX_TOTAL_RECOVERY_ATTEMPTS,
     MAX_VALIDATION_RECOVERY_ATTEMPTS,
-    P3F_COMMIT_REASON_NORMAL_GAIN,
     RECOVERY_PHASE_MERGE_PARTIAL_FAILURE,
     RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_PHASE_RECLAIM_INCREMENTAL_FAILURE,
     RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED,
+    RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_VALIDATION_LOOP_DISABLED,
-)
-
-# §13.5 rollup: ``recovery_validation_outcome.commit_reason`` only (성공 경로).
-_ROLLUP_SEMANTIC_COMMIT_REASONS: frozenset[str] = frozenset(
-    {
-        P3F_COMMIT_REASON_NORMAL_GAIN,
-        COMMIT_REASON_GUARDED_ATOMIC,
-        "degraded_connected_recovery",
-    }
+    ROLLUP_COMMIT_REASONS_CANONICAL,
 )
 
 __all__ = [
@@ -78,9 +69,17 @@ def apply_recovery_contract_defaults(target: dict[str, Any]) -> None:
     target.setdefault("recovery_post_reclaim_pass3_connectivity_break", False)
     target.setdefault("p4_orchestration_entry_segment", None)
     target.setdefault("recovery_action_plan", [])
+    target.setdefault("recovery_trigger", None)
+    target.setdefault("pass3_commit_subtype", None)
     target.setdefault(
         "recovery_validation_outcome",
-        {"commit_reason": None, "rollback_reason": None, "rejected_reason": None},
+        {
+            "commit_reason": None,
+            "rollback_reason": None,
+            "rejected_reason": None,
+            "recovery_trigger": None,
+            "pass3_commit_subtype": None,
+        },
     )
     target.setdefault("validation_recovery_cycles_used", 0)
 
@@ -113,6 +112,7 @@ def tag_post_reclaim_pass3_connectivity_break(pass3_summary: dict[str, Any]) -> 
 
     if pass3_summary.get("post_reclaim_pass3_pass3_reverted"):
         pass3_summary["recovery_post_reclaim_pass3_connectivity_break"] = True
+        pass3_summary["recovery_trigger"] = RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK
         append_recovery_contract_phase(
             pass3_summary, RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK
         )
@@ -137,14 +137,24 @@ def synthesize_recovery_validation_outcome(summary: dict[str, Any]) -> None:
     """Fill ``recovery_validation_outcome`` top-level commit / rollback / rejected summary.
 
     Per-stage ``pass3_*`` / ``p4_*`` fields stay authoritative; this is a P5 rollup only.
+    ``commit_reason`` is §13.5 success classification only (``pass3_final_committed``).
+    ``recovery_trigger`` mirrors bounded recovery entry (not P4 orchestration markers).
     """
 
     out: dict[str, Any] = {
         "commit_reason": None,
         "rollback_reason": None,
         "rejected_reason": None,
+        "recovery_trigger": None,
+        "pass3_commit_subtype": None,
     }
     rr = str(summary.get("return_reason") or "")
+
+    rt = summary.get("recovery_trigger")
+    if rt is not None and str(rt).strip():
+        out["recovery_trigger"] = str(rt).strip()
+    elif summary.get("recovery_post_reclaim_pass3_connectivity_break"):
+        out["recovery_trigger"] = RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK
 
     for key in (
         "pass3_rollback_reason",
@@ -169,22 +179,19 @@ def synthesize_recovery_validation_outcome(summary: dict[str, Any]) -> None:
     if out["rejected_reason"] is None and rr and rr != "ok":
         out["rejected_reason"] = rr
 
-    if rr == "ok":
+    st = summary.get("pass3_commit_subtype")
+    if st is not None and str(st).strip():
+        out["pass3_commit_subtype"] = str(st).strip()
+
+    if (
+        rr == "ok"
+        and bool(summary.get("pass3_final_committed"))
+        and bool(summary.get("pass3_committed"))
+    ):
         cr = summary.get("pass3_commit_reason")
-        if cr is None:
-            cr_s = ""
-        elif isinstance(cr, str):
-            cr_s = cr.strip()
-        else:
-            cr_s = str(cr).strip()
-        if cr_s in _ROLLUP_SEMANTIC_COMMIT_REASONS:
+        cr_s = "" if cr is None else (str(cr).strip() if isinstance(cr, str) else str(cr).strip())
+        if cr_s in ROLLUP_COMMIT_REASONS_CANONICAL:
             out["commit_reason"] = cr_s
-        elif cr_s in {"", "validation_ok"}:
-            out["commit_reason"] = P3F_COMMIT_REASON_NORMAL_GAIN
-        else:
-            out["commit_reason"] = P3F_COMMIT_REASON_NORMAL_GAIN
-    else:
-        out["commit_reason"] = None
 
     summary["recovery_validation_outcome"] = out
 

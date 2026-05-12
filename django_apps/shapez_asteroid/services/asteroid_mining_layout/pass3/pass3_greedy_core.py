@@ -20,7 +20,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.boun
     cells_touching_void,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY,
     INF_COST,
+    P3F_COMMIT_REASON_NORMAL_GAIN,
     PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED,
     PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS,
     PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_PATH_LEN,
@@ -520,7 +522,7 @@ def reconstruct_mining_priority_transport(
         return Pass3TransportResult(
             True,
             new_cells,
-            {**metrics_base, "commit_reason": "normal_gain", "gain": gain_total},
+            {**metrics_base, "commit_reason": P3F_COMMIT_REASON_NORMAL_GAIN, "gain": gain_total},
         )
 
     if gain_total == 0 and allow_degraded_connected_commit:
@@ -529,7 +531,7 @@ def reconstruct_mining_priority_transport(
             dict(transport_cells),
             {
                 **metrics_base,
-                "commit_reason": "degraded_connected_recovery",
+                "commit_reason": COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY,
                 "gain": 0,
                 "pass3_greedy_reject_detail": greedy_reject_detail,
             },

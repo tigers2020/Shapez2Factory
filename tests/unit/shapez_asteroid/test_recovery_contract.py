@@ -202,22 +202,102 @@ def test_synthesize_recovery_validation_outcome_rollup() -> None:
     assert s["recovery_validation_outcome"]["commit_reason"] is None
 
 
-def test_synthesize_ok_maps_validation_ok_to_normal_gain() -> None:
+def test_synthesize_ok_validation_ok_not_rollup_commit_reason() -> None:
     s = {
         "return_reason": "ok",
         "pass3_commit_reason": "validation_ok",
+        "pass3_final_committed": True,
+        "pass3_committed": True,
+    }
+    synthesize_recovery_validation_outcome(s)
+    assert s["recovery_validation_outcome"]["commit_reason"] is None
+
+
+def test_synthesize_ok_canonical_commit_reason_requires_final_commit_flags() -> None:
+    s = {
+        "return_reason": "ok",
+        "pass3_commit_reason": fc.P3F_COMMIT_REASON_NORMAL_GAIN,
+        "pass3_final_committed": False,
+        "pass3_committed": True,
+    }
+    synthesize_recovery_validation_outcome(s)
+    assert s["recovery_validation_outcome"]["commit_reason"] is None
+
+
+def test_synthesize_ok_guarded_subtype_rollup_commit_reason_normal_gain() -> None:
+    s = {
+        "return_reason": "ok",
+        "pass3_commit_reason": fc.P3F_COMMIT_REASON_NORMAL_GAIN,
+        "pass3_commit_subtype": fc.COMMIT_REASON_GUARDED_ATOMIC,
+        "pass3_final_committed": True,
+        "pass3_committed": True,
+    }
+    synthesize_recovery_validation_outcome(s)
+    rvo = s["recovery_validation_outcome"]
+    assert rvo["commit_reason"] == fc.P3F_COMMIT_REASON_NORMAL_GAIN
+    assert rvo["pass3_commit_subtype"] == fc.COMMIT_REASON_GUARDED_ATOMIC
+
+
+def test_synthesize_post_reclaim_connectivity_break_not_commit_reason() -> None:
+    s = {
+        "return_reason": "ok",
+        "pass3_final_committed": True,
+        "pass3_committed": True,
+        "pass3_commit_reason": fc.P3F_COMMIT_REASON_NORMAL_GAIN,
+        "recovery_post_reclaim_pass3_connectivity_break": True,
+        "recovery_trigger": fc.RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     }
     synthesize_recovery_validation_outcome(s)
     assert s["recovery_validation_outcome"]["commit_reason"] == fc.P3F_COMMIT_REASON_NORMAL_GAIN
+    assert (
+        s["recovery_validation_outcome"]["recovery_trigger"]
+        == fc.RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK
+    )
 
 
-def test_synthesize_ok_preserves_semantic_pass3_commit_reason() -> None:
+def test_synthesize_final_validation_rollback_not_commit_reason() -> None:
     s = {
         "return_reason": "ok",
-        "pass3_commit_reason": fc.COMMIT_REASON_GUARDED_ATOMIC,
+        "pass3_rollback_reason": "final_validation_failed_after_pass3",
+        "pass3_commit_reason": fc.P3F_COMMIT_REASON_NORMAL_GAIN,
+        "pass3_final_committed": False,
+        "pass3_committed": True,
     }
     synthesize_recovery_validation_outcome(s)
-    assert s["recovery_validation_outcome"]["commit_reason"] == fc.COMMIT_REASON_GUARDED_ATOMIC
+    assert s["recovery_validation_outcome"]["rollback_reason"] == (
+        "final_validation_failed_after_pass3"
+    )
+    assert s["recovery_validation_outcome"]["commit_reason"] is None
+
+
+def test_synthesize_rollback_rejected_and_recovery_trigger_separate() -> None:
+    s = {
+        "return_reason": "validation_connectivity_failed",
+        "recovery_trigger": fc.RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY,
+        "pass3_rollback_reason": "rb_shadow",
+        "pass3_rejected_reason": "rj_pass3",
+        "pass3_commit_reason": fc.P3F_COMMIT_REASON_NORMAL_GAIN,
+    }
+    synthesize_recovery_validation_outcome(s)
+    rvo = s["recovery_validation_outcome"]
+    assert rvo["rollback_reason"] == "rb_shadow"
+    assert rvo["rejected_reason"] == "rj_pass3"
+    assert rvo["commit_reason"] is None
+    assert rvo["recovery_trigger"] == fc.RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY
+
+
+def test_synthesize_ok_degraded_connected_rollup_when_final_committed() -> None:
+    s = {
+        "return_reason": "ok",
+        "pass3_commit_reason": fc.COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY,
+        "pass3_final_committed": True,
+        "pass3_committed": True,
+    }
+    synthesize_recovery_validation_outcome(s)
+    assert (
+        s["recovery_validation_outcome"]["commit_reason"]
+        == fc.COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY
+    )
 
 
 def test_synthesize_failure_drops_pass3_commit_reason_from_rollup() -> None:
@@ -228,6 +308,18 @@ def test_synthesize_failure_drops_pass3_commit_reason_from_rollup() -> None:
     }
     synthesize_recovery_validation_outcome(s)
     assert s["recovery_validation_outcome"]["commit_reason"] is None
+
+
+def test_finalize_recovery_terminal_reason_post_reclaim_success_via_recovery_trigger() -> None:
+    ps = {
+        "recovery_trigger": fc.P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE,
+        "recovery_trigger_reason": None,
+        "p4_orchestration_entry_segment": None,
+        "post_reclaim_pass3_map_accepted": True,
+        "recovery_context_chain": ["a"],
+    }
+    finalize_recovery_terminal_reason(ps)
+    assert ps["recovery_terminal_reason"] == fc.RECOVERY_TERMINAL_POST_RECLAIM_PASS3_SUCCESS
 
 
 def test_finalize_recovery_terminal_reason_post_reclaim_success_via_p4_orchestration() -> None:

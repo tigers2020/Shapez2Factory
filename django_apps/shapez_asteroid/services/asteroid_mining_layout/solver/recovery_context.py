@@ -52,8 +52,10 @@ def finalize_recovery_terminal_reason(pass3_summary: dict[str, Any]) -> None:
     Kept separate from per-commit ``rollback_reason`` fields on the summary.
     """
 
-    orchestration = pass3_summary.get("p4_orchestration_entry_segment") or pass3_summary.get(
-        "recovery_trigger_reason"
+    orchestration = (
+        pass3_summary.get("p4_orchestration_entry_segment")
+        or pass3_summary.get("recovery_trigger")
+        or pass3_summary.get("recovery_trigger_reason")
     )
     if not orchestration:
         pass3_summary["recovery_terminal_reason"] = None

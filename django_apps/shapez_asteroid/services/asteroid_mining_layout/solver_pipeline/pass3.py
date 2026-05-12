@@ -9,6 +9,7 @@ from typing import Any
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     RECOVERY_PHASE_VALIDATION_RECOVERY,
     RECOVERY_SEGMENT_VALIDATION_RETRY,
+    RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY,
     ROUTING_STATE_KEYS_STEP4_HASH,
     SOLVER_FRAME_PASS3_TRANSPORT,
 )
@@ -103,7 +104,9 @@ def initial_pass3_summary() -> dict[str, Any]:
         "pass3_connectivity_reject_sample": None,
         "pass3_greedy_local_replacement": None,
         "recovery_context_chain": [],
+        "recovery_trigger": None,
         "recovery_trigger_reason": None,
+        "pass3_commit_subtype": None,
         "p4_orchestration_entry_segment": None,
         "recovery_terminal_reason": None,
         **p3e2_pass3_summary_placeholder(rejected_reason="pass3_not_eligible"),
@@ -139,6 +142,7 @@ def run_pass3_stage(
     if validation_recovery_attempt > 0:
         append_recovery_contract_phase(pass3_summary, RECOVERY_PHASE_VALIDATION_RECOVERY)
         extend_recovery_chain(pass3_summary, RECOVERY_SEGMENT_VALIDATION_RETRY)
+        pass3_summary["recovery_trigger"] = RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY
     pass3_permission = pass3_permission_snapshot(
         pass12_skipped=pass12_skipped,
         step4_committed=step4_committed,
@@ -219,6 +223,7 @@ def run_pass3_stage(
                 or k == "pass3_greedy_committed"
                 or k == "pass3_connectivity_reject_sample"
                 or k == "pass3_greedy_local_replacement"
+                or k == "pass3_commit_subtype"
             ):
                 pass3_summary[k] = v
         if p3_trace.get("pass3_skipped"):
@@ -270,13 +275,12 @@ def run_pass3_stage(
                     "pass3_gain": int(p3_trace.get("gain", 0) or 0),
                     "pass3_bottleneck_count": p3_trace.get("bottleneck_count", 0),
                     "pass3_over_capacity_segments": p3_trace.get("over_capacity_segments", 0),
+                    "pass3_commit_reason": None,
+                    "pass3_commit_subtype": None,
                 }
-                if p3_trace.get("pass3_committed"):
-                    upd_rev["pass3_commit_reason"] = p3_trace.get("commit_reason")
-                else:
-                    rejected_reason = p3_trace.get("rejected_reason")
-                    if rejected_reason is not None:
-                        upd_rev["pass3_rejected_reason"] = rejected_reason
+                rejected_reason = p3_trace.get("rejected_reason")
+                if rejected_reason is not None:
+                    upd_rev["pass3_rejected_reason"] = rejected_reason
                 pass3_summary.update(upd_rev)
                 for k in (
                     "before_transport_count",

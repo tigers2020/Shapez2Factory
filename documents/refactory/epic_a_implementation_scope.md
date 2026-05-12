@@ -21,6 +21,7 @@
 ## Allowed (건드리는 것)
 
 - **A-classified rows only** — [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) §5.4 및 관련 플랜([02_pipeline_recovery_control_flow.md](./02_pipeline_recovery_control_flow.md))에서 **A**로 고정된 항목만 코드 변경 대상으로 삼는다.
+- **현재 PR의 A 행 목록** — [epic_a_active_rows.md](./epic_a_active_rows.md)(§5.3 스냅샷; A가 0건이면 코드로 정본 복귀를 억지 맞추지 않음).
 
 ---
 

@@ -1874,6 +1874,10 @@ def test_apply_exception_summary_defaults_includes_greedy_local_replacement_keys
 
     d: dict[str, object] = {}
     finalize_mod.apply_exception_summary_defaults(d)
+    # Exception summary: hash/ELA seed keys come from solver_service._initial_summary_fields,
+    # not duplicated via apply_exception_summary_defaults (D5 deletion group).
+    assert "step_hash_step4" not in d
+    assert "existing_layout_analysis" not in d
     assert "pass3_greedy_local_replacement" in d
     assert d["pass3_greedy_local_replacement"] is None
     assert "post_reclaim_pass3_greedy_local_replacement" in d

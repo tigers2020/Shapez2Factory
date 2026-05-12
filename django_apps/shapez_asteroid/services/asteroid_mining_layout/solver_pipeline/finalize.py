@@ -831,7 +831,12 @@ def build_final_solver_output(
 
 
 def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
-    """Exception path의 기존 solver_summary 기본값을 유지한다."""
+    """Exception path용 solver_summary 기본값.
+
+    ``solver_service._initial_summary_fields``가 이미 채우는 키(``existing_layout_analysis``,
+    ``before_return_validate``, ``step_hash_*``, ``solver_state_hash``)는 여기서 중복
+    ``setdefault`` 하지 않는다.
+    """
 
     summary_fields.setdefault("geometry_valid", False)
     summary_fields.setdefault("connectivity_valid", False)
@@ -890,18 +895,12 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("cascade_corrective_attempts", 0)
     summary_fields.setdefault("cascade_reroute_count", 0)
     summary_fields.setdefault("cascade_rollback_count", 0)
-    summary_fields.setdefault("existing_layout_analysis", None)
     summary_fields.setdefault("existing_layout_source_kind", None)
     summary_fields.setdefault("existing_layout_hint_coord_count", 0)
     summary_fields.setdefault("existing_layout_barrier_cell_count", 0)
     summary_fields.setdefault("pass2_spine_seed_count", 0)
     summary_fields.setdefault("pass2_spine_priority_applied", False)
     summary_fields.setdefault("placement_candidate_blocked_count", 0)
-    summary_fields.setdefault("before_return_validate", None)
-    summary_fields.setdefault("step_hash_step4", None)
-    summary_fields.setdefault("step_hash_pass3", None)
-    summary_fields.setdefault("step_hash_p4", None)
-    summary_fields.setdefault("solver_state_hash", None)
     summary_fields.setdefault("pass3_skipped", True)
     summary_fields.setdefault("pass3_skip_reason", None)
     summary_fields.setdefault("pass3_committed", False)

@@ -329,9 +329,11 @@ def test_step4_committed_routes_populate_soft_protected_corridor_pool() -> None:
     pool_cells = soft_cells | hard_cells
     assert route_cells.issubset(pool_cells)
     assert soft_cells.isdisjoint(hard_cells)
+    # §14.2: STEP4 commit snapshot has no pending soft candidates; confirmed == flat soft pool.
+    assert r.routing_state["soft_protected_candidate_corridors"] == []
     assert (
-        r.routing_state["soft_protected_candidate_corridors"]
-        == r.routing_state["soft_protected_confirmed_corridors"]
+        r.routing_state["soft_protected_confirmed_corridors"]
+        == r.routing_state["soft_protected_corridors"]
     )
 
 

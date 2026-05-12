@@ -1,4 +1,11 @@
-"""STEP4 committed route 기반 protected corridor state 조립."""
+"""STEP4 committed route 기반 protected corridor state 조립.
+
+§14.2 스냅샷: 이 모듈의 ``_routing_state_from_committed_routes``는 **이미 commit된**
+route만 받는다. 미검증 probe/shadow 후보는 여기서 생기지 않으므로
+``soft_protected_candidate_corridors``는 빈 리스트로 둔다.
+``soft_protected_confirmed_corridors``·``soft_protected_corridors``는 동일한
+commit 확정 soft 풀(``soft_cells``)을 반영한다.
+"""
 
 from __future__ import annotations
 
@@ -83,7 +90,10 @@ def _routing_state_from_committed_routes(
     cells: dict[Coord, dict[str, Any]] | None = None,
     is_external: Callable[[Coord], bool] | None = None,
 ) -> dict[str, Any] | None:
-    """Step4 committed route에서 P4 reclaim용 hard/soft protected corridor pool을 만든다."""
+    """Step4 committed route에서 P4 reclaim용 hard/soft protected corridor pool을 만든다.
+
+    ``soft_protected_candidate_corridors``는 commit 스냅샷에서 후보가 없으므로 항상 ``[]``.
+    """
 
     if not routes:
         return None
@@ -117,6 +127,6 @@ def _routing_state_from_committed_routes(
         },
         "hard_protected_corridors": _coord_lists(hard_cells),
         "soft_protected_corridors": _coord_lists(soft_cells),
-        "soft_protected_candidate_corridors": _coord_lists(soft_cells),
+        "soft_protected_candidate_corridors": [],
         "soft_protected_confirmed_corridors": _coord_lists(soft_cells),
     }

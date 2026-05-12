@@ -126,7 +126,11 @@ def _run_post_reclaim_pass3_once(
         "post_reclaim_pass3_ran": True,
     }
     for k, v in p3_trace.items():
-        if k.startswith("p3e2_") or k.startswith("p3e3_") or k == "pass3_greedy_committed":
+        if (
+            k.startswith("p3e2_")
+            or k.startswith("p3e3_")
+            or k in ("pass3_greedy_committed", "pass3_greedy_local_replacement")
+        ):
             out[f"post_reclaim_pass3_{k}"] = v
     metric_keys = (
         "before_transport_count",

@@ -192,6 +192,20 @@ def _pass3_connectivity_reject_sample_dict(
     }
 
 
+def _new_pass3_greedy_local_replacement_stats() -> dict[str, Any]:
+    """NDJSON-friendly counters for optional delete + local same-kind reroute (Pass3 greedy)."""
+
+    return {
+        "enabled": bool(PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED),
+        "attempted_count": 0,
+        "accepted_count": 0,
+        "rejected_by_path_len": 0,
+        "rejected_by_disconnected_stub_limit": 0,
+        "rejected_by_no_path": 0,
+        "rejected_by_no_net_internal_gain": 0,
+    }
+
+
 def _try_greedy_local_replacement_reroute(
     pre_delete_tc: dict[Coord, str],
     trial: dict[Coord, str],
@@ -203,6 +217,7 @@ def _try_greedy_local_replacement_reroute(
     asteroid_cells: set[Coord],
     buildings: dict[Coord, str],
     is_external: Callable[[Coord], bool],
+    stats: dict[str, Any],
 ) -> dict[Coord, str] | None:
     """If enabled, add same-kind transport along stub→anchor probe paths until connected.
 
@@ -211,6 +226,7 @@ def _try_greedy_local_replacement_reroute(
 
     if not PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED:
         return None
+    stats["attempted_count"] = int(stats["attempted_count"]) + 1
     before_i = count_internal_transport_cells(pre_delete_tc.keys(), is_external=is_external)
     merged = dict(trial)
     for _ in range(PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS + 2):
@@ -221,7 +237,11 @@ def _try_greedy_local_replacement_reroute(
         ):
             after_i = count_internal_transport_cells(merged.keys(), is_external=is_external)
             if before_i > after_i:
+                stats["accepted_count"] = int(stats["accepted_count"]) + 1
                 return merged
+            stats["rejected_by_no_net_internal_gain"] = (
+                int(stats["rejected_by_no_net_internal_gain"]) + 1
+            )
             return None
         disc = transport_outlets_disconnected_from_anchor(
             merged,
@@ -230,6 +250,9 @@ def _try_greedy_local_replacement_reroute(
             limit=PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS + 1,
         )
         if not disc or len(disc) > PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_DISCONNECTED_STUBS:
+            stats["rejected_by_disconnected_stub_limit"] = (
+                int(stats["rejected_by_disconnected_stub_limit"]) + 1
+            )
             return None
         stub = disc[0]
         path = placement_stub_route_probe_path(
@@ -241,7 +264,11 @@ def _try_greedy_local_replacement_reroute(
             transport_cells=merged,
             fixed_stubs=frozenset(outlets_order),
         )
-        if path is None or len(path) > PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_PATH_LEN:
+        if path is None:
+            stats["rejected_by_no_path"] = int(stats["rejected_by_no_path"]) + 1
+            return None
+        if len(path) > PASS3_GREEDY_LOCAL_REPLACEMENT_MAX_PATH_LEN:
+            stats["rejected_by_path_len"] = int(stats["rejected_by_path_len"]) + 1
             return None
         for cell in path:
             merged[cell] = wr
@@ -273,7 +300,8 @@ def _try_remove_one_transport_cell(
     anchor: Coord,
     layout_role: str,
     buildings: dict[Coord, str],
-    is_external: Callable[[Coord], bool] | None,
+    lr_stats: dict[str, Any],
+    is_external: Callable[[Coord], bool] | None = None,
     skip_victim_cells: frozenset[Coord] | None = None,
 ) -> tuple[dict[Coord, str], int, str | None, dict[str, Any] | None]:
     """transport 셀 하나를 제거해 stub connectivity가 유지되는지 시험한다.
@@ -332,6 +360,7 @@ def _try_remove_one_transport_cell(
                 asteroid_cells=asteroid_cells,
                 buildings=buildings,
                 is_external=is_external,
+                stats=lr_stats,
             )
             if rerouted is not None:
                 tc = rerouted
@@ -376,7 +405,8 @@ def _compress_transport_greedy(
     anchor: Coord,
     layout_role: str,
     buildings: dict[Coord, str],
-    is_external: Callable[[Coord], bool] | None,
+    lr_stats: dict[str, Any],
+    is_external: Callable[[Coord], bool] | None = None,
     skip_victim_cells: frozenset[Coord] | None = None,
 ) -> tuple[dict[Coord, str], int, str, dict[str, Any] | None]:
     """고정 output stub을 보존하며 불필요한 transport를 greedy로 제거한다 (§11 Pass3 transport)."""
@@ -393,6 +423,7 @@ def _compress_transport_greedy(
             anchor=anchor,
             layout_role=layout_role,
             buildings=buildings,
+            lr_stats=lr_stats,
             is_external=is_external,
             skip_victim_cells=skip_victim_cells,
         )
@@ -425,6 +456,8 @@ def reconstruct_mining_priority_transport(
 
     _ = transport_role
     metrics_base: dict[str, Any] = {"over_capacity_segments": 0, "bottleneck_count": 0}
+    lr_stats = _new_pass3_greedy_local_replacement_stats()
+    metrics_base["pass3_greedy_local_replacement"] = lr_stats
     skip_victims: frozenset[Coord] | None = None
     if recovery_skip_high_sharing_transport_removals and isinstance(trunk_load, dict):
         skip_victims = cells_on_high_sharing_trunk_edges(trunk_load, transport_kind=transport_role)
@@ -440,6 +473,7 @@ def reconstruct_mining_priority_transport(
         anchor=anchor,
         layout_role=layout_role,
         buildings=buildings,
+        lr_stats=lr_stats,
         is_external=is_external,
         skip_victim_cells=skip_victims,
     )

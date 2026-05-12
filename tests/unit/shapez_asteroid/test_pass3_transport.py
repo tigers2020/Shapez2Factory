@@ -389,6 +389,12 @@ def test_reconstruct_mining_priority_transport_reject_detail_connectivity_spine(
     assert sample["nearest_anchor_distance"] == 1
     assert sample["transport_cell_count_before_trial"] == 3
     assert sample["transport_cell_count_after_trial"] == 2
+    lr = res.metrics.get("pass3_greedy_local_replacement")
+    assert isinstance(lr, dict)
+    assert lr["enabled"] is False
+    assert lr["attempted_count"] == 0
+    assert lr["accepted_count"] == 0
+    assert lr["rejected_by_no_path"] == 0
 
 
 def test_reconstruct_mining_priority_transport_local_reroute_saves_internal_when_enabled() -> None:
@@ -435,6 +441,124 @@ def test_reconstruct_mining_priority_transport_local_reroute_saves_internal_when
         outlets_order=[(1, 0)],
         anchor=(5, 0),
     )
+    lr = res.metrics.get("pass3_greedy_local_replacement")
+    assert isinstance(lr, dict)
+    assert lr["enabled"] is True
+    assert lr["attempted_count"] >= 1
+    assert lr["accepted_count"] >= 1
+    assert set(res.transport_cells.values()) == {"belt"}
+
+
+def test_reconstruct_mining_priority_transport_local_reroute_preserves_other_pipe_role() -> None:
+    """Same-kind reroute must not rewrite unrelated ``pipe`` rows (belt Pass3 scope)."""
+
+    def is_ext_y_ne_0(c: tuple[int, int]) -> bool:
+        return c[1] != 0
+
+    mineable = {(x, y) for x in range(1, 22) for y in range(0, 3)}
+    tc = {
+        (1, 0): "belt",
+        (2, 0): "belt",
+        (3, 0): "belt",
+        (4, 0): "belt",
+        (5, 0): "belt",
+    }
+
+    def mining_map_from_belt_transport(transport: dict[tuple[int, int], str]) -> list[dict]:
+        rows: list[dict] = []
+        for p in sorted(mineable, key=lambda c: (c[1], c[0])):
+            rows.append({"x": p[0], "y": p[1], "role": "inferred"})
+        for p in sorted(transport, key=lambda c: (c[1], c[0])):
+            rows.append({"x": p[0], "y": p[1], "role": "belt"})
+        rows.append({"x": 20, "y": 0, "role": "pipe"})
+        return rows
+
+    map_before = mining_map_from_belt_transport(tc)
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core."
+        "PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED",
+        True,
+    ):
+        res = reconstruct_mining_priority_transport(
+            anchor=(5, 0),
+            asteroid_cells=set(mineable),
+            mineable_cells=mineable,
+            buildings={},
+            transport_cells=dict(tc),
+            outlets_order=[(1, 0)],
+            transport_role="shape_belt",
+            is_external=is_ext_y_ne_0,
+        )
+    new_map = mining_map_after_transport_reconstruction(
+        map_before,
+        res.transport_cells,
+        target_role="belt",
+    )
+    pipe_rows = [r for r in new_map if r.get("x") == 20 and r.get("y") == 0]
+    assert pipe_rows and pipe_rows[0].get("role") == "pipe"
+
+
+def test_pass3_internal_saved_implies_reclaimed_interior_nonempty() -> None:
+    """Interior saved > 0 ⇒ ``_reclaimed_interior_transport_cells`` is non-empty (P4 handoff)."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim import (
+        reclaim_map_ops,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.internal_transport_metrics import (  # noqa: E501
+        count_internal_transport_cells,
+    )
+
+    def is_ext_y_ne_0(c: tuple[int, int]) -> bool:
+        return c[1] != 0
+
+    mineable = {(x, y) for x in range(1, 8) for y in range(0, 3)}
+    tc = {
+        (1, 0): "belt",
+        (2, 0): "belt",
+        (3, 0): "belt",
+        (4, 0): "belt",
+        (5, 0): "belt",
+    }
+
+    def mining_map_from_belt_transport(transport: dict[tuple[int, int], str]) -> list[dict]:
+        rows: list[dict] = []
+        for p in sorted(mineable, key=lambda c: (c[1], c[0])):
+            rows.append({"x": p[0], "y": p[1], "role": "inferred"})
+        for p in sorted(transport, key=lambda c: (c[1], c[0])):
+            rows.append({"x": p[0], "y": p[1], "role": "belt"})
+        return rows
+
+    map_before = mining_map_from_belt_transport(tc)
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core."
+        "PASS3_GREEDY_LOCAL_REPLACEMENT_ENABLED",
+        True,
+    ):
+        res = reconstruct_mining_priority_transport(
+            anchor=(5, 0),
+            asteroid_cells=set(mineable),
+            mineable_cells=mineable,
+            buildings={},
+            transport_cells=dict(tc),
+            outlets_order=[(1, 0)],
+            transport_role="shape_belt",
+            is_external=is_ext_y_ne_0,
+        )
+    map_after = mining_map_after_transport_reconstruction(
+        map_before,
+        res.transport_cells,
+        target_role="belt",
+    )
+    bi = count_internal_transport_cells(tc.keys(), is_external=is_ext_y_ne_0)
+    ai = count_internal_transport_cells(res.transport_cells.keys(), is_external=is_ext_y_ne_0)
+    saved = max(0, bi - ai)
+    assert saved > 0
+    reclaimed = reclaim_map_ops._reclaimed_interior_transport_cells(
+        map_before,
+        map_after,
+        is_external=is_ext_y_ne_0,
+    )
+    assert len(reclaimed) > 0
 
 
 def test_p3e3_rollback_guarded_transport_cells_copies_role_map() -> None:

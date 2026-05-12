@@ -325,3 +325,40 @@ def test_placement_stub_route_probe_path_matches_feasible() -> None:
         transport_cells=tc,
         fixed_stubs=fs,
     )
+
+
+def test_blocked_cells_omits_belt_and_probe_crosses_route_tree() -> None:
+    """``blocked_cells``: belt not blocked; stub probe reuses existing transport (route_tree)."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_transport import (
+        placement_stub_route_probe_path,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+        blocked_cells,
+    )
+
+    cells = {
+        (2, 0): {"role": "belt", "layout_kind": None},
+        (10, 0): {"role": "occupied", "layout_kind": "miner"},
+    }
+    bl = blocked_cells(cells)
+    assert (2, 0) not in bl
+    assert (10, 0) in bl
+
+    stub = (1, 0)
+    anchor = (4, 0)
+    asteroid = {stub, (2, 0), (3, 0), anchor}
+    mineable = set(asteroid)
+    buildings = {c: "occupied" for c in bl}
+    tc = {stub: "belt", (2, 0): "belt", (3, 0): "belt", anchor: "belt"}
+    path = placement_stub_route_probe_path(
+        outlet_stub=stub,
+        anchor=anchor,
+        asteroid_cells=asteroid,
+        mineable_cells=mineable,
+        buildings=buildings,
+        transport_cells=tc,
+        fixed_stubs=frozenset({stub}),
+    )
+    assert path is not None
+    assert (2, 0) in path and (3, 0) in path

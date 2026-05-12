@@ -658,6 +658,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("pass3_skip_reason", None)
     summary_fields.setdefault("pass3_committed", False)
     summary_fields.setdefault("pass3_greedy_committed", None)
+    summary_fields.setdefault("pass3_greedy_local_replacement", None)
     summary_fields.setdefault("pass3_map_accepted", False)
     summary_fields.setdefault("pass3_attempted_commit", False)
     summary_fields.setdefault("pass3_final_committed", False)

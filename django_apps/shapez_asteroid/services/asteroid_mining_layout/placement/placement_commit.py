@@ -42,7 +42,6 @@ _ALLOWED_PLACEMENT_COMMIT_TRANSITIONS: frozenset[_AllowedPlacementCommitTransiti
         # §9.6 / 03_data_schema_dto: geometry·연결성 파손(예: 인접 rollback 후 trunk 단절) 시
         # recovery 시도 전에 명시적으로 quarantine을 거친 뒤 terminal rollback한다.
         (PlacementCommitState.ROUTED_CONFIRMED, PlacementCommitState.QUARANTINED_UNROUTED),
-        (PlacementCommitState.ROUTED_CONFIRMED, PlacementCommitState.ROLLED_BACK),
     }
 )
 
@@ -124,8 +123,17 @@ def transition_placement_record_to_rolled_back(
     rollback_reason: str | None = None,
     clear_route_id: bool = True,
 ) -> PlacementCommitRecord:
-    """Single entry point for terminal ``ROLLED_BACK`` (STEP4 quarantine finalize + P2-C)."""
+    """Terminal ``ROLLED_BACK`` from ``PROVISIONAL_PLACED`` or ``QUARANTINED_UNROUTED`` only.
 
+    ``ROUTED_CONFIRMED`` rows must first take the explicit ``QUARANTINED_UNROUTED`` edge
+    (geometry / trunk revalidation), then call this helper on the quarantined record.
+    """
+
+    if rec.state == PlacementCommitState.ROUTED_CONFIRMED:
+        raise PlacementCommitTransitionError(
+            "ROLLED_BACK from ROUTED_CONFIRMED requires QUARANTINED_UNROUTED first "
+            f"(placement_id={rec.placement_id!r})"
+        )
     rr = rec.rollback_reason if rollback_reason is None else rollback_reason
     return apply_placement_commit_state_transition(
         rec,

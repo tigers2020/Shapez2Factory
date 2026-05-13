@@ -197,6 +197,23 @@ def p2c_revalidate_and_correct(
                     trunk_cells=trunk_cells,
                     trunk_edge_hits=trunk_edge_hits,
                 )
+                path_set = frozenset(path)
+                other_path_cells = frozenset(
+                    c for rt in routes_out if rt.placement_id != pid for c in rt.path
+                )
+                obsolete_path_cells = tuple(
+                    c for c in br.path if c not in path_set and c not in other_path_cells
+                )
+                if obsolete_path_cells:
+                    preserve_reroute = path_set | other_path_cells
+                    rollback_exclusive_transport_path_cells(
+                        cells,
+                        route_path=obsolete_path_cells,
+                        want_role=wr,
+                        preserve_coords=preserve_reroute,
+                        final_cells=final_cells,
+                        mineable=mineable,
+                    )
                 new_rt = Step4Route(
                     extractor_cell=br.extractor_cell,
                     stub_cell=br.stub_cell,

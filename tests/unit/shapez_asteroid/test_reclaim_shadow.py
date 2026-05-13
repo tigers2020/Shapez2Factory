@@ -1162,7 +1162,9 @@ def test_protected_corridors_solver_pool_wins_over_p3e3_touched() -> None:
     assert pcs.existing_layout_hints_cells == frozenset()
 
 
-def test_protected_corridors_existing_layout_hints_are_diagnostic_only() -> None:
+def test_protected_corridors_existing_layout_hints_are_ignored_for_runtime_dto() -> None:
+    """ELA solver_hints are replay/UI context only — reclaim DTO must not attach them."""
+
     hints = {
         "trunk_seed_cell_union": [[21, 1]],
         "cleanup_candidate_cell_union": [[22, 1]],
@@ -1175,10 +1177,10 @@ def test_protected_corridors_existing_layout_hints_are_diagnostic_only() -> None
     assert pcs.source == P4_RECLAIM_CORRIDOR_SOURCE_EMPTY
     assert pcs.hard == frozenset()
     assert pcs.soft == frozenset()
-    assert pcs.existing_layout_hints_cells == frozenset({(21, 1), (22, 1)})
+    assert pcs.existing_layout_hints_cells == frozenset()
 
 
-def test_protected_corridors_existing_layout_hints_hard_pool_wins() -> None:
+def test_protected_corridors_hard_pool_ignores_existing_layout_hint_overlap() -> None:
     pcs = protected_corridors_for_reclaim(
         pass3_trace={},
         solver_routing_state={"hard_protected_corridors": [[5, 5]], "soft_protected_corridors": []},
@@ -1190,7 +1192,7 @@ def test_protected_corridors_existing_layout_hints_hard_pool_wins() -> None:
     assert pcs.hard == frozenset({(5, 5)})
     assert (5, 5) not in pcs.soft
     assert (6, 6) not in pcs.soft
-    assert pcs.existing_layout_hints_cells == frozenset({(5, 5), (6, 6)})
+    assert pcs.existing_layout_hints_cells == frozenset()
 
 
 def test_protected_corridors_empty_solver_hints_no_regression() -> None:
@@ -1206,7 +1208,9 @@ def test_protected_corridors_empty_solver_hints_no_regression() -> None:
     assert base == merged
 
 
-def test_run_reclaim_shadow_trace_includes_hint_cell_count() -> None:
+def test_run_reclaim_shadow_trace_reports_zero_hint_cells_when_hints_not_runtime_authority() -> (
+    None
+):
     m = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False)
     trace = run_reclaim_shadow_scan_after_pass3(
         m,
@@ -1222,7 +1226,7 @@ def test_run_reclaim_shadow_trace_includes_hint_cell_count() -> None:
             "cleanup_candidate_cell_union": [[0, 1]],
         },
     )
-    assert trace.get("p4_reclaim_existing_layout_hint_cell_count") == 1
+    assert trace.get("p4_reclaim_existing_layout_hint_cell_count") == 0
 
 
 def test_solver_routing_state_for_p4_reclaim_prefers_routing_state_over_trunk() -> None:

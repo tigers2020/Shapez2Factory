@@ -401,6 +401,9 @@ def run_step4_merge_aware_routing(
                 and placement_id in ctx.force_route_attempt_placement_ids
             )
 
+            # Explicit ROUTED_CONFIRMED fast path (not implicit): stub_cell is already on the
+            # same-kind exterior-connected trunk (trunk_cells), so Dijkstra would be a no-op
+            # degenerate route; FSM still advances only via mark_routed_confirmed + recorded path.
             if stub_cell in trunk_cells and not force_attempt:
                 routes_out.append(
                     Step4Route(

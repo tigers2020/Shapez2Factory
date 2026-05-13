@@ -53,17 +53,25 @@ def test_corridor_lifecycle_state_for_cell_tiers() -> None:
     assert corridor_lifecycle_state_for_cell(pc, (0, 0)) is None
 
 
-def test_protected_corridors_read_merges_probe_discarded_from_pass3_trace() -> None:
+def test_protected_corridors_read_ignores_pass3_trace_probe_fields_at_runtime() -> None:
+    """§14: reclaim must not reconstruct probe lifecycle from pass3_trace (telemetry only)."""
+
     pc = protected_corridors_read_for_reclaim(
         pass3_trace={
             "protected_corridors": {"hard": [], "soft": []},
             "corridor_probe_discarded_cells": [[3, 4]],
+            "corridor_probe_candidate_cells": [[5, 5]],
         },
-        solver_routing_state=None,
+        solver_routing_state={
+            "hard_protected_corridors": [],
+            "soft_protected_corridors": [],
+            "protected_corridors": {"hard": [], "soft": []},
+        },
         existing_layout_solver_hints=None,
     )
-    assert (3, 4) in pc.probe_discarded_cells
-    assert corridor_lifecycle_state_for_cell(pc, (3, 4)) == fc.CORRIDOR_LIFECYCLE_DISCARDED
+    assert pc.probe_discarded_cells == frozenset()
+    assert pc.probe_candidate_cells == frozenset()
+    assert corridor_lifecycle_state_for_cell(pc, (3, 4)) is None
 
 
 def test_step4_committed_routing_state_marks_soft_hard_pools_and_empty_probe_candidates() -> None:

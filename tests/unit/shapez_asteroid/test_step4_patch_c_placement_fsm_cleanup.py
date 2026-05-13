@@ -129,6 +129,24 @@ def test_final_validation_rejects_unfinalized_placement_rows() -> None:
     assert rep.geometry_valid is False
 
 
+def test_final_validation_rejects_quarantined_unrouted_row() -> None:
+    """§15: quarantined_unrouted row metadata must fail geometry gate like provisional."""
+
+    mining_map: list[dict[str, Any]] = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "belt",
+            "surface": "shape",
+            "placement_state": "quarantined_unrouted",
+        },
+    ]
+    rep = fv.validate_final_mining_layout(mining_map)
+    assert rep.quarantined_unrouted_count == 1
+    assert rep.provisional_placed_row_count == 0
+    assert rep.geometry_valid is False
+
+
 def test_rollback_cleanup_bundle_plus_no_duplicate_strip() -> None:
     """``rollback_placement_cells`` + exclusive path strip is idempotent on bundle coords."""
 
@@ -236,6 +254,119 @@ def test_p2c_cascade_rollback_strips_exclusive_route_transport() -> None:
     assert work_records[pid].state == PlacementCommitState.ROLLED_BACK
     assert cells[stub].get("role") != "belt"
     assert cells[tail].get("role") != "belt"
+
+
+def test_p2c_cascade_reroute_strips_orphan_mid_path_cells() -> None:
+    """P2-C reroute: cells only on the pre-correction path must not survive as orphan belt."""
+
+    pid = "p2-000203"
+    ext = (40, 20)
+    stub = (41, 20)
+    old_mid = (42, 20)
+    tail = (43, 20)
+    det1 = (41, 21)
+    det2 = (42, 21)
+    mineable = frozenset({ext, stub, old_mid, tail, det1, det2})
+    final_cells = {
+        ext: {"x": 40, "y": 20, "role": "occupied", "layout_kind": "miner", "r": 0},
+        stub: {"x": 41, "y": 20, "role": "inferred", "layout_kind": "asteroid_field"},
+        old_mid: {"x": 42, "y": 20, "role": "inferred", "layout_kind": "asteroid_field"},
+        tail: {"x": 43, "y": 20, "role": "inferred", "layout_kind": "asteroid_field"},
+        det1: {"x": 41, "y": 21, "role": "inferred", "layout_kind": "asteroid_field"},
+        det2: {"x": 42, "y": 21, "role": "inferred", "layout_kind": "asteroid_field"},
+    }
+    cells: dict[tuple[int, int], dict[str, Any]] = {
+        ext: dict(final_cells[ext]) | {"placement_id": pid},
+        stub: {"x": 41, "y": 20, "role": "belt", "surface": "shape"},
+        old_mid: {"x": 42, "y": 20, "role": "belt", "surface": "shape"},
+        tail: {"x": 43, "y": 20, "role": "belt", "surface": "shape"},
+    }
+    rec = PlacementCommitRecord(
+        placement_id=pid,
+        placement_pass="pass2",
+        extractor_cell=ext,
+        extension_cells=(),
+        stub_cell=stub,
+        transport_kind="shape_belt",
+        state=PlacementCommitState.ROUTED_CONFIRMED,
+        route_id=f"route-{pid}",
+    )
+    work_records = {pid: rec}
+    new_path = (stub, det1, det2, tail)
+    routes_out = [
+        Step4Route(
+            extractor_cell=ext,
+            stub_cell=stub,
+            transport_kind="shape_belt",
+            path=(stub, old_mid, tail),
+            merged_to_existing=False,
+            reached_external=True,
+            placement_id=pid,
+        )
+    ]
+    failures: list[dict[str, Any]] = []
+    trunk_edge_hits: dict[str, int] = {}
+
+    with (
+        patch.object(
+            p2c,
+            "_facade_stub_reaches_external_trunk",
+            side_effect=[False] + [True] * 32,
+        ),
+        patch.object(p2c, "_facade_dijkstra", return_value=new_path),
+    ):
+        routes_out2, metrics = p2c.p2c_revalidate_and_correct(
+            cells,
+            routes_out,
+            work_records,
+            mineable=mineable,
+            asteroid=frozenset(),
+            final_cells=final_cells,
+            is_external=lambda c: c[0] >= 43,
+            surface="shape",
+            failures=failures,
+            trunk_edge_hits=trunk_edge_hits,
+        )
+
+    assert metrics["cascade_reroute_count"] >= 1
+    assert len(routes_out2) == 1
+    assert routes_out2[0].path == new_path
+    assert cells[old_mid].get("role") != "belt"
+    assert cells[det1].get("role") == "belt"
+    assert cells[det2].get("role") == "belt"
+
+
+def test_rollback_exclusive_preserves_neighbor_trunk_after_strip() -> None:
+    """Strip one route path but keep belt on coords shared with another route's trunk."""
+
+    path_a = ((10, 10), (11, 10), (12, 10))
+    mineable = frozenset(path_a)
+    final_cells = {
+        c: {
+            "x": c[0],
+            "y": c[1],
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+        }
+        for c in path_a
+    }
+    shared = {"x": 12, "y": 10, "role": "belt", "surface": "shape", "neighbor_trunk": True}
+    cells = {
+        (10, 10): {"x": 10, "y": 10, "role": "belt", "surface": "shape"},
+        (11, 10): {"x": 11, "y": 10, "role": "belt", "surface": "shape"},
+        (12, 10): dict(shared),
+    }
+    rollback_exclusive_transport_path_cells(
+        cells,
+        route_path=path_a,
+        want_role="belt",
+        preserve_coords=frozenset({(12, 10)}),
+        final_cells=final_cells,
+        mineable=mineable,
+    )
+    assert cells[(10, 10)] == final_cells[(10, 10)]
+    assert cells[(11, 10)] == final_cells[(11, 10)]
+    assert cells[(12, 10)] == shared
 
 
 def test_p2c_cascade_rollback_emits_quarantine_fsm_edge_before_terminal() -> None:

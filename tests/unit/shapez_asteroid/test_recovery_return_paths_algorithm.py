@@ -6,7 +6,9 @@ Policy rows mirror Algorithm ``02_pipeline_control_flow`` §4.3 / §4.3.1 / §4.
 
 from __future__ import annotations
 
+import ast
 import inspect
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -48,6 +50,33 @@ def _clean_fv() -> dict[str, Any]:
         "quarantined_unrouted_count": 0,
         "missing_stub_count": 0,
     }
+
+
+def _mining_layout_service_root() -> Path:
+    return (
+        Path(__file__).resolve().parents[3]
+        / "django_apps"
+        / "shapez_asteroid"
+        / "services"
+        / "asteroid_mining_layout"
+    )
+
+
+def test_solver_pipeline_does_not_iterate_replay_events_for_policy() -> None:
+    """Replay is append-only export; no ``for`` / comprehension scans ``replay_events`` (§14)."""
+
+    root = _mining_layout_service_root() / "solver_pipeline"
+    bad: list[str] = []
+    for path in sorted(root.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.For) and isinstance(node.iter, ast.Name):
+                if node.iter.id == "replay_events":
+                    bad.append(f"{path.name}:For")
+            if isinstance(node, ast.comprehension) and isinstance(node.iter, ast.Name):
+                if node.iter.id == "replay_events":
+                    bad.append(f"{path.name}:comp")
+    assert not bad, bad
 
 
 def test_d2_b2_orchestrator_step4_routing_contract_in_source() -> None:

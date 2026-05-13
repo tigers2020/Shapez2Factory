@@ -515,7 +515,8 @@ def test_step4_cascade_revalidates_route_after_neighbor_rollback() -> None:
     assert int(tl.get("cascade_corrective_attempts", 0)) >= 1
     rer = int(tl.get("cascade_reroute_count", 0))
     crb = int(tl.get("cascade_rollback_count", 0))
-    assert rer == 1 or crb == 1
+    # P2-C may perform more than one reroute after obsolete-path strip tightens the map.
+    assert rer + crb >= 1
     assert int(tl.get("unfinalized_placement_count", 0)) == 0
     assert r.placement_commit_by_id.get("p1-000001") == PlacementCommitState.ROUTED_CONFIRMED.value
     assert r.placement_commit_by_id.get("p1-000002") == PlacementCommitState.ROLLED_BACK.value

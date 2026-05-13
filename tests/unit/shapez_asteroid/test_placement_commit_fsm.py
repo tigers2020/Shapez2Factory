@@ -60,8 +60,20 @@ def test_transition_to_rolled_back_explicit_reason() -> None:
         route_id="route-y",
         rollback_reason=None,
     )
-    out = transition_placement_record_to_rolled_back(
+    with pytest.raises(PlacementCommitTransitionError):
+        transition_placement_record_to_rolled_back(
+            rec,
+            rollback_reason="p2c_trunk_disconnect",
+        )
+    qu = apply_placement_commit_state_transition(
         rec,
+        to=PlacementCommitState.QUARANTINED_UNROUTED,
+        rollback_reason="p2c_trunk_disconnect",
+        clear_route_id=True,
+        context="test_routed_must_quarantine_before_rolled",
+    )
+    out = transition_placement_record_to_rolled_back(
+        qu,
         rollback_reason="p2c_trunk_disconnect",
     )
     assert out.state == PlacementCommitState.ROLLED_BACK

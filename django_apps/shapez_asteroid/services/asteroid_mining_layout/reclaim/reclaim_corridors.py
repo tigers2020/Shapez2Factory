@@ -1,7 +1,9 @@
-"""P4 protected corridor runtime authority and replay-side probe parsing.
+"""P4 protected corridor runtime authority (STEP4 ``routing_state`` only).
 
-Runtime hard/soft corridor authority comes only from STEP4 ``routing_state``. Trace, replay,
-Pass3 trace, and ``trunk_load`` payloads are output-only and must not synthesize reclaim guards.
+Runtime hard/soft pools come only from committed STEP4 ``routing_state``. ``pass3_trace``,
+``existing_layout_solver_hints``, replay snapshots, ``trace_event`` payloads, ``solver_summary``,
+and ``trunk_load`` mirrors are output or UI hints only — reclaim must not read them to build
+authority (§12 / §14).
 """
 
 from __future__ import annotations
@@ -17,35 +19,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
     ProtectedCorridors,
     ProtectedCorridorSets,
 )
-
-
-def _parse_coord_pairs_from_trace_list(val: object) -> frozenset[Coord]:
-    """Normalize ``[[x,y], ...]`` trace lists to coords (``x != 0``)."""
-
-    if not isinstance(val, list):
-        return frozenset()
-    out: set[Coord] = set()
-    for it in val:
-        if isinstance(it, (list, tuple)) and len(it) >= 2:
-            try:
-                x = int(it[0])
-                y = int(it[1])
-            except (TypeError, ValueError):
-                continue
-            if x == 0:
-                continue
-            out.add((x, y))
-    return frozenset(out)
-
-
-def _probe_lifecycle_cells_from_pass3_trace(
-    pass3_trace: Mapping[str, object],
-) -> tuple[frozenset[Coord], frozenset[Coord]]:
-    """Return ``(probe_candidate_cells, probe_discarded_cells)`` from Pass3 trace only."""
-
-    cand = _parse_coord_pairs_from_trace_list(pass3_trace.get("corridor_probe_candidate_cells"))
-    disc = _parse_coord_pairs_from_trace_list(pass3_trace.get("corridor_probe_discarded_cells"))
-    return cand, disc
 
 
 def _parse_coord_pair_frozenset(val: object) -> frozenset[Coord]:
@@ -188,29 +161,6 @@ def _corridors_from_solver_routing_state(
     )
 
 
-def _attach_existing_layout_solver_hints(
-    base: ProtectedCorridorSets,
-    existing_layout_solver_hints: Mapping[str, object] | None,
-) -> ProtectedCorridorSets:
-    """Keep STEP 0.5 hints as diagnostics only; never promote them to hard/soft authority."""
-
-    if not isinstance(existing_layout_solver_hints, Mapping):
-        return base
-    trunk = _parse_coord_pair_frozenset(existing_layout_solver_hints.get("trunk_seed_cell_union"))
-    cleanup = _parse_coord_pair_frozenset(
-        existing_layout_solver_hints.get("cleanup_candidate_cell_union")
-    )
-    hint_cells = trunk | cleanup
-    if not hint_cells:
-        return base
-    return ProtectedCorridorSets(
-        hard=base.hard,
-        soft=base.soft,
-        source=base.source,
-        existing_layout_hints_cells=hint_cells,
-    )
-
-
 def protected_corridors_for_reclaim(
     *,
     pass3_trace: Mapping[str, object],
@@ -219,25 +169,24 @@ def protected_corridors_for_reclaim(
 ) -> ProtectedCorridorSets:
     """Select hard/soft protected corridors for Reclaim from runtime route state only.
 
-    ``pass3_trace`` remains in the signature for replay/debug callers, but it is output-only and
-    never reconstructs runtime hard/soft authority.
+    ``pass3_trace`` and ``existing_layout_solver_hints`` stay in the signature for call-site and
+    STEP10 wire compatibility; they are not read for runtime authority (output / replay / ELA UI
+    only). When the routing pool is empty, hard and soft are empty — no telemetry fallback.
     """
 
     _ = pass3_trace
+    _ = existing_layout_solver_hints
     eff: Mapping[str, object] | None = None
     if isinstance(solver_routing_state, Mapping):
         eff = _effective_solver_routing_mapping(solver_routing_state)
-    base: ProtectedCorridorSets
     if eff is not None and _solver_pool_corridors_available(eff):
-        base = _corridors_from_solver_routing_state(eff)
-    else:
-        base = ProtectedCorridorSets(
-            hard=frozenset(),
-            soft=frozenset(),
-            source=P4_RECLAIM_CORRIDOR_SOURCE_EMPTY,
-            existing_layout_hints_cells=frozenset(),
-        )
-    return _attach_existing_layout_solver_hints(base, existing_layout_solver_hints)
+        return _corridors_from_solver_routing_state(eff)
+    return ProtectedCorridorSets(
+        hard=frozenset(),
+        soft=frozenset(),
+        source=P4_RECLAIM_CORRIDOR_SOURCE_EMPTY,
+        existing_layout_hints_cells=frozenset(),
+    )
 
 
 def protected_corridors_read_for_reclaim(
@@ -246,21 +195,24 @@ def protected_corridors_read_for_reclaim(
     solver_routing_state: Mapping[str, object] | None = None,
     existing_layout_solver_hints: Mapping[str, object] | None = None,
 ) -> ProtectedCorridors:
-    """Same pool selection as :func:`protected_corridors_for_reclaim`, unified read DTO (P3-B)."""
+    """Same pool selection as :func:`protected_corridors_for_reclaim`, unified read DTO (P3-B).
+
+    ``probe_*`` fields remain on the DTO for schema compatibility; reclaim keeps them empty at
+    runtime — corridor lifecycle probes belong in replay/NDJSON assembly, not reclaim guards.
+    """
 
     pcs = protected_corridors_for_reclaim(
         pass3_trace=pass3_trace,
         solver_routing_state=solver_routing_state,
         existing_layout_solver_hints=existing_layout_solver_hints,
     )
-    probe_cand, probe_disc = _probe_lifecycle_cells_from_pass3_trace(pass3_trace)
     return ProtectedCorridors(
         hard=pcs.hard,
         soft=pcs.soft,
         candidate=pcs.existing_layout_hints_cells,
         source=pcs.source,
-        probe_candidate_cells=probe_cand,
-        probe_discarded_cells=probe_disc,
+        probe_candidate_cells=frozenset(),
+        probe_discarded_cells=frozenset(),
     )
 
 

@@ -102,6 +102,46 @@ def _minimal_p4() -> P4ReclaimStageResult:
     )
 
 
+def _step4_stage_with_map_rows(rows: list[dict]) -> Step4StageResult:
+    s4r = Step4RoutingResult(
+        committed=True,
+        map_after_routing=rows,
+        routes=(),
+        routing_failures=(),
+        trunk_load={
+            "unfinalized_placement_count": 0,
+            "step4_route_count": 0,
+            "step4_routing_failure_count": 0,
+            "cascade_corrective_attempts": 41,
+        },
+        routing_state={"hard_protected_corridors": [], "soft_protected_corridors": []},
+        placement_commit_by_id={},
+        rolled_back_placement_ids=(),
+        quarantined_placement_ids=(),
+    )
+    fv = FinalValidationReport(
+        geometry_valid=True,
+        connectivity_valid=True,
+        disconnected_stub_count=0,
+        quarantined_unrouted_count=0,
+        provisional_placed_row_count=0,
+        orphan_transport_count=0,
+        overlap_violation_count=0,
+        missing_stub_count=0,
+        missing_extractor_rotation_count=0,
+    )
+    return Step4StageResult(
+        step4_result=s4r,
+        map_after_routing=rows,
+        post_step4_counts={},
+        routing_state_summary={},
+        step_hash_step4="0" * 64,
+        step4_replay_transaction_id=None,
+        unfinalized_placement_count=0,
+        report_step4=fv,
+    )
+
+
 def test_three_pass3_p4_finalize_cycles_when_validation_cap_is_two() -> None:
     """Cap 2 ⇒ two full Pass3→P4→finalize passes (``max_cycles``)."""
 
@@ -383,3 +423,128 @@ def test_recovery_branch_includes_planned_actions_after_first_failure() -> None:
     assert branch_payloads[0]["recovery_trigger"] == fc.RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY
     assert "planned_actions" in branch_payloads[0]
     assert fc.RECOVERY_ACTION_GEOMETRY_REPAIR_OR_FAIL in branch_payloads[0]["planned_actions"]
+
+
+def test_pass3_connectivity_break_passes_step4_snapshot_as_p4_map_final() -> None:
+    """§4.3.1: P4 ``map_final`` follows STEP4 map, not broken Pass3 output."""
+
+    snap = [{"x": 0, "y": 0, "role": "belt", "surface": "shape", "_s4": True}]
+    p4_kw: dict[str, object] = {}
+
+    def _pass3(**_k: object) -> Pass3StageResult:
+        return Pass3StageResult(
+            map_final=[{"x": 1, "y": 1, "_p3bad": True}],
+            pass3_summary={"recovery_pass3_connectivity_break": True},
+            p3_trace={"protected_corridors": {"hard": [], "soft": []}},
+            eligible_pass3=True,
+            step_hash_pass3="c" * 64,
+        )
+
+    def _p4(**kwargs: object) -> P4ReclaimStageResult:
+        p4_kw["map_final"] = kwargs.get("map_final")
+        return _minimal_p4()
+
+    def _finalize(**_k: object) -> tuple[dict, dict]:
+        fv = {
+            "geometry_valid": True,
+            "connectivity_valid": True,
+            "disconnected_stub_count": 0,
+            "quarantined_unrouted_count": 0,
+            "provisional_placed_row_count": 0,
+            "orphan_transport_count": 0,
+            "overlap_violation_count": 0,
+            "missing_stub_count": 0,
+            "missing_extractor_rotation_count": 0,
+            "extractor_count": 0,
+            "extension_count": 0,
+            "transport_cell_count": 0,
+            "transport_connectivity_ok": True,
+        }
+        summary = {
+            "return_reason": "ok",
+            "pass3_commit_reason": fc.P3F_COMMIT_REASON_NORMAL_GAIN,
+            "pass3_final_committed": True,
+            "pass3_committed": True,
+            "after_internal_transport_count": 0,
+            "optimization_warnings": [],
+            "recovery_context_chain": [],
+        }
+        return (
+            {
+                "ok": True,
+                "return_reason": "ok",
+                "final_validation": fv,
+                "solver_timeline": [{"id": "stub", "summary": {}, "mining_map": []}],
+                "solver_replay": {"events": [], "ui_frames": []},
+                "solver_summary": {},
+                "existing_layout_analysis": None,
+            },
+            summary,
+        )
+
+    baseline_ns = SimpleNamespace(
+        internal_transport_count=0,
+        failure_reason=None,
+        aggregation="sequential_trunk_v1",
+    )
+
+    with patch.object(ro, "MAX_VALIDATION_RECOVERY_ATTEMPTS", 1):
+        with patch.object(recovery_policy, "MAX_VALIDATION_RECOVERY_ATTEMPTS", 1):
+            with patch(
+                "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
+                "pass12.run_pass12_stage",
+                return_value=_minimal_pass12(),
+            ):
+                with patch(
+                    "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
+                    "step4.run_step4_stage",
+                    return_value=_step4_stage_with_map_rows(snap),
+                ):
+                    with patch(
+                        "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
+                        "pass3.run_pass3_stage",
+                        side_effect=_pass3,
+                    ):
+                        with patch(
+                            "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
+                            "p4_reclaim.run_p4_reclaim_stage",
+                            side_effect=_p4,
+                        ):
+                            with patch(
+                                "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline."
+                                "finalize.build_final_solver_output",
+                                side_effect=_finalize,
+                            ):
+                                with patch(
+                                    "django_apps.shapez_asteroid.services.asteroid_mining_layout."
+                                    "solver.baseline_routing.compute_shortest_feasible_transport_baseline",
+                                    return_value=baseline_ns,
+                                ):
+                                    with patch(
+                                        "django_apps.shapez_asteroid.services.blueprint_map_summary."
+                                        "build_map_timeline",
+                                        return_value=[{"mining_map": []}, {"mining_map": []}],
+                                    ):
+                                        with patch(
+                                            "django_apps.shapez_asteroid.services.blueprint_map_summary."
+                                            "merge_with_transport_and_final_mining_map",
+                                            return_value=[],
+                                        ):
+                                            with patch(
+                                                "django_apps.shapez_asteroid.services."
+                                                "asteroid_mining_layout.existing_layout.existing_layout_analysis."
+                                                "analyze_existing_layout_from_mining_map",
+                                                return_value={},
+                                            ):
+                                                with trace_run_scope():
+                                                    ro.run_solver_timeline_pipeline(
+                                                        decoded={"BP": {"Entries": []}},
+                                                        debug_location=(
+                                                            "tests.unit.shapez_asteroid."
+                                                            "test_recovery_orchestrator_loop"
+                                                        ),
+                                                        run_id="p3-conn-p4-map-snap",
+                                                    )
+
+    mf = p4_kw.get("map_final")
+    assert isinstance(mf, list) and mf and mf[0].get("_s4") is True

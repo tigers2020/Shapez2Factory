@@ -145,7 +145,11 @@ def enrich_solver_summary_recovery(
     report: FinalValidationReport,
     step4_result: Step4RoutingResult,
 ) -> None:
-    """Attach P5 recovery fields after ``pass3_summary`` merged into ``summary_fields``."""
+    """Attach P5 recovery fields after ``pass3_summary`` merged into ``summary_fields``.
+
+    Re-affirms ``cascade_corrective_attempts`` from ``step4_result.trunk_load`` so the STEP4
+    P2-C counter stays separate from ``total_recovery_attempts_used`` (chain-only §13).
+    """
 
     apply_recovery_contract_defaults(summary_fields)
     tag_reclaim_incremental_failure_from_summary(summary_fields)
@@ -170,6 +174,12 @@ def enrich_solver_summary_recovery(
     )
     synthesize_recovery_validation_outcome(summary_fields)
     append_recovery_return_policy_trace_entries(summary_fields)
+    trunk = getattr(step4_result, "trunk_load", None)
+    tl = trunk if isinstance(trunk, dict) else {}
+    summary_fields["cascade_corrective_attempts"] = int(
+        tl.get("cascade_corrective_attempts", summary_fields.get("cascade_corrective_attempts", 0))
+        or 0
+    )
     summary_fields["total_recovery_attempts"] = int(
         summary_fields.get("total_recovery_attempts_used") or 0
     )
@@ -468,6 +478,8 @@ def run_solver_timeline_pipeline(
             step4_trunk_load=dict(step4.step4_result.trunk_load),
         )
         map_for_p4 = pass3.map_final
+        # §4.3.1 ``pass3_connectivity_break``: do not feed broken Pass3 layout into P4; use last
+        # STEP4 ``map_after_routing`` snapshot as ``map_final`` (Algorithm ``02`` §4.3.1).
         if pass3.pass3_summary.get("recovery_pass3_connectivity_break"):
             map_for_p4 = solver_mut_txn.copy_mining_map_rows(step4.map_after_routing)
         p4 = _p4_mod.run_p4_reclaim_stage(

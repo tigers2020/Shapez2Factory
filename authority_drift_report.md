@@ -13,6 +13,8 @@ Requested canonical paths under `documents/canon/` are not present in this check
 
 This is a read-only runtime authority audit. No code behavior was changed.
 
+**Superseded passages (see [`authority_drift_matrix.md`](authority_drift_matrix.md)):** As of the 2026-05-13 authority matrix audit, [`reclaim/reclaim_corridors.py`](django_apps/shapez_asteroid/services/asteroid_mining_layout/reclaim/reclaim_corridors.py) no longer merges corridor **authority** from `trunk_load` (`merge_step4_corridor_routing_mapping` ignores it) and no longer rebuilds **hard/soft** protected sets from `pass3_trace` in `protected_corridors_for_reclaim`. Matrix IDs **D1–D12** replace row-level truth for those areas; table rows below that still describe `trunk_load`/`pass3_trace` as reclaim **hard/soft** sources are **historical** relative to current code.
+
 ## Canonical Authority Baseline
 
 - STEP4 route state authority must be explicit. `08_step4_routing.md:257-267` says the STEP4 result must carry route state, Pass3 gate source must be `explicit_arg`, and `trunk_load` is only a result mirror, not proof of STEP4 commit.

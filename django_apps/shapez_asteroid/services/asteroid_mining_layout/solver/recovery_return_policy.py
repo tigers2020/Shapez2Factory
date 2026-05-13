@@ -4,9 +4,10 @@ Canon: ``documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_f
 (``documents/canon/02_pipeline_control_flow.md`` is not shipped in this repo).
 
 Canonical trigger strings live in ``foundation.constants``. The orchestrator calls
-:func:`recovery_return_policy_for_trigger` for ``step4_routing_failure`` before at most one
-remedial ``run_step4_stage``. Remaining rows are **spec-only** until explicitly wired (no
-phantom main-path triggers).
+:func:`recovery_return_policy_for_trigger` for STEP4 routing/capacity before at most one
+remedial ``run_step4_stage``. Other rows are consumed for trace
+(:func:`recovery_policy.append_recovery_return_policy_trace_entries`) and contract tests;
+``pass3_connectivity_break`` P4 input wiring lives in ``recovery_orchestrator`` (§4.3.1).
 """
 
 from __future__ import annotations
@@ -70,7 +71,7 @@ def recovery_return_policy_triggers() -> frozenset[str]:
 
 
 _POLICY_TABLE: Final[dict[str, RecoveryReturnPolicy]] = {
-    # §4.3: STEP4 route failure → retry / rollback / alternate trunk.
+    # §4.3 table ``step4_routing_failure``: remedial STEP4 retry (orchestrator-gated).
     RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE: RecoveryReturnPolicy(
         policy_id=RecoveryReturnPolicyId.STEP4_RETRY_ROLLBACK_ALTERNATE_TRUNK,
         reenters_step4=True,
@@ -78,7 +79,7 @@ _POLICY_TABLE: Final[dict[str, RecoveryReturnPolicy]] = {
         allows_one_time_remedial_step4=False,
         primary_return_steps=("STEP4",),
     ),
-    # §4.3: capacity split / trunk failure → STEP4 retry; trunk split / offending rollback.
+    # §4.3 table ``step4_capacity_failure``: STEP4 retry / trunk split path.
     RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE: RecoveryReturnPolicy(
         policy_id=RecoveryReturnPolicyId.STEP4_RETRY_TRUNK_SPLIT_OFFENDING_ROLLBACK,
         reenters_step4=True,
@@ -86,7 +87,8 @@ _POLICY_TABLE: Final[dict[str, RecoveryReturnPolicy]] = {
         allows_one_time_remedial_step4=False,
         primary_return_steps=("STEP4",),
     ),
-    # §4.3.1: Pass3 greedy connectivity-only rollback → STEP4 snapshot, then STEP6 reclaim.
+    # §4.3 table ``pass3_connectivity_break`` / §4.3.1: Pass3 rollback → return STEP6 reclaim;
+    # orchestrator passes P4 ``map_final`` from STEP4 snapshot when the break flag is set.
     RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK: RecoveryReturnPolicy(
         policy_id=RecoveryReturnPolicyId.ROLLBACK_PASS3_SNAPSHOT_THEN_STEP6,
         reenters_step4=False,
@@ -94,7 +96,7 @@ _POLICY_TABLE: Final[dict[str, RecoveryReturnPolicy]] = {
         allows_one_time_remedial_step4=False,
         primary_return_steps=("STEP6",),
     ),
-    # §4.3.2: rerun rollback → STEP9; no additional post-reclaim Pass3 rerun in the same block.
+    # §4.3 table ``post_reclaim_pass3_connectivity_break`` / §4.3.2: rerun rollback only → STEP9.
     RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK: RecoveryReturnPolicy(
         policy_id=RecoveryReturnPolicyId.ROLLBACK_RERUN_THEN_STEP9_NO_EXTRA_RERUN,
         reenters_step4=False,
@@ -102,7 +104,7 @@ _POLICY_TABLE: Final[dict[str, RecoveryReturnPolicy]] = {
         allows_one_time_remedial_step4=False,
         primary_return_steps=("STEP9",),
     ),
-    # §4.3: incremental reclaim rollback → continue STEP6 reclaim loop.
+    # §4.3 table ``reclaim_incremental_failure``: candidate rollback → continue STEP6.
     RECOVERY_TRIGGER_RECLAIM_INCREMENTAL_FAILURE: RecoveryReturnPolicy(
         policy_id=RecoveryReturnPolicyId.ROLLBACK_CANDIDATE_CONTINUE_STEP6,
         reenters_step4=False,
@@ -110,8 +112,8 @@ _POLICY_TABLE: Final[dict[str, RecoveryReturnPolicy]] = {
         allows_one_time_remedial_step4=False,
         primary_return_steps=("STEP6",),
     ),
-    # §4.3 + ``13_step9_validation`` §15: bounded validation recovery → STEP9 revalidation;
-    # no automatic STEP4 re-entry (Pass3→P4→finalize loop may repeat without STEP4).
+    # §4.3 table ``final_validation_failure`` + ``13_step9_validation`` §15: bounded Pass3→P4→
+    # STEP9 only; no STEP4 re-entry on that trigger.
     RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE: RecoveryReturnPolicy(
         policy_id=RecoveryReturnPolicyId.STEP9_REVALIDATE_ONLY_BOUNDED,
         reenters_step4=False,

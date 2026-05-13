@@ -26,6 +26,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery
     finalize_recovery_terminal_reason,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_policy import (
+    sync_recovery_total_attempts_used_from_chain,
     synthesize_recovery_validation_outcome,
     validation_recovery_allowed,
 )
@@ -37,6 +38,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
     _append_optimization_warnings,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
+    Step4RoutingResult,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
     final_validation as final_val_mod,
@@ -62,6 +66,60 @@ def test_default_validation_recovery_attempts_positive_enables_loop() -> None:
 
     assert fc.MAX_VALIDATION_RECOVERY_ATTEMPTS > fc.RECOVERY_VALIDATION_LOOP_DISABLED
     assert recovery_policy.is_validation_recovery_loop_enabled()
+
+
+def test_sync_recovery_total_attempts_tracks_chain_only_not_cascade_counter() -> None:
+    """§13: ``total_recovery_attempts_used`` mirrors ``recovery_context_chain`` length only."""
+
+    p3: dict[str, Any] = {
+        "recovery_context_chain": [{"recovery_trigger": "a"}, {"recovery_trigger": "b"}],
+        "cascade_corrective_attempts": 10_000,
+    }
+    sync_recovery_total_attempts_used_from_chain(p3)
+    assert p3["total_recovery_attempts_used"] == 2
+    assert p3["recovery_total_attempts_used"] == 2
+    assert p3["cascade_corrective_attempts"] == 10_000
+
+
+def test_enrich_recovery_summary_cascade_independent_of_attempt_counters() -> None:
+    """STEP4 P2-C counter must not be folded into chain or validation recovery attempt mirrors."""
+
+    summary_fields: dict[str, Any] = {
+        "pass3_summary": {},
+        "total_recovery_attempts_used": 2,
+        "validation_recovery_attempts_used": 1,
+        "recovery_context_chain": [{"recovery_trigger": "x"}, {"recovery_trigger": "y"}],
+    }
+    rpt = FinalValidationReport(
+        geometry_valid=True,
+        connectivity_valid=True,
+        disconnected_stub_count=0,
+        quarantined_unrouted_count=0,
+        provisional_placed_row_count=0,
+        orphan_transport_count=0,
+        overlap_violation_count=0,
+        missing_stub_count=0,
+        missing_extractor_rotation_count=0,
+    )
+    s4r = Step4RoutingResult(
+        committed=True,
+        map_after_routing=[],
+        routes=(),
+        routing_failures=(),
+        trunk_load={"cascade_corrective_attempts": 99},
+        routing_state={"hard_protected_corridors": [], "soft_protected_corridors": []},
+        placement_commit_by_id={},
+        rolled_back_placement_ids=(),
+        quarantined_placement_ids=(),
+    )
+    recovery_orch.enrich_solver_summary_recovery(
+        summary_fields, report=rpt, step4_result=s4r
+    )
+    assert summary_fields["cascade_corrective_attempts"] == 99
+    assert summary_fields["total_recovery_attempts_used"] == 2
+    assert summary_fields["validation_recovery_attempts_used"] == 1
+    assert summary_fields["total_recovery_attempts"] == 2
+    assert summary_fields["validation_recovery_attempts"] == 1
 
 
 def test_route_validation_recovery_actions_order_and_constants() -> None:

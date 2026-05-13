@@ -1052,6 +1052,57 @@ def test_tier_c_two_cell_cardinal_bundle_opens_route_after_tier_b_dead_end() -> 
     assert psr.get("bounded_bundle_rollback_success") is True
     pc = psr.get("path_cells") or []
     assert any(c == [15, 10] for c in pc)
+    assert psr.get("tier_c_pair_generation_mode") == "cardinal_same_bundle_only"
+    assert int(psr.get("tier_c_candidate_pair_count") or 0) > 0
+    assert psr.get("tier_c_direct_stub_blocker_cells") == [[11, 10]]
+    assert psr.get("tier_c_same_bundle_cardinal_neighbor_cells") == [[12, 10]]
+    sample = psr.get("tier_c_candidate_pair_sample") or []
+    assert isinstance(sample, list) and len(sample) >= 1
+    assert len(res.carved_extension_cells) == 2
+
+
+def test_tier_c_skipped_diagonal_only_extension_cluster_sets_diagnostic() -> None:
+    """No cardinal same-component pair; diagonal-only extension sets diagnostic flag."""
+
+    cells: dict[Coord, dict[str, object]] = {
+        (10, 10): {
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+        },
+        (11, 10): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (12, 11): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (15, 10): {"role": "pipe", "surface": "fluid"},
+        (11, 9): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (11, 11): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (12, 10): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+    }
+    base = frozenset((x, y) for x in range(9, 18) for y in range(8, 14))
+    mineable = base - {(11, 9), (11, 11), (12, 10)}
+    ex = frozenset({(11, 10), (12, 11)})
+    res = try_preserve_stub_route_recovery(
+        miner=(10, 10),
+        extensions=ex,
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(15, 10)}),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=8,
+        row_r_raw=0,
+    )
+    assert res.accepted is False
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr.get("tier_c_success") is False
+    assert psr.get("tier_c_skip_reason") == "tier_c_skipped_no_candidate_pairs"
+    assert int(psr.get("tier_c_candidate_pair_count") or 0) == 0
+    assert psr.get("tier_c_pair_generation_mode") == "cardinal_same_bundle_only"
+    nd = psr.get("tier_c_no_pair_diagnostic")
+    assert isinstance(nd, dict)
+    assert nd.get("stub_blocker_count") == 1
+    assert nd.get("blocker_has_only_diagonal_neighbors") is True
+    assert nd.get("same_bundle_cardinal_neighbor_count_by_blocker", {}).get("[11,10]") == 0
 
 
 def test_extension_carve_disabled_failure_preserves_telemetry_schema() -> None:

@@ -378,6 +378,12 @@ def _ensure_extension_carve_schema_on_preserve_stub_recovery(detail_row: dict[st
     psr.setdefault("tier_c_success", False)
     psr.setdefault("tier_c_skip_reason", None)
     psr.setdefault("tier_c_failure_reason", None)
+    psr.setdefault("tier_c_direct_stub_blocker_cells", [])
+    psr.setdefault("tier_c_same_bundle_cardinal_neighbor_cells", [])
+    psr.setdefault("tier_c_candidate_pair_count", 0)
+    psr.setdefault("tier_c_candidate_pair_sample", [])
+    psr.setdefault("tier_c_pair_generation_mode", None)
+    psr.setdefault("tier_c_no_pair_diagnostic", None)
 
 
 def _preserve_stub_route_drop_observability(

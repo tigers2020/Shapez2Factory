@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
-from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
+from django_apps.shapez_asteroid.extraction.shapez_grid import is_legal_xy, neighbors4
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS,
     MAX_PASS12_STUB_ROUTE_RECOVERY_NEW_TRANSPORT_CELLS,
@@ -606,44 +606,137 @@ def _extension_bundle_component_ids(
     return comp
 
 
-def _tier_c_neighbor_pairs_same_bundle(
+def _neighbors_diagonal4(x: int, y: int) -> tuple[Coord, ...]:
+    """Diagonal-only neighbors (not cardinal); skips illegal ``x == 0`` cells."""
+
+    out: list[Coord] = []
+    for dx, dy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
+        nx, ny = x + dx, y + dy
+        if is_legal_xy(nx, ny):
+            out.append((nx, ny))
+    return tuple(out)
+
+
+def _coord_key_blocker(c: Coord) -> str:
+    return f"[{int(c[0])},{int(c[1])}]"
+
+
+def _tier_c_cardinal_pairs_and_telemetry(
     *,
     miner: Coord,
     extensions: frozenset[Coord],
     cells: dict[Coord, dict[str, Any]],
     rotation_order: list[int],
-) -> list[tuple[int, Coord, Coord]]:
-    """Stub extension + one 4-neighbor extension in same bundle → ordered (cand_r, a, b) pairs."""
+) -> tuple[list[tuple[int, Coord, Coord]], dict[str, Any]]:
+    """Cardinal-only same-bundle pairs plus Tier C NDJSON telemetry (no diagonal pairs)."""
 
     bundle = _extension_bundle_component_ids(extensions, cells)
+    comp_sizes: dict[int, int] = {}
+    for _c, comp_id in bundle.items():
+        comp_sizes[comp_id] = comp_sizes.get(comp_id, 0) + 1
+
+    direct_blockers: set[Coord] = set()
     seen: set[tuple[int, Coord, Coord]] = set()
     out: list[tuple[int, Coord, Coord]] = []
+    partner_cells: set[Coord] = set()
+
+    def _is_ext_body(c: Coord) -> bool:
+        row = cells.get(c)
+        return row is not None and (layout_kind(row) or "") in EXTENSIONS
+
     for cand_r in rotation_order:
         stub = shape_miner_output_cell(miner, cand_r)
         if stub is None or stub not in extensions:
             continue
-        row_s = cells.get(stub)
-        if row_s is None or (layout_kind(row_s) or "") not in EXTENSIONS:
+        if not _is_ext_body(stub):
             continue
-        cid = bundle.get(stub)
-        if cid is None:
+        stub_cid = bundle.get(stub)
+        if stub_cid is None:
             continue
+        direct_blockers.add(stub)
         sx, sy = stub
         for nxt in sorted(neighbors4(sx, sy), key=lambda p: (p[1], p[0])):
-            if nxt not in extensions:
+            if nxt not in extensions or not _is_ext_body(nxt):
                 continue
-            row_n = cells.get(nxt)
-            if row_n is None or (layout_kind(row_n) or "") not in EXTENSIONS:
+            if bundle.get(nxt) != stub_cid:
                 continue
-            if bundle.get(nxt) != cid:
-                continue
+            partner_cells.add(nxt)
             a, b = (stub, nxt) if stub <= nxt else (nxt, stub)
             key = (cand_r, a, b)
             if key in seen:
                 continue
             seen.add(key)
             out.append((cand_r, a, b))
-    return out
+
+    blockers_sorted = sorted(direct_blockers, key=lambda p: (p[1], p[0]))
+    ext_component_size_by_blocker: dict[str, int] = {}
+    cardinal_neighbor_extension_count_by_blocker: dict[str, int] = {}
+    same_bundle_cardinal_neighbor_count_by_blocker: dict[str, int] = {}
+
+    for b in blockers_sorted:
+        k = _coord_key_blocker(b)
+        block_cid = bundle.get(b)
+        ext_component_size_by_blocker[k] = (
+            int(comp_sizes.get(block_cid, 0)) if block_cid is not None else 0
+        )
+        bx, by = b
+        card_ext = 0
+        same_card = 0
+        for nxt in neighbors4(bx, by):
+            if nxt not in extensions or not _is_ext_body(nxt):
+                continue
+            card_ext += 1
+            if block_cid is not None and bundle.get(nxt) == block_cid:
+                same_card += 1
+        cardinal_neighbor_extension_count_by_blocker[k] = card_ext
+        same_bundle_cardinal_neighbor_count_by_blocker[k] = same_card
+
+    pair_sample: list[list[list[int]]] = [
+        [[int(a[0]), int(a[1])], [int(b[0]), int(b[1])]]
+        for _r, a, b in out[:MAX_PASS12_TIER_C_PAIR_ATTEMPTS]
+    ]
+
+    no_pair: dict[str, Any] | None = None
+    if not out and blockers_sorted:
+        all_no_cardinal_sb = all(
+            same_bundle_cardinal_neighbor_count_by_blocker[_coord_key_blocker(b)] == 0
+            for b in blockers_sorted
+        )
+        any_diag_ext = False
+        for b in blockers_sorted:
+            bx, by = b
+            for nxt in _neighbors_diagonal4(bx, by):
+                if nxt in extensions and _is_ext_body(nxt):
+                    any_diag_ext = True
+                    break
+            if any_diag_ext:
+                break
+        blocker_has_only_diagonal_neighbors = bool(all_no_cardinal_sb and any_diag_ext)
+        no_pair = {
+            "stub_blocker_count": len(blockers_sorted),
+            "extension_component_size_by_blocker": dict(
+                sorted(ext_component_size_by_blocker.items(), key=lambda kv: kv[0])
+            ),
+            "cardinal_neighbor_extension_count_by_blocker": dict(
+                sorted(cardinal_neighbor_extension_count_by_blocker.items(), key=lambda kv: kv[0])
+            ),
+            "same_bundle_cardinal_neighbor_count_by_blocker": dict(
+                sorted(same_bundle_cardinal_neighbor_count_by_blocker.items(), key=lambda kv: kv[0])
+            ),
+            "blocker_has_only_diagonal_neighbors": blocker_has_only_diagonal_neighbors,
+        }
+
+    telemetry: dict[str, Any] = {
+        "tier_c_direct_stub_blocker_cells": [[int(c[0]), int(c[1])] for c in blockers_sorted],
+        "tier_c_same_bundle_cardinal_neighbor_cells": [
+            [int(c[0]), int(c[1])] for c in sorted(partner_cells, key=lambda p: (p[1], p[0]))
+        ],
+        "tier_c_candidate_pair_count": len(out),
+        "tier_c_candidate_pair_sample": pair_sample,
+        "tier_c_pair_generation_mode": "cardinal_same_bundle_only",
+        "tier_c_no_pair_diagnostic": no_pair,
+    }
+    return out, telemetry
 
 
 def _maybe_success_from_bfs_path(
@@ -887,6 +980,12 @@ def _empty_psr(nearest_hops: int | None) -> dict[str, Any]:
         "tier_c_success": False,
         "tier_c_skip_reason": None,
         "tier_c_failure_reason": None,
+        "tier_c_direct_stub_blocker_cells": [],
+        "tier_c_same_bundle_cardinal_neighbor_cells": [],
+        "tier_c_candidate_pair_count": 0,
+        "tier_c_candidate_pair_sample": [],
+        "tier_c_pair_generation_mode": None,
+        "tier_c_no_pair_diagnostic": None,
     }
 
 
@@ -1164,15 +1263,17 @@ def try_preserve_stub_route_recovery(
             tb = _tier_failed_label("tier_b", lp_b if isinstance(lp_b, dict) else None)
             tier_b_last_fail = tb or tier_b_last_fail
 
-    tier_c_specs = _tier_c_neighbor_pairs_same_bundle(
+    tier_c_specs, tier_c_telemetry = _tier_c_cardinal_pairs_and_telemetry(
         miner=miner,
         extensions=extensions,
         cells=cells,
         rotation_order=order,
     )
+    psr.update(tier_c_telemetry)
     if cells_carve_probe is None:
         psr["tier_c_skip_reason"] = "tier_c_skipped_no_one_cell_carve_probe_map"
         tier_c_specs = []
+        psr["tier_c_no_pair_diagnostic"] = None
     elif not tier_c_specs:
         psr["tier_c_skip_reason"] = "tier_c_skipped_no_candidate_pairs"
     if tier_c_specs:

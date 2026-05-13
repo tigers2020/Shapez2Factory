@@ -525,6 +525,22 @@ def finalize_pass2_route_probe_stats(stats_sink: dict[str, Any]) -> None:
         stats_sink["pass2_probe_goal_count"] = last
     else:
         stats_sink["pass2_probe_goal_count"] = int(stats_sink.get("pass2_probe_goal_count_max", 0))
+    lt = stats_sink.get("pass2_probe_last_goal_trace")
+    if isinstance(lt, dict) and "pass2_external_margin_diagnostic" not in lt:
+        bbox_raw = lt.get("mineable_asteroid_bbox")
+        bbox_ma = bbox_raw if isinstance(bbox_raw, dict) else None
+        diagnostic = _build_pass2_external_margin_diagnostic(
+            universe=set(),
+            margin=set(),
+            is_external=lambda _c: False,
+            bbox=bbox_ma,
+            is_external_shell_bbox=None,
+            is_external_shell_margin=None,
+        )
+        diagnostic["solver_summary_gap_fill"] = True
+        diagnostic["trace_universe_cell_count"] = lt.get("universe_cell_count")
+        diagnostic["trace_final_goal_count"] = lt.get("final_goal_count")
+        lt["pass2_external_margin_diagnostic"] = diagnostic
 
 
 def _pass2_stub_adjacent_baseline_trunk_reaches_external(

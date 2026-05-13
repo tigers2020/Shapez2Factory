@@ -635,6 +635,32 @@ def test_missing_stub_drop_detail_stub_trace_none_includes_extension_carve_defau
     assert "post_carve_rejected_reason" in psr
 
 
+def test_missing_stub_drop_detail_partial_psr_gets_extension_carve_defaults() -> None:
+    """부분 ``preserve_stub_recovery``만 있어도 extension carve 스키마가 채워진다."""
+
+    cells = {
+        (5, 5): {"role": "occupied", "layout_kind": "fluid_miner", "r": 0, "surface": "fluid"},
+    }
+    detail = pass12_merged_layout_seed._missing_stub_drop_detail_row(
+        miner=(5, 5),
+        cells=cells,
+        tk="fluid_pipe",
+        row_m={"r": 0, "surface": "fluid", "layout_kind": "fluid_miner", "role": "occupied"},
+        merged_seed_miner_count=2,
+        nhops=3,
+        ncell=(10, 10),
+        neighbor_stub_coords=(),
+        eff_r=0,
+        stub_route_trace_for_drop={
+            "preserve_stub_recovery": {"accepted": False, "attempted": True},
+        },
+    )
+    psr = detail["preserve_stub_recovery"]
+    assert psr["extension_carve_considered"] is False
+    assert psr["extension_carve_candidate_cells"] == []
+    assert psr["extension_carve_attempted"] is False
+
+
 @override_settings(SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True)
 def test_stub_route_recovery_new_transport_cap_reject() -> None:
     """Shortest path needs more new transport cells than cap → new_transport_cells bucket."""

@@ -126,6 +126,102 @@ def test_success_tier_appends_degradation_causes_from_pass12_signals() -> None:
     assert int(md.get("universe_scan_cell_count")) == 9
 
 
+def test_solver_summary_synthesizes_preserve_missing_stub_from_drop_details() -> None:
+    """drop_extractor_count와 상세 행이 있으면 ``preserve_missing_stub_summary``를 재합성한다."""
+
+    empty: list[dict[str, Any]] = []
+    routing_state: dict[str, Any] = {"hard_protected_corridors": []}
+    step4 = step4_routing_skipped_result(empty)
+    good = FinalValidationReport(
+        geometry_valid=True,
+        connectivity_valid=True,
+        disconnected_stub_count=0,
+        quarantined_unrouted_count=0,
+        provisional_placed_row_count=0,
+        orphan_transport_count=0,
+        overlap_violation_count=0,
+        missing_stub_count=0,
+        missing_extractor_rotation_count=0,
+        extractor_count=10,
+        extension_count=0,
+        transport_cell_count=0,
+        transport_connectivity_ok=True,
+    )
+    pass12_stats: dict[str, Any] = {
+        "pass12_merged_seed_miner_count": 10,
+        "pass12_preserved_bundle_extractor_cells": 10,
+        "pass12_preserved_missing_stub_drop_extractor_count": 2,
+        "pass12_preserved_missing_stub_drop_details": [
+            {
+                "preserve_drop_reason": "NO_MATCHING_STUB",
+                "recoverability_class": "NEAR_TRANSPORT",
+                "preserve_stub_recovery": {"rejected_reason_subtype": "occupied_neighbor_ring"},
+            },
+            {
+                "preserve_drop_reason": "NO_MATCHING_STUB",
+                "recoverability_class": "NEAR_TRANSPORT",
+                "preserve_stub_recovery": {},
+            },
+        ],
+        "pass12_preserved_recovery_success_count": 0,
+        "pass12_preserved_rotation_recovery_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_attempted_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_success_count": 0,
+        "pass12_preserved_recovered_stub_samples": [],
+        "pass12_preserved_unrecovered_stub_drop_samples": [],
+        "pass2_probe_empty_goal_set_count": 0,
+        "preserve_missing_stub_summary": {
+            "drop_count": 0,
+            "by_reason": {},
+            "by_recoverability": {},
+            "by_rejected_reason_subtype": {},
+            "local_repack_candidate_count": 0,
+        },
+    }
+    pass3_summary: dict[str, Any] = {
+        "after_internal_transport_count": 0,
+        "pass3_skipped": True,
+        "pass3_committed": False,
+    }
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize."
+        "_validate_final_mining_layout",
+        return_value=good,
+    ):
+        _, summary = build_final_solver_output(
+            run_id="pms-synth",
+            map_timeline=[{"mining_map": empty}, {"mining_map": empty}],
+            map_after_pass1=empty,
+            map_after_pass2=empty,
+            map_after_routing=empty,
+            map_final=empty,
+            pass12_status_fields={},
+            pass12_stats=pass12_stats,
+            pass12_phase="test",
+            pass12_skipped=True,
+            pre_counts=_empty_counts(),
+            post_pass2_counts=_empty_counts(),
+            step4_result=step4,
+            routing_state_summary=routing_state,
+            post_step4_counts=_empty_counts(),
+            unfinalized_placement_count=0,
+            pass3_summary=pass3_summary,
+            existing_layout_analysis=None,
+            step_hash_step4=None,
+            step_hash_pass3=None,
+            step_hash_p4=None,
+            solver_state_hash=None,
+            replay_events=[],
+            debug_location="tests.unit.shapez_asteroid.test_finalize_degradation_causes_success_tier",
+        )
+
+    pms = summary.get("preserve_missing_stub_summary") or {}
+    assert int(pms.get("drop_count") or 0) == 2
+    assert pms.get("by_reason", {}).get("NO_MATCHING_STUB") == 2
+    pq = summary.get("preserve_quality") or {}
+    assert int((pq.get("preserve_missing_stub_summary") or {}).get("drop_count") or 0) == 2
+
+
 def test_success_tier_degradation_causes_include_internal_transport_baseline_warning() -> None:
     """optimization_warnings의 알려진 토큰이 termination.degradation_causes에 합류한다."""
 

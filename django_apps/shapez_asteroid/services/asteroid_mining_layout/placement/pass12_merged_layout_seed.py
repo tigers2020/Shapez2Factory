@@ -273,7 +273,24 @@ def _missing_stub_drop_detail_row(
     else:
         detail_row["preserve_stub_recovery"] = copy.deepcopy(_empty_psr(nhops))
     _normalize_preserve_stub_recovery_drop_contract(detail_row)
+    _ensure_extension_carve_schema_on_preserve_stub_recovery(detail_row)
     return detail_row
+
+
+def _ensure_extension_carve_schema_on_preserve_stub_recovery(detail_row: dict[str, Any]) -> None:
+    """NDJSON: ``preserve_stub_recovery`` always exposes extension carve keys (telemetry only)."""
+
+    psr = detail_row.get("preserve_stub_recovery")
+    if not isinstance(psr, dict):
+        detail_row["preserve_stub_recovery"] = {}
+        psr = detail_row["preserve_stub_recovery"]
+    psr.setdefault("extension_carve_considered", False)
+    psr.setdefault("extension_carve_candidate_cells", [])
+    psr.setdefault("extension_carve_skip_reason", None)
+    psr.setdefault("extension_carve_attempted", False)
+    psr.setdefault("extension_carve_applied", None)
+    psr.setdefault("post_carve_rejected_reason", None)
+    psr.setdefault("carved_extension_cell", None)
 
 
 def _preserve_stub_route_drop_observability(

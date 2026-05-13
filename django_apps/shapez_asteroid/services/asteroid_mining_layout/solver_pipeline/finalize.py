@@ -35,6 +35,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED,
     SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_merged_layout_seed import (  # noqa: E501
+    _preserve_missing_stub_summary_from_details,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (  # noqa: E501
     placement_state_counts,
     unfinalized_placement_count_from_placement_commit_by_id,
@@ -265,6 +268,25 @@ def preserve_quality_bundle_from_pass12(
     score = preserved_ratio - dropped_ratio + 0.5 * recovered_ratio
     score_clamped = round(max(-1.0, min(1.0, score)), 6)
     return bundle, score_clamped
+
+
+def _synthesize_preserve_missing_stub_summary(
+    summary_fields: dict[str, Any],
+) -> None:
+    """Align preserve_missing_stub_summary with pass12_preserved_missing_stub_drop_details."""
+
+    drop_n = int(summary_fields.get("pass12_preserved_missing_stub_drop_extractor_count") or 0)
+    raw = summary_fields.get("pass12_preserved_missing_stub_drop_details")
+    if drop_n <= 0 or not isinstance(raw, list):
+        return
+    rows = [dict(d) for d in raw if isinstance(d, dict)]
+    if not rows:
+        return
+    agg = _preserve_missing_stub_summary_from_details(rows)
+    summary_fields["preserve_missing_stub_summary"] = agg
+    pq = summary_fields.get("preserve_quality")
+    if isinstance(pq, dict):
+        pq["preserve_missing_stub_summary"] = dict(agg)
 
 
 def _protected_corridor_counts_from_routing_state(
@@ -628,6 +650,7 @@ def build_final_solver_output(
     summary_fields["preserve_quality_score"] = _pqs
     summary_fields["preserve_quality_score_version"] = PRESERVE_QUALITY_SCORE_VERSION
     summary_fields["preserve_missing_stub_summary"] = _pq.get("preserve_missing_stub_summary", {})
+    _synthesize_preserve_missing_stub_summary(summary_fields)
     t_pass2 = _transport_cell_coords_from_map_rows(map_after_pass2)
     t_final = _transport_cell_coords_from_map_rows(map_final)
     summary_fields["existing_transport_reuse_ratio_final_vs_pass2"] = round(

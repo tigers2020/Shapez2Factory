@@ -9,6 +9,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_failure_category as _s4fc,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4RouteAttemptResult,
+    Step4StubRouteJob,
+)
 
 
 def test_classify_geometry_cage_neighbor_mix() -> None:
@@ -292,3 +296,126 @@ def test_t3_mixed_transport_contamination_goal_pipe_for_belt_route() -> None:
     )
     assert cat == _s4fc.Step4FailureCategory.mixed_transport_contamination.value
     assert conf == "medium"
+
+
+def _assert_classification_parity(
+    *,
+    legacy: tuple[str, str, dict[str, Any]],
+    from_attempt: tuple[str, str, dict[str, Any]],
+) -> None:
+    assert legacy[0] == from_attempt[0]
+    assert legacy[1] == from_attempt[1]
+    assert legacy[2] == from_attempt[2]
+
+
+def test_from_attempt_parity_merge_starvation_vs_legacy_compute() -> None:
+    stub: Coord = (1, 1)
+    near = [
+        {"cell": [0, 1], "reason": "ok"},
+        {"cell": [1, 0], "reason": "blocked"},
+        {"cell": [2, 1], "reason": "blocked"},
+        {"cell": [1, 2], "reason": "blocked"},
+    ]
+    stats = {
+        "stop_reason": "exhausted",
+        "frontier_stop_reason": "exhausted",
+        "expanded_nodes": 12,
+    }
+    attempt = Step4RouteAttemptResult.capture(None, dict(stats))
+    job = Step4StubRouteJob(
+        extractor_cell=(0, 0),
+        stub_cell=stub,
+        transport_kind="shape_belt",
+        placement_id="p-parity",
+    )
+    legacy = _s4fc.compute_step4_failure_classification(
+        stop_reason="exhausted",
+        last_error="no_route_exhausted",
+        nearest_transport_hops=3,
+        near=near,
+        goal_cells_count=3,
+        reachable_goal_count=0,
+        cells={},
+        want_role="belt",
+        stub_cell=stub,
+        hard_extras=frozenset(),
+        goal_cells=frozenset({(9, 9)}),
+        frontier_stop_reason="exhausted",
+        existing_trunk_present=True,
+        existing_trunk_goal_count=1,
+        reachable_existing_trunk_count=0,
+        reachable_exterior_margin_count=0,
+        search_budget_exhausted=False,
+        expanded_nodes=12,
+    )
+    from_a = _s4fc.compute_step4_failure_classification_from_attempt(
+        job=job,
+        attempt=attempt,
+        goal_set=None,
+        near=near,
+        cells={},
+        want_role="belt",
+        hard_extras=frozenset(),
+        goal_cells=frozenset({(9, 9)}),
+        nearest_transport_hops=3,
+        last_error="no_route_exhausted",
+        goal_cells_count=3,
+        reachable_goal_count=0,
+        reachable_existing_trunk_count=0,
+        reachable_exterior_margin_count=0,
+        existing_trunk_present=True,
+        existing_trunk_goal_count=1,
+        search_budget_exhausted=False,
+    )
+    _assert_classification_parity(legacy=legacy, from_attempt=from_a)
+
+
+def test_from_attempt_parity_stub_isolated_vs_legacy_compute() -> None:
+    stub: Coord = (0, 0)
+    near = [
+        {"cell": [0, 1], "reason": "blocked"},
+        {"cell": [1, 0], "reason": "blocked"},
+        {"cell": [-1, 0], "reason": "blocked"},
+        {"cell": [0, -1], "reason": "blocked"},
+    ]
+    stats = {"stop_reason": "exhausted"}
+    attempt = Step4RouteAttemptResult.capture(None, dict(stats))
+    job = Step4StubRouteJob(
+        extractor_cell=(0, 1),
+        stub_cell=stub,
+        transport_kind="shape_belt",
+        placement_id=None,
+    )
+    legacy = _s4fc.compute_step4_failure_classification(
+        stop_reason="exhausted",
+        last_error="no_route_exhausted",
+        nearest_transport_hops=2,
+        near=near,
+        goal_cells_count=1,
+        reachable_goal_count=0,
+        cells={},
+        want_role="belt",
+        stub_cell=stub,
+        hard_extras=frozenset(),
+        frontier_stop_reason="exhausted",
+    )
+    from_a = _s4fc.compute_step4_failure_classification_from_attempt(
+        job=job,
+        attempt=attempt,
+        goal_set=None,
+        near=near,
+        cells={},
+        want_role="belt",
+        hard_extras=frozenset(),
+        goal_cells=None,
+        nearest_transport_hops=2,
+        last_error="no_route_exhausted",
+        goal_cells_count=1,
+        reachable_goal_count=0,
+        reachable_existing_trunk_count=0,
+        reachable_exterior_margin_count=0,
+        existing_trunk_present=False,
+        existing_trunk_goal_count=0,
+        search_budget_exhausted=False,
+    )
+    _assert_classification_parity(legacy=legacy, from_attempt=from_a)

@@ -29,7 +29,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_dij
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
     Step4FailureClassification,
+    Step4GoalSet,
     Step4MutableState,
+    Step4RouteAttemptResult,
     Step4RouteJob,
     Step4RoutingContext,
     Step4SearchSnapshot,
@@ -612,6 +614,8 @@ class Step4RoutingFailure:
     placement_commit_state_at_route_attempt: str | None
     forced_last_error: str | None
     transport_component_probe: dict[str, Any] | None
+    route_attempt: Step4RouteAttemptResult | None = None
+    route_goal_set: Step4GoalSet | None = None
 
     def to_step4_route_failure_detail_dict(self) -> dict[str, Any]:
         """One failure row: keys match ``step4_route_failure_detail`` trace contract."""
@@ -784,26 +788,53 @@ class Step4RoutingFailure:
         if frontier_sr is None and stop is not None:
             frontier_sr = stop
 
-        cat, conf, evidence = _s4fc.compute_step4_failure_classification(
-            stop_reason=str(stop) if stop is not None else None,
-            last_error=last_error,
-            nearest_transport_hops=nhops,
-            near=near,
-            goal_cells_count=len(goal_cells),
-            reachable_goal_count=reachable_goal_count,
-            cells=cells,
-            want_role=want_role,
-            stub_cell=stub_cell,
-            hard_extras=hard_extras,
-            goal_cells=goal_cells,
-            frontier_stop_reason=str(frontier_sr) if frontier_sr is not None else None,
-            existing_trunk_present=ex_trunk,
-            existing_trunk_goal_count=len(trunk_cells),
-            reachable_existing_trunk_count=reachable_trunk_count,
-            reachable_exterior_margin_count=reachable_margin_count,
-            search_budget_exhausted=search_budget_exhausted_flag,
-            expanded_nodes=cand_nodes,
-        )
+        if self.route_attempt is not None:
+            stub_job = Step4StubRouteJob(
+                extractor_cell=extractor_cell,
+                stub_cell=stub_cell,
+                transport_kind=transport_kind,
+                placement_id=placement_id,
+            )
+            cat, conf, evidence = _s4fc.compute_step4_failure_classification_from_attempt(
+                job=stub_job,
+                attempt=self.route_attempt,
+                goal_set=self.route_goal_set,
+                near=near,
+                cells=cells,
+                want_role=want_role,
+                hard_extras=hard_extras,
+                goal_cells=goal_cells,
+                nearest_transport_hops=nhops,
+                last_error=last_error,
+                goal_cells_count=len(goal_cells),
+                reachable_goal_count=reachable_goal_count,
+                reachable_existing_trunk_count=reachable_trunk_count,
+                reachable_exterior_margin_count=reachable_margin_count,
+                existing_trunk_present=ex_trunk,
+                existing_trunk_goal_count=len(trunk_cells),
+                search_budget_exhausted=search_budget_exhausted_flag,
+            )
+        else:
+            cat, conf, evidence = _s4fc.compute_step4_failure_classification(
+                stop_reason=str(stop) if stop is not None else None,
+                last_error=last_error,
+                nearest_transport_hops=nhops,
+                near=near,
+                goal_cells_count=len(goal_cells),
+                reachable_goal_count=reachable_goal_count,
+                cells=cells,
+                want_role=want_role,
+                stub_cell=stub_cell,
+                hard_extras=hard_extras,
+                goal_cells=goal_cells,
+                frontier_stop_reason=str(frontier_sr) if frontier_sr is not None else None,
+                existing_trunk_present=ex_trunk,
+                existing_trunk_goal_count=len(trunk_cells),
+                reachable_existing_trunk_count=reachable_trunk_count,
+                reachable_exterior_margin_count=reachable_margin_count,
+                search_budget_exhausted=search_budget_exhausted_flag,
+                expanded_nodes=cand_nodes,
+            )
         prot_hard = _s4fc.protected_corridor_hard_involved(
             near, stub_cell=stub_cell, hard_extras=hard_extras
         )
@@ -905,6 +936,8 @@ def build_step4_route_failure_detail(
     placement_commit_state_at_route_attempt: str | None = None,
     forced_last_error: str | None = None,
     transport_component_probe: dict[str, Any] | None = None,
+    route_attempt: Step4RouteAttemptResult | None = None,
+    route_goal_set: Step4GoalSet | None = None,
 ) -> dict[str, Any]:
     """One failure row: keys match ``step4_route_failure_detail`` trace contract."""
 
@@ -931,6 +964,8 @@ def build_step4_route_failure_detail(
         placement_commit_state_at_route_attempt=placement_commit_state_at_route_attempt,
         forced_last_error=forced_last_error,
         transport_component_probe=transport_component_probe,
+        route_attempt=route_attempt,
+        route_goal_set=route_goal_set,
     ).to_step4_route_failure_detail_dict()
 
 
@@ -976,6 +1011,8 @@ def build_step4_route_failure_detail_ctx(
         placement_commit_state_at_route_attempt=pcs,
         forced_last_error=forced_last_error,
         transport_component_probe=transport_component_probe,
+        route_attempt=snap.attempt,
+        route_goal_set=snap.goal_set,
     )
 
 

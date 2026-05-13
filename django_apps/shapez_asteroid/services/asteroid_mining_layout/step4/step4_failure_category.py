@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+
+if TYPE_CHECKING:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+        step4_routing_models as _s4_rm,
+    )
 
 __all__ = [
     "Step4FailureCategory",
@@ -13,6 +18,7 @@ __all__ = [
     "build_step4_failure_classification_dict",
     "classify_step4_failure_category",
     "compute_step4_failure_classification",
+    "compute_step4_failure_classification_from_attempt",
     "protected_corridor_hard_involved",
     "stub_isolated_neighbor_geometry",
 ]
@@ -164,7 +170,7 @@ def _goal_cell_wrong_transport_role(
     return False
 
 
-def compute_step4_failure_classification(
+def _compute_step4_failure_classification_core(
     *,
     stop_reason: str | None,
     last_error: str,
@@ -186,8 +192,6 @@ def compute_step4_failure_classification(
     expanded_nodes: int | None = None,
     orphan_goal_excluded: bool = False,
 ) -> tuple[str, str, dict[str, Any]]:
-    """Return ``(category, confidence, evidence)`` — deterministic telemetry only."""
-
     last_err_s = str(last_error or "")
     exhausted = stop_reason == "exhausted" or last_err_s == "no_route_exhausted"
     budget = (
@@ -317,6 +321,113 @@ def compute_step4_failure_classification(
     cat = Step4FailureCategory.unknown.value
     conf = "low"
     return cat, conf, evidence_core
+
+
+def compute_step4_failure_classification(
+    *,
+    stop_reason: str | None,
+    last_error: str,
+    nearest_transport_hops: int | None,
+    near: list[dict[str, Any]],
+    goal_cells_count: int,
+    reachable_goal_count: int,
+    cells: dict[Coord, dict[str, Any]],
+    want_role: str,
+    stub_cell: Coord,
+    hard_extras: frozenset[Coord],
+    goal_cells: frozenset[Coord] | None = None,
+    frontier_stop_reason: str | None = None,
+    existing_trunk_present: bool = False,
+    existing_trunk_goal_count: int = 0,
+    reachable_existing_trunk_count: int = 0,
+    reachable_exterior_margin_count: int = 0,
+    search_budget_exhausted: bool = False,
+    expanded_nodes: int | None = None,
+    orphan_goal_excluded: bool = False,
+) -> tuple[str, str, dict[str, Any]]:
+    """Return ``(category, confidence, evidence)`` — deterministic telemetry only."""
+
+    return _compute_step4_failure_classification_core(
+        stop_reason=stop_reason,
+        last_error=last_error,
+        nearest_transport_hops=nearest_transport_hops,
+        near=near,
+        goal_cells_count=goal_cells_count,
+        reachable_goal_count=reachable_goal_count,
+        cells=cells,
+        want_role=want_role,
+        stub_cell=stub_cell,
+        hard_extras=hard_extras,
+        goal_cells=goal_cells,
+        frontier_stop_reason=frontier_stop_reason,
+        existing_trunk_present=existing_trunk_present,
+        existing_trunk_goal_count=existing_trunk_goal_count,
+        reachable_existing_trunk_count=reachable_existing_trunk_count,
+        reachable_exterior_margin_count=reachable_exterior_margin_count,
+        search_budget_exhausted=search_budget_exhausted,
+        expanded_nodes=expanded_nodes,
+        orphan_goal_excluded=orphan_goal_excluded,
+    )
+
+
+def compute_step4_failure_classification_from_attempt(
+    *,
+    job: _s4_rm.Step4StubRouteJob | _s4_rm.Step4RouteJob,
+    attempt: _s4_rm.Step4RouteAttemptResult,
+    goal_set: _s4_rm.Step4GoalSet | None,
+    near: list[dict[str, Any]],
+    cells: dict[Coord, dict[str, Any]],
+    want_role: str,
+    hard_extras: frozenset[Coord],
+    goal_cells: frozenset[Coord] | None,
+    nearest_transport_hops: int | None,
+    last_error: str,
+    goal_cells_count: int,
+    reachable_goal_count: int,
+    reachable_existing_trunk_count: int,
+    reachable_exterior_margin_count: int,
+    existing_trunk_present: bool,
+    existing_trunk_goal_count: int,
+    search_budget_exhausted: bool,
+    orphan_goal_excluded: bool = False,
+) -> tuple[str, str, dict[str, Any]]:
+    """Same taxonomy as ``compute_step4_failure_classification``; scalars from ``attempt``.
+
+    ``goal_set`` is reserved for later phases; do not branch classification on it here.
+    """
+
+    _ = goal_set
+    st = attempt.search_stats
+    stop = st.get("stop_reason")
+    frontier_sr = st.get("frontier_stop_reason")
+    if frontier_sr is None and stop is not None:
+        frontier_sr = stop
+    cand_nodes: int | None
+    if "expanded_nodes" in st:
+        cand_nodes = int(st["expanded_nodes"])
+    else:
+        cand_nodes = None
+    return _compute_step4_failure_classification_core(
+        stop_reason=str(stop) if stop is not None else None,
+        last_error=last_error,
+        nearest_transport_hops=nearest_transport_hops,
+        near=near,
+        goal_cells_count=goal_cells_count,
+        reachable_goal_count=reachable_goal_count,
+        cells=cells,
+        want_role=want_role,
+        stub_cell=job.stub_cell,
+        hard_extras=hard_extras,
+        goal_cells=goal_cells,
+        frontier_stop_reason=str(frontier_sr) if frontier_sr is not None else None,
+        existing_trunk_present=existing_trunk_present,
+        existing_trunk_goal_count=existing_trunk_goal_count,
+        reachable_existing_trunk_count=reachable_existing_trunk_count,
+        reachable_exterior_margin_count=reachable_exterior_margin_count,
+        search_budget_exhausted=search_budget_exhausted,
+        expanded_nodes=cand_nodes,
+        orphan_goal_excluded=orphan_goal_excluded,
+    )
 
 
 def classify_step4_failure_category(

@@ -19,6 +19,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_dij
     DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY,
     dijkstra_route_step4,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4RouteAttemptResult,
+)
 
 
 def _never_external(_c: Coord) -> bool:
@@ -29,9 +32,7 @@ def _assert_top_level_canonical_contract(detail: dict[str, Any]) -> None:
     """T1: every ``step4_route_failure_detail`` exposes flat canonical keys."""
 
     missing = [
-        k
-        for k in s4fd_mod.STEP4_ROUTE_FAILURE_DETAIL_TOP_LEVEL_CANONICAL_KEYS
-        if k not in detail
+        k for k in s4fd_mod.STEP4_ROUTE_FAILURE_DETAIL_TOP_LEVEL_CANONICAL_KEYS if k not in detail
     ]
     assert not missing, f"missing canonical keys: {missing}"
 
@@ -173,6 +174,47 @@ def test_build_step4_route_failure_detail_shape_matches_contract() -> None:
     js = json.dumps(detail["routing_failure_detail"], sort_keys=True)
     js2 = json.dumps(detail["routing_failure_detail"], sort_keys=True)
     assert js == js2
+
+
+def test_route_failure_detail_classification_same_with_route_attempt() -> None:
+    stub: Coord = (2, 2)
+    ext: Coord = (2, 3)
+    cells = {
+        stub: {"x": 2, "y": 2, "role": "belt", "surface": "shape"},
+        ext: {"x": 2, "y": 3, "role": "occupied", "layout_kind": "miner", "surface": "shape"},
+    }
+    blocked = frozenset({(3, 2), (1, 2), (2, 1)})
+    hard = frozenset({(3, 2)})
+    stats: dict[str, Any] = {"stop_reason": "exhausted", "expanded_nodes": 3, "heap_pops": 4}
+    common: dict[str, Any] = {
+        "placement_id": "p-test",
+        "extractor_cell": ext,
+        "stub_cell": stub,
+        "transport_kind": "shape_belt",
+        "want_role": "belt",
+        "blocked": blocked,
+        "hard_extras": hard,
+        "trunk_cells": frozenset(),
+        "goal_cells": frozenset({(10, 10)}),
+        "margin_cells": {(10, 10)},
+        "transport_now": set(),
+        "cells": cells,
+        "mineable": frozenset(),
+        "asteroid": frozenset(),
+        "is_external": _never_external,
+        "cheap_reuse_cells": None,
+        "search_stats": stats,
+    }
+    detail_legacy = s4fd_mod.build_step4_route_failure_detail(**common)
+    attempt = Step4RouteAttemptResult.capture(None, dict(stats))
+    detail_attempt = s4fd_mod.build_step4_route_failure_detail(**common, route_attempt=attempt)
+    assert detail_legacy["step4_failure_category"] == detail_attempt["step4_failure_category"]
+    leg_cls = detail_legacy["step4_failure_classification"]
+    att_cls = detail_attempt["step4_failure_classification"]
+    assert leg_cls == att_cls
+    assert detail_legacy["routing_failure_detail"]["step4_failure_category"] == (
+        detail_attempt["routing_failure_detail"]["step4_failure_category"]
+    )
 
 
 def test_routing_failure_detail_lifecycle_and_rolled_back_patch() -> None:

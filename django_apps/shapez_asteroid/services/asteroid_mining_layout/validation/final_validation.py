@@ -16,6 +16,10 @@ from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.mining_map_cell import (
+    MiningMapCellsByCoord,
+    MiningMapRows,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_probe import (
     probe_stub_to_external,
@@ -49,10 +53,10 @@ __all__ = [
 ]
 
 
-def _parse_cells(mining_map: list[dict[str, Any]]) -> dict[Coord, dict[str, Any]]:
+def _parse_cells(mining_map: MiningMapRows) -> MiningMapCellsByCoord:
     """Last row wins per coordinate."""
 
-    cells: dict[Coord, dict[str, Any]] = {}
+    cells: MiningMapCellsByCoord = {}
     for row in mining_map:
         x, y = row.get("x"), row.get("y")
         if not isinstance(x, int) or not isinstance(y, int):
@@ -70,7 +74,7 @@ def external_margin_from_bbox(width: int, height: int) -> int:
     return max(3, min(7, math.ceil(max(width, height) * 0.15)))
 
 
-def mineable_bbox(cells: dict[Coord, dict[str, Any]]) -> tuple[int, int, int, int] | None:
+def mineable_bbox(cells: MiningMapCellsByCoord) -> tuple[int, int, int, int] | None:
     """extractor/extension/inferred 셀 기준 validation bbox를 구한다 (§15 hard invariant).
 
     상세: documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md"""
@@ -92,13 +96,13 @@ def mineable_bbox(cells: dict[Coord, dict[str, Any]]) -> tuple[int, int, int, in
     return min(xs), max(xs), min(ys), max(ys)
 
 
-def cells_dict_from_mining_map(mining_map: list[dict[str, Any]]) -> dict[Coord, dict[str, Any]]:
+def cells_dict_from_mining_map(mining_map: MiningMapRows) -> MiningMapCellsByCoord:
     """mining_map rows를 좌표 keyed dict로 변환한다 (§15 final validation)."""
     return _parse_cells(mining_map)
 
 
 def external_predicate_for_mining_map(
-    mining_map: list[dict[str, Any]],
+    mining_map: MiningMapRows,
 ) -> Callable[[Coord], bool]:
     """mining_map bbox에서 external predicate를 생성한다 (§3.5 dynamic margin)."""
     cells = _parse_cells(mining_map)
@@ -128,7 +132,7 @@ def _external_predicate(bbox: tuple[int, int, int, int], margin: int) -> Callabl
 
 
 def _neighbor_transport_cells(
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     extractor_coord: Coord,
     want_kind: str,
 ) -> list[Coord]:
@@ -147,7 +151,7 @@ def _neighbor_transport_cells(
     return out
 
 
-def _transport_cell_set(cells: dict[Coord, dict[str, Any]]) -> set[Coord]:
+def _transport_cell_set(cells: MiningMapCellsByCoord) -> set[Coord]:
     """validation 대상 belt/pipe 좌표 집합을 만든다 (§15 hard invariant)."""
     s: set[Coord] = set()
     for c, row in cells.items():
@@ -185,7 +189,7 @@ def transport_cells_reaching_external(
 
 
 def orphan_transport_metrics_from_cells(
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
 ) -> dict[str, Any]:
     """Orphan belt/pipe counts + bounded samples (STEP9-equivalent graph; telemetry only)."""
 
@@ -225,7 +229,7 @@ def orphan_transport_metrics_from_cells(
     }
 
 
-def _multi_occupied_building_rows_per_cell(mining_map: list[dict[str, Any]]) -> int:
+def _multi_occupied_building_rows_per_cell(mining_map: MiningMapRows) -> int:
     """Count coords with >1 occupied extractor/extension row (duplicate body geometry)."""
 
     per: dict[Coord, int] = {}
@@ -243,7 +247,7 @@ def _multi_occupied_building_rows_per_cell(mining_map: list[dict[str, Any]]) -> 
     return sum(1 for n in per.values() if n > 1)
 
 
-def _overlap_violations_list(mining_map: list[dict[str, Any]]) -> int:
+def _overlap_violations_list(mining_map: MiningMapRows) -> int:
     """Building vs transport overlap + duplicate occupied extractor/extension rows (§15)."""
 
     by: dict[Coord, set[str]] = {}
@@ -266,8 +270,8 @@ def _overlap_violations_list(mining_map: list[dict[str, Any]]) -> int:
 
 
 def _fixed_output_stub_removed_count(
-    mining_map: list[dict[str, Any]],
-    cells: dict[Coord, dict[str, Any]],
+    mining_map: MiningMapRows,
+    cells: MiningMapCellsByCoord,
 ) -> int:
     """Rows asserting a fixed output stub cell where merged map lacks belt/pipe (§15)."""
 
@@ -293,7 +297,7 @@ def _fixed_output_stub_removed_count(
 
 
 def count_placement_fsm_rows_on_cells(
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
 ) -> tuple[int, int]:
     """Count rows carrying non-terminal placement FSM markers (dedupe keys per row)."""
 
@@ -314,7 +318,7 @@ def count_placement_fsm_rows_on_cells(
     return quarantined_unrouted_count, provisional_placed_row_count
 
 
-def validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValidationReport:
+def validate_final_mining_layout(mining_map: MiningMapRows) -> FinalValidationReport:
     """최종 mining layout의 geometry/connectivity hard invariant를 검증한다.
 
         Pass1/Pass2/STEP4/Pass3/Reclaim 이후 반환 직전 gate다 (§15).

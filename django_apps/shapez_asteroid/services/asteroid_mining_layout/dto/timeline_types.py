@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, TypedDict
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.mining_map_cell import (
+    MiningMapRows,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 
 
@@ -23,7 +26,7 @@ class SolverTimelineFrame(TypedDict, total=False):
 
     id: str
     summary: dict[str, Any]
-    mining_map: list[dict[str, Any]]
+    mining_map: MiningMapRows
     pass3: SolverTimelinePass3Payload
 
 

@@ -8,6 +8,12 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.mining_map_cell import (
+    MiningMapCellsByCoord,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.pass12_probe_types import (
+    Pass2GoalTraceWire,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_probe import (
     probe_stub_cheap_escape_to_external_detail,
@@ -222,7 +228,7 @@ class Pass2RouteProbePack:
 
     mineable: frozenset[Coord]
     asteroid: frozenset[Coord]
-    cells: dict[Coord, dict[str, Any]]
+    cells: MiningMapCellsByCoord
     existing_layout_analysis: dict[str, Any] | None
     stats_sink: dict[str, Any]
 
@@ -232,7 +238,7 @@ def build_pass2_step4_aligned_routing_goals(
     transport_kind: str,
     mineable: frozenset[Coord],
     asteroid: frozenset[Coord],
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     is_external: Callable[[Coord], bool],
     existing_layout_analysis: dict[str, Any] | None,
     transport_cells_before: frozenset[Coord],
@@ -248,9 +254,10 @@ def build_pass2_step4_aligned_routing_goals(
     dict. Like ``step4_merge_routing`` per-job goals, ``raw_goal ∪ trunk_reaching(probe)`` is used
     (trunk slice is a no-op for first-route void assist when those cells are already transport).
 
-    When that union is empty but ``transport_cells_before`` is not (island: no exterior margin,
-    no trunk-to-external), goals fall back to ``transport_cells_before`` so Pass2's bounded
-    step_cost-legal precheck can ask whether the stub reaches any pre-existing transport cell.
+    Orphan / non-exterior-reachable prior transport is never promoted into ``full_goal``; only
+    exterior-reachable prior same-kind trunk (``existing_reaching``) feeds committed goals. If the
+    union is empty, ``full_goal`` stays empty and Pass2 bundle commit rejects island-only prior
+    transport before uncertain followup can mask it.
     """
 
     margin = s4_goal.exterior_margin_cells(
@@ -285,15 +292,11 @@ def build_pass2_step4_aligned_routing_goals(
         set(transport_cells_probe), set(blocked_for_probe), is_external
     )
     full_goal = frozenset(set(raw_goal) | trunk_now)
-    fallback_goal_source: str | None = None
-    if not full_goal and transport_cells_before:
-        full_goal = frozenset(transport_cells_before)
-        fallback_goal_source = "transport_cells_before_island_fallback"
     seeds_for_kind = set(trunk_seed_by_kind.get(transport_kind, ()))
     universe_for_probe = (
         set(cells.keys()) | set(mineable) | set(asteroid) | set(transport_cells_probe)
     )
-    trace: dict[str, Any] = {
+    trace: Pass2GoalTraceWire = {
         "goal_set_kind": goal_set_kind,
         "exterior_margin_cell_count": len(margin),
         "trunk_seed_candidate_count": len(seeds_for_kind),
@@ -302,6 +305,8 @@ def build_pass2_step4_aligned_routing_goals(
         "raw_goal_count": len(raw_goal),
         "trunk_reaching_probe_count": len(trunk_now),
         "final_goal_count": len(full_goal),
+        "transport_cells_before_count": len(transport_cells_before),
+        "external_reachable_transport_before_count": len(existing_reaching),
         "external_margin_bbox_source": "universe_keys_mineable_asteroid_probe_transport_union",
         "universe_cell_count": len(universe_for_probe),
         "mineable_cell_count": len(mineable),
@@ -309,9 +314,6 @@ def build_pass2_step4_aligned_routing_goals(
         "mineable_asteroid_bbox": _mineable_asteroid_bbox(mineable, asteroid),
         "rejected_reason": None,
     }
-    if fallback_goal_source is not None:
-        trace["fallback_goal_source"] = fallback_goal_source
-        trace["fallback_goal_count"] = len(full_goal)
     if not full_goal:
         if (
             goal_set_kind == "first_route"
@@ -326,7 +328,7 @@ def build_pass2_step4_aligned_routing_goals(
             trace["rejected_reason"] = str(s4frd.Step4RouteFailureReason.empty_goal_set)
     if stats_sink is not None:
         stats_sink["pass2_probe_last_goal_trace"] = dict(trace)
-    return full_goal, goal_set_kind, len(full_goal), trace
+    return full_goal, goal_set_kind, len(full_goal), dict(trace)
 
 
 def _pass2_stats_touch_goal_eval(

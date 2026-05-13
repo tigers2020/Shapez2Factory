@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.existing_layout_types import (
+    ExistingLayoutAnalysisWire,
+    ExistingLayoutSolverHintsWire,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 
 
@@ -20,7 +24,7 @@ def _coord_pairs_from_json_list(raw: Any) -> set[Coord]:
 
 
 def pass12_transport_related_block_extra_cells(
-    existing_layout_analysis: dict[str, Any] | None,
+    existing_layout_analysis: ExistingLayoutAnalysisWire | dict[str, Any] | None,
 ) -> frozenset[Coord]:
     """Optional coords (not belt/pipe on ``working_map``) treated as transport-block for metrics.
 
@@ -42,7 +46,9 @@ def pass12_transport_related_block_extra_cells(
     return frozenset(cells)
 
 
-def solver_hint_coord_union(solver_hints: dict[str, Any]) -> frozenset[Coord]:
+def solver_hint_coord_union(
+    solver_hints: ExistingLayoutSolverHintsWire | dict[str, Any],
+) -> frozenset[Coord]:
     """Parse trunk/cleanup pair lists from §E ``solver_hints``."""
 
     pairs: set[Coord] = set()
@@ -59,7 +65,7 @@ def solver_hint_coord_union(solver_hints: dict[str, Any]) -> frozenset[Coord]:
 
 
 def pass12_existing_layout_barrier_meta(
-    existing_layout_analysis: dict[str, Any] | None,
+    existing_layout_analysis: ExistingLayoutAnalysisWire | dict[str, Any] | None,
     *,
     mineable: frozenset[Coord],
 ) -> tuple[frozenset[Coord], dict[str, Any]]:

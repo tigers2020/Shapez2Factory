@@ -339,8 +339,8 @@ def _merge_pass1_into_rows(
             tr["placement_id"] = pid_by_cell[(x, y)]
         cells[(x, y)] = tr
     for c in raw_transport - stamp_set:
-        row = cells.get(c)
-        if row is None or row.get("role") != transport_role:
+        transport_row = cells.get(c)
+        if transport_row is None or transport_row.get("role") != transport_role:
             continue
         if c in mineable and c in final_cells:
             cells[c] = dict(final_cells[c])

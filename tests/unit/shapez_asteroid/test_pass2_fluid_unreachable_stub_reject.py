@@ -86,10 +86,10 @@ def test_pass2_rejects_fluid_stub_when_no_step4_goal_reachable() -> None:
 
 
 def test_pass2_fluid_reachable_stub_still_commits_provisional() -> None:
-    """Same spine as provisional belt test: fluid stub can BFS-reach trunk/margin goals."""
+    """Fluid stub reaches exterior-touching same-kind trunk (canonical goals, no island ring)."""
 
     sink = p12_rp.new_pass2_route_probe_stats_sink()
-    mineable = frozenset({(2, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0)})
+    mineable = frozenset({(2, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0), (11, 0)})
     cells = {c: _fluid_cell(c[0], c[1]) for c in mineable}
     pack = p12_bc.Pass2RouteProbePack(
         mineable=mineable,
@@ -99,7 +99,7 @@ def test_pass2_fluid_reachable_stub_still_commits_provisional() -> None:
         stats_sink=sink,
     )
     scratch = p12_bc.Pass12LayoutScratch(transport_kind="fluid_pipe")
-    scratch.transport_cells = {(6, 0), (7, 0), (8, 0), (9, 0), (10, 0)}
+    scratch.transport_cells = {(6, 0), (7, 0), (8, 0), (9, 0), (10, 0), (11, 0)}
     scratch.blocked_cells = {(2, 0)}
     cand = p12_bc.Pass12BundleCandidate(
         blocked_cells=frozenset({(2, 0)}),
@@ -112,7 +112,7 @@ def test_pass2_fluid_reachable_stub_still_commits_provisional() -> None:
     )
 
     def is_ext(c: Coord) -> bool:
-        return c[0] >= 100
+        return c == (12, 0)
 
     assert (
         p12_bc.try_commit_pass2_bundle(
@@ -128,7 +128,7 @@ def test_pass2_fluid_reachable_stub_still_commits_provisional() -> None:
 
 
 def test_pass2_rejects_existing_layout_island_fallback_only_fluid_stub() -> None:
-    """기존 layout 해석이 있으면 fallback transport island만으로 Pass2를 통과시키지 않는다."""
+    """ELA가 있어도 외부 도달 trunk/margin이 없으면 island prior만으로 Pass2 commit 불가."""
 
     sink = p12_rp.new_pass2_route_probe_stats_sink()
     mineable = frozenset({(2, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0)})
@@ -169,10 +169,58 @@ def test_pass2_rejects_existing_layout_island_fallback_only_fluid_stub() -> None
         is False
     )
     gtrace = sink.get("pass2_probe_last_goal_trace") or {}
-    assert gtrace.get("fallback_goal_source") == "transport_cells_before_island_fallback"
+    assert int(gtrace.get("transport_cells_before_count") or 0) > 0
+    assert int(gtrace.get("final_goal_count") or 0) == 0
+    assert "fallback_goal_source" not in gtrace
     assert int(sink.get("pass2_reject_transport_cells_before_island_fallback_count", 0)) == 1
     assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 1
     assert scratch.placement_records == {}
+
+
+def test_pass2_rejects_island_prior_fluid_without_existing_layout_analysis() -> None:
+    """Island-only prior transport rejects even when ``existing_layout_analysis`` is absent."""
+
+    sink = p12_rp.new_pass2_route_probe_stats_sink()
+    mineable = frozenset({(2, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0)})
+    cells = {c: _fluid_cell(c[0], c[1]) for c in mineable}
+    pack = p12_bc.Pass2RouteProbePack(
+        mineable=mineable,
+        asteroid=frozenset(),
+        cells=cells,
+        existing_layout_analysis=None,
+        stats_sink=sink,
+    )
+    scratch = p12_bc.Pass12LayoutScratch(transport_kind="fluid_pipe")
+    scratch.transport_cells = {(6, 0), (7, 0), (8, 0), (9, 0), (10, 0)}
+    scratch.blocked_cells = {(2, 0)}
+    cand = p12_bc.Pass12BundleCandidate(
+        blocked_cells=frozenset({(2, 0)}),
+        new_transport=frozenset({(5, 0)}),
+        stub_cell=(5, 0),
+        extractor_cell=(2, 0),
+        extension_facings=frozenset(),
+        extractor_output_dir=(1, 0),
+        placement_pass="pass2",
+    )
+
+    def is_ext(c: Coord) -> bool:
+        return c[0] >= 100
+
+    assert (
+        p12_bc.try_commit_pass2_bundle(
+            scratch,
+            cand,
+            is_external=is_ext,
+            pass2_route_probe_pack=pack,
+        )
+        is False
+    )
+    gtrace = sink.get("pass2_probe_last_goal_trace") or {}
+    assert int(gtrace.get("transport_cells_before_count") or 0) > 0
+    assert int(gtrace.get("final_goal_count") or 0) == 0
+    assert "fallback_goal_source" not in gtrace
+    assert int(sink.get("pass2_reject_transport_cells_before_island_fallback_count", 0)) == 1
+    assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 1
 
 
 def test_fluid_regression_fixture_step4_failures_and_validation_stay_clean() -> None:
@@ -454,6 +502,7 @@ def test_pass2_rejects_disjoint_when_is_external_never_true_island_goal_fallback
     )
     assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 1
     gtrace = sink.get("pass2_probe_last_goal_trace") or {}
-    assert gtrace.get("fallback_goal_source") == "transport_cells_before_island_fallback"
+    assert int(gtrace.get("transport_cells_before_count") or 0) > 0
+    assert "fallback_goal_source" not in gtrace
     assert "pass2_last_transport_component_gate" not in sink
     assert scratch.placement_records == {}

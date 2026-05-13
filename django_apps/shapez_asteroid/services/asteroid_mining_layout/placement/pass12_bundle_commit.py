@@ -206,24 +206,27 @@ def _bump_unreachable_stub_flavor(sink: dict[str, Any], transport_kind: str) -> 
         _bump_stat_sink(sink, "pass2_reject_step4_unreachable_stub_count")
 
 
-def _is_noncanonical_island_fallback(
-    goal_trace: dict[str, Any],
-    *,
-    existing_layout_analysis: dict[str, Any] | None,
-) -> bool:
-    if not existing_layout_analysis:
+def _is_pass2_island_only_prior_transport_context(goal_trace: dict[str, Any]) -> bool:
+    """True when prior scratch had transport but STEP4-aligned canonical goals are all empty.
+
+    Rejects regardless of ``existing_layout_analysis`` (orphan island ring must not be probed as
+    goals). ``transport_cells_before_count`` is emitted by
+    ``build_pass2_step4_aligned_routing_goals``.
+    """
+
+    prior = int(goal_trace.get("transport_cells_before_count") or 0)
+    if prior <= 0:
         return False
-    if goal_trace.get("fallback_goal_source") != "transport_cells_before_island_fallback":
-        return False
-    # 기존 layout이 있는 run에서는 fallback transport island만으로 STEP4 목표를 대신하지 않는다.
     return (
-        int(goal_trace.get("exterior_margin_cell_count") or 0) == 0
+        int(goal_trace.get("final_goal_count") or 0) == 0
+        and int(goal_trace.get("existing_trunk_goal_count") or 0) == 0
+        and int(goal_trace.get("exterior_margin_cell_count") or 0) == 0
         and int(goal_trace.get("raw_goal_count") or 0) == 0
         and int(goal_trace.get("trunk_reaching_probe_count") or 0) == 0
     )
 
 
-def _reject_noncanonical_island_fallback(
+def _reject_island_only_prior_transport(
     *,
     state: Pass12LayoutScratch,
     candidate: Pass12BundleCandidate,
@@ -233,6 +236,7 @@ def _reject_noncanonical_island_fallback(
     goal_trace: dict[str, Any],
 ) -> None:
     payload: dict[str, Any] = dict(bundle_hint or {})
+    # Stat key name kept for telemetry continuity (no longer tied to removed island goal fallback).
     payload["reason"] = "pass2_reject_transport_cells_before_island_fallback"
     payload["reject_reason"] = "step4_unreachable_component"
     payload["stub_cell"] = candidate.stub_cell
@@ -388,11 +392,8 @@ def _route_probe_after_stub_present(
             blocked_for_probe=blocked_after,
             stats_sink=pack.stats_sink,
         )
-        if _is_noncanonical_island_fallback(
-            goal_trace,
-            existing_layout_analysis=pack.existing_layout_analysis,
-        ):
-            _reject_noncanonical_island_fallback(
+        if _is_pass2_island_only_prior_transport_context(goal_trace):
+            _reject_island_only_prior_transport(
                 state=state,
                 candidate=candidate,
                 trace_location=trace_location,

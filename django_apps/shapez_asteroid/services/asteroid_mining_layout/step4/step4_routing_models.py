@@ -14,6 +14,9 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.mining_map_cell import (
+    MiningMapCellsByCoord,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
@@ -151,7 +154,7 @@ class Step4RoutingContext:
     mineable: frozenset[Coord]
     asteroid: frozenset[Coord]
     is_external: Callable[[Coord], bool]
-    final_cells: dict[Coord, dict[str, Any]]
+    final_cells: MiningMapCellsByCoord
     hard_extras: frozenset[Coord]
     existing_layout_analysis: dict[str, Any] | None
     surface: str
@@ -180,9 +183,9 @@ class Step4TrunkLoadRuntime:
 class Step4MutableState:
     """STEP4 working set: live cells, placement records, routing outcomes, telemetry."""
 
-    cells: dict[Coord, dict[str, Any]]
+    cells: MiningMapCellsByCoord
     work_records: dict[str, PlacementCommitRecord]
-    baseline_cells: dict[Coord, dict[str, Any]]
+    baseline_cells: MiningMapCellsByCoord
     baseline_wr: dict[str, PlacementCommitRecord]
     jobs: list[tuple[Coord, Coord, str, str | None]]
     initial_trunk: frozenset[Coord]

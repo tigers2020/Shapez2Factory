@@ -6,9 +6,15 @@ from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any
+from typing import Any, cast
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.mining_map_cell import (
+    MiningMapCellsByCoord,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.step4_failure_types import (
+    Step4RoutingFailureDetailWire,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_failure_category as _s4fc,
@@ -141,7 +147,7 @@ def _neighbor_block_reason(
     want_role: str,
     blocked: frozenset[Coord],
     hard_extras: frozenset[Coord],
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     mineable: frozenset[Coord],
     asteroid: frozenset[Coord],
     is_external: Callable[[Coord], bool],
@@ -171,7 +177,7 @@ def _nearest_same_kind_transport_hops(
     stub_cell: Coord,
     *,
     want_role: str,
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     blocked: frozenset[Coord],
     mineable: frozenset[Coord],
     asteroid: frozenset[Coord],
@@ -222,7 +228,7 @@ def _bfs_reachable_from_stub(
     *,
     want_role: str,
     blocked: frozenset[Coord],
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     mineable: frozenset[Coord],
     asteroid: frozenset[Coord],
     is_external: Callable[[Coord], bool],
@@ -323,7 +329,7 @@ def build_routing_failure_detail_dict(
     dijkstra_reachable_trunk_goal_count: int | None = None,
     dijkstra_reachable_margin_goal_count: int | None = None,
     placement_commit_state_at_route_attempt: str | None = None,
-) -> dict[str, Any]:
+) -> Step4RoutingFailureDetailWire:
     """Normalized STEP4 routing failure telemetry (instrumentation-only contract)."""
 
     tk_out: str | None
@@ -375,7 +381,7 @@ def build_routing_failure_detail_dict(
             else placement_commit_state
         ),
     }
-    return {k: values[k] for k in ROUTING_FAILURE_DETAIL_KEYS}
+    return cast(Step4RoutingFailureDetailWire, {k: values[k] for k in ROUTING_FAILURE_DETAIL_KEYS})
 
 
 def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]) -> None:
@@ -636,7 +642,7 @@ class Step4RoutingFailure:
     goal_cells: frozenset[Coord]
     margin_cells: set[Coord]
     transport_now: set[Coord]
-    cells: dict[Coord, dict[str, Any]]
+    cells: MiningMapCellsByCoord
     mineable: frozenset[Coord]
     asteroid: frozenset[Coord]
     is_external: Callable[[Coord], bool]
@@ -962,7 +968,7 @@ def build_step4_route_failure_detail(
     goal_cells: frozenset[Coord],
     margin_cells: set[Coord],
     transport_now: set[Coord],
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     mineable: frozenset[Coord],
     asteroid: frozenset[Coord],
     is_external: Callable[[Coord], bool],
@@ -1085,7 +1091,7 @@ def pass2_provisional_stub_step4_stub_isolated_geometry(
     stub_cell: Coord,
     want_role: str,
     transport_kind: str,
-    cells_base: dict[Coord, dict[str, Any]],
+    cells_base: MiningMapCellsByCoord,
     transport_probe: frozenset[Coord],
     blocked_probe: frozenset[Coord],
     mineable: frozenset[Coord],
@@ -1098,7 +1104,7 @@ def pass2_provisional_stub_step4_stub_isolated_geometry(
     ``_neighbor_block_reason`` with ``hard_extras`` empty (Pass2 pack has no corridor extras).
     """
 
-    cells: dict[Coord, dict[str, Any]] = {k: dict(v) for k, v in cells_base.items()}
+    cells: MiningMapCellsByCoord = {k: dict(v) for k, v in cells_base.items()}
     for c in transport_probe:
         if c not in cells:
             cells[c] = _pass12_probe_transport_materialization_row(c, transport_kind=transport_kind)

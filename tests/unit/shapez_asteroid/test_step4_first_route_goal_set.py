@@ -187,8 +187,8 @@ def test_transport_kind_separation_trunk_seed_hints() -> None:
     assert tr_f["same_kind_trunk_seed_count"] == 0
 
 
-def test_island_empty_margin_fallback_goals_are_transport_cells_before() -> None:
-    """No universe cell has an external 4-neighbor → margin empty; use prior transport as goals."""
+def test_island_empty_margin_does_not_promote_prior_transport_as_goals() -> None:
+    """No exterior margin nor external-reachable prior trunk: empty goals (no island fallback)."""
 
     mineable = frozenset({(1, 0), (2, 0)})
     asteroid: frozenset[Coord] = frozenset()
@@ -222,13 +222,15 @@ def test_island_empty_margin_fallback_goals_are_transport_cells_before() -> None
         blocked_for_probe=frozenset(),
     )
     assert kind == "first_route"
-    assert goals == before
-    assert n == 1
+    assert goals == frozenset()
+    assert n == 0
     assert trace["exterior_margin_cell_count"] == 0
-    assert trace["final_goal_count"] == n
-    assert trace["fallback_goal_source"] == "transport_cells_before_island_fallback"
-    assert trace["fallback_goal_count"] == n
-    assert trace["rejected_reason"] is None
+    assert trace["final_goal_count"] == 0
+    assert trace["transport_cells_before_count"] == 1
+    assert trace["external_reachable_transport_before_count"] == 0
+    assert "fallback_goal_source" not in trace
+    exp_margin = str(s4frd.Step4RouteFailureReason.no_exterior_margin_for_probe)
+    assert trace["rejected_reason"] == exp_margin
 
 
 def test_finalize_prefers_last_probe_goal_count_over_max() -> None:

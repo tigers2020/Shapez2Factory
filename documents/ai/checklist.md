@@ -450,3 +450,11 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 - [x] 플랜: [`documents/plans/plan_pass2_island_fallback_gate_2026-05-13.md`](../plans/plan_pass2_island_fallback_gate_2026-05-13.md)
 - [x] 범위: Pass2 `transport_cells_before_island_fallback` 허용 조건 축소, STEP4 `step4_reentry_index` telemetry 추가
 - [x] 검증: 영향 단위 테스트, 관련 STEP4/Pass2 테스트, ruff, black --check, mypy 실행
+
+### 2026-05-13 asteroid_mining_layout DTO 인벤토리
+
+- [x] 작업 유형: `solver` / `refactor` / 문서 승인용 인벤토리
+- [x] 문서: [`plans/mining_layout_dto_inventory_2026-05-13.md`](plans/mining_layout_dto_inventory_2026-05-13.md)
+- [x] 범위: `03_data_schema_dto.md` E절과 `existing_layout_analysis`, STEP4 실패 상세, timeline/replay, Pass12 probe의 느슨한 `dict[str, Any]` 경계를 대조
+- [x] 구현: 공유 mining-map row 타입, ExistingLayout wire 타입, STEP4 failure detail wire 타입, Pass12 probe stats/trace 타입 추가
+- [x] 적용: final validation / existing layout / STEP4 detail / Pass12 probe의 읽기 경계 타입 힌트 적용. public dict 반환 계약과 serialization key order는 유지.

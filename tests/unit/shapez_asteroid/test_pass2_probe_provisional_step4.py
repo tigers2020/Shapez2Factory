@@ -108,7 +108,7 @@ def test_try_commit_pass2_rejects_uncertain_when_step4_stub_isolated_geometry_be
         p12_bc.try_commit_pass2_bundle(
             scratch,
             cand,
-            is_external=lambda c: c[0] >= 100,
+            is_external=lambda c: c == (11, 5),
             pass2_route_probe_pack=pack,
         )
         is False
@@ -168,7 +168,7 @@ def test_try_commit_pass2_rejects_uncertain_when_step4_stub_isolated_geometry_fl
         p12_bc.try_commit_pass2_bundle(
             scratch,
             cand,
-            is_external=lambda c: c[0] >= 100,
+            is_external=lambda c: c == (11, 5),
             pass2_route_probe_pack=pack,
         )
         is False
@@ -206,11 +206,11 @@ def test_pass2_probe_stub_isolated_geometry_helper_matches_four_blocked_neighbor
     )
 
 
-def test_try_commit_pass2_provisional_when_probe_pack_and_no_transport_route_yet() -> None:
-    """With Pass2RouteProbePack, no cheap-escape envelope: uncertain → still commit."""
+def test_try_commit_pass2_succeeds_when_probe_pack_and_exterior_reachable_baseline() -> None:
+    """Pass2RouteProbePack + exterior-reachable baseline: commit succeeds (replaces island path)."""
 
     sink = p12_rp.new_pass2_route_probe_stats_sink()
-    mineable = frozenset({(2, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0)})
+    mineable = frozenset({(2, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0), (11, 0)})
     asteroid: frozenset[Coord] = frozenset()
     cells = _cells_for_mineable(mineable)
     pack = p12_bc.Pass2RouteProbePack(
@@ -221,7 +221,7 @@ def test_try_commit_pass2_provisional_when_probe_pack_and_no_transport_route_yet
         stats_sink=sink,
     )
     scratch = p12_bc.Pass12LayoutScratch(transport_kind="shape_belt")
-    scratch.transport_cells = {(6, 0), (7, 0), (8, 0), (9, 0), (10, 0)}
+    scratch.transport_cells = {(6, 0), (7, 0), (8, 0), (9, 0), (10, 0), (11, 0)}
     scratch.blocked_cells = {(2, 0)}
     cand = p12_bc.Pass12BundleCandidate(
         blocked_cells=frozenset({(2, 0)}),
@@ -236,14 +236,13 @@ def test_try_commit_pass2_provisional_when_probe_pack_and_no_transport_route_yet
         p12_bc.try_commit_pass2_bundle(
             scratch,
             cand,
-            is_external=lambda c: c[0] >= 100,
+            is_external=lambda c: c == (12, 0),
             pass2_route_probe_pack=pack,
         )
         is True
     )
     p12_rp.finalize_pass2_route_probe_stats(sink)
-    assert sink["pass2_route_uncertain_count"] >= 1
-    assert sink["pass2_provisional_unrouted_count"] == 1
+    assert int(sink.get("pass2_probe_goal_eval_count", 0)) >= 1
     assert scratch.placement_records
 
 

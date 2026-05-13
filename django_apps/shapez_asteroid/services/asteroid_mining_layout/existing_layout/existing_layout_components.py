@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.mining_map_cell import (
+    MiningMapCellsByCoord,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     stub_row_materialized_for_want_role,
@@ -13,7 +15,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 
 
 def role_transport_cells(
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     want_role: str,
 ) -> set[Coord]:
     """Same-kind transport coords for component / STEP 0.5 analysis.
@@ -67,7 +69,7 @@ def bbox_of_cells(cs: frozenset[Coord]) -> tuple[int, int, int, int]:
 
 
 def neighbor_transport_cells(
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     extractor_coord: Coord,
     want_kind: str,
 ) -> list[Coord]:

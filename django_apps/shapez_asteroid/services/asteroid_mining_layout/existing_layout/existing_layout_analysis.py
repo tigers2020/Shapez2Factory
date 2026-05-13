@@ -7,9 +7,19 @@ Does not mutate maps or change Pass3 / reclaim policy.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.existing_layout_types import (
+    ExistingLayoutAnalysisWire,
+    ExistingLayoutIssueWire,
+    ExistingTransportAnalysisWire,
+    ExistingTransportComponentWire,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.mining_map_cell import (
+    MiningMapCellsByCoord,
+    MiningMapRows,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.existing_layout_components import (  # noqa: E501
     bbox_of_cells,
     cell_component_maps,
@@ -53,7 +63,7 @@ IssueCode = Literal[
 
 
 def _infer_source_kind(
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     *,
     has_belt: bool,
     has_pipe: bool,
@@ -101,9 +111,9 @@ def _infer_source_kind(
 def _analyze_one_transport_kind(
     kind_key: Literal["shape_belt", "fluid_pipe"],
     role: str,
-    cells: dict[Coord, dict[str, Any]],
+    cells: MiningMapCellsByCoord,
     reaching: set[Coord],
-) -> dict[str, Any]:
+) -> ExistingTransportAnalysisWire:
     tset = role_transport_cells(cells, role)
     comps = components_for_role(tset)
     comp_reaches = [bool(c & reaching) for c in comps]
@@ -132,7 +142,7 @@ def _analyze_one_transport_kind(
         single_cell_coords.append([p[0], p[1]])
     single_cell_coords.sort(key=lambda q: (q[1], q[0]))
 
-    summaries: list[dict[str, Any]] = []
+    summaries: list[ExistingTransportComponentWire] = []
     for i, c in enumerate(comps):
         x0, x1, y0, y1 = bbox_of_cells(c)
         touches = comp_reaches[i]
@@ -167,7 +177,7 @@ def _analyze_one_transport_kind(
 
 
 def analyze_existing_layout_from_mining_map(
-    mining_map: list[dict[str, Any]],
+    mining_map: MiningMapRows,
     *,
     is_external: Callable[[Coord], bool] | None = None,
 ) -> dict[str, Any]:
@@ -185,7 +195,7 @@ def analyze_existing_layout_from_mining_map(
     blocked = blocked_cells(cells)
     reaching = transport_cells_reaching_external(all_transport, blocked, ext_pred)
 
-    transport_blocks: dict[str, Any] = {}
+    transport_blocks: dict[str, ExistingTransportAnalysisWire] = {}
     if has_belt:
         transport_blocks["shape_belt"] = _analyze_one_transport_kind(
             "shape_belt", "belt", cells, reaching
@@ -195,6 +205,7 @@ def analyze_existing_layout_from_mining_map(
             "fluid_pipe", "pipe", cells, reaching
         )
 
+    transport_primary: ExistingTransportAnalysisWire
     if has_belt and not has_pipe:
         transport_primary = transport_blocks["shape_belt"]
     elif has_pipe and not has_belt:
@@ -294,7 +305,7 @@ def analyze_existing_layout_from_mining_map(
         {"x_min": bbox[0], "x_max": bbox[1], "y_min": bbox[2], "y_max": bbox[3]} if bbox else None
     )
 
-    issues: list[dict[str, Any]] = []
+    issues: list[ExistingLayoutIssueWire] = []
 
     def _add_issue(
         code: IssueCode,
@@ -327,28 +338,31 @@ def analyze_existing_layout_from_mining_map(
     for block in transport_blocks.values():
         if not isinstance(block, dict) or "components" not in block:
             continue
-        for comp in block["components"]:
-            st = comp.get("status")
+        for comp_row in block["components"]:
+            st = comp_row.get("status")
             if st == "orphan_component":
-                cell_pairs = comp.get("cells") or []
+                cell_pairs = comp_row.get("cells") or []
                 _add_issue(
                     "ORPHAN_TRANSPORT_COMPONENT",
                     "warning",
                     cell_pairs[:50],
-                    f"Orphan {block.get('transport_kind')} component id={comp.get('component_id')}",
-                    component_ids=[int(comp.get("component_id", -1))],
+                    (
+                        f"Orphan {block.get('transport_kind')} "
+                        f"component id={comp_row.get('component_id')}"
+                    ),
+                    component_ids=[int(comp_row.get("component_id", -1))],
                 )
             if st == "single_cell_artifact":
-                cell_pairs = comp.get("cells") or []
+                cell_pairs = comp_row.get("cells") or []
                 _add_issue(
                     "SINGLE_CELL_TRANSPORT_ARTIFACT",
                     "info",
                     cell_pairs,
                     (
                         f"Single-cell {block.get('transport_kind')} "
-                        f"artifact id={comp.get('component_id')}"
+                        f"artifact id={comp_row.get('component_id')}"
                     ),
-                    component_ids=[int(comp.get("component_id", -1))],
+                    component_ids=[int(comp_row.get("component_id", -1))],
                 )
 
     for xy in miners_no_adj:
@@ -371,37 +385,41 @@ def analyze_existing_layout_from_mining_map(
     for block in transport_blocks.values():
         if not isinstance(block, dict):
             continue
-        for comp in block.get("components") or []:
-            st2 = comp.get("status")
-            cells_l = comp.get("cells") or []
+        for comp_row in block.get("components") or []:
+            st2 = comp_row.get("status")
+            cells_l = comp_row.get("cells") or []
             parsed = {(p[0], p[1]) for p in cells_l if len(p) >= 2}
             if st2 == "main_trunk_candidate":
                 trunk_seed |= parsed
             elif st2 in ("orphan_component", "single_cell_artifact", "cleanup_candidate"):
                 cleanup |= parsed
 
-    return {
-        "source_kind": source_kind,
-        "island_bbox": island_bbox,
-        "transport": transport_primary,
-        "transport_by_kind": transport_blocks if len(transport_blocks) > 1 else None,
-        "equipment": {
-            "miner_count": miner_count,
-            "extension_count": extension_count,
-            "miners_without_adjacent_transport": miners_no_adj,
-            "miners_attached_to_orphan_transport": miners_orphan,
-            "equipment_attachment": [],
+    wire = cast(
+        ExistingLayoutAnalysisWire,
+        {
+            "source_kind": source_kind,
+            "island_bbox": island_bbox,
+            "transport": transport_primary,
+            "transport_by_kind": transport_blocks if len(transport_blocks) > 1 else None,
+            "equipment": {
+                "miner_count": miner_count,
+                "extension_count": extension_count,
+                "miners_without_adjacent_transport": miners_no_adj,
+                "miners_attached_to_orphan_transport": miners_orphan,
+                "equipment_attachment": [],
+            },
+            "issues": issues,
+            "solver_hints": {
+                "trunk_seed_cell_union": [[x, y] for x, y in sorted(trunk_seed, key=coord_key)],
+                "cleanup_candidate_cell_union": [[x, y] for x, y in sorted(cleanup, key=coord_key)],
+            },
         },
-        "issues": issues,
-        "solver_hints": {
-            "trunk_seed_cell_union": [[x, y] for x, y in sorted(trunk_seed, key=coord_key)],
-            "cleanup_candidate_cell_union": [[x, y] for x, y in sorted(cleanup, key=coord_key)],
-        },
-    }
+    )
+    return dict(wire)
 
 
 def existing_layout_heuristic_suppress_pass12_loops(
-    existing_layout_analysis: dict[str, Any] | None,
+    existing_layout_analysis: ExistingLayoutAnalysisWire | dict[str, Any] | None,
 ) -> bool:
     """Return True to skip Pass1/Pass2 placement loops while keeping STEP4 (preserve-first).
 
@@ -429,7 +447,7 @@ def existing_layout_heuristic_suppress_pass12_loops(
 
 
 def effective_suppress_pass1_loop(
-    existing_layout_analysis: dict[str, Any] | None,
+    existing_layout_analysis: ExistingLayoutAnalysisWire | dict[str, Any] | None,
 ) -> bool:
     """Whether the Pass1 outer placement loop should be skipped.
 
@@ -444,7 +462,7 @@ def effective_suppress_pass1_loop(
 
 
 def effective_suppress_pass2_loop(
-    existing_layout_analysis: dict[str, Any] | None,
+    existing_layout_analysis: ExistingLayoutAnalysisWire | dict[str, Any] | None,
 ) -> bool:
     """Whether the Pass2 internal placement loop should be skipped.
 
@@ -465,7 +483,7 @@ def effective_suppress_pass2_loop(
 
 
 def effective_suppress_pass12_placement_loops(
-    existing_layout_analysis: dict[str, Any] | None,
+    existing_layout_analysis: ExistingLayoutAnalysisWire | dict[str, Any] | None,
 ) -> bool:
     """Whether both Pass1 and Pass2 loops should be skipped (legacy aggregate flag)."""
 

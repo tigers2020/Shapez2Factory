@@ -344,9 +344,7 @@ def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]
         detail.setdefault("reachable_goal_count", 0)
         detail.setdefault("reachable_existing_trunk_count", 0)
         detail.setdefault("reachable_exterior_margin_count", 0)
-        detail.setdefault(
-            "candidate_expanded_nodes", int(detail.get("expanded_nodes") or 0)
-        )
+        detail.setdefault("candidate_expanded_nodes", int(detail.get("expanded_nodes") or 0))
         detail.setdefault("search_budget_exhausted", False)
         if "replacement_search_exhausted" not in detail:
             detail["replacement_search_exhausted"] = None
@@ -389,9 +387,7 @@ def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]
 
     detail["reachable_goal_count"] = int(rfd.get("reachable_goal_count") or 0)
     detail["reachable_existing_trunk_count"] = int(rfd.get("reachable_existing_trunk_count") or 0)
-    detail["reachable_exterior_margin_count"] = int(
-        rfd.get("reachable_exterior_margin_count") or 0
-    )
+    detail["reachable_exterior_margin_count"] = int(rfd.get("reachable_exterior_margin_count") or 0)
 
     cand = rfd.get("candidate_expanded_nodes")
     if cand is not None:
@@ -629,9 +625,7 @@ def build_step4_route_failure_detail(
     dg = search_stats.get(DIJKSTRA_REACHABLE_GOAL_COUNT_KEY)
     if dg is not None:
         reachable_goal_count = int(dg)
-        reachable_trunk_count = int(
-            search_stats.get(DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY) or 0
-        )
+        reachable_trunk_count = int(search_stats.get(DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY) or 0)
         reachable_margin_count = int(
             search_stats.get(DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY) or 0
         )
@@ -752,3 +746,77 @@ def build_step4_route_failure_detail(
         trunk_seed_cells=trunk_seed_cells,
     )
     return out
+
+
+def _pass12_probe_transport_materialization_row(
+    coord: Coord,
+    *,
+    transport_kind: str,
+) -> dict[str, Any]:
+    """Minimal row: ``step4_step_cost`` matches Pass2-committed ``transport_kind``."""
+
+    x, y = coord
+    if transport_kind == "fluid_pipe":
+        return {
+            "x": int(x),
+            "y": int(y),
+            "role": "pipe",
+            "layout_kind": "fluid_pipe_segment",
+            "surface": "fluid",
+        }
+    if transport_kind == "shape_belt":
+        return {
+            "x": int(x),
+            "y": int(y),
+            "role": "belt",
+            "layout_kind": "shape_belt_segment",
+            "surface": "shape",
+        }
+    raise ValueError(f"unsupported transport_kind={transport_kind!r}")
+
+
+def pass2_provisional_stub_step4_stub_isolated_geometry(
+    *,
+    stub_cell: Coord,
+    want_role: str,
+    transport_kind: str,
+    cells_base: dict[Coord, dict[str, Any]],
+    transport_probe: frozenset[Coord],
+    blocked_probe: frozenset[Coord],
+    mineable: frozenset[Coord],
+    asteroid: frozenset[Coord],
+    is_external: Callable[[Coord], bool],
+) -> bool:
+    """True iff STEP4 T3 ``stub_isolated`` neighbor diagnostics hold on the Pass2 probe snapshot.
+
+    Pass2-only **reject** helper: same neighbor reasons as ``build_step4_route_failure_detail`` /
+    ``_neighbor_block_reason`` with ``hard_extras`` empty (Pass2 pack has no corridor extras).
+    """
+
+    cells: dict[Coord, dict[str, Any]] = {k: dict(v) for k, v in cells_base.items()}
+    for c in transport_probe:
+        if c not in cells:
+            cells[c] = _pass12_probe_transport_materialization_row(c, transport_kind=transport_kind)
+    hard_extras: frozenset[Coord] = frozenset()
+    cheap: frozenset[Coord] | None = None
+    sx, sy = stub_cell
+    near: list[dict[str, Any]] = []
+    for n in neighbors4(sx, sy):
+        near.append(
+            {
+                "cell": [int(n[0]), int(n[1])],
+                "reason": _neighbor_block_reason(
+                    n,
+                    stub_cell=stub_cell,
+                    want_role=want_role,
+                    blocked=blocked_probe,
+                    hard_extras=hard_extras,
+                    cells=cells,
+                    mineable=mineable,
+                    asteroid=asteroid,
+                    is_external=is_external,
+                    cheap_reuse_cells=cheap,
+                ),
+            }
+        )
+    return _s4fc.stub_isolated_neighbor_geometry(near)

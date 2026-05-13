@@ -47,6 +47,15 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_r
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace import (
     trace_bundle_reject_invalid_stub,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_goal_trunk_seed as _s4_goal,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_reachability as _s4_reach,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+    final_validation as _finval,
+)
 
 _PASS1_TRACE = PASS12_TRY_COMMIT_PASS1_BUNDLE_TRACE_LOCATION
 _PASS2_TRACE = PASS12_TRY_COMMIT_PASS2_BUNDLE_TRACE_LOCATION
@@ -248,6 +257,67 @@ def _commit_after_probe(
                 goal_build_trace=goal_trace,
             )
             pass2_outcome = p2_out
+            if p2_out == "uncertain":
+                want_role = "pipe" if state.transport_kind == "fluid_pipe" else "belt"
+                trunk_for_probe = frozenset(
+                    _finval.transport_cells_reaching_external(
+                        set(transport_after), set(blocked_after), is_external
+                    )
+                )
+                margin_probe = _s4_goal.exterior_margin_cells(
+                    mineable=pack.mineable,
+                    asteroid=pack.asteroid,
+                    cells=pack.cells,
+                    is_external=is_external,
+                    universe_extra=transport_after,
+                )
+                prec = _s4_reach.pass2_stub_bounded_step4_reachability_precheck(
+                    stub_cell=candidate.stub_cell,
+                    want_role=want_role,
+                    transport_kind=state.transport_kind,
+                    cells_base=pack.cells,
+                    transport_probe=transport_after,
+                    blocked_probe=blocked_after,
+                    mineable=pack.mineable,
+                    asteroid=pack.asteroid,
+                    is_external=is_external,
+                    goal_cells=goals,
+                    trunk_cells=trunk_for_probe,
+                    margin_cells=margin_probe,
+                )
+                sink = pass2_route_probe_pack.stats_sink
+                if prec.stub_isolated_geometry:
+                    payload_iso: dict[str, Any] = dict(bundle_hint or {})
+                    payload_iso["reason"] = "pass2_reject_step4_stub_isolated"
+                    payload_iso["stub_cell"] = candidate.stub_cell
+                    payload_iso["want_role"] = want_role
+                    payload_iso["pass2_step4_precheck"] = {
+                        "stop_reason": prec.stop_reason,
+                        "visits": prec.visits,
+                        "reachable_goal_count": prec.reachable_goal_count,
+                    }
+                    trace_bundle_reject_invalid_stub(trace_location, payload_iso)
+                    sink["pass2_reject_step4_stub_isolated_count"] = (
+                        int(sink.get("pass2_reject_step4_stub_isolated_count", 0)) + 1
+                    )
+                    return False
+                if gn > 0 and not prec.reachable and prec.stop_reason == "exhausted":
+                    payload_u: dict[str, Any] = dict(bundle_hint or {})
+                    payload_u["reason"] = "pass2_reject_step4_unreachable_stub"
+                    payload_u["stub_cell"] = candidate.stub_cell
+                    payload_u["want_role"] = want_role
+                    payload_u["pass2_step4_precheck"] = {
+                        "stop_reason": prec.stop_reason,
+                        "visits": prec.visits,
+                        "reachable_goal_count": prec.reachable_goal_count,
+                        "reachable_existing_trunk_count": prec.reachable_existing_trunk_count,
+                        "reachable_exterior_margin_count": prec.reachable_exterior_margin_count,
+                    }
+                    trace_bundle_reject_invalid_stub(trace_location, payload_u)
+                    sink["pass2_reject_step4_unreachable_stub_count"] = (
+                        int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) + 1
+                    )
+                    return False
         else:
             if not bundle_route_probe_or_reject(
                 candidate.stub_cell,

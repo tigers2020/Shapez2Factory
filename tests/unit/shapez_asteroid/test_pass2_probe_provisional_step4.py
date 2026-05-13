@@ -18,6 +18,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_merge_routing as s4mr,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_route_failure_detail as s4rfd,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
     final_validation as finval,
 )
@@ -61,6 +64,146 @@ def test_try_commit_pass2_rejects_no_route_when_probe_pack_absent() -> None:
         is False
     )
     assert scratch.extractor_cells == set()
+
+
+def test_try_commit_pass2_rejects_uncertain_when_step4_stub_isolated_geometry_belt() -> None:
+    """Pass2 ``uncertain`` but four STEP4-illegal stub exits → do not commit (belt)."""
+
+    sink = p12_rp.new_pass2_route_probe_stats_sink()
+    mineable = frozenset(
+        {
+            (4, 5),
+            (5, 5),
+            (6, 5),
+            (5, 4),
+            (5, 6),
+            (7, 5),
+            (8, 5),
+            (9, 5),
+            (10, 5),
+        }
+    )
+    asteroid: frozenset[Coord] = frozenset()
+    cells = _cells_for_mineable(mineable)
+    pack = p12_bc.Pass2RouteProbePack(
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        existing_layout_analysis=None,
+        stats_sink=sink,
+    )
+    scratch = p12_bc.Pass12LayoutScratch(transport_kind="shape_belt")
+    scratch.transport_cells = {(7, 5), (8, 5), (9, 5), (10, 5)}
+    scratch.blocked_cells = {(6, 5), (5, 4), (5, 6)}
+    cand = p12_bc.Pass12BundleCandidate(
+        blocked_cells=frozenset({(4, 5)}),
+        new_transport=frozenset({(5, 5)}),
+        stub_cell=(5, 5),
+        extractor_cell=(4, 5),
+        extension_facings=frozenset(),
+        extractor_output_dir=(1, 0),
+        placement_pass="pass2",
+    )
+    assert (
+        p12_bc.try_commit_pass2_bundle(
+            scratch,
+            cand,
+            is_external=lambda c: c[0] >= 100,
+            pass2_route_probe_pack=pack,
+        )
+        is False
+    )
+    assert int(sink.get("pass2_reject_step4_stub_isolated_count", 0)) == 1
+    assert scratch.placement_records == {}
+
+
+def test_try_commit_pass2_rejects_uncertain_when_step4_stub_isolated_geometry_fluid_pipe() -> None:
+    """Same T3 cage geometry with ``fluid_pipe`` transport_kind (role ``pipe``)."""
+
+    sink = p12_rp.new_pass2_route_probe_stats_sink()
+    mineable = frozenset(
+        {
+            (4, 5),
+            (5, 5),
+            (6, 5),
+            (5, 4),
+            (5, 6),
+            (7, 5),
+            (8, 5),
+            (9, 5),
+            (10, 5),
+        }
+    )
+    asteroid: frozenset[Coord] = frozenset()
+    cells = {
+        c: {
+            "x": c[0],
+            "y": c[1],
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        }
+        for c in mineable
+    }
+    pack = p12_bc.Pass2RouteProbePack(
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        existing_layout_analysis=None,
+        stats_sink=sink,
+    )
+    scratch = p12_bc.Pass12LayoutScratch(transport_kind="fluid_pipe")
+    scratch.transport_cells = {(7, 5), (8, 5), (9, 5), (10, 5)}
+    scratch.blocked_cells = {(6, 5), (5, 4), (5, 6)}
+    cand = p12_bc.Pass12BundleCandidate(
+        blocked_cells=frozenset({(4, 5)}),
+        new_transport=frozenset({(5, 5)}),
+        stub_cell=(5, 5),
+        extractor_cell=(4, 5),
+        extension_facings=frozenset(),
+        extractor_output_dir=(1, 0),
+        placement_pass="pass2",
+    )
+    assert (
+        p12_bc.try_commit_pass2_bundle(
+            scratch,
+            cand,
+            is_external=lambda c: c[0] >= 100,
+            pass2_route_probe_pack=pack,
+        )
+        is False
+    )
+    assert int(sink.get("pass2_reject_step4_stub_isolated_count", 0)) == 1
+
+
+def test_pass2_probe_stub_isolated_geometry_helper_matches_four_blocked_neighbors() -> None:
+    """Direct check: helper True iff four orthogonal exits are STEP4-blocked/hard."""
+
+    mineable = frozenset({(5, 5), (7, 5), (8, 5)})
+    cells = _cells_for_mineable(mineable)
+    blocked = frozenset({(4, 5), (6, 5), (5, 4), (5, 6)})
+    assert s4rfd.pass2_provisional_stub_step4_stub_isolated_geometry(
+        stub_cell=(5, 5),
+        want_role="belt",
+        transport_kind="shape_belt",
+        cells_base=cells,
+        transport_probe=frozenset({(5, 5)}),
+        blocked_probe=blocked,
+        mineable=mineable,
+        asteroid=frozenset(),
+        is_external=lambda c: c[0] >= 100,
+    )
+    assert not s4rfd.pass2_provisional_stub_step4_stub_isolated_geometry(
+        stub_cell=(5, 5),
+        want_role="belt",
+        transport_kind="shape_belt",
+        cells_base=cells,
+        transport_probe=frozenset({(5, 5), (6, 5)}),
+        blocked_probe=frozenset({(4, 5), (5, 4), (5, 6)}),
+        mineable=mineable,
+        asteroid=frozenset(),
+        is_external=lambda c: c[0] >= 100,
+    )
 
 
 def test_try_commit_pass2_provisional_when_probe_pack_and_no_transport_route_yet() -> None:

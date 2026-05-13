@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout import (
+    existing_layout_components as elc,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.existing_layout_analysis import (  # noqa: E501
     analyze_existing_layout_from_mining_map,
 )
@@ -105,6 +108,100 @@ def test_ela_trunk_seed_excludes_orphan_belt_cells() -> None:
     assert (80, 80) in cleanup and (81, 80) in cleanup
     assert (80, 80) not in trunk and (81, 80) not in trunk
     assert (2, 1) in trunk
+
+
+def test_role_transport_cells_separates_inferred_belt_vs_pipe() -> None:
+    """Inferred segment rows map to one ``want_role`` only (no mixed trunk collection)."""
+
+    cells = {
+        (1, 1): {
+            "x": 1,
+            "y": 1,
+            "role": "inferred",
+            "layout_kind": "shape_belt_segment",
+            "surface": "shape",
+        },
+        (2, 1): {
+            "x": 2,
+            "y": 1,
+            "role": "inferred",
+            "layout_kind": "fluid_pipe_segment",
+            "surface": "fluid",
+        },
+    }
+    belts = elc.role_transport_cells(cells, "belt")
+    pipes = elc.role_transport_cells(cells, "pipe")
+    assert (1, 1) in belts and (1, 1) not in pipes
+    assert (2, 1) in pipes and (2, 1) not in belts
+
+
+def test_ela_inferred_fluid_pipe_main_trunk_in_trunk_seed() -> None:
+    """Merged-style inferred ``fluid_pipe_segment`` participates in main pipe trunk + ELA seed."""
+
+    mining_map = [
+        {
+            "x": 1,
+            "y": 0,
+            "role": "occupied",
+            "surface": "fluid",
+            "layout_kind": "fluid_extension",
+        },
+        {
+            "x": 5,
+            "y": 0,
+            "role": "inferred",
+            "surface": "fluid",
+            "layout_kind": "fluid_pipe_segment",
+        },
+        {
+            "x": 6,
+            "y": 0,
+            "role": "inferred",
+            "surface": "fluid",
+            "layout_kind": "fluid_pipe_segment",
+        },
+        {
+            "x": 7,
+            "y": 0,
+            "role": "inferred",
+            "surface": "fluid",
+            "layout_kind": "fluid_pipe_segment",
+        },
+    ]
+    def _is_ext(c: tuple[int, int]) -> bool:
+        return c == (8, 0)
+
+    out = analyze_existing_layout_from_mining_map(mining_map, is_external=_is_ext)
+    assert out["source_kind"] == "existing_fluid_layout"
+    trunk = {(int(p[0]), int(p[1])) for p in out["solver_hints"]["trunk_seed_cell_union"]}
+    assert {(5, 0), (6, 0), (7, 0)}.issubset(trunk)
+
+
+def test_ela_single_inferred_fluid_pipe_artifact_not_in_trunk_seed() -> None:
+    """Single-cell inferred pipe stays ``single_cell_artifact`` / cleanup only (not promoted)."""
+
+    mining_map = [
+        {
+            "x": 1,
+            "y": 0,
+            "role": "occupied",
+            "surface": "fluid",
+            "layout_kind": "fluid_extension",
+        },
+        {
+            "x": 50,
+            "y": 50,
+            "role": "inferred",
+            "surface": "fluid",
+            "layout_kind": "fluid_pipe_segment",
+        },
+    ]
+    is_ext = external_predicate_for_mining_map(mining_map)
+    out = analyze_existing_layout_from_mining_map(mining_map, is_external=is_ext)
+    trunk = {(int(p[0]), int(p[1])) for p in out["solver_hints"]["trunk_seed_cell_union"]}
+    cleanup = {(int(p[0]), int(p[1])) for p in out["solver_hints"]["cleanup_candidate_cell_union"]}
+    assert (50, 50) in cleanup
+    assert (50, 50) not in trunk
 
 
 def test_ela_single_cell_belt_not_in_trunk_seed() -> None:

@@ -7,15 +7,28 @@ from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    stub_row_materialized_for_want_role,
+)
 
 
 def role_transport_cells(
     cells: dict[Coord, dict[str, Any]],
     want_role: str,
 ) -> set[Coord]:
+    """Same-kind transport coords for component / STEP 0.5 analysis.
+
+    Includes ``role in (belt, pipe)`` plus ``role == inferred`` rows that STEP4 would treat as
+    materialized transport for ``want_role`` (``stub_row_materialized_for_want_role``), so merged
+    maps do not drop fluid trunk cells before ``role`` promotion.
+    """
+
     out: set[Coord] = set()
     for c, row in cells.items():
         if row.get("role") == want_role:
+            out.add(c)
+            continue
+        if want_role in ("belt", "pipe") and stub_row_materialized_for_want_role(row, want_role):
             out.add(c)
     return out
 

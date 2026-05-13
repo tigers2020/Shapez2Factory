@@ -14,6 +14,7 @@ __all__ = [
     "classify_step4_failure_category",
     "compute_step4_failure_classification",
     "protected_corridor_hard_involved",
+    "stub_isolated_neighbor_geometry",
 ]
 
 
@@ -70,6 +71,12 @@ def _all_stub_exits_blocked_or_unavailable(near: list[dict[str, Any]]) -> bool:
     if len(rs) < 4:
         return False
     return all(r in ("blocked", "hard_protected") for r in rs)
+
+
+def stub_isolated_neighbor_geometry(near: list[dict[str, Any]]) -> bool:
+    """True when ``near`` matches STEP4 T3 ``stub_isolated`` (four exits blocked or hard-only)."""
+
+    return _all_stub_exits_blocked_or_unavailable(near)
 
 
 def _stub_neighbor_hard_extras_touch(
@@ -297,12 +304,7 @@ def compute_step4_failure_classification(
             conf = "high"
             return cat, conf, evidence_core
 
-    if (
-        goal_cells_count > 0
-        and reachable_goal_count == 0
-        and frontier_exhausted
-        and not budget
-    ):
+    if goal_cells_count > 0 and reachable_goal_count == 0 and frontier_exhausted and not budget:
         cat = Step4FailureCategory.goal_starvation.value
         conf = "medium"
         return cat, conf, evidence_core

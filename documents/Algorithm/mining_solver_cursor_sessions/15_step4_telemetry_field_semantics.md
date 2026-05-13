@@ -40,3 +40,14 @@
 - margin·seed·raw goal: `step4_goal_trunk_seed.py`
 - goal union·ordering meta: `step4_search_diagnostics.merge_goal_union_meta`
 - fluid primary / margin fallback: `step4_merge_routing.py` 메인 루프
+
+## Alias note: goal count fields
+
+- `external_goal_count` is retained for backward compatibility.
+- `margin_goals_in_active_goal_cells_count` is the canonical clearer alias.
+- Both fields mean `len(active_goal_cells & exterior_margin_cells)` for the current route attempt.
+- This is not the total exterior-margin policy cell count.
+- `active_goal_cells_count` is the size of the actual goal union passed to STEP4 route search for that attempt.
+- `search_mode` and `goal_ordering_mode` are different fields:
+  - `search_mode` = search execution path / legacy marker.
+  - `goal_ordering_mode` = goal ordering / prioritization policy.

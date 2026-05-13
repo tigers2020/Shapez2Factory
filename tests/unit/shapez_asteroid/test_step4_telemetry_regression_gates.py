@@ -116,6 +116,7 @@ def test_additive_goal_cell_count_aliases() -> None:
     assert detail["margin_goals_in_active_goal_cells_count"] == ext_ct
     assert detail["active_goal_cells_count"] == int(detail["goal_set_size"])
     rfd = detail["routing_failure_detail"]
+    assert rfd["external_goal_count"] == ext_ct
     assert rfd["margin_goals_in_active_goal_cells_count"] == ext_ct
     assert rfd["active_goal_cells_count"] == int(rfd["goal_set_size"])
 

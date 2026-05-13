@@ -66,3 +66,10 @@
 | `documents/refactory/01_canonical_doc_paths.md` | `ACTIVE` | 본 inventory와 중복되는 범위를 정리 |
 | `documents/canon/` 물리 분리 | 미진행 | 경로 변경 영향이 커서 별도 플랜·승인 후 진행 |
 | `documents/reports/YYYY-MM/` 분리 | 미진행 | `REPORT` 문서 이동 전 링크 영향 확인 필요 |
+
+## STEP4 telemetry / DTO index additions
+
+| 문서 | 상태 | 종류 | 정본 여부 | 비고 |
+|------|------|------|-----------|------|
+| [`documents/Algorithm/mining_solver_cursor_sessions/14_step4_routing_dto_refactor_inventory.md`](../Algorithm/mining_solver_cursor_sessions/14_step4_routing_dto_refactor_inventory.md) | `CANON` | solver spec | YES | STEP4 DTO boundary inventory |
+| [`documents/Algorithm/mining_solver_cursor_sessions/15_step4_telemetry_field_semantics.md`](../Algorithm/mining_solver_cursor_sessions/15_step4_telemetry_field_semantics.md) | `CANON` | telemetry spec | YES | STEP4 route-failure telemetry field semantics |

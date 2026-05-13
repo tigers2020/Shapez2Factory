@@ -187,6 +187,50 @@ def test_transport_kind_separation_trunk_seed_hints() -> None:
     assert tr_f["same_kind_trunk_seed_count"] == 0
 
 
+def test_island_empty_margin_fallback_goals_are_transport_cells_before() -> None:
+    """No universe cell has an external 4-neighbor → margin empty; use prior transport as goals."""
+
+    mineable = frozenset({(1, 0), (2, 0)})
+    asteroid: frozenset[Coord] = frozenset()
+    cells: dict[Coord, dict[str, Any]] = {
+        (1, 0): {
+            "x": 1,
+            "y": 0,
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        },
+        (2, 0): {
+            "x": 2,
+            "y": 0,
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        },
+    }
+    before = frozenset({(1, 0)})
+    probe = frozenset({(1, 0), (2, 0)})
+    goals, kind, n, trace = p12rp.build_pass2_step4_aligned_routing_goals(
+        transport_kind="fluid_pipe",
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        is_external=lambda _c: False,
+        existing_layout_analysis=None,
+        transport_cells_before=before,
+        transport_cells_probe=probe,
+        blocked_for_probe=frozenset(),
+    )
+    assert kind == "first_route"
+    assert goals == before
+    assert n == 1
+    assert trace["exterior_margin_cell_count"] == 0
+    assert trace["final_goal_count"] == n
+    assert trace["fallback_goal_source"] == "transport_cells_before_island_fallback"
+    assert trace["fallback_goal_count"] == n
+    assert trace["rejected_reason"] is None
+
+
 def test_finalize_prefers_last_probe_goal_count_over_max() -> None:
     sink = p12rp.new_pass2_route_probe_stats_sink()
     p12rp.pass2_bundle_route_probe_decision(

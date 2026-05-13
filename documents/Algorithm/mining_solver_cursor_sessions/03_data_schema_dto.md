@@ -109,7 +109,12 @@ cascade 보정은 Final validation의 `validation_recovery`와 **다른 컨텍�
 
 ## C. RouteZone 및 Transport kind별 cost (§11.1–§11.2 발췌)
 
-**§3.5 설계 정본과의 관계**: 그리드 셀 단위 **Dijkstra** 기본 가중치·밀집 가산·output/stub/merge 정책은 [`01_project_overview.md`](./01_project_overview.md) §3.5가 정본이다(§0 구현 백지와 무관). **RouteZone 기본 cost 수치**는 아래 §11.1 표가 정본이며, Pass3 구현 시 §3.5 셀 비용과 단일 소스로 환산·정렬한다.
+**§3.5 설계 정본과의 관계**: 그리드 셀 단위 **Dijkstra** 기본 가중치·밀집 가산·output/stub/merge 정책은 [`01_project_overview.md`](./01_project_overview.md) §3.5가 정본이다(§0 구현 백지와 무관). **RouteZone 기본 cost 수치**는 아래 §11.1 표가 정본이다. **§3.5 셀 가중치 표와 §11.1 RouteZone 표는 수치 1:1 대응이 없다** — 적용 **단계**가 다르다(§3.5: Pass1/2·merge-aware routing 등 **그리드 Dijkstra**; §11.1·§11.2: Pass3·Reclaim incremental 등 **RouteZone 기반** 비용). 동일 목적의 코드 경로에서 **두 표를 섞어 쓰지 말 것**(한 경로는 한 표만). Pass3·P4 구현은 §11 계열을 따르고, STEP 4 본 trunk 라우팅은 §3.5를 따른다.
+
+| 구분 | 정본 위치 | 용도 예 |
+| --- | --- | --- |
+| 그리드 Dijkstra 셀 비용 | `01_project_overview.md` §3.5 | Pass1/2 placement 보조 probe, merge-aware routing 단계 |
+| RouteZone cost | 본 문서 §11.1·§11.2 | Pass3 greedy·Reclaim shadow incremental `additional_route_cost` 등 |
 
 ## 11. Pass3 Route Cost Model
 

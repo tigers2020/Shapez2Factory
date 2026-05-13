@@ -16,7 +16,10 @@ def forwards_copy_sprite_assets(apps, schema_editor):
     assets_prefix = "assets/shape_part_sprites/"
     SpriteModel = apps.get_model("web", "ShapePartSprite")
     media_root = Path(settings.MEDIA_ROOT)
-    dest_root = Path(settings.SHAPE_PART_SPRITE_STATIC_ROOT)
+    sprite_root = getattr(settings, "SHAPE_PART_SPRITE_STATIC_ROOT", None)
+    if not sprite_root:
+        return
+    dest_root = Path(sprite_root)
 
     for row in SpriteModel.objects.values("pk", "image"):
         old_rel = row["image"] or ""

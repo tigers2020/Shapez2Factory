@@ -316,3 +316,95 @@ def test_pass2_rejects_transport_disjoint_when_step4_prec_reachable_fluid_pipe()
     gate = sink.get("pass2_last_transport_component_gate") or {}
     assert gate.get("reject_reason") == "step4_unreachable_component"
     assert scratch.placement_records == {}
+
+
+def test_pass2_transport_component_gate_disjoint_direct_when_no_exterior() -> None:
+    """No cell reaches ``is_external`` → empty exterior_reachable; disjoint stub must fail."""
+
+    ok, det = p12_rp.pass2_transport_stub_reaches_exterior_reachable_transport(
+        (10, 0),
+        transport_cells=frozenset({(0, 0), (1, 0), (2, 0), (10, 0)}),
+        blocked_cells=frozenset(),
+        is_external=lambda c: False,
+        reachable_goal_count=0,
+    )
+    assert ok is False
+    assert det["reject_reason"] == "step4_unreachable_component_no_goals"
+    assert det["exterior_reachable_transport_cell_count"] == 0
+
+
+def test_pass2_transport_component_gate_first_fragment_skip_direct() -> None:
+    """Merged graph is stub-only: still skip (STEP4 may connect first island)."""
+
+    ok, det = p12_rp.pass2_transport_stub_reaches_exterior_reachable_transport(
+        (5, 0),
+        transport_cells=frozenset({(5, 0)}),
+        blocked_cells=frozenset(),
+        is_external=lambda c: False,
+        reachable_goal_count=0,
+    )
+    assert ok is True
+    assert det["reject_reason"] == "skipped_no_exterior_reachable_transport"
+
+
+def test_pass2_transport_component_gate_connected_skip_direct() -> None:
+    """Interior-only map but stub shares a transport component with other cells → skip."""
+
+    ok, det = p12_rp.pass2_transport_stub_reaches_exterior_reachable_transport(
+        (2, 0),
+        transport_cells=frozenset({(0, 0), (1, 0), (2, 0)}),
+        blocked_cells=frozenset(),
+        is_external=lambda c: False,
+        reachable_goal_count=0,
+    )
+    assert ok is True
+    assert det["reject_reason"] == "skipped_no_exterior_reachable_transport"
+
+
+def test_pass2_rejects_disjoint_when_is_external_never_true_island_goal_fallback() -> None:
+    """Interior-only: island goal fallback; disjoint stub fails step_cost precheck before gate."""
+
+    sink = p12_rp.new_pass2_route_probe_stats_sink()
+    mineable: frozenset[Coord] = frozenset(
+        [(5, 5), (5, 6), (5, 7)] + [(x, 5) for x in range(10, 55)]
+    )
+    cells = {c: _fluid_cell(c[0], c[1]) for c in mineable}
+    baseline_trunk = frozenset((x, 5) for x in range(10, 55))
+    blocked_ring = frozenset({(4, 5), (6, 5), (5, 4), (4, 7), (6, 7), (5, 8)})
+    pack = p12_bc.Pass2RouteProbePack(
+        mineable=mineable,
+        asteroid=frozenset(),
+        cells=cells,
+        existing_layout_analysis=None,
+        stats_sink=sink,
+    )
+    scratch = p12_bc.Pass12LayoutScratch(transport_kind="fluid_pipe")
+    scratch.transport_cells = set(baseline_trunk)
+    scratch.blocked_cells = {(2, 0)}
+    cand = p12_bc.Pass12BundleCandidate(
+        blocked_cells=blocked_ring,
+        new_transport=frozenset({(5, 5)}),
+        stub_cell=(5, 5),
+        extractor_cell=(4, 5),
+        extension_facings=frozenset(),
+        extractor_output_dir=(1, 0),
+        placement_pass="pass2",
+    )
+
+    def is_ext(_c: Coord) -> bool:
+        return False
+
+    assert (
+        p12_bc.try_commit_pass2_bundle(
+            scratch,
+            cand,
+            is_external=is_ext,
+            pass2_route_probe_pack=pack,
+        )
+        is False
+    )
+    assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 1
+    gtrace = sink.get("pass2_probe_last_goal_trace") or {}
+    assert gtrace.get("fallback_goal_source") == "transport_cells_before_island_fallback"
+    assert "pass2_last_transport_component_gate" not in sink
+    assert scratch.placement_records == {}

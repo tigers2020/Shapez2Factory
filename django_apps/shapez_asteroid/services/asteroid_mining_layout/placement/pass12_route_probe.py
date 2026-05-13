@@ -40,6 +40,55 @@ def _min_manhattan_between_sets(a: set[Coord], b: frozenset[Coord]) -> int | Non
     return best
 
 
+def _bfs_transport_component(
+    seed: Coord,
+    transport_cells: frozenset[Coord],
+    blocked_cells: frozenset[Coord],
+    *,
+    blocked_exempt: Coord,
+) -> set[Coord]:
+    """4-neighbor flood on ``transport_cells``; ``blocked_cells`` except at ``blocked_exempt``."""
+
+    q: deque[Coord] = deque([seed])
+    visited: set[Coord] = {seed}
+    while q:
+        c = q.popleft()
+        x, y = c
+        for nxt in neighbors4(x, y):
+            if nxt in blocked_cells and nxt != blocked_exempt:
+                continue
+            if nxt not in transport_cells or nxt in visited:
+                continue
+            visited.add(nxt)
+            q.append(nxt)
+    return visited
+
+
+def _stub_component_frontier_detail(
+    visited: set[Coord],
+    stub_cell: Coord,
+    blocked_cells: frozenset[Coord],
+    exterior_reachable: frozenset[Coord],
+) -> tuple[int, float, int | None]:
+    frontier_blocked = 0
+    frontier_total = 0
+    for c in visited:
+        cx, cy = c
+        for nxt in neighbors4(cx, cy):
+            if nxt in visited:
+                continue
+            frontier_total += 1
+            if nxt in blocked_cells and nxt != stub_cell:
+                frontier_blocked += 1
+    ratio = frontier_blocked / max(1, frontier_total)
+    nearest = _min_manhattan_between_sets(visited, exterior_reachable)
+    return (
+        int(len(visited)),
+        float(ratio),
+        int(nearest) if nearest is not None else None,
+    )
+
+
 def pass2_transport_stub_reaches_exterior_reachable_transport(
     stub_cell: Coord,
     *,
@@ -54,9 +103,12 @@ def pass2_transport_stub_reaches_exterior_reachable_transport(
     :func:`final_validation.transport_cells_reaching_external` on the merged probe transport graph
     (Pass2 scratch geometry only; no STEP4 routing).
 
-    When there is no exterior-reachable transport yet (e.g. first-route island), returns True and
-    ``reject_reason`` ``skipped_no_exterior_reachable_transport`` so Pass2 does not hard-block
-    seeding that Pass1/STEP4 still must connect.
+    When there is no exterior-reachable transport yet (e.g. first-route island: merged graph has
+    only this stub fragment), returns True and ``reject_reason``
+    ``skipped_no_exterior_reachable_transport`` so Pass2 does not hard-block seeding that Pass1 /
+    STEP4 still must connect. If other transport exists but nothing reaches external (interior
+    island), the stub must lie in the same transport component as some other cell; otherwise
+    returns False with ``step4_unreachable_component_no_goals``.
     """
 
     detail: dict[str, Any] = {
@@ -76,41 +128,42 @@ def pass2_transport_stub_reaches_exterior_reachable_transport(
         detail["nearest_external_distance"] = None
         return False, detail
     if not exterior_reachable:
+        others = transport_cells - {stub_cell}
+        visited = _bfs_transport_component(
+            stub_cell,
+            transport_cells,
+            blocked_cells,
+            blocked_exempt=stub_cell,
+        )
+        sz, ratio, nearest = _stub_component_frontier_detail(
+            visited, stub_cell, blocked_cells, exterior_reachable
+        )
+        detail["candidate_component_size"] = sz
+        detail["frontier_blocked_ratio"] = ratio
+        detail["nearest_external_distance"] = nearest
+        if not others:
+            detail["reject_reason"] = "skipped_no_exterior_reachable_transport"
+            return True, detail
+        if not (visited & others):
+            detail["reject_reason"] = "step4_unreachable_component_no_goals"
+            return False, detail
         detail["reject_reason"] = "skipped_no_exterior_reachable_transport"
-        detail["candidate_component_size"] = 0
-        detail["frontier_blocked_ratio"] = 0.0
-        detail["nearest_external_distance"] = None
         return True, detail
 
-    q: deque[Coord] = deque([stub_cell])
-    visited: set[Coord] = {stub_cell}
-    while q:
-        c = q.popleft()
-        x, y = c
-        for nxt in neighbors4(x, y):
-            if nxt in blocked_cells and nxt != stub_cell:
-                continue
-            if nxt not in transport_cells or nxt in visited:
-                continue
-            visited.add(nxt)
-            q.append(nxt)
+    visited = _bfs_transport_component(
+        stub_cell,
+        transport_cells,
+        blocked_cells,
+        blocked_exempt=stub_cell,
+    )
 
     overlap = bool(visited & exterior_reachable)
-    frontier_blocked = 0
-    frontier_total = 0
-    for c in visited:
-        cx, cy = c
-        for nxt in neighbors4(cx, cy):
-            if nxt in visited:
-                continue
-            frontier_total += 1
-            if nxt in blocked_cells and nxt != stub_cell:
-                frontier_blocked += 1
-    ratio = frontier_blocked / max(1, frontier_total)
-    nearest = _min_manhattan_between_sets(visited, exterior_reachable)
-    detail["candidate_component_size"] = int(len(visited))
-    detail["frontier_blocked_ratio"] = float(ratio)
-    detail["nearest_external_distance"] = int(nearest) if nearest is not None else None
+    sz, ratio, nearest = _stub_component_frontier_detail(
+        visited, stub_cell, blocked_cells, exterior_reachable
+    )
+    detail["candidate_component_size"] = sz
+    detail["frontier_blocked_ratio"] = ratio
+    detail["nearest_external_distance"] = nearest
     if overlap:
         detail["reject_reason"] = None
         return True, detail
@@ -183,6 +236,10 @@ def build_pass2_step4_aligned_routing_goals(
     probe-time belt coordinates participate even when absent from the frozen Pass1 ``cells``
     dict. Like ``step4_merge_routing`` per-job goals, ``raw_goal ∪ trunk_reaching(probe)`` is used
     (trunk slice is a no-op for first-route void assist when those cells are already transport).
+
+    When that union is empty but ``transport_cells_before`` is not (island: no exterior margin,
+    no trunk-to-external), goals fall back to ``transport_cells_before`` so Pass2's bounded
+    step_cost-legal precheck can ask whether the stub reaches any pre-existing transport cell.
     """
 
     margin = s4_goal.exterior_margin_cells(
@@ -217,6 +274,10 @@ def build_pass2_step4_aligned_routing_goals(
         set(transport_cells_probe), set(blocked_for_probe), is_external
     )
     full_goal = frozenset(set(raw_goal) | trunk_now)
+    fallback_goal_source: str | None = None
+    if not full_goal and transport_cells_before:
+        full_goal = frozenset(transport_cells_before)
+        fallback_goal_source = "transport_cells_before_island_fallback"
     seeds_for_kind = set(trunk_seed_by_kind.get(transport_kind, ()))
     universe_for_probe = (
         set(cells.keys()) | set(mineable) | set(asteroid) | set(transport_cells_probe)
@@ -237,6 +298,9 @@ def build_pass2_step4_aligned_routing_goals(
         "mineable_asteroid_bbox": _mineable_asteroid_bbox(mineable, asteroid),
         "rejected_reason": None,
     }
+    if fallback_goal_source is not None:
+        trace["fallback_goal_source"] = fallback_goal_source
+        trace["fallback_goal_count"] = len(full_goal)
     if not full_goal:
         if (
             goal_set_kind == "first_route"

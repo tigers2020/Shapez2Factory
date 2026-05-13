@@ -1,4 +1,4 @@
-# Shapez2 Asteroid Mining Solver 개발 진행 보고서 v5.3
+# Shapez2 Asteroid Mining Solver 개발 진행 보고서 v5.10
 
 **Role: Solver Architecture Reviewer**
 
@@ -33,6 +33,8 @@ v5.7 문서 정합: **RouteZone 기본 cost**(`mining_solver_cursor_sessions/03_
 v5.8 문서 정합: **§3.4 출하량·extension 비례·벨트/스페이스 벨트·유체·구간 누적 유량**, §3.6 capacity 표 갱신.
 
 v5.9 문서 정합: **1차 transport — max capacity 무시·누적 합산만**(§3.4·§3.6·§2.2, 후속에 capacity 검증 선택).
+
+v5.10 문서 정합(알고리즘 검토 후속): §12.2 `gain_ratio` **경험적 비율** 명시·`pass3_internal_transport_saved` vs `baseline_internal_transport_at_reclaim_entry` **필드 의미 표**, §12.4 `soft_protected` **밀집 데드락 시 MVP 종료**(§14.3 외 relax 없음), §12.5 **post-reclaim Pass3 rerun 게이트 = P4 스테이지 종료 1회·잠정 net은 최종 맵만**, §4.3.1 **attempt 귀속 표**(cascade vs `recovery_return_policy`), §3.5↔§11.1 **적용 단계 분리**, §15.4 optimization baseline **placement 집합 한계**, §4.4↔§9.6 **QUARANTINED 정리 순서**.
 
 ```text
 1. Reclaim loop가 Pass3의 내부 transport 절약분을 역행하지 못하도록 budget gate 추가
@@ -403,6 +405,15 @@ STEP 7에서 동일 현상은 `post_reclaim_pass3_connectivity_break`로 분리�
      이어서 **`step4_routing_failure`와 동일한** unrouted quarantine·STEP 4 재시도 루틴(표 1행)으로 넘긴다.
 ```
 
+**§4.3.1 3번 remedial 경로 — attempt 귀속(정본, 구현 단일 권위와 정렬)**: 아래 표는 **어느 상한·카운터**에 remedial STEP 4 재시도·Pass3 재시도·`cascade_corrective_recovery` 시도가 귀속되는지 고정한다. 코드는 `recovery_return_policy`(`django_apps/.../solver/recovery_return_policy.py`의 `_POLICY_TABLE`)·`MAX_CASCADE_CORRECTIVE_ATTEMPTS`(§4.2)·오케스트레이터 STEP 4 재시도 정책을 따른다.
+
+| 행위 | 귀속 카운터 / 한도 | 비고 |
+| --- | --- | --- |
+| §4.3 표 **본행** `step4_routing_failure`의 STEP 4 재시도 | 오케스트레이터 `recovery_return_policy_for_trigger(step4_routing_failure)`·`reenters_step4` 등 | `MAX_VALIDATION_RECOVERY_ATTEMPTS`와 **별개**(§4.2·`documents/refactory/02_pipeline_recovery_control_flow.md`). |
+| §4.3.1 3번 **remedial** “표 1행 절차를 한 번만” 재사용 | **동일** `step4_routing_failure` 정책의 **추가 1회**로 읽되, trace에 `remedial_after_pass3_connectivity_break` 등으로 구분 | 별도 canonical `recovery_trigger` 문자열을 붙이지 않아도 된다(본문 3번). |
+| `cascade_corrective_recovery`(§9.6·§13.3) | `MAX_CASCADE_CORRECTIVE_ATTEMPTS`·`cascade_corrective_attempts` | `MAX_TOTAL_RECOVERY_ATTEMPTS`·`validation_recovery` **아님**. |
+| Pass3 재시도(3번 성공 분기, **최대 1회**) | §4.3.1 본문 “무한 재시도 금지”; **별도 lifetime 상수 없음** | 실패 시 1번 rollback 후 표 “실패 시” 열. |
+
 **§4.3.1 3번 vs 표 “실패 시”**: 표의 “실패 시”는 **Pass3 rollback·연결성 회복 시도 전부가 소진된 뒤**의 최종 상태다. 3번은 그 **이전**에 허용하는 **한 번의 STEP 4 remedial**이다. 3번이 성공해 Pass3가 통과하면 표의 “실패 시” 열은 적용되지 않는다.
 
 “Reclaim 종료 후” 연결성 깨짐은 STEP 5 시점에 발생할 수 없다. 그 경우는 STEP 7에서 `post_reclaim_pass3_connectivity_break`(§4.3.2)로 처리한다.
@@ -439,6 +450,8 @@ SOLVER_FAILURE:
 - capacity-safe trunk를 만들 수 없음
 - attempt limit 초과
 ```
+
+**§4.4 ↔ §9.6 `QUARANTINED_UNROUTED`**: §9.6 규칙 6에 따라 **Final validation(STEP 9) 시점**에는 `QUARANTINED_UNROUTED` placement가 **남아 있으면 안 된다.** `PARTIAL_SUCCESS`(위 정의: reclaim rollback·low-priority 제거 등)로 종료하려면, 그 **이전** 파이프라인 단계에서 해당 placement를 `ROUTED_CONFIRMED`로 승격하거나 `ROLLED_BACK`하여 점유를 해제해야 한다. 즉 “일부 rollback 후 valid layout”의 **valid**에는 **hard invariant + placement FSM 종료 조건**(§9.6)이 포함된다. optimization만 미달인 경우는 §15.4·위 `PARTIAL_SUCCESS` 두 번째 bullet로 구분한다.
 
 §15.4의 항목은 **hard invariant(§15.1–15.3)** 와 **soft optimization(품질 목표)** 을 분리해 해석한다. optimization만 실패하면 Final validation을 “실패 → validation_recovery”로 보내지 않고,
 결과 등급과 trace 경고로 처리한다(§15.4 참고).
@@ -1181,16 +1194,23 @@ Pass3 reroute
 DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD = 1.5   # gain / additional_route_cost 최소 비율 (튜닝 범위 예: 1.2 ~ 2.5)
 ```
 
-**`gain` · `additional_route_cost` 단위(정본)**: 비율 threshold가 의미 있으려면 분자·분모가 **동일 차원**이어야 한다.
+**`gain` · `additional_route_cost` 단위(정본)**: 게이트를 단순화하기 위해 분자·분모를 한 쌍으로 고정한다. **물리 차원이 엄격히 동일하지 않을 수 있음**을 전제로, 아래 **MVP 구현 표준**과 `DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD`는 **경험적 튜닝**으로 읽는다(값을 바꾸면 함께 재튜닝).
 
 ```text
-- gain: 신규 placement로 인해 **기대 채굴량 증가분**(slots·`slots * slot_throughput` 등으로 환산한 **expected_output/min**). 구현은 slots를 쓰되 trace에는 환산된 수치를 함께 남긴다.
+- gain(MVP): 신규 shadow bundle이 가져오는 **기대 채굴 슬롯 증가분**을 **무차원 스칼라(slots 수)** 로 둔다(구현 상수 `RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS` 등). trace에는 필요 시 expected_output/min 환산값을 **추가**로 남긴다.
 - additional_route_cost: **incremental route 전체**(§11.3: **fixed output stub 셀 포함**, stub는 “cost 0 고정”이 아니며 RouteZone·KIND 보정을 **합산에 포함**한다)에 대한 **RouteZone 기반 route cost 합**(§11.1·§11.2). trace에는 필요 시 `route_cost_including_stub` / `route_cost_after_stub`로 분해해 기록해 튜닝을 돕는다. capacity penalty는 본 ratio에 넣지 않고 STEP 4·검증에서 별도 처리.
 ```
 
-위 정의로 `gain / additional_route_cost`는 “채굴 이득 대비 공간·내부 우회 비용”의 **무차원 비율**로 읽는다. 다른 정의로 바꿀 경우 상수 `DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD`를 함께 재튜닝한다.
+**`gain_ratio`(MVP)**: `gain / additional_route_cost` = “**slots 대비 RouteZone 비용 합**”의 비율이다. **무차원 물리 비율이 아니다.** 정규화된 무차원 비율로 바꾸는 후속 설계가 생기면 본 절·상수·테스트를 함께 갱신한다.
 
 **`pass3_internal_transport_saved` · 내부 transport 스냅샷 정렬(정본)**: `pass3_internal_transport_saved`는 **STEP 5 Pass3 성공 커밋 직후** 레이아웃에서 산출한다. `baseline_internal_transport_at_reclaim_entry`(§12.5)는 **Reclaim loop 진입 직전** 스냅샷이다. **두 값 모두** “Reclaim이 아직 아무 commit도 하기 전” 동일 물리 시점의 transport를 기준으로 하므로, **STEP 5 직후 ~ Reclaim 진입 사이**에 transport를 바꾸는 처리(예: `cascade_corrective_recovery`, 수동 repair)가 있었다면 **Pass3 절약분을 그 시점 레이아웃으로 재측정**해 `pass3_internal_transport_saved`를 갱신하거나, 동일 스냅샷에서 `pass3_internal_transport_saved`와 `baseline_internal_transport_at_reclaim_entry`의 **내부 transport 집계 정의를 동일 함수**로 맞춘다. §12.2 budget 수식의 `pass3_internal_transport_saved`와 §12.5·rerun 검증의 `net_internal_transport_saved_after_reclaim` 기준선이 **서로 다른 시점 레이아웃**을 가리키면 안 된다.
+
+| 필드 | 의미(집계 종류) | 주 용도 |
+| --- | --- | --- |
+| `pass3_internal_transport_saved` | Pass3 전후 대비 **절약한 내부 transport 칸 수(델타)** | §12.2 reclaim internal transport **budget** 상한·`allowed_internal_spend` |
+| `baseline_internal_transport_at_reclaim_entry` | Reclaim 직전 레이아웃의 **절대** 내부 transport 칸 수 | §12.5 `net`·post-reclaim Pass3 rerun **게이트** 기준선 |
+
+동일 물리 시점 레이아웃을 보되, 위 둘은 **서로 다른 의미의 수치**이므로 숫자가 같아지는 것이 아니다.
 
 신규 placement 후보는 다음 조건을 만족해야 한다.
 
@@ -1301,6 +1321,14 @@ mineable_cur = mineable_base - final_route_cells - hard_protected_corridors - so
 
 단, soft_protected_corridor는 Pass3 또는 recovery가 replacement route를 성공적으로 검증하면 해제 가능하다.
 
+#### 12.4.1 `soft_protected`와 `mineable_cur` 밀집 데드락 (MVP 탈출)
+
+신규 placement는 `mineable_cur` 위에 서야 하고, `soft_protected_corridors`는 replacement 검증(§14.3) 전까지 mineable에서 제외된다. **밀집 소행성**에서는 “후보를 올릴 mineable”과 “replacement 없이는 못 비우는 soft”가 동시에 막혀 **후보 생성이 영구적으로 0**인 구성이 이론상 가능하다.
+
+**MVP 정본(탈출)**: §14.3 **atomic replace로 replacement route가 성립할 때만** soft를 해제·재탐색한다. **replacement 없이 soft를 무시하거나 mineable 배제를 임시로 푸는 relax는 하지 않는다.** 해당 경우 Reclaim loop는 §12.6대로 **후보 없음·개별 reject로 종료**하고, 이미 연결된 known-good 레이아웃을 유지한다. solver 종료 등급은 §4.4(예: PARTIAL_SUCCESS)와 hard invariant(§15.1–15.3)를 따른다.
+
+**비MVP(후속 옵션, 정본 밖 설계)**: 상위 **STEP 4 소프트 풀 재협상**(recovery·cascade)으로 soft 점유를 줄인 뒤 동일 solve에서 Reclaim을 다시 시도하는 등 — 채택 시 별 개정으로 §4·§14와 attempt 예산을 함께 적는다.
+
 ---
 
 ### 12.5 Post-reclaim Pass3 rerun 조건
@@ -1315,7 +1343,9 @@ post-reclaim Pass3 rerun 조건:
 - 소행성 1회 solve 기준 MAX_POST_RECLAIM_PASS3_RERUNS 미도달(§4.2)
 ```
 
-**`net_internal_transport_saved_after_reclaim > 0` (rerun 진입 vs 사후)**: 목록의 `net > 0`은 **Pass3 rerun 블록을 실행하기 전**에 평가한다. 값은 **`baseline_internal_transport_at_reclaim_entry`(Reclaim loop 진입 직전 스냅샷)** 대비, **Reclaim loop가 끝난 직후·rerun 이전**에 재측정한 내부 transport 지표로부터 계산한 **잠정(provisional) net**이다. **rerun을 한 번 돌린 뒤**에야 알 수 있는 net으로 진입 여부를 판단하면 안 된다. 아래 “rerun 완료 후 검증” 블록의 `net > 0`은 **rerun 이후 metric 재계산** 결과다.
+**STEP 7 게이트 평가 시점(정본)**: 위 목록·`net > 0`·`MAX_POST_RECLAIM_PASS3_RERUNS`는 **Reclaim placement loop(STEP 6) 전체가 끝난 뒤**, **P4 스테이지(STEP 6+STEP 7 블록)를 한 번 빠져나가기 직전**에 **한 번만** 평가한다. Reclaim **iteration마다** rerun을 시도하지 않는다. `MAX_POST_RECLAIM_PASS3_RERUNS`는 §4.2대로 **solve 전역 lifetime**이며 iteration과 무관하다.
+
+**`net_internal_transport_saved_after_reclaim > 0` (rerun 진입 vs 사후)**: 목록의 `net > 0`은 **Pass3 rerun 블록을 실행하기 전**에 평가한다. 값은 **`baseline_internal_transport_at_reclaim_entry`(Reclaim loop 진입 직전 스냅샷)** 대비, **Reclaim loop가 끝난 직후·rerun 이전**에 재측정한 내부 transport 지표로부터 계산한 **잠정(provisional) net**이다. 잠정 net은 **모든 Reclaim commit이 반영된 최종 맵 상태**에서만 계산한다(Reclaim loop 내부의 중간 iteration 스냅샷으로 gate 하지 않는다). **rerun을 한 번 돌린 뒤**에야 알 수 있는 net으로 진입 여부를 판단하면 안 된다. 아래 “rerun 완료 후 검증” 블록의 `net > 0`은 **rerun 이후 metric 재계산** 결과다.
 
 **`net_internal_transport_saved_after_reclaim` 기준선(정본)**: **Reclaim loop 진입 직전 스냅샷**의 내부 transport 지표를 `baseline_internal_transport_at_reclaim_entry`로 저장한다. Reclaim commit 및 (있을 경우) rerun 후 metric과 비교해 net 절약을 계산한다. 최초 Pass3 단독 시점과 혼동하지 않도록 스냅샷 phase를 trace에 기록한다.
 
@@ -1631,6 +1661,8 @@ Final validation recovery는 MAX_VALIDATION_RECOVERY_ATTEMPTS를 초과할 수 �
 **`baseline BFS/A*` (정본)**: 아래 조건으로 **한 번** 라우팅한 counterfactual 레이아웃의 `asteroid_internal_transport_count`를 `optimization_baseline_internal_transport`로 저장한다.
 
 **기본 측정 시점(정본, v5.3)**: **Pass1·Pass2 placement 확정 직후, STEP 4 merge-aware routing 이전**의 occupied/blocked 맵을 입력으로 쓴다. 구현체 간 수치 비교 가능성을 위해 **이 시점을 기본값으로 고정**한다. 연구·A/B용으로 STEP 4 직후 맵을 쓰는 변형이 필요하면 **별도 필드**(예: `optimization_baseline_phase: pre_step4 | post_step4`)와 별도 수치를 trace에 **추가**하고, 본 문서 §15.4 첫 항목 checklist는 **pre_step4**만을 말한다.
+
+**placement 집합 한계(정본, v5.10)**: baseline 입력 맵의 extractor·extension 집합은 **STEP 4 이전 확정분**이다. 이후 STEP 4에서 `QUARANTINED_UNROUTED` → `ROLLED_BACK` 등으로 배치가 제거되면, **최종 결과 맵의 placement 수**는 baseline보다 적을 수 있다. 따라서 “baseline 대비 내부 transport 감소”는 **라우팅·Pass3 최적화만의 효과**가 아니라 **배치 수 감소**와 혼재할 수 있음을 trace·리포트에서 구분한다(필요 시 baseline·final 각각의 placement 카운트를 함께 기록).
 
 ```text
 - 입력 레이아웃: 위 기본 시점의 동일 occupied/blocked 맵.

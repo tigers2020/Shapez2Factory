@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import io
+import types
 from collections.abc import Iterator
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.db import IntegrityError
 from django.test import Client, override_settings
@@ -28,8 +31,47 @@ from django_apps.web.services.shape_part_sprites import (
     make_sprite_key,
     make_tank_vortex_sprite_key,
 )
+from django_apps.web.shape_part_sprite_storage import shape_part_sprite_storage
 
 User = get_user_model()
+
+
+def test_shape_part_sprite_storage_defaults_when_both_settings_keys_absent(tmp_path: Path) -> None:
+    base = tmp_path / "proj"
+    base.mkdir()
+    fake = types.SimpleNamespace(BASE_DIR=base)
+    with mock.patch("django_apps.web.shape_part_sprite_storage.settings", fake):
+        storage = shape_part_sprite_storage()
+    assert Path(storage.location) == base / "django_apps" / "web" / "static" / "web"
+    assert storage.base_url == "/static/web/"
+
+
+def test_shape_part_sprite_storage_improperly_configured_when_only_root_set(
+    tmp_path: Path,
+) -> None:
+    base = tmp_path / "proj"
+    base.mkdir()
+    root = base / "sprites"
+    fake = types.SimpleNamespace(BASE_DIR=base, SHAPE_PART_SPRITE_STATIC_ROOT=root)
+    with mock.patch("django_apps.web.shape_part_sprite_storage.settings", fake):
+        with pytest.raises(ImproperlyConfigured):
+            shape_part_sprite_storage()
+
+
+def test_shape_part_sprite_storage_ok_when_both_set(tmp_path: Path) -> None:
+    base = tmp_path / "proj"
+    base.mkdir()
+    root = base / "sprites"
+    root.mkdir()
+    fake = types.SimpleNamespace(
+        BASE_DIR=base,
+        SHAPE_PART_SPRITE_STATIC_ROOT=root,
+        SHAPE_PART_SPRITE_URL_PREFIX="/static/web/",
+    )
+    with mock.patch("django_apps.web.shape_part_sprite_storage.settings", fake):
+        storage = shape_part_sprite_storage()
+    assert Path(storage.location) == root
+    assert storage.base_url == "/static/web/"
 
 
 @pytest.fixture(autouse=True)

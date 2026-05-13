@@ -48,7 +48,7 @@ def _path_additional_route_cost_detail(
     total = 0
     first_hop = 0
     for i in range(len(path) - 1):
-        _frm, to = path[i], path[i + 1]
+        to = path[i + 1]
         ec = mining_priority_route_cell_cost(
             to,
             asteroid_cells=asteroid_cells,

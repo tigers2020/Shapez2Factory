@@ -30,6 +30,7 @@ RECOVERY_VALIDATION_LOOP_DISABLED = 0
 # RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED: MAX_TOTAL == this → no P4 skip by chain-length cap.
 # NOTE: 0 does NOT mean "disabled"; it means "unlimited" for this specific knob.
 RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED = 0
+# New comparisons should use this name, not a bare literal 0, to avoid conflating other zeros.
 
 MAX_TOTAL_RECOVERY_ATTEMPTS = RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED
 # Bounded Pass3→P4 timeline: total forward finalize passes when the validation recovery loop

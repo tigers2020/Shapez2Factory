@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from unittest.mock import patch
 
@@ -37,6 +38,9 @@ def _detail_keys() -> frozenset[str]:
             "expanded_nodes",
             "fallback_reason",
             "last_error",
+            "routing_failure_detail",
+            "step4_failure_category",
+            "step4_failure_classification",
         }
     )
 
@@ -127,13 +131,72 @@ def test_build_step4_route_failure_detail_shape_matches_contract() -> None:
         cheap_reuse_cells=None,
         search_stats={"stop_reason": "exhausted", "expanded_nodes": 3, "heap_pops": 4},
     )
-    assert frozenset(detail) == _detail_keys()
     assert detail["last_error"] == "no_route_exhausted"
     assert detail["search_mode"] == "goal_cells_union_legacy"
     assert detail["fallback_reason"] is None
-    assert detail["placement_id"] == "p-test"
+    assert _detail_keys() <= frozenset(detail)
+    keys = list(s4fd_mod.ROUTING_FAILURE_DETAIL_KEYS)
+    assert list(detail["routing_failure_detail"].keys()) == keys
+    rfd = detail["routing_failure_detail"]
+    assert rfd["placement_id"] == "p-test"
+    assert rfd["transport_kind"] == "shape_belt"
+    assert rfd["search_budget_exhausted"] is False
+    assert rfd["replacement_search_exhausted"] is None
+    assert rfd["quarantined"] is False
+    assert rfd["rolled_back"] is False
     assert isinstance(detail["blocked_reason_near_stub"], list)
     assert len(detail["blocked_reason_near_stub"]) == 4
+    assert rfd["trunk_seed_candidate_count"] == 0
+    assert rfd["candidate_expanded_nodes"] == 3
+    assert rfd["step4_failure_category"] == detail["step4_failure_category"]
+    assert isinstance(rfd["step4_failure_classification"], dict)
+    assert rfd["step4_failure_classification"] == detail["step4_failure_classification"]
+    ro = detail.get("step4_replay_overlay")
+    assert isinstance(ro, dict)
+    assert ro["failed_stub_cells"] == [[2, 2]]
+    assert ro["route_goal_cells_sample"] == [[10, 10]]
+    js = json.dumps(detail["routing_failure_detail"], sort_keys=True)
+    js2 = json.dumps(detail["routing_failure_detail"], sort_keys=True)
+    assert js == js2
+
+
+def test_routing_failure_detail_lifecycle_and_rolled_back_patch() -> None:
+    stub: Coord = (2, 2)
+    cells = {stub: {"x": 2, "y": 2, "role": "belt", "surface": "shape"}}
+    detail = s4fd_mod.build_step4_route_failure_detail(
+        placement_id="p2-000001",
+        extractor_cell=(2, 3),
+        stub_cell=stub,
+        transport_kind="shape_belt",
+        want_role="belt",
+        blocked=frozenset(),
+        hard_extras=frozenset(),
+        trunk_cells=frozenset(),
+        goal_cells=frozenset({(5, 5)}),
+        margin_cells={(5, 5)},
+        transport_now=set(),
+        cells=cells,
+        mineable=frozenset(),
+        asteroid=frozenset(),
+        is_external=_never_external,
+        cheap_reuse_cells=None,
+        search_stats={"stop_reason": "exhausted", "expanded_nodes": 1},
+        trunk_seed_candidate_count=7,
+    )
+    rfd = detail["routing_failure_detail"]
+    assert rfd["trunk_seed_candidate_count"] == 7
+    s4fd_mod.apply_routing_failure_detail_lifecycle(
+        detail,
+        replacement_search_exhausted=True,
+        quarantined=True,
+        placement_commit_state="quarantined_unrouted",
+    )
+    assert rfd["replacement_search_exhausted"] is True
+    assert rfd["quarantined"] is True
+    assert rfd["placement_commit_state"] == "quarantined_unrouted"
+    fd = {"step4_route_failure_detail": detail, "routing_failure_detail": rfd}
+    s4fd_mod.patch_failure_row_routing_failure_detail_rolled_back(fd)
+    assert rfd["rolled_back"] is True
 
 
 def test_build_step4_route_failure_detail_no_stats_last_error_generic() -> None:
@@ -159,3 +222,8 @@ def test_build_step4_route_failure_detail_no_stats_last_error_generic() -> None:
         search_stats={},
     )
     assert detail["last_error"] == "no_route"
+    rfd = detail["routing_failure_detail"]
+    assert rfd["route_goal_set_size"] == 0
+    assert rfd["reachable_goal_count"] == 0
+    assert rfd["candidate_expanded_nodes"] is None
+    assert rfd["extractor_id"] is None

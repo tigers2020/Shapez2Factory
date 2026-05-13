@@ -24,6 +24,7 @@ __all__ = [
     "collect_routing_jobs",
     "layout_kind",
     "mineable_and_asteroid_coords",
+    "stub_row_materialized_for_want_role",
     "transport_kind_for_extractor",
     "want_role",
 ]
@@ -81,6 +82,52 @@ def want_role(transport_kind: str) -> str:
     raise ValueError(f"unknown transport_kind {transport_kind!r}")
 
 
+_BUILDING_LIKE_LAYOUT_KINDS: frozenset[str] = frozenset(
+    {
+        "fluid_miner",
+        "fluid_extension",
+        "shape_miner",
+        "shape_extension",
+    }
+)
+
+
+def stub_row_materialized_for_want_role(row: dict[str, Any] | None, want_role: str) -> bool:
+    """True when a miner output stub cell is a legal ``want_role`` anchor (STEP4 / STEP9).
+
+    Accepts explicit ``role == want_role``, or ``role == "inferred"`` when ``layout_kind``
+    names the matching transport segment, or when a fixed-output stub flag is set without an
+    opposite-kind ``layout_kind`` token (merged map before ``role`` promotion to belt/pipe).
+    """
+
+    if row is None or want_role not in ("belt", "pipe"):
+        return False
+    role = row.get("role")
+    if role == want_role:
+        return True
+    if role != "inferred":
+        return False
+    lk = (layout_kind(row) or "").lower()
+    if lk in _BUILDING_LIKE_LAYOUT_KINDS:
+        return False
+    relaxed_pipe = "pipe" in lk and lk not in _BUILDING_LIKE_LAYOUT_KINDS
+    relaxed_belt = "belt" in lk and lk not in _BUILDING_LIKE_LAYOUT_KINDS
+    if relaxed_pipe and relaxed_belt:
+        return False
+    fixed = row.get("fixed_output_stub") is True or row.get("pass12_fixed_output_stub") is True
+    if want_role == "pipe":
+        if relaxed_pipe:
+            return True
+        if relaxed_belt:
+            return False
+        return fixed
+    if relaxed_belt:
+        return True
+    if relaxed_pipe:
+        return False
+    return fixed
+
+
 def blocked_cells(cells: dict[Coord, dict[str, Any]]) -> set[Coord]:
     """Cells occupied by extractor/extension bodies that routes must not cross (§9)."""
 
@@ -113,7 +160,7 @@ def collect_routing_jobs(
             continue
         st = cells.get(stub)
         wr = want_role(tk)
-        if st is None or st.get("role") != wr:
+        if st is None or not stub_row_materialized_for_want_role(st, wr):
             continue
         pid_raw = row.get("placement_id")
         pid = str(pid_raw) if isinstance(pid_raw, str) else None

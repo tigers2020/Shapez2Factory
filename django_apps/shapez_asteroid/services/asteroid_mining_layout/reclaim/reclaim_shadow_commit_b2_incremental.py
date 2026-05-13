@@ -129,7 +129,9 @@ def _p4_b2_try_commit_incremental_route(
 
     shadow_path = picked.shadow_route_path
     baseline_len = len(shadow_path) if shadow_path else len(path)
-    max_len = max(1, int(math.ceil(float(baseline_len) * float(MAX_RECLAIM_INCREMENTAL_ROUTE_LENGTH_RATIO))))
+    max_len = max(
+        1, int(math.ceil(float(baseline_len) * float(MAX_RECLAIM_INCREMENTAL_ROUTE_LENGTH_RATIO)))
+    )
     if len(path) > max_len:
         return _fail(P4_REJECT_INCREMENTAL_ROUTE_LENGTH_RATIO)
 

@@ -26,6 +26,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
     EXTRACTORS_SHAPE,
     blocked_cells,
     layout_kind,
+    stub_row_materialized_for_want_role,
     transport_kind_for_extractor,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation_contracts import (  # noqa: E501
@@ -227,16 +228,21 @@ def _fixed_output_stub_removed_count(
 
     n = 0
     for row in mining_map:
-        if row.get("fixed_output_stub") is not True and row.get(
-            "pass12_fixed_output_stub"
-        ) is not True:
+        if (
+            row.get("fixed_output_stub") is not True
+            and row.get("pass12_fixed_output_stub") is not True
+        ):
             continue
         x, y = row.get("x"), row.get("y")
         if not isinstance(x, int) or not isinstance(y, int) or x == 0:
             continue
         st = cells.get((x, y))
-        role = st.get("role") if st is not None else None
-        if role not in ("belt", "pipe"):
+        if st is None:
+            n += 1
+            continue
+        belt_ok = stub_row_materialized_for_want_role(st, "belt")
+        pipe_ok = stub_row_materialized_for_want_role(st, "pipe")
+        if not belt_ok and not pipe_ok:
             n += 1
     return n
 
@@ -327,8 +333,8 @@ def validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValid
                 continue
             st = cells.get(stub_cell)
             ok_kind = st is not None and (
-                (tk == "shape_belt" and st.get("role") == "belt")
-                or (tk == "fluid_pipe" and st.get("role") == "pipe")
+                (tk == "shape_belt" and stub_row_materialized_for_want_role(st, "belt"))
+                or (tk == "fluid_pipe" and stub_row_materialized_for_want_role(st, "pipe"))
             )
             if not ok_kind:
                 missing_stub_count += 1

@@ -15,6 +15,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
     PlacementCommitRecord,
     PlacementCommitState,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    stub_row_materialized_for_want_role as _stub_row_materialized_for_want_role,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_search_diagnostics as _s4sd,
 )
@@ -560,7 +563,9 @@ def build_step4_route_failure_diagnostic(
         goal_set_kind = "trunk_seed_candidates_union_exterior_margin"
 
     stub_row = cells.get(stub_cell)
-    stub_role_ok = bool(stub_row and stub_row.get("role") == want_role)
+    stub_role_ok = bool(
+        stub_row is not None and _stub_row_materialized_for_want_role(stub_row, want_role)
+    )
 
     blocked_body_count, blocked_transport_count, protected_hard_count, protected_soft_count = (
         _blocked_category_counts(

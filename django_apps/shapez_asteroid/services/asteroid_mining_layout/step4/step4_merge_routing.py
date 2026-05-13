@@ -139,6 +139,32 @@ __all__ = [
 ]
 
 
+def _margin_universe_extra_from_map_list(
+    map_rows: list[dict[str, Any]],
+    *,
+    cells_keys: set[Coord],
+) -> frozenset[Coord]:
+    """Belt/pipe coords declared on ``map_after_pass2`` rows but absent from ``cells`` keys.
+
+    Mirrors Pass2 ``build_pass2_step4_aligned_routing_goals`` (``pass12_route_probe``), which
+    passes ``universe_extra=transport_cells_probe`` into :func:`exterior_margin_cells` so probe
+    transport participates in the margin adjacency universe even when missing from the frozen
+    ``cells`` dict (Algorithm ``08_step4_routing`` section 9.2: exterior margin and trunk seed).
+    """
+
+    out: set[Coord] = set()
+    for row in map_rows:
+        if row.get("role") not in ("belt", "pipe"):
+            continue
+        x, y = row.get("x"), row.get("y")
+        if not isinstance(x, int) or not isinstance(y, int) or x == 0:
+            continue
+        c = (x, y)
+        if c not in cells_keys:
+            out.add(c)
+    return frozenset(out)
+
+
 def _step4_stub_min_margin_manhattan(
     stub: Coord,
     margin_cells: frozenset[Coord] | set[Coord],
@@ -235,8 +261,15 @@ def run_step4_merge_aware_routing(
         transport_cells_reaching_external(set(transport0), set(blocked0), is_external)
     )
 
+    margin_universe_extra = _margin_universe_extra_from_map_list(
+        map_after_pass2, cells_keys=set(cells.keys())
+    )
     margin_cells = exterior_margin_cells(
-        mineable=mineable, asteroid=asteroid, cells=cells, is_external=is_external
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        is_external=is_external,
+        universe_extra=margin_universe_extra,
     )
     hint_union = trunk_seed_union_from_existing_layout(existing_layout_analysis)
     cheap_reuse_cells = frozenset(set(initial_trunk) | set(hint_union))
@@ -399,6 +432,8 @@ def run_step4_merge_aware_routing(
                     is_external=is_external,
                     cheap_reuse_cells=cheap_reuse_cells,
                     search_stats=search_stats,
+                    trunk_seed_candidate_count=len(trunk_seed_by_kind.get(tk, ())),
+                    trunk_seed_cells=frozenset(trunk_seed_by_kind.get(tk, ())),
                 )
                 if trace_enabled():
                     debug_log_event(
@@ -537,6 +572,12 @@ def run_step4_merge_aware_routing(
                             "search_mode": f"pass2_recovery:{recovery_out.recovery_search_mode}"
                         }
                 if not recovered:
+                    replacement_attempted = recovery_tried_pass2 or bridge_attempted_flag
+                    if replacement_attempted:
+                        _s4_fail_detail.apply_routing_failure_detail_lifecycle(
+                            detail,
+                            replacement_search_exhausted=True,
+                        )
                     if placement_id is not None and placement_id in work_records:
                         rec = work_records[placement_id]
                         _rollback_placement_cells(cells, rec, final_cells, mineable)
@@ -553,6 +594,14 @@ def run_step4_merge_aware_routing(
                         )
                         fd["step4_route_failure_detail"] = detail
                         fd["last_error"] = detail["last_error"]
+                        _s4_fail_detail.apply_routing_failure_detail_lifecycle(
+                            detail,
+                            quarantined=True,
+                            placement_commit_state=work_records[placement_id].state.value,
+                        )
+                        rfd = detail.get("routing_failure_detail")
+                        if isinstance(rfd, dict):
+                            fd["routing_failure_detail"] = rfd
                         fd["step4_route_failure_diagnostic"] = build_step4_route_failure_diagnostic(
                             rec=work_records[placement_id],
                             extractor_cell=ext_cell,
@@ -612,6 +661,9 @@ def run_step4_merge_aware_routing(
                             "recovery_trigger": RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
                             "step4_route_failure_detail": detail,
                         }
+                        rfd_u = detail.get("routing_failure_detail")
+                        if isinstance(rfd_u, dict):
+                            fd_unrec["routing_failure_detail"] = rfd_u
                         fd_unrec["step4_route_failure_diagnostic"] = (
                             build_step4_route_failure_diagnostic(
                                 rec=None,
@@ -758,6 +810,9 @@ def run_step4_merge_aware_routing(
                 st = work_records[eid].state.value
                 fd["final_state"] = st
                 fd["state"] = st
+                if st == PlacementCommitState.ROLLED_BACK.value:
+                    _s4_fail_detail.patch_failure_row_routing_failure_detail_rolled_back(fd)
+                _s4_fail_detail.sync_routing_failure_detail_placement_commit_state(fd, st)
                 dig = fd.get("step4_route_failure_diagnostic")
                 if isinstance(dig, dict):
                     dig["final_state"] = st

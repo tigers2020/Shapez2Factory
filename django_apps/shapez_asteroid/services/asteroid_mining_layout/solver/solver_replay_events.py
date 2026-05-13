@@ -51,6 +51,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 # ``visualization_stream_tick`` (``computation_cycle % 10 == 0``), snapshot refs
 # ``layout_snapshot_before_pass3`` / ``layout_snapshot_after_pass3`` on replay root,
 # ``existing_layout_replay_overlay`` / ``placement_recovery_overlay`` (output-only).
+# v11: ``placement_recovery_overlay.step4_route_failure_replay_overlay`` — bounded STEP4 route
+# failure cell samples + corridor lists for debug/replay UI (never routing input).
 
 
 class SolverMutationEventKind(StrEnum):
@@ -449,9 +451,10 @@ def extract_pass3_layout_snapshot_refs(
     for ev in events:
         if not isinstance(ev, dict):
             continue
-        if ev.get("kind") != SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value and ev.get(
-            "event_type"
-        ) != REPLAY_EVENT_TYPE_PASS3_LAYOUT_SNAPSHOT:
+        if (
+            ev.get("kind") != SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value
+            and ev.get("event_type") != REPLAY_EVENT_TYPE_PASS3_LAYOUT_SNAPSHOT
+        ):
             continue
         pl = ev.get("payload")
         if not isinstance(pl, dict):

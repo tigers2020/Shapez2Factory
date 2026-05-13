@@ -19,6 +19,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
     build_final_solver_output,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_map_ops import (
+    rollback_placement_cells,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_merge_routing import (
     step4_routing_skipped_result,
 )
@@ -181,3 +184,31 @@ def test_finalize_rejects_quarantine_in_placement_commit_by_id_when_counter_zero
 
     assert summary["solver_termination"].endswith("failure")
     assert summary["return_reason"] == "validation_unfinalized_placement_failed"
+
+
+def test_rollback_placement_cells_restores_mineable_and_drops_overlay() -> None:
+    """§9.6: spatial rollback restores bundle coords from ``final_cells`` for mineable cells."""
+
+    ext = (5, 5)
+    stub = (6, 5)
+    mineable = frozenset({ext, stub})
+    final_cells = {
+        ext: {"x": 5, "y": 5, "role": "occupied", "layout_kind": "shape_miner"},
+        stub: {"x": 6, "y": 5, "role": "mineable", "layout_kind": None},
+    }
+    cells = {
+        ext: dict(final_cells[ext]),
+        stub: {"x": 6, "y": 5, "role": "belt", "surface": "shape", "placement_id": "p2-000001"},
+    }
+    rec = PlacementCommitRecord(
+        placement_id="p2-000001",
+        placement_pass="pass2",
+        extractor_cell=ext,
+        extension_cells=(),
+        stub_cell=stub,
+        transport_kind="shape_belt",
+        state=PlacementCommitState.PROVISIONAL_PLACED,
+    )
+    rollback_placement_cells(cells, rec, final_cells, mineable)
+    assert cells[ext] == final_cells[ext]
+    assert cells[stub] == final_cells[stub]

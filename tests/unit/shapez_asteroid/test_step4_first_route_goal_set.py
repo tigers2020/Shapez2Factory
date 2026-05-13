@@ -9,6 +9,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement impor
     pass12_route_probe as p12rp,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+    step4_goal_trunk_seed as s4_goal,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_route_failure_diagnostic as s4frd,
 )
 
@@ -233,3 +236,57 @@ def test_empty_goal_set_increments_counter_and_trace() -> None:
     assert sink["pass2_probe_empty_goal_set_count"] == 1
     assert diag["pass2_goal_set_trace"]["rejected_reason"] == "empty_goal_set"
     assert diag["pass2_goal_assisted_probe"]["allowed_goal_void_cell_count"] == 0
+
+
+def test_patch_a_margin_universe_extra_collects_belt_rows_missing_from_cells() -> None:
+    """STEP4 Pass2 parity: belt/pipe map rows missing from ``cells`` become ``universe_extra``."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+        step4_merge_routing as s4mr,
+    )
+
+    rows = [
+        {"x": 9, "y": 0, "role": "inferred", "layout_kind": "asteroid_field", "surface": "shape"},
+        {"x": 10, "y": 0, "role": "belt", "surface": "shape"},
+    ]
+    cells_keys = {(9, 0)}
+    extra = s4mr._margin_universe_extra_from_map_list(rows, cells_keys=cells_keys)
+    assert extra == frozenset({(10, 0)})
+
+
+def test_patch_a_exterior_margin_matches_pass2_when_extra_restores_belt() -> None:
+    """Same belt-edge geometry as ``test_universe_extra_restores_margin_when_belt_missing_...``."""
+
+    ext: Coord = (11, 0)
+
+    def is_external(c: Coord) -> bool:
+        return c == ext
+
+    mineable = frozenset({(9, 0)})
+    asteroid: frozenset[Coord] = frozenset()
+    cells: dict[Coord, dict[str, Any]] = {
+        (9, 0): {
+            "x": 9,
+            "y": 0,
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "shape",
+        },
+    }
+    belt_edge: Coord = (10, 0)
+    m0 = s4_goal.exterior_margin_cells(
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        is_external=is_external,
+        universe_extra=frozenset(),
+    )
+    m1 = s4_goal.exterior_margin_cells(
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        is_external=is_external,
+        universe_extra=frozenset({belt_edge}),
+    )
+    assert m0 == set()
+    assert (10, 0) in m1

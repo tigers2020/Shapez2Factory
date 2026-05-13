@@ -12,6 +12,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     blocked_cells as _blocked_cells,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    stub_row_materialized_for_want_role as _stub_row_materialized_for_want_role,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     transport_cells_reaching_external,
 )
@@ -22,6 +25,9 @@ def same_kind_transport_cells(cells: dict[Coord, dict[str, Any]], want_role: str
     out: set[Coord] = set()
     for c, row in cells.items():
         if row.get("role") == want_role:
+            out.add(c)
+            continue
+        if _stub_row_materialized_for_want_role(row, want_role):
             out.add(c)
     return out
 
@@ -66,6 +72,32 @@ def rollback_placement_cells(
             del cells[c]
 
 
+def rollback_exclusive_transport_path_cells(
+    cells: dict[Coord, dict[str, Any]],
+    *,
+    route_path: tuple[Coord, ...],
+    want_role: str,
+    preserve_coords: frozenset[Coord],
+    final_cells: dict[Coord, dict[str, Any]],
+    mineable: frozenset[Coord],
+) -> None:
+    """Strip same-role transport cells unique to ``route_path`` after bundle rollback (§9.6 P2-C).
+
+    Cells shared with ``preserve_coords`` (other committed routes) are not modified.
+    """
+
+    for p in route_path:
+        if p in preserve_coords:
+            continue
+        row = cells.get(p)
+        if row is None or row.get("role") != want_role:
+            continue
+        if p in mineable and p in final_cells:
+            cells[p] = dict(final_cells[p])
+        elif p in cells:
+            del cells[p]
+
+
 def stamp_placement_commit_on_map_rows(
     cells: dict[Coord, dict[str, Any]],
     work_records: dict[str, PlacementCommitRecord],
@@ -78,6 +110,7 @@ def stamp_placement_commit_on_map_rows(
             continue
         rec = work_records[pid]
         row["placement_commit_state"] = rec.state.value
+        row["placement_state"] = rec.state.value
         if rec.route_id is not None:
             row["route_id"] = rec.route_id
         else:

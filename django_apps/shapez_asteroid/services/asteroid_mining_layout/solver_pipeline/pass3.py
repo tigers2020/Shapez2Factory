@@ -300,9 +300,7 @@ def run_pass3_stage(
                             "source": "final_validation_after_pass3_commit",
                             "disconnected_stub_count": int(report_try.disconnected_stub_count),
                         }
-                    p3_trace["pass3_greedy_reject_detail"] = (
-                        PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY
-                    )
+                    p3_trace["pass3_greedy_reject_detail"] = PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY
                     pass3_summary["pass3_connectivity_reject_sample"] = p3_trace[
                         "pass3_connectivity_reject_sample"
                     ]

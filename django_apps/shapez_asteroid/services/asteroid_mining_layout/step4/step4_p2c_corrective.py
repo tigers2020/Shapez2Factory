@@ -25,6 +25,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_con
     Step4Route,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_map_ops import (
+    rollback_exclusive_transport_path_cells,
     rollback_placement_cells,
     same_kind_transport_cells,
 )
@@ -240,7 +241,18 @@ def p2c_revalidate_and_correct(
 
             if pid is not None and pid in work_records:
                 rec = work_records[pid]
+                preserve_path_cells = frozenset(
+                    c for rt in routes_out if rt.placement_id != pid for c in rt.path
+                )
                 rollback_placement_cells(cells, rec, final_cells, mineable)
+                rollback_exclusive_transport_path_cells(
+                    cells,
+                    route_path=br.path,
+                    want_role=wr,
+                    preserve_coords=preserve_path_cells,
+                    final_cells=final_cells,
+                    mineable=mineable,
+                )
                 work_records[pid] = transition_placement_record_to_rolled_back(
                     rec,
                     rollback_reason="p2c_trunk_disconnect",

@@ -24,6 +24,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     layout_kind as _layout_kind,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    stub_row_materialized_for_want_role as _stub_row_materialized_for_want_role,
+)
 
 # Positive costs for Dijkstra; ``None`` means the step is not permitted.
 _COST_SAME_ROLE_TRANSPORT = 10.0
@@ -55,6 +58,10 @@ def step4_step_cost(
     if row is not None:
         role = row.get("role")
         if role == want_role:
+            if cheap_reuse_cells is not None and c in cheap_reuse_cells:
+                return _COST_SAME_ROLE_TRUNK_REUSE
+            return _COST_SAME_ROLE_TRANSPORT
+        if _stub_row_materialized_for_want_role(row, want_role):
             if cheap_reuse_cells is not None and c in cheap_reuse_cells:
                 return _COST_SAME_ROLE_TRUNK_REUSE
             return _COST_SAME_ROLE_TRANSPORT

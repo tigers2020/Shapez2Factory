@@ -76,6 +76,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_contracts import (
     Step4RoutingResult,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_route_failure_replay_overlay import (  # noqa: E501
+    merge_step4_route_failure_replay_overlay,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
 )
@@ -769,6 +772,12 @@ def build_final_solver_output(
     ]
     # ``replay_events`` is same-run append-only export for STEP10 / NDJSON — not a policy input
     # for routing or recovery (see ``solver_replay_events`` and ``solver_trace`` module docs).
+    step4_fail_overlay = merge_step4_route_failure_replay_overlay(
+        routing_failures=step4_result.routing_failures,
+        routing_state=routing_state_summary,
+        quarantined_placements=tuple(step4_result.quarantined_placement_ids_peak),
+        rolled_back_placements=step4_result.rolled_back_placement_ids,
+    )
     solver_replay = build_solver_replay_snapshot(
         frames=frames,
         run_id=run_id,
@@ -782,6 +791,7 @@ def build_final_solver_output(
             "step4_quarantined_placement_ids": [
                 str(x) for x in step4_result.quarantined_placement_ids
             ],
+            "step4_route_failure_replay_overlay": step4_fail_overlay,
         },
     )
     out = {

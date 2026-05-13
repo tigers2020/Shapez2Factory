@@ -288,9 +288,9 @@ def run_p4_reclaim_loop_after_pass3(
                         continue
 
             merged["p4_reclaim_provisional_last_reject_reason"] = str(rr or "")
-            merged["p4_reclaim_provisional_reject_count"] = int(
-                merged.get("p4_reclaim_provisional_reject_count") or 0
-            ) + 1
+            merged["p4_reclaim_provisional_reject_count"] = (
+                int(merged.get("p4_reclaim_provisional_reject_count") or 0) + 1
+            )
             if i + 1 >= max_loop_iterations:
                 merged["p4_reclaim_loop_successful_commits"] = commits
                 merged["p4_reclaim_loop_internal_transport_cumulative_added"] = spent

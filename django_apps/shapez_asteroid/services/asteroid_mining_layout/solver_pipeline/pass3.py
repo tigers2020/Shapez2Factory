@@ -98,6 +98,8 @@ def initial_pass3_summary() -> dict[str, Any]:
         "pass3_map_accepted": False,
         "pass3_attempted_commit": False,
         "pass3_final_committed": False,
+        "pass3_validated_layout_retained": False,
+        "pass3_transport_stage_committed": False,
         "pass3_gain": 0,
         "pass3_reverted": False,
         "before_pass3_counts": None,
@@ -120,6 +122,13 @@ def initial_pass3_summary() -> dict[str, Any]:
     }
     apply_recovery_contract_defaults(d)
     return d
+
+
+def _sync_pass3_semantic_aliases(s: dict[str, Any]) -> None:
+    """Mirror ``pass3_map_accepted`` / ``pass3_committed`` under clearer names for logs."""
+
+    s["pass3_validated_layout_retained"] = bool(s.get("pass3_map_accepted"))
+    s["pass3_transport_stage_committed"] = bool(s.get("pass3_committed"))
 
 
 def run_pass3_stage(
@@ -244,6 +253,8 @@ def run_pass3_stage(
                     "pass3_attempted_commit": bool(p3_trace.get("pass3_committed")),
                     "pass3_final_committed": True,
                     "pass3_map_accepted": True,
+                    "pass3_validated_layout_retained": True,
+                    "pass3_transport_stage_committed": bool(p3_trace.get("pass3_committed")),
                     "pass3_gain": int(p3_trace.get("gain", 0) or 0),
                     "pass3_bottleneck_count": p3_trace.get("bottleneck_count", 0),
                     "pass3_over_capacity_segments": p3_trace.get("over_capacity_segments", 0),
@@ -284,6 +295,8 @@ def run_pass3_stage(
                     "pass3_map_accepted": False,
                     "pass3_attempted_commit": bool(p3_trace.get("pass3_committed")),
                     "pass3_final_committed": False,
+                    "pass3_validated_layout_retained": False,
+                    "pass3_transport_stage_committed": bool(p3_trace.get("pass3_committed")),
                     "pass3_gain": int(p3_trace.get("gain", 0) or 0),
                     "pass3_bottleneck_count": p3_trace.get("bottleneck_count", 0),
                     "pass3_over_capacity_segments": p3_trace.get("over_capacity_segments", 0),
@@ -328,6 +341,8 @@ def run_pass3_stage(
             p3_trace,
             validation_recovery_attempt=validation_recovery_attempt,
         )
+
+    _sync_pass3_semantic_aliases(pass3_summary)
 
     if eligible_pass3 and replay_events is not None and p3_txn_id is not None:
         h_after = solver_state_sha256_hex(
@@ -393,6 +408,12 @@ def run_pass3_stage(
             "greedy_committed": pass3_summary.get("pass3_greedy_committed"),
             "guarded_committed": bool(pass3_summary.get("p3e3_guarded_committed") or False),
             "map_accepted": bool(pass3_summary.get("pass3_map_accepted")),
+            "pass3_validated_layout_retained": bool(
+                pass3_summary.get("pass3_validated_layout_retained")
+            ),
+            "pass3_transport_stage_committed": bool(
+                pass3_summary.get("pass3_transport_stage_committed")
+            ),
             "final_committed": bool(pass3_summary.get("pass3_final_committed")),
             "reverted": bool(pass3_summary.get("pass3_reverted")),
             "gain": pass3_summary.get("pass3_gain", 0),

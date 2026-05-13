@@ -78,6 +78,8 @@ def test_sync_recovery_total_attempts_tracks_chain_only_not_cascade_counter() ->
     sync_recovery_total_attempts_used_from_chain(p3)
     assert p3["total_recovery_attempts_used"] == 2
     assert p3["recovery_total_attempts_used"] == 2
+    assert p3["recovery_context_chain_segment_count"] == 2
+    assert p3["max_recovery_context_chain_segments"] is None
     assert p3["cascade_corrective_attempts"] == 10_000
 
 
@@ -112,14 +114,14 @@ def test_enrich_recovery_summary_cascade_independent_of_attempt_counters() -> No
         rolled_back_placement_ids=(),
         quarantined_placement_ids=(),
     )
-    recovery_orch.enrich_solver_summary_recovery(
-        summary_fields, report=rpt, step4_result=s4r
-    )
+    recovery_orch.enrich_solver_summary_recovery(summary_fields, report=rpt, step4_result=s4r)
     assert summary_fields["cascade_corrective_attempts"] == 99
     assert summary_fields["total_recovery_attempts_used"] == 2
     assert summary_fields["validation_recovery_attempts_used"] == 1
     assert summary_fields["total_recovery_attempts"] == 2
     assert summary_fields["validation_recovery_attempts"] == 1
+    assert summary_fields["recovery_context_chain_segment_count"] == 2
+    assert summary_fields["max_recovery_context_chain_segments"] is None
 
 
 def test_route_validation_recovery_actions_order_and_constants() -> None:
@@ -745,6 +747,7 @@ def test_recovery_timeline_envelope_interpretation_fields() -> None:
     assert env["total_recovery_cap_mode"] == "unlimited"
     assert env["validation_recovery_loop_mode"] == "enabled"
     assert env["validation_recovery_execution_enabled"] is True
+    assert env["max_recovery_context_chain_segments"] is None
 
 
 def test_protected_corridors_read_matches_for_reclaim() -> None:

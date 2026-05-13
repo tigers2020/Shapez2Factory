@@ -160,6 +160,10 @@ def _run_post_reclaim_pass3_once(
     if p3_trace.get("pass3_skipped"):
         out["post_reclaim_pass3_executed"] = False
         out["post_reclaim_pass3_map_accepted"] = False
+        out["post_reclaim_pass3_pass3_validated_layout_retained"] = False
+        out["post_reclaim_pass3_pass3_transport_stage_committed"] = bool(
+            out.get("post_reclaim_pass3_pass3_committed")
+        )
         out["post_reclaim_pass3_skip_reason"] = str(
             p3_trace.get("pass3_skip_reason") or "pass3_skipped"
         )
@@ -169,6 +173,10 @@ def _run_post_reclaim_pass3_once(
     if report_try.geometry_valid and report_try.connectivity_valid:
         out["post_reclaim_pass3_executed"] = True
         out["post_reclaim_pass3_map_accepted"] = True
+        out["post_reclaim_pass3_pass3_validated_layout_retained"] = True
+        out["post_reclaim_pass3_pass3_transport_stage_committed"] = bool(
+            out.get("post_reclaim_pass3_pass3_committed")
+        )
         out["post_reclaim_pass3_skip_reason"] = None
         if p3_trace.get("pass3_committed"):
             cr_norm, prom_rej = partition_pass3_commit_reason_payload(
@@ -190,6 +198,10 @@ def _run_post_reclaim_pass3_once(
 
     out["post_reclaim_pass3_executed"] = False
     out["post_reclaim_pass3_map_accepted"] = False
+    out["post_reclaim_pass3_pass3_validated_layout_retained"] = False
+    out["post_reclaim_pass3_pass3_transport_stage_committed"] = bool(
+        out.get("post_reclaim_pass3_pass3_committed")
+    )
     out["post_reclaim_pass3_skip_reason"] = "final_validation_failed_after_post_reclaim_pass3"
     out["post_reclaim_pass3_pass3_reverted"] = True
     return mining_map, out

@@ -193,6 +193,10 @@ def review_solver_summary(ss: dict[str, Any]) -> dict[str, Any]:
     return {
         "pass3_rejected_reason": p3_rej,
         "p3f_rejected_reason": p3f_rej,
+        "pass3_map_accepted": ss.get("pass3_map_accepted"),
+        "pass3_greedy_committed": ss.get("pass3_greedy_committed"),
+        "pass3_validated_layout_retained": ss.get("pass3_validated_layout_retained"),
+        "pass3_transport_stage_committed": ss.get("pass3_transport_stage_committed"),
         "before_internal_transport_count": before,
         "after_internal_transport_count": after,
         "pass3_internal_transport_saved": saved,
@@ -224,6 +228,10 @@ def _print_report(path: Path, line_no: int | None, report: dict[str, Any]) -> No
     for k in (
         "pass3_rejected_reason",
         "p3f_rejected_reason",
+        "pass3_map_accepted",
+        "pass3_greedy_committed",
+        "pass3_validated_layout_retained",
+        "pass3_transport_stage_committed",
         "before_internal_transport_count",
         "after_internal_transport_count",
         "pass3_internal_transport_saved",

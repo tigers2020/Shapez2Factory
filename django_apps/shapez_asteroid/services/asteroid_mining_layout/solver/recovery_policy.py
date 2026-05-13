@@ -38,6 +38,7 @@ __all__ = [
     "is_validation_recovery_loop_enabled",
     "p4_reclaim_cap_blocks_entry",
     "step9_reports_hard_invariant_failure_for_bounded_recovery",
+    "sync_recovery_chain_serialization_aliases",
     "sync_recovery_total_attempts_used_from_chain",
     "synthesize_recovery_validation_outcome",
     "tag_merge_partial_failure_from_step4",
@@ -106,6 +107,7 @@ def apply_recovery_contract_defaults(target: dict[str, Any]) -> None:
     target.setdefault("validation_recovery_attempts", 0)
     target.setdefault("post_reclaim_pass3_reruns_lifetime_used", 0)
     target.setdefault("recovery_trigger_parallel", [])
+    sync_recovery_chain_serialization_aliases(target)
 
 
 def append_recovery_return_policy_trace_entries(summary: dict[str, Any]) -> None:
@@ -296,6 +298,25 @@ def synthesize_recovery_validation_outcome(summary: dict[str, Any]) -> None:
     summary["recovery_validation_outcome"] = out
 
 
+def sync_recovery_chain_serialization_aliases(target: dict[str, Any]) -> None:
+    """Attach log/UI-friendly recovery chain fields (serialization semantics).
+
+    ``total_recovery_attempts_used`` mirrors ``recovery_context_chain`` length (§13), not
+    "attempts consumed vs ``max_total_recovery_attempts``". When the total cap is unlimited,
+    ``max_recovery_context_chain_segments`` is ``None`` so ``0`` is never read as a literal max.
+    """
+
+    chain = target.get("recovery_context_chain")
+    if isinstance(chain, list):
+        n = len(chain)
+    else:
+        n = int(target.get("total_recovery_attempts_used") or 0)
+    target["recovery_context_chain_segment_count"] = n
+    target["max_recovery_context_chain_segments"] = (
+        int(MAX_TOTAL_RECOVERY_ATTEMPTS) if is_total_recovery_cap_bounded() else None
+    )
+
+
 def sync_recovery_total_attempts_used_from_chain(pass3_summary: dict[str, Any]) -> None:
     """Mirror chain length into recovery attempt counters (replay summary contract).
 
@@ -308,6 +329,7 @@ def sync_recovery_total_attempts_used_from_chain(pass3_summary: dict[str, Any]) 
         n = len(chain)
         pass3_summary["recovery_total_attempts_used"] = n
         pass3_summary["total_recovery_attempts_used"] = n
+    sync_recovery_chain_serialization_aliases(pass3_summary)
 
 
 def step9_reports_hard_invariant_failure_for_bounded_recovery(

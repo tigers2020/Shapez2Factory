@@ -966,6 +966,8 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("pass3_greedy_committed", None)
     summary_fields.setdefault("pass3_greedy_local_replacement", None)
     summary_fields.setdefault("pass3_map_accepted", False)
+    summary_fields.setdefault("pass3_validated_layout_retained", False)
+    summary_fields.setdefault("pass3_transport_stage_committed", False)
     summary_fields.setdefault("pass3_attempted_commit", False)
     summary_fields.setdefault("pass3_final_committed", False)
     summary_fields.setdefault("pass3_gain", 0)
@@ -1087,6 +1089,8 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("recovery_validation_recovery_eligible", False)
     summary_fields.setdefault("recovery_bounded_loop_configured", False)
     summary_fields.setdefault("max_total_recovery_attempts", MAX_TOTAL_RECOVERY_ATTEMPTS)
+    summary_fields.setdefault("max_recovery_context_chain_segments", None)
+    summary_fields.setdefault("recovery_context_chain_segment_count", 0)
     summary_fields.setdefault("max_validation_recovery_attempts", MAX_VALIDATION_RECOVERY_ATTEMPTS)
     summary_fields.setdefault("validation_recovery_cycles_used", 0)
     summary_fields.setdefault(

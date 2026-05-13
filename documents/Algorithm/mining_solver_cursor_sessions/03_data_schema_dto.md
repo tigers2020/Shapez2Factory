@@ -166,7 +166,7 @@ SolverRunContext:
   limits:
     max_reclaim_iterations: int
     max_post_reclaim_pass3_reruns: int      # 소행성 1 solve 전체(§4.2)
-    max_total_recovery_attempts: int
+    max_total_recovery_attempts: int        # 무제한일 때 코드 상 0 센티널; 로그는 max_recovery_context_chain_segments(nullable) 우선
     max_validation_recovery_attempts: int
     max_cascade_corrective_attempts: int
     default_reclaim_gain_ratio_threshold: float

@@ -28,7 +28,9 @@ RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE = "final_validation_failure"
 # RECOVERY_VALIDATION_LOOP_DISABLED: MAX_VALIDATION == this → no extra Pass3→P4 cycles.
 RECOVERY_VALIDATION_LOOP_DISABLED = 0
 # RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED: MAX_TOTAL == this → no P4 skip by chain-length cap.
-# NOTE: 0 does NOT mean "disabled"; it means "unlimited" for this specific knob.
+# Internal runtime sentinel only: 0 does NOT mean "disabled" or "zero allowed attempts".
+# Logs/UI must not interpret ``max_total_recovery_attempts == 0`` as a literal cap; use
+# ``solver_replay_contract_envelope`` / ``max_recovery_context_chain_segments`` (nullable).
 RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED = 0
 # New comparisons should use this name, not a bare literal 0, to avoid conflating other zeros.
 

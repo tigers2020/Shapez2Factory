@@ -47,6 +47,7 @@ def extend_recovery_chain(target: dict[str, Any], segment: str) -> None:
     if chain and chain[-1] == segment:
         return
     chain.append(segment)
+    sync_recovery_total_attempts_used_from_chain(target)
 
 
 def finalize_recovery_terminal_reason(pass3_summary: dict[str, Any]) -> None:

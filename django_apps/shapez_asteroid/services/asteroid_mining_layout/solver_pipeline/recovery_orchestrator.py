@@ -38,6 +38,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery
     apply_recovery_contract_defaults,
     is_total_recovery_cap_bounded,
     is_validation_recovery_loop_enabled,
+    sync_recovery_chain_serialization_aliases,
     synthesize_recovery_validation_outcome,
     tag_merge_partial_failure_from_step4,
     tag_post_reclaim_pass3_connectivity_break,
@@ -186,13 +187,21 @@ def enrich_solver_summary_recovery(
     summary_fields["validation_recovery_attempts"] = int(
         summary_fields.get("validation_recovery_attempts_used") or 0
     )
+    sync_recovery_chain_serialization_aliases(summary_fields)
 
 
 def recovery_timeline_envelope() -> dict[str, Any]:
-    """Stable metadata for UI / CI: caps and whether a bounded re-run loop is enabled."""
+    """Stable metadata for UI / CI (observability); internal caps may use sentinels (see constants).
+
+    ``max_total_recovery_attempts`` retains the runtime sentinel (0 = unlimited). Prefer
+    ``max_recovery_context_chain_segments`` for human-readable caps (``None`` when unlimited).
+    """
 
     return {
         "max_total_recovery_attempts": MAX_TOTAL_RECOVERY_ATTEMPTS,
+        "max_recovery_context_chain_segments": (
+            int(MAX_TOTAL_RECOVERY_ATTEMPTS) if is_total_recovery_cap_bounded() else None
+        ),
         "max_validation_recovery_attempts": MAX_VALIDATION_RECOVERY_ATTEMPTS,
         "validation_recovery_execution_enabled": is_validation_recovery_loop_enabled(),
         "total_recovery_cap_mode": "bounded" if is_total_recovery_cap_bounded() else "unlimited",

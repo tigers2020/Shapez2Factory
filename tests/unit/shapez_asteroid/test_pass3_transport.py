@@ -224,6 +224,8 @@ def test_pass3_rejected_reason_in_solver_summary_when_zero_gain() -> None:
     assert ss.get("pass3_final_committed") is True
     assert ss.get("pass3_map_accepted") is True
     assert ss.get("pass3_greedy_committed") is False
+    assert ss.get("pass3_validated_layout_retained") is True
+    assert ss.get("pass3_transport_stage_committed") is False
 
 
 def test_pass3_final_validation_failure_sets_rollback_reason() -> None:
@@ -286,6 +288,8 @@ def test_pass3_final_validation_failure_sets_rollback_reason() -> None:
     assert ss.get("pass3_committed") is True
     assert ss.get("pass3_map_accepted") is False
     assert ss.get("pass3_greedy_committed") is True
+    assert ss.get("pass3_validated_layout_retained") is False
+    assert ss.get("pass3_transport_stage_committed") is True
     assert ss.get("p4_reclaim_shadow_enabled") is False
     assert ss.get("p4_reclaim_shadow_skip_reason") == "pass3_reverted"
     assert ss.get("recovery_pass3_connectivity_break") is True

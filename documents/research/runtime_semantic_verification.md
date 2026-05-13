@@ -26,6 +26,37 @@
 
 ---
 
+## 관측 계층: Recovery cap·Pass3 (직렬화 시맨틱)
+
+**원칙**: 내부 런타임 비교용 센티널(`RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED == 0` 등)과, 로그·NDJSON·검증자가 읽는 **직렬화 필드**를 구분한다. 알고리즘 분기는 변경하지 않는다.
+
+### Recovery (§13 체인 길이 vs cap)
+
+| 필드 | 의미 |
+|------|------|
+| `total_recovery_attempts_used` | `recovery_context_chain` **길이 미러** (STEP4 `cascade_corrective_attempts`와 별개) |
+| `recovery_context_chain_segment_count` | 위와 동일; 로그 가독용 별칭 |
+| `max_total_recovery_attempts` | 레거시·호환: 무제한 모드에서 **정수 0** (내부 센티널). **“허용 0회”로 읽지 말 것** |
+| `max_recovery_context_chain_segments` | 관측용: bounded일 때 양의 상한, **무제한이면 `null`** |
+| `total_recovery_cap_mode` | `"bounded"` / `"unlimited"` — cap 해석 시 **이 문자열과 `max_recovery_context_chain_segments`를 우선** |
+
+`solver_replay_contract_envelope`(`recovery_timeline_envelope`)에 `max_recovery_context_chain_segments`가 포함된다.
+
+### Pass3 (검증 시 권위 있게 읽을 필드)
+
+| 필드 | 검증 시 의미(요약) |
+|------|-------------------|
+| `pass3_map_accepted` | `validate_final` 통과 후 **최종 맵 채택** (known-good 유지 판단에 **우선**) |
+| `pass3_greedy_committed` | greedy 단계 커밋 |
+| `pass3_committed` | Pass3 transport 단계 **가드/유효 outcome** (`pass3_greedy_committed`와 혼동 금지) |
+| `pass3_validated_layout_retained` | `pass3_map_accepted`와 동일 값(로그 가독 별칭) |
+| `pass3_transport_stage_committed` | `pass3_committed`와 동일 값(로그 가독 별칭) |
+| `pass3_final_committed` | 타임라인·finalize 축; **`pass3_map_accepted`와 함께** 읽기 |
+
+`pass3_committed=False` 이고 `pass3_final_committed=True`인 조합은 **“transport 개선은 reject, 검증 통과 레이아웃 유지”**로 읽는 것이 맞다.
+
+---
+
 ## 항목별 교차검증
 
 ### 1. Replay-derived authority 필드가 런타임 결정에 개입하지 않음

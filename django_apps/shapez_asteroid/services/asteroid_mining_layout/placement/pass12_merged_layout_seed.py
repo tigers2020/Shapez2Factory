@@ -6,6 +6,7 @@ treating them as empty slots (see ``scratch_from_working_map`` mineable-only blo
 
 from __future__ import annotations
 
+import copy
 import heapq
 from collections import deque
 from collections.abc import Mapping, Sequence
@@ -40,6 +41,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass1
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_preserve_stub_route_recovery import (  # noqa: E501
     StubRouteRecoveryResult,
+    _no_same_kind_route_subtype,
     try_preserve_stub_route_recovery,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
@@ -138,6 +140,55 @@ def _append_bounded_unrecovered_stub_sample(
     )
 
 
+def _normalize_preserve_stub_recovery_drop_contract(detail_row: dict[str, Any]) -> None:
+    """NDJSON/solver_summary: ensure probe + subtype stay self-consistent on merge.
+
+    Some pipelines retain shallow references; backfill nested ``stub_route_probe_last`` from
+    ``preserve_stub_recovery`` mirrors and re-derive ``rejected_reason_subtype`` when missing.
+    """
+
+    psr = detail_row.get("preserve_stub_recovery")
+    if not isinstance(psr, dict):
+        return
+    probe = psr.get("stub_route_probe_last")
+    if not isinstance(probe, dict):
+        return
+    _mirror_keys = (
+        "start_cell",
+        "stub_start_cell",
+        "goal_count",
+        "goal_sample",
+        "edge_cap",
+        "max_new_transport_cells",
+    )
+    for key in _mirror_keys:
+        if probe.get(key) is None and psr.get(key) is not None:
+            probe[key] = psr[key]
+    if probe.get("goal_count") is None:
+        gtc = psr.get("goal_transport_cell_count")
+        if isinstance(gtc, int):
+            probe["goal_count"] = gtc
+    start_cell = probe.get("start_cell")
+    if start_cell is not None:
+        probe["start"] = start_cell
+    else:
+        ss = probe.get("stub_start_cell")
+        if ss is not None:
+            probe["start"] = ss
+    if str(psr.get("rejected_reason") or "") == "no_same_kind_route":
+        sub = psr.get("rejected_reason_subtype")
+        if sub is None or sub == "":
+            psr["rejected_reason_subtype"] = _no_same_kind_route_subtype(
+                blocked=probe.get("blocked_frontier_reason_counts"),
+                reachable_relaxed=int(
+                    probe.get("reachable_same_kind_goals_under_edge_cap_512") or 0
+                ),
+            )
+        for key in _mirror_keys:
+            if psr.get(key) is None and probe.get(key) is not None:
+                psr[key] = probe[key]
+
+
 def _missing_stub_drop_detail_row(
     *,
     miner: Coord,
@@ -185,7 +236,8 @@ def _missing_stub_drop_detail_row(
     _rc = recoverability_class_for_preserve_drop_detail(detail_row)
     detail_row["recoverability_class"] = _rc.value
     if stub_route_trace_for_drop is not None:
-        detail_row.update(stub_route_trace_for_drop)
+        detail_row.update(copy.deepcopy(stub_route_trace_for_drop))
+    _normalize_preserve_stub_recovery_drop_contract(detail_row)
     return detail_row
 
 
@@ -1061,7 +1113,7 @@ def seed_pass12_scratch_from_merged_existing(
                 if defer_this:
                     assert nhops_seed is not None
                     trace_copy = (
-                        dict(stub_route_trace_for_drop)
+                        copy.deepcopy(stub_route_trace_for_drop)
                         if stub_route_trace_for_drop is not None
                         else None
                     )
@@ -1222,7 +1274,7 @@ def seed_pass12_scratch_from_merged_existing(
                         rr_rej_no_stub_space += 1
                     else:
                         rr_rej_no_stub_space += 1
-                last_trace = dict(rr_q.trace) if rr_q.trace else None
+                last_trace = copy.deepcopy(rr_q.trace) if rr_q.trace else None
                 next_queue.append(replace(d, stub_route_trace_last=last_trace))
         recovery_queue = next_queue
         if not progressed_any:

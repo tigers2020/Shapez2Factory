@@ -7,6 +7,7 @@ commit ``new_transport_coords`` on success only.
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -238,6 +239,135 @@ def _reachable_goals_under_edge_cap(
             dist_edges[nxt] = nd
             q.append(nxt)
     return len(goal_transport_cells & frozenset(parent.keys()))
+
+
+def _goal_sample_list(goals: frozenset[Coord], *, limit: int = 8) -> list[list[int]]:
+    """Deterministic bounded sample of goal coords for NDJSON contracts."""
+
+    sorted_goals = sorted(goals, key=lambda p: (p[1], p[0]))
+    return [[int(c[0]), int(c[1])] for c in sorted_goals[:limit]]
+
+
+def _augment_stub_route_probe(
+    stub: Coord,
+    cand_r: int,
+    goals: frozenset[Coord],
+    cells: dict[Coord, dict[str, Any]],
+    diag: dict[str, Any],
+    *,
+    mineable: frozenset[Coord],
+    blocked_body: frozenset[Coord],
+    want_wr: str,
+    relaxed_goals: int | None = None,
+    post_bfs_rejection: str | None = None,
+    path_for_metrics: list[Coord] | None = None,
+    new_transport_cell_count: int | None = None,
+) -> dict[str, Any]:
+    """Canonical ``stub_route_probe_last`` + fields mirrored on ``preserve_stub_recovery``."""
+
+    if relaxed_goals is None:
+        relaxed_goals = _reachable_goals_under_edge_cap(
+            stub,
+            goal_transport_cells=goals,
+            cells=cells,
+            mineable=mineable,
+            blocked_body=blocked_body,
+            want_wr=want_wr,
+            max_edges=512,
+            max_visits=50_000,
+        )
+    sc = [int(stub[0]), int(stub[1])]
+    out: dict[str, Any] = {
+        "start_cell": sc,
+        "stub_start_cell": sc,
+        "start": sc,
+        "cand_r": cand_r,
+        "goal_count": len(goals),
+        "goal_sample": _goal_sample_list(goals, limit=8),
+        "edge_cap": MAX_PASS12_STUB_ROUTE_RECOVERY_PATH_LEN,
+        "max_new_transport_cells": MAX_PASS12_STUB_ROUTE_RECOVERY_NEW_TRANSPORT_CELLS,
+        "bfs_failure": diag.get("failure"),
+        "expanded_nodes": diag.get("expanded_nodes"),
+        "blocked_frontier_reason_counts": diag.get("blocked_frontier_reason_counts"),
+        "last_frontier_sample": diag.get("last_frontier_sample"),
+        "reachable_same_kind_goals_under_edge_cap_512": relaxed_goals,
+        "local_neighbor_cells_around_stub": _local_neighbor_cells_around_stub(stub, cells),
+    }
+    if post_bfs_rejection is not None:
+        out["post_bfs_rejection"] = post_bfs_rejection
+    if path_for_metrics is not None:
+        out["path_cell_count"] = len(path_for_metrics)
+        out["route_len_edges"] = len(path_for_metrics) - 1
+    if new_transport_cell_count is not None:
+        out["new_transport_cell_count"] = new_transport_cell_count
+    return out
+
+
+def _sentinel_probe_no_bfs(
+    miner: Coord,
+    goals: frozenset[Coord],
+    cells: dict[Coord, dict[str, Any]],
+) -> dict[str, Any]:
+    """When no rotation reached BFS: explicit contract for NDJSON consumers."""
+
+    return {
+        "start_cell": None,
+        "stub_start_cell": None,
+        "start": None,
+        "cand_r": None,
+        "goal_count": len(goals),
+        "goal_sample": _goal_sample_list(goals, limit=8),
+        "edge_cap": MAX_PASS12_STUB_ROUTE_RECOVERY_PATH_LEN,
+        "max_new_transport_cells": MAX_PASS12_STUB_ROUTE_RECOVERY_NEW_TRANSPORT_CELLS,
+        "bfs_failure": "no_bfs_attempt",
+        "expanded_nodes": 0,
+        "blocked_frontier_reason_counts": {},
+        "last_frontier_sample": [],
+        "reachable_same_kind_goals_under_edge_cap_512": 0,
+        "local_neighbor_cells_around_stub": _local_neighbor_cells_around_stub(miner, cells),
+    }
+
+
+def _mirror_probe_contract_into_psr(psr: dict[str, Any], probe: dict[str, Any]) -> None:
+    """Duplicate key probe scalars at ``preserve_stub_recovery`` root for flat NDJSON reads."""
+
+    psr["stub_route_probe_last"] = probe
+    psr["start_cell"] = probe.get("start_cell")
+    psr["goal_count"] = probe.get("goal_count")
+    psr["goal_sample"] = probe.get("goal_sample")
+    psr["edge_cap"] = probe.get("edge_cap")
+    psr["max_new_transport_cells"] = probe.get("max_new_transport_cells")
+    psr["local_neighbor_cells_around_stub"] = probe.get("local_neighbor_cells_around_stub")
+
+
+def _no_same_kind_route_subtype(
+    *,
+    blocked: Mapping[str, Any] | None,
+    reachable_relaxed: int,
+) -> str:
+    """Tie-break: wrong_kind > edge_cap+goals > blocked_body > occupied; default edge or sealed."""
+
+    b: dict[str, int] = {}
+    if isinstance(blocked, dict):
+        for k, v in blocked.items():
+            if isinstance(v, int) and v > 0:
+                b[str(k)] = v
+    wk = b.get("wrong_kind_transport", 0)
+    ee = b.get("exceeds_max_edges_cap", 0)
+    bb = b.get("blocked_body", 0)
+    oc = b.get("occupied_not_traversable", 0)
+    mx = max(wk, ee, bb, oc, 0)
+    if wk > 0 and wk == mx:
+        return "wrong_kind_transport_near_stub"
+    if ee == mx and mx > 0 and reachable_relaxed >= 1:
+        return "same_kind_goal_unreachable_under_edge_cap"
+    if bb == mx and mx > 0:
+        return "stub_local_geometry_sealed"
+    if oc == mx and mx > 0:
+        return "occupied_neighbor_ring"
+    if reachable_relaxed >= 1:
+        return "same_kind_goal_unreachable_under_edge_cap"
+    return "stub_local_geometry_sealed"
 
 
 def _local_neighbor_cells_around_stub(
@@ -519,22 +649,35 @@ def try_preserve_stub_route_recovery(
                 max_edges=512,
                 max_visits=50_000,
             )
-            stub_route_probe_last = {
-                "stub_start_cell": [int(stub[0]), int(stub[1])],
-                "cand_r": cand_r,
-                "bfs_failure": diag.get("failure"),
-                "expanded_nodes": diag.get("expanded_nodes"),
-                "blocked_frontier_reason_counts": diag.get("blocked_frontier_reason_counts"),
-                "last_frontier_sample": diag.get("last_frontier_sample"),
-                "reachable_same_kind_goals_under_edge_cap_512": relaxed_goals,
-                "local_neighbor_cells_around_stub": _local_neighbor_cells_around_stub(stub, cells),
-            }
+            stub_route_probe_last = _augment_stub_route_probe(
+                stub,
+                cand_r,
+                goals,
+                cells,
+                diag,
+                mineable=mineable,
+                blocked_body=blocked_body,
+                want_wr=want_wr,
+                relaxed_goals=relaxed_goals,
+            )
             continue
         route_len_edges = len(path) - 1
         if route_len_edges > MAX_PASS12_STUB_ROUTE_RECOVERY_PATH_LEN:
             saw_route_len = True
             psr["path_cell_count"] = len(path)
             psr["route_len_edges"] = route_len_edges
+            stub_route_probe_last = _augment_stub_route_probe(
+                stub,
+                cand_r,
+                goals,
+                cells,
+                diag,
+                mineable=mineable,
+                blocked_body=blocked_body,
+                want_wr=want_wr,
+                post_bfs_rejection="route_len_over_cap",
+                path_for_metrics=path,
+            )
             continue
         path_cells = frozenset(path)
         new_t = path_cells - existing_same_kind - scratch_transport_cells
@@ -543,10 +686,24 @@ def try_preserve_stub_route_recovery(
             psr["path_cell_count"] = len(path)
             psr["route_len_edges"] = route_len_edges
             psr["new_transport_cell_count"] = len(new_t)
+            stub_route_probe_last = _augment_stub_route_probe(
+                stub,
+                cand_r,
+                goals,
+                cells,
+                diag,
+                mineable=mineable,
+                blocked_body=blocked_body,
+                want_wr=want_wr,
+                post_bfs_rejection="new_transport_cells_over_cap",
+                path_for_metrics=path,
+                new_transport_cell_count=len(new_t),
+            )
             continue
 
         psr["accepted"] = True
         psr["rejected_reason"] = None
+        psr["rejected_reason_subtype"] = None
         psr["selected_r"] = cand_r
         psr["selected_stub_cell"] = [int(stub[0]), int(stub[1])]
         psr["path_cell_count"] = diag.get("path_cell_count")
@@ -555,25 +712,18 @@ def try_preserve_stub_route_recovery(
             [int(c[0]), int(c[1])] for c in sorted(path, key=lambda p: (p[1], p[0]))
         ]
         psr["new_transport_cell_count"] = len(new_t)
-        psr["stub_route_probe_last"] = {
-            "stub_start_cell": [int(stub[0]), int(stub[1])],
-            "cand_r": cand_r,
-            "bfs_failure": diag.get("failure"),
-            "expanded_nodes": diag.get("expanded_nodes"),
-            "blocked_frontier_reason_counts": diag.get("blocked_frontier_reason_counts"),
-            "last_frontier_sample": diag.get("last_frontier_sample"),
-            "reachable_same_kind_goals_under_edge_cap_512": _reachable_goals_under_edge_cap(
-                stub,
-                goal_transport_cells=goals,
-                cells=cells,
-                mineable=mineable,
-                blocked_body=blocked_body,
-                want_wr=want_wr,
-                max_edges=512,
-                max_visits=50_000,
-            ),
-            "local_neighbor_cells_around_stub": _local_neighbor_cells_around_stub(stub, cells),
-        }
+        stub_ok_probe = _augment_stub_route_probe(
+            stub,
+            cand_r,
+            goals,
+            cells,
+            diag,
+            mineable=mineable,
+            blocked_body=blocked_body,
+            want_wr=want_wr,
+            path_for_metrics=path,
+        )
+        _mirror_probe_contract_into_psr(psr, stub_ok_probe)
         return StubRouteRecoveryResult(
             accepted=True,
             trace=base_trace,
@@ -582,23 +732,41 @@ def try_preserve_stub_route_recovery(
             stub_cell=stub,
         )
 
-    if stub_route_probe_last is not None:
-        psr["stub_route_probe_last"] = stub_route_probe_last
+    if stub_route_probe_last is None:
+        stub_route_probe_last = _sentinel_probe_no_bfs(miner, goals, cells)
+    _mirror_probe_contract_into_psr(psr, stub_route_probe_last)
 
     if saw_visit_cap:
         psr["rejected_reason"] = "visit_cap"
+        psr["rejected_reason_subtype"] = None
     elif saw_bfs_no_route:
         psr["rejected_reason"] = "no_same_kind_route"
+        psr["rejected_reason_subtype"] = _no_same_kind_route_subtype(
+            blocked=stub_route_probe_last.get("blocked_frontier_reason_counts"),
+            reachable_relaxed=int(
+                stub_route_probe_last.get("reachable_same_kind_goals_under_edge_cap_512") or 0
+            ),
+        )
     elif saw_route_len:
         psr["rejected_reason"] = "route_len_over_cap"
+        psr["rejected_reason_subtype"] = None
     elif saw_new_transport_over:
         psr["rejected_reason"] = "new_transport_cells_over_cap"
+        psr["rejected_reason_subtype"] = None
     elif not saw_ok_stub and saw_extension_carve:
         psr["rejected_reason"] = "extension_carve_disabled"
+        psr["rejected_reason_subtype"] = None
     elif saw_stub_other or saw_extension_carve:
         psr["rejected_reason"] = "no_stub_space"
+        psr["rejected_reason_subtype"] = None
     else:
         psr["rejected_reason"] = "no_same_kind_route"
+        psr["rejected_reason_subtype"] = _no_same_kind_route_subtype(
+            blocked=stub_route_probe_last.get("blocked_frontier_reason_counts"),
+            reachable_relaxed=int(
+                stub_route_probe_last.get("reachable_same_kind_goals_under_edge_cap_512") or 0
+            ),
+        )
     return StubRouteRecoveryResult(
         accepted=False,
         trace=base_trace,

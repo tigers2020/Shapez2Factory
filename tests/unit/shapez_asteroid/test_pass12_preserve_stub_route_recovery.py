@@ -114,6 +114,9 @@ def test_stub_route_recovery_success_mvp() -> None:
     assert isinstance(lastp, dict)
     assert lastp.get("bfs_failure") is None
     assert int(lastp.get("reachable_same_kind_goals_under_edge_cap_512") or 0) >= 1
+    assert lastp.get("start_cell") == lastp.get("stub_start_cell")
+    assert isinstance(lastp.get("goal_sample"), list)
+    assert psr0.get("goal_count") == lastp.get("goal_count")
 
 
 def test_goal_transport_cells_filters_scratch_by_opposite_role() -> None:
@@ -292,6 +295,12 @@ def test_stub_route_recovery_rejects_mixed_kind_trunk() -> None:
     assert counts.get("wrong_kind_transport", 0) >= 1
     assert isinstance(probe.get("local_neighbor_cells_around_stub"), list)
     assert isinstance(probe.get("last_frontier_sample"), list)
+    assert probe.get("start_cell") == probe.get("stub_start_cell")
+    assert probe.get("goal_count") == psr.get("goal_count")
+    assert isinstance(probe.get("goal_sample"), list)
+    assert probe.get("edge_cap") is not None
+    assert psr.get("rejected_reason_subtype") == "wrong_kind_transport_near_stub"
+    assert isinstance(psr.get("local_neighbor_cells_around_stub"), list)
 
 
 def test_stub_route_recovery_extension_carve_disabled() -> None:
@@ -358,6 +367,245 @@ def test_stub_route_recovery_extension_carve_disabled() -> None:
     psr = res.trace.get("preserve_stub_recovery")
     assert isinstance(psr, dict)
     assert psr.get("rejected_reason") == "extension_carve_disabled"
+    assert psr.get("stub_route_probe_last", {}).get("bfs_failure") == "no_bfs_attempt"
+    assert psr.get("rejected_reason_subtype") is None
+    assert isinstance(psr.get("local_neighbor_cells_around_stub"), list)
+
+
+def test_try_preserve_no_same_kind_subtype_under_small_edge_cap() -> None:
+    """Tight edge cap: goals exist in relaxed graph but shortest path exceeds BFS edge cap."""
+
+    from unittest.mock import patch
+
+    cells = {
+        (5, 5): {
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 3,
+            "surface": "fluid",
+        },
+        (6, 5): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (5, 6): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (5, 4): {"role": "inferred", "surface": "fluid"},
+        (5, 3): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (5, 2): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (5, 1): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (5, 0): {"role": "pipe", "surface": "fluid"},
+    }
+    mineable: frozenset[Coord] = frozenset(cells.keys())
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.placement."
+        "pass12_preserve_stub_route_recovery.MAX_PASS12_STUB_ROUTE_RECOVERY_PATH_LEN",
+        2,
+    ):
+        res = try_preserve_stub_route_recovery(
+            miner=(5, 5),
+            extensions=frozenset({(6, 5), (5, 6)}),
+            transport_kind="fluid_pipe",
+            cells=cells,
+            mineable=mineable,
+            scratch_transport_cells=frozenset({(5, 0)}),
+            scratch_blocked_cells=frozenset(),
+            nearest_same_kind_transport_hops=6,
+            row_r_raw=3,
+        )
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr.get("rejected_reason") == "no_same_kind_route"
+    assert psr.get("rejected_reason_subtype") == "same_kind_goal_unreachable_under_edge_cap"
+    probe = psr.get("stub_route_probe_last")
+    assert isinstance(probe, dict)
+    assert int(probe.get("reachable_same_kind_goals_under_edge_cap_512") or 0) >= 1
+    assert (probe.get("blocked_frontier_reason_counts") or {}).get("exceeds_max_edges_cap", 0) >= 1
+
+
+def test_try_preserve_visit_cap_rejected_reason_has_no_subtype() -> None:
+    """visit_cap rejection must not attach no_same_kind_route subtype."""
+
+    from unittest.mock import patch
+
+    cells = {
+        (5, 5): {
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 3,
+            "surface": "fluid",
+        },
+        (6, 5): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (5, 6): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (5, 4): {"role": "inferred", "surface": "fluid"},
+        (5, 3): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (5, 2): {"role": "pipe", "surface": "fluid"},
+    }
+    mineable: frozenset[Coord] = frozenset(cells.keys())
+
+    def _fake_bfs(
+        *_a: object,
+        **_k: object,
+    ) -> tuple[None, dict[str, object]]:
+        return None, {
+            "failure": "visit_cap",
+            "visited": 99999,
+            "expanded_nodes": 3,
+            "blocked_frontier_reason_counts": {"wrong_kind_transport": 5},
+            "last_frontier_sample": [[5, 4]],
+        }
+
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.placement."
+        "pass12_preserve_stub_route_recovery._bfs_shortest_path",
+        _fake_bfs,
+    ):
+        res = try_preserve_stub_route_recovery(
+            miner=(5, 5),
+            extensions=frozenset({(6, 5), (5, 6)}),
+            transport_kind="fluid_pipe",
+            cells=cells,
+            mineable=mineable,
+            scratch_transport_cells=frozenset({(5, 2)}),
+            scratch_blocked_cells=frozenset(),
+            nearest_same_kind_transport_hops=3,
+            row_r_raw=3,
+        )
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr.get("rejected_reason") == "visit_cap"
+    assert psr.get("rejected_reason_subtype") is None
+    assert "commit_reason" not in res.trace
+    assert "commit_reason" not in psr
+
+
+def test_missing_stub_drop_detail_merges_stub_route_probe_neighbors() -> None:
+    """Deferred/immediate drop rows merge preserve_stub_recovery; probe neighbors must surface."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+        final_validation as fv,
+    )
+
+    cells = fv.cells_dict_from_mining_map(
+        [
+            {
+                "x": 3,
+                "y": 3,
+                "role": "occupied",
+                "layout_kind": "fluid_miner",
+                "r": 3,
+                "surface": "fluid",
+            },
+            {
+                "x": 4,
+                "y": 3,
+                "role": "occupied",
+                "layout_kind": "fluid_extension",
+                "surface": "fluid",
+            },
+            {"x": 3, "y": 2, "role": "inferred", "surface": "fluid"},
+            {
+                "x": 3,
+                "y": 1,
+                "role": "occupied",
+                "layout_kind": "asteroid_field",
+                "surface": "fluid",
+            },
+            {"x": 3, "y": 0, "role": "belt", "surface": "shape"},
+            {
+                "x": 3,
+                "y": -1,
+                "role": "occupied",
+                "layout_kind": "asteroid_field",
+                "surface": "fluid",
+            },
+            {"x": 3, "y": -2, "role": "pipe", "surface": "fluid"},
+        ]
+    )
+    mineable: frozenset[Coord] = frozenset(cells.keys())
+    res = try_preserve_stub_route_recovery(
+        miner=(3, 3),
+        extensions=frozenset({(4, 3)}),
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(3, -2)}),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=4,
+        row_r_raw=3,
+    )
+    psr = res.trace["preserve_stub_recovery"]
+    detail = pass12_merged_layout_seed._missing_stub_drop_detail_row(
+        miner=(3, 3),
+        cells=cells,
+        tk="fluid_pipe",
+        row_m={"r": 3, "surface": "fluid", "layout_kind": "fluid_miner", "role": "occupied"},
+        merged_seed_miner_count=1,
+        nhops=4,
+        ncell=(3, -2),
+        neighbor_stub_coords=(),
+        eff_r=3,
+        stub_route_trace_for_drop={"preserve_stub_recovery": psr},
+    )
+    merged = detail.get("preserve_stub_recovery")
+    assert isinstance(merged, dict)
+    probe = merged.get("stub_route_probe_last")
+    assert isinstance(probe, dict)
+    nb = probe.get("local_neighbor_cells_around_stub")
+    assert isinstance(nb, list) and len(nb) >= 1
+    assert merged.get("rejected_reason_subtype") == "wrong_kind_transport_near_stub"
+    assert probe.get("start") == probe.get("start_cell")
+    assert isinstance(probe.get("goal_count"), int) and probe.get("goal_count", 0) >= 1
+    assert isinstance(merged.get("goal_count"), int)
+
+
+def test_missing_stub_drop_detail_backfills_probe_and_subtype_like_solver_summary() -> None:
+    """Partial nested probe + mirrors (production-like): normalize + JSON-serialize."""
+
+    import json
+
+    cells = {
+        (5, 5): {"role": "occupied", "layout_kind": "fluid_miner", "r": 0, "surface": "fluid"},
+    }
+    detail = pass12_merged_layout_seed._missing_stub_drop_detail_row(
+        miner=(5, 5),
+        cells=cells,
+        tk="fluid_pipe",
+        row_m={"r": 0, "surface": "fluid", "layout_kind": "fluid_miner", "role": "occupied"},
+        merged_seed_miner_count=2,
+        nhops=3,
+        ncell=(10, 10),
+        neighbor_stub_coords=(),
+        eff_r=0,
+        stub_route_trace_for_drop={
+            "preserve_stub_recovery": {
+                "accepted": False,
+                "attempted": True,
+                "rejected_reason": "no_same_kind_route",
+                "rejected_reason_subtype": None,
+                "goal_transport_cell_count": 82,
+                "start_cell": [5, 4],
+                "stub_start_cell": [5, 4],
+                "goal_count": 82,
+                "stub_route_probe_last": {
+                    "bfs_failure": "no_same_kind_route",
+                    "reachable_same_kind_goals_under_edge_cap_512": 82,
+                    "blocked_frontier_reason_counts": {"exceeds_max_edges_cap": 5},
+                    "local_neighbor_cells_around_stub": [{"cell": [5, 6], "role": None}],
+                },
+            },
+        },
+    )
+    psr = detail["preserve_stub_recovery"]
+    probe = psr["stub_route_probe_last"]
+    assert psr["rejected_reason_subtype"] == "same_kind_goal_unreachable_under_edge_cap"
+    assert probe["start_cell"] == [5, 4]
+    assert probe["start"] == [5, 4]
+    assert probe["stub_start_cell"] == [5, 4]
+    assert probe["goal_count"] == 82
+    assert "commit_reason" not in detail
+    assert "commit_reason" not in psr
+    json.dumps(detail, default=str)
+    solver_summary_fragment = {
+        "pass12_preserved_missing_stub_drop_extractor_count": 1,
+        "pass12_preserved_missing_stub_drop_details": [detail],
+    }
+    assert isinstance(solver_summary_fragment["pass12_preserved_missing_stub_drop_details"], list)
+    json.dumps(solver_summary_fragment, default=str)
 
 
 @override_settings(SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True)

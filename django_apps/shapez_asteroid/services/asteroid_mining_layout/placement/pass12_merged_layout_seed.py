@@ -156,10 +156,14 @@ def _bounded_recovery_summary_from_details(details: list[dict[str, Any]]) -> dic
         "tier_b_success_count": 0,
         "tier_c_attempted_count": 0,
         "tier_c_success_count": 0,
+        "tier_d_attempted_count": 0,
+        "tier_d_success_count": 0,
         "tier_b_skip_reason_counts": {},
         "tier_c_skip_reason_counts": {},
+        "tier_d_skip_reason_counts": {},
         "tier_b_failure_reason_counts": {},
         "tier_c_failure_reason_counts": {},
+        "tier_d_failure_reason_counts": {},
         "final_rejected_reason_counts": {},
         "final_rejected_reason_subtype_counts": {},
     }
@@ -179,6 +183,10 @@ def _bounded_recovery_summary_from_details(details: list[dict[str, Any]]) -> dic
             out["tier_c_attempted_count"] += 1
         if psr.get("tier_c_success") is True:
             out["tier_c_success_count"] += 1
+        if psr.get("tier_d_attempted") is True:
+            out["tier_d_attempted_count"] += 1
+        if psr.get("tier_d_success") is True:
+            out["tier_d_success_count"] += 1
         sb = psr.get("tier_b_skip_reason")
         if isinstance(sb, str) and sb:
             _bump(out["tier_b_skip_reason_counts"], sb)
@@ -191,6 +199,12 @@ def _bounded_recovery_summary_from_details(details: list[dict[str, Any]]) -> dic
         fc = psr.get("tier_c_failure_reason")
         if isinstance(fc, str) and fc:
             _bump(out["tier_c_failure_reason_counts"], fc)
+        sd = psr.get("tier_d_skip_reason")
+        if isinstance(sd, str) and sd:
+            _bump(out["tier_d_skip_reason_counts"], sd)
+        fd = psr.get("tier_d_failure_reason")
+        if isinstance(fd, str) and fd:
+            _bump(out["tier_d_failure_reason_counts"], fd)
         rr = psr.get("rejected_reason")
         if isinstance(rr, str) and rr:
             _bump(out["final_rejected_reason_counts"], rr)
@@ -200,8 +214,10 @@ def _bounded_recovery_summary_from_details(details: list[dict[str, Any]]) -> dic
     for key in (
         "tier_b_skip_reason_counts",
         "tier_c_skip_reason_counts",
+        "tier_d_skip_reason_counts",
         "tier_b_failure_reason_counts",
         "tier_c_failure_reason_counts",
+        "tier_d_failure_reason_counts",
         "final_rejected_reason_counts",
         "final_rejected_reason_subtype_counts",
     ):
@@ -384,6 +400,17 @@ def _ensure_extension_carve_schema_on_preserve_stub_recovery(detail_row: dict[st
     psr.setdefault("tier_c_candidate_pair_sample", [])
     psr.setdefault("tier_c_pair_generation_mode", None)
     psr.setdefault("tier_c_no_pair_diagnostic", None)
+    psr.setdefault("tier_d_attempted", False)
+    psr.setdefault("tier_d_success", False)
+    psr.setdefault("tier_d_skip_reason", None)
+    psr.setdefault("tier_d_failure_reason", None)
+    psr.setdefault("output_repack_candidate_count", 0)
+    psr.setdefault("output_repack_candidate_sample", [])
+    psr.setdefault("output_repack_selected_rotation", None)
+    psr.setdefault("output_repack_removed_extension_cells", [])
+    psr.setdefault("output_repack_replaced_extension_cells", [])
+    psr.setdefault("output_repack_preserved_extension_count", None)
+    psr.setdefault("output_repack_route_len_edges", None)
 
 
 def _preserve_stub_route_drop_observability(
@@ -1162,12 +1189,23 @@ def seed_pass12_scratch_from_merged_existing(
                         if rr_res.carved_extension_cells:
                             for _cc in rr_res.carved_extension_cells:
                                 cells.pop(_cc, None)
-                            carved = rr_res.carved_extension_cells
-                            exts = frozenset(e for e in exts if e not in carved)
-                            ext_tuple = tuple(sorted(exts, key=lambda p: (p[1], p[0])))
-                            parent_by_cell = _parent_tree_for_miner_and_extensions(
-                                miner, exts, cells, mineable
+                            exts = frozenset(
+                                e for e in exts if e not in rr_res.carved_extension_cells
                             )
+                        if rr_res.tier_d_extensions_removed:
+                            for _cc in rr_res.tier_d_extensions_removed:
+                                cells.pop(_cc, None)
+                            for coord, row in rr_res.tier_d_extension_placements:
+                                cells[coord] = dict(row)
+                            exts = rr_res.tier_d_final_extension_cells
+                        if rr_res.chosen_r is not None:
+                            mr = dict(cells[miner])
+                            mr["r"] = rr_res.chosen_r
+                            cells[miner] = mr
+                        ext_tuple = tuple(sorted(exts, key=lambda p: (p[1], p[0])))
+                        parent_by_cell = _parent_tree_for_miner_and_extensions(
+                            miner, exts, cells, mineable
+                        )
                         scratch.transport_cells |= set(rr_res.new_transport_coords)
                         recovery_transport_coords_added.update(rr_res.new_transport_coords)
                         eff_r = rr_res.chosen_r
@@ -1375,9 +1413,19 @@ def seed_pass12_scratch_from_merged_existing(
                     dex_exts = {e for e in d.extensions if e not in rr_q.carved_extension_cells}
                 else:
                     dex_exts = set(d.extensions)
+                if rr_q.tier_d_extensions_removed:
+                    for _cc in rr_q.tier_d_extensions_removed:
+                        cells.pop(_cc, None)
+                    for coord, row in rr_q.tier_d_extension_placements:
+                        cells[coord] = dict(row)
+                    dex_exts = set(rr_q.tier_d_final_extension_cells)
+                dminer = d.miner
+                if rr_q.chosen_r is not None and dminer in cells:
+                    mr = dict(cells[dminer])
+                    mr["r"] = rr_q.chosen_r
+                    cells[dminer] = mr
                 scratch.transport_cells |= set(rr_q.new_transport_coords)
                 recovery_transport_coords_added.update(rr_q.new_transport_coords)
-                dminer = d.miner
                 ext_tuple_q = tuple(sorted(dex_exts, key=lambda p: (p[1], p[0])))
                 eff_rq = rr_q.chosen_r
                 stub_cell_q = rr_q.stub_cell

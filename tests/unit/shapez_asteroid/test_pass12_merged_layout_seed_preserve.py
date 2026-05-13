@@ -47,7 +47,11 @@ def test_preserve_missing_stub_summary_includes_bounded_recovery_counts() -> Non
                 "tier_c_attempted": False,
                 "tier_c_success": False,
                 "tier_c_skip_reason": "tier_c_skipped_no_candidate_pairs",
-                "recovery_tier_attempted": ["A", "B"],
+                "tier_d_attempted": True,
+                "tier_d_success": False,
+                "tier_d_skip_reason": None,
+                "tier_d_failure_reason": "tier_d_failed_no_same_kind_route",
+                "recovery_tier_attempted": ["A", "B", "D"],
                 "rejected_reason": "no_same_kind_route",
                 "rejected_reason_subtype": "no_goal_relaxed",
             },
@@ -59,8 +63,11 @@ def test_preserve_missing_stub_summary_includes_bounded_recovery_counts() -> Non
     assert br["tier_a_attempted_count"] == 2
     assert br["tier_c_attempted_count"] == 1
     assert br["tier_c_success_count"] == 1
+    assert br["tier_d_attempted_count"] == 1
+    assert br["tier_d_success_count"] == 0
     assert br["tier_b_failure_reason_counts"].get("tier_b_failed_no_same_kind_route") == 1
     assert br["tier_c_skip_reason_counts"].get("tier_c_skipped_no_candidate_pairs") == 1
+    assert br["tier_d_failure_reason_counts"].get("tier_d_failed_no_same_kind_route") == 1
     assert br["final_rejected_reason_subtype_counts"].get("occupied_neighbor_ring") == 1
     assert br["final_rejected_reason_subtype_counts"].get("no_goal_relaxed") == 1
 

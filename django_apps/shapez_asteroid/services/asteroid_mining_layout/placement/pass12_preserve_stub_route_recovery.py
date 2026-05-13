@@ -6,7 +6,9 @@ commit ``new_transport_coords`` on success only.
 Production NDJSON often shows ``bounded_recovery.tier_c_success_count == 0`` while
 ``occupied_neighbor_ring`` dominates because Tier B removes only the first 1-cell carve slot
 and Tier C pairs require **cardinal** same-bundle extension neighbors; diagonal-only
-extension clusters yield ``tier_c_skipped_no_candidate_pairs``. Roll up
+extension clusters yield ``tier_c_skipped_no_candidate_pairs``. **Tier D**
+(``bounded_output_reorientation_repack``) may repack extensions with
+``foundation.extension_topology`` (4-neighbor only) after A/B/C fail. Roll up
 ``preserve_missing_stub_summary.bounded_recovery`` from per-drop ``preserve_stub_recovery``
 tier_* fields (never read NDJSON back into the solver).
 """
@@ -16,15 +18,26 @@ from __future__ import annotations
 import copy
 from collections import deque
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
-from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
-from django_apps.shapez_asteroid.extraction.shapez_grid import is_legal_xy, neighbors4
+from django_apps.shapez_asteroid.extraction.shape_miner_rotation import (
+    output_offset_r,
+    shape_miner_output_cell,
+)
+from django_apps.shapez_asteroid.extraction.shapez_grid import (
+    is_legal_xy,
+    neighbors4,
+    step_cardinal,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation import (
+    extension_topology as _ext_topo,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS,
     MAX_PASS12_STUB_ROUTE_RECOVERY_NEW_TRANSPORT_CELLS,
     MAX_PASS12_STUB_ROUTE_RECOVERY_PATH_LEN,
+    PASS12_MAX_EXTENSION_TILES,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
@@ -173,6 +186,11 @@ class StubRouteRecoveryResult:
     chosen_r: int | None
     stub_cell: Coord | None
     carved_extension_cells: frozenset[Coord] = field(default_factory=frozenset)
+    tier_d_extensions_removed: frozenset[Coord] = field(default_factory=frozenset)
+    tier_d_extension_placements: tuple[tuple[Coord, dict[str, Any]], ...] = field(
+        default_factory=tuple
+    )
+    tier_d_final_extension_cells: frozenset[Coord] = field(default_factory=frozenset)
 
 
 def _other_transport_role(want_wr: str) -> str:
@@ -944,6 +962,284 @@ def _probe_stub_route_once(
     )
 
 
+MAX_PASS12_TIER_D_TOPOLOGY_ATTEMPTS = 48
+
+
+def _tier_d_extensions_cardinally_connected(miner: Coord, extensions: frozenset[Coord]) -> bool:
+    """True iff every extension cell is reachable from ``miner`` via 4-neighbor hops in-set."""
+
+    if not extensions:
+        return True
+    seen_ext: set[Coord] = set()
+    q: deque[Coord] = deque([miner])
+    visited: set[Coord] = {miner}
+    while q:
+        c = q.popleft()
+        x, y = c
+        for nxt in neighbors4(x, y):
+            if nxt not in extensions or nxt in visited:
+                continue
+            visited.add(nxt)
+            seen_ext.add(nxt)
+            q.append(nxt)
+    return seen_ext == set(extensions)
+
+
+def _tier_d_blocked_for_enumeration(
+    cells: Mapping[Coord, dict[str, Any]],
+    *,
+    miner: Coord,
+    extensions: frozenset[Coord],
+    scratch_blocked: frozenset[Coord],
+) -> frozenset[Coord]:
+    """Cells that block extension repack enumeration (other buildings + scratch blocked)."""
+
+    out: set[Coord] = set(scratch_blocked)
+    for c, row in cells.items():
+        if c == miner or c in extensions:
+            continue
+        if row.get("role") != "occupied":
+            continue
+        lk = layout_kind(row) or ""
+        if lk in EXTRACTORS_SHAPE | EXTRACTORS_FLUID or lk in EXTENSIONS:
+            out.add(c)
+    return frozenset(out)
+
+
+def _tier_d_stub_skip_reason(
+    stub: Coord | None,
+    *,
+    miner: Coord,
+    extensions: frozenset[Coord],
+    cells: Mapping[Coord, dict[str, Any]],
+    scratch_blocked: frozenset[Coord],
+    want_wr: str,
+) -> str | None:
+    """None when stub is usable for Tier D repack on this rotation (before strip)."""
+
+    if stub is None:
+        return "tier_d_stub_none"
+    if stub in scratch_blocked:
+        return "tier_d_stub_blocked_protected_corridor"
+    if stub in extensions:
+        return None
+    row = cells.get(stub)
+    if row is None:
+        return None
+    role = row.get("role")
+    if role == "inferred":
+        return None
+    if role == want_wr:
+        return "tier_d_stub_blocked_same_kind_transport"
+    if role == ("belt" if want_wr == "pipe" else "pipe"):
+        return "tier_d_stub_blocked_other_kind_transport"
+    if role != "occupied":
+        return "tier_d_stub_blocked_unsupported_role"
+    lk = layout_kind(row) or ""
+    if lk in EXTENSIONS:
+        return "tier_d_stub_blocked_foreign_extension"
+    if lk in EXTRACTORS_SHAPE | EXTRACTORS_FLUID:
+        ex = (int(row["x"]), int(row["y"]))
+        if ex != miner:
+            return "tier_d_stub_blocked_unrelated_extractor"
+        return None
+    if lk == "asteroid_field":
+        return None
+    return "tier_d_stub_blocked_occupied_not_void"
+
+
+def _tier_d_extension_row_template(
+    cells: Mapping[Coord, dict[str, Any]], extensions: frozenset[Coord]
+) -> dict[str, Any]:
+    for c in sorted(extensions, key=lambda p: (p[1], p[0])):
+        row = cells.get(c)
+        if row and (layout_kind(row) or "") in EXTENSIONS:
+            return dict(row)
+    return {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"}
+
+
+def _try_tier_d_bounded_output_reorientation_repack(
+    *,
+    miner: Coord,
+    extensions: frozenset[Coord],
+    cells: dict[Coord, dict[str, Any]],
+    mineable: frozenset[Coord],
+    scratch_transport_cells: frozenset[Coord],
+    scratch_blocked_cells: frozenset[Coord],
+    want_wr: str,
+    goals: frozenset[Coord],
+    existing_same_kind: frozenset[Coord],
+    order: list[int],
+    psr: dict[str, Any],
+    base_trace: dict[str, Any],
+    saw_visit_cap: list[bool],
+    saw_bfs_no_route: list[bool],
+    saw_route_len: list[bool],
+    saw_new_transport_over: list[bool],
+    post_carve_no_route: list[bool],
+) -> StubRouteRecoveryResult | None:
+    """Tier D: strip local extensions, enumerate cardinal repacks, re-probe stub route."""
+
+    if not extensions:
+        psr["tier_d_attempted"] = False
+        psr["tier_d_skip_reason"] = "tier_d_skipped_empty_bundle"
+        return None
+    if not _tier_d_extensions_cardinally_connected(miner, extensions):
+        psr["tier_d_attempted"] = False
+        psr["tier_d_skip_reason"] = "tier_d_skipped_diagonal_only_extension_topology"
+        return None
+
+    cells_strip: dict[Coord, dict[str, Any]] = {c: dict(r) for c, r in cells.items()}
+    for ec in extensions:
+        cells_strip.pop(ec, None)
+
+    transport_strip = frozenset(
+        c for c, row in cells_strip.items() if row.get("role") in ("belt", "pipe")
+    )
+    blocked_enum = _tier_d_blocked_for_enumeration(
+        cells, miner=miner, extensions=extensions, scratch_blocked=scratch_blocked_cells
+    )
+    tpl = _tier_d_extension_row_template(cells, extensions)
+    ext_layout_kind = str(tpl.get("layout_kind") or "fluid_extension")
+    surface = str(tpl.get("surface") or ("fluid" if "fluid" in ext_layout_kind else "shape"))
+
+    candidate_count = 0
+    sample: list[dict[str, Any]] = []
+    last_fail: str | None = None
+    any_rotation_reached_topo = False
+    stop_all = False
+
+    for cand_r in order:
+        if stop_all:
+            break
+        stub = shape_miner_output_cell(miner, cand_r)
+        sk = _tier_d_stub_skip_reason(
+            stub,
+            miner=miner,
+            extensions=extensions,
+            cells=cells,
+            scratch_blocked=scratch_blocked_cells,
+            want_wr=want_wr,
+        )
+        if sk is not None:
+            continue
+        assert stub is not None
+        out_dir = output_offset_r(cand_r)
+        topo_list = _ext_topo.enumerate_extension_topologies(
+            miner,
+            out_dir,
+            mineable,
+            blocked_enum,
+            transport_strip,
+            max_extensions=PASS12_MAX_EXTENSION_TILES,
+        )
+        for topo in topo_list:
+            if topo.extension_count != len(extensions):
+                continue
+            any_rotation_reached_topo = True
+            candidate_count += 1
+            if len(sample) < 5:
+                sample.append(
+                    {
+                        "cand_r": int(cand_r),
+                        "extension_cells": [
+                            [int(c[0]), int(c[1])]
+                            for c in sorted(topo.extension_cells, key=lambda p: (p[1], p[0]))
+                        ],
+                    }
+                )
+            if candidate_count > MAX_PASS12_TIER_D_TOPOLOGY_ATTEMPTS:
+                stop_all = True
+                break
+            cells_try = dict(cells_strip)
+            placements: list[tuple[Coord, dict[str, Any]]] = []
+            ok_place = True
+            for cell, dx, dy in sorted(topo.facings, key=lambda t: (t[0][1], t[0][0], t[1], t[2])):
+                parent = step_cardinal(cell[0], cell[1], dx, dy)
+                if parent is None:
+                    ok_place = False
+                    break
+                rf = _ext_topo.rotation_r_for_extension_facing_parent((dx, dy))
+                erow = {
+                    "x": cell[0],
+                    "y": cell[1],
+                    "role": "occupied",
+                    "layout_kind": ext_layout_kind,
+                    "surface": surface,
+                    "r": rf,
+                }
+                cells_try[cell] = erow
+                placements.append((cell, dict(erow)))
+            if not ok_place:
+                continue
+            blocked_try = frozenset(scratch_blocked_cells | {miner} | topo.extension_cells)
+            ok_res = _probe_stub_route_once(
+                stub=stub,
+                cand_r=cand_r,
+                probe_cells=cells_try,
+                use_carved=False,
+                carved_coords=frozenset(),
+                goals=goals,
+                existing_same_kind=existing_same_kind,
+                scratch_transport_cells=scratch_transport_cells,
+                blocked_body=blocked_try,
+                mineable=mineable,
+                want_wr=want_wr,
+                psr=psr,
+                base_trace=base_trace,
+                saw_visit_cap=saw_visit_cap,
+                saw_bfs_no_route=saw_bfs_no_route,
+                saw_route_len=saw_route_len,
+                saw_new_transport_over=saw_new_transport_over,
+                post_carve_no_route=post_carve_no_route,
+            )
+            if ok_res is None:
+                lp = psr.get("stub_route_probe_last")
+                last_fail = (
+                    _tier_failed_label("tier_d", lp if isinstance(lp, dict) else None) or last_fail
+                )
+                continue
+            psr["recovery_tier_attempted"].append("D")
+            psr["tier_d_attempted"] = True
+            psr["tier_d_success"] = True
+            psr["tier_d_skip_reason"] = None
+            psr["tier_d_failure_reason"] = None
+            psr["output_repack_candidate_count"] = candidate_count
+            psr["output_repack_candidate_sample"] = sample
+            psr["output_repack_selected_rotation"] = int(cand_r)
+            psr["output_repack_removed_extension_cells"] = [
+                [int(c[0]), int(c[1])] for c in sorted(extensions, key=lambda p: (p[1], p[0]))
+            ]
+            psr["output_repack_replaced_extension_cells"] = [
+                [int(c[0]), int(c[1])]
+                for c, _ in sorted(placements, key=lambda t: (t[0][1], t[0][0]))
+            ]
+            psr["output_repack_preserved_extension_count"] = len(extensions)
+            psr["output_repack_route_len_edges"] = psr.get("route_len_edges")
+            return replace(
+                ok_res,
+                carved_extension_cells=frozenset(),
+                tier_d_extensions_removed=extensions,
+                tier_d_extension_placements=tuple((c, dict(r)) for c, r in placements),
+                tier_d_final_extension_cells=topo.extension_cells,
+            )
+        if stop_all:
+            break
+
+    psr["recovery_tier_attempted"].append("D")
+    psr["tier_d_attempted"] = True
+    psr["tier_d_success"] = False
+    psr["output_repack_candidate_count"] = candidate_count
+    psr["output_repack_candidate_sample"] = sample
+    if not any_rotation_reached_topo:
+        psr["tier_d_skip_reason"] = "tier_d_skipped_no_repack_candidates"
+        psr["tier_d_failure_reason"] = None
+    else:
+        psr["tier_d_skip_reason"] = None
+        psr["tier_d_failure_reason"] = last_fail or "tier_d_failed_exhausted_candidates"
+    return None
+
+
 def _empty_psr(nearest_hops: int | None) -> dict[str, Any]:
     return {
         "attempted": True,
@@ -986,6 +1282,17 @@ def _empty_psr(nearest_hops: int | None) -> dict[str, Any]:
         "tier_c_candidate_pair_sample": [],
         "tier_c_pair_generation_mode": None,
         "tier_c_no_pair_diagnostic": None,
+        "tier_d_attempted": False,
+        "tier_d_success": False,
+        "tier_d_skip_reason": None,
+        "tier_d_failure_reason": None,
+        "output_repack_candidate_count": 0,
+        "output_repack_candidate_sample": [],
+        "output_repack_selected_rotation": None,
+        "output_repack_removed_extension_cells": [],
+        "output_repack_replaced_extension_cells": [],
+        "output_repack_preserved_extension_count": None,
+        "output_repack_route_len_edges": None,
     }
 
 
@@ -1335,6 +1642,28 @@ def try_preserve_stub_route_recovery(
         lp_c = psr.get("stub_route_probe_last")
         tc = _tier_failed_label("tier_c", lp_c if isinstance(lp_c, dict) else None)
         tier_c_last_fail = tc or tier_c_last_fail
+
+    d_res = _try_tier_d_bounded_output_reorientation_repack(
+        miner=miner,
+        extensions=extensions,
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=scratch_transport_cells,
+        scratch_blocked_cells=scratch_blocked_cells,
+        want_wr=want_wr,
+        goals=goals,
+        existing_same_kind=existing_same_kind,
+        order=order,
+        psr=psr,
+        base_trace=base_trace,
+        saw_visit_cap=saw_visit_cap,
+        saw_bfs_no_route=saw_bfs_no_route,
+        saw_route_len=saw_route_len,
+        saw_new_transport_over=saw_new_transport_over,
+        post_carve_no_route=post_carve_no_route,
+    )
+    if d_res is not None:
+        return d_res
 
     if tier_a_last_probe is not None:
         psr["stub_route_probe_last"] = tier_a_last_probe

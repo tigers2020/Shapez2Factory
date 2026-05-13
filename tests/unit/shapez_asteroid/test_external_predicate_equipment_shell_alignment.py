@@ -211,3 +211,36 @@ def test_solver_summary_preserves_nested_pass2_external_margin_diagnostic() -> N
     assert isinstance(gtrace, dict)
     assert gtrace.get("pass2_external_margin_diagnostic") == diag
     assert _out["solver_summary"]["pass2_probe_last_goal_trace"]["pass2_external_margin_diagnostic"]
+
+
+def test_timeline_shell_bbox_matches_external_bbox_margin_for_same_rows() -> None:
+    """Pass12 probe shell bbox matches ``external_bbox_margin_for_mining_map`` on same rows."""
+
+    rows: list[dict[str, Any]] = []
+    for y in range(10, 31):
+        if y in (10, 25):
+            rows.append(
+                {
+                    "x": 5,
+                    "y": y,
+                    "role": "occupied",
+                    "layout_kind": "miner",
+                    "surface": "shape",
+                    "r": 0,
+                }
+            )
+        else:
+            rows.append(
+                {
+                    "x": 5,
+                    "y": y,
+                    "role": "inferred",
+                    "layout_kind": "asteroid_field",
+                    "surface": "shape",
+                }
+            )
+    shell = finval.external_bbox_margin_for_mining_map(rows)
+    assert shell is not None
+    bbox, margin = shell
+    assert bbox[2] == 10 and bbox[3] == 25
+    assert isinstance(margin, int) and margin >= 0

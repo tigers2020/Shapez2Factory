@@ -32,13 +32,21 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
     unfinalized_placement_count_from_counts,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    EXTRACTORS_FLUID,
+    EXTRACTORS_SHAPE,
+    mineable_and_asteroid_coords,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     blocked_cells as _blocked_cells,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     collect_routing_jobs as _collect_routing_jobs,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
-    mineable_and_asteroid_coords,
+    layout_kind as _layout_kind,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    transport_kind_for_extractor as _transport_kind_for_extractor,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     want_role as _want_role,
@@ -217,6 +225,22 @@ def _step4_sort_routing_jobs_outside_in(
             j[0][0],
         ),
     )
+
+
+def _count_extractors_with_int_rotation(cells: dict[Coord, dict[str, Any]]) -> int:
+    """Extractors with integer ``r`` (precondition aligned with ``collect_routing_jobs``)."""
+
+    n = 0
+    for _c, row in cells.items():
+        lk = _layout_kind(row)
+        if lk not in EXTRACTORS_SHAPE | EXTRACTORS_FLUID:
+            continue
+        if _transport_kind_for_extractor(row) is None:
+            continue
+        if not isinstance(row.get("r"), int):
+            continue
+        n += 1
+    return n
 
 
 def _build_step4_ctx_state(
@@ -1024,8 +1048,17 @@ def run_step4_merge_aware_routing(
     pcounts = placement_commit_counts_by_state(placement_commit_by_id)
     routing_failure_count = len(failures)
     rolled_back_n = len(rolled_back)
+    unfinal = unfinalized_placement_count_from_counts(pcounts)
+    jobs_post_n = len(_collect_routing_jobs(cells))
+    ext_rot_n = _count_extractors_with_int_rotation(cells)
+    stub_coverage_ok = ext_rot_n == 0 or ext_rot_n == jobs_post_n
+    placement_fsm_finalized = unfinal == 0
     complete_routing_success = (
-        not unrecoverable and routing_failure_count == 0 and rolled_back_n == 0
+        not unrecoverable
+        and routing_failure_count == 0
+        and rolled_back_n == 0
+        and placement_fsm_finalized
+        and stub_coverage_ok
     )
     committed = complete_routing_success
     step4_degraded = not unrecoverable and routing_failure_count == 0 and rolled_back_n > 0
@@ -1039,7 +1072,11 @@ def run_step4_merge_aware_routing(
         "step4_routing_failure_count": routing_failure_count,
         "initial_trunk_cells": len(initial_trunk),
         "placement_commit_counts": pcounts,
-        "unfinalized_placement_count": unfinalized_placement_count_from_counts(pcounts),
+        "unfinalized_placement_count": unfinal,
+        "step4_post_routing_extractor_rotation_count": ext_rot_n,
+        "step4_post_routing_job_count": jobs_post_n,
+        "step4_stub_coverage_ok": stub_coverage_ok,
+        "step4_placement_fsm_finalized": placement_fsm_finalized,
         "step4_routed_count": pcounts.get(PlacementCommitState.ROUTED_CONFIRMED.value, 0),
         "step4_routed_stub_count": pcounts.get(PlacementCommitState.ROUTED_CONFIRMED.value, 0),
         "step4_total_stub_count": len(jobs),

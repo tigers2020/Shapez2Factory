@@ -1,6 +1,7 @@
 """Failing regression contracts: runtime authority must not come from trace/replay mirrors.
 
-Canon: ``documents/Algorithm/mining_solver_cursor_sessions/`` 08 (STEP4), 12 (corridors), 14 (replay).
+Canon: ``documents/Algorithm/mining_solver_cursor_sessions/`` 08 (STEP4), 12 (corridors),
+14 (replay).
 
 These tests encode stricter authority than current code: when ``routing_state`` is absent,
 **all** reclaim-side corridor-related runtime surfaces must stay empty (no synthesis from
@@ -57,9 +58,8 @@ def test_protected_corridors_for_reclaim_no_routing_state_trace_must_not_synthes
 # --- (1b) When routing_state is absent, no *runtime* corridor attachment from hints either ---
 
 
-def test_protected_corridors_for_reclaim_no_routing_state_existing_layout_hints_must_not_attach() -> (
-    None
-):
+def test_protected_corridors_for_reclaim_no_routing_state_existing_layout_hints_must_not_attach(
+) -> None:
     pcs = protected_corridors_for_reclaim(
         pass3_trace={},
         solver_routing_state=None,
@@ -110,7 +110,7 @@ def _mining_layout_service_root() -> Path:
 
 
 def test_trunk_load_step4_committed_not_read_for_runtime_inference() -> None:
-    """08 §9.6: gate uses explicit ``Step4RoutingResult.committed`` — never trunk_load mirror key."""
+    """08 §9.6: use ``Step4RoutingResult.committed``, not ``trunk_load`` mirror keys."""
 
     root = _mining_layout_service_root()
     offenders: list[str] = []
@@ -133,9 +133,11 @@ def test_trunk_load_step4_committed_not_read_for_runtime_inference() -> None:
             if stripped.startswith("#"):
                 continue
             offenders.append(f"{path.relative_to(root)}:{lineno}:{stripped}")
-    assert not offenders, "trunk_load + step4_committed on same line (possible mirror inference):\n" + "\n".join(
-        offenders[:25]
+    msg = (
+        "trunk_load + step4_committed on same line (possible mirror inference):\n"
+        + "\n".join(offenders[:25])
     )
+    assert not offenders, msg
 
 
 # --- (4) recovery_trigger must not populate commit_reason (rollup contract) ---
@@ -149,12 +151,12 @@ def test_recovery_trigger_literals_disjoint_from_rollup_commit_reasons() -> None
         for k, v in vars(constants).items()
         if k.startswith("RECOVERY_TRIGGER_") and isinstance(v, str)
     }
-    assert triggers.isdisjoint(ROLLUP_COMMIT_REASONS_CANONICAL), triggers & ROLLUP_COMMIT_REASONS_CANONICAL
+    overlap = triggers & ROLLUP_COMMIT_REASONS_CANONICAL
+    assert triggers.isdisjoint(ROLLUP_COMMIT_REASONS_CANONICAL), overlap
 
 
-def test_synthesize_recovery_validation_outcome_does_not_copy_recovery_trigger_to_commit_reason() -> (
-    None
-):
+def test_synthesize_recovery_validation_outcome_does_not_copy_recovery_trigger_to_commit_reason(
+) -> None:
     summary = {
         "return_reason": "ok",
         "recovery_trigger": constants.RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
@@ -171,9 +173,8 @@ def test_synthesize_recovery_validation_outcome_does_not_copy_recovery_trigger_t
 # --- (5) committed=false ⇒ commit_reason slot stays null at partition boundary ---
 
 
-def test_partition_pass3_commit_reason_uncommitted_implies_no_commit_reason_even_if_raw_string() -> (
-    None
-):
+def test_partition_pass3_commit_reason_uncommitted_implies_no_commit_reason_even_if_raw_string(
+) -> None:
     cr, promoted = partition_pass3_commit_reason_payload(
         constants.P3F_COMMIT_REASON_NORMAL_GAIN,
         pass3_committed=False,
@@ -233,12 +234,12 @@ def test_merge_step4_corridor_routing_mapping_docstring_forbids_trunk_load_autho
     assert "trunk_load" in doc
 
 
-def test_merge_step4_corridor_routing_mapping_ignores_trunk_load_protected_corridors_payload() -> None:
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
-        merge_step4_corridor_routing_mapping,
+def test_merge_s4_corridor_mapping_ignores_trunk_load_protected_corridors_payload() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim import (
+        reclaim_corridors as rc,
     )
 
-    merged = merge_step4_corridor_routing_mapping(
+    merged = rc.merge_step4_corridor_routing_mapping(
         routing_state=None,
         trunk_load={
             "protected_corridors": {"hard": [[1, 1]], "soft": [[2, 2]]},

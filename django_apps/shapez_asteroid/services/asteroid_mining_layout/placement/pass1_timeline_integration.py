@@ -157,13 +157,17 @@ def _merge_pass1_into_rows(
 ) -> list[dict[str, Any]]:
     """Rebuild cells: ``with_transport`` plus reconstructed mineable shell, then P1 overlays."""
 
+    _ = transport_init  # Baseline transport coords (symmetry with callers); full scratch stamp.
     cells = {k: dict(v) for k, v in cells_dict_from_mining_map(working_map).items()}
     final_cells = cells_dict_from_mining_map(final_mining_map)
     for c in mineable:
         if c in final_cells:
             cells[c] = dict(final_cells[c])
     new_bodies = scratch.blocked_cells - set(blocked_init)
-    new_transport = scratch.transport_cells - set(transport_init)
+    # Stamp every scratch transport cell after the mineable shell overlay. Using only
+    # ``scratch.transport_cells - transport_init`` drops baseline stub belts/pipes that the
+    # shell overwrote with ``inferred`` (Pass12 preserve stub-route recovery may omit the stub
+    # from ``new_transport_coords`` when it was already same-kind on the merged probe map).
     if surface == "fluid":
         miner_layout = "fluid_miner"
         miner_t = "Layout_FluidMiner"
@@ -225,7 +229,9 @@ def _merge_pass1_into_rows(
             row = dict(miner_row)
             row.update({"x": x, "y": y})
             cells[c] = row
-    for x, y in new_transport:
+    for x, y in sorted(scratch.transport_cells, key=lambda p: (p[1], p[0])):
+        if (x, y) in scratch.blocked_cells:
+            continue
         tr: dict[str, Any] = {
             "x": x,
             "y": y,

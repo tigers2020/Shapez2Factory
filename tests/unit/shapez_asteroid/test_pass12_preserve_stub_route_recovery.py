@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django.test import override_settings
 
+from django_apps.shapez_asteroid.extraction.shape_miner_rotation import output_offset_r
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
     pass1_timeline_integration as p12_tl,
@@ -14,16 +15,22 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement impor
     pass12_preserve_stub_route_recovery,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
+    PlacementCommitRecord,
     PlacementCommitState,
+    make_placement_id,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     EXTRACTORS_FLUID,
     EXTRACTORS_SHAPE,
+    collect_routing_jobs,
     layout_kind,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
     PRESERVE_QUALITY_SCORE_VERSION,
     preserve_quality_bundle_from_pass12,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_merge_routing import (
+    run_step4_merge_aware_routing,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
     final_validation as final_val,
@@ -501,3 +508,146 @@ def test_integrate_pass12_stub_route_recovery_two_miners_missing_stub_zero() -> 
     belt_cells = {c for c, r in cells.items() if r.get("role") == "belt"}
     pipe_cells = {c for c, r in cells.items() if r.get("role") == "pipe"}
     assert not (belt_cells & pipe_cells)
+
+
+def test_merge_restamps_baseline_stub_after_mineable_shell_overwrite() -> None:
+    """Mineable shell must not erase a baseline stub still in ``scratch.transport_cells``."""
+
+    mineable: frozenset[Coord] = frozenset({(5, 2), (5, 3), (5, 4), (5, 5), (5, 6), (6, 5)})
+    working_map: list[dict[str, object]] = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 3,
+            "surface": "fluid",
+        },
+        {"x": 6, "y": 5, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        {"x": 5, "y": 6, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        {"x": 5, "y": 4, "role": "pipe", "surface": "fluid"},
+        {"x": 5, "y": 3, "role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        {"x": 5, "y": 2, "role": "pipe", "surface": "fluid"},
+    ]
+    final_mining_map: list[dict[str, object]] = [
+        {
+            "x": x,
+            "y": y,
+            "role": "inferred" if (x, y) == (5, 4) else "occupied",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        }
+        for x, y in sorted(mineable, key=lambda p: (p[1], p[0]))
+    ]
+    scratch, transport_init, blocked_init = p12_tl.scratch_from_working_map(
+        working_map, mineable_coords=mineable
+    )
+    scratch.transport_kind = "fluid_pipe"
+    scratch.blocked_cells.update({(5, 5), (6, 5), (5, 6)})
+    scratch.extractor_cells.add((5, 5))
+    scratch.extractor_output_dirs[(5, 5)] = output_offset_r(3)
+    scratch.transport_cells.update({(5, 4), (5, 2)})
+    pid = make_placement_id("pass1", 1)
+    scratch.placement_records[pid] = PlacementCommitRecord(
+        placement_id=pid,
+        placement_pass="pass1",
+        extractor_cell=(5, 5),
+        extension_cells=((5, 6), (6, 5)),
+        stub_cell=(5, 4),
+        transport_kind="fluid_pipe",
+        state=PlacementCommitState.PROVISIONAL_PLACED,
+        route_id="preserve_stub_route_recovery",
+    )
+    scratch.next_placement_seq = 1
+    merged = p12_tl._merge_pass1_into_rows(
+        working_map,
+        final_mining_map,
+        scratch,
+        transport_init,
+        blocked_init,
+        mineable,
+        "fluid",
+    )
+    cells = final_val.cells_dict_from_mining_map(merged)
+    assert cells[(5, 4)]["role"] == "pipe"
+    jobs = collect_routing_jobs(cells)
+    assert any(ext == (5, 5) for ext, *_ in jobs)
+
+
+@override_settings(
+    SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True,
+    SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED=False,
+)
+def test_integrate_pass12_stub_recovery_then_step4_complete_and_stub_coverage() -> None:
+    """After preserve stub-route recovery, STEP4 reports full commit and stub coverage telemetry."""
+
+    mineable_cells = [
+        (5, 3),
+        (5, 4),
+        (5, 5),
+        (5, 6),
+        (6, 5),
+        (10, 10),
+    ]
+    fm = [
+        {
+            "x": x,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        }
+        for x, y in mineable_cells
+    ]
+    wm = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 3,
+            "surface": "fluid",
+            "t": "Layout_FluidMiner",
+        },
+        {"x": 6, "y": 5, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        {"x": 5, "y": 6, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        {"x": 5, "y": 4, "role": "inferred", "surface": "fluid"},
+        {"x": 5, "y": 3, "role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        {"x": 5, "y": 2, "role": "pipe", "surface": "fluid"},
+        {
+            "x": 10,
+            "y": 10,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+            "t": "Layout_FluidMiner",
+        },
+        {"x": 11, "y": 10, "role": "pipe", "surface": "fluid"},
+    ]
+    _m1, m2, stats = p12_tl.integrate_pass12_placement_into_working_map(
+        working_map=wm,
+        final_mining_map=fm,
+        is_external=lambda _c: True,
+        existing_layout_analysis={
+            "source_kind": "existing_fluid_layout",
+            "equipment": {"miner_count": 2, "extension_count": 0},
+            "transport": {},
+            "issues": [],
+        },
+        suppress_pass1_pass2_loops=True,
+    )
+    assert stats["pass12_preserved_missing_stub_route_recovery_success_count"] >= 1
+    pr = stats.get("placement_records")
+    r = run_step4_merge_aware_routing(
+        m2,
+        final_mining_map=fm,
+        is_external=lambda _c: True,
+        placement_records=pr,
+    )
+    assert r.complete_routing_success
+    assert r.trunk_load.get("step4_stub_coverage_ok") is True
+    assert r.trunk_load.get("step4_placement_fsm_finalized") is True
+    rep = final_val.validate_final_mining_layout(r.map_after_routing)
+    assert rep.missing_stub_count == 0
+    assert rep.provisional_placed_row_count == 0

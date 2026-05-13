@@ -404,6 +404,7 @@ def run_step4_merge_aware_routing(
                 is_external=is_external,
                 trunk=trunk_cells,
                 goal_cells=goal_cells,
+                margin_cells=frozenset(margin_cells),
                 cheap_reuse_cells=cheap_reuse_cells,
                 search_stats=search_stats,
             )
@@ -414,6 +415,9 @@ def run_step4_merge_aware_routing(
                 bridge_attempted_flag = False
                 bridge_reason: str | None = None
                 bridge_meta: dict[str, Any] | None = None
+                pcs_at_attempt: str | None = None
+                if placement_id is not None and placement_id in work_records:
+                    pcs_at_attempt = work_records[placement_id].state.value
                 detail = _s4_fail_detail.build_step4_route_failure_detail(
                     placement_id=placement_id,
                     extractor_cell=ext_cell,
@@ -434,14 +438,8 @@ def run_step4_merge_aware_routing(
                     search_stats=search_stats,
                     trunk_seed_candidate_count=len(trunk_seed_by_kind.get(tk, ())),
                     trunk_seed_cells=frozenset(trunk_seed_by_kind.get(tk, ())),
+                    placement_commit_state_at_route_attempt=pcs_at_attempt,
                 )
-                if trace_enabled():
-                    debug_log_event(
-                        "django_apps.shapez_asteroid.services.asteroid_mining_layout."
-                        "step4.step4_merge_routing",
-                        "step4_route_failure_detail",
-                        {"step4_route_failure_detail": detail},
-                    )
                 if len(search_diag_samples) < 8:
                     exn = int(search_stats.get("expanded_nodes") or 0)
                     search_diag_samples.append(
@@ -816,6 +814,29 @@ def run_step4_merge_aware_routing(
                 dig = fd.get("step4_route_failure_diagnostic")
                 if isinstance(dig, dict):
                     dig["final_state"] = st
+
+        per_pid_attempt: dict[str, int] = {}
+        for fd in failures:
+            det = fd.get("step4_route_failure_detail")
+            if not isinstance(det, dict):
+                continue
+            eid = fd.get("extractor_id")
+            if isinstance(eid, str):
+                nxt = per_pid_attempt.get(eid, 0) + 1
+                per_pid_attempt[eid] = nxt
+                ai = nxt
+            else:
+                ai = 1
+            _s4_fail_detail.stamp_final_step4_route_failure_detail_trace_from_fd(
+                fd, attempt_index=ai
+            )
+            if trace_enabled():
+                debug_log_event(
+                    "django_apps.shapez_asteroid.services.asteroid_mining_layout."
+                    "step4.step4_merge_routing",
+                    "step4_route_failure_detail",
+                    {"step4_route_failure_detail": det},
+                )
 
         _stamp_placement_commit_on_map_rows(cells, work_records)
 

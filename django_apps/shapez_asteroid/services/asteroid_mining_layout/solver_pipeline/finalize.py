@@ -67,6 +67,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.recovery_orchestrator import (  # noqa: E501
     enrich_solver_summary_recovery,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.step4_route_failure_solver_summary import (  # noqa: E501
+    build_step4_route_failure_aggregate_for_solver_summary,
+    empty_step4_route_failure_aggregate_for_solver_summary,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.validation_bridge import (  # noqa: E501
     validate_final_mining_layout_bridge as _validate_final_mining_layout,
 )
@@ -548,6 +552,7 @@ def build_final_solver_output(
         "extractor_loss_due_to_step4_rollback": int(extractor_loss_due_to_step4_rollback),
         "route_loss_due_to_step4_rollback": int(route_loss_due_to_step4_rollback),
         "step4_committed": step4_result.committed,
+        "step4_complete_routing_success": bool(step4_result.complete_routing_success),
         "step4_skipped": bool(pass12_skipped),
         "placement_commit_counts": dict(step4_result.trunk_load.get("placement_commit_counts", {})),
         "rolled_back_placement_ids": list(step4_result.rolled_back_placement_ids),
@@ -565,6 +570,9 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    summary_fields.update(
+        build_step4_route_failure_aggregate_for_solver_summary(step4_result.routing_failures)
+    )
     summary_fields["step4_recovery_trigger"] = _s4_rt.step4_primary_recovery_trigger_from_result(
         step4_result
     )
@@ -1106,3 +1114,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     _term_exc = summary_fields.get("termination")
     if isinstance(_term_exc, dict):
         _term_exc.setdefault("quality_tier", summary_fields.get("solver_quality_tier"))
+    _t5_empty = empty_step4_route_failure_aggregate_for_solver_summary()
+    for _k, _v in _t5_empty.items():
+        summary_fields.setdefault(_k, _v)
+    summary_fields.setdefault("step4_complete_routing_success", False)

@@ -115,6 +115,12 @@ def emit_solver_summary_once(location: str, payload: dict[str, Any]) -> bool:
     if rid is not None:
         merged.setdefault("run_id", rid)
     trace_event(location, "solver_summary", {"solver_summary": merged})
+    if trace_enabled():
+        debug_log_event(
+            location,
+            "solver_summary",
+            {"solver_summary": merged},
+        )
     return True
 
 

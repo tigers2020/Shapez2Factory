@@ -19,6 +19,50 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_rou
 
 _MAX_STEP4_DIJKSTRA_POPS = 250_000
 
+# Telemetry-only: goals among cells popped into ``visited`` (same predicate as goal termination).
+DIJKSTRA_REACHABLE_GOAL_COUNT_KEY = "dijkstra_reachable_goal_count"
+DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY = "dijkstra_reachable_trunk_goal_count"
+DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY = "dijkstra_reachable_margin_goal_count"
+
+
+def _stamp_reachable_goal_counts_from_visited(
+    visited: set[Coord],
+    *,
+    stub_cell: Coord,
+    goal_cells: frozenset[Coord] | None,
+    trunk: frozenset[Coord],
+    margin_cells: frozenset[Coord] | None,
+    want_role: str,
+    is_external: Callable[[Coord], bool],
+    search_stats: dict[str, Any],
+) -> None:
+    """Count route goals hit by the search frontier (popped ``visited``); instrumentation only."""
+
+    rg = 0
+    rt = 0
+    rm = 0
+    for u in visited:
+        if u == stub_cell:
+            continue
+        if goal_cells is not None:
+            legacy_goal = step4_is_routing_goal(
+                u, want_role=want_role, trunk=trunk, is_external=is_external
+            )
+            reached = u in goal_cells or legacy_goal
+        else:
+            reached = step4_is_routing_goal(
+                u, want_role=want_role, trunk=trunk, is_external=is_external
+            )
+        if reached:
+            rg += 1
+            if u in trunk:
+                rt += 1
+            if margin_cells is not None and u in margin_cells:
+                rm += 1
+    search_stats[DIJKSTRA_REACHABLE_GOAL_COUNT_KEY] = rg
+    search_stats[DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY] = rt
+    search_stats[DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY] = rm
+
 
 def dijkstra_route_step4(
     stub_cell: Coord,
@@ -31,6 +75,7 @@ def dijkstra_route_step4(
     is_external: Callable[[Coord], bool],
     trunk: frozenset[Coord],
     goal_cells: frozenset[Coord] | None = None,
+    margin_cells: frozenset[Coord] | None = None,
     cheap_reuse_cells: frozenset[Coord] | None = None,
     search_stats: dict[str, Any] | None = None,
     max_heap_pops: int | None = None,
@@ -41,7 +86,12 @@ def dijkstra_route_step4(
     Otherwise the legacy ``step4_is_routing_goal`` predicate is used.
 
     If ``search_stats`` is a dict, it is filled on exit: ``expanded_nodes`` (visited count),
-    ``heap_pops``, ``stop_reason`` in ``success`` | ``exhausted`` | ``budget``.
+    ``heap_pops``, ``stop_reason`` in ``success`` | ``exhausted`` | ``budget``,
+    and ``dijkstra_reachable_goal_count`` / ``dijkstra_reachable_trunk_goal_count`` /
+    ``dijkstra_reachable_margin_goal_count`` (goals among popped ``visited``; telemetry only).
+
+    ``margin_cells``: optional frozenset for margin-goal split in reachable counts; omit when
+    unknown (margin count stays 0).
 
     ``max_heap_pops``: optional heap pop cap (defaults to ``_MAX_STEP4_DIJKSTRA_POPS``).
     """
@@ -67,6 +117,16 @@ def dijkstra_route_step4(
         pops += 1
         if pops > pop_cap:
             if search_stats is not None:
+                _stamp_reachable_goal_counts_from_visited(
+                    visited,
+                    stub_cell=stub_cell,
+                    goal_cells=goal_cells,
+                    trunk=trunk,
+                    margin_cells=margin_cells,
+                    want_role=want_role,
+                    is_external=is_external,
+                    search_stats=search_stats,
+                )
                 search_stats["expanded_nodes"] = len(visited)
                 search_stats["heap_pops"] = pops
                 search_stats["stop_reason"] = "budget"
@@ -97,6 +157,16 @@ def dijkstra_route_step4(
                 cur = prev[cur]
             chain.reverse()
             if search_stats is not None:
+                _stamp_reachable_goal_counts_from_visited(
+                    visited,
+                    stub_cell=stub_cell,
+                    goal_cells=goal_cells,
+                    trunk=trunk,
+                    margin_cells=margin_cells,
+                    want_role=want_role,
+                    is_external=is_external,
+                    search_stats=search_stats,
+                )
                 search_stats["expanded_nodes"] = len(visited)
                 search_stats["heap_pops"] = pops
                 search_stats["stop_reason"] = "success"
@@ -127,6 +197,16 @@ def dijkstra_route_step4(
                 heapq.heappush(heap, (nd, v))
         max_frontier_size = max(max_frontier_size, len(heap))
     if search_stats is not None:
+        _stamp_reachable_goal_counts_from_visited(
+            visited,
+            stub_cell=stub_cell,
+            goal_cells=goal_cells,
+            trunk=trunk,
+            margin_cells=margin_cells,
+            want_role=want_role,
+            is_external=is_external,
+            search_stats=search_stats,
+        )
         search_stats["expanded_nodes"] = len(visited)
         search_stats["heap_pops"] = pops
         search_stats["stop_reason"] = "exhausted"

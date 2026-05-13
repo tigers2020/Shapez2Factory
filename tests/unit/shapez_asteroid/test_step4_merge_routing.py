@@ -600,6 +600,22 @@ def test_step4_second_stub_route_failure_quarantines_that_bundle() -> None:
     assert fail.get("recovery_trigger") == "step4_routing_failure"
     assert not any(row.get("placement_id") == pid for row in r.map_after_routing)
 
+    det = fail["step4_route_failure_detail"]
+    assert det["failure_detail_phase"] == "final"
+    assert det["attempt_index"] == 1
+    assert det["rolled_back"] is True
+    assert det["quarantined"] is True
+    assert det["placement_commit_state"] == PlacementCommitState.ROLLED_BACK.value
+    assert det.get("rollback_reason") == "no_route"
+    assert "commit_reason" not in det
+    assert pid in r.rolled_back_placement_ids
+    assert {pid} == {
+        f["extractor_id"]
+        for f in r.routing_failures
+        if (f.get("step4_route_failure_detail") or {}).get("rolled_back") is True
+        and isinstance(f.get("extractor_id"), str)
+    }
+
     pcounts = r.trunk_load.get("placement_commit_counts") or {}
     assert pcounts.get(PlacementCommitState.ROUTED_CONFIRMED.value, 0) >= 1
     assert pcounts.get(PlacementCommitState.ROLLED_BACK.value, 0) >= 1
@@ -650,6 +666,10 @@ def test_build_solver_timeline_step4_frame_has_placement_commit_counts() -> None
     top = out.get("solver_summary") or {}
     assert "placement_commit_counts" in top
     assert top.get("unfinalized_placement_count") == 0
+    assert top.get("step4_complete_routing_success") is True
+    assert top.get("step4_failed_placement_ids") == []
+    assert top.get("step4_failure_attempt_detail_count") == 0
+    assert top.get("step4_route_failure_category_counts") == {}
 
 
 def test_timeline_step4_partial_skips_pass3() -> None:
@@ -701,6 +721,11 @@ def test_timeline_step4_partial_skips_pass3() -> None:
     summ = out.get("solver_summary") or {}
     assert summ.get("step4_committed") is False
     assert summ.get("pass3_skip_reason") == "step4_not_committed"
+    assert int(summ.get("step4_routing_failure_count") or 0) >= 1
+    assert int(summ.get("step4_failure_attempt_detail_count") or 0) >= 1
+    assert int(summ.get("step4_failed_placement_count") or 0) >= 1
+    assert isinstance(summ.get("step4_failed_placement_ids"), list)
+    assert isinstance(summ.get("step4_route_failure_last_error_counts"), dict)
 
 
 def test_step4_orphan_provisional_record_increments_unfinalized_trunk_count() -> None:

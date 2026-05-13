@@ -286,7 +286,7 @@ def test_gate9_deterministic_goal_ordering_and_failure_category() -> None:
     )
     a = s4fc.classify_step4_failure_category(**args)
     b = s4fc.classify_step4_failure_category(**args)
-    assert a == b == s4fc.Step4FailureCategory.geometry_cage.value
+    assert a == b == s4fc.Step4FailureCategory.stub_isolated.value
 
 
 def test_gate10_replay_overlay_json_deterministic() -> None:

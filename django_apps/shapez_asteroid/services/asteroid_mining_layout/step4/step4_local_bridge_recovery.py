@@ -170,6 +170,7 @@ def try_step4_local_bridge_recovery(
         is_external=is_external,
         trunk=trunk_cells,
         goal_cells=g_bridge,
+        margin_cells=frozenset(margin_cells),
         cheap_reuse_cells=cheap_reuse_cells,
         search_stats=bridge_stats,
         max_heap_pops=max_pops,

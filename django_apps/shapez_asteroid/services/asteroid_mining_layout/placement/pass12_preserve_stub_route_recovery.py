@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
@@ -78,6 +78,7 @@ class StubRouteRecoveryResult:
     new_transport_coords: frozenset[Coord]
     chosen_r: int | None
     stub_cell: Coord | None
+    carved_extension_cells: frozenset[Coord] = field(default_factory=frozenset)
 
 
 def _other_transport_role(want_wr: str) -> str:
@@ -498,6 +499,13 @@ def _empty_psr(nearest_hops: int | None) -> dict[str, Any]:
         "route_len_edges": None,
         "path_cells": None,
         "nearest_same_kind_transport_hops": nearest_hops,
+        "extension_carve_considered": False,
+        "extension_carve_candidate_cells": [],
+        "extension_carve_skip_reason": None,
+        "extension_carve_attempted": False,
+        "extension_carve_applied": None,
+        "carved_extension_cell": None,
+        "post_carve_rejected_reason": None,
     }
 
 
@@ -603,6 +611,9 @@ def try_preserve_stub_route_recovery(
     saw_stub_other = False
     stub_route_probe_last: dict[str, Any] | None = None
     rotation_candidates: list[tuple[tuple[int, int, int], int, Coord]] = []
+    cells_carve_probe: dict[Coord, dict[str, Any]] | None = None
+    carved_output_cell: Coord | None = None
+    carved_cand_r: int | None = None
     for cand_r in order:
         stub = shape_miner_output_cell(miner, cand_r)
         if stub is None:
@@ -614,21 +625,91 @@ def try_preserve_stub_route_recovery(
             blocked_body=blocked_body,
             want_wr=want_wr,
         )
-        if not ok_space:
-            if rej == "extension_carve_disabled":
-                saw_extension_carve = True
-            else:
-                saw_stub_other = True
+        if ok_space:
+            pri = _stub_cell_recovery_priority(stub, cells)
+            rotation_candidates.append((pri, cand_r, stub))
             continue
-        pri = _stub_cell_recovery_priority(stub, cells)
-        rotation_candidates.append((pri, cand_r, stub))
+        if rej == "extension_carve_disabled":
+            saw_extension_carve = True
+            psr["extension_carve_considered"] = True
+            row_st = cells.get(stub)
+            carved_ok = False
+            if stub not in extensions:
+                if psr["extension_carve_skip_reason"] is None:
+                    psr["extension_carve_skip_reason"] = "stub_not_in_extensions_set"
+            elif row_st is None:
+                if psr["extension_carve_skip_reason"] is None:
+                    psr["extension_carve_skip_reason"] = "no_row_at_stub_cell"
+            elif (layout_kind(row_st) or "") not in EXTENSIONS:
+                if psr["extension_carve_skip_reason"] is None:
+                    psr["extension_carve_skip_reason"] = "stub_cell_not_extension_layout_kind"
+            elif cells_carve_probe is not None:
+                if psr["extension_carve_skip_reason"] is None:
+                    psr["extension_carve_skip_reason"] = "extension_carve_slot_already_used"
+            else:
+                cells_try = dict(cells)
+                cells_try.pop(stub, None)
+                ok2, rej2 = _stub_space_mvp(
+                    stub,
+                    cells=cells_try,
+                    mineable=mineable,
+                    blocked_body=blocked_body,
+                    want_wr=want_wr,
+                )
+                psr["extension_carve_attempted"] = True
+                psr["extension_carve_candidate_cells"] = [[int(stub[0]), int(stub[1])]]
+                if ok2:
+                    cells_carve_probe = cells_try
+                    carved_output_cell = stub
+                    carved_cand_r = cand_r
+                    pri = _stub_cell_recovery_priority(stub, cells_try)
+                    rotation_candidates.append((pri, cand_r, stub))
+                    carved_ok = True
+                    psr["extension_carve_skip_reason"] = None
+                    break
+                if psr["extension_carve_skip_reason"] is None:
+                    psr["extension_carve_skip_reason"] = (
+                        f"carve_pop_still_blocks_stub_space:{rej2}"
+                        if rej2
+                        else "carve_pop_still_blocks_stub_space"
+                    )
+            if not carved_ok:
+                saw_stub_other = True
+        else:
+            saw_stub_other = True
     rotation_candidates.sort(key=lambda t: (t[0][0], t[0][1], t[0][2], t[1]))
     for _pri, cand_r, stub in rotation_candidates:
         saw_ok_stub = True
+        use_carved = (
+            cells_carve_probe is not None
+            and carved_output_cell is not None
+            and carved_cand_r is not None
+            and stub == carved_output_cell
+            and cand_r == carved_cand_r
+        )
+        if use_carved:
+            assert cells_carve_probe is not None
+            probe_cells = cells_carve_probe
+        else:
+            probe_cells = cells
+        goals_work = (
+            goal_transport_cells(
+                cells=probe_cells,
+                want_wr=want_wr,
+                scratch_transport_cells=scratch_transport_cells,
+            )
+            if use_carved
+            else goals
+        )
+        existing_work = (
+            existing_same_kind_transport_cells_from_map(probe_cells, want_wr=want_wr)
+            if use_carved
+            else existing_same_kind
+        )
         path, diag = _bfs_shortest_path(
             stub,
-            goal_transport_cells=goals,
-            cells=cells,
+            goal_transport_cells=goals_work,
+            cells=probe_cells,
             mineable=mineable,
             blocked_body=blocked_body,
             want_wr=want_wr,
@@ -639,10 +720,12 @@ def try_preserve_stub_route_recovery(
                 saw_visit_cap = True
             else:
                 saw_bfs_no_route = True
+            if use_carved:
+                psr["post_carve_rejected_reason"] = "no_same_kind_route"
             relaxed_goals = _reachable_goals_under_edge_cap(
                 stub,
-                goal_transport_cells=goals,
-                cells=cells,
+                goal_transport_cells=goals_work,
+                cells=probe_cells,
                 mineable=mineable,
                 blocked_body=blocked_body,
                 want_wr=want_wr,
@@ -652,8 +735,8 @@ def try_preserve_stub_route_recovery(
             stub_route_probe_last = _augment_stub_route_probe(
                 stub,
                 cand_r,
-                goals,
-                cells,
+                goals_work,
+                probe_cells,
                 diag,
                 mineable=mineable,
                 blocked_body=blocked_body,
@@ -669,8 +752,8 @@ def try_preserve_stub_route_recovery(
             stub_route_probe_last = _augment_stub_route_probe(
                 stub,
                 cand_r,
-                goals,
-                cells,
+                goals_work,
+                probe_cells,
                 diag,
                 mineable=mineable,
                 blocked_body=blocked_body,
@@ -680,7 +763,7 @@ def try_preserve_stub_route_recovery(
             )
             continue
         path_cells = frozenset(path)
-        new_t = path_cells - existing_same_kind - scratch_transport_cells
+        new_t = path_cells - existing_work - scratch_transport_cells
         if len(new_t) > MAX_PASS12_STUB_ROUTE_RECOVERY_NEW_TRANSPORT_CELLS:
             saw_new_transport_over = True
             psr["path_cell_count"] = len(path)
@@ -689,8 +772,8 @@ def try_preserve_stub_route_recovery(
             stub_route_probe_last = _augment_stub_route_probe(
                 stub,
                 cand_r,
-                goals,
-                cells,
+                goals_work,
+                probe_cells,
                 diag,
                 mineable=mineable,
                 blocked_body=blocked_body,
@@ -712,11 +795,14 @@ def try_preserve_stub_route_recovery(
             [int(c[0]), int(c[1])] for c in sorted(path, key=lambda p: (p[1], p[0]))
         ]
         psr["new_transport_cell_count"] = len(new_t)
+        if use_carved:
+            psr["extension_carve_applied"] = True
+            psr["carved_extension_cell"] = [int(stub[0]), int(stub[1])]
         stub_ok_probe = _augment_stub_route_probe(
             stub,
             cand_r,
-            goals,
-            cells,
+            goals_work,
+            probe_cells,
             diag,
             mineable=mineable,
             blocked_body=blocked_body,
@@ -724,12 +810,14 @@ def try_preserve_stub_route_recovery(
             path_for_metrics=path,
         )
         _mirror_probe_contract_into_psr(psr, stub_ok_probe)
+        carve_coords = frozenset({stub}) if use_carved else frozenset()
         return StubRouteRecoveryResult(
             accepted=True,
             trace=base_trace,
             new_transport_coords=new_t,
             chosen_r=cand_r,
             stub_cell=stub,
+            carved_extension_cells=carve_coords,
         )
 
     if stub_route_probe_last is None:
@@ -767,6 +855,8 @@ def try_preserve_stub_route_recovery(
                 stub_route_probe_last.get("reachable_same_kind_goals_under_edge_cap_512") or 0
             ),
         )
+    if psr["extension_carve_attempted"] and psr.get("extension_carve_applied") is None:
+        psr["extension_carve_applied"] = False
     return StubRouteRecoveryResult(
         accepted=False,
         trace=base_trace,

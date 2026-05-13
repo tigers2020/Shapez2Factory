@@ -55,6 +55,13 @@ def run_pass12_stage(
 
     sp1 = effective_suppress_pass1_loop(existing_layout_analysis)
     sp2 = effective_suppress_pass2_loop(existing_layout_analysis)
+    is_ext_basis: list[dict[str, Any]] | None = None
+    if len(map_timeline) > 1:
+        m1 = map_timeline[1]
+        if isinstance(m1, dict):
+            raw_basis = m1.get("mining_map")
+            if isinstance(raw_basis, list):
+                is_ext_basis = raw_basis
     map_after_pass1, map_after_pass2, pass12_stats = (
         p1_timeline_integration.integrate_pass12_placement_into_working_map(
             working_map=working_map,
@@ -64,6 +71,7 @@ def run_pass12_stage(
             replay_events=replay_events,
             suppress_pass1_loop=sp1,
             suppress_pass2_loop=sp2,
+            is_external_basis_mining_map=is_ext_basis,
         )
     )
     _p12s = {
@@ -73,6 +81,18 @@ def run_pass12_stage(
     }
     _dd = _p12s.get("pass12_preserved_missing_stub_drop_details") or []
     _rc = _p12s.get("pass12_preserve_drop_reason_counts") or {}
+    _pms = _p12s.get("preserve_missing_stub_summary")
+    _pms_out: dict[str, Any] = (
+        dict(_pms)
+        if isinstance(_pms, dict)
+        else {
+            "drop_count": 0,
+            "by_reason": {},
+            "by_recoverability": {},
+            "by_rejected_reason_subtype": {},
+            "local_repack_candidate_count": 0,
+        }
+    )
     _hop_hist: dict[str, int] = {}
     if isinstance(_dd, list):
         for _row in _dd:
@@ -111,6 +131,7 @@ def run_pass12_stage(
                 "stub_route_recovery_queue_rounds": int(
                     _p12s.get("pass12_preserved_missing_stub_route_recovery_queue_rounds") or 0
                 ),
+                "preserve_missing_stub_summary": _pms_out,
             },
         },
     )

@@ -198,6 +198,134 @@ def _mineable_asteroid_bbox(
     return {"x_min": min(xs), "x_max": max(xs), "y_min": min(ys), "y_max": max(ys)}
 
 
+_PASS2_MARGIN_DIAG_NEIGHBOR_CAP = 512
+
+
+def _neighbor_in_expanded_mineable_shell(
+    n: Coord, *, shell_bbox: tuple[int, int, int, int], margin: int
+) -> bool:
+    """True iff ``n`` is inside the inclusive §15 expanded rectangle (non-external shell)."""
+
+    x, y = n
+    x_min, x_max, y_min, y_max = shell_bbox
+    return bool(x_min - margin <= x <= x_max + margin and y_min - margin <= y <= y_max + margin)
+
+
+def _build_pass2_external_margin_diagnostic(
+    *,
+    universe: set[Coord],
+    margin: set[Coord],
+    is_external: Callable[[Coord], bool],
+    bbox: dict[str, int] | None,
+    is_external_shell_bbox: tuple[int, int, int, int] | None = None,
+    is_external_shell_margin: int | None = None,
+) -> dict[str, Any]:
+    """Bounded ``is_external`` sampling to explain ``exterior_margin_cell_count == 0``."""
+
+    u_count = len(universe)
+    eligible_cells = {c for c in universe if c[0] != 0}
+    eligible_n = len(eligible_cells)
+    neighbor_coords: list[Coord] = []
+    seen_n: set[Coord] = set()
+    for c in sorted(eligible_cells, key=lambda p: (p[1], p[0])):
+        cx, cy = c
+        for n in neighbors4(cx, cy):
+            if n in seen_n:
+                continue
+            seen_n.add(n)
+            neighbor_coords.append(n)
+            if len(neighbor_coords) >= _PASS2_MARGIN_DIAG_NEIGHBOR_CAP:
+                break
+        if len(neighbor_coords) >= _PASS2_MARGIN_DIAG_NEIGHBOR_CAP:
+            break
+    ext_true = 0
+    ext_false = 0
+    n_in_u = 0
+    n_out_u = 0
+    shell_x0 = 0
+    shell_inside = 0
+    shell_outside = 0
+    shell_unknown = 0
+    shell_known = (
+        is_external_shell_bbox is not None
+        and is_external_shell_margin is not None
+        and len(is_external_shell_bbox) == 4
+    )
+    for n in neighbor_coords:
+        if is_external(n):
+            ext_true += 1
+        else:
+            ext_false += 1
+        if n in universe:
+            n_in_u += 1
+        else:
+            n_out_u += 1
+        if shell_known:
+            assert is_external_shell_bbox is not None
+            assert is_external_shell_margin is not None
+            _sh_bb = is_external_shell_bbox
+            _sh_mg = is_external_shell_margin
+            nx, _ny = n
+            if nx == 0:
+                shell_x0 += 1
+            elif _neighbor_in_expanded_mineable_shell(n, shell_bbox=_sh_bb, margin=_sh_mg):
+                shell_inside += 1
+            else:
+                shell_outside += 1
+        else:
+            shell_unknown += 1
+    bbox_w: int | None = None
+    bbox_h: int | None = None
+    if bbox and all(k in bbox for k in ("x_min", "x_max", "y_min", "y_max")):
+        bbox_w = int(bbox["x_max"]) - int(bbox["x_min"]) + 1
+        bbox_h = int(bbox["y_max"]) - int(bbox["y_min"]) + 1
+    reasons: list[str] = []
+    if len(margin) == 0:
+        if u_count == 0:
+            reasons.append("empty_universe")
+        elif eligible_n == 0:
+            reasons.append("skipped_x0_only_universe")
+        elif neighbor_coords and ext_true == 0:
+            reasons.append("is_external_never_true_on_sampled_neighbors")
+            if shell_known and shell_outside == 0 and neighbor_coords:
+                reasons.append("all_sampled_neighbors_inside_predicate_shell_or_x0")
+        elif not neighbor_coords and eligible_n > 0:
+            reasons.append("no_neighbor_coords_sampled")
+    out: dict[str, Any] = {
+        "universe_scan_cell_count": u_count,
+        "margin_eligible_universe_cell_count": eligible_n,
+        "neighbor_sample_cap": _PASS2_MARGIN_DIAG_NEIGHBOR_CAP,
+        "sampled_neighbor_coord_count": len(neighbor_coords),
+        "is_external_true_neighbor_sample_count": ext_true,
+        "is_external_false_neighbor_sample_count": ext_false,
+        "sampled_neighbor_in_universe_count": n_in_u,
+        "sampled_neighbor_outside_universe_count": n_out_u,
+        "bbox_width": bbox_w,
+        "bbox_height": bbox_h,
+    }
+    if shell_known and is_external_shell_bbox is not None and is_external_shell_margin is not None:
+        sx_min, sx_max, sy_min, sy_max = is_external_shell_bbox
+        out["is_external_predicate_mineable_bbox"] = {
+            "x_min": int(sx_min),
+            "x_max": int(sx_max),
+            "y_min": int(sy_min),
+            "y_max": int(sy_max),
+        }
+        out["is_external_predicate_margin"] = int(is_external_shell_margin)
+    else:
+        out["is_external_predicate_mineable_bbox"] = None
+        out["is_external_predicate_margin"] = None
+    out["sampled_neighbor_shell_breakdown"] = {
+        "predicate_shell_unknown_neighbor_count": shell_unknown,
+        "sampled_neighbor_x_eq_0_count": shell_x0,
+        "sampled_neighbor_inside_expanded_mineable_bbox_count": shell_inside,
+        "sampled_neighbor_outside_expanded_mineable_bbox_count": shell_outside,
+    }
+    if reasons:
+        out["margin_generation_reason_if_zero"] = reasons
+    return out
+
+
 def new_pass2_route_probe_stats_sink() -> dict[str, Any]:
     """Default counters merged into Pass12 stats (Pass2 STEP4-aligned probe gate)."""
 
@@ -231,6 +359,9 @@ class Pass2RouteProbePack:
     cells: MiningMapCellsByCoord
     existing_layout_analysis: dict[str, Any] | None
     stats_sink: dict[str, Any]
+    #: Same mineable bbox + margin as :func:`final_validation.external_predicate_for_mining_map`.
+    is_external_shell_bbox: tuple[int, int, int, int] | None = None
+    is_external_shell_margin: int | None = None
 
 
 def build_pass2_step4_aligned_routing_goals(
@@ -245,6 +376,8 @@ def build_pass2_step4_aligned_routing_goals(
     transport_cells_probe: frozenset[Coord],
     blocked_for_probe: frozenset[Coord],
     stats_sink: dict[str, Any] | None = None,
+    is_external_shell_bbox: tuple[int, int, int, int] | None = None,
+    is_external_shell_margin: int | None = None,
 ) -> tuple[frozenset[Coord], Literal["first_route", "subsequent_route"], int, dict[str, Any]]:
     """Return ``(goal_cells, goal_set_kind, final_goal_count, trace)`` aligned with STEP4 §3.2.
 
@@ -296,6 +429,7 @@ def build_pass2_step4_aligned_routing_goals(
     universe_for_probe = (
         set(cells.keys()) | set(mineable) | set(asteroid) | set(transport_cells_probe)
     )
+    bbox_ma = _mineable_asteroid_bbox(mineable, asteroid)
     trace: Pass2GoalTraceWire = {
         "goal_set_kind": goal_set_kind,
         "exterior_margin_cell_count": len(margin),
@@ -311,8 +445,16 @@ def build_pass2_step4_aligned_routing_goals(
         "universe_cell_count": len(universe_for_probe),
         "mineable_cell_count": len(mineable),
         "asteroid_cell_count": len(asteroid),
-        "mineable_asteroid_bbox": _mineable_asteroid_bbox(mineable, asteroid),
+        "mineable_asteroid_bbox": bbox_ma,
         "rejected_reason": None,
+        "pass2_external_margin_diagnostic": _build_pass2_external_margin_diagnostic(
+            universe=universe_for_probe,
+            margin=margin,
+            is_external=is_external,
+            bbox=bbox_ma,
+            is_external_shell_bbox=is_external_shell_bbox,
+            is_external_shell_margin=is_external_shell_margin,
+        ),
     }
     if not full_goal:
         prior_n = len(transport_cells_before)

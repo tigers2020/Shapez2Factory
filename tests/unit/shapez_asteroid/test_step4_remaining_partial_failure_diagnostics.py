@@ -84,6 +84,9 @@ def test_first_route_no_exterior_margin_for_probe_reason() -> None:
     exp = str(s4frd.Step4RouteFailureReason.no_exterior_margin_for_probe)
     assert trace["rejected_reason"] == exp
     assert trace["mineable_asteroid_bbox"] == {"x_min": 3, "x_max": 3, "y_min": 0, "y_max": 0}
+    md = trace["pass2_external_margin_diagnostic"]
+    assert md["margin_eligible_universe_cell_count"] == 1
+    assert "margin_generation_reason_if_zero" in md
 
 
 def test_classifier_no_route_exhausted_before_mixed_stub_inferred() -> None:

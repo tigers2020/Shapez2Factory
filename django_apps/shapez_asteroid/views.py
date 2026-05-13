@@ -137,6 +137,8 @@ _COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS: tuple[str, ...] = (
     "preserve_quality_score",
     "preserve_quality_score_version",
     "preserve_quality",
+    "preserve_missing_stub_summary",
+    "termination",
     "step4_no_route_exhausted_breakdown",
     "step4_hard_protected_no_route_breakdown",
     "pass12_stub_route_recovery_enabled",
@@ -238,7 +240,8 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
     reclaim overlay fields via ``build_solver_timeline`` (extra solver cost).
 
     Pass ``GET include_solver_replay=1`` to include ``solver_replay`` (replay contract: frames,
-    ``events``, ``computation_cycle``; v3 adds per-event cycle + Pass3 layout snapshots);
+    ``events``, ``computation_cycle``; v3 adds per-event cycle + Pass3 layout snapshots; v12 adds
+    ``ui_frames`` and ``cycle_frames`` from ``replay_frame`` rows for STEP10 cycle streaming);
     shares one ``build_solver_timeline`` run with ``include_solver_overlay`` when both are set.
     """
 

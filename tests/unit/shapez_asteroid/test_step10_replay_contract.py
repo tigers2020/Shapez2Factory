@@ -135,6 +135,7 @@ def test_build_solver_timeline_replay_has_step10_root_fields() -> None:
     assert "placement_recovery_overlay" in sr
     assert isinstance(sr["placement_recovery_overlay"], dict)
     assert isinstance(sr.get("cycle_frames"), list)
+    assert isinstance(sr.get("ui_frames"), list)
 
 
 @pytest.mark.parametrize(

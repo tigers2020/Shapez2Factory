@@ -238,6 +238,7 @@ def _reject_island_only_prior_transport(
     payload: dict[str, Any] = dict(bundle_hint or {})
     # Stat key name kept for telemetry continuity (no longer tied to removed island goal fallback).
     payload["reason"] = "pass2_reject_transport_cells_before_island_fallback"
+    payload["canonical_reject_reason"] = "pass2_reject_all_orphan_prior_transport_empty_goal"
     payload["reject_reason"] = "step4_unreachable_component"
     payload["stub_cell"] = candidate.stub_cell
     payload["transport_kind"] = state.transport_kind
@@ -391,6 +392,8 @@ def _route_probe_after_stub_present(
             transport_cells_probe=transport_after,
             blocked_for_probe=blocked_after,
             stats_sink=pack.stats_sink,
+            is_external_shell_bbox=pack.is_external_shell_bbox,
+            is_external_shell_margin=pack.is_external_shell_margin,
         )
         if _is_pass2_island_only_prior_transport_context(goal_trace):
             _reject_island_only_prior_transport(

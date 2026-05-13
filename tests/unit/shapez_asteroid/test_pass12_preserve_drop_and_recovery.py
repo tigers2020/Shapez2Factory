@@ -74,6 +74,12 @@ def test_preserve_drop_mixed_kind_vs_orphan_histogram() -> None:
     rcc = stats["pass12_recoverability_class_counts"]
     assert rcc.get("NEEDS_REROUTE") == 1
     assert rcc.get("UNRECOVERABLE") == 1
+    pms = stats["preserve_missing_stub_summary"]
+    assert pms["drop_count"] == 2
+    assert pms["by_reason"].get("MIXED_KIND_CONFLICT") == 1
+    assert pms["by_reason"].get("ORPHAN_COMPONENT") == 1
+    assert pms["by_recoverability"].get("NEEDS_REROUTE") == 1
+    assert pms["by_recoverability"].get("UNRECOVERABLE") == 1
     for row in stats["pass12_preserved_missing_stub_drop_details"]:
         assert "recoverability_class" in row
         assert "preserve_stub_route_recovery_enabled" in row
@@ -314,7 +320,7 @@ def test_preserve_quality_bundle_zero_miners_still_has_score_version() -> None:
 
 
 def test_preserve_stub_route_drop_observability_hop1_deferred_eligible() -> None:
-    """nhops==1 + NO_MATCHING_STUB + recovery ON → deferred_queue_eligible (queue band includes 1)."""
+    """nhops==1, NO_MATCHING_STUB, recovery ON → deferred_queue_eligible (band includes 1)."""
 
     fn = pass12_merged_layout_seed._preserve_stub_route_drop_observability
     obs = fn(
@@ -346,3 +352,30 @@ def test_preserve_stub_route_drop_observability_orphan_not_deferred_eligible() -
     )
     assert obs["preserve_stub_route_deferred_queue_eligible"] is False
     assert obs["preserve_stub_route_inline_skip_reason"] == "nearest_hops_none"
+
+
+def test_preserve_missing_stub_summary_aggregator_subtype_and_finalize_bundle() -> None:
+    fn = pass12_merged_layout_seed._preserve_missing_stub_summary_from_details
+    rows = [
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "recoverability_class": "NEAR_TRANSPORT",
+            "preserve_stub_recovery": {"rejected_reason_subtype": "occupied_neighbor_ring"},
+        },
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "recoverability_class": "NEAR_TRANSPORT",
+            "preserve_stub_recovery": {},
+        },
+    ]
+    summ = fn(rows)
+    assert summ["drop_count"] == 2
+    assert summ["by_reason"]["NO_MATCHING_STUB"] == 2
+    assert summ["by_recoverability"]["NEAR_TRANSPORT"] == 2
+    assert summ["by_rejected_reason_subtype"]["occupied_neighbor_ring"] == 1
+    assert summ["by_rejected_reason_subtype"]["(none)"] == 1
+    assert summ["local_repack_candidate_count"] == 1
+    bundle, _score = preserve_quality_bundle_from_pass12(
+        {"preserve_missing_stub_summary": summ, "pass12_merged_seed_miner_count": 2}
+    )
+    assert bundle["preserve_missing_stub_summary"] == summ

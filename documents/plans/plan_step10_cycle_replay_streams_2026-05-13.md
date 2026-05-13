@@ -21,6 +21,11 @@
 - 라우팅·Pass3·Reclaim·Recovery·검증 알고리즘 본경로 변경 없음.
 - Debug NDJSON과 Replay NDJSON 분리 유지.
 
+## Debug NDJSON과의 구분 (교차 참고)
+
+- `var/asteroid_mining_layout_debug/*.ndjson` 등 **action/debug** 스트림에는 `cycle_frames`·`ui_frames`·`map_timeline_built`가 없을 수 있다. `replay_frame`·`computation_cycle` 검증은 **replay 전용 NDJSON**(`trace_event`·`solver_replay` 계약)으로 한다.
+- Pass2 margin·preserve 진단만으로 replay UI를 판정하지 않는다 — 관련: [`plan_pass2_external_predicate_shell_alignment_2026-05-13.md`](plan_pass2_external_predicate_shell_alignment_2026-05-13.md) (외부 셸 관측).
+
 ## 검증
 
 - 단위: NDJSON 파서, `replay_frame` ≥ 11 synthetic, stub-only 폴백, debug 와이어 거절.

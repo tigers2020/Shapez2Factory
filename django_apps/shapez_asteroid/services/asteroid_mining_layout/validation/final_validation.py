@@ -44,6 +44,7 @@ __all__ = [
     "FinalValidationReport",
     "count_placement_fsm_rows_on_cells",
     "cells_dict_from_mining_map",
+    "external_bbox_margin_for_mining_map",
     "external_margin_from_bbox",
     "external_predicate_for_mining_map",
     "mineable_bbox",
@@ -112,6 +113,20 @@ def external_predicate_for_mining_map(
     x_min, x_max, y_min, y_max = bbox
     margin = external_margin_from_bbox(x_max - x_min + 1, y_max - y_min + 1)
     return _external_predicate(bbox, margin)
+
+
+def external_bbox_margin_for_mining_map(
+    mining_map: MiningMapRows,
+) -> tuple[tuple[int, int, int, int], int] | None:
+    """``external_predicate_for_mining_map``과 동일한 mineable bbox·margin 쌍을 반환한다."""
+
+    cells = _parse_cells(mining_map)
+    bbox = mineable_bbox(cells)
+    if bbox is None:
+        return None
+    x_min, x_max, y_min, y_max = bbox
+    margin = external_margin_from_bbox(x_max - x_min + 1, y_max - y_min + 1)
+    return bbox, margin
 
 
 def _external_predicate(bbox: tuple[int, int, int, int], margin: int) -> Callable[[Coord], bool]:

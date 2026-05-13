@@ -66,6 +66,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
+    external_bbox_margin_for_mining_map,
     orphan_transport_metrics_from_cells,
     transport_cells_reaching_external,
 )
@@ -389,6 +390,7 @@ def integrate_pass12_placement_into_working_map(
     suppress_pass1_pass2_loops: bool = False,
     suppress_pass1_loop: bool | None = None,
     suppress_pass2_loop: bool | None = None,
+    is_external_basis_mining_map: list[dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """Run Pass1 outer then Pass2 internal placement; merge each stage into row lists.
 
@@ -406,10 +408,18 @@ def integrate_pass12_placement_into_working_map(
     (기존 연결 레이아웃 preserve-first 동작과 호환). 더 세밀한 분기는 ``suppress_pass1_loop`` /
     ``suppress_pass2_loop``로 패스를 따로 끈다(설정되지 않으면 ``suppress_pass1_pass2_loops``
     값을 그대로 사용). ``pass12_skipped``(혼합 면)와 달리 STEP4는 계속 실행된다.
+
+    ``is_external_basis_mining_map``: Pass2 margin 진단에 ``is_external``과 동일한 mineable bbox·
+    margin 셸 분해를 넣을 때 사용한다 (보통 ``map_timeline[1]["mining_map"]``). 생략 시 셸
+    분해 필드는 미기입(``None``/unknown 카운트)으로 남는다.
     """
 
     sp1 = suppress_pass1_loop if suppress_pass1_loop is not None else suppress_pass1_pass2_loops
     sp2 = suppress_pass2_loop if suppress_pass2_loop is not None else suppress_pass1_pass2_loops
+
+    shell_pack: tuple[tuple[int, int, int, int], int] | None = None
+    if is_external_basis_mining_map is not None:
+        shell_pack = external_bbox_margin_for_mining_map(is_external_basis_mining_map)
 
     mineable, asteroid = mineable_and_asteroid_coords(final_mining_map)
     _, ela_empty_meta = pass12_existing_layout_barrier_meta(
@@ -436,6 +446,13 @@ def integrate_pass12_placement_into_working_map(
         "pass12_preserved_equipment_groups": 0,
         "pass12_preserved_routed_placement_records": 0,
         "pass12_preserved_missing_stub_drop_details": [],
+        "preserve_missing_stub_summary": {
+            "drop_count": 0,
+            "by_reason": {},
+            "by_recoverability": {},
+            "by_rejected_reason_subtype": {},
+            "local_repack_candidate_count": 0,
+        },
         "pass12_merged_seed_miner_count": 0,
         "pass12_preserve_drop_reason_counts": {},
         "pass12_preserved_recovery_traces": [],
@@ -600,6 +617,8 @@ def integrate_pass12_placement_into_working_map(
             cells=cells_for_pass2_probe,
             existing_layout_analysis=existing_layout_analysis,
             stats_sink=pass2_probe_stats,
+            is_external_shell_bbox=shell_pack[0] if shell_pack else None,
+            is_external_shell_margin=shell_pack[1] if shell_pack else None,
         )
         ex_before_p2 = len(scratch.extractor_cells)
         ext_before_p2 = len(scratch.extension_facings)

@@ -367,6 +367,7 @@ def test_stub_route_recovery_extension_carve_disabled() -> None:
     psr = res.trace.get("preserve_stub_recovery")
     assert isinstance(psr, dict)
     assert psr.get("rejected_reason") == "extension_carve_disabled"
+    assert psr.get("extension_carve_considered") is True
     assert psr.get("stub_route_probe_last", {}).get("bfs_failure") == "no_bfs_attempt"
     assert psr.get("rejected_reason_subtype") is None
     assert isinstance(psr.get("local_neighbor_cells_around_stub"), list)
@@ -606,6 +607,32 @@ def test_missing_stub_drop_detail_backfills_probe_and_subtype_like_solver_summar
     }
     assert isinstance(solver_summary_fragment["pass12_preserved_missing_stub_drop_details"], list)
     json.dumps(solver_summary_fragment, default=str)
+
+
+def test_missing_stub_drop_detail_stub_trace_none_includes_extension_carve_defaults() -> None:
+    """stub_route_trace_for_drop 없을 때도 preserve_stub_recovery에 carve 스키마가 있다."""
+
+    cells = {
+        (5, 5): {"role": "occupied", "layout_kind": "fluid_miner", "r": 0, "surface": "fluid"},
+    }
+    detail = pass12_merged_layout_seed._missing_stub_drop_detail_row(
+        miner=(5, 5),
+        cells=cells,
+        tk="fluid_pipe",
+        row_m={"r": 0, "surface": "fluid", "layout_kind": "fluid_miner", "role": "occupied"},
+        merged_seed_miner_count=2,
+        nhops=3,
+        ncell=(10, 10),
+        neighbor_stub_coords=(),
+        eff_r=0,
+        stub_route_trace_for_drop=None,
+    )
+    psr = detail["preserve_stub_recovery"]
+    assert psr["extension_carve_considered"] is False
+    assert psr["extension_carve_candidate_cells"] == []
+    assert psr["extension_carve_attempted"] is False
+    assert "extension_carve_applied" in psr
+    assert "post_carve_rejected_reason" in psr
 
 
 @override_settings(SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True)

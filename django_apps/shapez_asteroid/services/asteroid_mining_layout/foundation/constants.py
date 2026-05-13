@@ -81,6 +81,11 @@ SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING = (
 SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS = "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS"
 SOLVER_QUALITY_TIER_SOLVER_FAILURE = "SOLVER_FAILURE"
 
+# ``solver_summary["termination"]["degradation_causes"]`` — quality signals (esp. success tier).
+DEGRADATION_CAUSE_EXTRACTOR_DROP_VS_MERGED_SEED = "extractor_drop_vs_merged_seed"
+DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP = "preserve_missing_stub_drop"
+DEGRADATION_CAUSE_PASS2_EMPTY_GOAL_PROBE = "pass2_empty_goal_set_probe"
+
 # Preserve-first: solver output internal transport worse than merged input baseline (STEP 0.5).
 LAYOUT_PRESERVE_HARD_GATE_REASON_TRANSPORT_REGRESSION = (
     "final_internal_transport_above_solver_input_baseline"

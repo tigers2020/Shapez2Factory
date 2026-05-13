@@ -14,6 +14,9 @@ from typing import Any
 from django.conf import settings
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    DEGRADATION_CAUSE_EXTRACTOR_DROP_VS_MERGED_SEED,
+    DEGRADATION_CAUSE_PASS2_EMPTY_GOAL_PROBE,
+    DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP,
     MAX_TOTAL_RECOVERY_ATTEMPTS,
     MAX_VALIDATION_RECOVERY_ATTEMPTS,
     OPTIMIZATION_BASELINE_SNAPSHOT_PASS1_PASS2_PRE_STEP4,
@@ -92,6 +95,15 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.trun
 )
 from django_apps.shapez_asteroid.services.blueprint_map_summary import (
     merge_with_transport_and_final_mining_map,
+)
+
+# ``optimization_warnings`` tokens mirrored into ``termination.degradation_causes`` (telemetry).
+_OPTIMIZATION_WARNINGS_AS_DEGRADATION_CAUSES = frozenset(
+    {
+        OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE,
+        OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_QUALITY_RATIO_HIGH,
+        OPTIMIZATION_WARNING_PASS12_STUB_ROUTE_RECOVERY_DISABLED_WHILE_ELIGIBLE,
+    }
 )
 
 SOLVER_TERMINATION_SUCCESS = "success"
@@ -233,6 +245,17 @@ def preserve_quality_bundle_from_pass12(
         "unrecovered_stub_drop_samples": unrec_samples,
         "preserve_quality_score_version": PRESERVE_QUALITY_SCORE_VERSION,
     }
+    _pms = pass12_stats.get("preserve_missing_stub_summary")
+    if isinstance(_pms, dict):
+        bundle["preserve_missing_stub_summary"] = dict(_pms)
+    else:
+        bundle["preserve_missing_stub_summary"] = {
+            "drop_count": 0,
+            "by_reason": {},
+            "by_recoverability": {},
+            "by_rejected_reason_subtype": {},
+            "local_repack_candidate_count": 0,
+        }
     if orig <= 0:
         return bundle, None
     denominator = float(max(orig, 1))
@@ -465,6 +488,18 @@ def build_final_solver_output(
     _rcounts = pass12_trace_fields.get("pass12_preserve_drop_reason_counts") or {}
     _ddetails = pass12_trace_fields.get("pass12_preserved_missing_stub_drop_details") or []
     _sample = _ddetails[:3] if isinstance(_ddetails, list) else []
+    _pms = pass12_trace_fields.get("preserve_missing_stub_summary")
+    _pms_out: dict[str, Any] = (
+        dict(_pms)
+        if isinstance(_pms, dict)
+        else {
+            "drop_count": 0,
+            "by_reason": {},
+            "by_recoverability": {},
+            "by_rejected_reason_subtype": {},
+            "local_repack_candidate_count": 0,
+        }
+    )
     debug_log_event(
         debug_location,
         "final_validation_completed",
@@ -493,6 +528,7 @@ def build_final_solver_output(
                 "recovery_success_count": int(
                     pass12_trace_fields.get("pass12_preserved_recovery_success_count") or 0
                 ),
+                "preserve_missing_stub_summary": _pms_out,
             },
         },
     )
@@ -591,6 +627,7 @@ def build_final_solver_output(
     summary_fields["preserve_quality"] = _pq
     summary_fields["preserve_quality_score"] = _pqs
     summary_fields["preserve_quality_score_version"] = PRESERVE_QUALITY_SCORE_VERSION
+    summary_fields["preserve_missing_stub_summary"] = _pq.get("preserve_missing_stub_summary", {})
     t_pass2 = _transport_cell_coords_from_map_rows(map_after_pass2)
     t_final = _transport_cell_coords_from_map_rows(map_final)
     summary_fields["existing_transport_reuse_ratio_final_vs_pass2"] = round(
@@ -656,6 +693,27 @@ def build_final_solver_output(
     _term_d = summary_fields.get("termination")
     if isinstance(_term_d, dict):
         _term_d["quality_tier"] = _qual_tier
+        if solver_termination in (
+            SOLVER_TERMINATION_SUCCESS,
+            SOLVER_TERMINATION_PARTIAL_SUCCESS,
+        ):
+            _dc_extra: list[str] = []
+            if int(summary_fields.get("extractor_drop_count") or 0) > 0:
+                _dc_extra.append(DEGRADATION_CAUSE_EXTRACTOR_DROP_VS_MERGED_SEED)
+            _pms_dc = summary_fields.get("preserve_missing_stub_summary")
+            if int((_pms_dc or {}).get("drop_count") or 0) > 0:
+                _dc_extra.append(DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP)
+            if int(summary_fields.get("pass2_probe_empty_goal_set_count") or 0) > 0:
+                _dc_extra.append(DEGRADATION_CAUSE_PASS2_EMPTY_GOAL_PROBE)
+            _base = list(_term_d.get("degradation_causes") or [])
+            for _c in _dc_extra:
+                if _c not in _base:
+                    _base.append(_c)
+            for w in _ow_list:
+                if isinstance(w, str) and w in _OPTIMIZATION_WARNINGS_AS_DEGRADATION_CAUSES:
+                    if w not in _base:
+                        _base.append(w)
+            _term_d["degradation_causes"] = _base
     if getattr(settings, "SHAPEZ_MINING_TRUNK_OBSERVATION_SOFT_CHECK", False):
         tw = trunk_load_observation_soft_warnings(map_final, step4_result.trunk_load)
         if tw:
@@ -806,17 +864,23 @@ def build_final_solver_output(
             "step4_route_failure_replay_overlay": step4_fail_overlay,
         },
     )
+    _term_for_out = summary_fields.get("termination")
+    if isinstance(_term_for_out, dict):
+        out_termination: dict[str, Any] = dict(_term_for_out)
+    else:
+        out_termination = {
+            "tier": termination_tier,
+            "return_reason": return_reason,
+            "degradation_causes": list(degradation_causes),
+            "ok": solver_termination == SOLVER_TERMINATION_SUCCESS,
+            "quality_tier": summary_fields.get("solver_quality_tier"),
+        }
     out = {
         # Backward-compatible: only full SUCCESS maps to ok=True.
         "ok": solver_termination == SOLVER_TERMINATION_SUCCESS,
         "return_reason": return_reason,
         "solver_termination": solver_termination,
-        "termination": {
-            "tier": termination_tier,
-            "return_reason": return_reason,
-            "degradation_causes": list(degradation_causes),
-            "ok": solver_termination == SOLVER_TERMINATION_SUCCESS,
-        },
+        "termination": out_termination,
         "solver_timeline": frames,
         "solver_replay": solver_replay,
         "solver_summary": summary_fields,
@@ -877,9 +941,6 @@ def build_final_solver_output(
             "solver_quality_summary": summary_fields.get("solver_quality_summary"),
         },
     }
-    _term_out = out.get("termination")
-    if isinstance(_term_out, dict):
-        _term_out["quality_tier"] = summary_fields.get("solver_quality_tier")
     debug_log_event(
         debug_location,
         "pipeline_return",
@@ -947,6 +1008,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("step4_skipped", False)
     summary_fields.setdefault("pass12_mixed_surface_skipped", False)
     summary_fields.setdefault("pass12_preserve_drop_reason_counts", {})
+    summary_fields.setdefault("preserve_missing_stub_summary", {})
     summary_fields.setdefault("preserve_quality", {})
     summary_fields.setdefault("preserve_quality_score", None)
     summary_fields.setdefault("preserve_quality_score_version", PRESERVE_QUALITY_SCORE_VERSION)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest import mock
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
@@ -159,14 +160,25 @@ def test_pass2_rejects_existing_layout_island_fallback_only_fluid_stub() -> None
     def is_ext(c: Coord) -> bool:
         return c[0] >= 100
 
-    assert (
-        p12_bc.try_commit_pass2_bundle(
-            scratch,
-            cand,
-            is_external=is_ext,
-            pass2_route_probe_pack=pack,
+    with mock.patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_bundle_commit.trace_bundle_reject_invalid_stub"
+    ) as mock_trace:
+        assert (
+            p12_bc.try_commit_pass2_bundle(
+                scratch,
+                cand,
+                is_external=is_ext,
+                pass2_route_probe_pack=pack,
+            )
+            is False
         )
-        is False
+    payloads = [c.args[1] for c in mock_trace.call_args_list if len(c.args) >= 2]
+    assert any(
+        p.get("canonical_reject_reason") == "pass2_reject_all_orphan_prior_transport_empty_goal"
+        for p in payloads
+    )
+    assert any(
+        p.get("reason") == "pass2_reject_transport_cells_before_island_fallback" for p in payloads
     )
     gtrace = sink.get("pass2_probe_last_goal_trace") or {}
     assert int(gtrace.get("transport_cells_before_count") or 0) > 0

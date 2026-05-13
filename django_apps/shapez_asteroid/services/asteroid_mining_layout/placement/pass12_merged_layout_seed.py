@@ -41,6 +41,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass1
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass12_preserve_stub_route_recovery import (  # noqa: E501
     StubRouteRecoveryResult,
+    _empty_psr,
     _no_same_kind_route_subtype,
     try_preserve_stub_route_recovery,
 )
@@ -140,6 +141,38 @@ def _append_bounded_unrecovered_stub_sample(
     )
 
 
+def _preserve_missing_stub_summary_from_details(
+    details: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Roll up ``pass12_preserved_missing_stub_drop_details`` for NDJSON / finalize trace."""
+
+    by_reason: dict[str, int] = {}
+    by_rec: dict[str, int] = {}
+    by_sub: dict[str, int] = {}
+    repack_eligible = 0
+    for d in details:
+        pr = str(d.get("preserve_drop_reason") or d.get("reason") or "unknown")
+        by_reason[pr] = by_reason.get(pr, 0) + 1
+        rc = str(d.get("recoverability_class") or "unknown")
+        by_rec[rc] = by_rec.get(rc, 0) + 1
+        sub = ""
+        psr = d.get("preserve_stub_recovery")
+        if isinstance(psr, dict):
+            sub = str(psr.get("rejected_reason_subtype") or "")
+            if sub == "occupied_neighbor_ring":
+                repack_eligible += 1
+        if not sub:
+            sub = "(none)"
+        by_sub[sub] = by_sub.get(sub, 0) + 1
+    return {
+        "drop_count": len(details),
+        "by_reason": dict(sorted(by_reason.items(), key=lambda kv: kv[0])),
+        "by_recoverability": dict(sorted(by_rec.items(), key=lambda kv: kv[0])),
+        "by_rejected_reason_subtype": dict(sorted(by_sub.items(), key=lambda kv: kv[0])),
+        "local_repack_candidate_count": repack_eligible,
+    }
+
+
 def _normalize_preserve_stub_recovery_drop_contract(detail_row: dict[str, Any]) -> None:
     """NDJSON/solver_summary: ensure probe + subtype stay self-consistent on merge.
 
@@ -237,6 +270,8 @@ def _missing_stub_drop_detail_row(
     detail_row["recoverability_class"] = _rc.value
     if stub_route_trace_for_drop is not None:
         detail_row.update(copy.deepcopy(stub_route_trace_for_drop))
+    else:
+        detail_row["preserve_stub_recovery"] = copy.deepcopy(_empty_psr(nhops))
     _normalize_preserve_stub_recovery_drop_contract(detail_row)
     return detail_row
 
@@ -1014,6 +1049,15 @@ def seed_pass12_scratch_from_merged_existing(
                     psr = rr_res.trace.get("preserve_stub_recovery")
                     if rr_res.accepted:
                         rr_success += 1
+                        if rr_res.carved_extension_cells:
+                            for _cc in rr_res.carved_extension_cells:
+                                cells.pop(_cc, None)
+                            carved = rr_res.carved_extension_cells
+                            exts = frozenset(e for e in exts if e not in carved)
+                            ext_tuple = tuple(sorted(exts, key=lambda p: (p[1], p[0])))
+                            parent_by_cell = _parent_tree_for_miner_and_extensions(
+                                miner, exts, cells, mineable
+                            )
                         scratch.transport_cells |= set(rr_res.new_transport_coords)
                         recovery_transport_coords_added.update(rr_res.new_transport_coords)
                         eff_r = rr_res.chosen_r
@@ -1215,10 +1259,15 @@ def seed_pass12_scratch_from_merged_existing(
             if rr_q.accepted:
                 rr_success += 1
                 progressed_any = True
+                if rr_q.carved_extension_cells:
+                    for _cc in rr_q.carved_extension_cells:
+                        cells.pop(_cc, None)
+                    dex_exts = {e for e in d.extensions if e not in rr_q.carved_extension_cells}
+                else:
+                    dex_exts = set(d.extensions)
                 scratch.transport_cells |= set(rr_q.new_transport_coords)
                 recovery_transport_coords_added.update(rr_q.new_transport_coords)
                 dminer = d.miner
-                dex_exts = set(d.extensions)
                 ext_tuple_q = tuple(sorted(dex_exts, key=lambda p: (p[1], p[0])))
                 eff_rq = rr_q.chosen_r
                 stub_cell_q = rr_q.stub_cell
@@ -1358,6 +1407,9 @@ def seed_pass12_scratch_from_merged_existing(
             preserved_missing_stub_drop_extractor_count
         ),
         "pass12_preserved_missing_stub_drop_details": missing_stub_drop_details,
+        "preserve_missing_stub_summary": _preserve_missing_stub_summary_from_details(
+            missing_stub_drop_details
+        ),
         "pass12_preserve_drop_reason_counts": dict(
             sorted(preserve_drop_reason_counts.items(), key=lambda kv: kv[0])
         ),

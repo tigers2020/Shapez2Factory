@@ -14,6 +14,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_route_failure_diagnostic as s4frd,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+    final_validation as finval,
+)
 
 
 def _is_ext_factory(ext: Coord) -> Any:
@@ -63,6 +66,10 @@ def test_first_route_final_goal_positive_from_exterior_margin_only() -> None:
     assert trace["final_goal_count"] > 0
     assert trace["exterior_margin_cell_count"] >= 1
     assert trace["rejected_reason"] is None
+    md = trace["pass2_external_margin_diagnostic"]
+    assert md["universe_scan_cell_count"] >= 1
+    assert md["margin_eligible_universe_cell_count"] >= 1
+    assert "margin_generation_reason_if_zero" not in md
     out, diag = p12rp.pass2_bundle_route_probe_decision(
         (3, 0),
         transport_cells=probe_transport,
@@ -231,6 +238,110 @@ def test_island_empty_margin_does_not_promote_prior_transport_as_goals() -> None
     assert "fallback_goal_source" not in trace
     exp_margin = str(s4frd.Step4RouteFailureReason.no_exterior_margin_for_probe)
     assert trace["rejected_reason"] == exp_margin
+    md = trace["pass2_external_margin_diagnostic"]
+    assert md["universe_scan_cell_count"] == 2
+    assert md["margin_eligible_universe_cell_count"] == 2
+    assert "margin_generation_reason_if_zero" in md
+    assert "is_external_never_true_on_sampled_neighbors" in md["margin_generation_reason_if_zero"]
+
+
+def test_pass2_margin_diagnostic_shell_breakdown_dense_inferred_block() -> None:
+    """Neighbors outside routing universe can still lie inside §15 expanded mineable shell."""
+
+    rows: list[dict[str, Any]] = []
+    cells: dict[Coord, dict[str, Any]] = {}
+    mineable_set: set[Coord] = set()
+    for x in range(5, 14):
+        for y in range(5, 14):
+            c = (x, y)
+            mineable_set.add(c)
+            row = {
+                "x": x,
+                "y": y,
+                "role": "inferred",
+                "layout_kind": "asteroid_field",
+                "surface": "shape",
+            }
+            rows.append(row)
+            cells[c] = dict(row)
+    mineable = frozenset(mineable_set)
+    asteroid: frozenset[Coord] = frozenset()
+    is_external = finval.external_predicate_for_mining_map(rows)
+    shell_bm = finval.external_bbox_margin_for_mining_map(rows)
+    assert shell_bm is not None
+    shell_bbox, shell_margin = shell_bm
+    _, kind, n, trace = p12rp.build_pass2_step4_aligned_routing_goals(
+        transport_kind="shape_belt",
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        is_external=is_external,
+        existing_layout_analysis=None,
+        transport_cells_before=frozenset(),
+        transport_cells_probe=frozenset(),
+        blocked_for_probe=frozenset(),
+        is_external_shell_bbox=shell_bbox,
+        is_external_shell_margin=shell_margin,
+    )
+    assert kind == "first_route"
+    assert n == 0
+    assert trace["exterior_margin_cell_count"] == 0
+    md = trace["pass2_external_margin_diagnostic"]
+    assert md["is_external_true_neighbor_sample_count"] == 0
+    br = md["sampled_neighbor_shell_breakdown"]
+    assert br["sampled_neighbor_outside_expanded_mineable_bbox_count"] == 0
+    assert br["sampled_neighbor_inside_expanded_mineable_bbox_count"] > 0
+    assert md["is_external_predicate_mineable_bbox"] == {
+        "x_min": 5,
+        "x_max": 13,
+        "y_min": 5,
+        "y_max": 13,
+    }
+    assert md["is_external_predicate_margin"] == shell_margin
+    reasons = md["margin_generation_reason_if_zero"]
+    assert "all_sampled_neighbors_inside_predicate_shell_or_x0" in reasons
+
+
+def test_pass2_external_margin_diagnostic_skipped_x0_only_universe() -> None:
+    """``exterior_margin_cells`` skips ``x==0`` universe cells; diagnostic records that."""
+
+    ext: Coord = (-1, 0)
+    is_external = _is_ext_factory(ext)
+    mineable = frozenset({(0, 0), (0, 1)})
+    asteroid: frozenset[Coord] = frozenset()
+    cells: dict[Coord, dict[str, Any]] = {
+        (0, 0): {
+            "x": 0,
+            "y": 0,
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "shape",
+        },
+        (0, 1): {
+            "x": 0,
+            "y": 1,
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "shape",
+        },
+    }
+    _, kind, n, trace = p12rp.build_pass2_step4_aligned_routing_goals(
+        transport_kind="shape_belt",
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        is_external=is_external,
+        existing_layout_analysis=None,
+        transport_cells_before=frozenset(),
+        transport_cells_probe=frozenset(),
+        blocked_for_probe=frozenset(),
+    )
+    assert kind == "first_route"
+    assert n == 0
+    md = trace["pass2_external_margin_diagnostic"]
+    assert md["universe_scan_cell_count"] == 2
+    assert md["margin_eligible_universe_cell_count"] == 0
+    assert "skipped_x0_only_universe" in md["margin_generation_reason_if_zero"]
 
 
 def test_finalize_prefers_last_probe_goal_count_over_max() -> None:

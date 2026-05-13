@@ -24,9 +24,13 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_goa
     build_step4_goal_set,
     build_trunk_seed_candidates_by_kind,
     exterior_margin_cells,
+    trunk_seed_union_from_existing_layout,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_merge_routing import (
     run_step4_merge_aware_routing,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_search_diagnostics import (  # noqa: E501
+    merge_goal_union_meta,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
     accumulate_trunk_edge_load,
@@ -54,6 +58,46 @@ def test_goal_set_first_route_is_margin_union_trunk_seed() -> None:
         trunk_seed_candidates_by_kind=seeds,
     )
     assert g_shape == margin | {(3, 3)}
+
+
+def test_merge_goal_union_adds_live_trunk_cells_to_raw_goal() -> None:
+    """Dijkstra goals union §08 raw_goal with same-kind exterior-connected trunk on the map."""
+
+    raw = {(1, 1)}
+    trunk = frozenset({(9, 9), (9, 10)})
+    margin = {(2, 2)}
+    goals, meta = merge_goal_union_meta(
+        (0, 0), raw_goal=set(raw), trunk_cells=trunk, margin_cells=margin
+    )
+    assert (9, 9) in goals and (1, 1) in goals
+    assert meta.get("applied") is True
+
+
+def test_trunk_seed_union_ignores_cleanup_candidate_cell_union() -> None:
+    """ELA orphans live only under ``cleanup_candidate_cell_union``; never trunk seed."""
+
+    ela = {
+        "solver_hints": {
+            "cleanup_candidate_cell_union": [[9, 9], [9, 10]],
+            "trunk_seed_cell_union": [],
+        }
+    }
+    assert trunk_seed_union_from_existing_layout(ela) == set()
+
+
+def test_cleanup_only_does_not_add_trunk_seed_candidates_without_row_kind() -> None:
+    """Cleanup-only coords without ``trunk_seed_cell_union`` do not enter per-kind seed pools."""
+
+    cells: dict[Coord, dict[str, Any]] = {}
+    margin = {(0, 1)}
+    hints = trunk_seed_union_from_existing_layout(
+        {"solver_hints": {"cleanup_candidate_cell_union": [[5, 5]], "trunk_seed_cell_union": []}}
+    )
+    by_kind = build_trunk_seed_candidates_by_kind(
+        exterior_margin=margin, hint_union=hints, cells=cells
+    )
+    assert by_kind["shape_belt"] == margin
+    assert by_kind["fluid_pipe"] == margin
 
 
 def test_goal_set_second_route_uses_committed_trunk_and_margin() -> None:

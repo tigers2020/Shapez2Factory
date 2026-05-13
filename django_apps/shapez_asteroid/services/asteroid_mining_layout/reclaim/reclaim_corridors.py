@@ -25,6 +25,35 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
 )
 
 
+def _parse_coord_pairs_from_trace_list(val: object) -> frozenset[Coord]:
+    """Normalize ``[[x,y], ...]`` trace lists to coords (``x != 0``)."""
+
+    if not isinstance(val, list):
+        return frozenset()
+    out: set[Coord] = set()
+    for it in val:
+        if isinstance(it, (list, tuple)) and len(it) >= 2:
+            try:
+                x = int(it[0])
+                y = int(it[1])
+            except (TypeError, ValueError):
+                continue
+            if x == 0:
+                continue
+            out.add((x, y))
+    return frozenset(out)
+
+
+def _probe_lifecycle_cells_from_pass3_trace(
+    pass3_trace: Mapping[str, object],
+) -> tuple[frozenset[Coord], frozenset[Coord]]:
+    """Return ``(probe_candidate_cells, probe_discarded_cells)`` from Pass3 trace only."""
+
+    cand = _parse_coord_pairs_from_trace_list(pass3_trace.get("corridor_probe_candidate_cells"))
+    disc = _parse_coord_pairs_from_trace_list(pass3_trace.get("corridor_probe_discarded_cells"))
+    return cand, disc
+
+
 def _parse_coord_pair_frozenset(val: object) -> frozenset[Coord]:
     """Parse JSON-like ``[[x,y], ...]``, ``set``/``frozenset`` of ``(x, y)`` pairs."""
 
@@ -345,11 +374,14 @@ def protected_corridors_read_for_reclaim(
         solver_routing_state=solver_routing_state,
         existing_layout_solver_hints=existing_layout_solver_hints,
     )
+    probe_cand, probe_disc = _probe_lifecycle_cells_from_pass3_trace(pass3_trace)
     return ProtectedCorridors(
         hard=pcs.hard,
         soft=pcs.soft,
         candidate=pcs.existing_layout_hints_cells,
         source=pcs.source,
+        probe_candidate_cells=probe_cand,
+        probe_discarded_cells=probe_disc,
     )
 
 

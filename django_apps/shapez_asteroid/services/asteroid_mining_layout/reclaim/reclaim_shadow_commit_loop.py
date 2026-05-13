@@ -239,6 +239,7 @@ def run_p4_reclaim_loop_after_pass3(
             is_external=is_external,
             p4_reclaim_incremental_route_commit_enabled=p4_reclaim_incremental_route_commit_enabled,
             existing_layout_solver_hints=existing_layout_solver_hints,
+            reclaim_internal_transport_spent_prior=spent,
         )
         ct = dict(commit_tr)
         ae = ct.pop("p4_reclaim_added_extractor_cells", None)
@@ -286,14 +287,29 @@ def run_p4_reclaim_loop_after_pass3(
                         map_cur = rep_map
                         continue
 
-            merged["p4_reclaim_loop_successful_commits"] = commits
-            merged["p4_reclaim_loop_internal_transport_cumulative_added"] = spent
-            merged["p4_reclaim_loop_terminated_reason"] = "provisional_commit_failed"
-            if commits:
-                merged["p4_reclaim_added_extractor_cells"] = acc_ex
-                merged["p4_reclaim_added_extension_cells"] = acc_ext
-                merged["p4_reclaim_added_stub_cells"] = acc_stub
-            return map_cur, merged
+            merged["p4_reclaim_provisional_last_reject_reason"] = str(rr or "")
+            merged["p4_reclaim_provisional_reject_count"] = int(
+                merged.get("p4_reclaim_provisional_reject_count") or 0
+            ) + 1
+            if i + 1 >= max_loop_iterations:
+                merged["p4_reclaim_loop_successful_commits"] = commits
+                merged["p4_reclaim_loop_internal_transport_cumulative_added"] = spent
+                merged["p4_reclaim_loop_terminated_reason"] = (
+                    "provisional_commit_failed_max_iterations"
+                )
+                if commits:
+                    merged["p4_reclaim_added_extractor_cells"] = acc_ex
+                    merged["p4_reclaim_added_extension_cells"] = acc_ext
+                    merged["p4_reclaim_added_stub_cells"] = acc_stub
+                elif not merged.get("p4_reclaim_provisional_commit_attempted", False):
+                    merged.update(
+                        p4_reclaim_provisional_commit_neutral_trace(
+                            attempted=True,
+                            rollback_reason=str(rr or "provisional_commit_failed"),
+                        )
+                    )
+                return map_cur, merged
+            continue
 
         incr_actual = int(picked.incremental_internal_transport_added)
         if commit_tr.get("p4_reclaim_incremental_route_committed"):

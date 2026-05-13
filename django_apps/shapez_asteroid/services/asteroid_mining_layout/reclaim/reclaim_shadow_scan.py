@@ -398,17 +398,21 @@ def reclaim_shadow_scan_core_after_pass3(
     )
     hard = pcs.hard
     soft = pcs.soft
+    transport_on_map = _all_transport_cells(map_after_pass3)
+    soft_active = frozenset(c for c in soft if c in transport_on_map)
     corridor_trace = {
         "p4_reclaim_protected_corridor_source": pcs.source,
         "p4_reclaim_hard_protected_count": len(pcs.hard),
         "p4_reclaim_soft_protected_count": len(pcs.soft),
+        "p4_reclaim_soft_active_on_map_count": len(soft_active),
         "p4_reclaim_existing_layout_hint_cell_count": len(pcs.existing_layout_hints_cells),
+        "p4_reclaim_probe_discarded_cell_count": len(pcs.probe_discarded_cells),
     }
     mineable_cur = _mineable_cur_for_reclaim(
         mineable,
         final_route_cells=final_route_cells,
         hard_protected_corridors=hard,
-        soft_protected_corridors=soft,
+        soft_protected_corridors=soft_active,
         committed_building_cells=committed,
     )
 
@@ -444,7 +448,7 @@ def reclaim_shadow_scan_core_after_pass3(
             mineable_cur=mineable_cur,
             final_route_cells=final_route_cells,
             hard=hard,
-            soft=soft,
+            soft=soft_active,
             committed=committed,
             reclaimed=reclaimed,
             reclaim_anchor_cells=set(reclaim_cells_nr),
@@ -543,7 +547,7 @@ def reclaim_shadow_scan_core_after_pass3(
                     mineable_cur=mineable_cur,
                     final_route_cells=final_route_cells,
                     hard_protected_corridors=hard,
-                    soft_protected_corridors=soft,
+                    soft_protected_corridors=soft_active,
                     want_role=want_role,
                     is_external=is_external,
                     outlets_order=outlets_order,
@@ -598,6 +602,9 @@ def reclaim_shadow_scan_core_after_pass3(
         best_dict = {
             "gain": best_for_trace.gain,
             "additional_route_cost": best_for_trace.additional_route_cost,
+            "route_cost_including_stub": best_for_trace.additional_route_cost,
+            "route_cost_first_hop_from_stub": best_for_trace.p4_route_cost_first_hop_from_stub,
+            "route_cost_after_stub": best_for_trace.p4_route_cost_after_stub,
             "gain_ratio": (
                 best_for_trace.gain_ratio if not math.isinf(best_for_trace.gain_ratio) else None
             ),
@@ -651,7 +658,7 @@ def reclaim_shadow_scan_core_after_pass3(
                 mineable_cur=mineable_cur,
                 final_route_cells=final_route_cells,
                 hard=hard,
-                soft=soft,
+                soft=soft_active,
                 committed=committed,
                 reclaimed=reclaimed,
                 reclaim_anchor_cells=set(reclaim_cells),

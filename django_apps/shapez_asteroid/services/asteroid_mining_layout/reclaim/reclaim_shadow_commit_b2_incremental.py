@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from typing import Any
 
@@ -11,7 +12,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.reclaim_sha
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     INF_COST,
+    MAX_RECLAIM_INCREMENTAL_ROUTE_LENGTH_RATIO,
     P4_RECLAIM_INCREMENTAL_ROUTE_PLACEMENT_ID,
+    P4_REJECT_INCREMENTAL_ROUTE_LENGTH_RATIO,
     P4_REJECT_INTERNAL_TRANSPORT_BUDGET,
     P4_REJECT_NO_INCREMENTAL_ROUTE,
     P4_REJECT_NO_OUTPUT_STUB,
@@ -30,6 +33,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_route_metrics import (  # noqa: E501
     _incremental_internal_transport_on_path,
+    _path_additional_route_cost_detail,
     _p4_zone_trace_from_path,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
@@ -59,10 +63,13 @@ def _p4_b2_try_commit_incremental_route(
     pass3_trace: dict[str, Any],
     final_mining_map: list[dict[str, Any]],
     is_external: Callable[[Coord], bool],
+    reclaim_internal_transport_spent_prior: int = 0,
 ) -> tuple[list[dict[str, Any]] | None, dict[str, Any]]:
     """P4-B2: reprobe stub→trunk path on the B1 map, paint belt/pipe cells, validate."""
 
     import django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow as _p4f  # noqa: E501
+
+    spent_prior = max(0, int(reclaim_internal_transport_spent_prior))
 
     def _fail(reason: str) -> tuple[list[dict[str, Any]] | None, dict[str, Any]]:
         """P4 incremental route 실패 payload를 공통 형태로 만든다 (§12.2 budget)."""
@@ -120,17 +127,22 @@ def _p4_b2_try_commit_incremental_route(
     internal_budget = _allowed_internal_transport_budget(pass3_saved)
     pass3_raw_saved = pass3_saved
 
-    add_cost = float(
-        _p4f._path_additional_route_cost(
-            path,
-            asteroid_cells=set(asteroid),
-            mineable_cells=set(mineable),
-            buildings=probe_buildings,
-            transport_cells=transport_cells,
-            fixed_stubs=fixed_stubs,
-            outlet_stub=stub,
-        )
+    shadow_path = picked.shadow_route_path
+    baseline_len = len(shadow_path) if shadow_path else len(path)
+    max_len = max(1, int(math.ceil(float(baseline_len) * float(MAX_RECLAIM_INCREMENTAL_ROUTE_LENGTH_RATIO))))
+    if len(path) > max_len:
+        return _fail(P4_REJECT_INCREMENTAL_ROUTE_LENGTH_RATIO)
+
+    tot_cost, first_hop, after_stub = _path_additional_route_cost_detail(
+        path,
+        asteroid_cells=set(asteroid),
+        mineable_cells=set(mineable),
+        buildings=probe_buildings,
+        transport_cells=transport_cells,
+        fixed_stubs=fixed_stubs,
+        outlet_stub=stub,
     )
+    add_cost = float(tot_cost)
     if add_cost >= float(INF_COST):
         return _fail(P4_REJECT_NO_INCREMENTAL_ROUTE)
 
@@ -142,9 +154,10 @@ def _p4_b2_try_commit_incremental_route(
         existing_transport=existing_tc,
     )
 
-    if incr > internal_budget:
+    projected = spent_prior + incr
+    if projected > internal_budget:
         return _fail(P4_REJECT_INTERNAL_TRANSPORT_BUDGET)
-    if pass3_raw_saved > 0 and (pass3_raw_saved - incr) <= 0:
+    if pass3_raw_saved > 0 and (pass3_raw_saved - projected) <= 0:
         return _fail(P4_REJECT_INTERNAL_TRANSPORT_BUDGET)
 
     stub_row = cells.get(stub)
@@ -186,5 +199,10 @@ def _p4_b2_try_commit_incremental_route(
         "p4_reclaim_incremental_route_path_cells": path_cells,
         "p4_reclaim_incremental_route_cells_added": added_cells,
         "p4_reclaim_incremental_route_b2_internal_transport_added": incr,
+        "p4_reclaim_incremental_route_baseline_length": baseline_len,
+        "p4_reclaim_incremental_route_max_length_allowed": max_len,
+        "p4_reclaim_route_cost_including_stub": add_cost,
+        "p4_reclaim_route_cost_first_hop_from_stub": float(first_hop),
+        "p4_reclaim_route_cost_after_stub": float(after_stub),
         **zone_tr,
     }

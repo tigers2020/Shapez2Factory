@@ -20,3 +20,4 @@ class RouteSearchResult:
     search_mode: str
     fallback_reason: str | None
     optimality_guarantee: bool
+    search_time_ms: float | None = None

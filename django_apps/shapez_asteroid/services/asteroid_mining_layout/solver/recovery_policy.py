@@ -11,13 +11,20 @@ from typing import Any
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     MAX_TOTAL_RECOVERY_ATTEMPTS,
     MAX_VALIDATION_RECOVERY_ATTEMPTS,
+    PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
     RECOVERY_PHASE_MERGE_PARTIAL_FAILURE,
+    RECOVERY_PHASE_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_PHASE_RECLAIM_INCREMENTAL_FAILURE,
     RECOVERY_TOTAL_RECOVERY_CAP_UNLIMITED,
+    RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_VALIDATION_LOOP_DISABLED,
     ROLLUP_COMMIT_REASONS_CANONICAL,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.semantic_contracts import (
+    partition_pass3_commit_reason_payload,
+    rollup_return_reason_to_recovery_trigger,
 )
 
 __all__ = [
@@ -30,6 +37,7 @@ __all__ = [
     "sync_recovery_total_attempts_used_from_chain",
     "synthesize_recovery_validation_outcome",
     "tag_merge_partial_failure_from_step4",
+    "tag_pass3_connectivity_break_from_greedy_trace",
     "tag_post_reclaim_pass3_connectivity_break",
     "tag_reclaim_incremental_failure_from_summary",
     "validation_recovery_allowed",
@@ -71,6 +79,7 @@ def apply_recovery_contract_defaults(target: dict[str, Any]) -> None:
     target.setdefault("max_validation_recovery_attempts", MAX_VALIDATION_RECOVERY_ATTEMPTS)
     target.setdefault("recovery_reclaim_incremental_failure", False)
     target.setdefault("recovery_merge_partial_failure", False)
+    target.setdefault("recovery_pass3_connectivity_break", False)
     target.setdefault("recovery_post_reclaim_pass3_connectivity_break", False)
     target.setdefault("p4_orchestration_entry_segment", None)
     target.setdefault("recovery_action_plan", [])
@@ -87,6 +96,33 @@ def apply_recovery_contract_defaults(target: dict[str, Any]) -> None:
         },
     )
     target.setdefault("validation_recovery_cycles_used", 0)
+    target.setdefault("total_recovery_attempts_used", 0)
+    target.setdefault("total_recovery_attempts", 0)
+    target.setdefault("validation_recovery_attempts", 0)
+    target.setdefault("post_reclaim_pass3_reruns_lifetime_used", 0)
+
+
+def tag_pass3_connectivity_break_from_greedy_trace(
+    pass3_summary: dict[str, Any],
+    p3_trace: dict[str, Any],
+    *,
+    validation_recovery_attempt: int,
+) -> None:
+    """Greedy Pass3 connectivity-only reject (§4.3.1): flag + bounded trigger for return-policy."""
+
+    if validation_recovery_attempt > 0:
+        return
+    if p3_trace.get("pass3_skipped"):
+        return
+    if p3_trace.get("pass3_connectivity_reject_sample") is None:
+        return
+    detail = str(p3_trace.get("pass3_greedy_reject_detail") or "")
+    if detail != PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY:
+        return
+    pass3_summary["recovery_pass3_connectivity_break"] = True
+    if not str(pass3_summary.get("recovery_trigger") or "").strip():
+        pass3_summary["recovery_trigger"] = RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK
+    append_recovery_contract_phase(pass3_summary, RECOVERY_PHASE_PASS3_CONNECTIVITY_BREAK)
 
 
 def tag_reclaim_incremental_failure_from_summary(pass3_summary: dict[str, Any]) -> None:
@@ -181,32 +217,44 @@ def synthesize_recovery_validation_outcome(summary: dict[str, Any]) -> None:
         if v:
             out["rejected_reason"] = str(v)
             break
-    if out["rejected_reason"] is None and rr and rr != "ok":
-        out["rejected_reason"] = rr
 
     st = summary.get("pass3_commit_subtype")
     if st is not None and str(st).strip():
         out["pass3_commit_subtype"] = str(st).strip()
 
+    if not (out.get("recovery_trigger") or "").strip() and rr and rr != "ok":
+        mapped_rt = rollup_return_reason_to_recovery_trigger(rr)
+        if mapped_rt is not None:
+            out["recovery_trigger"] = mapped_rt
+
+    cr_commit, _promoted = partition_pass3_commit_reason_payload(
+        summary.get("pass3_commit_reason"),
+        pass3_committed=bool(summary.get("pass3_committed")),
+        pass3_final_committed=bool(summary.get("pass3_final_committed")),
+    )
     if (
         rr == "ok"
         and bool(summary.get("pass3_final_committed"))
         and bool(summary.get("pass3_committed"))
+        and cr_commit in ROLLUP_COMMIT_REASONS_CANONICAL
     ):
-        cr = summary.get("pass3_commit_reason")
-        cr_s = "" if cr is None else (str(cr).strip() if isinstance(cr, str) else str(cr).strip())
-        if cr_s in ROLLUP_COMMIT_REASONS_CANONICAL:
-            out["commit_reason"] = cr_s
+        out["commit_reason"] = cr_commit
 
     summary["recovery_validation_outcome"] = out
 
 
 def sync_recovery_total_attempts_used_from_chain(pass3_summary: dict[str, Any]) -> None:
-    """Mirror chain length into ``recovery_total_attempts_used`` (replay summary contract)."""
+    """Mirror chain length into recovery attempt counters (replay summary contract).
+
+    ``total_recovery_attempts_used`` tracks ``recovery_context_chain`` only — STEP4
+    ``cascade_corrective_attempts`` are separate and must not increment this counter.
+    """
 
     chain = pass3_summary.get("recovery_context_chain")
     if isinstance(chain, list):
-        pass3_summary["recovery_total_attempts_used"] = len(chain)
+        n = len(chain)
+        pass3_summary["recovery_total_attempts_used"] = n
+        pass3_summary["total_recovery_attempts_used"] = n
 
 
 def step9_reports_hard_invariant_failure_for_bounded_recovery(
@@ -226,6 +274,8 @@ def step9_reports_hard_invariant_failure_for_bounded_recovery(
     overlap = int(fv.get("overlap_violation_count") or 0)
     quarantine = int(fv.get("quarantined_unrouted_count") or 0)
     if int(fv.get("missing_stub_count") or 0) > 0:
+        return False
+    if int(fv.get("fixed_output_stub_removed_count") or 0) > 0:
         return False
     if not connectivity_ok:
         return True

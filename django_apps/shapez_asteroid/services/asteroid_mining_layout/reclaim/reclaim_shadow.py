@@ -12,6 +12,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.reclaim_sha
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD,
+    MAX_RECLAIM_INCREMENTAL_ROUTE_LENGTH_RATIO,
     MAX_RECLAIM_INTERNAL_TRANSPORT_SPEND_RATIO,
     MAX_RECLAIM_ITERATIONS,
     MAX_RECLAIM_SHADOW_SCAN_LIMIT,
@@ -25,6 +26,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P4_REJECT_FINAL_ROUTE_OVERLAP,
     P4_REJECT_GAIN_RATIO,
     P4_REJECT_HARD_PROTECTED_CORRIDOR,
+    P4_REJECT_INCREMENTAL_ROUTE_LENGTH_RATIO,
     P4_REJECT_INTERNAL_TRANSPORT_BUDGET,
     P4_REJECT_NO_INCREMENTAL_ROUTE,
     P4_REJECT_NO_OUTPUT_STUB,
@@ -69,6 +71,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_route_metrics import (  # noqa: E501
     _path_additional_route_cost,
+    _path_additional_route_cost_detail,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow_commit import (  # noqa: E501
     p4_reclaim_provisional_commit_neutral_trace,
@@ -93,7 +96,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
 
 __all__ = [
     "_path_additional_route_cost",
+    "_path_additional_route_cost_detail",
     "DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD",
+    "MAX_RECLAIM_INCREMENTAL_ROUTE_LENGTH_RATIO",
     "MAX_RECLAIM_INTERNAL_TRANSPORT_SPEND_RATIO",
     "MAX_RECLAIM_ITERATIONS",
     "MAX_RECLAIM_SHADOW_SCAN_LIMIT",
@@ -107,6 +112,7 @@ __all__ = [
     "P4_REJECT_FINAL_ROUTE_OVERLAP",
     "P4_REJECT_GAIN_RATIO",
     "P4_REJECT_HARD_PROTECTED_CORRIDOR",
+    "P4_REJECT_INCREMENTAL_ROUTE_LENGTH_RATIO",
     "P4_REJECT_INTERNAL_TRANSPORT_BUDGET",
     "P4_REJECT_NO_INCREMENTAL_ROUTE",
     "P4_REJECT_NO_OUTPUT_STUB",

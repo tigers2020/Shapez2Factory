@@ -19,10 +19,13 @@ def p4_soft_replace_neutral_trace(
     jobs_attempted: int = 0,
     selected_job_index: int | None = None,
     rejected_reasons_by_job: list[str] | None = None,
+    replacement_search_exhausted: bool | None = None,
+    replacement_budget_keys: tuple[str, ...] | list[str] | None = None,
+    replacement_frontier_last_size: int | None = None,
 ) -> dict[str, Any]:
-    """짠14.3 trace keys for soft-corridor atomic replace (no commit / reject / neutral)."""
+    """§14.3 trace keys for soft-corridor atomic replace (no commit / reject / neutral)."""
 
-    return {
+    out: dict[str, Any] = {
         "p4_soft_replace_attempted": attempted,
         "p4_soft_replace_committed": committed,
         "p4_soft_replace_rejected_reason": rejected_reason,
@@ -34,6 +37,13 @@ def p4_soft_replace_neutral_trace(
         "p4_soft_replace_selected_job_index": selected_job_index,
         "p4_soft_replace_rejected_reasons_by_job": list(rejected_reasons_by_job or []),
     }
+    if replacement_search_exhausted is not None:
+        out["replacement_search_exhausted"] = replacement_search_exhausted
+    if replacement_budget_keys is not None:
+        out["replacement_budget_keys"] = list(replacement_budget_keys)
+    if replacement_frontier_last_size is not None:
+        out["replacement_frontier_last_size"] = int(replacement_frontier_last_size)
+    return out
 
 
 def replacement_probe_path_cardinally_connected(path: list[Coord]) -> bool:

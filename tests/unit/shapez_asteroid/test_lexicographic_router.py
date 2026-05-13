@@ -138,7 +138,40 @@ def test_deterministic_tie_breaks_equal_priority_paths_by_coord_sequence() -> No
     assert a.path[0] == start
 
 
-def test_blocked_cells_not_traversed() -> None:
+def test_lexicographic_route_records_search_time_ms() -> None:
+    """RouteSearchResult carries wall-clock search budget (milliseconds) for tracing."""
+
+    asteroid = frozenset({(0, 0)})
+    zm = build_route_zone_map(asteroid_cells=asteroid)
+    ok = find_lexicographic_route(
+        start=(0, 0),
+        goals=frozenset({(2, 0)}),
+        route_zone_map=zm,
+        transport_kind=TransportKind.SHAPE_BELT,
+        blocked_cells=frozenset(),
+        existing_transport_cells=frozenset(),
+        asteroid_cells=asteroid,
+        placement_candidate_cells=frozenset(),
+        allowed_cells=_bbox(0, 0, 2, 0),
+    )
+    assert ok.found
+    assert ok.search_time_ms is not None
+    assert 0.0 <= float(ok.search_time_ms) < 5_000.0
+
+    bad = find_lexicographic_route(
+        start=(0, 0),
+        goals=frozenset({(2, 0)}),
+        route_zone_map=zm,
+        transport_kind=TransportKind.SHAPE_BELT,
+        blocked_cells=frozenset({(1, 0)}),
+        existing_transport_cells=frozenset(),
+        asteroid_cells=asteroid,
+        placement_candidate_cells=frozenset(),
+        allowed_cells=_bbox(0, 0, 2, 0),
+    )
+    assert not bad.found
+    assert bad.search_time_ms is not None
+    assert float(bad.search_time_ms) >= 0.0
     asteroid = frozenset({(0, 0)})
     zm = build_route_zone_map(asteroid_cells=asteroid)
     start = (0, 0)

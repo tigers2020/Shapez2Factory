@@ -6,6 +6,7 @@ Wired from ``pass3_e2_shadow`` and ``pass3_e3_guarded``.
 from __future__ import annotations
 
 import heapq
+import time
 from collections.abc import Mapping, Set
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import (
@@ -168,6 +169,11 @@ def find_lexicographic_route(
     different turn penalties).
     """
 
+    t0 = time.perf_counter()
+
+    def _elapsed_ms() -> float:
+        return (time.perf_counter() - t0) * 1000.0
+
     _ = asteroid_cells
     ecw: Mapping[str, int] | None = (
         edge_congestion_weights if isinstance(edge_congestion_weights, Mapping) else None
@@ -182,6 +188,7 @@ def find_lexicographic_route(
             search_mode="lexicographic_dijkstra",
             fallback_reason="start_blocked",
             optimality_guarantee=True,
+            search_time_ms=_elapsed_ms(),
         )
 
     start_state: SearchState = (start, None)
@@ -287,6 +294,7 @@ def find_lexicographic_route(
             search_mode="lexicographic_dijkstra",
             fallback_reason="expanded_node_budget_exceeded",
             optimality_guarantee=False,
+            search_time_ms=_elapsed_ms(),
         )
 
     if best_goal is None or best_goal_path is None or best_goal_state is None:
@@ -298,6 +306,7 @@ def find_lexicographic_route(
             search_mode="lexicographic_dijkstra",
             fallback_reason="no_route_to_goals",
             optimality_guarantee=True,
+            search_time_ms=_elapsed_ms(),
         )
 
     if best_goal_path[0] != start:
@@ -309,6 +318,7 @@ def find_lexicographic_route(
             search_mode="lexicographic_dijkstra",
             fallback_reason="internal_path_reconstruction_error",
             optimality_guarantee=False,
+            search_time_ms=_elapsed_ms(),
         )
 
     return RouteSearchResult(
@@ -319,4 +329,5 @@ def find_lexicographic_route(
         search_mode="lexicographic_dijkstra",
         fallback_reason=None,
         optimality_guarantee=True,
+        search_time_ms=_elapsed_ms(),
     )

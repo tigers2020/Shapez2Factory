@@ -66,6 +66,10 @@ def _assert_trunk_load_nested_matches_legacy(tl: dict) -> None:
     assert tl["edges"] == tul["existing_transport_cell_crossings"]
     assert rm["route_cell_visits"] == tl["step4_accumulated_route_cell_visits"]
     assert rm["unique_route_cell_count"] == tl["step4_final_route_cell_count"]
+    visits = int(rm["route_cell_visits"])
+    unique = int(rm["unique_route_cell_count"])
+    exp_ratio = round(1.0 - float(unique) / float(visits), 6) if visits > 0 else 0.0
+    assert rm["shared_trunk_reuse_ratio"] == exp_ratio
     by_kind = tl["trunk_load_by_kind"]
     assert sum(int(v["route_cell_visits"]) for v in by_kind.values()) == rm["route_cell_visits"]
     assert (
@@ -128,6 +132,7 @@ def test_p2c_metrics_cannot_overwrite_reserved_trunk_load_contract_keys() -> Non
     assert tl["mode"] == "accumulate_only"
     assert tl["route_metrics"]["route_cell_visits"] == 3
     assert tl["route_metrics"]["unique_route_cell_count"] == 2
+    assert tl["route_metrics"]["shared_trunk_reuse_ratio"] == round(1.0 - 2.0 / 3.0, 6)
     assert tl["route_revalidation_passed"] is False
     assert tl["edges"] == {}
     _assert_transport_usage_dual_edge_maps(tl["transport_usage_load"])
@@ -249,6 +254,7 @@ def test_trunk_edge_visit_sum_relates_to_route_cell_visits() -> None:
         trunk_edge_load_by_kind=acc,
     )
     assert tl["route_metrics"]["route_cell_visits"] == visits
+    assert tl["route_metrics"]["shared_trunk_reuse_ratio"] == round(1.0 - 4.0 / float(visits), 6)
     tel = tl["transport_usage_load"]["trunk_edge_load"]
     assert sum(sum(d.values()) for d in tel.values()) == total_edges
 
@@ -260,6 +266,7 @@ def test_step4_trunk_load_skipped_has_contract_version_and_nested_blocks() -> No
     assert tl["skipped"] is True
     assert tl["route_metrics"]["route_cell_visits"] == 0
     assert tl["route_metrics"]["unique_route_cell_count"] == 0
+    assert tl["route_metrics"]["shared_trunk_reuse_ratio"] == 0.0
     assert tl["transport_usage_load"]["existing_transport_cell_crossings"] == {}
     _assert_transport_usage_dual_edge_maps(tl["transport_usage_load"])
     _assert_empty_kind_observation_block(tl["trunk_edge_load_observation"])

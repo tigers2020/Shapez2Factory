@@ -48,6 +48,8 @@ def test_isolated_belt_counts_as_orphan_transport() -> None:
     r = validate_final_mining_layout(mining_map)
     assert r.transport_cell_count == 1
     assert r.orphan_transport_count == 1
+    assert r.orphan_shape_belt_count == 1
+    assert r.orphan_fluid_pipe_count == 0
     assert r.transport_connectivity_ok is False
     assert r.connectivity_valid is False
     assert r.geometry_valid is True

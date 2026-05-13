@@ -14,6 +14,7 @@ from typing import Final
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE,
+    RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_TRIGGER_RECLAIM_INCREMENTAL_FAILURE,
     RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE,
@@ -35,6 +36,7 @@ class RecoveryReturnPolicyId(StrEnum):
     STEP4_RETRY_TRUNK_SPLIT_OFFENDING_ROLLBACK = "STEP4_RETRY_TRUNK_SPLIT_OFFENDING_ROLLBACK"
     ROLLBACK_RERUN_THEN_STEP9_NO_EXTRA_RERUN = "ROLLBACK_RERUN_THEN_STEP9_NO_EXTRA_RERUN"
     ROLLBACK_CANDIDATE_CONTINUE_STEP6 = "ROLLBACK_CANDIDATE_CONTINUE_STEP6"
+    ROLLBACK_PASS3_SNAPSHOT_THEN_STEP6 = "ROLLBACK_PASS3_SNAPSHOT_THEN_STEP6"
     STEP9_REVALIDATE_ONLY_BOUNDED = "STEP9_REVALIDATE_ONLY_BOUNDED"
 
 
@@ -80,6 +82,14 @@ _POLICY_TABLE: Final[dict[str, RecoveryReturnPolicy]] = {
         allows_extra_post_reclaim_pass3_rerun=False,
         allows_one_time_remedial_step4=False,
         primary_return_steps=("STEP4",),
+    ),
+    # §4.3.1: Pass3 greedy connectivity-only rollback → STEP4 snapshot, then STEP6 reclaim.
+    RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK: RecoveryReturnPolicy(
+        policy_id=RecoveryReturnPolicyId.ROLLBACK_PASS3_SNAPSHOT_THEN_STEP6,
+        reenters_step4=False,
+        allows_extra_post_reclaim_pass3_rerun=False,
+        allows_one_time_remedial_step4=False,
+        primary_return_steps=("STEP6",),
     ),
     # §4.3.2: rerun rollback → STEP9; no additional post-reclaim Pass3 rerun in the same block.
     RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK: RecoveryReturnPolicy(

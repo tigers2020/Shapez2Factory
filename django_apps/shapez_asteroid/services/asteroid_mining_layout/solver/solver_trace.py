@@ -1,5 +1,12 @@
 """Env-gated NDJSON trace for asteroid mining layout solver (correlation via run_id).
 
+**Trace / debug layer (Algorithm §STEP10):** from the solver algorithm's perspective this module
+is **write-only** to NDJSON and debug files. Routing, Pass3, Reclaim, and Recovery must **not**
+read ``latest.ndjson``, ``mining_layout_solver_trace.ndjson``, prior ``solver_summary`` trace
+lines, or ``replay_events`` from disk to make decisions — use live maps, ``routing_state``, and
+stage contracts only. Offline tools under ``scripts/debug/`` may read these artifacts for audit,
+regression, and UI replay export.
+
 Single ``solver_summary`` payload per run: see ``build_solver_timeline`` output and
 ``documents/Algorithm/cursor_agent_tier1_prompts_2026-05-10.md`` §Trace contract (recovery
 chain, Pass3/P4 fields, ``before_return_validate``, STEP 0.5 ``existing_layout_analysis``).

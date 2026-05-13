@@ -34,6 +34,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (  # noqa: E501
     placement_state_counts,
+    unfinalized_placement_count_from_placement_commit_by_id,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.spatial_authority import (  # noqa: E501
     assert_protected_corridors_agree_with_transport_map,
@@ -249,6 +250,15 @@ def _protected_corridor_counts_from_routing_state(
     return hard_count, soft_count, hard_count + soft_count
 
 
+def _pass3_summary_for_solver_timeline(pass3_summary: Mapping[str, Any]) -> dict[str, Any]:
+    """Strip ``pass3_commit_reason`` unless Pass3 finalized (STEP10 timeline summary contract)."""
+
+    out = dict(pass3_summary)
+    if not bool(out.get("pass3_final_committed")):
+        out["pass3_commit_reason"] = None
+    return out
+
+
 def build_final_solver_output(
     *,
     run_id: str,
@@ -297,7 +307,14 @@ def build_final_solver_output(
     map_fsm_unfinalized = int(report.provisional_placed_row_count) + int(
         report.quarantined_unrouted_count
     )
-    summary_unfinalized_placement_count = max(map_fsm_unfinalized, int(unfinalized_placement_count))
+    placement_commit_fsm_unfinalized = unfinalized_placement_count_from_placement_commit_by_id(
+        step4_result.placement_commit_by_id or {}
+    )
+    summary_unfinalized_placement_count = max(
+        map_fsm_unfinalized,
+        int(unfinalized_placement_count),
+        placement_commit_fsm_unfinalized,
+    )
 
     _layout_hard_valid = (
         bool(report.geometry_valid)
@@ -318,7 +335,7 @@ def build_final_solver_output(
 
     # Termination tier is the authoritative contract; ok/return_reason are mapped from it.
     if (
-        unfinalized_placement_count > 0
+        summary_unfinalized_placement_count > 0
         or not report.geometry_valid
         or not report.connectivity_valid
     ):
@@ -343,9 +360,16 @@ def build_final_solver_output(
         # Partial STEP4 without a hard-valid returned map (rare); not ``known_good_after_rollback``.
         step4_returned_layout_source = STEP4_RETURNED_LAYOUT_SOURCE_PRE_STEP4_BASELINE
 
+    placement_pipeline_unfinalized = max(
+        int(unfinalized_placement_count),
+        placement_commit_fsm_unfinalized,
+    )
+    # Map FSM quarantine/provisional on merged cells are geometry failures; only STEP4 /
+    # placement-commit unfinalized uses ``validation_unfinalized_placement_failed`` (bounded §11).
+
     if solver_termination == SOLVER_TERMINATION_PARTIAL_SUCCESS:
         return_reason = RETURN_REASON_STEP4_PARTIAL_FAILURE
-    elif unfinalized_placement_count > 0:
+    elif placement_pipeline_unfinalized > 0:
         return_reason = "validation_unfinalized_placement_failed"
     elif layout_ok:
         return_reason = "ok"
@@ -443,6 +467,9 @@ def build_final_solver_output(
             "connectivity_valid": report.connectivity_valid,
             "disconnected_stub_count": report.disconnected_stub_count,
             "orphan_transport_count": report.orphan_transport_count,
+            "orphan_shape_belt_count": report.orphan_shape_belt_count,
+            "orphan_fluid_pipe_count": report.orphan_fluid_pipe_count,
+            "fixed_output_stub_removed_count": report.fixed_output_stub_removed_count,
             "overlap_violation_count": report.overlap_violation_count,
             "missing_stub_count": report.missing_stub_count,
             "unfinalized_placement_count": summary_unfinalized_placement_count,
@@ -713,7 +740,7 @@ def build_final_solver_output(
             "summary": {
                 "step": "pass3_transport_minimization",
                 **pass12_status_fields,
-                **pass3_summary,
+                **_pass3_summary_for_solver_timeline(pass3_summary),
             },
             "mining_map": map_final,
         },
@@ -740,11 +767,22 @@ def build_final_solver_output(
             "mining_map": map_final,
         },
     ]
+    # ``replay_events`` is same-run append-only export for STEP10 / NDJSON — not a policy input
+    # for routing or recovery (see ``solver_replay_events`` and ``solver_trace`` module docs).
     solver_replay = build_solver_replay_snapshot(
         frames=frames,
         run_id=run_id,
         events=replay_events,
         optimization_metrics=optimization_replay_metrics,
+        existing_layout_analysis=existing_layout_analysis,
+        placement_recovery_overlay={
+            "step4_rolled_back_placement_ids": [
+                str(x) for x in step4_result.rolled_back_placement_ids
+            ],
+            "step4_quarantined_placement_ids": [
+                str(x) for x in step4_result.quarantined_placement_ids
+            ],
+        },
     )
     out = {
         # Backward-compatible: only full SUCCESS maps to ok=True.
@@ -766,6 +804,9 @@ def build_final_solver_output(
             "connectivity_valid": report.connectivity_valid,
             "disconnected_stub_count": report.disconnected_stub_count,
             "orphan_transport_count": report.orphan_transport_count,
+            "orphan_shape_belt_count": report.orphan_shape_belt_count,
+            "orphan_fluid_pipe_count": report.orphan_fluid_pipe_count,
+            "fixed_output_stub_removed_count": report.fixed_output_stub_removed_count,
             "overlap_violation_count": report.overlap_violation_count,
             "missing_stub_count": report.missing_stub_count,
             "missing_extractor_rotation_count": report.missing_extractor_rotation_count,
@@ -974,6 +1015,10 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("p4_reclaim_loop_successful_commits", 0)
     summary_fields.setdefault("p4_reclaim_loop_internal_transport_cumulative_added", 0)
     summary_fields.setdefault("p4_reclaim_loop_terminated_reason", None)
+    summary_fields.setdefault("provisional_net_internal_transport_saved_after_reclaim", None)
+    summary_fields.setdefault("p4_reclaim_provisional_reject_count", 0)
+    summary_fields.setdefault("p4_reclaim_provisional_last_reject_reason", None)
+    summary_fields.setdefault("p4_reclaim_soft_active_on_map_count", None)
     summary_fields.setdefault("p4_reclaim_zero_candidate_reasons", None)
     summary_fields.setdefault("mineable_base_count", None)
     summary_fields.setdefault("excluded_by_final_route_count", None)

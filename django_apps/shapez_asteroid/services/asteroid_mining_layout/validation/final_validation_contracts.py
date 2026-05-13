@@ -26,3 +26,8 @@ class FinalValidationReport:
     extension_count: int = 0
     transport_cell_count: int = 0
     transport_connectivity_ok: bool = True
+    # Per-TransportKind orphan counts (belt vs pipe subgraphs; §15 connectivity).
+    orphan_shape_belt_count: int = 0
+    orphan_fluid_pipe_count: int = 0
+    # Rows marked fixed output stub that are missing belt/pipe at merge (geometry hard fail).
+    fixed_output_stub_removed_count: int = 0

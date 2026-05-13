@@ -1,5 +1,12 @@
 """Replay contract: timeline frame order, summary keys, future mutation event kinds (STEP10).
 
+**Algorithm isolation:** ``replay_events`` (in-memory, same run) and persisted NDJSON trace rows
+are **outputs** for UI replay, CI, and ``scripts/debug`` auditors. Pass3, STEP4, Reclaim, and
+Recovery code must not treat replay history or trace files as **primary** routing or policy
+state — branch on explicit kwargs, ``routing_state_summary``, mining maps, and structured
+summaries passed between stages, not on scanning earlier ``replay_events`` or reading
+``var/`` NDJSON.
+
 Hash-stable summaries are not enough for UI/CI diff; this module defines a small JSON-friendly
 snapshot alongside ``solver_state_hash`` / step hashes.
 """
@@ -40,6 +47,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 # (includes ``trunk_observation_layer`` = committed route traversals; corridor tiers are separate).
 # v9: each replay ``events[]`` entry includes ``event_type`` (canonical category) derived from
 # ``kind``; ``kind`` remains the wire-stable legacy label (STEP10 / NDJSON backward compatibility).
+# v10: ``prepare_replay_events_for_snapshot`` — optional trace root keys per event (STEP10 schema),
+# ``visualization_stream_tick`` (``computation_cycle % 10 == 0``), snapshot refs
+# ``layout_snapshot_before_pass3`` / ``layout_snapshot_after_pass3`` on replay root,
+# ``existing_layout_replay_overlay`` / ``placement_recovery_overlay`` (output-only).
 
 
 class SolverMutationEventKind(StrEnum):
@@ -303,12 +314,272 @@ def normalize_replay_events_computation_cycles(events: list[dict[str, Any]]) -> 
     return n
 
 
+# Optional root keys on each replay event dict (STEP10 trace / UI; all output-only).
+REPLAY_EVENT_TRACE_OPTIONAL_KEYS: tuple[str, ...] = (
+    "step_index",
+    "recovery_trigger",
+    "placements_added",
+    "placements_removed",
+    "routes_added",
+    "routes_removed",
+    "protected_corridors",
+    "transport_kind",
+    "search",
+    "metrics",
+    "decision",
+    "visualization_stream_tick",
+)
+
+
+def existing_layout_replay_overlay(
+    existing_layout_analysis: dict[str, Any] | None,
+    *,
+    max_issue_coords: int = 200,
+) -> dict[str, Any] | None:
+    """JSON-friendly overlay from §E.3 analysis for STEP10 replay (output-only; no routing use)."""
+
+    if not isinstance(existing_layout_analysis, dict):
+        return None
+    by_kind = existing_layout_analysis.get("transport_by_kind")
+    blocks: list[dict[str, Any]] = []
+    if isinstance(by_kind, dict) and by_kind:
+        blocks = [b for b in by_kind.values() if isinstance(b, dict)]
+    else:
+        t0 = existing_layout_analysis.get("transport")
+        if isinstance(t0, dict):
+            blocks = [t0]
+
+    def _main_cells(transport_block: dict[str, Any]) -> list[list[int]]:
+        for comp in transport_block.get("components") or []:
+            if not isinstance(comp, dict):
+                continue
+            if comp.get("status") == "main_trunk_candidate":
+                out_m: list[list[int]] = []
+                for p in comp.get("cells") or []:
+                    if isinstance(p, (list, tuple)) and len(p) >= 2:
+                        try:
+                            out_m.append([int(p[0]), int(p[1])])
+                        except (TypeError, ValueError):
+                            continue
+                return out_m
+        return []
+
+    main: list[list[int]] = []
+    for blk in blocks:
+        if not main:
+            main = _main_cells(blk)
+
+    orphans: list[list[int]] = []
+    singles: list[list[int]] = []
+
+    def _consume(block: dict[str, Any]) -> None:
+        for comp in block.get("components") or []:
+            if not isinstance(comp, dict):
+                continue
+            st = comp.get("status")
+            cells = comp.get("cells") or []
+            if st == "orphan_component":
+                for p in cells:
+                    if isinstance(p, (list, tuple)) and len(p) >= 2:
+                        try:
+                            orphans.append([int(p[0]), int(p[1])])
+                        except (TypeError, ValueError):
+                            continue
+            elif st == "single_cell_artifact":
+                for p in cells:
+                    if isinstance(p, (list, tuple)) and len(p) >= 2:
+                        try:
+                            singles.append([int(p[0]), int(p[1])])
+                        except (TypeError, ValueError):
+                            continue
+
+    for blk in blocks:
+        _consume(blk)
+
+    eq = existing_layout_analysis.get("equipment")
+    eq_d: dict[str, Any] = eq if isinstance(eq, dict) else {}
+
+    issues_out: list[dict[str, Any]] = []
+    used = 0
+    for iss in existing_layout_analysis.get("issues") or []:
+        if not isinstance(iss, dict):
+            continue
+        raw_coords = iss.get("coords")
+        coords_in = raw_coords if isinstance(raw_coords, list) else []
+        trim: list[list[int]] = []
+        for pair in coords_in:
+            if used >= max_issue_coords:
+                break
+            if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+                try:
+                    trim.append([int(pair[0]), int(pair[1])])
+                except (TypeError, ValueError):
+                    continue
+                used += 1
+        issues_out.append(
+            {
+                "code": iss.get("code"),
+                "severity": iss.get("severity"),
+                "coords": trim,
+                "truncated": len(coords_in) > len(trim),
+            }
+        )
+
+    return {
+        "original_main_trunk_component": main,
+        "original_orphan_transport_components": orphans,
+        "original_single_cell_transport_artifacts": singles,
+        "original_miners_without_adjacent_transport": list(
+            eq_d.get("miners_without_adjacent_transport") or []
+        ),
+        "original_miners_attached_to_orphan_transport": list(
+            eq_d.get("miners_attached_to_orphan_transport") or []
+        ),
+        "existing_layout_issues_overlay": issues_out,
+    }
+
+
+def extract_pass3_layout_snapshot_refs(
+    events: list[dict[str, Any]],
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """First Pass3 before/after snapshot blocks for replay root (sha + txn id)."""
+
+    before: dict[str, Any] | None = None
+    after: dict[str, Any] | None = None
+    for ev in events:
+        if not isinstance(ev, dict):
+            continue
+        if ev.get("kind") != SolverMutationEventKind.PASS3_LAYOUT_SNAPSHOT.value and ev.get(
+            "event_type"
+        ) != REPLAY_EVENT_TYPE_PASS3_LAYOUT_SNAPSHOT:
+            continue
+        pl = ev.get("payload")
+        if not isinstance(pl, dict):
+            continue
+        marker = pl.get("marker")
+        h = pl.get("layout_state_sha256")
+        tid = pl.get("transaction_id")
+        if not isinstance(marker, str) or not isinstance(h, str):
+            continue
+        block: dict[str, Any] = {"layout_state_sha256": h}
+        if isinstance(tid, str):
+            block["transaction_id"] = tid
+        if marker == "before" and before is None:
+            before = block
+        elif marker == "after" and after is None:
+            after = block
+    return before, after
+
+
+def _fill_event_trace_schema(ev: dict[str, Any]) -> None:
+    """Populate STEP10 optional root keys; must run after ``computation_cycle`` is set."""
+
+    pl = ev.get("payload")
+    pl_d = pl if isinstance(pl, dict) else None
+
+    cyc = ev.get("computation_cycle")
+    if isinstance(cyc, int):
+        ev["step_index"] = cyc
+        ev["visualization_stream_tick"] = bool(cyc % 10 == 0)
+    else:
+        ev["step_index"] = None
+        ev["visualization_stream_tick"] = False
+
+    for k in (
+        "recovery_trigger",
+        "placements_added",
+        "placements_removed",
+        "routes_added",
+        "routes_removed",
+        "protected_corridors",
+        "transport_kind",
+        "search",
+        "metrics",
+        "decision",
+    ):
+        ev[k] = None
+
+    if pl_d is not None:
+        ev["recovery_trigger"] = pl_d.get("recovery_trigger")
+
+    kind = ev.get("kind")
+    if pl_d is not None:
+        tk = normalize_replay_transport_kind(pl_d.get("transport_kind"))
+        if tk is not None:
+            ev["transport_kind"] = tk
+        if "metrics" in pl_d:
+            ev["metrics"] = pl_d.get("metrics")
+        if "search" in pl_d:
+            ev["search"] = pl_d.get("search")
+        if "decision" in pl_d:
+            ev["decision"] = pl_d.get("decision")
+
+    if kind == SolverMutationEventKind.MAP_DIFF_COMMITTED.value and pl_d is not None:
+        ca, cr = pl_d.get("coords_added"), pl_d.get("coords_removed")
+        if isinstance(ca, int):
+            ev["placements_added"] = ca
+        if isinstance(cr, int):
+            ev["placements_removed"] = cr
+
+    if kind == SolverMutationEventKind.ROUTE_REPLACED.value and pl_d is not None:
+        rem = pl_d.get("cells_removed")
+        add = pl_d.get("cells_added")
+        if isinstance(rem, list):
+            ev["routes_removed"] = len(rem)
+        if isinstance(add, list):
+            ev["routes_added"] = len(add)
+
+    if kind == SolverMutationEventKind.CORRIDOR_PROMOTED.value and pl_d is not None:
+        cells_pm = pl_d.get("cells")
+        n_pm = len(cells_pm) if isinstance(cells_pm, list) else None
+        ev["protected_corridors"] = {
+            "from_tier": pl_d.get("from_tier"),
+            "to_tier": pl_d.get("to_tier"),
+            "cell_count": n_pm,
+        }
+    elif kind == SolverMutationEventKind.CORRIDOR_REPLACED.value and pl_d is not None:
+        rem_c = pl_d.get("cells_removed")
+        add_c = pl_d.get("cells_added")
+        ev["protected_corridors"] = {
+            "tier": pl_d.get("tier"),
+            "cells_removed_count": len(rem_c) if isinstance(rem_c, list) else None,
+            "cells_added_count": len(add_c) if isinstance(add_c, list) else None,
+        }
+    elif kind in (
+        SolverMutationEventKind.CORRIDOR_ADDED.value,
+        SolverMutationEventKind.CORRIDOR_REMOVED.value,
+    ):
+        if pl_d is not None:
+            tier = pl_d.get("tier")
+            cells = pl_d.get("cells")
+            n = len(cells) if isinstance(cells, list) else None
+            if tier is not None or n is not None:
+                ev["protected_corridors"] = {"tier": tier, "cell_count": n}
+
+
+def prepare_replay_events_for_snapshot(events: list[dict[str, Any]]) -> int:
+    """Normalize ``computation_cycle``, ``event_type``, and STEP10 per-event trace keys.
+
+    Output-only: must not be read by solver routing / placement decisions.
+    ``visualization_stream_tick`` is True when ``computation_cycle % 10 == 0`` (1-based cycles).
+    """
+
+    max_cycle = normalize_replay_events_computation_cycles(events)
+    enrich_replay_events_event_types(events)
+    for ev in events:
+        if isinstance(ev, dict):
+            _fill_event_trace_schema(ev)
+    return max_cycle
+
+
 def build_solver_replay_snapshot(
     *,
     frames: list[dict[str, Any]],
     run_id: str,
     events: list[dict[str, Any]] | None = None,
     optimization_metrics: dict[str, Any] | None = None,
+    existing_layout_analysis: dict[str, Any] | None = None,
+    placement_recovery_overlay: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Deterministic replay snapshot: frame order, summary keys, optional mutation ``events``."""
 
@@ -321,12 +592,14 @@ def build_solver_replay_snapshot(
             keys = sorted(summary.keys())
         per_frame.append({"id": f.get("id"), "summary_keys": keys})
     ev = list(events) if events is not None else []
-    max_cycle = normalize_replay_events_computation_cycles(ev)
+    max_cycle = prepare_replay_events_for_snapshot(ev)
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_frames import (  # noqa: E501
         build_replay_ui_frames,
     )
 
     ui_frames = build_replay_ui_frames(solver_timeline=frames, events=ev)
+    before_p3, after_p3 = extract_pass3_layout_snapshot_refs(ev)
+    ela_overlay = existing_layout_replay_overlay(existing_layout_analysis)
     snap: dict[str, Any] = {
         "contract_version": SOLVER_REPLAY_CONTRACT_VERSION,
         "run_id": run_id,
@@ -335,7 +608,13 @@ def build_solver_replay_snapshot(
         "computation_cycle": max_cycle,
         "events": ev,
         "ui_frames": ui_frames,
+        "layout_snapshot_before_pass3": before_p3,
+        "layout_snapshot_after_pass3": after_p3,
     }
+    if ela_overlay is not None:
+        snap["existing_layout_replay_overlay"] = ela_overlay
+    if placement_recovery_overlay is not None:
+        snap["placement_recovery_overlay"] = placement_recovery_overlay
     if optimization_metrics is not None:
         snap["optimization_metrics"] = optimization_metrics
     return snap

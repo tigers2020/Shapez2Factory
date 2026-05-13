@@ -20,6 +20,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
     layout_kind,
     want_role,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.semantic_contracts import (
+    partition_pass3_commit_reason_payload,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
     validate_final_mining_layout,
@@ -168,8 +171,15 @@ def _run_post_reclaim_pass3_once(
         out["post_reclaim_pass3_map_accepted"] = True
         out["post_reclaim_pass3_skip_reason"] = None
         if p3_trace.get("pass3_committed"):
-            if "commit_reason" in p3_trace:
-                out["post_reclaim_pass3_pass3_commit_reason"] = p3_trace["commit_reason"]
+            cr_norm, prom_rej = partition_pass3_commit_reason_payload(
+                p3_trace.get("commit_reason"),
+                pass3_committed=bool(p3_trace.get("pass3_committed")),
+                pass3_final_committed=True,
+            )
+            if cr_norm is not None:
+                out["post_reclaim_pass3_pass3_commit_reason"] = cr_norm
+            if prom_rej is not None:
+                out["post_reclaim_pass3_pass3_rejected_reason"] = prom_rej
             if "pass3_commit_subtype" in p3_trace:
                 out["post_reclaim_pass3_pass3_commit_subtype"] = p3_trace["pass3_commit_subtype"]
         else:

@@ -26,6 +26,9 @@ class _P4BundleEval:
     extension: Coord
     rotation: int
     shadow_route_path: tuple[Coord, ...] | None = None
+    # Trace-only: first hop from fixed output stub vs remainder (§12.2 route cost accounting).
+    p4_route_cost_first_hop_from_stub: float | None = None
+    p4_route_cost_after_stub: float | None = None
     # Spatial diversity (search pressure; gain_ratio threshold uses raw gain_ratio only).
     p4_cluster_penalty: float = 0.0
     p4_route_zone_overlap_cells: int = 0

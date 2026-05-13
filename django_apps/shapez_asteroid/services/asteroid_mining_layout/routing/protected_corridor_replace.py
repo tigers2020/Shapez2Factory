@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    CORRIDOR_REPLACEMENT_BUDGET_KEYS_SOFT_REPLACE,
     P4_REJECT_HARD_PROTECTED_CORRIDOR,
     P4_SOFT_REPLACE_REJECT_NO_REPLACEMENT_ROUTE,
     P4_SOFT_REPLACE_REJECT_NO_ROUTING_JOB,
@@ -59,6 +60,9 @@ def _p4_soft_replace_neutral_trace(
     jobs_attempted: int = 0,
     selected_job_index: int | None = None,
     rejected_reasons_by_job: list[str] | None = None,
+    replacement_search_exhausted: bool | None = None,
+    replacement_budget_keys: tuple[str, ...] | list[str] | None = None,
+    replacement_frontier_last_size: int | None = None,
 ) -> dict[str, Any]:
     """§14.3 trace keys for soft-corridor atomic replace (no commit / reject / neutral)."""
 
@@ -73,6 +77,9 @@ def _p4_soft_replace_neutral_trace(
         jobs_attempted=jobs_attempted,
         selected_job_index=selected_job_index,
         rejected_reasons_by_job=rejected_reasons_by_job,
+        replacement_search_exhausted=replacement_search_exhausted,
+        replacement_budget_keys=replacement_budget_keys,
+        replacement_frontier_last_size=replacement_frontier_last_size,
     )
 
 
@@ -178,6 +185,7 @@ def try_atomic_replace_soft_corridor(
     fixed_stubs = frozenset(outlets_order)
     final_cells = cells_dict_from_mining_map(final_mining_map)
     rejected_reasons_by_job: list[str] = []
+    last_frontier_size = 0
 
     import django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow as _p4f  # noqa: E501
 
@@ -204,6 +212,8 @@ def try_atomic_replace_soft_corridor(
         if path is None or len(path) < 2 or path[0] != stub:
             rejected_reasons_by_job.append(P4_SOFT_REPLACE_REJECT_NO_REPLACEMENT_ROUTE)
             continue
+
+        last_frontier_size = max(last_frontier_size, len(path))
 
         connected_ok = _replacement_probe_path_cardinally_connected(path)
         if not connected_ok:
@@ -282,6 +292,9 @@ def try_atomic_replace_soft_corridor(
         jobs_attempted=len(jobs),
         selected_job_index=None,
         rejected_reasons_by_job=rejected_reasons_by_job,
+        replacement_search_exhausted=True,
+        replacement_budget_keys=CORRIDOR_REPLACEMENT_BUDGET_KEYS_SOFT_REPLACE,
+        replacement_frontier_last_size=last_frontier_size,
     )
 
 

@@ -19,6 +19,10 @@ from collections.abc import Callable
 from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    CORRIDOR_LIFECYCLE_HARD,
+    CORRIDOR_LIFECYCLE_SOFT,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     blocked_cells as _blocked_cells,
@@ -140,6 +144,9 @@ def _routing_state_from_committed_routes(
         "soft_protected_corridors": _coord_lists(soft_cells),
         "soft_protected_candidate_corridors": [],
         "soft_protected_confirmed_corridors": _coord_lists(soft_cells),
+        "corridor_probe_candidates_at_commit": [],
+        "corridor_lifecycle_soft_pool": CORRIDOR_LIFECYCLE_SOFT if soft_cells else None,
+        "corridor_lifecycle_hard_pool": CORRIDOR_LIFECYCLE_HARD if hard_cells else None,
     }
     if existing_layout_analysis is not None:
         ela_seeds = step4_goal_trunk_seed.trunk_seed_union_from_existing_layout(

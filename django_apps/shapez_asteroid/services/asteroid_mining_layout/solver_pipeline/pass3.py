@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
     RECOVERY_PHASE_VALIDATION_RECOVERY,
     RECOVERY_SEGMENT_VALIDATION_RETRY,
     RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY,
@@ -30,6 +31,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_policy import (
     append_recovery_contract_phase,
     apply_recovery_contract_defaults,
+    tag_pass3_connectivity_break_from_greedy_trace,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.semantic_contracts import (
+    partition_pass3_commit_reason_payload,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_permission import (
     pass3_permission_snapshot,
@@ -244,7 +249,14 @@ def run_pass3_stage(
                     "pass3_over_capacity_segments": p3_trace.get("over_capacity_segments", 0),
                 }
                 if p3_trace.get("pass3_committed"):
-                    upd["pass3_commit_reason"] = p3_trace.get("commit_reason")
+                    cr_norm, prom_rej = partition_pass3_commit_reason_payload(
+                        p3_trace.get("commit_reason"),
+                        pass3_committed=bool(p3_trace.get("pass3_committed")),
+                        pass3_final_committed=True,
+                    )
+                    upd["pass3_commit_reason"] = cr_norm
+                    if prom_rej is not None:
+                        upd["pass3_rejected_reason"] = prom_rej
                 else:
                     rejected_reason = p3_trace.get("rejected_reason")
                     if rejected_reason is not None:
@@ -282,6 +294,21 @@ def run_pass3_stage(
                 if rejected_reason is not None:
                     upd_rev["pass3_rejected_reason"] = rejected_reason
                 pass3_summary.update(upd_rev)
+                if not report_try.connectivity_valid:
+                    if p3_trace.get("pass3_connectivity_reject_sample") is None:
+                        p3_trace["pass3_connectivity_reject_sample"] = {
+                            "source": "final_validation_after_pass3_commit",
+                            "disconnected_stub_count": int(report_try.disconnected_stub_count),
+                        }
+                    p3_trace["pass3_greedy_reject_detail"] = (
+                        PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY
+                    )
+                    pass3_summary["pass3_connectivity_reject_sample"] = p3_trace[
+                        "pass3_connectivity_reject_sample"
+                    ]
+                    pass3_summary["pass3_greedy_reject_detail"] = p3_trace[
+                        "pass3_greedy_reject_detail"
+                    ]
                 for k in (
                     "before_transport_count",
                     "after_transport_count",
@@ -296,6 +323,13 @@ def run_pass3_stage(
                         pass3_summary[k] = p3_trace[k]
     elif pass3_permission["skip_reason"] is not None:
         pass3_summary["pass3_skip_reason"] = pass3_permission["skip_reason"]
+
+    if eligible_pass3:
+        tag_pass3_connectivity_break_from_greedy_trace(
+            pass3_summary,
+            p3_trace,
+            validation_recovery_attempt=validation_recovery_attempt,
+        )
 
     if eligible_pass3 and replay_events is not None and p3_txn_id is not None:
         h_after = solver_state_sha256_hex(

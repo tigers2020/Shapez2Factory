@@ -20,7 +20,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.route_z
 )
 
 
-def _path_additional_route_cost(
+def _path_additional_route_cost_detail(
     path: list[Coord],
     *,
     asteroid_cells: set[Coord],
@@ -29,10 +29,15 @@ def _path_additional_route_cost(
     transport_cells: dict[Coord, str],
     fixed_stubs: frozenset[Coord],
     outlet_stub: Coord,
-) -> int:
-    """P4 incremental route가 추가로 소모하는 내부 비용을 계산한다 (§12.2 budget)."""
+) -> tuple[int, int, int]:
+    """P4 incremental route cost: ``(total, first_hop_from_stub, rest_after_first_hop)``.
+
+    ``total`` matches legacy :func:`_path_additional_route_cost` (per-step ``to`` cells only).
+    The first hop is the cost attributed to entering ``path[1]`` from the fixed output stub
+    ``path[0]``; ``rest`` is ``total - first_hop`` for trace (``route_cost_after_stub``).
+    """
     if len(path) < 2:
-        return 0
+        return 0, 0, 0
     boundary = cells_touching_void(set(asteroid_cells))
     route_tree = {c for c in transport_cells if c != outlet_stub}
     opp: dict[Coord, int] = {}
@@ -41,6 +46,7 @@ def _path_additional_route_cost(
         mineable_cells=frozenset(mineable_cells),
     )
     total = 0
+    first_hop = 0
     for i in range(len(path) - 1):
         _frm, to = path[i], path[i + 1]
         ec = mining_priority_route_cell_cost(
@@ -55,9 +61,33 @@ def _path_additional_route_cost(
             route_zone_map=route_zone_map,
         )
         if ec >= INF_COST:
-            return INF_COST
+            return INF_COST, 0, 0
         total += ec
-    return total
+        if i == 0:
+            first_hop = ec
+    return total, first_hop, total - first_hop
+
+
+def _path_additional_route_cost(
+    path: list[Coord],
+    *,
+    asteroid_cells: set[Coord],
+    mineable_cells: set[Coord],
+    buildings: dict[Coord, str],
+    transport_cells: dict[Coord, str],
+    fixed_stubs: frozenset[Coord],
+    outlet_stub: Coord,
+) -> int:
+    """P4 incremental route가 추가로 소모하는 내부 비용을 계산한다 (§12.2 budget)."""
+    return _path_additional_route_cost_detail(
+        path,
+        asteroid_cells=asteroid_cells,
+        mineable_cells=mineable_cells,
+        buildings=buildings,
+        transport_cells=transport_cells,
+        fixed_stubs=fixed_stubs,
+        outlet_stub=outlet_stub,
+    )[0]
 
 
 def _p4_zone_trace_from_path(

@@ -67,7 +67,14 @@ def merge_goal_union_meta(
     trunk_cells: frozenset[Coord],
     margin_cells: set[Coord],
 ) -> tuple[frozenset[Coord], dict[str, Any]]:
-    """Same goal union as legacy merge; ``priority_head`` is deterministic telemetry only."""
+    """Build Dijkstra ``goal_cells`` = raw §08 goal set ∪ **live** same-kind exterior trunk.
+
+    ``raw_goal`` comes from :func:`build_step4_goal_set` (trunk_seed ∪ margin, or committed ∪
+    margin). ``trunk_cells`` is the current map's same-role transport that reaches exterior;
+    unioning it is required so the first search can terminate on an existing preserved trunk
+    even when ``committed_trunk_by_kind`` is still empty. ``priority_head`` is deterministic
+    telemetry only (tier: live trunk → margin → other raw goals).
+    """
 
     union = frozenset(raw_goal | set(trunk_cells))
     if not union:

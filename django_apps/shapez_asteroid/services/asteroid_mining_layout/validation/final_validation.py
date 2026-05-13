@@ -179,8 +179,26 @@ def transport_cells_reaching_external(
     return seen
 
 
+def _multi_occupied_building_rows_per_cell(mining_map: list[dict[str, Any]]) -> int:
+    """Count coords with >1 occupied extractor/extension row (duplicate body geometry)."""
+
+    per: dict[Coord, int] = {}
+    for row in mining_map:
+        x, y = row.get("x"), row.get("y")
+        if not isinstance(x, int) or not isinstance(y, int) or x == 0:
+            continue
+        if row.get("role") != "occupied":
+            continue
+        lk = layout_kind(row)
+        if lk not in EXTRACTORS_SHAPE | EXTRACTORS_FLUID | EXTENSIONS:
+            continue
+        c = (x, y)
+        per[c] = per.get(c, 0) + 1
+    return sum(1 for n in per.values() if n > 1)
+
+
 def _overlap_violations_list(mining_map: list[dict[str, Any]]) -> int:
-    """Detect extractor/extension sharing a cell with belt/pipe (multi-row map allowed)."""
+    """Building vs transport overlap + duplicate occupied extractor/extension rows (§15)."""
 
     by: dict[Coord, set[str]] = {}
     for row in mining_map:
@@ -197,7 +215,30 @@ def _overlap_violations_list(mining_map: list[dict[str, Any]]) -> int:
         if kind is None:
             continue
         by.setdefault((x, y), set()).add(kind)
-    return sum(1 for s in by.values() if "building" in s and "transport" in s)
+    transport_body = sum(1 for s in by.values() if "building" in s and "transport" in s)
+    return transport_body + _multi_occupied_building_rows_per_cell(mining_map)
+
+
+def _fixed_output_stub_removed_count(
+    mining_map: list[dict[str, Any]],
+    cells: dict[Coord, dict[str, Any]],
+) -> int:
+    """Rows asserting a fixed output stub cell where merged map lacks belt/pipe (§15)."""
+
+    n = 0
+    for row in mining_map:
+        if row.get("fixed_output_stub") is not True and row.get(
+            "pass12_fixed_output_stub"
+        ) is not True:
+            continue
+        x, y = row.get("x"), row.get("y")
+        if not isinstance(x, int) or not isinstance(y, int) or x == 0:
+            continue
+        st = cells.get((x, y))
+        role = st.get("role") if st is not None else None
+        if role not in ("belt", "pipe"):
+            n += 1
+    return n
 
 
 def count_placement_fsm_rows_on_cells(
@@ -316,15 +357,23 @@ def validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValid
             ):
                 disconnected_stub_count += 1
 
-    connected_exit = transport_cells_reaching_external(transport_cells, blocked, is_external)
-    orphan_transport_count = len(transport_cells - connected_exit)
+    belt_cells = {c for c in transport_cells if cells.get(c, {}).get("role") == "belt"}
+    pipe_cells = {c for c in transport_cells if cells.get(c, {}).get("role") == "pipe"}
+    connected_belts = transport_cells_reaching_external(belt_cells, blocked, is_external)
+    connected_pipes = transport_cells_reaching_external(pipe_cells, blocked, is_external)
+    orphan_shape_belt_count = len(belt_cells - connected_belts)
+    orphan_fluid_pipe_count = len(pipe_cells - connected_pipes)
+    orphan_transport_count = orphan_shape_belt_count + orphan_fluid_pipe_count
     transport_connectivity_ok = orphan_transport_count == 0
+
+    fixed_output_stub_removed_count = _fixed_output_stub_removed_count(mining_map, cells)
 
     geometry_valid = (
         overlap_violation_count == 0
         and quarantined_unrouted_count == 0
         and provisional_placed_row_count == 0
         and missing_stub_count == 0
+        and fixed_output_stub_removed_count == 0
     )
     connectivity_valid = disconnected_stub_count == 0 and orphan_transport_count == 0
 
@@ -342,4 +391,7 @@ def validate_final_mining_layout(mining_map: list[dict[str, Any]]) -> FinalValid
         extension_count=extension_count,
         transport_cell_count=transport_cell_count,
         transport_connectivity_ok=transport_connectivity_ok,
+        orphan_shape_belt_count=orphan_shape_belt_count,
+        orphan_fluid_pipe_count=orphan_fluid_pipe_count,
+        fixed_output_stub_removed_count=fixed_output_stub_removed_count,
     )

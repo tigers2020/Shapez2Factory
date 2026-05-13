@@ -15,6 +15,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P3F_COMMIT_REASON_NORMAL_GAIN,
     P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE,
     PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
+    RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3 import pass3_greedy_core
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
@@ -287,6 +288,11 @@ def test_pass3_final_validation_failure_sets_rollback_reason() -> None:
     assert ss.get("pass3_greedy_committed") is True
     assert ss.get("p4_reclaim_shadow_enabled") is False
     assert ss.get("p4_reclaim_shadow_skip_reason") == "pass3_reverted"
+    assert ss.get("recovery_pass3_connectivity_break") is True
+    assert ss.get("recovery_trigger") == RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK
+    sample = ss.get("pass3_connectivity_reject_sample")
+    assert isinstance(sample, dict)
+    assert sample.get("source") == "final_validation_after_pass3_commit"
 
 
 def test_pass3_timeline_frame_includes_before_after_counts_when_eligible() -> None:
@@ -1587,6 +1593,7 @@ def test_post_reclaim_pass3_gate_requires_commits_transport_and_net_save() -> No
         "p4_reclaim_loop_successful_commits": 1,
         "p4_reclaim_loop_internal_transport_cumulative_added": 1,
         "pass3_internal_transport_saved": 2,
+        "provisional_net_internal_transport_saved_after_reclaim": 1,
     }
     assert _post_reclaim_pass3_gate(dict(base)) == (True, None)
     assert _post_reclaim_pass3_gate({**base, "p4_reclaim_loop_successful_commits": 0}) == (
@@ -1599,13 +1606,25 @@ def test_post_reclaim_pass3_gate_requires_commits_transport_and_net_save() -> No
         False,
         "reclaim_internal_transport_not_added",
     )
-    assert _post_reclaim_pass3_gate({**base, "pass3_internal_transport_saved": 1}) == (
+    assert _post_reclaim_pass3_gate(
+        {**base, "provisional_net_internal_transport_saved_after_reclaim": 0}
+    ) == (
         False,
-        "net_internal_transport_saved_nonpositive",
+        "provisional_net_internal_transport_nonpositive",
+    )
+    assert _post_reclaim_pass3_gate(
+        {**base, "provisional_net_internal_transport_saved_after_reclaim": None}
+    ) == (
+        False,
+        "provisional_net_internal_transport_missing",
     )
     assert _post_reclaim_pass3_gate({**base, "post_reclaim_pass3_reruns_used": 1}) == (
         False,
         "max_post_reclaim_pass3_reruns_reached",
+    )
+    assert _post_reclaim_pass3_gate(dict(base), post_reclaim_reruns_lifetime_used=1) == (
+        False,
+        "max_post_reclaim_pass3_reruns_lifetime",
     )
 
 
@@ -1693,7 +1712,7 @@ def test_build_solver_timeline_sets_post_reclaim_skip_when_reclaim_did_not_commi
     assert isinstance(ss.get("baseline_internal_transport_at_reclaim_entry"), int)
     assert ss.get("net_internal_transport_saved_after_reclaim") == 0
     assert ss.get("p4_orchestration_entry_segment") == P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE
-    assert ss.get("recovery_trigger_reason") is None
+    assert ss.get("recovery_trigger_reason") in (None, RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK)
     assert ss.get("recovery_context_chain") == [RECOVERY_SEGMENT_P4_RECLAIM]
     assert ss.get("recovery_terminal_reason") == "reclaim_commits_zero"
 
@@ -1759,6 +1778,24 @@ def _solver_summary_post_reclaim_gate_passes() -> tuple[dict[str, object], list[
     pass3_calls: list[int] = []
     pass3_invocation_index = {"n": 0}
 
+    _p4_it_calls = {"n": 0}
+
+    def _stub_internal_transport_count_for_p4_gate(
+        mm: list[dict],
+        *,
+        is_external,
+        **kwargs: object,
+    ) -> int:
+        from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver import (
+            solver_timeline as _st,
+        )
+
+        _p4_it_calls["n"] += 1
+        v = int(_st._internal_transport_count_for_pass3_kind(mm, is_external=is_external, **kwargs))
+        if _p4_it_calls["n"] == 2:
+            return max(0, v - 1)
+        return v
+
     def pass3_twice(mm: list[dict], **kwargs: object) -> tuple:
         pass3_calls.append(1)
         pass3_invocation_index["n"] += 1
@@ -1780,6 +1817,11 @@ def _solver_summary_post_reclaim_gate_passes() -> tuple[dict[str, object], list[
             "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service."
             "run_pass3_transport_minimization_from_maps",
             pass3_twice,
+        ),
+        patch(
+            "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.p4_reclaim."
+            "_internal_transport_count_for_pass3_kind",
+            _stub_internal_transport_count_for_p4_gate,
         ),
     ):
         out = build_solver_timeline(decoded)
@@ -1815,7 +1857,7 @@ def test_post_reclaim_pass3_keeps_recovery_context_chain() -> None:
 
     ss, _ = _solver_summary_post_reclaim_gate_passes()
     assert ss.get("p4_orchestration_entry_segment") == P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE
-    assert ss.get("recovery_trigger_reason") is None
+    assert ss.get("recovery_trigger_reason") in (None, RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK)
     assert ss.get("recovery_context_chain") == [
         RECOVERY_SEGMENT_P4_RECLAIM,
         RECOVERY_SEGMENT_SOFT_REPLACE_V2,

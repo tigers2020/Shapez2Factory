@@ -198,7 +198,11 @@ def test_synthesize_recovery_validation_outcome_rollup() -> None:
     }
     synthesize_recovery_validation_outcome(s)
     assert s["recovery_validation_outcome"]["rollback_reason"] == "rb1"
-    assert s["recovery_validation_outcome"]["rejected_reason"] == "validation_connectivity_failed"
+    assert s["recovery_validation_outcome"]["rejected_reason"] is None
+    assert (
+        s["recovery_validation_outcome"]["recovery_trigger"]
+        == fc.RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE
+    )
     assert s["recovery_validation_outcome"]["commit_reason"] is None
 
 

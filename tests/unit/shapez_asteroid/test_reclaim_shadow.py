@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    CORRIDOR_REPLACEMENT_BUDGET_KEYS_SOFT_REPLACE,
     P4_RECLAIM_ZERO_ALL_TRANSPORT_PROTECTED,
     P4_RECLAIM_ZERO_NO_RECLAIMED_CELLS,
     RECLAIM_CONTINUITY_BONUS_MAX,
@@ -78,6 +79,11 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_s
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     FinalValidationReport,
     cells_dict_from_mining_map,
+)
+
+_P4_SCAN_EVAL_ROUTE_COST_DETAIL = (
+    "django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim."
+    "reclaim_shadow_scan_eval._path_additional_route_cost_detail"
 )
 
 
@@ -366,11 +372,7 @@ def test_p4_rejects_gain_ratio_below_threshold_via_path_cost_patch() -> None:
             "placement_stub_route_probe_path",
             return_value=path,
         ),
-        patch(
-            "django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow."
-            "_path_additional_route_cost",
-            return_value=10,
-        ),
+        patch(_P4_SCAN_EVAL_ROUTE_COST_DETAIL, return_value=(10, 10, 0)),
     ):
         ev = _evaluate_one_shadow_bundle(
             anchor=(10, 4),
@@ -415,11 +417,7 @@ def test_p4_rejects_internal_transport_budget() -> None:
             "placement_stub_route_probe_path",
             return_value=path,
         ),
-        patch(
-            "django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow."
-            "_path_additional_route_cost",
-            return_value=1,
-        ),
+        patch(_P4_SCAN_EVAL_ROUTE_COST_DETAIL, return_value=(1, 1, 0)),
     ):
         ev = _evaluate_one_shadow_bundle(
             anchor=(10, 4),
@@ -463,11 +461,7 @@ def test_p4_accepted_shadow_with_cheap_route_and_budget() -> None:
             "placement_stub_route_probe_path",
             return_value=path,
         ),
-        patch(
-            "django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow."
-            "_path_additional_route_cost",
-            return_value=1,
-        ),
+        patch(_P4_SCAN_EVAL_ROUTE_COST_DETAIL, return_value=(1, 1, 0)),
     ):
         ev = _evaluate_one_shadow_bundle(
             anchor=(10, 4),
@@ -503,11 +497,7 @@ def test_p4_scan_finds_accepted_bundle_on_reclaimed_cell_with_savings() -> None:
             "placement_stub_route_probe_path",
             return_value=path,
         ),
-        patch(
-            "django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow."
-            "_path_additional_route_cost",
-            return_value=1,
-        ),
+        patch(_P4_SCAN_EVAL_ROUTE_COST_DETAIL, return_value=(1, 1, 0)),
     ):
         trace = run_reclaim_shadow_scan_after_pass3(
             before,
@@ -552,11 +542,7 @@ def test_p4_scan_zero_accepted_when_spent_prior_exhausts_internal_budget() -> No
             "placement_stub_route_probe_path",
             return_value=path,
         ),
-        patch(
-            "django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow."
-            "_path_additional_route_cost",
-            return_value=1,
-        ),
+        patch(_P4_SCAN_EVAL_ROUTE_COST_DETAIL, return_value=(1, 1, 0)),
     ):
         tr0 = run_reclaim_shadow_scan_after_pass3(
             before,
@@ -597,11 +583,7 @@ def test_p4_evaluate_rejects_when_spent_prior_plus_incr_exceeds_internal_cap() -
             "placement_stub_route_probe_path",
             return_value=path,
         ),
-        patch(
-            "django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_shadow."
-            "_path_additional_route_cost",
-            return_value=1,
-        ),
+        patch(_P4_SCAN_EVAL_ROUTE_COST_DETAIL, return_value=(1, 1, 0)),
     ):
         ev = _evaluate_one_shadow_bundle(
             anchor=(10, 4),
@@ -839,13 +821,14 @@ def test_p4_loop_attempts_soft_replace_when_candidate_hits_soft_corridor() -> No
             solver_routing_state=None,
             is_external=_external_east,
         )
-    replace_mock.assert_called_once()
+    replace_mock.assert_called()
+    assert replace_mock.call_count == MAX_RECLAIM_ITERATIONS
     call_kw = replace_mock.call_args.kwargs
     assert call_kw["old_soft_corridor_cells"] == [(14, 2)]
     assert P4_SOFT_REPLACE_V1_CONTRACT
     assert merged["p4_soft_replace_contract"] == P4_SOFT_REPLACE_V2_CONTRACT
     assert merged["p4_soft_replace_attempted"] is True
-    assert merged["p4_soft_replace_attempt_count"] == 1
+    assert merged["p4_soft_replace_attempt_count"] == MAX_RECLAIM_ITERATIONS
     assert merged["p4_soft_replace_commit_count"] == 0
     assert out_m is m0
 
@@ -909,10 +892,10 @@ def test_p4_loop_keeps_original_reject_when_soft_replace_fails() -> None:
             is_external=_external_east,
         )
     assert out_m is m0
-    assert merged["p4_reclaim_loop_terminated_reason"] == "provisional_commit_failed"
+    assert merged["p4_reclaim_loop_terminated_reason"] == "provisional_commit_failed_max_iterations"
     assert merged["p4_reclaim_provisional_commit_committed"] is False
     assert merged["p4_soft_replace_committed"] is False
-    assert merged["p4_soft_replace_attempt_count"] == 1
+    assert merged["p4_soft_replace_attempt_count"] == MAX_RECLAIM_ITERATIONS
     assert merged["p4_soft_replace_commit_count"] == 0
 
 
@@ -1745,13 +1728,17 @@ def test_p4_b1_rejects_hard_protected_overlap() -> None:
     assert tr["p4_reclaim_provisional_commit_rollback_reason"] == P4_REJECT_HARD_PROTECTED_CORRIDOR
 
 
-def test_p4_b1_rejects_soft_protected_overlap() -> None:
+def test_p4_b1_rejects_soft_protected_overlap_when_soft_has_active_transport() -> None:
+    """Extension on a belt that is also soft-protected: pre-check hits final-route overlap first."""
+
     scan = ReclaimShadowScanResult(
         trace=_fake_accepted_scan_trace(),
         evals=[_accepted_eval_at_10_4()],
         transport_kind="shape_belt",
     )
-    m = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False)
+    m = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False) + [
+        {"x": 10, "y": 3, "role": "belt"},
+    ]
     out_m, tr = run_p4_reclaim_provisional_commit_after_pass3(
         m,
         final_mining_map=_base_final_mining_map(),
@@ -1763,7 +1750,7 @@ def test_p4_b1_rejects_soft_protected_overlap() -> None:
         scan_result=scan,
     )
     assert out_m == m
-    assert tr["p4_reclaim_provisional_commit_rollback_reason"] == P4_REJECT_SOFT_PROTECTED_CORRIDOR
+    assert tr["p4_reclaim_provisional_commit_rollback_reason"] == P4_REJECT_FINAL_ROUTE_OVERLAP
 
 
 def test_p4_b2_1_trial_connectivity_fail_geometry_ok_b2_succeeds() -> None:
@@ -2114,6 +2101,8 @@ def test_soft_corridor_replace_rejects_without_replacement_route() -> None:
     assert tr["p4_soft_replace_committed"] is False
     assert tr["p4_soft_replace_rejected_reason"] == P4_SOFT_REPLACE_REJECT_NO_REPLACEMENT_ROUTE
     assert tr["p4_soft_replace_connected"] is None
+    assert tr.get("replacement_search_exhausted") is True
+    assert tr.get("replacement_budget_keys") == list(CORRIDOR_REPLACEMENT_BUDGET_KEYS_SOFT_REPLACE)
     assert m == before
 
 
@@ -2641,3 +2630,57 @@ def test_select_best_accepted_prefers_lower_diversity_penalty_at_same_gain() -> 
     best = select_best_accepted_p4_bundle([a, b])
     assert best is not None
     assert best.anchor == (10, 5)
+
+
+def test_path_additional_route_cost_detail_splits_first_hop() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_route_metrics import (  # noqa: E501
+        _path_additional_route_cost,
+        _path_additional_route_cost_detail,
+    )
+
+    path = [(0, 0), (1, 0), (2, 0)]
+    ast = {(0, 0), (1, 0), (2, 0)}
+    mine = {(0, 0), (1, 0), (2, 0)}
+    b: dict = {}
+    tc = {(0, 0): "belt"}
+    tot, first, rest = _path_additional_route_cost_detail(
+        path,
+        asteroid_cells=ast,
+        mineable_cells=mine,
+        buildings=b,
+        transport_cells=tc,
+        fixed_stubs=frozenset({(0, 0)}),
+        outlet_stub=(0, 0),
+    )
+    assert tot == _path_additional_route_cost(
+        path,
+        asteroid_cells=ast,
+        mineable_cells=mine,
+        buildings=b,
+        transport_cells=tc,
+        fixed_stubs=frozenset({(0, 0)}),
+        outlet_stub=(0, 0),
+    )
+    assert first + rest == tot
+
+
+def test_mineable_cur_smaller_soft_pool_includes_released_soft_cell() -> None:
+    """Caller passes active soft only; released soft cells are not excluded."""
+
+    mineable = frozenset({(1, 1), (2, 1), (3, 1)})
+    cur_full = _mineable_cur_for_reclaim(
+        mineable,
+        final_route_cells=frozenset(),
+        hard_protected_corridors=frozenset(),
+        soft_protected_corridors=frozenset({(1, 1), (2, 1)}),
+        committed_building_cells=frozenset(),
+    )
+    cur_active = _mineable_cur_for_reclaim(
+        mineable,
+        final_route_cells=frozenset(),
+        hard_protected_corridors=frozenset(),
+        soft_protected_corridors=frozenset({(1, 1)}),
+        committed_building_cells=frozenset(),
+    )
+    assert (2, 1) not in cur_full
+    assert (2, 1) in cur_active

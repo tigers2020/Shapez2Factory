@@ -93,9 +93,15 @@ def post_reclaim_pass3_permission(
     )
 
 
-def post_reclaim_pass3_gate(pass3_summary: dict[str, Any]) -> tuple[bool, str | None]:
+def post_reclaim_pass3_gate(
+    pass3_summary: dict[str, Any],
+    *,
+    post_reclaim_reruns_lifetime_used: int = 0,
+) -> tuple[bool, str | None]:
     """Return (run_pass3, skip_reason). Reclaim §12.5 minimal gate on solver path."""
 
+    if post_reclaim_reruns_lifetime_used >= MAX_POST_RECLAIM_PASS3_RERUNS:
+        return False, "max_post_reclaim_pass3_reruns_lifetime"
     reruns = int(pass3_summary.get("post_reclaim_pass3_reruns_used") or 0)
     if reruns >= MAX_POST_RECLAIM_PASS3_RERUNS:
         return False, "max_post_reclaim_pass3_reruns_reached"
@@ -105,9 +111,11 @@ def post_reclaim_pass3_gate(pass3_summary: dict[str, Any]) -> tuple[bool, str | 
     p4_add = int(pass3_summary.get("p4_reclaim_loop_internal_transport_cumulative_added") or 0)
     if p4_add <= 0:
         return False, "reclaim_internal_transport_not_added"
-    p3_saved = int(pass3_summary.get("pass3_internal_transport_saved") or 0)
-    if p3_saved - p4_add <= 0:
-        return False, "net_internal_transport_saved_nonpositive"
+    prov = pass3_summary.get("provisional_net_internal_transport_saved_after_reclaim")
+    if prov is None:
+        return False, "provisional_net_internal_transport_missing"
+    if int(prov) <= 0:
+        return False, "provisional_net_internal_transport_nonpositive"
     return True, None
 
 

@@ -1,7 +1,17 @@
-"""STEP4 trunk seed + goal set skeleton (§08 merge-aware routing MVP).
+"""STEP4 trunk seed + route goal set skeleton (§08 merge-aware routing MVP).
 
-``trunk_seed_cell_union`` from existing layout analysis excludes orphan/single-cell
-artifacts (they live under ``cleanup_candidate_cell_union`` in ELA).
+``trunk_seed_cell_union`` lists **main_trunk_candidate** cells only; orphan / single-cell
+artifacts live in ``cleanup_candidate_cell_union`` (ELA) and are **never** read here — see
+:func:`trunk_seed_union_from_existing_layout`.
+
+**Terminology (Algorithm §08):**
+
+- **Trunk seed candidates** (``build_trunk_seed_candidates_by_kind``): per ``TransportKind``,
+  ``exterior_margin ∪`` same-kind cells from ``trunk_seed_cell_union``.
+- **Raw goal set** (``build_step4_goal_set``): first-route → ``candidates ∪ margin``; later →
+  ``committed_trunk_by_kind[kind] ∪ margin`` for this STEP4 run only.
+- **Dijkstra goal_cells**: ``merge_goal_union_meta`` unions that raw set with **live**
+  same-kind exterior-connected trunk from the working map (merge-aware termination).
 """
 
 from __future__ import annotations
@@ -57,7 +67,11 @@ def exterior_margin_cells(
 def trunk_seed_union_from_existing_layout(
     existing_layout_analysis: dict[str, Any] | None,
 ) -> set[Coord]:
-    """Parse ``solver_hints.trunk_seed_cell_union`` (main_trunk_candidate only, §E)."""
+    """Parse ``solver_hints.trunk_seed_cell_union`` (main_trunk_candidate only, §E).
+
+    ``cleanup_candidate_cell_union`` and other ELA keys are **ignored** here so orphans and
+    single-cell artifacts never enter trunk seed candidates.
+    """
 
     if not existing_layout_analysis:
         return set()
@@ -122,7 +136,19 @@ def build_step4_goal_set(
     exterior_margin_cells: set[Coord],
     trunk_seed_candidates_by_kind: dict[str, set[Coord]],
 ) -> set[Coord]:
-    """§3.2: first-route vs subsequent-route goal set (set semantics, before ``frozenset``)."""
+    """§08: raw route goal set **before** merging live map trunk cells.
+
+    **First route (per kind, this STEP4 run):** no cells in ``committed_trunk_by_kind[kind]`` yet
+    → ``trunk_seed_candidates_by_kind[kind] ∪ exterior_margin_cells`` (candidates already
+    include margin; union keeps the contract explicit).
+
+    **Later routes:** once this run has committed at least one same-kind trunk cell for
+    ``kind``, goals are ``committed_trunk_by_kind[kind] ∪ exterior_margin_cells`` only (ELA
+    trunk_seed hints are not re-added — merge targets come from committed paths + margin).
+
+    The working-map exterior-connected trunk (same role) is unioned in
+    ``merge_goal_union_meta`` for Dijkstra ``goal_cells`` (merge-aware termination).
+    """
 
     existing = set(committed_trunk_by_kind.get(kind, ()))
     if existing:

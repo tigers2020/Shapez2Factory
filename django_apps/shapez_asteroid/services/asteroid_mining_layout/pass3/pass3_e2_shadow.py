@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    CORRIDOR_LIFECYCLE_DISCARDED,
     MAX_ROUTE_LENGTH_RATIO,
     P3E2_GUARD_EMPTY_POOL_NOT_WIRED,
     P3E2_GUARD_FROM_ADAPTER_INPUT,
@@ -51,6 +52,11 @@ def _p3e2_shadow_trace(
         "p3e2_lex_found": False,
         "p3e2_lex_internal_transport_count": 0,
         "p3e2_lex_path_length": 0,
+        "p3e2_lex_search_time_ms_total": None,
+        "p3e2_lex_expanded_nodes_total": None,
+        "p3e2_lex_search_mode": None,
+        "p3e2_lex_fallback_reason_last": None,
+        "p3e2_lex_optimality_guarantee_last": None,
         "p3e2_greedy_internal_transport_count": 0,
         "p3e2_greedy_path_length": 0,
         "p3e2_shadow_would_commit": False,
@@ -123,6 +129,11 @@ def _p3e2_shadow_trace(
 
     sum_lex_internal = 0
     sum_lex_len = 0
+    sum_lex_search_ms = 0.0
+    sum_lex_expanded = 0
+    lex_search_mode_last: str | None = None
+    lex_fallback_last: str | None = None
+    lex_optimality_last: bool | None = None
     sum_gr_internal = 0
     sum_gr_len = 0
     all_lex_ok = True
@@ -134,6 +145,7 @@ def _p3e2_shadow_trace(
         if corridor_dto.hard
         else P3E2_GUARD_EMPTY_POOL_NOT_WIRED
     )
+    discarded_probe_stub_cells: list[list[int]] = []
 
     for stub in outlets_order:
         rad_in = route_adapter_input_for_pass3_stub(
@@ -163,6 +175,13 @@ def _p3e2_shadow_trace(
             edge_congestion_weights=edge_congestion_weights,
             interior_depth_by_cell=ad_out.interior_depth_by_cell,
         )
+        st_ms = lex_res.search_time_ms
+        if st_ms is not None:
+            sum_lex_search_ms += float(st_ms)
+        sum_lex_expanded += int(lex_res.expanded_nodes)
+        lex_search_mode_last = lex_res.search_mode
+        lex_fallback_last = lex_res.fallback_reason
+        lex_optimality_last = lex_res.optimality_guarantee
         if lex_res.found:
             lex_outlets_ok += 1
 
@@ -177,6 +196,7 @@ def _p3e2_shadow_trace(
         )
 
         if g_path is None:
+            discarded_probe_stub_cells.append([int(stub[0]), int(stub[1])])
             if reject_reason is None:
                 reject_reason = "no_greedy_baseline"
             if not lex_res.found:
@@ -241,6 +261,11 @@ def _p3e2_shadow_trace(
             "p3e2_lex_found": all_lex_ok,
             "p3e2_lex_internal_transport_count": sum_lex_internal,
             "p3e2_lex_path_length": sum_lex_len,
+            "p3e2_lex_search_time_ms_total": sum_lex_search_ms,
+            "p3e2_lex_expanded_nodes_total": sum_lex_expanded,
+            "p3e2_lex_search_mode": lex_search_mode_last,
+            "p3e2_lex_fallback_reason_last": lex_fallback_last,
+            "p3e2_lex_optimality_guarantee_last": lex_optimality_last,
             "p3e2_greedy_internal_transport_count": sum_gr_internal,
             "p3e2_greedy_path_length": sum_gr_len,
             "p3e2_shadow_would_commit": would_commit,
@@ -250,6 +275,10 @@ def _p3e2_shadow_trace(
             "p3e2_greedy_success_count": greedy_outlets_ok,
             "p3e2_hard_protected_guard_state": hard_guard_state,
             "p3e2_step4_trunk_edge_congestion_wired": edge_congestion_weights is not None,
+            "corridor_probe_discarded_cells": discarded_probe_stub_cells,
+            "corridor_probe_lifecycle": (
+                CORRIDOR_LIFECYCLE_DISCARDED if discarded_probe_stub_cells else None
+            ),
         }
     )
     return base

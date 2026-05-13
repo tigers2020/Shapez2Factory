@@ -61,7 +61,12 @@ def _initial_summary_fields(run_id: str) -> dict[str, Any]:
 
 
 def build_solver_timeline(decoded: dict[str, Any]) -> dict[str, Any]:
-    """Run solver pipeline scaffold: map timeline → validation → single ``solver_summary``."""
+    """Run solver pipeline scaffold: map timeline → validation → single ``solver_summary``.
+
+    ``solver_summary``/NDJSON/replay are **outputs** of this run (via ``finalize`` +
+    ``solver_trace``). Decisions inside ``run_solver_timeline_pipeline`` use ``decoded`` and live
+    map/routing state only — never prior trace files as inputs.
+    """
 
     with trace_run_scope():
         run_id = trace_run_id_current() or ""

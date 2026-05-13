@@ -18,6 +18,9 @@ P4_ORCHESTRATION_ENTRY_SEGMENT_VALUE = RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM
 RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE = "step4_routing_failure"
 # Algorithm ``02_pipeline_control_flow`` §4.3 표 trigger id (replay·정책 테이블과 동일 문자열).
 RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE = "step4_capacity_failure"
+# Greedy Pass3 connectivity-only rollback → STEP6 reclaim (§4.3.1); not STEP9 validation recovery.
+RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK = "pass3_connectivity_break"
+RECOVERY_PHASE_PASS3_CONNECTIVITY_BREAK = RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK
 RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE = "final_validation_failure"
 
 # --- P5 recovery contract (attempt caps) ---
@@ -123,6 +126,8 @@ PASS12_TRY_COMMIT_PASS2_BUNDLE_TRACE_LOCATION = "pass12_bundle_commit.try_commit
 DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD = 1.5
 MAX_RECLAIM_INTERNAL_TRANSPORT_SPEND_RATIO = 0.35
 MIN_INTERNAL_TRANSPORT_SPEND_WHEN_NO_PASS3_SAVINGS = 1
+# P4-B2 incremental stub→trunk route length vs shadow-scan greedy baseline (same snapshot family).
+MAX_RECLAIM_INCREMENTAL_ROUTE_LENGTH_RATIO = 1.20
 
 # Expected mining throughput gain (slots) for a minimal miner + extension shadow bundle.
 RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS = 2.0
@@ -165,6 +170,19 @@ PASS3_GREEDY_REJECT_DETAIL_ROUTE_LENGTH_RATIO = "rejected_by_route_length_ratio"
 # Pass3 greedy: optional delete + bounded local replacement (same kind) when pure delete breaks
 # connectivity. Default off — overlaps P3-E3 atomic guarded search; keep small caps when enabling.
 #
+# §14 protected corridor lifecycle (document-aligned state ids; trace + DTO helpers).
+CORRIDOR_LIFECYCLE_CANDIDATE = "candidate_corridor"
+CORRIDOR_LIFECYCLE_SOFT = "soft_protected"
+CORRIDOR_LIFECYCLE_HARD = "hard_protected"
+CORRIDOR_LIFECYCLE_DISCARDED = "discarded"
+# Soft-replace §14.3: which subsystems consume the replacement search budget (trace keys).
+CORRIDOR_REPLACEMENT_BUDGET_KEYS_SOFT_REPLACE: tuple[str, ...] = (
+    "collect_routing_jobs",
+    "placement_stub_route_probe_path",
+    "replacement_probe_path_cardinally_connected",
+    "validate_final_mining_layout",
+)
+
 # Layering vs §14.3: ``try_atomic_replace_soft_corridor`` (routing.protected_corridor_replace)
 # runs on full ``mining_map`` with soft-corridor membership and post-swap validation. Pass3 local
 # replacement only patches the greedy ``dict[Coord,str]`` transport graph for a single routing
@@ -183,6 +201,7 @@ P4_REJECT_NO_OUTPUT_STUB = "rejected_by_no_output_stub"
 P4_REJECT_NO_INCREMENTAL_ROUTE = "rejected_by_no_incremental_route"
 P4_REJECT_GAIN_RATIO = "rejected_by_gain_ratio"
 P4_REJECT_INTERNAL_TRANSPORT_BUDGET = "rejected_by_internal_transport_budget"
+P4_REJECT_INCREMENTAL_ROUTE_LENGTH_RATIO = "rejected_by_incremental_route_length_ratio"
 P4_REJECT_VALIDATION = "rejected_by_validation"
 
 P4_REJECT_NO_SHADOW_CANDIDATE = "rejected_by_no_shadow_candidate"
@@ -197,6 +216,9 @@ P4_SOFT_REPLACE_REJECT_REPLACEMENT_NOT_CONNECTED = "rejected_by_replacement_not_
 P4_SOFT_REPLACE_REJECT_VALIDATION = "rejected_by_soft_replace_validation"
 
 P4_SOFT_REPLACE_ROUTE_PLACEMENT_ID = "p4_soft_replace_route"
+# Document-facing aliases (same string values as P4 / P3-E3 rejection ids).
+REJECTED_BY_HARD_PROTECTED_CORRIDOR = P4_REJECT_HARD_PROTECTED_CORRIDOR
+REJECTED_BY_NO_REPLACEMENT_ROUTE = P4_SOFT_REPLACE_REJECT_NO_REPLACEMENT_ROUTE
 
 # §14.3 soft corridor atomic replace (P4 reclaim loop + shared routing primitive; see
 # routing.protected_corridor_replace.try_atomic_replace_soft_corridor).
@@ -302,7 +324,7 @@ def post_reclaim_p3e3_route_ratio_max(*, pass3_internal_transport_saved: int) ->
 
 
 # --- Replay NDJSON contract ---
-SOLVER_REPLAY_CONTRACT_VERSION = 9
+SOLVER_REPLAY_CONTRACT_VERSION = 10
 
 # v9: replay ``events[]`` carry ``event_type`` (canonical category) alongside legacy ``kind``.
 # v8: ``ui_frames[].trunk_load_overlay`` (STEP4 trunk observation slice for STEP10 UI).
@@ -345,6 +367,52 @@ P3F_COMMIT_REASON_NORMAL_GAIN = "normal_gain"
 COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY = "degraded_connected_recovery"
 ROLLUP_COMMIT_REASONS_CANONICAL: frozenset[str] = frozenset(
     {P3F_COMMIT_REASON_NORMAL_GAIN, COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY}
+)
+
+# Telemetry: strings that must never be stored as a **successful** ``pass3_commit_reason`` /
+# ``recovery_validation_outcome["commit_reason"]`` (branch/reject/rollback vocabulary).
+INVALID_COMMIT_REASON_STRINGS: frozenset[str] = frozenset(
+    {
+        "pass3_connectivity_break",
+        RECOVERY_PHASE_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
+        RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
+        RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE,
+        RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK,
+        RECOVERY_TRIGGER_RECLAIM_INCREMENTAL_FAILURE,
+        RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE,
+        P3E3_REJECT_NO_REPLACEMENT_ROUTE,
+        P3E3_REJECT_CONNECTIVITY,
+        "rejected_by_capacity",
+        "rollback_unrouted_placement",
+        "solver_failure_attempt_limit",
+        PASS3_GREEDY_REJECT_DETAIL_NO_INTERNAL_DELTA,
+        PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
+        PASS3_GREEDY_REJECT_DETAIL_ZERO_GAIN,
+        PASS3_GREEDY_REJECT_DETAIL_ROUTE_LENGTH_RATIO,
+        "rejected_by_gain_or_length",
+        P3E3_REJECT_DISCONNECTED_STUB,
+        P3E3_REJECT_ORPHAN_TRANSPORT,
+        P3E3_REJECT_EXTERNAL_UNREACHABLE_TRANSPORT,
+        P3E3_REJECT_NO_INTERNAL_TRANSPORT_GAIN,
+        P3E3_REJECT_GEOMETRY,
+        P3E3_REJECT_VALIDATION,
+        P3E3_REJECT_HARD_PROTECTED_CORRIDOR,
+        P3E3_REJECT_ROUTE_LENGTH_RATIO,
+        P3E3_REJECT_FIXED_STUB_REMOVAL,
+        P3E3_REJECT_PRECHECK_NO_REPLACEMENT_ROUTE,
+        P3E3_REJECT_PRECHECK_NO_CANDIDATE,
+        P4_REJECT_FINAL_ROUTE_OVERLAP,
+        P4_REJECT_HARD_PROTECTED_CORRIDOR,
+        P4_REJECT_SOFT_PROTECTED_CORRIDOR,
+        P4_REJECT_NO_OUTPUT_STUB,
+        P4_REJECT_NO_INCREMENTAL_ROUTE,
+        P4_REJECT_GAIN_RATIO,
+        P4_REJECT_INTERNAL_TRANSPORT_BUDGET,
+        P4_REJECT_INCREMENTAL_ROUTE_LENGTH_RATIO,
+        P4_REJECT_VALIDATION,
+        P4_REJECT_NO_SHADOW_CANDIDATE,
+        P4_SOFT_REPLACE_REJECT_NO_REPLACEMENT_ROUTE,
+    }
 )
 
 # Rejected reason mapping fallback when a P3-E3 reason is not in the table.

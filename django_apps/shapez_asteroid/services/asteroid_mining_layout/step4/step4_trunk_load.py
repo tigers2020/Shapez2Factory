@@ -19,6 +19,8 @@ Nested blocks (v2 = v1 blocks plus observation):
 
 - ``route_metrics``: ``route_cell_visits`` (sum of committed path lengths; double-counts
   shared cells) vs ``unique_route_cell_count`` (``|union of committed path cells|``).
+  ``shared_trunk_reuse_ratio`` = ``1 - unique_route_cell_count / route_cell_visits`` when
+  visits > 0, else ``0.0`` (observation-only; not a routing gate).
 - ``trunk_load_by_kind``: per ``transport_kind`` committed trunk size, visits, and kind-local
   unique path cells (diagnostic; global unique may differ if kinds ever overlap; not expected
   for shape vs fluid in the MVP split).
@@ -221,12 +223,18 @@ def build_step4_trunk_load(
             "unique_route_cell_count": len(cells_k),
         }
 
+    reuse_ratio = (
+        round(1.0 - float(unique_global) / float(route_cell_visits), 6)
+        if route_cell_visits > 0
+        else 0.0
+    )
     out: dict[str, Any] = {
         "trunk_load_contract_version": TRUNK_LOAD_CONTRACT_VERSION,
         "mode": trace.get("mode", "accumulate_only"),
         "route_metrics": {
             "route_cell_visits": int(route_cell_visits),
             "unique_route_cell_count": int(unique_global),
+            "shared_trunk_reuse_ratio": reuse_ratio,
         },
         "trunk_load_by_kind": by_kind_out,
         "transport_usage_load": {

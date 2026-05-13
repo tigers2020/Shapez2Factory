@@ -26,8 +26,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
     PlacementCommitState,
+    apply_placement_commit_state_transition,
     placement_commit_counts_by_state,
     placement_record_to_failure_dict,
+    replace_provisional_placement_stub_cell,
     transition_placement_record_to_rolled_back,
     unfinalized_placement_count_from_counts,
 )
@@ -137,6 +139,50 @@ __all__ = [
 ]
 
 
+def _step4_stub_min_margin_manhattan(
+    stub: Coord,
+    margin_cells: frozenset[Coord] | set[Coord],
+) -> int:
+    """Minimum Manhattan distance from ``stub`` to any exterior margin cell."""
+
+    if not margin_cells:
+        return 0
+    sx, sy = stub
+    best = 10**9
+    for mx, my in margin_cells:
+        d = abs(sx - mx) + abs(sy - my)
+        if d < best:
+            best = d
+    return int(best)
+
+
+def _step4_sort_routing_jobs_outside_in(
+    jobs: list[tuple[Coord, Coord, str, str | None]],
+    *,
+    margin_cells: frozenset[Coord] | set[Coord],
+) -> list[tuple[Coord, Coord, str, str | None]]:
+    """Prefer routing stubs nearer the exterior margin first (§08 merge-aware ordering).
+
+    ``collect_routing_jobs`` already applies a deterministic scan order; this reorders only
+    when ``margin_cells`` is non-empty so merge-aware routing seeds shared trunk from the
+    outside inward without changing the Dijkstra cost model.
+    """
+
+    if not jobs or not margin_cells:
+        return jobs
+    mc = margin_cells if isinstance(margin_cells, frozenset) else frozenset(margin_cells)
+    return sorted(
+        jobs,
+        key=lambda j: (
+            _step4_stub_min_margin_manhattan(j[1], mc),
+            j[1][1],
+            j[1][0],
+            j[0][1],
+            j[0][0],
+        ),
+    )
+
+
 def run_step4_merge_aware_routing(
     map_after_pass2: list[dict[str, Any]],
     *,
@@ -199,6 +245,7 @@ def run_step4_merge_aware_routing(
         hint_union=hint_union,
         cells=cells,
     )
+    jobs = _step4_sort_routing_jobs_outside_in(list(jobs), margin_cells=margin_cells)
     committed_trunk_by_kind: dict[str, set[Coord]] = {}
     final_route_cells: set[Coord] = set()
     route_visits_by_kind: dict[str, int] = {}
@@ -276,10 +323,11 @@ def run_step4_merge_aware_routing(
                 )
                 if placement_id is not None and placement_id in work_records:
                     rid = f"route-{placement_id}"
-                    work_records[placement_id] = replace(
+                    work_records[placement_id] = apply_placement_commit_state_transition(
                         work_records[placement_id],
-                        state=PlacementCommitState.ROUTED_CONFIRMED,
+                        to=PlacementCommitState.ROUTED_CONFIRMED,
                         route_id=rid,
+                        context="stub_in_trunk_merge_to_existing",
                     )
                     committed_trunk_by_kind.setdefault(tk, set()).add(stub_cell)
                     final_route_cells.add(stub_cell)
@@ -295,6 +343,9 @@ def run_step4_merge_aware_routing(
                 exterior_margin_cells=margin_cells,
                 trunk_seed_candidates_by_kind=trunk_seed_by_kind,
             )
+            # ``raw_goal`` = §08 trunk_seed∪margin (first phase) or committed∪margin (later).
+            # ``merge_goal_union_meta`` adds live same-kind exterior-connected trunk cells so
+            # Dijkstra can merge to preserved trunk before this run commits any path.
             goal_cells, goal_order_meta = _s4sd.merge_goal_union_meta(
                 stub_cell,
                 raw_goal=set(raw_goal),
@@ -415,7 +466,7 @@ def run_step4_merge_aware_routing(
                             recovery_last_error = job_recovery_last_err
                             path = recovery_out.path
                             stub_cell = recovery_out.new_stub_cell
-                            work_records[placement_id] = replace(
+                            work_records[placement_id] = replace_provisional_placement_stub_cell(
                                 rec0,
                                 stub_cell=stub_cell,
                             )
@@ -489,10 +540,11 @@ def run_step4_merge_aware_routing(
                     if placement_id is not None and placement_id in work_records:
                         rec = work_records[placement_id]
                         _rollback_placement_cells(cells, rec, final_cells, mineable)
-                        work_records[placement_id] = replace(
+                        work_records[placement_id] = apply_placement_commit_state_transition(
                             rec,
-                            state=PlacementCommitState.QUARANTINED_UNROUTED,
+                            to=PlacementCommitState.QUARANTINED_UNROUTED,
                             rollback_reason="no_route",
+                            context="step4_no_route",
                         )
                         quarantined.append(placement_id)
                         fd = placement_record_to_failure_dict(
@@ -643,10 +695,11 @@ def run_step4_merge_aware_routing(
             if placement_id is not None:
                 routes_by_placement_id[placement_id] = [[int(a), int(b)] for a, b in path]
             if placement_id is not None and placement_id in work_records:
-                work_records[placement_id] = replace(
+                work_records[placement_id] = apply_placement_commit_state_transition(
                     work_records[placement_id],
-                    state=PlacementCommitState.ROUTED_CONFIRMED,
+                    to=PlacementCommitState.ROUTED_CONFIRMED,
                     route_id=f"route-{placement_id}",
+                    context="step4_path_routed",
                 )
 
         routes_out, p2c_metrics = _p2c_revalidate_and_correct(

@@ -13,6 +13,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 
 
+class PlacementCommitTransitionError(ValueError):
+    """Illegal :class:`PlacementCommitState` transition (Algorithm §9.6 FSM)."""
+
+
 class PlacementCommitState(StrEnum):
     """Pass12 bundle commit FSM 상태값.
 
@@ -25,6 +29,71 @@ class PlacementCommitState(StrEnum):
     ROUTED_CONFIRMED = "routed_confirmed"
     QUARANTINED_UNROUTED = "quarantined_unrouted"
     ROLLED_BACK = "rolled_back"
+
+
+_AllowedPlacementCommitTransition = tuple[PlacementCommitState, PlacementCommitState]
+_ALLOWED_PLACEMENT_COMMIT_TRANSITIONS: frozenset[_AllowedPlacementCommitTransition] = frozenset(
+    {
+        (PlacementCommitState.PROVISIONAL_PLACED, PlacementCommitState.ROUTED_CONFIRMED),
+        (PlacementCommitState.PROVISIONAL_PLACED, PlacementCommitState.QUARANTINED_UNROUTED),
+        (PlacementCommitState.PROVISIONAL_PLACED, PlacementCommitState.ROLLED_BACK),
+        (PlacementCommitState.QUARANTINED_UNROUTED, PlacementCommitState.ROUTED_CONFIRMED),
+        (PlacementCommitState.QUARANTINED_UNROUTED, PlacementCommitState.ROLLED_BACK),
+        (PlacementCommitState.ROUTED_CONFIRMED, PlacementCommitState.ROLLED_BACK),
+    }
+)
+
+
+def assert_placement_commit_transition_allowed(
+    rec: PlacementCommitRecord,
+    to: PlacementCommitState,
+    *,
+    context: str = "",
+) -> None:
+    """Raise :class:`PlacementCommitTransitionError` when ``rec.state -> to`` is not canonical."""
+
+    if (rec.state, to) not in _ALLOWED_PLACEMENT_COMMIT_TRANSITIONS:
+        ctx = f" ({context})" if context else ""
+        raise PlacementCommitTransitionError(
+            f"illegal placement FSM transition{ctx}: {rec.state!r} -> {to!r} "
+            f"(placement_id={rec.placement_id!r})"
+        )
+
+
+def apply_placement_commit_state_transition(
+    rec: PlacementCommitRecord,
+    *,
+    to: PlacementCommitState,
+    route_id: str | None = None,
+    rollback_reason: str | None = None,
+    clear_route_id: bool = False,
+    context: str = "",
+) -> PlacementCommitRecord:
+    """Return ``replace(rec, ...)`` after validating a single allowed FSM edge."""
+
+    assert_placement_commit_transition_allowed(rec, to, context=context)
+    rid = rec.route_id
+    if clear_route_id:
+        rid = None
+    elif route_id is not None:
+        rid = route_id
+    rr = rec.rollback_reason if rollback_reason is None else rollback_reason
+    return replace(rec, state=to, route_id=rid, rollback_reason=rr)
+
+
+def replace_provisional_placement_stub_cell(
+    rec: PlacementCommitRecord,
+    *,
+    stub_cell: Coord,
+) -> PlacementCommitRecord:
+    """Pass2 recovery may retarget stub while staying ``PROVISIONAL_PLACED`` (no FSM edge)."""
+
+    if rec.state != PlacementCommitState.PROVISIONAL_PLACED:
+        raise PlacementCommitTransitionError(
+            "stub_cell update requires PROVISIONAL_PLACED "
+            f"(placement_id={rec.placement_id!r}, state={rec.state!r})"
+        )
+    return replace(rec, stub_cell=stub_cell)
 
 
 @dataclass(frozen=True)
@@ -55,13 +124,23 @@ def transition_placement_record_to_rolled_back(
     """Single entry point for terminal ``ROLLED_BACK`` (STEP4 quarantine finalize + P2-C)."""
 
     rr = rec.rollback_reason if rollback_reason is None else rollback_reason
-    rid: str | None = None if clear_route_id else rec.route_id
-    return replace(
+    return apply_placement_commit_state_transition(
         rec,
-        state=PlacementCommitState.ROLLED_BACK,
+        to=PlacementCommitState.ROLLED_BACK,
         rollback_reason=rr,
-        route_id=rid,
+        clear_route_id=clear_route_id,
+        context="transition_placement_record_to_rolled_back",
     )
+
+
+def unfinalized_placement_count_from_placement_commit_by_id(
+    placement_commit_by_id: Mapping[str, str],
+) -> int:
+    """Count rows in ``PROVISIONAL_PLACED`` or ``QUARANTINED_UNROUTED`` from id→state string map."""
+
+    pv = PlacementCommitState.PROVISIONAL_PLACED.value
+    qv = PlacementCommitState.QUARANTINED_UNROUTED.value
+    return sum(1 for s in placement_commit_by_id.values() if s in (pv, qv))
 
 
 def make_placement_id(placement_pass: str, seq: int) -> str:

@@ -42,6 +42,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_route_metrics import (  # noqa: E501
     _incremental_internal_transport_on_path,
+    _path_additional_route_cost_detail,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     blocked_cells as _blocked_cells,
@@ -354,17 +355,18 @@ def _evaluate_one_shadow_bundle(
 
     route_path = tuple(path)
 
-    add_cost = float(
-        _p4f._path_additional_route_cost(
-            path,
-            asteroid_cells=scan.asteroid_cells,
-            mineable_cells=scan.mineable_cells,
-            buildings=scan.probe_buildings,
-            transport_cells=scan.transport_cells,
-            fixed_stubs=scan.fixed_stubs,
-            outlet_stub=stub,
-        )
+    tot_cost, first_hop, after_stub = _path_additional_route_cost_detail(
+        path,
+        asteroid_cells=scan.asteroid_cells,
+        mineable_cells=scan.mineable_cells,
+        buildings=scan.probe_buildings,
+        transport_cells=scan.transport_cells,
+        fixed_stubs=scan.fixed_stubs,
+        outlet_stub=stub,
     )
+    add_cost = float(tot_cost)
+    fh_trace = float(first_hop)
+    rest_trace = float(after_stub)
     if add_cost >= float(INF_COST):
         div_kw = _p4_reclaim_diversity_fields(
             anchor,
@@ -386,6 +388,8 @@ def _evaluate_one_shadow_bundle(
             extension=extension,
             rotation=rotation,
             shadow_route_path=route_path,
+            p4_route_cost_first_hop_from_stub=fh_trace,
+            p4_route_cost_after_stub=rest_trace,
             **div_kw,
         )
 
@@ -423,6 +427,8 @@ def _evaluate_one_shadow_bundle(
             extension=extension,
             rotation=rotation,
             shadow_route_path=route_path,
+            p4_route_cost_first_hop_from_stub=fh_trace,
+            p4_route_cost_after_stub=rest_trace,
             **div_kw,
         )
 
@@ -439,6 +445,8 @@ def _evaluate_one_shadow_bundle(
             extension=extension,
             rotation=rotation,
             shadow_route_path=route_path,
+            p4_route_cost_first_hop_from_stub=fh_trace,
+            p4_route_cost_after_stub=rest_trace,
             **div_kw,
         )
 
@@ -454,6 +462,8 @@ def _evaluate_one_shadow_bundle(
             extension=extension,
             rotation=rotation,
             shadow_route_path=route_path,
+            p4_route_cost_first_hop_from_stub=fh_trace,
+            p4_route_cost_after_stub=rest_trace,
             **div_kw,
         )
 
@@ -468,5 +478,7 @@ def _evaluate_one_shadow_bundle(
         extension=extension,
         rotation=rotation,
         shadow_route_path=route_path,
+        p4_route_cost_first_hop_from_stub=fh_trace,
+        p4_route_cost_after_stub=rest_trace,
         **div_kw,
     )

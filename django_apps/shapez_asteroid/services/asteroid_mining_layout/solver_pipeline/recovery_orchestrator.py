@@ -1,6 +1,10 @@
 """P5 bounded recovery: validation routing, baselines, optional Pass3→P4 retry loop.
 
 Algorithm §4.3 return policy (spec table): ``solver.recovery_return_policy``; branch wiring D2-B/C.
+
+Pipeline stages consume ``decoded``, working maps, ``routing_state_summary``, and structured
+per-stage summaries only. ``replay_events`` / NDJSON / ``solver_summary`` trace payloads are
+**emitted** for replay UI and offline tools (``scripts/debug``); they are not algorithm inputs.
 """
 
 from __future__ import annotations
@@ -17,6 +21,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     RECOVERY_ACTION_ROLLBACK_LOWEST_PRIORITY_PLACEMENT,
     RECOVERY_ACTION_ROLLBACK_OR_FAIL_QUARANTINED,
     RECOVERY_PHASE_VALIDATION_RECOVERY,
+    RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE,
     RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
     RECOVERY_TRIGGER_VALIDATION_RECOVERY_ENTRY,
 )
@@ -85,6 +90,9 @@ def _final_validation_report_from_pipeline_dict(fv: Any) -> FinalValidationRepor
         extension_count=int(fv.get("extension_count") or 0),
         transport_cell_count=int(fv.get("transport_cell_count") or 0),
         transport_connectivity_ok=bool(fv.get("transport_connectivity_ok", True)),
+        orphan_shape_belt_count=int(fv.get("orphan_shape_belt_count") or 0),
+        orphan_fluid_pipe_count=int(fv.get("orphan_fluid_pipe_count") or 0),
+        fixed_output_stub_removed_count=int(fv.get("fixed_output_stub_removed_count") or 0),
     )
 
 
@@ -160,6 +168,12 @@ def enrich_solver_summary_recovery(
         is_total_recovery_cap_bounded() or is_validation_recovery_loop_enabled()
     )
     synthesize_recovery_validation_outcome(summary_fields)
+    summary_fields["total_recovery_attempts"] = int(
+        summary_fields.get("total_recovery_attempts_used") or 0
+    )
+    summary_fields["validation_recovery_attempts"] = int(
+        summary_fields.get("validation_recovery_attempts_used") or 0
+    )
 
 
 def recovery_timeline_envelope() -> dict[str, Any]:
@@ -355,6 +369,22 @@ def run_solver_timeline_pipeline(
                 debug_location=debug_location,
                 existing_layout_analysis=existing_layout_analysis,
             )
+    elif s4_primary == RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE:
+        s4_cap = _recovery_return_policy.recovery_return_policy_for_trigger(
+            RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE,
+        )
+        if s4_cap.reenters_step4:
+            step4 = run_step4_stage(
+                map_after_pass2=pass12.map_after_pass2,
+                final_map=final_map,
+                is_external=is_external,
+                placement_records=pass12.placement_records,
+                pass12_skipped=pass12.pass12_skipped,
+                pass12_replay_txn_id=pass12.pass12_replay_txn_id,
+                replay_events=replay_events,
+                debug_location=debug_location,
+                existing_layout_analysis=existing_layout_analysis,
+            )
     optimization_baseline_internal_transport = optimization_baseline_internal_transport_at_map(
         pass12.map_after_pass2,
         final_mining_map=final_map,
@@ -382,6 +412,7 @@ def run_solver_timeline_pipeline(
     # a floor, ``range(max_cycles)`` runs zero iterations and ``out`` stays None.
     max_cycles = max(1, int(max_cycles))
     pass3_recovery_context = False
+    solver_recovery_budgets: dict[str, int] = {"post_reclaim_pass3_reruns_lifetime": 0}
     out: dict[str, Any] | None = None
     summary_fields: dict[str, Any] | None = None
     last_pipeline_out: dict[str, Any] | None = None
@@ -431,9 +462,12 @@ def run_solver_timeline_pipeline(
             step4_committed=step4.step4_result.committed,
             step4_trunk_load=dict(step4.step4_result.trunk_load),
         )
+        map_for_p4 = pass3.map_final
+        if pass3.pass3_summary.get("recovery_pass3_connectivity_break"):
+            map_for_p4 = solver_mut_txn.copy_mining_map_rows(step4.map_after_routing)
         p4 = _p4_mod.run_p4_reclaim_stage(
             map_after_routing=step4.map_after_routing,
-            map_final=pass3.map_final,
+            map_final=map_for_p4,
             final_map=final_map,
             is_external=is_external,
             existing_layout_analysis=existing_layout_analysis,
@@ -445,6 +479,7 @@ def run_solver_timeline_pipeline(
             replay_events=replay_events,
             routing_state_summary=step4.routing_state_summary,
             debug_location=debug_location,
+            solver_recovery_budgets=solver_recovery_budgets,
         )
         out, summary_fields = _finalize_mod.build_final_solver_output(
             run_id=run_id,
@@ -495,6 +530,12 @@ def run_solver_timeline_pipeline(
             summary_fields["validation_recovery_cycles_used"] = c
             summary_fields["validation_recovery_attempts_used"] = c
             summary_fields["solver_replay_contract_envelope"] = recovery_timeline_envelope()
+        summary_fields["validation_recovery_attempts"] = int(
+            summary_fields.get("validation_recovery_attempts_used") or 0
+        )
+        summary_fields["total_recovery_attempts"] = int(
+            summary_fields.get("total_recovery_attempts_used") or 0
+        )
 
         last_pipeline_out = out
         if out.get("ok"):

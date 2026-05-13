@@ -96,8 +96,13 @@ def run_p4_reclaim_stage(
     replay_events: list[dict[str, Any]],
     routing_state_summary: dict[str, Any] | None,
     debug_location: str,
+    solver_recovery_budgets: dict[str, int] | None = None,
 ) -> P4ReclaimStageResult:
-    """P4 reclaim과 post-reclaim Pass3를 기존 순서대로 실행한다."""
+    """P4 reclaim과 post-reclaim Pass3를 기존 순서대로 실행한다.
+
+    ``solver_recovery_budgets``가 주어지면 ``post_reclaim_pass3_reruns_lifetime`` 키로
+    solve 전역 post-reclaim Pass3 재실행 횟수를 누적한다(``MAX_POST_RECLAIM_PASS3_RERUNS``).
+    """
 
     p3_trace_local: dict[str, Any] = p3_trace if eligible_pass3 else {}
     p4_permission = p4_reclaim_permission_snapshot(
@@ -208,6 +213,13 @@ def run_p4_reclaim_stage(
     pass3_summary.update(
         {k: v for k, v in p4_trace.items() if k not in _PASS3_PRIMARY_METRICS_KEYS},
     )
+    bl_prev = pass3_summary.get("baseline_internal_transport_at_reclaim_entry")
+    if isinstance(bl_prev, int) and not isinstance(bl_prev, bool):
+        cur_it = _internal_transport_count_for_pass3_kind(map_final, is_external=is_external)
+        if isinstance(cur_it, int):
+            pass3_summary["provisional_net_internal_transport_saved_after_reclaim"] = int(
+                bl_prev
+            ) - int(cur_it)
     p3_sv = int(pass3_summary.get("pass3_internal_transport_saved") or 0)
     p4_cum = int(pass3_summary.get("p4_reclaim_loop_internal_transport_cumulative_added") or 0)
     pass3_summary["pass3_reclaim_projected_net_internal_saved"] = p3_sv - p4_cum
@@ -218,7 +230,15 @@ def run_p4_reclaim_stage(
         pass3_trace=p3_trace_local,
     ):
         pass3_summary.setdefault("post_reclaim_pass3_reruns_used", 0)
-        do_pr, pr_gate = post_reclaim_pass3_gate(pass3_summary)
+        lifetime_used = 0
+        if solver_recovery_budgets is not None:
+            lifetime_used = int(
+                solver_recovery_budgets.get("post_reclaim_pass3_reruns_lifetime", 0)
+            )
+        do_pr, pr_gate = post_reclaim_pass3_gate(
+            pass3_summary,
+            post_reclaim_reruns_lifetime_used=lifetime_used,
+        )
         if not do_pr:
             pass3_summary["post_reclaim_pass3_attempted"] = False
             pass3_summary["post_reclaim_pass3_executed"] = False
@@ -233,6 +253,10 @@ def run_p4_reclaim_stage(
             )
             pass3_summary.update(post_reclaim_update)
             extend_recovery_chain(pass3_summary, RECOVERY_SEGMENT_POST_RECLAIM_PASS3)
+            if solver_recovery_budgets is not None:
+                nxt = int(solver_recovery_budgets.get("post_reclaim_pass3_reruns_lifetime", 0)) + 1
+                solver_recovery_budgets["post_reclaim_pass3_reruns_lifetime"] = nxt
+                pass3_summary["post_reclaim_pass3_reruns_lifetime_used"] = nxt
     tag_post_reclaim_pass3_connectivity_break(pass3_summary)
     finalize_recovery_terminal_reason(pass3_summary)
     attach_net_internal_transport_saved_after_reclaim(

@@ -33,6 +33,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_merge_routing as step4_mod,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_merge_routing import (
+    _step4_sort_routing_jobs_outside_in,
     run_step4_merge_aware_routing,
     step4_routing_skipped_result,
 )
@@ -43,6 +44,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
     validate_final_mining_layout,
 )
 from django_apps.shapez_asteroid.services.blueprint_map_summary import build_map_timeline
+from tests.unit.shapez_asteroid.test_pass1_timeline_integration import (
+    _decoded_ring_with_interior,
+)
 
 
 def _mining_map_cascade_neighbor_rollback_fixture() -> list[dict[str, Any]]:
@@ -392,6 +396,34 @@ def test_step4_skipped_result_contract() -> None:
     assert r.trunk_load.get("route_revalidation_passed") is True
     assert r.trunk_load.get("broken_routed_route_count") == 0
     assert r.trunk_load.get("cascade_rollback_count") == 0
+
+
+def test_p2c_revalidate_runs_after_main_routing_loop() -> None:
+    """ROUTED_CONFIRMED rows still pass through P2-C (route geometry), not only placement FSM."""
+
+    decoded = _decoded_shape_miners_with_belt_escape()
+    mt = build_map_timeline(decoded)
+    wm, fm = mt[0]["mining_map"], mt[-1]["mining_map"]
+    is_ext = external_predicate_for_mining_map(mt[1]["mining_map"])
+    _p1, m2, stats = integrate_pass12_placement_into_working_map(
+        working_map=wm, final_mining_map=fm, is_external=is_ext
+    )
+    pr = stats.get("placement_records")
+    calls = {"n": 0}
+    real_p2c = step4_mod._p2c_revalidate_and_correct
+
+    def counting_p2c(*args: Any, **kwargs: Any) -> Any:
+        calls["n"] += 1
+        return real_p2c(*args, **kwargs)
+
+    with patch.object(step4_mod, "_p2c_revalidate_and_correct", counting_p2c):
+        run_step4_merge_aware_routing(
+            m2,
+            final_mining_map=fm,
+            is_external=is_ext,
+            placement_records=pr,
+        )
+    assert calls["n"] == 1
 
 
 def test_p2c_corrective_reroute_increments_when_stub_check_flaky_then_ok() -> None:
@@ -782,3 +814,28 @@ def test_count_placement_fsm_rows_on_cells_counts_distinct_rows() -> None:
     cells = cells_dict_from_mining_map(mining_map)
     q, p = count_placement_fsm_rows_on_cells(cells)
     assert p == 1 and q == 1
+
+
+def test_step4_outside_in_job_sort_orders_by_stub_margin_distance() -> None:
+    """Regression: outside-in ordering is deterministic (margin Manhattan, then scan tie-break)."""
+
+    jobs = [
+        ((2, 3), (3, 3), "shape_belt", "c"),
+        ((1, 1), (2, 1), "shape_belt", "a"),
+        ((3, 1), (4, 1), "shape_belt", "b"),
+    ]
+    margin = frozenset({(10, 2)})
+    out = _step4_sort_routing_jobs_outside_in(jobs, margin_cells=margin)
+    assert [j[3] for j in out] == ["b", "c", "a"]
+
+
+def test_step4_ring_build_solver_timeline_emits_shared_trunk_reuse_ratio() -> None:
+    """Gap-probe fixture: trunk_load.route_metrics carries derived reuse (observation-only)."""
+
+    out = build_solver_timeline(_decoded_ring_with_interior())
+    rm = out["solver_summary"]["trunk_load"]["route_metrics"]
+    assert "shared_trunk_reuse_ratio" in rm
+    visits = float(rm["route_cell_visits"])
+    unique = float(rm["unique_route_cell_count"])
+    assert rm["shared_trunk_reuse_ratio"] == round(1.0 - unique / visits, 6)
+    assert out["return_reason"] == "ok"

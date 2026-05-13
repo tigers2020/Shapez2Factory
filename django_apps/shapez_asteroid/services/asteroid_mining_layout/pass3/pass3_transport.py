@@ -1,4 +1,19 @@
-"""Pass-3 mining-priority transport reconstruction (façade re-exports + main entry)."""
+"""Pass-3 mining-priority transport reconstruction (façade re-exports + main entry).
+
+Canonical Pass3 objective (STEP5): reduce *asteroid internal* transport and bias routes toward
+exterior / void / low-value cells while preserving connectivity, fixed output stubs, and
+protected corridors — not merely reconnecting routes.
+
+Lexicographic priority tuple (in order, cumulative along the path): ``(internal_transport,
+mining_opportunity_loss, route_zone_cost, congestion_penalty, turn_count, path_length,
+tip_row, tip_col)``. Tie-break among equal tuples: lexicographically smaller coordinate path
+sequence (stable row/col ordering via path tuple comparison).
+
+Search: primary mode is lexicographic Dijkstra (bounded ``max_expanded_nodes``); weighted A*
+is not wired in this codebase. Baseline route length for ratio gates is recomputed from the
+current blocked/goal snapshot (greedy stub→anchor probe). Fallback ladder beyond lex is
+documented in corridor/atomic guarded commit modules; reclaim budget is unchanged here.
+"""
 
 from __future__ import annotations
 

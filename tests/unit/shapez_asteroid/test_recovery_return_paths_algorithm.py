@@ -14,6 +14,7 @@ import pytest
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE,
+    RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     RECOVERY_TRIGGER_RECLAIM_INCREMENTAL_FAILURE,
     RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE,
@@ -58,6 +59,8 @@ def test_d2_b2_orchestrator_step4_routing_contract_in_source() -> None:
     tail = src[src.index(marker) :]
     assert "run_step4_stage(" not in tail
     assert "step4_recovery_trigger" in src
+    assert "recovery_pass3_connectivity_break" in src
+    assert "copy_mining_map_rows(step4.map_after_routing)" in src
 
 
 def test_validation_recovery_not_enabled_by_post_reclaim_flag_when_step9_clean() -> None:
@@ -91,13 +94,50 @@ def test_p4_reclaim_stage_invokes_post_reclaim_pass3_hook_at_most_once() -> None
 
     src = inspect.getsource(p4_mod.run_p4_reclaim_stage)
     assert src.count("_run_post_reclaim_pass3_once(") == 1
+    assert "post_reclaim_pass3_reruns_lifetime" in src
 
 
-def test_recovery_return_policy_triggers_exactly_five() -> None:
+def test_p4_reclaim_stage_accepts_solve_global_recovery_budgets_param() -> None:
+    sig = inspect.signature(p4_mod.run_p4_reclaim_stage)
+    assert "solver_recovery_budgets" in sig.parameters
+
+
+def test_orchestrator_forwards_solver_recovery_budgets_to_p4() -> None:
+    src = inspect.getsource(ro.run_solver_timeline_pipeline)
+    assert "solver_recovery_budgets=solver_recovery_budgets" in src
+
+
+def test_tag_pass3_connectivity_break_sets_recovery_trigger_first_cycle_only() -> None:
+    """§4.3.1: greedy connectivity-only trace tags summary; validation cycles do not re-tag."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+        PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
+        RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_policy import (
+        apply_recovery_contract_defaults,
+        tag_pass3_connectivity_break_from_greedy_trace,
+    )
+
+    s: dict[str, Any] = {}
+    apply_recovery_contract_defaults(s)
+    tr = {
+        "pass3_connectivity_reject_sample": {"a": 1},
+        "pass3_greedy_reject_detail": PASS3_GREEDY_REJECT_DETAIL_CONNECTIVITY,
+    }
+    tag_pass3_connectivity_break_from_greedy_trace(s, tr, validation_recovery_attempt=0)
+    assert s.get("recovery_pass3_connectivity_break") is True
+    assert s.get("recovery_trigger") == RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK
+    tag_pass3_connectivity_break_from_greedy_trace(s, tr, validation_recovery_attempt=1)
+    assert s.get("recovery_trigger") == RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK
+
+
+def test_recovery_return_policy_triggers_exactly_six() -> None:
     assert rrp.recovery_return_policy_triggers() == frozenset(
         {
             RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
             RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE,
+            RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK,
             RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
             RECOVERY_TRIGGER_RECLAIM_INCREMENTAL_FAILURE,
             RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE,
@@ -105,11 +145,12 @@ def test_recovery_return_policy_triggers_exactly_five() -> None:
     )
 
 
-def test_pass3_connectivity_break_string_not_in_return_policy_table() -> None:
-    """D2-C deletion: unwired main-path trigger must not pretend to have a policy row."""
+def test_pass3_connectivity_break_has_return_policy_row() -> None:
+    """§4.3.1: greedy Pass3 connectivity-only rollback maps to explicit return policy."""
 
-    with pytest.raises(ValueError, match="unknown recovery trigger"):
-        rrp.recovery_return_policy_for_trigger("pass3_connectivity_break")
+    p = rrp.recovery_return_policy_for_trigger(RECOVERY_TRIGGER_PASS3_CONNECTIVITY_BREAK)
+    assert p.reenters_step4 is False
+    assert p.primary_return_steps == ("STEP6",)
 
 
 def test_recovery_return_policy_table_matches_algorithm() -> None:
@@ -125,6 +166,7 @@ def test_final_validation_failure_policy_never_targets_step4() -> None:
     p = rrp.recovery_return_policy_for_trigger(RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE)
     assert p.reenters_step4 is False
     assert "STEP4" not in p.primary_return_steps
+    assert p.primary_return_steps == ("Pass3", "P4", "STEP9")
 
 
 def test_post_reclaim_pass3_connectivity_break_policy_disallows_extra_rerun() -> None:
@@ -134,6 +176,17 @@ def test_post_reclaim_pass3_connectivity_break_policy_disallows_extra_rerun() ->
         RECOVERY_TRIGGER_POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
     )
     assert p.allows_extra_post_reclaim_pass3_rerun is False
+    assert p.primary_return_steps == ("STEP9",)
+
+
+def test_each_section_4_3_trigger_has_distinct_return_policy_row() -> None:
+    """§4.3: six canonical triggers each resolve to one frozen policy row."""
+
+    for trigger in sorted(rrp.recovery_return_policy_triggers()):
+        row = rrp.recovery_return_policy_for_trigger(trigger)
+        assert row.policy_id
+        assert isinstance(row.primary_return_steps, tuple)
+        assert row.primary_return_steps
 
 
 def test_recovery_return_policy_unknown_trigger_raises() -> None:

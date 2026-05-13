@@ -67,6 +67,7 @@ def run_p4_reclaim_provisional_commit_after_pass3(
     is_external: Callable[[Coord], bool] | None = None,
     p4_reclaim_incremental_route_commit_enabled: bool = True,
     existing_layout_solver_hints: Mapping[str, object] | None = None,
+    reclaim_internal_transport_spent_prior: int = 0,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """P4-B1 provisional placement + optional P4-B2 incremental route commit."""
 
@@ -104,6 +105,8 @@ def run_p4_reclaim_provisional_commit_after_pass3(
         existing_layout_solver_hints=existing_layout_solver_hints,
     )
     hard, soft = pcs.hard, pcs.soft
+    transport_cells_f = _all_transport_cells(mining_map)
+    soft_active = frozenset(c for c in soft if c in transport_cells_f)
 
     snapshot = _mining_map_snapshot(mining_map)
     cells = {k: dict(v) for k, v in cells_dict_from_mining_map(snapshot).items()}
@@ -125,7 +128,7 @@ def run_p4_reclaim_provisional_commit_after_pass3(
         placed,
         final_route_cells=final_route_cells,
         hard_protected_corridors=hard,
-        soft_protected_corridors=soft,
+        soft_protected_corridors=soft_active,
         committed_building_cells=committed,
     )
     if reason is not None:
@@ -262,6 +265,7 @@ def run_p4_reclaim_provisional_commit_after_pass3(
             pass3_trace=pass3_trace,
             final_mining_map=final_mining_map,
             is_external=is_external,
+            reclaim_internal_transport_spent_prior=reclaim_internal_transport_spent_prior,
         )
         if route_map is None:
             ft = p4_reclaim_provisional_commit_neutral_trace(attempted=True)

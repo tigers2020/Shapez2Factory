@@ -594,6 +594,8 @@ def test_t2_reachable_fields_present_on_every_failure_detail() -> None:
         "reachable_existing_trunk_count",
         "reachable_exterior_margin_count",
         "route_goal_set_size",
+        "active_goal_cells_count",
+        "margin_goals_in_active_goal_cells_count",
         "existing_trunk_goal_count",
         "external_goal_count",
         "trunk_seed_candidate_count",
@@ -605,6 +607,8 @@ def test_t2_reachable_fields_present_on_every_failure_detail() -> None:
         "reachable_existing_trunk_count",
         "reachable_exterior_margin_count",
         "route_goal_set_size",
+        "active_goal_cells_count",
+        "margin_goals_in_active_goal_cells_count",
         "trunk_seed_candidate_count",
     ):
         assert k in rfd

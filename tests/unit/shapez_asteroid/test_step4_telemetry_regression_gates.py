@@ -110,6 +110,16 @@ def test_goal_ordering_mode_field_exists() -> None:
     assert detail["routing_failure_detail"].get("goal_ordering_mode") == "none"
 
 
+def test_additive_goal_cell_count_aliases() -> None:
+    detail = _minimal_route_failure_detail()
+    ext_ct = int(detail["external_goal_count"])
+    assert detail["margin_goals_in_active_goal_cells_count"] == ext_ct
+    assert detail["active_goal_cells_count"] == int(detail["goal_set_size"])
+    rfd = detail["routing_failure_detail"]
+    assert rfd["margin_goals_in_active_goal_cells_count"] == ext_ct
+    assert rfd["active_goal_cells_count"] == int(rfd["goal_set_size"])
+
+
 def test_step4_failure_classification_shape() -> None:
     detail = _minimal_route_failure_detail()
     clf = detail.get("step4_failure_classification")

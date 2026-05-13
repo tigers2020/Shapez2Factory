@@ -55,6 +55,8 @@ ROUTING_FAILURE_DETAIL_KEYS: tuple[str, ...] = (
     "existing_trunk_present",
     "trunk_seed_candidate_count",
     "route_goal_set_size",
+    "active_goal_cells_count",
+    "margin_goals_in_active_goal_cells_count",
     "reachable_goal_count",
     "reachable_existing_trunk_count",
     "reachable_exterior_margin_count",
@@ -92,6 +94,8 @@ STEP4_ROUTE_FAILURE_DETAIL_TOP_LEVEL_CANONICAL_KEYS: tuple[str, ...] = (
     "route_goal_set_size",
     "existing_trunk_goal_count",
     "external_goal_count",
+    "margin_goals_in_active_goal_cells_count",
+    "active_goal_cells_count",
     "reachable_goal_count",
     "reachable_existing_trunk_count",
     "reachable_exterior_margin_count",
@@ -298,6 +302,8 @@ def build_routing_failure_detail_dict(
     existing_trunk_present: bool,
     trunk_seed_candidate_count: int,
     route_goal_set_size: int,
+    active_goal_cells_count: int,
+    margin_goals_in_active_goal_cells_count: int,
     reachable_goal_count: int,
     reachable_existing_trunk_count: int,
     reachable_exterior_margin_count: int,
@@ -340,6 +346,8 @@ def build_routing_failure_detail_dict(
         "existing_trunk_present": bool(existing_trunk_present),
         "trunk_seed_candidate_count": int(trunk_seed_candidate_count),
         "route_goal_set_size": int(route_goal_set_size),
+        "active_goal_cells_count": int(active_goal_cells_count),
+        "margin_goals_in_active_goal_cells_count": int(margin_goals_in_active_goal_cells_count),
         "reachable_goal_count": int(reachable_goal_count),
         "reachable_existing_trunk_count": int(reachable_existing_trunk_count),
         "reachable_exterior_margin_count": int(reachable_exterior_margin_count),
@@ -385,6 +393,14 @@ def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]
         detail.setdefault("existing_trunk_present", False)
         detail.setdefault("trunk_seed_candidate_count", 0)
         detail.setdefault("route_goal_set_size", 0)
+        detail.setdefault(
+            "margin_goals_in_active_goal_cells_count",
+            int(detail.get("external_goal_count") or 0),
+        )
+        detail.setdefault(
+            "active_goal_cells_count",
+            int(detail.get("goal_set_size") or detail.get("route_goal_set_size") or 0),
+        )
         detail.setdefault("reachable_goal_count", 0)
         detail.setdefault("reachable_existing_trunk_count", 0)
         detail.setdefault("reachable_exterior_margin_count", 0)
@@ -436,6 +452,21 @@ def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]
     detail["existing_trunk_present"] = bool(rfd.get("existing_trunk_present", False))
     detail["trunk_seed_candidate_count"] = int(rfd.get("trunk_seed_candidate_count") or 0)
     detail["route_goal_set_size"] = int(rfd.get("route_goal_set_size") or 0)
+
+    if "active_goal_cells_count" in rfd:
+        detail["active_goal_cells_count"] = int(rfd["active_goal_cells_count"])
+    else:
+        detail["active_goal_cells_count"] = int(
+            rfd.get("goal_set_size") or rfd.get("route_goal_set_size") or 0
+        )
+    if "margin_goals_in_active_goal_cells_count" in rfd:
+        detail["margin_goals_in_active_goal_cells_count"] = int(
+            rfd["margin_goals_in_active_goal_cells_count"]
+        )
+    else:
+        detail["margin_goals_in_active_goal_cells_count"] = int(
+            detail.get("external_goal_count") or 0
+        )
 
     detail["reachable_goal_count"] = int(rfd.get("reachable_goal_count") or 0)
     detail["reachable_existing_trunk_count"] = int(rfd.get("reachable_existing_trunk_count") or 0)
@@ -705,6 +736,8 @@ class Step4RoutingFailure:
             ),
             "existing_trunk_goal_count": len(trunk_cells),
             "external_goal_count": ext_goal_ct,
+            "margin_goals_in_active_goal_cells_count": ext_goal_ct,
+            "active_goal_cells_count": len(goal_cells),
             "blocked_reason_near_stub": near,
             "search_mode": str(search_stats.get("search_mode") or "goal_cells_union_legacy"),
             "goal_ordering_mode": goal_ordering_mode_s,
@@ -868,6 +901,8 @@ class Step4RoutingFailure:
             existing_trunk_present=ex_trunk,
             trunk_seed_candidate_count=tseed_n,
             route_goal_set_size=len(goal_cells),
+            active_goal_cells_count=len(goal_cells),
+            margin_goals_in_active_goal_cells_count=ext_goal_ct,
             reachable_goal_count=reachable_goal_count,
             reachable_existing_trunk_count=reachable_trunk_count,
             reachable_exterior_margin_count=reachable_margin_count,

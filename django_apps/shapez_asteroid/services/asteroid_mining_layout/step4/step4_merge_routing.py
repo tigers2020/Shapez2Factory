@@ -113,10 +113,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_rou
     is_hard_protected_stub_ring_failure,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4GoalSet,
     Step4MutableState,
+    Step4RouteAttemptResult,
+    Step4RouteJob,
     Step4RoutingContext,
     Step4SearchSnapshot,
-    Step4StubRouteJob,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_state import (
     _routing_state_from_committed_routes,
@@ -377,6 +379,7 @@ def run_step4_merge_aware_routing(
     search_goal_ordering_applied_any = False
     search_goal_ordering_mode = "none"
     unrecoverable = False
+    route_job_seq = 0
 
     try:
         for ext_cell, stub_cell, tk, placement_id in jobs:
@@ -419,6 +422,16 @@ def run_step4_merge_aware_routing(
                     state.note_stub_in_trunk_merge(tk, stub_cell, placement_id)
                 continue
 
+            route_job_seq += 1
+            rjob = Step4RouteJob(
+                extractor_cell=ext_cell,
+                stub_cell=stub_cell,
+                transport_kind=tk,
+                placement_id=placement_id,
+                job_seq=route_job_seq,
+                placement_commit_state_at_route_attempt=None,
+            )
+
             raw_goal = build_step4_goal_set(
                 tk,
                 committed_trunk_by_kind=committed_trunk_by_kind,
@@ -439,6 +452,8 @@ def run_step4_merge_aware_routing(
                 search_goal_ordering_mode = str(goal_order_meta.get("mode") or "none")
 
             search_stats: dict[str, Any] = {
+                # ``search_mode`` names the goal-cell termination path; ``goal_ordering_mode`` is
+                # the merge_goal_union_meta tier (see 15_step4_telemetry_field_semantics.md).
                 "search_mode": "goal_cells_union_legacy",
                 "step4_search_goal_priority_head": goal_order_meta.get("priority_head", ()),
                 "exterior_fallback_considered": False,
@@ -447,7 +462,9 @@ def run_step4_merge_aware_routing(
                 "primary_existing_trunk_reachable_count": None,
                 "fallback_external_goal_count": 0,
             }
+            search_stats["goal_ordering_mode"] = str(goal_order_meta.get("mode") or "none")
 
+            fluid_primary_goals: frozenset[Coord] | None = None
             committed_kind = committed_trunk_by_kind.get(tk) or set()
             if tk == "fluid_pipe" and committed_kind:
                 raw_primary = set(committed_kind)
@@ -457,6 +474,7 @@ def run_step4_merge_aware_routing(
                     trunk_cells=trunk_cells,
                     margin_cells=margin_cells,
                 )
+                fluid_primary_goals = goal_primary
                 reachable_bfs = _bfs_reachable_from_stub(
                     stub_cell,
                     want_role=want_role,
@@ -542,6 +560,13 @@ def run_step4_merge_aware_routing(
                 )
                 goal_cells = goal_full
 
+            goal_set_dto = Step4GoalSet.from_merge_round(
+                raw_goal=set(raw_goal),
+                merged_union_cells=goal_full,
+                goal_order_meta=goal_order_meta,
+                fluid_primary_goal_cells=fluid_primary_goals,
+            )
+
             goal_set_sizes.append(len(goal_cells))
             recovery_out = None
             recovery_eval_count = 0
@@ -564,12 +589,12 @@ def run_step4_merge_aware_routing(
                 placement_context = (
                     "step4_unreachable_component" if step4_unreachable_trap else "step4_no_route"
                 )
-                job = Step4StubRouteJob(
-                    extractor_cell=ext_cell,
-                    stub_cell=stub_cell,
-                    transport_kind=tk,
-                    placement_id=placement_id,
+                rjob = replace(
+                    rjob,
+                    placement_commit_state_at_route_attempt=pcs_at_attempt,
                 )
+                stub_job = rjob.as_stub_job()
+                attempt = Step4RouteAttemptResult.capture(None, dict(search_stats))
                 snap = Step4SearchSnapshot(
                     want_role=want_role,
                     blocked=blocked,
@@ -577,15 +602,17 @@ def run_step4_merge_aware_routing(
                     goal_cells=goal_cells,
                     transport_now=frozenset(transport_now),
                     search_stats=search_stats,
+                    goal_set=goal_set_dto,
+                    attempt=attempt,
                 )
                 detail = _s4_fail_detail.build_step4_route_failure_detail_ctx(
                     ctx,
                     state,
-                    job,
+                    rjob,
                     snap,
                     trunk_seed_candidate_count=len(trunk_seed_by_kind.get(tk, ())),
                     trunk_seed_cells=frozenset(trunk_seed_by_kind.get(tk, ())),
-                    placement_commit_state_at_route_attempt=pcs_at_attempt,
+                    placement_commit_state_at_route_attempt=None,
                     forced_last_error=forced_err,
                 )
                 if len(search_diag_samples) < 8:
@@ -631,7 +658,7 @@ def run_step4_merge_aware_routing(
                             _s4_p2_rec.try_step4_failed_pass2_route_recovery_ctx(
                                 ctx,
                                 state,
-                                job,
+                                stub_job,
                                 raw_goal_primary=set(raw_goal),
                                 dijkstra_fn=_dijkstra_route,
                             )
@@ -667,7 +694,7 @@ def run_step4_merge_aware_routing(
                             _s4_lb.try_step4_local_bridge_recovery_ctx(
                                 ctx,
                                 state,
-                                job,
+                                stub_job,
                                 blocked=blocked,
                                 trunk_cells=trunk_cells,
                                 goal_cells=goal_cells,

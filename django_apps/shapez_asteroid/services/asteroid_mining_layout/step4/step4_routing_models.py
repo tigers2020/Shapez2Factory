@@ -2,12 +2,16 @@
 
 Public output remains :class:`Step4RoutingResult` in ``step4_contracts``; these types shrink
 parameter bundles inside ``run_step4_merge_aware_routing`` and helpers.
+
+Full routing-failure trace serialization lives in ``step4_route_failure_detail`` as
+:class:`Step4RoutingFailure` (single ``to_step4_route_failure_detail_dict`` exit).
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
@@ -45,6 +49,88 @@ class Step4StubRouteJob:
 
 
 @dataclass(frozen=True, slots=True)
+class Step4GoalSet:
+    """§08 raw goals + merge-aware Dijkstra union (fluid primary subset optional)."""
+
+    raw_goal_cells: frozenset[Coord]
+    merged_union_cells: frozenset[Coord]
+    goal_ordering_mode: str
+    merge_applied: bool
+    priority_head: tuple[tuple[int, int], ...]
+    fluid_primary_goal_cells: frozenset[Coord] | None
+
+    @staticmethod
+    def from_merge_round(
+        *,
+        raw_goal: set[Coord],
+        merged_union_cells: frozenset[Coord],
+        goal_order_meta: Mapping[str, Any],
+        fluid_primary_goal_cells: frozenset[Coord] | None = None,
+    ) -> Step4GoalSet:
+        head_raw = goal_order_meta.get("priority_head") or ()
+        norm_head: list[tuple[int, int]] = []
+        for p in head_raw:
+            if isinstance(p, (list, tuple)) and len(p) >= 2:
+                norm_head.append((int(p[0]), int(p[1])))
+        return Step4GoalSet(
+            raw_goal_cells=frozenset(raw_goal),
+            merged_union_cells=merged_union_cells,
+            goal_ordering_mode=str(goal_order_meta.get("mode") or "none"),
+            merge_applied=bool(goal_order_meta.get("applied")),
+            priority_head=tuple(norm_head),
+            fluid_primary_goal_cells=fluid_primary_goal_cells,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Step4RouteAttemptResult:
+    """One Dijkstra outcome + telemetry snapshot (immutable read-through mapping)."""
+
+    path: tuple[Coord, ...] | None
+    search_stats: Mapping[str, Any]
+
+    @staticmethod
+    def capture(path: tuple[Coord, ...] | None, stats: dict[str, Any]) -> Step4RouteAttemptResult:
+        return Step4RouteAttemptResult(path, MappingProxyType(dict(stats)))
+
+
+@dataclass(frozen=True, slots=True)
+class Step4FailureClassification:
+    """Structured STEP4 failure classification (parallel to nested trace dict)."""
+
+    category: str
+    confidence: str
+    evidence: Mapping[str, Any]
+
+    def to_classification_dict(self) -> dict[str, Any]:
+        from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
+            step4_failure_category as _s4fc,
+        )
+
+        return _s4fc.build_step4_failure_classification_dict(
+            category=self.category,
+            confidence=self.confidence,
+            evidence=dict(self.evidence),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Step4RouteJob(Step4StubRouteJob):
+    """Stub job plus stable sequencing and placement FSM snapshot at route attempt."""
+
+    job_seq: int
+    placement_commit_state_at_route_attempt: str | None = None
+
+    def as_stub_job(self) -> Step4StubRouteJob:
+        return Step4StubRouteJob(
+            extractor_cell=self.extractor_cell,
+            stub_cell=self.stub_cell,
+            transport_kind=self.transport_kind,
+            placement_id=self.placement_id,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class Step4SearchSnapshot:
     """Per-attempt frozen view for failure detail / diagnostics."""
 
@@ -54,6 +140,8 @@ class Step4SearchSnapshot:
     goal_cells: frozenset[Coord]
     transport_now: frozenset[Coord]
     search_stats: dict[str, Any]
+    goal_set: Step4GoalSet | None = None
+    attempt: Step4RouteAttemptResult | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,7 +273,11 @@ class Step4MutableState:
 
 
 __all__ = [
+    "Step4FailureClassification",
+    "Step4GoalSet",
     "Step4MutableState",
+    "Step4RouteAttemptResult",
+    "Step4RouteJob",
     "Step4RoutingContext",
     "Step4SearchSnapshot",
     "Step4StubRouteJob",

@@ -22,6 +22,7 @@ _SEARCH_STATS_DIAG_KEYS: frozenset[str] = frozenset(
         "first_goal_candidate",
         "max_frontier_size",
         "frontier_stop_reason",
+        "goal_ordering_mode",
         "exterior_fallback_considered",
         "exterior_fallback_activated",
         "exterior_fallback_reason",

@@ -49,7 +49,12 @@ def _minimal_route_failure_detail() -> dict[str, Any]:
         asteroid=frozenset(),
         is_external=_never_external,
         cheap_reuse_cells=None,
-        search_stats={"stop_reason": "exhausted", "expanded_nodes": 3, "heap_pops": 4},
+        search_stats={
+            "stop_reason": "exhausted",
+            "expanded_nodes": 3,
+            "heap_pops": 4,
+            "goal_ordering_mode": "none",
+        },
     )
 
 
@@ -97,6 +102,12 @@ def test_step4_failure_category_exists() -> None:
     assert cat is not None
     assert str(cat) in tuple(x.value for x in s4fc_mod.Step4FailureCategory)
     assert detail["routing_failure_detail"]["step4_failure_category"] == cat
+
+
+def test_goal_ordering_mode_field_exists() -> None:
+    detail = _minimal_route_failure_detail()
+    assert detail.get("goal_ordering_mode") == "none"
+    assert detail["routing_failure_detail"].get("goal_ordering_mode") == "none"
 
 
 def test_step4_failure_classification_shape() -> None:

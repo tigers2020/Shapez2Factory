@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
+from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
@@ -26,7 +28,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_dij
     DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4FailureClassification,
     Step4MutableState,
+    Step4RouteJob,
     Step4RoutingContext,
     Step4SearchSnapshot,
     Step4StubRouteJob,
@@ -54,6 +58,7 @@ ROUTING_FAILURE_DETAIL_KEYS: tuple[str, ...] = (
     "reachable_exterior_margin_count",
     "candidate_expanded_nodes",
     "search_mode",
+    "goal_ordering_mode",
     "fallback_reason",
     "search_budget_exhausted",
     "replacement_search_exhausted",
@@ -91,6 +96,7 @@ STEP4_ROUTE_FAILURE_DETAIL_TOP_LEVEL_CANONICAL_KEYS: tuple[str, ...] = (
     "candidate_expanded_nodes",
     "expanded_nodes",
     "search_mode",
+    "goal_ordering_mode",
     "fallback_reason",
     "search_budget_exhausted",
     "frontier_stop_reason",
@@ -295,6 +301,7 @@ def build_routing_failure_detail_dict(
     reachable_exterior_margin_count: int,
     candidate_expanded_nodes: int | None,
     search_mode: str | None,
+    goal_ordering_mode: str | None,
     fallback_reason: str | None,
     search_budget_exhausted: bool,
     replacement_search_exhausted: bool | None,
@@ -336,6 +343,9 @@ def build_routing_failure_detail_dict(
         "reachable_exterior_margin_count": int(reachable_exterior_margin_count),
         "candidate_expanded_nodes": candidate_expanded_nodes,
         "search_mode": search_mode,
+        "goal_ordering_mode": (
+            str(goal_ordering_mode) if goal_ordering_mode is not None else "none"
+        ),
         "fallback_reason": fallback_reason,
         "search_budget_exhausted": bool(search_budget_exhausted),
         "replacement_search_exhausted": replacement_search_exhausted,
@@ -380,6 +390,7 @@ def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]
         detail.setdefault("search_budget_exhausted", False)
         if "replacement_search_exhausted" not in detail:
             detail["replacement_search_exhausted"] = None
+        detail.setdefault("goal_ordering_mode", "none")
         detail.setdefault("quarantined", False)
         detail.setdefault("rolled_back", False)
         detail.setdefault("failure_detail_phase", None)
@@ -437,6 +448,10 @@ def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]
     sm = rfd.get("search_mode")
     if sm is not None:
         detail["search_mode"] = str(sm)
+
+    gom = rfd.get("goal_ordering_mode")
+    if gom is not None:
+        detail["goal_ordering_mode"] = str(gom)
 
     fb = rfd.get("fallback_reason")
     detail["fallback_reason"] = fb if fb is None else str(fb)
@@ -571,6 +586,301 @@ def stamp_final_step4_route_failure_detail_trace_from_fd(
     det["rejected_reason"] = None if rj is None else str(rj)
 
 
+@dataclass(slots=True, kw_only=True)
+class Step4RoutingFailure:
+    """Single exit for ``step4_route_failure_detail`` trace dict assembly."""
+
+    placement_id: str | None
+    extractor_cell: Coord
+    stub_cell: Coord
+    transport_kind: str
+    want_role: str
+    blocked: frozenset[Coord]
+    hard_extras: frozenset[Coord]
+    trunk_cells: frozenset[Coord]
+    goal_cells: frozenset[Coord]
+    margin_cells: set[Coord]
+    transport_now: set[Coord]
+    cells: dict[Coord, dict[str, Any]]
+    mineable: frozenset[Coord]
+    asteroid: frozenset[Coord]
+    is_external: Callable[[Coord], bool]
+    cheap_reuse_cells: frozenset[Coord] | None
+    search_stats: dict[str, Any]
+    trunk_seed_candidate_count: int | None
+    trunk_seed_cells: frozenset[Coord] | None
+    placement_commit_state_at_route_attempt: str | None
+    forced_last_error: str | None
+    transport_component_probe: dict[str, Any] | None
+
+    def to_step4_route_failure_detail_dict(self) -> dict[str, Any]:
+        """One failure row: keys match ``step4_route_failure_detail`` trace contract."""
+
+        stub_cell = self.stub_cell
+        want_role = self.want_role
+        blocked = self.blocked
+        hard_extras = self.hard_extras
+        cells = self.cells
+        mineable = self.mineable
+        asteroid = self.asteroid
+        is_external = self.is_external
+        cheap_reuse_cells = self.cheap_reuse_cells
+        transport_now = self.transport_now
+        trunk_cells = self.trunk_cells
+        goal_cells = self.goal_cells
+        margin_cells = self.margin_cells
+        search_stats = self.search_stats
+        placement_id = self.placement_id
+        extractor_cell = self.extractor_cell
+        transport_kind = self.transport_kind
+        trunk_seed_cells = self.trunk_seed_cells
+        placement_commit_state_at_route_attempt = self.placement_commit_state_at_route_attempt
+        forced_last_error = self.forced_last_error
+        trunk_seed_candidate_count = self.trunk_seed_candidate_count
+
+        sx, sy = stub_cell
+        near: list[dict[str, Any]] = []
+        for n in neighbors4(sx, sy):
+            near.append(
+                {
+                    "cell": [int(n[0]), int(n[1])],
+                    "reason": _neighbor_block_reason(
+                        n,
+                        stub_cell=stub_cell,
+                        want_role=want_role,
+                        blocked=blocked,
+                        hard_extras=hard_extras,
+                        cells=cells,
+                        mineable=mineable,
+                        asteroid=asteroid,
+                        is_external=is_external,
+                        cheap_reuse_cells=cheap_reuse_cells,
+                    ),
+                }
+            )
+
+        nhops, ncell = _nearest_same_kind_transport_hops(
+            stub_cell,
+            want_role=want_role,
+            cells=cells,
+            blocked=blocked,
+            mineable=mineable,
+            asteroid=asteroid,
+            is_external=is_external,
+            cheap_reuse_cells=cheap_reuse_cells,
+            transport_cells=transport_now,
+        )
+
+        stop = search_stats.get("stop_reason")
+        if forced_last_error is not None:
+            last_error = str(forced_last_error)
+        elif stop == "budget":
+            last_error = "no_route_budget"
+        elif stop == "exhausted":
+            last_error = "no_route_exhausted"
+        elif stop == "success":
+            last_error = "no_route"
+        else:
+            last_error = "no_route"
+
+        # |goal_cells ∩ margin_cells| — not a standalone exterior-margin policy counter;
+        # see documents/Algorithm/mining_solver_cursor_sessions/
+        # 15_step4_telemetry_field_semantics.md
+        ext_goal_ct = len(goal_cells & margin_cells)
+
+        goal_ordering_mode_s = str(search_stats.get("goal_ordering_mode") or "none")
+
+        out: dict[str, Any] = {
+            "placement_id": placement_id,
+            "extractor_cell": [int(extractor_cell[0]), int(extractor_cell[1])],
+            "stub_cell": [int(stub_cell[0]), int(stub_cell[1])],
+            "transport_kind": transport_kind,
+            "nearest_existing_transport_distance": nhops,
+            "nearest_existing_transport_cell": (
+                None if ncell is None else [int(ncell[0]), int(ncell[1])]
+            ),
+            "existing_trunk_goal_count": len(trunk_cells),
+            "external_goal_count": ext_goal_ct,
+            "blocked_reason_near_stub": near,
+            "search_mode": str(search_stats.get("search_mode") or "goal_cells_union_legacy"),
+            "goal_ordering_mode": goal_ordering_mode_s,
+            "expanded_nodes": int(search_stats.get("expanded_nodes", 0)),
+            "fallback_reason": None,
+            "last_error": last_error,
+            "stop_reason": stop,
+            "goal_set_size": len(goal_cells),
+            "placement_commit_state_at_route_attempt": placement_commit_state_at_route_attempt,
+        }
+        _s4sd.copy_search_diagnostics_to_detail(out, search_stats)
+
+        visited = _bfs_reachable_from_stub(
+            stub_cell,
+            want_role=want_role,
+            blocked=blocked,
+            cells=cells,
+            mineable=mineable,
+            asteroid=asteroid,
+            is_external=is_external,
+            cheap_reuse_cells=cheap_reuse_cells,
+        )
+        reachable_goals = frozenset(goal_cells & visited)
+        reachable_trunk_bfs = reachable_goals & trunk_cells
+        reachable_margin_bfs = reachable_goals & margin_cells
+
+        dg = search_stats.get(DIJKSTRA_REACHABLE_GOAL_COUNT_KEY)
+        if dg is not None:
+            reachable_goal_count = int(dg)
+            reachable_trunk_count = int(
+                search_stats.get(DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY) or 0
+            )
+            reachable_margin_count = int(
+                search_stats.get(DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY) or 0
+            )
+        else:
+            reachable_goal_count = len(reachable_goals)
+            reachable_trunk_count = len(reachable_trunk_bfs)
+            reachable_margin_count = len(reachable_margin_bfs)
+
+        if dg is not None:
+            dio_g = int(dg)
+            dio_t = int(search_stats.get(DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY) or 0)
+            dio_m = int(search_stats.get(DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY) or 0)
+        else:
+            dio_g = int(reachable_goal_count)
+            dio_t = int(reachable_trunk_count)
+            dio_m = int(reachable_margin_count)
+        out["dijkstra_reachable_goal_count"] = dio_g
+        out["dijkstra_reachable_trunk_goal_count"] = dio_t
+        out["dijkstra_reachable_margin_goal_count"] = dio_m
+
+        blocked_reason, blocked_summary, nearest_blocked_cell, nearest_zone = (
+            _stub_neighbor_block_classification(near)
+        )
+        tseed_n = int(trunk_seed_candidate_count or 0)
+        ex_trunk = len(trunk_cells) > 0
+        cand_nodes: int | None
+        if "expanded_nodes" in search_stats:
+            cand_nodes = int(search_stats["expanded_nodes"])
+        else:
+            cand_nodes = None
+        search_budget_exhausted_flag = bool(stop == "budget")
+        stm = search_stats.get("search_time_ms")
+        search_time_ms_f: float | None
+        if isinstance(stm, (int, float)):
+            search_time_ms_f = float(stm)
+        else:
+            search_time_ms_f = None
+        optimality: str | None
+        if search_budget_exhausted_flag:
+            optimality = None
+        else:
+            optimality = "dijkstra_positive_costs_shortest_within_heap_budget"
+
+        search_mode_s = str(out.get("search_mode") or "goal_cells_union_legacy")
+        fallback_raw = out.get("fallback_reason")
+        fallback_out: str | None = None if fallback_raw is None else str(fallback_raw)
+
+        frontier_sr = search_stats.get("frontier_stop_reason")
+        if frontier_sr is None and stop is not None:
+            frontier_sr = stop
+
+        cat, conf, evidence = _s4fc.compute_step4_failure_classification(
+            stop_reason=str(stop) if stop is not None else None,
+            last_error=last_error,
+            nearest_transport_hops=nhops,
+            near=near,
+            goal_cells_count=len(goal_cells),
+            reachable_goal_count=reachable_goal_count,
+            cells=cells,
+            want_role=want_role,
+            stub_cell=stub_cell,
+            hard_extras=hard_extras,
+            goal_cells=goal_cells,
+            frontier_stop_reason=str(frontier_sr) if frontier_sr is not None else None,
+            existing_trunk_present=ex_trunk,
+            existing_trunk_goal_count=len(trunk_cells),
+            reachable_existing_trunk_count=reachable_trunk_count,
+            reachable_exterior_margin_count=reachable_margin_count,
+            search_budget_exhausted=search_budget_exhausted_flag,
+            expanded_nodes=cand_nodes,
+        )
+        prot_hard = _s4fc.protected_corridor_hard_involved(
+            near, stub_cell=stub_cell, hard_extras=hard_extras
+        )
+        evidence["protected_corridor_hard_involved"] = bool(prot_hard)
+        evidence["optimality_guarantee"] = optimality
+        evidence["search_mode"] = search_mode_s
+        evidence["goal_ordering_mode"] = goal_ordering_mode_s
+        evidence["search_time_ms"] = search_time_ms_f
+        evidence["fallback_reason"] = fallback_out
+        evidence["candidate_expanded_nodes"] = cand_nodes
+
+        classification_rec = Step4FailureClassification(
+            category=str(cat),
+            confidence=str(conf),
+            evidence=MappingProxyType(dict(evidence)),
+        )
+        classification_sub = classification_rec.to_classification_dict()
+        out["step4_failure_category"] = cat
+        out["step4_failure_classification"] = classification_sub
+
+        out["routing_failure_detail"] = build_routing_failure_detail_dict(
+            extractor_id=placement_id,
+            placement_id=placement_id,
+            transport_kind=transport_kind,
+            stub_cell=stub_cell,
+            placement_commit_state=placement_commit_state_at_route_attempt,
+            blocked_reason=blocked_reason,
+            blocked_reason_near_stub=blocked_summary,
+            nearest_blocked_cell=nearest_blocked_cell,
+            nearest_blocked_zone=nearest_zone,
+            existing_trunk_present=ex_trunk,
+            trunk_seed_candidate_count=tseed_n,
+            route_goal_set_size=len(goal_cells),
+            reachable_goal_count=reachable_goal_count,
+            reachable_existing_trunk_count=reachable_trunk_count,
+            reachable_exterior_margin_count=reachable_margin_count,
+            candidate_expanded_nodes=cand_nodes,
+            search_mode=search_mode_s,
+            goal_ordering_mode=goal_ordering_mode_s,
+            fallback_reason=fallback_out,
+            search_budget_exhausted=bool(stop == "budget"),
+            replacement_search_exhausted=None,
+            quarantined=False,
+            rolled_back=False,
+            step4_failure_category=cat,
+            step4_failure_classification=classification_sub,
+            goal_set_size=len(goal_cells),
+            dijkstra_reachable_goal_count=dio_g,
+            dijkstra_reachable_trunk_goal_count=dio_t,
+            dijkstra_reachable_margin_goal_count=dio_m,
+            placement_commit_state_at_route_attempt=placement_commit_state_at_route_attempt,
+        )
+        out.setdefault("frontier_stop_reason", None)
+        mirror_canonical_step4_route_failure_detail_top_level(out)
+        out["failure_detail_phase"] = None
+        out["attempt_index"] = 0
+        out["rollback_reason"] = None
+        out["rejected_reason"] = None
+        if self.transport_component_probe:
+            out["transport_component_probe"] = dict(self.transport_component_probe)
+        else:
+            out.setdefault("transport_component_probe", None)
+        out["step4_replay_overlay"] = _s4rov.build_step4_row_replay_overlay(
+            placement_id=placement_id,
+            stub_cell=stub_cell,
+            near=near,
+            nearest_blocked_cell=nearest_blocked_cell,
+            nearest_blocked_zone=nearest_zone,
+            goal_cells=goal_cells,
+            reachable_goals=reachable_goals,
+            trunk_cells=trunk_cells,
+            margin_cells=margin_cells,
+            trunk_seed_cells=trunk_seed_cells,
+        )
+        return out
+
+
 def build_step4_route_failure_detail(
     *,
     placement_id: str | None,
@@ -598,241 +908,36 @@ def build_step4_route_failure_detail(
 ) -> dict[str, Any]:
     """One failure row: keys match ``step4_route_failure_detail`` trace contract."""
 
-    sx, sy = stub_cell
-    near: list[dict[str, Any]] = []
-    for n in neighbors4(sx, sy):
-        near.append(
-            {
-                "cell": [int(n[0]), int(n[1])],
-                "reason": _neighbor_block_reason(
-                    n,
-                    stub_cell=stub_cell,
-                    want_role=want_role,
-                    blocked=blocked,
-                    hard_extras=hard_extras,
-                    cells=cells,
-                    mineable=mineable,
-                    asteroid=asteroid,
-                    is_external=is_external,
-                    cheap_reuse_cells=cheap_reuse_cells,
-                ),
-            }
-        )
-
-    nhops, ncell = _nearest_same_kind_transport_hops(
-        stub_cell,
-        want_role=want_role,
-        cells=cells,
-        blocked=blocked,
-        mineable=mineable,
-        asteroid=asteroid,
-        is_external=is_external,
-        cheap_reuse_cells=cheap_reuse_cells,
-        transport_cells=transport_now,
-    )
-
-    stop = search_stats.get("stop_reason")
-    if forced_last_error is not None:
-        last_error = str(forced_last_error)
-    elif stop == "budget":
-        last_error = "no_route_budget"
-    elif stop == "exhausted":
-        last_error = "no_route_exhausted"
-    elif stop == "success":
-        last_error = "no_route"
-    else:
-        # Patched Dijkstra / callers that return ``None`` without populating stats.
-        last_error = "no_route"
-
-    ext_goal_ct = len(goal_cells & margin_cells)
-
-    out: dict[str, Any] = {
-        "placement_id": placement_id,
-        "extractor_cell": [int(extractor_cell[0]), int(extractor_cell[1])],
-        "stub_cell": [int(stub_cell[0]), int(stub_cell[1])],
-        "transport_kind": transport_kind,
-        "nearest_existing_transport_distance": nhops,
-        "nearest_existing_transport_cell": (
-            None if ncell is None else [int(ncell[0]), int(ncell[1])]
-        ),
-        "existing_trunk_goal_count": len(trunk_cells),
-        "external_goal_count": ext_goal_ct,
-        "blocked_reason_near_stub": near,
-        "search_mode": str(search_stats.get("search_mode") or "goal_cells_union_legacy"),
-        "expanded_nodes": int(search_stats.get("expanded_nodes", 0)),
-        "fallback_reason": None,
-        "last_error": last_error,
-        "stop_reason": stop,
-        "goal_set_size": len(goal_cells),
-        "placement_commit_state_at_route_attempt": placement_commit_state_at_route_attempt,
-    }
-    _s4sd.copy_search_diagnostics_to_detail(out, search_stats)
-
-    visited = _bfs_reachable_from_stub(
-        stub_cell,
-        want_role=want_role,
-        blocked=blocked,
-        cells=cells,
-        mineable=mineable,
-        asteroid=asteroid,
-        is_external=is_external,
-        cheap_reuse_cells=cheap_reuse_cells,
-    )
-    reachable_goals = frozenset(goal_cells & visited)
-    reachable_trunk_bfs = reachable_goals & trunk_cells
-    reachable_margin_bfs = reachable_goals & margin_cells
-
-    dg = search_stats.get(DIJKSTRA_REACHABLE_GOAL_COUNT_KEY)
-    if dg is not None:
-        reachable_goal_count = int(dg)
-        reachable_trunk_count = int(search_stats.get(DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY) or 0)
-        reachable_margin_count = int(
-            search_stats.get(DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY) or 0
-        )
-    else:
-        reachable_goal_count = len(reachable_goals)
-        reachable_trunk_count = len(reachable_trunk_bfs)
-        reachable_margin_count = len(reachable_margin_bfs)
-
-    if dg is not None:
-        dio_g = int(dg)
-        dio_t = int(search_stats.get(DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY) or 0)
-        dio_m = int(search_stats.get(DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY) or 0)
-    else:
-        dio_g = int(reachable_goal_count)
-        dio_t = int(reachable_trunk_count)
-        dio_m = int(reachable_margin_count)
-    out["dijkstra_reachable_goal_count"] = dio_g
-    out["dijkstra_reachable_trunk_goal_count"] = dio_t
-    out["dijkstra_reachable_margin_goal_count"] = dio_m
-
-    blocked_reason, blocked_summary, nearest_blocked_cell, nearest_zone = (
-        _stub_neighbor_block_classification(near)
-    )
-    tseed_n = int(trunk_seed_candidate_count or 0)
-    ex_trunk = len(trunk_cells) > 0
-    cand_nodes: int | None
-    if "expanded_nodes" in search_stats:
-        cand_nodes = int(search_stats["expanded_nodes"])
-    else:
-        cand_nodes = None
-    search_budget_exhausted_flag = bool(stop == "budget")
-    stm = search_stats.get("search_time_ms")
-    search_time_ms_f: float | None
-    if isinstance(stm, (int, float)):
-        search_time_ms_f = float(stm)
-    else:
-        search_time_ms_f = None
-    optimality: str | None
-    if search_budget_exhausted_flag:
-        optimality = None
-    else:
-        optimality = "dijkstra_positive_costs_shortest_within_heap_budget"
-
-    search_mode_s = str(out.get("search_mode") or "goal_cells_union_legacy")
-    fallback_raw = out.get("fallback_reason")
-    fallback_out: str | None = None if fallback_raw is None else str(fallback_raw)
-
-    frontier_sr = search_stats.get("frontier_stop_reason")
-    if frontier_sr is None and stop is not None:
-        frontier_sr = stop
-
-    cat, conf, evidence = _s4fc.compute_step4_failure_classification(
-        stop_reason=str(stop) if stop is not None else None,
-        last_error=last_error,
-        nearest_transport_hops=nhops,
-        near=near,
-        goal_cells_count=len(goal_cells),
-        reachable_goal_count=reachable_goal_count,
-        cells=cells,
-        want_role=want_role,
-        stub_cell=stub_cell,
-        hard_extras=hard_extras,
-        goal_cells=goal_cells,
-        frontier_stop_reason=str(frontier_sr) if frontier_sr is not None else None,
-        existing_trunk_present=ex_trunk,
-        existing_trunk_goal_count=len(trunk_cells),
-        reachable_existing_trunk_count=reachable_trunk_count,
-        reachable_exterior_margin_count=reachable_margin_count,
-        search_budget_exhausted=search_budget_exhausted_flag,
-        expanded_nodes=cand_nodes,
-    )
-    prot_hard = _s4fc.protected_corridor_hard_involved(
-        near, stub_cell=stub_cell, hard_extras=hard_extras
-    )
-    evidence["protected_corridor_hard_involved"] = bool(prot_hard)
-    evidence["optimality_guarantee"] = optimality
-    evidence["search_mode"] = search_mode_s
-    evidence["search_time_ms"] = search_time_ms_f
-    evidence["fallback_reason"] = fallback_out
-    evidence["candidate_expanded_nodes"] = cand_nodes
-
-    classification_sub = _s4fc.build_step4_failure_classification_dict(
-        category=cat, confidence=conf, evidence=evidence
-    )
-    out["step4_failure_category"] = cat
-    out["step4_failure_classification"] = classification_sub
-
-    out["routing_failure_detail"] = build_routing_failure_detail_dict(
-        extractor_id=placement_id,
+    return Step4RoutingFailure(
         placement_id=placement_id,
+        extractor_cell=extractor_cell,
+        stub_cell=stub_cell,
         transport_kind=transport_kind,
-        stub_cell=stub_cell,
-        placement_commit_state=placement_commit_state_at_route_attempt,
-        blocked_reason=blocked_reason,
-        blocked_reason_near_stub=blocked_summary,
-        nearest_blocked_cell=nearest_blocked_cell,
-        nearest_blocked_zone=nearest_zone,
-        existing_trunk_present=ex_trunk,
-        trunk_seed_candidate_count=tseed_n,
-        route_goal_set_size=len(goal_cells),
-        reachable_goal_count=reachable_goal_count,
-        reachable_existing_trunk_count=reachable_trunk_count,
-        reachable_exterior_margin_count=reachable_margin_count,
-        candidate_expanded_nodes=cand_nodes,
-        search_mode=search_mode_s,
-        fallback_reason=fallback_out,
-        search_budget_exhausted=bool(stop == "budget"),
-        replacement_search_exhausted=None,
-        quarantined=False,
-        rolled_back=False,
-        step4_failure_category=cat,
-        step4_failure_classification=classification_sub,
-        goal_set_size=len(goal_cells),
-        dijkstra_reachable_goal_count=dio_g,
-        dijkstra_reachable_trunk_goal_count=dio_t,
-        dijkstra_reachable_margin_goal_count=dio_m,
-        placement_commit_state_at_route_attempt=placement_commit_state_at_route_attempt,
-    )
-    out.setdefault("frontier_stop_reason", None)
-    mirror_canonical_step4_route_failure_detail_top_level(out)
-    out["failure_detail_phase"] = None
-    out["attempt_index"] = 0
-    out["rollback_reason"] = None
-    out["rejected_reason"] = None
-    if transport_component_probe:
-        out["transport_component_probe"] = dict(transport_component_probe)
-    else:
-        out.setdefault("transport_component_probe", None)
-    out["step4_replay_overlay"] = _s4rov.build_step4_row_replay_overlay(
-        placement_id=placement_id,
-        stub_cell=stub_cell,
-        near=near,
-        nearest_blocked_cell=nearest_blocked_cell,
-        nearest_blocked_zone=nearest_zone,
-        goal_cells=goal_cells,
-        reachable_goals=reachable_goals,
+        want_role=want_role,
+        blocked=blocked,
+        hard_extras=hard_extras,
         trunk_cells=trunk_cells,
+        goal_cells=goal_cells,
         margin_cells=margin_cells,
+        transport_now=transport_now,
+        cells=cells,
+        mineable=mineable,
+        asteroid=asteroid,
+        is_external=is_external,
+        cheap_reuse_cells=cheap_reuse_cells,
+        search_stats=dict(search_stats),
+        trunk_seed_candidate_count=trunk_seed_candidate_count,
         trunk_seed_cells=trunk_seed_cells,
-    )
-    return out
+        placement_commit_state_at_route_attempt=placement_commit_state_at_route_attempt,
+        forced_last_error=forced_last_error,
+        transport_component_probe=transport_component_probe,
+    ).to_step4_route_failure_detail_dict()
 
 
 def build_step4_route_failure_detail_ctx(
     ctx: Step4RoutingContext,
     state: Step4MutableState,
-    job: Step4StubRouteJob,
+    job: Step4StubRouteJob | Step4RouteJob,
     snap: Step4SearchSnapshot,
     *,
     trunk_seed_candidate_count: int | None = None,
@@ -843,11 +948,16 @@ def build_step4_route_failure_detail_ctx(
 ) -> dict[str, Any]:
     """Bundle call for :func:`build_step4_route_failure_detail` (merge routing ctx/state/job)."""
 
+    stub = job.as_stub_job() if isinstance(job, Step4RouteJob) else job
+    pcs = placement_commit_state_at_route_attempt
+    if pcs is None and isinstance(job, Step4RouteJob):
+        pcs = job.placement_commit_state_at_route_attempt
+
     return build_step4_route_failure_detail(
-        placement_id=job.placement_id,
-        extractor_cell=job.extractor_cell,
-        stub_cell=job.stub_cell,
-        transport_kind=job.transport_kind,
+        placement_id=stub.placement_id,
+        extractor_cell=stub.extractor_cell,
+        stub_cell=stub.stub_cell,
+        transport_kind=stub.transport_kind,
         want_role=snap.want_role,
         blocked=snap.blocked,
         hard_extras=ctx.hard_extras,
@@ -863,7 +973,7 @@ def build_step4_route_failure_detail_ctx(
         search_stats=snap.search_stats,
         trunk_seed_candidate_count=trunk_seed_candidate_count,
         trunk_seed_cells=trunk_seed_cells,
-        placement_commit_state_at_route_attempt=placement_commit_state_at_route_attempt,
+        placement_commit_state_at_route_attempt=pcs,
         forced_last_error=forced_last_error,
         transport_component_probe=transport_component_probe,
     )

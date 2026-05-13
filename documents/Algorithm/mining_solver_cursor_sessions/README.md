@@ -18,6 +18,8 @@
 | [`12_protected_corridor.md`](12_protected_corridor.md) | Protected corridor §14 |
 | [`13_step9_validation.md`](13_step9_validation.md) | Final validation §15 |
 | [`14_step10_replay_ui.md`](14_step10_replay_ui.md) | Replay·UI §16 |
+| [`14_step4_routing_dto_refactor_inventory.md`](14_step4_routing_dto_refactor_inventory.md) | STEP4 DTO·파라미터 인벤토리 |
+| [`15_step4_telemetry_field_semantics.md`](15_step4_telemetry_field_semantics.md) | STEP4 텔레메트리 필드 의미 |
 
 - 상위 분할 출처: [`../Shapez2 Asteroid Mining Solver logic.md`](../Shapez2%20Asteroid%20Mining%20Solver%20logic.md)
 - 경로 혼동 방지·인덱스 유지보수: [`../../refactory/01_canonical_doc_paths.md`](../../refactory/01_canonical_doc_paths.md)

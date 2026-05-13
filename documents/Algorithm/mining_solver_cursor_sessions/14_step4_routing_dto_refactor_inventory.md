@@ -51,3 +51,5 @@
 2. 실패 상세·복구·다익스트라 호출을 `ctx`+`state`+`job`(+ `Step4SearchSnapshot`)로 축소.
 3. `apply_placement_commit_state_transition` 호출을 `Step4MutableState` 메서드로 일원화.
 4. `Step4TrunkLoadRuntime`(가칭)으로 trunk edge·visit 누적과 `build_step4_trunk_load` 직전 직렬화 분리.
+
+**진행(2026-05-13)**: `Step4GoalSet`, `Step4RouteJob`, `Step4RouteAttemptResult`, `Step4FailureClassification`, `Step4RoutingFailure` 초기 도입 및 `goal_ordering_mode` 텔레메트리 분리 — 계약 문서는 [`15_step4_telemetry_field_semantics.md`](15_step4_telemetry_field_semantics.md).

@@ -431,6 +431,11 @@ def test_build_solver_timeline_ui_frames_align_with_timeline() -> None:
     out = build_solver_timeline(decoded)
     tl = out["solver_timeline"]
     ui = out["solver_replay"]["ui_frames"]
+    ss = out.get("solver_summary") or {}
+    assert isinstance(ss.get("solver_timeline_frame_count"), int)
+    assert ss["solver_timeline_frame_count"] == len(tl)
+    assert isinstance(ss.get("map_timeline_frame_count"), int)
+    assert "replay_frame_count" in ss and "replay_event_count" in ss
     assert len(ui) == len(tl) == len(SOLVER_TIMELINE_FRAME_ORDER)
     for i, row in enumerate(ui):
         assert row["timeline_index"] == i

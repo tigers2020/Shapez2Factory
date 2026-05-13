@@ -315,6 +315,12 @@ def build_pass2_step4_aligned_routing_goals(
         "rejected_reason": None,
     }
     if not full_goal:
+        prior_n = len(transport_cells_before)
+        reach_n = len(existing_reaching)
+        trace["pass2_prior_transport_all_orphan"] = bool(prior_n > 0 and reach_n == 0)
+        trace["pass2_empty_goal_nonempty_universe"] = bool(
+            len(universe_for_probe) > 0 and len(margin) == 0 and len(full_goal) == 0
+        )
         if (
             goal_set_kind == "first_route"
             and len(margin) == 0

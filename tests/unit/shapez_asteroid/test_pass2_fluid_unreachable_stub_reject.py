@@ -171,6 +171,8 @@ def test_pass2_rejects_existing_layout_island_fallback_only_fluid_stub() -> None
     gtrace = sink.get("pass2_probe_last_goal_trace") or {}
     assert int(gtrace.get("transport_cells_before_count") or 0) > 0
     assert int(gtrace.get("final_goal_count") or 0) == 0
+    assert gtrace.get("pass2_prior_transport_all_orphan") is True
+    assert gtrace.get("pass2_empty_goal_nonempty_universe") is True
     assert "fallback_goal_source" not in gtrace
     assert int(sink.get("pass2_reject_transport_cells_before_island_fallback_count", 0)) == 1
     assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 1
@@ -218,6 +220,8 @@ def test_pass2_rejects_island_prior_fluid_without_existing_layout_analysis() -> 
     gtrace = sink.get("pass2_probe_last_goal_trace") or {}
     assert int(gtrace.get("transport_cells_before_count") or 0) > 0
     assert int(gtrace.get("final_goal_count") or 0) == 0
+    assert gtrace.get("pass2_prior_transport_all_orphan") is True
+    assert gtrace.get("pass2_empty_goal_nonempty_universe") is True
     assert "fallback_goal_source" not in gtrace
     assert int(sink.get("pass2_reject_transport_cells_before_island_fallback_count", 0)) == 1
     assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 1
@@ -229,6 +233,10 @@ def test_fluid_regression_fixture_step4_failures_and_validation_stay_clean() -> 
     raw = json.loads(_FIXTURE.read_text(encoding="utf-8"))
     out = build_solver_timeline(raw)
     ss = out.get("solver_summary") or {}
+    assert isinstance(ss.get("solver_timeline_frame_count"), int)
+    assert isinstance(ss.get("map_timeline_frame_count"), int)
+    assert "replay_frame_count" in ss
+    assert "replay_event_count" in ss
     assert int(ss.get("step4_routing_failure_count") or 0) == 0
     fv = out.get("final_validation") or {}
     assert fv.get("geometry_valid") is True

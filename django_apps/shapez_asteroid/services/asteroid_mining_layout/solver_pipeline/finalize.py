@@ -63,6 +63,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace import (
     debug_log_event,
+    replay_diag_counts_for_solver_summary,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.recovery_orchestrator import (  # noqa: E501
     enrich_solver_summary_recovery,
@@ -778,6 +779,9 @@ def build_final_solver_output(
             "mining_map": map_final,
         },
     ]
+    summary_fields["solver_timeline_frame_count"] = len(frames)
+    summary_fields["map_timeline_frame_count"] = len(map_timeline)
+    summary_fields.update(replay_diag_counts_for_solver_summary())
     # ``replay_events`` is same-run append-only export for STEP10 / NDJSON — not a policy input
     # for routing or recovery (see ``solver_replay_events`` and ``solver_trace`` module docs).
     step4_fail_overlay = merge_step4_route_failure_replay_overlay(

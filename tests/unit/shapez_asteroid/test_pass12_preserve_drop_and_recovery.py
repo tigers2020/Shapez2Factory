@@ -76,6 +76,8 @@ def test_preserve_drop_mixed_kind_vs_orphan_histogram() -> None:
     assert rcc.get("UNRECOVERABLE") == 1
     for row in stats["pass12_preserved_missing_stub_drop_details"]:
         assert "recoverability_class" in row
+        assert "preserve_stub_route_recovery_enabled" in row
+        assert "preserve_stub_route_drop_phase" in row
 
 
 @override_settings(SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=True)
@@ -309,3 +311,38 @@ def test_preserve_quality_bundle_zero_miners_still_has_score_version() -> None:
     )
     assert bundle["preserve_quality_score_version"] == PRESERVE_QUALITY_SCORE_VERSION
     assert score is None
+
+
+def test_preserve_stub_route_drop_observability_hop1_deferred_eligible() -> None:
+    """nhops==1 + NO_MATCHING_STUB + recovery ON → deferred_queue_eligible (queue band includes 1)."""
+
+    fn = pass12_merged_layout_seed._preserve_stub_route_drop_observability
+    obs = fn(
+        stub_route_recovery_enabled=True,
+        nhops_seed=1,
+        pdr_pre=pass12_merged_layout_seed.PreserveDropReason.NO_MATCHING_STUB,
+        stub_route_trace_for_drop={
+            "preserve_stub_recovery": {
+                "accepted": False,
+                "rejected_reason": "no_stub_space",
+            }
+        },
+        drop_phase="immediate_inline",
+    )
+    assert obs["preserve_stub_route_deferred_queue_eligible"] is True
+    assert obs["preserve_stub_route_hops_equal_one"] is True
+    assert obs["preserve_stub_route_inline_rejected_reason"] == "no_stub_space"
+    assert obs["preserve_stub_route_drop_after_deferred_queue"] is False
+
+
+def test_preserve_stub_route_drop_observability_orphan_not_deferred_eligible() -> None:
+    fn = pass12_merged_layout_seed._preserve_stub_route_drop_observability
+    obs = fn(
+        stub_route_recovery_enabled=True,
+        nhops_seed=None,
+        pdr_pre=pass12_merged_layout_seed.PreserveDropReason.ORPHAN_COMPONENT,
+        stub_route_trace_for_drop=None,
+        drop_phase="immediate_inline",
+    )
+    assert obs["preserve_stub_route_deferred_queue_eligible"] is False
+    assert obs["preserve_stub_route_inline_skip_reason"] == "nearest_hops_none"

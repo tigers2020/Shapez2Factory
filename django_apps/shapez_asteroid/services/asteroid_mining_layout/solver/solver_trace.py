@@ -241,6 +241,12 @@ def _replay_diag_for_summary() -> dict[str, Any]:
     }
 
 
+def replay_diag_counts_for_solver_summary() -> dict[str, Any]:
+    """Replay-layer counts for ``solver_summary`` (NDJSON ``emit_solver_summary_once`` keys)."""
+
+    return dict(_replay_diag_for_summary())
+
+
 def emit_solver_summary_once(location: str, payload: dict[str, Any]) -> bool:
     """Emit at most one ``solver_summary`` trace event per ``trace_run_scope``.
 

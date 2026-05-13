@@ -24,6 +24,8 @@ class Pass2GoalTraceWire(TypedDict, total=False):
     asteroid_cell_count: int
     mineable_asteroid_bbox: dict[str, int] | None
     rejected_reason: str | None
+    pass2_prior_transport_all_orphan: bool
+    pass2_empty_goal_nonempty_universe: bool
 
 
 class Pass2RouteProbeStatsWire(TypedDict, total=False):

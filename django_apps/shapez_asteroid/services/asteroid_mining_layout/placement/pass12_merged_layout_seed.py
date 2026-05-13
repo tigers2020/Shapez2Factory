@@ -11,7 +11,7 @@ from collections import deque
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from django.conf import settings
 
@@ -187,6 +187,53 @@ def _missing_stub_drop_detail_row(
     if stub_route_trace_for_drop is not None:
         detail_row.update(stub_route_trace_for_drop)
     return detail_row
+
+
+def _preserve_stub_route_drop_observability(
+    *,
+    stub_route_recovery_enabled: bool,
+    nhops_seed: int | None,
+    pdr_pre: PreserveDropReason,
+    stub_route_trace_for_drop: dict[str, Any] | None,
+    drop_phase: Literal["immediate_inline", "deferred_queue_exhausted"],
+) -> dict[str, Any]:
+    """NDJSON/solver_summary: stub-route vs deferred-queue decision (no routing policy reads)."""
+
+    maxh = MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS
+    deferred_eligible = bool(
+        stub_route_recovery_enabled
+        and pdr_pre == PreserveDropReason.NO_MATCHING_STUB
+        and nhops_seed is not None
+        and 1 <= nhops_seed <= maxh
+    )
+    out: dict[str, Any] = {
+        "preserve_stub_route_recovery_enabled": stub_route_recovery_enabled,
+        "preserve_stub_route_deferred_queue_min_hops_inclusive": 1,
+        "preserve_stub_route_deferred_queue_max_hops_inclusive": maxh,
+        "preserve_stub_route_deferred_queue_eligible": deferred_eligible,
+        "preserve_stub_route_drop_phase": drop_phase,
+        "preserve_stub_route_drop_after_deferred_queue": drop_phase == "deferred_queue_exhausted",
+        "preserve_stub_route_hops_equal_one": nhops_seed == 1,
+    }
+    if not stub_route_recovery_enabled:
+        out["preserve_stub_route_inline_attempted"] = False
+        out["preserve_stub_route_inline_skip_reason"] = "recovery_disabled"
+    elif nhops_seed is None:
+        out["preserve_stub_route_inline_attempted"] = False
+        out["preserve_stub_route_inline_skip_reason"] = "nearest_hops_none"
+    elif nhops_seed > maxh:
+        out["preserve_stub_route_inline_attempted"] = False
+        out["preserve_stub_route_inline_skip_reason"] = "nearest_hops_over_cap"
+    else:
+        out["preserve_stub_route_inline_attempted"] = True
+        psr = (stub_route_trace_for_drop or {}).get("preserve_stub_recovery")
+        if isinstance(psr, dict):
+            out["preserve_stub_route_inline_accepted"] = psr.get("accepted")
+            out["preserve_stub_route_inline_rejected_reason"] = psr.get("rejected_reason")
+        else:
+            out["preserve_stub_route_inline_accepted"] = None
+            out["preserve_stub_route_inline_rejected_reason"] = None
+    return out
 
 
 def _detail_adjacent_same_kind_transport(detail: Mapping[str, Any], want_wr: str) -> bool:
@@ -1012,7 +1059,7 @@ def seed_pass12_scratch_from_merged_existing(
                     stub_route_recovery_enabled
                     and pdr_pre == PreserveDropReason.NO_MATCHING_STUB
                     and nhops_seed is not None
-                    and 2 <= nhops_seed <= MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS
+                    and 1 <= nhops_seed <= MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS
                 )
                 if defer_this:
                     assert nhops_seed is not None
@@ -1047,6 +1094,15 @@ def seed_pass12_scratch_from_merged_existing(
                     neighbor_stub_coords=neighbor_stub_coords,
                     eff_r=eff_r,
                     stub_route_trace_for_drop=stub_route_trace_for_drop,
+                )
+                detail_row.update(
+                    _preserve_stub_route_drop_observability(
+                        stub_route_recovery_enabled=stub_route_recovery_enabled,
+                        nhops_seed=nhops_seed,
+                        pdr_pre=pdr_pre,
+                        stub_route_trace_for_drop=stub_route_trace_for_drop,
+                        drop_phase="immediate_inline",
+                    )
                 )
                 prev_n = preserve_drop_reason_counts.get(detail_row["preserve_drop_reason"], 0)
                 preserve_drop_reason_counts[detail_row["preserve_drop_reason"]] = prev_n + 1
@@ -1174,6 +1230,13 @@ def seed_pass12_scratch_from_merged_existing(
 
     for d in recovery_queue:
         preserved_missing_stub_drop_extractor_count += 1
+        wr_q = want_role(d.transport_kind)
+        cardinals_q = _cardinal_neighbor_cell_summaries(d.miner, cells)
+        pdr_q = _classify_preserve_drop_reason(
+            want_wr=wr_q,
+            cardinals=cardinals_q,
+            nearest_hops=d.nhops_seed,
+        )
         detail_row = _missing_stub_drop_detail_row(
             miner=d.miner,
             cells=cells,
@@ -1185,6 +1248,15 @@ def seed_pass12_scratch_from_merged_existing(
             neighbor_stub_coords=d.neighbor_stub_coords,
             eff_r=d.eff_r_after_inline,
             stub_route_trace_for_drop=d.stub_route_trace_last,
+        )
+        detail_row.update(
+            _preserve_stub_route_drop_observability(
+                stub_route_recovery_enabled=stub_route_recovery_enabled,
+                nhops_seed=d.nhops_seed,
+                pdr_pre=pdr_q,
+                stub_route_trace_for_drop=d.stub_route_trace_last,
+                drop_phase="deferred_queue_exhausted",
+            )
         )
         prev_dn = preserve_drop_reason_counts.get(detail_row["preserve_drop_reason"], 0)
         preserve_drop_reason_counts[detail_row["preserve_drop_reason"]] = prev_dn + 1

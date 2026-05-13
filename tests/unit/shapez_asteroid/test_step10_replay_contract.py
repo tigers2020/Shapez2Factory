@@ -124,6 +124,10 @@ def test_build_solver_timeline_replay_has_step10_root_fields() -> None:
     }
     out = build_solver_timeline(decoded)
     sr = out["solver_replay"]
+    ss = out.get("solver_summary") or {}
+    assert isinstance(ss.get("solver_timeline_frame_count"), int)
+    assert isinstance(ss.get("map_timeline_frame_count"), int)
+    assert "replay_frame_count" in ss and "replay_event_count" in ss
     assert "layout_snapshot_before_pass3" in sr
     assert "layout_snapshot_after_pass3" in sr
     assert sr["layout_snapshot_before_pass3"] is not None

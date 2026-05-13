@@ -57,6 +57,7 @@ def new_pass2_route_probe_stats_sink() -> dict[str, Any]:
         "pass2_hard_geometry_reject_count": 0,
         "pass2_reject_step4_stub_isolated_count": 0,
         "pass2_reject_step4_unreachable_stub_count": 0,
+        "pass2_reject_step4_unreachable_fluid_stub_count": 0,
         "reachable_component_sample_by_size": {},
     }
 

@@ -190,6 +190,12 @@ def test_fluid_pipe_partial_failure_telemetry_transport_kind_and_summary_fields(
         assert "commit_reason" not in row
         det = row.get("step4_route_failure_detail")
         if isinstance(det, dict):
+            assert "exterior_fallback_considered" in det
+            assert det.get("exterior_fallback_considered") in (True, False)
+            assert "primary_existing_trunk_reachable_count" in det
+            assert "exterior_fallback_activated" in det
+            assert "exterior_fallback_reason" in det
+            assert "fallback_external_goal_count" in det
             assert "commit_reason" not in det
             rfd = det.get("routing_failure_detail")
             if isinstance(rfd, dict):

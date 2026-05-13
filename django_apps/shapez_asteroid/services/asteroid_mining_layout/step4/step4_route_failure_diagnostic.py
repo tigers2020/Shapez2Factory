@@ -21,6 +21,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_search_diagnostics as _s4sd,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_fluid_pipe_failure_component_probe import (  # noqa: E501
+    build_step4_fluid_pipe_failure_component_probe,
+)
 
 
 class Step4RouteFailureReason(StrEnum):
@@ -550,7 +553,7 @@ def build_step4_route_failure_diagnostic(
 ) -> dict[str, Any]:
     """Stable nested dict: ``step4_route_failure_diagnostic`` on each ``routing_failures`` row."""
 
-    _ = (raw_goal, mineable, asteroid, is_external, cheap_reuse_cells)
+    _ = raw_goal
     goal_count = len(goal_cells)
     exterior_goal_count = len(goal_cells & margin_cells)
     seed_pool = trunk_seed_candidates_by_kind.get(transport_kind) or set()
@@ -656,6 +659,24 @@ def build_step4_route_failure_diagnostic(
         },
     }
     out.update(_s4sd.search_stats_diagnostic_extras(search_stats))
+    fp_probe = build_step4_fluid_pipe_failure_component_probe(
+        stub_cell=stub_cell,
+        want_role=want_role,
+        goal_cells=goal_cells,
+        trunk_cells=trunk_cells,
+        trunk_seed_candidates_by_kind=trunk_seed_candidates_by_kind,
+        margin_cells=margin_cells,
+        blocked=blocked,
+        hard_extras=hard_extras,
+        cells=cells,
+        mineable=mineable,
+        asteroid=asteroid,
+        is_external=is_external,
+        cheap_reuse_cells=cheap_reuse_cells,
+        transport_kind=transport_kind,
+    )
+    if fp_probe is not None:
+        out["step4_fluid_pipe_failure_component_probe"] = fp_probe
     return out
 
 

@@ -104,6 +104,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_map
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_p2c_corrective import (
     p2c_revalidate_and_correct as _p2c_revalidate_and_correct,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_route_failure_detail import (  # noqa: E501
+    _bfs_reachable_from_stub,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_route_failure_diagnostic import (  # noqa: E501
     build_step4_hard_protected_no_route_breakdown,
     build_step4_no_route_exhausted_breakdown,
@@ -379,7 +382,7 @@ def run_step4_merge_aware_routing(
             # ``raw_goal`` = §08 trunk_seed∪margin (first phase) or committed∪margin (later).
             # ``merge_goal_union_meta`` adds live same-kind exterior-connected trunk cells so
             # Dijkstra can merge to preserved trunk before this run commits any path.
-            goal_cells, goal_order_meta = _s4sd.merge_goal_union_meta(
+            goal_full, goal_order_meta = _s4sd.merge_goal_union_meta(
                 stub_cell,
                 raw_goal=set(raw_goal),
                 trunk_cells=trunk_cells,
@@ -388,26 +391,112 @@ def run_step4_merge_aware_routing(
             if goal_order_meta.get("applied"):
                 search_goal_ordering_applied_any = True
                 search_goal_ordering_mode = str(goal_order_meta.get("mode") or "none")
-            goal_set_sizes.append(len(goal_cells))
 
             search_stats: dict[str, Any] = {
                 "search_mode": "goal_cells_union_legacy",
                 "step4_search_goal_priority_head": goal_order_meta.get("priority_head", ()),
+                "exterior_fallback_considered": False,
+                "exterior_fallback_activated": False,
+                "exterior_fallback_reason": None,
+                "primary_existing_trunk_reachable_count": None,
+                "fallback_external_goal_count": 0,
             }
-            path = _dijkstra_route(
-                stub_cell,
-                want_role=want_role,
-                cells=cells,
-                blocked=blocked,
-                mineable=mineable,
-                asteroid=asteroid,
-                is_external=is_external,
-                trunk=trunk_cells,
-                goal_cells=goal_cells,
-                margin_cells=frozenset(margin_cells),
-                cheap_reuse_cells=cheap_reuse_cells,
-                search_stats=search_stats,
-            )
+
+            committed_kind = committed_trunk_by_kind.get(tk) or set()
+            if tk == "fluid_pipe" and committed_kind:
+                raw_primary = set(committed_kind)
+                goal_primary, _pri_meta = _s4sd.merge_goal_union_meta(
+                    stub_cell,
+                    raw_goal=raw_primary,
+                    trunk_cells=trunk_cells,
+                    margin_cells=margin_cells,
+                )
+                reachable_bfs = _bfs_reachable_from_stub(
+                    stub_cell,
+                    want_role=want_role,
+                    blocked=blocked,
+                    cells=cells,
+                    mineable=mineable,
+                    asteroid=asteroid,
+                    is_external=is_external,
+                    cheap_reuse_cells=cheap_reuse_cells,
+                )
+                pr = len(trunk_cells & reachable_bfs)
+                margin_only = frozenset(margin_cells) - goal_primary
+                search_stats["exterior_fallback_considered"] = True
+                search_stats["primary_existing_trunk_reachable_count"] = pr
+                search_stats["exterior_fallback_reason"] = "primary_trunk_only_goal_set"
+                path = _dijkstra_route(
+                    stub_cell,
+                    want_role=want_role,
+                    cells=cells,
+                    blocked=blocked,
+                    mineable=mineable,
+                    asteroid=asteroid,
+                    is_external=is_external,
+                    trunk=trunk_cells,
+                    goal_cells=goal_primary,
+                    margin_cells=frozenset(margin_cells),
+                    cheap_reuse_cells=cheap_reuse_cells,
+                    search_stats=search_stats,
+                )
+                goal_cells = goal_primary
+                if path is None and pr == 0 and margin_only:
+                    search_stats["exterior_fallback_reason"] = (
+                        "trunk_unreachable_reloading_exterior_margin_goals"
+                    )
+                    path = _dijkstra_route(
+                        stub_cell,
+                        want_role=want_role,
+                        cells=cells,
+                        blocked=blocked,
+                        mineable=mineable,
+                        asteroid=asteroid,
+                        is_external=is_external,
+                        trunk=trunk_cells,
+                        goal_cells=goal_full,
+                        margin_cells=frozenset(margin_cells),
+                        cheap_reuse_cells=cheap_reuse_cells,
+                        search_stats=search_stats,
+                    )
+                    goal_cells = goal_full
+                    search_stats["exterior_fallback_activated"] = path is not None
+                    search_stats["fallback_external_goal_count"] = len(margin_only)
+                    if path is None:
+                        search_stats["exterior_fallback_reason"] = (
+                            "trunk_unreachable_margin_fallback_still_exhausted"
+                        )
+                elif path is None:
+                    if pr > 0:
+                        search_stats["exterior_fallback_reason"] = (
+                            "stub_reaches_trunk_skip_margin_fallback"
+                        )
+                    elif not margin_only:
+                        search_stats["exterior_fallback_reason"] = (
+                            "no_margin_goals_beyond_primary_union"
+                        )
+                    else:
+                        search_stats["exterior_fallback_reason"] = (
+                            "primary_exhausted_no_margin_reload"
+                        )
+            else:
+                path = _dijkstra_route(
+                    stub_cell,
+                    want_role=want_role,
+                    cells=cells,
+                    blocked=blocked,
+                    mineable=mineable,
+                    asteroid=asteroid,
+                    is_external=is_external,
+                    trunk=trunk_cells,
+                    goal_cells=goal_full,
+                    margin_cells=frozenset(margin_cells),
+                    cheap_reuse_cells=cheap_reuse_cells,
+                    search_stats=search_stats,
+                )
+                goal_cells = goal_full
+
+            goal_set_sizes.append(len(goal_cells))
             recovery_out = None
             recovery_eval_count = 0
             if path is None:
@@ -442,23 +531,32 @@ def run_step4_merge_aware_routing(
                 )
                 if len(search_diag_samples) < 8:
                     exn = int(search_stats.get("expanded_nodes") or 0)
-                    search_diag_samples.append(
-                        {
-                            "placement_id": placement_id,
-                            "transport_kind": tk,
-                            "expanded_nodes": exn,
-                            "nearest_goal_distance_estimate": search_stats.get(
-                                "nearest_goal_distance_estimate"
-                            ),
-                            "goal_count_by_distance_bucket": dict(
-                                search_stats.get("goal_count_by_distance_bucket") or {}
-                            ),
-                            "first_goal_candidate": search_stats.get("first_goal_candidate"),
-                            "max_frontier_size": search_stats.get("max_frontier_size"),
-                            "frontier_stop_reason": search_stats.get("frontier_stop_reason"),
-                            "wide_search_exhausted_guess": exn >= 20,
-                        }
-                    )
+                    smp: dict[str, Any] = {
+                        "placement_id": placement_id,
+                        "transport_kind": tk,
+                        "expanded_nodes": exn,
+                        "nearest_goal_distance_estimate": search_stats.get(
+                            "nearest_goal_distance_estimate"
+                        ),
+                        "goal_count_by_distance_bucket": dict(
+                            search_stats.get("goal_count_by_distance_bucket") or {}
+                        ),
+                        "first_goal_candidate": search_stats.get("first_goal_candidate"),
+                        "max_frontier_size": search_stats.get("max_frontier_size"),
+                        "frontier_stop_reason": search_stats.get("frontier_stop_reason"),
+                        "wide_search_exhausted_guess": exn >= 20,
+                    }
+                    if tk == "fluid_pipe":
+                        for k in (
+                            "exterior_fallback_considered",
+                            "exterior_fallback_activated",
+                            "exterior_fallback_reason",
+                            "primary_existing_trunk_reachable_count",
+                            "fallback_external_goal_count",
+                        ):
+                            if k in search_stats:
+                                smp[k] = search_stats[k]
+                    search_diag_samples.append(smp)
                 recovery_tried_pass2 = False
                 job_recovery_last_mode: str | None = None
                 job_recovery_last_err: str | None = None

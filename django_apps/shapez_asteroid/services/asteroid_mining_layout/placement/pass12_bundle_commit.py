@@ -301,9 +301,30 @@ def _commit_after_probe(
                         int(sink.get("pass2_reject_step4_stub_isolated_count", 0)) + 1
                     )
                     return False
-                if gn > 0 and not prec.reachable and prec.stop_reason == "exhausted":
+                fluid_unreachable = (
+                    state.transport_kind == "fluid_pipe"
+                    and gn > 0
+                    and not prec.reachable
+                    and prec.stop_reason in ("exhausted", "budget")
+                )
+                belt_unreachable = (
+                    state.transport_kind != "fluid_pipe"
+                    and gn > 0
+                    and not prec.reachable
+                    and prec.stop_reason == "exhausted"
+                )
+                if fluid_unreachable or belt_unreachable:
                     payload_u: dict[str, Any] = dict(bundle_hint or {})
-                    payload_u["reason"] = "pass2_reject_step4_unreachable_stub"
+                    if fluid_unreachable:
+                        payload_u["reason"] = "pass2_reject_step4_unreachable_fluid_stub"
+                        sink["pass2_reject_step4_unreachable_fluid_stub_count"] = (
+                            int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) + 1
+                        )
+                    else:
+                        payload_u["reason"] = "pass2_reject_step4_unreachable_stub"
+                        sink["pass2_reject_step4_unreachable_stub_count"] = (
+                            int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) + 1
+                        )
                     payload_u["stub_cell"] = candidate.stub_cell
                     payload_u["want_role"] = want_role
                     payload_u["pass2_step4_precheck"] = {
@@ -314,9 +335,6 @@ def _commit_after_probe(
                         "reachable_exterior_margin_count": prec.reachable_exterior_margin_count,
                     }
                     trace_bundle_reject_invalid_stub(trace_location, payload_u)
-                    sink["pass2_reject_step4_unreachable_stub_count"] = (
-                        int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) + 1
-                    )
                     return False
         else:
             if not bundle_route_probe_or_reject(

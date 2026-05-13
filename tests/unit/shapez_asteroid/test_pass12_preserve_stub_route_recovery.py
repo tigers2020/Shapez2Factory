@@ -169,6 +169,45 @@ def test_try_preserve_scratch_goal_counters_on_trace() -> None:
     assert psr["rejected_reason"] == "nearest_hops_over_cap"
 
 
+def test_try_preserve_stub_route_recovery_attempts_hop_seven_candidate() -> None:
+    """hop=7 후보는 cap에 잘리지 않고 실제 경로 probe까지 진행한다."""
+
+    cells = {
+        (5, 5): {
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 3,
+            "surface": "fluid",
+        },
+        (6, 5): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (5, 6): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (5, 4): {"role": "inferred", "surface": "fluid"},
+        (5, 3): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (5, 2): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (5, 1): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (5, 0): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (5, -1): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (5, -2): {"role": "pipe", "surface": "fluid"},
+    }
+    mineable: frozenset[Coord] = frozenset(cells.keys())
+    res = try_preserve_stub_route_recovery(
+        miner=(5, 5),
+        extensions=frozenset({(6, 5), (5, 6)}),
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(5, -2)}),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=7,
+        row_r_raw=3,
+    )
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr["attempted"] is True
+    assert res.accepted is True
+    assert psr["route_len_edges"] == 6
+    assert psr["new_transport_cell_count"] == 6
+
+
 def test_stub_route_recovery_rejects_mixed_kind_trunk() -> None:
     """Belt on corridor blocks pipe BFS → no_same_kind_route."""
 

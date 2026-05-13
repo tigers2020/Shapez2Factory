@@ -53,6 +53,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 # ``existing_layout_replay_overlay`` / ``placement_recovery_overlay`` (output-only).
 # v11: ``placement_recovery_overlay.step4_route_failure_replay_overlay`` — bounded STEP4 route
 # failure cell samples + corridor lists for debug/replay UI (never routing input).
+# v12: ``solver_replay.cycle_frames`` + ``replay_frame`` kind (STEP10 cycle streaming).
 
 
 class SolverMutationEventKind(StrEnum):
@@ -75,6 +76,7 @@ class SolverMutationEventKind(StrEnum):
     CORRIDOR_REMOVED = "corridor_removed"
     CORRIDOR_PROMOTED = "corridor_promoted"
     CORRIDOR_REPLACED = "corridor_replaced"
+    REPLAY_FRAME = "replay_frame"
 
 
 # Canonical ``event_type`` per legacy ``kind`` (Epic B Part 2). Unknown ``kind`` → passthrough.
@@ -96,6 +98,7 @@ REPLAY_EVENT_TYPE_BY_KIND: dict[str, str] = {
     SolverMutationEventKind.CORRIDOR_REMOVED.value: "corridor_removed",
     SolverMutationEventKind.CORRIDOR_PROMOTED.value: "corridor_promoted",
     SolverMutationEventKind.CORRIDOR_REPLACED.value: "corridor_replaced",
+    SolverMutationEventKind.REPLAY_FRAME.value: "replay_frame",
 }
 
 OVERLAY_REPLAY_EVENT_TYPES: frozenset[str] = frozenset(
@@ -559,6 +562,12 @@ def _fill_event_trace_schema(ev: dict[str, Any]) -> None:
             if tier is not None or n is not None:
                 ev["protected_corridors"] = {"tier": tier, "cell_count": n}
 
+    if kind == SolverMutationEventKind.REPLAY_FRAME.value and pl_d is not None:
+        if "metrics" in pl_d:
+            ev["metrics"] = pl_d.get("metrics")
+        if "decision" in pl_d:
+            ev["decision"] = pl_d.get("decision")
+
 
 def prepare_replay_events_for_snapshot(events: list[dict[str, Any]]) -> int:
     """Normalize ``computation_cycle``, ``event_type``, and STEP10 per-event trace keys.
@@ -573,6 +582,35 @@ def prepare_replay_events_for_snapshot(events: list[dict[str, Any]]) -> int:
         if isinstance(ev, dict):
             _fill_event_trace_schema(ev)
     return max_cycle
+
+
+def build_cycle_frames_from_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Extract UI cycle rows from normalized ``replay_frame`` events (contract v12+)."""
+
+    out: list[dict[str, Any]] = []
+    for i, ev in enumerate(events):
+        if not isinstance(ev, dict):
+            continue
+        if ev.get("kind") != SolverMutationEventKind.REPLAY_FRAME.value:
+            continue
+        pl = ev.get("payload")
+        pl_d = pl if isinstance(pl, dict) else None
+        trace_cc = pl_d.get("trace_computation_cycle") if pl_d is not None else None
+        row: dict[str, Any] = {
+            "replay_event_index": i,
+            "computation_cycle": ev.get("computation_cycle"),
+            "trace_computation_cycle": trace_cc if isinstance(trace_cc, int) else trace_cc,
+            "phase": ev.get("phase"),
+            "frame_kind": pl_d.get("frame_kind") if pl_d is not None else None,
+            "layout_snapshot_phase": (
+                pl_d.get("layout_snapshot_phase") if pl_d is not None else None
+            ),
+            "metrics": ev.get("metrics"),
+            "decision": ev.get("decision"),
+            "mining_map": pl_d.get("mining_map") if pl_d is not None else None,
+        }
+        out.append(row)
+    return out
 
 
 def build_solver_replay_snapshot(
@@ -603,6 +641,7 @@ def build_solver_replay_snapshot(
     ui_frames = build_replay_ui_frames(solver_timeline=frames, events=ev)
     before_p3, after_p3 = extract_pass3_layout_snapshot_refs(ev)
     ela_overlay = existing_layout_replay_overlay(existing_layout_analysis)
+    cycle_frames = build_cycle_frames_from_events(ev)
     snap: dict[str, Any] = {
         "contract_version": SOLVER_REPLAY_CONTRACT_VERSION,
         "run_id": run_id,
@@ -611,6 +650,7 @@ def build_solver_replay_snapshot(
         "computation_cycle": max_cycle,
         "events": ev,
         "ui_frames": ui_frames,
+        "cycle_frames": cycle_frames,
         "layout_snapshot_before_pass3": before_p3,
         "layout_snapshot_after_pass3": after_p3,
     }

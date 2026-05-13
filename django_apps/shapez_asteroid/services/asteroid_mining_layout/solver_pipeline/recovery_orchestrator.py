@@ -312,6 +312,10 @@ def run_solver_timeline_pipeline(
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
         SolverMutationEventKind,
     )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace import (
+        trace_bind_replay_events,
+        trace_publish_layout_observation,
+    )
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline import (  # noqa: E501
         finalize as _finalize_mod,
     )
@@ -336,10 +340,15 @@ def run_solver_timeline_pipeline(
     )
 
     replay_events: list[dict[str, Any]] = []
+    trace_bind_replay_events(replay_events)
     map_timeline = build_map_timeline(decoded)
     working_map = map_timeline[0]["mining_map"]
     final_map = map_timeline[-1]["mining_map"]
     is_external = external_predicate_for_mining_map(map_timeline[1]["mining_map"])
+    trace_publish_layout_observation(
+        phase="working",
+        mining_map=solver_mut_txn.copy_mining_map_rows(working_map),
+    )
     step05_baseline_map = merge_with_transport_and_final_mining_map(working_map, final_map)
     existing_layout_analysis = analyze_existing_layout_from_mining_map(
         step05_baseline_map,
@@ -359,6 +368,10 @@ def run_solver_timeline_pipeline(
         replay_events=replay_events,
         map_timeline=map_timeline,
         debug_location=debug_location,
+    )
+    trace_publish_layout_observation(
+        phase="pass12",
+        mining_map=solver_mut_txn.copy_mining_map_rows(pass12.map_after_pass2),
     )
     step4 = run_step4_stage(
         map_after_pass2=pass12.map_after_pass2,
@@ -409,6 +422,10 @@ def run_solver_timeline_pipeline(
                 existing_layout_analysis=existing_layout_analysis,
                 step4_reentry_index=1,
             )
+    trace_publish_layout_observation(
+        phase="step4",
+        mining_map=solver_mut_txn.copy_mining_map_rows(step4.map_after_routing),
+    )
     optimization_baseline_internal_transport = optimization_baseline_internal_transport_at_map(
         pass12.map_after_pass2,
         final_mining_map=final_map,

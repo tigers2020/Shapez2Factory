@@ -330,8 +330,9 @@ def post_reclaim_p3e3_route_ratio_max(*, pass3_internal_transport_saved: int) ->
 
 
 # --- Replay NDJSON contract ---
-SOLVER_REPLAY_CONTRACT_VERSION = 11
+SOLVER_REPLAY_CONTRACT_VERSION = 12
 
+# v12: ``solver_replay.cycle_frames`` — NDJSON ``replay_frame`` + trace ``computation_cycle`` (STEP10).
 # v11: ``placement_recovery_overlay.step4_route_failure_replay_overlay`` (bounded STEP4 failure UI).
 # v9: replay ``events[]`` carry ``event_type`` (canonical category) alongside legacy ``kind``.
 # v8: ``ui_frames[].trunk_load_overlay`` (STEP4 trunk observation slice for STEP10 UI).

@@ -11,6 +11,8 @@ regression, and UI replay export.
 wire shape ``{"location","message","data"}`` (§STEP10). Per-run ``{run_id}.ndjson`` plus
 ``replay_latest.ndjson``. Override with ``SHAPEZ_SOLVER_TRACE_PATH`` (single file) or
 ``SHAPEZ_SOLVER_REPLAY_DIR`` (directory for the two-file pattern).
+``replay_frame`` rows omit full ``mining_map`` on disk (``mining_map_row_count`` only); full maps
+stay in in-memory ``replay_events`` for the API snapshot.
 
 **Debug NDJSON** (``var/asteroid_mining_layout_debug``): ``debug_log_event`` / ``kind: action``,
 ``run_start`` / ``run_end``, placement-verbose and bundle-reject diagnostics — **no** duplicate
@@ -62,6 +64,36 @@ _summary_emitted_var: ContextVar[bool] = ContextVar(
     "mining_layout_solver_summary_emitted",
     default=False,
 )
+# STEP10 trace step counter (one increment per ``trace_event`` primary call; replay wire only).
+_trace_computation_cycle_var: ContextVar[int] = ContextVar(
+    "mining_layout_trace_computation_cycle",
+    default=0,
+)
+_replay_events_sink_var: ContextVar[list[dict[str, Any]] | None] = ContextVar(
+    "mining_layout_replay_events_sink",
+    default=None,
+)
+_replay_layout_ctx_var: ContextVar[dict[str, Any] | None] = ContextVar(
+    "mining_layout_replay_layout_ctx",
+    default=None,
+)
+# Pass12-only merge inputs for ``replay_frame`` layout snapshots (output; never read by routing).
+_pass12_trace_merge_ctx_var: ContextVar[dict[str, Any] | None] = ContextVar(
+    "mining_layout_pass12_trace_merge_ctx",
+    default=None,
+)
+_trace_replay_stats_var: ContextVar[dict[str, int] | None] = ContextVar(
+    "mining_layout_trace_replay_stats",
+    default=None,
+)
+
+_REPLAY_FRAME_STRIDE = 10
+_CANDIDATE_REJECT_MESSAGES = frozenset(
+    {
+        "bundle_reject_invalid_stub",
+        "bundle_reject_no_route",
+    },
+)
 
 
 def trace_enabled() -> bool:
@@ -101,6 +133,114 @@ def trace_run_id_current() -> str | None:
     return _run_id_var.get()
 
 
+def trace_bind_replay_events(events: list[dict[str, Any]]) -> None:
+    """Bind ``replay_events`` for optional ``replay_frame`` appends (output-only)."""
+
+    _replay_events_sink_var.set(events)
+
+
+def trace_bind_pass12_merge_context(ctx: dict[str, Any] | None) -> Token[dict[str, Any] | None]:
+    """Bind merge inputs for Pass12 ``replay_frame`` ``mining_map`` snapshots (output-only)."""
+
+    return _pass12_trace_merge_ctx_var.set(ctx)
+
+
+def trace_reset_pass12_merge_context(token: Token[dict[str, Any] | None]) -> None:
+    _pass12_trace_merge_ctx_var.reset(token)
+
+
+def trace_pass12_merge_context_get() -> dict[str, Any] | None:
+    c = _pass12_trace_merge_ctx_var.get()
+    return c if isinstance(c, dict) else None
+
+
+def trace_publish_layout_observation(
+    *,
+    phase: str | None = None,
+    step_index: int | None = None,
+    mining_map: list[dict[str, Any]] | None = None,
+    metrics: dict[str, Any] | None = None,
+) -> None:
+    """Publish layout/metrics hints for ``replay_frame`` payloads (trace output only)."""
+
+    cur = dict(_replay_layout_ctx_var.get() or {})
+    if phase is not None:
+        cur["phase"] = phase
+    if step_index is not None:
+        cur["step_index"] = int(step_index)
+    if mining_map is not None:
+        cur["mining_map"] = mining_map
+    if metrics is not None:
+        cur["metrics"] = dict(metrics)
+    _replay_layout_ctx_var.set(cur)
+
+
+def trace_publish_pass12_scratch_metrics(scratch: Any, *, transport_kind: str) -> None:
+    """Update trace metrics from Pass12 scratch (cheap counts; output-only)."""
+
+    if scratch is None:
+        return
+    try:
+        metrics = {
+            "extractor_count": len(scratch.extractor_cells),
+            "extension_count": len(scratch.extension_facings),
+            "route_cell_count": len(scratch.transport_cells),
+            "internal_transport_count": None,
+            "extension_count_transport_adjacent": None,
+            "transport_connected": None,
+        }
+    except (TypeError, AttributeError):
+        return
+    _ = transport_kind
+    trace_publish_layout_observation(metrics=metrics)
+
+
+def _trace_stats_ensure() -> dict[str, int]:
+    s = _trace_replay_stats_var.get()
+    if s is None:
+        s = {"replay_event": 0, "replay_frame": 0, "candidate_reject": 0}
+        _trace_replay_stats_var.set(s)
+    return s
+
+
+def _canonical_trace_event_type(message: str) -> str:
+    if message in _CANDIDATE_REJECT_MESSAGES:
+        return "candidate_reject"
+    return message
+
+
+def _replay_diag_for_summary() -> dict[str, Any]:
+    if not trace_enabled():
+        return {
+            "replay_event_count": 0,
+            "replay_frame_count": 0,
+            "replay_candidate_event_count": 0,
+            "replay_has_computation_cycle": False,
+            "replay_frame_source": "trace_disabled",
+        }
+    s = _trace_replay_stats_var.get() or {
+        "replay_event": 0,
+        "replay_frame": 0,
+        "candidate_reject": 0,
+    }
+    rec = int(s.get("replay_event", 0))
+    rfc = int(s.get("replay_frame", 0))
+    crc = int(s.get("candidate_reject", 0))
+    if rfc > 0:
+        src = "replay_trace"
+    elif rec > 0:
+        src = "pass_snapshot_fallback"
+    else:
+        src = "unknown"
+    return {
+        "replay_event_count": rec,
+        "replay_frame_count": rfc,
+        "replay_candidate_event_count": crc,
+        "replay_has_computation_cycle": rec > 0,
+        "replay_frame_source": src,
+    }
+
+
 def emit_solver_summary_once(location: str, payload: dict[str, Any]) -> bool:
     """Emit at most one ``solver_summary`` trace event per ``trace_run_scope``.
 
@@ -114,6 +254,7 @@ def emit_solver_summary_once(location: str, payload: dict[str, Any]) -> bool:
     merged = dict(payload)
     if rid is not None:
         merged.setdefault("run_id", rid)
+    merged.update(_replay_diag_for_summary())
     trace_event(location, "solver_summary", {"solver_summary": merged})
     if trace_enabled():
         debug_log_event(
@@ -129,9 +270,19 @@ def trace_bundle_reject_no_route(location: str, data: dict[str, Any] | None = No
     trace_event(location, "bundle_reject_no_route", dict(data or {}))
 
 
-def trace_bundle_reject_invalid_stub(location: str, data: dict[str, Any] | None = None) -> None:
+def trace_bundle_reject_invalid_stub(
+    location: str,
+    data: dict[str, Any] | None = None,
+    *,
+    scratch: Any = None,
+) -> None:
     """``stub_cell`` not in merged transport (generator bug); not a route probe miss."""
 
+    if scratch is not None:
+        trace_publish_pass12_scratch_metrics(
+            scratch,
+            transport_kind=str(getattr(scratch, "transport_kind", "") or ""),
+        )
     trace_event(location, "bundle_reject_invalid_stub", dict(data or {}))
 
 
@@ -261,6 +412,11 @@ def trace_run_scope() -> Iterator[None]:
     token = trace_run_id_set(run_id)
     summary_tok = _summary_emitted_var.set(False)
     started = time.perf_counter()
+    _trace_computation_cycle_var.set(0)
+    _replay_events_sink_var.set(None)
+    _replay_layout_ctx_var.set({})
+    _pass12_trace_merge_ctx_var.set(None)
+    _trace_replay_stats_var.set({"replay_event": 0, "replay_frame": 0, "candidate_reject": 0})
     if trace_enabled():
         _prune_var_logging_files()
         _truncate_replay_files(run_id)
@@ -293,6 +449,11 @@ def trace_run_scope() -> Iterator[None]:
         )
         _summary_emitted_var.reset(summary_tok)
         trace_run_id_reset(token)
+        _trace_computation_cycle_var.set(0)
+        _replay_events_sink_var.set(None)
+        _replay_layout_ctx_var.set(None)
+        _pass12_trace_merge_ctx_var.set(None)
+        _trace_replay_stats_var.set(None)
 
 
 def debug_log_event(
@@ -330,6 +491,101 @@ def debug_trace_event(
     trace_event(location, message, merged)
 
 
+def _write_replay_ndjson_record(record: dict[str, Any]) -> None:
+    """Append one replay NDJSON line (no ``trace_enabled`` gate — caller gates)."""
+
+    line = json.dumps(record, ensure_ascii=False, default=str)
+    _logger.debug("%s", line)
+    rid = _run_id_var.get()
+    for path in _replay_log_paths(rid):
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+        except OSError as exc:
+            _logger.warning("mining_layout replay trace append failed path=%s err=%s", path, exc)
+
+
+def _emit_supplemental_replay_frame(*, trace_computation_cycle: int) -> None:
+    """Emit ``replay_frame`` row + optional in-memory replay event (stride-based).
+
+    ``replay_events`` payloads keep ``mining_map`` when present (API ``cycle_frames``).
+    Replay NDJSON omits full ``mining_map`` and writes ``mining_map_row_count`` only so
+    ``replay_latest.ndjson`` does not grow by megabytes per line.
+    """
+
+    if trace_computation_cycle <= 0 or (trace_computation_cycle % _REPLAY_FRAME_STRIDE) != 0:
+        return
+    ctx = dict(_replay_layout_ctx_var.get() or {})
+    phase = str(ctx.get("phase") or "unknown")
+    step_index = ctx.get("step_index")
+    layout_snap = ctx.get("layout_snapshot_phase")
+    mining_map = ctx.get("mining_map")
+    raw_m = ctx.get("metrics")
+    base_metrics: dict[str, Any] = dict(raw_m) if isinstance(raw_m, dict) else {}
+    metrics: dict[str, Any] = {
+        "extractor_count": base_metrics.get("extractor_count"),
+        "extension_count": base_metrics.get("extension_count"),
+        "route_cell_count": base_metrics.get("route_cell_count"),
+        "internal_transport_count": base_metrics.get("internal_transport_count"),
+        "transport_connected": base_metrics.get("transport_connected"),
+    }
+    payload: dict[str, Any] = {
+        "frame_kind": "cycle_snapshot",
+        "trace_computation_cycle": int(trace_computation_cycle),
+        "phase": phase,
+        "layout_snapshot_phase": layout_snap if isinstance(layout_snap, str) else None,
+        "metrics": metrics,
+        "decision": None,
+    }
+    if isinstance(mining_map, list):
+        from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_mutation_transaction import (  # noqa: E501
+            copy_mining_map_rows as _copy_mining_map_rows,
+        )
+
+        payload["mining_map"] = _copy_mining_map_rows(mining_map)
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
+        SolverMutationEventKind,
+    )
+
+    sink = _replay_events_sink_var.get()
+    if sink is not None:
+        sink.append(
+            {
+                "kind": SolverMutationEventKind.REPLAY_FRAME.value,
+                "phase": phase,
+                "payload": dict(payload),
+            }
+        )
+
+    rid = _run_id_var.get()
+    merged_rf: dict[str, Any] = {
+        "ts": time.time(),
+        "event_type": "replay_frame",
+        "computation_cycle": int(trace_computation_cycle),
+        "frame_kind": "cycle_snapshot",
+        "trace_computation_cycle": int(trace_computation_cycle),
+        "phase": phase,
+        "step_index": step_index,
+        "layout_snapshot_phase": payload["layout_snapshot_phase"],
+        "metrics": metrics,
+        "decision": None,
+    }
+    if isinstance(mining_map, list):
+        merged_rf["mining_map"] = mining_map
+    if rid is not None:
+        merged_rf["run_id"] = rid
+    ndjson_data = {k: v for k, v in merged_rf.items() if k != "mining_map"}
+    if isinstance(mining_map, list):
+        ndjson_data["mining_map_row_count"] = len(mining_map)
+    _write_replay_ndjson_record(
+        {"location": "solver_trace.replay_frame", "message": "replay_frame", "data": ndjson_data}
+    )
+    st = _trace_stats_ensure()
+    st["replay_frame"] = int(st.get("replay_frame", 0)) + 1
+
+
 def trace_event(location: str, message: str, data: dict[str, Any] | None = None) -> None:
     """STEP10 replay UI가 읽는 NDJSON trace event를 기록한다 (§16).
 
@@ -339,17 +595,20 @@ def trace_event(location: str, message: str, data: dict[str, Any] | None = None)
     if not trace_enabled():
         return
     merged: dict[str, Any] = dict(data or {})
+    n = _trace_computation_cycle_var.get() + 1
+    _trace_computation_cycle_var.set(n)
+    merged["computation_cycle"] = n
+    merged["event_type"] = _canonical_trace_event_type(message)
     merged["ts"] = time.time()
     rid = _run_id_var.get()
     if rid is not None:
         merged["run_id"] = rid
     record = {"location": location, "message": message, "data": merged}
-    line = json.dumps(record, ensure_ascii=False, default=str)
-    _logger.debug("%s", line)
-    for path in _replay_log_paths(rid):
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with path.open("a", encoding="utf-8") as fh:
-                fh.write(line + "\n")
-        except OSError as exc:
-            _logger.warning("mining_layout replay trace append failed path=%s err=%s", path, exc)
+    _write_replay_ndjson_record(record)
+
+    st = _trace_stats_ensure()
+    st["replay_event"] = int(st.get("replay_event", 0)) + 1
+    if merged["event_type"] == "candidate_reject":
+        st["candidate_reject"] = int(st.get("candidate_reject", 0)) + 1
+
+    _emit_supplemental_replay_frame(trace_computation_cycle=n)

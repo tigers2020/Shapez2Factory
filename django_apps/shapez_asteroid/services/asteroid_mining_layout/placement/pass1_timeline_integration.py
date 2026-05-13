@@ -57,6 +57,13 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_r
     new_replay_transaction_id,
     replay_transaction_payload,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace import (
+    trace_bind_pass12_merge_context,
+    trace_enabled,
+    trace_pass12_merge_context_get,
+    trace_publish_layout_observation,
+    trace_reset_pass12_merge_context,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
     orphan_transport_metrics_from_cells,
@@ -343,6 +350,34 @@ def _merge_pass1_into_rows(
     return [dict(cells[k]) for k in ordered], stamp_set
 
 
+def maybe_trace_publish_pass12_scratch_after_commit(state: Pass12LayoutScratch) -> None:
+    """Refresh trace layout ctx from current Pass12 scratch (``trace_enabled`` only).
+
+    Runs after each successful bundle commit so ``replay_frame`` snapshots and API
+    ``cycle_frames`` stay aligned with partial placement (output-only).
+    """
+
+    if not trace_enabled():
+        return
+    ctx = trace_pass12_merge_context_get()
+    if ctx is None:
+        return
+    merged_rows, _stamp = _merge_pass1_into_rows(
+        ctx["working_map"],
+        ctx["final_mining_map"],
+        state,
+        ctx["transport_init"],
+        ctx["blocked_init"],
+        ctx["mineable"],
+        ctx["surface"],
+        is_external=ctx["is_external"],
+    )
+    trace_publish_layout_observation(
+        phase="pass12",
+        mining_map=copy_mining_map_rows(merged_rows),
+    )
+
+
 def integrate_pass12_placement_into_working_map(
     *,
     working_map: list[dict[str, Any]],
@@ -515,6 +550,17 @@ def integrate_pass12_placement_into_working_map(
                 "payload": replay_transaction_payload(transaction_id=pass12_txn_id),
             }
         )
+    _pass12_merge_tok = trace_bind_pass12_merge_context(
+        {
+            "working_map": working_map,
+            "final_mining_map": final_mining_map,
+            "transport_init": transport_init,
+            "blocked_init": blocked_init,
+            "mineable": mineable,
+            "surface": surface,
+            "is_external": is_external,
+        }
+    )
     try:
         priority_seeds_arg: frozenset[Coord] | None = None
         spine_seeds: frozenset[Coord] = frozenset()
@@ -710,6 +756,8 @@ def integrate_pass12_placement_into_working_map(
                 }
             )
         raise
+    finally:
+        trace_reset_pass12_merge_context(_pass12_merge_tok)
 
 
 def integrate_pass1_outer_into_working_map(

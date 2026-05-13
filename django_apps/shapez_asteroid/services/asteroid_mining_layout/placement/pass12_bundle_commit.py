@@ -238,7 +238,7 @@ def _reject_noncanonical_island_fallback(
     payload["stub_cell"] = candidate.stub_cell
     payload["transport_kind"] = state.transport_kind
     payload["pass2_goal_set_trace"] = dict(goal_trace)
-    trace_bundle_reject_invalid_stub(trace_location, payload)
+    trace_bundle_reject_invalid_stub(trace_location, payload, scratch=state)
     _bump_stat_sink(pack.stats_sink, "pass2_reject_transport_cells_before_island_fallback_count")
     _bump_stat_sink(pack.stats_sink, "pass2_reject_step4_unreachable_component_count")
     _bump_unreachable_stub_flavor(pack.stats_sink, state.transport_kind)
@@ -316,7 +316,7 @@ def _pass2_uncertain_followup(
             "visits": prec.visits,
             "reachable_goal_count": prec.reachable_goal_count,
         }
-        trace_bundle_reject_invalid_stub(trace_location, payload_iso)
+        trace_bundle_reject_invalid_stub(trace_location, payload_iso, scratch=state)
         _bump_stat_sink(sink, "pass2_reject_step4_stub_isolated_count")
         return False
     unreachable_prec = gn > 0 and not prec.reachable and prec.stop_reason in ("exhausted", "budget")
@@ -333,7 +333,7 @@ def _pass2_uncertain_followup(
             "reachable_existing_trunk_count": prec.reachable_existing_trunk_count,
             "reachable_exterior_margin_count": prec.reachable_exterior_margin_count,
         }
-        trace_bundle_reject_invalid_stub(trace_location, payload_u)
+        trace_bundle_reject_invalid_stub(trace_location, payload_u, scratch=state)
         _bump_stat_sink(sink, "pass2_reject_step4_unreachable_component_count")
         _bump_unreachable_stub_flavor(sink, state.transport_kind)
         return False
@@ -354,7 +354,7 @@ def _pass2_uncertain_followup(
         payload_c["stub_cell"] = candidate.stub_cell
         payload_c["want_role"] = want_role
         payload_c["pass2_transport_component_gate"] = dict(comp_detail)
-        trace_bundle_reject_invalid_stub(trace_location, payload_c)
+        trace_bundle_reject_invalid_stub(trace_location, payload_c, scratch=state)
         _bump_stat_sink(sink, "pass2_reject_step4_unreachable_component_count")
         _bump_unreachable_stub_flavor(sink, state.transport_kind)
         return False
@@ -507,6 +507,11 @@ def _apply_pass12_bundle_commit(
             },
         }
     )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (  # noqa: E501
+        pass1_timeline_integration as _p12_tl,
+    )
+
+    _p12_tl.maybe_trace_publish_pass12_scratch_after_commit(state)
 
 
 def _commit_after_probe(

@@ -607,6 +607,8 @@
   var lastMiningMap = [];
   var lastStyleCatalog = {};
   var lastSolverReplay = null;
+  /** Contract v12+: cycle-level playback rows (subset of ``solver_replay``). */
+  var lastCycleFrames = [];
   /** Solver-only replay (STEP10): unified timeline uses ``map_timeline`` then ``solver_timeline`` rows; ``ui_frames`` is one meta row per solver row (not per replay event). */
   var lastSolverTimeline = [];
   /** One row per ``solver_timeline`` index (same order as unified timeline from ``solverPhaseStartIndex``). */
@@ -692,6 +694,7 @@
     corridor_removed: true,
     corridor_promoted: true,
     corridor_replaced: true,
+    replay_frame: true,
   };
 
   function normalizeSolverReplayPayload(raw) {
@@ -1829,6 +1832,15 @@
         return;
       }
       var next = decodeStepIndex + 1;
+      if (
+        typeof solverPhaseStartIndex === "number" &&
+        solverPhaseStartIndex > 0 &&
+        next >= solverPhaseStartIndex
+      ) {
+        setDecodeStepIndex(solverPhaseStartIndex);
+        stopDecodePlay();
+        return;
+      }
       setDecodeStepIndex(next);
       if (decodeStepsList.length) {
         var st = decodeStepsList[next];
@@ -3604,6 +3616,7 @@
       stopReplayPlay();
       lastSolverReplay = null;
       lastReplayUiFrames = [];
+      lastCycleFrames = [];
       solverPhaseStartIndex = -1;
       lastSummary = null;
       syncTierBadge(null);
@@ -3675,8 +3688,55 @@
           lastSolverReplay = replayNorm.replay;
           var rawUi = replayNorm.replay && replayNorm.replay.ui_frames;
           lastReplayUiFrames = Array.isArray(rawUi) ? rawUi : [];
+          lastCycleFrames =
+            replayNorm.replay && Array.isArray(replayNorm.replay.cycle_frames)
+              ? replayNorm.replay.cycle_frames
+              : [];
           var solverPlaybackSteps = Array.isArray(solverSteps) ? solverSteps : [];
-          if (
+          if (lastCycleFrames.length) {
+            var carryMap = [];
+            if (Array.isArray(mapSteps) && mapSteps.length) {
+              var lm = mapSteps[mapSteps.length - 1];
+              carryMap =
+                lm && Array.isArray(lm.mining_map) ? cloneMiningMapRows(lm.mining_map) : [];
+            }
+            solverPlaybackSteps = lastCycleFrames.map(function (cf, j) {
+              var mm =
+                cf && Array.isArray(cf.mining_map) && cf.mining_map.length
+                  ? cloneMiningMapRows(cf.mining_map)
+                  : carryMap;
+              if (mm && mm.length) carryMap = cloneMiningMapRows(mm);
+              var tid =
+                cf && cf.trace_computation_cycle != null && cf.trace_computation_cycle !== ""
+                  ? String(cf.trace_computation_cycle)
+                  : String(j);
+              return {
+                id: "solver_cycle_" + tid,
+                mining_map: mm,
+                summary: {
+                  replay_cycle: true,
+                  trace_computation_cycle: cf ? cf.trace_computation_cycle : null,
+                  phase: cf ? cf.phase : null,
+                  metrics: cf && cf.metrics ? cf.metrics : null,
+                },
+              };
+            });
+            lastReplayUiFrames = lastCycleFrames.map(function (cf, j) {
+              var evIx =
+                typeof cf.replay_event_index === "number" ? [cf.replay_event_index] : [];
+              return {
+                timeline_index: j,
+                timeline_frame_id:
+                  cf && cf.trace_computation_cycle != null && cf.trace_computation_cycle !== ""
+                    ? "solver_cycle_" + String(cf.trace_computation_cycle)
+                    : "solver_cycle_" + String(j),
+                event_indices: evIx,
+                overlay_event_indices: [],
+                primary_for_step10_ui: true,
+                protected_corridors: null,
+              };
+            });
+          } else if (
             !lastReplayUiFrames.length &&
             Array.isArray(solverPlaybackSteps) &&
             solverPlaybackSteps.length
@@ -3717,16 +3777,20 @@
               map_timeline_len: Array.isArray(mapSteps) ? mapSteps.length : -1,
               solverPhaseStartIndex: solverPhaseStartIndex,
               replay_event_count: replayNorm.events.length,
+              cycle_frames_len: lastCycleFrames.length,
             });
           }
           applyMapTimeline(unifiedTimeline, { autoPlayOnce: true });
           if (solverRedecodeHintEl) {
-            if (Array.isArray(solverSteps) && solverSteps.length) {
+            if (
+              (Array.isArray(solverSteps) && solverSteps.length) ||
+              lastCycleFrames.length
+            ) {
               solverRedecodeHintEl.classList.add("hidden");
               solverRedecodeHintEl.textContent = "";
             }
           }
-          if (!Array.isArray(solverSteps) || !solverSteps.length) {
+          if ((!Array.isArray(solverSteps) || !solverSteps.length) && !lastCycleFrames.length) {
             var miss = root.getAttribute("data-msg-solver-timeline-missing") || "";
             if (miss) {
               summaryEl.textContent = decodeSummaryText + " — " + miss;
@@ -3736,6 +3800,7 @@
         .catch(function () {
           lastSolverReplay = null;
           lastReplayUiFrames = [];
+          lastCycleFrames = [];
           lastSummary = null;
           syncTierBadge(null);
           applyMapTimeline([]);

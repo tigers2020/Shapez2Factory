@@ -12,7 +12,7 @@ _TRACE_PATH_MARKERS = (
     "asteroid_mining_layout_replay",
     "mining_layout_solver_trace.ndjson",
 )
-_TRACE_MODULE_ONLY = frozenset({"solver_trace.py"})
+_TRACE_MODULE_ONLY = frozenset({"solver_trace.py", "solver_replay_ndjson.py"})
 _SCRIPTS_PKG = re.compile(r"^\s*(from|import)\s+scripts(\.|$)")
 _READ_TEXT_OPEN = re.compile(
     r'(\.open\(\s*["\']r["\']|open\([^)]+\b["\']r["\']|read_text\()',

@@ -2,10 +2,19 @@
 
 **Trace / debug layer (Algorithm §STEP10):** from the solver algorithm's perspective this module
 is **write-only** to NDJSON and debug files. Routing, Pass3, Reclaim, and Recovery must **not**
-read ``latest.ndjson``, ``mining_layout_solver_trace.ndjson``, prior ``solver_summary`` trace
-lines, or ``replay_events`` from disk to make decisions — use live maps, ``routing_state``, and
-stage contracts only. Offline tools under ``scripts/debug/`` may read these artifacts for audit,
+read ``latest.ndjson``, ``replay_latest.ndjson``, prior ``solver_summary`` trace lines, or
+``replay_events`` from disk to make decisions — use live maps, ``routing_state``, and stage
+contracts only. Offline tools under ``scripts/debug/`` may read these artifacts for audit,
 regression, and UI replay export.
+
+**Replay NDJSON** (``var/asteroid_mining_layout_replay`` by default): ``trace_event`` lines only —
+wire shape ``{"location","message","data"}`` (§STEP10). Per-run ``{run_id}.ndjson`` plus
+``replay_latest.ndjson``. Override with ``SHAPEZ_SOLVER_TRACE_PATH`` (single file) or
+``SHAPEZ_SOLVER_REPLAY_DIR`` (directory for the two-file pattern).
+
+**Debug NDJSON** (``var/asteroid_mining_layout_debug``): ``debug_log_event`` / ``kind: action``,
+``run_start`` / ``run_end``, placement-verbose and bundle-reject diagnostics — **no** duplicate
+``trace_event`` rows (replay stream is separate).
 
 Single ``solver_summary`` payload per run: see ``build_solver_timeline`` output and
 ``documents/Algorithm/cursor_agent_tier1_prompts_2026-05-10.md`` §Trace contract (recovery
@@ -37,6 +46,7 @@ from django.conf import settings
 _ALGO_DBG_ENV = "SHAPEZ_SOLVER_ALGO_DEBUG"
 _TRACE_PATH_ENV = "SHAPEZ_SOLVER_TRACE_PATH"
 _DEBUG_DIR_ENV = "SHAPEZ_SOLVER_DEBUG_DIR"
+_REPLAY_DIR_ENV = "SHAPEZ_SOLVER_REPLAY_DIR"
 # Per-candidate / per-direction placement logs (e.g. select_extension_tree_relaxed exit).
 # DEBUG alone does not enable these — avoids multi‑MB NDJSON on large maps.
 _PLACEMENT_VERBOSE_ENV = "SHAPEZ_SOLVER_TRACE_PLACEMENT_VERBOSE"
@@ -119,13 +129,27 @@ def trace_bundle_reject_invalid_stub(location: str, data: dict[str, Any] | None 
     trace_event(location, "bundle_reject_invalid_stub", dict(data or {}))
 
 
-def _trace_paths() -> list[Path]:
-    """STEP10 NDJSON trace 출력 경로 목록을 결정한다 (§16 replay UI)."""
+def _replay_log_dir() -> Path:
+    """Replay NDJSON 루트 (per-run + replay_latest).
+
+    ``SHAPEZ_SOLVER_TRACE_PATH``가 설정되면 이 디렉터리는 쓰이지 않는다.
+    """
+
+    custom = os.environ.get(_REPLAY_DIR_ENV, "").strip()
+    if custom:
+        return Path(custom)
+    return Path(settings.BASE_DIR) / "var" / "asteroid_mining_layout_replay"
+
+
+def _replay_log_paths(run_id: str | None) -> list[Path]:
+    """STEP10 replay NDJSON 출력 경로. ``SHAPEZ_SOLVER_TRACE_PATH``면 단일 파일만."""
+
     custom = os.environ.get(_TRACE_PATH_ENV, "").strip()
-    base = Path(settings.BASE_DIR)
     if custom:
         return [Path(custom)]
-    return [base / "var" / "mining_layout_solver_trace.ndjson"]
+    root = _replay_log_dir()
+    name = run_id or "no-run"
+    return [root / f"{name}.ndjson", root / "replay_latest.ndjson"]
 
 
 def _debug_log_dir() -> Path:
@@ -183,14 +207,15 @@ def _prune_var_logging_files() -> None:
         _logger.warning("var log prune scan failed root=%s err=%s", var_root, exc)
 
 
-def _truncate_trace_files() -> None:
-    """Clear trace NDJSON targets so each traced solver run starts from an empty file."""
-    for path in _trace_paths():
+def _truncate_replay_files(run_id: str) -> None:
+    """Clear replay NDJSON targets so each traced solver run starts from empty files."""
+
+    for path in _replay_log_paths(run_id):
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("", encoding="utf-8")
         except OSError as exc:
-            _logger.warning("mining_layout trace truncate failed path=%s err=%s", path, exc)
+            _logger.warning("mining_layout replay trace truncate failed path=%s err=%s", path, exc)
 
 
 def _prepare_debug_log_files(run_id: str) -> None:
@@ -232,7 +257,7 @@ def trace_run_scope() -> Iterator[None]:
     started = time.perf_counter()
     if trace_enabled():
         _prune_var_logging_files()
-        _truncate_trace_files()
+        _truncate_replay_files(run_id)
         _prepare_debug_log_files(run_id)
         debug_log_event(
             "solver_trace.trace_run_scope",
@@ -244,8 +269,10 @@ def trace_run_scope() -> Iterator[None]:
                     "algo_debug_env": os.environ.get(_ALGO_DBG_ENV, ""),
                     "placement_verbose": trace_placement_verbose(),
                     "trace_path_override": os.environ.get(_TRACE_PATH_ENV, ""),
+                    "replay_dir_override": os.environ.get(_REPLAY_DIR_ENV, ""),
                     "debug_dir_override": os.environ.get(_DEBUG_DIR_ENV, ""),
                     "resolved_debug_dir": str(_debug_log_dir()),
+                    "resolved_replay_dir": str(_replay_log_dir()),
                 },
             },
         )
@@ -300,6 +327,8 @@ def debug_trace_event(
 def trace_event(location: str, message: str, data: dict[str, Any] | None = None) -> None:
     """STEP10 replay UI가 읽는 NDJSON trace event를 기록한다 (§16).
 
+    Writes **replay wire only** (see module docstring). Debug NDJSON is not written here.
+
     상세: documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md"""
     if not trace_enabled():
         return
@@ -311,19 +340,10 @@ def trace_event(location: str, message: str, data: dict[str, Any] | None = None)
     record = {"location": location, "message": message, "data": merged}
     line = json.dumps(record, ensure_ascii=False, default=str)
     _logger.debug("%s", line)
-    _write_debug_record(
-        {
-            "kind": "trace",
-            "level": "debug",
-            "location": location,
-            "message": message,
-            "data": merged,
-        }
-    )
-    for path in _trace_paths():
+    for path in _replay_log_paths(rid):
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a", encoding="utf-8") as fh:
                 fh.write(line + "\n")
         except OSError as exc:
-            _logger.warning("mining_layout trace append failed path=%s err=%s", path, exc)
+            _logger.warning("mining_layout replay trace append failed path=%s err=%s", path, exc)

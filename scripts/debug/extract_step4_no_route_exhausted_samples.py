@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Extract representative STEP4 ``no_route_exhausted`` rows from mining-layout NDJSON.
 
-Reads ``var/asteroid_mining_layout_debug/latest.ndjson`` by default (repo-relative).
+Reads ``var/asteroid_mining_layout_replay/replay_latest.ndjson`` by default (repo-relative).
+Replay wire uses ``location`` / ``message`` / ``data``; legacy debug NDJSON may use
+``kind: trace`` wrappers (routing_failures still appear under ``data``).
 Diagnostics only; does not import Django apps.
 
 Usage:
@@ -224,7 +226,7 @@ def main() -> int:
     ap.add_argument(
         "--path",
         type=Path,
-        default=_repo_root() / "var" / "asteroid_mining_layout_debug" / "latest.ndjson",
+        default=_repo_root() / "var" / "asteroid_mining_layout_replay" / "replay_latest.ndjson",
         help="NDJSON trace file",
     )
     ap.add_argument("--limit", type=int, default=5, help="Max samples (default 5)")

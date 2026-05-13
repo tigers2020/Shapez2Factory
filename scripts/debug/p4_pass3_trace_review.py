@@ -2,7 +2,8 @@
 """Extract Pass3/P4 trace fields from mining-layout NDJSON and apply the P4 review branch table.
 
 Reads the last ``solver_summary`` object in an NDJSON file (default:
-``var/asteroid_mining_layout_debug/latest.ndjson`` relative to repo root).
+``var/asteroid_mining_layout_replay/replay_latest.ndjson``). Supports legacy debug-wrapped
+``kind: trace`` lines and replay wire ``location`` / ``message`` / ``data`` rows.
 """
 
 from __future__ import annotations
@@ -13,6 +14,12 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import solver_trace_ndjson_read as _trace_read  # noqa: E402
 
 
 def _as_int(v: Any) -> int | None:
@@ -26,15 +33,7 @@ def _as_int(v: Any) -> int | None:
 
 
 def _solver_summary_from_record(obj: dict[str, Any]) -> dict[str, Any] | None:
-    if obj.get("kind") != "trace":
-        return None
-    if obj.get("message") != "solver_summary":
-        return None
-    data = obj.get("data")
-    if not isinstance(data, dict):
-        return None
-    ss = data.get("solver_summary")
-    return ss if isinstance(ss, dict) else None
+    return _trace_read.extract_solver_summary_from_ndjson_row(obj, run_id=None)
 
 
 def iter_solver_summaries_ndjson(path: Path) -> Iterator[tuple[int, dict[str, Any]]]:
@@ -274,12 +273,15 @@ def _print_report(path: Path, line_no: int | None, report: dict[str, Any]) -> No
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     _repo = Path(__file__).resolve().parents[1]
-    default_ndjson = _repo / "var" / "asteroid_mining_layout_debug" / "latest.ndjson"
+    default_ndjson = _repo / "var" / "asteroid_mining_layout_replay" / "replay_latest.ndjson"
     parser.add_argument(
         "--ndjson",
         type=Path,
         default=default_ndjson,
-        help="path to NDJSON (default: var/asteroid_mining_layout_debug/latest.ndjson under repo)",
+        help=(
+            "path to NDJSON (default: var/asteroid_mining_layout_replay/replay_latest.ndjson "
+            "under repo)"
+        ),
     )
     args = parser.parse_args(argv)
     path: Path = args.ndjson

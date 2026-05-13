@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Aggregate Pass12 preserve / recoverability fields from solver debug NDJSON.
+"""Aggregate Pass12 preserve / recoverability fields from solver NDJSON (replay or legacy).
 
-Each **production** NDJSON line with ``kind`` == ``trace`` and ``message`` ==
-``solver_summary`` contributes one row from ``data.solver_summary``.
+Each NDJSON line that represents a ``solver_summary`` trace contributes one row:
+
+- **Legacy** (debug file): ``kind`` == ``trace`` and ``message`` == ``solver_summary``.
+- **Replay wire** (replay file): ``message`` == ``solver_summary`` and ``data.solver_summary``
+  (``location`` / ``message`` / ``data`` shape; no ``kind``).
 
 **Contract (important)**:
 
@@ -18,7 +21,7 @@ Examples (from repo root)::
   python scripts/debug/aggregate_pass12_recoverability_from_ndjson.py PATH.ndjson
   python scripts/debug/aggregate_pass12_recoverability_from_ndjson.py DEBUG_DIR --max-files 50
 
-Optional ``--run-id`` filters lines whose top-level ``run_id`` matches.
+Optional ``--run-id`` filters lines whose top-level ``run_id`` or ``data.run_id`` matches.
 
 Output includes ``total_runs`` (same meaning as ``solver_summary_rows_used``: number
 of matching solver_summary lines scanned). With ``--split-by-ndjson-run-id``,
@@ -37,6 +40,12 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+import solver_trace_ndjson_read as _trace_read  # noqa: E402
 
 
 def _merge_class_counts(acc: dict[str, int], raw: Any) -> None:
@@ -95,15 +104,7 @@ def _iter_ndjson_lines(path: Path) -> Iterator[tuple[int, str]]:
 def _extract_solver_summary_row(
     row: dict[str, Any], *, run_id: str | None
 ) -> dict[str, Any] | None:
-    if run_id is not None and row.get("run_id") != run_id:
-        return None
-    if row.get("kind") != "trace" or row.get("message") != "solver_summary":
-        return None
-    data = row.get("data")
-    if not isinstance(data, dict):
-        return None
-    ss = data.get("solver_summary")
-    return ss if isinstance(ss, dict) else None
+    return _trace_read.extract_solver_summary_from_ndjson_row(row, run_id=run_id)
 
 
 def _source_kind_key(ss: dict[str, Any]) -> str:
@@ -213,8 +214,8 @@ def scan_ndjson_file_full_metrics_per_trace_run(
         global_b.ingest(ss)
         sk = _source_kind_key(ss)
         by_kind[sk].ingest(ss)
-        tr = row.get("run_id")
-        if isinstance(tr, str) and tr:
+        tr = _trace_read.row_trace_run_id(row)
+        if tr:
             _merge_class_counts(per_trace_class[tr], ss.get("pass12_recoverability_class_counts"))
     per_sorted = {k: dict(sorted(v.items())) for k, v in sorted(per_trace_class.items())}
     return global_b, dict(sorted(by_kind.items(), key=lambda kv: kv[0])), used, per_sorted
@@ -260,7 +261,7 @@ def main() -> int:
         type=str,
         default=None,
         metavar="ID",
-        help="Only aggregate lines with this top-level run_id",
+        help="Only aggregate lines with this run_id (top-level or data.run_id)",
     )
     parser.add_argument(
         "--max-files",
@@ -281,7 +282,7 @@ def main() -> int:
         dest="split_by_ndjson_run_id",
         help=(
             "Include pass12_recoverability_class_counts_by_ndjson_run_id "
-            "(group by top-level run_id on each trace line)"
+            "(group by run_id: top-level or data.run_id on each trace line)"
         ),
     )
     args = parser.parse_args()

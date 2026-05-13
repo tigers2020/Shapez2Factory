@@ -9,6 +9,7 @@
 
 - `run_solver_timeline_pipeline`은 `decoded`→`build_map_timeline` 등으로 핵심 입력을 구성하고, `replay_events`는 부수적으로 쌓인다.
 - `layout_preserve_hard_gate` 등은 **요약 필드·타임라인 프레임**을 고치며 NDJSON 파일을 “읽어” STEP4에 넣지는 않는다.
+- **디스크**: `django_apps/.../solver_trace.py`가 `trace_event`(STEP10 스트림)을 `var/asteroid_mining_layout_replay/`(`{run_id}.ndjson`, `replay_latest.ndjson`)에만 쓰고, `debug_log_event`·`run_start`/`run_end` 등은 `var/asteroid_mining_layout_debug/`에만 쓴다(구버전처럼 한 파일에 `kind: trace`를 섞지 않음). 환경 변수: `SHAPEZ_SOLVER_REPLAY_DIR`, `SHAPEZ_SOLVER_TRACE_PATH`(단일 replay 파일), `SHAPEZ_SOLVER_DEBUG_DIR`.
 
 ## 목표 상태
 

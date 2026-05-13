@@ -6,7 +6,12 @@ import re
 from pathlib import Path
 
 _ALGO_REL = Path("django_apps/shapez_asteroid/services/asteroid_mining_layout")
-_TRACE_PATH_MARKERS = ("latest.ndjson", "mining_layout_solver_trace.ndjson")
+_TRACE_PATH_MARKERS = (
+    "latest.ndjson",
+    "replay_latest.ndjson",
+    "asteroid_mining_layout_replay",
+    "mining_layout_solver_trace.ndjson",
+)
 _TRACE_MODULE_ONLY = frozenset({"solver_trace.py"})
 _SCRIPTS_PKG = re.compile(r"^\s*(from|import)\s+scripts(\.|$)")
 _READ_TEXT_OPEN = re.compile(

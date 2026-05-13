@@ -62,7 +62,9 @@ def test_emit_solver_summary_second_call_is_ignored() -> None:
     assert calls.count("solver_summary") == 1
 
 
-def test_trace_event_writes_run_debug_log_folder(tmp_path, monkeypatch, settings) -> None:
+def test_trace_event_writes_replay_ndjson_and_debug_action_only(
+    tmp_path, monkeypatch, settings
+) -> None:
     settings.BASE_DIR = tmp_path
     monkeypatch.setenv("SHAPEZ_SOLVER_ALGO_DEBUG", "1")
 
@@ -72,10 +74,15 @@ def test_trace_event_writes_run_debug_log_folder(tmp_path, monkeypatch, settings
 
     assert run_id is not None
     debug_dir = tmp_path / "var" / "asteroid_mining_layout_debug"
+    replay_dir = tmp_path / "var" / "asteroid_mining_layout_replay"
     run_path = debug_dir / f"{run_id}.ndjson"
     latest_path = debug_dir / "latest.ndjson"
+    replay_run = replay_dir / f"{run_id}.ndjson"
+    replay_latest = replay_dir / "replay_latest.ndjson"
     assert run_path.exists()
     assert latest_path.exists()
+    assert replay_run.exists()
+    assert replay_latest.exists()
 
     records = [json.loads(line) for line in run_path.read_text(encoding="utf-8").splitlines()]
     assert [r["action"] for r in records if r.get("kind") == "action"] == [
@@ -86,11 +93,15 @@ def test_trace_event_writes_run_debug_log_folder(tmp_path, monkeypatch, settings
     assert "debug_session" in start["data"]
     end = next(r for r in records if r.get("action") == "run_end")
     assert "elapsed_s" in end["data"]
-    trace_records = [r for r in records if r.get("kind") == "trace"]
-    assert trace_records
-    assert trace_records[0]["message"] == "test_message"
-    assert trace_records[0]["data"]["value"] == 3
+    assert not [r for r in records if r.get("kind") == "trace"]
+
+    wire = [json.loads(line) for line in replay_run.read_text(encoding="utf-8").splitlines()]
+    assert len(wire) == 1
+    assert wire[0]["location"] == "test.location"
+    assert wire[0]["message"] == "test_message"
+    assert wire[0]["data"]["value"] == 3
     assert latest_path.read_text(encoding="utf-8") == run_path.read_text(encoding="utf-8")
+    assert replay_latest.read_text(encoding="utf-8") == replay_run.read_text(encoding="utf-8")
 
 
 def test_prune_var_logs_drop_oldest_from_ten_ndjson(tmp_path, settings) -> None:

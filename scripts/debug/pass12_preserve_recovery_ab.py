@@ -16,8 +16,9 @@ least one line parses to an object containing ``BP`` (e.g. a pasted decoded line
 solver debug NDJSON without a ``BP`` line cannot be replayed; use ``*_decoded.json`` or
 ``--copy-code-file`` instead.
 
-``--solver-trace PATH`` scans the same way for a ``BP`` object (optional ``--run-id`` filters
-lines that carry ``run_id``). If the trace file has no blueprint line, pair with
+``--solver-trace PATH`` scans the same way for a ``BP`` object (optional ``--run-id``
+filters lines whose top-level ``run_id`` or ``data.run_id`` matches). If the trace file has no
+blueprint line, pair with
 ``--bp-json PATH`` (decoded blueprint) while still attaching trace metadata when possible.
 ``--bp-json`` alone loads a single decoded JSON object (same shape as ``*_decoded.json``).
 
@@ -72,6 +73,12 @@ from django_apps.shapez_core.services.shapez_copy_decode import (  # noqa: E402
     ShapezCopyDecodeError,
     decode_shapez2_copy_trace,
 )
+
+_SCRIPT_DEBUG = Path(__file__).resolve().parent
+if str(_SCRIPT_DEBUG) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DEBUG))
+
+import solver_trace_ndjson_read as _trace_read  # noqa: E402
 
 Pass12LayoutScratch = pass12_bundle_commit.Pass12LayoutScratch
 seed_pass12 = pass12_merged_layout_seed.seed_pass12_scratch_from_merged_existing
@@ -135,7 +142,7 @@ def _iter_ndjson_objects(path: Path, *, run_id: str | None) -> list[dict[str, An
             raise ValueError(f"{path}:{line_no}: invalid JSON ({e})") from e
         if not isinstance(row, dict):
             continue
-        if run_id is not None and row.get("run_id") != run_id:
+        if run_id is not None and not _trace_read.run_id_matches_row(row, run_id):
             continue
         rows.append(row)
     return rows
@@ -203,18 +210,15 @@ def load_decoded_from_solver_trace_ndjson(
     for row in rows:
         if _has_bp(row):
             last_bp = row
-        if row.get("kind") == "trace" and row.get("message") == "solver_summary":
-            data = row.get("data")
-            if isinstance(data, dict):
-                ss = data.get("solver_summary")
-                if isinstance(ss, dict):
-                    solver_summary = ss
-                    rid = row.get("run_id")
-                    if isinstance(rid, str) and rid:
-                        trace_run_id = rid
-                    inner = ss.get("run_id")
-                    if isinstance(inner, str) and inner:
-                        trace_run_id = inner
+        ss = _trace_read.extract_solver_summary_from_ndjson_row(row, run_id=None)
+        if ss is not None:
+            solver_summary = ss
+            tid = _trace_read.row_trace_run_id(row)
+            if isinstance(tid, str) and tid:
+                trace_run_id = tid
+            inner = ss.get("run_id")
+            if isinstance(inner, str) and inner:
+                trace_run_id = inner
     if bp_json is not None:
         decoded = load_decoded_from_ndjson_or_json(bp_json.resolve())
         trace_meta["bp_source"] = str(bp_json.resolve())

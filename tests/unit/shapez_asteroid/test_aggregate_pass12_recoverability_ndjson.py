@@ -57,6 +57,92 @@ def test_aggregate_pass12_recoverability_merges_two_rows(tmp_path: Path) -> None
 
 
 @pytest.mark.unit
+def test_aggregate_pass12_replay_wire_solver_summary(tmp_path: Path) -> None:
+    """Replay wire rows (no kind: trace) aggregate like legacy debug-wrapped lines."""
+
+    p = tmp_path / "replay.ndjson"
+    rows = [
+        {
+            "location": "finalize",
+            "message": "solver_summary",
+            "data": {
+                "run_id": "rwire",
+                "solver_summary": {
+                    "pass12_recoverability_class_counts": {"TRIVIAL": 2, "NEAR_TRANSPORT": 1}
+                },
+            },
+        },
+        {
+            "location": "finalize",
+            "message": "solver_summary",
+            "data": {
+                "run_id": "rwire",
+                "ts": 1.0,
+                "solver_summary": {
+                    "pass12_recoverability_class_counts": {"TRIVIAL": 1, "LOCAL_ROTATION": 3}
+                },
+            },
+        },
+    ]
+    p.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    out = subprocess.check_output(
+        [sys.executable, str(SCRIPT), str(p)],
+        cwd=str(REPO_ROOT),
+        text=True,
+    )
+    data = json.loads(out)
+    assert data["total_runs"] == 2
+    assert data["pass12_recoverability_class_counts"]["TRIVIAL"] == 3
+    assert data["pass12_recoverability_class_counts"]["NEAR_TRANSPORT"] == 1
+    assert data["pass12_recoverability_class_counts"]["LOCAL_ROTATION"] == 3
+
+
+@pytest.mark.unit
+def test_aggregate_run_id_matches_data_run_id_on_replay_wire(tmp_path: Path) -> None:
+    p = tmp_path / "t.ndjson"
+    p.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "location": "x",
+                        "message": "solver_summary",
+                        "data": {
+                            "run_id": "inner",
+                            "solver_summary": {
+                                "pass12_recoverability_class_counts": {"X": 1},
+                            },
+                        },
+                    }
+                ),
+                json.dumps(
+                    {
+                        "location": "x",
+                        "message": "solver_summary",
+                        "data": {
+                            "run_id": "other",
+                            "solver_summary": {
+                                "pass12_recoverability_class_counts": {"X": 99},
+                            },
+                        },
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    out = subprocess.check_output(
+        [sys.executable, str(SCRIPT), str(p), "--run-id", "inner"],
+        cwd=str(REPO_ROOT),
+        text=True,
+    )
+    data = json.loads(out)
+    assert data["total_runs"] == 1
+    assert data["pass12_recoverability_class_counts"]["X"] == 1
+
+
+@pytest.mark.unit
 def test_aggregate_respects_run_id_filter(tmp_path: Path) -> None:
     p = tmp_path / "t.ndjson"
     p.write_text(

@@ -25,6 +25,11 @@ decode 단계는 내부적으로 처리해도 되지만,
 solver pass 결과는 사용자가 볼 수 있어야 한다.
 ```
 
+### 16.1.1 NDJSON 파일 계층 (구현)
+
+- **Replay NDJSON** (`var/asteroid_mining_layout_replay/` 기본): `trace_event` 한 줄 형식 `{"location","message","data"}` — STEP10 스트리밍·오프라인 재분석용. `SHAPEZ_SOLVER_REPLAY_DIR` 또는 단일 파일 `SHAPEZ_SOLVER_TRACE_PATH`로 덮어쓸 수 있다.
+- **Debug NDJSON** (`var/asteroid_mining_layout_debug/`): `debug_log_event`(`kind: action`), run 시작/종료, 고용량 placement 로그 등 — replay `trace_event`와 **동일 파일에 섞이지 않는다**. `SHAPEZ_SOLVER_DEBUG_DIR`.
+
 ---
 
 ### 16.2 권장 replay 단계

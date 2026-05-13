@@ -7,6 +7,9 @@ from typing import Any, TypedDict
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.existing_layout_types import (
     CoordWire,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.recovery_semantics import (
+    RecoveryTrigger,
+)
 
 
 class Step4FailureClassificationWire(TypedDict, total=False):
@@ -66,8 +69,38 @@ class Step4SearchStatsWire(TypedDict, total=False):
     goal_count_by_distance_bucket: dict[str, int]
 
 
+class Step4RoutingFailureRowWire(TypedDict, total=False):
+    """One public ``Step4RoutingResult.routing_failures`` row."""
+
+    placement_id: str
+    placement_pass: str
+    extractor_cell: CoordWire
+    extension_cells: list[CoordWire]
+    stub_cell: CoordWire
+    transport_kind: str
+    state: str
+    route_id: str | None
+    rollback_reason: str | None
+    reason: str
+    extractor_id: str
+    attempt_count: int
+    final_state: str
+    last_error: str
+    recovery_trigger: RecoveryTrigger | str
+
+
+def step4_routing_failure_row_to_public_dict(
+    row: Step4RoutingFailureRowWire,
+) -> dict[str, Any]:
+    """Boundary adapter preserving the legacy public ``dict`` contract."""
+
+    return dict(row)
+
+
 __all__ = [
     "Step4FailureClassificationWire",
     "Step4RoutingFailureDetailWire",
+    "Step4RoutingFailureRowWire",
     "Step4SearchStatsWire",
+    "step4_routing_failure_row_to_public_dict",
 ]

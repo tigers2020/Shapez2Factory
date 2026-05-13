@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from copy import deepcopy
+from dataclasses import asdict
+
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout import (
     existing_layout_components as elc,
 )
@@ -8,6 +11,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     external_predicate_for_mining_map,
+    validate_final_mining_layout,
 )
 from django_apps.shapez_asteroid.services.blueprint_map_summary import (
     build_map_timeline,
@@ -30,6 +34,23 @@ def test_raw_asteroid_no_transport_classifies_raw_field() -> None:
     out = analyze_existing_layout_from_mining_map(mining_map, is_external=is_ext)
     assert out["source_kind"] == "raw_asteroid_field"
     assert out["transport"]["transport_kind"] == "none"
+
+
+def test_existing_layout_fields_do_not_leak_into_final_validation_report() -> None:
+    mining_map = [
+        {"x": 1, "y": 1, "role": "occupied", "surface": "shape", "layout_kind": "miner", "r": 0},
+        {"x": 2, "y": 1, "role": "belt", "surface": "shape", "layout_kind": "belt"},
+    ]
+    before = deepcopy(mining_map)
+    ela = analyze_existing_layout_from_mining_map(mining_map)
+    report = validate_final_mining_layout(mining_map)
+    final_fields = set(asdict(report))
+    assert "source_kind" in ela
+    assert "solver_hints" in ela
+    assert "source_kind" not in final_fields
+    assert "solver_hints" not in final_fields
+    assert "existing_layout_orphan_transport_cell_count" not in final_fields
+    assert mining_map == before
 
 
 def test_belt_single_component_classifies_shape_layout() -> None:
@@ -168,6 +189,7 @@ def test_ela_inferred_fluid_pipe_main_trunk_in_trunk_seed() -> None:
             "layout_kind": "fluid_pipe_segment",
         },
     ]
+
     def _is_ext(c: tuple[int, int]) -> bool:
         return c == (8, 0)
 

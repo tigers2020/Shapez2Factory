@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.dto.recovery_semantics import (
+    normalize_success_commit_reason,
+    promote_misfiled_rejected_reason,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
-    INVALID_COMMIT_REASON_STRINGS,
     RECOVERY_TRIGGER_FINAL_VALIDATION_FAILURE,
-    ROLLUP_COMMIT_REASONS_CANONICAL,
 )
 
 __all__ = [
@@ -52,10 +54,7 @@ def partition_pass3_commit_reason_payload(
     cr_s = str(raw).strip() if isinstance(raw, str) else str(raw).strip()
     if not cr_s:
         return None, None
-    if cr_s in INVALID_COMMIT_REASON_STRINGS:
-        if cr_s.startswith("rejected_by") or "rejected_" in cr_s:
-            return None, cr_s
-        return None, None
-    if cr_s in ROLLUP_COMMIT_REASONS_CANONICAL:
-        return cr_s, None
-    return None, None
+    promoted = promote_misfiled_rejected_reason(cr_s)
+    if promoted is not None:
+        return None, promoted
+    return normalize_success_commit_reason(cr_s), None

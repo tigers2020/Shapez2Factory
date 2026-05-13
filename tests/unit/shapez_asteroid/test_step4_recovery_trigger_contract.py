@@ -93,3 +93,34 @@ def test_placement_failure_dict_uses_recovery_trigger_not_commit_reason() -> Non
     d = placement_record_to_failure_dict(rec, reason="no_route")
     assert "commit_reason" not in d
     assert d["recovery_trigger"] == RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE
+
+
+def test_placement_failure_dict_preserves_public_keys_via_dto_adapter() -> None:
+    rec = PlacementCommitRecord(
+        placement_id="p2-000007",
+        placement_pass="pass2",
+        extractor_cell=(2, 3),
+        extension_cells=((3, 3),),
+        stub_cell=(4, 3),
+        transport_kind="fluid_pipe",
+        state=PlacementCommitState.ROLLED_BACK,
+        rollback_reason="no_route",
+    )
+    row = placement_record_to_failure_dict(rec, reason="no_route")
+    assert row == {
+        "placement_id": "p2-000007",
+        "placement_pass": "pass2",
+        "extractor_cell": [2, 3],
+        "extension_cells": [[3, 3]],
+        "stub_cell": [4, 3],
+        "transport_kind": "fluid_pipe",
+        "state": PlacementCommitState.ROLLED_BACK.value,
+        "route_id": None,
+        "rollback_reason": "no_route",
+        "reason": "no_route",
+        "extractor_id": "p2-000007",
+        "attempt_count": 1,
+        "final_state": PlacementCommitState.ROLLED_BACK.value,
+        "last_error": "no_route",
+        "recovery_trigger": RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
+    }

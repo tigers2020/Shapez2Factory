@@ -458,3 +458,11 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 - [x] 범위: `03_data_schema_dto.md` E절과 `existing_layout_analysis`, STEP4 실패 상세, timeline/replay, Pass12 probe의 느슨한 `dict[str, Any]` 경계를 대조
 - [x] 구현: 공유 mining-map row 타입, ExistingLayout wire 타입, STEP4 failure detail wire 타입, Pass12 probe stats/trace 타입 추가
 - [x] 적용: final validation / existing layout / STEP4 detail / Pass12 probe의 읽기 경계 타입 힌트 적용. public dict 반환 계약과 serialization key order는 유지.
+
+### 2026-05-13 asteroid_mining_layout DTO contract hardening phase 2
+
+- [x] 작업 유형: `solver` / `refactor` / semantic contract hardening
+- [x] 구현: `RecoveryTrigger` / `CommitReason` / `RollbackReason` / `RejectedReason` DTO namespace 추가
+- [x] 적용: `semantic_contracts.partition_pass3_commit_reason_payload`가 DTO namespace classifier를 경유하도록 변경
+- [x] 적용: STEP4 routing failure row를 typed DTO/public dict adapter 경유로 생성. 기존 public key set 유지.
+- [x] 회귀: commit_reason 성공 namespace, misfiled rejected_reason promotion, routing failure row key snapshot, ExistingLayoutAnalysis vs FinalValidationReport 필드 분리 테스트 추가

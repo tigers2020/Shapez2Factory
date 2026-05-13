@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, replace
+from dataclasses import dataclass, replace
 from enum import StrEnum
-from typing import Any
+from typing import Any, cast
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
@@ -209,16 +209,23 @@ def placement_record_to_failure_dict(
 ) -> dict[str, Any]:
     """STEP4 ``routing_failures`` entry: row-friendly coords + trace contract fields."""
 
-    d = asdict(rec)
-    d["extractor_cell"] = list(d["extractor_cell"])
-    d["extension_cells"] = [list(c) for c in d["extension_cells"]]
-    d["stub_cell"] = list(d["stub_cell"])
-    st = d["state"]
-    d["state"] = st.value if isinstance(st, PlacementCommitState) else str(st)
-    d["reason"] = reason
-    d["extractor_id"] = rec.placement_id
-    d["attempt_count"] = 1
-    d["final_state"] = d["state"]
-    d["last_error"] = reason
-    d["recovery_trigger"] = recovery_trigger or RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE
-    return d
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout import dto as _dto
+
+    row: dict[str, Any] = {
+        "placement_id": rec.placement_id,
+        "placement_pass": rec.placement_pass,
+        "extractor_cell": [int(rec.extractor_cell[0]), int(rec.extractor_cell[1])],
+        "extension_cells": [[int(c[0]), int(c[1])] for c in rec.extension_cells],
+        "stub_cell": [int(rec.stub_cell[0]), int(rec.stub_cell[1])],
+        "transport_kind": rec.transport_kind,
+        "state": rec.state.value,
+        "route_id": rec.route_id,
+        "rollback_reason": rec.rollback_reason,
+        "reason": reason,
+        "extractor_id": rec.placement_id,
+        "attempt_count": 1,
+        "final_state": rec.state.value,
+        "last_error": reason,
+        "recovery_trigger": recovery_trigger or RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
+    }
+    return _dto.step4_routing_failure_row_to_public_dict(cast(_dto.Step4RoutingFailureRowWire, row))

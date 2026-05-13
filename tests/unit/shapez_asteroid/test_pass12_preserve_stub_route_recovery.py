@@ -105,6 +105,15 @@ def test_stub_route_recovery_success_mvp() -> None:
     assert (5, 3) in scratch.transport_cells
     for _pid, rec in scratch.placement_records.items():
         assert rec.state == PlacementCommitState.PROVISIONAL_PLACED
+    traces = stats.get("pass12_preserved_recovery_traces") or []
+    assert traces
+    psr0 = traces[0].get("preserve_stub_recovery")
+    assert isinstance(psr0, dict)
+    assert psr0.get("accepted") is True
+    lastp = psr0.get("stub_route_probe_last")
+    assert isinstance(lastp, dict)
+    assert lastp.get("bfs_failure") is None
+    assert int(lastp.get("reachable_same_kind_goals_under_edge_cap_512") or 0) >= 1
 
 
 def test_goal_transport_cells_filters_scratch_by_opposite_role() -> None:
@@ -136,6 +145,7 @@ def test_try_preserve_rejects_invalid_transport_kind() -> None:
     psr = res.trace["preserve_stub_recovery"]
     assert psr["rejected_reason"] == "rejected_by_invalid_want_role"
     assert psr["attempted"] is False
+    assert psr["miner_cell"] == [1, 1]
 
 
 def test_try_preserve_scratch_goal_counters_on_trace() -> None:
@@ -160,6 +170,7 @@ def test_try_preserve_scratch_goal_counters_on_trace() -> None:
         scratch_blocked_cells=frozenset(),
         nearest_same_kind_transport_hops=99,
         row_r_raw=0,
+        nearest_same_kind_transport_cell=(2, 0),
     )
     psr = res.trace["preserve_stub_recovery"]
     assert psr["scratch_transport_input_count"] == 3
@@ -167,6 +178,8 @@ def test_try_preserve_scratch_goal_counters_on_trace() -> None:
     assert psr["scratch_goal_wrong_role_excluded_count"] == 1
     assert psr["scratch_goal_count"] == 2
     assert psr["rejected_reason"] == "nearest_hops_over_cap"
+    assert psr["miner_cell"] == [10, 10]
+    assert psr.get("nearest_same_kind_transport_cell") == [2, 0]
 
 
 def test_try_preserve_stub_route_recovery_attempts_hop_seven_candidate() -> None:
@@ -267,6 +280,18 @@ def test_stub_route_recovery_rejects_mixed_kind_trunk() -> None:
     psr = res.trace.get("preserve_stub_recovery")
     assert isinstance(psr, dict)
     assert psr.get("rejected_reason") == "no_same_kind_route"
+    assert psr.get("miner_cell") == [3, 3]
+    assert psr.get("transport_kind") == "fluid_pipe"
+    assert psr.get("goal_transport_cell_count") >= 1
+    probe = psr.get("stub_route_probe_last")
+    assert isinstance(probe, dict)
+    assert probe.get("bfs_failure") == "no_same_kind_route"
+    assert int(probe.get("expanded_nodes") or 0) >= 1
+    counts = probe.get("blocked_frontier_reason_counts")
+    assert isinstance(counts, dict)
+    assert counts.get("wrong_kind_transport", 0) >= 1
+    assert isinstance(probe.get("local_neighbor_cells_around_stub"), list)
+    assert isinstance(probe.get("last_frontier_sample"), list)
 
 
 def test_stub_route_recovery_extension_carve_disabled() -> None:
@@ -447,6 +472,8 @@ def test_try_preserve_stub_route_recovery_pure_no_scratch_mutation() -> None:
     )
     assert res.accepted is False
     assert tr == frozenset({(3, 1)})
+    assert "commit_reason" not in res.trace
+    assert "commit_reason" not in (res.trace.get("preserve_stub_recovery") or {})
 
 
 @override_settings(SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True)

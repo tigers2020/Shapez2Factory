@@ -151,7 +151,7 @@ def _stub_space_mvp(
     return False, "unsupported_role"
 
 
-def _can_step_to(
+def _step_block_reason(
     nxt: Coord,
     *,
     cells: dict[Coord, dict[str, Any]],
@@ -159,29 +159,106 @@ def _can_step_to(
     blocked_body: frozenset[Coord],
     want_wr: str,
     goal_transport_cells: frozenset[Coord],
-) -> bool:
+) -> str | None:
+    """None iff stub-route BFS may enter ``nxt`` (preserve stub recovery step feasibility)."""
+
     if nxt in blocked_body:
-        return False
+        return "blocked_body"
     if nxt in goal_transport_cells:
-        return True
+        return None
     if nxt not in mineable:
-        return False
+        return "not_mineable"
     row = cells.get(nxt)
     if row is None:
-        return True
+        return None
     role = row.get("role")
     if role == want_wr:
-        return True
+        return None
     if role == _other_transport_role(want_wr):
-        return False
+        return "wrong_kind_transport"
     if role == "inferred":
-        return True
+        return None
     if role == "occupied":
         lk = layout_kind(row) or ""
         if lk == "asteroid_field":
-            return True
-        return False
-    return False
+            return None
+        return "occupied_not_traversable"
+    return "unsupported_role"
+
+
+def _bump_reason(counts: dict[str, int], key: str) -> None:
+    counts[key] = counts.get(key, 0) + 1
+
+
+def _reachable_goals_under_edge_cap(
+    start: Coord,
+    *,
+    goal_transport_cells: frozenset[Coord],
+    cells: dict[Coord, dict[str, Any]],
+    mineable: frozenset[Coord],
+    blocked_body: frozenset[Coord],
+    want_wr: str,
+    max_edges: int,
+    max_visits: int,
+) -> int:
+    """How many goal cells share a ``_step_block_reason``-compatible component within depth cap."""
+
+    if start in goal_transport_cells:
+        return 1
+    parent: dict[Coord, Coord | None] = {start: None}
+    dist_edges: dict[Coord, int] = {start: 0}
+    q: deque[Coord] = deque([start])
+    visits = 0
+    while q:
+        cur = q.popleft()
+        visits += 1
+        if visits > max_visits:
+            break
+        d0 = dist_edges[cur]
+        x, y = cur
+        for nxt in sorted(neighbors4(x, y), key=lambda p: (p[1], p[0])):
+            if nxt in parent:
+                continue
+            if (
+                _step_block_reason(
+                    nxt,
+                    cells=cells,
+                    mineable=mineable,
+                    blocked_body=blocked_body,
+                    want_wr=want_wr,
+                    goal_transport_cells=goal_transport_cells,
+                )
+                is not None
+            ):
+                continue
+            nd = d0 + 1
+            if nd > max_edges:
+                continue
+            parent[nxt] = cur
+            dist_edges[nxt] = nd
+            q.append(nxt)
+    return len(goal_transport_cells & frozenset(parent.keys()))
+
+
+def _local_neighbor_cells_around_stub(
+    stub: Coord,
+    cells: dict[Coord, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Cardinal neighbors of ``stub`` for drop NDJSON (bounded, deterministic order)."""
+
+    x, y = stub
+    out: list[dict[str, Any]] = []
+    for nx in sorted(neighbors4(x, y), key=lambda p: (p[1], p[0])):
+        row = cells.get(nx)
+        lk = layout_kind(row) if row is not None else None
+        out.append(
+            {
+                "cell": [int(nx[0]), int(nx[1])],
+                "role": row.get("role") if row else None,
+                "layout_kind": lk,
+            }
+        )
+    return out
 
 
 def _bfs_shortest_path(
@@ -197,33 +274,54 @@ def _bfs_shortest_path(
     """Shortest path by edge count; deterministic tie-break via sorted neighbor expansion."""
 
     if start in goal_transport_cells:
-        return [start], {"path_cell_count": 1, "route_len_edges": 0}
+        return [start], {
+            "failure": None,
+            "path_cell_count": 1,
+            "route_len_edges": 0,
+            "expanded_nodes": 1,
+            "blocked_frontier_reason_counts": {},
+            "last_frontier_sample": [[int(start[0]), int(start[1])]],
+        }
 
     parent: dict[Coord, Coord | None] = {start: None}
     dist_edges: dict[Coord, int] = {start: 0}
     q: deque[Coord] = deque([start])
     visits = 0
+    blocked_frontier_reason_counts: dict[str, int] = {}
+    recent_expanded: deque[list[int]] = deque(maxlen=4)
     while q:
         cur = q.popleft()
         visits += 1
+        recent_expanded.append([int(cur[0]), int(cur[1])])
         if visits > 50_000:
-            return None, {"failure": "visit_cap", "visited": visits}
+            return None, {
+                "failure": "visit_cap",
+                "visited": visits,
+                "expanded_nodes": len(parent),
+                "blocked_frontier_reason_counts": dict(
+                    sorted(blocked_frontier_reason_counts.items(), key=lambda kv: kv[0])
+                ),
+                "last_frontier_sample": list(sorted(recent_expanded, key=lambda p: (p[1], p[0]))),
+            }
         d0 = dist_edges[cur]
         x, y = cur
         for nxt in sorted(neighbors4(x, y), key=lambda p: (p[1], p[0])):
             if nxt in parent:
                 continue
-            if not _can_step_to(
+            br = _step_block_reason(
                 nxt,
                 cells=cells,
                 mineable=mineable,
                 blocked_body=blocked_body,
                 want_wr=want_wr,
                 goal_transport_cells=goal_transport_cells,
-            ):
+            )
+            if br is not None:
+                _bump_reason(blocked_frontier_reason_counts, br)
                 continue
             nd = d0 + 1
             if nd > max_edges:
+                _bump_reason(blocked_frontier_reason_counts, "exceeds_max_edges_cap")
                 continue
             parent[nxt] = cur
             dist_edges[nxt] = nd
@@ -235,9 +333,27 @@ def _bfs_shortest_path(
                     w = parent.get(w)
                 path.reverse()
                 edges = len(path) - 1
-                return path, {"path_cell_count": len(path), "route_len_edges": edges}
+                return path, {
+                    "failure": None,
+                    "path_cell_count": len(path),
+                    "route_len_edges": edges,
+                    "expanded_nodes": len(parent),
+                    "blocked_frontier_reason_counts": dict(
+                        sorted(blocked_frontier_reason_counts.items(), key=lambda kv: kv[0])
+                    ),
+                    "last_frontier_sample": list(
+                        sorted(recent_expanded, key=lambda p: (p[1], p[0]))
+                    ),
+                }
             q.append(nxt)
-    return None, {"failure": "no_same_kind_route"}
+    return None, {
+        "failure": "no_same_kind_route",
+        "expanded_nodes": len(parent),
+        "blocked_frontier_reason_counts": dict(
+            sorted(blocked_frontier_reason_counts.items(), key=lambda kv: kv[0])
+        ),
+        "last_frontier_sample": list(sorted(recent_expanded, key=lambda p: (p[1], p[0]))),
+    }
 
 
 def _empty_psr(nearest_hops: int | None) -> dict[str, Any]:
@@ -266,11 +382,22 @@ def try_preserve_stub_route_recovery(
     scratch_blocked_cells: frozenset[Coord],
     nearest_same_kind_transport_hops: int | None,
     row_r_raw: Any,
+    nearest_same_kind_transport_cell: Coord | None = None,
 ) -> StubRouteRecoveryResult:
     """Pure probe: same-kind trunk reachable from an inferred/empty output stub (MVP)."""
 
     psr = _empty_psr(nearest_same_kind_transport_hops)
     base_trace: dict[str, Any] = {"preserve_stub_recovery": psr}
+    psr["miner_cell"] = [int(miner[0]), int(miner[1])]
+    psr["transport_kind"] = transport_kind
+    psr["nearest_same_kind_transport_cell"] = (
+        None
+        if nearest_same_kind_transport_cell is None
+        else [
+            int(nearest_same_kind_transport_cell[0]),
+            int(nearest_same_kind_transport_cell[1]),
+        ]
+    )
     try:
         want_wr = want_role(transport_kind)
     except ValueError:
@@ -332,6 +459,8 @@ def try_preserve_stub_route_recovery(
         want_wr=want_wr,
         scratch_transport_cells=scratch_transport_cells,
     )
+    psr["goal_transport_cell_count"] = len(goals)
+    psr["existing_same_kind_transport_cell_count"] = len(existing_same_kind)
 
     order = _rotation_order(row_r_raw)
     psr["candidate_rotation_count"] = len(order)
@@ -342,6 +471,7 @@ def try_preserve_stub_route_recovery(
     saw_new_transport_over = False
     saw_extension_carve = False
     saw_stub_other = False
+    stub_route_probe_last: dict[str, Any] | None = None
     rotation_candidates: list[tuple[tuple[int, int, int], int, Coord]] = []
     for cand_r in order:
         stub = shape_miner_output_cell(miner, cand_r)
@@ -379,6 +509,26 @@ def try_preserve_stub_route_recovery(
                 saw_visit_cap = True
             else:
                 saw_bfs_no_route = True
+            relaxed_goals = _reachable_goals_under_edge_cap(
+                stub,
+                goal_transport_cells=goals,
+                cells=cells,
+                mineable=mineable,
+                blocked_body=blocked_body,
+                want_wr=want_wr,
+                max_edges=512,
+                max_visits=50_000,
+            )
+            stub_route_probe_last = {
+                "stub_start_cell": [int(stub[0]), int(stub[1])],
+                "cand_r": cand_r,
+                "bfs_failure": diag.get("failure"),
+                "expanded_nodes": diag.get("expanded_nodes"),
+                "blocked_frontier_reason_counts": diag.get("blocked_frontier_reason_counts"),
+                "last_frontier_sample": diag.get("last_frontier_sample"),
+                "reachable_same_kind_goals_under_edge_cap_512": relaxed_goals,
+                "local_neighbor_cells_around_stub": _local_neighbor_cells_around_stub(stub, cells),
+            }
             continue
         route_len_edges = len(path) - 1
         if route_len_edges > MAX_PASS12_STUB_ROUTE_RECOVERY_PATH_LEN:
@@ -405,6 +555,25 @@ def try_preserve_stub_route_recovery(
             [int(c[0]), int(c[1])] for c in sorted(path, key=lambda p: (p[1], p[0]))
         ]
         psr["new_transport_cell_count"] = len(new_t)
+        psr["stub_route_probe_last"] = {
+            "stub_start_cell": [int(stub[0]), int(stub[1])],
+            "cand_r": cand_r,
+            "bfs_failure": diag.get("failure"),
+            "expanded_nodes": diag.get("expanded_nodes"),
+            "blocked_frontier_reason_counts": diag.get("blocked_frontier_reason_counts"),
+            "last_frontier_sample": diag.get("last_frontier_sample"),
+            "reachable_same_kind_goals_under_edge_cap_512": _reachable_goals_under_edge_cap(
+                stub,
+                goal_transport_cells=goals,
+                cells=cells,
+                mineable=mineable,
+                blocked_body=blocked_body,
+                want_wr=want_wr,
+                max_edges=512,
+                max_visits=50_000,
+            ),
+            "local_neighbor_cells_around_stub": _local_neighbor_cells_around_stub(stub, cells),
+        }
         return StubRouteRecoveryResult(
             accepted=True,
             trace=base_trace,
@@ -413,7 +582,12 @@ def try_preserve_stub_route_recovery(
             stub_cell=stub,
         )
 
-    if saw_bfs_no_route or saw_visit_cap:
+    if stub_route_probe_last is not None:
+        psr["stub_route_probe_last"] = stub_route_probe_last
+
+    if saw_visit_cap:
+        psr["rejected_reason"] = "visit_cap"
+    elif saw_bfs_no_route:
         psr["rejected_reason"] = "no_same_kind_route"
     elif saw_route_len:
         psr["rejected_reason"] = "route_len_over_cap"

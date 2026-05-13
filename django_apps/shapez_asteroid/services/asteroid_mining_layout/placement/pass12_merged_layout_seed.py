@@ -629,25 +629,25 @@ def _classify_preserve_drop_reason(
     return PreserveDropReason.NO_ADJACENT_TRANSPORT
 
 
-def _miner_missing_stub_drop_eligibility(
+def _miner_missing_stub_drop_probe(
     miner: Coord,
     cells: Mapping[Coord, dict[str, Any]],
     *,
     merged_seed_miner_count: int,
     existing_layout_source_kind: str | None,
-) -> tuple[bool, int | None]:
-    """Whether this miner hits the preserve-first missing-stub drop path + nearest hops."""
+) -> tuple[bool, int | None, Coord | None]:
+    """Missing-stub drop path + one nearest-transport BFS; else ``(False, None, None)``."""
 
     if not (_preserve_first_hard_gate(existing_layout_source_kind) and merged_seed_miner_count > 1):
-        return False, None
+        return False, None, None
     row_m = cells.get(miner)
     if row_m is None or row_m.get("role") != "occupied":
-        return False, None
+        return False, None, None
     if layout_kind(row_m) not in EXTRACTORS_SHAPE | EXTRACTORS_FLUID:
-        return False, None
+        return False, None, None
     tk = transport_kind_for_extractor(row_m)
     if tk is None:
-        return False, None
+        return False, None, None
     eff_r = _first_rotation_with_matching_stub(miner, cells, tk, row_m.get("r"))
     neighbor_stub_coords = _neighbor_stub_coords_for_kind(miner, cells, tk)
     if eff_r is None:
@@ -658,36 +658,14 @@ def _miner_missing_stub_drop_eligibility(
     routed_ok = st is not None and st.get("role") == wr
     would_drop = not routed_ok and len(neighbor_stub_coords) == 0
     if not would_drop:
-        return False, None
-    nhops, _ncell = _nearest_same_role_transport_bfs(
+        return False, None, None
+    nhops, ncell = _nearest_same_role_transport_bfs(
         miner,
         want_wr=wr,
         cells=cells,
         max_hops=MAX_PASS12_NEAREST_TRANSPORT_TRACE_HOPS,
     )
-    return True, nhops
-
-
-def _recovery_proximity_sort_key(
-    miner: Coord,
-    cells: Mapping[Coord, dict[str, Any]],
-    *,
-    merged_seed_miner_count: int,
-    existing_layout_source_kind: str | None,
-) -> tuple[int, int, int, int]:
-    """Lower tuple sorts earlier: non-drop miners first, then drop miners by nearest hops."""
-
-    wd, nh = _miner_missing_stub_drop_eligibility(
-        miner,
-        cells,
-        merged_seed_miner_count=merged_seed_miner_count,
-        existing_layout_source_kind=existing_layout_source_kind,
-    )
-    if not wd:
-        return (0, 0, miner[1], miner[0])
-    if nh is None:
-        return (1, 10**9, miner[1], miner[0])
-    return (1, nh, miner[1], miner[0])
+    return True, nhops, ncell
 
 
 def _mining_building_neighbors(
@@ -837,18 +815,29 @@ def seed_pass12_scratch_from_merged_existing(
     stub_route_recovery_enabled = bool(
         getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", True)
     )
+    nearest_same_kind_transport_bfs_cache: dict[Coord, tuple[int | None, Coord | None]] = {}
     if getattr(settings, "SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", False) or (
         stub_route_recovery_enabled
     ):
-        miners = sorted(
-            miners,
-            key=lambda m: _recovery_proximity_sort_key(
+        decorated: list[tuple[tuple[int, int, int, int], Coord]] = []
+        for m in miners:
+            wd, nh, nc = _miner_missing_stub_drop_probe(
                 m,
                 cells,
                 merged_seed_miner_count=merged_seed_miner_count,
                 existing_layout_source_kind=existing_layout_source_kind,
-            ),
-        )
+            )
+            if wd:
+                nearest_same_kind_transport_bfs_cache[m] = (nh, nc)
+            if not wd:
+                sort_k = (0, 0, m[1], m[0])
+            elif nh is None:
+                sort_k = (1, 10**9, m[1], m[0])
+            else:
+                sort_k = (1, nh, m[1], m[0])
+            decorated.append((sort_k, m))
+        decorated.sort(key=lambda t: t[0])
+        miners = [pair[1] for pair in decorated]
 
     extension_sets_by_miner = _merged_seed_extension_sets_by_miner(miners, cells, mineable)
     seeded_groups = 0
@@ -869,6 +858,7 @@ def seed_pass12_scratch_from_merged_existing(
     rr_rej_nearest_hops = 0
     rr_rej_no_stub_space = 0
     rr_rej_no_same_kind_route = 0
+    rr_rej_visit_cap = 0
     rr_rej_route_len = 0
     rr_rej_new_transport_cells = 0
     rr_rej_extension_carve = 0
@@ -920,12 +910,16 @@ def seed_pass12_scratch_from_merged_existing(
         if would_drop_unrecoverable:
             assert tk is not None
             wr_seed = want_role(tk)
-            nhops_seed, ncell_seed = _nearest_same_role_transport_bfs(
-                miner,
-                want_wr=wr_seed,
-                cells=cells,
-                max_hops=MAX_PASS12_NEAREST_TRANSPORT_TRACE_HOPS,
-            )
+            bfs_cached = nearest_same_kind_transport_bfs_cache.get(miner)
+            if bfs_cached is not None:
+                nhops_seed, ncell_seed = bfs_cached
+            else:
+                nhops_seed, ncell_seed = _nearest_same_role_transport_bfs(
+                    miner,
+                    want_wr=wr_seed,
+                    cells=cells,
+                    max_hops=MAX_PASS12_NEAREST_TRANSPORT_TRACE_HOPS,
+                )
             rec = _attempt_preserve_stub_recovery(
                 miner, cells, tk, row_m, neighbor_stub_coords, eff_r, routed_ok
             )
@@ -962,6 +956,7 @@ def seed_pass12_scratch_from_merged_existing(
                         scratch_blocked_cells=frozenset(scratch.blocked_cells),
                         nearest_same_kind_transport_hops=nhops_seed,
                         row_r_raw=row_m.get("r"),
+                        nearest_same_kind_transport_cell=ncell_seed,
                     )
                     stub_route_trace_for_drop = rr_res.trace
                     psr = rr_res.trace.get("preserve_stub_recovery")
@@ -988,7 +983,9 @@ def seed_pass12_scratch_from_merged_existing(
                             rr_rej_route_len += 1
                         elif rj == "new_transport_cells_over_cap":
                             rr_rej_new_transport_cells += 1
-                        elif rj in ("visit_cap", "no_same_kind_route"):
+                        elif rj == "visit_cap":
+                            rr_rej_visit_cap += 1
+                        elif rj == "no_same_kind_route":
                             rr_rej_no_same_kind_route += 1
                         elif rj == "no_stub_space":
                             rr_rej_no_stub_space += 1
@@ -1160,6 +1157,7 @@ def seed_pass12_scratch_from_merged_existing(
                 scratch_blocked_cells=frozenset(scratch.blocked_cells),
                 nearest_same_kind_transport_hops=d.nhops_seed,
                 row_r_raw=d.row_m.get("r"),
+                nearest_same_kind_transport_cell=d.ncell_seed,
             )
             psr = rr_q.trace.get("preserve_stub_recovery")
             if rr_q.accepted:
@@ -1216,7 +1214,9 @@ def seed_pass12_scratch_from_merged_existing(
                         rr_rej_route_len += 1
                     elif rj == "new_transport_cells_over_cap":
                         rr_rej_new_transport_cells += 1
-                    elif rj in ("visit_cap", "no_same_kind_route"):
+                    elif rj == "visit_cap":
+                        rr_rej_visit_cap += 1
+                    elif rj == "no_same_kind_route":
                         rr_rej_no_same_kind_route += 1
                     elif rj == "no_stub_space":
                         rr_rej_no_stub_space += 1
@@ -1336,6 +1336,9 @@ def seed_pass12_scratch_from_merged_existing(
         ),
         "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count": (
             rr_rej_no_same_kind_route
+        ),
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_visit_cap_count": (
+            rr_rej_visit_cap
         ),
         "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count": (
             rr_rej_route_len

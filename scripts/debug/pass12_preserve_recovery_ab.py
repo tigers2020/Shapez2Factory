@@ -11,6 +11,10 @@ With ``--stub-route-recovery-ab``: same inputs, but compares
 ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=True`` (isolates stub-route recovery). Writes
 ``var/pass12_stub_route_recovery_ab_experiment.json``.
 
+With ``--stub-route-cap-ab``: runs the same decoded input with
+``MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS`` variants (default: 6,8,10). Writes
+``var/pass12_stub_route_recovery_cap_ab_experiment.json``.
+
 ``--ndjson`` accepts (1) a single JSON object with top-level ``BP``, or (2) NDJSON where at
 least one line parses to an object containing ``BP`` (e.g. a pasted decoded line). Standard
 solver debug NDJSON without a ``BP`` line cannot be replayed; use ``*_decoded.json`` or
@@ -33,10 +37,12 @@ import copy
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any, cast
+from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -58,6 +64,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (  # noqa: E402
     pass12_bundle_commit,
     pass12_merged_layout_seed,
+    pass12_preserve_stub_route_recovery,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_service import (  # noqa: E402
     build_solver_timeline,
@@ -93,6 +100,7 @@ _STRIPED_BP: dict[str, object] = {
 
 _OUT_PATH = ROOT / "var" / "pass12_recovery_ab_experiment.json"
 _OUT_PATH_STUB_ROUTE_AB = ROOT / "var" / "pass12_stub_route_recovery_ab_experiment.json"
+_OUT_PATH_STUB_ROUTE_CAP_AB = ROOT / "var" / "pass12_stub_route_recovery_cap_ab_experiment.json"
 _TRACE_LIST_LIMIT = 32
 _DROP_DETAILS_LIMIT = 32
 
@@ -104,6 +112,7 @@ _STUB_ROUTE_AB_SUMMARY_KEYS = (
     "pass12_preserved_missing_stub_route_recovery_rejected_by_nearest_hops_count",
     "pass12_preserved_missing_stub_route_recovery_rejected_by_no_stub_space_count",
     "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count",
+    "pass12_preserved_missing_stub_route_recovery_rejected_by_visit_cap_count",
     "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count",
     "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count",
     "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count",
@@ -395,6 +404,15 @@ def _stub_route_ab_timeline_row(decoded: dict[str, Any], *, route_flag: bool) ->
         "pass12_preserved_recovery_traces": list(traces),
         "pass12_preserved_missing_stub_drop_details": list(drops),
         "extractor_count": s.get("extractor_count"),
+        "original_extractor_count": s.get("original_extractor_count"),
+        "final_extractor_count": s.get("final_extractor_count"),
+        "extractor_drop_count": s.get("extractor_drop_count"),
+        "transport_cell_count": s.get("transport_cell_count"),
+        "optimization_final_internal_transport_count": s.get(
+            "optimization_final_internal_transport_count"
+        ),
+        "internal_transport_delta_vs_baseline": s.get("internal_transport_delta_vs_baseline"),
+        "solver_quality_tier": s.get("solver_quality_tier"),
         "orphan_transport_count": s.get("orphan_transport_count"),
         "transport_connected": s.get("transport_connected"),
     }
@@ -428,6 +446,7 @@ def _diff_stub_route_ab(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
         "pass12_preserved_missing_stub_route_recovery_rejected_by_nearest_hops_count",
         "pass12_preserved_missing_stub_route_recovery_rejected_by_no_stub_space_count",
         "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count",
+        "pass12_preserved_missing_stub_route_recovery_rejected_by_visit_cap_count",
         "pass12_preserved_missing_stub_route_recovery_rejected_by_route_len_count",
         "pass12_preserved_missing_stub_route_recovery_rejected_by_new_transport_cells_count",
         "pass12_preserved_missing_stub_route_recovery_rejected_by_extension_carve_disabled_count",
@@ -537,6 +556,162 @@ def _main_stub_route_recovery_ab(
         "spotcheck": spot,
     }
     return _write_stub_route_ab(payload, diff, summary_diff)
+
+
+def _parse_cap_values(raw: str) -> tuple[int, ...]:
+    values: list[int] = []
+    for part in raw.split(","):
+        item = part.strip()
+        if not item:
+            continue
+        try:
+            cap = int(item)
+        except ValueError as e:
+            raise ValueError(f"invalid cap value: {item!r}") from e
+        if cap < 1:
+            raise ValueError(f"cap must be positive: {cap}")
+        if cap not in values:
+            values.append(cap)
+    if not values:
+        raise ValueError("at least one cap value is required")
+    return tuple(values)
+
+
+def _run_stub_route_cap_row(decoded: dict[str, Any], *, cap: int) -> dict[str, Any]:
+    """같은 입력을 특정 nearest-hop cap으로 실행하고 핵심 품질 지표를 모은다."""
+
+    started = time.perf_counter()
+    with (
+        patch.object(
+            pass12_merged_layout_seed,
+            "MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS",
+            cap,
+        ),
+        patch.object(
+            pass12_preserve_stub_route_recovery,
+            "MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS",
+            cap,
+        ),
+        override_settings(
+            SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=True,
+            SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True,
+        ),
+    ):
+        row = _stub_route_ab_timeline_row(copy.deepcopy(decoded), route_flag=True)
+    row["cap"] = cap
+    row["runtime_s"] = round(time.perf_counter() - started, 6)
+    return row
+
+
+def _cap_row_summary(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "cap": row.get("cap"),
+        "runtime_s": row.get("runtime_s"),
+        "original_extractor_count": row.get("original_extractor_count"),
+        "final_extractor_count": row.get("final_extractor_count") or row.get("extractor_count"),
+        "preserve_missing_stub_drop_count": row.get(
+            "pass12_preserved_missing_stub_drop_extractor_count"
+        ),
+        "stub_route_recovery_attempted_count": row.get(
+            "pass12_preserved_missing_stub_route_recovery_attempted_count"
+        ),
+        "stub_route_recovery_success_count": row.get(
+            "pass12_preserved_missing_stub_route_recovery_success_count"
+        ),
+        "rejected_by_nearest_hops_count": row.get(
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_nearest_hops_count"
+        ),
+        "rejected_by_no_same_kind_route_count": row.get(
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_no_same_kind_route_count"
+        ),
+        "rejected_by_visit_cap_count": row.get(
+            "pass12_preserved_missing_stub_route_recovery_rejected_by_visit_cap_count"
+        ),
+        "transport_cell_count": row.get("transport_cell_count"),
+        "optimization_final_internal_transport_count": row.get(
+            "optimization_final_internal_transport_count"
+        ),
+        "internal_transport_delta_vs_baseline": row.get("internal_transport_delta_vs_baseline"),
+        "geometry_valid": row.get("geometry_valid"),
+        "connectivity_valid": row.get("connectivity_valid"),
+        "missing_stub_count": row.get("missing_stub_count"),
+        "orphan_transport_count": row.get("orphan_transport_count"),
+        "transport_connected": row.get("transport_connected"),
+        "solver_quality_tier": row.get("solver_quality_tier"),
+    }
+
+
+def _main_stub_route_cap_ab(
+    decoded: dict[str, Any],
+    source: dict[str, Any],
+    *,
+    cap_values: tuple[int, ...],
+    full: bool = False,
+) -> int:
+    rows = [_run_stub_route_cap_row(decoded, cap=cap) for cap in cap_values]
+    summaries = [_cap_row_summary(row) for row in rows]
+    baseline = summaries[0] if summaries else {}
+    comparisons: list[dict[str, Any]] = []
+    base_final = baseline.get("final_extractor_count")
+    base_drop = baseline.get("preserve_missing_stub_drop_count")
+    base_transport = baseline.get("transport_cell_count")
+    base_delta = baseline.get("internal_transport_delta_vs_baseline")
+    for row in summaries:
+        comparisons.append(
+            {
+                "cap": row.get("cap"),
+                "final_extractor_delta_vs_first_cap": (
+                    None
+                    if not isinstance(row.get("final_extractor_count"), int)
+                    or not isinstance(base_final, int)
+                    else row["final_extractor_count"] - base_final
+                ),
+                "preserve_drop_delta_vs_first_cap": (
+                    None
+                    if not isinstance(row.get("preserve_missing_stub_drop_count"), int)
+                    or not isinstance(base_drop, int)
+                    else row["preserve_missing_stub_drop_count"] - base_drop
+                ),
+                "transport_cell_delta_vs_first_cap": (
+                    None
+                    if not isinstance(row.get("transport_cell_count"), int)
+                    or not isinstance(base_transport, int)
+                    else row["transport_cell_count"] - base_transport
+                ),
+                "internal_transport_delta_shift_vs_first_cap": (
+                    None
+                    if not isinstance(row.get("internal_transport_delta_vs_baseline"), int)
+                    or not isinstance(base_delta, int)
+                    else row["internal_transport_delta_vs_baseline"] - base_delta
+                ),
+            }
+        )
+    payload = {
+        "ab_mode": "stub_route_cap_ab",
+        "settings_note": (
+            "SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=True and "
+            "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True for every variant."
+        ),
+        "input_source": source,
+        "cap_values": list(cap_values),
+        "summary_rows": summaries,
+        "comparisons_vs_first_cap": comparisons,
+        "variant_rows": [_trim_timeline_heavy(row, full=full) for row in rows],
+    }
+    out_dir = ROOT / "var"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    _OUT_PATH_STUB_ROUTE_CAP_AB.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(
+        json.dumps(
+            {
+                "written": str(_OUT_PATH_STUB_ROUTE_CAP_AB),
+                "summary_rows": summaries,
+                "comparisons_vs_first_cap": comparisons,
+            },
+            indent=2,
+        )
+    )
+    return 0
 
 
 def _probe_replay_input(path: Path) -> dict[str, Any]:
@@ -833,6 +1008,21 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--stub-route-cap-ab",
+        action="store_true",
+        help=(
+            "Run stub-route recovery with nearest-hop cap variants. Writes "
+            "var/pass12_stub_route_recovery_cap_ab_experiment.json."
+        ),
+    )
+    parser.add_argument(
+        "--stub-route-cap-values",
+        type=str,
+        default="6,8,10",
+        metavar="CSV",
+        help="Comma-separated nearest-hop cap values for --stub-route-cap-ab (default: 6,8,10).",
+    )
+    parser.add_argument(
         "--probe-replay-input",
         type=Path,
         default=None,
@@ -847,8 +1037,16 @@ def main() -> int:
         return 0 if probe.get("replayable") else 3
 
     has_input = bool(args.solver_trace or args.copy_code_file or args.ndjson or args.bp_json)
+    cap_values = _parse_cap_values(args.stub_route_cap_values)
 
     try:
+        if args.stub_route_cap_ab and not has_input:
+            return _main_stub_route_cap_ab(
+                copy.deepcopy(_STRIPED_BP),
+                {"kind": "synthetic_striped_bp_stub_route_cap_ab"},
+                cap_values=cap_values,
+                full=args.full,
+            )
         if args.stub_route_recovery_ab and not has_input:
             return _main_stub_route_recovery_ab(
                 copy.deepcopy(_STRIPED_BP),
@@ -866,6 +1064,10 @@ def main() -> int:
                 "path": str(args.solver_trace.resolve()),
             }
             src_meta.update(trace_meta)
+            if args.stub_route_cap_ab:
+                return _main_stub_route_cap_ab(
+                    decoded, src_meta, cap_values=cap_values, full=args.full
+                )
             if args.stub_route_recovery_ab:
                 return _main_stub_route_recovery_ab(decoded, src_meta, full=args.full)
             return _main_decoded(decoded, src_meta, full=args.full)
@@ -875,6 +1077,10 @@ def main() -> int:
                 "kind": "copy_code_file",
                 "path": str(args.copy_code_file.resolve()),
             }
+            if args.stub_route_cap_ab:
+                return _main_stub_route_cap_ab(
+                    decoded, input_src, cap_values=cap_values, full=args.full
+                )
             if args.stub_route_recovery_ab:
                 return _main_stub_route_recovery_ab(decoded, input_src, full=args.full)
             return _main_decoded(decoded, input_src, full=args.full)
@@ -884,12 +1090,20 @@ def main() -> int:
                 "kind": "ndjson_or_json",
                 "path": str(args.ndjson.resolve()),
             }
+            if args.stub_route_cap_ab:
+                return _main_stub_route_cap_ab(
+                    decoded, input_src, cap_values=cap_values, full=args.full
+                )
             if args.stub_route_recovery_ab:
                 return _main_stub_route_recovery_ab(decoded, input_src, full=args.full)
             return _main_decoded(decoded, input_src, full=args.full)
         if args.bp_json:
             decoded = load_decoded_from_ndjson_or_json(args.bp_json.resolve())
             input_src = {"kind": "bp_json", "path": str(args.bp_json.resolve())}
+            if args.stub_route_cap_ab:
+                return _main_stub_route_cap_ab(
+                    decoded, input_src, cap_values=cap_values, full=args.full
+                )
             if args.stub_route_recovery_ab:
                 return _main_stub_route_recovery_ab(decoded, input_src, full=args.full)
             return _main_decoded(decoded, input_src, full=args.full)

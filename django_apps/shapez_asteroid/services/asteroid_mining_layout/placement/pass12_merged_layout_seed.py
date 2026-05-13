@@ -830,6 +830,7 @@ def seed_pass12_scratch_from_merged_existing(
     rotation_recovery_count = 0
     recovered_stub_samples: list[dict[str, Any]] = []
     unrecovered_stub_samples: list[dict[str, Any]] = []
+    recovery_transport_coords_added: set[Coord] = set()
     for miner in miners:
         seed_route_id = "preserve_merged_seed"
         exts = extension_sets_by_miner.get(miner, frozenset())
@@ -920,6 +921,7 @@ def seed_pass12_scratch_from_merged_existing(
                     if rr_res.accepted:
                         rr_success += 1
                         scratch.transport_cells |= set(rr_res.new_transport_coords)
+                        recovery_transport_coords_added.update(rr_res.new_transport_coords)
                         eff_r = rr_res.chosen_r
                         stub_cell = rr_res.stub_cell
                         routed_ok = True
@@ -1108,6 +1110,7 @@ def seed_pass12_scratch_from_merged_existing(
                 rr_success += 1
                 progressed_any = True
                 scratch.transport_cells |= set(rr_q.new_transport_coords)
+                recovery_transport_coords_added.update(rr_q.new_transport_coords)
                 dminer = d.miner
                 dex_exts = set(d.extensions)
                 ext_tuple_q = tuple(sorted(dex_exts, key=lambda p: (p[1], p[0])))
@@ -1280,4 +1283,5 @@ def seed_pass12_scratch_from_merged_existing(
         "pass12_stub_route_recovery_eligible_count": stub_route_recovery_eligible_count,
         "pass12_stub_route_recovery_queue_rounds": rr_stub_queue_rounds,
         "pass12_stub_route_recovery_attempted_count": rr_attempted,
+        "pass12_recovery_new_transport_coords": frozenset(recovery_transport_coords_added),
     }

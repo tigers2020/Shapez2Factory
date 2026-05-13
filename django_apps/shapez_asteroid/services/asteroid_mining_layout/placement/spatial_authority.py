@@ -124,16 +124,21 @@ def assert_scratch_transport_subset_of_map(
     mining_map: list[dict[str, Any]],
     *,
     context: str = "",
+    materialized_scratch_transport: frozenset[Coord] | None = None,
 ) -> None:
-    """Debug guard: scratch transport cells must appear as belt/pipe on ``mining_map``.
+    """Debug guard: materialized scratch transport cells must appear as belt/pipe on ``mining_map``.
 
-    Call after Pass1/Pass2 merge when both views should agree; raises ``ValueError`` if not.
+    When ``materialized_scratch_transport`` is set (Pass12 narrow restamp), only those coords are
+    checked; unstamped orphan scratch coords are ignored.
     """
 
     wr = want_role(scratch.transport_kind)
     cells = cells_dict_from_mining_map(mining_map)
+    to_check = materialized_scratch_transport
+    if to_check is None:
+        to_check = frozenset(c for c in scratch.transport_cells if c not in scratch.blocked_cells)
     missing: list[Coord] = []
-    for c in scratch.transport_cells:
+    for c in to_check:
         row = cells.get(c)
         if row is None or row.get("role") != wr:
             missing.append(c)

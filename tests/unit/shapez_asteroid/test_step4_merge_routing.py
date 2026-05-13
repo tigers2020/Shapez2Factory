@@ -398,6 +398,57 @@ def test_step4_skipped_result_contract() -> None:
     assert r.trunk_load.get("cascade_rollback_count") == 0
 
 
+def test_step4_complete_routing_success_false_when_orphan_metrics_nonzero() -> None:
+    """``complete_routing_success`` is false when post-routing orphan transport count > 0."""
+
+    surface = "shape"
+    final_mining_map: list[dict[str, Any]] = []
+    for x in range(9, 35):
+        for y in range(4, 12):
+            final_mining_map.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "role": "inferred",
+                    "layout_kind": "asteroid_field",
+                    "surface": surface,
+                }
+            )
+    map_after_pass2: list[dict[str, Any]] = []
+    for x in range(11, 30):
+        map_after_pass2.append(
+            {"x": x, "y": 5, "role": "belt", "surface": surface, "placement_id": "p-merge"}
+        )
+    map_after_pass2.append(
+        {
+            "x": 10,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "miner",
+            "surface": surface,
+            "r": 0,
+            "placement_id": "p-merge",
+        }
+    )
+    is_ext = external_predicate_for_mining_map(map_after_pass2)
+    fake_metrics = {
+        "orphan_transport_count": 2,
+        "orphan_fluid_pipe_count": 0,
+        "orphan_shape_belt_count": 2,
+        "orphan_pipe_sample_cells": [],
+        "orphan_belt_sample_cells": [[12, 10]],
+    }
+    with patch.object(step4_mod, "orphan_transport_metrics_from_cells", return_value=fake_metrics):
+        r = run_step4_merge_aware_routing(
+            map_after_pass2,
+            final_mining_map=final_mining_map,
+            is_external=is_ext,
+            placement_records=None,
+        )
+    assert int(r.trunk_load.get("step4_post_routing_orphan_transport_count") or 0) == 2
+    assert not r.complete_routing_success
+
+
 def test_p2c_revalidate_runs_after_main_routing_loop() -> None:
     """ROUTED_CONFIRMED rows still pass through P2-C (route geometry), not only placement FSM."""
 

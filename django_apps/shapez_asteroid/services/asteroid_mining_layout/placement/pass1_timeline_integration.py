@@ -44,6 +44,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass1
     new_pass2_route_probe_stats_sink,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
+    blocked_cells,
     layout_kind,
     mineable_and_asteroid_coords,
 )
@@ -58,6 +59,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_r
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
+    orphan_transport_metrics_from_cells,
+    transport_cells_reaching_external,
 )
 from django_apps.shapez_asteroid.services.blueprint_map_summary import (
     merge_with_transport_and_final_mining_map,
@@ -117,6 +120,82 @@ def dominant_surface_from_map(mining_map: list[dict[str, Any]]) -> str:
     return "fluid" if fluids > shapes else "shape"
 
 
+def _ela_transport_cell_lookup(
+    existing_layout_analysis: dict[str, Any] | None, *, surface: str
+) -> dict[Coord, dict[str, Any]]:
+    """Map coord → ExistingLayoutAnalysis transport component id/status (read-only telemetry)."""
+
+    if not existing_layout_analysis or not isinstance(existing_layout_analysis, dict):
+        return {}
+    kind_key = "fluid_pipe" if surface == "fluid" else "shape_belt"
+    block: dict[str, Any] | None = None
+    tbk = existing_layout_analysis.get("transport_by_kind")
+    if isinstance(tbk, dict) and isinstance(tbk.get(kind_key), dict):
+        block = tbk[kind_key]
+    if block is None:
+        tr = existing_layout_analysis.get("transport")
+        if isinstance(tr, dict) and tr.get("transport_kind") == kind_key:
+            block = tr
+    if not isinstance(block, dict):
+        return {}
+    out: dict[Coord, dict[str, Any]] = {}
+    for comp in block.get("components") or []:
+        if not isinstance(comp, dict):
+            continue
+        cid = comp.get("component_id")
+        st = comp.get("status")
+        for pair in comp.get("cells") or []:
+            if not isinstance(pair, (list, tuple)) or len(pair) < 2:
+                continue
+            out[(int(pair[0]), int(pair[1]))] = {
+                "existing_layout_component_id": cid,
+                "existing_layout_transport_status": st,
+            }
+    return out
+
+
+def _pass12_orphan_transport_sample_enriched(
+    *,
+    pipe_samples: list[list[int]],
+    belt_samples: list[list[int]],
+    transport_init: frozenset[Coord],
+    scratch_transport: frozenset[Coord],
+    recovery_coords: frozenset[Coord],
+    ela_by_cell: dict[Coord, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Bounded orphan samples with provenance flags (not algorithmic input)."""
+
+    out: list[dict[str, Any]] = []
+    scratch_minus_init = scratch_transport - transport_init
+    for xy in pipe_samples:
+        if len(xy) < 2:
+            continue
+        c = (int(xy[0]), int(xy[1]))
+        row: dict[str, Any] = {
+            "xy": [c[0], c[1]],
+            "role": "pipe",
+            "in_transport_init": c in transport_init,
+            "in_scratch_not_init": c in scratch_minus_init,
+            "in_recovery_new_transport": c in recovery_coords,
+        }
+        row.update(ela_by_cell.get(c, {}))
+        out.append(row)
+    for xy in belt_samples:
+        if len(xy) < 2:
+            continue
+        c = (int(xy[0]), int(xy[1]))
+        row = {
+            "xy": [c[0], c[1]],
+            "role": "belt",
+            "in_transport_init": c in transport_init,
+            "in_scratch_not_init": c in scratch_minus_init,
+            "in_recovery_new_transport": c in recovery_coords,
+        }
+        row.update(ela_by_cell.get(c, {}))
+        out.append(row)
+    return out
+
+
 def scratch_from_working_map(
     working_map: list[dict[str, Any]],
     *,
@@ -154,20 +233,20 @@ def _merge_pass1_into_rows(
     blocked_init: frozenset[Coord],
     mineable: frozenset[Coord],
     surface: str,
-) -> list[dict[str, Any]]:
-    """Rebuild cells: ``with_transport`` plus reconstructed mineable shell, then P1 overlays."""
+    *,
+    is_external: Callable[[Coord], bool],
+) -> tuple[list[dict[str, Any]], frozenset[Coord]]:
+    """Rebuild cells; return merged rows and transport coords materialized from scratch."""
 
-    _ = transport_init  # Baseline transport coords (symmetry with callers); full scratch stamp.
+    _ = transport_init  # Baseline transport coords (symmetry with callers); stamp_set derived.
     cells = {k: dict(v) for k, v in cells_dict_from_mining_map(working_map).items()}
     final_cells = cells_dict_from_mining_map(final_mining_map)
     for c in mineable:
         if c in final_cells:
             cells[c] = dict(final_cells[c])
     new_bodies = scratch.blocked_cells - set(blocked_init)
-    # Stamp every scratch transport cell after the mineable shell overlay. Using only
-    # ``scratch.transport_cells - transport_init`` drops baseline stub belts/pipes that the
-    # shell overwrote with ``inferred`` (Pass12 preserve stub-route recovery may omit the stub
-    # from ``new_transport_coords`` when it was already same-kind on the merged probe map).
+    # Stamp external-reachable same-kind scratch transport plus placement stub cells. Omitting
+    # disconnected scratch.transport avoids re-materializing orphan blueprint pipes (STEP9).
     if surface == "fluid":
         miner_layout = "fluid_miner"
         miner_t = "Layout_FluidMiner"
@@ -229,9 +308,20 @@ def _merge_pass1_into_rows(
             row = dict(miner_row)
             row.update({"x": x, "y": y})
             cells[c] = row
-    for x, y in sorted(scratch.transport_cells, key=lambda p: (p[1], p[0])):
-        if (x, y) in scratch.blocked_cells:
-            continue
+    raw_transport = {c for c in scratch.transport_cells if c not in scratch.blocked_cells}
+    if surface == "fluid":
+        t_graph = {c for c in raw_transport if cells.get(c, {}).get("role") != "belt"}
+    else:
+        t_graph = {c for c in raw_transport if cells.get(c, {}).get("role") != "pipe"}
+    bl = blocked_cells(cells)
+    reaching = transport_cells_reaching_external(t_graph, set(bl), is_external)
+    stub_cells = {
+        rec.stub_cell
+        for rec in scratch.placement_records.values()
+        if rec.stub_cell not in scratch.blocked_cells
+    }
+    stamp_set = frozenset(reaching | stub_cells)
+    for x, y in sorted(stamp_set, key=lambda p: (p[1], p[0])):
         tr: dict[str, Any] = {
             "x": x,
             "y": y,
@@ -241,8 +331,16 @@ def _merge_pass1_into_rows(
         if (x, y) in pid_by_cell:
             tr["placement_id"] = pid_by_cell[(x, y)]
         cells[(x, y)] = tr
+    for c in raw_transport - stamp_set:
+        row = cells.get(c)
+        if row is None or row.get("role") != transport_role:
+            continue
+        if c in mineable and c in final_cells:
+            cells[c] = dict(final_cells[c])
+        elif c in cells:
+            del cells[c]
     ordered = sorted(cells.keys(), key=lambda p: (p[1], p[0]))
-    return [dict(cells[k]) for k in ordered]
+    return [dict(cells[k]) for k in ordered], stamp_set
 
 
 def integrate_pass12_placement_into_working_map(
@@ -333,6 +431,11 @@ def integrate_pass12_placement_into_working_map(
         "pass12_stub_route_recovery_eligible_count": 0,
         "pass12_stub_route_recovery_queue_rounds": 0,
         "pass12_stub_route_recovery_attempted_count": 0,
+        "pass12_post_merge_orphan_transport_count": 0,
+        "pass12_post_merge_orphan_fluid_pipe_count": 0,
+        "pass12_post_merge_orphan_shape_belt_count": 0,
+        "pass12_post_merge_orphan_transport_sample_cells": [],
+        "pass12_recovery_new_transport_coords": frozenset(),
         **new_pass2_route_probe_stats_sink(),
         **ela_empty_meta,
     }
@@ -429,7 +532,7 @@ def integrate_pass12_placement_into_working_map(
                 placement_transport_blocked_counter=placement_transport_blocked_counter,
             )
         scratch_after_pass1 = _clone_scratch(scratch)
-        merged_rows_pass1_for_probe = _merge_pass1_into_rows(
+        merged_rows_pass1_for_probe, _probe_stamp = _merge_pass1_into_rows(
             working_map,
             final_mining_map,
             scratch_after_pass1,
@@ -437,6 +540,7 @@ def integrate_pass12_placement_into_working_map(
             blocked_init,
             mineable,
             surface,
+            is_external=is_external,
         )
         cells_for_pass2_probe = {
             k: dict(v) for k, v in cells_dict_from_mining_map(merged_rows_pass1_for_probe).items()
@@ -487,7 +591,7 @@ def integrate_pass12_placement_into_working_map(
                 pass2_route_probe_pack=pass2_route_probe_pack,
             )
         finalize_pass2_route_probe_stats(pass2_probe_stats)
-        merged_pass1 = _merge_pass1_into_rows(
+        merged_pass1, _stamp_pass1 = _merge_pass1_into_rows(
             working_map,
             final_mining_map,
             scratch_after_pass1,
@@ -495,9 +599,17 @@ def integrate_pass12_placement_into_working_map(
             blocked_init,
             mineable,
             surface,
+            is_external=is_external,
         )
-        merged_pass2 = _merge_pass1_into_rows(
-            working_map, final_mining_map, scratch, transport_init, blocked_init, mineable, surface
+        merged_pass2, stamp_pass2 = _merge_pass1_into_rows(
+            working_map,
+            final_mining_map,
+            scratch,
+            transport_init,
+            blocked_init,
+            mineable,
+            surface,
+            is_external=is_external,
         )
         if getattr(settings, "SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET", False):
             from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.spatial_authority import (  # noqa: E501
@@ -505,7 +617,10 @@ def integrate_pass12_placement_into_working_map(
             )
 
             assert_scratch_transport_subset_of_map(
-                scratch, merged_pass2, context="post_pass2_merge"
+                scratch,
+                merged_pass2,
+                context="post_pass2_merge",
+                materialized_scratch_transport=stamp_pass2,
             )
         pass1_new_transport_cells = tr_before_p2 - len(transport_init)
         final_transport_cells = _transport_cell_coords_from_map_rows(merged_pass2)
@@ -549,6 +664,29 @@ def integrate_pass12_placement_into_working_map(
             **preserve_seed_stats,
             **ela_meta,
         }
+        cells_post_pass12 = cells_dict_from_mining_map(merged_pass2)
+        om_pass12 = orphan_transport_metrics_from_cells(cells_post_pass12)
+        recovery_fc = preserve_seed_stats.get("pass12_recovery_new_transport_coords", frozenset())
+        if not isinstance(recovery_fc, frozenset):
+            recovery_fc = frozenset(recovery_fc) if recovery_fc else frozenset()
+        ela_lookup = _ela_transport_cell_lookup(existing_layout_analysis, surface=surface)
+        stats.update(
+            {
+                "pass12_post_merge_orphan_transport_count": om_pass12["orphan_transport_count"],
+                "pass12_post_merge_orphan_fluid_pipe_count": om_pass12["orphan_fluid_pipe_count"],
+                "pass12_post_merge_orphan_shape_belt_count": om_pass12["orphan_shape_belt_count"],
+                "pass12_post_merge_orphan_transport_sample_cells": (
+                    _pass12_orphan_transport_sample_enriched(
+                        pipe_samples=om_pass12["orphan_pipe_sample_cells"],
+                        belt_samples=om_pass12["orphan_belt_sample_cells"],
+                        transport_init=transport_init,
+                        scratch_transport=frozenset(scratch.transport_cells),
+                        recovery_coords=recovery_fc,
+                        ela_by_cell=ela_lookup,
+                    )
+                ),
+            }
+        )
         if replay_events is not None and pass12_txn_id is not None:
             assert map_before_pass12 is not None
             diff_pl = diff_mining_maps(map_before_pass12, merged_pass2)

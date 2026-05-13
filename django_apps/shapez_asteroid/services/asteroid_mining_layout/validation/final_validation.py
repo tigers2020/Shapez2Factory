@@ -33,6 +33,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.fina
     FinalValidationReport,
 )
 
+_ORPHAN_TRANSPORT_SAMPLE_CAP = 24
+
+
 __all__ = [
     "FinalValidationReport",
     "count_placement_fsm_rows_on_cells",
@@ -40,6 +43,7 @@ __all__ = [
     "external_margin_from_bbox",
     "external_predicate_for_mining_map",
     "mineable_bbox",
+    "orphan_transport_metrics_from_cells",
     "transport_cells_reaching_external",
     "validate_final_mining_layout",
 ]
@@ -178,6 +182,47 @@ def transport_cells_reaching_external(
             seen.add(nxt)
             q.append(nxt)
     return seen
+
+
+def orphan_transport_metrics_from_cells(
+    cells: dict[Coord, dict[str, Any]],
+) -> dict[str, Any]:
+    """Orphan belt/pipe counts + bounded samples (STEP9-equivalent graph; telemetry only)."""
+
+    transport_cells = _transport_cell_set(cells)
+    blocked = blocked_cells(cells)
+    bbox = mineable_bbox(cells)
+
+    def never_external(_c: Coord) -> bool:
+        return False
+
+    is_external: Callable[[Coord], bool] = never_external
+    if bbox is not None:
+        x_min, x_max, y_min, y_max = bbox
+        w = x_max - x_min + 1
+        h = y_max - y_min + 1
+        margin = external_margin_from_bbox(w, h)
+        is_external = _external_predicate(bbox, margin)
+
+    belt_cells = {c for c in transport_cells if cells.get(c, {}).get("role") == "belt"}
+    pipe_cells = {c for c in transport_cells if cells.get(c, {}).get("role") == "pipe"}
+    connected_belts = transport_cells_reaching_external(belt_cells, blocked, is_external)
+    connected_pipes = transport_cells_reaching_external(pipe_cells, blocked, is_external)
+    orphan_belts = belt_cells - connected_belts
+    orphan_pipes = pipe_cells - connected_pipes
+    otc = len(orphan_belts) + len(orphan_pipes)
+
+    def _samples(coords: set[Coord]) -> list[list[int]]:
+        ordered = sorted(coords, key=lambda p: (p[1], p[0]))
+        return [[c[0], c[1]] for c in ordered[:_ORPHAN_TRANSPORT_SAMPLE_CAP]]
+
+    return {
+        "orphan_transport_count": otc,
+        "orphan_fluid_pipe_count": len(orphan_pipes),
+        "orphan_shape_belt_count": len(orphan_belts),
+        "orphan_pipe_sample_cells": _samples(orphan_pipes),
+        "orphan_belt_sample_cells": _samples(orphan_belts),
+    }
 
 
 def _multi_occupied_building_rows_per_cell(mining_map: list[dict[str, Any]]) -> int:

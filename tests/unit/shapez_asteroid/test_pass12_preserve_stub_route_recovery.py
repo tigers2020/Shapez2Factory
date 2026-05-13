@@ -559,7 +559,8 @@ def test_merge_restamps_baseline_stub_after_mineable_shell_overwrite() -> None:
         route_id="preserve_stub_route_recovery",
     )
     scratch.next_placement_seq = 1
-    merged = p12_tl._merge_pass1_into_rows(
+    is_ext = final_val.external_predicate_for_mining_map([dict(r) for r in final_mining_map])
+    merged, _stamp = p12_tl._merge_pass1_into_rows(
         working_map,
         final_mining_map,
         scratch,
@@ -567,11 +568,92 @@ def test_merge_restamps_baseline_stub_after_mineable_shell_overwrite() -> None:
         blocked_init,
         mineable,
         "fluid",
+        is_external=is_ext,
     )
     cells = final_val.cells_dict_from_mining_map(merged)
     assert cells[(5, 4)]["role"] == "pipe"
     jobs = collect_routing_jobs(cells)
     assert any(ext == (5, 5) for ext, *_ in jobs)
+
+
+def test_merge_strips_orphan_pipe_island_not_reaching_external() -> None:
+    """Scratch/working orphan pipes must not survive merge when not external-reachable."""
+
+    mineable: frozenset[Coord] = frozenset(
+        {
+            (5, 2),
+            (5, 4),
+            (5, 5),
+            (5, 6),
+            (6, 5),
+            (10, 5),
+        }
+    )
+    working_map: list[dict[str, object]] = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 3,
+            "surface": "fluid",
+        },
+        {"x": 6, "y": 5, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        {"x": 5, "y": 6, "role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        {"x": 5, "y": 4, "role": "pipe", "surface": "fluid"},
+        {"x": 5, "y": 3, "role": "pipe", "surface": "fluid"},
+        {"x": 5, "y": 2, "role": "pipe", "surface": "fluid"},
+        # Inside layout bbox but 4-disconnected from trunk (not adjacent to external margin).
+        {"x": 8, "y": 5, "role": "pipe", "surface": "fluid"},
+        {"x": 9, "y": 5, "role": "pipe", "surface": "fluid"},
+    ]
+    final_mining_map: list[dict[str, object]] = [
+        {
+            "x": x,
+            "y": y,
+            "role": "inferred" if (x, y) == (10, 5) else "occupied",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        }
+        for x, y in sorted(mineable, key=lambda p: (p[1], p[0]))
+    ]
+    scratch, transport_init, blocked_init = p12_tl.scratch_from_working_map(
+        working_map, mineable_coords=mineable
+    )
+    scratch.transport_kind = "fluid_pipe"
+    scratch.blocked_cells.update({(5, 5), (6, 5), (5, 6)})
+    scratch.extractor_cells.add((5, 5))
+    scratch.extractor_output_dirs[(5, 5)] = output_offset_r(3)
+    pid = make_placement_id("pass1", 1)
+    scratch.placement_records[pid] = PlacementCommitRecord(
+        placement_id=pid,
+        placement_pass="pass1",
+        extractor_cell=(5, 5),
+        extension_cells=((5, 6), (6, 5)),
+        stub_cell=(5, 4),
+        transport_kind="fluid_pipe",
+        state=PlacementCommitState.PROVISIONAL_PLACED,
+        route_id="preserve_stub_route_recovery",
+    )
+    scratch.next_placement_seq = 1
+    combined_rows = [dict(r) for r in working_map] + [dict(r) for r in final_mining_map]
+    is_ext = final_val.external_predicate_for_mining_map(combined_rows)
+    merged, _stamp = p12_tl._merge_pass1_into_rows(
+        working_map,
+        final_mining_map,
+        scratch,
+        transport_init,
+        blocked_init,
+        mineable,
+        "fluid",
+        is_external=is_ext,
+    )
+    cells = final_val.cells_dict_from_mining_map(merged)
+    assert cells[(5, 4)]["role"] == "pipe"
+    assert cells.get((8, 5), {}).get("role") != "pipe"
+    assert cells.get((9, 5), {}).get("role") != "pipe"
+    om = final_val.orphan_transport_metrics_from_cells(cells)
+    assert om["orphan_transport_count"] == 0
 
 
 @override_settings(
@@ -588,6 +670,18 @@ def test_integrate_pass12_stub_recovery_then_step4_complete_and_stub_coverage() 
         (5, 6),
         (6, 5),
         (10, 10),
+        (6, 2),
+        (7, 2),
+        (8, 2),
+        (9, 2),
+        (10, 2),
+        (10, 3),
+        (10, 4),
+        (10, 5),
+        (10, 6),
+        (10, 7),
+        (10, 8),
+        (10, 9),
     ]
     fm = [
         {
@@ -624,11 +718,29 @@ def test_integrate_pass12_stub_recovery_then_step4_complete_and_stub_coverage() 
             "t": "Layout_FluidMiner",
         },
         {"x": 11, "y": 10, "role": "pipe", "surface": "fluid"},
+        *[
+            {"x": x, "y": y, "role": "pipe", "surface": "fluid"}
+            for x, y in [
+                (6, 2),
+                (7, 2),
+                (8, 2),
+                (9, 2),
+                (10, 2),
+                (10, 3),
+                (10, 4),
+                (10, 5),
+                (10, 6),
+                (10, 7),
+                (10, 8),
+                (10, 9),
+            ]
+        ],
     ]
+    is_ext = final_val.external_predicate_for_mining_map([dict(r) for r in wm])
     _m1, m2, stats = p12_tl.integrate_pass12_placement_into_working_map(
         working_map=wm,
         final_mining_map=fm,
-        is_external=lambda _c: True,
+        is_external=is_ext,
         existing_layout_analysis={
             "source_kind": "existing_fluid_layout",
             "equipment": {"miner_count": 2, "extension_count": 0},
@@ -642,7 +754,7 @@ def test_integrate_pass12_stub_recovery_then_step4_complete_and_stub_coverage() 
     r = run_step4_merge_aware_routing(
         m2,
         final_mining_map=fm,
-        is_external=lambda _c: True,
+        is_external=is_ext,
         placement_records=pr,
     )
     assert r.complete_routing_success

@@ -43,6 +43,17 @@ def test_assert_scratch_transport_subset_of_map_raises() -> None:
         assert_scratch_transport_subset_of_map(st, m)
 
 
+def test_assert_scratch_transport_subset_materialized_only_allows_orphan_scratch() -> None:
+    """Narrow Pass12 merge: scratch may list orphan coords; only materialized subset must map."""
+
+    st = Pass12LayoutScratch(transport_kind="shape_belt")
+    st.transport_cells = {(1, 0), (99, 99)}
+    m = [{"x": 1, "y": 0, "role": "belt", "surface": "shape"}]
+    assert_scratch_transport_subset_of_map(
+        st, m, materialized_scratch_transport=frozenset({(1, 0)})
+    )
+
+
 def test_infer_transport_kind_from_mining_map() -> None:
     assert (
         infer_transport_kind_from_mining_map([{"x": 1, "y": 0, "role": "pipe", "surface": "fluid"}])

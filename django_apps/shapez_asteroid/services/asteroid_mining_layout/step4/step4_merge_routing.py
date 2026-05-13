@@ -138,6 +138,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_tru
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
     cells_dict_from_mining_map,
+    orphan_transport_metrics_from_cells,
     transport_cells_reaching_external,
 )
 
@@ -1053,12 +1054,15 @@ def run_step4_merge_aware_routing(
     ext_rot_n = _count_extractors_with_int_rotation(cells)
     stub_coverage_ok = ext_rot_n == 0 or ext_rot_n == jobs_post_n
     placement_fsm_finalized = unfinal == 0
+    orph_metrics = orphan_transport_metrics_from_cells(dict(cells))
+    otc = int(orph_metrics.get("orphan_transport_count") or 0)
     complete_routing_success = (
         not unrecoverable
         and routing_failure_count == 0
         and rolled_back_n == 0
         and placement_fsm_finalized
         and stub_coverage_ok
+        and otc == 0
     )
     committed = complete_routing_success
     step4_degraded = not unrecoverable and routing_failure_count == 0 and rolled_back_n > 0
@@ -1116,6 +1120,19 @@ def run_step4_merge_aware_routing(
         "step4_search_goal_ordering_mode": search_goal_ordering_mode,
         "step4_search_diagnostics_samples": list(search_diag_samples),
         "step4_reentry_index": int(step4_reentry_index),
+        "step4_post_routing_orphan_transport_count": orph_metrics.get("orphan_transport_count", 0),
+        "step4_post_routing_orphan_fluid_pipe_count": orph_metrics.get(
+            "orphan_fluid_pipe_count", 0
+        ),
+        "step4_post_routing_orphan_shape_belt_count": orph_metrics.get(
+            "orphan_shape_belt_count", 0
+        ),
+        "step4_post_routing_orphan_pipe_sample_cells": orph_metrics.get(
+            "orphan_pipe_sample_cells", []
+        ),
+        "step4_post_routing_orphan_belt_sample_cells": orph_metrics.get(
+            "orphan_belt_sample_cells", []
+        ),
     }
     trace_tl["step4_no_route_exhausted_breakdown"] = build_step4_no_route_exhausted_breakdown(
         failures

@@ -24,6 +24,11 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     want_role as _want_role,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4MutableState,
+    Step4RoutingContext,
+    Step4StubRouteJob,
+)
 
 from ..validation.final_validation import transport_cells_reaching_external
 from .step4_goal_trunk_seed import build_step4_goal_set
@@ -359,3 +364,36 @@ def apply_pass2_recovery_path_paint(
             trunk_edge_hits[key] = trunk_edge_hits.get(key, 0) + 1
             continue
         cells[p] = {"x": p[0], "y": p[1], "role": want_role, "surface": surface}
+
+
+def try_step4_failed_pass2_route_recovery_ctx(
+    ctx: Step4RoutingContext,
+    state: Step4MutableState,
+    job: Step4StubRouteJob,
+    *,
+    raw_goal_primary: set[Coord],
+    dijkstra_fn: Any,
+) -> tuple[Pass2RouteRecoveryOutcome | None, int]:
+    """Bundle Pass2 recovery inputs from STEP4 merge ``ctx`` / ``state``."""
+
+    pid = job.placement_id
+    if pid is None or pid not in state.work_records:
+        return None, 0
+    return try_step4_failed_pass2_route_recovery(
+        ext_cell=job.extractor_cell,
+        stub_cell=job.stub_cell,
+        tk=job.transport_kind,
+        rec=state.work_records[pid],
+        cells=state.cells,
+        final_cells=ctx.final_cells,
+        mineable=ctx.mineable,
+        asteroid=ctx.asteroid,
+        is_external=ctx.is_external,
+        committed_trunk_by_kind=state.committed_trunk_by_kind,
+        margin_cells=set(ctx.margin_cells),
+        trunk_seed_by_kind=state.trunk_seed_by_kind_sets,
+        cheap_reuse_cells=ctx.cheap_reuse_cells,
+        hard_extras=ctx.hard_extras,
+        raw_goal_primary=raw_goal_primary,
+        dijkstra_fn=dijkstra_fn,
+    )

@@ -19,6 +19,11 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_dij
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_failed_pass2_route_recovery import (  # noqa: E501
     Pass2RouteRecoveryOutcome,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4MutableState,
+    Step4RoutingContext,
+    Step4StubRouteJob,
+)
 
 Step4RouteFailureReason = _s4_diag.Step4RouteFailureReason
 breaker_category_for_no_route_exhausted = _s4_diag.breaker_category_for_no_route_exhausted
@@ -234,4 +239,48 @@ def try_step4_local_bridge_recovery(
             "stop_reason": bridge_stats.get("stop_reason"),
             "expanded_nodes": bridge_stats.get("expanded_nodes"),
         },
+    )
+
+
+def try_step4_local_bridge_recovery_ctx(
+    ctx: Step4RoutingContext,
+    state: Step4MutableState,
+    job: Step4StubRouteJob,
+    *,
+    blocked: frozenset[Coord],
+    trunk_cells: frozenset[Coord],
+    goal_cells: frozenset[Coord],
+    raw_goal: set[Coord],
+    want_role: str,
+    detail: dict[str, Any],
+    search_stats: dict[str, Any],
+    committed_trunk_for_kind: set[Coord],
+) -> tuple[Pass2RouteRecoveryOutcome | None, str | None, bool, dict[str, Any] | None]:
+    """Bundle local bridge recovery inputs from STEP4 merge ``ctx`` / ``state``."""
+
+    pid = job.placement_id
+    if pid is None or pid not in state.work_records:
+        return None, None, False, None
+    return try_step4_local_bridge_recovery(
+        ext_cell=job.extractor_cell,
+        stub_cell=job.stub_cell,
+        tk=job.transport_kind,
+        rec=state.work_records[pid],
+        cells=state.cells,
+        mineable=ctx.mineable,
+        asteroid=ctx.asteroid,
+        is_external=ctx.is_external,
+        blocked=blocked,
+        trunk_cells=trunk_cells,
+        goal_cells=goal_cells,
+        raw_goal=raw_goal,
+        margin_cells=set(ctx.margin_cells),
+        trunk_seed_by_kind=state.trunk_seed_by_kind_sets,
+        committed_trunk_by_kind=state.committed_trunk_by_kind,
+        cheap_reuse_cells=ctx.cheap_reuse_cells,
+        hard_extras=ctx.hard_extras,
+        detail=detail,
+        search_stats=search_stats,
+        want_role=want_role,
+        committed_trunk_for_kind=committed_trunk_for_kind,
     )

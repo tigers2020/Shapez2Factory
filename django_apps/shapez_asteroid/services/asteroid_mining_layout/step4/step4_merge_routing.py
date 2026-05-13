@@ -26,10 +26,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
     PlacementCommitState,
-    apply_placement_commit_state_transition,
     placement_commit_counts_by_state,
     placement_record_to_failure_dict,
-    replace_provisional_placement_stub_cell,
     transition_placement_record_to_rolled_back,
     unfinalized_placement_count_from_counts,
 )
@@ -114,12 +112,18 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_rou
     build_step4_route_failure_diagnostic,
     is_hard_protected_stub_ring_failure,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4MutableState,
+    Step4RoutingContext,
+    Step4SearchSnapshot,
+    Step4StubRouteJob,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_state import (
     _routing_state_from_committed_routes,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_trunk_load import (
     accumulate_trunk_edge_load,
-    build_step4_trunk_load,
+    build_step4_trunk_load_for_merge_state,
     build_step4_trunk_load_skipped,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation.final_validation import (  # noqa: E501
@@ -213,35 +217,16 @@ def _step4_sort_routing_jobs_outside_in(
     )
 
 
-def run_step4_merge_aware_routing(
+def _build_step4_ctx_state(
     map_after_pass2: list[dict[str, Any]],
     *,
     final_mining_map: list[dict[str, Any]],
     is_external: Callable[[Coord], bool],
-    placement_records: dict[str, PlacementCommitRecord] | None = None,
-    force_route_attempt_placement_ids: frozenset[str] | None = None,
-    mutate_input_map: bool = False,
-    existing_layout_analysis: dict[str, Any] | None = None,
-    hard_protected_cells: frozenset[Coord] | None = None,
-) -> Step4RoutingResult:
-    """Route each extractor stub; roll back failed ``placement_id`` bundles only (P2-B).
-
-    ``force_route_attempt_placement_ids`` (optional): do not take the ``stub in trunk`` merge
-    shortcut for these ids — forces a full Dijkstra attempt (unit tests / diagnostics).
-
-    ``mutate_input_map``: when True, replace ``map_after_pass2`` rows in place with the routed
-    layout on success (for ``SolverMutationTransaction`` / rollback on exception).
-    On any exception, in-memory ``cells`` and ``work_records`` are restored to entry baselines
-    before re-raising.
-
-    ``existing_layout_analysis``: optional §E.3 payload; ``solver_hints.trunk_seed_cell_union``
-    is merged into per-kind trunk seed candidates (never ``cleanup_candidate_cell_union`` /
-    orphan/single-cell artifacts).
-
-    ``hard_protected_cells``: optional frozen coords that may not be occupied or crossed
-    (except the fixed output stub cell remains legal at path index 0).
-    """
-
+    placement_records: dict[str, PlacementCommitRecord] | None,
+    existing_layout_analysis: dict[str, Any] | None,
+    hard_protected_cells: frozenset[Coord] | None,
+    force_route_attempt_placement_ids: frozenset[str] | None,
+) -> tuple[Step4RoutingContext, Step4MutableState]:
     mineable, asteroid = mineable_and_asteroid_coords(final_mining_map)
     raw_cells = cells_dict_from_mining_map(map_after_pass2)
     cells = {k: dict(v) for k, v in raw_cells.items()}
@@ -283,35 +268,100 @@ def run_step4_merge_aware_routing(
         cells=cells,
     )
     jobs = _step4_sort_routing_jobs_outside_in(list(jobs), margin_cells=margin_cells)
-    committed_trunk_by_kind: dict[str, set[Coord]] = {}
-    final_route_cells: set[Coord] = set()
-    route_visits_by_kind: dict[str, int] = {}
-    unique_cells_by_kind: dict[str, set[Coord]] = {}
-    routes_by_placement_id: dict[str, list[list[int]]] = {}
-    goal_set_sizes: list[int] = []
-    # Sum of len(path) over committed routes (merge stub counts as 1); shared cells double-count.
-    accumulated_route_cell_visits = 0
-    hard_extras = frozenset(hard_protected_cells or ())
+    trunk_frozen = {k: frozenset(v) for k, v in trunk_seed_by_kind.items()}
+    trunk_sets = {k: set(v) for k, v in trunk_seed_by_kind.items()}
 
-    routes_out: list[Step4Route] = []
-    failures: list[dict[str, Any]] = []
-    trunk_edge_hits: dict[str, int] = {}
-    trunk_edge_load_by_kind: dict[str, dict[str, int]] = {}
-    trunk_edge_load_maximized_by_kind: dict[str, dict[str, int]] = {}
-    maximized_extractor_cache: dict[Coord, bool] = {}
-    p2c_metrics: dict[str, Any] = {
-        "route_revalidation_passed": True,
-        "broken_routed_route_count": 0,
-        "cascade_corrective_attempts": 0,
-        "cascade_reroute_count": 0,
-        "cascade_rollback_count": 0,
-        "cascade_rolled_back_placement_ids": tuple(),
-        "cascade_route_replay_detail": [],
-    }
-    rolled_back: list[str] = []
-    quarantined: list[str] = []
-    quarantined_placement_ids_peak: tuple[str, ...] = ()
-    unrecoverable = False
+    ctx = Step4RoutingContext(
+        mineable=mineable,
+        asteroid=asteroid,
+        is_external=is_external,
+        final_cells=final_cells,
+        hard_extras=frozenset(hard_protected_cells or ()),
+        existing_layout_analysis=existing_layout_analysis,
+        surface=surface,
+        margin_cells=frozenset(margin_cells),
+        cheap_reuse_cells=cheap_reuse_cells,
+        trunk_seed_by_kind=trunk_frozen,
+        force_route_attempt_placement_ids=force_route_attempt_placement_ids,
+    )
+    state = Step4MutableState(
+        cells=cells,
+        work_records=work_records,
+        baseline_cells=baseline_cells,
+        baseline_wr=baseline_wr,
+        jobs=jobs,
+        initial_trunk=initial_trunk,
+        trunk_seed_by_kind_sets=trunk_sets,
+    )
+    return ctx, state
+
+
+def run_step4_merge_aware_routing(
+    map_after_pass2: list[dict[str, Any]],
+    *,
+    final_mining_map: list[dict[str, Any]],
+    is_external: Callable[[Coord], bool],
+    placement_records: dict[str, PlacementCommitRecord] | None = None,
+    force_route_attempt_placement_ids: frozenset[str] | None = None,
+    mutate_input_map: bool = False,
+    existing_layout_analysis: dict[str, Any] | None = None,
+    hard_protected_cells: frozenset[Coord] | None = None,
+) -> Step4RoutingResult:
+    """Route each extractor stub; roll back failed ``placement_id`` bundles only (P2-B).
+
+    ``force_route_attempt_placement_ids`` (optional): do not take the ``stub in trunk`` merge
+    shortcut for these ids — forces a full Dijkstra attempt (unit tests / diagnostics).
+
+    ``mutate_input_map``: when True, replace ``map_after_pass2`` rows in place with the routed
+    layout on success (for ``SolverMutationTransaction`` / rollback on exception).
+    On any exception, in-memory ``cells`` and ``work_records`` are restored to entry baselines
+    before re-raising.
+
+    ``existing_layout_analysis``: optional §E.3 payload; ``solver_hints.trunk_seed_cell_union``
+    is merged into per-kind trunk seed candidates (never ``cleanup_candidate_cell_union`` /
+    orphan/single-cell artifacts).
+
+    ``hard_protected_cells``: optional frozen coords that may not be occupied or crossed
+    (except the fixed output stub cell remains legal at path index 0).
+    """
+
+    ctx, state = _build_step4_ctx_state(
+        map_after_pass2,
+        final_mining_map=final_mining_map,
+        is_external=is_external,
+        placement_records=placement_records,
+        existing_layout_analysis=existing_layout_analysis,
+        hard_protected_cells=hard_protected_cells,
+        force_route_attempt_placement_ids=force_route_attempt_placement_ids,
+    )
+    margin_cells_set = set(ctx.margin_cells)
+    margin_cells = margin_cells_set
+    mineable = ctx.mineable
+    asteroid = ctx.asteroid
+    is_external = ctx.is_external
+    final_cells = ctx.final_cells
+    surface = ctx.surface
+    cheap_reuse_cells = ctx.cheap_reuse_cells
+    hard_extras = ctx.hard_extras
+    existing_layout_analysis = ctx.existing_layout_analysis
+    cells = state.cells
+    work_records = state.work_records
+    jobs = state.jobs
+    initial_trunk = state.initial_trunk
+    trunk_seed_by_kind = state.trunk_seed_by_kind_sets
+    committed_trunk_by_kind = state.committed_trunk_by_kind
+    routes_by_placement_id = state.routes_by_placement_id
+    goal_set_sizes = state.goal_set_sizes
+    routes_out = state.routes_out
+    failures = state.failures
+    trunk_edge_hits = state.trunk.trunk_edge_hits
+    trunk_edge_load_by_kind = state.trunk.trunk_edge_load_by_kind
+    trunk_edge_load_maximized_by_kind = state.trunk.trunk_edge_load_maximized_by_kind
+    maximized_extractor_cache = state.trunk.maximized_extractor_cache
+    p2c_metrics = state.p2c_metrics
+    rolled_back = state.rolled_back
+    quarantined = state.quarantined
+
     recovery_attempted = 0
     recovery_success = 0
     recovery_rejected = 0
@@ -326,6 +376,7 @@ def run_step4_merge_aware_routing(
     search_diag_samples: list[dict[str, Any]] = []
     search_goal_ordering_applied_any = False
     search_goal_ordering_mode = "none"
+    unrecoverable = False
 
     try:
         for ext_cell, stub_cell, tk, placement_id in jobs:
@@ -341,9 +392,9 @@ def run_step4_merge_aware_routing(
             transport_before = frozenset(transport_now)
 
             force_attempt = (
-                force_route_attempt_placement_ids is not None
+                ctx.force_route_attempt_placement_ids is not None
                 and placement_id is not None
-                and placement_id in force_route_attempt_placement_ids
+                and placement_id in ctx.force_route_attempt_placement_ids
             )
 
             if stub_cell in trunk_cells and not force_attempt:
@@ -360,18 +411,12 @@ def run_step4_merge_aware_routing(
                 )
                 if placement_id is not None and placement_id in work_records:
                     rid = f"route-{placement_id}"
-                    work_records[placement_id] = apply_placement_commit_state_transition(
-                        work_records[placement_id],
-                        to=PlacementCommitState.ROUTED_CONFIRMED,
+                    state.mark_routed_confirmed(
+                        placement_id,
                         route_id=rid,
                         context="stub_in_trunk_merge_to_existing",
                     )
-                    committed_trunk_by_kind.setdefault(tk, set()).add(stub_cell)
-                    final_route_cells.add(stub_cell)
-                    routes_by_placement_id[placement_id] = [list(stub_cell)]
-                    accumulated_route_cell_visits += 1
-                    route_visits_by_kind[tk] = route_visits_by_kind.get(tk, 0) + 1
-                    unique_cells_by_kind.setdefault(tk, set()).add(stub_cell)
+                    state.note_stub_in_trunk_merge(tk, stub_cell, placement_id)
                 continue
 
             raw_goal = build_step4_goal_set(
@@ -519,24 +564,25 @@ def run_step4_merge_aware_routing(
                 placement_context = (
                     "step4_unreachable_component" if step4_unreachable_trap else "step4_no_route"
                 )
-                detail = _s4_fail_detail.build_step4_route_failure_detail(
-                    placement_id=placement_id,
+                job = Step4StubRouteJob(
                     extractor_cell=ext_cell,
                     stub_cell=stub_cell,
                     transport_kind=tk,
+                    placement_id=placement_id,
+                )
+                snap = Step4SearchSnapshot(
                     want_role=want_role,
                     blocked=blocked,
-                    hard_extras=hard_extras,
                     trunk_cells=trunk_cells,
                     goal_cells=goal_cells,
-                    margin_cells=margin_cells,
-                    transport_now=transport_now,
-                    cells=cells,
-                    mineable=mineable,
-                    asteroid=asteroid,
-                    is_external=is_external,
-                    cheap_reuse_cells=cheap_reuse_cells,
+                    transport_now=frozenset(transport_now),
                     search_stats=search_stats,
+                )
+                detail = _s4_fail_detail.build_step4_route_failure_detail_ctx(
+                    ctx,
+                    state,
+                    job,
+                    snap,
                     trunk_seed_candidate_count=len(trunk_seed_by_kind.get(tk, ())),
                     trunk_seed_cells=frozenset(trunk_seed_by_kind.get(tk, ())),
                     placement_commit_state_at_route_attempt=pcs_at_attempt,
@@ -582,21 +628,10 @@ def run_step4_merge_aware_routing(
                         recovery_attempted += 1
                         recovery_tried_pass2 = True
                         recovery_out, recovery_eval_count = (
-                            _s4_p2_rec.try_step4_failed_pass2_route_recovery(
-                                ext_cell=ext_cell,
-                                stub_cell=stub_cell,
-                                tk=tk,
-                                rec=rec0,
-                                cells=cells,
-                                final_cells=final_cells,
-                                mineable=mineable,
-                                asteroid=asteroid,
-                                is_external=is_external,
-                                committed_trunk_by_kind=committed_trunk_by_kind,
-                                margin_cells=margin_cells,
-                                trunk_seed_by_kind=trunk_seed_by_kind,
-                                cheap_reuse_cells=cheap_reuse_cells,
-                                hard_extras=hard_extras,
+                            _s4_p2_rec.try_step4_failed_pass2_route_recovery_ctx(
+                                ctx,
+                                state,
+                                job,
                                 raw_goal_primary=set(raw_goal),
                                 dijkstra_fn=_dijkstra_route,
                             )
@@ -610,10 +645,7 @@ def run_step4_merge_aware_routing(
                             recovery_last_error = job_recovery_last_err
                             path = recovery_out.path
                             stub_cell = recovery_out.new_stub_cell
-                            work_records[placement_id] = replace_provisional_placement_stub_cell(
-                                rec0,
-                                stub_cell=stub_cell,
-                            )
+                            state.replace_provisional_stub(placement_id, stub_cell=stub_cell)
                             recovered = True
                         else:
                             recovery_rejected += 1
@@ -632,27 +664,17 @@ def run_step4_merge_aware_routing(
                         and rec_bridge.state == PlacementCommitState.PROVISIONAL_PLACED
                     ):
                         bridge_out, bridge_reason, bridge_attempted_flag, bridge_meta = (
-                            _s4_lb.try_step4_local_bridge_recovery(
-                                ext_cell=ext_cell,
-                                stub_cell=stub_cell,
-                                tk=tk,
-                                rec=rec_bridge,
-                                cells=cells,
-                                mineable=mineable,
-                                asteroid=asteroid,
-                                is_external=is_external,
+                            _s4_lb.try_step4_local_bridge_recovery_ctx(
+                                ctx,
+                                state,
+                                job,
                                 blocked=blocked,
                                 trunk_cells=trunk_cells,
                                 goal_cells=goal_cells,
                                 raw_goal=set(raw_goal),
-                                margin_cells=margin_cells,
-                                trunk_seed_by_kind=trunk_seed_by_kind,
-                                committed_trunk_by_kind=committed_trunk_by_kind,
-                                cheap_reuse_cells=cheap_reuse_cells,
-                                hard_extras=hard_extras,
+                                want_role=want_role,
                                 detail=detail,
                                 search_stats=search_stats,
-                                want_role=want_role,
                                 committed_trunk_for_kind=set(committed_trunk_by_kind.get(tk, ())),
                             )
                         )
@@ -694,9 +716,8 @@ def run_step4_merge_aware_routing(
                     if placement_id is not None and placement_id in work_records:
                         rec = work_records[placement_id]
                         _rollback_placement_cells(cells, rec, final_cells, mineable)
-                        work_records[placement_id] = apply_placement_commit_state_transition(
-                            rec,
-                            to=PlacementCommitState.QUARANTINED_UNROUTED,
+                        state.mark_quarantined_unrouted(
+                            placement_id,
                             rollback_reason=placement_rollback_reason,
                             context=placement_context,
                         )
@@ -855,17 +876,12 @@ def run_step4_merge_aware_routing(
                     placement_id=placement_id,
                 )
             )
-            committed_trunk_by_kind.setdefault(tk, set()).update(path)
-            final_route_cells.update(path)
-            accumulated_route_cell_visits += len(path)
-            route_visits_by_kind[tk] = route_visits_by_kind.get(tk, 0) + len(path)
-            unique_cells_by_kind.setdefault(tk, set()).update(path)
+            state.note_route_path_committed(tk, path)
             if placement_id is not None:
                 routes_by_placement_id[placement_id] = [[int(a), int(b)] for a, b in path]
             if placement_id is not None and placement_id in work_records:
-                work_records[placement_id] = apply_placement_commit_state_transition(
-                    work_records[placement_id],
-                    to=PlacementCommitState.ROUTED_CONFIRMED,
+                state.mark_routed_confirmed(
+                    placement_id,
                     route_id=f"route-{placement_id}",
                     context="step4_path_routed",
                 )
@@ -885,9 +901,7 @@ def run_step4_merge_aware_routing(
 
         # Edge load is derived from final routes_out after P2-C corrections so
         # trunk_load/replay reflects returned route paths, not provisional commits.
-        trunk_edge_load_by_kind.clear()
-        trunk_edge_load_maximized_by_kind.clear()
-        maximized_extractor_cache.clear()
+        state.trunk.reset_edge_load_after_p2c()
 
         def _route_extractor_maximized(ext_cell: Coord, pid: str | None) -> bool:
             if ext_cell in maximized_extractor_cache:
@@ -910,7 +924,7 @@ def run_step4_merge_aware_routing(
 
         # QUARANTINED_UNROUTED is non-terminal (unfinalized_placement_count / STEP9). Spatial
         # rollback already ran; align FSM with P2-C cascade rollbacks — terminal ROLLED_BACK only.
-        quarantined_placement_ids_peak = tuple(quarantined)
+        state.quarantined_placement_ids_peak = tuple(quarantined)
         if quarantined:
             for pid in list(quarantined):
                 qrec = work_records.get(pid)
@@ -965,10 +979,10 @@ def run_step4_merge_aware_routing(
         else:
             map_after_routing = out_rows
     except BaseException:
-        cells.clear()
-        cells.update(_baseline_cells_copy(baseline_cells))
-        work_records.clear()
-        work_records.update(baseline_wr)
+        state.cells.clear()
+        state.cells.update(_baseline_cells_copy(state.baseline_cells))
+        state.work_records.clear()
+        state.work_records.update(state.baseline_wr)
         raise
 
     placement_commit_by_id = {pid: rec.state.value for pid, rec in work_records.items()}
@@ -980,7 +994,7 @@ def run_step4_merge_aware_routing(
     )
     committed = complete_routing_success
     step4_degraded = not unrecoverable and routing_failure_count == 0 and rolled_back_n > 0
-    q_peak_n = len(quarantined_placement_ids_peak)
+    q_peak_n = len(state.quarantined_placement_ids_peak)
 
     # trunk_load schema: ``step4_trunk_load`` (route_metrics vs legacy aliases, per-kind blocks).
     trace_tl: dict[str, Any] = {
@@ -995,7 +1009,7 @@ def run_step4_merge_aware_routing(
         "step4_routed_stub_count": pcounts.get(PlacementCommitState.ROUTED_CONFIRMED.value, 0),
         "step4_total_stub_count": len(jobs),
         "step4_quarantined_peak_count": q_peak_n,
-        "step4_quarantined_placement_ids_peak": list(quarantined_placement_ids_peak),
+        "step4_quarantined_placement_ids_peak": list(state.quarantined_placement_ids_peak),
         "step4_quarantined_count": q_peak_n,
         "step4_quarantined_unrouted_count": q_peak_n,
         "step4_rolled_back_count": rolled_back_n,
@@ -1036,17 +1050,10 @@ def run_step4_merge_aware_routing(
     trace_tl["step4_hard_protected_no_route_breakdown"] = (
         build_step4_hard_protected_no_route_breakdown(failures)
     )
-    trunk_load = build_step4_trunk_load(
-        trunk_edge_hits=trunk_edge_hits,
-        route_cell_visits=accumulated_route_cell_visits,
-        final_route_cells=final_route_cells,
-        committed_trunk_by_kind=committed_trunk_by_kind,
-        route_visits_by_kind=route_visits_by_kind,
-        unique_cells_by_kind=unique_cells_by_kind,
+    trunk_load = build_step4_trunk_load_for_merge_state(
+        state,
         p2c_metrics=p2c_metrics,
         trace=trace_tl,
-        trunk_edge_load_by_kind=trunk_edge_load_by_kind,
-        trunk_edge_load_maximized_by_kind=trunk_edge_load_maximized_by_kind,
     )
 
     result = Step4RoutingResult(
@@ -1063,10 +1070,10 @@ def run_step4_merge_aware_routing(
         ),
         placement_commit_by_id=dict(placement_commit_by_id),
         rolled_back_placement_ids=tuple(rolled_back),
-        quarantined_placement_ids=quarantined_placement_ids_peak,
+        quarantined_placement_ids=state.quarantined_placement_ids_peak,
         complete_routing_success=complete_routing_success,
         degraded=step4_degraded,
-        quarantined_placement_ids_peak=quarantined_placement_ids_peak,
+        quarantined_placement_ids_peak=state.quarantined_placement_ids_peak,
     )
     tid = _s4_rt.step4_primary_recovery_trigger_from_result(result)
     if tid is not None:

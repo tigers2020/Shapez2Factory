@@ -25,6 +25,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_dij
     DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY,
     DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4MutableState,
+    Step4RoutingContext,
+    Step4SearchSnapshot,
+    Step4StubRouteJob,
+)
 
 _MAX_NEAREST_TRANSPORT_BFS_VISITS = 50_000
 _MAX_REACHABLE_GOAL_BFS_VISITS = 50_000
@@ -821,6 +827,46 @@ def build_step4_route_failure_detail(
         trunk_seed_cells=trunk_seed_cells,
     )
     return out
+
+
+def build_step4_route_failure_detail_ctx(
+    ctx: Step4RoutingContext,
+    state: Step4MutableState,
+    job: Step4StubRouteJob,
+    snap: Step4SearchSnapshot,
+    *,
+    trunk_seed_candidate_count: int | None = None,
+    trunk_seed_cells: frozenset[Coord] | None = None,
+    placement_commit_state_at_route_attempt: str | None = None,
+    forced_last_error: str | None = None,
+    transport_component_probe: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Bundle call for :func:`build_step4_route_failure_detail` (merge routing ctx/state/job)."""
+
+    return build_step4_route_failure_detail(
+        placement_id=job.placement_id,
+        extractor_cell=job.extractor_cell,
+        stub_cell=job.stub_cell,
+        transport_kind=job.transport_kind,
+        want_role=snap.want_role,
+        blocked=snap.blocked,
+        hard_extras=ctx.hard_extras,
+        trunk_cells=snap.trunk_cells,
+        goal_cells=snap.goal_cells,
+        margin_cells=set(ctx.margin_cells),
+        transport_now=set(snap.transport_now),
+        cells=state.cells,
+        mineable=ctx.mineable,
+        asteroid=ctx.asteroid,
+        is_external=ctx.is_external,
+        cheap_reuse_cells=ctx.cheap_reuse_cells,
+        search_stats=snap.search_stats,
+        trunk_seed_candidate_count=trunk_seed_candidate_count,
+        trunk_seed_cells=trunk_seed_cells,
+        placement_commit_state_at_route_attempt=placement_commit_state_at_route_attempt,
+        forced_last_error=forced_last_error,
+        transport_component_probe=transport_component_probe,
+    )
 
 
 def _pass12_probe_transport_materialization_row(

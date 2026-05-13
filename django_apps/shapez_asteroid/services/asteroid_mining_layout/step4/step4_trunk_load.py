@@ -67,6 +67,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.place
     placement_commit_counts_by_state,
     unfinalized_placement_count_from_counts,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4MutableState,
+)
 
 TRUNK_LOAD_CONTRACT_VERSION = 3
 TRUNK_EDGE_LOAD_OBSERVATION_VERSION = 1
@@ -260,6 +263,28 @@ def build_step4_trunk_load(
             continue
         out[key] = val
     return out
+
+
+def build_step4_trunk_load_for_merge_state(
+    state: Step4MutableState,
+    *,
+    p2c_metrics: dict[str, Any],
+    trace: dict[str, Any],
+) -> dict[str, Any]:
+    """Assemble ``trunk_load`` from :class:`Step4MutableState` (runtime vs trace split at call)."""
+
+    return build_step4_trunk_load(
+        trunk_edge_hits=state.trunk.trunk_edge_hits,
+        route_cell_visits=state.accumulated_route_cell_visits,
+        final_route_cells=state.final_route_cells,
+        committed_trunk_by_kind=state.committed_trunk_by_kind,
+        route_visits_by_kind=state.route_visits_by_kind,
+        unique_cells_by_kind=state.unique_cells_by_kind,
+        p2c_metrics=p2c_metrics,
+        trace=trace,
+        trunk_edge_load_by_kind=state.trunk.trunk_edge_load_by_kind,
+        trunk_edge_load_maximized_by_kind=state.trunk.trunk_edge_load_maximized_by_kind,
+    )
 
 
 def _empty_p2c_metrics() -> dict[str, Any]:

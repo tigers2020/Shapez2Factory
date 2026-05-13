@@ -12,6 +12,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4 import (
     step4_search_diagnostics as _s4sd,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_models import (
+    Step4RoutingContext,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_permission import (  # noqa: E501
     step4_is_routing_goal,
     step4_step_cost,
@@ -165,3 +168,36 @@ def dijkstra_route_step4(
         search_stats["search_time_ms"] = (time.perf_counter() - t0) * 1000.0
 
     return result
+
+
+def dijkstra_route_step4_ctx(
+    ctx: Step4RoutingContext,
+    cells: dict[Coord, dict[str, Any]],
+    stub_cell: Coord,
+    *,
+    want_role: str,
+    blocked: frozenset[Coord],
+    trunk: frozenset[Coord],
+    goal_cells: frozenset[Coord] | None = None,
+    margin_cells: frozenset[Coord] | None = None,
+    cheap_reuse_cells: frozenset[Coord] | None = None,
+    search_stats: dict[str, Any] | None = None,
+    max_heap_pops: int | None = None,
+) -> tuple[Coord, ...] | None:
+    """Same as :func:`dijkstra_route_step4` with grid constants taken from ``ctx``."""
+
+    return dijkstra_route_step4(
+        stub_cell,
+        want_role=want_role,
+        cells=cells,
+        blocked=blocked,
+        mineable=ctx.mineable,
+        asteroid=ctx.asteroid,
+        is_external=ctx.is_external,
+        trunk=trunk,
+        goal_cells=goal_cells,
+        margin_cells=margin_cells,
+        cheap_reuse_cells=cheap_reuse_cells,
+        search_stats=search_stats,
+        max_heap_pops=max_heap_pops,
+    )

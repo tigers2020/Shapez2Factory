@@ -34,6 +34,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.baseline
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery_policy import (
     append_recovery_contract_phase,
+    append_recovery_return_policy_trace_entries,
     apply_recovery_contract_defaults,
     is_total_recovery_cap_bounded,
     is_validation_recovery_loop_enabled,
@@ -168,6 +169,7 @@ def enrich_solver_summary_recovery(
         is_total_recovery_cap_bounded() or is_validation_recovery_loop_enabled()
     )
     synthesize_recovery_validation_outcome(summary_fields)
+    append_recovery_return_policy_trace_entries(summary_fields)
     summary_fields["total_recovery_attempts"] = int(
         summary_fields.get("total_recovery_attempts_used") or 0
     )

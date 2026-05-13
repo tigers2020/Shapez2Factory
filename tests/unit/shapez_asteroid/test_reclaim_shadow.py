@@ -29,8 +29,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
     MAX_RECLAIM_ITERATIONS,
     MAX_RECLAIM_SHADOW_SCAN_LIMIT,
     P4_RECLAIM_CORRIDOR_SOURCE_EMPTY,
-    P4_RECLAIM_CORRIDOR_SOURCE_P3E3_TOUCHED_FALLBACK,
-    P4_RECLAIM_CORRIDOR_SOURCE_PASS3_TRACE,
     P4_RECLAIM_CORRIDOR_SOURCE_SOLVER_POOL,
     P4_REJECT_FINAL_ROUTE_OVERLAP,
     P4_REJECT_GAIN_RATIO,
@@ -53,7 +51,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
     _p4_bundle_eval,
     _reclaimed_interior_transport_cells,
     _try_atomic_replace_soft_corridor,
-    hard_soft_corridors_from_pass3_trace,
     p4_reclaim_provisional_commit_neutral_trace,
     protected_corridors_for_reclaim,
     reclaim_shadow_scan_core_after_pass3,
@@ -129,27 +126,6 @@ def _minimal_routed_shape_map(*, include_orphan_belt_at_8_4: bool) -> list[dict[
     if include_orphan_belt_at_8_4:
         extra.append({"x": 8, "y": 4, "role": "belt"})
     return rows + extra
-
-
-def test_hard_soft_corridors_from_pass3_trace_parses_candidate_dict() -> None:
-    h, s = hard_soft_corridors_from_pass3_trace(
-        {
-            "p3e3_guarded_commit_candidate": {
-                "touched_hard_protected_cells": [[5, 1]],
-                "touched_soft_protected_cells": [[6, 2]],
-            },
-        }
-    )
-    assert h == frozenset({(5, 1)})
-    assert s == frozenset({(6, 2)})
-
-
-def test_hard_soft_corridors_from_pass3_trace_empty_when_missing() -> None:
-    assert hard_soft_corridors_from_pass3_trace({}) == (frozenset(), frozenset())
-    assert hard_soft_corridors_from_pass3_trace({"p3e3_guarded_commit_candidate": None}) == (
-        frozenset(),
-        frozenset(),
-    )
 
 
 def test_mineable_cur_excludes_final_route_hard_soft_committed() -> None:
@@ -493,7 +469,9 @@ def test_p4_accepted_shadow_with_cheap_route_and_budget() -> None:
 
 
 def test_p4_scan_finds_accepted_bundle_on_reclaimed_cell_with_savings() -> None:
-    before = _minimal_routed_shape_map(include_orphan_belt_at_8_4=True)
+    before = _minimal_routed_shape_map(include_orphan_belt_at_8_4=True) + [
+        {"x": x, "y": 6, "role": "belt"} for x in range(1, 20)
+    ]
     after = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False)
     stub = (11, 4)
     path = [stub, (12, 4), (19, 2)]
@@ -514,7 +492,7 @@ def test_p4_scan_finds_accepted_bundle_on_reclaimed_cell_with_savings() -> None:
         )
     assert trace["p4_reclaim_candidate_count"] > 0
     assert trace["p4_reclaim_accepted_shadow_count"] >= 1
-    assert trace["p4_reclaim_internal_transport_budget"] == 35
+    assert trace["p4_reclaim_internal_transport_budget"] == 7
     bc = trace["p4_reclaim_best_candidate"]
     assert bc is not None
     assert bc.get("rejected_reason") is None
@@ -539,7 +517,9 @@ def test_p4_scan_finds_accepted_bundle_on_reclaimed_cell_with_savings() -> None:
 
 
 def test_p4_scan_zero_accepted_when_spent_prior_exhausts_internal_budget() -> None:
-    before = _minimal_routed_shape_map(include_orphan_belt_at_8_4=True)
+    before = _minimal_routed_shape_map(include_orphan_belt_at_8_4=True) + [
+        {"x": x, "y": 6, "role": "belt"} for x in range(1, 20)
+    ]
     after = _minimal_routed_shape_map(include_orphan_belt_at_8_4=False)
     path = [(11, 4), (12, 4), (19, 2)]
     with (
@@ -1182,7 +1162,7 @@ def test_protected_corridors_solver_pool_wins_over_p3e3_touched() -> None:
     assert pcs.existing_layout_hints_cells == frozenset()
 
 
-def test_protected_corridors_existing_layout_hints_merge_into_soft() -> None:
+def test_protected_corridors_existing_layout_hints_are_diagnostic_only() -> None:
     hints = {
         "trunk_seed_cell_union": [[21, 1]],
         "cleanup_candidate_cell_union": [[22, 1]],
@@ -1194,7 +1174,7 @@ def test_protected_corridors_existing_layout_hints_merge_into_soft() -> None:
     )
     assert pcs.source == P4_RECLAIM_CORRIDOR_SOURCE_EMPTY
     assert pcs.hard == frozenset()
-    assert pcs.soft == frozenset({(21, 1), (22, 1)})
+    assert pcs.soft == frozenset()
     assert pcs.existing_layout_hints_cells == frozenset({(21, 1), (22, 1)})
 
 
@@ -1209,7 +1189,8 @@ def test_protected_corridors_existing_layout_hints_hard_pool_wins() -> None:
     )
     assert pcs.hard == frozenset({(5, 5)})
     assert (5, 5) not in pcs.soft
-    assert (6, 6) in pcs.soft
+    assert (6, 6) not in pcs.soft
+    assert pcs.existing_layout_hints_cells == frozenset({(5, 5), (6, 6)})
 
 
 def test_protected_corridors_empty_solver_hints_no_regression() -> None:
@@ -1252,9 +1233,7 @@ def test_solver_routing_state_for_p4_reclaim_prefers_routing_state_over_trunk() 
     assert solver_routing_state_for_p4_reclaim(ns) == {"hard_protected_corridors": [[40, 1]]}
 
 
-def test_solver_routing_state_bridges_trunk_when_routing_state_corridors_empty() -> None:
-    """``routing_state`` may declare keys with empty lists; P4 still needs a pool (§12 bridge)."""
-
+def test_solver_routing_state_ignores_trunk_when_routing_state_corridors_empty() -> None:
     ns = SimpleNamespace(
         routing_state={
             "source": "step4_committed_routes",
@@ -1266,9 +1245,10 @@ def test_solver_routing_state_bridges_trunk_when_routing_state_corridors_empty()
     )
     merged = solver_routing_state_for_p4_reclaim(ns)
     assert merged == {
-        "hard_protected_corridors": [[7, 7]],
-        "soft_protected_corridors": [[8, 8]],
-        "protected_corridors": {"hard": [[7, 7]], "soft": [[8, 8]]},
+        "source": "step4_committed_routes",
+        "hard_protected_corridors": [],
+        "soft_protected_corridors": [],
+        "protected_corridors": {"hard": [], "soft": []},
     }
 
 
@@ -1282,12 +1262,12 @@ def test_solver_routing_state_for_p4_reclaim_without_trunk_load() -> None:
     }
 
 
-def test_solver_routing_state_for_p4_reclaim_trunk_fallback_when_no_routing_state() -> None:
+def test_solver_routing_state_for_p4_reclaim_empty_when_no_routing_state() -> None:
     ns = SimpleNamespace(
         routing_state=None,
         trunk_load={"hard_protected_corridors": [[2, 2]]},
     )
-    assert solver_routing_state_for_p4_reclaim(ns) == {"hard_protected_corridors": [[2, 2]]}
+    assert solver_routing_state_for_p4_reclaim(ns) is None
 
 
 def test_protected_corridors_flattens_nested_routing_state() -> None:
@@ -1340,19 +1320,19 @@ def test_p4_reclaim_receives_step4_protected_corridor_pool() -> None:
     assert pcs.soft == frozenset({(12, 2), (13, 2)})
 
 
-def test_protected_corridors_pass3_block_when_solver_pool_absent() -> None:
+def test_protected_corridors_pass3_block_empty_when_solver_pool_absent() -> None:
     pcs = protected_corridors_for_reclaim(
         pass3_trace={
             "protected_corridors": {"hard": [[4, 1]], "soft": [[5, 2]]},
         },
         solver_routing_state=None,
     )
-    assert pcs.source == P4_RECLAIM_CORRIDOR_SOURCE_PASS3_TRACE
-    assert pcs.hard == frozenset({(4, 1)})
-    assert pcs.soft == frozenset({(5, 2)})
+    assert pcs.source == P4_RECLAIM_CORRIDOR_SOURCE_EMPTY
+    assert pcs.hard == frozenset()
+    assert pcs.soft == frozenset()
 
 
-def test_protected_corridors_p3e3_touched_fallback() -> None:
+def test_protected_corridors_p3e3_touched_empty_when_solver_pool_absent() -> None:
     pcs = protected_corridors_for_reclaim(
         pass3_trace={
             "p3e3_guarded_commit_candidate": {
@@ -1362,12 +1342,12 @@ def test_protected_corridors_p3e3_touched_fallback() -> None:
         },
         solver_routing_state=None,
     )
-    assert pcs.source == P4_RECLAIM_CORRIDOR_SOURCE_P3E3_TOUCHED_FALLBACK
-    assert pcs.hard == frozenset({(9, 1)})
-    assert pcs.soft == frozenset({(10, 2)})
+    assert pcs.source == P4_RECLAIM_CORRIDOR_SOURCE_EMPTY
+    assert pcs.hard == frozenset()
+    assert pcs.soft == frozenset()
 
 
-def test_protected_corridors_malformed_pass3_block_falls_through_safely() -> None:
+def test_protected_corridors_malformed_pass3_block_empty_source() -> None:
     pcs = protected_corridors_for_reclaim(
         pass3_trace={
             "protected_corridors": {"hard": "not-a-list", "soft": [[1, 1]]},
@@ -1375,8 +1355,8 @@ def test_protected_corridors_malformed_pass3_block_falls_through_safely() -> Non
         solver_routing_state=None,
     )
     assert pcs.hard == frozenset()
-    assert pcs.soft == frozenset({(1, 1)})
-    assert pcs.source == P4_RECLAIM_CORRIDOR_SOURCE_PASS3_TRACE
+    assert pcs.soft == frozenset()
+    assert pcs.source == P4_RECLAIM_CORRIDOR_SOURCE_EMPTY
 
 
 def test_protected_corridors_malformed_trace_empty_source() -> None:
@@ -1421,10 +1401,8 @@ def test_run_reclaim_shadow_emits_corridor_trace_keys() -> None:
             "protected_corridors": {"hard": [[15, 2]], "soft": []},
         },
     )
-    assert (
-        trace.get("p4_reclaim_protected_corridor_source") == P4_RECLAIM_CORRIDOR_SOURCE_PASS3_TRACE
-    )
-    assert trace.get("p4_reclaim_hard_protected_count") == 1
+    assert trace.get("p4_reclaim_protected_corridor_source") == P4_RECLAIM_CORRIDOR_SOURCE_EMPTY
+    assert trace.get("p4_reclaim_hard_protected_count") == 0
     assert trace.get("p4_reclaim_soft_protected_count") == 0
     assert trace.get("p4_reclaim_existing_layout_hint_cell_count") == 0
 
@@ -1723,11 +1701,11 @@ def test_p4_b1_rejects_hard_protected_overlap() -> None:
     out_m, tr = run_p4_reclaim_provisional_commit_after_pass3(
         m,
         final_mining_map=_base_final_mining_map(),
-        pass3_trace={
-            "pass3_internal_transport_saved": 10,
-            "protected_corridors": {"hard": [[10, 4]], "soft": []},
+        pass3_trace={"pass3_internal_transport_saved": 10},
+        solver_routing_state={
+            "hard_protected_corridors": [[10, 4]],
+            "soft_protected_corridors": [],
         },
-        solver_routing_state=None,
         scan_result=scan,
     )
     assert out_m == m
@@ -1748,11 +1726,11 @@ def test_p4_b1_rejects_soft_protected_overlap_when_soft_has_active_transport() -
     out_m, tr = run_p4_reclaim_provisional_commit_after_pass3(
         m,
         final_mining_map=_base_final_mining_map(),
-        pass3_trace={
-            "pass3_internal_transport_saved": 10,
-            "protected_corridors": {"hard": [], "soft": [[10, 3]]},
+        pass3_trace={"pass3_internal_transport_saved": 10},
+        solver_routing_state={
+            "hard_protected_corridors": [],
+            "soft_protected_corridors": [[10, 3]],
         },
-        solver_routing_state=None,
         scan_result=scan,
     )
     assert out_m == m
@@ -2072,8 +2050,11 @@ def test_soft_replace_rejects_hard_protected_corridor_map_unchanged() -> None:
     out_map, tr = _try_atomic_replace_soft_corridor(
         m,
         final_mining_map=_base_final_mining_map(),
-        pass3_trace={"protected_corridors": {"hard": [[5, 5]], "soft": [[14, 2]]}},
-        solver_routing_state=None,
+        pass3_trace={},
+        solver_routing_state={
+            "hard_protected_corridors": [[5, 5]],
+            "soft_protected_corridors": [[14, 2]],
+        },
         old_soft_corridor_cells=[(5, 5)],
         is_external=_external_east,
     )
@@ -2094,11 +2075,11 @@ def test_soft_corridor_replace_rejects_without_replacement_route() -> None:
         out_map, tr = _try_atomic_replace_soft_corridor(
             m,
             final_mining_map=_base_final_mining_map(),
-            pass3_trace={
-                "pass3_internal_transport_saved": 10,
-                "protected_corridors": {"hard": [], "soft": [[14, 2]]},
+            pass3_trace={"pass3_internal_transport_saved": 10},
+            solver_routing_state={
+                "hard_protected_corridors": [],
+                "soft_protected_corridors": [[14, 2]],
             },
-            solver_routing_state=None,
             old_soft_corridor_cells=[(14, 2)],
             is_external=_external_east,
         )
@@ -2179,11 +2160,11 @@ def test_soft_replace_v2_tries_multiple_jobs_until_one_succeeds() -> None:
         out_map, tr = _try_atomic_replace_soft_corridor(
             m,
             final_mining_map=_base_final_mining_map(),
-            pass3_trace={
-                "pass3_internal_transport_saved": 10,
-                "protected_corridors": {"hard": [], "soft": [[14, 2]]},
+            pass3_trace={"pass3_internal_transport_saved": 10},
+            solver_routing_state={
+                "hard_protected_corridors": [],
+                "soft_protected_corridors": [[14, 2]],
             },
-            solver_routing_state=None,
             old_soft_corridor_cells=[(14, 2)],
             is_external=_external_east,
         )
@@ -2218,11 +2199,11 @@ def test_soft_replace_v2_preserves_map_when_all_jobs_fail() -> None:
         out_map, tr = _try_atomic_replace_soft_corridor(
             m,
             final_mining_map=_base_final_mining_map(),
-            pass3_trace={
-                "pass3_internal_transport_saved": 10,
-                "protected_corridors": {"hard": [], "soft": [[14, 2]]},
+            pass3_trace={"pass3_internal_transport_saved": 10},
+            solver_routing_state={
+                "hard_protected_corridors": [],
+                "soft_protected_corridors": [[14, 2]],
             },
-            solver_routing_state=None,
             old_soft_corridor_cells=[(14, 2)],
             is_external=_external_east,
         )
@@ -2266,11 +2247,11 @@ def test_soft_replace_v2_records_selected_job_index() -> None:
         out_map, tr = _try_atomic_replace_soft_corridor(
             m,
             final_mining_map=_base_final_mining_map(),
-            pass3_trace={
-                "pass3_internal_transport_saved": 10,
-                "protected_corridors": {"hard": [], "soft": [[14, 2]]},
+            pass3_trace={"pass3_internal_transport_saved": 10},
+            solver_routing_state={
+                "hard_protected_corridors": [],
+                "soft_protected_corridors": [[14, 2]],
             },
-            solver_routing_state=None,
             old_soft_corridor_cells=[(14, 2)],
             is_external=_external_east,
         )
@@ -2327,11 +2308,11 @@ def test_soft_corridor_replace_does_not_remove_old_cells_on_failure() -> None:
         out_map, tr = _try_atomic_replace_soft_corridor(
             m,
             final_mining_map=_base_final_mining_map(),
-            pass3_trace={
-                "pass3_internal_transport_saved": 10,
-                "protected_corridors": {"hard": [], "soft": [[14, 2]]},
+            pass3_trace={"pass3_internal_transport_saved": 10},
+            solver_routing_state={
+                "hard_protected_corridors": [],
+                "soft_protected_corridors": [[14, 2]],
             },
-            solver_routing_state=None,
             old_soft_corridor_cells=[(14, 2)],
             is_external=_external_east,
         )
@@ -2385,11 +2366,11 @@ def test_soft_corridor_replace_commits_old_remove_and_new_add_atomically() -> No
         out_map, tr = _try_atomic_replace_soft_corridor(
             m,
             final_mining_map=_base_final_mining_map(),
-            pass3_trace={
-                "pass3_internal_transport_saved": 10,
-                "protected_corridors": {"hard": [], "soft": [[14, 2]]},
+            pass3_trace={"pass3_internal_transport_saved": 10},
+            solver_routing_state={
+                "hard_protected_corridors": [],
+                "soft_protected_corridors": [[14, 2]],
             },
-            solver_routing_state=None,
             old_soft_corridor_cells=[(14, 2)],
             is_external=_external_east,
         )

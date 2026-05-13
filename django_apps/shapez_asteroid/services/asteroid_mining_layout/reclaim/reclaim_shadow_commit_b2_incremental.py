@@ -33,8 +33,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_route_metrics import (  # noqa: E501
     _incremental_internal_transport_on_path,
-    _path_additional_route_cost_detail,
     _p4_zone_trace_from_path,
+    _path_additional_route_cost_detail,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
     blocked_cells as _blocked_cells,
@@ -123,7 +123,8 @@ def _p4_b2_try_commit_incremental_route(
     if path is None or not path or path[0] != stub:
         return _fail(P4_REJECT_NO_INCREMENTAL_ROUTE)
 
-    pass3_saved = int(pass3_trace.get("pass3_internal_transport_saved") or 0)
+    _ = pass3_trace
+    pass3_saved = 0
     internal_budget = _allowed_internal_transport_budget(pass3_saved)
     pass3_raw_saved = pass3_saved
 

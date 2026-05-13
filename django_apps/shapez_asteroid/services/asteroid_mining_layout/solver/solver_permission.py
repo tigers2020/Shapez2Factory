@@ -63,14 +63,15 @@ def p4_reclaim_permission_snapshot(
 ) -> dict[str, Any]:
     """P4 reclaim 진입 권한과 실패 시 placeholder reason을 계산한다."""
 
+    _ = pass3_trace
     if not eligible_pass3:
         return {"eligible": False, "skip_reason": "pass3_not_eligible"}
     if pass3_summary.get("pass3_reverted"):
         return {"eligible": False, "skip_reason": "pass3_reverted"}
-    if pass3_trace.get("pass3_skipped"):
+    if pass3_summary.get("pass3_skipped"):
         return {
             "eligible": False,
-            "skip_reason": str(pass3_trace.get("pass3_skip_reason") or "pass3_skipped"),
+            "skip_reason": str(pass3_summary.get("pass3_skip_reason") or "pass3_skipped"),
         }
     if not pass3_summary.get("pass3_map_accepted"):
         return {"eligible": False, "skip_reason": "pass3_map_not_accepted"}
@@ -85,10 +86,11 @@ def post_reclaim_pass3_permission(
 ) -> bool:
     """P4 이후 Pass3 재실행 권한의 공통 전제만 판정한다."""
 
+    _ = pass3_trace
     return (
         eligible_pass3
         and not pass3_summary.get("pass3_reverted")
-        and not pass3_trace.get("pass3_skipped")
+        and not pass3_summary.get("pass3_skipped")
         and bool(pass3_summary.get("pass3_map_accepted"))
     )
 

@@ -73,7 +73,9 @@ def _empty_counts() -> dict[str, int]:
     return {"extractors": 0, "extensions": 0, "transport_cells": 0}
 
 
-def test_illegal_fsm_transition_raises() -> None:
+def test_routed_confirmed_may_quarantine_then_rolled_back() -> None:
+    """§9.6 / 03: cascade·geometry 파손 시 ROUTED → QUARANTINE → ROLLED_BACK (P2-C 등)."""
+
     rec = PlacementCommitRecord(
         placement_id="p1-000010",
         placement_pass="pass1",
@@ -84,12 +86,35 @@ def test_illegal_fsm_transition_raises() -> None:
         state=PlacementCommitState.ROUTED_CONFIRMED,
         route_id="route-z",
     )
+    qu = apply_placement_commit_state_transition(
+        rec,
+        to=PlacementCommitState.QUARANTINED_UNROUTED,
+        rollback_reason="p2c_trunk_disconnect",
+        clear_route_id=True,
+        context="test_quarantine",
+    )
+    assert qu.state == PlacementCommitState.QUARANTINED_UNROUTED
+    assert qu.route_id is None
+    rb = transition_placement_record_to_rolled_back(qu, rollback_reason="p2c_trunk_disconnect")
+    assert rb.state == PlacementCommitState.ROLLED_BACK
+
+
+def test_routed_confirmed_cannot_revert_to_provisional() -> None:
+    rec = PlacementCommitRecord(
+        placement_id="p1-000012",
+        placement_pass="pass1",
+        extractor_cell=(1, 1),
+        extension_cells=(),
+        stub_cell=(2, 1),
+        transport_kind="shape_belt",
+        state=PlacementCommitState.ROUTED_CONFIRMED,
+        route_id="route-z2",
+    )
     with pytest.raises(PlacementCommitTransitionError):
         apply_placement_commit_state_transition(
             rec,
-            to=PlacementCommitState.QUARANTINED_UNROUTED,
-            rollback_reason="x",
-            context="test",
+            to=PlacementCommitState.PROVISIONAL_PLACED,
+            context="illegal_revert",
         )
 
 

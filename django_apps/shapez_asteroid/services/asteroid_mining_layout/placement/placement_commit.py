@@ -39,6 +39,9 @@ _ALLOWED_PLACEMENT_COMMIT_TRANSITIONS: frozenset[_AllowedPlacementCommitTransiti
         (PlacementCommitState.PROVISIONAL_PLACED, PlacementCommitState.ROLLED_BACK),
         (PlacementCommitState.QUARANTINED_UNROUTED, PlacementCommitState.ROUTED_CONFIRMED),
         (PlacementCommitState.QUARANTINED_UNROUTED, PlacementCommitState.ROLLED_BACK),
+        # §9.6 / 03_data_schema_dto: geometry·연결성 파손(예: 인접 rollback 후 trunk 단절) 시
+        # recovery 시도 전에 명시적으로 quarantine을 거친 뒤 terminal rollback한다.
+        (PlacementCommitState.ROUTED_CONFIRMED, PlacementCommitState.QUARANTINED_UNROUTED),
         (PlacementCommitState.ROUTED_CONFIRMED, PlacementCommitState.ROLLED_BACK),
     }
 )

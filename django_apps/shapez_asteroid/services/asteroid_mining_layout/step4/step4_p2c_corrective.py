@@ -9,6 +9,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geom
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
     PlacementCommitState,
+    apply_placement_commit_state_transition,
     placement_record_to_failure_dict,
     transition_placement_record_to_rolled_back,
 )
@@ -253,8 +254,15 @@ def p2c_revalidate_and_correct(
                     final_cells=final_cells,
                     mineable=mineable,
                 )
-                work_records[pid] = transition_placement_record_to_rolled_back(
+                qu = apply_placement_commit_state_transition(
                     rec,
+                    to=PlacementCommitState.QUARANTINED_UNROUTED,
+                    rollback_reason="p2c_trunk_disconnect",
+                    clear_route_id=True,
+                    context="p2c_routed_route_geometry_invalid",
+                )
+                work_records[pid] = transition_placement_record_to_rolled_back(
+                    qu,
                     rollback_reason="p2c_trunk_disconnect",
                 )
                 cascade_ids.append(pid)

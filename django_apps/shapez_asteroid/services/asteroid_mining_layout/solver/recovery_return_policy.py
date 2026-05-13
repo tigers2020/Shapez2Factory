@@ -1,5 +1,8 @@
 """Algorithm §4.3 / §13 recovery **return policy** (spec table only; D2-B wire-up).
 
+Canon: ``documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md`` §4.3
+(``documents/canon/02_pipeline_control_flow.md`` is not shipped in this repo).
+
 Canonical trigger strings live in ``foundation.constants``. The orchestrator calls
 :func:`recovery_return_policy_for_trigger` for ``step4_routing_failure`` before at most one
 remedial ``run_step4_stage``. Remaining rows are **spec-only** until explicitly wired (no

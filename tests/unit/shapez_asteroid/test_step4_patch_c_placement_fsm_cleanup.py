@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import patch
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
+    placement_commit,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
     PlacementCommitState,
@@ -233,3 +236,80 @@ def test_p2c_cascade_rollback_strips_exclusive_route_transport() -> None:
     assert work_records[pid].state == PlacementCommitState.ROLLED_BACK
     assert cells[stub].get("role") != "belt"
     assert cells[tail].get("role") != "belt"
+
+
+def test_p2c_cascade_rollback_emits_quarantine_fsm_edge_before_terminal() -> None:
+    """P2-C 실패: p2c에서 QUARANTINE edge를 명시 호출한 뒤 terminal ROLLED_BACK으로 이어진다."""
+
+    pid = "p2-000202"
+    ext = (30, 30)
+    stub = (31, 30)
+    tail = (32, 30)
+    mineable = frozenset({ext, stub, tail})
+    final_cells = {
+        ext: {"x": 30, "y": 30, "role": "occupied", "layout_kind": "miner", "r": 0},
+        stub: {"x": 31, "y": 30, "role": "inferred", "layout_kind": "asteroid_field"},
+        tail: {"x": 32, "y": 30, "role": "inferred", "layout_kind": "asteroid_field"},
+    }
+    cells: dict[tuple[int, int], dict[str, Any]] = {
+        ext: dict(final_cells[ext]) | {"placement_id": pid},
+        stub: {"x": 31, "y": 30, "role": "belt", "surface": "shape"},
+        tail: {"x": 32, "y": 30, "role": "belt", "surface": "shape"},
+    }
+    rec = PlacementCommitRecord(
+        placement_id=pid,
+        placement_pass="pass2",
+        extractor_cell=ext,
+        extension_cells=(),
+        stub_cell=stub,
+        transport_kind="shape_belt",
+        state=PlacementCommitState.ROUTED_CONFIRMED,
+        route_id=f"route-{pid}",
+    )
+    work_records = {pid: rec}
+    routes_out = [
+        Step4Route(
+            extractor_cell=ext,
+            stub_cell=stub,
+            transport_kind="shape_belt",
+            path=(stub, tail),
+            merged_to_existing=False,
+            reached_external=True,
+            placement_id=pid,
+        )
+    ]
+    failures: list[dict[str, Any]] = []
+    trunk_edge_hits: dict[str, int] = {}
+    fsm_tos: list[Any] = []
+    _orig_apply = placement_commit.apply_placement_commit_state_transition
+
+    def _capture_p2c_apply(*args: Any, **kwargs: Any) -> Any:
+        t = kwargs.get("to")
+        if t is not None:
+            fsm_tos.append(t)
+        return _orig_apply(*args, **kwargs)
+
+    with (
+        patch.object(p2c, "_facade_stub_reaches_external_trunk", return_value=False),
+        patch.object(p2c, "_facade_dijkstra", return_value=None),
+        patch.object(
+            p2c,
+            "apply_placement_commit_state_transition",
+            side_effect=_capture_p2c_apply,
+        ),
+    ):
+        p2c.p2c_revalidate_and_correct(
+            cells,
+            routes_out,
+            work_records,
+            mineable=mineable,
+            asteroid=frozenset(),
+            final_cells=final_cells,
+            is_external=lambda c: c[0] > 99,
+            surface="shape",
+            failures=failures,
+            trunk_edge_hits=trunk_edge_hits,
+        )
+
+    assert fsm_tos == [PlacementCommitState.QUARANTINED_UNROUTED]
+    assert work_records[pid].state == PlacementCommitState.ROLLED_BACK

@@ -18,8 +18,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     MAX_RECLAIM_SHADOW_SCAN_LIMIT,
     MIN_INTERNAL_TRANSPORT_SPEND_WHEN_NO_PASS3_SAVINGS,
     P4_RECLAIM_CORRIDOR_SOURCE_EMPTY,
-    P4_RECLAIM_CORRIDOR_SOURCE_P3E3_TOUCHED_FALLBACK,
-    P4_RECLAIM_CORRIDOR_SOURCE_PASS3_TRACE,
     P4_RECLAIM_CORRIDOR_SOURCE_SOLVER_POOL,
     P4_RECLAIM_INCREMENTAL_ROUTE_PLACEMENT_ID,
     P4_RECLAIM_PROVISIONAL_PLACEMENT_ID,
@@ -48,9 +46,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_greedy_core import (
     placement_stub_route_probe_path,
-)
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
-    hard_soft_corridors_from_pass3_trace as hard_soft_corridors_from_pass3_trace,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.reclaim.reclaim_corridors import (
     protected_corridors_for_reclaim,
@@ -104,8 +99,6 @@ __all__ = [
     "MAX_RECLAIM_SHADOW_SCAN_LIMIT",
     "MIN_INTERNAL_TRANSPORT_SPEND_WHEN_NO_PASS3_SAVINGS",
     "P4_RECLAIM_CORRIDOR_SOURCE_EMPTY",
-    "P4_RECLAIM_CORRIDOR_SOURCE_P3E3_TOUCHED_FALLBACK",
-    "P4_RECLAIM_CORRIDOR_SOURCE_PASS3_TRACE",
     "P4_RECLAIM_CORRIDOR_SOURCE_SOLVER_POOL",
     "P4_RECLAIM_INCREMENTAL_ROUTE_PLACEMENT_ID",
     "P4_RECLAIM_PROVISIONAL_PLACEMENT_ID",
@@ -141,7 +134,6 @@ __all__ = [
     "_p4_selected_candidate_rank",
     "_reclaimed_interior_transport_cells",
     "_try_atomic_replace_soft_corridor",
-    "hard_soft_corridors_from_pass3_trace",
     "p4_reclaim_provisional_commit_neutral_trace",
     "p4_reclaim_shadow_placeholder",
     "protected_corridors_for_reclaim",

@@ -1096,6 +1096,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
             "rollback_reason": None,
             "rejected_reason": None,
             "recovery_trigger": None,
+            "recovery_trigger_parallel": None,
             "pass3_commit_subtype": None,
         },
     )

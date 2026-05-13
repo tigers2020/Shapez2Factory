@@ -97,11 +97,11 @@ def test_soft_replace_exhausted_trace_when_probe_returns_no_path() -> None:
         out, tr = try_atomic_replace_soft_corridor(
             m,
             final_mining_map=_base_final_mining_map(),
-            pass3_trace={
-                "pass3_internal_transport_saved": 10,
-                "protected_corridors": {"hard": [], "soft": [[14, 2]]},
+            pass3_trace={"pass3_internal_transport_saved": 10},
+            solver_routing_state={
+                "hard_protected_corridors": [],
+                "soft_protected_corridors": [[14, 2]],
             },
-            solver_routing_state=None,
             old_soft_corridor_cells=[(14, 2)],
             is_external=_external_east,
         )

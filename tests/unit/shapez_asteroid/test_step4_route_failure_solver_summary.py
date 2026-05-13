@@ -13,6 +13,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
     build_step4_route_failure_aggregate_for_solver_summary,
     empty_step4_route_failure_aggregate_for_solver_summary,
 )
+from scripts.debug.t7_step4_ndjson_contracts import failure_detail_count_contract
 
 
 def test_empty_aggregate_is_deterministic_zero() -> None:
@@ -82,6 +83,36 @@ def test_duplicate_placement_rows_increment_attempt_not_unique_count() -> None:
     assert agg["step4_failed_placement_count"] == 1
     assert agg["step4_failed_placement_ids"] == ["p2-000001"]
     assert agg["step4_route_failure_last_error_counts"] == {"no_route": 2}
+
+
+def test_summary_detail_count_contract_uses_final_reentry_rows() -> None:
+    fail_details = [
+        {"placement_id": "p1-000001", "step4_reentry_index": 0},
+        {"placement_id": "p1-000001", "step4_reentry_index": 1},
+    ]
+    contract = failure_detail_count_contract(
+        fail_details=fail_details,
+        solver_summary={"step4_failure_details_count": 1},
+        step4_completed_data={"step4_reentry_index": 1},
+    )
+    assert contract == {
+        "summary_count": 1,
+        "raw_detail_count": 2,
+        "final_reentry_index": 1,
+        "final_reentry_detail_count": 1,
+        "matches_final_reentry": True,
+    }
+
+
+def test_summary_detail_count_contract_flags_final_reentry_mismatch() -> None:
+    contract = failure_detail_count_contract(
+        fail_details=[{"placement_id": "p1-000001", "step4_reentry_index": 0}],
+        solver_summary={"step4_failure_details_count": 1},
+        step4_completed_data={"step4_reentry_index": 1},
+    )
+    assert contract["raw_detail_count"] == 1
+    assert contract["final_reentry_detail_count"] == 0
+    assert contract["matches_final_reentry"] is False
 
 
 def test_emit_solver_summary_writes_debug_ndjson_when_algo_debug_on(

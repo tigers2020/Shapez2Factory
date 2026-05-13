@@ -440,7 +440,17 @@ def reclaim_shadow_scan_core_after_pass3(
             p4_baseline_internal_transport_at_reclaim_entry=p4_baseline_internal_transport_at_reclaim_entry,
             p4_compare_baseline_internal_to_scan_entry=p4_compare_baseline_internal_to_scan_entry,
         )
-        pass3_saved_nr = int(pass3_trace.get("pass3_internal_transport_saved") or 0)
+        before_nr = _internal_transport_count_for_pass3_kind(
+            map_before_pass3, is_external=is_external
+        )
+        after_nr = _internal_transport_count_for_pass3_kind(
+            map_after_pass3, is_external=is_external
+        )
+        pass3_saved_nr = (
+            max(0, int(before_nr) - int(after_nr))
+            if before_nr is not None and after_nr is not None
+            else 0
+        )
         budget_nr = _allowed_internal_transport_budget(pass3_saved_nr)
         spent_nr = max(0, int(reclaim_internal_transport_spent_prior))
         zero_nr = _p4_reclaim_zero_candidate_diag(
@@ -477,7 +487,17 @@ def reclaim_shadow_scan_core_after_pass3(
     want_role = _want_role(tk)
     outlets_order = [j[1] for j in jobs]
 
-    pass3_saved = int(pass3_trace.get("pass3_internal_transport_saved") or 0)
+    before_internal = _internal_transport_count_for_pass3_kind(
+        map_before_pass3, is_external=is_external
+    )
+    after_internal = _internal_transport_count_for_pass3_kind(
+        map_after_pass3, is_external=is_external
+    )
+    pass3_saved = (
+        max(0, int(before_internal) - int(after_internal))
+        if before_internal is not None and after_internal is not None
+        else 0
+    )
     pass3_raw_saved = pass3_saved
     internal_budget = _allowed_internal_transport_budget(pass3_saved)
     spent_prior = max(0, int(reclaim_internal_transport_spent_prior))

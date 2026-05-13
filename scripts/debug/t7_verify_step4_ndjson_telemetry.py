@@ -50,6 +50,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation impo
 from django_apps.shapez_asteroid.services.blueprint_map_summary import (  # noqa: E402
     build_map_timeline,
 )
+from scripts.debug.t7_step4_ndjson_contracts import (  # noqa: E402
+    failure_detail_count_contract,
+)
 
 REQUIRED_DETAIL_KEYS: tuple[str, ...] = (
     "extractor_id",
@@ -299,21 +302,25 @@ def main() -> int:
             str(x) for x in (step4_completed_data.get("rolled_back_placement_ids") or []) if x
         )
         rb_detail = {
-            str(det.get("placement_id") or "")
-            for det in fail_details
-            if det.get("rolled_back")
+            str(det.get("placement_id") or "") for det in fail_details if det.get("rolled_back")
         }
         rb_detail.discard("")
         if rb_detail - rb_completed:
             diff = rb_detail - rb_completed
             print("WARN: rolled_back detail ids not subset of step4_completed:", diff)
 
-        sfc = int(solver_summary.get("step4_failure_details_count") or 0)
-        if sfc != len(fail_details):
+        contract = failure_detail_count_contract(
+            fail_details=fail_details,
+            solver_summary=solver_summary,
+            step4_completed_data=step4_completed_data,
+        )
+        print("step4_failure_details_count_contract", contract)
+        if not contract["matches_final_reentry"]:
             print(
-                "WARN: solver_summary step4_failure_details_count != NDJSON detail rows",
-                sfc,
-                len(fail_details),
+                "WARN: solver_summary step4_failure_details_count "
+                "!= final reentry NDJSON detail rows",
+                contract["summary_count"],
+                contract["final_reentry_detail_count"],
             )
 
     fv = None

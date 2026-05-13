@@ -192,3 +192,127 @@ def test_shape_belt_dead_end_still_uses_belt_unreachable_reason_only() -> None:
     )
     assert int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) == 1
     assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 0
+
+
+def _shape_belt_row(c: Coord) -> dict:
+    return {
+        "x": c[0],
+        "y": c[1],
+        "role": "inferred",
+        "layout_kind": "asteroid_field",
+        "surface": "shape",
+    }
+
+
+def test_pass2_rejects_transport_disjoint_when_step4_prec_reachable_belt() -> None:
+    """STEP4 BFS can reach margin goals through mineable void while transport stays off-trunk."""
+
+    sink = p12_rp.new_pass2_route_probe_stats_sink()
+    row_blocks = frozenset((x, 5) for x in range(6, 60))
+    vertical_tunnel = frozenset((5, y) for y in range(6, 100))
+    row_y99 = frozenset((x, 99) for x in range(6, 100))
+    col_x99 = frozenset((99, y) for y in range(6, 100))
+    margin_cell = (99, 5)
+    trunk_span = frozenset((x, 5) for x in range(60, 100))
+    mineable = frozenset(
+        row_blocks
+        | vertical_tunnel
+        | row_y99
+        | col_x99
+        | trunk_span
+        | frozenset({margin_cell, (5, 5)})
+    )
+    cells = {c: _shape_belt_row(c) for c in mineable}
+    pack = p12_bc.Pass2RouteProbePack(
+        mineable=mineable,
+        asteroid=frozenset(),
+        cells=cells,
+        existing_layout_analysis=None,
+        stats_sink=sink,
+    )
+    scratch = p12_bc.Pass12LayoutScratch(transport_kind="shape_belt")
+    scratch.transport_cells = set(trunk_span)
+    scratch.blocked_cells = set()
+    cand = p12_bc.Pass12BundleCandidate(
+        blocked_cells=frozenset({(4, 5)}) | row_blocks,
+        new_transport=frozenset({(5, 5)}),
+        stub_cell=(5, 5),
+        extractor_cell=(4, 5),
+        extension_facings=frozenset(),
+        extractor_output_dir=(1, 0),
+        placement_pass="pass2",
+    )
+
+    def is_ext(c: Coord) -> bool:
+        return int(c[0]) >= 100
+
+    assert (
+        p12_bc.try_commit_pass2_bundle(
+            scratch,
+            cand,
+            is_external=is_ext,
+            pass2_route_probe_pack=pack,
+        )
+        is False
+    )
+    assert int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) == 1
+    gate = sink.get("pass2_last_transport_component_gate") or {}
+    assert gate.get("reject_reason") == "step4_unreachable_component"
+    assert scratch.placement_records == {}
+
+
+def test_pass2_rejects_transport_disjoint_when_step4_prec_reachable_fluid_pipe() -> None:
+    """Same geometry as belt case; fluid_pipe uses the fluid unreachable counter."""
+
+    sink = p12_rp.new_pass2_route_probe_stats_sink()
+    row_blocks = frozenset((x, 5) for x in range(6, 60))
+    vertical_tunnel = frozenset((5, y) for y in range(6, 100))
+    row_y99 = frozenset((x, 99) for x in range(6, 100))
+    col_x99 = frozenset((99, y) for y in range(6, 100))
+    margin_cell = (99, 5)
+    trunk_span = frozenset((x, 5) for x in range(60, 100))
+    mineable = frozenset(
+        row_blocks
+        | vertical_tunnel
+        | row_y99
+        | col_x99
+        | trunk_span
+        | frozenset({margin_cell, (5, 5)})
+    )
+    cells = {c: _fluid_cell(c[0], c[1]) for c in mineable}
+    pack = p12_bc.Pass2RouteProbePack(
+        mineable=mineable,
+        asteroid=frozenset(),
+        cells=cells,
+        existing_layout_analysis=None,
+        stats_sink=sink,
+    )
+    scratch = p12_bc.Pass12LayoutScratch(transport_kind="fluid_pipe")
+    scratch.transport_cells = set(trunk_span)
+    scratch.blocked_cells = set()
+    cand = p12_bc.Pass12BundleCandidate(
+        blocked_cells=frozenset({(4, 5)}) | row_blocks,
+        new_transport=frozenset({(5, 5)}),
+        stub_cell=(5, 5),
+        extractor_cell=(4, 5),
+        extension_facings=frozenset(),
+        extractor_output_dir=(1, 0),
+        placement_pass="pass2",
+    )
+
+    def is_ext(c: Coord) -> bool:
+        return int(c[0]) >= 100
+
+    assert (
+        p12_bc.try_commit_pass2_bundle(
+            scratch,
+            cand,
+            is_external=is_ext,
+            pass2_route_probe_pack=pack,
+        )
+        is False
+    )
+    assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 1
+    gate = sink.get("pass2_last_transport_component_gate") or {}
+    assert gate.get("reject_reason") == "step4_unreachable_component"
+    assert scratch.placement_records == {}

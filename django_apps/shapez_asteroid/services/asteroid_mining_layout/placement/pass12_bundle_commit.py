@@ -35,6 +35,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.pass1
     build_pass2_step4_aligned_routing_goals,
     bundle_route_probe_or_reject,
     pass2_bundle_route_probe_decision,
+    pass2_transport_stub_reaches_exterior_reachable_transport,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement.placement_commit import (
     PlacementCommitRecord,
@@ -335,6 +336,31 @@ def _commit_after_probe(
                         "reachable_exterior_margin_count": prec.reachable_exterior_margin_count,
                     }
                     trace_bundle_reject_invalid_stub(trace_location, payload_u)
+                    return False
+                ok_comp, comp_detail = pass2_transport_stub_reaches_exterior_reachable_transport(
+                    candidate.stub_cell,
+                    transport_cells=transport_after,
+                    blocked_cells=blocked_after,
+                    is_external=is_external,
+                    reachable_goal_count=int(prec.reachable_goal_count),
+                )
+                sink["pass2_last_transport_component_gate"] = dict(comp_detail)
+                if not ok_comp:
+                    payload_c: dict[str, Any] = dict(bundle_hint or {})
+                    payload_c["reason"] = "pass2_reject_step4_unreachable_component"
+                    payload_c["reject_reason"] = "step4_unreachable_component"
+                    payload_c["stub_cell"] = candidate.stub_cell
+                    payload_c["want_role"] = want_role
+                    payload_c["pass2_transport_component_gate"] = dict(comp_detail)
+                    trace_bundle_reject_invalid_stub(trace_location, payload_c)
+                    if state.transport_kind == "fluid_pipe":
+                        sink["pass2_reject_step4_unreachable_fluid_stub_count"] = (
+                            int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) + 1
+                        )
+                    else:
+                        sink["pass2_reject_step4_unreachable_stub_count"] = (
+                            int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) + 1
+                        )
                     return False
         else:
             if not bundle_route_probe_or_reject(

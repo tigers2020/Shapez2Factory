@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -26,6 +27,95 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation impo
 )
 
 Pass2RouteProbeOutcome = Literal["routed", "uncertain"]
+
+
+def _min_manhattan_between_sets(a: set[Coord], b: frozenset[Coord]) -> int | None:
+    best: int | None = None
+    for ca in a:
+        ax, ay = ca
+        for cb in b:
+            d = abs(int(ax) - int(cb[0])) + abs(int(ay) - int(cb[1]))
+            if best is None or d < best:
+                best = d
+    return best
+
+
+def pass2_transport_stub_reaches_exterior_reachable_transport(
+    stub_cell: Coord,
+    *,
+    transport_cells: frozenset[Coord],
+    blocked_cells: frozenset[Coord],
+    is_external: Callable[[Coord], bool],
+    reachable_goal_count: int,
+) -> tuple[bool, dict[str, Any]]:
+    """True iff ``stub_cell``'s transport-only component intersects exterior-reachable transport.
+
+    Uses the same exterior-reachable flood as
+    :func:`final_validation.transport_cells_reaching_external` on the merged probe transport graph
+    (Pass2 scratch geometry only; no STEP4 routing).
+
+    When there is no exterior-reachable transport yet (e.g. first-route island), returns True and
+    ``reject_reason`` ``skipped_no_exterior_reachable_transport`` so Pass2 does not hard-block
+    seeding that Pass1/STEP4 still must connect.
+    """
+
+    detail: dict[str, Any] = {
+        "component_probe_kind": "transport_exterior_reachable_overlap",
+        "reachable_goal_count": int(reachable_goal_count),
+    }
+    exterior_reachable = frozenset(
+        finval.transport_cells_reaching_external(
+            set(transport_cells), set(blocked_cells), is_external
+        )
+    )
+    detail["exterior_reachable_transport_cell_count"] = int(len(exterior_reachable))
+    if stub_cell not in transport_cells:
+        detail["reject_reason"] = "stub_not_in_transport"
+        detail["candidate_component_size"] = 0
+        detail["frontier_blocked_ratio"] = 0.0
+        detail["nearest_external_distance"] = None
+        return False, detail
+    if not exterior_reachable:
+        detail["reject_reason"] = "skipped_no_exterior_reachable_transport"
+        detail["candidate_component_size"] = 0
+        detail["frontier_blocked_ratio"] = 0.0
+        detail["nearest_external_distance"] = None
+        return True, detail
+
+    q: deque[Coord] = deque([stub_cell])
+    visited: set[Coord] = {stub_cell}
+    while q:
+        c = q.popleft()
+        x, y = c
+        for nxt in neighbors4(x, y):
+            if nxt in blocked_cells and nxt != stub_cell:
+                continue
+            if nxt not in transport_cells or nxt in visited:
+                continue
+            visited.add(nxt)
+            q.append(nxt)
+
+    overlap = bool(visited & exterior_reachable)
+    frontier_blocked = 0
+    frontier_total = 0
+    for c in visited:
+        cx, cy = c
+        for nxt in neighbors4(cx, cy):
+            if nxt in visited:
+                continue
+            frontier_total += 1
+            if nxt in blocked_cells and nxt != stub_cell:
+                frontier_blocked += 1
+    ratio = frontier_blocked / max(1, frontier_total)
+    nearest = _min_manhattan_between_sets(visited, exterior_reachable)
+    detail["candidate_component_size"] = int(len(visited))
+    detail["frontier_blocked_ratio"] = float(ratio)
+    detail["nearest_external_distance"] = int(nearest) if nearest is not None else None
+    if overlap:
+        detail["reject_reason"] = None
+        return True, detail
+    detail["reject_reason"] = "step4_unreachable_component"
+    return False, detail
 
 
 def _mineable_asteroid_bbox(

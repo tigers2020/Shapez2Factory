@@ -16,3 +16,4 @@
 ## 관련
 
 - Django 앱 구조: [`django.md`](django.md)
+- 스키마·ETL·데이터 검증·모니터링을 **계층적으로** 나누는 에이전트 절차: [`.cursor/skills/data-pipeline-harness/SKILL.md`](../../../.cursor/skills/data-pipeline-harness/SKILL.md) (`@data-pipeline-harness`)

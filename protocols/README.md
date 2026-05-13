@@ -21,7 +21,7 @@
 | 오케스트레이션 | 단계·핸드오프 | 본 문서 **10단계**·아래 Mermaid |
 | 품질 게이트 | 경계·자동 검증 | **7~10단계**(리뷰어 → QA → 렉스 하네스 → 시몬 최종·문서) |
 
-선택: 채팅에서 절차를 한 번에 불러올 때는 프로젝트 Skill [`.cursor/skills/shapez2-harness/SKILL.md`](../.cursor/skills/shapez2-harness/SKILL.md)를 `@shapez2-harness` 등으로 연다.
+선택: 채팅에서 절차를 한 번에 불러올 때는 프로젝트 Skill [`.cursor/skills/shapez2-harness/SKILL.md`](../.cursor/skills/shapez2-harness/SKILL.md)를 `@shapez2-harness` 등으로 연다. 데이터 파이프라인 설계(스키마·ETL·검증·모니터링 위임)는 [`.cursor/skills/data-pipeline-harness/SKILL.md`](../.cursor/skills/data-pipeline-harness/SKILL.md) (`@data-pipeline-harness`). 종합 코드 리뷰(아키텍처·보안·성능·스타일 병렬 감사·통합 리포트)는 [`.cursor/skills/code-review-harness/SKILL.md`](../.cursor/skills/code-review-harness/SKILL.md) (`@code-review-harness`). 다각도 리서치(웹·학술·커뮤니티·교차검증·종합 보고)는 [`.cursor/skills/research-harness/SKILL.md`](../.cursor/skills/research-harness/SKILL.md) (`@research-harness`).
 
 ## 기획과 코딩의 분리 ([AGENTS.md](../AGENTS.md))
 

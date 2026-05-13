@@ -21,3 +21,7 @@
 ## 검증
 
 [`testing.md`](testing.md)의 최소 명령을 통과시키거나 미실행 사유를 남긴다.
+
+## 관련
+
+- PR·범위 단위 **종합 리뷰**(아키텍처·보안·성능·스타일 병렬 감사 후 통합 리포트): [`.cursor/skills/code-review-harness/SKILL.md`](../../../.cursor/skills/code-review-harness/SKILL.md) (`@code-review-harness`)

@@ -4,7 +4,7 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 
 **역할**: 짧은 헌법 + **매뉴얼 라우팅** + 완료 기준. 긴 설명·persona는 넣지 않는다. 상세는 [`documents/ai/manuals/`](documents/ai/manuals/)와 [`.cursor/rules/`](.cursor/rules/root.mdc)를 읽는다.
 
-**Cursor 하네스(요약)**: 역할 카드는 [`persona/`](persona/), 절차·규칙은 매뉴얼 + `.cursor/rules/*.mdc`, 단계·핸드오프는 [`protocols/README.md`](protocols/README.md)가 정본이다. 채팅에서 전체 워크플로를 한꺼번에 적용할 때는 선택적으로 프로젝트 Skill [`.cursor/skills/shapez2-harness/SKILL.md`](.cursor/skills/shapez2-harness/SKILL.md)를 연다.
+**Cursor 하네스(요약)**: 역할 카드는 [`persona/`](persona/), 절차·규칙은 매뉴얼 + `.cursor/rules/*.mdc`, 단계·핸드오프는 [`protocols/README.md`](protocols/README.md)가 정본이다. 채팅에서 전체 워크플로를 한꺼번에 적용할 때는 선택적으로 프로젝트 Skill [`.cursor/skills/shapez2-harness/SKILL.md`](.cursor/skills/shapez2-harness/SKILL.md)를 연다. **IDE·@ 참조·MCP·스레드**만 묶어 쓸 때는 [`.cursor/skills/cursor-shapez2-harness/SKILL.md`](.cursor/skills/cursor-shapez2-harness/SKILL.md) (`@cursor-shapez2-harness`)를 연다.
 
 **에이전트 네이티브 엔지니어링(요약)**: 인간의 역할은 타이핑보다 **의도·아키텍처·검증·디버깅**에 두는 것을 전제로 한다. 의도를 구체화(파일·심볼·완료 조건·제약)하고, **이해·재현 없이 수정하지 않으며**, 스레드·서브에이전트로 **컨텍스트를 분리**하고, 계측·가설·회귀 테스트로 검증한다. **규칙(Rules)** 은 상시 지시, **스킬(Skills)** 은 온디맨드 워크플로다. 상세·체크리스트: [`documents/ai/manuals/cursor_usage.md`](documents/ai/manuals/cursor_usage.md).
 
@@ -61,6 +61,9 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 | 테스트·pytest·마커 | [`documents/ai/manuals/testing.md`](documents/ai/manuals/testing.md) |
 | 리팩터·삭제·최소 침습 | [`documents/ai/manuals/refactor.md`](documents/ai/manuals/refactor.md) |
 | 모델·마이그레이션·DB | [`documents/ai/manuals/database.md`](documents/ai/manuals/database.md) |
+| 데이터 파이프라인 설계(스키마·ETL·검증·모니터링) | [`database.md`](documents/ai/manuals/database.md) · Skill [`.cursor/skills/data-pipeline-harness/SKILL.md`](.cursor/skills/data-pipeline-harness/SKILL.md) (`@data-pipeline-harness`) |
+| 종합 코드 리뷰(아키텍처·보안·성능·스타일 병렬 감사) | [`refactor.md`](documents/ai/manuals/refactor.md) · Skill [`.cursor/skills/code-review-harness/SKILL.md`](.cursor/skills/code-review-harness/SKILL.md) (`@code-review-harness`) |
+| 리서치(웹·학술·커뮤니티, 교차검증·종합 보고) | [`document_lifecycle.md`](documents/index/document_lifecycle.md) · [`START_HERE.md`](documents/ai/START_HERE.md) · Skill [`.cursor/skills/research-harness/SKILL.md`](.cursor/skills/research-harness/SKILL.md) (`@research-harness`) |
 | Cursor 사용 습관·컨텍스트·요금 절약 | [`documents/ai/manuals/cursor_usage.md`](documents/ai/manuals/cursor_usage.md) |
 
 추가 인덱스: [`documents/ai/README.md`](documents/ai/README.md).

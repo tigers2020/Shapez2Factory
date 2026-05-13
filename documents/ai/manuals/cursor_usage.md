@@ -13,7 +13,7 @@
 
 ## 2. 하네스 관점 (Human ↔ Agent ↔ Harness)
 
-에이전트는 프롬프트·규칙, 코드 검색, 터미널, 모델의 조합으로 동작한다. 이 레포에서는 [`.cursor/rules/`](../../../.cursor/rules/root.mdc)·[`AGENTS.md`](../../../AGENTS.md)·[`protocols/README.md`](../../../protocols/README.md)·스킬([`.cursor/skills/shapez2-harness/SKILL.md`](../../../.cursor/skills/shapez2-harness/SKILL.md))이 **하네스**에 해당한다.
+에이전트는 프롬프트·규칙, 코드 검색, 터미널, 모델의 조합으로 동작한다. 이 레포에서는 [`.cursor/rules/`](../../../.cursor/rules/root.mdc)·[`AGENTS.md`](../../../AGENTS.md)·[`protocols/README.md`](../../../protocols/README.md)·스킬([`.cursor/skills/shapez2-harness/SKILL.md`](../../../.cursor/skills/shapez2-harness/SKILL.md), [`.cursor/skills/cursor-shapez2-harness/SKILL.md`](../../../.cursor/skills/cursor-shapez2-harness/SKILL.md))이 **하네스**에 해당한다.
 
 ## 3. 의도 정밀도와 프롬프트
 
@@ -89,7 +89,7 @@
 | 구분 | 역할 | 이 레포 예 |
 |------|------|------------|
 | **Rules** | 상시 적용되는 짧은 지시 | `.cursor/rules/*.mdc`, `AGENTS.md` 핵심 |
-| **Skills** | 필요할 때만 여는 절차 묶음 | `/merge-all`, `shapez2-harness` 스킬, 이 매뉴얼을 `@`로 참조 |
+| **Skills** | 필요할 때만 여는 절차 묶음 | `/merge-all`, `shapez2-harness`, `cursor-shapez2-harness`, `data-pipeline-harness`, `code-review-harness`, `research-harness` 스킬, 이 매뉴얼을 `@`로 참조 |
 
 규칙 파일에 긴 본문을 중복 넣지 말고, 매뉴얼·플랜에 두고 링크한다.
 

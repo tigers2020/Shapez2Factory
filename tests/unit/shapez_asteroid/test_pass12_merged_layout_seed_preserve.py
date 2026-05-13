@@ -17,6 +17,35 @@ seed_pass12_scratch_from_merged_existing = (
 )
 
 
+def test_preserve_missing_stub_summary_includes_bounded_recovery_counts() -> None:
+    """``preserve_missing_stub_summary.bounded_recovery`` rolls up per-drop tier telemetry."""
+
+    details = [
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "preserve_stub_recovery": {
+                "tier_a_attempted": True,
+                "tier_a_success": False,
+                "tier_b_attempted": True,
+                "tier_b_success": False,
+                "tier_b_failure_reason": "tier_b_failed_no_same_kind_route",
+                "tier_c_attempted": True,
+                "tier_c_success": True,
+                "tier_c_skip_reason": None,
+                "recovery_tier_attempted": ["A", "B", "C"],
+                "rejected_reason": "no_same_kind_route",
+                "rejected_reason_subtype": "occupied_neighbor_ring",
+            },
+        }
+    ]
+    summary = pass12_merged_layout_seed._preserve_missing_stub_summary_from_details(details)
+    br = summary.get("bounded_recovery")
+    assert isinstance(br, dict)
+    assert br["tier_a_attempted_count"] == 1
+    assert br["tier_c_success_count"] == 1
+    assert br["tier_b_failure_reason_counts"].get("tier_b_failed_no_same_kind_route") == 1
+
+
 def test_seed_drops_unrouted_miners_without_adjacent_stub_when_existing_fluid_layout() -> None:
     """Hard gate + multi-miner: unrouted bundles with no adjacent pipe/belt are not preserved."""
 

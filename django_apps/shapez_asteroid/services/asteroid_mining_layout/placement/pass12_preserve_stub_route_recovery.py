@@ -2,6 +2,13 @@
 
 ``try_preserve_stub_route_recovery`` does **not** mutate ``Pass12LayoutScratch``; callers
 commit ``new_transport_coords`` on success only.
+
+Production NDJSON often shows ``bounded_recovery.tier_c_success_count == 0`` while
+``occupied_neighbor_ring`` dominates because Tier B removes only the first 1-cell carve slot
+and Tier C pairs require **cardinal** same-bundle extension neighbors; diagonal-only
+extension clusters yield ``tier_c_skipped_no_candidate_pairs``. Roll up
+``preserve_missing_stub_summary.bounded_recovery`` from per-drop ``preserve_stub_recovery``
+tier_* fields (never read NDJSON back into the solver).
 """
 
 from __future__ import annotations
@@ -10,7 +17,7 @@ import copy
 from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
@@ -29,6 +36,90 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 )
 
 MAX_PASS12_TIER_C_PAIR_ATTEMPTS = 8
+
+
+def _failure_reason_from_probe_dict(probe: Mapping[str, Any] | None) -> str | None:
+    if not isinstance(probe, dict):
+        return None
+    pr = probe.get("post_bfs_rejection")
+    if isinstance(pr, str) and pr:
+        return pr
+    bf = probe.get("bfs_failure")
+    if isinstance(bf, str) and bf and bf != "no_bfs_attempt":
+        return str(bf)
+    return None
+
+
+def _tier_failed_label(prefix: str, probe: Mapping[str, Any] | None) -> str | None:
+    raw = _failure_reason_from_probe_dict(probe)
+    if raw is None:
+        return None
+    return f"{prefix}_failed_{raw}"
+
+
+def _stamp_psr_tier_success(
+    psr: dict[str, Any],
+    winner: Literal["A", "B", "C"],
+    *,
+    tier_a_nonempty: bool,
+    tier_b_loop_ran: bool,
+    tier_c_loop_ran: bool,
+) -> None:
+    psr["tier_a_attempted"] = tier_a_nonempty
+    psr["tier_a_success"] = winner == "A"
+    psr["tier_b_attempted"] = tier_b_loop_ran
+    psr["tier_b_success"] = winner == "B"
+    psr["tier_c_attempted"] = tier_c_loop_ran or winner == "C"
+    psr["tier_c_success"] = winner == "C"
+    if winner == "A":
+        psr["tier_b_skip_reason"] = "skipped_after_tier_a_success"
+        psr["tier_c_skip_reason"] = "skipped_after_tier_a_success"
+    elif winner == "B":
+        psr["tier_b_skip_reason"] = None
+        psr["tier_c_skip_reason"] = "skipped_after_tier_b_success"
+    else:
+        psr["tier_b_skip_reason"] = None
+        psr["tier_c_skip_reason"] = None
+
+
+def _apply_failure_tier_trace(
+    psr: dict[str, Any],
+    *,
+    tier_a: list[tuple[tuple[int, int, int], int, Coord]],
+    tier_a_last_probe: dict[str, Any] | None,
+    tier_b_list: list[Any],
+    tier_b_loop_ran: bool,
+    tier_b_last_fail: str | None,
+    cells_carve_probe: dict[Coord, dict[str, Any]] | None,
+    tier_c_loop_ran: bool,
+    tier_c_last_fail: str | None,
+) -> None:
+    """Populate per-tier trace fields on rejected ``preserve_stub_recovery`` (NDJSON contract)."""
+
+    psr["tier_a_attempted"] = bool(tier_a)
+    psr["tier_a_success"] = False
+    if tier_a:
+        lp_a = tier_a_last_probe if isinstance(tier_a_last_probe, dict) else None
+        if lp_a is None:
+            spl = psr.get("stub_route_probe_last")
+            lp_a = spl if isinstance(spl, dict) else None
+        psr["tier_a_failure_reason"] = _tier_failed_label("tier_a", lp_a)
+    psr["tier_b_attempted"] = tier_b_loop_ran
+    psr["tier_b_success"] = False
+    if not tier_b_list:
+        psr["tier_b_skip_reason"] = (
+            "tier_b_skipped_no_one_cell_carve_probe"
+            if cells_carve_probe is None
+            else "tier_b_skipped_no_tier_b_candidate_row"
+        )
+    elif tier_b_loop_ran:
+        psr["tier_b_failure_reason"] = tier_b_last_fail
+    psr["tier_c_success"] = False
+    psr["tier_c_attempted"] = tier_c_loop_ran or ("C" in (psr.get("recovery_tier_attempted") or []))
+    if tier_c_loop_ran:
+        psr["tier_c_failure_reason"] = tier_c_last_fail
+    elif "C" in (psr.get("recovery_tier_attempted") or []) and not tier_c_loop_ran:
+        psr["tier_c_failure_reason"] = "tier_c_failed_stub_space_after_two_cell_pop"
 
 
 def existing_same_kind_transport_cells_from_map(
@@ -785,6 +876,17 @@ def _empty_psr(nearest_hops: int | None) -> dict[str, Any]:
         "bounded_bundle_rollback_attempted": False,
         "bounded_bundle_rollback_cells": [],
         "bounded_bundle_rollback_success": False,
+        "tier_a_attempted": False,
+        "tier_a_success": False,
+        "tier_a_failure_reason": None,
+        "tier_b_attempted": False,
+        "tier_b_success": False,
+        "tier_b_skip_reason": None,
+        "tier_b_failure_reason": None,
+        "tier_c_attempted": False,
+        "tier_c_success": False,
+        "tier_c_skip_reason": None,
+        "tier_c_failure_reason": None,
     }
 
 
@@ -894,6 +996,10 @@ def try_preserve_stub_route_recovery(
     cells_carve_probe: dict[Coord, dict[str, Any]] | None = None
     carved_output_cell: Coord | None = None
     carved_cand_r: int | None = None
+    tier_b_loop_ran = False
+    tier_b_last_fail: str | None = None
+    tier_c_loop_ran = False
+    tier_c_last_fail: str | None = None
     for cand_r in order:
         stub = shape_miner_output_cell(miner, cand_r)
         if stub is None:
@@ -984,6 +1090,13 @@ def try_preserve_stub_route_recovery(
             )
             if ok_res is not None:
                 psr["output_reorientation_success"] = True
+                _stamp_psr_tier_success(
+                    psr,
+                    "A",
+                    tier_a_nonempty=True,
+                    tier_b_loop_ran=False,
+                    tier_c_loop_ran=False,
+                )
                 return ok_res
         psr["output_reorientation_success"] = False
         lp = psr.get("stub_route_probe_last")
@@ -1015,6 +1128,7 @@ def try_preserve_stub_route_recovery(
         psr["bounded_bundle_rollback_cells"] = [[int(c[0]), int(c[1])] for c in sorted(cc0)]
         tier_b_list.sort(key=lambda t: (t[0][0], t[0][1], t[0][2], t[1]))
         for _pri, cand_r, stub, probe_cells, carved in tier_b_list:
+            tier_b_loop_ran = True
             saw_ok_stub[0] = True
             ok_res = _probe_stub_route_once(
                 stub=stub,
@@ -1038,7 +1152,17 @@ def try_preserve_stub_route_recovery(
             )
             if ok_res is not None:
                 psr["bounded_bundle_rollback_success"] = True
+                _stamp_psr_tier_success(
+                    psr,
+                    "B",
+                    tier_a_nonempty=bool(tier_a),
+                    tier_b_loop_ran=True,
+                    tier_c_loop_ran=False,
+                )
                 return ok_res
+            lp_b = psr.get("stub_route_probe_last")
+            tb = _tier_failed_label("tier_b", lp_b if isinstance(lp_b, dict) else None)
+            tier_b_last_fail = tb or tier_b_last_fail
 
     tier_c_specs = _tier_c_neighbor_pairs_same_bundle(
         miner=miner,
@@ -1047,7 +1171,10 @@ def try_preserve_stub_route_recovery(
         rotation_order=order,
     )
     if cells_carve_probe is None:
+        psr["tier_c_skip_reason"] = "tier_c_skipped_no_one_cell_carve_probe_map"
         tier_c_specs = []
+    elif not tier_c_specs:
+        psr["tier_c_skip_reason"] = "tier_c_skipped_no_candidate_pairs"
     if tier_c_specs:
         psr["recovery_tier_attempted"].append("C")
         psr["bounded_bundle_rollback_attempted"] = True
@@ -1073,6 +1200,7 @@ def try_preserve_stub_route_recovery(
             [int(b[0]), int(b[1])],
         ]
         saw_ok_stub[0] = True
+        tier_c_loop_ran = True
         ok_res = _probe_stub_route_once(
             stub=stub,
             cand_r=cand_r,
@@ -1095,11 +1223,33 @@ def try_preserve_stub_route_recovery(
         )
         if ok_res is not None:
             psr["bounded_bundle_rollback_success"] = True
+            _stamp_psr_tier_success(
+                psr,
+                "C",
+                tier_a_nonempty=bool(tier_a),
+                tier_b_loop_ran=tier_b_loop_ran,
+                tier_c_loop_ran=True,
+            )
             return ok_res
+        lp_c = psr.get("stub_route_probe_last")
+        tc = _tier_failed_label("tier_c", lp_c if isinstance(lp_c, dict) else None)
+        tier_c_last_fail = tc or tier_c_last_fail
 
     if tier_a_last_probe is not None:
         psr["stub_route_probe_last"] = tier_a_last_probe
         _mirror_probe_contract_into_psr(psr, tier_a_last_probe)
+
+    _apply_failure_tier_trace(
+        psr,
+        tier_a=tier_a,
+        tier_a_last_probe=tier_a_last_probe,
+        tier_b_list=tier_b_list,
+        tier_b_loop_ran=tier_b_loop_ran,
+        tier_b_last_fail=tier_b_last_fail,
+        cells_carve_probe=cells_carve_probe,
+        tier_c_loop_ran=tier_c_loop_ran,
+        tier_c_last_fail=tier_c_last_fail,
+    )
 
     if (
         not tier_a

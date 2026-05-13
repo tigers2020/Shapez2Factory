@@ -1005,6 +1005,55 @@ def test_tier_b_bundle_rollback_opens_route_after_tier_a_fails() -> None:
     assert rb and all(tuple(c) in ex for c in rb)
 
 
+def test_tier_c_two_cell_cardinal_bundle_opens_route_after_tier_b_dead_end() -> None:
+    """Tier C: two-cell cardinal bundle opens corridor when Tier B 1-cell carve is stuck.
+
+    Production ``tier_c_success_count`` is often zero because Tier C pairs are **cardinal**
+    neighbors in the same extension bundle; diagonal-only L shapes enumerate no pair.
+    """
+
+    cells: dict[Coord, dict[str, object]] = {
+        (10, 10): {
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+        },
+        (11, 10): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (12, 10): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+        (15, 10): {"role": "pipe", "surface": "fluid"},
+        (11, 9): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+        (11, 11): {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"},
+    }
+    base = frozenset((x, y) for x in range(9, 18) for y in range(8, 14))
+    mineable = base - {(11, 9), (11, 11)}
+    ex = frozenset({(11, 10), (12, 10)})
+    snap = copy.deepcopy(cells)
+    res = try_preserve_stub_route_recovery(
+        miner=(10, 10),
+        extensions=ex,
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(15, 10)}),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=8,
+        row_r_raw=0,
+    )
+    assert cells == snap
+    assert res.accepted is True
+    assert res.carved_extension_cells == ex
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr.get("tier_c_success") is True
+    assert psr.get("tier_c_attempted") is True
+    assert psr.get("tier_b_success") is False
+    assert psr.get("tier_b_attempted") is True
+    assert "C" in (psr.get("recovery_tier_attempted") or [])
+    assert psr.get("bounded_bundle_rollback_success") is True
+    pc = psr.get("path_cells") or []
+    assert any(c == [15, 10] for c in pc)
+
+
 def test_extension_carve_disabled_failure_preserves_telemetry_schema() -> None:
     """No free stub tier: failure path still exposes tier + rollback trace keys for NDJSON."""
 

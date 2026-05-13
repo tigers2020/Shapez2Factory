@@ -141,6 +141,74 @@ def _append_bounded_unrecovered_stub_sample(
     )
 
 
+def _bounded_recovery_summary_from_details(details: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate tier telemetry from ``preserve_stub_recovery`` rows (NDJSON only)."""
+
+    def _bump(m: dict[str, int], key: str) -> None:
+        if not key:
+            return
+        m[key] = m.get(key, 0) + 1
+
+    out: dict[str, Any] = {
+        "tier_a_attempted_count": 0,
+        "tier_a_success_count": 0,
+        "tier_b_attempted_count": 0,
+        "tier_b_success_count": 0,
+        "tier_c_attempted_count": 0,
+        "tier_c_success_count": 0,
+        "tier_b_skip_reason_counts": {},
+        "tier_c_skip_reason_counts": {},
+        "tier_b_failure_reason_counts": {},
+        "tier_c_failure_reason_counts": {},
+        "final_rejected_reason_counts": {},
+        "final_rejected_reason_subtype_counts": {},
+    }
+    for d in details:
+        psr = d.get("preserve_stub_recovery")
+        if not isinstance(psr, dict):
+            continue
+        if psr.get("tier_a_attempted") is True:
+            out["tier_a_attempted_count"] += 1
+        if psr.get("tier_a_success") is True:
+            out["tier_a_success_count"] += 1
+        if psr.get("tier_b_attempted") is True:
+            out["tier_b_attempted_count"] += 1
+        if psr.get("tier_b_success") is True:
+            out["tier_b_success_count"] += 1
+        if psr.get("tier_c_attempted") is True:
+            out["tier_c_attempted_count"] += 1
+        if psr.get("tier_c_success") is True:
+            out["tier_c_success_count"] += 1
+        sb = psr.get("tier_b_skip_reason")
+        if isinstance(sb, str) and sb:
+            _bump(out["tier_b_skip_reason_counts"], sb)
+        sc = psr.get("tier_c_skip_reason")
+        if isinstance(sc, str) and sc:
+            _bump(out["tier_c_skip_reason_counts"], sc)
+        fb = psr.get("tier_b_failure_reason")
+        if isinstance(fb, str) and fb:
+            _bump(out["tier_b_failure_reason_counts"], fb)
+        fc = psr.get("tier_c_failure_reason")
+        if isinstance(fc, str) and fc:
+            _bump(out["tier_c_failure_reason_counts"], fc)
+        rr = psr.get("rejected_reason")
+        if isinstance(rr, str) and rr:
+            _bump(out["final_rejected_reason_counts"], rr)
+        rs = psr.get("rejected_reason_subtype")
+        if isinstance(rs, str) and rs:
+            _bump(out["final_rejected_reason_subtype_counts"], rs)
+    for key in (
+        "tier_b_skip_reason_counts",
+        "tier_c_skip_reason_counts",
+        "tier_b_failure_reason_counts",
+        "tier_c_failure_reason_counts",
+        "final_rejected_reason_counts",
+        "final_rejected_reason_subtype_counts",
+    ):
+        out[key] = dict(sorted(out[key].items(), key=lambda kv: kv[0]))
+    return out
+
+
 def _preserve_missing_stub_summary_from_details(
     details: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -164,12 +232,14 @@ def _preserve_missing_stub_summary_from_details(
         if not sub:
             sub = "(none)"
         by_sub[sub] = by_sub.get(sub, 0) + 1
+    bounded = _bounded_recovery_summary_from_details(details)
     return {
         "drop_count": len(details),
         "by_reason": dict(sorted(by_reason.items(), key=lambda kv: kv[0])),
         "by_recoverability": dict(sorted(by_rec.items(), key=lambda kv: kv[0])),
         "by_rejected_reason_subtype": dict(sorted(by_sub.items(), key=lambda kv: kv[0])),
         "local_repack_candidate_count": repack_eligible,
+        "bounded_recovery": bounded,
     }
 
 
@@ -297,6 +367,17 @@ def _ensure_extension_carve_schema_on_preserve_stub_recovery(detail_row: dict[st
     psr.setdefault("bounded_bundle_rollback_attempted", False)
     psr.setdefault("bounded_bundle_rollback_cells", [])
     psr.setdefault("bounded_bundle_rollback_success", False)
+    psr.setdefault("tier_a_attempted", False)
+    psr.setdefault("tier_a_success", False)
+    psr.setdefault("tier_a_failure_reason", None)
+    psr.setdefault("tier_b_attempted", False)
+    psr.setdefault("tier_b_success", False)
+    psr.setdefault("tier_b_skip_reason", None)
+    psr.setdefault("tier_b_failure_reason", None)
+    psr.setdefault("tier_c_attempted", False)
+    psr.setdefault("tier_c_success", False)
+    psr.setdefault("tier_c_skip_reason", None)
+    psr.setdefault("tier_c_failure_reason", None)
 
 
 def _preserve_stub_route_drop_observability(

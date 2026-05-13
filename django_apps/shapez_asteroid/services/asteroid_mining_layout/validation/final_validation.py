@@ -97,6 +97,38 @@ def mineable_bbox(cells: MiningMapCellsByCoord) -> tuple[int, int, int, int] | N
     return min(xs), max(xs), min(ys), max(ys)
 
 
+def _occupied_extractor_extension_bbox(
+    cells: MiningMapCellsByCoord,
+) -> tuple[int, int, int, int] | None:
+    """Occupied extractor/extension 점만으로 axis bbox를 구한다 (§3.5 외곽 판정용).
+
+    inferred-only 팽창으로 ``is_external`` 셸이 라우팅 universe를 삼키는 경우를 줄이기 위해
+    ``external_predicate_*`` 에서 우선 사용한다. 점이 없으면 호출부가 ``mineable_bbox`` 로
+    폴백한다."""
+
+    pts: list[Coord] = []
+    for c, row in cells.items():
+        if row.get("role") != "occupied":
+            continue
+        lk = layout_kind(row)
+        if lk in EXTRACTORS_SHAPE | EXTRACTORS_FLUID | EXTENSIONS:
+            pts.append(c)
+    if not pts:
+        return None
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    return min(xs), max(xs), min(ys), max(ys)
+
+
+def _external_predicate_axis_bbox(cells: MiningMapCellsByCoord) -> tuple[int, int, int, int] | None:
+    """``is_external`` 동적 margin 입력 bbox: 장비 hull 우선, 없으면 기존 mineable bbox."""
+
+    bb = _occupied_extractor_extension_bbox(cells)
+    if bb is not None:
+        return bb
+    return mineable_bbox(cells)
+
+
 def cells_dict_from_mining_map(mining_map: MiningMapRows) -> MiningMapCellsByCoord:
     """mining_map rows를 좌표 keyed dict로 변환한다 (§15 final validation)."""
     return _parse_cells(mining_map)
@@ -105,9 +137,12 @@ def cells_dict_from_mining_map(mining_map: MiningMapRows) -> MiningMapCellsByCoo
 def external_predicate_for_mining_map(
     mining_map: MiningMapRows,
 ) -> Callable[[Coord], bool]:
-    """mining_map bbox에서 external predicate를 생성한다 (§3.5 dynamic margin)."""
+    """mining_map에서 external predicate를 생성한다 (§3.5 dynamic margin).
+
+    bbox는 occupied extractor/extension hull이 비어 있지 않으면 그 hull을 쓰고, 없으면
+    ``mineable_bbox``(inferred 포함)와 동일한 기존 규칙으로 폴백한다."""
     cells = _parse_cells(mining_map)
-    bbox = mineable_bbox(cells)
+    bbox = _external_predicate_axis_bbox(cells)
     if bbox is None:
         return lambda _: False
     x_min, x_max, y_min, y_max = bbox
@@ -118,10 +153,12 @@ def external_predicate_for_mining_map(
 def external_bbox_margin_for_mining_map(
     mining_map: MiningMapRows,
 ) -> tuple[tuple[int, int, int, int], int] | None:
-    """``external_predicate_for_mining_map``과 동일한 mineable bbox·margin 쌍을 반환한다."""
+    """``external_predicate_for_mining_map``과 동일한 bbox·margin 쌍을 반환한다.
+
+    bbox 선택 규칙은 ``external_predicate_for_mining_map``과 같다."""
 
     cells = _parse_cells(mining_map)
-    bbox = mineable_bbox(cells)
+    bbox = _external_predicate_axis_bbox(cells)
     if bbox is None:
         return None
     x_min, x_max, y_min, y_max = bbox
@@ -210,12 +247,12 @@ def orphan_transport_metrics_from_cells(
 
     transport_cells = _transport_cell_set(cells)
     blocked = blocked_cells(cells)
-    bbox = mineable_bbox(cells)
 
     def never_external(_c: Coord) -> bool:
         return False
 
     is_external: Callable[[Coord], bool] = never_external
+    bbox = _external_predicate_axis_bbox(cells)
     if bbox is not None:
         x_min, x_max, y_min, y_max = bbox
         w = x_max - x_min + 1
@@ -361,7 +398,7 @@ def validate_final_mining_layout(mining_map: MiningMapRows) -> FinalValidationRe
         cells
     )
 
-    bbox = mineable_bbox(cells)
+    bbox = _external_predicate_axis_bbox(cells)
     missing_stub_count = 0
     disconnected_stub_count = 0
 

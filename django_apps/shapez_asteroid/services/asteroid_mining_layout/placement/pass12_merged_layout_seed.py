@@ -291,6 +291,12 @@ def _ensure_extension_carve_schema_on_preserve_stub_recovery(detail_row: dict[st
     psr.setdefault("extension_carve_applied", None)
     psr.setdefault("post_carve_rejected_reason", None)
     psr.setdefault("carved_extension_cell", None)
+    psr.setdefault("recovery_tier_attempted", [])
+    psr.setdefault("output_reorientation_attempted", False)
+    psr.setdefault("output_reorientation_success", False)
+    psr.setdefault("bounded_bundle_rollback_attempted", False)
+    psr.setdefault("bounded_bundle_rollback_cells", [])
+    psr.setdefault("bounded_bundle_rollback_success", False)
 
 
 def _preserve_stub_route_drop_observability(

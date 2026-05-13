@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+
 from django.test import override_settings
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import output_offset_r
@@ -941,6 +943,258 @@ def test_merge_restamps_baseline_stub_after_mineable_shell_overwrite() -> None:
     assert cells[(5, 4)]["role"] == "pipe"
     jobs = collect_routing_jobs(cells)
     assert any(ext == (5, 5) for ext, *_ in jobs)
+
+
+def test_tier_b_bundle_rollback_opens_route_after_tier_a_fails() -> None:
+    """Bounded 1-extension rollback (tier B) can succeed when tier A exhausts free-stub probes."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+        final_validation as fv,
+    )
+
+    def ext() -> dict[str, object]:
+        return {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"}
+
+    def ast(x: int, y: int) -> dict[str, object]:
+        return {"role": "occupied", "layout_kind": "asteroid_field", "surface": "fluid"}
+
+    cells = fv.cells_dict_from_mining_map(
+        [
+            {
+                "x": 8,
+                "y": 8,
+                "role": "occupied",
+                "layout_kind": "fluid_miner",
+                "r": 0,
+                "surface": "fluid",
+            },
+            {"x": 9, "y": 8, **ext()},
+            {"x": 8, "y": 9, **ext()},
+            {"x": 7, "y": 8, **ext()},
+            {"x": 8, "y": 7, **ext()},
+            {"x": 8, "y": 3, "role": "pipe", "surface": "fluid"},
+        ]
+    )
+    for y in range(4, 8):
+        cells[(9, y)] = ast(9, y)
+    for p in ((10, 8), (9, 9), (9, 7), (10, 9), (10, 7), (11, 8)):
+        cells[p] = ast(p[0], p[1])
+    for x in range(4, 7):
+        cells[(x, 8)] = ast(x, 8)
+    for y in range(4, 7):
+        cells[(9, y)] = ast(9, y)
+    mineable: frozenset[Coord] = frozenset((x, y) for x in range(4, 13) for y in range(0, 12))
+    ex = frozenset({(9, 8), (8, 9), (7, 8), (8, 7)})
+    res = try_preserve_stub_route_recovery(
+        miner=(8, 8),
+        extensions=ex,
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(8, 3)}),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=8,
+        row_r_raw=0,
+    )
+    assert res.accepted is True
+    psr = res.trace["preserve_stub_recovery"]
+    assert "B" in (psr.get("recovery_tier_attempted") or [])
+    assert psr.get("bounded_bundle_rollback_success") is True
+    assert psr.get("extension_carve_applied") is True
+    rb = psr.get("bounded_bundle_rollback_cells") or []
+    assert rb and all(tuple(c) in ex for c in rb)
+
+
+def test_extension_carve_disabled_failure_preserves_telemetry_schema() -> None:
+    """No free stub tier: failure path still exposes tier + rollback trace keys for NDJSON."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+        final_validation as fv,
+    )
+
+    cells = fv.cells_dict_from_mining_map(
+        [
+            {
+                "x": 3,
+                "y": 3,
+                "role": "occupied",
+                "layout_kind": "fluid_miner",
+                "r": 0,
+                "surface": "fluid",
+            },
+            {
+                "x": 4,
+                "y": 3,
+                "role": "occupied",
+                "layout_kind": "fluid_extension",
+                "surface": "fluid",
+            },
+            {
+                "x": 2,
+                "y": 3,
+                "role": "occupied",
+                "layout_kind": "fluid_extension",
+                "surface": "fluid",
+            },
+            {
+                "x": 3,
+                "y": 2,
+                "role": "occupied",
+                "layout_kind": "fluid_extension",
+                "surface": "fluid",
+            },
+            {
+                "x": 3,
+                "y": 4,
+                "role": "occupied",
+                "layout_kind": "fluid_extension",
+                "surface": "fluid",
+            },
+            {"x": 3, "y": 5, "role": "pipe", "surface": "fluid"},
+        ]
+    )
+    mineable: frozenset[Coord] = frozenset(cells.keys()) | {(10, 10), (11, 10)}
+    res = try_preserve_stub_route_recovery(
+        miner=(3, 3),
+        extensions=frozenset({(4, 3), (2, 3), (3, 2), (3, 4)}),
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(3, 5), (11, 10)}),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=2,
+        row_r_raw=0,
+    )
+    assert res.accepted is False
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr.get("rejected_reason") == "extension_carve_disabled"
+    assert isinstance(psr.get("recovery_tier_attempted"), list)
+    assert psr.get("output_reorientation_attempted") is False
+    assert psr.get("output_reorientation_success") is False
+    assert psr.get("bounded_bundle_rollback_success") is False
+    assert psr.get("bounded_bundle_rollback_attempted") is True
+    rb = psr.get("bounded_bundle_rollback_cells") or []
+    assert isinstance(rb, list)
+    ex = frozenset({(4, 3), (2, 3), (3, 2), (3, 4)})
+    assert all(tuple(c) in ex for c in rb)
+    last = psr.get("stub_route_probe_last")
+    assert isinstance(last, dict)
+    assert last.get("bfs_failure") == "no_bfs_attempt"
+
+
+def test_bounded_bundle_rollback_cells_never_include_scratch_blocked() -> None:
+    """Rollback cells are extensions only; scratch_blocked corridor coords are never popped."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+        final_validation as fv,
+    )
+
+    cells = fv.cells_dict_from_mining_map(
+        [
+            {
+                "x": 8,
+                "y": 8,
+                "role": "occupied",
+                "layout_kind": "fluid_miner",
+                "r": 0,
+                "surface": "fluid",
+            },
+            {
+                "x": 9,
+                "y": 8,
+                "role": "occupied",
+                "layout_kind": "fluid_extension",
+                "surface": "fluid",
+            },
+            {
+                "x": 8,
+                "y": 9,
+                "role": "occupied",
+                "layout_kind": "fluid_extension",
+                "surface": "fluid",
+            },
+            {"x": 8, "y": 3, "role": "pipe", "surface": "fluid"},
+        ]
+    )
+    mineable: frozenset[Coord] = frozenset((x, y) for x in range(6, 12) for y in range(2, 12))
+    blocked = frozenset({(8, 6)})
+    ex = frozenset({(9, 8), (8, 9)})
+    res = try_preserve_stub_route_recovery(
+        miner=(8, 8),
+        extensions=ex,
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(8, 3)}),
+        scratch_blocked_cells=blocked,
+        nearest_same_kind_transport_hops=8,
+        row_r_raw=0,
+    )
+    psr = res.trace["preserve_stub_recovery"]
+    for pair in psr.get("bounded_bundle_rollback_cells") or []:
+        assert tuple(pair) not in blocked
+        assert tuple(pair) in ex
+    if res.new_transport_coords:
+        assert blocked.isdisjoint(res.new_transport_coords)
+
+
+def test_try_preserve_stub_route_recovery_does_not_mutate_cells_dict() -> None:
+    """Probe leaves caller ``cells`` unchanged; STEP4 owns materialized placement."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
+        final_validation as fv,
+    )
+
+    cells = fv.cells_dict_from_mining_map(
+        [
+            {
+                "x": 3,
+                "y": 3,
+                "role": "occupied",
+                "layout_kind": "fluid_miner",
+                "r": 3,
+                "surface": "fluid",
+            },
+            {
+                "x": 4,
+                "y": 3,
+                "role": "occupied",
+                "layout_kind": "fluid_extension",
+                "surface": "fluid",
+            },
+            {"x": 3, "y": 2, "role": "inferred", "surface": "fluid"},
+            {
+                "x": 3,
+                "y": 1,
+                "role": "occupied",
+                "layout_kind": "asteroid_field",
+                "surface": "fluid",
+            },
+            {"x": 3, "y": 0, "role": "belt", "surface": "shape"},
+            {
+                "x": 3,
+                "y": -1,
+                "role": "occupied",
+                "layout_kind": "asteroid_field",
+                "surface": "fluid",
+            },
+            {"x": 3, "y": -2, "role": "pipe", "surface": "fluid"},
+        ]
+    )
+    mineable: frozenset[Coord] = frozenset(cells.keys())
+    snap = copy.deepcopy(cells)
+    _ = try_preserve_stub_route_recovery(
+        miner=(3, 3),
+        extensions=frozenset({(4, 3)}),
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(3, -2)}),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=4,
+        row_r_raw=3,
+    )
+    assert cells == snap
 
 
 def test_merge_strips_orphan_pipe_island_not_reaching_external() -> None:

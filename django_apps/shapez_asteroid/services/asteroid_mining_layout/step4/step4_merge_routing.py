@@ -308,6 +308,7 @@ def run_step4_merge_aware_routing(
     mutate_input_map: bool = False,
     existing_layout_analysis: dict[str, Any] | None = None,
     hard_protected_cells: frozenset[Coord] | None = None,
+    step4_reentry_index: int = 0,
 ) -> Step4RoutingResult:
     """Route each extractor stub; roll back failed ``placement_id`` bundles only (P2-B).
 
@@ -615,6 +616,10 @@ def run_step4_merge_aware_routing(
                     placement_commit_state_at_route_attempt=None,
                     forced_last_error=forced_err,
                 )
+                detail["step4_reentry_index"] = int(step4_reentry_index)
+                rfd_detail = detail.get("routing_failure_detail")
+                if isinstance(rfd_detail, dict):
+                    rfd_detail["step4_reentry_index"] = int(step4_reentry_index)
                 if len(search_diag_samples) < 8:
                     exn = int(search_stats.get("expanded_nodes") or 0)
                     smp: dict[str, Any] = {
@@ -1070,6 +1075,7 @@ def run_step4_merge_aware_routing(
         "step4_search_goal_ordering_applied": bool(search_goal_ordering_applied_any),
         "step4_search_goal_ordering_mode": search_goal_ordering_mode,
         "step4_search_diagnostics_samples": list(search_diag_samples),
+        "step4_reentry_index": int(step4_reentry_index),
     }
     trace_tl["step4_no_route_exhausted_breakdown"] = build_step4_no_route_exhausted_breakdown(
         failures

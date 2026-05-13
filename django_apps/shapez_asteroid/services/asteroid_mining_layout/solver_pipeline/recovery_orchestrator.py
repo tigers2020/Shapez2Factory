@@ -349,6 +349,7 @@ def run_solver_timeline_pipeline(
         replay_events=replay_events,
         debug_location=debug_location,
         existing_layout_analysis=existing_layout_analysis,
+        step4_reentry_index=0,
     )
     s4_primary = _step4_recovery_trigger.step4_primary_recovery_trigger_from_result(
         step4.step4_result,
@@ -368,6 +369,7 @@ def run_solver_timeline_pipeline(
                 replay_events=replay_events,
                 debug_location=debug_location,
                 existing_layout_analysis=existing_layout_analysis,
+                step4_reentry_index=1,
             )
     elif s4_primary == RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE:
         s4_cap = _recovery_return_policy.recovery_return_policy_for_trigger(
@@ -384,6 +386,7 @@ def run_solver_timeline_pipeline(
                 replay_events=replay_events,
                 debug_location=debug_location,
                 existing_layout_analysis=existing_layout_analysis,
+                step4_reentry_index=1,
             )
     optimization_baseline_internal_transport = optimization_baseline_internal_transport_at_map(
         pass12.map_after_pass2,

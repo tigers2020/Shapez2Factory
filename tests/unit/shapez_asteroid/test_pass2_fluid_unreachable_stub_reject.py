@@ -127,6 +127,54 @@ def test_pass2_fluid_reachable_stub_still_commits_provisional() -> None:
     assert scratch.placement_records
 
 
+def test_pass2_rejects_existing_layout_island_fallback_only_fluid_stub() -> None:
+    """기존 layout 해석이 있으면 fallback transport island만으로 Pass2를 통과시키지 않는다."""
+
+    sink = p12_rp.new_pass2_route_probe_stats_sink()
+    mineable = frozenset({(2, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0)})
+    cells = {c: _fluid_cell(c[0], c[1]) for c in mineable}
+    pack = p12_bc.Pass2RouteProbePack(
+        mineable=mineable,
+        asteroid=frozenset(),
+        cells=cells,
+        existing_layout_analysis={
+            "source_kind": "existing_fluid_layout",
+            "solver_hints": {"trunk_seed_cell_union": []},
+        },
+        stats_sink=sink,
+    )
+    scratch = p12_bc.Pass12LayoutScratch(transport_kind="fluid_pipe")
+    scratch.transport_cells = {(6, 0), (7, 0), (8, 0), (9, 0), (10, 0)}
+    scratch.blocked_cells = {(2, 0)}
+    cand = p12_bc.Pass12BundleCandidate(
+        blocked_cells=frozenset({(2, 0)}),
+        new_transport=frozenset({(5, 0)}),
+        stub_cell=(5, 0),
+        extractor_cell=(2, 0),
+        extension_facings=frozenset(),
+        extractor_output_dir=(1, 0),
+        placement_pass="pass2",
+    )
+
+    def is_ext(c: Coord) -> bool:
+        return c[0] >= 100
+
+    assert (
+        p12_bc.try_commit_pass2_bundle(
+            scratch,
+            cand,
+            is_external=is_ext,
+            pass2_route_probe_pack=pack,
+        )
+        is False
+    )
+    gtrace = sink.get("pass2_probe_last_goal_trace") or {}
+    assert gtrace.get("fallback_goal_source") == "transport_cells_before_island_fallback"
+    assert int(sink.get("pass2_reject_transport_cells_before_island_fallback_count", 0)) == 1
+    assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 1
+    assert scratch.placement_records == {}
+
+
 def test_fluid_regression_fixture_step4_failures_and_validation_stay_clean() -> None:
     """Locked BP: happy path keeps STEP4 failures at 0 and validation geometry/connectivity true."""
 

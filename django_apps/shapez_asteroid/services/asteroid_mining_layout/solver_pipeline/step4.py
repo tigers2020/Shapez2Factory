@@ -114,6 +114,7 @@ def run_step4_stage(
     replay_events: list[dict[str, Any]],
     debug_location: str,
     existing_layout_analysis: dict[str, Any] | None = None,
+    step4_reentry_index: int = 0,
 ) -> Step4StageResult:
     """STEP4 route transaction을 실행하고 replay transaction 계약을 유지한다."""
 
@@ -144,6 +145,7 @@ def run_step4_stage(
                 placement_records=placement_records,
                 mutate_input_map=True,
                 existing_layout_analysis=existing_layout_analysis,
+                step4_reentry_index=step4_reentry_index,
             )
         except BaseException:
             replay_events.append(
@@ -242,6 +244,7 @@ def run_step4_stage(
             "rolled_back_placement_ids": list(step4_result.rolled_back_placement_ids),
             "quarantined_placement_ids": list(step4_result.quarantined_placement_ids),
             "quarantined_placement_ids_peak": list(step4_result.quarantined_placement_ids_peak),
+            "step4_reentry_index": int(step4_reentry_index),
             "after_routing_counts": post_step4_counts,
             "step_hash_step4": step_hash_step4,
             "step4_state_source": {

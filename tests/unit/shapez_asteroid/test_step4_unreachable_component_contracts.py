@@ -106,6 +106,7 @@ def test_step4_isolated_component_trap_records_zero_reachable_goals() -> None:
             final_mining_map=final_rows,
             is_external=is_external,
             placement_records=pr,
+            step4_reentry_index=3,
         )
     assert r.complete_routing_success is False
     assert r.rolled_back_placement_ids
@@ -119,6 +120,9 @@ def test_step4_isolated_component_trap_records_zero_reachable_goals() -> None:
     assert int(det.get("expanded_nodes") or 0) > 0
     assert int(det.get("dijkstra_reachable_goal_count") or 0) == 0
     assert det.get("last_error") == "step4_unreachable_component"
+    assert det.get("step4_reentry_index") == 3
+    assert (det.get("routing_failure_detail") or {}).get("step4_reentry_index") == 3
+    assert r.trunk_load.get("step4_reentry_index") == 3
 
 
 def test_recovery_reason_namespaces_do_not_cross() -> None:

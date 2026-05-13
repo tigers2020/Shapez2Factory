@@ -195,6 +195,320 @@ def try_commit_pass2_bundle(
     )
 
 
+def _bump_stat_sink(sink: dict[str, Any], key: str) -> None:
+    sink[key] = int(sink.get(key, 0)) + 1
+
+
+def _bump_unreachable_stub_flavor(sink: dict[str, Any], transport_kind: str) -> None:
+    if transport_kind == "fluid_pipe":
+        _bump_stat_sink(sink, "pass2_reject_step4_unreachable_fluid_stub_count")
+    else:
+        _bump_stat_sink(sink, "pass2_reject_step4_unreachable_stub_count")
+
+
+def _is_noncanonical_island_fallback(
+    goal_trace: dict[str, Any],
+    *,
+    existing_layout_analysis: dict[str, Any] | None,
+) -> bool:
+    if not existing_layout_analysis:
+        return False
+    if goal_trace.get("fallback_goal_source") != "transport_cells_before_island_fallback":
+        return False
+    # 기존 layout이 있는 run에서는 fallback transport island만으로 STEP4 목표를 대신하지 않는다.
+    return (
+        int(goal_trace.get("exterior_margin_cell_count") or 0) == 0
+        and int(goal_trace.get("raw_goal_count") or 0) == 0
+        and int(goal_trace.get("trunk_reaching_probe_count") or 0) == 0
+    )
+
+
+def _reject_noncanonical_island_fallback(
+    *,
+    state: Pass12LayoutScratch,
+    candidate: Pass12BundleCandidate,
+    trace_location: str,
+    bundle_hint: dict[str, Any] | None,
+    pack: Pass2RouteProbePack,
+    goal_trace: dict[str, Any],
+) -> None:
+    payload: dict[str, Any] = dict(bundle_hint or {})
+    payload["reason"] = "pass2_reject_transport_cells_before_island_fallback"
+    payload["reject_reason"] = "step4_unreachable_component"
+    payload["stub_cell"] = candidate.stub_cell
+    payload["transport_kind"] = state.transport_kind
+    payload["pass2_goal_set_trace"] = dict(goal_trace)
+    trace_bundle_reject_invalid_stub(trace_location, payload)
+    _bump_stat_sink(pack.stats_sink, "pass2_reject_transport_cells_before_island_fallback_count")
+    _bump_stat_sink(pack.stats_sink, "pass2_reject_step4_unreachable_component_count")
+    _bump_unreachable_stub_flavor(pack.stats_sink, state.transport_kind)
+
+
+def _reject_stub_missing_from_merged_transport(
+    *,
+    candidate: Pass12BundleCandidate,
+    transport_after: frozenset[Coord],
+    blocked_after: frozenset[Coord],
+    trace_location: str,
+    bundle_hint: dict[str, Any] | None,
+    pass2_route_probe_pack: Pass2RouteProbePack | None,
+) -> None:
+    payload: dict[str, Any] = dict(bundle_hint or {})
+    payload["reason"] = "stub_cell_missing_from_merged_transport"
+    payload["stub_cell"] = candidate.stub_cell
+    payload["route_probe_context"] = {
+        "transport_cell_count": len(transport_after),
+        "blocked_cell_count": len(blocked_after),
+    }
+    trace_bundle_reject_invalid_stub(trace_location, payload)
+    if trace_location == _PASS2_TRACE and pass2_route_probe_pack is not None:
+        _bump_stat_sink(pass2_route_probe_pack.stats_sink, "pass2_hard_geometry_reject_count")
+
+
+def _pass2_uncertain_followup(
+    *,
+    state: Pass12LayoutScratch,
+    candidate: Pass12BundleCandidate,
+    transport_after: frozenset[Coord],
+    blocked_after: frozenset[Coord],
+    is_external: Callable[[Coord], bool],
+    trace_location: str,
+    bundle_hint: dict[str, Any] | None,
+    pack: Pass2RouteProbePack,
+    goals: frozenset[Coord],
+    gn: int,
+) -> bool:
+    want_role = "pipe" if state.transport_kind == "fluid_pipe" else "belt"
+    trunk_for_probe = frozenset(
+        _finval.transport_cells_reaching_external(
+            set(transport_after), set(blocked_after), is_external
+        )
+    )
+    margin_probe = _s4_goal.exterior_margin_cells(
+        mineable=pack.mineable,
+        asteroid=pack.asteroid,
+        cells=pack.cells,
+        is_external=is_external,
+        universe_extra=transport_after,
+    )
+    prec = _s4_reach.pass2_stub_bounded_step4_reachability_precheck(
+        stub_cell=candidate.stub_cell,
+        want_role=want_role,
+        transport_kind=state.transport_kind,
+        cells_base=pack.cells,
+        transport_probe=transport_after,
+        blocked_probe=blocked_after,
+        mineable=pack.mineable,
+        asteroid=pack.asteroid,
+        is_external=is_external,
+        goal_cells=goals,
+        trunk_cells=trunk_for_probe,
+        margin_cells=margin_probe,
+    )
+    sink = pack.stats_sink
+    if prec.stub_isolated_geometry:
+        payload_iso: dict[str, Any] = dict(bundle_hint or {})
+        payload_iso["reason"] = "pass2_reject_step4_stub_isolated"
+        payload_iso["stub_cell"] = candidate.stub_cell
+        payload_iso["want_role"] = want_role
+        payload_iso["pass2_step4_precheck"] = {
+            "stop_reason": prec.stop_reason,
+            "visits": prec.visits,
+            "reachable_goal_count": prec.reachable_goal_count,
+        }
+        trace_bundle_reject_invalid_stub(trace_location, payload_iso)
+        _bump_stat_sink(sink, "pass2_reject_step4_stub_isolated_count")
+        return False
+    unreachable_prec = gn > 0 and not prec.reachable and prec.stop_reason in ("exhausted", "budget")
+    if unreachable_prec:
+        payload_u: dict[str, Any] = dict(bundle_hint or {})
+        payload_u["reason"] = "pass2_reject_step4_unreachable_component"
+        payload_u["reject_reason"] = "step4_unreachable_component"
+        payload_u["stub_cell"] = candidate.stub_cell
+        payload_u["want_role"] = want_role
+        payload_u["pass2_step4_precheck"] = {
+            "stop_reason": prec.stop_reason,
+            "visits": prec.visits,
+            "reachable_goal_count": prec.reachable_goal_count,
+            "reachable_existing_trunk_count": prec.reachable_existing_trunk_count,
+            "reachable_exterior_margin_count": prec.reachable_exterior_margin_count,
+        }
+        trace_bundle_reject_invalid_stub(trace_location, payload_u)
+        _bump_stat_sink(sink, "pass2_reject_step4_unreachable_component_count")
+        _bump_unreachable_stub_flavor(sink, state.transport_kind)
+        return False
+    ok_comp, comp_detail = pass2_transport_stub_reaches_exterior_reachable_transport(
+        candidate.stub_cell,
+        transport_cells=transport_after,
+        blocked_cells=blocked_after,
+        is_external=is_external,
+        reachable_goal_count=int(prec.reachable_goal_count),
+        step4_goal_count=int(gn),
+        pass2_precheck_reachable_goal_count=int(prec.reachable_goal_count),
+    )
+    sink["pass2_last_transport_component_gate"] = dict(comp_detail)
+    if not ok_comp:
+        payload_c: dict[str, Any] = dict(bundle_hint or {})
+        payload_c["reason"] = "pass2_reject_step4_unreachable_component"
+        payload_c["reject_reason"] = "step4_unreachable_component"
+        payload_c["stub_cell"] = candidate.stub_cell
+        payload_c["want_role"] = want_role
+        payload_c["pass2_transport_component_gate"] = dict(comp_detail)
+        trace_bundle_reject_invalid_stub(trace_location, payload_c)
+        _bump_stat_sink(sink, "pass2_reject_step4_unreachable_component_count")
+        _bump_unreachable_stub_flavor(sink, state.transport_kind)
+        return False
+    return True
+
+
+def _route_probe_after_stub_present(
+    state: Pass12LayoutScratch,
+    candidate: Pass12BundleCandidate,
+    baseline: Pass12ScratchBaseline,
+    transport_after: frozenset[Coord],
+    blocked_after: frozenset[Coord],
+    *,
+    is_external: Callable[[Coord], bool],
+    trace_location: str,
+    bundle_hint: dict[str, Any] | None,
+    adjacent_preserve_trunk_baseline_cells: frozenset[Coord] | None,
+    pass2_route_probe_pack: Pass2RouteProbePack | None,
+) -> tuple[bool, str | None]:
+    if trace_location == _PASS2_TRACE and pass2_route_probe_pack is not None:
+        pack = pass2_route_probe_pack
+        goals, gkind, gn, goal_trace = build_pass2_step4_aligned_routing_goals(
+            transport_kind=state.transport_kind,
+            mineable=pack.mineable,
+            asteroid=pack.asteroid,
+            cells=pack.cells,
+            is_external=is_external,
+            existing_layout_analysis=pack.existing_layout_analysis,
+            transport_cells_before=frozenset(baseline.transport_cells),
+            transport_cells_probe=transport_after,
+            blocked_for_probe=blocked_after,
+            stats_sink=pack.stats_sink,
+        )
+        if _is_noncanonical_island_fallback(
+            goal_trace,
+            existing_layout_analysis=pack.existing_layout_analysis,
+        ):
+            _reject_noncanonical_island_fallback(
+                state=state,
+                candidate=candidate,
+                trace_location=trace_location,
+                bundle_hint=bundle_hint,
+                pack=pack,
+                goal_trace=goal_trace,
+            )
+            return False, None
+        p2_out, _diag = pass2_bundle_route_probe_decision(
+            candidate.stub_cell,
+            transport_cells=transport_after,
+            blocked_cells=blocked_after,
+            is_external=is_external,
+            routing_goal_cells=goals,
+            goal_set_kind=gkind,
+            goal_count=gn,
+            adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
+            stats_sink=pack.stats_sink,
+            goal_build_trace=goal_trace,
+        )
+        if p2_out == "uncertain" and not _pass2_uncertain_followup(
+            state=state,
+            candidate=candidate,
+            transport_after=transport_after,
+            blocked_after=blocked_after,
+            is_external=is_external,
+            trace_location=trace_location,
+            bundle_hint=bundle_hint,
+            pack=pack,
+            goals=goals,
+            gn=gn,
+        ):
+            return False, None
+        return True, p2_out
+    if not bundle_route_probe_or_reject(
+        candidate.stub_cell,
+        transport_cells=transport_after,
+        blocked_cells=blocked_after,
+        is_external=is_external,
+        trace_location=trace_location,
+        bundle_hint=bundle_hint,
+        pass1_allow_cheap_escape=(trace_location == _PASS1_TRACE),
+        p1_cheap_void_cells=candidate.p1_cheap_void_cells,
+        pass2_adjacent_preserve_trunk_baseline_cells=(
+            adjacent_preserve_trunk_baseline_cells if trace_location == _PASS2_TRACE else None
+        ),
+    ):
+        return False, None
+    return True, "routed"
+
+
+def _apply_pass12_bundle_commit(
+    state: Pass12LayoutScratch,
+    candidate: Pass12BundleCandidate,
+    *,
+    trace_location: str,
+    pass2_route_probe_pack: Pass2RouteProbePack | None,
+    pass2_outcome: str | None,
+    replay_events: list[dict[str, Any]] | None,
+) -> None:
+    state.transport_cells |= set(candidate.new_transport)
+    state.blocked_cells |= set(candidate.blocked_cells)
+    if candidate.extractor_cell is None:
+        return
+    state.extractor_cells.add(candidate.extractor_cell)
+    if candidate.extractor_output_dir is not None:
+        ec = candidate.extractor_cell
+        state.extractor_output_dirs[ec] = candidate.extractor_output_dir
+    for c, edx, edy in candidate.extension_facings:
+        state.extension_facings[c] = (edx, edy)
+    state.next_placement_seq += 1
+    pid = make_placement_id(candidate.placement_pass, state.next_placement_seq)
+    ext_cells = tuple(
+        sorted((c for c, _edx, _edy in candidate.extension_facings), key=lambda t: (t[1], t[0]))
+    )
+    state.placement_records[pid] = PlacementCommitRecord(
+        placement_id=pid,
+        placement_pass=candidate.placement_pass,
+        extractor_cell=candidate.extractor_cell,
+        extension_cells=ext_cells,
+        stub_cell=candidate.stub_cell,
+        transport_kind=state.transport_kind,
+        state=PlacementCommitState.PROVISIONAL_PLACED,
+    )
+    if (
+        trace_location == _PASS2_TRACE
+        and pass2_route_probe_pack is not None
+        and pass2_outcome == "uncertain"
+    ):
+        _bump_stat_sink(pass2_route_probe_pack.stats_sink, "pass2_provisional_unrouted_count")
+    if replay_events is None:
+        return
+    replay_events.append(
+        {
+            "kind": SolverMutationEventKind.PASS12_BUNDLE_COMMIT.value,
+            "phase": "pass12",
+            "payload": _pass12_commit_replay_payload(
+                pid=pid,
+                state=state,
+                candidate=candidate,
+                trace_location=trace_location,
+            ),
+        }
+    )
+    replay_events.append(
+        {
+            "kind": SolverMutationEventKind.PLACEMENT_STATE_CHANGED.value,
+            "phase": "pass12",
+            "payload": {
+                "placement_id": pid,
+                "state": PlacementCommitState.PROVISIONAL_PLACED.value,
+            },
+        }
+    )
+
+
 def _commit_after_probe(
     state: Pass12LayoutScratch,
     candidate: Pass12BundleCandidate,
@@ -216,229 +530,37 @@ def _commit_after_probe(
         transport_after = frozenset(state.transport_cells | set(candidate.new_transport))
         blocked_after = frozenset(state.blocked_cells | set(candidate.blocked_cells))
         if candidate.stub_cell not in transport_after:
-            payload: dict[str, Any] = dict(bundle_hint or {})
-            payload["reason"] = "stub_cell_missing_from_merged_transport"
-            payload["stub_cell"] = candidate.stub_cell
-            payload["route_probe_context"] = {
-                "transport_cell_count": len(transport_after),
-                "blocked_cell_count": len(blocked_after),
-            }
-            trace_bundle_reject_invalid_stub(trace_location, payload)
-            if trace_location == _PASS2_TRACE and pass2_route_probe_pack is not None:
-                sink = pass2_route_probe_pack.stats_sink
-                sink["pass2_hard_geometry_reject_count"] = (
-                    int(sink.get("pass2_hard_geometry_reject_count", 0)) + 1
-                )
-            return False
-        pass2_outcome: str | None = None
-        if trace_location == _PASS2_TRACE and pass2_route_probe_pack is not None:
-            pack = pass2_route_probe_pack
-            goals, gkind, gn, goal_trace = build_pass2_step4_aligned_routing_goals(
-                transport_kind=state.transport_kind,
-                mineable=pack.mineable,
-                asteroid=pack.asteroid,
-                cells=pack.cells,
-                is_external=is_external,
-                existing_layout_analysis=pack.existing_layout_analysis,
-                transport_cells_before=frozenset(baseline.transport_cells),
-                transport_cells_probe=transport_after,
-                blocked_for_probe=blocked_after,
-                stats_sink=pack.stats_sink,
-            )
-            p2_out, _diag = pass2_bundle_route_probe_decision(
-                candidate.stub_cell,
-                transport_cells=transport_after,
-                blocked_cells=blocked_after,
-                is_external=is_external,
-                routing_goal_cells=goals,
-                goal_set_kind=gkind,
-                goal_count=gn,
-                adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
-                stats_sink=pack.stats_sink,
-                goal_build_trace=goal_trace,
-            )
-            pass2_outcome = p2_out
-            if p2_out == "uncertain":
-                want_role = "pipe" if state.transport_kind == "fluid_pipe" else "belt"
-                trunk_for_probe = frozenset(
-                    _finval.transport_cells_reaching_external(
-                        set(transport_after), set(blocked_after), is_external
-                    )
-                )
-                margin_probe = _s4_goal.exterior_margin_cells(
-                    mineable=pack.mineable,
-                    asteroid=pack.asteroid,
-                    cells=pack.cells,
-                    is_external=is_external,
-                    universe_extra=transport_after,
-                )
-                prec = _s4_reach.pass2_stub_bounded_step4_reachability_precheck(
-                    stub_cell=candidate.stub_cell,
-                    want_role=want_role,
-                    transport_kind=state.transport_kind,
-                    cells_base=pack.cells,
-                    transport_probe=transport_after,
-                    blocked_probe=blocked_after,
-                    mineable=pack.mineable,
-                    asteroid=pack.asteroid,
-                    is_external=is_external,
-                    goal_cells=goals,
-                    trunk_cells=trunk_for_probe,
-                    margin_cells=margin_probe,
-                )
-                sink = pass2_route_probe_pack.stats_sink
-                if prec.stub_isolated_geometry:
-                    payload_iso: dict[str, Any] = dict(bundle_hint or {})
-                    payload_iso["reason"] = "pass2_reject_step4_stub_isolated"
-                    payload_iso["stub_cell"] = candidate.stub_cell
-                    payload_iso["want_role"] = want_role
-                    payload_iso["pass2_step4_precheck"] = {
-                        "stop_reason": prec.stop_reason,
-                        "visits": prec.visits,
-                        "reachable_goal_count": prec.reachable_goal_count,
-                    }
-                    trace_bundle_reject_invalid_stub(trace_location, payload_iso)
-                    sink["pass2_reject_step4_stub_isolated_count"] = (
-                        int(sink.get("pass2_reject_step4_stub_isolated_count", 0)) + 1
-                    )
-                    return False
-                unreachable_prec = (
-                    gn > 0
-                    and not prec.reachable
-                    and prec.stop_reason in ("exhausted", "budget")
-                )
-                if unreachable_prec:
-                    payload_u: dict[str, Any] = dict(bundle_hint or {})
-                    payload_u["reason"] = "pass2_reject_step4_unreachable_component"
-                    payload_u["reject_reason"] = "step4_unreachable_component"
-                    payload_u["stub_cell"] = candidate.stub_cell
-                    payload_u["want_role"] = want_role
-                    payload_u["pass2_step4_precheck"] = {
-                        "stop_reason": prec.stop_reason,
-                        "visits": prec.visits,
-                        "reachable_goal_count": prec.reachable_goal_count,
-                        "reachable_existing_trunk_count": prec.reachable_existing_trunk_count,
-                        "reachable_exterior_margin_count": prec.reachable_exterior_margin_count,
-                    }
-                    trace_bundle_reject_invalid_stub(trace_location, payload_u)
-                    sink["pass2_reject_step4_unreachable_component_count"] = (
-                        int(sink.get("pass2_reject_step4_unreachable_component_count", 0)) + 1
-                    )
-                    if state.transport_kind == "fluid_pipe":
-                        sink["pass2_reject_step4_unreachable_fluid_stub_count"] = (
-                            int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) + 1
-                        )
-                    else:
-                        sink["pass2_reject_step4_unreachable_stub_count"] = (
-                            int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) + 1
-                        )
-                    return False
-                ok_comp, comp_detail = pass2_transport_stub_reaches_exterior_reachable_transport(
-                    candidate.stub_cell,
-                    transport_cells=transport_after,
-                    blocked_cells=blocked_after,
-                    is_external=is_external,
-                    reachable_goal_count=int(prec.reachable_goal_count),
-                    step4_goal_count=int(gn),
-                    pass2_precheck_reachable_goal_count=int(prec.reachable_goal_count),
-                )
-                sink["pass2_last_transport_component_gate"] = dict(comp_detail)
-                if not ok_comp:
-                    payload_c: dict[str, Any] = dict(bundle_hint or {})
-                    payload_c["reason"] = "pass2_reject_step4_unreachable_component"
-                    payload_c["reject_reason"] = "step4_unreachable_component"
-                    payload_c["stub_cell"] = candidate.stub_cell
-                    payload_c["want_role"] = want_role
-                    payload_c["pass2_transport_component_gate"] = dict(comp_detail)
-                    trace_bundle_reject_invalid_stub(trace_location, payload_c)
-                    sink["pass2_reject_step4_unreachable_component_count"] = (
-                        int(sink.get("pass2_reject_step4_unreachable_component_count", 0)) + 1
-                    )
-                    if state.transport_kind == "fluid_pipe":
-                        sink["pass2_reject_step4_unreachable_fluid_stub_count"] = (
-                            int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) + 1
-                        )
-                    else:
-                        sink["pass2_reject_step4_unreachable_stub_count"] = (
-                            int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) + 1
-                        )
-                    return False
-        else:
-            if not bundle_route_probe_or_reject(
-                candidate.stub_cell,
-                transport_cells=transport_after,
-                blocked_cells=blocked_after,
-                is_external=is_external,
+            _reject_stub_missing_from_merged_transport(
+                candidate=candidate,
+                transport_after=transport_after,
+                blocked_after=blocked_after,
                 trace_location=trace_location,
                 bundle_hint=bundle_hint,
-                pass1_allow_cheap_escape=(trace_location == _PASS1_TRACE),
-                p1_cheap_void_cells=candidate.p1_cheap_void_cells,
-                pass2_adjacent_preserve_trunk_baseline_cells=(
-                    adjacent_preserve_trunk_baseline_cells
-                    if trace_location == _PASS2_TRACE
-                    else None
-                ),
-            ):
-                return False
-            pass2_outcome = "routed"
-        state.transport_cells |= set(candidate.new_transport)
-        state.blocked_cells |= set(candidate.blocked_cells)
-        if candidate.extractor_cell is not None:
-            state.extractor_cells.add(candidate.extractor_cell)
-            if candidate.extractor_output_dir is not None:
-                ec = candidate.extractor_cell
-                state.extractor_output_dirs[ec] = candidate.extractor_output_dir
-            for c, edx, edy in candidate.extension_facings:
-                state.extension_facings[c] = (edx, edy)
-        if candidate.extractor_cell is not None:
-            state.next_placement_seq += 1
-            pid = make_placement_id(candidate.placement_pass, state.next_placement_seq)
-            ext_cells = tuple(
-                sorted(
-                    (c for c, _edx, _edy in candidate.extension_facings), key=lambda t: (t[1], t[0])
-                )
+                pass2_route_probe_pack=pass2_route_probe_pack,
             )
-            state.placement_records[pid] = PlacementCommitRecord(
-                placement_id=pid,
-                placement_pass=candidate.placement_pass,
-                extractor_cell=candidate.extractor_cell,
-                extension_cells=ext_cells,
-                stub_cell=candidate.stub_cell,
-                transport_kind=state.transport_kind,
-                state=PlacementCommitState.PROVISIONAL_PLACED,
-            )
-            if (
-                trace_location == _PASS2_TRACE
-                and pass2_route_probe_pack is not None
-                and pass2_outcome == "uncertain"
-            ):
-                sink = pass2_route_probe_pack.stats_sink
-                sink["pass2_provisional_unrouted_count"] = (
-                    int(sink.get("pass2_provisional_unrouted_count", 0)) + 1
-                )
-            if replay_events is not None:
-                replay_events.append(
-                    {
-                        "kind": SolverMutationEventKind.PASS12_BUNDLE_COMMIT.value,
-                        "phase": "pass12",
-                        "payload": _pass12_commit_replay_payload(
-                            pid=pid,
-                            state=state,
-                            candidate=candidate,
-                            trace_location=trace_location,
-                        ),
-                    }
-                )
-                replay_events.append(
-                    {
-                        "kind": SolverMutationEventKind.PLACEMENT_STATE_CHANGED.value,
-                        "phase": "pass12",
-                        "payload": {
-                            "placement_id": pid,
-                            "state": PlacementCommitState.PROVISIONAL_PLACED.value,
-                        },
-                    }
-                )
+            return False
+        ok_probe, pass2_outcome = _route_probe_after_stub_present(
+            state,
+            candidate,
+            baseline,
+            transport_after,
+            blocked_after,
+            is_external=is_external,
+            trace_location=trace_location,
+            bundle_hint=bundle_hint,
+            adjacent_preserve_trunk_baseline_cells=adjacent_preserve_trunk_baseline_cells,
+            pass2_route_probe_pack=pass2_route_probe_pack,
+        )
+        if not ok_probe:
+            return False
+        _apply_pass12_bundle_commit(
+            state,
+            candidate,
+            trace_location=trace_location,
+            pass2_route_probe_pack=pass2_route_probe_pack,
+            pass2_outcome=pass2_outcome,
+            replay_events=replay_events,
+        )
         return True
     except BaseException:
         restore_pass12_scratch(state, baseline)

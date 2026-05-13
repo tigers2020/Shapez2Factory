@@ -443,3 +443,10 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 - [x] [`documents/adr/`](../adr/): bounded recovery, protected corridor, final validation, replay cycle stream ADR 초기 골격 추가.
 - [ ] `documents/canon/` 물리 분리 플랜 작성: 현재 정본 경로 링크 영향과 이동/리다이렉트 전략 확정 필요.
 - [ ] `documents/reports/YYYY-MM/` 분리 플랜 작성: debug/progress/report 성격 문서 이동 전 참조 링크 확인 필요.
+
+### Pass2 island fallback gate / STEP4 reentry telemetry (2026-05-13)
+
+- [x] 작업 유형: `solver` / `tests`
+- [x] 플랜: [`documents/plans/plan_pass2_island_fallback_gate_2026-05-13.md`](../plans/plan_pass2_island_fallback_gate_2026-05-13.md)
+- [x] 범위: Pass2 `transport_cells_before_island_fallback` 허용 조건 축소, STEP4 `step4_reentry_index` telemetry 추가
+- [x] 검증: 영향 단위 테스트, 관련 STEP4/Pass2 테스트, ruff, black --check, mypy 실행

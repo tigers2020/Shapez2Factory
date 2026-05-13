@@ -400,6 +400,9 @@ def _evaluate_one_shadow_bundle(
         existing_transport=scan.existing_transport,
     )
 
+    # §12.2 gain_ratio (MVP): slots / RouteZone cost sum — empirical gate,
+    # not strict dimensionless. See Algorithm logic.md §12.2 (v5.10);
+    # tune DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD with this.
     if add_cost <= 0.0:
         gain_ratio = float("inf") if gain_slots > 0 else 0.0
     else:

@@ -140,7 +140,7 @@ def test_fluid_regression_fixture_step4_failures_and_validation_stay_clean() -> 
 
 
 def test_shape_belt_dead_end_still_uses_belt_unreachable_reason_only() -> None:
-    """Belt keeps ``pass2_reject_step4_unreachable_stub`` (exhausted only, not fluid counter)."""
+    """Belt dead-end: Pass2 uncertain rejects (pass2_reject_step4_unreachable_component)."""
 
     sink = p12_rp.new_pass2_route_probe_stats_sink()
     mineable: frozenset[Coord] = frozenset(
@@ -192,6 +192,7 @@ def test_shape_belt_dead_end_still_uses_belt_unreachable_reason_only() -> None:
     )
     assert int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) == 1
     assert int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) == 0
+    assert int(sink.get("pass2_reject_step4_unreachable_component_count", 0)) >= 1
 
 
 def _shape_belt_row(c: Coord) -> dict:

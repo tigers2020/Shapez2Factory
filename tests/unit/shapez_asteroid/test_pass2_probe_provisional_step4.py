@@ -283,3 +283,61 @@ def test_integrate_pass12_then_step4_no_quarantine_valid_layout() -> None:
     rep = finval.validate_final_mining_layout(r.map_after_routing)
     assert rep.connectivity_valid
     assert rep.disconnected_stub_count == 0
+
+
+def test_pass2_rejects_disconnected_component_even_if_probe_uncertain() -> None:
+    """Interior dead-end: uncertain + unreachable precheck → no commit, scratch unchanged."""
+
+    sink = p12_rp.new_pass2_route_probe_stats_sink()
+    mineable: frozenset[Coord] = frozenset(
+        [(5, 5), (5, 6), (5, 7)] + [(x, 5) for x in range(10, 55)]
+    )
+    cells = {
+        c: {
+            "x": c[0],
+            "y": c[1],
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "shape",
+        }
+        for c in mineable
+    }
+    baseline_trunk = frozenset((x, 5) for x in range(10, 55))
+    blocked_ring = frozenset({(4, 5), (6, 5), (5, 4), (4, 7), (6, 7), (5, 8)})
+    pack = p12_bc.Pass2RouteProbePack(
+        mineable=mineable,
+        asteroid=frozenset(),
+        cells=cells,
+        existing_layout_analysis=None,
+        stats_sink=sink,
+    )
+    scratch = p12_bc.Pass12LayoutScratch(transport_kind="shape_belt")
+    scratch.transport_cells = set(baseline_trunk)
+    scratch.blocked_cells = set()
+    baseline_transport = frozenset(scratch.transport_cells)
+    baseline_records = dict(scratch.placement_records)
+    cand = p12_bc.Pass12BundleCandidate(
+        blocked_cells=blocked_ring,
+        new_transport=frozenset({(5, 5)}),
+        stub_cell=(5, 5),
+        extractor_cell=(4, 5),
+        extension_facings=frozenset(),
+        extractor_output_dir=(1, 0),
+        placement_pass="pass2",
+    )
+
+    def is_ext(c: Coord) -> bool:
+        return c[0] >= 55
+
+    assert (
+        p12_bc.try_commit_pass2_bundle(
+            scratch,
+            cand,
+            is_external=is_ext,
+            pass2_route_probe_pack=pack,
+        )
+        is False
+    )
+    assert frozenset(scratch.transport_cells) == baseline_transport
+    assert scratch.placement_records == baseline_records
+    assert int(sink.get("pass2_reject_step4_unreachable_component_count", 0)) >= 1

@@ -27,6 +27,11 @@ _SEARCH_STATS_DIAG_KEYS: frozenset[str] = frozenset(
         "exterior_fallback_reason",
         "primary_existing_trunk_reachable_count",
         "fallback_external_goal_count",
+        "heap_pops",
+        "stop_reason",
+        "dijkstra_reachable_goal_count",
+        "dijkstra_reachable_trunk_goal_count",
+        "dijkstra_reachable_margin_goal_count",
     }
 )
 

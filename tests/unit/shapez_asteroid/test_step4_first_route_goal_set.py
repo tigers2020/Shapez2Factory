@@ -334,3 +334,29 @@ def test_patch_a_exterior_margin_matches_pass2_when_extra_restores_belt() -> Non
     )
     assert m0 == set()
     assert (10, 0) in m1
+
+
+def test_step4_first_route_empty_trunk_uses_margin_union_trunk_seed() -> None:
+    """§08: no committed trunk → raw goals are exterior margin ∪ per-kind trunk_seed."""
+
+    margin = {(20, 20), (21, 20)}
+    seeds_shape = {(10, 10), (11, 10)}
+    seeds_fluid = {(5, 5)}
+    trunk_seed_by_kind: dict[str, set[Coord]] = {
+        "shape_belt": set(seeds_shape),
+        "fluid_pipe": set(seeds_fluid),
+    }
+    g_belt = s4_goal.build_step4_goal_set(
+        "shape_belt",
+        committed_trunk_by_kind={},
+        exterior_margin_cells=set(margin),
+        trunk_seed_candidates_by_kind=trunk_seed_by_kind,
+    )
+    assert g_belt == set(margin) | seeds_shape
+    g_pipe = s4_goal.build_step4_goal_set(
+        "fluid_pipe",
+        committed_trunk_by_kind={},
+        exterior_margin_cells=set(margin),
+        trunk_seed_candidates_by_kind=trunk_seed_by_kind,
+    )
+    assert g_pipe == set(margin) | seeds_fluid

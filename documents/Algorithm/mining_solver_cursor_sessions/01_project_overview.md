@@ -10,7 +10,7 @@
 
 ---
 
-# Shapez2 Asteroid Mining Solver 개발 진행 보고서 v5.3
+# Shapez2 Asteroid Mining Solver 개발 진행 보고서 v5.10
 
 **Role: Solver Architecture Reviewer**
 
@@ -45,6 +45,8 @@ v5.7 문서 정합: **RouteZone 기본 cost**(`03_data_schema_dto.md` §11.1, `P
 v5.8 문서 정합: **§3.4 출하량·extension 비례·벨트/스페이스 벨트·유체·구간 누적 유량**, §3.6 capacity 표 갱신.
 
 v5.9 문서 정합: **1차 transport — max capacity 무시·누적 합산만**(§3.4·§3.6·§2.2, 후속에 capacity 검증 선택).
+
+v5.10 문서 정합: 상위 보고서 [`Shapez2 Asteroid Mining Solver logic.md`](../Shapez2%20Asteroid%20Mining%20Solver%20logic.md) v5.10 변경과 동기(§12.2 gain_ratio·§12.4 soft 데드락·§12.5 rerun 게이트·§4.3.1 attempt·§3.5↔§11.1·§15.4·§4.4↔§9.6). 세부 본문은 해당 파일·`03_data_schema_dto.md`·`10_step6_reclaim_loop.md`·`02_pipeline_control_flow.md`·`13_step9_validation.md` 조각을 본다.
 
 ```text
 1. Reclaim loop가 Pass3의 내부 transport 절약분을 역행하지 못하도록 budget gate 추가

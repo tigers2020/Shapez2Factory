@@ -302,30 +302,15 @@ def _commit_after_probe(
                         int(sink.get("pass2_reject_step4_stub_isolated_count", 0)) + 1
                     )
                     return False
-                fluid_unreachable = (
-                    state.transport_kind == "fluid_pipe"
-                    and gn > 0
+                unreachable_prec = (
+                    gn > 0
                     and not prec.reachable
                     and prec.stop_reason in ("exhausted", "budget")
                 )
-                belt_unreachable = (
-                    state.transport_kind != "fluid_pipe"
-                    and gn > 0
-                    and not prec.reachable
-                    and prec.stop_reason == "exhausted"
-                )
-                if fluid_unreachable or belt_unreachable:
+                if unreachable_prec:
                     payload_u: dict[str, Any] = dict(bundle_hint or {})
-                    if fluid_unreachable:
-                        payload_u["reason"] = "pass2_reject_step4_unreachable_fluid_stub"
-                        sink["pass2_reject_step4_unreachable_fluid_stub_count"] = (
-                            int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) + 1
-                        )
-                    else:
-                        payload_u["reason"] = "pass2_reject_step4_unreachable_stub"
-                        sink["pass2_reject_step4_unreachable_stub_count"] = (
-                            int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) + 1
-                        )
+                    payload_u["reason"] = "pass2_reject_step4_unreachable_component"
+                    payload_u["reject_reason"] = "step4_unreachable_component"
                     payload_u["stub_cell"] = candidate.stub_cell
                     payload_u["want_role"] = want_role
                     payload_u["pass2_step4_precheck"] = {
@@ -336,6 +321,17 @@ def _commit_after_probe(
                         "reachable_exterior_margin_count": prec.reachable_exterior_margin_count,
                     }
                     trace_bundle_reject_invalid_stub(trace_location, payload_u)
+                    sink["pass2_reject_step4_unreachable_component_count"] = (
+                        int(sink.get("pass2_reject_step4_unreachable_component_count", 0)) + 1
+                    )
+                    if state.transport_kind == "fluid_pipe":
+                        sink["pass2_reject_step4_unreachable_fluid_stub_count"] = (
+                            int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) + 1
+                        )
+                    else:
+                        sink["pass2_reject_step4_unreachable_stub_count"] = (
+                            int(sink.get("pass2_reject_step4_unreachable_stub_count", 0)) + 1
+                        )
                     return False
                 ok_comp, comp_detail = pass2_transport_stub_reaches_exterior_reachable_transport(
                     candidate.stub_cell,
@@ -343,6 +339,8 @@ def _commit_after_probe(
                     blocked_cells=blocked_after,
                     is_external=is_external,
                     reachable_goal_count=int(prec.reachable_goal_count),
+                    step4_goal_count=int(gn),
+                    pass2_precheck_reachable_goal_count=int(prec.reachable_goal_count),
                 )
                 sink["pass2_last_transport_component_gate"] = dict(comp_detail)
                 if not ok_comp:
@@ -353,6 +351,9 @@ def _commit_after_probe(
                     payload_c["want_role"] = want_role
                     payload_c["pass2_transport_component_gate"] = dict(comp_detail)
                     trace_bundle_reject_invalid_stub(trace_location, payload_c)
+                    sink["pass2_reject_step4_unreachable_component_count"] = (
+                        int(sink.get("pass2_reject_step4_unreachable_component_count", 0)) + 1
+                    )
                     if state.transport_kind == "fluid_pipe":
                         sink["pass2_reject_step4_unreachable_fluid_stub_count"] = (
                             int(sink.get("pass2_reject_step4_unreachable_fluid_stub_count", 0)) + 1

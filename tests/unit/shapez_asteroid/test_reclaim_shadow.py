@@ -1,4 +1,10 @@
-"""P4-A reclaim shadow: mineable_cur, exclusions, budget/gain trace (no commits)."""
+"""P4-A reclaim shadow: mineable_cur, exclusions, budget/gain trace (no commits).
+
+gain_ratio (§12.2): ``RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS`` divided by
+``additional_route_cost`` (RouteZone path sum). ``DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD`` is
+empirical, not a strict dimensionless physical ratio; see ``documents/Algorithm/
+Shapez2 Asteroid Mining Solver logic.md`` §12.2 (v5.10).
+"""
 
 from __future__ import annotations
 

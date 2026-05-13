@@ -96,6 +96,46 @@ def test_quarantined_unrouted_on_map_row_fails_geometry() -> None:
     assert r.geometry_valid is False
 
 
+def test_quarantined_unrouted_cannot_pass_final_validation() -> None:
+    """``placement_commit_state`` quarantined row must fail geometry (§15.1)."""
+
+    mining_map = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "belt",
+            "surface": "shape",
+            "placement_commit_state": "quarantined_unrouted",
+        },
+    ]
+    r = _final_validation.validate_final_mining_layout(mining_map)
+    assert r.quarantined_unrouted_count == 1
+    assert r.geometry_valid is False
+
+
+def test_final_validation_rejects_orphan_transport_component_by_kind() -> None:
+    """Orphan belt not reaching external margin → connectivity invalid + orphan count."""
+
+    mining_map: list[dict[str, Any]] = [
+        {
+            "x": 10,
+            "y": 10,
+            "role": "occupied",
+            "surface": "shape",
+            "layout_kind": "miner",
+            "t": "Layout_ShapeMiner",
+            "r": 0,
+        },
+        {"x": 11, "y": 10, "role": "belt", "surface": "shape"},
+        {"x": 12, "y": 10, "role": "belt", "surface": "shape"},
+        {"x": 50, "y": 50, "role": "belt", "surface": "shape"},
+    ]
+    r = _final_validation.validate_final_mining_layout(mining_map)
+    assert r.orphan_transport_count > 0
+    assert r.orphan_shape_belt_count > 0
+    assert r.connectivity_valid is False
+
+
 def test_step9_bounded_recovery_not_eligible_when_fixed_stub_removed() -> None:
     fv: dict[str, Any] = {
         "geometry_valid": False,

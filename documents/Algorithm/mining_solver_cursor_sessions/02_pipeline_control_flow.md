@@ -12,7 +12,7 @@
 
 ---
 
-## 4. 전체 Solver Pipeline v5.3
+## 4. 전체 Solver Pipeline v5.10
 
 v5에서는 Reclaim loop와 Recovery branch가 무한 루프를 만들지 않도록 **bounded control flow**를 명시한다.
 
@@ -138,6 +138,8 @@ STEP 7에서 동일 현상은 `post_reclaim_pass3_connectivity_break`로 분리�
      이어서 **`step4_routing_failure`와 동일한** unrouted quarantine·STEP 4 재시도 루틴(표 1행)으로 넘긴다.
 ```
 
+**§4.3.1 3번 remedial 경로 — attempt 귀속**: 전체 표·`recovery_return_policy` 코드 매핑은 [`Shapez2 Asteroid Mining Solver logic.md`](../Shapez2%20Asteroid%20Mining%20Solver%20logic.md) §4.3.1과 동일하다(본 조각은 중복을 피해 링크만 둔다).
+
 **§4.3.1 3번 vs 표 “실패 시”**: 표의 “실패 시”는 **Pass3 rollback·연결성 회복 시도 전부가 소진된 뒤**의 최종 상태다. 3번은 그 **이전**에 허용하는 **한 번의 STEP 4 remedial**이다. 3번이 성공해 Pass3가 통과하면 표의 “실패 시” 열은 적용되지 않는다.
 
 “Reclaim 종료 후” 연결성 깨짐은 STEP 5 시점에 발생할 수 없다. 그 경우는 STEP 7에서 `post_reclaim_pass3_connectivity_break`(§4.3.2)로 처리한다.
@@ -174,6 +176,8 @@ SOLVER_FAILURE:
 - capacity-safe trunk를 만들 수 없음
 - attempt limit 초과
 ```
+
+**§4.4 ↔ §9.6 `QUARANTINED_UNROUTED`**: §9.6 규칙 6에 따라 **Final validation(STEP 9) 시점**에는 `QUARANTINED_UNROUTED` placement가 **남아 있으면 안 된다.** `PARTIAL_SUCCESS`로 종료하려면 그 **이전** 단계에서 `ROUTED_CONFIRMED` 또는 `ROLLED_BACK`으로 정리한다. 상세는 [`Shapez2 Asteroid Mining Solver logic.md`](../Shapez2%20Asteroid%20Mining%20Solver%20logic.md) §4.4 본문.
 
 §15.4의 항목은 **hard invariant(§15.1–15.3)** 와 **soft optimization(품질 목표)** 을 분리해 해석한다. optimization만 실패하면 Final validation을 “실패 → validation_recovery”로 보내지 않고,
 결과 등급과 trace 경고로 처리한다(§15.4 참고).

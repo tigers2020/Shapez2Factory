@@ -72,6 +72,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_con
     Step4RoutingResult,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_dijkstra import (
+    DIJKSTRA_REACHABLE_GOAL_COUNT_KEY,
     dijkstra_route_step4,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_goal_trunk_seed import (  # noqa: E501
@@ -507,6 +508,17 @@ def run_step4_merge_aware_routing(
                 pcs_at_attempt: str | None = None
                 if placement_id is not None and placement_id in work_records:
                     pcs_at_attempt = work_records[placement_id].state.value
+                ex_nodes0 = int(search_stats.get("expanded_nodes") or 0)
+                d_rg0 = int(search_stats.get(DIJKSTRA_REACHABLE_GOAL_COUNT_KEY) or 0)
+                step4_unreachable_trap = bool(ex_nodes0 > 0 and d_rg0 == 0)
+                forced_err = "step4_unreachable_component" if step4_unreachable_trap else None
+                routing_fail_reason = (
+                    "step4_unreachable_component" if step4_unreachable_trap else "no_route"
+                )
+                placement_rollback_reason = routing_fail_reason
+                placement_context = (
+                    "step4_unreachable_component" if step4_unreachable_trap else "step4_no_route"
+                )
                 detail = _s4_fail_detail.build_step4_route_failure_detail(
                     placement_id=placement_id,
                     extractor_cell=ext_cell,
@@ -528,6 +540,7 @@ def run_step4_merge_aware_routing(
                     trunk_seed_candidate_count=len(trunk_seed_by_kind.get(tk, ())),
                     trunk_seed_cells=frozenset(trunk_seed_by_kind.get(tk, ())),
                     placement_commit_state_at_route_attempt=pcs_at_attempt,
+                    forced_last_error=forced_err,
                 )
                 if len(search_diag_samples) < 8:
                     exn = int(search_stats.get("expanded_nodes") or 0)
@@ -605,7 +618,11 @@ def run_step4_merge_aware_routing(
                         else:
                             recovery_rejected += 1
                             job_recovery_last_mode = "pass2_recovery:exhausted"
-                            job_recovery_last_err = str(detail.get("last_error") or "no_route")
+                            job_recovery_last_err = (
+                                "step4_unreachable_component"
+                                if step4_unreachable_trap
+                                else str(detail.get("last_error") or "no_route")
+                            )
                             recovery_last_mode = job_recovery_last_mode
                             recovery_last_error = job_recovery_last_err
                 if not recovered and placement_id is not None and placement_id in work_records:
@@ -680,16 +697,18 @@ def run_step4_merge_aware_routing(
                         work_records[placement_id] = apply_placement_commit_state_transition(
                             rec,
                             to=PlacementCommitState.QUARANTINED_UNROUTED,
-                            rollback_reason="no_route",
-                            context="step4_no_route",
+                            rollback_reason=placement_rollback_reason,
+                            context=placement_context,
                         )
                         quarantined.append(placement_id)
                         fd = placement_record_to_failure_dict(
                             work_records[placement_id],
-                            reason="no_route",
+                            reason=routing_fail_reason,
                         )
                         fd["step4_route_failure_detail"] = detail
                         fd["last_error"] = detail["last_error"]
+                        fd["rejected_reason"] = routing_fail_reason
+                        fd["rollback_reason"] = placement_rollback_reason
                         _s4_fail_detail.apply_routing_failure_detail_lifecycle(
                             detail,
                             quarantined=True,
@@ -751,11 +770,12 @@ def run_step4_merge_aware_routing(
                             "extractor_cell": list(ext_cell),
                             "stub_cell": list(stub_cell),
                             "transport_kind": tk,
-                            "reason": "no_route",
+                            "reason": routing_fail_reason,
                             "unrecoverable": True,
                             "last_error": detail["last_error"],
                             "recovery_trigger": RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
                             "step4_route_failure_detail": detail,
+                            "rejected_reason": routing_fail_reason,
                         }
                         rfd_u = detail.get("routing_failure_detail")
                         if isinstance(rfd_u, dict):

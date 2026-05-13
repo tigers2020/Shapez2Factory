@@ -71,6 +71,8 @@ Final validation recovery는 MAX_VALIDATION_RECOVERY_ATTEMPTS를 초과할 수 �
 
 **기본 측정 시점(정본, v5.3)**: **Pass1·Pass2 placement 확정 직후, STEP 4 merge-aware routing 이전**의 occupied/blocked 맵을 입력으로 쓴다. 구현체 간 수치 비교 가능성을 위해 **이 시점을 기본값으로 고정**한다. 연구·A/B용으로 STEP 4 직후 맵을 쓰는 변형이 필요하면 **별도 필드**(예: `optimization_baseline_phase: pre_step4 | post_step4`)와 별도 수치를 trace에 **추가**하고, 본 문서 §15.4 첫 항목 checklist는 **pre_step4**만을 말한다.
 
+**placement 집합 한계(정본, v5.10)**: baseline 입력 맵의 extractor·extension 집합은 **STEP 4 이전 확정분**이다. 이후 STEP 4에서 `QUARANTINED_UNROUTED` → `ROLLED_BACK` 등으로 배치가 제거되면 최종 결과의 placement 수는 baseline보다 적을 수 있다. “baseline 대비 내부 transport 감소”는 라우팅·Pass3 효과와 **배치 수 감소**가 혼재할 수 있음을 trace에서 구분한다.
+
 ```text
 - 입력 레이아웃: 위 기본 시점의 동일 occupied/blocked 맵.
 - goal set: STEP 4 첫 extractor와 **동일 규칙**의 exterior margin ∪ trunk_seed(§9.2)만 사용한다. merge·capacity는 적용하지 않는다.

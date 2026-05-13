@@ -55,6 +55,11 @@ ROUTING_FAILURE_DETAIL_KEYS: tuple[str, ...] = (
     "rolled_back",
     "step4_failure_category",
     "step4_failure_classification",
+    "goal_set_size",
+    "dijkstra_reachable_goal_count",
+    "dijkstra_reachable_trunk_goal_count",
+    "dijkstra_reachable_margin_goal_count",
+    "placement_commit_state_at_route_attempt",
 )
 
 # T1: flat top-level keys on every ``step4_route_failure_detail`` (debug NDJSON / replay rows).
@@ -93,6 +98,13 @@ STEP4_ROUTE_FAILURE_DETAIL_TOP_LEVEL_CANONICAL_KEYS: tuple[str, ...] = (
     "attempt_index",
     "rollback_reason",
     "rejected_reason",
+    "goal_set_size",
+    "dijkstra_reachable_goal_count",
+    "dijkstra_reachable_trunk_goal_count",
+    "dijkstra_reachable_margin_goal_count",
+    "placement_commit_state_at_route_attempt",
+    "stop_reason",
+    "transport_component_probe",
 )
 
 _REASON_SEVERITY: dict[str, int] = {
@@ -284,6 +296,11 @@ def build_routing_failure_detail_dict(
     rolled_back: bool,
     step4_failure_category: str,
     step4_failure_classification: dict[str, Any],
+    goal_set_size: int | None = None,
+    dijkstra_reachable_goal_count: int | None = None,
+    dijkstra_reachable_trunk_goal_count: int | None = None,
+    dijkstra_reachable_margin_goal_count: int | None = None,
+    placement_commit_state_at_route_attempt: str | None = None,
 ) -> dict[str, Any]:
     """Normalized STEP4 routing failure telemetry (instrumentation-only contract)."""
 
@@ -320,6 +337,15 @@ def build_routing_failure_detail_dict(
         "rolled_back": bool(rolled_back),
         "step4_failure_category": step4_failure_category,
         "step4_failure_classification": dict(step4_failure_classification),
+        "goal_set_size": int(goal_set_size if goal_set_size is not None else route_goal_set_size),
+        "dijkstra_reachable_goal_count": int(dijkstra_reachable_goal_count or 0),
+        "dijkstra_reachable_trunk_goal_count": int(dijkstra_reachable_trunk_goal_count or 0),
+        "dijkstra_reachable_margin_goal_count": int(dijkstra_reachable_margin_goal_count or 0),
+        "placement_commit_state_at_route_attempt": (
+            placement_commit_state_at_route_attempt
+            if placement_commit_state_at_route_attempt is not None
+            else placement_commit_state
+        ),
     }
     return {k: values[k] for k in ROUTING_FAILURE_DETAIL_KEYS}
 
@@ -360,6 +386,13 @@ def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]
         ):
             detail["step4_failure_classification"] = {}
         detail.setdefault("frontier_stop_reason", None)
+        detail.setdefault("goal_set_size", int(detail.get("route_goal_set_size") or 0))
+        detail.setdefault("dijkstra_reachable_goal_count", 0)
+        detail.setdefault("dijkstra_reachable_trunk_goal_count", 0)
+        detail.setdefault("dijkstra_reachable_margin_goal_count", 0)
+        detail.setdefault("placement_commit_state_at_route_attempt", None)
+        detail.setdefault("stop_reason", None)
+        detail.setdefault("transport_component_probe", None)
         return
 
     ex_id = rfd.get("extractor_id")
@@ -423,6 +456,19 @@ def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]
     else:
         detail["step4_failure_classification"] = {"raw": clf}
 
+    detail["goal_set_size"] = int(rfd.get("goal_set_size") or rfd.get("route_goal_set_size") or 0)
+    detail["dijkstra_reachable_goal_count"] = int(rfd.get("dijkstra_reachable_goal_count") or 0)
+    detail["dijkstra_reachable_trunk_goal_count"] = int(
+        rfd.get("dijkstra_reachable_trunk_goal_count") or 0
+    )
+    detail["dijkstra_reachable_margin_goal_count"] = int(
+        rfd.get("dijkstra_reachable_margin_goal_count") or 0
+    )
+    pc_at = rfd.get("placement_commit_state_at_route_attempt")
+    detail["placement_commit_state_at_route_attempt"] = (
+        pc_at if pc_at is not None else rfd.get("placement_commit_state")
+    )
+
     if "frontier_stop_reason" not in detail:
         detail["frontier_stop_reason"] = None
 
@@ -430,6 +476,7 @@ def mirror_canonical_step4_route_failure_detail_top_level(detail: dict[str, Any]
     detail.setdefault("attempt_index", 0)
     detail.setdefault("rollback_reason", None)
     detail.setdefault("rejected_reason", None)
+    detail.setdefault("transport_component_probe", None)
 
 
 def apply_routing_failure_detail_lifecycle(
@@ -540,6 +587,8 @@ def build_step4_route_failure_detail(
     trunk_seed_candidate_count: int | None = None,
     trunk_seed_cells: frozenset[Coord] | None = None,
     placement_commit_state_at_route_attempt: str | None = None,
+    forced_last_error: str | None = None,
+    transport_component_probe: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """One failure row: keys match ``step4_route_failure_detail`` trace contract."""
 
@@ -577,7 +626,9 @@ def build_step4_route_failure_detail(
     )
 
     stop = search_stats.get("stop_reason")
-    if stop == "budget":
+    if forced_last_error is not None:
+        last_error = str(forced_last_error)
+    elif stop == "budget":
         last_error = "no_route_budget"
     elif stop == "exhausted":
         last_error = "no_route_exhausted"
@@ -605,6 +656,9 @@ def build_step4_route_failure_detail(
         "expanded_nodes": int(search_stats.get("expanded_nodes", 0)),
         "fallback_reason": None,
         "last_error": last_error,
+        "stop_reason": stop,
+        "goal_set_size": len(goal_cells),
+        "placement_commit_state_at_route_attempt": placement_commit_state_at_route_attempt,
     }
     _s4sd.copy_search_diagnostics_to_detail(out, search_stats)
 
@@ -633,6 +687,18 @@ def build_step4_route_failure_detail(
         reachable_goal_count = len(reachable_goals)
         reachable_trunk_count = len(reachable_trunk_bfs)
         reachable_margin_count = len(reachable_margin_bfs)
+
+    if dg is not None:
+        dio_g = int(dg)
+        dio_t = int(search_stats.get(DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY) or 0)
+        dio_m = int(search_stats.get(DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY) or 0)
+    else:
+        dio_g = int(reachable_goal_count)
+        dio_t = int(reachable_trunk_count)
+        dio_m = int(reachable_margin_count)
+    out["dijkstra_reachable_goal_count"] = dio_g
+    out["dijkstra_reachable_trunk_goal_count"] = dio_t
+    out["dijkstra_reachable_margin_goal_count"] = dio_m
 
     blocked_reason, blocked_summary, nearest_blocked_cell, nearest_zone = (
         _stub_neighbor_block_classification(near)
@@ -726,6 +792,11 @@ def build_step4_route_failure_detail(
         rolled_back=False,
         step4_failure_category=cat,
         step4_failure_classification=classification_sub,
+        goal_set_size=len(goal_cells),
+        dijkstra_reachable_goal_count=dio_g,
+        dijkstra_reachable_trunk_goal_count=dio_t,
+        dijkstra_reachable_margin_goal_count=dio_m,
+        placement_commit_state_at_route_attempt=placement_commit_state_at_route_attempt,
     )
     out.setdefault("frontier_stop_reason", None)
     mirror_canonical_step4_route_failure_detail_top_level(out)
@@ -733,6 +804,10 @@ def build_step4_route_failure_detail(
     out["attempt_index"] = 0
     out["rollback_reason"] = None
     out["rejected_reason"] = None
+    if transport_component_probe:
+        out["transport_component_probe"] = dict(transport_component_probe)
+    else:
+        out.setdefault("transport_component_probe", None)
     out["step4_replay_overlay"] = _s4rov.build_step4_row_replay_overlay(
         placement_id=placement_id,
         stub_cell=stub_cell,

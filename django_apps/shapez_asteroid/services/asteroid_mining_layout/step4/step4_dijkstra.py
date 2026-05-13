@@ -25,45 +25,6 @@ DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY = "dijkstra_reachable_trunk_goal_count"
 DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY = "dijkstra_reachable_margin_goal_count"
 
 
-def _stamp_reachable_goal_counts_from_visited(
-    visited: set[Coord],
-    *,
-    stub_cell: Coord,
-    goal_cells: frozenset[Coord] | None,
-    trunk: frozenset[Coord],
-    margin_cells: frozenset[Coord] | None,
-    want_role: str,
-    is_external: Callable[[Coord], bool],
-    search_stats: dict[str, Any],
-) -> None:
-    """Count route goals hit by the search frontier (popped ``visited``); instrumentation only."""
-
-    rg = 0
-    rt = 0
-    rm = 0
-    for u in visited:
-        if u == stub_cell:
-            continue
-        if goal_cells is not None:
-            legacy_goal = step4_is_routing_goal(
-                u, want_role=want_role, trunk=trunk, is_external=is_external
-            )
-            reached = u in goal_cells or legacy_goal
-        else:
-            reached = step4_is_routing_goal(
-                u, want_role=want_role, trunk=trunk, is_external=is_external
-            )
-        if reached:
-            rg += 1
-            if u in trunk:
-                rt += 1
-            if margin_cells is not None and u in margin_cells:
-                rm += 1
-    search_stats[DIJKSTRA_REACHABLE_GOAL_COUNT_KEY] = rg
-    search_stats[DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY] = rt
-    search_stats[DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY] = rm
-
-
 def dijkstra_route_step4(
     stub_cell: Coord,
     *,
@@ -104,51 +65,58 @@ def dijkstra_route_step4(
     visited: set[Coord] = set()
     pops = 0
     max_frontier_size = 0
+    rg = rt = rm = 0
+    stop_reason: str | None = None
+    result: tuple[Coord, ...] | None = None
 
     if search_stats is not None:
         _s4sd.fill_goal_geometry_search_stats(stub_cell, goal_cells, search_stats)
 
-    def _stamp_time() -> None:
-        if search_stats is not None:
-            search_stats["search_time_ms"] = (time.perf_counter() - t0) * 1000.0
-
     while heap:
-        max_frontier_size = max(max_frontier_size, len(heap))
         pops += 1
         if pops > pop_cap:
-            if search_stats is not None:
-                _stamp_reachable_goal_counts_from_visited(
-                    visited,
-                    stub_cell=stub_cell,
-                    goal_cells=goal_cells,
-                    trunk=trunk,
-                    margin_cells=margin_cells,
-                    want_role=want_role,
-                    is_external=is_external,
-                    search_stats=search_stats,
-                )
-                search_stats["expanded_nodes"] = len(visited)
-                search_stats["heap_pops"] = pops
-                search_stats["stop_reason"] = "budget"
-                search_stats["max_frontier_size"] = max_frontier_size
-                search_stats["frontier_stop_reason"] = search_stats["stop_reason"]
-                _stamp_time()
-            return None
+            max_frontier_size = max(max_frontier_size, len(heap))
+            stop_reason = "budget"
+            break
         d, u = heapq.heappop(heap)
+        max_frontier_size = max(max_frontier_size, len(heap))
         if u in visited:
             continue
         if d > dist.get(u, float("inf")):
             continue
         visited.add(u)
+
         if goal_cells is not None:
-            legacy_goal = step4_is_routing_goal(
-                u, want_role=want_role, trunk=trunk, is_external=is_external
-            )
-            reached = u != stub_cell and (u in goal_cells or legacy_goal)
+            if u in goal_cells:
+                reached = u != stub_cell
+                if search_stats is not None and u != stub_cell:
+                    rg += 1
+                    if u in trunk:
+                        rt += 1
+                    if margin_cells is not None and u in margin_cells:
+                        rm += 1
+            else:
+                legacy_goal = step4_is_routing_goal(
+                    u, want_role=want_role, trunk=trunk, is_external=is_external
+                )
+                reached = u != stub_cell and legacy_goal
+                if search_stats is not None and u != stub_cell and legacy_goal:
+                    rg += 1
+                    if u in trunk:
+                        rt += 1
+                    if margin_cells is not None and u in margin_cells:
+                        rm += 1
         else:
             reached = step4_is_routing_goal(
                 u, want_role=want_role, trunk=trunk, is_external=is_external
             )
+            if search_stats is not None and u != stub_cell and reached:
+                rg += 1
+                if u in trunk:
+                    rt += 1
+                if margin_cells is not None and u in margin_cells:
+                    rm += 1
+
         if reached:
             chain: list[Coord] = []
             cur: Coord | None = u
@@ -156,24 +124,9 @@ def dijkstra_route_step4(
                 chain.append(cur)
                 cur = prev[cur]
             chain.reverse()
-            if search_stats is not None:
-                _stamp_reachable_goal_counts_from_visited(
-                    visited,
-                    stub_cell=stub_cell,
-                    goal_cells=goal_cells,
-                    trunk=trunk,
-                    margin_cells=margin_cells,
-                    want_role=want_role,
-                    is_external=is_external,
-                    search_stats=search_stats,
-                )
-                search_stats["expanded_nodes"] = len(visited)
-                search_stats["heap_pops"] = pops
-                search_stats["stop_reason"] = "success"
-                search_stats["max_frontier_size"] = max_frontier_size
-                search_stats["frontier_stop_reason"] = search_stats["stop_reason"]
-                _stamp_time()
-            return tuple(chain)
+            result = tuple(chain)
+            stop_reason = "success"
+            break
 
         x, y = u
         for v in neighbors4(x, y):
@@ -196,21 +149,19 @@ def dijkstra_route_step4(
                 prev[v] = u
                 heapq.heappush(heap, (nd, v))
         max_frontier_size = max(max_frontier_size, len(heap))
+
+    if stop_reason is None:
+        stop_reason = "exhausted"
+
     if search_stats is not None:
-        _stamp_reachable_goal_counts_from_visited(
-            visited,
-            stub_cell=stub_cell,
-            goal_cells=goal_cells,
-            trunk=trunk,
-            margin_cells=margin_cells,
-            want_role=want_role,
-            is_external=is_external,
-            search_stats=search_stats,
-        )
+        search_stats[DIJKSTRA_REACHABLE_GOAL_COUNT_KEY] = rg
+        search_stats[DIJKSTRA_REACHABLE_TRUNK_GOAL_COUNT_KEY] = rt
+        search_stats[DIJKSTRA_REACHABLE_MARGIN_GOAL_COUNT_KEY] = rm
         search_stats["expanded_nodes"] = len(visited)
         search_stats["heap_pops"] = pops
-        search_stats["stop_reason"] = "exhausted"
+        search_stats["stop_reason"] = stop_reason
         search_stats["max_frontier_size"] = max_frontier_size
-        search_stats["frontier_stop_reason"] = search_stats["stop_reason"]
-        _stamp_time()
-    return None
+        search_stats["frontier_stop_reason"] = stop_reason
+        search_stats["search_time_ms"] = (time.perf_counter() - t0) * 1000.0
+
+    return result

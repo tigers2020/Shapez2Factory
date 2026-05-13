@@ -124,6 +124,10 @@ PASS12_TRY_COMMIT_PASS1_BUNDLE_TRACE_LOCATION = "pass12_bundle_commit.try_commit
 PASS12_TRY_COMMIT_PASS2_BUNDLE_TRACE_LOCATION = "pass12_bundle_commit.try_commit_pass2_bundle"
 
 # --- P4 reclaim tuning (§12.2); values only may change ---
+# gain_ratio (MVP) = RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS /
+#     additional_route_cost (RouteZone path sum).
+# Not a strict dimensionless physical ratio — threshold is empirical;
+# retune both if either side changes.
 DEFAULT_RECLAIM_GAIN_RATIO_THRESHOLD = 1.5
 MAX_RECLAIM_INTERNAL_TRANSPORT_SPEND_RATIO = 0.35
 MIN_INTERNAL_TRANSPORT_SPEND_WHEN_NO_PASS3_SAVINGS = 1
@@ -131,6 +135,7 @@ MIN_INTERNAL_TRANSPORT_SPEND_WHEN_NO_PASS3_SAVINGS = 1
 MAX_RECLAIM_INCREMENTAL_ROUTE_LENGTH_RATIO = 1.20
 
 # Expected mining throughput gain (slots) for a minimal miner + extension shadow bundle.
+# Used as the gain numerator for §12.2 gain_ratio vs RouteZone path cost (see doc v5.10).
 RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS = 2.0
 
 # §12.6 — P4 commit loop vs per-scan bundle-eval cap (separate contracts).

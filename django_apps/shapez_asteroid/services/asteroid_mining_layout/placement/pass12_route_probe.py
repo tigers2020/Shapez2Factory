@@ -96,6 +96,8 @@ def pass2_transport_stub_reaches_exterior_reachable_transport(
     blocked_cells: frozenset[Coord],
     is_external: Callable[[Coord], bool],
     reachable_goal_count: int,
+    step4_goal_count: int = 0,
+    pass2_precheck_reachable_goal_count: int = 0,
 ) -> tuple[bool, dict[str, Any]]:
     """True iff ``stub_cell``'s transport-only component intersects exterior-reachable transport.
 
@@ -105,15 +107,17 @@ def pass2_transport_stub_reaches_exterior_reachable_transport(
 
     When there is no exterior-reachable transport yet (e.g. first-route island: merged graph has
     only this stub fragment), returns True and ``reject_reason``
-    ``skipped_no_exterior_reachable_transport`` so Pass2 does not hard-block seeding that Pass1 /
-    STEP4 still must connect. If other transport exists but nothing reaches external (interior
-    island), the stub must lie in the same transport component as some other cell; otherwise
-    returns False with ``step4_unreachable_component_no_goals``.
+    ``skipped_no_exterior_reachable_transport`` **only** if STEP4 goal count is zero or the bounded
+    precheck saw at least one reachable goal. If ``step4_goal_count > 0`` and the precheck found
+    ``pass2_precheck_reachable_goal_count == 0``, returns False: interior transport must not mask
+    a disconnected stub when goals exist (Algorithm §07/§08).
     """
 
     detail: dict[str, Any] = {
         "component_probe_kind": "transport_exterior_reachable_overlap",
         "reachable_goal_count": int(reachable_goal_count),
+        "step4_goal_count": int(step4_goal_count),
+        "pass2_precheck_reachable_goal_count": int(pass2_precheck_reachable_goal_count),
     }
     exterior_reachable = frozenset(
         finval.transport_cells_reaching_external(
@@ -142,10 +146,16 @@ def pass2_transport_stub_reaches_exterior_reachable_transport(
         detail["frontier_blocked_ratio"] = ratio
         detail["nearest_external_distance"] = nearest
         if not others:
+            if step4_goal_count > 0 and pass2_precheck_reachable_goal_count == 0:
+                detail["reject_reason"] = "step4_unreachable_component"
+                return False, detail
             detail["reject_reason"] = "skipped_no_exterior_reachable_transport"
             return True, detail
         if not (visited & others):
             detail["reject_reason"] = "step4_unreachable_component_no_goals"
+            return False, detail
+        if step4_goal_count > 0 and pass2_precheck_reachable_goal_count == 0:
+            detail["reject_reason"] = "step4_unreachable_component"
             return False, detail
         detail["reject_reason"] = "skipped_no_exterior_reachable_transport"
         return True, detail
@@ -201,6 +211,7 @@ def new_pass2_route_probe_stats_sink() -> dict[str, Any]:
         "pass2_reject_step4_stub_isolated_count": 0,
         "pass2_reject_step4_unreachable_stub_count": 0,
         "pass2_reject_step4_unreachable_fluid_stub_count": 0,
+        "pass2_reject_step4_unreachable_component_count": 0,
         "reachable_component_sample_by_size": {},
     }
 

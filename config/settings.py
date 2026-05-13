@@ -9,45 +9,28 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# If set, successful POST /api/asteroid/copy-preview/ writes encrypt code + decoded JSON here.
-SHAPEZ_COPY_DEBUG_DIR = (os.environ.get("SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
+# SHAPEZ_* / SOLVER_GRAPH_* 런타임 플래그는 ``shapez_runtime_flags`` 참고.
+from . import shapez_runtime_flags as _shapez_runtime_flags  # noqa: E402
 
-# Optional mining-layout invariant checks (env: 1/true/yes/on).
-# Default is OFF: zero overhead on normal requests; turn on in dev/CI when debugging
-# split-brain between scratch transport, map rows, or routing_state vs belts on map.
-_truthy_env = {"1", "true", "yes", "on"}
+SHAPEZ_COPY_DEBUG_DIR = _shapez_runtime_flags.SHAPEZ_COPY_DEBUG_DIR
 SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET = (
-    os.environ.get("SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET", "").strip().lower()
-    in _truthy_env
+    _shapez_runtime_flags.SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET
 )
-# When True: before returning from build_solver_timeline, assert protected corridors in
-# routing_state match shape_belt/fluid_pipe cells on the final map (STEP9 assertion gate).
-# Default OFF so production/copy-preview is not killed by a bad corner case; enable locally
-# or in CI via SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE=1. Tests use @override_settings(True).
 SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE = (
-    os.environ.get("SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE", "").strip().lower() in _truthy_env
+    _shapez_runtime_flags.SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE
 )
-# Pass12 merged-seed: optional relaxed stub + rotation recovery for preserved miners.
-# Default OFF; enable locally via SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY=1.
 SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY = (
-    os.environ.get("SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY", "").strip().lower() in _truthy_env
+    _shapez_runtime_flags.SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY
 )
-# Pass12 merged-seed: inferred stub → same-kind trunk BFS + NEAR_TRANSPORT defer-queue retries.
-# Relaxed rotation recovery(위 ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY``)와 별개.
-# Asteroid/플래너 기본 ON; 끄려면 ``SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=0`` 등.
-SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = os.environ.get(
-    "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY", "true"
-).strip().lower() not in {"0", "false", "no", "off"}
-# NDJSON: ``pass12_stub_route_recovery_disabled_by_flag=true`` ↔ 이 값이 False일 때;
-# ``attempted_count=0``은 stub-route recovery 미시도로 정상일 수 있음.
-# existing_fluid_layout: allow Pass2 internal fill on mineable voids while keeping Pass1
-# suppression (preserve-first). Default ON so internal mineable voids can be filled while
-# preserve bundles stay protected by ``blocked_cells``; set
-# ``SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED=0`` (or false/no/off) to fall back to the
-# legacy "skip both loops" behavior.
-SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED = os.environ.get(
-    "SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED", "true"
-).strip().lower() not in {"0", "false", "no", "off"}
+SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = (
+    _shapez_runtime_flags.SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY
+)
+SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED = (
+    _shapez_runtime_flags.SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED
+)
+SOLVER_GRAPH_PREVIEW_RENDERER = _shapez_runtime_flags.SOLVER_GRAPH_PREVIEW_RENDERER
+SOLVER_GRAPH_PREVIEW_STORAGE = _shapez_runtime_flags.SOLVER_GRAPH_PREVIEW_STORAGE
+SOLVER_GRAPH_PREVIEW_CACHE_DIR = _shapez_runtime_flags.SOLVER_GRAPH_PREVIEW_CACHE_DIR
 
 SECRET_KEY = "django-insecure-scaffold-only-change-before-deploy"
 DEBUG = True
@@ -164,19 +147,7 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
-# playwright_png: Node + Playwright (render_graph_preview.mjs). Often missing on PaaS runtime.
-# noop: skip PNG graph thumbnails; Quick Solver 3D still uses /api/shape-preview/ in the browser.
-# Macro graph tiles use preview_scene + sprite composition; warm PNG is optional — set noop on
-# hosts without Node/Chromium to avoid timeouts (see graph_preview Playwright subprocess).
-SOLVER_GRAPH_PREVIEW_RENDERER = (
-    os.environ.get("SOLVER_GRAPH_PREVIEW_RENDERER", "playwright_png").strip().lower()
-)
-# filesystem: PNG files under SOLVER_GRAPH_PREVIEW_CACHE_DIR (ephemeral on many PaaS).
-# database: store PNG bytes in web.GraphPreviewImage (Render Free friendly).
-SOLVER_GRAPH_PREVIEW_STORAGE = (
-    os.environ.get("SOLVER_GRAPH_PREVIEW_STORAGE", "filesystem").strip().lower()
-)
-SOLVER_GRAPH_PREVIEW_CACHE_DIR = BASE_DIR / ".graph_preview_cache"
+# ``SOLVER_GRAPH_PREVIEW_*``: ``shapez_runtime_flags`` (PNG noop·filesystem/DB).
 
 # Public Ko-fi profile when SUPPORT_KOFI_URL is unset or blank (set to another URL to override).
 SUPPORT_KOFI_URL = (

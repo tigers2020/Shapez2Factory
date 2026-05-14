@@ -12,6 +12,7 @@
 - [ ] PR-C~F: v2 STEP0→10 본 구현(현재는 STEP1 reconstruction + copy-preview 분기 일부만 진행 가능)
 - [x] PR-G: `SHAPEZ_MINING_LAYOUT_ENGINE=v2` 시 `copy_preview`의 **existing_layout_analysis**를 v2 `analyze_decoded_layout` JSON으로 전환·`map_timeline`은 당분간 `blueprint_map_summary` 유지 (2026-05-14 구현)
 - [x] **PR-H (2026-05-14)**: 런타임 v1 import·zip 부트스트랩·`include_solver_*` 제거; 스텁 `asteroid_mining_layout_v1_deprecated/`. 동시대 문서·플랜 묶음: [v1 문서 아카이브](../archive/2026-05-mining-layout-v1-era/README.md). (물리 대규모 리네임 단독 PR은 선택)
+- Pass1 Stabilization-P1 권위: 구현·replay UI 앵커는 v2 `placement/pass1_outer.py` + `placement/bundle_candidate.py`; v1 `try_commit_pass1_bundle` / `Pass12BundleCandidate`는 **아카이브 참고만** (체크리스트·Cursor 컨텍스트 drift 방지).
 
 ### 공통 · 스키마
 

@@ -313,6 +313,176 @@ def test_pass1_probe_output_stub_highlight_only() -> None:
     assert by_p[(11, 10)].get("pass1_replay_role") == "pass1_probe_stub_ok"
 
 
+def test_pass1_replay_extension_overlay_extension_tile_metadata() -> None:
+    """Committed extension_cells get extension layout_kind / t / r; stub stays unbadged."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
+        preview_reconstruction_timeline as pv,
+    )
+
+    mineable_rows = [
+        {"x": 9, "y": 10, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 10, "y": 10, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 11, "y": 10, "role": "belt", "surface": "shape"},
+    ]
+    committed_shape = [
+        {
+            "extractor_cell": [10, 10],
+            "output_stub_cell": [11, 10],
+            "extension_cells": [[9, 10]],
+            "transport_kind": "shape_belt",
+            "output_direction": [1, 0],
+        }
+    ]
+    rows_shape = pv._mining_map_with_pass1_replay_overlay(
+        mineable_rows,
+        frame_id="f_shape",
+        source_kind=None,
+        dominant="shape",
+        committed_bundles=committed_shape,
+        highlight_event=None,
+    )
+    by_s = {(int(r["x"]), int(r["y"])): r for r in rows_shape}
+    ext_shape = by_s[(9, 10)]
+    assert ext_shape.get("pass1_replay_role") == "pass1_extension_0_0"
+    assert ext_shape.get("layout_kind") == "extension"
+    assert ext_shape.get("t") == "Layout_ShapeMinerExtension"
+    assert ext_shape.get("surface") == "shape"
+    assert ext_shape.get("r") == 0
+    assert by_s[(10, 10)].get("layout_kind") == "miner"
+    assert by_s[(11, 10)].get("pass1_replay_role") is None
+
+    mineable_fluid = [
+        {"x": 10, "y": 9, "role": "occupied", "surface": "fluid", "layout_kind": "asteroid_field"},
+        {"x": 10, "y": 10, "role": "occupied", "surface": "fluid", "layout_kind": "asteroid_field"},
+        {"x": 11, "y": 10, "role": "pipe", "surface": "fluid"},
+    ]
+    committed_fluid = [
+        {
+            "extractor_cell": [10, 10],
+            "output_stub_cell": [11, 10],
+            "extension_cells": [[10, 9]],
+            "transport_kind": "fluid_pipe",
+            "output_direction": [1, 0],
+        }
+    ]
+    rows_fluid = pv._mining_map_with_pass1_replay_overlay(
+        mineable_fluid,
+        frame_id="f_fluid",
+        source_kind=None,
+        dominant="fluid",
+        committed_bundles=committed_fluid,
+        highlight_event=None,
+    )
+    by_f = {(int(r["x"]), int(r["y"])): r for r in rows_fluid}
+    ext_fluid = by_f[(10, 9)]
+    assert ext_fluid.get("pass1_replay_role") == "pass1_extension_0_0"
+    assert ext_fluid.get("layout_kind") == "fluid_extension"
+    assert ext_fluid.get("t") == "Layout_FluidMinerExtension"
+    assert ext_fluid.get("surface") == "fluid"
+    assert ext_fluid.get("r") == 1
+    assert by_f[(10, 10)].get("layout_kind") == "fluid_miner"
+
+
+def test_pass1_extension_orientation_dirs_branching_from_extractor() -> None:
+    """Two first-hop extensions share extractor parent; each ``r`` faces that parent."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
+        preview_reconstruction_timeline as pv,
+    )
+
+    extr = (10, 10)
+    dirs = pv._pass1_extension_orientation_dirs(extr, [[10, 11], [9, 10]])
+    assert dirs == ((0, -1), (1, 0))
+
+
+def test_pass1_extension_orientation_dirs_chain() -> None:
+    """Second extension attaches to first; both orient toward their immediate parent."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
+        preview_reconstruction_timeline as pv,
+    )
+
+    dirs = pv._pass1_extension_orientation_dirs((10, 10), [[9, 10], [8, 10]])
+    assert dirs == ((1, 0), (1, 0))
+
+
+def test_pass1_replay_branching_extensions_independent_r() -> None:
+    """Sibling extensions under one extractor get distinct parent-facing rotations."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
+        preview_reconstruction_timeline as pv,
+    )
+
+    mineable_rows = [
+        {"x": 9, "y": 10, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 10, "y": 10, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 10, "y": 11, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 11, "y": 10, "role": "belt", "surface": "shape"},
+    ]
+    committed = [
+        {
+            "extractor_cell": [10, 10],
+            "output_stub_cell": [11, 10],
+            "extension_cells": [[10, 11], [9, 10]],
+            "transport_kind": "shape_belt",
+            "output_direction": [1, 0],
+        }
+    ]
+    rows = pv._mining_map_with_pass1_replay_overlay(
+        mineable_rows,
+        frame_id="f_branch",
+        source_kind=None,
+        dominant="shape",
+        committed_bundles=committed,
+        highlight_event=None,
+    )
+    by_c = {(int(r["x"]), int(r["y"])): r for r in rows}
+    south = by_c[(10, 11)]
+    west = by_c[(9, 10)]
+    assert south.get("pass1_replay_role") == "pass1_extension_0_0"
+    assert west.get("pass1_replay_role") == "pass1_extension_0_1"
+    assert south.get("layout_kind") == "extension"
+    assert west.get("layout_kind") == "extension"
+    assert south.get("r") == 3
+    assert west.get("r") == 0
+    assert by_c[(11, 10)].get("pass1_replay_role") is None
+
+
+def test_pass1_replay_extension_transport_kind_defaults_shape() -> None:
+    """Missing ``transport_kind`` in replay bundle JSON defaults to shape belt semantics."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
+        preview_reconstruction_timeline as pv,
+    )
+
+    mineable_rows = [
+        {"x": 9, "y": 10, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 10, "y": 10, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 11, "y": 10, "role": "belt", "surface": "shape"},
+    ]
+    committed = [
+        {
+            "extractor_cell": [10, 10],
+            "output_stub_cell": [11, 10],
+            "extension_cells": [[9, 10]],
+            "output_direction": [1, 0],
+        }
+    ]
+    rows = pv._mining_map_with_pass1_replay_overlay(
+        mineable_rows,
+        frame_id="f_no_tk",
+        source_kind=None,
+        dominant="shape",
+        committed_bundles=committed,
+        highlight_event=None,
+    )
+    ext = {(int(r["x"]), int(r["y"])): r for r in rows}[(9, 10)]
+    assert ext.get("layout_kind") == "extension"
+    assert ext.get("t") == "Layout_ShapeMinerExtension"
+    assert ext.get("surface") == "shape"
+
+
 def test_pass1_occupied_cells_still_includes_stub() -> None:
     from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import BBox
     from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (

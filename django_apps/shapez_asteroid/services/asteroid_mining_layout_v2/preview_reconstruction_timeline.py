@@ -586,6 +586,92 @@ def _output_direction_from_bundle(b: dict[str, Any]) -> tuple[int, int]:
     return (stub[0] - extr[0], stub[1] - extr[1])
 
 
+def _transport_kind_from_bundle_dict(b: dict[str, Any]) -> TransportKind:
+    if b.get("transport_kind") == TransportKind.FLUID_PIPE.value:
+        return TransportKind.FLUID_PIPE
+    return TransportKind.SHAPE_BELT
+
+
+def _pass1_extension_orientation_dirs(
+    extractor: BlueprintCell,
+    extension_cells_json: Any,
+) -> tuple[tuple[int, int], ...]:
+    """Replay lists extensions in commit order; parent is always in ``{extractor} ∪ prior``.
+
+    Matches ``grow_extension_cells`` emission order (``PlacementBundle.extensions``).
+    """
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement import (
+        bundle_candidate as _bc,
+    )
+
+    seq = tuple(_coord_from_jsonish(x) for x in extension_cells_json or ())
+    placed: set[BlueprintCell] = {extractor}
+    out_dirs: list[tuple[int, int]] = []
+    for eco in seq:
+        parents = [p for p in placed if any(_bc.step_cell(p, d) == eco for d in _bc.CARDINAL_DIRS)]
+        if not parents:
+            logger.warning("pass1 replay extension has no parent in placed set eco=%s", eco)
+            out_dirs.append((0, -1))
+            placed.add(eco)
+            continue
+        if len(parents) != 1:
+            logger.warning(
+                "pass1 replay extension parent ambiguous eco=%s parents=%s",
+                eco,
+                parents,
+            )
+            par = min(parents, key=lambda c: (c[1], c[0]))
+        else:
+            par = parents[0]
+        out_dirs.append(_bc.orientation_toward_parent(eco, par))
+        placed.add(eco)
+    return tuple(out_dirs)
+
+
+def _pass1_committed_extension_mining_row(
+    eco: BlueprintCell,
+    *,
+    bundle: dict[str, Any],
+    orientation_toward_parent_dir: tuple[int, int],
+    pass1_role: str,
+    frame_id: str,
+    source_kind: str | None,
+    base_row: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """mining_map row for Pass1 extension body (decoded-map compatible for UI ``renderPlot``)."""
+
+    tk = _transport_kind_from_bundle_dict(bundle)
+    if tk is TransportKind.FLUID_PIPE:
+        surface = "fluid"
+        layout_kind = "fluid_extension"
+        t_str = "Layout_FluidMinerExtension"
+    else:
+        surface = "shape"
+        layout_kind = "extension"
+        t_str = "Layout_ShapeMinerExtension"
+    try:
+        r_val = rotation_r_for_output_direction(
+            orientation_toward_parent_dir[0],
+            orientation_toward_parent_dir[1],
+        )
+    except ValueError:
+        r_val = 0
+    if base_row is not None:
+        body = dict(base_row)
+    else:
+        body = {"x": eco[0], "y": eco[1], "role": "occupied", "surface": surface}
+    body["x"] = eco[0]
+    body["y"] = eco[1]
+    body["role"] = "occupied"
+    body["surface"] = surface
+    body["layout_kind"] = layout_kind
+    body["r"] = r_val
+    body["t"] = t_str
+    body["pass1_replay_role"] = pass1_role
+    return _stamp_row(body, frame_id=frame_id, source_kind=source_kind)
+
+
 def _pass1_committed_extractor_mining_row(
     extr: BlueprintCell,
     *,
@@ -597,8 +683,8 @@ def _pass1_committed_extractor_mining_row(
 ) -> dict[str, Any]:
     """mining_map row for Pass1 extractor body (decoded-map compatible for UI ``renderPlot``)."""
 
-    tk_raw = bundle.get("transport_kind")
-    if tk_raw == TransportKind.FLUID_PIPE.value:
+    tk = _transport_kind_from_bundle_dict(bundle)
+    if tk is TransportKind.FLUID_PIPE:
         surface = "fluid"
         layout_kind = "fluid_miner"
         t_str = "Layout_FluidMiner"
@@ -648,16 +734,18 @@ def _mining_map_with_pass1_replay_overlay(
             source_kind=source_kind,
             base_row=prev_e,
         )
+        orient_dirs = _pass1_extension_orientation_dirs(extr, b.get("extension_cells", ()))
         for j, ex in enumerate(b.get("extension_cells", ())):
             eco = _coord_from_jsonish(ex)
             prev = cells.get(eco)
-            cells[eco] = _pass1_overlay_cell_row(
-                eco[0],
-                eco[1],
+            odir = orient_dirs[j] if j < len(orient_dirs) else (0, -1)
+            cells[eco] = _pass1_committed_extension_mining_row(
+                eco,
+                bundle=b,
+                orientation_toward_parent_dir=odir,
                 pass1_role=f"pass1_extension_{bi}_{j}",
                 frame_id=frame_id,
                 source_kind=source_kind,
-                dominant=dominant,
                 base_row=prev,
             )
 

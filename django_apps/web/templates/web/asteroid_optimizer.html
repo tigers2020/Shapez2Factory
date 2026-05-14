@@ -76,7 +76,11 @@
       data-map-step-solver_pass3_transport="{% filter force_escape %}{% trans 'Solver: Pass3 transport' %}{% endfilter %}"
       data-map-step-solver_validate="{% filter force_escape %}{% trans 'Solver: Final validation' %}{% endfilter %}"
       data-map-step-v2_recon_transport_shell="{% filter force_escape %}{% trans 'v2: Transport & extraction shell' %}{% endfilter %}"
+      data-map-step-v2_recon_strip_transport="{% filter force_escape %}{% trans 'v2: Transportation removed (preview)' %}{% endfilter %}"
+      data-map-step-v2_recon_strip_extractors="{% filter force_escape %}{% trans 'v2: Extractors removed (preview)' %}{% endfilter %}"
+      data-map-step-v2_recon_strip_extensions="{% filter force_escape %}{% trans 'v2: Extensions removed (preview)' %}{% endfilter %}"
       data-map-step-v2_recon_interior_void="{% filter force_escape %}{% trans 'v2: Interior void (inferred)' %}{% endfilter %}"
+      data-map-step-v2_recon_inner_patch="{% filter force_escape %}{% trans 'v2: Inner patch (shell + void)' %}{% endfilter %}"
       data-map-step-v2_recon_mineable="{% filter force_escape %}{% trans 'v2: Mineable placement cells' %}{% endfilter %}"
       data-map-step-v2_pass1_candidates="{% filter force_escape %}{% trans 'v2: Pass1 candidates' %}{% endfilter %}"
       data-map-step-v2_pass1_provisional="{% filter force_escape %}{% trans 'v2: Pass1 provisional commit' %}{% endfilter %}"
@@ -90,7 +94,7 @@
       data-msg-solver-replay-no-mining-map="{% filter force_escape %}{% trans 'This solver frame has no mining_map; map may be empty until another frame is selected.' %}{% endfilter %}"
       data-playback-title-map-only="{% filter force_escape %}{% trans 'Map steps' %}{% endfilter %}"
       data-playback-title-map-solver="{% filter force_escape %}{% trans 'Map + solver steps' %}{% endfilter %}"
-      data-msg-solver-redecode-hint="{% filter force_escape %}{% trans 'With “Show solver overlay” on, click Decode again to append solver timeline steps after the six map-build steps.' %}{% endfilter %}"
+      data-msg-solver-redecode-hint="{% filter force_escape %}{% trans 'With “Show solver overlay” on, click Decode again to append solver timeline steps after the map preview steps.' %}{% endfilter %}"
       data-msg-p4-route-overlay="{% filter force_escape %}{% trans 'P4 reclaim last B2 route cells' %}{% endfilter %}"
       data-msg-p4-soft-overlay="{% filter force_escape %}{% trans 'P4 soft protected candidates (last commit)' %}{% endfilter %}"
       data-msg-p4-soft-replace-old-overlay="{% filter force_escape %}{% trans 'P4 soft repair old cells (last session)' %}{% endfilter %}"
@@ -3086,12 +3090,10 @@
       p4Cells.softReplaceOld.length ||
       p4Cells.softReplaceNew.length
     ) {
-      var p4RouteTitle = root.getAttribute("data-msg-p4-route-overlay") || "";
-      var p4SoftTitle = root.getAttribute("data-msg-p4-soft-overlay") || "";
-      var p4SoftReplaceOldTitle =
-        root.getAttribute("data-msg-p4-soft-replace-old-overlay") || "";
-      var p4SoftReplaceNewTitle =
-        root.getAttribute("data-msg-p4-soft-replace-new-overlay") || "";
+      var p4RouteTitle = root.dataset.msgP4RouteOverlay || "";
+      var p4SoftTitle = root.dataset.msgP4SoftOverlay || "";
+      var p4SoftReplaceOldTitle = root.dataset.msgP4SoftReplaceOldOverlay || "";
+      var p4SoftReplaceNewTitle = root.dataset.msgP4SoftReplaceNewOverlay || "";
       var gP4 = document.createElementNS(svgNs, "g");
       gP4.setAttribute("class", "am-p4-last-commit-overlay");
       var gP4Soft = document.createElementNS(svgNs, "g");
@@ -3133,9 +3135,9 @@
     }
     if (rrPts.removed.length || rrPts.added.length) {
       var titleRouteRm =
-        root.getAttribute("data-msg-route-replay-removed") || "";
+        root.dataset.msgRouteReplayRemoved || "";
       var titleRouteAd =
-        root.getAttribute("data-msg-route-replay-added") || "";
+        root.dataset.msgRouteReplayAdded || "";
       var gRR = document.createElementNS(svgNs, "g");
       gRR.setAttribute("class", "am-route-replay-cells-overlay");
       var gRRm = document.createElementNS(svgNs, "g");

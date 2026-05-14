@@ -65,6 +65,9 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
     ``map_timeline`` is ``v2_preview_map_timeline`` from ``build_copy_preview_v2_sidecars``
     (variable length; each frame has a full ``mining_map``). Root ``summary`` / ``mining_map``
     match the last timeline frame (or empty placeholders when reconstruction yields no frames).
+
+    ``reconstruction`` is the full STEP 1 DTO (JSON-safe). ``partial_pipeline`` lists which
+    solver phases are included in this response vs not yet wired—no replay/NDJSON input.
     Legacy v1 ``include_solver_*`` query parameters are ignored.
     """
 
@@ -139,6 +142,8 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
         "style_catalog": asteroid_map_style_catalog(),
         "existing_layout_analysis": existing_layout_analysis,
         "mining_layout_engine": v2_side["mining_layout_engine"],
+        "reconstruction": v2_side.get("reconstruction"),
+        "partial_pipeline": v2_side.get("partial_pipeline"),
         "reconstruction_summary": v2_side["reconstruction_summary"],
         "preview_schema_version": 2,
     }

@@ -1,27 +1,30 @@
+"""STEP 9 stub: quarantine surface + optional connectivity read-only probe."""
+
 from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
     PlacementCommitState,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.validation.final_validation import (  # noqa: E501
-    validate_final_layout_stub,
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.validation import (
+    final_validation,
 )
 
 
-def test_validation_rejects_quarantined() -> None:
-    rep = validate_final_layout_stub(
-        placement_commit_by_id={"a": PlacementCommitState.QUARANTINED_UNROUTED},
+def test_quarantined_surfaces_as_geometry_not_ok() -> None:
+    report = final_validation.validate_final_layout_stub(
+        placement_commit_by_id={"x": PlacementCommitState.QUARANTINED_UNROUTED},
         transport_cells=frozenset(),
         external_cells=frozenset(),
     )
-    assert rep.geometry_ok is False
-    assert rep.quarantined_count == 1
+    assert report.quarantined_count == 1
+    assert report.geometry_ok is False
 
 
-def test_validation_accepts_empty_transport() -> None:
-    rep = validate_final_layout_stub(
+def test_empty_transport_skips_connectivity_but_geometry_ok_when_clean() -> None:
+    report = final_validation.validate_final_layout_stub(
         placement_commit_by_id={},
         transport_cells=frozenset(),
         external_cells=frozenset(),
     )
-    assert rep.geometry_ok is True
+    assert report.geometry_ok is True
+    assert report.connectivity_ok is True

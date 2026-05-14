@@ -89,7 +89,7 @@ PR-D  Pass1 / Pass2
 PR-E  STEP4 routing MVP + quarantine→즉시 rollback 정책
 PR-F  STEP9 assertion-only + STEP10 최소 스냅샷
 PR-G  orchestrator 완성 + feature flag + web adapter
-PR-H  v1 → asteroid_mining_layout_old 리네임 전용 (대규모 치환, 동작 동일 목표)
+PR-H  런타임 v1 import 차단·asteroid_mining_layout_v1_deprecated 스텁 (2026-05-14 반영). 물리 리네임 단독 PR은 선택; 문서 맥락은 documents/archive/2026-05-mining-layout-v1-era/README.md
 PR-I  v2 MVP cross-check 리포트(선택, REPORT)
 ```
 

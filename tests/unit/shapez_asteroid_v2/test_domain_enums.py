@@ -1,4 +1,8 @@
+"""Canonical enum string stability (``03_data_schema_dto.md``)."""
+
 from __future__ import annotations
+
+import pytest
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
     CommitReason,
@@ -8,81 +12,127 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums
     RollbackReason,
     RouteZone,
     SolverTerminationTier,
-    SourceKind,
     TransportKind,
 )
 
 
-def test_transport_kind_values() -> None:
+def test_transport_kind_distinct_strings() -> None:
     assert TransportKind.SHAPE_BELT.value == "shape_belt"
     assert TransportKind.FLUID_PIPE.value == "fluid_pipe"
     assert TransportKind.SHAPE_BELT != TransportKind.FLUID_PIPE
+    assert {TransportKind.SHAPE_BELT.value, TransportKind.FLUID_PIPE.value} == {
+        "shape_belt",
+        "fluid_pipe",
+    }
 
 
-def test_placement_commit_state_values() -> None:
-    assert PlacementCommitState.PROVISIONAL_PLACED.value == "provisional_placed"
-    assert PlacementCommitState.ROUTED_CONFIRMED.value == "routed_confirmed"
-    assert PlacementCommitState.QUARANTINED_UNROUTED.value == "quarantined_unrouted"
-    assert PlacementCommitState.ROLLED_BACK.value == "rolled_back"
-    assert len(frozenset(PlacementCommitState)) == 4
+@pytest.mark.parametrize(
+    ("member", "expected"),
+    [
+        (PlacementCommitState.PROVISIONAL_PLACED, "provisional_placed"),
+        (PlacementCommitState.ROUTED_CONFIRMED, "routed_confirmed"),
+        (PlacementCommitState.QUARANTINED_UNROUTED, "quarantined_unrouted"),
+        (PlacementCommitState.ROLLED_BACK, "rolled_back"),
+    ],
+)
+def test_placement_commit_state_values(member: PlacementCommitState, expected: str) -> None:
+    assert member.value == expected
 
 
-def test_route_zone_values() -> None:
-    assert RouteZone.OUTSIDE.value == "outside"
-    assert RouteZone.BOUNDARY_VOID.value == "boundary_void"
-    assert RouteZone.INTERNAL_VOID.value == "internal_void"
-    assert RouteZone.FILLABLE_INTERIOR.value == "fillable_interior"
-    assert RouteZone.PLACEMENT_CANDIDATE.value == "placement_candidate"
-    assert RouteZone.PLACEMENT_OCCUPIED.value == "placement_occupied"
-    assert RouteZone.BLOCKED.value == "blocked"
+@pytest.mark.parametrize(
+    ("member", "expected"),
+    [
+        (RouteZone.OUTSIDE, "outside"),
+        (RouteZone.BOUNDARY_VOID, "boundary_void"),
+        (RouteZone.INTERNAL_VOID, "internal_void"),
+        (RouteZone.FILLABLE_INTERIOR, "fillable_interior"),
+        (RouteZone.PLACEMENT_CANDIDATE, "placement_candidate"),
+        (RouteZone.PLACEMENT_OCCUPIED, "placement_occupied"),
+        (RouteZone.BLOCKED, "blocked"),
+    ],
+)
+def test_route_zone_values(member: RouteZone, expected: str) -> None:
+    assert member.value == expected
 
 
-def test_solver_termination_tier_values() -> None:
-    assert SolverTerminationTier.SUCCESS.value == "success"
-    assert SolverTerminationTier.PARTIAL_SUCCESS.value == "partial_success"
-    assert SolverTerminationTier.SOLVER_FAILURE.value == "solver_failure"
+@pytest.mark.parametrize(
+    ("member", "expected"),
+    [
+        (SolverTerminationTier.SUCCESS, "success"),
+        (SolverTerminationTier.PARTIAL_SUCCESS, "partial_success"),
+        (SolverTerminationTier.SOLVER_FAILURE, "solver_failure"),
+    ],
+)
+def test_solver_termination_tier_values(member: SolverTerminationTier, expected: str) -> None:
+    assert member.value == expected
 
 
-def test_recovery_trigger_values() -> None:
-    assert RecoveryTrigger.STEP4_ROUTING_FAILURE.value == "step4_routing_failure"
-    assert RecoveryTrigger.STEP4_CAPACITY_FAILURE.value == "step4_capacity_failure"
-    assert RecoveryTrigger.PASS3_CONNECTIVITY_BREAK.value == "pass3_connectivity_break"
-    assert (
-        RecoveryTrigger.POST_RECLAIM_PASS3_CONNECTIVITY_BREAK.value
-        == "post_reclaim_pass3_connectivity_break"
-    )
-    assert RecoveryTrigger.RECLAIM_INCREMENTAL_FAILURE.value == "reclaim_incremental_failure"
-    assert RecoveryTrigger.FINAL_VALIDATION_FAILURE.value == "final_validation_failure"
+@pytest.mark.parametrize(
+    ("member", "expected"),
+    [
+        (RecoveryTrigger.STEP4_ROUTING_FAILURE, "step4_routing_failure"),
+        (RecoveryTrigger.STEP4_CAPACITY_FAILURE, "step4_capacity_failure"),
+        (RecoveryTrigger.PASS3_CONNECTIVITY_BREAK, "pass3_connectivity_break"),
+        (
+            RecoveryTrigger.POST_RECLAIM_PASS3_CONNECTIVITY_BREAK,
+            "post_reclaim_pass3_connectivity_break",
+        ),
+        (RecoveryTrigger.RECLAIM_INCREMENTAL_FAILURE, "reclaim_incremental_failure"),
+        (RecoveryTrigger.FINAL_VALIDATION_FAILURE, "final_validation_failure"),
+    ],
+)
+def test_recovery_trigger_values(member: RecoveryTrigger, expected: str) -> None:
+    assert member.value == expected
 
 
-def test_commit_reason_values() -> None:
-    assert CommitReason.NORMAL_GAIN.value == "normal_gain"
-    assert CommitReason.DEGRADED_CONNECTED_RECOVERY.value == "degraded_connected_recovery"
+@pytest.mark.parametrize(
+    ("member", "expected"),
+    [
+        (CommitReason.NORMAL_GAIN, "normal_gain"),
+        (CommitReason.DEGRADED_CONNECTED_RECOVERY, "degraded_connected_recovery"),
+    ],
+)
+def test_commit_reason_values(member: CommitReason, expected: str) -> None:
+    assert member.value == expected
 
 
-def test_rollback_reason_values() -> None:
-    assert RollbackReason.ROLLBACK_UNROUTED_PLACEMENT.value == "rollback_unrouted_placement"
-    assert RollbackReason.ROLLBACK_RECLAIM_CANDIDATE.value == "rollback_reclaim_candidate"
+@pytest.mark.parametrize(
+    ("member", "expected"),
+    [
+        (RollbackReason.ROLLBACK_UNROUTED_PLACEMENT, "rollback_unrouted_placement"),
+        (RollbackReason.ROLLBACK_RECLAIM_CANDIDATE, "rollback_reclaim_candidate"),
+    ],
+)
+def test_rollback_reason_values(member: RollbackReason, expected: str) -> None:
+    assert member.value == expected
 
 
-def test_rejected_reason_values() -> None:
-    assert RejectedReason.REJECTED_BY_GAIN_OR_LENGTH.value == "rejected_by_gain_or_length"
-    assert RejectedReason.REJECTED_BY_CONNECTIVITY.value == "rejected_by_connectivity"
-    assert RejectedReason.REJECTED_BY_OVERLAP.value == "rejected_by_overlap"
-    assert RejectedReason.REJECTED_BY_CAPACITY.value == "rejected_by_capacity"
-    assert (
-        RejectedReason.REJECTED_BY_INTERNAL_TRANSPORT_BUDGET.value
-        == "rejected_by_internal_transport_budget"
-    )
-    assert (
-        RejectedReason.REJECTED_BY_HARD_PROTECTED_CORRIDOR.value
-        == "rejected_by_hard_protected_corridor"
-    )
-    assert (
-        RejectedReason.REJECTED_BY_NO_REPLACEMENT_ROUTE.value == "rejected_by_no_replacement_route"
-    )
-    assert RejectedReason.SOLVER_FAILURE_ATTEMPT_LIMIT.value == "solver_failure_attempt_limit"
+@pytest.mark.parametrize(
+    ("member", "expected"),
+    [
+        (RejectedReason.REJECTED_BY_GAIN_OR_LENGTH, "rejected_by_gain_or_length"),
+        (RejectedReason.REJECTED_BY_CONNECTIVITY, "rejected_by_connectivity"),
+        (RejectedReason.REJECTED_BY_OVERLAP, "rejected_by_overlap"),
+        (RejectedReason.REJECTED_BY_CAPACITY, "rejected_by_capacity"),
+        (
+            RejectedReason.REJECTED_BY_INTERNAL_TRANSPORT_BUDGET,
+            "rejected_by_internal_transport_budget",
+        ),
+        (
+            RejectedReason.REJECTED_BY_HARD_PROTECTED_CORRIDOR,
+            "rejected_by_hard_protected_corridor",
+        ),
+        (
+            RejectedReason.REJECTED_BY_NO_REPLACEMENT_ROUTE,
+            "rejected_by_no_replacement_route",
+        ),
+        (RejectedReason.SOLVER_FAILURE_ATTEMPT_LIMIT, "solver_failure_attempt_limit"),
+    ],
+)
+def test_rejected_reason_values(member: RejectedReason, expected: str) -> None:
+    assert member.value == expected
 
 
-def test_source_kind_unknown_exists() -> None:
-    assert SourceKind.UNKNOWN.value == "unknown"
+def test_placement_commit_states_distinct() -> None:
+    states = list(PlacementCommitState)
+    assert len(states) == len({s.value for s in states})

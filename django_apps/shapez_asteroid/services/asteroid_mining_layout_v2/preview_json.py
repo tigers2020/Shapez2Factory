@@ -39,10 +39,14 @@ def _sort_key(x: Any) -> tuple[int, int, str]:
 
 
 def existing_layout_analysis_to_json(analysis: Any) -> dict[str, Any]:
-    """Serialize ``ExistingLayoutAnalysis`` (or compatible dataclass) for HTTP JSON."""
+    """Serialize ``ExistingLayoutAnalysis`` for HTTP JSON.
+
+    Top-level keys are prefixed with ``existing_layout_`` so payloads never collide with
+    STEP 9 ``FinalValidationReport`` field names (``geometry_ok``, etc.).
+    """
 
     out = to_jsonable(analysis)
     if not isinstance(out, dict):
         msg = "expected dict root from analysis serialization"
         raise TypeError(msg)
-    return out
+    return {f"existing_layout_{k}": v for k, v in out.items()}

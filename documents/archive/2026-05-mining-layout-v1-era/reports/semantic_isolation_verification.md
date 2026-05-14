@@ -1,8 +1,8 @@
 # 시맨틱 격리 검증 보고서 (런타임 권한 vs 텔레메트리·리플레이)
 
-**상태**: `REPORT` (관측·감사 결과; [`documents/index/document_lifecycle.md`](../index/document_lifecycle.md) 참고)  
+**상태**: `REPORT` (관측·감사 결과; [`documents/index/document_lifecycle.md`](../../../index/document_lifecycle.md) 참고)  
 **작성일**: 2026-05-13  
-**근거 정본**: [`documents/index/document_inventory.md`](../index/document_inventory.md) CANON 표 — 채굴 솔버 세션 02·03·08·11·12·13·14·15 및 [`documents/ai/step10_replay_timeline_contract_2026-05-12.md`](../ai/step10_replay_timeline_contract_2026-05-12.md). 운영 정본 요약은 [`AGENTS.md`](../../AGENTS.md), [`documents/ai/START_HERE.md`](../ai/START_HERE.md).
+**근거 정본**: [`documents/index/document_inventory.md`](../../../index/document_inventory.md) CANON 표 — 채굴 솔버 세션 02·03·08·11·12·13·14·15 및 [`step10_replay_timeline_contract_2026-05-12.md`](../ai/step10_replay_timeline_contract_2026-05-12.md) (동일 아카이브 트리). 운영 정본 요약은 [`AGENTS.md`](../../../../AGENTS.md), [`documents/ai/START_HERE.md`](../../../ai/START_HERE.md).
 
 ---
 

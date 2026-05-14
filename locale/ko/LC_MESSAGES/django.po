@@ -222,9 +222,6 @@ msgstr "데모"
 msgid "Decode"
 msgstr "해석"
 
-msgid "Show solver overlay"
-msgstr "Show solver overlay"
-
 msgid "Show protected corridors (read-only)"
 msgstr "보호 코리도 표시(읽기 전용)"
 
@@ -703,14 +700,10 @@ msgstr "서버 해석은 원본 좌표 맵을 유지하고, 격자는 브라우�
 
 msgid ""
 "Paste the in-game copy string. Decoding runs on the server; after Decode, "
-"use the timeline block below for map and solver steps together — solver "
-"notes appear at the bottom of that block when the solver overlay is "
-"included."
+"use the timeline block below for map steps (mining layout v2 preview)."
 msgstr ""
 "Paste the in-game copy string. Decoding runs on the server; after Decode, "
-"use the timeline block below for map and solver steps together — solver "
-"notes appear at the bottom of that block when the solver overlay is "
-"included."
+"use the timeline block below for map steps (mining layout v2 preview)."
 
 msgid ""
 "Only entries with X ≠ 0; columns are distinct game X values (no synthetic X "
@@ -1371,9 +1364,6 @@ msgstr "code는 문자열이어야 합니다"
 
 msgid "decode failed"
 msgstr "디코드에 실패했습니다"
-
-msgid "solver timeline failed"
-msgstr "솔버 타임라인 실패"
 
 msgid "Factory templates"
 msgstr "공장 템플릿"

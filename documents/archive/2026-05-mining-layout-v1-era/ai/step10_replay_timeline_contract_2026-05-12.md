@@ -1,6 +1,17 @@
+---
+status: ARCHIVED
+owner: solver-architecture
+last_reviewed: 2026-05-14
+supersedes: []
+superseded_by: "documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md (알고리즘·replay 정본)"
+related_epics: [mining-solver-v2-greenfield]
+---
+
 # STEP10 리플레이·타임라인 UI 계약 (2026-05-12)
 
-본문은 [AGENTS.md](../../AGENTS.md) `documents/` 작성 언어(한국어)에 따른다.
+> **이관(2026-05-14)**: 본문의 `django_apps/.../asteroid_mining_layout/` 코드 링크는 PR-H로 제거된 v1 패키지를 가리킨다. UI·replay 계약의 정본은 `mining_solver_cursor_sessions/14_step10_replay_ui.md`를 우선한다.
+
+본문은 [AGENTS.md](../../../../AGENTS.md) `documents/` 작성 언어(한국어)에 따른다.
 
 ## 용어: 타임라인 행 vs `computation_cycle` vs `cc_tick`
 
@@ -8,12 +19,12 @@
 |------|------|------|
 | **통합 타임라인 인덱스** | `map_timeline` + `solver_timeline` 순서 합성 | Decode 후 슬라이더의 “전체 스텝 N” 중 몇 번째인지. |
 | **Solver replay 슬라이더** | `solver_replay.ui_frames` (행 수 = `solver_timeline` 길이) | 맵 빌드 스텝 **이후** 구간만 별도 1…M 표시. 첫 틱 **1**은 첫 **`ui_frames` 행**이다. |
-| **`timeline_row_id` / `solver_timeline[i].id`** | 서버 `solver_timeline` | 고정 프레임 식별자. 첫 solver 행은 계약상 `solver_init` ([`SOLVER_FRAME_INIT`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/foundation/constants.py)). |
+| **`timeline_row_id` / `solver_timeline[i].id`** | 서버 `solver_timeline` | 고정 프레임 식별자. 첫 solver 행은 계약상 `solver_init` ([`SOLVER_FRAME_INIT`](../../../../django_apps/shapez_asteroid/services/asteroid_mining_layout/foundation/constants.py)). |
 | **`replay.events[].computation_cycle`** | `solver_replay.events` | 이벤트 로그의 단조 증가 인덱스(정규화 후 1…n). **타임라인 한 행과 1:1이 아님.** |
-| **`ui_frames[].computation_cycle_start` / `_end`** | [solver_replay_frames.py](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_replay_frames.py) | 해당 타임라인 행에 매핑된 이벤트들의 `computation_cycle` 최소·최대. |
+| **`ui_frames[].computation_cycle_start` / `_end`** | [solver_replay_frames.py](../../../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_replay_frames.py) | 해당 타임라인 행에 매핑된 이벤트들의 `computation_cycle` 최소·최대. |
 | **`computation_cycle_ui_tick_*`** | 동일 | stride=10일 때 UI 틱 버킷(증거·라벨용). **알고리즘 규칙으로 사용하지 않는다.** |
 
-**주의:** 사용자가 말하는 “cycle 1”이 **첫 리플레이 슬라이더 틱**이면, 그것은 **`computation_cycle == 1` 스냅샷이 아니라 `solver_init` 행**일 수 있다. 혼동 방지를 위해 UI에 `timeline_frame_id`를 병기한다([asteroid_optimizer.html](../../django_apps/web/templates/web/asteroid_optimizer.html) `replayPosEl`).
+**주의:** 사용자가 말하는 “cycle 1”이 **첫 리플레이 슬라이더 틱**이면, 그것은 **`computation_cycle == 1` 스냅샷이 아니라 `solver_init` 행**일 수 있다. 혼동 방지를 위해 UI에 `timeline_frame_id`를 병기한다([asteroid_optimizer.html](../../../../django_apps/web/templates/web/asteroid_optimizer.html) `replayPosEl`).
 
 ## 데이터 소스 (정본)
 
@@ -27,13 +38,13 @@
 
 ## Bbox·요약 필드 (UI `effectiveSummaryForPlot`와의 관계) — 감사 결과
 
-- **구현:** [asteroid_optimizer.html](../../django_apps/web/templates/web/asteroid_optimizer.html)의 `effectiveSummaryForPlot`는 `summary`에 `x_min`/`x_max`/`y_min`/`y_max`가 있으면 그대로 쓰고, 없으면 **`mining_map` 좌표로 bbox를 유도**한다.
-- **서버:** `solver_init` 등 초기 행의 `summary`는 [finalize.py](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/finalize.py)에서 `pass12_status_fields` 등만 붙이며 **좌표 bbox가 비어 있는 경우가 많다**. 이 경우 UI 유도 bbox는 “현재 프레임 셀만” 기준이라, **외곽 dashed(맵 빌드 단계·별도 summary)와 시각적으로 어긋날 수 있다.**
+- **구현:** [asteroid_optimizer.html](../../../../django_apps/web/templates/web/asteroid_optimizer.html)의 `effectiveSummaryForPlot`는 `summary`에 `x_min`/`x_max`/`y_min`/`y_max`가 있으면 그대로 쓰고, 없으면 **`mining_map` 좌표로 bbox를 유도**한다.
+- **서버:** `solver_init` 등 초기 행의 `summary`는 [finalize.py](../../../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/finalize.py)에서 `pass12_status_fields` 등만 붙이며 **좌표 bbox가 비어 있는 경우가 많다**. 이 경우 UI 유도 bbox는 “현재 프레임 셀만” 기준이라, **외곽 dashed(맵 빌드 단계·별도 summary)와 시각적으로 어긋날 수 있다.**
 - **결론:** bbox 불일치가 의심되면 (1) 맵 빌드 마지막 스텝의 `summary` bbox, (2) 동일 디코드의 `solver_init` `mining_map` 유도 bbox를 나란히 비교한다. **서버가 solver 타임라인 summary에 bbox를 채우는 변경**은 계약·회귀 영향이 있으므로 **별도 플랜·승인** 후 진행한다.
 
 ## `ui_frames` 주기 경계 검증
 
-- **소스:** `ui_frames[i].computation_cycle_start` / `_end`는 `event_indices`로 묶인 `solver_replay.events[j].computation_cycle`의 최소·최대다 ([solver_replay_frames.py](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_replay_frames.py) `build_replay_ui_frames`).
+- **소스:** `ui_frames[i].computation_cycle_start` / `_end`는 `event_indices`로 묶인 `solver_replay.events[j].computation_cycle`의 최소·최대다 ([solver_replay_frames.py](../../../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_replay_frames.py) `build_replay_ui_frames`).
 - **검증 API:** 같은 모듈의 `verify_replay_ui_frames_computation_cycles(events, ui_frames)`가 인덱스 범위·정수 `computation_cycle`·min/max 일치를 깨는 경우 문자열 목록으로 반환한다. `build_solver_replay_snapshot` 직후 단위 테스트에서 호출한다.
 
 ## 코리도(티어) vs 트렁크 히트맵(committed)
@@ -57,4 +68,4 @@
 python -m pytest tests/unit/shapez_asteroid/test_copy_preview.py -q
 ```
 
-전체 게이트는 [AGENTS.md](../../AGENTS.md) 품질 절차를 따른다.
+전체 게이트는 [AGENTS.md](../../../../AGENTS.md) 품질 절차를 따른다.

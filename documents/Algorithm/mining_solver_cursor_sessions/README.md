@@ -22,5 +22,5 @@
 | [`15_step4_telemetry_field_semantics.md`](15_step4_telemetry_field_semantics.md) | STEP4 텔레메트리 필드 의미 |
 
 - 상위 분할 출처: [`../Shapez2 Asteroid Mining Solver logic.md`](../Shapez2%20Asteroid%20Mining%20Solver%20logic.md)
-- 경로 혼동 방지·인덱스 유지보수: [`../../refactory/01_canonical_doc_paths.md`](../../refactory/01_canonical_doc_paths.md)
-- 삭제 감사(초안 → 절단위 인용은 Stage 1): [`../../refactory/algorithm_deviation_deletion_audit.md`](../../refactory/algorithm_deviation_deletion_audit.md)
+- 경로 혼동 방지·인덱스 유지보수: [`../../archive/2026-05-mining-layout-v1-era/refactory/01_canonical_doc_paths.md`](../../archive/2026-05-mining-layout-v1-era/refactory/01_canonical_doc_paths.md) (v1-era 스냅샷, **ARCHIVED**)
+- 삭제 감사(초안 → 절단위 인용은 Stage 1): [`../../archive/2026-05-mining-layout-v1-era/refactory/algorithm_deviation_deletion_audit.md`](../../archive/2026-05-mining-layout-v1-era/refactory/algorithm_deviation_deletion_audit.md)

@@ -64,6 +64,8 @@ class ReconstructionDTO:
     full_barrier_cells: tuple[BlueprintCell, ...] = ()
     belt_cells: tuple[BlueprintCell, ...] = ()
     pipe_cells: tuple[BlueprintCell, ...] = ()
+    extractor_cells: tuple[BlueprintCell, ...] = ()
+    extension_cells: tuple[BlueprintCell, ...] = ()
     interior_patch_cells: tuple[BlueprintCell, ...] = ()
     asteroid_bbox: BBox | None = None
     external_margin: int = 0
@@ -326,6 +328,8 @@ class TraceEvent:
     rollback_reason: RollbackReason | None = None
     recovery_trigger: RecoveryTrigger | None = None
     computation_cycle: int | None = None
+    route_level: bool = False
+    transport_kind: TransportKind | Literal["batch_mixed", "none"] | None = None
 
     def __post_init__(self) -> None:
         from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain import (
@@ -337,6 +341,10 @@ class TraceEvent:
             commit_reason=self.commit_reason,
             rejected_reason=self.rejected_reason,
             rollback_reason=self.rollback_reason,
+        )
+        trace_semantics.validate_route_level_trace_transport(
+            route_level=self.route_level,
+            transport_kind=self.transport_kind,
         )
 
 

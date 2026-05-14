@@ -6,7 +6,7 @@ import ast
 import re
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 _V2_PKG = _REPO_ROOT / "django_apps" / "shapez_asteroid" / "services" / "asteroid_mining_layout_v2"
 
 _LEGACY_ABS = "django_apps.shapez_asteroid.services.asteroid_mining_layout."
@@ -81,3 +81,53 @@ def test_v2_tree_has_no_django_imports() -> None:
                 if m == "django" or m.startswith("django."):
                     offenders.append(f"{path}: from {m}")
     assert not offenders, "v2 must remain Django-free:\n" + "\n".join(offenders)
+
+
+_V1_LAYOUT_PKG = "django_apps.shapez_asteroid.services.asteroid_mining_layout"
+
+
+def _imports_v1_layout_module(module_name: str) -> bool:
+    """True if ``module_name`` is the legacy v1 package (not ``...layout_v2``)."""
+
+    if module_name == _V1_LAYOUT_PKG:
+        return True
+    return module_name.startswith(_V1_LAYOUT_PKG + ".")
+
+
+def test_solver_py_does_not_import_v1_layout_package() -> None:
+    solver_path = _V2_PKG / "solver.py"
+    tree = ast.parse(solver_path.read_text(encoding="utf-8"), filename=str(solver_path))
+    offenders: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if _imports_v1_layout_module(alias.name):
+                    offenders.append(f"{solver_path}: import {alias.name}")
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            if _imports_v1_layout_module(node.module):
+                offenders.append(f"{solver_path}: from {node.module}")
+    assert not offenders, "solver.py must not import v1 layout internals:\n" + "\n".join(offenders)
+
+
+def test_v2_domain_imports_without_django_in_subprocess() -> None:
+    """Smoke: enum module must not pull Django onto ``sys.modules``."""
+
+    import subprocess
+    import sys
+
+    root_repr = repr(str(_REPO_ROOT))
+    code = f"""
+import sys
+sys.path.insert(0, {root_repr})
+import django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums as e
+assert not any(m.startswith("django.") for m in sys.modules if m.startswith("django"))
+print(e.TransportKind.SHAPE_BELT.value)
+"""
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=_REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr

@@ -26,7 +26,11 @@ class PlacementCommitState(StrEnum):
 
 
 class RouteZone(StrEnum):
-    """Pass3 / reclaim cost zones (``03_data_schema_dto`` §11.1)."""
+    """Pass3 / reclaim cost zones (``03_data_schema_dto`` §11.1).
+
+    Base costs apply to Pass3 / reclaim incremental routing only. **Do not** mix this
+    table with STEP 4 merge-aware grid Dijkstra cell weights (``01_project_overview`` §3.5).
+    """
 
     OUTSIDE = "outside"
     BOUNDARY_VOID = "boundary_void"
@@ -125,3 +129,21 @@ class ExistingLayoutIssueSeverity(StrEnum):
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
+
+
+# §11.1 base costs (Pass3 / reclaim). Not interchangeable with STEP 4 grid search costs.
+ROUTE_ZONE_PASS3_BASE_COST: dict[RouteZone, float] = {
+    RouteZone.OUTSIDE: 1.0,
+    RouteZone.BOUNDARY_VOID: 5.0,
+    RouteZone.INTERNAL_VOID: 50.0,
+    RouteZone.FILLABLE_INTERIOR: 150.0,
+    RouteZone.PLACEMENT_CANDIDATE: 400.0,
+    RouteZone.PLACEMENT_OCCUPIED: 900.0,
+    RouteZone.BLOCKED: float("inf"),
+}
+
+# §11.2 — kind-separated multipliers; trunk merge / load math stays per ``TransportKind``.
+TRANSPORT_KIND_ROUTE_ZONE_MULTIPLIER: dict[TransportKind, float] = {
+    TransportKind.SHAPE_BELT: 1.0,
+    TransportKind.FLUID_PIPE: 1.0,
+}

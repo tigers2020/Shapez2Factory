@@ -11,7 +11,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto i
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
     PlacementCommitState,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.placement_fsm import (
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.placement_fsm import (
     apply_pass1_provisional_commits,
     apply_pass2_provisional_commits,
     assert_all_provisional_commits,

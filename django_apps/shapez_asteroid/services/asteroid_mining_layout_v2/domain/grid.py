@@ -4,6 +4,10 @@ Grid stepping and invariants for blueprint coordinates.
 Wraps project cardinal-step rules without importing v1 layout code. Actual neighbor
 logic may delegate to ``shapez_asteroid.extraction.shapez_grid`` in a later phase
 after explicit review (keep this module thin).
+
+Pass3 / reclaim **RouteZone** costs live in ``domain.enums.ROUTE_ZONE_PASS3_BASE_COST``
+(``03_data_schema_dto`` §11.1). **Do not** mix those numbers with STEP 4 grid
+Dijkstra / merge-aware cell weights (``01_project_overview`` §3.5).
 """
 
 from __future__ import annotations

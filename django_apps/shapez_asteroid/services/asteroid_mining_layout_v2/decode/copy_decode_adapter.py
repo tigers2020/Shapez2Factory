@@ -1,13 +1,16 @@
 """
 STEP 0 — Shapez2 copy decode (``04_step0_decode.md`` §5).
 
-Pipeline for string payloads (implemented in ``shapez_core.services.shapez_copy_decode``,
-pure I/O + parse; **not** v1 ``asteroid_mining_layout``):
+Pipeline for string payloads is implemented in ``shapez_core.services.shapez_copy_decode``
+(**not** v1 ``asteroid_mining_layout``):
 
-  ``SHAPEZ2-4-`` → Base64 → gzip → JSON object
+  ``SHAPEZ2-4-`` → Base64 → gzip → UTF-8 → JSON object
 
-This adapter only wraps that utility and ``DecodedBlueprintDocument``. It does **not**
-run placement, routing, reconstruction, or existing-layout analysis (those are later steps).
+That module is **side-effect free** aside from allocating and returning a ``dict``: no
+global state, no disk/network I/O, no logging hooks — only ``base64`` / ``gzip`` /
+``json`` on the input string. This file stays a thin wrapper around it plus
+``DecodedBlueprintDocument`` normalization; it does **not** import placement, routing,
+validation, or STEP 0.5 analysis.
 """
 
 from __future__ import annotations

@@ -11,6 +11,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums
     RecoveryTrigger,
     RejectedReason,
     RollbackReason,
+    TransportKind,
 )
 
 _RECOVERY_VALUES = frozenset(m.value for m in RecoveryTrigger)
@@ -98,4 +99,24 @@ def assert_recovery_not_commit_reason(candidate: str) -> None:
 def assert_no_replacement_route_not_commit_reason(candidate: str) -> None:
     if candidate == RejectedReason.REJECTED_BY_NO_REPLACEMENT_ROUTE.value:
         msg = "rejected_by_no_replacement_route rejected as CommitReason"
+        raise ValueError(msg)
+
+
+def validate_route_level_trace_transport(
+    *,
+    route_level: bool,
+    transport_kind: TransportKind | str | None,
+) -> None:
+    """§16.3: ``batch_mixed`` is only for batched belt+pipe records, not per-route events."""
+
+    if not route_level:
+        return
+    if transport_kind is None or transport_kind == "none":
+        return
+    if isinstance(transport_kind, TransportKind):
+        tk = transport_kind.value
+    else:
+        tk = str(transport_kind)
+    if tk == "batch_mixed":
+        msg = "batch_mixed is not allowed for route-level TraceEvent"
         raise ValueError(msg)

@@ -1,37 +1,86 @@
 """
 Domain types: coordinates, enums, DTOs, and grid conventions.
 
-No I/O, no Django, no v1 solver imports. Algorithm behavior belongs in ``steps``/feature
+No I/O, no Django, no v1 solver imports. Algorithm behaviour belongs in ``steps``/feature
 packages (decode, placement, …), not here.
 """
 
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import BBox, Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
+    BBox,
+    BlueprintCell,
+    Coord,
+    as_blueprint_cell,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     DecodedExistingLayoutContext,
     ExistingLayoutAnalysis,
+    ExtensionPlacement,
+    ExtractorPlacement,
+    FinalValidationReport,
+    GridMask,
+    MetricsSnapshot,
+    OutputStub,
     Pass1Result,
     Pass2Result,
+    PlacementBundle,
+    PlacementId,
+    ReconstructionDTO,
+    RoutePath,
+    RoutingFailure,
     RoutingResult,
+    RoutingStateSnapshot,
     SolverRunContext,
+    SolverRunLimits,
+    Step4RoutingResult,
+    TraceEvent,
+    TrunkLoadSummary,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
+    CommitReason,
     PlacementCommitState,
-    SolverTermination,
+    RecoveryTrigger,
+    RejectedReason,
+    RollbackReason,
+    RouteZone,
+    SolverTerminationTier,
     SourceKind,
     TransportKind,
 )
 
 __all__ = [
     "BBox",
+    "BlueprintCell",
+    "CommitReason",
     "Coord",
     "DecodedExistingLayoutContext",
     "ExistingLayoutAnalysis",
+    "ExtensionPlacement",
+    "ExtractorPlacement",
+    "FinalValidationReport",
+    "GridMask",
+    "MetricsSnapshot",
+    "OutputStub",
     "Pass1Result",
     "Pass2Result",
+    "PlacementBundle",
     "PlacementCommitState",
+    "PlacementId",
+    "ReconstructionDTO",
+    "RecoveryTrigger",
+    "RejectedReason",
+    "RollbackReason",
+    "RoutePath",
+    "RouteZone",
+    "RoutingFailure",
     "RoutingResult",
+    "RoutingStateSnapshot",
     "SolverRunContext",
-    "SolverTermination",
+    "SolverRunLimits",
+    "SolverTerminationTier",
     "SourceKind",
+    "Step4RoutingResult",
+    "TraceEvent",
     "TransportKind",
+    "TrunkLoadSummary",
+    "as_blueprint_cell",
 ]

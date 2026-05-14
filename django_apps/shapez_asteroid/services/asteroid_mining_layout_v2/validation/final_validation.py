@@ -6,23 +6,15 @@ No routing side effects. ``trunk_load`` presence is not re-computed here until s
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
+    FinalValidationReport,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
     PlacementCommitState,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.routing.connectivity import (
     flood_reachable,
 )
-
-
-@dataclass(frozen=True, slots=True)
-class FinalValidationReport:
-    """Structured assertion summary (expand with §15 fields)."""
-
-    geometry_ok: bool
-    connectivity_ok: bool
-    quarantined_count: int
 
 
 def validate_final_layout_stub(

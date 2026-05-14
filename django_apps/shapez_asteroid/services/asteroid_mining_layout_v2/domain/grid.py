@@ -8,6 +8,11 @@ after explicit review (keep this module thin).
 
 from __future__ import annotations
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
+    Coord,
+    as_blueprint_cell,
+)
+
 
 def assert_nonzero_x(x: int) -> None:
     """Blueprint invariant: column x==0 does not exist."""
@@ -16,6 +21,8 @@ def assert_nonzero_x(x: int) -> None:
         raise ValueError(msg)
 
 
-def manhattan(a: tuple[int, int], b: tuple[int, int]) -> int:
+def manhattan(a: Coord | tuple[int, int], b: Coord | tuple[int, int]) -> int:
     """|ax-bx|+|ay-by| (diagonal moves not used for this helper)."""
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+    ax, ay = as_blueprint_cell(a)
+    bx, by = as_blueprint_cell(b)
+    return abs(ax - bx) + abs(ay - by)

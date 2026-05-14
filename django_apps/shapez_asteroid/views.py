@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import importlib
 import json
 import logging
+import sys
+import zipfile
+from pathlib import Path
 from typing import Any
 
 from django.conf import settings
@@ -12,19 +16,6 @@ from django.views.decorators.http import require_GET, require_POST
 from django_apps.shapez_asteroid.services.asteroid_map_cells import (
     list_map_cells_json,
     parse_bbox,
-)
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout import (
-    existing_layout_analysis as existing_layout_analysis_mod,
-)
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_corridors import (  # noqa: E501
-    protected_corridors_overlay_from_routing_state,
-)
-from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
-    final_validation,
-)
-from django_apps.shapez_asteroid.services.blueprint_map_summary import (
-    build_map_timeline,
-    merge_with_transport_and_final_mining_map,
 )
 from django_apps.shapez_asteroid.services.copy_preview_debug_dump import (
     dump_copy_preview_debug,
@@ -40,6 +31,70 @@ def _truthy_query_param(raw: str | None) -> bool:
         return False
     v = raw.strip().lower()
     return v in ("1", "true", "yes", "on")
+
+
+def _mining_layout_services_dir() -> Path:
+    """Directory that holds ``asteroid_mining_layout`` / ``asteroid_mining_layout.zip``."""
+
+    return Path(__file__).resolve().parent / "services"
+
+
+def _extract_mining_layout_from_sibling_zip() -> bool:
+    """If only ``asteroid_mining_layout.zip`` is present, unpack it next to the zip once.
+
+    Some checkouts ship the solver as a zip beside ``asteroid_mining_layout_v2``; Django
+    cannot import a dotted package from that zip without a folder. Skip when disabled
+    via ``settings.SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT = False``.
+    """
+
+    if not settings.SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT:
+        return False
+
+    services = _mining_layout_services_dir()
+    dest = services / "asteroid_mining_layout"
+    zpath = services / "asteroid_mining_layout.zip"
+    if dest.is_dir():
+        return False
+    if not zpath.is_file():
+        return False
+    try:
+        dest.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(zpath) as zf:
+            zf.extractall(dest)
+    except OSError:
+        logger.exception(
+            "asteroid_mining_layout.zip bootstrap: failed to extract to %s",
+            dest,
+        )
+        return False
+
+    for key in tuple(sys.modules.keys()):
+        if key.startswith("django_apps.shapez_asteroid.services.asteroid_mining_layout"):
+            del sys.modules[key]
+    importlib.invalidate_caches()
+    logger.info("Unpacked %s into %s for mining layout imports", zpath.name, dest)
+    return True
+
+
+def _import_build_solver_timeline() -> Any | None:
+    """Return ``build_solver_timeline`` or ``None`` if the mining layout package is absent."""
+
+    for attempt in range(2):
+        try:
+            from django_apps.shapez_asteroid.services.asteroid_mining_layout import (
+                build_solver_timeline,
+            )
+
+            return build_solver_timeline
+        except (ImportError, ModuleNotFoundError) as exc:
+            if attempt == 0 and _extract_mining_layout_from_sibling_zip():
+                continue
+            if attempt == 0:
+                logger.debug("build_solver_timeline import failed (no zip bootstrap): %s", exc)
+            else:
+                logger.warning("build_solver_timeline unavailable: %s", exc)
+            return None
+    return None
 
 
 def _merge_p4_pass3_overlay_into_map_timeline(
@@ -238,6 +293,10 @@ def _merge_replay_corridor_counts_into_last_map_summary(
     if not isinstance(ss, dict):
         return
     rs = ss.get("routing_state")
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_corridors import (  # noqa: E501
+        protected_corridors_overlay_from_routing_state,
+    )
+
     overlay = protected_corridors_overlay_from_routing_state(rs if isinstance(rs, dict) else None)
     counts = overlay.get("counts")
     if not isinstance(counts, dict):
@@ -283,23 +342,17 @@ def map_cells(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 def copy_preview(request: HttpRequest) -> JsonResponse:
-    """Return map timeline from ``build_map_timeline`` only.
+    """Return copy-preview JSON using **mining layout v2 only** (no ``build_map_timeline`` / v1 UI).
 
-    Pass ``GET include_solver_overlay=1`` (or ``true``/``yes``/``on``) to merge Pass3 P4
-    reclaim overlay fields via ``build_solver_timeline`` (extra solver cost).
+    ``map_timeline`` is ``v2_preview_map_timeline`` from ``build_copy_preview_v2_sidecars``
+    (variable length; each frame has a full ``mining_map``). Root ``summary`` / ``mining_map``
+    match the last timeline frame (or empty placeholders when reconstruction yields no frames).
 
-    Pass ``GET include_solver_replay=1`` to include ``solver_replay`` (replay contract: frames,
-    ``events``, ``computation_cycle``; v3 adds per-event cycle + Pass3 layout snapshots; v12 adds
-    ``ui_frames`` and ``cycle_frames`` from ``replay_frame`` rows for STEP10 cycle streaming);
-    shares one ``build_solver_timeline`` run with ``include_solver_overlay`` when both are set.
-
-    Count semantics: ``len(map_timeline)`` (here and in debug ``map_timeline_built``) is the small
-    **decoded map timeline** step count. ``solver_summary`` also exposes
-    ``decoded_map_timeline_frame_count`` (same), ``solver_milestone_frame_count`` (pass milestones),
-    ``replay_event_count`` (trace events), ``replay_cycle_frame_count`` (stride-based cycle frames,
-    alias ``replay_frame_count``), and ``replay_frame_source`` (which source the replay player
-    should prefer). See ``trace_frame_counter_glossary`` — do not compare map step count with trace
-    event count or cycle frame count as the same quantity.
+    Optional **legacy v1 solver** (package ``asteroid_mining_layout``): pass
+    ``GET include_solver_overlay=1`` / ``include_solver_replay=1`` to merge overlay fields onto
+    the v2 timeline and attach ``solver_replay`` / ``solver_timeline`` when that package is
+    installed. If it is missing, ``ok`` stays true, ``solver_layout_package_unavailable`` is set,
+    and solver keys are omitted.
     """
 
     try:
@@ -339,29 +392,43 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
     if debug_dir:
         dump_copy_preview_debug(code, decoded, debug_dir)
 
-    map_timeline = build_map_timeline(decoded)
     include_solver_overlay = _truthy_query_param(request.GET.get("include_solver_overlay"))
     include_solver_replay = _truthy_query_param(request.GET.get("include_solver_replay"))
 
     solver_out: dict[str, Any] | None = None
     if include_solver_overlay or include_solver_replay:
-        from django_apps.shapez_asteroid.services.asteroid_mining_layout import (
-            build_solver_timeline,
-        )
-
-        try:
-            solver_out = build_solver_timeline(decoded)
-        except Exception as exc:
-            logger.exception("copy_preview: build_solver_timeline failed")
-            return JsonResponse(
-                {
-                    "ok": False,
-                    "error": _("solver timeline failed"),
-                    "error_code": "solver_timeline_failed",
-                    "detail": str(exc),
-                },
-                status=500,
+        build_solver_timeline = _import_build_solver_timeline()
+        if build_solver_timeline is None:
+            logger.warning(
+                "copy_preview: asteroid_mining_layout missing; "
+                "include_solver_overlay/include_solver_replay requested — "
+                "continuing without legacy solver timeline (v2 preview still works)"
             )
+        else:
+            try:
+                solver_out = build_solver_timeline(decoded)
+            except Exception as exc:
+                logger.exception("copy_preview: build_solver_timeline failed")
+                return JsonResponse(
+                    {
+                        "ok": False,
+                        "error": _("solver timeline failed"),
+                        "error_code": "solver_timeline_failed",
+                        "detail": str(exc),
+                    },
+                    status=500,
+                )
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.solver import (
+        build_copy_preview_v2_sidecars,
+    )
+
+    v2_side = build_copy_preview_v2_sidecars(decoded)
+    existing_layout_analysis = v2_side["existing_layout_analysis"]
+    v2_append = v2_side.get("v2_preview_map_timeline")
+    if not isinstance(v2_append, list):
+        v2_append = []
+    map_timeline: list[dict[str, Any]] = list(v2_append)
 
     if include_solver_overlay and solver_out is not None:
         _merge_p4_pass3_overlay_into_map_timeline(map_timeline, solver_out)
@@ -369,24 +436,35 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
         _merge_final_validation_optimization_into_last_map_summary(map_timeline, solver_out)
         _merge_solver_summary_ui_fields_into_last_map_summary(map_timeline, solver_out)
         _merge_replay_corridor_counts_into_last_map_summary(map_timeline, solver_out)
-    fin = map_timeline[-1]
-    summary = fin["summary"]
-    mining_map = fin["mining_map"]
-    transport_map = map_timeline[0]["mining_map"]
-    step05_baseline_map = merge_with_transport_and_final_mining_map(transport_map, mining_map)
-    is_ext = final_validation.external_predicate_for_mining_map(map_timeline[1]["mining_map"])
-    existing_layout_analysis = existing_layout_analysis_mod.analyze_existing_layout_from_mining_map(
-        step05_baseline_map,
-        is_external=is_ext,
-    )
+
+    if map_timeline:
+        last_frame = map_timeline[-1]
+        last_summary = last_frame["summary"]
+        last_mining_map = last_frame["mining_map"]
+    else:
+        last_summary = {
+            "entry_count": 0,
+            "x_min": 0,
+            "x_max": 0,
+            "y_min": 0,
+            "y_max": 0,
+            "phase": "v2_empty",
+        }
+        last_mining_map: list[dict[str, Any]] = []
+
     payload: dict[str, Any] = {
         "ok": True,
-        "summary": summary,
-        "mining_map": mining_map,
+        "summary": last_summary,
+        "mining_map": last_mining_map,
         "map_timeline": map_timeline,
         "style_catalog": asteroid_map_style_catalog(),
         "existing_layout_analysis": existing_layout_analysis,
+        "mining_layout_engine": v2_side["mining_layout_engine"],
+        "reconstruction_summary": v2_side["reconstruction_summary"],
+        "preview_schema_version": 2,
     }
+    if (include_solver_overlay or include_solver_replay) and solver_out is None:
+        payload["solver_layout_package_unavailable"] = True
     if solver_out is not None and (include_solver_overlay or include_solver_replay):
         payload["mining_layout_runtime_flags"] = {
             "shapez_mining_pass12_preserve_stub_route_recovery": bool(

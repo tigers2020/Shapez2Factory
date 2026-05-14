@@ -223,7 +223,7 @@ msgid "Decode"
 msgstr "해석"
 
 msgid "Show solver overlay"
-msgstr "Show solver overlay"
+msgstr "솔버 오버레이 표시"
 
 msgid "Show protected corridors (read-only)"
 msgstr "보호 코리도 표시(읽기 전용)"
@@ -444,65 +444,98 @@ msgstr "둘러싼 패치 내부 채우기"
 msgid "Final mining map"
 msgstr "최종 채굴 맵"
 
+msgid "v2: Transport & extraction shell"
+msgstr "v2: 이송·추출 껍질"
+
+msgid "v2: Interior void (inferred)"
+msgstr "v2: 내부 공극(추론)"
+
+msgid "v2: Mineable placement cells"
+msgstr "v2: 채굴 가능 배치 칸"
+
+msgid "v2: Pass1 candidates"
+msgstr "v2: Pass1 후보"
+
+msgid "v2: Pass1 provisional commit"
+msgstr "v2: Pass1 잠정 확정"
+
+msgid "v2: Pass2 candidates"
+msgstr "v2: Pass2 후보"
+
+msgid "v2: Pass2 provisional commit"
+msgstr "v2: Pass2 잠정 확정"
+
+msgid "v2: Step4 trunk seed"
+msgstr "v2: Step4 트렁크 시드"
+
+msgid "v2: Step4 routing"
+msgstr "v2: Step4 라우팅"
+
+msgid "v2: Final validation"
+msgstr "v2: 최종 검증"
+
+msgid "v2: Final layout"
+msgstr "v2: 최종 배치"
+
 msgid "Solver: baseline (init)"
-msgstr "Solver: baseline (init)"
+msgstr "솔버: 기준선(초기화)"
 
 msgid "Solver: Pass1 outer"
-msgstr "Solver: Pass1 outer"
+msgstr "솔버: Pass1 외곽"
 
 msgid "Solver: Pass2 internal"
-msgstr "Solver: Pass2 internal"
+msgstr "솔버: Pass2 내부"
 
 msgid "Solver: Step4 routing"
-msgstr "Solver: Step4 routing"
+msgstr "솔버: Step4 라우팅"
 
 msgid "Solver: Pass3 transport"
-msgstr "Solver: Pass3 transport"
+msgstr "솔버: Pass3 이송"
 
 msgid "Solver: Final validation"
-msgstr "Solver: Final validation"
+msgstr "솔버: 최종 검증"
 
 msgid ""
 "Solver timeline was not returned (solver may have failed). Check the server "
 "or try Decode again."
 msgstr ""
-"Solver timeline was not returned (solver may have failed). Check the server "
-"or try Decode again."
+"솔버 타임라인이 반환되지 않았습니다(솔버 실패 가능). 서버를 확인하거나 다시 해석을 "
+"시도하세요."
 
 msgid ""
 "This solver frame has no mining_map; map may be empty until another frame is"
 " selected."
 msgstr ""
-"This solver frame has no mining_map; map may be empty until another frame is"
-" selected."
+"이 솔버 프레임에는 mining_map이 없습니다. 다른 프레임을 고를 때까지 맵이 비어 있을 "
+"수 있습니다."
 
 msgid "Map + solver steps"
-msgstr "Map + solver steps"
+msgstr "맵 + 솔버 단계"
 
 msgid ""
 "With “Show solver overlay” on, click Decode again to append solver timeline "
 "steps after the six map-build steps."
 msgstr ""
-"With “Show solver overlay” on, click Decode again to append solver timeline "
-"steps after the six map-build steps."
+"「솔버 오버레이 표시」를 켠 상태에서 다시 해석하면 맵 타임라인 뒤에 솔버 타임라인 "
+"단계가 붙습니다."
 
 msgid "P4 reclaim last B2 route cells"
-msgstr "P4 reclaim last B2 route cells"
+msgstr "P4 회수: 마지막 B2 경로 칸"
 
 msgid "P4 soft protected candidates (last commit)"
-msgstr "P4 soft protected candidates (last commit)"
+msgstr "P4 소프트 보호 후보(마지막 커밋)"
 
 msgid "P4 soft repair old cells (last session)"
-msgstr "P4 soft repair old cells (last session)"
+msgstr "P4 소프트 복구 이전 칸(마지막 세션)"
 
 msgid "P4 soft repair new cells (last session)"
-msgstr "P4 soft repair new cells (last session)"
+msgstr "P4 소프트 복구 신규 칸(마지막 세션)"
 
 msgid "Replay: route cells removed (cascade reroute)"
-msgstr "Replay: route cells removed (cascade reroute)"
+msgstr "리플레이: 경로 칸 제거(연쇄 재라우팅)"
 
 msgid "Replay: route cells added (cascade reroute)"
-msgstr "Replay: route cells added (cascade reroute)"
+msgstr "리플레이: 경로 칸 추가(연쇄 재라우팅)"
 
 msgid "Prepare string"
 msgstr "문자열 준비"
@@ -544,30 +577,29 @@ msgstr ""
 "반사실 기준선 대비 내부 이송 품질 비율이 높습니다(1.35× 초과). 하드 게이트로 쓰기 전에 경로 튜닝을 검토하는 것이 좋습니다."
 
 msgid "STEP4 not committed — Pass3/P4 overlay metrics hidden for this frame."
-msgstr "STEP4 not committed — Pass3/P4 overlay metrics hidden for this frame."
+msgstr "STEP4 미커밋 — 이 프레임에서는 Pass3/P4 오버레이 지표를 숨깁니다."
 
 msgid "STEP4 not committed"
-msgstr "STEP4 not committed"
+msgstr "STEP4 미커밋"
 
 msgid "(not committed)"
-msgstr "(not committed)"
+msgstr "(미커밋)"
 
 msgid ""
 "Pass3 skipped or not eligible — optimization metrics hidden for this frame."
 msgstr ""
-"Pass3 skipped or not eligible — optimization metrics hidden for this frame."
+"Pass3가 건너뛰었거나 대상이 아님 — 이 프레임에서는 최적화 지표를 숨깁니다."
 
 msgid ""
 "Pass3 skipped — internal transport optimization metrics do not apply to this"
 " run (Pass3/P4 did not commit)."
 msgstr ""
-"Pass3 skipped — internal transport optimization metrics do not apply to this"
-" run (Pass3/P4 did not commit)."
+"Pass3 건너뜀 — 내부 이송 최적화 지표는 이 실행에 적용되지 않습니다(Pass3/P4 미커밋)."
 
 msgid ""
 "Partial validation result — optimization metrics hidden for this frame."
 msgstr ""
-"Partial validation result — optimization metrics hidden for this frame."
+"부분 검증 결과 — 이 프레임에서는 최적화 지표를 숨깁니다."
 
 msgid "Protected corridor: hard"
 msgstr "보호 코리도: 하드"

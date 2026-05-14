@@ -24,7 +24,9 @@ SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET = (
     os.environ.get(
         "SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET",
         "",
-    ).strip().lower()
+    )
+    .strip()
+    .lower()
     in _truthy_env
 )
 # ``build_solver_timeline`` 반환 전 STEP9: 보호 회랑과 최종 맵 벨트 일치 assert. 기본 OFF.
@@ -46,6 +48,15 @@ SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED = os.environ.get(
     "SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED", "true"
 ).strip().lower() not in {"0", "false", "no", "off"}
 
+# ``SHAPEZ_MINING_LAYOUT_ENGINE``: 예약. ``copy_preview``는 항상 v2 타임라인·분석.
+# 이 값으로 분기하지 않음. 배포·문서 호환을 위해 env 키는 유지한다. 기본 ``v2``.
+SHAPEZ_MINING_LAYOUT_ENGINE = os.environ.get("SHAPEZ_MINING_LAYOUT_ENGINE", "v2").strip().lower()
+# ``asteroid_mining_layout`` 폴더가 없고 ``asteroid_mining_layout.zip``만 있을 때 copy-preview가
+# ``build_solver_timeline``을 쓰기 전에 zip을 sibling 폴더로 한 번 푼다. 읽기 전용 배포에서는 끈다.
+SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT = os.environ.get(
+    "SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT", "true"
+).strip().lower() not in {"0", "false", "no", "off"}
+
 # --- SOLVER_GRAPH_PREVIEW_* ---
 # ``SOLVER_GRAPH_PREVIEW_RENDERER``: playwright_png | noop 등. 기본 playwright_png.
 SOLVER_GRAPH_PREVIEW_RENDERER = (
@@ -61,6 +72,8 @@ __all__ = [
     "SHAPEZ_COPY_DEBUG_DIR",
     "SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET",
     "SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE",
+    "SHAPEZ_MINING_LAYOUT_ENGINE",
+    "SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT",
     "SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY",
     "SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY",
     "SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED",

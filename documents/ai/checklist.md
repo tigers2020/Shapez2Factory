@@ -6,6 +6,13 @@
 
 정본 분할 문서: [`documents/Algorithm/mining_solver_cursor_sessions/`](../Algorithm/mining_solver_cursor_sessions/). 상위 요약·원문은 [`Shapez2 Asteroid Mining Solver logic.md`](../Algorithm/Shapez2%20Asteroid%20Mining%20Solver%20logic.md).
 
+### v2 단일 권위 (범위 2, 2026-05-14)
+
+- [x] 문서 앵커: [`current_plan.md`](current_plan.md) 목표 절에 MVP 실행 순서 + legacy preview 감사 링크
+- [ ] PR-C~F: v2 STEP0→10 본 구현(현재는 STEP1 reconstruction + copy-preview 분기 일부만 진행 가능)
+- [x] PR-G: `SHAPEZ_MINING_LAYOUT_ENGINE=v2` 시 `copy_preview`의 **existing_layout_analysis**를 v2 `analyze_decoded_layout` JSON으로 전환·`map_timeline`은 당분간 `blueprint_map_summary` 유지 (2026-05-14 구현)
+- [ ] PR-H(게이트): v2 경로·`include_solver_*` 회귀·전역 pytest/ruff/mypy/black green **후에만** `asteroid_mining_layout` → `asteroid_mining_layout_old` 물리 리네임 단독 PR
+
 ### 공통 · 스키마
 
 - [ ] [`01_project_overview.md`](../Algorithm/mining_solver_cursor_sessions/01_project_overview.md): §0 백지 전제, §2 목표(채굴량·extension·내부 transport·외부 연결·overlap·capacity 1차 합산·bounded recovery·replay/streaming)와 구현 정합

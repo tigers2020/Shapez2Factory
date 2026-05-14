@@ -44,6 +44,8 @@ coverage.xml
 *.py,cover
 .hypothesis/
 *.mo
+!locale/*/LC_MESSAGES/django.mo
+!locale/*/LC_MESSAGES/djangojs.mo
 *.pot
 
 # --- Django ---

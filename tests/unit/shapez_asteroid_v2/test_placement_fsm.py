@@ -2,10 +2,20 @@ from __future__ import annotations
 
 import pytest
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
+    Pass1Result,
+    Pass2Result,
+    ReconstructionDTO,
+    SolverRunContext,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
     PlacementCommitState,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.placement_fsm import (
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.placement_fsm import (
+    apply_pass1_provisional_commits,
+    apply_pass2_provisional_commits,
+    assert_all_provisional_commits,
+    assert_no_routed_confirmed,
     assert_placement_commit_transition,
     assert_provisionally_placed,
     is_terminal_state,
@@ -99,3 +109,33 @@ def test_quarantine_cannot_revert_to_provisional() -> None:
         )
         is False
     )
+
+
+def test_apply_pass1_provisional_commits() -> None:
+    ctx = SolverRunContext(run_id="t", reconstruction=ReconstructionDTO())
+    p1 = Pass1Result(
+        placement_commit_entries=(("a", PlacementCommitState.PROVISIONAL_PLACED),),
+    )
+    merged = apply_pass1_provisional_commits(ctx, p1)
+    assert merged.placement_commit_by_id["a"] is PlacementCommitState.PROVISIONAL_PLACED
+
+
+def test_assert_all_provisional_commits_pass1_tuple() -> None:
+    entries = (("x", PlacementCommitState.PROVISIONAL_PLACED),)
+    assert_all_provisional_commits(entries)
+
+
+def test_apply_pass2_provisional_commits() -> None:
+    ctx = SolverRunContext(run_id="t", reconstruction=ReconstructionDTO())
+    p2 = Pass2Result(
+        placement_commit_entries=(("b", PlacementCommitState.PROVISIONAL_PLACED),),
+    )
+    merged = apply_pass2_provisional_commits(ctx, p2)
+    assert merged.placement_commit_by_id["b"] is PlacementCommitState.PROVISIONAL_PLACED
+
+
+def test_assert_no_routed_confirmed_rejects_routed() -> None:
+    with pytest.raises(AssertionError, match="ROUTED_CONFIRMED"):
+        assert_no_routed_confirmed(
+            (("x", PlacementCommitState.ROUTED_CONFIRMED),),
+        )

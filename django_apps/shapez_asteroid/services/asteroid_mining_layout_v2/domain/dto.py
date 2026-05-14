@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, NewType
+from typing import Any, Literal, NewType
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BBox,
@@ -57,11 +57,21 @@ class SolverRunLimits:
 
 @dataclass(frozen=True, slots=True)
 class ReconstructionDTO:
-    """STEP 1 outputs (mineable cells, shell, barriers)."""
+    """STEP 1 outputs (§6): shell, barriers, transport split, inferred interior, mineable."""
 
     mineable_placement_cells: tuple[BlueprintCell, ...] = ()
     extraction_shell_cells: tuple[BlueprintCell, ...] = ()
     full_barrier_cells: tuple[BlueprintCell, ...] = ()
+    belt_cells: tuple[BlueprintCell, ...] = ()
+    pipe_cells: tuple[BlueprintCell, ...] = ()
+    interior_patch_cells: tuple[BlueprintCell, ...] = ()
+    asteroid_bbox: BBox | None = None
+    external_margin: int = 0
+    external_margin_bbox_source: Literal["mineable", "shell", "none"] = "none"
+
+
+# Alias for CANON §6 naming (``SolverRunContext.reconstruction`` keeps field type).
+ReconstructionResult = ReconstructionDTO
 
 
 @dataclass(frozen=True, slots=True)
@@ -226,6 +236,7 @@ class ExtensionPlacement:
     placement_id: PlacementId
     anchor_extractor_id: PlacementId
     cell: BlueprintCell
+    parent_cell: BlueprintCell
 
 
 @dataclass(frozen=True, slots=True)
@@ -269,6 +280,7 @@ class Pass1Result:
 
     placements: tuple[PlacementBundle, ...] = ()
     occupied_cells: tuple[BlueprintCell, ...] = ()
+    placement_commit_entries: tuple[tuple[str, PlacementCommitState], ...] = ()
     beam_trace: tuple[dict[str, Any], ...] | None = None
 
 
@@ -278,6 +290,8 @@ class Pass2Result:
 
     provisional_placements: tuple[PlacementBundle, ...] = ()
     blocked_cells_delta: tuple[BlueprintCell, ...] = ()
+    placement_commit_entries: tuple[tuple[str, PlacementCommitState], ...] = ()
+    beam_trace: tuple[dict[str, Any], ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)

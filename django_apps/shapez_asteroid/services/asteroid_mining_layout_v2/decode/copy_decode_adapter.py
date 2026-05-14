@@ -1,7 +1,13 @@
 """
-STEP 0: Shapez2 copy string or JSON fixture → normalized decoded document.
+STEP 0 — Shapez2 copy decode (``04_step0_decode.md`` §5).
 
-Uses ``shapez_core.services.shapez_copy_decode`` (pure; not v1 mining layout).
+Pipeline for string payloads (implemented in ``shapez_core.services.shapez_copy_decode``,
+pure I/O + parse; **not** v1 ``asteroid_mining_layout``):
+
+  ``SHAPEZ2-4-`` → Base64 → gzip → JSON object
+
+This adapter only wraps that utility and ``DecodedBlueprintDocument``. It does **not**
+run placement, routing, reconstruction, or existing-layout analysis (those are later steps).
 """
 
 from __future__ import annotations
@@ -21,7 +27,8 @@ from django_apps.shapez_core.services.shapez_copy_decode import (
 def decode_copy_payload(payload: str | Mapping[str, Any]) -> DecodedBlueprintDocument:
     """Decode a ``SHAPEZ2-4-`` copy string or wrap an already-decoded blueprint ``dict``.
 
-    Returns a shallow read-only view (``document``); use ``as_mutable_dict()`` for a copy.
+    Mapping payloads skip Base64/gzip (caller-supplied JSON root). Returns a shallow
+    read-only view via ``document``; use ``as_mutable_dict()`` for an owned copy.
     """
 
     if isinstance(payload, str):

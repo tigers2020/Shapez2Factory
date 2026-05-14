@@ -2,9 +2,11 @@
 
 작업 시작 시 채우고, 범위가 바뀔 때마다 갱신한다.
 
-## 목표 (갱신 2026-05-10)
+## 목표 (갱신 2026-05-14)
 
+- **(범위 2, 진행 중)** 채굴 파이프라인 **v2 단일 권위** — Cursor 실행 플랜 `mining_pipeline_v2_authority` (저장소 밖 `.cursor/plans/`에 생성됨; 본 절이 워크스페이스 앵커). 단계는 ACTIVE MVP §3·§4와 동일: **웹 플래그·copy-preview v2 분기(PR-G) → 전부 green → PR-H v1 패키지 리네임**.
 - **(ACTIVE, 2026-05-13)** 채굴 솔버 **v2 그린필드 MVP** 실행 순서·게이트: [`plans/mining_solver_v2_mvp_execution_2026-05-13.md`](plans/mining_solver_v2_mvp_execution_2026-05-13.md) — v1 `asteroid_mining_layout` → `_old` 리네임은 **v2 스캐폴드·domain·import 경계 테스트 green 이후 단독 PR**.
+- **레거시 웹·preview 의존 감사(REPORT)**: [`../reports/2026-05/asteroid_legacy_preview_stack_audit.md`](../reports/2026-05/asteroid_legacy_preview_stack_audit.md).
 - `shapez_asteroid` 1단계 스켈레톤·복사 미리보기·채굴 레이아웃 솔버(멀티패스·pass3 transport 등)까지 **구현 완료**로 본다.
 - 리포 전체 **로컬 품질 게이트**(`pytest` / `ruff` / `mypy` / `black --check`)를 통과한 상태를 유지한다.
 - **진행 중 (정본)**: 채굴 레이아웃 솔버 **안정화** — 생산 설비 보존·비철거 복구·성공 판정 고정 ([`mining_layout_solver_stabilization_2026-05-09.md`](plans/mining_layout_solver_stabilization_2026-05-09.md)). 1차는 P0(요약·최종 검증·철거형 merge repair 차단)부터.
@@ -40,6 +42,7 @@
 
 - [x] 리서치/플랜: 스켈레톤·소행성 추출·레이아웃 플랜 합의
 - [x] 사람 승인: 해당 플랜 기준 구현
+- [ ] **PR-H (`asteroid_mining_layout` → `_old` 리네임)**: **보류** — v2 copy-preview·솔버 오버레이 회귀 + 전역 품질 게이트 green 전 금지(단독 PR, MVP §4 PR-H). 2026-05-14 세션에서는 수행하지 않음.
 - [x] 리서치/플랜: merge `repair not_found` 복구 ([`research_merge_repair_not_found_2026-05-09.md`](../research/research_merge_repair_not_found_2026-05-09.md), [`plans/merge_repair_not_found_recovery_2026-05-09.md`](plans/merge_repair_not_found_recovery_2026-05-09.md)) — 사용자 진행 지시로 승인 간주
 - [x] 리서치/플랜·승인: 솔버 안정화 ([`plans/mining_layout_solver_stabilization_2026-05-09.md`](plans/mining_layout_solver_stabilization_2026-05-09.md)) — 정식 반영·구현 착수 허용
 

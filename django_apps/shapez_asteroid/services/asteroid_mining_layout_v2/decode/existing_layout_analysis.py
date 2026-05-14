@@ -1,8 +1,24 @@
 """
-STEP 0.5 existing layout analysis (read-only context, §E).
+STEP 0.5 — Existing layout analysis (``03_data_schema_dto.md`` §E, ``04_step0_decode`` §5.4).
 
-Produces ``ExistingLayoutAnalysis`` without mutating placement. Does not replace
-``mineable_placement_cells`` from reconstruction (CANON boundary).
+Read-only solver context from decoded island JSON **before** STEP 1 reconstruction.
+DTO shapes match §E; belt and pipe are analyzed as **separate** ``TransportKind`` graphs
+(never merged into a mixed trunk).
+
+Contracts (implementation must preserve):
+
+1. ``ExistingLayoutAnalysis`` is read-only context (no blueprint mutation).
+2. It does not modify placement algorithms or outputs.
+3. It does **not** emit ``mineable_placement_cells`` (STEP 1 ``ReconstructionDTO`` only).
+4. It does **not** replace or shadow reconstruction inputs.
+5. ``TransportComponentStatus.MAIN_TRUNK_CANDIDATE`` cells feed ``trunk_seed_cell_union``.
+6. ``ORPHAN_COMPONENT`` and ``SINGLE_CELL_ARTIFACT`` feed ``cleanup_candidate_cell_union``.
+7. Hints are **not** ``hard_protected_corridors`` (protection is a downstream routing policy).
+8. Each ``ExistingTransportAnalysis`` row is single-kind (belt **or** pipe).
+9. Components are 4-neighbor CC within one kind only (§E.12).
+
+``classify_layout_type`` maps blueprint ``T`` strings to belt/pipe/equipment; it lives in
+``shapez_asteroid.services.style_classifier`` (layout labels only, not v1 solver).
 """
 
 from __future__ import annotations

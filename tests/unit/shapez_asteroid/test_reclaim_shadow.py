@@ -219,6 +219,29 @@ def test_p4_zero_candidate_diag_all_transport_protected_reason() -> None:
     assert att["mineable_cur_after_protection"] == 1
 
 
+def test_p4_zero_diag_skips_all_transport_trace_when_unprotected_transport() -> None:
+    d = _p4_reclaim_zero_candidate_diag(
+        mineable_base=frozenset({(1, 1)}),
+        mineable_cur=frozenset({(1, 1)}),
+        final_route_cells=frozenset(),
+        hard=frozenset({(10, 10)}),
+        soft=frozenset({(11, 11)}),
+        committed=frozenset(),
+        reclaimed=frozenset(),
+        reclaim_anchor_cells=set(),
+        transport_cells=frozenset({(10, 10), (11, 11), (12, 12)}),
+        internal_budget=5,
+        spent_prior=0,
+        anchor_specs_empty_all=False,
+        has_routing_jobs=True,
+        candidate_corridor_count=0,
+    )
+    assert P4_RECLAIM_ZERO_ALL_TRANSPORT_PROTECTED not in d.get(
+        "p4_reclaim_zero_candidate_reasons", []
+    )
+    assert "all_transport_protected_trace" not in d
+
+
 def test_p4_scan_preconditions_no_routing_jobs_includes_zero_routing_count() -> None:
     base = _base_final_mining_map()
     trace = run_reclaim_shadow_scan_after_pass3(

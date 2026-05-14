@@ -58,8 +58,7 @@ def test_protected_corridors_for_reclaim_no_routing_state_trace_must_not_synthes
 # --- (1b) When routing_state is absent, no *runtime* corridor attachment from hints either ---
 
 
-def test_protected_corridors_for_reclaim_no_routing_state_existing_layout_hints_must_not_attach(
-) -> None:
+def test_pc_reclaim_hints_do_not_attach_without_routing_state() -> None:
     pcs = protected_corridors_for_reclaim(
         pass3_trace={},
         solver_routing_state=None,
@@ -133,9 +132,8 @@ def test_trunk_load_step4_committed_not_read_for_runtime_inference() -> None:
             if stripped.startswith("#"):
                 continue
             offenders.append(f"{path.relative_to(root)}:{lineno}:{stripped}")
-    msg = (
-        "trunk_load + step4_committed on same line (possible mirror inference):\n"
-        + "\n".join(offenders[:25])
+    msg = "trunk_load + step4_committed on same line (possible mirror inference):\n" + "\n".join(
+        offenders[:25]
     )
     assert not offenders, msg
 
@@ -155,8 +153,7 @@ def test_recovery_trigger_literals_disjoint_from_rollup_commit_reasons() -> None
     assert triggers.isdisjoint(ROLLUP_COMMIT_REASONS_CANONICAL), overlap
 
 
-def test_synthesize_recovery_validation_outcome_does_not_copy_recovery_trigger_to_commit_reason(
-) -> None:
+def test_recovery_validation_outcome_does_not_promote_trigger_to_commit_reason() -> None:
     summary = {
         "return_reason": "ok",
         "recovery_trigger": constants.RECOVERY_TRIGGER_STEP4_ROUTING_FAILURE,
@@ -173,8 +170,7 @@ def test_synthesize_recovery_validation_outcome_does_not_copy_recovery_trigger_t
 # --- (5) committed=false ⇒ commit_reason slot stays null at partition boundary ---
 
 
-def test_partition_pass3_commit_reason_uncommitted_implies_no_commit_reason_even_if_raw_string(
-) -> None:
+def test_partition_pass3_commit_reason_uncommitted_keeps_reason_none() -> None:
     cr, promoted = partition_pass3_commit_reason_payload(
         constants.P3F_COMMIT_REASON_NORMAL_GAIN,
         pass3_committed=False,

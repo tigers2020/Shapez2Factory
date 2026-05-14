@@ -557,6 +557,9 @@ def test_preserve_loss_quality_tier_partial_success_subtier_and_degradation_caus
         "pass12_merged_seed_miner_count": 67,
         "pass12_preserved_bundle_extractor_cells": 65,
         "pass12_preserved_missing_stub_drop_extractor_count": 2,
+        "preserve_source_loss_before_step4": 2,
+        "pass12_preserve_drop_reason_counts": {"NO_MATCHING_STUB": 2},
+        "pass12_after_preserve_recovery_extractor_count": 65,
         "pass12_preserved_missing_stub_drop_details": [
             {"preserve_drop_reason": "NO_MATCHING_STUB", "preserve_stub_recovery": dict(_psr)},
             {"preserve_drop_reason": "NO_MATCHING_STUB", "preserve_stub_recovery": dict(_psr)},
@@ -619,6 +622,13 @@ def test_preserve_loss_quality_tier_partial_success_subtier_and_degradation_caus
 
     assert summary["solver_termination"] == SOLVER_TERMINATION_SUCCESS
     assert summary["solver_quality_tier"] == SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+    assert summary["preserve_source_loss_before_step4"] == 2
+    assert summary["preserve_source_loss_reason_counts"] == {"NO_MATCHING_STUB": 2}
+    assert summary["step4_route_success_on_surviving_placements"] is True
+    assert summary["step4_complete_routing_success"] is True
+    assert summary["original_extractor_count"] == 67
+    assert summary["final_extractor_count"] == 65
+    assert summary["after_preserve_recovery_extractor_count"] == 65
     pms = summary.get("preserve_missing_stub_summary") or {}
     assert int(pms.get("drop_count") or 0) == 2
     assert int(pms.get("unrecoverable_drop_count") or 0) == 2
@@ -629,6 +639,8 @@ def test_preserve_loss_quality_tier_partial_success_subtier_and_degradation_caus
         == SOLVER_QUALITY_SUBTIER_EXPECTED_UNRECOVERABLE_PRESERVE_LOSS_ONLY
     )
     fv = out.get("final_validation") or {}
+    assert fv.get("preserve_source_loss_before_step4") == 2
+    assert fv.get("step4_route_success_on_surviving_placements") is True
     assert fv.get("solver_quality_tier") == SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
     assert (
         fv.get("solver_quality_subtier")
@@ -638,3 +650,95 @@ def test_preserve_loss_quality_tier_partial_success_subtier_and_degradation_caus
     assert DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP in dc
     assert DEGRADATION_CAUSE_EXTRACTOR_DROP_VS_MERGED_SEED in dc
     assert OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE in dc
+
+
+def test_s3_clean_success_no_preserve_loss_full_quality_tier() -> None:
+    """No pre-STEP4 preserve loss and aligned extractor counts → SUCCESS_VALID_OPTIMIZED."""
+
+    empty: list[dict[str, Any]] = []
+    routing_state: dict[str, Any] = {"hard_protected_corridors": []}
+    step4 = step4_routing_skipped_result(empty)
+    good = FinalValidationReport(
+        geometry_valid=True,
+        connectivity_valid=True,
+        disconnected_stub_count=0,
+        quarantined_unrouted_count=0,
+        provisional_placed_row_count=0,
+        orphan_transport_count=0,
+        overlap_violation_count=0,
+        missing_stub_count=0,
+        missing_extractor_rotation_count=0,
+        extractor_count=10,
+        extension_count=0,
+        transport_cell_count=0,
+        transport_connectivity_ok=True,
+    )
+    pass12_stats: dict[str, Any] = {
+        "pass12_merged_seed_miner_count": 10,
+        "pass12_preserved_bundle_extractor_cells": 10,
+        "pass12_preserved_missing_stub_drop_extractor_count": 0,
+        "pass12_preserved_missing_stub_drop_details": [],
+        "pass12_preserved_recovery_success_count": 0,
+        "pass12_preserved_rotation_recovery_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_attempted_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_success_count": 0,
+        "pass12_preserved_recovered_stub_samples": [],
+        "pass12_preserved_unrecovered_stub_drop_samples": [],
+        "pass2_probe_empty_goal_set_count": 0,
+        "preserve_missing_stub_summary": {
+            "drop_count": 0,
+            "by_reason": {},
+            "by_recoverability": {},
+            "by_rejected_reason_subtype": {},
+            "local_repack_candidate_count": 0,
+        },
+    }
+    pass3_summary: dict[str, Any] = {
+        "after_internal_transport_count": 0,
+        "pass3_skipped": True,
+        "pass3_committed": False,
+    }
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize."
+        "_validate_final_mining_layout",
+        return_value=good,
+    ):
+        out, summary = build_final_solver_output(
+            run_id="s3-clean-success-tier",
+            map_timeline=[{"mining_map": empty}, {"mining_map": empty}],
+            map_after_pass1=empty,
+            map_after_pass2=empty,
+            map_after_routing=empty,
+            map_final=empty,
+            pass12_status_fields={},
+            pass12_stats=pass12_stats,
+            pass12_phase="test",
+            pass12_skipped=True,
+            pre_counts=_empty_counts(),
+            post_pass2_counts=_empty_counts(),
+            step4_result=step4,
+            routing_state_summary=routing_state,
+            post_step4_counts=_empty_counts(),
+            unfinalized_placement_count=0,
+            pass3_summary=pass3_summary,
+            existing_layout_analysis=None,
+            step_hash_step4=None,
+            step_hash_pass3=None,
+            step_hash_p4=None,
+            solver_state_hash=None,
+            replay_events=[],
+            debug_location="tests.unit.shapez_asteroid.test_finalize_degradation_causes_success_tier",
+            optimization_baseline_internal_transport=0,
+        )
+
+    assert int(summary.get("preserve_source_loss_before_step4") or 0) == 0
+    assert summary["solver_quality_tier"] == SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED
+    assert int(summary.get("extractor_drop_count") or 0) == 0
+    assert summary["original_extractor_count"] == 10
+    assert summary["final_extractor_count"] == 10
+    term = summary.get("termination") or {}
+    assert term.get("quality_tier") == SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED
+    fv = out.get("final_validation") or {}
+    assert fv.get("solver_quality_tier") == SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED
+    fv_term = fv.get("termination") or {}
+    assert fv_term.get("quality_tier") == SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED

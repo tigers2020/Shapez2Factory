@@ -10,18 +10,26 @@ commit 확정 soft 풀(``soft_cells``)을 반영한다.
 ``solver_hints.trunk_seed_cell_union``을 ``ela_trunk_seed_candidate_corridors``에만
 직렬화한다(관측·candidate 분리). 이 키는 ``hard_protected_corridors``에 합쳐지지 않으며
 ``ROUTING_STATE_KEYS_STEP4_HASH``에 포함되지 않는다.
+
+§14.2.2 (S4): ``hard_protected``는 **output stub**은 항상 증거가 있다. ``path[-1]``(trunk
+terminal)은 ``replacement_search_exhausted`` 등가 증명(``trunk_terminal_hard_reason``) 또는
+``is_external``로 확인되는 **외부 접점**일 때만 hard에 포함한다(무증거 승격 금지).
 """
 
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    ALLOWED_HARD_PROMOTION_REASONS,
     CORRIDOR_LIFECYCLE_HARD,
     CORRIDOR_LIFECYCLE_SOFT,
+    HARD_PROMOTION_REASON_EXTERNAL_ARTICULATION,
+    HARD_PROMOTION_REASON_OUTPUT_STUB,
+    HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing_cells import (
@@ -94,6 +102,73 @@ def _soft_cells_for_merged_stub_route(
     return frozenset(comp & trunk_cells)
 
 
+def _hard_cells_from_coord_list(val: object) -> frozenset[Coord]:
+    if not isinstance(val, list):
+        return frozenset()
+    out: set[Coord] = set()
+    for it in val:
+        if isinstance(it, (list, tuple)) and len(it) == 2:
+            x, y = it[0], it[1]
+            if isinstance(x, int) and isinstance(y, int) and x != 0:
+                out.add((x, y))
+    return frozenset(out)
+
+
+def compute_hard_promotion_audit(routing_state: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Count hard cells missing a valid §14.2.2 ``hard_protected_promotions`` record."""
+
+    if not isinstance(routing_state, dict):
+        return {"hard_promotion_without_proof_count": 0, "cells_missing_evidence": []}
+    hard_set = _hard_cells_from_coord_list(routing_state.get("hard_protected_corridors"))
+    promotions = routing_state.get("hard_protected_promotions")
+    if not isinstance(promotions, list) or not promotions:
+        return {
+            "hard_promotion_without_proof_count": len(hard_set),
+            "cells_missing_evidence": _coord_lists(hard_set),
+        }
+    explained: set[Coord] = set()
+    for p in promotions:
+        if not isinstance(p, dict):
+            continue
+        cell = p.get("cell")
+        reason = str(p.get("reason") or "")
+        if not isinstance(cell, (list, tuple)) or len(cell) != 2:
+            continue
+        try:
+            c = (int(cell[0]), int(cell[1]))
+        except (TypeError, ValueError):
+            continue
+        if reason not in ALLOWED_HARD_PROMOTION_REASONS:
+            continue
+        explained.add(c)
+    missing = hard_set - frozenset(explained)
+    return {
+        "hard_promotion_without_proof_count": len(missing),
+        "cells_missing_evidence": _coord_lists(missing),
+    }
+
+
+def _protected_corridor_hard_by_reason_from_promotions(
+    promotions: list[dict[str, Any]],
+) -> dict[str, list[list[int]]]:
+    buckets: dict[str, set[Coord]] = {}
+    for p in promotions:
+        if not isinstance(p, dict):
+            continue
+        cell = p.get("cell")
+        reason = str(p.get("reason") or "")
+        if not isinstance(cell, (list, tuple)) or len(cell) != 2:
+            continue
+        try:
+            c = (int(cell[0]), int(cell[1]))
+        except (TypeError, ValueError):
+            continue
+        if reason not in ALLOWED_HARD_PROMOTION_REASONS:
+            continue
+        buckets.setdefault(reason, set()).add(c)
+    return {k: _coord_lists(frozenset(v)) for k, v in sorted(buckets.items())}
+
+
 def _routing_state_from_committed_routes(
     routes: tuple[Step4Route, ...],
     *,
@@ -105,9 +180,11 @@ def _routing_state_from_committed_routes(
 
     ``soft_protected_candidate_corridors``는 commit 스냅샷에서 후보가 없으므로 항상 ``[]``.
 
-    ``hard``는 각 route의 ``stub_cell``과 ``path[-1]``(있을 때)만 포함한다. ELA
-    ``trunk_seed_cell_union``은 ``hard``에 승격되지 않으며, ``existing_layout_analysis``가
-    주어지면 ``ela_trunk_seed_candidate_corridors``에 별도 직렬화한다.
+    ``hard``는 기본적으로 각 route의 ``stub_cell``(output stub)만 포함한다. ``path[-1]``은
+    ``trunk_terminal_hard_reason == replacement_search_exhausted_terminal``이거나
+    ``reached_external``이고 ``is_external(path[-1])``가 참인 경우에만 hard에 추가한다.
+    ELA ``trunk_seed_cell_union``은 ``hard``에 승격되지 않으며,
+    ``ela_trunk_seed_candidate_corridors``에만 직렬화한다.
     """
 
     if not routes:
@@ -115,6 +192,7 @@ def _routing_state_from_committed_routes(
 
     hard: set[Coord] = set()
     soft_confirmed: set[Coord] = set()
+    promotions: list[dict[str, Any]] = []
     for route in routes:
         path = tuple(route.path)
         extra_soft: set[Coord] = set()
@@ -126,9 +204,43 @@ def _routing_state_from_committed_routes(
             continue
         soft_confirmed.update(path)
         soft_confirmed.update(extra_soft)
-        hard.add(route.stub_cell)
+        stub = route.stub_cell
+        hard.add(stub)
+        rid = route.placement_id or ""
+        src_rid = f"route-{rid}" if rid else "route-anon"
+        promotions.append(
+            {
+                "cell": [stub[0], stub[1]],
+                "reason": HARD_PROMOTION_REASON_OUTPUT_STUB,
+                "placement_id": route.placement_id,
+                "source_route_id": src_rid,
+                "replacement_search_exhausted": False,
+            }
+        )
         if path:
-            hard.add(path[-1])
+            tail = path[-1]
+            if tail != stub:
+                term_reason: str | None = None
+                exhausted_ok = (
+                    route.trunk_terminal_hard_reason
+                    == HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED
+                )
+                if exhausted_ok:
+                    term_reason = HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED
+                elif is_external is not None and route.reached_external and is_external(tail):
+                    term_reason = HARD_PROMOTION_REASON_EXTERNAL_ARTICULATION
+                if term_reason is not None:
+                    hard.add(tail)
+                    promotions.append(
+                        {
+                            "cell": [tail[0], tail[1]],
+                            "reason": term_reason,
+                            "placement_id": route.placement_id,
+                            "source_route_id": src_rid,
+                            "replacement_search_exhausted": term_reason
+                            == HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED,
+                        }
+                    )
 
     soft = soft_confirmed - hard
     hard_cells = frozenset(hard)
@@ -147,10 +259,24 @@ def _routing_state_from_committed_routes(
         "corridor_probe_candidates_at_commit": [],
         "corridor_lifecycle_soft_pool": CORRIDOR_LIFECYCLE_SOFT if soft_cells else None,
         "corridor_lifecycle_hard_pool": CORRIDOR_LIFECYCLE_HARD if hard_cells else None,
+        "hard_protected_promotions": promotions,
+        "protected_corridor_hard_by_reason": _protected_corridor_hard_by_reason_from_promotions(
+            promotions
+        ),
     }
+    _audit = compute_hard_promotion_audit(out)
+    out["hard_promotion_without_proof_count"] = int(
+        _audit.get("hard_promotion_without_proof_count") or 0
+    )
     if existing_layout_analysis is not None:
         ela_seeds = step4_goal_trunk_seed.trunk_seed_union_from_existing_layout(
             existing_layout_analysis
         )
         out["ela_trunk_seed_candidate_corridors"] = _coord_lists(frozenset(ela_seeds))
     return out
+
+
+__all__ = [
+    "_routing_state_from_committed_routes",
+    "compute_hard_promotion_audit",
+]

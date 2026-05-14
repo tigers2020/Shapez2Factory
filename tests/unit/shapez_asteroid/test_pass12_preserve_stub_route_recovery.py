@@ -7,6 +7,9 @@ import copy
 from django.test import override_settings
 
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import output_offset_r
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
     pass1_timeline_integration as p12_tl,
@@ -224,6 +227,7 @@ def test_try_preserve_stub_route_recovery_attempts_hop_seven_candidate() -> None
     assert res.accepted is True
     assert psr["route_len_edges"] == 6
     assert psr["new_transport_cell_count"] == 6
+    assert psr.get("commit_reason") == COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY
 
 
 def test_stub_route_recovery_rejects_mixed_kind_trunk() -> None:

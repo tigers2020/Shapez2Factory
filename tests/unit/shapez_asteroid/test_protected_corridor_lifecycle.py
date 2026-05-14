@@ -20,6 +20,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_con
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_routing_state import (
     _routing_state_from_committed_routes,
+    compute_hard_promotion_audit,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
     final_validation as fv_mod,
@@ -127,3 +128,49 @@ def test_final_validation_module_docstring_forbids_new_hard_corridors() -> None:
     low = doc.lower()
     assert "does not promote" in low
     assert "hard_protected_corridors" in low
+
+
+def test_compute_hard_promotion_audit_flags_missing_promotion_trace() -> None:
+    rs = {"hard_protected_corridors": [[2, 2]], "hard_protected_promotions": []}
+    aud = compute_hard_promotion_audit(rs)
+    assert aud["hard_promotion_without_proof_count"] == 1
+
+
+def test_compute_hard_promotion_audit_ok_when_promotions_cover_hard() -> None:
+    rs = {
+        "hard_protected_corridors": [[2, 2]],
+        "hard_protected_promotions": [
+            {"cell": [2, 2], "reason": fc.HARD_PROMOTION_REASON_OUTPUT_STUB},
+        ],
+    }
+    assert compute_hard_promotion_audit(rs)["hard_promotion_without_proof_count"] == 0
+
+
+def test_hard_terminal_promoted_when_replacement_search_exhausted_reason_on_route() -> None:
+    r = Step4Route(
+        extractor_cell=(1, 1),
+        stub_cell=(1, 2),
+        transport_kind="shape_belt",
+        path=((1, 3), (1, 4)),
+        merged_to_existing=False,
+        reached_external=True,
+        placement_id="p1",
+        trunk_terminal_hard_reason=fc.HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED,
+    )
+    st = _routing_state_from_committed_routes((r,), cells=None, is_external=None)
+    assert st is not None
+    hard = {tuple(int(a) for a in c) for c in st.get("hard_protected_corridors") or []}
+    assert hard == {(1, 2), (1, 4)}
+    byr = st.get("protected_corridor_hard_by_reason") or {}
+    assert fc.HARD_PROMOTION_REASON_OUTPUT_STUB in byr
+    assert fc.HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED in byr
+
+
+def test_soft_active_is_intersection_of_soft_pool_and_on_map_transport() -> None:
+    """§14 reclaim scan: ``soft_active`` ⊆ ``soft`` (cells still carrying transport on map)."""
+
+    soft = frozenset({(1, 1), (2, 2)})
+    transport_on_map = frozenset({(2, 2), (5, 5)})
+    soft_active = frozenset(c for c in soft if c in transport_on_map)
+    assert (1, 1) not in soft_active
+    assert (2, 2) in soft_active

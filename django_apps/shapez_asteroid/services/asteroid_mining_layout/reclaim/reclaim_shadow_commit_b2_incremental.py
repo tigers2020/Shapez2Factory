@@ -64,6 +64,7 @@ def _p4_b2_try_commit_incremental_route(
     final_mining_map: list[dict[str, Any]],
     is_external: Callable[[Coord], bool],
     reclaim_internal_transport_spent_prior: int = 0,
+    pass3_internal_transport_saved_for_budget: int | None = None,
 ) -> tuple[list[dict[str, Any]] | None, dict[str, Any]]:
     """P4-B2: reprobe stub→trunk path on the B1 map, paint belt/pipe cells, validate."""
 
@@ -123,8 +124,17 @@ def _p4_b2_try_commit_incremental_route(
     if path is None or not path or path[0] != stub:
         return _fail(P4_REJECT_NO_INCREMENTAL_ROUTE)
 
-    _ = pass3_trace
-    pass3_saved = 0
+    if pass3_internal_transport_saved_for_budget is not None:
+        pass3_saved = max(0, int(pass3_internal_transport_saved_for_budget))
+    else:
+        raw_sv = pass3_trace.get("pass3_internal_transport_saved")
+        pass3_saved = (
+            max(0, int(raw_sv)) if isinstance(raw_sv, int) and not isinstance(raw_sv, bool) else 0
+        )
+        if pass3_saved == 0:
+            implied = pass3_trace.get("pass3_internal_transport_saved_implied")
+            if isinstance(implied, int) and not isinstance(implied, bool) and implied >= 0:
+                pass3_saved = int(implied)
     internal_budget = _allowed_internal_transport_budget(pass3_saved)
     pass3_raw_saved = pass3_saved
 

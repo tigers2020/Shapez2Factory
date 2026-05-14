@@ -34,6 +34,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation impo
     extension_topology as _ext_topo,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY,
     MAX_PASS12_STUB_ROUTE_RECOVERY_NEAREST_HOPS,
     MAX_PASS12_STUB_ROUTE_RECOVERY_NEW_TRANSPORT_CELLS,
     MAX_PASS12_STUB_ROUTE_RECOVERY_PATH_LEN,
@@ -191,6 +192,13 @@ class StubRouteRecoveryResult:
         default_factory=tuple
     )
     tier_d_final_extension_cells: frozenset[Coord] = field(default_factory=frozenset)
+
+    def __post_init__(self) -> None:
+        if self.accepted:
+            return
+        psr = self.trace.get("preserve_stub_recovery")
+        if isinstance(psr, dict):
+            psr.pop("commit_reason", None)
 
 
 def _other_transport_role(want_wr: str) -> str:
@@ -788,6 +796,7 @@ def _maybe_success_from_bfs_path(
     psr["accepted"] = True
     psr["rejected_reason"] = None
     psr["rejected_reason_subtype"] = None
+    psr["commit_reason"] = COMMIT_REASON_DEGRADED_CONNECTED_RECOVERY
     psr["selected_r"] = cand_r
     psr["selected_stub_cell"] = [int(stub[0]), int(stub[1])]
     psr["path_cell_count"] = diag.get("path_cell_count")

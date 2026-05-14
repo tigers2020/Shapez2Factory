@@ -2,10 +2,9 @@
 
 - Pre-commit: ``_build_step4_ctx_state`` must not put ELA trunk seeds into ``ctx.hard_extras``;
   only optional ``hard_protected_cells`` feeds that set (:mod:`step4_merge_routing`).
-- Post-commit: ``hard_protected_corridors`` only from
-  ``step4_routing_state._routing_state_from_committed_routes`` with
-  ``source == "step4_committed_routes"``; ELA hints only in
-  ``ela_trunk_seed_candidate_corridors`` (see :mod:`step4_routing_state`).
+- Post-commit: hard pool from ``step4_routing_state`` (``source == step4_committed_routes``):
+  output stub always hard; ``path[-1]`` hard only with ``is_external`` or exhaust reason
+  (:mod:`step4_routing_state`). ELA hints: ``ela_trunk_seed_candidate_corridors`` only.
 - Reclaim reads STEP4 ``routing_state`` only; ``existing_layout_solver_hints`` is not authority
   (:mod:`reclaim_corridors`).
 - ``pass12_hard_protected_corridor_cells`` on ELA wire is a Pass12 transport-block overlay hint,
@@ -121,7 +120,16 @@ def test_step4_committed_route_can_become_hard_or_soft_protected_with_reason() -
     assert rs is not None
     assert rs["source"] == "step4_committed_routes"
     hard = {tuple(int(a) for a in c) for c in rs.get("hard_protected_corridors") or []}
-    assert hard == {(10, 1), (10, 4)}
+    assert hard == {(10, 1)}
+    rs_ext = _routing_state_from_committed_routes(
+        (route,),
+        existing_layout_analysis=ela,
+        cells=None,
+        is_external=lambda c: c == (10, 4),
+    )
+    assert rs_ext is not None
+    hard_ext = {tuple(int(a) for a in c) for c in rs_ext.get("hard_protected_corridors") or []}
+    assert hard_ext == {(10, 1), (10, 4)}
     ela_seeds = {
         tuple(int(a) for a in c) for c in rs.get("ela_trunk_seed_candidate_corridors") or []
     }

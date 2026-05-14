@@ -34,6 +34,46 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.recovery
 from .reclaim_shadow_commit_trace import p4_reclaim_provisional_commit_neutral_trace
 
 
+def _p4_accumulate_reclaim_funnel_loop_totals(
+    merged: dict[str, Any], scan_trace: Mapping[str, Any]
+) -> None:
+    """Loop-level sums of per-scan funnel counters (§12.6 audit)."""
+
+    n = int(
+        scan_trace.get("candidate_scan_count") or scan_trace.get("p4_reclaim_candidate_count") or 0
+    )
+    merged["reclaim_loop_total_candidate_scan_count"] = (
+        int(merged.get("reclaim_loop_total_candidate_scan_count") or 0) + n
+    )
+    br = scan_trace.get("candidate_reject_by_reason")
+    if isinstance(br, dict):
+        acc = merged.setdefault("reclaim_loop_total_candidate_reject_by_reason", {})
+        if isinstance(acc, dict):
+            for k, v in br.items():
+                if isinstance(k, str):
+                    acc[k] = int(acc.get(k, 0)) + int(v)
+    for fld in (
+        "gain_ratio_reject_count",
+        "internal_budget_reject_count",
+        "no_legal_stub_reject_count",
+        "incremental_route_failure_count",
+    ):
+        if fld in scan_trace:
+            mk = f"reclaim_loop_total_{fld}"
+            merged[mk] = int(merged.get(mk) or 0) + int(scan_trace[fld])
+
+
+def _p4_finalize_reclaim_loop_summary_aliases(merged: dict[str, Any]) -> None:
+    """Stable summary aliases expected by §12.6 reclaim audit consumers."""
+
+    merged["commit_count"] = int(merged.get("p4_reclaim_loop_successful_commits") or 0)
+    merged["total_reclaim_internal_added"] = int(
+        merged.get("p4_reclaim_loop_internal_transport_cumulative_added") or 0
+    )
+    if merged.get("allowed_internal_spend") is None:
+        merged["allowed_internal_spend"] = merged.get("p4_reclaim_internal_transport_budget")
+
+
 def _p4_extractor_coords_across_commits(acc_ex: list[list[int]]) -> list[Coord]:
     out: list[Coord] = []
     for cell in acc_ex:
@@ -118,6 +158,12 @@ def run_p4_reclaim_loop_after_pass3(
         "p4_reclaim_route_zone_excluded_cumulative_count": 0,
         "p4_reclaim_last_commit_route_cells": [],
         "p4_reclaim_last_soft_protected_candidate_cells": [],
+        "reclaim_loop_total_candidate_scan_count": 0,
+        "reclaim_loop_total_candidate_reject_by_reason": {},
+        "reclaim_loop_total_gain_ratio_reject_count": 0,
+        "reclaim_loop_total_internal_budget_reject_count": 0,
+        "reclaim_loop_total_no_legal_stub_reject_count": 0,
+        "reclaim_loop_total_incremental_route_failure_count": 0,
         **_p4_soft_replace_neutral_trace(),
         "p4_soft_replace_contract": None,
         "p4_soft_replace_attempt_count": 0,
@@ -169,6 +215,7 @@ def run_p4_reclaim_loop_after_pass3(
             p4_compare_baseline_internal_to_scan_entry=(i == 0),
         )
         merged.update(scan.trace)
+        _p4_accumulate_reclaim_funnel_loop_totals(merged, scan.trace)
         merged["p4_reclaim_loop_iterations_executed"] = i + 1
 
         if not scan.trace.get("p4_reclaim_shadow_enabled"):
@@ -189,6 +236,7 @@ def run_p4_reclaim_loop_after_pass3(
                         skip_reason=str(_sr),
                     )
                 )
+            _p4_finalize_reclaim_loop_summary_aliases(merged)
             return map_cur, merged
 
         sr = scan.trace.get("p4_reclaim_shadow_skip_reason")
@@ -207,6 +255,7 @@ def run_p4_reclaim_loop_after_pass3(
                         skip_reason=str(sr),
                     )
                 )
+            _p4_finalize_reclaim_loop_summary_aliases(merged)
             return map_cur, merged
 
         picked = select_best_accepted_p4_bundle(scan.evals)
@@ -216,6 +265,11 @@ def run_p4_reclaim_loop_after_pass3(
             merged["p4_reclaim_loop_terminated_reason"] = (
                 "no_accepted_shadow" if picked is None else "no_transport_kind"
             )
+            br = merged.get("candidate_reject_by_reason")
+            if picked is None and isinstance(br, dict) and br:
+                merged["p4_reclaim_loop_no_accepted_shadow_candidate_reject_by_reason"] = dict(br)
+                top = max(br.items(), key=lambda kv: int(kv[1]))
+                merged["p4_reclaim_loop_dominant_scan_reject_reason"] = str(top[0])
             if commits:
                 merged["p4_reclaim_added_extractor_cells"] = acc_ex
                 merged["p4_reclaim_added_extension_cells"] = acc_ext
@@ -227,6 +281,7 @@ def run_p4_reclaim_loop_after_pass3(
                         rollback_reason=P4_REJECT_NO_SHADOW_CANDIDATE,
                     )
                 )
+            _p4_finalize_reclaim_loop_summary_aliases(merged)
             return map_cur, merged
 
         map_next, commit_tr = _p4f.run_p4_reclaim_provisional_commit_after_pass3(
@@ -308,6 +363,7 @@ def run_p4_reclaim_loop_after_pass3(
                             rollback_reason=str(rr or "provisional_commit_failed"),
                         )
                     )
+                _p4_finalize_reclaim_loop_summary_aliases(merged)
                 return map_cur, merged
             continue
 
@@ -336,4 +392,5 @@ def run_p4_reclaim_loop_after_pass3(
     merged["p4_reclaim_added_extractor_cells"] = acc_ex
     merged["p4_reclaim_added_extension_cells"] = acc_ext
     merged["p4_reclaim_added_stub_cells"] = acc_stub
+    _p4_finalize_reclaim_loop_summary_aliases(merged)
     return map_cur, merged

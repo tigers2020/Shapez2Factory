@@ -551,6 +551,8 @@ def integrate_pass12_placement_into_working_map(
         mineable=mineable,
         scratch=scratch,
         existing_layout_source_kind=ela_sk if isinstance(ela_sk, str) else None,
+        final_mining_map=final_mining_map,
+        is_external=is_external,
     )
     extractors_after_seed = len(scratch.extractor_cells)
     extensions_after_seed = len(scratch.extension_facings)

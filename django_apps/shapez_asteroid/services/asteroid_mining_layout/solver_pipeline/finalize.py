@@ -70,6 +70,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_t
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace import (
     debug_log_event,
+    enrich_solver_summary_replay_frame_contract,
     replay_diag_counts_for_solver_summary,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.recovery_orchestrator import (  # noqa: E501
@@ -130,11 +131,17 @@ def _solver_quality_summary_for_tier(tier: str) -> str:
     """Short English line for copy-preview / UI (not gettext; API-stable literal)."""
 
     if tier == SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED:
-        return "Valid layout, fully optimized"
+        return "Geometry/connectivity PASS; preserve quality OK; optimization baseline met"
     if tier == SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING:
-        return "Valid layout, optimization warning"
+        return (
+            "Geometry/connectivity PASS; preserve quality OK; optimization WARN "
+            "(internal transport vs baseline)"
+        )
     if tier == SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS:
-        return "Valid layout, preserve or routing degradation"
+        return (
+            "Geometry/connectivity PASS; preserve quality PARTIAL/LOSS "
+            "(see preserve_source_loss_* and degradation_causes)"
+        )
     if tier == SOLVER_QUALITY_TIER_SOLVER_FAILURE:
         return "Layout validation failed"
     return "Unknown solver quality tier"
@@ -146,6 +153,7 @@ def _compute_solver_quality_tier(
     solver_termination: str,
     optimization_warnings: list[str],
     extractor_drop_count: int,
+    preserve_source_loss_before_step4: int,
 ) -> str:
     """Separate hard validity from optimization / preserve quality (reporting only).
 
@@ -157,6 +165,8 @@ def _compute_solver_quality_tier(
     if not layout_hard_valid or solver_termination == SOLVER_TERMINATION_FAILURE:
         return SOLVER_QUALITY_TIER_SOLVER_FAILURE
     if solver_termination == SOLVER_TERMINATION_PARTIAL_SUCCESS:
+        return SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+    if int(preserve_source_loss_before_step4) > 0:
         return SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
     if extractor_drop_count > 0:
         return SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
@@ -357,13 +367,28 @@ def _compute_pass3_zero_gain_reason(p3: Mapping[str, Any]) -> str | None:
 
 
 def _pass3_zero_gain_context(summary_fields: Mapping[str, Any]) -> dict[str, Any]:
-    return {
+    ctx: dict[str, Any] = {
         "before_internal_transport_count": summary_fields.get("before_internal_transport_count"),
         "after_internal_transport_count": summary_fields.get("after_internal_transport_count"),
         "before_transport_count": summary_fields.get("before_transport_count"),
         "after_transport_count": summary_fields.get("after_transport_count"),
         "step4_route_count": summary_fields.get("step4_route_count"),
     }
+    for k in (
+        "pass3_zero_gain_outcome",
+        "pass3_zero_gain_summary",
+        "pass3_reject_by_reason",
+        "pass3_candidate_route_count",
+        "pass3_candidate_improved_count",
+        "pass3_best_candidate_delta",
+        "pass3_best_candidate_rejected_reason",
+        "pass3_goal_set_count_by_kind",
+        "pass3_search_mode_counts",
+        "pass3_reject_sample_rows",
+    ):
+        if k in summary_fields:
+            ctx[k] = summary_fields[k]
+    return ctx
 
 
 def build_final_solver_output(
@@ -397,6 +422,7 @@ def build_final_solver_output(
     optimization_counterfactual_internal_transport_sequential_v1: int | None = None,
     optimization_counterfactual_failure_reason: str | None = None,
     optimization_counterfactual_aggregation: str | None = None,
+    orphan_island_bootstrap_trace: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """최종 validation, summary, timeline, replay payload를 기존 schema로 조립한다.
 
@@ -683,6 +709,8 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    if orphan_island_bootstrap_trace:
+        summary_fields.update(dict(orphan_island_bootstrap_trace))
     summary_fields["pass3_zero_gain_reason"] = _compute_pass3_zero_gain_reason(summary_fields)
     summary_fields["pass3_zero_gain_context"] = _pass3_zero_gain_context(summary_fields)
     summary_fields.update(
@@ -719,6 +747,34 @@ def build_final_solver_output(
     summary_fields["placement_state_counts"] = placement_state_counts(
         step4_result.placement_commit_by_id
     )
+    _psc_route = summary_fields["placement_state_counts"]
+    summary_fields["step4_routed_extractor_count"] = int(_psc_route.get("routed_confirmed", 0))
+    summary_fields["step4_route_success_on_surviving_placements"] = bool(
+        step4_result.complete_routing_success
+    )
+    _rss_cf = summary_fields.get("routing_state")
+    if isinstance(_rss_cf, dict):
+        summary_fields["protected_corridor_hard_by_reason"] = dict(
+            _rss_cf.get("protected_corridor_hard_by_reason") or {}
+        )
+        summary_fields["hard_promotion_without_proof_count"] = int(
+            _rss_cf.get("hard_promotion_without_proof_count") or 0
+        )
+    else:
+        summary_fields.setdefault("protected_corridor_hard_by_reason", {})
+        summary_fields.setdefault("hard_promotion_without_proof_count", 0)
+    summary_fields["protected_corridor_soft_count"] = int(soft_pc)
+    summary_fields["protected_corridor_candidate_count"] = int(_cand_n)
+    summary_fields["soft_replace_attempt_count"] = int(
+        summary_fields.get("p4_soft_replace_attempt_count") or 0
+    )
+    summary_fields["soft_replace_commit_count"] = int(
+        summary_fields.get("p4_soft_replace_commit_count") or 0
+    )
+    _pdl_rc = pass12_trace_fields.get("pass12_preserve_drop_reason_counts")
+    summary_fields["preserve_source_loss_reason_counts"] = (
+        dict(_pdl_rc) if isinstance(_pdl_rc, dict) else {}
+    )
     summary_fields["transport_connected"] = report.transport_connectivity_ok
     summary_fields["optimization_baseline_internal_transport"] = (
         optimization_baseline_internal_transport
@@ -754,6 +810,13 @@ def build_final_solver_output(
     _final_ext = int(report.extractor_count)
     summary_fields["original_extractor_count"] = _orig_ext
     summary_fields["final_extractor_count"] = _final_ext
+    _after_preserve_ext = int(
+        pass12_trace_fields.get("pass12_after_preserve_recovery_extractor_count") or 0
+    )
+    _preserve_loss_pre_s4 = int(pass12_trace_fields.get("preserve_source_loss_before_step4") or 0)
+    summary_fields["after_preserve_recovery_extractor_count"] = _after_preserve_ext
+    summary_fields["step4_surviving_extractor_count"] = int(post_step4_extractor_count)
+    summary_fields["preserve_source_loss_before_step4"] = _preserve_loss_pre_s4
     summary_fields["extractor_drop_count"] = max(0, _orig_ext - _final_ext)
     _bl_it = summary_fields.get("optimization_baseline_internal_transport")
     _af_it = summary_fields.get("after_internal_transport_count")
@@ -768,6 +831,9 @@ def build_final_solver_output(
         solver_termination=solver_termination,
         optimization_warnings=_ow_list,
         extractor_drop_count=int(summary_fields["extractor_drop_count"]),
+        preserve_source_loss_before_step4=int(
+            summary_fields.get("preserve_source_loss_before_step4") or 0
+        ),
     )
     summary_fields["solver_quality_tier"] = _qual_tier
     summary_fields["solver_result_tier"] = _qual_tier
@@ -926,23 +992,35 @@ def build_final_solver_output(
     summary_fields["solver_timeline_frame_count"] = len(frames)
     summary_fields["map_timeline_frame_count"] = len(map_timeline)
     summary_fields.update(replay_diag_counts_for_solver_summary())
+    enrich_solver_summary_replay_frame_contract(summary_fields)
     # Display-only: NDJSON/UI에서 map_timeline 길이와 replay 이벤트 수를 혼동하지 않도록.
     summary_fields["trace_frame_counter_glossary"] = {
+        "decoded_map_timeline_frame_count": (
+            "Same as map_timeline_frame_count: decoded visualization steps from "
+            "build_map_timeline(decoded); not solver milestones or replay cycle frames."
+        ),
         "map_timeline_frame_count": (
-            "Decoded visualization steps from build_map_timeline(decoded); small integer."
+            "Backward-compat alias of decoded_map_timeline_frame_count (decoded steps only)."
         ),
-        "solver_timeline_frame_count": (
-            "Solver milestone frames in finalize output; not the same as map_timeline."
+        "solver_milestone_frame_count": (
+            "Same as solver_timeline_frame_count: solver pass milestone frames in finalize "
+            "output; not replay NDJSON cycle stride frames."
         ),
+        "solver_timeline_frame_count": ("Backward-compat alias of solver_milestone_frame_count."),
         "replay_event_count": (
-            "Count of trace_event emissions (solver_trace.trace_event) this run."
+            "Count of trace_event emissions (solver_trace.trace_event) this run; not frame count."
+        ),
+        "replay_cycle_frame_count": (
+            "Same as replay_frame_count: supplemental replay_frame rows (stride-based cycle "
+            "snapshots, e.g. every 10 computation cycles); not map_timeline."
         ),
         "replay_frame_count": (
-            "Supplemental replay_frame rows (stride-based cycle snapshots); not map_timeline."
+            "Backward-compat alias of replay_cycle_frame_count (cycle stride snapshots)."
         ),
         "replay_frame_source": (
-            "replay_trace | pass_snapshot_fallback | trace_disabled | unknown — "
-            "how replay_frame_count was populated for this run."
+            "replay_trace | pass_snapshot_fallback | map_timeline_only | trace_disabled — "
+            "UI replay player selection: cycle frames win over milestone snapshots over decoded "
+            "map timeline only."
         ),
     }
     # ``replay_events`` is same-run append-only export for STEP10 / NDJSON — not a policy input
@@ -972,6 +1050,7 @@ def build_final_solver_output(
     _term_for_out = summary_fields.get("termination")
     if isinstance(_term_for_out, dict):
         out_termination: dict[str, Any] = dict(_term_for_out)
+        out_termination.setdefault("quality_tier", summary_fields.get("solver_quality_tier"))
     else:
         out_termination = {
             "tier": termination_tier,
@@ -1037,6 +1116,36 @@ def build_final_solver_output(
             "original_extractor_count": summary_fields.get("original_extractor_count"),
             "final_extractor_count": summary_fields.get("final_extractor_count"),
             "extractor_drop_count": summary_fields.get("extractor_drop_count"),
+            "after_preserve_recovery_extractor_count": summary_fields.get(
+                "after_preserve_recovery_extractor_count"
+            ),
+            "step4_surviving_extractor_count": summary_fields.get(
+                "step4_surviving_extractor_count"
+            ),
+            "step4_routed_extractor_count": summary_fields.get("step4_routed_extractor_count"),
+            "preserve_source_loss_before_step4": summary_fields.get(
+                "preserve_source_loss_before_step4"
+            ),
+            "preserve_source_loss_reason_counts": summary_fields.get(
+                "preserve_source_loss_reason_counts"
+            ),
+            "step4_route_success_on_surviving_placements": summary_fields.get(
+                "step4_route_success_on_surviving_placements"
+            ),
+            "step4_complete_routing_success": summary_fields.get("step4_complete_routing_success"),
+            "protected_corridor_hard_by_reason": summary_fields.get(
+                "protected_corridor_hard_by_reason"
+            ),
+            "hard_promotion_without_proof_count": summary_fields.get(
+                "hard_promotion_without_proof_count"
+            ),
+            "protected_corridor_soft_count": summary_fields.get("protected_corridor_soft_count"),
+            "protected_corridor_candidate_count": summary_fields.get(
+                "protected_corridor_candidate_count"
+            ),
+            "soft_replace_attempt_count": summary_fields.get("soft_replace_attempt_count"),
+            "soft_replace_commit_count": summary_fields.get("soft_replace_commit_count"),
+            "termination": dict(summary_fields.get("termination") or {}),
             "optimization_warning_count": summary_fields.get("optimization_warning_count"),
             "internal_transport_delta_vs_baseline": summary_fields.get(
                 "internal_transport_delta_vs_baseline"
@@ -1156,6 +1265,16 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("pass3_internal_transport_saved", None)
     summary_fields.setdefault("pass3_zero_gain_reason", None)
     summary_fields.setdefault("pass3_zero_gain_context", None)
+    summary_fields.setdefault("pass3_zero_gain_outcome", None)
+    summary_fields.setdefault("pass3_zero_gain_summary", None)
+    summary_fields.setdefault("pass3_reject_by_reason", None)
+    summary_fields.setdefault("pass3_candidate_route_count", None)
+    summary_fields.setdefault("pass3_candidate_improved_count", None)
+    summary_fields.setdefault("pass3_best_candidate_delta", None)
+    summary_fields.setdefault("pass3_best_candidate_rejected_reason", None)
+    summary_fields.setdefault("pass3_goal_set_count_by_kind", None)
+    summary_fields.setdefault("pass3_search_mode_counts", None)
+    summary_fields.setdefault("pass3_reject_sample_rows", None)
     summary_fields.setdefault("pass3_reclaim_projected_net_internal_saved", None)
     summary_fields.setdefault("pass3_commit_reason", None)
     summary_fields.setdefault("pass3_commit_subtype", None)
@@ -1233,6 +1352,12 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("p4_soft_replace_job_count", 0)
     summary_fields.setdefault("p4_soft_replace_jobs_attempted", 0)
     summary_fields.setdefault("p4_soft_replace_rejected_reasons_by_job", [])
+    summary_fields.setdefault("protected_corridor_hard_by_reason", {})
+    summary_fields.setdefault("hard_promotion_without_proof_count", 0)
+    summary_fields.setdefault("protected_corridor_soft_count", None)
+    summary_fields.setdefault("protected_corridor_candidate_count", None)
+    summary_fields.setdefault("soft_replace_attempt_count", 0)
+    summary_fields.setdefault("soft_replace_commit_count", 0)
     summary_fields.setdefault("post_reclaim_pass3_greedy_local_replacement", None)
     summary_fields.setdefault("post_reclaim_pass3_pass3_greedy_local_replacement", None)
     summary_fields.setdefault("post_reclaim_pass3_reruns_used", 0)
@@ -1281,6 +1406,9 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("optimization_warnings", [])
     summary_fields.setdefault("original_extractor_count", 0)
     summary_fields.setdefault("final_extractor_count", 0)
+    summary_fields.setdefault("after_preserve_recovery_extractor_count", 0)
+    summary_fields.setdefault("step4_surviving_extractor_count", 0)
+    summary_fields.setdefault("preserve_source_loss_before_step4", 0)
     summary_fields.setdefault("extractor_drop_count", 0)
     summary_fields.setdefault("optimization_warning_count", 0)
     summary_fields.setdefault("internal_transport_delta_vs_baseline", None)
@@ -1298,3 +1426,11 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     for _k, _v in _t5_empty.items():
         summary_fields.setdefault(_k, _v)
     summary_fields.setdefault("step4_complete_routing_success", False)
+    summary_fields.setdefault("step4_route_success_on_surviving_placements", False)
+    summary_fields.setdefault("step4_routed_extractor_count", 0)
+    summary_fields.setdefault("preserve_source_loss_reason_counts", {})
+    summary_fields.setdefault("map_timeline_frame_count", 0)
+    summary_fields.setdefault("solver_timeline_frame_count", 0)
+    summary_fields.setdefault("replay_event_count", 0)
+    summary_fields.setdefault("replay_frame_count", 0)
+    enrich_solver_summary_replay_frame_contract(summary_fields)

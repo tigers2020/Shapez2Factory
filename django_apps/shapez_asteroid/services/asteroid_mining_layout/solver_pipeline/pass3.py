@@ -15,6 +15,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     SOLVER_FRAME_PASS3_TRANSPORT,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3 import (
+    pass3_zero_gain_breakdown as _p3_zero_gain,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_f_branch_candidate import (  # noqa: E501
     p3f_pass3_summary_placeholder,
 )
@@ -72,6 +75,19 @@ class Pass3StageResult:
     p3_trace: dict[str, Any]
     eligible_pass3: bool
     step_hash_pass3: str
+
+
+_PASS3_SUMMARY_COUNT_FIELDS: tuple[str, ...] = (
+    "before_transport_count",
+    "after_transport_count",
+    "pass3_transport_cells_removed_total",
+    "pass3_internal_transport_saved",
+    "before_internal_transport_count",
+    "after_internal_transport_count",
+    "pass3_connectivity_reject_sample",
+    "pass3_greedy_local_replacement",
+    "pass3_greedy_reject_detail",
+) + tuple(sorted(_p3_zero_gain.PASS3_ZERO_GAIN_TELEMETRY_KEYS))
 
 
 def _run_pass3_transport_minimization_from_maps(
@@ -238,6 +254,7 @@ def run_pass3_stage(
                 or k == "pass3_connectivity_reject_sample"
                 or k == "pass3_greedy_local_replacement"
                 or k == "pass3_commit_subtype"
+                or k in _p3_zero_gain.PASS3_ZERO_GAIN_TELEMETRY_KEYS
             ):
                 pass3_summary[k] = v
         if p3_trace.get("pass3_skipped"):
@@ -272,16 +289,7 @@ def run_pass3_stage(
                     rejected_reason = p3_trace.get("rejected_reason")
                     if rejected_reason is not None:
                         upd["pass3_rejected_reason"] = rejected_reason
-                for k in (
-                    "before_transport_count",
-                    "after_transport_count",
-                    "pass3_transport_cells_removed_total",
-                    "pass3_internal_transport_saved",
-                    "before_internal_transport_count",
-                    "after_internal_transport_count",
-                    "pass3_connectivity_reject_sample",
-                    "pass3_greedy_local_replacement",
-                ):
+                for k in _PASS3_SUMMARY_COUNT_FIELDS:
                     if k in p3_trace:
                         upd[k] = p3_trace[k]
                 pass3_summary.update(upd)
@@ -320,16 +328,8 @@ def run_pass3_stage(
                     pass3_summary["pass3_greedy_reject_detail"] = p3_trace[
                         "pass3_greedy_reject_detail"
                     ]
-                for k in (
-                    "before_transport_count",
-                    "after_transport_count",
-                    "pass3_transport_cells_removed_total",
-                    "pass3_internal_transport_saved",
-                    "before_internal_transport_count",
-                    "after_internal_transport_count",
-                    "pass3_connectivity_reject_sample",
-                    "pass3_greedy_local_replacement",
-                ):
+                    _p3_zero_gain.enrich_pass3_trace_zero_gain_telemetry(p3_trace)
+                for k in _PASS3_SUMMARY_COUNT_FIELDS:
                     if k in p3_trace:
                         pass3_summary[k] = p3_trace[k]
     elif pass3_permission["skip_reason"] is not None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections import Counter
 from collections.abc import Callable, Mapping, Set
 from typing import Any
 
@@ -19,6 +20,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P4_RECLAIM_ZERO_NO_ANCHOR_NEAR_FREED_CELL,
     P4_RECLAIM_ZERO_NO_MINEABLE_AFTER_EXCLUSIONS,
     P4_RECLAIM_ZERO_NO_RECLAIMED_CELLS,
+    P4_REJECT_GAIN_RATIO,
+    P4_REJECT_INTERNAL_TRANSPORT_BUDGET,
+    P4_REJECT_NO_INCREMENTAL_ROUTE,
+    P4_REJECT_NO_OUTPUT_STUB,
     RECLAIM_DIVERSITY_MID_RADIUS,
     RECLAIM_DIVERSITY_NEAR_RADIUS,
     RECLAIM_SHADOW_MINER_EXTENSION_GAIN_SLOTS,
@@ -179,6 +184,41 @@ def _p4_mineable_exclusion_sequential_counts(
     ex_comm = len(after_soft & committed)
     cur = len(after_soft - committed)
     return ex_route, ex_hard, ex_soft, ex_comm, cur
+
+
+def _p4_reclaim_candidate_funnel_trace(
+    evals: list[_P4BundleEval],
+    *,
+    mineable_cur_before_protection: int,
+    mineable_cur_after_protection: int,
+    final_route_cells_excluded_count: int,
+    hard_protected_excluded_count: int,
+    soft_protected_excluded_count: int,
+    internal_budget: int,
+    spent_prior: int,
+) -> dict[str, Any]:
+    """§12.6 audit: mineable funnel + per-candidate rejection histogram (scan iteration)."""
+
+    c: Counter[str] = Counter()
+    for e in evals:
+        rr = e.rejected_reason
+        if rr:
+            c[str(rr)] += 1
+    return {
+        "mineable_cur_before_protection": int(mineable_cur_before_protection),
+        "mineable_cur_after_protection": int(mineable_cur_after_protection),
+        "final_route_cells_excluded_count": int(final_route_cells_excluded_count),
+        "hard_protected_excluded_count": int(hard_protected_excluded_count),
+        "soft_protected_excluded_count": int(soft_protected_excluded_count),
+        "candidate_scan_count": len(evals),
+        "candidate_reject_by_reason": dict(c),
+        "gain_ratio_reject_count": int(c[P4_REJECT_GAIN_RATIO]),
+        "internal_budget_reject_count": int(c[P4_REJECT_INTERNAL_TRANSPORT_BUDGET]),
+        "no_legal_stub_reject_count": int(c[P4_REJECT_NO_OUTPUT_STUB]),
+        "incremental_route_failure_count": int(c[P4_REJECT_NO_INCREMENTAL_ROUTE]),
+        "allowed_internal_spend": int(internal_budget),
+        "reclaim_internal_transport_spent_prior": int(spent_prior),
+    }
 
 
 def _p4_reclaim_zero_candidate_diag(
@@ -426,6 +466,17 @@ def reclaim_shadow_scan_core_after_pass3(
         soft_protected_corridors=soft_active,
         committed_building_cells=committed,
     )
+    mineable_base_f = frozenset(mineable)
+    ex_route, ex_hard, ex_soft, _ex_comm, mineable_cur_check = (
+        _p4_mineable_exclusion_sequential_counts(
+            mineable_base_f,
+            final_route_cells=final_route_cells,
+            hard=hard,
+            soft=soft_active,
+            committed=committed,
+        )
+    )
+    assert mineable_cur_check == len(mineable_cur)
 
     reclaimed = _reclaimed_interior_transport_cells(
         map_before_pass3,
@@ -480,11 +531,27 @@ def reclaim_shadow_scan_core_after_pass3(
             has_routing_jobs=False,
             candidate_corridor_count=len(pcs.candidate),
         )
+        funnel_nr = _p4_reclaim_candidate_funnel_trace(
+            [],
+            mineable_cur_before_protection=len(mineable_base_f),
+            mineable_cur_after_protection=len(mineable_cur),
+            final_route_cells_excluded_count=ex_route,
+            hard_protected_excluded_count=ex_hard,
+            soft_protected_excluded_count=ex_soft,
+            internal_budget=budget_nr,
+            spent_prior=spent_nr,
+        )
         return reclaim_shadow_scan_result_no_routing_jobs(
             zone_route_rebuilt=bool(zone_extra),
             mineable_excluded_by_route_cells=len(mineable & final_route_cells),
             corridor_trace=corridor_trace,
-            extra_trace={**extra_nr, **zero_nr},
+            extra_trace={
+                **extra_nr,
+                **zero_nr,
+                **funnel_nr,
+                "pass3_internal_transport_saved_for_reclaim_budget": int(pass3_saved_nr),
+                "p4_reclaim_internal_transport_budget": budget_nr,
+            },
         )
 
     reclaim_cells = mineable_cur & reclaimed
@@ -613,6 +680,17 @@ def reclaim_shadow_scan_core_after_pass3(
     accepted = sum(1 for e in evals if e.accepted_shadow)
     rejected = len(evals) - accepted
 
+    funnel_main = _p4_reclaim_candidate_funnel_trace(
+        evals,
+        mineable_cur_before_protection=len(mineable_base_f),
+        mineable_cur_after_protection=len(mineable_cur),
+        final_route_cells_excluded_count=ex_route,
+        hard_protected_excluded_count=ex_hard,
+        soft_protected_excluded_count=ex_soft,
+        internal_budget=internal_budget,
+        spent_prior=spent_prior,
+    )
+
     best_accepted = select_best_accepted_p4_bundle(evals)
     best_any: _P4BundleEval | None = None
     for e in evals:
@@ -670,6 +748,8 @@ def reclaim_shadow_scan_core_after_pass3(
             p4_baseline_internal_transport_at_reclaim_entry=p4_baseline_internal_transport_at_reclaim_entry,
             p4_compare_baseline_internal_to_scan_entry=p4_compare_baseline_internal_to_scan_entry,
         ),
+        **funnel_main,
+        "pass3_internal_transport_saved_for_reclaim_budget": int(pass3_saved),
         "p4_reclaim_candidate_count": len(evals),
         "p4_reclaim_accepted_shadow_count": accepted,
         "p4_reclaim_rejected_shadow_count": rejected,

@@ -96,12 +96,18 @@ _RUN_END_SOLVER_SUMMARY_SNAPSHOT_KEYS = frozenset(
         "trace_frame_counter_glossary",
         "replay_event_count",
         "replay_frame_count",
+        "replay_cycle_frame_count",
         "replay_frame_source",
         "replay_candidate_event_count",
         "map_timeline_frame_count",
         "solver_timeline_frame_count",
+        "decoded_map_timeline_frame_count",
+        "solver_milestone_frame_count",
         "pass3_zero_gain_reason",
         "pass3_zero_gain_context",
+        "pass3_zero_gain_outcome",
+        "pass3_zero_gain_summary",
+        "pass3_reject_by_reason",
         # Path A diagnostics (lightweight; nested preserve contract unchanged).
         "preserve_missing_stub_summary",
         "pass2_probe_goal_count",
@@ -234,35 +240,52 @@ def _canonical_trace_event_type(message: str) -> str:
 
 
 def _replay_diag_for_summary() -> dict[str, Any]:
+    """Replay NDJSON counters; ``enrich_solver_summary_replay_frame_contract`` sets frame source."""
+
     if not trace_enabled():
-        return {
-            "replay_event_count": 0,
-            "replay_frame_count": 0,
-            "replay_candidate_event_count": 0,
-            "replay_has_computation_cycle": False,
-            "replay_frame_source": "trace_disabled",
-        }
-    s = _trace_replay_stats_var.get() or {
-        "replay_event": 0,
-        "replay_frame": 0,
-        "candidate_reject": 0,
-    }
-    rec = int(s.get("replay_event", 0))
-    rfc = int(s.get("replay_frame", 0))
-    crc = int(s.get("candidate_reject", 0))
-    if rfc > 0:
-        src = "replay_trace"
-    elif rec > 0:
-        src = "pass_snapshot_fallback"
+        rec, rfc, crc = 0, 0, 0
     else:
-        src = "unknown"
+        s = _trace_replay_stats_var.get() or {
+            "replay_event": 0,
+            "replay_frame": 0,
+            "candidate_reject": 0,
+        }
+        rec = int(s.get("replay_event", 0))
+        rfc = int(s.get("replay_frame", 0))
+        crc = int(s.get("candidate_reject", 0))
     return {
         "replay_event_count": rec,
         "replay_frame_count": rfc,
         "replay_candidate_event_count": crc,
         "replay_has_computation_cycle": rec > 0,
-        "replay_frame_source": src,
     }
+
+
+def enrich_solver_summary_replay_frame_contract(summary_fields: dict[str, Any]) -> None:
+    """§14 STEP10: explicit decoded vs milestone vs cycle-frame counts and ``replay_frame_source``.
+
+    UI / replay player rule (display-only; not read by the solver during a run):
+
+    - ``replay_trace``: cycle stride ``replay_frame`` rows exist (``replay_frame_count`` > 0).
+    - ``pass_snapshot_fallback``: no cycle frames but solver milestone timeline exists.
+    - ``map_timeline_only``: only decoded ``build_map_timeline`` length applies.
+    - ``trace_disabled``: tracing env/settings off for this run.
+    """
+
+    mt = int(summary_fields.get("map_timeline_frame_count") or 0)
+    sm = int(summary_fields.get("solver_timeline_frame_count") or 0)
+    rc = int(summary_fields.get("replay_frame_count") or 0)
+    summary_fields["decoded_map_timeline_frame_count"] = mt
+    summary_fields["solver_milestone_frame_count"] = sm
+    summary_fields["replay_cycle_frame_count"] = rc
+    if not trace_enabled():
+        summary_fields["replay_frame_source"] = "trace_disabled"
+    elif rc > 0:
+        summary_fields["replay_frame_source"] = "replay_trace"
+    elif sm > 0:
+        summary_fields["replay_frame_source"] = "pass_snapshot_fallback"
+    else:
+        summary_fields["replay_frame_source"] = "map_timeline_only"
 
 
 def replay_diag_counts_for_solver_summary() -> dict[str, Any]:
@@ -285,6 +308,7 @@ def emit_solver_summary_once(location: str, payload: dict[str, Any]) -> bool:
     if rid is not None:
         merged.setdefault("run_id", rid)
     merged.update(_replay_diag_for_summary())
+    enrich_solver_summary_replay_frame_contract(merged)
     snap = {k: merged[k] for k in _RUN_END_SOLVER_SUMMARY_SNAPSHOT_KEYS if k in merged}
     if snap:
         _run_end_solver_summary_snapshot_var.set(snap)

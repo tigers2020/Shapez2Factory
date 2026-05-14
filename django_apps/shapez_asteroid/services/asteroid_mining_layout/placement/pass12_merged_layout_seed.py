@@ -9,7 +9,7 @@ from __future__ import annotations
 import copy
 import heapq
 from collections import deque
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any, Literal
@@ -58,6 +58,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
     transport_kind_for_extractor,
     want_role,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.orphan_island_external_bootstrap import (  # noqa: E501
+    empty_orphan_island_bootstrap_trace,
+    try_commit_orphan_island_external_bootstrap,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
     final_validation as _final_validation,
 )
@@ -98,6 +102,8 @@ class _DeferredNearTransportStubRecovery:
     neighbor_stub_coords: tuple[Coord, ...]
     eff_r_after_inline: int | None
     stub_route_trace_last: dict[str, Any] | None
+    initial_stub_trace: dict[str, Any] | None = None
+    retry_after_bootstrap: bool = False
 
 
 def _append_bounded_stub_sample(
@@ -636,6 +642,169 @@ def _preserve_stub_route_drop_observability(
             out["preserve_stub_route_inline_accepted"] = None
             out["preserve_stub_route_inline_rejected_reason"] = None
     return out
+
+
+def _deferred_queue_wants_orphan_external_bootstrap(
+    queue: Sequence[_DeferredNearTransportStubRecovery],
+) -> bool:
+    for d in queue:
+        tr = d.stub_route_trace_last or {}
+        psr = tr.get("preserve_stub_recovery")
+        if isinstance(psr, dict) and psr.get("rejected_reason") == "no_same_kind_route":
+            return True
+    return False
+
+
+def _sync_scratch_transport_cells_from_seed_map(
+    scratch: Pass12LayoutScratch,
+    cells: Mapping[Coord, dict[str, Any]],
+    mineable: frozenset[Coord],
+) -> None:
+    want_wr = want_role(scratch.transport_kind)
+    for c, row in cells.items():
+        if c not in mineable:
+            continue
+        if row.get("role") == want_wr:
+            scratch.transport_cells.add(c)
+
+
+def _refresh_deferred_queue_after_orphan_bootstrap(
+    queue: list[_DeferredNearTransportStubRecovery],
+    cells: Mapping[Coord, dict[str, Any]],
+) -> list[_DeferredNearTransportStubRecovery]:
+    out: list[_DeferredNearTransportStubRecovery] = []
+    for d in queue:
+        wr = want_role(d.transport_kind)
+        nh, nc = _nearest_same_role_transport_bfs(
+            d.miner,
+            want_wr=wr,
+            cells=dict(cells),
+            max_hops=MAX_PASS12_NEAREST_TRANSPORT_TRACE_HOPS,
+        )
+        nh2 = int(nh) if nh is not None else d.nhops_seed
+        nc2 = nc if nc is not None else d.ncell_seed
+        out.append(
+            replace(
+                d,
+                nhops_seed=nh2,
+                ncell_seed=nc2,
+                stub_route_trace_last=None,
+                retry_after_bootstrap=True,
+            )
+        )
+    return out
+
+
+def _same_kind_adjacent_transport_count(detail_row: Mapping[str, Any], *, want_wr: str) -> int:
+    n = 0
+    for key in ("adjacent_transport_cells", "adjacent_cardinal_cells"):
+        seq = detail_row.get(key)
+        if not isinstance(seq, list):
+            continue
+        for e in seq:
+            if isinstance(e, dict) and e.get("role") == want_wr:
+                n += 1
+    return n
+
+
+def _original_rejected_reason_from_initial(initial: dict[str, Any] | None) -> str | None:
+    if not initial:
+        return None
+    psr = initial.get("preserve_stub_recovery")
+    if isinstance(psr, dict):
+        s = str(psr.get("rejected_reason") or "")
+        return s or None
+    return None
+
+
+def _preserve_route_failure_class(
+    *,
+    final_rejected_reason: str,
+    psr_subtype: str | None,
+    seed_bootstrap_invoked: bool,
+    bootstrap_committed: bool,
+    recovery_retry_after_bootstrap: bool,
+) -> str:
+    sub = str(psr_subtype or "")
+    if sub == "occupied_neighbor_ring":
+        return "occupied_neighbor_ring"
+    if sub == "stub_local_geometry_sealed":
+        return "local_stub_geometry_blocked"
+    if final_rejected_reason == "no_bootstrap_route_to_exterior":
+        return "no_external_bootstrap_available"
+    if final_rejected_reason == "no_same_kind_route_after_bootstrap_failure":
+        if bootstrap_committed and recovery_retry_after_bootstrap:
+            return "recovery_failed_after_bootstrap"
+        return "no_external_bootstrap_available"
+    if final_rejected_reason == "no_same_kind_route":
+        if seed_bootstrap_invoked and bootstrap_committed and recovery_retry_after_bootstrap:
+            return "recovery_failed_after_bootstrap"
+        if not seed_bootstrap_invoked:
+            return "global_same_kind_route_unavailable"
+        if seed_bootstrap_invoked and not bootstrap_committed:
+            return "no_external_bootstrap_available"
+        return "global_same_kind_route_unavailable"
+    return "global_same_kind_route_unavailable"
+
+
+def _apply_seed_orphan_bootstrap_drop_telemetry(
+    detail_row: dict[str, Any],
+    *,
+    seed_bootstrap_trace: dict[str, Any],
+    seed_bootstrap_invoked: bool,
+    recovery_retry_after_bootstrap: bool,
+    initial_stub_trace: dict[str, Any] | None,
+) -> None:
+    psr = detail_row.get("preserve_stub_recovery")
+    if not isinstance(psr, dict):
+        psr = {}
+        detail_row["preserve_stub_recovery"] = psr
+    committed = bool(seed_bootstrap_trace.get("bootstrap_committed"))
+    detail_row["miner_coord"] = copy.deepcopy(detail_row.get("miner_cell"))
+    detail_row["original_reason"] = detail_row.get("preserve_drop_reason")
+    ori_rr = _original_rejected_reason_from_initial(initial_stub_trace)
+    if ori_rr:
+        detail_row["original_reason"] = ori_rr
+    detail_row["local_geometry_subtype"] = psr.get("rejected_reason_subtype")
+    wr = str(detail_row.get("expected_stub_role") or "")
+    detail_row["same_kind_near_transport_count"] = _same_kind_adjacent_transport_count(
+        detail_row, want_wr=wr
+    )
+    detail_row["bootstrap_attempted"] = seed_bootstrap_invoked
+    detail_row["bootstrap_committed"] = committed
+    detail_row["recovery_retry_after_bootstrap"] = bool(recovery_retry_after_bootstrap)
+    psr["bootstrap_attempted"] = seed_bootstrap_invoked
+    psr["bootstrap_committed"] = committed
+    psr["recovery_retry_after_bootstrap"] = bool(recovery_retry_after_bootstrap)
+    base_rr = str(psr.get("rejected_reason") or "")
+    detail_row["final_rejected_reason_subtype"] = psr.get("rejected_reason_subtype")
+    detail_row["final_rejected_reason"] = base_rr
+    if seed_bootstrap_invoked and not committed:
+        bfr = str(seed_bootstrap_trace.get("bootstrap_failure_reason") or "")
+        if bfr == "geometry_no_path":
+            detail_row["final_rejected_reason"] = "no_bootstrap_route_to_exterior"
+        else:
+            detail_row["final_rejected_reason"] = "no_same_kind_route_after_bootstrap_failure"
+    elif (
+        seed_bootstrap_invoked
+        and committed
+        and recovery_retry_after_bootstrap
+        and base_rr == "no_same_kind_route"
+    ):
+        detail_row["final_rejected_reason"] = "no_same_kind_route_after_bootstrap_failure"
+    detail_row["preserve_route_failure_class"] = _preserve_route_failure_class(
+        final_rejected_reason=str(detail_row["final_rejected_reason"]),
+        psr_subtype=(
+            detail_row.get("final_rejected_reason_subtype")
+            if isinstance(detail_row.get("final_rejected_reason_subtype"), str)
+            else str(detail_row.get("final_rejected_reason_subtype") or "")
+        ),
+        seed_bootstrap_invoked=seed_bootstrap_invoked,
+        bootstrap_committed=committed,
+        recovery_retry_after_bootstrap=recovery_retry_after_bootstrap,
+    )
+    if not psr.get("accepted"):
+        psr.pop("commit_reason", None)
 
 
 def _detail_adjacent_same_kind_transport(detail: Mapping[str, Any], want_wr: str) -> bool:
@@ -1252,6 +1421,8 @@ def seed_pass12_scratch_from_merged_existing(
     mineable: frozenset[Coord],
     scratch: Pass12LayoutScratch,
     existing_layout_source_kind: str | None = None,
+    final_mining_map: list[dict[str, Any]] | None = None,
+    is_external: Callable[[Coord], bool] | None = None,
 ) -> dict[str, Any]:
     """Populate scratch with extractors/extensions already on mineable in ``merged_mining_map``.
 
@@ -1327,6 +1498,8 @@ def seed_pass12_scratch_from_merged_existing(
     recovered_stub_samples: list[dict[str, Any]] = []
     unrecovered_stub_samples: list[dict[str, Any]] = []
     recovery_transport_coords_added: set[Coord] = set()
+    seed_bootstrap_trace: dict[str, Any] = empty_orphan_island_bootstrap_trace()
+    seed_bootstrap_invoked = False
     for miner in miners:
         seed_route_id = "preserve_merged_seed"
         exts = extension_sets_by_miner.get(miner, frozenset())
@@ -1555,6 +1728,10 @@ def seed_pass12_scratch_from_merged_existing(
                             neighbor_stub_coords=neighbor_stub_coords,
                             eff_r_after_inline=eff_r,
                             stub_route_trace_last=trace_copy,
+                            initial_stub_trace=(
+                                copy.deepcopy(trace_copy) if trace_copy is not None else None
+                            ),
+                            retry_after_bootstrap=False,
                         )
                     )
                     continue
@@ -1585,6 +1762,12 @@ def seed_pass12_scratch_from_merged_existing(
                 recoverability_class_counts[detail_row["recoverability_class"]] = (
                     recoverability_class_counts.get(detail_row["recoverability_class"], 0) + 1
                 )
+                detail_row["_seed_initial_stub_trace"] = (
+                    copy.deepcopy(stub_route_trace_for_drop)
+                    if stub_route_trace_for_drop is not None
+                    else None
+                )
+                detail_row["_seed_retry_after_bootstrap"] = False
                 missing_stub_drop_details.append(detail_row)
                 _append_bounded_unrecovered_stub_sample(unrecovered_stub_samples, detail_row)
                 seeded_groups += 1
@@ -1697,6 +1880,8 @@ def seed_pass12_scratch_from_merged_existing(
                 prov_rt_q = dict(rr_q.trace)
                 prov_rt_q["recovery_mode"] = ["stub_route_to_trunk"]
                 prov_rt_q["miner_cell"] = [int(dminer[0]), int(dminer[1])]
+                if d.retry_after_bootstrap:
+                    prov_rt_q["recovery_retry_after_bootstrap"] = True
                 preserved_recovery_traces.append(prov_rt_q)
                 _append_bounded_stub_sample(recovered_stub_samples, miner=dminer, rr_res=rr_q)
             else:
@@ -1719,8 +1904,32 @@ def seed_pass12_scratch_from_merged_existing(
                 last_trace = copy.deepcopy(rr_q.trace) if rr_q.trace else None
                 next_queue.append(replace(d, stub_route_trace_last=last_trace))
         recovery_queue = next_queue
-        if not progressed_any:
+        if progressed_any:
+            continue
+        if seed_bootstrap_invoked:
             break
+        if not recovery_queue:
+            break
+        if not _deferred_queue_wants_orphan_external_bootstrap(recovery_queue):
+            break
+        if final_mining_map is None or is_external is None:
+            break
+        seed_bootstrap_invoked = True
+        bt, _ela_unused = try_commit_orphan_island_external_bootstrap(
+            mining_map_rows=merged_mining_map,
+            final_mining_map=final_mining_map,
+            is_external=is_external,
+        )
+        seed_bootstrap_trace.update(bt)
+        if not bt.get("bootstrap_committed"):
+            break
+        cells = {
+            k: dict(v)
+            for k, v in _final_validation.cells_dict_from_mining_map(merged_mining_map).items()
+        }
+        nearest_same_kind_transport_bfs_cache.clear()
+        _sync_scratch_transport_cells_from_seed_map(scratch, cells, mineable)
+        recovery_queue = _refresh_deferred_queue_after_orphan_bootstrap(recovery_queue, cells)
 
     for d in recovery_queue:
         preserved_missing_stub_drop_extractor_count += 1
@@ -1757,9 +1966,22 @@ def seed_pass12_scratch_from_merged_existing(
         recoverability_class_counts[detail_row["recoverability_class"]] = (
             recoverability_class_counts.get(detail_row["recoverability_class"], 0) + 1
         )
+        detail_row["_seed_initial_stub_trace"] = copy.deepcopy(d.initial_stub_trace)
+        detail_row["_seed_retry_after_bootstrap"] = d.retry_after_bootstrap
         missing_stub_drop_details.append(detail_row)
         _append_bounded_unrecovered_stub_sample(unrecovered_stub_samples, detail_row)
         seeded_groups += 1
+
+    for dr in missing_stub_drop_details:
+        init = dr.pop("_seed_initial_stub_trace", None)
+        rrwb = bool(dr.pop("_seed_retry_after_bootstrap", False))
+        _apply_seed_orphan_bootstrap_drop_telemetry(
+            dr,
+            seed_bootstrap_trace=seed_bootstrap_trace,
+            seed_bootstrap_invoked=seed_bootstrap_invoked,
+            recovery_retry_after_bootstrap=rrwb,
+            initial_stub_trace=init,
+        )
 
     for c, row in cells.items():
         if c not in mineable or row.get("role") != "occupied":
@@ -1800,6 +2022,10 @@ def seed_pass12_scratch_from_merged_existing(
             preserved_missing_stub_drop_extractor_count
         ),
         "pass12_preserved_missing_stub_drop_details": missing_stub_drop_details,
+        "pass12_seed_orphan_bootstrap_trace": copy.deepcopy(seed_bootstrap_trace),
+        "pass12_seed_orphan_bootstrap_invoked": seed_bootstrap_invoked,
+        "pass12_after_preserve_recovery_extractor_count": len(scratch.extractor_cells),
+        "preserve_source_loss_before_step4": int(preserved_missing_stub_drop_extractor_count),
         "preserve_missing_stub_summary": _preserve_missing_stub_summary_from_details(
             missing_stub_drop_details
         ),

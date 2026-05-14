@@ -66,7 +66,7 @@ def test_routing_state_el_trunk_seed_candidate_key_serializes_ela() -> None:
     assert rs is not None
     assert rs["ela_trunk_seed_candidate_corridors"] == [[99, 1], [10, 2], [10, 3]]
     hard = _hard_coords(rs)
-    assert hard == {(10, 1), (10, 4)}
+    assert hard == {(10, 1)}
 
 
 def test_routing_state_el_trunk_seed_mid_path_not_hard() -> None:
@@ -89,10 +89,34 @@ def test_routing_state_el_trunk_seed_mid_path_not_hard() -> None:
     }
     rs = _routing_state_from_committed_routes((route,), existing_layout_analysis=ela)
     assert rs is not None
-    hard, soft = _hard_coords(rs), _soft_coords(rs)
+    hard = _hard_coords(rs)
+    assert hard == {(10, 1)}
+    soft = _soft_coords(rs)
     assert (10, 2) in soft and (10, 2) not in hard
     assert (10, 3) in soft and (10, 3) not in hard
-    assert (10, 1) in hard and (10, 4) in hard
+    assert (10, 4) in soft and (10, 4) not in hard
+    assert (10, 1) in hard
+
+
+def test_routing_state_external_terminal_promoted_when_is_external() -> None:
+    route = Step4Route(
+        extractor_cell=(9, 9),
+        stub_cell=(10, 1),
+        transport_kind="shape_belt",
+        path=((10, 2), (10, 3), (10, 4)),
+        merged_to_existing=False,
+        reached_external=True,
+        placement_id="p1",
+    )
+    rs = _routing_state_from_committed_routes(
+        (route,),
+        cells=None,
+        is_external=lambda c: c == (10, 4),
+    )
+    assert rs is not None
+    hard = _hard_coords(rs)
+    assert hard == {(10, 1), (10, 4)}
+    assert rs.get("hard_promotion_without_proof_count") == 0
 
 
 def test_p3e3_atomic_rejects_soft_cells_removed_without_replacement_route() -> None:

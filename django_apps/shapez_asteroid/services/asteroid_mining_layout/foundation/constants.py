@@ -193,6 +193,19 @@ CORRIDOR_LIFECYCLE_CANDIDATE = "candidate_corridor"
 CORRIDOR_LIFECYCLE_SOFT = "soft_protected"
 CORRIDOR_LIFECYCLE_HARD = "hard_protected"
 CORRIDOR_LIFECYCLE_DISCARDED = "discarded"
+
+# §14.2.2 hard promotion evidence (routing_state ``hard_protected_promotions[].reason``).
+HARD_PROMOTION_REASON_OUTPUT_STUB = "output_stub"
+HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED = "replacement_search_exhausted_terminal"
+HARD_PROMOTION_REASON_EXTERNAL_ARTICULATION = "external_articulation"
+
+ALLOWED_HARD_PROMOTION_REASONS: frozenset[str] = frozenset(
+    {
+        HARD_PROMOTION_REASON_OUTPUT_STUB,
+        HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED,
+        HARD_PROMOTION_REASON_EXTERNAL_ARTICULATION,
+    }
+)
 # Soft-replace §14.3: which subsystems consume the replacement search budget (trace keys).
 CORRIDOR_REPLACEMENT_BUDGET_KEYS_SOFT_REPLACE: tuple[str, ...] = (
     "collect_routing_jobs",

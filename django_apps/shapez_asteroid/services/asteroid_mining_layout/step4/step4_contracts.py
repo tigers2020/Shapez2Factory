@@ -23,6 +23,10 @@ class Step4Route:
     merged_to_existing: bool
     reached_external: bool
     placement_id: str | None = None
+    #: When set to :data:`HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED`, ``path[-1]`` may
+    #: join ``hard_protected`` (telemetry evidence). Otherwise terminal hard uses ``is_external``
+    #: only (see :func:`step4_routing_state._routing_state_from_committed_routes`).
+    trunk_terminal_hard_reason: str | None = None
 
 
 @dataclass(frozen=True)

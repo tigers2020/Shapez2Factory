@@ -258,6 +258,8 @@ def run_p4_reclaim_provisional_commit_after_pass3(
 
     if b2_will_run:
         assert is_external is not None
+        ps_b = scan_result.trace.get("pass3_internal_transport_saved_for_reclaim_budget")
+        pass_budget = int(ps_b) if isinstance(ps_b, int) and not isinstance(ps_b, bool) else None
         route_map, b2_trace = _p4_b2_try_commit_incremental_route(
             trial_map,
             picked=picked,
@@ -266,6 +268,7 @@ def run_p4_reclaim_provisional_commit_after_pass3(
             final_mining_map=final_mining_map,
             is_external=is_external,
             reclaim_internal_transport_spent_prior=reclaim_internal_transport_spent_prior,
+            pass3_internal_transport_saved_for_budget=pass_budget,
         )
         if route_map is None:
             ft = p4_reclaim_provisional_commit_neutral_trace(attempted=True)

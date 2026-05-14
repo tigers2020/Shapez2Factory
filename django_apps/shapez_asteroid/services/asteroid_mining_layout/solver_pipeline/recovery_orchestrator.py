@@ -312,7 +312,11 @@ def run_solver_timeline_pipeline(
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_replay_events import (  # noqa: E501
         SolverMutationEventKind,
     )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_timeline import (
+        count_layout_cells,
+    )
     from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace import (
+        debug_log_event,
         trace_bind_replay_events,
         trace_publish_layout_observation,
     )
@@ -373,6 +377,46 @@ def run_solver_timeline_pipeline(
         phase="pass12",
         mining_map=solver_mut_txn.copy_mining_map_rows(pass12.map_after_pass2),
     )
+    import copy as _copy_mod
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.existing_layout.existing_layout_analysis import (  # noqa: E501
+        analyze_existing_layout_from_mining_map,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.orphan_island_external_bootstrap import (  # noqa: E501
+        empty_orphan_island_bootstrap_trace,
+        try_commit_orphan_island_external_bootstrap,
+    )
+
+    if pass12.pass12_skipped:
+        _boot_trace = empty_orphan_island_bootstrap_trace()
+        _ela_boot = None
+    elif bool(pass12.pass12_stats.get("pass12_seed_orphan_bootstrap_invoked")):
+        _seed_bt = pass12.pass12_stats.get("pass12_seed_orphan_bootstrap_trace")
+        _boot_trace = (
+            _copy_mod.deepcopy(_seed_bt)
+            if isinstance(_seed_bt, dict)
+            else empty_orphan_island_bootstrap_trace()
+        )
+        if bool(_boot_trace.get("bootstrap_committed")):
+            _ela_boot = analyze_existing_layout_from_mining_map(
+                pass12.map_after_pass2,
+                is_external=is_external,
+            )
+        else:
+            _ela_boot = None
+    else:
+        _boot_trace, _ela_boot = try_commit_orphan_island_external_bootstrap(
+            mining_map_rows=pass12.map_after_pass2,
+            final_mining_map=final_map,
+            is_external=is_external,
+        )
+    ela_step4 = _ela_boot if _ela_boot is not None else existing_layout_analysis
+    post_pass2_counts_eff = count_layout_cells(pass12.map_after_pass2)
+    debug_log_event(
+        debug_location,
+        "orphan_island_external_bootstrap",
+        dict(_boot_trace),
+    )
     step4 = run_step4_stage(
         map_after_pass2=pass12.map_after_pass2,
         final_map=final_map,
@@ -382,7 +426,7 @@ def run_solver_timeline_pipeline(
         pass12_replay_txn_id=pass12.pass12_replay_txn_id,
         replay_events=replay_events,
         debug_location=debug_location,
-        existing_layout_analysis=existing_layout_analysis,
+        existing_layout_analysis=ela_step4,
         step4_reentry_index=0,
     )
     s4_primary = _step4_recovery_trigger.step4_primary_recovery_trigger_from_result(
@@ -402,7 +446,7 @@ def run_solver_timeline_pipeline(
                 pass12_replay_txn_id=pass12.pass12_replay_txn_id,
                 replay_events=replay_events,
                 debug_location=debug_location,
-                existing_layout_analysis=existing_layout_analysis,
+                existing_layout_analysis=ela_step4,
                 step4_reentry_index=1,
             )
     elif s4_primary == RECOVERY_TRIGGER_STEP4_CAPACITY_FAILURE:
@@ -419,7 +463,7 @@ def run_solver_timeline_pipeline(
                 pass12_replay_txn_id=pass12.pass12_replay_txn_id,
                 replay_events=replay_events,
                 debug_location=debug_location,
-                existing_layout_analysis=existing_layout_analysis,
+                existing_layout_analysis=ela_step4,
                 step4_reentry_index=1,
             )
     trace_publish_layout_observation(
@@ -513,7 +557,7 @@ def run_solver_timeline_pipeline(
             map_final=map_for_p4,
             final_map=final_map,
             is_external=is_external,
-            existing_layout_analysis=existing_layout_analysis,
+            existing_layout_analysis=ela_step4,
             eligible_pass3=pass3.eligible_pass3,
             pass3_summary=pass3.pass3_summary,
             p3_trace=pass3.p3_trace,
@@ -536,13 +580,13 @@ def run_solver_timeline_pipeline(
             pass12_phase=pass12.pass12_phase,
             pass12_skipped=pass12.pass12_skipped,
             pre_counts=pass12.pre_counts,
-            post_pass2_counts=pass12.post_pass2_counts,
+            post_pass2_counts=post_pass2_counts_eff,
             step4_result=step4.step4_result,
             routing_state_summary=step4.routing_state_summary,
             post_step4_counts=step4.post_step4_counts,
             unfinalized_placement_count=step4.unfinalized_placement_count,
             pass3_summary=p4.pass3_summary,
-            existing_layout_analysis=existing_layout_analysis,
+            existing_layout_analysis=ela_step4,
             step_hash_step4=step4.step_hash_step4,
             step_hash_pass3=pass3.step_hash_pass3,
             step_hash_p4=p4.step_hash_p4,
@@ -558,6 +602,7 @@ def run_solver_timeline_pipeline(
             ),
             optimization_counterfactual_failure_reason=counterfactual_routing.failure_reason,
             optimization_counterfactual_aggregation=counterfactual_routing.aggregation,
+            orphan_island_bootstrap_trace=_boot_trace,
         )
         assert summary_fields is not None
         _apply_layout_preserve_hard_gate(

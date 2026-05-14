@@ -8,6 +8,10 @@ from unittest.mock import patch
 
 import pytest
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    HARD_PROMOTION_REASON_EXTERNAL_ARTICULATION,
+    HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
     pass1_timeline_integration as p1_tl_mod,
@@ -360,9 +364,26 @@ def test_step4_output_stub_cells_populate_hard_protected_corridor_pool() -> None
     hard_cells = {tuple(cell) for cell in r.routing_state["protected_corridors"]["hard"]}
     stub_cells = {route.stub_cell for route in r.routes}
     external_trunk_entry_cells = {route.path[-1] for route in r.routes if route.path}
+    soft_cells = {tuple(c) for c in r.routing_state["protected_corridors"]["soft"]}
     assert stub_cells
     assert stub_cells.issubset(hard_cells)
-    assert external_trunk_entry_cells.issubset(hard_cells)
+    assert external_trunk_entry_cells.issubset(hard_cells | soft_cells)
+    for tail in hard_cells - stub_cells:
+        promos = r.routing_state.get("hard_protected_promotions") or []
+        tail_reasons = [
+            str(p.get("reason"))
+            for p in promos
+            if isinstance(p, dict)
+            and len(p.get("cell") or []) == 2
+            and tuple(int(x) for x in p["cell"]) == tail
+        ]
+        assert any(
+            rr in tail_reasons
+            for rr in (
+                HARD_PROMOTION_REASON_EXTERNAL_ARTICULATION,
+                HARD_PROMOTION_REASON_REPLACEMENT_SEARCH_EXHAUSTED,
+            )
+        ), f"non-stub hard {tail} must carry §14.2.2 evidence, got {tail_reasons!r}"
 
 
 def test_step4_fluid_map_routes_pipes() -> None:

@@ -41,6 +41,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     P3F_COMMIT_REASON_NORMAL_GAIN,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3 import (
+    pass3_zero_gain_breakdown as _p3_zero_gain,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.pass3.pass3_e2_shadow import (
     _p3e2_shadow_trace,
 )
@@ -460,6 +463,8 @@ def run_pass3_transport_minimization_from_maps(
         "pass3_skipped": False,
         "pass3_committed": result.committed,
         "pass3_greedy_committed": greedy_result.committed,
+        "pass3_transport_kind": tk,
+        "pass3_routing_job_count": len(jobs),
         **shadow_trace,
         **p3e3_trace,
         **p3f_trace,
@@ -483,6 +488,7 @@ def run_pass3_transport_minimization_from_maps(
     )
     trace["pass3_exit_transport_cell_count"] = after_transport_count
     trace["pass3_exit_mining_map_state_hash"] = mining_map_state_hash(new_map)
+    _p3_zero_gain.enrich_pass3_trace_zero_gain_telemetry(trace)
     return new_map, result, trace
 
 

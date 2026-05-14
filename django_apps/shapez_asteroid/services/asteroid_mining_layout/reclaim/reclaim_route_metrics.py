@@ -32,9 +32,9 @@ def _path_additional_route_cost_detail(
 ) -> tuple[int, int, int]:
     """P4 incremental route cost: ``(total, first_hop_from_stub, rest_after_first_hop)``.
 
-    ``total`` matches legacy :func:`_path_additional_route_cost` (per-step ``to`` cells only).
-    The first hop is the cost attributed to entering ``path[1]`` from the fixed output stub
-    ``path[0]``; ``rest`` is ``total - first_hop`` for trace (``route_cost_after_stub``).
+    ``total`` is the RouteZone-style sum for the fixed output stub ``path[0]`` plus each
+    ``path[i+1]`` step (§12.2). ``first_hop`` is stub cost plus the cost of entering ``path[1]``;
+    ``rest`` is ``total - first_hop``.
     """
     if len(path) < 2:
         return 0, 0, 0
@@ -45,7 +45,22 @@ def _path_additional_route_cost_detail(
         asteroid_cells=frozenset(asteroid_cells),
         mineable_cells=frozenset(mineable_cells),
     )
-    total = 0
+    # §12.2: fixed output stub cell counts toward RouteZone / incremental route budget sum.
+    stub_eval_fixed = frozenset(c for c in fixed_stubs if c != outlet_stub)
+    stub_ec = mining_priority_route_cell_cost(
+        outlet_stub,
+        asteroid_cells=asteroid_cells,
+        mineable_cells=mineable_cells,
+        boundary_cells=boundary,
+        buildings=buildings,
+        fixed_stubs=stub_eval_fixed,
+        route_tree=route_tree,
+        opportunity_score=opp,
+        route_zone_map=route_zone_map,
+    )
+    if stub_ec >= INF_COST:
+        return INF_COST, 0, 0
+    total = int(stub_ec)
     first_hop = 0
     for i in range(len(path) - 1):
         to = path[i + 1]
@@ -64,7 +79,7 @@ def _path_additional_route_cost_detail(
             return INF_COST, 0, 0
         total += ec
         if i == 0:
-            first_hop = ec
+            first_hop = int(stub_ec) + ec
     return total, first_hop, total - first_hop
 
 

@@ -105,10 +105,24 @@ def _merge_final_validation_optimization_into_last_map_summary(
         "original_extractor_count",
         "final_extractor_count",
         "extractor_drop_count",
+        "after_preserve_recovery_extractor_count",
+        "step4_surviving_extractor_count",
+        "step4_routed_extractor_count",
+        "preserve_source_loss_before_step4",
+        "preserve_source_loss_reason_counts",
+        "step4_route_success_on_surviving_placements",
+        "step4_complete_routing_success",
+        "protected_corridor_hard_by_reason",
+        "hard_promotion_without_proof_count",
+        "protected_corridor_soft_count",
+        "protected_corridor_candidate_count",
+        "soft_replace_attempt_count",
+        "soft_replace_commit_count",
         "solver_quality_tier",
         "solver_result_tier",
         "solver_quality_summary",
         "solver_quality_subtier",
+        "termination",
     )
     for k in keys:
         if k not in fv:
@@ -140,6 +154,13 @@ _COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS: tuple[str, ...] = (
     "step4_trunk_seed_candidate_zero_reason",
     "all_transport_protected_trace",
     "replay_frame_source",
+    "decoded_map_timeline_frame_count",
+    "solver_milestone_frame_count",
+    "replay_cycle_frame_count",
+    "replay_event_count",
+    "replay_frame_count",
+    "map_timeline_frame_count",
+    "solver_timeline_frame_count",
     "p4_reclaim_shadow_skip_reason",
     "post_reclaim_pass3_skip_reason",
     "preserve_quality_score",
@@ -157,9 +178,25 @@ _COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS: tuple[str, ...] = (
     "final_extractor_count",
     "original_extractor_count",
     "extractor_drop_count",
+    "after_preserve_recovery_extractor_count",
+    "step4_surviving_extractor_count",
+    "step4_routed_extractor_count",
+    "preserve_source_loss_before_step4",
+    "preserve_source_loss_reason_counts",
+    "step4_route_success_on_surviving_placements",
+    "step4_complete_routing_success",
+    "protected_corridor_hard_by_reason",
+    "hard_promotion_without_proof_count",
+    "protected_corridor_soft_count",
+    "protected_corridor_candidate_count",
+    "soft_replace_attempt_count",
+    "soft_replace_commit_count",
     "solver_termination",
     "optimization_warnings",
     "optimization_warning_count",
+    "solver_quality_tier",
+    "solver_result_tier",
+    "solver_quality_summary",
     "solver_quality_subtier",
     # ``termination`` (``degradation_causes``, ``quality_tier`` 등) — ``solver_summary``와 동일.
     "termination",
@@ -257,9 +294,12 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
     shares one ``build_solver_timeline`` run with ``include_solver_overlay`` when both are set.
 
     Count semantics: ``len(map_timeline)`` (here and in debug ``map_timeline_built``) is the small
-    decoded step count from ``build_map_timeline``. ``solver_summary.trace_frame_counter_glossary``
-    documents how that differs from ``replay_event_count`` / ``replay_frame_count`` on the same
-    run — do not compare those integers as the same quantity.
+    **decoded map timeline** step count. ``solver_summary`` also exposes
+    ``decoded_map_timeline_frame_count`` (same), ``solver_milestone_frame_count`` (pass milestones),
+    ``replay_event_count`` (trace events), ``replay_cycle_frame_count`` (stride-based cycle frames,
+    alias ``replay_frame_count``), and ``replay_frame_source`` (which source the replay player
+    should prefer). See ``trace_frame_counter_glossary`` — do not compare map step count with trace
+    event count or cycle frame count as the same quantity.
     """
 
     try:

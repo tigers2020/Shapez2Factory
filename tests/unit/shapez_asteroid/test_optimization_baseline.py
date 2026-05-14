@@ -24,6 +24,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
     _append_optimization_warnings,
     _append_stub_route_recovery_disabled_warning,
     _compute_solver_quality_tier,
+    _solver_quality_summary_for_tier,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.pass12 import (
     run_pass12_stage,
@@ -127,16 +128,17 @@ def test_optimization_warning_when_final_internal_transport_above_baseline() -> 
                 summ.get("solver_quality_tier")
                 == fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
             )
-            assert (
-                summ.get("solver_quality_summary")
-                == "Valid layout, preserve or routing degradation"
+            assert summ.get("solver_quality_summary") == _solver_quality_summary_for_tier(
+                fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
             )
         else:
             assert (
                 summ.get("solver_quality_tier")
                 == fc.SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING
             )
-            assert summ.get("solver_quality_summary") == "Valid layout, optimization warning"
+            assert summ.get("solver_quality_summary") == _solver_quality_summary_for_tier(
+                fc.SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING
+            )
         assert summ.get("solver_result_tier") == summ.get("solver_quality_tier")
         assert int(summ.get("optimization_warning_count") or 0) >= 1
         assert isinstance(summ.get("internal_transport_delta_vs_baseline"), int)
@@ -155,6 +157,7 @@ def test_compute_solver_quality_tier_extractor_drop_beats_optimization_warning()
             solver_termination=SOLVER_TERMINATION_SUCCESS,
             optimization_warnings=[fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE],
             extractor_drop_count=1,
+            preserve_source_loss_before_step4=0,
         )
         == fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
     )
@@ -167,6 +170,7 @@ def test_compute_solver_quality_tier_optimization_warning_branch() -> None:
             solver_termination=SOLVER_TERMINATION_SUCCESS,
             optimization_warnings=[fc.OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE],
             extractor_drop_count=0,
+            preserve_source_loss_before_step4=0,
         )
         == fc.SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING
     )
@@ -179,6 +183,20 @@ def test_compute_solver_quality_tier_extractor_drop_partial() -> None:
             solver_termination=SOLVER_TERMINATION_SUCCESS,
             optimization_warnings=[],
             extractor_drop_count=1,
+            preserve_source_loss_before_step4=0,
+        )
+        == fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+    )
+
+
+def test_compute_solver_quality_tier_preserve_source_loss_before_step4() -> None:
+    assert (
+        _compute_solver_quality_tier(
+            layout_hard_valid=True,
+            solver_termination=SOLVER_TERMINATION_SUCCESS,
+            optimization_warnings=[],
+            extractor_drop_count=0,
+            preserve_source_loss_before_step4=2,
         )
         == fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
     )
@@ -191,6 +209,7 @@ def test_compute_solver_quality_tier_hard_layout_invalid() -> None:
             solver_termination=SOLVER_TERMINATION_SUCCESS,
             optimization_warnings=[],
             extractor_drop_count=0,
+            preserve_source_loss_before_step4=0,
         )
         == fc.SOLVER_QUALITY_TIER_SOLVER_FAILURE
     )
@@ -203,6 +222,7 @@ def test_compute_solver_quality_tier_partial_success_maps_partial_tier() -> None
             solver_termination=SOLVER_TERMINATION_PARTIAL_SUCCESS,
             optimization_warnings=[],
             extractor_drop_count=0,
+            preserve_source_loss_before_step4=0,
         )
         == fc.SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
     )
@@ -215,6 +235,7 @@ def test_compute_solver_quality_tier_solver_failure() -> None:
             solver_termination=SOLVER_TERMINATION_FAILURE,
             optimization_warnings=[],
             extractor_drop_count=0,
+            preserve_source_loss_before_step4=0,
         )
         == fc.SOLVER_QUALITY_TIER_SOLVER_FAILURE
     )
@@ -265,6 +286,7 @@ def test_compute_solver_quality_tier_fully_optimized() -> None:
             solver_termination=SOLVER_TERMINATION_SUCCESS,
             optimization_warnings=[],
             extractor_drop_count=0,
+            preserve_source_loss_before_step4=0,
         )
         == fc.SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED
     )

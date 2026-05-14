@@ -222,6 +222,7 @@ def p2c_revalidate_and_correct(
                     merged_to_existing=merged,
                     reached_external=reached,
                     placement_id=pid,
+                    trunk_terminal_hard_reason=br.trunk_terminal_hard_reason,
                 )
                 for i, r in enumerate(routes_out):
                     if r.placement_id == pid:

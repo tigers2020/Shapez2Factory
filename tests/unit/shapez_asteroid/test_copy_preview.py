@@ -9,7 +9,14 @@ from unittest.mock import patch
 from django.test import Client, override_settings
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
+    DEGRADATION_CAUSE_EXTRACTOR_DROP_VS_MERGED_SEED,
+    DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP,
+    SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS,
+    SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING,
     SOLVER_REPLAY_CONTRACT_VERSION,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
+    _solver_quality_summary_for_tier,
 )
 from django_apps.shapez_asteroid.services.copy_preview_debug_dump import (
     _COPY_PREVIEW_DEBUG_MAX_STEMS,
@@ -302,7 +309,9 @@ def test_copy_preview_merges_final_validation_optimization_into_last_summary(
                 "optimization_warnings": [],
                 "solver_quality_tier": "SUCCESS_VALID_WITH_OPTIMIZATION_WARNING",
                 "solver_result_tier": "SUCCESS_VALID_WITH_OPTIMIZATION_WARNING",
-                "solver_quality_summary": "Valid layout, optimization warning",
+                "solver_quality_summary": _solver_quality_summary_for_tier(
+                    SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING
+                ),
                 "optimization_warning_count": 1,
             },
             "solver_summary": {
@@ -334,7 +343,9 @@ def test_copy_preview_merges_final_validation_optimization_into_last_summary(
     assert summ.get("optimization_internal_transport_quality_ratio") == 1.1875
     assert summ.get("optimization_counterfactual_aggregation") == "sequential_trunk_v1"
     assert summ.get("solver_quality_tier") == "SUCCESS_VALID_WITH_OPTIMIZATION_WARNING"
-    assert summ.get("solver_quality_summary") == "Valid layout, optimization warning"
+    assert summ.get("solver_quality_summary") == _solver_quality_summary_for_tier(
+        SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING
+    )
     assert summ.get("optimization_warning_count") == 1
     assert "optimization_internal_transport_quality_ratio" not in body["map_timeline"][0]["summary"]
     assert body["summary"].get("replay_protected_corridor_counts") == {
@@ -342,6 +353,54 @@ def test_copy_preview_merges_final_validation_optimization_into_last_summary(
         "soft": 1,
         "candidate": 0,
     }
+
+
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_merges_final_validation_termination_and_preserve_loss_fields(
+    mock_solver: object,
+) -> None:
+    """S3: summary merges termination (quality_tier, degradation_causes) from final_validation."""
+
+    def fake(_decoded: dict) -> dict:
+        return {
+            "solver_timeline": [],
+            "final_validation": {
+                "termination": {
+                    "tier": "SUCCESS",
+                    "quality_tier": SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS,
+                    "degradation_causes": [
+                        DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP,
+                        DEGRADATION_CAUSE_EXTRACTOR_DROP_VS_MERGED_SEED,
+                    ],
+                    "ok": True,
+                },
+                "preserve_source_loss_before_step4": 2,
+                "step4_route_success_on_surviving_placements": True,
+                "solver_quality_tier": SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS,
+            },
+            "solver_summary": {},
+        }
+
+    mock_solver.side_effect = fake
+
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)}, query="include_solver_replay=1")
+    assert response.status_code == 200
+    summ = response.json()["summary"]
+    term = summ.get("termination") or {}
+    assert term.get("quality_tier") == SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+    assert DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP in (term.get("degradation_causes") or [])
+    assert DEGRADATION_CAUSE_EXTRACTOR_DROP_VS_MERGED_SEED in (term.get("degradation_causes") or [])
+    assert summ.get("preserve_source_loss_before_step4") == 2
+    assert summ.get("step4_route_success_on_surviving_placements") is True
 
 
 @patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
@@ -355,7 +414,9 @@ def test_copy_preview_merges_solver_summary_ui_fields_and_runtime_flags(
                 "optimization_warnings": [],
                 "solver_quality_tier": "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS",
                 "solver_result_tier": "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS",
-                "solver_quality_summary": "Valid layout, preserve or routing degradation",
+                "solver_quality_summary": _solver_quality_summary_for_tier(
+                    SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS
+                ),
             },
             "solver_summary": {
                 "routing_state": None,
@@ -421,6 +482,13 @@ def test_copy_preview_merges_path_a_solver_summary_diagnostics(mock_solver: obje
                     "quality_tier": "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS",
                 },
                 "trace_frame_counter_glossary": {"map_timeline_frame_count": "decoded steps"},
+                "map_timeline_frame_count": 6,
+                "solver_timeline_frame_count": 6,
+                "replay_event_count": 731,
+                "replay_frame_count": 73,
+                "decoded_map_timeline_frame_count": 6,
+                "solver_milestone_frame_count": 6,
+                "replay_cycle_frame_count": 73,
                 "replay_frame_source": "replay_trace",
                 "preserve_missing_stub_summary": {
                     "drop_count": 2,
@@ -454,6 +522,13 @@ def test_copy_preview_merges_path_a_solver_summary_diagnostics(mock_solver: obje
     assert summ["termination"]["tier"] == "SUCCESS"
     assert summ["trace_frame_counter_glossary"]["map_timeline_frame_count"] == "decoded steps"
     assert summ["replay_frame_source"] == "replay_trace"
+    assert summ["decoded_map_timeline_frame_count"] == 6
+    assert summ["solver_milestone_frame_count"] == 6
+    assert summ["replay_cycle_frame_count"] == 73
+    assert summ["replay_event_count"] == 731
+    assert summ["replay_frame_count"] == 73
+    assert summ["map_timeline_frame_count"] == 6
+    assert summ["solver_timeline_frame_count"] == 6
     assert summ["preserve_missing_stub_summary"]["drop_count"] == 2
     assert summ["preserve_missing_stub_summary"]["preserve_drop_blocker_counts"] == {
         "stub_local_geometry_sealed": 1,

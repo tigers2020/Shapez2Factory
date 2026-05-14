@@ -187,7 +187,7 @@ def test_expand_pass1_replay_emits_many_frames_and_canonical_ids() -> None:
         mineable_rows,
         dominant="shape",
         source_kind="raw_asteroid_field",
-    )
+    ).frames
     ids = [str(f["id"]) for f in frames]
     assert "v2_pass1_candidates" in ids
     if p1.placements:

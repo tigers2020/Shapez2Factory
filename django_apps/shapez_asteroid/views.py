@@ -18,10 +18,18 @@ from django_apps.shapez_asteroid.services.asteroid_optimizer_dev_report import (
     resolve_dev_report_md_path,
     write_asteroid_optimizer_dev_report,
 )
+from django_apps.shapez_asteroid.services.behavior_artifact_collector import (
+    BehaviorArtifactCollector,
+    build_decode_failure_behavior_document,
+)
 from django_apps.shapez_asteroid.services.copy_preview_debug_dump import (
     dump_copy_preview_debug,
 )
 from django_apps.shapez_asteroid.services.style_classifier import asteroid_map_style_catalog
+from django_apps.shapez_asteroid.services.v2_behavior_artifact_dump import (
+    dump_v2_behavior_artifact_json,
+    input_digest_prefix_from_code,
+)
 from django_apps.shapez_core.services.shapez_copy_decode import decode_shapez2_copy_trace
 
 
@@ -91,6 +99,16 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
         )
 
     trace = decode_shapez2_copy_trace(code)
+    artifact_dir = (getattr(settings, "SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
+    digest_prefix = input_digest_prefix_from_code(code)
+    if artifact_dir and not trace.success:
+        dump_v2_behavior_artifact_json(
+            build_decode_failure_behavior_document(
+                trace=trace,
+                input_digest_prefix=digest_prefix,
+            ),
+            artifact_dir,
+        )
     if not trace.success:
         user_error = trace.error or _("decode failed")
         return JsonResponse(
@@ -112,7 +130,14 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
         build_copy_preview_v2_sidecars,
     )
 
-    v2_side = build_copy_preview_v2_sidecars(decoded)
+    behavior_artifact: BehaviorArtifactCollector | None = None
+    if artifact_dir:
+        behavior_artifact = BehaviorArtifactCollector(input_digest_prefix=digest_prefix)
+        behavior_artifact.record_decode_trace(trace)
+
+    v2_side = build_copy_preview_v2_sidecars(decoded, behavior_artifact=behavior_artifact)
+    if artifact_dir and behavior_artifact is not None:
+        dump_v2_behavior_artifact_json(behavior_artifact.build_document(), artifact_dir)
     existing_layout_analysis = v2_side["existing_layout_analysis"]
     v2_append = v2_side.get("v2_preview_map_timeline")
     if not isinstance(v2_append, list):

@@ -131,6 +131,17 @@ class ExistingLayoutIssueSeverity(StrEnum):
     ERROR = "error"
 
 
+class MineableEmptyCause(StrEnum):
+    """STEP 1 diagnostics only: why ``mineable_placement_cells`` may be empty (observability)."""
+
+    NOT_EMPTY = "not_empty"
+    SHELL_T_NOT_RECOGNIZED = "shell_t_not_recognized"
+    DUPLICATE_COORD_OVERLAY_BLOCKED = "duplicate_coord_overlay_blocked"
+    ALL_CANDIDATES_BLOCKED = "all_candidates_blocked"
+    SMALL_OR_FRAGMENTED_SHELL = "small_or_fragmented_shell"
+    UNKNOWN = "unknown"
+
+
 # §11.1 base costs (Pass3 / reclaim). Not interchangeable with STEP 4 grid search costs.
 ROUTE_ZONE_PASS3_BASE_COST: dict[RouteZone, float] = {
     RouteZone.OUTSIDE: 1.0,

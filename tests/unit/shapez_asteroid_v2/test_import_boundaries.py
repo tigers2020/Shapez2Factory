@@ -66,6 +66,48 @@ def test_validation_does_not_import_merge_aware_router() -> None:
         assert not pat.search(text), f"{path} must not reference merge_aware_router"
 
 
+_BAD_BEHAVIOR_ARTIFACT_MODULES = frozenset(
+    {
+        "django_apps.shapez_asteroid.services.behavior_artifact_collector",
+        "django_apps.shapez_asteroid.services.v2_behavior_artifact_dump",
+    }
+)
+
+
+def _import_targets_bad(module_name: str | None) -> bool:
+    if module_name is None:
+        return False
+    if module_name in _BAD_BEHAVIOR_ARTIFACT_MODULES:
+        return True
+    return any(module_name.startswith(m + ".") for m in _BAD_BEHAVIOR_ARTIFACT_MODULES)
+
+
+def test_core_v2_modules_do_not_import_behavior_artifact_stack() -> None:
+    """Behavior artifacts are output-only; domain / pass1 / recon core must not depend on them."""
+
+    roots = [
+        _V2_PKG / "domain",
+        _V2_PKG / "placement" / "pass1_outer.py",
+        _V2_PKG / "reconstruction" / "asteroid_reconstruction.py",
+        _V2_PKG / "routing",
+        _V2_PKG / "validation",
+    ]
+    offenders: list[str] = []
+    for root in roots:
+        paths = [root] if root.is_file() else _py_files(root)
+        for path in paths:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if _import_targets_bad(alias.name):
+                            offenders.append(f"{path}: import {alias.name}")
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    if _import_targets_bad(node.module):
+                        offenders.append(f"{path}: from {node.module}")
+    assert not offenders, "forbidden behavior-artifact imports:\n" + "\n".join(offenders)
+
+
 def test_v2_tree_has_no_django_imports() -> None:
     offenders: list[str] = []
     for path in _py_files(_V2_PKG):

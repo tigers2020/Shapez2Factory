@@ -2,8 +2,21 @@
 STEP 1 — Asteroid reconstruction (CANON ``05_step1_reconstruction.md`` §6).
 
 Blueprint scan → asteroid shell / transport / equipment / barriers → outside flood
-(with Chebyshev closing on the shell perimeter) → inferred interior void →
+(with Chebyshev closing on the shell perimeter) → inferred **interior mining-region
+candidates** (cells inside the closed shell perimeter with no blueprint row) →
 ``mineable_placement_cells``.
+
+**Void wording (domain):** ``interior_set`` / ``interior_patch_cells`` are *not*
+arbitrary map void or “air off the asteroid”. They are empty lattice sites inferred
+to lie inside the restored asteroid patch after perimeter closing — i.e. valid
+mining-region interior alongside ``asteroid_shell_cells`` and existing equipment
+footprints. True **external** void (coordinates never occupied by this blueprint’s
+mining-relevant rows) never enters ``mineable_placement_cells`` because only scanned
+barrier coordinates seed the hull and footprints.
+
+``mineable_placement_cells`` = shell ∪ inferred interior patch ∪ extractor ∪
+extension footprints, minus **permanent** belt / pipe / platform / other solid
+barriers (existing miners/extensions are not permanent blockers).
 
 ``DecodedExistingLayoutContext`` is accepted for API symmetry with STEP 0.5; it must
 not define or replace mineable cells (§6.4). No v1 solver imports; no NDJSON/log input.
@@ -130,6 +143,8 @@ def reconstruct_asteroid_mining_field(
 
     for item in gather_bp_entries_recursive(doc):
         x_val = _int_or_none(item.get("X"))
+        # Shapez blueprint layout math skips X==0 (no valid placement column); see
+        # ``blueprint_map_summary`` module docstring. Rows at X==0 are not ingested.
         if x_val is None or x_val == 0:
             continue
         y_val = _int_or_none(item.get("Y"))
@@ -180,19 +195,17 @@ def reconstruct_asteroid_mining_field(
     interior_set = {c for c in interior_raw if c not in full_barrier_cells}
     interior_patch_cells = _sorted_cells(interior_set)
 
-    blocking_for_mineable = (
-        belt_cells
-        | pipe_cells
-        | extractor_cells
-        | extension_cells
-        | platform_cells
-        | other_barrier_cells
-    )
+    equipment_footprint = extractor_cells | extension_cells
+    permanent_blocking_for_mineable = belt_cells | pipe_cells | platform_cells | other_barrier_cells
+    mineable_base = asteroid_shell_cells | interior_set | equipment_footprint
     mineable: set[BlueprintCell] = set()
-    for c in asteroid_shell_cells | interior_set:
+    for c in mineable_base:
+        # Same X!=0 lattice convention as ingestion: mineable cells use (x, y) with x>0.
+        # Equipment and shell never receive x==0 from the scan loop above; this keeps
+        # mineable aligned if interior inference ever yielded x==0 (it should not).
         if c[0] == 0:
             continue
-        if c in blocking_for_mineable:
+        if c in permanent_blocking_for_mineable:
             continue
         mineable.add(c)
 
@@ -220,6 +233,7 @@ def reconstruct_asteroid_mining_field(
         pipe_cells=_sorted_cells(pipe_cells),
         extractor_cells=_sorted_cells(extractor_cells),
         extension_cells=_sorted_cells(extension_cells),
+        equipment_footprint_mineable_cells=_sorted_cells(equipment_footprint),
         interior_patch_cells=interior_patch_cells,
         asteroid_bbox=abox,
         external_margin=margin,

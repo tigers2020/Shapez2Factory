@@ -21,6 +21,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums
     EquipmentKind,
     ExistingLayoutIssueCode,
     ExistingLayoutIssueSeverity,
+    MineableEmptyCause,
     PlacementCommitState,
     RecoveryTrigger,
     RejectedReason,
@@ -57,7 +58,17 @@ class SolverRunLimits:
 
 @dataclass(frozen=True, slots=True)
 class ReconstructionDTO:
-    """STEP 1 outputs (§6): shell, barriers, transport split, inferred interior, mineable."""
+    """STEP 1 outputs (§6): shell, barriers, transport split, inferred interior, mineable.
+
+    ``mineable_placement_cells`` is the restored asteroid mining region for placement:
+    extraction shell ∪ inferred interior **mining-region** cells (inside the closed
+    shell, not arbitrary off-map void) ∪ existing extractor/miner footprint ∪ existing
+    extension footprint, minus **permanent** obstacles (belt, pipe, platform, other solid
+    layout kinds). ``extractor_cells`` / ``extension_cells`` keep blueprint snapshots;
+    ``equipment_footprint_mineable_cells`` is their sorted union (prior mineable evidence).
+    ``full_barrier_cells`` remains the union of all occupied blueprint coordinates (not
+    equivalent to permanent mineable blockers).
+    """
 
     mineable_placement_cells: tuple[BlueprintCell, ...] = ()
     extraction_shell_cells: tuple[BlueprintCell, ...] = ()
@@ -66,6 +77,7 @@ class ReconstructionDTO:
     pipe_cells: tuple[BlueprintCell, ...] = ()
     extractor_cells: tuple[BlueprintCell, ...] = ()
     extension_cells: tuple[BlueprintCell, ...] = ()
+    equipment_footprint_mineable_cells: tuple[BlueprintCell, ...] = ()
     interior_patch_cells: tuple[BlueprintCell, ...] = ()
     asteroid_bbox: BBox | None = None
     external_margin: int = 0
@@ -74,6 +86,57 @@ class ReconstructionDTO:
 
 # Alias for CANON §6 naming (``SolverRunContext.reconstruction`` keeps field type).
 ReconstructionResult = ReconstructionDTO
+
+
+@dataclass(frozen=True, slots=True)
+class DuplicateCoordSampleDTO:
+    """One coordinate with multiple blueprint entries (overlay / duplicate ``T`` rows)."""
+
+    cell: BlueprintCell
+    t_values: tuple[str | None, ...]
+    has_shell: bool
+    has_blocking: bool
+    blocking_kinds: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ReconstructionDiagnosisDTO:
+    """Read-only STEP 1 reconstruction diagnostics; must not drive solver or placement input."""
+
+    total_entries: int = 0
+    unique_coord_count: int = 0
+    duplicate_coord_count: int = 0
+
+    extraction_shell_count: int = 0
+    interior_patch_count: int = 0
+    mineable_placement_count: int = 0
+
+    belt_count: int = 0
+    pipe_count: int = 0
+    extractor_count: int = 0
+    extension_count: int = 0
+    platform_count: int = 0
+    other_barrier_count: int = 0
+
+    coords_with_shell_and_blocking_count: int = 0
+    coords_with_shell_and_belt_count: int = 0
+    coords_with_shell_and_pipe_count: int = 0
+    coords_with_shell_and_extractor_count: int = 0
+    coords_with_shell_and_extension_count: int = 0
+
+    candidate_before_blocking_count: int = 0
+    blocked_candidate_count: int = 0
+
+    unrecognized_t_counts: tuple[tuple[str, int], ...] = ()
+    asteroid_like_unrecognized_t_counts: tuple[tuple[str, int], ...] = ()
+
+    duplicate_coord_samples: tuple[DuplicateCoordSampleDTO, ...] = ()
+
+    preview_timeline_frame_count: int | None = None
+    preview_timeline_frame_ids_sample: tuple[str, ...] = ()
+
+    primary_cause: MineableEmptyCause = MineableEmptyCause.UNKNOWN
+    note: str = ""
 
 
 @dataclass(frozen=True, slots=True)

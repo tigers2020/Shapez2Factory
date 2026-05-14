@@ -186,3 +186,138 @@ def test_extractor_and_extension_cells_populated() -> None:
     recon = reconstruct_asteroid_mining_field(decoded)
     assert (5, 5) in recon.extractor_cells
     assert (6, 5) in recon.extension_cells
+    assert set(recon.equipment_footprint_mineable_cells) == {(5, 5), (6, 5)}
+    assert set(recon.mineable_placement_cells) == {(5, 5), (6, 5)}
+
+
+def test_extension_only_layout_restores_mineable_from_footprints() -> None:
+    """No raw asteroid shell rows: extensions still evidence restored mineable region."""
+
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 10, "Y": 10, "T": "Layout_ShapeMinerExtension"},
+                {"X": 11, "Y": 10, "T": "Layout_ShapeMinerExtension"},
+                {"X": 12, "Y": 10, "T": "Layout_ShapeMinerExtension"},
+            ]
+        }
+    }
+    recon = reconstruct_asteroid_mining_field(decoded)
+    assert recon.extraction_shell_cells == ()
+    assert len(recon.extension_cells) == 3
+    assert set(recon.mineable_placement_cells) == {(10, 10), (11, 10), (12, 10)}
+    assert recon.equipment_footprint_mineable_cells == recon.extension_cells
+
+
+def test_belt_on_same_cell_as_extension_blocks_that_cell_from_mineable() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 4, "Y": 4, "T": "Belt_Straight"},
+                {"X": 4, "Y": 4, "T": "Layout_ShapeMinerExtension"},
+            ]
+        }
+    }
+    recon = reconstruct_asteroid_mining_field(decoded)
+    assert (4, 4) in recon.belt_cells and (4, 4) in recon.extension_cells
+    assert (4, 4) not in recon.mineable_placement_cells
+    assert (4, 4) in recon.equipment_footprint_mineable_cells
+
+
+def test_miner_only_without_shell_yields_mineable_extractor_cells() -> None:
+    """Extractor footprint alone restores mineable when no asteroid shell rows exist."""
+
+    decoded = {"BP": {"Entries": [{"X": 7, "Y": 7, "T": "Layout_ShapeMiner"}]}}
+    recon = reconstruct_asteroid_mining_field(decoded)
+    assert recon.extraction_shell_cells == ()
+    assert (7, 7) in recon.extractor_cells
+    assert set(recon.mineable_placement_cells) == {(7, 7)}
+
+
+def test_pipe_overlapping_miner_excludes_coordinate_from_mineable() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 8, "Y": 8, "T": "Layout_ShapeMiner"},
+                {"X": 8, "Y": 8, "T": "SpacePipe_Straight"},
+            ]
+        }
+    }
+    recon = reconstruct_asteroid_mining_field(decoded)
+    assert (8, 8) in recon.extractor_cells and (8, 8) in recon.pipe_cells
+    assert (8, 8) not in recon.mineable_placement_cells
+
+
+def test_platform_overlapping_extension_excludes_coordinate_from_mineable() -> None:
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 9, "Y": 9, "T": "Layout_ShapeMinerExtension"},
+                {"X": 9, "Y": 9, "T": "Foundation_Test"},
+            ]
+        }
+    }
+    recon = reconstruct_asteroid_mining_field(decoded)
+    assert (9, 9) in recon.extension_cells
+    assert (9, 9) not in recon.mineable_placement_cells
+
+
+def test_blueprint_entries_at_x_zero_are_never_ingested() -> None:
+    """X==0 column is skipped at scan (same convention as ``blueprint_map_summary``)."""
+
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 0, "Y": 10, "T": "Layout_ShapeMinerExtension"},
+                {"X": 1, "Y": 10, "T": "Layout_ShapeMinerExtension"},
+            ]
+        }
+    }
+    recon = reconstruct_asteroid_mining_field(decoded)
+    assert (0, 10) not in recon.extension_cells and (0, 10) not in recon.full_barrier_cells
+    assert (1, 10) in recon.extension_cells
+    assert set(recon.mineable_placement_cells) == {(1, 10)}
+
+
+def test_distant_coordinates_without_blueprint_rows_not_in_mineable() -> None:
+    """Arbitrary empty map sites are not mineable — only reconstructed region cells are."""
+
+    decoded = {"BP": {"Entries": _hollow_square_shell(inner_x0=2, inner_y0=2, size=4)}}
+    recon = reconstruct_asteroid_mining_field(decoded)
+    assert (500, 500) not in recon.mineable_placement_cells
+
+
+def test_many_extensions_no_shell_mineable_matches_extension_count() -> None:
+    """Regression shape: large extension-only layouts must keep mineable > 0 (artifact-style)."""
+
+    n = 80
+    decoded = {
+        "BP": {
+            "Entries": [
+                {"X": 200 + i, "Y": 300, "T": "Layout_ShapeMinerExtension"} for i in range(n)
+            ]
+        }
+    }
+    recon = reconstruct_asteroid_mining_field(decoded)
+    assert recon.extraction_shell_cells == ()
+    assert len(recon.extension_cells) == n
+    assert len(recon.mineable_placement_cells) == n
+    assert len(recon.equipment_footprint_mineable_cells) == n
+
+
+def test_fully_occupied_interior_no_inferior_patch_mineable_is_shell_plus_miner() -> None:
+    """Inner 2×2 filled with BP rows: no interior_patch; mineable = shell ∪ miner − blockers."""
+
+    entries = list(_hollow_square_shell(inner_x0=2, inner_y0=2, size=4))
+    entries += [
+        {"X": 3, "Y": 3, "T": "Belt_Straight"},
+        {"X": 4, "Y": 3, "T": "Foundation_Test"},
+        {"X": 3, "Y": 4, "T": "Layout_ShapeMiner"},
+        {"X": 4, "Y": 4, "T": "Z_Unknown_Blocker_Xyz"},
+    ]
+    recon = reconstruct_asteroid_mining_field({"BP": {"Entries": entries}})
+    assert recon.interior_patch_cells == ()
+    assert (3, 4) in recon.mineable_placement_cells
+    for blocked in ((3, 3), (4, 3), (4, 4)):
+        assert blocked not in recon.mineable_placement_cells
+    assert len(recon.mineable_placement_cells) == len(recon.extraction_shell_cells) + 1

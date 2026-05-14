@@ -11,6 +11,7 @@ from __future__ import annotations
 import copy
 import logging
 import os
+from dataclasses import dataclass
 from typing import Any, cast
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
@@ -653,13 +654,29 @@ def _pass1_events_for_preview_timeline(events: list[dict[str, Any]]) -> list[dic
     return [e for e in events if e.get("kind") in ("pass1_begin", "commit_bundle")]
 
 
+@dataclass(frozen=True, slots=True)
+class Pass1PreviewArtifacts:
+    """UI ``mining_map`` frames plus full Pass1 replay events from one Pass1 run."""
+
+    frames: list[dict[str, Any]]
+    pass1_replay_events: tuple[dict[str, Any], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class V2PreviewTimelineResult:
+    """JSON-safe preview frames for ``map_timeline`` and uncapped Pass1 replay events."""
+
+    frames: list[dict[str, Any]]
+    pass1_replay_events: tuple[dict[str, Any], ...]
+
+
 def expand_pass1_replay_mining_map_frames(
     recon: ReconstructionDTO,
     mineable_rows: list[dict[str, Any]],
     *,
     dominant: str,
     source_kind: str | None,
-) -> list[dict[str, Any]]:
+) -> Pass1PreviewArtifacts:
     """STEP 2 Pass1: ``mining_map`` frames for copy-preview ``map_timeline``.
 
     One frame per replay event for small runs; for larger event streams only ``pass1_begin``
@@ -669,6 +686,9 @@ def expand_pass1_replay_mining_map_frames(
     When ``reconstruction.mineable_placement_cells`` is empty, Pass1 emits no replay rows; a
     single ``v2_pass1_skipped_no_mineable`` frame is returned so the timeline length matches
     expectations (reconstruction + explicit Pass1 outcome + placeholders).
+
+    ``pass1_replay_events`` is the uncapped list from the same single Pass1 run (for
+    development-only behavior artifacts); UI frames may be thinned.
     """
 
     events: list[dict[str, Any]] = []
@@ -699,7 +719,7 @@ def expand_pass1_replay_mining_map_frames(
         summ["pass1_skip_reason"] = "no_mineable_placement_cells"
         out0: list[dict[str, Any]] = [{"id": fid, "summary": summ, "mining_map": rows}]
         _dev_log_v2_preview_frame(fid, entry_count=int(summ["entry_count"]))
-        return out0
+        return Pass1PreviewArtifacts(out0, tuple(dict(e) for e in events))
 
     committed: list[dict[str, Any]] = []
     out: list[dict[str, Any]] = []
@@ -764,7 +784,7 @@ def expand_pass1_replay_mining_map_frames(
         out.append({"id": fid, "summary": summ, "mining_map": rows})
         _dev_log_v2_preview_frame(fid, entry_count=int(summ["entry_count"]))
 
-    return out
+    return Pass1PreviewArtifacts(out, tuple(dict(e) for e in events))
 
 
 def _placeholder_milestone_frame(
@@ -784,9 +804,10 @@ def build_v2_preview_map_frames(
     recon: ReconstructionDTO,
     *,
     source_kind: str | None = None,
-) -> list[dict[str, Any]]:
+) -> V2PreviewTimelineResult:
     """
-    Return ``map_timeline``-compatible frames (variable length).
+    Return JSON-safe ``map_timeline`` frames (variable length) and uncapped Pass1 replay
+    events from a **single** Pass1 execution.
 
     Reconstruction preview order: full layout → strip belt/pipe → strip extractors →
     strip extensions → infer interior on stripped base → inner-patch focus (shell + void)
@@ -815,7 +836,10 @@ def build_v2_preview_map_frames(
                 summ: dict[str, Any] = summ_raw if isinstance(summ_raw, dict) else {}
                 ec = summ.get("entry_count") if isinstance(summ.get("entry_count"), int) else 0
                 _dev_log_v2_preview_frame(fr["id"], entry_count=ec)
-        return cast(list[dict[str, Any]], to_jsonable(only_placeholders))
+        return V2PreviewTimelineResult(
+            cast(list[dict[str, Any]], to_jsonable(only_placeholders)),
+            (),
+        )
 
     dominant = _dominant_surface_for_shell(decoded, recon)
     entries = _last_write_entries_by_cell(decoded)
@@ -888,13 +912,14 @@ def build_v2_preview_map_frames(
     frames.append({"id": fid3, "summary": s3, "mining_map": copy.deepcopy(rows3)})
     _dev_log_v2_preview_frame(fid3, entry_count=int(s3["entry_count"]))
 
-    pass1_frames = expand_pass1_replay_mining_map_frames(
+    pass1_art = expand_pass1_replay_mining_map_frames(
         recon,
         rows3,
         dominant=dominant,
         source_kind=source_kind,
     )
-    frames.extend(pass1_frames)
+    frames.extend(pass1_art.frames)
+    pass1_replay_events = pass1_art.pass1_replay_events
 
     last_rows = frames[-1]["mining_map"]
     if not isinstance(last_rows, list):
@@ -911,7 +936,10 @@ def build_v2_preview_map_frames(
         ec_ph = summ_ph.get("entry_count") if isinstance(summ_ph.get("entry_count"), int) else None
         _dev_log_v2_preview_frame(fid, entry_count=ec_ph)
 
-    return cast(list[dict[str, Any]], to_jsonable(frames))
+    return V2PreviewTimelineResult(
+        cast(list[dict[str, Any]], to_jsonable(frames)),
+        pass1_replay_events,
+    )
 
 
 V2_PREVIEW_PLACEHOLDER_STEP_IDS: tuple[str, ...] = _V2_PREVIEW_PLACEHOLDER_FRAME_IDS
@@ -919,6 +947,8 @@ V2_PREVIEW_PLACEHOLDER_STEP_IDS: tuple[str, ...] = _V2_PREVIEW_PLACEHOLDER_FRAME
 __all__ = [
     "PREVIEW_ASTEROID_REPLACE_TILE_T",
     "V2_PREVIEW_PLACEHOLDER_STEP_IDS",
+    "Pass1PreviewArtifacts",
+    "V2PreviewTimelineResult",
     "build_v2_preview_map_frames",
     "expand_pass1_replay_mining_map_frames",
 ]

@@ -35,7 +35,7 @@ def test_transport_shell_frame_includes_extractors_without_asteroid_field_tiles(
     assert recon.extraction_shell_cells == ()
     assert recon.extractor_cells and recon.pipe_cells
 
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="existing_fluid_layout")
+    frames = build_v2_preview_map_frames(decoded, recon, source_kind="existing_fluid_layout").frames
     first = next(f for f in frames if f.get("id") == "v2_recon_transport_shell")
     mm = first["mining_map"]
     xs = {int(r["x"]) for r in mm}
@@ -55,7 +55,7 @@ def test_transport_shell_frame_includes_asteroid_shell_when_present() -> None:
         }
     }
     recon = reconstruct_asteroid_mining_field(decoded)
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="raw_asteroid_field")
+    frames = build_v2_preview_map_frames(decoded, recon, source_kind="raw_asteroid_field").frames
     first = next(f for f in frames if f.get("id") == "v2_recon_transport_shell")
     assert len(first["mining_map"]) >= 2
 
@@ -72,7 +72,7 @@ def test_expand_pass1_emits_skip_frame_when_no_mineable_cells() -> None:
         mineable_rows,
         dominant="shape",
         source_kind="raw_asteroid_field",
-    )
+    ).frames
     assert len(frames) == 1
     assert frames[0]["id"] == "v2_pass1_skipped_no_mineable"
     assert frames[0]["summary"].get("pass1_event_kind") == "skipped_no_mineable"
@@ -89,7 +89,7 @@ def test_reconstruction_preview_frame_order_includes_strip_and_inner_patch() -> 
     entries.append({"X": 5, "Y": 4, "T": "Layout_ShapeMinerExtension"})
     decoded = {"BP": {"Entries": entries}}
     recon = reconstruct_asteroid_mining_field(decoded)
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout")
+    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout").frames
     ids = [f.get("id") for f in frames if isinstance(f, dict) and f.get("id")]
     assert ids[:7] == [
         "v2_recon_transport_shell",
@@ -134,11 +134,10 @@ def test_dominant_surface_includes_fluid_miner_not_on_shell_tiles() -> None:
     recon = reconstruct_asteroid_mining_field(decoded)
     assert _dominant_surface_for_shell(decoded, recon) == "fluid"
 
-    inner = next(
-        f
-        for f in build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout")
-        if f.get("id") == "v2_recon_inner_patch"
-    )
+    _frames = build_v2_preview_map_frames(
+        decoded, recon, source_kind="mixed_existing_layout"
+    ).frames
+    inner = next(f for f in _frames if f.get("id") == "v2_recon_inner_patch")
     by_xy = {(int(r["x"]), int(r["y"])): r for r in inner["mining_map"]}
     assert by_xy[(2, 4)]["surface"] == "fluid"
 
@@ -161,7 +160,7 @@ def test_strip_extensions_does_not_fill_voids_from_belt_extension_coord_collisio
     assert (4, 4) in recon.belt_cells
     assert (4, 4) in recon.extension_cells
 
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout")
+    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout").frames
     strip_ext = next(f for f in frames if f["id"] == "v2_recon_strip_extensions")
     keys = {(int(r["x"]), int(r["y"])) for r in strip_ext["mining_map"]}
     assert (4, 4) not in keys
@@ -181,7 +180,7 @@ def test_strip_asteroid_surface_follows_extractor_or_extension_kind() -> None:
     entries.append({"X": 4, "Y": 5, "T": "Layout_ShapeMinerExtension"})
     decoded = {"BP": {"Entries": entries}}
     recon = reconstruct_asteroid_mining_field(decoded)
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout")
+    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout").frames
 
     strip_ex = next(f for f in frames if f["id"] == "v2_recon_strip_extractors")
     by_ex = {(int(r["x"]), int(r["y"])): r for r in strip_ex["mining_map"]}

@@ -2913,13 +2913,12 @@
       var RndP = sprAtP.AM_AsteroidMapSpriteRenderer;
       var RslvP = sprAtP.AM_AsteroidMapSpriteResolver;
       var usePipeSp = atlasP && RndP && RslvP;
-      var isPipeStub = cellIsOutputStubTransport(p, "pipe");
       if (usePipeSp) {
         var specPipe = RslvP.resolveMiningCellSpriteDrawSpec(
           p,
           atlasP.meta,
           "pipe",
-          { dirs: { n: n, e: e, s: s, w: w }, isStub: isPipeStub }
+          { dirs: { n: n, e: e, s: s, w: w }, isStub: cellIsOutputStubTransport(p, "pipe") }
         );
         var okPipe = RndP.appendSvgSpriteTile(
           g,
@@ -2931,7 +2930,7 @@
           size,
           specPipe.rotationDeg || 0,
           {
-            className: isPipeStub ? "am-map-sprite-output-stub" : "am-map-sprite-transport",
+            className: "am-map-sprite-transport",
             titleText: titleText,
             stroke: strokeUse,
             strokeWidth: 0.08,
@@ -3059,13 +3058,12 @@
       var RndB = sprAtB.AM_AsteroidMapSpriteRenderer;
       var RslvB = sprAtB.AM_AsteroidMapSpriteResolver;
       var useBeltSp = atlasB && RndB && RslvB;
-      var isBeltStub = cellIsOutputStubTransport(p, "belt");
       if (useBeltSp) {
         var specBelt = RslvB.resolveMiningCellSpriteDrawSpec(
           p,
           atlasB.meta,
           "belt",
-          { dirs: { n: nb, e: eb, s: sb, w: wb }, isStub: isBeltStub }
+          { dirs: { n: nb, e: eb, s: sb, w: wb }, isStub: cellIsOutputStubTransport(p, "belt") }
         );
         var okBelt = RndB.appendSvgSpriteTile(
           gB,
@@ -3077,7 +3075,7 @@
           sizeB,
           specBelt.rotationDeg || 0,
           {
-            className: isBeltStub ? "am-map-sprite-output-stub" : "am-map-sprite-transport",
+            className: "am-map-sprite-transport",
             titleText: titleText,
             stroke: strokeUseB,
             strokeWidth: 0.08,

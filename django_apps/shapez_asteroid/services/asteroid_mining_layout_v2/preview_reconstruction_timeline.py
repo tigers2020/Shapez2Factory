@@ -19,6 +19,7 @@ from django_apps.shapez_asteroid.extraction.shape_miner_rotation import (
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BlueprintCell,
+    is_physical_x,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     ReconstructionDTO,
@@ -592,13 +593,58 @@ def _transport_kind_from_bundle_dict(b: dict[str, Any]) -> TransportKind:
     return TransportKind.SHAPE_BELT
 
 
+def _pass1_committed_output_stub_transport_row(
+    stub: BlueprintCell,
+    *,
+    bundle: dict[str, Any],
+    frame_id: str,
+    source_kind: str | None,
+    dominant: str,
+    base_row: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """mining_map row for the extractor output stub (belt or pipe) before extension bodies.
+
+    Preview-only: paints ``output_stub_cell`` as transport so the UI can connect the
+    miner head to belt/pipe before extension sprites on the other sides.
+    """
+
+    if not is_physical_x(stub[0]):
+        return None
+    tk = _transport_kind_from_bundle_dict(bundle)
+    out_dir = _output_direction_from_bundle(bundle)
+    try:
+        r_val = rotation_r_for_output_direction(out_dir[0], out_dir[1])
+    except ValueError:
+        r_val = 0
+    if tk is TransportKind.FLUID_PIPE:
+        role = "pipe"
+        surface = "fluid"
+    else:
+        role = "belt"
+        surface = dominant if dominant in ("shape", "fluid") else "shape"
+    if base_row is not None:
+        body = dict(base_row)
+    else:
+        body = {"x": stub[0], "y": stub[1], "role": role, "surface": surface}
+    body["x"] = stub[0]
+    body["y"] = stub[1]
+    body["role"] = role
+    body["surface"] = surface
+    body["r"] = r_val
+    body.pop("pass1_replay_role", None)
+    body.pop("layout_kind", None)
+    body.pop("t", None)
+    return _stamp_row(body, frame_id=frame_id, source_kind=source_kind)
+
+
 def _pass1_extension_orientation_dirs(
     extractor: BlueprintCell,
     extension_cells_json: Any,
 ) -> tuple[tuple[int, int], ...]:
     """Replay lists extensions in commit order; parent is always in ``{extractor} ∪ prior``.
 
-    Matches ``grow_extension_cells`` emission order (``PlacementBundle.extensions``).
+    Matches Pass1 ``grow_pass1_straight_extension_chain`` / Pass2 branching emission order
+    (``PlacementBundle.extensions`` list order).
     """
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement import (
@@ -734,6 +780,18 @@ def _mining_map_with_pass1_replay_overlay(
             source_kind=source_kind,
             base_row=prev_e,
         )
+        stub = _coord_from_jsonish(b["output_stub_cell"])
+        prev_stub = cells.get(stub)
+        stub_row = _pass1_committed_output_stub_transport_row(
+            stub,
+            bundle=b,
+            frame_id=frame_id,
+            source_kind=source_kind,
+            dominant=dominant,
+            base_row=prev_stub,
+        )
+        if stub_row is not None:
+            cells[stub] = stub_row
         orient_dirs = _pass1_extension_orientation_dirs(extr, b.get("extension_cells", ()))
         for j, ex in enumerate(b.get("extension_cells", ())):
             eco = _coord_from_jsonish(ex)

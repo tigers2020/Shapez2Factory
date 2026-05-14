@@ -91,7 +91,7 @@
   /**
    * @param {"belt"|"pipe"} transportRole
    * @param {{ n: boolean, e: boolean, s: boolean, w: boolean }} dirs
-   * @param {boolean} isOutputStub extractor output anchor cell
+   * @param {boolean} isOutputStub extractor output anchor cell (same straight tile as cnt<=1)
    */
   function resolveTransportSprite(transportRole, dirs, isOutputStub) {
     var n = !!dirs.n;
@@ -101,8 +101,13 @@
     var cnt = countDirs(n, e, s, w);
     var prefix = transportRole === "pipe" ? "pipe" : "belt";
 
+    // Extractor output anchor: full straight belt/pipe sprite (not empty stub atlas tile).
     if (isOutputStub) {
-      return { base: prefix + "_stub", rotationDeg: rotationForStraight(n, e, s, w), overlays: [] };
+      return {
+        base: prefix + "_straight",
+        rotationDeg: rotationForStraight(n, e, s, w),
+        overlays: [],
+      };
     }
 
     if (cnt <= 1) {

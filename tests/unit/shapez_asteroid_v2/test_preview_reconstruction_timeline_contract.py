@@ -313,6 +313,81 @@ def test_pass1_probe_output_stub_highlight_only() -> None:
     assert by_p[(11, 10)].get("pass1_replay_role") == "pass1_probe_stub_ok"
 
 
+def test_pass1_replay_committed_paints_output_stub_belt_before_extensions() -> None:
+    """Committed overlay paints belt on output stub (no prior belt row) before extensions."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
+        preview_reconstruction_timeline as pv,
+    )
+
+    mineable_rows = [
+        {"x": 9, "y": 10, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 10, "y": 10, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 11, "y": 10, "role": "inferred", "surface": "shape"},
+    ]
+    committed = [
+        {
+            "extractor_cell": [10, 10],
+            "output_stub_cell": [11, 10],
+            "extension_cells": [[9, 10]],
+            "transport_kind": "shape_belt",
+            "output_direction": [1, 0],
+        }
+    ]
+    rows = pv._mining_map_with_pass1_replay_overlay(
+        mineable_rows,
+        frame_id="f_stub_belt",
+        source_kind=None,
+        dominant="shape",
+        committed_bundles=committed,
+        highlight_event=None,
+    )
+    by_c = {(int(r["x"]), int(r["y"])): r for r in rows}
+    stub = by_c[(11, 10)]
+    assert stub.get("role") == "belt"
+    assert stub.get("r") == 0
+    assert stub.get("pass1_replay_role") is None
+    assert by_c[(9, 10)].get("layout_kind") == "extension"
+
+
+def test_pass1_replay_committed_paints_output_stub_pipe_before_extensions() -> None:
+    """Same for fluid pipe transport on the output stub."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
+        preview_reconstruction_timeline as pv,
+    )
+
+    mineable_rows = [
+        {"x": 10, "y": 9, "role": "occupied", "surface": "fluid", "layout_kind": "asteroid_field"},
+        {"x": 10, "y": 10, "role": "occupied", "surface": "fluid", "layout_kind": "asteroid_field"},
+        {"x": 11, "y": 10, "role": "inferred", "surface": "fluid"},
+    ]
+    committed = [
+        {
+            "extractor_cell": [10, 10],
+            "output_stub_cell": [11, 10],
+            "extension_cells": [[10, 9]],
+            "transport_kind": "fluid_pipe",
+            "output_direction": [1, 0],
+        }
+    ]
+    rows = pv._mining_map_with_pass1_replay_overlay(
+        mineable_rows,
+        frame_id="f_stub_pipe",
+        source_kind=None,
+        dominant="fluid",
+        committed_bundles=committed,
+        highlight_event=None,
+    )
+    by_c = {(int(r["x"]), int(r["y"])): r for r in rows}
+    stub = by_c[(11, 10)]
+    assert stub.get("role") == "pipe"
+    assert stub.get("surface") == "fluid"
+    assert stub.get("r") == 0
+    assert stub.get("pass1_replay_role") is None
+    assert by_c[(10, 9)].get("layout_kind") == "fluid_extension"
+
+
 def test_pass1_replay_extension_overlay_extension_tile_metadata() -> None:
     """Committed extension_cells get extension layout_kind / t / r; stub stays unbadged."""
 

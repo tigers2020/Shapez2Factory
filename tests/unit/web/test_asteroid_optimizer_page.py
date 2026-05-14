@@ -85,7 +85,7 @@ def test_asteroid_optimizer_map_sprite_atlas_smoke() -> None:
     assert b"resolveAsteroidSpriteKey" in resolver_js
     assert b"equipment_Layout_ShapeMiner" in resolver_js
     assert b"equipment_Layout_FluidMiner" in resolver_js
-    assert b'_stub"' in resolver_js
+    assert b"Extractor output anchor" in resolver_js
 
     renderer_js = (js_dir / "map_sprite_renderer.js").read_bytes()
     assert b"drawSpriteTile" in renderer_js

@@ -33,7 +33,7 @@ from .bundle_candidate import (
     CARDINAL_DIRS,
     Pass2BundleCandidate,
     blocked_by_building,
-    grow_extension_cells,
+    grow_pass2_branching_extension_cells,
     infer_transport_kind,
     lex_key_pass2_best_output,
     step_cell,
@@ -127,7 +127,7 @@ def _build_pass2_candidate(
     trial_used = set(used)
     trial_used.add(extractor)
     trial_used.add(stub)
-    exts = grow_extension_cells(
+    exts = grow_pass2_branching_extension_cells(
         extractor,
         out_dir,
         stub,

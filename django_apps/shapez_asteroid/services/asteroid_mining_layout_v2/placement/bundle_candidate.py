@@ -6,8 +6,13 @@ No route geometry; no ``final_route_cells`` (STEP 4 only).
 **Blueprint X column**: STEP1 ``mineable_placement_cells`` (decoded pipeline) never
 uses **X == 0** as a cell id (ingestion skips that label). That is **not** a physical void
 column between neighbors—do not read the gap in integer ids as empty grid space.
-Extension / escape feasibility uses ``mineable`` and ``blocked_by_building`` only —
-not a global ``x <= 0`` guard.
+Extension placement uses ``mineable`` plus local used / extractor / output-stub exclusion.
+Escape and stub feasibility may still use ``blocked_by_building``. No global ``x <= 0``
+guard beyond ``mineable`` and grid stepping.
+
+**Pass1 vs Pass2 extensions**: Pass1 uses a **single straight chain** opposite the output
+direction (max 3). Pass2 may use ``grow_pass2_branching_extension_cells`` (output-excluded
+three sides + BFS branching).
 
 **Deterministic direction ring**: ``CARDINAL_DIRS`` is **12 o'clock (north) first**, then
 **clockwise** — ``(0, -1), (1, 0), (0, 1), (-1, 0)`` in ``(dx, dy)`` blueprint space
@@ -119,24 +124,58 @@ def orientation_toward_parent(child: BlueprintCell, parent: BlueprintCell) -> tu
     raise ValueError(msg)
 
 
-def grow_extension_cells(
+def grow_pass1_straight_extension_chain(
     extractor: BlueprintCell,
     out_dir: tuple[int, int],
     stub: BlueprintCell,
     mineable: frozenset[BlueprintCell],
     used: set[BlueprintCell],
-    transport_kind: TransportKind,
-    reconstruction: ReconstructionDTO,
+    _transport_kind: TransportKind,
+    _reconstruction: ReconstructionDTO,
 ) -> tuple[tuple[BlueprintCell, BlueprintCell, tuple[int, int]], ...]:
-    """Up to 3 extensions: ``(ext_cell, parent_cell, orientation_toward_parent)``.
+    """Pass1 only: up to 3 extensions in one line **opposite** ``out_dir`` from ``extractor``.
 
-    Phase A — three extractor-adjacent slots (output excluded), clockwise from the slot
-    immediately clockwise of ``out_dir``.
-
-    Phase B — BFS from each placed extension: try ``CARDINAL_DIRS`` in order, skip step
-    back onto ``parent``, attach up to global limit 3. Supports chains and same-level
-    branching (multiple children of one extension when space allows).
+    Each extension's parent is the previous cell on the chain (first parent = ``extractor``).
+    Stops when the next cell is not placeable. No sideways branching.
     """
+
+    chain_dir = (-out_dir[0], -out_dir[1])
+    out: list[tuple[BlueprintCell, BlueprintCell, tuple[int, int]]] = []
+    local_used = set(used)
+
+    def can_place(cell: BlueprintCell) -> bool:
+        if cell in local_used:
+            return False
+        if cell in (stub, extractor):
+            return False
+        if cell not in mineable:
+            return False
+        return True
+
+    parent = extractor
+    cur = extractor
+    for _ in range(3):
+        nxt = step_cell(cur, chain_dir)
+        if not can_place(nxt):
+            break
+        out.append((nxt, parent, orientation_toward_parent(nxt, parent)))
+        local_used.add(nxt)
+        parent = nxt
+        cur = nxt
+
+    return tuple(out)
+
+
+def grow_pass2_branching_extension_cells(
+    extractor: BlueprintCell,
+    out_dir: tuple[int, int],
+    stub: BlueprintCell,
+    mineable: frozenset[BlueprintCell],
+    used: set[BlueprintCell],
+    _transport_kind: TransportKind,
+    _reconstruction: ReconstructionDTO,
+) -> tuple[tuple[BlueprintCell, BlueprintCell, tuple[int, int]], ...]:
+    """Pass2: up to 3 extensions via three sides (output excluded) plus BFS branching."""
 
     out: list[tuple[BlueprintCell, BlueprintCell, tuple[int, int]]] = []
     local_used = set(used)
@@ -148,7 +187,7 @@ def grow_extension_cells(
             return False
         if cell not in mineable:
             return False
-        return not blocked_by_building(cell, transport_kind, reconstruction)
+        return True
 
     for d in side_directions_after_output(out_dir):
         if len(out) >= 3:
@@ -214,7 +253,8 @@ __all__ = [
     "Pass2BundleCandidate",
     "bbox_edge_distance",
     "blocked_by_building",
-    "grow_extension_cells",
+    "grow_pass1_straight_extension_chain",
+    "grow_pass2_branching_extension_cells",
     "infer_transport_kind",
     "lex_key_pass1_best_output",
     "lex_key_pass2_best_output",

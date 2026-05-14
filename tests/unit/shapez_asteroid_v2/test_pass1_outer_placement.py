@@ -19,6 +19,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement im
     bundle_candidate as _bc,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pass1_outer import (
+    _inward_chain_direction_from_bbox,
+    _preferred_pass1_output_direction,
     pass1_mineable_outer_first_order,
     run_pass1_outer_placement,
 )
@@ -30,7 +32,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pl
 expand_pass1_replay_mining_map_frames = _pv_timeline.expand_pass1_replay_mining_map_frames
 
 CARDINAL_DIRS = _bc.CARDINAL_DIRS
-grow_extension_cells = _bc.grow_extension_cells
+grow_pass1_straight_extension_chain = _bc.grow_pass1_straight_extension_chain
+grow_pass2_branching_extension_cells = _bc.grow_pass2_branching_extension_cells
 side_directions_after_output = _bc.side_directions_after_output
 step_cell = _bc.step_cell
 
@@ -57,6 +60,15 @@ def _small_mineable_recon() -> ReconstructionDTO:
         external_margin=3,
         external_margin_bbox_source="mineable",
     )
+
+
+def test_pass1_outer_non_empty_extensions_when_barrier_overlaps_mineable() -> None:
+    """STEP1 overlap: mineable ⊆ full_barrier without belt_cells masking blocked_by_building."""
+
+    recon = _small_mineable_recon()
+    p1 = run_pass1_outer_placement(_ctx("t_p1_barrier_overlap"), recon)
+    assert p1.placements
+    assert max(len(b.extensions) for b in p1.placements) >= 1
 
 
 def test_pass1_each_bundle_has_one_output_stub_adjacent_to_extractor() -> None:
@@ -91,8 +103,55 @@ def test_extensions_at_most_three_orient_toward_parent() -> None:
             assert v in CARDINAL_DIRS
 
 
-def test_extension_branching_chain_supported() -> None:
-    """Vertical mineable spine: one side-slot on extractor, then BFS child off extension."""
+def test_bbox_inward_prefers_chain_into_deposit_west_rim() -> None:
+    """Nearest bbox face west → straight chain east; output stub west of extractor."""
+
+    bbox = BBox(min_x=20, min_y=20, max_x=25, max_y=25)
+    ext = (21, 22)
+    assert _inward_chain_direction_from_bbox(ext, bbox) == (1, 0)
+    assert _preferred_pass1_output_direction(ext, bbox) == (-1, 0)
+
+
+def test_bbox_inward_prefers_chain_into_deposit_south_rim() -> None:
+    bbox = BBox(min_x=20, min_y=20, max_x=25, max_y=25)
+    ext = (22, 24)
+    assert _inward_chain_direction_from_bbox(ext, bbox) == (0, -1)
+    assert _preferred_pass1_output_direction(ext, bbox) == (0, 1)
+
+
+def test_pass1_straight_chain_vertical_south_from_extractor() -> None:
+    """Pass1: output north → straight chain south only (no ㅗ/ㅓ/ㅏ branching)."""
+
+    mineable = frozenset((11, y) for y in range(100, 106))
+    recon = ReconstructionDTO(
+        mineable_placement_cells=tuple(sorted(mineable)),
+        extraction_shell_cells=tuple(sorted(mineable)),
+        full_barrier_cells=(),
+        asteroid_bbox=BBox(min_x=11, min_y=100, max_x=11, max_y=105),
+        external_margin=3,
+        external_margin_bbox_source="mineable",
+    )
+    extractor = (11, 102)
+    out_dir = (0, -1)
+    stub = step_cell(extractor, out_dir)
+    used: set[tuple[int, int]] = {extractor, stub}
+    exts = grow_pass1_straight_extension_chain(
+        extractor,
+        out_dir,
+        stub,
+        mineable,
+        used,
+        TransportKind.SHAPE_BELT,
+        recon,
+    )
+    assert len(exts) == 3
+    assert [c for c, _, _ in exts] == [(11, 103), (11, 104), (11, 105)]
+    parents = [p for c, p, _o in exts]
+    assert parents == [extractor, (11, 103), (11, 104)]
+
+
+def test_pass2_branching_chain_geometry_still_supported() -> None:
+    """Pass2 helper: side slots + BFS (not used for Pass1 outer)."""
 
     mineable = frozenset((11, y) for y in range(100, 105))
     recon = ReconstructionDTO(
@@ -107,7 +166,7 @@ def test_extension_branching_chain_supported() -> None:
     out_dir = (0, -1)
     stub = step_cell(extractor, out_dir)
     used: set[tuple[int, int]] = {extractor, stub}
-    exts = grow_extension_cells(
+    exts = grow_pass2_branching_extension_cells(
         extractor,
         out_dir,
         stub,

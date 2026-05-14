@@ -15,6 +15,11 @@ Cheap escape is probe-only (§7.3): never written to ``occupied_cells`` or
 
 Output-direction evaluation order is fixed ``CARDINAL_DIRS``: N → E → S → W.
 
+Among feasible bundles with the same maximum extension count, prefer the output whose
+straight chain runs **into the deposit** along the bbox inward normal of the tightest
+face (corners break ties by alignment with the vector toward the bbox center). This
+avoids west-rim extractors picking north output solely because N sorts before W.
+
 **Grid**: STEP1 ``mineable_placement_cells`` never uses **X == 0** as an id (decode
 convention). Neighbor moves and cheap-escape BFS use ``domain.grid.step_blueprint_cell``
 (seam ``-1 ↔ 1``); never ``x + dx`` raw east/west.
@@ -50,7 +55,7 @@ from .bundle_candidate import (
     CARDINAL_DIRS,
     Pass1BundleCandidate,
     blocked_by_building,
-    grow_extension_cells,
+    grow_pass1_straight_extension_chain,
     infer_transport_kind,
     lex_key_pass1_best_output,
     step_cell,
@@ -65,6 +70,46 @@ def _bbox_fallback(cells: frozenset[BlueprintCell]) -> BBox | None:
     xs = [c[0] for c in cells]
     ys = [c[1] for c in cells]
     return BBox(min_x=min(xs), min_y=min(ys), max_x=max(xs), max_y=max(ys))
+
+
+def _inward_chain_direction_from_bbox(extractor: BlueprintCell, bbox: BBox) -> tuple[int, int]:
+    """Unit step from extractor toward the nearest bbox face, then into the deposit.
+
+    On a tie (corner), pick the candidate best aligned with the vector toward bbox center.
+    """
+
+    x, y = extractor
+    dw, de = x - bbox.min_x, bbox.max_x - x
+    dn, ds = y - bbox.min_y, bbox.max_y - y
+    m = min(dw, de, dn, ds)
+    cand: list[tuple[int, int]] = []
+    if dw == m:
+        cand.append((1, 0))
+    if de == m:
+        cand.append((-1, 0))
+    if dn == m:
+        cand.append((0, 1))
+    if ds == m:
+        cand.append((0, -1))
+    if not cand:
+        return (0, -1)
+    if len(cand) == 1:
+        return cand[0]
+    cx = (bbox.min_x + bbox.max_x) / 2.0
+    cy = (bbox.min_y + bbox.max_y) / 2.0
+    vx, vy = cx - float(x), cy - float(y)
+
+    def dot(u: tuple[int, int]) -> float:
+        return float(u[0]) * vx + float(u[1]) * vy
+
+    return max(cand, key=dot)
+
+
+def _preferred_pass1_output_direction(extractor: BlueprintCell, bbox: BBox) -> tuple[int, int]:
+    """Output direction (extractor → stub) so straight chain grows along inward scan."""
+
+    ix, iy = _inward_chain_direction_from_bbox(extractor, bbox)
+    return (-ix, -iy)
 
 
 def pass1_mineable_outer_first_order(
@@ -213,7 +258,7 @@ def _build_candidate(
     trial_used = set(used)
     trial_used.add(extractor)
     trial_used.add(stub)
-    exts = grow_extension_cells(
+    exts = grow_pass1_straight_extension_chain(
         extractor,
         out_dir,
         stub,
@@ -370,10 +415,16 @@ def run_pass1_outer_placement(
 
         if feasible:
             max_ext = max(len(c.extension_cells) for c in feasible)
-            if max_ext > 0:
-                feasible = [c for c in feasible if len(c.extension_cells) > 0]
+            pool0 = (
+                [c for c in feasible if len(c.extension_cells) == max_ext]
+                if max_ext > 0
+                else list(feasible)
+            )
+            want_out = _preferred_pass1_output_direction(extractor, bbox)
+            tier1 = [c for c in pool0 if c.output_direction == want_out]
+            pool = tier1 if tier1 else pool0
             best = min(
-                feasible,
+                pool,
                 key=lambda c: lex_key_pass1_best_output(
                     extractor,
                     bbox,

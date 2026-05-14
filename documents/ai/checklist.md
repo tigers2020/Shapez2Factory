@@ -13,6 +13,7 @@
 - [x] PR-G: `SHAPEZ_MINING_LAYOUT_ENGINE=v2` 시 `copy_preview`의 **existing_layout_analysis**를 v2 `analyze_decoded_layout` JSON으로 전환·`map_timeline`은 당분간 `blueprint_map_summary` 유지 (2026-05-14 구현)
 - [x] **PR-H (2026-05-14)**: 런타임 v1 import·zip 부트스트랩·`include_solver_*` 제거; 스텁 `asteroid_mining_layout_v1_deprecated/`. 동시대 문서·플랜 묶음: [v1 문서 아카이브](../archive/2026-05-mining-layout-v1-era/README.md). (물리 대규모 리네임 단독 PR은 선택)
 - Pass1 Stabilization-P1 권위: 구현·replay UI 앵커는 v2 `placement/pass1_outer.py` + `placement/bundle_candidate.py`; v1 `try_commit_pass1_bundle` / `Pass12BundleCandidate`는 **아카이브 참고만** (체크리스트·Cursor 컨텍스트 drift 방지).
+- [ ] **Pass1 extension topology 정본 (2026-05-14)**: [`06_step2_pass1_placement.md`](../Algorithm/mining_solver_cursor_sessions/06_step2_pass1_placement.md) §7.2·§7.5·Stabilization-P1 — **straight-chain-first**(extractor **output 반대** 방향 1자 체인, 최대 3 extension); **ㅗ/ㅓ/ㅏ·3방 branching은 Pass1 기본이 아님**(fallback 또는 Pass2·후속). placement 패치 전까지 **구현이 정본과 다를 수 있음** → 코드 변경 시 정본 역주입.
 
 ### 공통 · 스키마
 
@@ -24,7 +25,7 @@
 
 - [ ] **STEP 0** — [`04_step0_decode.md`](../Algorithm/mining_solver_cursor_sessions/04_step0_decode.md): copy decode → blueprint 추출 → solver 입력 DTO 정규화·연동; **§5.4 STEP 0.5 Existing layout analysis**
 - [ ] **STEP 1** — [`05_step1_reconstruction.md`](../Algorithm/mining_solver_cursor_sessions/05_step1_reconstruction.md): shell·barrier·mineable patch·기존 belt/pipe 분리; mineable 추론은 본 단계만(재배치 중 변환 금지); **§6.4 existing layout ≠ mineable field**
-- [ ] **STEP 2** — [`06_step2_pass1_placement.md`](../Algorithm/mining_solver_cursor_sessions/06_step2_pass1_placement.md): 외곽 우선 bundle·output stub·escape feasibility·기존 trunk 연계·cheap path ≠ occupied
+- [ ] **STEP 2** — [`06_step2_pass1_placement.md`](../Algorithm/mining_solver_cursor_sessions/06_step2_pass1_placement.md): 외곽 우선 bundle·output stub·escape feasibility·기존 trunk 연계·cheap path ≠ occupied·**Pass1 extension 정본: output 반대 straight-chain-first(§7.2·§7.5), branching 비기본**
 - [ ] **STEP 3** — [`07_step3_pass2_placement.md`](../Algorithm/mining_solver_cursor_sessions/07_step3_pass2_placement.md): 내부 보강·blocked 집합·provisional commit·STEP 4에서 route 확정
 - [ ] **STEP 4** — [`08_step4_routing.md`](../Algorithm/mining_solver_cursor_sessions/08_step4_routing.md): merge-aware·capacity-aware routing, trunk seed·goal set, **§9.2.1 ExistingLayoutAnalysis trunk seed / cleanup**, 실패 시 quarantine/recovery 연계
 - [ ] **STEP 5** — [`09_step5_pass3_transport.md`](../Algorithm/mining_solver_cursor_sessions/09_step5_pass3_transport.md): 내부 transport 최소화·가중/사전순 routing·stub 고정·연결성 깨짐 시 rollback/§4.3.1

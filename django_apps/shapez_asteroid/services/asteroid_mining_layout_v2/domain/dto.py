@@ -282,7 +282,12 @@ class SolverRunContext:
 
 @dataclass(frozen=True, slots=True)
 class OutputStub:
-    """Extractor output stub cell (§3.1)."""
+    """Adjacent cell in the extractor **output** direction (§3.1).
+
+    Used for cheap-escape probe and routing anchor semantics; **not** the physical
+    miner body tile. Pass1 preview must not materialize this cell as an installed
+    extractor in ``mining_map`` committed frames (see ``PlacementBundle``).
+    """
 
     extractor_placement_id: PlacementId
     cell: BlueprintCell
@@ -308,6 +313,12 @@ class ExtensionPlacement:
 
 @dataclass(frozen=True, slots=True)
 class PlacementBundle:
+    """One Pass1/Pass2 head + extensions + output stub.
+
+    ``extractor.cell`` is the physical miner coordinate (mineable). ``output_stub.cell``
+    is the neighbouring output/probe coordinate only; it is not a second installed tile.
+    """
+
     extractor: ExtractorPlacement
     extensions: tuple[ExtensionPlacement, ...]
     output_stub: OutputStub

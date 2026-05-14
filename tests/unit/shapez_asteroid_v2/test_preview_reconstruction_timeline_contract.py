@@ -191,3 +191,141 @@ def test_strip_asteroid_surface_follows_extractor_or_extension_kind() -> None:
     by_sx = {(int(r["x"]), int(r["y"])): r for r in strip_ext["mining_map"]}
     assert by_sx[(5, 5)].get("surface") == "fluid"
     assert by_sx[(4, 5)].get("surface") == "shape"
+
+
+def test_pass1_commit_bundle_replay_includes_output_direction() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import BBox
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
+        SolverRunContext,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement import (
+        pass1_outer as pass1o,
+    )
+
+    mineable = tuple((x, y) for x in range(20, 26) for y in range(20, 26) if (x, y) != (22, 22))
+    barrier = tuple({*mineable, (22, 22)})
+    recon = ReconstructionDTO(
+        mineable_placement_cells=mineable,
+        extraction_shell_cells=mineable,
+        full_barrier_cells=barrier,
+        asteroid_bbox=BBox(min_x=20, min_y=20, max_x=25, max_y=25),
+    )
+    ctx = SolverRunContext(run_id="preview_contract", reconstruction=recon)
+    events: list[dict[str, object]] = []
+    pass1o.run_pass1_outer_placement(ctx, recon, replay_events=events, replay_event_cap=None)
+    commits = [e for e in events if e.get("kind") == "commit_bundle"]
+    assert commits
+    c0 = commits[0]
+    assert "output_direction" in c0
+    assert isinstance(c0["output_direction"], list) and len(c0["output_direction"]) == 2
+    assert c0.get("output_stub_physical") is False
+    assert "output_stub_cell" in c0
+
+
+def test_pass1_preview_no_pass1_stub_role_extractor_has_layout_kind_and_r() -> None:
+    """Committed/provisional Pass1 frames: extractor body only; no pass1_stub_* overlay."""
+
+    entries: list[dict[str, int | str]] = []
+    for x in range(2, 7):
+        for y in range(2, 7):
+            if x in (2, 6) or y in (2, 6):
+                entries.append({"X": x, "Y": y, "T": "AsteroidField_Test"})
+    entries.append({"X": 7, "Y": 3, "T": "Belt_Straight"})
+    entries.append({"X": 4, "Y": 4, "T": "Layout_ShapeMiner"})
+    entries.append({"X": 5, "Y": 4, "T": "Layout_ShapeMinerExtension"})
+    decoded = {"BP": {"Entries": entries}}
+    recon = reconstruct_asteroid_mining_field(decoded)
+    mineable_f = frozenset(recon.mineable_placement_cells)
+    result = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout")
+    matched = False
+    for fr in result.frames:
+        summ = fr.get("summary") or {}
+        ek = summ.get("pass1_event_kind")
+        if ek not in ("commit_bundle", "pass1_provisional_final"):
+            continue
+        matched = True
+        mm = fr.get("mining_map") or []
+        for row in mm:
+            pr = row.get("pass1_replay_role")
+            if pr is not None:
+                assert not str(pr).startswith("pass1_stub_")
+            if pr is not None and str(pr).startswith("pass1_extractor_"):
+                assert row.get("layout_kind") in ("miner", "fluid_miner")
+                assert "r" in row
+                xy = (int(row["x"]), int(row["y"]))
+                assert xy in mineable_f
+    assert matched, "expected Pass1 commit or provisional preview frame"
+
+
+def test_pass1_probe_output_stub_highlight_only() -> None:
+    """probe_output may paint stub cell; committed overlay does not use pass1_stub_*."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
+        preview_reconstruction_timeline as pv,
+    )
+
+    mineable_rows = [
+        {"x": 10, "y": 10, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+        {"x": 11, "y": 10, "role": "inferred", "surface": "shape"},
+    ]
+    committed = [
+        {
+            "extractor_cell": [10, 10],
+            "output_stub_cell": [11, 10],
+            "extension_cells": [],
+            "transport_kind": "shape_belt",
+            "output_direction": [1, 0],
+        }
+    ]
+    rows_committed = pv._mining_map_with_pass1_replay_overlay(
+        mineable_rows,
+        frame_id="f_commit",
+        source_kind=None,
+        dominant="shape",
+        committed_bundles=committed,
+        highlight_event=None,
+    )
+    by_c = {(int(r["x"]), int(r["y"])): r for r in rows_committed}
+    assert by_c[(10, 10)].get("layout_kind") == "miner"
+    assert by_c[(10, 10)].get("r") == 0
+    assert by_c[(11, 10)].get("pass1_replay_role") is None
+
+    rows_probe = pv._mining_map_with_pass1_replay_overlay(
+        mineable_rows,
+        frame_id="f_probe",
+        source_kind=None,
+        dominant="shape",
+        committed_bundles=[],
+        highlight_event={
+            "kind": "probe_output",
+            "output_stub_cell": [11, 10],
+            "reject_reason": None,
+        },
+    )
+    by_p = {(int(r["x"]), int(r["y"])): r for r in rows_probe}
+    assert by_p[(11, 10)].get("pass1_replay_role") == "pass1_probe_stub_ok"
+
+
+def test_pass1_occupied_cells_still_includes_stub() -> None:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import BBox
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
+        SolverRunContext,
+    )
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement import (
+        pass1_outer as pass1o,
+    )
+
+    mineable = tuple((x, y) for x in range(20, 26) for y in range(20, 26) if (x, y) != (22, 22))
+    barrier = tuple({*mineable, (22, 22)})
+    recon = ReconstructionDTO(
+        mineable_placement_cells=mineable,
+        extraction_shell_cells=mineable,
+        full_barrier_cells=barrier,
+        asteroid_bbox=BBox(min_x=20, min_y=20, max_x=25, max_y=25),
+    )
+    ctx = SolverRunContext(run_id="occ_stub", reconstruction=recon)
+    p1 = pass1o.run_pass1_outer_placement(ctx, recon)
+    if not p1.placements:
+        return
+    stub = p1.placements[0].output_stub.cell
+    assert stub in frozenset(p1.occupied_cells)

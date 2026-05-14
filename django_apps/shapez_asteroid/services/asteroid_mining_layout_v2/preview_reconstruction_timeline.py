@@ -14,12 +14,18 @@ import os
 from dataclasses import dataclass
 from typing import Any, cast
 
+from django_apps.shapez_asteroid.extraction.shape_miner_rotation import (
+    rotation_r_for_output_direction,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BlueprintCell,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     ReconstructionDTO,
     SolverRunContext,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
+    TransportKind,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pass1_outer import (
     run_pass1_outer_placement,
@@ -567,6 +573,55 @@ def _coord_from_jsonish(t: object) -> BlueprintCell:
     raise TypeError(msg)
 
 
+def _output_direction_from_bundle(b: dict[str, Any]) -> tuple[int, int]:
+    od = b.get("output_direction")
+    if isinstance(od, (list, tuple)) and len(od) == 2:
+        return (int(od[0]), int(od[1]))
+    extr = _coord_from_jsonish(b["extractor_cell"])
+    stub = _coord_from_jsonish(b["output_stub_cell"])
+    return (stub[0] - extr[0], stub[1] - extr[1])
+
+
+def _pass1_committed_extractor_mining_row(
+    extr: BlueprintCell,
+    *,
+    bundle: dict[str, Any],
+    pass1_role: str,
+    frame_id: str,
+    source_kind: str | None,
+    base_row: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """mining_map row for Pass1 extractor body (decoded-map compatible for UI ``renderPlot``)."""
+
+    tk_raw = bundle.get("transport_kind")
+    if tk_raw == TransportKind.FLUID_PIPE.value:
+        surface = "fluid"
+        layout_kind = "fluid_miner"
+        t_str = "Layout_FluidMiner"
+    else:
+        surface = "shape"
+        layout_kind = "miner"
+        t_str = "Layout_ShapeMiner"
+    out_dir = _output_direction_from_bundle(bundle)
+    try:
+        r_val = rotation_r_for_output_direction(out_dir[0], out_dir[1])
+    except ValueError:
+        r_val = 0
+    if base_row is not None:
+        body = dict(base_row)
+    else:
+        body = {"x": extr[0], "y": extr[1], "role": "occupied", "surface": surface}
+    body["x"] = extr[0]
+    body["y"] = extr[1]
+    body["role"] = "occupied"
+    body["surface"] = surface
+    body["layout_kind"] = layout_kind
+    body["r"] = r_val
+    body["t"] = t_str
+    body["pass1_replay_role"] = pass1_role
+    return _stamp_row(body, frame_id=frame_id, source_kind=source_kind)
+
+
 def _mining_map_with_pass1_replay_overlay(
     mineable_rows: list[dict[str, Any]],
     *,
@@ -580,21 +635,15 @@ def _mining_map_with_pass1_replay_overlay(
 
     for bi, b in enumerate(committed_bundles):
         extr = _coord_from_jsonish(b["extractor_cell"])
-        stub = _coord_from_jsonish(b["output_stub_cell"])
-        for role, coord in (
-            (f"pass1_extractor_{bi}", extr),
-            (f"pass1_stub_{bi}", stub),
-        ):
-            prev = cells.get(coord)
-            cells[coord] = _pass1_overlay_cell_row(
-                coord[0],
-                coord[1],
-                pass1_role=role,
-                frame_id=frame_id,
-                source_kind=source_kind,
-                dominant=dominant,
-                base_row=prev,
-            )
+        prev_e = cells.get(extr)
+        cells[extr] = _pass1_committed_extractor_mining_row(
+            extr,
+            bundle=b,
+            pass1_role=f"pass1_extractor_{bi}",
+            frame_id=frame_id,
+            source_kind=source_kind,
+            base_row=prev_e,
+        )
         for j, ex in enumerate(b.get("extension_cells", ())):
             eco = _coord_from_jsonish(ex)
             prev = cells.get(eco)
@@ -734,6 +783,8 @@ def expand_pass1_replay_mining_map_frames(
                     "extractor_cell": ev["extractor_cell"],
                     "output_stub_cell": ev["output_stub_cell"],
                     "extension_cells": list(ev.get("extension_cells", ())),
+                    "transport_kind": ev.get("transport_kind"),
+                    "output_direction": ev.get("output_direction"),
                 }
             )
 
@@ -763,6 +814,8 @@ def expand_pass1_replay_mining_map_frames(
                     "extractor_cell": ev["extractor_cell"],
                     "output_stub_cell": ev["output_stub_cell"],
                     "extension_cells": list(ev.get("extension_cells", ())),
+                    "transport_kind": ev.get("transport_kind"),
+                    "output_direction": ev.get("output_direction"),
                 }
             )
 

@@ -50,9 +50,9 @@ def build_copy_preview_v2_sidecars(decoded: dict[str, Any]) -> dict[str, Any]:
                 "step_0_5_existing_layout_analysis",
                 "step_1_reconstruction",
                 "preview_map_timeline",
+                "step_2_pass1_replay_timeline",
             ],
             "phases_not_included": [
-                "step_2_pass1",
                 "step_3_pass2",
                 "step_4_routing",
                 "step_5_plus_reclaim_recovery",

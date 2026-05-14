@@ -497,55 +497,55 @@ python -m black --check django_apps/shapez_asteroid/services/asteroid_mining_lay
 ## Pass1 체크리스트
 
 ```md
-- [ ] asteroid outer perimeter부터 inward scan
-- [ ] deterministic scan order 사용
-- [ ] output direction 후보 평가
-- [ ] extractor마다 exactly one output stub 생성
-- [ ] extension 후보는 output direction 제외 3방향
-- [ ] extension-to-extension chain / branching 지원
-- [ ] extractor당 max 3 extensions
-- [ ] extension orientation은 parent를 향함
-- [ ] cheap escape는 feasibility / score로만 사용
-- [ ] cheap escape path를 occupied transport로 기록하지 않음
-- [ ] final route cells 생성하지 않음
-- [ ] accepted bundle state는 PROVISIONAL_PLACED
-- [ ] placement_pass="pass1"
-- [ ] TransportKind 분리
+- [x] asteroid outer perimeter부터 inward scan
+- [x] deterministic scan order 사용
+- [x] output direction 후보 평가
+- [x] extractor마다 exactly one output stub 생성
+- [x] extension 후보는 output direction 제외 3방향
+- [x] extension-to-extension chain / branching 지원
+- [x] extractor당 max 3 extensions
+- [x] extension orientation은 parent를 향함
+- [x] cheap escape는 feasibility / score로만 사용
+- [x] cheap escape path를 occupied transport로 기록하지 않음
+- [x] final route cells 생성하지 않음
+- [x] accepted bundle state는 PROVISIONAL_PLACED
+- [x] placement_pass="pass1"
+- [x] TransportKind 분리
 
 ```
 
 ## Candidate 필드 체크리스트
 
 ```md
-- [ ] placement_id 또는 candidate_id
-- [ ] extractor coord
-- [ ] output direction
-- [ ] output stub coord
-- [ ] extension coords
-- [ ] extension parent relation
-- [ ] extension orientation
-- [ ] transport kind
-- [ ] scan index
-- [ ] score
-- [ ] reject_reason
+- [x] placement_id 또는 candidate_id
+- [x] extractor coord
+- [x] output direction
+- [x] output stub coord
+- [x] extension coords
+- [x] extension parent relation
+- [x] extension orientation
+- [x] transport kind
+- [x] scan index
+- [x] score
+- [x] reject_reason
 
 ```
 
 ## 테스트 체크리스트
 
 ```md
-- [ ] output direction마다 output stub exactly one
-- [ ] extension candidates가 output direction 제외
-- [ ] max 3 extensions
-- [ ] extension orientation points to parent
-- [ ] extension-to-extension branching 지원
-- [ ] cheap escape path가 occupied_cells에 없음
-- [ ] cheap escape path가 final_route_cells에 없음
-- [ ] accepted bundle은 PROVISIONAL_PLACED
-- [ ] STEP4 전 ROUTED_CONFIRMED 없음
-- [ ] deterministic scan order
-- [ ] belt / pipe TransportKind 분리
-- [ ] Pass1이 final routing commit code를 import하지 않음
+- [x] output direction마다 output stub exactly one
+- [x] extension candidates가 output direction 제외
+- [x] max 3 extensions
+- [x] extension orientation points to parent
+- [x] extension-to-extension branching 지원
+- [x] cheap escape path가 occupied_cells에 없음
+- [x] cheap escape path가 final_route_cells에 없음
+- [x] accepted bundle은 PROVISIONAL_PLACED
+- [x] STEP4 전 ROUTED_CONFIRMED 없음
+- [x] deterministic scan order
+- [x] belt / pipe TransportKind 분리
+- [x] Pass1이 final routing commit code를 import하지 않음
 
 ```
 

@@ -239,6 +239,8 @@ class ExtensionPlacement:
     anchor_extractor_id: PlacementId
     cell: BlueprintCell
     parent_cell: BlueprintCell
+    #: Unit cardinal vector from ``cell`` toward ``parent_cell`` (extension "faces" parent, §3.3).
+    orientation_toward_parent: tuple[int, int]
 
 
 @dataclass(frozen=True, slots=True)

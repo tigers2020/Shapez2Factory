@@ -5,12 +5,18 @@ from __future__ import annotations
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
     preview_reconstruction_timeline,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
+    ReconstructionDTO,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
     reconstruct_asteroid_mining_field,
 )
 
 _dominant_surface_for_shell = preview_reconstruction_timeline._dominant_surface_for_shell
 build_v2_preview_map_frames = preview_reconstruction_timeline.build_v2_preview_map_frames
+expand_pass1_replay_mining_map_frames = (
+    preview_reconstruction_timeline.expand_pass1_replay_mining_map_frames
+)
 PREVIEW_TILE = preview_reconstruction_timeline.PREVIEW_ASTEROID_REPLACE_TILE_T
 
 
@@ -54,6 +60,24 @@ def test_transport_shell_frame_includes_asteroid_shell_when_present() -> None:
     assert len(first["mining_map"]) >= 2
 
 
+def test_expand_pass1_emits_skip_frame_when_no_mineable_cells() -> None:
+    recon = ReconstructionDTO(
+        full_barrier_cells=((2, 2), (3, 2)),
+        extraction_shell_cells=((2, 2), (3, 2)),
+        mineable_placement_cells=(),
+    )
+    mineable_rows = [{"x": 2, "y": 2, "role": "occupied", "surface": "shape"}]
+    frames = expand_pass1_replay_mining_map_frames(
+        recon,
+        mineable_rows,
+        dominant="shape",
+        source_kind="raw_asteroid_field",
+    )
+    assert len(frames) == 1
+    assert frames[0]["id"] == "v2_pass1_skipped_no_mineable"
+    assert frames[0]["summary"].get("pass1_event_kind") == "skipped_no_mineable"
+
+
 def test_reconstruction_preview_frame_order_includes_strip_and_inner_patch() -> None:
     entries: list[dict[str, int | str]] = []
     for x in range(2, 7):
@@ -76,6 +100,8 @@ def test_reconstruction_preview_frame_order_includes_strip_and_inner_patch() -> 
         "v2_recon_inner_patch",
         "v2_recon_mineable",
     ]
+    assert ids[7] == "v2_pass1_candidates"
+    assert "v2_pass2_candidates" in ids
     shell = next(f for f in frames if f["id"] == "v2_recon_transport_shell")
     stripped = next(f for f in frames if f["id"] == "v2_recon_strip_transport")
     assert len(shell["mining_map"]) > len(stripped["mining_map"])
@@ -118,7 +144,10 @@ def test_dominant_surface_includes_fluid_miner_not_on_shell_tiles() -> None:
 
 
 def test_strip_extensions_does_not_fill_voids_from_belt_extension_coord_collision() -> None:
-    """Belt + extension at same coord: transport removes the cell; extension strip must not paint."""
+    """Belt + extension at same coord: transport removes the cell.
+
+    Extension strip must not paint.
+    """
 
     entries: list[dict[str, int | str]] = []
     for x in range(2, 7):

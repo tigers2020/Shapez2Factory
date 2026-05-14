@@ -83,6 +83,7 @@ def _build_pass2_candidate(
     *,
     run_id: str,
     bundle_index: int,
+    scan_index: int,
     extractor: BlueprintCell,
     out_dir: tuple[int, int],
     mineable: frozenset[BlueprintCell],
@@ -96,7 +97,8 @@ def _build_pass2_candidate(
         return None
     if blocked_by_building(stub, transport_kind, reconstruction):
         return Pass2BundleCandidate(
-            candidate_id=f"{run_id}:p2:cand:{bundle_index}:{extractor[0]}:{extractor[1]}:{out_dir}",
+            candidate_id=f"{run_id}:p2:cand:{scan_index}:{extractor}:{out_dir}",
+            scan_index=scan_index,
             extractor_cell=extractor,
             output_direction=out_dir,
             output_stub_cell=stub,
@@ -108,7 +110,8 @@ def _build_pass2_candidate(
 
     if not cheap_escape_feasible(stub, transport_kind, reconstruction):
         return Pass2BundleCandidate(
-            candidate_id=f"{run_id}:p2:cand:{bundle_index}:{extractor[0]}:{extractor[1]}:{out_dir}",
+            candidate_id=f"{run_id}:p2:cand:{scan_index}:{extractor}:{out_dir}",
+            scan_index=scan_index,
             extractor_cell=extractor,
             output_direction=out_dir,
             output_stub_cell=stub,
@@ -140,7 +143,8 @@ def _build_pass2_candidate(
     score = float(-edge) * 5.0 + float(len(exts)) * 3.0
 
     return Pass2BundleCandidate(
-        candidate_id=f"{run_id}:p2:cand:{bundle_index}:{extractor[0]}:{extractor[1]}:{out_dir}",
+        candidate_id=f"{run_id}:p2:cand:{scan_index}:{extractor}:{out_dir}",
+        scan_index=scan_index,
         extractor_cell=extractor,
         output_direction=out_dir,
         output_stub_cell=stub,
@@ -166,8 +170,9 @@ def _pass2_candidate_to_bundle(
             anchor_extractor_id=eid,
             cell=ec,
             parent_cell=pc,
+            orientation_toward_parent=orient,
         )
-        for i, (ec, pc) in enumerate(cand.extension_cells)
+        for i, (ec, pc, orient) in enumerate(cand.extension_cells)
     )
     ext = ExtractorPlacement(
         placement_id=eid,
@@ -208,7 +213,7 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
     commits: list[tuple[str, PlacementCommitState]] = []
     bundle_index = 0
 
-    for extractor in ordered:
+    for scan_index, extractor in enumerate(ordered):
         if extractor in used:
             continue
         best: Pass2BundleCandidate | None = None
@@ -216,6 +221,7 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
             cand = _build_pass2_candidate(
                 run_id=ctx.run_id,
                 bundle_index=bundle_index,
+                scan_index=scan_index,
                 extractor=extractor,
                 out_dir=out_dir,
                 mineable=mineable_cells,

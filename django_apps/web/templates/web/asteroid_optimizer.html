@@ -83,6 +83,7 @@
       data-map-step-v2_recon_inner_patch="{% filter force_escape %}{% trans 'v2: Inner patch (shell + void)' %}{% endfilter %}"
       data-map-step-v2_recon_mineable="{% filter force_escape %}{% trans 'v2: Mineable placement cells' %}{% endfilter %}"
       data-map-step-v2_pass1_candidates="{% filter force_escape %}{% trans 'v2: Pass1 candidates' %}{% endfilter %}"
+      data-map-step-v2_pass1_skipped_no_mineable="{% filter force_escape %}{% trans 'v2: Pass1 skipped (no mineable cells)' %}{% endfilter %}"
       data-map-step-v2_pass1_provisional="{% filter force_escape %}{% trans 'v2: Pass1 provisional commit' %}{% endfilter %}"
       data-map-step-v2_pass2_candidates="{% filter force_escape %}{% trans 'v2: Pass2 candidates' %}{% endfilter %}"
       data-map-step-v2_pass2_provisional="{% filter force_escape %}{% trans 'v2: Pass2 provisional commit' %}{% endfilter %}"
@@ -1351,6 +1352,9 @@
     }
 
     var st = mapTimelineList[decodeStepIndex];
+    if (!st) {
+      return;
+    }
     if (surface) surface.classList.remove("am-map-decode-active");
     if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
     var uir = solverTimelineUiRow(decodeStepIndex);

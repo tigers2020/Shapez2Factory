@@ -3,12 +3,24 @@ Pass1 outer-first placement (STEP 2, §7).
 
 Cheap escape is probe-only (§7.3): never written to ``occupied_cells`` or
 ``routing_state.final_route_cells``. STEP 4 owns real routes and ``ROUTED_CONFIRMED``.
+
+**Deterministic mineable scan (§7.2 item 6)** — equivalent to “12 o'clock clockwise”:
+
+1. **Outer-first**: ascending minimum axis distance from ``(x, y)`` to the mineable
+   ``bbox`` edge (L∞-shell index on an axis-aligned bbox).
+2. **Clockwise from north around bbox center**: bearing
+   ``atan2(dx, -dy)`` in ``[0, 2π)`` where ``(dx, dy)`` is cell minus centroid
+   (north = smaller ``y`` → ``dy < 0`` → bearing ``0``).
+3. **Tie-break**: ``(y, x)`` lexicographic.
+
+Output-direction evaluation order is fixed ``CARDINAL_DIRS``: N → E → S → W.
 """
 
 from __future__ import annotations
 
 import math
 from collections import deque
+from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BBox,
@@ -38,7 +50,6 @@ from .bundle_candidate import (
     step_cell,
 )
 
-# Backward alias within module
 _OUTPUT_DIRS = CARDINAL_DIRS
 
 
@@ -48,6 +59,30 @@ def _bbox_fallback(cells: frozenset[BlueprintCell]) -> BBox | None:
     xs = [c[0] for c in cells]
     ys = [c[1] for c in cells]
     return BBox(min_x=min(xs), min_y=min(ys), max_x=max(xs), max_y=max(ys))
+
+
+def pass1_mineable_outer_first_order(
+    mineable: frozenset[BlueprintCell],
+    bbox: BBox,
+) -> tuple[BlueprintCell, ...]:
+    """Public deterministic Pass1 mineable iteration order (§7.2)."""
+
+    cx = (bbox.min_x + bbox.max_x) / 2.0
+    cy = (bbox.min_y + bbox.max_y) / 2.0
+
+    def edge_distance(c: BlueprintCell) -> int:
+        x, y = c
+        return min(x - bbox.min_x, bbox.max_x - x, y - bbox.min_y, bbox.max_y - y)
+
+    def sort_key(c: BlueprintCell) -> tuple[int, float, int, int]:
+        x, y = c
+        dx, dy = x - cx, y - cy
+        ang = math.atan2(dx, -dy)
+        if ang < 0.0:
+            ang += 2.0 * math.pi
+        return (edge_distance(c), ang, y, x)
+
+    return tuple(sorted(mineable, key=sort_key))
 
 
 def _outside_margin(c: BlueprintCell, bbox: BBox, margin: int) -> bool:
@@ -104,28 +139,24 @@ def cheap_escape_feasible(
     return False
 
 
-def _sort_mineable_outer_first(
-    mineable: frozenset[BlueprintCell],
-    bbox: BBox,
-) -> tuple[BlueprintCell, ...]:
-    cx = (bbox.min_x + bbox.max_x) / 2.0
-    cy = (bbox.min_y + bbox.max_y) / 2.0
-
-    def edge_distance(c: BlueprintCell) -> int:
-        x, y = c
-        return min(x - bbox.min_x, bbox.max_x - x, y - bbox.min_y, bbox.max_y - y)
-
-    def sort_key(c: BlueprintCell) -> tuple[int, float, int, int]:
-        ang = math.atan2(c[0] - cx, -(c[1] - cy))
-        return (edge_distance(c), ang, c[1], c[0])
-
-    return tuple(sorted(mineable, key=sort_key))
+def _replay_append(
+    buf: list[dict[str, Any]] | None,
+    row: dict[str, Any],
+    *,
+    cap: int | None,
+) -> None:
+    if buf is None:
+        return
+    if cap is not None and len(buf) >= cap:
+        return
+    buf.append(row)
 
 
 def _build_candidate(
     *,
     run_id: str,
     bundle_index: int,
+    scan_index: int,
     extractor: BlueprintCell,
     out_dir: tuple[int, int],
     mineable: frozenset[BlueprintCell],
@@ -139,7 +170,8 @@ def _build_candidate(
         return None
     if blocked_by_building(stub, transport_kind, reconstruction):
         return Pass1BundleCandidate(
-            candidate_id=f"{run_id}:p1:cand:{bundle_index}:{extractor[0]}:{extractor[1]}:{out_dir}",
+            candidate_id=f"{run_id}:p1:cand:{scan_index}:{extractor}:{out_dir}",
+            scan_index=scan_index,
             extractor_cell=extractor,
             output_direction=out_dir,
             output_stub_cell=stub,
@@ -151,7 +183,8 @@ def _build_candidate(
 
     if not cheap_escape_feasible(stub, transport_kind, reconstruction):
         return Pass1BundleCandidate(
-            candidate_id=f"{run_id}:p1:cand:{bundle_index}:{extractor[0]}:{extractor[1]}:{out_dir}",
+            candidate_id=f"{run_id}:p1:cand:{scan_index}:{extractor}:{out_dir}",
+            scan_index=scan_index,
             extractor_cell=extractor,
             output_direction=out_dir,
             output_stub_cell=stub,
@@ -183,7 +216,8 @@ def _build_candidate(
     score = float(edge) * 10.0 + float(len(exts)) * 3.0
 
     return Pass1BundleCandidate(
-        candidate_id=f"{run_id}:p1:cand:{bundle_index}:{extractor[0]}:{extractor[1]}:{out_dir}",
+        candidate_id=f"{run_id}:p1:cand:{scan_index}:{extractor}:{out_dir}",
+        scan_index=scan_index,
         extractor_cell=extractor,
         output_direction=out_dir,
         output_stub_cell=stub,
@@ -209,8 +243,9 @@ def _candidate_to_bundle(
             anchor_extractor_id=eid,
             cell=ec,
             parent_cell=pc,
+            orientation_toward_parent=orient,
         )
-        for i, (ec, pc) in enumerate(cand.extension_cells)
+        for i, (ec, pc, orient) in enumerate(cand.extension_cells)
     )
     ext = ExtractorPlacement(
         placement_id=eid,
@@ -228,6 +263,9 @@ def _candidate_to_bundle(
 def run_pass1_outer_placement(
     ctx: SolverRunContext,
     reconstruction: ReconstructionDTO,
+    *,
+    replay_events: list[dict[str, Any]] | None = None,
+    replay_event_cap: int | None = 320,
 ) -> Pass1Result:
     """Greedy outer-first Pass1 (§7); does not mutate ``ctx`` or routing geometry."""
 
@@ -240,7 +278,7 @@ def run_pass1_outer_placement(
         return Pass1Result()
 
     transport_kind = infer_transport_kind(reconstruction)
-    ordered = _sort_mineable_outer_first(mineable_cells, bbox)
+    ordered = pass1_mineable_outer_first_order(mineable_cells, bbox)
 
     used: set[BlueprintCell] = set()
     bundles: list[PlacementBundle] = []
@@ -248,14 +286,31 @@ def run_pass1_outer_placement(
     commits: list[tuple[str, PlacementCommitState]] = []
     bundle_index = 0
 
-    for extractor in ordered:
+    _replay_append(
+        replay_events,
+        {"placement_pass": "pass1", "kind": "pass1_begin", "run_id": ctx.run_id},
+        cap=replay_event_cap,
+    )
+
+    for scan_index, extractor in enumerate(ordered):
         if extractor in used:
             continue
+        _replay_append(
+            replay_events,
+            {
+                "placement_pass": "pass1",
+                "kind": "consider_extract",
+                "scan_index": scan_index,
+                "extractor_cell": [extractor[0], extractor[1]],
+            },
+            cap=replay_event_cap,
+        )
         best: Pass1BundleCandidate | None = None
         for out_dir in _OUTPUT_DIRS:
             cand = _build_candidate(
                 run_id=ctx.run_id,
                 bundle_index=bundle_index,
+                scan_index=scan_index,
                 extractor=extractor,
                 out_dir=out_dir,
                 mineable=mineable_cells,
@@ -266,15 +321,30 @@ def run_pass1_outer_placement(
             )
             if cand is None:
                 continue
-            if cand.reject_reason is not None:
+            reject = cand.reject_reason
+            _replay_append(
+                replay_events,
+                {
+                    "placement_pass": "pass1",
+                    "kind": "probe_output",
+                    "scan_index": scan_index,
+                    "extractor_cell": [extractor[0], extractor[1]],
+                    "output_direction": [out_dir[0], out_dir[1]],
+                    "output_stub_cell": [cand.output_stub_cell[0], cand.output_stub_cell[1]],
+                    "reject_reason": reject,
+                },
+                cap=replay_event_cap,
+            )
+            if reject is not None:
                 beam.append(
                     {
                         "placement_pass": "pass1",
+                        "scan_index": scan_index,
                         "extractor_cell": extractor,
                         "output_direction": out_dir,
                         "score": cand.score,
                         "committed": False,
-                        "reject_reason": cand.reject_reason,
+                        "reject_reason": reject,
                     }
                 )
                 continue
@@ -297,6 +367,7 @@ def run_pass1_outer_placement(
         beam.append(
             {
                 "placement_pass": "pass1",
+                "scan_index": scan_index,
                 "extractor_cell": best.extractor_cell,
                 "output_direction": best.output_direction,
                 "output_stub_cell": best.output_stub_cell,
@@ -307,7 +378,31 @@ def run_pass1_outer_placement(
                 + tuple(str(x.placement_id) for x in b.extensions),
             }
         )
+        _replay_append(
+            replay_events,
+            {
+                "placement_pass": "pass1",
+                "kind": "commit_bundle",
+                "scan_index": scan_index,
+                "bundle_index": bundle_index,
+                "transport_kind": str(transport_kind.value),
+                "extractor_cell": [b.extractor.cell[0], b.extractor.cell[1]],
+                "output_stub_cell": [b.output_stub.cell[0], b.output_stub.cell[1]],
+                "extension_cells": [[c[0], c[1]] for c in (e.cell for e in b.extensions)],
+            },
+            cap=replay_event_cap,
+        )
         bundle_index += 1
+
+    _replay_append(
+        replay_events,
+        {
+            "placement_pass": "pass1",
+            "kind": "pass1_end",
+            "bundle_count": len(bundles),
+        },
+        cap=replay_event_cap,
+    )
 
     occupied_set: set[BlueprintCell] = set()
     for b in bundles:
@@ -325,4 +420,8 @@ def run_pass1_outer_placement(
     )
 
 
-__all__ = ["cheap_escape_feasible", "run_pass1_outer_placement"]
+__all__ = [
+    "cheap_escape_feasible",
+    "pass1_mineable_outer_first_order",
+    "run_pass1_outer_placement",
+]

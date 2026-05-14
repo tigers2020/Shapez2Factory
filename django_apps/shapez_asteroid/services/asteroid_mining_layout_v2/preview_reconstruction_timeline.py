@@ -1,7 +1,7 @@
 """
 v2 copy-preview: ``map_timeline`` frames (display-only).
 
-Reconstruction milestones (3) plus fixed placeholder rows for Pass1–final (not implemented yet).
+Reconstruction milestones plus STEP 2 Pass1 replay (one frame per placement event).
 Each frame is one **full** ``mining_map`` row list (no delta). Does not read NDJSON,
 ``solver_replay``, or ``solver_summary``. Domain modules must not import this package.
 """
@@ -18,6 +18,10 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     ReconstructionDTO,
+    SolverRunContext,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pass1_outer import (
+    run_pass1_outer_placement,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.preview_json import to_jsonable
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
@@ -98,10 +102,8 @@ def _dev_log_v2_preview_frame(frame_id: str, *, entry_count: int | None = None) 
 
 
 # UI ``data-map-step-*`` slugs in ``asteroid_optimizer.html``.
-# Pass1 … final — not wired yet.
+# Pass1 replay frames are inserted dynamically after ``v2_recon_mineable`` (STEP 2).
 _V2_PREVIEW_PLACEHOLDER_FRAME_IDS: tuple[str, ...] = (
-    "v2_pass1_candidates",
-    "v2_pass1_provisional",
     "v2_pass2_candidates",
     "v2_pass2_provisional",
     "v2_step4_trunk_seed",
@@ -539,6 +541,232 @@ def _apply_mineable_highlights(
     return _dict_to_sorted_rows(cells)
 
 
+def _pass1_overlay_cell_row(
+    x: int,
+    y: int,
+    *,
+    pass1_role: str,
+    frame_id: str,
+    source_kind: str | None,
+    dominant: str,
+    base_row: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if base_row is not None:
+        body = dict(base_row)
+    else:
+        body = {"x": x, "y": y, "role": "occupied", "surface": dominant}
+    body["pass1_replay_role"] = pass1_role
+    return _stamp_row(body, frame_id=frame_id, source_kind=source_kind)
+
+
+def _coord_from_jsonish(t: object) -> BlueprintCell:
+    if isinstance(t, (list, tuple)) and len(t) == 2:
+        return (int(t[0]), int(t[1]))
+    msg = f"expected [x,y] pair, got {type(t).__name__}"
+    raise TypeError(msg)
+
+
+def _mining_map_with_pass1_replay_overlay(
+    mineable_rows: list[dict[str, Any]],
+    *,
+    frame_id: str,
+    source_kind: str | None,
+    dominant: str,
+    committed_bundles: list[dict[str, Any]],
+    highlight_event: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    cells = _rows_to_cell_dict(copy.deepcopy(mineable_rows))
+
+    for bi, b in enumerate(committed_bundles):
+        extr = _coord_from_jsonish(b["extractor_cell"])
+        stub = _coord_from_jsonish(b["output_stub_cell"])
+        for role, coord in (
+            (f"pass1_extractor_{bi}", extr),
+            (f"pass1_stub_{bi}", stub),
+        ):
+            prev = cells.get(coord)
+            cells[coord] = _pass1_overlay_cell_row(
+                coord[0],
+                coord[1],
+                pass1_role=role,
+                frame_id=frame_id,
+                source_kind=source_kind,
+                dominant=dominant,
+                base_row=prev,
+            )
+        for j, ex in enumerate(b.get("extension_cells", ())):
+            eco = _coord_from_jsonish(ex)
+            prev = cells.get(eco)
+            cells[eco] = _pass1_overlay_cell_row(
+                eco[0],
+                eco[1],
+                pass1_role=f"pass1_extension_{bi}_{j}",
+                frame_id=frame_id,
+                source_kind=source_kind,
+                dominant=dominant,
+                base_row=prev,
+            )
+
+    if highlight_event is not None:
+        kind = highlight_event.get("kind")
+        if kind == "consider_extract":
+            c = _coord_from_jsonish(highlight_event["extractor_cell"])
+            prev = cells.get(c)
+            cells[c] = _pass1_overlay_cell_row(
+                c[0],
+                c[1],
+                pass1_role="pass1_scan_cursor",
+                frame_id=frame_id,
+                source_kind=source_kind,
+                dominant=dominant,
+                base_row=prev,
+            )
+        elif kind == "probe_output":
+            c = _coord_from_jsonish(highlight_event["output_stub_cell"])
+            prev = cells.get(c)
+            role = (
+                "pass1_probe_stub_ok"
+                if highlight_event.get("reject_reason") is None
+                else "pass1_probe_stub_reject"
+            )
+            cells[c] = _pass1_overlay_cell_row(
+                c[0],
+                c[1],
+                pass1_role=role,
+                frame_id=frame_id,
+                source_kind=source_kind,
+                dominant=dominant,
+                base_row=prev,
+            )
+
+    return _dict_to_sorted_rows(cells)
+
+
+# Above this count, each timeline frame triggers a browser ``loadCellsForSummary`` round-trip
+# (map-cells fetch storm + UI jank). Keep full probe/consider animation only for small runs.
+_PASS1_PREVIEW_FULL_EVENT_BUDGET = 72
+
+
+def _pass1_events_for_preview_timeline(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if len(events) <= _PASS1_PREVIEW_FULL_EVENT_BUDGET:
+        return list(events)
+    return [e for e in events if e.get("kind") in ("pass1_begin", "commit_bundle")]
+
+
+def expand_pass1_replay_mining_map_frames(
+    recon: ReconstructionDTO,
+    mineable_rows: list[dict[str, Any]],
+    *,
+    dominant: str,
+    source_kind: str | None,
+) -> list[dict[str, Any]]:
+    """STEP 2 Pass1: ``mining_map`` frames for copy-preview ``map_timeline``.
+
+    One frame per replay event for small runs; for larger event streams only ``pass1_begin``
+    and ``commit_bundle`` rows are expanded so the UI does not issue hundreds of identical
+    ``/api/asteroid/map-cells/`` requests during playback.
+
+    When ``reconstruction.mineable_placement_cells`` is empty, Pass1 emits no replay rows; a
+    single ``v2_pass1_skipped_no_mineable`` frame is returned so the timeline length matches
+    expectations (reconstruction + explicit Pass1 outcome + placeholders).
+    """
+
+    events: list[dict[str, Any]] = []
+    ctx = SolverRunContext(run_id="v2_preview_recon_timeline", reconstruction=recon)
+    run_pass1_outer_placement(ctx, recon, replay_events=events, replay_event_cap=None)
+
+    timeline_events = _pass1_events_for_preview_timeline(events)
+    preview_thinned = len(events) > _PASS1_PREVIEW_FULL_EVENT_BUDGET
+
+    if not timeline_events:
+        # ``run_pass1_outer_placement`` records nothing when ``mineable_placement_cells`` is
+        # empty (early return before ``pass1_begin``). Still emit one UI frame so copy-preview
+        # does not look like a broken ``map_timeline`` wire (7 recon + 6 placeholders only).
+        fid = "v2_pass1_skipped_no_mineable"
+        rows = _mining_map_with_pass1_replay_overlay(
+            mineable_rows,
+            frame_id=fid,
+            source_kind=source_kind,
+            dominant=dominant,
+            committed_bundles=[],
+            highlight_event=None,
+        )
+        summ = _summary_from_rows(rows, frame_id=fid, source_kind=source_kind)
+        summ["pass1_replay"] = True
+        summ["pass1_event_kind"] = "skipped_no_mineable"
+        summ["pass1_preview_thinned"] = preview_thinned
+        summ["preview_placeholder"] = False
+        summ["pass1_skip_reason"] = "no_mineable_placement_cells"
+        out0: list[dict[str, Any]] = [{"id": fid, "summary": summ, "mining_map": rows}]
+        _dev_log_v2_preview_frame(fid, entry_count=int(summ["entry_count"]))
+        return out0
+
+    committed: list[dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
+    for step_i, ev in enumerate(timeline_events):
+        kind = ev.get("kind")
+        highlight = ev if kind in ("consider_extract", "probe_output") else None
+
+        bundles_for_paint = list(committed)
+        if kind == "commit_bundle":
+            bundles_for_paint.append(
+                {
+                    "extractor_cell": ev["extractor_cell"],
+                    "output_stub_cell": ev["output_stub_cell"],
+                    "extension_cells": list(ev.get("extension_cells", ())),
+                }
+            )
+
+        fid = f"v2_pass1_replay_{step_i:04d}_{kind or 'ev'}"
+        if kind == "pass1_begin":
+            fid = "v2_pass1_candidates"
+
+        rows = _mining_map_with_pass1_replay_overlay(
+            mineable_rows,
+            frame_id=fid,
+            source_kind=source_kind,
+            dominant=dominant,
+            committed_bundles=bundles_for_paint,
+            highlight_event=highlight,
+        )
+        summ = _summary_from_rows(rows, frame_id=fid, source_kind=source_kind)
+        summ["pass1_replay"] = True
+        summ["pass1_event_kind"] = str(kind)
+        summ["pass1_preview_thinned"] = preview_thinned
+        summ["preview_placeholder"] = False
+        out.append({"id": fid, "summary": summ, "mining_map": rows})
+        _dev_log_v2_preview_frame(fid, entry_count=int(summ["entry_count"]))
+
+        if kind == "commit_bundle":
+            committed.append(
+                {
+                    "extractor_cell": ev["extractor_cell"],
+                    "output_stub_cell": ev["output_stub_cell"],
+                    "extension_cells": list(ev.get("extension_cells", ())),
+                }
+            )
+
+    if committed:
+        fid = "v2_pass1_provisional"
+        rows = _mining_map_with_pass1_replay_overlay(
+            mineable_rows,
+            frame_id=fid,
+            source_kind=source_kind,
+            dominant=dominant,
+            committed_bundles=committed,
+            highlight_event=None,
+        )
+        summ = _summary_from_rows(rows, frame_id=fid, source_kind=source_kind)
+        summ["pass1_replay"] = True
+        summ["pass1_event_kind"] = "pass1_provisional_final"
+        summ["pass1_preview_thinned"] = preview_thinned
+        summ["preview_placeholder"] = False
+        out.append({"id": fid, "summary": summ, "mining_map": rows})
+        _dev_log_v2_preview_frame(fid, entry_count=int(summ["entry_count"]))
+
+    return out
+
+
 def _placeholder_milestone_frame(
     *,
     frame_id: str,
@@ -562,9 +790,10 @@ def build_v2_preview_map_frames(
 
     Reconstruction preview order: full layout → strip belt/pipe → strip extractors →
     strip extensions → infer interior on stripped base → inner-patch focus (shell + void)
-    → mineable highlights. Then placeholder frames for later solver milestones.
+    → mineable highlights. Then STEP 2 Pass1 replay frames (variable count), then
+    placeholder frames for later solver milestones.
 
-    Always appends one row per ``_V2_PREVIEW_PLACEHOLDER_FRAME_IDS`` (display-only; same
+    Appends one row per ``_V2_PREVIEW_PLACEHOLDER_FRAME_IDS`` (display-only; same
     ``mining_map`` as the last reconstruction frame until those milestones exist).
 
     When reconstruction is empty (no barrier cells), returns **only** those placeholder
@@ -659,6 +888,14 @@ def build_v2_preview_map_frames(
     frames.append({"id": fid3, "summary": s3, "mining_map": copy.deepcopy(rows3)})
     _dev_log_v2_preview_frame(fid3, entry_count=int(s3["entry_count"]))
 
+    pass1_frames = expand_pass1_replay_mining_map_frames(
+        recon,
+        rows3,
+        dominant=dominant,
+        source_kind=source_kind,
+    )
+    frames.extend(pass1_frames)
+
     last_rows = frames[-1]["mining_map"]
     if not isinstance(last_rows, list):
         last_rows = []
@@ -683,4 +920,5 @@ __all__ = [
     "PREVIEW_ASTEROID_REPLACE_TILE_T",
     "V2_PREVIEW_PLACEHOLDER_STEP_IDS",
     "build_v2_preview_map_frames",
+    "expand_pass1_replay_mining_map_frames",
 ]

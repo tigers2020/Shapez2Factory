@@ -327,7 +327,24 @@ def _build_pass2_external_margin_diagnostic(
     }
     if reasons:
         out["margin_generation_reason_if_zero"] = reasons
+    if len(margin) == 0:
+        out["exterior_margin_status"] = _exterior_margin_status_from_reasons(reasons)
     return out
+
+
+def _exterior_margin_status_from_reasons(
+    reasons: list[str] | None,
+) -> str | None:
+    """High-level bucket when ``exterior_margin_cell_count == 0`` (diagnostic only)."""
+
+    if not reasons:
+        return "no_margin_by_design"
+    rs = frozenset(reasons)
+    if "outside_universe_neighbors_inside_predicate_shell_padding" in rs:
+        return "predicate_shell_padding_suppressed"
+    if "empty_universe" in rs or "skipped_x0_only_universe" in rs:
+        return "no_margin_by_design"
+    return "generation_bug_suspected"
 
 
 def new_pass2_route_probe_stats_sink() -> dict[str, Any]:
@@ -460,6 +477,23 @@ def build_pass2_step4_aligned_routing_goals(
             is_external_shell_margin=is_external_shell_margin,
         ),
     }
+    md = trace["pass2_external_margin_diagnostic"]
+    if isinstance(md, dict) and len(margin) == 0:
+        rgz = md.get("margin_generation_reason_if_zero")
+        trace["exterior_margin_status"] = _exterior_margin_status_from_reasons(
+            rgz if isinstance(rgz, list) else None
+        )
+    if len(seeds_for_kind) == 0:
+        trace["trunk_seed_candidate_zero_reason"] = (
+            s4_goal.diagnose_trunk_seed_candidate_zero_for_kind(
+                transport_kind=transport_kind,
+                existing_layout_analysis=existing_layout_analysis,
+                cells=dict(cells),
+                margin_cells=set(margin),
+                seeds_for_kind=set(seeds_for_kind),
+                existing_reaching=set(existing_reaching),
+            )
+        )
     if not full_goal:
         prior_n = len(transport_cells_before)
         reach_n = len(existing_reaching)

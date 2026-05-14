@@ -329,6 +329,43 @@ def _pass3_summary_for_solver_timeline(pass3_summary: Mapping[str, Any]) -> dict
     return out
 
 
+def _compute_pass3_zero_gain_reason(p3: Mapping[str, Any]) -> str | None:
+    """When ``pass3_internal_transport_saved`` is zero after a non-skip Pass3 run (telemetry)."""
+
+    if bool(p3.get("pass3_skipped")):
+        return None
+    if int(p3.get("pass3_internal_transport_saved") or 0) > 0:
+        return None
+    rr = str(
+        p3.get("pass3_rejected_reason")
+        or p3.get("rejected_reason")
+        or p3.get("p3f_rejected_reason")
+        or ""
+    )
+    low = rr.lower()
+    if "hard_protected" in low:
+        return "all_routes_hard_protected"
+    if "replacement" in low or "precheck_no_replacement" in low:
+        return "replacement_route_not_found"
+    if "ratio" in low or "route_length" in low:
+        return "route_length_ratio_exceeded"
+    if "connectivity" in low:
+        return "connectivity_would_break"
+    if "budget" in low or "visit" in low or "cap" in low:
+        return "search_budget_exhausted"
+    return "no_candidate_route_improved_internal_transport"
+
+
+def _pass3_zero_gain_context(summary_fields: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "before_internal_transport_count": summary_fields.get("before_internal_transport_count"),
+        "after_internal_transport_count": summary_fields.get("after_internal_transport_count"),
+        "before_transport_count": summary_fields.get("before_transport_count"),
+        "after_transport_count": summary_fields.get("after_transport_count"),
+        "step4_route_count": summary_fields.get("step4_route_count"),
+    }
+
+
 def build_final_solver_output(
     *,
     run_id: str,
@@ -646,6 +683,8 @@ def build_final_solver_output(
         **pass12_trace_fields,
         **pass3_summary,
     }
+    summary_fields["pass3_zero_gain_reason"] = _compute_pass3_zero_gain_reason(summary_fields)
+    summary_fields["pass3_zero_gain_context"] = _pass3_zero_gain_context(summary_fields)
     summary_fields.update(
         build_step4_route_failure_aggregate_for_solver_summary(step4_result.routing_failures)
     )
@@ -897,6 +936,10 @@ def build_final_solver_output(
         "replay_frame_count": (
             "Supplemental replay_frame rows (stride-based cycle snapshots); not map_timeline."
         ),
+        "replay_frame_source": (
+            "replay_trace | pass_snapshot_fallback | trace_disabled | unknown — "
+            "how replay_frame_count was populated for this run."
+        ),
     }
     # ``replay_events`` is same-run append-only export for STEP10 / NDJSON — not a policy input
     # for routing or recovery (see ``solver_replay_events`` and ``solver_trace`` module docs).
@@ -1107,6 +1150,8 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
     summary_fields.setdefault("before_transport_count", None)
     summary_fields.setdefault("after_transport_count", None)
     summary_fields.setdefault("pass3_internal_transport_saved", None)
+    summary_fields.setdefault("pass3_zero_gain_reason", None)
+    summary_fields.setdefault("pass3_zero_gain_context", None)
     summary_fields.setdefault("pass3_reclaim_projected_net_internal_saved", None)
     summary_fields.setdefault("pass3_commit_reason", None)
     summary_fields.setdefault("pass3_commit_subtype", None)

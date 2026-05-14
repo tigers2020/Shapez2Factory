@@ -47,3 +47,4 @@ def test_margin_generation_flags_outside_universe_void_inside_predicate_shell() 
     assert diag["is_external_true_neighbor_sample_count"] == 0
     reasons = diag.get("margin_generation_reason_if_zero") or []
     assert "outside_universe_neighbors_inside_predicate_shell_padding" in reasons
+    assert diag.get("exterior_margin_status") == "predicate_shell_padding_suppressed"

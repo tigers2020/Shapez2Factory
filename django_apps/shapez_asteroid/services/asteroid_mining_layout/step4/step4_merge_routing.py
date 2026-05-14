@@ -84,6 +84,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_dij
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.step4.step4_goal_trunk_seed import (  # noqa: E501
     build_step4_goal_set,
     build_trunk_seed_candidates_by_kind,
+    diagnose_trunk_seed_pool_empty,
     exterior_margin_cells,
     trunk_seed_union_from_existing_layout,
 )
@@ -1068,6 +1069,10 @@ def run_step4_merge_aware_routing(
     step4_degraded = not unrecoverable and routing_failure_count == 0 and rolled_back_n > 0
     q_peak_n = len(state.quarantined_placement_ids_peak)
 
+    _tseed_cnt = max(
+        (len(trunk_seed_by_kind.get(k, ())) for k in ("shape_belt", "fluid_pipe")),
+        default=0,
+    )
     # trunk_load schema: ``step4_trunk_load`` (route_metrics vs legacy aliases, per-kind blocks).
     trace_tl: dict[str, Any] = {
         "mode": "accumulate_only",
@@ -1099,9 +1104,16 @@ def run_step4_merge_aware_routing(
         "step4_trunk_seed_candidate_count_by_kind": {
             k: len(v) for k, v in trunk_seed_by_kind.items()
         },
-        "step4_trunk_seed_candidate_count": max(
-            (len(trunk_seed_by_kind.get(k, ())) for k in ("shape_belt", "fluid_pipe")),
-            default=0,
+        "step4_trunk_seed_candidate_count": _tseed_cnt,
+        "step4_trunk_seed_candidate_zero_reason": (
+            diagnose_trunk_seed_pool_empty(
+                existing_layout_analysis=existing_layout_analysis,
+                cells=cells,
+                margin_cells=margin_cells_set,
+                trunk_seed_by_kind=trunk_seed_by_kind,
+            )
+            if _tseed_cnt == 0
+            else None
         ),
         "step4_goal_set_size_peak": max(goal_set_sizes) if goal_set_sizes else 0,
         "step4_failed_route_recovery_attempted_count": recovery_attempted,

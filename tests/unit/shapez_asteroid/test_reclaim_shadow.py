@@ -205,10 +205,18 @@ def test_p4_zero_candidate_diag_all_transport_protected_reason() -> None:
         spent_prior=0,
         anchor_specs_empty_all=False,
         has_routing_jobs=True,
+        candidate_corridor_count=4,
     )
     assert P4_RECLAIM_ZERO_ALL_TRANSPORT_PROTECTED in d["p4_reclaim_zero_candidate_reasons"]
     assert d["p4_reclaim_unprotected_transport_count"] == 0
     assert P4_RECLAIM_ZERO_NO_RECLAIMED_CELLS in d["p4_reclaim_zero_candidate_reasons"]
+    att = d.get("all_transport_protected_trace")
+    assert isinstance(att, dict)
+    assert att["hard_protected_count"] == 1
+    assert att["soft_protected_count"] == 1
+    assert att["candidate_corridor_count"] == 4
+    assert att["mineable_cur_before_protection"] == 1
+    assert att["mineable_cur_after_protection"] == 1
 
 
 def test_p4_scan_preconditions_no_routing_jobs_includes_zero_routing_count() -> None:

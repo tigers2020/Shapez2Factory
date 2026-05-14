@@ -569,3 +569,59 @@ def test_integrate_pass12_unrouted_preserve_emits_parent_facing_ext_r() -> None:
     assert ext_row is not None
     assert ext_row.get("layout_kind") == "fluid_extension"
     assert ext_row.get("r") == 2
+
+
+def test_preserve_missing_stub_summary_blocker_histograms_no_matching_stub() -> None:
+    """``preserve_drop_blocker_counts`` / subtype / unrecoverable buckets for NO_MATCHING_STUB."""
+
+    details = [
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "preserve_stub_recovery": {
+                "rejected_reason": "no_same_kind_route",
+                "rejected_reason_subtype": "occupied_neighbor_ring",
+                "tier_d_failure_reason": "tier_d_failed_no_same_kind_route",
+            },
+        },
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "preserve_stub_recovery": {
+                "rejected_reason": "no_same_kind_route",
+                "rejected_reason_subtype": "stub_local_geometry_sealed",
+                "tier_d_failure_reason": "tier_d_failed_no_same_kind_route",
+            },
+        },
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "preserve_stub_recovery": {
+                "rejected_reason": "no_same_kind_route",
+                "rejected_reason_subtype": "other",
+                "tier_d_failure_reason": "tier_d_failed_route_len_over_cap",
+            },
+        },
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "nearest_same_kind_transport_hops": 2,
+            "preserve_stub_recovery": {
+                "attempted": True,
+                "accepted": False,
+                "stub_route_probe_last": {"goal_count": 0},
+            },
+        },
+    ]
+    summary = pass12_merged_layout_seed._preserve_missing_stub_summary_from_details(
+        [dict(d) for d in details]
+    )
+    blk = summary["preserve_drop_blocker_counts"]
+    assert blk["occupied_neighbor_ring"] == 1
+    assert blk["stub_local_geometry_sealed"] == 1
+    assert blk["no_legal_same_kind_route_under_bounds"] == 1
+    assert blk.get("no_route_to_same_kind_goal", 0) == 0
+    assert blk["empty_route_goal_set"] == 1
+    sub = summary["preserve_drop_rejected_subtype_counts"]
+    assert sub["occupied_neighbor_ring"] == 1
+    assert sub["stub_local_geometry_sealed"] == 1
+    assert sub["other"] == 1
+    assert sub["(none)"] == 1
+    ur = summary["preserve_drop_unrecoverable_reason_counts"]
+    assert ur["no_legal_same_kind_route_under_bounds"] == 3

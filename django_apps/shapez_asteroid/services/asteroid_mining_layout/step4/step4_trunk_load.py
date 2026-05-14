@@ -314,6 +314,7 @@ def _zero_trace_common(*, pass12_skipped: bool) -> dict[str, Any]:
         "step4_quarantined_unrouted_count": 0,
         "step4_trunk_seed_candidate_count_by_kind": {},
         "step4_trunk_seed_candidate_count": 0,
+        "step4_trunk_seed_candidate_zero_reason": None,
         "step4_goal_set_size_peak": 0,
         "step4_routed_stub_count": 0,
         "step4_total_stub_count": 0,

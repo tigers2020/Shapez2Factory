@@ -133,6 +133,8 @@ _COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS: tuple[str, ...] = (
     "step4_skipped",
     "pass3_skipped",
     "pass3_skip_reason",
+    "pass3_zero_gain_reason",
+    "pass3_zero_gain_context",
     "p4_reclaim_shadow_skip_reason",
     "post_reclaim_pass3_skip_reason",
     "preserve_quality_score",

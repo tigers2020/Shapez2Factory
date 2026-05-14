@@ -86,6 +86,24 @@ _trace_replay_stats_var: ContextVar[dict[str, int] | None] = ContextVar(
     "mining_layout_trace_replay_stats",
     default=None,
 )
+_run_end_solver_summary_snapshot_var: ContextVar[dict[str, Any] | None] = ContextVar(
+    "mining_layout_run_end_solver_summary_snapshot",
+    default=None,
+)
+
+_RUN_END_SOLVER_SUMMARY_SNAPSHOT_KEYS = frozenset(
+    {
+        "trace_frame_counter_glossary",
+        "replay_event_count",
+        "replay_frame_count",
+        "replay_frame_source",
+        "replay_candidate_event_count",
+        "map_timeline_frame_count",
+        "solver_timeline_frame_count",
+        "pass3_zero_gain_reason",
+        "pass3_zero_gain_context",
+    }
+)
 
 _REPLAY_FRAME_STRIDE = 10
 _CANDIDATE_REJECT_MESSAGES = frozenset(
@@ -261,6 +279,9 @@ def emit_solver_summary_once(location: str, payload: dict[str, Any]) -> bool:
     if rid is not None:
         merged.setdefault("run_id", rid)
     merged.update(_replay_diag_for_summary())
+    snap = {k: merged[k] for k in _RUN_END_SOLVER_SUMMARY_SNAPSHOT_KEYS if k in merged}
+    if snap:
+        _run_end_solver_summary_snapshot_var.set(snap)
     trace_event(location, "solver_summary", {"solver_summary": merged})
     if trace_enabled():
         debug_log_event(
@@ -417,6 +438,7 @@ def trace_run_scope() -> Iterator[None]:
     run_id = new_trace_run_id()
     token = trace_run_id_set(run_id)
     summary_tok = _summary_emitted_var.set(False)
+    snap_tok = _run_end_solver_summary_snapshot_var.set(None)
     started = time.perf_counter()
     _trace_computation_cycle_var.set(0)
     _replay_events_sink_var.set(None)
@@ -448,10 +470,15 @@ def trace_run_scope() -> Iterator[None]:
         yield
     finally:
         elapsed = time.perf_counter() - started
+        snap = _run_end_solver_summary_snapshot_var.get()
+        _run_end_solver_summary_snapshot_var.reset(snap_tok)
+        end_payload: dict[str, Any] = {"run_id": run_id, "elapsed_s": round(elapsed, 6)}
+        if isinstance(snap, dict) and snap:
+            end_payload["solver_summary"] = snap
         debug_log_event(
             "solver_trace.trace_run_scope",
             "run_end",
-            {"run_id": run_id, "elapsed_s": round(elapsed, 6)},
+            end_payload,
         )
         _summary_emitted_var.reset(summary_tok)
         trace_run_id_reset(token)

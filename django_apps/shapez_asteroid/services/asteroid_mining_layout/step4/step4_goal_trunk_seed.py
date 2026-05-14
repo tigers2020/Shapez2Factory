@@ -16,7 +16,7 @@ artifacts live in ``cleanup_candidate_cell_union`` (ELA) and are **never** read 
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
@@ -32,6 +32,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing.routing
 __all__ = [
     "build_step4_goal_set",
     "build_trunk_seed_candidates_by_kind",
+    "diagnose_trunk_seed_candidate_zero_for_kind",
+    "diagnose_trunk_seed_pool_empty",
     "exterior_margin_cells",
     "trunk_seed_union_from_existing_layout",
 ]
@@ -109,6 +111,62 @@ def _hint_cell_transport_kinds(c: Coord, cells: dict[Coord, dict[str, Any]]) -> 
     if lk in EXTRACTORS_FLUID:
         return {"fluid_pipe"}
     return set()
+
+
+def diagnose_trunk_seed_pool_empty(
+    *,
+    existing_layout_analysis: dict[str, Any] | None,
+    cells: dict[Coord, dict[str, Any]],
+    margin_cells: set[Coord],
+    trunk_seed_by_kind: Mapping[str, set[Coord]],
+) -> str | None:
+    """Telemetry-only reason when max per-kind trunk seed pool size is zero."""
+
+    mx = max(
+        (len(trunk_seed_by_kind.get(k, ())) for k in ("shape_belt", "fluid_pipe")),
+        default=0,
+    )
+    if mx > 0:
+        return None
+    if not existing_layout_analysis:
+        return "no_existing_layout_context"
+    hint = trunk_seed_union_from_existing_layout(existing_layout_analysis)
+    margin_n = len(margin_cells)
+    if not hint:
+        if margin_n == 0:
+            return "exterior_margin_empty_and_no_seed"
+        return "no_main_component"
+    if hint and not any(_hint_cell_transport_kinds(c, cells) for c in hint):
+        return "main_component_wrong_kind"
+    return "all_candidates_filtered_by_policy"
+
+
+def diagnose_trunk_seed_candidate_zero_for_kind(
+    *,
+    transport_kind: str,
+    existing_layout_analysis: dict[str, Any] | None,
+    cells: dict[Coord, dict[str, Any]],
+    margin_cells: set[Coord],
+    seeds_for_kind: set[Coord],
+    existing_reaching: set[Coord],
+) -> str | None:
+    """Pass2: empty per-kind trunk seed pool (``trunk_seed_candidate_count == 0``)."""
+
+    if len(seeds_for_kind) > 0:
+        return None
+    if not existing_layout_analysis:
+        return "no_existing_layout_context"
+    hint = trunk_seed_union_from_existing_layout(existing_layout_analysis)
+    margin_n = len(margin_cells)
+    if not hint:
+        if margin_n == 0:
+            return "exterior_margin_empty_and_no_seed"
+        return "no_main_component"
+    if not any(transport_kind in _hint_cell_transport_kinds(c, cells) for c in hint):
+        return "main_component_wrong_kind"
+    if margin_n == 0 and not existing_reaching:
+        return "main_component_not_external_reachable"
+    return "all_candidates_filtered_by_policy"
 
 
 def build_trunk_seed_candidates_by_kind(

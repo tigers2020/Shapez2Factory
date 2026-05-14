@@ -27,6 +27,8 @@ class Pass2GoalTraceWire(TypedDict, total=False):
     pass2_prior_transport_all_orphan: bool
     pass2_empty_goal_nonempty_universe: bool
     pass2_external_margin_diagnostic: dict[str, Any]
+    exterior_margin_status: str | None
+    trunk_seed_candidate_zero_reason: str | None
 
 
 class Pass2RouteProbeStatsWire(TypedDict, total=False):

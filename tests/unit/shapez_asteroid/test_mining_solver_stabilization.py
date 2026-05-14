@@ -62,6 +62,34 @@ def test_emit_solver_summary_second_call_is_ignored() -> None:
     assert calls.count("solver_summary") == 1
 
 
+def test_run_end_debug_action_includes_solver_summary_snapshot(
+    tmp_path, monkeypatch, settings
+) -> None:
+    """``run_end`` NDJSON row may embed a small ``solver_summary`` snapshot after emit."""
+
+    settings.BASE_DIR = tmp_path
+    monkeypatch.setenv("SHAPEZ_SOLVER_ALGO_DEBUG", "1")
+    with trace_run_scope():
+        rid = trace_run_id_current()
+        assert rid is not None
+        emit_solver_summary_once(
+            "tests.unit.shapez_asteroid.test_mining_solver_stabilization",
+            {
+                "trace_frame_counter_glossary": {"k": "v"},
+                "map_timeline_frame_count": 4,
+                "replay_event_count": 2,
+            },
+        )
+        run_path = tmp_path / "var" / "asteroid_mining_layout_debug" / f"{rid}.ndjson"
+    assert run_path.exists()
+    records = [json.loads(line) for line in run_path.read_text(encoding="utf-8").splitlines()]
+    end = next(r for r in records if r.get("action") == "run_end")
+    ss = end["data"].get("solver_summary")
+    assert isinstance(ss, dict)
+    assert "trace_frame_counter_glossary" in ss
+    assert ss.get("map_timeline_frame_count") == 4
+
+
 def test_trace_event_writes_replay_ndjson_and_debug_action_only(
     tmp_path, monkeypatch, settings
 ) -> None:

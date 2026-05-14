@@ -341,6 +341,24 @@ def report_pass12_preserved_missing_stub_drop_details(
     return rows
 
 
+def _ensure_no_matching_stub_blocker_fields(detail_row: dict[str, Any]) -> None:
+    """Backfill ``preserve_drop_blocker`` / ``preserve_drop_detail`` for legacy NDJSON rows."""
+
+    pr = str(detail_row.get("preserve_drop_reason") or detail_row.get("reason") or "")
+    if pr != PreserveDropReason.NO_MATCHING_STUB.value:
+        return
+    if detail_row.get("preserve_drop_blocker") and detail_row.get("preserve_drop_detail"):
+        return
+    blk, det = _preserve_drop_blocker_detail_for_row(
+        pdr=PreserveDropReason.NO_MATCHING_STUB,
+        detail_row=detail_row,
+    )
+    if blk and not detail_row.get("preserve_drop_blocker"):
+        detail_row["preserve_drop_blocker"] = blk
+    if det and not detail_row.get("preserve_drop_detail"):
+        detail_row["preserve_drop_detail"] = det
+
+
 def _preserve_missing_stub_summary_from_details(
     details: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -352,8 +370,13 @@ def _preserve_missing_stub_summary_from_details(
     repack_eligible = 0
     unrecoverable_drop_count = 0
     unrecoverable_reason_counts: dict[str, int] = {}
+    preserve_drop_blocker_counts: dict[str, int] = {}
+    preserve_drop_rejected_subtype_counts: dict[str, int] = {}
+    preserve_drop_unrecoverable_reason_counts: dict[str, int] = {}
     for d in details:
         pr = str(d.get("preserve_drop_reason") or d.get("reason") or "unknown")
+        if pr == PreserveDropReason.NO_MATCHING_STUB.value:
+            _ensure_no_matching_stub_blocker_fields(d)
         by_reason[pr] = by_reason.get(pr, 0) + 1
         rc = str(d.get("recoverability_class") or "unknown")
         by_rec[rc] = by_rec.get(rc, 0) + 1
@@ -366,10 +389,20 @@ def _preserve_missing_stub_summary_from_details(
         if not sub:
             sub = "(none)"
         by_sub[sub] = by_sub.get(sub, 0) + 1
+        if pr == PreserveDropReason.NO_MATCHING_STUB.value:
+            blk = str(d.get("preserve_drop_blocker") or "(none)")
+            preserve_drop_blocker_counts[blk] = preserve_drop_blocker_counts.get(blk, 0) + 1
+            preserve_drop_rejected_subtype_counts[sub] = (
+                preserve_drop_rejected_subtype_counts.get(sub, 0) + 1
+            )
         ucode = _unrecoverable_contract_reason_code(d)
         if ucode is not None:
             unrecoverable_drop_count += 1
             unrecoverable_reason_counts[ucode] = unrecoverable_reason_counts.get(ucode, 0) + 1
+            if pr == PreserveDropReason.NO_MATCHING_STUB.value:
+                preserve_drop_unrecoverable_reason_counts[ucode] = (
+                    preserve_drop_unrecoverable_reason_counts.get(ucode, 0) + 1
+                )
     bounded = _bounded_recovery_summary_from_details(details)
     drop_count = len(details)
     expected_unrecoverable_drop_count = unrecoverable_drop_count
@@ -386,6 +419,15 @@ def _preserve_missing_stub_summary_from_details(
         "recoverable_unresolved_drop_count": recoverable_unresolved_drop_count,
         "unrecoverable_reason_counts": dict(
             sorted(unrecoverable_reason_counts.items(), key=lambda kv: kv[0])
+        ),
+        "preserve_drop_blocker_counts": dict(
+            sorted(preserve_drop_blocker_counts.items(), key=lambda kv: kv[0])
+        ),
+        "preserve_drop_rejected_subtype_counts": dict(
+            sorted(preserve_drop_rejected_subtype_counts.items(), key=lambda kv: kv[0])
+        ),
+        "preserve_drop_unrecoverable_reason_counts": dict(
+            sorted(preserve_drop_unrecoverable_reason_counts.items(), key=lambda kv: kv[0])
         ),
     }
 
@@ -985,12 +1027,20 @@ def _preserve_drop_blocker_detail_for_row(
             "no_adjacent_output_stub_cell_for_kind",
             "preserve_stub_recovery_missing_after_drop_contract",
         )
+    sub_pre = psr.get("rejected_reason_subtype")
+    if sub_pre == "occupied_neighbor_ring":
+        return "occupied_neighbor_ring", "rejected_reason_subtype=occupied_neighbor_ring"
+    if sub_pre == "stub_local_geometry_sealed":
+        return "stub_local_geometry_sealed", "rejected_reason_subtype=stub_local_geometry_sealed"
     rr = psr.get("rejected_reason")
     if rr == "no_same_kind_route":
         sub = psr.get("rejected_reason_subtype")
         detail = f"stub_recovery_rejected={rr}"
         if sub:
             detail += f";subtype={sub}"
+        ucode = _unrecoverable_contract_reason_code(detail_row)
+        if ucode == "no_legal_same_kind_route_under_bounds":
+            return "no_legal_same_kind_route_under_bounds", detail
         return "no_route_to_same_kind_goal", detail
     if rr in ("visit_cap", "route_len_over_cap", "new_transport_cells_over_cap"):
         return "route_budget_exhausted", f"stub_recovery_rejected={rr}"

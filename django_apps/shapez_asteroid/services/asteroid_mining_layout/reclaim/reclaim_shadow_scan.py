@@ -196,6 +196,7 @@ def _p4_reclaim_zero_candidate_diag(
     spent_prior: int,
     anchor_specs_empty_all: bool,
     has_routing_jobs: bool,
+    candidate_corridor_count: int | None = None,
 ) -> dict[str, Any]:
     """Structured diagnostics when the P4-A scan emits zero bundle evaluations (trace only)."""
 
@@ -256,7 +257,7 @@ def _p4_reclaim_zero_candidate_diag(
                 }
             )
 
-    return {
+    out: dict[str, Any] = {
         "p4_reclaim_zero_candidate_reasons": reasons,
         "mineable_base_count": len(mineable_base),
         "excluded_by_final_route_count": ex_route,
@@ -273,6 +274,16 @@ def _p4_reclaim_zero_candidate_diag(
         "reclaim_anchor_failure_samples": failure_samples,
         "nearest_freed_cell_to_candidate_sample": nearest,
     }
+    if P4_RECLAIM_ZERO_ALL_TRANSPORT_PROTECTED in reasons:
+        out["all_transport_protected_trace"] = {
+            "hard_protected_count": len(hard),
+            "soft_protected_count": len(soft),
+            "candidate_corridor_count": int(candidate_corridor_count or 0),
+            "mineable_cur_before_protection": len(mineable_base),
+            "mineable_cur_after_protection": len(mineable_cur),
+            "final_route_cells_count": len(final_route_cells),
+        }
+    return out
 
 
 def _p4_reclaim_scan_preconditions_dict(
@@ -467,6 +478,7 @@ def reclaim_shadow_scan_core_after_pass3(
             spent_prior=spent_nr,
             anchor_specs_empty_all=False,
             has_routing_jobs=False,
+            candidate_corridor_count=len(pcs.candidate),
         )
         return reclaim_shadow_scan_result_no_routing_jobs(
             zone_route_rebuilt=bool(zone_extra),
@@ -687,6 +699,7 @@ def reclaim_shadow_scan_core_after_pass3(
                 spent_prior=spent_prior,
                 anchor_specs_empty_all=anchor_specs_empty_all,
                 has_routing_jobs=True,
+                candidate_corridor_count=len(pcs.candidate),
             )
         )
     return ReclaimShadowScanResult(trace=trace, evals=evals, transport_kind=tk)

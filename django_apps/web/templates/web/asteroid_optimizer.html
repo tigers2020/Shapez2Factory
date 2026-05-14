@@ -482,6 +482,48 @@
   var trunkHeatmapCb = root.querySelector("[data-am-trunk-heatmap-overlay]");
   var solverRedecodeHintEl = root.querySelector("[data-am-solver-redecode-hint]");
   var mapCellsUrl = root.dataset.mapCellsUrl || "";
+  var mapCellsByBboxKey = Object.create(null);
+
+  function clearMapCellsFetchCache() {
+    mapCellsByBboxKey = Object.create(null);
+  }
+
+  function mapCellsBboxKey(b) {
+    return b.x_min + ":" + b.x_max + ":" + b.y_min + ":" + b.y_max;
+  }
+
+  /** One network GET per bbox per page session; cleared on new Decode. */
+  function fetchMapCellsBboxOnce(b) {
+    var key = mapCellsBboxKey(b);
+    var existing = mapCellsByBboxKey[key];
+    if (existing) return existing;
+    var q =
+      "?x_min=" +
+      b.x_min +
+      "&x_max=" +
+      b.x_max +
+      "&y_min=" +
+      b.y_min +
+      "&y_max=" +
+      b.y_max;
+    var p = fetch(mapCellsUrl + q)
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data || !data.ok) {
+          delete mapCellsByBboxKey[key];
+        }
+        return data;
+      })
+      .catch(function (err) {
+        delete mapCellsByBboxKey[key];
+        throw err;
+      });
+    mapCellsByBboxKey[key] = p;
+    return p;
+  }
+
   var surface = root.querySelector("[data-asteroid-map-surface]");
   var plotInner = root.querySelector(".am-plot-inner");
   var plotPanzoomEl = root.querySelector("[data-am-plot-panzoom]");
@@ -1861,18 +1903,7 @@
     if (!boxes.length) return Promise.resolve();
     var fetches = boxes.map(function (b) {
       bboxRegions.push(b);
-      var q =
-        "?x_min=" +
-        b.x_min +
-        "&x_max=" +
-        b.x_max +
-        "&y_min=" +
-        b.y_min +
-        "&y_max=" +
-        b.y_max;
-      return fetch(mapCellsUrl + q).then(function (r) {
-        return r.json();
-      });
+      return fetchMapCellsBboxOnce(b);
     });
     return Promise.all(fetches).then(function (arr) {
       for (var j = 0; j < arr.length; j++) {
@@ -3022,6 +3053,30 @@
     plotSvg.appendChild(gTop);
     plotSvg.appendChild(gFacing);
     plotSvg.appendChild(gStationPerimeters);
+    var gPass1Replay = document.createElementNS(svgNs, "g");
+    gPass1Replay.setAttribute("class", "am-pass1-replay-overlay");
+    var pass1Ev =
+      summary && typeof summary.pass1_event_kind === "string" ? summary.pass1_event_kind : "";
+    var pi1;
+    for (pi1 = 0; pi1 < filtered.length; pi1++) {
+      var rowP1 = filtered[pi1];
+      if (!rowP1 || rowP1.x === 0) continue;
+      var pr = rowP1.pass1_replay_role;
+      if (pr == null || pr === "") continue;
+      var prStr = String(pr);
+      var strokeP1 = "rgb(245 158 11 / 0.92)";
+      if (prStr.indexOf("pass1_probe_stub_ok") === 0) strokeP1 = "rgb(45 212 191 / 0.95)";
+      else if (prStr.indexOf("pass1_probe_stub_reject") === 0) strokeP1 = "rgb(248 113 113 / 0.95)";
+      else if (prStr.indexOf("pass1_extractor_") === 0) strokeP1 = "rgb(167 139 250 / 0.95)";
+      else if (prStr.indexOf("pass1_extension_") === 0) strokeP1 = "rgb(56 189 248 / 0.95)";
+      else if (prStr.indexOf("pass1_skip_extract") === 0) strokeP1 = "rgb(251 113 133 / 0.95)";
+      else if (prStr.indexOf("pass1_scan_cursor") === 0) strokeP1 = "rgb(250 204 21 / 0.98)";
+      var tipP1 = prStr + (pass1Ev ? " · " + pass1Ev : "");
+      appendRouteReplayOutline(gPass1Replay, { x: rowP1.x, y: rowP1.y }, strokeP1, tipP1);
+    }
+    if (gPass1Replay.childNodes.length) {
+      plotSvg.appendChild(gPass1Replay);
+    }
     if (
       corridorOverlayCb &&
       corridorOverlayCb.checked &&
@@ -3429,6 +3484,7 @@
       errEl.classList.add("hidden");
       errEl.textContent = "";
       clearPlot();
+      clearMapCellsFetchCache();
       stopDecodePlay();
       lastSolverReplay = null;
       lastReplayUiFrames = [];

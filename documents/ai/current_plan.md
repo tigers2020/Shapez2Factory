@@ -4,6 +4,7 @@
 
 ## 목표 (갱신 2026-05-10)
 
+- **(ACTIVE, 2026-05-13)** 채굴 솔버 **v2 그린필드 MVP** 실행 순서·게이트: [`plans/mining_solver_v2_mvp_execution_2026-05-13.md`](plans/mining_solver_v2_mvp_execution_2026-05-13.md) — v1 `asteroid_mining_layout` → `_old` 리네임은 **v2 스캐폴드·domain·import 경계 테스트 green 이후 단독 PR**.
 - `shapez_asteroid` 1단계 스켈레톤·복사 미리보기·채굴 레이아웃 솔버(멀티패스·pass3 transport 등)까지 **구현 완료**로 본다.
 - 리포 전체 **로컬 품질 게이트**(`pytest` / `ruff` / `mypy` / `black --check`)를 통과한 상태를 유지한다.
 - **진행 중 (정본)**: 채굴 레이아웃 솔버 **안정화** — 생산 설비 보존·비철거 복구·성공 판정 고정 ([`mining_layout_solver_stabilization_2026-05-09.md`](plans/mining_layout_solver_stabilization_2026-05-09.md)). 1차는 P0(요약·최종 검증·철거형 merge repair 차단)부터.

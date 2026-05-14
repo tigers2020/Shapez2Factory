@@ -56,6 +56,7 @@
 | [`documents/Algorithm/progress_status_2026-05-10.md`](../Algorithm/progress_status_2026-05-10.md) | `REPORT` | progress report | NO | 진행 상태 기록 |
 | [`documents/notes/`](../notes/) | `REPORT` | notes | NO | 장기 정본 아님 |
 | [`documents/archive/`](../archive/) | `ARCHIVED` | archive | NO | 현재 설계 판단에 쓰지 않음 |
+| [`documents/ai/plans/mining_solver_v2_mvp_execution_2026-05-13.md`](../ai/plans/mining_solver_v2_mvp_execution_2026-05-13.md) | `ACTIVE` | execution plan | NO | v2 MVP PR 순서·`_old` 리네임 시점·QUARANTINE 정책 |
 
 ## 다음 정리 큐
 

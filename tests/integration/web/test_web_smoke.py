@@ -48,9 +48,8 @@ def test_asteroid_page_renders() -> None:
     assert b"data-asteroid-plot-svg" in response.content
     assert b"data-am-plot-panzoom" in response.content
     assert b"data-am-map-reset-view" in response.content
-    assert b"data-asteroid-solver-overlay" in response.content
-    assert b"include_solver_overlay=1" in response.content
-    assert b"include_solver_replay=1" in response.content
+    assert b"data-am-corridor-overlay" in response.content
+    assert b"include_solver_replay" not in response.content
 
 
 def test_asteroid_page_renders_korean() -> None:
@@ -61,7 +60,7 @@ def test_asteroid_page_renders_korean() -> None:
     assert "소행성 채굴 맵" in body
     assert "청사진 복사 코드" in body
     assert "data-asteroid-copy-root" in body
-    assert "data-asteroid-solver-overlay" in body
+    assert "data-am-corridor-overlay" in body
 
 
 def test_solve_alias_redirects_to_solver_page() -> None:

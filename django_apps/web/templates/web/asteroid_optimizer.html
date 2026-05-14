@@ -153,16 +153,6 @@
               <button type="button" id="asteroid-decode-btn" class="btn primary">{% trans "Decode" %}</button>
             </div>
             <div class="am-solver-overlay-option">
-              <label class="am-inline-check" for="asteroid-solver-overlay-toggle">
-                <input
-                  type="checkbox"
-                  id="asteroid-solver-overlay-toggle"
-                  data-asteroid-solver-overlay
-                />
-                <span>{% trans "Show solver overlay" %}</span>
-              </label>
-            </div>
-            <div class="am-solver-overlay-option">
               <label class="am-inline-check" for="asteroid-corridor-overlay-toggle">
                 <input
                   type="checkbox"
@@ -185,7 +175,7 @@
             <p class="hint hidden" data-am-solver-redecode-hint></p>
             <p class="hint">
               {% blocktrans trimmed %}
-                Paste the in-game copy string. Decoding runs on the server; after Decode, use the timeline block below for map and solver steps together — solver notes appear at the bottom of that block when the solver overlay is included.
+                Paste the in-game copy string. Decoding runs on the server; after Decode, use the timeline block below for map steps (mining layout v2 preview).
               {% endblocktrans %}
             </p>
             <div
@@ -483,26 +473,9 @@
   var root = document.querySelector("[data-asteroid-copy-root]");
   if (!root) return;
   var apiUrl = root.dataset.copyPreviewUrl || "";
-  var solverOverlayCb = root.querySelector("[data-asteroid-solver-overlay]");
   var corridorOverlayCb = root.querySelector("[data-am-corridor-overlay]");
   var trunkHeatmapCb = root.querySelector("[data-am-trunk-heatmap-overlay]");
   var solverRedecodeHintEl = root.querySelector("[data-am-solver-redecode-hint]");
-  if (solverOverlayCb && solverRedecodeHintEl) {
-    var redecodeMsg = root.dataset.msgSolverRedecodeHint || "";
-    solverOverlayCb.addEventListener("change", function () {
-      if (solverOverlayCb.checked && redecodeMsg) {
-        solverRedecodeHintEl.textContent = redecodeMsg;
-        solverRedecodeHintEl.classList.remove("hidden");
-      } else {
-        solverRedecodeHintEl.textContent = "";
-        solverRedecodeHintEl.classList.add("hidden");
-      }
-    });
-    if (solverOverlayCb.checked && redecodeMsg) {
-      solverRedecodeHintEl.textContent = redecodeMsg;
-      solverRedecodeHintEl.classList.remove("hidden");
-    }
-  }
   var mapCellsUrl = root.dataset.mapCellsUrl || "";
   var surface = root.querySelector("[data-asteroid-map-surface]");
   var plotInner = root.querySelector(".am-plot-inner");
@@ -591,27 +564,7 @@
   var mapVizTrack = root.querySelector("[data-am-decode-viz-track]");
   var mapVizDetail = root.querySelector("[data-am-decode-viz-detail]");
   function copyPreviewUrlWithOptions() {
-    var base = apiUrl || "";
-    try {
-      var u = new URL(base, globalThis.location.href);
-      u.searchParams.set("include_solver_replay", "1");
-      if (solverOverlayCb && solverOverlayCb.checked) {
-        u.searchParams.set("include_solver_overlay", "1");
-      } else {
-        u.searchParams.delete("include_solver_overlay");
-      }
-      return u.pathname + u.search;
-    } catch (e) {
-      if (typeof console !== "undefined" && console.debug) {
-        console.debug("[copyPreviewUrlWithOptions] URL parse failed", e);
-      }
-      var sep = base.includes("?") ? "&" : "?";
-      var extra = "include_solver_replay=1";
-      if (solverOverlayCb && solverOverlayCb.checked) {
-        extra += "&include_solver_overlay=1";
-      }
-      return base + sep + extra;
-    }
+    return apiUrl || "";
   }
 
   var SOLVER_REPLAY_KNOWN_KINDS = {

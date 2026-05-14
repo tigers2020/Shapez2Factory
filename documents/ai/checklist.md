@@ -11,7 +11,7 @@
 - [x] 문서 앵커: [`current_plan.md`](current_plan.md) 목표 절에 MVP 실행 순서 + legacy preview 감사 링크
 - [ ] PR-C~F: v2 STEP0→10 본 구현(현재는 STEP1 reconstruction + copy-preview 분기 일부만 진행 가능)
 - [x] PR-G: `SHAPEZ_MINING_LAYOUT_ENGINE=v2` 시 `copy_preview`의 **existing_layout_analysis**를 v2 `analyze_decoded_layout` JSON으로 전환·`map_timeline`은 당분간 `blueprint_map_summary` 유지 (2026-05-14 구현)
-- [ ] PR-H(게이트): v2 경로·`include_solver_*` 회귀·전역 pytest/ruff/mypy/black green **후에만** `asteroid_mining_layout` → `asteroid_mining_layout_old` 물리 리네임 단독 PR
+- [x] PR-H(런타임): v1 `django_apps...asteroid_mining_layout` import·zip 부트스트랩·`include_solver_*` 제거; 보관 `asteroid_mining_layout_v1_deprecated/` (물리 대규모 리네임 단독 PR은 선택)
 
 ### 공통 · 스키마
 

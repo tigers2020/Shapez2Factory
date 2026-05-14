@@ -114,15 +114,14 @@ def merge_with_transport_and_final_mining_map(
     final ``asteroid_field`` rows (preserves active miners for analysis).
     """
 
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing import routing_cells
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
-        final_validation,
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.adapters import (
+        mining_map_cells as _mmc,
     )
 
-    raw_w = final_validation.cells_dict_from_mining_map(with_transport_mining_map)
+    raw_w = _mmc.cells_dict_from_mining_map(with_transport_mining_map)
     cells: dict[tuple[int, int], dict[str, Any]] = {k: dict(v) for k, v in raw_w.items()}
-    final_cells = final_validation.cells_dict_from_mining_map(final_mining_map)
-    mineable, _ = routing_cells.mineable_and_asteroid_coords(final_mining_map)
+    final_cells = _mmc.cells_dict_from_mining_map(final_mining_map)
+    mineable, _ = _mmc.mineable_and_asteroid_coords(final_mining_map)
     for c in mineable:
         fc = final_cells.get(c)
         if fc is None:

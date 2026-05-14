@@ -58,10 +58,10 @@ SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED = os.environ.get(
 # ``SHAPEZ_MINING_LAYOUT_ENGINE``: 예약. ``copy_preview``는 항상 v2 타임라인·분석.
 # 이 값으로 분기하지 않음. 배포·문서 호환을 위해 env 키는 유지한다. 기본 ``v2``.
 SHAPEZ_MINING_LAYOUT_ENGINE = os.environ.get("SHAPEZ_MINING_LAYOUT_ENGINE", "v2").strip().lower()
-# ``asteroid_mining_layout`` 폴더가 없고 ``asteroid_mining_layout.zip``만 있을 때 copy-preview가
-# ``build_solver_timeline``을 쓰기 전에 zip을 sibling 폴더로 한 번 푼다. 읽기 전용 배포에서는 끈다.
+# ``SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT``: 레거시 v1 ``asteroid_mining_layout.zip`` 자동
+# 해제는 제거됨. 키는 설정 호환을 위해 유지하며 기본은 OFF(동작 없음).
 SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT = os.environ.get(
-    "SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT", "true"
+    "SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT", "false"
 ).strip().lower() not in {"0", "false", "no", "off"}
 
 # --- SOLVER_GRAPH_PREVIEW_* ---

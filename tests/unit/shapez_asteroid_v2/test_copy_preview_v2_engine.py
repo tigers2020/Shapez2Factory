@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import gzip
 import importlib
-import importlib.util
 import json
 
 import pytest
@@ -79,11 +78,14 @@ def test_copy_preview_v2_only_returns_sidecar_keys() -> None:
 
 
 @pytest.mark.django_db
-def test_copy_preview_v2_include_solver_replay_without_v1_package_ok() -> None:
-    if _v1_mining_layout_available():
-        pytest.skip("v1 package present; degraded path not exercised")
+def test_copy_preview_legacy_include_solver_query_params_ignored() -> None:
+    """``include_solver_*`` must not attach v1 keys (v1 runtime removed)."""
+
     code = _encode_copy(_bp([{"X": 1, "Y": 0, "T": "Layout_ShapeMiner"}]))
-    url = reverse("shapez_asteroid:copy_preview") + "?include_solver_replay=1"
+    url = (
+        reverse("shapez_asteroid:copy_preview")
+        + "?include_solver_replay=1&include_solver_overlay=1"
+    )
     response = Client().post(
         url,
         data=json.dumps({"code": code}),
@@ -92,12 +94,6 @@ def test_copy_preview_v2_include_solver_replay_without_v1_package_ok() -> None:
     assert response.status_code == 200
     data = json.loads(response.content.decode())
     assert data["ok"] is True
-    assert data.get("solver_layout_package_unavailable") is True
     assert "solver_replay" not in data
-
-
-def _v1_mining_layout_available() -> bool:
-    return (
-        importlib.util.find_spec("django_apps.shapez_asteroid.services.asteroid_mining_layout")
-        is not None
-    )
+    assert "solver_timeline" not in data
+    assert "solver_layout_package_unavailable" not in data

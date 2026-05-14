@@ -1,6 +1,6 @@
 """copy-preview 개발용: 타임라인·리플레이 요약 Markdown (``var/`` 덮어쓰기).
 
-솔버 입력으로 사용하지 않는다. 레거시 ``asteroid_mining_layout``(zip 추출본)의
+솔버 입력으로 사용하지 않는다. 레거시 v1(``asteroid_mining_layout`` / zip 추출본)의
 ``solver_trace.trace_event`` / ``debug_log_event`` NDJSON은 별도 계약이며,
 zip 동봉본 갱신 시 ``documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md``
 단계와 경계 로깅을 재점검한다.

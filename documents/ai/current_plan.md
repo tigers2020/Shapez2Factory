@@ -5,7 +5,7 @@
 ## 목표 (갱신 2026-05-14)
 
 - **(범위 2, 진행 중)** 채굴 파이프라인 **v2 단일 권위** — Cursor 실행 플랜 `mining_pipeline_v2_authority` (저장소 밖 `.cursor/plans/`에 생성됨; 본 절이 워크스페이스 앵커). 단계는 ACTIVE MVP §3·§4와 동일: **웹 플래그·copy-preview v2 분기(PR-G) → 전부 green → PR-H v1 패키지 리네임**.
-- **(ACTIVE, 2026-05-13)** 채굴 솔버 **v2 그린필드 MVP** 실행 순서·게이트: [`plans/mining_solver_v2_mvp_execution_2026-05-13.md`](plans/mining_solver_v2_mvp_execution_2026-05-13.md) — v1 `asteroid_mining_layout` → `_old` 리네임은 **v2 스캐폴드·domain·import 경계 테스트 green 이후 단독 PR**.
+- **(ACTIVE, 2026-05-13)** 채굴 솔버 **v2 그린필드 MVP** 실행 순서·게이트: [`plans/mining_solver_v2_mvp_execution_2026-05-13.md`](plans/mining_solver_v2_mvp_execution_2026-05-13.md) — **런타임 v1 import는 2026-05-14 제거됨**; 문서의 «v1 → `_old` 물리 리네임» 단독 PR은 아카이브·히스토리용으로만 잔존 가능.
 - **레거시 웹·preview 의존 감사(REPORT)**: [`../reports/2026-05/asteroid_legacy_preview_stack_audit.md`](../reports/2026-05/asteroid_legacy_preview_stack_audit.md).
 - `shapez_asteroid` 1단계 스켈레톤·복사 미리보기·채굴 레이아웃 솔버(멀티패스·pass3 transport 등)까지 **구현 완료**로 본다.
 - 리포 전체 **로컬 품질 게이트**(`pytest` / `ruff` / `mypy` / `black --check`)를 통과한 상태를 유지한다.
@@ -42,7 +42,7 @@
 
 - [x] 리서치/플랜: 스켈레톤·소행성 추출·레이아웃 플랜 합의
 - [x] 사람 승인: 해당 플랜 기준 구현
-- [ ] **PR-H (`asteroid_mining_layout` → `_old` 리네임)**: **보류** — v2 copy-preview·솔버 오버레이 회귀 + 전역 품질 게이트 green 전 금지(단독 PR, MVP §4 PR-H). 2026-05-14 세션에서는 수행하지 않음.
+- [x] **PR-H (런타임 v1 차단)**: **2026-05-14 선행 반영** — `copy_preview`·`views`·`blueprint_map_summary`에서 `django_apps.shapez_asteroid.services.asteroid_mining_layout` import 제거; 보관용 스텁 `asteroid_mining_layout_v1_deprecated/`. 문서상 «물리 리네임·대규모 치환» 단독 PR은 별도로 남을 수 있음.
 - [x] 리서치/플랜: merge `repair not_found` 복구 ([`research_merge_repair_not_found_2026-05-09.md`](../research/research_merge_repair_not_found_2026-05-09.md), [`plans/merge_repair_not_found_recovery_2026-05-09.md`](plans/merge_repair_not_found_recovery_2026-05-09.md)) — 사용자 진행 지시로 승인 간주
 - [x] 리서치/플랜·승인: 솔버 안정화 ([`plans/mining_layout_solver_stabilization_2026-05-09.md`](plans/mining_layout_solver_stabilization_2026-05-09.md)) — 정식 반영·구현 착수 허용
 

@@ -15,12 +15,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.decode impor
     analyze_decoded_layout,
     analyze_to_context,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.preview_json import (
-    existing_layout_analysis_to_json,
-    to_jsonable,
-)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction.asteroid_reconstruction import (  # noqa: E501
     reconstruct_asteroid_mining_field,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization import (
+    existing_layout_analysis_to_json,
+    to_jsonable,
 )
 from django_apps.shapez_asteroid.services.behavior_artifact_collector import (
     BehaviorArtifactCollector,
@@ -70,6 +70,7 @@ def build_copy_preview_v2_sidecars(
     }
     reconstruction_summary = {
         "mineable_placement_count": len(recon.mineable_placement_cells),
+        "interior_patch_count": len(recon.interior_patch_cells),
         "extraction_shell_count": len(recon.extraction_shell_cells),
         "full_barrier_count": len(recon.full_barrier_cells),
         "extractor_cell_count": len(recon.extractor_cells),

@@ -2,9 +2,9 @@
 STEP 1 — Asteroid reconstruction (CANON ``05_step1_reconstruction.md`` §6).
 
 Blueprint scan → asteroid shell / transport / equipment / barriers → outside flood
-(with Chebyshev closing on the shell perimeter) → inferred **interior mining-region
-candidates** (cells inside the closed shell perimeter with no blueprint row) →
-``mineable_placement_cells``.
+(with Chebyshev closing on the **transport-stripped hull** ``full_barrier − belt − pipe``,
+matching copy-preview strip semantics) → inferred **interior mining-region candidates**
+(cells inside that closed perimeter with no blueprint row) → ``mineable_placement_cells``.
 
 **Void wording (domain):** ``interior_set`` / ``interior_patch_cells`` are *not*
 arbitrary map void or “air off the asteroid”. They are empty lattice sites inferred
@@ -34,16 +34,18 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord
     is_physical_x,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
-    DecodedBlueprintDocument,
     DecodedExistingLayoutContext,
-    ReconstructionDTO,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid import (
     physical_column_count_inclusive,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.reconstruction import (
+    ReconstructionDTO,
+)
 from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_none as _int_or_none
 from django_apps.shapez_asteroid.services.style_classifier import PlotStyle, classify_layout_type
 
+from ..domain.decoded_blueprint import DecodedBlueprintDocument
 from .patch_interior import compute_patch_interior_cells
 
 
@@ -96,6 +98,17 @@ def _is_asteroid_shell_layout_type(layout_t: str | None) -> bool:
 
 def _sorted_cells(cells: Iterable[BlueprintCell]) -> tuple[BlueprintCell, ...]:
     return tuple(sorted(cells, key=lambda c: (c[1], c[0])))
+
+
+def validate_reconstruction_placement_contract(dto: ReconstructionDTO) -> None:
+    """``interior_patch_cells ⊆ mineable_placement_cells`` (STEP 1 → Pass1 contract)."""
+
+    interior_f = frozenset(dto.interior_patch_cells)
+    mineable_f = frozenset(dto.mineable_placement_cells)
+    if not interior_f <= mineable_f:
+        extra = sorted(interior_f - mineable_f, key=lambda c: (c[1], c[0]))[:24]
+        msg = f"interior_patch_cells must be subset of mineable_placement_cells; extra={extra!r}"
+        raise ValueError(msg)
 
 
 def _bbox_from_cells(cells: Iterable[BlueprintCell]) -> BBox | None:
@@ -199,8 +212,11 @@ def reconstruct_asteroid_mining_field(
     if not full_barrier_cells:
         return ReconstructionDTO()
 
+    # Match ``preview_reconstruction_timeline`` strip-transport hull: belt/pipe rows are
+    # dropped before interior inference so corridors do not count as perimeter blockers.
+    hull_for_interior_inference = full_barrier_cells - belt_cells - pipe_cells
     interior_raw = compute_patch_interior_cells(
-        set(asteroid_shell_cells),
+        set(hull_for_interior_inference),
         perimeter_bridge_steps=1,
     )
     interior_set = {c for c in interior_raw if c not in full_barrier_cells}
@@ -243,7 +259,7 @@ def reconstruct_asteroid_mining_field(
     _assert_physical_x_cells("equipment_footprint_mineable_cells", equipment_footprint)
     _assert_physical_x_cells("interior_patch_cells", interior_set)
 
-    return ReconstructionDTO(
+    dto = ReconstructionDTO(
         mineable_placement_cells=_sorted_cells(mineable),
         extraction_shell_cells=_sorted_cells(asteroid_shell_cells),
         full_barrier_cells=_sorted_cells(full_barrier_cells),
@@ -257,9 +273,12 @@ def reconstruct_asteroid_mining_field(
         external_margin=margin,
         external_margin_bbox_source=margin_source,
     )
+    validate_reconstruction_placement_contract(dto)
+    return dto
 
 
 __all__ = [
     "gather_bp_entries_recursive",
     "reconstruct_asteroid_mining_field",
+    "validate_reconstruction_placement_contract",
 ]

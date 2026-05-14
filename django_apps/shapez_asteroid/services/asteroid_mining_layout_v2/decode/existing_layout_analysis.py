@@ -28,7 +28,6 @@ from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import BBox, Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
-    DecodedBlueprintDocument,
     DecodedExistingLayoutContext,
     EquipmentTransportAttachment,
     ExistingEquipmentAnalysis,
@@ -47,6 +46,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums
     TransportKind,
 )
 from django_apps.shapez_asteroid.services.style_classifier import PlotStyle, classify_layout_type
+
+from ..domain.decoded_blueprint import DecodedBlueprintDocument
 
 _CARDINAL: tuple[tuple[int, int], ...] = ((1, 0), (-1, 0), (0, 1), (0, -1))
 

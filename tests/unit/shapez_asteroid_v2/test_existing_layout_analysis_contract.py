@@ -20,7 +20,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums
     TransportComponentStatus,
     TransportKind,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.preview_json import (
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization import (
     existing_layout_analysis_to_json,
 )
 

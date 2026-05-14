@@ -23,5 +23,6 @@ def test_sidecars_include_full_reconstruction_and_partial_pipeline_meta() -> Non
 
     rs = side["reconstruction_summary"]
     assert rs["mineable_placement_count"] == 0
+    assert rs.get("interior_patch_count") == 0
     assert "extractor_cell_count" in rs
     assert "extension_cell_count" in rs

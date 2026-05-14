@@ -120,6 +120,13 @@ def test_reconstruction_preview_frame_order_includes_strip_and_inner_patch() -> 
     roles = {((int(r["x"]), int(r["y"])), r.get("role")) for r in inner["mining_map"]}
     assert any(role == "inferred" for (_xy, role) in roles)
 
+    inferred_n = sum(1 for r in inner["mining_map"] if r.get("role") == "inferred")
+    assert inferred_n == len(recon.interior_patch_cells)
+
+    mineable_fr = next(f for f in frames if f["id"] == "v2_recon_mineable")
+    phased = sum(1 for r in mineable_fr["mining_map"] if r.get("phase") == "v2_recon_mineable")
+    assert phased == len(recon.mineable_placement_cells)
+
 
 def test_dominant_surface_includes_fluid_miner_not_on_shell_tiles() -> None:
     """Shell entries are only ``AsteroidField*`` (no surface hint); fluid miner must set default."""

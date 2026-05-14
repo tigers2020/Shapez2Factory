@@ -40,6 +40,8 @@
       data-asteroid-copy-root
       data-copy-preview-url="{% url 'shapez_asteroid:copy_preview' %}"
       data-map-cells-url="{% url 'shapez_asteroid:map_cells' %}"
+      data-am-sprite-atlas-image="{% static 'web/asteroid_optimizer/sprites/asteroid_map_atlas.png' %}"
+      data-am-sprite-atlas-meta="{% static 'web/asteroid_optimizer/sprites/asteroid_map_atlas.json' %}"
       data-msg-no-bounds="{% trans 'No XY bounds from entries.' %}"
       data-msg-network="{% trans 'Network error' %}"
       data-msg-failed="{% trans 'Request failed' %}"
@@ -473,6 +475,9 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{% static 'web/asteroid_optimizer/js/map_sprite_atlas.js' %}"></script>
+<script src="{% static 'web/asteroid_optimizer/js/map_sprite_resolver.js' %}"></script>
+<script src="{% static 'web/asteroid_optimizer/js/map_sprite_renderer.js' %}"></script>
 <script>
 (function () {
   var root = document.querySelector("[data-asteroid-copy-root]");
@@ -550,6 +555,9 @@
   var SPAN = 10;
   var plotCompact = null;
   var svgNs = "http://www.w3.org/2000/svg";
+  var mapSpriteAtlas = null;
+  var mapSpriteExternalLoadStarted = false;
+  var spriteAtlasWarned = false;
   /** Replay v5 ``route_replaced`` / UI boundary: belt|pipe aliases → shape_belt|fluid_pipe. */
   function normalizeReplayTransportKind(kind) {
     if (kind == null || kind === "") return null;
@@ -2150,6 +2158,48 @@
     if (!plotSvg) return;
     plotSvg.innerHTML = "";
     plotCompact = null;
+    if (typeof globalThis !== "undefined" && globalThis.AM_AsteroidMapSpriteAtlas && !mapSpriteAtlas) {
+      mapSpriteAtlas = globalThis.AM_AsteroidMapSpriteAtlas.createFallbackSpriteAtlas(32);
+    }
+    if (
+      typeof globalThis !== "undefined" &&
+      globalThis.AM_AsteroidMapSpriteAtlas &&
+      root.dataset.amSpriteAtlasImage &&
+      root.dataset.amSpriteAtlasMeta &&
+      !mapSpriteExternalLoadStarted
+    ) {
+      var iuSp = String(root.dataset.amSpriteAtlasImage || "").trim();
+      var muSp = String(root.dataset.amSpriteAtlasMeta || "").trim();
+      if (iuSp && muSp) {
+        mapSpriteExternalLoadStarted = true;
+        if (typeof globalThis.spriteAtlasLoadFailed !== "undefined") {
+          globalThis.spriteAtlasLoadFailed = false;
+        }
+        globalThis.AM_AsteroidMapSpriteAtlas.loadSpriteAtlas(iuSp, muSp).then(
+          function (a) {
+            mapSpriteAtlas = a;
+            if (mapTimelineList.length) {
+              setDecodeStepIndex(decodeStepIndex);
+            }
+          },
+          function () {
+            if (typeof globalThis.spriteAtlasLoadFailed !== "undefined") {
+              globalThis.spriteAtlasLoadFailed = true;
+            }
+            if (!spriteAtlasWarned && typeof console !== "undefined" && console.warn) {
+              spriteAtlasWarned = true;
+              console.warn(
+                "[asteroid map] sprite atlas failed to load; using colored tile fallback until next successful load."
+              );
+            }
+            mapSpriteAtlas = globalThis.AM_AsteroidMapSpriteAtlas.createFallbackSpriteAtlas(32);
+            if (mapTimelineList.length) {
+              setDecodeStepIndex(decodeStepIndex);
+            }
+          }
+        );
+      }
+    }
     var catalog = styleCatalog && typeof styleCatalog === "object" ? styleCatalog : {};
     function mapEntryTitle(entry) {
       if (!entry) return "";
@@ -2538,6 +2588,30 @@
       }
       return false;
     }
+    function cellIsOutputStubTransport(transport_row, transport_role) {
+      if (!transport_row) return false;
+      var pnStub = shapezNeighbors4(transport_row.x, transport_row.y);
+      var siStub;
+      for (siStub = 0; siStub < pnStub.length; siStub++) {
+        var nbStub = cellAt[pnStub[siStub][0] + "," + pnStub[siStub][1]];
+        if (!nbStub) continue;
+        if (
+          transport_role === "belt" &&
+          isShapeHeadTile(nbStub) &&
+          headOutputsToTransport(nbStub, transport_row)
+        ) {
+          return true;
+        }
+        if (
+          transport_role === "pipe" &&
+          isFluidHeadTile(nbStub) &&
+          headOutputsToTransport(nbStub, transport_row)
+        ) {
+          return true;
+        }
+      }
+      return false;
+    }
     function appendStationPerimeterOutlines(parent, is_head_tile, is_extension_tile) {
       var assigned_extension = Object.create(null);
       function extensionFacesParent(extension_row, parent_row) {
@@ -2726,6 +2800,55 @@
       var x0 = 1 + idx + pad;
       var y0 = p.y - minY + pad;
       var size = 1 - 2 * pad;
+      var sprAt = typeof globalThis !== "undefined" ? globalThis : window;
+      var atlas = mapSpriteAtlas;
+      var Rnd = sprAt.AM_AsteroidMapSpriteRenderer;
+      var Rslv = sprAt.AM_AsteroidMapSpriteResolver;
+      var useSp = atlas && Rnd && Rslv;
+      if (useSp) {
+        var specCell = Rslv.resolveMiningCellSpriteDrawSpec(p, atlas.meta, role, null);
+        if (specCell.baseKey && specCell.baseKey !== "empty") {
+          var opCell = null;
+          if (transportOverVoid && (role === "belt" || role === "pipe")) {
+            opCell = 0.22;
+          } else if (transportOverVoid) {
+            opCell = 0.35;
+          }
+          var okCell = Rnd.appendSvgSpriteTile(
+            parent,
+            svgNs,
+            atlas,
+            specCell.baseKey,
+            x0,
+            y0,
+            size,
+            specCell.rotationDeg || 0,
+            {
+              className: "am-map-sprite-terrain",
+              titleText: titleText,
+              stroke: fluidClusterStroke || null,
+              strokeWidth: fluidClusterStroke ? 0.14 : null,
+              opacity: opCell,
+            }
+          );
+          if (okCell) {
+            if (specCell.overlays && specCell.overlays.length && Rnd.appendSvgSpriteOverlays) {
+              Rnd.appendSvgSpriteOverlays(
+                parent,
+                svgNs,
+                atlas,
+                specCell.overlays,
+                x0,
+                y0,
+                size,
+                specCell.rotationDeg || 0,
+                { className: "am-map-sprite-overlay", opacity: opCell != null ? opCell : 0.85 }
+              );
+            }
+            return;
+          }
+        }
+      }
       var r = document.createElementNS(svgNs, "rect");
       r.setAttribute("x", String(x0));
       r.setAttribute("y", String(y0));
@@ -2754,7 +2877,7 @@
       }
       parent.appendChild(r);
     }
-    /** Pipe blueprint cells: faint fill + cluster-colored stubs + junction glyph (belt can reuse helpers later). */
+    /** Pipe blueprint cells: sprite atlas tile + optional junction glyph (legacy rect fallback). */
     function appendPipeCell(parent, p, titleText) {
       var idx = xi[p.x];
       if (idx === undefined) return;
@@ -2768,23 +2891,6 @@
       var strokeUse = strokeCluster || fillForRole("pipe");
       var g = document.createElementNS(svgNs, "g");
       g.setAttribute("class", "am-pipe-cell");
-      var rect = document.createElementNS(svgNs, "rect");
-      rect.setAttribute("x", String(x0));
-      rect.setAttribute("y", String(y0));
-      rect.setAttribute("width", String(size));
-      rect.setAttribute("height", String(size));
-      rect.setAttribute("rx", "0.06");
-      rect.setAttribute("ry", "0.06");
-      var pipeOverVoid = !!p.transport_over_void;
-      if (pipeOverVoid) {
-        rect.setAttribute("fill", "none");
-        rect.setAttribute("fill-opacity", "0");
-      } else {
-        rect.setAttribute("fill", fillForRole("pipe"));
-        rect.setAttribute("fill-opacity", opacityForRole("pipe"));
-      }
-      rect.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
-      rect.setAttribute("stroke-width", "0.04");
       var n = false;
       var e = false;
       var s = false;
@@ -2801,6 +2907,85 @@
         else if (d === "s") s = true;
         else if (d === "w") w = true;
       }
+      var pipeOverVoid = !!p.transport_over_void;
+      var sprAtP = typeof globalThis !== "undefined" ? globalThis : window;
+      var atlasP = mapSpriteAtlas;
+      var RndP = sprAtP.AM_AsteroidMapSpriteRenderer;
+      var RslvP = sprAtP.AM_AsteroidMapSpriteResolver;
+      var usePipeSp = atlasP && RndP && RslvP;
+      var isPipeStub = cellIsOutputStubTransport(p, "pipe");
+      if (usePipeSp) {
+        var specPipe = RslvP.resolveMiningCellSpriteDrawSpec(
+          p,
+          atlasP.meta,
+          "pipe",
+          { dirs: { n: n, e: e, s: s, w: w }, isStub: isPipeStub }
+        );
+        var okPipe = RndP.appendSvgSpriteTile(
+          g,
+          svgNs,
+          atlasP,
+          specPipe.baseKey,
+          x0,
+          y0,
+          size,
+          specPipe.rotationDeg || 0,
+          {
+            className: isPipeStub ? "am-map-sprite-output-stub" : "am-map-sprite-transport",
+            titleText: titleText,
+            stroke: strokeUse,
+            strokeWidth: 0.08,
+            opacity: pipeOverVoid ? 0.22 : null,
+          }
+        );
+        if (okPipe) {
+          var cntPipe = (n ? 1 : 0) + (e ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0);
+          var glyphPipeSp = pipeJunctionGlyph(n, e, s, w);
+          if (glyphPipeSp && cntPipe >= 3 && specPipe.baseKey === "pipe_straight") {
+            var jtSp = document.createElementNS(svgNs, "text");
+            jtSp.setAttribute("class", "am-pipe-junction-glyph");
+            jtSp.setAttribute("x", String(cx));
+            jtSp.setAttribute("y", String(cy));
+            jtSp.setAttribute("text-anchor", "middle");
+            jtSp.setAttribute("dominant-baseline", "central");
+            jtSp.setAttribute("fill", strokeUse);
+            jtSp.setAttribute("font-size", String(size * 0.52));
+            jtSp.textContent = glyphPipeSp;
+            g.appendChild(jtSp);
+          }
+          if (specPipe.overlays && specPipe.overlays.length && RndP.appendSvgSpriteOverlays) {
+            RndP.appendSvgSpriteOverlays(
+              g,
+              svgNs,
+              atlasP,
+              specPipe.overlays,
+              x0,
+              y0,
+              size,
+              specPipe.rotationDeg || 0,
+              { className: "am-map-sprite-overlay", opacity: pipeOverVoid ? 0.22 : 0.9 }
+            );
+          }
+          parent.appendChild(g);
+          return;
+        }
+      }
+      var rect = document.createElementNS(svgNs, "rect");
+      rect.setAttribute("x", String(x0));
+      rect.setAttribute("y", String(y0));
+      rect.setAttribute("width", String(size));
+      rect.setAttribute("height", String(size));
+      rect.setAttribute("rx", "0.06");
+      rect.setAttribute("ry", "0.06");
+      if (pipeOverVoid) {
+        rect.setAttribute("fill", "none");
+        rect.setAttribute("fill-opacity", "0");
+      } else {
+        rect.setAttribute("fill", fillForRole("pipe"));
+        rect.setAttribute("fill-opacity", opacityForRole("pipe"));
+      }
+      rect.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
+      rect.setAttribute("stroke-width", "0.04");
       g.appendChild(rect);
       function addLine(x1, y1, x2, y2) {
         var ln = document.createElementNS(svgNs, "line");
@@ -2838,7 +3023,7 @@
       }
       parent.appendChild(g);
     }
-    /** Shape belts: same stub rules as pipes, toward belts or shape station tiles. */
+    /** Shape belts: sprite atlas tile + optional junction glyph (legacy rect fallback). */
     function appendBeltCell(parent, p, titleText) {
       var idxB = xi[p.x];
       if (idxB === undefined) return;
@@ -2852,23 +3037,6 @@
       var strokeUseB = strokeClusterB || fillForRole("belt");
       var gB = document.createElementNS(svgNs, "g");
       gB.setAttribute("class", "am-belt-cell");
-      var rectB = document.createElementNS(svgNs, "rect");
-      rectB.setAttribute("x", String(x0b));
-      rectB.setAttribute("y", String(y0b));
-      rectB.setAttribute("width", String(sizeB));
-      rectB.setAttribute("height", String(sizeB));
-      rectB.setAttribute("rx", "0.06");
-      rectB.setAttribute("ry", "0.06");
-      var beltVoid = !!p.transport_over_void;
-      if (beltVoid) {
-        rectB.setAttribute("fill", "none");
-        rectB.setAttribute("fill-opacity", "0");
-      } else {
-        rectB.setAttribute("fill", fillForRole("belt"));
-        rectB.setAttribute("fill-opacity", opacityForRole("belt"));
-      }
-      rectB.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
-      rectB.setAttribute("stroke-width", "0.04");
       var nb = false;
       var eb = false;
       var sb = false;
@@ -2885,6 +3053,85 @@
         else if (db === "s") sb = true;
         else if (db === "w") wb = true;
       }
+      var beltVoid = !!p.transport_over_void;
+      var sprAtB = typeof globalThis !== "undefined" ? globalThis : window;
+      var atlasB = mapSpriteAtlas;
+      var RndB = sprAtB.AM_AsteroidMapSpriteRenderer;
+      var RslvB = sprAtB.AM_AsteroidMapSpriteResolver;
+      var useBeltSp = atlasB && RndB && RslvB;
+      var isBeltStub = cellIsOutputStubTransport(p, "belt");
+      if (useBeltSp) {
+        var specBelt = RslvB.resolveMiningCellSpriteDrawSpec(
+          p,
+          atlasB.meta,
+          "belt",
+          { dirs: { n: nb, e: eb, s: sb, w: wb }, isStub: isBeltStub }
+        );
+        var okBelt = RndB.appendSvgSpriteTile(
+          gB,
+          svgNs,
+          atlasB,
+          specBelt.baseKey,
+          x0b,
+          y0b,
+          sizeB,
+          specBelt.rotationDeg || 0,
+          {
+            className: isBeltStub ? "am-map-sprite-output-stub" : "am-map-sprite-transport",
+            titleText: titleText,
+            stroke: strokeUseB,
+            strokeWidth: 0.08,
+            opacity: beltVoid ? 0.22 : null,
+          }
+        );
+        if (okBelt) {
+          var cntBelt = (nb ? 1 : 0) + (eb ? 1 : 0) + (sb ? 1 : 0) + (wb ? 1 : 0);
+          var glyphBeltSp = pipeJunctionGlyph(nb, eb, sb, wb);
+          if (glyphBeltSp && cntBelt >= 3 && specBelt.baseKey === "belt_straight") {
+            var jtBsp = document.createElementNS(svgNs, "text");
+            jtBsp.setAttribute("class", "am-pipe-junction-glyph");
+            jtBsp.setAttribute("x", String(cxb));
+            jtBsp.setAttribute("y", String(cyb));
+            jtBsp.setAttribute("text-anchor", "middle");
+            jtBsp.setAttribute("dominant-baseline", "central");
+            jtBsp.setAttribute("fill", strokeUseB);
+            jtBsp.setAttribute("font-size", String(sizeB * 0.52));
+            jtBsp.textContent = glyphBeltSp;
+            gB.appendChild(jtBsp);
+          }
+          if (specBelt.overlays && specBelt.overlays.length && RndB.appendSvgSpriteOverlays) {
+            RndB.appendSvgSpriteOverlays(
+              gB,
+              svgNs,
+              atlasB,
+              specBelt.overlays,
+              x0b,
+              y0b,
+              sizeB,
+              specBelt.rotationDeg || 0,
+              { className: "am-map-sprite-overlay", opacity: beltVoid ? 0.22 : 0.9 }
+            );
+          }
+          parent.appendChild(gB);
+          return;
+        }
+      }
+      var rectB = document.createElementNS(svgNs, "rect");
+      rectB.setAttribute("x", String(x0b));
+      rectB.setAttribute("y", String(y0b));
+      rectB.setAttribute("width", String(sizeB));
+      rectB.setAttribute("height", String(sizeB));
+      rectB.setAttribute("rx", "0.06");
+      rectB.setAttribute("ry", "0.06");
+      if (beltVoid) {
+        rectB.setAttribute("fill", "none");
+        rectB.setAttribute("fill-opacity", "0");
+      } else {
+        rectB.setAttribute("fill", fillForRole("belt"));
+        rectB.setAttribute("fill-opacity", opacityForRole("belt"));
+      }
+      rectB.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
+      rectB.setAttribute("stroke-width", "0.04");
       gB.appendChild(rectB);
       function addLineB(x1, y1, x2, y2) {
         var lnB = document.createElementNS(svgNs, "line");
@@ -3073,6 +3320,36 @@
       else if (prStr.indexOf("pass1_scan_cursor") === 0) strokeP1 = "rgb(250 204 21 / 0.98)";
       var tipP1 = prStr + (pass1Ev ? " · " + pass1Ev : "");
       appendRouteReplayOutline(gPass1Replay, { x: rowP1.x, y: rowP1.y }, strokeP1, tipP1);
+      if (prStr.indexOf("pass1_scan_cursor") === 0) {
+        var gWinP1 = typeof globalThis !== "undefined" ? globalThis : window;
+        var atP1 = mapSpriteAtlas;
+        var rdP1 = gWinP1.AM_AsteroidMapSpriteRenderer;
+        var ixP1 = xi[rowP1.x];
+        if (
+          atP1 &&
+          rdP1 &&
+          ixP1 !== undefined &&
+          atP1.meta &&
+          atP1.meta.sprites &&
+          atP1.meta.sprites.overlay_replay_cursor
+        ) {
+          var padP1 = 0.12;
+          var x0p1 = 1 + ixP1 + padP1;
+          var y0p1 = rowP1.y - minY + padP1;
+          var szP1 = 1 - 2 * padP1;
+          rdP1.appendSvgSpriteTile(
+            gPass1Replay,
+            svgNs,
+            atP1,
+            "overlay_replay_cursor",
+            x0p1,
+            y0p1,
+            szP1,
+            0,
+            { className: "am-map-sprite-replay-cursor-overlay", titleText: tipP1, opacity: 0.65 }
+          );
+        }
+      }
     }
     if (gPass1Replay.childNodes.length) {
       plotSvg.appendChild(gPass1Replay);
@@ -3096,18 +3373,37 @@
       gS.setAttribute("class", "am-pc-soft");
       var gH = document.createElementNS(svgNs, "g");
       gH.setAttribute("class", "am-pc-hard");
-      function drawPcGroup(parent, arr, strokeHex, titleMsg) {
+      function appendCorridorOverlaySprite(parent, coordx, coordy, spriteKey, titleMsg) {
+        var gWin = typeof globalThis !== "undefined" ? globalThis : window;
+        var atlasPc = mapSpriteAtlas;
+        var RndPc = gWin.AM_AsteroidMapSpriteRenderer;
+        if (!atlasPc || !RndPc || !atlasPc.meta || !atlasPc.meta.sprites) return;
+        if (!atlasPc.meta.sprites[spriteKey]) return;
+        var idxPc = xi[coordx];
+        if (idxPc === undefined) return;
+        var padPc = 0.12;
+        var x0pc = 1 + idxPc + padPc;
+        var y0pc = coordy - minY + padPc;
+        var sizePc = 1 - 2 * padPc;
+        RndPc.appendSvgSpriteTile(parent, svgNs, atlasPc, spriteKey, x0pc, y0pc, sizePc, 0, {
+          className: "am-map-sprite-corridor-overlay",
+          titleText: titleMsg || "",
+          opacity: 0.5,
+        });
+      }
+      function drawPcGroup(parent, arr, strokeHex, titleMsg, spriteKey) {
         if (!Array.isArray(arr)) return;
         var ki;
         for (ki = 0; ki < arr.length; ki++) {
           var pr2 = arr[ki];
           if (!Array.isArray(pr2) || pr2.length < 2) continue;
           appendRouteReplayOutline(parent, { x: pr2[0], y: pr2[1] }, strokeHex, titleMsg);
+          appendCorridorOverlaySprite(parent, pr2[0], pr2[1], spriteKey, titleMsg);
         }
       }
-      drawPcGroup(gC, pcd2.candidate, "#0891b2", tCand);
-      drawPcGroup(gS, pcd2.soft, "#ca8a04", tSoft);
-      drawPcGroup(gH, pcd2.hard, "#dc2626", tHard);
+      drawPcGroup(gC, pcd2.candidate, "#0891b2", tCand, "overlay_candidate_corridor");
+      drawPcGroup(gS, pcd2.soft, "#ca8a04", tSoft, "overlay_soft_protected");
+      drawPcGroup(gH, pcd2.hard, "#dc2626", tHard, "overlay_hard_protected");
       gPc.appendChild(gC);
       gPc.appendChild(gS);
       gPc.appendChild(gH);

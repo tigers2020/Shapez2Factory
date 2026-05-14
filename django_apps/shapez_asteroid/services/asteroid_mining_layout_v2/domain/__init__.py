@@ -12,7 +12,6 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord
     as_blueprint_cell,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
-    DecodedBlueprintDocument,
     DecodedExistingLayoutContext,
     DuplicateCoordSampleDTO,
     EquipmentTransportAttachment,
@@ -71,6 +70,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pl
     is_terminal_state,
     placement_commit_transition_allowed,
 )
+
+from .decoded_blueprint import DecodedBlueprintDocument
 
 __all__ = [
     "BBox",

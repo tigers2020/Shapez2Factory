@@ -116,7 +116,7 @@ def test_diagnose_not_called_extension_only_mineable_restored() -> None:
     collector = BehaviorArtifactCollector(input_digest_prefix=input_digest_prefix_from_code(code))
     collector.record_decode_trace(trace)
     with patch(
-        "django_apps.shapez_asteroid.services.behavior_artifact_collector._recon_diag.diagnose_reconstruction_mineable_empty",  # noqa: E501
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization.dto_adapters._recon_diag.diagnose_reconstruction_mineable_empty",  # noqa: E501
     ) as mock_diag:
         build_copy_preview_v2_sidecars(decoded, behavior_artifact=collector)
     mock_diag.assert_not_called()
@@ -137,7 +137,7 @@ def test_diagnose_not_called_when_mineable_nonempty() -> None:
     collector = BehaviorArtifactCollector(input_digest_prefix=input_digest_prefix_from_code(code))
     collector.record_decode_trace(trace)
     with patch(
-        "django_apps.shapez_asteroid.services.behavior_artifact_collector._recon_diag.diagnose_reconstruction_mineable_empty",  # noqa: E501
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization.dto_adapters._recon_diag.diagnose_reconstruction_mineable_empty",  # noqa: E501
     ) as mock_diag:
         build_copy_preview_v2_sidecars(decoded, behavior_artifact=collector)
     mock_diag.assert_not_called()
@@ -155,7 +155,7 @@ def test_diagnosis_error_swallowed(tmp_path: Path) -> None:
         mineable_placement_cells=(),
     )
     with patch(
-        "django_apps.shapez_asteroid.services.behavior_artifact_collector._recon_diag.diagnose_reconstruction_mineable_empty",  # noqa: E501
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization.dto_adapters._recon_diag.diagnose_reconstruction_mineable_empty",  # noqa: E501
         side_effect=RuntimeError("boom"),
     ):
         collector.record_copy_preview_pipeline(

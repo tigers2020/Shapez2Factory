@@ -33,13 +33,13 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pass1_outer import (
     run_pass1_outer_placement,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.preview_json import to_jsonable
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
     asteroid_reconstruction as _ar,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
     patch_interior as _patch_interior,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization import to_jsonable
 from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_none as _int_or_none
 from django_apps.shapez_asteroid.services.style_classifier import (
     PlotStyle,
@@ -507,9 +507,9 @@ def _merge_interior_void(
 def _preview_interior_supplement(rows: list[dict[str, Any]]) -> frozenset[BlueprintCell]:
     """Void cells enclosed by the **current preview** solid hull (post-strip).
 
-    ``ReconstructionDTO.interior_patch_cells`` uses blueprint asteroid shell only; after
-    belt/equipment strip the preview silhouette can close gaps reconstruction did not use,
-    leaving visual holes unless patch interior is recomputed on non-``inferred`` rows.
+    STEP 1 now infers interiors from the same transport-stripped hull as this preview;
+    this pass remains a defensive merge so timeline frames never show inferred voids
+    absent from ``ReconstructionDTO.interior_patch_cells``.
     """
 
     solid: set[BlueprintCell] = set()

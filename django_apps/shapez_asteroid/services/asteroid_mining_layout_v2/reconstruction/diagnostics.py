@@ -15,18 +15,18 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.decode impor
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BlueprintCell,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
-    DecodedBlueprintDocument,
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
+    MineableEmptyCause,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.reconstruction import (
     DuplicateCoordSampleDTO,
     ReconstructionDiagnosisDTO,
     ReconstructionDTO,
 )
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
-    MineableEmptyCause,
-)
 from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_none as _int_or_none
 from django_apps.shapez_asteroid.services.style_classifier import PlotStyle, classify_layout_type
 
+from ..domain.decoded_blueprint import DecodedBlueprintDocument
 from .asteroid_reconstruction import (
     _is_asteroid_shell_layout_type,
     gather_bp_entries_recursive,

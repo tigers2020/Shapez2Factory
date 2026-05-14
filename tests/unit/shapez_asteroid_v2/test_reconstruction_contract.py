@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.decode import analyze_to_context
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain import decoded_blueprint
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
-    DecodedBlueprintDocument,
+    ReconstructionDTO,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
     compute_patch_interior_cells,
     reconstruct_asteroid_mining_field,
+    validate_reconstruction_placement_contract,
 )
 
 
@@ -120,7 +122,9 @@ def test_closing_prevents_tiny_perimeter_gap_leakage_fixture() -> None:
 def test_reconstruction_is_deterministic() -> None:
     decoded = {"BP": {"Entries": _hollow_square_shell(inner_x0=2, inner_y0=2, size=4)}}
     a = reconstruct_asteroid_mining_field(decoded)
-    b = reconstruct_asteroid_mining_field(DecodedBlueprintDocument(_root=dict(decoded)))
+    b = reconstruct_asteroid_mining_field(
+        decoded_blueprint.DecodedBlueprintDocument(_root=dict(decoded))
+    )
     assert a == b
 
 
@@ -322,6 +326,37 @@ def test_fully_occupied_interior_no_inferior_patch_mineable_is_shell_plus_miner(
     for blocked in ((3, 3), (4, 3), (4, 4)):
         assert blocked not in recon.mineable_placement_cells
     assert len(recon.mineable_placement_cells) == len(recon.extraction_shell_cells) + 1
+
+
+def test_interior_patch_from_extension_ring_without_asteroid_field_rows() -> None:
+    """Equipment-only perimeter (no ``AsteroidField*``) still closes an interior void."""
+
+    entries: list[dict[str, int | str]] = []
+    for x in range(10, 14):
+        for y in range(10, 14):
+            if x in (10, 13) or y in (10, 13):
+                entries.append({"X": x, "Y": y, "T": "Layout_ShapeMinerExtension"})
+    decoded = {"BP": {"Entries": entries}}
+    recon = reconstruct_asteroid_mining_field(decoded)
+    inner = {(11, 11), (12, 11), (11, 12), (12, 12)}
+    assert recon.extraction_shell_cells == ()
+    assert set(recon.interior_patch_cells) == inner
+    assert inner <= set(recon.mineable_placement_cells)
+    assert len(recon.mineable_placement_cells) == len(recon.extension_cells) + len(inner)
+
+
+def test_validate_reconstruction_placement_contract_rejects_disjoint_interior() -> None:
+    bad = ReconstructionDTO(
+        mineable_placement_cells=((1, 1),),
+        interior_patch_cells=((2, 2),),
+        full_barrier_cells=((1, 1), (2, 2)),
+    )
+    try:
+        validate_reconstruction_placement_contract(bad)
+    except ValueError as exc:
+        assert "interior_patch_cells" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
 
 
 def test_reconstruction_never_contains_x_zero_cells_across_negative_positive_shell() -> None:

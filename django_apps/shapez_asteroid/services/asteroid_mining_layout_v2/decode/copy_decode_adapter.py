@@ -18,13 +18,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
-    DecodedBlueprintDocument,
-)
 from django_apps.shapez_core.services.shapez_copy_decode import (
     ShapezCopyDecodeError,
     decode_shapez2_copy,
 )
+
+from ..domain.decoded_blueprint import DecodedBlueprintDocument
 
 
 def decode_copy_payload(payload: str | Mapping[str, Any]) -> DecodedBlueprintDocument:

@@ -213,6 +213,25 @@ def test_recoverability_class_mapping_table() -> None:
     )
 
 
+def test_preserve_drop_blocker_detail_for_no_same_kind_route() -> None:
+    """Telemetry: ``preserve_drop_blocker`` disambiguates ``NO_MATCHING_STUB``."""
+
+    b, d = pass12_merged_layout_seed._preserve_drop_blocker_detail_for_row(
+        pdr=pass12_merged_layout_seed.PreserveDropReason.NO_MATCHING_STUB,
+        detail_row={
+            "nearest_same_kind_transport_hops": 2,
+            "preserve_stub_recovery": {
+                "attempted": True,
+                "accepted": False,
+                "rejected_reason": "no_same_kind_route",
+                "rejected_reason_subtype": "test_subtype",
+            },
+        },
+    )
+    assert b == "no_route_to_same_kind_goal"
+    assert d is not None and "no_same_kind_route" in d and "test_subtype" in d
+
+
 def test_preserve_quality_bundle_and_score() -> None:
     bundle, score = preserve_quality_bundle_from_pass12(
         {

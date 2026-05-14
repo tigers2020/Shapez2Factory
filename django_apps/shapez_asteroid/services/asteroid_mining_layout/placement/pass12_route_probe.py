@@ -289,6 +289,10 @@ def _build_pass2_external_margin_diagnostic(
             reasons.append("is_external_never_true_on_sampled_neighbors")
             if shell_known and shell_outside == 0 and neighbor_coords:
                 reasons.append("all_sampled_neighbors_inside_predicate_shell_or_x0")
+            # Universe 밖 이웃이 있어도 ``is_external``은 bbox±margin 기준이라
+            # 빈 칸(void)이 셸 안에 있으면 여전히 False일 수 있다.
+            if shell_known and n_out_u > 0 and shell_outside == 0:
+                reasons.append("outside_universe_neighbors_inside_predicate_shell_padding")
         elif not neighbor_coords and eligible_n > 0:
             reasons.append("no_neighbor_coords_sampled")
     out: dict[str, Any] = {

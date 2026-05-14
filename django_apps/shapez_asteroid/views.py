@@ -156,6 +156,8 @@ _COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS: tuple[str, ...] = (
     "solver_quality_subtier",
     # ``termination`` (``degradation_causes``, ``quality_tier`` 등) — ``solver_summary``와 동일.
     "termination",
+    # map_timeline 길이 vs replay 이벤트 수 혼동 방지 (finalize ``trace_frame_counter_glossary``).
+    "trace_frame_counter_glossary",
 )
 
 
@@ -246,6 +248,11 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
     ``events``, ``computation_cycle``; v3 adds per-event cycle + Pass3 layout snapshots; v12 adds
     ``ui_frames`` and ``cycle_frames`` from ``replay_frame`` rows for STEP10 cycle streaming);
     shares one ``build_solver_timeline`` run with ``include_solver_overlay`` when both are set.
+
+    Count semantics: ``len(map_timeline)`` (here and in debug ``map_timeline_built``) is the small
+    decoded step count from ``build_map_timeline``. ``solver_summary.trace_frame_counter_glossary``
+    documents how that differs from ``replay_event_count`` / ``replay_frame_count`` on the same
+    run — do not compare those integers as the same quantity.
     """
 
     try:

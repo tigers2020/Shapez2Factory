@@ -117,6 +117,9 @@ def test_success_tier_appends_degradation_causes_from_pass12_signals() -> None:
     assert summary["solver_termination"] == SOLVER_TERMINATION_SUCCESS
     term = summary["termination"]
     assert term["tier"] == "SUCCESS"
+    gl = summary.get("trace_frame_counter_glossary")
+    assert isinstance(gl, dict)
+    assert "map_timeline_frame_count" in gl and "replay_event_count" in gl
     dc = list(term["degradation_causes"])
     assert DEGRADATION_CAUSE_EXTRACTOR_DROP_VS_MERGED_SEED in dc
     assert DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP in dc

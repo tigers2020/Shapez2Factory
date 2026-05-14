@@ -883,6 +883,21 @@ def build_final_solver_output(
     summary_fields["solver_timeline_frame_count"] = len(frames)
     summary_fields["map_timeline_frame_count"] = len(map_timeline)
     summary_fields.update(replay_diag_counts_for_solver_summary())
+    # Display-only: NDJSON/UI에서 map_timeline 길이와 replay 이벤트 수를 혼동하지 않도록.
+    summary_fields["trace_frame_counter_glossary"] = {
+        "map_timeline_frame_count": (
+            "Decoded visualization steps from build_map_timeline(decoded); small integer."
+        ),
+        "solver_timeline_frame_count": (
+            "Solver milestone frames in finalize output; not the same as map_timeline."
+        ),
+        "replay_event_count": (
+            "Count of trace_event emissions (solver_trace.trace_event) this run."
+        ),
+        "replay_frame_count": (
+            "Supplemental replay_frame rows (stride-based cycle snapshots); not map_timeline."
+        ),
+    }
     # ``replay_events`` is same-run append-only export for STEP10 / NDJSON — not a policy input
     # for routing or recovery (see ``solver_replay_events`` and ``solver_trace`` module docs).
     step4_fail_overlay = merge_step4_route_failure_replay_overlay(

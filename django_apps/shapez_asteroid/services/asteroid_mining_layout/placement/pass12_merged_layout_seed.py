@@ -491,6 +491,11 @@ def _missing_stub_drop_detail_row(
         detail_row["preserve_stub_recovery"] = copy.deepcopy(_empty_psr(nhops))
     _normalize_preserve_stub_recovery_drop_contract(detail_row)
     _ensure_extension_carve_schema_on_preserve_stub_recovery(detail_row)
+    blk, det = _preserve_drop_blocker_detail_for_row(pdr=pdr, detail_row=detail_row)
+    if blk:
+        detail_row["preserve_drop_blocker"] = blk
+    if det:
+        detail_row["preserve_drop_detail"] = det
     return detail_row
 
 
@@ -963,6 +968,55 @@ def _attempt_preserve_stub_recovery(
         "recovery_probe_budget": MAX_PASS12_RECOVERY_PROBES_PER_MINER,
     }
     return relaxed_coords, new_eff, new_routed, provenance
+
+
+def _preserve_drop_blocker_detail_for_row(
+    *,
+    pdr: PreserveDropReason,
+    detail_row: Mapping[str, Any],
+) -> tuple[str | None, str | None]:
+    """Trace-only refinement when ``preserve_drop_reason`` is ambiguous (telemetry)."""
+
+    if pdr != PreserveDropReason.NO_MATCHING_STUB:
+        return None, None
+    psr = detail_row.get("preserve_stub_recovery")
+    if not isinstance(psr, dict):
+        return (
+            "no_adjacent_output_stub_cell_for_kind",
+            "preserve_stub_recovery_missing_after_drop_contract",
+        )
+    rr = psr.get("rejected_reason")
+    if rr == "no_same_kind_route":
+        sub = psr.get("rejected_reason_subtype")
+        detail = f"stub_recovery_rejected={rr}"
+        if sub:
+            detail += f";subtype={sub}"
+        return "no_route_to_same_kind_goal", detail
+    if rr in ("visit_cap", "route_len_over_cap", "new_transport_cells_over_cap"):
+        return "route_budget_exhausted", f"stub_recovery_rejected={rr}"
+    if rr == "no_stub_space":
+        return "blocked_near_stub", f"stub_recovery_rejected={rr}"
+    if rr in ("nearest_hops_none", "nearest_hops_over_cap"):
+        return str(rr), f"stub_recovery_not_attempted={rr}"
+    probe = psr.get("stub_route_probe_last")
+    goal_zero = False
+    if isinstance(probe, dict):
+        gc = probe.get("goal_count")
+        if isinstance(gc, int) and gc == 0:
+            goal_zero = True
+    if not goal_zero:
+        g2 = psr.get("goal_count")
+        if isinstance(g2, int) and g2 == 0:
+            goal_zero = True
+    if goal_zero and psr.get("attempted") and not psr.get("accepted"):
+        return "empty_route_goal_set", "stub_route_probe_zero_goals"
+    nh = detail_row.get("nearest_same_kind_transport_hops")
+    if isinstance(nh, int) and nh >= 1:
+        return (
+            "no_adjacent_output_stub_cell_for_kind",
+            "same_kind_transport_beyond_cardinal_stub_adjacency",
+        )
+    return "no_adjacent_output_stub_cell_for_kind", None
 
 
 def _classify_preserve_drop_reason(

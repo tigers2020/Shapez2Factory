@@ -1561,37 +1561,6 @@ def test_tier_d_bounded_repack_opens_route_isolated_probe() -> None:
     assert trace_psr.get("output_repack_selected_rotation") == 1
 
 
-def test_tier_d_skips_diagonal_only_extension_topology() -> None:
-    """Diagonal-only extension attachment: no cardinal path miner→all extensions."""
-
-    cells: dict[Coord, dict[str, object]] = {
-        (10, 10): {
-            "role": "occupied",
-            "layout_kind": "fluid_miner",
-            "r": 0,
-            "surface": "fluid",
-        },
-        (11, 11): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
-    }
-    mineable = frozenset((x, y) for x in range(8, 14) for y in range(8, 14))
-    ex = frozenset({(11, 11)})
-    res = try_preserve_stub_route_recovery(
-        miner=(10, 10),
-        extensions=ex,
-        transport_kind="fluid_pipe",
-        cells=cells,
-        mineable=mineable,
-        scratch_transport_cells=frozenset(),
-        scratch_blocked_cells=frozenset(),
-        nearest_same_kind_transport_hops=3,
-        row_r_raw=0,
-    )
-    assert res.accepted is False
-    psr = res.trace["preserve_stub_recovery"]
-    assert psr.get("tier_d_skip_reason") == "tier_d_skipped_diagonal_only_extension_topology"
-    assert psr.get("tier_d_attempted") is False
-
-
 def test_tier_d_does_not_mutate_input_cells_on_rejected_probe() -> None:
     """Rejected full recovery leaves the original ``cells`` mapping unchanged (Tier D may run)."""
 
@@ -1706,3 +1675,206 @@ def test_tier_d_preserves_scratch_blocked_corridor_cell() -> None:
         row_r_raw=1,
     )
     assert cells[(4, 5)] == blocked_row
+
+
+def test_tier_d_success_sets_required_trace_fields() -> None:
+    """Tier D success path fills every ``plan_pass12_bounded_output_reorientation_repack`` key."""
+
+    psr_mod = pass12_preserve_stub_route_recovery
+
+    def ext() -> dict[str, object]:
+        return {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid", "r": 0}
+
+    def inf(x: int, y: int) -> dict[str, object]:
+        return {
+            "x": x,
+            "y": y,
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        }
+
+    cells: dict[Coord, dict[str, object]] = {
+        (5, 5): {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 1,
+            "surface": "fluid",
+        },
+        (6, 5): ext(),
+        (5, 10): {"x": 5, "y": 10, "role": "pipe", "surface": "fluid"},
+    }
+    for y in range(6, 10):
+        cells[(5, y)] = inf(5, y)
+    mineable = frozenset((x, y) for x in range(3, 9) for y in range(3, 12))
+    ex = frozenset({(6, 5)})
+    want_wr = "pipe"
+    goals = psr_mod.goal_transport_cells(
+        cells=cells, want_wr=want_wr, scratch_transport_cells=frozenset({(5, 10)})
+    )
+    existing = psr_mod.existing_same_kind_transport_cells_from_map(cells, want_wr=want_wr)
+    order = psr_mod._rotation_order(1)
+    trace_psr = psr_mod._empty_psr(3)
+    base_trace: dict[str, object] = {"preserve_stub_recovery": trace_psr}
+    saw_visit_cap = [False]
+    saw_bfs_no_route = [False]
+    saw_route_len = [False]
+    saw_new_transport_over = [False]
+    post_carve_no_route = [False]
+    res = psr_mod._try_tier_d_bounded_output_reorientation_repack(
+        miner=(5, 5),
+        extensions=ex,
+        cells=dict(cells),
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(5, 10)}),
+        scratch_blocked_cells=frozenset(),
+        want_wr=want_wr,
+        goals=goals,
+        existing_same_kind=existing,
+        order=order,
+        psr=trace_psr,
+        base_trace=base_trace,
+        saw_visit_cap=saw_visit_cap,
+        saw_bfs_no_route=saw_bfs_no_route,
+        saw_route_len=saw_route_len,
+        saw_new_transport_over=saw_new_transport_over,
+        post_carve_no_route=post_carve_no_route,
+    )
+    assert res is not None
+    for key in psr_mod.TIER_D_SUCCESS_TRACE_FIELD_KEYS:
+        assert key in trace_psr
+    assert psr_mod.tier_d_success_preserve_stub_recovery_trace_contract_ok(trace_psr)
+
+
+def test_tier_d_success_returns_removed_and_repacked_extension_cells() -> None:
+    """``StubRouteRecoveryResult`` carries Tier D strip/replace coords for merged-seed commit."""
+
+    psr_mod = pass12_preserve_stub_route_recovery
+
+    def ext() -> dict[str, object]:
+        return {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid", "r": 0}
+
+    def inf(x: int, y: int) -> dict[str, object]:
+        return {
+            "x": x,
+            "y": y,
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        }
+
+    cells: dict[Coord, dict[str, object]] = {
+        (5, 5): {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 1,
+            "surface": "fluid",
+        },
+        (6, 5): ext(),
+        (5, 10): {"x": 5, "y": 10, "role": "pipe", "surface": "fluid"},
+    }
+    for y in range(6, 10):
+        cells[(5, y)] = inf(5, y)
+    mineable = frozenset((x, y) for x in range(3, 9) for y in range(3, 12))
+    ex = frozenset({(6, 5)})
+    want_wr = "pipe"
+    goals = psr_mod.goal_transport_cells(
+        cells=cells, want_wr=want_wr, scratch_transport_cells=frozenset({(5, 10)})
+    )
+    existing = psr_mod.existing_same_kind_transport_cells_from_map(cells, want_wr=want_wr)
+    order = psr_mod._rotation_order(1)
+    trace_psr = psr_mod._empty_psr(3)
+    base_trace: dict[str, object] = {"preserve_stub_recovery": trace_psr}
+    saw_visit_cap = [False]
+    saw_bfs_no_route = [False]
+    saw_route_len = [False]
+    saw_new_transport_over = [False]
+    post_carve_no_route = [False]
+    res = psr_mod._try_tier_d_bounded_output_reorientation_repack(
+        miner=(5, 5),
+        extensions=ex,
+        cells=dict(cells),
+        mineable=mineable,
+        scratch_transport_cells=frozenset({(5, 10)}),
+        scratch_blocked_cells=frozenset(),
+        want_wr=want_wr,
+        goals=goals,
+        existing_same_kind=existing,
+        order=order,
+        psr=trace_psr,
+        base_trace=base_trace,
+        saw_visit_cap=saw_visit_cap,
+        saw_bfs_no_route=saw_bfs_no_route,
+        saw_route_len=saw_route_len,
+        saw_new_transport_over=saw_new_transport_over,
+        post_carve_no_route=post_carve_no_route,
+    )
+    assert res is not None
+    assert res.tier_d_extensions_removed == ex
+    assert res.tier_d_final_extension_cells == frozenset({(4, 5)})
+    assert len(res.tier_d_extension_placements) == 1
+    assert res.tier_d_extension_placements[0][0] == (4, 5)
+
+
+def test_tier_d_failure_keeps_existing_drop_behavior() -> None:
+    """Diagonal-only bundle: still rejected; Tier D does not flip ``accepted``."""
+
+    cells: dict[Coord, dict[str, object]] = {
+        (10, 10): {
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+        },
+        (11, 11): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+    }
+    mineable = frozenset((x, y) for x in range(8, 14) for y in range(8, 14))
+    res = try_preserve_stub_route_recovery(
+        miner=(10, 10),
+        extensions=frozenset({(11, 11)}),
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset(),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=3,
+        row_r_raw=0,
+    )
+    assert res.accepted is False
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr.get("tier_d_attempted") is False
+    assert psr.get("tier_d_success") is False
+
+
+def test_tier_d_never_accepts_diagonal_topology() -> None:
+    """4-neighbor contract: diagonal-only extension graph is skipped, never ``tier_d_success``."""
+
+    cells: dict[Coord, dict[str, object]] = {
+        (10, 10): {
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "r": 0,
+            "surface": "fluid",
+        },
+        (11, 11): {"role": "occupied", "layout_kind": "fluid_extension", "surface": "fluid"},
+    }
+    mineable = frozenset((x, y) for x in range(8, 14) for y in range(8, 14))
+    res = try_preserve_stub_route_recovery(
+        miner=(10, 10),
+        extensions=frozenset({(11, 11)}),
+        transport_kind="fluid_pipe",
+        cells=cells,
+        mineable=mineable,
+        scratch_transport_cells=frozenset(),
+        scratch_blocked_cells=frozenset(),
+        nearest_same_kind_transport_hops=3,
+        row_r_raw=0,
+    )
+    psr = res.trace["preserve_stub_recovery"]
+    assert psr.get("tier_d_skip_reason") == "tier_d_skipped_diagonal_only_extension_topology"
+    assert psr.get("tier_d_attempted") is False
+    assert psr.get("tier_d_success") is not True

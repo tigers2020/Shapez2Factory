@@ -225,6 +225,122 @@ def _bounded_recovery_summary_from_details(details: list[dict[str, Any]]) -> dic
     return out
 
 
+def _unrecoverable_contract_reason_code(detail: Mapping[str, Any]) -> str | None:
+    """Stable bucket for expected-loss summary (``None`` = not design-unrecoverable)."""
+
+    pdr = str(detail.get("preserve_drop_reason") or detail.get("reason") or "")
+    if pdr in (
+        PreserveDropReason.ORPHAN_COMPONENT.value,
+        PreserveDropReason.INVALID_EXISTING_ROW.value,
+    ):
+        return "orphan_or_invalid_no_preserve_trunk"
+    psr = detail.get("preserve_stub_recovery")
+    if not isinstance(psr, dict):
+        return None
+    rr = psr.get("rejected_reason")
+    if rr == "nearest_hops_none":
+        return "orphan_or_invalid_no_preserve_trunk"
+    if rr == "nearest_hops_over_cap":
+        return "no_legal_same_kind_route_under_bounds"
+    if rr in ("route_len_over_cap", "new_transport_cells_over_cap", "visit_cap"):
+        return "no_legal_same_kind_route_under_bounds"
+    td_skip = psr.get("tier_d_skip_reason")
+    if td_skip == "tier_d_skipped_diagonal_only_extension_topology":
+        return "diagonal_only_extension_topology"
+    if td_skip == "tier_d_skipped_empty_bundle":
+        return "would_require_unrelated_bundle_demolition"
+    if td_skip == "tier_d_skipped_no_repack_candidates":
+        return "sealed_by_unrelated_body"
+    tdf = psr.get("tier_d_failure_reason")
+    if isinstance(tdf, str) and tdf:
+        if "no_same_kind_route" in tdf:
+            return "no_legal_same_kind_route_under_bounds"
+        if (
+            "route_len_over_cap" in tdf
+            or "new_transport_cells_over_cap" in tdf
+            or "visit_cap" in tdf
+        ):
+            return "no_legal_same_kind_route_under_bounds"
+        if "unrelated_extractor" in tdf or "foreign_extension" in tdf:
+            return "would_require_unrelated_bundle_demolition"
+        if "protected_corridor" in tdf:
+            return "would_require_transport_or_protected_corridor_removal"
+    if psr.get("tier_d_attempted") is True and psr.get("tier_d_success") is not True:
+        if isinstance(tdf, str) and tdf.startswith("tier_d_failed_"):
+            return "no_legal_same_kind_route_under_bounds"
+    return None
+
+
+def classify_pass12_remaining_preserve_drop_row(detail: Mapping[str, Any]) -> str:
+    """Post-hoc triage label for NDJSON rows (debug reports; not solver input)."""
+
+    psr = detail.get("preserve_stub_recovery")
+    if not isinstance(psr, dict):
+        return "needs_more_telemetry"
+    if psr.get("tier_d_success") is True:
+        return "recoverable_with_small_fix"
+    code = _unrecoverable_contract_reason_code(detail)
+    if code is not None:
+        return "unrecoverable_by_design"
+    if psr.get("attempted") is False and psr.get("rejected_reason") not in (
+        None,
+        "nearest_hops_none",
+        "nearest_hops_over_cap",
+    ):
+        return "needs_more_telemetry"
+    if psr.get("tier_d_attempted") is True and psr.get("tier_d_success") is not True:
+        if psr.get("tier_d_skip_reason") is None and psr.get("tier_d_failure_reason") is None:
+            return "needs_more_telemetry"
+        return "unrecoverable_by_design"
+    return "needs_more_telemetry"
+
+
+def report_pass12_preserved_missing_stub_drop_details(
+    details: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Extract NDJSON-oriented fields for each remaining preserve drop (output / tooling only)."""
+
+    rows: list[dict[str, Any]] = []
+    for d in details:
+        psr = d.get("preserve_stub_recovery")
+        if not isinstance(psr, dict):
+            psr = {}
+        probe = psr.get("stub_route_probe_last")
+        blocked_fc: Any = None
+        if isinstance(probe, dict):
+            blocked_fc = probe.get("blocked_frontier_reason_counts")
+        rows.append(
+            {
+                "miner_cell": d.get("miner_cell"),
+                "transport_kind": d.get("transport_kind"),
+                "nearest_same_kind_transport_hops": d.get("nearest_same_kind_transport_hops"),
+                "nearest_same_kind_transport_cell": d.get("nearest_same_kind_transport_cell"),
+                "recoverability_class": d.get("recoverability_class"),
+                "preserve_drop_reason": d.get("preserve_drop_reason") or d.get("reason"),
+                "rejected_reason_subtype": psr.get("rejected_reason_subtype"),
+                "adjacent_cardinal_cells": d.get("adjacent_cardinal_cells"),
+                "rotation_probe_summary": d.get("rotation_probe_summary"),
+                "preserve_stub_recovery.rejected_reason": psr.get("rejected_reason"),
+                "preserve_stub_recovery.rejected_reason_subtype": psr.get(
+                    "rejected_reason_subtype"
+                ),
+                "tier_d_attempted": psr.get("tier_d_attempted"),
+                "tier_d_success": psr.get("tier_d_success"),
+                "tier_d_skip_reason": psr.get("tier_d_skip_reason"),
+                "tier_d_failure_reason": psr.get("tier_d_failure_reason"),
+                "output_repack_candidate_count": psr.get("output_repack_candidate_count"),
+                "output_repack_candidate_sample": psr.get("output_repack_candidate_sample"),
+                "output_repack_selected_rotation": psr.get("output_repack_selected_rotation"),
+                "blocked_frontier_reason_counts": blocked_fc,
+                "pass12_remaining_drop_classification": classify_pass12_remaining_preserve_drop_row(
+                    d
+                ),
+                "pass12_unrecoverable_contract_reason_code": _unrecoverable_contract_reason_code(d),
+            }
+        )
+    return rows
+
+
 def _preserve_missing_stub_summary_from_details(
     details: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -234,6 +350,8 @@ def _preserve_missing_stub_summary_from_details(
     by_rec: dict[str, int] = {}
     by_sub: dict[str, int] = {}
     repack_eligible = 0
+    unrecoverable_drop_count = 0
+    unrecoverable_reason_counts: dict[str, int] = {}
     for d in details:
         pr = str(d.get("preserve_drop_reason") or d.get("reason") or "unknown")
         by_reason[pr] = by_reason.get(pr, 0) + 1
@@ -248,6 +366,10 @@ def _preserve_missing_stub_summary_from_details(
         if not sub:
             sub = "(none)"
         by_sub[sub] = by_sub.get(sub, 0) + 1
+        ucode = _unrecoverable_contract_reason_code(d)
+        if ucode is not None:
+            unrecoverable_drop_count += 1
+            unrecoverable_reason_counts[ucode] = unrecoverable_reason_counts.get(ucode, 0) + 1
     bounded = _bounded_recovery_summary_from_details(details)
     return {
         "drop_count": len(details),
@@ -256,6 +378,10 @@ def _preserve_missing_stub_summary_from_details(
         "by_rejected_reason_subtype": dict(sorted(by_sub.items(), key=lambda kv: kv[0])),
         "local_repack_candidate_count": repack_eligible,
         "bounded_recovery": bounded,
+        "unrecoverable_drop_count": unrecoverable_drop_count,
+        "unrecoverable_reason_counts": dict(
+            sorted(unrecoverable_reason_counts.items(), key=lambda kv: kv[0])
+        ),
     }
 
 

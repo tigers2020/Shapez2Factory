@@ -964,6 +964,55 @@ def _probe_stub_route_once(
 
 MAX_PASS12_TIER_D_TOPOLOGY_ATTEMPTS = 48
 
+# NDJSON / ``preserve_stub_recovery`` contract when ``tier_d_success`` is true (plan 2026-05-13).
+TIER_D_SUCCESS_TRACE_FIELD_KEYS: tuple[str, ...] = (
+    "tier_d_attempted",
+    "tier_d_success",
+    "tier_d_skip_reason",
+    "tier_d_failure_reason",
+    "output_repack_candidate_count",
+    "output_repack_candidate_sample",
+    "output_repack_selected_rotation",
+    "output_repack_removed_extension_cells",
+    "output_repack_replaced_extension_cells",
+    "output_repack_preserved_extension_count",
+    "output_repack_route_len_edges",
+)
+
+
+def tier_d_success_preserve_stub_recovery_trace_contract_ok(psr: Mapping[str, Any]) -> bool:
+    """True iff ``psr`` satisfies Tier D success telemetry keys and null-skip/failure fields."""
+
+    if psr.get("tier_d_success") is not True:
+        return False
+    for key in TIER_D_SUCCESS_TRACE_FIELD_KEYS:
+        if key not in psr:
+            return False
+    if psr.get("tier_d_attempted") is not True:
+        return False
+    if psr.get("tier_d_skip_reason") is not None or psr.get("tier_d_failure_reason") is not None:
+        return False
+    occ = psr.get("output_repack_candidate_count")
+    if not isinstance(occ, int) or occ < 1:
+        return False
+    if not isinstance(psr.get("output_repack_candidate_sample"), list):
+        return False
+    if not isinstance(psr.get("output_repack_selected_rotation"), int):
+        return False
+    rem = psr.get("output_repack_removed_extension_cells")
+    rep = psr.get("output_repack_replaced_extension_cells")
+    if not isinstance(rem, list) or len(rem) < 1:
+        return False
+    if not isinstance(rep, list) or len(rep) < 1:
+        return False
+    pec = psr.get("output_repack_preserved_extension_count")
+    if not isinstance(pec, int) or pec < 1:
+        return False
+    rle = psr.get("output_repack_route_len_edges")
+    if not isinstance(rle, int) or rle < 0:
+        return False
+    return True
+
 
 def _tier_d_extensions_cardinally_connected(miner: Coord, extensions: frozenset[Coord]) -> bool:
     """True iff every extension cell is reachable from ``miner`` via 4-neighbor hops in-set."""
@@ -1215,7 +1264,8 @@ def _try_tier_d_bounded_output_reorientation_repack(
                 for c, _ in sorted(placements, key=lambda t: (t[0][1], t[0][0]))
             ]
             psr["output_repack_preserved_extension_count"] = len(extensions)
-            psr["output_repack_route_len_edges"] = psr.get("route_len_edges")
+            _rle = psr.get("route_len_edges")
+            psr["output_repack_route_len_edges"] = int(_rle) if isinstance(_rle, int) else _rle
             return replace(
                 ok_res,
                 carved_extension_cells=frozenset(),

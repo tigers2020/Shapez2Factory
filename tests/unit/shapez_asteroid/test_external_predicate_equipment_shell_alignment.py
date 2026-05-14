@@ -136,6 +136,8 @@ def test_orphan_prior_transport_not_promoted_when_external_unreachable() -> None
     assert (5, 15) not in goals
     assert trace["external_reachable_transport_before_count"] == 0
     assert "fallback_goal_source" not in trace
+    assert n == 0
+    assert trace["final_goal_count"] == 0
 
 
 def test_solver_summary_preserves_nested_pass2_external_margin_diagnostic() -> None:

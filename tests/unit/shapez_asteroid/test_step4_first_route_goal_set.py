@@ -395,6 +395,37 @@ def test_empty_goal_set_increments_counter_and_trace() -> None:
     assert diag["pass2_goal_assisted_probe"]["allowed_goal_void_cell_count"] == 0
 
 
+def test_first_route_final_goal_count_zero_valid_when_no_exterior_margin() -> None:
+    """``final_goal_count == 0`` is valid when ``is_external`` is false on the scanned universe."""
+
+    mineable = frozenset({(0, 0)})
+    asteroid: frozenset[Coord] = frozenset(mineable)
+    cells: dict[Coord, dict[str, Any]] = {
+        (0, 0): {
+            "x": 0,
+            "y": 0,
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "shape",
+        },
+    }
+    goals, kind, n, trace = p12rp.build_pass2_step4_aligned_routing_goals(
+        transport_kind="shape_belt",
+        mineable=mineable,
+        asteroid=asteroid,
+        cells=cells,
+        is_external=lambda _c: False,
+        existing_layout_analysis=None,
+        transport_cells_before=frozenset(),
+        transport_cells_probe=frozenset(),
+        blocked_for_probe=frozenset(),
+    )
+    assert kind == "first_route"
+    assert len(goals) == 0
+    assert n == 0
+    assert trace["final_goal_count"] == 0
+
+
 def test_patch_a_margin_universe_extra_collects_belt_rows_missing_from_cells() -> None:
     """STEP4 Pass2 parity: belt/pipe map rows missing from ``cells`` become ``universe_extra``."""
 

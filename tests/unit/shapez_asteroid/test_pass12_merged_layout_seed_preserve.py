@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django.test import override_settings
+
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
     pass1_timeline_integration as p12_tl,
@@ -9,6 +11,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement impor
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
     pass12_bundle_commit,
     pass12_merged_layout_seed,
+    pass12_preserve_stub_route_recovery,
 )
 
 Pass12LayoutScratch = pass12_bundle_commit.Pass12LayoutScratch
@@ -70,6 +73,217 @@ def test_preserve_missing_stub_summary_includes_bounded_recovery_counts() -> Non
     assert br["tier_d_failure_reason_counts"].get("tier_d_failed_no_same_kind_route") == 1
     assert br["final_rejected_reason_subtype_counts"].get("occupied_neighbor_ring") == 1
     assert br["final_rejected_reason_subtype_counts"].get("no_goal_relaxed") == 1
+    assert summary["unrecoverable_drop_count"] == 1
+    assert summary["unrecoverable_reason_counts"].get("no_legal_same_kind_route_under_bounds") == 1
+
+
+def test_preserve_missing_stub_summary_counts_tier_d_success_in_bounded_recovery() -> None:
+    """Synthetic row: ``tier_d_success`` rolls into ``bounded_recovery`` (replay tooling)."""
+
+    details = [
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "preserve_stub_recovery": {
+                "tier_d_attempted": True,
+                "tier_d_success": True,
+                "tier_d_skip_reason": None,
+                "tier_d_failure_reason": None,
+                "rejected_reason": "no_same_kind_route",
+            },
+        },
+    ]
+    summary = pass12_merged_layout_seed._preserve_missing_stub_summary_from_details(details)
+    br = summary["bounded_recovery"]
+    assert br["tier_d_success_count"] == 1
+    assert summary["unrecoverable_drop_count"] == 0
+
+
+def test_preserve_missing_stub_summary_unrecoverable_reason_counts() -> None:
+    """Diagonal-only Tier D skip and orphan rows bump ``unrecoverable_reason_counts``."""
+
+    details = [
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "preserve_stub_recovery": {
+                "tier_d_attempted": False,
+                "tier_d_success": False,
+                "tier_d_skip_reason": "tier_d_skipped_diagonal_only_extension_topology",
+                "tier_d_failure_reason": None,
+            },
+        },
+        {
+            "preserve_drop_reason": "ORPHAN_COMPONENT",
+            "preserve_stub_recovery": {"attempted": False},
+        },
+    ]
+    summary = pass12_merged_layout_seed._preserve_missing_stub_summary_from_details(details)
+    assert summary["unrecoverable_drop_count"] == 2
+    ur = summary["unrecoverable_reason_counts"]
+    assert ur.get("diagonal_only_extension_topology") == 1
+    assert ur.get("orphan_or_invalid_no_preserve_trunk") == 1
+
+
+def test_report_pass12_preserved_missing_stub_drop_details_shape() -> None:
+    """Report helper is NDJSON-oriented and does not read files."""
+
+    rows_in = [
+        {
+            "miner_cell": [1, 2],
+            "transport_kind": "fluid_pipe",
+            "nearest_same_kind_transport_hops": 2,
+            "nearest_same_kind_transport_cell": [9, 9],
+            "recoverability_class": "NEAR_TRANSPORT",
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "adjacent_cardinal_cells": [],
+            "rotation_probe_summary": [],
+            "preserve_stub_recovery": {
+                "rejected_reason": "no_same_kind_route",
+                "rejected_reason_subtype": "occupied_neighbor_ring",
+                "tier_d_attempted": True,
+                "tier_d_success": False,
+                "tier_d_skip_reason": None,
+                "tier_d_failure_reason": "tier_d_failed_no_same_kind_route",
+                "output_repack_candidate_count": 3,
+                "output_repack_candidate_sample": [{"cand_r": 0}],
+                "output_repack_selected_rotation": None,
+                "stub_route_probe_last": {"blocked_frontier_reason_counts": {"x": 1}},
+            },
+        },
+    ]
+    out = pass12_merged_layout_seed.report_pass12_preserved_missing_stub_drop_details(rows_in)
+    assert len(out) == 1
+    r0 = out[0]
+    assert r0["miner_cell"] == [1, 2]
+    assert r0["blocked_frontier_reason_counts"] == {"x": 1}
+    assert r0["pass12_remaining_drop_classification"] == "unrecoverable_by_design"
+    assert (
+        r0["pass12_unrecoverable_contract_reason_code"] == "no_legal_same_kind_route_under_bounds"
+    )
+
+
+@override_settings(SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY=True)
+def test_merged_seed_applies_tier_d_extension_removal_and_placements() -> None:
+    """Merged seed applies ``tier_d_extensions_removed`` / placements when probe returns Tier D."""
+
+    from unittest.mock import patch
+
+    def fluid_ext(x: int, y: int) -> dict[str, object]:
+        return {
+            "x": x,
+            "y": y,
+            "role": "occupied",
+            "layout_kind": "fluid_extension",
+            "surface": "fluid",
+            "r": 0,
+        }
+
+    def inferred(x: int, y: int) -> dict[str, object]:
+        return {
+            "x": x,
+            "y": y,
+            "role": "inferred",
+            "layout_kind": "asteroid_field",
+            "surface": "fluid",
+        }
+
+    rows: list[dict[str, object]] = [
+        {
+            "x": 5,
+            "y": 5,
+            "role": "occupied",
+            "layout_kind": "fluid_miner",
+            "surface": "fluid",
+            "r": 1,
+        },
+        fluid_ext(6, 5),
+    ]
+    for y in range(6, 10):
+        rows.append(inferred(5, y))
+    rows.append({"x": 5, "y": 10, "role": "pipe", "surface": "fluid"})
+    rows.extend(
+        [
+            {
+                "x": 30,
+                "y": 30,
+                "role": "occupied",
+                "layout_kind": "fluid_miner",
+                "surface": "fluid",
+                "r": 0,
+            },
+            fluid_ext(29, 30),
+            {"x": 31, "y": 30, "role": "pipe", "surface": "fluid"},
+        ]
+    )
+    mineable = frozenset((x, y) for x in range(2, 40) for y in range(2, 40))
+    scratch = Pass12LayoutScratch(transport_kind="fluid_pipe")
+    orig_try = pass12_merged_layout_seed.try_preserve_stub_route_recovery
+
+    def _tier_d_stub_for_miner_5_5(
+        **kwargs: object,
+    ) -> pass12_preserve_stub_route_recovery.StubRouteRecoveryResult:
+        miner = kwargs["miner"]
+        extensions = kwargs["extensions"]
+        if miner == (5, 5) and extensions:
+            psr = pass12_preserve_stub_route_recovery._empty_psr(3)
+            psr["tier_d_attempted"] = True
+            psr["tier_d_success"] = True
+            psr["tier_d_skip_reason"] = None
+            psr["tier_d_failure_reason"] = None
+            psr["output_repack_candidate_count"] = 1
+            psr["output_repack_candidate_sample"] = []
+            psr["output_repack_selected_rotation"] = 1
+            rem = sorted(extensions, key=lambda p: (p[1], p[0]))
+            psr["output_repack_removed_extension_cells"] = [[int(c[0]), int(c[1])] for c in rem]
+            psr["output_repack_replaced_extension_cells"] = [[4, 5]]
+            psr["output_repack_preserved_extension_count"] = len(extensions)
+            psr["output_repack_route_len_edges"] = 4
+            psr["selected_r"] = 1
+            psr["accepted"] = True
+            ext_row = {
+                "x": 4,
+                "y": 5,
+                "role": "occupied",
+                "layout_kind": "fluid_extension",
+                "surface": "fluid",
+                "r": 0,
+            }
+            return pass12_preserve_stub_route_recovery.StubRouteRecoveryResult(
+                accepted=True,
+                trace={"preserve_stub_recovery": psr},
+                new_transport_coords=frozenset(),
+                chosen_r=1,
+                stub_cell=(5, 6),
+                carved_extension_cells=frozenset(),
+                tier_d_extensions_removed=extensions,
+                tier_d_extension_placements=(((4, 5), ext_row),),
+                tier_d_final_extension_cells=frozenset({(4, 5)}),
+            )
+        return orig_try(**kwargs)
+
+    with (
+        patch.object(
+            pass12_merged_layout_seed, "_attempt_preserve_stub_recovery", return_value=None
+        ),
+        patch.object(
+            pass12_merged_layout_seed,
+            "try_preserve_stub_route_recovery",
+            side_effect=_tier_d_stub_for_miner_5_5,
+        ),
+    ):
+        stats = seed_pass12_scratch_from_merged_existing(
+            rows,
+            mineable=mineable,
+            scratch=scratch,
+            existing_layout_source_kind="existing_fluid_layout",
+        )
+    assert stats["pass12_preserved_missing_stub_route_recovery_success_count"] >= 1
+    assert (4, 5) in scratch.blocked_cells
+    assert scratch.extension_facings.get((4, 5)) is not None
+    assert any(
+        rec.extractor_cell == (5, 5) and (4, 5) in rec.extension_cells
+        for rec in scratch.placement_records.values()
+    )
+    assert scratch.preserved_mining_row_overrides.get((6, 5)) is None
 
 
 def test_seed_drops_unrouted_miners_without_adjacent_stub_when_existing_fluid_layout() -> None:

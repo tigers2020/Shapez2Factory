@@ -329,3 +329,5 @@ def test_pass1_occupied_cells_still_includes_stub() -> None:
         return
     stub = p1.placements[0].output_stub.cell
     assert stub in frozenset(p1.occupied_cells)
+    assert stub in frozenset(p1.output_stub_cells)
+    assert stub not in frozenset(p1.placement_occupied_cells)

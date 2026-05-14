@@ -13,9 +13,16 @@ from pathlib import Path
 _BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SHAPEZ_COPY_* ---
-# ``SHAPEZ_COPY_DEBUG_DIR``: copy-preview 성공 시 암호화 코드·디코드 JSON 덤프 경로.
-# 기본 빈 문자열(OFF).
-SHAPEZ_COPY_DEBUG_DIR = (os.environ.get("SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
+# ``SHAPEZ_COPY_DEBUG_DIR``: copy-preview 성공 시 코드·디코드 JSON 덤프와
+# v2 행동 산출물 JSON(``v2_behavior_artifact_*``)을 같은 디렉터리에 기록.
+# 상대 경로면 프로젝트 ``BASE_DIR`` 기준(``var/...`` 권장). 절대 경로는 그대로 사용.
+# Replay NDJSON·Debug NDJSON·솔버 입력 아님(output-only). 기본 빈 문자열(OFF).
+_copy_debug_raw = (os.environ.get("SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
+if not _copy_debug_raw:
+    SHAPEZ_COPY_DEBUG_DIR = ""
+else:
+    _p = Path(_copy_debug_raw)
+    SHAPEZ_COPY_DEBUG_DIR = str(_p if _p.is_absolute() else (_BASE_DIR / _p))
 
 # --- SHAPEZ_MINING_* (env: 1/true/yes/on → True) ---
 # 기본 OFF. 스크래치 수송·맵 행·routing_state 불일치 디버깅 시 켠다.

@@ -126,9 +126,16 @@ def test_occupied_cells_match_exact_union_of_bundle_cells() -> None:
     recon = _small_mineable_recon()
     p1 = run_pass1_outer_placement(_ctx(), recon)
     union: set[tuple[int, int]] = set()
+    placement_only: set[tuple[int, int]] = set()
+    stubs: set[tuple[int, int]] = set()
     for b in p1.placements:
         union |= {b.extractor.cell, b.output_stub.cell} | {e.cell for e in b.extensions}
+        placement_only |= {b.extractor.cell} | {e.cell for e in b.extensions}
+        stubs.add(b.output_stub.cell)
     assert set(p1.occupied_cells) == union
+    assert set(p1.placement_occupied_cells) == placement_only
+    assert set(p1.output_stub_cells) == stubs
+    assert not (placement_only & stubs)
 
 
 def test_pass1_no_final_route_cells_field() -> None:

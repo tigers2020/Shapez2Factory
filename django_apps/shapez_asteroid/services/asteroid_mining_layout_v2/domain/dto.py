@@ -354,9 +354,18 @@ class TrunkLoadSummary:
 
 @dataclass(frozen=True, slots=True)
 class Pass1Result:
-    """STEP 2 Pass1 (§7)."""
+    """STEP 2 Pass1 (§7).
+
+    ``placement_occupied_cells`` — extractor ∪ extension footprints (installed equipment).
+    ``output_stub_cells`` — reserved belt/pipe anchor per bundle (not a second miner tile;
+    Pass2 must not place equipment here; STEP 4 connects transport from these cells).
+    ``occupied_cells`` — sorted ``placement_occupied_cells ∪ output_stub_cells`` for any
+    caller that still expects a single Pass2 blocking set (§7.3).
+    """
 
     placements: tuple[PlacementBundle, ...] = ()
+    placement_occupied_cells: tuple[BlueprintCell, ...] = ()
+    output_stub_cells: tuple[BlueprintCell, ...] = ()
     occupied_cells: tuple[BlueprintCell, ...] = ()
     placement_commit_entries: tuple[tuple[str, PlacementCommitState], ...] = ()
     beam_trace: tuple[dict[str, Any], ...] | None = None

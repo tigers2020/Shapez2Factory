@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
+    BBox,
     BlueprintCell,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
@@ -30,6 +31,39 @@ CARDINAL_DIRS: tuple[tuple[int, int], ...] = ((0, -1), (1, 0), (0, 1), (-1, 0))
 
 def step_cell(cell: BlueprintCell, d: tuple[int, int]) -> BlueprintCell:
     return (cell[0] + d[0], cell[1] + d[1])
+
+
+def bbox_edge_distance(extractor: BlueprintCell, bbox: BBox) -> int:
+    """L∞ distance from ``extractor`` to axis-aligned ``bbox`` perimeter (integer)."""
+
+    x, y = extractor
+    return min(x - bbox.min_x, bbox.max_x - x, y - bbox.min_y, bbox.max_y - y)
+
+
+def lex_key_pass1_best_output(
+    extractor: BlueprintCell,
+    bbox: BBox,
+    extension_count: int,
+    output_direction: tuple[int, int],
+) -> tuple[int, int, int]:
+    """Pass1 outer: prefer more extensions, then smaller edge (more peripheral), then N→W."""
+
+    out_i = CARDINAL_DIRS.index(output_direction)
+    edge = bbox_edge_distance(extractor, bbox)
+    return (-extension_count, edge, out_i)
+
+
+def lex_key_pass2_best_output(
+    extractor: BlueprintCell,
+    bbox: BBox,
+    extension_count: int,
+    output_direction: tuple[int, int],
+) -> tuple[int, int, int]:
+    """Pass2 interior fill: prefer more extensions, then larger edge (more inner), then N→W."""
+
+    out_i = CARDINAL_DIRS.index(output_direction)
+    edge = bbox_edge_distance(extractor, bbox)
+    return (-extension_count, -edge, out_i)
 
 
 def infer_transport_kind(reconstruction: ReconstructionDTO) -> TransportKind:
@@ -97,7 +131,7 @@ def grow_extension_cells(
     local_used = set(used)
 
     def can_place(cell: BlueprintCell) -> bool:
-        if cell[0] <= 0 or cell in local_used:
+        if cell in local_used:
             return False
         if cell in (stub, extractor):
             return False
@@ -167,9 +201,12 @@ __all__ = [
     "CARDINAL_DIRS",
     "Pass1BundleCandidate",
     "Pass2BundleCandidate",
+    "bbox_edge_distance",
     "blocked_by_building",
     "grow_extension_cells",
     "infer_transport_kind",
+    "lex_key_pass1_best_output",
+    "lex_key_pass2_best_output",
     "orientation_toward_parent",
     "side_directions_after_output",
     "step_cell",

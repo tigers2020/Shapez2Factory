@@ -47,6 +47,7 @@ from .bundle_candidate import (
     blocked_by_building,
     grow_extension_cells,
     infer_transport_kind,
+    lex_key_pass1_best_output,
     step_cell,
 )
 
@@ -96,8 +97,6 @@ def _outside_margin(c: BlueprintCell, bbox: BBox, margin: int) -> bool:
 
 
 def _movable_for_escape_probe(c: BlueprintCell, tk: TransportKind, r: ReconstructionDTO) -> bool:
-    if c[0] <= 0:
-        return False
     return not blocked_by_building(c, tk, r)
 
 
@@ -128,7 +127,7 @@ def cheap_escape_feasible(
             return True
         for d in _OUTPUT_DIRS:
             nxt = step_cell(cur, d)
-            if nxt in seen or nxt[0] <= 0:
+            if nxt in seen:
                 continue
             if nxt[0] < xmin or nxt[0] > xmax or nxt[1] < ymin or nxt[1] > ymax:
                 continue
@@ -166,7 +165,7 @@ def _build_candidate(
     bbox: BBox,
 ) -> Pass1BundleCandidate | None:
     stub = step_cell(extractor, out_dir)
-    if stub[0] <= 0 or stub in used:
+    if stub in used:
         return None
     if blocked_by_building(stub, transport_kind, reconstruction):
         return Pass1BundleCandidate(
@@ -213,7 +212,8 @@ def _build_candidate(
         extractor[1] - bbox.min_y,
         bbox.max_y - extractor[1],
     )
-    score = float(edge) * 10.0 + float(len(exts)) * 3.0
+    n_ext = len(exts)
+    score = float(n_ext) * 1000.0 - float(edge) * 10.0
 
     return Pass1BundleCandidate(
         candidate_id=f"{run_id}:p1:cand:{scan_index}:{extractor}:{out_dir}",
@@ -306,6 +306,7 @@ def run_pass1_outer_placement(
             cap=replay_event_cap,
         )
         best: Pass1BundleCandidate | None = None
+        feasible: list[Pass1BundleCandidate] = []
         for out_dir in _OUTPUT_DIRS:
             cand = _build_candidate(
                 run_id=ctx.run_id,
@@ -348,8 +349,21 @@ def run_pass1_outer_placement(
                     }
                 )
                 continue
-            if best is None or cand.score > best.score:
-                best = cand
+            feasible.append(cand)
+
+        if feasible:
+            max_ext = max(len(c.extension_cells) for c in feasible)
+            if max_ext > 0:
+                feasible = [c for c in feasible if len(c.extension_cells) > 0]
+            best = min(
+                feasible,
+                key=lambda c: lex_key_pass1_best_output(
+                    extractor,
+                    bbox,
+                    len(c.extension_cells),
+                    c.output_direction,
+                ),
+            )
 
         if best is None or best.reject_reason is not None:
             continue
@@ -406,16 +420,26 @@ def run_pass1_outer_placement(
         cap=replay_event_cap,
     )
 
-    occupied_set: set[BlueprintCell] = set()
+    placement_occ: set[BlueprintCell] = set()
+    stub_cells: set[BlueprintCell] = set()
     for b in bundles:
-        occupied_set.add(b.extractor.cell)
-        occupied_set.add(b.output_stub.cell)
+        placement_occ.add(b.extractor.cell)
+        stub_cells.add(b.output_stub.cell)
         for ext in b.extensions:
-            occupied_set.add(ext.cell)
-    occupied = tuple(sorted(occupied_set, key=lambda c: (c[1], c[0])))
+            placement_occ.add(ext.cell)
+    union_occ = placement_occ | stub_cells
+
+    def _cell_sort_key(c: BlueprintCell) -> tuple[int, int]:
+        return (c[1], c[0])
+
+    placement_sorted = tuple(sorted(placement_occ, key=_cell_sort_key))
+    stub_sorted = tuple(sorted(stub_cells, key=_cell_sort_key))
+    occupied = tuple(sorted(union_occ, key=_cell_sort_key))
 
     return Pass1Result(
         placements=tuple(bundles),
+        placement_occupied_cells=placement_sorted,
+        output_stub_cells=stub_sorted,
         occupied_cells=occupied,
         placement_commit_entries=tuple(commits),
         beam_trace=tuple(beam) if beam else None,

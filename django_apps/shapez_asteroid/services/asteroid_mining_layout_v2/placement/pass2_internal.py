@@ -35,6 +35,7 @@ from .bundle_candidate import (
     blocked_by_building,
     grow_extension_cells,
     infer_transport_kind,
+    lex_key_pass2_best_output,
     step_cell,
 )
 from .pass1_outer import cheap_escape_feasible
@@ -52,9 +53,11 @@ def build_pass2_blocked_set(
     pass1: Pass1Result,
     reconstruction: ReconstructionDTO,
 ) -> frozenset[BlueprintCell]:
-    """§8.2: Pass1 extractor/extension/stub + hard barriers / preserved blueprint."""
+    """§8.2: Pass1 equipment + reserved output stubs + hard barriers / preserved blueprint."""
 
-    fixed = frozenset(pass1.occupied_cells)
+    fixed = frozenset(pass1.placement_occupied_cells) | frozenset(pass1.output_stub_cells)
+    if not fixed and pass1.occupied_cells:
+        fixed = frozenset(pass1.occupied_cells)
     barrier = frozenset(reconstruction.full_barrier_cells)
     return fixed | barrier
 
@@ -93,7 +96,7 @@ def _build_pass2_candidate(
     bbox: BBox,
 ) -> Pass2BundleCandidate | None:
     stub = step_cell(extractor, out_dir)
-    if stub[0] <= 0 or stub in used:
+    if stub in used:
         return None
     if blocked_by_building(stub, transport_kind, reconstruction):
         return Pass2BundleCandidate(
@@ -140,7 +143,8 @@ def _build_pass2_candidate(
         extractor[1] - bbox.min_y,
         bbox.max_y - extractor[1],
     )
-    score = float(-edge) * 5.0 + float(len(exts)) * 3.0
+    n_ext = len(exts)
+    score = float(n_ext) * 1000.0 + float(edge) * 5.0
 
     return Pass2BundleCandidate(
         candidate_id=f"{run_id}:p2:cand:{scan_index}:{extractor}:{out_dir}",
@@ -216,7 +220,7 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
     for scan_index, extractor in enumerate(ordered):
         if extractor in used:
             continue
-        best: Pass2BundleCandidate | None = None
+        feasible: list[Pass2BundleCandidate] = []
         for out_dir in CARDINAL_DIRS:
             cand = _build_pass2_candidate(
                 run_id=ctx.run_id,
@@ -244,8 +248,22 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
                     }
                 )
                 continue
-            if best is None or cand.score > best.score:
-                best = cand
+            feasible.append(cand)
+
+        best: Pass2BundleCandidate | None = None
+        if feasible:
+            max_ext = max(len(c.extension_cells) for c in feasible)
+            if max_ext > 0:
+                feasible = [c for c in feasible if len(c.extension_cells) > 0]
+            best = min(
+                feasible,
+                key=lambda c: lex_key_pass2_best_output(
+                    extractor,
+                    bbox,
+                    len(c.extension_cells),
+                    c.output_direction,
+                ),
+            )
 
         if best is None or best.reject_reason is not None:
             continue

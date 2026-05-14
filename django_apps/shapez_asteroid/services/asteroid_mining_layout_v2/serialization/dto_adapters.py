@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.reconstruction import (
     ReconstructionDTO,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (

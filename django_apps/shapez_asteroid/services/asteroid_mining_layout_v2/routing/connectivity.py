@@ -9,13 +9,18 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Iterable
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid import (
+    cardinal_neighbors4,
+)
+
 
 def neighbors4(
     cell: tuple[int, int],
 ) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int], tuple[int, int]]:
-    """Unweighted 4-neighbors (cardinal); grid boundary rules applied by caller."""
-    x, y = cell
-    return ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+    """Unweighted 4-neighbors (cardinal) on the no-``x==0`` blueprint lattice."""
+
+    n = cardinal_neighbors4(cell)
+    return (n[0], n[1], n[2], n[3])
 
 
 def flood_reachable(

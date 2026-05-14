@@ -27,6 +27,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto i
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
     TransportKind,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid import (
+    step_blueprint_cell,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pass1_outer import (
     run_pass1_outer_placement,
 )
@@ -458,8 +461,9 @@ def _neighbor_majority_surface(
     """Pick ``shape`` / ``fluid`` from orthogonal neighbors; ties fall back to ``fallback``."""
 
     votes: list[str] = []
-    for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
-        r = cell_map.get((x + dx, y + dy))
+    for d in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+        nx, ny = step_blueprint_cell((x, y), d)
+        r = cell_map.get((nx, ny))
         if not r:
             continue
         s = r.get("surface")

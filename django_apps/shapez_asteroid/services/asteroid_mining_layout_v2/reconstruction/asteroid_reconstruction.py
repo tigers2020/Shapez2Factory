@@ -31,11 +31,15 @@ from typing import Any, Literal
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BBox,
     BlueprintCell,
+    is_physical_x,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     DecodedBlueprintDocument,
     DecodedExistingLayoutContext,
     ReconstructionDTO,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid import (
+    physical_column_count_inclusive,
 )
 from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_none as _int_or_none
 from django_apps.shapez_asteroid.services.style_classifier import PlotStyle, classify_layout_type
@@ -108,9 +112,16 @@ def _bbox_from_cells(cells: Iterable[BlueprintCell]) -> BBox | None:
 def _external_margin_from_bbox(b: BBox) -> int:
     """Dynamic margin (``01_project_overview.md`` §3.5)."""
 
-    w = b.max_x - b.min_x + 1
+    w = physical_column_count_inclusive(b.min_x, b.max_x)
     h = b.max_y - b.min_y + 1
     return max(3, min(7, int(math.ceil(max(w, h) * 0.15))))
+
+
+def _assert_physical_x_cells(label: str, cells: Iterable[BlueprintCell]) -> None:
+    bad = [c for c in cells if not is_physical_x(c[0])]
+    if bad:
+        msg = f"{label}: illegal x==0 cells {bad[:5]!r}"
+        raise ValueError(msg)
 
 
 def reconstruct_asteroid_mining_field(
@@ -200,10 +211,7 @@ def reconstruct_asteroid_mining_field(
     mineable_base = asteroid_shell_cells | interior_set | equipment_footprint
     mineable: set[BlueprintCell] = set()
     for c in mineable_base:
-        # Same X!=0 lattice convention as ingestion: mineable cells use (x, y) with x>0.
-        # Equipment and shell never receive x==0 from the scan loop above; this keeps
-        # mineable aligned if interior inference ever yielded x==0 (it should not).
-        if c[0] == 0:
+        if not is_physical_x(c[0]):
             continue
         if c in permanent_blocking_for_mineable:
             continue
@@ -224,6 +232,16 @@ def reconstruct_asteroid_mining_field(
             abox = sbox
             margin_source = "shell"
             margin = _external_margin_from_bbox(abox)
+
+    _assert_physical_x_cells("mineable_placement_cells", mineable)
+    _assert_physical_x_cells("extraction_shell_cells", asteroid_shell_cells)
+    _assert_physical_x_cells("full_barrier_cells", full_barrier_cells)
+    _assert_physical_x_cells("belt_cells", belt_cells)
+    _assert_physical_x_cells("pipe_cells", pipe_cells)
+    _assert_physical_x_cells("extractor_cells", extractor_cells)
+    _assert_physical_x_cells("extension_cells", extension_cells)
+    _assert_physical_x_cells("equipment_footprint_mineable_cells", equipment_footprint)
+    _assert_physical_x_cells("interior_patch_cells", interior_set)
 
     return ReconstructionDTO(
         mineable_placement_cells=_sorted_cells(mineable),

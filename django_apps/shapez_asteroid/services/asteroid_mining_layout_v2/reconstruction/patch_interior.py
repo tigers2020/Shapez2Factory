@@ -2,28 +2,37 @@
 
 Ported from legacy ``asteroid_patch_interior`` (morphological closing + outside flood).
 No Django; no v1 ``asteroid_mining_layout`` imports.
+
+Uses ``domain.grid`` on top of ``domain.coord`` (no ``x == 0`` column): neighbors and
+bbox scans never treat ``(0, y)`` as grid cells.
 """
 
 from __future__ import annotations
 
 from collections import deque
 
-_NEI4: tuple[tuple[int, int], ...] = ((-1, 0), (1, 0), (0, -1), (0, 1))
-
-_NEI8: tuple[tuple[int, int], ...] = tuple(
-    (dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
+    is_physical_x,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid import (
+    cardinal_neighbors4,
+    chebyshev_neighbors8,
+    iter_physical_x_in_range,
+    step_blueprint_cell,
 )
 
 
 def _is_narrow_slit_gap(cell: tuple[int, int], occupied: set[tuple[int, int]]) -> bool:
     x, y = cell
-    if (x, y) in occupied:
+    if (x, y) in occupied or not is_physical_x(x):
         return False
-    if (x - 1, y) in occupied and (x + 1, y) in occupied:
+    west = step_blueprint_cell((x, y), (-1, 0))
+    east = step_blueprint_cell((x, y), (1, 0))
+    if west in occupied and east in occupied:
         if (x, y - 1) not in occupied and (x, y + 1) not in occupied:
             return True
     if (x, y - 1) in occupied and (x, y + 1) in occupied:
-        if (x - 1, y) not in occupied and (x + 1, y) not in occupied:
+        if west not in occupied and east not in occupied:
             return True
     return False
 
@@ -36,16 +45,15 @@ def _slit_touching_outside(
     if not _is_narrow_slit_gap(cell, occupied):
         return False
     x, y = cell
-    return any((x + dx, y + dy) in outside for dx, dy in _NEI8)
+    return any(n in outside for n in chebyshev_neighbors8((x, y)))
 
 
 def dilate_chebyshev(cells: set[tuple[int, int]], steps: int) -> set[tuple[int, int]]:
     s = set(cells)
     for _ in range(max(0, steps)):
         nxt = set(s)
-        for x, y in s:
-            for dx, dy in _NEI8:
-                nxt.add((x + dx, y + dy))
+        for c in s:
+            nxt |= chebyshev_neighbors8(c)
         s = nxt
     return s
 
@@ -54,9 +62,10 @@ def erode_chebyshev(cells: set[tuple[int, int]], steps: int) -> set[tuple[int, i
     s = set(cells)
     for _ in range(max(0, steps)):
         nxt: set[tuple[int, int]] = set()
-        for x, y in s:
-            if all((x + dx, y + dy) in s for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
-                nxt.add((x, y))
+        for c in s:
+            ball = frozenset({c}) | chebyshev_neighbors8(c)
+            if ball <= s:
+                nxt.add(c)
         s = nxt
     return s
 
@@ -87,6 +96,8 @@ def compute_patch_interior_cells(
     q: deque[tuple[int, int]] = deque()
 
     for x in range(ax0, ax1 + 1):
+        if not is_physical_x(x):
+            continue
         for y in range(ay0, ay1 + 1):
             on_edge = x == ax0 or x == ax1 or y == ay0 or y == ay1
             if on_edge and (x, y) not in blocked:
@@ -94,22 +105,22 @@ def compute_patch_interior_cells(
                 outside.add((x, y))
 
     while q:
-        x, y = q.popleft()
-        for dx, dy in _NEI4:
-            nx, ny = x + dx, y + dy
+        cur = q.popleft()
+        for nxt in cardinal_neighbors4(cur):
+            nx, ny = nxt
             if nx < ax0 or nx > ax1 or ny < ay0 or ny > ay1:
                 continue
-            if (nx, ny) in blocked or (nx, ny) in outside:
+            if nxt in blocked or nxt in outside:
                 continue
-            outside.add((nx, ny))
-            q.append((nx, ny))
+            outside.add(nxt)
+            q.append(nxt)
 
     interior: list[tuple[int, int]] = []
-    for x in range(x_min, x_max + 1):
+    for x in iter_physical_x_in_range(x_min, x_max):
         for y in range(y_min, y_max + 1):
             if (x, y) in occupied or (x, y) in outside:
                 continue
-            if any((x + dx, y + dy) in outside for dx, dy in _NEI4):
+            if any(n in outside for n in cardinal_neighbors4((x, y))):
                 continue
             if _slit_touching_outside((x, y), occupied, outside):
                 continue

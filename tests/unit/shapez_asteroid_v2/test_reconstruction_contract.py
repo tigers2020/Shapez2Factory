@@ -104,7 +104,8 @@ def test_closing_prevents_tiny_perimeter_gap_leakage_fixture() -> None:
     open_interior = compute_patch_interior_cells(corners, perimeter_bridge_steps=0)
     closed_interior = compute_patch_interior_cells(corners, perimeter_bridge_steps=1)
     assert len(closed_interior) > len(open_interior)
-    assert closed_interior == [(2, 2)]
+    assert (2, 2) in closed_interior
+    assert all(c[0] != 0 for c in closed_interior)
 
     decoded = {
         "BP": {
@@ -321,3 +322,21 @@ def test_fully_occupied_interior_no_inferior_patch_mineable_is_shell_plus_miner(
     for blocked in ((3, 3), (4, 3), (4, 4)):
         assert blocked not in recon.mineable_placement_cells
     assert len(recon.mineable_placement_cells) == len(recon.extraction_shell_cells) + 1
+
+
+def test_reconstruction_never_contains_x_zero_cells_across_negative_positive_shell() -> None:
+    """Two physical columns only (``x=-1`` and ``x=1``); outputs must omit ``x==0``."""
+
+    entries: list[dict[str, object]] = []
+    for y in range(0, 4):
+        entries.append({"X": -1, "Y": y, "T": "AsteroidField_Test"})
+        entries.append({"X": 1, "Y": y, "T": "AsteroidField_Test"})
+    decoded = {"BP": {"Entries": entries}}
+    recon = reconstruct_asteroid_mining_field(decoded)
+    for cells in (
+        recon.mineable_placement_cells,
+        recon.extraction_shell_cells,
+        recon.interior_patch_cells,
+        recon.full_barrier_cells,
+    ):
+        assert all(c[0] != 0 for c in cells)

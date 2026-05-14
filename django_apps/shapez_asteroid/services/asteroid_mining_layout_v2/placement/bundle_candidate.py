@@ -30,13 +30,18 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto i
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
     TransportKind,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid import (
+    step_blueprint_cell,
+)
 
 # 12 o'clock = north = smaller Y, then clockwise N → E → S → W.
 CARDINAL_DIRS: tuple[tuple[int, int], ...] = ((0, -1), (1, 0), (0, 1), (-1, 0))
 
 
 def step_cell(cell: BlueprintCell, d: tuple[int, int]) -> BlueprintCell:
-    return (cell[0] + d[0], cell[1] + d[1])
+    """One cardinal step on the no-``x==0`` blueprint lattice (via ``domain.grid``)."""
+
+    return step_blueprint_cell(cell, d)
 
 
 def bbox_edge_distance(extractor: BlueprintCell, bbox: BBox) -> int:
@@ -107,11 +112,11 @@ def side_directions_after_output(out_dir: tuple[int, int]) -> tuple[tuple[int, i
 def orientation_toward_parent(child: BlueprintCell, parent: BlueprintCell) -> tuple[int, int]:
     """Unit vector from ``child`` toward ``parent`` (extension faces parent, §3.3)."""
 
-    d = (parent[0] - child[0], parent[1] - child[1])
-    if d not in CARDINAL_DIRS:
-        msg = f"non-adjacent extension/parent pair: child={child!r} parent={parent!r}"
-        raise ValueError(msg)
-    return d
+    for d in CARDINAL_DIRS:
+        if step_cell(child, d) == parent:
+            return d
+    msg = f"non-adjacent extension/parent pair: child={child!r} parent={parent!r}"
+    raise ValueError(msg)
 
 
 def grow_extension_cells(

@@ -16,9 +16,8 @@ Cheap escape is probe-only (§7.3): never written to ``occupied_cells`` or
 Output-direction evaluation order is fixed ``CARDINAL_DIRS``: N → E → S → W.
 
 **Grid**: STEP1 ``mineable_placement_cells`` never uses **X == 0** as an id (decode
-convention). That omission is **not** a physical void between columns. Neighbor
-validity is ``mineable`` + barrier / transport masks; cheap escape BFS is bounded by
-``asteroid_bbox`` ± margin only — no ``x <= 0`` sentinel.
+convention). Neighbor moves and cheap-escape BFS use ``domain.grid.step_blueprint_cell``
+(seam ``-1 ↔ 1``); never ``x + dx`` raw east/west.
 """
 
 from __future__ import annotations
@@ -30,6 +29,7 @@ from typing import Any
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BBox,
     BlueprintCell,
+    is_physical_x,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     ExtensionPlacement,
@@ -170,6 +170,18 @@ def _build_candidate(
     bbox: BBox,
 ) -> Pass1BundleCandidate | None:
     stub = step_cell(extractor, out_dir)
+    if not is_physical_x(stub[0]):
+        return Pass1BundleCandidate(
+            candidate_id=f"{run_id}:p1:cand:{scan_index}:{extractor}:{out_dir}",
+            scan_index=scan_index,
+            extractor_cell=extractor,
+            output_direction=out_dir,
+            output_stub_cell=stub,
+            extension_cells=(),
+            transport_kind=transport_kind,
+            score=-1.0,
+            reject_reason="stub_non_physical_coordinate",
+        )
     if stub in used:
         return None
     if blocked_by_building(stub, transport_kind, reconstruction):
@@ -408,7 +420,7 @@ def run_pass1_outer_placement(
                 "extractor_cell": [b.extractor.cell[0], b.extractor.cell[1]],
                 "output_direction": [best.output_direction[0], best.output_direction[1]],
                 "output_stub_cell": [b.output_stub.cell[0], b.output_stub.cell[1]],
-                "output_stub_physical": False,
+                "output_stub_physical": is_physical_x(b.output_stub.cell[0]),
                 "extension_cells": [[c[0], c[1]] for c in (e.cell for e in b.extensions)],
             },
             cap=replay_event_cap,

@@ -218,7 +218,7 @@ def test_pass1_commit_bundle_replay_includes_output_direction() -> None:
     c0 = commits[0]
     assert "output_direction" in c0
     assert isinstance(c0["output_direction"], list) and len(c0["output_direction"]) == 2
-    assert c0.get("output_stub_physical") is False
+    assert c0.get("output_stub_physical") is True
     assert "output_stub_cell" in c0
 
 

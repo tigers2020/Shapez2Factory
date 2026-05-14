@@ -4,7 +4,16 @@
 
 ## Mining layout solver — `mining_solver_cursor_sessions` 정렬
 
-정본 분할 문서: [`documents/Algorithm/mining_solver_cursor_sessions/`](../Algorithm/mining_solver_cursor_sessions/). 상위 요약·원문은 [`Shapez2 Asteroid Mining Solver logic.md`](../Algorithm/Shapez2%20Asteroid%20Mining%20Solver%20logic.md).
+정본 분할 문서: [`documents/Algorithm/mining_solver_cursor_sessions/`](../Algorithm/mining_solver_cursor_sessions/). 참고용 장문 요약(구 v1 시대, **ARCHIVED**): [`Shapez2 Asteroid Mining Solver logic.md`](../archive/2026-05-mining-layout-v1-era/algorithm-root/Shapez2%20Asteroid%20Mining%20Solver%20logic.md).
+
+### v2 단일 권위 (범위 2, 2026-05-14)
+
+- [x] 문서 앵커: [`current_plan.md`](current_plan.md) 목표 절에 MVP 실행 순서 + legacy preview 감사 링크
+- [ ] PR-C~F: v2 STEP0→10 본 구현(현재는 STEP1 reconstruction + copy-preview 분기 일부만 진행 가능)
+- [x] PR-G: `SHAPEZ_MINING_LAYOUT_ENGINE=v2` 시 `copy_preview`의 **existing_layout_analysis**를 v2 `analyze_decoded_layout` JSON으로 전환·`map_timeline`은 당분간 `blueprint_map_summary` 유지 (2026-05-14 구현)
+- [x] **PR-H (2026-05-14)**: 런타임 v1 import·zip 부트스트랩·`include_solver_*` 제거; 스텁 `asteroid_mining_layout_v1_deprecated/`. 동시대 문서·플랜 묶음: [v1 문서 아카이브](../archive/2026-05-mining-layout-v1-era/README.md). (물리 대규모 리네임 단독 PR은 선택)
+- Pass1 Stabilization-P1 권위: 구현·replay UI 앵커는 v2 `placement/pass1_outer.py` + `placement/bundle_candidate.py`; v1 `try_commit_pass1_bundle` / `Pass12BundleCandidate`는 **아카이브 참고만** (체크리스트·Cursor 컨텍스트 drift 방지).
+- [ ] **Pass1 extension topology 정본 (2026-05-14)**: [`06_step2_pass1_placement.md`](../Algorithm/mining_solver_cursor_sessions/06_step2_pass1_placement.md) §7.2·§7.5·Stabilization-P1 — **straight-chain-first**(extractor **output 반대** 방향 1자 체인, 최대 3 extension); **ㅗ/ㅓ/ㅏ·3방 branching은 Pass1 기본이 아님**(fallback 또는 Pass2·후속). placement 패치 전까지 **구현이 정본과 다를 수 있음** → 코드 변경 시 정본 역주입.
 
 ### 공통 · 스키마
 
@@ -16,7 +25,7 @@
 
 - [ ] **STEP 0** — [`04_step0_decode.md`](../Algorithm/mining_solver_cursor_sessions/04_step0_decode.md): copy decode → blueprint 추출 → solver 입력 DTO 정규화·연동; **§5.4 STEP 0.5 Existing layout analysis**
 - [ ] **STEP 1** — [`05_step1_reconstruction.md`](../Algorithm/mining_solver_cursor_sessions/05_step1_reconstruction.md): shell·barrier·mineable patch·기존 belt/pipe 분리; mineable 추론은 본 단계만(재배치 중 변환 금지); **§6.4 existing layout ≠ mineable field**
-- [ ] **STEP 2** — [`06_step2_pass1_placement.md`](../Algorithm/mining_solver_cursor_sessions/06_step2_pass1_placement.md): 외곽 우선 bundle·output stub·escape feasibility·기존 trunk 연계·cheap path ≠ occupied
+- [ ] **STEP 2** — [`06_step2_pass1_placement.md`](../Algorithm/mining_solver_cursor_sessions/06_step2_pass1_placement.md): 외곽 우선 bundle·output stub·escape feasibility·기존 trunk 연계·cheap path ≠ occupied·**Pass1 extension 정본: output 반대 straight-chain-first(§7.2·§7.5), branching 비기본**
 - [ ] **STEP 3** — [`07_step3_pass2_placement.md`](../Algorithm/mining_solver_cursor_sessions/07_step3_pass2_placement.md): 내부 보강·blocked 집합·provisional commit·STEP 4에서 route 확정
 - [ ] **STEP 4** — [`08_step4_routing.md`](../Algorithm/mining_solver_cursor_sessions/08_step4_routing.md): merge-aware·capacity-aware routing, trunk seed·goal set, **§9.2.1 ExistingLayoutAnalysis trunk seed / cleanup**, 실패 시 quarantine/recovery 연계
 - [ ] **STEP 5** — [`09_step5_pass3_transport.md`](../Algorithm/mining_solver_cursor_sessions/09_step5_pass3_transport.md): 내부 transport 최소화·가중/사전순 routing·stub 고정·연결성 깨짐 시 rollback/§4.3.1
@@ -38,8 +47,8 @@
 
 | §13 항목 (정본) | 코드 필드·심볼 | 상태 |
 |------------------|------------------|------|
-| `recovery_trigger` (§13.1·§13.5) | `pass3_summary["recovery_trigger_reason"]` ([`solver_pipeline/pass3.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/pass3.py)·[`solver_pipeline/p4_reclaim.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/p4_reclaim.py)) | 부분 — `RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM` 1종만 정의 |
-| `recovery_terminal_reason` (§13.1) | [`solver/recovery_context.finalize_recovery_terminal_reason`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/recovery_context.py) | 반영 — `post_reclaim_pass3_success` / `final_validation_failed_after_post_reclaim_pass3` / `p4_reclaim_loop_*` |
+| `recovery_trigger` (§13.1·§13.5) | `pass3_summary["recovery_trigger_reason"]` ([`solver_pipeline/pass3.py`](../archive/2026-05-mining-layout-v1-era/README.md)·[`solver_pipeline/p4_reclaim.py`](../archive/2026-05-mining-layout-v1-era/README.md)) | 부분 — `RECOVERY_TRIGGER_POST_PASS3_P4_RECLAIM` 1종만 정의 |
+| `recovery_terminal_reason` (§13.1) | [`solver/recovery_context.finalize_recovery_terminal_reason`](../archive/2026-05-mining-layout-v1-era/README.md) | 반영 — `post_reclaim_pass3_success` / `final_validation_failed_after_post_reclaim_pass3` / `p4_reclaim_loop_*` |
 | trigger #1 STEP4 routing failure | (코드 trigger 문자열 미정의) → STEP4 자체 rollback·`step4_routing_failure_count`·`cascade_*` | 미구현 (recovery_trigger_reason 미반영) |
 | trigger #2 STEP4 capacity | capacity는 `accumulate_only` trace만 — recovery 진입 없음 | 미구현 |
 | trigger #3 Pass3 connectivity break | Pass3 자체 rollback·`pass3_rollback_reason`; recovery_trigger 미설정 | 부분 |
@@ -48,46 +57,46 @@
 | trigger #6 Final validation fail | STEP9 실패 시 `return_reason="validation_*"`; recovery 분기 없음 | 미구현 |
 | `MAX_TOTAL_RECOVERY_ATTEMPTS` (§13.1) | 코드 상수 없음 (P4·post-reclaim별 개별 한도만) | 미구현 |
 | `MAX_VALIDATION_RECOVERY_ATTEMPTS` (§13.1) | 코드 상수 없음 | 미구현 |
-| `MAX_CASCADE_CORRECTIVE_ATTEMPTS` (§13.3) | `cascade_corrective_attempts`/`cascade_reroute_count`/`cascade_rollback_count` ([`step4/step4_p2c_corrective.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/step4/step4_p2c_corrective.py)) | 부분 — 카운트만 노출, 명시 상수 분리 없음 |
-| `MAX_RECLAIM_ITERATIONS` (§4.2) | [`foundation/constants.MAX_RECLAIM_ITERATIONS`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/foundation/constants.py) `=3` | 반영 |
+| `MAX_CASCADE_CORRECTIVE_ATTEMPTS` (§13.3) | `cascade_corrective_attempts`/`cascade_reroute_count`/`cascade_rollback_count` ([`step4/step4_p2c_corrective.py`](../archive/2026-05-mining-layout-v1-era/README.md)) | 부분 — 카운트만 노출, 명시 상수 분리 없음 |
+| `MAX_RECLAIM_ITERATIONS` (§4.2) | [`foundation/constants.MAX_RECLAIM_ITERATIONS`](../archive/2026-05-mining-layout-v1-era/README.md) `=3` | 반영 |
 | `MAX_POST_RECLAIM_PASS3_RERUNS` (§4.2) | `foundation/constants.MAX_POST_RECLAIM_PASS3_RERUNS` `=1` | 반영 |
-| context: `budget_recovery` | merge repair budget escalation([`merge_repair_*` 플랜](plans/merge_repair_not_found_recovery_2026-05-09.md)) — 별도 필드 | 부분 |
+| context: `budget_recovery` | merge repair budget escalation([`merge_repair_*` 플랜](../archive/2026-05-mining-layout-v1-era/ai-plans/merge_repair_not_found_recovery_2026-05-09.md)) — 별도 필드 | 부분 |
 | context: `terminal_overflow_recovery` | 미구현 | 미구현 |
 | context: `merge_partial_failure` | 미구현 (감지 조건도 별도 구현 필요) | 미구현 |
 | context: `cascade_corrective_recovery` | STEP4 corrective reroute 경로 존재; recovery_trigger 명시 없음 | 부분 |
 | context: `validation_recovery` | 미구현 | 미구현 |
 | `commit_reason` enum (§13.5) | `pass3_commit_reason`·`COMMIT_REASON_GUARDED_ATOMIC=guarded_atomic_candidate`·greedy `normal_gain`·`degraded_connected_recovery` | 반영 (정본 enum 외 `guarded_atomic_candidate` 추가) |
-| `recovery_context_chain` (§13) | `pass3_summary["recovery_context_chain"]` + [`extend_recovery_chain`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/recovery_context.py); 세그먼트: `p4_reclaim`/`soft_replace_v2`/`post_reclaim_pass3` | 반영 |
+| `recovery_context_chain` (§13) | `pass3_summary["recovery_context_chain"]` + [`extend_recovery_chain`](../archive/2026-05-mining-layout-v1-era/README.md); 세그먼트: `p4_reclaim`/`soft_replace_v2`/`post_reclaim_pass3` | 반영 |
 
 ### 세션 대조 진척 요약 (2026-05-10 · `asteroid_mining_layout` 코드베이스)
 
-워크스페이스 기준 패키지가 **`foundation/` · `placement/` · `routing/` · `step4/` · `pass3/` · `reclaim/` · `solver/` · `solver_pipeline/` · `validation/` · `existing_layout/` · `dto/`** 등으로 모듈화되어 있으며, 공개 진입점은 [`solver/solver_service.build_solver_timeline`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_service.py)이다.
+워크스페이스 기준 패키지가 **`foundation/` · `placement/` · `routing/` · `step4/` · `pass3/` · `reclaim/` · `solver/` · `solver_pipeline/` · `validation/` · `existing_layout/` · `dto/`** 등으로 모듈화되어 있으며, 공개 진입점은 [`solver/solver_service.build_solver_timeline`](../archive/2026-05-mining-layout-v1-era/README.md)이다.
 
 | 세션·STEP | 구현 근거(요지) | 문서 대비 남은 갭 |
 |-----------|------------------|-------------------|
 | `02` §4 순서 | `solver_pipeline.pass12` → `step4` → `pass3` → `p4_reclaim` → `finalize` | §4.1 분기 전부를 트리거별로 문서와 1:1 매핑한 적 없음 |
-| STEP 0.5 / `03` §E | [`existing_layout_analysis.analyze_existing_layout_from_mining_map`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/existing_layout/existing_layout_analysis.py) — `solver_hints`(trunk_seed / cleanup), issues, transport 블록 | §E 필드·이름 **전 항목** 정적 대조 미실시 |
-| STEP 2–3 | [`placement/pass1_timeline_integration`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/placement/pass1_timeline_integration.py)·Pass12 bundle commit | `pass2_spine.spine_seed_voids_adjacent_extensions`는 **여전히 패키지 내 미참조** |
-| STEP 4 | [`solver_pipeline/step4`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/step4.py)·`step4/` | ELA trunk를 STEP4 goal/seed로 **직접** 소비하는지 문서 §9.2.1과 별도 확인 필요 |
+| STEP 0.5 / `03` §E | [`existing_layout_analysis.analyze_existing_layout_from_mining_map`](../archive/2026-05-mining-layout-v1-era/README.md) — `solver_hints`(trunk_seed / cleanup), issues, transport 블록 | §E 필드·이름 **전 항목** 정적 대조 미실시 |
+| STEP 2–3 | [`placement/pass1_timeline_integration`](../archive/2026-05-mining-layout-v1-era/README.md)·Pass12 bundle commit | `pass2_spine.spine_seed_voids_adjacent_extensions`는 **여전히 패키지 내 미참조** |
+| STEP 4 | [`solver_pipeline/step4`](../archive/2026-05-mining-layout-v1-era/README.md)·`step4/` | ELA trunk를 STEP4 goal/seed로 **직접** 소비하는지 문서 §9.2.1과 별도 확인 필요 |
 | STEP 5 | `pass3/pass3_transport` 등 | rollback·§4.3.1 세부는 부분 구현 가능 |
-| STEP 6 | [`reclaim/reclaim_shadow_commit_loop.run_p4_reclaim_loop_after_pass3`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/reclaim/reclaim_shadow_commit_loop.py), [`foundation/constants`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/foundation/constants.py) `MAX_RECLAIM_*` | 문서 상수(2 vs 3 등)와 숫자 정합은 별도 |
-| STEP 7 | [`solver_timeline._run_post_reclaim_pass3_once`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_timeline.py), [`solver_permission.post_reclaim_pass3_gate`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_permission.py) | rerun 한도·실패 시 STEP9 직행 등 세부 트리거 표 대조 미완 |
-| STEP 8 | [`solver/recovery_context`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/recovery_context.py), P4 단계의 trigger 요약 필드 | `11_step8_recovery.md` 전 트리거·복귀점 표 미대조 |
-| STEP 9 | [`validation/final_validation`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/validation/final_validation.py) | capacity·§15.5 existing vs final 분리 등 후속 항목 |
+| STEP 6 | [`reclaim/reclaim_shadow_commit_loop.run_p4_reclaim_loop_after_pass3`](../archive/2026-05-mining-layout-v1-era/README.md), [`foundation/constants`](../archive/2026-05-mining-layout-v1-era/README.md) `MAX_RECLAIM_*` | 문서 상수(2 vs 3 등)와 숫자 정합은 별도 |
+| STEP 7 | [`solver_timeline._run_post_reclaim_pass3_once`](../archive/2026-05-mining-layout-v1-era/README.md), [`solver_permission.post_reclaim_pass3_gate`](../archive/2026-05-mining-layout-v1-era/README.md) | rerun 한도·실패 시 STEP9 직행 등 세부 트리거 표 대조 미완 |
+| STEP 8 | [`solver/recovery_context`](../archive/2026-05-mining-layout-v1-era/README.md), P4 단계의 trigger 요약 필드 | `11_step8_recovery.md` 전 트리거·복귀점 표 미대조 |
+| STEP 9 | [`validation/final_validation`](../archive/2026-05-mining-layout-v1-era/README.md) | capacity·§15.5 existing vs final 분리 등 후속 항목 |
 | STEP 10 | replay v3·`computation_cycle` (기존 체크리스트 기록과 동일) | §16 스트리밍·레이어 UI 정본과 별도 QA |
-| Protected / ELA 힌트 | [`pass12_existing_layout_hints`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/existing_layout/pass12_existing_layout_hints.py), [`reclaim_corridors` solver_hints → soft](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/reclaim/reclaim_corridors.py) | §14.2.3·Pass3 hard 정책 전면 |
+| Protected / ELA 힌트 | [`pass12_existing_layout_hints`](../archive/2026-05-mining-layout-v1-era/README.md), [`reclaim_corridors` solver_hints → soft](../archive/2026-05-mining-layout-v1-era/README.md) | §14.2.3·Pass3 hard 정책 전면 |
 
 ### 2026-05-10 Serena·정적 스캔 — `asteroid_mining_layout` ↔ 본 절
 
 Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 코드 확인하고 본 체크리스트만 갱신함 (구현 변경 없음).
 
-- [x] **`find_referencing_symbols`**: `solver_service.build_solver_timeline` — 참조: [`asteroid_mining_layout/__init__.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/__init__.py)·[`placement/pass1_timeline_integration.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/placement/pass1_timeline_integration.py) docstring·[`solver/mining_layout_solver_state.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/mining_layout_solver_state.py) docstring·`tests/unit/shapez_asteroid/` 다수. `django_apps/**/*.py`에서 `**/test*.py` 제외 시 **호출부는 패키지 내부·테스트만** (뷰 등 외부 직접 호출 미검출).
-- [x] **`find_referencing_symbols`**: [`placement/pass2_spine.spine_seed_voids_adjacent_extensions`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/placement/pass2_spine.py) — **참조 0건** → 아래「Pass2 spine 미배선」과 정합.
-- [x] **(당시 스캔 한계 — 2026-05-10b에서 정정)** `ExistingLayoutAnalysis` 문자열 검색만으로는 놓침. **현재**: [`existing_layout/existing_layout_analysis.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/existing_layout/existing_layout_analysis.py)에 분석·`solver_hints` 출력·`solver_service`에서 Pass12/P4로 전달.
-- [x] **(당시 스캔 한계 — 2026-05-10b에서 정정)** `MAX_RECLAIM` 등 미검출은 패턴/경로 한계. **현재**: [`foundation/constants.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/foundation/constants.py) `MAX_RECLAIM_*`, [`reclaim_shadow_commit_loop`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/reclaim/reclaim_shadow_commit_loop.py), `post_reclaim_pass3_*` 필드·게이트([`solver_timeline`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_timeline.py)·[`solver_permission`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_permission.py)) 존재.
+- [x] **`find_referencing_symbols`**: `solver_service.build_solver_timeline` — 참조: [`asteroid_mining_layout/__init__.py`](../archive/2026-05-mining-layout-v1-era/README.md)·[`placement/pass1_timeline_integration.py`](../archive/2026-05-mining-layout-v1-era/README.md) docstring·[`solver/mining_layout_solver_state.py`](../archive/2026-05-mining-layout-v1-era/README.md) docstring·`tests/unit/shapez_asteroid/` 다수. `django_apps/**/*.py`에서 `**/test*.py` 제외 시 **호출부는 패키지 내부·테스트만** (뷰 등 외부 직접 호출 미검출).
+- [x] **`find_referencing_symbols`**: [`placement/pass2_spine.spine_seed_voids_adjacent_extensions`](../archive/2026-05-mining-layout-v1-era/README.md) — **참조 0건** → 아래「Pass2 spine 미배선」과 정합.
+- [x] **(당시 스캔 한계 — 2026-05-10b에서 정정)** `ExistingLayoutAnalysis` 문자열 검색만으로는 놓침. **현재**: [`existing_layout/existing_layout_analysis.py`](../archive/2026-05-mining-layout-v1-era/README.md)에 분석·`solver_hints` 출력·`solver_service`에서 Pass12/P4로 전달.
+- [x] **(당시 스캔 한계 — 2026-05-10b에서 정정)** `MAX_RECLAIM` 등 미검출은 패턴/경로 한계. **현재**: [`foundation/constants.py`](../archive/2026-05-mining-layout-v1-era/README.md) `MAX_RECLAIM_*`, [`reclaim_shadow_commit_loop`](../archive/2026-05-mining-layout-v1-era/README.md), `post_reclaim_pass3_*` 필드·게이트([`solver_timeline`](../archive/2026-05-mining-layout-v1-era/README.md)·[`solver_permission`](../archive/2026-05-mining-layout-v1-era/README.md)) 존재.
 - [x] **replay 스냅샷 v3 (코드)**: `SOLVER_REPLAY_CONTRACT_VERSION` 3 — `build_solver_replay_snapshot`가 이벤트·상위에 `computation_cycle`; Pass3는 `transaction_begin`+`pass3_layout_snapshot`(before/after)+`map_diff_committed` 또는 `rollback`로 동일 `transaction_id`.
 - [x] **B1 `ui_frames` + copy-preview `solver_timeline`**: `build_replay_ui_frames`로 타임라인별 이벤트 슬라이스·Pass3 스냅샷 메타; 옵티마이저 HTML은 `map_timeline`+`solver_timeline` 연속 스크럽.
-- [x] **`find_symbol`**: [`routing/route_zone.TransportKind`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/routing/route_zone.py)·[`placement/placement_commit.PlacementCommitState`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/placement/placement_commit.py) 존재 — [`03_data_schema_dto.md`](../Algorithm/mining_solver_cursor_sessions/03_data_schema_dto.md) 일부와 코드 동기 **부분 확인**. **§E**: dict 기반 ELA + `solver_hints`는 코드에 있음(TypedDict·문서 전 필드 대조는 선택).
+- [x] **`find_symbol`**: [`routing/route_zone.TransportKind`](../archive/2026-05-mining-layout-v1-era/README.md)·[`placement/placement_commit.PlacementCommitState`](../archive/2026-05-mining-layout-v1-era/README.md) 존재 — [`03_data_schema_dto.md`](../Algorithm/mining_solver_cursor_sessions/03_data_schema_dto.md) 일부와 코드 동기 **부분 확인**. **§E**: dict 기반 ELA + `solver_hints`는 코드에 있음(TypedDict·문서 전 필드 대조는 선택).
 - [x] **영향 구간 `pytest` (본일)**: `test_pass1_timeline_integration`·`test_pass3_transport`·`test_step4_merge_routing`·`test_mining_solver_stabilization`·`test_lexicographic_router`·`test_mining_layout_route_costs` — **64 passed, 1 skipped** (`ruff`/`mypy`/`black` 전역 게이트는 본 갱신에서 미실행).
 
 ### 검증 (렉스 · 세션과 병행)
@@ -96,22 +105,22 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 - [x] **2026-05-10 (세션·체크리스트 갱신)**: `python -m pytest tests/unit/shapez_asteroid/` → **293 passed, 1 skipped** (문서만 수정·`ruff`/`mypy`/`black` 전역은 미실행)
 - [x] **2026-05-10 (Phase A·B 회귀)**: `python -m pytest tests/unit/shapez_asteroid/` → **297 passed, 1 skipped**. 변경 파일에 `ruff`·`mypy`·`black --check` 모두 clean. Phase A: P4·post_reclaim·recovery 필드 일관성 단언 1건 추가([`test_mining_solver_stabilization.py`](../../tests/unit/shapez_asteroid/test_mining_solver_stabilization.py) `test_build_solver_timeline_summary_p4_and_recovery_fields_consistent`). Phase B: Pass2 spine 시드 카운트 관측만 추가(동작 변경 없음, [`test_pass1_timeline_integration.py`](../../tests/unit/shapez_asteroid/test_pass1_timeline_integration.py) 회귀 3건).
 - [x] **2026-05-10 (wave 종료 — Solver Architecture Reviewer 판정)**: `mining_solver_next_wave_317aa1eb.plan.md` Phase A/B/C 모두 정본과 정합으로 **종료 처리**. 다음 wave 1순위는 **「Pass2 spine ON/OFF A/B 활용 플랜」**(시드 관측 → 후보 정렬·우선순위 활용 단계). 2순위 Recovery trigger 확장(§13.5 enum), 3순위 §E TypedDict 고정.
-- [x] **2026-05-10 (Pass2 spine soft 우선순위 A/B wave 완료)**: [`plans/pass2_spine_soft_priority_ab_2026-05-10.md`](plans/pass2_spine_soft_priority_ab_2026-05-10.md) 정본 등록. `mineable_inner_first_order(..., priority_seeds=...)` / `run_pass2_internal_placement_mvp(..., priority_seeds=...)` / `integrate_pass12_placement_into_working_map(..., pass2_spine_priority_enabled=False)` 인자 + `solver_summary["pass2_spine_priority_applied"]: bool` 노출(기본 OFF). 솔버 외부 호출은 always-OFF, ON 분기는 단위 테스트만. 회귀: `python -m pytest tests/unit/shapez_asteroid/` → **302 passed, 1 skipped**, 변경 5파일에 `ruff`/`mypy`/`black --check` clean. 다음 1순위는 §13.5 Recovery trigger 확장.
+- [x] **2026-05-10 (Pass2 spine soft 우선순위 A/B wave 완료)**: [`plans/pass2_spine_soft_priority_ab_2026-05-10.md`](../archive/2026-05-mining-layout-v1-era/ai-plans/pass2_spine_soft_priority_ab_2026-05-10.md) 정본 등록. `mineable_inner_first_order(..., priority_seeds=...)` / `run_pass2_internal_placement_mvp(..., priority_seeds=...)` / `integrate_pass12_placement_into_working_map(..., pass2_spine_priority_enabled=False)` 인자 + `solver_summary["pass2_spine_priority_applied"]: bool` 노출(기본 OFF). 솔버 외부 호출은 always-OFF, ON 분기는 단위 테스트만. 회귀: `python -m pytest tests/unit/shapez_asteroid/` → **302 passed, 1 skipped**, 변경 5파일에 `ruff`/`mypy`/`black --check` clean. 다음 1순위는 §13.5 Recovery trigger 확장.
 
 ### 2026-05-10 Asteroid solver 계약 보존 리팩터 1차
 
 - [x] 작업 유형: `solver` / `refactor`
-- [x] 범위: [`solver/solver_service.build_solver_timeline`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver/solver_service.py) 오케스트레이션 유지, 내부 단계만 `solver_pipeline/`로 분리
+- [x] 범위: [`solver/solver_service.build_solver_timeline`](../archive/2026-05-mining-layout-v1-era/README.md) 오케스트레이션 유지, 내부 단계만 `solver_pipeline/`로 분리
 - [x] 계약 보존: replay v2 event/transaction 필드, timeline frame id, `routing_state` hard/soft/nested protected corridor shape, Pass1→Pass2→STEP4→Pass3→P4→validate 순서 변경 없음
 - [x] 회귀 보강: `solver_summary["routing_state"]` protected corridor shape end-to-end 테스트 추가
 - [x] 검증: `python -m pytest tests/unit/shapez_asteroid/` → **291 passed, 1 skipped**; `python -m pytest tests/integration/web/test_web_smoke.py tests/unit/shapez_asteroid/test_copy_preview.py` → **29 passed**; `ruff check django_apps/shapez_asteroid/services/asteroid_mining_layout tests/unit/shapez_asteroid`; `mypy django_apps/shapez_asteroid/services/asteroid_mining_layout`; `black --check django_apps/shapez_asteroid/services/asteroid_mining_layout tests/unit/shapez_asteroid`
-- [x] **2차**: [`step4_merge_routing.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/step4_merge_routing.py)에서 STEP4 result DTO를 `step4_contracts.py`, protected corridor `routing_state` 조립을 `step4_routing_state.py`로 분리. `_dijkstra_route`·`_p2c_revalidate_and_correct` patch 지점과 `Step4Route`/`Step4RoutingResult` import 호환 유지. 검증: `test_step4_merge_routing.py` 영향 구간 → **18 passed, 1 skipped**, 전체 `tests/unit/shapez_asteroid/` → **291 passed, 1 skipped**, `ruff`, `mypy`, `black --check`.
+- [x] **2차**: [`step4_merge_routing.py`](../archive/2026-05-mining-layout-v1-era/README.md)에서 STEP4 result DTO를 `step4_contracts.py`, protected corridor `routing_state` 조립을 `step4_routing_state.py`로 분리. `_dijkstra_route`·`_p2c_revalidate_and_correct` patch 지점과 `Step4Route`/`Step4RoutingResult` import 호환 유지. 검증: `test_step4_merge_routing.py` 영향 구간 → **18 passed, 1 skipped**, 전체 `tests/unit/shapez_asteroid/` → **291 passed, 1 skipped**, `ruff`, `mypy`, `black --check`.
 
 ### 2026-05-10 P0.5 Decoded existing layout (문서·계약)
 
 - [x] 플랜: [`../plans/decoded_existing_layout_model.md`](../plans/decoded_existing_layout_model.md) — 세션 문서 접목·구현 범위 요약 **문서 존재·본문 확인**(구현은 플랜대로 별도 커밋)
-- [x] **dto-contract (코어)**: [`existing_layout_analysis.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/existing_layout/existing_layout_analysis.py)가 `source_kind`·`transport`·`issues`·`solver_hints` 등 §E 성격 필드를 출력·`build_solver_timeline`에서 Pass12/P4에 전달. **남음**: [`03_data_schema_dto.md`](../Algorithm/mining_solver_cursor_sessions/03_data_schema_dto.md) §E와 **필드별 1:1** 대조·(선택) TypedDict 고정.
-- [x] **solver-hints-contract (배선)**: `solver_hints` → Pass2 barrier meta [`pass12_existing_layout_hints`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/existing_layout/pass12_existing_layout_hints.py), P4 reclaim **soft** 병합 [`reclaim_corridors`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/reclaim/reclaim_corridors.py). **남음**: Pass3 **hard** trunk 보호·STEP4가 ELA trunk를 라우팅 seed/goal로 **직접** 쓰는지 등 ([`08_step4_routing.md`](../Algorithm/mining_solver_cursor_sessions/08_step4_routing.md) §9.2.1, [`12_protected_corridor.md`](../Algorithm/mining_solver_cursor_sessions/12_protected_corridor.md) §14.2.3) 정본 대조.
+- [x] **dto-contract (코어)**: [`existing_layout_analysis.py`](../archive/2026-05-mining-layout-v1-era/README.md)가 `source_kind`·`transport`·`issues`·`solver_hints` 등 §E 성격 필드를 출력·`build_solver_timeline`에서 Pass12/P4에 전달. **남음**: [`03_data_schema_dto.md`](../Algorithm/mining_solver_cursor_sessions/03_data_schema_dto.md) §E와 **필드별 1:1** 대조·(선택) TypedDict 고정.
+- [x] **solver-hints-contract (배선)**: `solver_hints` → Pass2 barrier meta [`pass12_existing_layout_hints`](../archive/2026-05-mining-layout-v1-era/README.md), P4 reclaim **soft** 병합 [`reclaim_corridors`](../archive/2026-05-mining-layout-v1-era/README.md). **남음**: Pass3 **hard** trunk 보호·STEP4가 ELA trunk를 라우팅 seed/goal로 **직접** 쓰는지 등 ([`08_step4_routing.md`](../Algorithm/mining_solver_cursor_sessions/08_step4_routing.md) §9.2.1, [`12_protected_corridor.md`](../Algorithm/mining_solver_cursor_sessions/12_protected_corridor.md) §14.2.3) 정본 대조.
 
 ---
 
@@ -119,14 +128,14 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 
 - 상세 QA·트레이스 항목: [`var/checklist.md`](../../var/checklist.md) (§0.1~§11, 부록 A)
 - [ ] 작업 유형: `solver`
-- [ ] 문서: [`plans/mining_layout_solver_stabilization_2026-05-09.md`](plans/mining_layout_solver_stabilization_2026-05-09.md), [`current_plan.md`](current_plan.md)
-- [x] **Stabilization-P0 (일부 완료)**: `emit_solver_summary_once`·`build_solver_timeline` 종료 요약(`solver_summary`)·`after_pass2` baseline proxy·[`final_validation`](django_apps/shapez_asteroid/services/asteroid_mining_layout/final_validation.py) geometry/connectivity 하드 게이트·용량은 `accumulate_only` trace만
-- [x] **Stabilization-P1 — route probe 헬퍼**: [`bundle_route_probe_or_reject`](django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_service.py)·`bundle_reject_no_route`
-- [x] **Stabilization-P1 — 공식 Pass1/Pass2 커밋 게이트**: [`pass12_bundle_commit`](django_apps/shapez_asteroid/services/asteroid_mining_layout/pass12_bundle_commit.py) (`try_commit_pass1_bundle` / `try_commit_pass2_bundle`)·실패 시 transport/blocked 무잔류·`bundle_reject_invalid_stub`(`stub_cell`이 합쳐진 transport에 없을 때)
-- [x] **Canonical P1-A — Pass1 outer-first MVP 생성기**: [`pass1_outer_placement`](django_apps/shapez_asteroid/services/asteroid_mining_layout/pass1_outer_placement.py) (`run_pass1_outer_placement_mvp`)·커밋은 전부 `try_commit_pass1_bundle`
-- [x] **Canonical P1-B — extension topology**: [`extension_topology.enumerate_extension_topologies`](django_apps/shapez_asteroid/services/asteroid_mining_layout/extension_topology.py)·Pass1 번들 후보와 연동
+- [ ] 문서: [`plans/mining_layout_solver_stabilization_2026-05-09.md`](../archive/2026-05-mining-layout-v1-era/ai-plans/mining_layout_solver_stabilization_2026-05-09.md), [`current_plan.md`](current_plan.md)
+- [x] **Stabilization-P0 (일부 완료)**: `emit_solver_summary_once`·`build_solver_timeline` 종료 요약(`solver_summary`)·`after_pass2` baseline proxy·[`final_validation`](../archive/2026-05-mining-layout-v1-era/README.md) geometry/connectivity 하드 게이트·용량은 `accumulate_only` trace만
+- [x] **Stabilization-P1 — route probe 헬퍼**: [`bundle_route_probe_or_reject`](../archive/2026-05-mining-layout-v1-era/README.md)·`bundle_reject_no_route`
+- [x] **Stabilization-P1 — 공식 Pass1/Pass2 커밋 게이트**: [`pass12_bundle_commit`](../archive/2026-05-mining-layout-v1-era/README.md) (`try_commit_pass1_bundle` / `try_commit_pass2_bundle`)·실패 시 transport/blocked 무잔류·`bundle_reject_invalid_stub`(`stub_cell`이 합쳐진 transport에 없을 때)
+- [x] **Canonical P1-A — Pass1 outer-first MVP 생성기**: [`pass1_outer_placement`](../archive/2026-05-mining-layout-v1-era/README.md) (`run_pass1_outer_placement_mvp`)·커밋은 전부 `try_commit_pass1_bundle`
+- [x] **Canonical P1-B — extension topology**: [`extension_topology.enumerate_extension_topologies`](../archive/2026-05-mining-layout-v1-era/README.md)·Pass1 번들 후보와 연동
 - [x] **P1-C — 출력 방향·출구 스텁·cheap escape 정합**: `extractor_output_dir`·`final_validation`·cheap void 마진(동적 3~7)·Pass2는 cheap 미사용
-- [x] **Pass2-A — 내부 채움 MVP**: [`pass2_internal_placement`](django_apps/shapez_asteroid/services/asteroid_mining_layout/pass2_internal_placement.py)·inner-first·`try_commit_pass2_bundle`만·`pass2_*` 통계
+- [x] **Pass2-A — 내부 채움 MVP**: [`pass2_internal_placement`](../archive/2026-05-mining-layout-v1-era/README.md)·inner-first·`try_commit_pass2_bundle`만·`pass2_*` 통계
 - [ ] **Stabilization-P1 — 미래 배선 (나머지 생성기)**: Pass2 spine·reclaim 등은 동일하게 공식 게이트만 경유·`scratch` 직접 갱신 금지
 - [ ] **미완 (안정화 플랜 나머지)**: 철거 기반 merge repair 커밋 차단·destructive 이벤트 카운트·생산 점수 검증 등
 - [ ] **2차**: 배치기에서 stub→trunk probe 호출·protected corridor 최소
@@ -137,7 +146,7 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 ### 2026-05-09 Merge repair `not_found` escalation
 
 - [x] 작업 유형: `solver`
-- [x] 문서: [`research_merge_repair_not_found_2026-05-09.md`](../research/research_merge_repair_not_found_2026-05-09.md), [`plans/merge_repair_not_found_recovery_2026-05-09.md`](plans/merge_repair_not_found_recovery_2026-05-09.md), [`current_plan.md`](current_plan.md) 갱신
+- [x] 문서: [`research_merge_repair_not_found_2026-05-09.md`](../archive/2026-05-mining-layout-v1-era/research/research_merge_repair_not_found_2026-05-09.md), [`plans/merge_repair_not_found_recovery_2026-05-09.md`](../archive/2026-05-mining-layout-v1-era/ai-plans/merge_repair_not_found_recovery_2026-05-09.md), [`current_plan.md`](current_plan.md) 갱신
 - [x] `repair is None` 시 merge budget escalation(1~4) + Pass3 `budget_recovery` 후 재시도; give-up 시 명시적 partial failure 메시지
 - [x] `find_min_demolition_path` `not_found` trace에 `explored_cells`·`bounds`·`neighbor_costs` 등 진단 필드 추가
 - [x] 검증: `pytest` 해당 unit 구간, `ruff` 변경 파일
@@ -145,7 +154,7 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 ### 2026-05-09 Merge repair mineable route P1
 
 - [x] 작업 유형: `solver`
-- [x] 문서: [`merge_repair_mineable_route_p1_2026-05-09.md`](plans/merge_repair_mineable_route_p1_2026-05-09.md), [`research_merge_repair_not_found_2026-05-09.md`](../research/research_merge_repair_not_found_2026-05-09.md) P1·관측 갱신
+- [x] 문서: [`merge_repair_mineable_route_p1_2026-05-09.md`](../archive/2026-05-mining-layout-v1-era/ai-plans/merge_repair_mineable_route_p1_2026-05-09.md), [`research_merge_repair_not_found_2026-05-09.md`](../archive/2026-05-mining-layout-v1-era/research/research_merge_repair_not_found_2026-05-09.md) P1·관측 갱신
 - [x] `cost_grid.repair_cell_cost`에 `mineable_route_step_cost`; `weighted_routing`·merge 2차 호출·`MERGE_REPAIR_MINEABLE_ROUTE_CELL_COST`
 - [x] 검증: `pytest` `test_mining_layout_route_costs`, `ruff`, `black --check`
 
@@ -288,27 +297,27 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 
 ### P2-A — STEP4 최소 merge-aware routing (아키텍처 검토 마감 2026-05-09)
 
-- [x] 구현·연동: [`step4_merge_routing.run_step4_merge_aware_routing`](django_apps/shapez_asteroid/services/asteroid_mining_layout/step4_merge_routing.py)·[`solver_service`](django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_service.py) 호출
+- [x] 구현·연동: [`step4_merge_routing.run_step4_merge_aware_routing`](../archive/2026-05-mining-layout-v1-era/README.md)·[`solver_service`](../archive/2026-05-mining-layout-v1-era/README.md) 호출
 - [x] 단위: [`tests/unit/shapez_asteroid/test_step4_merge_routing.py`](../../tests/unit/shapez_asteroid/test_step4_merge_routing.py)
 - [x] 검증: `pytest` 141 passed, 1 skipped; `ruff` 통과(기존 실패 `I001` import 정렬 — 기능 결함 아님)
 - [x] 상태: **DONE** — 다음: **P2-B — `PlacementCommitState` FSM** ([`03_data_schema_dto.md`](../Algorithm/mining_solver_cursor_sessions/03_data_schema_dto.md) 정본과 코드 동기)
 
 ### P2-B — PlacementCommitState FSM (계약·검증 정합 2026-05-10)
 
-- [x] Enum·레코드·`make_placement_id` — [`placement_commit.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/placement_commit.py); Pass12 커밋 시 `PROVISIONAL_PLACED` — [`pass12_bundle_commit`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/pass12_bundle_commit.py)
-- [x] 맵 행 `placement_id`·STEP4 `ROUTED_CONFIRMED` / 격실패 `QUARANTINED_UNROUTED`→`ROLLED_BACK`·rollback — [`step4_merge_routing`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/step4_merge_routing.py)
+- [x] Enum·레코드·`make_placement_id` — [`placement_commit.py`](../archive/2026-05-mining-layout-v1-era/README.md); Pass12 커밋 시 `PROVISIONAL_PLACED` — [`pass12_bundle_commit`](../archive/2026-05-mining-layout-v1-era/README.md)
+- [x] 맵 행 `placement_id`·STEP4 `ROUTED_CONFIRMED` / 격실패 `QUARANTINED_UNROUTED`→`ROLLED_BACK`·rollback — [`step4_merge_routing`](../archive/2026-05-mining-layout-v1-era/README.md)
 - [x] `routing_failures` 항목: `extractor_id`·`attempt_count`·`final_state`·`last_error`(및 기존 좌표 필드)
-- [x] `solver_summary`·`solver_step4_routing` summary: `placement_commit_counts`·`step4_*_count` — [`solver_service`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_service.py)
+- [x] `solver_summary`·`solver_step4_routing` summary: `placement_commit_counts`·`step4_*_count` — [`solver_service`](../archive/2026-05-mining-layout-v1-era/README.md)
 - [x] `final_validation`: `placement_state` 또는 `placement_commit_state`가 `quarantined_unrouted`이면 `geometry_valid=False`
 - [x] 단위: [`test_step4_merge_routing.py`](../../tests/unit/shapez_asteroid/test_step4_merge_routing.py) 보강
 
 ### P2-B.1 — FSM guard·맵 메타 (2026-05-10)
 
 - [x] `unfinalized_placement_count`(`provisional_placed`+`quarantined_unrouted`) — `trunk_load`·`solver_summary`·`solver_step4_routing`·`final_validation` API
-- [x] 잔존 시 `return_reason`=`validation_unfinalized_placement_failed`·`ok`=False — [`solver_service`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_service.py)
-- [x] `final_validation`: 맵 행 `provisional_placed` → `provisional_placed_row_count`·geometry 실패 — [`final_validation.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/final_validation.py)
+- [x] 잔존 시 `return_reason`=`validation_unfinalized_placement_failed`·`ok`=False — [`solver_service`](../archive/2026-05-mining-layout-v1-era/README.md)
+- [x] `final_validation`: 맵 행 `provisional_placed` → `provisional_placed_row_count`·geometry 실패 — [`final_validation.py`](../archive/2026-05-mining-layout-v1-era/README.md)
 - [x] STEP4 후 `placement_id` 행에 `placement_commit_state`·`route_id`·`rollback_reason` 스탬프; Pass12 출력 리스트 **별도 dict 복사** 후 라우팅(타임라인 프레임 무결)
-- [x] `unfinalized_placement_count_from_counts` — [`placement_commit.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/placement_commit.py)
+- [x] `unfinalized_placement_count_from_counts` — [`placement_commit.py`](../archive/2026-05-mining-layout-v1-era/README.md)
 - [x] 단위: orphan `placement_records`·`build_solver_timeline` 패치 검증
 - [x] polish (아키텍처 검토 마감): `layout_degraded`에 `step4_rollback_count`·`solver_summary` 상위 `step4_rolled_back_count`·예외 경로 `setdefault`
 
@@ -325,9 +334,9 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 - [x] 성공 시 `Step4Route` 경로 교체·기존 `route-{placement_id}` 유지
 - [x] 실패 시 해당 placement **cascade rollback** (`rollback_reason`=`p2c_trunk_disconnect`)
 - [x] `cascade_corrective_attempts` 한도 (`_MAX_P2C_CORRECTIVE_ATTEMPTS` = 64)
-- [x] [`solver_service`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_service.py) `solver_summary`·`solver_step4_routing`: `route_revalidation_passed`, `broken_routed_route_count`, `cascade_corrective_attempts`, `cascade_reroute_count`, `cascade_rollback_count`, `trunk_load`에 `cascade_rolled_back_placement_ids`
+- [x] [`solver_service`](../archive/2026-05-mining-layout-v1-era/README.md) `solver_summary`·`solver_step4_routing`: `route_revalidation_passed`, `broken_routed_route_count`, `cascade_corrective_attempts`, `cascade_reroute_count`, `cascade_rollback_count`, `trunk_load`에 `cascade_rolled_back_placement_ids`
 - [x] `layout_degraded`: `broken_routed_route_count` / `cascade_rollback_count` 반영
-- [x] 구현 축: [`step4_merge_routing.py`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/step4_merge_routing.py) (`_p2c_revalidate_and_correct`) · `final_validation` 추가 필드 없음 · `solver_service` 요약/프레임 전파
+- [x] 구현 축: [`step4_merge_routing.py`](../archive/2026-05-mining-layout-v1-era/README.md) (`_p2c_revalidate_and_correct`) · `final_validation` 추가 필드 없음 · `solver_service` 요약/프레임 전파
 - [x] 단위: `_stub_reaches_external_trunk` flaky 패치로 corrective reroute 경로 검증
 - [x] **P2-C.1 (DONE)** 실맵 회귀: [`test_step4_cascade_revalidates_route_after_neighbor_rollback`](../../tests/unit/shapez_asteroid/test_step4_merge_routing.py) — **손 구성 `mining_map`**(y=10 단일 복도·파이프 우회 차단)·B routing 실패→stub `(15,10)` rollback으로 A 단절→P2-C가 broken 감지 후 corrective reroute/cascade·`final_validation` 통과. B만 `force_route_attempt_placement_ids`(stub-in-trunk merge 우회; 안 하면 패치가 호출되지 않음).
 
@@ -361,8 +370,8 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 
 **목표**: Pass3 greedy 대체용 reroute pathfinder를 **순수 함수**로 구현. **본 단계에서 `solver_service`·Pass3 greedy 교체·atomic replace·`MAX_ROUTE_LENGTH_RATIO` 게이트·protected corridor·replay UI 변경은 하지 않는다.**
 
-- [x] `RouteZone`·`ROUTE_ZONE_COST`·`TransportKind`·`KIND_COST_MULTIPLIER`·[`route_zone.build_route_zone_map`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/route_zone.py)
-- [x] [`lexicographic_router.find_lexicographic_route`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/lexicographic_router.py)·`RouteSearchResult`·`max_expanded_nodes`·deterministic tie-break·고정 stub `path[0]==start`·선택 `allowed_cells`(무한 그리드 차단용, E2에서 솔버 bbox와 정합 가능)
+- [x] `RouteZone`·`ROUTE_ZONE_COST`·`TransportKind`·`KIND_COST_MULTIPLIER`·[`route_zone.build_route_zone_map`](../archive/2026-05-mining-layout-v1-era/README.md)
+- [x] [`lexicographic_router.find_lexicographic_route`](../archive/2026-05-mining-layout-v1-era/README.md)·`RouteSearchResult`·`max_expanded_nodes`·deterministic tie-break·고정 stub `path[0]==start`·선택 `allowed_cells`(무한 그리드 차단용, E2에서 솔버 bbox와 정합 가능)
 - [x] 단위: 외곽(void) 우회가 길어도 `internal_transport_count`가 낮으면 선택
 - [x] 단위: `placement_candidate` 직선을 피해 더 긴 경로
 - [x] 단위: 동일 priority 시 경로(좌표 시퀀스) 사전순 결정적 선택
@@ -375,17 +384,17 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 
 **목표**: P3-E2 통합 전 정본 비용·solver 문자열 정합·방향 인식 탐색으로 디버깅 비용 점감.
 
-- [x] [`ROUTE_ZONE_COST`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/route_zone.py) 3구역 스칼라를 정본(외곽 1·경계 5·내부 50)과 일치
-- [x] [`TransportKind`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/route_zone.py) `shape_belt` / `fluid_pipe`·[`transport_kind_from_solver_value`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/route_zone.py)
-- [x] [`find_lexicographic_route`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/lexicographic_router.py) 탐색 상태 `(cell, previous_cell)` — 누적 turn이 진입 방향에 의존
+- [x] [`ROUTE_ZONE_COST`](../archive/2026-05-mining-layout-v1-era/README.md) 3구역 스칼라를 정본(외곽 1·경계 5·내부 50)과 일치
+- [x] [`TransportKind`](../archive/2026-05-mining-layout-v1-era/README.md) `shape_belt` / `fluid_pipe`·[`transport_kind_from_solver_value`](../archive/2026-05-mining-layout-v1-era/README.md)
+- [x] [`find_lexicographic_route`](../archive/2026-05-mining-layout-v1-era/README.md) 탐색 상태 `(cell, previous_cell)` — 누적 turn이 진입 방향에 의존
 - [x] 단위: 정본 비용·adapter·합류 셀 진입 방향에 따른 후속 turn (좌표 `x>=1`으로 `neighbors4` 제약 반영)
 - [x] 검증: `pytest tests/unit/shapez_asteroid/`·`ruff`/`mypy`/`black` 변경 파일
 
 ### P3-E2 — Route adapter + Pass3 shadow lex vs greedy (베이스 · 2026-05-10)
 
-- [x] [`route_adapter`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/route_adapter.py) 입력/출력·`build_route_adapter_output`·Pass3 stub용 입력 빌더
-- [x] [`pass3_transport`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/pass3_transport.py) shadow 전용 lex vs greedy probe·`p3e2_*` trace
-- [x] [`solver_service`](../../django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_service.py) 요약 병합 — **실맵 lex 커밋 없음**(greedy 유지)
+- [x] [`route_adapter`](../archive/2026-05-mining-layout-v1-era/README.md) 입력/출력·`build_route_adapter_output`·Pass3 stub용 입력 빌더
+- [x] [`pass3_transport`](../archive/2026-05-mining-layout-v1-era/README.md) shadow 전용 lex vs greedy probe·`p3e2_*` trace
+- [x] [`solver_service`](../archive/2026-05-mining-layout-v1-era/README.md) 요약 병합 — **실맵 lex 커밋 없음**(greedy 유지)
 
 ### P3-E2.1 — shadow hardening (완료 · 2026-05-10, 문서 동기화)
 
@@ -454,7 +463,7 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 ### 2026-05-13 asteroid_mining_layout DTO 인벤토리
 
 - [x] 작업 유형: `solver` / `refactor` / 문서 승인용 인벤토리
-- [x] 문서: [`plans/mining_layout_dto_inventory_2026-05-13.md`](plans/mining_layout_dto_inventory_2026-05-13.md)
+- [x] 문서: [`plans/mining_layout_dto_inventory_2026-05-13.md`](../archive/2026-05-mining-layout-v1-era/ai-plans/mining_layout_dto_inventory_2026-05-13.md)
 - [x] 범위: `03_data_schema_dto.md` E절과 `existing_layout_analysis`, STEP4 실패 상세, timeline/replay, Pass12 probe의 느슨한 `dict[str, Any]` 경계를 대조
 - [x] 구현: 공유 mining-map row 타입, ExistingLayout wire 타입, STEP4 failure detail wire 타입, Pass12 probe stats/trace 타입 추가
 - [x] 적용: final validation / existing layout / STEP4 detail / Pass12 probe의 읽기 경계 타입 힌트 적용. public dict 반환 계약과 serialization key order는 유지.

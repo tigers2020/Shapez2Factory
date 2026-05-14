@@ -99,9 +99,14 @@ def mining_surface_from_layout(layout_type: str | None) -> str | None:
     style = classify_layout_type(layout_type)
     if style is None:
         return None
+    lowered = str(layout_type).strip().lower()
     if style in (PlotStyle.fluid_miner, PlotStyle.fluid_extension):
         return "fluid"
-    if style in (PlotStyle.miner, PlotStyle.extension, PlotStyle.extractor, PlotStyle.booster):
+    if style is PlotStyle.extractor:
+        if "fluid" in lowered or "pump" in lowered:
+            return "fluid"
+        return "shape"
+    if style in (PlotStyle.miner, PlotStyle.extension, PlotStyle.booster):
         return "shape"
     return None
 

@@ -222,9 +222,6 @@ msgstr "데모"
 msgid "Decode"
 msgstr "해석"
 
-msgid "Show solver overlay"
-msgstr "Show solver overlay"
-
 msgid "Show protected corridors (read-only)"
 msgstr "보호 코리도 표시(읽기 전용)"
 
@@ -246,24 +243,11 @@ msgstr "일시정지"
 msgid "Next"
 msgstr "다음"
 
-msgid "Step"
-msgstr "단계"
+msgid "Timeline step"
+msgstr "Timeline step"
 
-msgid "Solver controls"
-msgstr "솔버 조작"
-
-msgid "Solver frame"
-msgstr "Solver frame"
-
-msgid "Unified map + solver playback"
-msgstr "Unified map + solver playback"
-
-msgid ""
-"Use the timeline under the blueprint field for full map-build and solver "
-"steps together; use this card for solver-only frames and replay metadata."
-msgstr ""
-"Use the timeline under the blueprint field for full map-build and solver "
-"steps together; use this card for solver-only frames and replay metadata."
+msgid "Step interval"
+msgstr "Step interval"
 
 msgid "Build rules"
 msgstr "표시 규칙"
@@ -297,6 +281,9 @@ msgstr "반투명 칸: 도형·유체 구분은 청사진 레이아웃 이름을
 msgid "Rotate map panel (which edge faces up)"
 msgstr "맵 패널 회전(어느 변이 위인지)"
 
+msgid "Map orientation"
+msgstr "Map orientation"
+
 msgid "N"
 msgstr "N"
 
@@ -314,6 +301,13 @@ msgstr "Reset view"
 
 msgid "Wheel: zoom in/out. Drag: pan. Reset restores fit."
 msgstr "Wheel: zoom in/out. Drag: pan. Reset restores fit."
+
+msgid ""
+"Timeline position on the map matches the step under the blueprint (Prev / "
+"Play / slider)."
+msgstr ""
+"Timeline position on the map matches the step under the blueprint (Prev / "
+"Play / slider)."
 
 msgid "Scan pass (preview)"
 msgstr "스캔 패스(미리보기)"
@@ -368,9 +362,6 @@ msgstr "병합 파이프(솔버 미리보기)"
 
 msgid "Final trunk (solver preview)"
 msgstr "최종 트렁크(솔버 미리보기)"
-
-msgid "Build playback (not connected)"
-msgstr "구축 재생(미연결)"
 
 msgid "Decoded layout summary"
 msgstr "해석된 레이아웃 요약"
@@ -461,6 +452,39 @@ msgstr "Solver: Pass3 transport"
 
 msgid "Solver: Final validation"
 msgstr "Solver: Final validation"
+
+msgid "v2: Transport & extraction shell"
+msgstr "v2: Transport & extraction shell"
+
+msgid "v2: Interior void (inferred)"
+msgstr "v2: Interior void (inferred)"
+
+msgid "v2: Mineable placement cells"
+msgstr "v2: Mineable placement cells"
+
+msgid "v2: Pass1 candidates"
+msgstr "v2: Pass1 candidates"
+
+msgid "v2: Pass1 provisional commit"
+msgstr "v2: Pass1 provisional commit"
+
+msgid "v2: Pass2 candidates"
+msgstr "v2: Pass2 candidates"
+
+msgid "v2: Pass2 provisional commit"
+msgstr "v2: Pass2 provisional commit"
+
+msgid "v2: Step4 trunk seed"
+msgstr "v2: Step4 trunk seed"
+
+msgid "v2: Step4 routing"
+msgstr "v2: Step4 routing"
+
+msgid "v2: Final validation"
+msgstr "v2: Final validation"
+
+msgid "v2: Final layout"
+msgstr "v2: Final layout"
 
 msgid ""
 "Solver timeline was not returned (solver may have failed). Check the server "
@@ -592,11 +616,11 @@ msgid ""
 msgstr ""
 "Counts traversals on routes STEP4 already painted; not corridor probe tiers."
 
-msgid "Map step playback"
-msgstr "맵 단계 재생"
+msgid "Timeline playback"
+msgstr "Timeline playback"
 
-msgid "Solver timeline replay"
-msgstr "Solver timeline replay"
+msgid "Solver details for current timeline step"
+msgstr "Solver details for current timeline step"
 
 msgid "Map orientation (north up by default)"
 msgstr "맵 방향(기본 북쪽 위)"
@@ -624,9 +648,6 @@ msgstr "청사진 레이아웃 격자"
 
 msgid "Tile legend"
 msgstr "타일 범례"
-
-msgid "Build timeline (preview)"
-msgstr "구축 타임라인(미리보기)"
 
 msgid "Validate input type"
 msgstr "입력 형식 검사"
@@ -678,16 +699,11 @@ msgid ""
 msgstr "서버 해석은 원본 좌표 맵을 유지하고, 격자는 브라우저에서 그립니다."
 
 msgid ""
-"Paste the in-game copy string. Decoding runs on the server; a short map "
-"summary appears on the right."
-msgstr "게임 안에서 복사한 문자열을 붙여 주세요. 해석은 서버에서 돌고, 오른쪽에 짧은 맵 요약이 나옵니다."
-
-msgid ""
-"Solver timeline replay (after Decode with solver overlay). Scrub or play to "
-"drive the map; decode playback pauses here."
+"Paste the in-game copy string. Decoding runs on the server; after Decode, "
+"use the timeline block below for map steps (mining layout v2 preview)."
 msgstr ""
-"Solver timeline replay (after Decode with solver overlay). Scrub or play to "
-"drive the map; decode playback pauses here."
+"Paste the in-game copy string. Decoding runs on the server; after Decode, "
+"use the timeline block below for map steps (mining layout v2 preview)."
 
 msgid ""
 "Only entries with X ≠ 0; columns are distinct game X values (no synthetic X "
@@ -696,11 +712,6 @@ msgid ""
 msgstr ""
 "X≠0인 항목만 표시하고, 열은 서로 다른 게임 X값입니다(가짜 X=0 열 없음). 게임 맵처럼 북쪽 위: Y가 작을수록 패널 위쪽, "
 "세로는 아래로 증가합니다."
-
-msgid ""
-"Solver scan order and trunk controls will show here when connected; they are"
-" not the same as map rotation above."
-msgstr "연결되면 솔버 스캔 순서·트렁크 조작이 여기 표시됩니다. 위의 맵 회전과는 다릅니다."
 
 msgid "shapez2 planner"
 msgstr "shapez2 planner"
@@ -1353,9 +1364,6 @@ msgstr "code는 문자열이어야 합니다"
 
 msgid "decode failed"
 msgstr "디코드에 실패했습니다"
-
-msgid "solver timeline failed"
-msgstr "솔버 타임라인 실패"
 
 msgid "Factory templates"
 msgstr "공장 템플릿"

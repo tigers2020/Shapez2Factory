@@ -114,15 +114,14 @@ def merge_with_transport_and_final_mining_map(
     final ``asteroid_field`` rows (preserves active miners for analysis).
     """
 
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.routing import routing_cells
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout.validation import (
-        final_validation,
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.adapters import (
+        mining_map_cells as _mmc,
     )
 
-    raw_w = final_validation.cells_dict_from_mining_map(with_transport_mining_map)
+    raw_w = _mmc.cells_dict_from_mining_map(with_transport_mining_map)
     cells: dict[tuple[int, int], dict[str, Any]] = {k: dict(v) for k, v in raw_w.items()}
-    final_cells = final_validation.cells_dict_from_mining_map(final_mining_map)
-    mineable, _ = routing_cells.mineable_and_asteroid_coords(final_mining_map)
+    final_cells = _mmc.cells_dict_from_mining_map(final_mining_map)
+    mineable, _ = _mmc.mineable_and_asteroid_coords(final_mining_map)
     for c in mineable:
         fc = final_cells.get(c)
         if fc is None:
@@ -289,6 +288,17 @@ def _extraction_shell_coords_from_entries(decoded: dict[str, Any]) -> frozenset[
     return frozenset(shell)
 
 
+def _asteroid_envelope_coords(
+    extraction_shell: frozenset[tuple[int, int]],
+) -> frozenset[tuple[int, int]]:
+    """Shell plus inferred enclosed voids (inside the asteroid); exterior void is excluded."""
+
+    if not extraction_shell:
+        return frozenset()
+    interior = frozenset(compute_patch_interior_cells(set(extraction_shell)))
+    return extraction_shell | interior
+
+
 def _mining_with_transport_rows(
     decoded: dict[str, Any],
 ) -> list[tuple[int, int, str | None, int | None]]:
@@ -371,11 +381,13 @@ def _mining_map_with_transport(
     ext_only = [(x, y, t, r) for x, y, t, r in rows if is_extraction_style(classify_layout_type(t))]
     dominant = _dominant_mining_surface_simple(ext_only) if ext_only else "shape"
 
+    asteroid_envelope = _asteroid_envelope_coords(extraction_shell)
     out: list[dict[str, Any]] = []
     for x, y, t_str, r_val in sorted(rows, key=lambda row: (row[1], row[0])):
         st = classify_layout_type(t_str)
         if st == PlotStyle.belt:
-            over_void = (x, y) not in extraction_shell
+            # True only outside shell ∪ enclosed interior (exterior void); interior void keeps fill.
+            over_void = (x, y) not in asteroid_envelope
             out.append(
                 {
                     "x": x,
@@ -386,7 +398,7 @@ def _mining_map_with_transport(
                 }
             )
         elif st == PlotStyle.pipe:
-            over_void = (x, y) not in extraction_shell
+            over_void = (x, y) not in asteroid_envelope
             out.append(
                 {
                     "x": x,

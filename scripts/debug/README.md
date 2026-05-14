@@ -14,7 +14,7 @@
 |----------|------|
 | `p4_pass3_trace_review.py` | NDJSON에서 마지막 `solver_summary` 등 요약 리뷰 |
 | `aggregate_pass12_recoverability_from_ndjson.py` | NDJSON 다건 스캔·집계 |
-| `pass12_preserve_recovery_ab.py` | preserve A/B·NDJSON/복사본 입력 실험 |
+| `pass12_preserve_recovery_ab.py` | **DEPRECATED** (v1 제거됨; 실행 시 exit 2) |
 | `extract_step4_no_route_exhausted_samples.py` | NDJSON에서 no-route exhausted 샘플 추출 |
 
 실행 예는 각 파일 상단 docstring을 본다. 레포 루트에서:

@@ -40,6 +40,8 @@
       data-asteroid-copy-root
       data-copy-preview-url="{% url 'shapez_asteroid:copy_preview' %}"
       data-map-cells-url="{% url 'shapez_asteroid:map_cells' %}"
+      data-am-sprite-atlas-image="{% static 'web/asteroid_optimizer/sprites/asteroid_map_atlas.png' %}"
+      data-am-sprite-atlas-meta="{% static 'web/asteroid_optimizer/sprites/asteroid_map_atlas.json' %}"
       data-msg-no-bounds="{% trans 'No XY bounds from entries.' %}"
       data-msg-network="{% trans 'Network error' %}"
       data-msg-failed="{% trans 'Request failed' %}"
@@ -47,71 +49,87 @@
       data-msg-shape-mining="{% trans 'Shape mining' %}"
       data-msg-belt="{% trans 'Belt' %}"
       data-msg-pipe="{% trans 'Pipe' %}"
-      data-msg-layout-fluid-extension="{% filter escapejs %}{% trans 'Fluid extension' %}{% endfilter %}"
-      data-msg-layout-extension="{% filter escapejs %}{% trans 'Extension' %}{% endfilter %}"
-      data-msg-layout-fluid-miner="{% filter escapejs %}{% trans 'Fluid miner' %}{% endfilter %}"
-      data-msg-layout-miner="{% filter escapejs %}{% trans 'Miner' %}{% endfilter %}"
-      data-msg-layout-extractor="{% filter escapejs %}{% trans 'Extractor' %}{% endfilter %}"
-      data-msg-layout-booster="{% filter escapejs %}{% trans 'Booster' %}{% endfilter %}"
-      data-msg-layout-asteroid-field="{% filter escapejs %}{% trans 'Asteroid field' %}{% endfilter %}"
+      data-msg-layout-fluid-extension="{% filter force_escape %}{% trans 'Fluid extension' %}{% endfilter %}"
+      data-msg-layout-extension="{% filter force_escape %}{% trans 'Extension' %}{% endfilter %}"
+      data-msg-layout-fluid-miner="{% filter force_escape %}{% trans 'Fluid miner' %}{% endfilter %}"
+      data-msg-layout-miner="{% filter force_escape %}{% trans 'Miner' %}{% endfilter %}"
+      data-msg-layout-extractor="{% filter force_escape %}{% trans 'Extractor' %}{% endfilter %}"
+      data-msg-layout-booster="{% filter force_escape %}{% trans 'Booster' %}{% endfilter %}"
+      data-msg-layout-asteroid-field="{% filter force_escape %}{% trans 'Asteroid field' %}{% endfilter %}"
       data-demo-blueprint-url="{% static 'web/asteroid_demo_blueprint.txt' %}"
-      data-map-phase-idle-title="{% filter escapejs %}{% trans 'Solver phase' %}{% endfilter %}"
-      data-map-phase-idle-desc="{% filter escapejs %}{% trans 'Boundary scan and pipe overlay when the solver API is available.' %}{% endfilter %}"
-      data-map-phase-map-title="{% filter escapejs %}{% trans 'Map build' %}{% endfilter %}"
-      data-map-phase-decode-title="{% filter escapejs %}{% trans 'Copy decode' %}{% endfilter %}"
-      data-map-badge-idle="{% filter escapejs %}{% trans 'Timeline: 0 / 0 (preview)' %}{% endfilter %}"
-      data-map-badge-step-prefix="{% filter escapejs %}{% trans 'Map step' %}{% endfilter %}"
-      data-map-badge-solver-prefix="{% filter escapejs %}{% trans 'Solver' %}{% endfilter %}"
-      data-map-badge-decode-prefix="{% filter escapejs %}{% trans 'Decode step' %}{% endfilter %}"
-      data-map-step-with_transport="{% filter escapejs %}{% trans 'Blueprint with belt & pipe' %}{% endfilter %}"
-      data-map-step-extraction_shell="{% filter escapejs %}{% trans 'Transport removed (mining shell)' %}{% endfilter %}"
-      data-map-step-strip_extractors="{% filter escapejs %}{% trans 'Destroy extractors — asteroid field' %}{% endfilter %}"
-      data-map-step-strip_extensions="{% filter escapejs %}{% trans 'Destroy extensions — asteroid field' %}{% endfilter %}"
-      data-map-step-fill_interior="{% filter escapejs %}{% trans 'Fill enclosed patch interior' %}{% endfilter %}"
-      data-map-step-final="{% filter escapejs %}{% trans 'Final mining map' %}{% endfilter %}"
-      data-map-step-solver_init="{% filter escapejs %}{% trans 'Solver: baseline (init)' %}{% endfilter %}"
-      data-map-step-solver_pass1_outer="{% filter escapejs %}{% trans 'Solver: Pass1 outer' %}{% endfilter %}"
-      data-map-step-solver_pass2_internal="{% filter escapejs %}{% trans 'Solver: Pass2 internal' %}{% endfilter %}"
-      data-map-step-solver_step4_routing="{% filter escapejs %}{% trans 'Solver: Step4 routing' %}{% endfilter %}"
-      data-map-step-solver_pass3_transport="{% filter escapejs %}{% trans 'Solver: Pass3 transport' %}{% endfilter %}"
-      data-map-step-solver_validate="{% filter escapejs %}{% trans 'Solver: Final validation' %}{% endfilter %}"
-      data-msg-solver-timeline-missing="{% filter escapejs %}{% trans 'Solver timeline was not returned (solver may have failed). Check the server or try Decode again.' %}{% endfilter %}"
-      data-msg-solver-replay-no-mining-map="{% filter escapejs %}{% trans 'This solver frame has no mining_map; map may be empty until another frame is selected.' %}{% endfilter %}"
-      data-playback-title-map-only="{% filter escapejs %}{% trans 'Map steps' %}{% endfilter %}"
-      data-playback-title-map-solver="{% filter escapejs %}{% trans 'Map + solver steps' %}{% endfilter %}"
-      data-msg-solver-redecode-hint="{% filter escapejs %}{% trans 'With “Show solver overlay” on, click Decode again to append solver timeline steps after the six map-build steps.' %}{% endfilter %}"
-      data-msg-p4-route-overlay="{% filter escapejs %}{% trans 'P4 reclaim last B2 route cells' %}{% endfilter %}"
-      data-msg-p4-soft-overlay="{% filter escapejs %}{% trans 'P4 soft protected candidates (last commit)' %}{% endfilter %}"
-      data-msg-p4-soft-replace-old-overlay="{% filter escapejs %}{% trans 'P4 soft repair old cells (last session)' %}{% endfilter %}"
-      data-msg-p4-soft-replace-new-overlay="{% filter escapejs %}{% trans 'P4 soft repair new cells (last session)' %}{% endfilter %}"
-      data-msg-route-replay-removed="{% filter escapejs %}{% trans 'Replay: route cells removed (cascade reroute)' %}{% endfilter %}"
-      data-msg-route-replay-added="{% filter escapejs %}{% trans 'Replay: route cells added (cascade reroute)' %}{% endfilter %}"
-      data-map-viz-stage-0="{% filter escapejs %}{% trans 'Prepare string' %}{% endfilter %}"
-      data-map-viz-stage-1="{% filter escapejs %}{% trans 'Binary payload' %}{% endfilter %}"
-      data-map-viz-stage-2="{% filter escapejs %}{% trans 'Parse JSON' %}{% endfilter %}"
-      data-map-viz-stage-3="{% filter escapejs %}{% trans 'Layout object' %}{% endfilter %}"
-      data-msg-opt-counterfactual-baseline="{% filter escapejs %}{% trans 'Counterfactual baseline' %}{% endfilter %}"
-      data-msg-opt-final-internal="{% filter escapejs %}{% trans 'Final internal transport' %}{% endfilter %}"
-      data-msg-opt-internal-tiles="{% filter escapejs %}{% trans 'internal tiles' %}{% endfilter %}"
-      data-msg-opt-quality-ratio="{% filter escapejs %}{% trans 'Quality ratio' %}{% endfilter %}"
-      data-msg-opt-times="{% filter escapejs %}{% trans '×' %}{% endfilter %}"
-      data-msg-opt-aggregation="{% filter escapejs %}{% trans 'Aggregation' %}{% endfilter %}"
-      data-msg-opt-counterfactual-failed="{% filter escapejs %}{% trans 'Counterfactual baseline unavailable' %}{% endfilter %}"
-      data-msg-opt-warn-ratio-high="{% filter escapejs %}{% trans 'Internal transport quality ratio is high versus the counterfactual baseline (over 1.35×). Consider route tuning before using this as a hard gate.' %}{% endfilter %}"
+      data-map-phase-idle-title="{% filter force_escape %}{% trans 'Solver phase' %}{% endfilter %}"
+      data-map-phase-idle-desc="{% filter force_escape %}{% trans 'Boundary scan and pipe overlay when the solver API is available.' %}{% endfilter %}"
+      data-map-phase-map-title="{% filter force_escape %}{% trans 'Map build' %}{% endfilter %}"
+      data-map-phase-decode-title="{% filter force_escape %}{% trans 'Copy decode' %}{% endfilter %}"
+      data-map-badge-idle="{% filter force_escape %}{% trans 'Timeline: 0 / 0 (preview)' %}{% endfilter %}"
+      data-map-badge-step-prefix="{% filter force_escape %}{% trans 'Map step' %}{% endfilter %}"
+      data-map-badge-solver-prefix="{% filter force_escape %}{% trans 'Solver' %}{% endfilter %}"
+      data-map-badge-decode-prefix="{% filter force_escape %}{% trans 'Decode step' %}{% endfilter %}"
+      data-map-step-with_transport="{% filter force_escape %}{% trans 'Blueprint with belt & pipe' %}{% endfilter %}"
+      data-map-step-extraction_shell="{% filter force_escape %}{% trans 'Transport removed (mining shell)' %}{% endfilter %}"
+      data-map-step-strip_extractors="{% filter force_escape %}{% trans 'Destroy extractors — asteroid field' %}{% endfilter %}"
+      data-map-step-strip_extensions="{% filter force_escape %}{% trans 'Destroy extensions — asteroid field' %}{% endfilter %}"
+      data-map-step-fill_interior="{% filter force_escape %}{% trans 'Fill enclosed patch interior' %}{% endfilter %}"
+      data-map-step-final="{% filter force_escape %}{% trans 'Final mining map' %}{% endfilter %}"
+      data-map-step-solver_init="{% filter force_escape %}{% trans 'Solver: baseline (init)' %}{% endfilter %}"
+      data-map-step-solver_pass1_outer="{% filter force_escape %}{% trans 'Solver: Pass1 outer' %}{% endfilter %}"
+      data-map-step-solver_pass2_internal="{% filter force_escape %}{% trans 'Solver: Pass2 internal' %}{% endfilter %}"
+      data-map-step-solver_step4_routing="{% filter force_escape %}{% trans 'Solver: Step4 routing' %}{% endfilter %}"
+      data-map-step-solver_pass3_transport="{% filter force_escape %}{% trans 'Solver: Pass3 transport' %}{% endfilter %}"
+      data-map-step-solver_validate="{% filter force_escape %}{% trans 'Solver: Final validation' %}{% endfilter %}"
+      data-map-step-v2_recon_transport_shell="{% filter force_escape %}{% trans 'v2: Transport & extraction shell' %}{% endfilter %}"
+      data-map-step-v2_recon_strip_transport="{% filter force_escape %}{% trans 'v2: Transportation removed (preview)' %}{% endfilter %}"
+      data-map-step-v2_recon_strip_extractors="{% filter force_escape %}{% trans 'v2: Extractors removed (preview)' %}{% endfilter %}"
+      data-map-step-v2_recon_strip_extensions="{% filter force_escape %}{% trans 'v2: Extensions removed (preview)' %}{% endfilter %}"
+      data-map-step-v2_recon_interior_void="{% filter force_escape %}{% trans 'v2: Interior void (inferred)' %}{% endfilter %}"
+      data-map-step-v2_recon_inner_patch="{% filter force_escape %}{% trans 'v2: Inner patch (shell + void)' %}{% endfilter %}"
+      data-map-step-v2_recon_mineable="{% filter force_escape %}{% trans 'v2: Mineable placement cells' %}{% endfilter %}"
+      data-map-step-v2_pass1_candidates="{% filter force_escape %}{% trans 'v2: Pass1 candidates' %}{% endfilter %}"
+      data-map-step-v2_pass1_skipped_no_mineable="{% filter force_escape %}{% trans 'v2: Pass1 skipped (no mineable cells)' %}{% endfilter %}"
+      data-map-step-v2_pass1_provisional="{% filter force_escape %}{% trans 'v2: Pass1 provisional commit' %}{% endfilter %}"
+      data-map-step-v2_pass2_candidates="{% filter force_escape %}{% trans 'v2: Pass2 candidates' %}{% endfilter %}"
+      data-map-step-v2_pass2_provisional="{% filter force_escape %}{% trans 'v2: Pass2 provisional commit' %}{% endfilter %}"
+      data-map-step-v2_step4_trunk_seed="{% filter force_escape %}{% trans 'v2: Step4 trunk seed' %}{% endfilter %}"
+      data-map-step-v2_step4_routing="{% filter force_escape %}{% trans 'v2: Step4 routing' %}{% endfilter %}"
+      data-map-step-v2_final_validation="{% filter force_escape %}{% trans 'v2: Final validation' %}{% endfilter %}"
+      data-map-step-v2_final_layout="{% filter force_escape %}{% trans 'v2: Final layout' %}{% endfilter %}"
+      data-msg-solver-timeline-missing="{% filter force_escape %}{% trans 'Solver timeline was not returned (solver may have failed). Check the server or try Decode again.' %}{% endfilter %}"
+      data-msg-solver-replay-no-mining-map="{% filter force_escape %}{% trans 'This solver frame has no mining_map; map may be empty until another frame is selected.' %}{% endfilter %}"
+      data-playback-title-map-only="{% filter force_escape %}{% trans 'Map steps' %}{% endfilter %}"
+      data-playback-title-map-solver="{% filter force_escape %}{% trans 'Map + solver steps' %}{% endfilter %}"
+      data-msg-solver-redecode-hint="{% filter force_escape %}{% trans 'With “Show solver overlay” on, click Decode again to append solver timeline steps after the map preview steps.' %}{% endfilter %}"
+      data-msg-p4-route-overlay="{% filter force_escape %}{% trans 'P4 reclaim last B2 route cells' %}{% endfilter %}"
+      data-msg-p4-soft-overlay="{% filter force_escape %}{% trans 'P4 soft protected candidates (last commit)' %}{% endfilter %}"
+      data-msg-p4-soft-replace-old-overlay="{% filter force_escape %}{% trans 'P4 soft repair old cells (last session)' %}{% endfilter %}"
+      data-msg-p4-soft-replace-new-overlay="{% filter force_escape %}{% trans 'P4 soft repair new cells (last session)' %}{% endfilter %}"
+      data-msg-route-replay-removed="{% filter force_escape %}{% trans 'Replay: route cells removed (cascade reroute)' %}{% endfilter %}"
+      data-msg-route-replay-added="{% filter force_escape %}{% trans 'Replay: route cells added (cascade reroute)' %}{% endfilter %}"
+      data-map-viz-stage-0="{% filter force_escape %}{% trans 'Prepare string' %}{% endfilter %}"
+      data-map-viz-stage-1="{% filter force_escape %}{% trans 'Binary payload' %}{% endfilter %}"
+      data-map-viz-stage-2="{% filter force_escape %}{% trans 'Parse JSON' %}{% endfilter %}"
+      data-map-viz-stage-3="{% filter force_escape %}{% trans 'Layout object' %}{% endfilter %}"
+      data-msg-opt-counterfactual-baseline="{% filter force_escape %}{% trans 'Counterfactual baseline' %}{% endfilter %}"
+      data-msg-opt-final-internal="{% filter force_escape %}{% trans 'Final internal transport' %}{% endfilter %}"
+      data-msg-opt-internal-tiles="{% filter force_escape %}{% trans 'internal tiles' %}{% endfilter %}"
+      data-msg-opt-quality-ratio="{% filter force_escape %}{% trans 'Quality ratio' %}{% endfilter %}"
+      data-msg-opt-times="{% filter force_escape %}{% trans '×' %}{% endfilter %}"
+      data-msg-opt-aggregation="{% filter force_escape %}{% trans 'Aggregation' %}{% endfilter %}"
+      data-msg-opt-counterfactual-failed="{% filter force_escape %}{% trans 'Counterfactual baseline unavailable' %}{% endfilter %}"
+      data-msg-opt-warn-ratio-high="{% filter force_escape %}{% trans 'Internal transport quality ratio is high versus the counterfactual baseline (over 1.35×). Consider route tuning before using this as a hard gate.' %}{% endfilter %}"
       data-am-opt-ratio-warn-threshold="1.35"
-      data-msg-step4-partial-replay="{% filter escapejs %}{% trans 'STEP4 not committed — Pass3/P4 overlay metrics hidden for this frame.' %}{% endfilter %}"
-      data-msg-step4-partial-phase-title="{% filter escapejs %}{% trans 'STEP4 not committed' %}{% endfilter %}"
-      data-msg-step4-partial-step-suffix="{% filter escapejs %}{% trans '(not committed)' %}{% endfilter %}"
-      data-msg-pass3-skipped-replay="{% filter escapejs %}{% trans 'Pass3 skipped or not eligible — optimization metrics hidden for this frame.' %}{% endfilter %}"
-      data-msg-pass3-skipped-summary-opt="{% filter escapejs %}{% trans 'Pass3 skipped — internal transport optimization metrics do not apply to this run (Pass3/P4 did not commit).' %}{% endfilter %}"
-      data-msg-validate-partial-replay="{% filter escapejs %}{% trans 'Partial validation result — optimization metrics hidden for this frame.' %}{% endfilter %}"
-      data-msg-pc-hard="{% filter escapejs %}{% trans 'Protected corridor: hard' %}{% endfilter %}"
-      data-msg-pc-soft="{% filter escapejs %}{% trans 'Protected corridor: soft' %}{% endfilter %}"
-      data-msg-pc-candidate="{% filter escapejs %}{% trans 'Protected corridor: candidate' %}{% endfilter %}"
-      data-msg-pc-counts="{% filter escapejs %}{% trans 'Corridors (hard/soft/candidate)' %}{% endfilter %}"
-      data-tier-badge-partial="{% filter escapejs %}{% trans 'PARTIAL — preserve/routing loss' %}{% endfilter %}"
-      data-msg-trunk-edge-heatmap="{% filter escapejs %}{% trans 'Trunk edge load (STEP4 committed routes)' %}{% endfilter %}"
-      data-msg-trunk-edge-heatmap-committed-only="{% filter escapejs %}{% trans 'Counts traversals on routes STEP4 already painted; not corridor probe tiers.' %}{% endfilter %}"
+      data-msg-step4-partial-replay="{% filter force_escape %}{% trans 'STEP4 not committed — Pass3/P4 overlay metrics hidden for this frame.' %}{% endfilter %}"
+      data-msg-step4-partial-phase-title="{% filter force_escape %}{% trans 'STEP4 not committed' %}{% endfilter %}"
+      data-msg-step4-partial-step-suffix="{% filter force_escape %}{% trans '(not committed)' %}{% endfilter %}"
+      data-msg-pass3-skipped-replay="{% filter force_escape %}{% trans 'Pass3 skipped or not eligible — optimization metrics hidden for this frame.' %}{% endfilter %}"
+      data-msg-pass3-skipped-summary-opt="{% filter force_escape %}{% trans 'Pass3 skipped — internal transport optimization metrics do not apply to this run (Pass3/P4 did not commit).' %}{% endfilter %}"
+      data-msg-validate-partial-replay="{% filter force_escape %}{% trans 'Partial validation result — optimization metrics hidden for this frame.' %}{% endfilter %}"
+      data-msg-pc-hard="{% filter force_escape %}{% trans 'Protected corridor: hard' %}{% endfilter %}"
+      data-msg-pc-soft="{% filter force_escape %}{% trans 'Protected corridor: soft' %}{% endfilter %}"
+      data-msg-pc-candidate="{% filter force_escape %}{% trans 'Protected corridor: candidate' %}{% endfilter %}"
+      data-msg-pc-counts="{% filter force_escape %}{% trans 'Corridors (hard/soft/candidate)' %}{% endfilter %}"
+      data-tier-badge-partial="{% filter force_escape %}{% trans 'PARTIAL — preserve/routing loss' %}{% endfilter %}"
+      data-msg-trunk-edge-heatmap="{% filter force_escape %}{% trans 'Trunk edge load (STEP4 committed routes)' %}{% endfilter %}"
+      data-msg-trunk-edge-heatmap-committed-only="{% filter force_escape %}{% trans 'Counts traversals on routes STEP4 already painted; not corridor probe tiers.' %}{% endfilter %}"
     >
       <form class="hidden" aria-hidden="true" data-asteroid-csrf>{% csrf_token %}</form>
 
@@ -142,16 +160,6 @@
               <button type="button" id="asteroid-decode-btn" class="btn primary">{% trans "Decode" %}</button>
             </div>
             <div class="am-solver-overlay-option">
-              <label class="am-inline-check" for="asteroid-solver-overlay-toggle">
-                <input
-                  type="checkbox"
-                  id="asteroid-solver-overlay-toggle"
-                  data-asteroid-solver-overlay
-                />
-                <span>{% trans "Show solver overlay" %}</span>
-              </label>
-            </div>
-            <div class="am-solver-overlay-option">
               <label class="am-inline-check" for="asteroid-corridor-overlay-toggle">
                 <input
                   type="checkbox"
@@ -174,13 +182,13 @@
             <p class="hint hidden" data-am-solver-redecode-hint></p>
             <p class="hint">
               {% blocktrans trimmed %}
-                Paste the in-game copy string. Decoding runs on the server; a short map summary appears on the right.
+                Paste the in-game copy string. Decoding runs on the server; after Decode, use the timeline block below for map steps (mining layout v2 preview).
               {% endblocktrans %}
             </p>
             <div
               class="am-decode-playback hidden"
               data-am-decode-playback
-              aria-label="{% trans 'Map step playback' %}"
+              aria-label="{% trans 'Timeline playback' %}"
             >
               <details class="am-decode-log-details">
                 <summary class="am-decode-log-summary">
@@ -203,90 +211,41 @@
                 <button type="button" class="btn" data-am-decode-next>{% trans "Next" %}</button>
               </div>
               <label class="am-decode-slider-label">
-                <span>{% trans "Step" %}</span>
+                <span>{% trans "Timeline step" %}</span>
                 <input type="range" data-am-decode-slider min="0" max="0" value="0" />
               </label>
-              <pre class="am-decode-detail" data-am-decode-detail></pre>
-            </div>
-          </div>
-        </article>
-
-        <article
-          class="card hot am-future-panel"
-          aria-labelledby="asteroid-solver-heading"
-          data-am-solver-shell
-        >
-          <div class="card-head">
-            <div>
-              <h2 class="card-title" id="asteroid-solver-heading">{% trans "Solver controls" %}</h2>
-              <div class="card-sub">
-                {% blocktrans trimmed %}
-                  Solver timeline replay (after Decode with solver overlay). Scrub or play to drive the map; decode playback pauses here.
-                {% endblocktrans %}
-              </div>
-            </div>
-          </div>
-          <div class="card-body">
-            <div
-              class="am-solver-replay"
-              data-am-solver-replay-panel
-              aria-label="{% trans 'Solver timeline replay' %}"
-            >
-              <p class="am-solver-replay-pos" data-am-solver-replay-pos aria-live="polite"></p>
-              <pre
-                class="am-solver-replay-meta"
-                data-am-solver-replay-meta
-                aria-live="polite"
-              ></pre>
-              <p
-                class="hint am-solver-replay-warn hidden"
-                data-am-solver-replay-warn
-                role="status"
-              ></p>
-              <div class="am-solver-replay-controls">
-                <button
-                  type="button"
-                  class="btn"
-                  data-am-solver-replay-prev
-                  disabled
-                >{% trans "Prev" %}</button>
-                <button
-                  type="button"
-                  class="btn primary"
-                  data-am-solver-replay-play
-                  disabled
-                >{% trans "Play" %}</button>
-                <button
-                  type="button"
-                  class="btn"
-                  data-am-solver-replay-pause
-                  hidden
-                  disabled
-                >{% trans "Pause" %}</button>
-                <button
-                  type="button"
-                  class="btn"
-                  data-am-solver-replay-next
-                  disabled
-                >{% trans "Next" %}</button>
-              </div>
-              <label class="am-solver-replay-slider-label">
-                <span>{% trans "Solver frame" %}</span>
+              <label class="am-decode-slider-label">
+                <span>
+                  {% trans "Step interval" %}
+                  (<span data-am-playback-step-ms-display>100 ms</span>)
+                </span>
                 <input
                   type="range"
-                  data-am-solver-replay-slider
-                  min="0"
-                  max="0"
-                  value="0"
-                  disabled
+                  data-am-playback-step-ms
+                  min="100"
+                  max="4000"
+                  step="50"
+                  value="100"
+                  aria-label="{% trans 'Step interval' %}"
                 />
               </label>
-            </div>
-            <div class="option am-solver-replay-hint-block">
-              <div class="option-name">{% trans "Unified map + solver playback" %}</div>
-              <p class="am-future-field-value">
-                {% trans "Use the timeline under the blueprint field for full map-build and solver steps together; use this card for solver-only frames and replay metadata." %}
-              </p>
+              <pre class="am-decode-detail" data-am-decode-detail></pre>
+              <div
+                class="am-solver-replay am-solver-replay--embedded"
+                data-am-solver-replay-panel
+                aria-label="{% trans 'Solver details for current timeline step' %}"
+              >
+                <pre
+                  class="am-solver-replay-meta"
+                  data-am-solver-replay-meta
+                  aria-live="polite"
+                ></pre>
+                <p
+                  class="hint am-solver-replay-warn hidden"
+                  data-am-solver-replay-warn
+                  role="status"
+                ></p>
+              </div>
             </div>
           </div>
         </article>
@@ -343,12 +302,12 @@
           </p>
 
           <p class="am-orient-label">{% trans "Rotate map panel (which edge faces up)" %}</p>
-          <div class="map-toolbar">
-            <div
+            <div class="map-toolbar">
+            <fieldset
               class="segmented"
-              role="group"
               aria-label="{% trans 'Map orientation (north up by default)' %}"
             >
+              <legend class="am-fieldset-legend-sr">{% trans "Map orientation" %}</legend>
               <button
                 type="button"
                 data-map-orientation="N"
@@ -374,7 +333,7 @@
                 aria-pressed="false"
                 title="{% trans 'West up' %}"
               >{% trans "W" %}</button>
-            </div>
+            </fieldset>
             <button
               type="button"
               class="am-map-reset-view-btn"
@@ -388,9 +347,7 @@
               {% trans "Wheel: zoom in/out. Drag: pan. Reset restores fit." %}
             </p>
             <p class="am-map-hint">
-              {% blocktrans trimmed %}
-                Solver scan order and trunk controls will show here when connected; they are not the same as map rotation above.
-              {% endblocktrans %}
+              {% trans "Timeline position on the map matches the step under the blueprint (Prev / Play / slider)." %}
             </p>
             <div class="solver-badges">
               <span class="badge cyan">{% trans "Scan pass (preview)" %}</span>
@@ -412,24 +369,23 @@
                 </div>
               </div>
               <div class="am-plot-inner">
-                <div
+                <output
                   class="am-decode-map-viz hidden"
                   data-am-decode-map-viz
-                  role="status"
                   aria-live="polite"
                   aria-label="{% trans 'Decode progress on map' %}"
                 >
-                  <div class="am-decode-viz-meta">
+                  <span class="am-decode-viz-meta">
                     <span class="am-decode-viz-step-label" data-am-decode-viz-label></span>
                     <span class="am-decode-viz-fraction" data-am-decode-viz-fraction></span>
-                  </div>
-                  <div class="am-decode-viz-bar" aria-hidden="true">
-                    <div class="am-decode-viz-bar-fill" data-am-decode-viz-bar></div>
-                  </div>
-                  <div class="am-decode-viz-stages" data-am-decode-viz-stages></div>
-                  <div class="am-decode-viz-track" data-am-decode-viz-track></div>
-                  <pre class="am-decode-viz-detail" data-am-decode-viz-detail></pre>
-                </div>
+                  </span>
+                  <span class="am-decode-viz-bar" aria-hidden="true">
+                    <span class="am-decode-viz-bar-fill" data-am-decode-viz-bar></span>
+                  </span>
+                  <span class="am-decode-viz-stages" data-am-decode-viz-stages></span>
+                  <span class="am-decode-viz-track" data-am-decode-viz-track></span>
+                  <samp class="am-decode-viz-detail" data-am-decode-viz-detail></samp>
+                </output>
                 <div
                   class="am-plot-panzoom"
                   data-am-plot-panzoom
@@ -491,22 +447,6 @@
             </span>
           </div>
 
-          <div class="timeline am-timeline-placeholder" aria-label="{% trans 'Build timeline (preview)' %}">
-            <div class="timeline-head">
-              <span>{% trans "Build playback (not connected)" %}</span>
-              <span>0 / 0</span>
-            </div>
-            <div class="track" role="presentation">
-              <div class="tick extractor"></div>
-              <div class="tick merge"></div>
-              <div class="tick trunk"></div>
-              <div class="tick merge"></div>
-              <div class="tick extractor"></div>
-              <div class="tick merge"></div>
-              <div class="tick trunk"></div>
-            </div>
-          </div>
-
           <div class="map-footer am-map-footer">
             <div>
               <div class="summary-title">{% trans "Decoded layout summary" %}</div>
@@ -535,32 +475,60 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{% static 'web/asteroid_optimizer/js/map_sprite_atlas.js' %}"></script>
+<script src="{% static 'web/asteroid_optimizer/js/map_sprite_resolver.js' %}"></script>
+<script src="{% static 'web/asteroid_optimizer/js/map_sprite_renderer.js' %}"></script>
 <script>
 (function () {
   var root = document.querySelector("[data-asteroid-copy-root]");
   if (!root) return;
-  var apiUrl = root.getAttribute("data-copy-preview-url") || "";
-  var solverOverlayCb = root.querySelector("[data-asteroid-solver-overlay]");
+  var apiUrl = root.dataset.copyPreviewUrl || "";
   var corridorOverlayCb = root.querySelector("[data-am-corridor-overlay]");
   var trunkHeatmapCb = root.querySelector("[data-am-trunk-heatmap-overlay]");
   var solverRedecodeHintEl = root.querySelector("[data-am-solver-redecode-hint]");
-  if (solverOverlayCb && solverRedecodeHintEl) {
-    var redecodeMsg = root.getAttribute("data-msg-solver-redecode-hint") || "";
-    solverOverlayCb.addEventListener("change", function () {
-      if (solverOverlayCb.checked && redecodeMsg) {
-        solverRedecodeHintEl.textContent = redecodeMsg;
-        solverRedecodeHintEl.classList.remove("hidden");
-      } else {
-        solverRedecodeHintEl.textContent = "";
-        solverRedecodeHintEl.classList.add("hidden");
-      }
-    });
-    if (solverOverlayCb.checked && redecodeMsg) {
-      solverRedecodeHintEl.textContent = redecodeMsg;
-      solverRedecodeHintEl.classList.remove("hidden");
-    }
+  var mapCellsUrl = root.dataset.mapCellsUrl || "";
+  var mapCellsByBboxKey = Object.create(null);
+
+  function clearMapCellsFetchCache() {
+    mapCellsByBboxKey = Object.create(null);
   }
-  var mapCellsUrl = root.getAttribute("data-map-cells-url") || "";
+
+  function mapCellsBboxKey(b) {
+    return b.x_min + ":" + b.x_max + ":" + b.y_min + ":" + b.y_max;
+  }
+
+  /** One network GET per bbox per page session; cleared on new Decode. */
+  function fetchMapCellsBboxOnce(b) {
+    var key = mapCellsBboxKey(b);
+    var existing = mapCellsByBboxKey[key];
+    if (existing) return existing;
+    var q =
+      "?x_min=" +
+      b.x_min +
+      "&x_max=" +
+      b.x_max +
+      "&y_min=" +
+      b.y_min +
+      "&y_max=" +
+      b.y_max;
+    var p = fetch(mapCellsUrl + q)
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data || !data.ok) {
+          delete mapCellsByBboxKey[key];
+        }
+        return data;
+      })
+      .catch(function (err) {
+        delete mapCellsByBboxKey[key];
+        throw err;
+      });
+    mapCellsByBboxKey[key] = p;
+    return p;
+  }
+
   var surface = root.querySelector("[data-asteroid-map-surface]");
   var plotInner = root.querySelector(".am-plot-inner");
   var plotPanzoomEl = root.querySelector("[data-am-plot-panzoom]");
@@ -579,7 +547,7 @@
   var errEl = root.querySelector("[data-asteroid-error]");
   var ta = root.querySelector("#asteroid-copy-input");
   var demoBtn = root.querySelector("#asteroid-demo-fill-btn");
-  var demoUrl = root.getAttribute("data-demo-blueprint-url") || "";
+  var demoUrl = root.dataset.demoBlueprintUrl || "";
   var btn = root.querySelector("#asteroid-decode-btn");
   var orientBtns = root.querySelectorAll("[data-map-orientation]");
   var mapOrientation = "N";
@@ -587,6 +555,9 @@
   var SPAN = 10;
   var plotCompact = null;
   var svgNs = "http://www.w3.org/2000/svg";
+  var mapSpriteAtlas = null;
+  var mapSpriteExternalLoadStarted = false;
+  var spriteAtlasWarned = false;
   /** Replay v5 ``route_replaced`` / UI boundary: belt|pipe aliases → shape_belt|fluid_pipe. */
   function normalizeReplayTransportKind(kind) {
     if (kind == null || kind === "") return null;
@@ -609,15 +580,8 @@
   var lastSolverReplay = null;
   /** Contract v12+: cycle-level playback rows (subset of ``solver_replay``). */
   var lastCycleFrames = [];
-  /** Solver-only replay (STEP10): unified timeline uses ``map_timeline`` then ``solver_timeline`` rows; ``ui_frames`` is one meta row per solver row (not per replay event). */
-  var lastSolverTimeline = [];
-  /** One row per ``solver_timeline`` index (same order as unified timeline from ``solverPhaseStartIndex``). */
+  /** Solver-only replay (STEP10): ``lastReplayUiFrames`` is one UI row per ``solver_timeline`` index (unified timeline from ``solverPhaseStartIndex``). */
   var lastReplayUiFrames = [];
-  var currentReplayIndex = 0;
-  var replayTimer = null;
-  var isReplayPlaying = false;
-  /** After Decode, slider starts at last frame without overwriting map until user uses solver replay (decode may autoplay). */
-  var solverReplayOwnsMap = false;
   var decodeSummaryText = "";
   var decodePlayback = root.querySelector("[data-am-decode-playback]");
   var decodeStepsEl = root.querySelector("[data-am-decode-steps]");
@@ -631,12 +595,6 @@
   var decodeNextBtn = root.querySelector("[data-am-decode-next]");
   var decodePlayBtn = root.querySelector("[data-am-decode-play]");
   var decodePauseBtn = root.querySelector("[data-am-decode-pause]");
-  var replaySlider = root.querySelector("[data-am-solver-replay-slider]");
-  var replayPrevBtn = root.querySelector("[data-am-solver-replay-prev]");
-  var replayNextBtn = root.querySelector("[data-am-solver-replay-next]");
-  var replayPlayBtn = root.querySelector("[data-am-solver-replay-play]");
-  var replayPauseBtn = root.querySelector("[data-am-solver-replay-pause]");
-  var replayPosEl = root.querySelector("[data-am-solver-replay-pos]");
   var replayMetaEl = root.querySelector("[data-am-solver-replay-meta]");
   var replayWarnEl = root.querySelector("[data-am-solver-replay-warn]");
   var decodeStepsList = [];
@@ -645,6 +603,11 @@
   var solverPhaseStartIndex = -1;
   var decodeStepIndex = 0;
   var decodePlayTimer = null;
+  /** Shared map-step + solver replay interval; sliders update this while playing. */
+  var playbackStepMs = 100;
+  var playbackStepMsMin = 100;
+  var playbackStepMsMax = 4000;
+  var decodePlayN = 0;
   var mapPhaseTitleEl = root.querySelector("[data-am-map-phase-title]");
   var mapPhaseDescEl = root.querySelector("[data-am-map-phase-desc]");
   var mapDecodeBadgeEl = root.querySelector("[data-am-decode-map-badge]");
@@ -656,24 +619,7 @@
   var mapVizTrack = root.querySelector("[data-am-decode-viz-track]");
   var mapVizDetail = root.querySelector("[data-am-decode-viz-detail]");
   function copyPreviewUrlWithOptions() {
-    var base = apiUrl || "";
-    try {
-      var u = new URL(base, window.location.href);
-      u.searchParams.set("include_solver_replay", "1");
-      if (solverOverlayCb && solverOverlayCb.checked) {
-        u.searchParams.set("include_solver_overlay", "1");
-      } else {
-        u.searchParams.delete("include_solver_overlay");
-      }
-      return u.pathname + u.search;
-    } catch (e) {
-      var sep = base.indexOf("?") === -1 ? "?" : "&";
-      var extra = "include_solver_replay=1";
-      if (solverOverlayCb && solverOverlayCb.checked) {
-        extra += "&include_solver_overlay=1";
-      }
-      return base + sep + extra;
-    }
+    return apiUrl || "";
   }
 
   var SOLVER_REPLAY_KNOWN_KINDS = {
@@ -716,8 +662,7 @@
       return;
     }
     var seen = Object.create(null);
-    for (var i = 0; i < events.length; i++) {
-      var e = events[i];
+    for (var e of events) {
       if (!e || typeof e.kind !== "string") {
         continue;
       }
@@ -732,7 +677,7 @@
   function cloneMiningMapRows(rows) {
     if (!Array.isArray(rows)) return [];
     return rows.map(function (row) {
-      return row && typeof row === "object" ? Object.assign({}, row) : row;
+      return row && typeof row === "object" ? { ...row } : row;
     });
   }
 
@@ -740,34 +685,19 @@
     return String(x) + "," + String(y);
   }
 
-  function upsertMiningMapRow(rows, row) {
-    if (!row || typeof row !== "object") return rows;
-    var x = Number(row.x);
-    var y = Number(row.y);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return rows;
-    var key = coordKey(x, y);
-    for (var i = 0; i < rows.length; i++) {
-      var cur = rows[i];
-      if (!cur || typeof cur !== "object") continue;
-      if (coordKey(Number(cur.x), Number(cur.y)) === key) {
-        rows[i] = Object.assign({}, cur, row);
-        return rows;
-      }
-    }
-    rows.push(Object.assign({}, row));
-    return rows;
-  }
-
-  /** Opt-in: ``localStorage.setItem("am_replay_frame_debug","1")`` or ``window.AM_SOLVER_REPLAY_FRAME_DEBUG=true``. */
+  /** Opt-in: ``localStorage.setItem("am_replay_frame_debug","1")`` or ``globalThis.AM_SOLVER_REPLAY_FRAME_DEBUG=true``. */
   function amSolverReplayFrameDebugEnabled() {
     try {
-      if (typeof window !== "undefined" && window.AM_SOLVER_REPLAY_FRAME_DEBUG) {
+      if (globalThis.AM_SOLVER_REPLAY_FRAME_DEBUG) {
         return true;
       }
       if (typeof localStorage !== "undefined" && localStorage.getItem("am_replay_frame_debug") === "1") {
         return true;
       }
     } catch (e) {
+      if (typeof console !== "undefined" && console.debug) {
+        console.debug("[amSolverReplayFrameDebugEnabled] storage read failed", e);
+      }
       return false;
     }
     return false;
@@ -776,8 +706,7 @@
   function countMiningMapTransportCells(rows) {
     if (!Array.isArray(rows)) return 0;
     var c = 0;
-    for (var ri = 0; ri < rows.length; ri++) {
-      var rw = rows[ri];
+    for (var rw of rows) {
       if (!rw || typeof rw !== "object") continue;
       if (rw.x === 0) continue;
       var role = rw.role || "occupied";
@@ -998,11 +927,80 @@
     return root.getAttribute("data-msg-shape-mining") || "Shape mining";
   }
 
+  function formatPlaybackStepLabel(ms) {
+    if (ms >= 1000) {
+      var s = ms / 1000;
+      var t = s.toFixed(1);
+      if (t.indexOf(".0") === t.length - 2) t = String(Math.round(s));
+      return t + " s";
+    }
+    return String(ms) + " ms";
+  }
+
+  function syncPlaybackSpeedUi() {
+    var inputs = root.querySelectorAll("[data-am-playback-step-ms]");
+    var di;
+    for (di = 0; di < inputs.length; di++) {
+      inputs[di].value = String(playbackStepMs);
+    }
+    var lab = formatPlaybackStepLabel(playbackStepMs);
+    var outs = root.querySelectorAll("[data-am-playback-step-ms-display]");
+    for (di = 0; di < outs.length; di++) {
+      outs[di].textContent = lab;
+    }
+  }
+
+  function clampPlaybackStepMs(ms) {
+    var n = parseInt(ms, 10);
+    if (!isFinite(n)) n = playbackStepMs;
+    if (n < playbackStepMsMin) n = playbackStepMsMin;
+    if (n > playbackStepMsMax) n = playbackStepMsMax;
+    return n;
+  }
+
+  function applyPlaybackStepMs(rawMs) {
+    playbackStepMs = clampPlaybackStepMs(rawMs);
+    syncPlaybackSpeedUi();
+    if (decodePlayTimer && decodePlayN > 0) {
+      armDecodePlayTimer();
+    }
+  }
+
+  function decodePlayTick() {
+    var n = decodePlayN;
+    if (!n) {
+      stopDecodePlay();
+      return;
+    }
+    if (decodeStepIndex >= n - 1) {
+      stopDecodePlay();
+      return;
+    }
+    var next = decodeStepIndex + 1;
+    setDecodeStepIndex(next);
+    if (decodeStepsList.length) {
+      var st = decodeStepsList[next];
+      if (st && st.ok === false) {
+        stopDecodePlay();
+      }
+    }
+  }
+
+  function armDecodePlayTimer() {
+    if (!decodePlayN) return;
+    if (decodePlayTimer) {
+      clearInterval(decodePlayTimer);
+      decodePlayTimer = null;
+    }
+    decodePlayTimer = setInterval(decodePlayTick, playbackStepMs);
+  }
+
   function stopDecodePlay() {
     if (decodePlayTimer) {
       clearInterval(decodePlayTimer);
       decodePlayTimer = null;
     }
+    decodePlayN = 0;
     if (decodePlayBtn && decodePauseBtn) {
       decodePlayBtn.hidden = false;
       decodePauseBtn.hidden = true;
@@ -1058,7 +1056,7 @@
       mapVizStages.innerHTML = "";
       var sg;
       for (sg = 0; sg < 4; sg++) {
-        var sd = document.createElement("div");
+        var sd = document.createElement("span");
         sd.className = "am-decode-viz-stage";
         if (sg < si) sd.classList.add("done");
         else if (sg === si) sd.classList.add("active");
@@ -1074,7 +1072,7 @@
       mapVizTrack.innerHTML = "";
       var ti;
       for (ti = 0; ti < n; ti++) {
-        var tick = document.createElement("div");
+        var tick = document.createElement("span");
         tick.className = "am-decode-viz-tick";
         if (ti < idx) tick.classList.add("past");
         else if (ti === idx) tick.classList.add("current");
@@ -1101,88 +1099,6 @@
     return row && typeof row === "object" ? row : null;
   }
 
-  function solverReplayFrameCount() {
-    return Array.isArray(lastReplayUiFrames) ? lastReplayUiFrames.length : 0;
-  }
-
-  function syncSolverReplayControls() {
-    var n = solverReplayFrameCount();
-    var has =
-      solverPhaseStartIndex >= 0 &&
-      n > 0 &&
-      mapTimelineList.length > solverPhaseStartIndex;
-    if (has && decodeStepIndex >= solverPhaseStartIndex) {
-      currentReplayIndex = decodeStepIndex - solverPhaseStartIndex;
-      if (currentReplayIndex < 0) currentReplayIndex = 0;
-      if (currentReplayIndex > n - 1) currentReplayIndex = n - 1;
-    } else if (has) {
-      currentReplayIndex = 0;
-    }
-    var sliderIx = has ? Math.min(Math.max(currentReplayIndex, 0), Math.max(0, n - 1)) : 0;
-    if (replaySlider) {
-      replaySlider.disabled = !has;
-      replaySlider.max = String(Math.max(0, n - 1));
-      replaySlider.value = String(sliderIx);
-    }
-    if (replayPrevBtn) {
-      replayPrevBtn.disabled = !has || decodeStepIndex <= solverPhaseStartIndex;
-    }
-    if (replayNextBtn) {
-      replayNextBtn.disabled =
-        !has || decodeStepIndex >= solverPhaseStartIndex + n - 1;
-    }
-    if (replayPlayBtn) {
-      replayPlayBtn.disabled = !has || n <= 1;
-      replayPlayBtn.hidden = isReplayPlaying;
-    }
-    if (replayPauseBtn) {
-      replayPauseBtn.hidden = !isReplayPlaying;
-      replayPauseBtn.disabled = !has || n <= 1;
-    }
-    if (replayPosEl) {
-      var rowId = "";
-      if (has && Array.isArray(lastReplayUiFrames) && sliderIx >= 0 && sliderIx < lastReplayUiFrames.length) {
-        var fr = lastReplayUiFrames[sliderIx];
-        if (fr && fr.timeline_frame_id) rowId = String(fr.timeline_frame_id);
-      }
-      replayPosEl.textContent = has
-        ? sliderIx + 1 + " / " + n + (rowId ? " · " + rowId : "")
-        : "";
-    }
-  }
-
-  function stopReplayPlay() {
-    if (replayTimer) {
-      clearInterval(replayTimer);
-      replayTimer = null;
-    }
-    isReplayPlaying = false;
-    syncSolverReplayControls();
-  }
-
-  function startReplayPlay() {
-    var n = solverReplayFrameCount();
-    if (!n || solverPhaseStartIndex < 0) return;
-    stopDecodePlay();
-    var maxUnified = solverPhaseStartIndex + n - 1;
-    isReplayPlaying = true;
-    if (replayPlayBtn) replayPlayBtn.hidden = true;
-    if (replayPauseBtn) replayPauseBtn.hidden = false;
-    if (decodeStepIndex < solverPhaseStartIndex || decodeStepIndex > maxUnified) {
-      setDecodeStepIndex(solverPhaseStartIndex);
-    } else {
-      syncSolverReplayControls();
-    }
-    var playMs = 1200;
-    replayTimer = setInterval(function () {
-      if (decodeStepIndex >= maxUnified) {
-        stopReplayPlay();
-        return;
-      }
-      setDecodeStepIndex(decodeStepIndex + 1);
-    }, playMs);
-  }
-
   function buildReplayOverlayDetail(uiRow) {
     if (!uiRow || typeof uiRow !== "object") return null;
     var replay = lastSolverReplay;
@@ -1190,8 +1106,8 @@
     var overlayEvents = [];
     var ov = uiRow.overlay_event_indices;
     if (Array.isArray(ov)) {
-      for (var oi = 0; oi < ov.length; oi++) {
-        var ix = ov[oi];
+      for (const element of ov) {
+        var ix = element;
         if (typeof ix !== "number" || ix < 0 || ix >= events.length) continue;
         var ev = events[ix];
         if (ev && typeof ev === "object") overlayEvents.push(ev);
@@ -1454,8 +1370,8 @@
     if (solLen < 0) {
       return idx + 1 + " / " + n;
     }
-    var mapPrefix = root.getAttribute("data-map-badge-step-prefix") || "Map step";
-    var solPrefix = root.getAttribute("data-map-badge-solver-prefix") || "Solver";
+    var mapPrefix = root.dataset.mapBadgeStepPrefix || "Map step";
+    var solPrefix = root.dataset.mapBadgeSolverPrefix || "Solver";
     if (idx < mL) {
       return mapPrefix + " " + (idx + 1) + " / " + mL;
     }
@@ -1463,11 +1379,10 @@
   }
 
   function syncMapTimelineStep() {
-    var idleTitle = root.getAttribute("data-map-phase-idle-title") || "";
-    var idleDesc = root.getAttribute("data-map-phase-idle-desc") || "";
-    var idleBadge = root.getAttribute("data-map-badge-idle") || "";
-    var mapTitle = root.getAttribute("data-map-phase-map-title") || "";
-    var badgePrefix = root.getAttribute("data-map-badge-step-prefix") || "";
+    var idleTitle = root.dataset.mapPhaseIdleTitle || "";
+    var idleDesc = root.dataset.mapPhaseIdleDesc || "";
+    var idleBadge = root.dataset.mapBadgeIdle || "";
+    var mapTitle = root.dataset.mapPhaseMapTitle || "";
 
     var n = mapTimelineList.length;
     if (!n) {
@@ -1487,6 +1402,9 @@
     }
 
     var st = mapTimelineList[decodeStepIndex];
+    if (!st) {
+      return;
+    }
     if (surface) surface.classList.remove("am-map-decode-active");
     if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
     var uir = solverTimelineUiRow(decodeStepIndex);
@@ -1614,11 +1532,11 @@
       return;
     }
 
-    var idleTitle = root.getAttribute("data-map-phase-idle-title") || "";
-    var idleDesc = root.getAttribute("data-map-phase-idle-desc") || "";
-    var idleBadge = root.getAttribute("data-map-badge-idle") || "";
-    var decodeTitle = root.getAttribute("data-map-phase-decode-title") || "";
-    var badgePrefix = root.getAttribute("data-map-badge-decode-prefix") || "";
+    var idleTitle = root.dataset.mapPhaseIdleTitle || "";
+    var idleDesc = root.dataset.mapPhaseIdleDesc || "";
+    var idleBadge = root.dataset.mapBadgeIdle || "";
+    var decodeTitle = root.dataset.mapPhaseDecodeTitle || "";
+    var badgePrefix = root.dataset.mapBadgeDecodePrefix || "";
 
     if (!decodeStepsList.length) {
       if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = idleTitle;
@@ -1746,7 +1664,6 @@
     if (decodePrevBtn) decodePrevBtn.disabled = decodeStepIndex <= 0;
     if (decodeNextBtn) decodeNextBtn.disabled = n === 0 || decodeStepIndex >= n - 1;
     syncDecodeStepMap();
-    syncSolverReplayControls();
   }
 
   function setDecodeStepIndex(idx) {
@@ -1766,7 +1683,6 @@
     }
     decodeStepsList = [];
     stopDecodePlay();
-    stopReplayPlay();
     if (!decodePlayback) return;
     if (!mapTimelineList.length) {
       decodePlayback.classList.add("hidden");
@@ -1795,7 +1711,6 @@
     mapTimelineList = [];
     solverPhaseStartIndex = -1;
     stopDecodePlay();
-    stopReplayPlay();
     if (!decodePlayback) return;
     if (!decodeStepsList.length) {
       decodePlayback.classList.add("hidden");
@@ -1820,55 +1735,30 @@
     var n = playbackStepCount();
     if (!n) return;
     stopDecodePlay();
-    stopReplayPlay();
-    /* 항상 step 0부터 재생 (디코드 직후 마지막 스텝에 있어도 리셋). */
-    setDecodeStepIndex(0);
+    if (decodeStepIndex >= n - 1) {
+      setDecodeStepIndex(0);
+    }
     if (decodePlayBtn) decodePlayBtn.hidden = true;
     if (decodePauseBtn) decodePauseBtn.hidden = false;
-    var playMs = 1200;
-    decodePlayTimer = setInterval(function () {
-      if (decodeStepIndex >= n - 1) {
-        stopDecodePlay();
-        return;
-      }
-      var next = decodeStepIndex + 1;
-      if (
-        typeof solverPhaseStartIndex === "number" &&
-        solverPhaseStartIndex > 0 &&
-        next >= solverPhaseStartIndex
-      ) {
-        setDecodeStepIndex(solverPhaseStartIndex);
-        stopDecodePlay();
-        return;
-      }
-      setDecodeStepIndex(next);
-      if (decodeStepsList.length) {
-        var st = decodeStepsList[next];
-        if (st && st.ok === false) {
-          stopDecodePlay();
-        }
-      }
-    }, playMs);
+    decodePlayN = n;
+    armDecodePlayTimer();
   }
 
   if (decodeSlider) {
     decodeSlider.addEventListener("input", function () {
       stopDecodePlay();
-      stopReplayPlay();
       setDecodeStepIndex(parseInt(decodeSlider.value, 10) || 0);
     });
   }
   if (decodePrevBtn) {
     decodePrevBtn.addEventListener("click", function () {
       stopDecodePlay();
-      stopReplayPlay();
       setDecodeStepIndex(decodeStepIndex - 1);
     });
   }
   if (decodeNextBtn) {
     decodeNextBtn.addEventListener("click", function () {
       stopDecodePlay();
-      stopReplayPlay();
       setDecodeStepIndex(decodeStepIndex + 1);
     });
   }
@@ -1887,56 +1777,24 @@
       var li = ev.target.closest(".am-decode-step");
       if (!li || !decodeStepsEl.contains(li)) return;
       stopDecodePlay();
-      stopReplayPlay();
       var idx = Array.prototype.indexOf.call(decodeStepsEl.children, li);
       if (idx >= 0) setDecodeStepIndex(idx);
     });
   }
 
-  if (replaySlider) {
-    replaySlider.addEventListener("input", function () {
-      stopReplayPlay();
-      stopDecodePlay();
-      var n = solverReplayFrameCount();
-      if (!n || solverPhaseStartIndex < 0) return;
-      var idx = parseInt(replaySlider.value, 10) || 0;
-      var mx = Math.max(0, n - 1);
-      if (idx < 0) idx = 0;
-      if (idx > mx) idx = mx;
-      setDecodeStepIndex(solverPhaseStartIndex + idx);
-    });
-  }
-  if (replayPrevBtn) {
-    replayPrevBtn.addEventListener("click", function () {
-      stopReplayPlay();
-      stopDecodePlay();
-      var n = solverReplayFrameCount();
-      if (!n || solverPhaseStartIndex < 0) return;
-      if (decodeStepIndex <= solverPhaseStartIndex) return;
-      setDecodeStepIndex(decodeStepIndex - 1);
-    });
-  }
-  if (replayNextBtn) {
-    replayNextBtn.addEventListener("click", function () {
-      stopReplayPlay();
-      stopDecodePlay();
-      var n = solverReplayFrameCount();
-      if (!n || solverPhaseStartIndex < 0) return;
-      var lastSol = solverPhaseStartIndex + n - 1;
-      if (decodeStepIndex >= lastSol) return;
-      setDecodeStepIndex(decodeStepIndex + 1);
-    });
-  }
-  if (replayPlayBtn) {
-    replayPlayBtn.addEventListener("click", function () {
-      startReplayPlay();
-    });
-  }
-  if (replayPauseBtn) {
-    replayPauseBtn.addEventListener("click", function () {
-      stopReplayPlay();
-    });
-  }
+  (function setupPlaybackSpeedSliders() {
+    var speedInputs = root.querySelectorAll("[data-am-playback-step-ms]");
+    var si;
+    if (speedInputs.length) {
+      playbackStepMs = clampPlaybackStepMs(speedInputs[0].value);
+    }
+    for (si = 0; si < speedInputs.length; si++) {
+      speedInputs[si].addEventListener("input", function () {
+        applyPlaybackStepMs(this.value);
+      });
+    }
+    syncPlaybackSpeedUi();
+  })();
 
   function rebuildMiningIndex(miningMap) {
     miningByCoord = Object.create(null);
@@ -2053,18 +1911,7 @@
     if (!boxes.length) return Promise.resolve();
     var fetches = boxes.map(function (b) {
       bboxRegions.push(b);
-      var q =
-        "?x_min=" +
-        b.x_min +
-        "&x_max=" +
-        b.x_max +
-        "&y_min=" +
-        b.y_min +
-        "&y_max=" +
-        b.y_max;
-      return fetch(mapCellsUrl + q).then(function (r) {
-        return r.json();
-      });
+      return fetchMapCellsBboxOnce(b);
     });
     return Promise.all(fetches).then(function (arr) {
       for (var j = 0; j < arr.length; j++) {
@@ -2311,6 +2158,48 @@
     if (!plotSvg) return;
     plotSvg.innerHTML = "";
     plotCompact = null;
+    if (typeof globalThis !== "undefined" && globalThis.AM_AsteroidMapSpriteAtlas && !mapSpriteAtlas) {
+      mapSpriteAtlas = globalThis.AM_AsteroidMapSpriteAtlas.createFallbackSpriteAtlas(32);
+    }
+    if (
+      typeof globalThis !== "undefined" &&
+      globalThis.AM_AsteroidMapSpriteAtlas &&
+      root.dataset.amSpriteAtlasImage &&
+      root.dataset.amSpriteAtlasMeta &&
+      !mapSpriteExternalLoadStarted
+    ) {
+      var iuSp = String(root.dataset.amSpriteAtlasImage || "").trim();
+      var muSp = String(root.dataset.amSpriteAtlasMeta || "").trim();
+      if (iuSp && muSp) {
+        mapSpriteExternalLoadStarted = true;
+        if (typeof globalThis.spriteAtlasLoadFailed !== "undefined") {
+          globalThis.spriteAtlasLoadFailed = false;
+        }
+        globalThis.AM_AsteroidMapSpriteAtlas.loadSpriteAtlas(iuSp, muSp).then(
+          function (a) {
+            mapSpriteAtlas = a;
+            if (mapTimelineList.length) {
+              setDecodeStepIndex(decodeStepIndex);
+            }
+          },
+          function () {
+            if (typeof globalThis.spriteAtlasLoadFailed !== "undefined") {
+              globalThis.spriteAtlasLoadFailed = true;
+            }
+            if (!spriteAtlasWarned && typeof console !== "undefined" && console.warn) {
+              spriteAtlasWarned = true;
+              console.warn(
+                "[asteroid map] sprite atlas failed to load; using colored tile fallback until next successful load."
+              );
+            }
+            mapSpriteAtlas = globalThis.AM_AsteroidMapSpriteAtlas.createFallbackSpriteAtlas(32);
+            if (mapTimelineList.length) {
+              setDecodeStepIndex(decodeStepIndex);
+            }
+          }
+        );
+      }
+    }
     var catalog = styleCatalog && typeof styleCatalog === "object" ? styleCatalog : {};
     function mapEntryTitle(entry) {
       if (!entry) return "";
@@ -2699,6 +2588,30 @@
       }
       return false;
     }
+    function cellIsOutputStubTransport(transport_row, transport_role) {
+      if (!transport_row) return false;
+      var pnStub = shapezNeighbors4(transport_row.x, transport_row.y);
+      var siStub;
+      for (siStub = 0; siStub < pnStub.length; siStub++) {
+        var nbStub = cellAt[pnStub[siStub][0] + "," + pnStub[siStub][1]];
+        if (!nbStub) continue;
+        if (
+          transport_role === "belt" &&
+          isShapeHeadTile(nbStub) &&
+          headOutputsToTransport(nbStub, transport_row)
+        ) {
+          return true;
+        }
+        if (
+          transport_role === "pipe" &&
+          isFluidHeadTile(nbStub) &&
+          headOutputsToTransport(nbStub, transport_row)
+        ) {
+          return true;
+        }
+      }
+      return false;
+    }
     function appendStationPerimeterOutlines(parent, is_head_tile, is_extension_tile) {
       var assigned_extension = Object.create(null);
       function extensionFacesParent(extension_row, parent_row) {
@@ -2887,6 +2800,55 @@
       var x0 = 1 + idx + pad;
       var y0 = p.y - minY + pad;
       var size = 1 - 2 * pad;
+      var sprAt = typeof globalThis !== "undefined" ? globalThis : window;
+      var atlas = mapSpriteAtlas;
+      var Rnd = sprAt.AM_AsteroidMapSpriteRenderer;
+      var Rslv = sprAt.AM_AsteroidMapSpriteResolver;
+      var useSp = atlas && Rnd && Rslv;
+      if (useSp) {
+        var specCell = Rslv.resolveMiningCellSpriteDrawSpec(p, atlas.meta, role, null);
+        if (specCell.baseKey && specCell.baseKey !== "empty") {
+          var opCell = null;
+          if (transportOverVoid && (role === "belt" || role === "pipe")) {
+            opCell = 0.22;
+          } else if (transportOverVoid) {
+            opCell = 0.35;
+          }
+          var okCell = Rnd.appendSvgSpriteTile(
+            parent,
+            svgNs,
+            atlas,
+            specCell.baseKey,
+            x0,
+            y0,
+            size,
+            specCell.rotationDeg || 0,
+            {
+              className: "am-map-sprite-terrain",
+              titleText: titleText,
+              stroke: fluidClusterStroke || null,
+              strokeWidth: fluidClusterStroke ? 0.14 : null,
+              opacity: opCell,
+            }
+          );
+          if (okCell) {
+            if (specCell.overlays && specCell.overlays.length && Rnd.appendSvgSpriteOverlays) {
+              Rnd.appendSvgSpriteOverlays(
+                parent,
+                svgNs,
+                atlas,
+                specCell.overlays,
+                x0,
+                y0,
+                size,
+                specCell.rotationDeg || 0,
+                { className: "am-map-sprite-overlay", opacity: opCell != null ? opCell : 0.85 }
+              );
+            }
+            return;
+          }
+        }
+      }
       var r = document.createElementNS(svgNs, "rect");
       r.setAttribute("x", String(x0));
       r.setAttribute("y", String(y0));
@@ -2915,7 +2877,7 @@
       }
       parent.appendChild(r);
     }
-    /** Pipe blueprint cells: faint fill + cluster-colored stubs + junction glyph (belt can reuse helpers later). */
+    /** Pipe blueprint cells: sprite atlas tile + optional junction glyph (legacy rect fallback). */
     function appendPipeCell(parent, p, titleText) {
       var idx = xi[p.x];
       if (idx === undefined) return;
@@ -2929,23 +2891,6 @@
       var strokeUse = strokeCluster || fillForRole("pipe");
       var g = document.createElementNS(svgNs, "g");
       g.setAttribute("class", "am-pipe-cell");
-      var rect = document.createElementNS(svgNs, "rect");
-      rect.setAttribute("x", String(x0));
-      rect.setAttribute("y", String(y0));
-      rect.setAttribute("width", String(size));
-      rect.setAttribute("height", String(size));
-      rect.setAttribute("rx", "0.06");
-      rect.setAttribute("ry", "0.06");
-      var pipeOverVoid = !!p.transport_over_void;
-      if (pipeOverVoid) {
-        rect.setAttribute("fill", "none");
-        rect.setAttribute("fill-opacity", "0");
-      } else {
-        rect.setAttribute("fill", fillForRole("pipe"));
-        rect.setAttribute("fill-opacity", opacityForRole("pipe"));
-      }
-      rect.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
-      rect.setAttribute("stroke-width", "0.04");
       var n = false;
       var e = false;
       var s = false;
@@ -2962,6 +2907,84 @@
         else if (d === "s") s = true;
         else if (d === "w") w = true;
       }
+      var pipeOverVoid = !!p.transport_over_void;
+      var sprAtP = typeof globalThis !== "undefined" ? globalThis : window;
+      var atlasP = mapSpriteAtlas;
+      var RndP = sprAtP.AM_AsteroidMapSpriteRenderer;
+      var RslvP = sprAtP.AM_AsteroidMapSpriteResolver;
+      var usePipeSp = atlasP && RndP && RslvP;
+      if (usePipeSp) {
+        var specPipe = RslvP.resolveMiningCellSpriteDrawSpec(
+          p,
+          atlasP.meta,
+          "pipe",
+          { dirs: { n: n, e: e, s: s, w: w }, isStub: cellIsOutputStubTransport(p, "pipe") }
+        );
+        var okPipe = RndP.appendSvgSpriteTile(
+          g,
+          svgNs,
+          atlasP,
+          specPipe.baseKey,
+          x0,
+          y0,
+          size,
+          specPipe.rotationDeg || 0,
+          {
+            className: "am-map-sprite-transport",
+            titleText: titleText,
+            stroke: strokeUse,
+            strokeWidth: 0.08,
+            opacity: pipeOverVoid ? 0.22 : null,
+          }
+        );
+        if (okPipe) {
+          var cntPipe = (n ? 1 : 0) + (e ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0);
+          var glyphPipeSp = pipeJunctionGlyph(n, e, s, w);
+          if (glyphPipeSp && cntPipe >= 3 && specPipe.baseKey === "pipe_straight") {
+            var jtSp = document.createElementNS(svgNs, "text");
+            jtSp.setAttribute("class", "am-pipe-junction-glyph");
+            jtSp.setAttribute("x", String(cx));
+            jtSp.setAttribute("y", String(cy));
+            jtSp.setAttribute("text-anchor", "middle");
+            jtSp.setAttribute("dominant-baseline", "central");
+            jtSp.setAttribute("fill", strokeUse);
+            jtSp.setAttribute("font-size", String(size * 0.52));
+            jtSp.textContent = glyphPipeSp;
+            g.appendChild(jtSp);
+          }
+          if (specPipe.overlays && specPipe.overlays.length && RndP.appendSvgSpriteOverlays) {
+            RndP.appendSvgSpriteOverlays(
+              g,
+              svgNs,
+              atlasP,
+              specPipe.overlays,
+              x0,
+              y0,
+              size,
+              specPipe.rotationDeg || 0,
+              { className: "am-map-sprite-overlay", opacity: pipeOverVoid ? 0.22 : 0.9 }
+            );
+          }
+          parent.appendChild(g);
+          return;
+        }
+      }
+      var rect = document.createElementNS(svgNs, "rect");
+      rect.setAttribute("x", String(x0));
+      rect.setAttribute("y", String(y0));
+      rect.setAttribute("width", String(size));
+      rect.setAttribute("height", String(size));
+      rect.setAttribute("rx", "0.06");
+      rect.setAttribute("ry", "0.06");
+      if (pipeOverVoid) {
+        rect.setAttribute("fill", "none");
+        rect.setAttribute("fill-opacity", "0");
+      } else {
+        rect.setAttribute("fill", fillForRole("pipe"));
+        rect.setAttribute("fill-opacity", opacityForRole("pipe"));
+      }
+      rect.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
+      rect.setAttribute("stroke-width", "0.04");
       g.appendChild(rect);
       function addLine(x1, y1, x2, y2) {
         var ln = document.createElementNS(svgNs, "line");
@@ -2999,7 +3022,7 @@
       }
       parent.appendChild(g);
     }
-    /** Shape belts: same stub rules as pipes, toward belts or shape station tiles. */
+    /** Shape belts: sprite atlas tile + optional junction glyph (legacy rect fallback). */
     function appendBeltCell(parent, p, titleText) {
       var idxB = xi[p.x];
       if (idxB === undefined) return;
@@ -3013,23 +3036,6 @@
       var strokeUseB = strokeClusterB || fillForRole("belt");
       var gB = document.createElementNS(svgNs, "g");
       gB.setAttribute("class", "am-belt-cell");
-      var rectB = document.createElementNS(svgNs, "rect");
-      rectB.setAttribute("x", String(x0b));
-      rectB.setAttribute("y", String(y0b));
-      rectB.setAttribute("width", String(sizeB));
-      rectB.setAttribute("height", String(sizeB));
-      rectB.setAttribute("rx", "0.06");
-      rectB.setAttribute("ry", "0.06");
-      var beltVoid = !!p.transport_over_void;
-      if (beltVoid) {
-        rectB.setAttribute("fill", "none");
-        rectB.setAttribute("fill-opacity", "0");
-      } else {
-        rectB.setAttribute("fill", fillForRole("belt"));
-        rectB.setAttribute("fill-opacity", opacityForRole("belt"));
-      }
-      rectB.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
-      rectB.setAttribute("stroke-width", "0.04");
       var nb = false;
       var eb = false;
       var sb = false;
@@ -3046,6 +3052,84 @@
         else if (db === "s") sb = true;
         else if (db === "w") wb = true;
       }
+      var beltVoid = !!p.transport_over_void;
+      var sprAtB = typeof globalThis !== "undefined" ? globalThis : window;
+      var atlasB = mapSpriteAtlas;
+      var RndB = sprAtB.AM_AsteroidMapSpriteRenderer;
+      var RslvB = sprAtB.AM_AsteroidMapSpriteResolver;
+      var useBeltSp = atlasB && RndB && RslvB;
+      if (useBeltSp) {
+        var specBelt = RslvB.resolveMiningCellSpriteDrawSpec(
+          p,
+          atlasB.meta,
+          "belt",
+          { dirs: { n: nb, e: eb, s: sb, w: wb }, isStub: cellIsOutputStubTransport(p, "belt") }
+        );
+        var okBelt = RndB.appendSvgSpriteTile(
+          gB,
+          svgNs,
+          atlasB,
+          specBelt.baseKey,
+          x0b,
+          y0b,
+          sizeB,
+          specBelt.rotationDeg || 0,
+          {
+            className: "am-map-sprite-transport",
+            titleText: titleText,
+            stroke: strokeUseB,
+            strokeWidth: 0.08,
+            opacity: beltVoid ? 0.22 : null,
+          }
+        );
+        if (okBelt) {
+          var cntBelt = (nb ? 1 : 0) + (eb ? 1 : 0) + (sb ? 1 : 0) + (wb ? 1 : 0);
+          var glyphBeltSp = pipeJunctionGlyph(nb, eb, sb, wb);
+          if (glyphBeltSp && cntBelt >= 3 && specBelt.baseKey === "belt_straight") {
+            var jtBsp = document.createElementNS(svgNs, "text");
+            jtBsp.setAttribute("class", "am-pipe-junction-glyph");
+            jtBsp.setAttribute("x", String(cxb));
+            jtBsp.setAttribute("y", String(cyb));
+            jtBsp.setAttribute("text-anchor", "middle");
+            jtBsp.setAttribute("dominant-baseline", "central");
+            jtBsp.setAttribute("fill", strokeUseB);
+            jtBsp.setAttribute("font-size", String(sizeB * 0.52));
+            jtBsp.textContent = glyphBeltSp;
+            gB.appendChild(jtBsp);
+          }
+          if (specBelt.overlays && specBelt.overlays.length && RndB.appendSvgSpriteOverlays) {
+            RndB.appendSvgSpriteOverlays(
+              gB,
+              svgNs,
+              atlasB,
+              specBelt.overlays,
+              x0b,
+              y0b,
+              sizeB,
+              specBelt.rotationDeg || 0,
+              { className: "am-map-sprite-overlay", opacity: beltVoid ? 0.22 : 0.9 }
+            );
+          }
+          parent.appendChild(gB);
+          return;
+        }
+      }
+      var rectB = document.createElementNS(svgNs, "rect");
+      rectB.setAttribute("x", String(x0b));
+      rectB.setAttribute("y", String(y0b));
+      rectB.setAttribute("width", String(sizeB));
+      rectB.setAttribute("height", String(sizeB));
+      rectB.setAttribute("rx", "0.06");
+      rectB.setAttribute("ry", "0.06");
+      if (beltVoid) {
+        rectB.setAttribute("fill", "none");
+        rectB.setAttribute("fill-opacity", "0");
+      } else {
+        rectB.setAttribute("fill", fillForRole("belt"));
+        rectB.setAttribute("fill-opacity", opacityForRole("belt"));
+      }
+      rectB.setAttribute("stroke", "rgb(15 23 42 / 0.35)");
+      rectB.setAttribute("stroke-width", "0.04");
       gB.appendChild(rectB);
       function addLineB(x1, y1, x2, y2) {
         var lnB = document.createElementNS(svgNs, "line");
@@ -3214,6 +3298,60 @@
     plotSvg.appendChild(gTop);
     plotSvg.appendChild(gFacing);
     plotSvg.appendChild(gStationPerimeters);
+    var gPass1Replay = document.createElementNS(svgNs, "g");
+    gPass1Replay.setAttribute("class", "am-pass1-replay-overlay");
+    var pass1Ev =
+      summary && typeof summary.pass1_event_kind === "string" ? summary.pass1_event_kind : "";
+    var pi1;
+    for (pi1 = 0; pi1 < filtered.length; pi1++) {
+      var rowP1 = filtered[pi1];
+      if (!rowP1 || rowP1.x === 0) continue;
+      var pr = rowP1.pass1_replay_role;
+      if (pr == null || pr === "") continue;
+      var prStr = String(pr);
+      var strokeP1 = "rgb(245 158 11 / 0.92)";
+      if (prStr.indexOf("pass1_probe_stub_ok") === 0) strokeP1 = "rgb(45 212 191 / 0.95)";
+      else if (prStr.indexOf("pass1_probe_stub_reject") === 0) strokeP1 = "rgb(248 113 113 / 0.95)";
+      else if (prStr.indexOf("pass1_extractor_") === 0) strokeP1 = "rgb(167 139 250 / 0.95)";
+      else if (prStr.indexOf("pass1_extension_") === 0) strokeP1 = "rgb(56 189 248 / 0.95)";
+      else if (prStr.indexOf("pass1_skip_extract") === 0) strokeP1 = "rgb(251 113 133 / 0.95)";
+      else if (prStr.indexOf("pass1_scan_cursor") === 0) strokeP1 = "rgb(250 204 21 / 0.98)";
+      var tipP1 = prStr + (pass1Ev ? " · " + pass1Ev : "");
+      appendRouteReplayOutline(gPass1Replay, { x: rowP1.x, y: rowP1.y }, strokeP1, tipP1);
+      if (prStr.indexOf("pass1_scan_cursor") === 0) {
+        var gWinP1 = typeof globalThis !== "undefined" ? globalThis : window;
+        var atP1 = mapSpriteAtlas;
+        var rdP1 = gWinP1.AM_AsteroidMapSpriteRenderer;
+        var ixP1 = xi[rowP1.x];
+        if (
+          atP1 &&
+          rdP1 &&
+          ixP1 !== undefined &&
+          atP1.meta &&
+          atP1.meta.sprites &&
+          atP1.meta.sprites.overlay_replay_cursor
+        ) {
+          var padP1 = 0.12;
+          var x0p1 = 1 + ixP1 + padP1;
+          var y0p1 = rowP1.y - minY + padP1;
+          var szP1 = 1 - 2 * padP1;
+          rdP1.appendSvgSpriteTile(
+            gPass1Replay,
+            svgNs,
+            atP1,
+            "overlay_replay_cursor",
+            x0p1,
+            y0p1,
+            szP1,
+            0,
+            { className: "am-map-sprite-replay-cursor-overlay", titleText: tipP1, opacity: 0.65 }
+          );
+        }
+      }
+    }
+    if (gPass1Replay.childNodes.length) {
+      plotSvg.appendChild(gPass1Replay);
+    }
     if (
       corridorOverlayCb &&
       corridorOverlayCb.checked &&
@@ -3222,9 +3360,9 @@
       pcPoints.length
     ) {
       var pcd2 = replayOverlay.protected_corridors;
-      var tHard = root.getAttribute("data-msg-pc-hard") || "";
-      var tSoft = root.getAttribute("data-msg-pc-soft") || "";
-      var tCand = root.getAttribute("data-msg-pc-candidate") || "";
+      var tHard = root.dataset.msgPcHard || "";
+      var tSoft = root.dataset.msgPcSoft || "";
+      var tCand = root.dataset.msgPcCandidate || "";
       var gPc = document.createElementNS(svgNs, "g");
       gPc.setAttribute("class", "am-protected-corridor-overlay");
       var gC = document.createElementNS(svgNs, "g");
@@ -3233,18 +3371,37 @@
       gS.setAttribute("class", "am-pc-soft");
       var gH = document.createElementNS(svgNs, "g");
       gH.setAttribute("class", "am-pc-hard");
-      function drawPcGroup(parent, arr, strokeHex, titleMsg) {
+      function appendCorridorOverlaySprite(parent, coordx, coordy, spriteKey, titleMsg) {
+        var gWin = typeof globalThis !== "undefined" ? globalThis : window;
+        var atlasPc = mapSpriteAtlas;
+        var RndPc = gWin.AM_AsteroidMapSpriteRenderer;
+        if (!atlasPc || !RndPc || !atlasPc.meta || !atlasPc.meta.sprites) return;
+        if (!atlasPc.meta.sprites[spriteKey]) return;
+        var idxPc = xi[coordx];
+        if (idxPc === undefined) return;
+        var padPc = 0.12;
+        var x0pc = 1 + idxPc + padPc;
+        var y0pc = coordy - minY + padPc;
+        var sizePc = 1 - 2 * padPc;
+        RndPc.appendSvgSpriteTile(parent, svgNs, atlasPc, spriteKey, x0pc, y0pc, sizePc, 0, {
+          className: "am-map-sprite-corridor-overlay",
+          titleText: titleMsg || "",
+          opacity: 0.5,
+        });
+      }
+      function drawPcGroup(parent, arr, strokeHex, titleMsg, spriteKey) {
         if (!Array.isArray(arr)) return;
         var ki;
         for (ki = 0; ki < arr.length; ki++) {
           var pr2 = arr[ki];
           if (!Array.isArray(pr2) || pr2.length < 2) continue;
           appendRouteReplayOutline(parent, { x: pr2[0], y: pr2[1] }, strokeHex, titleMsg);
+          appendCorridorOverlaySprite(parent, pr2[0], pr2[1], spriteKey, titleMsg);
         }
       }
-      drawPcGroup(gC, pcd2.candidate, "#0891b2", tCand);
-      drawPcGroup(gS, pcd2.soft, "#ca8a04", tSoft);
-      drawPcGroup(gH, pcd2.hard, "#dc2626", tHard);
+      drawPcGroup(gC, pcd2.candidate, "#0891b2", tCand, "overlay_candidate_corridor");
+      drawPcGroup(gS, pcd2.soft, "#ca8a04", tSoft, "overlay_soft_protected");
+      drawPcGroup(gH, pcd2.hard, "#dc2626", tHard, "overlay_hard_protected");
       gPc.appendChild(gC);
       gPc.appendChild(gS);
       gPc.appendChild(gH);
@@ -3286,12 +3443,10 @@
       p4Cells.softReplaceOld.length ||
       p4Cells.softReplaceNew.length
     ) {
-      var p4RouteTitle = root.getAttribute("data-msg-p4-route-overlay") || "";
-      var p4SoftTitle = root.getAttribute("data-msg-p4-soft-overlay") || "";
-      var p4SoftReplaceOldTitle =
-        root.getAttribute("data-msg-p4-soft-replace-old-overlay") || "";
-      var p4SoftReplaceNewTitle =
-        root.getAttribute("data-msg-p4-soft-replace-new-overlay") || "";
+      var p4RouteTitle = root.dataset.msgP4RouteOverlay || "";
+      var p4SoftTitle = root.dataset.msgP4SoftOverlay || "";
+      var p4SoftReplaceOldTitle = root.dataset.msgP4SoftReplaceOldOverlay || "";
+      var p4SoftReplaceNewTitle = root.dataset.msgP4SoftReplaceNewOverlay || "";
       var gP4 = document.createElementNS(svgNs, "g");
       gP4.setAttribute("class", "am-p4-last-commit-overlay");
       var gP4Soft = document.createElementNS(svgNs, "g");
@@ -3333,9 +3488,9 @@
     }
     if (rrPts.removed.length || rrPts.added.length) {
       var titleRouteRm =
-        root.getAttribute("data-msg-route-replay-removed") || "";
+        root.dataset.msgRouteReplayRemoved || "";
       var titleRouteAd =
-        root.getAttribute("data-msg-route-replay-added") || "";
+        root.dataset.msgRouteReplayAdded || "";
       var gRR = document.createElementNS(svgNs, "g");
       gRR.setAttribute("class", "am-route-replay-cells-overlay");
       var gRRm = document.createElementNS(svgNs, "g");
@@ -3589,16 +3744,27 @@
       errEl.classList.add("hidden");
       errEl.textContent = "";
       demoBtn.disabled = true;
-      fetch(demoUrl)
+      fetch(demoUrl, { cache: "no-store" })
         .then(function (res) {
           if (!res.ok) throw new Error("demo fetch failed");
           return res.text();
         })
         .then(function (text) {
-          ta.value = text.replace(/\r\n/g, "\n").trim();
+          var lines = text
+            .split(/\r\n|\n|\r/)
+            .map(function (s) {
+              return s.trim();
+            })
+            .filter(Boolean);
+          if (!lines.length) {
+            ta.value = "";
+            return;
+          }
+          var i = Math.floor(Math.random() * lines.length);
+          ta.value = lines[i];
         })
         .catch(function () {
-          errEl.textContent = root.getAttribute("data-msg-network") || "";
+          errEl.textContent = root.dataset.msgNetwork || "";
           errEl.classList.remove("hidden");
         })
         .finally(function () {
@@ -3612,8 +3778,8 @@
       errEl.classList.add("hidden");
       errEl.textContent = "";
       clearPlot();
+      clearMapCellsFetchCache();
       stopDecodePlay();
-      stopReplayPlay();
       lastSolverReplay = null;
       lastReplayUiFrames = [];
       lastCycleFrames = [];
@@ -3756,7 +3922,6 @@
             warnUnknownSolverReplayKinds(replayNorm.events);
           }
           applyDecodeSteps([]);
-          lastSolverTimeline = Array.isArray(solverPlaybackSteps) ? solverPlaybackSteps : [];
           solverPhaseStartIndex =
             Array.isArray(solverPlaybackSteps) &&
             solverPlaybackSteps.length &&

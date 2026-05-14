@@ -32,9 +32,7 @@ class AsteroidReconstruction:
     x_max: int
     y_min: int
     y_max: int
-    # 정적 장애물 + 솔버 점유(코어/익스텐션). 파이프 트렁크는 solver_pipe_network_cells.
     transport_hard_block_cells: frozenset[tuple[int, int]] = frozenset()
-    # 이전 패스까지 솔버 파이프 경로; A* blocked 아님, pipe goal 시드만.
     solver_pipe_network_cells: frozenset[tuple[int, int]] = frozenset()
 
 

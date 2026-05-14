@@ -701,6 +701,10 @@ def build_final_solver_output(
     summary_fields["step4_hard_protected_no_route_breakdown"] = summary_fields["trunk_load"].get(
         "step4_hard_protected_no_route_breakdown"
     )
+    # Top-level alias for run_end snapshot / copy-preview (also on ``trunk_load``).
+    summary_fields["step4_trunk_seed_candidate_zero_reason"] = summary_fields["trunk_load"].get(
+        "step4_trunk_seed_candidate_zero_reason"
+    )
     _pq, _pqs = preserve_quality_bundle_from_pass12(pass12_trace_fields)
     summary_fields["preserve_quality"] = _pq
     summary_fields["preserve_quality_score"] = _pqs

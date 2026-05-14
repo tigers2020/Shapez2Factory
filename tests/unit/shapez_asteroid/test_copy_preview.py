@@ -408,6 +408,68 @@ def test_copy_preview_merges_solver_summary_ui_fields_and_runtime_flags(
 
 
 @patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
+def test_copy_preview_merges_path_a_solver_summary_diagnostics(mock_solver: object) -> None:
+    """Last map summary receives Path A blocks from ``solver_summary`` (UI parity)."""
+
+    def fake(_decoded: dict) -> dict:
+        return {
+            "solver_timeline": [],
+            "final_validation": {"optimization_warnings": []},
+            "solver_summary": {
+                "termination": {
+                    "tier": "SUCCESS",
+                    "quality_tier": "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS",
+                },
+                "trace_frame_counter_glossary": {"map_timeline_frame_count": "decoded steps"},
+                "replay_frame_source": "replay_trace",
+                "preserve_missing_stub_summary": {
+                    "drop_count": 2,
+                    "preserve_drop_blocker_counts": {"stub_local_geometry_sealed": 1},
+                },
+                "pass2_probe_goal_count": 0,
+                "pass2_probe_last_goal_trace": {
+                    "exterior_margin_status": "predicate_shell_padding_suppressed",
+                },
+                "step4_trunk_seed_candidate_zero_reason": "exterior_margin_empty_and_no_seed",
+                "all_transport_protected_trace": {"hard_protected_count": 3},
+                "pass3_zero_gain_reason": "no_candidate_route_improved_internal_transport",
+                "pass3_zero_gain_context": {"step4_route_count": 7},
+            },
+        }
+
+    mock_solver.side_effect = fake
+
+    client = Client()
+    client.get("/asteroid/")
+    data = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 2, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    response = _post_json(client, {"code": _encode_copy(data)}, query="include_solver_replay=1")
+    assert response.status_code == 200
+    summ = response.json()["summary"]
+    assert summ["termination"]["tier"] == "SUCCESS"
+    assert summ["trace_frame_counter_glossary"]["map_timeline_frame_count"] == "decoded steps"
+    assert summ["replay_frame_source"] == "replay_trace"
+    assert summ["preserve_missing_stub_summary"]["drop_count"] == 2
+    assert summ["preserve_missing_stub_summary"]["preserve_drop_blocker_counts"] == {
+        "stub_local_geometry_sealed": 1,
+    }
+    assert summ["pass2_probe_goal_count"] == 0
+    assert (
+        summ["pass2_probe_last_goal_trace"]["exterior_margin_status"]
+        == "predicate_shell_padding_suppressed"
+    )
+    assert summ["step4_trunk_seed_candidate_zero_reason"] == "exterior_margin_empty_and_no_seed"
+    assert summ["all_transport_protected_trace"] == {"hard_protected_count": 3}
+    assert summ["pass3_zero_gain_reason"] == "no_candidate_route_improved_internal_transport"
+    assert summ["pass3_zero_gain_context"]["step4_route_count"] == 7
+
+
+@patch("django_apps.shapez_asteroid.services.asteroid_mining_layout.build_solver_timeline")
 def test_copy_preview_solver_timeline_raises_returns_500(mock_solver: object) -> None:
     mock_solver.side_effect = RuntimeError("boom")
 

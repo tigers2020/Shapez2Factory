@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -88,6 +89,76 @@ def test_run_end_debug_action_includes_solver_summary_snapshot(
     assert isinstance(ss, dict)
     assert "trace_frame_counter_glossary" in ss
     assert ss.get("map_timeline_frame_count") == 4
+
+
+def test_run_end_solver_summary_snapshot_includes_path_a_diagnostics(
+    tmp_path, monkeypatch, settings
+) -> None:
+    """``run_end`` snapshot carries Path A preserve / pass2 / P4-trace blocks (telemetry only)."""
+
+    settings.BASE_DIR = tmp_path
+    monkeypatch.setenv("SHAPEZ_SOLVER_ALGO_DEBUG", "1")
+    traced: list[dict[str, Any]] = []
+
+    def capture(location: str, message: str, data: dict | None = None) -> None:
+        if message == "solver_summary" and data:
+            traced.append(dict(data))
+
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver.solver_trace.trace_event",
+        capture,
+    ):
+        with trace_run_scope():
+            rid = trace_run_id_current()
+            assert rid is not None
+            emit_solver_summary_once(
+                "tests.unit.shapez_asteroid.test_mining_solver_stabilization",
+                {
+                    "termination": {
+                        "tier": "SUCCESS",
+                        "quality_tier": "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS",
+                    },
+                    "solver_quality_tier": "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS",
+                    "trace_frame_counter_glossary": {"map_timeline_frame_count": "hint"},
+                    "map_timeline_frame_count": 4,
+                    "replay_event_count": 2,
+                    "preserve_missing_stub_summary": {
+                        "drop_count": 3,
+                        "preserve_drop_blocker_counts": {"occupied_neighbor_ring": 2},
+                    },
+                    "pass2_probe_goal_count": 0,
+                    "pass2_probe_last_goal_trace": {
+                        "exterior_margin_status": "predicate_shell_padding_suppressed",
+                    },
+                    "step4_trunk_seed_candidate_zero_reason": "exterior_margin_empty_and_no_seed",
+                    "all_transport_protected_trace": {"hard_protected_count": 5},
+                    "pass3_zero_gain_reason": "no_candidate_route_improved_internal_transport",
+                    "pass3_zero_gain_context": {"before_internal_transport_count": 9},
+                },
+            )
+    full_ss = traced[0]["solver_summary"]
+    assert full_ss["termination"]["tier"] == "SUCCESS"
+    assert full_ss["solver_quality_tier"] == "PARTIAL_SUCCESS_VALID_PRESERVE_LOSS"
+
+    run_path = tmp_path / "var" / "asteroid_mining_layout_debug" / f"{rid}.ndjson"
+    records = [json.loads(line) for line in run_path.read_text(encoding="utf-8").splitlines()]
+    end = next(r for r in records if r.get("action") == "run_end")
+    snap = end["data"]["solver_summary"]
+    assert isinstance(snap, dict)
+    assert snap["pass2_probe_goal_count"] == 0
+    assert snap["preserve_missing_stub_summary"]["drop_count"] == 3
+    assert snap["preserve_missing_stub_summary"]["preserve_drop_blocker_counts"] == {
+        "occupied_neighbor_ring": 2,
+    }
+    assert (
+        snap["pass2_probe_last_goal_trace"]["exterior_margin_status"]
+        == "predicate_shell_padding_suppressed"
+    )
+    assert snap["step4_trunk_seed_candidate_zero_reason"] == "exterior_margin_empty_and_no_seed"
+    assert snap["all_transport_protected_trace"] == {"hard_protected_count": 5}
+    assert snap["pass3_zero_gain_reason"] == "no_candidate_route_improved_internal_transport"
+    assert snap["pass3_zero_gain_context"]["before_internal_transport_count"] == 9
+    assert "replay_frame_source" in snap
 
 
 def test_trace_event_writes_replay_ndjson_and_debug_action_only(

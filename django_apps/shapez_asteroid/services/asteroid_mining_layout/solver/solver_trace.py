@@ -102,6 +102,12 @@ _RUN_END_SOLVER_SUMMARY_SNAPSHOT_KEYS = frozenset(
         "solver_timeline_frame_count",
         "pass3_zero_gain_reason",
         "pass3_zero_gain_context",
+        # Path A diagnostics (lightweight; nested preserve contract unchanged).
+        "preserve_missing_stub_summary",
+        "pass2_probe_goal_count",
+        "pass2_probe_last_goal_trace",
+        "step4_trunk_seed_candidate_zero_reason",
+        "all_transport_protected_trace",
     }
 )
 

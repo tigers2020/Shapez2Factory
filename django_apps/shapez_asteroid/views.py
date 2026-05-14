@@ -139,7 +139,6 @@ _COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS: tuple[str, ...] = (
     "preserve_quality_score_version",
     "preserve_quality",
     "preserve_missing_stub_summary",
-    "termination",
     "step4_no_route_exhausted_breakdown",
     "step4_hard_protected_no_route_breakdown",
     "pass12_stub_route_recovery_enabled",
@@ -155,6 +154,8 @@ _COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS: tuple[str, ...] = (
     "optimization_warnings",
     "optimization_warning_count",
     "solver_quality_subtier",
+    # ``termination`` (``degradation_causes``, ``quality_tier`` 등) — ``solver_summary``와 동일.
+    "termination",
 )
 
 

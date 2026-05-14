@@ -2,10 +2,10 @@
 
 ## 범위
 
-- **관측**: 최신 운영 NDJSON에서 Tier D 복구가 유효함(시도 9 / 성공 8)에도 불구하고 `extractor_drop_count == 2`가 남고, `solver_quality_tier`는 API 호환을 위해 `PARTIAL_SUCCESS_VALID_PRESERVE_LOSS`로 유지되는 케이스를 다룬다.
-- **본 워크스페이스**: 해당 운영 NDJSON 파일 본문은 **저장소에 포함되어 있지 않다.** 아래 **운영 스냅샷 수치**와 **분류 확정 필드**는 에이전트 작업 시점에 제공된 최신 생산 요약에서 가져온 것이다. `miner_cell`·`nearest_same_kind_transport_cell` 등 **좌표·맵 기준 필드 전체**는 로컬에 보관된 동일 NDJSON의 `solver_summary.pass12_preserved_missing_stub_drop_details[0]`, `[1]` 원문과 반드시 대조한다.
+- **관측**: Tier D 복구가 유효한 운영 케이스에서도 `extractor_drop_count`가 남고, `solver_quality_tier`는 API 호환을 위해 `PARTIAL_SUCCESS_VALID_PRESERVE_LOSS`로 유지되는 흐름을 정리한다.
+- **증거**: 본 문서의 **원문 JSON 붙여넣기**는 `var/asteroid_mining_layout_debug/latest.ndjson`(run `ceaa1731e164`, `pass12_completed` 이벤트)에서 추출했다. 이 파일의 `preserve_missing_stub_summary.drop_count`는 **10**이며, 아래 **「인용 생산 스냅샷」** 의 `drop_count=2`, `tier_d` 9/8과 **동일 런이 아니다**. 생산 2건의 `miner_cell` 등은 **해당 생산 NDJSON**으로 대조해야 한다.
 
-## 운영 NDJSON 스냅샷 (최신, 레포 외부 원본과 대조)
+## 인용 생산 스냅샷 (이슈 입력, 레포 외부)
 
 | 필드 | 값 |
 |------|---|
@@ -19,29 +19,38 @@
 | `preserve_missing_stub_summary.expected_unrecoverable_drop_count` | 2 |
 | `preserve_missing_stub_summary.recoverable_unresolved_drop_count` | 0 |
 | `preserve_missing_stub_summary.unrecoverable_reason_counts.no_legal_same_kind_route_under_bounds` | 2 |
+| `solver_quality_tier` | `PARTIAL_SUCCESS_VALID_PRESERVE_LOSS` |
+| `solver_quality_subtier` | `EXPECTED_UNRECOVERABLE_PRESERVE_LOSS_ONLY` |
+| `degradation_causes` (요지) | `preserve_missing_stub_drop`, `internal_transport_above_pass2_baseline` |
 
-**검증·주장 한계**: `extractor_drop_count` 개선이나 추가 드롭 감소는 **새 생산 NDJSON**으로만 확인한다. 본 문서·코드 변경만으로 생산 지표가 좋아졌다고 주장하지 않는다.
+**검증·주장 한계**: 위 생산 수치는 **새 생산 NDJSON**으로만 재검증한다. 레포에 보관된 `latest.ndjson`만으로는 `drop_count=2` 런을 복원할 수 없다.
 
-## 남은 2건 — `report_pass12_preserved_missing_stub_drop_details` 관점
+## 남은 2건 — 열 계약 표 (`report_pass12_preserved_missing_stub_drop_details`)
 
-운영에서 두 드롭 모두 계약상 비복구로 집계되었다. `report_pass12_preserved_missing_stub_drop_details(details)` 출력에서 **확정된** 열은 아래와 같다(좌표·트랜스포트 세부는 원본 NDJSON 행을 따른다).
+아래 2행은 **증거 `latest.ndjson`의 `pass12_preserved_missing_stub_drop_details[0]`, `[1]`** 을 `report_pass12_preserved_missing_stub_drop_details`로 평탄화한 값이다. 스키마·Tier D·repack 필드 확인용이며, **생산 2드롭 좌표와 동일함을 주장하지 않는다.**
 
-| # | `miner_cell` | `pass12_unrecoverable_contract_reason_code` | `pass12_remaining_drop_classification` | 비고 |
-|---|--------------|-----------------------------------------------|------------------------------------------|------|
-| 1 | **운영 NDJSON `details[0].miner_cell`과 동일** | `no_legal_same_kind_route_under_bounds` | `unrecoverable_by_design` | Tier D 시도 후 BFS/한계 계열 사유로 집계됨 |
-| 2 | **운영 NDJSON `details[1].miner_cell`과 동일** | `no_legal_same_kind_route_under_bounds` | `unrecoverable_by_design` | 동일 |
+| # | `miner_cell` | `transport_kind` | `preserve_drop_reason` | `recoverability_class` | `rejected_reason_subtype` | `nearest_same_kind_transport_hops` | `tier_d_attempted` | `tier_d_success` | `tier_d_skip_reason` | `tier_d_failure_reason` | `output_repack_candidate_count` | `output_repack_selected_rotation` | `unrecoverable_reason` (`pass12_unrecoverable_contract_reason_code`) |
+|---:|---|---|---|---|---|---:|---|---|---|---|---:|---|---|
+| 1 | `[-2, -7]` | `fluid_pipe` | `NO_MATCHING_STUB` | `NEAR_TRANSPORT` | `occupied_neighbor_ring` | 5 | `true` | `false` |  | `tier_d_failed_no_same_kind_route` | 26 |  | `no_legal_same_kind_route_under_bounds` |
+| 2 | `[-3, -3]` | `fluid_pipe` | `NO_MATCHING_STUB` | `NEAR_TRANSPORT` | `occupied_neighbor_ring` | 5 | `true` | `false` |  | `tier_d_failed_no_same_kind_route` | 49 |  | `no_legal_same_kind_route_under_bounds` |
 
-### 원문 행 붙여넣기용 (NDJSON `pass12_preserved_missing_stub_drop_details` 요소)
+**생산 2건과의 정합(요약만)**: 인용 생산에서 `unrecoverable_drop_count=2`이고 `unrecoverable_reason_counts['no_legal_same_kind_route_under_bounds']=2`이면, 위 표의 **마지막 열**이 생산 각 행에서도 동일 버킷이어야 한다. 행별 `tier_d_*` 합이 `bounded_recovery`의 9/8과 어떻게 맞는지는 **생산 `preserve_stub_recovery` 원문**으로만 확정한다.
 
-레포에 파일이 없어 **전체 원문 JSON은 비워 두지 않고**, 운영 NDJSON에서 각 배열 요소를 **그대로** 아래 블록에 교체한다.
+### 원문 행 붙여넣기 (`pass12_preserved_missing_stub_drop_details` 요소)
+
+증거 파일 `latest.ndjson` — **요소 0** (10-drop 런). 생산 2-drop 런과 동일하지 않을 수 있다.
 
 ```json
-<PASTE_PRODUCTION_drop_details[0]_AS_SINGLE_JSON_OBJECT>
+{"miner_cell":[-2,-7],"reason":"NO_MATCHING_STUB","preserve_drop_reason":"NO_MATCHING_STUB","transport_kind":"fluid_pipe","expected_stub_role":"pipe","pass12_merged_seed_miner_count":67,"nearest_same_kind_transport_hops":5,"nearest_same_kind_transport_cell":[-3,-11],"recoverability_class":"NEAR_TRANSPORT","preserve_stub_recovery":{"tier_d_attempted":true,"tier_d_success":false,"tier_d_skip_reason":null,"tier_d_failure_reason":"tier_d_failed_no_same_kind_route","output_repack_candidate_count":26,"output_repack_selected_rotation":null,"rejected_reason_subtype":"occupied_neighbor_ring","rejected_reason":"no_same_kind_route"}}
 ```
 
+증거 파일 `latest.ndjson` — **요소 1** (10-drop 런).
+
 ```json
-<PASTE_PRODUCTION_drop_details[1]_AS_SINGLE_JSON_OBJECT>
+{"miner_cell":[-3,-3],"reason":"NO_MATCHING_STUB","preserve_drop_reason":"NO_MATCHING_STUB","transport_kind":"fluid_pipe","expected_stub_role":"pipe","pass12_merged_seed_miner_count":67,"nearest_same_kind_transport_hops":5,"nearest_same_kind_transport_cell":[-8,-3],"recoverability_class":"NEAR_TRANSPORT","preserve_stub_recovery":{"tier_d_attempted":true,"tier_d_success":false,"tier_d_skip_reason":null,"tier_d_failure_reason":"tier_d_failed_no_same_kind_route","output_repack_candidate_count":49,"output_repack_selected_rotation":null,"rejected_reason_subtype":"occupied_neighbor_ring","rejected_reason":"no_same_kind_route"}}
 ```
+
+(전체 원문은 NDJSON `pass12_completed` → `data.pass12_stats.pass12_preserved_missing_stub_drop_details` 배열 요소와 동일하다. 위는 가독성을 위해 축약한 코어 필드만 남긴 사본이다.)
 
 ## 도구 (알고리즘 입력 아님)
 

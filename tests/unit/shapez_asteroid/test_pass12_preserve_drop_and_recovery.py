@@ -7,6 +7,7 @@ from django.test import override_settings
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.constants import (
     MAX_PASS12_RECOVERY_BFS_HOPS,
+    SOLVER_QUALITY_SUBTIER_EXPECTED_UNRECOVERABLE_PRESERVE_LOSS_ONLY,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.geometry import Coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.placement import (
@@ -18,6 +19,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
     PRESERVE_QUALITY_SCORE_VERSION,
+    _compute_solver_quality_subtier,
     preserve_quality_bundle_from_pass12,
 )
 
@@ -25,6 +27,21 @@ Pass12LayoutScratch = pass12_bundle_commit.Pass12LayoutScratch
 seed_pass12_scratch_from_merged_existing = (
     pass12_merged_layout_seed.seed_pass12_scratch_from_merged_existing
 )
+
+
+def test_solver_quality_subtier_expected_unrecoverable_only_from_summary_dict() -> None:
+    """``preserve_missing_stub_summary``가 전부 비복구일 때 subtier 플래그만 설정된다."""
+
+    assert (
+        _compute_solver_quality_subtier(
+            {
+                "drop_count": 2,
+                "unrecoverable_drop_count": 2,
+            }
+        )
+        == SOLVER_QUALITY_SUBTIER_EXPECTED_UNRECOVERABLE_PRESERVE_LOSS_ONLY
+    )
+    assert _compute_solver_quality_subtier({"drop_count": 2, "unrecoverable_drop_count": 1}) is None
 
 
 def test_preserve_drop_mixed_kind_vs_orphan_histogram() -> None:

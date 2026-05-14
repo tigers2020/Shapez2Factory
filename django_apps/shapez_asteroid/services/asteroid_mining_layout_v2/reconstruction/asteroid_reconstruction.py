@@ -143,8 +143,8 @@ def reconstruct_asteroid_mining_field(
 
     for item in gather_bp_entries_recursive(doc):
         x_val = _int_or_none(item.get("X"))
-        # Shapez blueprint layout math skips X==0 (no valid placement column); see
-        # ``blueprint_map_summary`` module docstring. Rows at X==0 are not ingested.
+        # Shapez blueprint: X==0 is not ingested as a cell id (CANON STEP1 §6.2.1). That is
+        # a label skip, not a physical void column between neighbors.
         if x_val is None or x_val == 0:
             continue
         y_val = _int_or_none(item.get("Y"))

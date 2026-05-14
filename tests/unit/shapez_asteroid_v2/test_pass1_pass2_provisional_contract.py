@@ -27,12 +27,30 @@ def _ctx() -> SolverRunContext:
 
 def test_pass1_pass2_commit_entries_are_provisional_only() -> None:
     mineable = tuple((x, y) for x in range(20, 26) for y in range(20, 26) if (x, y) != (22, 22))
+    bbox = BBox(min_x=20, min_y=20, max_x=25, max_y=25)
+    shell = tuple(
+        sorted(
+            (
+                c
+                for c in mineable
+                if min(
+                    c[0] - bbox.min_x,
+                    bbox.max_x - c[0],
+                    c[1] - bbox.min_y,
+                    bbox.max_y - c[1],
+                )
+                == 0
+            ),
+            key=lambda c: (c[1], c[0]),
+        )
+    )
     barrier = tuple({*mineable, (22, 22)})
     recon = ReconstructionDTO(
         mineable_placement_cells=mineable,
-        extraction_shell_cells=mineable,
+        extraction_shell_cells=shell,
         full_barrier_cells=barrier,
-        asteroid_bbox=BBox(min_x=20, min_y=20, max_x=25, max_y=25),
+        belt_cells=mineable,
+        asteroid_bbox=bbox,
     )
     ctx = _ctx()
     p1 = run_pass1_outer_placement(ctx, recon)

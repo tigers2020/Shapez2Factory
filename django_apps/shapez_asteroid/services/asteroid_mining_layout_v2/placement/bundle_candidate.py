@@ -3,6 +3,12 @@ Pass1 / Pass2 bundle candidate models and shared placement geometry (§7–§8).
 
 No route geometry; no ``final_route_cells`` (STEP 4 only).
 
+**Blueprint X column**: STEP1 ``mineable_placement_cells`` (decoded pipeline) never
+uses **X == 0** as a cell id (ingestion skips that label). That is **not** a physical void
+column between neighbors—do not read the gap in integer ids as empty grid space.
+Extension / escape feasibility uses ``mineable`` and ``blocked_by_building`` only —
+not a global ``x <= 0`` guard.
+
 **Deterministic direction ring**: ``CARDINAL_DIRS`` is **12 o'clock (north) first**, then
 **clockwise** — ``(0, -1), (1, 0), (0, 1), (-1, 0)`` in ``(dx, dy)`` blueprint space
 (``x`` east, ``y`` south).

@@ -24,19 +24,19 @@ side_directions_after_output = _bc.side_directions_after_output
 step_cell = _bc.step_cell
 
 
-def test_grow_extension_cells_allows_non_positive_x_when_mineable() -> None:
-    """STEP1 may omit X==0 from decoded blueprints; manual mineable may still use x<=0."""
+def test_grow_extension_cells_uses_mineable_not_global_x_guard() -> None:
+    """Validity is mineable + barriers only; decoded mineable never includes X==0 (STEP1 §6.2.1)."""
 
-    mineable = frozenset({(-1, 10), (-2, 10), (-3, 10), (-2, 9), (-2, 11)})
+    mineable = frozenset({(1, 10), (2, 10), (3, 10), (2, 9), (2, 11)})
     recon = ReconstructionDTO(
         mineable_placement_cells=tuple(sorted(mineable)),
         extraction_shell_cells=tuple(sorted(mineable)),
         full_barrier_cells=(),
-        asteroid_bbox=BBox(min_x=-3, min_y=9, max_x=-1, max_y=11),
+        asteroid_bbox=BBox(min_x=1, min_y=9, max_x=3, max_y=11),
         external_margin=3,
         external_margin_bbox_source="mineable",
     )
-    extractor = (-2, 10)
+    extractor = (2, 10)
     out_dir = (0, -1)
     stub = step_cell(extractor, out_dir)
     used = {extractor, stub}

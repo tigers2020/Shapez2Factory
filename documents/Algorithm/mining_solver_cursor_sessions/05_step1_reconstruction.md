@@ -33,6 +33,16 @@ mineable_placement_cells  # 실제 배치 후보 셀
 5. 외부가 아닌 빈 공간을 내부 채굴 후보 patch로 추론한다.
 ```
 
+### 6.2.1 Blueprint X 격자 (CANON)
+
+```text
+decode·STEP1 ``mineable_placement_cells`` 매핑에는 **X==0 열 식별자가 존재하지 않는다**
+(Shapez copy blueprint: X==0 비섭식, ``asteroid_reconstruction.py`` 참고).
+이는 **라벨/섭식 규칙**이며, 인접 열 사이에 **물리적 void(빈 칸 열)**가 끼어 있다는 뜻이 아니다.
+STEP2/3 placement는 전역 ``x<=0`` 가드가 아니라 mineable·``full_barrier_cells``·
+belt/pipe로만 인접 셀 타당성을 판별한다.
+```
+
 ---
 
 ### 6.3 중요한 정정 사항

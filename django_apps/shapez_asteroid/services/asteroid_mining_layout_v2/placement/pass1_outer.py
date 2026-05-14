@@ -14,6 +14,11 @@ Cheap escape is probe-only (§7.3): never written to ``occupied_cells`` or
 3. **Tie-break**: ``(y, x)`` lexicographic.
 
 Output-direction evaluation order is fixed ``CARDINAL_DIRS``: N → E → S → W.
+
+**Grid**: STEP1 ``mineable_placement_cells`` never uses **X == 0** as an id (decode
+convention). That omission is **not** a physical void between columns. Neighbor
+validity is ``mineable`` + barrier / transport masks; cheap escape BFS is bounded by
+``asteroid_bbox`` ± margin only — no ``x <= 0`` sentinel.
 """
 
 from __future__ import annotations

@@ -30,6 +30,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     SOLVER_FRAME_PASS3_TRANSPORT,
     SOLVER_FRAME_STEP4_ROUTING,
     SOLVER_FRAME_VALIDATE,
+    SOLVER_QUALITY_SUBTIER_EXPECTED_UNRECOVERABLE_PRESERVE_LOSS_ONLY,
     SOLVER_QUALITY_TIER_PARTIAL_SUCCESS_VALID_PRESERVE_LOSS,
     SOLVER_QUALITY_TIER_SOLVER_FAILURE,
     SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED,
@@ -162,6 +163,22 @@ def _compute_solver_quality_tier(
     if optimization_warnings:
         return SOLVER_QUALITY_TIER_SUCCESS_VALID_WITH_OPTIMIZATION_WARNING
     return SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED
+
+
+def _compute_solver_quality_subtier(
+    preserve_missing_stub_summary: Mapping[str, Any] | None,
+) -> str | None:
+    """Flag preserve-loss runs where every stub drop is contract-unrecoverable (telemetry)."""
+
+    if not isinstance(preserve_missing_stub_summary, dict):
+        return None
+    drop_n = int(preserve_missing_stub_summary.get("drop_count") or 0)
+    if drop_n <= 0:
+        return None
+    unrec = int(preserve_missing_stub_summary.get("unrecoverable_drop_count") or 0)
+    if unrec != drop_n:
+        return None
+    return SOLVER_QUALITY_SUBTIER_EXPECTED_UNRECOVERABLE_PRESERVE_LOSS_ONLY
 
 
 # Bump when ``preserve_quality_score`` formula or inputs change (A/B / NDJSON comparability).
@@ -712,6 +729,9 @@ def build_final_solver_output(
     summary_fields["solver_quality_tier"] = _qual_tier
     summary_fields["solver_result_tier"] = _qual_tier
     summary_fields["solver_quality_summary"] = _solver_quality_summary_for_tier(_qual_tier)
+    summary_fields["solver_quality_subtier"] = _compute_solver_quality_subtier(
+        summary_fields.get("preserve_missing_stub_summary")
+    )
     _append_stub_route_recovery_disabled_warning(summary_fields)
     _term_d = summary_fields.get("termination")
     if isinstance(_term_d, dict):
@@ -962,6 +982,7 @@ def build_final_solver_output(
             "solver_quality_tier": summary_fields.get("solver_quality_tier"),
             "solver_result_tier": summary_fields.get("solver_result_tier"),
             "solver_quality_summary": summary_fields.get("solver_quality_summary"),
+            "solver_quality_subtier": summary_fields.get("solver_quality_subtier"),
         },
     }
     debug_log_event(
@@ -1205,6 +1226,7 @@ def apply_exception_summary_defaults(summary_fields: dict[str, Any]) -> None:
         "solver_quality_summary",
         _solver_quality_summary_for_tier(SOLVER_QUALITY_TIER_SOLVER_FAILURE),
     )
+    summary_fields.setdefault("solver_quality_subtier", None)
     _term_exc = summary_fields.get("termination")
     if isinstance(_term_exc, dict):
         _term_exc.setdefault("quality_tier", summary_fields.get("solver_quality_tier"))

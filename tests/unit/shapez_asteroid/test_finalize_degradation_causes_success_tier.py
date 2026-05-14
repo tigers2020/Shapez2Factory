@@ -10,6 +10,8 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout.foundation.cons
     DEGRADATION_CAUSE_PASS2_EMPTY_GOAL_PROBE,
     DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP,
     OPTIMIZATION_WARNING_INTERNAL_TRANSPORT_ABOVE_PASS2_BASELINE,
+    SOLVER_QUALITY_SUBTIER_EXPECTED_UNRECOVERABLE_PRESERVE_LOSS_ONLY,
+    SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize import (
     SOLVER_TERMINATION_SUCCESS,
@@ -218,8 +220,219 @@ def test_solver_summary_synthesizes_preserve_missing_stub_from_drop_details() ->
     pms = summary.get("preserve_missing_stub_summary") or {}
     assert int(pms.get("drop_count") or 0) == 2
     assert pms.get("by_reason", {}).get("NO_MATCHING_STUB") == 2
+    assert int(pms.get("unrecoverable_drop_count") or 0) == 0
+    assert int(pms.get("expected_unrecoverable_drop_count") or 0) == 0
+    assert int(pms.get("recoverable_unresolved_drop_count") or 0) == 2
     pq = summary.get("preserve_quality") or {}
     assert int((pq.get("preserve_missing_stub_summary") or {}).get("drop_count") or 0) == 2
+
+
+def test_finalize_quality_subtier_only_when_all_preserve_drops_unrecoverable_by_contract() -> None:
+    """``solver_quality_tier`` stays optimized; subtier flags expected-only preserve loss."""
+
+    empty: list[dict[str, Any]] = []
+    routing_state: dict[str, Any] = {"hard_protected_corridors": []}
+    step4 = step4_routing_skipped_result(empty)
+    good = FinalValidationReport(
+        geometry_valid=True,
+        connectivity_valid=True,
+        disconnected_stub_count=0,
+        quarantined_unrouted_count=0,
+        provisional_placed_row_count=0,
+        orphan_transport_count=0,
+        overlap_violation_count=0,
+        missing_stub_count=0,
+        missing_extractor_rotation_count=0,
+        extractor_count=10,
+        extension_count=0,
+        transport_cell_count=0,
+        transport_connectivity_ok=True,
+    )
+    _psr = {
+        "tier_d_attempted": True,
+        "tier_d_success": False,
+        "tier_d_skip_reason": None,
+        "tier_d_failure_reason": "tier_d_failed_no_same_kind_route",
+        "rejected_reason": "no_same_kind_route",
+    }
+    pass12_stats: dict[str, Any] = {
+        "pass12_merged_seed_miner_count": 10,
+        "pass12_preserved_bundle_extractor_cells": 10,
+        "pass12_preserved_missing_stub_drop_extractor_count": 2,
+        "pass12_preserved_missing_stub_drop_details": [
+            {"preserve_drop_reason": "NO_MATCHING_STUB", "preserve_stub_recovery": dict(_psr)},
+            {"preserve_drop_reason": "NO_MATCHING_STUB", "preserve_stub_recovery": dict(_psr)},
+        ],
+        "pass12_preserved_recovery_success_count": 0,
+        "pass12_preserved_rotation_recovery_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_attempted_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_success_count": 0,
+        "pass12_preserved_recovered_stub_samples": [],
+        "pass12_preserved_unrecovered_stub_drop_samples": [],
+        "pass2_probe_empty_goal_set_count": 0,
+        "preserve_missing_stub_summary": {
+            "drop_count": 0,
+            "by_reason": {},
+            "by_recoverability": {},
+            "by_rejected_reason_subtype": {},
+            "local_repack_candidate_count": 0,
+        },
+    }
+    pass3_summary: dict[str, Any] = {
+        "after_internal_transport_count": 0,
+        "pass3_skipped": True,
+        "pass3_committed": False,
+    }
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize."
+        "_validate_final_mining_layout",
+        return_value=good,
+    ):
+        out, summary = build_final_solver_output(
+            run_id="pms-subtier",
+            map_timeline=[{"mining_map": empty}, {"mining_map": empty}],
+            map_after_pass1=empty,
+            map_after_pass2=empty,
+            map_after_routing=empty,
+            map_final=empty,
+            pass12_status_fields={},
+            pass12_stats=pass12_stats,
+            pass12_phase="test",
+            pass12_skipped=True,
+            pre_counts=_empty_counts(),
+            post_pass2_counts=_empty_counts(),
+            step4_result=step4,
+            routing_state_summary=routing_state,
+            post_step4_counts=_empty_counts(),
+            unfinalized_placement_count=0,
+            pass3_summary=pass3_summary,
+            existing_layout_analysis=None,
+            step_hash_step4=None,
+            step_hash_pass3=None,
+            step_hash_p4=None,
+            solver_state_hash=None,
+            replay_events=[],
+            debug_location="tests.unit.shapez_asteroid.test_finalize_degradation_causes_success_tier",
+        )
+
+    pms = summary.get("preserve_missing_stub_summary") or {}
+    assert int(pms.get("drop_count") or 0) == 2
+    assert int(pms.get("unrecoverable_drop_count") or 0) == 2
+    assert int(pms.get("expected_unrecoverable_drop_count") or 0) == 2
+    assert int(pms.get("recoverable_unresolved_drop_count") or 0) == 0
+    assert summary.get("solver_quality_tier") == SOLVER_QUALITY_TIER_SUCCESS_VALID_OPTIMIZED
+    assert summary.get("solver_quality_subtier") == (
+        SOLVER_QUALITY_SUBTIER_EXPECTED_UNRECOVERABLE_PRESERVE_LOSS_ONLY
+    )
+    term = summary.get("termination") or {}
+    dc = list(term.get("degradation_causes") or [])
+    assert DEGRADATION_CAUSE_PRESERVE_MISSING_STUB_DROP in dc
+    assert DEGRADATION_CAUSE_EXTRACTOR_DROP_VS_MERGED_SEED not in dc
+    fv = out.get("final_validation") or {}
+    assert (
+        fv.get("solver_quality_subtier")
+        == SOLVER_QUALITY_SUBTIER_EXPECTED_UNRECOVERABLE_PRESERVE_LOSS_ONLY
+    )
+
+
+def test_finalize_solver_quality_subtier_absent_when_not_all_drops_unrecoverable() -> None:
+    """Mixed contract outcomes: no ``EXPECTED_UNRECOVERABLE_*`` subtier."""
+
+    empty: list[dict[str, Any]] = []
+    routing_state: dict[str, Any] = {"hard_protected_corridors": []}
+    step4 = step4_routing_skipped_result(empty)
+    good = FinalValidationReport(
+        geometry_valid=True,
+        connectivity_valid=True,
+        disconnected_stub_count=0,
+        quarantined_unrouted_count=0,
+        provisional_placed_row_count=0,
+        orphan_transport_count=0,
+        overlap_violation_count=0,
+        missing_stub_count=0,
+        missing_extractor_rotation_count=0,
+        extractor_count=10,
+        extension_count=0,
+        transport_cell_count=0,
+        transport_connectivity_ok=True,
+    )
+    pass12_stats: dict[str, Any] = {
+        "pass12_merged_seed_miner_count": 10,
+        "pass12_preserved_bundle_extractor_cells": 10,
+        "pass12_preserved_missing_stub_drop_extractor_count": 2,
+        "pass12_preserved_missing_stub_drop_details": [
+            {
+                "preserve_drop_reason": "NO_MATCHING_STUB",
+                "preserve_stub_recovery": {
+                    "tier_d_attempted": True,
+                    "tier_d_success": False,
+                    "tier_d_skip_reason": None,
+                    "tier_d_failure_reason": "tier_d_failed_no_same_kind_route",
+                    "rejected_reason": "no_same_kind_route",
+                },
+            },
+            {
+                "preserve_drop_reason": "NO_MATCHING_STUB",
+                "recoverability_class": "NEAR_TRANSPORT",
+                "preserve_stub_recovery": {"rejected_reason_subtype": "occupied_neighbor_ring"},
+            },
+        ],
+        "pass12_preserved_recovery_success_count": 0,
+        "pass12_preserved_rotation_recovery_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_attempted_count": 0,
+        "pass12_preserved_missing_stub_route_recovery_success_count": 0,
+        "pass12_preserved_recovered_stub_samples": [],
+        "pass12_preserved_unrecovered_stub_drop_samples": [],
+        "pass2_probe_empty_goal_set_count": 0,
+        "preserve_missing_stub_summary": {
+            "drop_count": 0,
+            "by_reason": {},
+            "by_recoverability": {},
+            "by_rejected_reason_subtype": {},
+            "local_repack_candidate_count": 0,
+        },
+    }
+    pass3_summary: dict[str, Any] = {
+        "after_internal_transport_count": 0,
+        "pass3_skipped": True,
+        "pass3_committed": False,
+    }
+    with patch(
+        "django_apps.shapez_asteroid.services.asteroid_mining_layout.solver_pipeline.finalize."
+        "_validate_final_mining_layout",
+        return_value=good,
+    ):
+        out, summary = build_final_solver_output(
+            run_id="pms-subtier-mixed",
+            map_timeline=[{"mining_map": empty}, {"mining_map": empty}],
+            map_after_pass1=empty,
+            map_after_pass2=empty,
+            map_after_routing=empty,
+            map_final=empty,
+            pass12_status_fields={},
+            pass12_stats=pass12_stats,
+            pass12_phase="test",
+            pass12_skipped=True,
+            pre_counts=_empty_counts(),
+            post_pass2_counts=_empty_counts(),
+            step4_result=step4,
+            routing_state_summary=routing_state,
+            post_step4_counts=_empty_counts(),
+            unfinalized_placement_count=0,
+            pass3_summary=pass3_summary,
+            existing_layout_analysis=None,
+            step_hash_step4=None,
+            step_hash_pass3=None,
+            step_hash_p4=None,
+            solver_state_hash=None,
+            replay_events=[],
+            debug_location="tests.unit.shapez_asteroid.test_finalize_degradation_causes_success_tier",
+        )
+
+    pms = summary.get("preserve_missing_stub_summary") or {}
+    assert int(pms.get("recoverable_unresolved_drop_count") or 0) == 1
+    assert summary.get("solver_quality_subtier") is None
+    assert (out.get("final_validation") or {}).get("solver_quality_subtier") is None
 
 
 def test_success_tier_degradation_causes_include_internal_transport_baseline_warning() -> None:

@@ -377,6 +377,8 @@ def test_preserve_missing_stub_summary_aggregator_subtype_and_finalize_bundle() 
     assert summ["local_repack_candidate_count"] == 1
     assert summ.get("unrecoverable_drop_count") == 0
     assert summ.get("unrecoverable_reason_counts") == {}
+    assert summ.get("expected_unrecoverable_drop_count") == 0
+    assert summ.get("recoverable_unresolved_drop_count") == 2
     bundle, _score = preserve_quality_bundle_from_pass12(
         {"preserve_missing_stub_summary": summ, "pass12_merged_seed_miner_count": 2}
     )

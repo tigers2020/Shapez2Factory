@@ -108,6 +108,7 @@ def _merge_final_validation_optimization_into_last_map_summary(
         "solver_quality_tier",
         "solver_result_tier",
         "solver_quality_summary",
+        "solver_quality_subtier",
     )
     for k in keys:
         if k not in fv:
@@ -153,6 +154,7 @@ _COPY_PREVIEW_SOLVER_SUMMARY_UI_KEYS: tuple[str, ...] = (
     "solver_termination",
     "optimization_warnings",
     "optimization_warning_count",
+    "solver_quality_subtier",
 )
 
 

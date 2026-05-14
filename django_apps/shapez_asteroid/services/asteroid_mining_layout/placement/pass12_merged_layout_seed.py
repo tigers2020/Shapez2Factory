@@ -371,14 +371,19 @@ def _preserve_missing_stub_summary_from_details(
             unrecoverable_drop_count += 1
             unrecoverable_reason_counts[ucode] = unrecoverable_reason_counts.get(ucode, 0) + 1
     bounded = _bounded_recovery_summary_from_details(details)
+    drop_count = len(details)
+    expected_unrecoverable_drop_count = unrecoverable_drop_count
+    recoverable_unresolved_drop_count = max(0, drop_count - unrecoverable_drop_count)
     return {
-        "drop_count": len(details),
+        "drop_count": drop_count,
         "by_reason": dict(sorted(by_reason.items(), key=lambda kv: kv[0])),
         "by_recoverability": dict(sorted(by_rec.items(), key=lambda kv: kv[0])),
         "by_rejected_reason_subtype": dict(sorted(by_sub.items(), key=lambda kv: kv[0])),
         "local_repack_candidate_count": repack_eligible,
         "bounded_recovery": bounded,
         "unrecoverable_drop_count": unrecoverable_drop_count,
+        "expected_unrecoverable_drop_count": expected_unrecoverable_drop_count,
+        "recoverable_unresolved_drop_count": recoverable_unresolved_drop_count,
         "unrecoverable_reason_counts": dict(
             sorted(unrecoverable_reason_counts.items(), key=lambda kv: kv[0])
         ),

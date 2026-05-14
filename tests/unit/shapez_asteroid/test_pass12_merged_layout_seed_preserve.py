@@ -75,6 +75,40 @@ def test_preserve_missing_stub_summary_includes_bounded_recovery_counts() -> Non
     assert br["final_rejected_reason_subtype_counts"].get("no_goal_relaxed") == 1
     assert summary["unrecoverable_drop_count"] == 1
     assert summary["unrecoverable_reason_counts"].get("no_legal_same_kind_route_under_bounds") == 1
+    assert summary["expected_unrecoverable_drop_count"] == 1
+    assert summary["recoverable_unresolved_drop_count"] == 1
+
+
+def test_preserve_missing_stub_summary_all_unrecoverable_recoverable_unresolved_zero() -> None:
+    """When every drop is contract-unrecoverable, ``recoverable_unresolved_drop_count`` is 0."""
+
+    details = [
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "preserve_stub_recovery": {
+                "tier_d_attempted": True,
+                "tier_d_success": False,
+                "tier_d_skip_reason": None,
+                "tier_d_failure_reason": "tier_d_failed_no_same_kind_route",
+                "rejected_reason": "no_same_kind_route",
+            },
+        },
+        {
+            "preserve_drop_reason": "NO_MATCHING_STUB",
+            "preserve_stub_recovery": {
+                "tier_d_attempted": True,
+                "tier_d_success": False,
+                "tier_d_skip_reason": None,
+                "tier_d_failure_reason": "tier_d_failed_no_same_kind_route",
+                "rejected_reason": "no_same_kind_route",
+            },
+        },
+    ]
+    summary = pass12_merged_layout_seed._preserve_missing_stub_summary_from_details(details)
+    assert summary["drop_count"] == 2
+    assert summary["unrecoverable_drop_count"] == 2
+    assert summary["expected_unrecoverable_drop_count"] == 2
+    assert summary["recoverable_unresolved_drop_count"] == 0
 
 
 def test_preserve_missing_stub_summary_counts_tier_d_success_in_bounded_recovery() -> None:
@@ -96,6 +130,8 @@ def test_preserve_missing_stub_summary_counts_tier_d_success_in_bounded_recovery
     br = summary["bounded_recovery"]
     assert br["tier_d_success_count"] == 1
     assert summary["unrecoverable_drop_count"] == 0
+    assert summary["expected_unrecoverable_drop_count"] == 0
+    assert summary["recoverable_unresolved_drop_count"] == 1
 
 
 def test_preserve_missing_stub_summary_unrecoverable_reason_counts() -> None:
@@ -121,6 +157,8 @@ def test_preserve_missing_stub_summary_unrecoverable_reason_counts() -> None:
     ur = summary["unrecoverable_reason_counts"]
     assert ur.get("diagonal_only_extension_topology") == 1
     assert ur.get("orphan_or_invalid_no_preserve_trunk") == 1
+    assert summary["expected_unrecoverable_drop_count"] == 2
+    assert summary["recoverable_unresolved_drop_count"] == 0
 
 
 def test_report_pass12_preserved_missing_stub_drop_details_shape() -> None:

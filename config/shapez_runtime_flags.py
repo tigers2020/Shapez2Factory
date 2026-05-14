@@ -20,6 +20,13 @@ SHAPEZ_COPY_DEBUG_DIR = (os.environ.get("SHAPEZ_COPY_DEBUG_DIR", "") or "").stri
 # --- SHAPEZ_MINING_* (env: 1/true/yes/on → True) ---
 # 기본 OFF. 스크래치 수송·맵 행·routing_state 불일치 디버깅 시 켠다.
 _truthy_env = frozenset({"1", "true", "yes", "on"})
+
+# --- SHAPEZ_DEV_* (copy-preview 개발용 MD 보고서; 기본 OFF) ---
+SHAPEZ_DEV_ASTEROID_STEP_REPORT = (
+    os.environ.get("SHAPEZ_DEV_ASTEROID_STEP_REPORT", "").strip().lower() in _truthy_env
+)
+# 비우면 ``BASE_DIR / "var" / "asteroid_optimizer_dev_report.md"`` (뷰에서 조합).
+SHAPEZ_DEV_ASTEROID_REPORT_MD = (os.environ.get("SHAPEZ_DEV_ASTEROID_REPORT_MD", "") or "").strip()
 SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET = (
     os.environ.get(
         "SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET",
@@ -70,6 +77,8 @@ SOLVER_GRAPH_PREVIEW_CACHE_DIR = _BASE_DIR / ".graph_preview_cache"
 
 __all__ = [
     "SHAPEZ_COPY_DEBUG_DIR",
+    "SHAPEZ_DEV_ASTEROID_REPORT_MD",
+    "SHAPEZ_DEV_ASTEROID_STEP_REPORT",
     "SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET",
     "SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE",
     "SHAPEZ_MINING_LAYOUT_ENGINE",

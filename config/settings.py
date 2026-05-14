@@ -13,6 +13,8 @@ load_dotenv(BASE_DIR / ".env")
 from . import shapez_runtime_flags as _shapez_runtime_flags  # noqa: E402
 
 SHAPEZ_COPY_DEBUG_DIR = _shapez_runtime_flags.SHAPEZ_COPY_DEBUG_DIR
+SHAPEZ_DEV_ASTEROID_REPORT_MD = _shapez_runtime_flags.SHAPEZ_DEV_ASTEROID_REPORT_MD
+SHAPEZ_DEV_ASTEROID_STEP_REPORT = _shapez_runtime_flags.SHAPEZ_DEV_ASTEROID_STEP_REPORT
 SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET = (
     _shapez_runtime_flags.SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET
 )

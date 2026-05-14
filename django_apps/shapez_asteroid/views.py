@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import logging
@@ -16,6 +17,11 @@ from django.views.decorators.http import require_GET, require_POST
 from django_apps.shapez_asteroid.services.asteroid_map_cells import (
     list_map_cells_json,
     parse_bbox,
+)
+from django_apps.shapez_asteroid.services.asteroid_optimizer_dev_report import (
+    format_asteroid_optimizer_dev_report_md,
+    resolve_dev_report_md_path,
+    write_asteroid_optimizer_dev_report,
 )
 from django_apps.shapez_asteroid.services.copy_preview_debug_dump import (
     dump_copy_preview_debug,
@@ -482,4 +488,46 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
         st = solver_out.get("solver_timeline")
         if isinstance(st, list):
             payload["solver_timeline"] = st
+
+    if getattr(settings, "SHAPEZ_DEV_ASTEROID_STEP_REPORT", False):
+        report_path = resolve_dev_report_md_path(
+            base_dir=settings.BASE_DIR,
+            override=getattr(settings, "SHAPEZ_DEV_ASTEROID_REPORT_MD", "") or "",
+        )
+        st_raw = payload.get("solver_timeline")
+        st_list = payload["solver_timeline"] if isinstance(st_raw, list) else None
+        sr_raw = payload.get("solver_replay")
+        sr_dict = payload["solver_replay"] if isinstance(sr_raw, dict) else None
+        mlf = payload.get("mining_layout_runtime_flags")
+        fp = hashlib.sha256(code.encode("utf-8", errors="surrogatepass")).hexdigest()[:16]
+        md_text = format_asteroid_optimizer_dev_report_md(
+            map_timeline=payload["map_timeline"],
+            root_summary=payload["summary"],
+            reconstruction_summary=(
+                payload.get("reconstruction_summary")
+                if isinstance(payload.get("reconstruction_summary"), dict)
+                else None
+            ),
+            mining_layout_engine=(
+                payload.get("mining_layout_engine")
+                if isinstance(payload.get("mining_layout_engine"), str)
+                else None
+            ),
+            include_solver_overlay=include_solver_overlay,
+            include_solver_replay=include_solver_replay,
+            solver_timeline=st_list,
+            solver_replay=sr_dict,
+            solver_layout_package_unavailable=bool(
+                payload.get("solver_layout_package_unavailable")
+            ),
+            mining_layout_runtime_flags=mlf if isinstance(mlf, dict) else None,
+            preview_schema_version=(
+                int(payload["preview_schema_version"])
+                if isinstance(payload.get("preview_schema_version"), int)
+                else None
+            ),
+            code_fingerprint=fp,
+        )
+        write_asteroid_optimizer_dev_report(report_path, md_text)
+
     return JsonResponse(payload)

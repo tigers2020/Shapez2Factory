@@ -185,13 +185,13 @@
             <p class="hint hidden" data-am-solver-redecode-hint></p>
             <p class="hint">
               {% blocktrans trimmed %}
-                Paste the in-game copy string. Decoding runs on the server; a short map summary appears on the right.
+                Paste the in-game copy string. Decoding runs on the server; after Decode, use the timeline block below for map and solver steps together — solver notes appear at the bottom of that block when the solver overlay is included.
               {% endblocktrans %}
             </p>
             <div
               class="am-decode-playback hidden"
               data-am-decode-playback
-              aria-label="{% trans 'Map step playback' %}"
+              aria-label="{% trans 'Timeline playback' %}"
             >
               <details class="am-decode-log-details">
                 <summary class="am-decode-log-summary">
@@ -214,90 +214,41 @@
                 <button type="button" class="btn" data-am-decode-next>{% trans "Next" %}</button>
               </div>
               <label class="am-decode-slider-label">
-                <span>{% trans "Step" %}</span>
+                <span>{% trans "Timeline step" %}</span>
                 <input type="range" data-am-decode-slider min="0" max="0" value="0" />
               </label>
-              <pre class="am-decode-detail" data-am-decode-detail></pre>
-            </div>
-          </div>
-        </article>
-
-        <article
-          class="card hot am-future-panel"
-          aria-labelledby="asteroid-solver-heading"
-          data-am-solver-shell
-        >
-          <div class="card-head">
-            <div>
-              <h2 class="card-title" id="asteroid-solver-heading">{% trans "Solver controls" %}</h2>
-              <div class="card-sub">
-                {% blocktrans trimmed %}
-                  Solver timeline replay (after Decode with solver overlay). Scrub or play to drive the map; decode playback pauses here.
-                {% endblocktrans %}
-              </div>
-            </div>
-          </div>
-          <div class="card-body">
-            <div
-              class="am-solver-replay"
-              data-am-solver-replay-panel
-              aria-label="{% trans 'Solver timeline replay' %}"
-            >
-              <p class="am-solver-replay-pos" data-am-solver-replay-pos aria-live="polite"></p>
-              <pre
-                class="am-solver-replay-meta"
-                data-am-solver-replay-meta
-                aria-live="polite"
-              ></pre>
-              <p
-                class="hint am-solver-replay-warn hidden"
-                data-am-solver-replay-warn
-                role="status"
-              ></p>
-              <div class="am-solver-replay-controls">
-                <button
-                  type="button"
-                  class="btn"
-                  data-am-solver-replay-prev
-                  disabled
-                >{% trans "Prev" %}</button>
-                <button
-                  type="button"
-                  class="btn primary"
-                  data-am-solver-replay-play
-                  disabled
-                >{% trans "Play" %}</button>
-                <button
-                  type="button"
-                  class="btn"
-                  data-am-solver-replay-pause
-                  hidden
-                  disabled
-                >{% trans "Pause" %}</button>
-                <button
-                  type="button"
-                  class="btn"
-                  data-am-solver-replay-next
-                  disabled
-                >{% trans "Next" %}</button>
-              </div>
-              <label class="am-solver-replay-slider-label">
-                <span>{% trans "Solver frame" %}</span>
+              <label class="am-decode-slider-label">
+                <span>
+                  {% trans "Step interval" %}
+                  (<span data-am-playback-step-ms-display>100 ms</span>)
+                </span>
                 <input
                   type="range"
-                  data-am-solver-replay-slider
-                  min="0"
-                  max="0"
-                  value="0"
-                  disabled
+                  data-am-playback-step-ms
+                  min="100"
+                  max="4000"
+                  step="50"
+                  value="100"
+                  aria-label="{% trans 'Step interval' %}"
                 />
               </label>
-            </div>
-            <div class="option am-solver-replay-hint-block">
-              <div class="option-name">{% trans "Unified map + solver playback" %}</div>
-              <p class="am-future-field-value">
-                {% trans "Use the timeline under the blueprint field for full map-build and solver steps together; use this card for solver-only frames and replay metadata." %}
-              </p>
+              <pre class="am-decode-detail" data-am-decode-detail></pre>
+              <div
+                class="am-solver-replay am-solver-replay--embedded"
+                data-am-solver-replay-panel
+                aria-label="{% trans 'Solver details for current timeline step' %}"
+              >
+                <pre
+                  class="am-solver-replay-meta"
+                  data-am-solver-replay-meta
+                  aria-live="polite"
+                ></pre>
+                <p
+                  class="hint am-solver-replay-warn hidden"
+                  data-am-solver-replay-warn
+                  role="status"
+                ></p>
+              </div>
             </div>
           </div>
         </article>
@@ -354,12 +305,12 @@
           </p>
 
           <p class="am-orient-label">{% trans "Rotate map panel (which edge faces up)" %}</p>
-          <div class="map-toolbar">
-            <div
+            <div class="map-toolbar">
+            <fieldset
               class="segmented"
-              role="group"
               aria-label="{% trans 'Map orientation (north up by default)' %}"
             >
+              <legend class="am-fieldset-legend-sr">{% trans "Map orientation" %}</legend>
               <button
                 type="button"
                 data-map-orientation="N"
@@ -385,7 +336,7 @@
                 aria-pressed="false"
                 title="{% trans 'West up' %}"
               >{% trans "W" %}</button>
-            </div>
+            </fieldset>
             <button
               type="button"
               class="am-map-reset-view-btn"
@@ -399,9 +350,7 @@
               {% trans "Wheel: zoom in/out. Drag: pan. Reset restores fit." %}
             </p>
             <p class="am-map-hint">
-              {% blocktrans trimmed %}
-                Solver scan order and trunk controls will show here when connected; they are not the same as map rotation above.
-              {% endblocktrans %}
+              {% trans "Timeline position on the map matches the step under the blueprint (Prev / Play / slider)." %}
             </p>
             <div class="solver-badges">
               <span class="badge cyan">{% trans "Scan pass (preview)" %}</span>
@@ -423,24 +372,23 @@
                 </div>
               </div>
               <div class="am-plot-inner">
-                <div
+                <output
                   class="am-decode-map-viz hidden"
                   data-am-decode-map-viz
-                  role="status"
                   aria-live="polite"
                   aria-label="{% trans 'Decode progress on map' %}"
                 >
-                  <div class="am-decode-viz-meta">
+                  <span class="am-decode-viz-meta">
                     <span class="am-decode-viz-step-label" data-am-decode-viz-label></span>
                     <span class="am-decode-viz-fraction" data-am-decode-viz-fraction></span>
-                  </div>
-                  <div class="am-decode-viz-bar" aria-hidden="true">
-                    <div class="am-decode-viz-bar-fill" data-am-decode-viz-bar></div>
-                  </div>
-                  <div class="am-decode-viz-stages" data-am-decode-viz-stages></div>
-                  <div class="am-decode-viz-track" data-am-decode-viz-track></div>
-                  <pre class="am-decode-viz-detail" data-am-decode-viz-detail></pre>
-                </div>
+                  </span>
+                  <span class="am-decode-viz-bar" aria-hidden="true">
+                    <span class="am-decode-viz-bar-fill" data-am-decode-viz-bar></span>
+                  </span>
+                  <span class="am-decode-viz-stages" data-am-decode-viz-stages></span>
+                  <span class="am-decode-viz-track" data-am-decode-viz-track></span>
+                  <samp class="am-decode-viz-detail" data-am-decode-viz-detail></samp>
+                </output>
                 <div
                   class="am-plot-panzoom"
                   data-am-plot-panzoom
@@ -502,22 +450,6 @@
             </span>
           </div>
 
-          <div class="timeline am-timeline-placeholder" aria-label="{% trans 'Build timeline (preview)' %}">
-            <div class="timeline-head">
-              <span>{% trans "Build playback (not connected)" %}</span>
-              <span>0 / 0</span>
-            </div>
-            <div class="track" role="presentation">
-              <div class="tick extractor"></div>
-              <div class="tick merge"></div>
-              <div class="tick trunk"></div>
-              <div class="tick merge"></div>
-              <div class="tick extractor"></div>
-              <div class="tick merge"></div>
-              <div class="tick trunk"></div>
-            </div>
-          </div>
-
           <div class="map-footer am-map-footer">
             <div>
               <div class="summary-title">{% trans "Decoded layout summary" %}</div>
@@ -550,13 +482,13 @@
 (function () {
   var root = document.querySelector("[data-asteroid-copy-root]");
   if (!root) return;
-  var apiUrl = root.getAttribute("data-copy-preview-url") || "";
+  var apiUrl = root.dataset.copyPreviewUrl || "";
   var solverOverlayCb = root.querySelector("[data-asteroid-solver-overlay]");
   var corridorOverlayCb = root.querySelector("[data-am-corridor-overlay]");
   var trunkHeatmapCb = root.querySelector("[data-am-trunk-heatmap-overlay]");
   var solverRedecodeHintEl = root.querySelector("[data-am-solver-redecode-hint]");
   if (solverOverlayCb && solverRedecodeHintEl) {
-    var redecodeMsg = root.getAttribute("data-msg-solver-redecode-hint") || "";
+    var redecodeMsg = root.dataset.msgSolverRedecodeHint || "";
     solverOverlayCb.addEventListener("change", function () {
       if (solverOverlayCb.checked && redecodeMsg) {
         solverRedecodeHintEl.textContent = redecodeMsg;
@@ -571,7 +503,7 @@
       solverRedecodeHintEl.classList.remove("hidden");
     }
   }
-  var mapCellsUrl = root.getAttribute("data-map-cells-url") || "";
+  var mapCellsUrl = root.dataset.mapCellsUrl || "";
   var surface = root.querySelector("[data-asteroid-map-surface]");
   var plotInner = root.querySelector(".am-plot-inner");
   var plotPanzoomEl = root.querySelector("[data-am-plot-panzoom]");
@@ -590,7 +522,7 @@
   var errEl = root.querySelector("[data-asteroid-error]");
   var ta = root.querySelector("#asteroid-copy-input");
   var demoBtn = root.querySelector("#asteroid-demo-fill-btn");
-  var demoUrl = root.getAttribute("data-demo-blueprint-url") || "";
+  var demoUrl = root.dataset.demoBlueprintUrl || "";
   var btn = root.querySelector("#asteroid-decode-btn");
   var orientBtns = root.querySelectorAll("[data-map-orientation]");
   var mapOrientation = "N";
@@ -620,15 +552,8 @@
   var lastSolverReplay = null;
   /** Contract v12+: cycle-level playback rows (subset of ``solver_replay``). */
   var lastCycleFrames = [];
-  /** Solver-only replay (STEP10): unified timeline uses ``map_timeline`` then ``solver_timeline`` rows; ``ui_frames`` is one meta row per solver row (not per replay event). */
-  var lastSolverTimeline = [];
-  /** One row per ``solver_timeline`` index (same order as unified timeline from ``solverPhaseStartIndex``). */
+  /** Solver-only replay (STEP10): ``lastReplayUiFrames`` is one UI row per ``solver_timeline`` index (unified timeline from ``solverPhaseStartIndex``). */
   var lastReplayUiFrames = [];
-  var currentReplayIndex = 0;
-  var replayTimer = null;
-  var isReplayPlaying = false;
-  /** After Decode, slider starts at last frame without overwriting map until user uses solver replay (decode may autoplay). */
-  var solverReplayOwnsMap = false;
   var decodeSummaryText = "";
   var decodePlayback = root.querySelector("[data-am-decode-playback]");
   var decodeStepsEl = root.querySelector("[data-am-decode-steps]");
@@ -642,12 +567,6 @@
   var decodeNextBtn = root.querySelector("[data-am-decode-next]");
   var decodePlayBtn = root.querySelector("[data-am-decode-play]");
   var decodePauseBtn = root.querySelector("[data-am-decode-pause]");
-  var replaySlider = root.querySelector("[data-am-solver-replay-slider]");
-  var replayPrevBtn = root.querySelector("[data-am-solver-replay-prev]");
-  var replayNextBtn = root.querySelector("[data-am-solver-replay-next]");
-  var replayPlayBtn = root.querySelector("[data-am-solver-replay-play]");
-  var replayPauseBtn = root.querySelector("[data-am-solver-replay-pause]");
-  var replayPosEl = root.querySelector("[data-am-solver-replay-pos]");
   var replayMetaEl = root.querySelector("[data-am-solver-replay-meta]");
   var replayWarnEl = root.querySelector("[data-am-solver-replay-warn]");
   var decodeStepsList = [];
@@ -656,6 +575,11 @@
   var solverPhaseStartIndex = -1;
   var decodeStepIndex = 0;
   var decodePlayTimer = null;
+  /** Shared map-step + solver replay interval; sliders update this while playing. */
+  var playbackStepMs = 100;
+  var playbackStepMsMin = 100;
+  var playbackStepMsMax = 4000;
+  var decodePlayN = 0;
   var mapPhaseTitleEl = root.querySelector("[data-am-map-phase-title]");
   var mapPhaseDescEl = root.querySelector("[data-am-map-phase-desc]");
   var mapDecodeBadgeEl = root.querySelector("[data-am-decode-map-badge]");
@@ -669,7 +593,7 @@
   function copyPreviewUrlWithOptions() {
     var base = apiUrl || "";
     try {
-      var u = new URL(base, window.location.href);
+      var u = new URL(base, globalThis.location.href);
       u.searchParams.set("include_solver_replay", "1");
       if (solverOverlayCb && solverOverlayCb.checked) {
         u.searchParams.set("include_solver_overlay", "1");
@@ -678,7 +602,10 @@
       }
       return u.pathname + u.search;
     } catch (e) {
-      var sep = base.indexOf("?") === -1 ? "?" : "&";
+      if (typeof console !== "undefined" && console.debug) {
+        console.debug("[copyPreviewUrlWithOptions] URL parse failed", e);
+      }
+      var sep = base.includes("?") ? "&" : "?";
       var extra = "include_solver_replay=1";
       if (solverOverlayCb && solverOverlayCb.checked) {
         extra += "&include_solver_overlay=1";
@@ -727,8 +654,7 @@
       return;
     }
     var seen = Object.create(null);
-    for (var i = 0; i < events.length; i++) {
-      var e = events[i];
+    for (var e of events) {
       if (!e || typeof e.kind !== "string") {
         continue;
       }
@@ -743,7 +669,7 @@
   function cloneMiningMapRows(rows) {
     if (!Array.isArray(rows)) return [];
     return rows.map(function (row) {
-      return row && typeof row === "object" ? Object.assign({}, row) : row;
+      return row && typeof row === "object" ? { ...row } : row;
     });
   }
 
@@ -751,34 +677,19 @@
     return String(x) + "," + String(y);
   }
 
-  function upsertMiningMapRow(rows, row) {
-    if (!row || typeof row !== "object") return rows;
-    var x = Number(row.x);
-    var y = Number(row.y);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return rows;
-    var key = coordKey(x, y);
-    for (var i = 0; i < rows.length; i++) {
-      var cur = rows[i];
-      if (!cur || typeof cur !== "object") continue;
-      if (coordKey(Number(cur.x), Number(cur.y)) === key) {
-        rows[i] = Object.assign({}, cur, row);
-        return rows;
-      }
-    }
-    rows.push(Object.assign({}, row));
-    return rows;
-  }
-
-  /** Opt-in: ``localStorage.setItem("am_replay_frame_debug","1")`` or ``window.AM_SOLVER_REPLAY_FRAME_DEBUG=true``. */
+  /** Opt-in: ``localStorage.setItem("am_replay_frame_debug","1")`` or ``globalThis.AM_SOLVER_REPLAY_FRAME_DEBUG=true``. */
   function amSolverReplayFrameDebugEnabled() {
     try {
-      if (typeof window !== "undefined" && window.AM_SOLVER_REPLAY_FRAME_DEBUG) {
+      if (globalThis.AM_SOLVER_REPLAY_FRAME_DEBUG) {
         return true;
       }
       if (typeof localStorage !== "undefined" && localStorage.getItem("am_replay_frame_debug") === "1") {
         return true;
       }
     } catch (e) {
+      if (typeof console !== "undefined" && console.debug) {
+        console.debug("[amSolverReplayFrameDebugEnabled] storage read failed", e);
+      }
       return false;
     }
     return false;
@@ -787,8 +698,7 @@
   function countMiningMapTransportCells(rows) {
     if (!Array.isArray(rows)) return 0;
     var c = 0;
-    for (var ri = 0; ri < rows.length; ri++) {
-      var rw = rows[ri];
+    for (var rw of rows) {
       if (!rw || typeof rw !== "object") continue;
       if (rw.x === 0) continue;
       var role = rw.role || "occupied";
@@ -1009,11 +919,80 @@
     return root.getAttribute("data-msg-shape-mining") || "Shape mining";
   }
 
+  function formatPlaybackStepLabel(ms) {
+    if (ms >= 1000) {
+      var s = ms / 1000;
+      var t = s.toFixed(1);
+      if (t.indexOf(".0") === t.length - 2) t = String(Math.round(s));
+      return t + " s";
+    }
+    return String(ms) + " ms";
+  }
+
+  function syncPlaybackSpeedUi() {
+    var inputs = root.querySelectorAll("[data-am-playback-step-ms]");
+    var di;
+    for (di = 0; di < inputs.length; di++) {
+      inputs[di].value = String(playbackStepMs);
+    }
+    var lab = formatPlaybackStepLabel(playbackStepMs);
+    var outs = root.querySelectorAll("[data-am-playback-step-ms-display]");
+    for (di = 0; di < outs.length; di++) {
+      outs[di].textContent = lab;
+    }
+  }
+
+  function clampPlaybackStepMs(ms) {
+    var n = parseInt(ms, 10);
+    if (!isFinite(n)) n = playbackStepMs;
+    if (n < playbackStepMsMin) n = playbackStepMsMin;
+    if (n > playbackStepMsMax) n = playbackStepMsMax;
+    return n;
+  }
+
+  function applyPlaybackStepMs(rawMs) {
+    playbackStepMs = clampPlaybackStepMs(rawMs);
+    syncPlaybackSpeedUi();
+    if (decodePlayTimer && decodePlayN > 0) {
+      armDecodePlayTimer();
+    }
+  }
+
+  function decodePlayTick() {
+    var n = decodePlayN;
+    if (!n) {
+      stopDecodePlay();
+      return;
+    }
+    if (decodeStepIndex >= n - 1) {
+      stopDecodePlay();
+      return;
+    }
+    var next = decodeStepIndex + 1;
+    setDecodeStepIndex(next);
+    if (decodeStepsList.length) {
+      var st = decodeStepsList[next];
+      if (st && st.ok === false) {
+        stopDecodePlay();
+      }
+    }
+  }
+
+  function armDecodePlayTimer() {
+    if (!decodePlayN) return;
+    if (decodePlayTimer) {
+      clearInterval(decodePlayTimer);
+      decodePlayTimer = null;
+    }
+    decodePlayTimer = setInterval(decodePlayTick, playbackStepMs);
+  }
+
   function stopDecodePlay() {
     if (decodePlayTimer) {
       clearInterval(decodePlayTimer);
       decodePlayTimer = null;
     }
+    decodePlayN = 0;
     if (decodePlayBtn && decodePauseBtn) {
       decodePlayBtn.hidden = false;
       decodePauseBtn.hidden = true;
@@ -1069,7 +1048,7 @@
       mapVizStages.innerHTML = "";
       var sg;
       for (sg = 0; sg < 4; sg++) {
-        var sd = document.createElement("div");
+        var sd = document.createElement("span");
         sd.className = "am-decode-viz-stage";
         if (sg < si) sd.classList.add("done");
         else if (sg === si) sd.classList.add("active");
@@ -1085,7 +1064,7 @@
       mapVizTrack.innerHTML = "";
       var ti;
       for (ti = 0; ti < n; ti++) {
-        var tick = document.createElement("div");
+        var tick = document.createElement("span");
         tick.className = "am-decode-viz-tick";
         if (ti < idx) tick.classList.add("past");
         else if (ti === idx) tick.classList.add("current");
@@ -1112,88 +1091,6 @@
     return row && typeof row === "object" ? row : null;
   }
 
-  function solverReplayFrameCount() {
-    return Array.isArray(lastReplayUiFrames) ? lastReplayUiFrames.length : 0;
-  }
-
-  function syncSolverReplayControls() {
-    var n = solverReplayFrameCount();
-    var has =
-      solverPhaseStartIndex >= 0 &&
-      n > 0 &&
-      mapTimelineList.length > solverPhaseStartIndex;
-    if (has && decodeStepIndex >= solverPhaseStartIndex) {
-      currentReplayIndex = decodeStepIndex - solverPhaseStartIndex;
-      if (currentReplayIndex < 0) currentReplayIndex = 0;
-      if (currentReplayIndex > n - 1) currentReplayIndex = n - 1;
-    } else if (has) {
-      currentReplayIndex = 0;
-    }
-    var sliderIx = has ? Math.min(Math.max(currentReplayIndex, 0), Math.max(0, n - 1)) : 0;
-    if (replaySlider) {
-      replaySlider.disabled = !has;
-      replaySlider.max = String(Math.max(0, n - 1));
-      replaySlider.value = String(sliderIx);
-    }
-    if (replayPrevBtn) {
-      replayPrevBtn.disabled = !has || decodeStepIndex <= solverPhaseStartIndex;
-    }
-    if (replayNextBtn) {
-      replayNextBtn.disabled =
-        !has || decodeStepIndex >= solverPhaseStartIndex + n - 1;
-    }
-    if (replayPlayBtn) {
-      replayPlayBtn.disabled = !has || n <= 1;
-      replayPlayBtn.hidden = isReplayPlaying;
-    }
-    if (replayPauseBtn) {
-      replayPauseBtn.hidden = !isReplayPlaying;
-      replayPauseBtn.disabled = !has || n <= 1;
-    }
-    if (replayPosEl) {
-      var rowId = "";
-      if (has && Array.isArray(lastReplayUiFrames) && sliderIx >= 0 && sliderIx < lastReplayUiFrames.length) {
-        var fr = lastReplayUiFrames[sliderIx];
-        if (fr && fr.timeline_frame_id) rowId = String(fr.timeline_frame_id);
-      }
-      replayPosEl.textContent = has
-        ? sliderIx + 1 + " / " + n + (rowId ? " · " + rowId : "")
-        : "";
-    }
-  }
-
-  function stopReplayPlay() {
-    if (replayTimer) {
-      clearInterval(replayTimer);
-      replayTimer = null;
-    }
-    isReplayPlaying = false;
-    syncSolverReplayControls();
-  }
-
-  function startReplayPlay() {
-    var n = solverReplayFrameCount();
-    if (!n || solverPhaseStartIndex < 0) return;
-    stopDecodePlay();
-    var maxUnified = solverPhaseStartIndex + n - 1;
-    isReplayPlaying = true;
-    if (replayPlayBtn) replayPlayBtn.hidden = true;
-    if (replayPauseBtn) replayPauseBtn.hidden = false;
-    if (decodeStepIndex < solverPhaseStartIndex || decodeStepIndex > maxUnified) {
-      setDecodeStepIndex(solverPhaseStartIndex);
-    } else {
-      syncSolverReplayControls();
-    }
-    var playMs = 1200;
-    replayTimer = setInterval(function () {
-      if (decodeStepIndex >= maxUnified) {
-        stopReplayPlay();
-        return;
-      }
-      setDecodeStepIndex(decodeStepIndex + 1);
-    }, playMs);
-  }
-
   function buildReplayOverlayDetail(uiRow) {
     if (!uiRow || typeof uiRow !== "object") return null;
     var replay = lastSolverReplay;
@@ -1201,8 +1098,8 @@
     var overlayEvents = [];
     var ov = uiRow.overlay_event_indices;
     if (Array.isArray(ov)) {
-      for (var oi = 0; oi < ov.length; oi++) {
-        var ix = ov[oi];
+      for (const element of ov) {
+        var ix = element;
         if (typeof ix !== "number" || ix < 0 || ix >= events.length) continue;
         var ev = events[ix];
         if (ev && typeof ev === "object") overlayEvents.push(ev);
@@ -1465,8 +1362,8 @@
     if (solLen < 0) {
       return idx + 1 + " / " + n;
     }
-    var mapPrefix = root.getAttribute("data-map-badge-step-prefix") || "Map step";
-    var solPrefix = root.getAttribute("data-map-badge-solver-prefix") || "Solver";
+    var mapPrefix = root.dataset.mapBadgeStepPrefix || "Map step";
+    var solPrefix = root.dataset.mapBadgeSolverPrefix || "Solver";
     if (idx < mL) {
       return mapPrefix + " " + (idx + 1) + " / " + mL;
     }
@@ -1474,11 +1371,10 @@
   }
 
   function syncMapTimelineStep() {
-    var idleTitle = root.getAttribute("data-map-phase-idle-title") || "";
-    var idleDesc = root.getAttribute("data-map-phase-idle-desc") || "";
-    var idleBadge = root.getAttribute("data-map-badge-idle") || "";
-    var mapTitle = root.getAttribute("data-map-phase-map-title") || "";
-    var badgePrefix = root.getAttribute("data-map-badge-step-prefix") || "";
+    var idleTitle = root.dataset.mapPhaseIdleTitle || "";
+    var idleDesc = root.dataset.mapPhaseIdleDesc || "";
+    var idleBadge = root.dataset.mapBadgeIdle || "";
+    var mapTitle = root.dataset.mapPhaseMapTitle || "";
 
     var n = mapTimelineList.length;
     if (!n) {
@@ -1625,11 +1521,11 @@
       return;
     }
 
-    var idleTitle = root.getAttribute("data-map-phase-idle-title") || "";
-    var idleDesc = root.getAttribute("data-map-phase-idle-desc") || "";
-    var idleBadge = root.getAttribute("data-map-badge-idle") || "";
-    var decodeTitle = root.getAttribute("data-map-phase-decode-title") || "";
-    var badgePrefix = root.getAttribute("data-map-badge-decode-prefix") || "";
+    var idleTitle = root.dataset.mapPhaseIdleTitle || "";
+    var idleDesc = root.dataset.mapPhaseIdleDesc || "";
+    var idleBadge = root.dataset.mapBadgeIdle || "";
+    var decodeTitle = root.dataset.mapPhaseDecodeTitle || "";
+    var badgePrefix = root.dataset.mapBadgeDecodePrefix || "";
 
     if (!decodeStepsList.length) {
       if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = idleTitle;
@@ -1757,7 +1653,6 @@
     if (decodePrevBtn) decodePrevBtn.disabled = decodeStepIndex <= 0;
     if (decodeNextBtn) decodeNextBtn.disabled = n === 0 || decodeStepIndex >= n - 1;
     syncDecodeStepMap();
-    syncSolverReplayControls();
   }
 
   function setDecodeStepIndex(idx) {
@@ -1777,7 +1672,6 @@
     }
     decodeStepsList = [];
     stopDecodePlay();
-    stopReplayPlay();
     if (!decodePlayback) return;
     if (!mapTimelineList.length) {
       decodePlayback.classList.add("hidden");
@@ -1806,7 +1700,6 @@
     mapTimelineList = [];
     solverPhaseStartIndex = -1;
     stopDecodePlay();
-    stopReplayPlay();
     if (!decodePlayback) return;
     if (!decodeStepsList.length) {
       decodePlayback.classList.add("hidden");
@@ -1831,55 +1724,30 @@
     var n = playbackStepCount();
     if (!n) return;
     stopDecodePlay();
-    stopReplayPlay();
-    /* 항상 step 0부터 재생 (디코드 직후 마지막 스텝에 있어도 리셋). */
-    setDecodeStepIndex(0);
+    if (decodeStepIndex >= n - 1) {
+      setDecodeStepIndex(0);
+    }
     if (decodePlayBtn) decodePlayBtn.hidden = true;
     if (decodePauseBtn) decodePauseBtn.hidden = false;
-    var playMs = 1200;
-    decodePlayTimer = setInterval(function () {
-      if (decodeStepIndex >= n - 1) {
-        stopDecodePlay();
-        return;
-      }
-      var next = decodeStepIndex + 1;
-      if (
-        typeof solverPhaseStartIndex === "number" &&
-        solverPhaseStartIndex > 0 &&
-        next >= solverPhaseStartIndex
-      ) {
-        setDecodeStepIndex(solverPhaseStartIndex);
-        stopDecodePlay();
-        return;
-      }
-      setDecodeStepIndex(next);
-      if (decodeStepsList.length) {
-        var st = decodeStepsList[next];
-        if (st && st.ok === false) {
-          stopDecodePlay();
-        }
-      }
-    }, playMs);
+    decodePlayN = n;
+    armDecodePlayTimer();
   }
 
   if (decodeSlider) {
     decodeSlider.addEventListener("input", function () {
       stopDecodePlay();
-      stopReplayPlay();
       setDecodeStepIndex(parseInt(decodeSlider.value, 10) || 0);
     });
   }
   if (decodePrevBtn) {
     decodePrevBtn.addEventListener("click", function () {
       stopDecodePlay();
-      stopReplayPlay();
       setDecodeStepIndex(decodeStepIndex - 1);
     });
   }
   if (decodeNextBtn) {
     decodeNextBtn.addEventListener("click", function () {
       stopDecodePlay();
-      stopReplayPlay();
       setDecodeStepIndex(decodeStepIndex + 1);
     });
   }
@@ -1898,56 +1766,24 @@
       var li = ev.target.closest(".am-decode-step");
       if (!li || !decodeStepsEl.contains(li)) return;
       stopDecodePlay();
-      stopReplayPlay();
       var idx = Array.prototype.indexOf.call(decodeStepsEl.children, li);
       if (idx >= 0) setDecodeStepIndex(idx);
     });
   }
 
-  if (replaySlider) {
-    replaySlider.addEventListener("input", function () {
-      stopReplayPlay();
-      stopDecodePlay();
-      var n = solverReplayFrameCount();
-      if (!n || solverPhaseStartIndex < 0) return;
-      var idx = parseInt(replaySlider.value, 10) || 0;
-      var mx = Math.max(0, n - 1);
-      if (idx < 0) idx = 0;
-      if (idx > mx) idx = mx;
-      setDecodeStepIndex(solverPhaseStartIndex + idx);
-    });
-  }
-  if (replayPrevBtn) {
-    replayPrevBtn.addEventListener("click", function () {
-      stopReplayPlay();
-      stopDecodePlay();
-      var n = solverReplayFrameCount();
-      if (!n || solverPhaseStartIndex < 0) return;
-      if (decodeStepIndex <= solverPhaseStartIndex) return;
-      setDecodeStepIndex(decodeStepIndex - 1);
-    });
-  }
-  if (replayNextBtn) {
-    replayNextBtn.addEventListener("click", function () {
-      stopReplayPlay();
-      stopDecodePlay();
-      var n = solverReplayFrameCount();
-      if (!n || solverPhaseStartIndex < 0) return;
-      var lastSol = solverPhaseStartIndex + n - 1;
-      if (decodeStepIndex >= lastSol) return;
-      setDecodeStepIndex(decodeStepIndex + 1);
-    });
-  }
-  if (replayPlayBtn) {
-    replayPlayBtn.addEventListener("click", function () {
-      startReplayPlay();
-    });
-  }
-  if (replayPauseBtn) {
-    replayPauseBtn.addEventListener("click", function () {
-      stopReplayPlay();
-    });
-  }
+  (function setupPlaybackSpeedSliders() {
+    var speedInputs = root.querySelectorAll("[data-am-playback-step-ms]");
+    var si;
+    if (speedInputs.length) {
+      playbackStepMs = clampPlaybackStepMs(speedInputs[0].value);
+    }
+    for (si = 0; si < speedInputs.length; si++) {
+      speedInputs[si].addEventListener("input", function () {
+        applyPlaybackStepMs(this.value);
+      });
+    }
+    syncPlaybackSpeedUi();
+  })();
 
   function rebuildMiningIndex(miningMap) {
     miningByCoord = Object.create(null);
@@ -3233,9 +3069,9 @@
       pcPoints.length
     ) {
       var pcd2 = replayOverlay.protected_corridors;
-      var tHard = root.getAttribute("data-msg-pc-hard") || "";
-      var tSoft = root.getAttribute("data-msg-pc-soft") || "";
-      var tCand = root.getAttribute("data-msg-pc-candidate") || "";
+      var tHard = root.dataset.msgPcHard || "";
+      var tSoft = root.dataset.msgPcSoft || "";
+      var tCand = root.dataset.msgPcCandidate || "";
       var gPc = document.createElementNS(svgNs, "g");
       gPc.setAttribute("class", "am-protected-corridor-overlay");
       var gC = document.createElementNS(svgNs, "g");
@@ -3635,7 +3471,6 @@
       errEl.textContent = "";
       clearPlot();
       stopDecodePlay();
-      stopReplayPlay();
       lastSolverReplay = null;
       lastReplayUiFrames = [];
       lastCycleFrames = [];
@@ -3778,7 +3613,6 @@
             warnUnknownSolverReplayKinds(replayNorm.events);
           }
           applyDecodeSteps([]);
-          lastSolverTimeline = Array.isArray(solverPlaybackSteps) ? solverPlaybackSteps : [];
           solverPhaseStartIndex =
             Array.isArray(solverPlaybackSteps) &&
             solverPlaybackSteps.length &&

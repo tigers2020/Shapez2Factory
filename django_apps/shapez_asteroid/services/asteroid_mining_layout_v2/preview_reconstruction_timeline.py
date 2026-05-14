@@ -9,7 +9,8 @@ Each frame is one **full** ``mining_map`` row list (no delta). Does not read NDJ
 from __future__ import annotations
 
 import copy
-from typing import Any
+import logging
+from typing import Any, cast
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BlueprintCell,
@@ -21,11 +22,37 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.preview_json
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
     asteroid_reconstruction as _ar,
 )
+from django_apps.shapez_asteroid.services.asteroid_patch_interior import (
+    compute_patch_interior_cells,
+)
 from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_none as _int_or_none
 from django_apps.shapez_asteroid.services.style_classifier import (
     classify_layout_type,
     is_extraction_style,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _dev_log_v2_preview_frame(frame_id: str, *, entry_count: int | None = None) -> None:
+    """``SHAPEZ_DEV_ASTEROID_STEP_REPORT`` ON일 때만 v2 프레임 경계를 debug 로그로 남긴다."""
+
+    try:
+        from django.conf import settings
+
+        if not getattr(settings, "SHAPEZ_DEV_ASTEROID_STEP_REPORT", False):
+            return
+    except Exception:
+        return
+    if entry_count is None:
+        logger.debug("v2_preview_map_timeline_frame frame_id=%s", frame_id)
+    else:
+        logger.debug(
+            "v2_preview_map_timeline_frame frame_id=%s entry_count=%s",
+            frame_id,
+            entry_count,
+        )
+
 
 # UI ``data-map-step-*`` slugs in ``asteroid_optimizer.html``.
 # Pass1 … final — not wired yet.
@@ -159,13 +186,24 @@ def _build_transport_shell_rows(
     belt = frozenset(recon.belt_cells)
     pipe = frozenset(recon.pipe_cells)
     shell = frozenset(recon.extraction_shell_cells)
+    # Match ``blueprint_map_summary._asteroid_envelope_coords``: shell ∪ enclosed interior
+    # (including cells occupied by belt/pipe inside a hole — not only ``interior_patch_cells``).
+    asteroid_envelope = shell | frozenset(
+        compute_patch_interior_cells(set(shell), perimeter_bridge_steps=1)
+    )
     coords = sorted(belt | pipe | shell, key=lambda c: (c[1], c[0]))
     out: list[dict[str, Any]] = []
     for x, y in coords:
         if (x, y) in belt:
             out.append(
                 _stamp_row(
-                    {"x": x, "y": y, "role": "belt", "surface": dominant},
+                    {
+                        "x": x,
+                        "y": y,
+                        "role": "belt",
+                        "surface": dominant,
+                        "transport_over_void": (x, y) not in asteroid_envelope,
+                    },
                     frame_id=frame_id,
                     source_kind=source_kind,
                 )
@@ -173,7 +211,13 @@ def _build_transport_shell_rows(
         elif (x, y) in pipe:
             out.append(
                 _stamp_row(
-                    {"x": x, "y": y, "role": "pipe", "surface": dominant},
+                    {
+                        "x": x,
+                        "y": y,
+                        "role": "pipe",
+                        "surface": dominant,
+                        "transport_over_void": (x, y) not in asteroid_envelope,
+                    },
                     frame_id=frame_id,
                     source_kind=source_kind,
                 )
@@ -299,7 +343,13 @@ def build_v2_preview_map_frames(
             )
             for fid in _V2_PREVIEW_PLACEHOLDER_FRAME_IDS
         ]
-        return to_jsonable(only_placeholders)
+        for fr in only_placeholders:
+            if isinstance(fr, dict) and isinstance(fr.get("id"), str):
+                summ_raw = fr.get("summary")
+                summ: dict[str, Any] = summ_raw if isinstance(summ_raw, dict) else {}
+                ec = summ.get("entry_count") if isinstance(summ.get("entry_count"), int) else 0
+                _dev_log_v2_preview_frame(fr["id"], entry_count=ec)
+        return cast(list[dict[str, Any]], to_jsonable(only_placeholders))
 
     dominant = _dominant_surface_for_shell(decoded, recon)
     entries = _last_write_entries_by_cell(decoded)
@@ -308,48 +358,39 @@ def build_v2_preview_map_frames(
 
     fid1 = "v2_recon_transport_shell"
     rows1 = _build_transport_shell_rows(recon, dominant, entries, fid1, source_kind)
-    frames.append(
-        {
-            "id": fid1,
-            "summary": _summary_from_rows(rows1, frame_id=fid1, source_kind=source_kind),
-            "mining_map": copy.deepcopy(rows1),
-        }
-    )
+    s1 = _summary_from_rows(rows1, frame_id=fid1, source_kind=source_kind)
+    frames.append({"id": fid1, "summary": s1, "mining_map": copy.deepcopy(rows1)})
+    _dev_log_v2_preview_frame(fid1, entry_count=int(s1["entry_count"]))
 
     fid2 = "v2_recon_interior_void"
     rows2 = _merge_interior_void(rows1, recon.interior_patch_cells, dominant, fid2, source_kind)
-    frames.append(
-        {
-            "id": fid2,
-            "summary": _summary_from_rows(rows2, frame_id=fid2, source_kind=source_kind),
-            "mining_map": copy.deepcopy(rows2),
-        }
-    )
+    s2 = _summary_from_rows(rows2, frame_id=fid2, source_kind=source_kind)
+    frames.append({"id": fid2, "summary": s2, "mining_map": copy.deepcopy(rows2)})
+    _dev_log_v2_preview_frame(fid2, entry_count=int(s2["entry_count"]))
 
     fid3 = "v2_recon_mineable"
     mineable_f = frozenset(recon.mineable_placement_cells)
     rows3 = _apply_mineable_highlights(rows2, mineable_f, fid3, source_kind)
-    frames.append(
-        {
-            "id": fid3,
-            "summary": _summary_from_rows(rows3, frame_id=fid3, source_kind=source_kind),
-            "mining_map": copy.deepcopy(rows3),
-        }
-    )
+    s3 = _summary_from_rows(rows3, frame_id=fid3, source_kind=source_kind)
+    frames.append({"id": fid3, "summary": s3, "mining_map": copy.deepcopy(rows3)})
+    _dev_log_v2_preview_frame(fid3, entry_count=int(s3["entry_count"]))
 
     last_rows = frames[-1]["mining_map"]
     if not isinstance(last_rows, list):
         last_rows = []
     for fid in _V2_PREVIEW_PLACEHOLDER_FRAME_IDS:
-        frames.append(
-            _placeholder_milestone_frame(
-                frame_id=fid,
-                mining_map_rows=last_rows,
-                source_kind=source_kind,
-            )
+        ph = _placeholder_milestone_frame(
+            frame_id=fid,
+            mining_map_rows=last_rows,
+            source_kind=source_kind,
         )
+        frames.append(ph)
+        summ_ph_raw = ph.get("summary")
+        summ_ph: dict[str, Any] = summ_ph_raw if isinstance(summ_ph_raw, dict) else {}
+        ec_ph = summ_ph.get("entry_count") if isinstance(summ_ph.get("entry_count"), int) else None
+        _dev_log_v2_preview_frame(fid, entry_count=ec_ph)
 
-    return to_jsonable(frames)
+    return cast(list[dict[str, Any]], to_jsonable(frames))
 
 
 V2_PREVIEW_PLACEHOLDER_STEP_IDS: tuple[str, ...] = _V2_PREVIEW_PLACEHOLDER_FRAME_IDS

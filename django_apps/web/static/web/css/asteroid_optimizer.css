@@ -358,6 +358,25 @@
   background: #0f172a;
 }
 
+.asteroid-mine-page fieldset.segmented {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+
+.asteroid-mine-page fieldset.segmented > legend.am-fieldset-legend-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .asteroid-mine-page .segmented button {
   border: 0;
   border-right: 1px solid #334155;
@@ -555,6 +574,7 @@
 }
 
 .asteroid-mine-page .am-decode-viz-bar {
+  display: block;
   height: 6px;
   border-radius: 999px;
   background: rgb(30 41 59 / 0.85);
@@ -576,6 +596,7 @@
 }
 
 .asteroid-mine-page .am-decode-viz-stage {
+  display: block;
   border-radius: 10px;
   padding: 6px 8px;
   text-align: center;
@@ -623,6 +644,7 @@
 }
 
 .asteroid-mine-page .am-decode-viz-tick {
+  display: block;
   flex: 1;
   min-width: 4px;
   border-radius: 4px;
@@ -647,6 +669,7 @@
 }
 
 .asteroid-mine-page .am-decode-viz-detail {
+  display: block;
   margin: 0;
   padding: 8px 10px;
   border-radius: 10px;
@@ -836,12 +859,14 @@
   margin-bottom: 14px;
 }
 
-.asteroid-mine-page .am-solver-replay-pos {
-  margin: 0 0 10px;
-  font-size: 12px;
-  font-weight: 900;
-  color: var(--cyan);
-  font-variant-numeric: tabular-nums;
+.asteroid-mine-page .am-solver-replay--embedded {
+  margin-top: 14px;
+  margin-bottom: 0;
+  padding: 12px 0 0;
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
 }
 
 .asteroid-mine-page .am-solver-replay-meta {
@@ -864,35 +889,11 @@
 }
 
 .asteroid-mine-page .am-solver-replay-warn {
+  display: block;
   margin-top: 0;
   margin-bottom: 10px;
   color: var(--warn);
   font-weight: 700;
-}
-
-.asteroid-mine-page .am-solver-replay-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.asteroid-mine-page .am-solver-replay-slider-label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--muted);
-  margin: 0;
-}
-
-.asteroid-mine-page .am-solver-replay-slider-label input[type="range"] {
-  width: 100%;
-  accent-color: var(--cyan-2);
-}
-
-.asteroid-mine-page .am-solver-replay-hint-block {
-  margin-bottom: 0;
 }
 
 .asteroid-mine-page .am-future-fields {
@@ -1085,18 +1086,17 @@
     grid-template-columns: 1fr;
   }
 
-  /* Blueprint copy + solver controls side by side so the map stays nearer the top. */
+  /* Blueprint + build rules: rules card full width below the copy card. */
   .asteroid-mine-page .stack {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
   }
 
-  .asteroid-mine-page .stack > article:first-child,
-  .asteroid-mine-page .stack > article:nth-child(2) {
+  .asteroid-mine-page .stack > * {
     min-width: 0;
   }
 
-  .asteroid-mine-page .stack > article:nth-child(3) {
+  .asteroid-mine-page .stack > details.am-build-rules {
     grid-column: 1 / -1;
   }
 
@@ -1109,14 +1109,10 @@
   }
 }
 
-/* Narrow: drop solver placeholder so blueprint + map get the width. */
+/* Narrow: single-column stack */
 @media (max-width: 640px) {
   .asteroid-mine-page .stack {
     grid-template-columns: 1fr;
-  }
-
-  .asteroid-mine-page .am-future-panel {
-    display: none;
   }
 }
 

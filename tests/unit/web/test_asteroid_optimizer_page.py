@@ -47,6 +47,19 @@ def test_asteroid_optimizer_pass1_extension_overlay_outline_smoke() -> None:
     assert b"pass1_scan_cursor" in response.content
 
 
+def test_asteroid_optimizer_outer_rim_yellow_overlay_smoke() -> None:
+    """Asteroid outline cells are drawn as yellow SVG boundary lines."""
+
+    response = Client().get(reverse("web:asteroid"))
+    assert response.status_code == 200
+    assert b"computeAsteroidOutlinePoints" in response.content
+    assert b"appendOuterRimLines(gOuterRim, asteroid_outline_points)" in response.content
+    assert b"outer_rim_mineable_cells" in response.content
+    assert b"am-outer-rim-lines" in response.content
+    assert b"am-outer-rim-line" in response.content
+    assert b"rgb(250 204 21 / 0.98)" in response.content
+
+
 def test_asteroid_optimizer_svg_underlay_paints_mineable_role() -> None:
     """Promoted mineable rows are not occupied; plot must still fill gUnder like inferred."""
 

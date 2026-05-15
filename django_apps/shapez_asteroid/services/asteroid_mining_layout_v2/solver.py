@@ -34,6 +34,8 @@ from django_apps.shapez_asteroid.services.behavior_artifact_collector import (
     BehaviorArtifactCollector,
 )
 
+COPY_PREVIEW_PIPELINE_SCOPE = "decode_to_pass1_preview"
+
 
 def build_copy_preview_v2_sidecars(
     decoded: dict[str, Any],
@@ -79,7 +81,17 @@ def build_copy_preview_v2_sidecars(
         ),
     )
     v2_preview_map_timeline = preview_res.frames
+    skipped_passes = [
+        {"pass": "pass2", "reason": "copy_preview_pass1_only"},
+        {"pass": "step4_routing", "reason": "copy_preview_pass1_only"},
+        {"pass": "pass3", "reason": "copy_preview_pass1_only"},
+        {"pass": "final_map_build", "reason": "copy_preview_pass1_only"},
+    ]
     partial_pipeline: dict[str, Any] = {
+        "pipeline_scope": COPY_PREVIEW_PIPELINE_SCOPE,
+        "executed_stage_max": "pass1",
+        "executed_passes": ["decode", "step_0_5", "step_1", "pass1"],
+        "skipped_passes": skipped_passes,
         "phases_included": [
             "step_0_decode",
             "step_0_5_existing_layout_analysis",
@@ -125,6 +137,10 @@ def build_copy_preview_v2_sidecars(
     return {
         "existing_layout_analysis": existing_layout_analysis_to_json(analysis),
         "mining_layout_engine": "v2",
+        "pipeline_scope": COPY_PREVIEW_PIPELINE_SCOPE,
+        "executed_stage_max": "pass1",
+        "executed_passes": ["decode", "step_0_5", "step_1", "pass1"],
+        "skipped_passes": skipped_passes,
         "reconstruction": to_jsonable(recon),
         "partial_pipeline": partial_pipeline,
         "reconstruction_summary": reconstruction_summary,

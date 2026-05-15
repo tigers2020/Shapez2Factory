@@ -1441,3 +1441,85 @@
   stroke: rgb(22 163 74 / 0.82);
   stroke-width: 0.075;
 }
+
+/* Map cell detail (<dialog>) */
+.asteroid-mine-page .am-cell-detail-dialog {
+  max-width: min(36rem, 92vw);
+  width: 100%;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 48px var(--shadow);
+}
+
+.asteroid-mine-page .am-cell-detail-dialog::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+
+.asteroid-mine-page .am-cell-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.asteroid-mine-page .am-cell-detail-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.asteroid-mine-page .am-cell-detail-close {
+  font: inherit;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--text);
+}
+
+.asteroid-mine-page .am-cell-detail-close:hover {
+  border-color: var(--cyan-2);
+  color: var(--cyan);
+}
+
+.asteroid-mine-page .am-cell-detail-scroll {
+  max-height: min(70vh, 28rem);
+  overflow: auto;
+  padding: 12px 14px 16px;
+}
+
+.asteroid-mine-page .am-cell-detail-dl {
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) 1fr;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.asteroid-mine-page .am-cell-detail-dl dt {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.asteroid-mine-page .am-cell-detail-dl dd {
+  margin: 0;
+  color: #cbd5e1;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.asteroid-mine-page .am-cell-detail-msg {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #cbd5e1;
+}

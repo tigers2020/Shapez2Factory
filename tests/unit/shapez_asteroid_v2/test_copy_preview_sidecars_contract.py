@@ -11,12 +11,22 @@ def test_sidecars_include_full_reconstruction_and_partial_pipeline_meta() -> Non
     decoded: dict = {"BP": {"Entries": []}}
     side = build_copy_preview_v2_sidecars(decoded)
     assert side["mining_layout_engine"] == "v2"
+    assert side["pipeline_scope"] == "decode_to_pass1_preview"
+    assert side["executed_stage_max"] == "pass1"
+    assert side["executed_passes"] == ["decode", "step_0_5", "step_1", "pass1"]
+    assert {item["pass"]: item["reason"] for item in side["skipped_passes"]}[
+        "pass2"
+    ] == "copy_preview_pass1_only"
     assert isinstance(side["reconstruction"], dict)
     assert side["reconstruction"]["mineable_placement_cells"] == []
     assert side["reconstruction"]["extractor_cells"] == []
     assert side["reconstruction"]["extension_cells"] == []
 
     pp = side["partial_pipeline"]
+    assert pp["pipeline_scope"] == "decode_to_pass1_preview"
+    assert {item["pass"]: item["reason"] for item in pp["skipped_passes"]}[
+        "pass2"
+    ] == "copy_preview_pass1_only"
     assert "step_1_reconstruction" in pp["phases_included"]
     assert "step_10_replay_snapshots" in pp["phases_not_included"]
     assert "replay" in pp["note"].lower()

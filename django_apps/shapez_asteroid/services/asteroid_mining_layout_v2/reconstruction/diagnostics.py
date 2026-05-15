@@ -82,8 +82,8 @@ def _entry_kind(t_str: str | None) -> _EntryKind:
     return "other"
 
 
-def _transport_solid_layout_kind_labels(kinds: set[_EntryKind]) -> tuple[str, ...]:
-    """Layout kinds that exclude a coord from mineable (belt/pipe/platform/other only)."""
+def _permanent_blocking_kinds_from_cell_kinds(kinds: set[_EntryKind]) -> tuple[str, ...]:
+    """Kinds that block restored mineable placement (belt/pipe/platform/other only)."""
 
     labels: list[str] = []
     if "belt" in kinds:
@@ -204,14 +204,14 @@ def _coord_metrics_from_by_cell(
 
 def _shell_blocking_coord_counts(
     shell_f: frozenset[BlueprintCell],
-    transport_solid_mineable_exclusions: frozenset[BlueprintCell],
+    permanent_blocking_for_mineable: frozenset[BlueprintCell],
     belt_f: frozenset[BlueprintCell],
     pipe_f: frozenset[BlueprintCell],
     ext_f: frozenset[BlueprintCell],
     exn_f: frozenset[BlueprintCell],
 ) -> tuple[int, int, int, int, int]:
     return (
-        sum(1 for c in shell_f if c in transport_solid_mineable_exclusions),
+        sum(1 for c in shell_f if c in permanent_blocking_for_mineable),
         sum(1 for c in shell_f if c in belt_f),
         sum(1 for c in shell_f if c in pipe_f),
         sum(1 for c in shell_f if c in ext_f),
@@ -246,7 +246,7 @@ def _build_duplicate_coord_samples(
         has_blocking = bool(kinds & {"belt", "pipe", "platform", "other"})
         if len(t_vals) <= 1 and not (has_shell and has_blocking):
             continue
-        bk = _transport_solid_layout_kind_labels(kinds)
+        bk = _permanent_blocking_kinds_from_cell_kinds(kinds)
         sample_dtos.append(
             DuplicateCoordSampleDTO(
                 cell=cell,
@@ -305,7 +305,7 @@ def diagnose_reconstruction_mineable_empty(
     plat_f = _platform_cells_from_entries(doc)
     other_f = _other_barrier_cells_from_entries(doc)
 
-    transport_solid_mineable_exclusions = belt_f | pipe_f | plat_f | other_f
+    permanent_blocking_for_mineable = belt_f | pipe_f | plat_f | other_f
 
     (
         coords_shell_blocking,
@@ -315,7 +315,7 @@ def diagnose_reconstruction_mineable_empty(
         coords_shell_extension,
     ) = _shell_blocking_coord_counts(
         shell_f,
-        transport_solid_mineable_exclusions,
+        permanent_blocking_for_mineable,
         belt_f,
         pipe_f,
         ext_f,

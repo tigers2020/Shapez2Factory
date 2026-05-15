@@ -179,10 +179,6 @@ SolverRunContext:
     mineable_placement_cells: list[tuple[int, int]]   # 정본: 격자 (row, col) 정수 튜플; trace 직렬화는 [row,col] 등 합의 포맷
     extraction_shell_cells: list[tuple[int, int]]
     full_barrier_cells: list[tuple[int, int]]
-    transport_and_solid_blocker_cells: list[tuple[int, int]]   # belt∪pipe∪platform∪other — mineable 후보 제외용
-    void_flood_blocker_cells: list[tuple[int, int]]             # platform∪other — 외부 void flood만 차단(belt/pipe 제외)
-    external_void_cells: list[tuple[int, int]]
-    outer_rim_mineable_cells: list[tuple[int, int]]
   routing_state:
     trunk_seed_candidates: list[tuple[int, int]]   # reconstruction과 동일 (row, col) 정본
     existing_trunk_cells_by_kind: dict      # TransportKind -> cells

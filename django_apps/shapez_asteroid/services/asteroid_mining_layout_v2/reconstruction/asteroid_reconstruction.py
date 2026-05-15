@@ -2,9 +2,12 @@
 STEP 1 — Asteroid reconstruction (CANON ``05_step1_reconstruction.md`` §6).
 
 Blueprint scan → asteroid shell / transport / equipment / barriers → outside flood
-(with Chebyshev closing on the **transport-stripped hull** ``full_barrier − belt − pipe``,
-matching copy-preview strip semantics) → inferred **interior mining-region candidates**
-(cells inside that closed perimeter with no blueprint row) → ``mineable_placement_cells``.
+(with Chebyshev closing on an **interior-inference hull**: always ``full_barrier − belt − pipe``;
+when an asteroid **shell** exists, also subtract ``equipment_footprint`` so miners/extensions
+do not distort patch geometry; equipment-only blueprints keep extensions on the hull so a
+closed ring still infers interior). Inferred **interior mining-region** cells are empty
+lattice inside that closed perimeter (no blueprint row); ``mineable_placement_cells`` unions
+equipment footprints in ``_reconstruct_mineable_cells``.
 
 **Void wording (domain):** ``interior_set`` / ``interior_patch_cells`` are *not*
 arbitrary map void or “air off the asteroid”. They are empty lattice sites inferred
@@ -15,13 +18,8 @@ mining-relevant rows) never enters ``mineable_placement_cells`` because only sca
 barrier coordinates seed the hull and footprints.
 
 ``mineable_placement_cells`` = shell ∪ inferred interior patch ∪ extractor ∪
-extension footprints, minus **layout** belt / pipe / platform / other solid
-barriers (existing miners/extensions are not subtracted as blockers).
-
-**Void flood (Pass1 ``outer_rim``):** ``compute_mining_void_topology`` blocks only
-``mineable ∪ void_flood_blocker_cells`` where ``void_flood_blocker_cells`` is
-platform ∪ other (belt/pipe do not block exterior void, matching the
-transport-stripped hull for interior inference).
+extension footprints, minus **permanent** belt / pipe / platform / other solid
+barriers (existing miners/extensions are not permanent blockers).
 
 ``DecodedExistingLayoutContext`` is accepted for API symmetry with STEP 0.5; it must
 not define or replace mineable cells (§6.4). No v1 solver imports; no NDJSON/log input.
@@ -159,7 +157,7 @@ def _sorted_cells(cells: Iterable[BlueprintCell]) -> tuple[BlueprintCell, ...]:
 
 
 def validate_reconstruction_placement_contract(dto: ReconstructionDTO) -> None:
-    """``interior_patch_cells ⊆ mineable_placement_cells`` (STEP 1 → Pass1 contract)."""
+    """STEP 1 to Pass1: mineable, interior, void, rim, transport, equipment snapshot invariants."""
 
     interior_f = frozenset(dto.interior_patch_cells)
     mineable_f = frozenset(dto.mineable_placement_cells)
@@ -169,23 +167,50 @@ def validate_reconstruction_placement_contract(dto: ReconstructionDTO) -> None:
         raise ValueError(msg)
 
     ext_v = frozenset(dto.external_void_cells)
+    int_v = frozenset(dto.internal_void_cells)
     outer_r = frozenset(dto.outer_rim_mineable_cells)
+    internal_r = frozenset(dto.internal_hole_rim_mineable_cells)
     if ext_v & mineable_f:
         bad = sorted(ext_v & mineable_f, key=lambda c: (c[1], c[0]))[:12]
         msg = f"external_void_cells must be disjoint from mineable_placement_cells; overlap={bad!r}"
+        raise ValueError(msg)
+    if int_v & mineable_f:
+        bad = sorted(int_v & mineable_f, key=lambda c: (c[1], c[0]))[:12]
+        msg = f"internal_void_cells must be disjoint from mineable_placement_cells; overlap={bad!r}"
         raise ValueError(msg)
     if outer_r - mineable_f:
         bad = sorted(outer_r - mineable_f, key=lambda c: (c[1], c[0]))[:12]
         msg = f"outer_rim_mineable_cells must be subset of mineable_placement_cells; extra={bad!r}"
         raise ValueError(msg)
-
-    void_fb = frozenset(dto.void_flood_blocker_cells)
-    if void_fb & mineable_f:
-        bad = sorted(void_fb & mineable_f, key=lambda c: (c[1], c[0]))[:12]
+    if internal_r - mineable_f:
+        bad = sorted(internal_r - mineable_f, key=lambda c: (c[1], c[0]))[:12]
         msg = (
-            "void_flood_blocker_cells must be disjoint from mineable_placement_cells; "
-            f"overlap={bad!r}"
+            "internal_hole_rim_mineable_cells must be subset of "
+            f"mineable_placement_cells; extra={bad!r}"
         )
+        raise ValueError(msg)
+
+    extractor_f = frozenset(dto.extractor_cells)
+    extension_f = frozenset(dto.extension_cells)
+    belt_f = frozenset(dto.belt_cells)
+    pipe_f = frozenset(dto.pipe_cells)
+    perm_f = frozenset(dto.permanent_mineable_blocker_cells)
+    equipment_snapshot = extractor_f | extension_f
+    orphan_equipment = equipment_snapshot - mineable_f - perm_f
+    if orphan_equipment:
+        bad = sorted(orphan_equipment, key=lambda c: (c[1], c[0]))[:24]
+        msg = (
+            "each extractor/extension snapshot cell must be mineable or overlap "
+            f"permanent_mineable_blocker_cells; orphan={bad!r}"
+        )
+        raise ValueError(msg)
+    if mineable_f & belt_f:
+        bad = sorted(mineable_f & belt_f, key=lambda c: (c[1], c[0]))[:24]
+        msg = f"mineable_placement_cells must be disjoint from belt_cells; overlap={bad!r}"
+        raise ValueError(msg)
+    if mineable_f & pipe_f:
+        bad = sorted(mineable_f & pipe_f, key=lambda c: (c[1], c[0]))[:24]
+        msg = f"mineable_placement_cells must be disjoint from pipe_cells; overlap={bad!r}"
         raise ValueError(msg)
 
 
@@ -209,9 +234,9 @@ def validate_reconstruction_semantic_contract(dto: ReconstructionDTO) -> None:
             f"missing={missing!r} extra={extra!r}"
         )
         raise ValueError(msg)
-    belt_or_pipe_f = frozenset(dto.belt_cells) | frozenset(dto.pipe_cells)
+    permanent_block = frozenset(dto.belt_cells) | frozenset(dto.pipe_cells)
     for s in dto.mineable_cell_semantics:
-        if s.cell in belt_or_pipe_f:
+        if s.cell in permanent_block:
             msg = f"mineable semantic on belt/pipe cell is forbidden: {s.cell!r}"
             raise ValueError(msg)
 
@@ -334,8 +359,17 @@ def _reconstruct_interior_patch(
     full_barrier_cells: set[BlueprintCell],
     belt_cells: set[BlueprintCell],
     pipe_cells: set[BlueprintCell],
+    extractor_cells: set[BlueprintCell],
+    extension_cells: set[BlueprintCell],
+    asteroid_shell_cells: set[BlueprintCell],
 ) -> tuple[set[BlueprintCell], tuple[BlueprintCell, ...]]:
-    hull_for_interior_inference = full_barrier_cells - belt_cells - pipe_cells
+    equipment_footprint = extractor_cells | extension_cells
+    stripped = full_barrier_cells - belt_cells - pipe_cells
+    # Equipment-only blueprints (no ``AsteroidField*`` shell) still need extension/miner
+    # rows in the hull so ``compute_patch_interior_cells`` can close a perimeter ring.
+    hull_for_interior_inference = (
+        stripped - equipment_footprint if asteroid_shell_cells else stripped
+    )
     interior_raw = compute_patch_interior_cells(
         set(hull_for_interior_inference),
         perimeter_bridge_steps=1,
@@ -349,11 +383,7 @@ def _reconstruct_mineable_cells(
     interior_set: set[BlueprintCell],
 ) -> set[BlueprintCell]:
     equipment_footprint = b.extractor_cells | b.extension_cells
-    # Current-layout exclusions from *mineable membership* (belt/pipe/platform/other).
-    # Not a frozen map predicate: hull/interior uses ``full_barrier − belt − pipe``;
-    # in-game edits could later change what is mineable. Belt/pipe coords still live in
-    # ``belt_cells`` / ``pipe_cells`` and in ``full_barrier_cells`` for occupancy DTOs.
-    transport_solid_mineable_exclusions = (
+    permanent_blocking_for_mineable = (
         b.belt_cells | b.pipe_cells | b.platform_cells | b.other_barrier_cells
     )
     mineable_base = b.asteroid_shell_cells | interior_set | equipment_footprint
@@ -361,7 +391,7 @@ def _reconstruct_mineable_cells(
     for c in mineable_base:
         if not is_physical_x(c[0]):
             continue
-        if c in transport_solid_mineable_exclusions:
+        if c in permanent_blocking_for_mineable:
             continue
         mineable.add(c)
     return mineable
@@ -449,7 +479,7 @@ def _build_mineable_cell_semantics(
         src: MineableSemanticSource
         if cell in interior_set:
             rk = interior_kind[cell]
-            src = "asteroid_field_inferred"
+            src = "interior_patch_inferred"
         elif cell in shell_cells:
             rk = shell_kind[cell]
             src = "extraction_shell"
@@ -522,10 +552,18 @@ def reconstruct_asteroid_mining_field(
 
     # Match ``preview_reconstruction_timeline`` strip-transport hull: belt/pipe rows are
     # dropped before interior inference so corridors do not count as perimeter blockers.
+    # When an asteroid shell exists, extractor/extension rows are also dropped from the
+    # hull occupied set so they do not distort closing / interior flood (mineable still
+    # unions them). Equipment-only blueprints keep those rows on the hull so a closed ring
+    # can still infer interior
+    # (see ``test_interior_patch_from_extension_ring_without_asteroid_field_rows``).
     interior_set, interior_patch_cells = _reconstruct_interior_patch(
         b.full_barrier_cells,
         b.belt_cells,
         b.pipe_cells,
+        b.extractor_cells,
+        b.extension_cells,
+        b.asteroid_shell_cells,
     )
 
     mineable = _reconstruct_mineable_cells(b, interior_set)
@@ -555,16 +593,13 @@ def reconstruct_asteroid_mining_field(
 
     _reconstruct_assert_physical_invariants(mineable, b, equipment_footprint, interior_set)
 
-    transport_solid_f = frozenset(
-        b.belt_cells | b.pipe_cells | b.platform_cells | b.other_barrier_cells
-    )
-    void_flood_f = frozenset(b.platform_cells | b.other_barrier_cells)
+    perm_block_f = frozenset(b.belt_cells | b.pipe_cells | b.platform_cells | b.other_barrier_cells)
     if abox is not None and mineable_f:
         void_topo = _mining_void_topology.compute_mining_void_topology(
-            mineable_f, abox, margin, void_flood_f
+            mineable_f, abox, margin, perm_block_f
         )
     else:
-        void_topo = _mining_void_topology.MiningVoidTopology((), ())
+        void_topo = _mining_void_topology.MiningVoidTopology((), (), ())
 
     dto = ReconstructionDTO(
         mineable_placement_cells=_sorted_cells(mineable),
@@ -577,10 +612,11 @@ def reconstruct_asteroid_mining_field(
         equipment_footprint_mineable_cells=_sorted_cells(equipment_footprint),
         interior_patch_cells=interior_patch_cells,
         mineable_cell_semantics=mineable_semantics,
-        transport_and_solid_blocker_cells=_sorted_cells(transport_solid_f),
-        void_flood_blocker_cells=_sorted_cells(void_flood_f),
+        permanent_mineable_blocker_cells=_sorted_cells(perm_block_f),
         external_void_cells=void_topo.external_void_cells,
+        internal_void_cells=void_topo.internal_void_cells,
         outer_rim_mineable_cells=void_topo.outer_rim_mineable_cells,
+        internal_hole_rim_mineable_cells=void_topo.internal_hole_rim_mineable_cells,
         asteroid_bbox=abox,
         external_margin=margin,
         external_margin_bbox_source=margin_source,

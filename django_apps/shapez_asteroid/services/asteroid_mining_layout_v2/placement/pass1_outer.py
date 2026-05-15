@@ -26,10 +26,8 @@ convention). Neighbor moves and cheap-escape BFS use ``domain.grid.step_blueprin
 
 **Rim-only extractor core (Pass1)**: one rim only — ``outer_rim_mineable_cells`` (mineable
 4-adjacent to **external** void from border flood in ``asteroid_bbox ± external_margin``).
-When that exterior rim is known (DTO or recomputed topology), the mineable scan visits
-**only** those rim cells (no interior ``consider_extract`` spam). Filled holes are mineable;
-only the true exterior rim counts. Empty outer rim → graph
-``perimeter_depth == 0`` fallback when exterior void flood yields no rim cells.
+No separate hole-rim field; ``internal_void_cells`` is diagnostic. Filled holes are mineable;
+only the true exterior rim counts. Empty outer rim → graph ``perimeter_depth == 0`` fallback.
 Extension chains may go deeper; Pass2 owns interior cores.
 """
 
@@ -136,12 +134,16 @@ def _pass1_resolve_outer_rim_and_gate(
 ) -> tuple[frozenset[BlueprintCell], bool]:
     """Return ``(outer_rim_f, gate_external_rim)`` — single Pass1 rim (external void adjacent)."""
 
-    void_fb = frozenset(reconstruction.void_flood_blocker_cells)
+    perm_fb = (
+        frozenset(reconstruction.permanent_mineable_blocker_cells)
+        if reconstruction.permanent_mineable_blocker_cells
+        else frozenset(reconstruction.belt_cells) | frozenset(reconstruction.pipe_cells)
+    )
     topo = _mining_void_topology.compute_mining_void_topology(
         mineable_cells,
         bbox,
         reconstruction.external_margin,
-        void_fb,
+        perm_fb,
     )
     outer_from_dto = frozenset(reconstruction.outer_rim_mineable_cells)
     outer_from_topo = frozenset(topo.outer_rim_mineable_cells)
@@ -721,16 +723,12 @@ def run_pass1_outer_placement(
     if bbox is None:
         return Pass1Result()
 
+    ordered = pass1_mineable_outer_first_order(mineable_cells, bbox)
     depth_by_cell = compute_mineable_perimeter_depth_by_cell(mineable_cells)
     outer_rim_f, gate_external_rim = _pass1_resolve_outer_rim_and_gate(
         reconstruction, mineable_cells, bbox, depth_by_cell
     )
-    if gate_external_rim and outer_rim_f:
-        ordered = pass1_mineable_outer_first_order(outer_rim_f, bbox)
-    elif gate_external_rim:
-        ordered = ()
-    else:
-        ordered = pass1_mineable_outer_first_order(mineable_cells, bbox)
+    internal_hole_rim_f = frozenset(reconstruction.internal_hole_rim_mineable_cells)
 
     used: set[BlueprintCell] = set()
     bundles: list[PlacementBundle] = []
@@ -764,6 +762,7 @@ def run_pass1_outer_placement(
         transport_kind = infer_transport_kind_for_mineable_cell(reconstruction, extractor)
         pd = depth_by_cell.get(extractor, -1)
         rim_ok = extractor in outer_rim_f
+        internal_hole_rim = extractor in internal_hole_rim_f
         row: dict[str, Any] = {
             "placement_pass": "pass1",
             "kind": "consider_extract",
@@ -771,6 +770,8 @@ def run_pass1_outer_placement(
             "extractor_cell": [extractor[0], extractor[1]],
             "perimeter_depth": int(pd),
             "pass1_external_rim": rim_ok,
+            "external_rim": rim_ok,
+            "internal_hole_rim": internal_hole_rim,
         }
         if not rim_ok:
             rreason = (

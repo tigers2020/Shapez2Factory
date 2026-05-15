@@ -138,6 +138,23 @@
       data-tier-badge-partial="{% filter force_escape %}{% trans 'PARTIAL — preserve/routing loss' %}{% endfilter %}"
       data-msg-trunk-edge-heatmap="{% filter force_escape %}{% trans 'Trunk edge load (STEP4 committed routes)' %}{% endfilter %}"
       data-msg-trunk-edge-heatmap-committed-only="{% filter force_escape %}{% trans 'Counts traversals on routes STEP4 already painted; not corridor probe tiers.' %}{% endfilter %}"
+      data-msg-cell-detail-title="{% filter force_escape %}{% trans 'Cell details' %}{% endfilter %}"
+      data-msg-cell-detail-coords="{% filter force_escape %}{% trans 'Coordinates' %}{% endfilter %}"
+      data-msg-cell-detail-timeline="{% filter force_escape %}{% trans 'Timeline' %}{% endfilter %}"
+      data-msg-cell-detail-bounds="{% filter force_escape %}{% trans 'Layout bounds (effective)' %}{% endfilter %}"
+      data-msg-cell-detail-pointer="{% filter force_escape %}{% trans 'Pointer summary' %}{% endfilter %}"
+      data-msg-cell-detail-mining-row="{% filter force_escape %}{% trans 'Blueprint / mining_map row' %}{% endfilter %}"
+      data-msg-cell-detail-db="{% filter force_escape %}{% trans 'DB map cell' %}{% endfilter %}"
+      data-msg-cell-detail-overlays="{% filter force_escape %}{% trans 'Overlays (current frame)' %}{% endfilter %}"
+      data-msg-cell-detail-no-x0="{% filter force_escape %}{% trans 'There is no game column at x = 0; pick a cell on the grid.' %}{% endfilter %}"
+      data-msg-cell-detail-outside-grid="{% filter force_escape %}{% trans 'Click a tile inside the decoded map grid.' %}{% endfilter %}"
+      data-msg-cell-detail-in-bbox="{% filter force_escape %}{% trans 'Inside loaded map-cells bbox' %}{% endfilter %}"
+      data-msg-cell-detail-yes="{% filter force_escape %}{% trans 'yes' %}{% endfilter %}"
+      data-msg-cell-detail-no="{% filter force_escape %}{% trans 'no' %}{% endfilter %}"
+      data-msg-cell-detail-step-index="{% filter force_escape %}{% trans 'Step index' %}{% endfilter %}"
+      data-msg-cell-detail-step-id="{% filter force_escape %}{% trans 'Step id' %}{% endfilter %}"
+      data-msg-cell-detail-step-label="{% filter force_escape %}{% trans 'Step label' %}{% endfilter %}"
+      data-msg-cell-detail-void-label="{% filter force_escape %}{% trans 'Void label (API)' %}{% endfilter %}"
     >
       <form class="hidden" aria-hidden="true" data-asteroid-csrf>{% csrf_token %}</form>
 
@@ -493,6 +510,22 @@
           </div>
         </div>
       </article>
+
+      <dialog
+        class="am-cell-detail-dialog"
+        data-am-cell-detail-dialog
+        aria-labelledby="am-cell-detail-title"
+      >
+        <div class="am-cell-detail-head">
+          <h2 id="am-cell-detail-title" class="am-cell-detail-title"></h2>
+          <form method="dialog">
+            <button type="submit" class="am-cell-detail-close" data-am-cell-detail-close>
+              {% trans "Close" %}
+            </button>
+          </form>
+        </div>
+        <div class="am-cell-detail-scroll" data-am-cell-detail-body></div>
+      </dialog>
     </section>
   </main>
 </div>
@@ -563,6 +596,11 @@
   var ZOOM_MAX = 4;
   var panDrag = null;
   var touchPan = null;
+  var cellDetailDialog = root.querySelector("[data-am-cell-detail-dialog]");
+  var cellDetailBody = root.querySelector("[data-am-cell-detail-body]");
+  var cellDetailTitleHeading = root.querySelector("#am-cell-detail-title");
+  var lastCellPickOverlayContext = null;
+  var TAP_PAN_THRESHOLD = 6;
   var px = root.querySelector("[data-asteroid-pointer-x]");
   var py = root.querySelector("[data-asteroid-pointer-y]");
   var pStatus = root.querySelector("[data-asteroid-pointer-status]");
@@ -602,6 +640,7 @@
   var lastSummary = null;
   var lastMiningMap = [];
   var lastStyleCatalog = {};
+  var last_reconstruction = null;
   var lastSolverReplay = null;
   /** Contract v12+: cycle-level playback rows (subset of ``solver_replay``). */
   var lastCycleFrames = [];
@@ -1661,7 +1700,7 @@
     if (amSolverReplayFrameDebugEnabled() && typeof console !== "undefined" && console.debug) {
       console.debug("[am replay frame]", buildAmReplayFrameDebugPayload(st, uir, decodeStepIndex));
     }
-    renderPlot(st.summary, st.mining_map || [], lastStyleCatalog, overlayDetail);
+    renderPlot(st.summary, st.mining_map || [], lastStyleCatalog, overlayDetail, last_reconstruction);
     applyMapOrientation(mapOrientation);
     loadCellsForSummary(st.summary, st.mining_map || []);
   }
@@ -1719,7 +1758,7 @@
     if (layoutReady) {
       if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
       rebuildMiningIndex(lastMiningMap || []);
-      renderPlot(lastSummary, lastMiningMap || [], lastStyleCatalog);
+      renderPlot(lastSummary, lastMiningMap || [], lastStyleCatalog, null, last_reconstruction);
       applyMapOrientation(mapOrientation);
       loadCellsForSummary(lastSummary, lastMiningMap || []);
       return;
@@ -2078,6 +2117,15 @@
     return false;
   }
 
+  /** Same priority as ``updatePointerStatus`` (blueprint row → DB → void). */
+  function pointerStatusTextForCoord(x, y) {
+    var k = x + "," + y;
+    if (miningByCoord[k]) return miningStatusLabel(miningByCoord[k]);
+    if (cellMap[k]) return cellMap[k].label;
+    if (!pointInLoadedRegions(x, y)) return voidLabel;
+    return voidLabel;
+  }
+
   function updatePointerStatus() {
     if (!pStatus) return;
     if (!px || !py) return;
@@ -2108,6 +2156,256 @@
       return;
     }
     pStatus.textContent = voidLabel;
+  }
+
+  /** Game (x,y) from pointer client coords, or null if off-grid / no plot. */
+  function clientToGameXY(clientX, clientY) {
+    if (plotCompact && plotSvg && plotSvg.createSVGPoint && plotSvg.getScreenCTM) {
+      var pt = plotSvg.createSVGPoint();
+      pt.x = clientX;
+      pt.y = clientY;
+      var ctm = plotSvg.getScreenCTM();
+      if (!ctm) return null;
+      var svgP = pt.matrixTransform(ctm.inverse());
+      var ux = svgP.x;
+      var uy = svgP.y;
+      var Wvb = plotCompact.w;
+      var ch = plotCompact.h;
+      var n = plotCompact.uniqueXs.length;
+      if (ux < 0 || ux > Wvb || uy < 0 || uy > ch) return null;
+      var colIdx = Math.floor(ux) - 1;
+      if (colIdx < 0 || colIdx >= n) return null;
+      var rowBin = Math.min(ch - 1, Math.max(0, Math.floor(uy)));
+      return { x: plotCompact.uniqueXs[colIdx], y: plotCompact.minY + rowBin };
+    }
+    if (!surface) return null;
+    var r2 = surface.getBoundingClientRect();
+    if (!r2.width || !r2.height) return null;
+    var relX2 = (clientX - r2.left) / r2.width;
+    var relY2 = (clientY - r2.top) / r2.height;
+    return {
+      x: Math.round((relX2 - 0.5) * (2 * SPAN)),
+      y: Math.round((0.5 - relY2) * (2 * SPAN)),
+    };
+  }
+
+  function appendCellDetailRow(dl, dtText, ddText) {
+    var dt = document.createElement("dt");
+    dt.textContent = dtText;
+    var dd = document.createElement("dd");
+    if (ddText != null && typeof ddText === "object") {
+      try {
+        dd.textContent = JSON.stringify(ddText, null, 2);
+      } catch (e) {
+        dd.textContent = String(ddText);
+      }
+    } else {
+      dd.textContent = ddText == null ? "" : String(ddText);
+    }
+    dl.appendChild(dt);
+    dl.appendChild(dd);
+  }
+
+  function cellListHasXY(lst, x, y) {
+    if (!Array.isArray(lst)) return false;
+    var i;
+    for (i = 0; i < lst.length; i++) {
+      var p = lst[i];
+      if (p && p.x === x && p.y === y) return true;
+    }
+    return false;
+  }
+
+  function trunkHeatmapWeightsAt(x, y, trunkHiPoints) {
+    if (!Array.isArray(trunkHiPoints)) return "";
+    var ws = [];
+    var i;
+    for (i = 0; i < trunkHiPoints.length; i++) {
+      var t = trunkHiPoints[i];
+      if (t && t.x === x && t.y === y && typeof t.w === "number") ws.push(t.w);
+    }
+    return ws.length ? ws.join(", ") : "";
+  }
+
+  function openCellDetailModal(gameX, gameY) {
+    if (!cellDetailDialog || !cellDetailBody || !cellDetailTitleHeading) return;
+    if (gameX === 0) {
+      cellDetailTitleHeading.textContent =
+        root.getAttribute("data-msg-cell-detail-title") || "Cell details";
+      cellDetailBody.innerHTML = "";
+      var p0 = document.createElement("p");
+      p0.className = "am-cell-detail-msg";
+      p0.textContent = root.getAttribute("data-msg-cell-detail-no-x0") || "";
+      cellDetailBody.appendChild(p0);
+      cellDetailDialog.showModal();
+      return;
+    }
+    var k = gameX + "," + gameY;
+    cellDetailTitleHeading.textContent =
+      (root.getAttribute("data-msg-cell-detail-title") || "Cell details") + " (" + gameX + ", " + gameY + ")";
+    cellDetailBody.innerHTML = "";
+    var dl = document.createElement("dl");
+    dl.className = "am-cell-detail-dl";
+
+    appendCellDetailRow(
+      dl,
+      root.getAttribute("data-msg-cell-detail-coords") || "Coordinates",
+      "(" + gameX + ", " + gameY + ")"
+    );
+
+    var nSteps = playbackStepCount();
+    var mapMode = mapTimelineList.length > 0;
+    var st = mapMode ? mapTimelineList[decodeStepIndex] : decodeStepsList[decodeStepIndex];
+    var stepPos =
+      nSteps > 0 ? String(decodeStepIndex + 1) + " / " + String(nSteps) : String(decodeStepIndex);
+    appendCellDetailRow(
+      dl,
+      root.getAttribute("data-msg-cell-detail-timeline") || "Timeline",
+      stepPos + (mapMode ? " (map+solver)" : " (decode)")
+    );
+    appendCellDetailRow(
+      dl,
+      root.getAttribute("data-msg-cell-detail-step-index") || "Step index",
+      String(decodeStepIndex) + " (0-based)"
+    );
+    if (st && st.id) {
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-cell-detail-step-id") || "Step id",
+        String(st.id)
+      );
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-cell-detail-step-label") || "Step label",
+        mapMode ? mapStepLabel(st.id) : decodeStepLabel(st.id)
+      );
+    }
+
+    var effB = effectiveSummaryForPlot(lastSummary, lastMiningMap);
+    if (effB && effB.x_min != null) {
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-cell-detail-bounds") || "Layout bounds (effective)",
+        "X " + effB.x_min + "…" + effB.x_max + " · Y " + effB.y_min + "…" + effB.y_max
+      );
+    }
+
+    appendCellDetailRow(
+      dl,
+      root.getAttribute("data-msg-cell-detail-pointer") || "Pointer summary",
+      pointerStatusTextForCoord(gameX, gameY)
+    );
+
+    var mine = miningByCoord[k];
+    if (mine) {
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-cell-detail-mining-row") || "Blueprint / mining_map row",
+        ""
+      );
+      var keys = Object.keys(mine).sort();
+      var ki;
+      for (ki = 0; ki < keys.length; ki++) {
+        var kk = keys[ki];
+        var val = mine[kk];
+        if (val != null && typeof val === "object") {
+          try {
+            val = JSON.stringify(val);
+          } catch (e) {
+            val = String(val);
+          }
+        }
+        appendCellDetailRow(dl, kk, val == null ? "" : String(val));
+      }
+    } else {
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-cell-detail-mining-row") || "Blueprint / mining_map row",
+        "—"
+      );
+    }
+
+    if (cellMap[k]) {
+      appendCellDetailRow(dl, root.getAttribute("data-msg-cell-detail-db") || "DB map cell", "");
+      appendCellDetailRow(dl, "slug", cellMap[k].slug || "");
+      appendCellDetailRow(dl, "label", cellMap[k].label || "");
+    } else {
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-cell-detail-db") || "DB map cell",
+        "(" + (root.getAttribute("data-msg-cell-detail-no") || "no") + " row)"
+      );
+    }
+
+    var yN = root.getAttribute("data-msg-cell-detail-yes") || "yes";
+    var nN = root.getAttribute("data-msg-cell-detail-no") || "no";
+    appendCellDetailRow(
+      dl,
+      root.getAttribute("data-msg-cell-detail-in-bbox") || "Inside loaded map-cells bbox",
+      pointInLoadedRegions(gameX, gameY) ? yN : nN
+    );
+    appendCellDetailRow(
+      dl,
+      root.getAttribute("data-msg-cell-detail-void-label") || "Void label (API)",
+      voidLabel
+    );
+
+    var ctx = lastCellPickOverlayContext;
+    if (ctx && ctx.p4Cells) {
+      var p4 = ctx.p4Cells;
+      var rr = ctx.rrPts || { removed: [], added: [] };
+      var p4r = cellListHasXY(p4.route, gameX, gameY);
+      var p4s = cellListHasXY(p4.soft, gameX, gameY);
+      var p4o = cellListHasXY(p4.softReplaceOld, gameX, gameY);
+      var p4n = cellListHasXY(p4.softReplaceNew, gameX, gameY);
+      var rrm = cellListHasXY(rr.removed, gameX, gameY);
+      var rra = cellListHasXY(rr.added, gameX, gameY);
+      var pc = cellListHasXY(ctx.pcPoints, gameX, gameY);
+      var tw = trunkHeatmapWeightsAt(gameX, gameY, ctx.trunkHiPoints);
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-cell-detail-overlays") || "Overlays (current frame)",
+        ""
+      );
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-p4-route-overlay") || "P4 route",
+        p4r ? yN : nN
+      );
+      appendCellDetailRow(dl, root.getAttribute("data-msg-p4-soft-overlay") || "P4 soft", p4s ? yN : nN);
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-p4-soft-replace-old-overlay") || "P4 soft old",
+        p4o ? yN : nN
+      );
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-p4-soft-replace-new-overlay") || "P4 soft new",
+        p4n ? yN : nN
+      );
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-route-replay-removed") || "Replay removed",
+        rrm ? yN : nN
+      );
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-route-replay-added") || "Replay added",
+        rra ? yN : nN
+      );
+      appendCellDetailRow(dl, root.getAttribute("data-msg-pc-counts") || "Corridors", pc ? yN : nN);
+      appendCellDetailRow(
+        dl,
+        root.getAttribute("data-msg-trunk-edge-heatmap") || "Trunk heatmap",
+        tw || nN
+      );
+      if (ctx.suppressS4P34) {
+        appendCellDetailRow(dl, "Pass3/P4 viz", "suppressed");
+      }
+    }
+
+    cellDetailBody.appendChild(dl);
+    cellDetailDialog.showModal();
   }
 
   function syncTierBadge(summary) {
@@ -2256,6 +2554,7 @@
       plotSvg.removeAttribute("viewBox");
     }
     resetPlotView();
+    lastCellPickOverlayContext = null;
   }
 
   function uniqueSortedXs(points) {
@@ -2304,10 +2603,90 @@
     return out;
   }
 
-  function renderPlot(summary, miningMap, styleCatalog, replayOverlay) {
+  function computeP4OverlayCells(summaryObj) {
+    var route = [];
+    var soft = [];
+    var softReplaceOld = [];
+    var softReplaceNew = [];
+    if (!summaryObj || typeof summaryObj !== "object") {
+      return { route: route, soft: soft, softReplaceOld: softReplaceOld, softReplaceNew: softReplaceNew };
+    }
+    function collectInto(lst, dest) {
+      if (!Array.isArray(lst)) return;
+      var j;
+      for (j = 0; j < lst.length; j++) {
+        var it = lst[j];
+        var px;
+        var py;
+        if (Array.isArray(it) && it.length >= 2) {
+          px = it[0];
+          py = it[1];
+        } else if (it && typeof it === "object") {
+          px = it.x;
+          py = it.y;
+        } else {
+          continue;
+        }
+        if (typeof px !== "number" || typeof py !== "number") continue;
+        if (px === 0) continue;
+        dest.push({ x: px, y: py });
+      }
+    }
+    collectInto(summaryObj.p4_reclaim_last_soft_protected_candidate_cells, soft);
+    collectInto(summaryObj.p4_reclaim_last_commit_route_cells, route);
+    collectInto(summaryObj.p4_soft_replace_old_cells, softReplaceOld);
+    collectInto(summaryObj.p4_soft_replace_new_cells, softReplaceNew);
+    return { route: route, soft: soft, softReplaceOld: softReplaceOld, softReplaceNew: softReplaceNew };
+  }
+
+  function computeRouteReplayCellPoints(overlay) {
+    var removed = [];
+    var added = [];
+    if (!overlay || !overlay.overlayEvents) {
+      return { removed: removed, added: added };
+    }
+    function collectPairs(arr, dest) {
+      if (!Array.isArray(arr)) return;
+      var j;
+      for (j = 0; j < arr.length; j++) {
+        var it = arr[j];
+        if (Array.isArray(it) && it.length >= 2 && typeof it[0] === "number") {
+          if (it[0] === 0) continue;
+          dest.push({ x: it[0], y: it[1] });
+        }
+      }
+    }
+    var ei;
+    for (ei = 0; ei < overlay.overlayEvents.length; ei++) {
+      var ev = overlay.overlayEvents[ei];
+      if (!ev || ev.kind !== "route_replaced") continue;
+      var pl = ev.payload;
+      if (!pl || typeof pl !== "object") continue;
+      var hasTop =
+        (Array.isArray(pl.cells_removed) && pl.cells_removed.length) ||
+        (Array.isArray(pl.cells_added) && pl.cells_added.length);
+      collectPairs(pl.cells_removed, removed);
+      collectPairs(pl.cells_added, added);
+      if (!hasTop) {
+        var reps = pl.replacements;
+        if (Array.isArray(reps)) {
+          var r;
+          for (r = 0; r < reps.length; r++) {
+            if (!reps[r] || typeof reps[r] !== "object") continue;
+            collectPairs(reps[r].cells_removed, removed);
+            collectPairs(reps[r].cells_added, added);
+          }
+        }
+      }
+    }
+    return { removed: removed, added: added };
+  }
+
+  function renderPlot(summary, miningMap, styleCatalog, replayOverlay, reconstruction) {
     if (!plotSvg) return;
     plotSvg.innerHTML = "";
     plotCompact = null;
+    lastCellPickOverlayContext = null;
     if (typeof globalThis !== "undefined" && globalThis.AM_AsteroidMapSpriteAtlas && !mapSpriteAtlas) {
       mapSpriteAtlas = globalThis.AM_AsteroidMapSpriteAtlas.createFallbackSpriteAtlas(32);
     }
@@ -2410,91 +2789,14 @@
       plotSvg.removeAttribute("viewBox");
       return;
     }
-    function p4OverlayCells(summaryObj) {
-      var route = [];
-      var soft = [];
-      var softReplaceOld = [];
-      var softReplaceNew = [];
-      if (!summaryObj || typeof summaryObj !== "object") {
-        return { route: route, soft: soft, softReplaceOld: softReplaceOld, softReplaceNew: softReplaceNew };
-      }
-      function collectInto(lst, dest) {
-        if (!Array.isArray(lst)) return;
-        var j;
-        for (j = 0; j < lst.length; j++) {
-          var it = lst[j];
-          var px;
-          var py;
-          if (Array.isArray(it) && it.length >= 2) {
-            px = it[0];
-            py = it[1];
-          } else if (it && typeof it === "object") {
-            px = it.x;
-            py = it.y;
-          } else {
-            continue;
-          }
-          if (typeof px !== "number" || typeof py !== "number") continue;
-          if (px === 0) continue;
-          dest.push({ x: px, y: py });
-        }
-      }
-      collectInto(summaryObj.p4_reclaim_last_soft_protected_candidate_cells, soft);
-      collectInto(summaryObj.p4_reclaim_last_commit_route_cells, route);
-      collectInto(summaryObj.p4_soft_replace_old_cells, softReplaceOld);
-      collectInto(summaryObj.p4_soft_replace_new_cells, softReplaceNew);
-      return { route: route, soft: soft, softReplaceOld: softReplaceOld, softReplaceNew: softReplaceNew };
-    }
     var suppressS4P34 =
       replayOverlay && replayOverlay.__amSuppressStep4Pass34Viz === true;
     var p4Cells = suppressS4P34
       ? { route: [], soft: [], softReplaceOld: [], softReplaceNew: [] }
-      : p4OverlayCells(effSummary);
-    function routeReplayCellPoints(overlay) {
-      var removed = [];
-      var added = [];
-      if (!overlay || !overlay.overlayEvents) {
-        return { removed: removed, added: added };
-      }
-      function collectPairs(arr, dest) {
-        if (!Array.isArray(arr)) return;
-        var j;
-        for (j = 0; j < arr.length; j++) {
-          var it = arr[j];
-          if (Array.isArray(it) && it.length >= 2 && typeof it[0] === "number") {
-            if (it[0] === 0) continue;
-            dest.push({ x: it[0], y: it[1] });
-          }
-        }
-      }
-      var ei;
-      for (ei = 0; ei < overlay.overlayEvents.length; ei++) {
-        var ev = overlay.overlayEvents[ei];
-        if (!ev || ev.kind !== "route_replaced") continue;
-        var pl = ev.payload;
-        if (!pl || typeof pl !== "object") continue;
-        var hasTop =
-          (Array.isArray(pl.cells_removed) && pl.cells_removed.length) ||
-          (Array.isArray(pl.cells_added) && pl.cells_added.length);
-        collectPairs(pl.cells_removed, removed);
-        collectPairs(pl.cells_added, added);
-        if (!hasTop) {
-          var reps = pl.replacements;
-          if (Array.isArray(reps)) {
-            var r;
-            for (r = 0; r < reps.length; r++) {
-              if (!reps[r] || typeof reps[r] !== "object") continue;
-              collectPairs(reps[r].cells_removed, removed);
-              collectPairs(reps[r].cells_added, added);
-            }
-          }
-        }
-      }
-      return { removed: removed, added: added };
-    }
+      : computeP4OverlayCells(effSummary);
     var rrPts = suppressS4P34
       ? { removed: [], added: [] }
-      : routeReplayCellPoints(replayOverlay);
+      : computeRouteReplayCellPoints(replayOverlay);
     var rrAll = rrPts.removed.concat(rrPts.added);
     var pcPoints = [];
     if (corridorOverlayCb && corridorOverlayCb.checked && replayOverlay && replayOverlay.protected_corridors) {
@@ -2549,16 +2851,85 @@
         }
       }
     }
+    function normalize_coord_points(raw_cells) {
+      var points = [];
+      if (!Array.isArray(raw_cells)) return points;
+      for (var oi = 0; oi < raw_cells.length; oi++) {
+        var raw = raw_cells[oi];
+        var ox = null;
+        var oy = null;
+        if (Array.isArray(raw) && raw.length >= 2) {
+          ox = raw[0];
+          oy = raw[1];
+        } else if (raw && typeof raw === "object") {
+          ox = raw.x;
+          oy = raw.y;
+        }
+        if (typeof ox !== "number" || typeof oy !== "number") continue;
+        if (ox === 0) continue;
+        points.push({ x: ox, y: oy });
+      }
+      return points;
+    }
+    function computeAsteroidOutlinePoints(rows) {
+      var points = [];
+      if (!Array.isArray(rows)) return points;
+      for (var ap_i = 0; ap_i < rows.length; ap_i++) {
+        var row = rows[ap_i];
+        if (!row || typeof row.x !== "number" || typeof row.y !== "number") continue;
+        if (row.x === 0) continue;
+        var row_role = row.role || "occupied";
+        var layout_kind = row.layout_kind || "";
+        if (
+          row_role === "inferred" ||
+          row_role === "mineable" ||
+          layout_kind === "asteroid_field"
+        ) {
+          points.push({ x: row.x, y: row.y });
+        }
+      }
+      return points;
+    }
+    var recon_obj = reconstruction && typeof reconstruction === "object" ? reconstruction : {};
+    var outer_rim_points = normalize_coord_points(recon_obj.outer_rim_mineable_cells);
+    var mineable_outline_points = normalize_coord_points(recon_obj.mineable_placement_cells);
+    var visible_outline_points = computeAsteroidOutlinePoints(filtered);
+    var asteroid_outline_points = mineable_outline_points.length
+      ? mineable_outline_points
+      : outer_rim_points.length
+        ? outer_rim_points
+        : visible_outline_points;
     var p4All = p4Cells.route
       .concat(p4Cells.soft)
       .concat(p4Cells.softReplaceOld)
       .concat(p4Cells.softReplaceNew);
-    var forUx = filtered.concat(p4All).concat(rrAll).concat(pcPoints).concat(trunkHiPoints);
+    var forUx = filtered
+      .concat(p4All)
+      .concat(rrAll)
+      .concat(pcPoints)
+      .concat(trunkHiPoints)
+      .concat(asteroid_outline_points);
     var ux = uniqueSortedXs(forUx);
     if (ux.length === 0) {
       plotSvg.removeAttribute("viewBox");
       return;
     }
+    lastCellPickOverlayContext = {
+      suppressS4P34: suppressS4P34,
+      effSummary: effSummary,
+      p4Cells: {
+        route: p4Cells.route.slice(),
+        soft: p4Cells.soft.slice(),
+        softReplaceOld: p4Cells.softReplaceOld.slice(),
+        softReplaceNew: p4Cells.softReplaceNew.slice(),
+      },
+      rrPts: {
+        removed: rrPts.removed.slice(),
+        added: rrPts.added.slice(),
+      },
+      pcPoints: pcPoints.slice(),
+      trunkHiPoints: trunkHiPoints.slice(),
+    };
     var mar = 2;
     var minY = effSummary.y_min - mar;
     var maxY = effSummary.y_max + mar;
@@ -2582,6 +2953,11 @@
       var thy = trunkHiPoints[oi].y;
       minY = Math.min(minY, thy - mar);
       maxY = Math.max(maxY, thy + mar);
+    }
+    for (oi = 0; oi < asteroid_outline_points.length; oi++) {
+      var rim_y = asteroid_outline_points[oi].y;
+      minY = Math.min(minY, rim_y - mar);
+      maxY = Math.max(maxY, rim_y + mar);
     }
     var ch = maxY - minY + 1;
     var n = ux.length;
@@ -2942,6 +3318,54 @@
         r.appendChild(tt);
       }
       parent.appendChild(r);
+    }
+    function appendOuterRimLines(parent, outline_points) {
+      if (!outline_points.length) return;
+      var outline_set = Object.create(null);
+      for (var mp_i = 0; mp_i < outline_points.length; mp_i++) {
+        outline_set[outline_points[mp_i].x + "," + outline_points[mp_i].y] = true;
+      }
+      function add_outer_edge(x1, y1, x2, y2) {
+        var edge = document.createElementNS(svgNs, "line");
+        edge.setAttribute("class", "am-outer-rim-line");
+        edge.setAttribute("x1", String(x1));
+        edge.setAttribute("y1", String(y1));
+        edge.setAttribute("x2", String(x2));
+        edge.setAttribute("y2", String(y2));
+        edge.setAttribute("stroke", "rgb(250 204 21 / 0.98)");
+        edge.setAttribute("stroke-width", "0.16");
+        edge.setAttribute("stroke-linecap", "round");
+        parent.appendChild(edge);
+      }
+      for (var rim_i = 0; rim_i < outline_points.length; rim_i++) {
+        var rp = outline_points[rim_i];
+        var idx_rim = xi[rp.x];
+        if (idx_rim === undefined) continue;
+        var x0_rim = 1 + idx_rim + 0.03;
+        var y0_rim = rp.y - minY + 0.03;
+        var x1_rim = x0_rim + 0.94;
+        var y1_rim = y0_rim + 0.94;
+        var rim_nbs = shapezNeighbors4(rp.x, rp.y);
+        var has_n = false;
+        var has_e = false;
+        var has_s = false;
+        var has_w = false;
+        for (var rn_i = 0; rn_i < rim_nbs.length; rn_i++) {
+          var nbx_rim = rim_nbs[rn_i][0];
+          var nby_rim = rim_nbs[rn_i][1];
+          if (!outline_set[nbx_rim + "," + nby_rim]) continue;
+          var dir_rim = classifyNeighborDir(rp.x, rp.y, nbx_rim, nby_rim);
+          if (dir_rim === "n") has_n = true;
+          else if (dir_rim === "e") has_e = true;
+          else if (dir_rim === "s") has_s = true;
+          else if (dir_rim === "w") has_w = true;
+        }
+        // 외부에 닿은 면만 노란 선으로 그려 내부 격자선은 만들지 않는다.
+        if (!has_n) add_outer_edge(x0_rim, y0_rim, x1_rim, y0_rim);
+        if (!has_s) add_outer_edge(x0_rim, y1_rim, x1_rim, y1_rim);
+        if (!has_e) add_outer_edge(x1_rim, y0_rim, x1_rim, y1_rim);
+        if (!has_w) add_outer_edge(x0_rim, y0_rim, x0_rim, y1_rim);
+      }
     }
     function appendCellRect(parent, p, role, titleText, fluidClusterStroke, transportOverVoid) {
       var idx = xi[p.x];
@@ -3398,6 +3822,8 @@
     gTop.setAttribute("class", "asteroid-plot-occupied");
     var gFacing = document.createElementNS(svgNs, "g");
     gFacing.setAttribute("class", "asteroid-plot-facing-arrows");
+    var gOuterRim = document.createElementNS(svgNs, "g");
+    gOuterRim.setAttribute("class", "am-outer-rim-lines");
 
     var i;
     for (i = 0; i < filtered.length; i++) {
@@ -3441,6 +3867,7 @@
     gStationPerimeters.setAttribute("class", "am-station-perimeter-outlines");
     appendStationPerimeterOutlines(gStationPerimeters, isFluidHeadTile, isFluidExtensionTile);
     appendStationPerimeterOutlines(gStationPerimeters, isShapeHeadTile, isShapeExtensionTile);
+    appendOuterRimLines(gOuterRim, asteroid_outline_points);
 
     plotSvg.appendChild(gUnder);
     plotSvg.appendChild(gBelt);
@@ -3448,6 +3875,7 @@
     plotSvg.appendChild(gTop);
     plotSvg.appendChild(gFacing);
     plotSvg.appendChild(gStationPerimeters);
+    plotSvg.appendChild(gOuterRim);
     var gPass1Replay = document.createElementNS(svgNs, "g");
     gPass1Replay.setAttribute("class", "am-pass1-replay-overlay");
     var pass1Ev =
@@ -3759,10 +4187,43 @@
 
     plotInner.addEventListener("wheel", onWheelPlotZoom, { passive: false });
 
-    function endPanMouse() {
+    function endPanMouse(ev) {
+      var pd = panDrag;
+      if (
+        pd &&
+        ev &&
+        ev.type === "mouseup" &&
+        typeof ev.clientX === "number" &&
+        ev.button === 0
+      ) {
+        var dx = ev.clientX - pd.startX;
+        var dy = ev.clientY - pd.startY;
+        if (Math.abs(dx) + Math.abs(dy) < TAP_PAN_THRESHOLD) {
+          var gTap = clientToGameXY(ev.clientX, ev.clientY);
+          if (gTap) {
+            openCellDetailModal(gTap.x, gTap.y);
+          } else if (cellDetailDialog && cellDetailBody && cellDetailTitleHeading) {
+            cellDetailTitleHeading.textContent =
+              root.getAttribute("data-msg-cell-detail-title") || "Cell details";
+            cellDetailBody.innerHTML = "";
+            var pm = document.createElement("p");
+            pm.className = "am-cell-detail-msg";
+            pm.textContent = root.getAttribute("data-msg-cell-detail-outside-grid") || "";
+            cellDetailBody.appendChild(pm);
+            cellDetailDialog.showModal();
+          }
+        }
+      }
       panDrag = null;
       if (plotInner) plotInner.classList.remove("am-panning");
     }
+
+    document.addEventListener("mouseup", function (ev) {
+      endPanMouse(ev);
+    });
+    window.addEventListener("blur", function () {
+      endPanMouse(null);
+    });
 
     plotInner.addEventListener("mousedown", function (e) {
       if (e.button !== 0) return;
@@ -3782,9 +4243,6 @@
       plotPanZoom.panY = panDrag.pan0Y + (e.clientY - panDrag.startY);
       applyPlotViewTransform();
     });
-
-    document.addEventListener("mouseup", endPanMouse);
-    window.addEventListener("blur", endPanMouse);
 
     plotInner.addEventListener(
       "touchstart",
@@ -3826,10 +4284,28 @@
       if (!touchPan) return;
       var ci;
       for (ci = 0; ci < e.changedTouches.length; ci++) {
-        if (e.changedTouches[ci].identifier === touchPan.id) {
-          endTouchPan();
-          return;
+        var chT = e.changedTouches[ci];
+        if (chT.identifier !== touchPan.id) continue;
+        var tpd = touchPan;
+        var dxT = chT.clientX - tpd.startX;
+        var dyT = chT.clientY - tpd.startY;
+        endTouchPan();
+        if (Math.abs(dxT) + Math.abs(dyT) < TAP_PAN_THRESHOLD) {
+          var gT = clientToGameXY(chT.clientX, chT.clientY);
+          if (gT) {
+            openCellDetailModal(gT.x, gT.y);
+          } else if (cellDetailDialog && cellDetailBody && cellDetailTitleHeading) {
+            cellDetailTitleHeading.textContent =
+              root.getAttribute("data-msg-cell-detail-title") || "Cell details";
+            cellDetailBody.innerHTML = "";
+            var pmT = document.createElement("p");
+            pmT.className = "am-cell-detail-msg";
+            pmT.textContent = root.getAttribute("data-msg-cell-detail-outside-grid") || "";
+            cellDetailBody.appendChild(pmT);
+            cellDetailDialog.showModal();
+          }
         }
+        return;
       }
     });
     plotInner.addEventListener("touchcancel", endTouchPan);
@@ -3843,43 +4319,15 @@
 
   if (surface && px && py) {
     surface.addEventListener("mousemove", function (e) {
-      if (plotCompact && plotSvg && plotSvg.createSVGPoint && plotSvg.getScreenCTM) {
-        var pt = plotSvg.createSVGPoint();
-        pt.x = e.clientX;
-        pt.y = e.clientY;
-        var ctm = plotSvg.getScreenCTM();
-        if (!ctm) return;
-        var svgP = pt.matrixTransform(ctm.inverse());
-        var ux = svgP.x;
-        var uy = svgP.y;
-        var Wvb = plotCompact.w;
-        var ch = plotCompact.h;
-        var n = plotCompact.uniqueXs.length;
-        if (ux < 0 || ux > Wvb || uy < 0 || uy > ch) {
-          px.textContent = "--";
-          py.textContent = "--";
-          updatePointerStatus();
-          return;
-        }
-        var colIdx = Math.floor(ux) - 1;
-        if (colIdx >= 0 && colIdx < n) {
-          px.textContent = String(plotCompact.uniqueXs[colIdx]);
-        } else {
-          px.textContent = "--";
-        }
-        var rowBin = Math.min(ch - 1, Math.max(0, Math.floor(uy)));
-        py.textContent = String(plotCompact.minY + rowBin);
+      var g = clientToGameXY(e.clientX, e.clientY);
+      if (!g) {
+        px.textContent = "--";
+        py.textContent = "--";
         updatePointerStatus();
         return;
       }
-      var r2 = surface.getBoundingClientRect();
-      if (!r2.width || !r2.height) return;
-      var relX2 = (e.clientX - r2.left) / r2.width;
-      var relY2 = (e.clientY - r2.top) / r2.height;
-      var gx = Math.round((relX2 - 0.5) * (2 * SPAN));
-      var gy = Math.round((0.5 - relY2) * (2 * SPAN));
-      px.textContent = String(gx);
-      py.textContent = String(gy);
+      px.textContent = String(g.x);
+      py.textContent = String(g.y);
       updatePointerStatus();
     });
     surface.addEventListener("mouseleave", function () {
@@ -3972,6 +4420,7 @@
       lastCycleFrames = [];
       solverPhaseStartIndex = -1;
       lastSummary = null;
+      last_reconstruction = null;
       syncTierBadge(null);
       lastRuntimeTraceEvents = [];
       if (replayWarnEl) {
@@ -4009,6 +4458,7 @@
             summaryEl.textContent = idle;
             decodeSummaryText = "";
             lastSummary = null;
+            last_reconstruction = null;
             lastSolverReplay = null;
             lastReplayUiFrames = [];
             lastRuntimeTraceEvents = [];
@@ -4037,6 +4487,10 @@
           syncTierBadge(lastSummary);
           lastMiningMap = x.data.mining_map || [];
           lastStyleCatalog = x.data.style_catalog || {};
+          last_reconstruction =
+            x.data.reconstruction && typeof x.data.reconstruction === "object"
+              ? x.data.reconstruction
+              : null;
           lastRuntimeTraceEvents = Array.isArray(x.data.runtime_trace_events)
             ? x.data.runtime_trace_events
             : [];
@@ -4159,6 +4613,7 @@
           lastReplayUiFrames = [];
           lastCycleFrames = [];
           lastSummary = null;
+          last_reconstruction = null;
           lastRuntimeTraceEvents = [];
           syncTierBadge(null);
           applyMapTimeline([]);

@@ -41,8 +41,8 @@ def test_perimeter_depth_ring_with_inner_patch() -> None:
     assert is_pass1_rim_extractor_cell((30, 31), depth) is True
 
 
-def test_pass1_consider_extract_skips_interior_when_external_rim_gate_active() -> None:
-    """Solid 12×12: with exterior void rim known, only ``outer_rim_mineable_cells`` are scanned."""
+def test_pass1_consider_extract_marks_interior_reject_and_skips_probe() -> None:
+    """Solid 12×12 patch: interior cells scanned as extractors get rim reject (no output probe)."""
 
     n = 12
     mineable = tuple((x, y) for x in range(100, 100 + n) for y in range(100, 100 + n))
@@ -56,8 +56,6 @@ def test_pass1_consider_extract_skips_interior_when_external_rim_gate_active() -
         external_margin=3,
         external_margin_bbox_source="mineable",
     )
-    depth = compute_mineable_perimeter_depth_by_cell(frozenset(mineable))
-    interior = {c for c, d in depth.items() if d >= 1}
     events: list[dict[object, object]] = []
     run_pass1_outer_placement(
         _ctx(),
@@ -66,15 +64,25 @@ def test_pass1_consider_extract_skips_interior_when_external_rim_gate_active() -
         replay_event_cap=2000,
         trace=TraceCollector("rim_gate"),
     )
-    consider = [e for e in events if e.get("kind") == "consider_extract"]
-    cells = {tuple(e["extractor_cell"]) for e in consider}
-    assert not (cells & interior)
-    assert all(e.get("pass1_external_rim") is True for e in consider)
-    assert all(int(e["perimeter_depth"]) == 0 for e in consider)
+    rejects = [
+        e
+        for e in events
+        if e.get("kind") == "consider_extract"
+        and e.get("reject_reason") == "pass1_extractor_not_on_external_rim"
+    ]
+    assert len(rejects) >= 8
+    assert all(int(e["perimeter_depth"]) >= 1 for e in rejects)
+    for e in rejects[:5]:
+        ext = tuple(e["extractor_cell"])
+        assert not any(
+            pe.get("kind") == "probe_output" and tuple(pe["extractor_cell"]) == ext for pe in events
+        )
     ends = [e for e in events if e.get("kind") == "pass1_end"]
     assert len(ends) == 1
     assert ends[0].get("pass1_extractor_rim_only") is True
     assert ends[0].get("pass1_stop_reason") == "mineable_ordered_scan_complete"
+    rj = ends[0].get("reject_count_by_reason") or {}
+    assert rj.get("pass1_extractor_not_on_external_rim", 0) == len(rejects)
 
 
 def test_pass1_committed_extractors_are_rim_only() -> None:
@@ -108,9 +116,10 @@ def test_pass1_committed_extractors_are_rim_only() -> None:
     p1 = run_pass1_outer_placement(
         _ctx("rim_only_box"), recon, trace=TraceCollector("rim_only_box")
     )
+    perm_fb = frozenset(recon.belt_cells) | frozenset(recon.pipe_cells)
     outer_rim = frozenset(
         _mining_void_topology.compute_mining_void_topology(
-            frozenset(mineable), bbox, recon.external_margin, frozenset()
+            frozenset(mineable), bbox, recon.external_margin, perm_fb
         ).outer_rim_mineable_cells
     )
     for b in p1.placements:
@@ -146,17 +155,38 @@ def test_pass1_hole_adjacent_mineable_not_used_as_extractor_core() -> None:
     mineable = tuple((x, y) for x in range(20, 26) for y in range(20, 26) if (x, y) != (22, 22))
     bbox = BBox(min_x=20, min_y=20, max_x=25, max_y=25)
     barrier = tuple({*mineable, (22, 22)})
+    topo = _mining_void_topology.compute_mining_void_topology(
+        frozenset(mineable), bbox, 3, frozenset()
+    )
     recon = ReconstructionDTO(
         mineable_placement_cells=mineable,
         extraction_shell_cells=mineable,
         full_barrier_cells=barrier,
         belt_cells=(),
         pipe_cells=(),
+        outer_rim_mineable_cells=topo.outer_rim_mineable_cells,
+        internal_hole_rim_mineable_cells=topo.internal_hole_rim_mineable_cells,
         asteroid_bbox=bbox,
         external_margin=3,
         external_margin_bbox_source="mineable",
     )
     hole_touch = {(22, 21), (21, 22), (23, 22), (22, 23)}
-    p1 = run_pass1_outer_placement(_ctx("donut1"), recon, trace=TraceCollector("donut1"))
+    events: list[dict[str, object]] = []
+    p1 = run_pass1_outer_placement(
+        _ctx("donut1"),
+        recon,
+        replay_events=events,
+        replay_event_cap=2000,
+        trace=TraceCollector("donut1"),
+    )
     for b in p1.placements:
         assert b.extractor.cell not in hole_touch
+    rejects = [
+        e
+        for e in events
+        if e.get("kind") == "consider_extract" and tuple(e["extractor_cell"]) in hole_touch
+    ]
+    assert rejects
+    assert all(e.get("internal_hole_rim") is True for e in rejects)
+    assert all(e.get("external_rim") is False for e in rejects)
+    assert all(e.get("reject_reason") == "pass1_extractor_not_on_external_rim" for e in rejects)

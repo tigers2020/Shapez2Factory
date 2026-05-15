@@ -44,6 +44,16 @@ def _iter_entry_dicts(entries: Any) -> Any:
             yield item
 
 
+def _type_field_to_str(t_raw: Any) -> str | None:
+    """Normalize blueprint entry ``T`` to an optional layout-type string."""
+
+    if isinstance(t_raw, str):
+        return t_raw
+    if t_raw is None:
+        return None
+    return str(t_raw)
+
+
 def gather_bp_entries_recursive(decoded: dict[str, Any]) -> list[dict[str, Any]]:
     """Collect layout dicts from BP.Entries plus nested Container/Building Entries when present."""
 
@@ -63,7 +73,7 @@ def gather_bp_entries_recursive(decoded: dict[str, Any]) -> list[dict[str, Any]]
 
         raw = node.get("Entries")
         entries = raw if isinstance(raw, list) else []
-        out.extend(entry for entry in _iter_entry_dicts(entries))
+        out.extend(_iter_entry_dicts(entries))
         nested = (
             ("Building", node.get("Building")),
             ("SubBuilding", node.get("SubBuilding")),
@@ -91,15 +101,7 @@ def reconstruct_from_decoded(decoded: dict[str, Any]) -> AsteroidReconstruction 
             y_val = 0
 
         xy = (x_val, y_val)
-        t_raw = item.get("T")
-        t_str: str | None
-        if isinstance(t_raw, str):
-            t_str = t_raw
-        elif t_raw is None:
-            t_str = None
-        else:
-            t_str = str(t_raw)
-
+        t_str = _type_field_to_str(item.get("T"))
         style = classify_layout_type(t_str)
         blueprint_occupied_cells.add(xy)
         if style == PlotStyle.belt:
@@ -191,7 +193,12 @@ def mining_surfaces_from_shell(decoded: dict[str, Any]) -> frozenset[str]:
     hints: set[str] = set()
     for item in gather_bp_entries_recursive(decoded):
         t_raw = item.get("T")
-        t_str = t_raw if isinstance(t_raw, str) else str(t_raw) if t_raw is not None else None
+        if isinstance(t_raw, str):
+            t_str = t_raw
+        elif t_raw is not None:
+            t_str = str(t_raw)
+        else:
+            t_str = None
         surface = mining_surface_from_layout(t_str)
         if surface is not None:
             hints.add(surface)

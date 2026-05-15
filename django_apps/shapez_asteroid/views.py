@@ -9,6 +9,10 @@ from django.http import HttpRequest, JsonResponse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 
+from django_apps.shapez_asteroid.constants import (
+    COPY_PREVIEW_EMPTY_TIMELINE_PHASE,
+    COPY_PREVIEW_SCHEMA_VERSION,
+)
 from django_apps.shapez_asteroid.services.asteroid_map_cells import (
     list_map_cells_json,
     parse_bbox,
@@ -41,6 +45,155 @@ def _map_cells_error_code(message: str) -> str:
         "bbox span too large": "bbox_span_too_large",
         "bbox must not include x=0": "bbox_includes_x_zero",
     }.get(message, "bbox_validation_error")
+
+
+def _copy_preview_parse_json_body(
+    request: HttpRequest,
+) -> tuple[Any | None, JsonResponse | None]:
+    try:
+        return json.loads(request.body.decode("utf-8")), None
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None, JsonResponse(
+            {"ok": False, "error": _("invalid json"), "error_code": "invalid_json"},
+            status=400,
+        )
+
+
+def _copy_preview_require_code_string(body: Any) -> tuple[str | None, JsonResponse | None]:
+    code = body.get("code")
+    if not isinstance(code, str):
+        return None, JsonResponse(
+            {
+                "ok": False,
+                "error": _("code must be a string"),
+                "error_code": "code_not_string",
+            },
+            status=400,
+        )
+    return code, None
+
+
+def _copy_preview_decode_trace(
+    code: str, artifact_dir: str
+) -> tuple[tuple[dict[str, Any], Any, str] | None, JsonResponse | None]:
+    trace = decode_shapez2_copy_trace(code)
+    digest_prefix = input_digest_prefix_from_code(code)
+    if artifact_dir and not trace.success:
+        dump_v2_behavior_artifact_json(
+            build_decode_failure_behavior_document(
+                trace=trace,
+                input_digest_prefix=digest_prefix,
+            ),
+            artifact_dir,
+        )
+    if not trace.success:
+        user_error = trace.error or _("decode failed")
+        return None, JsonResponse(
+            {
+                "ok": False,
+                "error": user_error,
+                "error_code": "decode_trace_error" if trace.error else "decode_failed",
+            },
+            status=400,
+        )
+    decoded = trace.data
+    assert decoded is not None
+    return (decoded, trace, digest_prefix), None
+
+
+def _copy_preview_success_payload(
+    decoded: dict[str, Any],
+    trace: Any,
+    digest_prefix: str,
+    artifact_dir: str,
+) -> dict[str, Any]:
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.solver import (
+        build_copy_preview_v2_sidecars,
+    )
+
+    behavior_artifact: BehaviorArtifactCollector | None = None
+    if artifact_dir:
+        behavior_artifact = BehaviorArtifactCollector(input_digest_prefix=digest_prefix)
+        behavior_artifact.record_decode_trace(trace)
+
+    v2_side = build_copy_preview_v2_sidecars(decoded, behavior_artifact=behavior_artifact)
+    if artifact_dir and behavior_artifact is not None:
+        dump_v2_behavior_artifact_json(behavior_artifact.build_document(), artifact_dir)
+    existing_layout_analysis = v2_side["existing_layout_analysis"]
+    v2_append = v2_side.get("v2_preview_map_timeline")
+    v2_list = v2_append if isinstance(v2_append, list) else []
+    map_timeline: list[dict[str, Any]] = list(v2_list)
+
+    if map_timeline:
+        last_frame = map_timeline[-1]
+        last_summary = last_frame["summary"]
+        last_mining_map = last_frame["mining_map"]
+    else:
+        last_summary = {
+            "entry_count": 0,
+            "x_min": 0,
+            "x_max": 0,
+            "y_min": 0,
+            "y_max": 0,
+            "phase": COPY_PREVIEW_EMPTY_TIMELINE_PHASE,
+        }
+        last_mining_map: list[dict[str, Any]] = []
+
+    return {
+        "ok": True,
+        "summary": last_summary,
+        "mining_map": last_mining_map,
+        "map_timeline": map_timeline,
+        "style_catalog": asteroid_map_style_catalog(),
+        "existing_layout_analysis": existing_layout_analysis,
+        "mining_layout_engine": v2_side["mining_layout_engine"],
+        "reconstruction": v2_side.get("reconstruction"),
+        "partial_pipeline": v2_side.get("partial_pipeline"),
+        "reconstruction_summary": v2_side["reconstruction_summary"],
+        "preview_schema_version": COPY_PREVIEW_SCHEMA_VERSION,
+    }
+
+
+def _copy_preview_maybe_write_dev_report(payload: dict[str, Any], code: str) -> None:
+    if not getattr(settings, "SHAPEZ_DEV_ASTEROID_STEP_REPORT", False):
+        return
+    report_path = resolve_dev_report_md_path(
+        base_dir=settings.BASE_DIR,
+        override=getattr(settings, "SHAPEZ_DEV_ASTEROID_REPORT_MD", "") or "",
+    )
+    st_raw = payload.get("solver_timeline")
+    st_list = st_raw if isinstance(st_raw, list) else None
+    sr_raw = payload.get("solver_replay")
+    sr_dict = sr_raw if isinstance(sr_raw, dict) else None
+    mlf = payload.get("mining_layout_runtime_flags")
+    fp = hashlib.sha256(code.encode("utf-8", errors="surrogatepass")).hexdigest()[:16]
+    md_text = format_asteroid_optimizer_dev_report_md(
+        map_timeline=payload["map_timeline"],
+        root_summary=payload["summary"],
+        reconstruction_summary=(
+            payload.get("reconstruction_summary")
+            if isinstance(payload.get("reconstruction_summary"), dict)
+            else None
+        ),
+        mining_layout_engine=(
+            payload.get("mining_layout_engine")
+            if isinstance(payload.get("mining_layout_engine"), str)
+            else None
+        ),
+        include_solver_overlay=False,
+        include_solver_replay=False,
+        solver_timeline=st_list,
+        solver_replay=sr_dict,
+        solver_layout_package_unavailable=False,
+        mining_layout_runtime_flags=mlf if isinstance(mlf, dict) else None,
+        preview_schema_version=(
+            int(payload["preview_schema_version"])
+            if isinstance(payload.get("preview_schema_version"), int)
+            else None
+        ),
+        code_fingerprint=fp,
+    )
+    write_asteroid_optimizer_dev_report(report_path, md_text)
 
 
 @require_GET
@@ -79,137 +232,24 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
     Legacy v1 ``include_solver_*`` query parameters are ignored.
     """
 
-    try:
-        body = json.loads(request.body.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return JsonResponse(
-            {"ok": False, "error": _("invalid json"), "error_code": "invalid_json"},
-            status=400,
-        )
+    body, body_err = _copy_preview_parse_json_body(request)
+    if body_err is not None:
+        return body_err
 
-    code = body.get("code")
-    if not isinstance(code, str):
-        return JsonResponse(
-            {
-                "ok": False,
-                "error": _("code must be a string"),
-                "error_code": "code_not_string",
-            },
-            status=400,
-        )
+    code, code_err = _copy_preview_require_code_string(body)
+    if code_err is not None:
+        return code_err
 
-    trace = decode_shapez2_copy_trace(code)
     artifact_dir = (getattr(settings, "SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
-    digest_prefix = input_digest_prefix_from_code(code)
-    if artifact_dir and not trace.success:
-        dump_v2_behavior_artifact_json(
-            build_decode_failure_behavior_document(
-                trace=trace,
-                input_digest_prefix=digest_prefix,
-            ),
-            artifact_dir,
-        )
-    if not trace.success:
-        user_error = trace.error or _("decode failed")
-        return JsonResponse(
-            {
-                "ok": False,
-                "error": user_error,
-                "error_code": "decode_trace_error" if trace.error else "decode_failed",
-            },
-            status=400,
-        )
-    decoded = trace.data
-    assert decoded is not None
+    decoded_bundle, decode_err = _copy_preview_decode_trace(code, artifact_dir)
+    if decode_err is not None:
+        return decode_err
+    decoded, trace, digest_prefix = decoded_bundle
 
     debug_dir = getattr(settings, "SHAPEZ_COPY_DEBUG_DIR", "") or ""
     if debug_dir:
         dump_copy_preview_debug(code, decoded, debug_dir)
 
-    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.solver import (
-        build_copy_preview_v2_sidecars,
-    )
-
-    behavior_artifact: BehaviorArtifactCollector | None = None
-    if artifact_dir:
-        behavior_artifact = BehaviorArtifactCollector(input_digest_prefix=digest_prefix)
-        behavior_artifact.record_decode_trace(trace)
-
-    v2_side = build_copy_preview_v2_sidecars(decoded, behavior_artifact=behavior_artifact)
-    if artifact_dir and behavior_artifact is not None:
-        dump_v2_behavior_artifact_json(behavior_artifact.build_document(), artifact_dir)
-    existing_layout_analysis = v2_side["existing_layout_analysis"]
-    v2_append = v2_side.get("v2_preview_map_timeline")
-    if not isinstance(v2_append, list):
-        v2_append = []
-    map_timeline: list[dict[str, Any]] = list(v2_append)
-
-    if map_timeline:
-        last_frame = map_timeline[-1]
-        last_summary = last_frame["summary"]
-        last_mining_map = last_frame["mining_map"]
-    else:
-        last_summary = {
-            "entry_count": 0,
-            "x_min": 0,
-            "x_max": 0,
-            "y_min": 0,
-            "y_max": 0,
-            "phase": "v2_empty",
-        }
-        last_mining_map: list[dict[str, Any]] = []
-
-    payload: dict[str, Any] = {
-        "ok": True,
-        "summary": last_summary,
-        "mining_map": last_mining_map,
-        "map_timeline": map_timeline,
-        "style_catalog": asteroid_map_style_catalog(),
-        "existing_layout_analysis": existing_layout_analysis,
-        "mining_layout_engine": v2_side["mining_layout_engine"],
-        "reconstruction": v2_side.get("reconstruction"),
-        "partial_pipeline": v2_side.get("partial_pipeline"),
-        "reconstruction_summary": v2_side["reconstruction_summary"],
-        "preview_schema_version": 2,
-    }
-
-    if getattr(settings, "SHAPEZ_DEV_ASTEROID_STEP_REPORT", False):
-        report_path = resolve_dev_report_md_path(
-            base_dir=settings.BASE_DIR,
-            override=getattr(settings, "SHAPEZ_DEV_ASTEROID_REPORT_MD", "") or "",
-        )
-        st_raw = payload.get("solver_timeline")
-        st_list = st_raw if isinstance(st_raw, list) else None
-        sr_raw = payload.get("solver_replay")
-        sr_dict = sr_raw if isinstance(sr_raw, dict) else None
-        mlf = payload.get("mining_layout_runtime_flags")
-        fp = hashlib.sha256(code.encode("utf-8", errors="surrogatepass")).hexdigest()[:16]
-        md_text = format_asteroid_optimizer_dev_report_md(
-            map_timeline=payload["map_timeline"],
-            root_summary=payload["summary"],
-            reconstruction_summary=(
-                payload.get("reconstruction_summary")
-                if isinstance(payload.get("reconstruction_summary"), dict)
-                else None
-            ),
-            mining_layout_engine=(
-                payload.get("mining_layout_engine")
-                if isinstance(payload.get("mining_layout_engine"), str)
-                else None
-            ),
-            include_solver_overlay=False,
-            include_solver_replay=False,
-            solver_timeline=st_list,
-            solver_replay=sr_dict,
-            solver_layout_package_unavailable=False,
-            mining_layout_runtime_flags=mlf if isinstance(mlf, dict) else None,
-            preview_schema_version=(
-                int(payload["preview_schema_version"])
-                if isinstance(payload.get("preview_schema_version"), int)
-                else None
-            ),
-            code_fingerprint=fp,
-        )
-        write_asteroid_optimizer_dev_report(report_path, md_text)
-
+    payload = _copy_preview_success_payload(decoded, trace, digest_prefix, artifact_dir)
+    _copy_preview_maybe_write_dev_report(payload, code)
     return JsonResponse(payload)

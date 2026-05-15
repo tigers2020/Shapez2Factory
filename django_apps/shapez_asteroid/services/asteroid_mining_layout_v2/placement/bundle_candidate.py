@@ -166,6 +166,74 @@ def grow_pass1_straight_extension_chain(
     return tuple(out)
 
 
+def _pass2_extension_cell_placeable(
+    cell: BlueprintCell,
+    *,
+    local_used: set[BlueprintCell],
+    stub: BlueprintCell,
+    extractor: BlueprintCell,
+    mineable: frozenset[BlueprintCell],
+) -> bool:
+    if cell in local_used:
+        return False
+    if cell in (stub, extractor):
+        return False
+    return cell in mineable
+
+
+def _pass2_seed_side_extensions(
+    out: list[tuple[BlueprintCell, BlueprintCell, tuple[int, int]]],
+    local_used: set[BlueprintCell],
+    extractor: BlueprintCell,
+    out_dir: tuple[int, int],
+    stub: BlueprintCell,
+    mineable: frozenset[BlueprintCell],
+) -> None:
+    for d in side_directions_after_output(out_dir):
+        if len(out) >= 3:
+            break
+        nc = step_cell(extractor, d)
+        if not _pass2_extension_cell_placeable(
+            nc,
+            local_used=local_used,
+            stub=stub,
+            extractor=extractor,
+            mineable=mineable,
+        ):
+            continue
+        out.append((nc, extractor, orientation_toward_parent(nc, extractor)))
+        local_used.add(nc)
+
+
+def _pass2_bfs_branch_extensions(
+    q: deque[tuple[BlueprintCell, BlueprintCell]],
+    out: list[tuple[BlueprintCell, BlueprintCell, tuple[int, int]]],
+    local_used: set[BlueprintCell],
+    stub: BlueprintCell,
+    extractor: BlueprintCell,
+    mineable: frozenset[BlueprintCell],
+) -> None:
+    while q and len(out) < 3:
+        ext_cell, par = q.popleft()
+        for d in CARDINAL_DIRS:
+            if len(out) >= 3:
+                break
+            nxt = step_cell(ext_cell, d)
+            if nxt == par:
+                continue
+            if not _pass2_extension_cell_placeable(
+                nxt,
+                local_used=local_used,
+                stub=stub,
+                extractor=extractor,
+                mineable=mineable,
+            ):
+                continue
+            out.append((nxt, ext_cell, orientation_toward_parent(nxt, ext_cell)))
+            local_used.add(nxt)
+            q.append((nxt, ext_cell))
+
+
 def grow_pass2_branching_extension_cells(
     extractor: BlueprintCell,
     out_dir: tuple[int, int],
@@ -179,39 +247,9 @@ def grow_pass2_branching_extension_cells(
 
     out: list[tuple[BlueprintCell, BlueprintCell, tuple[int, int]]] = []
     local_used = set(used)
-
-    def can_place(cell: BlueprintCell) -> bool:
-        if cell in local_used:
-            return False
-        if cell in (stub, extractor):
-            return False
-        if cell not in mineable:
-            return False
-        return True
-
-    for d in side_directions_after_output(out_dir):
-        if len(out) >= 3:
-            break
-        nc = step_cell(extractor, d)
-        if can_place(nc):
-            out.append((nc, extractor, orientation_toward_parent(nc, extractor)))
-            local_used.add(nc)
-
+    _pass2_seed_side_extensions(out, local_used, extractor, out_dir, stub, mineable)
     q: deque[tuple[BlueprintCell, BlueprintCell]] = deque((ec, ep) for ec, ep, _ in out)
-
-    while q and len(out) < 3:
-        ext_cell, par = q.popleft()
-        for d in CARDINAL_DIRS:
-            if len(out) >= 3:
-                break
-            nxt = step_cell(ext_cell, d)
-            if nxt == par:
-                continue
-            if can_place(nxt):
-                out.append((nxt, ext_cell, orientation_toward_parent(nxt, ext_cell)))
-                local_used.add(nxt)
-                q.append((nxt, ext_cell))
-
+    _pass2_bfs_branch_extensions(q, out, local_used, stub, extractor, mineable)
     return tuple(out)
 
 

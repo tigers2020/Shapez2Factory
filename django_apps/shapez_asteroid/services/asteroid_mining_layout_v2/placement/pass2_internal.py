@@ -85,7 +85,6 @@ def _sort_mineable_interior_first(
 def _build_pass2_candidate(
     *,
     run_id: str,
-    bundle_index: int,
     scan_index: int,
     extractor: BlueprintCell,
     out_dir: tuple[int, int],
@@ -159,6 +158,156 @@ def _build_pass2_candidate(
     )
 
 
+def _pass2_prepare_greedy_state(
+    ctx: SolverRunContext,
+    pass1: Pass1Result,
+) -> tuple[
+    ReconstructionDTO,
+    frozenset[BlueprintCell],
+    BBox,
+    set[BlueprintCell],
+    tuple[BlueprintCell, ...],
+    TransportKind,
+] | None:
+    reconstruction = ctx.reconstruction
+    mineable_cells = frozenset(reconstruction.mineable_placement_cells)
+    if not mineable_cells:
+        return None
+    bbox = reconstruction.asteroid_bbox or _bbox_fallback(mineable_cells)
+    if bbox is None:
+        return None
+    blocked = build_pass2_blocked_set(pass1, reconstruction)
+    used: set[BlueprintCell] = set(blocked)
+    remaining = frozenset(c for c in mineable_cells if c not in blocked)
+    if not remaining:
+        return None
+    transport_kind = infer_transport_kind(reconstruction)
+    ordered = _sort_mineable_interior_first(remaining, bbox)
+    return (reconstruction, mineable_cells, bbox, used, ordered, transport_kind)
+
+
+def _pass2_gather_feasible_for_extractor(
+    *,
+    run_id: str,
+    scan_index: int,
+    extractor: BlueprintCell,
+    mineable_cells: frozenset[BlueprintCell],
+    used: set[BlueprintCell],
+    transport_kind: TransportKind,
+    reconstruction: ReconstructionDTO,
+    bbox: BBox,
+) -> tuple[list[Pass2BundleCandidate], list[dict[str, object]]]:
+    feasible: list[Pass2BundleCandidate] = []
+    beam_rejects: list[dict[str, object]] = []
+    for out_dir in CARDINAL_DIRS:
+        cand = _build_pass2_candidate(
+            run_id=run_id,
+            scan_index=scan_index,
+            extractor=extractor,
+            out_dir=out_dir,
+            mineable=mineable_cells,
+            used=used,
+            transport_kind=transport_kind,
+            reconstruction=reconstruction,
+            bbox=bbox,
+        )
+        if cand is None:
+            continue
+        if cand.reject_reason is not None:
+            beam_rejects.append(
+                {
+                    "placement_pass": "pass2",
+                    "extractor_cell": extractor,
+                    "output_direction": out_dir,
+                    "score": cand.score,
+                    "committed": False,
+                    "reject_reason": cand.reject_reason,
+                }
+            )
+            continue
+        feasible.append(cand)
+    return feasible, beam_rejects
+
+
+def _pass2_pick_best_feasible(
+    extractor: BlueprintCell,
+    feasible: list[Pass2BundleCandidate],
+    bbox: BBox,
+) -> Pass2BundleCandidate | None:
+    if not feasible:
+        return None
+    max_ext = max(len(c.extension_cells) for c in feasible)
+    if max_ext > 0:
+        feasible = [c for c in feasible if len(c.extension_cells) > 0]
+    return min(
+        feasible,
+        key=lambda c: lex_key_pass2_best_output(
+            extractor,
+            bbox,
+            len(c.extension_cells),
+            c.output_direction,
+        ),
+    )
+
+
+def _pass2_try_commit_bundle(
+    best: Pass2BundleCandidate,
+    *,
+    run_id: str,
+    bundle_index: int,
+    used: set[BlueprintCell],
+    bundles: list[PlacementBundle],
+    commits: list[tuple[str, PlacementCommitState]],
+    beam: list[dict[str, object]],
+) -> int | None:
+    if best.reject_reason is not None:
+        return None
+    b = _pass2_candidate_to_bundle(best, run_id=run_id, bundle_index=bundle_index)
+    occ = {b.extractor.cell, b.output_stub.cell}
+    occ.update(ext.cell for ext in b.extensions)
+    if occ & used:
+        return None
+    used.update(occ)
+    bundles.append(b)
+    commits.append((str(b.extractor.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
+    for ext in b.extensions:
+        commits.append((str(ext.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
+    beam.append(
+        {
+            "placement_pass": "pass2",
+            "extractor_cell": best.extractor_cell,
+            "output_direction": best.output_direction,
+            "output_stub_cell": best.output_stub_cell,
+            "score": best.score,
+            "committed": True,
+            "reject_reason": None,
+            "placement_ids": (str(b.extractor.placement_id),)
+            + tuple(str(x.placement_id) for x in b.extensions),
+        }
+    )
+    return bundle_index + 1
+
+
+def _pass2_assemble_result(
+    bundles: list[PlacementBundle],
+    commits: list[tuple[str, PlacementCommitState]],
+    beam: list[dict[str, object]],
+) -> Pass2Result:
+    pass2_occ: set[BlueprintCell] = set()
+    for b in bundles:
+        pass2_occ.add(b.extractor.cell)
+        pass2_occ.add(b.output_stub.cell)
+        for ext in b.extensions:
+            pass2_occ.add(ext.cell)
+    blocked_delta = tuple(sorted(pass2_occ, key=lambda c: (c[1], c[0])))
+    return Pass2Result(
+        provisional_placements=tuple(bundles),
+        blocked_cells_delta=blocked_delta,
+        placement_commit_entries=tuple(commits),
+        beam_trace=tuple(beam) if beam else None,
+    )
+
+
 def _pass2_candidate_to_bundle(
     cand: Pass2BundleCandidate,
     *,
@@ -166,7 +315,7 @@ def _pass2_candidate_to_bundle(
     bundle_index: int,
 ) -> PlacementBundle:
     eid = PlacementId(
-        f"{run_id}:p2:e:{bundle_index}:" f"{cand.extractor_cell[0]}:{cand.extractor_cell[1]}"
+        f"{run_id}:p2:e:{bundle_index}:" + f"{cand.extractor_cell[0]}:{cand.extractor_cell[1]}"
     )
     exts = tuple(
         ExtensionPlacement(
@@ -194,23 +343,10 @@ def _pass2_candidate_to_bundle(
 def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2Result:
     """Greedy interior Pass2 (§8); does not read ``final_route_cells`` or mutate ``ctx``."""
 
-    reconstruction = ctx.reconstruction
-    mineable_cells = frozenset(reconstruction.mineable_placement_cells)
-    if not mineable_cells:
+    prepared = _pass2_prepare_greedy_state(ctx, pass1)
+    if prepared is None:
         return Pass2Result()
-
-    bbox = reconstruction.asteroid_bbox or _bbox_fallback(mineable_cells)
-    if bbox is None:
-        return Pass2Result()
-
-    blocked = build_pass2_blocked_set(pass1, reconstruction)
-    used: set[BlueprintCell] = set(blocked)
-    remaining = frozenset(c for c in mineable_cells if c not in blocked)
-    if not remaining:
-        return Pass2Result()
-
-    transport_kind = infer_transport_kind(reconstruction)
-    ordered = _sort_mineable_interior_first(remaining, bbox)
+    reconstruction, mineable_cells, bbox, used, ordered, transport_kind = prepared
 
     bundles: list[PlacementBundle] = []
     beam: list[dict[str, object]] = []
@@ -220,93 +356,33 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
     for scan_index, extractor in enumerate(ordered):
         if extractor in used:
             continue
-        feasible: list[Pass2BundleCandidate] = []
-        for out_dir in CARDINAL_DIRS:
-            cand = _build_pass2_candidate(
-                run_id=ctx.run_id,
-                bundle_index=bundle_index,
-                scan_index=scan_index,
-                extractor=extractor,
-                out_dir=out_dir,
-                mineable=mineable_cells,
-                used=used,
-                transport_kind=transport_kind,
-                reconstruction=reconstruction,
-                bbox=bbox,
-            )
-            if cand is None:
-                continue
-            if cand.reject_reason is not None:
-                beam.append(
-                    {
-                        "placement_pass": "pass2",
-                        "extractor_cell": extractor,
-                        "output_direction": out_dir,
-                        "score": cand.score,
-                        "committed": False,
-                        "reject_reason": cand.reject_reason,
-                    }
-                )
-                continue
-            feasible.append(cand)
-
-        best: Pass2BundleCandidate | None = None
-        if feasible:
-            max_ext = max(len(c.extension_cells) for c in feasible)
-            if max_ext > 0:
-                feasible = [c for c in feasible if len(c.extension_cells) > 0]
-            best = min(
-                feasible,
-                key=lambda c: lex_key_pass2_best_output(
-                    extractor,
-                    bbox,
-                    len(c.extension_cells),
-                    c.output_direction,
-                ),
-            )
-
+        feasible, beam_rejects = _pass2_gather_feasible_for_extractor(
+            run_id=ctx.run_id,
+            scan_index=scan_index,
+            extractor=extractor,
+            mineable_cells=mineable_cells,
+            used=used,
+            transport_kind=transport_kind,
+            reconstruction=reconstruction,
+            bbox=bbox,
+        )
+        beam.extend(beam_rejects)
+        best = _pass2_pick_best_feasible(extractor, feasible, bbox)
         if best is None or best.reject_reason is not None:
             continue
-
-        b = _pass2_candidate_to_bundle(best, run_id=ctx.run_id, bundle_index=bundle_index)
-        occ = {b.extractor.cell, b.output_stub.cell}
-        occ.update(ext.cell for ext in b.extensions)
-        if occ & used:
-            continue
-        used.update(occ)
-        bundles.append(b)
-        commits.append((str(b.extractor.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
-        for ext in b.extensions:
-            commits.append((str(ext.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
-        beam.append(
-            {
-                "placement_pass": "pass2",
-                "extractor_cell": best.extractor_cell,
-                "output_direction": best.output_direction,
-                "output_stub_cell": best.output_stub_cell,
-                "score": best.score,
-                "committed": True,
-                "reject_reason": None,
-                "placement_ids": (str(b.extractor.placement_id),)
-                + tuple(str(x.placement_id) for x in b.extensions),
-            }
+        next_index = _pass2_try_commit_bundle(
+            best,
+            run_id=ctx.run_id,
+            bundle_index=bundle_index,
+            used=used,
+            bundles=bundles,
+            commits=commits,
+            beam=beam,
         )
-        bundle_index += 1
+        if next_index is not None:
+            bundle_index = next_index
 
-    pass2_occ: set[BlueprintCell] = set()
-    for b in bundles:
-        pass2_occ.add(b.extractor.cell)
-        pass2_occ.add(b.output_stub.cell)
-        for ext in b.extensions:
-            pass2_occ.add(ext.cell)
-    blocked_delta = tuple(sorted(pass2_occ, key=lambda c: (c[1], c[0])))
-
-    return Pass2Result(
-        provisional_placements=tuple(bundles),
-        blocked_cells_delta=blocked_delta,
-        placement_commit_entries=tuple(commits),
-        beam_trace=tuple(beam) if beam else None,
-    )
+    return _pass2_assemble_result(bundles, commits, beam)
 
 
 __all__ = ["build_pass2_blocked_set", "run_pass2_internal_fill"]

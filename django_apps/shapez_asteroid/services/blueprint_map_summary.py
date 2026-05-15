@@ -126,9 +126,7 @@ def merge_with_transport_and_final_mining_map(
         fc = final_cells.get(c)
         if fc is None:
             continue
-        if fc.get("role") == "inferred":
-            cells[c] = dict(fc)
-        elif c not in cells:
+        if fc.get("role") == "inferred" or c not in cells:
             cells[c] = dict(fc)
     ordered = sorted(cells.keys(), key=lambda p: (p[1], p[0]))
     return [dict(cells[k]) for k in ordered]
@@ -253,6 +251,18 @@ def _mining_map_reconstructed(
     return out
 
 
+def _coord_if_extraction_shell_item(item: dict[str, Any]) -> tuple[int, int] | None:
+    xy = _bp_entry_xy_or_none(item)
+    if xy is None:
+        return None
+    style = classify_layout_type(_bp_entry_t_string(item.get("T")))
+    if style == PlotStyle.platform or style is None:
+        return None
+    if not is_extraction_style(style):
+        return None
+    return xy
+
+
 def _extraction_shell_coords_from_entries(decoded: dict[str, Any]) -> frozenset[tuple[int, int]]:
     """Coords that ever carry an extraction layout (belt/pipe may share coords in ``by_coord``)."""
 
@@ -267,24 +277,9 @@ def _extraction_shell_coords_from_entries(decoded: dict[str, Any]) -> frozenset[
     for item in entries:
         if not isinstance(item, dict):
             continue
-        x_val = _int_or_none(item.get("X"))
-        if x_val is None or x_val == 0:
-            continue
-        y_val = _int_or_none(item.get("Y"))
-        if y_val is None:
-            y_val = 0
-        t_raw = item.get("T")
-        if isinstance(t_raw, str):
-            t_str: str | None = t_raw
-        elif t_raw is None:
-            t_str = None
-        else:
-            t_str = str(t_raw)
-        style = classify_layout_type(t_str)
-        if style == PlotStyle.platform or style is None:
-            continue
-        if is_extraction_style(style):
-            shell.add((x_val, y_val))
+        coord = _coord_if_extraction_shell_item(item)
+        if coord is not None:
+            shell.add(coord)
     return frozenset(shell)
 
 
@@ -297,6 +292,30 @@ def _asteroid_envelope_coords(
         return frozenset()
     interior = frozenset(compute_patch_interior_cells(set(extraction_shell)))
     return extraction_shell | interior
+
+
+def _bp_entry_xy_or_none(item: dict[str, Any]) -> tuple[int, int] | None:
+    x_val = _int_or_none(item.get("X"))
+    if x_val is None or x_val == 0:
+        return None
+    y_val = _int_or_none(item.get("Y"))
+    if y_val is None:
+        y_val = 0
+    return (x_val, y_val)
+
+
+def _bp_entry_t_string(t_raw: Any) -> str | None:
+    if isinstance(t_raw, str):
+        return t_raw
+    if t_raw is None:
+        return None
+    return str(t_raw)
+
+
+def _layout_included_for_transport_map(style: PlotStyle | None) -> bool:
+    if style == PlotStyle.platform or style is None:
+        return False
+    return is_extraction_style(style) or style in (PlotStyle.belt, PlotStyle.pipe)
 
 
 def _mining_with_transport_rows(
@@ -315,31 +334,39 @@ def _mining_with_transport_rows(
     for item in entries:
         if not isinstance(item, dict):
             continue
-        x_val = _int_or_none(item.get("X"))
-        if x_val is None or x_val == 0:
+        xy = _bp_entry_xy_or_none(item)
+        if xy is None:
             continue
-        y_val = _int_or_none(item.get("Y"))
-        if y_val is None:
-            y_val = 0
-        t_raw = item.get("T")
-        if isinstance(t_raw, str):
-            t_str: str | None = t_raw
-        elif t_raw is None:
-            t_str = None
-        else:
-            t_str = str(t_raw)
-        style = classify_layout_type(t_str)
-        if style == PlotStyle.platform or style is None:
+        t_str = _bp_entry_t_string(item.get("T"))
+        if not _layout_included_for_transport_map(classify_layout_type(t_str)):
             continue
-        if not (is_extraction_style(style) or style in (PlotStyle.belt, PlotStyle.pipe)):
-            continue
-        r_val = _int_or_none(item.get("R"))
-        by_coord[(x_val, y_val)] = (t_str, r_val)
+        by_coord[xy] = (t_str, _int_or_none(item.get("R")))
 
     return sorted(
         ((x, y, t, r) for (x, y), (t, r) in by_coord.items()),
         key=lambda row: (row[1], row[0]),
     )
+
+
+def _timeline_row_cleared_t(row: TimelineRow, st: PlotStyle | None, dominant: str) -> TimelineRow:
+    ss = _occupied_surface(row.t, dominant) if row.t else "shape"
+    slk = st.value if st is not None else None
+    return TimelineRow(row.x, row.y, None, row.r, ss, slk)
+
+
+def _row_after_layout_strip(
+    row: TimelineRow,
+    st: PlotStyle | None,
+    dominant: str,
+    *,
+    strip_extractors: bool,
+    strip_extensions: bool,
+) -> TimelineRow:
+    if strip_extractors and st in EXTRACTOR_DEMOLITION_STYLES:
+        return _timeline_row_cleared_t(row, st, dominant)
+    if strip_extensions and st in SUPPORT_DEMOLITION_STYLES:
+        return _timeline_row_cleared_t(row, st, dominant)
+    return row
 
 
 def _strip_layout_rows(
@@ -352,21 +379,15 @@ def _strip_layout_rows(
     out: list[TimelineRow] = []
     for row in rows:
         st = classify_layout_type(row.t)
-        if strip_extractors and st in EXTRACTOR_DEMOLITION_STYLES:
-            ss = _occupied_surface(row.t, dominant) if row.t else "shape"
-            slk = st.value if st is not None else None
-            out.append(
-                TimelineRow(row.x, row.y, None, row.r, ss, slk),
-            )
-            continue
-        if strip_extensions and st in SUPPORT_DEMOLITION_STYLES:
-            ss = _occupied_surface(row.t, dominant) if row.t else "shape"
-            slk = st.value if st is not None else None
-            out.append(
-                TimelineRow(row.x, row.y, None, row.r, ss, slk),
-            )
-            continue
-        out.append(row)
+        out.append(
+            _row_after_layout_strip(
+                row,
+                st,
+                dominant,
+                strip_extractors=strip_extractors,
+                strip_extensions=strip_extensions,
+            ),
+        )
     return sorted(out, key=lambda r: (r.y, r.x))
 
 
@@ -530,24 +551,14 @@ def _mining_occupied_rows(
     for item in entries:
         if not isinstance(item, dict):
             continue
-        x_val = _int_or_none(item.get("X"))
-        if x_val is None or x_val == 0:
+        xy = _bp_entry_xy_or_none(item)
+        if xy is None:
             continue
-        y_val = _int_or_none(item.get("Y"))
-        if y_val is None:
-            y_val = 0
-        t_raw = item.get("T")
-        if isinstance(t_raw, str):
-            t_str: str | None = t_raw
-        elif t_raw is None:
-            t_str = None
-        else:
-            t_str = str(t_raw)
+        t_str = _bp_entry_t_string(item.get("T"))
         style = classify_layout_type(t_str)
         if not is_extraction_style(style):
             continue
-        r_val = _int_or_none(item.get("R"))
-        by_coord[(x_val, y_val)] = (t_str, r_val)
+        by_coord[xy] = (t_str, _int_or_none(item.get("R")))
 
     return sorted(
         (TimelineRow(x, y, t, r) for (x, y), (t, r) in by_coord.items()),

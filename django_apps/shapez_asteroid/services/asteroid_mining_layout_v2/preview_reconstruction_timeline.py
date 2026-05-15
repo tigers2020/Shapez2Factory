@@ -51,6 +51,17 @@ from django_apps.shapez_asteroid.services.style_classifier import (
 
 logger = logging.getLogger(__name__)
 
+
+def _type_field_to_str(t_raw: Any) -> str | None:
+    """Normalize blueprint ``T``: keep ``str``, else ``str()`` if not ``None``, else ``None``."""
+
+    if isinstance(t_raw, str):
+        return t_raw
+    if t_raw is not None:
+        return str(t_raw)
+    return None
+
+
 # Synthetic ``T`` for preview-only cells where equipment was stripped back to bare field.
 PREVIEW_ASTEROID_REPLACE_TILE_T = "AsteroidField_PreviewReplace"
 
@@ -89,7 +100,7 @@ def _preview_strip_targets_for_styles(
         if not item:
             continue
         t_raw = item.get("T")
-        t_str = t_raw if isinstance(t_raw, str) else (str(t_raw) if t_raw is not None else None)
+        t_str = _type_field_to_str(t_raw)
         st = classify_layout_type(t_str)
         if st in styles:
             matched.add(xy)
@@ -124,6 +135,32 @@ _V2_PREVIEW_PLACEHOLDER_FRAME_IDS: tuple[str, ...] = (
 )
 
 
+def _blueprint_cell_xy_from_entry(item: dict[str, Any]) -> BlueprintCell | None:
+    x_val = _int_or_none(item.get("X"))
+    if x_val is None or x_val == 0:
+        return None
+    y_val = _int_or_none(item.get("Y"))
+    if y_val is None:
+        y_val = 0
+    return (x_val, y_val)
+
+
+def _recon_shell_surface_hint_coords(recon: ReconstructionDTO) -> frozenset[BlueprintCell]:
+    return (
+        frozenset(recon.extraction_shell_cells)
+        | frozenset(recon.extractor_cells)
+        | frozenset(recon.extension_cells)
+    )
+
+
+def _dominant_surface_from_layout_hints(hints: list[str]) -> str:
+    if "fluid" in hints:
+        return "fluid"
+    if "shape" in hints:
+        return "shape"
+    return "shape"
+
+
 def _dominant_surface_for_shell(
     decoded: dict[str, Any],
     recon: ReconstructionDTO,
@@ -139,31 +176,17 @@ def _dominant_surface_for_shell(
     belt tint, etc.).
     """
 
+    hint_coords = _recon_shell_surface_hint_coords(recon)
     hints: list[str] = []
-    hint_coords = (
-        frozenset(recon.extraction_shell_cells)
-        | frozenset(recon.extractor_cells)
-        | frozenset(recon.extension_cells)
-    )
     for item in _ar.gather_bp_entries_recursive(decoded):
-        x_val = _int_or_none(item.get("X"))
-        if x_val is None or x_val == 0:
+        xy = _blueprint_cell_xy_from_entry(item)
+        if xy is None or xy not in hint_coords:
             continue
-        y_val = _int_or_none(item.get("Y"))
-        if y_val is None:
-            y_val = 0
-        if (x_val, y_val) not in hint_coords:
-            continue
-        t_raw = item.get("T")
-        t_str = t_raw if isinstance(t_raw, str) else (str(t_raw) if t_raw is not None else None)
+        t_str = _type_field_to_str(item.get("T"))
         h = mining_surface_from_layout(t_str)
         if h:
             hints.append(h)
-    if "fluid" in hints:
-        return "fluid"
-    if "shape" in hints:
-        return "shape"
-    return "shape"
+    return _dominant_surface_from_layout_hints(hints)
 
 
 def _last_write_entries_by_cell(
@@ -248,13 +271,7 @@ def _occupied_cell_payload(
     t_str: str | None = None
     r_val: int | None = None
     if item:
-        t_raw = item.get("T")
-        if isinstance(t_raw, str):
-            t_str = t_raw
-        elif t_raw is not None:
-            t_str = str(t_raw)
-        else:
-            t_str = None
+        t_str = _type_field_to_str(item.get("T"))
         r_val = _int_or_none(item.get("R"))
     surf = mining_surface_from_layout(t_str) or dominant
     cell: dict[str, Any] = {
@@ -301,7 +318,7 @@ def _strip_rows_replace_coords_with_asteroid_field(
     for x, y in sorted(removed_coords, key=lambda c: (c[1], c[0])):
         item = entries.get((x, y))
         t_raw = item.get("T") if item else None
-        t_str = t_raw if isinstance(t_raw, str) else (str(t_raw) if t_raw is not None else None)
+        t_str = _type_field_to_str(t_raw)
         surf = mining_surface_from_layout(t_str) or dominant
         cells[(x, y)] = _stamp_row(
             {
@@ -1002,47 +1019,34 @@ def _placeholder_milestone_frame(
     return {"id": frame_id, "summary": summary, "mining_map": rows}
 
 
-def build_v2_preview_map_frames(
+def _v2_preview_timeline_when_empty_barrier(*, source_kind: str | None) -> V2PreviewTimelineResult:
+    only_placeholders = [
+        _placeholder_milestone_frame(
+            frame_id=fid,
+            mining_map_rows=[],
+            source_kind=source_kind,
+        )
+        for fid in _V2_PREVIEW_PLACEHOLDER_FRAME_IDS
+    ]
+    for fr in only_placeholders:
+        if isinstance(fr, dict) and isinstance(fr.get("id"), str):
+            summ_raw = fr.get("summary")
+            summ: dict[str, Any] = summ_raw if isinstance(summ_raw, dict) else {}
+            ec = summ.get("entry_count") if isinstance(summ.get("entry_count"), int) else 0
+            _dev_log_v2_preview_frame(fr["id"], entry_count=ec)
+    return V2PreviewTimelineResult(
+        cast(list[dict[str, Any]], to_jsonable(only_placeholders)),
+        (),
+    )
+
+
+def _v2_preview_build_pre_pass1_reconstruction_frames(
     decoded: dict[str, Any],
     recon: ReconstructionDTO,
     *,
-    source_kind: str | None = None,
-) -> V2PreviewTimelineResult:
-    """
-    Return JSON-safe ``map_timeline`` frames (variable length) and uncapped Pass1 replay
-    events from a **single** Pass1 execution.
-
-    Reconstruction preview order: full layout → strip belt/pipe → strip extractors →
-    strip extensions → infer interior on stripped base → inner-patch focus (shell + void)
-    → mineable highlights. Then STEP 2 Pass1 replay frames (variable count), then
-    placeholder frames for later solver milestones.
-
-    Appends one row per ``_V2_PREVIEW_PLACEHOLDER_FRAME_IDS`` (display-only; same
-    ``mining_map`` as the last reconstruction frame until those milestones exist).
-
-    When reconstruction is empty (no barrier cells), returns **only** those placeholder
-    frames (empty ``mining_map`` each).
-    """
-
-    if not recon.full_barrier_cells:
-        only_placeholders = [
-            _placeholder_milestone_frame(
-                frame_id=fid,
-                mining_map_rows=[],
-                source_kind=source_kind,
-            )
-            for fid in _V2_PREVIEW_PLACEHOLDER_FRAME_IDS
-        ]
-        for fr in only_placeholders:
-            if isinstance(fr, dict) and isinstance(fr.get("id"), str):
-                summ_raw = fr.get("summary")
-                summ: dict[str, Any] = summ_raw if isinstance(summ_raw, dict) else {}
-                ec = summ.get("entry_count") if isinstance(summ.get("entry_count"), int) else 0
-                _dev_log_v2_preview_frame(fr["id"], entry_count=ec)
-        return V2PreviewTimelineResult(
-            cast(list[dict[str, Any]], to_jsonable(only_placeholders)),
-            (),
-        )
+    source_kind: str | None,
+) -> tuple[list[dict[str, Any]], str, list[dict[str, Any]]]:
+    """Reconstruction through mineable highlights; returns ``(frames, dominant, rows3)``."""
 
     dominant = _dominant_surface_for_shell(decoded, recon)
     entries = _last_write_entries_by_cell(decoded)
@@ -1115,18 +1119,16 @@ def build_v2_preview_map_frames(
     frames.append({"id": fid3, "summary": s3, "mining_map": copy.deepcopy(rows3)})
     _dev_log_v2_preview_frame(fid3, entry_count=int(s3["entry_count"]))
 
-    pass1_art = expand_pass1_replay_mining_map_frames(
-        recon,
-        rows3,
-        dominant=dominant,
-        source_kind=source_kind,
-    )
-    frames.extend(pass1_art.frames)
-    pass1_replay_events = pass1_art.pass1_replay_events
+    return frames, dominant, rows3
 
-    last_rows = frames[-1]["mining_map"]
-    if not isinstance(last_rows, list):
-        last_rows = []
+
+def _v2_preview_append_tail_placeholder_frames(
+    frames: list[dict[str, Any]],
+    *,
+    source_kind: str | None,
+) -> None:
+    last_rows_raw = frames[-1]["mining_map"]
+    last_rows: list[dict[str, Any]] = last_rows_raw if isinstance(last_rows_raw, list) else []
     for fid in _V2_PREVIEW_PLACEHOLDER_FRAME_IDS:
         ph = _placeholder_milestone_frame(
             frame_id=fid,
@@ -1138,6 +1140,47 @@ def build_v2_preview_map_frames(
         summ_ph: dict[str, Any] = summ_ph_raw if isinstance(summ_ph_raw, dict) else {}
         ec_ph = summ_ph.get("entry_count") if isinstance(summ_ph.get("entry_count"), int) else None
         _dev_log_v2_preview_frame(fid, entry_count=ec_ph)
+
+
+def build_v2_preview_map_frames(
+    decoded: dict[str, Any],
+    recon: ReconstructionDTO,
+    *,
+    source_kind: str | None = None,
+) -> V2PreviewTimelineResult:
+    """
+    Return JSON-safe ``map_timeline`` frames (variable length) and uncapped Pass1 replay
+    events from a **single** Pass1 execution.
+
+    Reconstruction preview order: full layout → strip belt/pipe → strip extractors →
+    strip extensions → infer interior on stripped base → inner-patch focus (shell + void)
+    → mineable highlights. Then STEP 2 Pass1 replay frames (variable count), then
+    placeholder frames for later solver milestones.
+
+    Appends one row per ``_V2_PREVIEW_PLACEHOLDER_FRAME_IDS`` (display-only; same
+    ``mining_map`` as the last reconstruction frame until those milestones exist).
+
+    When reconstruction is empty (no barrier cells), returns **only** those placeholder
+    frames (empty ``mining_map`` each).
+    """
+
+    if not recon.full_barrier_cells:
+        return _v2_preview_timeline_when_empty_barrier(source_kind=source_kind)
+
+    frames, dominant, rows3 = _v2_preview_build_pre_pass1_reconstruction_frames(
+        decoded, recon, source_kind=source_kind
+    )
+
+    pass1_art = expand_pass1_replay_mining_map_frames(
+        recon,
+        rows3,
+        dominant=dominant,
+        source_kind=source_kind,
+    )
+    frames.extend(pass1_art.frames)
+    pass1_replay_events = pass1_art.pass1_replay_events
+
+    _v2_preview_append_tail_placeholder_frames(frames, source_kind=source_kind)
 
     return V2PreviewTimelineResult(
         cast(list[dict[str, Any]], to_jsonable(frames)),

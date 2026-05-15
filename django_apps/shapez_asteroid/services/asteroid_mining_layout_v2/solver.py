@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django_apps.shapez_asteroid.constants import COPY_PREVIEW_SCHEMA_VERSION
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
     preview_reconstruction_timeline as _v2_preview_timeline,
 )
@@ -87,7 +88,7 @@ def build_copy_preview_v2_sidecars(
             decoded_for_diagnosis=decoded,
             reconstruction_dto=recon,
             partial_pipeline=partial_pipeline,
-            preview_schema_version=2,
+            preview_schema_version=COPY_PREVIEW_SCHEMA_VERSION,
         )
     return {
         "existing_layout_analysis": existing_layout_analysis_to_json(analysis),

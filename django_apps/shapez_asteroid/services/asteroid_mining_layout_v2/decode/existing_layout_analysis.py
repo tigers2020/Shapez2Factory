@@ -262,7 +262,7 @@ def _scan_entries(
             continue
         if style in (PlotStyle.extension, PlotStyle.fluid_extension):
             equipment.append((c, EquipmentKind.EXTENSION, layout_t))
-            continue
+
     return frozenset(belt), frozenset(pipe), equipment
 
 
@@ -338,6 +338,61 @@ def _component_status(
     return next(s.status for s in analysis.components if s.component_id == comp_id)
 
 
+def _equipment_wants_transport(ek: EquipmentKind, layout_t: str | None) -> tuple[bool, bool]:
+    """Return ``(want_belt, want_pipe)`` for adjacency checks (extension uses layout surface)."""
+
+    if ek is EquipmentKind.SHAPE_MINER:
+        return True, False
+    if ek is EquipmentKind.FLUID_MINER:
+        return False, True
+    if ek is EquipmentKind.EXTENSION:
+        surf = _extension_surface(layout_t)
+        return surf == "shape", surf == "fluid"
+    return False, False
+
+
+def _equipment_adjacent_transport_scan(
+    coord: Coord,
+    *,
+    want_belt: bool,
+    want_pipe: bool,
+    belt_cells: frozenset[Coord],
+    pipe_cells: frozenset[Coord],
+    belt_map: dict[Coord, int],
+    pipe_map: dict[Coord, int],
+    belt_analysis: ExistingTransportAnalysis,
+    pipe_analysis: ExistingTransportAnalysis,
+) -> tuple[tuple[Coord, ...], tuple[int, ...], bool]:
+    """Collect adjacent transport cells, component ids, and whether any touches the main trunk."""
+
+    adj_coords: list[Coord] = []
+    comp_ids: list[int] = []
+    touches_main = False
+    for dx, dy in _CARDINAL:
+        n = Coord(coord.x + dx, coord.y + dy)
+        if want_belt and n in belt_cells:
+            adj_coords.append(n)
+            bid = belt_map[n]
+            comp_ids.append(bid)
+            if (
+                _component_status(belt_analysis, bid)
+                is TransportComponentStatus.MAIN_TRUNK_CANDIDATE
+            ):
+                touches_main = True
+        if want_pipe and n in pipe_cells:
+            adj_coords.append(n)
+            pid = pipe_map[n]
+            comp_ids.append(pid)
+            if (
+                _component_status(pipe_analysis, pid)
+                is TransportComponentStatus.MAIN_TRUNK_CANDIDATE
+            ):
+                touches_main = True
+    adj_sorted = tuple(sorted(set(adj_coords), key=lambda c: (c.x, c.y)))
+    comp_ids_sorted = tuple(sorted(set(comp_ids)))
+    return adj_sorted, comp_ids_sorted, touches_main
+
+
 def _analyze_equipment(
     equipment_rows: list[tuple[Coord, EquipmentKind, str | None]],
     belt_cells: frozenset[Coord],
@@ -359,40 +414,18 @@ def _analyze_equipment(
         elif ek is EquipmentKind.EXTENSION:
             ext_count += 1
 
-        want_belt = ek is EquipmentKind.SHAPE_MINER or (
-            ek is EquipmentKind.EXTENSION and _extension_surface(layout_t) == "shape"
+        want_belt, want_pipe = _equipment_wants_transport(ek, layout_t)
+        adj_sorted, comp_ids_sorted, touches_main = _equipment_adjacent_transport_scan(
+            coord,
+            want_belt=want_belt,
+            want_pipe=want_pipe,
+            belt_cells=belt_cells,
+            pipe_cells=pipe_cells,
+            belt_map=belt_map,
+            pipe_map=pipe_map,
+            belt_analysis=belt_analysis,
+            pipe_analysis=pipe_analysis,
         )
-        want_pipe = ek is EquipmentKind.FLUID_MINER or (
-            ek is EquipmentKind.EXTENSION and _extension_surface(layout_t) == "fluid"
-        )
-
-        adj_coords: list[Coord] = []
-        comp_ids: list[int] = []
-        touches_main = False
-
-        for dx, dy in _CARDINAL:
-            n = Coord(coord.x + dx, coord.y + dy)
-            if want_belt and n in belt_cells:
-                adj_coords.append(n)
-                bid = belt_map[n]
-                comp_ids.append(bid)
-                if (
-                    _component_status(belt_analysis, bid)
-                    is TransportComponentStatus.MAIN_TRUNK_CANDIDATE
-                ):
-                    touches_main = True
-            if want_pipe and n in pipe_cells:
-                adj_coords.append(n)
-                pid = pipe_map[n]
-                comp_ids.append(pid)
-                if (
-                    _component_status(pipe_analysis, pid)
-                    is TransportComponentStatus.MAIN_TRUNK_CANDIDATE
-                ):
-                    touches_main = True
-
-        adj_sorted = tuple(sorted(set(adj_coords), key=lambda c: (c.x, c.y)))
-        comp_ids_sorted = tuple(sorted(set(comp_ids)))
 
         if ek in (EquipmentKind.SHAPE_MINER, EquipmentKind.FLUID_MINER):
             if not adj_sorted:
@@ -421,14 +454,9 @@ def _analyze_equipment(
     )
 
 
-def _classify_source_kind(
-    *,
-    belt_cells: frozenset[Coord],
-    pipe_cells: frozenset[Coord],
+def _shape_fluid_equipment_presence(
     equipment_rows: list[tuple[Coord, EquipmentKind, str | None]],
-) -> tuple[SourceKind, bool]:
-    has_belt = bool(belt_cells)
-    has_pipe = bool(pipe_cells)
+) -> tuple[bool, bool]:
     has_shape_miner = any(ek is EquipmentKind.SHAPE_MINER for _, ek, _ in equipment_rows)
     has_fluid_miner = any(ek is EquipmentKind.FLUID_MINER for _, ek, _ in equipment_rows)
     has_shape_ext = any(
@@ -439,25 +467,33 @@ def _classify_source_kind(
         ek is EquipmentKind.EXTENSION and _extension_surface(lt) == "fluid"
         for _, ek, lt in equipment_rows
     )
+    return has_shape_miner or has_shape_ext, has_fluid_miner or has_fluid_ext
 
-    shape_eq = has_shape_miner or has_shape_ext
-    fluid_eq = has_fluid_miner or has_fluid_ext
 
-    if not has_belt and not has_pipe and not shape_eq and not fluid_eq:
-        return SourceKind.RAW_ASTEROID_FIELD, False
-
-    ambiguous = False
+def _try_resolve_source_kind_conflicts(
+    has_belt: bool,
+    has_pipe: bool,
+    shape_eq: bool,
+    fluid_eq: bool,
+) -> tuple[SourceKind, bool] | None:
     if has_belt and has_pipe:
         return SourceKind.MIXED_EXISTING_LAYOUT, False
     if shape_eq and fluid_eq:
         return SourceKind.MIXED_EXISTING_LAYOUT, False
     if fluid_eq and has_belt and not has_pipe:
-        ambiguous = True
-        return SourceKind.UNKNOWN, ambiguous
+        return SourceKind.UNKNOWN, True
     if shape_eq and has_pipe and not has_belt:
-        ambiguous = True
-        return SourceKind.UNKNOWN, ambiguous
+        return SourceKind.UNKNOWN, True
+    return None
 
+
+def _resolve_source_kind_by_transport_and_equipment(
+    has_belt: bool,
+    has_pipe: bool,
+    shape_eq: bool,
+    fluid_eq: bool,
+) -> tuple[SourceKind, bool]:
+    ambiguous = False
     if fluid_eq or has_pipe:
         if shape_eq or has_belt:
             return SourceKind.MIXED_EXISTING_LAYOUT, False
@@ -471,6 +507,80 @@ def _classify_source_kind(
     return SourceKind.UNKNOWN, ambiguous
 
 
+def _classify_source_kind(
+    *,
+    belt_cells: frozenset[Coord],
+    pipe_cells: frozenset[Coord],
+    equipment_rows: list[tuple[Coord, EquipmentKind, str | None]],
+) -> tuple[SourceKind, bool]:
+    has_belt = bool(belt_cells)
+    has_pipe = bool(pipe_cells)
+    shape_eq, fluid_eq = _shape_fluid_equipment_presence(equipment_rows)
+
+    if not has_belt and not has_pipe and not shape_eq and not fluid_eq:
+        return SourceKind.RAW_ASTEROID_FIELD, False
+
+    early = _try_resolve_source_kind_conflicts(has_belt, has_pipe, shape_eq, fluid_eq)
+    if early is not None:
+        return early
+
+    return _resolve_source_kind_by_transport_and_equipment(
+        has_belt, has_pipe, shape_eq, fluid_eq
+    )
+
+
+def _issues_for_transport_layer(
+    label: str,
+    analysis: ExistingTransportAnalysis,
+) -> list[ExistingLayoutIssue]:
+    """Build transport-layer issues for one ``TransportKind`` row (belt or pipe)."""
+
+    items: list[ExistingLayoutIssue] = []
+    if analysis.component_count > 1:
+        coords = tuple(
+            sorted(
+                (c for comp in analysis.components for c in comp.cells),
+                key=lambda c: (c.x, c.y),
+            )
+        )
+        items.append(
+            ExistingLayoutIssue(
+                code=ExistingLayoutIssueCode.TRANSPORT_DISCONNECTED,
+                severity=ExistingLayoutIssueSeverity.WARNING,
+                coords=coords,
+                component_ids=tuple(analysis.orphan_component_ids),
+                message=f"{label}: multiple disconnected transport components",
+            )
+        )
+    if analysis.orphan_component_ids:
+        oids = frozenset(analysis.orphan_component_ids)
+        ocells_list: list[Coord] = []
+        for comp in analysis.components:
+            if comp.component_id in oids:
+                ocells_list.extend(comp.cells)
+        ocells = tuple(sorted(ocells_list, key=lambda c: (c.x, c.y)))
+        items.append(
+            ExistingLayoutIssue(
+                code=ExistingLayoutIssueCode.ORPHAN_TRANSPORT_COMPONENT,
+                severity=ExistingLayoutIssueSeverity.WARNING,
+                coords=ocells,
+                component_ids=tuple(analysis.orphan_component_ids),
+                message=f"{label}: orphan multi-cell transport components",
+            )
+        )
+    if analysis.single_cell_artifacts:
+        items.append(
+            ExistingLayoutIssue(
+                code=ExistingLayoutIssueCode.SINGLE_CELL_TRANSPORT_ARTIFACT,
+                severity=ExistingLayoutIssueSeverity.INFO,
+                coords=tuple(sorted(analysis.single_cell_artifacts, key=lambda c: (c.x, c.y))),
+                component_ids=(),
+                message=f"{label}: single-cell transport artifacts",
+            )
+        )
+    return items
+
+
 def _collect_issues(
     *,
     belt_analysis: ExistingTransportAnalysis,
@@ -479,85 +589,38 @@ def _collect_issues(
     source_ambiguous: bool,
 ) -> list[ExistingLayoutIssue]:
     issues: list[ExistingLayoutIssue] = []
-
-    def push(
-        code: ExistingLayoutIssueCode,
-        severity: ExistingLayoutIssueSeverity,
-        coords: tuple[Coord, ...],
-        component_ids: tuple[int, ...],
-        message: str,
-    ) -> None:
-        issues.append(
-            ExistingLayoutIssue(
-                code=code,
-                severity=severity,
-                coords=coords,
-                component_ids=component_ids,
-                message=message,
-            )
-        )
-
     for label, analysis in (("shape_belt", belt_analysis), ("fluid_pipe", pipe_analysis)):
-        if analysis.component_count > 1:
-            coords = tuple(
-                sorted(
-                    (c for comp in analysis.components for c in comp.cells),
-                    key=lambda c: (c.x, c.y),
-                )
-            )
-            push(
-                ExistingLayoutIssueCode.TRANSPORT_DISCONNECTED,
-                ExistingLayoutIssueSeverity.WARNING,
-                coords,
-                tuple(analysis.orphan_component_ids),
-                f"{label}: multiple disconnected transport components",
-            )
-        if analysis.orphan_component_ids:
-            oids = frozenset(analysis.orphan_component_ids)
-            ocells_list: list[Coord] = []
-            for comp in analysis.components:
-                if comp.component_id in oids:
-                    ocells_list.extend(comp.cells)
-            ocells = tuple(sorted(ocells_list, key=lambda c: (c.x, c.y)))
-            push(
-                ExistingLayoutIssueCode.ORPHAN_TRANSPORT_COMPONENT,
-                ExistingLayoutIssueSeverity.WARNING,
-                ocells,
-                tuple(analysis.orphan_component_ids),
-                f"{label}: orphan multi-cell transport components",
-            )
-        if analysis.single_cell_artifacts:
-            push(
-                ExistingLayoutIssueCode.SINGLE_CELL_TRANSPORT_ARTIFACT,
-                ExistingLayoutIssueSeverity.INFO,
-                tuple(sorted(analysis.single_cell_artifacts, key=lambda c: (c.x, c.y))),
-                (),
-                f"{label}: single-cell transport artifacts",
-            )
+        issues.extend(_issues_for_transport_layer(label, analysis))
 
     if equipment.miners_without_adjacent_transport:
-        push(
-            ExistingLayoutIssueCode.MINER_NO_ADJACENT_TRANSPORT,
-            ExistingLayoutIssueSeverity.WARNING,
-            equipment.miners_without_adjacent_transport,
-            (),
-            "miner missing adjacent correct-kind transport",
+        issues.append(
+            ExistingLayoutIssue(
+                code=ExistingLayoutIssueCode.MINER_NO_ADJACENT_TRANSPORT,
+                severity=ExistingLayoutIssueSeverity.WARNING,
+                coords=equipment.miners_without_adjacent_transport,
+                component_ids=(),
+                message="miner missing adjacent correct-kind transport",
+            )
         )
     if equipment.miners_attached_to_orphan_transport:
-        push(
-            ExistingLayoutIssueCode.MINER_ATTACHED_TO_ORPHAN_TRANSPORT,
-            ExistingLayoutIssueSeverity.WARNING,
-            equipment.miners_attached_to_orphan_transport,
-            (),
-            "miner adjacent only to non-main / artifact transport",
+        issues.append(
+            ExistingLayoutIssue(
+                code=ExistingLayoutIssueCode.MINER_ATTACHED_TO_ORPHAN_TRANSPORT,
+                severity=ExistingLayoutIssueSeverity.WARNING,
+                coords=equipment.miners_attached_to_orphan_transport,
+                component_ids=(),
+                message="miner adjacent only to non-main / artifact transport",
+            )
         )
     if source_ambiguous:
-        push(
-            ExistingLayoutIssueCode.SOURCE_KIND_AMBIGUOUS,
-            ExistingLayoutIssueSeverity.WARNING,
-            (),
-            (),
-            "equipment/transport mix does not admit a single existing-layout class",
+        issues.append(
+            ExistingLayoutIssue(
+                code=ExistingLayoutIssueCode.SOURCE_KIND_AMBIGUOUS,
+                severity=ExistingLayoutIssueSeverity.WARNING,
+                coords=(),
+                component_ids=(),
+                message="equipment/transport mix does not admit a single existing-layout class",
+            )
         )
     issues.sort(key=lambda i: (i.code.value, i.severity.value, tuple((c.x, c.y) for c in i.coords)))
     return issues

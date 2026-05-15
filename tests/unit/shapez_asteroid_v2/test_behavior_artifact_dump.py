@@ -86,6 +86,26 @@ def test_artifact_contains_preview_meta_and_pass1_events(tmp_path: Path) -> None
     kinds = [e.get("event_type") for e in doc["runtime_trace_events"]]
     assert kinds.count("phase_started") == 4
     assert kinds.count("phase_finished") == 4
+    assert kinds.count("phase_failed") == 0
+
+    p1_replay = doc["pass1_replay_events"]
+    p1_kinds = [e.get("kind") for e in p1_replay]
+    p1_rt = [e for e in doc["runtime_trace_events"] if e.get("phase") == "pass1_outer"]
+    probes = [e for e in p1_replay if e.get("kind") == "probe_output"]
+    n_probe_ok = sum(1 for e in probes if e.get("reject_reason") is None)
+    n_probe_rej = sum(1 for e in probes if e.get("reject_reason") is not None)
+    n_scanned = sum(1 for e in p1_rt if e.get("event_type") == "pass1_candidate_scanned")
+    assert n_scanned == p1_kinds.count("consider_extract")
+    n_ok_ev = sum(1 for e in p1_rt if e.get("event_type") == "pass1_output_probe_succeeded")
+    assert n_ok_ev == n_probe_ok
+    n_rej_ev = sum(1 for e in p1_rt if e.get("event_type") == "pass1_output_probe_rejected")
+    assert n_rej_ev == n_probe_rej
+    n_comm = sum(1 for e in p1_rt if e.get("event_type") == "pass1_bundle_committed")
+    assert n_comm == p1_kinds.count("commit_bundle")
+    n_begin = sum(1 for e in p1_rt if e.get("event_type") == "pass1_begin")
+    assert n_begin == p1_kinds.count("pass1_begin")
+    n_end = sum(1 for e in p1_rt if e.get("event_type") == "pass1_end")
+    assert n_end == p1_kinds.count("pass1_end")
     for row in doc["preview_frames"]:
         assert "mining_map" not in row
         assert "id" in row

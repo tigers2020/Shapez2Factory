@@ -47,11 +47,15 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto i
     SolverRunContext,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
+    CommitReason,
     PlacementCommitState,
     TransportKind,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
     TraceCollector,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_events import (
+    TraceEvent,
 )
 
 from .bundle_candidate import (
@@ -65,6 +69,39 @@ from .bundle_candidate import (
 )
 
 _OUTPUT_DIRS = CARDINAL_DIRS
+
+_PASS1_TRACE_PHASE = "pass1_outer"
+
+
+def _pass1_emit_trace_event(
+    trace: TraceCollector,
+    step_box: list[int],
+    *,
+    run_id: str,
+    event_type: str,
+    committed: bool,
+    commit_reason: CommitReason | None,
+) -> None:
+    """Parallel to replay rows; emits even when replay buffer is ``None`` or capped."""
+
+    step = step_box[0]
+    step_box[0] = step + 1
+    trace.emit(
+        TraceEvent(
+            run_id=run_id,
+            phase=_PASS1_TRACE_PHASE,
+            step_index=step,
+            event_type=event_type,
+            committed=committed,
+            commit_reason=commit_reason if committed else None,
+            rejected_reason=None,
+            rollback_reason=None,
+            recovery_trigger=None,
+            computation_cycle=None,
+            route_level=False,
+            transport_kind=None,
+        )
+    )
 
 
 def _bbox_fallback(cells: frozenset[BlueprintCell]) -> BBox | None:
@@ -360,6 +397,8 @@ def _pass1_probe_outputs_for_scan_cell(
     replay_events: list[dict[str, Any]] | None,
     replay_event_cap: int | None,
     beam: list[dict[str, object]],
+    trace: TraceCollector,
+    trace_step_box: list[int],
 ) -> list[Pass1BundleCandidate]:
     feasible: list[Pass1BundleCandidate] = []
     for out_dir in _OUTPUT_DIRS:
@@ -390,6 +429,24 @@ def _pass1_probe_outputs_for_scan_cell(
             },
             cap=replay_event_cap,
         )
+        if reject is None:
+            _pass1_emit_trace_event(
+                trace,
+                trace_step_box,
+                run_id=run_id,
+                event_type="pass1_output_probe_succeeded",
+                committed=True,
+                commit_reason=CommitReason.NORMAL_GAIN,
+            )
+        else:
+            _pass1_emit_trace_event(
+                trace,
+                trace_step_box,
+                run_id=run_id,
+                event_type="pass1_output_probe_rejected",
+                committed=False,
+                commit_reason=None,
+            )
         if reject is not None:
             beam.append(
                 {
@@ -448,6 +505,8 @@ def _pass1_try_commit_bundle(
     bundle_index: int,
     replay_events: list[dict[str, Any]] | None,
     replay_event_cap: int | None,
+    trace: TraceCollector,
+    trace_step_box: list[int],
 ) -> int | None:
     """Return ``bundle_index + 1`` after a successful commit; ``None`` if skipped."""
 
@@ -491,6 +550,14 @@ def _pass1_try_commit_bundle(
         },
         cap=replay_event_cap,
     )
+    _pass1_emit_trace_event(
+        trace,
+        trace_step_box,
+        run_id=ctx.run_id,
+        event_type="pass1_bundle_committed",
+        committed=True,
+        commit_reason=CommitReason.NORMAL_GAIN,
+    )
     return bundle_index + 1
 
 
@@ -500,6 +567,10 @@ def _pass1_assemble_result(
     beam: list[dict[str, object]],
     replay_events: list[dict[str, Any]] | None,
     replay_event_cap: int | None,
+    *,
+    run_id: str,
+    trace: TraceCollector,
+    trace_step_box: list[int],
 ) -> Pass1Result:
     _replay_append(
         replay_events,
@@ -509,6 +580,14 @@ def _pass1_assemble_result(
             "bundle_count": len(bundles),
         },
         cap=replay_event_cap,
+    )
+    _pass1_emit_trace_event(
+        trace,
+        trace_step_box,
+        run_id=run_id,
+        event_type="pass1_end",
+        committed=False,
+        commit_reason=None,
     )
 
     placement_occ: set[BlueprintCell] = set()
@@ -544,7 +623,6 @@ def run_pass1_outer_placement(
 ) -> Pass1Result:
     """Greedy outer-first Pass1 (§7); does not mutate ``ctx`` or routing geometry."""
 
-    _ = trace
     mineable_cells = frozenset(reconstruction.mineable_placement_cells)
     if not mineable_cells:
         return Pass1Result()
@@ -561,11 +639,20 @@ def run_pass1_outer_placement(
     beam: list[dict[str, object]] = []
     commits: list[tuple[str, PlacementCommitState]] = []
     bundle_index = 0
+    trace_step_box: list[int] = [0]
 
     _replay_append(
         replay_events,
         {"placement_pass": "pass1", "kind": "pass1_begin", "run_id": ctx.run_id},
         cap=replay_event_cap,
+    )
+    _pass1_emit_trace_event(
+        trace,
+        trace_step_box,
+        run_id=ctx.run_id,
+        event_type="pass1_begin",
+        committed=False,
+        commit_reason=None,
     )
 
     for scan_index, extractor in enumerate(ordered):
@@ -581,6 +668,14 @@ def run_pass1_outer_placement(
             },
             cap=replay_event_cap,
         )
+        _pass1_emit_trace_event(
+            trace,
+            trace_step_box,
+            run_id=ctx.run_id,
+            event_type="pass1_candidate_scanned",
+            committed=False,
+            commit_reason=None,
+        )
         feasible = _pass1_probe_outputs_for_scan_cell(
             run_id=ctx.run_id,
             scan_index=scan_index,
@@ -593,6 +688,8 @@ def run_pass1_outer_placement(
             replay_events=replay_events,
             replay_event_cap=replay_event_cap,
             beam=beam,
+            trace=trace,
+            trace_step_box=trace_step_box,
         )
         best = _pass1_pick_best_feasible(feasible, extractor, bbox)
         if best is None or best.reject_reason is not None:
@@ -609,11 +706,22 @@ def run_pass1_outer_placement(
             bundle_index=bundle_index,
             replay_events=replay_events,
             replay_event_cap=replay_event_cap,
+            trace=trace,
+            trace_step_box=trace_step_box,
         )
         if nxt is not None:
             bundle_index = nxt
 
-    return _pass1_assemble_result(bundles, commits, beam, replay_events, replay_event_cap)
+    return _pass1_assemble_result(
+        bundles,
+        commits,
+        beam,
+        replay_events,
+        replay_event_cap,
+        run_id=ctx.run_id,
+        trace=trace,
+        trace_step_box=trace_step_box,
+    )
 
 
 __all__ = [

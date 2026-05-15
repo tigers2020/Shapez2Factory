@@ -26,6 +26,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trac
     TraceCollector,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization import (
+    dto_adapters,
     existing_layout_analysis_to_json,
     to_jsonable,
 )
@@ -120,6 +121,7 @@ def build_copy_preview_v2_sidecars(
             preview_schema_version=COPY_PREVIEW_SCHEMA_VERSION,
             runtime_trace=trace,
         )
+    rt_events, rt_trunc = dto_adapters.runtime_trace_events_for_behavior_artifact(trace.events)
     return {
         "existing_layout_analysis": existing_layout_analysis_to_json(analysis),
         "mining_layout_engine": "v2",
@@ -127,6 +129,8 @@ def build_copy_preview_v2_sidecars(
         "partial_pipeline": partial_pipeline,
         "reconstruction_summary": reconstruction_summary,
         "v2_preview_map_timeline": v2_preview_map_timeline,
+        "runtime_trace_events": rt_events,
+        "runtime_trace_events_truncated": rt_trunc,
     }
 
 

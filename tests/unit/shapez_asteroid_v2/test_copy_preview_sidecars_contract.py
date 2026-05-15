@@ -26,3 +26,9 @@ def test_sidecars_include_full_reconstruction_and_partial_pipeline_meta() -> Non
     assert rs.get("interior_patch_count") == 0
     assert "extractor_cell_count" in rs
     assert "extension_cell_count" in rs
+
+    rt = side["runtime_trace_events"]
+    assert isinstance(rt, list)
+    assert len(rt) >= 1
+    assert "runtime_trace_events_truncated" in side
+    assert side["runtime_trace_events_truncated"] is False

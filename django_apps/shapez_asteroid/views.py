@@ -126,9 +126,16 @@ def _copy_preview_success_payload(
     map_timeline: list[dict[str, Any]] = list(v2_list)
 
     if map_timeline:
-        last_frame = map_timeline[-1]
-        last_summary = last_frame["summary"]
-        last_mining_map = last_frame["mining_map"]
+        last_exec: dict[str, Any] | None = None
+        for fr in reversed(map_timeline):
+            summ = fr.get("summary")
+            if isinstance(summ, dict) and summ.get("preview_placeholder") is True:
+                continue
+            last_exec = fr
+            break
+        pick = last_exec if last_exec is not None else map_timeline[-1]
+        last_summary = pick["summary"]
+        last_mining_map = pick["mining_map"]
     else:
         last_summary = {
             "entry_count": 0,
@@ -140,6 +147,9 @@ def _copy_preview_success_payload(
         }
         last_mining_map: list[dict[str, Any]] = []
 
+    rt_ev = v2_side.get("runtime_trace_events")
+    rt_list = rt_ev if isinstance(rt_ev, list) else []
+    rt_tr = v2_side.get("runtime_trace_events_truncated")
     return {
         "ok": True,
         "summary": last_summary,
@@ -152,6 +162,8 @@ def _copy_preview_success_payload(
         "partial_pipeline": v2_side.get("partial_pipeline"),
         "reconstruction_summary": v2_side["reconstruction_summary"],
         "preview_schema_version": COPY_PREVIEW_SCHEMA_VERSION,
+        "runtime_trace_events": rt_list,
+        "runtime_trace_events_truncated": bool(rt_tr) if rt_tr is not None else False,
     }
 
 
@@ -226,7 +238,11 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
 
     ``map_timeline`` is ``v2_preview_map_timeline`` from ``build_copy_preview_v2_sidecars``
     (variable length; each frame has a full ``mining_map``). Root ``summary`` / ``mining_map``
-    match the last timeline frame (or empty placeholders when reconstruction yields no frames).
+    match the last **non-placeholder** timeline frame when present, else the last frame
+    (or empty placeholders when reconstruction yields no frames).
+
+    ``runtime_trace_events`` is the instrumented run trace for this copy-preview request
+    (observability only; not solver input).
 
     ``reconstruction`` is the full STEP 1 DTO (JSON-safe). ``partial_pipeline`` lists which
     solver phases are included in this response vs not yet wired—no replay/NDJSON input.

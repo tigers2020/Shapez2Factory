@@ -262,6 +262,8 @@ def test_copy_preview_view_response_excludes_artifact(tmp_path: Path) -> None:
     assert "schema_version" not in data
     assert "pass1_replay_events" not in data
     assert "algorithm_input" not in data
+    assert isinstance(data.get("runtime_trace_events"), list)
+    assert data.get("runtime_trace_events_truncated") is False
     ba_dir = tmp_path / "var" / "behavior_artifact"
     arts = list(ba_dir.glob("v2_behavior_artifact_*_behavior_artifact.json"))
     assert len(arts) == 1

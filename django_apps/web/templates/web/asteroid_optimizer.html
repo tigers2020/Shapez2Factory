@@ -94,6 +94,9 @@
       data-map-step-v2_step4_routing="{% filter force_escape %}{% trans 'v2: Step4 routing' %}{% endfilter %}"
       data-map-step-v2_final_validation="{% filter force_escape %}{% trans 'v2: Final validation' %}{% endfilter %}"
       data-map-step-v2_final_layout="{% filter force_escape %}{% trans 'v2: Final layout' %}{% endfilter %}"
+      data-msg-preview-placeholder-badge="{% filter force_escape %}{% trans 'PLACEHOLDER / NOT EXECUTED' %}{% endfilter %}"
+      data-msg-preview-placeholder-hint="{% filter force_escape %}{% trans 'Display-only timeline slot; not executed by the mining layout solver in this preview run.' %}{% endfilter %}"
+      data-msg-preview-placeholder-map-title-suffix="{% filter force_escape %}{% trans 'Preview slot (not solver output)' %}{% endfilter %}"
       data-msg-solver-timeline-missing="{% filter force_escape %}{% trans 'Solver timeline was not returned (solver may have failed). Check the server or try Decode again.' %}{% endfilter %}"
       data-msg-solver-replay-no-mining-map="{% filter force_escape %}{% trans 'This solver frame has no mining_map; map may be empty until another frame is selected.' %}{% endfilter %}"
       data-playback-title-map-only="{% filter force_escape %}{% trans 'Map steps' %}{% endfilter %}"
@@ -360,8 +363,17 @@
             <div class="am-map-surface" data-asteroid-map-surface>
               <div class="map-overlay-top">
                 <div class="phase-box" data-am-map-phase-box>
-                  <strong data-am-map-phase-title>{% trans "Solver phase" %}</strong>
-                  <span data-am-map-phase-desc>{% trans "Boundary scan and pipe overlay when the solver API is available." %}</span>
+                  <div class="am-map-phase-headline">
+                    <strong data-am-map-phase-title>{% trans "Solver phase" %}</strong>
+                    <span
+                      class="badge warn am-preview-placeholder-badge hidden"
+                      data-am-preview-placeholder-badge
+                      aria-live="polite"
+                    ></span>
+                  </div>
+                  <span class="am-map-phase-desc" data-am-map-phase-desc>
+                    {% trans "Boundary scan and pipe overlay when the solver API is available." %}
+                  </span>
                 </div>
                 <div class="coord-box">
                   <strong>{% trans "Pointer" %}</strong>
@@ -583,6 +595,8 @@
   var lastCycleFrames = [];
   /** Solver-only replay (STEP10): ``lastReplayUiFrames`` is one UI row per ``solver_timeline`` index (unified timeline from ``solverPhaseStartIndex``). */
   var lastReplayUiFrames = [];
+  /** copy-preview response: runtime trace rows (same run as ``map_timeline``). */
+  var lastRuntimeTraceEvents = [];
   var decodeSummaryText = "";
   var decodePlayback = root.querySelector("[data-am-decode-playback]");
   var decodeStepsEl = root.querySelector("[data-am-decode-steps]");
@@ -611,6 +625,7 @@
   var decodePlayN = 0;
   var mapPhaseTitleEl = root.querySelector("[data-am-map-phase-title]");
   var mapPhaseDescEl = root.querySelector("[data-am-map-phase-desc]");
+  var previewPlaceholderBadgeEl = root.querySelector("[data-am-preview-placeholder-badge]");
   var mapDecodeBadgeEl = root.querySelector("[data-am-decode-map-badge]");
   var mapDecodeViz = root.querySelector("[data-am-decode-map-viz]");
   var mapVizLabel = root.querySelector("[data-am-decode-viz-label]");
@@ -762,6 +777,64 @@
     return row;
   }
 
+  function runtimeTracePhaseCoverage(events) {
+    var seen = Object.create(null);
+    var order = [];
+    if (!Array.isArray(events)) return order;
+    for (var i = 0; i < events.length; i++) {
+      var ev = events[i];
+      var ph = ev && ev.phase != null ? String(ev.phase) : "";
+      if (!ph || seen[ph]) continue;
+      seen[ph] = true;
+      order.push(ph);
+    }
+    return order;
+  }
+
+  function lastNonPlaceholderMapTimelineIndex() {
+    var list = mapTimelineList;
+    if (!list.length) return -1;
+    var last = -1;
+    for (var i = 0; i < list.length; i++) {
+      var su = list[i] && list[i].summary && typeof list[i].summary === "object" ? list[i].summary : {};
+      if (su.preview_placeholder !== true) last = i;
+    }
+    return last;
+  }
+
+  /** Last unified index to visit during autoplay (skip trailing v2 placeholder frames on map-only). */
+  function playbackAutoplayEndIndex() {
+    var n = playbackStepCount();
+    if (!n) return -1;
+    if (!mapTimelineList.length) return n - 1;
+    if (solverPhaseStartIndex >= 0) return n - 1;
+    var cap = lastNonPlaceholderMapTimelineIndex();
+    if (cap < 0) return n - 1;
+    return cap;
+  }
+
+  function formatV2MapTimelineDebugLine(st) {
+    if (!st || typeof st !== "object") return "";
+    var summ = st.summary && typeof st.summary === "object" ? st.summary : {};
+    var fid = st.id != null ? String(st.id) : "";
+    var phases = runtimeTracePhaseCoverage(lastRuntimeTraceEvents);
+    return (
+      "[v2 preview frame]\n" +
+      "frame_id=" +
+      fid +
+      "\nphase(summary)=" +
+      (summ.phase != null ? String(summ.phase) : "") +
+      "\npreview_placeholder=" +
+      String(summ.preview_placeholder === true) +
+      "\npass1_replay=" +
+      String(summ.pass1_replay === true) +
+      "\npass1_event_kind=" +
+      (summ.pass1_event_kind != null ? String(summ.pass1_event_kind) : "") +
+      "\nruntime_trace_phase_coverage=" +
+      JSON.stringify(phases)
+    );
+  }
+
   function buildAmReplayFrameDebugPayload(st, uir, mapIx) {
     var replay = lastSolverReplay;
     var events = replay && Array.isArray(replay.events) ? replay.events : [];
@@ -815,6 +888,12 @@
         : ls.final_extractor_count != null
           ? ls.final_extractor_count
           : null;
+    var summPhase =
+      summ.phase != null
+        ? String(summ.phase)
+        : st && st.id != null
+          ? String(st.id)
+          : "";
     return {
       frame_id: st && st.id ? st.id : null,
       source_array: srcArr,
@@ -828,7 +907,12 @@
       timeline_row_id: st && st.id,
       timeline_frame_id: uir && uir.timeline_frame_id,
       phase: summ.replay_phase != null ? summ.replay_phase : "",
-      step_index: typeof uir.timeline_index === "number" ? uir.timeline_index : null,
+      map_summary_phase: summPhase,
+      preview_placeholder: summ.preview_placeholder === true,
+      pass1_replay: summ.pass1_replay === true,
+      pass1_event_kind: summ.pass1_event_kind != null ? String(summ.pass1_event_kind) : "",
+      runtime_trace_phase_coverage: runtimeTracePhaseCoverage(lastRuntimeTraceEvents),
+      step_index: uir && typeof uir.timeline_index === "number" ? uir.timeline_index : null,
       computation_cycle: typeof summ.replay_cycle === "number" ? summ.replay_cycle : null,
       computation_cycle_start: uir && uir.computation_cycle_start != null ? uir.computation_cycle_start : null,
       computation_cycle_end: uir && uir.computation_cycle_end != null ? uir.computation_cycle_end : null,
@@ -973,7 +1057,8 @@
       stopDecodePlay();
       return;
     }
-    if (decodeStepIndex >= n - 1) {
+    var playEnd = playbackAutoplayEndIndex();
+    if (playEnd >= 0 && decodeStepIndex >= playEnd) {
       stopDecodePlay();
       return;
     }
@@ -1389,6 +1474,10 @@
     if (!n) {
       if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = idleTitle;
       if (mapPhaseDescEl) mapPhaseDescEl.textContent = idleDesc;
+      if (previewPlaceholderBadgeEl) {
+        previewPlaceholderBadgeEl.textContent = "";
+        previewPlaceholderBadgeEl.classList.add("hidden");
+      }
       if (mapDecodeBadgeEl) mapDecodeBadgeEl.textContent = idleBadge;
       if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
       if (surface) surface.classList.remove("am-map-decode-active");
@@ -1411,6 +1500,18 @@
     var uir = solverTimelineUiRow(decodeStepIndex);
     var overlayDetail = buildReplayOverlayDetail(uir);
     var mapStepId = st && st.id ? st.id : "";
+    var summDisplay = st && st.summary && typeof st.summary === "object" ? st.summary : {};
+    var isPreviewPlaceholder = summDisplay.preview_placeholder === true;
+    if (previewPlaceholderBadgeEl) {
+      if (isPreviewPlaceholder) {
+        previewPlaceholderBadgeEl.textContent =
+          root.getAttribute("data-msg-preview-placeholder-badge") || "PLACEHOLDER / NOT EXECUTED";
+        previewPlaceholderBadgeEl.classList.remove("hidden");
+      } else {
+        previewPlaceholderBadgeEl.textContent = "";
+        previewPlaceholderBadgeEl.classList.add("hidden");
+      }
+    }
     if (
       mapStepId === "strip_extractors" ||
       mapStepId === "strip_extensions" ||
@@ -1461,6 +1562,10 @@
         var ptt = root.getAttribute("data-msg-step4-partial-phase-title") || "";
         if (ptt) phaseTitle = mapTitle + " · " + ptt;
       }
+      if (isPreviewPlaceholder) {
+        var pOnly = root.getAttribute("data-msg-preview-placeholder-map-title-suffix") || "";
+        if (pOnly) phaseTitle = phaseTitle + " · " + pOnly;
+      }
       mapPhaseTitleEl.textContent = phaseTitle;
     }
     if (mapPhaseDescEl) {
@@ -1483,18 +1588,29 @@
         if (nv) partialNotes.push(nv);
       }
       var extraNote = partialNotes.join(" · ");
-      if (overlayDetail && overlayDetail.summaryLine && baseLbl) {
+      var phHint = "";
+      if (isPreviewPlaceholder) {
+        phHint = root.getAttribute("data-msg-preview-placeholder-hint") || "";
+      }
+      var descCore = baseLbl;
+      if (phHint) descCore = descCore + " — " + phHint;
+      if (overlayDetail && overlayDetail.summaryLine && descCore) {
         mapPhaseDescEl.textContent =
-          baseLbl + " · " + overlayDetail.summaryLine + (extraNote ? " · " + extraNote : "");
+          descCore + " · " + overlayDetail.summaryLine + (extraNote ? " · " + extraNote : "");
       } else {
-        mapPhaseDescEl.textContent = baseLbl + (extraNote ? " · " + extraNote : "");
+        mapPhaseDescEl.textContent = descCore + (extraNote ? " · " + extraNote : "");
       }
     }
     if (mapDecodeBadgeEl) {
       mapDecodeBadgeEl.textContent = formatUnifiedPlaybackStepLabel(decodeStepIndex, n);
     }
     if (replayMetaEl) {
-      replayMetaEl.textContent = uir ? formatReplayUiFrameMeta(uir, overlayDetail, st.summary) : "";
+      var solverMeta = uir ? formatReplayUiFrameMeta(uir, overlayDetail, st.summary) : "";
+      var v2line = formatV2MapTimelineDebugLine(st);
+      var metaParts = [];
+      if (solverMeta) metaParts.push(solverMeta);
+      if (v2line) metaParts.push(v2line);
+      replayMetaEl.textContent = metaParts.join("\n\n");
     }
     if (replayWarnEl) {
       var thrRaw = root.getAttribute("data-am-opt-ratio-warn-threshold") || "1.35";
@@ -1542,6 +1658,10 @@
     if (!decodeStepsList.length) {
       if (mapPhaseTitleEl) mapPhaseTitleEl.textContent = idleTitle;
       if (mapPhaseDescEl) mapPhaseDescEl.textContent = idleDesc;
+      if (previewPlaceholderBadgeEl) {
+        previewPlaceholderBadgeEl.textContent = "";
+        previewPlaceholderBadgeEl.classList.add("hidden");
+      }
       if (mapDecodeBadgeEl) mapDecodeBadgeEl.textContent = idleBadge;
       if (mapDecodeViz) mapDecodeViz.classList.add("hidden");
       if (surface) surface.classList.remove("am-map-decode-active");
@@ -1602,6 +1722,9 @@
         li.className = "am-decode-step";
         if (mapMode && solverPhaseStartIndex >= 0 && i === solverPhaseStartIndex) {
           li.classList.add("am-decode-step-solver-phase-start");
+        }
+        if (mapMode && st && st.summary && st.summary.preview_placeholder === true) {
+          li.classList.add("am-decode-step-placeholder");
         }
         if (i < decodeStepIndex) li.classList.add("past");
         else if (i === decodeStepIndex) li.classList.add("active");
@@ -1681,6 +1804,7 @@
     mapTimelineList = Array.isArray(timeline) ? timeline : [];
     if (!mapTimelineList.length) {
       solverPhaseStartIndex = -1;
+      lastRuntimeTraceEvents = [];
     }
     decodeStepsList = [];
     stopDecodePlay();
@@ -1711,6 +1835,7 @@
     decodeStepsList = Array.isArray(steps) ? steps : [];
     mapTimelineList = [];
     solverPhaseStartIndex = -1;
+    lastRuntimeTraceEvents = [];
     stopDecodePlay();
     if (!decodePlayback) return;
     if (!decodeStepsList.length) {
@@ -1736,7 +1861,8 @@
     var n = playbackStepCount();
     if (!n) return;
     stopDecodePlay();
-    if (decodeStepIndex >= n - 1) {
+    var playEnd = playbackAutoplayEndIndex();
+    if (playEnd >= 0 && decodeStepIndex >= playEnd) {
       setDecodeStepIndex(0);
     }
     if (decodePlayBtn) decodePlayBtn.hidden = true;
@@ -3787,6 +3913,7 @@
       solverPhaseStartIndex = -1;
       lastSummary = null;
       syncTierBadge(null);
+      lastRuntimeTraceEvents = [];
       if (replayWarnEl) {
         replayWarnEl.textContent = "";
         replayWarnEl.classList.add("hidden");
@@ -3824,6 +3951,7 @@
             lastSummary = null;
             lastSolverReplay = null;
             lastReplayUiFrames = [];
+            lastRuntimeTraceEvents = [];
             applyMapTimeline([]);
             applyDecodeSteps([]);
             syncTierBadge(null);
@@ -3849,6 +3977,9 @@
           syncTierBadge(lastSummary);
           lastMiningMap = x.data.mining_map || [];
           lastStyleCatalog = x.data.style_catalog || {};
+          lastRuntimeTraceEvents = Array.isArray(x.data.runtime_trace_events)
+            ? x.data.runtime_trace_events
+            : [];
           var mapSteps = x.data.map_timeline || [];
           var solverSteps = x.data.solver_timeline || [];
           var replayNorm = normalizeSolverReplayPayload(x.data.solver_replay);
@@ -3968,6 +4099,7 @@
           lastReplayUiFrames = [];
           lastCycleFrames = [];
           lastSummary = null;
+          lastRuntimeTraceEvents = [];
           syncTierBadge(null);
           applyMapTimeline([]);
           applyDecodeSteps([]);

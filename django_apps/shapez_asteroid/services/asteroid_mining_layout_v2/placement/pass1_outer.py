@@ -23,6 +23,11 @@ avoids west-rim extractors picking north output solely because N sorts before W.
 **Grid**: STEP1 ``mineable_placement_cells`` never uses **X == 0** as an id (decode
 convention). Neighbor moves and cheap-escape BFS use ``domain.grid.step_blueprint_cell``
 (seam ``-1 ↔ 1``); never ``x + dx`` raw east/west.
+
+**Rim-only extractor core (Pass1)**: the extractor cell must sit on the mineable graph
+boundary — ``perimeter_depth == 0`` (4-neighbor ``step_cell`` to a cell not in
+``mineable_placement_cells``). Extension chains may still occupy deeper cells; Pass2
+owns interior cores.
 """
 
 from __future__ import annotations
@@ -71,6 +76,50 @@ from .bundle_candidate import (
 _OUTPUT_DIRS = CARDINAL_DIRS
 
 _PASS1_TRACE_PHASE = "pass1_outer"
+
+
+def compute_mineable_perimeter_depth_by_cell(
+    mineable: frozenset[BlueprintCell],
+) -> dict[BlueprintCell, int]:
+    """BFS depth inside ``mineable`` to the nearest cell with a 4-neighbor outside ``mineable``.
+
+    ``depth == 0`` is a rim cell (touches non-mineable via ``step_cell``). Deterministic:
+    multi-source BFS in discovery order from the initial rim queue (mineable iteration order).
+    """
+
+    if not mineable:
+        return {}
+    q: deque[BlueprintCell] = deque()
+    depth: dict[BlueprintCell, int] = {}
+    rim_ordered: list[BlueprintCell] = []
+    for c in sorted(mineable, key=lambda x: (x[1], x[0])):
+        for d in CARDINAL_DIRS:
+            if step_cell(c, d) not in mineable:
+                rim_ordered.append(c)
+                break
+    for c in rim_ordered:
+        if c in depth:
+            continue
+        depth[c] = 0
+        q.append(c)
+    while q:
+        cur = q.popleft()
+        dc = depth[cur]
+        for d in CARDINAL_DIRS:
+            nxt = step_cell(cur, d)
+            if nxt not in mineable or nxt in depth:
+                continue
+            depth[nxt] = dc + 1
+            q.append(nxt)
+    return depth
+
+
+def is_pass1_rim_extractor_cell(
+    cell: BlueprintCell, depth_by_cell: dict[BlueprintCell, int]
+) -> bool:
+    """True iff ``cell`` is mineable-adjacent to a non-mineable 4-neighbor (``depth == 0``)."""
+
+    return depth_by_cell.get(cell) == 0
 
 
 def _pass1_emit_trace_event(
@@ -571,6 +620,10 @@ def _pass1_assemble_result(
     run_id: str,
     trace: TraceCollector,
     trace_step_box: list[int],
+    pass1_extractor_rim_only: bool,
+    max_committed_extractor_depth: int,
+    reject_count_by_reason: dict[str, int],
+    pass1_stop_reason: str,
 ) -> Pass1Result:
     _replay_append(
         replay_events,
@@ -578,6 +631,10 @@ def _pass1_assemble_result(
             "placement_pass": "pass1",
             "kind": "pass1_end",
             "bundle_count": len(bundles),
+            "pass1_extractor_rim_only": pass1_extractor_rim_only,
+            "max_committed_extractor_depth": max_committed_extractor_depth,
+            "reject_count_by_reason": dict(sorted(reject_count_by_reason.items())),
+            "pass1_stop_reason": pass1_stop_reason,
         },
         cap=replay_event_cap,
     )
@@ -633,6 +690,7 @@ def run_pass1_outer_placement(
 
     transport_kind = infer_transport_kind(reconstruction)
     ordered = pass1_mineable_outer_first_order(mineable_cells, bbox)
+    depth_by_cell = compute_mineable_perimeter_depth_by_cell(mineable_cells)
 
     used: set[BlueprintCell] = set()
     bundles: list[PlacementBundle] = []
@@ -640,6 +698,11 @@ def run_pass1_outer_placement(
     commits: list[tuple[str, PlacementCommitState]] = []
     bundle_index = 0
     trace_step_box: list[int] = [0]
+    reject_count_by_reason: dict[str, int] = {}
+    max_committed_extractor_depth = -1
+
+    def _bump_reject(reason: str) -> None:
+        reject_count_by_reason[reason] = reject_count_by_reason.get(reason, 0) + 1
 
     _replay_append(
         replay_events,
@@ -658,16 +721,19 @@ def run_pass1_outer_placement(
     for scan_index, extractor in enumerate(ordered):
         if extractor in used:
             continue
-        _replay_append(
-            replay_events,
-            {
-                "placement_pass": "pass1",
-                "kind": "consider_extract",
-                "scan_index": scan_index,
-                "extractor_cell": [extractor[0], extractor[1]],
-            },
-            cap=replay_event_cap,
-        )
+        pd = depth_by_cell.get(extractor, -1)
+        rim_ok = is_pass1_rim_extractor_cell(extractor, depth_by_cell)
+        row: dict[str, Any] = {
+            "placement_pass": "pass1",
+            "kind": "consider_extract",
+            "scan_index": scan_index,
+            "extractor_cell": [extractor[0], extractor[1]],
+            "perimeter_depth": int(pd),
+        }
+        if not rim_ok:
+            row["reject_reason"] = "pass1_extractor_not_on_rim"
+            _bump_reject("pass1_extractor_not_on_rim")
+        _replay_append(replay_events, row, cap=replay_event_cap)
         _pass1_emit_trace_event(
             trace,
             trace_step_box,
@@ -676,6 +742,8 @@ def run_pass1_outer_placement(
             committed=False,
             commit_reason=None,
         )
+        if not rim_ok:
+            continue
         feasible = _pass1_probe_outputs_for_scan_cell(
             run_id=ctx.run_id,
             scan_index=scan_index,
@@ -711,6 +779,9 @@ def run_pass1_outer_placement(
         )
         if nxt is not None:
             bundle_index = nxt
+            max_committed_extractor_depth = max(
+                max_committed_extractor_depth, int(depth_by_cell.get(best.extractor_cell, 0))
+            )
 
     return _pass1_assemble_result(
         bundles,
@@ -721,11 +792,17 @@ def run_pass1_outer_placement(
         run_id=ctx.run_id,
         trace=trace,
         trace_step_box=trace_step_box,
+        pass1_extractor_rim_only=True,
+        max_committed_extractor_depth=max_committed_extractor_depth,
+        reject_count_by_reason=reject_count_by_reason,
+        pass1_stop_reason="mineable_ordered_scan_complete",
     )
 
 
 __all__ = [
     "cheap_escape_feasible",
+    "compute_mineable_perimeter_depth_by_cell",
+    "is_pass1_rim_extractor_cell",
     "pass1_mineable_outer_first_order",
     "run_pass1_outer_placement",
 ]

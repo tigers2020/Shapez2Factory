@@ -56,6 +56,15 @@ Pass2에서 occupied로 처리하면 안 되는 것:
 6. 실제 route 가능성은 STEP 4 merge-aware routing에서 확정한다.
 ```
 
+### 8.3.1 Pass2 번들 패킹 옵티마이저 (CP-SAT / greedy fallback)
+
+내부 채움 단계에서 **순차 greedy commit 대신**, Pass1·장벽 기준선으로 생성한 모든 feasible ``Pass2BundleCandidate`` 풀을 만든 뒤, **셀 겹침이 없도록** 부분집합을 고른다.
+
+- **점유 셀**: 각 후보의 ``extractor_cell``·``output_stub_cell``·각 extension 타일(``PlacementBundle`` geometry와 동일).
+- **선택기**: OR-Tools CP-SAT가 설치되어 있으면 set packing으로 목적함수(정수 스케일된 score)를 최대화한다. **CP-SAT는 선택 의존성**이며, 미설치·시간 제한·비정상 종료 시 **결정적 greedy fallback**으로 동일 계약을 유지한다.
+- **금지**: STEP 4 라우팅 수행·``final_route_cells`` 참조·``ROUTED_CONFIRMED`` 생성·replay/NDJSON을 알고리즘 입력으로 사용. 선택된 번들은 여전히 **PROVISIONAL_PLACED**만 사용한다.
+- **cheap escape**: 기존과 같이 feasibility / scoring probe일 뿐, escape 경로를 occupied transport로 취급하지 않는다.
+
 ---
 
 ### 8.4 Pass2에서 하지 말아야 할 일

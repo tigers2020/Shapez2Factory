@@ -59,6 +59,10 @@ module = ["dj_database_url"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = ["ortools.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = ["tests.*"]
 ignore_errors = true
 

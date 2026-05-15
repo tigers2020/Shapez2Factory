@@ -2,7 +2,8 @@
 Pass2 internal fill placement (STEP 3, §8).
 
 Blocked set = Pass1 fixed geometry + preserved blueprint barriers. Cheap escape is
-probe-only (§8.2–§8.3). ``routing_state.final_route_cells`` is not read or written.
+probe-only (§8.2–§8.3). STEP 4 route geometry on ``SolverRunContext`` is not read or
+written here.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import math
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BBox,
     BlueprintCell,
+    is_physical_x,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     ExtensionPlacement,
@@ -35,10 +37,13 @@ from .bundle_candidate import (
     blocked_by_building,
     grow_pass2_branching_extension_cells,
     infer_transport_kind,
-    lex_key_pass2_best_output,
     step_cell,
 )
 from .pass1_outer import cheap_escape_feasible
+from .pass2_bundle_optimizer import (
+    Pass2PackingInput,
+    optimize_pass2_bundle_packing,
+)
 
 
 def _bbox_fallback(cells: frozenset[BlueprintCell]) -> BBox | None:
@@ -66,7 +71,7 @@ def _sort_mineable_interior_first(
     cells: frozenset[BlueprintCell],
     bbox: BBox,
 ) -> tuple[BlueprintCell, ...]:
-    """Inner cells first (max edge distance), then same angular sweep as Pass1."""
+    """Inner cells first (max edge distance), then same angular sweep as Pass1 (§7.2)."""
 
     cx = (bbox.min_x + bbox.max_x) / 2.0
     cy = (bbox.min_y + bbox.max_y) / 2.0
@@ -76,8 +81,12 @@ def _sort_mineable_interior_first(
         return min(x - bbox.min_x, bbox.max_x - x, y - bbox.min_y, bbox.max_y - y)
 
     def sort_key(c: BlueprintCell) -> tuple[int, float, int, int]:
-        ang = math.atan2(c[0] - cx, -(c[1] - cy))
-        return (-edge_distance(c), ang, c[1], c[0])
+        x, y = c
+        dx, dy = x - cx, y - cy
+        ang = math.atan2(dx, -dy)
+        if ang < 0.0:
+            ang += 2.0 * math.pi
+        return (-edge_distance(c), ang, y, x)
 
     return tuple(sorted(cells, key=sort_key))
 
@@ -95,6 +104,18 @@ def _build_pass2_candidate(
     bbox: BBox,
 ) -> Pass2BundleCandidate | None:
     stub = step_cell(extractor, out_dir)
+    if not is_physical_x(stub[0]):
+        return Pass2BundleCandidate(
+            candidate_id=f"{run_id}:p2:cand:{scan_index}:{extractor}:{out_dir}",
+            scan_index=scan_index,
+            extractor_cell=extractor,
+            output_direction=out_dir,
+            output_stub_cell=stub,
+            extension_cells=(),
+            transport_kind=transport_kind,
+            score=-1.0,
+            reject_reason="stub_non_physical_coordinate",
+        )
     if stub in used:
         return None
     if blocked_by_building(stub, transport_kind, reconstruction):
@@ -158,17 +179,20 @@ def _build_pass2_candidate(
     )
 
 
-def _pass2_prepare_greedy_state(
+def _pass2_prepare_state(
     ctx: SolverRunContext,
     pass1: Pass1Result,
-) -> tuple[
-    ReconstructionDTO,
-    frozenset[BlueprintCell],
-    BBox,
-    set[BlueprintCell],
-    tuple[BlueprintCell, ...],
-    TransportKind,
-] | None:
+) -> (
+    tuple[
+        ReconstructionDTO,
+        frozenset[BlueprintCell],
+        BBox,
+        set[BlueprintCell],
+        tuple[BlueprintCell, ...],
+        TransportKind,
+    ]
+    | None
+):
     reconstruction = ctx.reconstruction
     mineable_cells = frozenset(reconstruction.mineable_placement_cells)
     if not mineable_cells:
@@ -229,63 +253,36 @@ def _pass2_gather_feasible_for_extractor(
     return feasible, beam_rejects
 
 
-def _pass2_pick_best_feasible(
-    extractor: BlueprintCell,
-    feasible: list[Pass2BundleCandidate],
-    bbox: BBox,
-) -> Pass2BundleCandidate | None:
-    if not feasible:
-        return None
-    max_ext = max(len(c.extension_cells) for c in feasible)
-    if max_ext > 0:
-        feasible = [c for c in feasible if len(c.extension_cells) > 0]
-    return min(
-        feasible,
-        key=lambda c: lex_key_pass2_best_output(
-            extractor,
-            bbox,
-            len(c.extension_cells),
-            c.output_direction,
-        ),
-    )
-
-
-def _pass2_try_commit_bundle(
-    best: Pass2BundleCandidate,
+def _pass2_collect_candidate_pool(
     *,
     run_id: str,
-    bundle_index: int,
-    used: set[BlueprintCell],
-    bundles: list[PlacementBundle],
-    commits: list[tuple[str, PlacementCommitState]],
-    beam: list[dict[str, object]],
-) -> int | None:
-    if best.reject_reason is not None:
-        return None
-    b = _pass2_candidate_to_bundle(best, run_id=run_id, bundle_index=bundle_index)
-    occ = {b.extractor.cell, b.output_stub.cell}
-    occ.update(ext.cell for ext in b.extensions)
-    if occ & used:
-        return None
-    used.update(occ)
-    bundles.append(b)
-    commits.append((str(b.extractor.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
-    for ext in b.extensions:
-        commits.append((str(ext.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
-    beam.append(
-        {
-            "placement_pass": "pass2",
-            "extractor_cell": best.extractor_cell,
-            "output_direction": best.output_direction,
-            "output_stub_cell": best.output_stub_cell,
-            "score": best.score,
-            "committed": True,
-            "reject_reason": None,
-            "placement_ids": (str(b.extractor.placement_id),)
-            + tuple(str(x.placement_id) for x in b.extensions),
-        }
-    )
-    return bundle_index + 1
+    ordered: tuple[BlueprintCell, ...],
+    mineable_cells: frozenset[BlueprintCell],
+    baseline_used: set[BlueprintCell],
+    transport_kind: TransportKind,
+    reconstruction: ReconstructionDTO,
+    bbox: BBox,
+) -> tuple[tuple[Pass2BundleCandidate, ...], list[dict[str, object]]]:
+    """Feasible ``out_dir`` candidates per extractor; baseline ``used`` only."""
+
+    pool: list[Pass2BundleCandidate] = []
+    beam_rejects: list[dict[str, object]] = []
+    for scan_index, extractor in enumerate(ordered):
+        if extractor in baseline_used:
+            continue
+        feasible, rejects = _pass2_gather_feasible_for_extractor(
+            run_id=run_id,
+            scan_index=scan_index,
+            extractor=extractor,
+            mineable_cells=mineable_cells,
+            used=baseline_used,
+            transport_kind=transport_kind,
+            reconstruction=reconstruction,
+            bbox=bbox,
+        )
+        beam_rejects.extend(rejects)
+        pool.extend(feasible)
+    return tuple(pool), beam_rejects
 
 
 def _pass2_assemble_result(
@@ -341,46 +338,76 @@ def _pass2_candidate_to_bundle(
 
 
 def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2Result:
-    """Greedy interior Pass2 (§8); does not read ``final_route_cells`` or mutate ``ctx``."""
+    """Interior Pass2 (§8): pool + set packing; no STEP4 route read/write or ``ctx`` mutation."""
 
-    prepared = _pass2_prepare_greedy_state(ctx, pass1)
+    prepared = _pass2_prepare_state(ctx, pass1)
     if prepared is None:
         return Pass2Result()
-    reconstruction, mineable_cells, bbox, used, ordered, transport_kind = prepared
+    reconstruction, mineable_cells, bbox, baseline_used, ordered, transport_kind = prepared
+
+    pool, pool_rejects = _pass2_collect_candidate_pool(
+        run_id=ctx.run_id,
+        ordered=ordered,
+        mineable_cells=mineable_cells,
+        baseline_used=baseline_used,
+        transport_kind=transport_kind,
+        reconstruction=reconstruction,
+        bbox=bbox,
+    )
+    beam: list[dict[str, object]] = list(pool_rejects)
+
+    pack_inp = Pass2PackingInput(
+        candidates=pool,
+        blocked_cells=frozenset(baseline_used),
+    )
+    packing = optimize_pass2_bundle_packing(pack_inp)
+    beam.extend(packing.rejected)
 
     bundles: list[PlacementBundle] = []
-    beam: list[dict[str, object]] = []
     commits: list[tuple[str, PlacementCommitState]] = []
-    bundle_index = 0
 
-    for scan_index, extractor in enumerate(ordered):
-        if extractor in used:
-            continue
-        feasible, beam_rejects = _pass2_gather_feasible_for_extractor(
-            run_id=ctx.run_id,
-            scan_index=scan_index,
-            extractor=extractor,
-            mineable_cells=mineable_cells,
-            used=used,
-            transport_kind=transport_kind,
-            reconstruction=reconstruction,
-            bbox=bbox,
+    for rank, cand in enumerate(packing.selected):
+        b = _pass2_candidate_to_bundle(cand, run_id=ctx.run_id, bundle_index=rank)
+        bundles.append(b)
+        commits.append((str(b.extractor.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
+        for ext in b.extensions:
+            commits.append((str(ext.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
+        beam.append(
+            {
+                "placement_pass": "pass2",
+                "event_type": "pass2_optimizer_selected",
+                "optimizer_selected": True,
+                "optimizer_rank": rank,
+                "objective_score": int(round(float(cand.score) * 1000.0)),
+                "candidate_score": cand.score,
+                "scan_index": cand.scan_index,
+                "extractor_cell": cand.extractor_cell,
+                "output_direction": cand.output_direction,
+                "output_stub_cell": cand.output_stub_cell,
+                "score": cand.score,
+                "committed": True,
+                "reject_reason": None,
+                "placement_ids": (str(b.extractor.placement_id),)
+                + tuple(str(x.placement_id) for x in b.extensions),
+            }
         )
-        beam.extend(beam_rejects)
-        best = _pass2_pick_best_feasible(extractor, feasible, bbox)
-        if best is None or best.reject_reason is not None:
-            continue
-        next_index = _pass2_try_commit_bundle(
-            best,
-            run_id=ctx.run_id,
-            bundle_index=bundle_index,
-            used=used,
-            bundles=bundles,
-            commits=commits,
-            beam=beam,
-        )
-        if next_index is not None:
-            bundle_index = next_index
+
+    beam.append(
+        {
+            "placement_pass": "pass2",
+            "event_type": "pass2_optimizer_summary",
+            "optimizer": packing.optimizer_name,
+            "optimizer_status": packing.optimizer_status,
+            "candidate_count": packing.candidate_count,
+            "selected_count": packing.selected_count,
+            "conflict_constraint_count": packing.conflict_constraint_count,
+            "objective_value": packing.objective_value,
+            "fallback_used": packing.fallback_used,
+            "cp_sat_status": packing.cp_sat_status,
+            "time_limit_ms": pack_inp.time_limit_ms,
+            "max_candidates": pack_inp.max_candidates,
+        }
+    )
 
     return _pass2_assemble_result(bundles, commits, beam)
 

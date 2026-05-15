@@ -14,6 +14,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord
 )
 
 from .bundle_candidate import Pass2BundleCandidate
+from .pass2_route_probe import Pass2RouteProbe
 
 try:
     from ortools.sat.python import cp_model as ortools_cp_model
@@ -33,26 +34,58 @@ def pass2_candidate_occupied_cells(candidate: Pass2BundleCandidate) -> frozenset
     return frozenset(cells)
 
 
+def pass2_candidate_conflict_cells(
+    candidate: Pass2BundleCandidate,
+    *,
+    blocked_cells: frozenset[BlueprintCell],
+    route_probes: dict[str, Pass2RouteProbe] | None,
+) -> frozenset[BlueprintCell]:
+    """Cells that must not overlap another selected candidate (equipment + shadow corridor).
+
+    ``blocked_cells`` is the Pass2 baseline (Pass1 geometry ∪ barriers). Pass2 equipment
+    must be disjoint from it (enforced when building the pool). Shadow ``path_cells`` may
+    overlap traversable belt/pipe cells that also appear in ``blocked_cells``; those
+    overlaps are modeled via ``path_cells`` only (we do **not** OR the entire baseline into
+    every candidate — that would trivialize set packing).
+
+    ``route_probes`` omitted → equipment footprint only (legacy direct optimizer tests).
+    """
+
+    cells: set[BlueprintCell] = set(pass2_candidate_occupied_cells(candidate))
+    if route_probes is not None:
+        pr = route_probes.get(candidate.candidate_id)
+        if pr is not None and pr.reachable:
+            cells.update(pr.path_cells)
+    cells.update(pass2_candidate_occupied_cells(candidate) & blocked_cells)
+    return frozenset(cells)
+
+
 def _objective_weight(candidate: Pass2BundleCandidate) -> int:
     return int(round(float(candidate.score) * 1000.0))
 
 
 def _cell_to_candidate_indices(
     candidates: tuple[Pass2BundleCandidate, ...],
+    *,
+    blocked_cells: frozenset[BlueprintCell],
+    route_probes: dict[str, Pass2RouteProbe] | None,
 ) -> dict[BlueprintCell, tuple[int, ...]]:
     out: dict[BlueprintCell, list[int]] = {}
     for i, c in enumerate(candidates):
-        for cell in pass2_candidate_occupied_cells(c):
+        for cell in pass2_candidate_conflict_cells(
+            c, blocked_cells=blocked_cells, route_probes=route_probes
+        ):
             out.setdefault(cell, []).append(i)
     return {k: tuple(v) for k, v in out.items()}
 
 
 def select_pass2_bundles_greedy_fallback(
     candidates: tuple[Pass2BundleCandidate, ...],
+    *,
+    blocked_cells: frozenset[BlueprintCell] = frozenset(),
+    route_probes: dict[str, Pass2RouteProbe] | None = None,
 ) -> tuple[Pass2BundleCandidate, ...]:
     """Deterministic greedy set packing: sort by weight desc, then stable tie-breakers."""
-
-
 
     def sort_key(
         item: tuple[int, Pass2BundleCandidate],
@@ -65,7 +98,9 @@ def select_pass2_bundles_greedy_fallback(
     taken: set[BlueprintCell] = set()
     picked: list[Pass2BundleCandidate] = []
     for _i, c in sorted_items:
-        occ = pass2_candidate_occupied_cells(c)
+        occ = pass2_candidate_conflict_cells(
+            c, blocked_cells=blocked_cells, route_probes=route_probes
+        )
         if occ & taken:
             continue
         taken |= occ
@@ -77,6 +112,8 @@ def select_pass2_bundles_greedy_fallback(
 def _cp_sat_pack(
     candidates: tuple[Pass2BundleCandidate, ...],
     *,
+    blocked_cells: frozenset[BlueprintCell],
+    route_probes: dict[str, Pass2RouteProbe] | None,
     time_limit_ms: int,
 ) -> tuple[tuple[Pass2BundleCandidate, ...], int, str, int] | None:
     """Return (selected_sorted, objective, cp_status_name, conflict_count) or None."""
@@ -88,7 +125,9 @@ def _cp_sat_pack(
     model = cp_model.CpModel()
     n = len(candidates)
     weights = [_objective_weight(candidates[i]) for i in range(n)]
-    cell_map = _cell_to_candidate_indices(candidates)
+    cell_map = _cell_to_candidate_indices(
+        candidates, blocked_cells=blocked_cells, route_probes=route_probes
+    )
     x = [model.NewBoolVar(f"x_{i}") for i in range(n)]
     conflict_count = 0
     for _cell, indices in cell_map.items():
@@ -132,6 +171,7 @@ class Pass2PackingInput:
 
     candidates: tuple[Pass2BundleCandidate, ...]
     blocked_cells: frozenset[BlueprintCell]
+    route_probes: dict[str, Pass2RouteProbe] | None = None
     max_candidates: int = 5000
     time_limit_ms: int = 250
     use_cp_sat: bool = True
@@ -186,7 +226,9 @@ def optimize_pass2_bundle_packing(inp: Pass2PackingInput) -> Pass2PackingResult:
             optimizer_name="none",
         )
 
-    cell_map = _cell_to_candidate_indices(pool)
+    cell_map = _cell_to_candidate_indices(
+        pool, blocked_cells=inp.blocked_cells, route_probes=inp.route_probes
+    )
     conflict_constraint_count = sum(1 for idx in cell_map.values() if len(idx) >= 2)
 
     selected: tuple[Pass2BundleCandidate, ...] = ()
@@ -197,7 +239,12 @@ def optimize_pass2_bundle_packing(inp: Pass2PackingInput) -> Pass2PackingResult:
     cp_failed = False
 
     if inp.use_cp_sat and ortools_cp_model is not None:
-        cp_out = _cp_sat_pack(pool, time_limit_ms=inp.time_limit_ms)
+        cp_out = _cp_sat_pack(
+            pool,
+            blocked_cells=inp.blocked_cells,
+            route_probes=inp.route_probes,
+            time_limit_ms=inp.time_limit_ms,
+        )
         if cp_out is not None:
             selected, objective_value, cp_sat_status, conflict_constraint_count = cp_out
             optimizer_name = "cp_sat"
@@ -206,7 +253,9 @@ def optimize_pass2_bundle_packing(inp: Pass2PackingInput) -> Pass2PackingResult:
             cp_failed = True
 
     if not selected:
-        selected = select_pass2_bundles_greedy_fallback(pool)
+        selected = select_pass2_bundles_greedy_fallback(
+            pool, blocked_cells=inp.blocked_cells, route_probes=inp.route_probes
+        )
         objective_value = sum(_objective_weight(c) for c in selected)
         optimizer_name = "greedy_fallback"
         optimizer_status = "GREEDY_FALLBACK"
@@ -236,6 +285,7 @@ __all__ = [
     "Pass2PackingInput",
     "Pass2PackingResult",
     "optimize_pass2_bundle_packing",
+    "pass2_candidate_conflict_cells",
     "pass2_candidate_occupied_cells",
     "select_pass2_bundles_greedy_fallback",
 ]

@@ -3253,7 +3253,7 @@
     for (i = 0; i < filtered.length; i++) {
       var cell = filtered[i];
       var role = cell.role || "occupied";
-      if (role === "inferred") {
+      if (role === "inferred" || role === "mineable") {
         appendCellRect(gUnder, cell, paintRoleForSurfaceMining(cell.surface), mapEntryTitle(cell));
       }
     }

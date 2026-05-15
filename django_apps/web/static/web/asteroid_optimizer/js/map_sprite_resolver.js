@@ -191,10 +191,16 @@
     var surf = entity && entity.surface ? String(entity.surface) : "shape";
     var t = entity && entity.t != null ? String(entity.t) : "";
 
-    if (role === "inferred") return "interior_patch";
-
     if (lk === "asteroid_field") {
       return surfaceFluid(surf) ? "mineable_fluid" : "mineable_shape";
+    }
+
+    if (role === "mineable") {
+      return surfaceFluid(surf) ? "mineable_fluid" : "mineable_shape";
+    }
+
+    if (role === "inferred") {
+      return "interior_patch";
     }
 
     if (lk === "miner" || lk === "extractor") {
@@ -314,6 +320,9 @@
   g.AM_AsteroidMapSpriteResolver = {
     entityTypeString: entityTypeString,
     rotationDegFromEntity: rotationDegFromEntity,
+    semanticTerrainKey: function (entity, paintRole, manifest) {
+      return semanticTerrainKey(entity, paintRole, manifest || {});
+    },
     resolveTerrainSprite: function (row, paintRole) {
       var k = semanticTerrainKey(row, paintRole, null);
       return { base: k, rotationDeg: 0, overlays: [] };

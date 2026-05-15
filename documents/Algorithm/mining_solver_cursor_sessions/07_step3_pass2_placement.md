@@ -51,7 +51,7 @@ Pass2에서 occupied로 처리하면 안 되는 것:
 1. Pass1 결과의 extractor/extension/output_stub cells를 고정한다.
 2. fixed occupied cells를 제외한 mineable cell에서 후보를 만든다.
 3. 남은 mineable cell에 extractor + extension bundle 후보를 생성한다.
-4. cheap escape 가능성이 없는 후보는 낮은 priority 또는 reject 처리한다.
+4. 각 후보에 대해 ``output_stub_cell``에서 외부 margin 또는 동종 trunk goal까지 BFS 도달성(``pass2_route_probe``)을 검사한다. 불가 후보는 ``pass2_stub_not_externally_reachable``로 제외한다(Pass2에서는 ``cheap_escape_feasible``를 쓰지 않는다).
 5. 후보 commit은 final route 확정 전 provisional placement commit이다.
 6. 실제 route 가능성은 STEP 4 merge-aware routing에서 확정한다.
 ```
@@ -60,10 +60,11 @@ Pass2에서 occupied로 처리하면 안 되는 것:
 
 내부 채움 단계에서 **순차 greedy commit 대신**, Pass1·장벽 기준선으로 생성한 모든 feasible ``Pass2BundleCandidate`` 풀을 만든 뒤, **셀 겹침이 없도록** 부분집합을 고른다.
 
-- **점유 셀**: 각 후보의 ``extractor_cell``·``output_stub_cell``·각 extension 타일(``PlacementBundle`` geometry와 동일).
+- **충돌 셀(옵티마이저)**: 각 후보의 ``extractor_cell``·``output_stub_cell``·각 extension 타일에 더해, 도달 BFS가 찾은 **중간 corridor 셀만** shadow로 포함한다.  정책: ``path_cells``는 **stub·goal 제외**(stub는 장비 충돌에 이미 포함, goal은 exterior/trunk 공유 구간 과보수 차단 방지). 이 shadow 셀은 **CP-SAT/greedy 겹침 제약 전용**이며 ``final_route_cells``·``ROUTED_CONFIRMED``·``Pass2Result.blocked_cells_delta``·전역 ``build_pass2_blocked_set`` 갱신에 넣지 않는다.
+- **Pass1 기준선**: ``Pass2PackingInput.blocked_cells``는 Pass1 고정 기하 ∪ 장벽 스냅샷이다. 장비 footprint는 이 집합과 교차하면 안 되며(풀 생성으로 통상 보장), 옵티마이저는 장비∪shadow 간 쌍별 충돌에 ``blocked_cells``와의 교차를 반영한다(전체 baseline을 모든 후보 충돌 집합에 무분별 OR 하면 set packing이 무의미해지므로 하지 않는다).
 - **선택기**: OR-Tools CP-SAT가 설치되어 있으면 set packing으로 목적함수(정수 스케일된 score)를 최대화한다. **CP-SAT는 선택 의존성**이며, 미설치·시간 제한·비정상 종료 시 **결정적 greedy fallback**으로 동일 계약을 유지한다.
 - **금지**: STEP 4 라우팅 수행·``final_route_cells`` 참조·``ROUTED_CONFIRMED`` 생성·replay/NDJSON을 알고리즘 입력으로 사용. 선택된 번들은 여전히 **PROVISIONAL_PLACED**만 사용한다.
-- **cheap escape**: 기존과 같이 feasibility / scoring probe일 뿐, escape 경로를 occupied transport로 취급하지 않는다.
+- **도달 BFS 경로**: 최종 belt/pipe가 아니며, shadow corridor 예약으로만 쓴다.
 
 ---
 
@@ -71,7 +72,7 @@ Pass2에서 occupied로 처리하면 안 되는 것:
 
 ```text
 - 내부 void를 새 mining field로 변환하지 않는다.
-- cheap escape path 전체를 route처럼 occupied 처리하지 않는다.
+- cheap escape path 전체를 **전역 blocked / final route**처럼 occupied 처리하지 않는다(옵티마이저 shadow corridor는 §8.3.1과 별개).
 - 외부 연결이 불가능한 단독 extractor를 억지로 배치하지 않는다.
 - 채굴기 하나만 멀리 두고 긴 pipe만 연결하는 저효율 패턴을 방치하지 않는다.
 ```

@@ -20,6 +20,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement im
     pass1_outer,
     pass2_bundle_optimizer,
     pass2_internal,
+    pass2_route_probe,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.placement_fsm import (
     assert_all_provisional_commits,
@@ -28,8 +29,11 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pl
 
 Pass2BundleCandidate = bundle_candidate.Pass2BundleCandidate
 Pass2PackingInput = pass2_bundle_optimizer.Pass2PackingInput
+Pass2RouteProbe = pass2_route_probe.Pass2RouteProbe
 optimize_pass2_bundle_packing = pass2_bundle_optimizer.optimize_pass2_bundle_packing
+pass2_candidate_conflict_cells = pass2_bundle_optimizer.pass2_candidate_conflict_cells
 pass2_candidate_occupied_cells = pass2_bundle_optimizer.pass2_candidate_occupied_cells
+probe_pass2_stub_route = pass2_route_probe.probe_pass2_stub_route
 select_pass2_bundles_greedy_fallback = pass2_bundle_optimizer.select_pass2_bundles_greedy_fallback
 run_pass2_internal_fill = pass2_internal.run_pass2_internal_fill
 run_pass1_outer_placement = pass1_outer.run_pass1_outer_placement
@@ -197,6 +201,7 @@ def test_pass2_modules_do_not_reference_final_route_cells() -> None:
     for rel in (
         "django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/placement/pass2_internal.py",
         "django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/placement/pass2_bundle_optimizer.py",
+        "django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/placement/pass2_route_probe.py",
     ):
         text = (root / rel).read_text(encoding="utf-8")
         assert "final_route_cells" not in text
@@ -254,5 +259,148 @@ def test_cp_sat_prefers_b_and_c_over_a_when_installed() -> None:
 def test_select_pass2_bundles_greedy_fallback_order() -> None:
     a = _cand(cid="a", scan_index=0, extractor=(0, 0), stub=(0, 1), score=1.0)
     b = _cand(cid="b", scan_index=0, extractor=(2, 0), stub=(2, 1), score=2.0)
-    out = select_pass2_bundles_greedy_fallback((a, b))
+    out = select_pass2_bundles_greedy_fallback((a, b), blocked_cells=frozenset(), route_probes=None)
     assert len(out) == 2
+
+
+def test_pass2_candidate_conflict_cells_includes_shadow_path() -> None:
+    a = _cand(cid="a", scan_index=0, extractor=(0, 0), stub=(0, 1), score=10.0)
+    probes = {
+        "a": Pass2RouteProbe(
+            candidate_id="a",
+            reachable=True,
+            path_cells=((5, 5), (5, 6)),
+            goal_cell=(5, 7),
+            reject_reason=None,
+        )
+    }
+    cells = pass2_candidate_conflict_cells(a, blocked_cells=frozenset(), route_probes=probes)
+    assert (5, 5) in cells and (5, 6) in cells
+    assert (5, 7) not in cells
+    assert (0, 1) not in {(5, 5), (5, 6)}
+
+
+def test_cp_sat_shadow_corridor_overlap_selects_at_most_one() -> None:
+    pytest.importorskip("ortools")
+    a = _cand(cid="A", scan_index=0, extractor=(0, 0), stub=(0, 1), score=100.0)
+    b = _cand(cid="B", scan_index=1, extractor=(10, 0), stub=(10, 1), score=100.0)
+    shared = (5, 5)
+    probes = {
+        "A": Pass2RouteProbe(
+            candidate_id="A",
+            reachable=True,
+            path_cells=(shared,),
+            goal_cell=(0, 10),
+            reject_reason=None,
+        ),
+        "B": Pass2RouteProbe(
+            candidate_id="B",
+            reachable=True,
+            path_cells=(shared,),
+            goal_cell=(10, 10),
+            reject_reason=None,
+        ),
+    }
+    inp = Pass2PackingInput(
+        candidates=(a, b), blocked_cells=frozenset(), route_probes=probes, use_cp_sat=True
+    )
+    r = optimize_pass2_bundle_packing(inp)
+    assert len(r.selected) == 1
+
+
+def test_greedy_fallback_respects_shadow_corridor() -> None:
+    a = _cand(cid="A", scan_index=0, extractor=(0, 0), stub=(0, 1), score=10.0)
+    b = _cand(cid="B", scan_index=1, extractor=(10, 0), stub=(10, 1), score=9.0)
+    shared = (5, 5)
+    probes = {
+        "A": Pass2RouteProbe(
+            candidate_id="A",
+            reachable=True,
+            path_cells=(shared,),
+            goal_cell=(0, 9),
+            reject_reason=None,
+        ),
+        "B": Pass2RouteProbe(
+            candidate_id="B",
+            reachable=True,
+            path_cells=(shared,),
+            goal_cell=(10, 9),
+            reject_reason=None,
+        ),
+    }
+    out = select_pass2_bundles_greedy_fallback(
+        (a, b), blocked_cells=frozenset(), route_probes=probes
+    )
+    assert len(out) == 1
+
+
+def test_probe_path_cells_exclude_stub_and_goal() -> None:
+    mineable = tuple((x, y) for x in range(10, 15) for y in range(10, 15))
+    bbox = BBox(min_x=10, min_y=10, max_x=14, max_y=14)
+    barrier = tuple(mineable)
+    recon = ReconstructionDTO(
+        mineable_placement_cells=mineable,
+        extraction_shell_cells=(),
+        full_barrier_cells=barrier,
+        belt_cells=mineable,
+        asteroid_bbox=bbox,
+        external_margin=3,
+    )
+    ctx = SolverRunContext(run_id="probe_path", reconstruction=recon)
+    cand = _cand(
+        cid="p",
+        scan_index=0,
+        extractor=(12, 12),
+        stub=(12, 11),
+        score=1.0,
+        out_dir=(0, -1),
+    )
+    pr = probe_pass2_stub_route(
+        cand,
+        pass1_fixed_cells=frozenset(),
+        reconstruction=recon,
+        ctx=ctx,
+    )
+    assert pr.reachable
+    assert pr.goal_cell is not None
+    assert cand.output_stub_cell not in pr.path_cells
+    assert pr.goal_cell not in pr.path_cells
+
+
+def test_pass2_blocked_cells_delta_is_equipment_only() -> None:
+    mineable = tuple((x, y) for x in range(20, 26) for y in range(20, 26) if (x, y) != (22, 22))
+    bbox = BBox(min_x=20, min_y=20, max_x=25, max_y=25)
+    shell = tuple(
+        sorted(
+            (
+                c
+                for c in mineable
+                if min(
+                    c[0] - bbox.min_x,
+                    bbox.max_x - c[0],
+                    c[1] - bbox.min_y,
+                    bbox.max_y - c[1],
+                )
+                == 0
+            ),
+            key=lambda c: (c[1], c[0]),
+        )
+    )
+    barrier = tuple({*mineable, (22, 22)})
+    recon = ReconstructionDTO(
+        mineable_placement_cells=mineable,
+        extraction_shell_cells=shell,
+        full_barrier_cells=barrier,
+        belt_cells=mineable,
+        asteroid_bbox=bbox,
+    )
+    ctx = SolverRunContext(run_id="p2_delta_contract", reconstruction=recon)
+    p1 = run_pass1_outer_placement(ctx, recon)
+    p2 = run_pass2_internal_fill(ctx, p1)
+    equip: set[tuple[int, int]] = set()
+    for b in p2.provisional_placements:
+        equip.add(b.extractor.cell)
+        equip.add(b.output_stub.cell)
+        for ext in b.extensions:
+            equip.add(ext.cell)
+    assert set(p2.blocked_cells_delta) == equip

@@ -555,6 +555,8 @@ def _apply_mineable_highlights(
     frame_id: str,
     source_kind: str | None,
 ) -> list[dict[str, Any]]:
+    """Stamp mineable phase; promote inferred rows in ``mineable`` to confirmed field."""
+
     cells = _rows_to_cell_dict(rows)
     for x, y in mineable:
         key = (x, y)
@@ -562,7 +564,11 @@ def _apply_mineable_highlights(
             continue
         r = dict(cells[key])
         if r.get("role") == "inferred":
+            r["role"] = "mineable"
             r["layout_kind"] = "asteroid_field"
+            surf = r.get("surface")
+            if surf not in ("shape", "fluid"):
+                r["surface"] = "shape"
         r["phase"] = frame_id
         if source_kind:
             r["source_kind"] = source_kind

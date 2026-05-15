@@ -60,6 +60,13 @@ belt/pipe로만 인접 셀 타당성을 판별한다.
 - Pass1/Pass2/Pass3/Reclaim loop는 이미 확정된 mineable field 위에서 placement와 routing을 최적화한다.
 ```
 
+### 6.3.1 Preview / UI: ``inferred`` → ``mineable`` (출력 계층)
+
+복원 결과에서 ``interior_patch_cells ⊆ mineable_placement_cells``로 확정된 셀은 **추론 void(``role=inferred``)**가 아니라 **채굴 가능 소행성 필드**로 표시되어야 한다.
+
+- ``preview_reconstruction_timeline._apply_mineable_highlights``는 ``mineable_placement_cells``에 포함된 inferred 행에 대해 ``role=mineable``·``layout_kind=asteroid_field``를 부여한다.
+- 프론트 ``map_sprite_resolver.js``는 ``layout_kind === "asteroid_field"``를 ``role === "inferred"``보다 먼저 해석해, 구 리플레이 행(``inferred``+``asteroid_field``)도 mineable 스프라이트로 그린다.
+
 ---
 
 ### 6.4 Existing layout analysis와의 경계

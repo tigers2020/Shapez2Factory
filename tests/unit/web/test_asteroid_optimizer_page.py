@@ -47,6 +47,14 @@ def test_asteroid_optimizer_pass1_extension_overlay_outline_smoke() -> None:
     assert b"pass1_scan_cursor" in response.content
 
 
+def test_asteroid_optimizer_svg_underlay_paints_mineable_role() -> None:
+    """Promoted mineable rows are not occupied; plot must still fill gUnder like inferred."""
+
+    response = Client().get(reverse("web:asteroid"))
+    assert response.status_code == 200
+    assert b'role === "inferred" || role === "mineable"' in response.content
+
+
 def test_asteroid_optimizer_map_sprite_atlas_smoke() -> None:
     """Sprite atlas wires static PNG/JSON, resolver, renderer, and canvas drawImage path."""
 

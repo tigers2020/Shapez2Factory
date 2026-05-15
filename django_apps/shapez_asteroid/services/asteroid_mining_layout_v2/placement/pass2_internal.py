@@ -1,9 +1,9 @@
 """
 Pass2 internal fill placement (STEP 3, §8).
 
-Blocked set = Pass1 fixed geometry + preserved blueprint barriers. Cheap escape is
-probe-only (§8.2–§8.3). STEP 4 route geometry on ``SolverRunContext`` is not read or
-written here.
+Blocked set = Pass1 fixed geometry + preserved blueprint barriers. Stub→exterior/trunk
+BFS (``pass2_route_probe``) is admission + packing-shadow only (§8). STEP 4 route
+geometry on ``SolverRunContext`` is not read or written here.
 """
 
 from __future__ import annotations
@@ -39,11 +39,11 @@ from .bundle_candidate import (
     infer_transport_kind,
     step_cell,
 )
-from .pass1_outer import cheap_escape_feasible
 from .pass2_bundle_optimizer import (
     Pass2PackingInput,
     optimize_pass2_bundle_packing,
 )
+from .pass2_route_probe import Pass2RouteProbe, probe_pass2_stub_route
 
 
 def _bbox_fallback(cells: frozenset[BlueprintCell]) -> BBox | None:
@@ -65,6 +65,15 @@ def build_pass2_blocked_set(
         fixed = frozenset(pass1.occupied_cells)
     barrier = frozenset(reconstruction.full_barrier_cells)
     return fixed | barrier
+
+
+def _pass1_fixed_cells_for_probe(pass1: Pass1Result) -> frozenset[BlueprintCell]:
+    """Pass1 equipment ∪ output stubs (BFS hard occupancy; not full ``full_barrier``)."""
+
+    fixed = frozenset(pass1.placement_occupied_cells) | frozenset(pass1.output_stub_cells)
+    if not fixed and pass1.occupied_cells:
+        fixed = frozenset(pass1.occupied_cells)
+    return fixed
 
 
 def _sort_mineable_interior_first(
@@ -129,19 +138,6 @@ def _build_pass2_candidate(
             transport_kind=transport_kind,
             score=-1.0,
             reject_reason="stub_blocked",
-        )
-
-    if not cheap_escape_feasible(stub, transport_kind, reconstruction):
-        return Pass2BundleCandidate(
-            candidate_id=f"{run_id}:p2:cand:{scan_index}:{extractor}:{out_dir}",
-            scan_index=scan_index,
-            extractor_cell=extractor,
-            output_direction=out_dir,
-            output_stub_cell=stub,
-            extension_cells=(),
-            transport_kind=transport_kind,
-            score=-1.0,
-            reject_reason="cheap_escape_failed",
         )
 
     trial_used = set(used)
@@ -356,9 +352,36 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
     )
     beam: list[dict[str, object]] = list(pool_rejects)
 
+    p1_fixed = _pass1_fixed_cells_for_probe(pass1)
+    route_probes: dict[str, Pass2RouteProbe] = {}
+    filtered_pool: list[Pass2BundleCandidate] = []
+    for cand in pool:
+        pr = probe_pass2_stub_route(
+            cand,
+            pass1_fixed_cells=p1_fixed,
+            reconstruction=reconstruction,
+            ctx=ctx,
+        )
+        route_probes[cand.candidate_id] = pr
+        if not pr.reachable:
+            beam.append(
+                {
+                    "placement_pass": "pass2",
+                    "extractor_cell": cand.extractor_cell,
+                    "output_direction": cand.output_direction,
+                    "output_stub_cell": cand.output_stub_cell,
+                    "score": cand.score,
+                    "committed": False,
+                    "reject_reason": "pass2_stub_not_externally_reachable",
+                }
+            )
+            continue
+        filtered_pool.append(cand)
+
     pack_inp = Pass2PackingInput(
-        candidates=pool,
+        candidates=tuple(filtered_pool),
         blocked_cells=frozenset(baseline_used),
+        route_probes=route_probes,
     )
     packing = optimize_pass2_bundle_packing(pack_inp)
     beam.extend(packing.rejected)

@@ -18,6 +18,60 @@ expand_pass1_replay_mining_map_frames = (
     preview_reconstruction_timeline.expand_pass1_replay_mining_map_frames
 )
 PREVIEW_TILE = preview_reconstruction_timeline.PREVIEW_ASTEROID_REPLACE_TILE_T
+_apply_mineable_highlights = preview_reconstruction_timeline._apply_mineable_highlights
+
+
+def test_apply_mineable_highlights_promotes_inferred_in_mineable_set() -> None:
+    rows = [
+        {"x": 3, "y": 3, "role": "inferred", "surface": "shape", "phase": "v2_recon_inner_patch"},
+        {"x": 5, "y": 5, "role": "occupied", "surface": "shape", "layout_kind": "asteroid_field"},
+    ]
+    mineable = frozenset({(3, 3), (5, 5)})
+    out = _apply_mineable_highlights(rows, mineable, "v2_recon_mineable", "test_kind")
+    by = {(int(r["x"]), int(r["y"])): r for r in out}
+    assert by[(3, 3)]["role"] == "mineable"
+    assert by[(3, 3)]["layout_kind"] == "asteroid_field"
+    assert by[(3, 3)]["surface"] == "shape"
+    assert by[(3, 3)]["phase"] == "v2_recon_mineable"
+    assert by[(3, 3)]["source_kind"] == "test_kind"
+    assert by[(5, 5)]["role"] == "occupied"
+    assert by[(5, 5)]["phase"] == "v2_recon_mineable"
+
+
+def test_apply_mineable_highlights_sets_default_surface_when_missing() -> None:
+    rows = [{"x": 1, "y": 2, "role": "inferred", "phase": "x"}]
+    out = _apply_mineable_highlights(rows, frozenset({(1, 2)}), "v2_recon_mineable", None)
+    r = out[0]
+    assert r["role"] == "mineable"
+    assert r["surface"] == "shape"
+
+
+def test_apply_mineable_highlights_leaves_inferred_outside_mineable() -> None:
+    rows = [{"x": 9, "y": 9, "role": "inferred", "surface": "shape"}]
+    out = _apply_mineable_highlights(rows, frozenset({(1, 1)}), "v2_recon_mineable", None)
+    assert out[0]["role"] == "inferred"
+    assert out[0].get("layout_kind") is None
+
+
+def test_v2_recon_mineable_frame_interior_cells_are_mineable_role() -> None:
+    entries: list[dict[str, int | str]] = []
+    for x in range(2, 7):
+        for y in range(2, 7):
+            if x in (2, 6) or y in (2, 6):
+                entries.append({"X": x, "Y": y, "T": "AsteroidField_Test"})
+    entries.append({"X": 7, "Y": 3, "T": "Belt_Straight"})
+    entries.append({"X": 4, "Y": 4, "T": "Layout_ShapeMiner"})
+    entries.append({"X": 5, "Y": 4, "T": "Layout_ShapeMinerExtension"})
+    decoded = {"BP": {"Entries": entries}}
+    recon = reconstruct_asteroid_mining_field(decoded)
+    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout").frames
+    mineable_fr = next(f for f in frames if f["id"] == "v2_recon_mineable")
+    interior = set(recon.interior_patch_cells)
+    for r in mineable_fr["mining_map"]:
+        xy = (int(r["x"]), int(r["y"]))
+        if xy in interior:
+            assert r.get("role") == "mineable"
+            assert r.get("layout_kind") == "asteroid_field"
 
 
 def test_transport_shell_frame_includes_extractors_without_asteroid_field_tiles() -> None:

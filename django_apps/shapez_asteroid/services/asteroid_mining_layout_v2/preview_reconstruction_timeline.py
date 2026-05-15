@@ -877,6 +877,9 @@ def _mining_map_with_pass1_replay_overlay(
 # Above this count, each timeline frame triggers a browser ``loadCellsForSummary`` round-trip
 # (map-cells fetch storm + UI jank). Keep full probe/consider animation only for small runs.
 _PASS1_PREVIEW_FULL_EVENT_BUDGET = 72
+# Large reconstructed grids: full ``mining_map`` per replay step still freezes the UI even
+# when Pass1 emits few replay rows (e.g. rim-only scan). Apply the same event thinning.
+_PASS1_PREVIEW_FULL_MAP_ROW_BUDGET = 96
 
 
 def _committed_bundle_dicts_from_pass1(p1: Pass1Result) -> list[dict[str, Any]]:
@@ -899,8 +902,15 @@ def _committed_bundle_dicts_from_pass1(p1: Pass1Result) -> list[dict[str, Any]]:
     return out
 
 
-def _pass1_events_for_preview_timeline(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    if len(events) <= _PASS1_PREVIEW_FULL_EVENT_BUDGET:
+def _pass1_events_for_preview_timeline(
+    events: list[dict[str, Any]],
+    *,
+    mineable_row_count: int,
+) -> list[dict[str, Any]]:
+    if (
+        len(events) <= _PASS1_PREVIEW_FULL_EVENT_BUDGET
+        and mineable_row_count <= _PASS1_PREVIEW_FULL_MAP_ROW_BUDGET
+    ):
         return list(events)
     return [e for e in events if e.get("kind") in ("pass1_begin", "commit_bundle")]
 
@@ -932,9 +942,10 @@ def expand_pass1_replay_mining_map_frames(
 ) -> Pass1PreviewArtifacts:
     """STEP 2 Pass1: ``mining_map`` frames for copy-preview ``map_timeline``.
 
-    One frame per replay event for small runs; for larger event streams only ``pass1_begin``
-    and ``commit_bundle`` rows are expanded so the UI does not issue hundreds of identical
-    ``/api/asteroid/map-cells/`` requests during playback.
+    One frame per replay event for small runs; for larger event streams **or** large
+    ``mineable_rows`` (same fetch cost per frame), only ``pass1_begin`` and ``commit_bundle``
+    rows are expanded so the UI does not issue hundreds of identical ``/api/asteroid/map-cells/``
+    requests during playback.
 
     When ``reconstruction.mineable_placement_cells`` is empty, Pass1 emits no replay rows; a
     single ``v2_pass1_skipped_no_mineable`` frame is returned so the timeline length matches
@@ -954,8 +965,12 @@ def expand_pass1_replay_mining_map_frames(
         trace=trace,
     )
 
-    timeline_events = _pass1_events_for_preview_timeline(events)
-    preview_thinned = len(events) > _PASS1_PREVIEW_FULL_EVENT_BUDGET
+    timeline_events = _pass1_events_for_preview_timeline(
+        events, mineable_row_count=len(mineable_rows)
+    )
+    preview_thinned = len(events) > _PASS1_PREVIEW_FULL_EVENT_BUDGET or len(
+        mineable_rows
+    ) > _PASS1_PREVIEW_FULL_MAP_ROW_BUDGET
 
     if not timeline_events:
         # ``run_pass1_outer_placement`` records nothing when ``mineable_placement_cells`` is

@@ -64,6 +64,17 @@ mineable_placement_cells  ← shell ∪ patch ∪ 장비 footprint 등으로 확
 
 - ``preview_reconstruction_timeline._apply_mineable_highlights``는 ``mineable_placement_cells``에 포함된 inferred 행에 대해 ``role=mineable``·``layout_kind=asteroid_field``를 부여한다.
 - 프론트 ``map_sprite_resolver.js``는 ``layout_kind === "asteroid_field"``를 ``role === "inferred"``보다 먼저 해석해, 구 리플레이 행(``inferred``+``asteroid_field``)도 mineable 스프라이트로 그린다.
+- 도메인 ``MineableCellSemantic.source``에서 추론된 내부 patch mineable은 ``asteroid_field_inferred``로 표기한다(프리뷰 ``mineable``+``asteroid_field`` 승격과 동일한 “필드 본체” 역할).
+
+### 6.3.2 외부 void flood · ``outer_rim_mineable_cells`` (Pass1 단일 림)
+
+Pass1이 쓰는 **외곽 림**은 ``asteroid_bbox ± external_margin`` 직사각형 테두리에서 시작하는 4-인접 flood로 분류한 ``external_void_cells``에 인접한 ``mineable_placement_cells``뿐이다.
+
+- **차단( mineable 제외 )**: ``mineable_placement_cells``와 ``void_flood_blocker_cells``(``platform``∪``other`` 고체 레이아웃)만 void 관통을 막는다. **belt/pipe는 void flood에 넣지 않는다**(내부 hull ``full_barrier − belt − pipe``와 같은 “운송은 닫힌 껍질에서 제외” 원칙).
+- **mineable에서 빼는 차단(레이아웃)**: ``transport_and_solid_blocker_cells`` = belt∪pipe∪platform∪other — **현재 BP 레이아웃** 기준으로 mineable 후보에서만 제외(“영구”가 아님; hull·내부 추론은 belt/pipe를 별도로 제거). belt/pipe 좌표는 ``belt_cells``/``pipe_cells``/``full_barrier_cells``에 그대로 남아 점유 표현에 쓴다.
+- **단일 ``outer_rim``**: 셸이든 추론 interior patch mineable이든, **같은** ``external_void_cells`` flood 성분에 4-인접이면 **같은** ``outer_rim_mineable_cells``에만 들어간다(인클로어드 공동만 맞닿은 림은 외곽 림이 아님 — annulus 규약).
+
+재구성(``reconstruct_asteroid_mining_field``)과 Pass1(``_pass1_resolve_outer_rim_and_gate``)은 동일한 ``void_flood_blocker_cells``를 ``compute_mining_void_topology``에 넘겨 **이중 정의를 피한다**.
 
 ---
 

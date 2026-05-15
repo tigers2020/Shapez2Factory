@@ -1,11 +1,14 @@
 """Mineable-adjacent void topology for Pass1 rim gating (STEP 1, pure domain).
 
 Flood ``asteroid_bbox`` expanded by ``external_margin`` from the rectangle border through
-cells that are not in ``mineable`` and not in ``permanent_blocking`` (belt / pipe /
-platform / other solid mineable blockers). Classifies **external** vs **internal** void
-for diagnostics only. **Pass1 uses a single rim:** ``outer_rim_mineable_cells`` — mineable
-cells with a 4-neighbor in external void (true exterior). Internal void has no separate
-rim field; when a hole is filled with mineable, that boundary is not a Pass1 rim.
+cells that are not in ``mineable`` and not in ``void_flood_extra_blockers``. Belt and
+pipe are **not** included in ``void_flood_extra_blockers`` so exterior void matches the
+same transport-stripped hull idea as interior inference (``full_barrier − belt − pipe``):
+void may traverse belt/pipe lattice sites. Platform/other solid rows remain blockers
+for the flood so unrelated map solids do not short-circuit the exterior.
+
+**Pass1 rim:** ``outer_rim_mineable_cells`` — mineable cells with a 4-neighbor in that
+exterior void flood.
 """
 
 from __future__ import annotations
@@ -31,10 +34,9 @@ def _cell_sort_key(c: BlueprintCell) -> tuple[int, int]:
 
 @dataclass(frozen=True, slots=True)
 class MiningVoidTopology:
-    """Void sets and the single Pass1 rim (external-void-adjacent mineable) in ``bbox ± margin``."""
+    """Exterior void flood and the single Pass1 rim (external-void-adjacent mineable)."""
 
     external_void_cells: tuple[BlueprintCell, ...]
-    internal_void_cells: tuple[BlueprintCell, ...]
     outer_rim_mineable_cells: tuple[BlueprintCell, ...]
 
 
@@ -42,14 +44,14 @@ def compute_mining_void_topology(
     mineable: frozenset[BlueprintCell],
     bbox: BBox,
     margin: int,
-    permanent_blocking: frozenset[BlueprintCell],
+    void_flood_extra_blockers: frozenset[BlueprintCell],
 ) -> MiningVoidTopology:
-    """Border flood in the expanded bbox; mineable and permanent cells block traversal."""
+    """Border flood; void cannot cross ``mineable`` or ``void_flood_extra_blockers``."""
 
     xmin, xmax = bbox.min_x - margin, bbox.max_x + margin
     ymin, ymax = bbox.min_y - margin, bbox.max_y + margin
 
-    blocked = mineable | permanent_blocking
+    blocked = mineable | void_flood_extra_blockers
 
     def in_rect(c: BlueprintCell) -> bool:
         x, y = c
@@ -85,12 +87,6 @@ def compute_mining_void_topology(
             external.add(nxt)
             q.append(nxt)
 
-    internal: set[BlueprintCell] = set()
-    for c in rect_cells:
-        if c in blocked or c in external:
-            continue
-        internal.add(c)
-
     outer_rim: set[BlueprintCell] = set()
     for m in mineable:
         for d in _CARDINAL:
@@ -100,7 +96,6 @@ def compute_mining_void_topology(
 
     return MiningVoidTopology(
         external_void_cells=tuple(sorted(external, key=_cell_sort_key)),
-        internal_void_cells=tuple(sorted(internal, key=_cell_sort_key)),
         outer_rim_mineable_cells=tuple(sorted(outer_rim, key=_cell_sort_key)),
     )
 

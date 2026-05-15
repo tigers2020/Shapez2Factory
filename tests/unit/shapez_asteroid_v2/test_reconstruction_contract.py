@@ -100,7 +100,7 @@ def test_orphan_transport_not_in_extraction_shell() -> None:
     assert (50, 50) in recon.pipe_cells
 
 
-def test_interior_patch_inferred_from_shell_without_interior_blueprint_entries() -> None:
+def test_interior_patch_semantics_asteroid_field_inferred_hollow_shell() -> None:
     decoded = {"BP": {"Entries": _hollow_square_shell(inner_x0=2, inner_y0=2, size=4)}}
     recon = reconstruct_asteroid_mining_field(decoded)
     inner = {(x, y) for x in (3, 4) for y in (3, 4)}
@@ -110,7 +110,7 @@ def test_interior_patch_inferred_from_shell_without_interior_blueprint_entries()
     assert set(by_cell) == set(recon.mineable_placement_cells)
     for c in inner:
         assert by_cell[c].resource_kind is AsteroidResourceKind.SHAPE_ASTEROID
-        assert by_cell[c].source == "interior_patch_inferred"
+        assert by_cell[c].source == "asteroid_field_inferred"
 
 
 def test_interior_patch_inherits_fluid_shell_resource_kind() -> None:
@@ -460,6 +460,29 @@ def test_reconstruction_never_contains_x_zero_cells_across_negative_positive_she
         assert all(c[0] != 0 for c in cells)
 
 
+def test_mining_void_topology_belt_corridor_void_traversal_affects_outer_rim() -> None:
+    """Belt neck: void flood must not treat belt cells as void walls."""
+
+    left = {(x, y) for x in range(1, 5) for y in (9, 10, 11)}
+    right = {(x, y) for x in range(6, 10) for y in (9, 10, 11)}
+    belt_corridor = {(5, 9), (5, 10), (5, 11)}
+    mineable_f = frozenset(left | right)
+    bbox = BBox(1, 9, 9, 11)
+    margin = 1
+    topo_belt_as_void_wall = _mining_void_topology.compute_mining_void_topology(
+        mineable_f, bbox, margin, frozenset(belt_corridor)
+    )
+    topo_canon = _mining_void_topology.compute_mining_void_topology(
+        mineable_f, bbox, margin, frozenset()
+    )
+    rim_wrong = frozenset(topo_belt_as_void_wall.outer_rim_mineable_cells)
+    rim_ok = frozenset(topo_canon.outer_rim_mineable_cells)
+    assert (4, 10) not in rim_wrong
+    assert (4, 10) in rim_ok
+    assert (6, 10) not in rim_wrong
+    assert (6, 10) in rim_ok
+
+
 def test_mining_void_topology_annulus_inner_void_not_outer_rim() -> None:
     """Thick annulus: mineable cells bordering only enclosed void are not in ``outer_rim``."""
 
@@ -472,7 +495,7 @@ def test_mining_void_topology_annulus_inner_void_not_outer_rim() -> None:
     assert (13, 11) in mineable_f
     assert (13, 11) not in outer
     assert (10, 13) in outer
-    assert topo.internal_void_cells
+    assert (13, 12) not in mineable_f
 
 
 def test_reconstruction_populates_void_topology_masks() -> None:

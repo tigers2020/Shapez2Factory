@@ -20,6 +20,10 @@ build_v2_preview_map_frames = preview_reconstruction_timeline.build_v2_preview_m
 expand_pass1_replay_mining_map_frames = (
     preview_reconstruction_timeline.expand_pass1_replay_mining_map_frames
 )
+_PASS1_EVENTS_FOR_PREVIEW = preview_reconstruction_timeline._pass1_events_for_preview_timeline
+_PASS1_PREVIEW_FULL_MAP_ROW_BUDGET = (
+    preview_reconstruction_timeline._PASS1_PREVIEW_FULL_MAP_ROW_BUDGET
+)
 PREVIEW_TILE = preview_reconstruction_timeline.PREVIEW_ASTEROID_REPLACE_TILE_T
 _apply_mineable_highlights = preview_reconstruction_timeline._apply_mineable_highlights
 
@@ -144,6 +148,22 @@ def test_expand_pass1_emits_skip_frame_when_no_mineable_cells() -> None:
     assert len(frames) == 1
     assert frames[0]["id"] == "v2_pass1_skipped_no_mineable"
     assert frames[0]["summary"].get("pass1_event_kind") == "skipped_no_mineable"
+
+
+def test_pass1_preview_timeline_thins_when_mining_map_row_count_large() -> None:
+    """Few Pass1 replay rows + large ``mineable_rows`` → thin frames (avoid UI freeze)."""
+
+    events = [
+        {"kind": "pass1_begin"},
+        {"kind": "consider_extract"},
+        {"kind": "commit_bundle", "extractor_cell": [0, 0]},
+    ]
+    full = _PASS1_EVENTS_FOR_PREVIEW(events, mineable_row_count=10)
+    assert [e["kind"] for e in full] == ["pass1_begin", "consider_extract", "commit_bundle"]
+    thin = _PASS1_EVENTS_FOR_PREVIEW(
+        events, mineable_row_count=_PASS1_PREVIEW_FULL_MAP_ROW_BUDGET + 1
+    )
+    assert [e["kind"] for e in thin] == ["pass1_begin", "commit_bundle"]
 
 
 def test_reconstruction_preview_frame_order_includes_strip_and_inner_patch() -> None:

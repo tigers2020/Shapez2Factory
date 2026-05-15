@@ -232,15 +232,15 @@
               <label class="am-decode-slider-label">
                 <span>
                   {% trans "Step interval" %}
-                  (<span data-am-playback-step-ms-display>100 ms</span>)
+                  (<span data-am-playback-step-ms-display>33 ms (~30.3 fps)</span>)
                 </span>
                 <input
                   type="range"
                   data-am-playback-step-ms
-                  min="100"
+                  min="9"
                   max="4000"
-                  step="50"
-                  value="100"
+                  step="1"
+                  value="33"
                   aria-label="{% trans 'Step interval' %}"
                 />
               </label>
@@ -631,8 +631,9 @@
   var decodeStepIndex = 0;
   var decodePlayTimer = null;
   /** Shared map-step + solver replay interval; sliders update this while playing. */
-  var playbackStepMs = 100;
-  var playbackStepMsMin = 100;
+  /** Default ~30 fps; min ms = ceil(1000/120) caps rate at ~111 fps (integer setInterval). */
+  var playbackStepMs = 33;
+  var playbackStepMsMin = 9;
   var playbackStepMsMax = 4000;
   var decodePlayN = 0;
   var mapPhaseTitleEl = root.querySelector("[data-am-map-phase-title]");
@@ -1025,13 +1026,23 @@
   }
 
   function formatPlaybackStepLabel(ms) {
+    var fps = ms > 0 ? 1000 / ms : 0;
+    var fpsStr;
+    if (!isFinite(fps) || fps <= 0) {
+      fpsStr = "—";
+    } else if (fps >= 100) {
+      fpsStr = String(Math.round(fps));
+    } else {
+      var r = Math.round(fps * 10) / 10;
+      fpsStr = r % 1 === 0 ? String(Math.round(r)) : r.toFixed(1);
+    }
     if (ms >= 1000) {
       var s = ms / 1000;
       var t = s.toFixed(1);
       if (t.indexOf(".0") === t.length - 2) t = String(Math.round(s));
-      return t + " s";
+      return t + " s (~" + fpsStr + " fps)";
     }
-    return String(ms) + " ms";
+    return String(ms) + " ms (~" + fpsStr + " fps)";
   }
 
   function syncPlaybackSpeedUi() {

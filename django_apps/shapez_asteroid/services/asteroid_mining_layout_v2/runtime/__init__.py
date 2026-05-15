@@ -5,8 +5,16 @@ replay frames or NDJSON as input; migrate call-by-call into this package when sp
 ``domain/dto.py`` mixed concerns (Phase 7+).
 """
 
-from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_events import (
-    TraceEvent,
-)
+from .event_builders import runtime_phase_boundary_event
+from .logging_helpers import solver_phase_log_extra
+from .step_instrumentation import run_instrumented_step
+from .trace_collector import TraceCollector
+from .trace_events import TraceEvent
 
-__all__ = ["TraceEvent"]
+__all__ = [
+    "TraceEvent",
+    "TraceCollector",
+    "runtime_phase_boundary_event",
+    "run_instrumented_step",
+    "solver_phase_log_extra",
+]

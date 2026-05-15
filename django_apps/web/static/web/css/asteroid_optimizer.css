@@ -241,6 +241,35 @@
   margin-top: 14px;
 }
 
+.asteroid-mine-page .actions.am-demo-actions {
+  align-items: stretch;
+}
+
+.asteroid-mine-page .am-demo-select {
+  flex: 1 1 200px;
+  min-width: 0;
+  border: 1px solid #31415f;
+  background: #111827;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
+
+.asteroid-mine-page .am-demo-select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.asteroid-mine-page .am-demo-select:focus {
+  border-color: var(--cyan-2);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.08);
+}
+
 .asteroid-mine-page .am-solver-overlay-option {
   margin-top: 12px;
 }

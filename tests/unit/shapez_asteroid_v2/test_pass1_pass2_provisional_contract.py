@@ -80,7 +80,7 @@ def test_manual_pass1_result_never_routed_before_step4() -> None:
 
 
 def test_pass1_outer_first_order_includes_interior_patch_cells_in_scan() -> None:
-    """Pass1 iterates ``mineable_placement_cells``; interior voids must appear in scan order."""
+    """Pass1 iterates ``mineable_placement_cells``; interior patch mineables appear in scan order."""
 
     from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement import (
         pass1_outer as pass1o,

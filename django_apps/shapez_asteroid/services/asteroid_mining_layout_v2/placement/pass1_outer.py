@@ -68,7 +68,7 @@ from .bundle_candidate import (
     Pass1BundleCandidate,
     blocked_by_building,
     grow_pass1_straight_extension_chain,
-    infer_transport_kind,
+    infer_transport_kind_for_mineable_cell,
     lex_key_pass1_best_output,
     step_cell,
 )
@@ -688,7 +688,6 @@ def run_pass1_outer_placement(
     if bbox is None:
         return Pass1Result()
 
-    transport_kind = infer_transport_kind(reconstruction)
     ordered = pass1_mineable_outer_first_order(mineable_cells, bbox)
     depth_by_cell = compute_mineable_perimeter_depth_by_cell(mineable_cells)
 
@@ -721,6 +720,7 @@ def run_pass1_outer_placement(
     for scan_index, extractor in enumerate(ordered):
         if extractor in used:
             continue
+        transport_kind = infer_transport_kind_for_mineable_cell(reconstruction, extractor)
         pd = depth_by_cell.get(extractor, -1)
         rim_ok = is_pass1_rim_extractor_cell(extractor, depth_by_cell)
         row: dict[str, Any] = {

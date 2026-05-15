@@ -30,9 +30,11 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord
     BlueprintCell,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
+    MineableCellSemantic,
     ReconstructionDTO,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
+    AsteroidResourceKind,
     TransportKind,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid import (
@@ -88,6 +90,25 @@ def infer_transport_kind(reconstruction: ReconstructionDTO) -> TransportKind:
     if has_pipe and not has_belt:
         return TransportKind.FLUID_PIPE
     return TransportKind.SHAPE_BELT
+
+
+def infer_transport_kind_for_mineable_cell(
+    reconstruction: ReconstructionDTO,
+    cell: BlueprintCell,
+) -> TransportKind:
+    """Prefer STEP1 ``mineable_cell_semantics``; ``UNKNOWN`` uses belt/pipe map heuristic."""
+
+    sem_by: dict[BlueprintCell, MineableCellSemantic] = {
+        s.cell: s for s in reconstruction.mineable_cell_semantics
+    }
+    sem = sem_by.get(cell)
+    if sem is None:
+        return infer_transport_kind(reconstruction)
+    if sem.resource_kind is AsteroidResourceKind.FLUID_ASTEROID:
+        return TransportKind.FLUID_PIPE
+    if sem.resource_kind is AsteroidResourceKind.SHAPE_ASTEROID:
+        return TransportKind.SHAPE_BELT
+    return infer_transport_kind(reconstruction)
 
 
 def blocked_by_building(
@@ -294,6 +315,7 @@ __all__ = [
     "grow_pass1_straight_extension_chain",
     "grow_pass2_branching_extension_cells",
     "infer_transport_kind",
+    "infer_transport_kind_for_mineable_cell",
     "lex_key_pass1_best_output",
     "lex_key_pass2_best_output",
     "orientation_toward_parent",

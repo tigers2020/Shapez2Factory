@@ -45,20 +45,18 @@ belt/pipe로만 인접 셀 타당성을 판별한다.
 
 ---
 
-### 6.3 중요한 정정 사항
-
-다음 로직은 **재배치 중에 수행하면 안 된다.**
+### 6.3 중요한 정본 (필드 시맨틱)
 
 ```text
-내부 void를 나중에 inferred mining field로 변환한다.
+interior_patch_cells      ← STEP1에서만 추론되는 소행성 내부 채굴 격자(폐곡선 안의 빈 격자).
+mineable_placement_cells  ← shell ∪ patch ∪ 장비 footprint 등으로 확정된 “정식 소행성 채굴 필드”.
 ```
 
-올바른 기준:
+의미 정리:
 
-```text
-- mineable field 추론은 decode/reconstruction 단계에서만 한다.
-- Pass1/Pass2/Pass3/Reclaim loop는 이미 확정된 mineable field 위에서 placement와 routing을 최적화한다.
-```
+- 위 두 집합에 들어간 좌표는 **맵 밖 공기(off-map void)**가 아니라, blueprint 복원 결과로 **소행성 채굴 필드**다. Preview/UI·스프라이트 계층에서는 ``asteroid_field`` / ``role=mineable``로 취급하고(§6.3.1), Pass3 ``RouteZone.INTERNAL_VOID`` 같은 “내부 빈 공간” 비용 존과 **동일시하지 않는다**.
+- **mineable 집합과 interior patch 추론**은 **decode / reconstruction(STEP1)에서만** 수행한다.
+- Pass1/Pass2/Pass3/Reclaim은 그 이후 **이미 확정된** ``mineable_placement_cells`` 위에서 배치·라우팅만 하며, reconstruction이 확정한 셀을 **void로 바꾸거나 mineable 정의를 덮어쓰지 않는다**.
 
 ### 6.3.1 Preview / UI: ``inferred`` → ``mineable`` (출력 계층)
 

@@ -37,17 +37,66 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     DecodedExistingLayoutContext,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
+    AsteroidResourceKind,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid import (
     physical_column_count_inclusive,
+    step_blueprint_cell,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.reconstruction import (
+    MineableCellSemantic,
+    MineableSemanticSource,
     ReconstructionDTO,
 )
 from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_none as _int_or_none
-from django_apps.shapez_asteroid.services.style_classifier import PlotStyle, classify_layout_type
+from django_apps.shapez_asteroid.services.style_classifier import (
+    PlotStyle,
+    classify_layout_type,
+    mining_surface_from_layout,
+)
 
 from ..domain.decoded_blueprint import DecodedBlueprintDocument
 from .patch_interior import compute_patch_interior_cells
+
+_CARDINAL: tuple[tuple[int, int], ...] = ((0, -1), (1, 0), (0, 1), (-1, 0))
+
+
+def _four_neighbors(c: BlueprintCell) -> tuple[BlueprintCell, ...]:
+    return tuple(step_blueprint_cell(c, d) for d in _CARDINAL)
+
+
+def infer_asteroid_resource_kind_from_shell_layout_t(t_str: str | None) -> AsteroidResourceKind:
+    """Shape vs fluid asteroid field from shell ``T`` (last blueprint row wins on overlay)."""
+
+    if not t_str:
+        return AsteroidResourceKind.UNKNOWN_ASTEROID
+    c = str(t_str).strip().lower().replace("_", "")
+    if "fluid" in c or "liquid" in c:
+        return AsteroidResourceKind.FLUID_ASTEROID
+    if "asteroidfield" in c:
+        return AsteroidResourceKind.SHAPE_ASTEROID
+    return AsteroidResourceKind.UNKNOWN_ASTEROID
+
+
+def infer_asteroid_resource_kind_from_equipment_layout_t(t_str: str | None) -> AsteroidResourceKind:
+    surf = mining_surface_from_layout(t_str)
+    if surf == "fluid":
+        return AsteroidResourceKind.FLUID_ASTEROID
+    if surf == "shape":
+        return AsteroidResourceKind.SHAPE_ASTEROID
+    return AsteroidResourceKind.UNKNOWN_ASTEROID
+
+
+def _merge_adjacent_resource_kinds(kinds: set[AsteroidResourceKind]) -> AsteroidResourceKind:
+    """Collapse UNKNOWN; if both SHAPE and FLUID appear, UNKNOWN (no silent coercion)."""
+
+    core = {k for k in kinds if k is not AsteroidResourceKind.UNKNOWN_ASTEROID}
+    if len(core) > 1:
+        return AsteroidResourceKind.UNKNOWN_ASTEROID
+    if len(core) == 1:
+        return next(iter(core))
+    return AsteroidResourceKind.UNKNOWN_ASTEROID
 
 
 def _iter_entry_dicts(entries: Any) -> Any:
@@ -112,6 +161,33 @@ def validate_reconstruction_placement_contract(dto: ReconstructionDTO) -> None:
         raise ValueError(msg)
 
 
+def validate_reconstruction_semantic_contract(dto: ReconstructionDTO) -> None:
+    """Mineable coordinates ↔ semantics coverage; barriers must not carry mineable semantics."""
+
+    validate_reconstruction_placement_contract(dto)
+    mineable_f = frozenset(dto.mineable_placement_cells)
+    sem_by_cell = {s.cell: s for s in dto.mineable_cell_semantics}
+    if not mineable_f:
+        if dto.mineable_cell_semantics:
+            raise ValueError(
+                "mineable_cell_semantics must be empty when mineable_placement_cells is empty"
+            )
+        return
+    if set(sem_by_cell) != mineable_f:
+        missing = sorted(mineable_f - set(sem_by_cell), key=lambda c: (c[1], c[0]))[:24]
+        extra = sorted(set(sem_by_cell) - mineable_f, key=lambda c: (c[1], c[0]))[:24]
+        msg = (
+            "mineable_cell_semantics must cover exactly mineable_placement_cells; "
+            f"missing={missing!r} extra={extra!r}"
+        )
+        raise ValueError(msg)
+    permanent_block = frozenset(dto.belt_cells) | frozenset(dto.pipe_cells)
+    for s in dto.mineable_cell_semantics:
+        if s.cell in permanent_block:
+            msg = f"mineable semantic on belt/pipe cell is forbidden: {s.cell!r}"
+            raise ValueError(msg)
+
+
 def _bbox_from_cells(cells: Iterable[BlueprintCell]) -> BBox | None:
     xs: list[int] = []
     ys: list[int] = []
@@ -148,6 +224,8 @@ class _ReconstructBarrierBuckets:
     extension_cells: set[BlueprintCell] = field(default_factory=set)
     platform_cells: set[BlueprintCell] = field(default_factory=set)
     other_barrier_cells: set[BlueprintCell] = field(default_factory=set)
+    shell_t_by_cell: dict[BlueprintCell, str | None] = field(default_factory=dict)
+    equipment_t_by_cell: dict[BlueprintCell, str | None] = field(default_factory=dict)
 
 
 def _reconstruct_mutable_doc(
@@ -188,6 +266,7 @@ def _reconstruct_classify_cell_into_buckets(
     b.full_barrier_cells.add(xy)
     if _is_asteroid_shell_layout_type(t_str):
         b.asteroid_shell_cells.add(xy)
+        b.shell_t_by_cell[xy] = t_str
         return
 
     style = classify_layout_type(t_str)
@@ -202,8 +281,10 @@ def _reconstruct_classify_cell_into_buckets(
         PlotStyle.booster,
     ):
         b.extractor_cells.add(xy)
+        b.equipment_t_by_cell[xy] = t_str
     elif style in (PlotStyle.extension, PlotStyle.fluid_extension):
         b.extension_cells.add(xy)
+        b.equipment_t_by_cell[xy] = t_str
     elif style is PlotStyle.platform:
         b.platform_cells.add(xy)
     else:
@@ -252,6 +333,99 @@ def _reconstruct_mineable_cells(
             continue
         mineable.add(c)
     return mineable
+
+
+def _shell_kind_by_cell(b: _ReconstructBarrierBuckets) -> dict[BlueprintCell, AsteroidResourceKind]:
+    return {
+        xy: infer_asteroid_resource_kind_from_shell_layout_t(b.shell_t_by_cell.get(xy))
+        for xy in b.asteroid_shell_cells
+    }
+
+
+def _interior_inferred_kind_by_cell(
+    interior_set: set[BlueprintCell],
+    shell_cells: set[BlueprintCell],
+    shell_kind: dict[BlueprintCell, AsteroidResourceKind],
+    equipment_cells: set[BlueprintCell],
+    equipment_t: dict[BlueprintCell, str | None],
+) -> dict[BlueprintCell, AsteroidResourceKind]:
+    if not interior_set:
+        return {}
+    out: dict[BlueprintCell, AsteroidResourceKind] = {}
+    remaining = set(interior_set)
+    while remaining:
+        seed = min(remaining, key=lambda c: (c[1], c[0]))
+        stack: list[BlueprintCell] = [seed]
+        comp: set[BlueprintCell] = set()
+        while stack:
+            c = stack.pop()
+            if c not in remaining:
+                continue
+            remaining.remove(c)
+            comp.add(c)
+            for n in _four_neighbors(c):
+                if n in remaining:
+                    stack.append(n)
+        shell_touch: set[AsteroidResourceKind] = set()
+        eq_touch: set[AsteroidResourceKind] = set()
+        for c in comp:
+            for n in _four_neighbors(c):
+                if n in shell_cells:
+                    shell_touch.add(shell_kind.get(n, AsteroidResourceKind.UNKNOWN_ASTEROID))
+                if n in equipment_cells:
+                    eq_touch.add(
+                        infer_asteroid_resource_kind_from_equipment_layout_t(equipment_t.get(n))
+                    )
+        merged_shell = _merge_adjacent_resource_kinds(shell_touch)
+        kind: AsteroidResourceKind
+        if merged_shell is not AsteroidResourceKind.UNKNOWN_ASTEROID:
+            kind = merged_shell
+        else:
+            kind = _merge_adjacent_resource_kinds(eq_touch)
+        for c in comp:
+            out[c] = kind
+    return out
+
+
+def _equipment_only_semantic_kind(
+    xy: BlueprintCell,
+    shell_cells: set[BlueprintCell],
+    shell_kind: dict[BlueprintCell, AsteroidResourceKind],
+    equipment_t: dict[BlueprintCell, str | None],
+) -> AsteroidResourceKind:
+    adj_shell: set[AsteroidResourceKind] = set()
+    for n in _four_neighbors(xy):
+        if n in shell_cells:
+            adj_shell.add(shell_kind.get(n, AsteroidResourceKind.UNKNOWN_ASTEROID))
+    merged = _merge_adjacent_resource_kinds(adj_shell)
+    if merged is not AsteroidResourceKind.UNKNOWN_ASTEROID:
+        return merged
+    return infer_asteroid_resource_kind_from_equipment_layout_t(equipment_t.get(xy))
+
+
+def _build_mineable_cell_semantics(
+    mineable: set[BlueprintCell],
+    interior_set: set[BlueprintCell],
+    b: _ReconstructBarrierBuckets,
+    shell_kind: dict[BlueprintCell, AsteroidResourceKind],
+    interior_kind: dict[BlueprintCell, AsteroidResourceKind],
+    equipment_t: dict[BlueprintCell, str | None],
+) -> tuple[MineableCellSemantic, ...]:
+    shell_cells = b.asteroid_shell_cells
+    out: list[MineableCellSemantic] = []
+    for cell in _sorted_cells(mineable):
+        src: MineableSemanticSource
+        if cell in interior_set:
+            rk = interior_kind[cell]
+            src = "interior_patch_inferred"
+        elif cell in shell_cells:
+            rk = shell_kind[cell]
+            src = "extraction_shell"
+        else:
+            rk = _equipment_only_semantic_kind(cell, shell_cells, shell_kind, equipment_t)
+            src = "equipment_footprint"
+        out.append(MineableCellSemantic(cell=cell, resource_kind=rk, source=src))
+    return tuple(out)
 
 
 def _reconstruct_external_bbox_margin(
@@ -325,6 +499,24 @@ def reconstruct_asteroid_mining_field(
     mineable = _reconstruct_mineable_cells(b, interior_set)
     equipment_footprint = b.extractor_cells | b.extension_cells
 
+    shell_kind = _shell_kind_by_cell(b)
+    equipment_cells = b.extractor_cells | b.extension_cells
+    interior_kind = _interior_inferred_kind_by_cell(
+        interior_set,
+        b.asteroid_shell_cells,
+        shell_kind,
+        equipment_cells,
+        b.equipment_t_by_cell,
+    )
+    mineable_semantics = _build_mineable_cell_semantics(
+        mineable,
+        interior_set,
+        b,
+        shell_kind,
+        interior_kind,
+        b.equipment_t_by_cell,
+    )
+
     mineable_f = frozenset(mineable)
     shell_f = frozenset(b.asteroid_shell_cells)
     abox, margin_source, margin = _reconstruct_external_bbox_margin(mineable_f, shell_f)
@@ -341,16 +533,20 @@ def reconstruct_asteroid_mining_field(
         extension_cells=_sorted_cells(b.extension_cells),
         equipment_footprint_mineable_cells=_sorted_cells(equipment_footprint),
         interior_patch_cells=interior_patch_cells,
+        mineable_cell_semantics=mineable_semantics,
         asteroid_bbox=abox,
         external_margin=margin,
         external_margin_bbox_source=margin_source,
     )
-    validate_reconstruction_placement_contract(dto)
+    validate_reconstruction_semantic_contract(dto)
     return dto
 
 
 __all__ = [
     "gather_bp_entries_recursive",
+    "infer_asteroid_resource_kind_from_equipment_layout_t",
+    "infer_asteroid_resource_kind_from_shell_layout_t",
     "reconstruct_asteroid_mining_field",
     "validate_reconstruction_placement_contract",
+    "validate_reconstruction_semantic_contract",
 ]

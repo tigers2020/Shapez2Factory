@@ -11,8 +11,24 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord
     Coord,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
+    AsteroidResourceKind,
     MineableEmptyCause,
 )
+
+MineableSemanticSource = Literal[
+    "extraction_shell",
+    "interior_patch_inferred",
+    "equipment_footprint",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class MineableCellSemantic:
+    """Canonical asteroid field semantics for one mineable placement cell (STEP 1)."""
+
+    cell: BlueprintCell
+    resource_kind: AsteroidResourceKind
+    source: MineableSemanticSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +55,13 @@ class ReconstructionDTO:
     ``equipment_footprint_mineable_cells`` is their sorted union (prior mineable evidence).
     ``full_barrier_cells`` remains the union of all occupied blueprint coordinates (not
     equivalent to permanent mineable blockers).
+
+    ``interior_patch_cells`` are included in the same formal asteroid field as mineable
+    placement targets; they are not ``RouteZone.INTERNAL_VOID`` / off-map void for later passes.
+
+    ``mineable_cell_semantics`` has exactly one row per ``mineable_placement_cell`` when
+    produced by ``reconstruct_asteroid_mining_field``; later passes should prefer this over
+    map labels for shape vs fluid.
     """
 
     mineable_placement_cells: tuple[BlueprintCell, ...] = ()
@@ -50,6 +73,7 @@ class ReconstructionDTO:
     extension_cells: tuple[BlueprintCell, ...] = ()
     equipment_footprint_mineable_cells: tuple[BlueprintCell, ...] = ()
     interior_patch_cells: tuple[BlueprintCell, ...] = ()
+    mineable_cell_semantics: tuple[MineableCellSemantic, ...] = ()
     asteroid_bbox: BBox | None = None
     external_margin: int = 0
     external_margin_bbox_source: Literal["mineable", "shell", "none"] = "none"
@@ -113,6 +137,8 @@ class ReconstructionDiagnosisDTO:
 __all__ = [
     "DuplicateCoordSampleDTO",
     "GridMask",
+    "MineableCellSemantic",
+    "MineableSemanticSource",
     "ReconstructionDTO",
     "ReconstructionDiagnosisDTO",
     "ReconstructionResult",

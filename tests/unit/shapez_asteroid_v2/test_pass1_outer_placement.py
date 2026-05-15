@@ -269,3 +269,32 @@ def test_expand_pass1_replay_emits_many_frames_and_canonical_ids() -> None:
         summ = fr.get("summary")
         assert isinstance(summ, dict)
         assert summ.get("pass1_replay") is True
+
+
+def test_pass1_transport_kind_uses_mineable_semantics_not_global_belt_presence() -> None:
+    """Fluid asteroid shell → ``FLUID_PIPE`` for rim extractors even when belts exist off-patch."""
+
+    from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
+        reconstruct_asteroid_mining_field,
+    )
+
+    entries = [
+        {"X": x, "Y": y, "T": "AsteroidField_Fluid_Test"}
+        for x, y in [
+            (10, 10),
+            (11, 10),
+            (12, 10),
+            (10, 11),
+            (12, 11),
+            (10, 12),
+            (11, 12),
+            (12, 12),
+        ]
+    ]
+    entries.append({"X": 50, "Y": 50, "T": "Belt_Straight"})
+    recon = reconstruct_asteroid_mining_field({"BP": {"Entries": entries}})
+    assert _bc.infer_transport_kind(recon) is TransportKind.SHAPE_BELT
+    p1 = run_pass1_outer_placement(_ctx("t_p1_sem_tk"), recon, trace=TraceCollector("t_p1_sem_tk"))
+    assert p1.placements
+    assert p1.placements[0].extractor.transport_kind is TransportKind.FLUID_PIPE
+    assert p1.placements[0].output_stub.transport_kind is TransportKind.FLUID_PIPE

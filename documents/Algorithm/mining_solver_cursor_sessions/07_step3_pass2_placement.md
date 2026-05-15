@@ -71,7 +71,7 @@ Pass2에서 occupied로 처리하면 안 되는 것:
 ### 8.4 Pass2에서 하지 말아야 할 일
 
 ```text
-- 내부 void를 새 mining field로 변환하지 않는다.
+- reconstruction ``mineable_placement_cells``(및 ``interior_patch_cells ⊆ mineable`` 구간)은 **소행성 필드**다. Pass2는 이 셀들을 void 존으로 재분류하거나 ``RouteZone.INTERNAL_VOID`` 등에 매핑하지 않으며, STEP1 밖에서 새 mineable 집합을 추론하지 않는다(후보는 항상 STEP1 산출 mineable에서만).
 - cheap escape path 전체를 **전역 blocked / final route**처럼 occupied 처리하지 않는다(옵티마이저 shadow corridor는 §8.3.1과 별개).
 - 외부 연결이 불가능한 단독 extractor를 억지로 배치하지 않는다.
 - 채굴기 하나만 멀리 두고 긴 pipe만 연결하는 저효율 패턴을 방치하지 않는다.

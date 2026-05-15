@@ -130,6 +130,11 @@ cascade 보정은 Final validation의 `validation_recovery`와 **다른 컨텍�
 | PLACEMENT_OCCUPIED   | extractor/extension 점유 셀    |     900 |
 | BLOCKED              | extractor으로 경로 관통 불가한 점유 셀 |     INF |
 
+**§11.1과 STEP1 reconstruction의 관계 (CANON)**
+
+- ``SolverRunContext.reconstruction.mineable_placement_cells``에 포함된 좌표(``interior_patch_cells`` 포함)는 **정식 소행성 채굴 필드**이지, 위 표의 ``INTERNAL_VOID``(Pass3/reclaim 비용 레이어용 “내부 빈 공간” 분류)와 동일한 개념이 아니다.
+- 존 맵·비용 표를 reconstruction과 합성할 때, reconstruction이 이미 mineable로 확정한 셀을 ``INTERNAL_VOID``로 두면 placement·cost 계약이 깨진다.
+
 ---
 
 ### 11.2 Transport kind별 cost override

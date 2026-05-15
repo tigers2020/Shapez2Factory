@@ -43,7 +43,7 @@ from .bundle_candidate import (
     Pass2BundleCandidate,
     blocked_by_building,
     grow_pass2_branching_extension_cells,
-    infer_transport_kind,
+    infer_transport_kind_for_mineable_cell,
     step_cell,
 )
 from .corridor_opening import maybe_open_corridors_before_pass2
@@ -277,7 +277,6 @@ def _pass2_prepare_state(
         BBox,
         set[BlueprintCell],
         tuple[BlueprintCell, ...],
-        TransportKind,
     ]
     | None
 ):
@@ -293,9 +292,8 @@ def _pass2_prepare_state(
     remaining = frozenset(c for c in mineable_cells if c not in blocked)
     if not remaining:
         return None
-    transport_kind = infer_transport_kind(reconstruction)
     ordered = _sort_mineable_interior_first(remaining, bbox)
-    return (reconstruction, mineable_cells, bbox, used, ordered, transport_kind)
+    return (reconstruction, mineable_cells, bbox, used, ordered)
 
 
 def _pass2_gather_feasible_for_extractor(
@@ -305,12 +303,12 @@ def _pass2_gather_feasible_for_extractor(
     extractor: BlueprintCell,
     mineable_cells: frozenset[BlueprintCell],
     used: set[BlueprintCell],
-    transport_kind: TransportKind,
     reconstruction: ReconstructionDTO,
     bbox: BBox,
     trace: TraceCollector,
     trace_step_box: list[int],
 ) -> tuple[list[Pass2BundleCandidate], list[dict[str, object]]]:
+    transport_kind = infer_transport_kind_for_mineable_cell(reconstruction, extractor)
     feasible: list[Pass2BundleCandidate] = []
     beam_rejects: list[dict[str, object]] = []
     for out_dir in CARDINAL_DIRS:
@@ -355,7 +353,6 @@ def _pass2_collect_candidate_pool(
     ordered: tuple[BlueprintCell, ...],
     mineable_cells: frozenset[BlueprintCell],
     baseline_used: set[BlueprintCell],
-    transport_kind: TransportKind,
     reconstruction: ReconstructionDTO,
     bbox: BBox,
     trace: TraceCollector,
@@ -374,7 +371,6 @@ def _pass2_collect_candidate_pool(
             extractor=extractor,
             mineable_cells=mineable_cells,
             used=baseline_used,
-            transport_kind=transport_kind,
             reconstruction=reconstruction,
             bbox=bbox,
             trace=trace,
@@ -473,7 +469,7 @@ def run_pass2_internal_fill(
             pass1_after_corridor_gate=p1_work if gate_ran else None,
             solver_ctx_after_corridor_gate=ctx_work if gate_ran else None,
         )
-    reconstruction, mineable_cells, bbox, baseline_used, ordered, transport_kind = prepared
+    reconstruction, mineable_cells, bbox, baseline_used, ordered = prepared
 
     beam: list[dict[str, object]] = list(corridor_trace)
 
@@ -482,7 +478,6 @@ def run_pass2_internal_fill(
         ordered=ordered,
         mineable_cells=mineable_cells,
         baseline_used=baseline_used,
-        transport_kind=transport_kind,
         reconstruction=reconstruction,
         bbox=bbox,
         trace=trace,

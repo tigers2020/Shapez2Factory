@@ -44,6 +44,8 @@ TransportComponentSummary = _existing_layout_domain.TransportComponentSummary
 
 DuplicateCoordSampleDTO = _recon_domain.DuplicateCoordSampleDTO
 GridMask = _recon_domain.GridMask
+MineableCellSemantic = _recon_domain.MineableCellSemantic
+MineableSemanticSource = _recon_domain.MineableSemanticSource
 ReconstructionDTO = _recon_domain.ReconstructionDTO
 ReconstructionDiagnosisDTO = _recon_domain.ReconstructionDiagnosisDTO
 ReconstructionResult = _recon_domain.ReconstructionResult

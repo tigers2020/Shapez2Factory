@@ -171,6 +171,8 @@ fallback_reason: string | null
 | PLACEMENT_OCCUPIED   | extractor/extension 점유 셀    |     900 |
 | BLOCKED              | extractor으로 경로 관통 불가한 점유 셀 |     INF |
 
+**정본 교차**: STEP1 ``mineable_placement_cells``·``interior_patch_cells``는 소행성 채굴 필드이며 ``INTERNAL_VOID``와 동일시하면 안 된다. 상세는 [`03_data_schema_dto.md`](./03_data_schema_dto.md) §11.1 표 직후 CANON 단락.
+
 ---
 
 ### 11.2 Transport kind별 cost override

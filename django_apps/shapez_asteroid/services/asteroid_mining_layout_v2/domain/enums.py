@@ -16,6 +16,14 @@ class TransportKind(StrEnum):
     FLUID_PIPE = "fluid_pipe"
 
 
+class AsteroidResourceKind(StrEnum):
+    """STEP 1 mineable cell: asteroid field resource (shape vs fluid), not map void."""
+
+    SHAPE_ASTEROID = "shape_asteroid"
+    FLUID_ASTEROID = "fluid_asteroid"
+    UNKNOWN_ASTEROID = "unknown_asteroid"
+
+
 class PlacementCommitState(StrEnum):
     """Placement FSM states (§9.6)."""
 
@@ -30,6 +38,10 @@ class RouteZone(StrEnum):
 
     Base costs apply to Pass3 / reclaim incremental routing only. **Do not** mix this
     table with STEP 4 merge-aware grid Dijkstra cell weights (``01_project_overview`` §3.5).
+
+    ``INTERNAL_VOID`` here is not STEP1 ``mineable_placement_cells`` / ``interior_patch_cells``:
+    those reconstruction outputs are formal asteroid mining field and must not be
+    classified as this zone when a layer combines reconstruction with Pass3 costs.
     """
 
     OUTSIDE = "outside"

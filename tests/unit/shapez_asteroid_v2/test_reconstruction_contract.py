@@ -5,12 +5,17 @@ from __future__ import annotations
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.decode import analyze_to_context
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain import decoded_blueprint
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
+    MineableCellSemantic,
     ReconstructionDTO,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
+    AsteroidResourceKind,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
     compute_patch_interior_cells,
     reconstruct_asteroid_mining_field,
     validate_reconstruction_placement_contract,
+    validate_reconstruction_semantic_contract,
 )
 
 
@@ -97,6 +102,80 @@ def test_interior_patch_inferred_from_shell_without_interior_blueprint_entries()
     inner = {(x, y) for x in (3, 4) for y in (3, 4)}
     assert set(recon.interior_patch_cells) == inner
     assert inner <= set(recon.mineable_placement_cells)
+    by_cell = {s.cell: s for s in recon.mineable_cell_semantics}
+    assert set(by_cell) == set(recon.mineable_placement_cells)
+    for c in inner:
+        assert by_cell[c].resource_kind is AsteroidResourceKind.SHAPE_ASTEROID
+        assert by_cell[c].source == "interior_patch_inferred"
+
+
+def test_interior_patch_inherits_fluid_shell_resource_kind() -> None:
+    entries = [
+        {"X": x, "Y": y, "T": "AsteroidField_Fluid_Test"}
+        for x, y in [
+            (10, 10),
+            (11, 10),
+            (12, 10),
+            (10, 11),
+            (12, 11),
+            (10, 12),
+            (11, 12),
+            (12, 12),
+        ]
+    ]
+    recon = reconstruct_asteroid_mining_field({"BP": {"Entries": entries}})
+    assert set(recon.interior_patch_cells) == {(11, 11)}
+    by_cell = {s.cell: s for s in recon.mineable_cell_semantics}
+    assert by_cell[(11, 11)].resource_kind is AsteroidResourceKind.FLUID_ASTEROID
+
+
+def test_interior_patch_unknown_when_shell_adjacency_mixed_shape_and_fluid() -> None:
+    entries: list[dict[str, int | str]] = []
+    for x in (10, 11, 12):
+        for y in (10, 11, 12):
+            if not (x in (10, 12) or y in (10, 12)):
+                continue
+            t = "AsteroidField_Fluid_Test" if x == 10 else "AsteroidField_Shape_Test"
+            entries.append({"X": x, "Y": y, "T": t})
+    recon = reconstruct_asteroid_mining_field({"BP": {"Entries": entries}})
+    by_cell = {s.cell: s for s in recon.mineable_cell_semantics}
+    assert by_cell[(11, 11)].resource_kind is AsteroidResourceKind.UNKNOWN_ASTEROID
+
+
+def test_validate_reconstruction_semantic_contract_rejects_non_covering_semantics() -> None:
+    bad = ReconstructionDTO(
+        mineable_placement_cells=((1, 1),),
+        interior_patch_cells=(),
+        full_barrier_cells=((1, 1),),
+        mineable_cell_semantics=(
+            MineableCellSemantic((1, 1), AsteroidResourceKind.SHAPE_ASTEROID, "extraction_shell"),
+            MineableCellSemantic((2, 2), AsteroidResourceKind.SHAPE_ASTEROID, "extraction_shell"),
+        ),
+    )
+    try:
+        validate_reconstruction_semantic_contract(bad)
+    except ValueError as exc:
+        assert "mineable_cell_semantics" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_validate_reconstruction_semantic_contract_rejects_semantics_on_belt_cell() -> None:
+    bad = ReconstructionDTO(
+        mineable_placement_cells=((1, 1),),
+        interior_patch_cells=(),
+        belt_cells=((1, 1),),
+        full_barrier_cells=((1, 1),),
+        mineable_cell_semantics=(
+            MineableCellSemantic((1, 1), AsteroidResourceKind.SHAPE_ASTEROID, "extraction_shell"),
+        ),
+    )
+    try:
+        validate_reconstruction_semantic_contract(bad)
+    except ValueError as exc:
+        assert "belt/pipe" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
 
 
 def test_closing_prevents_tiny_perimeter_gap_leakage_fixture() -> None:

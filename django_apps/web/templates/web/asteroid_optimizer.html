@@ -57,6 +57,10 @@
       data-msg-layout-booster="{% filter force_escape %}{% trans 'Booster' %}{% endfilter %}"
       data-msg-layout-asteroid-field="{% filter force_escape %}{% trans 'Asteroid field' %}{% endfilter %}"
       data-demo-blueprint-url="{% static 'web/asteroid_demo_blueprint.txt' %}"
+      data-msg-demo-placeholder="{% filter force_escape %}{% trans 'Choose a demo blueprint…' %}{% endfilter %}"
+      data-msg-demo-loading="{% filter force_escape %}{% trans 'Loading demo blueprints…' %}{% endfilter %}"
+      data-msg-demo-empty="{% filter force_escape %}{% trans 'No demo blueprints available' %}{% endfilter %}"
+      data-msg-demo-load-failed="{% filter force_escape %}{% trans 'Could not load demo blueprints' %}{% endfilter %}"
       data-map-phase-idle-title="{% filter force_escape %}{% trans 'Solver phase' %}{% endfilter %}"
       data-map-phase-idle-desc="{% filter force_escape %}{% trans 'Boundary scan and pipe overlay when the solver API is available.' %}{% endfilter %}"
       data-map-phase-map-title="{% filter force_escape %}{% trans 'Map build' %}{% endfilter %}"
@@ -159,8 +163,15 @@
               spellcheck="false"
               placeholder="SHAPEZ2-4-…"
             ></textarea>
-            <div class="actions">
-              <button type="button" id="asteroid-demo-fill-btn" class="btn">{% trans "Demo" %}</button>
+            <div class="actions am-demo-actions">
+              <select
+                id="asteroid-demo-select"
+                class="am-demo-select"
+                disabled
+                aria-label="{% trans 'Demo blueprint' %}"
+              >
+                <option value="">{% trans "Loading demo blueprints…" %}</option>
+              </select>
               <button type="button" id="asteroid-decode-btn" class="btn primary">{% trans "Decode" %}</button>
             </div>
             <div class="am-solver-overlay-option">
@@ -559,8 +570,9 @@
   var tierBadgeEl = root.querySelector("[data-asteroid-tier-badge]");
   var errEl = root.querySelector("[data-asteroid-error]");
   var ta = root.querySelector("#asteroid-copy-input");
-  var demoBtn = root.querySelector("#asteroid-demo-fill-btn");
+  var demoSelect = root.querySelector("#asteroid-demo-select");
   var demoUrl = root.dataset.demoBlueprintUrl || "";
+  var demoBlueprintLines = [];
   var btn = root.querySelector("#asteroid-decode-btn");
   var orientBtns = root.querySelectorAll("[data-map-orientation]");
   var mapOrientation = "N";
@@ -3866,37 +3878,74 @@
     });
   }
 
-  if (demoBtn && ta && demoUrl && errEl) {
-    demoBtn.addEventListener("click", function () {
-      errEl.classList.add("hidden");
-      errEl.textContent = "";
-      demoBtn.disabled = true;
-      fetch(demoUrl, { cache: "no-store" })
-        .then(function (res) {
-          if (!res.ok) throw new Error("demo fetch failed");
-          return res.text();
-        })
-        .then(function (text) {
-          var lines = text
-            .split(/\r\n|\n|\r/)
-            .map(function (s) {
-              return s.trim();
-            })
-            .filter(Boolean);
-          if (!lines.length) {
-            ta.value = "";
-            return;
-          }
-          var i = Math.floor(Math.random() * lines.length);
-          ta.value = lines[i];
-        })
-        .catch(function () {
-          errEl.textContent = root.dataset.msgNetwork || "";
-          errEl.classList.remove("hidden");
-        })
-        .finally(function () {
-          demoBtn.disabled = false;
-        });
+  if (demoSelect && ta && demoUrl && errEl) {
+    function clearDemoSelectChildren() {
+      while (demoSelect.firstChild) {
+        demoSelect.removeChild(demoSelect.firstChild);
+      }
+    }
+    function appendDemoOption(value, label) {
+      var opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = label;
+      demoSelect.appendChild(opt);
+    }
+    function demoOptionLabel(line, index1) {
+      var s = String(line);
+      var headLen = 52;
+      var head = s.slice(0, headLen);
+      if (s.length > headLen) {
+        head += "…";
+      }
+      return String(index1) + " — " + head;
+    }
+    fetch(demoUrl, { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("demo fetch failed");
+        return res.text();
+      })
+      .then(function (text) {
+        errEl.classList.add("hidden");
+        errEl.textContent = "";
+        var lines = text
+          .split(/\r\n|\n|\r/)
+          .map(function (s) {
+            return s.trim();
+          })
+          .filter(Boolean);
+        demoBlueprintLines = lines;
+        clearDemoSelectChildren();
+        var placeholder = root.dataset.msgDemoPlaceholder || "";
+        appendDemoOption("", placeholder);
+        var i;
+        for (i = 0; i < lines.length; i++) {
+          appendDemoOption(String(i), demoOptionLabel(lines[i], i + 1));
+        }
+        if (!lines.length) {
+          demoSelect.disabled = true;
+          clearDemoSelectChildren();
+          appendDemoOption("", root.dataset.msgDemoEmpty || "");
+          return;
+        }
+        demoSelect.disabled = false;
+      })
+      .catch(function () {
+        demoBlueprintLines = [];
+        demoSelect.disabled = true;
+        clearDemoSelectChildren();
+        appendDemoOption("", root.dataset.msgDemoLoadFailed || "");
+        errEl.textContent = root.dataset.msgNetwork || "";
+        errEl.classList.remove("hidden");
+      });
+    demoSelect.addEventListener("change", function () {
+      var v = demoSelect.value;
+      if (v === "") {
+        return;
+      }
+      var idx = parseInt(v, 10);
+      if (idx >= 0 && idx < demoBlueprintLines.length) {
+        ta.value = demoBlueprintLines[idx];
+      }
     });
   }
 

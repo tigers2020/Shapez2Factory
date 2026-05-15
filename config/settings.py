@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     "django_apps.shapez_solver.apps.ShapezSolverConfig",
     "django_apps.shapez_asteroid.apps.ShapezAsteroidConfig",
     "django_apps.web.apps.WebConfig",
+    "django_apps.asteroid_lab.apps.AsteroidLabConfig",
 ]
 
 MIDDLEWARE = [

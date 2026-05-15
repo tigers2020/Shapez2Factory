@@ -21,6 +21,7 @@ from django_apps.web.constants import (
     HOME_INITIAL_SHAPE_CODE,
 )
 from django_apps.web.models import GraphPreviewImage
+from django_apps.web.services.asteroid_mining_lab_demo import lab_page_context
 from django_apps.web.services.graph_preview import (
     PlaywrightPngGraphPreviewRenderer,
     png_bytes_are_valid,
@@ -150,6 +151,14 @@ def asteroid_optimizer(request: HttpRequest) -> HttpResponse:
             "asteroid_health_url": reverse("shapez_asteroid:health"),
         },
     )
+
+
+def asteroid_miner_layout_solver(request: HttpRequest) -> HttpResponse:
+    """Asteroid mining lab UI (demo replay + static panels); solver wiring comes later."""
+    blueprint_code = request.GET.get("code", "").strip()
+    ctx = lab_page_context()
+    ctx["blueprint_code"] = blueprint_code
+    return render(request, "web/asteroid_miner_layout_solver.html", ctx)
 
 
 _KOFI_HOSTS = frozenset({"ko-fi.com", "www.ko-fi.com"})

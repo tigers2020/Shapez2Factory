@@ -1,0 +1,435 @@
+"""Phase 1 persistence for Asteroid Lab UI, replay, topology help, and hybrid solver artifacts.
+
+Solver code must consume DTOs only; these models are for persistence, cache, UI, and inspection.
+"""
+
+from __future__ import annotations
+
+from django.db import models
+
+
+class AsteroidProject(models.Model):
+    """One lab page / work unit."""
+
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=120, unique=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-updated_at",)
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["-updated_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return str(self.name)
+
+
+class AsteroidMapInput(models.Model):
+    """Decoded blueprint and copy-code metadata for a project."""
+
+    class SourceKind(models.TextChoices):
+        COPY_CODE = "copy_code", "Copy code"
+        DECODED_JSON = "decoded_json", "Decoded JSON"
+        IMPORT_FILE = "import_file", "Import file"
+        OTHER = "other", "Other"
+
+    project = models.ForeignKey(
+        AsteroidProject,
+        on_delete=models.CASCADE,
+        related_name="map_inputs",
+    )
+    source_kind = models.CharField(
+        max_length=40,
+        choices=SourceKind.choices,
+        default=SourceKind.OTHER,
+    )
+    copy_code = models.TextField(blank=True)
+    decoded_json = models.JSONField(default=dict, blank=True)
+    content_sha256 = models.CharField(max_length=64, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["project", "source_kind"]),
+            models.Index(fields=["content_sha256"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.project.slug} ({self.source_kind})"
+
+
+class AsteroidCellSnapshot(models.Model):
+    """Grid / cell paint state the UI can render."""
+
+    map_input = models.ForeignKey(
+        AsteroidMapInput,
+        on_delete=models.CASCADE,
+        related_name="cell_snapshots",
+    )
+    layer = models.CharField(max_length=80, default="combined")
+    cell_grid_json = models.JSONField(default=dict, blank=True)
+    overlay_json = models.JSONField(default=dict, blank=True)
+    captured_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-captured_at",)
+        indexes = [
+            models.Index(fields=["map_input", "layer"]),
+            models.Index(fields=["map_input", "-captured_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.map_input_id} layer={self.layer}"
+
+
+class PatternTemplate(models.Model):
+    """Local pattern / DP template for the lab (app ``asteroid_lab``; not ``shapez_solver``)."""
+
+    template_key = models.CharField(max_length=160, unique=True)
+    title = models.CharField(max_length=200)
+    pattern_json = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("template_key",)
+        indexes = [models.Index(fields=["template_key"])]
+
+    def __str__(self) -> str:
+        return str(self.title)
+
+
+class PatternVariant(models.Model):
+    """Rotation / mirror / transport-specific view of a lab ``PatternTemplate``."""
+
+    template = models.ForeignKey(
+        PatternTemplate,
+        on_delete=models.CASCADE,
+        related_name="variants",
+    )
+    variant_key = models.CharField(max_length=160)
+    rotation_quarter_turns = models.PositiveSmallIntegerField(default=0)
+    mirrored = models.BooleanField(default=False)
+    transport_kind = models.CharField(max_length=40, default="default")
+    variant_json = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ("template", "variant_key")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("template", "variant_key"),
+                name="uniq_al_pattern_variant_per_template",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["template", "variant_key"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.template.template_key}:{self.variant_key}"
+
+
+class SolverRun(models.Model):
+    """One GA / hybrid solver execution for a lab project (``asteroid_lab`` app)."""
+
+    class RunStatus(models.TextChoices):
+        PENDING = "pending", "Pending"
+        RUNNING = "running", "Running"
+        COMPLETED = "completed", "Completed"
+        FAILED = "failed", "Failed"
+        CANCELLED = "cancelled", "Cancelled"
+
+    project = models.ForeignKey(
+        AsteroidProject,
+        on_delete=models.CASCADE,
+        related_name="solver_runs",
+    )
+    run_key = models.CharField(max_length=120, db_index=True)
+    algorithm_label = models.CharField(max_length=120, default="ga_hybrid")
+    status = models.CharField(
+        max_length=40,
+        choices=RunStatus.choices,
+        default=RunStatus.PENDING,
+    )
+    config_json = models.JSONField(default=dict, blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("project", "run_key"),
+                name="uniq_al_solver_run_key_per_project",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["project", "status"]),
+            models.Index(fields=["project", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.project.slug} {self.run_key}"
+
+
+class SolverMetricSnapshot(models.Model):
+    """Per-frame fitness / score components for inspection (not solver input)."""
+
+    solver_run = models.ForeignKey(
+        SolverRun,
+        on_delete=models.CASCADE,
+        related_name="metric_snapshots",
+    )
+    frame_index = models.PositiveIntegerField()
+    phase = models.CharField(max_length=80, blank=True)
+    fitness_components_json = models.JSONField(default=dict, blank=True)
+    aggregate_score = models.FloatField(null=True, blank=True)
+    throughput_hint = models.FloatField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("solver_run", "frame_index")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("solver_run", "frame_index"),
+                name="uniq_al_metric_snapshot_frame",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["solver_run", "frame_index"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"run={self.solver_run_id} frame={self.frame_index}"
+
+
+class CandidateBundle(models.Model):
+    """Gene-level placement bundle (not cell-level rows)."""
+
+    solver_run = models.ForeignKey(
+        SolverRun,
+        on_delete=models.CASCADE,
+        related_name="candidate_bundles",
+    )
+    bundle_key = models.CharField(max_length=160)
+    generation_index = models.PositiveIntegerField(null=True, blank=True)
+
+    extractor_coord = models.JSONField()
+    output_direction = models.CharField(max_length=20)
+    output_stub_coord = models.JSONField()
+
+    extension_pattern_key = models.CharField(max_length=120, blank=True)
+    extension_coords_json = models.JSONField(default=list, blank=True)
+
+    transport_kind = models.CharField(max_length=40)
+    placement_state = models.CharField(max_length=60, default="provisional")
+
+    local_score = models.FloatField(default=0)
+    fitness_json = models.JSONField(default=dict, blank=True)
+    reject_reason = models.CharField(max_length=120, blank=True)
+
+    class Meta:
+        ordering = ("solver_run", "bundle_key")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("solver_run", "bundle_key"),
+                name="uniq_al_candidate_bundle_key_per_run",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["solver_run", "generation_index"]),
+            models.Index(fields=["solver_run", "placement_state"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.solver_run_id}:{self.bundle_key}"
+
+
+class RoutingProbe(models.Model):
+    """Fast feasibility routing probe result for a candidate bundle."""
+
+    candidate_bundle = models.ForeignKey(
+        CandidateBundle,
+        on_delete=models.CASCADE,
+        related_name="routing_probes",
+    )
+    probe_kind = models.CharField(max_length=80, default="fast_feasibility")
+    start_stub_coord = models.JSONField()
+    goal_summary_json = models.JSONField(default=dict, blank=True)
+
+    reachable = models.BooleanField(default=False)
+    path_cost = models.FloatField(null=True, blank=True)
+    path_cells_json = models.JSONField(default=list, blank=True)
+
+    failure_reason = models.CharField(max_length=120, blank=True)
+    explored_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("candidate_bundle", "id")
+        indexes = [
+            models.Index(fields=["candidate_bundle", "probe_kind"]),
+            models.Index(fields=["candidate_bundle", "reachable"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"bundle={self.candidate_bundle_id} reachable={self.reachable}"
+
+
+class ReplayTrack(models.Model):
+    """UI replay timeline container (orthogonal to solver DTO inputs)."""
+
+    project = models.ForeignKey(
+        AsteroidProject,
+        on_delete=models.CASCADE,
+        related_name="replay_tracks",
+    )
+    solver_run = models.ForeignKey(
+        SolverRun,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="replay_tracks",
+    )
+    track_key = models.CharField(max_length=160)
+    title = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("project", "track_key"),
+                name="uniq_replay_track_key_per_project",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["project", "track_key"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.project.slug}:{self.track_key}"
+
+
+class ReplayFrame(models.Model):
+    """Single UI playback step (play / pause / scrub targets)."""
+
+    replay_track = models.ForeignKey(
+        ReplayTrack,
+        on_delete=models.CASCADE,
+        related_name="frames",
+    )
+    frame_index = models.PositiveIntegerField()
+    frame_key = models.CharField(max_length=120)
+
+    phase = models.CharField(max_length=80)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+
+    frame_payload = models.JSONField(default=dict, blank=True)
+    cell_overlay_json = models.JSONField(default=dict, blank=True)
+    metric_snapshot_json = models.JSONField(default=dict, blank=True)
+
+    is_placeholder = models.BooleanField(default=False)
+    is_keyframe = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("replay_track", "frame_index")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("replay_track", "frame_index"),
+                name="uniq_replay_frame_index_per_track",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["replay_track", "frame_index"]),
+            models.Index(fields=["replay_track", "is_keyframe"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.replay_track_id}#{self.frame_index}"
+
+
+class UIPlaybackSession(models.Model):
+    """Client- or server-side persisted transport / scrubber state."""
+
+    replay_track = models.OneToOneField(
+        ReplayTrack,
+        on_delete=models.CASCADE,
+        related_name="playback_session",
+    )
+
+    current_frame_index = models.PositiveIntegerField(default=0)
+    is_playing = models.BooleanField(default=False)
+    playback_speed_ms = models.PositiveIntegerField(default=800)
+
+    selected_layer = models.CharField(max_length=80, default="combined")
+    selected_candidate_id = models.CharField(max_length=120, blank=True)
+    selected_bundle_id = models.CharField(max_length=120, blank=True)
+
+    ui_state_json = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["replay_track"]),
+            models.Index(fields=["-updated_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"session track={self.replay_track_id}"
+
+
+class TopologyRule(models.Model):
+    """Catalog row for topology / routing rules shown in modals."""
+
+    rule_key = models.CharField(max_length=120, unique=True)
+    title = models.CharField(max_length=200)
+    short_label = models.CharField(max_length=80)
+
+    rule_group = models.CharField(max_length=80)
+    severity = models.CharField(max_length=40, default="info")
+
+    description = models.TextField(blank=True)
+    examples_json = models.JSONField(default=list, blank=True)
+    diagram_json = models.JSONField(default=dict, blank=True)
+
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ("sort_order", "rule_key")
+        indexes = [
+            models.Index(fields=["rule_group", "is_active", "sort_order"]),
+            models.Index(fields=["rule_key"]),
+        ]
+
+    def __str__(self) -> str:
+        return str(self.title)
+
+
+class TopologyRuleModalContent(models.Model):
+    """Rich modal body linked to a topology rule (separate from the summary row)."""
+
+    rule = models.OneToOneField(
+        TopologyRule,
+        on_delete=models.CASCADE,
+        related_name="modal_content",
+    )
+    modal_title = models.CharField(max_length=200, blank=True)
+    lead_html = models.TextField(blank=True)
+    sections_json = models.JSONField(default=list, blank=True)
+    footer_json = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["rule"])]
+
+    def __str__(self) -> str:
+        return f"modal:{self.rule.rule_key}"

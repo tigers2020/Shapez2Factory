@@ -14,6 +14,7 @@ from django_apps.web.views.macro_staff import (
     staff_site_required,
 )
 from django_apps.web.views.public_pages import (
+    asteroid_miner_layout_solver,
     asteroid_optimizer,
     demo,
     gallery,
@@ -25,6 +26,7 @@ from django_apps.web.views.public_pages import (
 )
 
 __all__ = [
+    "asteroid_miner_layout_solver",
     "asteroid_optimizer",
     "demo",
     "gallery",

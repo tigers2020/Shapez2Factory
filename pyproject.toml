@@ -89,5 +89,15 @@ module = [
     "django_apps.web.views",
     "django_apps.web.views.macro_staff",
     "django_apps.web.views.public_pages",
+    "django_apps.asteroid_lab.admin",
+    "django_apps.asteroid_lab.apps",
+    "django_apps.asteroid_lab.models",
+    "django_apps.asteroid_lab.services.dto",
+    "django_apps.asteroid_lab.services.experiment_service",
+    "django_apps.asteroid_lab.services.input_service",
+    "django_apps.asteroid_lab.services.project_service",
+    "django_apps.asteroid_lab.services.replay_service",
+    "django_apps.asteroid_lab.services.topology_service",
+    "django_apps.asteroid_lab.services",
 ]
 ignore_errors = true

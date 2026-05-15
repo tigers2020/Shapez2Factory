@@ -14,6 +14,11 @@ urlpatterns = [
     path("solver/", views.solver, name="solver"),
     path("solver/pattern-lab/", views.pattern_lab, name="pattern-lab"),
     path(
+        "asteroid-miner-layout/",
+        views.asteroid_miner_layout_solver,
+        name="asteroid-miner-layout",
+    ),
+    path(
         "internal/staff/macro-patterns/",
         views.macro_pattern_list,
         name="macro-pattern-staff",

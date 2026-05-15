@@ -20,7 +20,9 @@ import pytest
 
 _TESTS_ROOT = Path(__file__).resolve().parent
 
-_LAYER_MARKERS = frozenset({"shapez_core", "shapez_solver", "shapez_asteroid", "web", "api"})
+_LAYER_MARKERS = frozenset(
+    {"shapez_core", "shapez_solver", "shapez_asteroid", "web", "api", "asteroid_lab"}
+)
 
 
 @pytest.fixture

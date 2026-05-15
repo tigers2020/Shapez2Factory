@@ -87,6 +87,7 @@
       data-map-step-v2_pass1_candidates="{% filter force_escape %}{% trans 'v2: Pass1 candidates' %}{% endfilter %}"
       data-map-step-v2_pass1_skipped_no_mineable="{% filter force_escape %}{% trans 'v2: Pass1 skipped (no mineable cells)' %}{% endfilter %}"
       data-map-step-v2_pass1_provisional="{% filter force_escape %}{% trans 'v2: Pass1 provisional commit' %}{% endfilter %}"
+      data-map-step-v2_pass1_corridor_gate="{% filter force_escape %}{% trans 'v2: Pass1 corridor gate (egress carve)' %}{% endfilter %}"
       data-map-step-v2_pass2_candidates="{% filter force_escape %}{% trans 'v2: Pass2 candidates' %}{% endfilter %}"
       data-map-step-v2_pass2_provisional="{% filter force_escape %}{% trans 'v2: Pass2 provisional commit' %}{% endfilter %}"
       data-map-step-v2_step4_trunk_seed="{% filter force_escape %}{% trans 'v2: Step4 trunk seed' %}{% endfilter %}"
@@ -3253,7 +3254,7 @@
     for (i = 0; i < filtered.length; i++) {
       var cell = filtered[i];
       var role = cell.role || "occupied";
-      if (role === "inferred") {
+      if (role === "inferred" || role === "mineable") {
         appendCellRect(gUnder, cell, paintRoleForSurfaceMining(cell.surface), mapEntryTitle(cell));
       }
     }

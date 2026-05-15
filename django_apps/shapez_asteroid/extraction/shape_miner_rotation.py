@@ -51,7 +51,7 @@ def shape_miner_extension_positions(
     """Cells opposite the output, collinear with the core; ``None`` if any step is illegal."""
 
     if extension_count <= 0:
-        return tuple()
+        return ()
     ox, oy = output_offset_r(r)
     wx, wy = -ox, -oy
     cur_x, cur_y = core

@@ -28,3 +28,17 @@ def test_empty_transport_skips_connectivity_but_geometry_ok_when_clean() -> None
     )
     assert report.geometry_ok is True
     assert report.connectivity_ok is True
+
+
+def test_validate_final_layout_stub_does_not_replace_transport_or_external_sets() -> None:
+    external = frozenset({(2, 0), (3, 0)})
+    transport = frozenset({(2, 0), (4, 0)})
+    ext_id = id(external)
+    tr_id = id(transport)
+    final_validation.validate_final_layout_stub(
+        placement_commit_by_id={},
+        transport_cells=transport,
+        external_cells=external,
+    )
+    assert id(external) == ext_id
+    assert id(transport) == tr_id

@@ -2,6 +2,11 @@
 Trace / replay decision semantics (§13.5, §16.3).
 
 No log/NDJSON parsing — validates in-memory DTO fields only.
+
+**Not enforced** (pending explicit spec / product agreement before tightening):
+
+- ``committed=false`` does not require ``rejected_reason`` or ``rollback_reason`` to be set.
+- ``committed=false`` does not forbid both ``rejected_reason`` and ``rollback_reason`` set.
 """
 
 from __future__ import annotations

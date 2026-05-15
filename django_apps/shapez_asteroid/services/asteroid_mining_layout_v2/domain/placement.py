@@ -12,6 +12,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums
     PlacementCommitState,
     TransportKind,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.orchestration import (
+    SolverRunContext,
+)
 
 PlacementId = NewType("PlacementId", str)
 
@@ -87,6 +90,9 @@ class Pass2Result:
     blocked_cells_delta: tuple[BlueprintCell, ...] = ()
     placement_commit_entries: tuple[tuple[str, PlacementCommitState], ...] = ()
     beam_trace: tuple[dict[str, Any], ...] | None = None
+    corridor_opening_trace: tuple[dict[str, object], ...] = ()
+    pass1_after_corridor_gate: Pass1Result | None = None
+    solver_ctx_after_corridor_gate: SolverRunContext | None = None
 
 
 __all__ = [

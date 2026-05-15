@@ -1,0 +1,53 @@
+"""Named constants for the shapez_asteroid app (API contracts, limits, re-exports).
+
+Domain throughput/grid numbers live in ``extraction.constants``; this module
+re-exports them for a single import path and holds HTTP/JSON contract literals.
+"""
+
+from __future__ import annotations
+
+from django_apps.shapez_asteroid.extraction.constants import (
+    ASTEROID_EXTERIOR_MARGIN,
+    BEAM_DEFAULT_MAX_CLUSTERS_CAP,
+    BEAM_ENUM_MAX_EXTENSION_DEPTH,
+    BEAM_HARD_CAP,
+    BEAM_MAX_CORE_CANDIDATES_PER_STATE,
+    BEAM_TIME_BUDGET_SEC,
+    CLUSTER_TILE_ESTIMATE,
+    DEFAULT_BEAM_WIDTH,
+    EXTENSION_MAX_PER_CLUSTER,
+    ITEMS_PER_MIN_PER_SHAPE_SLOT,
+    SHAPE_SHAPE_THROUGHPUT_PER_CLUSTER_MAX,
+    SHAPE_SLOTS_PER_CORE,
+    SHAPE_SLOTS_PER_EXTENSION,
+)
+
+# --- copy-preview API (root JSON and behavior artifacts) ---
+COPY_PREVIEW_SCHEMA_VERSION = 2
+COPY_PREVIEW_EMPTY_TIMELINE_PHASE = "v2_empty"
+
+# --- map-cells bbox API ---
+MAP_CELLS_MAX_AXIS_SPAN = 256
+MAP_CELLS_DEFAULT_VOID_SLUG = "void"
+MAP_CELLS_DEFAULT_VOID_LABEL = "void"
+
+__all__ = [
+    "ASTEROID_EXTERIOR_MARGIN",
+    "BEAM_DEFAULT_MAX_CLUSTERS_CAP",
+    "BEAM_ENUM_MAX_EXTENSION_DEPTH",
+    "BEAM_HARD_CAP",
+    "BEAM_MAX_CORE_CANDIDATES_PER_STATE",
+    "BEAM_TIME_BUDGET_SEC",
+    "CLUSTER_TILE_ESTIMATE",
+    "COPY_PREVIEW_EMPTY_TIMELINE_PHASE",
+    "COPY_PREVIEW_SCHEMA_VERSION",
+    "DEFAULT_BEAM_WIDTH",
+    "EXTENSION_MAX_PER_CLUSTER",
+    "ITEMS_PER_MIN_PER_SHAPE_SLOT",
+    "MAP_CELLS_DEFAULT_VOID_LABEL",
+    "MAP_CELLS_DEFAULT_VOID_SLUG",
+    "MAP_CELLS_MAX_AXIS_SPAN",
+    "SHAPE_SHAPE_THROUGHPUT_PER_CLUSTER_MAX",
+    "SHAPE_SLOTS_PER_CORE",
+    "SHAPE_SLOTS_PER_EXTENSION",
+]

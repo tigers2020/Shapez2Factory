@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 
-from django_apps.shapez_asteroid.extraction.constants import ASTEROID_EXTERIOR_MARGIN
+from django_apps.shapez_asteroid.constants import ASTEROID_EXTERIOR_MARGIN
 from django_apps.shapez_asteroid.extraction.shape_miner_rotation import shape_miner_output_cell
 from django_apps.shapez_asteroid.extraction.shapez_grid import neighbors4
 from django_apps.shapez_asteroid.services.asteroid_reconstruction import (
@@ -40,6 +40,85 @@ def pipe_step_allowed(nxy: Coord, *, blocked_cells: frozenset[Coord]) -> bool:
     return nxy not in blocked_cells
 
 
+def _in_search_bounds(nx: int, ny: int, bx0: int, bx1: int, by0: int, by1: int) -> bool:
+    return bx0 <= nx <= bx1 and by0 <= ny <= by1
+
+
+def _cell_reaches_exit_goal(
+    cell: Coord,
+    *,
+    rec: AsteroidReconstruction,
+    margin: int,
+    use_pipe: bool,
+) -> bool:
+    cx, cy = cell
+    if is_exterior_coord(cx, cy, rec=rec, exterior_margin=margin):
+        return True
+    net = rec.solver_pipe_network_cells
+    return bool(use_pipe and net and cell in net)
+
+
+def _neighbor_step_ok(
+    cur: Coord,
+    nxy: Coord,
+    *,
+    use_pipe: bool,
+    blocked_cells: frozenset[Coord],
+    routed_transport_cells: frozenset[Coord],
+    directed_edges: frozenset[DirectedEdge],
+) -> bool:
+    if use_pipe:
+        return pipe_step_allowed(nxy, blocked_cells=blocked_cells)
+    return transport_step_allowed(
+        cur,
+        nxy,
+        blocked_cells=blocked_cells,
+        routed_transport_cells=routed_transport_cells,
+        directed_edges=directed_edges,
+    )
+
+
+def _cheap_transport_escape_bfs(
+    start: Coord,
+    *,
+    rec: AsteroidReconstruction,
+    margin: int,
+    use_pipe: bool,
+    blocked_cells: frozenset[Coord],
+    routed_transport_cells: frozenset[Coord],
+    directed_edges: frozenset[DirectedEdge],
+    bx0: int,
+    bx1: int,
+    by0: int,
+    by1: int,
+) -> bool:
+    q: deque[Coord] = deque([start])
+    seen: set[Coord] = {start}
+    while q:
+        cx, cy = q.popleft()
+        cur = (cx, cy)
+        if _cell_reaches_exit_goal(cur, rec=rec, margin=margin, use_pipe=use_pipe):
+            return True
+        for nx, ny in neighbors4(cx, cy):
+            if not _in_search_bounds(nx, ny, bx0, bx1, by0, by1):
+                continue
+            nxy = (nx, ny)
+            if nxy in seen:
+                continue
+            if not _neighbor_step_ok(
+                cur,
+                nxy,
+                use_pipe=use_pipe,
+                blocked_cells=blocked_cells,
+                routed_transport_cells=routed_transport_cells,
+                directed_edges=directed_edges,
+            ):
+                continue
+            seen.add(nxy)
+            q.append(nxy)
+    return False
+
+
 def cheap_transport_escape_exists(
     *,
     rec: AsteroidReconstruction,
@@ -68,35 +147,16 @@ def cheap_transport_escape_exists(
     start = shape_miner_output_cell(extractor_core, rotation)
     if start is None or start in blocked_cells:
         return False
-
-    if use_pipe and rec.solver_pipe_network_cells and start in rec.solver_pipe_network_cells:
-        return True
-
-    q: deque[Coord] = deque([start])
-    seen: set[Coord] = {start}
-    while q:
-        cx, cy = q.popleft()
-        if is_exterior_coord(cx, cy, rec=rec, exterior_margin=margin):
-            return True
-        if use_pipe and rec.solver_pipe_network_cells and (cx, cy) in rec.solver_pipe_network_cells:
-            return True
-        for nx, ny in neighbors4(cx, cy):
-            nxy = (nx, ny)
-            if nx < bx0 or nx > bx1 or ny < by0 or ny > by1:
-                continue
-            if nxy in seen:
-                continue
-            if use_pipe:
-                if not pipe_step_allowed(nxy, blocked_cells=blocked_cells):
-                    continue
-            elif not transport_step_allowed(
-                (cx, cy),
-                nxy,
-                blocked_cells=blocked_cells,
-                routed_transport_cells=routed_transport_cells,
-                directed_edges=de,
-            ):
-                continue
-            seen.add(nxy)
-            q.append(nxy)
-    return False
+    return _cheap_transport_escape_bfs(
+        start,
+        rec=rec,
+        margin=margin,
+        use_pipe=use_pipe,
+        blocked_cells=blocked_cells,
+        routed_transport_cells=routed_transport_cells,
+        directed_edges=de,
+        bx0=bx0,
+        bx1=bx1,
+        by0=by0,
+        by1=by1,
+    )

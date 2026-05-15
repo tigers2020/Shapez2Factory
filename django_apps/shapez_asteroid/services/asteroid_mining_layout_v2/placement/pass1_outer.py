@@ -150,20 +150,25 @@ def _movable_for_escape_probe(c: BlueprintCell, tk: TransportKind, r: Reconstruc
     return not blocked_by_building(c, tk, r)
 
 
-def cheap_escape_feasible(
-    stub: BlueprintCell,
-    transport_kind: TransportKind,
+def _cheap_escape_resolve_bbox_and_margin(
     reconstruction: ReconstructionDTO,
-) -> bool:
-    """4-neighbor BFS from stub; same-kind belt/pipe traversable (§3.1 merge hint)."""
-
+) -> tuple[BBox, int] | None:
     bbox = reconstruction.asteroid_bbox or _bbox_fallback(
         frozenset(reconstruction.mineable_placement_cells)
     )
     if bbox is None:
-        return False
+        return None
     margin = reconstruction.external_margin or 3
+    return (bbox, margin)
 
+
+def _cheap_escape_bfs_reaches_outside(
+    stub: BlueprintCell,
+    bbox: BBox,
+    margin: int,
+    transport_kind: TransportKind,
+    reconstruction: ReconstructionDTO,
+) -> bool:
     xmin = min(stub[0], bbox.min_x) - margin - 6
     xmax = max(stub[0], bbox.max_x) + margin + 6
     ymin = min(stub[1], bbox.min_y) - margin - 6
@@ -188,6 +193,22 @@ def cheap_escape_feasible(
     return False
 
 
+def cheap_escape_feasible(
+    stub: BlueprintCell,
+    transport_kind: TransportKind,
+    reconstruction: ReconstructionDTO,
+) -> bool:
+    """4-neighbor BFS from stub; same-kind belt/pipe traversable (§3.1 merge hint)."""
+
+    resolved = _cheap_escape_resolve_bbox_and_margin(reconstruction)
+    if resolved is None:
+        return False
+    bbox, margin = resolved
+    return _cheap_escape_bfs_reaches_outside(
+        stub, bbox, margin, transport_kind, reconstruction
+    )
+
+
 def _replay_append(
     buf: list[dict[str, Any]] | None,
     row: dict[str, Any],
@@ -204,7 +225,6 @@ def _replay_append(
 def _build_candidate(
     *,
     run_id: str,
-    bundle_index: int,
     scan_index: int,
     extractor: BlueprintCell,
     out_dir: tuple[int, int],
@@ -297,7 +317,7 @@ def _candidate_to_bundle(
     bundle_index: int,
 ) -> PlacementBundle:
     eid = PlacementId(
-        f"{run_id}:p1:e:{bundle_index}:" f"{cand.extractor_cell[0]}:{cand.extractor_cell[1]}"
+        f"{run_id}:p1:e:{bundle_index}:" + f"{cand.extractor_cell[0]}:{cand.extractor_cell[1]}"
     )
     exts = tuple(
         ExtensionPlacement(
@@ -320,6 +340,197 @@ def _candidate_to_bundle(
         transport_kind=cand.transport_kind,
     )
     return PlacementBundle(extractor=ext, extensions=exts, output_stub=stub)
+
+
+def _pass1_cell_sort_key(c: BlueprintCell) -> tuple[int, int]:
+    return (c[1], c[0])
+
+
+def _pass1_probe_outputs_for_scan_cell(
+    *,
+    run_id: str,
+    scan_index: int,
+    extractor: BlueprintCell,
+    mineable: frozenset[BlueprintCell],
+    used: set[BlueprintCell],
+    transport_kind: TransportKind,
+    reconstruction: ReconstructionDTO,
+    bbox: BBox,
+    replay_events: list[dict[str, Any]] | None,
+    replay_event_cap: int | None,
+    beam: list[dict[str, object]],
+) -> list[Pass1BundleCandidate]:
+    feasible: list[Pass1BundleCandidate] = []
+    for out_dir in _OUTPUT_DIRS:
+        cand = _build_candidate(
+            run_id=run_id,
+            scan_index=scan_index,
+            extractor=extractor,
+            out_dir=out_dir,
+            mineable=mineable,
+            used=used,
+            transport_kind=transport_kind,
+            reconstruction=reconstruction,
+            bbox=bbox,
+        )
+        if cand is None:
+            continue
+        reject = cand.reject_reason
+        _replay_append(
+            replay_events,
+            {
+                "placement_pass": "pass1",
+                "kind": "probe_output",
+                "scan_index": scan_index,
+                "extractor_cell": [extractor[0], extractor[1]],
+                "output_direction": [out_dir[0], out_dir[1]],
+                "output_stub_cell": [cand.output_stub_cell[0], cand.output_stub_cell[1]],
+                "reject_reason": reject,
+            },
+            cap=replay_event_cap,
+        )
+        if reject is not None:
+            beam.append(
+                {
+                    "placement_pass": "pass1",
+                    "scan_index": scan_index,
+                    "extractor_cell": extractor,
+                    "output_direction": out_dir,
+                    "score": cand.score,
+                    "committed": False,
+                    "reject_reason": reject,
+                }
+            )
+            continue
+        feasible.append(cand)
+    return feasible
+
+
+def _pass1_pick_best_feasible(
+    feasible: list[Pass1BundleCandidate],
+    extractor: BlueprintCell,
+    bbox: BBox,
+) -> Pass1BundleCandidate | None:
+    if not feasible:
+        return None
+    max_ext = max(len(c.extension_cells) for c in feasible)
+    pool0 = (
+        [c for c in feasible if len(c.extension_cells) == max_ext]
+        if max_ext > 0
+        else list(feasible)
+    )
+    want_out = _preferred_pass1_output_direction(extractor, bbox)
+    tier1 = [c for c in pool0 if c.output_direction == want_out]
+    pool = tier1 if tier1 else pool0
+
+    def _best_key(c: Pass1BundleCandidate) -> tuple[int, int, int]:
+        return lex_key_pass1_best_output(
+            extractor,
+            bbox,
+            len(c.extension_cells),
+            c.output_direction,
+        )
+
+    return min(pool, key=_best_key)
+
+
+def _pass1_try_commit_bundle(
+    best: Pass1BundleCandidate,
+    *,
+    ctx: SolverRunContext,
+    scan_index: int,
+    used: set[BlueprintCell],
+    bundles: list[PlacementBundle],
+    commits: list[tuple[str, PlacementCommitState]],
+    beam: list[dict[str, object]],
+    transport_kind: TransportKind,
+    bundle_index: int,
+    replay_events: list[dict[str, Any]] | None,
+    replay_event_cap: int | None,
+) -> int | None:
+    """Return ``bundle_index + 1`` after a successful commit; ``None`` if skipped."""
+
+    b = _candidate_to_bundle(best, run_id=ctx.run_id, bundle_index=bundle_index)
+    occ = {b.extractor.cell, b.output_stub.cell}
+    occ.update(ext.cell for ext in b.extensions)
+    if occ & used:
+        return None
+    used.update(occ)
+    bundles.append(b)
+    commits.append((str(b.extractor.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
+    for ext in b.extensions:
+        commits.append((str(ext.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
+    beam.append(
+        {
+            "placement_pass": "pass1",
+            "scan_index": scan_index,
+            "extractor_cell": best.extractor_cell,
+            "output_direction": best.output_direction,
+            "output_stub_cell": best.output_stub_cell,
+            "score": best.score,
+            "committed": True,
+            "reject_reason": None,
+            "placement_ids": (str(b.extractor.placement_id),)
+            + tuple(str(x.placement_id) for x in b.extensions),
+        }
+    )
+    _replay_append(
+        replay_events,
+        {
+            "placement_pass": "pass1",
+            "kind": "commit_bundle",
+            "scan_index": scan_index,
+            "bundle_index": bundle_index,
+            "transport_kind": str(transport_kind.value),
+            "extractor_cell": [b.extractor.cell[0], b.extractor.cell[1]],
+            "output_direction": [best.output_direction[0], best.output_direction[1]],
+            "output_stub_cell": [b.output_stub.cell[0], b.output_stub.cell[1]],
+            "output_stub_physical": is_physical_x(b.output_stub.cell[0]),
+            "extension_cells": [[c[0], c[1]] for c in (e.cell for e in b.extensions)],
+        },
+        cap=replay_event_cap,
+    )
+    return bundle_index + 1
+
+
+def _pass1_assemble_result(
+    bundles: list[PlacementBundle],
+    commits: list[tuple[str, PlacementCommitState]],
+    beam: list[dict[str, object]],
+    replay_events: list[dict[str, Any]] | None,
+    replay_event_cap: int | None,
+) -> Pass1Result:
+    _replay_append(
+        replay_events,
+        {
+            "placement_pass": "pass1",
+            "kind": "pass1_end",
+            "bundle_count": len(bundles),
+        },
+        cap=replay_event_cap,
+    )
+
+    placement_occ: set[BlueprintCell] = set()
+    stub_cells: set[BlueprintCell] = set()
+    for b in bundles:
+        placement_occ.add(b.extractor.cell)
+        stub_cells.add(b.output_stub.cell)
+        for ext in b.extensions:
+            placement_occ.add(ext.cell)
+    union_occ = placement_occ | stub_cells
+
+    placement_sorted = tuple(sorted(placement_occ, key=_pass1_cell_sort_key))
+    stub_sorted = tuple(sorted(stub_cells, key=_pass1_cell_sort_key))
+    occupied = tuple(sorted(union_occ, key=_pass1_cell_sort_key))
+
+    return Pass1Result(
+        placements=tuple(bundles),
+        placement_occupied_cells=placement_sorted,
+        output_stub_cells=stub_sorted,
+        occupied_cells=occupied,
+        placement_commit_entries=tuple(commits),
+        beam_trace=tuple(beam) if beam else None,
+    )
 
 
 def run_pass1_outer_placement(
@@ -367,150 +578,40 @@ def run_pass1_outer_placement(
             },
             cap=replay_event_cap,
         )
-        best: Pass1BundleCandidate | None = None
-        feasible: list[Pass1BundleCandidate] = []
-        for out_dir in _OUTPUT_DIRS:
-            cand = _build_candidate(
-                run_id=ctx.run_id,
-                bundle_index=bundle_index,
-                scan_index=scan_index,
-                extractor=extractor,
-                out_dir=out_dir,
-                mineable=mineable_cells,
-                used=used,
-                transport_kind=transport_kind,
-                reconstruction=reconstruction,
-                bbox=bbox,
-            )
-            if cand is None:
-                continue
-            reject = cand.reject_reason
-            _replay_append(
-                replay_events,
-                {
-                    "placement_pass": "pass1",
-                    "kind": "probe_output",
-                    "scan_index": scan_index,
-                    "extractor_cell": [extractor[0], extractor[1]],
-                    "output_direction": [out_dir[0], out_dir[1]],
-                    "output_stub_cell": [cand.output_stub_cell[0], cand.output_stub_cell[1]],
-                    "reject_reason": reject,
-                },
-                cap=replay_event_cap,
-            )
-            if reject is not None:
-                beam.append(
-                    {
-                        "placement_pass": "pass1",
-                        "scan_index": scan_index,
-                        "extractor_cell": extractor,
-                        "output_direction": out_dir,
-                        "score": cand.score,
-                        "committed": False,
-                        "reject_reason": reject,
-                    }
-                )
-                continue
-            feasible.append(cand)
-
-        if feasible:
-            max_ext = max(len(c.extension_cells) for c in feasible)
-            pool0 = (
-                [c for c in feasible if len(c.extension_cells) == max_ext]
-                if max_ext > 0
-                else list(feasible)
-            )
-            want_out = _preferred_pass1_output_direction(extractor, bbox)
-            tier1 = [c for c in pool0 if c.output_direction == want_out]
-            pool = tier1 if tier1 else pool0
-            best = min(
-                pool,
-                key=lambda c: lex_key_pass1_best_output(
-                    extractor,
-                    bbox,
-                    len(c.extension_cells),
-                    c.output_direction,
-                ),
-            )
-
+        feasible = _pass1_probe_outputs_for_scan_cell(
+            run_id=ctx.run_id,
+            scan_index=scan_index,
+            extractor=extractor,
+            mineable=mineable_cells,
+            used=used,
+            transport_kind=transport_kind,
+            reconstruction=reconstruction,
+            bbox=bbox,
+            replay_events=replay_events,
+            replay_event_cap=replay_event_cap,
+            beam=beam,
+        )
+        best = _pass1_pick_best_feasible(feasible, extractor, bbox)
         if best is None or best.reject_reason is not None:
             continue
-
-        b = _candidate_to_bundle(best, run_id=ctx.run_id, bundle_index=bundle_index)
-        occ = {b.extractor.cell, b.output_stub.cell}
-        occ.update(ext.cell for ext in b.extensions)
-        if occ & used:
-            continue
-        used.update(occ)
-        bundles.append(b)
-        commits.append((str(b.extractor.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
-        for ext in b.extensions:
-            commits.append((str(ext.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
-        beam.append(
-            {
-                "placement_pass": "pass1",
-                "scan_index": scan_index,
-                "extractor_cell": best.extractor_cell,
-                "output_direction": best.output_direction,
-                "output_stub_cell": best.output_stub_cell,
-                "score": best.score,
-                "committed": True,
-                "reject_reason": None,
-                "placement_ids": (str(b.extractor.placement_id),)
-                + tuple(str(x.placement_id) for x in b.extensions),
-            }
+        nxt = _pass1_try_commit_bundle(
+            best,
+            ctx=ctx,
+            scan_index=scan_index,
+            used=used,
+            bundles=bundles,
+            commits=commits,
+            beam=beam,
+            transport_kind=transport_kind,
+            bundle_index=bundle_index,
+            replay_events=replay_events,
+            replay_event_cap=replay_event_cap,
         )
-        _replay_append(
-            replay_events,
-            {
-                "placement_pass": "pass1",
-                "kind": "commit_bundle",
-                "scan_index": scan_index,
-                "bundle_index": bundle_index,
-                "transport_kind": str(transport_kind.value),
-                "extractor_cell": [b.extractor.cell[0], b.extractor.cell[1]],
-                "output_direction": [best.output_direction[0], best.output_direction[1]],
-                "output_stub_cell": [b.output_stub.cell[0], b.output_stub.cell[1]],
-                "output_stub_physical": is_physical_x(b.output_stub.cell[0]),
-                "extension_cells": [[c[0], c[1]] for c in (e.cell for e in b.extensions)],
-            },
-            cap=replay_event_cap,
-        )
-        bundle_index += 1
+        if nxt is not None:
+            bundle_index = nxt
 
-    _replay_append(
-        replay_events,
-        {
-            "placement_pass": "pass1",
-            "kind": "pass1_end",
-            "bundle_count": len(bundles),
-        },
-        cap=replay_event_cap,
-    )
-
-    placement_occ: set[BlueprintCell] = set()
-    stub_cells: set[BlueprintCell] = set()
-    for b in bundles:
-        placement_occ.add(b.extractor.cell)
-        stub_cells.add(b.output_stub.cell)
-        for ext in b.extensions:
-            placement_occ.add(ext.cell)
-    union_occ = placement_occ | stub_cells
-
-    def _cell_sort_key(c: BlueprintCell) -> tuple[int, int]:
-        return (c[1], c[0])
-
-    placement_sorted = tuple(sorted(placement_occ, key=_cell_sort_key))
-    stub_sorted = tuple(sorted(stub_cells, key=_cell_sort_key))
-    occupied = tuple(sorted(union_occ, key=_cell_sort_key))
-
-    return Pass1Result(
-        placements=tuple(bundles),
-        placement_occupied_cells=placement_sorted,
-        output_stub_cells=stub_sorted,
-        occupied_cells=occupied,
-        placement_commit_entries=tuple(commits),
-        beam_trace=tuple(beam) if beam else None,
+    return _pass1_assemble_result(
+        bundles, commits, beam, replay_events, replay_event_cap
     )
 
 

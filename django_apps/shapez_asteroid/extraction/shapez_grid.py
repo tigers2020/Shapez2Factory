@@ -14,7 +14,7 @@ from __future__ import annotations
 Coord = tuple[int, int]
 
 
-def is_legal_xy(x: int, y: int) -> bool:
+def is_legal_xy(x: int, _y: int) -> bool:
     return x != 0
 
 

@@ -107,7 +107,8 @@ def apply_pass1_provisional_commits(ctx: SolverRunContext, pass1: Pass1Result) -
     merged = dict(ctx.placement_commit_by_id)
     for pid, st in pass1.placement_commit_entries:
         merged[pid] = st
-    return replace(ctx, placement_commit_by_id=merged)
+    out: SolverRunContext = replace(ctx, placement_commit_by_id=merged)
+    return out
 
 
 def apply_pass2_provisional_commits(ctx: SolverRunContext, pass2: Pass2Result) -> SolverRunContext:
@@ -118,7 +119,8 @@ def apply_pass2_provisional_commits(ctx: SolverRunContext, pass2: Pass2Result) -
     merged = dict(ctx.placement_commit_by_id)
     for pid, st in pass2.placement_commit_entries:
         merged[pid] = st
-    return replace(ctx, placement_commit_by_id=merged)
+    out: SolverRunContext = replace(ctx, placement_commit_by_id=merged)
+    return out
 
 
 __all__ = [

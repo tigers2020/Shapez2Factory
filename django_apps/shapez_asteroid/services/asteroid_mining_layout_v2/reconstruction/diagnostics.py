@@ -102,38 +102,50 @@ def _frozen_count_pairs(counter: Counter[str]) -> tuple[tuple[str, int], ...]:
     return tuple(sorted(counter.items(), key=lambda kv: (-kv[1], kv[0])))
 
 
+def _blueprint_cell_from_entry_item(item: dict[str, Any]) -> BlueprintCell | None:
+    x_val = _int_or_none(item.get("X"))
+    if x_val is None or x_val == 0:
+        return None
+    y_val = _int_or_none(item.get("Y"))
+    if y_val is None:
+        y_val = 0
+    return (x_val, y_val)
+
+
+def _entry_is_other_barrier_classification(t_str: str | None) -> bool:
+    """True iff entry is ``other_barrier`` (shell short-circuit before ``classify_layout_type``)."""
+
+    if _is_asteroid_shell_layout_type(t_str):
+        return False
+    style = classify_layout_type(t_str)
+    if style is PlotStyle.belt:
+        return False
+    if style is PlotStyle.pipe:
+        return False
+    if style in (
+        PlotStyle.fluid_miner,
+        PlotStyle.miner,
+        PlotStyle.extractor,
+        PlotStyle.booster,
+    ):
+        return False
+    if style in (PlotStyle.extension, PlotStyle.fluid_extension):
+        return False
+    if style is PlotStyle.platform:
+        return False
+    return True
+
+
 def _other_barrier_cells_from_entries(doc: dict[str, Any]) -> frozenset[BlueprintCell]:
     """Cells classified as ``other_barrier`` (same branch as ``asteroid_reconstruction``)."""
 
     other: set[BlueprintCell] = set()
     for item in gather_bp_entries_recursive(doc):
-        x_val = _int_or_none(item.get("X"))
-        if x_val is None or x_val == 0:
+        xy = _blueprint_cell_from_entry_item(item)
+        if xy is None:
             continue
-        y_val = _int_or_none(item.get("Y"))
-        if y_val is None:
-            y_val = 0
-        xy: BlueprintCell = (x_val, y_val)
-        t_str = _normalize_t_raw(item)
-        if _is_asteroid_shell_layout_type(t_str):
-            continue
-        style = classify_layout_type(t_str)
-        if style is PlotStyle.belt:
-            continue
-        if style is PlotStyle.pipe:
-            continue
-        if style in (
-            PlotStyle.fluid_miner,
-            PlotStyle.miner,
-            PlotStyle.extractor,
-            PlotStyle.booster,
-        ):
-            continue
-        if style in (PlotStyle.extension, PlotStyle.fluid_extension):
-            continue
-        if style is PlotStyle.platform:
-            continue
-        other.add(xy)
+        if _entry_is_other_barrier_classification(_normalize_t_raw(item)):
+            other.add(xy)
     return frozenset(other)
 
 
@@ -157,21 +169,18 @@ def _platform_cells_from_entries(doc: dict[str, Any]) -> frozenset[BlueprintCell
     return frozenset(plat)
 
 
-def diagnose_reconstruction_mineable_empty(
+def _mutable_doc_from_decoded(
     decoded_blueprint: dict[str, Any] | DecodedBlueprintDocument,
-    reconstruction: ReconstructionDTO | None = None,
-) -> ReconstructionDiagnosisDTO:
-    """Aggregate reconstruction stats and a deterministic ``primary_cause`` label."""
+) -> dict[str, Any]:
+    if isinstance(decoded_blueprint, DecodedBlueprintDocument):
+        return decoded_blueprint.as_mutable_dict()
+    return dict(decoded_blueprint)
 
-    doc = (
-        decoded_blueprint.as_mutable_dict()
-        if isinstance(decoded_blueprint, DecodedBlueprintDocument)
-        else dict(decoded_blueprint)
-    )
-    entries = gather_bp_entries_recursive(doc)
-    total_entries = len(entries)
 
-    by_cell: dict[BlueprintCell, list[str | None]] = defaultdict(list)
+def _by_cell_t_values(
+    entries: list[dict[str, Any]],
+) -> defaultdict[BlueprintCell, list[str | None]]:
+    by_cell: defaultdict[BlueprintCell, list[str | None]] = defaultdict(list)
     for item in entries:
         x_val = _int_or_none(item.get("X"))
         if x_val is None or x_val == 0:
@@ -181,34 +190,37 @@ def diagnose_reconstruction_mineable_empty(
             y_val = 0
         xy: BlueprintCell = (x_val, y_val)
         by_cell[xy].append(_normalize_t_raw(item))
+    return by_cell
 
+
+def _coord_metrics_from_by_cell(
+    by_cell: defaultdict[BlueprintCell, list[str | None]],
+) -> tuple[int, int]:
     unique_coord_count = len(by_cell)
     duplicate_coord_count = sum(1 for _c, ts in by_cell.items() if len(ts) > 1)
+    return unique_coord_count, duplicate_coord_count
 
-    recon = reconstruction if reconstruction is not None else reconstruct_asteroid_mining_field(doc)
-    shell_f = frozenset(recon.extraction_shell_cells)
-    interior_f = frozenset(recon.interior_patch_cells)
-    belt_f = frozenset(recon.belt_cells)
-    pipe_f = frozenset(recon.pipe_cells)
-    ext_f = frozenset(recon.extractor_cells)
-    exn_f = frozenset(recon.extension_cells)
-    plat_f = _platform_cells_from_entries(doc)
-    other_f = _other_barrier_cells_from_entries(doc)
 
-    permanent_blocking_for_mineable = belt_f | pipe_f | plat_f | other_f
+def _shell_blocking_coord_counts(
+    shell_f: frozenset[BlueprintCell],
+    permanent_blocking_for_mineable: frozenset[BlueprintCell],
+    belt_f: frozenset[BlueprintCell],
+    pipe_f: frozenset[BlueprintCell],
+    ext_f: frozenset[BlueprintCell],
+    exn_f: frozenset[BlueprintCell],
+) -> tuple[int, int, int, int, int]:
+    return (
+        sum(1 for c in shell_f if c in permanent_blocking_for_mineable),
+        sum(1 for c in shell_f if c in belt_f),
+        sum(1 for c in shell_f if c in pipe_f),
+        sum(1 for c in shell_f if c in ext_f),
+        sum(1 for c in shell_f if c in exn_f),
+    )
 
-    coords_shell_blocking = sum(1 for c in shell_f if c in permanent_blocking_for_mineable)
-    coords_shell_belt = sum(1 for c in shell_f if c in belt_f)
-    coords_shell_pipe = sum(1 for c in shell_f if c in pipe_f)
-    coords_shell_extractor = sum(1 for c in shell_f if c in ext_f)
-    coords_shell_extension = sum(1 for c in shell_f if c in exn_f)
 
-    candidate_union = shell_f | interior_f | ext_f | exn_f
-    candidate_before_blocking = len(candidate_union)
-    mineable_f = frozenset(recon.mineable_placement_cells)
-    mineable_n = len(mineable_f)
-    blocked_candidate = len(candidate_union - mineable_f)
-
+def _collect_unrecognized_t_counters(
+    entries: list[dict[str, Any]],
+) -> tuple[Counter[str], Counter[str]]:
     unrecognized: Counter[str] = Counter()
     asteroid_like_unrec: Counter[str] = Counter()
     for item in entries:
@@ -218,7 +230,14 @@ def diagnose_reconstruction_mineable_empty(
             unrecognized[t_str] += 1
             if "asteroid" in _compact_t(t_str) and not _is_asteroid_shell_layout_type(t_str):
                 asteroid_like_unrec[t_str] += 1
+    return unrecognized, asteroid_like_unrec
 
+
+def _build_duplicate_coord_samples(
+    by_cell: defaultdict[BlueprintCell, list[str | None]],
+    *,
+    limit: int = 10,
+) -> tuple[DuplicateCoordSampleDTO, ...]:
     sample_dtos: list[DuplicateCoordSampleDTO] = []
     for cell, t_vals in sorted(by_cell.items(), key=lambda kv: (-len(kv[1]), kv[0][1], kv[0][0])):
         kinds = {_entry_kind(t) for t in t_vals}
@@ -236,11 +255,13 @@ def diagnose_reconstruction_mineable_empty(
                 blocking_kinds=bk,
             )
         )
-    duplicate_coord_samples = tuple(sample_dtos[:10])
+    return tuple(sample_dtos[:limit])
 
-    preview_count: int | None = None
-    preview_ids: tuple[str, ...] = ()
-    note_tail = ""
+
+def _preview_timeline_fields(
+    doc: dict[str, Any],
+    recon: ReconstructionDTO,
+) -> tuple[int | None, tuple[str, ...], str]:
     try:
         from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2 import (
             preview_reconstruction_timeline as _preview,
@@ -253,10 +274,61 @@ def diagnose_reconstruction_mineable_empty(
         preview_ids = tuple(
             str(f.get("id", "")) for f in frames[:12] if isinstance(f, dict) and f.get("id")
         )
+        return preview_count, preview_ids, ""
     except (ImportError, TypeError, ValueError, KeyError) as exc:
-        preview_count = None
-        preview_ids = ()
-        note_tail = f"preview_frames_unavailable:{type(exc).__name__}"
+        return None, (), f"preview_frames_unavailable:{type(exc).__name__}"
+
+
+def diagnose_reconstruction_mineable_empty(
+    decoded_blueprint: dict[str, Any] | DecodedBlueprintDocument,
+    reconstruction: ReconstructionDTO | None = None,
+) -> ReconstructionDiagnosisDTO:
+    """Aggregate reconstruction stats and a deterministic ``primary_cause`` label."""
+
+    doc = _mutable_doc_from_decoded(decoded_blueprint)
+    entries = gather_bp_entries_recursive(doc)
+    total_entries = len(entries)
+
+    by_cell = _by_cell_t_values(entries)
+    unique_coord_count, duplicate_coord_count = _coord_metrics_from_by_cell(by_cell)
+
+    recon = reconstruction if reconstruction is not None else reconstruct_asteroid_mining_field(doc)
+    shell_f = frozenset(recon.extraction_shell_cells)
+    interior_f = frozenset(recon.interior_patch_cells)
+    belt_f = frozenset(recon.belt_cells)
+    pipe_f = frozenset(recon.pipe_cells)
+    ext_f = frozenset(recon.extractor_cells)
+    exn_f = frozenset(recon.extension_cells)
+    plat_f = _platform_cells_from_entries(doc)
+    other_f = _other_barrier_cells_from_entries(doc)
+
+    permanent_blocking_for_mineable = belt_f | pipe_f | plat_f | other_f
+
+    (
+        coords_shell_blocking,
+        coords_shell_belt,
+        coords_shell_pipe,
+        coords_shell_extractor,
+        coords_shell_extension,
+    ) = _shell_blocking_coord_counts(
+        shell_f,
+        permanent_blocking_for_mineable,
+        belt_f,
+        pipe_f,
+        ext_f,
+        exn_f,
+    )
+
+    candidate_union = shell_f | interior_f | ext_f | exn_f
+    candidate_before_blocking = len(candidate_union)
+    mineable_f = frozenset(recon.mineable_placement_cells)
+    mineable_n = len(mineable_f)
+    blocked_candidate = len(candidate_union - mineable_f)
+
+    unrecognized, asteroid_like_unrec = _collect_unrecognized_t_counters(entries)
+    duplicate_coord_samples = _build_duplicate_coord_samples(by_cell)
+
+    preview_count, preview_ids, note_tail = _preview_timeline_fields(doc, recon)
 
     shell_n = len(recon.extraction_shell_cells)
     interior_n = len(recon.interior_patch_cells)

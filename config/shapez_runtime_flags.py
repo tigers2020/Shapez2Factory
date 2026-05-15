@@ -13,8 +13,9 @@ from pathlib import Path
 _BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- SHAPEZ_COPY_* ---
-# ``SHAPEZ_COPY_DEBUG_DIR``: copy-preview 성공 시 코드·디코드 JSON 덤프와
-# v2 행동 산출물 JSON(``v2_behavior_artifact_*``)을 같은 디렉터리에 기록.
+# ``SHAPEZ_COPY_DEBUG_DIR``: copy-preview 성공 시 코드·디코드 JSON 덤프 디렉터리.
+# v2 행동 산출물 JSON(``v2_behavior_artifact_*``)은 비어 있지 않을 때만 기록하며,
+# 경로는 항상 ``BASE_DIR / "var" / "behavior_artifact"`` 이다(이 env와 분리).
 # 상대 경로면 프로젝트 ``BASE_DIR`` 기준(``var/...`` 권장). 절대 경로는 그대로 사용.
 # Replay NDJSON·Debug NDJSON·솔버 입력 아님(output-only). 기본 빈 문자열(OFF).
 _copy_debug_raw = (os.environ.get("SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()

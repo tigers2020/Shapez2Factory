@@ -14,6 +14,7 @@
 - [x] **PR-H (2026-05-14)**: 런타임 v1 import·zip 부트스트랩·`include_solver_*` 제거; 스텁 `asteroid_mining_layout_v1_deprecated/`. 동시대 문서·플랜 묶음: [v1 문서 아카이브](../archive/2026-05-mining-layout-v1-era/README.md). (물리 대규모 리네임 단독 PR은 선택)
 - Pass1 Stabilization-P1 권위: 구현·replay UI 앵커는 v2 `placement/pass1_outer.py` + `placement/bundle_candidate.py`; v1 `try_commit_pass1_bundle` / `Pass12BundleCandidate`는 **아카이브 참고만** (체크리스트·Cursor 컨텍스트 drift 방지).
 - [ ] **Pass1 extension topology 정본 (2026-05-14)**: [`06_step2_pass1_placement.md`](../Algorithm/mining_solver_cursor_sessions/06_step2_pass1_placement.md) §7.2·§7.5·Stabilization-P1 — **straight-chain-first**(extractor **output 반대** 방향 1자 체인, 최대 3 extension); **ㅗ/ㅓ/ㅏ·3방 branching은 Pass1 기본이 아님**(fallback 또는 Pass2·후속). placement 패치 전까지 **구현이 정본과 다를 수 있음** → 코드 변경 시 정본 역주입.
+- [x] v2 외부 네임스페이스: [`test_import_boundaries.py`](../../tests/unit/shapez_asteroid_v2/test_import_boundaries.py) `test_v2_tree_django_apps_imports_match_allowlist`로 `django_apps.*` 교차 import allowlist 고정 (2026-05-15)
 
 ### 공통 · 스키마
 
@@ -475,3 +476,11 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 - [x] 적용: `semantic_contracts.partition_pass3_commit_reason_payload`가 DTO namespace classifier를 경유하도록 변경
 - [x] 적용: STEP4 routing failure row를 typed DTO/public dict adapter 경유로 생성. 기존 public key set 유지.
 - [x] 회귀: commit_reason 성공 namespace, misfiled rejected_reason promotion, routing failure row key snapshot, ExistingLayoutAnalysis vs FinalValidationReport 필드 분리 테스트 추가
+# 2026-05-15 문서 구조 자동 갱신
+
+- [x] `structure.md`에 v2 asteroid 서비스 트리와 `tests/unit/shapez_asteroid_v2/` 반영
+- [x] `documents/README.md`에서 `debug/`, `reports/`, `refactory/`, v2 active 문서, v1 archive 판정 갱신
+- [x] `documents/index/document_inventory.md`에서 `CANON` / `ACTIVE` / `RESEARCH` / `REPORT` / `ARCHIVED` 상태 재분류
+- [x] `documents/archive/README.md`와 `archive/2026-05-mining-layout-v1-era/README.md` 최신 archive 정책 갱신
+- [x] 새 파일 이동 없음: v2 문서는 active/canon/report로 유지하고, v1-era 묶음만 archive로 유지
+- [x] 2026-05-15 추가 갱신: v2 corridor probe/recovery 구조, report index, supplemental STEP4 문서 권위(`ACTIVE`, 정본 아님) 반영

@@ -220,7 +220,8 @@ def test_copy_preview_view_response_excludes_artifact(tmp_path: Path) -> None:
     code = _minimal_valid_copy_code()
     rf = RequestFactory()
     body = json.dumps({"code": code})
-    with override_settings(SHAPEZ_COPY_DEBUG_DIR=str(tmp_path)):
+    copy_debug = tmp_path / "copy_debug"
+    with override_settings(BASE_DIR=tmp_path, SHAPEZ_COPY_DEBUG_DIR=str(copy_debug)):
         req = rf.post(
             "/api/asteroid/copy-preview/",
             data=body,
@@ -232,7 +233,8 @@ def test_copy_preview_view_response_excludes_artifact(tmp_path: Path) -> None:
     assert "schema_version" not in data
     assert "pass1_replay_events" not in data
     assert "algorithm_input" not in data
-    arts = list(tmp_path.glob("v2_behavior_artifact_*_behavior_artifact.json"))
+    ba_dir = tmp_path / "var" / "behavior_artifact"
+    arts = list(ba_dir.glob("v2_behavior_artifact_*_behavior_artifact.json"))
     assert len(arts) == 1
     loaded = json.loads(arts[0].read_text(encoding="utf-8"))
     _assert_required_schema(loaded)

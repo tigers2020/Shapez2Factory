@@ -17,32 +17,60 @@ _JSON_SUFFIX = "_decoded.json"
 _COPY_PREVIEW_DEBUG_MAX_STEMS = 10
 
 
-def _prune_copy_preview_debug_dir(root: Path) -> None:
-    """``copy_preview_*`` stem 수가 `_COPY_PREVIEW_DEBUG_MAX_STEMS`를 넘으면
-    mtime 오래된 stem부터 삭제한다.
-    """
+def _copy_preview_stem_from_name(name: str) -> str | None:
+    if name.endswith(_CODE_SUFFIX):
+        return name[: -len(_CODE_SUFFIX)]
+    if name.endswith(_JSON_SUFFIX):
+        return name[: -len(_JSON_SUFFIX)]
+    return None
 
+
+def _copy_preview_stem_mtime_ns(path: Path) -> tuple[str, int] | None:
+    if not path.is_file():
+        return None
+    stem = _copy_preview_stem_from_name(path.name)
+    if stem is None:
+        return None
+    try:
+        mtime_ns = path.stat().st_mtime_ns
+    except OSError:
+        return None
+    return stem, mtime_ns
+
+
+def _scan_copy_preview_stems(root: Path) -> dict[str, int] | None:
     stems: dict[str, int] = {}
     try:
         for path in root.glob("copy_preview_*"):
-            if not path.is_file():
+            pair = _copy_preview_stem_mtime_ns(path)
+            if pair is None:
                 continue
-            name = path.name
-            if name.endswith(_CODE_SUFFIX):
-                stem = name[: -len(_CODE_SUFFIX)]
-            elif name.endswith(_JSON_SUFFIX):
-                stem = name[: -len(_JSON_SUFFIX)]
-            else:
-                continue
-            try:
-                mtime_ns = path.stat().st_mtime_ns
-            except OSError:
-                continue
+            stem, mtime_ns = pair
             prev = stems.get(stem)
             if prev is None or mtime_ns > prev:
                 stems[stem] = mtime_ns
     except OSError as exc:
         logger.warning("shapez copy debug dump: prune scan failed dir=%s: %s", root, exc)
+        return None
+    return stems
+
+
+def _unlink_copy_preview_stem_files(root: Path, stem: str) -> None:
+    for suffix in (_CODE_SUFFIX, _JSON_SUFFIX):
+        path = root / f"{stem}{suffix}"
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            logger.warning("shapez copy debug dump: prune unlink failed path=%s: %s", path, exc)
+
+
+def _prune_copy_preview_debug_dir(root: Path) -> None:
+    """``copy_preview_*`` stem 수가 `_COPY_PREVIEW_DEBUG_MAX_STEMS`를 넘으면
+    mtime 오래된 stem부터 삭제한다.
+    """
+
+    stems = _scan_copy_preview_stems(root)
+    if stems is None:
         return
 
     max_stems = _COPY_PREVIEW_DEBUG_MAX_STEMS
@@ -50,12 +78,7 @@ def _prune_copy_preview_debug_dir(root: Path) -> None:
         return
     ordered = sorted(stems.items(), key=lambda kv: (kv[1], kv[0]))
     for stem, _ in ordered[: len(stems) - max_stems]:
-        for suffix in (_CODE_SUFFIX, _JSON_SUFFIX):
-            path = root / f"{stem}{suffix}"
-            try:
-                path.unlink(missing_ok=True)
-            except OSError as exc:
-                logger.warning("shapez copy debug dump: prune unlink failed path=%s: %s", path, exc)
+        _unlink_copy_preview_stem_files(root, stem)
 
 
 def dump_copy_preview_debug(code: str, decoded: dict[str, Any], dump_dir: str | Path) -> None:

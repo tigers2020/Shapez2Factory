@@ -22,6 +22,38 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pl
     placement_commit_transition_allowed,
 )
 
+_P = PlacementCommitState.PROVISIONAL_PLACED
+_RC = PlacementCommitState.ROUTED_CONFIRMED
+_QU = PlacementCommitState.QUARANTINED_UNROUTED
+_RB = PlacementCommitState.ROLLED_BACK
+
+_CommitPair = tuple[PlacementCommitState, PlacementCommitState]
+# ``03_data_schema_dto.md`` §B (PlacementCommitState FSM) — 허용 (from, to) 전체.
+_PLACEMENT_COMMIT_FSM_ALLOWED_PAIRS: frozenset[_CommitPair] = frozenset(
+    {
+        (_P, _P),
+        (_P, _RC),
+        (_P, _QU),
+        (_P, _RB),
+        (_RC, _RC),
+        (_QU, _QU),
+        (_QU, _RC),
+        (_QU, _RB),
+        (_RB, _RB),
+    },
+)
+
+
+def test_placement_commit_fsm_exhaustive_matrix_matches_canon() -> None:
+    states = list(PlacementCommitState)
+    for a in states:
+        for b in states:
+            expected = (a, b) in _PLACEMENT_COMMIT_FSM_ALLOWED_PAIRS
+            assert placement_commit_transition_allowed(a, b) is expected, (
+                f"unexpected transition {a!r} -> {b!r}: "
+                f"expected {expected}, see 03_data_schema_dto §B"
+            )
+
 
 def test_is_terminal_state() -> None:
     assert is_terminal_state(PlacementCommitState.ROUTED_CONFIRMED) is True

@@ -86,8 +86,8 @@ v1과 독립된 `asteroid_mining_layout_v2` 패키지 골격 생성.
   - // §9.6 FSM·provisional merge.
 - [x] `placement/pass1_outer.py` (확인) [`L228–약325`](mdc:django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/placement/pass1_outer.py)
   - // `run_pass1_outer_placement`.
-- [x] `placement/pass2_internal.py` (확인) [`L185–끝`](mdc:django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/placement/pass2_internal.py)
-  - // `run_pass2_internal_fill`.
+- [x] `placement/pass2_internal.py` / `placement/pass2_bundle_optimizer.py` (확인) [`pass2_internal.py`](mdc:django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/placement/pass2_internal.py) · [`pass2_bundle_optimizer.py`](mdc:django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/placement/pass2_bundle_optimizer.py)
+  - // `run_pass2_internal_fill` + CP-SAT/optional greedy 번들 패킹.
 - [x] `routing/__init__.py` (확인) [`routing/__init__.py`](mdc:django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/routing/__init__.py)
   - // STEP4 패키지 docstring.
 - [x] `routing/trunk_seed.py` (확인) [`L14–L17`](mdc:django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/routing/trunk_seed.py)
@@ -594,8 +594,18 @@ Pass1 이후 남은 내부 mineable cells에 provisional placement.
 - [ ] placement_pass="pass2"
 - [ ] TransportKind 분리
 - [ ] ordinary Pass2에서 reclaim route-overlap rule 미적용
+- [ ] Pass2 feasible ``Pass2BundleCandidate`` 풀을 먼저 수집한 뒤 전역적으로 겹침 없는 부분집합을 선택한다 (``pass2_internal`` + ``pass2_bundle_optimizer``).
+- [ ] 번들 패킹은 ``extractor_cell``·``output_stub_cell``·extension 타일 셀 기준 set packing이며, OR-Tools CP-SAT는 **선택**이며 미설치 시 결정적 greedy fallback으로 동작한다.
+- [ ] ``pass2_bundle_optimizer``는 STEP4 라우팅·``final_route_cells``·``ROUTED_CONFIRMED``·replay NDJSON 입력을 사용하지 않는다.
 
 ```
+
+### Pass2 번들 패킹 옵티마이저 (CP-SAT / fallback)
+
+- [x] `placement/pass2_bundle_optimizer.py` — CP-SAT(optional)·greedy fallback·``Pass2PackingInput``/``Pass2PackingResult`` (확인) [`pass2_bundle_optimizer.py`](mdc:django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/placement/pass2_bundle_optimizer.py)
+- [x] `run_pass2_internal_fill` — 풀 수집 후 ``optimize_pass2_bundle_packing`` 연결·beam ``pass2_optimizer_selected`` / ``pass2_optimizer_summary`` (확인) [`pass2_internal.py`](mdc:django_apps/shapez_asteroid/services/asteroid_mining_layout_v2/placement/pass2_internal.py)
+- [x] 계약 테스트 (확인) [`test_pass2_bundle_optimizer_contract.py`](mdc:tests/unit/shapez_asteroid_v2/test_pass2_bundle_optimizer_contract.py)
+
 
 ## 테스트 체크리스트
 
@@ -609,6 +619,7 @@ Pass1 이후 남은 내부 mineable cells에 provisional placement.
 - [ ] accepted Pass2 bundle은 PROVISIONAL_PLACED
 - [ ] STEP4 전 ROUTED_CONFIRMED 없음
 - [ ] ordinary Pass2에서 route overlap logic 미적용
+- [ ] Pass2 번들 패킹 옵티마이저가 ``merge_aware_router`` / ``trunk_seed`` / replay import를 끌지 않음
 - [ ] deterministic candidate ordering
 - [ ] isolated extractor no plausible escape 처리
 - [ ] belt / pipe TransportKind 분리

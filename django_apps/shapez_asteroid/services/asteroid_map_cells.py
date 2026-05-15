@@ -7,11 +7,11 @@ from typing import Any
 from django.apps import apps
 from django.http import QueryDict
 
-# Max inclusive span per axis (inclusive range length).
-_MAX_AXIS_SPAN = 256
-
-# Slug used when no DB row exists for a coordinate inside the loaded bbox.
-DEFAULT_VOID_SLUG = "void"
+from django_apps.shapez_asteroid.constants import (
+    MAP_CELLS_DEFAULT_VOID_LABEL,
+    MAP_CELLS_DEFAULT_VOID_SLUG,
+    MAP_CELLS_MAX_AXIS_SPAN,
+)
 
 
 def void_kind_label() -> tuple[str, str]:
@@ -19,13 +19,13 @@ def void_kind_label() -> tuple[str, str]:
 
     AsteroidCellStatusKind = apps.get_model("shapez_asteroid", "AsteroidCellStatusKind")
     row = (
-        AsteroidCellStatusKind.objects.filter(slug=DEFAULT_VOID_SLUG)
+        AsteroidCellStatusKind.objects.filter(slug=MAP_CELLS_DEFAULT_VOID_SLUG)
         .values_list("slug", "label")
         .first()
     )
     if row:
         return str(row[0]), str(row[1])
-    return DEFAULT_VOID_SLUG, "void"
+    return MAP_CELLS_DEFAULT_VOID_SLUG, MAP_CELLS_DEFAULT_VOID_LABEL
 
 
 def parse_bbox(query: QueryDict) -> tuple[dict[str, Any] | None, tuple[int, int, int, int] | None]:
@@ -46,7 +46,7 @@ def parse_bbox(query: QueryDict) -> tuple[dict[str, Any] | None, tuple[int, int,
     if x_min > x_max or y_min > y_max:
         return ({"ok": False, "error": "min must be <= max for each axis"}, None)
 
-    if x_max - x_min + 1 > _MAX_AXIS_SPAN or y_max - y_min + 1 > _MAX_AXIS_SPAN:
+    if x_max - x_min + 1 > MAP_CELLS_MAX_AXIS_SPAN or y_max - y_min + 1 > MAP_CELLS_MAX_AXIS_SPAN:
         return ({"ok": False, "error": "bbox span too large"}, None)
 
     if x_min <= 0 <= x_max:

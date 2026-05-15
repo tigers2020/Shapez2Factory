@@ -475,3 +475,10 @@ Serena MCP(`user-serena`) `initial_instructions` 후, 심볼·패턴 도구로 �
 - [x] 적용: `semantic_contracts.partition_pass3_commit_reason_payload`가 DTO namespace classifier를 경유하도록 변경
 - [x] 적용: STEP4 routing failure row를 typed DTO/public dict adapter 경유로 생성. 기존 public key set 유지.
 - [x] 회귀: commit_reason 성공 namespace, misfiled rejected_reason promotion, routing failure row key snapshot, ExistingLayoutAnalysis vs FinalValidationReport 필드 분리 테스트 추가
+# 2026-05-15 문서 구조 자동 갱신
+
+- [x] `structure.md`에 v2 asteroid 서비스 트리와 `tests/unit/shapez_asteroid_v2/` 반영
+- [x] `documents/README.md`에서 `debug/`, `reports/`, `refactory/`, v2 active 문서, v1 archive 판정 갱신
+- [x] `documents/index/document_inventory.md`에서 `CANON` / `ACTIVE` / `RESEARCH` / `REPORT` / `ARCHIVED` 상태 재분류
+- [x] `documents/archive/README.md`와 `archive/2026-05-mining-layout-v1-era/README.md` 최신 archive 정책 갱신
+- [x] 새 파일 이동 없음: v2 문서는 active/canon/report로 유지하고, v1-era 묶음만 archive로 유지

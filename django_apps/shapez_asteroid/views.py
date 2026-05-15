@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 from typing import Any
 
 from django.conf import settings
@@ -240,16 +241,18 @@ def copy_preview(request: HttpRequest) -> JsonResponse:
     if code_err is not None:
         return code_err
 
-    artifact_dir = (getattr(settings, "SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
-    decoded_bundle, decode_err = _copy_preview_decode_trace(code, artifact_dir)
+    copy_debug_dir = (getattr(settings, "SHAPEZ_COPY_DEBUG_DIR", "") or "").strip()
+    behavior_artifact_dir = (
+        str(Path(settings.BASE_DIR) / "var" / "behavior_artifact") if copy_debug_dir else ""
+    )
+    decoded_bundle, decode_err = _copy_preview_decode_trace(code, behavior_artifact_dir)
     if decode_err is not None:
         return decode_err
     decoded, trace, digest_prefix = decoded_bundle
 
-    debug_dir = getattr(settings, "SHAPEZ_COPY_DEBUG_DIR", "") or ""
-    if debug_dir:
-        dump_copy_preview_debug(code, decoded, debug_dir)
+    if copy_debug_dir:
+        dump_copy_preview_debug(code, decoded, copy_debug_dir)
 
-    payload = _copy_preview_success_payload(decoded, trace, digest_prefix, artifact_dir)
+    payload = _copy_preview_success_payload(decoded, trace, digest_prefix, behavior_artifact_dir)
     _copy_preview_maybe_write_dev_report(payload, code)
     return JsonResponse(payload)

@@ -1,68 +1,49 @@
 # `documents/` 인덱스
 
-프로젝트 Markdown 본문 언어는 [AGENTS.md](../AGENTS.md) 기준 **한국어**(코드·경로·식별자는 그대로).
+프로젝트 Markdown 본문은 한국어를 기본으로 한다. 코드, 경로, CLI, 식별자, URL은 원문을 유지한다.
 
-## 디렉터리
+## 가장 먼저 읽을 문서
 
-| 경로 | 용도 |
-|------|------|
-| [`ai/`](ai/) | 에이전트용 현재 계획·체크리스트·작업 유형별 매뉴얼 |
-| [`index/`](index/) | 문서 상태 enum·inventory·정본/활성/보관 읽기 우선순위 |
-| [`adr/`](adr/) | 승인된 아키텍처 결정 기록. 정본 spec의 "왜"를 보강 |
-| [`plans/`](plans/) | 승인 게이트 대상 **활성 실행 플랜** (주제별 `plan_*.md`; 구현 완료·참고용 쌍은 [`archive/completed-implementation/`](archive/completed-implementation/README.md)) |
-| [`research/`](research/) | 플랜 선행 **조사·근거** (`research_*.md`; 1:1 쌍은 위와 동일 규칙) |
-| [`notes/`](notes/) | 진행 메모·요약(장기 보관 가치가 낮은 초안) |
-| [`meta/`](meta/) | 크레딧·잡 메모 등 메타 |
-| [`attribution/`](attribution/) | 외부 자산·표기 |
-| [`game_rules/`](game_rules/) | shapez 2 규칙·도메인 모델·솔버 추상화 정본 |
-| [`Algorithm/`](Algorithm/) | asteroid mining layout 중심의 알고리즘 설계·공간 권위·리플레이/검증 스펙 |
-| [`refactory/`](refactory/) | 솔버 drift 큐 — **본문은** [`archive/2026-05-mining-layout-v1-era/refactory/`](archive/2026-05-mining-layout-v1-era/refactory/) **로 이관**; [`refactory/README.md`](refactory/README.md)는 리다이렉트만 |
-| [`samples/`](samples/) | shapez 2 블루프린트/디코드 예제와 분석 샘플 |
-| [`ui/`](ui/) | 독립 HTML 기반 UI 레퍼런스·목업 |
-| [`archive/`](archive/) | 완료·폐기된 플랜·리서치 **보관** (아래 참고) |
+1. [`README.md`](README.md) — 이 문서. 문서 권위와 읽는 순서.
+2. [`Algorithm/mining_solver_cursor_sessions/README.md`](Algorithm/mining_solver_cursor_sessions/README.md) — asteroid mining solver canonical step specs.
+3. [`Algorithm/README.md`](Algorithm/README.md) — canonical step order 요약.
+4. [`ai/START_HERE.md`](ai/START_HERE.md) — AI 작업 세션 진입점.
+5. [`index/document_lifecycle.md`](index/document_lifecycle.md), [`index/document_inventory.md`](index/document_inventory.md) — 문서 lifecycle과 기존 inventory.
+6. [`reports/documentation_audit/README.md`](reports/documentation_audit/README.md) — 2026-05-15 문서 감사 결과.
 
-## 아카이브
+## 권위 계층
 
-| 경로 | 설명 |
-|------|------|
-| [`archive/2026-05-mining-layout-v1-era/README.md`](archive/2026-05-mining-layout-v1-era/README.md) | v1 `asteroid_mining_layout` 패키지 시대 플랜·refactory·Algorithm 루트 MD·REPORT·일부 `ai/` 스냅샷 **읽기 전용 묶음** (2026-05-14) |
-| [`archive/obsolete-src-shapez2-solver-plans-2026-05-01/`](archive/obsolete-src-shapez2-solver-plans-2026-05-01/) | 레이아웃 이전 시점의 Django/정렬 플랜 초안 |
-| [`archive/2026-05-completed/README.md`](archive/2026-05-completed/README.md) | **2026-05**에 완료 처리한 플랜·리서치 묶음 (Python 정리, Recipe Graph Editor 일괄) |
-| [`archive/completed-implementation/README.md`](archive/completed-implementation/README.md) | **구현 완료**로 분류한 실행 플랜·리서치 1:1 쌍 (`by-stem/<stem>/`) |
+| 범주 | 경로 | 사용 규칙 |
+|---|---|---|
+| canonical algorithm spec | [`Algorithm/mining_solver_cursor_sessions/`](Algorithm/mining_solver_cursor_sessions/README.md) | solver 동작 판단의 1차 정본. canonical docs가 구현보다 우선한다. |
+| canonical routing/index | [`README.md`](README.md), [`Algorithm/README.md`](Algorithm/README.md), [`index/`](index/) | 문서 위치와 lifecycle 판단에 사용한다. |
+| AI workflow/manuals | [`ai/`](ai/) | 작업 절차, current plan, checklist, manual routing. algorithm spec을 대체하지 않는다. |
+| implementation planning | [`plans/`](plans/), [`ai/plans/`](ai/plans/) | 승인된 작업 범위와 backlog 확인용. 정본 충돌 시 정본이 우선한다. |
+| audit/report/research | [`reports/`](reports/), [`research/`](research/), [`notes/`](notes/), [`debug/`](debug/) | 관측 증거와 분석. historical report는 current truth가 아니다. |
+| historical/obsolete | [`archive/`](archive/), [`refactory/`](refactory/) | 역사 확인용. 현재 구현 판단에 직접 사용하지 않는다. |
+| generated/sample output | [`samples/`](samples/), `var/`, root `v2_behavior_artifact_*.json` | output evidence only. 알고리즘 입력으로 사용 금지. |
 
-## 플랜 ↔ 리서치 짝·누락 (파일명 기준)
+## canonical solver 문서
 
-활성 본문은 `documents/plans/`·`documents/research/`에 두고, 구현이 끝난 1:1 쌍은 [`archive/completed-implementation/by-stem/`](archive/completed-implementation/README.md) 아래에 **동일 스템 폴더**로 모은다. (과거 규칙) `plan_<stem>.md`와 `research_<stem>.md`의 `<stem>`이 같으면 한 쌍으로 본다. **현재 스캔 기준** (2026-05-12 정리):
+현재 asteroid mining solver 정본은 [`Algorithm/mining_solver_cursor_sessions/`](Algorithm/mining_solver_cursor_sessions/README.md)의 README와 01-14 문서다. 특히 다음 원칙은 전역 규칙이다.
 
-| 구분 | 스템 (예시) | 비고 |
-|------|-------------|------|
-| `plans/`에만 남음 (동일 스템 리서치 없음) | 위 표의 일부 스템은 **v1-era 아카이브**로 이관됨([`archive/2026-05-mining-layout-v1-era/`](archive/2026-05-mining-layout-v1-era/README.md)). `documents/plans/`에 남은 파일은 활성·백로그 위주 |
-| `research/`에만 남음 (동일 스템 플랜 없음) | 일부는 v1-era 아카이브로 이관. 남은 `blueprint_grid_coordinates_2026-05-10` 등은 상위 주제·근거 문서 |
-| 독립 스펙·분류 문서 | `pattern_family_macro_taxonomy`, `plan_solver_optimization_topology_2026-05-11` | 접두사 규칙과 무관한 분류/최적화 스펙. 현재는 활성 참고 문서로 유지 |
-| `Algorithm/` 활성 스펙 | `mining_solver_cursor_sessions/01..15` 등 세션 브리프가 정본. 루트 단발 MD는 v1-era 아카이브 [`algorithm-root/`](archive/2026-05-mining-layout-v1-era/algorithm-root/)로 이관됨 |
-| 세션별 아카이브 (이전 방식) | `python_dead_code_cleanup_2026-05-04`, Recipe Graph Editor 계열 | [`archive/2026-05-completed/`](archive/2026-05-completed/README.md) 참고 |
-| 구현 완료 플랜+리서치 쌍 | 위 세션 아카이브 외 다수 | [`archive/completed-implementation/by-stem/`](archive/completed-implementation/README.md) |
+- 로그, NDJSON, replay_events, solver_summary는 output evidence only이며 algorithm input이 아니다.
+- ExistingLayoutAnalysis는 read-only context다.
+- `mineable_placement_cells`는 STEP 1 reconstruction의 산출이다.
+- Pass1/Pass2는 provisional placement만 만든다.
+- STEP4가 route confirmation을 소유한다.
+- Final validation은 assertion-only다.
+- Recovery는 bounded branch이며 항상 linear로 실행되는 단계가 아니다.
 
-## 최신 업데이트 기준 (2026-05-14)
+## 구현 계획과 보고서 사용법
 
-- `documents/index/document_inventory.md`가 현재 정본·활성·연구·보고·보관 문서를 구분하는 1차 라우팅 표다. 새 작업은 먼저 [`documents/index/document_lifecycle.md`](index/document_lifecycle.md)의 상태 enum을 따른다.
-- **v1 패키지 시대 문서 묶음**: [`archive/2026-05-mining-layout-v1-era/README.md`](archive/2026-05-mining-layout-v1-era/README.md) (refactory 전체·`Algorithm/` 루트 MD·일부 plans/research/reports·`ai/plans`·Step10 스냅샷 등).
-- `documents/ai/START_HERE.md`는 새 AI 세션·서브에이전트의 context 진입점이다.
-- `documents/adr/`는 bounded recovery, protected corridor, final validation, replay cycle stream의 결정 이유를 기록한다.
-- `documents/ai/README.md`, `manuals/cursor_usage.md`, `manuals/testing.md`가 최신 작업 허브·검증 지침을 반영한다.
-- `documents/Algorithm/mining_solver_cursor_sessions/`에 **01~15** 단계 브리프가 있다. 한 페이지 인덱스는 [`Algorithm/mining_solver_cursor_sessions/README.md`](Algorithm/mining_solver_cursor_sessions/README.md). 과거 [`refactory/01_canonical_doc_paths.md`](archive/2026-05-mining-layout-v1-era/refactory/01_canonical_doc_paths.md)는 아카이브로 이관됨.
-- `documents/research/research_blueprint_grid_coordinates_2026-05-10.md`는 블루프린트 격자 좌표 정본이며, `AGENTS.md`의 `X == 0` 불가 전제와 연결된다.
+- `plans/`와 `ai/plans/`는 구현 전/중 계획이다. 완료되었거나 v1-era인 문서는 archive 후보로 검토한다.
+- `reports/`와 `research/`는 증거와 판단 기록이다. canonical spec으로 승격하려면 Algorithm spec 또는 ADR에 별도로 반영해야 한다.
+- `documents/reports/documentation_audit/`는 2026-05-15 기준 문서 감사 결과이며 `REPORT`다.
 
-## 알려진 불일치·정리 메모
+## future AI coding agents 금지 사항
 
-1. **`notes/recipe_graph_editor_progress_2026-05-04.md`**  
-   과거 `notes/`에만 두었던 스냅샷은 Phase 표가 낙후되어 **정본을 아카이브**로 통합했고, 해당 파일은 리다이렉트만 남겼다.
-
-2. **동일 주제 문서**  
-   Recipe Graph Editor는 플랜이 `plans/`와 과거 `documents/` 루트에 나뉘어 있었음 → 완료 후 **`archive/2026-05-completed/recipe-graph-editor/`** 한곳으로 모았다.
-
-3. **`plan_recipe_graph_editor_2026-05-04.md` 내부 표**  
-   본문 하단 「구현 진행 현황」은 **부분 완료** 기준이고, 같은 날짜의 **진행 스냅샷**(`recipe_graph_editor_progress_*.md`)과 Phase 요약이 다를 수 있다. 최종 구현 여부는 코드·스냅샷을 우선한다.
-
-4. **`archive/completed-implementation/` 일괄 보관 (2026-05-06)**  
-   `plans/`·`research/`에 있던 대부분의 1:1 실행 플랜 쌍을 스템별 폴더로 옮겼다. 세부 규칙·예외 스템은 [`archive/completed-implementation/README.md`](archive/completed-implementation/README.md)를 본다.
+- `var/*.ndjson`, `latest.ndjson`, replay output, behavior artifact JSON, solver_summary를 읽어 solver algorithm input으로 사용하지 않는다.
+- `archive/2026-05-mining-layout-v1-era/`의 v1 경로와 결론을 current v2 구현 계약으로 사용하지 않는다.
+- historical report를 조용히 current spec에 병합하지 않는다. 충돌하면 drift/obsolete로 표시한다.
+- production code나 solver behavior는 문서 감사 작업에서 수정하지 않는다.

@@ -19,6 +19,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pl
     assert_all_provisional_commits,
     assert_no_routed_confirmed,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 
 
 def _ctx() -> SolverRunContext:
@@ -53,12 +56,12 @@ def test_pass1_pass2_commit_entries_are_provisional_only() -> None:
         asteroid_bbox=bbox,
     )
     ctx = _ctx()
-    p1 = run_pass1_outer_placement(ctx, recon)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
     entries1 = p1.placement_commit_entries
     if entries1:
         assert_all_provisional_commits(entries1)
         assert_no_routed_confirmed(entries1)
-    p2 = run_pass2_internal_fill(ctx, p1)
+    p2 = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     entries2 = p2.placement_commit_entries
     if entries2:
         assert_all_provisional_commits(entries2)
@@ -105,7 +108,9 @@ def test_pass1_consider_extract_never_targets_off_mineable_grid() -> None:
     )
     ctx = SolverRunContext(run_id="p1_edge", reconstruction=recon)
     events: list[dict[object, object]] = []
-    run_pass1_outer_placement(ctx, recon, replay_events=events, replay_event_cap=200)
+    run_pass1_outer_placement(
+        ctx, recon, replay_events=events, replay_event_cap=200, trace=TraceCollector(ctx.run_id)
+    )
     for e in events:
         if e.get("kind") == "consider_extract":
             assert tuple(e["extractor_cell"]) in {(50, 50), (51, 50)}

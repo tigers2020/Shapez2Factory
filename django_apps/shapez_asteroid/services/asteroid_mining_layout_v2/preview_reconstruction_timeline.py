@@ -46,6 +46,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstructi
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
     patch_interior as _patch_interior,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization import to_jsonable
 from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_none as _int_or_none
 from django_apps.shapez_asteroid.services.style_classifier import (
@@ -925,6 +928,7 @@ def expand_pass1_replay_mining_map_frames(
     *,
     dominant: str,
     source_kind: str | None,
+    trace: TraceCollector,
 ) -> Pass1PreviewArtifacts:
     """STEP 2 Pass1: ``mining_map`` frames for copy-preview ``map_timeline``.
 
@@ -943,7 +947,11 @@ def expand_pass1_replay_mining_map_frames(
     events: list[dict[str, Any]] = []
     ctx = SolverRunContext(run_id="v2_preview_recon_timeline", reconstruction=recon)
     pass1_result = run_pass1_outer_placement(
-        ctx, recon, replay_events=events, replay_event_cap=None
+        ctx,
+        recon,
+        replay_events=events,
+        replay_event_cap=None,
+        trace=trace,
     )
 
     timeline_events = _pass1_events_for_preview_timeline(events)
@@ -1185,6 +1193,7 @@ def build_v2_preview_map_frames(
     recon: ReconstructionDTO,
     *,
     source_kind: str | None = None,
+    trace: TraceCollector,
 ) -> V2PreviewTimelineResult:
     """
     Return JSON-safe ``map_timeline`` frames (variable length) and uncapped Pass1 replay
@@ -1207,6 +1216,7 @@ def build_v2_preview_map_frames(
     """
 
     if not recon.full_barrier_cells:
+        _ = trace
         return _v2_preview_timeline_when_empty_barrier(source_kind=source_kind)
 
     frames, dominant, rows3 = _v2_preview_build_pre_pass1_reconstruction_frames(
@@ -1218,6 +1228,7 @@ def build_v2_preview_map_frames(
         rows3,
         dominant=dominant,
         source_kind=source_kind,
+        trace=trace,
     )
     frames.extend(pass1_art.frames)
     pass1_replay_events = pass1_art.pass1_replay_events

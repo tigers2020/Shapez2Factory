@@ -19,6 +19,12 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.decode impor
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction.asteroid_reconstruction import (  # noqa: E501
     reconstruct_asteroid_mining_field,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime import (
+    step_instrumentation as _v2_step_inst,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization import (
     existing_layout_analysis_to_json,
     to_jsonable,
@@ -39,14 +45,37 @@ def build_copy_preview_v2_sidecars(
     surfaced to the UI without reading NDJSON or prior replay as algorithm input.
     """
 
-    analysis = analyze_decoded_layout(decoded)
-    decoded_ctx = analyze_to_context(decoded)
-    recon = reconstruct_asteroid_mining_field(decoded, decoded_ctx)
+    run_id = (
+        behavior_artifact.input_digest_prefix if behavior_artifact is not None else "copy_preview"
+    )
+    trace = TraceCollector(run_id)
+
+    analysis = _v2_step_inst.run_instrumented_step(
+        phase="step_0_5_existing_layout_analysis",
+        trace=trace,
+        step_index=0,
+        fn=lambda: analyze_decoded_layout(decoded),
+    )
+    decoded_ctx = _v2_step_inst.run_instrumented_step(
+        phase="step_0_decode_context",
+        trace=trace,
+        step_index=1,
+        fn=lambda: analyze_to_context(decoded),
+    )
+    recon = _v2_step_inst.run_instrumented_step(
+        phase="step_1_reconstruction",
+        trace=trace,
+        step_index=2,
+        fn=lambda: reconstruct_asteroid_mining_field(decoded, decoded_ctx),
+    )
     sk = analysis.source_kind.value
-    preview_res = _v2_preview_timeline.build_v2_preview_map_frames(
-        decoded,
-        recon,
-        source_kind=sk,
+    preview_res = _v2_step_inst.run_instrumented_step(
+        phase="preview_map_timeline",
+        trace=trace,
+        step_index=3,
+        fn=lambda: _v2_preview_timeline.build_v2_preview_map_frames(
+            decoded, recon, source_kind=sk, trace=trace
+        ),
     )
     v2_preview_map_timeline = preview_res.frames
     partial_pipeline: dict[str, Any] = {

@@ -50,6 +50,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums
     PlacementCommitState,
     TransportKind,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 
 from .bundle_candidate import (
     CARDINAL_DIRS,
@@ -204,9 +207,7 @@ def cheap_escape_feasible(
     if resolved is None:
         return False
     bbox, margin = resolved
-    return _cheap_escape_bfs_reaches_outside(
-        stub, bbox, margin, transport_kind, reconstruction
-    )
+    return _cheap_escape_bfs_reaches_outside(stub, bbox, margin, transport_kind, reconstruction)
 
 
 def _replay_append(
@@ -539,9 +540,11 @@ def run_pass1_outer_placement(
     *,
     replay_events: list[dict[str, Any]] | None = None,
     replay_event_cap: int | None = 320,
+    trace: TraceCollector,
 ) -> Pass1Result:
     """Greedy outer-first Pass1 (§7); does not mutate ``ctx`` or routing geometry."""
 
+    _ = trace
     mineable_cells = frozenset(reconstruction.mineable_placement_cells)
     if not mineable_cells:
         return Pass1Result()
@@ -610,9 +613,7 @@ def run_pass1_outer_placement(
         if nxt is not None:
             bundle_index = nxt
 
-    return _pass1_assemble_result(
-        bundles, commits, beam, replay_events, replay_event_cap
-    )
+    return _pass1_assemble_result(bundles, commits, beam, replay_events, replay_event_cap)
 
 
 __all__ = [

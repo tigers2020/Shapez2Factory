@@ -18,6 +18,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement im
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pass1_outer import (
     run_pass1_outer_placement,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 
 CARDINAL_DIRS = _bc.CARDINAL_DIRS
 grow_pass1_straight_extension_chain = _bc.grow_pass1_straight_extension_chain
@@ -229,7 +232,7 @@ def test_run_pass1_commits_non_empty_extensions_on_open_grid() -> None:
         external_margin_bbox_source="mineable",
     )
     ctx = SolverRunContext(run_id="ext_open", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
     assert p1.placements
     assert max(len(b.extensions) for b in p1.placements) >= 1
 
@@ -247,7 +250,7 @@ def test_cheap_escape_probe_cells_not_in_pass1_placement_occupied() -> None:
         external_margin_bbox_source="mineable",
     )
     ctx = SolverRunContext(run_id="cheap_not_occ", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
     po = frozenset(p1.placement_occupied_cells)
     for b in p1.placements:
         assert b.extractor.cell in po

@@ -26,6 +26,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pl
     assert_all_provisional_commits,
     assert_no_routed_confirmed,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 
 
 def _repo_root() -> Path:
@@ -89,9 +92,9 @@ def test_pass2_never_overlaps_pass1_extractor_extension_or_stub() -> None:
         asteroid_bbox=bbox,
     )
     ctx = SolverRunContext(run_id="p2_overlap", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
     p1_occ = frozenset(p1.occupied_cells)
-    p2 = run_pass2_internal_fill(ctx, p1)
+    p2 = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     for b in p2.provisional_placements:
         cells = {b.extractor.cell, b.output_stub.cell, *(e.cell for e in b.extensions)}
         assert not (cells & p1_occ)
@@ -127,8 +130,8 @@ def test_pass2_extractors_lie_outside_blocked_set() -> None:
         asteroid_bbox=bbox,
     )
     ctx = SolverRunContext(run_id="p2_blocked", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
-    p2 = run_pass2_internal_fill(ctx, p1)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
+    p2 = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     blocked = build_pass2_blocked_set(p1, recon)
     for b in p2.provisional_placements:
         assert b.extractor.cell not in blocked
@@ -163,8 +166,8 @@ def test_pass2_provisional_only_no_routed_confirmed() -> None:
         asteroid_bbox=bbox,
     )
     ctx = SolverRunContext(run_id="p2_fsm", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
-    p2 = run_pass2_internal_fill(ctx, p1)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
+    p2 = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     if p2.placement_commit_entries:
         assert_all_provisional_commits(p2.placement_commit_entries)
         assert_no_routed_confirmed(p2.placement_commit_entries)
@@ -198,9 +201,9 @@ def test_pass2_deterministic_for_identical_inputs() -> None:
         asteroid_bbox=bbox,
     )
     ctx = SolverRunContext(run_id="det", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
-    a = run_pass2_internal_fill(ctx, p1)
-    b = run_pass2_internal_fill(ctx, p1)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
+    a = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
+    b = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     assert a == b
 
 
@@ -234,8 +237,10 @@ def test_pass2_ignores_routing_state_final_route_cell_noise() -> None:
     noise = RoutingStateSnapshot(final_route_cells=((1, 1), (2, 2), (3, 3)))
     ctx_plain = SolverRunContext(run_id="noise", reconstruction=recon)
     ctx_noisy = SolverRunContext(run_id="noise", reconstruction=recon, routing_state=noise)
-    p1 = run_pass1_outer_placement(ctx_plain, recon)
-    assert run_pass2_internal_fill(ctx_plain, p1) == run_pass2_internal_fill(ctx_noisy, p1)
+    p1 = run_pass1_outer_placement(ctx_plain, recon, trace=TraceCollector(ctx_plain.run_id))
+    assert run_pass2_internal_fill(
+        ctx_plain, p1, trace=TraceCollector(ctx_plain.run_id)
+    ) == run_pass2_internal_fill(ctx_noisy, p1, trace=TraceCollector(ctx_noisy.run_id))
 
 
 def test_pass2_transport_kind_pipe_when_only_pipe_cells() -> None:
@@ -269,8 +274,8 @@ def test_pass2_transport_kind_pipe_when_only_pipe_cells() -> None:
         asteroid_bbox=bbox,
     )
     ctx = SolverRunContext(run_id="pipe_only", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
-    p2 = run_pass2_internal_fill(ctx, p1)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
+    p2 = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     for b in p2.provisional_placements:
         assert b.extractor.transport_kind is TransportKind.FLUID_PIPE
         assert b.output_stub.transport_kind is TransportKind.FLUID_PIPE
@@ -307,8 +312,8 @@ def test_pass2_transport_kind_belt_when_belt_cells_present() -> None:
         asteroid_bbox=bbox,
     )
     ctx = SolverRunContext(run_id="belt_pref", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
-    p2 = run_pass2_internal_fill(ctx, p1)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
+    p2 = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     for b in p2.provisional_placements:
         assert b.extractor.transport_kind is TransportKind.SHAPE_BELT
 
@@ -344,5 +349,5 @@ def test_pass2_empty_when_no_remaining_mineable() -> None:
         occupied_cells=((199, 200), (200, 199), (200, 200)),
     )
     ctx = SolverRunContext(run_id="full", reconstruction=recon)
-    p2 = run_pass2_internal_fill(ctx, p1)
+    p2 = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     assert p2 == Pass2Result()

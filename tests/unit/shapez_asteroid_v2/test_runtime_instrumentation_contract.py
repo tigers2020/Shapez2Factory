@@ -181,20 +181,7 @@ def test_instrumentation_modules_have_no_forbidden_disk_reads_in_ast() -> None:
                 assert node.func.id != "open", f"{name}: forbidden open()"
 
 
-# --- Slice 3B: staged migration allowlists ---
-
-_PUBLIC_PHASE_FUNCS_ALLOWLIST_NO_TRACE_YET: frozenset[tuple[str, str]] = frozenset(
-    {
-        ("placement.pass1_outer", "run_pass1_outer_placement"),
-        ("placement.pass2_internal", "run_pass2_internal_fill"),
-    }
-)
-
-_ORCHESTRATION_ALLOWLIST_NO_INSTRUMENTED_STEP_YET: frozenset[str] = frozenset(
-    {
-        "solver.py",
-    }
-)
+# --- Slice 3: public phase trace plumbing ---
 
 
 def _top_level_functions(path: Path) -> list[ast.FunctionDef]:
@@ -202,28 +189,22 @@ def _top_level_functions(path: Path) -> list[ast.FunctionDef]:
     return [n for n in tree.body if isinstance(n, ast.FunctionDef)]
 
 
-def test_public_run_phase_functions_trace_kwonly_or_allowlisted() -> None:
-    """3B: until migration, only known entrypoints may omit ``trace``."""
+def test_public_run_phase_functions_require_trace_kwonly() -> None:
+    """Public ``run_*`` entrypoints must accept keyword-only ``trace``."""
 
     for rel in ("placement/pass1_outer.py", "placement/pass2_internal.py"):
         path = _V2_PKG / rel
-        mod_key = rel.replace(".py", "").replace("/", ".")
         for fn in _top_level_functions(path):
             if not fn.name.startswith("run_"):
-                continue
-            key = (mod_key, fn.name)
-            if key in _PUBLIC_PHASE_FUNCS_ALLOWLIST_NO_TRACE_YET:
                 continue
             kwonly = {a.arg for a in fn.args.kwonlyargs}
             assert "trace" in kwonly, f"{path}:{fn.name} must accept keyword-only trace"
 
 
-def test_solver_orchestration_uses_instrumented_step_or_allowlisted() -> None:
+def test_solver_orchestration_uses_instrumented_step() -> None:
     path = _V2_PKG / "solver.py"
     src = path.read_text(encoding="utf-8")
-    uses_step = "run_instrumented_step" in src
-    allowlisted = path.name in _ORCHESTRATION_ALLOWLIST_NO_INSTRUMENTED_STEP_YET
-    assert uses_step or allowlisted
+    assert "run_instrumented_step" in src
 
 
 def test_runtime_instrumentation_does_not_vendor_trace_semantics() -> None:

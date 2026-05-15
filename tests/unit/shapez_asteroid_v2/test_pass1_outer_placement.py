@@ -28,6 +28,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pl
     assert_all_provisional_commits,
     assert_no_routed_confirmed,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 
 expand_pass1_replay_mining_map_frames = _pv_timeline.expand_pass1_replay_mining_map_frames
 
@@ -66,14 +69,16 @@ def test_pass1_outer_non_empty_extensions_when_barrier_overlaps_mineable() -> No
     """STEP1 overlap: mineable ⊆ full_barrier without belt_cells masking blocked_by_building."""
 
     recon = _small_mineable_recon()
-    p1 = run_pass1_outer_placement(_ctx("t_p1_barrier_overlap"), recon)
+    p1 = run_pass1_outer_placement(
+        _ctx("t_p1_barrier_overlap"), recon, trace=TraceCollector("t_p1_barrier_overlap")
+    )
     assert p1.placements
     assert max(len(b.extensions) for b in p1.placements) >= 1
 
 
 def test_pass1_each_bundle_has_one_output_stub_adjacent_to_extractor() -> None:
     recon = _small_mineable_recon()
-    p1 = run_pass1_outer_placement(_ctx(), recon)
+    p1 = run_pass1_outer_placement(_ctx(), recon, trace=TraceCollector("t_pass1"))
     for b in p1.placements:
         stub = b.output_stub.cell
         ext = b.extractor.cell
@@ -91,7 +96,7 @@ def test_side_directions_exclude_output_only() -> None:
 
 def test_extensions_at_most_three_orient_toward_parent() -> None:
     recon = _small_mineable_recon()
-    p1 = run_pass1_outer_placement(_ctx(), recon)
+    p1 = run_pass1_outer_placement(_ctx(), recon, trace=TraceCollector("t_pass1"))
     for b in p1.placements:
         assert len(b.extensions) <= 3
         for ext in b.extensions:
@@ -183,7 +188,7 @@ def test_pass2_branching_chain_geometry_still_supported() -> None:
 
 def test_occupied_cells_match_exact_union_of_bundle_cells() -> None:
     recon = _small_mineable_recon()
-    p1 = run_pass1_outer_placement(_ctx(), recon)
+    p1 = run_pass1_outer_placement(_ctx(), recon, trace=TraceCollector("t_pass1"))
     union: set[tuple[int, int]] = set()
     placement_only: set[tuple[int, int]] = set()
     stubs: set[tuple[int, int]] = set()
@@ -198,12 +203,12 @@ def test_occupied_cells_match_exact_union_of_bundle_cells() -> None:
 
 
 def test_pass1_no_final_route_cells_field() -> None:
-    p1 = run_pass1_outer_placement(_ctx(), _small_mineable_recon())
+    p1 = run_pass1_outer_placement(_ctx(), _small_mineable_recon(), trace=TraceCollector("t_pass1"))
     assert getattr(p1, "final_route_cells", ()) == ()
 
 
 def test_provisional_only_no_routed_confirmed() -> None:
-    p1 = run_pass1_outer_placement(_ctx(), _small_mineable_recon())
+    p1 = run_pass1_outer_placement(_ctx(), _small_mineable_recon(), trace=TraceCollector("t_pass1"))
     if p1.placement_commit_entries:
         assert_all_provisional_commits(p1.placement_commit_entries)
         assert_no_routed_confirmed(p1.placement_commit_entries)
@@ -232,7 +237,7 @@ def test_transport_kind_pipe_when_only_pipe_cells() -> None:
         external_margin=3,
         external_margin_bbox_source="mineable",
     )
-    p1 = run_pass1_outer_placement(_ctx("pipe_only"), recon)
+    p1 = run_pass1_outer_placement(_ctx("pipe_only"), recon, trace=TraceCollector("pipe_only"))
     for b in p1.placements:
         assert b.extractor.transport_kind is TransportKind.FLUID_PIPE
 
@@ -243,7 +248,7 @@ def test_pass1_source_does_not_import_merge_aware_router() -> None:
 
 def test_expand_pass1_replay_emits_many_frames_and_canonical_ids() -> None:
     recon = _small_mineable_recon()
-    p1 = run_pass1_outer_placement(_ctx(), recon)
+    p1 = run_pass1_outer_placement(_ctx(), recon, trace=TraceCollector("t_pass1"))
     mineable_rows = [
         {"x": x, "y": y, "role": "occupied", "surface": "shape", "phase": "v2_recon_mineable"}
         for x, y in sorted(recon.mineable_placement_cells, key=lambda c: (c[1], c[0]))
@@ -253,6 +258,7 @@ def test_expand_pass1_replay_emits_many_frames_and_canonical_ids() -> None:
         mineable_rows,
         dominant="shape",
         source_kind="raw_asteroid_field",
+        trace=TraceCollector("expand_pass1"),
     ).frames
     ids = [str(f["id"]) for f in frames]
     assert "v2_pass1_candidates" in ids

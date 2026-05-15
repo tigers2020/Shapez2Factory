@@ -13,6 +13,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pass1_outer import (
     run_pass1_outer_placement,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 
 
 def test_step_cell_never_produces_x_zero() -> None:
@@ -33,7 +36,9 @@ def test_pass1_no_commit_stub_at_x_zero_two_column_mineable() -> None:
     )
     ctx = SolverRunContext(run_id="seam_regression", reconstruction=recon)
     events: list[dict[str, object]] = []
-    p1 = run_pass1_outer_placement(ctx, recon, replay_events=events, replay_event_cap=None)
+    p1 = run_pass1_outer_placement(
+        ctx, recon, replay_events=events, replay_event_cap=None, trace=TraceCollector(ctx.run_id)
+    )
 
     commits = [e for e in events if e.get("kind") == "commit_bundle"]
     for e in commits:
@@ -62,7 +67,9 @@ def test_probe_west_from_one_yields_minus_one_not_zero() -> None:
     )
     ctx = SolverRunContext(run_id="probe_stub", reconstruction=recon)
     events: list[dict[str, object]] = []
-    run_pass1_outer_placement(ctx, recon, replay_events=events, replay_event_cap=None)
+    run_pass1_outer_placement(
+        ctx, recon, replay_events=events, replay_event_cap=None, trace=TraceCollector(ctx.run_id)
+    )
     probes = [
         e
         for e in events

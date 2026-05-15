@@ -27,6 +27,7 @@ from django_apps.shapez_asteroid.services.blueprint_entry_parsing import int_or_
 from django_apps.shapez_asteroid.services.style_classifier import PlotStyle, classify_layout_type
 
 from ..domain.decoded_blueprint import DecodedBlueprintDocument
+from ..runtime.trace_collector import TraceCollector
 from .asteroid_reconstruction import (
     _is_asteroid_shell_layout_type,
     gather_bp_entries_recursive,
@@ -268,7 +269,9 @@ def _preview_timeline_fields(
         )
 
         sk = analyze_decoded_layout(doc).source_kind.value
-        preview_res = _preview.build_v2_preview_map_frames(doc, recon, source_kind=sk)
+        preview_res = _preview.build_v2_preview_map_frames(
+            doc, recon, source_kind=sk, trace=TraceCollector("reconstruction_diagnostics")
+        )
         frames = preview_res.frames
         preview_count = len(frames)
         preview_ids = tuple(

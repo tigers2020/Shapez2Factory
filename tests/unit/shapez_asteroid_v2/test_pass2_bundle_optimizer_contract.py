@@ -26,6 +26,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pl
     assert_all_provisional_commits,
     assert_no_routed_confirmed,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 
 Pass2BundleCandidate = bundle_candidate.Pass2BundleCandidate
 Pass2PackingInput = pass2_bundle_optimizer.Pass2PackingInput
@@ -189,8 +192,8 @@ def test_run_pass2_internal_fill_provisional_only() -> None:
         asteroid_bbox=bbox,
     )
     ctx = SolverRunContext(run_id="p2_opt_contract", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
-    p2 = run_pass2_internal_fill(ctx, p1)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
+    p2 = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     if p2.placement_commit_entries:
         assert_all_provisional_commits(p2.placement_commit_entries)
         assert_no_routed_confirmed(p2.placement_commit_entries)
@@ -436,8 +439,8 @@ def test_pass2_blocked_cells_delta_is_equipment_only() -> None:
         asteroid_bbox=bbox,
     )
     ctx = SolverRunContext(run_id="p2_delta_contract", reconstruction=recon)
-    p1 = run_pass1_outer_placement(ctx, recon)
-    p2 = run_pass2_internal_fill(ctx, p1)
+    p1 = run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
+    p2 = run_pass2_internal_fill(ctx, p1, trace=TraceCollector(ctx.run_id))
     equip: set[tuple[int, int]] = set()
     for b in p2.provisional_placements:
         equip.add(b.extractor.cell)

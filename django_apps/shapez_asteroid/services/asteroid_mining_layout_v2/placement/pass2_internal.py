@@ -30,6 +30,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums
     PlacementCommitState,
     TransportKind,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 
 from .bundle_candidate import (
     CARDINAL_DIRS,
@@ -341,13 +344,19 @@ def _pass2_candidate_to_bundle(
     return PlacementBundle(extractor=ext, extensions=exts, output_stub=stub)
 
 
-def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2Result:
+def run_pass2_internal_fill(
+    ctx: SolverRunContext,
+    pass1: Pass1Result,
+    *,
+    trace: TraceCollector,
+) -> Pass2Result:
     """Interior Pass2 (§8): optional Pass1 corridor gate, then pool + packing.
 
     Corridor gate may return ``pass1_after_corridor_gate`` / ``solver_ctx_after_corridor_gate``
     on ``Pass2Result`` when openings were applied (caller merges ctx for downstream steps).
     """
 
+    _ = trace
     p1_work, ctx_work, corridor_trace = maybe_open_corridors_before_pass2(ctx=ctx, pass1=pass1)
     gate_ran = bool(corridor_trace) or (p1_work is not pass1)
 

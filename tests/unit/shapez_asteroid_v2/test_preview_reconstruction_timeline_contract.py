@@ -11,6 +11,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto i
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
     reconstruct_asteroid_mining_field,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 
 _dominant_surface_for_shell = preview_reconstruction_timeline._dominant_surface_for_shell
 build_v2_preview_map_frames = preview_reconstruction_timeline.build_v2_preview_map_frames
@@ -19,6 +22,10 @@ expand_pass1_replay_mining_map_frames = (
 )
 PREVIEW_TILE = preview_reconstruction_timeline.PREVIEW_ASTEROID_REPLACE_TILE_T
 _apply_mineable_highlights = preview_reconstruction_timeline._apply_mineable_highlights
+
+
+def _tr() -> TraceCollector:
+    return TraceCollector("preview_timeline_contract")
 
 
 def test_apply_mineable_highlights_promotes_inferred_in_mineable_set() -> None:
@@ -64,7 +71,9 @@ def test_v2_recon_mineable_frame_interior_cells_are_mineable_role() -> None:
     entries.append({"X": 5, "Y": 4, "T": "Layout_ShapeMinerExtension"})
     decoded = {"BP": {"Entries": entries}}
     recon = reconstruct_asteroid_mining_field(decoded)
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout").frames
+    frames = build_v2_preview_map_frames(
+        decoded, recon, source_kind="mixed_existing_layout", trace=_tr()
+    ).frames
     mineable_fr = next(f for f in frames if f["id"] == "v2_recon_mineable")
     interior = set(recon.interior_patch_cells)
     for r in mineable_fr["mining_map"]:
@@ -89,7 +98,9 @@ def test_transport_shell_frame_includes_extractors_without_asteroid_field_tiles(
     assert recon.extraction_shell_cells == ()
     assert recon.extractor_cells and recon.pipe_cells
 
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="existing_fluid_layout").frames
+    frames = build_v2_preview_map_frames(
+        decoded, recon, source_kind="existing_fluid_layout", trace=_tr()
+    ).frames
     first = next(f for f in frames if f.get("id") == "v2_recon_transport_shell")
     mm = first["mining_map"]
     xs = {int(r["x"]) for r in mm}
@@ -109,7 +120,9 @@ def test_transport_shell_frame_includes_asteroid_shell_when_present() -> None:
         }
     }
     recon = reconstruct_asteroid_mining_field(decoded)
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="raw_asteroid_field").frames
+    frames = build_v2_preview_map_frames(
+        decoded, recon, source_kind="raw_asteroid_field", trace=_tr()
+    ).frames
     first = next(f for f in frames if f.get("id") == "v2_recon_transport_shell")
     assert len(first["mining_map"]) >= 2
 
@@ -126,6 +139,7 @@ def test_expand_pass1_emits_skip_frame_when_no_mineable_cells() -> None:
         mineable_rows,
         dominant="shape",
         source_kind="raw_asteroid_field",
+        trace=_tr(),
     ).frames
     assert len(frames) == 1
     assert frames[0]["id"] == "v2_pass1_skipped_no_mineable"
@@ -143,7 +157,9 @@ def test_reconstruction_preview_frame_order_includes_strip_and_inner_patch() -> 
     entries.append({"X": 5, "Y": 4, "T": "Layout_ShapeMinerExtension"})
     decoded = {"BP": {"Entries": entries}}
     recon = reconstruct_asteroid_mining_field(decoded)
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout").frames
+    frames = build_v2_preview_map_frames(
+        decoded, recon, source_kind="mixed_existing_layout", trace=_tr()
+    ).frames
     ids = [f.get("id") for f in frames if isinstance(f, dict) and f.get("id")]
     assert ids[:7] == [
         "v2_recon_transport_shell",
@@ -196,7 +212,7 @@ def test_dominant_surface_includes_fluid_miner_not_on_shell_tiles() -> None:
     assert _dominant_surface_for_shell(decoded, recon) == "fluid"
 
     _frames = build_v2_preview_map_frames(
-        decoded, recon, source_kind="mixed_existing_layout"
+        decoded, recon, source_kind="mixed_existing_layout", trace=_tr()
     ).frames
     inner = next(f for f in _frames if f.get("id") == "v2_recon_inner_patch")
     by_xy = {(int(r["x"]), int(r["y"])): r for r in inner["mining_map"]}
@@ -221,7 +237,9 @@ def test_strip_extensions_does_not_fill_voids_from_belt_extension_coord_collisio
     assert (4, 4) in recon.belt_cells
     assert (4, 4) in recon.extension_cells
 
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout").frames
+    frames = build_v2_preview_map_frames(
+        decoded, recon, source_kind="mixed_existing_layout", trace=_tr()
+    ).frames
     strip_ext = next(f for f in frames if f["id"] == "v2_recon_strip_extensions")
     keys = {(int(r["x"]), int(r["y"])) for r in strip_ext["mining_map"]}
     assert (4, 4) not in keys
@@ -241,7 +259,9 @@ def test_strip_asteroid_surface_follows_extractor_or_extension_kind() -> None:
     entries.append({"X": 4, "Y": 5, "T": "Layout_ShapeMinerExtension"})
     decoded = {"BP": {"Entries": entries}}
     recon = reconstruct_asteroid_mining_field(decoded)
-    frames = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout").frames
+    frames = build_v2_preview_map_frames(
+        decoded, recon, source_kind="mixed_existing_layout", trace=_tr()
+    ).frames
 
     strip_ex = next(f for f in frames if f["id"] == "v2_recon_strip_extractors")
     by_ex = {(int(r["x"]), int(r["y"])): r for r in strip_ex["mining_map"]}
@@ -273,7 +293,9 @@ def test_pass1_commit_bundle_replay_includes_output_direction() -> None:
     )
     ctx = SolverRunContext(run_id="preview_contract", reconstruction=recon)
     events: list[dict[str, object]] = []
-    pass1o.run_pass1_outer_placement(ctx, recon, replay_events=events, replay_event_cap=None)
+    pass1o.run_pass1_outer_placement(
+        ctx, recon, replay_events=events, replay_event_cap=None, trace=TraceCollector(ctx.run_id)
+    )
     commits = [e for e in events if e.get("kind") == "commit_bundle"]
     assert commits
     c0 = commits[0]
@@ -297,7 +319,9 @@ def test_pass1_preview_no_pass1_stub_role_extractor_has_layout_kind_and_r() -> N
     decoded = {"BP": {"Entries": entries}}
     recon = reconstruct_asteroid_mining_field(decoded)
     mineable_f = frozenset(recon.mineable_placement_cells)
-    result = build_v2_preview_map_frames(decoded, recon, source_kind="mixed_existing_layout")
+    result = build_v2_preview_map_frames(
+        decoded, recon, source_kind="mixed_existing_layout", trace=_tr()
+    )
     matched = False
     for fr in result.frames:
         summ = fr.get("summary") or {}
@@ -630,7 +654,7 @@ def test_pass1_occupied_cells_still_includes_stub() -> None:
         asteroid_bbox=BBox(min_x=20, min_y=20, max_x=25, max_y=25),
     )
     ctx = SolverRunContext(run_id="occ_stub", reconstruction=recon)
-    p1 = pass1o.run_pass1_outer_placement(ctx, recon)
+    p1 = pass1o.run_pass1_outer_placement(ctx, recon, trace=TraceCollector(ctx.run_id))
     if not p1.placements:
         return
     stub = p1.placements[0].output_stub.cell

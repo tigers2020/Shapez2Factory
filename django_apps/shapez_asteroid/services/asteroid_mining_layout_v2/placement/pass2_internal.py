@@ -27,11 +27,15 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto i
     SolverRunContext,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums import (
+    CommitReason,
     PlacementCommitState,
     TransportKind,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
     TraceCollector,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_events import (
+    TraceEvent,
 )
 
 from .bundle_candidate import (
@@ -48,6 +52,90 @@ from .pass2_bundle_optimizer import (
     optimize_pass2_bundle_packing,
 )
 from .pass2_route_probe import Pass2RouteProbe, probe_pass2_stub_route
+
+_PASS2_TRACE_PHASE = "pass2_internal"
+
+
+def _pass2_emit_trace_event(
+    trace: TraceCollector,
+    step_box: list[int],
+    *,
+    run_id: str,
+    event_type: str,
+    committed: bool,
+    commit_reason: CommitReason | None,
+) -> None:
+    """Runtime trace parallel to ``beam_trace``; semantics via ``TraceEvent`` only."""
+
+    step = step_box[0]
+    step_box[0] = step + 1
+    trace.emit(
+        TraceEvent(
+            run_id=run_id,
+            phase=_PASS2_TRACE_PHASE,
+            step_index=step,
+            event_type=event_type,
+            committed=committed,
+            commit_reason=commit_reason if committed else None,
+            rejected_reason=None,
+            rollback_reason=None,
+            recovery_trigger=None,
+            computation_cycle=None,
+            route_level=False,
+            transport_kind=None,
+        )
+    )
+
+
+def _pass2_emit_observation(
+    trace: TraceCollector,
+    step_box: list[int],
+    *,
+    run_id: str,
+    event_type: str,
+) -> None:
+    _pass2_emit_trace_event(
+        trace,
+        step_box,
+        run_id=run_id,
+        event_type=event_type,
+        committed=False,
+        commit_reason=None,
+    )
+
+
+def _pass2_emit_committed(
+    trace: TraceCollector,
+    step_box: list[int],
+    *,
+    run_id: str,
+    event_type: str,
+) -> None:
+    _pass2_emit_trace_event(
+        trace,
+        step_box,
+        run_id=run_id,
+        event_type=event_type,
+        committed=True,
+        commit_reason=CommitReason.NORMAL_GAIN,
+    )
+
+
+def _pass2_emit_rejected(
+    trace: TraceCollector,
+    step_box: list[int],
+    *,
+    run_id: str,
+    event_type: str,
+) -> None:
+    _pass2_emit_trace_event(
+        trace,
+        step_box,
+        run_id=run_id,
+        event_type=event_type,
+        committed=False,
+        commit_reason=None,
+    )
 
 
 def _bbox_fallback(cells: frozenset[BlueprintCell]) -> BBox | None:
@@ -220,6 +308,8 @@ def _pass2_gather_feasible_for_extractor(
     transport_kind: TransportKind,
     reconstruction: ReconstructionDTO,
     bbox: BBox,
+    trace: TraceCollector,
+    trace_step_box: list[int],
 ) -> tuple[list[Pass2BundleCandidate], list[dict[str, object]]]:
     feasible: list[Pass2BundleCandidate] = []
     beam_rejects: list[dict[str, object]] = []
@@ -248,6 +338,12 @@ def _pass2_gather_feasible_for_extractor(
                     "reject_reason": cand.reject_reason,
                 }
             )
+            _pass2_emit_rejected(
+                trace,
+                trace_step_box,
+                run_id=run_id,
+                event_type="pass2_candidate_rejected",
+            )
             continue
         feasible.append(cand)
     return feasible, beam_rejects
@@ -262,6 +358,8 @@ def _pass2_collect_candidate_pool(
     transport_kind: TransportKind,
     reconstruction: ReconstructionDTO,
     bbox: BBox,
+    trace: TraceCollector,
+    trace_step_box: list[int],
 ) -> tuple[tuple[Pass2BundleCandidate, ...], list[dict[str, object]]]:
     """Feasible ``out_dir`` candidates per extractor; baseline ``used`` only."""
 
@@ -279,6 +377,8 @@ def _pass2_collect_candidate_pool(
             transport_kind=transport_kind,
             reconstruction=reconstruction,
             bbox=bbox,
+            trace=trace,
+            trace_step_box=trace_step_box,
         )
         beam_rejects.extend(rejects)
         pool.extend(feasible)
@@ -356,12 +456,18 @@ def run_pass2_internal_fill(
     on ``Pass2Result`` when openings were applied (caller merges ctx for downstream steps).
     """
 
-    _ = trace
     p1_work, ctx_work, corridor_trace = maybe_open_corridors_before_pass2(ctx=ctx, pass1=pass1)
     gate_ran = bool(corridor_trace) or (p1_work is not pass1)
 
+    trace_step_box: list[int] = [0]
     prepared = _pass2_prepare_state(ctx_work, p1_work)
     if prepared is None:
+        _pass2_emit_observation(
+            trace,
+            trace_step_box,
+            run_id=ctx_work.run_id,
+            event_type="pass2_noop",
+        )
         return Pass2Result(
             corridor_opening_trace=corridor_trace,
             pass1_after_corridor_gate=p1_work if gate_ran else None,
@@ -379,6 +485,8 @@ def run_pass2_internal_fill(
         transport_kind=transport_kind,
         reconstruction=reconstruction,
         bbox=bbox,
+        trace=trace,
+        trace_step_box=trace_step_box,
     )
     beam.extend(pool_rejects)
 
@@ -404,6 +512,12 @@ def run_pass2_internal_fill(
                     "committed": False,
                     "reject_reason": "pass2_stub_not_externally_reachable",
                 }
+            )
+            _pass2_emit_rejected(
+                trace,
+                trace_step_box,
+                run_id=ctx_work.run_id,
+                event_type="pass2_stub_route_probe_rejected",
             )
             continue
         filtered_pool.append(cand)
@@ -444,6 +558,12 @@ def run_pass2_internal_fill(
                 + tuple(str(x.placement_id) for x in b.extensions),
             }
         )
+        _pass2_emit_committed(
+            trace,
+            trace_step_box,
+            run_id=ctx_work.run_id,
+            event_type="pass2_optimizer_selected",
+        )
 
     beam.append(
         {
@@ -460,6 +580,12 @@ def run_pass2_internal_fill(
             "time_limit_ms": pack_inp.time_limit_ms,
             "max_candidates": pack_inp.max_candidates,
         }
+    )
+    _pass2_emit_observation(
+        trace,
+        trace_step_box,
+        run_id=ctx_work.run_id,
+        event_type="pass2_optimizer_summary",
     )
 
     return _pass2_assemble_result(

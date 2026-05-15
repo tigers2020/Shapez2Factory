@@ -39,6 +39,7 @@ from .bundle_candidate import (
     infer_transport_kind,
     step_cell,
 )
+from .corridor_opening import maybe_open_corridors_before_pass2
 from .pass2_bundle_optimizer import (
     Pass2PackingInput,
     optimize_pass2_bundle_packing,
@@ -285,6 +286,10 @@ def _pass2_assemble_result(
     bundles: list[PlacementBundle],
     commits: list[tuple[str, PlacementCommitState]],
     beam: list[dict[str, object]],
+    *,
+    corridor_opening_trace: tuple[dict[str, object], ...] = (),
+    pass1_after_corridor_gate: Pass1Result | None = None,
+    solver_ctx_after_corridor_gate: SolverRunContext | None = None,
 ) -> Pass2Result:
     pass2_occ: set[BlueprintCell] = set()
     for b in bundles:
@@ -298,6 +303,9 @@ def _pass2_assemble_result(
         blocked_cells_delta=blocked_delta,
         placement_commit_entries=tuple(commits),
         beam_trace=tuple(beam) if beam else None,
+        corridor_opening_trace=corridor_opening_trace,
+        pass1_after_corridor_gate=pass1_after_corridor_gate,
+        solver_ctx_after_corridor_gate=solver_ctx_after_corridor_gate,
     )
 
 
@@ -334,15 +342,28 @@ def _pass2_candidate_to_bundle(
 
 
 def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2Result:
-    """Interior Pass2 (§8): pool + set packing; no STEP4 route read/write or ``ctx`` mutation."""
+    """Interior Pass2 (§8): optional Pass1 corridor gate, then pool + packing.
 
-    prepared = _pass2_prepare_state(ctx, pass1)
+    Corridor gate may return ``pass1_after_corridor_gate`` / ``solver_ctx_after_corridor_gate``
+    on ``Pass2Result`` when openings were applied (caller merges ctx for downstream steps).
+    """
+
+    p1_work, ctx_work, corridor_trace = maybe_open_corridors_before_pass2(ctx=ctx, pass1=pass1)
+    gate_ran = bool(corridor_trace) or (p1_work is not pass1)
+
+    prepared = _pass2_prepare_state(ctx_work, p1_work)
     if prepared is None:
-        return Pass2Result()
+        return Pass2Result(
+            corridor_opening_trace=corridor_trace,
+            pass1_after_corridor_gate=p1_work if gate_ran else None,
+            solver_ctx_after_corridor_gate=ctx_work if gate_ran else None,
+        )
     reconstruction, mineable_cells, bbox, baseline_used, ordered, transport_kind = prepared
 
+    beam: list[dict[str, object]] = list(corridor_trace)
+
     pool, pool_rejects = _pass2_collect_candidate_pool(
-        run_id=ctx.run_id,
+        run_id=ctx_work.run_id,
         ordered=ordered,
         mineable_cells=mineable_cells,
         baseline_used=baseline_used,
@@ -350,9 +371,9 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
         reconstruction=reconstruction,
         bbox=bbox,
     )
-    beam: list[dict[str, object]] = list(pool_rejects)
+    beam.extend(pool_rejects)
 
-    p1_fixed = _pass1_fixed_cells_for_probe(pass1)
+    p1_fixed = _pass1_fixed_cells_for_probe(p1_work)
     route_probes: dict[str, Pass2RouteProbe] = {}
     filtered_pool: list[Pass2BundleCandidate] = []
     for cand in pool:
@@ -360,7 +381,7 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
             cand,
             pass1_fixed_cells=p1_fixed,
             reconstruction=reconstruction,
-            ctx=ctx,
+            ctx=ctx_work,
         )
         route_probes[cand.candidate_id] = pr
         if not pr.reachable:
@@ -390,7 +411,7 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
     commits: list[tuple[str, PlacementCommitState]] = []
 
     for rank, cand in enumerate(packing.selected):
-        b = _pass2_candidate_to_bundle(cand, run_id=ctx.run_id, bundle_index=rank)
+        b = _pass2_candidate_to_bundle(cand, run_id=ctx_work.run_id, bundle_index=rank)
         bundles.append(b)
         commits.append((str(b.extractor.placement_id), PlacementCommitState.PROVISIONAL_PLACED))
         for ext in b.extensions:
@@ -432,7 +453,14 @@ def run_pass2_internal_fill(ctx: SolverRunContext, pass1: Pass1Result) -> Pass2R
         }
     )
 
-    return _pass2_assemble_result(bundles, commits, beam)
+    return _pass2_assemble_result(
+        bundles,
+        commits,
+        beam,
+        corridor_opening_trace=corridor_trace,
+        pass1_after_corridor_gate=p1_work if gate_ran else None,
+        solver_ctx_after_corridor_gate=ctx_work if gate_ran else None,
+    )
 
 
 __all__ = ["build_pass2_blocked_set", "run_pass2_internal_fill"]

@@ -13,7 +13,7 @@
 | `django_apps/shapez_asteroid/` | asteroid extraction, copy-preview, mining layout v2 파이프라인 |
 | `django_apps/web/` | 페이지 템플릿, 정적 자산, thin view, staff tooling |
 | `tests/unit/` | core/solver/asteroid/web 단위 테스트 |
-| `tests/unit/shapez_asteroid_v2/` | mining layout v2 계약/경계/placement/replay 테스트 |
+| `tests/unit/shapez_asteroid_v2/` | mining layout v2 계약/경계/placement/routing/replay 테스트 |
 | `tests/integration/` | Django request/response, page/API integration smoke |
 | `documents/` | 문서 authority, 계획, 연구, 보고, archive. 정본 지도는 [`documents/README.md`](documents/README.md) |
 | `protocols/` | multi-step pipeline 절차 ([`protocols/README.md`](protocols/README.md)) |
@@ -47,11 +47,13 @@
 ### `django_apps/shapez_asteroid/`
 
 - `extraction/`: blueprint decoding, grid-coordinate authority, asteroid extraction DTO.
-- `services/asteroid_mining_layout_v2/`: 현재 mining layout 구현 권위. STEP0 decode, STEP1 reconstruction, Pass1/Pass2 placement, routing stub, validation, replay/serialization 경계를 포함한다.
-- `services/asteroid_mining_layout_v2/domain/`: v2 DTO, enum, grid, orchestration, decoded blueprint, trace semantics.
+- `services/asteroid_mining_layout_v2/`: 현재 mining layout 구현 권위. STEP0 decode, STEP1 reconstruction, Pass1/Pass2 placement, STEP4 routing, validation, replay/serialization 경계를 포함한다.
+- `services/asteroid_mining_layout_v2/adapters/`: mining-map row와 외부 DTO 사이의 adapter boundary.
+- `services/asteroid_mining_layout_v2/decode/`: copy decode adapter와 existing layout analysis.
+- `services/asteroid_mining_layout_v2/domain/`: v2 DTO, enum, grid, orchestration, decoded blueprint, corridor, trace semantics.
 - `services/asteroid_mining_layout_v2/reconstruction/`: asteroid reconstruction, diagnostics, interior patch.
-- `services/asteroid_mining_layout_v2/placement/`: bundle candidate, Pass1 outer placement, Pass2 internal placement, placement FSM.
-- `services/asteroid_mining_layout_v2/routing/`: trunk seed, connectivity, merge-aware router placeholder.
+- `services/asteroid_mining_layout_v2/placement/`: bundle candidate, Pass1 outer placement, Pass2 internal placement, corridor opening, placement FSM.
+- `services/asteroid_mining_layout_v2/routing/`: trunk seed, connectivity, merge-aware router, corridor probe, STEP4 corridor recovery.
 - `services/asteroid_mining_layout_v2/replay/`, `runtime/`, `serialization/`: output-only trace/replay/runtime/public artifact contracts.
 - `services/asteroid_mining_layout/` 계열 v1 문서·계획은 [`documents/archive/2026-05-mining-layout-v1-era/`](documents/archive/2026-05-mining-layout-v1-era/README.md)로 분류한다.
 - `ports/`: solver input/output adapter boundary.
@@ -84,7 +86,7 @@ Internationalized routes (`i18n_patterns`, default language without prefix) incl
 - `tests/unit/shapez_core/`: parser, render scene, SVG preview, geometry.
 - `tests/unit/shapez_solver/`: solver engine, recipe graph, models, catalog, pattern lab.
 - `tests/unit/shapez_asteroid/`: archived/v1-era asteroid solver and shared compatibility checks where still retained.
-- `tests/unit/shapez_asteroid_v2/`: v2 namespace, domain DTO, reconstruction, placement, trace/replay, serialization, validation contract tests.
+- `tests/unit/shapez_asteroid_v2/`: v2 namespace, domain DTO, reconstruction, placement, corridor probe/recovery, trace/replay, serialization, validation contract tests.
 - `tests/unit/web/`: template/markup and web-specific checks.
 - `tests/integration/api/`: health/API integration checks.
 - `tests/integration/web/`: page smoke, auth, pattern lab, macro-pattern staff flows.

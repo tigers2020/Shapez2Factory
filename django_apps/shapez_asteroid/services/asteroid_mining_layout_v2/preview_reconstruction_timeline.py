@@ -2,6 +2,8 @@
 v2 copy-preview: ``map_timeline`` frames (display-only).
 
 Reconstruction milestones plus STEP 2 Pass1 replay (one frame per placement event).
+When Pass1 seals the perimeter, an extra ``v2_pass1_corridor_gate`` frame may run the
+same ``maybe_open_corridors_before_pass2`` gate as Pass2 (display-only).
 Each frame is one **full** ``mining_map`` row list (no delta). Does not read NDJSON,
 ``solver_replay``, or ``solver_summary``. Domain modules must not import this package.
 """
@@ -22,6 +24,7 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord
     is_physical_x,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
+    Pass1Result,
     ReconstructionDTO,
     SolverRunContext,
 )
@@ -30,6 +33,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.enums
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.grid import (
     step_blueprint_cell,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement import (
+    corridor_opening,
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.placement.pass1_outer import (
     run_pass1_outer_placement,
@@ -870,6 +876,26 @@ def _mining_map_with_pass1_replay_overlay(
 _PASS1_PREVIEW_FULL_EVENT_BUDGET = 72
 
 
+def _committed_bundle_dicts_from_pass1(p1: Pass1Result) -> list[dict[str, Any]]:
+    """Replay-overlay dicts aligned with ``commit_bundle`` replay rows."""
+
+    out: list[dict[str, Any]] = []
+    for b in p1.placements:
+        extr = b.extractor.cell
+        stub = b.output_stub.cell
+        out_dir = (stub[0] - extr[0], stub[1] - extr[1])
+        out.append(
+            {
+                "extractor_cell": [extr[0], extr[1]],
+                "output_stub_cell": [stub[0], stub[1]],
+                "extension_cells": [[e.cell[0], e.cell[1]] for e in b.extensions],
+                "transport_kind": str(b.extractor.transport_kind.value),
+                "output_direction": [out_dir[0], out_dir[1]],
+            }
+        )
+    return out
+
+
 def _pass1_events_for_preview_timeline(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if len(events) <= _PASS1_PREVIEW_FULL_EVENT_BUDGET:
         return list(events)
@@ -882,6 +908,7 @@ class Pass1PreviewArtifacts:
 
     frames: list[dict[str, Any]]
     pass1_replay_events: tuple[dict[str, Any], ...]
+    pass1_result: Pass1Result
 
 
 @dataclass(frozen=True, slots=True)
@@ -915,7 +942,9 @@ def expand_pass1_replay_mining_map_frames(
 
     events: list[dict[str, Any]] = []
     ctx = SolverRunContext(run_id="v2_preview_recon_timeline", reconstruction=recon)
-    run_pass1_outer_placement(ctx, recon, replay_events=events, replay_event_cap=None)
+    pass1_result = run_pass1_outer_placement(
+        ctx, recon, replay_events=events, replay_event_cap=None
+    )
 
     timeline_events = _pass1_events_for_preview_timeline(events)
     preview_thinned = len(events) > _PASS1_PREVIEW_FULL_EVENT_BUDGET
@@ -941,7 +970,7 @@ def expand_pass1_replay_mining_map_frames(
         summ["pass1_skip_reason"] = "no_mineable_placement_cells"
         out0: list[dict[str, Any]] = [{"id": fid, "summary": summ, "mining_map": rows}]
         _dev_log_v2_preview_frame(fid, entry_count=int(summ["entry_count"]))
-        return Pass1PreviewArtifacts(out0, tuple(dict(e) for e in events))
+        return Pass1PreviewArtifacts(out0, tuple(dict(e) for e in events), Pass1Result())
 
     committed: list[dict[str, Any]] = []
     out: list[dict[str, Any]] = []
@@ -1010,7 +1039,7 @@ def expand_pass1_replay_mining_map_frames(
         out.append({"id": fid, "summary": summ, "mining_map": rows})
         _dev_log_v2_preview_frame(fid, entry_count=int(summ["entry_count"]))
 
-    return Pass1PreviewArtifacts(out, tuple(dict(e) for e in events))
+    return Pass1PreviewArtifacts(out, tuple(dict(e) for e in events), pass1_result)
 
 
 def _placeholder_milestone_frame(
@@ -1132,8 +1161,11 @@ def _v2_preview_append_tail_placeholder_frames(
     frames: list[dict[str, Any]],
     *,
     source_kind: str | None,
+    baseline_mining_map: list[dict[str, Any]] | None = None,
 ) -> None:
-    last_rows_raw = frames[-1]["mining_map"]
+    last_rows_raw = (
+        baseline_mining_map if baseline_mining_map is not None else frames[-1]["mining_map"]
+    )
     last_rows: list[dict[str, Any]] = last_rows_raw if isinstance(last_rows_raw, list) else []
     for fid in _V2_PREVIEW_PLACEHOLDER_FRAME_IDS:
         ph = _placeholder_milestone_frame(
@@ -1158,13 +1190,17 @@ def build_v2_preview_map_frames(
     Return JSON-safe ``map_timeline`` frames (variable length) and uncapped Pass1 replay
     events from a **single** Pass1 execution.
 
+    After Pass1 provisional, may append ``v2_pass1_corridor_gate`` when the Pass2
+    pre-gate removes bundles (same logic as ``maybe_open_corridors_before_pass2``).
+
     Reconstruction preview order: full layout → strip belt/pipe → strip extractors →
     strip extensions → infer interior on stripped base → inner-patch focus (shell + void)
     → mineable highlights. Then STEP 2 Pass1 replay frames (variable count), then
     placeholder frames for later solver milestones.
 
-    Appends one row per ``_V2_PREVIEW_PLACEHOLDER_FRAME_IDS`` (display-only; same
-    ``mining_map`` as the last reconstruction frame until those milestones exist).
+    Appends one row per ``_V2_PREVIEW_PLACEHOLDER_FRAME_IDS`` (display-only; each uses the
+    same ``mining_map`` raster as the last Pass1 frame, or after ``v2_pass1_corridor_gate``
+    when that frame was emitted).
 
     When reconstruction is empty (no barrier cells), returns **only** those placeholder
     frames (empty ``mining_map`` each).
@@ -1186,7 +1222,41 @@ def build_v2_preview_map_frames(
     frames.extend(pass1_art.frames)
     pass1_replay_events = pass1_art.pass1_replay_events
 
-    _v2_preview_append_tail_placeholder_frames(frames, source_kind=source_kind)
+    placeholder_baseline: list[dict[str, Any]] | None = None
+    p1_res = pass1_art.pass1_result
+    if p1_res.placements:
+        ctx_gate = SolverRunContext(
+            run_id="v2_preview_corridor_gate",
+            reconstruction=recon,
+            placement_commit_by_id=dict(p1_res.placement_commit_entries),
+        )
+        p1_after, _ctx_after, corridor_trace = corridor_opening.maybe_open_corridors_before_pass2(
+            ctx=ctx_gate, pass1=p1_res
+        )
+        if corridor_trace:
+            gate_rows = _mining_map_with_pass1_replay_overlay(
+                copy.deepcopy(rows3),
+                frame_id="v2_pass1_corridor_gate",
+                source_kind=source_kind,
+                dominant=dominant,
+                committed_bundles=_committed_bundle_dicts_from_pass1(p1_after),
+                highlight_event=None,
+            )
+            summ_gate = _summary_from_rows(
+                gate_rows, frame_id="v2_pass1_corridor_gate", source_kind=source_kind
+            )
+            summ_gate["pass1_replay"] = True
+            summ_gate["pass1_event_kind"] = "corridor_gate"
+            summ_gate["preview_placeholder"] = False
+            summ_gate["corridor_opening_trace"] = to_jsonable(list(corridor_trace))
+            frames.append(
+                {"id": "v2_pass1_corridor_gate", "summary": summ_gate, "mining_map": gate_rows}
+            )
+            placeholder_baseline = gate_rows
+
+    _v2_preview_append_tail_placeholder_frames(
+        frames, source_kind=source_kind, baseline_mining_map=placeholder_baseline
+    )
 
     return V2PreviewTimelineResult(
         cast(list[dict[str, Any]], to_jsonable(frames)),

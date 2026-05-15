@@ -1,7 +1,7 @@
 {
   "schema_version": "v2.copy_preview_behavior_artifact.1",
   "artifact_kind": "copy_preview_behavior",
-  "generated_utc": "2026-05-15T11:19:05Z",
+  "generated_utc": "2026-05-15T13:56:55Z",
   "algorithm_input": false,
   "http_response_included": false,
   "includes_mining_map": false,
@@ -437,10 +437,51 @@
       }
     },
     {
+      "id": "v2_pass1_corridor_gate",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass1_corridor_gate",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "corridor_gate",
+        "preview_placeholder": false,
+        "corridor_opening_trace": [
+          {
+            "event_type": "corridor_opening_recovery",
+            "phase": "pass1_post_gate",
+            "recovery_trigger": null,
+            "decision": {
+              "committed": true,
+              "commit_reason": "degraded_connected_recovery"
+            },
+            "metrics": {
+              "gateway_count_before": 0,
+              "gateway_count_after": 0,
+              "placements_removed_count": 1,
+              "extractor_removed_count": 1,
+              "extension_removed_count": 0,
+              "lost_slot_count": 1,
+              "path_length": 3
+            },
+            "search": {
+              "search_mode": "lexicographic_dijkstra",
+              "expanded_nodes": 0,
+              "search_time_ms": 0,
+              "optimality_guarantee": true
+            }
+          }
+        ]
+      }
+    },
+    {
       "id": "v2_pass2_candidates",
       "summary": {
-        "entry_count": 2,
-        "x_min": 1,
+        "entry_count": 1,
+        "x_min": 2,
         "x_max": 2,
         "y_min": 2,
         "y_max": 2,
@@ -452,8 +493,8 @@
     {
       "id": "v2_pass2_provisional",
       "summary": {
-        "entry_count": 2,
-        "x_min": 1,
+        "entry_count": 1,
+        "x_min": 2,
         "x_max": 2,
         "y_min": 2,
         "y_max": 2,
@@ -465,8 +506,8 @@
     {
       "id": "v2_step4_trunk_seed",
       "summary": {
-        "entry_count": 2,
-        "x_min": 1,
+        "entry_count": 1,
+        "x_min": 2,
         "x_max": 2,
         "y_min": 2,
         "y_max": 2,
@@ -478,8 +519,8 @@
     {
       "id": "v2_step4_routing",
       "summary": {
-        "entry_count": 2,
-        "x_min": 1,
+        "entry_count": 1,
+        "x_min": 2,
         "x_max": 2,
         "y_min": 2,
         "y_max": 2,
@@ -491,8 +532,8 @@
     {
       "id": "v2_final_validation",
       "summary": {
-        "entry_count": 2,
-        "x_min": 1,
+        "entry_count": 1,
+        "x_min": 2,
         "x_max": 2,
         "y_min": 2,
         "y_max": 2,
@@ -504,8 +545,8 @@
     {
       "id": "v2_final_layout",
       "summary": {
-        "entry_count": 2,
-        "x_min": 1,
+        "entry_count": 1,
+        "x_min": 2,
         "x_max": 2,
         "y_min": 2,
         "y_max": 2,

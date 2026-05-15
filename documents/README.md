@@ -9,7 +9,8 @@
 3. [`Algorithm/README.md`](Algorithm/README.md) — canonical step order 요약.
 4. [`ai/START_HERE.md`](ai/START_HERE.md) — AI 작업 세션 진입점.
 5. [`index/document_lifecycle.md`](index/document_lifecycle.md), [`index/document_inventory.md`](index/document_inventory.md) — 문서 lifecycle과 기존 inventory.
-6. [`reports/documentation_audit/README.md`](reports/documentation_audit/README.md) — 2026-05-15 문서 감사 결과.
+6. [`reports/README.md`](reports/README.md) — 보고서 묶음 인덱스.
+7. [`reports/documentation_audit/README.md`](reports/documentation_audit/README.md) — 2026-05-15 문서 감사 결과.
 
 ## 권위 계층
 
@@ -19,7 +20,7 @@
 | canonical routing/index | [`README.md`](README.md), [`Algorithm/README.md`](Algorithm/README.md), [`index/`](index/) | 문서 위치와 lifecycle 판단에 사용한다. |
 | AI workflow/manuals | [`ai/`](ai/) | 작업 절차, current plan, checklist, manual routing. algorithm spec을 대체하지 않는다. |
 | implementation planning | [`plans/`](plans/), [`ai/plans/`](ai/plans/) | 승인된 작업 범위와 backlog 확인용. 정본 충돌 시 정본이 우선한다. |
-| audit/report/research | [`reports/`](reports/), [`research/`](research/), [`notes/`](notes/), [`debug/`](debug/) | 관측 증거와 분석. historical report는 current truth가 아니다. |
+| audit/report/research | [`reports/`](reports/README.md), [`research/`](research/), [`notes/`](notes/), [`debug/`](debug/) | 관측 증거와 분석. historical report는 current truth가 아니다. |
 | historical/obsolete | [`archive/`](archive/), [`refactory/`](refactory/) | 역사 확인용. 현재 구현 판단에 직접 사용하지 않는다. |
 | generated/sample output | [`samples/`](samples/), `var/`, root `v2_behavior_artifact_*.json` | output evidence only. 알고리즘 입력으로 사용 금지. |
 
@@ -40,6 +41,7 @@
 - `plans/`와 `ai/plans/`는 구현 전/중 계획이다. 완료되었거나 v1-era인 문서는 archive 후보로 검토한다.
 - `reports/`와 `research/`는 증거와 판단 기록이다. canonical spec으로 승격하려면 Algorithm spec 또는 ADR에 별도로 반영해야 한다.
 - `documents/reports/documentation_audit/`는 2026-05-15 기준 문서 감사 결과이며 `REPORT`다.
+- `documents/reports/README.md`는 report 묶음의 현재 라우팅 인덱스다.
 
 ## future AI coding agents 금지 사항
 

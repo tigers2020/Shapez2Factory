@@ -334,6 +334,47 @@ def test_greedy_fallback_respects_shadow_corridor() -> None:
     assert len(out) == 1
 
 
+def test_probe_pass2_stub_route_unreachable_enclosed_dead_end() -> None:
+    """Stub surrounded by barrier (non-belt) and extractor; BFS cannot reach margin or trunk."""
+
+    mineable = ((400, 200), (401, 200))
+    bbox = BBox(min_x=400, min_y=200, max_x=401, max_y=200)
+    frame: set[tuple[int, int]] = set()
+    for x in range(399, 403):
+        for y in range(199, 202):
+            c = (x, y)
+            if c not in mineable:
+                frame.add(c)
+    barrier = tuple(sorted(set(mineable) | frame))
+    recon = ReconstructionDTO(
+        mineable_placement_cells=mineable,
+        extraction_shell_cells=mineable,
+        full_barrier_cells=barrier,
+        belt_cells=mineable,
+        asteroid_bbox=bbox,
+        external_margin=3,
+    )
+    ctx = SolverRunContext(run_id="probe_dead", reconstruction=recon)
+    cand = _cand(
+        cid="dead",
+        scan_index=0,
+        extractor=(400, 200),
+        stub=(401, 200),
+        score=1.0,
+        out_dir=(1, 0),
+    )
+    pr = probe_pass2_stub_route(
+        cand,
+        pass1_fixed_cells=frozenset(),
+        reconstruction=recon,
+        ctx=ctx,
+    )
+    assert not pr.reachable
+    assert pr.reject_reason == "pass2_stub_not_externally_reachable"
+    assert pr.path_cells == ()
+    assert pr.goal_cell is None
+
+
 def test_probe_path_cells_exclude_stub_and_goal() -> None:
     mineable = tuple((x, y) for x in range(10, 15) for y in range(10, 15))
     bbox = BBox(min_x=10, min_y=10, max_x=14, max_y=14)

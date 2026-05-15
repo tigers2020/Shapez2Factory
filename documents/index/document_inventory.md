@@ -38,8 +38,8 @@
 | [`documents/Algorithm/mining_solver_cursor_sessions/12_protected_corridor.md`](../Algorithm/mining_solver_cursor_sessions/12_protected_corridor.md) | `CANON` | solver spec | YES | protected corridor |
 | [`documents/Algorithm/mining_solver_cursor_sessions/13_step9_validation.md`](../Algorithm/mining_solver_cursor_sessions/13_step9_validation.md) | `CANON` | solver spec | YES | final validation |
 | [`documents/Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md`](../Algorithm/mining_solver_cursor_sessions/14_step10_replay_ui.md) | `CANON` | solver spec | YES | replay UI |
-| [`documents/Algorithm/mining_solver_cursor_sessions/14_step4_routing_dto_refactor_inventory.md`](../Algorithm/mining_solver_cursor_sessions/14_step4_routing_dto_refactor_inventory.md) | `CANON` | solver spec | YES | STEP4 DTO boundary inventory |
-| [`documents/Algorithm/mining_solver_cursor_sessions/15_step4_telemetry_field_semantics.md`](../Algorithm/mining_solver_cursor_sessions/15_step4_telemetry_field_semantics.md) | `CANON` | telemetry spec | YES | STEP4 route-failure telemetry semantics |
+| [`documents/Algorithm/mining_solver_cursor_sessions/14_step4_routing_dto_refactor_inventory.md`](../Algorithm/mining_solver_cursor_sessions/14_step4_routing_dto_refactor_inventory.md) | `ACTIVE` | supplemental inventory | NO | STEP4 DTO boundary inventory. 번호 충돌 때문에 01-14 canonical step docs보다 낮은 권위. |
+| [`documents/Algorithm/mining_solver_cursor_sessions/15_step4_telemetry_field_semantics.md`](../Algorithm/mining_solver_cursor_sessions/15_step4_telemetry_field_semantics.md) | `ACTIVE` | supplemental telemetry note | NO | STEP4 route-failure telemetry semantics. telemetry 보조 문서로 검토 중. |
 
 ## Active 작업·백로그
 
@@ -62,6 +62,8 @@
 | [`documents/research/runtime_semantic_verification.md`](../research/runtime_semantic_verification.md) | `RESEARCH` | runtime verification note | NO | v2/solver semantic verification 근거 |
 | [`documents/reports/2026-05/path_a_post_diagnostic_audit_2026-05-13.md`](../reports/2026-05/path_a_post_diagnostic_audit_2026-05-13.md) | `REPORT` | audit report | NO | Path A post diagnostic audit |
 | [`documents/reports/2026-05/pass12_expected_preserve_loss_acceptance_2026-05-13.md`](../reports/2026-05/pass12_expected_preserve_loss_acceptance_2026-05-13.md) | `REPORT` | acceptance report | NO | Pass12 expected preserve loss acceptance |
+| [`documents/reports/README.md`](../reports/README.md) | `REPORT` | report index | NO | report 묶음 라우팅. 정본 계약 아님 |
+| [`documents/reports/documentation_audit/README.md`](../reports/documentation_audit/README.md) | `REPORT` | documentation audit index | NO | 2026-05-15 문서/코드 대조 감사 |
 | [`documents/debug/`](../debug/) | `REPORT` | debug report | NO | 로그/복사본 분석 |
 | [`documents/notes/`](../notes/) | `REPORT` | notes | NO | 장기 메모. 정본 아님 |
 
@@ -85,3 +87,9 @@
 | `documents/reports/2026-05/` | `REPORT` | 정본 반영이 필요하면 Algorithm spec 또는 ADR로 승격 |
 | `documents/Algorithm/mining_solver_cursor_sessions.zip` | generated/reference artifact | 정본 문서 아님. 필요 시 산출물 정리 정책에서 처리 |
 | 루트 `v2_behavior_artifact_*.json` | generated artifact | 문서 archive가 아니라 실행 산출물 정리 대상으로 별도 판단 |
+
+## 2026-05-15 최신 구조 반영
+
+- `asteroid_mining_layout_v2`에는 `adapters/`, `decode/`, `routing/corridor_probe.py`, `routing/step4_corridor_recovery.py`, `placement/corridor_opening.py`, `domain/corridor.py`가 포함된다.
+- `tests/unit/shapez_asteroid_v2/`에는 corridor probe와 min-cost egress carving 회귀 테스트가 포함된다.
+- 위 파일들은 현재 v2 작업 경계로 보며, v1-era archive 문서의 구현 계약을 되살리는 근거로 쓰지 않는다.

@@ -14,6 +14,9 @@ from django.test import RequestFactory, override_settings
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     ReconstructionDTO,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization import (
+    public_artifacts,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.solver import (
     build_copy_preview_v2_sidecars,
 )
@@ -44,7 +47,7 @@ def _encode_decoded(doc: dict) -> str:
 
 
 def _assert_required_schema(doc: dict) -> None:
-    assert doc["schema_version"] == "v2.copy_preview_behavior_artifact.1"
+    assert doc["schema_version"] == public_artifacts.COPY_PREVIEW_BEHAVIOR_SCHEMA_VERSION
     assert doc["artifact_kind"] == "copy_preview_behavior"
     assert doc["algorithm_input"] is False
     assert doc["http_response_included"] is False
@@ -52,6 +55,8 @@ def _assert_required_schema(doc: dict) -> None:
     assert doc["includes_full_pass1_events"] is True
     assert doc["pass1_replay_events_truncated"] is False
     assert doc["pass1_replay_event_count"] == len(doc["pass1_replay_events"])
+    assert doc["runtime_trace_events_truncated"] is False
+    assert doc["runtime_trace_event_count"] == len(doc["runtime_trace_events"])
     # Raw copy string must not appear outside decode_trace (steps may mention the prefix).
     sans_decode = {k: v for k, v in doc.items() if k != "decode_trace"}
     assert "SHAPEZ2-4-" not in json.dumps(sans_decode)
@@ -77,6 +82,10 @@ def test_artifact_contains_preview_meta_and_pass1_events(tmp_path: Path) -> None
     build_copy_preview_v2_sidecars(trace.data, behavior_artifact=collector)
     doc = collector.build_document()
     _assert_required_schema(doc)
+    assert doc["runtime_trace_event_count"] >= 8
+    kinds = [e.get("event_type") for e in doc["runtime_trace_events"]]
+    assert kinds.count("phase_started") == 4
+    assert kinds.count("phase_finished") == 4
     for row in doc["preview_frames"]:
         assert "mining_map" not in row
         assert "id" in row

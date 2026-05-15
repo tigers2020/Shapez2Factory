@@ -8,6 +8,9 @@ from typing import Any
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     ReconstructionDTO,
 )
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_collector import (
+    TraceCollector,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.serialization import (
     dto_adapters,
 )
@@ -29,6 +32,8 @@ class BehaviorArtifactCollector:
     _pass1_replay_events: list[dict[str, Any]] = field(default_factory=list)
     _partial_pipeline: dict[str, Any] | None = None
     _preview_schema_version: int | None = None
+    _runtime_trace_events: list[dict[str, Any]] = field(default_factory=list)
+    _runtime_trace_events_truncated: bool = False
 
     def record_decode_trace(self, trace: DecodeTraceResult) -> None:
         self._decode_trace = dto_adapters.decode_trace_to_public_dict(trace)
@@ -45,6 +50,7 @@ class BehaviorArtifactCollector:
         reconstruction_dto: ReconstructionDTO,
         partial_pipeline: dict[str, Any],
         preview_schema_version: int,
+        runtime_trace: TraceCollector | None = None,
     ) -> None:
         self._step_0_5 = existing_layout_analysis
         self._step_1 = reconstruction
@@ -57,6 +63,13 @@ class BehaviorArtifactCollector:
         self._pass1_replay_events = dto_adapters.pass1_replay_events_shallow_copy(
             pass1_replay_events
         )
+        if runtime_trace is not None:
+            self._runtime_trace_events, self._runtime_trace_events_truncated = (
+                dto_adapters.runtime_trace_events_for_behavior_artifact(runtime_trace.events)
+            )
+        else:
+            self._runtime_trace_events = []
+            self._runtime_trace_events_truncated = False
 
         if len(reconstruction_dto.mineable_placement_cells) == 0:
             self._step_1_diagnosis, self._step_1_diagnosis_error = (
@@ -78,6 +91,8 @@ class BehaviorArtifactCollector:
             step_1_diagnosis_error=self._step_1_diagnosis_error,
             preview_frames_thin=self._preview_frames,
             pass1_replay_events=self._pass1_replay_events,
+            runtime_trace_events=self._runtime_trace_events,
+            runtime_trace_events_truncated=self._runtime_trace_events_truncated,
             partial_pipeline=self._partial_pipeline,
             preview_schema_version=self._preview_schema_version,
             reconstruction_summary=self._reconstruction_summary,

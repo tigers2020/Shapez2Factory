@@ -49,6 +49,8 @@ def test_assemble_and_decode_failure_match_required_top_level_keys() -> None:
         step_1_diagnosis_error=None,
         preview_frames_thin=[{"id": "a", "summary": {"entry_count": 0}}],
         pass1_replay_events=[{"kind": "noop"}],
+        runtime_trace_events=[{"event_type": "phase_started", "phase": "p"}],
+        runtime_trace_events_truncated=False,
         partial_pipeline={"phases_included": []},
         preview_schema_version=2,
         reconstruction_summary={"mineable_placement_count": 0},

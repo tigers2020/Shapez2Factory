@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-COPY_PREVIEW_BEHAVIOR_SCHEMA_VERSION = "v2.copy_preview_behavior_artifact.1"
+COPY_PREVIEW_BEHAVIOR_SCHEMA_VERSION = "v2.copy_preview_behavior_artifact.2"
 ARTIFACT_KIND_COPY_PREVIEW_BEHAVIOR = "copy_preview_behavior"
 
 # Top-level keys required on every copy-preview behavior artifact document (stable contract).
@@ -31,6 +31,9 @@ COPY_PREVIEW_BEHAVIOR_DOCUMENT_REQUIRED_KEYS: frozenset[str] = frozenset(
         "pass1_replay_events",
         "pass1_replay_event_count",
         "pass1_replay_events_truncated",
+        "runtime_trace_events",
+        "runtime_trace_event_count",
+        "runtime_trace_events_truncated",
         "notes",
     }
 )

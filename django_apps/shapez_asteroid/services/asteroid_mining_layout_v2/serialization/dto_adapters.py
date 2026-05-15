@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from enum import Enum
 from typing import Any
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.reconstruction import (
@@ -10,6 +11,9 @@ from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.recon
 )
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.reconstruction import (
     diagnostics as _recon_diag,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.runtime.trace_events import (
+    TraceEvent,
 )
 from django_apps.shapez_core.services.shapez_copy_decode import DecodeTraceResult
 
@@ -45,6 +49,41 @@ def pass1_replay_events_shallow_copy(events: list[dict[str, Any]]) -> list[dict[
     return [dict(e) for e in events]
 
 
+def trace_event_to_public_dict(ev: TraceEvent) -> dict[str, Any]:
+    """JSON-safe ``TraceEvent`` row for behavior artifacts (output-only)."""
+
+    def _norm(val: Any) -> Any:
+        if val is None:
+            return None
+        if isinstance(val, Enum):
+            return val.value
+        return val
+
+    return {
+        "run_id": ev.run_id,
+        "phase": ev.phase,
+        "step_index": ev.step_index,
+        "event_type": ev.event_type,
+        "committed": ev.committed,
+        "commit_reason": _norm(ev.commit_reason),
+        "rejected_reason": _norm(ev.rejected_reason),
+        "rollback_reason": _norm(ev.rollback_reason),
+        "recovery_trigger": _norm(ev.recovery_trigger),
+        "computation_cycle": ev.computation_cycle,
+        "route_level": ev.route_level,
+        "transport_kind": _norm(ev.transport_kind),
+    }
+
+
+def runtime_trace_events_for_behavior_artifact(
+    events: tuple[TraceEvent, ...] | list[TraceEvent],
+) -> tuple[list[dict[str, Any]], bool]:
+    """Return ``(public_rows, truncated)``; Slice 4 does not truncate (second value is false)."""
+
+    rows = [trace_event_to_public_dict(e) for e in events]
+    return rows, False
+
+
 def try_step_1_diagnosis_for_empty_mineable(
     decoded_for_diagnosis: dict[str, Any],
     reconstruction_dto: ReconstructionDTO,
@@ -75,6 +114,8 @@ def assemble_copy_preview_behavior_document(
     step_1_diagnosis_error: str | None,
     preview_frames_thin: list[dict[str, Any]],
     pass1_replay_events: list[dict[str, Any]],
+    runtime_trace_events: list[dict[str, Any]],
+    runtime_trace_events_truncated: bool,
     partial_pipeline: dict[str, Any] | None,
     preview_schema_version: int | None,
     reconstruction_summary: dict[str, Any] | None,
@@ -83,6 +124,7 @@ def assemble_copy_preview_behavior_document(
 
     now = _generated_utc_now()
     events = list(pass1_replay_events)
+    rt_events = list(runtime_trace_events)
     return {
         "schema_version": COPY_PREVIEW_BEHAVIOR_SCHEMA_VERSION,
         "artifact_kind": ARTIFACT_KIND_COPY_PREVIEW_BEHAVIOR,
@@ -102,6 +144,9 @@ def assemble_copy_preview_behavior_document(
         "pass1_replay_events": events,
         "pass1_replay_event_count": len(events),
         "pass1_replay_events_truncated": False,
+        "runtime_trace_events": rt_events,
+        "runtime_trace_event_count": len(rt_events),
+        "runtime_trace_events_truncated": runtime_trace_events_truncated,
         "notes": {
             "partial_pipeline": partial_pipeline,
             "preview_schema_version": preview_schema_version,
@@ -137,6 +182,9 @@ def build_decode_failure_behavior_document(
         "pass1_replay_events": [],
         "pass1_replay_event_count": 0,
         "pass1_replay_events_truncated": False,
+        "runtime_trace_events": [],
+        "runtime_trace_event_count": 0,
+        "runtime_trace_events_truncated": False,
         "notes": {"decode_failed": True},
     }
 
@@ -147,5 +195,7 @@ __all__ = [
     "decode_trace_to_public_dict",
     "pass1_replay_events_shallow_copy",
     "preview_frames_thin_for_behavior_artifact",
+    "runtime_trace_events_for_behavior_artifact",
+    "trace_event_to_public_dict",
     "try_step_1_diagnosis_for_empty_mineable",
 ]

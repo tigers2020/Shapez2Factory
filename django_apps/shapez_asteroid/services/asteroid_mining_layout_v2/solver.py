@@ -118,6 +118,7 @@ def build_copy_preview_v2_sidecars(
             reconstruction_dto=recon,
             partial_pipeline=partial_pipeline,
             preview_schema_version=COPY_PREVIEW_SCHEMA_VERSION,
+            runtime_trace=trace,
         )
     return {
         "existing_layout_analysis": existing_layout_analysis_to_json(analysis),

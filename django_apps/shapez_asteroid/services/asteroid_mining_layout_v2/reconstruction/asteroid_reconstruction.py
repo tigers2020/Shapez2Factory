@@ -29,6 +29,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain import (
+    mining_void_topology as _mining_void_topology,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BBox,
     BlueprintCell,
@@ -158,6 +161,22 @@ def validate_reconstruction_placement_contract(dto: ReconstructionDTO) -> None:
     if interior_f - mineable_f:
         extra = sorted(interior_f - mineable_f, key=lambda c: (c[1], c[0]))[:24]
         msg = f"interior_patch_cells must be subset of mineable_placement_cells; extra={extra!r}"
+        raise ValueError(msg)
+
+    ext_v = frozenset(dto.external_void_cells)
+    int_v = frozenset(dto.internal_void_cells)
+    outer_r = frozenset(dto.outer_rim_mineable_cells)
+    if ext_v & mineable_f:
+        bad = sorted(ext_v & mineable_f, key=lambda c: (c[1], c[0]))[:12]
+        msg = f"external_void_cells must be disjoint from mineable_placement_cells; overlap={bad!r}"
+        raise ValueError(msg)
+    if int_v & mineable_f:
+        bad = sorted(int_v & mineable_f, key=lambda c: (c[1], c[0]))[:12]
+        msg = f"internal_void_cells must be disjoint from mineable_placement_cells; overlap={bad!r}"
+        raise ValueError(msg)
+    if outer_r - mineable_f:
+        bad = sorted(outer_r - mineable_f, key=lambda c: (c[1], c[0]))[:12]
+        msg = f"outer_rim_mineable_cells must be subset of mineable_placement_cells; extra={bad!r}"
         raise ValueError(msg)
 
 
@@ -523,6 +542,14 @@ def reconstruct_asteroid_mining_field(
 
     _reconstruct_assert_physical_invariants(mineable, b, equipment_footprint, interior_set)
 
+    perm_block_f = frozenset(b.belt_cells | b.pipe_cells | b.platform_cells | b.other_barrier_cells)
+    if abox is not None and mineable_f:
+        void_topo = _mining_void_topology.compute_mining_void_topology(
+            mineable_f, abox, margin, perm_block_f
+        )
+    else:
+        void_topo = _mining_void_topology.MiningVoidTopology((), (), ())
+
     dto = ReconstructionDTO(
         mineable_placement_cells=_sorted_cells(mineable),
         extraction_shell_cells=_sorted_cells(b.asteroid_shell_cells),
@@ -534,6 +561,10 @@ def reconstruct_asteroid_mining_field(
         equipment_footprint_mineable_cells=_sorted_cells(equipment_footprint),
         interior_patch_cells=interior_patch_cells,
         mineable_cell_semantics=mineable_semantics,
+        permanent_mineable_blocker_cells=_sorted_cells(perm_block_f),
+        external_void_cells=void_topo.external_void_cells,
+        internal_void_cells=void_topo.internal_void_cells,
+        outer_rim_mineable_cells=void_topo.outer_rim_mineable_cells,
         asteroid_bbox=abox,
         external_margin=margin,
         external_margin_bbox_source=margin_source,

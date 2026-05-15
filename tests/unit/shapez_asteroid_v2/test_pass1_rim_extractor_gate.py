@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain import (
+    mining_void_topology as _mining_void_topology,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import BBox
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     ReconstructionDTO,
@@ -65,7 +68,7 @@ def test_pass1_consider_extract_marks_interior_reject_and_skips_probe() -> None:
         e
         for e in events
         if e.get("kind") == "consider_extract"
-        and e.get("reject_reason") == "pass1_extractor_not_on_rim"
+        and e.get("reject_reason") == "pass1_extractor_not_on_external_rim"
     ]
     assert len(rejects) >= 8
     assert all(int(e["perimeter_depth"]) >= 1 for e in rejects)
@@ -79,7 +82,7 @@ def test_pass1_consider_extract_marks_interior_reject_and_skips_probe() -> None:
     assert ends[0].get("pass1_extractor_rim_only") is True
     assert ends[0].get("pass1_stop_reason") == "mineable_ordered_scan_complete"
     rj = ends[0].get("reject_count_by_reason") or {}
-    assert rj.get("pass1_extractor_not_on_rim", 0) == len(rejects)
+    assert rj.get("pass1_extractor_not_on_external_rim", 0) == len(rejects)
 
 
 def test_pass1_committed_extractors_are_rim_only() -> None:
@@ -113,9 +116,14 @@ def test_pass1_committed_extractors_are_rim_only() -> None:
     p1 = run_pass1_outer_placement(
         _ctx("rim_only_box"), recon, trace=TraceCollector("rim_only_box")
     )
-    depth = compute_mineable_perimeter_depth_by_cell(frozenset(mineable))
+    perm_fb = frozenset(recon.belt_cells) | frozenset(recon.pipe_cells)
+    outer_rim = frozenset(
+        _mining_void_topology.compute_mining_void_topology(
+            frozenset(mineable), bbox, recon.external_margin, perm_fb
+        ).outer_rim_mineable_cells
+    )
     for b in p1.placements:
-        assert is_pass1_rim_extractor_cell(b.extractor.cell, depth)
+        assert b.extractor.cell in outer_rim
 
 
 def test_pass1_extension_may_be_deeper_than_extractor_on_thick_patch() -> None:
@@ -139,3 +147,25 @@ def test_pass1_extension_may_be_deeper_than_extractor_on_thick_patch() -> None:
         depth.get(b.extractor.cell) == 0 and any(depth.get(e.cell, -1) >= 2 for e in b.extensions)
         for b in p1.placements
     )
+
+
+def test_pass1_hole_adjacent_mineable_not_used_as_extractor_core() -> None:
+    """Central void: mineable cells bordering only the internal void are not Pass1 cores."""
+
+    mineable = tuple((x, y) for x in range(20, 26) for y in range(20, 26) if (x, y) != (22, 22))
+    bbox = BBox(min_x=20, min_y=20, max_x=25, max_y=25)
+    barrier = tuple({*mineable, (22, 22)})
+    recon = ReconstructionDTO(
+        mineable_placement_cells=mineable,
+        extraction_shell_cells=mineable,
+        full_barrier_cells=barrier,
+        belt_cells=(),
+        pipe_cells=(),
+        asteroid_bbox=bbox,
+        external_margin=3,
+        external_margin_bbox_source="mineable",
+    )
+    hole_touch = {(22, 21), (21, 22), (23, 22), (22, 23)}
+    p1 = run_pass1_outer_placement(_ctx("donut1"), recon, trace=TraceCollector("donut1"))
+    for b in p1.placements:
+        assert b.extractor.cell not in hole_touch

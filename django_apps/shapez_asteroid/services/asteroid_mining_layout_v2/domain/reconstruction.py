@@ -62,6 +62,13 @@ class ReconstructionDTO:
     ``mineable_cell_semantics`` has exactly one row per ``mineable_placement_cell`` when
     produced by ``reconstruct_asteroid_mining_field``; later passes should prefer this over
     map labels for shape vs fluid.
+
+    **Void topology (STEP 1, Pass1 gating)**: ``external_void_cells`` / ``internal_void_cells``
+    classify empty lattice sites inside ``asteroid_bbox ± external_margin`` reachable (or
+    not) from the rectangle border without crossing ``mineable_placement_cells`` or
+    ``permanent_mineable_blocker_cells``. **Single Pass1 rim:** ``outer_rim_mineable_cells``
+    — mineable cells 4-adjacent to external void only. There is no separate “hole rim”
+    field; a filled hole is just mineable and only the true exterior rim remains.
     """
 
     mineable_placement_cells: tuple[BlueprintCell, ...] = ()
@@ -74,6 +81,10 @@ class ReconstructionDTO:
     equipment_footprint_mineable_cells: tuple[BlueprintCell, ...] = ()
     interior_patch_cells: tuple[BlueprintCell, ...] = ()
     mineable_cell_semantics: tuple[MineableCellSemantic, ...] = ()
+    permanent_mineable_blocker_cells: tuple[BlueprintCell, ...] = ()
+    external_void_cells: tuple[BlueprintCell, ...] = ()
+    internal_void_cells: tuple[BlueprintCell, ...] = ()
+    outer_rim_mineable_cells: tuple[BlueprintCell, ...] = ()
     asteroid_bbox: BBox | None = None
     external_margin: int = 0
     external_margin_bbox_source: Literal["mineable", "shell", "none"] = "none"

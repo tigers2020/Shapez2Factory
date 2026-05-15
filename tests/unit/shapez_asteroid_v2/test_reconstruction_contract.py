@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.decode import analyze_to_context
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain import decoded_blueprint
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain import (
+    mining_void_topology as _mining_void_topology,
+)
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import BBox
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.dto import (
     MineableCellSemantic,
     ReconstructionDTO,
@@ -454,3 +458,26 @@ def test_reconstruction_never_contains_x_zero_cells_across_negative_positive_she
         recon.full_barrier_cells,
     ):
         assert all(c[0] != 0 for c in cells)
+
+
+def test_mining_void_topology_annulus_inner_void_not_outer_rim() -> None:
+    """Thick annulus: mineable cells bordering only enclosed void are not in ``outer_rim``."""
+
+    hole = {(x, y) for x in (12, 13, 14) for y in (12, 13, 14)}
+    all_c = {(x, y) for x in range(10, 17) for y in range(10, 17)}
+    mineable_f = frozenset(all_c - hole)
+    bbox = BBox(10, 10, 16, 16)
+    topo = _mining_void_topology.compute_mining_void_topology(mineable_f, bbox, 1, frozenset())
+    outer = frozenset(topo.outer_rim_mineable_cells)
+    assert (13, 11) in mineable_f
+    assert (13, 11) not in outer
+    assert (10, 13) in outer
+    assert topo.internal_void_cells
+
+
+def test_reconstruction_populates_void_topology_masks() -> None:
+    decoded = {"BP": {"Entries": _hollow_square_shell(inner_x0=2, inner_y0=2, size=4)}}
+    recon = reconstruct_asteroid_mining_field(decoded)
+    assert recon.outer_rim_mineable_cells
+    assert set(recon.outer_rim_mineable_cells) <= set(recon.mineable_placement_cells)
+    assert not (set(recon.external_void_cells) & set(recon.mineable_placement_cells))

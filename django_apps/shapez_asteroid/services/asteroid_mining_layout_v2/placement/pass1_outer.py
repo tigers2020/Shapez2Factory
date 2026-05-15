@@ -24,10 +24,11 @@ avoids west-rim extractors picking north output solely because N sorts before W.
 convention). Neighbor moves and cheap-escape BFS use ``domain.grid.step_blueprint_cell``
 (seam ``-1 ↔ 1``); never ``x + dx`` raw east/west.
 
-**Rim-only extractor core (Pass1)**: the extractor cell must sit on the mineable graph
-boundary — ``perimeter_depth == 0`` (4-neighbor ``step_cell`` to a cell not in
-``mineable_placement_cells``). Extension chains may still occupy deeper cells; Pass2
-owns interior cores.
+**Rim-only extractor core (Pass1)**: one rim only — ``outer_rim_mineable_cells`` (mineable
+4-adjacent to **external** void from border flood in ``asteroid_bbox ± external_margin``).
+No separate hole-rim field; ``internal_void_cells`` is diagnostic. Filled holes are mineable;
+only the true exterior rim counts. Empty outer rim → graph ``perimeter_depth == 0`` fallback.
+Extension chains may go deeper; Pass2 owns interior cores.
 """
 
 from __future__ import annotations
@@ -36,6 +37,9 @@ import math
 from collections import deque
 from typing import Any
 
+from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain import (
+    mining_void_topology as _mining_void_topology,
+)
 from django_apps.shapez_asteroid.services.asteroid_mining_layout_v2.domain.coord import (
     BBox,
     BlueprintCell,
@@ -120,6 +124,37 @@ def is_pass1_rim_extractor_cell(
     """True iff ``cell`` is mineable-adjacent to a non-mineable 4-neighbor (``depth == 0``)."""
 
     return depth_by_cell.get(cell) == 0
+
+
+def _pass1_resolve_outer_rim_and_gate(
+    reconstruction: ReconstructionDTO,
+    mineable_cells: frozenset[BlueprintCell],
+    bbox: BBox,
+    depth_by_cell: dict[BlueprintCell, int],
+) -> tuple[frozenset[BlueprintCell], bool]:
+    """Return ``(outer_rim_f, gate_external_rim)`` — single Pass1 rim (external void adjacent)."""
+
+    perm_fb = (
+        frozenset(reconstruction.permanent_mineable_blocker_cells)
+        if reconstruction.permanent_mineable_blocker_cells
+        else frozenset(reconstruction.belt_cells) | frozenset(reconstruction.pipe_cells)
+    )
+    topo = _mining_void_topology.compute_mining_void_topology(
+        mineable_cells,
+        bbox,
+        reconstruction.external_margin,
+        perm_fb,
+    )
+    outer_from_dto = frozenset(reconstruction.outer_rim_mineable_cells)
+    outer_from_topo = frozenset(topo.outer_rim_mineable_cells)
+    if outer_from_dto:
+        outer_rim_f = outer_from_dto
+    elif outer_from_topo:
+        outer_rim_f = outer_from_topo
+    else:
+        outer_rim_f = frozenset(c for c in mineable_cells if depth_by_cell.get(c) == 0)
+    gate_external = bool(outer_from_dto or outer_from_topo)
+    return outer_rim_f, gate_external
 
 
 def _pass1_emit_trace_event(
@@ -690,6 +725,9 @@ def run_pass1_outer_placement(
 
     ordered = pass1_mineable_outer_first_order(mineable_cells, bbox)
     depth_by_cell = compute_mineable_perimeter_depth_by_cell(mineable_cells)
+    outer_rim_f, gate_external_rim = _pass1_resolve_outer_rim_and_gate(
+        reconstruction, mineable_cells, bbox, depth_by_cell
+    )
 
     used: set[BlueprintCell] = set()
     bundles: list[PlacementBundle] = []
@@ -722,17 +760,23 @@ def run_pass1_outer_placement(
             continue
         transport_kind = infer_transport_kind_for_mineable_cell(reconstruction, extractor)
         pd = depth_by_cell.get(extractor, -1)
-        rim_ok = is_pass1_rim_extractor_cell(extractor, depth_by_cell)
+        rim_ok = extractor in outer_rim_f
         row: dict[str, Any] = {
             "placement_pass": "pass1",
             "kind": "consider_extract",
             "scan_index": scan_index,
             "extractor_cell": [extractor[0], extractor[1]],
             "perimeter_depth": int(pd),
+            "pass1_external_rim": rim_ok,
         }
         if not rim_ok:
-            row["reject_reason"] = "pass1_extractor_not_on_rim"
-            _bump_reject("pass1_extractor_not_on_rim")
+            rreason = (
+                "pass1_extractor_not_on_external_rim"
+                if gate_external_rim
+                else "pass1_extractor_not_on_rim"
+            )
+            row["reject_reason"] = rreason
+            _bump_reject(rreason)
         _replay_append(replay_events, row, cap=replay_event_cap)
         _pass1_emit_trace_event(
             trace,

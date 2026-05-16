@@ -45,8 +45,8 @@
         >{% trans "Pattern Lab" %}</a>
         <a
           href="{% url 'web:asteroid-miner-layout' %}"
-          class="rounded-lg px-3 py-2 no-underline {% if current == 'asteroid-miner-layout' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-          {% if current == "asteroid-miner-layout" %}aria-current="page"{% endif %}
+          class="rounded-lg px-3 py-2 no-underline {% if current == 'asteroid-miner-layout' or current == 'asteroid-miner-layout-project' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
+          {% if current == "asteroid-miner-layout" or current == "asteroid-miner-layout-project" %}aria-current="page"{% endif %}
         >{% trans "Asteroid layout" %}</a>
         {% if request.user.is_staff %}
           <a

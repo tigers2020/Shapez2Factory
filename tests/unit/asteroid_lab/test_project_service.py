@@ -23,3 +23,28 @@ def test_create_project_from_copy_code_dto_shape() -> None:
     assert inp.copy_code == raw
     assert inp.decoded_json == {}
     assert inp.source_kind == m.AsteroidMapInput.SourceKind.COPY_CODE
+
+
+@pytest.mark.django_db
+def test_resolve_or_create_project_slug_dedupes() -> None:
+    slug_a = project_service.resolve_or_create_project_slug_for_copy_code("hello-lab-copy")
+    slug_b = project_service.resolve_or_create_project_slug_for_copy_code("hello-lab-copy")
+    assert slug_a == slug_b
+    assert m.AsteroidProject.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_resolve_or_create_strips_whitespace_for_digest() -> None:
+    slug_a = project_service.resolve_or_create_project_slug_for_copy_code("  spaced-copy  ")
+    slug_b = project_service.resolve_or_create_project_slug_for_copy_code("spaced-copy")
+    assert slug_a == slug_b
+    assert m.AsteroidProject.objects.count() == 1
+    inp = m.AsteroidMapInput.objects.order_by("-created_at").first()
+    assert inp is not None
+    assert inp.copy_code == "spaced-copy"
+
+
+@pytest.mark.django_db
+def test_resolve_or_create_empty_raises() -> None:
+    with pytest.raises(ValueError, match="empty"):
+        project_service.resolve_or_create_project_slug_for_copy_code("   ")

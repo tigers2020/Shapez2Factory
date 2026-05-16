@@ -13,6 +13,16 @@ urlpatterns = [
     path("solver/", views.solver, name="solver"),
     path("solver/pattern-lab/", views.pattern_lab, name="pattern-lab"),
     path(
+        "asteroid-miner-layout/projects/",
+        views.asteroid_miner_layout_create_project,
+        name="asteroid-miner-layout-projects-create",
+    ),
+    path(
+        "asteroid-miner-layout/p/<slug:slug>/",
+        views.asteroid_miner_layout_project,
+        name="asteroid-miner-layout-project",
+    ),
+    path(
         "asteroid-miner-layout/",
         views.asteroid_miner_layout_solver,
         name="asteroid-miner-layout",

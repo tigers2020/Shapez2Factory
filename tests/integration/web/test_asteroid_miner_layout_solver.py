@@ -1,5 +1,10 @@
+import pytest
 from django.test import Client
 from django.urls import reverse
+
+from django_apps.asteroid_lab import models as m
+
+pytestmark = pytest.mark.django_db
 
 
 def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
@@ -16,11 +21,51 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert "No runs" in content
 
 
-def test_asteroid_miner_layout_page_preserves_code_query() -> None:
+def test_asteroid_miner_layout_ignores_code_query_string() -> None:
     response = Client().get(
         reverse("web:asteroid-miner-layout"),
-        {"code": "TEST_BLUEPRINT_SNIPPET"},
+        {"code": "SHOULD_NOT_APPEAR_IN_PAGE"},
     )
 
     assert response.status_code == 200
-    assert b"TEST_BLUEPRINT_SNIPPET" in response.content
+    assert b"SHOULD_NOT_APPEAR_IN_PAGE" not in response.content
+
+
+def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
+    client = Client()
+    copy = "SHAPEZ2-LAB-INTEGRATION-UNIQUE-COPY-STRING"
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(create_url, {"copy_code": copy}, follow=True)
+
+    assert response.status_code == 200
+    assert copy.encode() in response.content
+    assert m.AsteroidProject.objects.count() == 1
+    proj = m.AsteroidProject.objects.get()
+    assert f"/asteroid-miner-layout/p/{proj.slug}/" in response.request["PATH_INFO"]
+
+
+def test_asteroid_miner_layout_post_same_copy_dedupes_project() -> None:
+    client = Client()
+    copy = "SHAPEZ2-LAB-DEDUPE-SAME-COPY"
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    client.post(create_url, {"copy_code": copy}, follow=True)
+
+    assert m.AsteroidProject.objects.count() == 1
+
+
+def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:
+    client = Client()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(create_url, {"copy_code": ""}, follow=False)
+
+    assert response.status_code == 302
+    assert response.url == reverse("web:asteroid-miner-layout")
+
+
+def test_asteroid_miner_layout_project_unknown_slug_404() -> None:
+    response = Client().get(
+        reverse("web:asteroid-miner-layout-project", kwargs={"slug": "nonexistent-slug-xyz"}),
+    )
+
+    assert response.status_code == 404

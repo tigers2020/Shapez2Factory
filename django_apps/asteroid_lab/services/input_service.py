@@ -10,6 +10,12 @@ from django_apps.asteroid_lab.models import AsteroidMapInput, AsteroidProject
 from django_apps.asteroid_lab.services.dto import NormalizedBlueprintDTO
 
 
+def content_sha256_for_copy_code(copy_code: str) -> str:
+    """SHA-256 of UTF-8 bytes (same rule as stored ``AsteroidMapInput.content_sha256``)."""
+
+    return hashlib.sha256(copy_code.encode("utf-8")).hexdigest()
+
+
 def create_copy_code_map_input(
     project: AsteroidProject,
     copy_code: str,
@@ -21,7 +27,7 @@ def create_copy_code_map_input(
     This row is UI/persistence only — **not** an algorithm input surface for the solver core.
     """
 
-    digest = hashlib.sha256(copy_code.encode("utf-8")).hexdigest()
+    digest = content_sha256_for_copy_code(copy_code)
     return AsteroidMapInput.objects.create(
         project=project,
         source_kind=AsteroidMapInput.SourceKind.COPY_CODE,

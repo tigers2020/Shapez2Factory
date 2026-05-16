@@ -6,9 +6,15 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.translation import gettext as _
+from django.views.decorators.http import require_POST
 
+from django_apps.asteroid_lab.models import AsteroidMapInput, AsteroidProject
+from django_apps.asteroid_lab.services.project_service import (
+    resolve_or_create_project_slug_for_copy_code,
+)
 from django_apps.shapez_core.services.preview_service import (
     build_demo_parse_rows,
     get_color_catalog_rows,
@@ -140,15 +146,49 @@ def pattern_lab(request: HttpRequest) -> HttpResponse:
     )
 
 
-def asteroid_miner_layout_solver(request: HttpRequest) -> HttpResponse:
-    """Asteroid mining lab UI (demo replay + static panels); solver wiring comes later."""
-    blueprint_code = request.GET.get("code", "").strip()
+def _asteroid_miner_lab_page_context(blueprint_code: str) -> dict[str, Any]:
     ctx = lab_page_context()
     ctx["blueprint_code"] = blueprint_code
     ui_initial = dict(ctx.get("lab_ui_initial") or {})
     ui_initial["blueprintCode"] = blueprint_code
     ctx["lab_ui_initial"] = ui_initial
-    return render(request, "web/asteroid_miner_layout_solver.html", ctx)
+    return ctx
+
+
+def asteroid_miner_layout_solver(request: HttpRequest) -> HttpResponse:
+    """Asteroid mining lab shell (GET query ``code`` is ignored; use POST to persist)."""
+
+    return render(
+        request,
+        "web/asteroid_miner_layout_solver.html",
+        _asteroid_miner_lab_page_context(""),
+    )
+
+
+def asteroid_miner_layout_project(request: HttpRequest, slug: str) -> HttpResponse:
+    """Lab page for one persisted :class:`~django_apps.asteroid_lab.models.AsteroidProject`."""
+
+    project = AsteroidProject.objects.filter(slug=slug).first()
+    if project is None:
+        raise Http404
+    inp = AsteroidMapInput.objects.filter(project_id=project.pk).order_by("-created_at").first()
+    blueprint_code = (inp.copy_code if inp else "") or ""
+    return render(
+        request,
+        "web/asteroid_miner_layout_solver.html",
+        _asteroid_miner_lab_page_context(blueprint_code),
+    )
+
+
+@require_POST
+def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
+    """POST copy text, dedupe by digest, redirect to slug URL (PRG)."""
+
+    copy_code = (request.POST.get("copy_code") or "").strip()
+    if not copy_code:
+        return redirect(reverse("web:asteroid-miner-layout"))
+    slug = resolve_or_create_project_slug_for_copy_code(copy_code, source_label="")
+    return redirect(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
 
 
 _KOFI_HOSTS = frozenset({"ko-fi.com", "www.ko-fi.com"})

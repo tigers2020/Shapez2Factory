@@ -7,9 +7,12 @@ import secrets
 from django.db import transaction
 from django.utils.text import slugify
 
-from django_apps.asteroid_lab.models import AsteroidProject
+from django_apps.asteroid_lab.models import AsteroidMapInput, AsteroidProject
 from django_apps.asteroid_lab.services.dto import CreateProjectFromCopyCodeResultDTO
-from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
+from django_apps.asteroid_lab.services.input_service import (
+    content_sha256_for_copy_code,
+    create_copy_code_map_input,
+)
 
 
 def _unique_slug_from_label(label: str) -> str:
@@ -49,3 +52,29 @@ def create_project_from_copy_code(
         copy_code_sha256=inp.content_sha256,
         source_label=source_label,
     )
+
+
+def resolve_or_create_project_slug_for_copy_code(
+    copy_code: str,
+    *,
+    source_label: str = "",
+) -> str:
+    """Return ``AsteroidProject.slug`` for this copy text, reusing a row with matching digest."""
+
+    normalized = copy_code.strip()
+    if not normalized:
+        msg = "copy code is empty"
+        raise ValueError(msg)
+
+    digest = content_sha256_for_copy_code(normalized)
+    existing = (
+        AsteroidMapInput.objects.filter(content_sha256=digest)
+        .select_related("project")
+        .order_by("-created_at")
+        .first()
+    )
+    if existing is not None:
+        return str(existing.project.slug)
+
+    dto = create_project_from_copy_code(normalized, source_label=source_label)
+    return str(dto.slug)

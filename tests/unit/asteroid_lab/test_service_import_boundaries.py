@@ -10,6 +10,7 @@ def _iter_lab_py_files(lab_root: Path) -> list[Path]:
         lab_root / "services",
         lab_root / "adapters",
         lab_root / "replay",
+        lab_root / "snapshots",
     )
     paths: list[Path] = []
     for root in roots:

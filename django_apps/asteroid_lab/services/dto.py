@@ -186,6 +186,39 @@ class NormalizedBlueprintDTO:
 
 
 @dataclass(frozen=True, slots=True)
+class DecodedCellDTO:
+    """One top-level ``BP.Entries`` cell row (A5); nested ``B.Entries`` are summary-only."""
+
+    x: int
+    y: int
+    layer: int | None
+    rotation: int
+    tile_type: str
+    cell_kind: str
+    transport_kind: str
+    has_nested_blueprint: bool
+    nested_entry_count: int
+    nested_type_counts_json: dict[str, int]
+    raw_entry_json: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class DecodedBlueprintSnapshotDTO:
+    """Aggregated decoded blueprint for UI overlay and replay decode frames."""
+
+    project_id: int | None
+    map_input_id: int | None
+    binary_version: int | None
+    blueprint_type: str
+    entry_count: int
+    bbox_json: dict[str, Any]
+    cell_kind_counts_json: dict[str, int]
+    transport_kind_counts_json: dict[str, int]
+    cells: tuple[DecodedCellDTO, ...]
+    summary_json: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
 class SnapshotEventDTO:
     """One logical solver/UI step emitted for replay (never solver algorithm input)."""
 

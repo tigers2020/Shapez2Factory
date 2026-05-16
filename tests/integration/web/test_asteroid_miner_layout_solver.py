@@ -77,6 +77,83 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     assert 'id="lab-replay-frames-data"' in response.content.decode()
 
 
+def test_replay_frame_cell_post_returns_cell_json() -> None:
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
+    assert frame is not None
+    track = frame.replay_track
+    url = reverse("web:asteroid-miner-layout-replay-frame-cell")
+    body = {
+        "replay_frame_id": int(frame.pk),
+        "replay_track_id": int(track.pk),
+        "x": 1,
+        "y": 0,
+        "project_slug": track.project.slug,
+    }
+    response = client.post(
+        url,
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    assert data["cell"] is not None
+    assert data["cell"].get("x") == 1
+    assert data["cell"].get("y") == 0
+    assert "cell_kind" in data["cell"]
+
+
+def test_replay_frame_cell_post_wrong_track_403() -> None:
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
+    assert frame is not None
+    track = frame.replay_track
+    url = reverse("web:asteroid-miner-layout-replay-frame-cell")
+    body = {
+        "replay_frame_id": int(frame.pk),
+        "replay_track_id": int(track.pk) + 99999,
+        "x": 1,
+        "y": 0,
+    }
+    response = client.post(
+        url,
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+    assert response.status_code == 403
+
+
+def test_replay_frame_cell_post_project_slug_mismatch_403() -> None:
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
+    assert frame is not None
+    track = frame.replay_track
+    url = reverse("web:asteroid-miner-layout-replay-frame-cell")
+    body = {
+        "replay_frame_id": int(frame.pk),
+        "replay_track_id": int(track.pk),
+        "x": 1,
+        "y": 0,
+        "project_slug": "wrong-slug-not-this-project",
+    }
+    response = client.post(
+        url,
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+    assert response.status_code == 403
+
+
 def test_asteroid_miner_layout_post_same_copy_dedupes_project() -> None:
     client = Client()
     copy = _unique_valid_copy()

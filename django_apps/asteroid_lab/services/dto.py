@@ -200,6 +200,8 @@ class DecodedCellDTO:
     nested_entry_count: int
     nested_type_counts_json: dict[str, int]
     raw_entry_json: dict[str, Any]
+    server_x: int | None = field(default=None)
+    server_y: int | None = field(default=None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +246,8 @@ class ExistingEquipmentDTO:
     cell_kind: str
     transport_kind: str
     raw_entry_json: dict[str, Any]
+    server_x: int | None = field(default=None)
+    server_y: int | None = field(default=None)
 
 
 @dataclass(frozen=True, slots=True)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import Counter
+from collections import Counter, deque
 from collections.abc import Sequence
 from typing import Any
 
@@ -10,6 +10,10 @@ from django_apps.asteroid_lab.services.dto import (
     DecodedBlueprintSnapshotDTO,
     DecodedCellDTO,
     ExistingLayoutInspectionDTO,
+)
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    map_bbox_dense_and_y,
+    server_xy_for_raw_xy,
 )
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
@@ -33,6 +37,9 @@ def decoded_cell_to_full_map_row(cell: DecodedCellDTO, **extra: Any) -> dict[str
         "transport_kind": cell.transport_kind,
         "tile_type": cell.tile_type,
     }
+    if cell.server_x is not None and cell.server_y is not None:
+        row["server_x"] = cell.server_x
+        row["server_y"] = cell.server_y
     row.update(extra)
     return row
 
@@ -75,6 +82,8 @@ def _synthetic_asteroid_field_cell(source: DecodedCellDTO, field_cell_kind: str)
         nested_entry_count=0,
         nested_type_counts_json={},
         raw_entry_json={"_replay_synthetic": True, "_from_cell_kind": source.cell_kind},
+        server_x=source.server_x,
+        server_y=source.server_y,
     )
 
 
@@ -112,6 +121,9 @@ def _replace_extensions_with_synthetic_fields(
     return tuple(out)
 
 
+_VOID_RECORD_SCHEMA = "asteroid_lab.internal_void_record.v1"
+
+
 def _infer_internal_void_rows(remaining: Sequence[DecodedCellDTO]) -> list[dict[str, Any]]:
     """Flood-fill from padded AABB border; unreachable empty cells → internal_void."""
 
@@ -127,7 +139,7 @@ def _infer_internal_void_rows(remaining: Sequence[DecodedCellDTO]) -> list[dict[
         w0 = -1
     h0, h1 = mn_y - pad, mx_y + pad
     occupied = {(c.x, c.y) for c in remaining}
-    from collections import deque
+    bbox_params = map_bbox_dense_and_y([{"X": c.x, "Y": c.y} for c in remaining])
 
     q: deque[tuple[int, int]] = deque()
     seen: set[tuple[int, int]] = set()
@@ -167,18 +179,32 @@ def _infer_internal_void_rows(remaining: Sequence[DecodedCellDTO]) -> list[dict[
                 continue
             if (x, y) in seen:
                 continue
-            voids.append(
-                {
-                    "x": x,
-                    "y": y,
-                    "layer": None,
-                    "rotation": 0,
-                    "cell_kind": "internal_void",
-                    "transport_kind": "none",
-                    "tile_type": "",
-                    "replay_role": "internal_void",
-                }
-            )
+            void_record: dict[str, Any] = {
+                "schema": _VOID_RECORD_SCHEMA,
+                "inference": "flood_fill_unreachable_from_padded_aabb_v1",
+                "raw": {"x": x, "y": y},
+            }
+            row: dict[str, Any] = {
+                "x": x,
+                "y": y,
+                "layer": None,
+                "rotation": 0,
+                "cell_kind": "internal_void",
+                "transport_kind": "none",
+                "tile_type": "",
+                "replay_role": "internal_void",
+                "void_record": void_record,
+            }
+            if bbox_params is not None:
+                pair = server_xy_for_raw_xy(
+                    x, y, max_dense_x=bbox_params[0], min_raw_y=bbox_params[1]
+                )
+                if pair is not None:
+                    sx, sy = pair
+                    row["server_x"] = sx
+                    row["server_y"] = sy
+                    void_record["server"] = {"x": sx, "y": sy}
+            voids.append(row)
     return voids
 
 

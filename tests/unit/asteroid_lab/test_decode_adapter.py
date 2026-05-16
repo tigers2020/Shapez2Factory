@@ -109,3 +109,5 @@ def test_persist_decoded_snapshot_updates_latest_map_input() -> None:
     assert inp.id == dto_proj.map_input_id
     assert inp.source_kind == m.AsteroidMapInput.SourceKind.DECODED_JSON
     assert inp.decoded_json["_asteroid_lab_summary"]["binary_version"] == 3
+    assert len(inp.layout_fingerprint) == 64
+    assert len(inp.absolute_layout_fingerprint) == 64

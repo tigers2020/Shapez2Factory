@@ -119,6 +119,14 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     assert isinstance(fm4, list)
     voids = [c for c in fm4 if c.get("cell_kind") == "internal_void"]
     assert len(voids) >= 1
+    for v in voids:
+        vr = v.get("void_record")
+        assert isinstance(vr, dict)
+        assert vr.get("schema") == "asteroid_lab.internal_void_record.v1"
+        assert vr.get("inference") == "flood_fill_unreachable_from_padded_aabb_v1"
+        assert vr.get("raw") == {"x": v["x"], "y": v["y"]}
+        if v.get("server_x") is not None and v.get("server_y") is not None:
+            assert vr.get("server") == {"x": v["server_x"], "y": v["server_y"]}
     diff4 = recon_row.frame_payload.get("diff") or {}
     added_kinds = {c.get("cell_kind") for c in (diff4.get("added") or [])}
     assert "internal_void" in added_kinds

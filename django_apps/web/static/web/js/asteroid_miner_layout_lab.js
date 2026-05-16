@@ -34,6 +34,23 @@
     }
   }
 
+  function getCookie(name) {
+    const prefix = "; " + name + "=";
+    const raw = document.cookie;
+    const start = raw.indexOf(prefix);
+    if (start < 0) {
+      return "";
+    }
+    const from = start + prefix.length;
+    const end = raw.indexOf(";", from);
+    const token = end < 0 ? raw.substring(from) : raw.substring(from, end);
+    try {
+      return decodeURIComponent(token);
+    } catch {
+      return token;
+    }
+  }
+
   function replayPhaseForFrame(frame) {
     if (frame < 40) return "Decode + Reconstruction";
     if (frame < 90) return "Candidate Expansion";
@@ -53,7 +70,15 @@
     return 0;
   }
 
-  /** World x to dense visual column; x === 0 is invalid (null). */
+  /** World x to dense column index (no x===0); mirrors server_coords.raw_x_to_dense_x. */
+  function rawXToDenseX(x) {
+    const xi = Number(x);
+    if (!Number.isFinite(xi) || xi === 0) return null;
+    if (xi < 0) return Math.floor((xi + 1) / 2);
+    return Math.floor((xi - 1) / 2) + 1;
+  }
+
+  /** World x to dense visual column; x === 0 is invalid (null). Legacy Lab anchor. */
   function visualCol(x) {
     const xi = Number(x);
     if (!Number.isFinite(xi)) return null;
@@ -207,6 +232,10 @@
   }
 
   function computeReplayGridLayout(replayFrames) {
+    /* Lab grid uses ``visualCol`` (raw world X/Y) only. ``server_x``/``server_y`` on cells are for
+     * backend/fingerprint; mapping them to pixel columns via dense inverse makes X step by 2 on
+     * the positive side, which is confusing in this UI.
+     */
     let minD = Infinity;
     let maxD = -Infinity;
     let minR = Infinity;
@@ -309,7 +338,7 @@
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (!cell || typeof cell !== "object") continue;
-      const idx = resolveCellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = toneForFullMapCell(cell);
@@ -324,7 +353,7 @@
     for (let i = 0; i < targets.length; i++) {
       const cell = targets[i].cell;
       const role = targets[i].role;
-      const idx = resolveCellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const tone = toneForDiffRole(role);
       if (!tone) continue;
@@ -341,7 +370,7 @@
     for (let i = 0; i < list.length; i++) {
       const cell = list[i];
       if (!cell || typeof cell !== "object") continue;
-      const idx = resolveCellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = overlayToneClasses("issue", cell);
@@ -358,7 +387,7 @@
     pushCellList(targets, cells, "");
     for (let i = 0; i < targets.length; i++) {
       const cell = targets[i].cell;
-      const idx = resolveCellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = overlayToneClasses("decode", cell);
@@ -373,7 +402,7 @@
     for (let i = 0; i < targets.length; i++) {
       const cell = targets[i].cell;
       const role = targets[i].role;
-      const idx = resolveCellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = overlayToneClasses(role, cell);
@@ -478,7 +507,10 @@
 
     let domCells;
     let baseClasses;
-    let resolveCellIndex = cellIndexDemo;
+    let resolveCellIndex = function (cell) {
+      if (!cell || typeof cell !== "object") return null;
+      return cellIndexDemo(cell.x, cell.y);
+    };
     let replayLayout = null;
     let resizeObserver = null;
     let replayResizeMode = null;
@@ -501,10 +533,13 @@
         return String(el.className || "");
       });
 
-      resolveCellIndex = function (x, y) {
-        const d = visualCol(x);
+      resolveCellIndex = function (cell) {
+        if (!cell || typeof cell !== "object") return null;
+        const gw = replayLayout.gridW;
+        const gh = replayLayout.gridH;
+        const d = visualCol(cell.x);
         if (d == null) return null;
-        const yi = Number(y);
+        const yi = Number(cell.y);
         if (!Number.isFinite(yi)) return null;
         const col = d - replayLayout.minD;
         const row = yi - replayLayout.minR;
@@ -770,6 +805,7 @@
         frame = baselineFrame;
       }
       closeTopologyModal();
+      closeCellDetailModal();
       if (blueprintInput) blueprintInput.value = baselineBlueprint;
       applyRunSelectionHighlight(baselineRunId);
       setRunDetail(baselineRun);
@@ -843,6 +879,10 @@
       }
       if (payload.lab_ui_initial && typeof payload.lab_ui_initial === "object") {
         Object.assign(initialFromServer, payload.lab_ui_initial);
+      }
+      if (rootEl && payload.lab_ui_initial && typeof payload.lab_ui_initial === "object") {
+        const tid = payload.lab_ui_initial.replayTrackId;
+        rootEl.dataset.labReplayTrackId = tid != null ? String(tid) : "";
       }
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
@@ -937,6 +977,332 @@
       });
     }
 
+    function domIndexToWorldXY(domIdx) {
+      if (!hasServerReplay || !replayLayout) {
+        return null;
+      }
+      const gw = replayLayout.gridW;
+      const i = Number(domIdx);
+      if (!Number.isFinite(i) || i < 0) {
+        return null;
+      }
+      const col = i % gw;
+      const row = Math.floor(i / gw);
+      const d = col + replayLayout.minD;
+      const y = row + replayLayout.minR;
+      const xWorld = d < 0 ? d : d + 1;
+      return { x: xWorld, y: y };
+    }
+
+    function labCsrfToken() {
+      const mc = document.querySelector("[name=csrfmiddlewaretoken]");
+      if (mc && mc.value) {
+        return mc.value;
+      }
+      return getCookie("csrftoken") || "";
+    }
+
+    const LAB_CELL_DETAIL_KEY_ORDER = [
+      "x",
+      "y",
+      "server_x",
+      "server_y",
+      "layer",
+      "rotation",
+      "cell_kind",
+      "tile_type",
+      "transport_kind",
+    ];
+
+    function labCellDetailEscapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function labCellDetailOrderedKeys(obj) {
+      const keys = Object.keys(obj || {});
+      const seen = {};
+      const out = [];
+      for (let i = 0; i < LAB_CELL_DETAIL_KEY_ORDER.length; i++) {
+        const k = LAB_CELL_DETAIL_KEY_ORDER[i];
+        if (keys.indexOf(k) >= 0) {
+          out.push(k);
+          seen[k] = true;
+        }
+      }
+      const rest = keys
+        .filter(function (k) {
+          return !seen[k];
+        })
+        .sort();
+      return out.concat(rest);
+    }
+
+    function labCellDetailFormatValue(v) {
+      if (v === null || v === undefined) {
+        return '<span class="text-slate-500">—</span>';
+      }
+      if (typeof v === "number" || typeof v === "boolean") {
+        return labCellDetailEscapeHtml(String(v));
+      }
+      if (typeof v === "string") {
+        const t = v.trim();
+        if (t === "") {
+          return '<span class="text-slate-500">(empty)</span>';
+        }
+        return labCellDetailEscapeHtml(v);
+      }
+      const json = JSON.stringify(v);
+      if (json.length <= 140) {
+        return (
+          '<span class="wrap-break-word font-mono text-[11px]">' + labCellDetailEscapeHtml(json) + "</span>"
+        );
+      }
+      return (
+        '<details class="mt-1">' +
+        '<summary class="cursor-pointer text-xs text-slate-400">JSON (' +
+        String(json.length) +
+        " chars)</summary>" +
+        '<pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded border border-slate-800 bg-slate-900/80 p-2 font-mono text-[11px] leading-snug">' +
+        labCellDetailEscapeHtml(JSON.stringify(v, null, 2)) +
+        "</pre></details>"
+      );
+    }
+
+    function labCellDetailKvTableHtml(obj) {
+      if (!obj || typeof obj !== "object") {
+        return '<p class="text-slate-500">—</p>';
+      }
+      const keys = labCellDetailOrderedKeys(obj);
+      if (!keys.length) {
+        return '<p class="text-slate-500">(empty object)</p>';
+      }
+      let rows = "";
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        rows +=
+          '<div class="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 border-b border-slate-800/80 py-2 last:border-b-0">' +
+          '<dt class="shrink-0 font-mono text-xs text-slate-500">' +
+          labCellDetailEscapeHtml(k) +
+          "</dt>" +
+          '<dd class="min-w-0 text-slate-200">' +
+          labCellDetailFormatValue(obj[k]) +
+          "</dd></div>";
+      }
+      return '<dl class="rounded-lg border border-slate-800/80 px-3">' + rows + "</dl>";
+    }
+
+    function labCellDetailFrameMetaHtml(data) {
+      const parts = [];
+      if (data.frame_index !== undefined && data.frame_index !== null) {
+        parts.push("frame_index: " + String(data.frame_index));
+      }
+      if (data.frame_key !== undefined && data.frame_key !== null && String(data.frame_key) !== "") {
+        parts.push("frame_key: " + String(data.frame_key));
+      }
+      if (!parts.length) {
+        return "";
+      }
+      return (
+        '<p class="mb-3 font-mono text-[11px] leading-relaxed text-slate-500">' +
+        labCellDetailEscapeHtml(parts.join(" · ")) +
+        "</p>"
+      );
+    }
+
+    function labCellDetailSourceBlockHtml(sourceKey, val, mergedCell) {
+      if (
+        sourceKey === "full_map" &&
+        mergedCell &&
+        typeof mergedCell === "object" &&
+        val &&
+        typeof val === "object" &&
+        !Array.isArray(val) &&
+        JSON.stringify(val) === JSON.stringify(mergedCell)
+      ) {
+        return (
+          '<div class="mb-4 last:mb-0">' +
+          '<h4 class="mb-1 font-mono text-xs text-slate-400">' +
+          labCellDetailEscapeHtml(sourceKey) +
+          "</h4>" +
+          '<p class="text-xs text-slate-500">Same as merged cell above.</p></div>'
+        );
+      }
+      const head =
+        '<h4 class="mb-2 font-mono text-xs text-slate-400">' +
+        labCellDetailEscapeHtml(sourceKey) +
+        "</h4>";
+      if (val !== null && val !== undefined && typeof val === "object" && !Array.isArray(val)) {
+        return '<div class="mb-4 last:mb-0">' + head + labCellDetailKvTableHtml(val) + "</div>";
+      }
+      return (
+        '<div class="mb-4 last:mb-0">' +
+        head +
+        '<div class="text-slate-200">' +
+        labCellDetailFormatValue(val) +
+        "</div></div>"
+      );
+    }
+
+    function labCellDetailRenderSuccess(cellDetailEl, data) {
+      const cell = data.cell;
+      const sources = data.sources || {};
+      const frameMeta = labCellDetailFrameMetaHtml(data);
+      let html = '<div class="space-y-6">';
+      if (cell && typeof cell === "object") {
+        html +=
+          '<section class="space-y-2">' +
+          '<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">Merged cell</h3>' +
+          frameMeta +
+          labCellDetailKvTableHtml(cell) +
+          "</section>";
+      } else {
+        const msg = data.message || "no_cell_at_xy";
+        html +=
+          '<section class="space-y-2">' +
+          '<p class="text-slate-300">' +
+          labCellDetailEscapeHtml(msg) +
+          "</p>" +
+          frameMeta +
+          "</section>";
+      }
+      const srcKeys = Object.keys(sources);
+      if (srcKeys.length) {
+        let srcHtml = "";
+        for (let s = 0; s < srcKeys.length; s++) {
+          srcHtml += labCellDetailSourceBlockHtml(srcKeys[s], sources[srcKeys[s]], cell);
+        }
+        html +=
+          '<section class="space-y-3">' +
+          '<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">Sources (server)</h3>' +
+          srcHtml +
+          "</section>";
+      }
+      html += "</div>";
+      cellDetailEl.innerHTML = html;
+    }
+
+    const cellDetailModal = document.getElementById("lab-cell-detail-modal");
+    const cellDetailBody = document.getElementById("lab-cell-detail-body");
+    const closeCellDetailBtn = document.getElementById("lab-close-cell-detail");
+
+    function closeCellDetailModal() {
+      if (!cellDetailModal) {
+        return;
+      }
+      cellDetailModal.classList.add("hidden");
+      cellDetailModal.classList.remove("flex");
+    }
+
+    function openCellDetailModal() {
+      if (!cellDetailModal) {
+        return;
+      }
+      cellDetailModal.classList.remove("hidden");
+      cellDetailModal.classList.add("flex");
+    }
+
+    if (gridEl && cellDetailModal) {
+      gridEl.addEventListener("click", function (ev) {
+        if (!hasServerReplay || !replayLayout) {
+          return;
+        }
+        const hit = ev.target.closest("[data-lab-cell-index]");
+        if (!hit || !gridEl.contains(hit)) {
+          return;
+        }
+        const idx = parseInt(hit.getAttribute("data-lab-cell-index") || "", 10);
+        const xy = domIndexToWorldXY(idx);
+        if (!xy) {
+          return;
+        }
+        const fr = getCurrentReplayFrame();
+        if (!fr || fr.id == null) {
+          return;
+        }
+        const cellUrl = rootEl && rootEl.dataset ? rootEl.dataset.labReplayCellUrl || "" : "";
+        const trackIdStr =
+          rootEl && rootEl.dataset && rootEl.dataset.labReplayTrackId != null
+            ? String(rootEl.dataset.labReplayTrackId)
+            : "";
+        if (!cellUrl || !trackIdStr) {
+          return;
+        }
+        const projectSlug =
+          rootEl && rootEl.dataset && rootEl.dataset.labProjectSlug != null
+            ? String(rootEl.dataset.labProjectSlug)
+            : "";
+        const payload = {
+          replay_frame_id: fr.id,
+          replay_track_id: parseInt(trackIdStr, 10),
+          x: xy.x,
+          y: xy.y,
+        };
+        if (projectSlug) {
+          payload.project_slug = projectSlug;
+        }
+        if (cellDetailBody) {
+          cellDetailBody.textContent = "Loading…";
+        }
+        openCellDetailModal();
+        fetch(cellUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-CSRFToken": labCsrfToken(),
+          },
+          body: JSON.stringify(payload),
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return { ok: false, error: "bad_json" };
+              })
+              .then(function (data) {
+                return { res: res, data: data };
+              });
+          })
+          .then(function (bundle) {
+            const res = bundle.res;
+            const data = bundle.data;
+            if (!cellDetailBody) {
+              return;
+            }
+            if (!res.ok || !data || data.ok !== true) {
+              const err = data && data.error ? String(data.error) : "request_failed " + res.status;
+              cellDetailBody.textContent = err;
+              return;
+            }
+            labCellDetailRenderSuccess(cellDetailBody, data);
+          })
+          .catch(function () {
+            if (cellDetailBody) {
+              cellDetailBody.textContent = "Network error.";
+            }
+          });
+      });
+    }
+
+    closeCellDetailBtn?.addEventListener("click", function () {
+      closeCellDetailModal();
+    });
+    cellDetailModal?.addEventListener("click", function (ev) {
+      if (ev.target === cellDetailModal) {
+        closeCellDetailModal();
+      }
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape" && cellDetailModal && !cellDetailModal.classList.contains("hidden")) {
+        closeCellDetailModal();
+      }
+    });
+
     window.AsteroidLabReplay = {
       getCurrentReplayFrame: getCurrentReplayFrame,
       renderReplayFrame: function (fr) {
@@ -959,6 +1325,7 @@
       },
       collectOverlayPaintTargets: collectOverlayPaintTargets,
       visualCol: visualCol,
+      rawXToDenseX: rawXToDenseX,
       replaceLabReplayPayload: replaceLabReplayPayload,
     };
 

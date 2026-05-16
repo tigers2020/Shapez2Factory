@@ -50,6 +50,8 @@ class AsteroidMapInput(models.Model):
     copy_code = models.TextField(blank=True)
     decoded_json = models.JSONField(default=dict, blank=True)
     content_sha256 = models.CharField(max_length=64, blank=True, db_index=True)
+    layout_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
+    absolute_layout_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

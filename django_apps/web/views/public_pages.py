@@ -1,3 +1,4 @@
+import json
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -43,11 +44,13 @@ from django_apps.web.models import GraphPreviewImage
 from django_apps.web.services.asteroid_lab_page_context import (
     build_lab_replay_payload,
     lab_page_context,
+    serialize_replay_frame,
 )
 from django_apps.web.services.graph_preview import (
     PlaywrightPngGraphPreviewRenderer,
     png_bytes_are_valid,
 )
+from django_apps.web.services.replay_frame_cell_lookup import lookup_cell_in_serialized_frame
 
 
 @lru_cache(maxsize=8)
@@ -228,6 +231,60 @@ def asteroid_miner_layout_project(request: HttpRequest, slug: str) -> HttpRespon
         request,
         "web/asteroid_miner_layout_solver.html",
         _asteroid_miner_lab_page_context(blueprint_code, project=project),
+    )
+
+
+@require_POST
+def asteroid_miner_layout_replay_frame_cell(request: HttpRequest) -> JsonResponse:
+    """POST JSON: resolve one cell at world (x, y) for a persisted :class:`ReplayFrame`."""
+
+    try:
+        body = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
+
+    def _bad(msg: str, status: int = 400) -> JsonResponse:
+        return JsonResponse({"ok": False, "error": msg, "cell": None, "sources": {}}, status=status)
+
+    try:
+        replay_frame_id = int(body["replay_frame_id"])
+        replay_track_id = int(body["replay_track_id"])
+        x = int(body["x"])
+        y = int(body["y"])
+    except (KeyError, TypeError, ValueError):
+        return _bad("missing_or_invalid_fields")
+
+    if x == 0:
+        return _bad("invalid_x_zero")
+
+    project_slug = str(body.get("project_slug") or "").strip()
+
+    frame = (
+        ReplayFrame.objects.select_related("replay_track__project")
+        .filter(pk=replay_frame_id)
+        .first()
+    )
+    if frame is None:
+        return _bad("replay_frame_not_found", 404)
+
+    if int(frame.replay_track_id) != replay_track_id:
+        return _bad("replay_track_mismatch", 403)
+
+    if project_slug and frame.replay_track.project.slug != project_slug:
+        return _bad("project_slug_mismatch", 403)
+
+    ser = serialize_replay_frame(frame)
+    cell, sources = lookup_cell_in_serialized_frame(ser, x, y)
+    message = "" if cell is not None else "no_cell_at_xy"
+    return JsonResponse(
+        {
+            "ok": True,
+            "cell": cell,
+            "sources": sources,
+            "message": message,
+            "frame_index": ser.get("frame_index"),
+            "frame_key": ser.get("frame_key"),
+        }
     )
 
 

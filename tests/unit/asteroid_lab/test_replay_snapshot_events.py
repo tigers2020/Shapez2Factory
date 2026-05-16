@@ -70,9 +70,6 @@ _REQUIRED_EVENT_TYPES: tuple[str, ...] = (
     "ga.crossover_applied",
     "ga.selection_applied",
     "ga.best_updated",
-    "validation.started",
-    "validation.failed",
-    "validation.passed",
     "replay.snapshot.cleanup_transport",
     "replay.snapshot.cleanup_extractor",
     "replay.snapshot.cleanup_extension",
@@ -81,7 +78,6 @@ _REQUIRED_EVENT_TYPES: tuple[str, ...] = (
     "existing_layout.transport_components_indexed",
     "existing_layout.equipment_indexed",
     "existing_layout.attachment_analyzed",
-    "existing_layout.issues_detected",
     "existing_layout.hints_generated",
 )
 

@@ -18,8 +18,6 @@ from django_apps.asteroid_lab.replay.reconstruction_frames import build_reconstr
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     build_cleanup_and_reconstruction_rows,
     diff_maps,
-    filter_issue_cells_for_full_map,
-    issue_overlay_cells,
     rows_from_cells,
     snapshot_summary_from_rows,
 )
@@ -124,17 +122,11 @@ def record_existing_layout_inspection_frames(
         summary=snapshot_summary_from_rows(row_extension),
     )
 
-    issues_payload = [asdict(i) for i in inspection.issues]
     hints = dict(inspection.hints_json)
-    i_cells_raw = issue_overlay_cells(inspection)
-    i_cells = filter_issue_cells_for_full_map(i_cells_raw, row_recon)
     recon_summary = snapshot_summary_from_rows(row_recon)
     recon_summary.update(recon_extra)
-    recon_summary["inspection_issue_count"] = len(inspection.issues)
-    recon_summary["visible_issue_cell_count"] = len(i_cells)
     recon_summary["inspection"] = {
         "summary_json": ins_summary,
-        "issues": issues_payload,
         "hints_json": hints,
         "attachments": [asdict(a) for a in inspection.attachments],
         "transport_components": [
@@ -155,7 +147,6 @@ def record_existing_layout_inspection_frames(
         trace_events=collector.events,
         recon_summary=dict(recon_summary),
         hints=hints,
-        final_issue_cells=i_cells,
     )
 
     return recorder.record_many([ev_transport, ev_extractor, ev_extension, *recon_events])
@@ -184,7 +175,6 @@ def persist_existing_layout_inspection_snapshot(
         "schema": "asteroid_lab_existing_layout_inspection_v1",
         "summary_json": dict(inspection.summary_json),
         "hints_json": dict(inspection.hints_json),
-        "issue_codes": [i.issue_code for i in inspection.issues],
     }
     grid: dict[str, Any] = {
         "inspection": asdict(inspection),

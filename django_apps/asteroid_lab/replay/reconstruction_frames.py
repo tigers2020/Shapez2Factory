@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import replace
 from typing import Any
 
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
@@ -85,7 +84,6 @@ def build_reconstruction_replay_events(
     trace_events: Sequence[ReconstructionTraceEvent],
     recon_summary: dict[str, Any],
     hints: dict[str, Any],
-    final_issue_cells: list[dict[str, Any]] | None = None,
 ) -> list[SnapshotEventDTO]:
     """Convert trace events into persisted replay frames (full_map + diff per step)."""
 
@@ -205,13 +203,4 @@ def build_reconstruction_replay_events(
         prev_display = next_display
         merged = next_merged
 
-    if out and final_issue_cells is not None:
-        last = out[-1]
-        out[-1] = replace(
-            last,
-            cell_overlay_json={
-                **last.cell_overlay_json,
-                "issue_cells": list(final_issue_cells),
-            },
-        )
     return out

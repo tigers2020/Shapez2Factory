@@ -114,7 +114,6 @@ def test_two_clusters_orphan_and_transport_disconnected() -> None:
     assert main_comp.cell_count == 2
     orphan = next(c for c in fluid if c.component_id != main_id)
     assert orphan.cell_count == 1
-    assert any(i.issue_code == "transport_disconnected" for i in ins.issues)
     cleanup = ins.hints_json["cleanup_candidate_cells"]
     assert len(cleanup) == 1
 
@@ -170,10 +169,9 @@ def test_miner_adjacent_transport_attaches_to_component() -> None:
     att = next(a for a in ins.attachments if a.equipment_id == "1,1,null")
     assert att.attached_to_any_transport is True
     assert att.attached_to_main_component is True
-    assert not any(i.issue_code == "miner_no_adjacent_transport" for i in ins.issues)
 
 
-def test_miner_no_adjacent_transport_issue() -> None:
+def test_miner_no_adjacent_transport_attachment() -> None:
     decoded = {
         "V": 1,
         "BP": {
@@ -183,10 +181,11 @@ def test_miner_no_adjacent_transport_issue() -> None:
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    assert any(i.issue_code == "miner_no_adjacent_transport" for i in ins.issues)
+    att = next(a for a in ins.attachments if a.equipment_id == "1,0,null")
+    assert att.attached_to_any_transport is False
 
 
-def test_extension_no_adjacent_transport_issue() -> None:
+def test_extension_no_adjacent_transport_attachment() -> None:
     decoded = {
         "V": 1,
         "BP": {
@@ -196,10 +195,11 @@ def test_extension_no_adjacent_transport_issue() -> None:
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    assert any(i.issue_code == "extension_no_adjacent_transport" for i in ins.issues)
+    att = next(a for a in ins.attachments if a.equipment_id == "1,0,null")
+    assert att.attached_to_any_transport is False
 
 
-def test_miner_attached_only_to_orphan_transport() -> None:
+def test_miner_adjacent_to_orphan_not_on_main_component() -> None:
     decoded = {
         "V": 1,
         "BP": {
@@ -214,16 +214,12 @@ def test_miner_attached_only_to_orphan_transport() -> None:
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    assert any(i.issue_code == "miner_attached_to_orphan_transport" for i in ins.issues)
-    att = next(i for i in ins.issues if i.issue_code == "miner_attached_to_orphan_transport")
-    assert len(att.cells_json) >= 2
-    assert att.cells_json[0].get("cell_kind") == "fluid_miner"
-    assert all(
-        c.get("cell_kind") in ("space_pipe", "space_belt") for c in att.cells_json[1:]
-    )
+    att = next(a for a in ins.attachments if a.equipment_id == "6,1,null")
+    assert att.attached_to_any_transport is True
+    assert att.attached_to_main_component is False
 
 
-def test_mixed_transport_nearby() -> None:
+def test_fluid_miner_belt_neighbor_not_matching_kind() -> None:
     decoded = {
         "V": 1,
         "BP": {
@@ -236,7 +232,9 @@ def test_mixed_transport_nearby() -> None:
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    assert any(i.issue_code == "mixed_transport_nearby" for i in ins.issues)
+    att = next(a for a in ins.attachments if a.equipment_id == "1,0,null")
+    assert att.attached_to_any_transport is False
+    assert len(att.adjacent_transport_cells_json) == 1
 
 
 def test_nested_b_entries_not_unfolded_single_top_level_cell() -> None:

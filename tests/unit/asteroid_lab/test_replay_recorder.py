@@ -108,7 +108,7 @@ def test_before_after_delta_preserved_in_frame_payload(replay_track: m.ReplayTra
     out = r.record_event(
         _ev(
             key="d",
-            event_type=et.EVENT_TYPE_VALIDATION_STARTED,
+            event_type=et.EVENT_TYPE_RECONSTRUCTION_BEGIN,
             before={"n": 0},
             after={"n": 1},
             delta={"dn": 1},
@@ -129,7 +129,7 @@ def test_policy_capture_before_after_false_strips_state_payloads(
     out = r.record_event(
         _ev(
             key="z",
-            event_type=et.EVENT_TYPE_VALIDATION_PASSED,
+            event_type=et.EVENT_TYPE_RECONSTRUCTION_SHELL_DETECTED,
             before={"a": 1},
             after={"b": 2},
             delta={"c": 3},

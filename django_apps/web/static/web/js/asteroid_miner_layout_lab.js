@@ -176,10 +176,6 @@
     pushCellList(out, fullMapCellsFromFrame(frame), "");
     const diffT = collectDiffPaintTargets(frame);
     for (let i = 0; i < diffT.length; i++) out.push(diffT[i]);
-    const ov = frame.cell_overlay_json;
-    if (ov && typeof ov === "object") {
-      pushCellList(out, ov.issue_cells, "issue");
-    }
     return out;
   }
 
@@ -191,7 +187,6 @@
     pushCellList(out, overlay.cells, "");
     pushCellList(out, overlay.equipment_cells, "equipment");
     pushCellList(out, overlay.equipment, "equipment");
-    pushCellList(out, overlay.issue_cells, "issue");
     pushCellList(out, overlay.adjacent_transport, "adjacent_transport");
     pushFromComponentBlocks(out, overlay.components, "transport");
     pushFromComponentBlocks(out, overlay.transport_components, "transport");
@@ -211,7 +206,6 @@
       "cells",
       "equipment_cells",
       "equipment",
-      "issue_cells",
       "adjacent_transport",
       "components",
       "transport_components",
@@ -278,9 +272,6 @@
 
   function overlayToneClasses(role, cell) {
     const r = String(role || "");
-    if (r === "issue" || (cell && cell.issue_code)) {
-      return "ring-1 ring-inset ring-red-500/70 bg-red-950/30";
-    }
     if (r === "equipment" || r === "equipment_cells") {
       return "ring-1 ring-inset ring-amber-400/50 bg-amber-950/20";
     }
@@ -361,23 +352,6 @@
     }
   }
 
-  function renderIssueOverlayOnly(baseClasses, domCells, overlay, resolveCellIndex) {
-    const list = overlay && typeof overlay === "object" ? overlay.issue_cells : null;
-    if (!Array.isArray(list)) return;
-    for (let i = 0; i < list.length; i++) {
-      const cell = list[i];
-      if (!cell || typeof cell !== "object") continue;
-      const idx = resolveCellIndex(cell);
-      if (idx == null || idx < 0 || idx >= domCells.length) continue;
-      const base = baseClasses[idx] || "";
-      const tone = overlayToneClasses("issue", cell);
-      const el = domCells[idx];
-      el.className = base + " " + tone;
-      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
-      el.setAttribute("data-overlay-role", "issue");
-    }
-  }
-
   function renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex) {
     if (!Array.isArray(cells)) return;
     const targets = [];
@@ -435,10 +409,6 @@
     if (fm.length) {
       renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
       renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
-      const ov = frame.cell_overlay_json;
-      if (ov && typeof ov === "object" && Array.isArray(ov.issue_cells) && ov.issue_cells.length) {
-        renderIssueOverlayOnly(baseClasses, domCells, ov, resolveCellIndex);
-      }
       return;
     }
     const ov = frame.cell_overlay_json;

@@ -72,12 +72,7 @@ def test_record_existing_layout_inspection_frames_order_and_types(
     recon_row = rows[-1]
     assert recon_row.frame_payload.get("event_key") == "step4_09_reconstruction_final"
     assert recon_row.frame_payload.get("full_map") is not None
-    assert isinstance(recon_row.cell_overlay_json.get("issue_cells"), list)
-    summary = (recon_row.frame_payload or {}).get("summary") or {}
-    assert "inspection_issue_count" in summary
-    assert "visible_issue_cell_count" in summary
-    issue_cells = recon_row.cell_overlay_json.get("issue_cells") or []
-    assert summary["visible_issue_cell_count"] == len(issue_cells)
+    assert "issue_cells" not in recon_row.cell_overlay_json
 
     for row in rows[:3]:
         etype = (row.frame_payload or {}).get("event_type")

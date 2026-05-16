@@ -11,7 +11,6 @@ from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_r
 from django_apps.asteroid_lab.services.dto import (
     DecodedBlueprintSnapshotDTO,
     DecodedCellDTO,
-    ExistingLayoutInspectionDTO,
 )
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
@@ -22,87 +21,6 @@ def cell_key_xy_layer(row: dict[str, Any]) -> tuple[int, int, int | None]:
     layer = row.get("layer")
     ly: int | None = None if layer is None else int(layer)
     return (int(row["x"]), int(row["y"]), ly)
-
-
-EQUIPMENT_KINDS_FOR_ISSUE_FILTER = frozenset(
-    {
-        "fluid_miner",
-        "fluid_miner_extension",
-        "shape_miner",
-        "shape_miner_extension",
-    }
-)
-
-TRANSPORT_TILE_KINDS_FOR_ISSUE_FILTER = frozenset({"space_pipe", "space_belt"})
-
-
-def filter_issue_cells_for_full_map(
-    issue_cells: list[dict[str, Any]],
-    full_map_rows: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Drop stale issue rows vs ``full_map`` at (x,y,layer).
-
-    - Equipment: same as before — drop when full_map cell_kind no longer matches.
-    - Transport tiles: drop when full_map has no ``space_pipe`` / ``space_belt`` at that
-      coordinate (e.g. reconstruction stripped transport; ``transport_disconnected``).
-    """
-
-    by_key: dict[tuple[int, int, int | None], dict[str, Any]] = {}
-    for r in full_map_rows:
-        if not isinstance(r, dict):
-            continue
-        try:
-            by_key[cell_key_xy_layer(r)] = r
-        except (KeyError, TypeError, ValueError):
-            continue
-
-    out: list[dict[str, Any]] = []
-    for ic in issue_cells:
-        if not isinstance(ic, dict):
-            continue
-        ck = ic.get("cell_kind")
-        ck_s = ck if isinstance(ck, str) else ""
-        if not ck_s and str(ic.get("issue_code") or "") == "miner_attached_to_orphan_transport":
-            try:
-                key_mt = cell_key_xy_layer(ic)
-            except (KeyError, TypeError, ValueError):
-                continue
-            base_mt = by_key.get(key_mt)
-            base_mt_ck = base_mt.get("cell_kind") if isinstance(base_mt, dict) else None
-            base_mt_s = base_mt_ck if isinstance(base_mt_ck, str) else ""
-            if base_mt_s not in TRANSPORT_TILE_KINDS_FOR_ISSUE_FILTER:
-                continue
-            out.append(ic)
-            continue
-        if ck_s in TRANSPORT_TILE_KINDS_FOR_ISSUE_FILTER:
-            try:
-                key = cell_key_xy_layer(ic)
-            except (KeyError, TypeError, ValueError):
-                out.append(ic)
-                continue
-            base = by_key.get(key)
-            base_ck = base.get("cell_kind") if isinstance(base, dict) else None
-            base_s = base_ck if isinstance(base_ck, str) else ""
-            if base_s in TRANSPORT_TILE_KINDS_FOR_ISSUE_FILTER:
-                out.append(ic)
-            continue
-        if ck_s not in EQUIPMENT_KINDS_FOR_ISSUE_FILTER:
-            out.append(ic)
-            continue
-        try:
-            key = cell_key_xy_layer(ic)
-        except (KeyError, TypeError, ValueError):
-            out.append(ic)
-            continue
-        base = by_key.get(key)
-        if base is None:
-            out.append(ic)
-            continue
-        base_ck = base.get("cell_kind")
-        if base_ck != ck_s:
-            continue
-        out.append(ic)
-    return out
 
 
 def decoded_cell_to_full_map_row(cell: DecodedCellDTO, **extra: Any) -> dict[str, Any]:
@@ -268,30 +186,12 @@ def build_cleanup_and_reconstruction_rows(
     )
 
 
-def issue_overlay_cells(inspection: ExistingLayoutInspectionDTO) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for iss in inspection.issues:
-        for cell in iss.cells_json:
-            out.append(
-                {
-                    **cell,
-                    "overlay_role": "issue",
-                    "issue_code": iss.issue_code,
-                    "severity": iss.severity,
-                    "equipment_id": iss.equipment_id,
-                }
-            )
-    return out
-
-
 __all__ = [
     "build_cleanup_and_reconstruction_rows",
     "cell_key_xy_layer",
     "decode_snapshot_summary",
     "decoded_cell_to_full_map_row",
     "diff_maps",
-    "filter_issue_cells_for_full_map",
-    "issue_overlay_cells",
     "rows_from_cells",
     "snapshot_summary_from_rows",
 ]

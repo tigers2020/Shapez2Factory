@@ -10,7 +10,6 @@ from django_apps.asteroid_lab.services.dto import (
     EquipmentAttachmentDTO,
     ExistingEquipmentDTO,
     ExistingLayoutInspectionDTO,
-    ExistingLayoutIssueDTO,
     ExistingTransportComponentDTO,
 )
 from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_x
@@ -249,14 +248,12 @@ def inspect_existing_layout(
         )
 
     attachments: list[EquipmentAttachmentDTO] = []
-    issues: list[ExistingLayoutIssueDTO] = []
 
     for eq in equipment:
         adj_transport: list[dict[str, Any]] = []
         comp_ids: set[int] = set()
         matching_neighbor = False
         main_touch = False
-        wrong_kind_neighbor = False
 
         for nx, ny, nl in iter_four_neighbors(eq.x, eq.y, eq.layer):
             nb = by_key.get((nx, ny, nl))
@@ -273,11 +270,6 @@ def inspect_existing_layout(
             adj_transport.append(_overlay_cell(nb, **extra))
 
             exp = _expected_neighbor_tile_kind(eq.cell_kind)
-            if exp == "space_pipe" and nb.cell_kind == "space_belt":
-                wrong_kind_neighbor = True
-            elif exp == "space_belt" and nb.cell_kind == "space_pipe":
-                wrong_kind_neighbor = True
-
             if exp is not None and nb.cell_kind == exp:
                 matching_neighbor = True
                 tk = nb.transport_kind
@@ -293,95 +285,6 @@ def inspect_existing_layout(
                 adjacent_component_ids=sorted_cids,
                 attached_to_any_transport=matching_neighbor,
                 attached_to_main_component=main_touch,
-            )
-        )
-
-        if wrong_kind_neighbor:
-            issues.append(
-                ExistingLayoutIssueDTO(
-                    issue_code="mixed_transport_nearby",
-                    severity="warning",
-                    equipment_id=eq.equipment_id,
-                    component_id=None,
-                    cells_json=[
-                        {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind}
-                    ],
-                    message=(
-                        "Equipment has a 4-neighbor transport tile of the other transport family."
-                    ),
-                )
-            )
-
-        exp_tile = _expected_neighbor_tile_kind(eq.cell_kind)
-        if exp_tile is not None and not matching_neighbor:
-            if eq.cell_kind in ("fluid_miner", "shape_miner"):
-                issues.append(
-                    ExistingLayoutIssueDTO(
-                        issue_code="miner_no_adjacent_transport",
-                        severity="error",
-                        equipment_id=eq.equipment_id,
-                        component_id=None,
-                        cells_json=[
-                            {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind}
-                        ],
-                        message="Miner has no adjacent matching transport tile (pipe/belt).",
-                    )
-                )
-            else:
-                issues.append(
-                    ExistingLayoutIssueDTO(
-                        issue_code="extension_no_adjacent_transport",
-                        severity="error",
-                        equipment_id=eq.equipment_id,
-                        component_id=None,
-                        cells_json=[
-                            {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind}
-                        ],
-                        message=(
-                            "Miner extension has no adjacent matching transport tile (pipe/belt)."
-                        ),
-                    )
-                )
-
-        if eq.cell_kind in ("fluid_miner", "shape_miner") and matching_neighbor and not main_touch:
-            issues.append(
-                ExistingLayoutIssueDTO(
-                    issue_code="miner_attached_to_orphan_transport",
-                    severity="warning",
-                    equipment_id=eq.equipment_id,
-                    component_id=sorted_cids[0] if sorted_cids else None,
-                    cells_json=[
-                        {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind},
-                        *adj_transport,
-                    ],
-                    message=(
-                        "Miner connects only to non-main transport components "
-                        "for this transport kind."
-                    ),
-                )
-            )
-
-    for tk in ("fluid_pipe", "shape_belt"):
-        comps_tk = [c for c in transport_dtos_final if c.transport_kind == tk]
-        if len(comps_tk) <= 1:
-            continue
-        mid = main_by_kind.get(tk)
-        orphan_cells: list[dict[str, Any]] = []
-        for comp in comps_tk:
-            if mid is not None and comp.component_id == mid:
-                continue
-            orphan_cells.extend(comp.cells_json)
-        issues.append(
-            ExistingLayoutIssueDTO(
-                issue_code="transport_disconnected",
-                severity="info",
-                equipment_id="",
-                component_id=None,
-                cells_json=orphan_cells,
-                message=(
-                    f"Multiple disconnected {tk} transport components; "
-                    "non-main segments are orphans."
-                ),
             )
         )
 
@@ -420,7 +323,6 @@ def inspect_existing_layout(
             "shape_belt": sum(1 for c in transport_dtos_final if c.transport_kind == "shape_belt"),
         },
         "equipment_count": len(equipment),
-        "issue_count": len(issues),
         "nested_blueprint_note": (
             "Nested B.Entries remain summarized on each DecodedCellDTO; not unfolded."
         ),
@@ -432,7 +334,6 @@ def inspect_existing_layout(
         transport_components=tuple(transport_dtos_final),
         equipment=tuple(equipment),
         attachments=tuple(attachments),
-        issues=tuple(issues),
         hints_json=hints_json,
         summary_json=summary_json,
     )

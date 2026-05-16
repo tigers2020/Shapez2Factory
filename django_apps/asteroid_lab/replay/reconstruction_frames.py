@@ -1,7 +1,15 @@
-"""Replay helpers: topology reconstruction rows and stepwise snapshot events."""
+"""Replay helpers: topology reconstruction rows and stepwise snapshot events.
+
+``reconstruction_final`` map rows use island-uniform ``asteroid_*_field`` (canonical).
+``fill_commit`` may still show the topology placeholder ``cell_kind`` before stamping.
+After trace frames, a synthetic ``step4_10_asteroid_map_complete`` repeats the same
+``full_map`` and ``diff`` as ``reconstruction_final`` (end-of-timeline presentation;
+not a trace event).
+"""
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Sequence
 from typing import Any
 
@@ -16,6 +24,7 @@ from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_RECONSTRUCTION_EXTERNAL_FLOOD_FILL,
     EVENT_TYPE_RECONSTRUCTION_INTERIOR_PATCH_MARKED,
     EVENT_TYPE_RECONSTRUCTION_INTERNAL_VOID_DETECTED,
+    EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE,
     EVENT_TYPE_RECONSTRUCTION_MINEABLE_FINALIZED,
     EVENT_TYPE_RECONSTRUCTION_SHELL_DETECTED,
 )
@@ -85,7 +94,11 @@ def build_reconstruction_replay_events(
     recon_summary: dict[str, Any],
     hints: dict[str, Any],
 ) -> list[SnapshotEventDTO]:
-    """Convert trace events into persisted replay frames (full_map + diff per step)."""
+    """Convert trace events into persisted replay frames (full_map + diff per step).
+
+    Appends a synthetic ``asteroid_map_complete`` frame after ``reconstruction_final``
+    when the latter appears in the trace (same ``full_map`` and same ``diff`` as that final).
+    """
 
     default_layer: int | None = cleanup.cleaned_cells[0].layer if cleanup.cleaned_cells else None
     merged: dict[tuple[int, int, int | None], dict[str, Any]] = {}
@@ -103,6 +116,10 @@ def build_reconstruction_replay_events(
     }
     prev_display = _sort_rows(list(merged.values()))
     out: list[SnapshotEventDTO] = []
+    final_full_map_snapshot: list[dict[str, Any]] | None = None
+    final_frame_summary: dict[str, Any] | None = None
+    final_frame_metrics: dict[str, Any] | None = None
+    final_diff_payload: dict[str, Any] | None = None
 
     marker_trace_types = frozenset(
         {
@@ -153,7 +170,13 @@ def build_reconstruction_replay_events(
                 next_merged[key3] = decoded_cell_to_full_map_row(cell)
 
         if tt == "reconstruction_final":
-            next_merged = {cell_key_xy_layer(r): dict(r) for r in final_rows}
+            # Overlay stamped reconstruction onto the structural map. Replacing the entire
+            # merged dict with recon rows alone drops keys present in structural_rows but
+            # absent from ``recon.cells`` (e.g. replay synthetic field anchors where cleanup
+            # removed the building entry entirely).
+            next_merged = dict(merged)
+            for r in final_rows:
+                next_merged[cell_key_xy_layer(r)] = dict(r)
 
         next_display = _sort_rows(list(next_merged.values()))
         if tt in marker_trace_types:
@@ -199,8 +222,39 @@ def build_reconstruction_replay_events(
             diff=diff_payload,
             summary=summary_out,
         )
+        if tt == "reconstruction_final":
+            final_full_map_snapshot = copy.deepcopy(next_display)
+            final_frame_summary = dict(summary_out)
+            final_frame_metrics = dict(metrics)
+            final_diff_payload = copy.deepcopy(diff_payload)
         out.append(dto)
         prev_display = next_display
         merged = next_merged
+
+    if (
+        final_full_map_snapshot is not None
+        and final_frame_summary is not None
+        and final_frame_metrics is not None
+        and final_diff_payload is not None
+    ):
+        complete_display = copy.deepcopy(final_full_map_snapshot)
+        overlay_complete: dict[str, Any] = {"cells": complete_display}
+        complete_diff = copy.deepcopy(final_diff_payload)
+        complete_dto = SnapshotEventDTO(
+            event_key="step4_10_asteroid_map_complete",
+            phase="reconstruction",
+            phase_step="asteroid_map_complete",
+            event_type=EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE,
+            title="Asteroid Map Complete",
+            description="Synthetic replay frame: same full_map and diff as reconstruction_final",
+            after_state_json={"hints_json": hints},
+            cell_overlay_json=overlay_complete,
+            metrics_json=dict(final_frame_metrics),
+            is_decision_point=False,
+            full_map=complete_display,
+            diff=complete_diff,
+            summary=dict(final_frame_summary),
+        )
+        out.append(complete_dto)
 
     return out

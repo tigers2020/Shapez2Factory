@@ -1,15 +1,17 @@
-"""Interior component detection, enclosure guards, and deterministic fill kind."""
+"""Interior component detection, enclosure guards, and topology placeholder fill."""
 
 from __future__ import annotations
 
-from collections import Counter, deque
+from collections import deque
 
-from django_apps.asteroid_lab.reconstruction.evidence import ASTEROID_FIELD_KINDS
 from django_apps.asteroid_lab.reconstruction.grid import Coord
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.transport_components import iter_four_neighbors
 
 ASTEROID_SHAPE_FIELD = "asteroid_shape_field"
+
+# Island pass assigns final ``asteroid_*_field``; topology holes use this placeholder first.
+TOPOLOGY_FILL_PLACEHOLDER_KIND = ASTEROID_SHAPE_FIELD
 
 
 def passes_bbox_interior(comp: set[Coord], w0: int, w1: int, h0: int, h1: int) -> bool:
@@ -62,63 +64,6 @@ def connected_components(nodes: set[Coord]) -> list[set[Coord]]:
     return comps
 
 
-def _neighbor_pool(comp: set[Coord], *, chebyshev: bool) -> set[Coord]:
-    pool: set[Coord] = set()
-    for x, y in comp:
-        if chebyshev:
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    if dx == 0 and dy == 0:
-                        continue
-                    pool.add((x + dx, y + dy))
-        else:
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                pool.add((x + dx, y + dy))
-    return pool
-
-
-def _tally_field_kinds(pool: set[Coord], field_by_xy: dict[Coord, str]) -> Counter[str]:
-    ctr: Counter[str] = Counter()
-    for xy in pool:
-        k = field_by_xy.get(xy)
-        if k in ASTEROID_FIELD_KINDS:
-            ctr[k] += 1
-    return ctr
-
-
-def _strict_winner(ctr: Counter[str]) -> str | None:
-    """Return kind if it has strictly higher count than any other; ties return None."""
-
-    if not ctr:
-        return None
-    items = sorted(ctr.items(), key=lambda kv: (-kv[1], kv[0]))
-    top_k, top_v = items[0]
-    if len(items) == 1:
-        return top_k
-    second_v = items[1][1]
-    if top_v > second_v:
-        return top_k
-    return None
-
-
-def infer_fill_field_kind(
-    comp: set[Coord],
-    field_by_xy: dict[Coord, str],
-    global_field_counter: Counter[str],
-) -> str:
-    """Deterministic fluid/shape choice (building types must not influence this)."""
-
-    for cheb in (False, True):
-        ctr = _tally_field_kinds(_neighbor_pool(comp, chebyshev=cheb), field_by_xy)
-        winner = _strict_winner(ctr)
-        if winner is not None:
-            return winner
-    gwin = _strict_winner(global_field_counter)
-    if gwin is not None:
-        return gwin
-    return ASTEROID_SHAPE_FIELD
-
-
 def synthetic_field_cell(
     x: int,
     y: int,
@@ -128,7 +73,7 @@ def synthetic_field_cell(
     server_x: int | None = None,
     server_y: int | None = None,
 ) -> DecodedCellDTO:
-    """Replay-only filled hole cell."""
+    """Replay-only filled hole cell (placeholder ``cell_kind`` until island stamp)."""
 
     return DecodedCellDTO(
         x=x,

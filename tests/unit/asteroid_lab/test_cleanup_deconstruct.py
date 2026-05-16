@@ -75,6 +75,15 @@ def test_wall_coords_union_decode_evidence_and_miner_extension() -> None:
     assert all(is_asteroid_evidence(c) for c in r.cleaned_cells if (c.x, c.y) in {(1, 1), (2, 1)})
 
 
+def test_original_cells_match_snapshot_input() -> None:
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+    )
+    r = deconstruct_snapshot(_snapshot(cells))
+    assert r.original_cells == cells
+
+
 def test_ignored_transport_subset_of_removed() -> None:
     cells = (
         _cell(1, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),

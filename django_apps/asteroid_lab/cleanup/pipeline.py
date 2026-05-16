@@ -51,5 +51,6 @@ def deconstruct_snapshot(snapshot: DecodedBlueprintSnapshotDTO) -> CleanupResult
         wall_coords=wall_frozen,
         bbox_bounds=bbox_bounds,
         server_xy_params=server_xy_params,
+        original_cells=tuple(cells),
         summary_json=dict(summary),
     )

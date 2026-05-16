@@ -2,23 +2,19 @@
 
 from __future__ import annotations
 
-from collections import Counter
-from collections.abc import Iterable, Set
+from collections.abc import Set
 from typing import TYPE_CHECKING
 
-from django_apps.asteroid_lab.reconstruction.evidence import (
-    ASTEROID_FIELD_KINDS,
-    evidence_field_kind,
-)
 from django_apps.asteroid_lab.reconstruction.fill import (
+    TOPOLOGY_FILL_PLACEHOLDER_KIND,
     connected_components,
-    infer_fill_field_kind,
     passes_bbox_interior,
     passes_two_axis_evidence_guard,
     synthetic_field_cell,
 )
 from django_apps.asteroid_lab.reconstruction.flood_fill import external_reachable
 from django_apps.asteroid_lab.reconstruction.grid import Coord, iter_bbox_cells
+from django_apps.asteroid_lab.reconstruction.island import stamp_islands_uniform
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.shell import infer_shell_barrier_coords
 from django_apps.asteroid_lab.reconstruction.trace import (
@@ -31,24 +27,6 @@ from django_apps.asteroid_lab.snapshots.transport_components import sort_key_xy_
 
 if TYPE_CHECKING:
     from django_apps.asteroid_lab.cleanup.result import CleanupResult
-
-
-def _field_kind_map_from_cells(cells: Iterable[DecodedCellDTO]) -> dict[Coord, str]:
-    m: dict[Coord, str] = {}
-    for c in cells:
-        k = evidence_field_kind(c)
-        if k in ASTEROID_FIELD_KINDS:
-            m[(c.x, c.y)] = k
-    return m
-
-
-def _global_field_counter_from_cells(cells: Iterable[DecodedCellDTO]) -> Counter[str]:
-    ctr: Counter[str] = Counter()
-    for c in cells:
-        k = evidence_field_kind(c)
-        if k in ASTEROID_FIELD_KINDS:
-            ctr[k] += 1
-    return ctr
 
 
 def _sorted_interior_components(interior: set[Coord]) -> list[set[Coord]]:
@@ -66,6 +44,8 @@ def _sorted_interior_components(interior: set[Coord]) -> list[set[Coord]]:
 def reconstruct_after_cleanup(
     *,
     cleaned_cells: tuple[DecodedCellDTO, ...],
+    original_cells: tuple[DecodedCellDTO, ...],
+    removed_building_cells: tuple[DecodedCellDTO, ...] = (),
     wall_coords: Set[Coord] | frozenset[Coord],
     bbox_bounds: tuple[int, int, int, int] | None,
     server_xy_params: tuple[int, int] | None,
@@ -76,6 +56,9 @@ def reconstruct_after_cleanup(
     ``wall_coords`` (cleanup evidence + removed miner/extension anchors) define fill guards.
     ``barrier_xy = wall_coords ∪ inferred_shell`` blocks external flood-fill only; inferred
     segments must not be passed to ``passes_two_axis_evidence_guard`` (overfill risk).
+
+    Topology holes are filled with a placeholder ``cell_kind``; final ``asteroid_*_field`` on
+    every non-transport island comes from :func:`stamp_islands_uniform`.
     """
 
     walls_xy: set[Coord] = set(wall_coords)
@@ -131,8 +114,13 @@ def reconstruct_after_cleanup(
                     },
                 )
             )
+        stamped = stamp_islands_uniform(
+            tuple(sorted(stripped, key=sort_key_xy_layer)),
+            original_cells=original_cells,
+            removed_building_cells=removed_building_cells,
+        )
         return ReconstructionResult(
-            cells=tuple(sorted(stripped, key=sort_key_xy_layer)),
+            cells=stamped,
             summary_json=dict(summary),
             outer_rim_coords=(),
         )
@@ -194,9 +182,6 @@ def reconstruct_after_cleanup(
     skipped_guard = 0
     filled_components = 0
     filled: list[DecodedCellDTO] = []
-
-    field_by_xy = _field_kind_map_from_cells(cleaned_cells)
-    global_ctr = _global_field_counter_from_cells(cleaned_cells)
 
     for comp_index, comp in enumerate(interior_comps):
         if trace_collector is not None:
@@ -265,7 +250,7 @@ def reconstruct_after_cleanup(
             )
 
         filled_components += 1
-        kind = infer_fill_field_kind(comp, field_by_xy, global_ctr)
+        kind = TOPOLOGY_FILL_PLACEHOLDER_KIND
         fill_layer: int | None = stripped[0].layer if stripped else None
         fill_xy: list[Coord] = []
         for x, y in sorted(comp):
@@ -283,7 +268,9 @@ def reconstruct_after_cleanup(
                 )
                 if pair is not None:
                     sx, sy = pair
-            filled.append(synthetic_field_cell(x, y, fill_layer, kind, server_x=sx, server_y=sy))
+            filled.append(
+                synthetic_field_cell(x, y, fill_layer, kind, server_x=sx, server_y=sy)
+            )
 
         if trace_collector is not None and fill_xy:
             trace_collector.append(
@@ -297,6 +284,7 @@ def reconstruct_after_cleanup(
                         "component_index": comp_index,
                         "cell_kind": kind,
                         "filled_cell_count": len(fill_xy),
+                        "note": "placeholder_kind_before_island_stamp",
                     },
                 )
             )
@@ -315,7 +303,12 @@ def reconstruct_after_cleanup(
         key = (cell.x, cell.y, cell.layer)
         merged[key] = cell
 
-    out_cells = tuple(sorted(merged.values(), key=sort_key_xy_layer))
+    merged_tuple = tuple(sorted(merged.values(), key=sort_key_xy_layer))
+    out_cells = stamp_islands_uniform(
+        merged_tuple,
+        original_cells=original_cells,
+        removed_building_cells=removed_building_cells,
+    )
 
     if trace_collector is not None:
         trace_collector.append(
@@ -345,6 +338,8 @@ def run_topology_reconstruction(
 
     return reconstruct_after_cleanup(
         cleaned_cells=cleanup.cleaned_cells,
+        original_cells=cleanup.original_cells,
+        removed_building_cells=cleanup.removed_building_cells,
         wall_coords=cleanup.wall_coords,
         bbox_bounds=cleanup.bbox_bounds,
         server_xy_params=cleanup.server_xy_params,
@@ -360,6 +355,8 @@ def reconstruct_snapshot(snapshot: DecodedBlueprintSnapshotDTO) -> Reconstructio
     c = deconstruct_snapshot(snapshot)
     return reconstruct_after_cleanup(
         cleaned_cells=c.cleaned_cells,
+        original_cells=c.original_cells,
+        removed_building_cells=c.removed_building_cells,
         wall_coords=c.wall_coords,
         bbox_bounds=c.bbox_bounds,
         server_xy_params=c.server_xy_params,

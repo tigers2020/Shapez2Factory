@@ -28,4 +28,5 @@ class CleanupResult:
     wall_coords: frozenset[Coord]
     bbox_bounds: BBoxBounds | None
     server_xy_params: tuple[int, int] | None
+    original_cells: tuple[DecodedCellDTO, ...]
     summary_json: dict[str, Any] = field(default_factory=dict)

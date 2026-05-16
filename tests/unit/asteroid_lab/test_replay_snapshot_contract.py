@@ -114,25 +114,35 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
         for ch in changed3
     )
 
-    recon_row = rows[-1]
-    assert recon_row.frame_payload.get("event_key") == "step4_09_reconstruction_final"
-    assert (
-        recon_row.frame_payload.get("event_type") == et.EVENT_TYPE_RECONSTRUCTION_MINEABLE_FINALIZED
+    payloads = [r.frame_payload or {} for r in rows]
+    final_payload = next(
+        p for p in payloads if p.get("event_key") == "step4_09_reconstruction_final"
     )
-    fm4 = recon_row.frame_payload.get("full_map")
+    complete_payload = rows[-1].frame_payload or {}
+    assert complete_payload.get("event_key") == "step4_10_asteroid_map_complete"
+    assert complete_payload.get("event_type") == et.EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE
+    assert complete_payload.get("full_map") == final_payload.get("full_map")
+    assert complete_payload.get("diff") == final_payload.get("diff")
+    assert complete_payload.get("is_decision_point") is False
+
+    assert (
+        final_payload.get("event_type") == et.EVENT_TYPE_RECONSTRUCTION_MINEABLE_FINALIZED
+    )
+    fm4 = final_payload.get("full_map")
     assert isinstance(fm4, list)
     assert all(c.get("cell_kind") != "internal_void" for c in fm4)
     hole = next(c for c in fm4 if c.get("x") == 2 and c.get("y") == 2)
     assert hole.get("cell_kind") == "asteroid_shape_field"
-    diff4 = recon_row.frame_payload.get("diff") or {}
+    diff4 = final_payload.get("diff") or {}
     added_kinds = {c.get("cell_kind") for c in (diff4.get("added") or [])}
     if added_kinds:
         assert "asteroid_shape_field" in added_kinds
-    rs = recon_row.frame_payload.get("summary") or {}
+    rs = final_payload.get("summary") or {}
     assert int(rs.get("barrier_cell_count", 0)) >= int(rs.get("wall_cell_count", 0))
     assert "inferred_shell_cell_count" in rs
     assert "external_reachable_count" in rs
     assert int(rs.get("filled_hole_cell_count", -1)) >= 1
+    assert complete_payload.get("summary") == rs
 
 
 @pytest.mark.django_db

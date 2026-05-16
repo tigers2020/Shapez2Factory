@@ -43,3 +43,14 @@ def evidence_field_kind(cell: DecodedCellDTO) -> str | None:
     if cell.cell_kind in ASTEROID_FIELD_KINDS:
         return cell.cell_kind
     return None
+
+
+def inferred_field_kind_from_removed_miner_extension(cell: DecodedCellDTO) -> str | None:
+    """Field kind implied by a stripped miner/extension anchor (replay synthetic field parity)."""
+
+    ck = cell.cell_kind
+    if ck in ("fluid_miner", "fluid_miner_extension"):
+        return "asteroid_fluid_field"
+    if ck in ("shape_miner", "shape_miner_extension"):
+        return "asteroid_shape_field"
+    return None

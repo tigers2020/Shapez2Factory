@@ -27,6 +27,56 @@ def cell_key_xy_layer(row: dict[str, Any]) -> tuple[int, int, int | None]:
     return (int(row["x"]), int(row["y"]), ly)
 
 
+EQUIPMENT_KINDS_FOR_ISSUE_FILTER = frozenset(
+    {
+        "fluid_miner",
+        "fluid_miner_extension",
+        "shape_miner",
+        "shape_miner_extension",
+    }
+)
+
+
+def filter_issue_cells_for_full_map(
+    issue_cells: list[dict[str, Any]],
+    full_map_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Drop equipment issue rows whose cell_kind no longer matches full_map at (x,y,layer)."""
+
+    by_key: dict[tuple[int, int, int | None], dict[str, Any]] = {}
+    for r in full_map_rows:
+        if not isinstance(r, dict):
+            continue
+        try:
+            by_key[cell_key_xy_layer(r)] = r
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    out: list[dict[str, Any]] = []
+    for ic in issue_cells:
+        if not isinstance(ic, dict):
+            continue
+        ck = ic.get("cell_kind")
+        ck_s = ck if isinstance(ck, str) else ""
+        if ck_s not in EQUIPMENT_KINDS_FOR_ISSUE_FILTER:
+            out.append(ic)
+            continue
+        try:
+            key = cell_key_xy_layer(ic)
+        except (KeyError, TypeError, ValueError):
+            out.append(ic)
+            continue
+        base = by_key.get(key)
+        if base is None:
+            out.append(ic)
+            continue
+        base_ck = base.get("cell_kind")
+        if base_ck != ck_s:
+            continue
+        out.append(ic)
+    return out
+
+
 def decoded_cell_to_full_map_row(cell: DecodedCellDTO, **extra: Any) -> dict[str, Any]:
     row: dict[str, Any] = {
         "x": cell.x,
@@ -291,9 +341,11 @@ def issue_overlay_cells(inspection: ExistingLayoutInspectionDTO) -> list[dict[st
 
 __all__ = [
     "build_cleanup_and_reconstruction_rows",
+    "cell_key_xy_layer",
     "decode_snapshot_summary",
     "decoded_cell_to_full_map_row",
     "diff_maps",
+    "filter_issue_cells_for_full_map",
     "issue_overlay_cells",
     "rows_from_cells",
     "snapshot_summary_from_rows",

@@ -15,6 +15,7 @@ from django_apps.asteroid_lab.replay.event_types import (
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     build_cleanup_and_reconstruction_rows,
     diff_maps,
+    filter_issue_cells_for_full_map,
     issue_overlay_cells,
     snapshot_summary_from_rows,
 )
@@ -115,9 +116,11 @@ def record_existing_layout_inspection_frames(
 
     issues_payload = [asdict(i) for i in inspection.issues]
     hints = dict(inspection.hints_json)
-    i_cells = issue_overlay_cells(inspection)
+    i_cells_raw = issue_overlay_cells(inspection)
+    i_cells = filter_issue_cells_for_full_map(i_cells_raw, row_recon)
     recon_summary = snapshot_summary_from_rows(row_recon)
-    recon_summary["issue_count"] = len(inspection.issues)
+    recon_summary["inspection_issue_count"] = len(inspection.issues)
+    recon_summary["visible_issue_cell_count"] = len(i_cells)
     recon_summary["inspection"] = {
         "summary_json": ins_summary,
         "issues": issues_payload,

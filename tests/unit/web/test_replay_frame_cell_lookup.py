@@ -5,7 +5,7 @@ from __future__ import annotations
 from django_apps.web.services.replay_frame_cell_lookup import lookup_cell_in_serialized_frame
 
 
-def test_lookup_full_map_then_issue_merges() -> None:
+def test_lookup_full_map_then_issue_same_cell_kind_merge_contract() -> None:
     ser = {
         "full_map": [
             {"x": 1, "y": 0, "cell_kind": "fluid_miner", "layer": None},
@@ -19,7 +19,50 @@ def test_lookup_full_map_then_issue_merges() -> None:
     assert cell is not None
     assert cell.get("issue_code") == "E_TEST"
     assert cell.get("cell_kind") == "fluid_miner"
+    assert cell.get("issue_original_cell_kind") == "fluid_miner"
     assert "issue_cell" in sources
+
+
+def test_lookup_field_plus_issue_extension_merged_physical_from_full_map() -> None:
+    ser = {
+        "full_map": [
+            {
+                "x": 4,
+                "y": -8,
+                "layer": None,
+                "cell_kind": "asteroid_fluid_field",
+                "transport_kind": "none",
+                "tile_type": "",
+                "rotation": 0,
+                "server_x": 2,
+                "server_y": 8,
+            },
+        ],
+        "diff": {"removed": [], "added": [], "changed": []},
+        "cell_overlay_json": {
+            "issue_cells": [
+                {
+                    "x": 4,
+                    "y": -8,
+                    "layer": None,
+                    "cell_kind": "fluid_miner_extension",
+                    "issue_code": "extension_no_adjacent_transport",
+                    "severity": "error",
+                    "overlay_role": "issue",
+                    "equipment_id": "4,-8,null",
+                },
+            ],
+        },
+    }
+    cell, _sources = lookup_cell_in_serialized_frame(ser, 4, -8)
+    assert cell is not None
+    assert cell.get("cell_kind") == "asteroid_fluid_field"
+    assert cell.get("transport_kind") == "none"
+    assert cell.get("server_x") == 2
+    assert cell.get("server_y") == 8
+    assert cell.get("issue_original_cell_kind") == "fluid_miner_extension"
+    assert cell.get("issue_equipment_id") == "4,-8,null"
+    assert cell.get("issue_code") == "extension_no_adjacent_transport"
 
 
 def test_lookup_full_map_empty_cell_returns_none() -> None:

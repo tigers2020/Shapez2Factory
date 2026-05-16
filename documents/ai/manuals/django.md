@@ -8,19 +8,19 @@
 |----|------|------|
 | shapez_core | `django_apps/shapez_core/` | 도형 규칙·파싱·정규화 |
 | shapez_solver | `django_apps/shapez_solver/` | 솔버 유스케이스·서비스 |
-| shapez_asteroid | `django_apps/shapez_asteroid/` | 소행성·펌프 레이아웃 최적화(레시피 솔버와 별도) |
+| asteroid_lab | `django_apps/asteroid_lab/` | 소행성 실험실(ORM·디코드·리플레이; 레시피 솔버와 별도) |
 | web | `django_apps/web/` | 템플릿·정적 자산·얇은 뷰 |
 
 ## 블루프린트 격자 좌표 (공통)
 
-소행성·블루프린트 복사 격자는 **`X == 0`인 열이 없다**(`1`과 `-1`이 동서로 인접; `0` 비경유). 서버 코드 `(x, y)`에서도 **`x == 0` 불가**. 상세·근거: [`research_blueprint_grid_coordinates_2026-05-10.md`](../../research/research_blueprint_grid_coordinates_2026-05-10.md), 구현 [`shapez_grid`](../../../django_apps/shapez_asteroid/extraction/shapez_grid.py).
+블루프린트 복사 격자는 **`X == 0`인 열이 없다**(`1`과 `-1`이 동서로 인접; `0` 비경유). 서버 코드 `(x, y)`에서도 **`x == 0` 불가**. 상세·근거: [`research_blueprint_grid_coordinates_2026-05-10.md`](../../research/research_blueprint_grid_coordinates_2026-05-10.md).
 
 ## 의존 방향 (금지 위반 금지)
 
-- `shapez_core` → `web`, `shapez_solver`, `shapez_asteroid` **import 금지**
-- `shapez_solver` → `shapez_core` 만 허용 · `web`·`shapez_asteroid` import **금지**
-- `shapez_asteroid` → `shapez_core` 만 허용(향후)·스켈레톤에서는 미사용 가능 · `web`·`shapez_solver` import **금지**
-- `web` → `shapez_core`, `shapez_solver`, `shapez_asteroid` 허용
+- `shapez_core` → `web`, `shapez_solver`, `asteroid_lab` **import 금지**
+- `shapez_solver` → `shapez_core` 만 허용 · `web`·`asteroid_lab` import **금지**
+- `asteroid_lab` → `shapez_core` 만 허용(향후)·스켈레톤에서는 미사용 가능 · `web`·`shapez_solver` import **금지**
+- `web` → `shapez_core`, `shapez_solver`, `asteroid_lab` 허용
 
 정본: [`.cursor/rules/architecture.mdc`](../../../.cursor/rules/architecture.mdc).
 

@@ -40,6 +40,7 @@
   function init() {
     const matrix = readJsonScript("lab-cell-overlay-matrix-data");
     const runs = readJsonScript("lab-runs-data");
+    const uiInitial = readJsonScript("lab-ui-initial-state");
     const cells = document.querySelectorAll("[data-lab-cell-index]");
     const phaseEl = document.getElementById("lab-replay-phase");
     const frameEl = document.getElementById("lab-frame-display");
@@ -50,16 +51,40 @@
     const modal = document.getElementById("lab-topology-modal");
     const openTopology = document.getElementById("lab-open-topology");
     const closeTopology = document.getElementById("lab-close-topology");
+    const blueprintInput = document.getElementById("lab-blueprint-input");
 
     if (!matrix || !Array.isArray(matrix) || cells.length !== matrix.length) {
       return;
     }
 
-    let frame = parseInt(
-      document.getElementById("lab-root")?.dataset.labInitialFrame || "128",
-      10,
-    );
-    if (Number.isNaN(frame)) frame = 128;
+    const rootEl = document.getElementById("lab-root");
+    const parseFrame = function (v, fallback) {
+      const n = parseInt(String(v), 10);
+      return Number.isNaN(n) ? fallback : n;
+    };
+    const datasetFrame = parseFrame(rootEl?.dataset.labInitialFrame, 128);
+    const initialFromServer = uiInitial && typeof uiInitial === "object" ? uiInitial : {};
+    const baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
+    const baselineBlueprint =
+      typeof initialFromServer.blueprintCode === "string"
+        ? initialFromServer.blueprintCode
+        : blueprintInput
+          ? String(blueprintInput.value)
+          : "";
+    const baselineRun =
+      initialFromServer.defaultRun && typeof initialFromServer.defaultRun === "object"
+        ? initialFromServer.defaultRun
+        : Array.isArray(runs) && runs.length
+          ? runs[0]
+          : null;
+    const baselineRunId =
+      typeof initialFromServer.defaultRunId === "string"
+        ? initialFromServer.defaultRunId
+        : baselineRun && baselineRun.id
+          ? String(baselineRun.id)
+          : null;
+
+    let frame = baselineFrame;
     let isPlaying = false;
     let timerId = null;
 
@@ -100,10 +125,35 @@
       }
     }
 
-    document.getElementById("lab-header-reset")?.addEventListener("click", function () {
+    function closeTopologyModal() {
+      if (!modal) return;
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function applyRunSelectionHighlight(runId) {
+      document.querySelectorAll("[data-lab-run-id]").forEach(function (b) {
+        const on = runId != null && b.getAttribute("data-lab-run-id") === runId;
+        b.classList.toggle("border-cyan-500", on);
+        b.classList.toggle("bg-cyan-500/10", on);
+        b.classList.toggle("border-slate-800", !on);
+        b.classList.toggle("bg-slate-900", !on);
+        b.classList.toggle("hover:border-slate-700", !on);
+      });
+    }
+
+    function resetToInitial() {
       setPlaying(false);
-      frame = 0;
+      frame = baselineFrame;
+      closeTopologyModal();
+      if (blueprintInput) blueprintInput.value = baselineBlueprint;
+      applyRunSelectionHighlight(baselineRunId);
+      setRunDetail(baselineRun);
       applyFrame();
+    }
+
+    document.getElementById("lab-header-reset")?.addEventListener("click", function () {
+      resetToInitial();
     });
 
     document.getElementById("lab-header-run")?.addEventListener("click", function () {
@@ -151,14 +201,7 @@
         const run = (runs || []).find(function (r) {
           return r.id === rid;
         });
-        document.querySelectorAll("[data-lab-run-id]").forEach(function (b) {
-          const on = b.getAttribute("data-lab-run-id") === rid;
-          b.classList.toggle("border-cyan-500", on);
-          b.classList.toggle("bg-cyan-500/10", on);
-          b.classList.toggle("border-slate-800", !on);
-          b.classList.toggle("bg-slate-900", !on);
-          b.classList.toggle("hover:border-slate-700", !on);
-        });
+        applyRunSelectionHighlight(rid);
         setRunDetail(run);
       });
     });
@@ -168,13 +211,11 @@
       modal?.classList.add("flex");
     });
     closeTopology?.addEventListener("click", function () {
-      modal?.classList.add("hidden");
-      modal?.classList.remove("flex");
+      closeTopologyModal();
     });
     modal?.addEventListener("click", function (ev) {
       if (ev.target === modal) {
-        modal.classList.add("hidden");
-        modal.classList.remove("flex");
+        closeTopologyModal();
       }
     });
 

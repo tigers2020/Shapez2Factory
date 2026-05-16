@@ -1,1 +1,1 @@
-이 폴더의 내용은 **아카이브**되었다: [`documents/archive/2026-05-mining-layout-v1-era/refactory/`](../archive/2026-05-mining-layout-v1-era/refactory/) — 인덱스: [`../archive/2026-05-mining-layout-v1-era/README.md`](../archive/2026-05-mining-layout-v1-era/README.md).
+이 폴더는 **리다이렉트용**으로만 남긴다. 과거 v1-era refactory 본문은 저장소에서 제거되었으며, 필요 시 **git 기록**에서 찾는다.

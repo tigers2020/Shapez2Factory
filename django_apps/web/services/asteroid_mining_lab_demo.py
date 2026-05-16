@@ -218,6 +218,7 @@ def lab_page_context() -> dict[str, Any]:
     matrix = build_lab_cells_overlay_matrix()
     initial_frame = 128
     stages_display = [{**s, "tone_class": _stage_tone_class(s["state"])} for s in STAGES]
+    default_run = RUNS[0] if RUNS else None
     return {
         "total_frames": TOTAL_FRAMES,
         "initial_frame": initial_frame,
@@ -228,4 +229,11 @@ def lab_page_context() -> dict[str, Any]:
         "extractor_rules": EXTRACTOR_RULES,
         "topology_rules": TOPOLOGY_RULES,
         "stages_display": stages_display,
+        "lab_ui_initial": {
+            "frame": initial_frame,
+            "totalFrames": TOTAL_FRAMES,
+            "blueprintCode": "",
+            "defaultRun": default_run,
+            "defaultRunId": default_run["id"] if default_run else None,
+        },
     }

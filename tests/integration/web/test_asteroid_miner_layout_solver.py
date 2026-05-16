@@ -11,6 +11,7 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert "Greenfield Solver Workspace" in content
     assert "Replay Timeline" in content
     assert "lab-cell-overlay-matrix-data" in content
+    assert 'id="lab-ui-initial-state"' in content
 
 
 def test_asteroid_miner_layout_page_preserves_code_query() -> None:

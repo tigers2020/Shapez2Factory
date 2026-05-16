@@ -10,7 +10,6 @@ urlpatterns = [
     path("gallery/", views.gallery, name="gallery"),
     path("demo/", views.demo, name="demo"),
     path("support/", views.support, name="support"),
-    path("asteroid/", views.asteroid_optimizer, name="asteroid"),
     path("solver/", views.solver, name="solver"),
     path("solver/pattern-lab/", views.pattern_lab, name="pattern-lab"),
     path(

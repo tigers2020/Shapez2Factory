@@ -1,7 +1,7 @@
 """Pure copy decode + normalization (A3); no mining v2 imports.
 
-Real-world copy/decoded samples for humans live under ``var/asteroid_mining_layout_debug/``;
-tests use only synthetic payloads built in this file.
+Real-world copy/decoded samples for humans may live under ``var/shapez_copy_debug/``
+or ad-hoc paths; tests use only synthetic payloads built in this file.
 """
 
 from __future__ import annotations

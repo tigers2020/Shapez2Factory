@@ -39,11 +39,6 @@
           {% if current == "solver" %}aria-current="page"{% endif %}
         >{% trans "Solver" %}</a>
         <a
-          href="{% url 'web:asteroid' %}"
-          class="rounded-lg px-3 py-2 no-underline {% if current == 'asteroid' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-          {% if current == "asteroid" %}aria-current="page"{% endif %}
-        >{% trans "Asteroid mining" %}</a>
-        <a
           href="{% url 'web:pattern-lab' %}"
           class="rounded-lg px-3 py-2 no-underline {% if current == 'pattern-lab' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
           {% if current == "pattern-lab" %}aria-current="page"{% endif %}

@@ -219,6 +219,71 @@ class DecodedBlueprintSnapshotDTO:
 
 
 @dataclass(frozen=True, slots=True)
+class ExistingTransportComponentDTO:
+    """One connected transport component (``SpacePipe`` / ``SpaceBelt`` cells only)."""
+
+    component_id: int
+    transport_kind: str
+    cell_kind: str
+    cell_count: int
+    bbox_json: dict[str, Any]
+    touches_bbox_edge: bool
+    cells_json: list[dict[str, Any]]
+
+
+@dataclass(frozen=True, slots=True)
+class ExistingEquipmentDTO:
+    """Miner or extension equipment cell (top-level ``BP.Entries`` only)."""
+
+    equipment_id: str
+    x: int
+    y: int
+    layer: int | None
+    rotation: int
+    tile_type: str
+    cell_kind: str
+    transport_kind: str
+    raw_entry_json: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class EquipmentAttachmentDTO:
+    """4-neighbor attachment between equipment and indexed transport components."""
+
+    equipment_id: str
+    adjacent_transport_cells_json: list[dict[str, Any]]
+    adjacent_component_ids: list[int]
+    attached_to_any_transport: bool
+    attached_to_main_component: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ExistingLayoutIssueDTO:
+    """Inspection issue row (UI/replay only; not solver input)."""
+
+    issue_code: str
+    severity: str
+    equipment_id: str
+    component_id: int | None
+    cells_json: list[dict[str, Any]]
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class ExistingLayoutInspectionDTO:
+    """Full existing-layout inspection over A5 decoded top-level cells."""
+
+    project_id: int | None
+    map_input_id: int | None
+    transport_components: tuple[ExistingTransportComponentDTO, ...]
+    equipment: tuple[ExistingEquipmentDTO, ...]
+    attachments: tuple[EquipmentAttachmentDTO, ...]
+    issues: tuple[ExistingLayoutIssueDTO, ...]
+    hints_json: dict[str, Any]
+    summary_json: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
 class SnapshotEventDTO:
     """One logical solver/UI step emitted for replay (never solver algorithm input)."""
 

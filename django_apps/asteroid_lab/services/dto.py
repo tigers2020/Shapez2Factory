@@ -183,3 +183,56 @@ class NormalizedBlueprintDTO:
     """Blueprint JSON ready to persist on ``AsteroidMapInput.decoded_json``."""
 
     decoded_json: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class SnapshotEventDTO:
+    """One logical solver/UI step emitted for replay (never solver algorithm input)."""
+
+    event_key: str
+    phase: str
+    phase_step: str = ""
+    event_type: str = ""
+    title: str = ""
+    description: str = ""
+    before_state_json: dict[str, Any] = field(default_factory=dict)
+    after_state_json: dict[str, Any] = field(default_factory=dict)
+    delta_json: dict[str, Any] = field(default_factory=dict)
+    cell_overlay_json: dict[str, Any] = field(default_factory=dict)
+    focus_cells_json: list[Any] = field(default_factory=list)
+    candidate_ref: str = ""
+    bundle_ref: str = ""
+    route_ref: str = ""
+    is_decision_point: bool = False
+    is_reversible: bool = True
+    is_placeholder: bool = False
+    severity: str = "info"
+    metrics_json: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class SnapshotFrameDTO:
+    """Result row after persisting a snapshot as ``ReplayFrame`` (UI playback artifact)."""
+
+    replay_frame_id: int
+    replay_track_id: int
+    frame_index: int
+    event_key: str
+    phase: str
+    event_type: str
+    title: str
+    frame_payload: dict[str, Any]
+    cell_overlay_json: dict[str, Any]
+    metric_snapshot_json: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class ReplayRecordingPolicyDTO:
+    """Optional thinning / caps for replay volume (does not affect solver correctness)."""
+
+    capture_every_step: bool = True
+    capture_rejected_candidates: bool = True
+    capture_probe_paths: bool = True
+    capture_before_after: bool = True
+    max_frames: int | None = None
+    thinning_strategy: str = "none"

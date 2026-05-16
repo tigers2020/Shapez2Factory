@@ -35,6 +35,18 @@ def _next_frame_index(track_id: int) -> int:
     return int(max_idx) + 1
 
 
+def next_replay_frame_index(track_id: int) -> int:
+    """Next ``frame_index`` that :func:`append_replay_frame` would assign (read-only ordering).
+
+    Used by replay recorders for bookkeeping only — **not** solver algorithm input.
+    """
+
+    if not ReplayTrack.objects.filter(pk=track_id).exists():
+        msg = f"ReplayTrack id={track_id} does not exist"
+        raise ValueError(msg)
+    return _next_frame_index(track_id)
+
+
 def _frame_row(m: ReplayFrame) -> ReplayFrameRowDTO:
     return ReplayFrameRowDTO(
         id=m.id,

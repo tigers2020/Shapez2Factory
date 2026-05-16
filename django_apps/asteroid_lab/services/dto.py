@@ -334,3 +334,19 @@ class ReplayRecordingPolicyDTO:
     capture_before_after: bool = True
     max_frames: int | None = None
     thinning_strategy: str = "none"
+
+
+@dataclass(frozen=True, slots=True)
+class InitialReplayPipelineResultDTO:
+    """Result of A6.2 copy-import inspection replay wiring (UI artifacts only)."""
+
+    project_id: int
+    map_input_id: int
+    solver_run_id: int | None
+    replay_track_id: int | None
+    replay_frame_count: int
+    decoded_snapshot_id: int | None
+    existing_layout_snapshot_id: int | None
+    status: str
+    error_message: str = ""
+    run_key: str = ""

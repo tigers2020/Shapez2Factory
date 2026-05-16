@@ -99,6 +99,38 @@ def test_lab_page_context_orders_frames_by_frame_index_then_id() -> None:
 
 
 @pytest.mark.django_db
+def test_lab_page_context_after_pipeline_selects_non_empty_track() -> None:
+    import base64
+    import gzip
+    import json
+
+    from django_apps.asteroid_lab.services import project_service
+    from django_apps.asteroid_lab.services.replay_pipeline_service import (
+        build_initial_replay_for_map_input,
+    )
+
+    root = {
+        "V": 88,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": 1, "Y": 0, "T": "Layout_ProMiner"},
+                {"X": 2, "Y": 0, "T": "SpaceBelt_Left"},
+            ],
+        },
+    }
+    text = json.dumps(root, separators=(",", ":")).encode("utf-8")
+    code = "SHAPEZ2-4-" + base64.b64encode(gzip.compress(text)).decode("ascii")
+    dto = project_service.create_project_from_copy_code(code, source_label="ctx-pipe")
+    build_initial_replay_for_map_input(dto.map_input_id)
+
+    ctx = alc.lab_page_context()
+    assert ctx["has_replay_frames"] is True
+    assert ctx["total_frames"] == 8
+    assert len(ctx["lab_replay_frames_json"]) == 8
+
+
+@pytest.mark.django_db
 def test_lab_page_context_does_not_create_replay_rows() -> None:
     p = m.AsteroidProject.objects.create(name="Cnt", slug="cnt-lab-ctx")
     t = m.ReplayTrack.objects.create(project=p, track_key="cnt-tr")

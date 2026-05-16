@@ -81,17 +81,17 @@ def test_bbox_and_counts() -> None:
             "$type": "Island",
             "Entries": [
                 {"X": 2, "Y": 1, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 0, "Y": -1, "R": 1, "T": "SpaceBelt_Right"},
+                {"X": -1, "Y": -1, "R": 1, "T": "SpaceBelt_Right"},
                 {"X": 2, "Y": 1, "R": 0, "T": "WeirdUnknown"},
             ],
         },
     }
     snap = build_decoded_blueprint_snapshot(decoded)
-    assert snap.bbox_json["min_x"] == 0
+    assert snap.bbox_json["min_x"] == -1
     assert snap.bbox_json["max_x"] == 2
     assert snap.bbox_json["min_y"] == -1
     assert snap.bbox_json["max_y"] == 1
-    assert snap.bbox_json["width"] == 3
+    assert snap.bbox_json["width"] == 4
     assert snap.bbox_json["height"] == 3
     assert snap.cell_kind_counts_json["space_pipe"] == 1
     assert snap.cell_kind_counts_json["space_belt"] == 1
@@ -105,7 +105,7 @@ def test_snapshot_dto_json_serializable() -> None:
     decoded = {
         "V": 1,
         "_asteroid_lab_summary": {"k": "v"},
-        "BP": {"$type": "Island", "Entries": [{"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_A"}]},
+        "BP": {"$type": "Island", "Entries": [{"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_A"}]},
     }
     snap = build_decoded_blueprint_snapshot(decoded, project_id=9, map_input_id=3)
     blob = json.dumps(asdict(snap))

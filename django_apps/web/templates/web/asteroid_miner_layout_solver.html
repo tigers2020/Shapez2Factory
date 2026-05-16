@@ -316,11 +316,14 @@
               </div>
             </div>
 
-            <div class="mt-5 overflow-auto rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+            <div
+              id="lab-replay-grid-viewport"
+              class="mt-5 min-h-[220px] overflow-auto rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
+            >
               <div
                 id="lab-replay-grid"
-                class="grid w-max gap-1 opacity-100 transition-opacity duration-200"
-                style="grid-template-columns: repeat(23, minmax(0, 1.25rem));"
+                class="grid w-max max-w-full gap-1 opacity-100 transition-opacity duration-200"
+                {% if not has_replay_frames %}style="grid-template-columns: repeat(23, minmax(0, 1.25rem));"{% endif %}
                 data-overlay=""
               >
                 {% for cls in lab_cell_initial_classes %}

@@ -17,8 +17,8 @@ def project_and_input() -> tuple[m.AsteroidProject, m.AsteroidMapInput]:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 0, "Y": 1, "R": 0, "T": "Layout_FluidMiner"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 1, "Y": 1, "R": 0, "T": "Layout_FluidMiner"},
             ],
         },
     }

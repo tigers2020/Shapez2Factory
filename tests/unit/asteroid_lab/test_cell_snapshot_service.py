@@ -23,8 +23,8 @@ def project_and_input() -> tuple[m.AsteroidProject, m.AsteroidMapInput]:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 1, "Y": 0, "R": 0, "T": "SpaceBelt_Left"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 2, "Y": 0, "R": 0, "T": "SpaceBelt_Left"},
             ],
         },
         "_asteroid_lab_summary": {"entry_count": 2},
@@ -160,12 +160,12 @@ def test_manual_snapshot_replay_not_used_as_algorithm_input_doc() -> None:
         binary_version=1,
         blueprint_type="Island",
         entry_count=1,
-        bbox_json={"min_x": 0, "max_x": 0, "min_y": 0, "max_y": 0, "width": 1, "height": 1},
+        bbox_json={"min_x": 1, "max_x": 1, "min_y": 0, "max_y": 0, "width": 1, "height": 1},
         cell_kind_counts_json={"space_pipe": 1},
         transport_kind_counts_json={"fluid_pipe": 1},
         cells=(
             DecodedCellDTO(
-                x=0,
+                x=1,
                 y=0,
                 layer=None,
                 rotation=0,
@@ -175,7 +175,7 @@ def test_manual_snapshot_replay_not_used_as_algorithm_input_doc() -> None:
                 has_nested_blueprint=False,
                 nested_entry_count=0,
                 nested_type_counts_json={},
-                raw_entry_json={"X": 0, "Y": 0, "T": "SpacePipe_X"},
+                raw_entry_json={"X": 1, "Y": 0, "T": "SpacePipe_X"},
             ),
         ),
         summary_json={},
@@ -183,7 +183,7 @@ def test_manual_snapshot_replay_not_used_as_algorithm_input_doc() -> None:
     built = build_decoded_blueprint_snapshot(
         {
             "V": 1,
-            "BP": {"$type": "Island", "Entries": [{"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_X"}]},
+            "BP": {"$type": "Island", "Entries": [{"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_X"}]},
         }
     )
     assert built.cell_kind_counts_json == snap.cell_kind_counts_json

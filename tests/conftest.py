@@ -23,6 +23,15 @@ _TESTS_ROOT = Path(__file__).resolve().parent
 _LAYER_MARKERS = frozenset({"shapez_core", "shapez_solver", "web", "api", "asteroid_lab"})
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    """pytest-django: 테스트 DB 재사용 (pytest.ini `--reuse-db`와 동일, addopts 미적용 환경 보조)."""
+    opt = config.option
+    if getattr(opt, "create_db", False):
+        return
+    if hasattr(opt, "reuse_db"):
+        opt.reuse_db = True
+
+
 @pytest.fixture
 def without_canonical_catalog_macros() -> None:
     """Remove migration-seeded macro recipes so tests can define their own catalog rows."""

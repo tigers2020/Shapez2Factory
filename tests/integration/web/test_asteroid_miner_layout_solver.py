@@ -1,10 +1,38 @@
+import base64
+import gzip
+import json
+import random
+
 import pytest
 from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
+from django_apps.web.services import asteroid_lab_page_context as alc
 
 pytestmark = pytest.mark.django_db
+
+
+def _encode_v4_copy(root: dict) -> str:
+    text = json.dumps(root, separators=(",", ":")).encode("utf-8")
+    gz = gzip.compress(text)
+    b64 = base64.b64encode(gz).decode("ascii")
+    return f"SHAPEZ2-4-{b64}"
+
+
+def _unique_valid_copy() -> str:
+    return _encode_v4_copy(
+        {
+            "V": random.randint(1, 10_000_000),
+            "BP": {
+                "$type": "Island",
+                "Entries": [
+                    {"X": 1, "Y": 0, "T": "Layout_ProMiner"},
+                    {"X": 2, "Y": 0, "T": "SpaceBelt_Left"},
+                ],
+            },
+        }
+    )
 
 
 def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
@@ -33,7 +61,7 @@ def test_asteroid_miner_layout_ignores_code_query_string() -> None:
 
 def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     client = Client()
-    copy = "SHAPEZ2-LAB-INTEGRATION-UNIQUE-COPY-STRING"
+    copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
     response = client.post(create_url, {"copy_code": copy}, follow=True)
 
@@ -42,16 +70,22 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     assert m.AsteroidProject.objects.count() == 1
     proj = m.AsteroidProject.objects.get()
     assert f"/asteroid-miner-layout/p/{proj.slug}/" in response.request["PATH_INFO"]
+    assert m.ReplayFrame.objects.count() >= 8
+    ctx = alc.lab_page_context()
+    assert ctx["has_replay_frames"] is True
+    assert ctx["total_frames"] >= 8
+    assert 'id="lab-replay-frames-data"' in response.content.decode()
 
 
 def test_asteroid_miner_layout_post_same_copy_dedupes_project() -> None:
     client = Client()
-    copy = "SHAPEZ2-LAB-DEDUPE-SAME-COPY"
+    copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
     client.post(create_url, {"copy_code": copy}, follow=True)
     client.post(create_url, {"copy_code": copy}, follow=True)
 
     assert m.AsteroidProject.objects.count() == 1
+    assert m.ReplayFrame.objects.count() == 8
 
 
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:
@@ -69,3 +103,11 @@ def test_asteroid_miner_layout_project_unknown_slug_404() -> None:
     )
 
     assert response.status_code == 404
+
+
+def test_asteroid_miner_layout_post_invalid_copy_no_replay_frames() -> None:
+    client = Client()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": "not-valid-shapez-payload"}, follow=True)
+
+    assert m.ReplayFrame.objects.count() == 0

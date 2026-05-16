@@ -77,10 +77,10 @@ def test_normalize_summary_counts() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "T": "Layout_ProMiner"},
-                {"X": 0, "Y": 1, "T": "SpaceBelt_Left"},
-                {"X": 0, "Y": 0, "T": "SpacePipe_Right"},
-                {"X": 2, "Y": 0, "T": "Foo_MinerExtension_Bar"},
+                {"X": 1, "Y": 0, "T": "Layout_ProMiner"},
+                {"X": 1, "Y": 1, "T": "SpaceBelt_Left"},
+                {"X": 1, "Y": 0, "T": "SpacePipe_Right"},
+                {"X": 3, "Y": 0, "T": "Foo_MinerExtension_Bar"},
             ],
         },
     }

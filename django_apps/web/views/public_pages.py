@@ -5,6 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from django.conf import settings
+from django.contrib import messages
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -12,8 +13,12 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from django_apps.asteroid_lab.models import AsteroidMapInput, AsteroidProject
+from django_apps.asteroid_lab.services.input_service import content_sha256_for_copy_code
 from django_apps.asteroid_lab.services.project_service import (
     resolve_or_create_project_slug_for_copy_code,
+)
+from django_apps.asteroid_lab.services.replay_pipeline_service import (
+    build_initial_replay_for_map_input,
 )
 from django_apps.shapez_core.services.preview_service import (
     build_demo_parse_rows,
@@ -182,12 +187,30 @@ def asteroid_miner_layout_project(request: HttpRequest, slug: str) -> HttpRespon
 
 @require_POST
 def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
-    """POST copy text, dedupe by digest, redirect to slug URL (PRG)."""
+    """POST copy text, dedupe by digest, build inspection replay, redirect to slug URL (PRG)."""
 
     copy_code = (request.POST.get("copy_code") or "").strip()
     if not copy_code:
         return redirect(reverse("web:asteroid-miner-layout"))
     slug = resolve_or_create_project_slug_for_copy_code(copy_code, source_label="")
+    project = AsteroidProject.objects.filter(slug=slug).first()
+    if project is not None:
+        digest = content_sha256_for_copy_code(copy_code)
+        inp = (
+            AsteroidMapInput.objects.filter(project_id=project.pk, content_sha256=digest)
+            .order_by("-created_at")
+            .first()
+        )
+        if inp is None:
+            inp = (
+                AsteroidMapInput.objects.filter(project_id=project.pk)
+                .order_by("-created_at")
+                .first()
+            )
+        if inp is not None:
+            result = build_initial_replay_for_map_input(int(inp.pk))
+            if result.status != "ok" and result.error_message:
+                messages.error(request, result.error_message)
     return redirect(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
 
 

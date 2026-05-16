@@ -19,6 +19,13 @@ def _neutral_overlay_matrix() -> list[list[str]]:
     return [list(row) for _ in range(CELL_COUNT)]
 
 
+def _single_cell_overlay_matrix() -> list[list[str]]:
+    """One SSR cell when server replay exists; Lab JS rebuilds the real grid."""
+
+    row = [LAB_CELL_NEUTRAL, LAB_CELL_NEUTRAL, LAB_CELL_NEUTRAL]
+    return [list(row)]
+
+
 def get_latest_lab_replay_track() -> ReplayTrack | None:
     """Latest :class:`ReplayTrack` that has at least one frame (display-only read)."""
 
@@ -129,4 +136,7 @@ def lab_page_context() -> dict[str, Any]:
         }
     )
     ctx["lab_ui_initial"] = ui
+    single = _single_cell_overlay_matrix()
+    ctx["lab_cell_overlay_matrix"] = single
+    ctx["lab_cell_initial_classes"] = [single[0][0]]
     return ctx

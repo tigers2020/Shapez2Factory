@@ -1,4 +1,7 @@
-"""Pure existing-layout inspection (A6)."""
+"""Pure existing-layout inspection (A6).
+
+Blueprint ``X`` coordinates follow the asteroid map rule: no ``x == 0`` (fixtures use 1, 2, …).
+"""
 
 from __future__ import annotations
 
@@ -14,8 +17,8 @@ def test_space_pipe_fluid_pipe_components_separate_from_belt() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 2, "Y": 0, "R": 0, "T": "SpaceBelt_Left"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 3, "Y": 0, "R": 0, "T": "SpaceBelt_Left"},
             ],
         },
     }
@@ -35,8 +38,8 @@ def test_four_neighbor_grouping_diagonal_does_not_connect() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 1, "Y": 1, "R": 0, "T": "SpacePipe_Right"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 2, "Y": 1, "R": 0, "T": "SpacePipe_Right"},
             ],
         },
     }
@@ -53,11 +56,11 @@ def test_main_component_largest_cell_count_wins() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Right"},
-                {"X": 5, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 6, "Y": 0, "R": 0, "T": "SpacePipe_Right"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 2, "Y": 0, "R": 0, "T": "SpacePipe_Right"},
+                {"X": 6, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
                 {"X": 7, "Y": 0, "R": 0, "T": "SpacePipe_Right"},
+                {"X": 8, "Y": 0, "R": 0, "T": "SpacePipe_Right"},
             ],
         },
     }
@@ -76,8 +79,8 @@ def test_main_component_tie_breaks_on_lower_component_id() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 3, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 4, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
             ],
         },
     }
@@ -96,9 +99,9 @@ def test_two_clusters_orphan_and_transport_disconnected() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Right"},
-                {"X": 5, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 2, "Y": 0, "R": 0, "T": "SpacePipe_Right"},
+                {"X": 6, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
             ],
         },
     }
@@ -122,8 +125,8 @@ def test_fluid_miner_and_extension_indexed() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "Layout_FluidMiner"},
-                {"X": 1, "Y": 0, "R": 0, "T": "Layout_FluidMinerExtension"},
+                {"X": 1, "Y": 0, "R": 0, "T": "Layout_FluidMiner"},
+                {"X": 2, "Y": 0, "R": 0, "T": "Layout_FluidMinerExtension"},
             ],
         },
     }
@@ -139,10 +142,10 @@ def test_shape_miner_indexed_when_present() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "Layout_ShapeMiner"},
-                {"X": 0, "Y": 1, "R": 0, "T": "Layout_ShapeMinerExtension"},
-                {"X": 1, "Y": 0, "R": 0, "T": "SpaceBelt_Left"},
-                {"X": 1, "Y": 1, "R": 0, "T": "SpaceBelt_Left"},
+                {"X": 1, "Y": 0, "R": 0, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 1, "R": 0, "T": "Layout_ShapeMinerExtension"},
+                {"X": 2, "Y": 0, "R": 0, "T": "SpaceBelt_Left"},
+                {"X": 2, "Y": 1, "R": 0, "T": "SpaceBelt_Left"},
             ],
         },
     }
@@ -157,14 +160,14 @@ def test_miner_adjacent_transport_attaches_to_component() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 0, "Y": 1, "R": 0, "T": "Layout_FluidMiner"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 1, "Y": 1, "R": 0, "T": "Layout_FluidMiner"},
             ],
         },
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
-    att = next(a for a in ins.attachments if a.equipment_id == "0,1,null")
+    att = next(a for a in ins.attachments if a.equipment_id == "1,1,null")
     assert att.attached_to_any_transport is True
     assert att.attached_to_main_component is True
     assert not any(i.issue_code == "miner_no_adjacent_transport" for i in ins.issues)
@@ -175,7 +178,7 @@ def test_miner_no_adjacent_transport_issue() -> None:
         "V": 1,
         "BP": {
             "$type": "Island",
-            "Entries": [{"X": 0, "Y": 0, "R": 0, "T": "Layout_FluidMiner"}],
+            "Entries": [{"X": 1, "Y": 0, "R": 0, "T": "Layout_FluidMiner"}],
         },
     }
     snap = build_decoded_blueprint_snapshot(decoded)
@@ -188,7 +191,7 @@ def test_extension_no_adjacent_transport_issue() -> None:
         "V": 1,
         "BP": {
             "$type": "Island",
-            "Entries": [{"X": 0, "Y": 0, "R": 0, "T": "Layout_FluidMinerExtension"}],
+            "Entries": [{"X": 1, "Y": 0, "R": 0, "T": "Layout_FluidMinerExtension"}],
         },
     }
     snap = build_decoded_blueprint_snapshot(decoded)
@@ -202,10 +205,10 @@ def test_miner_attached_only_to_orphan_transport() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Right"},
-                {"X": 5, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 5, "Y": 1, "R": 0, "T": "Layout_FluidMiner"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 2, "Y": 0, "R": 0, "T": "SpacePipe_Right"},
+                {"X": 6, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 6, "Y": 1, "R": 0, "T": "Layout_FluidMiner"},
             ],
         },
     }
@@ -220,8 +223,8 @@ def test_mixed_transport_nearby() -> None:
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "Layout_FluidMiner"},
-                {"X": 0, "Y": 1, "R": 0, "T": "SpaceBelt_Left"},
+                {"X": 1, "Y": 0, "R": 0, "T": "Layout_FluidMiner"},
+                {"X": 1, "Y": 1, "R": 0, "T": "SpaceBelt_Left"},
             ],
         },
     }
@@ -237,7 +240,7 @@ def test_nested_b_entries_not_unfolded_single_top_level_cell() -> None:
             "$type": "Island",
             "Entries": [
                 {
-                    "X": 0,
+                    "X": 1,
                     "Y": 0,
                     "R": 0,
                     "T": "Layout_FluidMiner",
@@ -261,8 +264,8 @@ def test_hints_contain_main_component_candidate_and_cleanup_candidates() -> None
         "BP": {
             "$type": "Island",
             "Entries": [
-                {"X": 0, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
-                {"X": 3, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
+                {"X": 4, "Y": 0, "R": 0, "T": "SpacePipe_Forward"},
             ],
         },
     }

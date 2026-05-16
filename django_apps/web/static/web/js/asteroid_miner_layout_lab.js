@@ -1,5 +1,10 @@
 /**
  * Client-side replay controls for the asteroid mining lab page (shell UI).
+ *
+ * Shapez2 asteroid map invariant (Lab + server replay):
+ * - There is no x == 0 column. Horizontal order: ..., -2, -1, 1, 2, ...
+ * - (-1, y) is horizontally adjacent to (1, y), not (0, y).
+ * - World (1, 0) is the UI anchor: visual column index 0, row y = 0 at grid center (symmetric padding).
  */
 (function () {
   "use strict";
@@ -7,8 +12,15 @@
   const GRID_W = 23;
   const GRID_H = 15;
 
+  /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. */
+  const LAB_CELL_BASE =
+    "lab-cell shrink-0 rounded-[5px] border bg-slate-950 border-slate-900";
+
   const rawTotal = window.__ASTEROID_LAB_TOTAL_FRAMES__;
   const TOTAL_FRAMES = Number.isFinite(rawTotal) ? rawTotal : 0;
+
+  /** Extra empty cells beyond union bbox on each side (visual col / row), symmetric around (1,0). */
+  const REPLAY_GRID_EDGE_PADDING = 5;
 
   function readJsonScript(id) {
     const el = document.getElementById(id);
@@ -41,7 +53,16 @@
     return 0;
   }
 
-  function cellIndex(x, y) {
+  /** World x to dense visual column; x === 0 is invalid (null). */
+  function visualCol(x) {
+    const xi = Number(x);
+    if (!Number.isFinite(xi)) return null;
+    if (xi === 0) return null;
+    if (xi < 0) return xi;
+    return xi - 1;
+  }
+
+  function cellIndexDemo(x, y) {
     const xi = Number(x);
     const yi = Number(y);
     if (!Number.isFinite(xi) || !Number.isFinite(yi)) return null;
@@ -124,6 +145,49 @@
     return out;
   }
 
+  function computeReplayGridLayout(replayFrames) {
+    let minD = Infinity;
+    let maxD = -Infinity;
+    let minR = Infinity;
+    let maxR = -Infinity;
+    let any = false;
+    for (let fi = 0; fi < replayFrames.length; fi++) {
+      const fr = replayFrames[fi];
+      if (!fr || typeof fr !== "object") continue;
+      const ov = fr.cell_overlay_json;
+      if (!ov || typeof ov !== "object") continue;
+      const targets = collectOverlayPaintTargets(ov);
+      for (let ti = 0; ti < targets.length; ti++) {
+        const cell = targets[ti].cell;
+        if (!cell || typeof cell !== "object") continue;
+        const d = visualCol(cell.x);
+        if (d == null) continue;
+        const yi = Number(cell.y);
+        if (!Number.isFinite(yi)) continue;
+        any = true;
+        if (d < minD) minD = d;
+        if (d > maxD) maxD = d;
+        if (yi < minR) minR = yi;
+        if (yi > maxR) maxR = yi;
+      }
+    }
+    if (!any) {
+      minD = maxD = minR = maxR = 0;
+    }
+    const coreHalfX = Math.max(Math.max(0, -minD), Math.max(0, maxD), 1);
+    const coreHalfY = Math.max(Math.max(0, -minR), Math.max(0, maxR), 1);
+    const halfX = coreHalfX + REPLAY_GRID_EDGE_PADDING;
+    const halfY = coreHalfY + REPLAY_GRID_EDGE_PADDING;
+    return {
+      minD: -halfX,
+      maxD: halfX,
+      minR: -halfY,
+      maxR: halfY,
+      gridW: 2 * halfX + 1,
+      gridH: 2 * halfY + 1,
+    };
+  }
+
   function overlayToneClasses(role, cell) {
     const r = String(role || "");
     if (r === "issue" || (cell && cell.issue_code)) {
@@ -141,13 +205,13 @@
     return "ring-1 ring-inset ring-violet-400/35 bg-violet-950/15";
   }
 
-  function renderDecodedCells(baseClasses, domCells, cells) {
+  function renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex) {
     if (!Array.isArray(cells)) return;
     const targets = [];
     pushCellList(targets, cells, "");
     for (let i = 0; i < targets.length; i++) {
       const cell = targets[i].cell;
-      const idx = cellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell.x, cell.y);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = overlayToneClasses("decode", cell);
@@ -157,12 +221,12 @@
     }
   }
 
-  function renderExistingLayoutOverlay(baseClasses, domCells, overlay) {
+  function renderExistingLayoutOverlay(baseClasses, domCells, overlay, resolveCellIndex) {
     const targets = collectOverlayPaintTargets(overlay);
     for (let i = 0; i < targets.length; i++) {
       const cell = targets[i].cell;
       const role = targets[i].role;
-      const idx = cellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell.x, cell.y);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = overlayToneClasses(role, cell);
@@ -173,14 +237,14 @@
     }
   }
 
-  function renderCellOverlay(baseClasses, domCells, overlay) {
+  function renderCellOverlay(baseClasses, domCells, overlay, resolveCellIndex) {
     if (!overlay || typeof overlay !== "object") return;
     const cells = overlay.cells;
     if (Array.isArray(cells) && cells.length > 0) {
-      renderDecodedCells(baseClasses, domCells, cells);
+      renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex);
       return;
     }
-    renderExistingLayoutOverlay(baseClasses, domCells, overlay);
+    renderExistingLayoutOverlay(baseClasses, domCells, overlay, resolveCellIndex);
   }
 
   function resetGridBase(domCells, baseClasses) {
@@ -191,12 +255,12 @@
     }
   }
 
-  function renderReplayFrame(frame, baseClasses, domCells) {
+  function renderReplayFrame(frame, baseClasses, domCells, resolveCellIndex) {
     resetGridBase(domCells, baseClasses);
     if (!frame || typeof frame !== "object") return;
     const ov = frame.cell_overlay_json;
     if (ov && typeof ov === "object") {
-      renderCellOverlay(baseClasses, domCells, ov);
+      renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
     }
   }
 
@@ -234,6 +298,7 @@
     const replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
     const hasServerReplay = replayFrames.length > 0;
 
+    const gridViewport = document.getElementById("lab-replay-grid-viewport");
     const cells = document.querySelectorAll("[data-lab-cell-index]");
     const phaseEl = document.getElementById("lab-replay-phase");
     const frameEl = document.getElementById("lab-frame-display");
@@ -246,14 +311,82 @@
     const closeTopology = document.getElementById("lab-close-topology");
     const blueprintInput = document.getElementById("lab-blueprint-input");
 
-    if (!matrix || !Array.isArray(matrix) || cells.length !== matrix.length) {
+    if (!gridEl) {
       return;
     }
 
-    const domCells = Array.prototype.slice.call(cells);
-    const baseClasses = domCells.map(function (el) {
-      return String(el.className || "");
-    });
+    let domCells;
+    let baseClasses;
+    let resolveCellIndex = cellIndexDemo;
+    let replayLayout = null;
+    let resizeObserver = null;
+
+    if (hasServerReplay) {
+      if (!matrix || !Array.isArray(matrix)) {
+        return;
+      }
+      replayLayout = computeReplayGridLayout(replayFrames);
+      const gw = replayLayout.gridW;
+      const gh = replayLayout.gridH;
+      const neutralClass = LAB_CELL_BASE;
+
+      gridEl.textContent = "";
+      for (let i = 0; i < gw * gh; i++) {
+        const div = document.createElement("div");
+        div.setAttribute("data-lab-cell-index", String(i));
+        div.className = neutralClass;
+        gridEl.appendChild(div);
+      }
+      domCells = Array.prototype.slice.call(gridEl.querySelectorAll("[data-lab-cell-index]"));
+      baseClasses = domCells.map(function (el) {
+        return String(el.className || "");
+      });
+
+      resolveCellIndex = function (x, y) {
+        const d = visualCol(x);
+        if (d == null) return null;
+        const yi = Number(y);
+        if (!Number.isFinite(yi)) return null;
+        const col = d - replayLayout.minD;
+        const row = yi - replayLayout.minR;
+        if (col < 0 || row < 0 || col >= gw || row >= gh) return null;
+        return row * gw + col;
+      };
+
+      const padPx = 16;
+      const minCell = 4;
+      const maxCell = 28;
+
+      function applyReplayGridSizing() {
+        if (!gridViewport || !replayLayout) return;
+        const cw = gridViewport.clientWidth - padPx * 2;
+        const ch = gridViewport.clientHeight - padPx * 2;
+        const px = Math.max(
+          minCell,
+          Math.min(maxCell, Math.floor(Math.min(cw / replayLayout.gridW, ch / replayLayout.gridH))),
+        );
+        gridEl.style.gridTemplateColumns = "repeat(" + replayLayout.gridW + ", minmax(0, " + px + "px))";
+        gridEl.style.gridTemplateRows = "repeat(" + replayLayout.gridH + ", minmax(0, " + px + "px))";
+      }
+
+      applyReplayGridSizing();
+      if (gridViewport && typeof ResizeObserver !== "undefined") {
+        resizeObserver = new ResizeObserver(function () {
+          applyReplayGridSizing();
+        });
+        resizeObserver.observe(gridViewport);
+      } else if (gridViewport) {
+        window.addEventListener("resize", applyReplayGridSizing);
+      }
+    } else {
+      if (!matrix || !Array.isArray(matrix) || cells.length !== matrix.length) {
+        return;
+      }
+      domCells = Array.prototype.slice.call(cells);
+      baseClasses = domCells.map(function (el) {
+        return String(el.className || "");
+      });
+    }
 
     const rootEl = document.getElementById("lab-root");
     const parseFrame = function (v, fallback) {
@@ -298,7 +431,7 @@
         if (replayArrayIndex < 0) replayArrayIndex = 0;
         if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
         const fr = getCurrentReplayFrame();
-        renderReplayFrame(fr, baseClasses, domCells);
+        renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
         updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl);
         const cycle = document.getElementById("lab-computation-cycle");
         if (cycle) {
@@ -500,24 +633,25 @@
     window.AsteroidLabReplay = {
       getCurrentReplayFrame: getCurrentReplayFrame,
       renderReplayFrame: function (fr) {
-        renderReplayFrame(fr, baseClasses, domCells);
+        renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
       },
       renderCellOverlay: function (ov) {
         resetGridBase(domCells, baseClasses);
-        renderCellOverlay(baseClasses, domCells, ov);
+        renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
       },
       renderDecodedCells: function (list) {
         resetGridBase(domCells, baseClasses);
-        renderDecodedCells(baseClasses, domCells, list);
+        renderDecodedCells(baseClasses, domCells, list, resolveCellIndex);
       },
       renderExistingLayoutOverlay: function (ov) {
         resetGridBase(domCells, baseClasses);
-        renderExistingLayoutOverlay(baseClasses, domCells, ov);
+        renderExistingLayoutOverlay(baseClasses, domCells, ov, resolveCellIndex);
       },
       updateFrameInfo: function (fr) {
         updateFrameInfo(fr, hasServerReplay ? replayFrames.length : 0, phaseEl, frameEl, gridEl);
       },
       collectOverlayPaintTargets: collectOverlayPaintTargets,
+      visualCol: visualCol,
     };
 
     setRunDetail(baselineRun);

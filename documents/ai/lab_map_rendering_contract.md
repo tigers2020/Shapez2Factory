@@ -42,5 +42,6 @@ CANON 아님. [`django_apps/web/static/web/js/asteroid_miner_layout_lab.js`](../
 
 ## SVG 자산
 
+- `space_pipe_*` Lab 스프라이트도 **East-facing·R=0 = 디코드 연결**에 맞추고, 표시는 `LAB_SPRITE_REGISTRY`에서 광물과 같이 `add`·`offsetQ: 0`으로 둔다(한 파일만 어긋날 때는 그 항목만 예외 조정).
 - 신규 Lab용 layout 스프라이트는 **East-facing** 기준으로 작성한다.
 - `viewBox="0 0 100 100"` 권장; 기존 96 좌표계는 스케일 래핑으로 맞출 수 있다.

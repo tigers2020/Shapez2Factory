@@ -84,8 +84,8 @@ class EquipmentPorts:
 # Base ports at rotation 0 — calibrated on a real asteroid blueprint (shape miners/extensions):
 # input from ``e`` (field / upstream), outputs on ``n``, ``s``, ``w`` (T excluding east).
 # ``rotation`` is decode ``R`` (quarter-turns from East at 0, increasing CW on the map); port dirs
-# rotate CW by ``rotation % 4``. Lab sprites apply an extra art-only offset in JS
-# (``LAB_SPRITE_ROTATION_OFFSET_Q``) — do not duplicate that here or bundle topology drifts.
+# rotate CW by ``rotation % 4``. Lab sprite display uses ``LAB_SPRITE_REGISTRY`` only;
+# do not duplicate that math here or bundle topology drifts.
 _BASE_PORTS_R0: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "fluid_miner": (frozenset({"e"}), frozenset({"n", "s", "w"})),
     "fluid_miner_extension": (frozenset({"e"}), frozenset({"n", "s", "w"})),

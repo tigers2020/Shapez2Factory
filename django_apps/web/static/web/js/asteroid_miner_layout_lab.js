@@ -68,12 +68,23 @@
     return Math.round(Number(value) * dpr) / dpr;
   }
 
-  /** Zoomed grid cell edge (px): integer tracks avoid subpixel grid + sprite blur at high zoom. */
+  /** Resolved column gap in px for ``#lab-replay-grid`` (row gap matches uniform ``gap``). */
+  function labReplayGridGapPx(gridEl) {
+    if (!gridEl || typeof window.getComputedStyle !== "function") {
+      return 0;
+    }
+    const st = window.getComputedStyle(gridEl);
+    const col = parseFloat(String(st.columnGap || st.gap || "0"));
+    return Number.isFinite(col) && col > 0 ? col : 0;
+  }
+
+  /** Zoomed grid cell edge length (px), snapped to device pixels to reduce SVG/img blur. */
   function labZoomedCellEdgePx(basePx, zoom) {
     const minCellPx = 4;
     const raw = Number(basePx) * Number(zoom);
     if (!Number.isFinite(raw)) return minCellPx;
-    return Math.max(minCellPx, Math.round(raw));
+    const snapped = snapToDevicePixel(raw);
+    return Math.max(minCellPx, Math.round(snapped));
   }
 
   /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. ``relative`` anchors the sprite layer. */
@@ -933,7 +944,7 @@
       const tx = snapToDevicePixel(t.tx);
       const ty = snapToDevicePixel(t.ty);
       gridStage.style.transformOrigin = "0 0";
-      gridStage.style.transform = "translate(" + tx + "px, " + ty + "px)";
+      gridStage.style.transform = "translate3d(" + tx + "px," + ty + "px,0)";
     }
 
     function applyLabGridLayoutForZoom() {
@@ -941,12 +952,14 @@
         const gw = replayLayout.gridW;
         const gh = replayLayout.gridH;
         const zpx = labZoomedCellEdgePx(replayFitBasePx, labViewportTransform.zoom);
-        gridEl.style.gridTemplateColumns = "repeat(" + gw + ", minmax(0, " + zpx + "px))";
-        gridEl.style.gridTemplateRows = "repeat(" + gh + ", minmax(0, " + zpx + "px))";
+        gridEl.style.setProperty("--lab-cell-size", String(zpx) + "px");
+        gridEl.style.gridTemplateColumns = "repeat(" + gw + ", " + zpx + "px)";
+        gridEl.style.gridTemplateRows = "repeat(" + gh + ", " + zpx + "px)";
       } else if (domCells && domCells.length) {
         const zpx = labZoomedCellEdgePx(demoBaseCellPxAtZoom1, labViewportTransform.zoom);
-        gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", minmax(0, " + zpx + "px))";
-        gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", minmax(0, " + zpx + "px))";
+        gridEl.style.setProperty("--lab-cell-size", String(zpx) + "px");
+        gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", " + zpx + "px)";
+        gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", " + zpx + "px)";
       }
       applyLabViewportTransform();
     }
@@ -1004,10 +1017,14 @@
         if (!gridViewport || !replayLayout) return;
         const cw = gridViewport.clientWidth - padPx * 2;
         const ch = gridViewport.clientHeight - padPx * 2;
-        replayFitBasePx = Math.max(
-          minCell,
-          Math.min(maxCell, Math.floor(Math.min(cw / replayLayout.gridW, ch / replayLayout.gridH))),
-        );
+        const gw = replayLayout.gridW;
+        const gh = replayLayout.gridH;
+        const gapPx = labReplayGridGapPx(gridEl);
+        const gapCols = Math.max(0, gw - 1) * gapPx;
+        const gapRows = Math.max(0, gh - 1) * gapPx;
+        const cellFromW = Math.floor((cw - gapCols) / gw);
+        const cellFromH = Math.floor((ch - gapRows) / gh);
+        replayFitBasePx = Math.max(minCell, Math.min(maxCell, Math.min(cellFromW, cellFromH)));
         applyLabGridLayoutForZoom();
       }
 
@@ -2043,6 +2060,36 @@
       visualCol: visualCol,
       rawXToDenseX: rawXToDenseX,
       replaceLabReplayPayload: replaceLabReplayPayload,
+    };
+
+    /** DevTools-only: assert #lab-replay-grid-viewport rect is stable across cell-pixel zoom. */
+    window.__shapezLabReplaySelfTestViewportZoomStability = function () {
+      if (!gridViewport || typeof gridViewport.getBoundingClientRect !== "function") {
+        return { ok: false, reason: "no_viewport" };
+      }
+      const r0 = gridViewport.getBoundingClientRect();
+      const z0 = labViewportTransform.zoom;
+      let zTry = Math.min(LAB_VIEWPORT_MAX_SCALE, z0 * 2);
+      if (zTry <= z0) {
+        zTry = Math.min(LAB_VIEWPORT_MAX_SCALE, z0 + 0.25);
+      }
+      if (zTry <= z0) {
+        return { ok: true, skipped: true, reason: "already_at_max_zoom" };
+      }
+      labViewportTransform.zoom = zTry;
+      applyLabGridLayoutForZoom();
+      const r1 = gridViewport.getBoundingClientRect();
+      labViewportTransform.zoom = z0;
+      applyLabGridLayoutForZoom();
+      const dw = Math.abs(r1.width - r0.width);
+      const dh = Math.abs(r1.height - r0.height);
+      return {
+        ok: dw <= 1 && dh <= 1,
+        r0: { width: r0.width, height: r0.height },
+        r1: { width: r1.width, height: r1.height },
+        dw: dw,
+        dh: dh,
+      };
     };
 
     applyLabGridLayoutForZoom();

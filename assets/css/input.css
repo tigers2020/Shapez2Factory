@@ -16,10 +16,14 @@
     background-color: rgb(76 29 149 / 0.5);
   }
 
-  /* Lab replay viewport shell: fixed aspect parent; block selection and browser zoom gestures. */
+  /* Lab replay viewport shell: fixed aspect parent; block selection and browser zoom gestures.
+   * Intrinsic grid size must not expand this box (stage is absolutely positioned inside padding). */
   #lab-replay-grid-viewport {
     position: relative;
     overflow: hidden;
+    contain: layout paint;
+    transform: none;
+    min-width: 0;
     user-select: none;
     -webkit-user-select: none;
     -webkit-user-drag: none;
@@ -29,18 +33,11 @@
   #lab-replay-grid-stage,
   #lab-replay-grid,
   .lab-cell,
-  .lab-cell-sprite-layer {
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-user-drag: none;
-  }
-
+  .lab-cell-sprite-layer,
   .lab-cell-sprite {
     user-select: none;
     -webkit-user-select: none;
     -webkit-user-drag: none;
-    /* Vector SVG in <img>: crisp-edges upscales poorly; auto keeps browser vector resample. */
-    image-rendering: auto;
   }
 
   /* Replay timeline scrub (native range; dark track via accent). */
@@ -52,10 +49,36 @@
     accent-color: rgb(6 182 212);
   }
 
-  /* Lab replay grid: single source for Tailwind gap-1 (0.25rem) and bundle gap bridges. */
+  /* Lab replay grid: gap in px (JS fit uses getComputedStyle); bundle gap bridges use same token. */
   #lab-replay-grid {
     --lab-cell-gap: 0.25rem;
+    width: max-content;
+    height: max-content;
+    box-sizing: border-box;
     gap: var(--lab-cell-gap);
+  }
+
+  /* Fills viewport padding box (match template p-4 / Tailwind inset-4); out of flow so cell-pixel zoom
+   * does not inflate #lab-replay-grid-viewport height in flex layouts. */
+  #lab-replay-grid-stage {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    min-width: 0;
+    overflow: visible;
+    will-change: transform;
+  }
+
+  /* Lab map cells: square grid areas; border counts toward box (matches fixed track math). */
+  .lab-cell {
+    position: relative;
+    overflow: visible;
+    box-sizing: border-box;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    min-height: 0;
   }
 
   /* Rotation debug (toggle via JS: #lab-replay-grid.lab-debug-rotation). */
@@ -112,12 +135,6 @@
     transform: translateX(-50%);
   }
 
-  /* Lab map cells: anchor absolute sprite layer + bridges. */
-  .lab-cell {
-    position: relative;
-    overflow: visible;
-  }
-
   .lab-cell-sprite-layer {
     position: absolute;
     inset: 0;
@@ -137,6 +154,9 @@
     object-fit: contain;
     transform-origin: center center;
     pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
     image-rendering: auto;
   }
 

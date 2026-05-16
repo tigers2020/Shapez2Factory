@@ -48,6 +48,7 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert "G-042" not in content
     assert "No runs" in content
     assert 'id="lab-replay-grid-stage"' in content
+    assert "absolute inset-4" in content
     assert 'id="lab-replay-grid-hud-coord"' in content
     assert 'id="lab-replay-grid-hud-role"' in content
 

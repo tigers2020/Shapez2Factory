@@ -242,3 +242,26 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-replay-grid-stage" in js
     assert "bindLabViewportInteractions" in js
     assert "LAB_VIEWPORT_MIN_SCALE" in js
+    assert "__shapezLabReplaySelfTestViewportZoomStability" in js
+
+
+def test_lab_replay_stage_absolute_inset_template_contract() -> None:
+    root = Path(__file__).resolve().parents[3]
+    tpl = (
+        root / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
+    ).read_text(encoding="utf-8")
+    assert 'id="lab-replay-grid-stage"' in tpl
+    assert "absolute inset-4" in tpl
+
+
+def test_lab_replay_viewport_css_layout_contract() -> None:
+    root = Path(__file__).resolve().parents[3]
+    css = (root / "assets" / "css" / "input.css").read_text(encoding="utf-8")
+    assert "contain: layout paint" in css
+    assert "transform: none" in css
+    assert "#lab-replay-grid-stage" in css
+    marker = "#lab-replay-grid-stage {"
+    assert marker in css
+    start = css.index(marker)
+    stage_block = css[start : start + 520]
+    assert "position: absolute" in stage_block

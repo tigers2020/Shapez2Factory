@@ -9,6 +9,7 @@ def test_services_python_files_avoid_mining_solver_paths() -> None:
     root = Path(__file__).resolve().parents[3] / "django_apps" / "asteroid_lab" / "services"
     forbidden_substrings = (
         "django_apps.shapez_asteroid",
+        "django_apps.shapez_solver",
         "asteroid_mining_layout_v2",
         "asteroid_mining_layout_v1",
     )

@@ -1,4 +1,10 @@
-"""Replay timeline persistence (UI / inspection only — never solver algorithm input)."""
+"""Replay timeline persistence.
+
+**Architectural rule:** ``ReplayFrame`` / ``ReplayTrack`` / ``UIPlaybackSession`` rows are
+**never** solver algorithm input. They exist for UI playback, scrubber state, and inspection
+only. The solver engine must consume pure in-memory DTOs with **zero** reads of these tables as
+inputs to optimization logic.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +21,7 @@ from django_apps.asteroid_lab.models import (
 from django_apps.asteroid_lab.services.dto import (
     PlaybackPatchDTO,
     PlaybackSessionDTO,
-    ReplayFrameAppendDTO,
+    ReplayFrameDTO,
     ReplayFrameRowDTO,
     ReplayTrackPayloadDTO,
 )
@@ -59,7 +65,7 @@ def _session_dto(s: UIPlaybackSession) -> PlaybackSessionDTO:
 
 
 @transaction.atomic
-def append_replay_frame(track_id: int, frame: ReplayFrameAppendDTO) -> ReplayFrameRowDTO:
+def append_replay_frame(track_id: int, frame: ReplayFrameDTO) -> ReplayFrameRowDTO:
     """Append one ``ReplayFrame`` with strictly monotonic ``frame_index``.
 
     Stored replay rows are **UI timeline / inspection only** — never feed them back as solver
@@ -115,7 +121,11 @@ def get_replay_track_payload(track_id: int) -> ReplayTrackPayloadDTO:
 
 @transaction.atomic
 def update_playback_session(track_id: int, patch: PlaybackPatchDTO) -> PlaybackSessionDTO:
-    """Upsert ``UIPlaybackSession`` for the track (transport UI state only)."""
+    """Upsert ``UIPlaybackSession`` for the track (transport UI state only).
+
+    ``UIPlaybackSession`` is ``OneToOneField`` to ``ReplayTrack`` — at most one session row per
+    track. Repeated calls with the same ``track_id`` update the same row (idempotent upsert).
+    """
 
     if not ReplayTrack.objects.filter(pk=track_id).exists():
         msg = f"ReplayTrack id={track_id} does not exist"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from django.db import IntegrityError, transaction
 
 import django_apps.asteroid_lab.models as al
 
@@ -141,6 +142,19 @@ def test_solver_metric_snapshot_fitness_components() -> None:
     snap.refresh_from_db()
     assert snap.fitness_components_json["layout"] == 0.8
     assert snap.aggregate_score == pytest.approx(0.73)
+
+
+@pytest.mark.django_db
+def test_ui_playback_session_one_to_one_replay_track() -> None:
+    """Phase 1: ``UIPlaybackSession.replay_track`` is ``OneToOneField`` (one session per track)."""
+
+    project = al.AsteroidProject.objects.create(name="O", slug="o-121")
+    track = al.ReplayTrack.objects.create(project=project, track_key="t")
+    al.UIPlaybackSession.objects.create(replay_track=track, current_frame_index=1)
+    assert al.UIPlaybackSession.objects.filter(replay_track=track).count() == 1
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            al.UIPlaybackSession.objects.create(replay_track=track, current_frame_index=2)
 
 
 @pytest.mark.django_db

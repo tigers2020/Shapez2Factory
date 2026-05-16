@@ -20,8 +20,12 @@ def test_create_solver_run_dto() -> None:
     assert dto.project_id == p.id
     assert dto.run_key == "run-1"
     assert dto.config_json == {"pop": 40}
+    assert dto.replay_track_id > 0
     row = m.SolverRun.objects.get(pk=dto.id)
     assert row.status == m.SolverRun.RunStatus.PENDING
+    track = m.ReplayTrack.objects.get(pk=dto.replay_track_id)
+    assert track.track_key == "run-1"
+    assert track.solver_run_id == dto.id
 
 
 @pytest.mark.django_db

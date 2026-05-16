@@ -22,7 +22,11 @@ def create_solver_run(
     algorithm_label: str,
     config: dict[str, Any],
 ) -> SolverRunDTO:
-    """Insert one ``SolverRun`` row for bookkeeping / UI (not passed into solver packages)."""
+    """Insert one ``SolverRun`` plus default ``ReplayTrack`` scaffolding.
+
+    Does **not** execute solver algorithms. Persisted replay rows are UI-only — never solver
+    algorithm input.
+    """
 
     if not AsteroidProject.objects.filter(pk=project_id).exists():
         msg = f"AsteroidProject id={project_id} does not exist"
@@ -34,10 +38,16 @@ def create_solver_run(
         algorithm_label=algorithm_label,
         config_json=dict(config or {}),
     )
-    return _solver_run_dto(run)
+    track = ensure_default_replay_track(
+        project_id,
+        run.id,
+        track_key=run_key,
+        title="",
+    )
+    return _solver_run_dto(run, replay_track_id=track.track_id)
 
 
-def _solver_run_dto(run: SolverRun) -> SolverRunDTO:
+def _solver_run_dto(run: SolverRun, *, replay_track_id: int) -> SolverRunDTO:
     return SolverRunDTO(
         id=run.id,
         project_id=run.project_id,
@@ -45,6 +55,7 @@ def _solver_run_dto(run: SolverRun) -> SolverRunDTO:
         algorithm_label=run.algorithm_label,
         status=run.status,
         config_json=dict(run.config_json or {}),
+        replay_track_id=replay_track_id,
     )
 
 

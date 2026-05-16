@@ -6,13 +6,21 @@ import pytest
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services import replay_service
-from django_apps.asteroid_lab.services.dto import PlaybackPatchDTO, ReplayFrameAppendDTO
+from django_apps.asteroid_lab.services.dto import (
+    PlaybackPatchDTO,
+    ReplayFrameAppendDTO,
+    ReplayFrameDTO,
+)
 
 
 @pytest.fixture
 def replay_track() -> m.ReplayTrack:
     p = m.AsteroidProject.objects.create(name="R", slug="r-svc")
     return m.ReplayTrack.objects.create(project=p, track_key="t1")
+
+
+def test_replay_frame_dto_alias_matches_append_dto() -> None:
+    assert ReplayFrameDTO is ReplayFrameAppendDTO
 
 
 @pytest.mark.django_db
@@ -82,3 +90,20 @@ def test_update_playback_session_upsert(replay_track: m.ReplayTrack) -> None:
     )
     assert dto2.ui_state_json["zoom"] == pytest.approx(1.2)
     assert dto2.ui_state_json["pan"] == 3
+
+
+@pytest.mark.django_db
+def test_update_playback_session_idempotent_single_row(replay_track: m.ReplayTrack) -> None:
+    """``UIPlaybackSession`` is one-to-one with ``ReplayTrack`` — no duplicate rows per track."""
+
+    replay_service.update_playback_session(
+        replay_track.id,
+        PlaybackPatchDTO(current_frame_index=1),
+    )
+    replay_service.update_playback_session(
+        replay_track.id,
+        PlaybackPatchDTO(current_frame_index=2),
+    )
+    assert m.UIPlaybackSession.objects.filter(replay_track_id=replay_track.id).count() == 1
+    s = m.UIPlaybackSession.objects.get(replay_track_id=replay_track.id)
+    assert s.current_frame_index == 2

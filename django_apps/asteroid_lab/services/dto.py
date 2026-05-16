@@ -1,6 +1,8 @@
 """Service boundary DTOs (no Django imports).
 
-Replay / track payloads are **UI inspection and playback only** — never solver algorithm input.
+Replay rows, playback sessions, and topology payloads are **persistence / cache / UI inspection
+only**. They must **never** be read back as solver algorithm input; the solver engine stays a
+pure DTO consumer over in-memory structures.
 """
 
 from __future__ import annotations
@@ -23,7 +25,11 @@ class CreateProjectFromCopyCodeResultDTO:
 
 @dataclass(frozen=True, slots=True)
 class SolverRunDTO:
-    """One persisted lab solver run row (for UI / bookkeeping; not passed into solver core)."""
+    """One persisted lab solver run row (for UI / bookkeeping; not passed into solver core).
+
+    ``replay_track_id`` is the default empty ``ReplayTrack`` shell for this run (UI timeline
+    container only; never solver algorithm input).
+    """
 
     id: int
     project_id: int
@@ -31,6 +37,7 @@ class SolverRunDTO:
     algorithm_label: str
     status: str
     config_json: dict[str, Any]
+    replay_track_id: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +55,10 @@ class ReplayFrameAppendDTO:
     is_keyframe: bool = False
     frame_index: int | None = None
     """If ``None``, next monotonic index is used. If set, must equal that next index."""
+
+
+# Alias for API/docs that refer to a single "replay frame" append payload.
+ReplayFrameDTO = ReplayFrameAppendDTO
 
 
 @dataclass(frozen=True, slots=True)

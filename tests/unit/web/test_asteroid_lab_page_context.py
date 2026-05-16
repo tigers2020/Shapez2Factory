@@ -231,6 +231,8 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "getCurrentReplayFrame" in js
     assert "lab-replay-frames-data" in js
     assert "lab-timeline-play" in js
+    assert "lab-timeline-scrub" in js
+    assert "setTimelineIndex" in js
     assert "hasServerReplay" in js
     assert "replayPhaseForFrame" in js
     assert "updateFrameInfo" in js

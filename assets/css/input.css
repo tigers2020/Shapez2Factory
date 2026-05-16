@@ -16,10 +16,61 @@
     background-color: rgb(76 29 149 / 0.5);
   }
 
+  /* Lab replay viewport shell: fixed aspect parent; block selection and browser zoom gestures. */
+  #lab-replay-grid-viewport {
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    touch-action: none;
+  }
+
+  #lab-replay-grid-stage,
+  #lab-replay-grid,
+  .lab-cell,
+  .lab-cell-sprite-layer {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .lab-cell-sprite {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    /* Vector SVG in <img>: crisp-edges upscales poorly; auto keeps browser vector resample. */
+    image-rendering: auto;
+  }
+
+  /* Replay timeline scrub (native range; dark track via accent). */
+  #lab-timeline-scrub {
+    width: 100%;
+    min-width: 0;
+    height: 1.25rem;
+    cursor: pointer;
+    accent-color: rgb(6 182 212);
+  }
+
   /* Lab replay grid: single source for Tailwind gap-1 (0.25rem) and bundle gap bridges. */
   #lab-replay-grid {
     --lab-cell-gap: 0.25rem;
     gap: var(--lab-cell-gap);
+  }
+
+  /* Rotation debug (toggle via JS: #lab-replay-grid.lab-debug-rotation). */
+  #lab-replay-grid.lab-debug-rotation .lab-cell[data-r]::after {
+    content: "R" attr(data-r) " S" attr(data-sprite-q);
+    position: absolute;
+    right: 2px;
+    bottom: 1px;
+    z-index: 4;
+    font-size: 8px;
+    line-height: 1;
+    color: rgb(248 250 252);
+    opacity: 0.85;
+    pointer-events: none;
+    text-shadow: 0 0 2px rgb(15 23 42);
   }
 
   /* Same-bundle neighbor bridges (extend into grid gap); color from JS. */

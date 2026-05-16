@@ -5,6 +5,11 @@
  * - There is no x == 0 column. Horizontal order: ..., -2, -1, 1, 2, ...
  * - (-1, y) is horizontally adjacent to (1, y), not (0, y).
  * - World (1, 0) is the UI anchor: visual column index 0, row y = 0 at grid center (symmetric padding).
+ *
+ * Domain rotation contract (blueprint / server JSON; never mutate ``cell.rotation`` in JS):
+ * - R = 0 means East; R increases by quarter-turns clockwise (0..3).
+ * - Sprite facing fixes are display-only: ``LAB_SPRITE_REGISTRY`` offsetQ / rotationCombine and CSS
+ *   ``rotate`` on the sprite ``img`` only. Do not apply ad-hoc R+1 or rewrite domain rotation.
  */
 (function () {
   "use strict";
@@ -63,6 +68,14 @@
     return Math.round(Number(value) * dpr) / dpr;
   }
 
+  /** Zoomed grid cell edge (px): integer tracks avoid subpixel grid + sprite blur at high zoom. */
+  function labZoomedCellEdgePx(basePx, zoom) {
+    const minCellPx = 4;
+    const raw = Number(basePx) * Number(zoom);
+    if (!Number.isFinite(raw)) return minCellPx;
+    return Math.max(minCellPx, Math.round(raw));
+  }
+
   /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. ``relative`` anchors the sprite layer. */
   const LAB_CELL_BASE =
     "lab-cell relative shrink-0 overflow-visible rounded-[5px] border bg-slate-950 border-slate-900";
@@ -82,20 +95,86 @@
     "space_pipe_y_merger.svg",
   ]);
 
-  function buildLabSpriteRegistry() {
-    const reg = {};
-    LAB_SPRITE_KNOWN.forEach(function (fn) {
-      const isSpacePipe = fn.indexOf("space_pipe_") === 0 && fn.endsWith(".svg");
-      reg[fn] = Object.freeze({
-        offsetQ: 1,
-        rotationCombine: isSpacePipe ? "sub" : "add",
-      });
-    });
-    return Object.freeze(reg);
+  /**
+   * Per-sprite-file art correction: ``offsetQ`` + ``rotationCombine`` (server ``rotation`` untouched).
+   * ``nativeFacing`` is East (0) for all current Lab SVGs; reserved for audits / tooling.
+   */
+  const LAB_SPRITE_REGISTRY = Object.freeze({
+    "layout_fluid_miner.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "layout_fluid_miner_extension.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_forward.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "sub",
+      offsetQ: 1,
+    }),
+    "space_pipe_left_fwd_merger.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "sub",
+      offsetQ: 1,
+    }),
+    "space_pipe_left_turn.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "sub",
+      offsetQ: 1,
+    }),
+    "space_pipe_right_fwd_merger.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "sub",
+      offsetQ: 1,
+    }),
+    "space_pipe_right_fwd_splitter.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "sub",
+      offsetQ: 1,
+    }),
+    "space_pipe_right_turn.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "sub",
+      offsetQ: 1,
+    }),
+    "space_pipe_triple_merger.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "sub",
+      offsetQ: 1,
+    }),
+    "space_pipe_triple_splitter.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "sub",
+      offsetQ: 1,
+    }),
+    "space_pipe_y_merger.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "sub",
+      offsetQ: 1,
+    }),
+  });
+
+  /** When true, or ``#lab-root`` has ``data-lab-debug-rotation="1"``, grid shows R/S overlay on cells with sprites. */
+  const LAB_DEBUG_ROTATION = false;
+
+  function labRotationDebugEnabled(rootEl) {
+    if (LAB_DEBUG_ROTATION) {
+      return true;
+    }
+    if (rootEl && rootEl.dataset && rootEl.dataset.labDebugRotation === "1") {
+      return true;
+    }
+    return false;
   }
 
-  /** Per-sprite-file art correction: ``offsetQ`` + ``rotationCombine`` only (server ``rotation`` untouched). */
-  const LAB_SPRITE_REGISTRY = buildLabSpriteRegistry();
+  /** ``cell_kind`` → sprite file when ``tile_type`` is missing (not used for ambiguous kinds like ``space_pipe``). */
+  const LAB_SPRITE_CELL_KIND_FALLBACK = Object.freeze({
+    fluid_miner: "layout_fluid_miner.svg",
+    fluid_miner_extension: "layout_fluid_miner_extension.svg",
+  });
 
   /** Sprite stack container; styles in ``assets/css/input.css`` (``.lab-cell-sprite-layer``). */
   const LAB_CELL_SPRITE_LAYER_CLASS = "lab-cell-sprite-layer";
@@ -170,6 +249,33 @@
     return name;
   }
 
+  function labSpriteFilenameFromCellKind(cellKind) {
+    const ck = cellKind == null ? "" : String(cellKind);
+    if (!ck) return null;
+    const fn = LAB_SPRITE_CELL_KIND_FALLBACK[ck];
+    if (!fn || !LAB_SPRITE_KNOWN.has(fn)) return null;
+    return fn;
+  }
+
+  function labSpriteFilenameForCell(cell) {
+    if (!cell || typeof cell !== "object") return null;
+    let fn = labSpriteFilenameFromTileType(cell.tile_type);
+    if (!fn && cell.cell_kind != null) {
+      fn = labSpriteFilenameFromCellKind(cell.cell_kind);
+    }
+    return fn;
+  }
+
+  function attachLabSpriteImgNoDrag(img) {
+    if (!img || img.__labSpriteNoDrag) return;
+    img.__labSpriteNoDrag = true;
+    img.draggable = false;
+    img.setAttribute("draggable", "false");
+    img.addEventListener("dragstart", function (ev) {
+      ev.preventDefault();
+    });
+  }
+
   function ensureLabCellSpriteLayer(cellEl) {
     let layer = cellEl.querySelector("[data-lab-sprite-layer]");
     if (!layer) {
@@ -180,6 +286,8 @@
       const img = document.createElement("img");
       img.className = "lab-cell-sprite";
       img.alt = "";
+      img.setAttribute("aria-hidden", "true");
+      attachLabSpriteImgNoDrag(img);
       layer.appendChild(img);
       cellEl.appendChild(layer);
     }
@@ -197,21 +305,25 @@
     el.style.backgroundRepeat = "";
     el.style.transform = "";
     el.removeAttribute("data-lab-sprite");
+    el.removeAttribute("data-r");
+    el.removeAttribute("data-sprite-q");
+    el.removeAttribute("data-sprite-file");
   }
 
   function applyLabCellSprite(el, cell) {
     clearLabCellSprite(el);
     if (!labSpriteBaseUrl || !cell || typeof cell !== "object") return;
-    const fn = labSpriteFilenameFromTileType(cell.tile_type);
+    const fn = labSpriteFilenameForCell(cell);
     if (!fn) return;
     const spec = LAB_SPRITE_REGISTRY[fn];
     if (!spec) return;
     const layer = ensureLabCellSpriteLayer(el);
     const img = layer.querySelector("img.lab-cell-sprite");
     if (!img) return;
+    attachLabSpriteImgNoDrag(img);
     const base = String(labSpriteBaseUrl).replace(/\/?$/, "/");
     img.src = base + fn;
-    const logicalQ = cell.rotation;
+    const logicalQ = normalizeQuarterTurns(cell.rotation);
     const spriteQ = combineSpriteRotation(logicalQ, spec);
     const deg = rotationToDeg(spriteQ);
     if (deg !== 0) {
@@ -220,6 +332,12 @@
       img.style.transform = "";
     }
     layer.setAttribute("data-lab-sprite", fn);
+    const rootDbg = document.getElementById("lab-root");
+    if (labRotationDebugEnabled(rootDbg)) {
+      el.setAttribute("data-r", String(logicalQ));
+      el.setAttribute("data-sprite-q", String(spriteQ));
+      el.setAttribute("data-sprite-file", fn);
+    }
   }
 
   function readJsonScript(id) {
@@ -780,6 +898,7 @@
     const phaseEl = document.getElementById("lab-replay-phase");
     const frameEl = document.getElementById("lab-frame-display");
     const gridEl = document.getElementById("lab-replay-grid");
+    const scrubEl = document.getElementById("lab-timeline-scrub");
     const playBtn = document.getElementById("lab-timeline-play");
     const playIcon = document.getElementById("lab-timeline-play-icon");
     const pauseIcon = document.getElementById("lab-timeline-pause-icon");
@@ -796,8 +915,15 @@
     const gridHudCoord = document.getElementById("lab-replay-grid-hud-coord");
     const gridHudRole = document.getElementById("lab-replay-grid-hud-role");
 
-    let labViewportTransform = { scale: 1, tx: 0, ty: 0 };
+    let labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
     let labPanState = null;
+    /** Fitted cell edge (px) at zoom 1 for server replay; from ``applyReplayGridSizing``. */
+    let replayFitBasePx = 20;
+    /** Measured cell edge (px) at zoom 1 for demo matrix grid. */
+    let demoBaseCellPxAtZoom1 = 20;
+
+    let domCells;
+    let baseClasses;
 
     function applyLabViewportTransform() {
       if (!gridStage) {
@@ -807,16 +933,29 @@
       const tx = snapToDevicePixel(t.tx);
       const ty = snapToDevicePixel(t.ty);
       gridStage.style.transformOrigin = "0 0";
-      gridStage.style.transform = "translate(" + tx + "px, " + ty + "px) scale(" + t.scale + ")";
+      gridStage.style.transform = "translate(" + tx + "px, " + ty + "px)";
     }
 
-    function resetLabViewportTransform() {
-      labViewportTransform = { scale: 1, tx: 0, ty: 0 };
+    function applyLabGridLayoutForZoom() {
+      if (hasServerReplay && replayLayout) {
+        const gw = replayLayout.gridW;
+        const gh = replayLayout.gridH;
+        const zpx = labZoomedCellEdgePx(replayFitBasePx, labViewportTransform.zoom);
+        gridEl.style.gridTemplateColumns = "repeat(" + gw + ", minmax(0, " + zpx + "px))";
+        gridEl.style.gridTemplateRows = "repeat(" + gh + ", minmax(0, " + zpx + "px))";
+      } else if (domCells && domCells.length) {
+        const zpx = labZoomedCellEdgePx(demoBaseCellPxAtZoom1, labViewportTransform.zoom);
+        gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", minmax(0, " + zpx + "px))";
+        gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", minmax(0, " + zpx + "px))";
+      }
       applyLabViewportTransform();
     }
 
-    let domCells;
-    let baseClasses;
+    function resetLabViewportTransform() {
+      labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
+      applyLabGridLayoutForZoom();
+    }
+
     let resolveCellIndex = function (cell) {
       if (!cell || typeof cell !== "object") return null;
       return cellIndexDemo(cell.x, cell.y);
@@ -865,12 +1004,11 @@
         if (!gridViewport || !replayLayout) return;
         const cw = gridViewport.clientWidth - padPx * 2;
         const ch = gridViewport.clientHeight - padPx * 2;
-        const px = Math.max(
+        replayFitBasePx = Math.max(
           minCell,
           Math.min(maxCell, Math.floor(Math.min(cw / replayLayout.gridW, ch / replayLayout.gridH))),
         );
-        gridEl.style.gridTemplateColumns = "repeat(" + replayLayout.gridW + ", minmax(0, " + px + "px))";
-        gridEl.style.gridTemplateRows = "repeat(" + replayLayout.gridH + ", minmax(0, " + px + "px))";
+        applyLabGridLayoutForZoom();
       }
 
       function labReplayViewportOnWindowResize() {
@@ -882,9 +1020,11 @@
       resizeObserver = null;
       replayResizeMode = null;
       if (gridViewport && typeof ResizeObserver !== "undefined") {
+        /* Do not reset zoom/pan here: cell-pixel zoom changes inner layout and can
+         * retrigger the observer; ``applyReplayGridSizing`` already calls
+         * ``applyLabGridLayoutForZoom`` with the current ``labViewportTransform``. */
         resizeObserver = new ResizeObserver(function () {
           applyReplayGridSizing();
-          resetLabViewportTransform();
         });
         resizeObserver.observe(gridViewport);
         replayResizeMode = "observer";
@@ -922,9 +1062,25 @@
       baseClasses = domCells.map(function (el) {
         return String(el.className || "");
       });
+      requestAnimationFrame(function () {
+        const first = domCells[0];
+        if (first && first.offsetWidth > 0) {
+          demoBaseCellPxAtZoom1 = Math.max(4, first.offsetWidth);
+        }
+        applyLabGridLayoutForZoom();
+      });
     }
 
     const rootEl = document.getElementById("lab-root");
+    function syncLabDebugRotationClass() {
+      if (!gridEl) return;
+      if (labRotationDebugEnabled(rootEl)) {
+        gridEl.classList.add("lab-debug-rotation");
+      } else {
+        gridEl.classList.remove("lab-debug-rotation");
+      }
+    }
+    syncLabDebugRotationClass();
     labSpriteBaseUrl =
       rootEl && rootEl.dataset && rootEl.dataset.labSpriteBase != null
         ? String(rootEl.dataset.labSpriteBase)
@@ -980,6 +1136,51 @@
 
     let replayArrayIndex = replaySlotForServerInitialFrame();
 
+    function getMaxTimelineIndex() {
+      if (hasServerReplay) {
+        return Math.max(0, replayFrames.length - 1);
+      }
+      return TOTAL_FRAMES;
+    }
+
+    function getCurrentTimelineIndex() {
+      return hasServerReplay ? replayArrayIndex : frame;
+    }
+
+    function setTimelineIndex(nextIndex, options) {
+      const opt = options || {};
+      const pause = opt.pause !== false;
+      const max = getMaxTimelineIndex();
+      const parsed = parseInt(String(nextIndex), 10);
+      const raw = Number.isFinite(parsed) ? parsed : 0;
+      const clamped = clampNumber(raw, 0, max);
+      if (hasServerReplay) {
+        replayArrayIndex = clamped;
+      } else {
+        frame = clamped;
+      }
+      if (pause) {
+        setPlaying(false);
+      }
+      applyFrame();
+    }
+
+    function syncLabTimelineScrub() {
+      if (!scrubEl) {
+        return;
+      }
+      const max = getMaxTimelineIndex();
+      scrubEl.min = "0";
+      scrubEl.max = String(max);
+      const noFrames =
+        (hasServerReplay && replayFrames.length === 0) || (!hasServerReplay && TOTAL_FRAMES <= 0);
+      scrubEl.disabled = noFrames;
+      if (!noFrames) {
+        const cur = getCurrentTimelineIndex();
+        scrubEl.value = String(clampNumber(cur, 0, max));
+      }
+    }
+
     function getCurrentReplayFrame() {
       if (!hasServerReplay) return null;
       return replayFrames[replayArrayIndex] || null;
@@ -1003,6 +1204,7 @@
               ? "ReplayFrame id " + String(fr.id) + (fr.is_keyframe ? " · keyframe" : "")
               : "—";
         }
+        syncLabTimelineScrub();
         return;
       }
 
@@ -1023,6 +1225,7 @@
       if (gridEl) gridEl.dataset.overlay = overlay;
       const cycle = document.getElementById("lab-computation-cycle");
       if (cycle) cycle.textContent = "computation_cycle #" + String(frame);
+      syncLabTimelineScrub();
     }
 
     function setPlaying(next) {
@@ -1165,6 +1368,12 @@
       }
       applyFrame();
     });
+
+    if (scrubEl) {
+      scrubEl.addEventListener("input", function () {
+        setTimelineIndex(scrubEl.value, { pause: true });
+      });
+    }
 
     document.querySelectorAll("[data-lab-run-id]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -1388,22 +1597,24 @@
         return;
       }
       event.preventDefault();
-      const rect = gridViewport.getBoundingClientRect();
-      const anchorX = event.clientX - rect.left;
-      const anchorY = event.clientY - rect.top;
-      const oldScale = labViewportTransform.scale;
+      const srect = gridStage.getBoundingClientRect();
+      const anchorX = event.clientX - srect.left;
+      const anchorY = event.clientY - srect.top;
+      const oldZoom = labViewportTransform.zoom;
+      const basePx = hasServerReplay && replayLayout ? replayFitBasePx : demoBaseCellPxAtZoom1;
+      const oldCellPx = labZoomedCellEdgePx(basePx, oldZoom);
       const zoomFactor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
-      const nextScale = clampNumber(oldScale * zoomFactor, LAB_VIEWPORT_MIN_SCALE, LAB_VIEWPORT_MAX_SCALE);
-      if (nextScale === oldScale) {
+      const nextZoom = clampNumber(oldZoom * zoomFactor, LAB_VIEWPORT_MIN_SCALE, LAB_VIEWPORT_MAX_SCALE);
+      if (nextZoom === oldZoom) {
         updateLabGridHudFromPoint(event.clientX, event.clientY);
         return;
       }
-      const worldX = (anchorX - labViewportTransform.tx) / oldScale;
-      const worldY = (anchorY - labViewportTransform.ty) / oldScale;
-      labViewportTransform.scale = nextScale;
-      labViewportTransform.tx = anchorX - worldX * nextScale;
-      labViewportTransform.ty = anchorY - worldY * nextScale;
-      applyLabViewportTransform();
+      const newCellPx = labZoomedCellEdgePx(basePx, nextZoom);
+      const ratio = oldCellPx > 0 ? newCellPx / oldCellPx : 1;
+      labViewportTransform.zoom = nextZoom;
+      labViewportTransform.tx = anchorX - (anchorX - labViewportTransform.tx) * ratio;
+      labViewportTransform.ty = anchorY - (anchorY - labViewportTransform.ty) * ratio;
+      applyLabGridLayoutForZoom();
       updateLabGridHudFromPoint(event.clientX, event.clientY);
     }
 
@@ -1470,6 +1681,19 @@
         return;
       }
       labViewportInteractionsBound = true;
+      function preventLabViewportSelectDrag(ev) {
+        ev.preventDefault();
+      }
+      gridViewport.addEventListener("dragstart", preventLabViewportSelectDrag);
+      gridViewport.addEventListener("selectstart", preventLabViewportSelectDrag);
+      if (gridStage) {
+        gridStage.addEventListener("dragstart", preventLabViewportSelectDrag);
+        gridStage.addEventListener("selectstart", preventLabViewportSelectDrag);
+      }
+      if (gridEl) {
+        gridEl.addEventListener("dragstart", preventLabViewportSelectDrag);
+        gridEl.addEventListener("selectstart", preventLabViewportSelectDrag);
+      }
       gridViewport.addEventListener("wheel", handleLabViewportWheel, { passive: false });
       gridViewport.addEventListener("pointerdown", handleLabViewportPointerDown);
       gridViewport.addEventListener("pointermove", handleLabViewportPointerMove);
@@ -1821,7 +2045,7 @@
       replaceLabReplayPayload: replaceLabReplayPayload,
     };
 
-    applyLabViewportTransform();
+    applyLabGridLayoutForZoom();
     updateLabGridHudEmpty();
     bindLabViewportInteractions();
 

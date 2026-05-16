@@ -16,6 +16,51 @@
     background-color: rgb(76 29 149 / 0.5);
   }
 
+  /* Lab replay grid: single source for Tailwind gap-1 (0.25rem) and bundle gap bridges. */
+  #lab-replay-grid {
+    --lab-cell-gap: 0.25rem;
+    gap: var(--lab-cell-gap);
+  }
+
+  /* Same-bundle neighbor bridges (extend into grid gap); color from JS. */
+  .lab-bundle-bridge {
+    position: absolute;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  .lab-bundle-bridge-e {
+    top: 50%;
+    left: 100%;
+    width: var(--lab-cell-gap);
+    height: 3px;
+    transform: translateY(-50%);
+  }
+
+  .lab-bundle-bridge-w {
+    top: 50%;
+    right: 100%;
+    width: var(--lab-cell-gap);
+    height: 3px;
+    transform: translateY(-50%);
+  }
+
+  .lab-bundle-bridge-s {
+    top: 100%;
+    left: 50%;
+    width: 3px;
+    height: var(--lab-cell-gap);
+    transform: translateX(-50%);
+  }
+
+  .lab-bundle-bridge-n {
+    bottom: 100%;
+    left: 50%;
+    width: 3px;
+    height: var(--lab-cell-gap);
+    transform: translateX(-50%);
+  }
+
   .account-allauth-primary-btn {
     display: block;
     width: 100%;

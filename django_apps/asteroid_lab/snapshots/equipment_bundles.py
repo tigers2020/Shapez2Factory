@@ -2,6 +2,8 @@
 
 Ports are **decode-rotation–aligned** sets at R=0, calibrated against a real asteroid
 blueprint (see tests). Two extractors never share an edge even if facing ports match.
+Each ``cells_json`` entry includes ``bundle_edges`` (hull toward non-bundle neighbors) and
+``bundle_links`` (same-bundle grid neighbors for Lab gap bridges).
 """
 
 from __future__ import annotations
@@ -209,6 +211,24 @@ def _bundle_edges_for_cell(
     return "".join(sorted(parts, key=lambda s: _DIR_ORDER.index(s)))
 
 
+def _bundle_links_for_cell(
+    pos: _Pos,
+    bundle_positions: frozenset[_Pos],
+) -> str:
+    """Directions toward a grid neighbor inside the same bundle (Lab gap bridges)."""
+
+    x, y, layer = pos
+    parts: list[str] = []
+    for nx, ny, nl in iter_four_neighbors_map(x, y, layer):
+        npos = (nx, ny, nl)
+        d = direction_from_a_to_b(x, y, nx, ny)
+        if d is None:
+            continue
+        if npos in bundle_positions:
+            parts.append(d)
+    return "".join(sorted(parts, key=lambda s: _DIR_ORDER.index(s)))
+
+
 def build_equipment_bundles(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Group equipment cells by undirected port-compatible adjacency (same layer, same family)."""
 
@@ -259,8 +279,10 @@ def build_equipment_bundles(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for pos in positions:
             row = pos_to_row[pos]
             edges = _bundle_edges_for_cell(pos, bundle_set)
+            links = _bundle_links_for_cell(pos, bundle_set)
             cell_out = dict(row)
             cell_out["bundle_edges"] = edges
+            cell_out["bundle_links"] = links
             cells_json.append(cell_out)
         bundle_blocks.append({"bundle_id": bundle_id, "cells_json": cells_json})
 

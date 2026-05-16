@@ -84,6 +84,26 @@ def test_ports_face_each_other_same_bundle() -> None:
     assert len(bundles[0]["cells_json"]) == 2
     ids = _bundle_ids_by_xy(bundles)
     assert ids[(-1, 0)] == ids[(-1, 1)]
+    by_xy = {(int(c["x"]), int(c["y"])): c for c in bundles[0]["cells_json"]}
+    top, bottom = by_xy[(-1, 0)], by_xy[(-1, 1)]
+    assert "s" in top["bundle_links"]
+    assert "n" in bottom["bundle_links"]
+    assert "s" not in top["bundle_edges"]
+    assert "n" not in bottom["bundle_edges"]
+    assert set(top["bundle_edges"]).isdisjoint(set(top["bundle_links"]))
+    assert set(bottom["bundle_edges"]).isdisjoint(set(bottom["bundle_links"]))
+
+
+def test_bundle_edges_and_links_disjoint_on_shape_blueprint() -> None:
+    """Every equipment cell: hull edges vs interior links are disjoint (server contract)."""
+
+    shape_rows = _shape_rows_from_copy(_USER_BLUEPRINT_COPY)
+    bundles = build_equipment_bundles(shape_rows)
+    for block in bundles:
+        for c in block["cells_json"]:
+            e = str(c.get("bundle_edges") or "")
+            ln = str(c.get("bundle_links") or "")
+            assert set(e).isdisjoint(set(ln))
 
 
 def test_adjacent_extractors_never_merge() -> None:
@@ -146,7 +166,9 @@ def test_output_schema_bundle_edges() -> None:
     assert len(bundles) == 1
     for c in bundles[0]["cells_json"]:
         assert "bundle_edges" in c
+        assert "bundle_links" in c
         assert isinstance(c["bundle_edges"], str)
+        assert isinstance(c["bundle_links"], str)
     joined = "".join(c["bundle_edges"] for c in bundles[0]["cells_json"])
     assert "n" in joined or "e" in joined or "s" in joined or "w" in joined
 

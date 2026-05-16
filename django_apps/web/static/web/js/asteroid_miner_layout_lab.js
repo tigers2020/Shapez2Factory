@@ -12,9 +12,9 @@
   const GRID_W = 23;
   const GRID_H = 15;
 
-  /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. */
+  /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. ``relative`` anchors the sprite layer. */
   const LAB_CELL_BASE =
-    "lab-cell shrink-0 overflow-hidden rounded-[5px] border bg-slate-950 border-slate-900";
+    "lab-cell relative shrink-0 overflow-visible rounded-[5px] border bg-slate-950 border-slate-900";
 
   /** Filenames under ``web/assets/sprites/`` (whitelist for ``tile_type`` → URL). */
   const LAB_SPRITE_KNOWN = new Set([
@@ -36,9 +36,13 @@
    * topology and port dirs use that raw ``R`` (no extra offset).
    *
    * Lab SVG assets are authored with default "forward" toward screen-up; ``LAB_SPRITE_ROTATION_OFFSET_Q``
-   * is **CSS sprite art only** — it does not change decode or ``equipment_bundles`` from the API.
+   * applies on the **sprite child layer only** (parent cell keeps bundle ``border-*`` aligned to map n/e/s/w).
    */
   const LAB_SPRITE_ROTATION_OFFSET_Q = 1;
+
+  /** Fills cell under borders; background + ``transform`` live here, not on ``.lab-cell``. */
+  const LAB_CELL_SPRITE_LAYER_CLASS =
+    "lab-cell-sprite-layer pointer-events-none absolute inset-0 z-[1] overflow-hidden rounded-[5px] bg-center bg-no-repeat";
 
   /** Set in ``init`` from ``#lab-root`` ``data-lab-sprite-base`` (Django ``{% static %}``). */
   let labSpriteBaseUrl = "";
@@ -101,11 +105,28 @@
     } else if (t === "Layout_FluidMinerExtension") {
       name = "layout_fluid_miner_extension.svg";
     }
+    // Shape miners: add ``layout_shape_miner*.svg`` under ``web/assets/sprites/`` and whitelist in ``LAB_SPRITE_KNOWN``.
     if (!name || !LAB_SPRITE_KNOWN.has(name)) return null;
     return name;
   }
 
+  function ensureLabCellSpriteLayer(cellEl) {
+    let layer = cellEl.querySelector("[data-lab-sprite-layer]");
+    if (!layer) {
+      layer = document.createElement("div");
+      layer.setAttribute("data-lab-sprite-layer", "1");
+      layer.setAttribute("aria-hidden", "true");
+      layer.className = LAB_CELL_SPRITE_LAYER_CLASS;
+      cellEl.appendChild(layer);
+    }
+    return layer;
+  }
+
   function clearLabCellSprite(el) {
+    const layer = el.querySelector("[data-lab-sprite-layer]");
+    if (layer) {
+      layer.remove();
+    }
     el.style.backgroundImage = "";
     el.style.backgroundSize = "";
     el.style.backgroundPosition = "";
@@ -119,20 +140,23 @@
     if (!labSpriteBaseUrl || !cell || typeof cell !== "object") return;
     const fn = labSpriteFilenameFromTileType(cell.tile_type);
     if (!fn) return;
+    const layer = ensureLabCellSpriteLayer(el);
     const base = String(labSpriteBaseUrl).replace(/\/?$/, "/");
     const url = base + fn;
-    el.style.backgroundImage = 'url("' + url.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '")';
-    el.style.backgroundSize = "contain";
-    el.style.backgroundPosition = "center";
-    el.style.backgroundRepeat = "no-repeat";
+    layer.style.backgroundImage = 'url("' + url.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '")';
+    layer.style.backgroundSize = "contain";
+    layer.style.backgroundPosition = "center";
+    layer.style.backgroundRepeat = "no-repeat";
     const rot = Number(cell.rotation);
     const q = Number.isFinite(rot) ? ((Math.trunc(rot) % 4) + 4) % 4 : 0;
     const displayQ = (q + LAB_SPRITE_ROTATION_OFFSET_Q) % 4;
     // Blueprint R: quarter-turns from East (0), clockwise. CSS rotate(+) is clockwise on screen.
     if (displayQ !== 0) {
-      el.style.transform = "rotate(" + String(displayQ * 90) + "deg)";
+      layer.style.transform = "rotate(" + String(displayQ * 90) + "deg)";
+    } else {
+      layer.style.transform = "";
     }
-    el.setAttribute("data-lab-sprite", fn);
+    layer.setAttribute("data-lab-sprite", fn);
   }
 
   function readJsonScript(id) {
@@ -491,6 +515,24 @@
     "rgba(125, 211, 252, 0.14)",
   ];
 
+  /** Solid bridge bars (paired with ``BUNDLE_EDGE_PALETTE`` / inset fill). */
+  var BUNDLE_BRIDGE_HEX = [
+    "#fde047",
+    "#bef264",
+    "#67e8f9",
+    "#f0abfc",
+    "#fdba74",
+    "#7dd3fc",
+  ];
+
+  function clearLabCellBundleBridges(el) {
+    if (!el || !el.querySelectorAll) return;
+    var bridges = el.querySelectorAll("[data-lab-bundle-bridge]");
+    for (var i = 0; i < bridges.length; i++) {
+      bridges[i].remove();
+    }
+  }
+
   function cellOverlayJsonFromFrame(frame) {
     if (!frame || typeof frame !== "object") return null;
     var top = frame.cell_overlay_json;
@@ -502,7 +544,7 @@
     return null;
   }
 
-  /** ``cell_overlay_json`` shape: ``{ equipment_bundles: [ { bundle_id, cells_json } ] }``. */
+  /** ``cell_overlay_json``: ``equipment_bundles[].cells_json`` with ``bundle_edges`` (hull) + ``bundle_links`` (gap bridges). */
   function applyEquipmentBundleGroupVisualsFromOverlay(ov, domCells, resolveCellIndex) {
     if (!ov || typeof ov !== "object") return;
     var bundles = ov.equipment_bundles;
@@ -523,6 +565,7 @@
         var idx = resolveCellIndex(cell);
         if (idx == null || idx < 0 || idx >= domCells.length) continue;
         var el = domCells[idx];
+        clearLabCellBundleBridges(el);
         el.style.boxShadow = "inset 0 0 0 9999px " + fillRgba;
         var edges = cell.bundle_edges != null ? String(cell.bundle_edges) : "";
         var parts = [];
@@ -532,6 +575,20 @@
         if (edges.indexOf("w") >= 0) parts.push(colors.w);
         if (parts.length) {
           el.className = el.className + " " + parts.join(" ");
+        }
+        var linkStr = cell.bundle_links != null ? String(cell.bundle_links) : "";
+        if (linkStr) {
+          var hex = BUNDLE_BRIDGE_HEX[pi % BUNDLE_BRIDGE_HEX.length];
+          for (var li = 0; li < linkStr.length; li++) {
+            var d = linkStr.charAt(li);
+            if (d !== "n" && d !== "e" && d !== "s" && d !== "w") continue;
+            var br = document.createElement("div");
+            br.setAttribute("data-lab-bundle-bridge", "1");
+            br.setAttribute("aria-hidden", "true");
+            br.className = "lab-bundle-bridge lab-bundle-bridge-" + d;
+            br.style.backgroundColor = hex;
+            el.appendChild(br);
+          }
         }
       }
     }
@@ -589,6 +646,7 @@
 
   function resetGridBase(domCells, baseClasses) {
     for (let i = 0; i < domCells.length; i++) {
+      clearLabCellBundleBridges(domCells[i]);
       domCells[i].className = baseClasses[i] || "";
       domCells[i].style.boxShadow = "";
       domCells[i].removeAttribute("data-cell-kind");

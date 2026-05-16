@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.web.services import asteroid_lab_page_context as alc
 
 
@@ -124,10 +125,18 @@ def test_lab_page_context_after_pipeline_selects_non_empty_track() -> None:
     dto = project_service.create_project_from_copy_code(code, source_label="ctx-pipe")
     build_initial_replay_for_map_input(dto.map_input_id)
 
-    ctx = alc.lab_page_context()
+    ctx = alc.lab_page_context(project_id=dto.project_id)
     assert ctx["has_replay_frames"] is True
-    assert ctx["total_frames"] == 5
-    assert len(ctx["lab_replay_frames_json"]) == 5
+    frames = ctx["lab_replay_frames_json"]
+    tid = ctx["lab_replay_track_id"]
+    assert tid is not None
+    assert len(frames) == m.ReplayFrame.objects.filter(replay_track_id=tid).count()
+    assert len(frames) >= 6
+    assert ctx["total_frames"] == len(frames)
+    assert frames[0]["event_type"] == et.EVENT_TYPE_DECODE_RAW_LOADED
+    assert frames[0]["frame_key"] == "step0_decode_raw"
+    assert frames[1]["event_type"] == et.EVENT_TYPE_DECODE_NORMALIZED
+    assert frames[1]["frame_key"] == "step0_decode"
 
 
 @pytest.mark.django_db
@@ -208,6 +217,8 @@ def test_lab_js_replay_wiring_smoke() -> None:
     )
     js = js_path.read_text(encoding="utf-8")
     assert "LAB_SPRITE_KNOWN" in js
+    assert "LAB_SPRITE_ROTATION_OFFSET_Q" in js
+    assert "displayQ" in js
     assert "function renderReplayFrame" in js
     assert "getCurrentReplayFrame" in js
     assert "lab-replay-frames-data" in js

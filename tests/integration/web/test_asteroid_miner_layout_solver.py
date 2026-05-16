@@ -73,10 +73,10 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     assert m.AsteroidProject.objects.count() == 1
     proj = m.AsteroidProject.objects.get()
     assert f"/asteroid-miner-layout/p/{proj.slug}/" in response.request["PATH_INFO"]
-    assert m.ReplayFrame.objects.count() >= 5
+    assert m.ReplayFrame.objects.count() >= 6
     ctx = alc.lab_page_context()
     assert ctx["has_replay_frames"] is True
-    assert ctx["total_frames"] >= 5
+    assert ctx["total_frames"] >= 6
     assert 'id="lab-replay-frames-data"' in response.content.decode()
 
 
@@ -165,7 +165,11 @@ def test_asteroid_miner_layout_post_same_copy_dedupes_project() -> None:
     client.post(create_url, {"copy_code": copy}, follow=True)
 
     assert m.AsteroidProject.objects.count() == 1
-    assert m.ReplayFrame.objects.count() == 5
+    proj = m.AsteroidProject.objects.get()
+    frames = m.ReplayFrame.objects.filter(replay_track__project_id=proj.pk).order_by("frame_index")
+    assert frames.count() >= 6
+    assert frames[0].frame_key == "step0_decode_raw"
+    assert frames[1].frame_key == "step0_decode"
 
 
 def test_asteroid_miner_layout_post_project_slug_adds_map_input_to_same_project() -> None:

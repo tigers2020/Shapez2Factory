@@ -65,28 +65,49 @@ def test_record_decoded_snapshot_frames_single_full_map_decode(
     _, inp = project_and_input
     snap = css.build_decoded_blueprint_snapshot_from_input(inp.id)
     frames = css.record_decoded_snapshot_frames(replay_track.id, snap)
-    assert len(frames) == 1
+    assert len(frames) == 2
     assert frames[0].frame_index == 0
+    assert frames[1].frame_index == 1
 
     rows = list(m.ReplayFrame.objects.filter(replay_track=replay_track).order_by("frame_index"))
-    assert len(rows) == 1
-    assert rows[0].title == "Decoded blueprint"
-    assert rows[0].frame_payload["event_type"] == et.EVENT_TYPE_DECODE_NORMALIZED
-    assert rows[0].frame_payload["event_key"] == "step0_decode"
-    fm = rows[0].frame_payload.get("full_map")
+    assert len(rows) == 2
+    raw_row, norm_row = rows[0], rows[1]
+    assert raw_row.frame_key == "step0_decode_raw"
+    assert raw_row.title == "Decoded blueprint (raw)"
+    assert raw_row.frame_payload["event_type"] == et.EVENT_TYPE_DECODE_RAW_LOADED
+    assert raw_row.frame_payload["event_key"] == "step0_decode_raw"
+    fm_raw = raw_row.frame_payload.get("full_map")
+    assert isinstance(fm_raw, list) and len(fm_raw) == 2
+    kinds_raw = {c["cell_kind"] for c in fm_raw}
+    assert "space_pipe" in kinds_raw
+    assert "space_belt" in kinds_raw
+    diff_raw = raw_row.frame_payload.get("diff") or {}
+    assert diff_raw == {"added": [], "removed": [], "changed": []}
+    cells_raw = raw_row.cell_overlay_json.get("cells")
+    assert isinstance(cells_raw, list) and len(cells_raw) == 2
+    assert raw_row.metric_snapshot_json.get("cell_kind_counts") == {
+        "space_pipe": 1,
+        "space_belt": 1,
+    }
+
+    assert norm_row.frame_key == "step0_decode"
+    assert norm_row.title == "Decoded blueprint"
+    assert norm_row.frame_payload["event_type"] == et.EVENT_TYPE_DECODE_NORMALIZED
+    assert norm_row.frame_payload["event_key"] == "step0_decode"
+    fm = norm_row.frame_payload.get("full_map")
     assert isinstance(fm, list) and len(fm) == 0
     kinds = {c["cell_kind"] for c in fm}
     assert "space_pipe" not in kinds
     assert "space_belt" not in kinds
-    diff = rows[0].frame_payload.get("diff") or {}
+    diff = norm_row.frame_payload.get("diff") or {}
     removed = diff.get("removed") or []
     assert any(c.get("cell_kind") == "space_pipe" for c in removed)
     assert any(c.get("cell_kind") == "space_belt" for c in removed)
     assert diff.get("added") == []
     assert diff.get("changed") == []
-    cells = rows[0].cell_overlay_json.get("cells")
+    cells = norm_row.cell_overlay_json.get("cells")
     assert isinstance(cells, list) and len(cells) == 0
-    assert rows[0].metric_snapshot_json.get("cell_kind_counts") == {}
+    assert norm_row.metric_snapshot_json.get("cell_kind_counts") == {}
 
 
 @pytest.mark.django_db
@@ -101,13 +122,15 @@ def test_record_step0_decode_matches_step1_transport_full_map_empty_transport_di
     els.record_existing_layout_inspection_frames(replay_track.id, ins)
 
     rows = list(m.ReplayFrame.objects.filter(replay_track=replay_track).order_by("frame_index"))
-    assert len(rows) >= 5
+    assert len(rows) >= 6
     p0 = rows[0].frame_payload or {}
     p1 = rows[1].frame_payload or {}
-    assert p0.get("event_key") == "step0_decode"
-    assert p1.get("event_key") == "step1_cleanup_transport"
-    assert p0.get("full_map") == p1.get("full_map")
-    assert p1.get("diff") == {"added": [], "removed": [], "changed": []}
+    p2 = rows[2].frame_payload or {}
+    assert p0.get("event_key") == "step0_decode_raw"
+    assert p1.get("event_key") == "step0_decode"
+    assert p2.get("event_key") == "step1_cleanup_transport"
+    assert p1.get("full_map") == p2.get("full_map")
+    assert p2.get("diff") == {"added": [], "removed": [], "changed": []}
 
 
 @pytest.mark.django_db
@@ -118,7 +141,7 @@ def test_no_reconstruction_event_types_emitted(
     _, inp = project_and_input
     snap = css.build_decoded_blueprint_snapshot_from_input(inp.id)
     css.record_decoded_snapshot_frames(replay_track.id, snap)
-    allowed = {et.EVENT_TYPE_DECODE_NORMALIZED}
+    allowed = {et.EVENT_TYPE_DECODE_RAW_LOADED, et.EVENT_TYPE_DECODE_NORMALIZED}
     for row in m.ReplayFrame.objects.filter(replay_track=replay_track).order_by("frame_index"):
         etype = (row.frame_payload or {}).get("event_type")
         assert etype in allowed

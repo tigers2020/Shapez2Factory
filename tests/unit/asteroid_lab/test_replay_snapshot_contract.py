@@ -52,16 +52,27 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     dto = project_service.create_project_from_copy_code(code, source_label="snap-contract")
     result = build_initial_replay_for_map_input(dto.map_input_id)
     assert result.status == "ok"
-    assert result.replay_frame_count >= 5
+    assert result.replay_frame_count >= 6
 
     rows = list(
         m.ReplayFrame.objects.filter(replay_track_id=result.replay_track_id).order_by(
             "frame_index", "id"
         )
     )
-    assert len(rows) >= 5
+    assert len(rows) >= 6
 
-    decode_row = rows[0]
+    raw_row = rows[0]
+    assert raw_row.frame_payload.get("event_type") == et.EVENT_TYPE_DECODE_RAW_LOADED
+    assert raw_row.frame_payload.get("event_key") == "step0_decode_raw"
+    fm_raw = raw_row.frame_payload.get("full_map")
+    assert isinstance(fm_raw, list) and len(fm_raw) == 11
+    kinds_raw = {c["cell_kind"] for c in fm_raw}
+    assert "space_pipe" in kinds_raw
+    assert "fluid_miner" in kinds_raw
+    diff_raw = raw_row.frame_payload.get("diff") or {}
+    assert diff_raw == {"added": [], "removed": [], "changed": []}
+
+    decode_row = rows[1]
     assert decode_row.frame_payload.get("event_type") == et.EVENT_TYPE_DECODE_NORMALIZED
     fm0 = decode_row.frame_payload.get("full_map")
     assert isinstance(fm0, list) and len(fm0) == 10
@@ -74,7 +85,7 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     removed0 = diff0.get("removed") or []
     assert any(c.get("cell_kind") == "space_pipe" for c in removed0)
 
-    transport_row = rows[1]
+    transport_row = rows[2]
     assert (
         transport_row.frame_payload.get("event_type")
         == et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT
@@ -86,7 +97,7 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     diff1 = transport_row.frame_payload.get("diff") or {}
     assert diff1 == {"added": [], "removed": [], "changed": []}
 
-    extractor_row = rows[2]
+    extractor_row = rows[3]
     fm2 = extractor_row.frame_payload.get("full_map")
     assert isinstance(fm2, list) and len(fm2) == 10
     assert all(c["cell_kind"] != "fluid_miner" for c in fm2)
@@ -100,7 +111,7 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
         for ch in changed2
     )
 
-    extension_row = rows[3]
+    extension_row = rows[4]
     fm3 = extension_row.frame_payload.get("full_map")
     assert isinstance(fm3, list) and len(fm3) == 10
     assert all(c["cell_kind"] != "fluid_miner_extension" for c in fm3)
@@ -125,9 +136,7 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     assert complete_payload.get("diff") == final_payload.get("diff")
     assert complete_payload.get("is_decision_point") is False
 
-    assert (
-        final_payload.get("event_type") == et.EVENT_TYPE_RECONSTRUCTION_MINEABLE_FINALIZED
-    )
+    assert final_payload.get("event_type") == et.EVENT_TYPE_RECONSTRUCTION_MINEABLE_FINALIZED
     fm4 = final_payload.get("full_map")
     assert isinstance(fm4, list)
     assert all(c.get("cell_kind") != "internal_void" for c in fm4)

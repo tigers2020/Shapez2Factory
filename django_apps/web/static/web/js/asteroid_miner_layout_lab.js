@@ -31,6 +31,13 @@
     "space_pipe_y_merger.svg",
   ]);
 
+  /**
+   * Lab SVG sprites are drawn with default "forward" toward screen-up (north in blueprint terms).
+   * Blueprint ``R`` is still quarter-turns from East (0), clockwise; add this many quarter-turns
+   * for CSS ``rotate`` so art matches raw ``R``.
+   */
+  const LAB_SPRITE_ROTATION_OFFSET_Q = 1;
+
   /** Set in ``init`` from ``#lab-root`` ``data-lab-sprite-base`` (Django ``{% static %}``). */
   let labSpriteBaseUrl = "";
 
@@ -118,8 +125,10 @@
     el.style.backgroundRepeat = "no-repeat";
     const rot = Number(cell.rotation);
     const q = Number.isFinite(rot) ? ((Math.trunc(rot) % 4) + 4) % 4 : 0;
-    if (q !== 0) {
-      el.style.transform = "rotate(" + String(q * 90) + "deg)";
+    const displayQ = (q + LAB_SPRITE_ROTATION_OFFSET_Q) % 4;
+    // Blueprint R: quarter-turns from East (0), clockwise. CSS rotate(+) is clockwise on screen.
+    if (displayQ !== 0) {
+      el.style.transform = "rotate(" + String(displayQ * 90) + "deg)";
     }
     el.setAttribute("data-lab-sprite", fn);
   }

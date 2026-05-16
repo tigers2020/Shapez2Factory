@@ -95,6 +95,8 @@
   const LAB_SPRITE_KNOWN = new Set([
     "layout_fluid_miner.svg",
     "layout_fluid_miner_extension.svg",
+    "layout_shape_miner.svg",
+    "layout_shape_miner_extension.svg",
     "space_pipe_forward.svg",
     "space_pipe_left_fwd_merger.svg",
     "space_pipe_left_turn.svg",
@@ -117,6 +119,16 @@
       offsetQ: 0,
     }),
     "layout_fluid_miner_extension.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "layout_shape_miner.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "layout_shape_miner_extension.svg": Object.freeze({
       nativeFacing: DIR.EAST,
       rotationCombine: "add",
       offsetQ: 0,
@@ -185,6 +197,8 @@
   const LAB_SPRITE_CELL_KIND_FALLBACK = Object.freeze({
     fluid_miner: "layout_fluid_miner.svg",
     fluid_miner_extension: "layout_fluid_miner_extension.svg",
+    shape_miner: "layout_shape_miner.svg",
+    shape_miner_extension: "layout_shape_miner_extension.svg",
   });
 
   /** Sprite stack container; styles in ``assets/css/input.css`` (``.lab-cell-sprite-layer``). */
@@ -200,7 +214,8 @@
   const REPLAY_GRID_EDGE_PADDING = 5;
 
   const LAB_VIEWPORT_MIN_SCALE = 0.35;
-  const LAB_VIEWPORT_MAX_SCALE = 3.5;
+  /** Upper bound for wheel cell-pixel zoom (base cell px × zoom). */
+  const LAB_VIEWPORT_MAX_SCALE = 6;
   const LAB_VIEWPORT_DRAG_THRESHOLD_PX = 6;
 
   let labViewportInteractionsBound = false;

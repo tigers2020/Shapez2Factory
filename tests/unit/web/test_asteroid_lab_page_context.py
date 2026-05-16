@@ -215,3 +215,5 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "replayPhaseForFrame" in js
     assert "updateFrameInfo" in js
     assert "replaceLabReplayPayload" in js
+    assert "bootStartedWithServerReplay" not in js
+    assert "syncProjectSlugHiddenFromRedirect" in js

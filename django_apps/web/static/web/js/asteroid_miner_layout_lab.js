@@ -452,7 +452,6 @@
       {},
       uiInitial && typeof uiInitial === "object" ? uiInitial : {},
     );
-    const bootStartedWithServerReplay = hasServerReplay;
 
     const gridViewport = document.getElementById("lab-replay-grid-viewport");
     const cells = document.querySelectorAll("[data-lab-cell-index]");
@@ -574,7 +573,7 @@
       return Number.isNaN(n) ? fallback : n;
     };
     const datasetFrame = parseFrame(rootEl?.dataset.labInitialFrame, 0);
-    const baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
+    let baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
     let baselineBlueprint =
       typeof initialFromServer.blueprintCode === "string"
         ? initialFromServer.blueprintCode
@@ -839,14 +838,11 @@
       if (payload.lab_ui_initial && typeof payload.lab_ui_initial === "object") {
         Object.assign(initialFromServer, payload.lab_ui_initial);
       }
+      baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
       replayFrames = next;
       hasServerReplay = replayFrames.length > 0;
-      if (!hasServerReplay || !bootStartedWithServerReplay) {
-        window.location.assign(redirectTo || window.location.href);
-        return;
-      }
-      if (!payload.replay_ok && next.length === 0) {
+      if (!hasServerReplay) {
         window.location.assign(redirectTo || window.location.href);
         return;
       }
@@ -855,6 +851,26 @@
       replayArrayIndex = replaySlotForServerInitialFrame();
       setPlaying(false);
       applyFrame();
+    }
+
+    function syncProjectSlugHiddenFromRedirect(form, redirectUrl) {
+      if (!form || !redirectUrl) return;
+      try {
+        const u = new URL(redirectUrl, window.location.origin);
+        const m = u.pathname.match(/\/asteroid-miner-layout\/p\/([^/]+)\/?/);
+        if (!m) return;
+        const slug = decodeURIComponent(m[1]);
+        let hi = form.querySelector('input[name="project_slug"]');
+        if (!hi) {
+          hi = document.createElement("input");
+          hi.type = "hidden";
+          hi.name = "project_slug";
+          form.appendChild(hi);
+        }
+        hi.value = slug;
+      } catch {
+        /* ignore */
+      }
     }
 
     const importForm = document.getElementById("lab-import-project-form");
@@ -893,7 +909,21 @@
               replaceLabReplayPayload(data);
               return;
             }
-            window.location.assign(data.redirect);
+            if (data.redirect) {
+              if (typeof history.pushState === "function") {
+                try {
+                  history.pushState(null, "", data.redirect);
+                  syncProjectSlugHiddenFromRedirect(importForm, data.redirect);
+                } catch {
+                  window.location.assign(data.redirect);
+                  return;
+                }
+              } else {
+                window.location.assign(data.redirect);
+                return;
+              }
+            }
+            replaceLabReplayPayload(data);
           })
           .catch(function () {
             importForm.submit();

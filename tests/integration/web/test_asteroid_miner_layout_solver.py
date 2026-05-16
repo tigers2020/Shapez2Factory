@@ -108,6 +108,78 @@ def test_asteroid_miner_layout_post_project_slug_adds_map_input_to_same_project(
     assert copy2.encode() in page.content
 
 
+def test_asteroid_miner_layout_create_json_accept_existing_project() -> None:
+    """Lab form fetch() uses Accept: application/json; stay on slug with new map input + frames."""
+    client = Client()
+    copy1 = _unique_valid_copy()
+    copy2 = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy1}, follow=True)
+    proj = m.AsteroidProject.objects.get()
+    slug = proj.slug
+    n_inputs = m.AsteroidMapInput.objects.filter(project_id=proj.pk).count()
+
+    response = client.post(
+        create_url,
+        {"copy_code": copy2, "project_slug": slug},
+        HTTP_ACCEPT="application/json",
+    )
+
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    assert data["in_place"] is True
+    assert data["blueprint_code"] == copy2
+    assert len(data.get("lab_replay_frames_json") or []) >= 1
+    assert data["redirect"] == reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})
+    assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == n_inputs + 1
+
+
+def test_asteroid_miner_layout_post_rebuilds_replay_when_track_had_no_frames() -> None:
+    """Orphan SolverRun+ReplayTrack (0 frames) must recover on re-POST (force retry in view)."""
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    proj = m.AsteroidProject.objects.get()
+    tid = m.ReplayTrack.objects.filter(project=proj).values_list("id", flat=True).first()
+    assert tid is not None
+    m.ReplayFrame.objects.filter(replay_track_id=tid).delete()
+    assert m.ReplayFrame.objects.filter(replay_track_id=tid).count() == 0
+
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    assert data["replay_ok"] is True
+    assert len(data.get("lab_replay_frames_json") or []) >= 5
+
+
+def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    assert data["in_place"] is False
+    proj = m.AsteroidProject.objects.get()
+    expected = reverse("web:asteroid-miner-layout-project", kwargs={"slug": proj.slug})
+    assert data["redirect"] == expected
+    assert len(data.get("lab_replay_frames_json") or []) >= 5
+
+
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:
     client = Client()
     create_url = reverse("web:asteroid-miner-layout-projects-create")

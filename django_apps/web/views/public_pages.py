@@ -341,6 +341,12 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             )
         if inp is not None:
             result = build_initial_replay_for_map_input(int(inp.pk))
+            if (
+                result.status != "ok"
+                and result.error_message
+                and "force=True" in result.error_message
+            ):
+                result = build_initial_replay_for_map_input(int(inp.pk), force=True)
             if result.status != "ok" and result.error_message:
                 messages.error(request, result.error_message)
     redirect_url = reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})

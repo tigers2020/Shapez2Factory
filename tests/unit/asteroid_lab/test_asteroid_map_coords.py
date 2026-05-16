@@ -42,6 +42,10 @@ def test_iter_four_neighbors_skips_x_zero() -> None:
     assert (0, 0, None) not in n
 
 
+def test_iter_four_neighbors_at_world_x_zero_is_empty() -> None:
+    assert list(iter_four_neighbors_map(0, 0, None)) == []
+
+
 def test_transport_bfs_connects_across_seam() -> None:
     decoded = {
         "V": 1,

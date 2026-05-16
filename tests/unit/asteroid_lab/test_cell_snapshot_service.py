@@ -9,6 +9,7 @@ import pytest
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.asteroid_lab.services import cell_snapshot_service as css
+from django_apps.asteroid_lab.services import existing_layout_service as els
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
@@ -73,12 +74,40 @@ def test_record_decoded_snapshot_frames_single_full_map_decode(
     assert rows[0].frame_payload["event_type"] == et.EVENT_TYPE_DECODE_NORMALIZED
     assert rows[0].frame_payload["event_key"] == "step0_decode"
     fm = rows[0].frame_payload.get("full_map")
-    assert isinstance(fm, list) and len(fm) == 2
-    assert {c["cell_kind"] for c in fm} == {"space_pipe", "space_belt"}
-    assert rows[0].frame_payload.get("diff") == {"added": [], "removed": [], "changed": []}
+    assert isinstance(fm, list) and len(fm) == 0
+    kinds = {c["cell_kind"] for c in fm}
+    assert "space_pipe" not in kinds
+    assert "space_belt" not in kinds
+    diff = rows[0].frame_payload.get("diff") or {}
+    removed = diff.get("removed") or []
+    assert any(c.get("cell_kind") == "space_pipe" for c in removed)
+    assert any(c.get("cell_kind") == "space_belt" for c in removed)
+    assert diff.get("added") == []
+    assert diff.get("changed") == []
     cells = rows[0].cell_overlay_json.get("cells")
-    assert isinstance(cells, list) and len(cells) == 2
-    assert rows[0].metric_snapshot_json.get("cell_kind_counts") == snap.cell_kind_counts_json
+    assert isinstance(cells, list) and len(cells) == 0
+    assert rows[0].metric_snapshot_json.get("cell_kind_counts") == {}
+
+
+@pytest.mark.django_db
+def test_record_step0_decode_matches_step1_transport_full_map_empty_transport_diff(
+    project_and_input: tuple[m.AsteroidProject, m.AsteroidMapInput],
+    replay_track: m.ReplayTrack,
+) -> None:
+    _, inp = project_and_input
+    snap = css.build_decoded_blueprint_snapshot_from_input(inp.id)
+    ins = els.build_existing_layout_inspection_from_input(inp.id)
+    css.record_decoded_snapshot_frames(replay_track.id, snap)
+    els.record_existing_layout_inspection_frames(replay_track.id, ins)
+
+    rows = list(m.ReplayFrame.objects.filter(replay_track=replay_track).order_by("frame_index"))
+    assert len(rows) == 5
+    p0 = rows[0].frame_payload or {}
+    p1 = rows[1].frame_payload or {}
+    assert p0.get("event_key") == "step0_decode"
+    assert p1.get("event_key") == "step1_cleanup_transport"
+    assert p0.get("full_map") == p1.get("full_map")
+    assert p1.get("diff") == {"added": [], "removed": [], "changed": []}
 
 
 @pytest.mark.django_db

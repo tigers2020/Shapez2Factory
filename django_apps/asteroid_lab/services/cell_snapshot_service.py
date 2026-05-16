@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import asdict
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay.event_types import EVENT_TYPE_DECODE_NORMALIZED
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
+    build_cleanup_and_reconstruction_rows,
     decode_snapshot_summary,
-    rows_from_cells,
+    diff_maps,
+    snapshot_summary_from_rows,
 )
 from django_apps.asteroid_lab.services.dto import (
     DecodedBlueprintSnapshotDTO,
@@ -59,20 +62,25 @@ def record_decoded_snapshot_frames(
     track_id: int,
     snapshot: DecodedBlueprintSnapshotDTO,
 ) -> list[SnapshotFrameDTO]:
-    """Append one decode replay frame: full decoded blueprint map snapshot (UI-only artifact)."""
+    """Append one decode replay frame: transport-stripped map for solver-facing UI (artifact)."""
 
     recorder = ReplayRecorder(int(track_id))
     bv = snapshot.binary_version
-    full_map = rows_from_cells(snapshot.cells)
+    row_decode, row_transport, *_ = build_cleanup_and_reconstruction_rows(snapshot)
+    full_map = list(row_transport)
+    diff = diff_maps(row_decode, row_transport)
+    raw_decode = decode_snapshot_summary(snapshot)
+    frame_summary = snapshot_summary_from_rows(row_transport)
     norm_metrics: dict[str, Any] = {
         "binary_version": bv,
         "blueprint_type": snapshot.blueprint_type,
         "entry_count": snapshot.entry_count,
-        "cell_kind_counts": dict(snapshot.cell_kind_counts_json),
-        "transport_kind_counts": dict(snapshot.transport_kind_counts_json),
+        "cell_kind_counts": dict(frame_summary["cell_kind_counts"]),
+        "transport_kind_counts": dict(
+            Counter(str(r.get("transport_kind") or "none") for r in row_transport)
+        ),
         "bbox": dict(snapshot.bbox_json),
     }
-    frame_summary = decode_snapshot_summary(snapshot)
 
     ev_decode = SnapshotEventDTO(
         event_key="step0_decode",
@@ -80,13 +88,13 @@ def record_decoded_snapshot_frames(
         phase_step="normalized",
         event_type=EVENT_TYPE_DECODE_NORMALIZED,
         title="Decoded blueprint",
-        description="Full map after copy decode (all top-level BP.Entries).",
-        after_state_json={"decode": frame_summary},
+        description="Copy decode with existing transport stripped for solver-facing map.",
+        after_state_json={"decode": raw_decode},
         cell_overlay_json={"cells": full_map},
         metrics_json=norm_metrics,
         is_decision_point=True,
-        full_map=list(full_map),
-        diff={"added": [], "removed": [], "changed": []},
+        full_map=full_map,
+        diff=diff,
         summary=frame_summary,
     )
 

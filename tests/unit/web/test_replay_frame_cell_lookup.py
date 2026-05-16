@@ -75,6 +75,33 @@ def test_lookup_full_map_empty_cell_returns_none() -> None:
     assert cell is None
 
 
+def test_lookup_removed_transport_coord_has_no_full_map_source() -> None:
+    """step0-style frame: pipe only in diff.removed, not in full_map — no sources['full_map']."""
+    ser = {
+        "full_map": [{"x": 1, "y": 0, "cell_kind": "fluid_miner", "layer": None}],
+        "diff": {
+            "removed": [
+                {
+                    "x": 2,
+                    "y": 0,
+                    "layer": None,
+                    "cell_kind": "space_pipe",
+                    "tile_type": "SpacePipe_Forward",
+                    "transport_kind": "fluid_pipe",
+                },
+            ],
+            "added": [],
+            "changed": [],
+        },
+        "cell_overlay_json": {},
+    }
+    cell, sources = lookup_cell_in_serialized_frame(ser, 2, 0)
+    assert "full_map" not in sources
+    assert sources.get("diff_removed", {}).get("cell_kind") == "space_pipe"
+    assert cell is not None
+    assert cell.get("cell_kind") == "space_pipe"
+
+
 def test_lookup_overlay_only_matches_last() -> None:
     ser: dict = {"full_map": [], "cell_overlay_json": {}}
     ser["cell_overlay_json"] = {

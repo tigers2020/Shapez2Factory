@@ -352,7 +352,7 @@ def inspect_existing_layout(
                     component_id=sorted_cids[0] if sorted_cids else None,
                     cells_json=[
                         {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind},
-                        *[{"x": d["x"], "y": d["y"], "layer": d["layer"]} for d in adj_transport],
+                        *adj_transport,
                     ],
                     message=(
                         "Miner connects only to non-main transport components "

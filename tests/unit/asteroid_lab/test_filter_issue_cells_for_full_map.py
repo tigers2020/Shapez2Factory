@@ -40,6 +40,45 @@ def test_filter_keeps_non_equipment_issue() -> None:
     assert out[0]["issue_code"] == "mixed_transport_nearby"
 
 
+def test_filter_drops_transport_disconnected_when_recon_has_field_not_pipe() -> None:
+    """Reconstruction full_map has no space_pipe; orphan transport issue must not overlay."""
+    full_map = [{"x": 2, "y": -2, "layer": None, "cell_kind": "asteroid_fluid_field"}]
+    raw = [
+        {
+            "x": 2,
+            "y": -2,
+            "layer": None,
+            "cell_kind": "space_pipe",
+            "tile_type": "SpacePipe_RightFwdSplitter",
+            "transport_kind": "fluid_pipe",
+            "issue_code": "transport_disconnected",
+            "severity": "info",
+            "overlay_role": "issue",
+            "equipment_id": "",
+        },
+    ]
+    out = filter_issue_cells_for_full_map(raw, full_map)
+    assert out == []
+
+
+def test_filter_drops_miner_attached_adjacent_row_without_cell_kind_when_no_pipe_on_map() -> None:
+    """Legacy issue rows with only x,y,layer (no cell_kind): drop when recon has no transport."""
+    full_map = [{"x": -2, "y": -2, "layer": None, "cell_kind": "asteroid_fluid_field"}]
+    raw = [
+        {
+            "x": -2,
+            "y": -2,
+            "layer": None,
+            "issue_code": "miner_attached_to_orphan_transport",
+            "severity": "warning",
+            "overlay_role": "issue",
+            "equipment_id": "-1,-2,null",
+        },
+    ]
+    out = filter_issue_cells_for_full_map(raw, full_map)
+    assert out == []
+
+
 def test_filter_keeps_equipment_issue_when_cell_kind_matches() -> None:
     full_map = [{"x": 3, "y": 0, "layer": None, "cell_kind": "fluid_miner"}]
     row = {

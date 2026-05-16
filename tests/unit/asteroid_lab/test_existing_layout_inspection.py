@@ -215,6 +215,12 @@ def test_miner_attached_only_to_orphan_transport() -> None:
     snap = build_decoded_blueprint_snapshot(decoded)
     ins = inspect_existing_layout(snap)
     assert any(i.issue_code == "miner_attached_to_orphan_transport" for i in ins.issues)
+    att = next(i for i in ins.issues if i.issue_code == "miner_attached_to_orphan_transport")
+    assert len(att.cells_json) >= 2
+    assert att.cells_json[0].get("cell_kind") == "fluid_miner"
+    assert all(
+        c.get("cell_kind") in ("space_pipe", "space_belt") for c in att.cells_json[1:]
+    )
 
 
 def test_mixed_transport_nearby() -> None:

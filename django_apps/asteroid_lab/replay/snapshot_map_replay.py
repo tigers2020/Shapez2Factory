@@ -36,12 +36,19 @@ EQUIPMENT_KINDS_FOR_ISSUE_FILTER = frozenset(
     }
 )
 
+TRANSPORT_TILE_KINDS_FOR_ISSUE_FILTER = frozenset({"space_pipe", "space_belt"})
+
 
 def filter_issue_cells_for_full_map(
     issue_cells: list[dict[str, Any]],
     full_map_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Drop equipment issue rows whose cell_kind no longer matches full_map at (x,y,layer)."""
+    """Drop stale issue rows vs ``full_map`` at (x,y,layer).
+
+    - Equipment: same as before — drop when full_map cell_kind no longer matches.
+    - Transport tiles: drop when full_map has no ``space_pipe`` / ``space_belt`` at that
+      coordinate (e.g. reconstruction stripped transport; ``transport_disconnected``).
+    """
 
     by_key: dict[tuple[int, int, int | None], dict[str, Any]] = {}
     for r in full_map_rows:
@@ -58,6 +65,30 @@ def filter_issue_cells_for_full_map(
             continue
         ck = ic.get("cell_kind")
         ck_s = ck if isinstance(ck, str) else ""
+        if not ck_s and str(ic.get("issue_code") or "") == "miner_attached_to_orphan_transport":
+            try:
+                key_mt = cell_key_xy_layer(ic)
+            except (KeyError, TypeError, ValueError):
+                continue
+            base_mt = by_key.get(key_mt)
+            base_mt_ck = base_mt.get("cell_kind") if isinstance(base_mt, dict) else None
+            base_mt_s = base_mt_ck if isinstance(base_mt_ck, str) else ""
+            if base_mt_s not in TRANSPORT_TILE_KINDS_FOR_ISSUE_FILTER:
+                continue
+            out.append(ic)
+            continue
+        if ck_s in TRANSPORT_TILE_KINDS_FOR_ISSUE_FILTER:
+            try:
+                key = cell_key_xy_layer(ic)
+            except (KeyError, TypeError, ValueError):
+                out.append(ic)
+                continue
+            base = by_key.get(key)
+            base_ck = base.get("cell_kind") if isinstance(base, dict) else None
+            base_s = base_ck if isinstance(base_ck, str) else ""
+            if base_s in TRANSPORT_TILE_KINDS_FOR_ISSUE_FILTER:
+                out.append(ic)
+            continue
         if ck_s not in EQUIPMENT_KINDS_FOR_ISSUE_FILTER:
             out.append(ic)
             continue

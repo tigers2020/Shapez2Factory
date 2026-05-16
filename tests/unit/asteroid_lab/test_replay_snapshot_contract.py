@@ -64,14 +64,15 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     decode_row = rows[0]
     assert decode_row.frame_payload.get("event_type") == et.EVENT_TYPE_DECODE_NORMALIZED
     fm0 = decode_row.frame_payload.get("full_map")
-    assert isinstance(fm0, list) and len(fm0) == 11
+    assert isinstance(fm0, list) and len(fm0) == 10
     kinds0 = {c["cell_kind"] for c in fm0}
     assert "fluid_miner" in kinds0
-    assert "space_pipe" in kinds0
+    assert "space_pipe" not in kinds0
     assert "fluid_miner_extension" in kinds0
     assert "unknown" in kinds0
     diff0 = decode_row.frame_payload.get("diff") or {}
-    assert diff0.get("removed") == []
+    removed0 = diff0.get("removed") or []
+    assert any(c.get("cell_kind") == "space_pipe" for c in removed0)
 
     transport_row = rows[1]
     assert (
@@ -80,10 +81,10 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     )
     fm1 = transport_row.frame_payload.get("full_map")
     assert isinstance(fm1, list) and len(fm1) == 10
+    assert fm1 == fm0
     assert all(c["cell_kind"] != "space_pipe" for c in fm1)
     diff1 = transport_row.frame_payload.get("diff") or {}
-    removed_kinds = {c["cell_kind"] for c in (diff1.get("removed") or [])}
-    assert "space_pipe" in removed_kinds
+    assert diff1 == {"added": [], "removed": [], "changed": []}
 
     extractor_row = rows[2]
     fm2 = extractor_row.frame_payload.get("full_map")

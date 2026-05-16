@@ -72,13 +72,13 @@ def record_existing_layout_inspection_frames(
         phase_step="transport",
         event_type=EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
         title="After transport cleanup",
-        description="Full map with belts and pipes removed; removed cells in diff.removed.",
+        description=("Transport already stripped in step0; this frame marks the cleanup baseline."),
         after_state_json={"inspection_summary": ins_summary},
         cell_overlay_json={"cells": row_transport},
         metrics_json=snapshot_summary_from_rows(row_transport),
         is_decision_point=True,
         full_map=list(row_transport),
-        diff=diff_maps(row_decode, row_transport),
+        diff=diff_maps(row_transport, row_transport),
         summary=snapshot_summary_from_rows(row_transport),
     )
 

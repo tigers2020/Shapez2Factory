@@ -10,6 +10,12 @@
 
 /* django-allauth: primary submit cap (see also static/web/css/auth-layout.css) */
 @layer components {
+  /* Asteroid lab replay: decode.normalized cells on dark grid (JS applies this class). */
+  .lab-decode-cell-tone {
+    box-shadow: inset 0 0 0 2px rgb(167 139 250 / 0.88);
+    background-color: rgb(76 29 149 / 0.5);
+  }
+
   .account-allauth-primary-btn {
     display: block;
     width: 100%;

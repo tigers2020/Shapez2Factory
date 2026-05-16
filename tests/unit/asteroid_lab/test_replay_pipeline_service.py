@@ -46,13 +46,13 @@ def test_build_initial_replay_creates_run_track_frames_and_snapshots() -> None:
     assert result.status == "ok"
     assert result.solver_run_id is not None
     assert result.replay_track_id is not None
-    assert result.replay_frame_count == 8
+    assert result.replay_frame_count == 5
     assert result.decoded_snapshot_id is not None
     assert result.existing_layout_snapshot_id is not None
 
     inp = m.AsteroidMapInput.objects.get(pk=dto.map_input_id)
     assert inp.decoded_json.get("_asteroid_lab_summary") is not None
-    assert m.ReplayFrame.objects.filter(replay_track_id=result.replay_track_id).count() == 8
+    assert m.ReplayFrame.objects.filter(replay_track_id=result.replay_track_id).count() == 5
     assert m.AsteroidCellSnapshot.objects.filter(
         map_input=inp, layer="decoded_blueprint_top"
     ).exists()
@@ -66,14 +66,11 @@ def test_build_initial_replay_creates_run_track_frames_and_snapshots() -> None:
             "frame_index", "id"
         )
     ]
-    assert et.EVENT_TYPE_DECODE_RAW_LOADED in types
-    assert et.EVENT_TYPE_DECODE_NORMALIZED in types
-    assert et.EVENT_TYPE_EXISTING_LAYOUT_BEGIN in types
-    assert et.EVENT_TYPE_EXISTING_LAYOUT_TRANSPORT_COMPONENTS_INDEXED in types
-    assert et.EVENT_TYPE_EXISTING_LAYOUT_EQUIPMENT_INDEXED in types
-    assert et.EVENT_TYPE_EXISTING_LAYOUT_ATTACHMENT_ANALYZED in types
-    assert et.EVENT_TYPE_EXISTING_LAYOUT_ISSUES_DETECTED in types
-    assert et.EVENT_TYPE_EXISTING_LAYOUT_HINTS_GENERATED in types
+    assert types[0] == et.EVENT_TYPE_DECODE_NORMALIZED
+    assert et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT in types
+    assert et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR in types
+    assert et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION in types
+    assert et.EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION in types
 
 
 @pytest.mark.django_db
@@ -86,7 +83,7 @@ def test_build_initial_replay_idempotent_without_force() -> None:
     assert r1.replay_track_id == r2.replay_track_id
     assert r1.solver_run_id == r2.solver_run_id
     assert m.SolverRun.objects.filter(project_id=dto.project_id).count() == 1
-    assert m.ReplayFrame.objects.filter(replay_track_id=r1.replay_track_id).count() == 8
+    assert m.ReplayFrame.objects.filter(replay_track_id=r1.replay_track_id).count() == 5
 
 
 @pytest.mark.django_db

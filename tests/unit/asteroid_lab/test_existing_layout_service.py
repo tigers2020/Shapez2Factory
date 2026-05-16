@@ -55,14 +55,12 @@ def test_record_existing_layout_inspection_frames_order_and_types(
     _, inp = project_and_input
     ins = els.build_existing_layout_inspection_from_input(inp.id)
     frames = els.record_existing_layout_inspection_frames(replay_track.id, ins)
-    assert len(frames) == 6
+    assert len(frames) == 4
     expected_types = (
-        et.EVENT_TYPE_EXISTING_LAYOUT_BEGIN,
-        et.EVENT_TYPE_EXISTING_LAYOUT_TRANSPORT_COMPONENTS_INDEXED,
-        et.EVENT_TYPE_EXISTING_LAYOUT_EQUIPMENT_INDEXED,
-        et.EVENT_TYPE_EXISTING_LAYOUT_ATTACHMENT_ANALYZED,
-        et.EVENT_TYPE_EXISTING_LAYOUT_ISSUES_DETECTED,
-        et.EVENT_TYPE_EXISTING_LAYOUT_HINTS_GENERATED,
+        et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
+        et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR,
+        et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION,
+        et.EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
     )
     for i, ft in enumerate(expected_types):
         assert frames[i].event_type == ft
@@ -74,11 +72,9 @@ def test_record_existing_layout_inspection_frames_order_and_types(
     for row in rows:
         etype = (row.frame_payload or {}).get("event_type")
         assert etype not in recon_vals
-    issues_row = rows[4]
-    assert issues_row.cell_overlay_json.get("issue_cells") is not None
-    hints_row = rows[5]
-    assert "main_component_candidate" in hints_row.cell_overlay_json
-    assert "cleanup_candidate_cells" in hints_row.cell_overlay_json
+    recon_row = rows[3]
+    assert recon_row.frame_payload.get("full_map") is not None
+    assert isinstance(recon_row.cell_overlay_json.get("issue_cells"), list)
 
 
 @pytest.mark.django_db

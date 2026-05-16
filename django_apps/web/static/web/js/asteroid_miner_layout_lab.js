@@ -97,6 +97,67 @@
     }
   }
 
+  function fullMapCellsFromFrame(frame) {
+    if (!frame || typeof frame !== "object") return [];
+    if (Array.isArray(frame.full_map) && frame.full_map.length) return frame.full_map;
+    const p = frame.frame_payload;
+    if (p && typeof p === "object") {
+      const nested = p.full_map;
+      if (Array.isArray(nested) && nested.length) return nested;
+    }
+    const ov = frame.cell_overlay_json;
+    if (ov && typeof ov === "object" && Array.isArray(ov.cells) && ov.cells.length) return ov.cells;
+    return [];
+  }
+
+  function frameDiffFromFrame(frame) {
+    if (!frame || typeof frame !== "object") return null;
+    let d = frame.diff;
+    if (d && typeof d === "object") return d;
+    const p = frame.frame_payload;
+    if (p && typeof p === "object" && p.diff && typeof p.diff === "object") return p.diff;
+    return null;
+  }
+
+  function pushDiffCells(out, arr, role) {
+    if (!Array.isArray(arr)) return;
+    for (let i = 0; i < arr.length; i++) {
+      const c = arr[i];
+      if (!c || typeof c !== "object") continue;
+      out.push({ cell: c, role: role });
+    }
+  }
+
+  function collectDiffPaintTargets(frame) {
+    const out = [];
+    if (!frame || typeof frame !== "object") return out;
+    const d = frameDiffFromFrame(frame);
+    if (!d || typeof d !== "object") return out;
+    pushDiffCells(out, d.removed, "diff_removed");
+    pushDiffCells(out, d.added, "diff_added");
+    const ch = d.changed;
+    if (!Array.isArray(ch)) return out;
+    for (let i = 0; i < ch.length; i++) {
+      const item = ch[i];
+      if (item && typeof item === "object" && item.after) {
+        out.push({ cell: item.after, role: "diff_changed" });
+      }
+    }
+    return out;
+  }
+
+  function collectFrameSpatialTargets(frame) {
+    const out = [];
+    pushCellList(out, fullMapCellsFromFrame(frame), "");
+    const diffT = collectDiffPaintTargets(frame);
+    for (let i = 0; i < diffT.length; i++) out.push(diffT[i]);
+    const ov = frame.cell_overlay_json;
+    if (ov && typeof ov === "object") {
+      pushCellList(out, ov.issue_cells, "issue");
+    }
+    return out;
+  }
+
   /** Collect drawable cells from tolerant overlay shapes (decode / existing_layout). */
   function collectOverlayPaintTargets(overlay) {
     const out = [];
@@ -154,9 +215,7 @@
     for (let fi = 0; fi < replayFrames.length; fi++) {
       const fr = replayFrames[fi];
       if (!fr || typeof fr !== "object") continue;
-      const ov = fr.cell_overlay_json;
-      if (!ov || typeof ov !== "object") continue;
-      const targets = collectOverlayPaintTargets(ov);
+      const targets = collectFrameSpatialTargets(fr);
       for (let ti = 0; ti < targets.length; ti++) {
         const cell = targets[ti].cell;
         if (!cell || typeof cell !== "object") continue;
@@ -202,7 +261,89 @@
     if (r === "cleanup_candidate") {
       return "ring-1 ring-inset ring-orange-400/45 bg-orange-950/20";
     }
+    if (r === "decode") {
+      return "lab-decode-cell-tone";
+    }
     return "ring-1 ring-inset ring-violet-400/35 bg-violet-950/15";
+  }
+
+  function toneForFullMapCell(cell) {
+    const ck = cell && cell.cell_kind != null ? String(cell.cell_kind) : "";
+    if (ck === "internal_void") {
+      return "ring-1 ring-inset ring-zinc-500/50 bg-zinc-900/35";
+    }
+    if (ck === "space_pipe" || ck === "space_belt") {
+      return "ring-1 ring-inset ring-cyan-400/40 bg-cyan-950/20";
+    }
+    if (ck === "fluid_miner" || ck === "shape_miner") {
+      return "ring-1 ring-inset ring-amber-400/50 bg-amber-950/20";
+    }
+    if (ck === "fluid_miner_extension" || ck === "shape_miner_extension") {
+      return "ring-1 ring-inset ring-amber-300/40 bg-amber-950/12";
+    }
+    return overlayToneClasses("", cell);
+  }
+
+  function toneForDiffRole(role) {
+    const r = String(role || "");
+    if (r === "diff_removed") {
+      return "opacity-75 ring-1 ring-inset ring-red-500/70 bg-red-950/35";
+    }
+    if (r === "diff_added") {
+      return "ring-1 ring-inset ring-emerald-400/55 bg-emerald-950/25";
+    }
+    if (r === "diff_changed") {
+      return "ring-1 ring-inset ring-yellow-400/50 bg-yellow-950/20";
+    }
+    return "";
+  }
+
+  function renderFullMapCells(baseClasses, domCells, cells, resolveCellIndex) {
+    if (!Array.isArray(cells)) return;
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      if (!cell || typeof cell !== "object") continue;
+      const idx = resolveCellIndex(cell.x, cell.y);
+      if (idx == null || idx < 0 || idx >= domCells.length) continue;
+      const base = baseClasses[idx] || "";
+      const tone = toneForFullMapCell(cell);
+      const el = domCells[idx];
+      el.className = base + " " + tone;
+      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
+    }
+  }
+
+  function renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex) {
+    const targets = collectDiffPaintTargets(frame);
+    for (let i = 0; i < targets.length; i++) {
+      const cell = targets[i].cell;
+      const role = targets[i].role;
+      const idx = resolveCellIndex(cell.x, cell.y);
+      if (idx == null || idx < 0 || idx >= domCells.length) continue;
+      const tone = toneForDiffRole(role);
+      if (!tone) continue;
+      const base = baseClasses[idx] || "";
+      const el = domCells[idx];
+      el.className = base + " " + tone;
+      el.setAttribute("data-overlay-role", role);
+    }
+  }
+
+  function renderIssueOverlayOnly(baseClasses, domCells, overlay, resolveCellIndex) {
+    const list = overlay && typeof overlay === "object" ? overlay.issue_cells : null;
+    if (!Array.isArray(list)) return;
+    for (let i = 0; i < list.length; i++) {
+      const cell = list[i];
+      if (!cell || typeof cell !== "object") continue;
+      const idx = resolveCellIndex(cell.x, cell.y);
+      if (idx == null || idx < 0 || idx >= domCells.length) continue;
+      const base = baseClasses[idx] || "";
+      const tone = overlayToneClasses("issue", cell);
+      const el = domCells[idx];
+      el.className = base + " " + tone;
+      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
+      el.setAttribute("data-overlay-role", "issue");
+    }
   }
 
   function renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex) {
@@ -258,6 +399,16 @@
   function renderReplayFrame(frame, baseClasses, domCells, resolveCellIndex) {
     resetGridBase(domCells, baseClasses);
     if (!frame || typeof frame !== "object") return;
+    const fm = fullMapCellsFromFrame(frame);
+    if (fm.length) {
+      renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
+      renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
+      const ov = frame.cell_overlay_json;
+      if (ov && typeof ov === "object" && Array.isArray(ov.issue_cells) && ov.issue_cells.length) {
+        renderIssueOverlayOnly(baseClasses, domCells, ov, resolveCellIndex);
+      }
+      return;
+    }
     const ov = frame.cell_overlay_json;
     if (ov && typeof ov === "object") {
       renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
@@ -295,8 +446,13 @@
     const runs = readJsonScript("lab-runs-data");
     const uiInitial = readJsonScript("lab-ui-initial-state");
     const replayFramesRaw = readJsonScript("lab-replay-frames-data");
-    const replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
-    const hasServerReplay = replayFrames.length > 0;
+    let replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
+    let hasServerReplay = replayFrames.length > 0;
+    let initialFromServer = Object.assign(
+      {},
+      uiInitial && typeof uiInitial === "object" ? uiInitial : {},
+    );
+    const bootStartedWithServerReplay = hasServerReplay;
 
     const gridViewport = document.getElementById("lab-replay-grid-viewport");
     const cells = document.querySelectorAll("[data-lab-cell-index]");
@@ -320,16 +476,14 @@
     let resolveCellIndex = cellIndexDemo;
     let replayLayout = null;
     let resizeObserver = null;
+    let replayResizeMode = null;
+    let replayCleanup = function () {};
 
-    if (hasServerReplay) {
-      if (!matrix || !Array.isArray(matrix)) {
-        return;
-      }
-      replayLayout = computeReplayGridLayout(replayFrames);
+    function initializeServerReplaySurface(framesArr) {
+      const neutralClass = LAB_CELL_BASE;
+      replayLayout = computeReplayGridLayout(framesArr);
       const gw = replayLayout.gridW;
       const gh = replayLayout.gridH;
-      const neutralClass = LAB_CELL_BASE;
-
       gridEl.textContent = "";
       for (let i = 0; i < gw * gh; i++) {
         const div = document.createElement("div");
@@ -370,14 +524,40 @@
       }
 
       applyReplayGridSizing();
+      resizeObserver = null;
+      replayResizeMode = null;
       if (gridViewport && typeof ResizeObserver !== "undefined") {
         resizeObserver = new ResizeObserver(function () {
           applyReplayGridSizing();
         });
         resizeObserver.observe(gridViewport);
+        replayResizeMode = "observer";
       } else if (gridViewport) {
         window.addEventListener("resize", applyReplayGridSizing);
+        replayResizeMode = "window";
       }
+
+      return function cleanupReplaySurface() {
+        if (replayResizeMode === "observer" && resizeObserver) {
+          try {
+            resizeObserver.disconnect();
+          } catch (e) {
+            /* ignore */
+          }
+          resizeObserver = null;
+        }
+        if (replayResizeMode === "window" && gridViewport) {
+          window.removeEventListener("resize", applyReplayGridSizing);
+        }
+        replayResizeMode = null;
+      };
+    }
+
+    if (hasServerReplay) {
+      if (!matrix || !Array.isArray(matrix)) {
+        return;
+      }
+      replayCleanup = initializeServerReplaySurface(replayFrames);
     } else {
       if (!matrix || !Array.isArray(matrix) || cells.length !== matrix.length) {
         return;
@@ -394,9 +574,8 @@
       return Number.isNaN(n) ? fallback : n;
     };
     const datasetFrame = parseFrame(rootEl?.dataset.labInitialFrame, 0);
-    const initialFromServer = uiInitial && typeof uiInitial === "object" ? uiInitial : {};
     const baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
-    const baselineBlueprint =
+    let baselineBlueprint =
       typeof initialFromServer.blueprintCode === "string"
         ? initialFromServer.blueprintCode
         : blueprintInput
@@ -415,11 +594,31 @@
           ? String(baselineRun.id)
           : null;
 
+    function replaySlotForServerInitialFrame() {
+      if (!hasServerReplay || !replayFrames.length) return 0;
+      const wantFi = parseFrame(initialFromServer.frame, datasetFrame);
+      let i = 0;
+      for (; i < replayFrames.length; i++) {
+        const fr = replayFrames[i];
+        if (!fr || typeof fr !== "object") continue;
+        const fi = Number(fr.frame_index);
+        if (Number.isFinite(fi) && fi === wantFi) {
+          return i;
+        }
+      }
+      for (let j = 0; j < replayFrames.length; j++) {
+        if (fullMapCellsFromFrame(replayFrames[j]).length) {
+          return j;
+        }
+      }
+      return 0;
+    }
+
     let frame = baselineFrame;
     let isPlaying = false;
     let timerId = null;
 
-    let replayArrayIndex = 0;
+    let replayArrayIndex = replaySlotForServerInitialFrame();
 
     function getCurrentReplayFrame() {
       if (!hasServerReplay) return null;
@@ -561,7 +760,7 @@
     function resetToInitial() {
       setPlaying(false);
       if (hasServerReplay) {
-        replayArrayIndex = 0;
+        replayArrayIndex = replaySlotForServerInitialFrame();
       } else {
         frame = baselineFrame;
       }
@@ -630,6 +829,78 @@
       }
     });
 
+    function replaceLabReplayPayload(payload) {
+      if (!payload || typeof payload !== "object") return;
+      const redirectTo = typeof payload.redirect === "string" ? payload.redirect : "";
+      if (blueprintInput && typeof payload.blueprint_code === "string") {
+        blueprintInput.value = payload.blueprint_code;
+        baselineBlueprint = payload.blueprint_code;
+      }
+      if (payload.lab_ui_initial && typeof payload.lab_ui_initial === "object") {
+        Object.assign(initialFromServer, payload.lab_ui_initial);
+      }
+      const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
+      replayFrames = next;
+      hasServerReplay = replayFrames.length > 0;
+      if (!hasServerReplay || !bootStartedWithServerReplay) {
+        window.location.assign(redirectTo || window.location.href);
+        return;
+      }
+      if (!payload.replay_ok && next.length === 0) {
+        window.location.assign(redirectTo || window.location.href);
+        return;
+      }
+      replayCleanup();
+      replayCleanup = initializeServerReplaySurface(replayFrames);
+      replayArrayIndex = replaySlotForServerInitialFrame();
+      setPlaying(false);
+      applyFrame();
+    }
+
+    const importForm = document.getElementById("lab-import-project-form");
+    if (importForm) {
+      importForm.addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        const fd = new FormData(importForm);
+        fetch(importForm.action, {
+          method: "POST",
+          body: fd,
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return { ok: false };
+              })
+              .then(function (data) {
+                return { res: res, data: data };
+              });
+          })
+          .then(function (bundle) {
+            const res = bundle.res;
+            const data = bundle.data;
+            if (!res.ok || !data || data.ok === false) {
+              if (data && data.redirect) {
+                window.location.assign(data.redirect);
+              } else {
+                window.location.reload();
+              }
+              return;
+            }
+            if (data.in_place) {
+              replaceLabReplayPayload(data);
+              return;
+            }
+            window.location.assign(data.redirect);
+          })
+          .catch(function () {
+            importForm.submit();
+          });
+      });
+    }
+
     window.AsteroidLabReplay = {
       getCurrentReplayFrame: getCurrentReplayFrame,
       renderReplayFrame: function (fr) {
@@ -652,6 +923,7 @@
       },
       collectOverlayPaintTargets: collectOverlayPaintTargets,
       visualCol: visualCol,
+      replaceLabReplayPayload: replaceLabReplayPayload,
     };
 
     setRunDetail(baselineRun);

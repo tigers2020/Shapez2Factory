@@ -7,19 +7,22 @@ from typing import Any
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay.event_types import (
-    EVENT_TYPE_EXISTING_LAYOUT_ATTACHMENT_ANALYZED,
-    EVENT_TYPE_EXISTING_LAYOUT_BEGIN,
-    EVENT_TYPE_EXISTING_LAYOUT_EQUIPMENT_INDEXED,
-    EVENT_TYPE_EXISTING_LAYOUT_HINTS_GENERATED,
-    EVENT_TYPE_EXISTING_LAYOUT_ISSUES_DETECTED,
-    EVENT_TYPE_EXISTING_LAYOUT_TRANSPORT_COMPONENTS_INDEXED,
+    EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION,
+    EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR,
+    EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
+    EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
+)
+from django_apps.asteroid_lab.replay.snapshot_map_replay import (
+    build_cleanup_and_reconstruction_rows,
+    diff_maps,
+    issue_overlay_cells,
+    snapshot_summary_from_rows,
 )
 from django_apps.asteroid_lab.services.cell_snapshot_service import (
     build_decoded_blueprint_snapshot_from_input,
 )
 from django_apps.asteroid_lab.services.dto import (
     DecodedBlueprintSnapshotDTO,
-    ExistingEquipmentDTO,
     ExistingLayoutInspectionDTO,
     SnapshotEventDTO,
     SnapshotFrameDTO,
@@ -43,171 +46,111 @@ def build_existing_layout_inspection_from_input(map_input_id: int) -> ExistingLa
     return inspect_existing_layout(snap)
 
 
-def _equipment_cell_overlay(eq: ExistingEquipmentDTO) -> dict[str, Any]:
-    return {
-        "x": eq.x,
-        "y": eq.y,
-        "layer": eq.layer,
-        "rotation": eq.rotation,
-        "cell_kind": eq.cell_kind,
-        "transport_kind": eq.transport_kind,
-        "tile_type": eq.tile_type,
-        "equipment_id": eq.equipment_id,
-        "role": "equipment",
-    }
-
-
 def record_existing_layout_inspection_frames(
     track_id: int,
     inspection: ExistingLayoutInspectionDTO,
 ) -> list[SnapshotFrameDTO]:
-    """Append six ``existing_layout.*`` replay frames (UI-only; never solver input)."""
+    """Append four full-map cleanup + reconstruction replay frames (UI-only; never solver input)."""
 
-    recorder = ReplayRecorder(int(track_id))
-    phase = "existing_layout"
+    if inspection.map_input_id is None:
+        msg = "ExistingLayoutInspectionDTO.map_input_id is required for snapshot replay"
+        raise ValueError(msg)
 
-    summary = dict(inspection.summary_json)
-    begin_metrics: dict[str, Any] = {
-        "transport_component_count": summary.get("transport_component_count"),
-        "equipment_count": summary.get("equipment_count"),
-        "issue_count": summary.get("issue_count"),
-    }
-    ev_begin = SnapshotEventDTO(
-        event_key="existing_layout.begin",
-        phase=phase,
-        phase_step="begin",
-        event_type=EVENT_TYPE_EXISTING_LAYOUT_BEGIN,
-        title="Existing layout inspection started",
-        description="Read-only analysis of decoded top-level cells (no nested unfold).",
-        after_state_json={
-            "summary_json": summary,
-            "transport_components_by_kind": summary.get("transport_components_by_kind"),
-        },
-        cell_overlay_json={},
-        metrics_json=begin_metrics,
-        is_decision_point=True,
+    snap = build_decoded_blueprint_snapshot_from_input(int(inspection.map_input_id))
+    row_decode, row_transport, row_extractor, row_extension, row_recon = (
+        build_cleanup_and_reconstruction_rows(snap)
     )
 
-    transport_overlay: dict[str, Any] = {
-        "components": [
+    recorder = ReplayRecorder(int(track_id))
+    phase = "layout_cleanup"
+    ins_summary = dict(inspection.summary_json)
+
+    ev_transport = SnapshotEventDTO(
+        event_key="step1_cleanup_transport",
+        phase=phase,
+        phase_step="transport",
+        event_type=EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
+        title="After transport cleanup",
+        description="Full map with belts and pipes removed; removed cells in diff.removed.",
+        after_state_json={"inspection_summary": ins_summary},
+        cell_overlay_json={"cells": row_transport},
+        metrics_json=snapshot_summary_from_rows(row_transport),
+        is_decision_point=True,
+        full_map=list(row_transport),
+        diff=diff_maps(row_decode, row_transport),
+        summary=snapshot_summary_from_rows(row_transport),
+    )
+
+    ev_extractor = SnapshotEventDTO(
+        event_key="step2_cleanup_extractor",
+        phase=phase,
+        phase_step="extractor",
+        event_type=EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR,
+        title="After extractor cleanup",
+        description="Full map with miners removed; underlying field visible where applicable.",
+        after_state_json={"inspection_summary": ins_summary},
+        cell_overlay_json={"cells": row_extractor},
+        metrics_json=snapshot_summary_from_rows(row_extractor),
+        is_decision_point=True,
+        full_map=list(row_extractor),
+        diff=diff_maps(row_transport, row_extractor),
+        summary=snapshot_summary_from_rows(row_extractor),
+    )
+
+    ev_extension = SnapshotEventDTO(
+        event_key="step3_cleanup_extension",
+        phase=phase,
+        phase_step="extension",
+        event_type=EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION,
+        title="After extension cleanup",
+        description="Full map with miner extensions removed.",
+        after_state_json={"inspection_summary": ins_summary},
+        cell_overlay_json={"cells": row_extension},
+        metrics_json=snapshot_summary_from_rows(row_extension),
+        is_decision_point=True,
+        full_map=list(row_extension),
+        diff=diff_maps(row_extractor, row_extension),
+        summary=snapshot_summary_from_rows(row_extension),
+    )
+
+    issues_payload = [asdict(i) for i in inspection.issues]
+    hints = dict(inspection.hints_json)
+    i_cells = issue_overlay_cells(inspection)
+    recon_summary = snapshot_summary_from_rows(row_recon)
+    recon_summary["issue_count"] = len(inspection.issues)
+    recon_summary["inspection"] = {
+        "summary_json": ins_summary,
+        "issues": issues_payload,
+        "hints_json": hints,
+        "attachments": [asdict(a) for a in inspection.attachments],
+        "transport_components": [
             {
                 "component_id": c.component_id,
                 "transport_kind": c.transport_kind,
-                "cells": [
-                    {
-                        **cell,
-                        "overlay_role": "transport",
-                        "is_main_component": cell.get("role") == "main",
-                    }
-                    for cell in c.cells_json
-                ],
+                "cell_count": c.cell_count,
+                "touches_bbox_edge": c.touches_bbox_edge,
             }
             for c in inspection.transport_components
-        ]
+        ],
     }
-    ev_transport = SnapshotEventDTO(
-        event_key="existing_layout.transport_components_indexed",
-        phase=phase,
-        phase_step="transport",
-        event_type=EVENT_TYPE_EXISTING_LAYOUT_TRANSPORT_COMPONENTS_INDEXED,
-        title="Transport components indexed",
-        description="SpacePipe / SpaceBelt cells grouped by transport_kind (4-neighbor).",
-        after_state_json={
-            "component_count": len(inspection.transport_components),
-            "components_summary": [
-                {
-                    "component_id": c.component_id,
-                    "transport_kind": c.transport_kind,
-                    "cell_count": c.cell_count,
-                    "touches_bbox_edge": c.touches_bbox_edge,
-                }
-                for c in inspection.transport_components
-            ],
-        },
-        cell_overlay_json=transport_overlay,
-        metrics_json={"components": len(inspection.transport_components)},
-        is_decision_point=True,
-    )
 
-    equip_cells = [_equipment_cell_overlay(eq) for eq in inspection.equipment]
-    ev_equip = SnapshotEventDTO(
-        event_key="existing_layout.equipment_indexed",
-        phase=phase,
-        phase_step="equipment",
-        event_type=EVENT_TYPE_EXISTING_LAYOUT_EQUIPMENT_INDEXED,
-        title="Equipment indexed",
-        description="Miner and extension cells from top-level BP.Entries.",
-        after_state_json={"equipment_count": len(inspection.equipment)},
-        cell_overlay_json={"equipment_cells": equip_cells},
-        metrics_json={"equipment_count": len(inspection.equipment)},
-        is_decision_point=True,
-    )
-
-    attach_overlay_cells: list[dict[str, Any]] = list(equip_cells)
-    for att in inspection.attachments:
-        for cell in att.adjacent_transport_cells_json:
-            row = dict(cell)
-            row["overlay_role"] = "adjacent_transport"
-            row["for_equipment_id"] = att.equipment_id
-            attach_overlay_cells.append(row)
-    ev_attach = SnapshotEventDTO(
-        event_key="existing_layout.attachment_analyzed",
-        phase=phase,
-        phase_step="attachment",
-        event_type=EVENT_TYPE_EXISTING_LAYOUT_ATTACHMENT_ANALYZED,
-        title="Equipment–transport attachment analyzed",
-        description="4-neighbor adjacency to indexed transport components.",
-        after_state_json={"attachments": [asdict(a) for a in inspection.attachments]},
-        cell_overlay_json={"cells": attach_overlay_cells},
-        metrics_json={"attachment_rows": len(inspection.attachments)},
-        is_decision_point=True,
-    )
-
-    issue_cells: list[dict[str, Any]] = []
-    for iss in inspection.issues:
-        for cell in iss.cells_json:
-            issue_cells.append(
-                {
-                    **cell,
-                    "overlay_role": "issue",
-                    "issue_code": iss.issue_code,
-                    "severity": iss.severity,
-                    "equipment_id": iss.equipment_id,
-                }
-            )
-    ev_issues = SnapshotEventDTO(
-        event_key="existing_layout.issues_detected",
-        phase=phase,
-        phase_step="issues",
-        event_type=EVENT_TYPE_EXISTING_LAYOUT_ISSUES_DETECTED,
-        title="Layout issues detected",
-        description="Inspection issues (UI only; not solver input).",
-        after_state_json={"issues": [asdict(i) for i in inspection.issues]},
-        cell_overlay_json={"issue_cells": issue_cells},
-        metrics_json={"issue_count": len(inspection.issues)},
-        is_decision_point=True,
-    )
-
-    hints = dict(inspection.hints_json)
-    main_cand = hints.get("main_component_candidate") or {}
-    cleanup = hints.get("cleanup_candidate_cells") or []
-    ev_hints = SnapshotEventDTO(
-        event_key="existing_layout.hints_generated",
-        phase=phase,
-        phase_step="hints",
-        event_type=EVENT_TYPE_EXISTING_LAYOUT_HINTS_GENERATED,
-        title="Inspection hints generated",
-        description="Main component candidates and cleanup overlay (UI only).",
+    ev_recon = SnapshotEventDTO(
+        event_key="step4_reconstruction",
+        phase="reconstruction",
+        phase_step="snapshot",
+        event_type=EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
+        title="Reconstruction snapshot",
+        description="Structural cells plus inferred internal_void; inspection metadata in summary.",
         after_state_json={"hints_json": hints},
-        cell_overlay_json={
-            "main_component_candidate": main_cand,
-            "cleanup_candidate_cells": cleanup,
-        },
-        metrics_json={"cleanup_cell_count": len(cleanup)},
+        cell_overlay_json={"cells": row_recon, "issue_cells": i_cells},
+        metrics_json=snapshot_summary_from_rows(row_recon),
         is_decision_point=True,
+        full_map=list(row_recon),
+        diff=diff_maps(row_extension, row_recon),
+        summary=recon_summary,
     )
 
-    return recorder.record_many([ev_begin, ev_transport, ev_equip, ev_attach, ev_issues, ev_hints])
+    return recorder.record_many([ev_transport, ev_extractor, ev_extension, ev_recon])
 
 
 def persist_existing_layout_inspection_snapshot(

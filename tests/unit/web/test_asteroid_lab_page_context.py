@@ -126,8 +126,8 @@ def test_lab_page_context_after_pipeline_selects_non_empty_track() -> None:
 
     ctx = alc.lab_page_context()
     assert ctx["has_replay_frames"] is True
-    assert ctx["total_frames"] == 8
-    assert len(ctx["lab_replay_frames_json"]) == 8
+    assert ctx["total_frames"] == 5
+    assert len(ctx["lab_replay_frames_json"]) == 5
 
 
 @pytest.mark.django_db
@@ -147,6 +147,38 @@ def test_lab_page_context_does_not_create_replay_rows() -> None:
     before = m.ReplayFrame.objects.count()
     alc.lab_page_context()
     assert m.ReplayFrame.objects.count() == before
+
+
+@pytest.mark.django_db
+def test_lab_page_context_restricted_to_project_id() -> None:
+    p1 = m.AsteroidProject.objects.create(name="A", slug="ctx-scoped-a")
+    t1 = m.ReplayTrack.objects.create(project=p1, track_key="a-tr")
+    m.ReplayFrame.objects.create(
+        replay_track=t1,
+        frame_index=0,
+        frame_key="a",
+        phase="p",
+        title="A",
+        description="",
+        frame_payload={"event_type": "decode.raw_loaded"},
+        cell_overlay_json={},
+    )
+    p2 = m.AsteroidProject.objects.create(name="B", slug="ctx-scoped-b")
+    t2 = m.ReplayTrack.objects.create(project=p2, track_key="b-tr")
+    m.ReplayFrame.objects.create(
+        replay_track=t2,
+        frame_index=0,
+        frame_key="b",
+        phase="p",
+        title="B",
+        description="",
+        frame_payload={"event_type": "decode.normalized"},
+        cell_overlay_json={},
+    )
+    ctx_a = alc.lab_page_context(project_id=p1.pk)
+    assert ctx_a["lab_replay_track_id"] == t1.id
+    ctx_b = alc.lab_page_context(project_id=p2.pk)
+    assert ctx_b["lab_replay_track_id"] == t2.id
 
 
 def test_lab_page_context_module_import_boundary() -> None:
@@ -182,4 +214,4 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "hasServerReplay" in js
     assert "replayPhaseForFrame" in js
     assert "updateFrameInfo" in js
-    assert "window.AsteroidLabReplay" in js
+    assert "replaceLabReplayPayload" in js

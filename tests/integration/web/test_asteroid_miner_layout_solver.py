@@ -70,10 +70,10 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     assert m.AsteroidProject.objects.count() == 1
     proj = m.AsteroidProject.objects.get()
     assert f"/asteroid-miner-layout/p/{proj.slug}/" in response.request["PATH_INFO"]
-    assert m.ReplayFrame.objects.count() >= 8
+    assert m.ReplayFrame.objects.count() >= 5
     ctx = alc.lab_page_context()
     assert ctx["has_replay_frames"] is True
-    assert ctx["total_frames"] >= 8
+    assert ctx["total_frames"] >= 5
     assert 'id="lab-replay-frames-data"' in response.content.decode()
 
 
@@ -85,7 +85,27 @@ def test_asteroid_miner_layout_post_same_copy_dedupes_project() -> None:
     client.post(create_url, {"copy_code": copy}, follow=True)
 
     assert m.AsteroidProject.objects.count() == 1
-    assert m.ReplayFrame.objects.count() == 8
+    assert m.ReplayFrame.objects.count() == 5
+
+
+def test_asteroid_miner_layout_post_project_slug_adds_map_input_to_same_project() -> None:
+    client = Client()
+    copy1 = _unique_valid_copy()
+    copy2 = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy1}, follow=True)
+    proj = m.AsteroidProject.objects.get()
+    slug = proj.slug
+    client.post(
+        create_url,
+        {"copy_code": copy2, "project_slug": slug},
+        follow=True,
+    )
+    assert m.AsteroidProject.objects.count() == 1
+    assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == 2
+    page = client.get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
+    assert page.status_code == 200
+    assert copy2.encode() in page.content
 
 
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:

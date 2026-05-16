@@ -93,8 +93,16 @@
                 <circle cx="12" cy="12" r="3"/>
               </svg>
             </div>
-            <form method="post" action="{% url 'web:asteroid-miner-layout-projects-create' %}" class="mt-3">
+            <form
+              id="lab-import-project-form"
+              method="post"
+              action="{% url 'web:asteroid-miner-layout-projects-create' %}"
+              class="mt-3"
+            >
               {% csrf_token %}
+              {% if lab_project_slug %}
+                <input type="hidden" name="project_slug" value="{{ lab_project_slug }}" />
+              {% endif %}
               <label class="sr-only" for="lab-blueprint-input">Blueprint</label>
               <textarea
                 id="lab-blueprint-input"

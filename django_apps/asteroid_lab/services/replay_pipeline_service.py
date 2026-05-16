@@ -30,8 +30,8 @@ from django_apps.asteroid_lab.services.input_service import (
     persist_decoded_snapshot_for_map_input,
 )
 
-# decode (2) + existing_layout (6) — see cell_snapshot_service / existing_layout_service.
-_INSPECTION_EXPECTED_FRAMES = 8
+# decode (1) + cleanup/reconstruction (4); see cell_snapshot_service / existing_layout_service.
+_INSPECTION_EXPECTED_FRAMES = 5
 
 
 def _default_run_key(map_input_id: int, digest_hex: str) -> str:

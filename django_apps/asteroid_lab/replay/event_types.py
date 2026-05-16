@@ -10,6 +10,12 @@ from __future__ import annotations
 EVENT_TYPE_DECODE_RAW_LOADED = "decode.raw_loaded"
 EVENT_TYPE_DECODE_NORMALIZED = "decode.normalized"
 
+# --- snapshot transaction replay (full_map per frame; UI-only) ---
+EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT = "replay.snapshot.cleanup_transport"
+EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR = "replay.snapshot.cleanup_extractor"
+EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION = "replay.snapshot.cleanup_extension"
+EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION = "replay.snapshot.reconstruction"
+
 # --- reconstruction ---
 EVENT_TYPE_RECONSTRUCTION_BEGIN = "reconstruction.begin"
 EVENT_TYPE_RECONSTRUCTION_CLEAR_OLD_LAYOUT = "reconstruction.clear_old_layout"
@@ -59,6 +65,10 @@ SNAPSHOT_EVENT_TYPES: frozenset[str] = frozenset(
     {
         EVENT_TYPE_DECODE_RAW_LOADED,
         EVENT_TYPE_DECODE_NORMALIZED,
+        EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
+        EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR,
+        EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION,
+        EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
         EVENT_TYPE_RECONSTRUCTION_BEGIN,
         EVENT_TYPE_RECONSTRUCTION_CLEAR_OLD_LAYOUT,
         EVENT_TYPE_RECONSTRUCTION_SHELL_DETECTED,

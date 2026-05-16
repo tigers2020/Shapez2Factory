@@ -306,6 +306,9 @@ class SnapshotEventDTO:
     is_placeholder: bool = False
     severity: str = "info"
     metrics_json: dict[str, Any] = field(default_factory=dict)
+    full_map: list[dict[str, Any]] = field(default_factory=list)
+    diff: dict[str, Any] = field(default_factory=dict)
+    summary: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)

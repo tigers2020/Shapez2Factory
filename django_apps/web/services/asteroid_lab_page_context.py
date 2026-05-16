@@ -40,14 +40,41 @@ def get_latest_lab_replay_track() -> ReplayTrack | None:
     )
 
 
+def get_latest_lab_replay_track_for_project(project_id: int) -> ReplayTrack | None:
+    """Latest replay track (with frames) for a single persisted AsteroidProject."""
+
+    ordered_frames = ReplayFrame.objects.order_by("frame_index", "id")
+    return cast(
+        ReplayTrack | None,
+        ReplayTrack.objects.filter(project_id=int(project_id))
+        .annotate(_frame_count=Count("frames"))
+        .filter(_frame_count__gt=0)
+        .order_by("-created_at", "-id")
+        .prefetch_related(Prefetch("frames", queryset=ordered_frames))
+        .first(),
+    )
+
+
 def serialize_replay_frame(frame: ReplayFrame) -> dict[str, Any]:
     """JSON-serializable replay frame for the Lab UI (output artifact only)."""
 
     payload: dict[str, Any] = dict(frame.frame_payload or {})
     event_type = str(payload.get("event_type") or "")
+    full_map = payload.get("full_map")
+    if not isinstance(full_map, list) or len(full_map) == 0:
+        co = dict(frame.cell_overlay_json or {})
+        cells = co.get("cells")
+        full_map = list(cells) if isinstance(cells, list) else []
+    diff = payload.get("diff")
+    if not isinstance(diff, dict):
+        diff = {}
+    summary = payload.get("summary")
+    if not isinstance(summary, dict):
+        summary = dict(frame.metric_snapshot_json or {})
     return {
         "id": int(frame.pk),
         "frame_index": int(frame.frame_index),
+        "frame_id": str(frame.frame_key),
         "frame_key": str(frame.frame_key),
         "phase": str(frame.phase),
         "event_type": event_type,
@@ -58,6 +85,9 @@ def serialize_replay_frame(frame: ReplayFrame) -> dict[str, Any]:
         "frame_payload": payload,
         "cell_overlay_json": dict(frame.cell_overlay_json or {}),
         "metric_snapshot_json": dict(frame.metric_snapshot_json or {}),
+        "full_map": full_map,
+        "diff": diff,
+        "summary": summary,
     }
 
 
@@ -101,9 +131,15 @@ def neutral_lab_context() -> dict[str, Any]:
     }
 
 
-def lab_page_context() -> dict[str, Any]:
+def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
+    """Lab shell context. When ``project_id`` is set, replay comes from that project only."""
+
     ctx = neutral_lab_context()
-    track = get_latest_lab_replay_track()
+    track = (
+        get_latest_lab_replay_track_for_project(project_id)
+        if project_id is not None
+        else get_latest_lab_replay_track()
+    )
     if track is None:
         return ctx
 

@@ -57,27 +57,28 @@ def test_build_decoded_blueprint_snapshot_from_input_reads_decoded_json(
 
 
 @pytest.mark.django_db
-def test_record_decoded_snapshot_frames_raw_and_normalized(
+def test_record_decoded_snapshot_frames_single_full_map_decode(
     project_and_input: tuple[m.AsteroidProject, m.AsteroidMapInput],
     replay_track: m.ReplayTrack,
 ) -> None:
     _, inp = project_and_input
     snap = css.build_decoded_blueprint_snapshot_from_input(inp.id)
     frames = css.record_decoded_snapshot_frames(replay_track.id, snap)
-    assert len(frames) == 2
+    assert len(frames) == 1
     assert frames[0].frame_index == 0
-    assert frames[1].frame_index == 1
 
     rows = list(m.ReplayFrame.objects.filter(replay_track=replay_track).order_by("frame_index"))
-    assert len(rows) == 2
-    assert rows[0].title == "Raw copy decoded"
-    assert rows[0].frame_payload["event_type"] == et.EVENT_TYPE_DECODE_RAW_LOADED
-    assert rows[1].title == "Decoded blueprint normalized"
-    assert rows[1].frame_payload["event_type"] == et.EVENT_TYPE_DECODE_NORMALIZED
-    cells = rows[1].cell_overlay_json.get("cells")
+    assert len(rows) == 1
+    assert rows[0].title == "Decoded blueprint"
+    assert rows[0].frame_payload["event_type"] == et.EVENT_TYPE_DECODE_NORMALIZED
+    assert rows[0].frame_payload["event_key"] == "step0_decode"
+    fm = rows[0].frame_payload.get("full_map")
+    assert isinstance(fm, list) and len(fm) == 2
+    assert {c["cell_kind"] for c in fm} == {"space_pipe", "space_belt"}
+    assert rows[0].frame_payload.get("diff") == {"added": [], "removed": [], "changed": []}
+    cells = rows[0].cell_overlay_json.get("cells")
     assert isinstance(cells, list) and len(cells) == 2
-    assert {c["cell_kind"] for c in cells} == {"space_pipe", "space_belt"}
-    assert rows[1].metric_snapshot_json.get("cell_kind_counts") == snap.cell_kind_counts_json
+    assert rows[0].metric_snapshot_json.get("cell_kind_counts") == snap.cell_kind_counts_json
 
 
 @pytest.mark.django_db
@@ -88,7 +89,7 @@ def test_no_reconstruction_event_types_emitted(
     _, inp = project_and_input
     snap = css.build_decoded_blueprint_snapshot_from_input(inp.id)
     css.record_decoded_snapshot_frames(replay_track.id, snap)
-    allowed = {et.EVENT_TYPE_DECODE_RAW_LOADED, et.EVENT_TYPE_DECODE_NORMALIZED}
+    allowed = {et.EVENT_TYPE_DECODE_NORMALIZED}
     for row in m.ReplayFrame.objects.filter(replay_track=replay_track).order_by("frame_index"):
         etype = (row.frame_payload or {}).get("event_type")
         assert etype in allowed

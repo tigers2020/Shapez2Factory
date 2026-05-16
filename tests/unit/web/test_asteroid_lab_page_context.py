@@ -218,3 +218,6 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "replaceLabReplayPayload" in js
     assert "bootStartedWithServerReplay" not in js
     assert "syncProjectSlugHiddenFromRedirect" in js
+    assert "lab-replay-grid-stage" in js
+    assert "bindLabViewportInteractions" in js
+    assert "LAB_VIEWPORT_MIN_SCALE" in js

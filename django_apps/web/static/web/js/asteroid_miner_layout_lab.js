@@ -40,6 +40,40 @@
   /** Extra empty cells beyond union bbox on each side (visual col / row), symmetric around (1,0). */
   const REPLAY_GRID_EDGE_PADDING = 5;
 
+  const LAB_VIEWPORT_MIN_SCALE = 0.35;
+  const LAB_VIEWPORT_MAX_SCALE = 3.5;
+  const LAB_VIEWPORT_DRAG_THRESHOLD_PX = 6;
+
+  let labViewportInteractionsBound = false;
+
+  function clampNumber(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  /** HUD: ``data-overlay-role``, ``data-cell-kind``, ``data-tile-type`` (cleared in ``resetGridBase``). */
+  function applyLabCellHudAttributes(el, cell, overlayRoleForAttr) {
+    if (!el) return;
+    const r =
+      overlayRoleForAttr != null && String(overlayRoleForAttr) !== ""
+        ? String(overlayRoleForAttr)
+        : "";
+    if (r) {
+      el.setAttribute("data-overlay-role", r);
+    } else {
+      el.removeAttribute("data-overlay-role");
+    }
+    if (cell && cell.cell_kind != null) {
+      el.setAttribute("data-cell-kind", String(cell.cell_kind));
+    } else {
+      el.removeAttribute("data-cell-kind");
+    }
+    if (cell && cell.tile_type != null && String(cell.tile_type) !== "") {
+      el.setAttribute("data-tile-type", String(cell.tile_type));
+    } else {
+      el.removeAttribute("data-tile-type");
+    }
+  }
+
   function labSpriteFilenameFromTileType(tileType) {
     const t = tileType == null ? "" : String(tileType);
     if (!t) return null;
@@ -400,7 +434,11 @@
       const tone = toneForFullMapCell(cell);
       const el = domCells[idx];
       el.className = base + " " + tone;
-      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
+      applyLabCellHudAttributes(
+        el,
+        cell,
+        cell.overlay_role != null ? String(cell.overlay_role) : "",
+      );
       applyLabCellSprite(el, cell);
     }
   }
@@ -417,7 +455,7 @@
       const base = baseClasses[idx] || "";
       const el = domCells[idx];
       el.className = base + " " + tone;
-      el.setAttribute("data-overlay-role", role);
+      applyLabCellHudAttributes(el, cell, role);
       applyLabCellSprite(el, cell);
     }
   }
@@ -428,13 +466,14 @@
     pushCellList(targets, cells, "");
     for (let i = 0; i < targets.length; i++) {
       const cell = targets[i].cell;
+      const role = targets[i].role;
       const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = overlayToneClasses("decode", cell);
       const el = domCells[idx];
       el.className = base + " " + tone;
-      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
+      applyLabCellHudAttributes(el, cell, role != null ? String(role) : "");
       applyLabCellSprite(el, cell);
     }
   }
@@ -450,8 +489,7 @@
       const tone = overlayToneClasses(role, cell);
       const el = domCells[idx];
       el.className = base + " " + tone;
-      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
-      if (role) el.setAttribute("data-overlay-role", role);
+      applyLabCellHudAttributes(el, cell, role != null ? String(role) : "");
       applyLabCellSprite(el, cell);
     }
   }
@@ -471,6 +509,7 @@
       domCells[i].className = baseClasses[i] || "";
       domCells[i].removeAttribute("data-cell-kind");
       domCells[i].removeAttribute("data-overlay-role");
+      domCells[i].removeAttribute("data-tile-type");
       clearLabCellSprite(domCells[i]);
     }
   }
@@ -545,6 +584,27 @@
       return;
     }
 
+    const gridStage = document.getElementById("lab-replay-grid-stage");
+    const gridHudCoord = document.getElementById("lab-replay-grid-hud-coord");
+    const gridHudRole = document.getElementById("lab-replay-grid-hud-role");
+
+    let labViewportTransform = { scale: 1, tx: 0, ty: 0 };
+    let labPanState = null;
+
+    function applyLabViewportTransform() {
+      if (!gridStage) {
+        return;
+      }
+      const t = labViewportTransform;
+      gridStage.style.transformOrigin = "0 0";
+      gridStage.style.transform = "translate(" + t.tx + "px, " + t.ty + "px) scale(" + t.scale + ")";
+    }
+
+    function resetLabViewportTransform() {
+      labViewportTransform = { scale: 1, tx: 0, ty: 0 };
+      applyLabViewportTransform();
+    }
+
     let domCells;
     let baseClasses;
     let resolveCellIndex = function (cell) {
@@ -603,17 +663,23 @@
         gridEl.style.gridTemplateRows = "repeat(" + replayLayout.gridH + ", minmax(0, " + px + "px))";
       }
 
+      function labReplayViewportOnWindowResize() {
+        applyReplayGridSizing();
+        resetLabViewportTransform();
+      }
+
       applyReplayGridSizing();
       resizeObserver = null;
       replayResizeMode = null;
       if (gridViewport && typeof ResizeObserver !== "undefined") {
         resizeObserver = new ResizeObserver(function () {
           applyReplayGridSizing();
+          resetLabViewportTransform();
         });
         resizeObserver.observe(gridViewport);
         replayResizeMode = "observer";
       } else if (gridViewport) {
-        window.addEventListener("resize", applyReplayGridSizing);
+        window.addEventListener("resize", labReplayViewportOnWindowResize);
         replayResizeMode = "window";
       }
 
@@ -627,7 +693,7 @@
           resizeObserver = null;
         }
         if (replayResizeMode === "window" && gridViewport) {
-          window.removeEventListener("resize", applyReplayGridSizing);
+          window.removeEventListener("resize", labReplayViewportOnWindowResize);
         }
         replayResizeMode = null;
       };
@@ -938,6 +1004,7 @@
       }
       replayCleanup();
       replayCleanup = initializeServerReplaySurface(replayFrames);
+      resetLabViewportTransform();
       replayArrayIndex = replaySlotForServerInitialFrame();
       setPlaying(false);
       applyFrame();
@@ -1036,6 +1103,169 @@
       const y = row + replayLayout.minR;
       const xWorld = d < 0 ? d : d + 1;
       return { x: xWorld, y: y };
+    }
+
+    function findLabCellFromPoint(clientX, clientY) {
+      const el = document.elementFromPoint(clientX, clientY);
+      if (!el) {
+        return null;
+      }
+      return el.closest("[data-lab-cell-index]");
+    }
+
+    function updateLabGridHudEmpty() {
+      if (gridHudCoord) {
+        gridHudCoord.textContent = "—";
+      }
+      if (gridHudRole) {
+        gridHudRole.textContent = "—";
+      }
+    }
+
+    function getLabCellDisplayCoord(cellEl) {
+      const indexText = cellEl && cellEl.getAttribute ? cellEl.getAttribute("data-lab-cell-index") : null;
+      const idx = Number.parseInt(indexText || "", 10);
+      if (!Number.isFinite(idx)) {
+        return "—";
+      }
+      if (hasServerReplay && replayLayout) {
+        const coord = domIndexToWorldXY(idx);
+        if (!coord) {
+          return "—";
+        }
+        return "(" + coord.x + ", " + coord.y + ")";
+      }
+      const demoX = idx % GRID_W;
+      const demoY = Math.floor(idx / GRID_W);
+      return "(" + demoX + ", " + demoY + ")";
+    }
+
+    function getLabCellDisplayRole(cellEl) {
+      if (!cellEl) {
+        return "—";
+      }
+      const ov = cellEl.getAttribute("data-overlay-role");
+      if (ov != null && ov !== "") {
+        return ov;
+      }
+      const ck = cellEl.getAttribute("data-cell-kind");
+      if (ck != null && ck !== "") {
+        return ck;
+      }
+      const tt = cellEl.getAttribute("data-tile-type");
+      if (tt != null && tt !== "") {
+        return tt;
+      }
+      return "—";
+    }
+
+    function updateLabGridHudFromPoint(clientX, clientY) {
+      const cellEl = findLabCellFromPoint(clientX, clientY);
+      if (!cellEl || !gridEl.contains(cellEl)) {
+        updateLabGridHudEmpty();
+        return;
+      }
+      if (gridHudCoord) {
+        gridHudCoord.textContent = getLabCellDisplayCoord(cellEl);
+      }
+      if (gridHudRole) {
+        gridHudRole.textContent = getLabCellDisplayRole(cellEl);
+      }
+    }
+
+    function handleLabViewportWheel(event) {
+      if (!gridViewport || !gridStage) {
+        return;
+      }
+      event.preventDefault();
+      const rect = gridViewport.getBoundingClientRect();
+      const anchorX = event.clientX - rect.left;
+      const anchorY = event.clientY - rect.top;
+      const oldScale = labViewportTransform.scale;
+      const zoomFactor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const nextScale = clampNumber(oldScale * zoomFactor, LAB_VIEWPORT_MIN_SCALE, LAB_VIEWPORT_MAX_SCALE);
+      if (nextScale === oldScale) {
+        updateLabGridHudFromPoint(event.clientX, event.clientY);
+        return;
+      }
+      const worldX = (anchorX - labViewportTransform.tx) / oldScale;
+      const worldY = (anchorY - labViewportTransform.ty) / oldScale;
+      labViewportTransform.scale = nextScale;
+      labViewportTransform.tx = anchorX - worldX * nextScale;
+      labViewportTransform.ty = anchorY - worldY * nextScale;
+      applyLabViewportTransform();
+      updateLabGridHudFromPoint(event.clientX, event.clientY);
+    }
+
+    function handleLabViewportPointerDown(event) {
+      if (!gridViewport || event.button !== 0) {
+        return;
+      }
+      labPanState = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startTx: labViewportTransform.tx,
+        startTy: labViewportTransform.ty,
+        dragging: false,
+      };
+    }
+
+    function handleLabViewportPointerMove(event) {
+      updateLabGridHudFromPoint(event.clientX, event.clientY);
+      if (!labPanState || labPanState.pointerId !== event.pointerId) {
+        return;
+      }
+      const dx = event.clientX - labPanState.startClientX;
+      const dy = event.clientY - labPanState.startClientY;
+      const distance = Math.hypot(dx, dy);
+      if (!labPanState.dragging) {
+        if (distance < LAB_VIEWPORT_DRAG_THRESHOLD_PX) {
+          return;
+        }
+        labPanState.dragging = true;
+        gridViewport.setPointerCapture(event.pointerId);
+      }
+      event.preventDefault();
+      labViewportTransform.tx = labPanState.startTx + dx;
+      labViewportTransform.ty = labPanState.startTy + dy;
+      applyLabViewportTransform();
+    }
+
+    function handleLabViewportPointerUp(event) {
+      if (!labPanState || labPanState.pointerId !== event.pointerId) {
+        return;
+      }
+      if (
+        labPanState.dragging &&
+        typeof gridViewport.releasePointerCapture === "function" &&
+        typeof gridViewport.hasPointerCapture === "function" &&
+        gridViewport.hasPointerCapture(event.pointerId)
+      ) {
+        gridViewport.releasePointerCapture(event.pointerId);
+      }
+      labPanState = null;
+    }
+
+    function handleLabViewportPointerLeave(event) {
+      updateLabGridHudEmpty();
+      if (!labPanState || labPanState.pointerId !== event.pointerId) {
+        return;
+      }
+      labPanState = null;
+    }
+
+    function bindLabViewportInteractions() {
+      if (labViewportInteractionsBound || !gridViewport) {
+        return;
+      }
+      labViewportInteractionsBound = true;
+      gridViewport.addEventListener("wheel", handleLabViewportWheel, { passive: false });
+      gridViewport.addEventListener("pointerdown", handleLabViewportPointerDown);
+      gridViewport.addEventListener("pointermove", handleLabViewportPointerMove);
+      gridViewport.addEventListener("pointerup", handleLabViewportPointerUp);
+      gridViewport.addEventListener("pointercancel", handleLabViewportPointerUp);
+      gridViewport.addEventListener("pointerleave", handleLabViewportPointerLeave);
     }
 
     function labCsrfToken() {
@@ -1372,6 +1602,10 @@
       rawXToDenseX: rawXToDenseX,
       replaceLabReplayPayload: replaceLabReplayPayload,
     };
+
+    applyLabViewportTransform();
+    updateLabGridHudEmpty();
+    bindLabViewportInteractions();
 
     setRunDetail(baselineRun);
     applyFrame();

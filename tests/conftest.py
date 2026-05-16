@@ -2,7 +2,7 @@
 
 Markers are applied automatically from file location (no per-test decorators):
 - unit / integration — top-level under tests/
-- shapez_core / shapez_solver / shapez_asteroid / web / api — second segment when present
+- shapez_core / shapez_solver / web / api — second segment when present
 
 Examples:
   pytest -m unit
@@ -20,7 +20,16 @@ import pytest
 
 _TESTS_ROOT = Path(__file__).resolve().parent
 
-_LAYER_MARKERS = frozenset({"shapez_core", "shapez_solver", "shapez_asteroid", "web", "api"})
+_LAYER_MARKERS = frozenset({"shapez_core", "shapez_solver", "web", "api", "asteroid_lab"})
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """pytest-django: 테스트 DB 재사용 (pytest.ini `--reuse-db`와 동일, addopts 미적용 환경 보조)."""
+    opt = config.option
+    if getattr(opt, "create_db", False):
+        return
+    if hasattr(opt, "reuse_db"):
+        opt.reuse_db = True
 
 
 @pytest.fixture

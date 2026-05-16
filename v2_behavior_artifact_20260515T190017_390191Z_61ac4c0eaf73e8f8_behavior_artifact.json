@@ -1,0 +1,1121 @@
+{
+  "schema_version": "v2.copy_preview_behavior_artifact.2",
+  "artifact_kind": "copy_preview_behavior",
+  "generated_utc": "2026-05-15T19:00:17Z",
+  "algorithm_input": false,
+  "http_response_included": false,
+  "includes_mining_map": false,
+  "includes_full_pass1_events": true,
+  "source": {
+    "view": "copy_preview",
+    "engine": "asteroid_mining_layout_v2",
+    "pipeline_scope": "decode_to_pass1_preview"
+  },
+  "input_digest_prefix": "61ac4c0eaf73e8f8",
+  "decode_trace": {
+    "steps": [
+      {
+        "id": "normalize_whitespace",
+        "ok": true,
+        "detail": {
+          "chars_in": 109,
+          "chars_out": 109
+        }
+      },
+      {
+        "id": "check_prefix",
+        "ok": true,
+        "detail": {
+          "prefix": "SHAPEZ2-4-"
+        }
+      },
+      {
+        "id": "extract_payload",
+        "ok": true,
+        "detail": {
+          "payload_chars": 99
+        }
+      },
+      {
+        "id": "trim_base64",
+        "ok": true,
+        "detail": {
+          "payload_chars": 99
+        }
+      },
+      {
+        "id": "pad_base64",
+        "ok": true,
+        "detail": {
+          "padded_chars": 100
+        }
+      },
+      {
+        "id": "base64_decode",
+        "ok": true,
+        "detail": {
+          "bytes": 74
+        }
+      },
+      {
+        "id": "verify_gzip_magic",
+        "ok": true,
+        "detail": {
+          "magic_ok": true
+        }
+      },
+      {
+        "id": "gzip_decompress",
+        "ok": true,
+        "detail": {
+          "compressed_bytes": 74,
+          "decompressed_bytes": 58
+        }
+      },
+      {
+        "id": "utf8_decode",
+        "ok": true,
+        "detail": {
+          "chars": 58
+        }
+      },
+      {
+        "id": "json_parse",
+        "ok": true,
+        "detail": {
+          "value_type": "dict"
+        }
+      },
+      {
+        "id": "validate_top_level_object",
+        "ok": true,
+        "detail": {
+          "keys": [
+            "BP"
+          ],
+          "key_count": 1
+        }
+      }
+    ],
+    "success": true,
+    "error": null
+  },
+  "step_0_5": {
+    "existing_layout_source_kind": "existing_shape_layout",
+    "existing_layout_island_bbox": {
+      "min_x": 2,
+      "min_y": 2,
+      "max_x": 2,
+      "max_y": 2
+    },
+    "existing_layout_belt_transport": {
+      "transport_kind": "shape_belt",
+      "component_count": 0,
+      "main_component_id": null,
+      "components": [],
+      "orphan_component_ids": [],
+      "single_cell_artifacts": []
+    },
+    "existing_layout_pipe_transport": {
+      "transport_kind": "fluid_pipe",
+      "component_count": 0,
+      "main_component_id": null,
+      "components": [],
+      "orphan_component_ids": [],
+      "single_cell_artifacts": []
+    },
+    "existing_layout_equipment": {
+      "miner_count": 1,
+      "extension_count": 0,
+      "miners_without_adjacent_transport": [
+        {
+          "x": 2,
+          "y": 2
+        }
+      ],
+      "miners_attached_to_orphan_transport": [],
+      "equipment_attachment": [
+        {
+          "equipment_coord": {
+            "x": 2,
+            "y": 2
+          },
+          "equipment_kind": "shape_miner",
+          "adjacent_transport_coords": [],
+          "adjacent_component_ids": [],
+          "attached_to_main_component": false
+        }
+      ]
+    },
+    "existing_layout_issues": [
+      {
+        "code": "MINER_NO_ADJACENT_TRANSPORT",
+        "severity": "warning",
+        "coords": [
+          {
+            "x": 2,
+            "y": 2
+          }
+        ],
+        "component_ids": [],
+        "message": "miner missing adjacent correct-kind transport"
+      }
+    ],
+    "existing_layout_solver_hints": {
+      "trunk_seed_cell_union": [],
+      "cleanup_candidate_cell_union": []
+    }
+  },
+  "step_1": {
+    "mineable_placement_cells": [
+      [
+        2,
+        2
+      ]
+    ],
+    "extraction_shell_cells": [],
+    "full_barrier_cells": [
+      [
+        2,
+        2
+      ]
+    ],
+    "belt_cells": [],
+    "pipe_cells": [],
+    "extractor_cells": [
+      [
+        2,
+        2
+      ]
+    ],
+    "extension_cells": [],
+    "equipment_footprint_mineable_cells": [
+      [
+        2,
+        2
+      ]
+    ],
+    "interior_patch_cells": [],
+    "mineable_cell_semantics": [
+      {
+        "cell": [
+          2,
+          2
+        ],
+        "resource_kind": "shape_asteroid",
+        "source": "equipment_footprint"
+      }
+    ],
+    "permanent_mineable_blocker_cells": [],
+    "external_void_cells": [
+      [
+        -1,
+        -1
+      ],
+      [
+        1,
+        -1
+      ],
+      [
+        2,
+        -1
+      ],
+      [
+        3,
+        -1
+      ],
+      [
+        4,
+        -1
+      ],
+      [
+        5,
+        -1
+      ],
+      [
+        -1,
+        0
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        2,
+        0
+      ],
+      [
+        3,
+        0
+      ],
+      [
+        4,
+        0
+      ],
+      [
+        5,
+        0
+      ],
+      [
+        -1,
+        1
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        3,
+        1
+      ],
+      [
+        4,
+        1
+      ],
+      [
+        5,
+        1
+      ],
+      [
+        -1,
+        2
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        5,
+        2
+      ],
+      [
+        -1,
+        3
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        4,
+        3
+      ],
+      [
+        5,
+        3
+      ],
+      [
+        -1,
+        4
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        5,
+        4
+      ],
+      [
+        -1,
+        5
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        2,
+        5
+      ],
+      [
+        3,
+        5
+      ],
+      [
+        4,
+        5
+      ],
+      [
+        5,
+        5
+      ]
+    ],
+    "outer_rim_mineable_cells": [
+      [
+        2,
+        2
+      ]
+    ],
+    "asteroid_bbox": {
+      "min_x": 2,
+      "min_y": 2,
+      "max_x": 2,
+      "max_y": 2
+    },
+    "external_margin": 3,
+    "external_margin_bbox_source": "mineable"
+  },
+  "step_1_diagnosis": null,
+  "step_1_diagnosis_error": null,
+  "preview_frames": [
+    {
+      "id": "v2_recon_transport_shell",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_recon_transport_shell",
+        "source_kind": "existing_shape_layout"
+      }
+    },
+    {
+      "id": "v2_recon_strip_transport",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_recon_strip_transport",
+        "source_kind": "existing_shape_layout"
+      }
+    },
+    {
+      "id": "v2_recon_strip_extractors",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_recon_strip_extractors",
+        "source_kind": "existing_shape_layout"
+      }
+    },
+    {
+      "id": "v2_recon_strip_extensions",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_recon_strip_extensions",
+        "source_kind": "existing_shape_layout"
+      }
+    },
+    {
+      "id": "v2_recon_interior_void",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_recon_interior_void",
+        "source_kind": "existing_shape_layout"
+      }
+    },
+    {
+      "id": "v2_recon_inner_patch",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_recon_inner_patch",
+        "source_kind": "existing_shape_layout"
+      }
+    },
+    {
+      "id": "v2_recon_mineable",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_recon_mineable",
+        "source_kind": "existing_shape_layout"
+      }
+    },
+    {
+      "id": "v2_pass1_candidates",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass1_candidates",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "pass1_begin",
+        "pass1_preview_thinned": false,
+        "preview_placeholder": false
+      }
+    },
+    {
+      "id": "v2_pass1_replay_0001_consider_extract",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass1_replay_0001_consider_extract",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "consider_extract",
+        "pass1_preview_thinned": false,
+        "preview_placeholder": false
+      }
+    },
+    {
+      "id": "v2_pass1_replay_0002_probe_output",
+      "summary": {
+        "entry_count": 2,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 1,
+        "y_max": 2,
+        "phase": "v2_pass1_replay_0002_probe_output",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "probe_output",
+        "pass1_preview_thinned": false,
+        "preview_placeholder": false
+      }
+    },
+    {
+      "id": "v2_pass1_replay_0003_probe_output",
+      "summary": {
+        "entry_count": 2,
+        "x_min": 2,
+        "x_max": 3,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass1_replay_0003_probe_output",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "probe_output",
+        "pass1_preview_thinned": false,
+        "preview_placeholder": false
+      }
+    },
+    {
+      "id": "v2_pass1_replay_0004_probe_output",
+      "summary": {
+        "entry_count": 2,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 3,
+        "phase": "v2_pass1_replay_0004_probe_output",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "probe_output",
+        "pass1_preview_thinned": false,
+        "preview_placeholder": false
+      }
+    },
+    {
+      "id": "v2_pass1_replay_0005_probe_output",
+      "summary": {
+        "entry_count": 2,
+        "x_min": 1,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass1_replay_0005_probe_output",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "probe_output",
+        "pass1_preview_thinned": false,
+        "preview_placeholder": false
+      }
+    },
+    {
+      "id": "v2_pass1_replay_0006_commit_bundle",
+      "summary": {
+        "entry_count": 2,
+        "x_min": 1,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass1_replay_0006_commit_bundle",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "commit_bundle",
+        "pass1_preview_thinned": false,
+        "preview_placeholder": false
+      }
+    },
+    {
+      "id": "v2_pass1_replay_0007_pass1_end",
+      "summary": {
+        "entry_count": 2,
+        "x_min": 1,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass1_replay_0007_pass1_end",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "pass1_end",
+        "pass1_preview_thinned": false,
+        "preview_placeholder": false
+      }
+    },
+    {
+      "id": "v2_pass1_provisional",
+      "summary": {
+        "entry_count": 2,
+        "x_min": 1,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass1_provisional",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "pass1_provisional_final",
+        "pass1_preview_thinned": false,
+        "preview_placeholder": false
+      }
+    },
+    {
+      "id": "v2_pass1_corridor_gate",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass1_corridor_gate",
+        "source_kind": "existing_shape_layout",
+        "pass1_replay": true,
+        "pass1_event_kind": "corridor_gate",
+        "preview_placeholder": false,
+        "corridor_opening_trace": [
+          {
+            "event_type": "corridor_opening_recovery",
+            "phase": "pass1_post_gate",
+            "recovery_trigger": null,
+            "decision": {
+              "committed": true,
+              "commit_reason": "degraded_connected_recovery"
+            },
+            "metrics": {
+              "gateway_count_before": 0,
+              "gateway_count_after": 0,
+              "placements_removed_count": 1,
+              "extractor_removed_count": 1,
+              "extension_removed_count": 0,
+              "lost_slot_count": 1,
+              "path_length": 3
+            },
+            "search": {
+              "search_mode": "lexicographic_dijkstra",
+              "expanded_nodes": 0,
+              "search_time_ms": 0,
+              "optimality_guarantee": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "v2_pass2_candidates",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass2_candidates",
+        "source_kind": "existing_shape_layout",
+        "preview_placeholder": true
+      }
+    },
+    {
+      "id": "v2_pass2_provisional",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_pass2_provisional",
+        "source_kind": "existing_shape_layout",
+        "preview_placeholder": true
+      }
+    },
+    {
+      "id": "v2_step4_trunk_seed",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_step4_trunk_seed",
+        "source_kind": "existing_shape_layout",
+        "preview_placeholder": true
+      }
+    },
+    {
+      "id": "v2_step4_routing",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_step4_routing",
+        "source_kind": "existing_shape_layout",
+        "preview_placeholder": true
+      }
+    },
+    {
+      "id": "v2_final_validation",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_final_validation",
+        "source_kind": "existing_shape_layout",
+        "preview_placeholder": true
+      }
+    },
+    {
+      "id": "v2_final_layout",
+      "summary": {
+        "entry_count": 1,
+        "x_min": 2,
+        "x_max": 2,
+        "y_min": 2,
+        "y_max": 2,
+        "phase": "v2_final_layout",
+        "source_kind": "existing_shape_layout",
+        "preview_placeholder": true
+      }
+    }
+  ],
+  "pass1_replay_events": [
+    {
+      "placement_pass": "pass1",
+      "kind": "pass1_begin",
+      "run_id": "v2_preview_recon_timeline"
+    },
+    {
+      "placement_pass": "pass1",
+      "kind": "consider_extract",
+      "scan_index": 0,
+      "extractor_cell": [
+        2,
+        2
+      ],
+      "perimeter_depth": 0,
+      "pass1_external_rim": true
+    },
+    {
+      "placement_pass": "pass1",
+      "kind": "probe_output",
+      "scan_index": 0,
+      "extractor_cell": [
+        2,
+        2
+      ],
+      "output_direction": [
+        0,
+        -1
+      ],
+      "output_stub_cell": [
+        2,
+        1
+      ],
+      "reject_reason": null
+    },
+    {
+      "placement_pass": "pass1",
+      "kind": "probe_output",
+      "scan_index": 0,
+      "extractor_cell": [
+        2,
+        2
+      ],
+      "output_direction": [
+        1,
+        0
+      ],
+      "output_stub_cell": [
+        3,
+        2
+      ],
+      "reject_reason": null
+    },
+    {
+      "placement_pass": "pass1",
+      "kind": "probe_output",
+      "scan_index": 0,
+      "extractor_cell": [
+        2,
+        2
+      ],
+      "output_direction": [
+        0,
+        1
+      ],
+      "output_stub_cell": [
+        2,
+        3
+      ],
+      "reject_reason": null
+    },
+    {
+      "placement_pass": "pass1",
+      "kind": "probe_output",
+      "scan_index": 0,
+      "extractor_cell": [
+        2,
+        2
+      ],
+      "output_direction": [
+        -1,
+        0
+      ],
+      "output_stub_cell": [
+        1,
+        2
+      ],
+      "reject_reason": null
+    },
+    {
+      "placement_pass": "pass1",
+      "kind": "commit_bundle",
+      "scan_index": 0,
+      "bundle_index": 0,
+      "transport_kind": "shape_belt",
+      "extractor_cell": [
+        2,
+        2
+      ],
+      "output_direction": [
+        -1,
+        0
+      ],
+      "output_stub_cell": [
+        1,
+        2
+      ],
+      "output_stub_physical": true,
+      "extension_cells": []
+    },
+    {
+      "placement_pass": "pass1",
+      "kind": "pass1_end",
+      "bundle_count": 1,
+      "pass1_extractor_rim_only": true,
+      "max_committed_extractor_depth": 0,
+      "reject_count_by_reason": {},
+      "pass1_stop_reason": "mineable_ordered_scan_complete"
+    }
+  ],
+  "pass1_replay_event_count": 8,
+  "pass1_replay_events_truncated": false,
+  "runtime_trace_events": [
+    {
+      "run_id": "61ac4c0eaf73e8f8",
+      "phase": "step_0_5_existing_layout_analysis",
+      "step_index": 0,
+      "event_type": "phase_started",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "61ac4c0eaf73e8f8",
+      "phase": "step_0_5_existing_layout_analysis",
+      "step_index": 0,
+      "event_type": "phase_finished",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "61ac4c0eaf73e8f8",
+      "phase": "step_0_decode_context",
+      "step_index": 1,
+      "event_type": "phase_started",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "61ac4c0eaf73e8f8",
+      "phase": "step_0_decode_context",
+      "step_index": 1,
+      "event_type": "phase_finished",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "61ac4c0eaf73e8f8",
+      "phase": "step_1_reconstruction",
+      "step_index": 2,
+      "event_type": "phase_started",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "61ac4c0eaf73e8f8",
+      "phase": "step_1_reconstruction",
+      "step_index": 2,
+      "event_type": "phase_finished",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "61ac4c0eaf73e8f8",
+      "phase": "preview_map_timeline",
+      "step_index": 3,
+      "event_type": "phase_started",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "v2_preview_recon_timeline",
+      "phase": "pass1_outer",
+      "step_index": 0,
+      "event_type": "pass1_begin",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "v2_preview_recon_timeline",
+      "phase": "pass1_outer",
+      "step_index": 1,
+      "event_type": "pass1_candidate_scanned",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "v2_preview_recon_timeline",
+      "phase": "pass1_outer",
+      "step_index": 2,
+      "event_type": "pass1_output_probe_succeeded",
+      "committed": true,
+      "commit_reason": "normal_gain",
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "v2_preview_recon_timeline",
+      "phase": "pass1_outer",
+      "step_index": 3,
+      "event_type": "pass1_output_probe_succeeded",
+      "committed": true,
+      "commit_reason": "normal_gain",
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "v2_preview_recon_timeline",
+      "phase": "pass1_outer",
+      "step_index": 4,
+      "event_type": "pass1_output_probe_succeeded",
+      "committed": true,
+      "commit_reason": "normal_gain",
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "v2_preview_recon_timeline",
+      "phase": "pass1_outer",
+      "step_index": 5,
+      "event_type": "pass1_output_probe_succeeded",
+      "committed": true,
+      "commit_reason": "normal_gain",
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "v2_preview_recon_timeline",
+      "phase": "pass1_outer",
+      "step_index": 6,
+      "event_type": "pass1_bundle_committed",
+      "committed": true,
+      "commit_reason": "normal_gain",
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "v2_preview_recon_timeline",
+      "phase": "pass1_outer",
+      "step_index": 7,
+      "event_type": "pass1_end",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    },
+    {
+      "run_id": "61ac4c0eaf73e8f8",
+      "phase": "preview_map_timeline",
+      "step_index": 3,
+      "event_type": "phase_finished",
+      "committed": false,
+      "commit_reason": null,
+      "rejected_reason": null,
+      "rollback_reason": null,
+      "recovery_trigger": null,
+      "computation_cycle": null,
+      "route_level": false,
+      "transport_kind": null
+    }
+  ],
+  "runtime_trace_event_count": 16,
+  "runtime_trace_events_truncated": false,
+  "notes": {
+    "partial_pipeline": {
+      "phases_included": [
+        "step_0_decode",
+        "step_0_5_existing_layout_analysis",
+        "step_1_reconstruction",
+        "preview_map_timeline",
+        "step_2_pass1_replay_timeline"
+      ],
+      "phases_not_included": [
+        "step_3_pass2",
+        "step_4_routing",
+        "step_5_plus_reclaim_recovery",
+        "step_9_final_validation",
+        "step_10_replay_snapshots"
+      ],
+      "note": "Replay/trace files are output-side evidence only; they are not read here to drive reconstruction or placement."
+    },
+    "preview_schema_version": 2,
+    "reconstruction_summary": {
+      "mineable_placement_count": 1,
+      "interior_patch_count": 0,
+      "extraction_shell_count": 0,
+      "full_barrier_count": 1,
+      "extractor_cell_count": 1,
+      "extension_cell_count": 0,
+      "equipment_footprint_mineable_count": 1
+    }
+  }
+}

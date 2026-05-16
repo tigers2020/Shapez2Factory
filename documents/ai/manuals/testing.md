@@ -10,9 +10,9 @@ python -m pytest
 
 | 방식 | 예 |
 |------|-----|
-| 마커 | `-m unit`, `-m integration`, `-m shapez_solver`, `-m shapez_core`, `-m shapez_asteroid`, `-m web`, `-m api` |
+| 마커 | `-m unit`, `-m integration`, `-m shapez_solver`, `-m shapez_core`, `-m web`, `-m api`, `-m asteroid_lab` |
 | 조합 | `-m "unit and shapez_core"` |
-| 경로 | `python -m pytest tests/unit/shapez_solver/` · `python -m pytest tests/unit/shapez_asteroid/` |
+| 경로 | `python -m pytest tests/unit/shapez_solver/` · `python -m pytest tests/unit/asteroid_lab/` |
 
 마커 정의: `pytest.ini`. 경로 기반 자동 마커: `tests/conftest.py`.
 
@@ -38,7 +38,7 @@ CI에서는 `black --check .`로 포맷만 검사하는 경우가 있다.
 
 ## 로케일(`ko`)
 
-템플릿·지정 Python 경로의 gettext msgid를 반영하려면 루트에서 `python scripts/build_locale_ko.py`를 실행한다. PR/CI에서는 `python scripts/build_locale_ko.py --strict`로 `django_apps/shapez_asteroid/views.py`와 `django_apps/web/views/public_pages.py`에 등장하는 리터럴 `_("...")`가 `scripts/build_locale_ko.py`의 `KO`에 모두 있는지 검증한다(`tests/unit/test_build_locale_ko_strict.py`).
+템플릿·지정 Python 경로의 gettext msgid를 반영하려면 루트에서 `python scripts/build_locale_ko.py`를 실행한다. PR/CI에서는 `python scripts/build_locale_ko.py --strict`로 `django_apps/web/views/public_pages.py`에 등장하는 리터럴 `_("...")`가 `scripts/build_locale_ko.py`의 `KO`에 모두 있는지 검증한다(`tests/unit/test_build_locale_ko_strict.py`).
 
 ## 하네스 순서 (게이트)
 

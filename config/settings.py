@@ -9,29 +9,10 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# SHAPEZ_* / SOLVER_GRAPH_* 런타임 플래그는 ``shapez_runtime_flags`` 참고.
+# SHAPEZ_COPY_DEBUG_DIR / SOLVER_GRAPH_* 런타임 플래그는 ``shapez_runtime_flags`` 참고.
 from . import shapez_runtime_flags as _shapez_runtime_flags  # noqa: E402
 
 SHAPEZ_COPY_DEBUG_DIR = _shapez_runtime_flags.SHAPEZ_COPY_DEBUG_DIR
-SHAPEZ_DEV_ASTEROID_REPORT_MD = _shapez_runtime_flags.SHAPEZ_DEV_ASTEROID_REPORT_MD
-SHAPEZ_DEV_ASTEROID_STEP_REPORT = _shapez_runtime_flags.SHAPEZ_DEV_ASTEROID_STEP_REPORT
-SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET = (
-    _shapez_runtime_flags.SHAPEZ_MINING_ASSERT_SCRATCH_TRANSPORT_SUBSET
-)
-SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE = (
-    _shapez_runtime_flags.SHAPEZ_MINING_ASSERT_STEP9_ROUTING_STATE
-)
-SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY = (
-    _shapez_runtime_flags.SHAPEZ_MINING_PASS12_PRESERVE_STUB_RECOVERY
-)
-SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY = (
-    _shapez_runtime_flags.SHAPEZ_MINING_PASS12_PRESERVE_STUB_ROUTE_RECOVERY
-)
-SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED = (
-    _shapez_runtime_flags.SHAPEZ_MINING_PASS2_FLUID_INTERNAL_FILL_ENABLED
-)
-SHAPEZ_MINING_LAYOUT_ENGINE = _shapez_runtime_flags.SHAPEZ_MINING_LAYOUT_ENGINE
-SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT = _shapez_runtime_flags.SHAPEZ_MINING_LAYOUT_ZIP_AUTO_EXTRACT
 SOLVER_GRAPH_PREVIEW_RENDERER = _shapez_runtime_flags.SOLVER_GRAPH_PREVIEW_RENDERER
 SOLVER_GRAPH_PREVIEW_STORAGE = _shapez_runtime_flags.SOLVER_GRAPH_PREVIEW_STORAGE
 SOLVER_GRAPH_PREVIEW_CACHE_DIR = _shapez_runtime_flags.SOLVER_GRAPH_PREVIEW_CACHE_DIR
@@ -66,8 +47,8 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "django_apps.shapez_core.apps.ShapezCoreConfig",
     "django_apps.shapez_solver.apps.ShapezSolverConfig",
-    "django_apps.shapez_asteroid.apps.ShapezAsteroidConfig",
     "django_apps.web.apps.WebConfig",
+    "django_apps.asteroid_lab.apps.AsteroidLabConfig",
 ]
 
 MIDDLEWARE = [

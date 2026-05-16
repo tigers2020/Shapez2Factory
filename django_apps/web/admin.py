@@ -14,7 +14,7 @@ from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
-from django_apps.web.models import ShapePartSprite
+from django_apps.web.models import AsteroidDecodedLayoutDocument, ShapePartSprite
 from django_apps.web.services.shape_part_sprite_generation import (
     JOB_CACHE_TIMEOUT_SECONDS,
     _build_work_queue,
@@ -365,3 +365,39 @@ class ShapePartSpriteAdmin(admin.ModelAdmin):
 
         public = {k: v for k, v in state.items() if k != "user_id"}
         return JsonResponse(public)
+
+
+@admin.register(AsteroidDecodedLayoutDocument)
+class AsteroidDecodedLayoutDocumentAdmin(admin.ModelAdmin):
+    """Read-only view of imported decoded JSON (use management command to load)."""
+
+    list_display = (
+        "id",
+        "bp_type",
+        "root_v",
+        "binary_version",
+        "entry_count",
+        "source_label",
+        "created_at",
+    )
+    list_filter = ("bp_type",)
+    search_fields = ("source_label", "content_sha256")
+    readonly_fields = (
+        "content_sha256",
+        "source_label",
+        "root_v",
+        "bp_type",
+        "binary_version",
+        "icon_json",
+        "document_json",
+        "entry_count",
+        "created_at",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        del request
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        del obj
+        return request.user.is_superuser

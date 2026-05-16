@@ -14,13 +14,81 @@
 
   /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. */
   const LAB_CELL_BASE =
-    "lab-cell shrink-0 rounded-[5px] border bg-slate-950 border-slate-900";
+    "lab-cell shrink-0 overflow-hidden rounded-[5px] border bg-slate-950 border-slate-900";
+
+  /** Filenames under ``web/assets/sprites/`` (whitelist for ``tile_type`` → URL). */
+  const LAB_SPRITE_KNOWN = new Set([
+    "layout_fluid_miner.svg",
+    "layout_fluid_miner_extension.svg",
+    "space_pipe_forward.svg",
+    "space_pipe_left_fwd_merger.svg",
+    "space_pipe_left_turn.svg",
+    "space_pipe_right_fwd_merger.svg",
+    "space_pipe_right_fwd_splitter.svg",
+    "space_pipe_right_turn.svg",
+    "space_pipe_triple_merger.svg",
+    "space_pipe_triple_splitter.svg",
+    "space_pipe_y_merger.svg",
+  ]);
+
+  /** Set in ``init`` from ``#lab-root`` ``data-lab-sprite-base`` (Django ``{% static %}``). */
+  let labSpriteBaseUrl = "";
 
   const rawTotal = window.__ASTEROID_LAB_TOTAL_FRAMES__;
   const TOTAL_FRAMES = Number.isFinite(rawTotal) ? rawTotal : 0;
 
   /** Extra empty cells beyond union bbox on each side (visual col / row), symmetric around (1,0). */
   const REPLAY_GRID_EDGE_PADDING = 5;
+
+  function labSpriteFilenameFromTileType(tileType) {
+    const t = tileType == null ? "" : String(tileType);
+    if (!t) return null;
+    let name = null;
+    if (t.startsWith("SpacePipe_")) {
+      const rest = t.slice("SpacePipe_".length);
+      if (!rest) return null;
+      const parts = rest.split("_");
+      let slug = "";
+      for (let i = 0; i < parts.length; i++) {
+        slug += (i ? "_" : "") + String(parts[i]).toLowerCase();
+      }
+      name = "space_pipe_" + slug + ".svg";
+    } else if (t === "Layout_FluidMiner") {
+      name = "layout_fluid_miner.svg";
+    } else if (t === "Layout_FluidMinerExtension") {
+      name = "layout_fluid_miner_extension.svg";
+    }
+    if (!name || !LAB_SPRITE_KNOWN.has(name)) return null;
+    return name;
+  }
+
+  function clearLabCellSprite(el) {
+    el.style.backgroundImage = "";
+    el.style.backgroundSize = "";
+    el.style.backgroundPosition = "";
+    el.style.backgroundRepeat = "";
+    el.style.transform = "";
+    el.removeAttribute("data-lab-sprite");
+  }
+
+  function applyLabCellSprite(el, cell) {
+    clearLabCellSprite(el);
+    if (!labSpriteBaseUrl || !cell || typeof cell !== "object") return;
+    const fn = labSpriteFilenameFromTileType(cell.tile_type);
+    if (!fn) return;
+    const base = String(labSpriteBaseUrl).replace(/\/?$/, "/");
+    const url = base + fn;
+    el.style.backgroundImage = 'url("' + url.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '")';
+    el.style.backgroundSize = "contain";
+    el.style.backgroundPosition = "center";
+    el.style.backgroundRepeat = "no-repeat";
+    const rot = Number(cell.rotation);
+    const q = Number.isFinite(rot) ? ((Math.trunc(rot) % 4) + 4) % 4 : 0;
+    if (q !== 0) {
+      el.style.transform = "rotate(" + String(q * 90) + "deg)";
+    }
+    el.setAttribute("data-lab-sprite", fn);
+  }
 
   function readJsonScript(id) {
     const el = document.getElementById(id);
@@ -333,6 +401,7 @@
       const el = domCells[idx];
       el.className = base + " " + tone;
       if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
+      applyLabCellSprite(el, cell);
     }
   }
 
@@ -349,6 +418,7 @@
       const el = domCells[idx];
       el.className = base + " " + tone;
       el.setAttribute("data-overlay-role", role);
+      applyLabCellSprite(el, cell);
     }
   }
 
@@ -365,6 +435,7 @@
       const el = domCells[idx];
       el.className = base + " " + tone;
       if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
+      applyLabCellSprite(el, cell);
     }
   }
 
@@ -381,6 +452,7 @@
       el.className = base + " " + tone;
       if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
       if (role) el.setAttribute("data-overlay-role", role);
+      applyLabCellSprite(el, cell);
     }
   }
 
@@ -399,6 +471,7 @@
       domCells[i].className = baseClasses[i] || "";
       domCells[i].removeAttribute("data-cell-kind");
       domCells[i].removeAttribute("data-overlay-role");
+      clearLabCellSprite(domCells[i]);
     }
   }
 
@@ -576,6 +649,10 @@
     }
 
     const rootEl = document.getElementById("lab-root");
+    labSpriteBaseUrl =
+      rootEl && rootEl.dataset && rootEl.dataset.labSpriteBase != null
+        ? String(rootEl.dataset.labSpriteBase)
+        : "";
     const parseFrame = function (v, fallback) {
       const n = parseInt(String(v), 10);
       return Number.isNaN(n) ? fallback : n;

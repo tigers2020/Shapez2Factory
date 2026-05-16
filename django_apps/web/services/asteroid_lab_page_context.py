@@ -11,7 +11,9 @@ from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
 GRID_W, GRID_H = 23, 15
 CELL_COUNT = GRID_W * GRID_H
 
-LAB_CELL_NEUTRAL = "lab-cell h-5 w-5 shrink-0 rounded-[5px] border bg-slate-950 border-slate-900"
+LAB_CELL_NEUTRAL = (
+    "lab-cell h-5 w-5 shrink-0 overflow-hidden rounded-[5px] border bg-slate-950 border-slate-900"
+)
 
 
 def _neutral_overlay_matrix() -> list[list[str]]:

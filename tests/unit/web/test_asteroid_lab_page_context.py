@@ -207,6 +207,7 @@ def test_lab_js_replay_wiring_smoke() -> None:
         root / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
     )
     js = js_path.read_text(encoding="utf-8")
+    assert "LAB_SPRITE_KNOWN" in js
     assert "function renderReplayFrame" in js
     assert "getCurrentReplayFrame" in js
     assert "lab-replay-frames-data" in js

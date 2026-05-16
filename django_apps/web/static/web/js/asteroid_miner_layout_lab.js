@@ -37,6 +37,9 @@
    *
    * Lab SVG assets are authored with default "forward" toward screen-up; ``LAB_SPRITE_ROTATION_OFFSET_Q``
    * applies on the **sprite child layer only** (parent cell keeps bundle ``border-*`` aligned to map n/e/s/w).
+   *
+   * ``SpacePipe_*`` uses ``(offset - R)`` quarter-turns on the sprite layer; ``(offset + R)`` is kept for
+   * layout miners so chiral junctions line up with decode ``R`` vs symmetric equipment art.
    */
   const LAB_SPRITE_ROTATION_OFFSET_Q = 1;
 
@@ -87,6 +90,14 @@
     }
   }
 
+  /** ``LeftFwdMerger`` / ``YMerger`` → ``left_fwd_merger`` / ``y_merger`` (asset basename segment). */
+  function labPascalSegmentToSnakeLower(segment) {
+    return String(segment)
+      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+      .replace(/([a-z\d])([A-Z])/g, "$1_$2")
+      .toLowerCase();
+  }
+
   function labSpriteFilenameFromTileType(tileType) {
     const t = tileType == null ? "" : String(tileType);
     if (!t) return null;
@@ -94,11 +105,7 @@
     if (t.startsWith("SpacePipe_")) {
       const rest = t.slice("SpacePipe_".length);
       if (!rest) return null;
-      const parts = rest.split("_");
-      let slug = "";
-      for (let i = 0; i < parts.length; i++) {
-        slug += (i ? "_" : "") + String(parts[i]).toLowerCase();
-      }
+      const slug = labPascalSegmentToSnakeLower(rest);
       name = "space_pipe_" + slug + ".svg";
     } else if (t === "Layout_FluidMiner") {
       name = "layout_fluid_miner.svg";
@@ -148,8 +155,11 @@
     layer.style.backgroundPosition = "center";
     layer.style.backgroundRepeat = "no-repeat";
     const rot = Number(cell.rotation);
-    const q = Number.isFinite(rot) ? ((Math.trunc(rot) % 4) + 4) % 4 : 0;
-    const displayQ = (q + LAB_SPRITE_ROTATION_OFFSET_Q) % 4;
+    const qRaw = Number.isFinite(rot) ? ((Math.trunc(rot) % 4) + 4) % 4 : 0;
+    const tt = cell.tile_type == null ? "" : String(cell.tile_type);
+    const displayQ = tt.startsWith("SpacePipe_")
+      ? (LAB_SPRITE_ROTATION_OFFSET_Q - qRaw + 4) % 4
+      : (qRaw + LAB_SPRITE_ROTATION_OFFSET_Q) % 4;
     // Blueprint R: quarter-turns from East (0), clockwise. CSS rotate(+) is clockwise on screen.
     if (displayQ !== 0) {
       layer.style.transform = "rotate(" + String(displayQ * 90) + "deg)";

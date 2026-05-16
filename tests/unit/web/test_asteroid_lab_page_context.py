@@ -217,6 +217,9 @@ def test_lab_js_replay_wiring_smoke() -> None:
     )
     js = js_path.read_text(encoding="utf-8")
     assert "LAB_SPRITE_KNOWN" in js
+    assert "labPascalSegmentToSnakeLower" in js
+    assert '.startsWith("SpacePipe_")' in js
+    assert "LAB_SPRITE_ROTATION_OFFSET_Q - qRaw" in js
     assert "LAB_SPRITE_ROTATION_OFFSET_Q" in js
     assert "displayQ" in js
     assert "function renderReplayFrame" in js

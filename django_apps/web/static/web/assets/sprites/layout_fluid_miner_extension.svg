@@ -26,8 +26,8 @@
 <rect x="24" y="32" width="52" height="34" rx="8" fill="url(#metal)" stroke="#2d3748" stroke-width="3"/>
 <circle cx="36" cy="49" r="9" fill="#47a7e8" stroke="#0b3654" stroke-width="3"/>
 <circle cx="60" cy="49" r="9" fill="#47a7e8" stroke="#0b3654" stroke-width="3"/>
-<path d="M24 62 H76" stroke="#ffd166" stroke-width="4"/>
-<path d="M50 24 V32" stroke="#9aa7b8" stroke-width="6" stroke-linecap="round"/>
+<path d="M12 50 H88" stroke="#ffd166" stroke-width="5" stroke-linecap="round"/>
+<path d="M50 22 V50" stroke="#9aa7b8" stroke-width="6" stroke-linecap="round"/>
 <text x="50" y="82" text-anchor="middle" font-family="Arial" font-size="9" fill="#d9e6f2">EXT</text>
 </g>
 </svg>

@@ -60,12 +60,56 @@ def _without_transport(c: DecodedCellDTO) -> bool:
     return not is_transport_tile(c)
 
 
-def _without_extractors(c: DecodedCellDTO) -> bool:
-    return c.cell_kind not in ("fluid_miner", "shape_miner")
+def _synthetic_asteroid_field_cell(source: DecodedCellDTO, field_cell_kind: str) -> DecodedCellDTO:
+    """Replay-only cell: same (x,y,layer) as removed miner/extension; not in decode BP."""
+
+    return DecodedCellDTO(
+        x=source.x,
+        y=source.y,
+        layer=source.layer,
+        rotation=0,
+        tile_type="",
+        cell_kind=field_cell_kind,
+        transport_kind="none",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={"_replay_synthetic": True, "_from_cell_kind": source.cell_kind},
+    )
 
 
-def _without_extensions(c: DecodedCellDTO) -> bool:
-    return c.cell_kind not in ("fluid_miner_extension", "shape_miner_extension")
+def _field_cell_kind_for_miner(c: DecodedCellDTO) -> str:
+    return "asteroid_shape_field" if c.cell_kind == "shape_miner" else "asteroid_fluid_field"
+
+
+def _field_cell_kind_for_extension(c: DecodedCellDTO) -> str:
+    if c.cell_kind == "shape_miner_extension":
+        return "asteroid_shape_field"
+    return "asteroid_fluid_field"
+
+
+def _replace_miners_with_synthetic_fields(
+    cells: Sequence[DecodedCellDTO],
+) -> tuple[DecodedCellDTO, ...]:
+    out: list[DecodedCellDTO] = []
+    for c in cells:
+        if c.cell_kind in ("fluid_miner", "shape_miner"):
+            out.append(_synthetic_asteroid_field_cell(c, _field_cell_kind_for_miner(c)))
+        else:
+            out.append(c)
+    return tuple(out)
+
+
+def _replace_extensions_with_synthetic_fields(
+    cells: Sequence[DecodedCellDTO],
+) -> tuple[DecodedCellDTO, ...]:
+    out: list[DecodedCellDTO] = []
+    for c in cells:
+        if c.cell_kind in ("fluid_miner_extension", "shape_miner_extension"):
+            out.append(_synthetic_asteroid_field_cell(c, _field_cell_kind_for_extension(c)))
+        else:
+            out.append(c)
+    return tuple(out)
 
 
 def _infer_internal_void_rows(remaining: Sequence[DecodedCellDTO]) -> list[dict[str, Any]]:
@@ -148,6 +192,7 @@ def snapshot_summary_from_rows(rows: Sequence[dict[str, Any]]) -> dict[str, Any]
         "cell_kind_counts": dict(ck),
         "extractor_count": n("fluid_miner", "shape_miner"),
         "extension_count": n("fluid_miner_extension", "shape_miner_extension"),
+        "field_count": n("asteroid_fluid_field", "asteroid_shape_field"),
         "belt_count": int(ck.get("space_belt", 0)),
         "pipe_count": int(ck.get("space_pipe", 0)),
         "internal_void_count": int(ck.get("internal_void", 0)),
@@ -188,8 +233,8 @@ def build_cleanup_and_reconstruction_rows(
 
     all_cells = snapshot.cells
     after_transport = tuple(c for c in all_cells if _without_transport(c))
-    after_extractors = tuple(c for c in after_transport if _without_extractors(c))
-    after_extensions = tuple(c for c in after_extractors if _without_extensions(c))
+    after_extractors = _replace_miners_with_synthetic_fields(after_transport)
+    after_extensions = _replace_extensions_with_synthetic_fields(after_extractors)
     void_rows = _infer_internal_void_rows(after_extensions)
     structural = rows_from_cells(after_extensions)
     reconstruction = structural + void_rows

@@ -281,6 +281,12 @@
     if (ck === "fluid_miner_extension" || ck === "shape_miner_extension") {
       return "ring-1 ring-inset ring-amber-300/40 bg-amber-950/12";
     }
+    if (ck === "asteroid_fluid_field") {
+      return "ring-1 ring-inset ring-teal-400/50 bg-teal-950/28";
+    }
+    if (ck === "asteroid_shape_field") {
+      return "ring-1 ring-inset ring-emerald-400/50 bg-emerald-950/28";
+    }
     return overlayToneClasses("", cell);
   }
 

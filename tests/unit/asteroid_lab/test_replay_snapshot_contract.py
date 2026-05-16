@@ -87,13 +87,31 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
 
     extractor_row = rows[2]
     fm2 = extractor_row.frame_payload.get("full_map")
-    assert isinstance(fm2, list) and len(fm2) == 9
+    assert isinstance(fm2, list) and len(fm2) == 10
     assert all(c["cell_kind"] != "fluid_miner" for c in fm2)
+    cell_10 = next(c for c in fm2 if c["x"] == 1 and c["y"] == 0)
+    assert cell_10["cell_kind"] == "asteroid_fluid_field"
+    diff2 = extractor_row.frame_payload.get("diff") or {}
+    changed2 = diff2.get("changed") or []
+    assert any(
+        ch.get("before", {}).get("cell_kind") == "fluid_miner"
+        and ch.get("after", {}).get("cell_kind") == "asteroid_fluid_field"
+        for ch in changed2
+    )
 
     extension_row = rows[3]
     fm3 = extension_row.frame_payload.get("full_map")
-    assert isinstance(fm3, list) and len(fm3) == 8
+    assert isinstance(fm3, list) and len(fm3) == 10
     assert all(c["cell_kind"] != "fluid_miner_extension" for c in fm3)
+    cell_30 = next(c for c in fm3 if c["x"] == 3 and c["y"] == 0)
+    assert cell_30["cell_kind"] == "asteroid_fluid_field"
+    diff3 = extension_row.frame_payload.get("diff") or {}
+    changed3 = diff3.get("changed") or []
+    assert any(
+        ch.get("before", {}).get("cell_kind") == "fluid_miner_extension"
+        and ch.get("after", {}).get("cell_kind") == "asteroid_fluid_field"
+        for ch in changed3
+    )
 
     recon_row = rows[4]
     assert recon_row.frame_payload.get("event_type") == et.EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION

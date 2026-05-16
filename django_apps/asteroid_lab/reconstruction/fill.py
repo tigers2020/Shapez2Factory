@@ -22,7 +22,11 @@ def passes_bbox_interior(comp: set[Coord], w0: int, w1: int, h0: int, h1: int) -
 
 
 def passes_two_axis_evidence_guard(comp: set[Coord], walls: set[Coord]) -> bool:
-    """Require wall touch on both x- and y-offset directions (4-neighbor)."""
+    """Require evidence-wall touch on both x- and y-offset directions (4-neighbor).
+
+    Pass ``cleanup.wall_coords`` only; do not pass inferred shell / flood ``barrier`` sets
+    (would self-justify fills). Barriers for flood are handled in ``pipeline``.
+    """
 
     has_x = False
     has_y = False

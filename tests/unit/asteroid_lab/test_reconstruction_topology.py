@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.reconstruction.pipeline import reconstruct_snapshot
+from django_apps.asteroid_lab.reconstruction.shell import infer_shell_barrier_coords
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
 
 
@@ -77,6 +78,11 @@ def test_interior_hole_filled_as_field_not_void() -> None:
     assert "internal_void" not in kinds
     hole = next(c for c in res.cells if c.x == 2 and c.y == 2)
     assert hole.cell_kind == "asteroid_shape_field"
+    s = res.summary_json
+    assert s.get("inferred_shell_cell_count", 0) >= 1
+    assert int(s["barrier_cell_count"]) >= int(s["wall_cell_count"])
+    assert int(s["filled_component_count"]) >= 1
+    assert int(s["filled_hole_cell_count"]) == 1
 
 
 def test_fluid_miner_inside_shell_fill_kind_not_from_miner_type() -> None:
@@ -116,6 +122,19 @@ def test_incomplete_shell_does_not_overfill() -> None:
     )
     res = reconstruct_snapshot(_snapshot(cells))
     assert not any(c.x == 2 and c.y == 2 for c in res.cells)
+    s = res.summary_json
+    assert int(s["filled_hole_cell_count"]) == 0
+    assert int(s["filled_component_count"]) == 0
+
+
+def test_infer_shell_skips_strict_bbox_interior() -> None:
+    """Do not infer barrier across the hole inside the tight wall bbox (row span)."""
+
+    walls = {(1, 1), (3, 1), (1, 3), (3, 3), (1, 2), (3, 2)}
+    bbox = (-1, 3, 0, 4)
+    inf = infer_shell_barrier_coords(walls, bbox)
+    assert (2, 2) not in inf
+    assert (2, 1) in inf or (2, 3) in inf
 
 
 def test_existing_asteroid_field_evidence_not_overwritten() -> None:
@@ -158,3 +177,45 @@ def test_deterministic_tie_break_prefers_shape() -> None:
     res = reconstruct_snapshot(_snapshot(cells))
     hole = next(c for c in res.cells if c.x == 2 and c.y == 2)
     assert hole.cell_kind == "asteroid_shape_field"
+
+
+def test_trace_collector_does_not_change_reconstruction_cells() -> None:
+    from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
+    from django_apps.asteroid_lab.reconstruction.pipeline import reconstruct_after_cleanup
+    from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
+
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(2, 1, tile_type="UnknownTile_B"),
+        _cell(3, 1, tile_type="UnknownTile_C"),
+        _cell(1, 2, tile_type="UnknownTile_D"),
+        _cell(3, 2, tile_type="UnknownTile_E"),
+        _cell(1, 3, tile_type="UnknownTile_F"),
+        _cell(2, 3, tile_type="UnknownTile_G"),
+        _cell(3, 3, tile_type="UnknownTile_H"),
+    )
+    snap = _snapshot(cells)
+    c = deconstruct_snapshot(snap)
+    without = reconstruct_after_cleanup(
+        cleaned_cells=c.cleaned_cells,
+        wall_coords=c.wall_coords,
+        bbox_bounds=c.bbox_bounds,
+        server_xy_params=c.server_xy_params,
+    )
+    coll = ReconstructionTraceCollector()
+    with_trace = reconstruct_after_cleanup(
+        cleaned_cells=c.cleaned_cells,
+        wall_coords=c.wall_coords,
+        bbox_bounds=c.bbox_bounds,
+        server_xy_params=c.server_xy_params,
+        trace_collector=coll,
+    )
+    assert without.cells == with_trace.cells
+    assert len(coll.events) >= 2
+    finals = [e for e in coll.events if e.trace_event_type == "reconstruction_final"]
+    assert len(finals) == 1
+    keys = [str(e.summary_json.get("event_key", "")) for e in coll.events]
+    assert "step4_09_reconstruction_final" in keys

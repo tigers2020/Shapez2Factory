@@ -6,8 +6,8 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import Any
 
+from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
 from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_result
-from django_apps.asteroid_lab.replay.reconstruction_frames import run_topology_reconstruction
 from django_apps.asteroid_lab.services.dto import (
     DecodedBlueprintSnapshotDTO,
     DecodedCellDTO,

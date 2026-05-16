@@ -6,17 +6,21 @@ from dataclasses import asdict
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
+from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
+from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_result
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION,
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR,
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
-    EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
 )
+from django_apps.asteroid_lab.replay.reconstruction_frames import build_reconstruction_replay_events
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     build_cleanup_and_reconstruction_rows,
     diff_maps,
     filter_issue_cells_for_full_map,
     issue_overlay_cells,
+    rows_from_cells,
     snapshot_summary_from_rows,
 )
 from django_apps.asteroid_lab.services.cell_snapshot_service import (
@@ -51,16 +55,22 @@ def record_existing_layout_inspection_frames(
     track_id: int,
     inspection: ExistingLayoutInspectionDTO,
 ) -> list[SnapshotFrameDTO]:
-    """Append four full-map cleanup + reconstruction replay frames (UI-only; never solver input)."""
+    """Append cleanup frames plus stepwise reconstruction replay (UI-only; never solver input)."""
 
     if inspection.map_input_id is None:
         msg = "ExistingLayoutInspectionDTO.map_input_id is required for snapshot replay"
         raise ValueError(msg)
 
     snap = build_decoded_blueprint_snapshot_from_input(int(inspection.map_input_id))
-    row_decode, row_transport, row_extractor, row_extension, row_recon, recon_extra = (
-        build_cleanup_and_reconstruction_rows(snap)
+    _, row_transport, row_extractor, row_extension, _, _ = build_cleanup_and_reconstruction_rows(
+        snap
     )
+
+    cleanup = load_cleanup_result(snap)
+    collector = ReconstructionTraceCollector()
+    recon = run_topology_reconstruction(cleanup, trace_collector=collector)
+    row_recon = rows_from_cells(recon.cells)
+    recon_extra = {**dict(cleanup.summary_json), **dict(recon.summary_json)}
 
     recorder = ReplayRecorder(int(track_id))
     phase = "layout_cleanup"
@@ -138,26 +148,17 @@ def record_existing_layout_inspection_frames(
         ],
     }
 
-    ev_recon = SnapshotEventDTO(
-        event_key="step4_reconstruction",
-        phase="reconstruction",
-        phase_step="snapshot",
-        event_type=EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
-        title="Reconstruction snapshot",
-        description=(
-            "Structural cells after topology reconstruction (no internal_void); "
-            "inspection metadata in summary."
-        ),
-        after_state_json={"hints_json": hints},
-        cell_overlay_json={"cells": row_recon, "issue_cells": i_cells},
-        metrics_json=dict(recon_summary),
-        is_decision_point=True,
-        full_map=list(row_recon),
-        diff=diff_maps(row_extension, row_recon),
-        summary=recon_summary,
+    recon_events = build_reconstruction_replay_events(
+        structural_rows=list(row_extension),
+        cleanup=cleanup,
+        recon=recon,
+        trace_events=collector.events,
+        recon_summary=dict(recon_summary),
+        hints=hints,
+        final_issue_cells=i_cells,
     )
 
-    return recorder.record_many([ev_transport, ev_extractor, ev_extension, ev_recon])
+    return recorder.record_many([ev_transport, ev_extractor, ev_extension, *recon_events])
 
 
 def persist_existing_layout_inspection_snapshot(

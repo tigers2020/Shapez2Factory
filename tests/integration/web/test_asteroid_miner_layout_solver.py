@@ -12,6 +12,8 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert "Replay Timeline" in content
     assert "lab-cell-overlay-matrix-data" in content
     assert 'id="lab-ui-initial-state"' in content
+    assert "G-042" not in content
+    assert "No runs" in content
 
 
 def test_asteroid_miner_layout_page_preserves_code_query() -> None:

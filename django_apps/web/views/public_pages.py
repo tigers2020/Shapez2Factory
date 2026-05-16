@@ -20,7 +20,7 @@ from django_apps.web.constants import (
     HOME_INITIAL_SHAPE_CODE,
 )
 from django_apps.web.models import GraphPreviewImage
-from django_apps.web.services.asteroid_mining_lab_demo import lab_page_context
+from django_apps.web.services.asteroid_lab_page_context import lab_page_context
 from django_apps.web.services.graph_preview import (
     PlaywrightPngGraphPreviewRenderer,
     png_bytes_are_valid,

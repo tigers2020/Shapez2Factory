@@ -1,10 +1,11 @@
 /**
- * Demo replay controls for the asteroid mining lab page (client-only).
+ * Client-side replay controls for the asteroid mining lab page (shell UI).
  */
 (function () {
   "use strict";
 
-  const TOTAL_FRAMES = window.__ASTEROID_LAB_TOTAL_FRAMES__ || 240;
+  const rawTotal = window.__ASTEROID_LAB_TOTAL_FRAMES__;
+  const TOTAL_FRAMES = Number.isFinite(rawTotal) ? rawTotal : 0;
 
   function readJsonScript(id) {
     const el = document.getElementById(id);
@@ -62,7 +63,7 @@
       const n = parseInt(String(v), 10);
       return Number.isNaN(n) ? fallback : n;
     };
-    const datasetFrame = parseFrame(rootEl?.dataset.labInitialFrame, 128);
+    const datasetFrame = parseFrame(rootEl?.dataset.labInitialFrame, 0);
     const initialFromServer = uiInitial && typeof uiInitial === "object" ? uiInitial : {};
     const baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
     const baselineBlueprint =
@@ -91,7 +92,7 @@
     function applyFrame() {
       if (frame < 0) frame = 0;
       if (frame > TOTAL_FRAMES) frame = TOTAL_FRAMES;
-      const overlay = replayOverlayForFrame(frame);
+      const overlay = TOTAL_FRAMES <= 0 ? "candidates" : replayOverlayForFrame(frame);
       const oi = overlayIndex(overlay);
       for (let i = 0; i < cells.length; i++) {
         const row = matrix[i];
@@ -99,7 +100,9 @@
           cells[i].className = row[oi];
         }
       }
-      if (phaseEl) phaseEl.textContent = replayPhaseForFrame(frame);
+      if (phaseEl) {
+        phaseEl.textContent = TOTAL_FRAMES <= 0 ? "—" : replayPhaseForFrame(frame);
+      }
       if (frameEl) frameEl.textContent = String(frame) + " / " + String(TOTAL_FRAMES);
       if (gridEl) gridEl.dataset.overlay = overlay;
       const cycle = document.getElementById("lab-computation-cycle");
@@ -107,12 +110,16 @@
     }
 
     function setPlaying(next) {
-      isPlaying = next;
+      let wantPlay = next;
+      if (wantPlay && TOTAL_FRAMES <= 0) {
+        wantPlay = false;
+      }
+      isPlaying = wantPlay;
       if (timerId !== null) {
         window.clearInterval(timerId);
         timerId = null;
       }
-      if (isPlaying) {
+      if (isPlaying && TOTAL_FRAMES > 0) {
         timerId = window.setInterval(function () {
           frame += 1;
           if (frame >= TOTAL_FRAMES) frame = 0;
@@ -142,6 +149,52 @@
       });
     }
 
+    function setRunDetail(run) {
+      const dash = "—";
+      const detailIds = [
+        "lab-detail-score",
+        "lab-detail-miners",
+        "lab-detail-extension-cap",
+        "lab-detail-connected",
+        "lab-detail-cost",
+        "lab-detail-belts",
+        "lab-detail-pipes",
+        "lab-detail-saturation",
+      ];
+      if (!run) {
+        for (const id of detailIds) {
+          const el = document.getElementById(id);
+          if (el) el.textContent = dash;
+        }
+        const title = document.getElementById("lab-detail-run-id");
+        if (title) title.textContent = dash;
+        return;
+      }
+      const ext =
+        run.extension_cap != null && run.extension_cap !== ""
+          ? String(run.extension_cap)
+          : dash;
+      const map = [
+        ["lab-detail-score", run.score != null ? run.score : dash],
+        ["lab-detail-miners", run.miners != null ? run.miners : dash],
+        ["lab-detail-extension-cap", ext],
+        ["lab-detail-connected", run.connected != null ? run.connected : dash],
+        ["lab-detail-cost", run.cost != null ? run.cost : dash],
+        ["lab-detail-belts", run.belts != null ? run.belts : dash],
+        ["lab-detail-pipes", run.pipes != null ? run.pipes : dash],
+        [
+          "lab-detail-saturation",
+          run.saturation != null && run.saturation !== "" ? String(run.saturation) + "%" : dash,
+        ],
+      ];
+      for (const [id, val] of map) {
+        const n = document.getElementById(id);
+        if (n) n.textContent = String(val);
+      }
+      const title = document.getElementById("lab-detail-run-id");
+      if (title) title.textContent = run.id != null ? String(run.id) : dash;
+    }
+
     function resetToInitial() {
       setPlaying(false);
       frame = baselineFrame;
@@ -167,6 +220,7 @@
     });
 
     playBtn?.addEventListener("click", function () {
+      if (TOTAL_FRAMES <= 0) return;
       setPlaying(!isPlaying);
       applyFrame();
     });
@@ -175,25 +229,6 @@
       frame = Math.min(TOTAL_FRAMES, frame + 1);
       applyFrame();
     });
-
-    function setRunDetail(run) {
-      if (!run) return;
-      const map = [
-        ["lab-detail-score", run.score],
-        ["lab-detail-miners", run.miners],
-        ["lab-detail-connected", run.connected],
-        ["lab-detail-cost", run.cost],
-        ["lab-detail-belts", run.belts],
-        ["lab-detail-pipes", run.pipes],
-        ["lab-detail-saturation", run.saturation + "%"],
-      ];
-      for (const [id, val] of map) {
-        const n = document.getElementById(id);
-        if (n) n.textContent = String(val);
-      }
-      const title = document.getElementById("lab-detail-run-id");
-      if (title) title.textContent = run.id;
-    }
 
     document.querySelectorAll("[data-lab-run-id]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -219,6 +254,7 @@
       }
     });
 
+    setRunDetail(baselineRun);
     applyFrame();
   }
 

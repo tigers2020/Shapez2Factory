@@ -21,9 +21,7 @@
             Asteroid Mining Lab
           </div>
           <h1 class="mt-1 text-2xl font-semibold tracking-tight">Greenfield Solver Workspace</h1>
-          <p class="mt-1 max-w-3xl text-sm text-slate-400">
-            Candidate placement, extension topology, output transport attachment, route feasibility, scoring, and final validation are visible as replay frames.
-          </p>
+          <p class="mt-1 max-w-3xl text-sm text-slate-400">—</p>
         </div>
         <div class="flex gap-2">
           <button
@@ -75,6 +73,8 @@
               </div>
               <div class="mt-1 text-xs text-slate-500">{{ rule.detail }}</div>
             </div>
+          {% empty %}
+            <p class="text-sm text-slate-500">No data</p>
           {% endfor %}
         </div>
       </div>
@@ -102,19 +102,19 @@
               <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div class="rounded-xl bg-slate-900 p-3">
                   <div class="text-slate-500">Mode</div>
-                  <div class="mt-1 font-medium">GA + Local Solver</div>
+                  <div class="mt-1 font-medium">—</div>
                 </div>
                 <div class="rounded-xl bg-slate-900 p-3">
                   <div class="text-slate-500">Budget</div>
-                  <div class="mt-1 font-medium">30 sec</div>
+                  <div class="mt-1 font-medium">—</div>
                 </div>
                 <div class="rounded-xl bg-slate-900 p-3">
                   <div class="text-slate-500">Shape ratio</div>
-                  <div class="mt-1 font-medium">5 miners / belt</div>
+                  <div class="mt-1 font-medium">—</div>
                 </div>
                 <div class="rounded-xl bg-slate-900 p-3">
                   <div class="text-slate-500">Fluid ratio</div>
-                  <div class="mt-1 font-medium">4 miners / pipe</div>
+                  <div class="mt-1 font-medium">—</div>
                 </div>
               </div>
               <button type="submit" class="mt-3 w-full rounded-xl border border-slate-700 bg-slate-900 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800">
@@ -142,10 +142,12 @@
                   </div>
                   <div class="mt-1 text-xs text-slate-400">{{ rule.detail }}</div>
                 </div>
+              {% empty %}
+                <p class="text-sm text-slate-500">No data</p>
               {% endfor %}
             </div>
-            <div class="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-              Fitness should reward connected saturation, not raw extractor count. A disconnected miner contributes zero practical throughput.
+            <div class="mt-3 rounded-xl border border-slate-800 bg-slate-900 p-3 text-xs text-slate-500">
+              —
             </div>
           </div>
         </div>
@@ -155,7 +157,7 @@
             <div class="flex items-center justify-between gap-3">
               <div>
                 <div class="text-sm font-semibold">Topology Constraints</div>
-                <div class="mt-1 text-xs text-slate-500">Extractor / extension / transport attachment rules</div>
+                <div class="mt-1 text-xs text-slate-500">—</div>
               </div>
               <button
                 type="button"
@@ -186,6 +188,8 @@
                     <div class="text-xs text-slate-500">{{ s.state }}</div>
                   </div>
                 </div>
+              {% empty %}
+                <p class="text-sm text-slate-500">No data</p>
               {% endfor %}
             </div>
           </div>
@@ -193,6 +197,7 @@
       </section>
 
       <section class="space-y-5">
+        {% if runs %}
         {% with r=runs.0 %}
           <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
             <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
@@ -212,7 +217,7 @@
             <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
               <div class="p-4">
                 <div class="text-xs uppercase tracking-wide text-slate-500">Extensions</div>
-                <div class="mt-1 text-2xl font-semibold text-slate-100">≤ 3</div>
+                <div class="mt-1 text-2xl font-semibold text-slate-100">{{ r.extension_cap|default:"—" }}</div>
                 <div class="mt-1 text-xs text-slate-400">per extractor</div>
               </div>
             </div>
@@ -232,6 +237,45 @@
             </div>
           </div>
         {% endwith %}
+        {% else %}
+          <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
+              <div class="p-4">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Best score</div>
+                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
+                <div class="mt-1 text-xs text-slate-400">—</div>
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
+              <div class="p-4">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Extractors</div>
+                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
+                <div class="mt-1 text-xs text-slate-400">—</div>
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
+              <div class="p-4">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Extensions</div>
+                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
+                <div class="mt-1 text-xs text-slate-400">—</div>
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
+              <div class="p-4">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Belt groups</div>
+                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
+                <div class="mt-1 text-xs text-slate-400">—</div>
+              </div>
+            </div>
+            <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
+              <div class="p-4">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Fluid groups</div>
+                <div class="mt-1 text-2xl font-semibold text-slate-100">—</div>
+                <div class="mt-1 text-xs text-slate-400">—</div>
+              </div>
+            </div>
+          </div>
+        {% endif %}
 
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
           <div class="p-4">
@@ -280,15 +324,15 @@
             </div>
 
             <div class="mt-4 flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-              <div>Replay Controller: decode → candidate expansion → route probe → validation</div>
+              <div>—</div>
               <div class="font-mono text-cyan-300" id="lab-computation-cycle">computation_cycle #{{ initial_frame }}</div>
             </div>
 
             <div class="mt-4 grid gap-3 text-xs text-slate-400 md:grid-cols-4">
-              <div class="rounded-xl bg-slate-900 p-3"><span class="text-amber-300">■</span> Asteroid rim</div>
-              <div class="rounded-xl bg-slate-900 p-3"><span class="text-stone-300">■</span> Mineable field</div>
-              <div class="rounded-xl bg-slate-900 p-3"><span class="text-cyan-300">■</span> Candidate bundle</div>
-              <div class="rounded-xl bg-slate-900 p-3"><span class="text-emerald-300">■</span> Output-connected route</div>
+              <div class="rounded-xl bg-slate-900 p-3">—</div>
+              <div class="rounded-xl bg-slate-900 p-3">—</div>
+              <div class="rounded-xl bg-slate-900 p-3">—</div>
+              <div class="rounded-xl bg-slate-900 p-3">—</div>
             </div>
           </div>
         </div>
@@ -320,11 +364,14 @@
                     <div>{{ r.saturation }}% sat.</div>
                   </div>
                 </button>
+              {% empty %}
+                <p class="text-sm text-slate-500">No runs</p>
               {% endfor %}
             </div>
           </div>
         </div>
 
+        {% if runs %}
         {% with r=runs.0 %}
           <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
             <div class="p-4">
@@ -342,7 +389,7 @@
                 <div class="mt-3 space-y-2 text-sm text-slate-400">
                   <div class="flex justify-between"><span>Fitness</span><span id="lab-detail-score" class="text-slate-100">{{ r.score }}</span></div>
                   <div class="flex justify-between"><span>Extractor bundles</span><span id="lab-detail-miners" class="text-slate-100">{{ r.miners }}</span></div>
-                  <div class="flex justify-between"><span>Extension cap</span><span class="text-slate-100">3 / extractor</span></div>
+                  <div class="flex justify-between"><span>Extension cap</span><span id="lab-detail-extension-cap" class="text-slate-100">{{ r.extension_cap|default:"—" }}</span></div>
                   <div class="flex justify-between"><span>Externally connected</span><span id="lab-detail-connected" class="text-slate-100">{{ r.connected }}</span></div>
                   <div class="flex justify-between"><span>Transport cost</span><span id="lab-detail-cost" class="text-slate-100">{{ r.cost }}</span></div>
                   <div class="flex justify-between"><span>Belt-equivalent groups</span><span id="lab-detail-belts" class="text-slate-100">{{ r.belts }}</span></div>
@@ -350,18 +397,43 @@
                   <div class="flex justify-between"><span>Estimated saturation</span><span id="lab-detail-saturation" class="text-slate-100">{{ r.saturation }}%</span></div>
                 </div>
               </div>
-              <div class="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-                <div class="flex gap-2">
-                  <svg class="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                    <path d="M12 9v4M12 17h.01"/>
-                  </svg>
-                  <span>Final validation must remain assertion-only. Throughput imbalance is a warning unless it breaks geometry/connectivity.</span>
-                </div>
+              <div class="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-3 text-sm text-slate-500">
+                —
               </div>
             </div>
           </div>
         {% endwith %}
+        {% else %}
+          <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
+            <div class="p-4">
+              <div class="flex items-center gap-2">
+                <svg class="h-4 w-4 text-cyan-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="16" y="16" width="6" height="6" rx="1"/>
+                  <rect x="2" y="16" width="6" height="6" rx="1"/>
+                  <rect x="9" y="2" width="6" height="6" rx="1"/>
+                  <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8"/>
+                </svg>
+                <h2 class="font-semibold">Selected Run Detail</h2>
+              </div>
+              <div class="mt-4 rounded-xl bg-slate-900 p-4">
+                <div id="lab-detail-run-id" class="text-sm font-medium">—</div>
+                <div class="mt-3 space-y-2 text-sm text-slate-400">
+                  <div class="flex justify-between"><span>Fitness</span><span id="lab-detail-score" class="text-slate-100">—</span></div>
+                  <div class="flex justify-between"><span>Extractor bundles</span><span id="lab-detail-miners" class="text-slate-100">—</span></div>
+                  <div class="flex justify-between"><span>Extension cap</span><span id="lab-detail-extension-cap" class="text-slate-100">—</span></div>
+                  <div class="flex justify-between"><span>Externally connected</span><span id="lab-detail-connected" class="text-slate-100">—</span></div>
+                  <div class="flex justify-between"><span>Transport cost</span><span id="lab-detail-cost" class="text-slate-100">—</span></div>
+                  <div class="flex justify-between"><span>Belt-equivalent groups</span><span id="lab-detail-belts" class="text-slate-100">—</span></div>
+                  <div class="flex justify-between"><span>Pipe-equivalent groups</span><span id="lab-detail-pipes" class="text-slate-100">—</span></div>
+                  <div class="flex justify-between"><span>Estimated saturation</span><span id="lab-detail-saturation" class="text-slate-100">—</span></div>
+                </div>
+              </div>
+              <div class="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-3 text-sm text-slate-500">
+                —
+              </div>
+            </div>
+          </div>
+        {% endif %}
       </section>
     </main>
   </div>

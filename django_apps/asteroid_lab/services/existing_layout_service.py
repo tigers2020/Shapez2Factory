@@ -58,7 +58,7 @@ def record_existing_layout_inspection_frames(
         raise ValueError(msg)
 
     snap = build_decoded_blueprint_snapshot_from_input(int(inspection.map_input_id))
-    row_decode, row_transport, row_extractor, row_extension, row_recon = (
+    row_decode, row_transport, row_extractor, row_extension, row_recon, recon_extra = (
         build_cleanup_and_reconstruction_rows(snap)
     )
 
@@ -119,6 +119,7 @@ def record_existing_layout_inspection_frames(
     i_cells_raw = issue_overlay_cells(inspection)
     i_cells = filter_issue_cells_for_full_map(i_cells_raw, row_recon)
     recon_summary = snapshot_summary_from_rows(row_recon)
+    recon_summary.update(recon_extra)
     recon_summary["inspection_issue_count"] = len(inspection.issues)
     recon_summary["visible_issue_cell_count"] = len(i_cells)
     recon_summary["inspection"] = {
@@ -143,10 +144,13 @@ def record_existing_layout_inspection_frames(
         phase_step="snapshot",
         event_type=EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
         title="Reconstruction snapshot",
-        description="Structural cells plus inferred internal_void; inspection metadata in summary.",
+        description=(
+            "Structural cells after topology reconstruction (no internal_void); "
+            "inspection metadata in summary."
+        ),
         after_state_json={"hints_json": hints},
         cell_overlay_json={"cells": row_recon, "issue_cells": i_cells},
-        metrics_json=snapshot_summary_from_rows(row_recon),
+        metrics_json=dict(recon_summary),
         is_decision_point=True,
         full_map=list(row_recon),
         diff=diff_maps(row_extension, row_recon),

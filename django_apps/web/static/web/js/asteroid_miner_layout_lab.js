@@ -298,9 +298,6 @@
 
   function toneForFullMapCell(cell) {
     const ck = cell && cell.cell_kind != null ? String(cell.cell_kind) : "";
-    if (ck === "internal_void") {
-      return "ring-1 ring-inset ring-zinc-500/50 bg-zinc-900/35";
-    }
     if (ck === "space_pipe" || ck === "space_belt") {
       return "ring-1 ring-inset ring-cyan-400/40 bg-cyan-950/20";
     }

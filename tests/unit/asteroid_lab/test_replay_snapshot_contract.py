@@ -118,19 +118,12 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     assert recon_row.frame_payload.get("event_type") == et.EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION
     fm4 = recon_row.frame_payload.get("full_map")
     assert isinstance(fm4, list)
-    voids = [c for c in fm4 if c.get("cell_kind") == "internal_void"]
-    assert len(voids) >= 1
-    for v in voids:
-        vr = v.get("void_record")
-        assert isinstance(vr, dict)
-        assert vr.get("schema") == "asteroid_lab.internal_void_record.v1"
-        assert vr.get("inference") == "flood_fill_unreachable_from_padded_aabb_v1"
-        assert vr.get("raw") == {"x": v["x"], "y": v["y"]}
-        if v.get("server_x") is not None and v.get("server_y") is not None:
-            assert vr.get("server") == {"x": v["server_x"], "y": v["server_y"]}
+    assert all(c.get("cell_kind") != "internal_void" for c in fm4)
+    hole = next(c for c in fm4 if c.get("x") == 2 and c.get("y") == 2)
+    assert hole.get("cell_kind") == "asteroid_shape_field"
     diff4 = recon_row.frame_payload.get("diff") or {}
     added_kinds = {c.get("cell_kind") for c in (diff4.get("added") or [])}
-    assert "internal_void" in added_kinds
+    assert "asteroid_shape_field" in added_kinds
 
 
 @pytest.mark.django_db

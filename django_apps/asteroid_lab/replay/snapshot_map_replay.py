@@ -2,22 +2,19 @@
 
 from __future__ import annotations
 
-from collections import Counter, deque
+from collections import Counter
 from collections.abc import Sequence
 from typing import Any
 
+from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_result
+from django_apps.asteroid_lab.replay.reconstruction_frames import run_topology_reconstruction
 from django_apps.asteroid_lab.services.dto import (
     DecodedBlueprintSnapshotDTO,
     DecodedCellDTO,
     ExistingLayoutInspectionDTO,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    map_bbox_dense_and_y,
-    server_xy_for_raw_xy,
-)
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
-    iter_four_neighbors,
 )
 
 
@@ -202,93 +199,6 @@ def _replace_extensions_with_synthetic_fields(
     return tuple(out)
 
 
-_VOID_RECORD_SCHEMA = "asteroid_lab.internal_void_record.v1"
-
-
-def _infer_internal_void_rows(remaining: Sequence[DecodedCellDTO]) -> list[dict[str, Any]]:
-    """Flood-fill from padded AABB border; unreachable empty cells → internal_void."""
-
-    if not remaining:
-        return []
-    xs = [c.x for c in remaining]
-    ys = [c.y for c in remaining]
-    mn_x, mx_x = min(xs), max(xs)
-    mn_y, mx_y = min(ys), max(ys)
-    pad = 1
-    w0, w1 = mn_x - pad, mx_x + pad
-    if w0 == 0:
-        w0 = -1
-    h0, h1 = mn_y - pad, mx_y + pad
-    occupied = {(c.x, c.y) for c in remaining}
-    bbox_params = map_bbox_dense_and_y([{"X": c.x, "Y": c.y} for c in remaining])
-
-    q: deque[tuple[int, int]] = deque()
-    seen: set[tuple[int, int]] = set()
-
-    def try_enqueue(x: int, y: int) -> None:
-        if x == 0:
-            return
-        if x < w0 or x > w1 or y < h0 or y > h1:
-            return
-        if (x, y) in occupied or (x, y) in seen:
-            return
-        seen.add((x, y))
-        q.append((x, y))
-
-    for x in range(w0, w1 + 1):
-        if x == 0:
-            continue
-        try_enqueue(x, h0)
-        try_enqueue(x, h1)
-    for y in range(h0, h1 + 1):
-        if w0 != 0:
-            try_enqueue(w0, y)
-        if w1 != 0:
-            try_enqueue(w1, y)
-
-    while q:
-        x, y = q.popleft()
-        for nx, ny, _nl in iter_four_neighbors(x, y, None):
-            try_enqueue(nx, ny)
-
-    voids: list[dict[str, Any]] = []
-    for x in range(mn_x, mx_x + 1):
-        if x == 0:
-            continue
-        for y in range(mn_y, mx_y + 1):
-            if (x, y) in occupied:
-                continue
-            if (x, y) in seen:
-                continue
-            void_record: dict[str, Any] = {
-                "schema": _VOID_RECORD_SCHEMA,
-                "inference": "flood_fill_unreachable_from_padded_aabb_v1",
-                "raw": {"x": x, "y": y},
-            }
-            row: dict[str, Any] = {
-                "x": x,
-                "y": y,
-                "layer": None,
-                "rotation": 0,
-                "cell_kind": "internal_void",
-                "transport_kind": "none",
-                "tile_type": "",
-                "replay_role": "internal_void",
-                "void_record": void_record,
-            }
-            if bbox_params is not None:
-                pair = server_xy_for_raw_xy(
-                    x, y, max_dense_x=bbox_params[0], min_raw_y=bbox_params[1]
-                )
-                if pair is not None:
-                    sx, sy = pair
-                    row["server_x"] = sx
-                    row["server_y"] = sy
-                    void_record["server"] = {"x": sx, "y": sy}
-            voids.append(row)
-    return voids
-
-
 def snapshot_summary_from_rows(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
     ck = Counter(str(r.get("cell_kind") or "") for r in rows)
 
@@ -335,6 +245,7 @@ def build_cleanup_and_reconstruction_rows(
     list[dict[str, Any]],
     list[dict[str, Any]],
     list[dict[str, Any]],
+    dict[str, Any],
 ]:
     """Return full_map rows for transport / extractor / extension cleanup and reconstruction."""
 
@@ -342,15 +253,18 @@ def build_cleanup_and_reconstruction_rows(
     after_transport = tuple(c for c in all_cells if _without_transport(c))
     after_extractors = _replace_miners_with_synthetic_fields(after_transport)
     after_extensions = _replace_extensions_with_synthetic_fields(after_extractors)
-    void_rows = _infer_internal_void_rows(after_extensions)
     structural = rows_from_cells(after_extensions)
-    reconstruction = structural + void_rows
+    cleanup = load_cleanup_result(snapshot)
+    recon = run_topology_reconstruction(cleanup)
+    reconstruction = rows_from_cells(recon.cells)
+    recon_summary = {**dict(cleanup.summary_json), **dict(recon.summary_json)}
     return (
         rows_from_cells(all_cells),
         rows_from_cells(after_transport),
         rows_from_cells(after_extractors),
         structural,
         reconstruction,
+        dict(recon_summary),
     )
 
 

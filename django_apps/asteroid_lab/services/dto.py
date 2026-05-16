@@ -169,3 +169,17 @@ class TopologyModalResultDTO:
     error_code: str
     message: str
     payload: TopologyModalPayloadDTO | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RawDecodedBlueprintDTO:
+    """Validated root JSON from :func:`decode_copy_string` (no lab summary block yet)."""
+
+    root: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class NormalizedBlueprintDTO:
+    """Blueprint JSON ready to persist on ``AsteroidMapInput.decoded_json``."""
+
+    decoded_json: dict[str, Any]

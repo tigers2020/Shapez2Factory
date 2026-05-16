@@ -29,7 +29,8 @@ def create_project_from_copy_code(
 ) -> CreateProjectFromCopyCodeResultDTO:
     """Create ``AsteroidProject`` + ``AsteroidMapInput`` with raw copy text.
 
-    ``decoded_json`` stays empty until a decode sub-task or adapter populates it.
+    ``decoded_json`` stays empty until :func:`decode_copy_string` /
+    :func:`normalize_decoded_blueprint` + :func:`persist_decoded_snapshot` populate it.
     Does **not** import asteroid mining v1/v2 solver internals.
 
     Persisted rows are for UI/cache/inspection — **not** solver algorithm input.

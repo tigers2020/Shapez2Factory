@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterator
+from collections.abc import Iterator
 
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 
@@ -15,7 +15,7 @@ def sort_key_xy_layer(cell: DecodedCellDTO) -> tuple[int, int, int]:
     """Stable ordering; ``None`` layer sorts before negative real layers."""
 
     layer = cell.layer
-    layer_key = layer if layer is not None else -10**12
+    layer_key = layer if layer is not None else -(10**12)
     return (cell.x, cell.y, layer_key)
 
 

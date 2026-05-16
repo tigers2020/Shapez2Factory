@@ -67,12 +67,11 @@ def _bbox_of_cells(cells: list[DecodedCellDTO]) -> dict[str, Any]:
 
 
 def _touches_snapshot_bbox(cell: DecodedCellDTO, bbox: dict[str, Any]) -> bool:
-    return (
-        cell.x == bbox["min_x"]
-        or cell.x == bbox["max_x"]
-        or cell.y == bbox["min_y"]
-        or cell.y == bbox["max_y"]
-    )
+    mn_x = int(bbox["min_x"])
+    mx_x = int(bbox["max_x"])
+    mn_y = int(bbox["min_y"])
+    mx_y = int(bbox["max_y"])
+    return cell.x == mn_x or cell.x == mx_x or cell.y == mn_y or cell.y == mx_y
 
 
 def _expected_neighbor_tile_kind(equipment_cell_kind: str) -> str | None:
@@ -133,7 +132,9 @@ def _index_transport_components(
                     cell_count=len(comp_cells),
                     bbox_json=_bbox_of_cells(comp_cells),
                     touches_bbox_edge=touches,
-                    cells_json=[_overlay_cell(c, component_id=cid, role="pending") for c in comp_cells],
+                    cells_json=[
+                        _overlay_cell(c, component_id=cid, role="pending") for c in comp_cells
+                    ],
                 )
             )
 
@@ -154,8 +155,10 @@ def _pick_main_component_id(
     return int(chosen.component_id)
 
 
-def inspect_existing_layout(snapshot: DecodedBlueprintSnapshotDTO) -> ExistingLayoutInspectionDTO:
-    """Pure inspection: top-level decoded cells only; nested ``B.Entries`` stay summarized on cells."""
+def inspect_existing_layout(
+    snapshot: DecodedBlueprintSnapshotDTO,
+) -> ExistingLayoutInspectionDTO:
+    """Pure inspection: top-level cells only; nested ``B.Entries`` stay summarized on cells."""
 
     bbox = dict(snapshot.bbox_json)
     cells = snapshot.cells
@@ -214,7 +217,6 @@ def inspect_existing_layout(snapshot: DecodedBlueprintSnapshotDTO) -> ExistingLa
     issues: list[ExistingLayoutIssueDTO] = []
 
     for eq in equipment:
-        ec = by_key[(eq.x, eq.y, eq.layer)]
         adj_transport: list[dict[str, Any]] = []
         comp_ids: set[int] = set()
         matching_neighbor = False
@@ -266,8 +268,12 @@ def inspect_existing_layout(snapshot: DecodedBlueprintSnapshotDTO) -> ExistingLa
                     severity="warning",
                     equipment_id=eq.equipment_id,
                     component_id=None,
-                    cells_json=[{"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind}],
-                    message="Equipment has a 4-neighbor transport tile of the other transport family.",
+                    cells_json=[
+                        {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind}
+                    ],
+                    message=(
+                        "Equipment has a 4-neighbor transport tile of the other transport family."
+                    ),
                 )
             )
 
@@ -296,7 +302,9 @@ def inspect_existing_layout(snapshot: DecodedBlueprintSnapshotDTO) -> ExistingLa
                         cells_json=[
                             {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind}
                         ],
-                        message="Miner extension has no adjacent matching transport tile (pipe/belt).",
+                        message=(
+                            "Miner extension has no adjacent matching transport tile (pipe/belt)."
+                        ),
                     )
                 )
 
@@ -311,7 +319,10 @@ def inspect_existing_layout(snapshot: DecodedBlueprintSnapshotDTO) -> ExistingLa
                         {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind},
                         *[{"x": d["x"], "y": d["y"], "layer": d["layer"]} for d in adj_transport],
                     ],
-                    message="Miner connects only to non-main transport components for this transport kind.",
+                    message=(
+                        "Miner connects only to non-main transport components "
+                        "for this transport kind."
+                    ),
                 )
             )
 
@@ -332,7 +343,10 @@ def inspect_existing_layout(snapshot: DecodedBlueprintSnapshotDTO) -> ExistingLa
                 equipment_id="",
                 component_id=None,
                 cells_json=orphan_cells,
-                message=f"Multiple disconnected {tk} transport components; non-main segments are orphans.",
+                message=(
+                    f"Multiple disconnected {tk} transport components; "
+                    "non-main segments are orphans."
+                ),
             )
         )
 
@@ -346,15 +360,15 @@ def inspect_existing_layout(snapshot: DecodedBlueprintSnapshotDTO) -> ExistingLa
         mid = main_by_kind.get(tk)
         if mid is None:
             continue
-        comp = next((c for c in transport_dtos_final if c.component_id == mid), None)
-        if comp is None:
+        main_comp = next((c for c in transport_dtos_final if c.component_id == mid), None)
+        if main_comp is None:
             continue
         hints_main[tk] = {
-            "component_id": comp.component_id,
-            "cell_count": comp.cell_count,
-            "touches_bbox_edge": comp.touches_bbox_edge,
+            "component_id": main_comp.component_id,
+            "cell_count": main_comp.cell_count,
+            "touches_bbox_edge": main_comp.touches_bbox_edge,
             "transport_kind": tk,
-            "cell_kind": comp.cell_kind,
+            "cell_kind": main_comp.cell_kind,
         }
 
     hints_json: dict[str, Any] = {
@@ -372,7 +386,9 @@ def inspect_existing_layout(snapshot: DecodedBlueprintSnapshotDTO) -> ExistingLa
         },
         "equipment_count": len(equipment),
         "issue_count": len(issues),
-        "nested_blueprint_note": "Nested B.Entries remain summarized on each DecodedCellDTO; not unfolded.",
+        "nested_blueprint_note": (
+            "Nested B.Entries remain summarized on each DecodedCellDTO; not unfolded."
+        ),
     }
 
     return ExistingLayoutInspectionDTO(

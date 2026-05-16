@@ -73,6 +73,12 @@ _REQUIRED_EVENT_TYPES: tuple[str, ...] = (
     "validation.started",
     "validation.failed",
     "validation.passed",
+    "existing_layout.begin",
+    "existing_layout.transport_components_indexed",
+    "existing_layout.equipment_indexed",
+    "existing_layout.attachment_analyzed",
+    "existing_layout.issues_detected",
+    "existing_layout.hints_generated",
 )
 
 

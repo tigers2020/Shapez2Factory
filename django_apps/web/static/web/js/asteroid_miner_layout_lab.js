@@ -32,9 +32,11 @@
   ]);
 
   /**
-   * Lab SVG sprites are drawn with default "forward" toward screen-up (north in blueprint terms).
-   * Blueprint ``R`` is still quarter-turns from East (0), clockwise; add this many quarter-turns
-   * for CSS ``rotate`` so art matches raw ``R``.
+   * Blueprint ``R`` is quarter-turns from **East (0)**, **clockwise** on the map; server bundle
+   * topology and port dirs use that raw ``R`` (no extra offset).
+   *
+   * Lab SVG assets are authored with default "forward" toward screen-up; ``LAB_SPRITE_ROTATION_OFFSET_Q``
+   * is **CSS sprite art only** — it does not change decode or ``equipment_bundles`` from the API.
    */
   const LAB_SPRITE_ROTATION_OFFSET_Q = 1;
 
@@ -469,6 +471,76 @@
     }
   }
 
+  /** Bright per-bundle stroke on outer edges (``equipment_bundles`` from replay overlay). */
+  var BUNDLE_EDGE_PALETTE = [
+    { n: "border-t-2 border-t-yellow-300", e: "border-r-2 border-r-yellow-300", s: "border-b-2 border-b-yellow-300", w: "border-l-2 border-l-yellow-300" },
+    { n: "border-t-2 border-t-lime-300", e: "border-r-2 border-r-lime-300", s: "border-b-2 border-b-lime-300", w: "border-l-2 border-l-lime-300" },
+    { n: "border-t-2 border-t-cyan-300", e: "border-r-2 border-r-cyan-300", s: "border-b-2 border-b-cyan-300", w: "border-l-2 border-l-cyan-300" },
+    { n: "border-t-2 border-t-fuchsia-300", e: "border-r-2 border-r-fuchsia-300", s: "border-b-2 border-b-fuchsia-300", w: "border-l-2 border-l-fuchsia-300" },
+    { n: "border-t-2 border-t-orange-300", e: "border-r-2 border-r-orange-300", s: "border-b-2 border-b-orange-300", w: "border-l-2 border-l-orange-300" },
+    { n: "border-t-2 border-t-sky-300", e: "border-r-2 border-r-sky-300", s: "border-b-2 border-b-sky-300", w: "border-l-2 border-l-sky-300" },
+  ];
+
+  /** Inset fill per bundle id (paired with ``BUNDLE_EDGE_PALETTE``); not Tailwind — avoids purge. */
+  var BUNDLE_FILL_INSET_RGBA = [
+    "rgba(253, 224, 71, 0.14)",
+    "rgba(190, 242, 100, 0.14)",
+    "rgba(103, 232, 249, 0.14)",
+    "rgba(240, 171, 252, 0.14)",
+    "rgba(254, 215, 170, 0.14)",
+    "rgba(125, 211, 252, 0.14)",
+  ];
+
+  function cellOverlayJsonFromFrame(frame) {
+    if (!frame || typeof frame !== "object") return null;
+    var top = frame.cell_overlay_json;
+    if (top && typeof top === "object") return top;
+    var p = frame.frame_payload;
+    if (p && typeof p === "object" && p.cell_overlay_json && typeof p.cell_overlay_json === "object") {
+      return p.cell_overlay_json;
+    }
+    return null;
+  }
+
+  /** ``cell_overlay_json`` shape: ``{ equipment_bundles: [ { bundle_id, cells_json } ] }``. */
+  function applyEquipmentBundleGroupVisualsFromOverlay(ov, domCells, resolveCellIndex) {
+    if (!ov || typeof ov !== "object") return;
+    var bundles = ov.equipment_bundles;
+    if (!Array.isArray(bundles) || bundles.length === 0) return;
+    for (var bi = 0; bi < bundles.length; bi++) {
+      var block = bundles[bi];
+      if (!block || typeof block !== "object") continue;
+      var bid = Number(block.bundle_id);
+      var pi = (Number.isFinite(bid) ? bid - 1 : 0) % BUNDLE_EDGE_PALETTE.length;
+      if (pi < 0) pi = 0;
+      var colors = BUNDLE_EDGE_PALETTE[pi];
+      var fillRgba = BUNDLE_FILL_INSET_RGBA[pi % BUNDLE_FILL_INSET_RGBA.length];
+      var cells = block.cells_json;
+      if (!Array.isArray(cells)) continue;
+      for (var ci = 0; ci < cells.length; ci++) {
+        var cell = cells[ci];
+        if (!cell || typeof cell !== "object") continue;
+        var idx = resolveCellIndex(cell);
+        if (idx == null || idx < 0 || idx >= domCells.length) continue;
+        var el = domCells[idx];
+        el.style.boxShadow = "inset 0 0 0 9999px " + fillRgba;
+        var edges = cell.bundle_edges != null ? String(cell.bundle_edges) : "";
+        var parts = [];
+        if (edges.indexOf("n") >= 0) parts.push(colors.n);
+        if (edges.indexOf("e") >= 0) parts.push(colors.e);
+        if (edges.indexOf("s") >= 0) parts.push(colors.s);
+        if (edges.indexOf("w") >= 0) parts.push(colors.w);
+        if (parts.length) {
+          el.className = el.className + " " + parts.join(" ");
+        }
+      }
+    }
+  }
+
+  function applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex) {
+    applyEquipmentBundleGroupVisualsFromOverlay(cellOverlayJsonFromFrame(frame), domCells, resolveCellIndex);
+  }
+
   function renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex) {
     if (!Array.isArray(cells)) return;
     const targets = [];
@@ -508,14 +580,17 @@
     const cells = overlay.cells;
     if (Array.isArray(cells) && cells.length > 0) {
       renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex);
+      applyEquipmentBundleGroupVisualsFromOverlay(overlay, domCells, resolveCellIndex);
       return;
     }
     renderExistingLayoutOverlay(baseClasses, domCells, overlay, resolveCellIndex);
+    applyEquipmentBundleGroupVisualsFromOverlay(overlay, domCells, resolveCellIndex);
   }
 
   function resetGridBase(domCells, baseClasses) {
     for (let i = 0; i < domCells.length; i++) {
       domCells[i].className = baseClasses[i] || "";
+      domCells[i].style.boxShadow = "";
       domCells[i].removeAttribute("data-cell-kind");
       domCells[i].removeAttribute("data-overlay-role");
       domCells[i].removeAttribute("data-tile-type");
@@ -530,6 +605,7 @@
     if (fm.length) {
       renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
       renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
+      applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
       return;
     }
     const ov = frame.cell_overlay_json;
@@ -1594,6 +1670,9 @@
       renderCellOverlay: function (ov) {
         resetGridBase(domCells, baseClasses);
         renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
+      },
+      applyEquipmentBundleHighlight: function (ov) {
+        applyEquipmentBundleGroupVisualsFromOverlay(ov, domCells, resolveCellIndex);
       },
       renderDecodedCells: function (list) {
         resetGridBase(domCells, baseClasses);

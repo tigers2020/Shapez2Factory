@@ -27,6 +27,7 @@ from django_apps.asteroid_lab.services.replay_recorder import ReplayRecorder
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
+from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
 
 
 def build_decoded_blueprint_snapshot_from_input(map_input_id: int) -> DecodedBlueprintSnapshotDTO:
@@ -105,7 +106,10 @@ def record_decoded_snapshot_frames(
         title="Decoded blueprint (raw)",
         description="Copy decode: full blueprint as decoded from copy (transport included).",
         after_state_json={"decode": raw_decode},
-        cell_overlay_json={"cells": full_map_raw},
+        cell_overlay_json={
+            "cells": full_map_raw,
+            "equipment_bundles": build_equipment_bundles(full_map_raw),
+        },
         metrics_json=raw_metrics,
         is_decision_point=True,
         full_map=full_map_raw,
@@ -121,7 +125,10 @@ def record_decoded_snapshot_frames(
         title="Decoded blueprint",
         description="Copy decode with existing transport stripped for solver-facing map.",
         after_state_json={"decode": raw_decode},
-        cell_overlay_json={"cells": full_map_norm},
+        cell_overlay_json={
+            "cells": full_map_norm,
+            "equipment_bundles": build_equipment_bundles(full_map_norm),
+        },
         metrics_json=norm_metrics,
         is_decision_point=True,
         full_map=full_map_norm,

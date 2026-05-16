@@ -31,7 +31,12 @@ from django_apps.asteroid_lab.services.dto import (
     SnapshotFrameDTO,
 )
 from django_apps.asteroid_lab.services.replay_recorder import ReplayRecorder
+from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
 from django_apps.asteroid_lab.snapshots.existing_layout_inspection import inspect_existing_layout
+
+
+def _cell_overlay_with_equipment_bundles(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"cells": rows, "equipment_bundles": build_equipment_bundles(rows)}
 
 
 def build_existing_layout_inspection_from_snapshot(
@@ -85,7 +90,7 @@ def record_existing_layout_inspection_frames(
             "this frame marks the cleanup baseline."
         ),
         after_state_json={"inspection_summary": ins_summary},
-        cell_overlay_json={"cells": row_transport},
+        cell_overlay_json=_cell_overlay_with_equipment_bundles(row_transport),
         metrics_json=snapshot_summary_from_rows(row_transport),
         is_decision_point=True,
         full_map=list(row_transport),
@@ -101,7 +106,7 @@ def record_existing_layout_inspection_frames(
         title="After extractor cleanup",
         description="Full map with miners removed; underlying field visible where applicable.",
         after_state_json={"inspection_summary": ins_summary},
-        cell_overlay_json={"cells": row_extractor},
+        cell_overlay_json=_cell_overlay_with_equipment_bundles(row_extractor),
         metrics_json=snapshot_summary_from_rows(row_extractor),
         is_decision_point=True,
         full_map=list(row_extractor),
@@ -117,7 +122,7 @@ def record_existing_layout_inspection_frames(
         title="After extension cleanup",
         description="Full map with miner extensions removed.",
         after_state_json={"inspection_summary": ins_summary},
-        cell_overlay_json={"cells": row_extension},
+        cell_overlay_json=_cell_overlay_with_equipment_bundles(row_extension),
         metrics_json=snapshot_summary_from_rows(row_extension),
         is_decision_point=True,
         full_map=list(row_extension),

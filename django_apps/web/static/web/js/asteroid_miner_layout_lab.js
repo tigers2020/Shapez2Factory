@@ -12,6 +12,57 @@
   const GRID_W = 23;
   const GRID_H = 15;
 
+  /** Canonical map rotation: 0 = East, 1 = South, 2 = West, 3 = North; quarter-turns clockwise. */
+  const DIR = Object.freeze({
+    EAST: 0,
+    SOUTH: 1,
+    WEST: 2,
+    NORTH: 3,
+  });
+
+  const LINK_KEY_TO_DIR = Object.freeze({
+    e: DIR.EAST,
+    s: DIR.SOUTH,
+    w: DIR.WEST,
+    n: DIR.NORTH,
+  });
+
+  const DIR_TO_BRIDGE_SUFFIX = Object.freeze({
+    0: "e",
+    1: "s",
+    2: "w",
+    3: "n",
+  });
+
+  function normalizeQuarterTurns(q) {
+    const n = Number(q);
+    if (!Number.isFinite(n)) return 0;
+    return ((Math.trunc(n) % 4) + 4) % 4;
+  }
+
+  function rotationToDeg(q) {
+    return normalizeQuarterTurns(q) * 90;
+  }
+
+  /**
+   * Sprite quarter-turns from server ``cell.rotation`` (unchanged) and per-file registry ``offsetQ`` /
+   * ``rotationCombine``. Server ``R`` is never rewritten — only display math here.
+   */
+  function combineSpriteRotation(logicalQ, spec) {
+    const q = normalizeQuarterTurns(logicalQ);
+    const offsetQ = normalizeQuarterTurns(spec && spec.offsetQ != null ? spec.offsetQ : 0);
+    const mode = spec && spec.rotationCombine === "sub" ? "sub" : "add";
+    if (mode === "sub") {
+      return normalizeQuarterTurns(offsetQ - q);
+    }
+    return normalizeQuarterTurns(offsetQ + q);
+  }
+
+  function snapToDevicePixel(value) {
+    const dpr = window.devicePixelRatio || 1;
+    return Math.round(Number(value) * dpr) / dpr;
+  }
+
   /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. ``relative`` anchors the sprite layer. */
   const LAB_CELL_BASE =
     "lab-cell relative shrink-0 overflow-visible rounded-[5px] border bg-slate-950 border-slate-900";
@@ -31,21 +82,23 @@
     "space_pipe_y_merger.svg",
   ]);
 
-  /**
-   * Blueprint ``R`` is quarter-turns from **East (0)**, **clockwise** on the map; server bundle
-   * topology and port dirs use that raw ``R`` (no extra offset).
-   *
-   * Lab SVG assets are authored with default "forward" toward screen-up; ``LAB_SPRITE_ROTATION_OFFSET_Q``
-   * applies on the **sprite child layer only** (parent cell keeps bundle ``border-*`` aligned to map n/e/s/w).
-   *
-   * ``SpacePipe_*`` uses ``(offset - R)`` quarter-turns on the sprite layer; ``(offset + R)`` is kept for
-   * layout miners so chiral junctions line up with decode ``R`` vs symmetric equipment art.
-   */
-  const LAB_SPRITE_ROTATION_OFFSET_Q = 1;
+  function buildLabSpriteRegistry() {
+    const reg = {};
+    LAB_SPRITE_KNOWN.forEach(function (fn) {
+      const isSpacePipe = fn.indexOf("space_pipe_") === 0 && fn.endsWith(".svg");
+      reg[fn] = Object.freeze({
+        offsetQ: 1,
+        rotationCombine: isSpacePipe ? "sub" : "add",
+      });
+    });
+    return Object.freeze(reg);
+  }
 
-  /** Fills cell under borders; background + ``transform`` live here, not on ``.lab-cell``. */
-  const LAB_CELL_SPRITE_LAYER_CLASS =
-    "lab-cell-sprite-layer pointer-events-none absolute inset-0 z-[1] overflow-hidden rounded-[5px] bg-center bg-no-repeat";
+  /** Per-sprite-file art correction: ``offsetQ`` + ``rotationCombine`` only (server ``rotation`` untouched). */
+  const LAB_SPRITE_REGISTRY = buildLabSpriteRegistry();
+
+  /** Sprite stack container; styles in ``assets/css/input.css`` (``.lab-cell-sprite-layer``). */
+  const LAB_CELL_SPRITE_LAYER_CLASS = "lab-cell-sprite-layer";
 
   /** Set in ``init`` from ``#lab-root`` ``data-lab-sprite-base`` (Django ``{% static %}``). */
   let labSpriteBaseUrl = "";
@@ -124,6 +177,10 @@
       layer.setAttribute("data-lab-sprite-layer", "1");
       layer.setAttribute("aria-hidden", "true");
       layer.className = LAB_CELL_SPRITE_LAYER_CLASS;
+      const img = document.createElement("img");
+      img.className = "lab-cell-sprite";
+      img.alt = "";
+      layer.appendChild(img);
       cellEl.appendChild(layer);
     }
     return layer;
@@ -147,24 +204,20 @@
     if (!labSpriteBaseUrl || !cell || typeof cell !== "object") return;
     const fn = labSpriteFilenameFromTileType(cell.tile_type);
     if (!fn) return;
+    const spec = LAB_SPRITE_REGISTRY[fn];
+    if (!spec) return;
     const layer = ensureLabCellSpriteLayer(el);
+    const img = layer.querySelector("img.lab-cell-sprite");
+    if (!img) return;
     const base = String(labSpriteBaseUrl).replace(/\/?$/, "/");
-    const url = base + fn;
-    layer.style.backgroundImage = 'url("' + url.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '")';
-    layer.style.backgroundSize = "contain";
-    layer.style.backgroundPosition = "center";
-    layer.style.backgroundRepeat = "no-repeat";
-    const rot = Number(cell.rotation);
-    const qRaw = Number.isFinite(rot) ? ((Math.trunc(rot) % 4) + 4) % 4 : 0;
-    const tt = cell.tile_type == null ? "" : String(cell.tile_type);
-    const displayQ = tt.startsWith("SpacePipe_")
-      ? (LAB_SPRITE_ROTATION_OFFSET_Q - qRaw + 4) % 4
-      : (qRaw + LAB_SPRITE_ROTATION_OFFSET_Q) % 4;
-    // Blueprint R: quarter-turns from East (0), clockwise. CSS rotate(+) is clockwise on screen.
-    if (displayQ !== 0) {
-      layer.style.transform = "rotate(" + String(displayQ * 90) + "deg)";
+    img.src = base + fn;
+    const logicalQ = cell.rotation;
+    const spriteQ = combineSpriteRotation(logicalQ, spec);
+    const deg = rotationToDeg(spriteQ);
+    if (deg !== 0) {
+      img.style.transform = "rotate(" + String(deg) + "deg)";
     } else {
-      layer.style.transform = "";
+      img.style.transform = "";
     }
     layer.setAttribute("data-lab-sprite", fn);
   }
@@ -591,11 +644,13 @@
           var hex = BUNDLE_BRIDGE_HEX[pi % BUNDLE_BRIDGE_HEX.length];
           for (var li = 0; li < linkStr.length; li++) {
             var d = linkStr.charAt(li);
-            if (d !== "n" && d !== "e" && d !== "s" && d !== "w") continue;
+            var dir = LINK_KEY_TO_DIR[d];
+            if (dir === undefined) continue;
+            var suffix = DIR_TO_BRIDGE_SUFFIX[dir];
             var br = document.createElement("div");
             br.setAttribute("data-lab-bundle-bridge", "1");
             br.setAttribute("aria-hidden", "true");
-            br.className = "lab-bundle-bridge lab-bundle-bridge-" + d;
+            br.className = "lab-bundle-bridge lab-bundle-bridge-" + suffix;
             br.style.backgroundColor = hex;
             el.appendChild(br);
           }
@@ -749,8 +804,10 @@
         return;
       }
       const t = labViewportTransform;
+      const tx = snapToDevicePixel(t.tx);
+      const ty = snapToDevicePixel(t.ty);
       gridStage.style.transformOrigin = "0 0";
-      gridStage.style.transform = "translate(" + t.tx + "px, " + t.ty + "px) scale(" + t.scale + ")";
+      gridStage.style.transform = "translate(" + tx + "px, " + ty + "px) scale(" + t.scale + ")";
     }
 
     function resetLabViewportTransform() {
@@ -1510,13 +1567,18 @@
       let rows = "";
       for (let i = 0; i < keys.length; i++) {
         const k = keys[i];
+        let dd = labCellDetailFormatValue(obj[k]);
+        if (k === "rotation") {
+          dd +=
+            ' <span class="whitespace-nowrap text-xs text-slate-500">(East=0, clockwise)</span>';
+        }
         rows +=
           '<div class="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 border-b border-slate-800/80 py-2 last:border-b-0">' +
           '<dt class="shrink-0 font-mono text-xs text-slate-500">' +
           labCellDetailEscapeHtml(k) +
           "</dt>" +
           '<dd class="min-w-0 text-slate-200">' +
-          labCellDetailFormatValue(obj[k]) +
+          dd +
           "</dd></div>";
       }
       return '<dl class="rounded-lg border border-slate-800/80 px-3">' + rows + "</dl>";

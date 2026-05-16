@@ -217,11 +217,16 @@ def test_lab_js_replay_wiring_smoke() -> None:
     )
     js = js_path.read_text(encoding="utf-8")
     assert "LAB_SPRITE_KNOWN" in js
+    assert "LAB_SPRITE_REGISTRY" in js
     assert "labPascalSegmentToSnakeLower" in js
     assert '.startsWith("SpacePipe_")' in js
-    assert "LAB_SPRITE_ROTATION_OFFSET_Q - qRaw" in js
-    assert "LAB_SPRITE_ROTATION_OFFSET_Q" in js
-    assert "displayQ" in js
+    assert "combineSpriteRotation" in js
+    assert "normalizeQuarterTurns" in js
+    assert "LINK_KEY_TO_DIR" in js
+    assert "DIR_TO_BRIDGE_SUFFIX" in js
+    assert "lab-cell-sprite" in js
+    assert "snapToDevicePixel" in js
+    assert "data-lab-sprite-base" in js
     assert "function renderReplayFrame" in js
     assert "getCurrentReplayFrame" in js
     assert "lab-replay-frames-data" in js

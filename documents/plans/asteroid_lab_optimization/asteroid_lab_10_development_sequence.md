@@ -12,7 +12,8 @@ GA + local pattern compiler + route feasibility 기반 optimization layer를 안
 - **테스트:** `python -m pytest tests/unit/shapez_asteroid/ tests/integration/shapez_asteroid/test_optimization_ui_payload.py` → **193 passed** (에이전트 로컬 실행).
 - **GitHub #14 (narrow corridor expansion):** `tests/unit/shapez_asteroid/test_corridor_survivability_expansion.py`에 reservation·starvation 리플레이·late commit·evolution→commit 스티칭 회귀를 모은다.
 - **대칭 목표 narrow bridge:** `tests/unit/shapez_asteroid/fixtures/narrow_corridor.py`의 `build_symmetric_*` + `tests/unit/shapez_asteroid/test_symmetric_corridor_fixture.py`. 림 우측 단일 goal 편향은 `build_narrow_bridge_optimization_input` 및 기존 비대칭 테스트로 **의도적으로 유지**한다.
-- **JSON fixture (narrow corridor v0):** `tests/fixtures/shapez_asteroid/optimization/narrow_corridor_asymmetric_rim_competition.json`, `narrow_corridor_symmetric_rim_competition.json` — `json_safe_replay_value` 스냅샷; 동기 테스트 `tests/unit/shapez_asteroid/test_narrow_corridor_optimization_json_fixtures.py`. (전역 진화 JSON·역직렬화 런타임 경로는 여전히 범위 밖.)
+- **JSON fixture (narrow corridor v0):** `tests/fixtures/shapez_asteroid/optimization/narrow_corridor_asymmetric_rim_competition.json`, `narrow_corridor_symmetric_rim_competition.json` — `json_safe_replay_value` 스냅샷; 동기 테스트 `tests/unit/shapez_asteroid/test_narrow_corridor_optimization_json_fixtures.py`.
+- **JSON 계약 파서 (테스트 전용):** `tests/unit/shapez_asteroid/fixtures/optimization_json.py` — `schema_version == 1`만 허용, 필수 키·상호 배타적 goal export(`primary_route_goal` vs 최상위 `route_goals`)·알 수 없는 최상위 키 거부; `test_optimization_fixture_json_contract.py`에서 디스크 ↔ `json_safe` 빌더 동등성·라운드트립 검증. **프로덕션 솔버 입력·런타임 자동 소비는 범위 밖**이며 전역 진화 JSON 팩·역직렬화 런타임도 여전히 후속.
 
 ---
 

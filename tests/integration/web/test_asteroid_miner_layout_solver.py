@@ -3,6 +3,7 @@ import gzip
 import json
 import random
 import unittest.mock as mock
+from pathlib import Path
 
 import pytest
 from django.test import Client
@@ -28,6 +29,13 @@ from tests.support.measure_json_sections import (
 )
 
 pytestmark = [pytest.mark.django_db, pytest.mark.slow]
+
+
+def _read_asteroid_lab_js_text() -> str:
+    root = Path(__file__).resolve().parents[3]
+    return (
+        root / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
 
 
 def _lab_html_with_optimization_replay(client: Client, opt_payload: dict) -> str:
@@ -442,6 +450,34 @@ def test_post_json_attach_reason_vs_read_diagnostic(mock_attach: mock.MagicMock)
     metrics = opt.get("metrics") or {}
     assert metrics.get("optimization_replay_diagnostic_reason") == "missing_optimization_replay"
     mock_attach.assert_called()
+    js = _read_asteroid_lab_js_text()
+    assert 'return "Attach: skipped (" + reason + ")"' in js
+    assert metrics.get("optimization_replay_diagnostic_reason") != attach.get("reason")
+
+
+def test_post_json_attach_true_matches_hud_attached_vocabulary() -> None:
+    """12J — attach JSON `{attached: true}` matches HUD ``Attach: attached`` branch in lab JS."""
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    attach = data.get("optimization_replay_attach")
+    assert attach == {"attached": True, "reason": "attached"}
+    js = _read_asteroid_lab_js_text()
+    assert 'reason === "attached" ? "Attach: attached"' in js
+
+
+def test_post_json_attach_skipped_empty_candidate_pool_hud_vocabulary() -> None:
+    """12J — skipped attach with reason is a separate write-channel string from read diagnostic."""
+    js = _read_asteroid_lab_js_text()
+    assert "empty_candidate_pool" in js
+    assert 'return "Attach: skipped (" + reason + ")"' in js
 
 
 def test_post_projects_json_size_attribution_and_optimization_replay_hard_caps() -> None:

@@ -2,7 +2,7 @@
 
 Role: Asteroid Lab Runtime Replay Wiring Architect
 
-**문서 상태:** ACTIVE. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. 그 외 시퀀스는 설계·경계 고정용이다.  
+**문서 상태:** ACTIVE. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. **Sequence 12J**(POST `optimization_replay_attach` 전용 HUD 줄)는 Lab 템플릿·`asteroid_miner_layout_lab.js`·테스트·§12J 문서로 구현 완료(2026-05-17). 그 외 시퀀스는 설계·경계 고정용이다.  
 **범위:** Lab persistence·UI 읽기 경로에 optimization replay를 안전하게 연결하는 방법만 다룬다.  
 **금지:** 본 문서만으로는 **솔버·리플레이 이벤트 의미·DTO·테스트 전용 fixture 파서 동작**을 바꾸지 않는다. 실제 배선 구현은 별도 PR·승인 후 진행한다.
 
@@ -305,7 +305,7 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 
 **구현 상태 (v0, 2026-05-17): 완료**
 
-- **템플릿 SSR:** `asteroid_miner_layout_solver.html` — `lab-optimization-replay-status` / `lab-optimization-replay-truncation` / `lab-optimization-replay-diagnostic` (표시 전용; Lab 리플레이 인덱스·프레임 순서 비변경).
+- **템플릿 SSR:** `asteroid_miner_layout_solver.html` — `lab-optimization-replay-status` / `lab-optimization-replay-truncation` / `lab-optimization-replay-diagnostic` / `lab-optimization-replay-attach`(12J, 기본 `Attach: —`; 표시 전용; Lab 리플레이 인덱스·프레임 순서 비변경).
 - **클라이언트:** `renderOptimizationReplayHud(track)` — `normalizeOptimizationReplayTrack`가 `truncation_reason`·`optimization_replay_diagnostic_reason`을 metrics에 전달; `replaceOptimizationReplayPayload` 경로에서 HUD 재렌더.
 - **금지(유지):** Lab ↔ optimization 암묵적 프레임 동기화, 메타데이터 상호작용(재시도·수리), 솔버·리플레이 의미 변경 없음.
 
@@ -369,6 +369,17 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - **금지 재확인:** 프레임 인덱스 동기화, Lab `currentFrameIndex`와 optimization 스텝 맞추기, 오버레이 레이어 소유권 이동, `renderOptimizationReplayHud` 책임 확대 — **전부 비범위**. 문제가 보이면 **버그 리포트·별도 시퀀스**로 분리한다.
 
 **구현 시 스코프 요약:** 3축 어휘·JS const·attach↔diagnostic 매핑 표·M1–M7 행렬·체인 테스트를 **한 PR 또는 12I 전용 소PR 연속**으로 묶되, 각 PR은 §3 output-only·§9 dual-track·§11 비목표를 위반하지 않는다.
+
+### Sequence 12J — Optimization replay attach HUD (POST write channel, 별도 줄)
+
+**구현 상태 (2026-05-17): 완료**
+
+- **목표:** `Accept: application/json` POST 응답의 `optimization_replay_attach` `{ attached, reason }`를 **읽기 진단(`metrics.optimization_replay_diagnostic_reason`)과 섞지 않고**, Optimization Replay 패널에 **`#lab-optimization-replay-attach`** 한 줄로만 노출한다.
+- **표시 규칙 (클라이언트):** `formatOptimizationReplayAttachHudLine` — `attached === true` 이고 `reason === "attached"` 이면 `Attach: attached`; `attached === false` 이면 `Attach: skipped (<reason>)` (`reason` 없으면 `unknown`); 메타 없음·비객체·`attached` 비불리언이면 `Attach: —`.
+- **렌더:** `renderOptimizationReplayHud(track)`가 status / truncation / diagnostic을 **기존과 동일**으로 갱신한 뒤, 캐시된 POST 값(`optimizationReplayAttachHudRaw`)으로 attach 줄을 갱신한다. `replaceOptimizationReplayPayload`만 호출될 때는 attach 캐시를 바꾸지 않으므로 **마지막 POST의 attach 표시가 유지**된다(읽기 트랙 교체와 쓰기 관측 축 분리).
+- **`renderOptimizationReplayAttachHud(raw)`:** POST 처리 경로에서만 호출; 캐시를 갱신한 뒤 `renderOptimizationReplayHud(optimizationReplayTrack)`로 HUD 전체를 다시 그린다.
+- **비범위(유지):** 솔버·GA·`optimization_replay_persist` 동작 변경 없음; read diagnostic 의미 변경 없음; `optimization_replay_diagnostic_reason`에 attach reason을 **합치지 않음**; 페이로드 압축·Lab/Optimization 암묵 동기·오버레이 수명 변경 없음.
+- **12I.6과의 관계:** 12I.6의 “`renderOptimizationReplayHud` 책임 확대” 비범위는 **오버레이·Lab 인덱스 동기·렌더 소유권 이동**을 가리킨다. 12J는 **POST attach 메타 한 줄(쓰기 관측)** 만 추가한다.
 
 ---
 
@@ -447,3 +458,4 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 | Dual-track | Lab map 권한 vs optimization 관측; 암묵 동기 없음 |
 | 12F-v0 | 프레임 리스트 가드만; 봉투·HUD·cap·migration **제외** |
 | 12I (초안, 미구현) | §12I: HUD **status / reason / diagnostic** 3축·JS const·`optimization_replay_attach.reason`↔diagnostic 매핑·malformed 행렬(M1–M7)·persist→deserialize→`replaceOptimizationReplayPayload`→HUD **표시 보존** 테스트; 오버레이 완전성·동기화/렌더 ownership 변경 **비범위(관측만)** |
+| 12J (구현 완료) | §12J: POST **`optimization_replay_attach` 전용 HUD 줄** (`Attach: …`); read **`optimization_replay_diagnostic_reason` 불변**; 솔버/attach/persist **비변경** |

@@ -444,11 +444,26 @@ def test_lab_js_renderOptimizationReplayHud_three_axis_uses_vocabulary_constants
     assert "OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_PREFIX" in chunk
     assert "OPTIMIZATION_REPLAY_HUD_REASON.DIAGNOSTIC_PREFIX" in chunk
     assert "OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_UNKNOWN" in chunk
+    assert 'getElementById("lab-optimization-replay-attach")' in chunk
+    assert "formatOptimizationReplayAttachHudLine(optimizationReplayAttachHudRaw)" in chunk
+
+
+def test_lab_js_renderOptimizationReplayHud_diagnostic_uses_read_metrics_only() -> None:
+    """12J — attach reason is not merged into optimization_replay_diagnostic_reason in HUD."""
+    js = _read_lab_js()
+    start = js.index("function renderOptimizationReplayHud(track)")
+    end = js.index("function formatOptimizationReplayAttachHudLine(raw)", start)
+    body = js[start:end]
+    i = body.index("const diagnostic =")
+    j = body.index("const baseStatus", i)
+    section = body[i:j]
+    assert "optimization_replay_diagnostic_reason" in section
+    assert "optimizationReplayAttachHudRaw" not in section
 
 
 def test_lab_js_calls_renderOptimizationReplayHud_on_load_and_replace() -> None:
     js = _read_lab_js()
-    assert js.count("renderOptimizationReplayHud(optimizationReplayTrack)") == 2
+    assert js.count("renderOptimizationReplayHud(optimizationReplayTrack)") == 3
 
 
 def test_lab_js_formats_optimization_replay_summary() -> None:

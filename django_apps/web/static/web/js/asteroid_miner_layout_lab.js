@@ -463,6 +463,9 @@
     readJsonScriptPayload(OPTIMIZATION_REPLAY_SCRIPT_ID, EMPTY_OPTIMIZATION_REPLAY_TRACK),
   );
 
+  /** Cached POST ``optimization_replay_attach`` for HUD (12J write channel; not read diagnostic). */
+  let optimizationReplayAttachHudRaw;
+
   /**
    * Sequence 10B — optimization replay metadata only (no overlay, no lab frame index sync).
    * Do not read optimization frame geometry here; lab replay still drives the grid.
@@ -560,6 +563,11 @@
   }
 
   function renderOptimizationReplayHud(track) {
+    const attachEl = document.getElementById("lab-optimization-replay-attach");
+    if (attachEl) {
+      attachEl.textContent = formatOptimizationReplayAttachHudLine(optimizationReplayAttachHudRaw);
+    }
+
     const statusEl = document.getElementById("lab-optimization-replay-status");
     const truncEl = document.getElementById("lab-optimization-replay-truncation");
     const diagEl = document.getElementById("lab-optimization-replay-diagnostic");
@@ -638,11 +646,8 @@
   }
 
   function renderOptimizationReplayAttachHud(raw) {
-    const el = document.getElementById("lab-optimization-replay-attach");
-    if (!el) {
-      return;
-    }
-    el.textContent = formatOptimizationReplayAttachHudLine(raw);
+    optimizationReplayAttachHudRaw = raw;
+    renderOptimizationReplayHud(optimizationReplayTrack);
   }
 
   function formatOptimizationReplayEventCounts(summary) {

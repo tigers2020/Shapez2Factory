@@ -157,13 +157,13 @@ fitness tie-break (우선순위, 동일 total일 때):
 ## Invariant
 
 ```text
-[ ] same seed produces same result (population 초기화·mutation·tie-break 포함)
-[ ] best fitness is non-decreasing under elitism (total 기준)
-[ ] repair never creates unknown candidate id
-[ ] mutation never generates cell-level genes
-[ ] result includes convergence_reason (EvolutionConvergenceReason enum)
-[ ] fitness 동점 시 tie-break 키가 문서와 구현에서 동일하다
-[ ] commit_order는 genome 필드로 유지되며 rim·candidate 풀 enumeration 순을 그대로 commit 정본으로 쓰지 않는다 (Phase 7)
+[x] same seed produces same result (population 초기화·mutation·tie-break 포함)
+[x] best fitness is non-decreasing under elitism (total 기준)
+[x] repair never creates unknown candidate id
+[x] mutation never generates cell-level genes
+[x] result includes convergence_reason (EvolutionConvergenceReason enum)
+[x] fitness 동점 시 tie-break 키가 문서와 구현에서 동일하다
+[x] commit_order는 genome 필드로 유지되며 rim·candidate 풀 enumeration 순을 그대로 commit 정본으로 쓰지 않는다 (Phase 7)
 ```
 
 ## 테스트
@@ -180,11 +180,11 @@ test_evolution_fitness_tie_break_deterministic
 ## 완료 조건
 
 ```text
-[ ] EvolutionConfig DTO 구현
-[ ] random initial population 구현
-[ ] mutation-only search 구현
-[ ] repair 구현
-[ ] EvolutionConvergenceReason enum + EvolutionResult 반영
-[ ] deterministic seed·tie-break 테스트 통과
-[ ] best genome 반환
+[x] EvolutionConfig DTO 구현
+[x] random initial population 구현
+[x] mutation-only search 구현
+[x] repair 구현
+[x] EvolutionConvergenceReason enum + EvolutionResult 반영
+[x] deterministic seed·tie-break 테스트 통과
+[x] best genome 반환
 ```

@@ -1,10 +1,15 @@
-"""12D — Run GA after successful inspection replay, then persist optimization replay (output-only).
+"""12D/12E — Run bounded GA after successful inspection replay, then persist optimization replay.
 
 ``replay_pipeline_service`` must not import ``django_apps.shapez_asteroid``; this module lives in
 ``web.services`` and may orchestrate shapez_asteroid + attach (12C).
+
+POST 경로는 하드 캡으로 응답 지연 상한을 두며,
+예외(evolution_failed)와 후보 0건(empty_candidate_pool)을 구분한다.
 """
 
 from __future__ import annotations
+
+import logging
 
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.pipeline import reconstruct_snapshot
@@ -29,6 +34,30 @@ from django_apps.shapez_asteroid.optimization.route_domain_snapshot_builder impo
     RouteDomainSnapshotBuilder,
 )
 
+_logger = logging.getLogger(__name__)
+
+# 12E — POST 동기 경로 전용 상한 (운영 튜닝 시 이 상수만 조정).
+_POST_INSPECTION_MAX_CANDIDATES = 64
+_POST_INSPECTION_ROUTE_PROBE_MAX_EXPANSIONS = 256
+_POST_INSPECTION_TIME_BUDGET_MS = 500
+_POST_INSPECTION_POPULATION_SIZE = 8
+_POST_INSPECTION_ELITE_COUNT = 2
+_POST_INSPECTION_MAX_GENERATION = 3
+_POST_INSPECTION_MAX_STALL_GENERATION = 2
+
+
+def _finalize_attach(
+    map_input_id: int,
+    out: OptimizationReplayAttachResult,
+) -> OptimizationReplayAttachResult:
+    _logger.info(
+        "post_inspection_optimization_replay map_input_id=%s attached=%s reason=%s",
+        map_input_id,
+        out.attached,
+        out.reason,
+    )
+    return out
+
 
 def run_post_inspection_evolution_and_attach_optimization_replay(
     map_input_id: int,
@@ -40,9 +69,14 @@ def run_post_inspection_evolution_and_attach_optimization_replay(
     """
 
     if pipeline_result.status != "ok":
-        return OptimizationReplayAttachResult(attached=False, reason="non_ok_result")
+        return _finalize_attach(
+            map_input_id, OptimizationReplayAttachResult(attached=False, reason="non_ok_result")
+        )
     if pipeline_result.solver_run_id is None:
-        return OptimizationReplayAttachResult(attached=False, reason="missing_solver_run_id")
+        return _finalize_attach(
+            map_input_id,
+            OptimizationReplayAttachResult(attached=False, reason="missing_solver_run_id"),
+        )
 
     try:
         snapshot = build_decoded_blueprint_snapshot_from_input(int(map_input_id))
@@ -54,8 +88,8 @@ def run_post_inspection_evolution_and_attach_optimization_replay(
         gen_cfg = CandidateGenerationConfig(
             extractor_policy=ExtractorPlacementPolicy.RIM_ONLY,
             allow_diagnostic_unreachable=True,
-            max_candidates=64,
-            route_probe_max_expansions=200,
+            max_candidates=_POST_INSPECTION_MAX_CANDIDATES,
+            route_probe_max_expansions=_POST_INSPECTION_ROUTE_PROBE_MAX_EXPANSIONS,
             transport_kinds=frozenset({TransportKind.SHAPE_BELT}),
             route_probe_goal_priority_weight=10,
         )
@@ -67,23 +101,40 @@ def run_post_inspection_evolution_and_attach_optimization_replay(
             replay_recorder=recorder,
         )
         pool = pool_result.normal_candidates
+        if not pool:
+            if not recorder.frames:
+                return _finalize_attach(
+                    map_input_id,
+                    OptimizationReplayAttachResult(attached=False, reason="empty_candidate_pool"),
+                )
+            return _finalize_attach(
+                map_input_id,
+                attach_optimization_replay_frames_after_successful_replay_build(
+                    pipeline_result, recorder.frames
+                ),
+            )
         evo_cfg = EvolutionConfig(
             seed=42,
-            population_size=4,
-            elite_count=1,
+            population_size=_POST_INSPECTION_POPULATION_SIZE,
+            elite_count=_POST_INSPECTION_ELITE_COUNT,
             mutation_rate=0.5,
             tournament_size=2,
-            max_generation=1,
-            max_stall_generation=0,
-            time_budget_ms=1200,
+            max_generation=_POST_INSPECTION_MAX_GENERATION,
+            max_stall_generation=_POST_INSPECTION_MAX_STALL_GENERATION,
+            time_budget_ms=_POST_INSPECTION_TIME_BUDGET_MS,
             forced_distant_mutation_period=None,
         )
         run_evolutionary_search(evo_cfg, pool, replay_recorder=recorder, route_domain=domain)
     except Exception:
-        return OptimizationReplayAttachResult(attached=False, reason="evolution_failed")
+        return _finalize_attach(
+            map_input_id, OptimizationReplayAttachResult(attached=False, reason="evolution_failed")
+        )
 
-    return attach_optimization_replay_frames_after_successful_replay_build(
-        pipeline_result, recorder.frames
+    return _finalize_attach(
+        map_input_id,
+        attach_optimization_replay_frames_after_successful_replay_build(
+            pipeline_result, recorder.frames
+        ),
     )
 
 

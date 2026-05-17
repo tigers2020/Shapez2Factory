@@ -181,19 +181,19 @@ cardinal_unit_toward(src: Coord, dst: Coord) -> Direction
 ## Invariant
 
 ```text
-[ ] 모든 Coord·셀 집합이 Server X/Y (`neighbors4_server` 밀집 4방 계약)
-[ ] topology_graph·probe의 이웃이 `neighbors4_server`와 동일 계약
-[ ] inferred interior fill must be mineable asteroid field
-[ ] external void must not be mineable
-[ ] belt/pipe removed positions must not become asteroid evidence by default
-[ ] extractor/extension removed positions must become asteroid evidence
-[ ] route_goals: 각 goal은 goal_kind·priority·existing_trunk 의미를 가진다
-[ ] topology_graph: 노드 coord가 asteroid / void 계약과 모순 없다
-[ ] existing_transport_cells: 각 coord에 최대 하나의 셀 레코드 (빈 frozenset = greenfield 운송 없음)
-[ ] existing_trunk_cells ⊆ { c.coord for c in existing_transport_cells } (trunk인데 운송 kind가 없는 coord 금지)
-[ ] `RouteGoalKind.existing_transport_attachment` 계열 goal은 `existing_transport_cells`의 kind와 모순되지 않는다
-[ ] protected_corridor_cells의 모든 coord는 route_domain 빌더 출력 키에 존재한다 (Phase 4)
-[ ] existing_trunk / protected 가 mineable 과 불가능한 중복이면 adapter가 명시 정책으로 해결한다
+[x] 모든 Coord·셀 집합이 Server X/Y (`neighbors4_server` 밀집 4방 계약)
+[x] topology_graph·probe의 이웃이 `neighbors4_server`와 동일 계약
+[x] inferred interior fill must be mineable asteroid field
+[x] external void must not be mineable
+[x] belt/pipe removed positions must not become asteroid evidence by default
+[x] extractor/extension removed positions must become asteroid evidence
+[x] route_goals: 각 goal은 goal_kind·priority·existing_trunk 의미를 가진다
+[x] topology_graph: 노드 coord가 asteroid / void 계약과 모순 없다
+[x] existing_transport_cells: 각 coord에 최대 하나의 셀 레코드 (빈 frozenset = greenfield 운송 없음)
+[x] existing_trunk_cells ⊆ { c.coord for c in existing_transport_cells } (trunk인데 운송 kind가 없는 coord 금지)
+[x] `RouteGoalKind.existing_transport_attachment` 계열 goal은 `existing_transport_cells`의 kind와 모순되지 않는다
+[x] protected_corridor_cells의 모든 coord는 route_domain 빌더 출력 키에 존재한다 (Phase 4)
+[x] existing_trunk / protected 가 mineable 과 불가능한 중복이면 adapter가 명시 정책으로 해결한다
 ```
 
 ## 테스트
@@ -213,10 +213,10 @@ test_optimization_input_trunk_cells_subset_of_transport_cells
 ## 완료 조건
 
 ```text
-[ ] OptimizationInput DTO 구현 (route_goals·topology_graph·existing_transport_cells·trunk·protected 포함)
-[ ] Reconstruction → OptimizationInput adapter + **RouteDomainSnapshotBuilder** 시드 경로 (개발 시퀀스 1B와 동일 범위)
-[ ] Server 밀집 이웃(`neighbors4_server`) 테스트 통과
-[ ] hole asteroid 등 topology 어댑터 검증은 시퀀스 1B 완료 기준(개발 시퀀스 10)으로 분리
+[x] OptimizationInput DTO 구현 (route_goals·topology_graph·existing_transport_cells·trunk·protected 포함)
+[x] Reconstruction → OptimizationInput adapter + **RouteDomainSnapshotBuilder** 시드 경로 (개발 시퀀스 1B와 동일 범위)
+[x] Server 밀집 이웃(`neighbors4_server`) 테스트 통과
+[x] hole asteroid 등 topology 어댑터 검증은 시퀀스 1B 완료 기준(개발 시퀀스 10)으로 분리
 ```
 
 ## 구현 계약 — 문자열 대신 enum

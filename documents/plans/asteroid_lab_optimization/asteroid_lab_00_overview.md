@@ -23,6 +23,10 @@ Asteroid topology
 
 구조를 가진 optimization layer다.
 
+## 문서·체크리스트 동기 (2026-05-17)
+
+Phase 계약 문서 `asteroid_lab_01`~`09`의 체크리스트는 저장소 현재 구현·`tests/unit/shapez_asteroid/`·관련 통합 테스트 기준으로 갱신되었다. **미착수 항목**(예: narrow corridor 회귀 fixture, 전 저장소 `ruff`/`mypy`/`black`)과 품질 게이트는 **`asteroid_lab_10_development_sequence.md`** Sequence 10–11 및 상단 검증 메모를 정본으로 본다.
+
 ## 핵심 원칙
 
 ```text

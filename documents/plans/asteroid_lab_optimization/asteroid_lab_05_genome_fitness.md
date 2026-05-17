@@ -165,13 +165,13 @@ repair 단계에서 제거한다.
 ## Invariant
 
 ```text
-[ ] genome stores candidate ids, not cells
-[ ] fitness must be deterministic for same input
-[ ] overlap penalty dominates throughput gain
-[ ] unreachable penalty dominates extractor gain
-[ ] all score components are exposed in breakdown (v0에서 0이어도 합산식에 포함)
-[ ] route_goal_quality_score·route_goal_priority_penalty가 probe 스냅샷과 결정적으로 연결된다
-[ ] FitnessMetrics가 카운트·합 등 집계 값을 보존한다 (replay·디버그)
+[x] genome stores candidate ids, not cells
+[x] fitness must be deterministic for same input
+[x] overlap penalty dominates throughput gain
+[x] unreachable penalty dominates extractor gain
+[x] all score components are exposed in breakdown (v0에서 0이어도 합산식에 포함)
+[x] route_goal_quality_score·route_goal_priority_penalty가 probe 스냅샷과 결정적으로 연결된다
+[x] FitnessMetrics가 카운트·합 등 집계 값을 보존한다 (replay·디버그)
 ```
 
 ## 테스트
@@ -191,9 +191,9 @@ test_fitness_narrow_corridor_dominates_high_throughput_greed
 ## 완료 조건
 
 ```text
-[ ] Gene/Genome DTO 구현
-[ ] FitnessBreakdown + FitnessMetrics 구현
-[ ] deterministic evaluator 구현
-[ ] route_fragility_penalty·shared_corridor_pressure_penalty가 breakdown에 존재 (v0는 0 허용)
-[ ] overlap/unreachable penalty 테스트 통과
+[x] Gene/Genome DTO 구현
+[x] FitnessBreakdown + FitnessMetrics 구현
+[x] deterministic evaluator 구현
+[x] route_fragility_penalty·shared_corridor_pressure_penalty가 breakdown에 존재 (v0는 0 허용)
+[x] overlap/unreachable penalty 테스트 통과
 ```

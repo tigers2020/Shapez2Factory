@@ -30,6 +30,7 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
 OptimizationReplayAttachReason = Literal[
     "attached",
     "empty_frames",
+    "empty_candidate_pool",
     "non_ok_result",
     "missing_solver_run_id",
     "solver_run_not_found",

@@ -114,14 +114,14 @@ extractor only = x4
 ## Invariant
 
 ```text
-[ ] pattern_id deterministic
-[ ] output_stub is not occupied
-[ ] extractor_offset exactly one
-[ ] extension_count <= 3
-[ ] occupied_offsets contains extractor + extensions only
-[ ] attachments 길이 == extension_count (v0 linear)
-[ ] 회전 후 오프셋·투영이 Server 정수 격자에서 결정적
-[ ] throughput_factor in {4, 8, 12, 16} and matches extension_count
+[x] pattern_id deterministic
+[x] output_stub is not occupied
+[x] extractor_offset exactly one
+[x] extension_count <= 3
+[x] occupied_offsets contains extractor + extensions only
+[x] attachments 길이 == extension_count (v0 linear)
+[x] 회전 후 오프셋·투영이 Server 정수 격자에서 결정적
+[x] throughput_factor in {4, 8, 12, 16} and matches extension_count
 ```
 
 ## 테스트
@@ -138,9 +138,9 @@ test_pattern_library_attachments_linear_chain
 ## 완료 조건
 
 ```text
-[ ] linear pattern 0~3 extension 생성
-[ ] 4방향 회전 지원
-[ ] deterministic order 보장
-[ ] output_stub 계산 완료
-[ ] ExtensionAttachment·throughput_factor·canonical E 계약 반영
+[x] linear pattern 0~3 extension 생성
+[x] 4방향 회전 지원
+[x] deterministic order 보장
+[x] output_stub 계산 완료
+[x] ExtensionAttachment·throughput_factor·canonical E 계약 반영
 ```

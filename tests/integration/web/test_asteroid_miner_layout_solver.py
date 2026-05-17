@@ -16,6 +16,34 @@ from django_apps.web.services import asteroid_lab_page_context as alc
 pytestmark = pytest.mark.django_db
 
 
+def _assert_optimization_replay_lab_payload(data: dict) -> None:
+    """12E: lab JSON must carry real optimization replay frames (event_type contract)."""
+
+    opt = data.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY)
+    assert isinstance(opt, dict)
+    assert opt.get("track_id") == "optimization"
+    assert int(opt.get("frame_count") or 0) >= 1
+    frames = opt.get("frames") or []
+    assert isinstance(frames, list) and len(frames) >= 1
+    assert isinstance(frames[0], dict)
+    assert "event_type" in frames[0] and isinstance(frames[0]["event_type"], str)
+    event_types = [
+        f["event_type"]
+        for f in frames
+        if isinstance(f, dict) and isinstance(f.get("event_type"), str)
+    ]
+    assert any(
+        et.startswith("candidate.")
+        or et.startswith("route_probe.")
+        or et.startswith("generation.")
+        or et.startswith("genome.")
+        or et.startswith("optimization.")
+        or et.startswith("pattern.")
+        or et.startswith("best_genome.")
+        for et in event_types
+    )
+
+
 def _encode_v4_copy(root: dict) -> str:
     text = json.dumps(root, separators=(",", ":")).encode("utf-8")
     gz = gzip.compress(text)
@@ -219,10 +247,11 @@ def test_asteroid_miner_layout_create_json_accept_existing_project() -> None:
     assert data["in_place"] is True
     assert data["blueprint_code"] == copy2
     assert len(data.get("lab_replay_frames_json") or []) >= 1
-    opt = data.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY)
-    assert isinstance(opt, dict)
-    assert opt.get("track_id") == "optimization"
-    assert int(opt.get("frame_count") or 0) > 0
+    _assert_optimization_replay_lab_payload(data)
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict)
+    assert attach.get("attached") is True
+    assert attach.get("reason") == "attached"
     assert data["redirect"] == reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})
     assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == n_inputs + 1
 
@@ -250,10 +279,9 @@ def test_asteroid_miner_layout_post_rebuilds_replay_when_track_had_no_frames() -
     assert data["ok"] is True
     assert data["replay_ok"] is True
     assert len(data.get("lab_replay_frames_json") or []) >= 5
-    opt = data.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY)
-    assert isinstance(opt, dict)
-    assert opt.get("track_id") == "optimization"
-    assert int(opt.get("frame_count") or 0) > 0
+    _assert_optimization_replay_lab_payload(data)
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict) and attach.get("reason") == "attached"
 
 
 def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
@@ -274,10 +302,9 @@ def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
     expected = reverse("web:asteroid-miner-layout-project", kwargs={"slug": proj.slug})
     assert data["redirect"] == expected
     assert len(data.get("lab_replay_frames_json") or []) >= 5
-    opt = data.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY)
-    assert isinstance(opt, dict)
-    assert opt.get("track_id") == "optimization"
-    assert int(opt.get("frame_count") or 0) > 0
+    _assert_optimization_replay_lab_payload(data)
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict) and attach.get("reason") == "attached"
 
 
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:

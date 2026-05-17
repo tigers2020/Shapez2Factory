@@ -98,12 +98,12 @@ validation issue count (+ issue_code)
 ## Invariant
 
 ```text
-[ ] replay frame is serializable
-[ ] replay frame does not affect algorithm result
-[ ] frame index is monotonic
-[ ] event_type is OptimizationReplayEventType (자유 문자열 금지)
-[ ] v0 상수 MAX_REPLAY_* 및 replay_truncated 동작
-[ ] 동일 입력·동일 seed에서 replay 기록 on/off에 관계없이 best genome·best fitness가 동일하다 (부작용 없음)
+[x] replay frame is serializable
+[x] replay frame does not affect algorithm result
+[x] frame index is monotonic
+[x] event_type is OptimizationReplayEventType (자유 문자열 금지)
+[x] v0 상수 MAX_REPLAY_* 및 replay_truncated 동작
+[x] 동일 입력·동일 seed에서 replay 기록 on/off에 관계없이 best genome·best fitness가 동일하다 (부작용 없음)
 ```
 
 ## Frontend Dual-track Replay Policy
@@ -209,8 +209,8 @@ test_replay_event_type_is_enum
 ## 완료 조건
 
 ```text
-[ ] OptimizationReplayEventType enum + OptimizationReplayFrame 구현
-[ ] optimization events 기록
-[ ] UI에서 timeline 재생 가능
-[ ] artifact/debug only invariant 테스트 통과
+[x] OptimizationReplayEventType enum + OptimizationReplayFrame 구현
+[x] optimization events 기록
+[x] UI에서 timeline 재생 가능
+[x] artifact/debug only invariant 테스트 통과
 ```

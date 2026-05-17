@@ -225,20 +225,20 @@ unreachable candidate는 normal pool에 넣지 않는다. diagnostic은 `allow_d
 ## Invariant
 
 ```text
-[ ] Candidate Generator가 placement를 확정(commit)하지 않는다
-[ ] rim 순회 순서가 commit 순서로 새지 않는다 (commit_order는 genome)
-[ ] topology_signature deterministic (pattern·회전·연장·stub·처리량·transport·occupied 기하 요약)
-[ ] CandidateEquivalenceKey 기반 dedupe가 max_candidates truncation보다 먼저 적용된다
-[ ] occupied_cells contains extractor and extensions only
-[ ] output_stub not in occupied_cells
-[ ] extractor in rim_cells
-[ ] extensions in mineable_cells
-[ ] topology_graph·occupied가 Server 밀집 격자·`neighbors4_server`와 모순 없음 (server x=0 허용)
-[ ] 모든 절대 Coord·셀 집합이 Server X/Y (Phase 1 좌표 규칙과 동일)
-[ ] normal_candidates의 각 원소: route_probe_result.reachable is True
-[ ] normal_candidates: route_probe_result.reached_goal is not None (v0 성공 계약)
-[ ] rejected_candidates: rejection_reason은 항상 CandidateRejectReason
-[ ] normal pool 등록 전 probe 통과 여부가 타입으로 구분된다
+[x] Candidate Generator가 placement를 확정(commit)하지 않는다
+[x] rim 순회 순서가 commit 순서로 새지 않는다 (commit_order는 genome)
+[x] topology_signature deterministic (pattern·회전·연장·stub·처리량·transport·occupied 기하 요약)
+[x] CandidateEquivalenceKey 기반 dedupe가 max_candidates truncation보다 먼저 적용된다
+[x] occupied_cells contains extractor and extensions only
+[x] output_stub not in occupied_cells
+[x] extractor in rim_cells
+[x] extensions in mineable_cells
+[x] topology_graph·occupied가 Server 밀집 격자·`neighbors4_server`와 모순 없음 (server x=0 허용)
+[x] 모든 절대 Coord·셀 집합이 Server X/Y (Phase 1 좌표 규칙과 동일)
+[x] normal_candidates의 각 원소: route_probe_result.reachable is True
+[x] normal_candidates: route_probe_result.reached_goal is not None (v0 성공 계약)
+[x] rejected_candidates: rejection_reason은 항상 CandidateRejectReason
+[x] normal pool 등록 전 probe 통과 여부가 타입으로 구분된다
 ```
 
 ## 테스트
@@ -259,15 +259,15 @@ test_candidate_generator_equivalence_dedupe_deterministic
 ## 완료 조건
 
 ```text
-[ ] rim-only extractor **후보 생성만** (commit·greedy rim 설치 없음)
-[ ] linear extension 후보 생성
-[ ] reject reason 기록
-[ ] CandidateRejectReason·RouteProbeFailureReason·ValidationIssueCode 정의
-[ ] CandidateEquivalenceKey + dedupe (max_candidates 전)
-[ ] topology_signature 필드 (직렬화 구성요소 문서와 일치)
-[ ] CandidateGenerationConfig DTO 정의
-[ ] route_probe를 동일 시퀀스에서 호출 (normal pool 게이트)
-[ ] 성공 후보에 route_probe_result 기록 (별칭 matched_goal_kind·route_cost 없음)
-[ ] BundleCandidate factory/builder로만 생성
-[ ] CandidateGenerationResult (normal vs rejected 타입 분리)
+[x] rim-only extractor **후보 생성만** (commit·greedy rim 설치 없음)
+[x] linear extension 후보 생성
+[x] reject reason 기록
+[x] CandidateRejectReason·RouteProbeFailureReason·ValidationIssueCode 정의
+[x] CandidateEquivalenceKey + dedupe (max_candidates 전)
+[x] topology_signature 필드 (직렬화 구성요소 문서와 일치)
+[x] CandidateGenerationConfig DTO 정의
+[x] route_probe를 동일 시퀀스에서 호출 (normal pool 게이트)
+[x] 성공 후보에 route_probe_result 기록 (별칭 matched_goal_kind·route_cost 없음)
+[x] BundleCandidate factory/builder로만 생성
+[x] CandidateGenerationResult (normal vs rejected 타입 분리)
 ```

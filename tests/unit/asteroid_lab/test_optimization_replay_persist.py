@@ -204,6 +204,30 @@ def test_run_post_inspection_evolution_attaches_replay_frames() -> None:
 
 
 @pytest.mark.django_db
+def test_run_post_inspection_empty_candidate_pool_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    from django_apps.shapez_asteroid.optimization.dto import CandidateGenerationResult
+
+    code = _encode_v4_copy(_minimal_root(version=601))
+    dto = project_service.create_project_from_copy_code(code, source_label="empty-pool")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+
+    def fake_generate(
+        *args: object,
+        replay_recorder: object | None = None,
+        **kwargs: object,
+    ) -> CandidateGenerationResult:
+        return CandidateGenerationResult(normal_candidates=(), rejected_candidates=())
+
+    monkeypatch.setattr(
+        "django_apps.web.services.asteroid_lab_post_inspection_evolution.generate_bundle_candidates",
+        fake_generate,
+    )
+    wire = run_post_inspection_evolution_and_attach_optimization_replay(dto.map_input_id, result)
+    assert wire.attached is False and wire.reason == "empty_candidate_pool"
+
+
+@pytest.mark.django_db
 def test_attach_solver_run_not_found_returns_reason() -> None:
     code = _encode_v4_copy(_minimal_root(version=508))
     dto = project_service.create_project_from_copy_code(code, source_label="missing-run")

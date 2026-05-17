@@ -28,6 +28,7 @@ from django_apps.shapez_asteroid.optimization.enums import (
     TransportMask,
 )
 from django_apps.shapez_asteroid.optimization.evolutionary_search import (
+    _reassign_commit_order,
     compute_population_diversity,
     deterministic_sort_key,
     initialize_population,
@@ -327,6 +328,43 @@ def test_candidate_pool_not_mutated() -> None:
     run_evolutionary_search(_small_config(), tuple(pool))
     assert pool[0].occupied_cells == snap[0].occupied_cells
     assert pool[1].route_probe_result == snap[1].route_probe_result
+
+
+def test_reassign_commit_order_respects_commit_order_not_candidate_id() -> None:
+    """Regression: candidate_id lexicographic sort must not erase commit_order semantics."""
+
+    genes = (
+        Gene("z", True, 0),
+        Gene("a", True, 1),
+    )
+    out = _reassign_commit_order(genes)
+    assert [g.candidate_id for g in out] == ["z", "a"]
+    assert [g.commit_order for g in out] == [0, 1]
+
+
+def test_repair_unreachable_before_bundle_limit() -> None:
+    """Unreachable slots should not consume limit before they are disabled."""
+
+    g0 = _goal(Coord(0, 0))
+    pool = (
+        _bundle("hi", _probe_ok(goal=g0), throughput=100),
+        _bundle("lo", _probe_ok(goal=g0), throughput=1, extractor=Coord(1, 0)),
+        _bundle("bad", _probe_bad(), throughput=50, extractor=Coord(2, 0)),
+    )
+    g = Genome(
+        "lim",
+        (
+            Gene("bad", True, 0),
+            Gene("hi", True, 1),
+            Gene("lo", True, 2),
+        ),
+        seed=0,
+    )
+    r = repair_genome(g, pool)
+    assert any(gg.enabled and gg.candidate_id == "hi" for gg in r.genes), (
+        "high-throughput reachable should survive after unreachable is dropped "
+        "before bundle limit"
+    )
 
 
 def test_genome_commit_order_preserved_under_zero_mutation() -> None:

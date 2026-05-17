@@ -150,7 +150,17 @@ def compute_population_diversity(
 
 
 def _reassign_commit_order(genes: Sequence[Gene]) -> tuple[Gene, ...]:
-    ordered = sorted(genes, key=lambda g: (g.candidate_id, g.commit_order, g.enabled))
+    """Renumber ``commit_order`` to ``0..n-1`` without collapsing shuffle semantics.
+
+    Genes are ordered by existing ``commit_order`` (then ``candidate_id``, then
+    enabled-first) so ``commit_order_shuffle`` and repair steps explore real
+    commit permutations instead of reverting to ``candidate_id`` order.
+    """
+
+    ordered = sorted(
+        genes,
+        key=lambda g: (g.commit_order, g.candidate_id, not g.enabled),
+    )
     return tuple(replace(g, commit_order=i) for i, g in enumerate(ordered))
 
 
@@ -447,10 +457,10 @@ def repair_genome(
     by_id = _pool_by_id(candidate_pool)
     genes = genome.genes
     genes = _dedupe_candidates(genes)
-    genes = _limit_bundle_count(genes, by_id)
     genes = _remove_unreachable(genes, by_id)
     genes = _overlap_low_score_removal(genes, by_id)
     genes = _remove_corridor_blocker(genes, by_id, route_domain)
+    genes = _limit_bundle_count(genes, by_id)
     if genes == genome.genes:
         return genome
     return replace(genome, genes=genes)

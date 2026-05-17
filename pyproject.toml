@@ -24,6 +24,7 @@ dependencies = [
 dev = [
     "black",
     "mypy",
+    "types-polib",
     "pytest",
     "pytest-django",
     "pytest-xdist",

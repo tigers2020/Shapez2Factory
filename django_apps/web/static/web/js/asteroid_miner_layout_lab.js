@@ -758,6 +758,8 @@
     if (nextPayload == null || typeof nextPayload !== "object") {
       return;
     }
+    /* 11D: clear stale optimization overlay DOM before attaching a new track (clear → HUD → panel → render). */
+    clearOptimizationReplayOverlay();
     optimizationReplayTrack = normalizeOptimizationReplayTrack(nextPayload);
     optimizationReplayFrameIndex = 0;
     renderOptimizationReplaySummary(
@@ -786,6 +788,9 @@
    *   ``frame.metrics.server_xy_params`` as ``[max_dense_x, min_raw_y]``. Missing → cells dropped
    *   with ``missing_lab_projection_bbox``.
    * - Optional passthrough: ``lab_world_x`` / ``lab_world_y`` on a cell (non-zero x) skips server conversion.
+   *
+   * Sequence 11D — projection cache policy: **no memoization** (pure function of the frame argument;
+   * deterministic recomputation each overlay render; no cross-frame cache).
    */
   function projectOptimizationReplayFrameToLabOverlay(frame) {
     const diagnostics = {
@@ -950,6 +955,9 @@
   function clearOptimizationReplayOverlay() {
     const layer = document.getElementById("lab-optimization-overlay-layer");
     if (!layer) return;
+    /* 11D: viewport pan/zoom lives on ``#lab-replay-grid-stage`` only; never accumulate transform on overlay. */
+    layer.style.transform = "";
+    layer.style.transformOrigin = "";
     layer.replaceChildren();
   }
 
@@ -970,7 +978,7 @@
     }
   }
 
-  function renderLabOptimizationOverlayDiagnostics(diagnostics) {
+  function renderLabOptimizationOverlayDiagnostics(diagnostics, frame) {
     const el = document.getElementById("lab-optimization-overlay-diagnostics");
     if (!el) return;
     if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
@@ -988,8 +996,17 @@
         ? diagnostics.dropReasons
         : {};
     const mb = Number(reasons.missing_lab_projection_bbox) || 0;
+    const m = frame && frame.metrics && typeof frame.metrics === "object" ? frame.metrics : null;
+    const trunc = Boolean(m && m.replay_truncated === true);
+    const truncNote = trunc ? " · replay_truncated (frame metrics)" : "";
     el.textContent =
-      "projected: " + String(p) + " · dropped: " + String(dr) + " · missing bbox: " + String(mb);
+      "projected: " +
+      String(p) +
+      " · dropped: " +
+      String(dr) +
+      " · missing bbox: " +
+      String(mb) +
+      truncNote;
   }
 
   function renderLabOptimizationOverlayCells(projectionCells) {
@@ -1021,12 +1038,36 @@
     }
   }
 
+  /**
+   * Sequence 11D — monotonic overlay render generation (anchor for stale async projection guards).
+   * Incremented at the start of every ``renderOptimizationReplayOverlay`` invocation.
+   */
+  let optimizationReplayOverlayRenderSeq = 0;
+
+  /**
+   * Stale-render guard: commit projected overlay only if this render generation is still current.
+   * (Synchronous today; guards against future async projection without implicit Lab/optimization sync.)
+   */
+  function commitOptimizationOverlayRender(seq, projection) {
+    if (seq !== optimizationReplayOverlayRenderSeq) {
+      return false;
+    }
+    if (!projection || typeof projection !== "object") {
+      return false;
+    }
+    renderLabOptimizationOverlayCells(projection.cells);
+    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
+    renderLabOptimizationOverlayDiagnostics(projection.diagnostics, frame);
+    return true;
+  }
+
   function renderOptimizationReplayOverlay() {
+    const seq = ++optimizationReplayOverlayRenderSeq;
     const shell = document.getElementById("lab-optimization-overlay-layer");
     if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
       clearOptimizationReplayOverlay();
       if (shell) shell.classList.add("hidden");
-      renderLabOptimizationOverlayDiagnostics(null);
+      renderLabOptimizationOverlayDiagnostics(null, null);
       return;
     }
     if (shell) shell.classList.remove("hidden");
@@ -1047,9 +1088,30 @@
 
     const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
     const projection = projectOptimizationReplayFrameToLabOverlay(frame);
-    renderLabOptimizationOverlayCells(projection.cells);
-    renderLabOptimizationOverlayDiagnostics(projection.diagnostics);
+    if (!commitOptimizationOverlayRender(seq, projection)) {
+      const el = document.getElementById("lab-optimization-overlay-diagnostics");
+      if (el) {
+        el.textContent = "—";
+      }
+      return;
+    }
   }
+
+  /**
+   * Sequence 11D — overlay lifecycle invariants (see tests in ``test_asteroid_lab_page_context.py``).
+   * - Lab viewport transform owner: ``#lab-replay-grid-stage`` (``applyLabViewportTransform``); overlay shell
+   *   must not retain pan/zoom ``transform`` (cleared in ``clearOptimizationReplayOverlay``).
+   * - ``renderOptimizationReplayOverlay``: ``syncOptimizationOverlayLayerGridStyles`` →
+   *   ``clearOptimizationReplayOverlay`` → project → commit (cells + diagnostics).
+   * - ``replaceOptimizationReplayPayload``: ``clearOptimizationReplayOverlay`` before track swap.
+   * - ``applyLabGridLayoutForZoom`` / ``resetLabViewportTransform``: refresh overlay ctx then
+   *   ``renderOptimizationReplayOverlay`` (clear + render order preserved).
+   */
+  window.__shapezLabReplayOverlayLifecycle = Object.freeze({
+    getOptimizationReplayOverlayRenderSeq: function () {
+      return optimizationReplayOverlayRenderSeq;
+    },
+  });
 
   function getCookie(name) {
     const prefix = "; " + name + "=";

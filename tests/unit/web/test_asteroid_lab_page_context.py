@@ -319,6 +319,13 @@ def _lab_js_sequence_11b_region() -> str:
     return js[start:end]
 
 
+def _lab_js_sequence_11d_region() -> str:
+    js = _read_lab_js()
+    start = js.index("* Sequence 11D — monotonic overlay render generation")
+    end = js.index("function getCookie", start)
+    return js[start:end]
+
+
 def test_lab_js_registers_optimization_replay_summary() -> None:
     js = _read_lab_js()
     assert js.count("buildOptimizationReplayTrackSummary(optimizationReplayTrack)") == 2
@@ -339,6 +346,9 @@ def test_lab_js_replace_optimization_replay_payload_preserves_hud_rerender_chain
     i = js.index("function replaceOptimizationReplayPayload(nextPayload)")
     j = js.index("function projectOptimizationReplayFrameToLabOverlay", i)
     block = js[i:j]
+    assert block.index("clearOptimizationReplayOverlay()") < block.index(
+        "normalizeOptimizationReplayTrack(nextPayload)"
+    )
     n = block.index("normalizeOptimizationReplayTrack(nextPayload)")
     s = block.index("renderOptimizationReplaySummary", n)
     h = block.index("renderOptimizationReplayHud(optimizationReplayTrack)", s)
@@ -1175,6 +1185,95 @@ def test_lab_js_sequence_11b_does_not_mutate_optimization_cells() -> None:
     region = _lab_js_sequence_11b_region()
     assert "visible_cells =" not in region
     assert "overlay_cells =" not in region
+
+
+def test_lab_js_sequence_11d_region_covers_overlay_lifecycle() -> None:
+    region = _lab_js_sequence_11d_region()
+    assert "let optimizationReplayOverlayRenderSeq = 0" in region
+    assert "const seq = ++optimizationReplayOverlayRenderSeq" in region
+    assert "function commitOptimizationOverlayRender(seq, projection)" in region
+    assert "seq !== optimizationReplayOverlayRenderSeq" in region
+    assert "window.__shapezLabReplayOverlayLifecycle" in region
+
+
+def test_lab_js_sequence_11d_clear_overlay_resets_transform() -> None:
+    js = _read_lab_js()
+    i = js.index("function clearOptimizationReplayOverlay()")
+    j = js.index("function syncOptimizationOverlayLayerGridStyles", i)
+    clear_block = js[i:j]
+    assert 'getElementById("lab-optimization-overlay-layer")' in clear_block
+    assert 'layer.style.transform = ""' in clear_block
+    assert 'layer.style.transformOrigin = ""' in clear_block
+
+
+def test_lab_js_sequence_11d_render_overlay_clear_then_project_commit() -> None:
+    js = _read_lab_js()
+    i = js.index("function renderOptimizationReplayOverlay()")
+    j = js.index("function getCookie", i)
+    body = js[i:j]
+    main_path = (
+        "    syncOptimizationOverlayLayerGridStyles();\n"
+        "    clearOptimizationReplayOverlay();\n"
+        "\n"
+        "    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);\n"
+        "    const projection = projectOptimizationReplayFrameToLabOverlay(frame);\n"
+        "    if (!commitOptimizationOverlayRender(seq, projection))"
+    )
+    assert main_path in body
+
+
+def test_lab_js_sequence_11a_projection_cache_policy_documented() -> None:
+    region = _lab_js_sequence_11a_region()
+    assert "Sequence 11D — projection cache policy" in region
+    assert "no memoization" in region
+
+
+def test_lab_js_sequence_11d_truncation_echo_in_overlay_diagnostics() -> None:
+    js = _read_lab_js()
+    assert "m.replay_truncated === true" in js
+    assert "replay_truncated (frame metrics)" in js
+
+
+def test_lab_js_apply_frame_refreshes_overlay_after_lab_overlay_ctx() -> None:
+    js = _read_lab_js()
+    i = js.index("function applyFrame()")
+    j = js.index("function setPlaying", i)
+    block = js[i:j]
+    assert block.count("refreshLabOverlayCtx()") == 2
+    assert block.count("renderOptimizationReplayOverlay()") == 2
+    server_tail = (
+        "syncLabTimelineScrub();\n        refreshLabOverlayCtx();\n"
+        "        renderOptimizationReplayOverlay();\n        return;"
+    )
+    demo_tail = (
+        "      syncLabTimelineScrub();\n"
+        "      refreshLabOverlayCtx();\n"
+        "      renderOptimizationReplayOverlay();\n"
+        "    }"
+    )
+    assert server_tail in block
+    assert demo_tail in block
+
+
+def test_lab_js_apply_lab_grid_layout_for_zoom_refreshes_overlay() -> None:
+    js = _read_lab_js()
+    i = js.index("function applyLabGridLayoutForZoom()")
+    j = js.index("function resetLabViewportTransform", i)
+    block = js[i:j]
+    assert "refreshLabOverlayCtx()" in block
+    assert "renderOptimizationReplayOverlay()" in block
+    assert block.index("refreshLabOverlayCtx()") < block.index("renderOptimizationReplayOverlay()")
+
+
+def test_lab_js_viewport_transform_applied_to_lab_stage_only() -> None:
+    """11D: pan/zoom translate3d applies to ``#lab-replay-grid-stage`` only."""
+    js = _read_lab_js()
+    i = js.index("function applyLabViewportTransform()")
+    j = js.index("function applyLabGridLayoutForZoom", i)
+    block = js[i:j]
+    assert "gridStage" in block
+    assert "translate3d" in block
+    assert "lab-optimization-overlay-layer" not in block
 
 
 def test_lab_js_replay_wiring_smoke() -> None:

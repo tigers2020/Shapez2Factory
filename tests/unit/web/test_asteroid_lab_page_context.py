@@ -279,6 +279,17 @@ def _lab_js_sequence_10d_region() -> str:
 def _lab_js_sequence_10e_region() -> str:
     js = _read_lab_js()
     start = js.index("* Sequence 10E")
+    d = js.find("* Sequence 11A", start)
+    if d != -1:
+        end = d
+    else:
+        end = js.index("function getCookie", start)
+    return js[start:end]
+
+
+def _lab_js_sequence_11a_region() -> str:
+    js = _read_lab_js()
+    start = js.index("* Sequence 11A")
     end = js.index("function getCookie", start)
     return js[start:end]
 
@@ -870,6 +881,49 @@ def test_lab_page_context_module_import_boundary() -> None:
             "(Sequence 9B lab optimization replay payload seam)"
         )
         assert text.count("django_apps.shapez_asteroid") == 1
+
+
+def test_lab_js_sequence_11a_projection_adapter_exists() -> None:
+    js = _read_lab_js()
+    assert "function projectOptimizationReplayFrameToLabOverlay(frame)" in js
+
+
+def test_lab_js_sequence_11a_does_not_mutate_lab_frame() -> None:
+    region = _lab_js_sequence_11a_region()
+    for needle in (
+        "getCurrentReplayFrame",
+        "replaceLabReplayPayload",
+        "applyFrame(",
+        "lab_initial_replay_frame",
+        "lab-replay-frames-data",
+        "cell_overlay_json",
+        "frame.visible_cells =",
+        "frame.overlay_cells =",
+    ):
+        assert needle not in region, needle
+
+
+def test_lab_js_sequence_11a_does_not_sync_frame_indices() -> None:
+    region = _lab_js_sequence_11a_region()
+    for needle in (
+        "currentFrameIndex",
+        "optimizationReplayFrameIndex",
+        "replayArrayIndex",
+    ):
+        assert needle not in region, needle
+
+
+def test_lab_js_sequence_11a_records_projection_diagnostics() -> None:
+    region = _lab_js_sequence_11a_region()
+    for key in (
+        "inputVisibleCellCount",
+        "inputOverlayCellCount",
+        "projectedCellCount",
+        "droppedCellCount",
+        "dropReasons",
+    ):
+        assert key in region, key
+    assert "missing_lab_projection_bbox" in region
 
 
 def test_lab_js_replay_wiring_smoke() -> None:

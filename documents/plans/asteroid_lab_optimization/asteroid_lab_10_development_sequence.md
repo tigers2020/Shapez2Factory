@@ -403,6 +403,14 @@ all gates pass
 
 | 시퀀스 | 상태 | 요약 |
 |--------|------|------|
-| 11A | 미착수 | readonly overlay projection adapter — `OptimizationReplayFrame` cells → Lab overlay cells 명시 변환 |
-| 11B | 미착수 | overlay rendering — 기능 플래그 뒤에서만 |
+| 11A | 완료 | readonly overlay projection — `projectOptimizationReplayFrameToLabOverlay(frame)` → `{ cells, diagnostics }`; Lab/optimization 인덱스·Lab 페이로드 미변경; bbox는 `metrics`에서만 |
+| 11B | 미착수 | overlay rendering — 11A 산출만 소비, 기능 플래그 뒤에서만 |
 | 11C | 미착수 | frame sync policy — **필요할 때만** 명시적 동기화 정책 검토 (기본은 비동기화, `09` 정본 참조) |
+
+#### 11A 완료 기준 (요약)
+
+```text
+[x] asteroid_lab_09에 Sequence 11A 계약(입출력·금지·bbox·drop) 문서화
+[x] asteroid_miner_layout_lab.js에 projectOptimizationReplayFrameToLabOverlay 구현 (렌더/DOM/인덱스 sync 없음)
+[x] test_asteroid_lab_page_context.py에 11A 정적 계약 테스트
+```

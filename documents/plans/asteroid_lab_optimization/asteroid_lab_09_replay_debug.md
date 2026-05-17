@@ -148,9 +148,36 @@ validation issue count (+ issue_code)
 
 ### 향후 오버레이 게이트 (Sequence 11A 이후)
 
-- **오버레이 렌더링**은 **Sequence 11A — readonly overlay projection adapter**가 있어야 시작한다.
+- **오버레이 렌더링(11B)** 은 아래 **Sequence 11A** projection 산출물을 소비하는 경로에서만 시작한다.
 - 어댑터는 `OptimizationReplayFrame`의 cells를 **Lab 오버레이 셀 표현**으로 **명시적으로 변환**해야 한다.
 - 어댑터는 **기본 Lab replay 프레임 페이로드를 변형(mutate)하지 않는다**(읽기 전용 오버레이 합성).
+
+## Sequence 11A — Readonly Overlay Projection Adapter
+
+**목표:** `OptimizationReplayFrame` JSON의 `visible_cells` / `overlay_cells` → Lab 격자에 올릴 수 있는 **읽기 전용** 오버레이 projection `{ cells, diagnostics }` (렌더링은 11B).
+
+### 핵심 계약
+
+```text
+- adapter input: OptimizationReplayFrame (JSON 단일 프레임; mutate 금지)
+- adapter output: LabOptimizationOverlayProjection = { cells[], diagnostics{} } (JS: projectOptimizationReplayFrameToLabOverlay)
+- input frame / Lab replay frame 페이로드: mutate 금지
+- Server dense Coord → Lab world (x,y): server right-bottom seam 역변환 (dense_x = max_dense_x - server_x, raw_x = 2*dense_x - 1, raw_y = server_y + min_raw_y)
+- bbox 메타: frame.metrics.lab_projection_max_dense_x + lab_projection_min_raw_y, 또는 metrics.server_xy_params = [max_dense_x, min_raw_y] (cleanup과 동일 2튜플)
+- bbox 없으면 server-dense 셀은 drop, dropReasons.missing_lab_projection_bbox
+- unsupported / 좌표 결손 셀: drop + dropReasons 집계 (진단 전용)
+- Lab replay frame index ↔ optimizationReplayFrameIndex: 암묵적 동기화 없음 (11A는 인덱스를 읽지도 쓰지도 않음)
+- projection ≠ rendering, projection ≠ sync, projection ≠ solver input
+```
+
+### 셀 출력(최소 DTO, JS)
+
+- `cells[]`: `x`,`y`(Lab world), `role: "optimization_overlay"`, `source: "optimization_replay"`, `overlayLayer`(`visible`|`overlay`), `eventType`, `candidateId`, `routeReservationId`, `transportKind`, `severity` 등(입력 셀에 있으면 전달).
+- `diagnostics`: `inputVisibleCellCount`, `inputOverlayCellCount`, `projectedCellCount`, `droppedCellCount`, `dropReasons` 맵.
+
+### 선택 passthrough
+
+- 셀에 `lab_world_x` / `lab_world_y`가 있고 x≠0이면 server 변환을 건너뛴다(동일 bbox 없이 Lab 좌표가 이미 붙은 경우).
 
 ## 테스트
 

@@ -611,6 +611,175 @@
 
   renderOptimizationReplayFramePanel();
 
+  /**
+   * Sequence 11A — readonly overlay projection adapter.
+   *
+   * Input: a single optimization replay ``frame`` object (``visible_cells`` / ``overlay_cells`` JSON).
+   * Output: ``{ cells, diagnostics }`` for future overlay renderers (11B). **projection ≠ rendering**.
+   *
+   * - Does **not** mutate ``frame`` or Lab replay frame payloads.
+   * - Does **not** read or write Lab replay timeline index or optimization-only frame index (no implicit sync).
+   * - Server-dense ``Coord`` ``{x,y}`` → Lab **world** ``(x,y)`` (same convention as ``lab_replay`` cells)
+   *   using right-bottom bbox seam: ``dense_x = max_dense_x - server_x``, ``raw_x = 2 * dense_x - 1``,
+   *   ``raw_y = server_y + min_raw_y`` (mirrors ``server_coords.server_xy_for_raw_xy`` inverse).
+   * - Bbox: ``frame.metrics.lab_projection_max_dense_x`` + ``lab_projection_min_raw_y``, or
+   *   ``frame.metrics.server_xy_params`` as ``[max_dense_x, min_raw_y]``. Missing → cells dropped
+   *   with ``missing_lab_projection_bbox``.
+   * - Optional passthrough: ``lab_world_x`` / ``lab_world_y`` on a cell (non-zero x) skips server conversion.
+   */
+  function projectOptimizationReplayFrameToLabOverlay(frame) {
+    const diagnostics = {
+      inputVisibleCellCount: 0,
+      inputOverlayCellCount: 0,
+      projectedCellCount: 0,
+      droppedCellCount: 0,
+      dropReasons: {},
+    };
+
+    function bumpDrop(reason) {
+      const r = String(reason || "unknown");
+      diagnostics.droppedCellCount += 1;
+      diagnostics.dropReasons[r] = (diagnostics.dropReasons[r] || 0) + 1;
+    }
+
+    if (!frame || typeof frame !== "object") {
+      return { cells: [], diagnostics: diagnostics };
+    }
+
+    const metrics = frame.metrics && typeof frame.metrics === "object" ? frame.metrics : null;
+    let maxDenseX = null;
+    let minRawY = null;
+    if (metrics) {
+      const md = metrics.lab_projection_max_dense_x;
+      const my = metrics.lab_projection_min_raw_y;
+      if (Number.isFinite(Number(md)) && Number.isFinite(Number(my))) {
+        maxDenseX = Number(md);
+        minRawY = Number(my);
+      } else if (Array.isArray(metrics.server_xy_params) && metrics.server_xy_params.length >= 2) {
+        maxDenseX = Number(metrics.server_xy_params[0]);
+        minRawY = Number(metrics.server_xy_params[1]);
+      }
+    }
+    const bboxOk =
+      Number.isFinite(maxDenseX) &&
+      Number.isFinite(minRawY) &&
+      Number.isInteger(maxDenseX) &&
+      Number.isInteger(minRawY) &&
+      maxDenseX >= 0;
+
+    const vis = Array.isArray(frame.visible_cells) ? frame.visible_cells : [];
+    const ovl = Array.isArray(frame.overlay_cells) ? frame.overlay_cells : [];
+    diagnostics.inputVisibleCellCount = vis.length;
+    diagnostics.inputOverlayCellCount = ovl.length;
+
+    const eventType =
+      typeof frame.event_type === "string" && frame.event_type ? frame.event_type : null;
+
+    function extractSpatial(cell) {
+      if (!cell || typeof cell !== "object") return null;
+      const lwx = cell.lab_world_x;
+      const lwy = cell.lab_world_y;
+      if (lwx != null && lwy != null) {
+        const wx = Number(lwx);
+        const wy = Number(lwy);
+        if (Number.isFinite(wx) && Number.isFinite(wy) && wx !== 0) {
+          return { mode: "lab_world", rawX: wx, rawY: wy };
+        }
+      }
+      const coord = cell.coord && typeof cell.coord === "object" ? cell.coord : cell;
+      const sx = Number(coord.x);
+      const sy = Number(coord.y);
+      if (!Number.isFinite(sx) || !Number.isFinite(sy)) return null;
+      return { mode: "server", serverX: sx, serverY: sy };
+    }
+
+    function serverDenseToLabWorldXY(serverX, serverY) {
+      const denseX = maxDenseX - serverX;
+      const rawX = 2 * denseX - 1;
+      const rawY = serverY + minRawY;
+      return { rawX: rawX, rawY: rawY };
+    }
+
+    function projectOne(cell, layer) {
+      const sp = extractSpatial(cell);
+      if (!sp) {
+        bumpDrop("missing_coord");
+        return null;
+      }
+      let rawX;
+      let rawY;
+      if (sp.mode === "lab_world") {
+        rawX = sp.rawX;
+        rawY = sp.rawY;
+      } else {
+        if (!bboxOk) {
+          bumpDrop("missing_lab_projection_bbox");
+          return null;
+        }
+        const w = serverDenseToLabWorldXY(sp.serverX, sp.serverY);
+        rawX = w.rawX;
+        rawY = w.rawY;
+      }
+      if (rawX === 0 || !Number.isFinite(rawX) || !Number.isFinite(rawY)) {
+        bumpDrop("invalid_lab_world_xy");
+        return null;
+      }
+      if (visualCol(rawX) == null) {
+        bumpDrop("invalid_lab_world_xy");
+        return null;
+      }
+
+      const candidateId =
+        cell.candidate_id != null
+          ? String(cell.candidate_id)
+          : cell.candidateId != null
+            ? String(cell.candidateId)
+            : null;
+      const routeReservationId =
+        cell.route_reservation_id != null
+          ? String(cell.route_reservation_id)
+          : cell.routeReservationId != null
+            ? String(cell.routeReservationId)
+            : null;
+      let transportKind =
+        cell.transport_kind != null
+          ? String(cell.transport_kind)
+          : cell.transportKind != null
+            ? String(cell.transportKind)
+            : null;
+      if (transportKind === "null") transportKind = null;
+
+      let severity = null;
+      if (cell.severity != null) severity = String(cell.severity);
+
+      diagnostics.projectedCellCount += 1;
+      return {
+        x: rawX,
+        y: rawY,
+        role: "optimization_overlay",
+        source: "optimization_replay",
+        overlayLayer: layer,
+        eventType: eventType,
+        candidateId: candidateId,
+        routeReservationId: routeReservationId,
+        transportKind: transportKind,
+        severity: severity,
+      };
+    }
+
+    const out = [];
+    for (let i = 0; i < vis.length; i++) {
+      const row = projectOne(vis[i], "visible");
+      if (row) out.push(row);
+    }
+    for (let j = 0; j < ovl.length; j++) {
+      const row2 = projectOne(ovl[j], "overlay");
+      if (row2) out.push(row2);
+    }
+
+    return { cells: out, diagnostics: diagnostics };
+  }
+
   function getCookie(name) {
     const prefix = "; " + name + "=";
     const raw = document.cookie;

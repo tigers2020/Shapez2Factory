@@ -426,22 +426,36 @@
 
     const frames = Array.isArray(raw.frames) ? raw.frames.slice() : [];
     const metricsRaw = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
+    const truncReasonRaw = metricsRaw.truncation_reason;
+    const truncReason =
+      typeof truncReasonRaw === "string" && truncReasonRaw.trim() ? truncReasonRaw.trim() : null;
+    const diagRaw = metricsRaw.optimization_replay_diagnostic_reason;
+    const diagnosticReason =
+      typeof diagRaw === "string" && diagRaw.trim() ? diagRaw.trim() : null;
+
+    const metricsOut = {
+      frame_count: Number.isFinite(Number(metricsRaw.frame_count))
+        ? Number(metricsRaw.frame_count)
+        : frames.length,
+      event_type_counts:
+        metricsRaw.event_type_counts && typeof metricsRaw.event_type_counts === "object"
+          ? Object.freeze({ ...metricsRaw.event_type_counts })
+          : Object.freeze({}),
+      replay_truncated: Boolean(metricsRaw.replay_truncated),
+    };
+    if (truncReason) {
+      metricsOut.truncation_reason = truncReason;
+    }
+    if (diagnosticReason) {
+      metricsOut.optimization_replay_diagnostic_reason = diagnosticReason;
+    }
 
     return Object.freeze({
       track_id: typeof raw.track_id === "string" ? raw.track_id : "optimization",
       track_label: typeof raw.track_label === "string" ? raw.track_label : "Optimization",
       frame_count: Number.isFinite(Number(raw.frame_count)) ? Number(raw.frame_count) : frames.length,
       frames: Object.freeze(frames),
-      metrics: Object.freeze({
-        frame_count: Number.isFinite(Number(metricsRaw.frame_count))
-          ? Number(metricsRaw.frame_count)
-          : frames.length,
-        event_type_counts:
-          metricsRaw.event_type_counts && typeof metricsRaw.event_type_counts === "object"
-            ? Object.freeze({ ...metricsRaw.event_type_counts })
-            : Object.freeze({}),
-        replay_truncated: Boolean(metricsRaw.replay_truncated),
-      }),
+      metrics: Object.freeze(metricsOut),
     });
   }
 
@@ -495,6 +509,61 @@
     return label + ": " + String(count) + " frame" + (count === 1 ? "" : "s") + suffix;
   }
 
+  /**
+   * Sequence 12H — truncation / read-diagnostic HUD (display-only; no Lab sync, no frame reorder).
+   */
+  function renderOptimizationReplayHud(track) {
+    const statusEl = document.getElementById("lab-optimization-replay-status");
+    const truncEl = document.getElementById("lab-optimization-replay-truncation");
+    const diagEl = document.getElementById("lab-optimization-replay-diagnostic");
+    if (!statusEl || !truncEl || !diagEl) {
+      return;
+    }
+
+    const framesLen = optimizationReplayFrameCount(track);
+    const metrics = track && track.metrics && typeof track.metrics === "object" ? track.metrics : {};
+    const truncated = Boolean(metrics.replay_truncated);
+    const truncReason =
+      typeof metrics.truncation_reason === "string" && metrics.truncation_reason.trim()
+        ? metrics.truncation_reason.trim()
+        : truncated
+          ? "unknown"
+          : "";
+    const diagnostic =
+      typeof metrics.optimization_replay_diagnostic_reason === "string" &&
+      metrics.optimization_replay_diagnostic_reason.trim()
+        ? metrics.optimization_replay_diagnostic_reason.trim()
+        : "";
+
+    truncEl.textContent = truncated ? "Truncation: " + truncReason : "";
+    diagEl.textContent = diagnostic ? "Diagnostic: " + diagnostic : "";
+    if (truncated) {
+      truncEl.classList.remove("hidden");
+    } else {
+      truncEl.classList.add("hidden");
+    }
+    if (diagnostic) {
+      diagEl.classList.remove("hidden");
+    } else {
+      diagEl.classList.add("hidden");
+    }
+
+    const baseStatus = "text-xs font-medium ";
+    if (framesLen === 0 && !diagnostic) {
+      statusEl.textContent = "—";
+      statusEl.className = baseStatus + "text-slate-500";
+    } else if (framesLen === 0 && diagnostic) {
+      statusEl.textContent = "Replay status: fallback-empty";
+      statusEl.className = baseStatus + "text-amber-200/90";
+    } else if (truncated) {
+      statusEl.textContent = "Replay status: truncated";
+      statusEl.className = baseStatus + "text-amber-200/90";
+    } else {
+      statusEl.textContent = "Replay status: normal";
+      statusEl.className = baseStatus + "text-emerald-200/80";
+    }
+  }
+
   function formatOptimizationReplayEventCounts(summary) {
     const counts =
       summary && summary.eventTypeCounts && typeof summary.eventTypeCounts === "object"
@@ -522,6 +591,7 @@
   renderOptimizationReplaySummary(
     buildOptimizationReplayTrackSummary(optimizationReplayTrack),
   );
+  renderOptimizationReplayHud(optimizationReplayTrack);
 
   /**
    * Sequence 10D — selected optimization replay frame metadata (text only; no geometry, no lab sync).
@@ -642,6 +712,7 @@
     renderOptimizationReplaySummary(
       buildOptimizationReplayTrackSummary(optimizationReplayTrack),
     );
+    renderOptimizationReplayHud(optimizationReplayTrack);
     optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
       optimizationReplayTrack,
       optimizationReplayFrameIndex,

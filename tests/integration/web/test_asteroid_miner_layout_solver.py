@@ -2,18 +2,66 @@ import base64
 import gzip
 import json
 import random
+import unittest.mock as mock
 
 import pytest
 from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
+from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEventType
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+    build_optimization_replay_track_payload,
+    deserialize_optimization_replay_frames_from_json,
+    empty_optimization_replay_track_payload,
+    empty_optimization_replay_track_payload_with_diagnostic,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 
 pytestmark = [pytest.mark.django_db, pytest.mark.slow]
+
+
+def _lab_html_with_optimization_replay(client: Client, opt_payload: dict) -> str:
+    ctx = {**alc.neutral_lab_context(), OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: opt_payload}
+    with mock.patch("django_apps.web.views.public_pages.lab_page_context", return_value=ctx):
+        response = client.get(reverse("web:asteroid-miner-layout"))
+    assert response.status_code == 200
+    return response.content.decode()
+
+
+def _valid_truncated_optimization_track() -> dict:
+    raw = [
+        {
+            "frame_index": 0,
+            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
+            "title": "t",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {"replay_truncated": True, "truncation_reason": "cells_reason_xyz"},
+        }
+    ]
+    frames = deserialize_optimization_replay_frames_from_json(raw)
+    assert frames is not None
+    return build_optimization_replay_track_payload(frames)
+
+
+def _valid_normal_optimization_track() -> dict:
+    raw = [
+        {
+            "frame_index": 0,
+            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
+            "title": "t",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        }
+    ]
+    frames = deserialize_optimization_replay_frames_from_json(raw)
+    assert frames is not None
+    return build_optimization_replay_track_payload(frames)
 
 
 def _assert_optimization_replay_lab_payload(data: dict) -> None:
@@ -339,3 +387,51 @@ def test_asteroid_miner_layout_post_invalid_copy_no_replay_frames() -> None:
     assert bad.status_code == 302
 
     assert m.ReplayFrame.objects.count() == 0
+
+
+def test_optimization_replay_truncated_badge_visible() -> None:
+    html = _lab_html_with_optimization_replay(Client(), _valid_truncated_optimization_track())
+    assert 'id="lab-optimization-replay-status"' in html
+    assert "Replay status: truncated" in html
+
+
+def test_optimization_replay_truncation_reason_visible() -> None:
+    html = _lab_html_with_optimization_replay(Client(), _valid_truncated_optimization_track())
+    assert 'id="lab-optimization-replay-truncation"' in html
+    assert "Truncation: cells_reason_xyz" in html
+
+
+def test_optimization_replay_diagnostic_reason_visible() -> None:
+    payload = empty_optimization_replay_track_payload_with_diagnostic(
+        "invalid_optimization_replay_payload",
+    )
+    html = _lab_html_with_optimization_replay(Client(), payload)
+    assert "Replay status: fallback-empty" in html
+    assert "Diagnostic: invalid_optimization_replay_payload" in html
+
+
+def test_valid_optimization_replay_hides_diagnostic() -> None:
+    html = _lab_html_with_optimization_replay(Client(), _valid_normal_optimization_track())
+    assert "Replay status: normal" in html
+    assert "Diagnostic:" not in html
+
+
+def test_empty_replay_without_diagnostic_shows_neutral_state() -> None:
+    html = _lab_html_with_optimization_replay(Client(), empty_optimization_replay_track_payload())
+    assert "Replay status: fallback-empty" not in html
+    assert "Diagnostic:" not in html
+    assert "Replay status: truncated" not in html
+
+
+def test_metadata_hud_does_not_change_replay_controls() -> None:
+    html = _lab_html_with_optimization_replay(Client(), _valid_truncated_optimization_track())
+    assert 'id="lab-optimization-frame-prev"' in html
+    assert 'id="lab-optimization-frame-next"' in html
+    assert 'id="lab-optimization-frame-display"' in html
+
+
+def test_optimization_replay_hud_regression_lab_timeline_controls_present() -> None:
+    html = _lab_html_with_optimization_replay(Client(), _valid_normal_optimization_track())
+    assert 'id="lab-timeline-play"' in html
+    assert 'id="lab-timeline-prev"' in html
+    assert 'id="lab-timeline-next"' in html

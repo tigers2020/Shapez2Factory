@@ -358,6 +358,39 @@ def test_template_includes_optimization_replay_event_counts_target() -> None:
     assert 'id="lab-optimization-replay-event-counts"' in html
 
 
+def test_template_includes_optimization_replay_hud_status() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-status"' in html
+
+
+def test_template_includes_optimization_replay_hud_truncation() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-truncation"' in html
+
+
+def test_template_includes_optimization_replay_hud_diagnostic() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-diagnostic"' in html
+
+
+def test_lab_js_has_renderOptimizationReplayHud() -> None:
+    js = _read_lab_js()
+    assert "function renderOptimizationReplayHud(track)" in js
+
+
+def test_lab_js_renderOptimizationReplayHud_avoids_currentFrameIndex() -> None:
+    js = _read_lab_js()
+    start = js.index("* Sequence 12H")
+    end = js.index("function formatOptimizationReplayEventCounts", start)
+    chunk = js[start:end]
+    assert "currentFrameIndex" not in chunk
+
+
+def test_lab_js_calls_renderOptimizationReplayHud_on_load_and_replace() -> None:
+    js = _read_lab_js()
+    assert js.count("renderOptimizationReplayHud(optimizationReplayTrack)") == 2
+
+
 def test_lab_js_formats_optimization_replay_summary() -> None:
     js = _read_lab_js()
     assert "function formatOptimizationReplaySummary(summary)" in js

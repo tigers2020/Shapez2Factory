@@ -70,6 +70,10 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     response = client.post(create_url, {"copy_code": copy}, follow=True)
 
     assert response.status_code == 200
+    content = response.content.decode()
+    assert "optimization-replay-json" not in content
+    assert "optimizationReplayFrameIndex" not in content
+    assert "optimizationReplayTrack" not in content
     assert copy.encode() in response.content
     assert m.AsteroidProject.objects.count() == 1
     proj = m.AsteroidProject.objects.get()

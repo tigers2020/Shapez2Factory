@@ -399,6 +399,13 @@ def test_template_includes_optimization_replay_hud_diagnostic() -> None:
     assert 'id="lab-optimization-replay-diagnostic"' in html
 
 
+def test_template_includes_optimization_replay_hud_attach() -> None:
+    """12J — write-channel attach line (SSR default before any POST)."""
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-attach"' in html
+    assert "Attach: —" in html
+
+
 def test_lab_js_has_renderOptimizationReplayHud() -> None:
     js = _read_lab_js()
     assert "function renderOptimizationReplayHud(track)" in js
@@ -458,6 +465,16 @@ def test_lab_js_run_solver_fetch_refreshes_optimization_replay_when_present() ->
     block = js[i:j]
     assert "replaceLabReplayPayload(data)" in block
     assert "replaceOptimizationReplayPayload(data.optimization_replay)" in block
+    assert "renderOptimizationReplayAttachHud(data.optimization_replay_attach)" in block
+
+
+def test_lab_js_sequence_12j_attach_hud_helpers() -> None:
+    js = _read_lab_js()
+    assert "function formatOptimizationReplayAttachHudLine(raw)" in js
+    assert "function renderOptimizationReplayAttachHud(raw)" in js
+    assert "Sequence 12J" in js
+    assert 'return "Attach: skipped (" + reason + ")"' in js
+    assert 'return reason === "attached" ? "Attach: attached"' in js
 
 
 def test_lab_js_does_not_read_optimization_frames_by_current_frame_index() -> None:

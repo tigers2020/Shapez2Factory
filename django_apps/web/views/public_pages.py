@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -58,6 +59,8 @@ from django_apps.web.services.graph_preview import (
     png_bytes_are_valid,
 )
 from django_apps.web.services.replay_frame_cell_lookup import lookup_cell_in_serialized_frame
+
+_logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=8)
@@ -340,6 +343,33 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
         body.update(replay_bundle)
         if optimization_replay_attach is not None:
             body["optimization_replay_attach"] = optimization_replay_attach
+        opt_track = body.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY)
+        opt_fc = 0
+        if isinstance(opt_track, dict):
+            try:
+                opt_fc = int(opt_track.get("frame_count") or 0)
+            except (TypeError, ValueError):
+                opt_fc = 0
+        attach_summary: tuple[bool, str] | None = None
+        if isinstance(optimization_replay_attach, dict):
+            attach_summary = (
+                bool(optimization_replay_attach.get("attached")),
+                str(optimization_replay_attach.get("reason") or ""),
+            )
+        _logger.info(
+            "asteroid_lab_projects_json ok=%s status=%s replay_ok=%s lab_frames=%s "
+            "optimization_frame_count=%s optimization_replay_attach=%s",
+            ok,
+            status,
+            replay_ok,
+            (
+                len(body.get("lab_replay_frames_json") or [])
+                if isinstance(body.get("lab_replay_frames_json"), list)
+                else None
+            ),
+            opt_fc,
+            attach_summary,
+        )
         return JsonResponse(body, status=status)
 
     if stay_slug:

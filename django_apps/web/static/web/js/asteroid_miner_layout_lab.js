@@ -615,6 +615,36 @@
     }
   }
 
+  /**
+   * Sequence 12J — POST ``optimization_replay_attach`` display-only (write channel; not diagnostic).
+   */
+  function formatOptimizationReplayAttachHudLine(raw) {
+    if (raw == null || typeof raw !== "object") {
+      return "Attach: —";
+    }
+    const attached = raw.attached;
+    const reason =
+      typeof raw.reason === "string" && raw.reason.trim() ? raw.reason.trim() : "";
+    if (typeof attached !== "boolean") {
+      return "Attach: —";
+    }
+    if (attached) {
+      return reason === "attached" ? "Attach: attached" : "Attach: attached (" + reason + ")";
+    }
+    if (reason) {
+      return "Attach: skipped (" + reason + ")";
+    }
+    return "Attach: skipped (unknown)";
+  }
+
+  function renderOptimizationReplayAttachHud(raw) {
+    const el = document.getElementById("lab-optimization-replay-attach");
+    if (!el) {
+      return;
+    }
+    el.textContent = formatOptimizationReplayAttachHudLine(raw);
+  }
+
   function formatOptimizationReplayEventCounts(summary) {
     const counts =
       summary && summary.eventTypeCounts && typeof summary.eventTypeCounts === "object"
@@ -2287,6 +2317,7 @@
             if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
               replaceOptimizationReplayPayload(data.optimization_replay);
             }
+            renderOptimizationReplayAttachHud(data.optimization_replay_attach);
             return;
           }
           if (data.redirect) {
@@ -2307,6 +2338,7 @@
           if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
             replaceOptimizationReplayPayload(data.optimization_replay);
           }
+          renderOptimizationReplayAttachHud(data.optimization_replay_attach);
         })
         .catch(function () {
           form.submit();

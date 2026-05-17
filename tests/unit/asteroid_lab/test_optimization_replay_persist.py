@@ -24,6 +24,7 @@ from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEve
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
+    deserialize_optimization_replay_frames_from_json,
     empty_optimization_replay_track_payload_with_diagnostic,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
@@ -96,6 +97,24 @@ def test_persist_writes_optimization_replay_frames_list() -> None:
     assert isinstance(raw, list) and len(raw) == 1
     assert raw[0]["title"] == "t"
     assert raw[0]["frame_index"] == 0
+
+
+def test_persist_then_deserialize_round_trip_preserves_frame_shape() -> None:
+    """12I.5 — stored blob round-trips through deserialize (attach reason / HUD read path)."""
+    code = _encode_v4_copy(_minimal_root(version=702))
+    dto = project_service.create_project_from_copy_code(code, source_label="persist-roundtrip")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
+    frames_in = _one_valid_frame()
+    persist_optimization_replay_frames_to_solver_run(run, frames_in)
+    run.refresh_from_db()
+    raw = run.config_json[SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY]
+    frames_out = deserialize_optimization_replay_frames_from_json(raw)
+    assert frames_out is not None
+    assert len(frames_out) == 1
+    assert frames_out[0].event_type == frames_in[0].event_type
+    assert frames_out[0].frame_index == 0
 
 
 def test_persist_empty_frames_does_not_mutate_solver_run_config_json() -> None:

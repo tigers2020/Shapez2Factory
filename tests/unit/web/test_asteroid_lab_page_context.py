@@ -333,6 +333,18 @@ def test_lab_js_has_replace_optimization_replay_payload() -> None:
     assert "applyFrame(" not in block
 
 
+def test_lab_js_replace_optimization_replay_payload_preserves_hud_rerender_chain() -> None:
+    """12I.5: JSON refresh path re-normalizes then refreshes summary + HUD (display-only)."""
+    js = _read_lab_js()
+    i = js.index("function replaceOptimizationReplayPayload(nextPayload)")
+    j = js.index("function projectOptimizationReplayFrameToLabOverlay", i)
+    block = js[i:j]
+    n = block.index("normalizeOptimizationReplayTrack(nextPayload)")
+    s = block.index("renderOptimizationReplaySummary", n)
+    h = block.index("renderOptimizationReplayHud(optimizationReplayTrack)", s)
+    assert n < s < h
+
+
 def test_lab_js_has_optimization_replay_frame_count_helper() -> None:
     js = _read_lab_js()
     assert "function optimizationReplayFrameCount(track)" in js
@@ -384,6 +396,33 @@ def test_lab_js_renderOptimizationReplayHud_avoids_currentFrameIndex() -> None:
     end = js.index("function formatOptimizationReplayEventCounts", start)
     chunk = js[start:end]
     assert "currentFrameIndex" not in chunk
+
+
+def test_lab_js_sequence_12h_includes_12i_hud_vocabulary_consts() -> None:
+    js = _read_lab_js()
+    start = js.index("* Sequence 12H")
+    end = js.index("function formatOptimizationReplayEventCounts", start)
+    chunk = js[start:end]
+    assert "const OPTIMIZATION_REPLAY_DIAGNOSTIC_CODE = Object.freeze" in chunk
+    assert "const OPTIMIZATION_REPLAY_HUD_STATUS = Object.freeze" in chunk
+    assert "const OPTIMIZATION_REPLAY_HUD_REASON = Object.freeze" in chunk
+    assert "const OPTIMIZATION_REPLAY_ATTACH_REASON = Object.freeze" in chunk
+    assert "function mapOptimizationReplayAttachReasonToDiagnostic(reason)" in chunk
+    assert "function mapOptimizationReplayAttachReasonToHudStatusDisplay(reason)" in chunk
+
+
+def test_lab_js_renderOptimizationReplayHud_three_axis_uses_vocabulary_constants() -> None:
+    js = _read_lab_js()
+    start = js.index("function renderOptimizationReplayHud(track)")
+    end = js.index("function formatOptimizationReplayEventCounts", start)
+    chunk = js[start:end]
+    assert "OPTIMIZATION_REPLAY_HUD_STATUS.NEUTRAL_DASH" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_STATUS.FALLBACK_EMPTY" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_STATUS.TRUNCATED" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_STATUS.NORMAL" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_PREFIX" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_REASON.DIAGNOSTIC_PREFIX" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_UNKNOWN" in chunk
 
 
 def test_lab_js_calls_renderOptimizationReplayHud_on_load_and_replace() -> None:

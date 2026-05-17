@@ -435,3 +435,58 @@ def test_optimization_replay_hud_regression_lab_timeline_controls_present() -> N
     assert 'id="lab-timeline-play"' in html
     assert 'id="lab-timeline-prev"' in html
     assert 'id="lab-timeline-next"' in html
+
+
+def test_optimization_replay_malformed_m1_missing_shows_diagnostic_in_html() -> None:
+    """12I.4 M1 — missing key classification surfaces as SSR HUD diagnostic."""
+    payload = empty_optimization_replay_track_payload_with_diagnostic("missing_optimization_replay")
+    html = _lab_html_with_optimization_replay(Client(), payload)
+    assert "Replay status: fallback-empty" in html
+    assert "Diagnostic: missing_optimization_replay" in html
+    assert "Replay status: truncated" not in html
+
+
+def test_optimization_replay_malformed_m2_empty_list_shows_diagnostic_in_html() -> None:
+    """12I.4 M2 — empty list in config maps to empty_optimization_replay_frames."""
+    payload = empty_optimization_replay_track_payload_with_diagnostic(
+        "empty_optimization_replay_frames"
+    )
+    html = _lab_html_with_optimization_replay(Client(), payload)
+    assert "Replay status: fallback-empty" in html
+    assert "Diagnostic: empty_optimization_replay_frames" in html
+
+
+def test_optimization_replay_malformed_m3_invalid_shape_shows_diagnostic_in_html() -> None:
+    """12I.4 M3 — invalid list / frame shape → invalid_optimization_replay_payload."""
+    payload = empty_optimization_replay_track_payload_with_diagnostic(
+        "invalid_optimization_replay_payload",
+    )
+    html = _lab_html_with_optimization_replay(Client(), payload)
+    assert "Replay status: fallback-empty" in html
+    assert "Diagnostic: invalid_optimization_replay_payload" in html
+
+
+def test_optimization_replay_malformed_m4_truncation_contract_shows_diagnostic_in_html() -> None:
+    """12I.4 M4 — replay_truncated / truncation_reason pair break."""
+    payload = empty_optimization_replay_track_payload_with_diagnostic("invalid_truncation_contract")
+    html = _lab_html_with_optimization_replay(Client(), payload)
+    assert "Replay status: fallback-empty" in html
+    assert "Diagnostic: invalid_truncation_contract" in html
+
+
+def test_optimization_replay_malformed_m5_unknown_event_type_shows_diagnostic_in_html() -> None:
+    """12I.4 M5 — unsupported event_type string."""
+    payload = empty_optimization_replay_track_payload_with_diagnostic(
+        "unsupported_or_unknown_event_type",
+    )
+    html = _lab_html_with_optimization_replay(Client(), payload)
+    assert "Replay status: fallback-empty" in html
+    assert "Diagnostic: unsupported_or_unknown_event_type" in html
+
+
+def test_optimization_replay_truncated_hud_preserved_alongside_empty_diagnostic() -> None:
+    """Truncation axis + empty diagnostic: SSR matches 12H/12I three-axis layout."""
+    html = _lab_html_with_optimization_replay(Client(), _valid_truncated_optimization_track())
+    assert "Replay status: truncated" in html
+    assert "Truncation: cells_reason_xyz" in html
+    assert "Diagnostic:" not in html

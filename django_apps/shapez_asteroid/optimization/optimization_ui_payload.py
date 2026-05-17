@@ -14,7 +14,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, TypedDict
 
+from django_apps.shapez_asteroid.optimization.coords import Coord
 from django_apps.shapez_asteroid.optimization.dto import OptimizationReplayFrame
+from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEventType
 from django_apps.shapez_asteroid.optimization.optimization_replay import (
     optimization_replay_frame_to_json_dict,
 )
@@ -24,6 +26,10 @@ TRACK_LABEL = "Optimization"
 
 # Lab / API flat field (Option B — smallest change vs existing ``lab_*`` keys).
 OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY = "optimization_replay"
+
+# ``django_apps.asteroid_lab.models.SolverRun.config_json`` output-only list of frame dicts
+# (same shape as :func:`optimization_replay_frame_to_json_dict`, written by future runners).
+SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY = "optimization_replay_frames"
 
 
 class OptimizationReplayTrackPayload(TypedDict):
@@ -46,6 +52,74 @@ def _event_type_counts_sorted(frames: Sequence[OptimizationReplayFrame]) -> dict
 
 def _aggregate_replay_truncated(frames: Sequence[OptimizationReplayFrame]) -> bool:
     return any(bool(f.metrics.get("replay_truncated")) for f in frames)
+
+
+def _cell_sequence_from_json(val: object) -> tuple[Any, ...] | None:
+    if not isinstance(val, list):
+        return None
+    out: list[Any] = []
+    for item in val:
+        if not isinstance(item, dict):
+            return None
+        try:
+            x = int(item["x"])
+            y = int(item["y"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        out.append(Coord(x, y))
+    return tuple(out)
+
+
+def deserialize_optimization_replay_frames_from_json(
+    raw: object,
+) -> tuple[OptimizationReplayFrame, ...] | None:
+    """Parse persisted frame dicts into :class:`OptimizationReplayFrame` (read-only UI path).
+
+    Returns ``None`` if ``raw`` is not a non-empty list of well-formed frame objects.
+    """
+
+    if not isinstance(raw, list) or len(raw) == 0:
+        return None
+    frames: list[OptimizationReplayFrame] = []
+    for pos, item in enumerate(raw):
+        if not isinstance(item, dict):
+            return None
+        try:
+            frame_index = int(item["frame_index"])
+            et_raw = item["event_type"]
+            title = str(item["title"])
+            description = str(item.get("description") or "")
+        except (KeyError, TypeError, ValueError):
+            return None
+        try:
+            event_type = OptimizationReplayEventType(str(et_raw))
+        except ValueError:
+            return None
+        vis = _cell_sequence_from_json(item.get("visible_cells", []))
+        ovl = _cell_sequence_from_json(item.get("overlay_cells", []))
+        if vis is None or ovl is None:
+            return None
+        metrics_raw = item.get("metrics", {})
+        if metrics_raw is None:
+            metrics: dict[str, Any] = {}
+        elif isinstance(metrics_raw, dict):
+            metrics = dict(metrics_raw)
+        else:
+            return None
+        if frame_index != pos:
+            return None
+        frames.append(
+            OptimizationReplayFrame(
+                frame_index=frame_index,
+                event_type=event_type,
+                title=title,
+                description=description,
+                visible_cells=vis,
+                overlay_cells=ovl,
+                metrics=metrics,
+            )
+        )
+    return tuple(frames)
 
 
 def empty_optimization_replay_track_payload() -> dict[str, object]:

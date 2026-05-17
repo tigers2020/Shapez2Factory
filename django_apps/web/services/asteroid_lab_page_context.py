@@ -7,9 +7,12 @@ from typing import Any, cast
 from django.conf import settings
 from django.db.models import Count, Prefetch
 
-from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack, SolverRun
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+    SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
+    build_optimization_replay_track_payload,
+    deserialize_optimization_replay_frames_from_json,
     empty_optimization_replay_track_payload,
 )
 
@@ -99,17 +102,43 @@ def serialize_replay_frame(frame: ReplayFrame) -> dict[str, Any]:
     }
 
 
-def optimization_replay_payload_for_project(project_id: int | None) -> dict[str, Any]:
-    """JSON-safe optimization replay track for the Lab shell (12A bridge).
+def get_latest_optimization_replay_for_project(project_id: int) -> tuple[Any, ...] | None:
+    """Latest persisted optimization replay frames for the project (read-only).
 
-    When no persisted optimization run exists for the project, returns the same
-    schema as :func:`empty_optimization_replay_track_payload` (deterministic).
-    Sequence 12B may load stored frames and pass them to
-    :func:`build_optimization_replay_track_payload`.
+    Walks :class:`~django_apps.asteroid_lab.models.SolverRun` rows newest-first and
+    returns the first non-empty, well-formed
+    ``config_json[SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY]`` list.
+    Returns ``None`` when no such payload exists.
     """
 
-    del project_id
-    return empty_optimization_replay_track_payload()
+    runs = (
+        SolverRun.objects.filter(project_id=int(project_id))
+        .order_by("-created_at", "-id")
+        .only(
+            "config_json",
+        )
+    )
+    for run in runs:
+        raw = (run.config_json or {}).get(SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY)
+        frames = deserialize_optimization_replay_frames_from_json(raw)
+        if frames:
+            return frames
+    return None
+
+
+def optimization_replay_payload_for_project(project_id: int | None) -> dict[str, Any]:
+    """JSON-safe optimization replay track for the Lab shell (12A/12B bridge).
+
+    When no persisted optimization replay exists for the project, returns the same
+    schema as :func:`empty_optimization_replay_track_payload` (deterministic).
+    """
+
+    if project_id is None:
+        return empty_optimization_replay_track_payload()
+    frames = get_latest_optimization_replay_for_project(int(project_id))
+    if frames is None:
+        return empty_optimization_replay_track_payload()
+    return cast(dict[str, Any], build_optimization_replay_track_payload(frames))
 
 
 def build_lab_replay_payload(track: ReplayTrack) -> tuple[list[dict[str, Any]], dict[str, Any]]:

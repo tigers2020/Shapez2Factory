@@ -4,16 +4,66 @@ from __future__ import annotations
 
 import json
 
+from django_apps.shapez_asteroid.optimization.coords import Coord
 from django_apps.shapez_asteroid.optimization.dto import OptimizationReplayFrame
 from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEventType
-from django_apps.shapez_asteroid.optimization.optimization_replay import OptimizationReplayRecorder
+from django_apps.shapez_asteroid.optimization.optimization_replay import (
+    OptimizationReplayRecorder,
+    optimization_replay_frames_to_json_list,
+)
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     TRACK_ID,
     build_optimization_replay_track_payload,
+    deserialize_optimization_replay_frames_from_json,
     empty_optimization_replay_track_payload,
     merge_optimization_track_into_lab_payload,
 )
+
+
+def test_deserialize_optimization_replay_round_trips_recorder_output() -> None:
+    rec = OptimizationReplayRecorder()
+    rec.record_replay_frame(
+        event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
+        title="g",
+        description="d",
+        visible_cells=(Coord(1, 2),),
+        overlay_cells=(),
+        metrics={"k": 1},
+    )
+    raw = optimization_replay_frames_to_json_list(rec.frames)
+    got = deserialize_optimization_replay_frames_from_json(raw)
+    assert got == rec.frames
+
+
+def test_deserialize_rejects_unknown_event_type() -> None:
+    raw = [
+        {
+            "frame_index": 0,
+            "event_type": "not.a.real.event",
+            "title": "t",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        }
+    ]
+    assert deserialize_optimization_replay_frames_from_json(raw) is None
+
+
+def test_deserialize_rejects_non_sequential_frame_index() -> None:
+    raw = [
+        {
+            "frame_index": 1,
+            "event_type": OptimizationReplayEventType.GENOME_GENERATED.value,
+            "title": "t",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        }
+    ]
+    assert deserialize_optimization_replay_frames_from_json(raw) is None
 
 
 def test_optimization_replay_track_payload_empty() -> None:

@@ -13,8 +13,16 @@ from django.test import RequestFactory
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay import event_types as et
+from django_apps.shapez_asteroid.optimization.coords import Coord
+from django_apps.shapez_asteroid.optimization.dto import OptimizationReplayFrame
+from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEventType
+from django_apps.shapez_asteroid.optimization.optimization_replay import (
+    optimization_replay_frames_to_json_list,
+)
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+    SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
+    build_optimization_replay_track_payload,
     empty_optimization_replay_track_payload,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
@@ -880,6 +888,95 @@ def test_lab_page_context_restricted_to_project_id() -> None:
     assert ctx_a["lab_replay_track_id"] == t1.id
     ctx_b = alc.lab_page_context(project_id=p2.pk)
     assert ctx_b["lab_replay_track_id"] == t2.id
+
+
+@pytest.mark.django_db
+def test_optimization_replay_payload_for_project_none_is_empty() -> None:
+    assert (
+        alc.optimization_replay_payload_for_project(None)
+        == empty_optimization_replay_track_payload()
+    )
+
+
+@pytest.mark.django_db
+def test_lab_page_context_optimization_replay_from_latest_solver_run() -> None:
+    p = m.AsteroidProject.objects.create(name="OptProj", slug="opt-proj-12b")
+    frames = (
+        OptimizationReplayFrame(
+            0,
+            OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED,
+            "t",
+            "d",
+            (Coord(0, 0),),
+            (),
+            {},
+        ),
+    )
+    replay_blob = optimization_replay_frames_to_json_list(frames)
+    m.SolverRun.objects.create(
+        project=p,
+        run_key="run-opt-1",
+        config_json={SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY: replay_blob},
+    )
+    ctx = alc.lab_page_context(project_id=p.pk)
+    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == build_optimization_replay_track_payload(
+        frames
+    )
+
+
+@pytest.mark.django_db
+def test_lab_page_context_optimization_replay_skips_newer_empty_solver_run() -> None:
+    p = m.AsteroidProject.objects.create(name="Skip", slug="skip-empty-run-12b")
+    frames = (
+        OptimizationReplayFrame(
+            0,
+            OptimizationReplayEventType.GENOME_GENERATED,
+            "g",
+            "",
+            (),
+            (),
+            {},
+        ),
+    )
+    blob = optimization_replay_frames_to_json_list(frames)
+    m.SolverRun.objects.create(project=p, run_key="older", config_json={})
+    m.SolverRun.objects.create(
+        project=p,
+        run_key="old-rich",
+        config_json={SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY: blob},
+    )
+    m.SolverRun.objects.create(project=p, run_key="newer-empty", config_json={})
+    ctx = alc.lab_page_context(project_id=p.pk)
+    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] == 1
+    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frames"][0]["title"] == "g"
+
+
+@pytest.mark.django_db
+def test_lab_page_context_optimization_replay_project_isolation() -> None:
+    pa = m.AsteroidProject.objects.create(name="A", slug="iso-opt-a")
+    pb = m.AsteroidProject.objects.create(name="B", slug="iso-opt-b")
+    frames_a = (
+        OptimizationReplayFrame(
+            0,
+            OptimizationReplayEventType.VALIDATION_COMPLETED,
+            "va",
+            "",
+            (),
+            (),
+            {},
+        ),
+    )
+    replay_blob_a = optimization_replay_frames_to_json_list(frames_a)
+    m.SolverRun.objects.create(
+        project=pa,
+        run_key="a1",
+        config_json={SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY: replay_blob_a},
+    )
+    m.SolverRun.objects.create(project=pb, run_key="b1", config_json={})
+    ctx_a = alc.lab_page_context(project_id=pa.pk)
+    ctx_b = alc.lab_page_context(project_id=pb.pk)
+    assert ctx_a[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] == 1
+    assert ctx_b[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
 
 
 def test_lab_page_context_module_import_boundary() -> None:

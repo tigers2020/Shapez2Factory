@@ -22,6 +22,10 @@ _FORBIDDEN_COORD_PROJECTION_MODULES: frozenset[str] = frozenset(
     {
         "django_apps.asteroid_lab.snapshots.server_coords",
         "django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot",
+        # Other snapshot helpers that call raw_x_to_dense_x / server_xy_for_raw_xy; algorithm must
+        # not bind them after normalization (renamed-import guard supplements token scan).
+        "django_apps.asteroid_lab.snapshots.layout_fingerprint",
+        "django_apps.asteroid_lab.snapshots.existing_layout_inspection",
     }
 )
 

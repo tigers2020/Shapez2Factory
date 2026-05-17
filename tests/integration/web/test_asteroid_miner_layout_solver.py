@@ -470,6 +470,13 @@ def test_post_json_optimization_input_does_not_raw_convert_server_coords() -> No
         assert isinstance(diagnostic, dict)
         assert diagnostic.get("stage") != "optimization_input"
         assert "Cannot map raw" not in str(diagnostic.get("error_message") or "")
+        if reason == "evolution_failed":
+            # Prior regression: server X==0 was mistaken for raw at optimization_input.
+            assert diagnostic.get("stage") in {
+                "route_probe",
+                "candidate_generation",
+                "evolution_search",
+            }, diagnostic
 
 
 @mock.patch(

@@ -27,7 +27,9 @@ existing belt / pipe / trunk / protected corridor
 
 ## 좌표 정본 (Server X/Y, 12L)
 
-OptimizationInput 이후 모든 Coord는 Server X/Y dense coord이며, raw 좌표는 입력으로 허용하지 않는다. raw↔server 변환은 decode/import boundary 또는 final UI/export projection boundary에서만 허용된다.
+OptimizationInput 이후 모든 Coord는 Server X/Y dense coord이며, raw 좌표는 입력으로 허용하지 않는다. normalize(디코드·cleanup·reconstruction) 이후 알고리즘 계층에서 raw↔server 변환을 다시 호출하는 것은 금지다. raw↔server 변환은 decode/import boundary 또는 final UI/export projection boundary에서만 허용된다.
+
+**검증(12L-hardening):** `tests/unit/shapez_asteroid/test_import_boundaries.py`(AST·금지 토큰), `tests/unit/asteroid_lab/test_coordinate_boundary.py`(import 경계 `raw_x==0` 가드), `tests/unit/shapez_asteroid/test_optimization_input.py`(server `x==0`·전 셀 Server X/Y), `tests/integration/web/test_asteroid_miner_layout_solver.py`의 `test_post_json_optimization_input_does_not_raw_convert_server_coords`(POST 회귀).
 
 ## Route goal 계약
 

@@ -487,4 +487,5 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - post-inspection evolution은 `build_optimization_input` 이후 raw 좌표 변환기를 호출하지 않는다.
 - raw `X`/`Y`, `raw_to_server`, `server_to_raw`, `server_xy_for_raw_xy` 계열 변환은 import/decode 및 최종 display/export projection 경계에서만 허용한다.
 - server `x == 0`은 replay/route/evolution 진단에서 유효 좌표로 유지한다.
+- **12L-hardening:** `test_import_boundaries`(projection 모듈 AST + 금지 토큰), POST `test_post_json_optimization_input_does_not_raw_convert_server_coords`로 `evolution_failed` 시 `stage`가 `optimization_input`에 머물지 않음을 추가로 고정한다.
 - 12L에서 UI/overlay projection 변경은 범위 밖이다. projection boundary 문제가 발견되면 별도 UI/export boundary 작업으로 분리한다.

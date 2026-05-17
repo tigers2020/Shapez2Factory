@@ -220,4 +220,5 @@ MAX_REPLAY_FRAMES = 500
 - server `x == 0`은 유효 좌표이며, optimization input/candidate/route/evolution/validation/replay 경로에서 실패 조건이 아니다.
 - raw `X`/`Y`, `raw_to_server`, `server_to_raw`, `server_xy_for_raw_xy` 계열 변환은 decode/import 또는 최종 UI/export projection 경계에서만 허용한다.
 - `build_optimization_input` 및 post-inspection evolution 경로는 이미 채워진 `server_x`/`server_y`만 소비하며 raw 좌표를 다시 변환하지 않는다.
+- **12L-hardening:** `tests/unit/shapez_asteroid/test_import_boundaries.py`에서 알고리즘·어댑터·post-inspection 경로의 좌표 projection 모듈 import·금지 토큰을 정적으로 차단한다. POST 회귀는 `test_post_json_optimization_input_does_not_raw_convert_server_coords`(server `x==0` copy, `Cannot map raw`·`stage=optimization_input` 재발 방지)로 고정한다.
 - 12L에서 UI/overlay projection 변경은 범위 밖이다. projection boundary 문제가 발견되면 별도 UI/export boundary 작업으로 분리한다.

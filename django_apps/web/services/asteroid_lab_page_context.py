@@ -99,6 +99,19 @@ def serialize_replay_frame(frame: ReplayFrame) -> dict[str, Any]:
     }
 
 
+def optimization_replay_payload_for_project(project_id: int | None) -> dict[str, Any]:
+    """JSON-safe optimization replay track for the Lab shell (12A bridge).
+
+    When no persisted optimization run exists for the project, returns the same
+    schema as :func:`empty_optimization_replay_track_payload` (deterministic).
+    Sequence 12B may load stored frames and pass them to
+    :func:`build_optimization_replay_track_payload`.
+    """
+
+    del project_id
+    return empty_optimization_replay_track_payload()
+
+
 def build_lab_replay_payload(track: ReplayTrack) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Ordered serialized frames and the first frame dict for initial paint."""
 
@@ -145,6 +158,7 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
     """Lab shell context. When ``project_id`` is set, replay comes from that project only."""
 
     ctx = neutral_lab_context()
+    ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] = optimization_replay_payload_for_project(project_id)
     track = (
         get_latest_lab_replay_track_for_project(project_id)
         if project_id is not None

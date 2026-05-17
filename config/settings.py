@@ -117,7 +117,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Lab shell ``asteroid_miner_layout_lab.js`` URL query; bump or set ``SHAPEZ_LAB_JS_VERSION`` to bust cache.
-SHAPEZ_LAB_JS_VERSION = os.environ.get("SHAPEZ_LAB_JS_VERSION", "3").strip() or "3"
+SHAPEZ_LAB_JS_VERSION = os.environ.get("SHAPEZ_LAB_JS_VERSION", "4").strip() or "4"
 
 # General user uploads (not shape part sprites; see SHAPE_PART_SPRITE_*).
 MEDIA_URL = "/media/"

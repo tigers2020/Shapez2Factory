@@ -8,6 +8,10 @@ from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
+from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
+    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+    empty_optimization_replay_track_payload,
+)
 from django_apps.web.services import asteroid_lab_page_context as alc
 
 pytestmark = pytest.mark.django_db
@@ -216,6 +220,9 @@ def test_asteroid_miner_layout_create_json_accept_existing_project() -> None:
     assert data["in_place"] is True
     assert data["blueprint_code"] == copy2
     assert len(data.get("lab_replay_frames_json") or []) >= 1
+    assert (
+        data.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY) == empty_optimization_replay_track_payload()
+    )
     assert data["redirect"] == reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})
     assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == n_inputs + 1
 
@@ -243,6 +250,9 @@ def test_asteroid_miner_layout_post_rebuilds_replay_when_track_had_no_frames() -
     assert data["ok"] is True
     assert data["replay_ok"] is True
     assert len(data.get("lab_replay_frames_json") or []) >= 5
+    assert (
+        data.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY) == empty_optimization_replay_track_payload()
+    )
 
 
 def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
@@ -263,6 +273,9 @@ def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
     expected = reverse("web:asteroid-miner-layout-project", kwargs={"slug": proj.slug})
     assert data["redirect"] == expected
     assert len(data.get("lab_replay_frames_json") or []) >= 5
+    assert (
+        data.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY) == empty_optimization_replay_track_payload()
+    )
 
 
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:

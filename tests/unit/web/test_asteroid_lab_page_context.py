@@ -312,11 +312,16 @@ def _lab_js_sequence_11b_region() -> str:
 
 def test_lab_js_registers_optimization_replay_summary() -> None:
     js = _read_lab_js()
-    needle = (
-        "const optimizationReplaySummary = buildOptimizationReplayTrackSummary("
-        "optimizationReplayTrack)"
-    )
-    assert needle in js
+    assert js.count("buildOptimizationReplayTrackSummary(optimizationReplayTrack)") == 2
+
+
+def test_lab_js_has_replace_optimization_replay_payload() -> None:
+    js = _read_lab_js()
+    assert "function replaceOptimizationReplayPayload(nextPayload)" in js
+    i = js.index("function replaceOptimizationReplayPayload")
+    j = js.index("* Sequence 11A", i)
+    block = js[i:j]
+    assert "applyFrame(" not in block
 
 
 def test_lab_js_has_optimization_replay_frame_count_helper() -> None:
@@ -351,9 +356,13 @@ def test_lab_js_formats_optimization_replay_summary() -> None:
     assert "summary.replayTruncated" in js
 
 
-def test_lab_js_renders_optimization_replay_summary_once() -> None:
+def test_lab_js_run_solver_fetch_refreshes_optimization_replay_when_present() -> None:
     js = _read_lab_js()
-    assert js.count("renderOptimizationReplaySummary(optimizationReplaySummary)") == 1
+    i = js.index("function runLabBlueprintRebuildViaImportForm")
+    j = js.index("const importForm", i)
+    block = js[i:j]
+    assert "replaceLabReplayPayload(data)" in block
+    assert "replaceOptimizationReplayPayload(data.optimization_replay)" in block
 
 
 def test_lab_js_does_not_read_optimization_frames_by_current_frame_index() -> None:
@@ -556,7 +565,7 @@ def test_lab_js_renders_optimization_replay_frame_metadata_via_panel() -> None:
     assert "function renderOptimizationReplayFramePanel()" in region
     assert "formatOptimizationReplayFrameMetadata(frame)" in region
     assert "renderOptimizationReplayFrameMetadata(meta)" in region
-    assert js.count("renderOptimizationReplayFramePanel();") == 3
+    assert js.count("renderOptimizationReplayFramePanel();") == 4
 
 
 def test_render_optimization_replay_frame_metadata_missing_element_no_throw() -> None:

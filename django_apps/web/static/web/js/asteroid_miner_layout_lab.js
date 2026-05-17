@@ -445,7 +445,7 @@
     });
   }
 
-  const optimizationReplayTrack = normalizeOptimizationReplayTrack(
+  let optimizationReplayTrack = normalizeOptimizationReplayTrack(
     readJsonScriptPayload(OPTIMIZATION_REPLAY_SCRIPT_ID, EMPTY_OPTIMIZATION_REPLAY_TRACK),
   );
 
@@ -482,10 +482,8 @@
     });
   }
 
-  const optimizationReplaySummary = buildOptimizationReplayTrackSummary(optimizationReplayTrack);
-
   /**
-   * Sequence 10C — read-only optimization replay summary in metadata panel (no frame rendering).
+   * Sequence 10C — optimization replay summary panel (format + render helpers).
    */
   function formatOptimizationReplaySummary(summary) {
     const label =
@@ -521,7 +519,9 @@
     ev.textContent = formatOptimizationReplayEventCounts(summary);
   }
 
-  renderOptimizationReplaySummary(optimizationReplaySummary);
+  renderOptimizationReplaySummary(
+    buildOptimizationReplayTrackSummary(optimizationReplayTrack),
+  );
 
   /**
    * Sequence 10D — selected optimization replay frame metadata (text only; no geometry, no lab sync).
@@ -628,6 +628,26 @@
   });
 
   renderOptimizationReplayFramePanel();
+
+  /**
+   * Sequence 12A — swap optimization replay track from Run Solver JSON without touching Lab replay.
+   * Does not call ``applyFrame``; does not sync ``optimizationReplayFrameIndex`` with Lab frame index.
+   */
+  function replaceOptimizationReplayPayload(nextPayload) {
+    if (nextPayload == null || typeof nextPayload !== "object") {
+      return;
+    }
+    optimizationReplayTrack = normalizeOptimizationReplayTrack(nextPayload);
+    optimizationReplayFrameIndex = 0;
+    renderOptimizationReplaySummary(
+      buildOptimizationReplayTrackSummary(optimizationReplayTrack),
+    );
+    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
+      optimizationReplayTrack,
+      optimizationReplayFrameIndex,
+    );
+    renderOptimizationReplayFramePanel();
+  }
 
   /**
    * Sequence 11A — readonly overlay projection adapter.
@@ -2080,6 +2100,9 @@
           }
           if (data.in_place) {
             replaceLabReplayPayload(data);
+            if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
+              replaceOptimizationReplayPayload(data.optimization_replay);
+            }
             return;
           }
           if (data.redirect) {
@@ -2097,6 +2120,9 @@
             }
           }
           replaceLabReplayPayload(data);
+          if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
+            replaceOptimizationReplayPayload(data.optimization_replay);
+          }
         })
         .catch(function () {
           form.submit();
@@ -2650,6 +2676,7 @@
       visualCol: visualCol,
       rawXToDenseX: rawXToDenseX,
       replaceLabReplayPayload: replaceLabReplayPayload,
+      replaceOptimizationReplayPayload: replaceOptimizationReplayPayload,
     };
 
     /** DevTools-only: assert #lab-replay-grid-viewport rect is stable across cell-pixel zoom. */

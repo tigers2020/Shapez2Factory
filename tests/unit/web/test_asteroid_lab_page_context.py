@@ -28,6 +28,10 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 from django_apps.web.views import public_pages
+from tests.support.measure_json_sections import (
+    assert_optimization_replay_hard_caps,
+    measure_json_sections,
+)
 
 _OPTIMIZATION_REPLAY_SCRIPT_RE = re.compile(
     r'<script id="optimization-replay-json" type="application/json">(?P<body>.*?)</script>',
@@ -319,6 +323,13 @@ def _lab_js_sequence_11b_region() -> str:
     return js[start:end]
 
 
+def _lab_js_sequence_11d_region() -> str:
+    js = _read_lab_js()
+    start = js.index("* Sequence 11D — monotonic overlay render generation")
+    end = js.index("function getCookie", start)
+    return js[start:end]
+
+
 def test_lab_js_registers_optimization_replay_summary() -> None:
     js = _read_lab_js()
     assert js.count("buildOptimizationReplayTrackSummary(optimizationReplayTrack)") == 2
@@ -339,6 +350,9 @@ def test_lab_js_replace_optimization_replay_payload_preserves_hud_rerender_chain
     i = js.index("function replaceOptimizationReplayPayload(nextPayload)")
     j = js.index("function projectOptimizationReplayFrameToLabOverlay", i)
     block = js[i:j]
+    assert block.index("clearOptimizationReplayOverlay()") < block.index(
+        "normalizeOptimizationReplayTrack(nextPayload)"
+    )
     n = block.index("normalizeOptimizationReplayTrack(nextPayload)")
     s = block.index("renderOptimizationReplaySummary", n)
     h = block.index("renderOptimizationReplayHud(optimizationReplayTrack)", s)
@@ -385,6 +399,13 @@ def test_template_includes_optimization_replay_hud_diagnostic() -> None:
     assert 'id="lab-optimization-replay-diagnostic"' in html
 
 
+def test_template_includes_optimization_replay_hud_attach() -> None:
+    """12J — write-channel attach line (SSR default before any POST)."""
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-attach"' in html
+    assert "Attach: —" in html
+
+
 def test_lab_js_has_renderOptimizationReplayHud() -> None:
     js = _read_lab_js()
     assert "function renderOptimizationReplayHud(track)" in js
@@ -423,11 +444,26 @@ def test_lab_js_renderOptimizationReplayHud_three_axis_uses_vocabulary_constants
     assert "OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_PREFIX" in chunk
     assert "OPTIMIZATION_REPLAY_HUD_REASON.DIAGNOSTIC_PREFIX" in chunk
     assert "OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_UNKNOWN" in chunk
+    assert 'getElementById("lab-optimization-replay-attach")' in chunk
+    assert "formatOptimizationReplayAttachHudLine(optimizationReplayAttachHudRaw)" in chunk
+
+
+def test_lab_js_renderOptimizationReplayHud_diagnostic_uses_read_metrics_only() -> None:
+    """12J — attach reason is not merged into optimization_replay_diagnostic_reason in HUD."""
+    js = _read_lab_js()
+    start = js.index("function renderOptimizationReplayHud(track)")
+    end = js.index("function formatOptimizationReplayAttachHudLine(raw)", start)
+    body = js[start:end]
+    i = body.index("const diagnostic =")
+    j = body.index("const baseStatus", i)
+    section = body[i:j]
+    assert "optimization_replay_diagnostic_reason" in section
+    assert "optimizationReplayAttachHudRaw" not in section
 
 
 def test_lab_js_calls_renderOptimizationReplayHud_on_load_and_replace() -> None:
     js = _read_lab_js()
-    assert js.count("renderOptimizationReplayHud(optimizationReplayTrack)") == 2
+    assert js.count("renderOptimizationReplayHud(optimizationReplayTrack)") == 3
 
 
 def test_lab_js_formats_optimization_replay_summary() -> None:
@@ -444,6 +480,16 @@ def test_lab_js_run_solver_fetch_refreshes_optimization_replay_when_present() ->
     block = js[i:j]
     assert "replaceLabReplayPayload(data)" in block
     assert "replaceOptimizationReplayPayload(data.optimization_replay)" in block
+    assert "renderOptimizationReplayAttachHud(data.optimization_replay_attach)" in block
+
+
+def test_lab_js_sequence_12j_attach_hud_helpers() -> None:
+    js = _read_lab_js()
+    assert "function formatOptimizationReplayAttachHudLine(raw)" in js
+    assert "function renderOptimizationReplayAttachHud(raw)" in js
+    assert "Sequence 12J" in js
+    assert 'return "Attach: skipped (" + reason + ")"' in js
+    assert 'return reason === "attached" ? "Attach: attached"' in js
 
 
 def test_lab_js_does_not_read_optimization_frames_by_current_frame_index() -> None:
@@ -1177,6 +1223,95 @@ def test_lab_js_sequence_11b_does_not_mutate_optimization_cells() -> None:
     assert "overlay_cells =" not in region
 
 
+def test_lab_js_sequence_11d_region_covers_overlay_lifecycle() -> None:
+    region = _lab_js_sequence_11d_region()
+    assert "let optimizationReplayOverlayRenderSeq = 0" in region
+    assert "const seq = ++optimizationReplayOverlayRenderSeq" in region
+    assert "function commitOptimizationOverlayRender(seq, projection)" in region
+    assert "seq !== optimizationReplayOverlayRenderSeq" in region
+    assert "window.__shapezLabReplayOverlayLifecycle" in region
+
+
+def test_lab_js_sequence_11d_clear_overlay_resets_transform() -> None:
+    js = _read_lab_js()
+    i = js.index("function clearOptimizationReplayOverlay()")
+    j = js.index("function syncOptimizationOverlayLayerGridStyles", i)
+    clear_block = js[i:j]
+    assert 'getElementById("lab-optimization-overlay-layer")' in clear_block
+    assert 'layer.style.transform = ""' in clear_block
+    assert 'layer.style.transformOrigin = ""' in clear_block
+
+
+def test_lab_js_sequence_11d_render_overlay_clear_then_project_commit() -> None:
+    js = _read_lab_js()
+    i = js.index("function renderOptimizationReplayOverlay()")
+    j = js.index("function getCookie", i)
+    body = js[i:j]
+    main_path = (
+        "    syncOptimizationOverlayLayerGridStyles();\n"
+        "    clearOptimizationReplayOverlay();\n"
+        "\n"
+        "    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);\n"
+        "    const projection = projectOptimizationReplayFrameToLabOverlay(frame);\n"
+        "    if (!commitOptimizationOverlayRender(seq, projection))"
+    )
+    assert main_path in body
+
+
+def test_lab_js_sequence_11a_projection_cache_policy_documented() -> None:
+    region = _lab_js_sequence_11a_region()
+    assert "Sequence 11D — projection cache policy" in region
+    assert "no memoization" in region
+
+
+def test_lab_js_sequence_11d_truncation_echo_in_overlay_diagnostics() -> None:
+    js = _read_lab_js()
+    assert "m.replay_truncated === true" in js
+    assert "replay_truncated (frame metrics)" in js
+
+
+def test_lab_js_apply_frame_refreshes_overlay_after_lab_overlay_ctx() -> None:
+    js = _read_lab_js()
+    i = js.index("function applyFrame()")
+    j = js.index("function setPlaying", i)
+    block = js[i:j]
+    assert block.count("refreshLabOverlayCtx()") == 2
+    assert block.count("renderOptimizationReplayOverlay()") == 2
+    server_tail = (
+        "syncLabTimelineScrub();\n        refreshLabOverlayCtx();\n"
+        "        renderOptimizationReplayOverlay();\n        return;"
+    )
+    demo_tail = (
+        "      syncLabTimelineScrub();\n"
+        "      refreshLabOverlayCtx();\n"
+        "      renderOptimizationReplayOverlay();\n"
+        "    }"
+    )
+    assert server_tail in block
+    assert demo_tail in block
+
+
+def test_lab_js_apply_lab_grid_layout_for_zoom_refreshes_overlay() -> None:
+    js = _read_lab_js()
+    i = js.index("function applyLabGridLayoutForZoom()")
+    j = js.index("function resetLabViewportTransform", i)
+    block = js[i:j]
+    assert "refreshLabOverlayCtx()" in block
+    assert "renderOptimizationReplayOverlay()" in block
+    assert block.index("refreshLabOverlayCtx()") < block.index("renderOptimizationReplayOverlay()")
+
+
+def test_lab_js_viewport_transform_applied_to_lab_stage_only() -> None:
+    """11D: pan/zoom translate3d applies to ``#lab-replay-grid-stage`` only."""
+    js = _read_lab_js()
+    i = js.index("function applyLabViewportTransform()")
+    j = js.index("function applyLabGridLayoutForZoom", i)
+    block = js[i:j]
+    assert "gridStage" in block
+    assert "translate3d" in block
+    assert "lab-optimization-overlay-layer" not in block
+
+
 def test_lab_js_replay_wiring_smoke() -> None:
     root = Path(__file__).resolve().parents[3]
     js_path = (
@@ -1232,3 +1367,116 @@ def test_lab_replay_viewport_css_layout_contract() -> None:
     start = css.index(marker)
     stage_block = css[start : start + 520]
     assert "position: absolute" in stage_block
+
+
+def test_measure_json_sections_total_matches_sorted_minified_json() -> None:
+    root = {"z": 0, "a": [1, 2]}
+    stats = measure_json_sections(root)
+    enc = json.dumps(root, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    assert stats["total_bytes"] == len(enc)
+    assert set(stats["top_level_key_bytes"]) == {"a", "z"}
+
+
+def test_measure_json_sections_lab_and_optimization_subsections() -> None:
+    lab_frame = {
+        "frame_index": 0,
+        "full_map": [{"x": 1, "y": 0}, {"x": 2, "y": 0}],
+        "frame_payload": {},
+    }
+    opt_track = {
+        "track_id": "optimization",
+        "frames": [
+            {
+                "frame_index": 0,
+                "event_type": "candidate.generated",
+                "visible_cells": [{"x": 1, "y": 0}],
+                "overlay_cells": [{"x": 2, "y": 0}],
+                "metrics": {},
+            }
+        ],
+    }
+    root = {
+        "ok": True,
+        "lab_replay_frames_json": [lab_frame],
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: opt_track,
+    }
+    stats = measure_json_sections(root)
+    assert stats["lab_replay"]["frame_count"] == 1
+    assert stats["lab_replay"]["full_map_len_max"] == 2
+    assert stats["lab_replay"]["full_map_len_sum"] == 2
+    assert stats["lab_replay"]["lab_frame_count"] == 1
+    tlk = stats["top_level_key_bytes"]
+    assert stats["lab_replay"]["lab_total_bytes"] == tlk["lab_replay_frames_json"]
+    assert isinstance(stats["lab_replay"]["redundancy"], dict)
+    assert stats["lab_replay"]["largest_lab_frames"]
+    assert stats["optimization_replay"]["frame_count"] == 1
+    assert stats["optimization_replay"]["visible_plus_overlay_max"] == 2
+    assert_optimization_replay_hard_caps(root)
+
+
+def test_measure_json_sections_13b_adjacent_identical_full_map_and_top_n() -> None:
+    row = {"x": 1, "y": 2, "layer": 0, "cell_kind": "miner"}
+    lab = [
+        {"frame_index": 0, "frame_key": "ka", "full_map": [row]},
+        {"frame_index": 1, "frame_key": "kb", "full_map": [dict(row)]},
+    ]
+    opt_track = {
+        "track_id": "optimization",
+        "frames": [
+            {
+                "frame_index": 0,
+                "event_type": "candidate.generated",
+                "visible_cells": [],
+                "overlay_cells": [],
+                "metrics": {},
+            }
+        ],
+    }
+    root = {
+        "ok": True,
+        "lab_replay_frames_json": lab,
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: opt_track,
+    }
+    stats = measure_json_sections(root, largest_lab_frames_n=1)
+    assert stats["lab_replay"]["redundancy"]["adjacent_identical_full_map_count"] == 1
+    assert stats["lab_replay"]["redundancy"]["cell_row_total_instances"] == 2
+    assert stats["lab_replay"]["redundancy"]["cell_row_unique_identity_count"] == 1
+    assert stats["lab_replay"]["redundancy"]["cell_row_duplicate_instance_estimate"] == 1
+    assert len(stats["lab_replay"]["largest_lab_frames"]) == 1
+    assert stats["lab_replay"]["largest_lab_frames"][0]["list_index"] == 0
+
+
+def test_assert_optimization_replay_hard_caps_rejects_frame_count_over_500() -> None:
+    frames = [
+        {
+            "frame_index": i,
+            "event_type": "candidate.generated",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        }
+        for i in range(501)
+    ]
+    root = {OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: {"track_id": "optimization", "frames": frames}}
+    with pytest.raises(AssertionError, match="frame_count"):
+        assert_optimization_replay_hard_caps(root)
+
+
+def test_assert_optimization_replay_hard_caps_rejects_cells_over_128() -> None:
+    cells = [{"x": i, "y": 0} for i in range(1, 130)]
+    root = {
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: {
+            "track_id": "optimization",
+            "frames": [
+                {
+                    "frame_index": 0,
+                    "event_type": "candidate.generated",
+                    "visible_cells": cells,
+                    "overlay_cells": [],
+                    "metrics": {},
+                }
+            ],
+        }
+    }
+    with pytest.raises(AssertionError, match="129 exceeds"):
+        assert_optimization_replay_hard_caps(root)

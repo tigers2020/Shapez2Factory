@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import gzip
 import json
+import unittest.mock as mock
 from dataclasses import replace
 
 import pytest
@@ -12,6 +13,7 @@ import pytest
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services import project_service
 from django_apps.asteroid_lab.services.optimization_replay_persist import (
+    OPTIMIZATION_REPLAY_ATTACH_DIAGNOSTIC_KEYS,
     attach_optimization_replay_frames_after_successful_replay_build,
     persist_optimization_replay_frames_to_solver_run,
 )
@@ -24,12 +26,17 @@ from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEve
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
+    build_optimization_replay_track_payload,
     deserialize_optimization_replay_frames_from_json,
     empty_optimization_replay_track_payload_with_diagnostic,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 from django_apps.web.services.asteroid_lab_post_inspection_evolution import (
     run_post_inspection_evolution_and_attach_optimization_replay,
+)
+from tests.support.measure_json_sections import (
+    assert_optimization_replay_hard_caps,
+    measure_json_sections,
 )
 
 
@@ -213,8 +220,89 @@ def test_run_post_inspection_evolution_attaches_replay_frames() -> None:
     assert result.status == "ok"
     wire = run_post_inspection_evolution_and_attach_optimization_replay(dto.map_input_id, result)
     assert wire.attached is True and wire.reason == "attached"
+    assert wire.diagnostic is None
     ctx = alc.lab_page_context(project_id=dto.project_id)
     assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] > 0
+
+
+def test_run_post_inspection_evolution_failed_diagnostic_stage_evolution_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import django_apps.web.services.asteroid_lab_post_inspection_evolution as pie
+    from django_apps.shapez_asteroid.optimization.dto import CandidateGenerationResult
+    from tests.unit.shapez_asteroid.test_evolutionary_search import _bundle, _goal, _probe_ok
+
+    g0 = _goal(Coord(0, 0))
+    cand = _bundle("lab_ut_only", _probe_ok(goal=g0))
+
+    def fake_gen(*_a: object, **_k: object) -> CandidateGenerationResult:
+        return CandidateGenerationResult(normal_candidates=(cand,), rejected_candidates=())
+
+    monkeypatch.setattr(pie, "generate_bundle_candidates", fake_gen)
+    mock_evo = mock.MagicMock(side_effect=RuntimeError("boom"))
+    monkeypatch.setattr(pie, "run_evolutionary_search", mock_evo)
+    code = _encode_v4_copy(_minimal_root(version=509))
+    dto = project_service.create_project_from_copy_code(code, source_label="evo-boom")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    wire = run_post_inspection_evolution_and_attach_optimization_replay(dto.map_input_id, result)
+    assert mock_evo.called
+    assert wire.attached is False and wire.reason == "evolution_failed"
+    d = wire.diagnostic
+    assert isinstance(d, dict)
+    assert d.get("stage") == "evolution_search"
+    assert d.get("error_type") == "RuntimeError"
+    assert "boom" in (d.get("error_message") or "")
+    assert set(d.keys()) <= set(OPTIMIZATION_REPLAY_ATTACH_DIAGNOSTIC_KEYS)
+
+
+def test_run_post_inspection_evolution_failed_diagnostic_stage_candidate_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _boom_gen(*_a: object, **_k: object) -> None:
+        raise ValueError("candidate_gen_x")
+
+    monkeypatch.setattr(
+        "django_apps.web.services.asteroid_lab_post_inspection_evolution.generate_bundle_candidates",
+        _boom_gen,
+    )
+    code = _encode_v4_copy(_minimal_root(version=9002))
+    dto = project_service.create_project_from_copy_code(code, source_label="gen-boom")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    wire = run_post_inspection_evolution_and_attach_optimization_replay(dto.map_input_id, result)
+    assert wire.attached is False and wire.reason == "evolution_failed"
+    d = wire.diagnostic
+    assert isinstance(d, dict)
+    assert d.get("stage") == "candidate_generation"
+    assert d.get("error_type") == "ValueError"
+    assert "candidate_gen_x" in (d.get("error_message") or "")
+
+
+def test_run_post_inspection_evolution_failed_diagnostic_stage_optimization_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """12L — ValueError before route_probe: adapter / OptimizationInput path."""
+
+    import django_apps.web.services.asteroid_lab_post_inspection_evolution as pie
+
+    def _boom_opt(*_a: object, **_k: object) -> None:
+        raise ValueError("optimization_input_ut_invariant")
+
+    monkeypatch.setattr(pie, "build_optimization_input", _boom_opt)
+    code = _encode_v4_copy(_minimal_root(version=9003))
+    dto = project_service.create_project_from_copy_code(code, source_label="opt-input-boom")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    wire = run_post_inspection_evolution_and_attach_optimization_replay(dto.map_input_id, result)
+    assert wire.attached is False and wire.reason == "evolution_failed"
+    d = wire.diagnostic
+    assert isinstance(d, dict)
+    assert d.get("stage") == "optimization_input"
+    assert d.get("error_type") == "ValueError"
+    assert "optimization_input_ut_invariant" in (d.get("error_message") or "")
+    assert d.get("candidate_count") is None
+    assert d.get("recorder_frame_count") == 0
 
 
 def test_run_post_inspection_empty_candidate_pool_reason(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -238,6 +326,9 @@ def test_run_post_inspection_empty_candidate_pool_reason(monkeypatch: pytest.Mon
     )
     wire = run_post_inspection_evolution_and_attach_optimization_replay(dto.map_input_id, result)
     assert wire.attached is False and wire.reason == "empty_candidate_pool"
+    assert wire.diagnostic is not None
+    assert wire.diagnostic.get("stage") == "empty_candidate_pool"
+    assert wire.diagnostic.get("normal_candidate_count") == 0
 
 
 def test_attach_solver_run_not_found_returns_reason() -> None:
@@ -291,6 +382,8 @@ def test_attach_invalid_replay_payload_when_truncation_pair_missing() -> None:
     )
     out = attach_optimization_replay_frames_after_successful_replay_build(result, bad)
     assert out.attached is False and out.reason == "invalid_replay_payload"
+    assert out.diagnostic is not None
+    assert out.diagnostic.get("stage") == "replay_serialization"
 
 
 def test_persisted_optimization_replay_invalid_shape_falls_back_empty() -> None:
@@ -326,3 +419,12 @@ def test_page_context_malformed_optimization_replay_does_not_crash() -> None:
             "invalid_optimization_replay_payload"
         )
     )
+
+
+def test_build_optimization_track_payload_passes_13a_cap_measure() -> None:
+    track = build_optimization_replay_track_payload(_one_valid_frame())
+    root = {OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: track, "lab_replay_frames_json": []}
+    assert_optimization_replay_hard_caps(root)
+    stats = measure_json_sections(root)
+    assert stats["optimization_replay"]["frame_count"] == 1
+    assert stats["optimization_replay"]["visible_plus_overlay_max"] == 1

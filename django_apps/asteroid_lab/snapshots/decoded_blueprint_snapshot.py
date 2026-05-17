@@ -124,6 +124,9 @@ def build_decoded_blueprint_snapshot(
             pair = server_xy_for_raw_xy(x, y, max_dense_x=bbox_params[0], min_raw_y=bbox_params[1])
             if pair is not None:
                 sx, sy = pair
+        elif (sx is None or sy is None) and bbox_params is not None and x == 0:
+            # Raw X==0: no dense horizontal index; explicit server for algorithm layers.
+            sx, sy = 0, y - bbox_params[1]
 
         cells.append(
             DecodedCellDTO(

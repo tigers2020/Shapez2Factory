@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib
 
+import pytest
+
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.pipeline import (
     reconstruct_snapshot,
@@ -257,6 +259,28 @@ def test_extractor_removed_anchor_supports_mineable_hole() -> None:
     recon = reconstruct_snapshot(snap)
     inp = build_optimization_input(recon, cleanup)
     assert inp.mineable_cells
+
+
+def test_decoded_cell_to_server_coord_requires_explicit_server_coord() -> None:
+    """Optimization adapter rejects raw-only cells instead of double-converting them."""
+
+    cell = _cell(0, -4, cell_kind="asteroid_shape_field", server_x=None, server_y=None)
+    with pytest.raises(ValueError, match="optimization boundary"):
+        decoded_cell_to_server_coord(cell, server_xy_params=(3, -6))
+
+
+def test_build_optimization_input_accepts_server_x_zero_on_decoded_cells() -> None:
+    """Server dense ``x==0`` through explicit ``server_x``/``server_y`` must not fail."""
+
+    cells = (
+        _cell(-1, 0, cell_kind="asteroid_shape_field", server_x=0, server_y=0),
+        _cell(1, 0, cell_kind="asteroid_shape_field", server_x=1, server_y=0),
+    )
+    snap = _snapshot(cells)
+    cleanup = deconstruct_snapshot(snap)
+    recon = run_topology_reconstruction(cleanup)
+    inp = build_optimization_input(recon, cleanup)
+    assert Coord(0, 0) in inp.asteroid_cells
 
 
 def test_all_optimization_input_coords_are_server_xy() -> None:

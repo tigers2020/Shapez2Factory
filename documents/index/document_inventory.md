@@ -1,6 +1,6 @@
 # 문서 Inventory
 
-기준일: 2026-05-16  
+기준일: 2026-05-17  
 범위: `documents/`의 주요 설계·계획·조사·보고·보관 문서. 전체 파일 목록이 아니라 AI context 선택을 위한 authority 지도다.
 
 상태 enum은 [`document_lifecycle.md`](document_lifecycle.md)를 따른다.
@@ -35,6 +35,7 @@
 |------|------|------|-----------|------|
 | [`documents/research/`](../research/) | `RESEARCH` | research | NO | 조사·근거. 개별 문서만 정본 승격 가능 |
 | [`documents/research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md`](../research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md) | `RESEARCH` | asteroid lab memo | NO | server 좌표·layout fingerprint. CANON 아님 |
+| [`documents/plans/asteroid_lab_optimization/asteroid_lab_progress_report_2026-05-17.md`](../plans/asteroid_lab_optimization/asteroid_lab_progress_report_2026-05-17.md) | `REPORT` | asteroid lab progress snapshot | NO | 2026-05-17 진행 요약; 브랜치 `quality/repository-gate-cleanup` 기준. 정본 아님 |
 | [`documents/reports/README.md`](../reports/README.md) | `REPORT` | report index | NO | report 묶음 라우팅. 정본 계약 아님 |
 | [`documents/debug/`](../debug/) | `REPORT` | debug report | NO | 로그/복사본 분석 슬롯. **현재 체크아웃에 파일 없음**; 과거 보고는 git 기록 |
 | [`documents/notes/`](../notes/) | `REPORT` | notes | NO | 장기 메모. 정본 아님 |
@@ -66,3 +67,7 @@
 
 - 고아 채굴 placement 플랜·감사 묶음은 위 archive 표 참고.
 - `documents/meta/chat.md` 비프로젝트 덤프는 제거(원문 필요 시 git 기록).
+
+## 2026-05-17 문서 정리
+
+- Asteroid Lab optimization layer 진행 스냅 [`asteroid_lab_progress_report_2026-05-17.md`](../plans/asteroid_lab_optimization/asteroid_lab_progress_report_2026-05-17.md)를 inventory `REPORT` 행에 등록했다.

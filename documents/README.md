@@ -18,7 +18,7 @@
 | canonical routing/index | [`README.md`](README.md), [`Algorithm/README.md`](Algorithm/README.md), [`index/`](index/) | 문서 위치와 lifecycle 판단에 사용한다. |
 | AI workflow/manuals | [`ai/`](ai/) | 작업 절차, current plan, checklist, manual routing. |
 | implementation planning | [`plans/`](plans/), [`ai/plans/`](ai/plans/) | 승인된 작업 범위와 backlog 확인용. 정본 충돌 시 정본이 우선한다. |
-| audit/report/research | [`reports/`](reports/README.md), [`research/`](research/), [`notes/`](notes/), [`debug/`](debug/) | 관측 증거와 분석. historical report는 current truth가 아니다. |
+| audit/report/research | [`reports/`](reports/README.md), [`research/`](research/), [`notes/`](notes/), [`debug/`](debug/)(슬롯·파일 없을 수 있음), [`archive/refactor_audit_pre_mining_solver_removal_2026-05/`](archive/refactor_audit_pre_mining_solver_removal_2026-05/README.md) | 관측 증거와 분석. historical report는 current truth가 아니다. 감사 묶음은 제거된 정본을 인용할 수 있으므로 archive만 본다. |
 | historical/obsolete | [`archive/`](archive/), [`refactory/`](refactory/) | 역사 확인용. 현재 구현 판단에 직접 사용하지 않는다. |
 | generated/sample output | [`samples/`](samples/), `var/` | output evidence only. 알고리즘 입력으로 사용 금지. |
 

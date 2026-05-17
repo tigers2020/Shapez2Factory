@@ -2,6 +2,8 @@
 
 CANON 아님. [`django_apps/web/static/web/js/asteroid_miner_layout_lab.js`](../../django_apps/web/static/web/js/asteroid_miner_layout_lab.js) 구현과 동기화한다.
 
+서버 내부 좌표·레이아웃 핑거프린트(디코드 후 계산)는 [`../research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md`](../research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md)를 본다.
+
 ## Canonical 방향
 
 - 정수 `0–3`: **0 = East, 1 = South, 2 = West, 3 = North**

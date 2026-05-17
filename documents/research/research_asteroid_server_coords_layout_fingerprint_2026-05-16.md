@@ -1,7 +1,15 @@
+---
+status: RESEARCH
+owner: asteroid-lab
+last_reviewed: 2026-05-16
+supersedes: []
+superseded_by: []
+related_epics: []
+---
+
 # Asteroid Lab: server 좌표계 및 레이아웃 핑거프린트 (결정안)
 
-**상태**: 구현 기준 문서 (CANON 아님, 리팩터리 참고용)  
-**날짜**: 2026-05-16
+**종류**: 구현 메모 (CANON 아님). topology·Lab UI와 연계해 [`documents/ai/plan_asteroid_reconstruction_topology_2026-05-16.md`](../ai/plan_asteroid_reconstruction_topology_2026-05-16.md), [`documents/ai/lab_map_rendering_contract.md`](../ai/lab_map_rendering_contract.md)와 함께 읽는다.
 
 ## 목적
 

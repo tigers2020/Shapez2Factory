@@ -29,6 +29,9 @@ _oui = importlib.import_module(_opt_pkg + ".optimization_ui_payload")
 SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY = (
     _oui.SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY
 )
+validate_optimization_replay_frame_list_payload = (
+    _oui.validate_optimization_replay_frame_list_payload
+)
 
 OptimizationReplayAttachReason = Literal[
     "attached",
@@ -38,6 +41,7 @@ OptimizationReplayAttachReason = Literal[
     "missing_solver_run_id",
     "solver_run_not_found",
     "evolution_failed",
+    "invalid_replay_payload",
 ]
 
 
@@ -60,9 +64,12 @@ def persist_optimization_replay_frames_to_solver_run(
 
     if not frames:
         return
+    blob = optimization_replay_frames_to_json_list(frames)
+    if not validate_optimization_replay_frame_list_payload(blob):
+        return
     merged = dict(solver_run.config_json or {})
     key = SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY
-    merged[key] = optimization_replay_frames_to_json_list(frames)
+    merged[key] = blob
     solver_run.config_json = merged
     solver_run.save(update_fields=["config_json"])
 
@@ -79,6 +86,9 @@ def attach_optimization_replay_frames_after_successful_replay_build(
         return OptimizationReplayAttachResult(attached=False, reason="missing_solver_run_id")
     if not frames:
         return OptimizationReplayAttachResult(attached=False, reason="empty_frames")
+    blob = optimization_replay_frames_to_json_list(frames)
+    if not validate_optimization_replay_frame_list_payload(blob):
+        return OptimizationReplayAttachResult(attached=False, reason="invalid_replay_payload")
     run = m.SolverRun.objects.filter(pk=int(result.solver_run_id)).first()
     if run is None:
         return OptimizationReplayAttachResult(attached=False, reason="solver_run_not_found")

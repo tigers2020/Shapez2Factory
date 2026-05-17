@@ -2,7 +2,7 @@
 
 Role: Asteroid Lab Runtime Replay Wiring Architect
 
-**문서 상태:** ACTIVE (설계 전용). 본 문서는 **구현 승인 전 단계**의 경계·순서·검증을 고정한다.  
+**문서 상태:** ACTIVE. §12 **Sequence 12F**는 구현 완료(2026-05-17); 나머지 시퀀스(12G 이후)는 설계·경계 고정용이다.  
 **범위:** Lab persistence·UI 읽기 경로에 optimization replay를 안전하게 연결하는 방법만 다룬다.  
 **금지:** 본 문서만으로는 **솔버·리플레이 이벤트 의미·DTO·테스트 전용 fixture 파서 동작**을 바꾸지 않는다. 실제 배선 구현은 별도 PR·승인 후 진행한다.
 
@@ -257,6 +257,17 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 
 ### Sequence 12F — Persist frame-list guard v0
 
+**구현 상태 (v0, 2026-05-17): 완료**
+
+- **가드·역직렬화:** `django_apps.shapez_asteroid.optimization.optimization_ui_payload`에 `validate_optimization_replay_frame_list_payload` 및 `deserialize_optimization_replay_frames_from_json` 내 프레임 `metrics` 절단 짝 검증(`replay_truncated == true` → 동일 `metrics`에 non-empty `truncation_reason`).
+- **트랙 집계:** `build_optimization_replay_track_payload`가 `replay_truncated == true`일 때만 `metrics.truncation_reason`을 넣으며, 값은 프레임 순서 기준 **첫** non-empty reason(없으면 in-memory 비정합 시 `"unknown"` — persist 경로는 역직렬화에서 걸러짐).
+- **쓰기:** `persist_optimization_replay_frames_to_solver_run`는 직렬화 후 가드 실패 시 저장 생략. `attach_optimization_replay_frames_after_successful_replay_build`는 `invalid_replay_payload` reason으로 스킵.
+- **Recorder:** `OptimizationReplayRecorder`가 셀·프레임 상한 절단 시 `truncation_reason`을 함께 기록(`max_replay_cells_per_frame`, `max_replay_frames`).
+- **범위 유지:** `optimization_replay_schema_version` / `optimization_replay_truncated` / `optimization_replay_truncation_reason` **sibling 미도입**, 봉투·HUD·byte cap·migration **미도입**(§11·§12 out-of-scope와 동일).
+- **12G 예고:** 읽기 실패 시 `optimization_replay_diagnostic_reason` 등 단일 진단 문자열은 12G; 12F는 shape·절단 짝·트랙 reason 집계만.
+
+**테스트 (추가·갱신):** `tests/unit/shapez_asteroid/test_optimization_ui_payload.py`(가드·집계·역직렬화), `tests/unit/shapez_asteroid/test_solver_optimization_replay_import_boundary.py`(솔버 패키지 문자열 비참조), `tests/unit/asteroid_lab/test_optimization_replay_persist.py`(persist/attach/page 빈 트랙), Recorder 단언 보강 `test_optimization_replay.py`·`test_optimization_replay_skeleton.py`.
+
 **Scope:**
 
 - `optimization_replay_frames`만 optimization replay persist 키로 유지한다.
@@ -281,9 +292,9 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 
 ### Sequence 12G — UI payload read adapter
 
-- page context가 persist된 프레임을 읽고 스키마·shape·절단 짝을 검증한다.
-- 실패 시 empty payload + §7.2 진단 문자열.
-- `metrics.truncation_reason` 노출은 §6.1에 따른다.
+- page context가 persist된 프레임을 읽는다(12F에서 shape·절단 짝은 `deserialize`/`validate`로 이미 고정).
+- 실패 시 empty payload + §7.2 진단 문자열(`optimization_replay_diagnostic_reason` 등 — **12G 구현 범위**).
+- `metrics.truncation_reason` 노출은 §6.1에 따른다(12F에서 트랙 집계 완료).
 
 ### Sequence 12H — Truncation HUD / metadata display
 

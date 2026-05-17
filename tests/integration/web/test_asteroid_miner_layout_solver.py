@@ -131,6 +131,22 @@ def _unique_valid_copy() -> str:
     )
 
 
+def _server_x_zero_copy() -> str:
+    return _encode_v4_copy(
+        {
+            "V": random.randint(1, 10_000_000),
+            "BP": {
+                "$type": "Island",
+                "Entries": [
+                    {"X": 0, "Y": -6, "T": "Layout_ProMiner"},
+                    {"X": 1, "Y": -6, "T": "SpaceBelt_Left"},
+                    {"X": 1, "Y": -5, "T": "Layout_1x1BalancedShapeMiner"},
+                ],
+            },
+        }
+    )
+
+
 def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     response = Client().get(reverse("web:asteroid-miner-layout"))
 
@@ -419,6 +435,25 @@ def test_post_json_optimization_replay_contract_keys() -> None:
     assert isinstance(opt, dict)
     if attach.get("attached") is True:
         assert int(opt.get("frame_count") or 0) >= 1
+
+
+def test_post_json_optimization_input_does_not_raw_convert_server_coords() -> None:
+    client = Client()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": _server_x_zero_copy()},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict)
+    diagnostic = attach.get("diagnostic")
+    if isinstance(diagnostic, dict):
+        assert diagnostic.get("stage") != "optimization_input"
+        assert "Cannot map raw" not in str(diagnostic.get("error_message") or "")
 
 
 @mock.patch(

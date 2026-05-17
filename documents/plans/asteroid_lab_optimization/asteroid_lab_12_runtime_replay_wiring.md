@@ -482,7 +482,9 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 | 12K (구현 완료) | §12K: attach **`reason` 어휘 유지** + **`diagnostic` 스칼라**(`stage`·카운트·짧은 오류); read 진단과 분리; 솔버 의미·동기화 **비변경** |
 ## Sequence 12L 좌표 경계 보강 (2026-05-17)
 
+- Critical invariant: decode/import normalization이 Server X/Y를 만든 뒤에는 알고리즘 코드에서 raw 좌표가 불법이다.
 - optimization replay write path는 solver output 관측 계층이며, 입력 구성은 Server X/Y만 사용한다.
 - post-inspection evolution은 `build_optimization_input` 이후 raw 좌표 변환기를 호출하지 않는다.
-- raw `X`/`Y`는 import/decode 및 최종 display/export projection 경계에서만 허용한다.
+- raw `X`/`Y`, `raw_to_server`, `server_to_raw`, `server_xy_for_raw_xy` 계열 변환은 import/decode 및 최종 display/export projection 경계에서만 허용한다.
 - server `x == 0`은 replay/route/evolution 진단에서 유효 좌표로 유지한다.
+- 12L에서 UI/overlay projection 변경은 범위 밖이다. projection boundary 문제가 발견되면 별도 UI/export boundary 작업으로 분리한다.

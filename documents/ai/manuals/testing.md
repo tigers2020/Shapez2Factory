@@ -11,7 +11,7 @@ PR 직전·CI에서만 전체에 가깝게 두고, 로컬 반복은 아래 **빠
 ### 빠른 루틴 · 병렬 · `slow` 마커
 
 - **병렬**: `pip install -e ".[dev]"`에 `pytest-xdist` 포함. 예: `python -m pytest -n auto --dist loadscope` (Django DB 테스트 충돌 시 `--dist loadscope` 유지).
-- **`slow`**: 리플레이 빌드·무거운 DB 경로. `pytest.ini`에 등록. 부착 위치: `tests/integration/web/test_asteroid_miner_layout_solver.py`(모듈), `tests/unit/asteroid_lab/test_optimization_replay_persist.py`(모듈), `test_replay_pipeline_service.py`의 DB 리플레이 테스트·`test_replay_snapshot_contract.py`의 대형 리플레이 계약 테스트.
+- **`slow`**: 리플레이 빌드·무거운 DB 경로. `pytest.ini`에 등록. 부착: `test_asteroid_miner_layout_solver.py`(모듈), `test_optimization_replay_persist.py`(모듈), `test_replay_pipeline_service.py`의 리플레이 DB 테스트 3개, `test_replay_snapshot_contract.py`의 대형 계약 테스트 1개.
 - **로컬 단위 위주**: `python -m pytest -n auto --dist loadscope -m "not slow" tests/unit/shapez_asteroid tests/unit/asteroid_lab tests/unit/web`
 - **느린 것만**: `python -m pytest -n auto --dist loadscope -m slow`
 - **Makefile**(루트): `make lint` · `make type` · `make test-fast` · `make test-integration` · `make test-slow` · `make test-all` (`PYTHON=python3` 등 오버라이드 가능).

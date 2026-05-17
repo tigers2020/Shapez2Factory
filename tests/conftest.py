@@ -3,7 +3,9 @@
 Markers are applied automatically from file location (no per-test decorators):
 - unit / integration — top-level under tests/
 - shapez_core / shapez_solver / web / api — second segment when present
-- slow — ``_SLOW_TEST_RELS`` 에 해당하는 모듈에 자동 부착
+
+The ``slow`` marker is declared in ``pytest.ini`` and attached on selected
+modules/tests (replay-heavy paths). Use ``-m "not slow"`` for a faster loop.
 
 Examples:
   pytest -m unit
@@ -24,15 +26,6 @@ import pytest
 _TESTS_ROOT = Path(__file__).resolve().parent
 
 _LAYER_MARKERS = frozenset({"shapez_core", "shapez_solver", "web", "api", "asteroid_lab"})
-
-# 느린 모듈(리플레이 빌드·Django 통합 등): 로컬 기본 루틴에서는 ``-m "not slow"`` 로 제외 가능.
-_SLOW_TEST_RELS = frozenset(
-    {
-        "integration/web/test_asteroid_miner_layout_solver.py",
-        "unit/asteroid_lab/test_optimization_replay_persist.py",
-        "unit/asteroid_lab/test_replay_pipeline_service.py",
-    }
-)
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -80,7 +73,3 @@ def pytest_collection_modifyitems(
 
         if len(parts) >= 2 and parts[1] in _LAYER_MARKERS:
             item.add_marker(getattr(pytest.mark, parts[1]))
-
-        rel_posix = rel.as_posix()
-        if rel_posix in _SLOW_TEST_RELS:
-            item.add_marker(pytest.mark.slow)

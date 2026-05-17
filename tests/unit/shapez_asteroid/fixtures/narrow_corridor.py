@@ -12,6 +12,10 @@ rim cells; each candidate's ``occupied_cells`` overlay blocks its own rim goal c
 ``run_route_probe`` from the shared bridge stub naturally targets the **opposite** rim.
 Commit order then decides which side consumes the bridge first (no rim_right-only goal).
 
+**JSON golden** (``json_safe_replay_value`` export, no round-trip loader):
+``tests/fixtures/shapez_asteroid/optimization/narrow_corridor_{asymmetric,symmetric}_rim_competition.json``;
+contract tests: ``test_narrow_corridor_optimization_json_fixtures.py``.
+
 Candidate-time probes use only each candidate's own ``occupied_cells`` overlay; incremental
 commit re-runs ``run_route_probe`` with the union of prior committed placements and the
 current candidate — reproducing reachable-at-pool / blocked-at-commit starvation.

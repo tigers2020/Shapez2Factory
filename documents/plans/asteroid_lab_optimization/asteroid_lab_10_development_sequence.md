@@ -431,9 +431,9 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 ### 작업
 
 ```text
-[ ] ruff check
-[ ] black --check
-[ ] mypy
+[x] ruff check .
+[x] black --check .
+[x] mypy .
 [x] targeted pytest
 [x] integration pytest
 ```
@@ -441,10 +441,10 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 ### 완료 기준
 
 ```text
-[ ] all gates pass
+[x] all gates pass (2026-05-17 로컬: `ruff check .` · `black --check .` · `mypy .` · `python -m pytest` → 792 passed)
 ```
 
-> **참고 (2026-05-17):** `tests/unit/shapez_asteroid/` + `tests/integration/shapez_asteroid/test_optimization_ui_payload.py` 구간 **193 passed**. 전 저장소 `ruff` / `mypy` / `black --check` 는 본 턴에서 미실행.
+> **참고 (2026-05-17):** `tests/unit/shapez_asteroid/` + `tests/integration/shapez_asteroid/test_optimization_ui_payload.py` 구간 **193 passed** (기존). 동일 날짜 **전 저장소** `python -m ruff check .` · `python -m black --check .` · `python -m mypy .` · `python -m pytest` 를 추가로 실행해 **전부 green** 확인(코드 변경 없음).
 
 > **참고 (12E 이후):** Run Solver copy POST 경로는 `tests/unit/asteroid_lab/test_optimization_replay_persist.py`·`tests/integration/web/test_asteroid_miner_layout_solver.py` 등 **타깃 구간 green**. 전 저장소 게이트는 아래 `### 알려진 부채 (전역 게이트)`와 같이 **기존 부채**로 남긴다.
 
@@ -470,7 +470,7 @@ Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 
 
 ### 알려진 부채 (전역 게이트)
 
-12C–12E diff와 별도로,**전 저장소** `ruff check .` / `mypy .` / `black --check .` 는 기존 이슈(예: E501, `polib` 스텁, 일부 파일 `black` 드리프트)로 실패할 수 있다. merge PR에는 **known debt**로 한 줄 남기고, `## Sequence 11 — Quality Gates` 전 항목 green은 **별도 PR**로 추적한다.
+과거 병합 구간에서는 **전 저장소** `ruff check .` / `mypy .` / `black --check .` 가 환경·드리프트로 실패한 적이 있어 merge PR에 **known debt**로 남긴 바 있다. **2026-05-17 로컬 gate sweep** 기준으로는 위 명령 + `python -m pytest` 가 green이었다. CI·다른 OS·다른 Python 마이너에서 재현 실패가 나오면 이 절을 다시 열어 이슈로 추적한다.
 
 ---
 

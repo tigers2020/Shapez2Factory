@@ -381,3 +381,28 @@ integration pytest
 ```text
 all gates pass
 ```
+
+---
+
+## Asteroid Lab — Optimization replay UI (시퀀스 10A–10F)
+
+**번호 주의:** 아래 `10A–10F`는 Lab 페이지 **optimization 리플레이 UI** 전용 진행 번호이다. 위젯·스크립트(`asteroid_miner_layout_lab.js` 등)와 `asteroid_lab_09_replay_debug.md`의 **Frontend Dual-track Replay Policy**와 정렬한다. 본 문서 상단의 `## Sequence 10 — Regression Fixtures`(회귀 fixture)와 **같은 “10” 계층이 아니다.**
+
+### 진행 표 (10A–10F)
+
+| 시퀀스 | 상태 | 요약 |
+|--------|------|------|
+| 10A | 완료 | parse-only — optimization 리플레이 JSON 파싱만 |
+| 10B | 완료 | metadata summary — 요약 메타데이터 표시 |
+| 10C | 완료 | summary panel — 요약 패널 UI |
+| 10D | 완료 | selected frame metadata — 선택 프레임 메타데이터 |
+| 10E | 완료 | independent metadata navigation — `optimizationReplayFrameIndex`만 clamp·갱신, Lab replay 타임라인 비침해 |
+| 10F | 완료 | dual-track sync policy document — `asteroid_lab_09_replay_debug.md`에 이중 트랙·비동기화 계약 문서화 |
+
+### 향후 (오버레이·동기화)
+
+| 시퀀스 | 상태 | 요약 |
+|--------|------|------|
+| 11A | 미착수 | readonly overlay projection adapter — `OptimizationReplayFrame` cells → Lab overlay cells 명시 변환 |
+| 11B | 미착수 | overlay rendering — 기능 플래그 뒤에서만 |
+| 11C | 미착수 | frame sync policy — **필요할 때만** 명시적 동기화 정책 검토 (기본은 비동기화, `09` 정본 참조) |

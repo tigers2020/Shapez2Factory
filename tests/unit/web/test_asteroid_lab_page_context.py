@@ -243,6 +243,110 @@ def test_lab_js_no_console_spam_for_optimization_replay() -> None:
     assert "console." not in chunk
 
 
+def _lab_js_sequence_10b_region() -> str:
+    js = _read_lab_js()
+    start = js.index("Sequence 10B")
+    end = js.index("function getCookie", start)
+    return js[start:end]
+
+
+def test_lab_js_registers_optimization_replay_summary() -> None:
+    js = _read_lab_js()
+    needle = (
+        "const optimizationReplaySummary = buildOptimizationReplayTrackSummary("
+        "optimizationReplayTrack)"
+    )
+    assert needle in js
+
+
+def test_lab_js_has_optimization_replay_frame_count_helper() -> None:
+    js = _read_lab_js()
+    assert "function optimizationReplayFrameCount(track)" in js
+
+
+def test_lab_js_has_optimization_replay_event_counts_helper() -> None:
+    js = _read_lab_js()
+    assert "function optimizationReplayEventTypeCounts(track)" in js
+
+
+def test_lab_js_does_not_render_optimization_overlay() -> None:
+    js = _read_lab_js()
+    for name in ("drawOptimizationOverlay", "renderOptimizationReplayFrame", "optimizationOverlay"):
+        assert name not in js
+    assert "optimizationReplayTrack.frames[" not in js
+    assert "visible_cells" not in _lab_js_sequence_10b_region()
+    assert "overlay_cells" not in _lab_js_sequence_10b_region()
+
+
+def test_lab_js_does_not_replace_lab_replay_frames_with_optimization_frames() -> None:
+    js = _read_lab_js()
+    i = js.index("function replaceLabReplayPayload")
+    j = js.index("function syncProjectSlugHiddenFromRedirect", i)
+    block = js[i:j]
+    assert "optimizationReplayTrack" not in block
+    assert "optimizationReplaySummary" not in block
+    assert "payload.lab_replay_frames_json" in block
+
+
+def test_lab_js_does_not_add_backend_calls_for_optimization_replay() -> None:
+    js = _read_lab_js()
+    gate = js.index("function getCookie")
+    tail = js[gate:]
+    assert "optimizationReplayTrack" not in tail
+    assert "optimizationReplaySummary" not in tail
+
+
+def test_lab_js_keeps_existing_replay_script_ids() -> None:
+    js = _read_lab_js()
+    assert js.count('readJsonScript("lab-replay-frames-data")') == 1
+    assert js.count('readJsonScript("lab-cell-overlay-matrix-data")') == 1
+    assert js.count('readJsonScript("lab-runs-data")') == 1
+    assert js.count('readJsonScript("lab-ui-initial-state")') == 1
+
+
+def test_optimization_replay_track_metadata_uses_track_id_optimization() -> None:
+    js = _read_lab_js()
+    assert 'trackId: typeof track?.track_id === "string" ? track.track_id : "optimization"' in js
+
+
+def test_optimization_replay_track_metadata_no_coordinate_interpretation() -> None:
+    region = _lab_js_sequence_10b_region()
+    assert "visible_cells" not in region
+    assert "overlay_cells" not in region
+    assert ".frames[" not in region
+
+
+def test_build_optimization_replay_track_summary_empty() -> None:
+    js = _read_lab_js()
+    assert "function buildOptimizationReplayTrackSummary(track)" in js
+    assert "function optimizationReplayFrameCount(track)" in js
+    assert "function hasOptimizationReplayFrames(track)" in js
+    assert "track && Array.isArray(track.frames) ? track.frames.length : 0" in js
+
+
+def test_build_optimization_replay_track_summary_counts() -> None:
+    js = _read_lab_js()
+    assert "metrics.event_type_counts" in js
+    assert "return Object.freeze({ ...counts });" in js
+
+
+def test_has_optimization_replay_frames_false_for_empty() -> None:
+    js = _read_lab_js()
+    assert "track.frames.length > 0" in js
+
+
+def test_has_optimization_replay_frames_true_for_nonempty() -> None:
+    js = _read_lab_js()
+    assert "Boolean(track && Array.isArray(track.frames) && track.frames.length > 0)" in js
+
+
+def test_summary_does_not_mutate_frames() -> None:
+    region = _lab_js_sequence_10b_region()
+    assert ".frames.push" not in region
+    assert ".frames.splice" not in region
+    assert ".frames =" not in region
+
+
 def test_template_still_exposes_optimization_replay_json_script() -> None:
     tpl = (
         Path(__file__).resolve().parents[3]

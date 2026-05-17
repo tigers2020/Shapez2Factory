@@ -435,6 +435,41 @@
     readJsonScriptPayload(OPTIMIZATION_REPLAY_SCRIPT_ID, EMPTY_OPTIMIZATION_REPLAY_TRACK),
   );
 
+  /**
+   * Sequence 10B — optimization replay metadata only (no overlay, no lab frame index sync).
+   * Do not read optimization frame geometry here; lab replay still drives the grid.
+   */
+  function hasOptimizationReplayFrames(track) {
+    return Boolean(track && Array.isArray(track.frames) && track.frames.length > 0);
+  }
+
+  function optimizationReplayFrameCount(track) {
+    return track && Array.isArray(track.frames) ? track.frames.length : 0;
+  }
+
+  function optimizationReplayEventTypeCounts(track) {
+    const metrics = track && track.metrics && typeof track.metrics === "object" ? track.metrics : {};
+    const counts =
+      metrics.event_type_counts && typeof metrics.event_type_counts === "object"
+        ? metrics.event_type_counts
+        : {};
+    return Object.freeze({ ...counts });
+  }
+
+  function buildOptimizationReplayTrackSummary(track) {
+    const frameCount = optimizationReplayFrameCount(track);
+    const counts = optimizationReplayEventTypeCounts(track);
+    return Object.freeze({
+      trackId: typeof track?.track_id === "string" ? track.track_id : "optimization",
+      trackLabel: typeof track?.track_label === "string" ? track.track_label : "Optimization",
+      frameCount,
+      replayTruncated: Boolean(track?.metrics?.replay_truncated),
+      eventTypeCounts: counts,
+    });
+  }
+
+  const optimizationReplaySummary = buildOptimizationReplayTrackSummary(optimizationReplayTrack);
+
   function getCookie(name) {
     const prefix = "; " + name + "=";
     const raw = document.cookie;

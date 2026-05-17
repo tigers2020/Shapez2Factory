@@ -9,8 +9,14 @@ from django_apps.shapez_asteroid.optimization.dto import (
     ExistingTransportCell,
     OptimizationInput,
     RouteCellDomain,
+    RouteReservation,
 )
-from django_apps.shapez_asteroid.optimization.enums import RouteClass, TransportKind, TransportMask
+from django_apps.shapez_asteroid.optimization.enums import (
+    ReservationState,
+    RouteClass,
+    TransportKind,
+    TransportMask,
+)
 
 
 def _mask_for_transport_cell(cell: ExistingTransportCell) -> TransportMask:
@@ -117,7 +123,63 @@ class RouteDomainSnapshotBuilder:
         return out
 
     @staticmethod
+    def build_commit_snapshot(
+        inp: OptimizationInput,
+        *,
+        confirmed_reservations: tuple[RouteReservation, ...] = (),
+        committed_occupied_cells: frozenset[Coord] = frozenset(),
+    ) -> dict[Coord, RouteCellDomain]:
+        """Rebuild ``route_domain`` from seed, placements, and reservations (Sequence 6)."""
+
+        base = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
+        for c in sorted(committed_occupied_cells, key=lambda z: (z.x, z.y)):
+            cell = base.get(c)
+            if cell is None:
+                continue
+            if c in inp.blocked_cells:
+                continue
+            base[c] = RouteCellDomain(
+                coord=c,
+                route_class=cell.route_class,
+                traversal_cost=cell.traversal_cost,
+                hard_blocked=True,
+                carve_allowed=False,
+                transport_mask=TransportMask.NONE,
+            )
+
+        confirmed_only = tuple(
+            r
+            for r in sorted(confirmed_reservations, key=lambda z: z.reservation_id)
+            if r.reservation_state is ReservationState.CONFIRMED
+        )
+        for res in confirmed_only:
+            mask_same = (
+                TransportMask.SHAPE_BELT
+                if res.transport_kind is TransportKind.SHAPE_BELT
+                else TransportMask.FLUID_PIPE
+            )
+            for coord in res.path:
+                if coord in inp.protected_corridor_cells:
+                    continue
+                if coord in inp.blocked_cells:
+                    continue
+                cell = base.get(coord)
+                if cell is None:
+                    continue
+                if cell.hard_blocked and coord in committed_occupied_cells:
+                    continue
+                base[coord] = RouteCellDomain(
+                    coord=coord,
+                    route_class=RouteClass.PREFERRED_TRUNK,
+                    traversal_cost=1,
+                    hard_blocked=False,
+                    carve_allowed=False,
+                    transport_mask=mask_same,
+                )
+        return base
+
+    @staticmethod
     def build_snapshot(inp: OptimizationInput) -> Mapping[Coord, RouteCellDomain]:
-        """Public API: seed snapshot (commit overlays are Sequence 7)."""
+        """Public API: seed snapshot (commit overlays use ``build_commit_snapshot``)."""
 
         return dict(RouteDomainSnapshotBuilder.build_seed_snapshot(inp))

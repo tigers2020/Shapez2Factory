@@ -10,10 +10,13 @@ from django_apps.shapez_asteroid.optimization.coords import BBox, Coord
 from django_apps.shapez_asteroid.optimization.enums import (
     CandidateRejectReason,
     CardinalDirection,
+    CommitConflictReason,
     EdgeKind,
     EvolutionConvergenceReason,
     ExtractorPlacementPolicy,
     OptimizationReplayEventType,
+    PlacementCommitState,
+    ReservationState,
     RouteClass,
     RouteGoalKind,
     RouteProbeFailureReason,
@@ -273,3 +276,47 @@ class OptimizationReplayFrame:
     visible_cells: tuple[Any, ...]
     overlay_cells: tuple[Any, ...]
     metrics: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class RouteReservation:
+    """Route hold for Sequence 6; ``reservation_id`` is deterministic (no UUID)."""
+
+    reservation_id: str
+    candidate_id: str
+    transport_kind: TransportKind
+    path: tuple[Coord, ...]
+    reserved_cells: frozenset[Coord]
+    cost: int
+    reached_goal: RouteGoal
+    goal_priority: int
+    reservation_state: ReservationState
+    domain_cell_transitions: tuple[RouteDomainCellTransition, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CommittedPlacement:
+    candidate_id: str
+    occupied_cells: frozenset[Coord]
+    transport_kind: TransportKind
+    route_reservation_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateCommitResult:
+    candidate_id: str
+    commit_state: PlacementCommitState
+    conflict_reason: CommitConflictReason | None
+    route_reservation_id: str | None
+    route_probe_result: RouteProbeResult
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class IncrementalCommitResult:
+    committed_placements: tuple[CommittedPlacement, ...]
+    route_reservations: tuple[RouteReservation, ...]
+    candidate_results: tuple[CandidateCommitResult, ...]
+    final_route_domain: Mapping[Coord, RouteCellDomain]
+    confirmed_candidate_count: int
+    rolled_back_candidate_count: int

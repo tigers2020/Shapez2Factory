@@ -14,9 +14,11 @@ from django_apps.shapez_asteroid.optimization.coords import (
 )
 from django_apps.shapez_asteroid.optimization.dto import (
     BundleCandidate,
+    CandidateCommitResult,
     CandidateEquivalenceKey,
     CandidateGenerationConfig,
     CandidateGenerationResult,
+    CommittedPlacement,
     EvolutionConfig,
     EvolutionResult,
     ExistingTransportCell,
@@ -25,6 +27,7 @@ from django_apps.shapez_asteroid.optimization.dto import (
     Gene,
     Genome,
     GenomeDiversityMetrics,
+    IncrementalCommitResult,
     OptimizationInput,
     OptimizationReplayFrame,
     RecoveryBudget,
@@ -34,6 +37,7 @@ from django_apps.shapez_asteroid.optimization.dto import (
     RouteGoal,
     RouteProbeInput,
     RouteProbeResult,
+    RouteReservation,
     TopologyEdge,
     TopologyGraph,
     TopologyNode,
@@ -78,6 +82,10 @@ from django_apps.shapez_asteroid.optimization.genome_fitness import (
     fitness_breakdown_total_matches_components,
     genome_selected_candidates,
     probe_unreachable_or_stale,
+)
+from django_apps.shapez_asteroid.optimization.incremental_commit import (
+    commit_best_genome,
+    genome_commit_candidates,
 )
 from django_apps.shapez_asteroid.optimization.optimization_replay import (
     MAX_REPLAY_CELLS_PER_FRAME,
@@ -160,6 +168,12 @@ __all__ = [
     "Gene",
     "Genome",
     "GenomeDiversityMetrics",
+    "CandidateCommitResult",
+    "CommittedPlacement",
+    "IncrementalCommitResult",
+    "RouteReservation",
+    "commit_best_genome",
+    "genome_commit_candidates",
     "build_linear_patterns",
     "build_pattern_library",
     "OptimizationInput",

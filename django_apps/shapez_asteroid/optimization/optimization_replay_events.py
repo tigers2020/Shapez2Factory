@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from django_apps.shapez_asteroid.optimization.commit_survivability_metrics import (
+    commit_survivability_metrics_to_replay_metrics,
+)
 from django_apps.shapez_asteroid.optimization.dto import (
+    CommitSurvivabilityMetrics,
     FitnessBreakdown,
     Genome,
     OptimizationInput,
@@ -283,6 +287,37 @@ def emit_route_rolled_back(
     )
 
 
+def emit_commit_survivability_summary(
+    recorder: OptimizationReplaySink | None,
+    metrics: CommitSurvivabilityMetrics,
+    *,
+    title: str = "Commit survivability summary",
+    description: str = "",
+    route_fragility_penalty: float = 0.0,
+    shared_corridor_pressure_penalty: float = 0.0,
+    visible_cells: tuple[object, ...] = (),
+    overlay_cells: tuple[object, ...] = (),
+    extra_metrics: Mapping[str, object] | None = None,
+) -> None:
+    if recorder is None:
+        return
+    m: dict[str, object] = commit_survivability_metrics_to_replay_metrics(
+        metrics,
+        route_fragility_penalty=route_fragility_penalty,
+        shared_corridor_pressure_penalty=shared_corridor_pressure_penalty,
+    )
+    if extra_metrics:
+        m.update(dict(extra_metrics))
+    recorder.record_replay_frame(
+        event_type=OptimizationReplayEventType.COMMIT_SURVIVABILITY_SUMMARY,
+        title=title,
+        description=description,
+        visible_cells=visible_cells,
+        overlay_cells=overlay_cells,
+        metrics=m,
+    )
+
+
 def emit_validation_completed(
     recorder: OptimizationReplaySink | None,
     *,
@@ -341,6 +376,7 @@ def optimization_input_loaded_metrics(inp: OptimizationInput) -> dict[str, objec
 
 __all__ = [
     "emit_best_genome_selected",
+    "emit_commit_survivability_summary",
     "emit_generation_completed",
     "emit_genome_evaluated",
     "emit_genome_generated",

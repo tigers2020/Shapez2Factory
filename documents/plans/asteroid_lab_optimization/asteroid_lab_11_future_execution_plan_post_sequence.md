@@ -1,0 +1,770 @@
+# Asteroid Lab — Future Execution Plan (Post Sequence 11)
+
+Role: Principal Solver System Architect
+
+---
+
+# 목적
+
+현재까지 완료된:
+
+```text
+Sequence 1A–11B
+12C–12E
+```
+
+이후의 개발 우선순위·범위·금지사항·검증 조건을 정본 수준으로 고정한다.
+
+본 문서는:
+
+```text
+Optimization replay
+Evolutionary optimization
+Incremental commit
+UI replay
+Regression stability
+```
+
+를 장기적으로 유지 가능한 형태로 확장하기 위한 후속 계획이다.
+
+---
+
+# 현재 상태 요약
+
+현재 구현 상태:
+
+```text
+[x] DTO / topology / route domain
+[x] pattern library
+[x] candidate + probe
+[x] genome / fitness
+[x] evolutionary search v0
+[x] incremental commit
+[x] validation
+[x] optimization replay
+[x] dual-track replay UI
+[x] readonly overlay projection
+[x] overlay rendering
+[x] POST optimization replay persist
+```
+
+남은 핵심 리스크:
+
+```text
+- narrow corridor starvation
+- replay scale growth
+- overlay lifecycle drift
+- commit survivability under congestion
+- route fragility after reservation accumulation
+- full-repository gate debt
+```
+
+---
+
+# 핵심 원칙 (계속 유지)
+
+## 1. Replay is output only
+
+```text
+Replay / artifact / metrics / NDJSON
+must never become solver input.
+```
+
+---
+
+## 2. No implicit replay synchronization
+
+```text
+Lab replay
+!=
+Optimization replay
+```
+
+명시적 정책 없이:
+
+```text
+- frame index coupling
+- autoplay coupling
+- timeline ownership merge
+```
+
+금지.
+
+---
+
+## 3. Placement never bypasses feasibility
+
+계속 유지:
+
+```text
+candidate generation
++
+immediate route feasibility
+```
+
+---
+
+## 4. Commit-time probe is authoritative
+
+candidate 단계 reachable은:
+
+```text
+commit success guarantee 아님
+```
+
+항상:
+
+```text
+latest route_domain snapshot
+```
+
+기준 재-probe.
+
+---
+
+# 다음 우선순위
+
+# Priority 1 — Sequence 10 Completion
+
+현재 Regression Fixture가 완전히 닫히지 않았다.
+
+## 목표
+
+```text
+corridor / congestion / route fragility
+```
+
+회귀 검증 기반 확보.
+
+---
+
+# Sequence 10A — Narrow Corridor Fixture
+
+## 목적
+
+좁은 corridor 환경에서:
+
+```text
+- trunk sharing
+- congestion
+- unreachable after commit
+- route starvation
+```
+
+을 재현 가능하게 만든다.
+
+---
+
+## Fixture 요구사항
+
+```text
+single narrow corridor
+multiple extractor competition
+mixed transport kinds
+existing trunk attachment
+protected corridor overlap risk
+```
+
+---
+
+## 포함해야 하는 상황
+
+### 상황 1
+
+```text
+candidate probe reachable
+→ commit 단계 unreachable
+```
+
+---
+
+### 상황 2
+
+```text
+high throughput candidate
+blocks future expansion
+```
+
+---
+
+### 상황 3
+
+```text
+shared corridor pressure
+causes rollback
+```
+
+---
+
+### 상황 4
+
+```text
+shape belt corridor
+fluid pipe conflict
+```
+
+---
+
+## 테스트
+
+```text
+test_narrow_corridor_probe_vs_commit_regression
+test_shared_corridor_pressure_regression
+test_future_expansion_penalty_regression
+test_trunk_sharing_penalty_regression
+test_transport_kind_corridor_conflict_regression
+```
+
+---
+
+## 완료 조건
+
+```text
+[ ] deterministic optimization result
+[ ] replay stable across same seed
+[ ] congestion regression reproducible
+[ ] commit rollback reproducible
+```
+
+---
+
+# Sequence 10B — Route Fragility Regression Pack
+
+> **구현 교차 참조 (2026-05-17):** `asteroid_lab_10_development_sequence.md`의 Regression Fixtures **Sequence 10B(Commit survivability metrics)** 에 `CommitSurvivabilityMetrics`·`PenaltyMode`·`commit.survivability_summary` 리플레이가 land했다. 본 절 아래 fixture 체크리스트는 별도 확장으로 남긴다.
+
+## 목적
+
+fitness의:
+
+```text
+route_fragility_penalty
+shared_corridor_pressure_penalty
+```
+
+가 실제 commit survivability와 연결되는지 검증.
+
+---
+
+## 작업
+
+```text
+[ ] reservation accumulation fixture
+[ ] corridor starvation replay fixture
+[ ] late-generation unreachable fixture
+```
+
+---
+
+## 완료 조건
+
+```text
+[ ] fragility penalty 없는 경우 regression 재현 가능
+[ ] penalty 적용 시 regression 감소 확인
+```
+
+---
+
+# Priority 2 — Sequence 11C
+
+# Sequence 11C — Explicit Replay Sync Policy
+
+## 상태
+
+```text
+optional
+not default
+```
+
+현재 기본 정책:
+
+```text
+no implicit sync
+```
+
+유지.
+
+---
+
+## 이 시퀀스를 시작하는 조건
+
+다음 UX 요구가 실제로 필요할 때만:
+
+```text
+- coupled playback
+- lockstep timeline mode
+- jump-to-related-frame
+- synchronized scrubber
+```
+
+---
+
+## 금지
+
+다음은 절대 자동 연결 금지:
+
+```text
+same frame number
+same event order
+same playback speed
+```
+
+---
+
+## 허용 방식
+
+반드시:
+
+```text
+explicit sync mode
+```
+
+를 사용자 toggle로 둔다.
+
+예:
+
+```text
+[ ] Sync optimization timeline with lab replay
+```
+
+---
+
+## 요구 사항
+
+### Sync ownership
+
+동기화 상태에서도:
+
+```text
+Lab replay owns map rendering
+Optimization replay owns optimization metadata
+```
+
+유지.
+
+---
+
+### One-way sync 우선
+
+v0 권장:
+
+```text
+optimization frame
+→ optional lab replay jump
+```
+
+단방향.
+
+역방향 autoplay coupling 금지.
+
+---
+
+## 테스트
+
+```text
+test_explicit_sync_mode_disabled_by_default
+test_explicit_sync_mode_does_not_mutate_lab_state_when_disabled
+test_explicit_sync_mode_preserves_overlay_ownership
+```
+
+---
+
+## 완료 조건
+
+```text
+[ ] sync mode optional
+[ ] disabled by default
+[ ] no implicit coupling remains
+```
+
+---
+
+# Priority 3 — Overlay Lifecycle Stability
+
+주의:
+
+```text
+현재 정본 시퀀스에는 없음
+```
+
+필요 시:
+
+```text
+11D
+```
+
+로 확장.
+
+---
+
+# Proposed Sequence 11D — Overlay Lifecycle Stability
+
+## 목적
+
+overlay replay가:
+
+```text
+large replay
+rapid scrub
+zoom/pan
+DOM rebuild
+```
+
+상황에서 안정적으로 유지되게 한다.
+
+---
+
+## 작업
+
+```text
+[ ] projection cache
+[ ] stale render guard
+[ ] replay_truncated HUD
+[ ] overlay partial repaint
+[ ] transform ownership invariant
+```
+
+---
+
+## 핵심 invariant
+
+```text
+Overlay never owns viewport transform.
+```
+
+viewport transform owner:
+
+```text
+Lab stage only
+```
+
+---
+
+## 테스트
+
+```text
+test_overlay_projection_cache_deterministic
+test_overlay_stale_render_guard
+test_overlay_transform_ownership
+test_overlay_partial_repaint
+```
+
+---
+
+## 완료 조건
+
+```text
+[ ] overlay redraw deterministic
+[ ] rapid scrub race 없음
+[ ] zoom drift 없음
+[ ] replay_truncated visible
+```
+
+---
+
+# Priority 4 — Evolution Search v1
+
+현재는:
+
+```text
+mutation-only + repair
+```
+
+중심.
+
+다음 단계는:
+
+```text
+diversity stabilization
+```
+
+이다.
+
+---
+
+# Sequence 12A — Diversity Stabilization
+
+## 목적
+
+국소 최적 붕괴 방지.
+
+---
+
+## 작업
+
+```text
+[ ] topology diversity metrics
+[ ] rim entropy metrics
+[ ] distant mutation scheduler
+[ ] population collapse detector
+```
+
+---
+
+## 테스트
+
+```text
+test_population_diversity_survives_long_run
+test_forced_distant_mutation_breaks_local_optimum
+```
+
+---
+
+## 완료 조건
+
+```text
+[ ] repeated same-topology collapse 감소
+[ ] deterministic under same seed
+```
+
+---
+
+# Sequence 12B — Commit Survivability Fitness
+
+## 목적
+
+fitness와 실제 commit 성공률 정렬.
+
+---
+
+## 작업
+
+```text
+[ ] post-commit survivability estimation
+[ ] reservation pressure heuristic
+[ ] future expansion survivability scoring
+```
+
+---
+
+## 완료 조건
+
+```text
+[ ] reachable-but-uncommittable candidate 감소
+```
+
+---
+
+# Priority 5 — Replay Scalability
+
+현재:
+
+```text
+full snapshot replay
+```
+
+전제.
+
+활성 셀 증가 시:
+
+```text
+memory / payload / DOM pressure
+```
+
+대응 필요.
+
+---
+
+# Sequence 13A — Replay Compression Research
+
+## 목적
+
+large replay artifact 대응.
+
+---
+
+## 작업
+
+```text
+[ ] delta frame prototype
+[ ] immutable snapshot reuse
+[ ] overlay diff serialization
+[ ] binary replay experiment
+```
+
+---
+
+## 중요
+
+v0 replay contract 깨지면 안 된다.
+
+즉:
+
+```text
+serialization optimization
+!=
+semantic replay mutation
+```
+
+---
+
+## 테스트
+
+```text
+test_compressed_replay_equivalent_to_full_snapshot
+test_replay_deterministic_after_compression
+```
+
+---
+
+## 완료 조건
+
+```text
+[ ] replay semantic equivalence 유지
+[ ] payload 감소 확인
+```
+
+---
+
+# Priority 6 — Full Repository Quality Gates
+
+현재 known debt:
+
+```text
+ruff
+mypy
+black --check
+```
+
+전 저장소 green 아님.
+
+---
+
+# Sequence 14A — Repository Gate Cleanup
+
+## 작업
+
+```text
+[ ] E501 cleanup
+[ ] black drift cleanup
+[ ] missing stubs
+[ ] mypy narrowing
+```
+
+---
+
+## 금지
+
+optimization architecture 변경 금지.
+
+이 시퀀스는:
+
+```text
+repository hygiene only
+```
+
+이다.
+
+---
+
+## 완료 조건
+
+```text
+[ ] ruff check . green
+[ ] black --check . green
+[ ] mypy . green
+```
+
+---
+
+# 장기 계획 (v2+)
+
+다음은 v0/v1 이후.
+
+---
+
+# Sequence 20+ — Advanced Optimization
+
+## 후보
+
+```text
+CP-SAT hybrid refinement
+corridor balancing
+trunk redundancy scoring
+multi-objective Pareto search
+advanced reroute planner
+```
+
+---
+
+## 금지
+
+다음은 여전히 금지:
+
+```text
+cell-level GA
+replay-driven algorithm
+implicit replay coupling
+```
+
+---
+
+# 최종 우선순위 요약
+
+## Immediate
+
+```text
+1. Sequence 10A narrow corridor fixture
+2. Sequence 10B route fragility regression
+```
+
+---
+
+## Optional / Conditional
+
+```text
+3. Sequence 11C explicit sync policy
+4. Sequence 11D overlay lifecycle stability
+```
+
+---
+
+## Mid-term
+
+```text
+5. Sequence 12A diversity stabilization
+6. Sequence 12B commit survivability fitness
+7. Sequence 13A replay scalability
+```
+
+---
+
+## Infrastructure
+
+```text
+8. Sequence 14A repository gate cleanup
+```
+
+---
+
+# 최종 결론
+
+현재 가장 중요한 건:
+
+```text
+route feasibility
+!=
+commit survivability
+```
+
+상황을 regression fixture 수준에서 안정적으로 재현·검증 가능하게 만드는 것이다.
+
+따라서 다음 실질 우선순위는:
+
+```text
+narrow corridor
+shared corridor pressure
+reservation accumulation
+```
+
+fixture 기반 regression 강화다.
+
+그 이후에만:
+
+```text
+explicit replay sync
+advanced overlay lifecycle
+replay scaling
+```
+
+으로 가는 것이 안전하다.
+

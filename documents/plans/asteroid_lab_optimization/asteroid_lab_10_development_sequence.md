@@ -350,8 +350,8 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 
 ## Sequence 10 — Regression Fixtures
 
-> **상태:** Sequence **10A**(본 절의 회귀 fixture 하위 단계; Lab UI 시퀀스 표의 “10A”와 **동일 번호 아님**) — narrow bridge regression fixture 완료.  
-> JSON fixture화와 full evolutionary narrow-map deterministic best genome 검증은 후속 10B/12A 범위.
+> **상태:** Sequence **10A** 완료 · Sequence **10B**(Commit survivability metrics, 본 절 하위) v0 완료. Lab UI 시퀀스 표의 “10A–10F”와 **번호 계층이 다름**.  
+> JSON fixture화·full narrow-map evolutionary 결정론 검증은 후속(12A 등) 범위.
 
 ### 작업
 
@@ -382,16 +382,25 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 ```text
 [ ] JSON fixture under tests/fixtures/shapez_asteroid/optimization/
 [ ] same seed → same best genome on full narrow evolution run
-[ ] 10B penalty on/off survivability comparison
-[ ] commit success ratio / rollback ratio metrics
 ```
 
-### 후속 (Sequence 10B — 개요)
+### Sequence 10B — Commit survivability metrics (Regression Fixtures 하위; Lab UI 10B 아님)
 
-```text
-penalty 튜닝 선행이 아니라, penalty off/on 비교가 가능한 fixture + metrics contract를 먼저 고정한 뒤
-fitness penalty가 commit survivability와 같은 방향으로 움직이는지 검증 (상세는 별도 플랜·PR 범위에서 확장).
-```
+> **상태:** v0 완료. penalty 튜닝이 아니라 **계약·관측·penalty off/on 비교** 고정이 목적.
+
+#### 메트릭 계약
+
+- **Post-commit(관측 전용):** `CommitSurvivabilityMetrics` — `commit_attempt_count`, `commit_confirmed_count`, `commit_rolled_back_count`, `commit_success_ratio`, `rollback_reason_counts`(enum 값 키), `route_probe_failed_count`, `transport_kind_conflict_count`. 진화 탐색 입력 **금지**.
+- **Pre-commit(fitness):** `PenaltyMode.OFF` / `PenaltyMode.CONSERVATIVE`. 보수 모드는 `route_fragility_penalty`·`shared_corridor_pressure_penalty`에만 결정적 휴리스틱을 부여; 나머지 breakdown 슬롯은 v0와 동일하게 0 유지 가능.
+
+#### 리플레이
+
+- `OptimizationReplayEventType.COMMIT_SURVIVABILITY_SUMMARY` — 스칼라·JSON-safe `rollback_reason_counts`; **solver/GA 입력 금지**.
+- commit-only 경로에서 리플레이의 `route_fragility_penalty` / `shared_corridor_pressure_penalty` 필드는 v0에서 **0.0** 플레이스홀더(향후 evolution+commit 스티치 시 fitness 스냅샷 전달 여지).
+
+#### 테스트
+
+- `tests/unit/shapez_asteroid/test_commit_survivability_metrics.py` — narrow bridge fixture 기준 survivability 요약·rollback 이유·penalty off vs conservative·랭킹·리플레이 프레임.
 
 ---
 

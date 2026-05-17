@@ -109,6 +109,13 @@ class CommitConflictReason(StrEnum):
     ROUTE_PROBE_FAILED = "route_probe_failed"
 
 
+class PenaltyMode(StrEnum):
+    """Fitness-only penalty schedule (pre-commit genome evaluation; not replay input)."""
+
+    OFF = "off"
+    CONSERVATIVE = "conservative"
+
+
 class OptimizationReplayEventType(StrEnum):
     OPTIMIZATION_INPUT_LOADED = "optimization.input_loaded"
     PATTERN_GENERATED = "pattern.generated"
@@ -123,6 +130,7 @@ class OptimizationReplayEventType(StrEnum):
     ROUTE_COMMIT_ATTEMPTED = "route.commit_attempted"
     ROUTE_COMMITTED = "route.committed"
     ROUTE_ROLLED_BACK = "route.rolled_back"
+    COMMIT_SURVIVABILITY_SUMMARY = "commit.survivability_summary"
     VALIDATION_COMPLETED = "validation.completed"
 
 

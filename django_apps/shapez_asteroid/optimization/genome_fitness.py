@@ -14,7 +14,7 @@ from django_apps.shapez_asteroid.optimization.dto import (
     RouteCellDomain,
     RouteProbeResult,
 )
-from django_apps.shapez_asteroid.optimization.enums import RouteClass, RouteGoalKind
+from django_apps.shapez_asteroid.optimization.enums import PenaltyMode, RouteClass, RouteGoalKind
 
 # v0 weights (tunable; documented in asteroid_lab_05_genome_fitness.md)
 _W_EXTRACTOR = 1000
@@ -106,9 +106,69 @@ def compute_route_goal_priority_penalty(probe: RouteProbeResult) -> float:
     return float(probe.goal_priority)
 
 
+def _route_fragility_penalty_value(
+    selected: Sequence[BundleCandidate],
+    route_domain: Mapping[Coord, RouteCellDomain] | None,
+) -> float:
+    """Narrow-corridor traversals on probe paths (deterministic; pre-commit heuristic)."""
+
+    total = 0.0
+    for cand in sorted(selected, key=lambda z: z.candidate_id):
+        pr = cand.route_probe_result
+        if probe_unreachable_or_stale(pr):
+            continue
+        for cell in pr.path:
+            if route_domain is None:
+                total += 50.0
+            else:
+                dom = route_domain.get(cell)
+                if dom is not None and dom.route_class is RouteClass.NARROW_CORRIDOR:
+                    total += 80.0
+    return total
+
+
+def _shared_cell_weight_for_domain(dom: RouteCellDomain | None) -> float:
+    if dom is None:
+        return 0.0
+    if dom.route_class is RouteClass.NARROW_CORRIDOR:
+        return 1500.0
+    if dom.route_class is RouteClass.PREFERRED_TRUNK:
+        return 400.0
+    return 100.0
+
+
+def _shared_corridor_pressure_penalty_value(
+    selected: Sequence[BundleCandidate],
+    route_domain: Mapping[Coord, RouteCellDomain] | None,
+) -> float:
+    """Penalty when multiple selected candidates share route cells (deterministic)."""
+
+    path_sets: list[set[Coord]] = []
+    for cand in sorted(selected, key=lambda z: z.candidate_id):
+        pr = cand.route_probe_result
+        if probe_unreachable_or_stale(pr):
+            continue
+        path_sets.append(set(pr.path))
+    if len(path_sets) < 2:
+        return 0.0
+    shared: set[Coord] = set()
+    for i in range(len(path_sets)):
+        for j in range(i + 1, len(path_sets)):
+            shared |= path_sets[i] & path_sets[j]
+    weight = 0.0
+    for cell in sorted(shared, key=lambda z: (z.x, z.y)):
+        if route_domain is None:
+            weight += 900.0
+        else:
+            weight += _shared_cell_weight_for_domain(route_domain.get(cell))
+    return weight
+
+
 def compute_conservative_penalties(
     selected: Sequence[BundleCandidate],
     route_domain: Mapping[Coord, RouteCellDomain] | None,
+    *,
+    penalty_mode: PenaltyMode = PenaltyMode.OFF,
 ) -> tuple[
     float,
     float,
@@ -120,10 +180,14 @@ def compute_conservative_penalties(
     float,
     float,
 ]:
-    """v0 placeholders except optional narrow-passage occupancy hook in metrics path."""
+    """Nine-tuple aligns with ``build_fitness_breakdown`` penalty slots (v0 + Sequence 10B)."""
 
-    _ = (len(tuple(selected)), route_domain is not None)
-    return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    if penalty_mode is not PenaltyMode.CONSERVATIVE:
+        return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+    route_fragility = _route_fragility_penalty_value(selected, route_domain)
+    shared_pressure = _shared_corridor_pressure_penalty_value(selected, route_domain)
+    return (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, route_fragility, shared_pressure)
 
 
 def _narrow_passage_occupied_count(
@@ -239,6 +303,7 @@ def evaluate_genome(
     candidate_pool: Sequence[BundleCandidate],
     *,
     route_domain: Mapping[Coord, RouteCellDomain] | None = None,
+    penalty_mode: PenaltyMode = PenaltyMode.OFF,
 ) -> FitnessBreakdown:
     """Evaluate ``genome`` against ``candidate_pool`` without mutating pool or candidates."""
 
@@ -265,7 +330,7 @@ def evaluate_genome(
         dead_end_penalty,
         route_fragility_penalty,
         shared_corridor_pressure_penalty,
-    ) = compute_conservative_penalties(ordered, route_domain)
+    ) = compute_conservative_penalties(ordered, route_domain, penalty_mode=penalty_mode)
 
     return build_fitness_breakdown(
         metrics,

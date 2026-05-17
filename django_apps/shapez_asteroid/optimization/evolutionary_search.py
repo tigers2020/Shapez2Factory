@@ -20,7 +20,11 @@ from django_apps.shapez_asteroid.optimization.dto import (
     GenomeDiversityMetrics,
     RouteCellDomain,
 )
-from django_apps.shapez_asteroid.optimization.enums import EvolutionConvergenceReason, RouteClass
+from django_apps.shapez_asteroid.optimization.enums import (
+    EvolutionConvergenceReason,
+    PenaltyMode,
+    RouteClass,
+)
 from django_apps.shapez_asteroid.optimization.genome_fitness import (
     evaluate_genome,
     probe_unreachable_or_stale,
@@ -503,9 +507,13 @@ def _evaluate(
     candidate_pool: Sequence[BundleCandidate],
     route_domain: Mapping[Coord, RouteCellDomain] | None,
     counter: list[int],
+    *,
+    penalty_mode: PenaltyMode,
 ) -> FitnessBreakdown:
     counter[0] += 1
-    return evaluate_genome(genome, candidate_pool, route_domain=route_domain)
+    return evaluate_genome(
+        genome, candidate_pool, route_domain=route_domain, penalty_mode=penalty_mode
+    )
 
 
 def run_evolutionary_search(
@@ -515,6 +523,7 @@ def run_evolutionary_search(
     route_domain: Mapping[Coord, RouteCellDomain] | None = None,
     hall_of_fame_total_trace: list[float] | None = None,
     replay_recorder: OptimizationReplaySink | None = None,
+    penalty_mode: PenaltyMode = PenaltyMode.OFF,
 ) -> EvolutionResult:
     """Evolution on candidate ids only; does not mutate ``candidate_pool``.
 
@@ -527,7 +536,7 @@ def run_evolutionary_search(
     if not pool_tuple:
         evaluated = [0]
         dummy = Genome("empty", (), cfg.seed)
-        fb = _evaluate(dummy, pool_tuple, route_domain, evaluated)
+        fb = _evaluate(dummy, pool_tuple, route_domain, evaluated, penalty_mode=penalty_mode)
         result = EvolutionResult(
             best_genome=dummy,
             best_fitness=fb,
@@ -554,7 +563,7 @@ def run_evolutionary_search(
     scored: list[tuple[Genome, FitnessBreakdown]] = []
     for g in pop:
         r = repair_genome(g, pool_tuple, route_domain=route_domain)
-        fit = _evaluate(r, pool_tuple, route_domain, evaluated)
+        fit = _evaluate(r, pool_tuple, route_domain, evaluated, penalty_mode=penalty_mode)
         scored.append((r, fit))
 
     def sort_pop() -> None:
@@ -615,7 +624,9 @@ def run_evolutionary_search(
                 forced_distant=forced and ci == 0,
             )
             repaired = repair_genome(mutated, pool_tuple, route_domain=route_domain)
-            fitc = _evaluate(repaired, pool_tuple, route_domain, evaluated)
+            fitc = _evaluate(
+                repaired, pool_tuple, route_domain, evaluated, penalty_mode=penalty_mode
+            )
             children.append((repaired, fitc))
 
         scored[:] = elites + children

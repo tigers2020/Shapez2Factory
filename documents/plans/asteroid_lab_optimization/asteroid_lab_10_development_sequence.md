@@ -391,6 +391,32 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 
 > **참고 (2026-05-17):** `tests/unit/shapez_asteroid/` + `tests/integration/shapez_asteroid/test_optimization_ui_payload.py` 구간 **193 passed**. 전 저장소 `ruff` / `mypy` / `black --check` 는 본 턴에서 미실행.
 
+> **참고 (12E 이후):** Run Solver copy POST 경로는 `tests/unit/asteroid_lab/test_optimization_replay_persist.py`·`tests/integration/web/test_asteroid_miner_layout_solver.py` 등 **타깃 구간 green**. 전 저장소 게이트는 아래 `### 알려진 부채 (전역 게이트)`와 같이 **기존 부채**로 남긴다.
+
+---
+
+## Asteroid Lab — Run Solver POST · optimization replay 영속 (시퀀스 12C–12E)
+
+Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 **POST 동기** bounded GA를 돌리고, optimization replay 프레임을 `SolverRun.config_json`에 합친다. Lab 응답 JSON에 inspection 번들을 넣기 **전**에 attach를 실행해야 동일 응답에 optimization 트랙이 포함된다 (`django_apps/web/views/public_pages.py`, `django_apps/web/services/asteroid_lab_post_inspection_evolution.py`). `replay_pipeline_service`는 `shapez_asteroid`를 import하지 않는 경계를 유지한다.
+
+### 진행 표 (12C–12E)
+
+| 시퀀스 | 상태 | 요약 |
+|--------|------|------|
+| 12C | 완료 | `optimization_replay_persist` — 성공한 inspection replay 빌드 이후에만 `SolverRun.config_json`에 프레임 기록 (output-only) |
+| 12D | 완료 | 검사 replay `ok` 직후 post-inspection evolution + attach로 UI optimization 트랙 동기 반영 |
+| 12E | 완료 | POST 전용 하드캡(`max_candidates`, `route_probe_max_expansions`, `time_budget_ms`, `population_size` 등), `empty_candidate_pool` / `evolution_failed` 분리, JSON `optimization_replay_attach` `{attached, reason}`, `_finalize_attach` INFO 로그, `event_type`·접두사 스모크 및 attach 계약 통합 테스트 |
+
+### 12E 구현 요약
+
+- **응답 지연:** POST 인라인 GA에 동기 상한을 둔다 (v0는 응답 안정성 우선).
+- **관측성:** 스킵·실패 시에도 `optimization_replay_attach.reason`으로 UI·테스트·로그가 동일 어휘를 공유한다. (의미상 `empty_candidate_pool`은 orchestration 결과에 가깝고 `empty_frames`는 attach 결과에 가깝다; v1에서 타입 분리 여지는 있으나 12E 범위에서는 단일 `OptimizationReplayAttachReason`에 포함해 둔다.)
+- **검증:** 위 타깃 pytest 구간 통과.
+
+### 알려진 부채 (전역 게이트)
+
+12C–12E diff와 별도로,**전 저장소** `ruff check .` / `mypy .` / `black --check .` 는 기존 이슈(예: E501, `polib` 스텁, 일부 파일 `black` 드리프트)로 실패할 수 있다. merge PR에는 **known debt**로 한 줄 남기고, `## Sequence 11 — Quality Gates` 전 항목 green은 **별도 PR**로 추적한다.
+
 ---
 
 ## Asteroid Lab — Optimization replay UI (시퀀스 10A–10F)

@@ -213,16 +213,16 @@ candidate probe 성공 ≠ 최종 commit 성공의 논리적 함의
 ## Invariant
 
 ```text
-[x] uniform-cost 탐색은 hard_blocked 셀로 확장하지 않는다
-[x] 이웃 나열은 topology_graph 무방향 계약과 모순 없음 (fallback 시 neighbors4_server와 동일)
-[x] shape belt and fluid pipe route domains are separated
-[x] reachable=True requires path length > 0 unless start is goal
-[x] reachable=True 이면 reached_goal·goal_priority가 계약에 맞게 채워진다
-[x] reachable=False 이면 failure_reason은 RouteProbeFailureReason (필수)
-[x] goal_kind·priority는 “아무 외부 좌표 도달”이 아니라 계약된 목표만 매칭한다
-[x] reached_goal 선택은 route_selection_score·tie-break로 결정된다
-[x] expanded_nodes·max_expansions 정의가 구현·테스트와 일치한다
-[x] blocked_by_occupied는 문서화된 좁은 조건에서만 사용된다
+[ ] uniform-cost 탐색은 hard_blocked 셀로 확장하지 않는다
+[ ] 이웃 나열은 topology_graph 무방향 계약과 모순 없음 (fallback 시 neighbors4_server와 동일)
+[ ] shape belt and fluid pipe route domains are separated
+[ ] reachable=True requires path length > 0 unless start is goal
+[ ] reachable=True 이면 reached_goal·goal_priority가 계약에 맞게 채워진다
+[ ] reachable=False 이면 failure_reason은 RouteProbeFailureReason (필수)
+[ ] goal_kind·priority는 “아무 외부 좌표 도달”이 아니라 계약된 목표만 매칭한다
+[ ] reached_goal 선택은 route_selection_score·tie-break로 결정된다
+[ ] expanded_nodes·max_expansions 정의가 구현·테스트와 일치한다
+[ ] blocked_by_occupied는 문서화된 좁은 조건에서만 사용된다
 
 ## 테스트
 
@@ -243,10 +243,10 @@ test_route_probe_blocked_by_occupied_only_at_start_trap
 ## 완료 조건
 
 ```text
-[x] bounded uniform-cost search (Dijkstra-lite) 구현
-[x] RouteProbeInput / RouteProbeResult (route_domain·RouteGoal·topology_graph) 구현
-[x] TransportMask 타입 정의
-[x] RouteProbeFailureReason enum + RouteProbeResult (reached_goal·goal_priority) 구현
-[x] route_selection_score·tie-break 문서화 및 테스트
-[x] candidate_generator에서 호출 가능
+[ ] bounded uniform-cost search (Dijkstra-lite) 구현
+[ ] RouteProbeInput / RouteProbeResult (route_domain·RouteGoal·topology_graph) 구현
+[ ] TransportMask 타입 정의
+[ ] RouteProbeFailureReason enum + RouteProbeResult (reached_goal·goal_priority) 구현
+[ ] route_selection_score·tie-break 문서화 및 테스트
+[ ] candidate_generator에서 호출 가능
 ```

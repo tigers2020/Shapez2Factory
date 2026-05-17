@@ -6,10 +6,6 @@ from django_apps.shapez_asteroid.optimization.bundle_candidate_factory import (
 from django_apps.shapez_asteroid.optimization.bundle_candidate_generator import (
     generate_bundle_candidates,
 )
-from django_apps.shapez_asteroid.optimization.commit_survivability_metrics import (
-    commit_survivability_metrics_to_replay_metrics,
-    summarize_incremental_commit,
-)
 from django_apps.shapez_asteroid.optimization.coords import (
     BBox,
     Coord,
@@ -22,7 +18,6 @@ from django_apps.shapez_asteroid.optimization.dto import (
     CandidateEquivalenceKey,
     CandidateGenerationConfig,
     CandidateGenerationResult,
-    CommitSurvivabilityMetrics,
     CommittedPlacement,
     EvolutionConfig,
     EvolutionResult,
@@ -57,7 +52,6 @@ from django_apps.shapez_asteroid.optimization.enums import (
     EvolutionConvergenceReason,
     ExtractorPlacementPolicy,
     OptimizationReplayEventType,
-    PenaltyMode,
     PlacementCommitState,
     ReservationState,
     RouteClass,
@@ -111,7 +105,6 @@ from django_apps.shapez_asteroid.optimization.optimization_replay import (
 )
 from django_apps.shapez_asteroid.optimization.optimization_replay_events import (
     emit_best_genome_selected,
-    emit_commit_survivability_summary,
     emit_generation_completed,
     emit_genome_evaluated,
     emit_genome_generated,
@@ -174,8 +167,6 @@ __all__ = [
     "fitness_breakdown_total_matches_components",
     "genome_selected_candidates",
     "probe_unreachable_or_stale",
-    "commit_survivability_metrics_to_replay_metrics",
-    "summarize_incremental_commit",
     "occupied_geometry_summary",
     "RejectedBundleCandidate",
     "RouteProbeInput",
@@ -183,7 +174,6 @@ __all__ = [
     "run_route_probe",
     "CardinalDirection",
     "CommitConflictReason",
-    "CommitSurvivabilityMetrics",
     "Coord",
     "Direction",
     "EdgeKind",
@@ -191,7 +181,6 @@ __all__ = [
     "EvolutionConfig",
     "EvolutionResult",
     "EvolutionConvergenceReason",
-    "PenaltyMode",
     "compute_population_diversity",
     "deterministic_sort_key",
     "initialize_population",
@@ -233,7 +222,6 @@ __all__ = [
     "empty_optimization_replay_track_payload",
     "merge_optimization_track_into_lab_payload",
     "emit_best_genome_selected",
-    "emit_commit_survivability_summary",
     "emit_generation_completed",
     "emit_genome_evaluated",
     "emit_genome_generated",

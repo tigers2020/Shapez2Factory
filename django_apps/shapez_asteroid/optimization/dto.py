@@ -325,19 +325,6 @@ class IncrementalCommitResult:
 
 
 @dataclass(frozen=True, slots=True)
-class CommitSurvivabilityMetrics:
-    """Observed incremental-commit outcome (Sequence 10B). Not used as evolutionary search input."""
-
-    commit_attempt_count: int
-    commit_confirmed_count: int
-    commit_rolled_back_count: int
-    commit_success_ratio: float
-    rollback_reason_counts: tuple[tuple[CommitConflictReason, int], ...]
-    route_probe_failed_count: int
-    transport_kind_conflict_count: int
-
-
-@dataclass(frozen=True, slots=True)
 class ValidationIssue:
     """Read-only validation finding (Sequence 7 assert gate)."""
 

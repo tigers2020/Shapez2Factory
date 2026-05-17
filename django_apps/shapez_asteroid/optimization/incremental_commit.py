@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from django_apps.shapez_asteroid.optimization.commit_survivability_metrics import (
-    summarize_incremental_commit,
-)
 from django_apps.shapez_asteroid.optimization.coords import Coord
 from django_apps.shapez_asteroid.optimization.dto import (
     BundleCandidate,
@@ -35,7 +32,6 @@ from django_apps.shapez_asteroid.optimization.enums import (
 )
 from django_apps.shapez_asteroid.optimization.optimization_replay import OptimizationReplaySink
 from django_apps.shapez_asteroid.optimization.optimization_replay_events import (
-    emit_commit_survivability_summary,
     emit_route_commit_attempted,
     emit_route_committed,
     emit_route_rolled_back,
@@ -387,7 +383,7 @@ def commit_best_genome(
     )
     n_ok = sum(1 for r in results if r.commit_state is PlacementCommitState.CONFIRMED)
     n_bad = sum(1 for r in results if r.commit_state is PlacementCommitState.ROLLED_BACK)
-    out = IncrementalCommitResult(
+    return IncrementalCommitResult(
         committed_placements=tuple(placements),
         route_reservations=tuple(reservations),
         candidate_results=tuple(results),
@@ -395,8 +391,3 @@ def commit_best_genome(
         confirmed_candidate_count=n_ok,
         rolled_back_candidate_count=n_bad,
     )
-    emit_commit_survivability_summary(
-        replay_recorder,
-        summarize_incremental_commit(out),
-    )
-    return out

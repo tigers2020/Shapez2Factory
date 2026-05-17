@@ -1,8 +1,4 @@
-"""A6.2 — Wire copy import to decode + inspection replay frames (UI-only artifacts).
-
-Optimization replay persistence (12C) lives in ``optimization_replay_persist`` so this module
-stays free of shapez_asteroid optimization imports (see unit import guard test).
-"""
+"""A6.2 — Wire copy import to decode + inspection replay frames (UI-only artifacts)."""
 
 from __future__ import annotations
 

@@ -4,18 +4,12 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from django.conf import settings
 from django.db.models import Count, Prefetch
 
-from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack, SolverRun
+from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
-    SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
-    build_optimization_replay_track_payload,
-    deserialize_optimization_replay_frames_from_json,
-    diagnostic_reason_after_failed_optimization_replay_scan,
     empty_optimization_replay_track_payload,
-    empty_optimization_replay_track_payload_with_diagnostic,
 )
 
 GRID_W, GRID_H = 23, 15
@@ -104,59 +98,6 @@ def serialize_replay_frame(frame: ReplayFrame) -> dict[str, Any]:
     }
 
 
-def _solver_runs_config_only_newest_first(project_id: int) -> list[SolverRun]:
-    return list(
-        SolverRun.objects.filter(project_id=int(project_id))
-        .order_by("-created_at", "-id")
-        .only("config_json")
-    )
-
-
-def get_latest_optimization_replay_for_project(project_id: int) -> tuple[Any, ...] | None:
-    """Latest persisted optimization replay frames for the project (read-only).
-
-    Walks :class:`~django_apps.asteroid_lab.models.SolverRun` rows newest-first and
-    returns the first non-empty, well-formed
-    ``config_json[SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY]`` list.
-    Returns ``None`` when no such payload exists.
-    """
-
-    key = SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY
-    for run in _solver_runs_config_only_newest_first(project_id):
-        raw = (run.config_json or {}).get(key)
-        frames = deserialize_optimization_replay_frames_from_json(raw)
-        if frames:
-            return frames
-    return None
-
-
-def optimization_replay_payload_for_project(project_id: int | None) -> dict[str, Any]:
-    """JSON-safe optimization replay track for the Lab shell (12A/12B bridge).
-
-    When no persisted optimization replay exists for the project, returns the same
-    envelope as :func:`empty_optimization_replay_track_payload` plus
-    ``metrics.optimization_replay_diagnostic_reason`` when a read fallback occurred
-    (Sequence 12G).
-    """
-
-    if project_id is None:
-        return empty_optimization_replay_track_payload()
-    key = SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY
-    runs = _solver_runs_config_only_newest_first(int(project_id))
-    for run in runs:
-        raw = (run.config_json or {}).get(key)
-        frames = deserialize_optimization_replay_frames_from_json(raw)
-        if frames:
-            return cast(dict[str, Any], build_optimization_replay_track_payload(frames))
-    reason = diagnostic_reason_after_failed_optimization_replay_scan(
-        [dict(r.config_json or {}) for r in runs]
-    )
-    return cast(
-        dict[str, Any],
-        empty_optimization_replay_track_payload_with_diagnostic(reason),
-    )
-
-
 def build_lab_replay_payload(track: ReplayTrack) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Ordered serialized frames and the first frame dict for initial paint."""
 
@@ -195,7 +136,6 @@ def neutral_lab_context() -> dict[str, Any]:
             "replayTrackKey": None,
         },
         OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: empty_optimization_replay_track_payload(),
-        "lab_js_version": settings.SHAPEZ_LAB_JS_VERSION,
     }
 
 
@@ -203,7 +143,6 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
     """Lab shell context. When ``project_id`` is set, replay comes from that project only."""
 
     ctx = neutral_lab_context()
-    ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] = optimization_replay_payload_for_project(project_id)
     track = (
         get_latest_lab_replay_track_for_project(project_id)
         if project_id is not None

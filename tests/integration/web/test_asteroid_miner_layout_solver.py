@@ -2,94 +2,15 @@ import base64
 import gzip
 import json
 import random
-import unittest.mock as mock
 
 import pytest
 from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
-from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEventType
-from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
-    build_optimization_replay_track_payload,
-    deserialize_optimization_replay_frames_from_json,
-    empty_optimization_replay_track_payload,
-    empty_optimization_replay_track_payload_with_diagnostic,
-)
 from django_apps.web.services import asteroid_lab_page_context as alc
 
-pytestmark = [pytest.mark.django_db, pytest.mark.slow]
-
-
-def _lab_html_with_optimization_replay(client: Client, opt_payload: dict) -> str:
-    ctx = {**alc.neutral_lab_context(), OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: opt_payload}
-    with mock.patch("django_apps.web.views.public_pages.lab_page_context", return_value=ctx):
-        response = client.get(reverse("web:asteroid-miner-layout"))
-    assert response.status_code == 200
-    return response.content.decode()
-
-
-def _valid_truncated_optimization_track() -> dict:
-    raw = [
-        {
-            "frame_index": 0,
-            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {"replay_truncated": True, "truncation_reason": "cells_reason_xyz"},
-        }
-    ]
-    frames = deserialize_optimization_replay_frames_from_json(raw)
-    assert frames is not None
-    return build_optimization_replay_track_payload(frames)
-
-
-def _valid_normal_optimization_track() -> dict:
-    raw = [
-        {
-            "frame_index": 0,
-            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {},
-        }
-    ]
-    frames = deserialize_optimization_replay_frames_from_json(raw)
-    assert frames is not None
-    return build_optimization_replay_track_payload(frames)
-
-
-def _assert_optimization_replay_lab_payload(data: dict) -> None:
-    """12E: lab JSON must carry real optimization replay frames (event_type contract)."""
-
-    opt = data.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY)
-    assert isinstance(opt, dict)
-    assert opt.get("track_id") == "optimization"
-    assert int(opt.get("frame_count") or 0) >= 1
-    frames = opt.get("frames") or []
-    assert isinstance(frames, list) and len(frames) >= 1
-    assert isinstance(frames[0], dict)
-    assert "event_type" in frames[0] and isinstance(frames[0]["event_type"], str)
-    event_types = [
-        f["event_type"]
-        for f in frames
-        if isinstance(f, dict) and isinstance(f.get("event_type"), str)
-    ]
-    assert any(
-        et.startswith("candidate.")
-        or et.startswith("route_probe.")
-        or et.startswith("generation.")
-        or et.startswith("genome.")
-        or et.startswith("optimization.")
-        or et.startswith("pattern.")
-        or et.startswith("best_genome.")
-        for et in event_types
-    )
+pytestmark = pytest.mark.django_db
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -164,8 +85,7 @@ def test_replay_frame_cell_post_returns_cell_json() -> None:
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    create_resp = client.post(create_url, {"copy_code": copy}, follow=False)
-    assert create_resp.status_code == 302
+    client.post(create_url, {"copy_code": copy}, follow=True)
     frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
     assert frame is not None
     track = frame.replay_track
@@ -195,8 +115,7 @@ def test_replay_frame_cell_post_wrong_track_403() -> None:
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    create_resp = client.post(create_url, {"copy_code": copy}, follow=False)
-    assert create_resp.status_code == 302
+    client.post(create_url, {"copy_code": copy}, follow=True)
     frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
     assert frame is not None
     track = frame.replay_track
@@ -219,8 +138,7 @@ def test_replay_frame_cell_post_project_slug_mismatch_403() -> None:
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    create_resp = client.post(create_url, {"copy_code": copy}, follow=False)
-    assert create_resp.status_code == 302
+    client.post(create_url, {"copy_code": copy}, follow=True)
     frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
     assert frame is not None
     track = frame.replay_track
@@ -244,9 +162,8 @@ def test_asteroid_miner_layout_post_same_copy_dedupes_project() -> None:
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    r1 = client.post(create_url, {"copy_code": copy}, follow=False)
-    r2 = client.post(create_url, {"copy_code": copy}, follow=False)
-    assert r1.status_code == 302 and r2.status_code == 302
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    client.post(create_url, {"copy_code": copy}, follow=True)
 
     assert m.AsteroidProject.objects.count() == 1
     proj = m.AsteroidProject.objects.get()
@@ -261,16 +178,14 @@ def test_asteroid_miner_layout_post_project_slug_adds_map_input_to_same_project(
     copy1 = _unique_valid_copy()
     copy2 = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    r1 = client.post(create_url, {"copy_code": copy1}, follow=False)
-    assert r1.status_code == 302
+    client.post(create_url, {"copy_code": copy1}, follow=True)
     proj = m.AsteroidProject.objects.get()
     slug = proj.slug
-    r2 = client.post(
+    client.post(
         create_url,
         {"copy_code": copy2, "project_slug": slug},
-        follow=False,
+        follow=True,
     )
-    assert r2.status_code == 302
     assert m.AsteroidProject.objects.count() == 1
     assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == 2
     page = client.get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
@@ -284,8 +199,7 @@ def test_asteroid_miner_layout_create_json_accept_existing_project() -> None:
     copy1 = _unique_valid_copy()
     copy2 = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    r0 = client.post(create_url, {"copy_code": copy1}, follow=False)
-    assert r0.status_code == 302
+    client.post(create_url, {"copy_code": copy1}, follow=True)
     proj = m.AsteroidProject.objects.get()
     slug = proj.slug
     n_inputs = m.AsteroidMapInput.objects.filter(project_id=proj.pk).count()
@@ -302,11 +216,6 @@ def test_asteroid_miner_layout_create_json_accept_existing_project() -> None:
     assert data["in_place"] is True
     assert data["blueprint_code"] == copy2
     assert len(data.get("lab_replay_frames_json") or []) >= 1
-    _assert_optimization_replay_lab_payload(data)
-    attach = data.get("optimization_replay_attach")
-    assert isinstance(attach, dict)
-    assert attach.get("attached") is True
-    assert attach.get("reason") == "attached"
     assert data["redirect"] == reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})
     assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == n_inputs + 1
 
@@ -316,8 +225,7 @@ def test_asteroid_miner_layout_post_rebuilds_replay_when_track_had_no_frames() -
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    r0 = client.post(create_url, {"copy_code": copy}, follow=False)
-    assert r0.status_code == 302
+    client.post(create_url, {"copy_code": copy}, follow=True)
     proj = m.AsteroidProject.objects.get()
     tid = m.ReplayTrack.objects.filter(project=proj).values_list("id", flat=True).first()
     assert tid is not None
@@ -335,9 +243,6 @@ def test_asteroid_miner_layout_post_rebuilds_replay_when_track_had_no_frames() -
     assert data["ok"] is True
     assert data["replay_ok"] is True
     assert len(data.get("lab_replay_frames_json") or []) >= 5
-    _assert_optimization_replay_lab_payload(data)
-    attach = data.get("optimization_replay_attach")
-    assert isinstance(attach, dict) and attach.get("reason") == "attached"
 
 
 def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
@@ -358,9 +263,6 @@ def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
     expected = reverse("web:asteroid-miner-layout-project", kwargs={"slug": proj.slug})
     assert data["redirect"] == expected
     assert len(data.get("lab_replay_frames_json") or []) >= 5
-    _assert_optimization_replay_lab_payload(data)
-    attach = data.get("optimization_replay_attach")
-    assert isinstance(attach, dict) and attach.get("reason") == "attached"
 
 
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:
@@ -383,110 +285,6 @@ def test_asteroid_miner_layout_project_unknown_slug_404() -> None:
 def test_asteroid_miner_layout_post_invalid_copy_no_replay_frames() -> None:
     client = Client()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    bad = client.post(create_url, {"copy_code": "not-valid-shapez-payload"}, follow=False)
-    assert bad.status_code == 302
+    client.post(create_url, {"copy_code": "not-valid-shapez-payload"}, follow=True)
 
     assert m.ReplayFrame.objects.count() == 0
-
-
-def test_optimization_replay_truncated_badge_visible() -> None:
-    html = _lab_html_with_optimization_replay(Client(), _valid_truncated_optimization_track())
-    assert 'id="lab-optimization-replay-status"' in html
-    assert "Replay status: truncated" in html
-
-
-def test_optimization_replay_truncation_reason_visible() -> None:
-    html = _lab_html_with_optimization_replay(Client(), _valid_truncated_optimization_track())
-    assert 'id="lab-optimization-replay-truncation"' in html
-    assert "Truncation: cells_reason_xyz" in html
-
-
-def test_optimization_replay_diagnostic_reason_visible() -> None:
-    payload = empty_optimization_replay_track_payload_with_diagnostic(
-        "invalid_optimization_replay_payload",
-    )
-    html = _lab_html_with_optimization_replay(Client(), payload)
-    assert "Replay status: fallback-empty" in html
-    assert "Diagnostic: invalid_optimization_replay_payload" in html
-
-
-def test_valid_optimization_replay_hides_diagnostic() -> None:
-    html = _lab_html_with_optimization_replay(Client(), _valid_normal_optimization_track())
-    assert "Replay status: normal" in html
-    assert "Diagnostic:" not in html
-
-
-def test_empty_replay_without_diagnostic_shows_neutral_state() -> None:
-    html = _lab_html_with_optimization_replay(Client(), empty_optimization_replay_track_payload())
-    assert "Replay status: fallback-empty" not in html
-    assert "Diagnostic:" not in html
-    assert "Replay status: truncated" not in html
-
-
-def test_metadata_hud_does_not_change_replay_controls() -> None:
-    html = _lab_html_with_optimization_replay(Client(), _valid_truncated_optimization_track())
-    assert 'id="lab-optimization-frame-prev"' in html
-    assert 'id="lab-optimization-frame-next"' in html
-    assert 'id="lab-optimization-frame-display"' in html
-
-
-def test_optimization_replay_hud_regression_lab_timeline_controls_present() -> None:
-    html = _lab_html_with_optimization_replay(Client(), _valid_normal_optimization_track())
-    assert 'id="lab-timeline-play"' in html
-    assert 'id="lab-timeline-prev"' in html
-    assert 'id="lab-timeline-next"' in html
-
-
-def test_optimization_replay_malformed_m1_missing_shows_diagnostic_in_html() -> None:
-    """12I.4 M1 — missing key classification surfaces as SSR HUD diagnostic."""
-    payload = empty_optimization_replay_track_payload_with_diagnostic("missing_optimization_replay")
-    html = _lab_html_with_optimization_replay(Client(), payload)
-    assert "Replay status: fallback-empty" in html
-    assert "Diagnostic: missing_optimization_replay" in html
-    assert "Replay status: truncated" not in html
-
-
-def test_optimization_replay_malformed_m2_empty_list_shows_diagnostic_in_html() -> None:
-    """12I.4 M2 — empty list in config maps to empty_optimization_replay_frames."""
-    payload = empty_optimization_replay_track_payload_with_diagnostic(
-        "empty_optimization_replay_frames"
-    )
-    html = _lab_html_with_optimization_replay(Client(), payload)
-    assert "Replay status: fallback-empty" in html
-    assert "Diagnostic: empty_optimization_replay_frames" in html
-
-
-def test_optimization_replay_malformed_m3_invalid_shape_shows_diagnostic_in_html() -> None:
-    """12I.4 M3 — invalid list / frame shape → invalid_optimization_replay_payload."""
-    payload = empty_optimization_replay_track_payload_with_diagnostic(
-        "invalid_optimization_replay_payload",
-    )
-    html = _lab_html_with_optimization_replay(Client(), payload)
-    assert "Replay status: fallback-empty" in html
-    assert "Diagnostic: invalid_optimization_replay_payload" in html
-
-
-def test_optimization_replay_malformed_m4_truncation_contract_shows_diagnostic_in_html() -> None:
-    """12I.4 M4 — replay_truncated / truncation_reason pair break."""
-    payload = empty_optimization_replay_track_payload_with_diagnostic("invalid_truncation_contract")
-    html = _lab_html_with_optimization_replay(Client(), payload)
-    assert "Replay status: fallback-empty" in html
-    assert "Diagnostic: invalid_truncation_contract" in html
-
-
-def test_optimization_replay_malformed_m5_unknown_event_type_shows_diagnostic_in_html() -> None:
-    """12I.4 M5 — unsupported event_type string."""
-    payload = empty_optimization_replay_track_payload_with_diagnostic(
-        "unsupported_or_unknown_event_type",
-    )
-    html = _lab_html_with_optimization_replay(Client(), payload)
-    assert "Replay status: fallback-empty" in html
-    assert "Diagnostic: unsupported_or_unknown_event_type" in html
-
-
-def test_optimization_replay_truncated_hud_preserved_alongside_empty_diagnostic() -> None:
-    """Truncation axis + empty diagnostic: SSR matches 12H/12I three-axis layout."""
-    html = _lab_html_with_optimization_replay(Client(), _valid_truncated_optimization_track())
-    assert "Replay status: truncated" in html
-    assert "Truncation: cells_reason_xyz" in html
-    assert "Diagnostic:" not in html

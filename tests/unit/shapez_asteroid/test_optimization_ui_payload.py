@@ -4,103 +4,16 @@ from __future__ import annotations
 
 import json
 
-from django_apps.shapez_asteroid.optimization.coords import Coord
 from django_apps.shapez_asteroid.optimization.dto import OptimizationReplayFrame
 from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEventType
-from django_apps.shapez_asteroid.optimization.optimization_replay import (
-    OptimizationReplayRecorder,
-    optimization_replay_frames_to_json_list,
-)
+from django_apps.shapez_asteroid.optimization.optimization_replay import OptimizationReplayRecorder
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY,
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     TRACK_ID,
     build_optimization_replay_track_payload,
-    classify_persisted_optimization_replay_frames_value,
-    deserialize_optimization_replay_frames_from_json,
-    diagnostic_reason_after_failed_optimization_replay_scan,
     empty_optimization_replay_track_payload,
-    empty_optimization_replay_track_payload_with_diagnostic,
     merge_optimization_track_into_lab_payload,
-    validate_optimization_replay_frame_list_payload,
 )
-
-
-def test_deserialize_optimization_replay_round_trips_recorder_output() -> None:
-    rec = OptimizationReplayRecorder()
-    rec.record_replay_frame(
-        event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
-        title="g",
-        description="d",
-        visible_cells=(Coord(1, 2),),
-        overlay_cells=(),
-        metrics={"k": 1},
-    )
-    raw = optimization_replay_frames_to_json_list(rec.frames)
-    got = deserialize_optimization_replay_frames_from_json(raw)
-    assert got == rec.frames
-
-
-def test_recorder_truncation_round_trip_passes_frame_list_guard() -> None:
-    rec = OptimizationReplayRecorder(max_frames=2)
-    for i in range(4):
-        rec.record_replay_frame(
-            event_type=OptimizationReplayEventType.CANDIDATE_REJECTED,
-            title=str(i),
-            description="",
-            visible_cells=(),
-            overlay_cells=(),
-            metrics={},
-        )
-    raw = optimization_replay_frames_to_json_list(rec.frames)
-    assert validate_optimization_replay_frame_list_payload(raw) is True
-    assert deserialize_optimization_replay_frames_from_json(raw) == rec.frames
-
-
-def test_deserialize_rejects_truncation_without_reason() -> None:
-    raw = [
-        {
-            "frame_index": 0,
-            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {"replay_truncated": True},
-        }
-    ]
-    assert deserialize_optimization_replay_frames_from_json(raw) is None
-    assert validate_optimization_replay_frame_list_payload(raw) is False
-
-
-def test_deserialize_rejects_unknown_event_type() -> None:
-    raw = [
-        {
-            "frame_index": 0,
-            "event_type": "not.a.real.event",
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {},
-        }
-    ]
-    assert deserialize_optimization_replay_frames_from_json(raw) is None
-
-
-def test_deserialize_rejects_non_sequential_frame_index() -> None:
-    raw = [
-        {
-            "frame_index": 1,
-            "event_type": OptimizationReplayEventType.GENOME_GENERATED.value,
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {},
-        }
-    ]
-    assert deserialize_optimization_replay_frames_from_json(raw) is None
 
 
 def test_optimization_replay_track_payload_empty() -> None:
@@ -192,7 +105,7 @@ def test_optimization_replay_track_payload_truncated_aggregate() -> None:
             "",
             (),
             (),
-            {"replay_truncated": True, "truncation_reason": "first_reason"},
+            {"replay_truncated": True},
         ),
         OptimizationReplayFrame(
             1,
@@ -206,7 +119,6 @@ def test_optimization_replay_track_payload_truncated_aggregate() -> None:
     )
     m = build_optimization_replay_track_payload(frames)["metrics"]
     assert m["replay_truncated"] is True
-    assert m["truncation_reason"] == "first_reason"
 
 
 def test_optimization_replay_track_payload_json_safe() -> None:
@@ -287,150 +199,6 @@ def test_optimization_track_payload_deterministic() -> None:
     assert a == b
 
 
-def test_persisted_optimization_replay_rejects_non_list_payload() -> None:
-    assert validate_optimization_replay_frame_list_payload({"x": 1}) is False
-    assert validate_optimization_replay_frame_list_payload("[]") is False
-    assert validate_optimization_replay_frame_list_payload(None) is False
-
-
-def test_validate_optimization_replay_frame_list_payload_accepts_empty_list() -> None:
-    assert validate_optimization_replay_frame_list_payload([]) is True
-
-
-def test_persisted_optimization_replay_requires_continuous_frame_index() -> None:
-    raw = [
-        {
-            "frame_index": 0,
-            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
-            "title": "a",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {},
-        },
-        {
-            "frame_index": 2,
-            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
-            "title": "b",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {},
-        },
-    ]
-    assert validate_optimization_replay_frame_list_payload(raw) is False
-
-
-def test_persisted_optimization_replay_rejects_unknown_event_type_guard() -> None:
-    raw = [
-        {
-            "frame_index": 0,
-            "event_type": "bogus.event",
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {},
-        }
-    ]
-    assert validate_optimization_replay_frame_list_payload(raw) is False
-
-
-def test_persisted_optimization_replay_truncation_contract() -> None:
-    bad = [
-        {
-            "frame_index": 0,
-            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {"replay_truncated": True},
-        }
-    ]
-    assert validate_optimization_replay_frame_list_payload(bad) is False
-    good = [
-        {
-            "frame_index": 0,
-            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {"replay_truncated": True, "truncation_reason": "cells"},
-        }
-    ]
-    assert validate_optimization_replay_frame_list_payload(good) is True
-    frames = deserialize_optimization_replay_frames_from_json(good)
-    assert frames is not None
-    track = build_optimization_replay_track_payload(frames)
-    assert track["metrics"]["replay_truncated"] is True
-    assert track["metrics"]["truncation_reason"] == "cells"
-
-
-def test_build_optimization_replay_track_payload_aggregates_first_truncation_reason() -> None:
-    frames = (
-        OptimizationReplayFrame(
-            0,
-            OptimizationReplayEventType.CANDIDATE_GENERATED,
-            "a",
-            "",
-            (),
-            (),
-            {"replay_truncated": True, "truncation_reason": "alpha"},
-        ),
-        OptimizationReplayFrame(
-            1,
-            OptimizationReplayEventType.CANDIDATE_GENERATED,
-            "b",
-            "",
-            (),
-            (),
-            {"replay_truncated": True, "truncation_reason": "beta"},
-        ),
-    )
-    m = build_optimization_replay_track_payload(frames)["metrics"]
-    assert m["truncation_reason"] == "alpha"
-
-
-def test_build_optimization_replay_track_payload_omits_truncation_reason_when_not_truncated() -> (
-    None
-):
-    frames = (
-        OptimizationReplayFrame(
-            0,
-            OptimizationReplayEventType.CANDIDATE_GENERATED,
-            "a",
-            "",
-            (),
-            (),
-            {"truncation_reason": "ignored_when_not_truncated"},
-        ),
-    )
-    m = build_optimization_replay_track_payload(frames)["metrics"]
-    assert m["replay_truncated"] is False
-    assert "truncation_reason" not in m
-
-
-def test_build_truncated_without_frame_reason_uses_unknown() -> None:
-    """In-memory frames may omit the pair; track still exposes a non-empty reason (§6.1)."""
-
-    frames = (
-        OptimizationReplayFrame(
-            0,
-            OptimizationReplayEventType.CANDIDATE_GENERATED,
-            "t",
-            "",
-            (),
-            (),
-            {"replay_truncated": True},
-        ),
-    )
-    m = build_optimization_replay_track_payload(frames)["metrics"]
-    assert m["replay_truncated"] is True
-    assert m["truncation_reason"] == "unknown"
-
-
 def test_existing_replay_payload_without_optimization_still_valid() -> None:
     base = {
         "lab_replay_frames_json": [{"id": 10, "phase": "p", "event_type": "lab.custom"}],
@@ -444,88 +212,3 @@ def test_existing_replay_payload_without_optimization_still_valid() -> None:
     for k in base:
         assert merged[k] == base[k]
     assert merged[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] == 0
-
-
-def test_missing_optimization_replay_sets_diagnostic_reason() -> None:
-    assert diagnostic_reason_after_failed_optimization_replay_scan([{}]) == (
-        "missing_optimization_replay"
-    )
-    assert diagnostic_reason_after_failed_optimization_replay_scan(()) == (
-        "missing_optimization_replay"
-    )
-
-
-def test_empty_optimization_replay_sets_diagnostic_reason() -> None:
-    assert classify_persisted_optimization_replay_frames_value([]) == (
-        "empty_optimization_replay_frames"
-    )
-
-
-def test_invalid_optimization_replay_payload_sets_diagnostic_reason() -> None:
-    assert classify_persisted_optimization_replay_frames_value({"x": 1}) == (
-        "invalid_optimization_replay_payload"
-    )
-    assert classify_persisted_optimization_replay_frames_value(None) == (
-        "invalid_optimization_replay_payload"
-    )
-
-
-def test_invalid_truncation_contract_sets_diagnostic_reason() -> None:
-    raw = [
-        {
-            "frame_index": 0,
-            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {"replay_truncated": True},
-        }
-    ]
-    assert classify_persisted_optimization_replay_frames_value(raw) == (
-        "invalid_truncation_contract"
-    )
-
-
-def test_unknown_event_type_sets_diagnostic_reason() -> None:
-    raw = [
-        {
-            "frame_index": 0,
-            "event_type": "not.a.real.event",
-            "title": "t",
-            "description": "",
-            "visible_cells": [],
-            "overlay_cells": [],
-            "metrics": {},
-        }
-    ]
-    assert classify_persisted_optimization_replay_frames_value(raw) == (
-        "unsupported_or_unknown_event_type"
-    )
-
-
-def test_valid_optimization_replay_has_no_diagnostic_reason() -> None:
-    frames = (
-        OptimizationReplayFrame(
-            0,
-            OptimizationReplayEventType.CANDIDATE_GENERATED,
-            "a",
-            "d0",
-            (),
-            (),
-            {"k": 1},
-        ),
-    )
-    payload = build_optimization_replay_track_payload(frames)
-    assert OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY not in payload["metrics"]
-
-
-def test_diagnostic_reason_does_not_change_replay_metrics() -> None:
-    empty = empty_optimization_replay_track_payload()
-    diag = empty_optimization_replay_track_payload_with_diagnostic(
-        "empty_optimization_replay_frames"
-    )
-    em = dict(empty["metrics"])  # type: ignore[arg-type]
-    dm = dict(diag["metrics"])  # type: ignore[arg-type]
-    del dm[OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY]
-    assert em == dm

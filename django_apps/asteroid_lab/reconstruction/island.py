@@ -84,7 +84,9 @@ def resolve_island_kind(
 
     vote_xys = _vote_xy_set(island_keys, key_to_cell)
     counts = Counter(
-        original_evidence_by_xy[xy] for xy in vote_xys if xy in original_evidence_by_xy
+        original_evidence_by_xy[xy]
+        for xy in vote_xys
+        if xy in original_evidence_by_xy
     )
     if counts["asteroid_fluid_field"] > counts["asteroid_shape_field"]:
         return "asteroid_fluid_field"

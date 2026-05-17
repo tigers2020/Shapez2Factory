@@ -119,17 +119,13 @@ class OptimizationReplayRecorder:
     ) -> None:
         if len(self._frames) >= self._max_frames:
             self._replay_truncated = True
-            self._patch_last_metrics(
-                replay_truncated=True,
-                truncation_reason="max_replay_frames",
-            )
+            self._patch_last_metrics(replay_truncated=True)
             return
 
         vis, ovl, cell_trunc = _truncate_cells(visible_cells, overlay_cells, self._max_cells)
         m: dict[str, Any] = dict(metrics or {})
         if cell_trunc:
             m["replay_truncated"] = True
-            m["truncation_reason"] = "max_replay_cells_per_frame"
             self._replay_truncated = True
 
         frame = OptimizationReplayFrame(

@@ -17,20 +17,6 @@
   const GRID_W = 23;
   const GRID_H = 15;
 
-  /** Lab optimization overlay (11B): when true, paint projection in ``#lab-optimization-overlay-layer`` only. */
-  const ENABLE_LAB_OPTIMIZATION_OVERLAY = false;
-
-  /** Mutable context for 11B overlay renderer (assigned from ``init`` / ``replaceLabReplayPayload``). */
-  const labOverlayCtx = {
-    gridEl: null,
-    hasServerReplay: false,
-    replayLayout: null,
-    resolveCellIndex: null,
-  };
-
-  /** Called after optimization frame panel DOM updates; assigned in ``init`` to refresh 11B overlay. */
-  let labAfterOptimizationPanelDom = function () {};
-
   /** Canonical map rotation: 0 = East, 1 = South, 2 = West, 3 = North; quarter-turns clockwise. */
   const DIR = Object.freeze({
     EAST: 0,
@@ -390,665 +376,6 @@
     } catch {
       return null;
     }
-  }
-
-  /**
-   * Sequence 10A — optimization replay bootstrap (parse + frozen metadata only).
-   * Missing ``#optimization-replay-json`` or malformed JSON yields ``EMPTY_OPTIMIZATION_REPLAY_TRACK``
-   * (fallback contract; no throw, no console, not wired to solver or replay renderer).
-   */
-  const OPTIMIZATION_REPLAY_SCRIPT_ID = "optimization-replay-json";
-  const EMPTY_OPTIMIZATION_REPLAY_TRACK = Object.freeze({
-    track_id: "optimization",
-    track_label: "Optimization",
-    frame_count: 0,
-    frames: Object.freeze([]),
-    metrics: Object.freeze({
-      frame_count: 0,
-      event_type_counts: Object.freeze({}),
-      replay_truncated: false,
-    }),
-  });
-
-  function readJsonScriptPayload(scriptId, fallback) {
-    const el = document.getElementById(scriptId);
-    if (!el) return fallback;
-    try {
-      const parsed = JSON.parse(el.textContent || "null");
-      return parsed == null ? fallback : parsed;
-    } catch (_err) {
-      return fallback;
-    }
-  }
-
-  function normalizeOptimizationReplayTrack(raw) {
-    if (!raw || typeof raw !== "object") return EMPTY_OPTIMIZATION_REPLAY_TRACK;
-
-    const frames = Array.isArray(raw.frames) ? raw.frames.slice() : [];
-    const metricsRaw = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
-    const truncReasonRaw = metricsRaw.truncation_reason;
-    const truncReason =
-      typeof truncReasonRaw === "string" && truncReasonRaw.trim() ? truncReasonRaw.trim() : null;
-    const diagRaw = metricsRaw.optimization_replay_diagnostic_reason;
-    const diagnosticReason =
-      typeof diagRaw === "string" && diagRaw.trim() ? diagRaw.trim() : null;
-
-    const metricsOut = {
-      frame_count: Number.isFinite(Number(metricsRaw.frame_count))
-        ? Number(metricsRaw.frame_count)
-        : frames.length,
-      event_type_counts:
-        metricsRaw.event_type_counts && typeof metricsRaw.event_type_counts === "object"
-          ? Object.freeze({ ...metricsRaw.event_type_counts })
-          : Object.freeze({}),
-      replay_truncated: Boolean(metricsRaw.replay_truncated),
-    };
-    if (truncReason) {
-      metricsOut.truncation_reason = truncReason;
-    }
-    if (diagnosticReason) {
-      metricsOut.optimization_replay_diagnostic_reason = diagnosticReason;
-    }
-
-    return Object.freeze({
-      track_id: typeof raw.track_id === "string" ? raw.track_id : "optimization",
-      track_label: typeof raw.track_label === "string" ? raw.track_label : "Optimization",
-      frame_count: Number.isFinite(Number(raw.frame_count)) ? Number(raw.frame_count) : frames.length,
-      frames: Object.freeze(frames),
-      metrics: Object.freeze(metricsOut),
-    });
-  }
-
-  let optimizationReplayTrack = normalizeOptimizationReplayTrack(
-    readJsonScriptPayload(OPTIMIZATION_REPLAY_SCRIPT_ID, EMPTY_OPTIMIZATION_REPLAY_TRACK),
-  );
-
-  /**
-   * Sequence 10B — optimization replay metadata only (no overlay, no lab frame index sync).
-   * Do not read optimization frame geometry here; lab replay still drives the grid.
-   */
-  function hasOptimizationReplayFrames(track) {
-    return Boolean(track && Array.isArray(track.frames) && track.frames.length > 0);
-  }
-
-  function optimizationReplayFrameCount(track) {
-    return track && Array.isArray(track.frames) ? track.frames.length : 0;
-  }
-
-  function optimizationReplayEventTypeCounts(track) {
-    const metrics = track && track.metrics && typeof track.metrics === "object" ? track.metrics : {};
-    const counts =
-      metrics.event_type_counts && typeof metrics.event_type_counts === "object"
-        ? metrics.event_type_counts
-        : {};
-    return Object.freeze({ ...counts });
-  }
-
-  function buildOptimizationReplayTrackSummary(track) {
-    const frameCount = optimizationReplayFrameCount(track);
-    const counts = optimizationReplayEventTypeCounts(track);
-    return Object.freeze({
-      trackId: typeof track?.track_id === "string" ? track.track_id : "optimization",
-      trackLabel: typeof track?.track_label === "string" ? track.track_label : "Optimization",
-      frameCount,
-      replayTruncated: Boolean(track?.metrics?.replay_truncated),
-      eventTypeCounts: counts,
-    });
-  }
-
-  /**
-   * Sequence 10C — optimization replay summary panel (format + render helpers).
-   */
-  function formatOptimizationReplaySummary(summary) {
-    const label =
-      summary && typeof summary.trackLabel === "string" ? summary.trackLabel : "Optimization";
-    const count =
-      summary && Number.isFinite(Number(summary.frameCount)) ? Number(summary.frameCount) : 0;
-    const truncated = Boolean(summary && summary.replayTruncated);
-    const suffix = truncated ? " · truncated" : "";
-    return label + ": " + String(count) + " frame" + (count === 1 ? "" : "s") + suffix;
-  }
-
-  /**
-   * Sequence 12H — truncation / read-diagnostic HUD (display-only; no Lab sync, no frame reorder).
-   * Sequence 12I — §7.1-aligned diagnostic codes + attach reason helpers (M1–M5; M6–M7 reserved in docs).
-   */
-  const OPTIMIZATION_REPLAY_DIAGNOSTIC_CODE = Object.freeze({
-    EMPTY_OPTIMIZATION_REPLAY_FRAMES: "empty_optimization_replay_frames",
-    INVALID_OPTIMIZATION_REPLAY_PAYLOAD: "invalid_optimization_replay_payload",
-    INVALID_TRUNCATION_CONTRACT: "invalid_truncation_contract",
-    MISSING_OPTIMIZATION_REPLAY: "missing_optimization_replay",
-    UNSUPPORTED_OR_UNKNOWN_EVENT_TYPE: "unsupported_or_unknown_event_type",
-  });
-
-  const OPTIMIZATION_REPLAY_HUD_STATUS = Object.freeze({
-    FALLBACK_EMPTY: "Replay status: fallback-empty",
-    NEUTRAL_DASH: "—",
-    NORMAL: "Replay status: normal",
-    TRUNCATED: "Replay status: truncated",
-  });
-
-  const OPTIMIZATION_REPLAY_HUD_REASON = Object.freeze({
-    DIAGNOSTIC_PREFIX: "Diagnostic: ",
-    TRUNCATION_PREFIX: "Truncation: ",
-    TRUNCATION_UNKNOWN: "unknown",
-  });
-
-  const OPTIMIZATION_REPLAY_ATTACH_REASON = Object.freeze({
-    ATTACHED: "attached",
-    EMPTY_CANDIDATE_POOL: "empty_candidate_pool",
-    EMPTY_FRAMES: "empty_frames",
-    EVOLUTION_FAILED: "evolution_failed",
-    INVALID_REPLAY_PAYLOAD: "invalid_replay_payload",
-    MISSING_SOLVER_RUN_ID: "missing_solver_run_id",
-    NON_OK_RESULT: "non_ok_result",
-    SOLVER_RUN_NOT_FOUND: "solver_run_not_found",
-  });
-
-  function mapOptimizationReplayAttachReasonToDiagnostic(reason) {
-    if (reason === OPTIMIZATION_REPLAY_ATTACH_REASON.INVALID_REPLAY_PAYLOAD) {
-      return OPTIMIZATION_REPLAY_DIAGNOSTIC_CODE.INVALID_OPTIMIZATION_REPLAY_PAYLOAD;
-    }
-    return null;
-  }
-
-  function mapOptimizationReplayAttachReasonToHudStatusDisplay(reason) {
-    if (reason === OPTIMIZATION_REPLAY_ATTACH_REASON.INVALID_REPLAY_PAYLOAD) {
-      return OPTIMIZATION_REPLAY_HUD_STATUS.FALLBACK_EMPTY;
-    }
-    return null;
-  }
-
-  function renderOptimizationReplayHud(track) {
-    const statusEl = document.getElementById("lab-optimization-replay-status");
-    const truncEl = document.getElementById("lab-optimization-replay-truncation");
-    const diagEl = document.getElementById("lab-optimization-replay-diagnostic");
-    if (!statusEl || !truncEl || !diagEl) {
-      return;
-    }
-
-    const framesLen = optimizationReplayFrameCount(track);
-    const metrics = track && track.metrics && typeof track.metrics === "object" ? track.metrics : {};
-    const truncated = Boolean(metrics.replay_truncated);
-    const truncReason =
-      typeof metrics.truncation_reason === "string" && metrics.truncation_reason.trim()
-        ? metrics.truncation_reason.trim()
-        : truncated
-          ? OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_UNKNOWN
-          : "";
-    const diagnostic =
-      typeof metrics.optimization_replay_diagnostic_reason === "string" &&
-      metrics.optimization_replay_diagnostic_reason.trim()
-        ? metrics.optimization_replay_diagnostic_reason.trim()
-        : "";
-
-    truncEl.textContent = truncated
-      ? OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_PREFIX + truncReason
-      : "";
-    diagEl.textContent = diagnostic
-      ? OPTIMIZATION_REPLAY_HUD_REASON.DIAGNOSTIC_PREFIX + diagnostic
-      : "";
-    if (truncated) {
-      truncEl.classList.remove("hidden");
-    } else {
-      truncEl.classList.add("hidden");
-    }
-    if (diagnostic) {
-      diagEl.classList.remove("hidden");
-    } else {
-      diagEl.classList.add("hidden");
-    }
-
-    const baseStatus = "text-xs font-medium ";
-    if (framesLen === 0 && !diagnostic) {
-      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.NEUTRAL_DASH;
-      statusEl.className = baseStatus + "text-slate-500";
-    } else if (framesLen === 0 && diagnostic) {
-      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.FALLBACK_EMPTY;
-      statusEl.className = baseStatus + "text-amber-200/90";
-    } else if (truncated) {
-      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.TRUNCATED;
-      statusEl.className = baseStatus + "text-amber-200/90";
-    } else {
-      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.NORMAL;
-      statusEl.className = baseStatus + "text-emerald-200/80";
-    }
-  }
-
-  function formatOptimizationReplayEventCounts(summary) {
-    const counts =
-      summary && summary.eventTypeCounts && typeof summary.eventTypeCounts === "object"
-        ? summary.eventTypeCounts
-        : {};
-    const keys = Object.keys(counts).sort();
-    if (!keys.length) return "No optimization events";
-    return keys
-      .slice(0, 3)
-      .map(function (k) {
-        return k + ": " + counts[k];
-      })
-      .join(" · ");
-  }
-
-  function renderOptimizationReplaySummary(summary) {
-    const el = document.getElementById("lab-optimization-replay-summary-value");
-    if (!el) return;
-    el.textContent = formatOptimizationReplaySummary(summary);
-    const ev = document.getElementById("lab-optimization-replay-event-counts");
-    if (!ev) return;
-    ev.textContent = formatOptimizationReplayEventCounts(summary);
-  }
-
-  renderOptimizationReplaySummary(
-    buildOptimizationReplayTrackSummary(optimizationReplayTrack),
-  );
-  renderOptimizationReplayHud(optimizationReplayTrack);
-
-  /**
-   * Sequence 10D — selected optimization replay frame metadata (text only; no geometry, no lab sync).
-   */
-  function selectedOptimizationReplayFrame(track, frameIndex) {
-    if (!track || !Array.isArray(track.frames)) return null;
-    if (!Number.isInteger(frameIndex)) return null;
-    if (frameIndex < 0 || frameIndex >= track.frames.length) return null;
-    return track.frames[frameIndex] || null;
-  }
-
-  function formatOptimizationReplayFrameMetadata(frame) {
-    if (!frame || typeof frame !== "object") {
-      return Object.freeze({
-        title: "No optimization frame selected",
-        eventType: "—",
-        description: "—",
-        metricsSummary: "No metrics",
-      });
-    }
-
-    const metrics =
-      frame.metrics && typeof frame.metrics === "object" ? frame.metrics : {};
-
-    const metricKeys = Object.keys(metrics).sort();
-
-    return Object.freeze({
-      title:
-        typeof frame.title === "string" && frame.title ? frame.title : "Optimization Frame",
-      eventType: typeof frame.event_type === "string" ? frame.event_type : "—",
-      description:
-        typeof frame.description === "string" && frame.description ? frame.description : "—",
-      metricsSummary:
-        metricKeys.length > 0 ? metricKeys.slice(0, 5).join(" · ") : "No metrics",
-    });
-  }
-
-  function renderOptimizationReplayFrameMetadata(meta) {
-    const titleEl = document.getElementById("lab-optimization-frame-title");
-    if (titleEl) titleEl.textContent = meta.title;
-    const evEl = document.getElementById("lab-optimization-frame-event");
-    if (evEl) evEl.textContent = meta.eventType;
-    const descEl = document.getElementById("lab-optimization-frame-description");
-    if (descEl) descEl.textContent = meta.description;
-    const metEl = document.getElementById("lab-optimization-frame-metrics");
-    if (metEl) metEl.textContent = meta.metricsSummary;
-  }
-
-  /**
-   * Sequence 10E — optimization replay frame navigation (metadata + index display only; no lab sync).
-   */
-  let optimizationReplayFrameIndex = 0;
-
-  function clampOptimizationReplayFrameIndex(track, idx) {
-    const len = Array.isArray(track?.frames) ? track.frames.length : 0;
-    if (len <= 0) return 0;
-    return Math.max(0, Math.min(len - 1, idx));
-  }
-
-  function currentOptimizationReplayFrame(track) {
-    return selectedOptimizationReplayFrame(
-      track,
-      clampOptimizationReplayFrameIndex(track, optimizationReplayFrameIndex),
-    );
-  }
-
-  function renderOptimizationReplayFramePanel() {
-    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
-    const meta = formatOptimizationReplayFrameMetadata(frame);
-
-    renderOptimizationReplayFrameMetadata(meta);
-
-    const el = document.getElementById("lab-optimization-frame-display");
-    if (!el) {
-      labAfterOptimizationPanelDom();
-      return;
-    }
-
-    const len = optimizationReplayFrameCount(optimizationReplayTrack);
-    const current =
-      len > 0
-        ? clampOptimizationReplayFrameIndex(optimizationReplayTrack, optimizationReplayFrameIndex) +
-          1
-        : 0;
-
-    el.textContent = String(current) + " / " + String(len);
-    labAfterOptimizationPanelDom();
-  }
-
-  document.getElementById("lab-optimization-frame-prev")?.addEventListener("click", function () {
-    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
-      optimizationReplayTrack,
-      optimizationReplayFrameIndex - 1,
-    );
-    renderOptimizationReplayFramePanel();
-  });
-
-  document.getElementById("lab-optimization-frame-next")?.addEventListener("click", function () {
-    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
-      optimizationReplayTrack,
-      optimizationReplayFrameIndex + 1,
-    );
-    renderOptimizationReplayFramePanel();
-  });
-
-  renderOptimizationReplayFramePanel();
-
-  /**
-   * Sequence 12A — swap optimization replay track from Run Solver JSON without touching Lab replay.
-   * Does not call ``applyFrame``; does not sync ``optimizationReplayFrameIndex`` with Lab frame index.
-   */
-  function replaceOptimizationReplayPayload(nextPayload) {
-    if (nextPayload == null || typeof nextPayload !== "object") {
-      return;
-    }
-    optimizationReplayTrack = normalizeOptimizationReplayTrack(nextPayload);
-    optimizationReplayFrameIndex = 0;
-    renderOptimizationReplaySummary(
-      buildOptimizationReplayTrackSummary(optimizationReplayTrack),
-    );
-    renderOptimizationReplayHud(optimizationReplayTrack);
-    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
-      optimizationReplayTrack,
-      optimizationReplayFrameIndex,
-    );
-    renderOptimizationReplayFramePanel();
-  }
-
-  /**
-   * Sequence 11A — readonly overlay projection adapter.
-   *
-   * Input: a single optimization replay ``frame`` object (``visible_cells`` / ``overlay_cells`` JSON).
-   * Output: ``{ cells, diagnostics }`` for future overlay renderers (11B). **projection ≠ rendering**.
-   *
-   * - Does **not** mutate ``frame`` or Lab replay frame payloads.
-   * - Does **not** read or write Lab replay timeline index or optimization-only frame index (no implicit sync).
-   * - Server-dense ``Coord`` ``{x,y}`` → Lab **world** ``(x,y)`` (same convention as ``lab_replay`` cells)
-   *   using right-bottom bbox seam: ``dense_x = max_dense_x - server_x``, ``raw_x = 2 * dense_x - 1``,
-   *   ``raw_y = server_y + min_raw_y`` (mirrors ``server_coords.server_xy_for_raw_xy`` inverse).
-   * - Bbox: ``frame.metrics.lab_projection_max_dense_x`` + ``lab_projection_min_raw_y``, or
-   *   ``frame.metrics.server_xy_params`` as ``[max_dense_x, min_raw_y]``. Missing → cells dropped
-   *   with ``missing_lab_projection_bbox``.
-   * - Optional passthrough: ``lab_world_x`` / ``lab_world_y`` on a cell (non-zero x) skips server conversion.
-   */
-  function projectOptimizationReplayFrameToLabOverlay(frame) {
-    const diagnostics = {
-      inputVisibleCellCount: 0,
-      inputOverlayCellCount: 0,
-      projectedCellCount: 0,
-      droppedCellCount: 0,
-      dropReasons: {},
-    };
-
-    function bumpDrop(reason) {
-      const r = String(reason || "unknown");
-      diagnostics.droppedCellCount += 1;
-      diagnostics.dropReasons[r] = (diagnostics.dropReasons[r] || 0) + 1;
-    }
-
-    if (!frame || typeof frame !== "object") {
-      return { cells: [], diagnostics: diagnostics };
-    }
-
-    const metrics = frame.metrics && typeof frame.metrics === "object" ? frame.metrics : null;
-    let maxDenseX = null;
-    let minRawY = null;
-    if (metrics) {
-      const md = metrics.lab_projection_max_dense_x;
-      const my = metrics.lab_projection_min_raw_y;
-      if (Number.isFinite(Number(md)) && Number.isFinite(Number(my))) {
-        maxDenseX = Number(md);
-        minRawY = Number(my);
-      } else if (Array.isArray(metrics.server_xy_params) && metrics.server_xy_params.length >= 2) {
-        maxDenseX = Number(metrics.server_xy_params[0]);
-        minRawY = Number(metrics.server_xy_params[1]);
-      }
-    }
-    const bboxOk =
-      Number.isFinite(maxDenseX) &&
-      Number.isFinite(minRawY) &&
-      Number.isInteger(maxDenseX) &&
-      Number.isInteger(minRawY) &&
-      maxDenseX >= 0;
-
-    const vis = Array.isArray(frame.visible_cells) ? frame.visible_cells : [];
-    const ovl = Array.isArray(frame.overlay_cells) ? frame.overlay_cells : [];
-    diagnostics.inputVisibleCellCount = vis.length;
-    diagnostics.inputOverlayCellCount = ovl.length;
-
-    const eventType =
-      typeof frame.event_type === "string" && frame.event_type ? frame.event_type : null;
-
-    function extractSpatial(cell) {
-      if (!cell || typeof cell !== "object") return null;
-      const lwx = cell.lab_world_x;
-      const lwy = cell.lab_world_y;
-      if (lwx != null && lwy != null) {
-        const wx = Number(lwx);
-        const wy = Number(lwy);
-        if (Number.isFinite(wx) && Number.isFinite(wy) && wx !== 0) {
-          return { mode: "lab_world", rawX: wx, rawY: wy };
-        }
-      }
-      const coord = cell.coord && typeof cell.coord === "object" ? cell.coord : cell;
-      const sx = Number(coord.x);
-      const sy = Number(coord.y);
-      if (!Number.isFinite(sx) || !Number.isFinite(sy)) return null;
-      return { mode: "server", serverX: sx, serverY: sy };
-    }
-
-    function serverDenseToLabWorldXY(serverX, serverY) {
-      const denseX = maxDenseX - serverX;
-      const rawX = 2 * denseX - 1;
-      const rawY = serverY + minRawY;
-      return { rawX: rawX, rawY: rawY };
-    }
-
-    function projectOne(cell, layer) {
-      const sp = extractSpatial(cell);
-      if (!sp) {
-        bumpDrop("missing_coord");
-        return null;
-      }
-      let rawX;
-      let rawY;
-      if (sp.mode === "lab_world") {
-        rawX = sp.rawX;
-        rawY = sp.rawY;
-      } else {
-        if (!bboxOk) {
-          bumpDrop("missing_lab_projection_bbox");
-          return null;
-        }
-        const w = serverDenseToLabWorldXY(sp.serverX, sp.serverY);
-        rawX = w.rawX;
-        rawY = w.rawY;
-      }
-      if (rawX === 0 || !Number.isFinite(rawX) || !Number.isFinite(rawY)) {
-        bumpDrop("invalid_lab_world_xy");
-        return null;
-      }
-      if (visualCol(rawX) == null) {
-        bumpDrop("invalid_lab_world_xy");
-        return null;
-      }
-
-      const candidateId =
-        cell.candidate_id != null
-          ? String(cell.candidate_id)
-          : cell.candidateId != null
-            ? String(cell.candidateId)
-            : null;
-      const routeReservationId =
-        cell.route_reservation_id != null
-          ? String(cell.route_reservation_id)
-          : cell.routeReservationId != null
-            ? String(cell.routeReservationId)
-            : null;
-      let transportKind =
-        cell.transport_kind != null
-          ? String(cell.transport_kind)
-          : cell.transportKind != null
-            ? String(cell.transportKind)
-            : null;
-      if (transportKind === "null") transportKind = null;
-
-      let severity = null;
-      if (cell.severity != null) severity = String(cell.severity);
-
-      diagnostics.projectedCellCount += 1;
-      return {
-        x: rawX,
-        y: rawY,
-        role: "optimization_overlay",
-        source: "optimization_replay",
-        overlayLayer: layer,
-        eventType: eventType,
-        candidateId: candidateId,
-        routeReservationId: routeReservationId,
-        transportKind: transportKind,
-        severity: severity,
-      };
-    }
-
-    const out = [];
-    for (let i = 0; i < vis.length; i++) {
-      const row = projectOne(vis[i], "visible");
-      if (row) out.push(row);
-    }
-    for (let j = 0; j < ovl.length; j++) {
-      const row2 = projectOne(ovl[j], "overlay");
-      if (row2) out.push(row2);
-    }
-
-    return { cells: out, diagnostics: diagnostics };
-  }
-
-  /**
-   * Sequence 11B — feature-flagged optimization replay overlay rendering.
-   *
-   * Renders only into ``#lab-optimization-overlay-layer`` (never mutates ``#lab-replay-grid`` cell nodes).
-   * Geometry comes exclusively from ``projectOptimizationReplayFrameToLabOverlay``; no Lab vs optimization
-   * frame index sync and no Lab replay payload mutation.
-   */
-  function clearOptimizationReplayOverlay() {
-    const layer = document.getElementById("lab-optimization-overlay-layer");
-    if (!layer) return;
-    layer.replaceChildren();
-  }
-
-  function syncOptimizationOverlayLayerGridStyles() {
-    const layer = document.getElementById("lab-optimization-overlay-layer");
-    if (!layer || !labOverlayCtx.gridEl) return;
-    const g = labOverlayCtx.gridEl;
-    layer.style.display = "grid";
-    layer.style.gridTemplateColumns = g.style.gridTemplateColumns || "";
-    layer.style.gridTemplateRows = g.style.gridTemplateRows || "";
-    const cs = g.style.getPropertyValue("--lab-cell-size");
-    if (cs) {
-      layer.style.setProperty("--lab-cell-size", cs);
-    }
-    const gap = window.getComputedStyle(g).gap;
-    if (gap) {
-      layer.style.gap = gap;
-    }
-  }
-
-  function renderLabOptimizationOverlayDiagnostics(diagnostics) {
-    const el = document.getElementById("lab-optimization-overlay-diagnostics");
-    if (!el) return;
-    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
-      el.textContent = "—";
-      return;
-    }
-    if (!diagnostics || typeof diagnostics !== "object") {
-      el.textContent = "—";
-      return;
-    }
-    const p = Number(diagnostics.projectedCellCount) || 0;
-    const dr = Number(diagnostics.droppedCellCount) || 0;
-    const reasons =
-      diagnostics.dropReasons && typeof diagnostics.dropReasons === "object"
-        ? diagnostics.dropReasons
-        : {};
-    const mb = Number(reasons.missing_lab_projection_bbox) || 0;
-    el.textContent =
-      "projected: " + String(p) + " · dropped: " + String(dr) + " · missing bbox: " + String(mb);
-  }
-
-  function renderLabOptimizationOverlayCells(projectionCells) {
-    const layer = document.getElementById("lab-optimization-overlay-layer");
-    if (!layer || !Array.isArray(projectionCells)) return;
-    layer.replaceChildren();
-    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) return;
-    const ctx = labOverlayCtx;
-    if (!ctx.hasServerReplay || !ctx.replayLayout || typeof ctx.resolveCellIndex !== "function") {
-      return;
-    }
-    const rl = ctx.replayLayout;
-    const gw = rl.gridW;
-    for (let i = 0; i < projectionCells.length; i++) {
-      const c = projectionCells[i];
-      if (!c || typeof c !== "object") continue;
-      const idx = ctx.resolveCellIndex({ x: c.x, y: c.y });
-      if (idx == null || idx < 0) continue;
-      const col = idx % gw;
-      const row = Math.floor(idx / gw);
-      const mark = document.createElement("div");
-      mark.setAttribute("data-lab-opt-overlay-cell", "1");
-      mark.setAttribute("aria-hidden", "true");
-      mark.className =
-        "pointer-events-none min-h-0 min-w-0 rounded-[5px] ring-2 ring-inset ring-fuchsia-400/45";
-      mark.style.gridColumn = String(col + 1);
-      mark.style.gridRow = String(row + 1);
-      layer.appendChild(mark);
-    }
-  }
-
-  function renderOptimizationReplayOverlay() {
-    const shell = document.getElementById("lab-optimization-overlay-layer");
-    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
-      clearOptimizationReplayOverlay();
-      if (shell) shell.classList.add("hidden");
-      renderLabOptimizationOverlayDiagnostics(null);
-      return;
-    }
-    if (shell) shell.classList.remove("hidden");
-
-    if (!labOverlayCtx.hasServerReplay || !labOverlayCtx.replayLayout) {
-      clearOptimizationReplayOverlay();
-      if (shell) shell.classList.add("hidden");
-      const el = document.getElementById("lab-optimization-overlay-diagnostics");
-      if (el) {
-        el.textContent =
-          "projected: 0 · dropped: 0 · missing bbox: 0 (needs server Lab replay grid + flag)";
-      }
-      return;
-    }
-
-    syncOptimizationOverlayLayerGridStyles();
-    clearOptimizationReplayOverlay();
-
-    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
-    const projection = projectOptimizationReplayFrameToLabOverlay(frame);
-    renderLabOptimizationOverlayCells(projection.cells);
-    renderLabOptimizationOverlayDiagnostics(projection.diagnostics);
   }
 
   function getCookie(name) {
@@ -1650,8 +977,6 @@
         gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", " + zpx + "px)";
       }
       applyLabViewportTransform();
-      refreshLabOverlayCtx();
-      renderOptimizationReplayOverlay();
     }
 
     function resetLabViewportTransform() {
@@ -1667,13 +992,6 @@
     let resizeObserver = null;
     let replayResizeMode = null;
     let replayCleanup = function () {};
-
-    function refreshLabOverlayCtx() {
-      labOverlayCtx.gridEl = gridEl;
-      labOverlayCtx.hasServerReplay = hasServerReplay;
-      labOverlayCtx.replayLayout = replayLayout;
-      labOverlayCtx.resolveCellIndex = resolveCellIndex;
-    }
 
     function initializeServerReplaySurface(framesArr) {
       const neutralClass = LAB_CELL_BASE;
@@ -1765,37 +1083,25 @@
 
     if (hasServerReplay) {
       if (!matrix || !Array.isArray(matrix)) {
-        hasServerReplay = false;
-        replayFrames = [];
-      } else {
-        try {
-          replayCleanup = initializeServerReplaySurface(replayFrames);
-        } catch (_err) {
-          hasServerReplay = false;
-          replayFrames = [];
-        }
+        return;
       }
-    }
-    if (!hasServerReplay) {
+      replayCleanup = initializeServerReplaySurface(replayFrames);
+    } else {
       if (!matrix || !Array.isArray(matrix) || cells.length !== matrix.length) {
-        domCells = [];
-        baseClasses = [];
-      } else {
-        domCells = Array.prototype.slice.call(cells);
-        baseClasses = domCells.map(function (el) {
-          return String(el.className || "");
-        });
-        requestAnimationFrame(function () {
-          const first = domCells[0];
-          if (first && first.offsetWidth > 0) {
-            demoBaseCellPxAtZoom1 = Math.max(4, first.offsetWidth);
-          }
-          applyLabGridLayoutForZoom();
-        });
+        return;
       }
+      domCells = Array.prototype.slice.call(cells);
+      baseClasses = domCells.map(function (el) {
+        return String(el.className || "");
+      });
+      requestAnimationFrame(function () {
+        const first = domCells[0];
+        if (first && first.offsetWidth > 0) {
+          demoBaseCellPxAtZoom1 = Math.max(4, first.offsetWidth);
+        }
+        applyLabGridLayoutForZoom();
+      });
     }
-
-    refreshLabOverlayCtx();
 
     const rootEl = document.getElementById("lab-root");
     function syncLabDebugRotationClass() {
@@ -1931,8 +1237,6 @@
               : "—";
         }
         syncLabTimelineScrub();
-        refreshLabOverlayCtx();
-        renderOptimizationReplayOverlay();
         return;
       }
 
@@ -1954,8 +1258,6 @@
       const cycle = document.getElementById("lab-computation-cycle");
       if (cycle) cycle.textContent = "computation_cycle #" + String(frame);
       syncLabTimelineScrub();
-      refreshLabOverlayCtx();
-      renderOptimizationReplayOverlay();
     }
 
     function setPlaying(next) {
@@ -2070,11 +1372,6 @@
     });
 
     document.getElementById("lab-header-run")?.addEventListener("click", function () {
-      const form = document.getElementById("lab-import-project-form");
-      if (form) {
-        runLabBlueprintRebuildViaImportForm(form);
-        return;
-      }
       setPlaying(true);
       applyFrame();
     });
@@ -2158,7 +1455,6 @@
       }
       replayCleanup();
       replayCleanup = initializeServerReplaySurface(replayFrames);
-      refreshLabOverlayCtx();
       resetLabViewportTransform();
       replayArrayIndex = replaySlotForServerInitialFrame();
       setPlaying(false);
@@ -2185,80 +1481,61 @@
       }
     }
 
-    let labImportPostInFlight = false;
-
-    function runLabBlueprintRebuildViaImportForm(form) {
-      if (!form || !form.action || labImportPostInFlight) {
-        return;
-      }
-      labImportPostInFlight = true;
-      const fd = new FormData(form);
-      fetch(form.action, {
-        method: "POST",
-        body: fd,
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      })
-        .then(function (res) {
-          return res
-            .json()
-            .catch(function () {
-              return { ok: false };
-            })
-            .then(function (data) {
-              return { res: res, data: data };
-            });
-        })
-        .then(function (bundle) {
-          const res = bundle.res;
-          const data = bundle.data;
-          if (!res.ok || !data || data.ok === false) {
-            if (data && data.redirect) {
-              window.location.assign(data.redirect);
-            } else {
-              window.location.reload();
-            }
-            return;
-          }
-          if (data.in_place) {
-            replaceLabReplayPayload(data);
-            if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
-              replaceOptimizationReplayPayload(data.optimization_replay);
-            }
-            return;
-          }
-          if (data.redirect) {
-            if (typeof history.pushState === "function") {
-              try {
-                history.pushState(null, "", data.redirect);
-                syncProjectSlugHiddenFromRedirect(form, data.redirect);
-              } catch {
-                window.location.assign(data.redirect);
-                return;
-              }
-            } else {
-              window.location.assign(data.redirect);
-              return;
-            }
-          }
-          replaceLabReplayPayload(data);
-          if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
-            replaceOptimizationReplayPayload(data.optimization_replay);
-          }
-        })
-        .catch(function () {
-          form.submit();
-        })
-        .finally(function () {
-          labImportPostInFlight = false;
-        });
-    }
-
     const importForm = document.getElementById("lab-import-project-form");
     if (importForm) {
       importForm.addEventListener("submit", function (ev) {
         ev.preventDefault();
-        runLabBlueprintRebuildViaImportForm(importForm);
+        const fd = new FormData(importForm);
+        fetch(importForm.action, {
+          method: "POST",
+          body: fd,
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return { ok: false };
+              })
+              .then(function (data) {
+                return { res: res, data: data };
+              });
+          })
+          .then(function (bundle) {
+            const res = bundle.res;
+            const data = bundle.data;
+            if (!res.ok || !data || data.ok === false) {
+              if (data && data.redirect) {
+                window.location.assign(data.redirect);
+              } else {
+                window.location.reload();
+              }
+              return;
+            }
+            if (data.in_place) {
+              replaceLabReplayPayload(data);
+              return;
+            }
+            if (data.redirect) {
+              if (typeof history.pushState === "function") {
+                try {
+                  history.pushState(null, "", data.redirect);
+                  syncProjectSlugHiddenFromRedirect(importForm, data.redirect);
+                } catch {
+                  window.location.assign(data.redirect);
+                  return;
+                }
+              } else {
+                window.location.assign(data.redirect);
+                return;
+              }
+            }
+            replaceLabReplayPayload(data);
+          })
+          .catch(function () {
+            importForm.submit();
+          });
       });
     }
 
@@ -2798,7 +2075,6 @@
       visualCol: visualCol,
       rawXToDenseX: rawXToDenseX,
       replaceLabReplayPayload: replaceLabReplayPayload,
-      replaceOptimizationReplayPayload: replaceOptimizationReplayPayload,
     };
 
     /** DevTools-only: assert #lab-replay-grid-viewport rect is stable across cell-pixel zoom. */
@@ -2834,10 +2110,6 @@
     applyLabGridLayoutForZoom();
     updateLabGridHudEmpty();
     bindLabViewportInteractions();
-
-    labAfterOptimizationPanelDom = function () {
-      renderOptimizationReplayOverlay();
-    };
 
     setRunDetail(baselineRun);
     applyFrame();

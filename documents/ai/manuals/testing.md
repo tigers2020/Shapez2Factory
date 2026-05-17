@@ -6,27 +6,11 @@
 python -m pytest
 ```
 
-PR 직전·CI에서만 전체에 가깝게 두고, 로컬 반복은 아래 **빠른 루틴**을 권장한다.
-
-### 빠른 루틴 · 병렬 · `slow` 마커
-
-- **병렬**: `pip install -e ".[dev]"`에 `pytest-xdist` 포함. 예: `python -m pytest -n auto --dist loadscope` (Django DB 테스트 충돌 시 `--dist loadscope` 유지).
-- **`slow`**: 리플레이 빌드·무거운 DB 경로. `pytest.ini`에 등록. 부착: `test_asteroid_miner_layout_solver.py`(모듈), `test_optimization_replay_persist.py`(모듈), `test_replay_pipeline_service.py`의 리플레이 DB 테스트 3개, `test_replay_snapshot_contract.py`의 대형 계약 테스트 1개.
-- **로컬 단위 위주**: `python -m pytest -n auto --dist loadscope -m "not slow" tests/unit/shapez_asteroid tests/unit/asteroid_lab tests/unit/web`
-- **느린 것만**: `python -m pytest -n auto --dist loadscope -m slow`
-- **Makefile**(루트): `make lint` · `make type` · `make test-fast` · `make test-integration` · `make test-slow` · `make test-all` (`PYTHON=python3` 등 오버라이드 가능).
-
-`--reuse-db`는 `pytest.ini`의 `addopts`에 이미 포함되어 있다.
-
-### mypy 캐시
-
-`pyproject.toml`의 `[tool.mypy] cache_dir`를 사용한다. CI에서는 해당 디렉터리를 캐시 아티팩트로 두면 재실행이 빨라진다.
-
 ## 구간 실행
 
 | 방식 | 예 |
 |------|-----|
-| 마커 | `-m unit`, `-m integration`, `-m slow`, `-m "not slow"`, `-m shapez_solver`, `-m shapez_core`, `-m web`, `-m api`, `-m asteroid_lab` |
+| 마커 | `-m unit`, `-m integration`, `-m shapez_solver`, `-m shapez_core`, `-m web`, `-m api`, `-m asteroid_lab` |
 | 조합 | `-m "unit and shapez_core"` |
 | 경로 | `python -m pytest tests/unit/shapez_solver/` · `python -m pytest tests/unit/asteroid_lab/` |
 

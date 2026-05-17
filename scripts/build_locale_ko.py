@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-import polib
+import polib  # type: ignore[import-untyped]
 
 BASE = Path(__file__).resolve().parents[1]
 TEMPLATE_ROOT = BASE / "django_apps" / "web" / "templates"
@@ -321,7 +321,6 @@ KO: dict[str, str] = {
     "bbox span too large": "범위가 너무 큽니다",
     "bbox must not include x=0": "x=0을 포함할 수 없습니다",
     # Gallery view (public_pages)
-    "Unknown project.": "알 수 없는 프로젝트입니다.",
     "Screenshots": "스크린샷",
     "Factory templates": "공장 템플릿",
     "Gameplay UI and factory moments from recent runs.": "최근 플레이·공장 화면을 모았습니다.",

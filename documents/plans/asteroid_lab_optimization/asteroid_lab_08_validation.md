@@ -88,13 +88,13 @@ route isolation risk (외부 목표까지 대체 경로 존재 여부 등)
 ## Invariant
 
 ```text
-[x] validation is read-only
-[x] Validation must not invent new routes
-[x] Validation must not mutate placement
-[x] Validation must not fix topology
-[x] error severity fails validation
-[x] warning/info does not fail validation
-[x] every issue has explicit issue_code (ValidationIssueCode)
+[ ] validation is read-only
+[ ] Validation must not invent new routes
+[ ] Validation must not mutate placement
+[ ] Validation must not fix topology
+[ ] error severity fails validation
+[ ] warning/info does not fail validation
+[ ] every issue has explicit issue_code (ValidationIssueCode)
 ```
 
 ## 테스트
@@ -116,7 +116,7 @@ test_validation_fails_committed_candidate_missing_from_pool
 ## 완료 조건
 
 ```text
-[x] ValidationResult DTO 구현
-[x] final assert gate 구현
-[x] validation read-only 테스트 통과
+[ ] ValidationResult DTO 구현
+[ ] final assert gate 구현
+[ ] validation read-only 테스트 통과
 ```

@@ -53,6 +53,21 @@ debug artifact
 
 이들은 output/debug 전용이다.
 
+### 1b. 통합 Lab 리플레이 타임라인 (정본)
+
+최적화 단계 리플레이는 **별도 JSON/프론트 트랙이 아니라** 동일 `ReplayTrack`의 `ReplayFrame`에만 append한다. 프론트는 `lab-replay-frames-data`와 **단일** scrub 인덱스만 사용한다. 듀얼 트랙·`optimizationReplayFrameIndex` 등 금지·롤백 기준: `rollback_baseline_unified_replay.md`.
+
+### 1c. 앱 경계 예외 — output-only adapter
+
+개발 시퀀스의 기본 분할은 다음과 같다.
+
+```text
+Lab 리플레이·ORM·디코드 = django_apps/asteroid_lab
+최적화 DTO·GA·probe·validation·replay 직렬화 = django_apps/shapez_asteroid/optimization
+```
+
+**boundary exception: output-only adapter** — `django_apps/asteroid_lab/services/optimization_replay_to_lab_frames.py` 는 최적화 레코더의 `OptimizationReplayFrame` 등을 Lab `ReplayFrameAppendDTO`로 옮기기 위해 `shapez_asteroid.optimization` DTO·enum을 import한다. **단방향(최적화 → Lab append)** 만 허용되며, Lab → shapez_asteroid 알고리즘 입력으로의 재주입이나 역방향 비즈니스 규칙 전파는 하지 않는다.
+
 ### 2. Cell-level GA 금지
 
 잘못된 genome:

@@ -131,8 +131,7 @@ if ($LASTEXITCODE -gt 1) { throw "git grep failed" }
 - Run Solver JSON 응답에 lab_replay_frames_json 타임라인이 하나만 노출된다.
 - 최적화 단계 프레임이 동일 리스트에 append된다.
 - frame_index는 0부터 final_count - 1까지 연속이다.
-- 렌더된 HTML에 #optimization-replay-json 이 없다.
-- Lab JS에 optimizationReplayFrameIndex 가 없다.
+- 렌더된 프로젝트 HTML에 `optimization-replay-json` / `optimizationReplayTrack` / `optimizationReplayFrameIndex` 문자열이 없다.
 - 기존 Lab 스크러버로 append된 최적화 프레임을 선택할 수 있다.
 - 리플레이는 출력 전용이며 솔버 입력으로 쓰이지 않는다.
 ```
@@ -140,10 +139,17 @@ if ($LASTEXITCODE -gt 1) { throw "git grep failed" }
 ## 검증 명령
 
 ```bash
+python -m pytest
+python -m ruff check .
+python -m mypy .
+python -m black --check .
+```
+
+단일 디렉터리로 빠르게 볼 때(예시):
+
+```bash
 python -m pytest tests/unit/asteroid_lab/
 python -m pytest tests/integration/web/test_asteroid_miner_layout_solver.py
-python -m ruff check .
-python -m black --check .
 ```
 
 ## 다음 진행 순서(권장)
@@ -160,6 +166,17 @@ git checkout -b refactor/unified-lab-replay-from-baseline 10b3b966081496c3d67394
 
 ```text
 Read and obey documents/plans/asteroid_lab_optimization/rollback_baseline_unified_replay.md before editing code.
+```
+
+## 관련 플랜 문서(구 서술 정렬)
+
+아래 파일이 **아직 없거나** 과거 초안에 **Lab / Optimization dual-track·독립 `optimizationReplayFrameIndex`** 를 불변으로 두었다면, 구현·문서 정본은 **본 rollback 문서 + `asteroid_lab_00_overview.md` §1b·1c** 를 따른다. Phase 9·10 플랜 본문 상단에 *Unified Lab Replay Timeline* superseded 메모를 두었다.
+
+```text
+documents/plans/asteroid_lab_optimization/asteroid_lab_09_replay_debug.md
+documents/plans/asteroid_lab_optimization/asteroid_lab_10_development_sequence.md
+(작성 예정) asteroid_lab_12_runtime_replay_wiring.md
+(작성 예정) asteroid_lab_13_replay_payload_scalability.md
 ```
 
 ## Git의 역할에 대한 메모

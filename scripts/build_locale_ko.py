@@ -325,6 +325,7 @@ KO: dict[str, str] = {
     "Factory templates": "공장 템플릿",
     "Gameplay UI and factory moments from recent runs.": "최근 플레이·공장 화면을 모았습니다.",
     "Layout references captured from the in-game template browser.": "게임 내 템플릿 브라우저에서 가져온 배치 참고용입니다.",
+    "Unknown project.": "프로젝트를 찾을 수 없습니다.",
     # Gallery / demo / support (templates) — bulk entries below
     "Generate missing part sprites": "빠진 부품 스프라이트 생성",
     (

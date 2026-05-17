@@ -41,13 +41,13 @@ from django_apps.web.constants import (
     HOME_INITIAL_SHAPE_CODE,
 )
 from django_apps.web.models import GraphPreviewImage
+from django_apps.web.services.asteroid_lab_optimization_run import (
+    run_lab_solver_optimization_for_map_input,
+)
 from django_apps.web.services.asteroid_lab_page_context import (
     build_lab_replay_payload,
     lab_page_context,
     serialize_replay_frame,
-)
-from django_apps.web.services.asteroid_lab_optimization_run import (
-    run_lab_solver_optimization_for_map_input,
 )
 from django_apps.web.services.graph_preview import (
     PlaywrightPngGraphPreviewRenderer,
@@ -258,7 +258,9 @@ def asteroid_miner_layout_run_solver(request: HttpRequest) -> JsonResponse:
             replay_track_id=replay_track_id,
         )
     except ValueError as exc:
-        return JsonResponse({"ok": False, "error": "invalid_request", "message": str(exc)}, status=400)
+        return JsonResponse(
+            {"ok": False, "error": "invalid_request", "message": str(exc)}, status=400
+        )
 
     bundle = _lab_json_bundle_for_track_id(replay_track_id, copy_code=inp.copy_code)
     return JsonResponse(

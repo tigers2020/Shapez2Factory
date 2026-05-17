@@ -860,7 +860,7 @@ msgid "Layout references captured from the in-game template browser."
 msgstr "게임 내 템플릿 브라우저에서 가져온 배치 참고용입니다."
 
 msgid "Unknown project."
-msgstr "Unknown project."
+msgstr "프로젝트를 찾을 수 없습니다."
 
 msgid "Bitcoin Cash (BCH)"
 msgstr "비트코인 캐시(BCH)"

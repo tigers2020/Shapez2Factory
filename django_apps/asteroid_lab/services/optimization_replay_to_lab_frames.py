@@ -1,4 +1,10 @@
-"""Map optimization replay frames onto Lab ``ReplayFrameAppendDTO`` rows (output-only)."""
+"""Map optimization replay frames onto Lab ``ReplayFrameAppendDTO`` rows (output-only).
+
+**App-boundary exception:** lives under ``asteroid_lab`` but imports
+``shapez_asteroid.optimization`` DTOs only to adapt recorder output into Lab
+append payloads (one-way). Documented as *boundary exception: output-only
+adapter* in ``asteroid_lab_00_overview.md``.
+"""
 
 from __future__ import annotations
 

@@ -126,3 +126,141 @@ def test_route_committed_merges_path_when_commit_result_matches() -> None:
     by_xy = {(int(r["x"]), int(r["y"])): r for r in fm if isinstance(r, dict)}
     assert (2, 0) in by_xy
     assert by_xy[(2, 0)].get("transport_kind") == "shape_belt"
+
+
+def test_route_committed_then_overlay_preserves_committed_full_map() -> None:
+    """route.committed advances physical map; a later overlay-only frame must not revert it."""
+    base = [
+        {
+            "x": 1,
+            "y": 0,
+            "layer": 0,
+            "cell_kind": "field",
+            "transport_kind": "none",
+            "tile_type": "",
+        }
+    ]
+    rid = "c1:route:0"
+    committed = OptimizationReplayFrame(
+        frame_index=0,
+        event_type=OptimizationReplayEventType.ROUTE_COMMITTED,
+        title="committed",
+        description="",
+        visible_cells=(),
+        overlay_cells=(),
+        metrics={"route_reservation_id": rid},
+    )
+    overlay_only = OptimizationReplayFrame(
+        frame_index=1,
+        event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
+        title="after",
+        description="",
+        visible_cells=(Coord(1, 0),),
+        overlay_cells=(),
+        metrics={"k": 2},
+    )
+    resv = RouteReservation(
+        reservation_id=rid,
+        candidate_id="c1",
+        transport_kind=TransportKind.SHAPE_BELT,
+        path=(Coord(1, 0), Coord(2, 0)),
+        reserved_cells=frozenset({Coord(1, 0), Coord(2, 0)}),
+        cost=1,
+        reached_goal=_goal(),
+        goal_priority=1,
+        reservation_state=ReservationState.CONFIRMED,
+        domain_cell_transitions=(),
+    )
+    commit = IncrementalCommitResult(
+        committed_placements=(),
+        route_reservations=(resv,),
+        candidate_results=(),
+        final_route_domain={},
+        confirmed_candidate_count=1,
+        rolled_back_candidate_count=0,
+    )
+    dtos = optimization_replay_frames_to_lab_append_dtos(
+        (committed, overlay_only),
+        baseline_full_map=list(base),
+        commit_result=commit,
+    )
+    assert len(dtos) == 2
+
+    fm0 = dtos[0].frame_payload.get("full_map") or []
+    by0 = {(int(r["x"]), int(r["y"])): r for r in fm0 if isinstance(r, dict)}
+    assert (2, 0) in by0
+    assert by0[(2, 0)].get("transport_kind") == "shape_belt"
+    assert (1, 0) in by0
+    assert by0[(1, 0)].get("cell_kind") == "transport"
+
+    fm1 = dtos[1].frame_payload.get("full_map") or []
+    by1 = {(int(r["x"]), int(r["y"])): r for r in fm1 if isinstance(r, dict)}
+    assert (2, 0) in by1
+    assert by1[(2, 0)].get("transport_kind") == "shape_belt"
+    assert by1[(1, 0)].get("cell_kind") == "transport"
+
+
+def test_overlay_frame_before_commit_matches_baseline_full_map() -> None:
+    """Non-commit frame materialized map equals baseline; commit frame then extends it."""
+    base = [
+        {
+            "x": 1,
+            "y": 0,
+            "layer": 0,
+            "cell_kind": "field",
+            "transport_kind": "none",
+            "tile_type": "",
+        }
+    ]
+    rid = "c1:route:0"
+    overlay_first = OptimizationReplayFrame(
+        frame_index=0,
+        event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
+        title="probe",
+        description="",
+        visible_cells=(Coord(1, 0),),
+        overlay_cells=(),
+        metrics={"k": 0},
+    )
+    committed = OptimizationReplayFrame(
+        frame_index=1,
+        event_type=OptimizationReplayEventType.ROUTE_COMMITTED,
+        title="committed",
+        description="",
+        visible_cells=(),
+        overlay_cells=(),
+        metrics={"route_reservation_id": rid},
+    )
+    resv = RouteReservation(
+        reservation_id=rid,
+        candidate_id="c1",
+        transport_kind=TransportKind.SHAPE_BELT,
+        path=(Coord(1, 0), Coord(2, 0)),
+        reserved_cells=frozenset({Coord(1, 0), Coord(2, 0)}),
+        cost=1,
+        reached_goal=_goal(),
+        goal_priority=1,
+        reservation_state=ReservationState.CONFIRMED,
+        domain_cell_transitions=(),
+    )
+    commit = IncrementalCommitResult(
+        committed_placements=(),
+        route_reservations=(resv,),
+        candidate_results=(),
+        final_route_domain={},
+        confirmed_candidate_count=1,
+        rolled_back_candidate_count=0,
+    )
+    dtos = optimization_replay_frames_to_lab_append_dtos(
+        (overlay_first, committed),
+        baseline_full_map=list(base),
+        commit_result=commit,
+    )
+    assert len(dtos) == 2
+    fm0 = dtos[0].frame_payload.get("full_map") or []
+    assert len(fm0) == 1
+    assert fm0[0].get("cell_kind") == "field"
+    fm1 = dtos[1].frame_payload.get("full_map") or []
+    by1 = {(int(r["x"]), int(r["y"])): r for r in fm1 if isinstance(r, dict)}
+    assert (2, 0) in by1
+    assert by1[(2, 0)].get("transport_kind") == "shape_belt"

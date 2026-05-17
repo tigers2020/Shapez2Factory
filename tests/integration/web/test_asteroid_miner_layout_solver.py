@@ -278,6 +278,7 @@ def test_asteroid_miner_layout_run_solver_appends_optimization_frames() -> None:
     tid = m.ReplayTrack.objects.filter(project=proj).values_list("id", flat=True).first()
     mid = m.AsteroidMapInput.objects.filter(project=proj).values_list("id", flat=True).first()
     assert tid is not None and mid is not None
+    n_inputs = m.AsteroidMapInput.objects.filter(project_id=proj.pk).count()
     n_before = m.ReplayFrame.objects.filter(replay_track_id=tid).count()
     url = reverse("web:asteroid-miner-layout-run-solver")
     body = {
@@ -298,10 +299,20 @@ def test_asteroid_miner_layout_run_solver_appends_optimization_frames() -> None:
     assert int(data["inspection_frame_count_before"]) == n_before
     frames = data.get("lab_replay_frames_json") or []
     assert len(frames) == n_before + appended
+    for i, fr in enumerate(frames):
+        assert int(fr["frame_index"]) == i
     last = frames[-1]
     assert int(last["frame_index"]) == len(frames) - 1
     assert str(last["frame_key"]).startswith("optimization_")
     assert last["phase"] == "optimization"
+    assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == n_inputs
+
+    page = client.get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": proj.slug}))
+    assert page.status_code == 200
+    html = page.content.decode()
+    assert "optimization-replay-json" not in html
+    assert "optimizationReplayFrameIndex" not in html
+    assert "optimizationReplayTrack" not in html
 
 
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:

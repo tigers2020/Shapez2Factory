@@ -16,6 +16,7 @@ from django_apps.web.views.macro_staff import (
 from django_apps.web.views.public_pages import (
     asteroid_miner_layout_create_project,
     asteroid_miner_layout_project,
+    asteroid_miner_layout_replay_frame_cell,
     asteroid_miner_layout_solver,
     demo,
     gallery,
@@ -29,6 +30,7 @@ from django_apps.web.views.public_pages import (
 __all__ = [
     "asteroid_miner_layout_create_project",
     "asteroid_miner_layout_project",
+    "asteroid_miner_layout_replay_frame_cell",
     "asteroid_miner_layout_solver",
     "demo",
     "gallery",

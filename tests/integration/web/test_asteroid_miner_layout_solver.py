@@ -8,9 +8,40 @@ from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
+from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
+    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+)
 from django_apps.web.services import asteroid_lab_page_context as alc
 
 pytestmark = pytest.mark.django_db
+
+
+def _assert_optimization_replay_lab_payload(data: dict) -> None:
+    """12E: lab JSON must carry real optimization replay frames (event_type contract)."""
+
+    opt = data.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY)
+    assert isinstance(opt, dict)
+    assert opt.get("track_id") == "optimization"
+    assert int(opt.get("frame_count") or 0) >= 1
+    frames = opt.get("frames") or []
+    assert isinstance(frames, list) and len(frames) >= 1
+    assert isinstance(frames[0], dict)
+    assert "event_type" in frames[0] and isinstance(frames[0]["event_type"], str)
+    event_types = [
+        f["event_type"]
+        for f in frames
+        if isinstance(f, dict) and isinstance(f.get("event_type"), str)
+    ]
+    assert any(
+        et.startswith("candidate.")
+        or et.startswith("route_probe.")
+        or et.startswith("generation.")
+        or et.startswith("genome.")
+        or et.startswith("optimization.")
+        or et.startswith("pattern.")
+        or et.startswith("best_genome.")
+        for et in event_types
+    )
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -47,6 +78,10 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert 'id="lab-ui-initial-state"' in content
     assert "G-042" not in content
     assert "No runs" in content
+    assert 'id="lab-replay-grid-stage"' in content
+    assert "absolute inset-4" in content
+    assert 'id="lab-replay-grid-hud-coord"' in content
+    assert 'id="lab-replay-grid-hud-role"' in content
 
 
 def test_asteroid_miner_layout_ignores_code_query_string() -> None:
@@ -70,11 +105,88 @@ def test_asteroid_miner_layout_post_copy_prg_shows_in_project_page() -> None:
     assert m.AsteroidProject.objects.count() == 1
     proj = m.AsteroidProject.objects.get()
     assert f"/asteroid-miner-layout/p/{proj.slug}/" in response.request["PATH_INFO"]
-    assert m.ReplayFrame.objects.count() >= 5
+    assert m.ReplayFrame.objects.count() >= 6
     ctx = alc.lab_page_context()
     assert ctx["has_replay_frames"] is True
-    assert ctx["total_frames"] >= 5
+    assert ctx["total_frames"] >= 6
     assert 'id="lab-replay-frames-data"' in response.content.decode()
+
+
+def test_replay_frame_cell_post_returns_cell_json() -> None:
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
+    assert frame is not None
+    track = frame.replay_track
+    url = reverse("web:asteroid-miner-layout-replay-frame-cell")
+    body = {
+        "replay_frame_id": int(frame.pk),
+        "replay_track_id": int(track.pk),
+        "x": 1,
+        "y": 0,
+        "project_slug": track.project.slug,
+    }
+    response = client.post(
+        url,
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    assert data["cell"] is not None
+    assert data["cell"].get("x") == 1
+    assert data["cell"].get("y") == 0
+    assert "cell_kind" in data["cell"]
+
+
+def test_replay_frame_cell_post_wrong_track_403() -> None:
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
+    assert frame is not None
+    track = frame.replay_track
+    url = reverse("web:asteroid-miner-layout-replay-frame-cell")
+    body = {
+        "replay_frame_id": int(frame.pk),
+        "replay_track_id": int(track.pk) + 99999,
+        "x": 1,
+        "y": 0,
+    }
+    response = client.post(
+        url,
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+    assert response.status_code == 403
+
+
+def test_replay_frame_cell_post_project_slug_mismatch_403() -> None:
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
+    assert frame is not None
+    track = frame.replay_track
+    url = reverse("web:asteroid-miner-layout-replay-frame-cell")
+    body = {
+        "replay_frame_id": int(frame.pk),
+        "replay_track_id": int(track.pk),
+        "x": 1,
+        "y": 0,
+        "project_slug": "wrong-slug-not-this-project",
+    }
+    response = client.post(
+        url,
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+    assert response.status_code == 403
 
 
 def test_asteroid_miner_layout_post_same_copy_dedupes_project() -> None:
@@ -85,7 +197,11 @@ def test_asteroid_miner_layout_post_same_copy_dedupes_project() -> None:
     client.post(create_url, {"copy_code": copy}, follow=True)
 
     assert m.AsteroidProject.objects.count() == 1
-    assert m.ReplayFrame.objects.count() == 5
+    proj = m.AsteroidProject.objects.get()
+    frames = m.ReplayFrame.objects.filter(replay_track__project_id=proj.pk).order_by("frame_index")
+    assert frames.count() >= 6
+    assert frames[0].frame_key == "step0_decode_raw"
+    assert frames[1].frame_key == "step0_decode"
 
 
 def test_asteroid_miner_layout_post_project_slug_adds_map_input_to_same_project() -> None:
@@ -131,6 +247,11 @@ def test_asteroid_miner_layout_create_json_accept_existing_project() -> None:
     assert data["in_place"] is True
     assert data["blueprint_code"] == copy2
     assert len(data.get("lab_replay_frames_json") or []) >= 1
+    _assert_optimization_replay_lab_payload(data)
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict)
+    assert attach.get("attached") is True
+    assert attach.get("reason") == "attached"
     assert data["redirect"] == reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})
     assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == n_inputs + 1
 
@@ -158,6 +279,9 @@ def test_asteroid_miner_layout_post_rebuilds_replay_when_track_had_no_frames() -
     assert data["ok"] is True
     assert data["replay_ok"] is True
     assert len(data.get("lab_replay_frames_json") or []) >= 5
+    _assert_optimization_replay_lab_payload(data)
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict) and attach.get("reason") == "attached"
 
 
 def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
@@ -178,6 +302,9 @@ def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
     expected = reverse("web:asteroid-miner-layout-project", kwargs={"slug": proj.slug})
     assert data["redirect"] == expected
     assert len(data.get("lab_replay_frames_json") or []) >= 5
+    _assert_optimization_replay_lab_payload(data)
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict) and attach.get("reason") == "attached"
 
 
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:

@@ -6,14 +6,14 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import Any
 
+from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
+from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_result
 from django_apps.asteroid_lab.services.dto import (
     DecodedBlueprintSnapshotDTO,
     DecodedCellDTO,
-    ExistingLayoutInspectionDTO,
 )
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
-    iter_four_neighbors,
 )
 
 
@@ -33,6 +33,9 @@ def decoded_cell_to_full_map_row(cell: DecodedCellDTO, **extra: Any) -> dict[str
         "transport_kind": cell.transport_kind,
         "tile_type": cell.tile_type,
     }
+    if cell.server_x is not None and cell.server_y is not None:
+        row["server_x"] = cell.server_x
+        row["server_y"] = cell.server_y
     row.update(extra)
     return row
 
@@ -60,82 +63,58 @@ def _without_transport(c: DecodedCellDTO) -> bool:
     return not is_transport_tile(c)
 
 
-def _without_extractors(c: DecodedCellDTO) -> bool:
-    return c.cell_kind not in ("fluid_miner", "shape_miner")
+def _synthetic_asteroid_field_cell(source: DecodedCellDTO, field_cell_kind: str) -> DecodedCellDTO:
+    """Replay-only cell: same (x,y,layer) as removed miner/extension; not in decode BP."""
+
+    return DecodedCellDTO(
+        x=source.x,
+        y=source.y,
+        layer=source.layer,
+        rotation=0,
+        tile_type="",
+        cell_kind=field_cell_kind,
+        transport_kind="none",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={"_replay_synthetic": True, "_from_cell_kind": source.cell_kind},
+        server_x=source.server_x,
+        server_y=source.server_y,
+    )
 
 
-def _without_extensions(c: DecodedCellDTO) -> bool:
-    return c.cell_kind not in ("fluid_miner_extension", "shape_miner_extension")
+def _field_cell_kind_for_miner(c: DecodedCellDTO) -> str:
+    return "asteroid_shape_field" if c.cell_kind == "shape_miner" else "asteroid_fluid_field"
 
 
-def _infer_internal_void_rows(remaining: Sequence[DecodedCellDTO]) -> list[dict[str, Any]]:
-    """Flood-fill from padded AABB border; unreachable empty cells → internal_void."""
+def _field_cell_kind_for_extension(c: DecodedCellDTO) -> str:
+    if c.cell_kind == "shape_miner_extension":
+        return "asteroid_shape_field"
+    return "asteroid_fluid_field"
 
-    if not remaining:
-        return []
-    xs = [c.x for c in remaining]
-    ys = [c.y for c in remaining]
-    mn_x, mx_x = min(xs), max(xs)
-    mn_y, mx_y = min(ys), max(ys)
-    pad = 1
-    w0, w1 = mn_x - pad, mx_x + pad
-    if w0 == 0:
-        w0 = -1
-    h0, h1 = mn_y - pad, mx_y + pad
-    occupied = {(c.x, c.y) for c in remaining}
-    from collections import deque
 
-    q: deque[tuple[int, int]] = deque()
-    seen: set[tuple[int, int]] = set()
+def _replace_miners_with_synthetic_fields(
+    cells: Sequence[DecodedCellDTO],
+) -> tuple[DecodedCellDTO, ...]:
+    out: list[DecodedCellDTO] = []
+    for c in cells:
+        if c.cell_kind in ("fluid_miner", "shape_miner"):
+            out.append(_synthetic_asteroid_field_cell(c, _field_cell_kind_for_miner(c)))
+        else:
+            out.append(c)
+    return tuple(out)
 
-    def try_enqueue(x: int, y: int) -> None:
-        if x == 0:
-            return
-        if x < w0 or x > w1 or y < h0 or y > h1:
-            return
-        if (x, y) in occupied or (x, y) in seen:
-            return
-        seen.add((x, y))
-        q.append((x, y))
 
-    for x in range(w0, w1 + 1):
-        if x == 0:
-            continue
-        try_enqueue(x, h0)
-        try_enqueue(x, h1)
-    for y in range(h0, h1 + 1):
-        if w0 != 0:
-            try_enqueue(w0, y)
-        if w1 != 0:
-            try_enqueue(w1, y)
-
-    while q:
-        x, y = q.popleft()
-        for nx, ny, _nl in iter_four_neighbors(x, y, None):
-            try_enqueue(nx, ny)
-
-    voids: list[dict[str, Any]] = []
-    for x in range(mn_x, mx_x + 1):
-        if x == 0:
-            continue
-        for y in range(mn_y, mx_y + 1):
-            if (x, y) in occupied:
-                continue
-            if (x, y) in seen:
-                continue
-            voids.append(
-                {
-                    "x": x,
-                    "y": y,
-                    "layer": None,
-                    "rotation": 0,
-                    "cell_kind": "internal_void",
-                    "transport_kind": "none",
-                    "tile_type": "",
-                    "replay_role": "internal_void",
-                }
-            )
-    return voids
+def _replace_extensions_with_synthetic_fields(
+    cells: Sequence[DecodedCellDTO],
+) -> tuple[DecodedCellDTO, ...]:
+    out: list[DecodedCellDTO] = []
+    for c in cells:
+        if c.cell_kind in ("fluid_miner_extension", "shape_miner_extension"):
+            out.append(_synthetic_asteroid_field_cell(c, _field_cell_kind_for_extension(c)))
+        else:
+            out.append(c)
+    return tuple(out)
 
 
 def snapshot_summary_from_rows(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
@@ -148,6 +127,7 @@ def snapshot_summary_from_rows(rows: Sequence[dict[str, Any]]) -> dict[str, Any]
         "cell_kind_counts": dict(ck),
         "extractor_count": n("fluid_miner", "shape_miner"),
         "extension_count": n("fluid_miner_extension", "shape_miner_extension"),
+        "field_count": n("asteroid_fluid_field", "asteroid_shape_field"),
         "belt_count": int(ck.get("space_belt", 0)),
         "pipe_count": int(ck.get("space_pipe", 0)),
         "internal_void_count": int(ck.get("internal_void", 0)),
@@ -183,47 +163,35 @@ def build_cleanup_and_reconstruction_rows(
     list[dict[str, Any]],
     list[dict[str, Any]],
     list[dict[str, Any]],
+    dict[str, Any],
 ]:
     """Return full_map rows for transport / extractor / extension cleanup and reconstruction."""
 
     all_cells = snapshot.cells
     after_transport = tuple(c for c in all_cells if _without_transport(c))
-    after_extractors = tuple(c for c in after_transport if _without_extractors(c))
-    after_extensions = tuple(c for c in after_extractors if _without_extensions(c))
-    void_rows = _infer_internal_void_rows(after_extensions)
+    after_extractors = _replace_miners_with_synthetic_fields(after_transport)
+    after_extensions = _replace_extensions_with_synthetic_fields(after_extractors)
     structural = rows_from_cells(after_extensions)
-    reconstruction = structural + void_rows
+    cleanup = load_cleanup_result(snapshot)
+    recon = run_topology_reconstruction(cleanup)
+    reconstruction = rows_from_cells(recon.cells)
+    recon_summary = {**dict(cleanup.summary_json), **dict(recon.summary_json)}
     return (
         rows_from_cells(all_cells),
         rows_from_cells(after_transport),
         rows_from_cells(after_extractors),
         structural,
         reconstruction,
+        dict(recon_summary),
     )
-
-
-def issue_overlay_cells(inspection: ExistingLayoutInspectionDTO) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for iss in inspection.issues:
-        for cell in iss.cells_json:
-            out.append(
-                {
-                    **cell,
-                    "overlay_role": "issue",
-                    "issue_code": iss.issue_code,
-                    "severity": iss.severity,
-                    "equipment_id": iss.equipment_id,
-                }
-            )
-    return out
 
 
 __all__ = [
     "build_cleanup_and_reconstruction_rows",
+    "cell_key_xy_layer",
     "decode_snapshot_summary",
     "decoded_cell_to_full_map_row",
     "diff_maps",
-    "issue_overlay_cells",
     "rows_from_cells",
     "snapshot_summary_from_rows",
 ]

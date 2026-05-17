@@ -1,6 +1,12 @@
 # Current plan
 
-**상태 (2026-05-15)**: `django_apps.shapez_asteroid` 앱, 관련 단위 테스트, 채굴 레이아웃 algorithm 세션 문서를 저장소에서 제거했다.
+**상태 (2026-05-16)**: `django_apps.shapez_asteroid` 앱 제거 이후 웹·솔버·`asteroid_lab` green 유지.
+
+## Asteroid reconstruction (topology fill)
+
+- **`cleanup.wall_coords`**: 디코드 evidence + 제거된 extractor/extension 좌표; belt/pipe는 포함하지 않음 (기존 계약 유지).
+- **`reconstruction` barrier**: `barrier_xy = wall_coords ∪ infer_shell_barrier_coords(...)` — **외부 `external_reachable` flood만** 차단하는 추론 shell(행·열 span 등). cleanup 산출물이 아님.
+- **Fill 허가**: `passes_two_axis_evidence_guard`는 **원본 `wall_coords`만** 사용. `barrier_xy`를 guard에 넣지 않음(추론 벽으로 자기증명·과충전 방지).
 
 ## 현재 초점
 

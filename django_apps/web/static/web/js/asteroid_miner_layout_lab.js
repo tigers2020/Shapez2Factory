@@ -5,6 +5,11 @@
  * - There is no x == 0 column. Horizontal order: ..., -2, -1, 1, 2, ...
  * - (-1, y) is horizontally adjacent to (1, y), not (0, y).
  * - World (1, 0) is the UI anchor: visual column index 0, row y = 0 at grid center (symmetric padding).
+ *
+ * Domain rotation contract (blueprint / server JSON; never mutate ``cell.rotation`` in JS):
+ * - R = 0 means East; R increases by quarter-turns clockwise (0..3).
+ * - Sprite facing fixes are display-only: ``LAB_SPRITE_REGISTRY`` offsetQ / rotationCombine and CSS
+ *   ``rotate`` on the sprite ``img`` only. Do not apply ad-hoc R+1 or rewrite domain rotation.
  */
 (function () {
   "use strict";
@@ -12,15 +17,368 @@
   const GRID_W = 23;
   const GRID_H = 15;
 
-  /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. */
+  /** Lab optimization overlay (11B): when true, paint projection in ``#lab-optimization-overlay-layer`` only. */
+  const ENABLE_LAB_OPTIMIZATION_OVERLAY = false;
+
+  /** Mutable context for 11B overlay renderer (assigned from ``init`` / ``replaceLabReplayPayload``). */
+  const labOverlayCtx = {
+    gridEl: null,
+    hasServerReplay: false,
+    replayLayout: null,
+    resolveCellIndex: null,
+  };
+
+  /** Called after optimization frame panel DOM updates; assigned in ``init`` to refresh 11B overlay. */
+  let labAfterOptimizationPanelDom = function () {};
+
+  /** Canonical map rotation: 0 = East, 1 = South, 2 = West, 3 = North; quarter-turns clockwise. */
+  const DIR = Object.freeze({
+    EAST: 0,
+    SOUTH: 1,
+    WEST: 2,
+    NORTH: 3,
+  });
+
+  const LINK_KEY_TO_DIR = Object.freeze({
+    e: DIR.EAST,
+    s: DIR.SOUTH,
+    w: DIR.WEST,
+    n: DIR.NORTH,
+  });
+
+  const DIR_TO_BRIDGE_SUFFIX = Object.freeze({
+    0: "e",
+    1: "s",
+    2: "w",
+    3: "n",
+  });
+
+  function normalizeQuarterTurns(q) {
+    const n = Number(q);
+    if (!Number.isFinite(n)) return 0;
+    return ((Math.trunc(n) % 4) + 4) % 4;
+  }
+
+  function rotationToDeg(q) {
+    return normalizeQuarterTurns(q) * 90;
+  }
+
+  /**
+   * Sprite quarter-turns from server ``cell.rotation`` (unchanged) and per-file registry ``offsetQ`` /
+   * ``rotationCombine``. Server ``R`` is never rewritten — only display math here.
+   */
+  function combineSpriteRotation(logicalQ, spec) {
+    const q = normalizeQuarterTurns(logicalQ);
+    const offsetQ = normalizeQuarterTurns(spec && spec.offsetQ != null ? spec.offsetQ : 0);
+    const mode = spec && spec.rotationCombine === "sub" ? "sub" : "add";
+    if (mode === "sub") {
+      return normalizeQuarterTurns(offsetQ - q);
+    }
+    return normalizeQuarterTurns(offsetQ + q);
+  }
+
+  function snapToDevicePixel(value) {
+    const dpr = window.devicePixelRatio || 1;
+    return Math.round(Number(value) * dpr) / dpr;
+  }
+
+  /** Resolved column gap in px for ``#lab-replay-grid`` (row gap matches uniform ``gap``). */
+  function labReplayGridGapPx(gridEl) {
+    if (!gridEl || typeof window.getComputedStyle !== "function") {
+      return 0;
+    }
+    const st = window.getComputedStyle(gridEl);
+    const col = parseFloat(String(st.columnGap || st.gap || "0"));
+    return Number.isFinite(col) && col > 0 ? col : 0;
+  }
+
+  /** Zoomed grid cell edge length (px), snapped to device pixels to reduce SVG/img blur. */
+  function labZoomedCellEdgePx(basePx, zoom) {
+    const minCellPx = 4;
+    const raw = Number(basePx) * Number(zoom);
+    if (!Number.isFinite(raw)) return minCellPx;
+    const snapped = snapToDevicePixel(raw);
+    return Math.max(minCellPx, Math.round(snapped));
+  }
+
+  /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. ``relative`` anchors the sprite layer. */
   const LAB_CELL_BASE =
-    "lab-cell shrink-0 rounded-[5px] border bg-slate-950 border-slate-900";
+    "lab-cell relative shrink-0 overflow-visible rounded-[5px] border bg-slate-950 border-slate-900";
+
+  /** Filenames under ``web/assets/sprites/`` (whitelist for ``tile_type`` → URL). */
+  const LAB_SPRITE_KNOWN = new Set([
+    "layout_fluid_miner.svg",
+    "layout_fluid_miner_extension.svg",
+    "layout_shape_miner.svg",
+    "layout_shape_miner_extension.svg",
+    "space_pipe_forward.svg",
+    "space_pipe_left_fwd_merger.svg",
+    "space_pipe_left_turn.svg",
+    "space_pipe_right_fwd_merger.svg",
+    "space_pipe_right_fwd_splitter.svg",
+    "space_pipe_right_turn.svg",
+    "space_pipe_triple_merger.svg",
+    "space_pipe_triple_splitter.svg",
+    "space_pipe_y_merger.svg",
+  ]);
+
+  /**
+   * Per-sprite-file art correction: ``offsetQ`` + ``rotationCombine`` (server ``rotation`` untouched).
+   * ``nativeFacing`` is East (0) for all current Lab SVGs; reserved for audits / tooling.
+   */
+  const LAB_SPRITE_REGISTRY = Object.freeze({
+    "layout_fluid_miner.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "layout_fluid_miner_extension.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "layout_shape_miner.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "layout_shape_miner_extension.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_forward.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_left_fwd_merger.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_left_turn.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_right_fwd_merger.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_right_fwd_splitter.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_right_turn.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_triple_merger.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_triple_splitter.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+    "space_pipe_y_merger.svg": Object.freeze({
+      nativeFacing: DIR.EAST,
+      rotationCombine: "add",
+      offsetQ: 0,
+    }),
+  });
+
+  /** When true, or ``#lab-root`` has ``data-lab-debug-rotation="1"``, grid shows R/S overlay on cells with sprites. */
+  const LAB_DEBUG_ROTATION = false;
+
+  function labRotationDebugEnabled(rootEl) {
+    if (LAB_DEBUG_ROTATION) {
+      return true;
+    }
+    if (rootEl && rootEl.dataset && rootEl.dataset.labDebugRotation === "1") {
+      return true;
+    }
+    return false;
+  }
+
+  /** ``cell_kind`` → sprite file when ``tile_type`` is missing (not used for ambiguous kinds like ``space_pipe``). */
+  const LAB_SPRITE_CELL_KIND_FALLBACK = Object.freeze({
+    fluid_miner: "layout_fluid_miner.svg",
+    fluid_miner_extension: "layout_fluid_miner_extension.svg",
+    shape_miner: "layout_shape_miner.svg",
+    shape_miner_extension: "layout_shape_miner_extension.svg",
+  });
+
+  /** Sprite stack container; styles in ``assets/css/input.css`` (``.lab-cell-sprite-layer``). */
+  const LAB_CELL_SPRITE_LAYER_CLASS = "lab-cell-sprite-layer";
+
+  /** Set in ``init`` from ``#lab-root`` ``data-lab-sprite-base`` (Django ``{% static %}``). */
+  let labSpriteBaseUrl = "";
 
   const rawTotal = window.__ASTEROID_LAB_TOTAL_FRAMES__;
   const TOTAL_FRAMES = Number.isFinite(rawTotal) ? rawTotal : 0;
 
   /** Extra empty cells beyond union bbox on each side (visual col / row), symmetric around (1,0). */
   const REPLAY_GRID_EDGE_PADDING = 5;
+
+  const LAB_VIEWPORT_MIN_SCALE = 0.35;
+  /** Upper bound for wheel cell-pixel zoom (base cell px × zoom). */
+  const LAB_VIEWPORT_MAX_SCALE = 6;
+  const LAB_VIEWPORT_DRAG_THRESHOLD_PX = 6;
+
+  let labViewportInteractionsBound = false;
+
+  function clampNumber(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  /** HUD: ``data-overlay-role``, ``data-cell-kind``, ``data-tile-type`` (cleared in ``resetGridBase``). */
+  function applyLabCellHudAttributes(el, cell, overlayRoleForAttr) {
+    if (!el) return;
+    const r =
+      overlayRoleForAttr != null && String(overlayRoleForAttr) !== ""
+        ? String(overlayRoleForAttr)
+        : "";
+    if (r) {
+      el.setAttribute("data-overlay-role", r);
+    } else {
+      el.removeAttribute("data-overlay-role");
+    }
+    if (cell && cell.cell_kind != null) {
+      el.setAttribute("data-cell-kind", String(cell.cell_kind));
+    } else {
+      el.removeAttribute("data-cell-kind");
+    }
+    if (cell && cell.tile_type != null && String(cell.tile_type) !== "") {
+      el.setAttribute("data-tile-type", String(cell.tile_type));
+    } else {
+      el.removeAttribute("data-tile-type");
+    }
+  }
+
+  /** ``LeftFwdMerger`` / ``YMerger`` → ``left_fwd_merger`` / ``y_merger`` (asset basename segment). */
+  function labPascalSegmentToSnakeLower(segment) {
+    return String(segment)
+      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+      .replace(/([a-z\d])([A-Z])/g, "$1_$2")
+      .toLowerCase();
+  }
+
+  function labSpriteFilenameFromTileType(tileType) {
+    const t = tileType == null ? "" : String(tileType);
+    if (!t) return null;
+    let name = null;
+    if (t.startsWith("SpacePipe_")) {
+      const rest = t.slice("SpacePipe_".length);
+      if (!rest) return null;
+      const slug = labPascalSegmentToSnakeLower(rest);
+      name = "space_pipe_" + slug + ".svg";
+    } else if (t === "Layout_FluidMiner") {
+      name = "layout_fluid_miner.svg";
+    } else if (t === "Layout_FluidMinerExtension") {
+      name = "layout_fluid_miner_extension.svg";
+    }
+    // Shape miners: add ``layout_shape_miner*.svg`` under ``web/assets/sprites/`` and whitelist in ``LAB_SPRITE_KNOWN``.
+    if (!name || !LAB_SPRITE_KNOWN.has(name)) return null;
+    return name;
+  }
+
+  function labSpriteFilenameFromCellKind(cellKind) {
+    const ck = cellKind == null ? "" : String(cellKind);
+    if (!ck) return null;
+    const fn = LAB_SPRITE_CELL_KIND_FALLBACK[ck];
+    if (!fn || !LAB_SPRITE_KNOWN.has(fn)) return null;
+    return fn;
+  }
+
+  function labSpriteFilenameForCell(cell) {
+    if (!cell || typeof cell !== "object") return null;
+    let fn = labSpriteFilenameFromTileType(cell.tile_type);
+    if (!fn && cell.cell_kind != null) {
+      fn = labSpriteFilenameFromCellKind(cell.cell_kind);
+    }
+    return fn;
+  }
+
+  function attachLabSpriteImgNoDrag(img) {
+    if (!img || img.__labSpriteNoDrag) return;
+    img.__labSpriteNoDrag = true;
+    img.draggable = false;
+    img.setAttribute("draggable", "false");
+    img.addEventListener("dragstart", function (ev) {
+      ev.preventDefault();
+    });
+  }
+
+  function ensureLabCellSpriteLayer(cellEl) {
+    let layer = cellEl.querySelector("[data-lab-sprite-layer]");
+    if (!layer) {
+      layer = document.createElement("div");
+      layer.setAttribute("data-lab-sprite-layer", "1");
+      layer.setAttribute("aria-hidden", "true");
+      layer.className = LAB_CELL_SPRITE_LAYER_CLASS;
+      const img = document.createElement("img");
+      img.className = "lab-cell-sprite";
+      img.alt = "";
+      img.setAttribute("aria-hidden", "true");
+      attachLabSpriteImgNoDrag(img);
+      layer.appendChild(img);
+      cellEl.appendChild(layer);
+    }
+    return layer;
+  }
+
+  function clearLabCellSprite(el) {
+    const layer = el.querySelector("[data-lab-sprite-layer]");
+    if (layer) {
+      layer.remove();
+    }
+    el.style.backgroundImage = "";
+    el.style.backgroundSize = "";
+    el.style.backgroundPosition = "";
+    el.style.backgroundRepeat = "";
+    el.style.transform = "";
+    el.removeAttribute("data-lab-sprite");
+    el.removeAttribute("data-r");
+    el.removeAttribute("data-sprite-q");
+    el.removeAttribute("data-sprite-file");
+  }
+
+  function applyLabCellSprite(el, cell) {
+    clearLabCellSprite(el);
+    if (!labSpriteBaseUrl || !cell || typeof cell !== "object") return;
+    const fn = labSpriteFilenameForCell(cell);
+    if (!fn) return;
+    const spec = LAB_SPRITE_REGISTRY[fn];
+    if (!spec) return;
+    const layer = ensureLabCellSpriteLayer(el);
+    const img = layer.querySelector("img.lab-cell-sprite");
+    if (!img) return;
+    attachLabSpriteImgNoDrag(img);
+    const base = String(labSpriteBaseUrl).replace(/\/?$/, "/");
+    img.src = base + fn;
+    const logicalQ = normalizeQuarterTurns(cell.rotation);
+    const spriteQ = combineSpriteRotation(logicalQ, spec);
+    const deg = rotationToDeg(spriteQ);
+    if (deg !== 0) {
+      img.style.transform = "rotate(" + String(deg) + "deg)";
+    } else {
+      img.style.transform = "";
+    }
+    layer.setAttribute("data-lab-sprite", fn);
+    const rootDbg = document.getElementById("lab-root");
+    if (labRotationDebugEnabled(rootDbg)) {
+      el.setAttribute("data-r", String(logicalQ));
+      el.setAttribute("data-sprite-q", String(spriteQ));
+      el.setAttribute("data-sprite-file", fn);
+    }
+  }
 
   function readJsonScript(id) {
     const el = document.getElementById(id);
@@ -31,6 +389,560 @@
       return JSON.parse(el.textContent);
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Sequence 10A — optimization replay bootstrap (parse + frozen metadata only).
+   * Missing ``#optimization-replay-json`` or malformed JSON yields ``EMPTY_OPTIMIZATION_REPLAY_TRACK``
+   * (fallback contract; no throw, no console, not wired to solver or replay renderer).
+   */
+  const OPTIMIZATION_REPLAY_SCRIPT_ID = "optimization-replay-json";
+  const EMPTY_OPTIMIZATION_REPLAY_TRACK = Object.freeze({
+    track_id: "optimization",
+    track_label: "Optimization",
+    frame_count: 0,
+    frames: Object.freeze([]),
+    metrics: Object.freeze({
+      frame_count: 0,
+      event_type_counts: Object.freeze({}),
+      replay_truncated: false,
+    }),
+  });
+
+  function readJsonScriptPayload(scriptId, fallback) {
+    const el = document.getElementById(scriptId);
+    if (!el) return fallback;
+    try {
+      const parsed = JSON.parse(el.textContent || "null");
+      return parsed == null ? fallback : parsed;
+    } catch (_err) {
+      return fallback;
+    }
+  }
+
+  function normalizeOptimizationReplayTrack(raw) {
+    if (!raw || typeof raw !== "object") return EMPTY_OPTIMIZATION_REPLAY_TRACK;
+
+    const frames = Array.isArray(raw.frames) ? raw.frames.slice() : [];
+    const metricsRaw = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
+
+    return Object.freeze({
+      track_id: typeof raw.track_id === "string" ? raw.track_id : "optimization",
+      track_label: typeof raw.track_label === "string" ? raw.track_label : "Optimization",
+      frame_count: Number.isFinite(Number(raw.frame_count)) ? Number(raw.frame_count) : frames.length,
+      frames: Object.freeze(frames),
+      metrics: Object.freeze({
+        frame_count: Number.isFinite(Number(metricsRaw.frame_count))
+          ? Number(metricsRaw.frame_count)
+          : frames.length,
+        event_type_counts:
+          metricsRaw.event_type_counts && typeof metricsRaw.event_type_counts === "object"
+            ? Object.freeze({ ...metricsRaw.event_type_counts })
+            : Object.freeze({}),
+        replay_truncated: Boolean(metricsRaw.replay_truncated),
+      }),
+    });
+  }
+
+  let optimizationReplayTrack = normalizeOptimizationReplayTrack(
+    readJsonScriptPayload(OPTIMIZATION_REPLAY_SCRIPT_ID, EMPTY_OPTIMIZATION_REPLAY_TRACK),
+  );
+
+  /**
+   * Sequence 10B — optimization replay metadata only (no overlay, no lab frame index sync).
+   * Do not read optimization frame geometry here; lab replay still drives the grid.
+   */
+  function hasOptimizationReplayFrames(track) {
+    return Boolean(track && Array.isArray(track.frames) && track.frames.length > 0);
+  }
+
+  function optimizationReplayFrameCount(track) {
+    return track && Array.isArray(track.frames) ? track.frames.length : 0;
+  }
+
+  function optimizationReplayEventTypeCounts(track) {
+    const metrics = track && track.metrics && typeof track.metrics === "object" ? track.metrics : {};
+    const counts =
+      metrics.event_type_counts && typeof metrics.event_type_counts === "object"
+        ? metrics.event_type_counts
+        : {};
+    return Object.freeze({ ...counts });
+  }
+
+  function buildOptimizationReplayTrackSummary(track) {
+    const frameCount = optimizationReplayFrameCount(track);
+    const counts = optimizationReplayEventTypeCounts(track);
+    return Object.freeze({
+      trackId: typeof track?.track_id === "string" ? track.track_id : "optimization",
+      trackLabel: typeof track?.track_label === "string" ? track.track_label : "Optimization",
+      frameCount,
+      replayTruncated: Boolean(track?.metrics?.replay_truncated),
+      eventTypeCounts: counts,
+    });
+  }
+
+  /**
+   * Sequence 10C — optimization replay summary panel (format + render helpers).
+   */
+  function formatOptimizationReplaySummary(summary) {
+    const label =
+      summary && typeof summary.trackLabel === "string" ? summary.trackLabel : "Optimization";
+    const count =
+      summary && Number.isFinite(Number(summary.frameCount)) ? Number(summary.frameCount) : 0;
+    const truncated = Boolean(summary && summary.replayTruncated);
+    const suffix = truncated ? " · truncated" : "";
+    return label + ": " + String(count) + " frame" + (count === 1 ? "" : "s") + suffix;
+  }
+
+  function formatOptimizationReplayEventCounts(summary) {
+    const counts =
+      summary && summary.eventTypeCounts && typeof summary.eventTypeCounts === "object"
+        ? summary.eventTypeCounts
+        : {};
+    const keys = Object.keys(counts).sort();
+    if (!keys.length) return "No optimization events";
+    return keys
+      .slice(0, 3)
+      .map(function (k) {
+        return k + ": " + counts[k];
+      })
+      .join(" · ");
+  }
+
+  function renderOptimizationReplaySummary(summary) {
+    const el = document.getElementById("lab-optimization-replay-summary-value");
+    if (!el) return;
+    el.textContent = formatOptimizationReplaySummary(summary);
+    const ev = document.getElementById("lab-optimization-replay-event-counts");
+    if (!ev) return;
+    ev.textContent = formatOptimizationReplayEventCounts(summary);
+  }
+
+  renderOptimizationReplaySummary(
+    buildOptimizationReplayTrackSummary(optimizationReplayTrack),
+  );
+
+  /**
+   * Sequence 10D — selected optimization replay frame metadata (text only; no geometry, no lab sync).
+   */
+  function selectedOptimizationReplayFrame(track, frameIndex) {
+    if (!track || !Array.isArray(track.frames)) return null;
+    if (!Number.isInteger(frameIndex)) return null;
+    if (frameIndex < 0 || frameIndex >= track.frames.length) return null;
+    return track.frames[frameIndex] || null;
+  }
+
+  function formatOptimizationReplayFrameMetadata(frame) {
+    if (!frame || typeof frame !== "object") {
+      return Object.freeze({
+        title: "No optimization frame selected",
+        eventType: "—",
+        description: "—",
+        metricsSummary: "No metrics",
+      });
+    }
+
+    const metrics =
+      frame.metrics && typeof frame.metrics === "object" ? frame.metrics : {};
+
+    const metricKeys = Object.keys(metrics).sort();
+
+    return Object.freeze({
+      title:
+        typeof frame.title === "string" && frame.title ? frame.title : "Optimization Frame",
+      eventType: typeof frame.event_type === "string" ? frame.event_type : "—",
+      description:
+        typeof frame.description === "string" && frame.description ? frame.description : "—",
+      metricsSummary:
+        metricKeys.length > 0 ? metricKeys.slice(0, 5).join(" · ") : "No metrics",
+    });
+  }
+
+  function renderOptimizationReplayFrameMetadata(meta) {
+    const titleEl = document.getElementById("lab-optimization-frame-title");
+    if (titleEl) titleEl.textContent = meta.title;
+    const evEl = document.getElementById("lab-optimization-frame-event");
+    if (evEl) evEl.textContent = meta.eventType;
+    const descEl = document.getElementById("lab-optimization-frame-description");
+    if (descEl) descEl.textContent = meta.description;
+    const metEl = document.getElementById("lab-optimization-frame-metrics");
+    if (metEl) metEl.textContent = meta.metricsSummary;
+  }
+
+  /**
+   * Sequence 10E — optimization replay frame navigation (metadata + index display only; no lab sync).
+   */
+  let optimizationReplayFrameIndex = 0;
+
+  function clampOptimizationReplayFrameIndex(track, idx) {
+    const len = Array.isArray(track?.frames) ? track.frames.length : 0;
+    if (len <= 0) return 0;
+    return Math.max(0, Math.min(len - 1, idx));
+  }
+
+  function currentOptimizationReplayFrame(track) {
+    return selectedOptimizationReplayFrame(
+      track,
+      clampOptimizationReplayFrameIndex(track, optimizationReplayFrameIndex),
+    );
+  }
+
+  function renderOptimizationReplayFramePanel() {
+    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
+    const meta = formatOptimizationReplayFrameMetadata(frame);
+
+    renderOptimizationReplayFrameMetadata(meta);
+
+    const el = document.getElementById("lab-optimization-frame-display");
+    if (!el) {
+      labAfterOptimizationPanelDom();
+      return;
+    }
+
+    const len = optimizationReplayFrameCount(optimizationReplayTrack);
+    const current =
+      len > 0
+        ? clampOptimizationReplayFrameIndex(optimizationReplayTrack, optimizationReplayFrameIndex) +
+          1
+        : 0;
+
+    el.textContent = String(current) + " / " + String(len);
+    labAfterOptimizationPanelDom();
+  }
+
+  document.getElementById("lab-optimization-frame-prev")?.addEventListener("click", function () {
+    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
+      optimizationReplayTrack,
+      optimizationReplayFrameIndex - 1,
+    );
+    renderOptimizationReplayFramePanel();
+  });
+
+  document.getElementById("lab-optimization-frame-next")?.addEventListener("click", function () {
+    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
+      optimizationReplayTrack,
+      optimizationReplayFrameIndex + 1,
+    );
+    renderOptimizationReplayFramePanel();
+  });
+
+  renderOptimizationReplayFramePanel();
+
+  /**
+   * Sequence 12A — swap optimization replay track from Run Solver JSON without touching Lab replay.
+   * Does not call ``applyFrame``; does not sync ``optimizationReplayFrameIndex`` with Lab frame index.
+   */
+  function replaceOptimizationReplayPayload(nextPayload) {
+    if (nextPayload == null || typeof nextPayload !== "object") {
+      return;
+    }
+    optimizationReplayTrack = normalizeOptimizationReplayTrack(nextPayload);
+    optimizationReplayFrameIndex = 0;
+    renderOptimizationReplaySummary(
+      buildOptimizationReplayTrackSummary(optimizationReplayTrack),
+    );
+    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
+      optimizationReplayTrack,
+      optimizationReplayFrameIndex,
+    );
+    renderOptimizationReplayFramePanel();
+  }
+
+  /**
+   * Sequence 11A — readonly overlay projection adapter.
+   *
+   * Input: a single optimization replay ``frame`` object (``visible_cells`` / ``overlay_cells`` JSON).
+   * Output: ``{ cells, diagnostics }`` for future overlay renderers (11B). **projection ≠ rendering**.
+   *
+   * - Does **not** mutate ``frame`` or Lab replay frame payloads.
+   * - Does **not** read or write Lab replay timeline index or optimization-only frame index (no implicit sync).
+   * - Server-dense ``Coord`` ``{x,y}`` → Lab **world** ``(x,y)`` (same convention as ``lab_replay`` cells)
+   *   using right-bottom bbox seam: ``dense_x = max_dense_x - server_x``, ``raw_x = 2 * dense_x - 1``,
+   *   ``raw_y = server_y + min_raw_y`` (mirrors ``server_coords.server_xy_for_raw_xy`` inverse).
+   * - Bbox: ``frame.metrics.lab_projection_max_dense_x`` + ``lab_projection_min_raw_y``, or
+   *   ``frame.metrics.server_xy_params`` as ``[max_dense_x, min_raw_y]``. Missing → cells dropped
+   *   with ``missing_lab_projection_bbox``.
+   * - Optional passthrough: ``lab_world_x`` / ``lab_world_y`` on a cell (non-zero x) skips server conversion.
+   */
+  function projectOptimizationReplayFrameToLabOverlay(frame) {
+    const diagnostics = {
+      inputVisibleCellCount: 0,
+      inputOverlayCellCount: 0,
+      projectedCellCount: 0,
+      droppedCellCount: 0,
+      dropReasons: {},
+    };
+
+    function bumpDrop(reason) {
+      const r = String(reason || "unknown");
+      diagnostics.droppedCellCount += 1;
+      diagnostics.dropReasons[r] = (diagnostics.dropReasons[r] || 0) + 1;
+    }
+
+    if (!frame || typeof frame !== "object") {
+      return { cells: [], diagnostics: diagnostics };
+    }
+
+    const metrics = frame.metrics && typeof frame.metrics === "object" ? frame.metrics : null;
+    let maxDenseX = null;
+    let minRawY = null;
+    if (metrics) {
+      const md = metrics.lab_projection_max_dense_x;
+      const my = metrics.lab_projection_min_raw_y;
+      if (Number.isFinite(Number(md)) && Number.isFinite(Number(my))) {
+        maxDenseX = Number(md);
+        minRawY = Number(my);
+      } else if (Array.isArray(metrics.server_xy_params) && metrics.server_xy_params.length >= 2) {
+        maxDenseX = Number(metrics.server_xy_params[0]);
+        minRawY = Number(metrics.server_xy_params[1]);
+      }
+    }
+    const bboxOk =
+      Number.isFinite(maxDenseX) &&
+      Number.isFinite(minRawY) &&
+      Number.isInteger(maxDenseX) &&
+      Number.isInteger(minRawY) &&
+      maxDenseX >= 0;
+
+    const vis = Array.isArray(frame.visible_cells) ? frame.visible_cells : [];
+    const ovl = Array.isArray(frame.overlay_cells) ? frame.overlay_cells : [];
+    diagnostics.inputVisibleCellCount = vis.length;
+    diagnostics.inputOverlayCellCount = ovl.length;
+
+    const eventType =
+      typeof frame.event_type === "string" && frame.event_type ? frame.event_type : null;
+
+    function extractSpatial(cell) {
+      if (!cell || typeof cell !== "object") return null;
+      const lwx = cell.lab_world_x;
+      const lwy = cell.lab_world_y;
+      if (lwx != null && lwy != null) {
+        const wx = Number(lwx);
+        const wy = Number(lwy);
+        if (Number.isFinite(wx) && Number.isFinite(wy) && wx !== 0) {
+          return { mode: "lab_world", rawX: wx, rawY: wy };
+        }
+      }
+      const coord = cell.coord && typeof cell.coord === "object" ? cell.coord : cell;
+      const sx = Number(coord.x);
+      const sy = Number(coord.y);
+      if (!Number.isFinite(sx) || !Number.isFinite(sy)) return null;
+      return { mode: "server", serverX: sx, serverY: sy };
+    }
+
+    function serverDenseToLabWorldXY(serverX, serverY) {
+      const denseX = maxDenseX - serverX;
+      const rawX = 2 * denseX - 1;
+      const rawY = serverY + minRawY;
+      return { rawX: rawX, rawY: rawY };
+    }
+
+    function projectOne(cell, layer) {
+      const sp = extractSpatial(cell);
+      if (!sp) {
+        bumpDrop("missing_coord");
+        return null;
+      }
+      let rawX;
+      let rawY;
+      if (sp.mode === "lab_world") {
+        rawX = sp.rawX;
+        rawY = sp.rawY;
+      } else {
+        if (!bboxOk) {
+          bumpDrop("missing_lab_projection_bbox");
+          return null;
+        }
+        const w = serverDenseToLabWorldXY(sp.serverX, sp.serverY);
+        rawX = w.rawX;
+        rawY = w.rawY;
+      }
+      if (rawX === 0 || !Number.isFinite(rawX) || !Number.isFinite(rawY)) {
+        bumpDrop("invalid_lab_world_xy");
+        return null;
+      }
+      if (visualCol(rawX) == null) {
+        bumpDrop("invalid_lab_world_xy");
+        return null;
+      }
+
+      const candidateId =
+        cell.candidate_id != null
+          ? String(cell.candidate_id)
+          : cell.candidateId != null
+            ? String(cell.candidateId)
+            : null;
+      const routeReservationId =
+        cell.route_reservation_id != null
+          ? String(cell.route_reservation_id)
+          : cell.routeReservationId != null
+            ? String(cell.routeReservationId)
+            : null;
+      let transportKind =
+        cell.transport_kind != null
+          ? String(cell.transport_kind)
+          : cell.transportKind != null
+            ? String(cell.transportKind)
+            : null;
+      if (transportKind === "null") transportKind = null;
+
+      let severity = null;
+      if (cell.severity != null) severity = String(cell.severity);
+
+      diagnostics.projectedCellCount += 1;
+      return {
+        x: rawX,
+        y: rawY,
+        role: "optimization_overlay",
+        source: "optimization_replay",
+        overlayLayer: layer,
+        eventType: eventType,
+        candidateId: candidateId,
+        routeReservationId: routeReservationId,
+        transportKind: transportKind,
+        severity: severity,
+      };
+    }
+
+    const out = [];
+    for (let i = 0; i < vis.length; i++) {
+      const row = projectOne(vis[i], "visible");
+      if (row) out.push(row);
+    }
+    for (let j = 0; j < ovl.length; j++) {
+      const row2 = projectOne(ovl[j], "overlay");
+      if (row2) out.push(row2);
+    }
+
+    return { cells: out, diagnostics: diagnostics };
+  }
+
+  /**
+   * Sequence 11B — feature-flagged optimization replay overlay rendering.
+   *
+   * Renders only into ``#lab-optimization-overlay-layer`` (never mutates ``#lab-replay-grid`` cell nodes).
+   * Geometry comes exclusively from ``projectOptimizationReplayFrameToLabOverlay``; no Lab vs optimization
+   * frame index sync and no Lab replay payload mutation.
+   */
+  function clearOptimizationReplayOverlay() {
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (!layer) return;
+    layer.replaceChildren();
+  }
+
+  function syncOptimizationOverlayLayerGridStyles() {
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (!layer || !labOverlayCtx.gridEl) return;
+    const g = labOverlayCtx.gridEl;
+    layer.style.display = "grid";
+    layer.style.gridTemplateColumns = g.style.gridTemplateColumns || "";
+    layer.style.gridTemplateRows = g.style.gridTemplateRows || "";
+    const cs = g.style.getPropertyValue("--lab-cell-size");
+    if (cs) {
+      layer.style.setProperty("--lab-cell-size", cs);
+    }
+    const gap = window.getComputedStyle(g).gap;
+    if (gap) {
+      layer.style.gap = gap;
+    }
+  }
+
+  function renderLabOptimizationOverlayDiagnostics(diagnostics) {
+    const el = document.getElementById("lab-optimization-overlay-diagnostics");
+    if (!el) return;
+    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
+      el.textContent = "—";
+      return;
+    }
+    if (!diagnostics || typeof diagnostics !== "object") {
+      el.textContent = "—";
+      return;
+    }
+    const p = Number(diagnostics.projectedCellCount) || 0;
+    const dr = Number(diagnostics.droppedCellCount) || 0;
+    const reasons =
+      diagnostics.dropReasons && typeof diagnostics.dropReasons === "object"
+        ? diagnostics.dropReasons
+        : {};
+    const mb = Number(reasons.missing_lab_projection_bbox) || 0;
+    el.textContent =
+      "projected: " + String(p) + " · dropped: " + String(dr) + " · missing bbox: " + String(mb);
+  }
+
+  function renderLabOptimizationOverlayCells(projectionCells) {
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (!layer || !Array.isArray(projectionCells)) return;
+    layer.replaceChildren();
+    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) return;
+    const ctx = labOverlayCtx;
+    if (!ctx.hasServerReplay || !ctx.replayLayout || typeof ctx.resolveCellIndex !== "function") {
+      return;
+    }
+    const rl = ctx.replayLayout;
+    const gw = rl.gridW;
+    for (let i = 0; i < projectionCells.length; i++) {
+      const c = projectionCells[i];
+      if (!c || typeof c !== "object") continue;
+      const idx = ctx.resolveCellIndex({ x: c.x, y: c.y });
+      if (idx == null || idx < 0) continue;
+      const col = idx % gw;
+      const row = Math.floor(idx / gw);
+      const mark = document.createElement("div");
+      mark.setAttribute("data-lab-opt-overlay-cell", "1");
+      mark.setAttribute("aria-hidden", "true");
+      mark.className =
+        "pointer-events-none min-h-0 min-w-0 rounded-[5px] ring-2 ring-inset ring-fuchsia-400/45";
+      mark.style.gridColumn = String(col + 1);
+      mark.style.gridRow = String(row + 1);
+      layer.appendChild(mark);
+    }
+  }
+
+  function renderOptimizationReplayOverlay() {
+    const shell = document.getElementById("lab-optimization-overlay-layer");
+    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
+      clearOptimizationReplayOverlay();
+      if (shell) shell.classList.add("hidden");
+      renderLabOptimizationOverlayDiagnostics(null);
+      return;
+    }
+    if (shell) shell.classList.remove("hidden");
+
+    if (!labOverlayCtx.hasServerReplay || !labOverlayCtx.replayLayout) {
+      clearOptimizationReplayOverlay();
+      if (shell) shell.classList.add("hidden");
+      const el = document.getElementById("lab-optimization-overlay-diagnostics");
+      if (el) {
+        el.textContent =
+          "projected: 0 · dropped: 0 · missing bbox: 0 (needs server Lab replay grid + flag)";
+      }
+      return;
+    }
+
+    syncOptimizationOverlayLayerGridStyles();
+    clearOptimizationReplayOverlay();
+
+    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
+    const projection = projectOptimizationReplayFrameToLabOverlay(frame);
+    renderLabOptimizationOverlayCells(projection.cells);
+    renderLabOptimizationOverlayDiagnostics(projection.diagnostics);
+  }
+
+  function getCookie(name) {
+    const prefix = "; " + name + "=";
+    const raw = document.cookie;
+    const start = raw.indexOf(prefix);
+    if (start < 0) {
+      return "";
+    }
+    const from = start + prefix.length;
+    const end = raw.indexOf(";", from);
+    const token = end < 0 ? raw.substring(from) : raw.substring(from, end);
+    try {
+      return decodeURIComponent(token);
+    } catch {
+      return token;
     }
   }
 
@@ -53,7 +965,15 @@
     return 0;
   }
 
-  /** World x to dense visual column; x === 0 is invalid (null). */
+  /** World x to dense column index (no x===0); mirrors server_coords.raw_x_to_dense_x. */
+  function rawXToDenseX(x) {
+    const xi = Number(x);
+    if (!Number.isFinite(xi) || xi === 0) return null;
+    if (xi < 0) return Math.floor((xi + 1) / 2);
+    return Math.floor((xi - 1) / 2) + 1;
+  }
+
+  /** World x to dense visual column; x === 0 is invalid (null). Legacy Lab anchor. */
   function visualCol(x) {
     const xi = Number(x);
     if (!Number.isFinite(xi)) return null;
@@ -151,10 +1071,6 @@
     pushCellList(out, fullMapCellsFromFrame(frame), "");
     const diffT = collectDiffPaintTargets(frame);
     for (let i = 0; i < diffT.length; i++) out.push(diffT[i]);
-    const ov = frame.cell_overlay_json;
-    if (ov && typeof ov === "object") {
-      pushCellList(out, ov.issue_cells, "issue");
-    }
     return out;
   }
 
@@ -166,7 +1082,6 @@
     pushCellList(out, overlay.cells, "");
     pushCellList(out, overlay.equipment_cells, "equipment");
     pushCellList(out, overlay.equipment, "equipment");
-    pushCellList(out, overlay.issue_cells, "issue");
     pushCellList(out, overlay.adjacent_transport, "adjacent_transport");
     pushFromComponentBlocks(out, overlay.components, "transport");
     pushFromComponentBlocks(out, overlay.transport_components, "transport");
@@ -186,7 +1101,6 @@
       "cells",
       "equipment_cells",
       "equipment",
-      "issue_cells",
       "adjacent_transport",
       "components",
       "transport_components",
@@ -207,6 +1121,10 @@
   }
 
   function computeReplayGridLayout(replayFrames) {
+    /* Lab grid uses ``visualCol`` (raw world X/Y) only. ``server_x``/``server_y`` on cells are for
+     * backend/fingerprint; mapping them to pixel columns via dense inverse makes X step by 2 on
+     * the positive side, which is confusing in this UI.
+     */
     let minD = Infinity;
     let maxD = -Infinity;
     let minR = Infinity;
@@ -249,9 +1167,6 @@
 
   function overlayToneClasses(role, cell) {
     const r = String(role || "");
-    if (r === "issue" || (cell && cell.issue_code)) {
-      return "ring-1 ring-inset ring-red-500/70 bg-red-950/30";
-    }
     if (r === "equipment" || r === "equipment_cells") {
       return "ring-1 ring-inset ring-amber-400/50 bg-amber-950/20";
     }
@@ -269,9 +1184,6 @@
 
   function toneForFullMapCell(cell) {
     const ck = cell && cell.cell_kind != null ? String(cell.cell_kind) : "";
-    if (ck === "internal_void") {
-      return "ring-1 ring-inset ring-zinc-500/50 bg-zinc-900/35";
-    }
     if (ck === "space_pipe" || ck === "space_belt") {
       return "ring-1 ring-inset ring-cyan-400/40 bg-cyan-950/20";
     }
@@ -280,6 +1192,12 @@
     }
     if (ck === "fluid_miner_extension" || ck === "shape_miner_extension") {
       return "ring-1 ring-inset ring-amber-300/40 bg-amber-950/12";
+    }
+    if (ck === "asteroid_fluid_field") {
+      return "ring-1 ring-inset ring-teal-400/50 bg-teal-950/28";
+    }
+    if (ck === "asteroid_shape_field") {
+      return "ring-1 ring-inset ring-emerald-400/50 bg-emerald-950/28";
     }
     return overlayToneClasses("", cell);
   }
@@ -303,13 +1221,18 @@
     for (let i = 0; i < cells.length; i++) {
       const cell = cells[i];
       if (!cell || typeof cell !== "object") continue;
-      const idx = resolveCellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = toneForFullMapCell(cell);
       const el = domCells[idx];
       el.className = base + " " + tone;
-      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
+      applyLabCellHudAttributes(
+        el,
+        cell,
+        cell.overlay_role != null ? String(cell.overlay_role) : "",
+      );
+      applyLabCellSprite(el, cell);
     }
   }
 
@@ -318,32 +1241,121 @@
     for (let i = 0; i < targets.length; i++) {
       const cell = targets[i].cell;
       const role = targets[i].role;
-      const idx = resolveCellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const tone = toneForDiffRole(role);
       if (!tone) continue;
       const base = baseClasses[idx] || "";
       const el = domCells[idx];
       el.className = base + " " + tone;
-      el.setAttribute("data-overlay-role", role);
+      applyLabCellHudAttributes(el, cell, role);
+      applyLabCellSprite(el, cell);
     }
   }
 
-  function renderIssueOverlayOnly(baseClasses, domCells, overlay, resolveCellIndex) {
-    const list = overlay && typeof overlay === "object" ? overlay.issue_cells : null;
-    if (!Array.isArray(list)) return;
-    for (let i = 0; i < list.length; i++) {
-      const cell = list[i];
-      if (!cell || typeof cell !== "object") continue;
-      const idx = resolveCellIndex(cell.x, cell.y);
-      if (idx == null || idx < 0 || idx >= domCells.length) continue;
-      const base = baseClasses[idx] || "";
-      const tone = overlayToneClasses("issue", cell);
-      const el = domCells[idx];
-      el.className = base + " " + tone;
-      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
-      el.setAttribute("data-overlay-role", "issue");
+  /** Bright per-bundle stroke on outer edges (``equipment_bundles`` from replay overlay). */
+  var BUNDLE_EDGE_PALETTE = [
+    { n: "border-t-2 border-t-yellow-300", e: "border-r-2 border-r-yellow-300", s: "border-b-2 border-b-yellow-300", w: "border-l-2 border-l-yellow-300" },
+    { n: "border-t-2 border-t-lime-300", e: "border-r-2 border-r-lime-300", s: "border-b-2 border-b-lime-300", w: "border-l-2 border-l-lime-300" },
+    { n: "border-t-2 border-t-cyan-300", e: "border-r-2 border-r-cyan-300", s: "border-b-2 border-b-cyan-300", w: "border-l-2 border-l-cyan-300" },
+    { n: "border-t-2 border-t-fuchsia-300", e: "border-r-2 border-r-fuchsia-300", s: "border-b-2 border-b-fuchsia-300", w: "border-l-2 border-l-fuchsia-300" },
+    { n: "border-t-2 border-t-orange-300", e: "border-r-2 border-r-orange-300", s: "border-b-2 border-b-orange-300", w: "border-l-2 border-l-orange-300" },
+    { n: "border-t-2 border-t-sky-300", e: "border-r-2 border-r-sky-300", s: "border-b-2 border-b-sky-300", w: "border-l-2 border-l-sky-300" },
+  ];
+
+  /** Inset fill per bundle id (paired with ``BUNDLE_EDGE_PALETTE``); not Tailwind — avoids purge. */
+  var BUNDLE_FILL_INSET_RGBA = [
+    "rgba(253, 224, 71, 0.14)",
+    "rgba(190, 242, 100, 0.14)",
+    "rgba(103, 232, 249, 0.14)",
+    "rgba(240, 171, 252, 0.14)",
+    "rgba(254, 215, 170, 0.14)",
+    "rgba(125, 211, 252, 0.14)",
+  ];
+
+  /** Solid bridge bars (paired with ``BUNDLE_EDGE_PALETTE`` / inset fill). */
+  var BUNDLE_BRIDGE_HEX = [
+    "#fde047",
+    "#bef264",
+    "#67e8f9",
+    "#f0abfc",
+    "#fdba74",
+    "#7dd3fc",
+  ];
+
+  function clearLabCellBundleBridges(el) {
+    if (!el || !el.querySelectorAll) return;
+    var bridges = el.querySelectorAll("[data-lab-bundle-bridge]");
+    for (var i = 0; i < bridges.length; i++) {
+      bridges[i].remove();
     }
+  }
+
+  function cellOverlayJsonFromFrame(frame) {
+    if (!frame || typeof frame !== "object") return null;
+    var top = frame.cell_overlay_json;
+    if (top && typeof top === "object") return top;
+    var p = frame.frame_payload;
+    if (p && typeof p === "object" && p.cell_overlay_json && typeof p.cell_overlay_json === "object") {
+      return p.cell_overlay_json;
+    }
+    return null;
+  }
+
+  /** ``cell_overlay_json``: ``equipment_bundles[].cells_json`` with ``bundle_edges`` (hull) + ``bundle_links`` (gap bridges). */
+  function applyEquipmentBundleGroupVisualsFromOverlay(ov, domCells, resolveCellIndex) {
+    if (!ov || typeof ov !== "object") return;
+    var bundles = ov.equipment_bundles;
+    if (!Array.isArray(bundles) || bundles.length === 0) return;
+    for (var bi = 0; bi < bundles.length; bi++) {
+      var block = bundles[bi];
+      if (!block || typeof block !== "object") continue;
+      var bid = Number(block.bundle_id);
+      var pi = (Number.isFinite(bid) ? bid - 1 : 0) % BUNDLE_EDGE_PALETTE.length;
+      if (pi < 0) pi = 0;
+      var colors = BUNDLE_EDGE_PALETTE[pi];
+      var fillRgba = BUNDLE_FILL_INSET_RGBA[pi % BUNDLE_FILL_INSET_RGBA.length];
+      var cells = block.cells_json;
+      if (!Array.isArray(cells)) continue;
+      for (var ci = 0; ci < cells.length; ci++) {
+        var cell = cells[ci];
+        if (!cell || typeof cell !== "object") continue;
+        var idx = resolveCellIndex(cell);
+        if (idx == null || idx < 0 || idx >= domCells.length) continue;
+        var el = domCells[idx];
+        clearLabCellBundleBridges(el);
+        el.style.boxShadow = "inset 0 0 0 9999px " + fillRgba;
+        var edges = cell.bundle_edges != null ? String(cell.bundle_edges) : "";
+        var parts = [];
+        if (edges.indexOf("n") >= 0) parts.push(colors.n);
+        if (edges.indexOf("e") >= 0) parts.push(colors.e);
+        if (edges.indexOf("s") >= 0) parts.push(colors.s);
+        if (edges.indexOf("w") >= 0) parts.push(colors.w);
+        if (parts.length) {
+          el.className = el.className + " " + parts.join(" ");
+        }
+        var linkStr = cell.bundle_links != null ? String(cell.bundle_links) : "";
+        if (linkStr) {
+          var hex = BUNDLE_BRIDGE_HEX[pi % BUNDLE_BRIDGE_HEX.length];
+          for (var li = 0; li < linkStr.length; li++) {
+            var d = linkStr.charAt(li);
+            var dir = LINK_KEY_TO_DIR[d];
+            if (dir === undefined) continue;
+            var suffix = DIR_TO_BRIDGE_SUFFIX[dir];
+            var br = document.createElement("div");
+            br.setAttribute("data-lab-bundle-bridge", "1");
+            br.setAttribute("aria-hidden", "true");
+            br.className = "lab-bundle-bridge lab-bundle-bridge-" + suffix;
+            br.style.backgroundColor = hex;
+            el.appendChild(br);
+          }
+        }
+      }
+    }
+  }
+
+  function applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex) {
+    applyEquipmentBundleGroupVisualsFromOverlay(cellOverlayJsonFromFrame(frame), domCells, resolveCellIndex);
   }
 
   function renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex) {
@@ -352,13 +1364,15 @@
     pushCellList(targets, cells, "");
     for (let i = 0; i < targets.length; i++) {
       const cell = targets[i].cell;
-      const idx = resolveCellIndex(cell.x, cell.y);
+      const role = targets[i].role;
+      const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = overlayToneClasses("decode", cell);
       const el = domCells[idx];
       el.className = base + " " + tone;
-      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
+      applyLabCellHudAttributes(el, cell, role != null ? String(role) : "");
+      applyLabCellSprite(el, cell);
     }
   }
 
@@ -367,14 +1381,14 @@
     for (let i = 0; i < targets.length; i++) {
       const cell = targets[i].cell;
       const role = targets[i].role;
-      const idx = resolveCellIndex(cell.x, cell.y);
+      const idx = resolveCellIndex(cell);
       if (idx == null || idx < 0 || idx >= domCells.length) continue;
       const base = baseClasses[idx] || "";
       const tone = overlayToneClasses(role, cell);
       const el = domCells[idx];
       el.className = base + " " + tone;
-      if (cell.cell_kind != null) el.setAttribute("data-cell-kind", String(cell.cell_kind));
-      if (role) el.setAttribute("data-overlay-role", role);
+      applyLabCellHudAttributes(el, cell, role != null ? String(role) : "");
+      applyLabCellSprite(el, cell);
     }
   }
 
@@ -383,16 +1397,22 @@
     const cells = overlay.cells;
     if (Array.isArray(cells) && cells.length > 0) {
       renderDecodedCells(baseClasses, domCells, cells, resolveCellIndex);
+      applyEquipmentBundleGroupVisualsFromOverlay(overlay, domCells, resolveCellIndex);
       return;
     }
     renderExistingLayoutOverlay(baseClasses, domCells, overlay, resolveCellIndex);
+    applyEquipmentBundleGroupVisualsFromOverlay(overlay, domCells, resolveCellIndex);
   }
 
   function resetGridBase(domCells, baseClasses) {
     for (let i = 0; i < domCells.length; i++) {
+      clearLabCellBundleBridges(domCells[i]);
       domCells[i].className = baseClasses[i] || "";
+      domCells[i].style.boxShadow = "";
       domCells[i].removeAttribute("data-cell-kind");
       domCells[i].removeAttribute("data-overlay-role");
+      domCells[i].removeAttribute("data-tile-type");
+      clearLabCellSprite(domCells[i]);
     }
   }
 
@@ -403,10 +1423,7 @@
     if (fm.length) {
       renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
       renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
-      const ov = frame.cell_overlay_json;
-      if (ov && typeof ov === "object" && Array.isArray(ov.issue_cells) && ov.issue_cells.length) {
-        renderIssueOverlayOnly(baseClasses, domCells, ov, resolveCellIndex);
-      }
+      applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
       return;
     }
     const ov = frame.cell_overlay_json;
@@ -458,6 +1475,7 @@
     const phaseEl = document.getElementById("lab-replay-phase");
     const frameEl = document.getElementById("lab-frame-display");
     const gridEl = document.getElementById("lab-replay-grid");
+    const scrubEl = document.getElementById("lab-timeline-scrub");
     const playBtn = document.getElementById("lab-timeline-play");
     const playIcon = document.getElementById("lab-timeline-play-icon");
     const pauseIcon = document.getElementById("lab-timeline-pause-icon");
@@ -470,13 +1488,70 @@
       return;
     }
 
+    const gridStage = document.getElementById("lab-replay-grid-stage");
+    const gridHudCoord = document.getElementById("lab-replay-grid-hud-coord");
+    const gridHudRole = document.getElementById("lab-replay-grid-hud-role");
+
+    let labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
+    let labPanState = null;
+    /** Fitted cell edge (px) at zoom 1 for server replay; from ``applyReplayGridSizing``. */
+    let replayFitBasePx = 20;
+    /** Measured cell edge (px) at zoom 1 for demo matrix grid. */
+    let demoBaseCellPxAtZoom1 = 20;
+
     let domCells;
     let baseClasses;
-    let resolveCellIndex = cellIndexDemo;
+
+    function applyLabViewportTransform() {
+      if (!gridStage) {
+        return;
+      }
+      const t = labViewportTransform;
+      const tx = snapToDevicePixel(t.tx);
+      const ty = snapToDevicePixel(t.ty);
+      gridStage.style.transformOrigin = "0 0";
+      gridStage.style.transform = "translate3d(" + tx + "px," + ty + "px,0)";
+    }
+
+    function applyLabGridLayoutForZoom() {
+      if (hasServerReplay && replayLayout) {
+        const gw = replayLayout.gridW;
+        const gh = replayLayout.gridH;
+        const zpx = labZoomedCellEdgePx(replayFitBasePx, labViewportTransform.zoom);
+        gridEl.style.setProperty("--lab-cell-size", String(zpx) + "px");
+        gridEl.style.gridTemplateColumns = "repeat(" + gw + ", " + zpx + "px)";
+        gridEl.style.gridTemplateRows = "repeat(" + gh + ", " + zpx + "px)";
+      } else if (domCells && domCells.length) {
+        const zpx = labZoomedCellEdgePx(demoBaseCellPxAtZoom1, labViewportTransform.zoom);
+        gridEl.style.setProperty("--lab-cell-size", String(zpx) + "px");
+        gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", " + zpx + "px)";
+        gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", " + zpx + "px)";
+      }
+      applyLabViewportTransform();
+      refreshLabOverlayCtx();
+      renderOptimizationReplayOverlay();
+    }
+
+    function resetLabViewportTransform() {
+      labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
+      applyLabGridLayoutForZoom();
+    }
+
+    let resolveCellIndex = function (cell) {
+      if (!cell || typeof cell !== "object") return null;
+      return cellIndexDemo(cell.x, cell.y);
+    };
     let replayLayout = null;
     let resizeObserver = null;
     let replayResizeMode = null;
     let replayCleanup = function () {};
+
+    function refreshLabOverlayCtx() {
+      labOverlayCtx.gridEl = gridEl;
+      labOverlayCtx.hasServerReplay = hasServerReplay;
+      labOverlayCtx.replayLayout = replayLayout;
+      labOverlayCtx.resolveCellIndex = resolveCellIndex;
+    }
 
     function initializeServerReplaySurface(framesArr) {
       const neutralClass = LAB_CELL_BASE;
@@ -495,10 +1570,13 @@
         return String(el.className || "");
       });
 
-      resolveCellIndex = function (x, y) {
-        const d = visualCol(x);
+      resolveCellIndex = function (cell) {
+        if (!cell || typeof cell !== "object") return null;
+        const gw = replayLayout.gridW;
+        const gh = replayLayout.gridH;
+        const d = visualCol(cell.x);
         if (d == null) return null;
-        const yi = Number(y);
+        const yi = Number(cell.y);
         if (!Number.isFinite(yi)) return null;
         const col = d - replayLayout.minD;
         const row = yi - replayLayout.minR;
@@ -514,25 +1592,36 @@
         if (!gridViewport || !replayLayout) return;
         const cw = gridViewport.clientWidth - padPx * 2;
         const ch = gridViewport.clientHeight - padPx * 2;
-        const px = Math.max(
-          minCell,
-          Math.min(maxCell, Math.floor(Math.min(cw / replayLayout.gridW, ch / replayLayout.gridH))),
-        );
-        gridEl.style.gridTemplateColumns = "repeat(" + replayLayout.gridW + ", minmax(0, " + px + "px))";
-        gridEl.style.gridTemplateRows = "repeat(" + replayLayout.gridH + ", minmax(0, " + px + "px))";
+        const gw = replayLayout.gridW;
+        const gh = replayLayout.gridH;
+        const gapPx = labReplayGridGapPx(gridEl);
+        const gapCols = Math.max(0, gw - 1) * gapPx;
+        const gapRows = Math.max(0, gh - 1) * gapPx;
+        const cellFromW = Math.floor((cw - gapCols) / gw);
+        const cellFromH = Math.floor((ch - gapRows) / gh);
+        replayFitBasePx = Math.max(minCell, Math.min(maxCell, Math.min(cellFromW, cellFromH)));
+        applyLabGridLayoutForZoom();
+      }
+
+      function labReplayViewportOnWindowResize() {
+        applyReplayGridSizing();
+        resetLabViewportTransform();
       }
 
       applyReplayGridSizing();
       resizeObserver = null;
       replayResizeMode = null;
       if (gridViewport && typeof ResizeObserver !== "undefined") {
+        /* Do not reset zoom/pan here: cell-pixel zoom changes inner layout and can
+         * retrigger the observer; ``applyReplayGridSizing`` already calls
+         * ``applyLabGridLayoutForZoom`` with the current ``labViewportTransform``. */
         resizeObserver = new ResizeObserver(function () {
           applyReplayGridSizing();
         });
         resizeObserver.observe(gridViewport);
         replayResizeMode = "observer";
       } else if (gridViewport) {
-        window.addEventListener("resize", applyReplayGridSizing);
+        window.addEventListener("resize", labReplayViewportOnWindowResize);
         replayResizeMode = "window";
       }
 
@@ -546,7 +1635,7 @@
           resizeObserver = null;
         }
         if (replayResizeMode === "window" && gridViewport) {
-          window.removeEventListener("resize", applyReplayGridSizing);
+          window.removeEventListener("resize", labReplayViewportOnWindowResize);
         }
         replayResizeMode = null;
       };
@@ -554,20 +1643,52 @@
 
     if (hasServerReplay) {
       if (!matrix || !Array.isArray(matrix)) {
-        return;
+        hasServerReplay = false;
+        replayFrames = [];
+      } else {
+        try {
+          replayCleanup = initializeServerReplaySurface(replayFrames);
+        } catch (_err) {
+          hasServerReplay = false;
+          replayFrames = [];
+        }
       }
-      replayCleanup = initializeServerReplaySurface(replayFrames);
-    } else {
+    }
+    if (!hasServerReplay) {
       if (!matrix || !Array.isArray(matrix) || cells.length !== matrix.length) {
-        return;
+        domCells = [];
+        baseClasses = [];
+      } else {
+        domCells = Array.prototype.slice.call(cells);
+        baseClasses = domCells.map(function (el) {
+          return String(el.className || "");
+        });
+        requestAnimationFrame(function () {
+          const first = domCells[0];
+          if (first && first.offsetWidth > 0) {
+            demoBaseCellPxAtZoom1 = Math.max(4, first.offsetWidth);
+          }
+          applyLabGridLayoutForZoom();
+        });
       }
-      domCells = Array.prototype.slice.call(cells);
-      baseClasses = domCells.map(function (el) {
-        return String(el.className || "");
-      });
     }
 
+    refreshLabOverlayCtx();
+
     const rootEl = document.getElementById("lab-root");
+    function syncLabDebugRotationClass() {
+      if (!gridEl) return;
+      if (labRotationDebugEnabled(rootEl)) {
+        gridEl.classList.add("lab-debug-rotation");
+      } else {
+        gridEl.classList.remove("lab-debug-rotation");
+      }
+    }
+    syncLabDebugRotationClass();
+    labSpriteBaseUrl =
+      rootEl && rootEl.dataset && rootEl.dataset.labSpriteBase != null
+        ? String(rootEl.dataset.labSpriteBase)
+        : "";
     const parseFrame = function (v, fallback) {
       const n = parseInt(String(v), 10);
       return Number.isNaN(n) ? fallback : n;
@@ -619,6 +1740,51 @@
 
     let replayArrayIndex = replaySlotForServerInitialFrame();
 
+    function getMaxTimelineIndex() {
+      if (hasServerReplay) {
+        return Math.max(0, replayFrames.length - 1);
+      }
+      return TOTAL_FRAMES;
+    }
+
+    function getCurrentTimelineIndex() {
+      return hasServerReplay ? replayArrayIndex : frame;
+    }
+
+    function setTimelineIndex(nextIndex, options) {
+      const opt = options || {};
+      const pause = opt.pause !== false;
+      const max = getMaxTimelineIndex();
+      const parsed = parseInt(String(nextIndex), 10);
+      const raw = Number.isFinite(parsed) ? parsed : 0;
+      const clamped = clampNumber(raw, 0, max);
+      if (hasServerReplay) {
+        replayArrayIndex = clamped;
+      } else {
+        frame = clamped;
+      }
+      if (pause) {
+        setPlaying(false);
+      }
+      applyFrame();
+    }
+
+    function syncLabTimelineScrub() {
+      if (!scrubEl) {
+        return;
+      }
+      const max = getMaxTimelineIndex();
+      scrubEl.min = "0";
+      scrubEl.max = String(max);
+      const noFrames =
+        (hasServerReplay && replayFrames.length === 0) || (!hasServerReplay && TOTAL_FRAMES <= 0);
+      scrubEl.disabled = noFrames;
+      if (!noFrames) {
+        const cur = getCurrentTimelineIndex();
+        scrubEl.value = String(clampNumber(cur, 0, max));
+      }
+    }
+
     function getCurrentReplayFrame() {
       if (!hasServerReplay) return null;
       return replayFrames[replayArrayIndex] || null;
@@ -642,6 +1808,9 @@
               ? "ReplayFrame id " + String(fr.id) + (fr.is_keyframe ? " · keyframe" : "")
               : "—";
         }
+        syncLabTimelineScrub();
+        refreshLabOverlayCtx();
+        renderOptimizationReplayOverlay();
         return;
       }
 
@@ -662,6 +1831,9 @@
       if (gridEl) gridEl.dataset.overlay = overlay;
       const cycle = document.getElementById("lab-computation-cycle");
       if (cycle) cycle.textContent = "computation_cycle #" + String(frame);
+      syncLabTimelineScrub();
+      refreshLabOverlayCtx();
+      renderOptimizationReplayOverlay();
     }
 
     function setPlaying(next) {
@@ -764,6 +1936,7 @@
         frame = baselineFrame;
       }
       closeTopologyModal();
+      closeCellDetailModal();
       if (blueprintInput) blueprintInput.value = baselineBlueprint;
       applyRunSelectionHighlight(baselineRunId);
       setRunDetail(baselineRun);
@@ -775,6 +1948,11 @@
     });
 
     document.getElementById("lab-header-run")?.addEventListener("click", function () {
+      const form = document.getElementById("lab-import-project-form");
+      if (form) {
+        runLabBlueprintRebuildViaImportForm(form);
+        return;
+      }
       setPlaying(true);
       applyFrame();
     });
@@ -803,6 +1981,12 @@
       }
       applyFrame();
     });
+
+    if (scrubEl) {
+      scrubEl.addEventListener("input", function () {
+        setTimelineIndex(scrubEl.value, { pause: true });
+      });
+    }
 
     document.querySelectorAll("[data-lab-run-id]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -838,6 +2022,10 @@
       if (payload.lab_ui_initial && typeof payload.lab_ui_initial === "object") {
         Object.assign(initialFromServer, payload.lab_ui_initial);
       }
+      if (rootEl && payload.lab_ui_initial && typeof payload.lab_ui_initial === "object") {
+        const tid = payload.lab_ui_initial.replayTrackId;
+        rootEl.dataset.labReplayTrackId = tid != null ? String(tid) : "";
+      }
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
       replayFrames = next;
@@ -848,6 +2036,8 @@
       }
       replayCleanup();
       replayCleanup = initializeServerReplaySurface(replayFrames);
+      refreshLabOverlayCtx();
+      resetLabViewportTransform();
       replayArrayIndex = replaySlotForServerInitialFrame();
       setPlaying(false);
       applyFrame();
@@ -873,22 +2063,552 @@
       }
     }
 
+    let labImportPostInFlight = false;
+
+    function runLabBlueprintRebuildViaImportForm(form) {
+      if (!form || !form.action || labImportPostInFlight) {
+        return;
+      }
+      labImportPostInFlight = true;
+      const fd = new FormData(form);
+      fetch(form.action, {
+        method: "POST",
+        body: fd,
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+        .then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return { ok: false };
+            })
+            .then(function (data) {
+              return { res: res, data: data };
+            });
+        })
+        .then(function (bundle) {
+          const res = bundle.res;
+          const data = bundle.data;
+          if (!res.ok || !data || data.ok === false) {
+            if (data && data.redirect) {
+              window.location.assign(data.redirect);
+            } else {
+              window.location.reload();
+            }
+            return;
+          }
+          if (data.in_place) {
+            replaceLabReplayPayload(data);
+            if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
+              replaceOptimizationReplayPayload(data.optimization_replay);
+            }
+            return;
+          }
+          if (data.redirect) {
+            if (typeof history.pushState === "function") {
+              try {
+                history.pushState(null, "", data.redirect);
+                syncProjectSlugHiddenFromRedirect(form, data.redirect);
+              } catch {
+                window.location.assign(data.redirect);
+                return;
+              }
+            } else {
+              window.location.assign(data.redirect);
+              return;
+            }
+          }
+          replaceLabReplayPayload(data);
+          if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
+            replaceOptimizationReplayPayload(data.optimization_replay);
+          }
+        })
+        .catch(function () {
+          form.submit();
+        })
+        .finally(function () {
+          labImportPostInFlight = false;
+        });
+    }
+
     const importForm = document.getElementById("lab-import-project-form");
     if (importForm) {
       importForm.addEventListener("submit", function (ev) {
         ev.preventDefault();
-        const fd = new FormData(importForm);
-        fetch(importForm.action, {
+        runLabBlueprintRebuildViaImportForm(importForm);
+      });
+    }
+
+    function domIndexToWorldXY(domIdx) {
+      if (!hasServerReplay || !replayLayout) {
+        return null;
+      }
+      const gw = replayLayout.gridW;
+      const i = Number(domIdx);
+      if (!Number.isFinite(i) || i < 0) {
+        return null;
+      }
+      const col = i % gw;
+      const row = Math.floor(i / gw);
+      const d = col + replayLayout.minD;
+      const y = row + replayLayout.minR;
+      const xWorld = d < 0 ? d : d + 1;
+      return { x: xWorld, y: y };
+    }
+
+    function findLabCellFromPoint(clientX, clientY) {
+      const el = document.elementFromPoint(clientX, clientY);
+      if (!el) {
+        return null;
+      }
+      return el.closest("[data-lab-cell-index]");
+    }
+
+    function updateLabGridHudEmpty() {
+      if (gridHudCoord) {
+        gridHudCoord.textContent = "—";
+      }
+      if (gridHudRole) {
+        gridHudRole.textContent = "—";
+      }
+    }
+
+    function getLabCellDisplayCoord(cellEl) {
+      const indexText = cellEl && cellEl.getAttribute ? cellEl.getAttribute("data-lab-cell-index") : null;
+      const idx = Number.parseInt(indexText || "", 10);
+      if (!Number.isFinite(idx)) {
+        return "—";
+      }
+      if (hasServerReplay && replayLayout) {
+        const coord = domIndexToWorldXY(idx);
+        if (!coord) {
+          return "—";
+        }
+        return "(" + coord.x + ", " + coord.y + ")";
+      }
+      const demoX = idx % GRID_W;
+      const demoY = Math.floor(idx / GRID_W);
+      return "(" + demoX + ", " + demoY + ")";
+    }
+
+    function getLabCellDisplayRole(cellEl) {
+      if (!cellEl) {
+        return "—";
+      }
+      const ov = cellEl.getAttribute("data-overlay-role");
+      if (ov != null && ov !== "") {
+        return ov;
+      }
+      const ck = cellEl.getAttribute("data-cell-kind");
+      if (ck != null && ck !== "") {
+        return ck;
+      }
+      const tt = cellEl.getAttribute("data-tile-type");
+      if (tt != null && tt !== "") {
+        return tt;
+      }
+      return "—";
+    }
+
+    function updateLabGridHudFromPoint(clientX, clientY) {
+      const cellEl = findLabCellFromPoint(clientX, clientY);
+      if (!cellEl || !gridEl.contains(cellEl)) {
+        updateLabGridHudEmpty();
+        return;
+      }
+      if (gridHudCoord) {
+        gridHudCoord.textContent = getLabCellDisplayCoord(cellEl);
+      }
+      if (gridHudRole) {
+        gridHudRole.textContent = getLabCellDisplayRole(cellEl);
+      }
+    }
+
+    function handleLabViewportWheel(event) {
+      if (!gridViewport || !gridStage) {
+        return;
+      }
+      event.preventDefault();
+      const srect = gridStage.getBoundingClientRect();
+      const anchorX = event.clientX - srect.left;
+      const anchorY = event.clientY - srect.top;
+      const oldZoom = labViewportTransform.zoom;
+      const basePx = hasServerReplay && replayLayout ? replayFitBasePx : demoBaseCellPxAtZoom1;
+      const oldCellPx = labZoomedCellEdgePx(basePx, oldZoom);
+      const zoomFactor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+      const nextZoom = clampNumber(oldZoom * zoomFactor, LAB_VIEWPORT_MIN_SCALE, LAB_VIEWPORT_MAX_SCALE);
+      if (nextZoom === oldZoom) {
+        updateLabGridHudFromPoint(event.clientX, event.clientY);
+        return;
+      }
+      const newCellPx = labZoomedCellEdgePx(basePx, nextZoom);
+      const ratio = oldCellPx > 0 ? newCellPx / oldCellPx : 1;
+      labViewportTransform.zoom = nextZoom;
+      labViewportTransform.tx = anchorX - (anchorX - labViewportTransform.tx) * ratio;
+      labViewportTransform.ty = anchorY - (anchorY - labViewportTransform.ty) * ratio;
+      applyLabGridLayoutForZoom();
+      updateLabGridHudFromPoint(event.clientX, event.clientY);
+    }
+
+    function handleLabViewportPointerDown(event) {
+      if (!gridViewport || event.button !== 0) {
+        return;
+      }
+      labPanState = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startTx: labViewportTransform.tx,
+        startTy: labViewportTransform.ty,
+        dragging: false,
+      };
+    }
+
+    function handleLabViewportPointerMove(event) {
+      updateLabGridHudFromPoint(event.clientX, event.clientY);
+      if (!labPanState || labPanState.pointerId !== event.pointerId) {
+        return;
+      }
+      const dx = event.clientX - labPanState.startClientX;
+      const dy = event.clientY - labPanState.startClientY;
+      const distance = Math.hypot(dx, dy);
+      if (!labPanState.dragging) {
+        if (distance < LAB_VIEWPORT_DRAG_THRESHOLD_PX) {
+          return;
+        }
+        labPanState.dragging = true;
+        gridViewport.setPointerCapture(event.pointerId);
+      }
+      event.preventDefault();
+      labViewportTransform.tx = labPanState.startTx + dx;
+      labViewportTransform.ty = labPanState.startTy + dy;
+      applyLabViewportTransform();
+    }
+
+    function handleLabViewportPointerUp(event) {
+      if (!labPanState || labPanState.pointerId !== event.pointerId) {
+        return;
+      }
+      if (
+        labPanState.dragging &&
+        typeof gridViewport.releasePointerCapture === "function" &&
+        typeof gridViewport.hasPointerCapture === "function" &&
+        gridViewport.hasPointerCapture(event.pointerId)
+      ) {
+        gridViewport.releasePointerCapture(event.pointerId);
+      }
+      labPanState = null;
+    }
+
+    function handleLabViewportPointerLeave(event) {
+      updateLabGridHudEmpty();
+      if (!labPanState || labPanState.pointerId !== event.pointerId) {
+        return;
+      }
+      labPanState = null;
+    }
+
+    function bindLabViewportInteractions() {
+      if (labViewportInteractionsBound || !gridViewport) {
+        return;
+      }
+      labViewportInteractionsBound = true;
+      function preventLabViewportSelectDrag(ev) {
+        ev.preventDefault();
+      }
+      gridViewport.addEventListener("dragstart", preventLabViewportSelectDrag);
+      gridViewport.addEventListener("selectstart", preventLabViewportSelectDrag);
+      if (gridStage) {
+        gridStage.addEventListener("dragstart", preventLabViewportSelectDrag);
+        gridStage.addEventListener("selectstart", preventLabViewportSelectDrag);
+      }
+      if (gridEl) {
+        gridEl.addEventListener("dragstart", preventLabViewportSelectDrag);
+        gridEl.addEventListener("selectstart", preventLabViewportSelectDrag);
+      }
+      gridViewport.addEventListener("wheel", handleLabViewportWheel, { passive: false });
+      gridViewport.addEventListener("pointerdown", handleLabViewportPointerDown);
+      gridViewport.addEventListener("pointermove", handleLabViewportPointerMove);
+      gridViewport.addEventListener("pointerup", handleLabViewportPointerUp);
+      gridViewport.addEventListener("pointercancel", handleLabViewportPointerUp);
+      gridViewport.addEventListener("pointerleave", handleLabViewportPointerLeave);
+    }
+
+    function labCsrfToken() {
+      const mc = document.querySelector("[name=csrfmiddlewaretoken]");
+      if (mc && mc.value) {
+        return mc.value;
+      }
+      return getCookie("csrftoken") || "";
+    }
+
+    const LAB_CELL_DETAIL_KEY_ORDER = [
+      "x",
+      "y",
+      "server_x",
+      "server_y",
+      "layer",
+      "rotation",
+      "cell_kind",
+      "tile_type",
+      "transport_kind",
+    ];
+
+    function labCellDetailEscapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function labCellDetailOrderedKeys(obj) {
+      const keys = Object.keys(obj || {});
+      const seen = {};
+      const out = [];
+      for (let i = 0; i < LAB_CELL_DETAIL_KEY_ORDER.length; i++) {
+        const k = LAB_CELL_DETAIL_KEY_ORDER[i];
+        if (keys.indexOf(k) >= 0) {
+          out.push(k);
+          seen[k] = true;
+        }
+      }
+      const rest = keys
+        .filter(function (k) {
+          return !seen[k];
+        })
+        .sort();
+      return out.concat(rest);
+    }
+
+    function labCellDetailFormatValue(v) {
+      if (v === null || v === undefined) {
+        return '<span class="text-slate-500">—</span>';
+      }
+      if (typeof v === "number" || typeof v === "boolean") {
+        return labCellDetailEscapeHtml(String(v));
+      }
+      if (typeof v === "string") {
+        const t = v.trim();
+        if (t === "") {
+          return '<span class="text-slate-500">(empty)</span>';
+        }
+        return labCellDetailEscapeHtml(v);
+      }
+      const json = JSON.stringify(v);
+      if (json.length <= 140) {
+        return (
+          '<span class="wrap-break-word font-mono text-[11px]">' + labCellDetailEscapeHtml(json) + "</span>"
+        );
+      }
+      return (
+        '<details class="mt-1">' +
+        '<summary class="cursor-pointer text-xs text-slate-400">JSON (' +
+        String(json.length) +
+        " chars)</summary>" +
+        '<pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap wrap-break-word rounded border border-slate-800 bg-slate-900/80 p-2 font-mono text-[11px] leading-snug">' +
+        labCellDetailEscapeHtml(JSON.stringify(v, null, 2)) +
+        "</pre></details>"
+      );
+    }
+
+    function labCellDetailKvTableHtml(obj) {
+      if (!obj || typeof obj !== "object") {
+        return '<p class="text-slate-500">—</p>';
+      }
+      const keys = labCellDetailOrderedKeys(obj);
+      if (!keys.length) {
+        return '<p class="text-slate-500">(empty object)</p>';
+      }
+      let rows = "";
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        let dd = labCellDetailFormatValue(obj[k]);
+        if (k === "rotation") {
+          dd +=
+            ' <span class="whitespace-nowrap text-xs text-slate-500">(East=0, clockwise)</span>';
+        }
+        rows +=
+          '<div class="grid grid-cols-[minmax(0,auto)_1fr] gap-x-3 border-b border-slate-800/80 py-2 last:border-b-0">' +
+          '<dt class="shrink-0 font-mono text-xs text-slate-500">' +
+          labCellDetailEscapeHtml(k) +
+          "</dt>" +
+          '<dd class="min-w-0 text-slate-200">' +
+          dd +
+          "</dd></div>";
+      }
+      return '<dl class="rounded-lg border border-slate-800/80 px-3">' + rows + "</dl>";
+    }
+
+    function labCellDetailFrameMetaHtml(data) {
+      const parts = [];
+      if (data.frame_index !== undefined && data.frame_index !== null) {
+        parts.push("frame_index: " + String(data.frame_index));
+      }
+      if (data.frame_key !== undefined && data.frame_key !== null && String(data.frame_key) !== "") {
+        parts.push("frame_key: " + String(data.frame_key));
+      }
+      if (!parts.length) {
+        return "";
+      }
+      return (
+        '<p class="mb-3 font-mono text-[11px] leading-relaxed text-slate-500">' +
+        labCellDetailEscapeHtml(parts.join(" · ")) +
+        "</p>"
+      );
+    }
+
+    function labCellDetailSourceBlockHtml(sourceKey, val, mergedCell) {
+      if (
+        sourceKey === "full_map" &&
+        mergedCell &&
+        typeof mergedCell === "object" &&
+        val &&
+        typeof val === "object" &&
+        !Array.isArray(val) &&
+        JSON.stringify(val) === JSON.stringify(mergedCell)
+      ) {
+        return (
+          '<div class="mb-4 last:mb-0">' +
+          '<h4 class="mb-1 font-mono text-xs text-slate-400">' +
+          labCellDetailEscapeHtml(sourceKey) +
+          "</h4>" +
+          '<p class="text-xs text-slate-500">Same as merged cell above.</p></div>'
+        );
+      }
+      const head =
+        '<h4 class="mb-2 font-mono text-xs text-slate-400">' +
+        labCellDetailEscapeHtml(sourceKey) +
+        "</h4>";
+      if (val !== null && val !== undefined && typeof val === "object" && !Array.isArray(val)) {
+        return '<div class="mb-4 last:mb-0">' + head + labCellDetailKvTableHtml(val) + "</div>";
+      }
+      return (
+        '<div class="mb-4 last:mb-0">' +
+        head +
+        '<div class="text-slate-200">' +
+        labCellDetailFormatValue(val) +
+        "</div></div>"
+      );
+    }
+
+    function labCellDetailRenderSuccess(cellDetailEl, data) {
+      const cell = data.cell;
+      const sources = data.sources || {};
+      const frameMeta = labCellDetailFrameMetaHtml(data);
+      let html = '<div class="space-y-6">';
+      if (cell && typeof cell === "object") {
+        html +=
+          '<section class="space-y-2">' +
+          '<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">Merged cell</h3>' +
+          frameMeta +
+          labCellDetailKvTableHtml(cell) +
+          "</section>";
+      } else {
+        const msg = data.message || "no_cell_at_xy";
+        html +=
+          '<section class="space-y-2">' +
+          '<p class="text-slate-300">' +
+          labCellDetailEscapeHtml(msg) +
+          "</p>" +
+          frameMeta +
+          "</section>";
+      }
+      const srcKeys = Object.keys(sources);
+      if (srcKeys.length) {
+        let srcHtml = "";
+        for (let s = 0; s < srcKeys.length; s++) {
+          srcHtml += labCellDetailSourceBlockHtml(srcKeys[s], sources[srcKeys[s]], cell);
+        }
+        html +=
+          '<section class="space-y-3">' +
+          '<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">Sources (server)</h3>' +
+          srcHtml +
+          "</section>";
+      }
+      html += "</div>";
+      cellDetailEl.innerHTML = html;
+    }
+
+    const cellDetailModal = document.getElementById("lab-cell-detail-modal");
+    const cellDetailBody = document.getElementById("lab-cell-detail-body");
+    const closeCellDetailBtn = document.getElementById("lab-close-cell-detail");
+
+    function closeCellDetailModal() {
+      if (!cellDetailModal) {
+        return;
+      }
+      cellDetailModal.classList.add("hidden");
+      cellDetailModal.classList.remove("flex");
+    }
+
+    function openCellDetailModal() {
+      if (!cellDetailModal) {
+        return;
+      }
+      cellDetailModal.classList.remove("hidden");
+      cellDetailModal.classList.add("flex");
+    }
+
+    if (gridEl && cellDetailModal) {
+      gridEl.addEventListener("click", function (ev) {
+        if (!hasServerReplay || !replayLayout) {
+          return;
+        }
+        const hit = ev.target.closest("[data-lab-cell-index]");
+        if (!hit || !gridEl.contains(hit)) {
+          return;
+        }
+        const idx = parseInt(hit.getAttribute("data-lab-cell-index") || "", 10);
+        const xy = domIndexToWorldXY(idx);
+        if (!xy) {
+          return;
+        }
+        const fr = getCurrentReplayFrame();
+        if (!fr || fr.id == null) {
+          return;
+        }
+        const cellUrl = rootEl && rootEl.dataset ? rootEl.dataset.labReplayCellUrl || "" : "";
+        const trackIdStr =
+          rootEl && rootEl.dataset && rootEl.dataset.labReplayTrackId != null
+            ? String(rootEl.dataset.labReplayTrackId)
+            : "";
+        if (!cellUrl || !trackIdStr) {
+          return;
+        }
+        const projectSlug =
+          rootEl && rootEl.dataset && rootEl.dataset.labProjectSlug != null
+            ? String(rootEl.dataset.labProjectSlug)
+            : "";
+        const payload = {
+          replay_frame_id: fr.id,
+          replay_track_id: parseInt(trackIdStr, 10),
+          x: xy.x,
+          y: xy.y,
+        };
+        if (projectSlug) {
+          payload.project_slug = projectSlug;
+        }
+        if (cellDetailBody) {
+          cellDetailBody.textContent = "Loading…";
+        }
+        openCellDetailModal();
+        fetch(cellUrl, {
           method: "POST",
-          body: fd,
           credentials: "same-origin",
-          headers: { Accept: "application/json" },
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-CSRFToken": labCsrfToken(),
+          },
+          body: JSON.stringify(payload),
         })
           .then(function (res) {
             return res
               .json()
               .catch(function () {
-                return { ok: false };
+                return { ok: false, error: "bad_json" };
               })
               .then(function (data) {
                 return { res: res, data: data };
@@ -897,39 +2617,37 @@
           .then(function (bundle) {
             const res = bundle.res;
             const data = bundle.data;
-            if (!res.ok || !data || data.ok === false) {
-              if (data && data.redirect) {
-                window.location.assign(data.redirect);
-              } else {
-                window.location.reload();
-              }
+            if (!cellDetailBody) {
               return;
             }
-            if (data.in_place) {
-              replaceLabReplayPayload(data);
+            if (!res.ok || !data || data.ok !== true) {
+              const err = data && data.error ? String(data.error) : "request_failed " + res.status;
+              cellDetailBody.textContent = err;
               return;
             }
-            if (data.redirect) {
-              if (typeof history.pushState === "function") {
-                try {
-                  history.pushState(null, "", data.redirect);
-                  syncProjectSlugHiddenFromRedirect(importForm, data.redirect);
-                } catch {
-                  window.location.assign(data.redirect);
-                  return;
-                }
-              } else {
-                window.location.assign(data.redirect);
-                return;
-              }
-            }
-            replaceLabReplayPayload(data);
+            labCellDetailRenderSuccess(cellDetailBody, data);
           })
           .catch(function () {
-            importForm.submit();
+            if (cellDetailBody) {
+              cellDetailBody.textContent = "Network error.";
+            }
           });
       });
     }
+
+    closeCellDetailBtn?.addEventListener("click", function () {
+      closeCellDetailModal();
+    });
+    cellDetailModal?.addEventListener("click", function (ev) {
+      if (ev.target === cellDetailModal) {
+        closeCellDetailModal();
+      }
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape" && cellDetailModal && !cellDetailModal.classList.contains("hidden")) {
+        closeCellDetailModal();
+      }
+    });
 
     window.AsteroidLabReplay = {
       getCurrentReplayFrame: getCurrentReplayFrame,
@@ -939,6 +2657,9 @@
       renderCellOverlay: function (ov) {
         resetGridBase(domCells, baseClasses);
         renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
+      },
+      applyEquipmentBundleHighlight: function (ov) {
+        applyEquipmentBundleGroupVisualsFromOverlay(ov, domCells, resolveCellIndex);
       },
       renderDecodedCells: function (list) {
         resetGridBase(domCells, baseClasses);
@@ -953,7 +2674,47 @@
       },
       collectOverlayPaintTargets: collectOverlayPaintTargets,
       visualCol: visualCol,
+      rawXToDenseX: rawXToDenseX,
       replaceLabReplayPayload: replaceLabReplayPayload,
+      replaceOptimizationReplayPayload: replaceOptimizationReplayPayload,
+    };
+
+    /** DevTools-only: assert #lab-replay-grid-viewport rect is stable across cell-pixel zoom. */
+    window.__shapezLabReplaySelfTestViewportZoomStability = function () {
+      if (!gridViewport || typeof gridViewport.getBoundingClientRect !== "function") {
+        return { ok: false, reason: "no_viewport" };
+      }
+      const r0 = gridViewport.getBoundingClientRect();
+      const z0 = labViewportTransform.zoom;
+      let zTry = Math.min(LAB_VIEWPORT_MAX_SCALE, z0 * 2);
+      if (zTry <= z0) {
+        zTry = Math.min(LAB_VIEWPORT_MAX_SCALE, z0 + 0.25);
+      }
+      if (zTry <= z0) {
+        return { ok: true, skipped: true, reason: "already_at_max_zoom" };
+      }
+      labViewportTransform.zoom = zTry;
+      applyLabGridLayoutForZoom();
+      const r1 = gridViewport.getBoundingClientRect();
+      labViewportTransform.zoom = z0;
+      applyLabGridLayoutForZoom();
+      const dw = Math.abs(r1.width - r0.width);
+      const dh = Math.abs(r1.height - r0.height);
+      return {
+        ok: dw <= 1 && dh <= 1,
+        r0: { width: r0.width, height: r0.height },
+        r1: { width: r1.width, height: r1.height },
+        dw: dw,
+        dh: dh,
+      };
+    };
+
+    applyLabGridLayoutForZoom();
+    updateLabGridHudEmpty();
+    bindLabViewportInteractions();
+
+    labAfterOptimizationPanelDom = function () {
+      renderOptimizationReplayOverlay();
     };
 
     setRunDetail(baselineRun);

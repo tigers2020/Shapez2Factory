@@ -10,9 +10,9 @@ from django_apps.asteroid_lab.services.dto import (
     EquipmentAttachmentDTO,
     ExistingEquipmentDTO,
     ExistingLayoutInspectionDTO,
-    ExistingLayoutIssueDTO,
     ExistingTransportComponentDTO,
 )
+from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_x
 from django_apps.asteroid_lab.snapshots.transport_components import (
     cell_position_key,
     is_transport_tile,
@@ -45,6 +45,9 @@ def _overlay_cell(cell: DecodedCellDTO, **extra: Any) -> dict[str, Any]:
         "transport_kind": cell.transport_kind,
         "tile_type": cell.tile_type,
     }
+    if cell.server_x is not None and cell.server_y is not None:
+        row["server_x"] = cell.server_x
+        row["server_y"] = cell.server_y
     row.update(extra)
     return row
 
@@ -56,7 +59,7 @@ def _bbox_of_cells(cells: list[DecodedCellDTO]) -> dict[str, Any]:
     ys = [c.y for c in cells]
     mn_x, mx_x = min(xs), max(xs)
     mn_y, mx_y = min(ys), max(ys)
-    return {
+    out: dict[str, Any] = {
         "min_x": mn_x,
         "max_x": mx_x,
         "min_y": mn_y,
@@ -64,6 +67,31 @@ def _bbox_of_cells(cells: list[DecodedCellDTO]) -> dict[str, Any]:
         "width": mx_x - mn_x + 1,
         "height": mx_y - mn_y + 1,
     }
+    dense_vals: list[int] = []
+    for c in cells:
+        if c.x == 0:
+            continue
+        try:
+            dense_vals.append(raw_x_to_dense_x(c.x))
+        except ValueError:
+            pass
+    if dense_vals:
+        mndx, mxdx = min(dense_vals), max(dense_vals)
+        out["dense_min_x"] = mndx
+        out["dense_max_x"] = mxdx
+        out["dense_width"] = mxdx - mndx + 1
+    if all(c.server_x is not None and c.server_y is not None for c in cells):
+        sxs = [int(c.server_x) for c in cells if c.server_x is not None]
+        sys_ = [int(c.server_y) for c in cells if c.server_y is not None]
+        smn_x, smx_x = min(sxs), max(sxs)
+        smn_y, smx_y = min(sys_), max(sys_)
+        out["server_min_x"] = smn_x
+        out["server_max_x"] = smx_x
+        out["server_min_y"] = smn_y
+        out["server_max_y"] = smx_y
+        out["server_width"] = smx_x - smn_x + 1
+        out["server_height"] = smx_y - smn_y + 1
+    return out
 
 
 def _touches_snapshot_bbox(cell: DecodedCellDTO, bbox: dict[str, Any]) -> bool:
@@ -86,7 +114,11 @@ def _index_transport_components(
     cells: tuple[DecodedCellDTO, ...],
     snapshot_bbox: dict[str, Any],
 ) -> tuple[list[ExistingTransportComponentDTO], dict[tuple[int, int, int | None], int]]:
-    """Return DTO rows (deterministic global ``component_id``) and transport cell → id map."""
+    """Return transport DTO rows and transport cell → component id map.
+
+    BFS uses raw ``iter_four_neighbors`` (not ``server_x``/``server_y``): rank-dense ``X`` can
+    collide for invalid consecutive positives in fixtures. Server coords stay for fingerprint/UI.
+    """
 
     by_key: dict[tuple[int, int, int | None], DecodedCellDTO] = {
         cell_position_key(c): c for c in cells
@@ -210,18 +242,18 @@ def inspect_existing_layout(
                 cell_kind=c.cell_kind,
                 transport_kind=c.transport_kind,
                 raw_entry_json=dict(c.raw_entry_json),
+                server_x=c.server_x,
+                server_y=c.server_y,
             )
         )
 
     attachments: list[EquipmentAttachmentDTO] = []
-    issues: list[ExistingLayoutIssueDTO] = []
 
     for eq in equipment:
         adj_transport: list[dict[str, Any]] = []
         comp_ids: set[int] = set()
         matching_neighbor = False
         main_touch = False
-        wrong_kind_neighbor = False
 
         for nx, ny, nl in iter_four_neighbors(eq.x, eq.y, eq.layer):
             nb = by_key.get((nx, ny, nl))
@@ -238,11 +270,6 @@ def inspect_existing_layout(
             adj_transport.append(_overlay_cell(nb, **extra))
 
             exp = _expected_neighbor_tile_kind(eq.cell_kind)
-            if exp == "space_pipe" and nb.cell_kind == "space_belt":
-                wrong_kind_neighbor = True
-            elif exp == "space_belt" and nb.cell_kind == "space_pipe":
-                wrong_kind_neighbor = True
-
             if exp is not None and nb.cell_kind == exp:
                 matching_neighbor = True
                 tk = nb.transport_kind
@@ -258,95 +285,6 @@ def inspect_existing_layout(
                 adjacent_component_ids=sorted_cids,
                 attached_to_any_transport=matching_neighbor,
                 attached_to_main_component=main_touch,
-            )
-        )
-
-        if wrong_kind_neighbor:
-            issues.append(
-                ExistingLayoutIssueDTO(
-                    issue_code="mixed_transport_nearby",
-                    severity="warning",
-                    equipment_id=eq.equipment_id,
-                    component_id=None,
-                    cells_json=[
-                        {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind}
-                    ],
-                    message=(
-                        "Equipment has a 4-neighbor transport tile of the other transport family."
-                    ),
-                )
-            )
-
-        exp_tile = _expected_neighbor_tile_kind(eq.cell_kind)
-        if exp_tile is not None and not matching_neighbor:
-            if eq.cell_kind in ("fluid_miner", "shape_miner"):
-                issues.append(
-                    ExistingLayoutIssueDTO(
-                        issue_code="miner_no_adjacent_transport",
-                        severity="error",
-                        equipment_id=eq.equipment_id,
-                        component_id=None,
-                        cells_json=[
-                            {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind}
-                        ],
-                        message="Miner has no adjacent matching transport tile (pipe/belt).",
-                    )
-                )
-            else:
-                issues.append(
-                    ExistingLayoutIssueDTO(
-                        issue_code="extension_no_adjacent_transport",
-                        severity="error",
-                        equipment_id=eq.equipment_id,
-                        component_id=None,
-                        cells_json=[
-                            {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind}
-                        ],
-                        message=(
-                            "Miner extension has no adjacent matching transport tile (pipe/belt)."
-                        ),
-                    )
-                )
-
-        if eq.cell_kind in ("fluid_miner", "shape_miner") and matching_neighbor and not main_touch:
-            issues.append(
-                ExistingLayoutIssueDTO(
-                    issue_code="miner_attached_to_orphan_transport",
-                    severity="warning",
-                    equipment_id=eq.equipment_id,
-                    component_id=sorted_cids[0] if sorted_cids else None,
-                    cells_json=[
-                        {"x": eq.x, "y": eq.y, "layer": eq.layer, "cell_kind": eq.cell_kind},
-                        *[{"x": d["x"], "y": d["y"], "layer": d["layer"]} for d in adj_transport],
-                    ],
-                    message=(
-                        "Miner connects only to non-main transport components "
-                        "for this transport kind."
-                    ),
-                )
-            )
-
-    for tk in ("fluid_pipe", "shape_belt"):
-        comps_tk = [c for c in transport_dtos_final if c.transport_kind == tk]
-        if len(comps_tk) <= 1:
-            continue
-        mid = main_by_kind.get(tk)
-        orphan_cells: list[dict[str, Any]] = []
-        for comp in comps_tk:
-            if mid is not None and comp.component_id == mid:
-                continue
-            orphan_cells.extend(comp.cells_json)
-        issues.append(
-            ExistingLayoutIssueDTO(
-                issue_code="transport_disconnected",
-                severity="info",
-                equipment_id="",
-                component_id=None,
-                cells_json=orphan_cells,
-                message=(
-                    f"Multiple disconnected {tk} transport components; "
-                    "non-main segments are orphans."
-                ),
             )
         )
 
@@ -385,7 +323,6 @@ def inspect_existing_layout(
             "shape_belt": sum(1 for c in transport_dtos_final if c.transport_kind == "shape_belt"),
         },
         "equipment_count": len(equipment),
-        "issue_count": len(issues),
         "nested_blueprint_note": (
             "Nested B.Entries remain summarized on each DecodedCellDTO; not unfolded."
         ),
@@ -397,7 +334,6 @@ def inspect_existing_layout(
         transport_components=tuple(transport_dtos_final),
         equipment=tuple(equipment),
         attachments=tuple(attachments),
-        issues=tuple(issues),
         hints_json=hints_json,
         summary_json=summary_json,
     )

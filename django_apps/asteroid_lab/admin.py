@@ -25,9 +25,14 @@ class AsteroidProjectAdmin(admin.ModelAdmin):
 
 @admin.register(m.AsteroidMapInput)
 class AsteroidMapInputAdmin(admin.ModelAdmin):
-    list_display = ("id", "project", "source_kind", "created_at")
+    list_display = ("id", "project", "source_kind", "layout_fp", "created_at")
     list_filter = ("source_kind",)
     raw_id_fields = ("project",)
+
+    @staticmethod
+    def layout_fp(obj: m.AsteroidMapInput) -> str:
+        fp = (obj.layout_fingerprint or "").strip()
+        return fp[:12] + "..." if len(fp) > 12 else fp or "-"
 
 
 @admin.register(m.AsteroidCellSnapshot)

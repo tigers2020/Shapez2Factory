@@ -7,6 +7,11 @@ from typing import Any
 
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    map_bbox_dense_and_y,
+    raw_x_to_dense_x,
+    server_xy_for_raw_xy,
+)
 
 
 def _as_int(val: Any) -> int:
@@ -78,9 +83,13 @@ def build_decoded_blueprint_snapshot(
     blueprint_type = str(bp.get("$type", "")) if bp.get("$type") is not None else ""
     binary_version = _as_int(decoded_json.get("V"))
 
+    entry_dicts = [e for e in entries if isinstance(e, dict)]
+    bbox_params = map_bbox_dense_and_y(entry_dicts)
+
     cells: list[DecodedCellDTO] = []
     xs: list[int] = []
     ys: list[int] = []
+    dense_xs: list[int] = []
 
     for item in entries:
         if not isinstance(item, dict):
@@ -89,6 +98,11 @@ def build_decoded_blueprint_snapshot(
         y = _as_int(item.get("Y"))
         xs.append(x)
         ys.append(y)
+        if x != 0:
+            try:
+                dense_xs.append(raw_x_to_dense_x(x))
+            except ValueError:
+                pass
 
         t_raw = item.get("T")
         tile_type = str(t_raw) if isinstance(t_raw, str) else ""
@@ -101,6 +115,15 @@ def build_decoded_blueprint_snapshot(
         layer = _extract_layer(item)
 
         raw_entry: dict[str, Any] = dict(item)
+
+        sx_obj = item.get("server_x")
+        sy_obj = item.get("server_y")
+        sx = sx_obj if isinstance(sx_obj, int) else None
+        sy = sy_obj if isinstance(sy_obj, int) else None
+        if (sx is None or sy is None) and bbox_params is not None and x != 0:
+            pair = server_xy_for_raw_xy(x, y, max_dense_x=bbox_params[0], min_raw_y=bbox_params[1])
+            if pair is not None:
+                sx, sy = pair
 
         cells.append(
             DecodedCellDTO(
@@ -115,13 +138,15 @@ def build_decoded_blueprint_snapshot(
                 nested_entry_count=nested_count,
                 nested_type_counts_json=nested_type_counts,
                 raw_entry_json=raw_entry,
+                server_x=sx,
+                server_y=sy,
             )
         )
 
     if xs and ys:
         min_x, max_x = min(xs), max(xs)
         min_y, max_y = min(ys), max(ys)
-        bbox = {
+        bbox: dict[str, Any] = {
             "min_x": min_x,
             "max_x": max_x,
             "min_y": min_y,
@@ -129,6 +154,11 @@ def build_decoded_blueprint_snapshot(
             "width": max_x - min_x + 1,
             "height": max_y - min_y + 1,
         }
+        if dense_xs:
+            mndx, mxdx = min(dense_xs), max(dense_xs)
+            bbox["dense_min_x"] = mndx
+            bbox["dense_max_x"] = mxdx
+            bbox["dense_width"] = mxdx - mndx + 1
     else:
         bbox = {
             "min_x": 0,
@@ -138,6 +168,16 @@ def build_decoded_blueprint_snapshot(
             "width": 0,
             "height": 0,
         }
+
+    sxs = [c.server_x for c in cells if c.server_x is not None]
+    sys_ = [c.server_y for c in cells if c.server_y is not None]
+    if sxs and sys_:
+        bbox["server_min_x"] = min(sxs)
+        bbox["server_max_x"] = max(sxs)
+        bbox["server_min_y"] = min(sys_)
+        bbox["server_max_y"] = max(sys_)
+        bbox["server_width"] = max(sxs) - min(sxs) + 1
+        bbox["server_height"] = max(sys_) - min(sys_) + 1
 
     cell_kind_counts: dict[str, int] = {}
     transport_kind_counts: dict[str, int] = {}

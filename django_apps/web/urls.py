@@ -18,6 +18,11 @@ urlpatterns = [
         name="asteroid-miner-layout-projects-create",
     ),
     path(
+        "asteroid-miner-layout/replay-frame-cell/",
+        views.asteroid_miner_layout_replay_frame_cell,
+        name="asteroid-miner-layout-replay-frame-cell",
+    ),
+    path(
         "asteroid-miner-layout/p/<slug:slug>/",
         views.asteroid_miner_layout_project,
         name="asteroid-miner-layout-project",

@@ -52,58 +52,106 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     dto = project_service.create_project_from_copy_code(code, source_label="snap-contract")
     result = build_initial_replay_for_map_input(dto.map_input_id)
     assert result.status == "ok"
-    assert result.replay_frame_count == 5
+    assert result.replay_frame_count >= 6
 
     rows = list(
         m.ReplayFrame.objects.filter(replay_track_id=result.replay_track_id).order_by(
             "frame_index", "id"
         )
     )
-    assert len(rows) == 5
+    assert len(rows) >= 6
 
-    decode_row = rows[0]
+    raw_row = rows[0]
+    assert raw_row.frame_payload.get("event_type") == et.EVENT_TYPE_DECODE_RAW_LOADED
+    assert raw_row.frame_payload.get("event_key") == "step0_decode_raw"
+    fm_raw = raw_row.frame_payload.get("full_map")
+    assert isinstance(fm_raw, list) and len(fm_raw) == 11
+    kinds_raw = {c["cell_kind"] for c in fm_raw}
+    assert "space_pipe" in kinds_raw
+    assert "fluid_miner" in kinds_raw
+    diff_raw = raw_row.frame_payload.get("diff") or {}
+    assert diff_raw == {"added": [], "removed": [], "changed": []}
+
+    decode_row = rows[1]
     assert decode_row.frame_payload.get("event_type") == et.EVENT_TYPE_DECODE_NORMALIZED
     fm0 = decode_row.frame_payload.get("full_map")
-    assert isinstance(fm0, list) and len(fm0) == 11
+    assert isinstance(fm0, list) and len(fm0) == 10
     kinds0 = {c["cell_kind"] for c in fm0}
     assert "fluid_miner" in kinds0
-    assert "space_pipe" in kinds0
+    assert "space_pipe" not in kinds0
     assert "fluid_miner_extension" in kinds0
     assert "unknown" in kinds0
     diff0 = decode_row.frame_payload.get("diff") or {}
-    assert diff0.get("removed") == []
+    removed0 = diff0.get("removed") or []
+    assert any(c.get("cell_kind") == "space_pipe" for c in removed0)
 
-    transport_row = rows[1]
+    transport_row = rows[2]
     assert (
         transport_row.frame_payload.get("event_type")
         == et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT
     )
     fm1 = transport_row.frame_payload.get("full_map")
     assert isinstance(fm1, list) and len(fm1) == 10
+    assert fm1 == fm0
     assert all(c["cell_kind"] != "space_pipe" for c in fm1)
     diff1 = transport_row.frame_payload.get("diff") or {}
-    removed_kinds = {c["cell_kind"] for c in (diff1.get("removed") or [])}
-    assert "space_pipe" in removed_kinds
+    assert diff1 == {"added": [], "removed": [], "changed": []}
 
-    extractor_row = rows[2]
+    extractor_row = rows[3]
     fm2 = extractor_row.frame_payload.get("full_map")
-    assert isinstance(fm2, list) and len(fm2) == 9
+    assert isinstance(fm2, list) and len(fm2) == 10
     assert all(c["cell_kind"] != "fluid_miner" for c in fm2)
+    cell_10 = next(c for c in fm2 if c["x"] == 1 and c["y"] == 0)
+    assert cell_10["cell_kind"] == "asteroid_fluid_field"
+    diff2 = extractor_row.frame_payload.get("diff") or {}
+    changed2 = diff2.get("changed") or []
+    assert any(
+        ch.get("before", {}).get("cell_kind") == "fluid_miner"
+        and ch.get("after", {}).get("cell_kind") == "asteroid_fluid_field"
+        for ch in changed2
+    )
 
-    extension_row = rows[3]
+    extension_row = rows[4]
     fm3 = extension_row.frame_payload.get("full_map")
-    assert isinstance(fm3, list) and len(fm3) == 8
+    assert isinstance(fm3, list) and len(fm3) == 10
     assert all(c["cell_kind"] != "fluid_miner_extension" for c in fm3)
+    cell_30 = next(c for c in fm3 if c["x"] == 3 and c["y"] == 0)
+    assert cell_30["cell_kind"] == "asteroid_fluid_field"
+    diff3 = extension_row.frame_payload.get("diff") or {}
+    changed3 = diff3.get("changed") or []
+    assert any(
+        ch.get("before", {}).get("cell_kind") == "fluid_miner_extension"
+        and ch.get("after", {}).get("cell_kind") == "asteroid_fluid_field"
+        for ch in changed3
+    )
 
-    recon_row = rows[4]
-    assert recon_row.frame_payload.get("event_type") == et.EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION
-    fm4 = recon_row.frame_payload.get("full_map")
+    payloads = [r.frame_payload or {} for r in rows]
+    final_payload = next(
+        p for p in payloads if p.get("event_key") == "step4_09_reconstruction_final"
+    )
+    complete_payload = rows[-1].frame_payload or {}
+    assert complete_payload.get("event_key") == "step4_10_asteroid_map_complete"
+    assert complete_payload.get("event_type") == et.EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE
+    assert complete_payload.get("full_map") == final_payload.get("full_map")
+    assert complete_payload.get("diff") == final_payload.get("diff")
+    assert complete_payload.get("is_decision_point") is False
+
+    assert final_payload.get("event_type") == et.EVENT_TYPE_RECONSTRUCTION_MINEABLE_FINALIZED
+    fm4 = final_payload.get("full_map")
     assert isinstance(fm4, list)
-    voids = [c for c in fm4 if c.get("cell_kind") == "internal_void"]
-    assert len(voids) >= 1
-    diff4 = recon_row.frame_payload.get("diff") or {}
+    assert all(c.get("cell_kind") != "internal_void" for c in fm4)
+    hole = next(c for c in fm4 if c.get("x") == 2 and c.get("y") == 2)
+    assert hole.get("cell_kind") == "asteroid_shape_field"
+    diff4 = final_payload.get("diff") or {}
     added_kinds = {c.get("cell_kind") for c in (diff4.get("added") or [])}
-    assert "internal_void" in added_kinds
+    if added_kinds:
+        assert "asteroid_shape_field" in added_kinds
+    rs = final_payload.get("summary") or {}
+    assert int(rs.get("barrier_cell_count", 0)) >= int(rs.get("wall_cell_count", 0))
+    assert "inferred_shell_cell_count" in rs
+    assert "external_reachable_count" in rs
+    assert int(rs.get("filled_hole_cell_count", -1)) >= 1
+    assert complete_payload.get("summary") == rs
 
 
 @pytest.mark.django_db

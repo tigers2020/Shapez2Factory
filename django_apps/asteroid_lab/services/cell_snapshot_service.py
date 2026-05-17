@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import asdict
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.replay.event_types import EVENT_TYPE_DECODE_NORMALIZED
+from django_apps.asteroid_lab.replay.event_types import (
+    EVENT_TYPE_DECODE_NORMALIZED,
+    EVENT_TYPE_DECODE_RAW_LOADED,
+)
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
+    build_cleanup_and_reconstruction_rows,
     decode_snapshot_summary,
-    rows_from_cells,
+    diff_maps,
+    snapshot_summary_from_rows,
 )
 from django_apps.asteroid_lab.services.dto import (
     DecodedBlueprintSnapshotDTO,
@@ -21,6 +27,7 @@ from django_apps.asteroid_lab.services.replay_recorder import ReplayRecorder
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
+from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
 
 
 def build_decoded_blueprint_snapshot_from_input(map_input_id: int) -> DecodedBlueprintSnapshotDTO:
@@ -40,7 +47,7 @@ def build_decoded_blueprint_snapshot_from_input(map_input_id: int) -> DecodedBlu
 
 
 def _overlay_cell_dict(c: DecodedCellDTO) -> dict[str, Any]:
-    return {
+    row: dict[str, Any] = {
         "x": c.x,
         "y": c.y,
         "layer": c.layer,
@@ -49,44 +56,87 @@ def _overlay_cell_dict(c: DecodedCellDTO) -> dict[str, Any]:
         "transport_kind": c.transport_kind,
         "tile_type": c.tile_type,
     }
+    if c.server_x is not None and c.server_y is not None:
+        row["server_x"] = c.server_x
+        row["server_y"] = c.server_y
+    return row
 
 
 def record_decoded_snapshot_frames(
     track_id: int,
     snapshot: DecodedBlueprintSnapshotDTO,
 ) -> list[SnapshotFrameDTO]:
-    """Append one decode replay frame: full decoded blueprint map snapshot (UI-only artifact)."""
+    """Append decode replay frames: raw full map, then transport-stripped map + removal diff."""
 
     recorder = ReplayRecorder(int(track_id))
     bv = snapshot.binary_version
-    full_map = rows_from_cells(snapshot.cells)
+    row_decode, row_transport, *_ = build_cleanup_and_reconstruction_rows(snapshot)
+    full_map_raw = [dict(r) for r in row_decode]
+    full_map_norm = [dict(r) for r in row_transport]
+    transport_diff = diff_maps(row_decode, row_transport)
+    raw_decode = decode_snapshot_summary(snapshot)
+    summary_raw = snapshot_summary_from_rows(row_decode)
+    summary_norm = snapshot_summary_from_rows(row_transport)
+    raw_metrics: dict[str, Any] = {
+        "binary_version": bv,
+        "blueprint_type": snapshot.blueprint_type,
+        "entry_count": snapshot.entry_count,
+        "cell_kind_counts": dict(summary_raw["cell_kind_counts"]),
+        "transport_kind_counts": dict(
+            Counter(str(r.get("transport_kind") or "none") for r in row_decode)
+        ),
+        "bbox": dict(snapshot.bbox_json),
+    }
     norm_metrics: dict[str, Any] = {
         "binary_version": bv,
         "blueprint_type": snapshot.blueprint_type,
         "entry_count": snapshot.entry_count,
-        "cell_kind_counts": dict(snapshot.cell_kind_counts_json),
-        "transport_kind_counts": dict(snapshot.transport_kind_counts_json),
+        "cell_kind_counts": dict(summary_norm["cell_kind_counts"]),
+        "transport_kind_counts": dict(
+            Counter(str(r.get("transport_kind") or "none") for r in row_transport)
+        ),
         "bbox": dict(snapshot.bbox_json),
     }
-    frame_summary = decode_snapshot_summary(snapshot)
 
-    ev_decode = SnapshotEventDTO(
+    ev_raw = SnapshotEventDTO(
+        event_key="step0_decode_raw",
+        phase="decode",
+        phase_step="raw",
+        event_type=EVENT_TYPE_DECODE_RAW_LOADED,
+        title="Decoded blueprint (raw)",
+        description="Copy decode: full blueprint as decoded from copy (transport included).",
+        after_state_json={"decode": raw_decode},
+        cell_overlay_json={
+            "cells": full_map_raw,
+            "equipment_bundles": build_equipment_bundles(full_map_raw),
+        },
+        metrics_json=raw_metrics,
+        is_decision_point=True,
+        full_map=full_map_raw,
+        diff={"added": [], "removed": [], "changed": []},
+        summary=summary_raw,
+    )
+
+    ev_norm = SnapshotEventDTO(
         event_key="step0_decode",
         phase="decode",
         phase_step="normalized",
         event_type=EVENT_TYPE_DECODE_NORMALIZED,
         title="Decoded blueprint",
-        description="Full map after copy decode (all top-level BP.Entries).",
-        after_state_json={"decode": frame_summary},
-        cell_overlay_json={"cells": full_map},
+        description="Copy decode with existing transport stripped for solver-facing map.",
+        after_state_json={"decode": raw_decode},
+        cell_overlay_json={
+            "cells": full_map_norm,
+            "equipment_bundles": build_equipment_bundles(full_map_norm),
+        },
         metrics_json=norm_metrics,
         is_decision_point=True,
-        full_map=list(full_map),
-        diff={"added": [], "removed": [], "changed": []},
-        summary=frame_summary,
+        full_map=full_map_norm,
+        diff=transport_diff,
+        summary=summary_norm,
     )
 
-    return recorder.record_many([ev_decode])
+    return recorder.record_many([ev_raw, ev_norm])
 
 
 def persist_decoded_cell_snapshot(

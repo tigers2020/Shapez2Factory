@@ -6,16 +6,19 @@ from dataclasses import asdict
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
+from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
+from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_result
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION,
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR,
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
-    EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
 )
+from django_apps.asteroid_lab.replay.reconstruction_frames import build_reconstruction_replay_events
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     build_cleanup_and_reconstruction_rows,
     diff_maps,
-    issue_overlay_cells,
+    rows_from_cells,
     snapshot_summary_from_rows,
 )
 from django_apps.asteroid_lab.services.cell_snapshot_service import (
@@ -28,7 +31,12 @@ from django_apps.asteroid_lab.services.dto import (
     SnapshotFrameDTO,
 )
 from django_apps.asteroid_lab.services.replay_recorder import ReplayRecorder
+from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
 from django_apps.asteroid_lab.snapshots.existing_layout_inspection import inspect_existing_layout
+
+
+def _cell_overlay_with_equipment_bundles(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"cells": rows, "equipment_bundles": build_equipment_bundles(rows)}
 
 
 def build_existing_layout_inspection_from_snapshot(
@@ -50,16 +58,22 @@ def record_existing_layout_inspection_frames(
     track_id: int,
     inspection: ExistingLayoutInspectionDTO,
 ) -> list[SnapshotFrameDTO]:
-    """Append four full-map cleanup + reconstruction replay frames (UI-only; never solver input)."""
+    """Append cleanup frames plus stepwise reconstruction replay (UI-only; never solver input)."""
 
     if inspection.map_input_id is None:
         msg = "ExistingLayoutInspectionDTO.map_input_id is required for snapshot replay"
         raise ValueError(msg)
 
     snap = build_decoded_blueprint_snapshot_from_input(int(inspection.map_input_id))
-    row_decode, row_transport, row_extractor, row_extension, row_recon = (
-        build_cleanup_and_reconstruction_rows(snap)
+    _, row_transport, row_extractor, row_extension, _, _ = build_cleanup_and_reconstruction_rows(
+        snap
     )
+
+    cleanup = load_cleanup_result(snap)
+    collector = ReconstructionTraceCollector()
+    recon = run_topology_reconstruction(cleanup, trace_collector=collector)
+    row_recon = rows_from_cells(recon.cells)
+    recon_extra = {**dict(cleanup.summary_json), **dict(recon.summary_json)}
 
     recorder = ReplayRecorder(int(track_id))
     phase = "layout_cleanup"
@@ -71,13 +85,16 @@ def record_existing_layout_inspection_frames(
         phase_step="transport",
         event_type=EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
         title="After transport cleanup",
-        description="Full map with belts and pipes removed; removed cells in diff.removed.",
+        description=(
+            "Transport already stripped in decode.normalized frame; "
+            "this frame marks the cleanup baseline."
+        ),
         after_state_json={"inspection_summary": ins_summary},
-        cell_overlay_json={"cells": row_transport},
+        cell_overlay_json=_cell_overlay_with_equipment_bundles(row_transport),
         metrics_json=snapshot_summary_from_rows(row_transport),
         is_decision_point=True,
         full_map=list(row_transport),
-        diff=diff_maps(row_decode, row_transport),
+        diff=diff_maps(row_transport, row_transport),
         summary=snapshot_summary_from_rows(row_transport),
     )
 
@@ -89,7 +106,7 @@ def record_existing_layout_inspection_frames(
         title="After extractor cleanup",
         description="Full map with miners removed; underlying field visible where applicable.",
         after_state_json={"inspection_summary": ins_summary},
-        cell_overlay_json={"cells": row_extractor},
+        cell_overlay_json=_cell_overlay_with_equipment_bundles(row_extractor),
         metrics_json=snapshot_summary_from_rows(row_extractor),
         is_decision_point=True,
         full_map=list(row_extractor),
@@ -105,7 +122,7 @@ def record_existing_layout_inspection_frames(
         title="After extension cleanup",
         description="Full map with miner extensions removed.",
         after_state_json={"inspection_summary": ins_summary},
-        cell_overlay_json={"cells": row_extension},
+        cell_overlay_json=_cell_overlay_with_equipment_bundles(row_extension),
         metrics_json=snapshot_summary_from_rows(row_extension),
         is_decision_point=True,
         full_map=list(row_extension),
@@ -113,14 +130,11 @@ def record_existing_layout_inspection_frames(
         summary=snapshot_summary_from_rows(row_extension),
     )
 
-    issues_payload = [asdict(i) for i in inspection.issues]
     hints = dict(inspection.hints_json)
-    i_cells = issue_overlay_cells(inspection)
     recon_summary = snapshot_summary_from_rows(row_recon)
-    recon_summary["issue_count"] = len(inspection.issues)
+    recon_summary.update(recon_extra)
     recon_summary["inspection"] = {
         "summary_json": ins_summary,
-        "issues": issues_payload,
         "hints_json": hints,
         "attachments": [asdict(a) for a in inspection.attachments],
         "transport_components": [
@@ -134,23 +148,16 @@ def record_existing_layout_inspection_frames(
         ],
     }
 
-    ev_recon = SnapshotEventDTO(
-        event_key="step4_reconstruction",
-        phase="reconstruction",
-        phase_step="snapshot",
-        event_type=EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
-        title="Reconstruction snapshot",
-        description="Structural cells plus inferred internal_void; inspection metadata in summary.",
-        after_state_json={"hints_json": hints},
-        cell_overlay_json={"cells": row_recon, "issue_cells": i_cells},
-        metrics_json=snapshot_summary_from_rows(row_recon),
-        is_decision_point=True,
-        full_map=list(row_recon),
-        diff=diff_maps(row_extension, row_recon),
-        summary=recon_summary,
+    recon_events = build_reconstruction_replay_events(
+        structural_rows=list(row_extension),
+        cleanup=cleanup,
+        recon=recon,
+        trace_events=collector.events,
+        recon_summary=dict(recon_summary),
+        hints=hints,
     )
 
-    return recorder.record_many([ev_transport, ev_extractor, ev_extension, ev_recon])
+    return recorder.record_many([ev_transport, ev_extractor, ev_extension, *recon_events])
 
 
 def persist_existing_layout_inspection_snapshot(
@@ -176,7 +183,6 @@ def persist_existing_layout_inspection_snapshot(
         "schema": "asteroid_lab_existing_layout_inspection_v1",
         "summary_json": dict(inspection.summary_json),
         "hints_json": dict(inspection.hints_json),
-        "issue_codes": [i.issue_code for i in inspection.issues],
     }
     grid: dict[str, Any] = {
         "inspection": asdict(inspection),

@@ -200,6 +200,8 @@ class DecodedCellDTO:
     nested_entry_count: int
     nested_type_counts_json: dict[str, int]
     raw_entry_json: dict[str, Any]
+    server_x: int | None = field(default=None)
+    server_y: int | None = field(default=None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +246,8 @@ class ExistingEquipmentDTO:
     cell_kind: str
     transport_kind: str
     raw_entry_json: dict[str, Any]
+    server_x: int | None = field(default=None)
+    server_y: int | None = field(default=None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -258,18 +262,6 @@ class EquipmentAttachmentDTO:
 
 
 @dataclass(frozen=True, slots=True)
-class ExistingLayoutIssueDTO:
-    """Inspection issue row (UI/replay only; not solver input)."""
-
-    issue_code: str
-    severity: str
-    equipment_id: str
-    component_id: int | None
-    cells_json: list[dict[str, Any]]
-    message: str
-
-
-@dataclass(frozen=True, slots=True)
 class ExistingLayoutInspectionDTO:
     """Full existing-layout inspection over A5 decoded top-level cells."""
 
@@ -278,7 +270,6 @@ class ExistingLayoutInspectionDTO:
     transport_components: tuple[ExistingTransportComponentDTO, ...]
     equipment: tuple[ExistingEquipmentDTO, ...]
     attachments: tuple[EquipmentAttachmentDTO, ...]
-    issues: tuple[ExistingLayoutIssueDTO, ...]
     hints_json: dict[str, Any]
     summary_json: dict[str, Any]
 

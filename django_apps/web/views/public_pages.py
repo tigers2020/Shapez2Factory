@@ -1,3 +1,4 @@
+import json
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -29,6 +30,9 @@ from django_apps.asteroid_lab.services.project_service import (
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
 )
+from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
+    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+)
 from django_apps.shapez_core.services.preview_service import (
     build_demo_parse_rows,
     get_color_catalog_rows,
@@ -43,11 +47,17 @@ from django_apps.web.models import GraphPreviewImage
 from django_apps.web.services.asteroid_lab_page_context import (
     build_lab_replay_payload,
     lab_page_context,
+    optimization_replay_payload_for_project,
+    serialize_replay_frame,
+)
+from django_apps.web.services.asteroid_lab_post_inspection_evolution import (
+    run_post_inspection_evolution_and_attach_optimization_replay,
 )
 from django_apps.web.services.graph_preview import (
     PlaywrightPngGraphPreviewRenderer,
     png_bytes_are_valid,
 )
+from django_apps.web.services.replay_frame_cell_lookup import lookup_cell_in_serialized_frame
 
 
 @lru_cache(maxsize=8)
@@ -167,6 +177,10 @@ def _asteroid_miner_lab_page_context(
     blueprint_code: str, *, project: AsteroidProject | None = None
 ) -> dict[str, Any]:
     ctx = lab_page_context(project_id=int(project.pk) if project is not None else None)
+    if OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY not in ctx:
+        ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] = optimization_replay_payload_for_project(
+            int(project.pk) if project is not None else None
+        )
     ctx["blueprint_code"] = blueprint_code
     ui_initial = dict(ctx.get("lab_ui_initial") or {})
     ui_initial["blueprintCode"] = blueprint_code
@@ -175,7 +189,12 @@ def _asteroid_miner_lab_page_context(
     return ctx
 
 
-def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> dict[str, Any]:
+def _lab_json_bundle_for_track_id(
+    track_id: int | None,
+    *,
+    copy_code: str,
+    project_id: int | None = None,
+) -> dict[str, Any]:
     frames: list[dict[str, Any]] = []
     initial: dict[str, Any] = {}
     track: ReplayTrack | None = None
@@ -199,10 +218,15 @@ def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> di
         "replayTrackId": int(track.pk) if track else None,
         "replayTrackKey": str(track.track_key) if track else None,
     }
+    opt_project_id = project_id
+    if opt_project_id is None and track is not None:
+        opt_project_id = int(track.project_id)
+    opt_payload = optimization_replay_payload_for_project(opt_project_id)
     return {
         "lab_replay_frames_json": frames,
         "lab_initial_replay_frame_json": initial,
         "lab_ui_initial": ui,
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: opt_payload,
     }
 
 
@@ -232,6 +256,60 @@ def asteroid_miner_layout_project(request: HttpRequest, slug: str) -> HttpRespon
 
 
 @require_POST
+def asteroid_miner_layout_replay_frame_cell(request: HttpRequest) -> JsonResponse:
+    """POST JSON: resolve one cell at world (x, y) for a persisted :class:`ReplayFrame`."""
+
+    try:
+        body = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
+
+    def _bad(msg: str, status: int = 400) -> JsonResponse:
+        return JsonResponse({"ok": False, "error": msg, "cell": None, "sources": {}}, status=status)
+
+    try:
+        replay_frame_id = int(body["replay_frame_id"])
+        replay_track_id = int(body["replay_track_id"])
+        x = int(body["x"])
+        y = int(body["y"])
+    except (KeyError, TypeError, ValueError):
+        return _bad("missing_or_invalid_fields")
+
+    if x == 0:
+        return _bad("invalid_x_zero")
+
+    project_slug = str(body.get("project_slug") or "").strip()
+
+    frame = (
+        ReplayFrame.objects.select_related("replay_track__project")
+        .filter(pk=replay_frame_id)
+        .first()
+    )
+    if frame is None:
+        return _bad("replay_frame_not_found", 404)
+
+    if int(frame.replay_track_id) != replay_track_id:
+        return _bad("replay_track_mismatch", 403)
+
+    if project_slug and frame.replay_track.project.slug != project_slug:
+        return _bad("project_slug_mismatch", 403)
+
+    ser = serialize_replay_frame(frame)
+    cell, sources = lookup_cell_in_serialized_frame(ser, x, y)
+    message = "" if cell is not None else "no_cell_at_xy"
+    return JsonResponse(
+        {
+            "ok": True,
+            "cell": cell,
+            "sources": sources,
+            "message": message,
+            "frame_index": ser.get("frame_index"),
+            "frame_key": ser.get("frame_key"),
+        }
+    )
+
+
+@require_POST
 def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
     """POST copy text, dedupe by digest, build inspection replay, redirect to slug URL (PRG)."""
 
@@ -248,6 +326,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
         replay_bundle: dict[str, Any],
         replay_ok: bool,
         error_message: str,
+        optimization_replay_attach: dict[str, Any] | None = None,
         status: int = 200,
     ) -> JsonResponse:
         body: dict[str, Any] = {
@@ -259,6 +338,8 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             "error_message": error_message,
         }
         body.update(replay_bundle)
+        if optimization_replay_attach is not None:
+            body["optimization_replay_attach"] = optimization_replay_attach
         return JsonResponse(body, status=status)
 
     if stay_slug:
@@ -271,7 +352,9 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                     redirect_url=reverse("web:asteroid-miner-layout"),
                     in_place=False,
                     copy_for_blueprint=copy_code,
-                    replay_bundle=_lab_json_bundle_for_track_id(None, copy_code=copy_code),
+                    replay_bundle=_lab_json_bundle_for_track_id(
+                        None, copy_code=copy_code, project_id=None
+                    ),
                     replay_ok=False,
                     error_message="unknown_project",
                     status=404,
@@ -285,7 +368,9 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                     redirect_url=redirect_url,
                     in_place=False,
                     copy_for_blueprint="",
-                    replay_bundle=_lab_json_bundle_for_track_id(None, copy_code=""),
+                    replay_bundle=_lab_json_bundle_for_track_id(
+                        None, copy_code="", project_id=int(stay_project.pk)
+                    ),
                     replay_ok=False,
                     error_message="empty_copy",
                     status=400,
@@ -295,8 +380,16 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
         result = build_initial_replay_for_map_input(int(inp.pk), force=True)
         if result.status != "ok" and result.error_message:
             messages.error(request, result.error_message)
+        opt_attach_payload: dict[str, Any] | None = None
+        if result.status == "ok":
+            oa = run_post_inspection_evolution_and_attach_optimization_replay(int(inp.pk), result)
+            opt_attach_payload = {"attached": oa.attached, "reason": oa.reason}
         redirect_url = reverse("web:asteroid-miner-layout-project", kwargs={"slug": stay_slug})
-        bundle = _lab_json_bundle_for_track_id(result.replay_track_id, copy_code=copy_code)
+        bundle = _lab_json_bundle_for_track_id(
+            result.replay_track_id,
+            copy_code=copy_code,
+            project_id=int(stay_project.pk),
+        )
         if wants_json:
             return _json_response(
                 ok=True,
@@ -306,6 +399,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                 replay_bundle=bundle,
                 replay_ok=result.status == "ok",
                 error_message=result.error_message or "",
+                optimization_replay_attach=opt_attach_payload,
             )
         return redirect(redirect_url)
 
@@ -316,7 +410,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                 redirect_url=reverse("web:asteroid-miner-layout"),
                 in_place=False,
                 copy_for_blueprint="",
-                replay_bundle=_lab_json_bundle_for_track_id(None, copy_code=""),
+                replay_bundle=_lab_json_bundle_for_track_id(None, copy_code="", project_id=None),
                 replay_ok=False,
                 error_message="empty_copy",
                 status=400,
@@ -349,10 +443,24 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                 result = build_initial_replay_for_map_input(int(inp.pk), force=True)
             if result.status != "ok" and result.error_message:
                 messages.error(request, result.error_message)
+            opt_attach_payload = None
+            if result.status == "ok":
+                oa = run_post_inspection_evolution_and_attach_optimization_replay(
+                    int(inp.pk), result
+                )
+                opt_attach_payload = {"attached": oa.attached, "reason": oa.reason}
+        else:
+            opt_attach_payload = None
+    else:
+        opt_attach_payload = None
     redirect_url = reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})
     if wants_json:
         tid = getattr(result, "replay_track_id", None) if result is not None else None
-        bundle = _lab_json_bundle_for_track_id(tid, copy_code=copy_code)
+        bundle = _lab_json_bundle_for_track_id(
+            tid,
+            copy_code=copy_code,
+            project_id=int(project.pk) if project is not None else None,
+        )
         err = (getattr(result, "error_message", "") or "") if result is not None else ""
         return _json_response(
             ok=True,
@@ -362,6 +470,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             replay_bundle=bundle,
             replay_ok=getattr(result, "status", None) == "ok" if result is not None else False,
             error_message=err,
+            optimization_replay_attach=opt_attach_payload,
         )
     return redirect(redirect_url)
 

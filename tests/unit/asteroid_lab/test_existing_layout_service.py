@@ -55,26 +55,38 @@ def test_record_existing_layout_inspection_frames_order_and_types(
     _, inp = project_and_input
     ins = els.build_existing_layout_inspection_from_input(inp.id)
     frames = els.record_existing_layout_inspection_frames(replay_track.id, ins)
-    assert len(frames) == 4
-    expected_types = (
-        et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
-        et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR,
-        et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION,
-        et.EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
-    )
-    for i, ft in enumerate(expected_types):
-        assert frames[i].event_type == ft
-        assert frames[i].frame_index == i
+    assert len(frames) >= 4
+    assert frames[0].event_type == et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT
+    assert frames[1].event_type == et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR
+    assert frames[2].event_type == et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION
+    recon_vals = {getattr(et, n) for n in dir(et) if n.startswith("EVENT_TYPE_RECONSTRUCTION_")}
+    recon_frames = [f for f in frames[3:] if f.event_type in recon_vals]
+    assert len(recon_frames) >= 1
+    last = frames[-1]
+    assert last.event_key == "step4_10_asteroid_map_complete"
+    assert last.event_type == et.EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE
+    final_frame = next(f for f in frames if f.event_key == "step4_09_reconstruction_final")
+    assert final_frame.event_type == et.EVENT_TYPE_RECONSTRUCTION_MINEABLE_FINALIZED
+    for i, fr in enumerate(frames):
+        assert fr.frame_index == i
 
     rows = list(m.ReplayFrame.objects.filter(replay_track=replay_track).order_by("frame_index"))
-    recon = {n for n in dir(et) if n.startswith("EVENT_TYPE_RECONSTRUCTION_")}
-    recon_vals = {getattr(et, n) for n in recon}
-    for row in rows:
+    complete_row = rows[-1]
+    assert complete_row.frame_payload.get("event_key") == "step4_10_asteroid_map_complete"
+    assert complete_row.frame_payload.get("full_map") is not None
+    assert "issue_cells" not in complete_row.cell_overlay_json
+
+    final_orm = next(
+        r
+        for r in rows
+        if (r.frame_payload or {}).get("event_key") == "step4_09_reconstruction_final"
+    )
+    assert final_orm.frame_payload.get("full_map") is not None
+
+    for row in rows[:3]:
         etype = (row.frame_payload or {}).get("event_type")
         assert etype not in recon_vals
-    recon_row = rows[3]
-    assert recon_row.frame_payload.get("full_map") is not None
-    assert isinstance(recon_row.cell_overlay_json.get("issue_cells"), list)
+    assert any((r.frame_payload or {}).get("event_type") in recon_vals for r in rows[3:])
 
 
 @pytest.mark.django_db

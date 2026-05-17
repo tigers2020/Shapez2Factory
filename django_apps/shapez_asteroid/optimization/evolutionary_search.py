@@ -25,6 +25,13 @@ from django_apps.shapez_asteroid.optimization.genome_fitness import (
     evaluate_genome,
     probe_unreachable_or_stale,
 )
+from django_apps.shapez_asteroid.optimization.optimization_replay import OptimizationReplaySink
+from django_apps.shapez_asteroid.optimization.optimization_replay_events import (
+    emit_best_genome_selected,
+    emit_generation_completed,
+    emit_genome_evaluated,
+    emit_genome_generated,
+)
 
 _MAX_BUNDLES_PER_GENOME = 8
 
@@ -507,6 +514,7 @@ def run_evolutionary_search(
     *,
     route_domain: Mapping[Coord, RouteCellDomain] | None = None,
     hall_of_fame_total_trace: list[float] | None = None,
+    replay_recorder: OptimizationReplaySink | None = None,
 ) -> EvolutionResult:
     """Evolution on candidate ids only; does not mutate ``candidate_pool``.
 
@@ -520,13 +528,22 @@ def run_evolutionary_search(
         evaluated = [0]
         dummy = Genome("empty", (), cfg.seed)
         fb = _evaluate(dummy, pool_tuple, route_domain, evaluated)
-        return EvolutionResult(
+        result = EvolutionResult(
             best_genome=dummy,
             best_fitness=fb,
             generation_count=0,
             evaluated_genome_count=evaluated[0],
             convergence_reason=EvolutionConvergenceReason.CANDIDATE_POOL_EXHAUSTED,
         )
+        emit_best_genome_selected(
+            replay_recorder,
+            genome=result.best_genome,
+            fitness_total=result.best_fitness.total,
+            fitness_breakdown=result.best_fitness,
+            selected_candidate_count=result.best_fitness.metrics.selected_candidate_count,
+            evolution_convergence_reason=result.convergence_reason,
+        )
+        return result
 
     rng = Random(cfg.seed)
     next_genome_seq = [0]
@@ -545,6 +562,14 @@ def run_evolutionary_search(
 
     sort_pop()
     best_g, best_f = scored[0]
+    emit_genome_generated(
+        replay_recorder,
+        title="Initial population",
+        description="Summarized initial genomes after repair and evaluation",
+        population_size=len(scored),
+        genome_ids=tuple(g.genome_id for g, _ in scored),
+        candidate_count=len(pool_tuple),
+    )
     initial_best_total = best_f.total
     improved_flag = False
     if hall_of_fame_total_trace is not None:
@@ -612,6 +637,23 @@ def run_evolutionary_search(
         if hall_of_fame_total_trace is not None:
             hall_of_fame_total_trace.append(best_f.total)
 
+        emit_generation_completed(
+            replay_recorder,
+            title=f"Generation {gen} completed",
+            generation_index=gen,
+            fitness_total=scored[0][1].total,
+            population_size=len(scored),
+            evaluated_count=evaluated[0],
+        )
+        emit_genome_evaluated(
+            replay_recorder,
+            title=f"Generation {gen} best genome",
+            genome_id=scored[0][0].genome_id,
+            generation_index=gen,
+            fitness_total=scored[0][1].total,
+            fitness_breakdown=scored[0][1],
+        )
+
         if cfg.max_stall_generation > 0 and stall >= cfg.max_stall_generation:
             convergence = EvolutionConvergenceReason.MAX_STALL_GENERATION
             break
@@ -640,13 +682,22 @@ def run_evolutionary_search(
     if hall_of_fame_total_trace is not None:
         hall_of_fame_total_trace.append(best_f.total)
 
-    return EvolutionResult(
+    out = EvolutionResult(
         best_genome=best_g,
         best_fitness=best_f,
         generation_count=generation_done,
         evaluated_genome_count=evaluated[0],
         convergence_reason=convergence,
     )
+    emit_best_genome_selected(
+        replay_recorder,
+        genome=out.best_genome,
+        fitness_total=out.best_fitness.total,
+        fitness_breakdown=out.best_fitness,
+        selected_candidate_count=out.best_fitness.metrics.selected_candidate_count,
+        evolution_convergence_reason=out.convergence_reason,
+    )
+    return out
 
 
 __all__ = [

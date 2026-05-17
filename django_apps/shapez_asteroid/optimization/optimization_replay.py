@@ -5,6 +5,7 @@ Replay artifacts are never algorithm input; recording must not affect search res
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from enum import Enum
@@ -148,12 +149,16 @@ def json_safe_replay_value(obj: object) -> object:
         return obj.value
     if isinstance(obj, Coord):
         return {"x": obj.x, "y": obj.y}
+    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+        raw = dataclasses.asdict(obj)
+        return json_safe_replay_value(raw)
     if isinstance(obj, Mapping):
         return {str(k): json_safe_replay_value(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
         return [json_safe_replay_value(x) for x in obj]
     if isinstance(obj, (frozenset, set)):
-        return [json_safe_replay_value(x) for x in obj]
+        ordered = sorted(obj, key=lambda z: (type(z).__name__, str(z)))
+        return [json_safe_replay_value(x) for x in ordered]
     return str(obj)
 
 

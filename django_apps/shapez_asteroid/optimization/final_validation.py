@@ -21,6 +21,10 @@ from django_apps.shapez_asteroid.optimization.enums import (
     ValidationIssueCode,
     ValidationSeverity,
 )
+from django_apps.shapez_asteroid.optimization.optimization_replay import OptimizationReplaySink
+from django_apps.shapez_asteroid.optimization.optimization_replay_events import (
+    emit_validation_completed,
+)
 
 _SEVERITY_ORDER: dict[ValidationSeverity, int] = {
     ValidationSeverity.ERROR: 0,
@@ -624,6 +628,8 @@ def validate_incremental_commit_result(
     optimization_input: OptimizationInput,
     candidate_pool: Sequence[BundleCandidate],
     commit_result: IncrementalCommitResult,
+    *,
+    replay_recorder: OptimizationReplaySink | None = None,
 ) -> ValidationResult:
     """Assert-gate validation: read-only checks on ``commit_result`` (no routing or mutation)."""
 
@@ -643,7 +649,14 @@ def validate_incremental_commit_result(
     _validate_extension_constraints_v0(candidate_by_id, commit_result, issues)
 
     sorted_issues = _sort_issues(issues)
-    return ValidationResult(passed=_passed_from_issues(sorted_issues), issues=sorted_issues)
+    out = ValidationResult(passed=_passed_from_issues(sorted_issues), issues=sorted_issues)
+    res_ids = tuple(r.reservation_id for r in commit_result.route_reservations)
+    emit_validation_completed(
+        replay_recorder,
+        result=out,
+        route_reservation_ids=res_ids,
+    )
+    return out
 
 
 def validation_passed_from_issues(issues: Sequence[ValidationIssue]) -> bool:

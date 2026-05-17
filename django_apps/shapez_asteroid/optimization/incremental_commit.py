@@ -30,6 +30,12 @@ from django_apps.shapez_asteroid.optimization.enums import (
     TransportKind,
     TransportMask,
 )
+from django_apps.shapez_asteroid.optimization.optimization_replay import OptimizationReplaySink
+from django_apps.shapez_asteroid.optimization.optimization_replay_events import (
+    emit_route_commit_attempted,
+    emit_route_committed,
+    emit_route_rolled_back,
+)
 from django_apps.shapez_asteroid.optimization.route_domain_snapshot_builder import (
     RouteDomainSnapshotBuilder,
 )
@@ -170,6 +176,7 @@ def commit_best_genome(
     recovery_budget: RecoveryBudget | None = None,
     *,
     probe_config: CandidateGenerationConfig | None = None,
+    replay_recorder: OptimizationReplaySink | None = None,
 ) -> IncrementalCommitResult:
     """Incrementally confirm candidates in ``Gene.commit_order`` with fresh route probes."""
 
@@ -186,6 +193,17 @@ def commit_best_genome(
 
     for _gene, cand in pairs:
         if recovery_budget is not None and probe_attempts >= recovery_budget.max_reroute_attempts:
+            emit_route_commit_attempted(
+                replay_recorder,
+                candidate_id=cand.candidate_id,
+                transport_kind=cand.transport_kind,
+            )
+            emit_route_rolled_back(
+                replay_recorder,
+                candidate_id=cand.candidate_id,
+                transport_kind=cand.transport_kind,
+                commit_conflict_reason=CommitConflictReason.TRUNK_DEADLOCK,
+            )
             results.append(
                 CandidateCommitResult(
                     candidate_id=cand.candidate_id,
@@ -198,6 +216,11 @@ def commit_best_genome(
             )
             continue
 
+        emit_route_commit_attempted(
+            replay_recorder,
+            candidate_id=cand.candidate_id,
+            transport_kind=cand.transport_kind,
+        )
         probe_attempts += 1
         route_domain = _invoke_build_commit(
             route_domain_builder,
@@ -218,6 +241,12 @@ def commit_best_genome(
         probe_res = run_route_probe(probe_inp, occupied_cells=occupied_overlay)
 
         if not _probe_connected(probe_res):
+            emit_route_rolled_back(
+                replay_recorder,
+                candidate_id=cand.candidate_id,
+                transport_kind=cand.transport_kind,
+                commit_conflict_reason=CommitConflictReason.ROUTE_PROBE_FAILED,
+            )
             results.append(
                 CandidateCommitResult(
                     candidate_id=cand.candidate_id,
@@ -235,6 +264,12 @@ def commit_best_genome(
         reached_goal = probe_res.reached_goal
         goal_priority = probe_res.goal_priority
         if reached_goal is None or goal_priority is None:
+            emit_route_rolled_back(
+                replay_recorder,
+                candidate_id=cand.candidate_id,
+                transport_kind=cand.transport_kind,
+                commit_conflict_reason=CommitConflictReason.ROUTE_PROBE_FAILED,
+            )
             results.append(
                 CandidateCommitResult(
                     candidate_id=cand.candidate_id,
@@ -256,6 +291,12 @@ def commit_best_genome(
             confirmed_reservations=confirmed_tuple,
         )
         if conflict is not None:
+            emit_route_rolled_back(
+                replay_recorder,
+                candidate_id=cand.candidate_id,
+                transport_kind=cand.transport_kind,
+                commit_conflict_reason=conflict,
+            )
             results.append(
                 CandidateCommitResult(
                     candidate_id=cand.candidate_id,
@@ -313,6 +354,11 @@ def commit_best_genome(
                 transport_kind=cand.transport_kind,
                 route_reservation_id=reservation_id,
             )
+        )
+        emit_route_committed(
+            replay_recorder,
+            candidate_id=cand.candidate_id,
+            reservation=confirmed_res,
         )
         committed_occ.update(cand.occupied_cells)
         confirmed_tuple = tuple(reservations)

@@ -138,3 +138,20 @@ def build_rim_competition_pool(
         seed=42,
     )
     return (left, right), genome
+
+
+def build_rim_competition_genome(
+    *,
+    left_commit_order: int = 0,
+    right_commit_order: int = 1,
+) -> Genome:
+    """Same pool ids as :func:`build_rim_competition_pool`; only ``commit_order`` differs."""
+
+    return Genome(
+        "narrow_bridge_g_ordered",
+        (
+            Gene("rim_left", True, left_commit_order),
+            Gene("rim_right", True, right_commit_order),
+        ),
+        seed=42,
+    )

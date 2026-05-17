@@ -28,6 +28,7 @@ from django_apps.shapez_asteroid.optimization.enums import (
     TransportMask,
 )
 from django_apps.shapez_asteroid.optimization.evolutionary_search import (
+    _dedupe_candidates,
     _reassign_commit_order,
     compute_population_diversity,
     deterministic_sort_key,
@@ -254,6 +255,60 @@ def test_dedupe_keeps_lowest_commit_order_for_duplicate_id() -> None:
     enabled = [gg for gg in r.genes if gg.enabled and gg.candidate_id == "d"]
     assert len(enabled) == 1
     assert enabled[0].commit_order == 0
+
+
+def test_dedupe_preserves_earliest_commit_order() -> None:
+    genes = (Gene("d", True, 9), Gene("d", True, 0))
+    out = _dedupe_candidates(genes)
+    enabled = [x for x in out if x.enabled and x.candidate_id == "d"]
+    assert len(enabled) == 1
+    assert enabled[0].candidate_id == "d"
+    assert enabled[0].commit_order == 0
+
+
+def test_dedupe_does_not_collapse_commit_permutations() -> None:
+    """Distinct ids: relative commit semantics follow ``commit_order``, not ``candidate_id``."""
+
+    genes = (
+        Gene("z", True, 0),
+        Gene("a", True, 1),
+    )
+    out = _dedupe_candidates(genes)
+    enabled = [x for x in out if x.enabled]
+    assert [x.candidate_id for x in enabled] == ["z", "a"]
+    assert [x.commit_order for x in enabled] == [0, 1]
+
+
+def test_dedupe_enabled_gene_wins_over_later_duplicate() -> None:
+    """Earlier disabled slot must not suppress a later enabled duplicate of the same id."""
+
+    genes = (Gene("d", False, 0), Gene("d", True, 1))
+    out = _dedupe_candidates(genes)
+    enabled = [x for x in out if x.enabled and x.candidate_id == "d"]
+    assert len(enabled) == 1
+    assert enabled[0].commit_order == 1
+
+
+def test_commit_order_shuffle_survives_repair_pipeline() -> None:
+    """``repair_genome`` first step (dedupe) keeps commit_order authority for unique ids."""
+
+    g0 = _goal(Coord(0, 0))
+    pool = (
+        _bundle("z", _probe_ok(goal=g0), extractor=Coord(0, 0)),
+        _bundle("a", _probe_ok(goal=g0), extractor=Coord(3, 0)),
+    )
+    g = Genome(
+        "shuf",
+        (
+            Gene("z", True, 5),
+            Gene("a", True, 2),
+        ),
+        seed=0,
+    )
+    r = repair_genome(g, pool)
+    enabled = [x for x in r.genes if x.enabled]
+    assert [x.candidate_id for x in enabled] == ["a", "z"]
+    assert [x.commit_order for x in enabled] == [0, 1]
 
 
 def test_convergence_reason_enum() -> None:

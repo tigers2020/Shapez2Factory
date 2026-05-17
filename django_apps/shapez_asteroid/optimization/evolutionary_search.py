@@ -27,6 +27,14 @@ from django_apps.shapez_asteroid.optimization.genome_fitness import (
 )
 
 _MAX_BUNDLES_PER_GENOME = 8
+
+
+def _commit_order_sort_key(g: Gene) -> tuple[int, str, bool]:
+    """Sort key: ``commit_order`` is authoritative; ``candidate_id`` tie-break; enabled first."""
+
+    return (g.commit_order, g.candidate_id, not g.enabled)
+
+
 _MUTATION_OPS: tuple[str, ...] = (
     "add_candidate",
     "remove_candidate",
@@ -152,15 +160,11 @@ def compute_population_diversity(
 def _reassign_commit_order(genes: Sequence[Gene]) -> tuple[Gene, ...]:
     """Renumber ``commit_order`` to ``0..n-1`` without collapsing shuffle semantics.
 
-    Genes are ordered by existing ``commit_order`` (then ``candidate_id``, then
-    enabled-first) so ``commit_order_shuffle`` and repair steps explore real
-    commit permutations instead of reverting to ``candidate_id`` order.
+    Genes are ordered by ``_commit_order_sort_key`` so ``commit_order_shuffle`` and repair
+    steps explore real commit permutations instead of reverting to ``candidate_id`` order.
     """
 
-    ordered = sorted(
-        genes,
-        key=lambda g: (g.commit_order, g.candidate_id, not g.enabled),
-    )
+    ordered = sorted(genes, key=_commit_order_sort_key)
     return tuple(replace(g, commit_order=i) for i, g in enumerate(ordered))
 
 
@@ -410,17 +414,36 @@ def _remove_corridor_blocker(
     return _genes_tuple(_reassign_commit_order(out))
 
 
-def _dedupe_candidates(genes: Sequence[Gene]) -> tuple[Gene, ...]:
-    """One enabled representative per ``candidate_id``; earliest ``commit_order`` wins."""
+def _pick_duplicate_keeper(group: Sequence[Gene]) -> Gene:
+    """Per ``candidate_id`` group: prefer enabled genes, earliest ``commit_order`` among them."""
 
-    seen: set[str] = set()
+    group_list = list(group)
+    enabled = [g for g in group_list if g.enabled]
+    if enabled:
+        return min(enabled, key=lambda g: (g.commit_order, g.candidate_id))
+    return min(group_list, key=_commit_order_sort_key)
+
+
+def _dedupe_candidates(genes: Sequence[Gene]) -> tuple[Gene, ...]:
+    """At most one *active* representative per ``candidate_id``; ``commit_order``-canonical keeper.
+
+    Iteration uses ``_commit_order_sort_key`` so ``candidate_id`` never leads the ordering.
+    The keeper for a duplicate id is the earliest enabled gene by ``commit_order``; if none
+    are enabled, the earliest slot by ``_commit_order_sort_key`` wins (deterministic).
+    """
+
+    by_cid: dict[str, list[Gene]] = {}
+    for g in genes:
+        by_cid.setdefault(g.candidate_id, []).append(g)
+    keepers = {cid: _pick_duplicate_keeper(grp) for cid, grp in sorted(by_cid.items())}
+
     out: list[Gene] = []
-    for g in sorted(genes, key=lambda z: (z.commit_order, z.candidate_id, not z.enabled)):
-        if g.candidate_id in seen:
-            out.append(replace(g, enabled=False))
-        else:
-            seen.add(g.candidate_id)
+    for g in sorted(genes, key=_commit_order_sort_key):
+        k = keepers[g.candidate_id]
+        if g is k:
             out.append(g)
+        else:
+            out.append(replace(g, enabled=False))
     return _genes_tuple(_reassign_commit_order(out))
 
 

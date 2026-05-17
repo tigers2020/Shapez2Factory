@@ -21,6 +21,15 @@ strict ``schema_version`` 1 parse/round-trip (test-only, not production solver i
 Candidate-time probes use only each candidate's own ``occupied_cells`` overlay; incremental
 commit re-runs ``run_route_probe`` with the union of prior committed placements and the
 current candidate — reproducing reachable-at-pool / blocked-at-commit starvation.
+
+**Sequence 10A regression map** (same three-cell asteroid; builders below):
+
+- Shared narrow corridor + trunk overlap stub: ``build_narrow_bridge_optimization_input`` /
+  ``build_symmetric_narrow_bridge_optimization_input``.
+- Probe reachable → commit unreachable / rollback: ``build_rim_competition_pool`` +
+  ``build_symmetric_rim_competition_pool`` (stale solo probes vs commit-time reprobe).
+- Shared corridor pressure + optional throughput skew / mixed transport kinds:
+  ``build_rim_competition_pool(..., rim_*_transport_kind=..., rim_*_base_throughput=...)``.
 """
 
 from __future__ import annotations
@@ -100,6 +109,10 @@ def build_rim_competition_pool(
     inp: OptimizationInput,
     *,
     transport_kind: TransportKind = TransportKind.SHAPE_BELT,
+    rim_left_transport_kind: TransportKind | None = None,
+    rim_right_transport_kind: TransportKind | None = None,
+    rim_left_base_throughput: int = 1,
+    rim_right_base_throughput: int = 1,
 ) -> tuple[tuple[BundleCandidate, ...], Genome]:
     """Two rim extractors compete for the same bridge.
 
@@ -107,6 +120,9 @@ def build_rim_competition_pool(
     as reachable along ``(bridge, goal)`` even when a literal solo ``run_route_probe`` would
     not match that contract. Incremental commit always re-probes against the latest
     ``route_domain`` and merged ``occupied_cells`` overlay.
+
+    Optional per-rim ``transport_kind`` / ``base_throughput`` supports Sequence 10A mixed
+    transport and throughput-skew regression (shared corridor pressure vs commit order).
     """
 
     c0, c1, c2 = narrow_bridge_coords()
@@ -121,11 +137,16 @@ def build_rim_competition_pool(
         goal_priority=goal.priority,
         failure_reason=None,
     )
+    tk_left = transport_kind if rim_left_transport_kind is None else rim_left_transport_kind
+    tk_right = transport_kind if rim_right_transport_kind is None else rim_right_transport_kind
 
     def _bundle(
         cid: str,
         occupied: frozenset[Coord],
         probe: RouteProbeResult,
+        *,
+        tk: TransportKind,
+        throughput: int,
     ) -> BundleCandidate:
         extractor = min(occupied, key=lambda z: (z.x, z.y))
         extensions = tuple(sorted(occupied - {extractor}, key=lambda z: (z.x, z.y)))
@@ -138,14 +159,26 @@ def build_rim_competition_pool(
             occupied_cells=occupied,
             output_stub=c1,
             output_dir=CardinalDirection.EAST,
-            transport_kind=transport_kind,
-            base_throughput=1,
-            base_score=1.0,
+            transport_kind=tk,
+            base_throughput=throughput,
+            base_score=float(throughput),
             route_probe_result=probe,
         )
 
-    left = _bundle("rim_left", frozenset({c0}), stale_ok)
-    right = _bundle("rim_right", frozenset({c2}), stale_ok)
+    left = _bundle(
+        "rim_left",
+        frozenset({c0}),
+        stale_ok,
+        tk=tk_left,
+        throughput=rim_left_base_throughput,
+    )
+    right = _bundle(
+        "rim_right",
+        frozenset({c2}),
+        stale_ok,
+        tk=tk_right,
+        throughput=rim_right_base_throughput,
+    )
     genome = Genome(
         "narrow_bridge_g",
         (Gene("rim_left", True, 0), Gene("rim_right", True, 1)),

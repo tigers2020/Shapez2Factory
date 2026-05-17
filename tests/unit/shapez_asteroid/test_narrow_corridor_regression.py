@@ -8,6 +8,7 @@ import pytest
 
 from django_apps.shapez_asteroid.optimization.dto import (
     BundleCandidate,
+    EvolutionConfig,
     Gene,
     Genome,
     RouteProbeInput,
@@ -21,6 +22,7 @@ from django_apps.shapez_asteroid.optimization.enums import (
     RouteClass,
     TransportKind,
 )
+from django_apps.shapez_asteroid.optimization.evolutionary_search import run_evolutionary_search
 from django_apps.shapez_asteroid.optimization.genome_fitness import (
     evaluate_genome,
     fitness_breakdown_total_matches_components,
@@ -59,6 +61,36 @@ def test_shared_corridor_pressure_regression() -> None:
 
     inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
     pool, genome = build_rim_competition_pool(inp)
+    res = commit_best_genome(genome, pool, inp, RouteDomainSnapshotBuilder)
+    assert res.confirmed_candidate_count == 1
+    assert res.rolled_back_candidate_count == 1
+
+
+def test_high_throughput_rim_second_rolls_back_shared_corridor_regression() -> None:
+    """Commit order dominates: very high ``base_throughput`` on the second rim still rolls back."""
+
+    inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
+    pool, genome = build_rim_competition_pool(
+        inp,
+        rim_left_base_throughput=1,
+        rim_right_base_throughput=50_000,
+    )
+    assert pool[1].base_throughput == 50_000
+    res = commit_best_genome(genome, pool, inp, RouteDomainSnapshotBuilder)
+    assert res.candidate_results[0].commit_state is PlacementCommitState.CONFIRMED
+    assert res.candidate_results[1].commit_state is PlacementCommitState.ROLLED_BACK
+
+
+def test_mixed_shape_fluid_shared_corridor_probe_reachable_commit_regression() -> None:
+    """Solo pool probes reachable; first SHAPE commit reserves exit cells as shape-only trunk."""
+
+    inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
+    pool, genome = build_rim_competition_pool(
+        inp,
+        rim_left_transport_kind=TransportKind.SHAPE_BELT,
+        rim_right_transport_kind=TransportKind.FLUID_PIPE,
+    )
+    assert all(c.route_probe_result.reachable for c in pool)
     res = commit_best_genome(genome, pool, inp, RouteDomainSnapshotBuilder)
     assert res.confirmed_candidate_count == 1
     assert res.rolled_back_candidate_count == 1
@@ -166,6 +198,37 @@ def test_transport_kind_corridor_conflict_regression() -> None:
 
     assert res.candidate_results[0].commit_state is PlacementCommitState.CONFIRMED
     assert res.candidate_results[1].conflict_reason is CommitConflictReason.TRANSPORT_KIND_CONFLICT
+
+
+def test_replay_sink_presence_does_not_drift_evolution_or_incremental_commit() -> None:
+    """Real :class:`OptimizationReplayRecorder` is output-only; same seed → same evo + commit."""
+
+    inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
+    pool, _ = build_rim_competition_pool(inp)
+    rd = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
+    cfg = EvolutionConfig(
+        seed=701,
+        population_size=4,
+        elite_count=1,
+        mutation_rate=0.35,
+        tournament_size=2,
+        max_generation=4,
+        max_stall_generation=0,
+        time_budget_ms=None,
+        forced_distant_mutation_period=None,
+    )
+    evo_off = run_evolutionary_search(cfg, pool, route_domain=rd, replay_recorder=None)
+    rec = OptimizationReplayRecorder()
+    evo_on = run_evolutionary_search(cfg, pool, route_domain=rd, replay_recorder=rec)
+    assert evo_off == evo_on
+
+    best = evo_off.best_genome
+    c_off = commit_best_genome(best, pool, inp, RouteDomainSnapshotBuilder, replay_recorder=None)
+    commit_rec = OptimizationReplayRecorder()
+    c_on = commit_best_genome(
+        best, pool, inp, RouteDomainSnapshotBuilder, replay_recorder=commit_rec
+    )
+    assert c_off == c_on
 
 
 def test_narrow_bridge_replay_event_order_deterministic() -> None:

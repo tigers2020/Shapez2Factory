@@ -246,6 +246,17 @@ def test_lab_js_no_console_spam_for_optimization_replay() -> None:
 def _lab_js_sequence_10b_region() -> str:
     js = _read_lab_js()
     start = js.index("Sequence 10B")
+    c = js.find("* Sequence 10C", start)
+    if c != -1:
+        end = c
+    else:
+        end = js.index("function getCookie", start)
+    return js[start:end]
+
+
+def _lab_js_sequence_10c_region() -> str:
+    js = _read_lab_js()
+    start = js.index("* Sequence 10C")
     end = js.index("function getCookie", start)
     return js[start:end]
 
@@ -267,6 +278,87 @@ def test_lab_js_has_optimization_replay_frame_count_helper() -> None:
 def test_lab_js_has_optimization_replay_event_counts_helper() -> None:
     js = _read_lab_js()
     assert "function optimizationReplayEventTypeCounts(track)" in js
+
+
+def test_template_includes_optimization_replay_summary_panel() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-summary"' in html
+
+
+def test_template_includes_optimization_replay_summary_value_target() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-summary-value"' in html
+
+
+def test_template_includes_optimization_replay_event_counts_target() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-event-counts"' in html
+
+
+def test_lab_js_formats_optimization_replay_summary() -> None:
+    js = _read_lab_js()
+    assert "function formatOptimizationReplaySummary(summary)" in js
+    assert '(count === 1 ? "" : "s")' in js
+    assert "summary.replayTruncated" in js
+
+
+def test_lab_js_renders_optimization_replay_summary_once() -> None:
+    js = _read_lab_js()
+    assert js.count("renderOptimizationReplaySummary(optimizationReplaySummary)") == 1
+
+
+def test_lab_js_does_not_read_optimization_frames_by_current_frame_index() -> None:
+    js = _read_lab_js()
+    assert "optimizationReplayTrack.frames[currentFrameIndex]" not in js
+
+
+def test_lab_js_does_not_add_track_selector_controls() -> None:
+    js = _read_lab_js()
+    for needle in (
+        "selectOptimizationTrack",
+        "lab-optimization-track-select",
+        "lab-optimization-replay-timeline",
+    ):
+        assert needle not in js
+
+
+def test_existing_lab_replay_controls_still_present() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-timeline-play"' in html
+    assert 'id="lab-timeline-scrub"' in html
+    assert 'id="lab-timeline-prev"' in html
+    assert 'id="lab-timeline-next"' in html
+
+
+def test_format_optimization_replay_summary_empty() -> None:
+    region = _lab_js_sequence_10c_region()
+    assert (
+        'summary && typeof summary.trackLabel === "string" ? summary.trackLabel : "Optimization"'
+        in region
+    )
+    assert "Number(summary.frameCount)" in region
+
+
+def test_format_optimization_replay_summary_pluralization() -> None:
+    assert '(count === 1 ? "" : "s")' in _lab_js_sequence_10c_region()
+
+
+def test_format_optimization_replay_summary_truncated() -> None:
+    assert '? " · truncated"' in _lab_js_sequence_10c_region()
+
+
+def test_render_optimization_replay_summary_missing_element_no_throw() -> None:
+    region = _lab_js_sequence_10c_region()
+    assert "function renderOptimizationReplaySummary(summary)" in region
+    assert "if (!el) return" in region
+    assert "if (!ev) return" in region
+
+
+def test_lab_js_sequence_10c_skips_geometry_and_frame_indexing() -> None:
+    region = _lab_js_sequence_10c_region()
+    assert "visible_cells" not in region
+    assert "overlay_cells" not in region
+    assert "optimizationReplayTrack.frames[" not in region
 
 
 def test_lab_js_does_not_render_optimization_overlay() -> None:

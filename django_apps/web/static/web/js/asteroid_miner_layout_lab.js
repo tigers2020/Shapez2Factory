@@ -470,6 +470,45 @@
 
   const optimizationReplaySummary = buildOptimizationReplayTrackSummary(optimizationReplayTrack);
 
+  /**
+   * Sequence 10C — read-only optimization replay summary in metadata panel (no frame rendering).
+   */
+  function formatOptimizationReplaySummary(summary) {
+    const label =
+      summary && typeof summary.trackLabel === "string" ? summary.trackLabel : "Optimization";
+    const count =
+      summary && Number.isFinite(Number(summary.frameCount)) ? Number(summary.frameCount) : 0;
+    const truncated = Boolean(summary && summary.replayTruncated);
+    const suffix = truncated ? " · truncated" : "";
+    return label + ": " + String(count) + " frame" + (count === 1 ? "" : "s") + suffix;
+  }
+
+  function formatOptimizationReplayEventCounts(summary) {
+    const counts =
+      summary && summary.eventTypeCounts && typeof summary.eventTypeCounts === "object"
+        ? summary.eventTypeCounts
+        : {};
+    const keys = Object.keys(counts).sort();
+    if (!keys.length) return "No optimization events";
+    return keys
+      .slice(0, 3)
+      .map(function (k) {
+        return k + ": " + counts[k];
+      })
+      .join(" · ");
+  }
+
+  function renderOptimizationReplaySummary(summary) {
+    const el = document.getElementById("lab-optimization-replay-summary-value");
+    if (!el) return;
+    el.textContent = formatOptimizationReplaySummary(summary);
+    const ev = document.getElementById("lab-optimization-replay-event-counts");
+    if (!ev) return;
+    ev.textContent = formatOptimizationReplayEventCounts(summary);
+  }
+
+  renderOptimizationReplaySummary(optimizationReplaySummary);
+
   function getCookie(name) {
     const prefix = "; " + name + "=";
     const raw = document.cookie;

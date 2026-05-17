@@ -12,7 +12,9 @@ GA + local pattern compiler + route feasibility 기반 optimization layer를 안
 - **테스트:** `python -m pytest tests/unit/shapez_asteroid/ tests/integration/shapez_asteroid/test_optimization_ui_payload.py` → **193 passed** (에이전트 로컬 실행).
 - **GitHub #14 (narrow corridor expansion):** `tests/unit/shapez_asteroid/test_corridor_survivability_expansion.py`에 reservation·starvation 리플레이·late commit·evolution→commit 스티칭 회귀를 모은다.
 - **대칭 목표 narrow bridge:** `tests/unit/shapez_asteroid/fixtures/narrow_corridor.py`의 `build_symmetric_*` + `tests/unit/shapez_asteroid/test_symmetric_corridor_fixture.py`. 림 우측 단일 goal 편향은 `build_narrow_bridge_optimization_input` 및 기존 비대칭 테스트로 **의도적으로 유지**한다.
-- **JSON fixture (narrow corridor v0):** `tests/fixtures/shapez_asteroid/optimization/narrow_corridor_asymmetric_rim_competition.json`, `narrow_corridor_symmetric_rim_competition.json` — `json_safe_replay_value` 스냅샷; 동기 테스트 `tests/unit/shapez_asteroid/test_narrow_corridor_optimization_json_fixtures.py`. (전역 진화 JSON·역직렬화 런타임 경로는 여전히 범위 밖.)
+- **JSON fixture (narrow corridor v0):** `tests/fixtures/shapez_asteroid/optimization/narrow_corridor_asymmetric_rim_competition.json`, `narrow_corridor_symmetric_rim_competition.json` — `json_safe_replay_value` 스냅샷; 동기 테스트 `tests/unit/shapez_asteroid/test_narrow_corridor_optimization_json_fixtures.py`.
+- **JSON 계약 파서 (테스트 전용):** `tests/unit/shapez_asteroid/fixtures/optimization_json.py` — `schema_version == 1`만 허용, 필수 키·상호 배타적 goal export(`primary_route_goal` vs 최상위 `route_goals`)·알 수 없는 최상위 키 거부; `test_optimization_fixture_json_contract.py`에서 디스크 ↔ `json_safe` 빌더 동등성·라운드트립 검증. **프로덕션 솔버 입력·런타임 자동 소비는 범위 밖**이며 전역 진화 JSON 팩·역직렬화 런타임도 여전히 후속.
+- **Replay-track JSON 골든(v0, 출력 계약만):** `tests/fixtures/shapez_asteroid/replay/narrow_corridor_{asymmetric,symmetric,starvation}_replay.json` — `build_optimization_replay_track_payload`와 동일 프레임 직렬화; 빌더 `fixtures/replay_track_builders.py`. **테스트 전용 파서** `fixtures/replay_json.py` + `test_replay_fixture_json_contract.py`(`schema_version` 1, 최상위 키 화이트리스트, `replay_event_sequence`↔프레임 정합). **리플레이는 솔버/커밋 입력이 아님**; Lab/런타임 자동 소비 배선은 범위 밖.
 
 ---
 
@@ -431,9 +433,9 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 ### 작업
 
 ```text
-[ ] ruff check
-[ ] black --check
-[ ] mypy
+[x] ruff check .
+[x] black --check .
+[x] mypy .
 [x] targeted pytest
 [x] integration pytest
 ```
@@ -441,10 +443,10 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 ### 완료 기준
 
 ```text
-[ ] all gates pass
+[x] all gates pass (2026-05-17 로컬: `ruff check .` · `black --check .` · `mypy .` · `python -m pytest` → 792 passed)
 ```
 
-> **참고 (2026-05-17):** `tests/unit/shapez_asteroid/` + `tests/integration/shapez_asteroid/test_optimization_ui_payload.py` 구간 **193 passed**. 전 저장소 `ruff` / `mypy` / `black --check` 는 본 턴에서 미실행.
+> **참고 (2026-05-17):** `tests/unit/shapez_asteroid/` + `tests/integration/shapez_asteroid/test_optimization_ui_payload.py` 구간 **193 passed** (기존). 동일 날짜 **전 저장소** `python -m ruff check .` · `python -m black --check .` · `python -m mypy .` · `python -m pytest` 를 추가로 실행해 **전부 green** 확인(코드 변경 없음).
 
 > **참고 (12E 이후):** Run Solver copy POST 경로는 `tests/unit/asteroid_lab/test_optimization_replay_persist.py`·`tests/integration/web/test_asteroid_miner_layout_solver.py` 등 **타깃 구간 green**. 전 저장소 게이트는 아래 `### 알려진 부채 (전역 게이트)`와 같이 **기존 부채**로 남긴다.
 
@@ -470,7 +472,7 @@ Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 
 
 ### 알려진 부채 (전역 게이트)
 
-12C–12E diff와 별도로,**전 저장소** `ruff check .` / `mypy .` / `black --check .` 는 기존 이슈(예: E501, `polib` 스텁, 일부 파일 `black` 드리프트)로 실패할 수 있다. merge PR에는 **known debt**로 한 줄 남기고, `## Sequence 11 — Quality Gates` 전 항목 green은 **별도 PR**로 추적한다.
+과거 병합 구간에서는 **전 저장소** `ruff check .` / `mypy .` / `black --check .` 가 환경·드리프트로 실패한 적이 있어 merge PR에 **known debt**로 남긴 바 있다. **2026-05-17 로컬 gate sweep** 기준으로는 위 명령 + `python -m pytest` 가 green이었다. CI·다른 OS·다른 Python 마이너에서 재현 실패가 나오면 이 절을 다시 열어 이슈로 추적한다.
 
 ---
 

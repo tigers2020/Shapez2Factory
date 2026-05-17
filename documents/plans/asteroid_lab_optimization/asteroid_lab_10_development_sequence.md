@@ -350,23 +350,47 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 
 ## Sequence 10 — Regression Fixtures
 
-> **상태:** 시나리오는 주로 `tests/unit/shapez_asteroid/*.py` 헬퍼·복원 입력으로 분산되어 있다. 아래 “narrow corridor”는 **전용 블루프린트 회귀 묶음** 기준으로 미정돈.
+> **상태:** Sequence **10A**(본 절의 회귀 fixture 하위 단계; Lab UI 시퀀스 표의 “10A”와 **동일 번호 아님**) — narrow bridge regression fixture 완료.  
+> JSON fixture화와 full evolutionary narrow-map deterministic best genome 검증은 후속 10B/12A 범위.
 
 ### 작업
 
 ```text
 [x] simple asteroid fixture
 [x] hole asteroid fixture
-[ ] narrow corridor asteroid fixture
+[x] narrow corridor asteroid fixture — test helper 기반 narrow bridge
 [x] shape/fluid mixed fixture
 [x] unreachable output fixture
-[x] existing trunk / protected corridor 스텁 fixture (비어 있지 않은 케이스)
+[x] existing trunk / protected corridor 스텁 fixture
 ```
 
-### 완료 기준
+### 10A 완료 내용
 
 ```text
-[ ] 각 fixture에서 deterministic optimization result 생성
+[x] 3-cell narrow bridge OptimizationInput builder
+[x] rim competition candidate pool
+[x] candidate probe reachable → commit-time reprobe failure regression
+[x] shared bridge rollback regression
+[x] shape/fluid transport conflict regression
+[x] protected ∩ existing trunk seed-domain precedence regression
+[x] replay event order deterministic regression
+[x] targeted pytest / ruff / mypy green
+```
+
+### 남은 범위
+
+```text
+[ ] JSON fixture under tests/fixtures/shapez_asteroid/optimization/
+[ ] same seed → same best genome on full narrow evolution run
+[ ] 10B penalty on/off survivability comparison
+[ ] commit success ratio / rollback ratio metrics
+```
+
+### 후속 (Sequence 10B — 개요)
+
+```text
+penalty 튜닝 선행이 아니라, penalty off/on 비교가 가능한 fixture + metrics contract를 먼저 고정한 뒤
+fitness penalty가 commit survivability와 같은 방향으로 움직이는지 검증 (상세는 별도 플랜·PR 범위에서 확장).
 ```
 
 ---

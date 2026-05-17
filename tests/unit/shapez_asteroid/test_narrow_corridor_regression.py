@@ -65,7 +65,10 @@ def test_shared_corridor_pressure_regression() -> None:
 
 
 def test_future_expansion_penalty_regression() -> None:
-    """Fitness breakdown retains future_expansion_penalty (v0 wire; value from placeholders)."""
+    """future_expansion_penalty breakdown contract regression.
+
+    v0 placeholder 0; ``fitness_breakdown_total_matches_components`` holds.
+    """
 
     inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
     pool, genome = build_rim_competition_pool(inp)
@@ -77,7 +80,10 @@ def test_future_expansion_penalty_regression() -> None:
 
 
 def test_trunk_sharing_penalty_regression() -> None:
-    """Fitness breakdown retains trunk_sharing_penalty (v0 wire; value from placeholders)."""
+    """trunk_sharing_penalty breakdown contract regression.
+
+    v0 placeholder 0; ``fitness_breakdown_total_matches_components`` holds.
+    """
 
     inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
     pool, genome = build_rim_competition_pool(inp)
@@ -93,6 +99,9 @@ def test_transport_kind_corridor_conflict_regression() -> None:
 
     ``protected_bridge=False`` so the bridge cell receives the SHAPE trunk mask overlay on
     commit (protected cells skip trunk overlay — see ``RouteDomainSnapshotBuilder``).
+
+    Synthetic regression: ``fake_probe`` below patches fluid ``run_route_probe`` only for
+    this test so the conflict path is exercised without changing production probe/commit logic.
     """
 
     inp, goal = build_narrow_bridge_optimization_input(protected_bridge=False)
@@ -132,6 +141,10 @@ def test_transport_kind_corridor_conflict_regression() -> None:
     pool = (shape, fluid)
     genome = Genome("mixed_g", (Gene("shape_rim", True, 0), Gene("fluid_rim", True, 1)), seed=7)
 
+    # Synthetic regression hook:
+    # Force the fluid probe path through the already-reserved shape corridor
+    # so commit conflict classification can be tested without changing
+    # route_probe or incremental_commit production logic.
     def fake_probe(probe_inp: RouteProbeInput, *, occupied_cells=None):
         if probe_inp.transport_kind is TransportKind.SHAPE_BELT:
             return run_route_probe(probe_inp, occupied_cells=occupied_cells)

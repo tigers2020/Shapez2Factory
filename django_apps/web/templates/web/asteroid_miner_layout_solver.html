@@ -389,15 +389,22 @@
               </div>
 
               <div id="lab-replay-grid-stage" class="absolute inset-4 min-w-0">
-                <div
-                  id="lab-replay-grid"
-                  class="grid min-w-0 opacity-100 transition-opacity duration-200"
-                  {% if not has_replay_frames %}style="grid-template-columns: repeat(23, minmax(0, 1.25rem));"{% endif %}
-                  data-overlay=""
-                >
-                  {% for cls in lab_cell_initial_classes %}
-                    <div data-lab-cell-index="{{ forloop.counter0 }}" class="{{ cls }}"></div>
-                  {% endfor %}
+                <div id="lab-replay-grid-stack" class="relative w-max max-w-full min-w-0">
+                  <div
+                    id="lab-replay-grid"
+                    class="grid min-w-0 opacity-100 transition-opacity duration-200"
+                    {% if not has_replay_frames %}style="grid-template-columns: repeat(23, minmax(0, 1.25rem));"{% endif %}
+                    data-overlay=""
+                  >
+                    {% for cls in lab_cell_initial_classes %}
+                      <div data-lab-cell-index="{{ forloop.counter0 }}" class="{{ cls }}"></div>
+                    {% endfor %}
+                  </div>
+                  <div
+                    id="lab-optimization-overlay-layer"
+                    class="pointer-events-none absolute inset-0 z-10 hidden min-w-0 grid content-start justify-start"
+                    aria-hidden="true"
+                  ></div>
                 </div>
               </div>
             </div>
@@ -463,6 +470,12 @@
                 —
               </div>
               <div id="lab-optimization-frame-metrics" class="mt-1 text-xs text-slate-500">—</div>
+              <div
+                id="lab-optimization-overlay-diagnostics"
+                class="mt-1 font-mono text-[11px] leading-snug text-slate-500"
+              >
+                —
+              </div>
             </div>
           </div>
         </div>

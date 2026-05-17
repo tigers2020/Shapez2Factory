@@ -17,6 +17,20 @@
   const GRID_W = 23;
   const GRID_H = 15;
 
+  /** Lab optimization overlay (11B): when true, paint projection in ``#lab-optimization-overlay-layer`` only. */
+  const ENABLE_LAB_OPTIMIZATION_OVERLAY = false;
+
+  /** Mutable context for 11B overlay renderer (assigned from ``init`` / ``replaceLabReplayPayload``). */
+  const labOverlayCtx = {
+    gridEl: null,
+    hasServerReplay: false,
+    replayLayout: null,
+    resolveCellIndex: null,
+  };
+
+  /** Called after optimization frame panel DOM updates; assigned in ``init`` to refresh 11B overlay. */
+  let labAfterOptimizationPanelDom = function () {};
+
   /** Canonical map rotation: 0 = East, 1 = South, 2 = West, 3 = North; quarter-turns clockwise. */
   const DIR = Object.freeze({
     EAST: 0,
@@ -581,7 +595,10 @@
     renderOptimizationReplayFrameMetadata(meta);
 
     const el = document.getElementById("lab-optimization-frame-display");
-    if (!el) return;
+    if (!el) {
+      labAfterOptimizationPanelDom();
+      return;
+    }
 
     const len = optimizationReplayFrameCount(optimizationReplayTrack);
     const current =
@@ -591,6 +608,7 @@
         : 0;
 
     el.textContent = String(current) + " / " + String(len);
+    labAfterOptimizationPanelDom();
   }
 
   document.getElementById("lab-optimization-frame-prev")?.addEventListener("click", function () {
@@ -778,6 +796,117 @@
     }
 
     return { cells: out, diagnostics: diagnostics };
+  }
+
+  /**
+   * Sequence 11B — feature-flagged optimization replay overlay rendering.
+   *
+   * Renders only into ``#lab-optimization-overlay-layer`` (never mutates ``#lab-replay-grid`` cell nodes).
+   * Geometry comes exclusively from ``projectOptimizationReplayFrameToLabOverlay``; no Lab vs optimization
+   * frame index sync and no Lab replay payload mutation.
+   */
+  function clearOptimizationReplayOverlay() {
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (!layer) return;
+    layer.replaceChildren();
+  }
+
+  function syncOptimizationOverlayLayerGridStyles() {
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (!layer || !labOverlayCtx.gridEl) return;
+    const g = labOverlayCtx.gridEl;
+    layer.style.display = "grid";
+    layer.style.gridTemplateColumns = g.style.gridTemplateColumns || "";
+    layer.style.gridTemplateRows = g.style.gridTemplateRows || "";
+    const cs = g.style.getPropertyValue("--lab-cell-size");
+    if (cs) {
+      layer.style.setProperty("--lab-cell-size", cs);
+    }
+    const gap = window.getComputedStyle(g).gap;
+    if (gap) {
+      layer.style.gap = gap;
+    }
+  }
+
+  function renderLabOptimizationOverlayDiagnostics(diagnostics) {
+    const el = document.getElementById("lab-optimization-overlay-diagnostics");
+    if (!el) return;
+    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
+      el.textContent = "—";
+      return;
+    }
+    if (!diagnostics || typeof diagnostics !== "object") {
+      el.textContent = "—";
+      return;
+    }
+    const p = Number(diagnostics.projectedCellCount) || 0;
+    const dr = Number(diagnostics.droppedCellCount) || 0;
+    const reasons =
+      diagnostics.dropReasons && typeof diagnostics.dropReasons === "object"
+        ? diagnostics.dropReasons
+        : {};
+    const mb = Number(reasons.missing_lab_projection_bbox) || 0;
+    el.textContent =
+      "projected: " + String(p) + " · dropped: " + String(dr) + " · missing bbox: " + String(mb);
+  }
+
+  function renderLabOptimizationOverlayCells(projectionCells) {
+    const layer = document.getElementById("lab-optimization-overlay-layer");
+    if (!layer || !Array.isArray(projectionCells)) return;
+    layer.replaceChildren();
+    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) return;
+    const ctx = labOverlayCtx;
+    if (!ctx.hasServerReplay || !ctx.replayLayout || typeof ctx.resolveCellIndex !== "function") {
+      return;
+    }
+    const rl = ctx.replayLayout;
+    const gw = rl.gridW;
+    for (let i = 0; i < projectionCells.length; i++) {
+      const c = projectionCells[i];
+      if (!c || typeof c !== "object") continue;
+      const idx = ctx.resolveCellIndex({ x: c.x, y: c.y });
+      if (idx == null || idx < 0) continue;
+      const col = idx % gw;
+      const row = Math.floor(idx / gw);
+      const mark = document.createElement("div");
+      mark.setAttribute("data-lab-opt-overlay-cell", "1");
+      mark.setAttribute("aria-hidden", "true");
+      mark.className =
+        "pointer-events-none min-h-0 min-w-0 rounded-[5px] ring-2 ring-inset ring-fuchsia-400/45";
+      mark.style.gridColumn = String(col + 1);
+      mark.style.gridRow = String(row + 1);
+      layer.appendChild(mark);
+    }
+  }
+
+  function renderOptimizationReplayOverlay() {
+    const shell = document.getElementById("lab-optimization-overlay-layer");
+    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
+      clearOptimizationReplayOverlay();
+      if (shell) shell.classList.add("hidden");
+      renderLabOptimizationOverlayDiagnostics(null);
+      return;
+    }
+    if (shell) shell.classList.remove("hidden");
+
+    if (!labOverlayCtx.hasServerReplay || !labOverlayCtx.replayLayout) {
+      clearOptimizationReplayOverlay();
+      if (shell) shell.classList.add("hidden");
+      const el = document.getElementById("lab-optimization-overlay-diagnostics");
+      if (el) {
+        el.textContent =
+          "projected: 0 · dropped: 0 · missing bbox: 0 (needs server Lab replay grid + flag)";
+      }
+      return;
+    }
+
+    syncOptimizationOverlayLayerGridStyles();
+    clearOptimizationReplayOverlay();
+
+    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
+    const projection = projectOptimizationReplayFrameToLabOverlay(frame);
+    renderLabOptimizationOverlayCells(projection.cells);
+    renderLabOptimizationOverlayDiagnostics(projection.diagnostics);
   }
 
   function getCookie(name) {
@@ -1379,6 +1508,8 @@
         gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", " + zpx + "px)";
       }
       applyLabViewportTransform();
+      refreshLabOverlayCtx();
+      renderOptimizationReplayOverlay();
     }
 
     function resetLabViewportTransform() {
@@ -1394,6 +1525,13 @@
     let resizeObserver = null;
     let replayResizeMode = null;
     let replayCleanup = function () {};
+
+    function refreshLabOverlayCtx() {
+      labOverlayCtx.gridEl = gridEl;
+      labOverlayCtx.hasServerReplay = hasServerReplay;
+      labOverlayCtx.replayLayout = replayLayout;
+      labOverlayCtx.resolveCellIndex = resolveCellIndex;
+    }
 
     function initializeServerReplaySurface(framesArr) {
       const neutralClass = LAB_CELL_BASE;
@@ -1504,6 +1642,8 @@
         applyLabGridLayoutForZoom();
       });
     }
+
+    refreshLabOverlayCtx();
 
     const rootEl = document.getElementById("lab-root");
     function syncLabDebugRotationClass() {
@@ -1639,6 +1779,8 @@
               : "—";
         }
         syncLabTimelineScrub();
+        refreshLabOverlayCtx();
+        renderOptimizationReplayOverlay();
         return;
       }
 
@@ -1660,6 +1802,8 @@
       const cycle = document.getElementById("lab-computation-cycle");
       if (cycle) cycle.textContent = "computation_cycle #" + String(frame);
       syncLabTimelineScrub();
+      refreshLabOverlayCtx();
+      renderOptimizationReplayOverlay();
     }
 
     function setPlaying(next) {
@@ -1857,6 +2001,7 @@
       }
       replayCleanup();
       replayCleanup = initializeServerReplaySurface(replayFrames);
+      refreshLabOverlayCtx();
       resetLabViewportTransform();
       replayArrayIndex = replaySlotForServerInitialFrame();
       setPlaying(false);
@@ -2512,6 +2657,10 @@
     applyLabGridLayoutForZoom();
     updateLabGridHudEmpty();
     bindLabViewportInteractions();
+
+    labAfterOptimizationPanelDom = function () {
+      renderOptimizationReplayOverlay();
+    };
 
     setRunDetail(baselineRun);
     applyFrame();

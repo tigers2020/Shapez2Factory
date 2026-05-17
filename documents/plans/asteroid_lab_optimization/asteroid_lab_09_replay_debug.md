@@ -124,8 +124,9 @@ validation issue count (+ issue_code)
 
 - **소스:** `optimization_replay`를 `json_script` 등으로 전달한 optimization 리플레이 페이로드(`optimization_replay.py`·`optimization_ui_payload.py` 계약과 정렬).
 - **Sequence 10E까지:** **메타데이터 전용** — 선택 프레임의 `event_type` / `title` / `description` / `metrics` 등 표시만 허용.
+- **Sequence 11B:** 기능 플래그가 켜진 경우에만, **11A projection** 결과를 **별도 오버레이 레이어**에 그린다. Lab 격자의 기본 셀 DOM·Lab 프레임 페이로드는 변경하지 않는다.
 - **소유:** `optimizationReplayFrameIndex` 등 **독립적인 optimization 전용 인덱스**가 소유한다. Lab의 `currentFrameIndex`와 **별도**로 clamp·prev/next만 적용한다.
-- **금지(투영 정책 전):** optimization 트랙이 **격자 렌더링을 주도**해서는 안 된다. `visible_cells` / `overlay_cells`를 Lab 격자에 그리려면 **별도 투영 정책·어댑터(Sequence 11A)**가 선행되어야 한다.
+- **금지(11A 이전):** optimization 트랙이 **격자 렌더링을 주도**해서는 안 된다. `visible_cells` / `overlay_cells`를 Lab 격자에 그리려면 **별도 투영 정책·어댑터(Sequence 11A)**가 선행되어야 한다.
 
 ### 비동기화 규칙 (양방향)
 
@@ -178,6 +179,21 @@ validation issue count (+ issue_code)
 ### 선택 passthrough
 
 - 셀에 `lab_world_x` / `lab_world_y`가 있고 x≠0이면 server 변환을 건너뛴다(동일 bbox 없이 Lab 좌표가 이미 붙은 경우).
+
+## Sequence 11B — Feature-flagged overlay rendering
+
+**목표:** 선택된 optimization 리플레이 프레임 → `projectOptimizationReplayFrameToLabOverlay(frame)` → **`#lab-optimization-overlay-layer`** 에만 읽기 전용 셀 표시(기본 플래그 `false`).
+
+### 핵심 계약
+
+```text
+- 입력: 11A projection만 (직접 visible_cells/overlay_cells를 Lab 그리드 해석기에 넣지 않음)
+- 기능 플래그: ENABLE_LAB_OPTIMIZATION_OVERLAY (기본 false); 꺼지면 clear + diagnostics "—"
+- DOM: Lab base grid 셀 노드는 변경 금지; 오버레이는 별도 레이어에서만 append/remove
+- clear: clearOptimizationReplayOverlay() — 플래그 off·projection 불가·그리드 없을 때 즉시 비움
+- diagnostics: lab-optimization-overlay-diagnostics에 projected / dropped / missing bbox 요약
+- 금지: Lab vs optimization 프레임 인덱스 암묵 동기화, Lab replay 페이로드 mutation, solver/백엔드 입력, 11A 함수 내부 DOM 접근(유지)
+```
 
 ## 테스트
 

@@ -290,6 +290,17 @@ def _lab_js_sequence_10e_region() -> str:
 def _lab_js_sequence_11a_region() -> str:
     js = _read_lab_js()
     start = js.index("* Sequence 11A")
+    b = js.find("* Sequence 11B", start)
+    if b != -1:
+        end = b
+    else:
+        end = js.index("function getCookie", start)
+    return js[start:end]
+
+
+def _lab_js_sequence_11b_region() -> str:
+    js = _read_lab_js()
+    start = js.index("* Sequence 11B")
     end = js.index("function getCookie", start)
     return js[start:end]
 
@@ -924,6 +935,60 @@ def test_lab_js_sequence_11a_records_projection_diagnostics() -> None:
     ):
         assert key in region, key
     assert "missing_lab_projection_bbox" in region
+
+
+def test_lab_js_sequence_11b_overlay_feature_flag_exists() -> None:
+    js = _read_lab_js()
+    assert "const ENABLE_LAB_OPTIMIZATION_OVERLAY = false" in js
+
+
+def test_lab_js_sequence_11b_overlay_layer_id_exists() -> None:
+    js = _read_lab_js()
+    assert 'getElementById("lab-optimization-overlay-layer")' in js
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-overlay-layer"' in html
+    assert 'id="lab-optimization-overlay-diagnostics"' in html
+
+
+def test_lab_js_sequence_11b_render_consumes_projection_adapter() -> None:
+    region = _lab_js_sequence_11b_region()
+    assert "function renderOptimizationReplayOverlay()" in region
+    assert "projectOptimizationReplayFrameToLabOverlay(frame)" in region
+    assert "function renderLabOptimizationOverlayCells(projectionCells)" in region
+
+
+def test_lab_js_sequence_11b_render_does_not_mutate_lab_frame() -> None:
+    region = _lab_js_sequence_11b_region()
+    for needle in (
+        "replaceLabReplayPayload",
+        "getCurrentReplayFrame",
+        "applyFrame(",
+        "cell_overlay_json",
+        "lab-replay-frames-data",
+    ):
+        assert needle not in region, needle
+
+
+def test_lab_js_sequence_11b_render_does_not_sync_indices() -> None:
+    region = _lab_js_sequence_11b_region()
+    for needle in (
+        "currentFrameIndex",
+        "optimizationReplayFrameIndex",
+        "replayArrayIndex",
+    ):
+        assert needle not in region, needle
+
+
+def test_lab_js_sequence_11b_clear_overlay_exists() -> None:
+    js = _read_lab_js()
+    assert "function clearOptimizationReplayOverlay()" in js
+    assert "lab-optimization-overlay-layer" in _lab_js_sequence_11b_region()
+
+
+def test_lab_js_sequence_11b_does_not_mutate_optimization_cells() -> None:
+    region = _lab_js_sequence_11b_region()
+    assert "visible_cells =" not in region
+    assert "overlay_cells =" not in region
 
 
 def test_lab_js_replay_wiring_smoke() -> None:

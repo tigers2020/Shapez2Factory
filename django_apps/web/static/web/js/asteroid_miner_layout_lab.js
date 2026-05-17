@@ -1384,8 +1384,22 @@
         rootEl && rootEl.dataset && rootEl.dataset.labProjectSlug != null
           ? String(rootEl.dataset.labProjectSlug)
           : "";
+      const mapInputStr =
+        rootEl && rootEl.dataset && rootEl.dataset.labMapInputId != null
+          ? String(rootEl.dataset.labMapInputId).trim()
+          : "";
       if (!runUrl || !trackIdStr || !projectSlug) {
         return;
+      }
+      const runBody = {
+        project_slug: projectSlug,
+        replay_track_id: parseInt(trackIdStr, 10),
+      };
+      if (mapInputStr) {
+        const mid = parseInt(mapInputStr, 10);
+        if (Number.isFinite(mid)) {
+          runBody.map_input_id = mid;
+        }
       }
       fetch(runUrl, {
         method: "POST",
@@ -1395,10 +1409,7 @@
           "Content-Type": "application/json",
           "X-CSRFToken": labCsrfToken(),
         },
-        body: JSON.stringify({
-          project_slug: projectSlug,
-          replay_track_id: parseInt(trackIdStr, 10),
-        }),
+        body: JSON.stringify(runBody),
       })
         .then(function (res) {
           return res
@@ -1414,12 +1425,20 @@
           const res = bundle.res;
           const data = bundle.data;
           if (!res.ok || !data || data.ok !== true) {
+            const err =
+              (data && (data.error || data.message)) ||
+              ("HTTP " + res.status + " on run-solver");
+            if (typeof console !== "undefined" && console.warn) {
+              console.warn("[lab run-solver]", err, data);
+            }
             return;
           }
           replaceLabReplayPayload(data);
         })
-        .catch(function () {
-          /* ignore */
+        .catch(function (e) {
+          if (typeof console !== "undefined" && console.warn) {
+            console.warn("[lab run-solver] fetch failed", e);
+          }
         });
     });
 
@@ -1491,6 +1510,9 @@
       if (rootEl && payload.lab_ui_initial && typeof payload.lab_ui_initial === "object") {
         const tid = payload.lab_ui_initial.replayTrackId;
         rootEl.dataset.labReplayTrackId = tid != null ? String(tid) : "";
+      }
+      if (rootEl && payload.lab_map_input_id != null) {
+        rootEl.dataset.labMapInputId = String(payload.lab_map_input_id);
       }
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];

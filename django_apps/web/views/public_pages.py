@@ -46,6 +46,7 @@ from django_apps.web.services.asteroid_lab_optimization_run import (
 )
 from django_apps.web.services.asteroid_lab_page_context import (
     build_lab_replay_payload,
+    inspection_replay_track_for_map_input,
     lab_page_context,
     serialize_replay_frame,
 )
@@ -212,6 +213,37 @@ def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> di
     }
 
 
+def _lab_optimization_append_debug(
+    *,
+    requested_map_input_id: int,
+    client_replay_track_id: int,
+    canonical_replay_track_id: int | None,
+    append_track_id: int | None,
+    response_track_id: int | None,
+    corrected_stale_replay_track: bool,
+    n0: int,
+    appended: int,
+    reason: str,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "requested_map_input_id": int(requested_map_input_id),
+        "client_replay_track_id": int(client_replay_track_id),
+        "canonical_replay_track_id": (
+            int(canonical_replay_track_id) if canonical_replay_track_id is not None else None
+        ),
+        "append_track_id": int(append_track_id) if append_track_id is not None else None,
+        "response_track_id": int(response_track_id) if response_track_id is not None else None,
+        "corrected_stale_replay_track": bool(corrected_stale_replay_track),
+        "n0": int(n0),
+        "appended": int(appended),
+        "reason": str(reason),
+    }
+    if extra:
+        out.update(extra)
+    return out
+
+
 @require_POST
 def asteroid_miner_layout_run_solver(request: HttpRequest) -> JsonResponse:
     """POST JSON: run bounded optimization and append Lab replay frames (single timeline)."""
@@ -236,10 +268,6 @@ def asteroid_miner_layout_run_solver(request: HttpRequest) -> JsonResponse:
     if proj is None:
         return JsonResponse({"ok": False, "error": "unknown_project"}, status=404)
 
-    track = ReplayTrack.objects.filter(pk=replay_track_id, project_id=proj.pk).first()
-    if track is None:
-        return JsonResponse({"ok": False, "error": "replay_track_not_found"}, status=404)
-
     if mid_raw is not None:
         try:
             map_input_id = int(mid_raw)
@@ -252,22 +280,66 @@ def asteroid_miner_layout_run_solver(request: HttpRequest) -> JsonResponse:
     if inp is None:
         return JsonResponse({"ok": False, "error": "no_map_input"}, status=400)
 
+    client_tid = int(replay_track_id)
+    canonical = inspection_replay_track_for_map_input(inp)
+    if canonical is None:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "no_canonical_inspection_track",
+                "lab_map_input_id": int(inp.pk),
+                "optimization_append_debug": _lab_optimization_append_debug(
+                    requested_map_input_id=int(inp.pk),
+                    client_replay_track_id=client_tid,
+                    canonical_replay_track_id=None,
+                    append_track_id=None,
+                    response_track_id=None,
+                    corrected_stale_replay_track=False,
+                    n0=0,
+                    appended=0,
+                    reason="no_canonical_inspection_track",
+                ),
+            },
+            status=400,
+        )
+
+    effective_tid = int(canonical.pk)
+    corrected_stale_replay_track = effective_tid != client_tid
+
     try:
-        n0, appended = run_lab_solver_optimization_for_map_input(
+        result = run_lab_solver_optimization_for_map_input(
             map_input_id=int(inp.pk),
-            replay_track_id=replay_track_id,
+            replay_track_id=effective_tid,
         )
     except ValueError as exc:
         return JsonResponse(
             {"ok": False, "error": "invalid_request", "message": str(exc)}, status=400
         )
 
-    bundle = _lab_json_bundle_for_track_id(replay_track_id, copy_code=inp.copy_code)
+    bundle = _lab_json_bundle_for_track_id(effective_tid, copy_code=inp.copy_code)
+    response_tid = bundle.get("lab_ui_initial", {}).get("replayTrackId")
+    if response_tid is not None:
+        response_tid = int(response_tid)
+    opt_extra = {k: v for k, v in result.debug.items() if k not in {"n0", "appended", "reason"}}
+    opt_debug = _lab_optimization_append_debug(
+        requested_map_input_id=int(inp.pk),
+        client_replay_track_id=client_tid,
+        canonical_replay_track_id=int(canonical.pk),
+        append_track_id=effective_tid,
+        response_track_id=response_tid,
+        corrected_stale_replay_track=corrected_stale_replay_track,
+        n0=result.inspection_frame_count_before,
+        appended=result.appended,
+        reason=str(result.debug.get("reason", "")),
+        extra=opt_extra,
+    )
     return JsonResponse(
         {
             "ok": True,
-            "inspection_frame_count_before": n0,
-            "appended_optimization_frames": appended,
+            "inspection_frame_count_before": result.inspection_frame_count_before,
+            "appended_optimization_frames": result.appended,
+            "lab_map_input_id": int(inp.pk),
+            "optimization_append_debug": opt_debug,
             **bundle,
         }
     )

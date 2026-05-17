@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NamedTuple
 
 from django.db import transaction
 
@@ -38,6 +38,15 @@ from django_apps.shapez_asteroid.optimization.route_domain_snapshot_builder impo
 from django_apps.web.services.asteroid_lab_page_context import serialize_replay_frame
 
 _MAX_LAB_OPTIMIZATION_REPLAY_FRAMES = 200
+
+
+class LabOptimizationRunResult(NamedTuple):
+    """Result of ``run_lab_solver_optimization_for_map_input`` (counts + diagnostics)."""
+
+    inspection_frame_count_before: int
+    appended: int
+    debug: dict[str, Any]
+
 
 _GEN_CFG = CandidateGenerationConfig(
     extractor_policy=ExtractorPlacementPolicy.RIM_ONLY,
@@ -77,11 +86,8 @@ def run_lab_solver_optimization_for_map_input(
     *,
     map_input_id: int,
     replay_track_id: int,
-) -> tuple[int, int]:
-    """Run optimizer outside DB txn; append Lab ``ReplayFrame`` rows inside ``transaction.atomic``.
-
-    Returns ``(inspection_frame_count_before, appended_count)``.
-    """
+) -> LabOptimizationRunResult:
+    """Run optimizer outside a DB txn; append frames inside ``transaction.atomic``."""
 
     inp = AsteroidMapInput.objects.filter(pk=int(map_input_id)).select_related("project").first()
     if inp is None:
@@ -106,12 +112,14 @@ def run_lab_solver_optimization_for_map_input(
         replay_recorder=rec,
     )
     pool = tuple(gen_out.normal_candidates)
+    pool_n = len(pool)
     evo = run_evolutionary_search(
         _EVO_CFG,
         pool,
         route_domain=route_domain,
         replay_recorder=rec,
     )
+    evo_reason = evo.convergence_reason
     commit_res = commit_best_genome(
         evo.best_genome,
         pool,
@@ -129,6 +137,7 @@ def run_lab_solver_optimization_for_map_input(
     raw_frames = tuple(rec.frames)
     if len(raw_frames) > _MAX_LAB_OPTIMIZATION_REPLAY_FRAMES:
         raw_frames = raw_frames[:_MAX_LAB_OPTIMIZATION_REPLAY_FRAMES]
+    rec_n = len(raw_frames)
 
     with transaction.atomic():
         ReplayTrack.objects.select_for_update().filter(pk=int(replay_track_id)).first()
@@ -149,4 +158,24 @@ def run_lab_solver_optimization_for_map_input(
         )
         for dto in dtos:
             append_replay_frame(int(replay_track_id), dto)
-        return n0, len(dtos)
+        appended = len(dtos)
+        if appended > 0:
+            reason = "appended"
+        elif rec_n > 0:
+            reason = "append_failed"
+        elif pool_n == 0:
+            reason = "empty_candidate_pool"
+        elif rec_n == 0 and pool_n > 0 and int(evo.evaluated_genome_count) == 0:
+            reason = "evolution_failed"
+        else:
+            reason = "empty_replay_frames"
+        debug: dict[str, Any] = {
+            "n0": n0,
+            "appended": appended,
+            "reason": reason,
+            "candidate_pool_len": pool_n,
+            "recorder_frame_count": rec_n,
+            "evolution_convergence_reason": str(evo_reason),
+            "evaluated_genome_count": int(evo.evaluated_genome_count),
+        }
+        return LabOptimizationRunResult(n0, appended, debug)

@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from django.db.models import Count, Prefetch
 
-from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.models import AsteroidMapInput, ReplayFrame, ReplayTrack
 
 GRID_W, GRID_H = 23, 15
 CELL_COUNT = GRID_W * GRID_H
@@ -50,6 +50,32 @@ def get_latest_lab_replay_track_for_project(project_id: int) -> ReplayTrack | No
     return cast(
         ReplayTrack | None,
         ReplayTrack.objects.filter(project_id=int(project_id))
+        .annotate(_frame_count=Count("frames"))
+        .filter(_frame_count__gt=0)
+        .order_by("-created_at", "-id")
+        .prefetch_related(Prefetch("frames", queryset=ordered_frames))
+        .first(),
+    )
+
+
+def inspection_replay_track_for_map_input(inp: AsteroidMapInput) -> ReplayTrack | None:
+    """Replay track for this map input's inspection pipeline (``inspection-{id}-…`` ``track_key``).
+
+    ``build_initial_replay_for_map_input`` uses ``track_key`` derived from the map input id; with
+    ``force=True`` a random suffix is appended, so we match by prefix instead of exact key.
+
+    Returns ``None`` when no persisted track with frames exists for this input (caller may fall
+    back to project-wide latest).
+    """
+
+    prefix = f"inspection-{int(inp.pk)}-"
+    ordered_frames = ReplayFrame.objects.order_by("frame_index", "id")
+    return cast(
+        ReplayTrack | None,
+        ReplayTrack.objects.filter(
+            project_id=int(inp.project_id),
+            track_key__startswith=prefix,
+        )
         .annotate(_frame_count=Count("frames"))
         .filter(_frame_count__gt=0)
         .order_by("-created_at", "-id")
@@ -120,6 +146,7 @@ def neutral_lab_context() -> dict[str, Any]:
         "stages_display": [],
         "lab_replay_track_id": None,
         "lab_replay_track_key": None,
+        "lab_map_input_id": None,
         "lab_replay_frames_json": [],
         "lab_initial_replay_frame_json": {},
         "has_replay_frames": False,
@@ -138,16 +165,35 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
     """Lab shell context. When ``project_id`` is set, replay comes from that project only."""
 
     ctx = neutral_lab_context()
-    track = (
-        get_latest_lab_replay_track_for_project(project_id)
-        if project_id is not None
-        else get_latest_lab_replay_track()
-    )
+    track: ReplayTrack | None = None
+    track_for_latest_map_input: ReplayTrack | None = None
+    latest_inp: AsteroidMapInput | None = None
+    if project_id is not None:
+        latest_inp = (
+            AsteroidMapInput.objects.filter(project_id=int(project_id))
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if latest_inp is not None:
+            track_for_latest_map_input = inspection_replay_track_for_map_input(latest_inp)
+            track = track_for_latest_map_input
+        else:
+            track = get_latest_lab_replay_track_for_project(project_id)
+    else:
+        track = get_latest_lab_replay_track()
     if track is None:
+        if project_id is not None and latest_inp is not None:
+            out = neutral_lab_context()
+            out["lab_map_input_id"] = int(latest_inp.pk)
+            return out
         return ctx
 
     frames_json, initial_json = build_lab_replay_payload(track)
     if not frames_json:
+        if project_id is not None and latest_inp is not None:
+            out = neutral_lab_context()
+            out["lab_map_input_id"] = int(latest_inp.pk)
+            return out
         return ctx
 
     n = len(frames_json)
@@ -159,6 +205,11 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
             "initial_replay_phase": str(frames_json[0]["phase"]),
             "lab_replay_track_id": int(track.pk),
             "lab_replay_track_key": str(track.track_key),
+            "lab_map_input_id": (
+                int(latest_inp.pk)
+                if track_for_latest_map_input is not None and latest_inp is not None
+                else None
+            ),
             "lab_replay_frames_json": frames_json,
             "lab_initial_replay_frame_json": initial_json,
             "has_replay_frames": True,

@@ -19,6 +19,7 @@
     data-lab-replay-cell-url="{% url 'web:asteroid-miner-layout-replay-frame-cell' %}"
     data-lab-run-solver-url="{% url 'web:asteroid-miner-layout-run-solver' %}"
     data-lab-replay-track-id="{% if lab_replay_track_id %}{{ lab_replay_track_id }}{% endif %}"
+    data-lab-map-input-id="{% if lab_map_input_id %}{{ lab_map_input_id }}{% endif %}"
     data-lab-project-slug="{{ lab_project_slug|default:'' }}"
     data-lab-sprite-base="{% static 'web/assets/sprites/' %}"
   >

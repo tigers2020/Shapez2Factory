@@ -556,14 +556,60 @@
     if (metEl) metEl.textContent = meta.metricsSummary;
   }
 
-  const selectedOptimizationFrame = hasOptimizationReplayFrames(optimizationReplayTrack)
-    ? selectedOptimizationReplayFrame(optimizationReplayTrack, 0)
-    : null;
+  /**
+   * Sequence 10E — optimization replay frame navigation (metadata + index display only; no lab sync).
+   */
+  let optimizationReplayFrameIndex = 0;
 
-  const selectedOptimizationFrameMetadata =
-    formatOptimizationReplayFrameMetadata(selectedOptimizationFrame);
+  function clampOptimizationReplayFrameIndex(track, idx) {
+    const len = Array.isArray(track?.frames) ? track.frames.length : 0;
+    if (len <= 0) return 0;
+    return Math.max(0, Math.min(len - 1, idx));
+  }
 
-  renderOptimizationReplayFrameMetadata(selectedOptimizationFrameMetadata);
+  function currentOptimizationReplayFrame(track) {
+    return selectedOptimizationReplayFrame(
+      track,
+      clampOptimizationReplayFrameIndex(track, optimizationReplayFrameIndex),
+    );
+  }
+
+  function renderOptimizationReplayFramePanel() {
+    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
+    const meta = formatOptimizationReplayFrameMetadata(frame);
+
+    renderOptimizationReplayFrameMetadata(meta);
+
+    const el = document.getElementById("lab-optimization-frame-display");
+    if (!el) return;
+
+    const len = optimizationReplayFrameCount(optimizationReplayTrack);
+    const current =
+      len > 0
+        ? clampOptimizationReplayFrameIndex(optimizationReplayTrack, optimizationReplayFrameIndex) +
+          1
+        : 0;
+
+    el.textContent = String(current) + " / " + String(len);
+  }
+
+  document.getElementById("lab-optimization-frame-prev")?.addEventListener("click", function () {
+    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
+      optimizationReplayTrack,
+      optimizationReplayFrameIndex - 1,
+    );
+    renderOptimizationReplayFramePanel();
+  });
+
+  document.getElementById("lab-optimization-frame-next")?.addEventListener("click", function () {
+    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
+      optimizationReplayTrack,
+      optimizationReplayFrameIndex + 1,
+    );
+    renderOptimizationReplayFramePanel();
+  });
+
+  renderOptimizationReplayFramePanel();
 
   function getCookie(name) {
     const prefix = "; " + name + "=";

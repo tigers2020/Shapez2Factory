@@ -268,6 +268,17 @@ def _lab_js_sequence_10c_region() -> str:
 def _lab_js_sequence_10d_region() -> str:
     js = _read_lab_js()
     start = js.index("* Sequence 10D")
+    e = js.find("* Sequence 10E", start)
+    if e != -1:
+        end = e
+    else:
+        end = js.index("function getCookie", start)
+    return js[start:end]
+
+
+def _lab_js_sequence_10e_region() -> str:
+    js = _read_lab_js()
+    start = js.index("* Sequence 10E")
     end = js.index("function getCookie", start)
     return js[start:end]
 
@@ -402,23 +413,25 @@ def test_format_optimization_replay_frame_metadata_metrics_summary() -> None:
 
 
 def test_lab_js_does_not_render_optimization_geometry() -> None:
-    region = _lab_js_sequence_10d_region()
-    for name in (
-        "drawOptimizationOverlay",
-        "renderOptimizationReplayFrame(",
-        "optimizationOverlay",
-    ):
-        assert name not in region
-    assert "visible_cells" not in region
-    assert "overlay_cells" not in region
+    for region in (_lab_js_sequence_10d_region(), _lab_js_sequence_10e_region()):
+        for name in (
+            "drawOptimizationOverlay",
+            "renderOptimizationReplayFrame(",
+            "optimizationOverlay",
+        ):
+            assert name not in region, f"{name!r} must not appear in optimization replay regions"
+        assert "visible_cells" not in region
+        assert "overlay_cells" not in region
 
 
 def test_lab_js_does_not_read_visible_cells() -> None:
     assert "visible_cells" not in _lab_js_sequence_10d_region()
+    assert "visible_cells" not in _lab_js_sequence_10e_region()
 
 
 def test_lab_js_does_not_read_overlay_cells() -> None:
     assert "overlay_cells" not in _lab_js_sequence_10d_region()
+    assert "overlay_cells" not in _lab_js_sequence_10e_region()
 
 
 def test_lab_js_does_not_sync_with_current_frame_index() -> None:
@@ -438,9 +451,85 @@ def test_template_contains_optimization_frame_metadata_targets() -> None:
         assert f'id="{sid}"' in html
 
 
-def test_lab_js_renders_optimization_replay_frame_metadata_once() -> None:
+def test_template_contains_optimization_frame_navigation_targets() -> None:
+    html = _render_lab_shell_html()
+    for sid in (
+        "lab-optimization-frame-prev",
+        "lab-optimization-frame-next",
+        "lab-optimization-frame-display",
+    ):
+        assert f'id="{sid}"' in html
+
+
+def test_optimization_frame_navigation_buttons_exist() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-frame-prev"' in html
+    assert 'id="lab-optimization-frame-next"' in html
+    assert 'id="lab-optimization-frame-display"' in html
+
+
+def test_optimization_frame_navigation_uses_independent_index() -> None:
+    region = _lab_js_sequence_10e_region()
+    assert "let optimizationReplayFrameIndex = 0" in region
+    assert "optimizationReplayFrameIndex - 1" in region
+    assert "optimizationReplayFrameIndex + 1" in region
+
+
+def test_optimization_frame_navigation_does_not_modify_lab_frame_index() -> None:
+    region = _lab_js_sequence_10e_region()
+    assert "currentFrameIndex" not in region
+    assert "replayArrayIndex" not in region
+    assert "applyFrame(" not in region
+
+
+def test_optimization_frame_navigation_clamps_bounds() -> None:
+    region = _lab_js_sequence_10e_region()
+    assert "function clampOptimizationReplayFrameIndex(track, idx)" in region
+    assert "Array.isArray(track?.frames)" in region
+    assert "Math.min(len - 1, idx)" in region
+
+
+def test_optimization_frame_navigation_updates_metadata_only() -> None:
+    region = _lab_js_sequence_10e_region()
+    assert "lab-optimization-frame-display" in region
+    assert "formatOptimizationReplayFrameMetadata(frame)" in region
+    assert "renderOptimizationReplayFrameMetadata(meta)" in region
+
+
+def test_lab_js_does_not_sync_optimization_and_lab_timelines() -> None:
+    region = _lab_js_sequence_10e_region()
+    for needle in (
+        "currentFrameIndex",
+        "replayArrayIndex",
+        "applyFrame(",
+        "lab-timeline",
+        "scrubEl",
+        "setPlaying",
+        "setTimelineIndex",
+    ):
+        assert needle not in region
+
+
+def test_lab_js_sequence_10e_skips_track_frames_direct_indexing() -> None:
+    region = _lab_js_sequence_10e_region()
+    assert "optimizationReplayTrack.frames[" not in region
+
+
+def test_lab_js_sequence_10e_does_not_mutate_optimization_frames() -> None:
+    region = _lab_js_sequence_10e_region()
+    assert ".frames.push" not in region
+    assert ".frames.splice" not in region
+    assert "optimizationReplayTrack.frames =" not in region
+
+
+def test_lab_js_renders_optimization_replay_frame_metadata_via_panel() -> None:
     js = _read_lab_js()
-    assert js.count("renderOptimizationReplayFrameMetadata(selectedOptimizationFrameMetadata)") == 1
+    assert "renderOptimizationReplayFrameMetadata(selectedOptimizationFrameMetadata)" not in js
+    region = _lab_js_sequence_10e_region()
+    assert "function renderOptimizationReplayFramePanel()" in region
+    assert "formatOptimizationReplayFrameMetadata(frame)" in region
+    assert "renderOptimizationReplayFrameMetadata(meta)" in region
+    assert js.count("renderOptimizationReplayFramePanel();") == 3
 
 
 def test_render_optimization_replay_frame_metadata_missing_element_no_throw() -> None:

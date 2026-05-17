@@ -58,12 +58,19 @@ def _is_valid_coord(obj: object) -> bool:
     )
 
 
+def _coord_sort_key(c: object) -> tuple[int, str, str]:
+    """Sort key that never reads ``.x``/``.y`` on non-``Coord`` (invalid inputs must not raise)."""
+
+    if isinstance(c, Coord):
+        return (0, repr(c.x), repr(c.y))
+    return (1, repr(c), "")
+
+
 def _issue_sort_key(issue: ValidationIssue) -> tuple[object, ...]:
-    coord_key: tuple[object, ...]
     if issue.coord is None:
-        coord_key = (1, 0, 0)
+        coord_key: tuple[object, ...] = (1, 0, 0)
     else:
-        coord_key = (0, issue.coord.x, issue.coord.y)
+        coord_key = (0,) + _coord_sort_key(issue.coord)
     path_key = _PATH_INDEX_NONE_SORT if issue.path_index is None else issue.path_index
     return (
         _SEVERITY_ORDER.get(issue.severity, 99),
@@ -142,37 +149,39 @@ def _validate_coord_contract(
                 message=f"invalid Coord contract: {ctx}",
             )
 
-    for c in sorted(optimization_input.asteroid_cells, key=lambda z: (z.x, z.y)):
+    for c in sorted(optimization_input.asteroid_cells, key=_coord_sort_key):
         check_coord(c, ctx="optimization_input.asteroid_cells")
-    for c in sorted(optimization_input.mineable_cells, key=lambda z: (z.x, z.y)):
+    for c in sorted(optimization_input.mineable_cells, key=_coord_sort_key):
         check_coord(c, ctx="optimization_input.mineable_cells")
-    for c in sorted(optimization_input.rim_cells, key=lambda z: (z.x, z.y)):
+    for c in sorted(optimization_input.rim_cells, key=_coord_sort_key):
         check_coord(c, ctx="optimization_input.rim_cells")
-    for c in sorted(optimization_input.interior_cells, key=lambda z: (z.x, z.y)):
+    for c in sorted(optimization_input.interior_cells, key=_coord_sort_key):
         check_coord(c, ctx="optimization_input.interior_cells")
-    for c in sorted(optimization_input.external_void_cells, key=lambda z: (z.x, z.y)):
+    for c in sorted(optimization_input.external_void_cells, key=_coord_sort_key):
         check_coord(c, ctx="optimization_input.external_void_cells")
     for g in sorted(
         optimization_input.route_goals,
-        key=lambda z: (z.coord.x, z.coord.y, z.priority),
+        key=lambda z: _coord_sort_key(z.coord) + (repr(z.priority), z.goal_kind.value),
     ):
         check_coord(g.coord, ctx="optimization_input.route_goals.coord")
     for etc in sorted(
         optimization_input.existing_transport_cells,
-        key=lambda z: (z.coord.x, z.coord.y),
+        key=lambda z: _coord_sort_key(z.coord),
     ):
         check_coord(etc.coord, ctx="optimization_input.existing_transport_cells.coord")
-    for c in sorted(optimization_input.existing_trunk_cells, key=lambda z: (z.x, z.y)):
+    for c in sorted(optimization_input.existing_trunk_cells, key=_coord_sort_key):
         check_coord(c, ctx="optimization_input.existing_trunk_cells")
-    for c in sorted(optimization_input.protected_corridor_cells, key=lambda z: (z.x, z.y)):
+    for c in sorted(optimization_input.protected_corridor_cells, key=_coord_sort_key):
         check_coord(c, ctx="optimization_input.protected_corridor_cells")
-    for c in sorted(optimization_input.blocked_cells, key=lambda z: (z.x, z.y)):
+    for c in sorted(optimization_input.blocked_cells, key=_coord_sort_key):
         check_coord(c, ctx="optimization_input.blocked_cells")
-    for n in sorted(optimization_input.topology_graph.nodes, key=lambda z: (z.coord.x, z.coord.y)):
+    for n in sorted(
+        optimization_input.topology_graph.nodes, key=lambda z: _coord_sort_key(z.coord)
+    ):
         check_coord(n.coord, ctx="topology_graph.node.coord")
     for edge in sorted(
         optimization_input.topology_graph.edges,
-        key=lambda z: (z.a.x, z.a.y, z.b.x, z.b.y),
+        key=lambda z: _coord_sort_key(z.a) + _coord_sort_key(z.b),
     ):
         check_coord(edge.a, ctx="topology_graph.edge.a")
         check_coord(edge.b, ctx="topology_graph.edge.b")
@@ -181,7 +190,7 @@ def _validate_coord_contract(
         check_coord(cand.extractor, ctx=f"candidate {cand.candidate_id!r} extractor")
         for i, ext in enumerate(cand.extensions):
             check_coord(ext, ctx=f"candidate {cand.candidate_id!r} extensions[{i}]")
-        for c in sorted(cand.occupied_cells, key=lambda z: (z.x, z.y)):
+        for c in sorted(cand.occupied_cells, key=_coord_sort_key):
             check_coord(c, ctx=f"candidate {cand.candidate_id!r} occupied_cells")
         check_coord(cand.output_stub, ctx=f"candidate {cand.candidate_id!r} output_stub")
         for i, path_coord in enumerate(cand.route_probe_result.path):
@@ -194,22 +203,41 @@ def _validate_coord_contract(
             check_coord(rg.coord, ctx=f"candidate {cand.candidate_id!r} reached_goal.coord")
 
     for pl in commit_result.committed_placements:
-        for c in sorted(pl.occupied_cells, key=lambda z: (z.x, z.y)):
+        for c in sorted(pl.occupied_cells, key=_coord_sort_key):
             check_coord(c, ctx=f"placement {pl.candidate_id!r} occupied_cells")
 
     for res in commit_result.route_reservations:
         for i, c in enumerate(res.path):
             check_coord(c, ctx=f"reservation {res.reservation_id!r} path[{i}]")
-        for c in sorted(res.reserved_cells, key=lambda z: (z.x, z.y)):
+        for c in sorted(res.reserved_cells, key=_coord_sort_key):
             check_coord(c, ctx=f"reservation {res.reservation_id!r} reserved_cells")
         check_coord(
             res.reached_goal.coord,
             ctx=f"reservation {res.reservation_id!r} reached_goal.coord",
         )
 
-    for c, dom in sorted(commit_result.final_route_domain.items(), key=lambda z: (z[0].x, z[0].y)):
+    for c, dom in sorted(
+        commit_result.final_route_domain.items(), key=lambda z: _coord_sort_key(z[0])
+    ):
         check_coord(c, ctx="final_route_domain key")
         check_coord(dom.coord, ctx="final_route_domain RouteCellDomain.coord")
+
+
+def _validate_committed_placements_in_candidate_pool(
+    candidate_by_id: Mapping[str, BundleCandidate],
+    commit_result: IncrementalCommitResult,
+    issues: list[ValidationIssue],
+) -> None:
+    for pl in commit_result.committed_placements:
+        if pl.candidate_id not in candidate_by_id:
+            _emit(
+                issues,
+                issue_code=ValidationIssueCode.CANDIDATE_POOL_MISSING,
+                severity=ValidationSeverity.ERROR,
+                candidate_id=pl.candidate_id,
+                route_reservation_id=pl.route_reservation_id,
+                message="committed placement candidate_id not found in candidate_pool",
+            )
 
 
 def _validate_confirmed_candidate_has_one_reservation(
@@ -361,7 +389,7 @@ def _validate_no_invalid_overlap(
     for pl in placements:
         for c in pl.occupied_cells:
             cell_to_candidates.setdefault(c, []).append(pl.candidate_id)
-    for coord, ids in sorted(cell_to_candidates.items(), key=lambda z: (z[0].x, z[0].y)):
+    for coord, ids in sorted(cell_to_candidates.items(), key=lambda z: _coord_sort_key(z[0])):
         uniq = sorted(frozenset(ids))
         if len(uniq) > 1:
             _emit(
@@ -603,6 +631,7 @@ def validate_incremental_commit_result(
 
     issues: list[ValidationIssue] = []
     _validate_coord_contract(optimization_input, candidate_pool, commit_result, issues)
+    _validate_committed_placements_in_candidate_pool(candidate_by_id, commit_result, issues)
     _validate_confirmed_candidate_has_one_reservation(commit_result, issues)
     _validate_reserved_cells_match_path(commit_result, issues)
     _validate_route_goal_contract(optimization_input, commit_result, issues)

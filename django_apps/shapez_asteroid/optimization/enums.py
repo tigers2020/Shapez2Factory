@@ -78,6 +78,7 @@ class ValidationSeverity(StrEnum):
 
 
 class ValidationIssueCode(StrEnum):
+    CANDIDATE_POOL_MISSING = "candidate_pool_missing"
     ORPHAN_TRANSPORT = "orphan_transport"
     EXTRACTOR_OUTPUT_DISCONNECTED = "extractor_output_disconnected"
     INVALID_OVERLAP = "invalid_overlap"

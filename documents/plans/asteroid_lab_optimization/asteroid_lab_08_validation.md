@@ -71,6 +71,8 @@ max 3 extensions per extractor
 route_domain / reserved path와 최종 배치의 모순 없음 (read-only 비교만)
 reserved_cells와 각 confirmed reservation의 path가 집합적으로 일치한다
 각 confirmed candidate에 대해 정확히 하나의 CONFIRMED RouteReservation이 존재한다 (Phase 7)
+각 committed placement의 candidate_id는 candidate_pool에 존재한다 (없으면 CANDIDATE_POOL_MISSING)
+coord 계약 검사 시 셀 집합 정렬은 ``_coord_sort_key`` 등으로 수행해, 비정상 객체에서도 정렬 단계에서 예외가 나지 않게 한다
 ```
 
 ## v1+ 확장 (문서만, v0 필수 아님)
@@ -107,6 +109,8 @@ test_validation_issue_codes_explicit
 test_validation_issue_includes_route_goal_and_transport_context
 test_validation_fails_candidate_without_confirmed_reservation
 test_validation_fails_reserved_cells_path_mismatch
+test_validate_coord_contract_safe_sort_malformed_cell_no_raise
+test_validation_fails_committed_candidate_missing_from_pool
 ```
 
 ## 완료 조건

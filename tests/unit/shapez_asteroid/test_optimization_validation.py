@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
@@ -722,3 +723,46 @@ def test_validation_fails_extension_constraints() -> None:
         ValidationIssueCode.EXTENSION_COUNT_EXCEEDED in codes
         or ValidationIssueCode.EXTENSION_ATTACHMENT_INVALID in codes
     )
+
+
+def test_validate_coord_contract_safe_sort_malformed_cell_no_raise() -> None:
+    inp, goal = _strip_input()
+    c0, c1, c2 = Coord(0, 0), Coord(1, 0), Coord(2, 0)
+    path = (c1, c2)
+    pool = (_candidate("a", occupied=frozenset({c0}), output_stub=c1, path=path, goal=goal),)
+    pl = CommittedPlacement(
+        candidate_id="a",
+        occupied_cells=frozenset({c0}),
+        transport_kind=TransportKind.SHAPE_BELT,
+        route_reservation_id="a:route:0",
+    )
+    res = _reservation("a:route:0", "a", path, goal)
+    commit = _commit_one(inp, pl, res)
+
+    class NonCoord:
+        def __repr__(self) -> str:
+            return "NonCoord"
+
+    inp_bad = replace(
+        inp,
+        asteroid_cells=frozenset({NonCoord(), c0}),  # type: ignore[arg-type]
+    )
+    vr = validate_incremental_commit_result(inp_bad, pool, commit)
+    assert any(i.issue_code is ValidationIssueCode.INVALID_COORD_CONTRACT for i in vr.issues)
+
+
+def test_validation_fails_committed_candidate_missing_from_pool() -> None:
+    inp, goal = _strip_input()
+    c0, c1, c2 = Coord(0, 0), Coord(1, 0), Coord(2, 0)
+    path = (c1, c2)
+    pool = (_candidate("other", occupied=frozenset({c0}), output_stub=c1, path=path, goal=goal),)
+    pl = CommittedPlacement(
+        candidate_id="missing",
+        occupied_cells=frozenset({c0}),
+        transport_kind=TransportKind.SHAPE_BELT,
+        route_reservation_id="missing:0",
+    )
+    res = _reservation("missing:0", "missing", path, goal)
+    commit = _commit_one(inp, pl, res)
+    vr = validate_incremental_commit_result(inp, pool, commit)
+    assert any(i.issue_code is ValidationIssueCode.CANDIDATE_POOL_MISSING for i in vr.issues)

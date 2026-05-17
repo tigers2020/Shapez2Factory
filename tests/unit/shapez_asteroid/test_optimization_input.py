@@ -101,6 +101,7 @@ def test_enum_values_match_phase_docs() -> None:
     assert CandidateRejectReason.ROUTE_PROBE_UNREACHABLE.value == "route_probe_unreachable"
     assert ValidationSeverity.ERROR.value == "error"
     assert ValidationIssueCode.ORPHAN_TRANSPORT.value == "orphan_transport"
+    assert ValidationIssueCode.CANDIDATE_POOL_MISSING.value == "candidate_pool_missing"
     assert EvolutionConvergenceReason.MAX_STALL_GENERATION.value == "max_stall_generation"
     assert CommitConflictReason.TRUNK_DEADLOCK.value == "trunk_deadlock"
     assert OptimizationReplayEventType.ROUTE_PROBE_FAILED.value == "route_probe.failed"

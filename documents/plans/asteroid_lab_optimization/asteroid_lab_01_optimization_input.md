@@ -25,6 +25,10 @@ existing belt / pipe / trunk / protected corridor
 
 **belt vs pipe(kind)** 는 좌표만으로 재추론하지 않는다. `RouteCellDomain.transport_mask` 생성은 `existing_transport_cells`(또는 이에서 유도한 coord→kind)를 우선 소스로 한다 (Phase 4 빌더).
 
+## 좌표 정본 (Server X/Y, 12L)
+
+OptimizationInput 이후 모든 Coord는 Server X/Y dense coord이며, raw 좌표는 입력으로 허용하지 않는다. raw↔server 변환은 decode/import boundary 또는 final UI/export projection boundary에서만 허용된다.
+
 ## Route goal 계약
 
 `frozenset[Coord]` 수준의 `external_goals`만 두면 trunk seed·corridor entry·margin·기존 부착점·soft corridor를 구분하지 못해 **STEP4류 재발**이 난다.

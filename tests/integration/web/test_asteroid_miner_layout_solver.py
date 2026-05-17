@@ -450,8 +450,24 @@ def test_post_json_optimization_input_does_not_raw_convert_server_coords() -> No
     assert data["ok"] is True
     attach = data.get("optimization_replay_attach")
     assert isinstance(attach, dict)
-    diagnostic = attach.get("diagnostic")
-    if isinstance(diagnostic, dict):
+    assert "Cannot map raw" not in json.dumps(data)
+    reason = str(attach.get("reason") or "")
+    assert reason in {
+        "attached",
+        "empty_frames",
+        "empty_candidate_pool",
+        "non_ok_result",
+        "missing_solver_run_id",
+        "solver_run_not_found",
+        "evolution_failed",
+        "invalid_replay_payload",
+    }
+    if attach.get("attached") is True:
+        assert reason == "attached"
+        _assert_optimization_replay_lab_payload(data)
+    else:
+        diagnostic = attach.get("diagnostic")
+        assert isinstance(diagnostic, dict)
         assert diagnostic.get("stage") != "optimization_input"
         assert "Cannot map raw" not in str(diagnostic.get("error_message") or "")
 

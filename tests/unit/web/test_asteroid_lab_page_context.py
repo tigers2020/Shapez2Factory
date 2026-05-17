@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from unittest import mock
 
 import pytest
+from django.template.loader import render_to_string
+from django.test import RequestFactory
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay import event_types as et
@@ -15,6 +18,33 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     empty_optimization_replay_track_payload,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
+from django_apps.web.views import public_pages
+
+_OPTIMIZATION_REPLAY_SCRIPT_RE = re.compile(
+    r'<script id="optimization-replay-json" type="application/json">(?P<body>.*?)</script>',
+    re.DOTALL,
+)
+
+
+def _lab_shell_render_context() -> dict:
+    ctx = alc.neutral_lab_context()
+    ctx["blueprint_code"] = ""
+    ctx["lab_project_slug"] = ""
+    return ctx
+
+
+def _render_lab_shell_html() -> str:
+    return render_to_string(
+        "web/asteroid_miner_layout_solver.html",
+        _lab_shell_render_context(),
+        request=RequestFactory().get("/"),
+    )
+
+
+def _parse_optimization_replay_script(html: str) -> dict:
+    m = _OPTIMIZATION_REPLAY_SCRIPT_RE.search(html)
+    assert m is not None
+    return json.loads(m.group("body"))
 
 
 def test_neutral_lab_context_includes_empty_optimization_replay() -> None:
@@ -91,7 +121,82 @@ def test_context_template_payload_backward_compatible_if_template_touched() -> N
         root / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
     ).read_text(encoding="utf-8")
     assert 'lab_replay_frames_json|json_script:"lab-replay-frames-data"' in tpl
-    assert "optimization_replay" not in tpl
+    assert 'optimization_replay|json_script:"optimization-replay-json"' in tpl
+
+
+def test_lab_template_includes_optimization_replay_json_script() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="optimization-replay-json"' in html
+    assert 'id="optimization-replay-json" type="application/json"' in html.replace("\n", " ")
+
+
+def test_optimization_replay_json_script_contains_empty_track_by_default() -> None:
+    html = _render_lab_shell_html()
+    data = _parse_optimization_replay_script(html)
+    assert data == empty_optimization_replay_track_payload()
+
+
+def test_optimization_replay_json_script_is_valid_json() -> None:
+    html = _render_lab_shell_html()
+    data = _parse_optimization_replay_script(html)
+    assert isinstance(data, dict)
+    assert "track_id" in data
+
+
+def test_existing_lab_json_scripts_still_present() -> None:
+    html = _render_lab_shell_html()
+    for sid in (
+        "lab-cell-overlay-matrix-data",
+        "lab-runs-data",
+        "lab-ui-initial-state",
+        "lab-replay-frames-data",
+        "lab-initial-replay-frame-data",
+    ):
+        assert f'id="{sid}"' in html
+        assert html.count(f'id="{sid}"') == 1
+
+
+def test_template_renders_when_lab_page_context_omits_optimization_replay() -> None:
+    """View helper restores the key so ``json_script`` never sees a missing variable."""
+
+    base = dict(alc.neutral_lab_context())
+    del base[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
+    with mock.patch.object(public_pages, "lab_page_context", return_value=base):
+        ctx = public_pages._asteroid_miner_lab_page_context("", project=None)
+    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
+    html = render_to_string(
+        "web/asteroid_miner_layout_solver.html",
+        ctx,
+        request=RequestFactory().get("/"),
+    )
+    assert _parse_optimization_replay_script(html) == empty_optimization_replay_track_payload()
+
+
+def test_template_does_not_include_raw_unescaped_optimization_json() -> None:
+    ctx = _lab_shell_render_context()
+    malicious = dict(empty_optimization_replay_track_payload())
+    malicious["track_label"] = "</script><script>evil()</script>"
+    ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] = malicious
+    html = render_to_string(
+        "web/asteroid_miner_layout_solver.html",
+        ctx,
+        request=RequestFactory().get("/"),
+    )
+    m = _OPTIMIZATION_REPLAY_SCRIPT_RE.search(html)
+    assert m is not None
+    body = m.group("body")
+    assert "</script>" not in body
+    parsed = json.loads(body)
+    assert parsed["track_label"] == malicious["track_label"]
+
+
+def test_no_frontend_controller_logic_added_for_optimization_replay_json() -> None:
+    root = Path(__file__).resolve().parents[3]
+    js_path = (
+        root / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    )
+    js = js_path.read_text(encoding="utf-8")
+    assert "optimization-replay-json" not in js
 
 
 @pytest.mark.django_db

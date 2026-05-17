@@ -30,6 +30,10 @@ from django_apps.asteroid_lab.services.project_service import (
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
 )
+from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
+    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+    empty_optimization_replay_track_payload,
+)
 from django_apps.shapez_core.services.preview_service import (
     build_demo_parse_rows,
     get_color_catalog_rows,
@@ -170,6 +174,10 @@ def _asteroid_miner_lab_page_context(
     blueprint_code: str, *, project: AsteroidProject | None = None
 ) -> dict[str, Any]:
     ctx = lab_page_context(project_id=int(project.pk) if project is not None else None)
+    ctx.setdefault(
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+        empty_optimization_replay_track_payload(),
+    )
     ctx["blueprint_code"] = blueprint_code
     ui_initial = dict(ctx.get("lab_ui_initial") or {})
     ui_initial["blueprintCode"] = blueprint_code

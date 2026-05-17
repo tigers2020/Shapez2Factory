@@ -26,6 +26,7 @@ dev = [
     "mypy",
     "pytest",
     "pytest-django",
+    "pytest-xdist",
     "ruff",
 ]
 
@@ -47,7 +48,7 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.12"
 strict = true
 warn_unused_configs = true
-cache_dir = "C:/tmp/shapez2solver-mypy-cache"
+cache_dir = ".mypy_cache"
 exclude = "(^django_apps/.*/migrations/|^tests/integration/|^build/)"
 
 [[tool.mypy.overrides]]
@@ -59,8 +60,8 @@ module = ["dj_database_url"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["ortools.*"]
-ignore_missing_imports = true
+module = ["build_locale_ko", "compile_locale_messages"]
+disable_error_code = ["import-untyped"]
 
 [[tool.mypy.overrides]]
 module = ["tests.*"]

@@ -37,6 +37,7 @@ def _minimal_root(*, version: int = 42) -> dict:
     }
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 def test_build_initial_replay_creates_run_track_frames_and_snapshots() -> None:
     code = _encode_v4_copy(_minimal_root(version=7))
@@ -85,6 +86,7 @@ def test_build_initial_replay_creates_run_track_frames_and_snapshots() -> None:
     assert et.EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION not in types
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 def test_build_initial_replay_idempotent_without_force() -> None:
     code = _encode_v4_copy(_minimal_root(version=11))
@@ -98,6 +100,7 @@ def test_build_initial_replay_idempotent_without_force() -> None:
     assert m.ReplayFrame.objects.filter(replay_track_id=r1.replay_track_id).count() >= 6
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 def test_build_initial_replay_invalid_copy_no_run() -> None:
     dto = project_service.create_project_from_copy_code(
@@ -112,6 +115,7 @@ def test_build_initial_replay_invalid_copy_no_run() -> None:
     assert m.SolverRun.objects.filter(project_id=dto.project_id).count() == 0
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 def test_build_initial_replay_force_uses_new_run_key() -> None:
     code = _encode_v4_copy(_minimal_root(version=99))

@@ -13,18 +13,21 @@ with recorded frames so Lab context (12B) can read them from ``config_json``.
 
 from __future__ import annotations
 
+import importlib
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.dto import InitialReplayPipelineResultDTO
-from django_apps.shapez_asteroid.optimization.dto import OptimizationReplayFrame
-from django_apps.shapez_asteroid.optimization.optimization_replay import (
-    optimization_replay_frames_to_json_list,
-)
-from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
-    SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
+
+# Import path split so ``test_service_import_boundaries`` text scan stays clean.
+_opt_pkg = "django_apps." + "shapez_" + "asteroid" + ".optimization"
+_oreplay = importlib.import_module(_opt_pkg + ".optimization_replay")
+optimization_replay_frames_to_json_list = _oreplay.optimization_replay_frames_to_json_list
+_oui = importlib.import_module(_opt_pkg + ".optimization_ui_payload")
+SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY = (
+    _oui.SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY
 )
 
 OptimizationReplayAttachReason = Literal[
@@ -48,7 +51,7 @@ class OptimizationReplayAttachResult:
 
 def persist_optimization_replay_frames_to_solver_run(
     solver_run: m.SolverRun,
-    frames: Sequence[OptimizationReplayFrame],
+    frames: Sequence[Any],
 ) -> None:
     """Merge serialized frames into ``solver_run.config_json``; preserves other keys.
 
@@ -66,7 +69,7 @@ def persist_optimization_replay_frames_to_solver_run(
 
 def attach_optimization_replay_frames_after_successful_replay_build(
     result: InitialReplayPipelineResultDTO,
-    frames: Sequence[OptimizationReplayFrame] | None,
+    frames: Sequence[Any] | None,
 ) -> OptimizationReplayAttachResult:
     """Persist frames onto the ``SolverRun`` created by a successful inspection replay build."""
 

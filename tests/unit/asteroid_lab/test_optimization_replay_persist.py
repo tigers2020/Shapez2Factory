@@ -24,12 +24,17 @@ from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEve
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
+    build_optimization_replay_track_payload,
     deserialize_optimization_replay_frames_from_json,
     empty_optimization_replay_track_payload_with_diagnostic,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 from django_apps.web.services.asteroid_lab_post_inspection_evolution import (
     run_post_inspection_evolution_and_attach_optimization_replay,
+)
+from tests.support.measure_json_sections import (
+    assert_optimization_replay_hard_caps,
+    measure_json_sections,
 )
 
 
@@ -326,3 +331,12 @@ def test_page_context_malformed_optimization_replay_does_not_crash() -> None:
             "invalid_optimization_replay_payload"
         )
     )
+
+
+def test_build_optimization_track_payload_passes_13a_cap_measure() -> None:
+    track = build_optimization_replay_track_payload(_one_valid_frame())
+    root = {OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: track, "lab_replay_frames_json": []}
+    assert_optimization_replay_hard_caps(root)
+    stats = measure_json_sections(root)
+    assert stats["optimization_replay"]["frame_count"] == 1
+    assert stats["optimization_replay"]["visible_plus_overlay_max"] == 1

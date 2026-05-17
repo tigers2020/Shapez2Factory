@@ -28,6 +28,10 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 from django_apps.web.views import public_pages
+from tests.support.measure_json_sections import (
+    assert_optimization_replay_hard_caps,
+    measure_json_sections,
+)
 
 _OPTIMIZATION_REPLAY_SCRIPT_RE = re.compile(
     r'<script id="optimization-replay-json" type="application/json">(?P<body>.*?)</script>',
@@ -1331,3 +1335,79 @@ def test_lab_replay_viewport_css_layout_contract() -> None:
     start = css.index(marker)
     stage_block = css[start : start + 520]
     assert "position: absolute" in stage_block
+
+
+def test_measure_json_sections_total_matches_sorted_minified_json() -> None:
+    root = {"z": 0, "a": [1, 2]}
+    stats = measure_json_sections(root)
+    enc = json.dumps(root, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    assert stats["total_bytes"] == len(enc)
+    assert set(stats["top_level_key_bytes"]) == {"a", "z"}
+
+
+def test_measure_json_sections_lab_and_optimization_subsections() -> None:
+    lab_frame = {
+        "frame_index": 0,
+        "full_map": [{"x": 1, "y": 0}, {"x": 2, "y": 0}],
+        "frame_payload": {},
+    }
+    opt_track = {
+        "track_id": "optimization",
+        "frames": [
+            {
+                "frame_index": 0,
+                "event_type": "candidate.generated",
+                "visible_cells": [{"x": 1, "y": 0}],
+                "overlay_cells": [{"x": 2, "y": 0}],
+                "metrics": {},
+            }
+        ],
+    }
+    root = {
+        "ok": True,
+        "lab_replay_frames_json": [lab_frame],
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: opt_track,
+    }
+    stats = measure_json_sections(root)
+    assert stats["lab_replay"]["frame_count"] == 1
+    assert stats["lab_replay"]["full_map_len_max"] == 2
+    assert stats["lab_replay"]["full_map_len_sum"] == 2
+    assert stats["optimization_replay"]["frame_count"] == 1
+    assert stats["optimization_replay"]["visible_plus_overlay_max"] == 2
+    assert_optimization_replay_hard_caps(root)
+
+
+def test_assert_optimization_replay_hard_caps_rejects_frame_count_over_500() -> None:
+    frames = [
+        {
+            "frame_index": i,
+            "event_type": "candidate.generated",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        }
+        for i in range(501)
+    ]
+    root = {OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: {"track_id": "optimization", "frames": frames}}
+    with pytest.raises(AssertionError, match="frame_count"):
+        assert_optimization_replay_hard_caps(root)
+
+
+def test_assert_optimization_replay_hard_caps_rejects_cells_over_128() -> None:
+    cells = [{"x": i, "y": 0} for i in range(1, 130)]
+    root = {
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: {
+            "track_id": "optimization",
+            "frames": [
+                {
+                    "frame_index": 0,
+                    "event_type": "candidate.generated",
+                    "visible_cells": cells,
+                    "overlay_cells": [],
+                    "metrics": {},
+                }
+            ],
+        }
+    }
+    with pytest.raises(AssertionError, match="129 exceeds"):
+        assert_optimization_replay_hard_caps(root)

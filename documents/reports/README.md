@@ -6,6 +6,10 @@
 
 하위 디렉터리는 필요할 때만 추가한다. 과거에 두었던 `documentation_audit/`, `2026-05/` 등 일부 묶음은 정리 과정에서 삭제되었을 수 있다 — 경로가 없으면 archive·git 기록을 본다.
 
+### Asteroid Lab (플랜 트리에 둔 REPORT)
+
+- [`../plans/asteroid_lab_optimization/asteroid_lab_progress_report_2026-05-17.md`](../plans/asteroid_lab_optimization/asteroid_lab_progress_report_2026-05-17.md) — 2026-05-17 진행 스냅(`REPORT`). 브랜치 기준 `quality/repository-gate-cleanup`. 인덱스: [`../index/document_inventory.md`](../index/document_inventory.md) Research·Report 표.
+
 ## 사용 규칙
 
 - 구현 판단은 [`../index/document_inventory.md`](../index/document_inventory.md)의 `CANON` 문서를 먼저 본다.

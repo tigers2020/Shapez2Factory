@@ -733,7 +733,10 @@ implicit replay coupling
 ```text
 5. Sequence 12A diversity stabilization
 6. Sequence 12B commit survivability fitness
-7. Sequence 13A replay scalability
+7. Sequence 13A replay scalability — 연구/계측 단계(13A): ``tests/support/measure_json_sections.py``,
+   통합 테스트 ``test_post_projects_json_size_attribution_and_optimization_replay_hard_caps``,
+   근거·갭·후보 전략은 ``asteroid_lab_09_replay_debug.md`` 「Sequence 13A」 참고.
+   (즉시 delta 구현·DTO 의미 변경은 범위 밖)
 ```
 
 ---

@@ -18,6 +18,11 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     empty_optimization_replay_track_payload_with_diagnostic,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
+from tests.support.measure_json_sections import (
+    assert_lab_replay_not_capped_by_optimization_constants,
+    assert_optimization_replay_hard_caps,
+    measure_json_sections,
+)
 
 pytestmark = [pytest.mark.django_db, pytest.mark.slow]
 
@@ -361,6 +366,38 @@ def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
     _assert_optimization_replay_lab_payload(data)
     attach = data.get("optimization_replay_attach")
     assert isinstance(attach, dict) and attach.get("reason") == "attached"
+
+
+def test_post_projects_json_size_attribution_and_optimization_replay_hard_caps() -> None:
+    """13A — POST JSON is measurable via test client; optimization replay obeys MAX_REPLAY_*.
+
+    Lab replay uses ``full_map`` / inspection pipeline and is **not** clamped by
+    ``MAX_REPLAY_CELLS_PER_FRAME`` (optimization-only constant).
+    """
+
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    assert_optimization_replay_hard_caps(data)
+    lab_n = assert_lab_replay_not_capped_by_optimization_constants(data)
+    assert lab_n >= 5
+    stats = measure_json_sections(data)
+    enc = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    assert stats["total_bytes"] == len(enc)
+    assert stats["lab_replay"]["frame_count"] == lab_n
+    assert stats["optimization_replay"]["frame_count"] >= 1
+    assert stats["optimization_replay"]["visible_plus_overlay_max"] <= 128
+    assert OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY in stats["top_level_key_bytes"]
+    assert stats["top_level_key_bytes"]["lab_replay_frames_json"] > 0
+    assert stats["top_level_key_bytes"][OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] > 0
 
 
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:

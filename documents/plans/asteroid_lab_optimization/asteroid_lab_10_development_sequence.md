@@ -15,6 +15,7 @@ GA + local pattern compiler + route feasibility 기반 optimization layer를 안
 - **JSON fixture (narrow corridor v0):** `tests/fixtures/shapez_asteroid/optimization/narrow_corridor_asymmetric_rim_competition.json`, `narrow_corridor_symmetric_rim_competition.json` — `json_safe_replay_value` 스냅샷; 동기 테스트 `tests/unit/shapez_asteroid/test_narrow_corridor_optimization_json_fixtures.py`.
 - **JSON 계약 파서 (테스트 전용):** `tests/unit/shapez_asteroid/fixtures/optimization_json.py` — `schema_version == 1`만 허용, 필수 키·상호 배타적 goal export(`primary_route_goal` vs 최상위 `route_goals`)·알 수 없는 최상위 키 거부; `test_optimization_fixture_json_contract.py`에서 디스크 ↔ `json_safe` 빌더 동등성·라운드트립 검증. **프로덕션 솔버 입력·런타임 자동 소비는 범위 밖**이며 전역 진화 JSON 팩·역직렬화 런타임도 여전히 후속.
 - **Replay-track JSON 골든(v0, 출력 계약만):** `tests/fixtures/shapez_asteroid/replay/narrow_corridor_{asymmetric,symmetric,starvation}_replay.json` — `build_optimization_replay_track_payload`와 동일 프레임 직렬화; 빌더 `fixtures/replay_track_builders.py`. **테스트 전용 파서** `fixtures/replay_json.py` + `test_replay_fixture_json_contract.py`(`schema_version` 1, 최상위 키 화이트리스트, `replay_event_sequence`↔프레임 정합). **리플레이는 솔버/커밋 입력이 아님**; Lab/런타임 자동 소비 배선은 범위 밖.
+- **Long replay stitching JSON(v0, 출력 계약만):** `tests/fixtures/shapez_asteroid/replay_long/narrow_corridor_evolution_commit_replay.json`, `narrow_corridor_truncated_replay.json` — 진화 구간(`optimization.input_loaded`·`genome.*`·`generation.completed`) → `best_genome.selected` → incremental commit(`route.*`) → `commit.survivability_summary` 스티칭을 한 artifact에 고정; truncated 픽스처는 동일 프레임 접두사에서 `replay_summary.replay_truncated=true` 및 최상위 `truncation_reason` 계약을 검증한다. 계약 테스트 `test_long_replay_fixture_contract.py`. **런타임 persistence·역직렬화 자동 소비는 여전히 범위 밖**이며, 픽스처는 알고리즘 입력이 아니다.
 
 ---
 
@@ -452,17 +453,18 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 
 ---
 
-## Asteroid Lab — Run Solver POST · optimization replay 영속 (시퀀스 12C–12E)
+## Asteroid Lab — Run Solver POST · optimization replay 영속 (시퀀스 12C–12F)
 
 Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 **POST 동기** bounded GA를 돌리고, optimization replay 프레임을 `SolverRun.config_json`에 합친다. Lab 응답 JSON에 inspection 번들을 넣기 **전**에 attach를 실행해야 동일 응답에 optimization 트랙이 포함된다 (`django_apps/web/views/public_pages.py`, `django_apps/web/services/asteroid_lab_post_inspection_evolution.py`). `replay_pipeline_service`는 `shapez_asteroid`를 import하지 않는 경계를 유지한다.
 
-### 진행 표 (12C–12E)
+### 진행 표 (12C–12F)
 
 | 시퀀스 | 상태 | 요약 |
 |--------|------|------|
 | 12C | 완료 | `optimization_replay_persist` — 성공한 inspection replay 빌드 이후에만 `SolverRun.config_json`에 프레임 기록 (output-only) |
 | 12D | 완료 | 검사 replay `ok` 직후 post-inspection evolution + attach로 UI optimization 트랙 동기 반영 |
 | 12E | 완료 | POST 전용 하드캡(`max_candidates`, `route_probe_max_expansions`, `time_budget_ms`, `population_size` 등), `empty_candidate_pool` / `evolution_failed` 분리, JSON `optimization_replay_attach` `{attached, reason}`, `_finalize_attach` INFO 로그, `event_type`·접두사 스모크 및 attach 계약 통합 테스트 |
+| 12F | 완료 | persist 프레임 리스트 가드: `validate_optimization_replay_frame_list_payload` + 역직렬화 시 절단 짝·연속 `frame_index`·알려진 `event_type`; malformed 시 읽기 빈 트랙·쓰기 스킵(`invalid_replay_payload`); `build_optimization_replay_track_payload`가 잘림 시 첫 `truncation_reason` 집계; schema/truncation **sibling·봉투·HUD·cap·migration** 비범위 유지(정본: `asteroid_lab_12_runtime_replay_wiring.md`) |
 
 ### 12E 구현 요약
 

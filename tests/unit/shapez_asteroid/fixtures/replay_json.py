@@ -1,7 +1,9 @@
 """Strict JSON contract for optimization **replay-track** golden fixtures (test-only).
 
-``schema_version`` 1 (v0) matches files under ``tests/fixtures/shapez_asteroid/replay/``.
+``schema_version`` 1 (v0) matches files under ``tests/fixtures/shapez_asteroid/replay/``
+and long-stitch files under ``tests/fixtures/shapez_asteroid/replay_long/``.
 Validates envelope + frame shape + ``replay_event_sequence`` consistency with frames.
+Optional ``truncation_reason`` (top-level) pairs with ``replay_summary.replay_truncated``.
 Does **not** deserialize into domain ``OptimizationReplayFrame`` objects and is **not**
 production Lab/runtime wiring.
 """
@@ -24,6 +26,7 @@ _ALLOWED_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
         "replay_frames",
         "replay_summary",
         "replay_event_sequence",
+        "truncation_reason",
         "metadata",
     }
 )
@@ -72,6 +75,7 @@ class ReplayFixtureJson:
     replay_frames: Sequence[Mapping[str, object]]
     replay_summary: Mapping[str, object]
     replay_event_sequence: Sequence[str]
+    truncation_reason: str | None
     metadata: Mapping[str, object] | None
 
 
@@ -115,7 +119,26 @@ def _event_type_counts_from_sequence(events: Sequence[str]) -> dict[str, int]:
     return dict(sorted(raw.items()))
 
 
-def _validate_replay_summary(summary: object, *, frame_count: int, events: Sequence[str]) -> None:
+def _validate_truncation_reason_field(
+    data: dict[str, object], *, replay_truncated: bool
+) -> str | None:
+    has_key = "truncation_reason" in data
+    raw = data.get("truncation_reason")
+    if not replay_truncated:
+        if not has_key:
+            return None
+        msg = "truncation_reason must be absent when replay_summary.replay_truncated is false"
+        raise ReplayFixtureJsonError(msg)
+    if not has_key or raw is None:
+        msg = "truncation_reason is required when replay_summary.replay_truncated is true"
+        raise ReplayFixtureJsonError(msg)
+    if not isinstance(raw, str) or not raw.strip():
+        msg = f"truncation_reason must be a non-empty string, got {raw!r}"
+        raise ReplayFixtureJsonError(msg)
+    return raw.strip()
+
+
+def _validate_replay_summary(summary: object, *, frame_count: int, events: Sequence[str]) -> bool:
     if not isinstance(summary, dict):
         msg = f"replay_summary must be object, got {type(summary).__name__}"
         raise ReplayFixtureJsonError(msg)
@@ -148,6 +171,7 @@ def _validate_replay_summary(summary: object, *, frame_count: int, events: Seque
     if not isinstance(rt, bool):
         msg = f"replay_summary.replay_truncated must be bool, got {type(rt).__name__}"
         raise ReplayFixtureJsonError(msg)
+    return rt
 
 
 def _validate_frame(obj: object, *, position: int) -> dict[str, object]:
@@ -229,7 +253,10 @@ def parse_replay_fixture_json(data: Mapping[str, object]) -> ReplayFixtureJson:
             )
             raise ReplayFixtureJsonError(msg)
 
-    _validate_replay_summary(data["replay_summary"], frame_count=len(frames), events=events)
+    replay_truncated = _validate_replay_summary(
+        data["replay_summary"], frame_count=len(frames), events=events
+    )
+    trunc_reason = _validate_truncation_reason_field(data, replay_truncated=replay_truncated)
 
     meta: dict[str, object] | None = None
     if "metadata" in data:
@@ -245,6 +272,7 @@ def parse_replay_fixture_json(data: Mapping[str, object]) -> ReplayFixtureJson:
         replay_frames=tuple(copy.deepcopy(f) for f in frames),
         replay_summary=copy.deepcopy(dict(data["replay_summary"])),
         replay_event_sequence=tuple(events),
+        truncation_reason=trunc_reason,
         metadata=meta,
     )
 
@@ -257,6 +285,8 @@ def replay_fixture_json_to_safe_dict(fixture: ReplayFixtureJson) -> dict[str, An
         "replay_summary": copy.deepcopy(dict(fixture.replay_summary)),
         "replay_event_sequence": list(fixture.replay_event_sequence),
     }
+    if fixture.truncation_reason is not None:
+        out["truncation_reason"] = fixture.truncation_reason
     if fixture.metadata is not None:
         out["metadata"] = copy.deepcopy(dict(fixture.metadata))
     return out

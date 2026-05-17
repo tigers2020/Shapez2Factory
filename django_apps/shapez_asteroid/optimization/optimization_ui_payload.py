@@ -54,6 +54,43 @@ def _aggregate_replay_truncated(frames: Sequence[OptimizationReplayFrame]) -> bo
     return any(bool(f.metrics.get("replay_truncated")) for f in frames)
 
 
+def _first_truncation_reason_from_frames(
+    frames: Sequence[OptimizationReplayFrame],
+) -> str | None:
+    """First non-empty ``truncation_reason`` on a frame with ``replay_truncated``."""
+
+    for f in frames:
+        if not bool(f.metrics.get("replay_truncated")):
+            continue
+        tr = f.metrics.get("truncation_reason")
+        if isinstance(tr, str) and tr.strip():
+            return tr.strip()
+    return None
+
+
+def _frame_metrics_truncation_pair_ok(metrics: Mapping[str, Any]) -> bool:
+    if not bool(metrics.get("replay_truncated")):
+        return True
+    tr = metrics.get("truncation_reason")
+    return isinstance(tr, str) and bool(tr.strip())
+
+
+def validate_optimization_replay_frame_list_payload(raw: object) -> bool:
+    """Return True if ``raw`` is a list that passes the v0 persisted replay guard.
+
+    * ``raw`` must be a ``list`` (including empty; empty is valid).
+    * Non-empty lists must deserialize via
+      :func:`deserialize_optimization_replay_frames_from_json` (shape, indices,
+      known ``event_type``, metrics dict, truncation pair).
+    """
+
+    if not isinstance(raw, list):
+        return False
+    if len(raw) == 0:
+        return True
+    return deserialize_optimization_replay_frames_from_json(raw) is not None
+
+
 def _cell_sequence_from_json(val: object) -> tuple[Any, ...] | None:
     if not isinstance(val, list):
         return None
@@ -106,6 +143,8 @@ def deserialize_optimization_replay_frames_from_json(
             metrics = dict(metrics_raw)
         else:
             return None
+        if not _frame_metrics_truncation_pair_ok(metrics):
+            return None
         if frame_index != pos:
             return None
         frames.append(
@@ -147,16 +186,24 @@ def build_optimization_replay_track_payload(
         return empty_optimization_replay_track_payload()
 
     serialized = [optimization_replay_frame_to_json_dict(f) for f in frames]
+    truncated = _aggregate_replay_truncated(frames)
+    track_metrics: dict[str, Any] = {
+        "frame_count": len(serialized),
+        "event_type_counts": _event_type_counts_sorted(frames),
+        "replay_truncated": truncated,
+    }
+    if truncated:
+        first_reason = _first_truncation_reason_from_frames(frames)
+        if first_reason is not None:
+            track_metrics["truncation_reason"] = first_reason
+        else:
+            track_metrics["truncation_reason"] = "unknown"
     return {
         "track_id": TRACK_ID,
         "track_label": TRACK_LABEL,
         "frame_count": len(serialized),
         "frames": serialized,
-        "metrics": {
-            "frame_count": len(serialized),
-            "event_type_counts": _event_type_counts_sorted(frames),
-            "replay_truncated": _aggregate_replay_truncated(frames),
-        },
+        "metrics": track_metrics,
     }
 
 

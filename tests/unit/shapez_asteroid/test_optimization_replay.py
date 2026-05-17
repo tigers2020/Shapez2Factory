@@ -136,6 +136,7 @@ def test_replay_large_payload_truncation() -> None:
     f = r.frames[0]
     assert len(f.visible_cells) + len(f.overlay_cells) <= MAX_REPLAY_CELLS_PER_FRAME
     assert f.metrics.get("replay_truncated") is True
+    assert f.metrics.get("truncation_reason") == "max_replay_cells_per_frame"
 
 
 def test_replay_truncation_marks_metrics() -> None:
@@ -149,6 +150,7 @@ def test_replay_truncation_marks_metrics() -> None:
         )
     assert len(r.frames) == 2
     assert r.frames[-1].metrics.get("replay_truncated") is True
+    assert r.frames[-1].metrics.get("truncation_reason") == "max_replay_frames"
 
 
 def test_noop_replay_recorder_has_no_side_effects() -> None:

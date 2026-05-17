@@ -24,6 +24,7 @@ from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEve
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
+    empty_optimization_replay_track_payload,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 from django_apps.web.services.asteroid_lab_post_inspection_evolution import (
@@ -228,3 +229,74 @@ def test_attach_solver_run_not_found_returns_reason() -> None:
     bogus = replace(result, solver_run_id=9_999_999_999)
     out = attach_optimization_replay_frames_after_successful_replay_build(bogus, _one_valid_frame())
     assert out.attached is False and out.reason == "solver_run_not_found"
+
+
+def test_persist_skips_when_truncation_contract_breaks_on_serialized_blob() -> None:
+    code = _encode_v4_copy(_minimal_root(version=612))
+    dto = project_service.create_project_from_copy_code(code, source_label="trunc-skip")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
+    before = dict(run.config_json or {})
+    bad = (
+        OptimizationReplayFrame(
+            frame_index=0,
+            event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
+            title="t",
+            description="",
+            visible_cells=(Coord(1, 0),),
+            overlay_cells=(),
+            metrics={"replay_truncated": True},
+        ),
+    )
+    persist_optimization_replay_frames_to_solver_run(run, bad)
+    run.refresh_from_db()
+    assert run.config_json == before
+
+
+def test_attach_invalid_replay_payload_when_truncation_pair_missing() -> None:
+    code = _encode_v4_copy(_minimal_root(version=613))
+    dto = project_service.create_project_from_copy_code(code, source_label="invalid-pair")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    bad = (
+        OptimizationReplayFrame(
+            frame_index=0,
+            event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
+            title="t",
+            description="",
+            visible_cells=(Coord(1, 0),),
+            overlay_cells=(),
+            metrics={"replay_truncated": True},
+        ),
+    )
+    out = attach_optimization_replay_frames_after_successful_replay_build(result, bad)
+    assert out.attached is False and out.reason == "invalid_replay_payload"
+
+
+def test_persisted_optimization_replay_invalid_shape_falls_back_empty() -> None:
+    code = _encode_v4_copy(_minimal_root(version=614))
+    dto = project_service.create_project_from_copy_code(code, source_label="bad-shape")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
+    merged = dict(run.config_json or {})
+    merged[SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY] = {"not": "a list"}
+    run.config_json = merged
+    run.save(update_fields=["config_json"])
+    ctx = alc.lab_page_context(project_id=dto.project_id)
+    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
+
+
+def test_page_context_malformed_optimization_replay_does_not_crash() -> None:
+    code = _encode_v4_copy(_minimal_root(version=615))
+    dto = project_service.create_project_from_copy_code(code, source_label="mal-crash")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
+    merged = dict(run.config_json or {})
+    merged[SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY] = None
+    run.config_json = merged
+    run.save(update_fields=["config_json"])
+    ctx = alc.lab_page_context(project_id=dto.project_id)
+    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()

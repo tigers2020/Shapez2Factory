@@ -24,6 +24,7 @@ def _encode_v4_copy(root: dict) -> str:
     return f"SHAPEZ2-4-{b64}"
 
 
+@pytest.mark.slow
 @pytest.mark.django_db
 def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     def corner(x: int, y: int) -> dict:

@@ -97,8 +97,8 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 |------|------|
 | 설치 | `pip install -e ".[dev]"` |
 | 서버 | `python manage.py runserver` |
-| 테스트 전체 | `python -m pytest` |
-| 테스트 구간 | `python -m pytest -m unit` 등 · 경로 예: `tests/unit/shapez_solver/` |
+| 테스트 전체 | `python -m pytest` (병렬: `python -m pytest -n auto --dist loadscope`) |
+| 테스트 구간 | `python -m pytest -m unit` · `-m "not slow"` · 경로 예: `tests/unit/shapez_solver/` · 루트 `Makefile` (`make test-fast` 등) |
 | 로컬 검증 | `ruff check .` → `mypy .` → `black .` |
 | CI 포맷 | `black --check .` |
 

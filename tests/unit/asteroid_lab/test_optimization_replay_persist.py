@@ -65,7 +65,9 @@ def _one_valid_frame() -> tuple[OptimizationReplayFrame, ...]:
     )
 
 
-@pytest.mark.django_db
+pytestmark = [pytest.mark.slow, pytest.mark.django_db]
+
+
 def test_persist_preserves_unrelated_config_json_keys() -> None:
     code = _encode_v4_copy(_minimal_root(version=501))
     dto = project_service.create_project_from_copy_code(code, source_label="persist-keys")
@@ -81,7 +83,6 @@ def test_persist_preserves_unrelated_config_json_keys() -> None:
     assert SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY in run.config_json
 
 
-@pytest.mark.django_db
 def test_persist_writes_optimization_replay_frames_list() -> None:
     code = _encode_v4_copy(_minimal_root(version=502))
     dto = project_service.create_project_from_copy_code(code, source_label="persist-list")
@@ -96,7 +97,6 @@ def test_persist_writes_optimization_replay_frames_list() -> None:
     assert raw[0]["frame_index"] == 0
 
 
-@pytest.mark.django_db
 def test_persist_empty_frames_does_not_mutate_solver_run_config_json() -> None:
     code = _encode_v4_copy(_minimal_root(version=503))
     dto = project_service.create_project_from_copy_code(code, source_label="noop")
@@ -108,7 +108,6 @@ def test_persist_empty_frames_does_not_mutate_solver_run_config_json() -> None:
     assert run.config_json == before
 
 
-@pytest.mark.django_db
 def test_attach_then_lab_page_context_reports_nonzero_frames() -> None:
     code = _encode_v4_copy(_minimal_root(version=504))
     dto = project_service.create_project_from_copy_code(code, source_label="attach-ctx")
@@ -124,7 +123,6 @@ def test_attach_then_lab_page_context_reports_nonzero_frames() -> None:
     assert opt["frames"][0]["title"] == "t"
 
 
-@pytest.mark.django_db
 def test_attach_empty_frames_preserves_existing_optimization_replay() -> None:
     code = _encode_v4_copy(_minimal_root(version=507))
     dto = project_service.create_project_from_copy_code(code, source_label="empty-attach")
@@ -141,7 +139,6 @@ def test_attach_empty_frames_preserves_existing_optimization_replay() -> None:
     assert isinstance(after, list) and len(after) == before_len
 
 
-@pytest.mark.django_db
 def test_get_latest_skips_invalid_persisted_blob_on_newest_run() -> None:
     code = _encode_v4_copy(_minimal_root(version=505))
     dto = project_service.create_project_from_copy_code(code, source_label="invalid-blob")
@@ -161,7 +158,6 @@ def test_get_latest_skips_invalid_persisted_blob_on_newest_run() -> None:
     assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] == 1
 
 
-@pytest.mark.django_db
 def test_attach_does_not_mutate_inspection_config_passed_at_create() -> None:
     """Replay blob is merged post-create; caller ``config`` is unchanged on disk except merge."""
 
@@ -177,7 +173,6 @@ def test_attach_does_not_mutate_inspection_config_passed_at_create() -> None:
     assert isinstance(run.config_json.get(SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY), list)
 
 
-@pytest.mark.django_db
 def test_attach_noop_on_failed_pipeline() -> None:
     dto = project_service.create_project_from_copy_code(
         "not-a-valid-shapez-copy", source_label="bad"
@@ -191,7 +186,6 @@ def test_attach_noop_on_failed_pipeline() -> None:
     assert m.SolverRun.objects.filter(project_id=dto.project_id).count() == 0
 
 
-@pytest.mark.django_db
 def test_run_post_inspection_evolution_attaches_replay_frames() -> None:
     code = _encode_v4_copy(_minimal_root(version=509))
     dto = project_service.create_project_from_copy_code(code, source_label="wire-12d")
@@ -203,7 +197,6 @@ def test_run_post_inspection_evolution_attaches_replay_frames() -> None:
     assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] > 0
 
 
-@pytest.mark.django_db
 def test_run_post_inspection_empty_candidate_pool_reason(monkeypatch: pytest.MonkeyPatch) -> None:
     from django_apps.shapez_asteroid.optimization.dto import CandidateGenerationResult
 
@@ -227,7 +220,6 @@ def test_run_post_inspection_empty_candidate_pool_reason(monkeypatch: pytest.Mon
     assert wire.attached is False and wire.reason == "empty_candidate_pool"
 
 
-@pytest.mark.django_db
 def test_attach_solver_run_not_found_returns_reason() -> None:
     code = _encode_v4_copy(_minimal_root(version=508))
     dto = project_service.create_project_from_copy_code(code, source_label="missing-run")

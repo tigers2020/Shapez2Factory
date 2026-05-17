@@ -13,7 +13,7 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 
-pytestmark = pytest.mark.django_db
+pytestmark = [pytest.mark.django_db, pytest.mark.slow]
 
 
 def _assert_optimization_replay_lab_payload(data: dict) -> None:
@@ -116,7 +116,8 @@ def test_replay_frame_cell_post_returns_cell_json() -> None:
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    client.post(create_url, {"copy_code": copy}, follow=True)
+    create_resp = client.post(create_url, {"copy_code": copy}, follow=False)
+    assert create_resp.status_code == 302
     frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
     assert frame is not None
     track = frame.replay_track
@@ -146,7 +147,8 @@ def test_replay_frame_cell_post_wrong_track_403() -> None:
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    client.post(create_url, {"copy_code": copy}, follow=True)
+    create_resp = client.post(create_url, {"copy_code": copy}, follow=False)
+    assert create_resp.status_code == 302
     frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
     assert frame is not None
     track = frame.replay_track
@@ -169,7 +171,8 @@ def test_replay_frame_cell_post_project_slug_mismatch_403() -> None:
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    client.post(create_url, {"copy_code": copy}, follow=True)
+    create_resp = client.post(create_url, {"copy_code": copy}, follow=False)
+    assert create_resp.status_code == 302
     frame = m.ReplayFrame.objects.order_by("frame_index", "id").first()
     assert frame is not None
     track = frame.replay_track
@@ -193,8 +196,9 @@ def test_asteroid_miner_layout_post_same_copy_dedupes_project() -> None:
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    client.post(create_url, {"copy_code": copy}, follow=True)
-    client.post(create_url, {"copy_code": copy}, follow=True)
+    r1 = client.post(create_url, {"copy_code": copy}, follow=False)
+    r2 = client.post(create_url, {"copy_code": copy}, follow=False)
+    assert r1.status_code == 302 and r2.status_code == 302
 
     assert m.AsteroidProject.objects.count() == 1
     proj = m.AsteroidProject.objects.get()
@@ -209,14 +213,16 @@ def test_asteroid_miner_layout_post_project_slug_adds_map_input_to_same_project(
     copy1 = _unique_valid_copy()
     copy2 = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    client.post(create_url, {"copy_code": copy1}, follow=True)
+    r1 = client.post(create_url, {"copy_code": copy1}, follow=False)
+    assert r1.status_code == 302
     proj = m.AsteroidProject.objects.get()
     slug = proj.slug
-    client.post(
+    r2 = client.post(
         create_url,
         {"copy_code": copy2, "project_slug": slug},
-        follow=True,
+        follow=False,
     )
+    assert r2.status_code == 302
     assert m.AsteroidProject.objects.count() == 1
     assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == 2
     page = client.get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
@@ -230,7 +236,8 @@ def test_asteroid_miner_layout_create_json_accept_existing_project() -> None:
     copy1 = _unique_valid_copy()
     copy2 = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    client.post(create_url, {"copy_code": copy1}, follow=True)
+    r0 = client.post(create_url, {"copy_code": copy1}, follow=False)
+    assert r0.status_code == 302
     proj = m.AsteroidProject.objects.get()
     slug = proj.slug
     n_inputs = m.AsteroidMapInput.objects.filter(project_id=proj.pk).count()
@@ -261,7 +268,8 @@ def test_asteroid_miner_layout_post_rebuilds_replay_when_track_had_no_frames() -
     client = Client()
     copy = _unique_valid_copy()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    client.post(create_url, {"copy_code": copy}, follow=True)
+    r0 = client.post(create_url, {"copy_code": copy}, follow=False)
+    assert r0.status_code == 302
     proj = m.AsteroidProject.objects.get()
     tid = m.ReplayTrack.objects.filter(project=proj).values_list("id", flat=True).first()
     assert tid is not None
@@ -327,6 +335,7 @@ def test_asteroid_miner_layout_project_unknown_slug_404() -> None:
 def test_asteroid_miner_layout_post_invalid_copy_no_replay_frames() -> None:
     client = Client()
     create_url = reverse("web:asteroid-miner-layout-projects-create")
-    client.post(create_url, {"copy_code": "not-valid-shapez-payload"}, follow=True)
+    bad = client.post(create_url, {"copy_code": "not-valid-shapez-payload"}, follow=False)
+    assert bad.status_code == 302
 
     assert m.ReplayFrame.objects.count() == 0

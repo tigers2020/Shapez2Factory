@@ -41,6 +41,8 @@ from django_apps.shapez_asteroid.optimization.dto import (
     TopologyEdge,
     TopologyGraph,
     TopologyNode,
+    ValidationIssue,
+    ValidationResult,
 )
 from django_apps.shapez_asteroid.optimization.enums import (
     CandidateRejectReason,
@@ -70,6 +72,10 @@ from django_apps.shapez_asteroid.optimization.evolutionary_search import (
     run_evolutionary_search,
     tournament_select,
     validate_evolution_config,
+)
+from django_apps.shapez_asteroid.optimization.final_validation import (
+    validate_incremental_commit_result,
+    validation_passed_from_issues,
 )
 from django_apps.shapez_asteroid.optimization.genome_fitness import (
     build_fitness_breakdown,
@@ -198,13 +204,17 @@ __all__ = [
     "RouteGoal",
     "RouteGoalKind",
     "RouteProbeFailureReason",
+    "validate_incremental_commit_result",
+    "validation_passed_from_issues",
     "TopologyEdge",
     "TopologyGraph",
     "TopologyNode",
     "TopologyNodeKind",
     "TransportKind",
     "TransportMask",
+    "ValidationIssue",
     "ValidationIssueCode",
+    "ValidationResult",
     "ValidationSeverity",
     "cardinal_unit_toward",
     "neighbors4_server",

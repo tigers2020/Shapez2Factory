@@ -23,6 +23,21 @@ best genome
 → rollback failed candidate
 ```
 
+## Incremental commit 동작 (`commit_best_genome`)
+
+```text
+1) 각 candidate 처리 직전에 `RouteDomainSnapshotBuilder.build_snapshot(...)`로
+   route_domain을 새로 만든다 (confirmed_reservations·committed_occupied_cells 반영).
+2) candidate 생성 단계의 `BundleCandidate.route_probe_result`는 참고용일 뿐이며,
+   commit 루프의 최종 증명이 아니다.
+3) 각 commit 후보는 **항상 그 시점의 최신 route_domain**으로 `run_route_probe`를 다시 돌린다.
+4) commit 성공 시 해당 예약 경로는 동일 `transport_kind`에 대해 trunk·preferred로 승격되고,
+   다른 kind는 `transport_mask` 등으로 차단·제한된다 (`RouteDomainSnapshotBuilder.build_snapshot` 오버레이).
+5) 확정된 placement의 `occupied_cells`는 이후 스냅샷에서 `hard_blocked`로 반영된다.
+```
+
+commit 코드는 `RouteCellDomain`을 **제자리(in-place) 패치하지 않는다**. 스냅샷은 빌더가 새 `dict[Coord, RouteCellDomain]`로 돌려준다.
+
 ## commit_order 출처 (greedy 순서 누수 방지)
 
 실제 확정 순서는 **선택된 genome의 `Gene.commit_order`** 만이 정본이다. 기본값으로 다음을 **commit 순서로 쓰면 안 된다**.
@@ -132,15 +147,34 @@ commit이 **성공(CONFIRMED)** 하면:
 
 이 계약이 없으면 candidate 단계 “reachable”과 최종 commit 충돌이 **다시 분리**된다. Phase 3의 즉시 probe는 **그 시점 스냅샷**이고, commit 루프 안에서는 **항상 최신 domain**으로 재-probe한다.
 
+## RouteDomainSnapshotBuilder — route_domain 스냅샷 정본 API
+
+- **정본 진입점**: `RouteDomainSnapshotBuilder.build_snapshot(inp, *, confirmed_reservations=(), committed_occupied_cells=frozenset())`  
+  - 선택 인자: `confirmed_reservations`, `committed_occupied_cells` (둘 다 비어 있으면 시드 스냅샷과 동등하게 `build_seed_snapshot` 경로).
+- **하위 호환**: `build_commit_snapshot(...)`는 위 `build_snapshot`에 **얇게 위임**하는 래퍼로 남길 수 있다.
+- 빌더는 셀 도메인을 **불변 스냅샷**으로 구성한다; commit 쪽은 반환된 맵을 **새로 받아** 쓰고, 기존 `RouteCellDomain` 인스턴스를 제자리로 고치지 않는다.
+
+## `blocked_cells` vs `protected_corridor_cells` (의미 분리)
+
+- **`blocked_cells`** (`OptimizationInput`): 일반 **hard no-go** 셀 집합.  
+  - commit 경로 검사(`incremental_commit._path_conflict_reason`)에서 경로가 `blocked_cells`와 교차하면 **`CommitConflictReason.HARD_BLOCKED_CONFLICT`** (`"hard_blocked_conflict"`).
+- **`protected_corridor_cells`**: 보호·정책 민감 **복도** 셀.  
+  - **정책 위반**으로 commit을 거절할 때는 **`HARD_PROTECTED_CONFLICT`** (`"hard_protected_conflict"`)를 쓴다 (일반 hard no-go와 구분).  
+  - 복도를 **허용된 통로**로 통과·비용·mask 제어하는 것은 `RouteDomainSnapshotBuilder` / `RouteCellDomain` 정책(시드·오버레이)의 책임이며, `blocked_cells`와 동일 취급하지 않는다.
+
 ## Conflict
 
-충돌 사유는 **`CommitConflictReason` enum** 과 1:1 (자유 문자열 금지).
+충돌 사유는 **`CommitConflictReason` StrEnum** 과 1:1 (자유 문자열 금지).
 
 ```python
-class CommitConflictReason(Enum):
+from enum import StrEnum
+
+
+class CommitConflictReason(StrEnum):
     OCCUPIED_CELL_CONFLICT = "occupied_cell_conflict"
     ROUTE_CELL_CONFLICT = "route_cell_conflict"
     TRANSPORT_KIND_CONFLICT = "transport_kind_conflict"
+    HARD_BLOCKED_CONFLICT = "hard_blocked_conflict"
     HARD_PROTECTED_CONFLICT = "hard_protected_conflict"
     TRUNK_DEADLOCK = "trunk_deadlock"
     ROUTE_PROBE_FAILED = "route_probe_failed"
@@ -168,9 +202,12 @@ candidate가 commit 실패하면 해당 candidate만 rollback한다.
 [ ] reserved_cells 집합이 path와 모순 없이 동기화된다 (Validation Phase 8 교차)
 [ ] domain_cell_transitions의 각 원소가 RouteClass 계약과 모순 없다 (빈 튜플은 “route_class 변경 없음”을 의미할 수 있음)
 [ ] RecoveryBudget 초과 시 thrashing이 무한 반복되지 않는다
+[ ] `blocked_cells` 경로 교차는 `HARD_BLOCKED_CONFLICT`, 보호 복도 **정책 위반**은 `HARD_PROTECTED_CONFLICT`로 구분한다 (의미 혼선 금지)
 ```
 
 ## 테스트
+
+`tests/unit/shapez_asteroid/test_incremental_commit.py`:
 
 ```text
 test_incremental_commit_confirms_connected_candidate
@@ -180,7 +217,24 @@ test_incremental_commit_transport_kind_conflict
 test_incremental_commit_route_reservation_excludes_occupied_cells
 test_incremental_commit_route_domain_reflects_prior_reservations
 test_incremental_commit_reservation_id_deterministic
+test_incremental_commit_uses_gene_commit_order_not_candidate_id
+test_incremental_commit_reprobes_latest_route_domain
+test_incremental_commit_failed_candidate_does_not_remove_prior_confirmed
+test_incremental_commit_reserved_cells_match_path
+test_incremental_commit_domain_cell_transitions_serialized
+test_incremental_commit_conflict_reason_enum_only
+test_incremental_commit_shape_and_fluid_domains_separated
+test_incremental_commit_confirmed_occupied_cells_become_hard_blocked
+test_incremental_commit_recovery_budget_exceeded
+test_incremental_commit_route_cell_conflict
+test_incremental_commit_hard_blocked_conflict
+test_incremental_commit_occupied_cell_conflict_on_path
 ```
+
+- **`HARD_BLOCKED_CONFLICT`**: `test_incremental_commit_hard_blocked_conflict`
+- **`build_snapshot` 단일 진입**: 전용 테스트명 `test_incremental_commit_uses_build_snapshot_single_entry`는 없음. 구현상 `commit_best_genome`이 `_invoke_build_commit` → `RouteDomainSnapshotBuilder.build_snapshot`만 호출하며, 동등 검증으로 `test_incremental_commit_reprobes_latest_route_domain`(프로브마다 새 `route_domain` 객체)·`test_incremental_commit_confirmed_occupied_cells_become_hard_blocked`(오버레이 스냅샷) 등을 참고한다.
+
+본 문서 범위는 Sequence 6 incremental commit 계약 동기화이며, **Sequence 7 validation (`ValidationIssueCode` 등) 구현·UI·CP-SAT·replay·recovery 로직은 추가하지 않는다.**
 
 ## 완료 조건
 
@@ -188,7 +242,7 @@ test_incremental_commit_reservation_id_deterministic
 [ ] best genome commit pipeline 구현
 [ ] RouteReservation (reservation_id·reached_goal·goal_priority·state·domain_cell_transitions) 구현
 [ ] RecoveryBudget 계약 및 초과 시 종료 경로
-[ ] CommitConflictReason enum
+[ ] CommitConflictReason StrEnum (`HARD_BLOCKED_CONFLICT`·`HARD_PROTECTED_CONFLICT` 등)
 [ ] commit 후 route_domain 갱신 계약 구현·테스트
 [ ] commit 시도 순서가 genome `Gene.commit_order` 정본(생성·rim 순 기본값 아님)
 [ ] local rollback 구현

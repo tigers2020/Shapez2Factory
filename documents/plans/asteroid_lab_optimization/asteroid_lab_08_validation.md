@@ -4,15 +4,19 @@
 
 최종 layout이 solver contract를 만족하는지 assert한다.
 
-Validation은 route를 새로 만들지 않는다.
+## 계약 (금지, read-only)
 
-## 금지
+아래는 **검증 단계가 절대 하지 않는 것**이다. 위반 시 검증이 아니라 **다른 시퀀스**(candidate·probe·commit·recovery·수동 편집)의 책임이다.
 
 ```text
 Validation must not invent new routes.
 Validation must not mutate placement.
 Validation must not fix topology.
 ```
+
+- **새 route 금지**: `run_route_probe`로 경로를 새로 찾거나, 없던 예약을 만들어 채우지 않는다. 이미 확정된 `RouteReservation`·배치·`TopologyGraph`만 **읽어** 일관성을 검사한다.
+- **placement 변이 금지**: extractor·extension·점유 셀 등 확정 배치를 추가·삭제·이동하지 않는다.
+- **topology 수정 금지**: `TopologyGraph` 노드·엣지를 추가·삭제·비용 조정하지 않는다.
 
 ## DTO
 
@@ -83,6 +87,9 @@ route isolation risk (외부 목표까지 대체 경로 존재 여부 등)
 
 ```text
 [ ] validation is read-only
+[ ] Validation must not invent new routes
+[ ] Validation must not mutate placement
+[ ] Validation must not fix topology
 [ ] error severity fails validation
 [ ] warning/info does not fail validation
 [ ] every issue has explicit issue_code (ValidationIssueCode)

@@ -23,6 +23,8 @@ from django_apps.shapez_asteroid.optimization.enums import (
     TopologyNodeKind,
     TransportKind,
     TransportMask,
+    ValidationIssueCode,
+    ValidationSeverity,
 )
 
 
@@ -320,3 +322,26 @@ class IncrementalCommitResult:
     final_route_domain: Mapping[Coord, RouteCellDomain]
     confirmed_candidate_count: int
     rolled_back_candidate_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class ValidationIssue:
+    """Read-only validation finding (Sequence 7 assert gate)."""
+
+    issue_code: ValidationIssueCode
+    severity: ValidationSeverity
+    coord: Coord | None
+    candidate_id: str | None
+    route_reservation_id: str | None
+    path_index: int | None
+    route_goal_kind: RouteGoalKind | None
+    transport_kind: TransportKind | None
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class ValidationResult:
+    """Result of ``validate_incremental_commit_result`` (issues sorted; ``passed`` = no ERROR)."""
+
+    passed: bool
+    issues: tuple[ValidationIssue, ...]

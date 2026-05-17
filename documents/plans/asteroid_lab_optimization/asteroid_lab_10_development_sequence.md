@@ -279,8 +279,12 @@ pytest tests/unit/shapez_asteroid/test_optimization_validation.py
 
 ```text
 validation은 read-only
-route를 새로 만들지 않음
+Validation must not invent new routes.
+Validation must not mutate placement.
+Validation must not fix topology.
 ```
+
+(정본 서술: `documents/plans/asteroid_lab_optimization/asteroid_lab_08_validation.md` — 계약(금지))
 
 ---
 

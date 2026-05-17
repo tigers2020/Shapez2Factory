@@ -156,6 +156,11 @@ def test_existing_lab_json_scripts_still_present() -> None:
         assert html.count(f'id="{sid}"') == 1
 
 
+def test_lab_shell_script_tag_has_js_version_query() -> None:
+    html = _render_lab_shell_html().replace("\n", " ")
+    assert "asteroid_miner_layout_lab.js?v=" in html
+
+
 def test_template_renders_when_lab_page_context_omits_optimization_replay() -> None:
     """View helper restores the key so ``json_script`` never sees a missing variable."""
 

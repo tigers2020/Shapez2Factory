@@ -580,5 +580,8 @@
   </div>
 
   <script>window.__ASTEROID_LAB_TOTAL_FRAMES__ = {{ total_frames }};</script>
-  <script src="{% static 'web/js/asteroid_miner_layout_lab.js' %}" defer></script>
+  <script
+    src="{% static 'web/js/asteroid_miner_layout_lab.js' %}?v={{ lab_js_version }}"
+    defer
+  ></script>
 {% endblock %}

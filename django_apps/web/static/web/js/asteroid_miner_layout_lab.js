@@ -1623,24 +1623,34 @@
 
     if (hasServerReplay) {
       if (!matrix || !Array.isArray(matrix)) {
-        return;
-      }
-      replayCleanup = initializeServerReplaySurface(replayFrames);
-    } else {
-      if (!matrix || !Array.isArray(matrix) || cells.length !== matrix.length) {
-        return;
-      }
-      domCells = Array.prototype.slice.call(cells);
-      baseClasses = domCells.map(function (el) {
-        return String(el.className || "");
-      });
-      requestAnimationFrame(function () {
-        const first = domCells[0];
-        if (first && first.offsetWidth > 0) {
-          demoBaseCellPxAtZoom1 = Math.max(4, first.offsetWidth);
+        hasServerReplay = false;
+        replayFrames = [];
+      } else {
+        try {
+          replayCleanup = initializeServerReplaySurface(replayFrames);
+        } catch (_err) {
+          hasServerReplay = false;
+          replayFrames = [];
         }
-        applyLabGridLayoutForZoom();
-      });
+      }
+    }
+    if (!hasServerReplay) {
+      if (!matrix || !Array.isArray(matrix) || cells.length !== matrix.length) {
+        domCells = [];
+        baseClasses = [];
+      } else {
+        domCells = Array.prototype.slice.call(cells);
+        baseClasses = domCells.map(function (el) {
+          return String(el.className || "");
+        });
+        requestAnimationFrame(function () {
+          const first = domCells[0];
+          if (first && first.offsetWidth > 0) {
+            demoBaseCellPxAtZoom1 = Math.max(4, first.offsetWidth);
+          }
+          applyLabGridLayoutForZoom();
+        });
+      }
     }
 
     refreshLabOverlayCtx();
@@ -1918,6 +1928,11 @@
     });
 
     document.getElementById("lab-header-run")?.addEventListener("click", function () {
+      const form = document.getElementById("lab-import-project-form");
+      if (form) {
+        runLabBlueprintRebuildViaImportForm(form);
+        return;
+      }
       setPlaying(true);
       applyFrame();
     });
@@ -2028,61 +2043,74 @@
       }
     }
 
+    let labImportPostInFlight = false;
+
+    function runLabBlueprintRebuildViaImportForm(form) {
+      if (!form || !form.action || labImportPostInFlight) {
+        return;
+      }
+      labImportPostInFlight = true;
+      const fd = new FormData(form);
+      fetch(form.action, {
+        method: "POST",
+        body: fd,
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+        .then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return { ok: false };
+            })
+            .then(function (data) {
+              return { res: res, data: data };
+            });
+        })
+        .then(function (bundle) {
+          const res = bundle.res;
+          const data = bundle.data;
+          if (!res.ok || !data || data.ok === false) {
+            if (data && data.redirect) {
+              window.location.assign(data.redirect);
+            } else {
+              window.location.reload();
+            }
+            return;
+          }
+          if (data.in_place) {
+            replaceLabReplayPayload(data);
+            return;
+          }
+          if (data.redirect) {
+            if (typeof history.pushState === "function") {
+              try {
+                history.pushState(null, "", data.redirect);
+                syncProjectSlugHiddenFromRedirect(form, data.redirect);
+              } catch {
+                window.location.assign(data.redirect);
+                return;
+              }
+            } else {
+              window.location.assign(data.redirect);
+              return;
+            }
+          }
+          replaceLabReplayPayload(data);
+        })
+        .catch(function () {
+          form.submit();
+        })
+        .finally(function () {
+          labImportPostInFlight = false;
+        });
+    }
+
     const importForm = document.getElementById("lab-import-project-form");
     if (importForm) {
       importForm.addEventListener("submit", function (ev) {
         ev.preventDefault();
-        const fd = new FormData(importForm);
-        fetch(importForm.action, {
-          method: "POST",
-          body: fd,
-          credentials: "same-origin",
-          headers: { Accept: "application/json" },
-        })
-          .then(function (res) {
-            return res
-              .json()
-              .catch(function () {
-                return { ok: false };
-              })
-              .then(function (data) {
-                return { res: res, data: data };
-              });
-          })
-          .then(function (bundle) {
-            const res = bundle.res;
-            const data = bundle.data;
-            if (!res.ok || !data || data.ok === false) {
-              if (data && data.redirect) {
-                window.location.assign(data.redirect);
-              } else {
-                window.location.reload();
-              }
-              return;
-            }
-            if (data.in_place) {
-              replaceLabReplayPayload(data);
-              return;
-            }
-            if (data.redirect) {
-              if (typeof history.pushState === "function") {
-                try {
-                  history.pushState(null, "", data.redirect);
-                  syncProjectSlugHiddenFromRedirect(importForm, data.redirect);
-                } catch {
-                  window.location.assign(data.redirect);
-                  return;
-                }
-              } else {
-                window.location.assign(data.redirect);
-                return;
-              }
-            }
-            replaceLabReplayPayload(data);
-          })
-          .catch(function () {
-            importForm.submit();
-          });
+        runLabBlueprintRebuildViaImportForm(importForm);
       });
     }
 

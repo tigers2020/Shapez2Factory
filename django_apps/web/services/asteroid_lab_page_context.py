@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from django.conf import settings
 from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
@@ -136,6 +137,7 @@ def neutral_lab_context() -> dict[str, Any]:
             "replayTrackKey": None,
         },
         OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: empty_optimization_replay_track_payload(),
+        "lab_js_version": settings.SHAPEZ_LAB_JS_VERSION,
     }
 
 

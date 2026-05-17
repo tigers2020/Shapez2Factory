@@ -1404,9 +1404,46 @@ def test_measure_json_sections_lab_and_optimization_subsections() -> None:
     assert stats["lab_replay"]["frame_count"] == 1
     assert stats["lab_replay"]["full_map_len_max"] == 2
     assert stats["lab_replay"]["full_map_len_sum"] == 2
+    assert stats["lab_replay"]["lab_frame_count"] == 1
+    tlk = stats["top_level_key_bytes"]
+    assert stats["lab_replay"]["lab_total_bytes"] == tlk["lab_replay_frames_json"]
+    assert isinstance(stats["lab_replay"]["redundancy"], dict)
+    assert stats["lab_replay"]["largest_lab_frames"]
     assert stats["optimization_replay"]["frame_count"] == 1
     assert stats["optimization_replay"]["visible_plus_overlay_max"] == 2
     assert_optimization_replay_hard_caps(root)
+
+
+def test_measure_json_sections_13b_adjacent_identical_full_map_and_top_n() -> None:
+    row = {"x": 1, "y": 2, "layer": 0, "cell_kind": "miner"}
+    lab = [
+        {"frame_index": 0, "frame_key": "ka", "full_map": [row]},
+        {"frame_index": 1, "frame_key": "kb", "full_map": [dict(row)]},
+    ]
+    opt_track = {
+        "track_id": "optimization",
+        "frames": [
+            {
+                "frame_index": 0,
+                "event_type": "candidate.generated",
+                "visible_cells": [],
+                "overlay_cells": [],
+                "metrics": {},
+            }
+        ],
+    }
+    root = {
+        "ok": True,
+        "lab_replay_frames_json": lab,
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: opt_track,
+    }
+    stats = measure_json_sections(root, largest_lab_frames_n=1)
+    assert stats["lab_replay"]["redundancy"]["adjacent_identical_full_map_count"] == 1
+    assert stats["lab_replay"]["redundancy"]["cell_row_total_instances"] == 2
+    assert stats["lab_replay"]["redundancy"]["cell_row_unique_identity_count"] == 1
+    assert stats["lab_replay"]["redundancy"]["cell_row_duplicate_instance_estimate"] == 1
+    assert len(stats["lab_replay"]["largest_lab_frames"]) == 1
+    assert stats["lab_replay"]["largest_lab_frames"][0]["list_index"] == 0
 
 
 def test_assert_optimization_replay_hard_caps_rejects_frame_count_over_500() -> None:

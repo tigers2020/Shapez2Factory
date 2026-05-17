@@ -579,10 +579,11 @@ def test_post_json_attach_skipped_empty_candidate_pool_hud_vocabulary() -> None:
 
 
 def test_post_projects_json_size_attribution_and_optimization_replay_hard_caps() -> None:
-    """13A — POST JSON is measurable via test client; optimization replay obeys MAX_REPLAY_*.
+    """13A/13B — POST JSON is measurable; optimization replay obeys MAX_REPLAY_*.
 
     Lab replay uses ``full_map`` / inspection pipeline and is **not** clamped by
-    ``MAX_REPLAY_CELLS_PER_FRAME`` (optimization-only constant).
+    ``MAX_REPLAY_CELLS_PER_FRAME`` (optimization-only constant). 13B adds redundancy
+    and largest-frame metadata only (no payload reduction).
     """
 
     client = Client()
@@ -603,6 +604,20 @@ def test_post_projects_json_size_attribution_and_optimization_replay_hard_caps()
     enc = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
     assert stats["total_bytes"] == len(enc)
     assert stats["lab_replay"]["frame_count"] == lab_n
+    assert stats["lab_replay"]["lab_frame_count"] == lab_n
+    tlk = stats["top_level_key_bytes"]
+    assert stats["lab_replay"]["lab_total_bytes"] == tlk["lab_replay_frames_json"]
+    assert stats["lab_replay"]["max_lab_frame_bytes"] == stats["lab_replay"]["max_frame_bytes"]
+    red = stats["lab_replay"]["redundancy"]
+    assert isinstance(red, dict)
+    assert isinstance(red.get("adjacent_identical_full_map_count"), int)
+    assert red["adjacent_identical_full_map_count"] >= 0
+    assert isinstance(red.get("cell_row_duplicate_instance_estimate"), int)
+    assert red["cell_row_duplicate_instance_estimate"] >= 0
+    assert stats["lab_replay"]["largest_lab_frames"]
+    assert len(stats["lab_replay"]["largest_lab_frames"]) <= 8
+    largest = stats["lab_replay"]["largest_lab_frames"]
+    assert all("bytes" in x and "list_index" in x for x in largest)
     assert stats["optimization_replay"]["frame_count"] >= 1
     assert stats["optimization_replay"]["visible_plus_overlay_max"] <= 128
     assert OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY in stats["top_level_key_bytes"]

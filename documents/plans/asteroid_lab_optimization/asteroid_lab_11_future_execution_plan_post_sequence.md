@@ -622,6 +622,26 @@ test_replay_deterministic_after_compression
 
 ---
 
+# Sequence 13B — Lab replay payload attribution (reduction design only)
+
+**범위:** ``measure_json_sections`` Lab 전용 확장, POST 회귀에서 중복·상위 프레임 메타 키 존재, ``asteroid_lab_09_replay_debug.md`` 「Sequence 13B」·본 절 동기화. **페이로드 축소 구현은 13C.**
+
+## 완료 조건
+
+```text
+[x] Lab replay 기여도·중복 프로파일을 테스트 헬퍼로 측정 가능
+[x] optimization ``MAX_REPLAY_*`` vs Lab 미캡 경계 문서화
+[x] 13C 옵션 순위·시맨틱 리스크·동등성 테스트 설계 초안
+```
+
+---
+
+# Sequence 13C — Lab replay payload reduction (implementation TBD)
+
+13B 설계·계측 승인 후: delta·intern·엔드포인트 분리·HTTP 압축 등 **별도 구현 PR**. 본 문서는 13C 착수 시 ``asteroid_lab_09`` 「13C」절과 실행 순서를 갱신한다.
+
+---
+
 # Priority 6 — Full Repository Quality Gates
 
 **2026-05-17 로컬 확인:** `python -m ruff check .` · `python -m black --check .` · `python -m mypy .` · `python -m pytest` 전부 green (792 tests, 코드 변경 없음). CI·타 환경에서의 재현은 별도 관측.
@@ -737,6 +757,9 @@ implicit replay coupling
    통합 테스트 ``test_post_projects_json_size_attribution_and_optimization_replay_hard_caps``,
    근거·갭·후보 전략은 ``asteroid_lab_09_replay_debug.md`` 「Sequence 13A」 참고.
    (즉시 delta 구현·DTO 의미 변경은 범위 밖)
+8. Sequence 13B Lab replay payload attribution — 13A 계측 확장(Lab 중복·상위 프레임·``lab_total_bytes``),
+   동일 통합 테스트에서 13B 키 회귀, 설계·13C 로드맵은 ``asteroid_lab_09_replay_debug.md`` 「Sequence 13B」.
+   (POST 페이로드 실제 축소는 13C)
 ```
 
 ---
@@ -744,7 +767,7 @@ implicit replay coupling
 ## Infrastructure
 
 ```text
-8. Sequence 14A repository gate cleanup
+9. Sequence 14A repository gate cleanup
 ```
 
 ---

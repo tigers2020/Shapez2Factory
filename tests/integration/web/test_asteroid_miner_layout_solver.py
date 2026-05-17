@@ -12,6 +12,7 @@ from django.urls import reverse
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.optimization_replay_persist import (
     OptimizationReplayAttachResult,
+    build_optimization_replay_attach_diagnostic,
 )
 from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEventType
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
@@ -412,6 +413,7 @@ def test_post_json_optimization_replay_contract_keys() -> None:
     assert "attached" in attach and "reason" in attach
     assert attach["attached"] is True
     assert attach["reason"] == "attached"
+    assert "diagnostic" not in attach
     _assert_optimization_replay_lab_payload(data)
     opt = data[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
     assert isinstance(opt, dict)
@@ -453,6 +455,41 @@ def test_post_json_attach_reason_vs_read_diagnostic(mock_attach: mock.MagicMock)
     js = _read_asteroid_lab_js_text()
     assert 'return "Attach: skipped (" + reason + ")"' in js
     assert metrics.get("optimization_replay_diagnostic_reason") != attach.get("reason")
+
+
+@mock.patch(
+    "django_apps.web.views.public_pages."
+    "run_post_inspection_evolution_and_attach_optimization_replay",
+)
+def test_post_json_attach_diagnostic_does_not_overwrite_read_diagnostic(
+    mock_attach: mock.MagicMock,
+) -> None:
+    mock_attach.return_value = OptimizationReplayAttachResult(
+        attached=False,
+        reason="evolution_failed",
+        diagnostic=build_optimization_replay_attach_diagnostic(
+            stage="validation",
+            validation_passed=False,
+        ),
+    )
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict)
+    assert attach.get("reason") == "evolution_failed"
+    assert attach.get("diagnostic", {}).get("stage") == "validation"
+    opt = data[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
+    metrics = opt.get("metrics") or {}
+    assert metrics.get("optimization_replay_diagnostic_reason") == "missing_optimization_replay"
+    assert "frames" not in attach.get("diagnostic", {})
 
 
 def test_post_json_attach_true_matches_hud_attached_vocabulary() -> None:

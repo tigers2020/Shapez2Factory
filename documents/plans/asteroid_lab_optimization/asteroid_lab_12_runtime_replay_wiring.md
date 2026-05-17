@@ -2,7 +2,7 @@
 
 Role: Asteroid Lab Runtime Replay Wiring Architect
 
-**문서 상태:** ACTIVE. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. **Sequence 12J**(POST `optimization_replay_attach` 전용 HUD 줄)는 Lab 템플릿·`asteroid_miner_layout_lab.js`·테스트·§12J 문서로 구현 완료(2026-05-17). 그 외 시퀀스는 설계·경계 고정용이다.  
+**문서 상태:** ACTIVE. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. **Sequence 12J**(POST `optimization_replay_attach` 전용 HUD 줄)는 Lab 템플릿·`asteroid_miner_layout_lab.js`·테스트·§12J 문서로 구현 완료(2026-05-17). **Sequence 12K**(POST attach `diagnostic` 스칼라·`evolution_failed` 단계 관측)는 §12K·코드·테스트로 구현 완료(2026-05-17). 그 외 시퀀스는 설계·경계 고정용이다.  
 **범위:** Lab persistence·UI 읽기 경로에 optimization replay를 안전하게 연결하는 방법만 다룬다.  
 **금지:** 본 문서만으로는 **솔버·리플레이 이벤트 의미·DTO·테스트 전용 fixture 파서 동작**을 바꾸지 않는다. 실제 배선 구현은 별도 PR·승인 후 진행한다.
 
@@ -381,6 +381,16 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - **비범위(유지):** 솔버·GA·`optimization_replay_persist` 동작 변경 없음; read diagnostic 의미 변경 없음; `optimization_replay_diagnostic_reason`에 attach reason을 **합치지 않음**; 페이로드 압축·Lab/Optimization 암묵 동기·오버레이 수명 변경 없음.
 - **12I.6과의 관계:** 12I.6의 “`renderOptimizationReplayHud` 책임 확대” 비범위는 **오버레이·Lab 인덱스 동기·렌더 소유권 이동**을 가리킨다. 12J는 **POST attach 메타 한 줄(쓰기 관측)** 만 추가한다.
 
+### Sequence 12K — POST attach scalar diagnostics (`evolution_failed` stage)
+
+**구현 상태 (2026-05-17): 완료**
+
+- **목표:** `optimization_replay_attach.reason`은 **기존 어휘를 유지**한 채(특히 `evolution_failed`·`empty_candidate_pool` 등), 실패 원인을 **스칼라 `optimization_replay_attach.diagnostic`** 으로만 구분한다. **읽기 축** `metrics.optimization_replay_diagnostic_reason`(persist 스캔·역직렬화)과 **쓰기 축** attach 진단은 **계속 분리**한다(12J 불변).
+- **필드:** `stage`, 후보·리코더 카운트,`best_genome_present`, `evolution_convergence_reason`, (예약) commit/validation 스칼라, `error_type` / 짧은 `error_message` — **프레임 배열·경로·전체 traceback·대형 맵 없음**. 허용 `stage` 값은 코드 상수 `OPTIMIZATION_REPLAY_ATTACH_DIAGNOSTIC_STAGES`로 고정.
+- **경로:** `django_apps/web/services/asteroid_lab_post_inspection_evolution.py`에서 단계 변수로 예외 매핑; `optimization_replay_persist.attach_optimization_replay_frames_after_successful_replay_build`는 attach 실패 시 `replay_serialization` / `attach_persist` 등 단계를 병합. `public_pages` JSON·INFO 로그에 `diagnostic.stage`를 노출(추가 HUD 줄 **비목표**).
+- **비범위(유지):** 솔버·GA·후보 생성·incremental commit·검증 **의미 변경 없음**; Lab/optimization 리플레이 동기·오버레이·페이로드 압축 없음.
+- **테스트(회귀):** `tests/unit/asteroid_lab/test_optimization_replay_persist.py`의 12K 전용 케이스(`evolution_search` 예외는 후보 풀을 테스트 헬퍼로 고정), `tests/integration/web/test_asteroid_miner_layout_solver.py`의 `test_post_json_attach_diagnostic_does_not_overwrite_read_diagnostic` 등.
+
 ---
 
 ## 13. Test plan (테스트 계획) — 12F 구현 PR 수용 기준
@@ -459,3 +469,4 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 | 12F-v0 | 프레임 리스트 가드만; 봉투·HUD·cap·migration **제외** |
 | 12I (초안, 미구현) | §12I: HUD **status / reason / diagnostic** 3축·JS const·`optimization_replay_attach.reason`↔diagnostic 매핑·malformed 행렬(M1–M7)·persist→deserialize→`replaceOptimizationReplayPayload`→HUD **표시 보존** 테스트; 오버레이 완전성·동기화/렌더 ownership 변경 **비범위(관측만)** |
 | 12J (구현 완료) | §12J: POST **`optimization_replay_attach` 전용 HUD 줄** (`Attach: …`); read **`optimization_replay_diagnostic_reason` 불변**; 솔버/attach/persist **비변경** |
+| 12K (구현 완료) | §12K: attach **`reason` 어휘 유지** + **`diagnostic` 스칼라**(`stage`·카운트·짧은 오류); read 진단과 분리; 솔버 의미·동기화 **비변경** |

@@ -351,14 +351,20 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             except (TypeError, ValueError):
                 opt_fc = 0
         attach_summary: tuple[bool, str] | None = None
+        attach_diag_stage: str | None = None
         if isinstance(optimization_replay_attach, dict):
             attach_summary = (
                 bool(optimization_replay_attach.get("attached")),
                 str(optimization_replay_attach.get("reason") or ""),
             )
+            diag = optimization_replay_attach.get("diagnostic")
+            if isinstance(diag, dict):
+                st = diag.get("stage")
+                attach_diag_stage = str(st) if st is not None else None
         _logger.info(
             "asteroid_lab_projects_json ok=%s status=%s replay_ok=%s lab_frames=%s "
-            "optimization_frame_count=%s optimization_replay_attach=%s",
+            "optimization_frame_count=%s optimization_replay_attach=%s "
+            "optimization_replay_attach_diagnostic_stage=%s",
             ok,
             status,
             replay_ok,
@@ -369,6 +375,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             ),
             opt_fc,
             attach_summary,
+            attach_diag_stage,
         )
         return JsonResponse(body, status=status)
 
@@ -414,6 +421,8 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
         if result.status == "ok":
             oa = run_post_inspection_evolution_and_attach_optimization_replay(int(inp.pk), result)
             opt_attach_payload = {"attached": oa.attached, "reason": oa.reason}
+            if oa.diagnostic is not None:
+                opt_attach_payload["diagnostic"] = oa.diagnostic
         redirect_url = reverse("web:asteroid-miner-layout-project", kwargs={"slug": stay_slug})
         bundle = _lab_json_bundle_for_track_id(
             result.replay_track_id,
@@ -479,6 +488,8 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                     int(inp.pk), result
                 )
                 opt_attach_payload = {"attached": oa.attached, "reason": oa.reason}
+                if oa.diagnostic is not None:
+                    opt_attach_payload["diagnostic"] = oa.diagnostic
         else:
             opt_attach_payload = None
     else:

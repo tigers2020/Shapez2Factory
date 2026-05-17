@@ -453,18 +453,20 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 
 ---
 
-## Asteroid Lab — Run Solver POST · optimization replay 영속 (시퀀스 12C–12F)
+## Asteroid Lab — Run Solver POST · optimization replay 영속 (시퀀스 12C–12H)
 
 Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 **POST 동기** bounded GA를 돌리고, optimization replay 프레임을 `SolverRun.config_json`에 합친다. Lab 응답 JSON에 inspection 번들을 넣기 **전**에 attach를 실행해야 동일 응답에 optimization 트랙이 포함된다 (`django_apps/web/views/public_pages.py`, `django_apps/web/services/asteroid_lab_post_inspection_evolution.py`). `replay_pipeline_service`는 `shapez_asteroid`를 import하지 않는 경계를 유지한다.
 
-### 진행 표 (12C–12F)
+### 진행 표 (12C–12H)
 
 | 시퀀스 | 상태 | 요약 |
 |--------|------|------|
 | 12C | 완료 | `optimization_replay_persist` — 성공한 inspection replay 빌드 이후에만 `SolverRun.config_json`에 프레임 기록 (output-only) |
 | 12D | 완료 | 검사 replay `ok` 직후 post-inspection evolution + attach로 UI optimization 트랙 동기 반영 |
 | 12E | 완료 | POST 전용 하드캡(`max_candidates`, `route_probe_max_expansions`, `time_budget_ms`, `population_size` 등), `empty_candidate_pool` / `evolution_failed` 분리, JSON `optimization_replay_attach` `{attached, reason}`, `_finalize_attach` INFO 로그, `event_type`·접두사 스모크 및 attach 계약 통합 테스트 |
-| 12F | 완료 | persist 프레임 리스트 가드: `validate_optimization_replay_frame_list_payload` + 역직렬화 시 절단 짝·연속 `frame_index`·알려진 `event_type`; malformed 시 읽기 빈 트랙·쓰기 스킵(`invalid_replay_payload`); `build_optimization_replay_track_payload`가 잘림 시 첫 `truncation_reason` 집계; schema/truncation **sibling·봉투·HUD·cap·migration** 비범위 유지(정본: `asteroid_lab_12_runtime_replay_wiring.md`) |
+| 12F | 완료 | persist 프레임 리스트 가드: `validate_optimization_replay_frame_list_payload` + 역직렬화 시 절단 짝·연속 `frame_index`·알려진 `event_type`; malformed 시 읽기 빈 트랙·쓰기 스킵(`invalid_replay_payload`); `build_optimization_replay_track_payload`가 잘림 시 첫 `truncation_reason` 집계; schema/truncation **sibling·봉투·cap·migration** 비범위 유지(정본: `asteroid_lab_12_runtime_replay_wiring.md`) |
+| 12G | 완료 | 읽기 실패 시 빈 트랙 + `metrics.optimization_replay_diagnostic_reason`만 추가 (`optimization_ui_payload` 분류 + `optimization_replay_payload_for_project`); 정상 페이로드에서는 키 부재; 솔버·리플레이 의미·schema/truncation sibling 비변경(정본: `asteroid_lab_12_runtime_replay_wiring.md` §7) |
+| 12H | 완료 | Optimization replay 패널 HUD: `replay_truncated` / `truncation_reason` / `optimization_replay_diagnostic_reason` 표시 전용(`asteroid_miner_layout_solver.html` SSR + `asteroid_miner_layout_lab.js`); 리플레이 시맨틱·Lab 타임라인 제어·암묵적 동기화 없음 |
 
 ### 12E 구현 요약
 

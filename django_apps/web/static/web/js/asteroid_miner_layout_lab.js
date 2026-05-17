@@ -426,22 +426,36 @@
 
     const frames = Array.isArray(raw.frames) ? raw.frames.slice() : [];
     const metricsRaw = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
+    const truncReasonRaw = metricsRaw.truncation_reason;
+    const truncReason =
+      typeof truncReasonRaw === "string" && truncReasonRaw.trim() ? truncReasonRaw.trim() : null;
+    const diagRaw = metricsRaw.optimization_replay_diagnostic_reason;
+    const diagnosticReason =
+      typeof diagRaw === "string" && diagRaw.trim() ? diagRaw.trim() : null;
+
+    const metricsOut = {
+      frame_count: Number.isFinite(Number(metricsRaw.frame_count))
+        ? Number(metricsRaw.frame_count)
+        : frames.length,
+      event_type_counts:
+        metricsRaw.event_type_counts && typeof metricsRaw.event_type_counts === "object"
+          ? Object.freeze({ ...metricsRaw.event_type_counts })
+          : Object.freeze({}),
+      replay_truncated: Boolean(metricsRaw.replay_truncated),
+    };
+    if (truncReason) {
+      metricsOut.truncation_reason = truncReason;
+    }
+    if (diagnosticReason) {
+      metricsOut.optimization_replay_diagnostic_reason = diagnosticReason;
+    }
 
     return Object.freeze({
       track_id: typeof raw.track_id === "string" ? raw.track_id : "optimization",
       track_label: typeof raw.track_label === "string" ? raw.track_label : "Optimization",
       frame_count: Number.isFinite(Number(raw.frame_count)) ? Number(raw.frame_count) : frames.length,
       frames: Object.freeze(frames),
-      metrics: Object.freeze({
-        frame_count: Number.isFinite(Number(metricsRaw.frame_count))
-          ? Number(metricsRaw.frame_count)
-          : frames.length,
-        event_type_counts:
-          metricsRaw.event_type_counts && typeof metricsRaw.event_type_counts === "object"
-            ? Object.freeze({ ...metricsRaw.event_type_counts })
-            : Object.freeze({}),
-        replay_truncated: Boolean(metricsRaw.replay_truncated),
-      }),
+      metrics: Object.freeze(metricsOut),
     });
   }
 
@@ -495,6 +509,112 @@
     return label + ": " + String(count) + " frame" + (count === 1 ? "" : "s") + suffix;
   }
 
+  /**
+   * Sequence 12H — truncation / read-diagnostic HUD (display-only; no Lab sync, no frame reorder).
+   * Sequence 12I — §7.1-aligned diagnostic codes + attach reason helpers (M1–M5; M6–M7 reserved in docs).
+   */
+  const OPTIMIZATION_REPLAY_DIAGNOSTIC_CODE = Object.freeze({
+    EMPTY_OPTIMIZATION_REPLAY_FRAMES: "empty_optimization_replay_frames",
+    INVALID_OPTIMIZATION_REPLAY_PAYLOAD: "invalid_optimization_replay_payload",
+    INVALID_TRUNCATION_CONTRACT: "invalid_truncation_contract",
+    MISSING_OPTIMIZATION_REPLAY: "missing_optimization_replay",
+    UNSUPPORTED_OR_UNKNOWN_EVENT_TYPE: "unsupported_or_unknown_event_type",
+  });
+
+  const OPTIMIZATION_REPLAY_HUD_STATUS = Object.freeze({
+    FALLBACK_EMPTY: "Replay status: fallback-empty",
+    NEUTRAL_DASH: "—",
+    NORMAL: "Replay status: normal",
+    TRUNCATED: "Replay status: truncated",
+  });
+
+  const OPTIMIZATION_REPLAY_HUD_REASON = Object.freeze({
+    DIAGNOSTIC_PREFIX: "Diagnostic: ",
+    TRUNCATION_PREFIX: "Truncation: ",
+    TRUNCATION_UNKNOWN: "unknown",
+  });
+
+  const OPTIMIZATION_REPLAY_ATTACH_REASON = Object.freeze({
+    ATTACHED: "attached",
+    EMPTY_CANDIDATE_POOL: "empty_candidate_pool",
+    EMPTY_FRAMES: "empty_frames",
+    EVOLUTION_FAILED: "evolution_failed",
+    INVALID_REPLAY_PAYLOAD: "invalid_replay_payload",
+    MISSING_SOLVER_RUN_ID: "missing_solver_run_id",
+    NON_OK_RESULT: "non_ok_result",
+    SOLVER_RUN_NOT_FOUND: "solver_run_not_found",
+  });
+
+  function mapOptimizationReplayAttachReasonToDiagnostic(reason) {
+    if (reason === OPTIMIZATION_REPLAY_ATTACH_REASON.INVALID_REPLAY_PAYLOAD) {
+      return OPTIMIZATION_REPLAY_DIAGNOSTIC_CODE.INVALID_OPTIMIZATION_REPLAY_PAYLOAD;
+    }
+    return null;
+  }
+
+  function mapOptimizationReplayAttachReasonToHudStatusDisplay(reason) {
+    if (reason === OPTIMIZATION_REPLAY_ATTACH_REASON.INVALID_REPLAY_PAYLOAD) {
+      return OPTIMIZATION_REPLAY_HUD_STATUS.FALLBACK_EMPTY;
+    }
+    return null;
+  }
+
+  function renderOptimizationReplayHud(track) {
+    const statusEl = document.getElementById("lab-optimization-replay-status");
+    const truncEl = document.getElementById("lab-optimization-replay-truncation");
+    const diagEl = document.getElementById("lab-optimization-replay-diagnostic");
+    if (!statusEl || !truncEl || !diagEl) {
+      return;
+    }
+
+    const framesLen = optimizationReplayFrameCount(track);
+    const metrics = track && track.metrics && typeof track.metrics === "object" ? track.metrics : {};
+    const truncated = Boolean(metrics.replay_truncated);
+    const truncReason =
+      typeof metrics.truncation_reason === "string" && metrics.truncation_reason.trim()
+        ? metrics.truncation_reason.trim()
+        : truncated
+          ? OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_UNKNOWN
+          : "";
+    const diagnostic =
+      typeof metrics.optimization_replay_diagnostic_reason === "string" &&
+      metrics.optimization_replay_diagnostic_reason.trim()
+        ? metrics.optimization_replay_diagnostic_reason.trim()
+        : "";
+
+    truncEl.textContent = truncated
+      ? OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_PREFIX + truncReason
+      : "";
+    diagEl.textContent = diagnostic
+      ? OPTIMIZATION_REPLAY_HUD_REASON.DIAGNOSTIC_PREFIX + diagnostic
+      : "";
+    if (truncated) {
+      truncEl.classList.remove("hidden");
+    } else {
+      truncEl.classList.add("hidden");
+    }
+    if (diagnostic) {
+      diagEl.classList.remove("hidden");
+    } else {
+      diagEl.classList.add("hidden");
+    }
+
+    const baseStatus = "text-xs font-medium ";
+    if (framesLen === 0 && !diagnostic) {
+      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.NEUTRAL_DASH;
+      statusEl.className = baseStatus + "text-slate-500";
+    } else if (framesLen === 0 && diagnostic) {
+      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.FALLBACK_EMPTY;
+      statusEl.className = baseStatus + "text-amber-200/90";
+    } else if (truncated) {
+      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.TRUNCATED;
+      statusEl.className = baseStatus + "text-amber-200/90";
+    } else {
+      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.NORMAL;
+      statusEl.className = baseStatus + "text-emerald-200/80";
+    }
+  }
+
   function formatOptimizationReplayEventCounts(summary) {
     const counts =
       summary && summary.eventTypeCounts && typeof summary.eventTypeCounts === "object"
@@ -522,6 +642,7 @@
   renderOptimizationReplaySummary(
     buildOptimizationReplayTrackSummary(optimizationReplayTrack),
   );
+  renderOptimizationReplayHud(optimizationReplayTrack);
 
   /**
    * Sequence 10D — selected optimization replay frame metadata (text only; no geometry, no lab sync).
@@ -642,6 +763,7 @@
     renderOptimizationReplaySummary(
       buildOptimizationReplayTrackSummary(optimizationReplayTrack),
     );
+    renderOptimizationReplayHud(optimizationReplayTrack);
     optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
       optimizationReplayTrack,
       optimizationReplayFrameIndex,

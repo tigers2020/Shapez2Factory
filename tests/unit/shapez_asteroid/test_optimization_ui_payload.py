@@ -12,11 +12,15 @@ from django_apps.shapez_asteroid.optimization.optimization_replay import (
     optimization_replay_frames_to_json_list,
 )
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
+    OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY,
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     TRACK_ID,
     build_optimization_replay_track_payload,
+    classify_persisted_optimization_replay_frames_value,
     deserialize_optimization_replay_frames_from_json,
+    diagnostic_reason_after_failed_optimization_replay_scan,
     empty_optimization_replay_track_payload,
+    empty_optimization_replay_track_payload_with_diagnostic,
     merge_optimization_track_into_lab_payload,
     validate_optimization_replay_frame_list_payload,
 )
@@ -440,3 +444,88 @@ def test_existing_replay_payload_without_optimization_still_valid() -> None:
     for k in base:
         assert merged[k] == base[k]
     assert merged[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] == 0
+
+
+def test_missing_optimization_replay_sets_diagnostic_reason() -> None:
+    assert diagnostic_reason_after_failed_optimization_replay_scan([{}]) == (
+        "missing_optimization_replay"
+    )
+    assert diagnostic_reason_after_failed_optimization_replay_scan(()) == (
+        "missing_optimization_replay"
+    )
+
+
+def test_empty_optimization_replay_sets_diagnostic_reason() -> None:
+    assert classify_persisted_optimization_replay_frames_value([]) == (
+        "empty_optimization_replay_frames"
+    )
+
+
+def test_invalid_optimization_replay_payload_sets_diagnostic_reason() -> None:
+    assert classify_persisted_optimization_replay_frames_value({"x": 1}) == (
+        "invalid_optimization_replay_payload"
+    )
+    assert classify_persisted_optimization_replay_frames_value(None) == (
+        "invalid_optimization_replay_payload"
+    )
+
+
+def test_invalid_truncation_contract_sets_diagnostic_reason() -> None:
+    raw = [
+        {
+            "frame_index": 0,
+            "event_type": OptimizationReplayEventType.CANDIDATE_GENERATED.value,
+            "title": "t",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {"replay_truncated": True},
+        }
+    ]
+    assert classify_persisted_optimization_replay_frames_value(raw) == (
+        "invalid_truncation_contract"
+    )
+
+
+def test_unknown_event_type_sets_diagnostic_reason() -> None:
+    raw = [
+        {
+            "frame_index": 0,
+            "event_type": "not.a.real.event",
+            "title": "t",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        }
+    ]
+    assert classify_persisted_optimization_replay_frames_value(raw) == (
+        "unsupported_or_unknown_event_type"
+    )
+
+
+def test_valid_optimization_replay_has_no_diagnostic_reason() -> None:
+    frames = (
+        OptimizationReplayFrame(
+            0,
+            OptimizationReplayEventType.CANDIDATE_GENERATED,
+            "a",
+            "d0",
+            (),
+            (),
+            {"k": 1},
+        ),
+    )
+    payload = build_optimization_replay_track_payload(frames)
+    assert OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY not in payload["metrics"]
+
+
+def test_diagnostic_reason_does_not_change_replay_metrics() -> None:
+    empty = empty_optimization_replay_track_payload()
+    diag = empty_optimization_replay_track_payload_with_diagnostic(
+        "empty_optimization_replay_frames"
+    )
+    em = dict(empty["metrics"])  # type: ignore[arg-type]
+    dm = dict(diag["metrics"])  # type: ignore[arg-type]
+    del dm[OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY]
+    assert em == dm

@@ -2,7 +2,7 @@
 
 Role: Asteroid Lab Runtime Replay Wiring Architect
 
-**문서 상태:** ACTIVE. §12 **Sequence 12F**는 구현 완료(2026-05-17); 나머지 시퀀스(12G 이후)는 설계·경계 고정용이다.  
+**문서 상태:** ACTIVE. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. 그 외 시퀀스는 설계·경계 고정용이다.  
 **범위:** Lab persistence·UI 읽기 경로에 optimization replay를 안전하게 연결하는 방법만 다룬다.  
 **금지:** 본 문서만으로는 **솔버·리플레이 이벤트 의미·DTO·테스트 전용 fixture 파서 동작**을 바꾸지 않는다. 실제 배선 구현은 별도 PR·승인 후 진행한다.
 
@@ -46,7 +46,7 @@ Role: Asteroid Lab Runtime Replay Wiring Architect
 
 - **저장:** `django_apps.asteroid_lab.services.optimization_replay_persist` — `SolverRun.config_json`에 `SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY` (`"optimization_replay_frames"`)로 **프레임 리스트만** 병합 저장. 다른 `config_json` 키는 보존.
 - **직렬화:** `optimization_replay_frames_to_json_list` — 프레임 단위 dict 리스트.
-- **UI:** `django_apps.web.services.asteroid_lab_page_context` — 최신 `SolverRun`에서 위 키를 읽고 `deserialize_optimization_replay_frames_from_json` 성공 시에만 `build_optimization_replay_track_payload`로 `OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY` (`"optimization_replay"`) 트랙을 채운다. 실패·없음이면 `empty_optimization_replay_track_payload()`.
+- **UI:** `django_apps.web.services.asteroid_lab_page_context` — 최신 `SolverRun`에서 위 키를 읽고 `deserialize_optimization_replay_frames_from_json` 성공 시에만 `build_optimization_replay_track_payload`로 `OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY` (`"optimization_replay"`) 트랙을 채운다. 실패·없음이면 `empty_optimization_replay_track_payload()`와 동일한 빈 트랙에 더해 **`metrics.optimization_replay_diagnostic_reason`**(12G, 메타데이터 전용)을 붙인다. **12H:** `asteroid_miner_layout_solver.html` SSR + `asteroid_miner_layout_lab.js`의 `renderOptimizationReplayHud`가 `replay_truncated` / `truncation_reason` / 진단 reason을 표시 전용으로 노출한다.
 - **트랙 `metrics`:** `build_optimization_replay_track_payload`가 `frame_count`, `event_type_counts`, `replay_truncated`를 채운다. `replay_truncated`는 프레임 `metrics` 집계 (`_aggregate_replay_truncated`).
 
 ### 2.2 Fixture 봉투 vs 런타임 persist 형상
@@ -87,7 +87,7 @@ Optimization 실행 / post-inspection
 |--------|------|
 | `shapez_asteroid.optimization` | 이벤트·프레임 DTO·직렬화 dict (비즈니스 규칙) |
 | `asteroid_lab` | `SolverRun`에 출력 병합 저장, import 경계 |
-| `web` (page context) | 읽기 전용 어댑터: malformed이면 빈 트랙 + (선택) 진단 문자열 |
+| `web` (page context) | 읽기 전용 어댑터: 역직렬화 실패 시 빈 트랙 + `metrics.optimization_replay_diagnostic_reason`(12G, 메타데이터만) |
 | 테스트 fixture 파서 | 회귀 정본만; 프로덕션 의존 **비권장** |
 
 ---
@@ -180,22 +180,24 @@ A diagnostic reason should be exposed for UI/debug.
 Solver result must remain unchanged.
 ```
 
-### 7.1 권장 진단 reason 코드 (예시)
+### 7.1 진단 reason 코드 (**12G v0 구현값**)
+
+읽기 전용·메타데이터 전용. 상수 키: `django_apps.shapez_asteroid.optimization.optimization_ui_payload.OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY` → 트랙 `metrics` 필드명 **`optimization_replay_diagnostic_reason`**.
 
 ```text
-missing_schema_version          # 봉투 도입 후에만 적용; v0에서는 미사용 가능
-unsupported_schema_version
-invalid_frame_shape
-invalid_event_type
-invalid_truncation_contract
-payload_too_large               # 12F-v0 범위 밖; 후속 시퀀스
+missing_optimization_replay          # 어떤 SolverRun.config_json에도 optimization_replay_frames 키가 없음
+empty_optimization_replay_frames     # 키는 있으나 리스트가 비어 있음 ([])
+invalid_optimization_replay_payload  # 리스트가 아님·프레임 dict/shape·좌표·연속 frame_index 등 (알 수 없는 event_type 제외)
+invalid_truncation_contract          # replay_truncated 인데 truncation_reason 짝이 깨짐
+unsupported_or_unknown_event_type    # 알려지지 않은 event_type 문자열
 ```
 
-v0에서는 주로 `deserialize` 실패·shape 위반에 대응하는 코드를 쓴다.
+정상 역직렬화 시 이 필드는 **부재**한다. 솔버·리플레이 의미·정렬·집계에는 관여하지 않는다.
 
-### 7.2 UI에 노출할 진단 문자열 (12G)
+### 7.2 UI 노출 (12G / 12H)
 
-읽기 경로가 빈 트랙으로 떨어질 때, 트랙 `metrics`에 **`optimization_replay_diagnostic_reason`** 같은 **단일 문자열**을 둘 수 있다. 이 값은 **표시·디버그 전용**이며 솔버 입력이 아니다. (구현은 Sequence **12G**에서 정리한다.)
+- **12G:** 빈 트랙으로 떨어질 때에만 §7.1 문자열을 `metrics.optimization_replay_diagnostic_reason`에 둔다. **리플레이 시맨틱·프레임 순서에는 관여하지 않는다.**
+- **12H:** Lab 템플릿·`asteroid_miner_layout_lab.js`가 `replay_truncated` / `truncation_reason` / `optimization_replay_diagnostic_reason`을 **표시 전용 HUD**로 노출한다(`#lab-optimization-replay-status` 등). 동기화·재시도·페이로드 변조 없음; Run Solver JSON 갱신 시에는 클라이언트 `replaceOptimizationReplayPayload`가 HUD를 다시 그린다.
 
 ---
 
@@ -248,7 +250,7 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - No database migration unless existing config_json is insufficient
 - No JSON fixture parser reuse as production parser unless explicitly reviewed
 - No route/commit/evolution algorithm changes
-- 12F-v0에서 schema envelope / schema sibling / byte-size cap / HUD 미도입
+- 12F-v0에서 schema envelope / schema sibling / byte-size cap 미도입(12H에서 **절단·진단 HUD**만 추가; 시맨틱·동기화 비변경)
 ```
 
 ---
@@ -263,7 +265,7 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - **트랙 집계:** `build_optimization_replay_track_payload`가 `replay_truncated == true`일 때만 `metrics.truncation_reason`을 넣으며, 값은 프레임 순서 기준 **첫** non-empty reason(없으면 in-memory 비정합 시 `"unknown"` — persist 경로는 역직렬화에서 걸러짐).
 - **쓰기:** `persist_optimization_replay_frames_to_solver_run`는 직렬화 후 가드 실패 시 저장 생략. `attach_optimization_replay_frames_after_successful_replay_build`는 `invalid_replay_payload` reason으로 스킵.
 - **Recorder:** `OptimizationReplayRecorder`가 셀·프레임 상한 절단 시 `truncation_reason`을 함께 기록(`max_replay_cells_per_frame`, `max_replay_frames`).
-- **범위 유지:** `optimization_replay_schema_version` / `optimization_replay_truncated` / `optimization_replay_truncation_reason` **sibling 미도입**, 봉투·HUD·byte cap·migration **미도입**(§11·§12 out-of-scope와 동일).
+- **범위 유지:** `optimization_replay_schema_version` / `optimization_replay_truncated` / `optimization_replay_truncation_reason` **sibling 미도입**, 봉투·byte cap·migration **미도입**; **12H**에서 표시 전용 HUD만 추가(§11·§12와 정합).
 - **12G 예고:** 읽기 실패 시 `optimization_replay_diagnostic_reason` 등 단일 진단 문자열은 12G; 12F는 shape·절단 짝·트랙 reason 집계만.
 
 **테스트 (추가·갱신):** `tests/unit/shapez_asteroid/test_optimization_ui_payload.py`(가드·집계·역직렬화), `tests/unit/shapez_asteroid/test_solver_optimization_replay_import_boundary.py`(솔버 패키지 문자열 비참조), `tests/unit/asteroid_lab/test_optimization_replay_persist.py`(persist/attach/page 빈 트랙), Recorder 단언 보강 `test_optimization_replay.py`·`test_optimization_replay_skeleton.py`.
@@ -284,25 +286,89 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - schema envelope
 - optimization_replay_schema_version sibling
 - config_json truncation sibling keys
-- UI HUD
 - DB migration
 - payload byte-size cap
 - dict 전역 키 화이트리스트의 과도한 확장(필요 시 후속 PR)
 ```
 
+(표시 전용 **절단·진단 HUD**는 **12H**에서 `asteroid_miner_layout_solver.html` / `asteroid_miner_layout_lab.js`로 도입; 리플레이 시맨틱·Lab 동기화 없음.)
+
 ### Sequence 12G — UI payload read adapter
+
+**구현 상태 (v0, 2026-05-17): 완료**
 
 - page context가 persist된 프레임을 읽는다(12F에서 shape·절단 짝은 `deserialize`/`validate`로 이미 고정).
 - 실패 시 empty payload + §7.2 진단 문자열(`optimization_replay_diagnostic_reason` 등 — **12G 구현 범위**).
 - `metrics.truncation_reason` 노출은 §6.1에 따른다(12F에서 트랙 집계 완료).
 
-### Sequence 12H — Truncation HUD / metadata display
+### Sequence 12H — Truncation / diagnostic metadata HUD
 
-- `replay_truncated` / `truncation_reason` 표시; 리플레이 시맨틱 변경 없음.
+**구현 상태 (v0, 2026-05-17): 완료**
 
-### Sequence 12I — Runtime malformed payload tests
+- **템플릿 SSR:** `asteroid_miner_layout_solver.html` — `lab-optimization-replay-status` / `lab-optimization-replay-truncation` / `lab-optimization-replay-diagnostic` (표시 전용; Lab 리플레이 인덱스·프레임 순서 비변경).
+- **클라이언트:** `renderOptimizationReplayHud(track)` — `normalizeOptimizationReplayTrack`가 `truncation_reason`·`optimization_replay_diagnostic_reason`을 metrics에 전달; `replaceOptimizationReplayPayload` 경로에서 HUD 재렌더.
+- **금지(유지):** Lab ↔ optimization 암묵적 프레임 동기화, 메타데이터 상호작용(재시도·수리), 솔버·리플레이 의미 변경 없음.
 
-- unsupported schema(봉투 도입 후)·invalid event type·invalid truncation contract·oversized(후속)·empty fallback 등.
+### Sequence 12I — Optimization replay HUD vocabulary hardening (초안)
+
+**목표:** optimization replay HUD에 오르는 **표시용 문자열·코드**를 `status` / `reason` / `diagnostic` **3축**으로 분리해, SSR·클라이언트 재주입(`replaceOptimizationReplayPayload`)·Python 진단 계약이 서로 섞이지 않도록 어휘를 고정한다. **구현은 본 시퀀스 범위에 포함하지 않는다** — 이 절은 문서 정본만 확정한다.
+
+**비목표(12I에서 금지):** Lab map 리플레이와 optimization 오버레이의 **동기화 모드 도입**, `renderOptimizationReplayHud`·오버레이 파이프라인의 **렌더/소유권(ownership) 변경**, 관측용 오버레이를 “완전 표시”하기 위한 **프레임 인덱스·이벤트 순서 강결합**. 오버레이 **완전성(completeness)** 은 구현 후 **관측·메트릭·수동 QA**로만 기록하고, 본 시퀀스는 그 결과를 **문서·테스트 기대값**에 반영하지 않는다(동기화/렌더 책임 변경 없음).
+
+#### 12I.1 3축 정의 (status / reason / diagnostic)
+
+| 축 | 의미(표시·계약) | 소스(개략) | 비고 |
+|----|------------------|------------|------|
+| **status** | “지금 트랙이 정상 로드됐는지 / 비어 있는지 / 잘렸는지” 등 **사용자 대면 요약** | 트랙 `metrics`의 `frame_count`, `replay_truncated`, empty vs non-empty payload 등에서 **파생** | **솔버·리플레이 시맨틱과 1:1 대응하지 않는다.** HUD 라벨 전용. |
+| **reason** | 잘림·절단의 **도메인 이유** (예: `truncation_reason`, recorder 상한) | 프레임 `metrics` → 트랙 `metrics` 집계(§6.1) | §6.1 짝 계약 위반 시 **읽기 경로는 empty + diagnostic** (§7). |
+| **diagnostic** | 역직렬화·형상·지원 외 `event_type` 등 **읽기 어댑터 실패 코드** | `metrics.optimization_replay_diagnostic_reason` 및 **쓰기 스킵** 시 attach reason (아래 12I.3) | **메타데이터 전용**; 프레임 순서·이벤트 해석에 관여하지 않음(§7.1·12G와 정합). |
+
+세 축은 **서로 대체 불가**. UI는 한 축의 문자열을 다른 축 라벨에 재사용하지 않도록 **명명 규칙**을 JS·SSR·Python에서 동일하게 맞춘다.
+
+#### 12I.2 JS `enum`/const 매핑 (초안)
+
+- **원칙:** `asteroid_miner_layout_lab.js`(및 Lab 전용 번들)에 **표시용 상수 테이블**을 둔다. 문자열 리터럴을 템플릿·HUD 분기 곳곳에 흩뿌리지 않는다.
+- **최소 구성:** (1) **diagnostic 코드** — §7.1과 동일 문자열 집합을 `OPTIMIZATION_REPLAY_DIAGNOSTIC_*` 또는 단일 객체 맵으로 고정. (2) **truncation / status 배지** — `replay_truncated`·`truncation_reason` 표시용 라벨·툴팁 키를 const로 묶는다.
+- **i18n:** v0는 한국어/영문 고정 문자열이어도 되나, 키는 **코드 값(diagnostic)** 과 **표시 문자열**을 분리해 후속 i18n PR이 맵만 갈아끼우게 한다.
+- **금지:** diagnostic 문자열을 Lab 리플레이 인덱스나 map 스텝과 연동하는 분기(암묵 동기, §9·12H 비목표와 충돌).
+
+#### 12I.3 `optimization_replay_attach.reason` 매핑 (초안)
+
+- **범위:** `attach_optimization_replay_frames_after_successful_replay_build` 등 **persist/attach 쓰기 경로**에서 가드 실패·스킵 시 남기는 **내부 이유 코드**(문서·로그·선택적 메타)와, **페이지에 노출되는** `optimization_replay_diagnostic_reason`을 **표로 대응**시킨다.
+- **원칙:** attach reason은 **운영·디버그·회귀 테스트** 우선이며, 반드시 HUD에 그대로 노출할 필요는 없다. 노출 시에는 §7.1에 이미 있는 코드만 사용하거나, **신규 코드는 §7.1 표에 먼저 추가**한 뒤 JS const와 함께 고정한다(문자열 표류 방지).
+- **문서 산출물(구현 PR 전):** “attach reason → (optional) diagnostic → HUD 표시 여부” **매핑 표**를 본 절 하위에 두는 것을 권장한다(구현 시 복붙 가능한 한 표).
+
+#### 12I.4 Malformed payload matrix (초안)
+
+아래는 **읽기 경로** 기준 행렬이다. 열: 입력 조건 / 기대 트랙 / `optimization_replay_diagnostic_reason` / `replay_truncated`·`truncation_reason` / 페이지 비파괴. 구현 PR은 각 행에 **단위 테스트 이름**을 한 줄씩 붙인다.
+
+| # | 입력 조건 (config_json `optimization_replay_frames`) | 기대 트랙 | diagnostic (있을 때) | truncation 축 | 비고 |
+|---|--------------------------------------------------------|-----------|------------------------|-----------------|------|
+| M1 | 키 없음 | empty | `missing_optimization_replay` | 짝 §6.1에 맞는 기본 false/부재 | §7.1 |
+| M2 | `[]` | empty | `empty_optimization_replay_frames` | 동상 | |
+| M3 | 리스트가 아님·프레임 dict 깨짐·`frame_index` 불연속 등 | empty | `invalid_optimization_replay_payload` | 동상 | |
+| M4 | `replay_truncated`와 `truncation_reason` 짝 깨짐 | empty | `invalid_truncation_contract` | 집계 전에 차단 | |
+| M5 | 알 수 없는 `event_type` | empty | `unsupported_or_unknown_event_type` | 동상 | |
+| M6 | (후속) 봉투·`optimization_replay_schema_version` 불일치 | empty | 별도 코드(§10) | 별도 PR에서 §7.1 확장 | 12I는 **행만 예약**; 코드 문자열은 봉투 PR과 동시 고정 |
+| M7 | (후속) 바이트 상한 초과 | empty 또는 정책 택일 | 후속 | 후속 | §14 open decision과 연계 |
+
+**주의:** M1–M5 코드 문자열은 **§7.1 구현값과 동일**해야 한다. 행렬은 **계약 표**이며, 구현 변경 시 §7·§12I·테스트 세 곳을 한 번에 갱신한다.
+
+#### 12I.5 검증 체인: persist → deserialize → `replaceOptimizationReplayPayload` → HUD 보존 (초안)
+
+- **의도:** 저장 직후 한 번 읽어도, **Run Solver JSON 갱신**으로 클라이언트가 `replaceOptimizationReplayPayload`를 탈 때도, **동일 diagnostic·truncation·status 표시**가 유지되는지 회귀한다.
+- **권장 테스트 계층:**
+  1. **Python:** persist fixture 또는 `SolverRun.config_json` 주입 → `deserialize_optimization_replay_frames_from_json` + `build_optimization_replay_track_payload` → 기대 `metrics` 스냅샷.
+  2. **Django page context:** 기존 `test_page_context_malformed_optimization_replay_does_not_crash` 계열 확장 — HTML에 **진단·절단 placeholder**가 기대 문자열을 포함하는지(SSR).
+  3. **JS(선택·최소):** `replaceOptimizationReplayPayload` 호출 후 DOM에 HUD 노드가 사라지지 않고, 동일 normalize 경로를 타는지 — **프론트 빌드 정책**에 맞춰 단위 또는 통합 한 건.
+- **보존 정의:** “보존”은 **표시 문자열·가시성**이며, **프레임 수·이벤트 내용**이 JSON 갱신으로 바뀌는 것과 혼동하지 않는다. optimization 트랙이 **의도적으로 비워지면** HUD는 empty 상태로 맞추는 것이 정상이다.
+
+#### 12I.6 오버레이 완전성·동기화 (관측만)
+
+- **완전성:** “모든 셀/모든 이벤트가 오버레이에 그려졌는가”는 **관측 지표**(로그, 스크린샷, 수동 체크리스트)로만 기록한다. 12I는 이를 **PASS/FAIL 게이트**로 문서화하지 않는다.
+- **금지 재확인:** 프레임 인덱스 동기화, Lab `currentFrameIndex`와 optimization 스텝 맞추기, 오버레이 레이어 소유권 이동, `renderOptimizationReplayHud` 책임 확대 — **전부 비범위**. 문제가 보이면 **버그 리포트·별도 시퀀스**로 분리한다.
+
+**구현 시 스코프 요약:** 3축 어휘·JS const·attach↔diagnostic 매핑 표·M1–M7 행렬·체인 테스트를 **한 PR 또는 12I 전용 소PR 연속**으로 묶되, 각 PR은 §3 output-only·§9 dual-track·§11 비목표를 위반하지 않는다.
 
 ---
 
@@ -380,3 +446,4 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 | Malformed | 빈 트랙 + 진단 문자열(12G); Lab 페이지 비파괴 |
 | Dual-track | Lab map 권한 vs optimization 관측; 암묵 동기 없음 |
 | 12F-v0 | 프레임 리스트 가드만; 봉투·HUD·cap·migration **제외** |
+| 12I (초안, 미구현) | §12I: HUD **status / reason / diagnostic** 3축·JS const·`optimization_replay_attach.reason`↔diagnostic 매핑·malformed 행렬(M1–M7)·persist→deserialize→`replaceOptimizationReplayPayload`→HUD **표시 보존** 테스트; 오버레이 완전성·동기화/렌더 ownership 변경 **비범위(관측만)** |

@@ -24,6 +24,7 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
     build_optimization_replay_track_payload,
     empty_optimization_replay_track_payload,
+    empty_optimization_replay_track_payload_with_diagnostic,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 from django_apps.web.views import public_pages
@@ -332,6 +333,18 @@ def test_lab_js_has_replace_optimization_replay_payload() -> None:
     assert "applyFrame(" not in block
 
 
+def test_lab_js_replace_optimization_replay_payload_preserves_hud_rerender_chain() -> None:
+    """12I.5: JSON refresh path re-normalizes then refreshes summary + HUD (display-only)."""
+    js = _read_lab_js()
+    i = js.index("function replaceOptimizationReplayPayload(nextPayload)")
+    j = js.index("function projectOptimizationReplayFrameToLabOverlay", i)
+    block = js[i:j]
+    n = block.index("normalizeOptimizationReplayTrack(nextPayload)")
+    s = block.index("renderOptimizationReplaySummary", n)
+    h = block.index("renderOptimizationReplayHud(optimizationReplayTrack)", s)
+    assert n < s < h
+
+
 def test_lab_js_has_optimization_replay_frame_count_helper() -> None:
     js = _read_lab_js()
     assert "function optimizationReplayFrameCount(track)" in js
@@ -355,6 +368,66 @@ def test_template_includes_optimization_replay_summary_value_target() -> None:
 def test_template_includes_optimization_replay_event_counts_target() -> None:
     html = _render_lab_shell_html()
     assert 'id="lab-optimization-replay-event-counts"' in html
+
+
+def test_template_includes_optimization_replay_hud_status() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-status"' in html
+
+
+def test_template_includes_optimization_replay_hud_truncation() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-truncation"' in html
+
+
+def test_template_includes_optimization_replay_hud_diagnostic() -> None:
+    html = _render_lab_shell_html()
+    assert 'id="lab-optimization-replay-diagnostic"' in html
+
+
+def test_lab_js_has_renderOptimizationReplayHud() -> None:
+    js = _read_lab_js()
+    assert "function renderOptimizationReplayHud(track)" in js
+
+
+def test_lab_js_renderOptimizationReplayHud_avoids_currentFrameIndex() -> None:
+    js = _read_lab_js()
+    start = js.index("* Sequence 12H")
+    end = js.index("function formatOptimizationReplayEventCounts", start)
+    chunk = js[start:end]
+    assert "currentFrameIndex" not in chunk
+
+
+def test_lab_js_sequence_12h_includes_12i_hud_vocabulary_consts() -> None:
+    js = _read_lab_js()
+    start = js.index("* Sequence 12H")
+    end = js.index("function formatOptimizationReplayEventCounts", start)
+    chunk = js[start:end]
+    assert "const OPTIMIZATION_REPLAY_DIAGNOSTIC_CODE = Object.freeze" in chunk
+    assert "const OPTIMIZATION_REPLAY_HUD_STATUS = Object.freeze" in chunk
+    assert "const OPTIMIZATION_REPLAY_HUD_REASON = Object.freeze" in chunk
+    assert "const OPTIMIZATION_REPLAY_ATTACH_REASON = Object.freeze" in chunk
+    assert "function mapOptimizationReplayAttachReasonToDiagnostic(reason)" in chunk
+    assert "function mapOptimizationReplayAttachReasonToHudStatusDisplay(reason)" in chunk
+
+
+def test_lab_js_renderOptimizationReplayHud_three_axis_uses_vocabulary_constants() -> None:
+    js = _read_lab_js()
+    start = js.index("function renderOptimizationReplayHud(track)")
+    end = js.index("function formatOptimizationReplayEventCounts", start)
+    chunk = js[start:end]
+    assert "OPTIMIZATION_REPLAY_HUD_STATUS.NEUTRAL_DASH" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_STATUS.FALLBACK_EMPTY" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_STATUS.TRUNCATED" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_STATUS.NORMAL" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_PREFIX" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_REASON.DIAGNOSTIC_PREFIX" in chunk
+    assert "OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_UNKNOWN" in chunk
+
+
+def test_lab_js_calls_renderOptimizationReplayHud_on_load_and_replace() -> None:
+    js = _read_lab_js()
+    assert js.count("renderOptimizationReplayHud(optimizationReplayTrack)") == 2
 
 
 def test_lab_js_formats_optimization_replay_summary() -> None:
@@ -976,7 +1049,9 @@ def test_lab_page_context_optimization_replay_project_isolation() -> None:
     ctx_a = alc.lab_page_context(project_id=pa.pk)
     ctx_b = alc.lab_page_context(project_id=pb.pk)
     assert ctx_a[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] == 1
-    assert ctx_b[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
+    assert ctx_b[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == (
+        empty_optimization_replay_track_payload_with_diagnostic("missing_optimization_replay")
+    )
 
 
 def test_lab_page_context_module_import_boundary() -> None:

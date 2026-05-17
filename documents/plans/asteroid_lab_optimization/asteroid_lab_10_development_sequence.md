@@ -350,7 +350,7 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 
 ## Sequence 10 — Regression Fixtures
 
-> **상태:** Sequence **10A** 완료 · Sequence **10B**(Commit survivability metrics, 본 절 하위) v0 완료. Lab UI 시퀀스 표의 “10A–10F”와 **번호 계층이 다름**.  
+> **상태:** Sequence **10A** 완료 · Regression Fixtures 하위 **Sequence 10B-v0**(metrics contract + minimal survivability 비교) **완료** · **10B fixture expansion pack**은 미완료. Lab UI 시퀀스 표의 “10A–10F”와 **번호 계층이 다름**.  
 > JSON fixture화·full narrow-map evolutionary 결정론 검증은 후속(12A 등) 범위.
 
 ### 작업
@@ -384,23 +384,42 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 [ ] same seed → same best genome on full narrow evolution run
 ```
 
-### Sequence 10B — Commit survivability metrics (Regression Fixtures 하위; Lab UI 10B 아님)
+### Sequence 10B — Commit Survivability Metrics v0 (Regression Fixtures 하위; Lab UI 10B 아님)
 
-> **상태:** v0 완료. penalty 튜닝이 아니라 **계약·관측·penalty off/on 비교** 고정이 목적.
+> **상태:** **10B-v0 완료** (metrics contract + minimal survivability 비교). penalty 튜닝이 아니라 **계약·관측·penalty off/on 비교** 고정이 목적. **10B fixture expansion**(reservation·starvation·late-unreachable 등)은 별도 미완료.
+
+**완료 (v0):**
+
+- `PenaltyMode.OFF` / `PenaltyMode.CONSERVATIVE`
+- `CommitSurvivabilityMetrics` 계약 및 `summarize_incremental_commit`
+- JSON-safe replay metrics adapter
+- `COMMIT_SURVIVABILITY_SUMMARY` 리플레이 프레임
+- 보수 모드에서 `route_fragility` / `shared_corridor_pressure` 최소 휴리스틱(`route_domain` 유무에 따른 이중 경로 포함)
+- narrow bridge 기준 penalty off/on 비교·타깃 pytest / ruff / scoped mypy green
+
+**남은 범위 (expansion):**
+
+- reservation accumulation fixture
+- corridor starvation replay fixture
+- late-generation unreachable fixture
+- evolution fitness 스냅샷과 commit summary 프레임의 penalty 스티칭
+- 전역 quality gates (`## Sequence 11` 참고)
 
 #### 메트릭 계약
 
 - **Post-commit(관측 전용):** `CommitSurvivabilityMetrics` — `commit_attempt_count`, `commit_confirmed_count`, `commit_rolled_back_count`, `commit_success_ratio`, `rollback_reason_counts`(enum 값 키), `route_probe_failed_count`, `transport_kind_conflict_count`. 진화 탐색 입력 **금지**.
 - **Pre-commit(fitness):** `PenaltyMode.OFF` / `PenaltyMode.CONSERVATIVE`. 보수 모드는 `route_fragility_penalty`·`shared_corridor_pressure_penalty`에만 결정적 휴리스틱을 부여; 나머지 breakdown 슬롯은 v0와 동일하게 0 유지 가능.
+- **CONSERVATIVE:** 결정적 **국소** 휴리스틱이며 **전역 commit 성공 예측기가 아님**.
 
 #### 리플레이
 
 - `OptimizationReplayEventType.COMMIT_SURVIVABILITY_SUMMARY` — 스칼라·JSON-safe `rollback_reason_counts`; **solver/GA 입력 금지**.
-- commit-only 경로에서 리플레이의 `route_fragility_penalty` / `shared_corridor_pressure_penalty` 필드는 v0에서 **0.0** 플레이스홀더(향후 evolution+commit 스티치 시 fitness 스냅샷 전달 여지).
+- **commit-only** summary 프레임에서 `route_fragility_penalty` / `shared_corridor_pressure_penalty`는 **0.0 플레이스홀더** — “패널티가 없다”가 아니라 **이 프레임이 fitness breakdown을 소유하지 않는다**는 뜻이다. 값은 evolution+commit 스티치 시에만 채워질 여지가 있다.
 
 #### 테스트
 
 - `tests/unit/shapez_asteroid/test_commit_survivability_metrics.py` — narrow bridge fixture 기준 survivability 요약·rollback 이유·penalty off vs conservative·랭킹·리플레이 프레임.
+- 진화 루프 **리플레이 기록 on/off 동일 결과**는 `tests/unit/shapez_asteroid/test_optimization_replay.py`의 `test_replay_same_seed_on_off_identical_best_genome`·`test_replay_events_do_not_affect_algorithm_result` 등(Sequence 3B replay artifact = algorithm input 금지 계열)으로 이미 고정. `CommitSurvivabilityMetrics`는 post-commit 관측이므로 GA 입력과 분리된 채로 동일 패밀리 불변식을 따른다.
 
 ---
 

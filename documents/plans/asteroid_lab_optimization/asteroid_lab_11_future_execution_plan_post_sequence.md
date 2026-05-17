@@ -126,7 +126,7 @@ latest route_domain snapshot
 
 # Priority 1 — Sequence 10 Completion
 
-현재 Regression Fixture가 완전히 닫히지 않았다.
+**상태 정리 (2026-05-17):** Regression Fixtures 하위 **10B-v0**(metrics contract·minimal survivability 비교)는 완료. **10B fixture expansion**(reservation·corridor starvation·late-unreachable 등)과 **10A** 일부 확장 체크리스트는 **미완료**로 남는다. “Sequence 10 전부 완료”로 읽지 말 것.
 
 ## 목표
 
@@ -230,7 +230,12 @@ test_transport_kind_corridor_conflict_regression
 
 # Sequence 10B — Route Fragility Regression Pack
 
-> **구현 교차 참조 (2026-05-17):** `asteroid_lab_10_development_sequence.md`의 Regression Fixtures **Sequence 10B(Commit survivability metrics)** 에 `CommitSurvivabilityMetrics`·`PenaltyMode`·`commit.survivability_summary` 리플레이가 land했다. 본 절 아래 fixture 체크리스트는 별도 확장으로 남긴다.
+```text
+10B-v0: metrics contract + minimal survivability comparison — complete
+10B fixture expansion: open (본 절 체크리스트)
+```
+
+> **구현 교차 참조 (2026-05-17):** `asteroid_lab_10_development_sequence.md`의 Regression Fixtures **Sequence 10B-v0**에 `CommitSurvivabilityMetrics`·`PenaltyMode`·`commit.survivability_summary` 리플레이가 land했다. 아래 reservation·starvation·late-unreachable fixture 작업은 **expansion**으로 미완료다.
 
 ## 목적
 

@@ -2,7 +2,7 @@
 
 Role: Asteroid Lab Runtime Replay Wiring Architect
 
-**문서 상태:** ACTIVE. §12 **Sequence 12F**는 구현 완료(2026-05-17); 나머지 시퀀스(12G 이후)는 설계·경계 고정용이다.  
+**문서 상태:** ACTIVE. §12 **Sequence 12F·12G**는 구현 완료(2026-05-17); 나머지 시퀀스는 설계·경계 고정용이다.  
 **범위:** Lab persistence·UI 읽기 경로에 optimization replay를 안전하게 연결하는 방법만 다룬다.  
 **금지:** 본 문서만으로는 **솔버·리플레이 이벤트 의미·DTO·테스트 전용 fixture 파서 동작**을 바꾸지 않는다. 실제 배선 구현은 별도 PR·승인 후 진행한다.
 
@@ -46,7 +46,7 @@ Role: Asteroid Lab Runtime Replay Wiring Architect
 
 - **저장:** `django_apps.asteroid_lab.services.optimization_replay_persist` — `SolverRun.config_json`에 `SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY` (`"optimization_replay_frames"`)로 **프레임 리스트만** 병합 저장. 다른 `config_json` 키는 보존.
 - **직렬화:** `optimization_replay_frames_to_json_list` — 프레임 단위 dict 리스트.
-- **UI:** `django_apps.web.services.asteroid_lab_page_context` — 최신 `SolverRun`에서 위 키를 읽고 `deserialize_optimization_replay_frames_from_json` 성공 시에만 `build_optimization_replay_track_payload`로 `OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY` (`"optimization_replay"`) 트랙을 채운다. 실패·없음이면 `empty_optimization_replay_track_payload()`.
+- **UI:** `django_apps.web.services.asteroid_lab_page_context` — 최신 `SolverRun`에서 위 키를 읽고 `deserialize_optimization_replay_frames_from_json` 성공 시에만 `build_optimization_replay_track_payload`로 `OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY` (`"optimization_replay"`) 트랙을 채운다. 실패·없음이면 `empty_optimization_replay_track_payload()`와 동일한 빈 트랙에 더해 **`metrics.optimization_replay_diagnostic_reason`**(12G, 메타데이터 전용)을 붙인다.
 - **트랙 `metrics`:** `build_optimization_replay_track_payload`가 `frame_count`, `event_type_counts`, `replay_truncated`를 채운다. `replay_truncated`는 프레임 `metrics` 집계 (`_aggregate_replay_truncated`).
 
 ### 2.2 Fixture 봉투 vs 런타임 persist 형상
@@ -87,7 +87,7 @@ Optimization 실행 / post-inspection
 |--------|------|
 | `shapez_asteroid.optimization` | 이벤트·프레임 DTO·직렬화 dict (비즈니스 규칙) |
 | `asteroid_lab` | `SolverRun`에 출력 병합 저장, import 경계 |
-| `web` (page context) | 읽기 전용 어댑터: malformed이면 빈 트랙 + (선택) 진단 문자열 |
+| `web` (page context) | 읽기 전용 어댑터: 역직렬화 실패 시 빈 트랙 + `metrics.optimization_replay_diagnostic_reason`(12G, 메타데이터만) |
 | 테스트 fixture 파서 | 회귀 정본만; 프로덕션 의존 **비권장** |
 
 ---
@@ -180,22 +180,23 @@ A diagnostic reason should be exposed for UI/debug.
 Solver result must remain unchanged.
 ```
 
-### 7.1 권장 진단 reason 코드 (예시)
+### 7.1 진단 reason 코드 (**12G v0 구현값**)
+
+읽기 전용·메타데이터 전용. 상수 키: `django_apps.shapez_asteroid.optimization.optimization_ui_payload.OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY` → 트랙 `metrics` 필드명 **`optimization_replay_diagnostic_reason`**.
 
 ```text
-missing_schema_version          # 봉투 도입 후에만 적용; v0에서는 미사용 가능
-unsupported_schema_version
-invalid_frame_shape
-invalid_event_type
-invalid_truncation_contract
-payload_too_large               # 12F-v0 범위 밖; 후속 시퀀스
+missing_optimization_replay          # 어떤 SolverRun.config_json에도 optimization_replay_frames 키가 없음
+empty_optimization_replay_frames     # 키는 있으나 리스트가 비어 있음 ([])
+invalid_optimization_replay_payload  # 리스트가 아님·프레임 dict/shape·좌표·연속 frame_index 등 (알 수 없는 event_type 제외)
+invalid_truncation_contract          # replay_truncated 인데 truncation_reason 짝이 깨짐
+unsupported_or_unknown_event_type    # 알려지지 않은 event_type 문자열
 ```
 
-v0에서는 주로 `deserialize` 실패·shape 위반에 대응하는 코드를 쓴다.
+정상 역직렬화 시 이 필드는 **부재**한다. 솔버·리플레이 의미·정렬·집계에는 관여하지 않는다.
 
-### 7.2 UI에 노출할 진단 문자열 (12G)
+### 7.2 UI 노출 (12G)
 
-읽기 경로가 빈 트랙으로 떨어질 때, 트랙 `metrics`에 **`optimization_replay_diagnostic_reason`** 같은 **단일 문자열**을 둘 수 있다. 이 값은 **표시·디버그 전용**이며 솔버 입력이 아니다. (구현은 Sequence **12G**에서 정리한다.)
+빈 트랙으로 떨어질 때에만 §7.1 문자열을 `metrics.optimization_replay_diagnostic_reason`에 둔다. **HUD·배지는 12G 범위 밖**이며, 본 키는 JSON·디버그·향후 UI 소비용 계약이다.
 
 ---
 

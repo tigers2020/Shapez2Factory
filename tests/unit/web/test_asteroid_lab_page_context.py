@@ -24,6 +24,7 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
     build_optimization_replay_track_payload,
     empty_optimization_replay_track_payload,
+    empty_optimization_replay_track_payload_with_diagnostic,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 from django_apps.web.views import public_pages
@@ -976,7 +977,9 @@ def test_lab_page_context_optimization_replay_project_isolation() -> None:
     ctx_a = alc.lab_page_context(project_id=pa.pk)
     ctx_b = alc.lab_page_context(project_id=pb.pk)
     assert ctx_a[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] == 1
-    assert ctx_b[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
+    assert ctx_b[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == (
+        empty_optimization_replay_track_payload_with_diagnostic("missing_optimization_replay")
+    )
 
 
 def test_lab_page_context_module_import_boundary() -> None:

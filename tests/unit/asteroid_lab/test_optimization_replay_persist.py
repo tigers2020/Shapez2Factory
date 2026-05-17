@@ -24,7 +24,7 @@ from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEve
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
-    empty_optimization_replay_track_payload,
+    empty_optimization_replay_track_payload_with_diagnostic,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
 from django_apps.web.services.asteroid_lab_post_inspection_evolution import (
@@ -285,7 +285,10 @@ def test_persisted_optimization_replay_invalid_shape_falls_back_empty() -> None:
     run.config_json = merged
     run.save(update_fields=["config_json"])
     ctx = alc.lab_page_context(project_id=dto.project_id)
-    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
+    expected = empty_optimization_replay_track_payload_with_diagnostic(
+        "invalid_optimization_replay_payload"
+    )
+    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == expected
 
 
 def test_page_context_malformed_optimization_replay_does_not_crash() -> None:
@@ -299,4 +302,8 @@ def test_page_context_malformed_optimization_replay_does_not_crash() -> None:
     run.config_json = merged
     run.save(update_fields=["config_json"])
     ctx = alc.lab_page_context(project_id=dto.project_id)
-    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
+    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == (
+        empty_optimization_replay_track_payload_with_diagnostic(
+            "invalid_optimization_replay_payload"
+        )
+    )

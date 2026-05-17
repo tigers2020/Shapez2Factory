@@ -12,7 +12,7 @@ tuples from
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from django_apps.shapez_asteroid.optimization.coords import Coord
 from django_apps.shapez_asteroid.optimization.dto import OptimizationReplayFrame
@@ -30,6 +30,10 @@ OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY = "optimization_replay"
 # ``django_apps.asteroid_lab.models.SolverRun.config_json`` output-only list of frame dicts
 # (same shape as :func:`optimization_replay_frame_to_json_dict`, written by future runners).
 SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY = "optimization_replay_frames"
+
+# Read-only UI metadata when persisted ``optimization_replay_frames`` cannot be deserialized.
+# Must not affect ordering, solver, or replay semantics (Sequence 12G).
+OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY = "optimization_replay_diagnostic_reason"
 
 
 class OptimizationReplayTrackPayload(TypedDict):
@@ -175,6 +179,75 @@ def empty_optimization_replay_track_payload() -> dict[str, object]:
             "replay_truncated": False,
         },
     }
+
+
+def empty_optimization_replay_track_payload_with_diagnostic(reason: str) -> dict[str, object]:
+    """Same as :func:`empty_optimization_replay_track_payload` plus a read-only failure reason."""
+
+    base = empty_optimization_replay_track_payload()
+    metrics = dict(cast(dict[str, Any], base["metrics"]))
+    metrics[OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY] = str(reason)
+    return {
+        **base,
+        "metrics": metrics,
+    }
+
+
+def _diagnose_non_empty_optimization_replay_frame_list(raw: list[object]) -> str:
+    """First deserialize failure class (non-empty list only)."""
+
+    for pos, item in enumerate(raw):
+        if not isinstance(item, dict):
+            return "invalid_optimization_replay_payload"
+        try:
+            frame_index = int(item["frame_index"])
+            et_raw = item["event_type"]
+            str(item["title"])
+            str(item.get("description") or "")
+        except (KeyError, TypeError, ValueError):
+            return "invalid_optimization_replay_payload"
+        try:
+            OptimizationReplayEventType(str(et_raw))
+        except ValueError:
+            return "unsupported_or_unknown_event_type"
+        vis = _cell_sequence_from_json(item.get("visible_cells", []))
+        ovl = _cell_sequence_from_json(item.get("overlay_cells", []))
+        if vis is None or ovl is None:
+            return "invalid_optimization_replay_payload"
+        metrics_raw = item.get("metrics", {})
+        if metrics_raw is None:
+            metrics: dict[str, Any] = {}
+        elif isinstance(metrics_raw, dict):
+            metrics = dict(metrics_raw)
+        else:
+            return "invalid_optimization_replay_payload"
+        if not _frame_metrics_truncation_pair_ok(metrics):
+            return "invalid_truncation_contract"
+        if frame_index != pos:
+            return "invalid_optimization_replay_payload"
+    return "invalid_optimization_replay_payload"
+
+
+def classify_persisted_optimization_replay_frames_value(raw: object) -> str:
+    """Reason string for a stored ``optimization_replay_frames`` value that does not deserialize."""
+
+    if not isinstance(raw, list):
+        return "invalid_optimization_replay_payload"
+    if len(raw) == 0:
+        return "empty_optimization_replay_frames"
+    return _diagnose_non_empty_optimization_replay_frame_list(raw)
+
+
+def diagnostic_reason_after_failed_optimization_replay_scan(
+    configs_ordered_newest_first: Sequence[Mapping[str, Any]],
+) -> str:
+    """Classify read failure from the newest config that sets ``optimization_replay_frames``."""
+
+    key = SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY
+    for cfg in configs_ordered_newest_first:
+        if key in cfg:
+            return classify_persisted_optimization_replay_frames_value(cfg[key])
+    return "missing_optimization_replay"
 
 
 def build_optimization_replay_track_payload(

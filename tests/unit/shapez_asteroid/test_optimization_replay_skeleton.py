@@ -175,6 +175,7 @@ def test_replay_candidate_generated_event_recorded() -> None:
     )
     rec = OptimizationReplayRecorder()
     generate_bundle_candidates(inp, domain, build_pattern_library(), cfg, replay_recorder=rec)
+    assert rec.frames[0].event_type is OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED
     types = [f.event_type for f in rec.frames]
     assert OptimizationReplayEventType.CANDIDATE_GENERATED in types
 

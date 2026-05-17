@@ -9,7 +9,7 @@ import dataclasses
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from enum import Enum
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from django_apps.shapez_asteroid.optimization.coords import Coord
 from django_apps.shapez_asteroid.optimization.dto import OptimizationReplayFrame
@@ -140,6 +140,15 @@ class OptimizationReplayRecorder:
         self._frames.append(frame)
 
 
+def _dataclass_fields_to_json_safe(obj: object) -> dict[str, object]:
+    """Shallow field walk so nested ``Coord``/enums use the same path as top-level values."""
+
+    return {
+        f.name: json_safe_replay_value(getattr(obj, f.name))
+        for f in dataclasses.fields(cast(Any, obj))
+    }
+
+
 def json_safe_replay_value(obj: object) -> object:
     """Convert replay-related values to JSON-serializable structures (no algorithm round-trip)."""
 
@@ -150,8 +159,7 @@ def json_safe_replay_value(obj: object) -> object:
     if isinstance(obj, Coord):
         return {"x": obj.x, "y": obj.y}
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
-        raw = dataclasses.asdict(obj)
-        return json_safe_replay_value(raw)
+        return _dataclass_fields_to_json_safe(obj)
     if isinstance(obj, Mapping):
         return {str(k): json_safe_replay_value(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):

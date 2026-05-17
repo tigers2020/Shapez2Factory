@@ -187,6 +187,24 @@ def test_replay_json_safe_serializes_validation_result() -> None:
     assert raw["passed"] is True
 
 
+def test_replay_json_safe_nested_coord_matches_top_level_coord() -> None:
+    c = Coord(3, 4)
+    issue = ValidationIssue(
+        issue_code=ValidationIssueCode.INVALID_COORD_CONTRACT,
+        severity=ValidationSeverity.ERROR,
+        coord=c,
+        candidate_id="x",
+        route_reservation_id=None,
+        path_index=None,
+        route_goal_kind=None,
+        transport_kind=None,
+        message="m",
+    )
+    vr = ValidationResult(passed=False, issues=(issue,))
+    nested = json_safe_replay_value(vr)["issues"][0]["coord"]
+    assert nested == json_safe_replay_value(c) == {"x": 3, "y": 4}
+
+
 def test_replay_same_seed_on_off_identical_best_genome() -> None:
     g0 = _goal(Coord(0, 0))
     pool = (

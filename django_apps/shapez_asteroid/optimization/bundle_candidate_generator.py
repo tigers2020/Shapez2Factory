@@ -26,6 +26,10 @@ from django_apps.shapez_asteroid.optimization.enums import (
 from django_apps.shapez_asteroid.optimization.optimization_replay import (
     OptimizationReplaySink,
 )
+from django_apps.shapez_asteroid.optimization.optimization_replay_events import (
+    emit_optimization_input_loaded,
+    optimization_input_loaded_metrics,
+)
 from django_apps.shapez_asteroid.optimization.pattern_dto import BundlePattern
 from django_apps.shapez_asteroid.optimization.route_probe import run_route_probe
 from django_apps.shapez_asteroid.optimization.topology_signature import build_topology_signature
@@ -84,6 +88,11 @@ def generate_bundle_candidates(
 
     if config.extractor_policy is not ExtractorPlacementPolicy.RIM_ONLY:
         raise ValueError("v0 only supports ExtractorPlacementPolicy.RIM_ONLY")
+
+    emit_optimization_input_loaded(
+        replay_recorder,
+        extra_metrics=optimization_input_loaded_metrics(opt),
+    )
 
     rim_order = tuple(sorted(opt.rim_cells, key=lambda c: (c.x, c.y)))
     tk_order = tuple(sorted(config.transport_kinds, key=lambda k: k.value))

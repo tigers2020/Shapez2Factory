@@ -411,9 +411,11 @@ def _remove_corridor_blocker(
 
 
 def _dedupe_candidates(genes: Sequence[Gene]) -> tuple[Gene, ...]:
+    """One enabled representative per ``candidate_id``; earliest ``commit_order`` wins."""
+
     seen: set[str] = set()
     out: list[Gene] = []
-    for g in sorted(genes, key=lambda z: (z.candidate_id, z.commit_order)):
+    for g in sorted(genes, key=lambda z: (z.commit_order, z.candidate_id, not z.enabled)):
         if g.candidate_id in seen:
             out.append(replace(g, enabled=False))
         else:

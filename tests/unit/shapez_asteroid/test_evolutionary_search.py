@@ -237,6 +237,25 @@ def test_no_duplicate_enabled_candidate_ids_after_repair() -> None:
     assert len(enabled_ids) == len(frozenset(enabled_ids))
 
 
+def test_dedupe_keeps_lowest_commit_order_for_duplicate_id() -> None:
+    """Duplicate candidate_id: representative is earliest commit_order, not list order."""
+
+    g0 = _goal(Coord(0, 0))
+    pool = (_bundle("d", _probe_ok(goal=g0)),)
+    g = Genome(
+        "dupco",
+        (
+            Gene("d", True, 9),
+            Gene("d", True, 0),
+        ),
+        seed=0,
+    )
+    r = repair_genome(g, pool)
+    enabled = [gg for gg in r.genes if gg.enabled and gg.candidate_id == "d"]
+    assert len(enabled) == 1
+    assert enabled[0].commit_order == 0
+
+
 def test_convergence_reason_enum() -> None:
     g0 = _goal(Coord(0, 0))
     pool = (_bundle("solo", _probe_ok(goal=g0)),)

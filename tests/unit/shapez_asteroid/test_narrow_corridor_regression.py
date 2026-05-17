@@ -1,4 +1,4 @@
-"""Sequence 10A — narrow corridor regression fixtures (probe vs commit, mixed transport)."""
+"""Sequence 10A/10B — narrow corridor regression (probe vs commit, penalties, replay invariant)."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from django_apps.shapez_asteroid.optimization.enums import (
     CardinalDirection,
     CommitConflictReason,
     OptimizationReplayEventType,
+    PenaltyMode,
     PlacementCommitState,
     RouteClass,
     TransportKind,
@@ -231,6 +232,42 @@ def test_replay_sink_presence_does_not_drift_evolution_or_incremental_commit() -
     assert c_off == c_on
 
 
+def test_replay_sink_presence_invariant_under_conservative_penalty_mode() -> None:
+    """Same as ``test_replay_sink_presence_*`` but ``PenaltyMode.CONSERVATIVE`` on evolution."""
+
+    inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
+    pool, _ = build_rim_competition_pool(inp)
+    rd = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
+    cfg = EvolutionConfig(
+        seed=701,
+        population_size=4,
+        elite_count=1,
+        mutation_rate=0.35,
+        tournament_size=2,
+        max_generation=4,
+        max_stall_generation=0,
+        time_budget_ms=None,
+        forced_distant_mutation_period=None,
+    )
+    mode = PenaltyMode.CONSERVATIVE
+    evo_off = run_evolutionary_search(
+        cfg, pool, route_domain=rd, replay_recorder=None, penalty_mode=mode
+    )
+    rec = OptimizationReplayRecorder()
+    evo_on = run_evolutionary_search(
+        cfg, pool, route_domain=rd, replay_recorder=rec, penalty_mode=mode
+    )
+    assert evo_off == evo_on
+
+    best = evo_off.best_genome
+    c_off = commit_best_genome(best, pool, inp, RouteDomainSnapshotBuilder, replay_recorder=None)
+    commit_rec = OptimizationReplayRecorder()
+    c_on = commit_best_genome(
+        best, pool, inp, RouteDomainSnapshotBuilder, replay_recorder=commit_rec
+    )
+    assert c_off == c_on
+
+
 def test_narrow_bridge_replay_event_order_deterministic() -> None:
     """Same seed / inputs → identical replay event type sequence (output-only recorder)."""
 
@@ -295,3 +332,78 @@ def test_commit_time_probe_uses_latest_route_domain_not_stale_pool() -> None:
     assert ids[0] != ids[1]
     right = pool[1]
     assert right.route_probe_result.reachable is True
+
+
+def test_route_fragility_penalty_ranks_dual_bridge_above_single_rim() -> None:
+    """Two rim bundles sharing the bridge get higher ``route_fragility_penalty`` than one."""
+
+    inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
+    pool, dual_genome = build_rim_competition_pool(inp)
+    left_id, right_id = pool[0].candidate_id, pool[1].candidate_id
+    single_left = Genome(
+        "g_one",
+        (Gene(left_id, True, 0), Gene(right_id, False, 1)),
+        seed=1,
+    )
+    rd = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
+    fb_dual = evaluate_genome(
+        dual_genome, pool, route_domain=rd, penalty_mode=PenaltyMode.CONSERVATIVE
+    )
+    fb_single = evaluate_genome(
+        single_left, pool, route_domain=rd, penalty_mode=PenaltyMode.CONSERVATIVE
+    )
+    assert fb_dual.route_fragility_penalty > fb_single.route_fragility_penalty
+    assert fb_single.total > fb_dual.total
+    assert fitness_breakdown_total_matches_components(fb_dual) is True
+    assert fitness_breakdown_total_matches_components(fb_single) is True
+
+
+def test_conservative_shared_corridor_pressure_suppresses_high_throughput_dual() -> None:
+    """Narrow shared-cell weight dominates marginal throughput gain from enabling both rims."""
+
+    inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
+    pool, dual_genome = build_rim_competition_pool(
+        inp,
+        rim_left_base_throughput=1,
+        rim_right_base_throughput=50_000,
+    )
+    left_id, right_id = pool[0].candidate_id, pool[1].candidate_id
+    right_only = Genome(
+        "g_right_only",
+        (Gene(left_id, False, 0), Gene(right_id, True, 1)),
+        seed=3,
+    )
+    rd = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
+    fb_dual = evaluate_genome(
+        dual_genome, pool, route_domain=rd, penalty_mode=PenaltyMode.CONSERVATIVE
+    )
+    fb_right = evaluate_genome(
+        right_only, pool, route_domain=rd, penalty_mode=PenaltyMode.CONSERVATIVE
+    )
+    assert fb_dual.shared_corridor_pressure_penalty > 0.0
+    assert fb_right.shared_corridor_pressure_penalty == 0.0
+    assert fb_dual.throughput_score > fb_right.throughput_score
+    assert fb_right.total > fb_dual.total
+    assert fitness_breakdown_total_matches_components(fb_dual) is True
+    assert fitness_breakdown_total_matches_components(fb_right) is True
+
+
+def test_late_commit_probe_failure_proxy_stale_reachable_zero_unreachable() -> None:
+    """Pool probes stay reachable; conservative penalties still flag dual-bridge commit risk.
+
+    Matches ``commit_best_genome`` outcome where the second rim rolls back after reservations
+    (fresh reprobe), while fitness uses only candidate-stage snapshots — no replay input.
+    """
+
+    inp, _ = build_narrow_bridge_optimization_input(protected_bridge=True)
+    pool, dual_genome = build_rim_competition_pool(inp)
+    rd = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
+    fb = evaluate_genome(dual_genome, pool, route_domain=rd, penalty_mode=PenaltyMode.CONSERVATIVE)
+    res = commit_best_genome(dual_genome, pool, inp, RouteDomainSnapshotBuilder)
+
+    assert fb.metrics.unreachable_count == 0
+    assert all(c.route_probe_result.reachable for c in pool)
+    assert res.rolled_back_candidate_count >= 1
+    assert fb.route_fragility_penalty > 0.0
+    assert fb.shared_corridor_pressure_penalty > 0.0
+    assert fitness_breakdown_total_matches_components(fb) is True

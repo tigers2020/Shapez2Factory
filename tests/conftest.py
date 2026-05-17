@@ -24,7 +24,7 @@ _LAYER_MARKERS = frozenset({"shapez_core", "shapez_solver", "web", "api", "aster
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """pytest-django: 테스트 DB 재사용 (pytest.ini `--reuse-db`와 동일, addopts 미적용 환경 보조)."""
+    """pytest-django: 테스트 DB 재사용 (pytest.ini reuse-db, addopts 미적용 보조)."""
     opt = config.option
     if getattr(opt, "create_db", False):
         return

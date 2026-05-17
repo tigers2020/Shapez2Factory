@@ -268,9 +268,7 @@ def reconstruct_after_cleanup(
                 )
                 if pair is not None:
                     sx, sy = pair
-            filled.append(
-                synthetic_field_cell(x, y, fill_layer, kind, server_x=sx, server_y=sy)
-            )
+            filled.append(synthetic_field_cell(x, y, fill_layer, kind, server_x=sx, server_y=sy))
 
         if trace_collector is not None and fill_xy:
             trace_collector.append(

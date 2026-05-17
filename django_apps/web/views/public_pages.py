@@ -50,6 +50,9 @@ from django_apps.web.services.asteroid_lab_page_context import (
     optimization_replay_payload_for_project,
     serialize_replay_frame,
 )
+from django_apps.web.services.asteroid_lab_post_inspection_evolution import (
+    run_post_inspection_evolution_and_attach_optimization_replay,
+)
 from django_apps.web.services.graph_preview import (
     PlaywrightPngGraphPreviewRenderer,
     png_bytes_are_valid,
@@ -374,6 +377,8 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
         result = build_initial_replay_for_map_input(int(inp.pk), force=True)
         if result.status != "ok" and result.error_message:
             messages.error(request, result.error_message)
+        if result.status == "ok":
+            run_post_inspection_evolution_and_attach_optimization_replay(int(inp.pk), result)
         redirect_url = reverse("web:asteroid-miner-layout-project", kwargs={"slug": stay_slug})
         bundle = _lab_json_bundle_for_track_id(
             result.replay_track_id,
@@ -432,6 +437,8 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                 result = build_initial_replay_for_map_input(int(inp.pk), force=True)
             if result.status != "ok" and result.error_message:
                 messages.error(request, result.error_message)
+            if result.status == "ok":
+                run_post_inspection_evolution_and_attach_optimization_replay(int(inp.pk), result)
     redirect_url = reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})
     if wants_json:
         tid = getattr(result, "replay_track_id", None) if result is not None else None

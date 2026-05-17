@@ -1,10 +1,11 @@
-"""12C — Persist optimization replay frames on ``SolverRun`` (output-only)."""
+"""12C/12D — Persist optimization replay frames on ``SolverRun`` (output-only)."""
 
 from __future__ import annotations
 
 import base64
 import gzip
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -25,6 +26,9 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
+from django_apps.web.services.asteroid_lab_post_inspection_evolution import (
+    run_post_inspection_evolution_and_attach_optimization_replay,
+)
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -93,7 +97,7 @@ def test_persist_writes_optimization_replay_frames_list() -> None:
 
 
 @pytest.mark.django_db
-def test_persist_empty_frames_is_noop() -> None:
+def test_persist_empty_frames_does_not_mutate_solver_run_config_json() -> None:
     code = _encode_v4_copy(_minimal_root(version=503))
     dto = project_service.create_project_from_copy_code(code, source_label="noop")
     result = build_initial_replay_for_map_input(dto.map_input_id)
@@ -110,11 +114,31 @@ def test_attach_then_lab_page_context_reports_nonzero_frames() -> None:
     dto = project_service.create_project_from_copy_code(code, source_label="attach-ctx")
     result = build_initial_replay_for_map_input(dto.map_input_id)
     assert result.status == "ok"
-    attach_optimization_replay_frames_after_successful_replay_build(result, _one_valid_frame())
+    out = attach_optimization_replay_frames_after_successful_replay_build(
+        result, _one_valid_frame()
+    )
+    assert out.attached is True and out.reason == "attached"
     ctx = alc.lab_page_context(project_id=dto.project_id)
     opt = ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
     assert opt["frame_count"] == 1
     assert opt["frames"][0]["title"] == "t"
+
+
+@pytest.mark.django_db
+def test_attach_empty_frames_preserves_existing_optimization_replay() -> None:
+    code = _encode_v4_copy(_minimal_root(version=507))
+    dto = project_service.create_project_from_copy_code(code, source_label="empty-attach")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
+    persist_optimization_replay_frames_to_solver_run(run, _one_valid_frame())
+    run.refresh_from_db()
+    before_len = len(run.config_json[SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY])
+    out = attach_optimization_replay_frames_after_successful_replay_build(result, ())
+    assert out.attached is False and out.reason == "empty_frames"
+    run.refresh_from_db()
+    after = run.config_json[SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY]
+    assert isinstance(after, list) and len(after) == before_len
 
 
 @pytest.mark.django_db
@@ -144,7 +168,10 @@ def test_attach_does_not_mutate_inspection_config_passed_at_create() -> None:
     code = _encode_v4_copy(_minimal_root(version=506))
     dto = project_service.create_project_from_copy_code(code, source_label="config-split")
     result = build_initial_replay_for_map_input(dto.map_input_id, config={"only_algo": True})
-    attach_optimization_replay_frames_after_successful_replay_build(result, _one_valid_frame())
+    out = attach_optimization_replay_frames_after_successful_replay_build(
+        result, _one_valid_frame()
+    )
+    assert out.attached is True
     run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
     assert run.config_json.get("only_algo") is True
     assert isinstance(run.config_json.get(SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY), list)
@@ -157,5 +184,31 @@ def test_attach_noop_on_failed_pipeline() -> None:
     )
     result = build_initial_replay_for_map_input(dto.map_input_id)
     assert result.status == "failed"
-    attach_optimization_replay_frames_after_successful_replay_build(result, _one_valid_frame())
+    out = attach_optimization_replay_frames_after_successful_replay_build(
+        result, _one_valid_frame()
+    )
+    assert out.attached is False and out.reason == "non_ok_result"
     assert m.SolverRun.objects.filter(project_id=dto.project_id).count() == 0
+
+
+@pytest.mark.django_db
+def test_run_post_inspection_evolution_attaches_replay_frames() -> None:
+    code = _encode_v4_copy(_minimal_root(version=509))
+    dto = project_service.create_project_from_copy_code(code, source_label="wire-12d")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    wire = run_post_inspection_evolution_and_attach_optimization_replay(dto.map_input_id, result)
+    assert wire.attached is True and wire.reason == "attached"
+    ctx = alc.lab_page_context(project_id=dto.project_id)
+    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] > 0
+
+
+@pytest.mark.django_db
+def test_attach_solver_run_not_found_returns_reason() -> None:
+    code = _encode_v4_copy(_minimal_root(version=508))
+    dto = project_service.create_project_from_copy_code(code, source_label="missing-run")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    bogus = replace(result, solver_run_id=9_999_999_999)
+    out = attach_optimization_replay_frames_after_successful_replay_build(bogus, _one_valid_frame())
+    assert out.attached is False and out.reason == "solver_run_not_found"

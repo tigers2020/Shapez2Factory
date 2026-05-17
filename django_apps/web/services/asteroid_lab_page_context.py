@@ -7,6 +7,10 @@ from typing import Any, cast
 from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
+from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
+    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+    empty_optimization_replay_track_payload,
+)
 
 GRID_W, GRID_H = 23, 15
 CELL_COUNT = GRID_W * GRID_H
@@ -131,6 +135,7 @@ def neutral_lab_context() -> dict[str, Any]:
             "replayTrackId": None,
             "replayTrackKey": None,
         },
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: empty_optimization_replay_track_payload(),
     }
 
 

@@ -276,6 +276,33 @@ def test_run_post_inspection_evolution_failed_diagnostic_stage_candidate_generat
     assert isinstance(d, dict)
     assert d.get("stage") == "candidate_generation"
     assert d.get("error_type") == "ValueError"
+    assert "candidate_gen_x" in (d.get("error_message") or "")
+
+
+def test_run_post_inspection_evolution_failed_diagnostic_stage_optimization_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """12L — ValueError before route_probe: adapter / OptimizationInput path."""
+
+    import django_apps.web.services.asteroid_lab_post_inspection_evolution as pie
+
+    def _boom_opt(*_a: object, **_k: object) -> None:
+        raise ValueError("optimization_input_ut_invariant")
+
+    monkeypatch.setattr(pie, "build_optimization_input", _boom_opt)
+    code = _encode_v4_copy(_minimal_root(version=9003))
+    dto = project_service.create_project_from_copy_code(code, source_label="opt-input-boom")
+    result = build_initial_replay_for_map_input(dto.map_input_id)
+    assert result.status == "ok"
+    wire = run_post_inspection_evolution_and_attach_optimization_replay(dto.map_input_id, result)
+    assert wire.attached is False and wire.reason == "evolution_failed"
+    d = wire.diagnostic
+    assert isinstance(d, dict)
+    assert d.get("stage") == "optimization_input"
+    assert d.get("error_type") == "ValueError"
+    assert "optimization_input_ut_invariant" in (d.get("error_message") or "")
+    assert d.get("candidate_count") is None
+    assert d.get("recorder_frame_count") == 0
 
 
 def test_run_post_inspection_empty_candidate_pool_reason(monkeypatch: pytest.MonkeyPatch) -> None:

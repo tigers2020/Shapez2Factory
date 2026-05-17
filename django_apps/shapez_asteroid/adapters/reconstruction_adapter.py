@@ -1,4 +1,4 @@
-"""Reconstruction + cleanup → ``OptimizationInput`` (Sequence 1B)."""
+"""Reconstruction + cleanup -> ``OptimizationInput`` (Sequence 1B)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.reconstruction.evidence import ASTEROID_FIELD_KINDS
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 from django_apps.shapez_asteroid.optimization.coords import BBox, Coord, neighbors4_server
 from django_apps.shapez_asteroid.optimization.dto import (
@@ -43,20 +42,17 @@ def decoded_cell_to_server_coord(
     *,
     server_xy_params: tuple[int, int] | None,
 ) -> Coord:
+    """Return dense **server** :class:`Coord` for optimization.
+
+    ``server_xy_params`` is kept for the existing helper signature only. This adapter must not
+    convert raw ``x``/``y``; decode/cleanup boundaries provide explicit ``server_x``/``server_y``.
+    """
+
     if cell.server_x is not None and cell.server_y is not None:
         return Coord(cell.server_x, cell.server_y)
-    if server_xy_params is not None:
-        pair = server_xy_for_raw_xy(
-            cell.x,
-            cell.y,
-            max_dense_x=server_xy_params[0],
-            min_raw_y=server_xy_params[1],
-        )
-        if pair is None:
-            raise ValueError(f"Cannot map raw ({cell.x},{cell.y}) to server coords (raw x==0?).")
-        return Coord(pair[0], pair[1])
     raise ValueError(
-        "DecodedCellDTO missing server_x/server_y and no server_xy_params for mapping."
+        "DecodedCellDTO missing server_x/server_y at optimization boundary; "
+        "algorithm input requires Server X/Y."
     )
 
 

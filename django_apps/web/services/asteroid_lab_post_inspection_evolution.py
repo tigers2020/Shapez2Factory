@@ -80,7 +80,7 @@ def _finalize_attach(
         "post_inspection_optimization_replay map_input_id=%s attached=%s reason=%s "
         "attach_diagnostic_stage=%s candidate_count=%s normal_candidate_count=%s "
         "rejected_candidate_count=%s recorder_frame_count=%s evolution_convergence_reason=%s "
-        "error_type=%s",
+        "error_type=%s error_message=%s",
         map_input_id,
         out.attached,
         out.reason,
@@ -91,6 +91,7 @@ def _finalize_attach(
         d.get("recorder_frame_count"),
         d.get("evolution_convergence_reason"),
         d.get("error_type"),
+        d.get("error_message"),
     )
     return out
 

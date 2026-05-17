@@ -470,6 +470,8 @@ def test_post_json_attach_diagnostic_does_not_overwrite_read_diagnostic(
         diagnostic=build_optimization_replay_attach_diagnostic(
             stage="validation",
             validation_passed=False,
+            error_type="ValueError",
+            error_message="validation_ut_short",
         ),
     )
     client = Client()
@@ -486,6 +488,7 @@ def test_post_json_attach_diagnostic_does_not_overwrite_read_diagnostic(
     assert isinstance(attach, dict)
     assert attach.get("reason") == "evolution_failed"
     assert attach.get("diagnostic", {}).get("stage") == "validation"
+    assert attach.get("diagnostic", {}).get("error_message") == "validation_ut_short"
     opt = data[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
     metrics = opt.get("metrics") or {}
     assert metrics.get("optimization_replay_diagnostic_reason") == "missing_optimization_replay"

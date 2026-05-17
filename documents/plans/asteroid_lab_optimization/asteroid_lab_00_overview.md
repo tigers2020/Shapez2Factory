@@ -42,6 +42,8 @@ OptimizationInput·TopologyGraph·RouteGoal.coord·candidate·probe·commit·val
 Server 격자는 정수 밀집(…, -1, 0, 1, …)이며 카테인 이웃은 일반 ±1 규칙이다. 본 최적화 플랜에는 다른 좌표 표현을 두지 않는다.
 ```
 
+**Sequence 12L (좌표 경계):** decode/cleanup/reconstruction이 붙인 **Server X/Y** 이후 알고리즘 계층에서는 raw blueprint ``X``/``Y``·``server_xy_for_raw_xy``를 쓰지 않는다. raw ``X==0`` 열은 dense 가로 인덱스가 없으므로 decode·토폴로지 fill에서 ``server_x=0``, ``server_y=Y-min_raw_y``로 **명시**한다. ``django_apps.shapez_asteroid.optimization`` 패키지와 post-inspection evolution 모듈은 ``asteroid_lab.snapshots.server_coords`` 브리지를 직접 참조하지 않는다(어댑터·decode 경계만).
+
 ## 금지 사항
 
 ### 1. Replay-driven algorithm 금지
@@ -211,3 +213,9 @@ MAX_REPLAY_FRAMES = 500
 ## Trunk vs existing transport (정본)
 
 `existing_transport_cells`(coord + `TransportKind`)와 `existing_trunk_cells`(coord 집합)를 **함께** 둔다. **trunk 멤버십의 정본은 `existing_trunk_cells`** 이다. `ExistingTransportCell`에는 trunk 플래그를 두지 않는다 (중복 표현 제거). adapter는 `existing_trunk_cells ⊆ coords(existing_transport_cells)` invariant를 강제한다.
+## Sequence 12L 좌표 경계 보강 (2026-05-17)
+
+- `OptimizationInput` 이후 알고리즘 계층의 정본 좌표는 Server X/Y dense grid이다.
+- server `x == 0`은 유효 좌표이며, optimization input/candidate/route/evolution/validation/replay 경로에서 실패 조건이 아니다.
+- raw `X`/`Y` 및 `server_xy_for_raw_xy` 계열 변환은 decode/import/cleanup/reconstruction 경계에서만 허용한다.
+- `build_optimization_input` 및 post-inspection evolution 경로는 이미 채워진 `server_x`/`server_y`만 소비하며 raw 좌표를 다시 변환하지 않는다.

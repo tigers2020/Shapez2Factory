@@ -352,6 +352,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                 opt_fc = 0
         attach_summary: tuple[bool, str] | None = None
         attach_diag_stage: str | None = None
+        attach_diag_error_message: str | None = None
         if isinstance(optimization_replay_attach, dict):
             attach_summary = (
                 bool(optimization_replay_attach.get("attached")),
@@ -361,10 +362,13 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             if isinstance(diag, dict):
                 st = diag.get("stage")
                 attach_diag_stage = str(st) if st is not None else None
+                em = diag.get("error_message")
+                attach_diag_error_message = str(em) if em is not None else None
         _logger.info(
             "asteroid_lab_projects_json ok=%s status=%s replay_ok=%s lab_frames=%s "
             "optimization_frame_count=%s optimization_replay_attach=%s "
-            "optimization_replay_attach_diagnostic_stage=%s",
+            "optimization_replay_attach_diagnostic_stage=%s "
+            "optimization_replay_attach_diagnostic_error_message=%s",
             ok,
             status,
             replay_ok,
@@ -376,6 +380,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             opt_fc,
             attach_summary,
             attach_diag_stage,
+            attach_diag_error_message,
         )
         return JsonResponse(body, status=status)
 

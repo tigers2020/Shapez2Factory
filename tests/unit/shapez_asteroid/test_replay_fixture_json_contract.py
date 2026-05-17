@@ -51,6 +51,13 @@ def test_starvation_replay_fixture_roundtrip() -> None:
     assert safe == expected_narrow_corridor_starvation_replay_fixture_v0()
 
 
+def test_replay_fixture_truncation_reason_absent_when_not_truncated() -> None:
+    path = _FIX_DIR / "narrow_corridor_asymmetric_replay.json"
+    fixture = load_replay_fixture_json(path)
+    assert fixture.replay_summary["replay_truncated"] is False
+    assert fixture.truncation_reason is None
+
+
 def test_replay_event_sequence_matches_expected_subsequence() -> None:
     path = _FIX_DIR / "narrow_corridor_asymmetric_replay.json"
     fixture = load_replay_fixture_json(path)

@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "replay_fixture_id": "narrow_corridor_truncated_replay_v0",
+  "replay_frames": [
+    {
+      "frame_index": 0,
+      "event_type": "optimization.input_loaded",
+      "title": "Optimization input loaded",
+      "description": "",
+      "visible_cells": [],
+      "overlay_cells": [],
+      "metrics": {
+        "candidate_count": 2,
+        "rejected_candidate_count": 0
+      }
+    },
+    {
+      "frame_index": 1,
+      "event_type": "genome.generated",
+      "title": "Genome generated (initial population)",
+      "description": "",
+      "visible_cells": [],
+      "overlay_cells": [],
+      "metrics": {
+        "genome_id": "genome_g0_elite00",
+        "generation_index": 0,
+        "population_size": 8,
+        "candidate_count": 2
+      }
+    },
+    {
+      "frame_index": 2,
+      "event_type": "genome.evaluated",
+      "title": "Genome evaluated",
+      "description": "",
+      "visible_cells": [],
+      "overlay_cells": [],
+      "metrics": {
+        "genome_id": "genome_g0_elite00",
+        "generation_index": 0,
+        "fitness_total": 12.5
+      }
+    },
+    {
+      "frame_index": 3,
+      "event_type": "generation.completed",
+      "title": "Generation 0 completed",
+      "description": "",
+      "visible_cells": [],
+      "overlay_cells": [],
+      "metrics": {
+        "generation_index": 0,
+        "fitness_total": 14.0,
+        "population_size": 8,
+        "evaluated_count": 8
+      }
+    },
+    {
+      "frame_index": 4,
+      "event_type": "genome.generated",
+      "title": "Genome generated (offspring)",
+      "description": "",
+      "visible_cells": [],
+      "overlay_cells": [],
+      "metrics": {
+        "genome_id": "genome_g1_mut03",
+        "generation_index": 1,
+        "population_size": 8,
+        "candidate_count": 2
+      }
+    },
+    {
+      "frame_index": 5,
+      "event_type": "genome.evaluated",
+      "title": "Genome evaluated",
+      "description": "",
+      "visible_cells": [],
+      "overlay_cells": [],
+      "metrics": {
+        "genome_id": "genome_g1_mut03",
+        "generation_index": 1,
+        "fitness_total": 15.25
+      }
+    },
+    {
+      "frame_index": 6,
+      "event_type": "generation.completed",
+      "title": "Generation 1 completed",
+      "description": "",
+      "visible_cells": [],
+      "overlay_cells": [],
+      "metrics": {
+        "generation_index": 1,
+        "fitness_total": 15.25,
+        "population_size": 8,
+        "evaluated_count": 8
+      }
+    }
+  ],
+  "replay_summary": {
+    "frame_count": 7,
+    "event_type_counts": {
+      "generation.completed": 2,
+      "genome.evaluated": 2,
+      "genome.generated": 2,
+      "optimization.input_loaded": 1
+    },
+    "replay_truncated": true
+  },
+  "replay_event_sequence": [
+    "optimization.input_loaded",
+    "genome.generated",
+    "genome.evaluated",
+    "generation.completed",
+    "genome.generated",
+    "genome.evaluated",
+    "generation.completed"
+  ],
+  "truncation_reason": "recording_frame_budget",
+  "metadata": {
+    "scenario": "narrow_corridor_truncated_before_best_genome",
+    "contract": "replay_fixture_long_v0",
+    "truncation_note": "prefix_of_evolution_commit_fixture_frames_0_6"
+  }
+}

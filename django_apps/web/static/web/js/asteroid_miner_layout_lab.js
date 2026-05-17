@@ -509,6 +509,62 @@
 
   renderOptimizationReplaySummary(optimizationReplaySummary);
 
+  /**
+   * Sequence 10D — selected optimization replay frame metadata (text only; no geometry, no lab sync).
+   */
+  function selectedOptimizationReplayFrame(track, frameIndex) {
+    if (!track || !Array.isArray(track.frames)) return null;
+    if (!Number.isInteger(frameIndex)) return null;
+    if (frameIndex < 0 || frameIndex >= track.frames.length) return null;
+    return track.frames[frameIndex] || null;
+  }
+
+  function formatOptimizationReplayFrameMetadata(frame) {
+    if (!frame || typeof frame !== "object") {
+      return Object.freeze({
+        title: "No optimization frame selected",
+        eventType: "—",
+        description: "—",
+        metricsSummary: "No metrics",
+      });
+    }
+
+    const metrics =
+      frame.metrics && typeof frame.metrics === "object" ? frame.metrics : {};
+
+    const metricKeys = Object.keys(metrics).sort();
+
+    return Object.freeze({
+      title:
+        typeof frame.title === "string" && frame.title ? frame.title : "Optimization Frame",
+      eventType: typeof frame.event_type === "string" ? frame.event_type : "—",
+      description:
+        typeof frame.description === "string" && frame.description ? frame.description : "—",
+      metricsSummary:
+        metricKeys.length > 0 ? metricKeys.slice(0, 5).join(" · ") : "No metrics",
+    });
+  }
+
+  function renderOptimizationReplayFrameMetadata(meta) {
+    const titleEl = document.getElementById("lab-optimization-frame-title");
+    if (titleEl) titleEl.textContent = meta.title;
+    const evEl = document.getElementById("lab-optimization-frame-event");
+    if (evEl) evEl.textContent = meta.eventType;
+    const descEl = document.getElementById("lab-optimization-frame-description");
+    if (descEl) descEl.textContent = meta.description;
+    const metEl = document.getElementById("lab-optimization-frame-metrics");
+    if (metEl) metEl.textContent = meta.metricsSummary;
+  }
+
+  const selectedOptimizationFrame = hasOptimizationReplayFrames(optimizationReplayTrack)
+    ? selectedOptimizationReplayFrame(optimizationReplayTrack, 0)
+    : null;
+
+  const selectedOptimizationFrameMetadata =
+    formatOptimizationReplayFrameMetadata(selectedOptimizationFrame);
+
+  renderOptimizationReplayFrameMetadata(selectedOptimizationFrameMetadata);
+
   function getCookie(name) {
     const prefix = "; " + name + "=";
     const raw = document.cookie;

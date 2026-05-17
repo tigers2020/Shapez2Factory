@@ -221,7 +221,7 @@ def test_lab_js_has_optimization_replay_normalizer() -> None:
 def test_lab_js_does_not_reference_optimization_replay_for_rendering() -> None:
     js = _read_lab_js()
     for name in (
-        "renderOptimizationReplayFrame",
+        "renderOptimizationReplayFrame(",
         "drawOptimizationOverlay",
         "selectOptimizationTrack",
     ):
@@ -257,6 +257,17 @@ def _lab_js_sequence_10b_region() -> str:
 def _lab_js_sequence_10c_region() -> str:
     js = _read_lab_js()
     start = js.index("* Sequence 10C")
+    d = js.find("* Sequence 10D", start)
+    if d != -1:
+        end = d
+    else:
+        end = js.index("function getCookie", start)
+    return js[start:end]
+
+
+def _lab_js_sequence_10d_region() -> str:
+    js = _read_lab_js()
+    start = js.index("* Sequence 10D")
     end = js.index("function getCookie", start)
     return js[start:end]
 
@@ -361,9 +372,95 @@ def test_lab_js_sequence_10c_skips_geometry_and_frame_indexing() -> None:
     assert "optimizationReplayTrack.frames[" not in region
 
 
+def test_selected_optimization_replay_frame_safe_bounds() -> None:
+    region = _lab_js_sequence_10d_region()
+    assert "function selectedOptimizationReplayFrame(track, frameIndex)" in region
+    assert "Number.isInteger(frameIndex)" in region
+    assert "frameIndex < 0 || frameIndex >= track.frames.length" in region
+
+
+def test_selected_optimization_replay_frame_null_when_empty() -> None:
+    region = _lab_js_sequence_10d_region()
+    assert "return track.frames[frameIndex] || null" in region
+
+
+def test_format_optimization_replay_frame_metadata_empty() -> None:
+    region = _lab_js_sequence_10d_region()
+    assert 'title: "No optimization frame selected"' in region
+    assert 'metricsSummary: "No metrics"' in region
+
+
+def test_format_optimization_replay_frame_metadata_event_type() -> None:
+    region = _lab_js_sequence_10d_region()
+    assert 'typeof frame.event_type === "string"' in region
+
+
+def test_format_optimization_replay_frame_metadata_metrics_summary() -> None:
+    region = _lab_js_sequence_10d_region()
+    assert "metricKeys.slice(0, 5).join" in region
+    assert "Object.keys(metrics).sort()" in region
+
+
+def test_lab_js_does_not_render_optimization_geometry() -> None:
+    region = _lab_js_sequence_10d_region()
+    for name in (
+        "drawOptimizationOverlay",
+        "renderOptimizationReplayFrame(",
+        "optimizationOverlay",
+    ):
+        assert name not in region
+    assert "visible_cells" not in region
+    assert "overlay_cells" not in region
+
+
+def test_lab_js_does_not_read_visible_cells() -> None:
+    assert "visible_cells" not in _lab_js_sequence_10d_region()
+
+
+def test_lab_js_does_not_read_overlay_cells() -> None:
+    assert "overlay_cells" not in _lab_js_sequence_10d_region()
+
+
+def test_lab_js_does_not_sync_with_current_frame_index() -> None:
+    js = _read_lab_js()
+    assert "optimizationReplayTrack.frames[currentFrameIndex]" not in js
+    assert "selectedOptimizationReplayFrame(optimizationReplayTrack, currentFrameIndex)" not in js
+
+
+def test_template_contains_optimization_frame_metadata_targets() -> None:
+    html = _render_lab_shell_html()
+    for sid in (
+        "lab-optimization-frame-title",
+        "lab-optimization-frame-event",
+        "lab-optimization-frame-description",
+        "lab-optimization-frame-metrics",
+    ):
+        assert f'id="{sid}"' in html
+
+
+def test_lab_js_renders_optimization_replay_frame_metadata_once() -> None:
+    js = _read_lab_js()
+    assert js.count("renderOptimizationReplayFrameMetadata(selectedOptimizationFrameMetadata)") == 1
+
+
+def test_render_optimization_replay_frame_metadata_missing_element_no_throw() -> None:
+    region = _lab_js_sequence_10d_region()
+    assert "function renderOptimizationReplayFrameMetadata(meta)" in region
+    assert "if (titleEl) titleEl.textContent" in region
+
+
+def test_lab_js_sequence_10d_skips_geometry_and_track_frames_indexing() -> None:
+    region = _lab_js_sequence_10d_region()
+    assert "optimizationReplayTrack.frames[" not in region
+
+
 def test_lab_js_does_not_render_optimization_overlay() -> None:
     js = _read_lab_js()
-    for name in ("drawOptimizationOverlay", "renderOptimizationReplayFrame", "optimizationOverlay"):
+    for name in (
+        "drawOptimizationOverlay",
+        "renderOptimizationReplayFrame(",
+        "optimizationOverlay",
+    ):
         assert name not in js
     assert "optimizationReplayTrack.frames[" not in js
     assert "visible_cells" not in _lab_js_sequence_10b_region()

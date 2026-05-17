@@ -126,7 +126,7 @@ latest route_domain snapshot
 
 # Priority 1 — Sequence 10 Completion
 
-**상태 정리 (2026-05-17):** Regression Fixtures 하위 **10B-v0**(metrics contract·minimal survivability 비교)는 완료. **10B fixture expansion**(reservation·corridor starvation·late-unreachable 등)과 **10A** 일부 확장 체크리스트는 **미완료**로 남는다. “Sequence 10 전부 완료”로 읽지 말 것.
+**상태 정리 (2026-05-17):** Regression Fixtures 하위 **10B-v0**(metrics contract·minimal survivability 비교)는 완료. **10B narrow corridor expansion(GitHub #14)** 은 `test_corridor_survivability_expansion.py`에 랜드됨. **대칭 rim goal narrow bridge**(`build_symmetric_*`, `test_symmetric_corridor_fixture.py`)로 commit_order가 브리지 소비 순서를 결정함을 별도 고정; **rim_right 단일 goal 비대칭 픽스처**는 의도적 분리 유지. **JSON fixture·full narrow evolution 결정론** 등은 여전히 후속. “Sequence 10 전부 완료”로 읽지 말 것.
 
 ## 목표
 
@@ -232,10 +232,12 @@ test_transport_kind_corridor_conflict_regression
 
 ```text
 10B-v0: metrics contract + minimal survivability comparison — complete
-10B fixture expansion: open (본 절 체크리스트)
+10B narrow corridor expansion (#14): landed in test_corridor_survivability_expansion.py
+10B symmetric dual-goal narrow bridge: test_symmetric_corridor_fixture.py + narrow_corridor.py helpers
+JSON fixture pack: still open
 ```
 
-> **구현 교차 참조 (2026-05-17):** `asteroid_lab_10_development_sequence.md`의 Regression Fixtures **Sequence 10B-v0**에 `CommitSurvivabilityMetrics`·`PenaltyMode`·`commit.survivability_summary` 리플레이가 land했다. 아래 reservation·starvation·late-unreachable fixture 작업은 **expansion**으로 미완료다.
+> **구현 교차 참조 (2026-05-17):** `asteroid_lab_10_development_sequence.md`의 Regression Fixtures **Sequence 10B-v0**에 `CommitSurvivabilityMetrics`·`PenaltyMode`·`commit.survivability_summary` 리플레이가 land했다. **#14 회귀 팩·대칭 goal 변형**은 위 테스트·픽스처로 반영되었고, **직렬화 JSON fixture**는 별도 후속이다.
 
 ## 목적
 

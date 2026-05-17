@@ -10,6 +10,9 @@ GA + local pattern compiler + route feasibility 기반 optimization layer를 안
 
 - **앱 경계:** Lab 리플레이·ORM·디코드는 `django_apps/asteroid_lab/`; 최적화 DTO·GA·probe·validation·replay 직렬화는 `django_apps/shapez_asteroid/optimization/`.
 - **테스트:** `python -m pytest tests/unit/shapez_asteroid/ tests/integration/shapez_asteroid/test_optimization_ui_payload.py` → **193 passed** (에이전트 로컬 실행).
+- **GitHub #14 (narrow corridor expansion):** `tests/unit/shapez_asteroid/test_corridor_survivability_expansion.py`에 reservation·starvation 리플레이·late commit·evolution→commit 스티칭 회귀를 모은다.
+- **대칭 목표 narrow bridge:** `tests/unit/shapez_asteroid/fixtures/narrow_corridor.py`의 `build_symmetric_*` + `tests/unit/shapez_asteroid/test_symmetric_corridor_fixture.py`. 림 우측 단일 goal 편향은 `build_narrow_bridge_optimization_input` 및 기존 비대칭 테스트로 **의도적으로 유지**한다.
+- **JSON fixture:** `tests/fixtures/shapez_asteroid/optimization/` 이하 직렬화 샘플은 본 작업 범위 밖(후속 PR).
 
 ---
 
@@ -350,8 +353,7 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 
 ## Sequence 10 — Regression Fixtures
 
-> **상태:** Sequence **10A** 완료 · Regression Fixtures 하위 **Sequence 10B-v0**(metrics contract + minimal survivability 비교) **완료** · **10B fixture expansion pack**은 미완료. Lab UI 시퀀스 표의 “10A–10F”와 **번호 계층이 다름**.  
-> JSON fixture화·full narrow-map evolutionary 결정론 검증은 후속(12A 등) 범위.
+> **상태:** Sequence **10A** 완료 · Regression Fixtures 하위 **Sequence 10B-v0**(metrics contract + minimal survivability 비교) **완료** · narrow corridor **#14 회귀 팩 + 대칭 goal 변형**은 테스트/픽스처로 반영됨 · **JSON fixture pack·full narrow-map evolutionary 결정론** 등은 여전히 후속. Lab UI 시퀀스 표의 “10A–10F”와 **번호 계층이 다름**.
 
 ### 작업
 
@@ -368,6 +370,7 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 
 ```text
 [x] 3-cell narrow bridge OptimizationInput builder
+[x] dual-goal symmetric narrow bridge builder (`build_symmetric_narrow_bridge_optimization_input`)
 [x] rim competition candidate pool
 [x] candidate probe reachable → commit-time reprobe failure regression
 [x] shared bridge rollback regression

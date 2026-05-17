@@ -126,7 +126,7 @@ latest route_domain snapshot
 
 # Priority 1 — Sequence 10 Completion
 
-**상태 정리 (2026-05-17):** Regression Fixtures 하위 **10B-v0**(metrics contract·minimal survivability 비교)는 완료. **10B narrow corridor expansion(GitHub #14)** 은 `test_corridor_survivability_expansion.py`에 랜드됨. **대칭 rim goal narrow bridge**(`build_symmetric_*`, `test_symmetric_corridor_fixture.py`)로 commit_order가 브리지 소비 순서를 결정함을 별도 고정; **rim_right 단일 goal 비대칭 픽스처**는 의도적 분리 유지. **JSON fixture·full narrow evolution 결정론** 등은 여전히 후속. “Sequence 10 전부 완료”로 읽지 말 것.
+**상태 정리 (2026-05-17):** Regression Fixtures 하위 **10B-v0**(metrics contract·minimal survivability 비교)는 완료. **10B narrow corridor expansion(GitHub #14)** 은 `tests/unit/shapez_asteroid/test_corridor_survivability_expansion.py`에 랜드됨. **대칭 rim goal narrow bridge**(`build_symmetric_*`, `tests/unit/shapez_asteroid/test_symmetric_corridor_fixture.py`)로 commit_order가 브리지 소비 순서를 결정함을 별도 고정; **rim_right 단일 goal 비대칭 픽스처**는 의도적 분리 유지. **JSON fixture·full narrow evolution 결정론** 등은 여전히 후속. “Sequence 10 전부 완료”로 읽지 말 것.
 
 ## 목표
 
@@ -232,8 +232,8 @@ test_transport_kind_corridor_conflict_regression
 
 ```text
 10B-v0: metrics contract + minimal survivability comparison — complete
-10B narrow corridor expansion (#14): landed in test_corridor_survivability_expansion.py
-10B symmetric dual-goal narrow bridge: test_symmetric_corridor_fixture.py + narrow_corridor.py helpers
+10B narrow corridor expansion (#14): landed in tests/unit/shapez_asteroid/test_corridor_survivability_expansion.py
+10B symmetric dual-goal narrow bridge: tests/unit/shapez_asteroid/test_symmetric_corridor_fixture.py + narrow_corridor.py helpers
 JSON fixture pack: still open
 ```
 

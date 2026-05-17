@@ -1372,8 +1372,55 @@
     });
 
     document.getElementById("lab-header-run")?.addEventListener("click", function () {
-      setPlaying(true);
-      applyFrame();
+      if (!hasServerReplay) {
+        return;
+      }
+      const runUrl = rootEl && rootEl.dataset ? rootEl.dataset.labRunSolverUrl || "" : "";
+      const trackIdStr =
+        rootEl && rootEl.dataset && rootEl.dataset.labReplayTrackId != null
+          ? String(rootEl.dataset.labReplayTrackId)
+          : "";
+      const projectSlug =
+        rootEl && rootEl.dataset && rootEl.dataset.labProjectSlug != null
+          ? String(rootEl.dataset.labProjectSlug)
+          : "";
+      if (!runUrl || !trackIdStr || !projectSlug) {
+        return;
+      }
+      fetch(runUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRFToken": labCsrfToken(),
+        },
+        body: JSON.stringify({
+          project_slug: projectSlug,
+          replay_track_id: parseInt(trackIdStr, 10),
+        }),
+      })
+        .then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return { ok: false };
+            })
+            .then(function (data) {
+              return { res: res, data: data };
+            });
+        })
+        .then(function (bundle) {
+          const res = bundle.res;
+          const data = bundle.data;
+          if (!res.ok || !data || data.ok !== true) {
+            return;
+          }
+          replaceLabReplayPayload(data);
+        })
+        .catch(function () {
+          /* ignore */
+        });
     });
 
     document.getElementById("lab-timeline-prev")?.addEventListener("click", function () {

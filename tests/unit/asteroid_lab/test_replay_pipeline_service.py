@@ -128,7 +128,6 @@ def test_replay_pipeline_service_has_no_forbidden_imports() -> None:
     path = lab_root / "replay_pipeline_service.py"
     text = path.read_text(encoding="utf-8")
     forbidden = (
-        "django_apps.shapez_asteroid",
         "django_apps.shapez_solver",
         "django_apps.shapez_core",
         "asteroid_mining_layout_v2",

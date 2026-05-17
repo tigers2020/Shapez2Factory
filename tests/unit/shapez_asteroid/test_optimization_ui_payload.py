@@ -1,4 +1,4 @@
-"""Sequence 9 — optimization replay track Lab payload adapter."""
+"""Sequence 9 — optimization replay track envelope (debug/export; not merged into Lab page)."""
 
 from __future__ import annotations
 
@@ -6,13 +6,12 @@ import json
 
 from django_apps.shapez_asteroid.optimization.dto import OptimizationReplayFrame
 from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEventType
-from django_apps.shapez_asteroid.optimization.optimization_replay import OptimizationReplayRecorder
-from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
+from django_apps.shapez_asteroid.optimization.optimization_replay import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     TRACK_ID,
+    OptimizationReplayRecorder,
     build_optimization_replay_track_payload,
     empty_optimization_replay_track_payload,
-    merge_optimization_track_into_lab_payload,
 )
 
 
@@ -135,28 +134,6 @@ def test_optimization_replay_track_payload_json_safe() -> None:
     json.dumps(build_optimization_replay_track_payload(rec.frames))
 
 
-def test_merge_optimization_track_preserves_existing_payload_fields() -> None:
-    base = {
-        "lab_replay_frames_json": [{"id": 1, "frame_index": 0}],
-        "lab_initial_replay_frame_json": {"id": 1},
-        "has_replay_frames": True,
-        "extra": {"nested": [1, 2]},
-    }
-    merged = merge_optimization_track_into_lab_payload(base, ())
-    assert merged["lab_replay_frames_json"] == base["lab_replay_frames_json"]
-    assert merged["has_replay_frames"] is True
-    assert merged["extra"] == base["extra"]
-    assert OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY in merged
-
-
-def test_merge_optimization_track_does_not_mutate_base_payload() -> None:
-    base: dict[str, object] = {"a": 1, "nested": {"x": 2}}
-    merged = merge_optimization_track_into_lab_payload(base, ())
-    assert OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY not in base
-    assert OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY in merged
-    assert merged is not base
-
-
 def test_optimization_track_uses_enum_values() -> None:
     f = OptimizationReplayFrame(
         0,
@@ -199,7 +176,8 @@ def test_optimization_track_payload_deterministic() -> None:
     assert a == b
 
 
-def test_existing_replay_payload_without_optimization_still_valid() -> None:
+def test_lab_style_replay_payload_without_parallel_track_key_is_json_safe() -> None:
+    """Lab UI bundle shape stays valid without merging a second replay track."""
     base = {
         "lab_replay_frames_json": [{"id": 10, "phase": "p", "event_type": "lab.custom"}],
         "lab_initial_replay_frame_json": {"id": 10},
@@ -207,8 +185,4 @@ def test_existing_replay_payload_without_optimization_still_valid() -> None:
         "lab_ui_initial": {"frame": 0, "totalFrames": 1},
     }
     json.dumps(base)
-    merged = merge_optimization_track_into_lab_payload(base, ())
-    json.dumps(merged)
-    for k in base:
-        assert merged[k] == base[k]
-    assert merged[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]["frame_count"] == 0
+    assert OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY not in base

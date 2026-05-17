@@ -265,6 +265,41 @@ def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
     assert len(data.get("lab_replay_frames_json") or []) >= 5
 
 
+def test_asteroid_miner_layout_run_solver_appends_optimization_frames() -> None:
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    proj = m.AsteroidProject.objects.get()
+    tid = m.ReplayTrack.objects.filter(project=proj).values_list("id", flat=True).first()
+    mid = m.AsteroidMapInput.objects.filter(project=proj).values_list("id", flat=True).first()
+    assert tid is not None and mid is not None
+    n_before = m.ReplayFrame.objects.filter(replay_track_id=tid).count()
+    url = reverse("web:asteroid-miner-layout-run-solver")
+    body = {
+        "project_slug": proj.slug,
+        "replay_track_id": int(tid),
+        "map_input_id": int(mid),
+    }
+    response = client.post(
+        url,
+        data=json.dumps(body),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    appended = int(data["appended_optimization_frames"])
+    assert appended > 0
+    assert int(data["inspection_frame_count_before"]) == n_before
+    frames = data.get("lab_replay_frames_json") or []
+    assert len(frames) == n_before + appended
+    last = frames[-1]
+    assert int(last["frame_index"]) == len(frames) - 1
+    assert str(last["frame_key"]).startswith("optimization_")
+    assert last["phase"] == "optimization"
+
+
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:
     client = Client()
     create_url = reverse("web:asteroid-miner-layout-projects-create")

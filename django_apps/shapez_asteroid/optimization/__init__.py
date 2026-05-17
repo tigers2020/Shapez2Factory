@@ -96,9 +96,15 @@ from django_apps.shapez_asteroid.optimization.incremental_commit import (
 from django_apps.shapez_asteroid.optimization.optimization_replay import (
     MAX_REPLAY_CELLS_PER_FRAME,
     MAX_REPLAY_FRAMES,
+    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
     NoOpOptimizationReplayRecorder,
     OptimizationReplayRecorder,
     OptimizationReplaySink,
+    OptimizationReplayTrackPayload,
+    TRACK_ID,
+    TRACK_LABEL,
+    build_optimization_replay_track_payload,
+    empty_optimization_replay_track_payload,
     json_safe_replay_value,
     optimization_replay_frame_to_json_dict,
     optimization_replay_frames_to_json_list,
@@ -114,15 +120,6 @@ from django_apps.shapez_asteroid.optimization.optimization_replay_events import 
     emit_route_rolled_back,
     emit_validation_completed,
     optimization_input_loaded_metrics,
-)
-from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
-    TRACK_ID,
-    TRACK_LABEL,
-    OptimizationReplayTrackPayload,
-    build_optimization_replay_track_payload,
-    empty_optimization_replay_track_payload,
-    merge_optimization_track_into_lab_payload,
 )
 from django_apps.shapez_asteroid.optimization.pattern_dto import (
     BundlePattern,
@@ -220,7 +217,6 @@ __all__ = [
     "OptimizationReplayTrackPayload",
     "build_optimization_replay_track_payload",
     "empty_optimization_replay_track_payload",
-    "merge_optimization_track_into_lab_payload",
     "emit_best_genome_selected",
     "emit_generation_completed",
     "emit_genome_evaluated",

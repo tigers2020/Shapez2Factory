@@ -9,7 +9,7 @@ import dataclasses
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from enum import Enum
-from typing import Any, Protocol, cast, runtime_checkable
+from typing import Any, Protocol, TypedDict, cast, runtime_checkable
 
 from django_apps.shapez_asteroid.optimization.coords import Coord
 from django_apps.shapez_asteroid.optimization.dto import OptimizationReplayFrame
@@ -188,3 +188,70 @@ def optimization_replay_frames_to_json_list(
     frames: Sequence[OptimizationReplayFrame],
 ) -> list[dict[str, Any]]:
     return [optimization_replay_frame_to_json_dict(f) for f in frames]
+
+
+TRACK_ID = "optimization"
+TRACK_LABEL = "Optimization"
+
+# Deprecated: Lab page no longer merges this key; kept for export/tests.
+OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY = "optimization_replay"
+
+
+class OptimizationReplayTrackPayload(TypedDict):
+    """Standalone optimization track envelope (debug/export)."""
+
+    track_id: str
+    track_label: str
+    frame_count: int
+    frames: list[dict[str, Any]]
+    metrics: dict[str, Any]
+
+
+def _event_type_counts_sorted(frames: Sequence[OptimizationReplayFrame]) -> dict[str, int]:
+    raw: dict[str, int] = {}
+    for f in frames:
+        key = f.event_type.value
+        raw[key] = raw.get(key, 0) + 1
+    return dict(sorted(raw.items()))
+
+
+def _aggregate_replay_truncated(frames: Sequence[OptimizationReplayFrame]) -> bool:
+    return any(bool(f.metrics.get("replay_truncated")) for f in frames)
+
+
+def empty_optimization_replay_track_payload() -> dict[str, object]:
+    """Empty optimization track envelope (debug/export only; not used by Lab page)."""
+
+    return {
+        "track_id": TRACK_ID,
+        "track_label": TRACK_LABEL,
+        "frame_count": 0,
+        "frames": [],
+        "metrics": {
+            "frame_count": 0,
+            "event_type_counts": {},
+            "replay_truncated": False,
+        },
+    }
+
+
+def build_optimization_replay_track_payload(
+    frames: Sequence[OptimizationReplayFrame],
+) -> dict[str, object]:
+    """Serialize frames for standalone export (not merged into Lab page context)."""
+
+    if not frames:
+        return empty_optimization_replay_track_payload()
+
+    serialized = [optimization_replay_frame_to_json_dict(f) for f in frames]
+    return {
+        "track_id": TRACK_ID,
+        "track_label": TRACK_LABEL,
+        "frame_count": len(serialized),
+        "frames": serialized,
+        "metrics": {
+            "frame_count": len(serialized),
+            "event_type_counts": _event_type_counts_sorted(frames),
+            "replay_truncated": _aggregate_replay_truncated(frames),
+        },
+    }

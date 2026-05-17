@@ -46,6 +46,9 @@ from django_apps.web.services.asteroid_lab_page_context import (
     lab_page_context,
     serialize_replay_frame,
 )
+from django_apps.web.services.asteroid_lab_optimization_run import (
+    run_lab_solver_optimization_for_map_input,
+)
 from django_apps.web.services.graph_preview import (
     PlaywrightPngGraphPreviewRenderer,
     png_bytes_are_valid,
@@ -207,6 +210,65 @@ def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> di
         "lab_initial_replay_frame_json": initial,
         "lab_ui_initial": ui,
     }
+
+
+@require_POST
+def asteroid_miner_layout_run_solver(request: HttpRequest) -> JsonResponse:
+    """POST JSON: run bounded optimization and append Lab replay frames (single timeline)."""
+
+    try:
+        body = json.loads(request.body.decode() or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
+
+    slug = str(body.get("project_slug") or "").strip()
+    tid_raw = body.get("replay_track_id")
+    mid_raw = body.get("map_input_id")
+    if not slug or tid_raw is None:
+        return JsonResponse({"ok": False, "error": "missing_fields"}, status=400)
+
+    try:
+        replay_track_id = int(tid_raw)
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "invalid_replay_track_id"}, status=400)
+
+    proj = AsteroidProject.objects.filter(slug=slug).first()
+    if proj is None:
+        return JsonResponse({"ok": False, "error": "unknown_project"}, status=404)
+
+    track = ReplayTrack.objects.filter(pk=replay_track_id, project_id=proj.pk).first()
+    if track is None:
+        return JsonResponse({"ok": False, "error": "replay_track_not_found"}, status=404)
+
+    if mid_raw is not None:
+        try:
+            map_input_id = int(mid_raw)
+        except (TypeError, ValueError):
+            return JsonResponse({"ok": False, "error": "invalid_map_input_id"}, status=400)
+        inp = AsteroidMapInput.objects.filter(pk=map_input_id, project_id=proj.pk).first()
+    else:
+        inp = AsteroidMapInput.objects.filter(project_id=proj.pk).order_by("-id").first()
+
+    if inp is None:
+        return JsonResponse({"ok": False, "error": "no_map_input"}, status=400)
+
+    try:
+        n0, appended = run_lab_solver_optimization_for_map_input(
+            map_input_id=int(inp.pk),
+            replay_track_id=replay_track_id,
+        )
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "error": "invalid_request", "message": str(exc)}, status=400)
+
+    bundle = _lab_json_bundle_for_track_id(replay_track_id, copy_code=inp.copy_code)
+    return JsonResponse(
+        {
+            "ok": True,
+            "inspection_frame_count_before": n0,
+            "appended_optimization_frames": appended,
+            **bundle,
+        }
+    )
 
 
 def asteroid_miner_layout_solver(request: HttpRequest) -> HttpResponse:

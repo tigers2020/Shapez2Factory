@@ -1,17 +1,13 @@
-"""Lab context exposes optimization replay envelope (Sequence 9B, DB-backed shell)."""
+"""Lab page context no longer exposes a parallel optimization replay payload."""
 
 from __future__ import annotations
 
 import pytest
 
-from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
-    empty_optimization_replay_track_payload,
-)
 from django_apps.web.services.asteroid_lab_page_context import lab_page_context
 
 
 @pytest.mark.django_db
-def test_lab_page_context_optimization_replay_matches_empty_payload_helper() -> None:
+def test_lab_page_context_has_no_parallel_optimization_replay_key() -> None:
     ctx = lab_page_context()
-    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
+    assert "optimization_replay" not in ctx

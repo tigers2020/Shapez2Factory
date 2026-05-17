@@ -4,34 +4,28 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest import mock
 
 import pytest
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay import event_types as et
-from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
-    empty_optimization_replay_track_payload,
-)
 from django_apps.web.services import asteroid_lab_page_context as alc
 
 
-def test_neutral_lab_context_includes_empty_optimization_replay() -> None:
+def test_neutral_lab_context_has_no_parallel_optimization_key() -> None:
     ctx = alc.neutral_lab_context()
-    assert OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY in ctx
-    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
+    assert "optimization_replay" not in ctx
 
 
 @pytest.mark.django_db
-def test_lab_page_context_includes_optimization_replay_key() -> None:
+def test_lab_page_context_has_no_parallel_optimization_key() -> None:
     m.AsteroidProject.objects.create(name="Empty", slug="empty-opt-replay-key")
     ctx = alc.lab_page_context()
-    assert OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY in ctx
+    assert "optimization_replay" not in ctx
 
 
 @pytest.mark.django_db
-def test_optimization_replay_context_payload_is_empty_track_by_default() -> None:
+def test_lab_context_has_no_empty_parallel_track_when_replay_exists() -> None:
     p = m.AsteroidProject.objects.create(name="WithLabReplay", slug="with-lab-replay-opt")
     t = m.ReplayTrack.objects.create(project=p, track_key="tr-opt")
     m.ReplayFrame.objects.create(
@@ -46,10 +40,7 @@ def test_optimization_replay_context_payload_is_empty_track_by_default() -> None
     )
     ctx = alc.lab_page_context()
     assert ctx["has_replay_frames"] is True
-    opt = ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
-    assert opt == empty_optimization_replay_track_payload()
-    assert opt["frame_count"] == 0
-    assert opt["frames"] == []
+    assert "optimization_replay" not in ctx
 
 
 @pytest.mark.django_db
@@ -58,40 +49,15 @@ def test_existing_lab_context_fields_preserved() -> None:
     neutral = alc.neutral_lab_context()
     ctx = alc.lab_page_context()
     for key in neutral:
-        if key == OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY:
-            continue
         assert key in ctx
         assert ctx[key] == neutral[key]
 
 
 @pytest.mark.django_db
-def test_context_optimization_replay_json_safe() -> None:
+def test_context_json_serializable() -> None:
     m.AsteroidProject.objects.create(name="JsonSafe", slug="json-safe-opt")
     ctx = alc.lab_page_context()
-    json.dumps(ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY])
-
-
-@pytest.mark.django_db
-def test_context_does_not_invoke_optimizer_runner() -> None:
-    m.AsteroidProject.objects.create(name="NoRunner", slug="no-runner-opt")
-    p = "django_apps.shapez_asteroid.optimization.optimization_ui_payload"
-    with (
-        mock.patch(f"{p}.build_optimization_replay_track_payload") as build_track,
-        mock.patch(f"{p}.optimization_replay_frame_to_json_dict") as frame_to_json,
-    ):
-        alc.neutral_lab_context()
-        alc.lab_page_context()
-    build_track.assert_not_called()
-    frame_to_json.assert_not_called()
-
-
-def test_context_template_payload_backward_compatible_if_template_touched() -> None:
-    root = Path(__file__).resolve().parents[3]
-    tpl = (
-        root / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
-    ).read_text(encoding="utf-8")
-    assert 'lab_replay_frames_json|json_script:"lab-replay-frames-data"' in tpl
-    assert "optimization_replay" not in tpl
+    json.dumps(ctx)
 
 
 @pytest.mark.django_db
@@ -102,7 +68,7 @@ def test_lab_page_context_neutral_when_no_replay_frames() -> None:
     assert ctx["total_frames"] == 0
     assert ctx["lab_replay_frames_json"] == []
     assert ctx["lab_initial_replay_frame_json"] == {}
-    assert ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] == empty_optimization_replay_track_payload()
+    assert "optimization_replay" not in ctx
 
 
 @pytest.mark.django_db
@@ -286,18 +252,12 @@ def test_lab_page_context_module_import_boundary() -> None:
     forbidden = (
         "django_apps.shapez_core",
         "django_apps.shapez_solver",
+        "django_apps.shapez_asteroid",
         "asteroid_mining_layout_v1",
         "asteroid_mining_layout_v2",
     )
     for bad in forbidden:
         assert bad not in text, f"asteroid_lab_page_context must not mention {bad!r}"
-    if "django_apps.shapez_asteroid" in text:
-        allowed = "from django_apps.shapez_asteroid.optimization.optimization_ui_payload import"
-        assert allowed in text, (
-            "shapez_asteroid imports are limited to optimization_ui_payload "
-            "(Sequence 9B lab optimization replay payload seam)"
-        )
-        assert text.count("django_apps.shapez_asteroid") == 1
 
 
 def test_lab_js_replay_wiring_smoke() -> None:
@@ -333,6 +293,7 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "bindLabViewportInteractions" in js
     assert "LAB_VIEWPORT_MIN_SCALE" in js
     assert "__shapezLabReplaySelfTestViewportZoomStability" in js
+    assert "labRunSolverUrl" in js
 
 
 def test_lab_replay_stage_absolute_inset_template_contract() -> None:
@@ -342,6 +303,7 @@ def test_lab_replay_stage_absolute_inset_template_contract() -> None:
     ).read_text(encoding="utf-8")
     assert 'id="lab-replay-grid-stage"' in tpl
     assert "absolute inset-4" in tpl
+    assert "run-solver" in tpl
 
 
 def test_lab_replay_viewport_css_layout_contract() -> None:

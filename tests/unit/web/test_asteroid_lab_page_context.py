@@ -190,13 +190,98 @@ def test_template_does_not_include_raw_unescaped_optimization_json() -> None:
     assert parsed["track_label"] == malicious["track_label"]
 
 
-def test_no_frontend_controller_logic_added_for_optimization_replay_json() -> None:
+def _read_lab_js() -> str:
     root = Path(__file__).resolve().parents[3]
     js_path = (
         root / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
     )
-    js = js_path.read_text(encoding="utf-8")
-    assert "optimization-replay-json" not in js
+    return js_path.read_text(encoding="utf-8")
+
+
+def test_lab_js_reads_optimization_replay_json_script_id() -> None:
+    js = _read_lab_js()
+    assert 'const OPTIMIZATION_REPLAY_SCRIPT_ID = "optimization-replay-json"' in js
+
+
+def test_lab_js_has_safe_json_script_reader() -> None:
+    js = _read_lab_js()
+    assert "function readJsonScriptPayload(scriptId, fallback)" in js
+    assert "if (!el) return fallback" in js
+    assert 'JSON.parse(el.textContent || "null")' in js
+    assert "catch (_err)" in js
+
+
+def test_lab_js_has_optimization_replay_normalizer() -> None:
+    js = _read_lab_js()
+    assert "function normalizeOptimizationReplayTrack(raw)" in js
+    assert "EMPTY_OPTIMIZATION_REPLAY_TRACK" in js
+    assert "raw.frames.slice()" in js
+
+
+def test_lab_js_does_not_reference_optimization_replay_for_rendering() -> None:
+    js = _read_lab_js()
+    for name in (
+        "renderOptimizationReplayFrame",
+        "drawOptimizationOverlay",
+        "selectOptimizationTrack",
+    ):
+        assert name not in js, f"10A must not add {name!r}"
+    assert "renderReplayFrame(optimizationReplayTrack" not in js
+    assert 'readJsonScript("optimization-replay-json"' not in js
+
+
+def test_lab_js_does_not_change_existing_replay_script_ids() -> None:
+    js = _read_lab_js()
+    assert 'readJsonScript("lab-replay-frames-data")' in js
+
+
+def test_lab_js_no_console_spam_for_optimization_replay() -> None:
+    js = _read_lab_js()
+    start = js.index("Sequence 10A")
+    end = js.index("function getCookie", start)
+    chunk = js[start:end]
+    assert "console." not in chunk
+
+
+def test_template_still_exposes_optimization_replay_json_script() -> None:
+    tpl = (
+        Path(__file__).resolve().parents[3]
+        / "django_apps"
+        / "web"
+        / "templates"
+        / "web"
+        / "asteroid_miner_layout_solver.html"
+    ).read_text(encoding="utf-8")
+    assert 'optimization_replay|json_script:"optimization-replay-json"' in tpl
+    assert 'id="optimization-replay-json"' in _render_lab_shell_html()
+
+
+def test_optimization_replay_missing_payload_fallback_contract_documented() -> None:
+    js = _read_lab_js()
+    assert "fallback contract" in js
+    assert "malformed JSON yields" in js
+    assert "EMPTY_OPTIMIZATION_REPLAY_TRACK" in js
+
+
+def test_read_json_script_payload_missing_returns_fallback() -> None:
+    js = _read_lab_js()
+    assert "if (!el) return fallback" in js
+
+
+def test_read_json_script_payload_malformed_returns_fallback() -> None:
+    js = _read_lab_js()
+    assert "catch (_err)" in js
+    assert "return fallback" in js
+
+
+def test_normalize_optimization_replay_track_accepts_empty_track() -> None:
+    js = _read_lab_js()
+    assert 'if (!raw || typeof raw !== "object") return EMPTY_OPTIMIZATION_REPLAY_TRACK' in js
+
+
+def test_normalize_optimization_replay_track_freezes_frames() -> None:
+    js = _read_lab_js()
+    assert "frames: Object.freeze(frames)" in js
 
 
 @pytest.mark.django_db

@@ -378,6 +378,63 @@
     }
   }
 
+  /**
+   * Sequence 10A — optimization replay bootstrap (parse + frozen metadata only).
+   * Missing ``#optimization-replay-json`` or malformed JSON yields ``EMPTY_OPTIMIZATION_REPLAY_TRACK``
+   * (fallback contract; no throw, no console, not wired to solver or replay renderer).
+   */
+  const OPTIMIZATION_REPLAY_SCRIPT_ID = "optimization-replay-json";
+  const EMPTY_OPTIMIZATION_REPLAY_TRACK = Object.freeze({
+    track_id: "optimization",
+    track_label: "Optimization",
+    frame_count: 0,
+    frames: Object.freeze([]),
+    metrics: Object.freeze({
+      frame_count: 0,
+      event_type_counts: Object.freeze({}),
+      replay_truncated: false,
+    }),
+  });
+
+  function readJsonScriptPayload(scriptId, fallback) {
+    const el = document.getElementById(scriptId);
+    if (!el) return fallback;
+    try {
+      const parsed = JSON.parse(el.textContent || "null");
+      return parsed == null ? fallback : parsed;
+    } catch (_err) {
+      return fallback;
+    }
+  }
+
+  function normalizeOptimizationReplayTrack(raw) {
+    if (!raw || typeof raw !== "object") return EMPTY_OPTIMIZATION_REPLAY_TRACK;
+
+    const frames = Array.isArray(raw.frames) ? raw.frames.slice() : [];
+    const metricsRaw = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
+
+    return Object.freeze({
+      track_id: typeof raw.track_id === "string" ? raw.track_id : "optimization",
+      track_label: typeof raw.track_label === "string" ? raw.track_label : "Optimization",
+      frame_count: Number.isFinite(Number(raw.frame_count)) ? Number(raw.frame_count) : frames.length,
+      frames: Object.freeze(frames),
+      metrics: Object.freeze({
+        frame_count: Number.isFinite(Number(metricsRaw.frame_count))
+          ? Number(metricsRaw.frame_count)
+          : frames.length,
+        event_type_counts:
+          metricsRaw.event_type_counts && typeof metricsRaw.event_type_counts === "object"
+            ? Object.freeze({ ...metricsRaw.event_type_counts })
+            : Object.freeze({}),
+        replay_truncated: Boolean(metricsRaw.replay_truncated),
+      }),
+    });
+  }
+
+  const optimizationReplayTrack = normalizeOptimizationReplayTrack(
+    readJsonScriptPayload(OPTIMIZATION_REPLAY_SCRIPT_ID, EMPTY_OPTIMIZATION_REPLAY_TRACK),
+  );
+
   function getCookie(name) {
     const prefix = "; " + name + "=";
     const raw = document.cookie;

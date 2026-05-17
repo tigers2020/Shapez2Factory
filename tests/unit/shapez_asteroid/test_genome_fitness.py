@@ -19,6 +19,7 @@ from django_apps.shapez_asteroid.optimization.dto import (
 )
 from django_apps.shapez_asteroid.optimization.enums import (
     CardinalDirection,
+    PenaltyMode,
     RouteClass,
     RouteGoalKind,
     RouteProbeFailureReason,
@@ -305,3 +306,41 @@ def test_unknown_enabled_gene_ignored_deterministically() -> None:
     genome = Genome("g", (Gene("ghost", True, 0), Gene("only", True, 1)), seed=0)
     sel = genome_selected_candidates(genome, (c,))
     assert tuple(x.candidate_id for x in sel) == ("only",)
+
+
+def test_conservative_penalties_include_fragility_and_shared_on_overlapping_paths() -> None:
+    """Sequence 10B: CONSERVATIVE mode fills the last two penalty slots from probe paths."""
+
+    g_east = _goal(Coord(2, 0), kind=RouteGoalKind.EXTERNAL_MARGIN, priority=1)
+    path = (Coord(1, 0), Coord(2, 0))
+    pr = _probe_ok(goal=g_east, path=path, cost=len(path))
+    left = _bundle("L", pr, occupied_cells=frozenset({Coord(0, 0)}))
+    right = _bundle("R", pr, occupied_cells=frozenset({Coord(3, 0)}))
+    pool = (left, right)
+    dual = Genome("dual", (Gene("L", True, 0), Gene("R", True, 1)), seed=0)
+    domain = {
+        Coord(1, 0): RouteCellDomain(
+            Coord(1, 0),
+            RouteClass.NARROW_CORRIDOR,
+            2,
+            False,
+            False,
+            TransportMask.BOTH,
+        ),
+        Coord(2, 0): RouteCellDomain(
+            Coord(2, 0),
+            RouteClass.STANDARD,
+            2,
+            False,
+            False,
+            TransportMask.BOTH,
+        ),
+    }
+    off = evaluate_genome(dual, pool, route_domain=domain, penalty_mode=PenaltyMode.OFF)
+    con = evaluate_genome(dual, pool, route_domain=domain, penalty_mode=PenaltyMode.CONSERVATIVE)
+    assert off.route_fragility_penalty == 0.0
+    assert off.shared_corridor_pressure_penalty == 0.0
+    assert con.route_fragility_penalty > 0.0
+    assert con.shared_corridor_pressure_penalty > 0.0
+    assert con.total < off.total
+    assert fitness_breakdown_total_matches_components(con) is True

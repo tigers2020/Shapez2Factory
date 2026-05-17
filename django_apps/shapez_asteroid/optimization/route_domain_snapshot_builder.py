@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 from django_apps.shapez_asteroid.optimization.coords import Coord
 from django_apps.shapez_asteroid.optimization.dto import (
     ExistingTransportCell,
@@ -129,7 +127,25 @@ class RouteDomainSnapshotBuilder:
         confirmed_reservations: tuple[RouteReservation, ...] = (),
         committed_occupied_cells: frozenset[Coord] = frozenset(),
     ) -> dict[Coord, RouteCellDomain]:
-        """Rebuild ``route_domain`` from seed, placements, and reservations (Sequence 6)."""
+        """Sequence 6 overlay; delegates to :meth:`build_snapshot`."""
+
+        return RouteDomainSnapshotBuilder.build_snapshot(
+            inp,
+            confirmed_reservations=confirmed_reservations,
+            committed_occupied_cells=committed_occupied_cells,
+        )
+
+    @staticmethod
+    def build_snapshot(
+        inp: OptimizationInput,
+        *,
+        confirmed_reservations: tuple[RouteReservation, ...] = (),
+        committed_occupied_cells: frozenset[Coord] = frozenset(),
+    ) -> dict[Coord, RouteCellDomain]:
+        """Canonical route_domain snapshot: seed, or seed plus commit overlays."""
+
+        if not confirmed_reservations and not committed_occupied_cells:
+            return RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
 
         base = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
         for c in sorted(committed_occupied_cells, key=lambda z: (z.x, z.y)):
@@ -177,9 +193,3 @@ class RouteDomainSnapshotBuilder:
                     transport_mask=mask_same,
                 )
         return base
-
-    @staticmethod
-    def build_snapshot(inp: OptimizationInput) -> Mapping[Coord, RouteCellDomain]:
-        """Public API: seed snapshot (commit overlays use ``build_commit_snapshot``)."""
-
-        return dict(RouteDomainSnapshotBuilder.build_seed_snapshot(inp))

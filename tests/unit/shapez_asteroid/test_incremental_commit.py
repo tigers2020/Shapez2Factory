@@ -672,7 +672,7 @@ def test_incremental_commit_route_cell_conflict() -> None:
     assert reason is CommitConflictReason.ROUTE_CELL_CONFLICT
 
 
-def test_incremental_commit_hard_protected_conflict() -> None:
+def test_incremental_commit_hard_blocked_conflict() -> None:
     inp, goal = _strip_input()
     c0, c1, c2 = Coord(0, 0), Coord(1, 0), Coord(2, 0)
     inp2 = OptimizationInput(
@@ -719,7 +719,7 @@ def test_incremental_commit_hard_protected_conflict() -> None:
     ):
         res = commit_best_genome(genome, pool, inp2, RouteDomainSnapshotBuilder)
 
-    assert res.candidate_results[0].conflict_reason is CommitConflictReason.HARD_PROTECTED_CONFLICT
+    assert res.candidate_results[0].conflict_reason is CommitConflictReason.HARD_BLOCKED_CONFLICT
 
 
 def test_incremental_commit_occupied_cell_conflict_on_path() -> None:

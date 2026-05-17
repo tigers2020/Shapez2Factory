@@ -133,7 +133,7 @@ def _path_conflict_reason(
         return CommitConflictReason.OCCUPIED_CELL_CONFLICT
     for c in path:
         if c in inp.blocked_cells:
-            return CommitConflictReason.HARD_PROTECTED_CONFLICT
+            return CommitConflictReason.HARD_BLOCKED_CONFLICT
         dom = route_domain.get(c)
         if dom is None:
             return CommitConflictReason.ROUTE_PROBE_FAILED
@@ -155,7 +155,7 @@ def _invoke_build_commit(
     occupied: frozenset[Coord],
 ) -> dict[Coord, RouteCellDomain]:
     cls: type[RouteDomainSnapshotBuilder] = cls_or if isinstance(cls_or, type) else type(cls_or)
-    return cls.build_commit_snapshot(
+    return cls.build_snapshot(
         inp,
         confirmed_reservations=confirmed,
         committed_occupied_cells=occupied,

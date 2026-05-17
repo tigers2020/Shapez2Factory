@@ -102,6 +102,7 @@ class CommitConflictReason(StrEnum):
     OCCUPIED_CELL_CONFLICT = "occupied_cell_conflict"
     ROUTE_CELL_CONFLICT = "route_cell_conflict"
     TRANSPORT_KIND_CONFLICT = "transport_kind_conflict"
+    HARD_BLOCKED_CONFLICT = "hard_blocked_conflict"
     HARD_PROTECTED_CONFLICT = "hard_protected_conflict"
     TRUNK_DEADLOCK = "trunk_deadlock"
     ROUTE_PROBE_FAILED = "route_probe_failed"

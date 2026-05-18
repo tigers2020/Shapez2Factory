@@ -17,6 +17,10 @@ from typing import Any
 from django_apps.asteroid_lab.replay.snapshot_map_replay import cell_key_xy_layer, diff_maps
 from django_apps.asteroid_lab.services.dto import ReplayFrameAppendDTO, SnapshotEventDTO
 from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    map_bbox_dense_and_y_from_lab_rows,
+    raw_xy_for_server_xy,
+)
 from django_apps.shapez_asteroid.optimization.dto import (
     IncrementalCommitResult,
     OptimizationReplayFrame,
@@ -39,7 +43,13 @@ def _metrics_json_safe(metrics: Mapping[str, object]) -> dict[str, Any]:
     return dict(raw) if isinstance(raw, dict) else {"value": raw}
 
 
-def _overlay_rows_from_cells(cells: tuple[object, ...]) -> list[dict[str, Any]]:
+def _overlay_rows_from_cells(
+    cells: tuple[object, ...],
+    *,
+    server_xy_params: tuple[int, int] | None,
+    lab_rows: list[dict[str, Any]] | None,
+    candidate_id: str | None,
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for c in cells:
         row = json_safe_replay_value(c)
@@ -50,12 +60,47 @@ def _overlay_rows_from_cells(cells: tuple[object, ...]) -> list[dict[str, Any]]:
             r.setdefault("cell_kind", "optimization_overlay")
             r.setdefault("transport_kind", "none")
             r.setdefault("tile_type", "")
+            if server_xy_params is not None:
+                sx = int(r["x"])
+                sy = int(r["y"])
+                r["server_x"] = sx
+                r["server_y"] = sy
+                max_dx, min_y = int(server_xy_params[0]), int(server_xy_params[1])
+                rx, ry = raw_xy_for_server_xy(
+                    sx,
+                    sy,
+                    max_dense_x=max_dx,
+                    min_raw_y=min_y,
+                    lab_rows=lab_rows,
+                )
+                r["x"] = rx
+                r["y"] = ry
+            if candidate_id:
+                r["optimization_candidate_id"] = candidate_id
             rows.append(r)
     return rows
 
 
-def _cell_overlay_json(visible: tuple[object, ...], overlay: tuple[object, ...]) -> dict[str, Any]:
-    rows = _overlay_rows_from_cells(visible) + _overlay_rows_from_cells(overlay)
+def _cell_overlay_json(
+    visible: tuple[object, ...],
+    overlay: tuple[object, ...],
+    *,
+    server_xy_params: tuple[int, int] | None,
+    lab_rows: list[dict[str, Any]] | None,
+    frame_metrics: Mapping[str, object],
+) -> dict[str, Any]:
+    cid = str(frame_metrics.get("candidate_id") or "").strip() or None
+    rows = _overlay_rows_from_cells(
+        visible,
+        server_xy_params=server_xy_params,
+        lab_rows=lab_rows,
+        candidate_id=cid,
+    ) + _overlay_rows_from_cells(
+        overlay,
+        server_xy_params=server_xy_params,
+        lab_rows=lab_rows,
+        candidate_id=cid,
+    )
     return {"cells": rows, "equipment_bundles": build_equipment_bundles(rows)}
 
 
@@ -124,6 +169,10 @@ def optimization_replay_frames_to_lab_append_dtos(
     out: list[ReplayFrameAppendDTO] = []
     for local_i, frame in enumerate(frames):
         before_map = deepcopy(working)
+        bbox = map_bbox_dense_and_y_from_lab_rows(working)
+        server_xy_params: tuple[int, int] | None = (
+            (int(bbox[0]), int(bbox[1])) if bbox is not None else None
+        )
         et = frame.event_type.value
         if et in COMMIT_CLASS_OPTIMIZATION_EVENT_TYPES and commit_result is not None:
             rid = frame.metrics.get("route_reservation_id")
@@ -137,8 +186,17 @@ def optimization_replay_frames_to_lab_append_dtos(
                 _apply_reservation_path_to_rows(working, path=res.path, transport_kind_value=tk)
 
         full_map_snapshot = deepcopy(working)
-        overlay = _cell_overlay_json(frame.visible_cells, frame.overlay_cells)
-        metrics = _metrics_json_safe(frame.metrics)
+        metrics_src = dict(frame.metrics)
+        if server_xy_params is not None:
+            metrics_src["server_xy_params"] = [server_xy_params[0], server_xy_params[1]]
+        overlay = _cell_overlay_json(
+            frame.visible_cells,
+            frame.overlay_cells,
+            server_xy_params=server_xy_params,
+            lab_rows=working,
+            frame_metrics=metrics_src,
+        )
+        metrics = _metrics_json_safe(metrics_src)
         diff = diff_maps(before_map, full_map_snapshot)
 
         event_key = f"optimization_{local_i:02d}_{_slug_from_event_type(frame.event_type)}"

@@ -185,12 +185,90 @@ def map_bbox_dense_and_y(entries: list[dict[str, Any]]) -> tuple[int, int] | Non
     return (max(t[2] for t in coords), min(t[1] for t in coords))
 
 
+def _lab_row_raw_xy(item: dict[str, Any]) -> tuple[int, int] | None:
+    """Lab ``full_map`` / overlay rows: lowercase ``x``/``y`` or blueprint-style ``X``/``Y``."""
+
+    if not isinstance(item, dict):
+        return None
+    if "x" in item:
+        return _as_int(item.get("x")), _as_int(item.get("y"))
+    if "X" in item:
+        return _as_int(item.get("X")), _as_int(item.get("Y"))
+    return None
+
+
+def map_bbox_dense_and_y_from_lab_rows(entries: list[dict[str, Any]]) -> tuple[int, int] | None:
+    """Like :func:`map_bbox_dense_and_y` for Lab replay rows (``x``/``y`` keys)."""
+
+    coords: list[tuple[int, int, int]] = []
+    for item in entries:
+        pair = _lab_row_raw_xy(item)
+        if pair is None:
+            continue
+        x, y = pair
+        if x == 0:
+            continue
+        try:
+            dx = raw_x_to_dense_x(x)
+        except ValueError:
+            continue
+        coords.append((x, y, dx))
+    if not coords:
+        return None
+    return (max(t[2] for t in coords), min(t[1] for t in coords))
+
+
+def raw_xy_for_server_xy(
+    sx: int,
+    sy: int,
+    *,
+    max_dense_x: int,
+    min_raw_y: int,
+    lab_rows: list[dict[str, Any]] | None = None,
+) -> tuple[int, int]:
+    """Inverse of :func:`server_xy_for_raw_xy` for Lab/UI projection.
+
+    When ``lab_rows`` is provided, the first row whose ``(server_x, server_y)`` matches
+    ``(sx, sy)`` (computed from that row's raw ``x``/``y``) wins — this disambiguates the
+    two-raw-columns-per-dense strip. Otherwise use the canonical odd-raw mapping
+    ``raw_x = 2 * (max_dense_x - sx) - 1`` (matches the dense column seam used with server).
+    """
+
+    t_sx, t_sy = int(sx), int(sy)
+    raw_y = t_sy + int(min_raw_y)
+    if lab_rows:
+        for item in lab_rows:
+            if not isinstance(item, dict):
+                continue
+            pair = _lab_row_raw_xy(item)
+            if pair is None:
+                continue
+            rx, ry = pair
+            if rx == 0:
+                continue
+            sp = server_xy_for_raw_xy(
+                rx,
+                ry,
+                max_dense_x=int(max_dense_x),
+                min_raw_y=int(min_raw_y),
+            )
+            if sp is None:
+                continue
+            if sp == (t_sx, t_sy):
+                return (rx, ry)
+    dense_x = int(max_dense_x) - t_sx
+    raw_x = 2 * dense_x - 1
+    return (raw_x, raw_y)
+
+
 __all__ = [
     "COORD_SYSTEM_BBOX_RIGHT_BOTTOM",
     "attach_server_coords_to_decoded_json",
     "coerce_server_axis_int",
     "dense_x_layout_line_including_zero",
     "map_bbox_dense_and_y",
+    "map_bbox_dense_and_y_from_lab_rows",
+    "raw_xy_for_server_xy",
     "raw_x_to_dense_x",
     "server_xy_for_layout_line_xy",
     "server_xy_for_raw_xy",

@@ -1438,7 +1438,21 @@
           const anchorIdx = findLabBaseAnchorIndex(replayFrames, replayArrayIndex);
           const anchorFr = replayFrames[anchorIdx];
           renderReplayFrame(anchorFr, baseClasses, domCells, resolveCellIndex);
-          const proj = projectOptimizationReplayFrameToLabOverlay(fr, resolveCellIndex);
+          const anchorLabRows = fullMapCellsFromFrame(anchorFr);
+          let proj;
+          const OptAcc =
+            typeof globalThis !== "undefined" ? globalThis.LabOptimizationOverlayAccumulator : null;
+          if (OptAcc) {
+            proj = OptAcc.projectCumulative(
+              replayFrames,
+              anchorIdx,
+              replayArrayIndex,
+              resolveCellIndex,
+              anchorLabRows,
+            );
+          } else {
+            proj = projectOptimizationReplayFrameToLabOverlay(fr, resolveCellIndex);
+          }
           renderLabOptimizationOverlayLayer(proj.directives, proj.diagnostics);
         } else {
           clearLabOptimizationOverlayLayer();
@@ -2352,6 +2366,9 @@
 
     window.AsteroidLabReplay = {
       getCurrentReplayFrame: getCurrentReplayFrame,
+      optimizationOverlayAccumulator:
+        typeof globalThis !== "undefined" ? globalThis.LabOptimizationOverlayAccumulator : null,
+      projectOptimizationReplayFrameToLabOverlay: projectOptimizationReplayFrameToLabOverlay,
       renderReplayFrame: function (fr) {
         renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
       },

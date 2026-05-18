@@ -53,6 +53,7 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert 'id="lab-replay-grid-hud-role"' in content
     assert 'id="lab-optimization-overlay-layer"' in content
     assert "data-lab-optimization-overlay-enabled" in content
+    assert "lab_optimization_overlay_accumulator.js" in content
 
 
 def test_asteroid_miner_layout_ignores_code_query_string() -> None:

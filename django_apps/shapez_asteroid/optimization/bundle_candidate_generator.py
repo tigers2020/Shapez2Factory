@@ -216,6 +216,7 @@ def generate_bundle_candidates(
                             "pattern_id": pattern.pattern_id,
                             "transport_kind": tk,
                             "candidate_reject_reason": CandidateRejectReason.EXTRACTOR_NOT_RIM,
+                            "candidate_id": candidate_id,
                         },
                     )
                     _fail_attempt()
@@ -244,6 +245,7 @@ def generate_bundle_candidates(
                             "pattern_id": pattern.pattern_id,
                             "transport_kind": tk,
                             "candidate_reject_reason": CandidateRejectReason.EXTENSION_NOT_MINEABLE,
+                            "candidate_id": candidate_id,
                         },
                     )
                     _fail_attempt()
@@ -274,6 +276,7 @@ def generate_bundle_candidates(
                             "candidate_reject_reason": (
                                 CandidateRejectReason.OCCUPIED_OUTSIDE_ASTEROID
                             ),
+                            "candidate_id": candidate_id,
                         },
                     )
                     _fail_attempt()
@@ -302,6 +305,7 @@ def generate_bundle_candidates(
                             "pattern_id": pattern.pattern_id,
                             "transport_kind": tk,
                             "candidate_reject_reason": CandidateRejectReason.PATTERN_OVERLAP_SELF,
+                            "candidate_id": candidate_id,
                         },
                     )
                     _fail_attempt()
@@ -332,6 +336,7 @@ def generate_bundle_candidates(
                             "candidate_reject_reason": (
                                 CandidateRejectReason.OUTPUT_STUB_INSIDE_OCCUPIED
                             ),
+                            "candidate_id": candidate_id,
                         },
                     )
                     _fail_attempt()
@@ -362,6 +367,7 @@ def generate_bundle_candidates(
                             "candidate_reject_reason": (
                                 CandidateRejectReason.OUTPUT_STUB_INVALID_COORD
                             ),
+                            "candidate_id": candidate_id,
                         },
                     )
                     _fail_attempt()
@@ -412,6 +418,7 @@ def generate_bundle_candidates(
                     fail_metrics = {
                         **probe_base_metrics,
                         "route_probe_failure_reason": probe_res.failure_reason,
+                        "candidate_id": candidate_id,
                     }
                     vis, ovl = _geometry_attempt_cells(
                         occupied,
@@ -456,6 +463,7 @@ def generate_bundle_candidates(
                                     CandidateRejectReason.ROUTE_PROBE_UNREACHABLE
                                 ),
                                 "route_probe_failure_reason": probe_res.failure_reason,
+                                "candidate_id": candidate_id,
                             },
                         )
                     if not config.allow_diagnostic_unreachable:
@@ -465,7 +473,11 @@ def generate_bundle_candidates(
                         break
                     continue
 
-                ok_metrics = {**probe_base_metrics, "route_probe_failure_reason": None}
+                ok_metrics = {
+                    **probe_base_metrics,
+                    "route_probe_failure_reason": None,
+                    "candidate_id": candidate_id,
+                }
                 vis_ok, ovl_ok = _geometry_attempt_cells(
                     occupied,
                     output_stub,

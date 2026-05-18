@@ -20,7 +20,9 @@ from django_apps.asteroid_lab.snapshots.server_coords import (
     COORD_SYSTEM_BBOX_RIGHT_BOTTOM,
     attach_server_coords_to_decoded_json,
     coerce_server_axis_int,
+    map_bbox_dense_and_y_from_lab_rows,
     raw_x_to_dense_x,
+    raw_xy_for_server_xy,
     server_xy_for_raw_xy,
 )
 from django_apps.shapez_asteroid.adapters.reconstruction_adapter import decoded_cell_to_server_coord
@@ -47,6 +49,24 @@ def test_raw_x_zero_raises() -> None:
 def test_server_xy_right_bottom_origin_single_cell() -> None:
     pair = server_xy_for_raw_xy(1, 0, max_dense_x=1, min_raw_y=0)
     assert pair == (0, 0)
+
+
+def test_raw_xy_for_server_xy_round_trip_with_lookup() -> None:
+    lab_rows = [
+        {"x": 1, "y": 0, "cell_kind": "field"},
+        {"x": 3, "y": 0, "cell_kind": "field"},
+    ]
+    sx0, sy0 = server_xy_for_raw_xy(1, 0, max_dense_x=2, min_raw_y=0)
+    assert (sx0, sy0) == (1, 0)
+    sx1, sy1 = server_xy_for_raw_xy(3, 0, max_dense_x=2, min_raw_y=0)
+    assert (sx1, sy1) == (0, 0)
+    assert raw_xy_for_server_xy(sx0, sy0, max_dense_x=2, min_raw_y=0, lab_rows=lab_rows) == (1, 0)
+    assert raw_xy_for_server_xy(sx1, sy1, max_dense_x=2, min_raw_y=0, lab_rows=lab_rows) == (3, 0)
+
+
+def test_map_bbox_dense_and_y_from_lab_rows_matches_two_columns() -> None:
+    rows = [{"x": 1, "y": 0}, {"x": 3, "y": 0}]
+    assert map_bbox_dense_and_y_from_lab_rows(rows) == (2, 0)
 
 
 def test_coerce_server_axis_int_rejects_bool_accepts_integral_float() -> None:

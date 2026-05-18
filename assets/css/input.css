@@ -99,6 +99,23 @@
     box-shadow: inset 0 0 0 2px rgb(248 113 113 / 0.92);
   }
 
+  .lab-opt-status-committed {
+    outline: 2px solid rgb(52 211 153 / 0.75);
+    outline-offset: -2px;
+  }
+
+  .lab-opt-status-rejected {
+    filter: grayscale(0.4) brightness(0.88);
+  }
+
+  .lab-opt-status-rolled-back {
+    filter: grayscale(0.65) brightness(0.78);
+  }
+
+  .lab-opt-status-probe-failed {
+    filter: saturate(0.75) brightness(0.92);
+  }
+
   /* Fills viewport padding box (match template p-4 / Tailwind inset-4); out of flow so cell-pixel zoom
    * does not inflate #lab-replay-grid-viewport height in flex layouts. */
   #lab-replay-grid-stage {

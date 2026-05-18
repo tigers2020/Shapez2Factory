@@ -65,7 +65,7 @@ def test_overlay_event_preserves_full_map_shape() -> None:
         event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
         title="c",
         description="",
-        visible_cells=(Coord(2, 0),),
+        visible_cells=(Coord(0, 0),),
         overlay_cells=(),
         metrics={"k": 1},
     )
@@ -155,7 +155,7 @@ def test_route_committed_then_overlay_preserves_committed_full_map() -> None:
         event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
         title="after",
         description="",
-        visible_cells=(Coord(1, 0),),
+        visible_cells=(Coord(0, 0),),
         overlay_cells=(),
         metrics={"k": 2},
     )
@@ -210,35 +210,45 @@ def test_candidate_geometry_dict_roles_round_trip_in_cell_overlay() -> None:
             "cell_kind": "field",
             "transport_kind": "none",
             "tile_type": "",
-        }
+        },
+        {
+            "x": 3,
+            "y": 0,
+            "layer": 0,
+            "cell_kind": "field",
+            "transport_kind": "none",
+            "tile_type": "",
+        },
     ]
-    stub = {"x": 3, "y": 0, "layer": 0, "overlay_role": "output_stub", "severity": "info"}
-    path_cell = {"x": 2, "y": 0, "layer": 0, "overlay_role": "route_path", "severity": "info"}
+    # Server coords for raw (1,0) and (3,0) with max_dense_x=2, min_raw_y=0 → (1,0) and (0,0).
+    stub = {"x": 1, "y": 0, "layer": 0, "overlay_role": "output_stub", "severity": "info"}
+    path_cell = {"x": 0, "y": 0, "layer": 0, "overlay_role": "route_path", "severity": "info"}
     fr = OptimizationReplayFrame(
         frame_index=0,
         event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
         title="c",
         description="",
-        visible_cells=(Coord(2, 0), stub),
+        visible_cells=(Coord(1, 0), stub),
         overlay_cells=(path_cell,),
         metrics={},
     )
     dtos = optimization_replay_frames_to_lab_append_dtos((fr,), baseline_full_map=list(base))
     cells = dtos[0].cell_overlay_json.get("cells") or []
-    at_2 = [
+    at_3 = [
         c
         for c in cells
-        if isinstance(c, dict) and int(c.get("x", -1)) == 2 and int(c.get("y", -1)) == 0
+        if isinstance(c, dict) and int(c.get("x", -1)) == 3 and int(c.get("y", -1)) == 0
     ]
-    roles_at_2 = [str(c.get("overlay_role") or "") for c in at_2]
-    assert "route_path" in roles_at_2
-    assert any(str(c.get("cell_kind") or "") == "optimization_overlay" for c in at_2)
+    roles_at_3 = [str(c.get("overlay_role") or "") for c in at_3]
+    assert "route_path" in roles_at_3
+    assert any(str(c.get("cell_kind") or "") == "optimization_overlay" for c in at_3)
     assert any(
         isinstance(c, dict)
-        and int(c.get("x", -1)) == 3
+        and int(c.get("x", -1)) == 1
         and str(c.get("overlay_role")) == "output_stub"
         for c in cells
     )
+    assert dtos[0].metric_snapshot_json.get("server_xy_params") == [2, 0]
 
 
 def test_overlay_frame_before_commit_matches_baseline_full_map() -> None:
@@ -259,7 +269,7 @@ def test_overlay_frame_before_commit_matches_baseline_full_map() -> None:
         event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
         title="probe",
         description="",
-        visible_cells=(Coord(1, 0),),
+        visible_cells=(Coord(0, 0),),
         overlay_cells=(),
         metrics={"k": 0},
     )

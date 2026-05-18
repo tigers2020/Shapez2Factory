@@ -96,3 +96,33 @@ def ensure_default_replay_track(
         solver_run_id=track.solver_run_id,
         track_key=track.track_key,
     )
+
+
+@transaction.atomic
+def resolve_inspection_solver_run(
+    project_id: int,
+    *,
+    run_key: str,
+    algorithm_label: str,
+    config: dict[str, Any] | None = None,
+    overwrite: bool = False,
+) -> SolverRunDTO:
+    """Create a new inspection run, or reuse and clear frames when ``overwrite`` is true."""
+
+    if overwrite:
+        run = SolverRun.objects.filter(project_id=project_id, run_key=run_key).first()
+        if run is not None:
+            track = ReplayTrack.objects.filter(project_id=project_id, track_key=run_key).first()
+            if track is not None:
+                track.frames.all().delete()
+            ref = ensure_default_replay_track(project_id, run.id, track_key=run_key)
+            return _solver_run_dto(run, replay_track_id=ref.track_id)
+    return create_solver_run(
+        project_id,
+        run_key=run_key,
+        algorithm_label=algorithm_label,
+        config=dict(config or {}),
+    )
+
+
+__all__ = ["create_solver_run", "ensure_default_replay_track", "resolve_inspection_solver_run"]

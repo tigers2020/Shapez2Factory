@@ -22,7 +22,7 @@ from django_apps.asteroid_lab.models import (
 )
 from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
-    create_copy_code_map_input,
+    upsert_map_input_for_project,
 )
 from django_apps.asteroid_lab.services.project_service import (
     resolve_or_create_project_slug_for_copy_code,
@@ -352,15 +352,15 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                     status=400,
                 )
             return redirect(redirect_url)
-        inp = create_copy_code_map_input(stay_project, copy_code, source_label="")
-        result = build_initial_replay_for_map_input(int(inp.pk), force=True)
+        inp, _created = upsert_map_input_for_project(stay_project, copy_code, source_label="")
+        result = build_initial_replay_for_map_input(int(inp.pk), overwrite=True)
         if result.status != "ok" and result.error_message:
             messages.error(request, result.error_message)
         redirect_url = reverse("web:asteroid-miner-layout-project", kwargs={"slug": stay_slug})
         bundle = _lab_json_bundle_for_track_id(result.replay_track_id, copy_code=copy_code)
         if wants_json:
             return _json_response(
-                ok=True,
+                ok=result.status == "ok",
                 redirect_url=redirect_url,
                 in_place=True,
                 copy_for_blueprint=copy_code,
@@ -401,13 +401,13 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                 .first()
             )
         if inp is not None:
-            result = build_initial_replay_for_map_input(int(inp.pk))
+            result = build_initial_replay_for_map_input(int(inp.pk), overwrite=True)
             if (
                 result.status != "ok"
                 and result.error_message
                 and "force=True" in result.error_message
             ):
-                result = build_initial_replay_for_map_input(int(inp.pk), force=True)
+                result = build_initial_replay_for_map_input(int(inp.pk), overwrite=True)
             if result.status != "ok" and result.error_message:
                 messages.error(request, result.error_message)
     redirect_url = reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})
@@ -415,13 +415,14 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
         tid = getattr(result, "replay_track_id", None) if result is not None else None
         bundle = _lab_json_bundle_for_track_id(tid, copy_code=copy_code)
         err = (getattr(result, "error_message", "") or "") if result is not None else ""
+        replay_ok = getattr(result, "status", None) == "ok" if result is not None else False
         return _json_response(
-            ok=True,
+            ok=replay_ok,
             redirect_url=redirect_url,
             in_place=False,
             copy_for_blueprint=copy_code,
             replay_bundle=bundle,
-            replay_ok=getattr(result, "status", None) == "ok" if result is not None else False,
+            replay_ok=replay_ok,
             error_message=err,
         )
     return redirect(redirect_url)

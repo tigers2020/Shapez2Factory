@@ -68,18 +68,24 @@ def test_persist_reconstructed_map_idempotent(hole_island_copy: str) -> None:
         map_input_id=inp.id,
         run_key="manual-1",
         recon=recon,
+        cleanup=cleanup,
         cleanup_summary=dict(cleanup.summary_json),
     )
     pk2 = persist_reconstructed_asteroid_map(
         map_input_id=inp.id,
         run_key="manual-1",
         recon=recon,
+        cleanup=cleanup,
         cleanup_summary=dict(cleanup.summary_json),
     )
     assert pk1 == pk2
     assert m.ReconstructedAsteroidMap.objects.filter(map_input=inp).count() == 1
     row = m.ReconstructedAsteroidMap.objects.get(pk=pk1)
     assert row.copy_code.endswith("$")
+    assert row.rebuilt_copy_code.endswith("$")
+    assert row.export_json.get("BP")
+    assert row.reconstruction_json.get("reconstructed_cells") is not None
+    assert row.entries.count() >= 1
     assert row.cell_count >= 1
 
 
@@ -105,11 +111,14 @@ def test_pipeline_persists_reconstructed_map(hole_island_copy: str) -> None:
 def test_load_orm_row_imports_field_kinds_not_miner_extension(hole_island_copy: str) -> None:
     proj = m.AsteroidProject.objects.create(name="Load", slug="recon-load")
     inp = m.AsteroidMapInput.objects.create(project=proj, copy_code=hole_island_copy)
-    _cleanup, recon = run_reconstruction_for_map_input(inp.id)
+    norm = normalize_decoded_blueprint(decode_copy_string(hole_island_copy.removesuffix("$")))
+    persist_decoded_snapshot_for_map_input(inp.id, norm)
+    cleanup, recon = run_reconstruction_for_map_input(inp.id)
     pk = persist_reconstructed_asteroid_map(
         map_input_id=inp.id,
         run_key="load-test",
         recon=recon,
+        cleanup=cleanup,
     )
     cells = load_reconstructed_asteroid_cells(pk=pk)
     assert "shape_miner_extension" not in {c.cell_kind for c in cells}

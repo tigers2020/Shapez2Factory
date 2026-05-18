@@ -24,7 +24,7 @@ from django_apps.asteroid_lab.services.existing_layout_service import (
     persist_existing_layout_inspection_snapshot,
     record_existing_layout_inspection_frames,
 )
-from django_apps.asteroid_lab.services.experiment_service import create_solver_run
+from django_apps.asteroid_lab.services.experiment_service import resolve_inspection_solver_run
 from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
     persist_decoded_snapshot_for_map_input,
@@ -94,8 +94,13 @@ def build_initial_replay_for_map_input(
     algorithm_label: str = "inspection_only",
     config: dict[str, Any] | None = None,
     force: bool = False,
+    overwrite: bool = False,
 ) -> InitialReplayPipelineResultDTO:
-    """Decode copy text, persist JSON, scaffold SolverRun/ReplayTrack, record inspection frames."""
+    """Decode copy text, persist JSON, scaffold SolverRun/ReplayTrack, record inspection frames.
+
+    ``overwrite=True``: same ``run_key``, replace replay frames and reconstructed map rows in place.
+    ``force=True``: new ``run_key`` suffix (new SolverRun); does not imply overwrite.
+    """
 
     inp = m.AsteroidMapInput.objects.filter(pk=int(map_input_id)).select_related("project").first()
     if inp is None:
@@ -120,7 +125,7 @@ def build_initial_replay_for_map_input(
     if force:
         rk = f"{rk}-{secrets.token_hex(4)}"[:120]
 
-    if not force:
+    if not force and not overwrite:
         existing_run = m.SolverRun.objects.filter(
             project_id=inp.project_id,
             run_key=rk,
@@ -131,7 +136,8 @@ def build_initial_replay_for_map_input(
                 track_key=rk,
             ).first()
             n = int(track.frames.count()) if track is not None else 0
-            if n >= _INSPECTION_EXPECTED_FRAMES and track is not None:
+            recon_pk = _latest_reconstructed_map_pk(int(inp.pk), rk)
+            if n >= _INSPECTION_EXPECTED_FRAMES and track is not None and recon_pk is not None:
                 return _result_from_completed_track(
                     inp, run_key=rk, solver_run=existing_run, track=track
                 )
@@ -176,11 +182,12 @@ def build_initial_replay_for_map_input(
 
     persist_decoded_snapshot_for_map_input(int(inp.pk), norm)
 
-    run_dto = create_solver_run(
+    run_dto = resolve_inspection_solver_run(
         int(inp.project_id),
         run_key=rk,
         algorithm_label=algorithm_label,
         config=dict(config or {}),
+        overwrite=overwrite and not force,
     )
     track_id = int(run_dto.replay_track_id)
 
@@ -203,6 +210,7 @@ def build_initial_replay_for_map_input(
         map_input_id=int(inp.pk),
         run_key=rk,
         recon=recon,
+        cleanup=cleanup,
         cleanup_summary=dict(cleanup.summary_json),
         solver_run_id=int(run_dto.id),
     )

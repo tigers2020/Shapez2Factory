@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import replace
 from typing import Any
 
 from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
@@ -11,6 +12,7 @@ from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
 )
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string, encode_copy_string
 from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
+from django_apps.asteroid_lab.reconstruction.evidence import ASTEROID_FIELD_KINDS
 from django_apps.asteroid_lab.services.dto import (
     DecodedCellDTO,
     NormalizedBlueprintDTO,
@@ -27,7 +29,10 @@ from django_apps.asteroid_lab.snapshots.server_coords import (
     map_bbox_dense_and_y,
     server_xy_for_raw_xy,
 )
-from django_apps.asteroid_lab.snapshots.transport_components import sort_key_xy_layer
+from django_apps.asteroid_lab.snapshots.transport_components import (
+    is_transport_tile,
+    sort_key_xy_layer,
+)
 
 T_SHAPE_FIELD = "Layout_ShapeMinerExtension"
 T_FLUID_FIELD = "Layout_FluidMinerExtension"
@@ -47,14 +52,65 @@ _T_TO_KIND: dict[str, str] = {
 
 
 def tile_type_for_reconstruction_export(cell: DecodedCellDTO) -> str:
-    """Map reconstruction cell to game ``T`` for persisted copy/json."""
+    """Map reconstruction cell to game ``T`` for persisted copy/json (fields → Extension only)."""
 
-    mapped = _KIND_TO_T.get(cell.cell_kind)
-    if mapped is not None:
-        return mapped
+    if cell.cell_kind in ASTEROID_FIELD_KINDS:
+        mapped = _KIND_TO_T.get(cell.cell_kind)
+        if mapped is not None:
+            return mapped
+    if cell.cell_kind in ("fluid_miner", "fluid_miner_extension"):
+        return T_FLUID_FIELD
+    if cell.cell_kind in ("shape_miner", "shape_miner_extension"):
+        return T_SHAPE_FIELD
+    if cell.tile_type in (T_FLUID_FIELD, T_SHAPE_FIELD):
+        return cell.tile_type
     if cell.tile_type:
         return cell.tile_type
     return ""
+
+
+def _remap_cell_to_asteroid_field(cell: DecodedCellDTO) -> DecodedCellDTO | None:
+    """Normalize strippable/building tiles to ``asteroid_*_field`` for game field export."""
+
+    if is_transport_tile(cell):
+        return None
+    if cell.cell_kind in ASTEROID_FIELD_KINDS:
+        tt = tile_type_for_reconstruction_export(cell)
+        return replace(cell, tile_type=tt)
+    if cell.cell_kind in ("fluid_miner", "fluid_miner_extension"):
+        return replace(
+            cell,
+            cell_kind="asteroid_fluid_field",
+            tile_type=T_FLUID_FIELD,
+            transport_kind="none",
+        )
+    if cell.cell_kind in ("shape_miner", "shape_miner_extension"):
+        return replace(
+            cell,
+            cell_kind="asteroid_shape_field",
+            tile_type=T_SHAPE_FIELD,
+            transport_kind="none",
+        )
+    return None
+
+
+def cells_for_field_export(cells: tuple[DecodedCellDTO, ...]) -> tuple[DecodedCellDTO, ...]:
+    """Field-only cells for ``rebuilt_copy_code`` (Extension ``T``, no belts/pipes/miners)."""
+
+    out: list[DecodedCellDTO] = []
+    for cell in cells:
+        mapped = _remap_cell_to_asteroid_field(cell)
+        if mapped is not None:
+            out.append(mapped)
+    return tuple(sorted(out, key=sort_key_xy_layer))
+
+
+def cells_for_field_export_from_decoded_json(
+    decoded_json: dict[str, Any],
+) -> tuple[DecodedCellDTO, ...]:
+    """Import decoded blueprint then keep only asteroid field cells for game paste."""
+
+    return cells_for_field_export(load_reconstruction_cells_from_decoded_json(decoded_json))
 
 
 def cell_kind_for_reconstruction_import(tile_type: str) -> tuple[str, str]:
@@ -250,6 +306,8 @@ def reconstruction_cell_keys(
 __all__ = [
     "T_FLUID_FIELD",
     "T_SHAPE_FIELD",
+    "cells_for_field_export",
+    "cells_for_field_export_from_decoded_json",
     "build_reconstructed_blueprint_root",
     "build_reconstructed_normalized_dto",
     "cell_kind_for_reconstruction_import",

@@ -54,12 +54,14 @@ class AsteroidMapInput(models.Model):
     layout_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
     absolute_layout_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ("-created_at",)
+        ordering = ("-updated_at",)
         indexes = [
             models.Index(fields=["project", "source_kind"]),
             models.Index(fields=["content_sha256"]),
+            models.Index(fields=["-updated_at"]),
         ]
 
     def __str__(self) -> str:
@@ -542,15 +544,25 @@ class ReconstructedAsteroidMap(models.Model):
         related_name="reconstructed_maps",
     )
     run_key = models.CharField(max_length=120, db_index=True)
-    copy_code = models.TextField(verbose_name="복사 문자열 (SHAPEZ2-4-…$)")
-    decoded_json = models.JSONField(default=dict, blank=True, verbose_name="디코드 JSON")
+    copy_code = models.TextField(verbose_name="복사 문자열 (SHAPEZ2-4-…$, = rebuilt)")
+    original_copy_code = models.TextField(blank=True, verbose_name="원본 paste copy")
+    rebuilt_copy_code = models.TextField(blank=True, verbose_name="export_json 인코딩")
+    decoded_json = models.JSONField(default=dict, blank=True, verbose_name="디코드 JSON (lab)")
+    export_json = models.JSONField(default=dict, blank=True, verbose_name="게임 export JSON")
+    reconstruction_json = models.JSONField(default=dict, blank=True, verbose_name="복원 셀 메타")
     summary_json = models.JSONField(default=dict, blank=True, verbose_name="reconstruction 요약")
     cell_count = models.PositiveIntegerField(default=0)
     layout_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
+    anchor_raw_x = models.IntegerField(null=True, blank=True)
+    anchor_raw_y = models.IntegerField(null=True, blank=True)
+    anchor_server_x = models.IntegerField(null=True, blank=True)
+    anchor_server_y = models.IntegerField(null=True, blank=True)
+    coord_system = models.CharField(max_length=80, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ("-created_at",)
+        ordering = ("-updated_at",)
         verbose_name = "복원 소행성 맵"
         verbose_name_plural = "복원 소행성 맵"
         constraints = [
@@ -560,10 +572,66 @@ class ReconstructedAsteroidMap(models.Model):
             ),
         ]
         indexes = [
-            models.Index(fields=["map_input", "-created_at"]),
-            models.Index(fields=["project", "-created_at"]),
+            models.Index(fields=["map_input", "-updated_at"]),
+            models.Index(fields=["project", "-updated_at"]),
             models.Index(fields=["layout_fingerprint"]),
+            models.Index(fields=["-updated_at"]),
         ]
 
     def __str__(self) -> str:
         return f"ReconstructedAsteroidMap #{self.pk} map_input={self.map_input_id}"
+
+
+class ReconstructedAsteroidEntry(models.Model):
+    """Exportable / evidence rows for one reconstructed map (query + audit)."""
+
+    class EntryKind(models.TextChoices):
+        MINER = "miner", "Miner"
+        MINER_EXTENSION = "miner_extension", "Miner extension"
+        BELT = "belt", "Belt"
+        PIPE = "pipe", "Pipe"
+        ASTEROID_FIELD = "asteroid_field", "Asteroid field"
+        VOID = "void", "Void"
+        UNKNOWN = "unknown", "Unknown"
+
+    class EntrySource(models.TextChoices):
+        ORIGINAL = "original", "Original"
+        CLEANUP_REMOVED = "cleanup_removed", "Cleanup removed"
+        RECONSTRUCTION = "reconstruction", "Reconstruction"
+        GENERATED = "generated", "Generated"
+
+    map = models.ForeignKey(
+        ReconstructedAsteroidMap,
+        on_delete=models.CASCADE,
+        related_name="entries",
+    )
+    raw_x = models.IntegerField(null=True, blank=True)
+    raw_y = models.IntegerField(null=True, blank=True)
+    server_x = models.IntegerField()
+    server_y = models.IntegerField()
+    t = models.IntegerField(null=True, blank=True, verbose_name="numeric T")
+    layout_id = models.CharField(max_length=128, blank=True)
+    layout_name = models.CharField(max_length=128, blank=True)
+    r = models.IntegerField(null=True, blank=True)
+    kind = models.CharField(max_length=32, choices=EntryKind.choices, db_index=True)
+    source = models.CharField(max_length=32, choices=EntrySource.choices, db_index=True)
+    payload = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "복원 소행성 엔트리"
+        verbose_name_plural = "복원 소행성 엔트리"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("map", "server_x", "server_y", "kind", "source"),
+                name="uniq_recon_entry_map_xy_kind_source",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["map", "server_x", "server_y"]),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"ReconstructedAsteroidEntry #{self.pk} "
+            f"map={self.map_id} ({self.server_x},{self.server_y}) {self.kind}/{self.source}"
+        )

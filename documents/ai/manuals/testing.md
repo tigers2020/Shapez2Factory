@@ -127,12 +127,15 @@ CI에서는 `black --check .`로 포맷만 검사하는 경우가 있다.
 
 ## 완료 보고
 
-에이전트·PR 설명에 다음을 포함한다([`AGENTS.md`](../../../AGENTS.md) **완료 조건**과 같은 보고 체계).
+에이전트·PR 설명은 [`AGENTS.md`](../../../AGENTS.md) · [`.cursor/rules/caveman-output.mdc`](../../../.cursor/rules/caveman-output.mdc) **Caveman 6절만** 쓴다. **6절 없이 완료 보고 금지.**
 
-1. **무엇을 바꿨는지** (변경 요약).
-2. **어떤 계약·불변식**에 영향이 있는지.
-3. **추가·수정한 테스트**가 무엇인지(없으면 다음 항).
-4. **실행한 기존 테스트·검증** (`pytest` **경로·구간**, `ruff`, `mypy`, `black` 등). 전체 스위트를 돌리지 않았다면 그 이유·남은 위험.
-5. **새 테스트를 넣지 않은 경우** 그것이 수용 가능한 이유(예: 순수 포맷·주석만 변경).
+| Caveman 절 | 포함할 내용 |
+|------------|-------------|
+| **Summary** | 변경 요약 |
+| **Files** | 변경 파일·이유 |
+| **Contracts** | 계약·불변식; 테스트 추가/생략 이유 |
+| **Tests** | `pytest` 경로·`ruff`·`mypy`·`black` — pass/fail/skipped; 전체 pytest 생략 이유 |
+| **Risks** | 미실행 명령·남은 위험 |
+| **Next** | 이후 진행; 「완료」는 여기만 |
 
-실행 못 한 명령·이유·남은 위험도 적는다.
+예외: Plan mode 본문 · 사용자 상세 설명 요청 · `documents/` 파일 본문. 상세: [`cursor_usage.md`](cursor_usage.md) §17.

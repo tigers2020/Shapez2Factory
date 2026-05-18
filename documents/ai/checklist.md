@@ -10,6 +10,10 @@
 - [x] `documents/Algorithm/mining_solver_cursor_sessions/` 및 관련 active 플랜/체크리스트 정리
 - [x] `config/shapez_runtime_flags.py`에서 mining 전용 env 노출 제거(복사 디버그·그래프 프리뷰만 유지)
 
+## 에이전트 품질 게이트
+
+- [ ] 마감 보고 **Caveman 6절** 준수 ([`caveman-output.mdc`](../../.cursor/rules/caveman-output.mdc) · [`AGENTS.md`](../../AGENTS.md))
+
 ## 검증 (로컬)
 
 - [ ] `python manage.py check`

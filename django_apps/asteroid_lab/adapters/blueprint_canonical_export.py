@@ -52,6 +52,18 @@ def _is_extractor_tile(t: str) -> bool:
     return t in ("Layout_FluidMiner", "Layout_ShapeMiner")
 
 
+def _is_field_extension_tile(t: str) -> bool:
+    return t in ("Layout_FluidMinerExtension", "Layout_ShapeMinerExtension")
+
+
+_FIELD_EXPORT_TILES: frozenset[str] = frozenset(
+    {
+        "Layout_FluidMinerExtension",
+        "Layout_ShapeMinerExtension",
+    }
+)
+
+
 def _strip_lab_entry(row: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k in _GAME_ENTRY_KEYS:
@@ -64,16 +76,35 @@ def _strip_lab_entry(row: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _extractor_anchor(entries: list[dict[str, Any]]) -> tuple[int, int]:
-    candidates: list[tuple[int, int]] = []
+def _export_anchor(entries: list[dict[str, Any]]) -> tuple[int, int]:
+    """Anchor for lab → official XY: miner first, else min ``Layout_*MinerExtension``."""
+
+    miners: list[tuple[int, int]] = []
+    extensions: list[tuple[int, int]] = []
     for row in entries:
         t = str(row.get("T", ""))
+        xy = (_as_int(row.get("X")), _as_int(row.get("Y")))
         if _is_extractor_tile(t):
-            candidates.append((_as_int(row.get("X")), _as_int(row.get("Y"))))
-    if not candidates:
-        msg = "no Layout_*Miner extractor in BP.Entries for official export anchor"
-        raise ValueError(msg)
-    return min(candidates)
+            miners.append(xy)
+        elif _is_field_extension_tile(t):
+            extensions.append(xy)
+    if miners:
+        return min(miners)
+    if extensions:
+        return min(extensions)
+    msg = "no Layout_*Miner or Layout_*MinerExtension anchor in BP.Entries for official export"
+    raise ValueError(msg)
+
+
+def _extractor_anchor(entries: list[dict[str, Any]]) -> tuple[int, int]:
+    return _export_anchor(entries)
+
+
+def _coords_look_like_game_export(entries: list[dict[str, Any]]) -> bool:
+    """True when blueprint ``X`` values match in-game paste space (negative columns common)."""
+
+    xs = [_as_int(row.get("X")) for row in entries if isinstance(row, dict)]
+    return bool(xs) and min(xs) < 0
 
 
 def strip_lab_fields_from_root(root: dict[str, Any]) -> dict[str, Any]:
@@ -138,6 +169,61 @@ def translate_lab_entries_to_official_xy(entries: list[dict[str, Any]]) -> list[
         out.append({"X": ox, "Y": oy, "R": r, "T": t})
     out.sort(key=lambda e: (_as_int(e.get("X")), _as_int(e.get("Y")), str(e.get("T", ""))))
     return out
+
+
+def _field_export_entries(entries_raw: list[Any]) -> list[dict[str, Any]]:
+    """Keep only Extension field tiles for in-game asteroid-field paste (no miners/pipes)."""
+
+    out: list[dict[str, Any]] = []
+    for item in entries_raw:
+        if not isinstance(item, dict):
+            continue
+        t = str(item.get("T", ""))
+        if t not in _FIELD_EXPORT_TILES:
+            continue
+        out.append(_strip_lab_entry(dict(item)))
+    out.sort(key=lambda row: (_as_int(row.get("X")), _as_int(row.get("Y")), str(row.get("T", ""))))
+    return out
+
+
+def to_game_paste_island_root(lab_layout_root: dict[str, Any]) -> dict[str, Any]:
+    """Build island JSON for in-game paste.
+
+  Field tiles only (``Layout_*MinerExtension``). Game-import coordinates (``X < 0``) are kept;
+  positive lab-space layouts use ``translate_lab_entries_to_official_xy``.
+    """
+
+    base = strip_lab_fields_from_root(lab_layout_root)
+    bp_in = base["BP"]
+    assert isinstance(bp_in, dict)
+    entries_raw = bp_in.get("Entries")
+    assert isinstance(entries_raw, list)
+    field_entries = _field_export_entries(entries_raw)
+    if not field_entries:
+        msg = "no Layout_*MinerExtension field entries for game paste export"
+        raise ValueError(msg)
+
+    if _coords_look_like_game_export(field_entries):
+        return {
+            "V": OFFICIAL_BINARY_VERSION,
+            "BP": {
+                "$type": "Island",
+                "Icon": dict(OFFICIAL_ISLAND_ICON),
+                "Entries": field_entries,
+                "BinaryVersion": OFFICIAL_BINARY_VERSION,
+            },
+        }
+
+    tmp_root: dict[str, Any] = {
+        "V": base.get("V", OFFICIAL_BINARY_VERSION),
+        "BP": {
+            "$type": "Island",
+            "Icon": dict(OFFICIAL_ISLAND_ICON),
+            "Entries": field_entries,
+            "BinaryVersion": OFFICIAL_BINARY_VERSION,
+        },
+    }
+    return to_official_island_root(tmp_root)
 
 
 def to_official_island_root(lab_layout_root: dict[str, Any]) -> dict[str, Any]:

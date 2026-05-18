@@ -7,6 +7,8 @@ from typing import Any
 
 from django.db import transaction
 
+from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
+from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
 from django_apps.asteroid_lab.models import AsteroidMapInput, AsteroidProject
 from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_jsonl
 from django_apps.asteroid_lab.services.dto import NormalizedBlueprintDTO
@@ -43,25 +45,71 @@ def content_sha256_for_copy_code(copy_code: str) -> str:
     return hashlib.sha256(copy_code.encode("utf-8")).hexdigest()
 
 
+@transaction.atomic
 def create_copy_code_map_input(
     project: AsteroidProject,
     copy_code: str,
     *,
     source_label: str = "",
 ) -> AsteroidMapInput:
-    """Persist raw copy text and empty ``decoded_json`` until decode is wired elsewhere.
+    """Persist raw copy text and decoded ``decoded_json`` with server coords attached.
 
     This row is UI/persistence only — **not** an algorithm input surface for the solver core.
+    Decode failure rolls back the row (no copy-only orphan).
     """
 
     digest = content_sha256_for_copy_code(copy_code)
-    return AsteroidMapInput.objects.create(
+    inp = AsteroidMapInput.objects.create(
         project=project,
         source_kind=AsteroidMapInput.SourceKind.COPY_CODE,
         copy_code=copy_code,
         decoded_json={},
         content_sha256=digest,
     )
+    normalized = copy_code.strip().removesuffix("$")
+    raw = decode_copy_string(normalized)
+    dto = normalize_decoded_blueprint(raw)
+    return persist_decoded_snapshot_for_map_input(int(inp.pk), dto)
+
+
+@transaction.atomic
+def refresh_map_input_from_copy_code(
+    map_input_id: int,
+    copy_code: str,
+) -> AsteroidMapInput:
+    """Overwrite ``copy_code`` and ``decoded_json`` on an existing ``AsteroidMapInput`` row."""
+
+    inp = AsteroidMapInput.objects.select_for_update().filter(pk=int(map_input_id)).first()
+    if inp is None:
+        msg = f"AsteroidMapInput id={map_input_id} not found"
+        raise ValueError(msg)
+    normalized = copy_code.strip().removesuffix("$")
+    inp.copy_code = copy_code
+    inp.content_sha256 = content_sha256_for_copy_code(copy_code)
+    inp.save(update_fields=["copy_code", "content_sha256", "updated_at"])
+    raw = decode_copy_string(normalized)
+    dto = normalize_decoded_blueprint(raw)
+    return persist_decoded_snapshot_for_map_input(int(inp.pk), dto)
+
+
+@transaction.atomic
+def upsert_map_input_for_project(
+    project: AsteroidProject,
+    copy_code: str,
+    *,
+    source_label: str = "",
+) -> tuple[AsteroidMapInput, bool]:
+    """Create or overwrite the map input row for this copy digest (``created`` flag)."""
+
+    digest = content_sha256_for_copy_code(copy_code)
+    existing = (
+        AsteroidMapInput.objects.filter(project_id=int(project.pk), content_sha256=digest)
+        .order_by("-updated_at")
+        .first()
+    )
+    if existing is not None:
+        return refresh_map_input_from_copy_code(int(existing.pk), copy_code), False
+    return create_copy_code_map_input(project, copy_code, source_label=source_label), True
 
 
 @transaction.atomic
@@ -104,6 +152,7 @@ def persist_decoded_snapshot_for_map_input(
             "source_kind",
             "layout_fingerprint",
             "absolute_layout_fingerprint",
+            "updated_at",
         ]
     )
     return inp
@@ -152,6 +201,7 @@ def persist_decoded_snapshot(project_id: int, dto: NormalizedBlueprintDTO) -> As
             "source_kind",
             "layout_fingerprint",
             "absolute_layout_fingerprint",
+            "updated_at",
         ]
     )
     return inp

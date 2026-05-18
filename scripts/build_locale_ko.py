@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-import polib  # type: ignore[import-untyped]
+import polib
 
 BASE = Path(__file__).resolve().parents[1]
 TEMPLATE_ROOT = BASE / "django_apps" / "web" / "templates"

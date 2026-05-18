@@ -30,6 +30,9 @@ from django_apps.asteroid_lab.services.project_service import (
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
 )
+from django_apps.shapez_core.services.lab_sprite_identifier_service import (
+    build_lab_identifier_sprite_relpath_map,
+)
 from django_apps.shapez_core.services.preview_service import (
     build_demo_parse_rows,
     get_color_catalog_rows,
@@ -175,6 +178,7 @@ def _asteroid_miner_lab_page_context(
     ui_initial["blueprintCode"] = blueprint_code
     ctx["lab_ui_initial"] = ui_initial
     ctx["lab_project_slug"] = str(project.slug) if project is not None else ""
+    ctx["lab_identifier_sprite_paths"] = build_lab_identifier_sprite_relpath_map()
     return ctx
 
 

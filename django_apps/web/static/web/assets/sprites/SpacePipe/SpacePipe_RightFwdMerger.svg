@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" shape-rendering="geometricPrecision">
+<defs>
+<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5c5a50"/><stop offset="0.55" stop-color="#2d302c"/><stop offset="1" stop-color="#141817"/></linearGradient>
+<linearGradient id="orange" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6a313"/><stop offset="1" stop-color="#b45a0a"/></linearGradient>
+<linearGradient id="fluid" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#21d7ff"/><stop offset="0.55" stop-color="#70ffe2"/><stop offset="1" stop-color="#b65cff"/></linearGradient>
+<filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g id="shadow" opacity="0.35"><ellipse cx="32" cy="35" rx="27" ry="20" fill="#000"/></g>
+<g id="base">
+<rect x="5" y="18" width="54" height="28" rx="8" fill="url(#metal)" stroke="#101312" stroke-width="1.5"/>
+<rect x="8" y="20" width="48" height="22" rx="6" fill="#242726" stroke="#64665d" stroke-width="1" opacity="0.95"/>
+</g>
+<g id="pipe_tubes" fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M 32 32 L 4 32" stroke="#0d1113" stroke-width="16"/>
+<path d="M 32 32 L 32 4" stroke="#0d1113" stroke-width="16"/>
+<path d="M 32 32 L 60 32" stroke="#0d1113" stroke-width="16"/>
+<path d="M 32 32 L 4 32" stroke="#505952" stroke-width="12"/>
+<path d="M 32 32 L 32 4" stroke="#505952" stroke-width="12"/>
+<path d="M 32 32 L 60 32" stroke="#505952" stroke-width="12"/>
+<path d="M 32 32 L 4 32" stroke="#222827" stroke-width="8"/>
+<path d="M 32 32 L 32 4" stroke="#222827" stroke-width="8"/>
+<path d="M 32 32 L 60 32" stroke="#222827" stroke-width="8"/>
+<path d="M 32 32 L 4 32" stroke="url(#fluid)" stroke-width="3.2" opacity="0.95" filter="url(#glow)"/>
+<path d="M 32 32 L 32 4" stroke="url(#fluid)" stroke-width="3.2" opacity="0.95" filter="url(#glow)"/>
+<path d="M 32 32 L 60 32" stroke="url(#fluid)" stroke-width="3.2" opacity="0.95" filter="url(#glow)"/>
+</g>
+<g id="mechanical_clamps">
+<rect x="0" y="22" width="14" height="20" rx="4" fill="url(#orange)" stroke="#703500" stroke-width="1.2"/>
+<rect x="50" y="22" width="14" height="20" rx="4" fill="url(#orange)" stroke="#703500" stroke-width="1.2"/>
+<rect x="22" y="0" width="20" height="14" rx="4" fill="url(#orange)" stroke="#703500" stroke-width="1.2"/>
+</g>
+<g id="junction">
+<circle cx="32" cy="32" r="13" fill="#161a1a" stroke="#6b685f" stroke-width="4"/>
+<circle cx="32" cy="32" r="7" fill="#102025" stroke="url(#fluid)" stroke-width="2.2" filter="url(#glow)"/>
+<circle cx="32" cy="32" r="3" fill="#d5fff8" opacity="0.95"/>
+</g>
+<g id="direction_mark">
+<path d="M 28.0 32.0 L 20.0 28.0 L 20.0 36.0 Z" fill="#79ffe6" opacity="0.86"/>
+<path d="M 32.0 28.0 L 36.0 20.0 L 28.0 20.0 Z" fill="#79ffe6" opacity="0.86"/>
+<path d="M 55.0 32.0 L 47.0 36.0 L 47.0 28.0 Z" fill="#79ffe6" opacity="0.86"/>
+<rect x="56" y="29" width="5" height="6" rx="1.5" fill="#79ffe6" filter="url(#glow)"/>
+</g>
+<g id="highlights" opacity="0.55">
+<path d="M10 21 H54" stroke="#fff0c0" stroke-width="1" opacity="0.35"/>
+<path d="M9 43 H55" stroke="#000" stroke-width="1" opacity="0.45"/>
+</g>
+</svg>

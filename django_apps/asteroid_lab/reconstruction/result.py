@@ -15,3 +15,4 @@ class ReconstructionResult:
     cells: tuple[DecodedCellDTO, ...]
     summary_json: dict[str, Any] = field(default_factory=dict)
     outer_rim_coords: tuple[tuple[int, int], ...] = ()
+    server_xy_params: tuple[int, int] | None = None

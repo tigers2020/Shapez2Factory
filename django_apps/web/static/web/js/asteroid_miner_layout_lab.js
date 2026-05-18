@@ -58,20 +58,8 @@
   const LAB_CELL_BASE =
     "lab-cell relative shrink-0 overflow-visible rounded-[5px] border bg-slate-950 border-slate-900";
 
-  /** Filenames under ``web/assets/sprites/`` (whitelist for ``tile_type`` → URL). */
-  const LAB_SPRITE_KNOWN = new Set([
-    "layout_fluid_miner.svg",
-    "layout_fluid_miner_extension.svg",
-    "space_pipe_forward.svg",
-    "space_pipe_left_fwd_merger.svg",
-    "space_pipe_left_turn.svg",
-    "space_pipe_right_fwd_merger.svg",
-    "space_pipe_right_fwd_splitter.svg",
-    "space_pipe_right_turn.svg",
-    "space_pipe_triple_merger.svg",
-    "space_pipe_triple_splitter.svg",
-    "space_pipe_y_merger.svg",
-  ]);
+  /** Map blueprint ``T`` (:class:`ShapezGameIdentifier` ``value``) → ``sprite_static_relpath``; from ``json_script`` id ``lab-identifier-sprite-paths-data``. */
+  let labIdentifierSpriteRelpaths = {};
 
   /** When true, or ``#lab-root`` has ``data-lab-debug-rotation="1"``, grid shows R overlay on cells with sprites. */
   const LAB_DEBUG_ROTATION = false;
@@ -86,10 +74,12 @@
     return false;
   }
 
-  /** ``cell_kind`` → sprite file when ``tile_type`` is missing (not used for ambiguous kinds like ``space_pipe``). */
-  const LAB_SPRITE_CELL_KIND_FALLBACK = Object.freeze({
-    fluid_miner: "layout_fluid_miner.svg",
-    fluid_miner_extension: "layout_fluid_miner_extension.svg",
+  /** ``cell_kind`` → blueprint ``T`` when ``tile_type`` is missing (not used for ambiguous kinds like ``space_pipe``). */
+  const LAB_SPRITE_CELL_KIND_TO_IDENTIFIER = Object.freeze({
+    fluid_miner: "Layout_FluidMiner",
+    fluid_miner_extension: "Layout_FluidMinerExtension",
+    shape_miner: "Layout_ShapeMiner",
+    shape_miner_extension: "Layout_ShapeMinerExtension",
   });
 
   /** Sprite stack container; styles in ``assets/css/input.css`` (``.lab-cell-sprite-layer``). */
@@ -138,48 +128,28 @@
     }
   }
 
-  /** ``LeftFwdMerger`` / ``YMerger`` → ``left_fwd_merger`` / ``y_merger`` (asset basename segment). */
-  function labPascalSegmentToSnakeLower(segment) {
-    return String(segment)
-      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
-      .replace(/([a-z\d])([A-Z])/g, "$1_$2")
-      .toLowerCase();
-  }
-
-  function labSpriteFilenameFromTileType(tileType) {
-    const t = tileType == null ? "" : String(tileType);
+  function labSpriteRelpathFromTileType(tileType) {
+    const t = tileType == null ? "" : String(tileType).trim();
     if (!t) return null;
-    let name = null;
-    if (t.startsWith("SpacePipe_")) {
-      const rest = t.slice("SpacePipe_".length);
-      if (!rest) return null;
-      const slug = labPascalSegmentToSnakeLower(rest);
-      name = "space_pipe_" + slug + ".svg";
-    } else if (t === "Layout_FluidMiner") {
-      name = "layout_fluid_miner.svg";
-    } else if (t === "Layout_FluidMinerExtension") {
-      name = "layout_fluid_miner_extension.svg";
-    }
-    // Shape miners: add ``layout_shape_miner*.svg`` under ``web/assets/sprites/`` and whitelist in ``LAB_SPRITE_KNOWN``.
-    if (!name || !LAB_SPRITE_KNOWN.has(name)) return null;
-    return name;
+    const rel = labIdentifierSpriteRelpaths[t];
+    return typeof rel === "string" && rel.length ? rel : null;
   }
 
-  function labSpriteFilenameFromCellKind(cellKind) {
+  function labSpriteRelpathFromCellKind(cellKind) {
     const ck = cellKind == null ? "" : String(cellKind);
     if (!ck) return null;
-    const fn = LAB_SPRITE_CELL_KIND_FALLBACK[ck];
-    if (!fn || !LAB_SPRITE_KNOWN.has(fn)) return null;
-    return fn;
+    const ident = LAB_SPRITE_CELL_KIND_TO_IDENTIFIER[ck];
+    if (!ident) return null;
+    return labSpriteRelpathFromTileType(ident);
   }
 
-  function labSpriteFilenameForCell(cell) {
+  function labSpriteRelpathForCell(cell) {
     if (!cell || typeof cell !== "object") return null;
-    let fn = labSpriteFilenameFromTileType(cell.tile_type);
-    if (!fn && cell.cell_kind != null) {
-      fn = labSpriteFilenameFromCellKind(cell.cell_kind);
+    let rel = labSpriteRelpathFromTileType(cell.tile_type);
+    if (!rel && cell.cell_kind != null) {
+      rel = labSpriteRelpathFromCellKind(cell.cell_kind);
     }
-    return fn;
+    return rel;
   }
 
   function attachLabSpriteImgNoDrag(img) {
@@ -229,14 +199,14 @@
   function applyLabCellSprite(el, cell) {
     clearLabCellSprite(el);
     if (!labSpriteBaseUrl || !cell || typeof cell !== "object") return;
-    const fn = labSpriteFilenameForCell(cell);
-    if (!fn || !LAB_SPRITE_KNOWN.has(fn)) return;
+    const rel = labSpriteRelpathForCell(cell);
+    if (!rel) return;
     const layer = ensureLabCellSpriteLayer(el);
     const img = layer.querySelector("img.lab-cell-sprite");
     if (!img) return;
     attachLabSpriteImgNoDrag(img);
     const base = String(labSpriteBaseUrl).replace(/\/?$/, "/");
-    img.src = base + fn;
+    img.src = base + rel;
     const logicalQ = normalizeQuarterTurns(cell.rotation);
     const deg = rotationToDeg(logicalQ);
     if (deg !== 0) {
@@ -244,11 +214,11 @@
     } else {
       img.style.transform = "";
     }
-    layer.setAttribute("data-lab-sprite", fn);
+    layer.setAttribute("data-lab-sprite", rel);
     const rootDbg = document.getElementById("lab-root");
     if (labRotationDebugEnabled(rootDbg)) {
       el.setAttribute("data-r", String(logicalQ));
-      el.setAttribute("data-sprite-file", fn);
+      el.setAttribute("data-sprite-file", rel);
     }
   }
 
@@ -1063,6 +1033,11 @@
       }
     }
     syncLabDebugRotationClass();
+    const idSpriteRaw = readJsonScript("lab-identifier-sprite-paths-data");
+    labIdentifierSpriteRelpaths =
+      idSpriteRaw && typeof idSpriteRaw === "object" && !Array.isArray(idSpriteRaw)
+        ? idSpriteRaw
+        : {};
     labSpriteBaseUrl =
       rootEl && rootEl.dataset && rootEl.dataset.labSpriteBase != null
         ? String(rootEl.dataset.labSpriteBase)

@@ -9,6 +9,13 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+SHAPEZ_BASEDATA_ROOT = Path(
+    os.environ.get(
+        "SHAPEZ_BASEDATA_ROOT",
+        str(BASE_DIR / "documents" / "shapez_2_data" / "basedata-v1137"),
+    )
+).resolve()
+
 # SHAPEZ_COPY_DEBUG_DIR / SOLVER_GRAPH_* 런타임 플래그는 ``shapez_runtime_flags`` 참고.
 from . import shapez_runtime_flags as _shapez_runtime_flags  # noqa: E402
 

@@ -1,0 +1,187 @@
+"""Optimization input contracts (Sequence 1A/1B)."""
+
+from __future__ import annotations
+
+import pytest
+
+from django_apps.asteroid_lab.optimization.coords import cardinal_unit_toward, neighbors4_server
+from django_apps.asteroid_lab.optimization.enums import Direction, TransportMask
+from django_apps.asteroid_lab.optimization.input_contracts import greenfield_optimization_input
+from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
+    optimization_input_from_reconstruction,
+)
+from django_apps.asteroid_lab.optimization.route_domain import RouteDomainSnapshotBuilder
+from django_apps.asteroid_lab.reconstruction.pipeline import reconstruct_snapshot
+from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
+from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
+from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
+
+
+def _cell(
+    x: int,
+    y: int,
+    *,
+    tile_type: str = "",
+    cell_kind: str = "unknown",
+    transport_kind: str = "none",
+    server_x: int | None = None,
+    server_y: int | None = None,
+) -> DecodedCellDTO:
+    return DecodedCellDTO(
+        x=x,
+        y=y,
+        layer=None,
+        rotation=0,
+        tile_type=tile_type,
+        cell_kind=cell_kind,
+        transport_kind=transport_kind,
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={},
+        server_x=server_x,
+        server_y=server_y,
+    )
+
+
+def _snapshot(cells: tuple[DecodedCellDTO, ...]) -> DecodedBlueprintSnapshotDTO:
+    xs = [c.x for c in cells]
+    ys = [c.y for c in cells]
+    mn_x, mx_x = min(xs), max(xs)
+    mn_y, mx_y = min(ys), max(ys)
+    ck: dict[str, int] = {}
+    for c in cells:
+        ck[c.cell_kind] = ck.get(c.cell_kind, 0) + 1
+    return DecodedBlueprintSnapshotDTO(
+        project_id=None,
+        map_input_id=None,
+        binary_version=3,
+        blueprint_type="Island",
+        entry_count=len(cells),
+        bbox_json={
+            "min_x": mn_x,
+            "max_x": mx_x,
+            "min_y": mn_y,
+            "max_y": mx_y,
+            "width": mx_x - mn_x + 1,
+            "height": mx_y - mn_y + 1,
+        },
+        cell_kind_counts_json=ck,
+        transport_kind_counts_json={},
+        cells=cells,
+        summary_json={},
+    )
+
+
+def _server_coord(c: DecodedCellDTO, res: ReconstructionResult) -> tuple[int, int]:
+    if c.server_x is not None and c.server_y is not None:
+        return (c.server_x, c.server_y)
+    p = res.server_xy_params
+    assert p is not None
+    return server_xy_for_raw_xy(c.x, c.y, min_dense_x=p[0], min_raw_y=p[1])
+
+
+def test_neighbors4_server_includes_x_zero_neighbor() -> None:
+    c = (0, 5)
+    n = neighbors4_server(c)
+    assert (-1, 5) in n
+    assert (1, 5) in n
+    assert (0, 4) in n
+    assert (0, 6) in n
+    assert len(n) == 4
+
+
+def test_cardinal_unit_toward_diagonal_raises() -> None:
+    with pytest.raises(ValueError, match="Manhattan"):
+        cardinal_unit_toward((0, 0), (1, 1))
+
+
+def test_cardinal_unit_toward_east() -> None:
+    assert cardinal_unit_toward((0, 0), (3, 0)) == Direction.E
+
+
+def test_greenfield_optimization_input_contract() -> None:
+    inp = greenfield_optimization_input()
+    assert inp.existing_transport_cells == frozenset()
+    assert inp.existing_trunk_cells == frozenset()
+    assert inp.protected_corridor_cells == frozenset()
+    assert inp.existing_trunk_cells <= {c.coord for c in inp.existing_transport_cells}
+
+
+def test_topology_graph_adjacency_matches_neighbors4_on_hole_fixture() -> None:
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(2, 1, cell_kind="fluid_miner"),
+        _cell(3, 1, tile_type="UnknownTile_C"),
+        _cell(1, 2, tile_type="UnknownTile_D"),
+        _cell(3, 2, tile_type="UnknownTile_E"),
+        _cell(1, 3, tile_type="UnknownTile_F"),
+        _cell(2, 3, tile_type="UnknownTile_G"),
+        _cell(3, 3, tile_type="UnknownTile_H"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    inp = optimization_input_from_reconstruction(res)
+    graph = inp.topology_graph
+    adj: dict[tuple[int, int], set[tuple[int, int]]] = {}
+    for e in graph.edges:
+        adj.setdefault(e.a, set()).add(e.b)
+
+    by_server: dict[tuple[int, int], DecodedCellDTO] = {}
+    for c in res.cells:
+        by_server[_server_coord(c, res)] = c
+
+    for sv, cell in by_server.items():
+        if cell.cell_kind not in ("asteroid_shape_field", "asteroid_fluid_field"):
+            continue
+        expected = {n for n in neighbors4_server(sv) if n in by_server}
+        assert adj.get(sv, set()) == expected
+
+
+def test_hole_interior_stays_mineable_in_optimization_input() -> None:
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(2, 1, tile_type="UnknownTile_B"),
+        _cell(3, 1, tile_type="UnknownTile_C"),
+        _cell(1, 2, tile_type="UnknownTile_D"),
+        _cell(3, 2, tile_type="UnknownTile_E"),
+        _cell(1, 3, tile_type="UnknownTile_F"),
+        _cell(2, 3, tile_type="UnknownTile_G"),
+        _cell(3, 3, tile_type="UnknownTile_H"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    inp = optimization_input_from_reconstruction(res)
+    hole = next(c for c in res.cells if c.x == 2 and c.y == 2)
+    assert hole.cell_kind == "asteroid_shape_field"
+    assert _server_coord(hole, res) in inp.mineable_cells
+
+
+def test_seed_route_domain_blocked_matches_optimization_input() -> None:
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(2, 1, cell_kind="fluid_miner"),
+        _cell(3, 1, tile_type="UnknownTile_C"),
+        _cell(1, 2, tile_type="UnknownTile_D"),
+        _cell(3, 2, tile_type="UnknownTile_E"),
+        _cell(1, 3, tile_type="UnknownTile_F"),
+        _cell(2, 3, tile_type="UnknownTile_G"),
+        _cell(3, 3, tile_type="UnknownTile_H"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    inp = optimization_input_from_reconstruction(res)
+    domain = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
+    for c in inp.blocked_cells:
+        assert domain[c].hard_blocked is True
+
+    mine_sv = next(iter(inp.mineable_cells))
+    mcell = domain[mine_sv]
+    assert mcell.hard_blocked is False
+    assert mcell.transport_mask == TransportMask.BOTH

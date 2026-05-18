@@ -5,6 +5,7 @@ Solver code must consume DTOs only; these models are for persistence, cache, UI,
 
 from __future__ import annotations
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -435,3 +436,65 @@ class TopologyRuleModalContent(models.Model):
 
     def __str__(self) -> str:
         return f"modal:{self.rule.rule_key}"
+
+
+class GeneticSample(models.Model):
+    """유전자 샘플: 복사 문자열 저장 시 디코드되어 ``decoded_json``에 반영된다."""
+
+    name = models.CharField(max_length=200, blank=True, verbose_name="이름")
+    project = models.ForeignKey(
+        AsteroidProject,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="genetic_samples",
+        verbose_name="프로젝트",
+    )
+    code = models.TextField(verbose_name="복사 문자열")
+    decoded_json = models.JSONField(default=dict, blank=True, verbose_name="디코드 JSON")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-updated_at",)
+        verbose_name = "유전자 샘플"
+        verbose_name_plural = "유전자 샘플"
+        indexes = [
+            models.Index(fields=["-updated_at"]),
+            models.Index(fields=["project", "-updated_at"]),
+        ]
+
+    def __str__(self) -> str:
+        if self.name:
+            return str(self.name)
+        return f"GeneticSample #{self.pk}" if self.pk else "GeneticSample (unsaved)"
+
+    def clean(self) -> None:
+        super().clean()
+        from django_apps.asteroid_lab.adapters.decode_adapter import (
+            AsteroidLabCopyDecodeError,
+            decode_copy_string,
+        )
+        from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
+        from django_apps.asteroid_lab.snapshots.server_coords import (
+            attach_server_coords_to_decoded_json,
+        )
+
+        code = (self.code or "").strip()
+        if not code:
+            self.decoded_json = {}
+            return
+        try:
+            raw = decode_copy_string(code)
+            dto = normalize_decoded_blueprint(raw)
+            merged = dict(dto.decoded_json)
+            attach_server_coords_to_decoded_json(merged)
+            self.decoded_json = merged
+        except AsteroidLabCopyDecodeError as exc:
+            raise ValidationError({"code": str(exc)}) from exc
+
+    def save(self, *args, **kwargs) -> None:
+        """Ensure ``decoded_json`` is populated even when ``save()`` is called outside ModelForm."""
+
+        self.full_clean()
+        super().save(*args, **kwargs)

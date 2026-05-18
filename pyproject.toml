@@ -18,6 +18,7 @@ dependencies = [
     "psycopg[binary]>=3.2,<4.0",
     "python-dotenv>=1.0,<2.0",
     "whitenoise>=6.9,<7.0",
+    "jsonschema>=4.23,<5.0",
 ]
 
 [project.optional-dependencies]
@@ -51,6 +52,13 @@ cache_dir = "C:/tmp/shapez2solver-mypy-cache"
 exclude = "(^django_apps/.*/migrations/|^tests/integration/|^build/)"
 
 [[tool.mypy.overrides]]
+module = [
+    "django_apps.shapez_core.models",
+    "django_apps.shapez_core.models.*",
+]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
 module = ["django.*"]
 ignore_missing_imports = true
 
@@ -70,9 +78,13 @@ ignore_errors = true
 module = [
     "config.*",
     "manage",
+    "django_apps.shapez_core.admin",
+    "django_apps.shapez_core.admin_filters",
     "django_apps.shapez_core.apps",
     "django_apps.shapez_core.urls",
     "django_apps.shapez_core.views",
+    "django_apps.shapez_core.services.basedata_import_service",
+    "django_apps.shapez_core.management.commands.import_shapez_basedata",
     "django_apps.shapez_solver.admin",
     "django_apps.shapez_solver.apps",
     "django_apps.shapez_solver.models",

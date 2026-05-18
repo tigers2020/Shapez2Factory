@@ -216,11 +216,10 @@ def test_lab_js_replay_wiring_smoke() -> None:
         root / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
     )
     js = js_path.read_text(encoding="utf-8")
-    assert "LAB_SPRITE_KNOWN" in js
+    assert "lab-identifier-sprite-paths-data" in js
+    assert "labIdentifierSpriteRelpaths" in js
     assert "combineSpriteRotation" not in js
     assert "normalizeQuarterTurns(cell.rotation)" in js
-    assert "labPascalSegmentToSnakeLower" in js
-    assert '.startsWith("SpacePipe_")' in js
     assert "normalizeQuarterTurns" in js
     assert "rotationToDeg" in js
     assert "LINK_KEY_TO_DIR" in js
@@ -247,3 +246,10 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "gridViewport.style.transform" not in js
     assert "gridViewport.style.width" not in js
     assert "gridViewport.style.height" not in js
+
+    tpl_path = (
+        root / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
+    )
+    tpl = tpl_path.read_text(encoding="utf-8")
+    assert "lab_identifier_sprite_paths" in tpl
+    assert "lab-identifier-sprite-paths-data" in tpl

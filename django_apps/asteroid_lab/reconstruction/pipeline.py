@@ -169,6 +169,7 @@ def reconstruct_after_cleanup(
             cells=stamped,
             summary_json=dict(summary),
             outer_rim_coords=(),
+            server_xy_params=server_xy_params,
         )
 
     w0, w1, h0, h1 = bbox_bounds
@@ -380,6 +381,7 @@ def reconstruct_after_cleanup(
         cells=out_cells,
         summary_json=dict(summary),
         outer_rim_coords=(),
+        server_xy_params=server_xy_params,
     )
 
 

@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import json
+
 from django.contrib import admin
+from django.utils.html import format_html
+from django.utils.safestring import SafeString
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.genetic_sample_mini_map import genetic_sample_mini_map_html
 
 
 class ReplayFrameInline(admin.TabularInline):
@@ -133,3 +138,40 @@ class TopologyRuleAdmin(admin.ModelAdmin):
 class TopologyRuleModalContentAdmin(admin.ModelAdmin):
     list_display = ("id", "rule", "modal_title", "updated_at")
     raw_id_fields = ("rule",)
+
+
+@admin.register(m.GeneticSample)
+class GeneticSampleAdmin(admin.ModelAdmin):
+    list_display = ("id", "mini_map_list", "name", "project", "updated_at")
+    list_display_links = ("id", "name")
+    list_select_related = ("project",)
+    search_fields = ("name", "code")
+    raw_id_fields = ("project",)
+    readonly_fields = ("decoded_json_pretty", "mini_map_preview", "created_at", "updated_at")
+    fieldsets = (
+        (None, {"fields": ("name", "project", "code")}),
+        ("디코드", {"fields": ("decoded_json_pretty", "mini_map_preview")}),
+        ("메타", {"fields": ("created_at", "updated_at")}),
+    )
+
+    @admin.display(description="디코드 JSON")
+    def decoded_json_pretty(self, obj: m.GeneticSample) -> SafeString | str:
+        if not obj.decoded_json:
+            return "-"
+        text = json.dumps(obj.decoded_json, indent=2, ensure_ascii=False)
+        pre_style = (
+            "max-height:420px;overflow:auto;font-size:11px;line-height:1.35;"
+            "background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;"
+            "white-space:pre-wrap;word-break:break-word;"
+        )
+        return format_html('<pre style="{}">{}</pre>', pre_style, text)
+
+    @admin.display(description="맵")
+    def mini_map_list(self, obj: m.GeneticSample) -> SafeString | str:
+        return genetic_sample_mini_map_html(obj.decoded_json, for_list=True)
+
+    @admin.display(description="미니맵")
+    def mini_map_preview(self, obj: m.GeneticSample) -> SafeString | str:
+        if obj.pk is None:
+            return "저장 후 미니맵이 표시됩니다."
+        return genetic_sample_mini_map_html(obj.decoded_json)

@@ -71,7 +71,7 @@ def genetic_sample_mini_map_html(
     sw = int(bbox["server_width"])
     sh = int(bbox["server_height"])
     sminx = int(bbox["server_min_x"])
-    smaxy = int(bbox["server_max_y"])
+    sminy = int(bbox["server_min_y"])
 
     by_pos: dict[tuple[int, int], DecodedCellDTO] = {}
     for cell in snap.cells:
@@ -88,8 +88,9 @@ def genetic_sample_mini_map_html(
     )
 
     cells_html: list[SafeString] = []
+    # Row 0 at top = smallest server_y (= smallest raw Y), same as Lab replay ``row = y - minR``.
     for grid_r in range(sh):
-        sy = smaxy - grid_r
+        sy = sminy + grid_r
         for grid_c in range(sw):
             sx = sminx + grid_c
             at_cell = by_pos.get((sx, sy))

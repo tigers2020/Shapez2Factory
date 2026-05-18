@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from django_apps.shapez_asteroid.optimization.coords import Coord, neighbors4_server
@@ -400,3 +402,23 @@ def test_route_probe_start_blocked_mask(kind: TransportKind) -> None:
         )
     )
     assert res.failure_reason is RouteProbeFailureReason.START_BLOCKED
+
+
+def test_route_probe_wall_clock_deadline_aborts_during_search() -> None:
+    c0, c1, c2 = Coord(0, 0), Coord(1, 0), Coord(2, 0)
+    domain = {c: _cell_domain(c) for c in (c0, c1, c2)}
+    goal = RouteGoal(c2, RouteGoalKind.EXTERNAL_MARGIN, None, priority=0, existing_trunk=False)
+    topo = _line_topology(c0, c1, c2)
+    inp = RouteProbeInput(
+        start=c0,
+        goals=frozenset({goal}),
+        route_domain=domain,
+        topology_graph=topo,
+        max_expansions=50,
+        transport_kind=TransportKind.SHAPE_BELT,
+        goal_priority_weight=1,
+        wall_clock_deadline_perf=time.perf_counter() - 1.0,
+    )
+    res = run_route_probe(inp)
+    assert not res.reachable
+    assert res.failure_reason is RouteProbeFailureReason.WALL_CLOCK_ABORT

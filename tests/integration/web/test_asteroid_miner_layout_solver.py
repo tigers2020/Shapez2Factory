@@ -306,6 +306,16 @@ def test_asteroid_miner_layout_run_solver_appends_optimization_frames() -> None:
     assert int(dbg["append_track_id"]) == int(dbg["response_track_id"])
     appended = int(data["appended_optimization_frames"])
     assert appended > 0
+    assert "optimization_replay_attach" in data
+    att = data["optimization_replay_attach"]
+    assert att.get("reason") == "appended"
+    diag = att["diagnostic"]
+    assert diag.get("stage") == "completed"
+    assert "elapsed_ms" in diag
+    assert "reject_reason_counts" in diag
+    assert "route_probe_failure_reason_counts" in diag
+    assert isinstance(diag["normal_candidate_count"], int)
+    assert isinstance(diag.get("pre_dedupe_route_success_count", 0), int)
     assert int(data["inspection_frame_count_before"]) == n_before
     frames = data.get("lab_replay_frames_json") or []
     assert len(frames) == n_before + appended

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import heapq
+import time
 from collections import defaultdict
 from collections.abc import Mapping
 
@@ -278,6 +279,20 @@ def run_route_probe(
             continue
 
         expanded_nodes += 1
+
+        if (
+            inp.wall_clock_deadline_perf is not None
+            and time.perf_counter() >= inp.wall_clock_deadline_perf
+        ):
+            return RouteProbeResult(
+                reachable=False,
+                path=(),
+                cost=0,
+                expanded_nodes=expanded_nodes,
+                reached_goal=None,
+                goal_priority=None,
+                failure_reason=RouteProbeFailureReason.WALL_CLOCK_ABORT,
+            )
 
         if u in goal_at:
             for g in goal_at[u]:

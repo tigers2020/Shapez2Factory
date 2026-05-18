@@ -237,6 +237,7 @@ def commit_best_genome(
             max_expansions=cfg.route_probe_max_expansions,
             transport_kind=cand.transport_kind,
             goal_priority_weight=cfg.route_probe_goal_priority_weight,
+            wall_clock_deadline_perf=cfg.wall_clock_deadline_perf,
         )
         probe_res = run_route_probe(probe_inp, occupied_cells=occupied_overlay)
 

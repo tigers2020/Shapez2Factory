@@ -42,6 +42,7 @@ from django_apps.web.constants import (
 )
 from django_apps.web.models import GraphPreviewImage
 from django_apps.web.services.asteroid_lab_optimization_run import (
+    build_optimization_replay_attach_payload,
     run_lab_solver_optimization_for_map_input,
 )
 from django_apps.web.services.asteroid_lab_page_context import (
@@ -340,6 +341,9 @@ def asteroid_miner_layout_run_solver(request: HttpRequest) -> JsonResponse:
             "appended_optimization_frames": result.appended,
             "lab_map_input_id": int(inp.pk),
             "optimization_append_debug": opt_debug,
+            "optimization_replay_attach": build_optimization_replay_attach_payload(
+                dict(result.debug)
+            ),
             **bundle,
         }
     )

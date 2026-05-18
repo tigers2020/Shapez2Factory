@@ -328,6 +328,21 @@ def test_convergence_reason_enum() -> None:
     assert r.convergence_reason == EvolutionConvergenceReason.NO_IMPROVEMENT
 
 
+def test_evolution_wall_clock_deadline_at_first_generation() -> None:
+    import time
+
+    g0 = _goal(Coord(0, 0))
+    pool = (_bundle("solo", _probe_ok(goal=g0)),)
+    cfg = _small_config(
+        max_generation=10,
+        max_stall_generation=0,
+        time_budget_ms=None,
+        wall_clock_deadline_perf=time.perf_counter() - 1.0,
+    )
+    r = run_evolutionary_search(cfg, pool)
+    assert r.convergence_reason is EvolutionConvergenceReason.WALL_CLOCK_DEADLINE
+
+
 def test_fitness_tie_break_deterministic() -> None:
     g0 = _goal(Coord(0, 0))
     c = _bundle("z", _probe_ok(goal=g0))
@@ -601,6 +616,7 @@ def test_evolution_convergence_reason_members() -> None:
             EvolutionConvergenceReason.MAX_GENERATION,
             EvolutionConvergenceReason.MAX_STALL_GENERATION,
             EvolutionConvergenceReason.TIME_BUDGET_MS,
+            EvolutionConvergenceReason.WALL_CLOCK_DEADLINE,
             EvolutionConvergenceReason.NO_IMPROVEMENT,
             EvolutionConvergenceReason.CANDIDATE_POOL_EXHAUSTED,
         }

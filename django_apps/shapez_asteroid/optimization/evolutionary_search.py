@@ -580,7 +580,15 @@ def run_evolutionary_search(
     start = time.perf_counter()
     pop_best_key = deterministic_sort_key(scored[0][0], scored[0][1])
 
+    def wall_clock_exceeded() -> bool:
+        return (
+            cfg.wall_clock_deadline_perf is not None
+            and time.perf_counter() >= cfg.wall_clock_deadline_perf
+        )
+
     def time_exceeded() -> bool:
+        if wall_clock_exceeded():
+            return True
         if cfg.time_budget_ms is None:
             return False
         elapsed_ms = (time.perf_counter() - start) * 1000.0
@@ -589,7 +597,11 @@ def run_evolutionary_search(
     generation_done = 0
     for gen in range(cfg.max_generation):
         if time_exceeded():
-            convergence = EvolutionConvergenceReason.TIME_BUDGET_MS
+            convergence = (
+                EvolutionConvergenceReason.WALL_CLOCK_DEADLINE
+                if wall_clock_exceeded()
+                else EvolutionConvergenceReason.TIME_BUDGET_MS
+            )
             generation_done = gen
             break
 
@@ -659,7 +671,11 @@ def run_evolutionary_search(
             break
 
         if time_exceeded():
-            convergence = EvolutionConvergenceReason.TIME_BUDGET_MS
+            convergence = (
+                EvolutionConvergenceReason.WALL_CLOCK_DEADLINE
+                if wall_clock_exceeded()
+                else EvolutionConvergenceReason.TIME_BUDGET_MS
+            )
             break
 
     if convergence is None:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+from collections import Counter
 from collections.abc import Mapping, Sequence
 
 from django_apps.shapez_asteroid.optimization.bundle_candidate_factory import (
@@ -12,6 +14,7 @@ from django_apps.shapez_asteroid.optimization.dto import (
     BundleCandidate,
     CandidateEquivalenceKey,
     CandidateGenerationConfig,
+    CandidateGenerationDiagnostics,
     CandidateGenerationResult,
     OptimizationInput,
     RejectedBundleCandidate,
@@ -99,11 +102,54 @@ def generate_bundle_candidates(
 
     normal_raw: list[BundleCandidate] = []
     rejected: list[RejectedBundleCandidate] = []
+    reject_counts: Counter[str] = Counter()
+    route_fail_counts: Counter[str] = Counter()
+    route_unreachable_suppressed = 0
+    route_probe_wall_ms_sum = 0
+
+    def _reject(row: RejectedBundleCandidate) -> None:
+        reject_counts[row.rejection_reason.value] += 1
+        rejected.append(row)
 
     seq = 0
+    abort_enum = False
+    abort_consecutive = False
+    consecutive_streak = 0
+
+    def _fail_attempt() -> None:
+        nonlocal consecutive_streak, abort_consecutive
+        consecutive_streak += 1
+        lim = config.max_consecutive_rejections
+        if lim is not None and lim > 0 and consecutive_streak >= lim:
+            abort_consecutive = True
+            _replay_emit(
+                replay_recorder,
+                event_type=OptimizationReplayEventType.CANDIDATE_REJECTED,
+                title="Enumeration stopped",
+                description=(
+                    f"{consecutive_streak} consecutive failures without a normal candidate"
+                ),
+                metrics={
+                    "lab_abort_reason": "consecutive_rejects",
+                    "consecutive_reject_streak": consecutive_streak,
+                    "max_consecutive_rejections": lim,
+                },
+            )
+
     for rim_cell in rim_order:
+        if abort_enum or abort_consecutive:
+            break
         for pattern in patterns:
+            if abort_enum or abort_consecutive:
+                break
             for tk in tk_order:
+                if abort_enum or abort_consecutive:
+                    break
+                if config.wall_clock_deadline_perf is not None and time.perf_counter() >= (
+                    config.wall_clock_deadline_perf
+                ):
+                    abort_enum = True
+                    break
                 seq += 1
                 candidate_id = f"c{seq:09d}"
                 extractor = _add(rim_cell, pattern.extractor_offset)
@@ -112,7 +158,7 @@ def generate_bundle_candidates(
                 output_stub = _add(rim_cell, pattern.output_stub_offset)
 
                 if extractor not in opt.rim_cells:
-                    rejected.append(
+                    _reject(
                         RejectedBundleCandidate(
                             attempted_pattern_id=pattern.pattern_id,
                             extractor=extractor,
@@ -131,10 +177,13 @@ def generate_bundle_candidates(
                             "candidate_reject_reason": CandidateRejectReason.EXTRACTOR_NOT_RIM,
                         },
                     )
+                    _fail_attempt()
+                    if abort_consecutive:
+                        break
                     continue
 
                 if any(e not in opt.mineable_cells for e in extensions):
-                    rejected.append(
+                    _reject(
                         RejectedBundleCandidate(
                             attempted_pattern_id=pattern.pattern_id,
                             extractor=extractor,
@@ -153,10 +202,13 @@ def generate_bundle_candidates(
                             "candidate_reject_reason": CandidateRejectReason.EXTENSION_NOT_MINEABLE,
                         },
                     )
+                    _fail_attempt()
+                    if abort_consecutive:
+                        break
                     continue
 
                 if not occupied.issubset(opt.asteroid_cells):
-                    rejected.append(
+                    _reject(
                         RejectedBundleCandidate(
                             attempted_pattern_id=pattern.pattern_id,
                             extractor=extractor,
@@ -177,10 +229,13 @@ def generate_bundle_candidates(
                             ),
                         },
                     )
+                    _fail_attempt()
+                    if abort_consecutive:
+                        break
                     continue
 
                 if len(occupied) != 1 + pattern.extension_count:
-                    rejected.append(
+                    _reject(
                         RejectedBundleCandidate(
                             attempted_pattern_id=pattern.pattern_id,
                             extractor=extractor,
@@ -199,10 +254,13 @@ def generate_bundle_candidates(
                             "candidate_reject_reason": CandidateRejectReason.PATTERN_OVERLAP_SELF,
                         },
                     )
+                    _fail_attempt()
+                    if abort_consecutive:
+                        break
                     continue
 
                 if output_stub in occupied:
-                    rejected.append(
+                    _reject(
                         RejectedBundleCandidate(
                             attempted_pattern_id=pattern.pattern_id,
                             extractor=extractor,
@@ -223,10 +281,13 @@ def generate_bundle_candidates(
                             ),
                         },
                     )
+                    _fail_attempt()
+                    if abort_consecutive:
+                        break
                     continue
 
                 if output_stub not in route_domain:
-                    rejected.append(
+                    _reject(
                         RejectedBundleCandidate(
                             attempted_pattern_id=pattern.pattern_id,
                             extractor=extractor,
@@ -247,6 +308,9 @@ def generate_bundle_candidates(
                             ),
                         },
                     )
+                    _fail_attempt()
+                    if abort_consecutive:
+                        break
                     continue
 
                 topo_sig = build_topology_signature(
@@ -266,8 +330,11 @@ def generate_bundle_candidates(
                     max_expansions=config.route_probe_max_expansions,
                     transport_kind=tk,
                     goal_priority_weight=config.route_probe_goal_priority_weight,
+                    wall_clock_deadline_perf=config.wall_clock_deadline_perf,
                 )
+                rp_t0 = time.perf_counter()
                 probe_res = run_route_probe(probe_inp, occupied_cells=occupied)
+                route_probe_wall_ms_sum += int((time.perf_counter() - rp_t0) * 1000.0)
 
                 probe_base_metrics: dict[str, object] = {
                     "pattern_id": pattern.pattern_id,
@@ -283,6 +350,9 @@ def generate_bundle_candidates(
                 probe_base_metrics["goal_priority"] = probe_res.goal_priority
 
                 if not probe_res.reachable or probe_res.reached_goal is None:
+                    fr = probe_res.failure_reason
+                    if fr is not None:
+                        route_fail_counts[fr.value] += 1
                     fail_metrics = {
                         **probe_base_metrics,
                         "route_probe_failure_reason": probe_res.failure_reason,
@@ -295,7 +365,7 @@ def generate_bundle_candidates(
                         metrics=fail_metrics,
                     )
                     if config.allow_diagnostic_unreachable:
-                        rejected.append(
+                        _reject(
                             RejectedBundleCandidate(
                                 attempted_pattern_id=pattern.pattern_id,
                                 extractor=extractor,
@@ -316,6 +386,11 @@ def generate_bundle_candidates(
                                 "route_probe_failure_reason": probe_res.failure_reason,
                             },
                         )
+                    if not config.allow_diagnostic_unreachable:
+                        route_unreachable_suppressed += 1
+                    _fail_attempt()
+                    if abort_consecutive:
+                        break
                     continue
 
                 ok_metrics = {**probe_base_metrics, "route_probe_failure_reason": None}
@@ -342,6 +417,7 @@ def generate_bundle_candidates(
                     route_probe_result=probe_res,
                 )
                 normal_raw.append(cand)
+                consecutive_streak = 0
                 _replay_emit(
                     replay_recorder,
                     event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
@@ -363,6 +439,11 @@ def generate_bundle_candidates(
                     },
                 )
 
+            if abort_enum or abort_consecutive:
+                break
+        if abort_enum or abort_consecutive:
+            break
+
     by_key: dict[CandidateEquivalenceKey, BundleCandidate] = {}
     for c in sorted(normal_raw, key=lambda z: z.candidate_id):
         k = _equivalence_key(c)
@@ -379,7 +460,23 @@ def generate_bundle_candidates(
         sorted_for_cap = sorted_for_cap[: config.max_candidates]
     normal_final = tuple(sorted_for_cap)
 
+    def _sorted_counts(c: Counter[str]) -> tuple[tuple[str, int], ...]:
+        return tuple(sorted(c.items(), key=lambda kv: kv[0]))
+
+    diagnostics = CandidateGenerationDiagnostics(
+        enumeration_attempts=seq,
+        pre_dedupe_route_success_count=len(normal_raw),
+        route_probe_unreachable_suppressed_count=route_unreachable_suppressed,
+        reject_reason_counts=_sorted_counts(reject_counts),
+        route_probe_failure_reason_counts=_sorted_counts(route_fail_counts),
+        enumeration_aborted_wall_clock=abort_enum,
+        enumeration_aborted_consecutive_rejects=abort_consecutive,
+        max_consecutive_rejections=config.max_consecutive_rejections,
+        route_probe_wall_ms_sum=route_probe_wall_ms_sum,
+    )
+
     return CandidateGenerationResult(
         normal_candidates=normal_final,
         rejected_candidates=tuple(rejected),
+        diagnostics=diagnostics,
     )

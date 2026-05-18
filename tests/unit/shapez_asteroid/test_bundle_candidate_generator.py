@@ -361,3 +361,29 @@ def test_rejected_unreachable_carries_probe_snapshot() -> None:
         if r.rejection_reason is CandidateRejectReason.ROUTE_PROBE_UNREACHABLE
     )
     assert rj.route_probe_result is not None
+
+
+def test_candidate_generator_stops_after_max_consecutive_rejections() -> None:
+    inp = _greenfield_square_input()
+    mineable = frozenset(inp.mineable_cells - {Coord(1, 0)})
+    inp2 = replace(inp, mineable_cells=mineable)
+    domain = RouteDomainSnapshotBuilder.build_seed_snapshot(inp2)
+    patterns = build_pattern_library()
+    base = CandidateGenerationConfig(
+        extractor_policy=ExtractorPlacementPolicy.RIM_ONLY,
+        allow_diagnostic_unreachable=False,
+        max_candidates=None,
+        route_probe_max_expansions=50,
+        transport_kinds=frozenset({TransportKind.SHAPE_BELT}),
+        route_probe_goal_priority_weight=10,
+    )
+    full = generate_bundle_candidates(inp2, domain, patterns, base)
+    capped = generate_bundle_candidates(
+        inp2, domain, patterns, replace(base, max_consecutive_rejections=6)
+    )
+    assert full.diagnostics is not None
+    assert capped.diagnostics is not None
+    assert full.diagnostics.enumeration_attempts > 6
+    assert capped.diagnostics.enumeration_aborted_consecutive_rejects is True
+    assert capped.diagnostics.max_consecutive_rejections == 6
+    assert capped.diagnostics.enumeration_attempts < full.diagnostics.enumeration_attempts

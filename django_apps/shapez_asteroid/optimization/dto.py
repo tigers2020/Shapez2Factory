@@ -129,6 +129,7 @@ class EvolutionConfig:
     max_stall_generation: int
     time_budget_ms: int | None
     forced_distant_mutation_period: int | None
+    wall_clock_deadline_perf: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +151,8 @@ class CandidateGenerationConfig:
     route_probe_max_expansions: int
     transport_kinds: frozenset[TransportKind]
     route_probe_goal_priority_weight: int
+    wall_clock_deadline_perf: float | None = None
+    max_consecutive_rejections: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,6 +174,7 @@ class RouteProbeInput:
     max_expansions: int
     transport_kind: TransportKind
     goal_priority_weight: int
+    wall_clock_deadline_perf: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,9 +213,25 @@ class RejectedBundleCandidate:
 
 
 @dataclass(frozen=True, slots=True)
+class CandidateGenerationDiagnostics:
+    """Lab / HTTP diagnostics only; not used as algorithm input."""
+
+    enumeration_attempts: int
+    pre_dedupe_route_success_count: int
+    route_probe_unreachable_suppressed_count: int
+    reject_reason_counts: tuple[tuple[str, int], ...]
+    route_probe_failure_reason_counts: tuple[tuple[str, int], ...]
+    enumeration_aborted_wall_clock: bool
+    enumeration_aborted_consecutive_rejects: bool
+    max_consecutive_rejections: int | None
+    route_probe_wall_ms_sum: int
+
+
+@dataclass(frozen=True, slots=True)
 class CandidateGenerationResult:
     normal_candidates: tuple[BundleCandidate, ...]
     rejected_candidates: tuple[RejectedBundleCandidate, ...]
+    diagnostics: CandidateGenerationDiagnostics | None = None
 
 
 @dataclass(frozen=True, slots=True)

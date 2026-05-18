@@ -62,10 +62,11 @@ def coerce_server_axis_int(val: Any) -> int | None:
 
 
 def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[str, Any]:
-    """Mutate ``BP.Entries`` items in-place: add ``server_x`` / ``server_y`` where raw X is valid.
+    """Mutate ``BP.Entries`` items in-place: add ``server_x`` / ``server_y``.
 
-    Preserves ``X`` / ``Y``. Skips entries with ``X == 0`` or non-dict rows. Idempotent overwrite
-    of ``server_x`` / ``server_y`` when recomputed.
+    Preserves ``X`` / ``Y``. Skips non-dict rows. Entries with ``X == 0`` use
+    :func:`server_xy_for_layout_line_xy` (layout seam bridge; same contract as decode adapter).
+    Idempotent overwrite of ``server_x`` / ``server_y`` when recomputed.
     """
 
     bp = decoded_json.get("BP")
@@ -100,8 +101,11 @@ def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[s
         x = _as_int(item.get("X"))
         y = _as_int(item.get("Y"))
         if x == 0:
-            item.pop("server_x", None)
-            item.pop("server_y", None)
+            lx, ly = server_xy_for_layout_line_xy(
+                0, y, max_dense_x=max_dense_x, min_raw_y=min_raw_y
+            )
+            item["server_x"] = lx
+            item["server_y"] = ly
             continue
         try:
             dense_x = raw_x_to_dense_x(x)

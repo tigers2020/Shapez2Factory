@@ -31,6 +31,7 @@ from django_apps.asteroid_lab.services.dto import (
     SnapshotFrameDTO,
 )
 from django_apps.asteroid_lab.services.replay_recorder import ReplayRecorder
+from django_apps.asteroid_lab.services.trace_logging import record_reconstruction_trace_events
 from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
 from django_apps.asteroid_lab.snapshots.existing_layout_inspection import inspect_existing_layout
 
@@ -57,6 +58,8 @@ def build_existing_layout_inspection_from_input(map_input_id: int) -> ExistingLa
 def record_existing_layout_inspection_frames(
     track_id: int,
     inspection: ExistingLayoutInspectionDTO,
+    *,
+    trace_logger: Any | None = None,
 ) -> list[SnapshotFrameDTO]:
     """Append cleanup frames plus stepwise reconstruction replay (UI-only; never solver input)."""
 
@@ -69,9 +72,10 @@ def record_existing_layout_inspection_frames(
         snap
     )
 
-    cleanup = load_cleanup_result(snap)
+    cleanup = load_cleanup_result(snap, trace_logger=trace_logger)
     collector = ReconstructionTraceCollector()
     recon = run_topology_reconstruction(cleanup, trace_collector=collector)
+    record_reconstruction_trace_events(trace_logger, collector.events)
     row_recon = rows_from_cells(recon.cells)
     recon_extra = {**dict(cleanup.summary_json), **dict(recon.summary_json)}
 

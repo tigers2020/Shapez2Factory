@@ -408,5 +408,7 @@ def test_trace_collector_does_not_change_reconstruction_cells() -> None:
     assert len(coll.events) >= 2
     finals = [e for e in coll.events if e.trace_event_type == "reconstruction_final"]
     assert len(finals) == 1
+    assert len(finals[0].coords) > 0
+    assert finals[0].summary_json.get("coord_space") == "raw_xy"
     keys = [str(e.summary_json.get("event_key", "")) for e in coll.events]
     assert "step4_09_reconstruction_final" in keys

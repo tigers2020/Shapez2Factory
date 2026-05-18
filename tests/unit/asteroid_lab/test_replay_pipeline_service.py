@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 import pytest
+from django.test.utils import override_settings
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay import event_types as et
@@ -121,6 +122,29 @@ def test_build_initial_replay_force_uses_new_run_key() -> None:
     assert r1.status == "ok" and r2.status == "ok"
     assert r1.run_key != r2.run_key
     assert m.SolverRun.objects.filter(project_id=dto.project_id).count() == 2
+
+
+@pytest.mark.django_db
+def test_build_initial_replay_writes_trace_log_when_enabled(tmp_path: Path) -> None:
+    code = _encode_v4_copy(_minimal_root(version=101))
+    dto = project_service.create_project_from_copy_code(code, source_label="trace-on")
+    with override_settings(
+        ASTEROID_LAB_TRACE_LOG_ENABLED=True,
+        ASTEROID_LAB_TRACE_LOG_DIR=tmp_path,
+        ASTEROID_LAB_TRACE_LOG_SAMPLE_LIMIT=8,
+    ):
+        result = build_initial_replay_for_map_input(dto.map_input_id, force=True)
+
+    assert result.status == "ok"
+    run_dirs = list((tmp_path / "runs").iterdir())
+    assert len(run_dirs) == 1
+    decode_log = (run_dirs[0] / "01_decode.jsonl").read_text(encoding="utf-8")
+    cleanup_log = (run_dirs[0] / "02_cleanup.jsonl").read_text(encoding="utf-8")
+    recon_log = (run_dirs[0] / "03_reconstruction.jsonl").read_text(encoding="utf-8")
+    assert "raw_blueprint_loaded" in decode_log
+    assert "coord_projected" in decode_log
+    assert "cleanup_summary" in cleanup_log
+    assert "reconstruction_final" in recon_log
 
 
 def test_replay_pipeline_service_has_no_forbidden_imports() -> None:

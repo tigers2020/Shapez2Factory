@@ -11,6 +11,7 @@ from django_apps.asteroid_lab.snapshots.server_coords import (
     coerce_server_axis_int,
     map_bbox_dense_and_y,
     raw_x_to_dense_x,
+    server_xy_for_layout_line_xy,
     server_xy_for_raw_xy,
 )
 
@@ -121,10 +122,17 @@ def build_decoded_blueprint_snapshot(
         sy_obj = item.get("server_y")
         sx = coerce_server_axis_int(sx_obj)
         sy = coerce_server_axis_int(sy_obj)
-        if (sx is None or sy is None) and bbox_params is not None and x != 0:
-            pair = server_xy_for_raw_xy(x, y, max_dense_x=bbox_params[0], min_raw_y=bbox_params[1])
-            if pair is not None:
-                sx, sy = pair
+        if (sx is None or sy is None) and bbox_params is not None:
+            if x == 0:
+                sx, sy = server_xy_for_layout_line_xy(
+                    x, y, max_dense_x=bbox_params[0], min_raw_y=bbox_params[1]
+                )
+            else:
+                pair = server_xy_for_raw_xy(
+                    x, y, max_dense_x=bbox_params[0], min_raw_y=bbox_params[1]
+                )
+                if pair is not None:
+                    sx, sy = pair
 
         cells.append(
             DecodedCellDTO(

@@ -10,6 +10,7 @@ from django_apps.asteroid_lab.services.optimization_replay_to_lab_frames import 
 )
 from django_apps.shapez_asteroid.optimization.coords import Coord
 from django_apps.shapez_asteroid.optimization.dto import (
+    CommittedPlacement,
     IncrementalCommitResult,
     OptimizationReplayFrame,
     RouteGoal,
@@ -87,7 +88,15 @@ def test_route_committed_merges_path_when_commit_result_matches() -> None:
             "cell_kind": "field",
             "transport_kind": "none",
             "tile_type": "",
-        }
+        },
+        {
+            "x": 3,
+            "y": 0,
+            "layer": 0,
+            "cell_kind": "field",
+            "transport_kind": "none",
+            "tile_type": "",
+        },
     ]
     rid = "c1:route:0"
     fr = OptimizationReplayFrame(
@@ -103,16 +112,24 @@ def test_route_committed_merges_path_when_commit_result_matches() -> None:
         reservation_id=rid,
         candidate_id="c1",
         transport_kind=TransportKind.SHAPE_BELT,
-        path=(Coord(1, 0), Coord(2, 0)),
-        reserved_cells=frozenset({Coord(1, 0), Coord(2, 0)}),
+        path=(Coord(1, 0),),
+        reserved_cells=frozenset({Coord(1, 0)}),
         cost=1,
         reached_goal=_goal(),
         goal_priority=1,
         reservation_state=ReservationState.CONFIRMED,
         domain_cell_transitions=(),
     )
+    pl = CommittedPlacement(
+        candidate_id="c1",
+        occupied_cells=frozenset({Coord(0, 0)}),
+        transport_kind=TransportKind.SHAPE_BELT,
+        route_reservation_id=rid,
+        extractor=Coord(0, 0),
+        extensions=(),
+    )
     commit = IncrementalCommitResult(
-        committed_placements=(),
+        committed_placements=(pl,),
         route_reservations=(resv,),
         candidate_results=(),
         final_route_domain={},
@@ -126,8 +143,16 @@ def test_route_committed_merges_path_when_commit_result_matches() -> None:
     )
     fm = dtos[0].frame_payload.get("full_map") or []
     by_xy = {(int(r["x"]), int(r["y"])): r for r in fm if isinstance(r, dict)}
-    assert (2, 0) in by_xy
-    assert by_xy[(2, 0)].get("transport_kind") == "shape_belt"
+    assert (1, 0) in by_xy
+    assert (3, 0) in by_xy
+    assert by_xy[(1, 0)].get("cell_kind") == "transport"
+    assert by_xy[(3, 0)].get("cell_kind") == "shape_miner"
+    assert by_xy[(1, 0)].get("transport_kind") == "shape_belt"
+    assert by_xy[(3, 0)].get("transport_kind") == "shape_belt"
+    assert by_xy[(1, 0)].get("server_x") == 1
+    assert by_xy[(1, 0)].get("server_y") == 0
+    assert by_xy[(3, 0)].get("server_x") == 0
+    assert by_xy[(3, 0)].get("server_y") == 0
 
 
 def test_route_committed_then_overlay_preserves_committed_full_map() -> None:
@@ -140,7 +165,15 @@ def test_route_committed_then_overlay_preserves_committed_full_map() -> None:
             "cell_kind": "field",
             "transport_kind": "none",
             "tile_type": "",
-        }
+        },
+        {
+            "x": 3,
+            "y": 0,
+            "layer": 0,
+            "cell_kind": "field",
+            "transport_kind": "none",
+            "tile_type": "",
+        },
     ]
     rid = "c1:route:0"
     committed = OptimizationReplayFrame(
@@ -165,16 +198,24 @@ def test_route_committed_then_overlay_preserves_committed_full_map() -> None:
         reservation_id=rid,
         candidate_id="c1",
         transport_kind=TransportKind.SHAPE_BELT,
-        path=(Coord(1, 0), Coord(2, 0)),
-        reserved_cells=frozenset({Coord(1, 0), Coord(2, 0)}),
+        path=(Coord(1, 0),),
+        reserved_cells=frozenset({Coord(1, 0)}),
         cost=1,
         reached_goal=_goal(),
         goal_priority=1,
         reservation_state=ReservationState.CONFIRMED,
         domain_cell_transitions=(),
     )
+    pl = CommittedPlacement(
+        candidate_id="c1",
+        occupied_cells=frozenset({Coord(0, 0)}),
+        transport_kind=TransportKind.SHAPE_BELT,
+        route_reservation_id=rid,
+        extractor=Coord(0, 0),
+        extensions=(),
+    )
     commit = IncrementalCommitResult(
-        committed_placements=(),
+        committed_placements=(pl,),
         route_reservations=(resv,),
         candidate_results=(),
         final_route_domain={},
@@ -190,16 +231,21 @@ def test_route_committed_then_overlay_preserves_committed_full_map() -> None:
 
     fm0 = dtos[0].frame_payload.get("full_map") or []
     by0 = {(int(r["x"]), int(r["y"])): r for r in fm0 if isinstance(r, dict)}
-    assert (2, 0) in by0
-    assert by0[(2, 0)].get("transport_kind") == "shape_belt"
     assert (1, 0) in by0
+    assert (3, 0) in by0
+    assert by0[(1, 0)].get("transport_kind") == "shape_belt"
+    assert by0[(3, 0)].get("transport_kind") == "shape_belt"
     assert by0[(1, 0)].get("cell_kind") == "transport"
+    assert by0[(3, 0)].get("cell_kind") == "shape_miner"
 
     fm1 = dtos[1].frame_payload.get("full_map") or []
     by1 = {(int(r["x"]), int(r["y"])): r for r in fm1 if isinstance(r, dict)}
-    assert (2, 0) in by1
-    assert by1[(2, 0)].get("transport_kind") == "shape_belt"
+    assert (1, 0) in by1
+    assert (3, 0) in by1
+    assert by1[(1, 0)].get("transport_kind") == "shape_belt"
+    assert by1[(3, 0)].get("transport_kind") == "shape_belt"
     assert by1[(1, 0)].get("cell_kind") == "transport"
+    assert by1[(3, 0)].get("cell_kind") == "shape_miner"
 
 
 def test_candidate_geometry_dict_roles_round_trip_in_cell_overlay() -> None:
@@ -270,7 +316,15 @@ def test_overlay_frame_before_commit_matches_baseline_full_map() -> None:
             "cell_kind": "field",
             "transport_kind": "none",
             "tile_type": "",
-        }
+        },
+        {
+            "x": 3,
+            "y": 0,
+            "layer": 0,
+            "cell_kind": "field",
+            "transport_kind": "none",
+            "tile_type": "",
+        },
     ]
     rid = "c1:route:0"
     overlay_first = OptimizationReplayFrame(
@@ -295,8 +349,8 @@ def test_overlay_frame_before_commit_matches_baseline_full_map() -> None:
         reservation_id=rid,
         candidate_id="c1",
         transport_kind=TransportKind.SHAPE_BELT,
-        path=(Coord(1, 0), Coord(2, 0)),
-        reserved_cells=frozenset({Coord(1, 0), Coord(2, 0)}),
+        path=(Coord(0, 0), Coord(1, 0)),
+        reserved_cells=frozenset({Coord(0, 0), Coord(1, 0)}),
         cost=1,
         reached_goal=_goal(),
         goal_priority=1,
@@ -318,12 +372,16 @@ def test_overlay_frame_before_commit_matches_baseline_full_map() -> None:
     )
     assert len(dtos) == 2
     fm0 = dtos[0].frame_payload.get("full_map") or []
-    assert len(fm0) == 1
-    assert fm0[0].get("cell_kind") == "field"
+    assert len(fm0) == 2
+    assert all(r.get("cell_kind") == "field" for r in fm0 if isinstance(r, dict))
     fm1 = dtos[1].frame_payload.get("full_map") or []
     by1 = {(int(r["x"]), int(r["y"])): r for r in fm1 if isinstance(r, dict)}
-    assert (2, 0) in by1
-    assert by1[(2, 0)].get("transport_kind") == "shape_belt"
+    assert (1, 0) in by1
+    assert (3, 0) in by1
+    assert by1[(1, 0)].get("transport_kind") == "shape_belt"
+    assert by1[(3, 0)].get("transport_kind") == "shape_belt"
+    assert by1[(1, 0)].get("cell_kind") == "transport"
+    assert by1[(3, 0)].get("cell_kind") == "transport"
 
 
 def test_debug_server_coords_only_when_env_enabled(monkeypatch: pytest.MonkeyPatch) -> None:

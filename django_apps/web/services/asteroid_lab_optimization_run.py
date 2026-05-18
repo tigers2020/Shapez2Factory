@@ -18,6 +18,7 @@ from django_apps.asteroid_lab.models import (
     UIPlaybackSession,
 )
 from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
+from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
 from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_result
 from django_apps.asteroid_lab.replay.event_types import EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE
 from django_apps.asteroid_lab.services.cell_snapshot_service import (
@@ -27,6 +28,11 @@ from django_apps.asteroid_lab.services.optimization_replay_to_lab_frames import 
     optimization_replay_frames_to_lab_append_dtos,
 )
 from django_apps.asteroid_lab.services.replay_service import append_replay_frame
+from django_apps.asteroid_lab.services.trace_logging import (
+    create_asteroid_lab_trace_logger,
+    record_decoded_snapshot_trace,
+    record_reconstruction_trace_events,
+)
 from django_apps.shapez_asteroid.adapters.reconstruction_adapter import build_optimization_input
 from django_apps.shapez_asteroid.optimization.bundle_candidate_generator import (
     generate_bundle_candidates,
@@ -199,10 +205,41 @@ def run_lab_solver_optimization_for_map_input(
     if track is None or int(track.project_id) != int(inp.project_id):
         raise ValueError("replay_track_not_found_or_project_mismatch")
 
+    trace_logger = create_asteroid_lab_trace_logger(
+        project_slug=str(inp.project.slug),
+        replay_track_id=int(replay_track_id),
+    )
+    if trace_logger is not None:
+        trace_logger.event(
+            stage="request",
+            event="run_started",
+            severity="info",
+            source={
+                "module": "django_apps.web.services.asteroid_lab_optimization_run",
+                "function": "run_lab_solver_optimization_for_map_input",
+            },
+            diagnostic={
+                "copy_code_hash": inp.content_sha256,
+                "input_length": len(inp.copy_code or ""),
+                "request_path": "service:run_lab_solver_optimization_for_map_input",
+                "request_method": "service",
+                "accept_json": None,
+                "run_optimization": True,
+            },
+        )
+
     snapshot = build_decoded_blueprint_snapshot_from_input(int(map_input_id))
-    cleanup = load_cleanup_result(snapshot)
-    recon = run_topology_reconstruction(cleanup)
-    opt_input = build_optimization_input(recon, cleanup)
+    record_decoded_snapshot_trace(
+        trace_logger,
+        snapshot,
+        copy_code_hash=inp.content_sha256,
+        input_length=len(inp.copy_code or ""),
+    )
+    cleanup = load_cleanup_result(snapshot, trace_logger=trace_logger)
+    collector = ReconstructionTraceCollector()
+    recon = run_topology_reconstruction(cleanup, trace_collector=collector)
+    record_reconstruction_trace_events(trace_logger, collector.events)
+    opt_input = build_optimization_input(recon, cleanup, trace_logger=trace_logger)
     route_domain = RouteDomainSnapshotBuilder.build_seed_snapshot(opt_input)
     build_input_ms = int((time.perf_counter() - t_build0) * 1000.0)
 
@@ -269,6 +306,24 @@ def run_lab_solver_optimization_for_map_input(
         unreachable_suppressed = int(diag.route_probe_unreachable_suppressed_count)
         enum_wall = bool(diag.enumeration_aborted_wall_clock)
         enum_consecutive = bool(diag.enumeration_aborted_consecutive_rejects)
+    if trace_logger is not None:
+        trace_logger.event(
+            stage="candidate_probe",
+            event="candidate_probe_summary",
+            severity="info",
+            source={
+                "module": "django_apps.web.services.asteroid_lab_optimization_run",
+                "function": "run_lab_solver_optimization_for_map_input",
+            },
+            diagnostic={
+                "candidate_count": pool_n,
+                "rejected_candidate_count": len(gen_out.rejected_candidates),
+                "route_probe_failure_reason_counts": route_fail_dict,
+                "candidate_reject_reason_counts": reject_dict,
+                "route_probe_wall_ms_sum": route_probe_ms_sum,
+                "enumeration_attempts": gen_attempts,
+            },
+        )
 
     first_10: list[dict[str, Any]] = []
     for row in gen_out.rejected_candidates[:10]:
@@ -384,7 +439,11 @@ def run_lab_solver_optimization_for_map_input(
         debug: dict[str, Any] = {
             "n0": n0,
             "truncated_tail_frames": truncated_tail_frames,
+            "prior_optimization_frames_deleted": truncated_tail_frames,
+            "prior_tail_lab_frame_delete_count": truncated_tail_frames,
+            "replay_tail_reset": truncated_tail_frames > 0,
             "appended": appended,
+            "appended_optimization_frame_count": appended,
             "reason": reason,
             "candidate_pool_len": pool_n,
             "recorder_frame_count": rec_n,
@@ -392,6 +451,27 @@ def run_lab_solver_optimization_for_map_input(
             "evaluated_genome_count": int(evo.evaluated_genome_count),
             "diagnostic": diagnostic,
         }
+        if trace_logger is not None:
+            trace_logger.event(
+                stage="replay_payload",
+                event="optimization_replay_appended",
+                severity="info",
+                source={
+                    "module": "django_apps.web.services.asteroid_lab_optimization_run",
+                    "function": "run_lab_solver_optimization_for_map_input",
+                },
+                diagnostic={
+                    "recorder_frame_count": rec_n,
+                    "appended_frame_count": appended,
+                    "appended_optimization_frame_count": appended,
+                    "truncated_tail_frames": truncated_tail_frames,
+                    "prior_optimization_frames_deleted": truncated_tail_frames,
+                    "prior_tail_lab_frame_delete_count": truncated_tail_frames,
+                    "replay_tail_reset": truncated_tail_frames > 0,
+                    "reason": reason,
+                },
+            )
+            trace_logger.close()
         return LabOptimizationRunResult(n0, appended, debug)
 
 

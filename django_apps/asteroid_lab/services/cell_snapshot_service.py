@@ -28,6 +28,7 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
 from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
+from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
 
 
 def build_decoded_blueprint_snapshot_from_input(map_input_id: int) -> DecodedBlueprintSnapshotDTO:
@@ -39,6 +40,7 @@ def build_decoded_blueprint_snapshot_from_input(map_input_id: int) -> DecodedBlu
         raise ValueError(msg)
     raw = inp.decoded_json
     decoded: dict[str, Any] = dict(raw) if isinstance(raw, dict) else {}
+    attach_server_coords_to_decoded_json(decoded)
     return build_decoded_blueprint_snapshot(
         decoded,
         project_id=int(inp.project_id),

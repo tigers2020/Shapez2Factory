@@ -54,3 +54,60 @@ def test_lookup_overlay_only_matches_last() -> None:
     assert cell is not None
     assert cell.get("cell_kind") == "space_pipe"
     assert sources.get("overlay_cells_matched") == 2
+
+
+def test_lookup_overlay_merged_on_top_of_full_map() -> None:
+    """Optimization-style frame: HUD (x,y) must reflect cell_overlay on top of full_map."""
+    ser = {
+        "full_map": [
+            {
+                "x": 3,
+                "y": -2,
+                "cell_kind": "asteroid_fluid_field",
+                "transport_kind": "none",
+                "server_x": 2,
+                "server_y": 8,
+            },
+        ],
+        "diff": {},
+        "cell_overlay_json": {
+            "cells": [
+                {
+                    "x": 3,
+                    "y": -2,
+                    "layer": 0,
+                    "cell_kind": "optimization_overlay",
+                    "overlay_role": "route_path",
+                    "severity": "info",
+                },
+            ],
+        },
+    }
+    cell, sources = lookup_cell_in_serialized_frame(ser, 3, -2)
+    assert cell is not None
+    assert cell.get("cell_kind") == "optimization_overlay"
+    assert cell.get("overlay_role") == "route_path"
+    assert sources.get("full_map") is not None
+    assert sources.get("overlay_cells_matched") == 1
+
+
+def test_lookup_full_map_nonempty_but_xy_only_in_overlay() -> None:
+    ser = {
+        "full_map": [{"x": 0, "y": 0, "cell_kind": "field"}],
+        "diff": {},
+        "cell_overlay_json": {
+            "cells": [
+                {
+                    "x": 5,
+                    "y": 5,
+                    "cell_kind": "optimization_overlay",
+                    "overlay_role": "candidate_occupied",
+                },
+            ],
+        },
+    }
+    cell, sources = lookup_cell_in_serialized_frame(ser, 5, 5)
+    assert cell is not None
+    assert cell.get("cell_kind") == "optimization_overlay"
+    assert sources.get("overlay_cells_matched") == 1
+    assert "full_map" not in sources

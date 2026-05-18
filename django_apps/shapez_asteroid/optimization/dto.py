@@ -322,6 +322,8 @@ class CommittedPlacement:
     occupied_cells: frozenset[Coord]
     transport_kind: TransportKind
     route_reservation_id: str
+    extractor: Coord | None = None
+    extensions: tuple[Coord, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

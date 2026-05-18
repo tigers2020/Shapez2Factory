@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.pipeline import (
@@ -10,6 +11,7 @@ from django_apps.asteroid_lab.reconstruction.pipeline import (
     run_topology_reconstruction,
 )
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
+from django_apps.asteroid_lab.services.trace_logging import AsteroidLabTraceLogger
 from django_apps.shapez_asteroid.adapters.reconstruction_adapter import (
     build_optimization_input,
     decoded_cell_to_server_coord,
@@ -210,7 +212,7 @@ def test_hole_interior_stays_mineable() -> None:
 
 
 def test_belt_removed_coord_not_asteroid_evidence_default() -> None:
-    """Pipe-only removal site must not be classified as asteroid field in OptimizationInput."""
+    """Transport-only removal must not add asteroid unless it shares a server tile with a miner."""
 
     cells = (
         _cell(1, 0, cell_kind="fluid_miner"),
@@ -233,7 +235,18 @@ def test_belt_removed_coord_not_asteroid_evidence_default() -> None:
         next(c for c in cleanup.ignored_transport_cells if c.cell_kind == "space_pipe"),
         server_xy_params=cleanup.server_xy_params,
     )
-    assert pipe_xy not in inp.asteroid_cells
+    miner_ext_servers = {
+        decoded_cell_to_server_coord(c, server_xy_params=cleanup.server_xy_params)
+        for c in cleanup.removed_building_cells
+        if c.cell_kind
+        in (
+            "fluid_miner",
+            "fluid_miner_extension",
+            "shape_miner",
+            "shape_miner_extension",
+        )
+    }
+    assert pipe_xy in miner_ext_servers
 
 
 def test_extractor_removed_anchor_supports_mineable_hole() -> None:
@@ -274,3 +287,67 @@ def test_all_optimization_input_coords_are_server_xy() -> None:
         assert isinstance(c, Coord)
     for e in inp.existing_transport_cells:
         assert isinstance(e.coord, Coord)
+
+
+def test_optimization_input_trace_does_not_change_result(tmp_path: Path) -> None:
+    cells = (
+        _cell(1, 1, cell_kind="asteroid_shape_field", server_x=0, server_y=0),
+        _cell(2, 1, cell_kind="asteroid_shape_field", server_x=1, server_y=0),
+        _cell(1, 2, cell_kind="space_belt", transport_kind="shape_belt", server_x=0, server_y=1),
+    )
+    snap = _snapshot(cells)
+    cleanup = deconstruct_snapshot(snap)
+    recon = run_topology_reconstruction(cleanup)
+    without_trace = build_optimization_input(recon, cleanup)
+    logger = AsteroidLabTraceLogger(run_id="opt-input-trace", root_dir=tmp_path)
+    with_trace = build_optimization_input(recon, cleanup, trace_logger=logger)
+    logger.close()
+
+    assert with_trace == without_trace
+    log_text = (tmp_path / "runs" / "opt-input-trace" / "04_optimization_input.jsonl").read_text(
+        encoding="utf-8"
+    )
+    assert "optimization_input_summary" in log_text
+    assert "optimization_input_cell_classified" in log_text
+
+
+def test_removed_miner_extension_server_anchors_in_asteroid_cells() -> None:
+    """Stripped extractor/extension server coords remain mineable topology (Sequence 1B)."""
+
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(2, 1, tile_type="UnknownTile_B"),
+        _cell(3, 1, tile_type="UnknownTile_C"),
+        _cell(1, 2, tile_type="UnknownTile_D"),
+        _cell(3, 2, tile_type="UnknownTile_E"),
+        _cell(1, 3, tile_type="UnknownTile_F"),
+        _cell(2, 3, tile_type="UnknownTile_G"),
+        _cell(3, 3, tile_type="UnknownTile_H"),
+    )
+    snap = _snapshot(cells)
+    cleanup = deconstruct_snapshot(snap)
+    recon = reconstruct_snapshot(snap)
+    inp = build_optimization_input(recon, cleanup)
+    anchors = {
+        decoded_cell_to_server_coord(c, server_xy_params=cleanup.server_xy_params)
+        for c in cleanup.removed_building_cells
+        if c.cell_kind in ("fluid_miner", "fluid_miner_extension")
+    }
+    assert anchors
+    assert anchors <= inp.asteroid_cells
+    assert anchors <= inp.mineable_cells
+
+
+def test_shapez_asteroid_solver_never_reads_asteroid_lab_trace_logs() -> None:
+    root = Path("django_apps/shapez_asteroid")
+    forbidden = ("var/log/asteroid_lab", "ASTEROID_LAB_TRACE_LOG_DIR")
+    for path in root.rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        for needle in forbidden:
+            assert needle not in text, f"{path} must not read trace logs"
+        assert ".read_text(" not in text
+        assert ".read_bytes(" not in text
+        assert "open(" not in text

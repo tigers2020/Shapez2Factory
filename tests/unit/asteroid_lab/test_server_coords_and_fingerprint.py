@@ -158,6 +158,40 @@ def test_attach_server_coords_pipe_seam() -> None:
     assert meta.get("coord_system") == COORD_SYSTEM_BBOX_RIGHT_BOTTOM
 
 
+def test_attach_server_coords_raw_x_zero_matches_layout_bridge() -> None:
+    decoded = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": 0, "Y": 5, "R": 0, "T": "SpaceBelt_Right"},
+                {"X": -1, "Y": 5, "R": 0, "T": "SpaceBelt_Left"},
+            ],
+        },
+    }
+    attach_server_coords_to_decoded_json(decoded)
+    by_x = {e["X"]: e for e in decoded["BP"]["Entries"]}
+    assert by_x[0]["server_x"] == by_x[-1]["server_x"]
+    assert by_x[0]["server_y"] == by_x[-1]["server_y"]
+
+
+def test_build_decoded_blueprint_snapshot_fills_server_for_raw_x_zero() -> None:
+    decoded = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": 0, "Y": 5, "R": 0, "T": "SpaceBelt_Right"},
+                {"X": -1, "Y": 5, "R": 0, "T": "SpaceBelt_Left"},
+            ],
+        },
+    }
+    attach_server_coords_to_decoded_json(decoded)
+    snap = build_decoded_blueprint_snapshot(decoded)
+    assert sum(1 for c in snap.cells if int(c.x) == 0 and c.server_x is not None) == 1
+    assert sum(1 for c in snap.cells if c.server_x is None or c.server_y is None) == 0
+
+
 def test_server_origin_bottom_right_corner_zero() -> None:
     decoded = {
         "V": 1,

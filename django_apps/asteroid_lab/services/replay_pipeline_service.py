@@ -29,6 +29,10 @@ from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
     persist_decoded_snapshot_for_map_input,
 )
+from django_apps.asteroid_lab.services.trace_logging import (
+    create_asteroid_lab_trace_logger,
+    record_decoded_snapshot_trace,
+)
 
 # decode (1) + cleanup/reconstruction (4); see cell_snapshot_service / existing_layout_service.
 _INSPECTION_EXPECTED_FRAMES = 5
@@ -138,10 +142,41 @@ def build_initial_replay_for_map_input(
                 run_key=rk,
             )
 
+    trace_logger = create_asteroid_lab_trace_logger(project_slug=str(inp.project.slug))
+    if trace_logger is not None:
+        trace_logger.event(
+            stage="request",
+            event="run_started",
+            severity="info",
+            source={
+                "module": "django_apps.asteroid_lab.services.replay_pipeline_service",
+                "function": "build_initial_replay_for_map_input",
+            },
+            diagnostic={
+                "copy_code_hash": digest,
+                "input_length": len(inp.copy_code or ""),
+                "run_key": rk,
+                "algorithm_label": algorithm_label,
+                "force": bool(force),
+            },
+        )
+
     try:
         raw = decode_copy_string(inp.copy_code)
         norm = normalize_decoded_blueprint(raw)
     except AsteroidLabCopyDecodeError as exc:
+        if trace_logger is not None:
+            trace_logger.event(
+                stage="decode.raw",
+                event="decode_failed",
+                severity="error",
+                source={
+                    "module": "django_apps.asteroid_lab.adapters.decode_adapter",
+                    "function": "decode_copy_string",
+                },
+                diagnostic={"error_message": str(exc)},
+            )
+            trace_logger.close()
         return InitialReplayPipelineResultDTO(
             project_id=int(inp.project_id),
             map_input_id=int(inp.pk),
@@ -164,18 +199,46 @@ def build_initial_replay_for_map_input(
         config=dict(config or {}),
     )
     track_id = int(run_dto.replay_track_id)
+    if trace_logger is not None:
+        trace_logger.bind_context(solver_run_id=int(run_dto.id), replay_track_id=track_id)
 
     snapshot = build_decoded_blueprint_snapshot_from_input(int(inp.pk))
+    record_decoded_snapshot_trace(
+        trace_logger,
+        snapshot,
+        copy_code_hash=digest,
+        input_length=len(inp.copy_code or ""),
+    )
     decoded_frames = record_decoded_snapshot_frames(track_id, snapshot)
     dec_snap_pk = persist_decoded_cell_snapshot(int(inp.project_id), int(inp.pk), snapshot)
 
     inspection = build_existing_layout_inspection_from_input(int(inp.pk))
-    layout_frames = record_existing_layout_inspection_frames(track_id, inspection)
+    layout_frames = record_existing_layout_inspection_frames(
+        track_id,
+        inspection,
+        trace_logger=trace_logger,
+    )
     layout_snap_pk = persist_existing_layout_inspection_snapshot(
         int(inp.project_id), int(inp.pk), inspection
     )
 
     total_frames = len(decoded_frames) + len(layout_frames)
+    if trace_logger is not None:
+        trace_logger.event(
+            stage="replay_payload",
+            event="inspection_replay_frames_recorded",
+            severity="info",
+            source={
+                "module": "django_apps.asteroid_lab.services.replay_pipeline_service",
+                "function": "build_initial_replay_for_map_input",
+            },
+            diagnostic={
+                "decoded_frame_count": len(decoded_frames),
+                "layout_frame_count": len(layout_frames),
+                "total_frame_count": total_frames,
+            },
+        )
+        trace_logger.close()
     return InitialReplayPipelineResultDTO(
         project_id=int(inp.project_id),
         map_input_id=int(inp.pk),

@@ -21,8 +21,10 @@ from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment
 from django_apps.asteroid_lab.snapshots.server_coords import (
     map_bbox_dense_and_y_from_lab_rows,
     raw_xy_for_server_xy,
+    server_xy_for_raw_xy,
 )
 from django_apps.shapez_asteroid.optimization.dto import (
+    CommittedPlacement,
     IncrementalCommitResult,
     OptimizationReplayFrame,
 )
@@ -123,36 +125,137 @@ def _transport_tile_type(kind_value: str) -> str:
     return "SpaceBelt_Straight"
 
 
+def _attach_server_axes_to_raw_row(
+    row: dict[str, Any],
+    *,
+    max_dx: int,
+    min_y: int,
+) -> None:
+    sp = server_xy_for_raw_xy(
+        int(row["x"]),
+        int(row["y"]),
+        max_dense_x=max_dx,
+        min_raw_y=min_y,
+    )
+    if sp is not None:
+        row["server_x"], row["server_y"] = int(sp[0]), int(sp[1])
+
+
+def _placement_miner_roles(transport_kind_value: str) -> tuple[tuple[str, str], tuple[str, str]]:
+    """``((extractor_cell_kind, extractor_tile), (extension_cell_kind, extension_tile))``."""
+
+    if transport_kind_value == "fluid_pipe":
+        return (
+            ("fluid_miner", "Layout_FluidMiner"),
+            ("fluid_miner_extension", "Layout_FluidMinerExtension"),
+        )
+    return (
+        ("shape_miner", "Layout_ShapeMiner"),
+        ("shape_miner_extension", "Layout_ShapeMinerExtension"),
+    )
+
+
+def _apply_committed_placement_for_reservation(
+    rows: list[dict[str, Any]],
+    *,
+    reservation_id: str,
+    placements: tuple[CommittedPlacement, ...],
+    server_xy_params: tuple[int, int] | None,
+    lab_rows: list[dict[str, Any]] | None = None,
+) -> None:
+    """Materialize extractor/extension **before** route path (belt wins on overlap)."""
+
+    if server_xy_params is None:
+        return
+    pl = next((p for p in placements if p.route_reservation_id == reservation_id), None)
+    if pl is None or pl.extractor is None:
+        return
+    max_dx, min_y = int(server_xy_params[0]), int(server_xy_params[1])
+    lab = lab_rows if lab_rows is not None else rows
+    tk = pl.transport_kind.value if hasattr(pl.transport_kind, "value") else str(pl.transport_kind)
+    (ex_ck, ex_tile), (ext_ck, ext_tile) = _placement_miner_roles(tk)
+    by_key = _index_rows(rows)
+
+    def write_server_cell(sx: int, sy: int, *, cell_kind: str, tile_type: str) -> None:
+        rx, ry = raw_xy_for_server_xy(
+            sx,
+            sy,
+            max_dense_x=max_dx,
+            min_raw_y=min_y,
+            lab_rows=lab,
+        )
+        stale = [k for k in by_key if k[0] == rx and k[1] == ry]
+        for k in stale:
+            del by_key[k]
+        row: dict[str, Any] = {
+            "x": rx,
+            "y": ry,
+            "layer": 0,
+            "rotation": 0,
+            "cell_kind": cell_kind,
+            "transport_kind": tk,
+            "tile_type": tile_type,
+        }
+        _attach_server_axes_to_raw_row(row, max_dx=max_dx, min_y=min_y)
+        by_key[(rx, ry, 0)] = row
+
+    ex = pl.extractor
+    write_server_cell(int(ex.x), int(ex.y), cell_kind=ex_ck, tile_type=ex_tile)
+    for ext in pl.extensions:
+        write_server_cell(int(ext.x), int(ext.y), cell_kind=ext_ck, tile_type=ext_tile)
+
+    rows[:] = sorted(by_key.values(), key=lambda r: (int(r["y"]), int(r["x"]), r.get("layer") or 0))
+
+
 def _apply_reservation_path_to_rows(
     rows: list[dict[str, Any]],
     *,
     path: tuple[Any, ...],
     transport_kind_value: str,
+    server_xy_params: tuple[int, int] | None,
+    lab_rows: list[dict[str, Any]] | None = None,
 ) -> None:
+    """Merge transport into ``rows`` at **raw/world** keys.
+
+    ``path`` uses optimization **server** ``Coord`` (see ``shapez_asteroid.optimization.coords``).
+    Lab ``full_map`` rows use blueprint raw ``x``/``y``. Strip duplicate ``(x,y,*)`` keys so
+    ``layer=None`` vs ``0`` does not leave stale ``asteroid_*`` rows.
+    """
+
+    if server_xy_params is None:
+        return
+    max_dx, min_y = int(server_xy_params[0]), int(server_xy_params[1])
+    lab = lab_rows if lab_rows is not None else rows
     by_key = _index_rows(rows)
     for step in path:
         if hasattr(step, "x") and hasattr(step, "y"):
-            x, y = int(step.x), int(step.y)
-            ly_raw = getattr(step, "layer", None)
-            ly: int | None = None if ly_raw is None else int(ly_raw)
+            sx, sy = int(step.x), int(step.y)
         else:
             coord = json_safe_replay_value(step)
             if not isinstance(coord, dict) or "x" not in coord or "y" not in coord:
                 continue
-            x, y = int(coord["x"]), int(coord["y"])
-            layer = coord.get("layer")
-            ly = None if layer is None else int(layer)
-        key = (x, y, ly)
+            sx, sy = int(coord["x"]), int(coord["y"])
+        rx, ry = raw_xy_for_server_xy(
+            sx,
+            sy,
+            max_dense_x=max_dx,
+            min_raw_y=min_y,
+            lab_rows=lab,
+        )
+        stale = [k for k in by_key if k[0] == rx and k[1] == ry]
+        for k in stale:
+            del by_key[k]
         row = {
-            "x": x,
-            "y": y,
-            "layer": ly,
+            "x": rx,
+            "y": ry,
+            "layer": 0,
             "rotation": 0,
             "cell_kind": "transport",
             "transport_kind": transport_kind_value,
             "tile_type": _transport_tile_type(transport_kind_value),
         }
-        by_key[key] = row
+        _attach_server_axes_to_raw_row(row, max_dx=max_dx, min_y=min_y)
+        by_key[(rx, ry, 0)] = row
     rows[:] = sorted(by_key.values(), key=lambda r: (int(r["y"]), int(r["x"]), r.get("layer") or 0))
 
 
@@ -178,17 +281,36 @@ def optimization_replay_frames_to_lab_append_dtos(
     out: list[ReplayFrameAppendDTO] = []
     for local_i, frame in enumerate(frames):
         before_map = deepcopy(working)
+        bbox_proj = map_bbox_dense_and_y_from_lab_rows(working)
+        server_xy_proj: tuple[int, int] | None = (
+            (int(bbox_proj[0]), int(bbox_proj[1])) if bbox_proj is not None else None
+        )
         et = frame.event_type.value
         if et in COMMIT_CLASS_OPTIMIZATION_EVENT_TYPES and commit_result is not None:
             rid = frame.metrics.get("route_reservation_id")
-            res = reservations_by_id.get(str(rid)) if rid is not None else None
+            rid_s = str(rid) if rid is not None else ""
+            res = reservations_by_id.get(rid_s) if rid_s else None
+            if rid_s:
+                _apply_committed_placement_for_reservation(
+                    working,
+                    reservation_id=rid_s,
+                    placements=commit_result.committed_placements,
+                    server_xy_params=server_xy_proj,
+                    lab_rows=working,
+                )
             if res is not None and res.path:
                 tk = (
                     res.transport_kind.value
                     if hasattr(res.transport_kind, "value")
                     else str(res.transport_kind)
                 )
-                _apply_reservation_path_to_rows(working, path=res.path, transport_kind_value=tk)
+                _apply_reservation_path_to_rows(
+                    working,
+                    path=res.path,
+                    transport_kind_value=tk,
+                    server_xy_params=server_xy_proj,
+                    lab_rows=working,
+                )
 
         bbox = map_bbox_dense_and_y_from_lab_rows(working)
         server_xy_params: tuple[int, int] | None = (

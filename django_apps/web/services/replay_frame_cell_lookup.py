@@ -89,9 +89,17 @@ def _merge_layers(layers: list[dict[str, Any]]) -> dict[str, Any]:
 def lookup_cell_in_serialized_frame(
     ser: dict[str, Any], x: int, y: int
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """Match lab grid paint order: full_map + diff layers; else overlay-only."""
+    """Match lab grid paint order: full_map + diff, then ``cell_overlay_json`` on top."""
 
     sources: dict[str, Any] = {}
+
+    overlay_matches: list[dict[str, Any]] = []
+    ov2 = ser.get("cell_overlay_json")
+    if isinstance(ov2, dict):
+        overlay_cells = _collect_overlay_cells(ov2)
+        overlay_matches = [dict(m) for m in _cells_at_xy(overlay_cells, x, y)]
+        if overlay_matches:
+            sources["overlay_cells_matched"] = len(overlay_matches)
 
     full_map_raw = ser.get("full_map")
     if isinstance(full_map_raw, list) and len(full_map_raw) > 0:
@@ -122,15 +130,13 @@ def lookup_cell_in_serialized_frame(
                         base_layers.append(dict(after))
 
         if not base_layers:
+            if overlay_matches:
+                return _merge_layers(overlay_matches), sources
             return None, sources
-        return _merge_layers(base_layers), sources
+        layers = [*base_layers, *overlay_matches]
+        return _merge_layers(layers), sources
 
-    ov2 = ser.get("cell_overlay_json")
-    if isinstance(ov2, dict):
-        overlay_cells = _collect_overlay_cells(ov2)
-        matches = _cells_at_xy(overlay_cells, x, y)
-        if matches:
-            sources["overlay_cells_matched"] = len(matches)
-            return _merge_layers([dict(m) for m in matches]), sources
+    if overlay_matches:
+        return _merge_layers(overlay_matches), sources
 
     return None, sources

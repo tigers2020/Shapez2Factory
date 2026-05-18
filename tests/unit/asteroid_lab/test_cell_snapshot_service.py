@@ -192,6 +192,35 @@ def test_snapshots_package_avoids_mining_solver_paths() -> None:
 
 
 @pytest.mark.django_db
+def test_build_decoded_blueprint_snapshot_from_input_attaches_server_coords_when_absent() -> None:
+    """Persisted decoded_json may omit server axes; read path must attach before snapshot DTO."""
+
+    proj = m.AsteroidProject.objects.create(name="Srv", slug="srv-attach")
+    decoded = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": 0, "Y": 3, "R": 0, "T": "SpaceBelt_Right"},
+                {"X": -1, "Y": 3, "R": 0, "T": "SpaceBelt_Left"},
+                {"X": -9, "Y": 0, "R": 0, "T": "Layout_FluidMiner"},
+                {"X": -8, "Y": 0, "R": 0, "T": "Layout_FluidMinerExtension"},
+            ],
+        },
+    }
+    inp = m.AsteroidMapInput.objects.create(
+        project=proj,
+        source_kind=m.AsteroidMapInput.SourceKind.DECODED_JSON,
+        decoded_json=decoded,
+    )
+    snap = css.build_decoded_blueprint_snapshot_from_input(inp.id)
+    assert sum(1 for c in snap.cells if c.server_x is None or c.server_y is None) == 0
+    z = next(c for c in snap.cells if int(c.x) == 0)
+    m1 = next(c for c in snap.cells if int(c.x) == -1)
+    assert z.server_x == m1.server_x and z.server_y == m1.server_y
+
+
+@pytest.mark.django_db
 def test_build_from_input_empty_bp_entries() -> None:
     proj = m.AsteroidProject.objects.create(name="E", slug="e-empty")
     inp = m.AsteroidMapInput.objects.create(

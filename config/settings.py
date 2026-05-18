@@ -124,6 +124,22 @@ MEDIA_ROOT = BASE_DIR / "media"
 SHAPE_PART_SPRITE_STATIC_ROOT = BASE_DIR / "django_apps" / "web" / "static" / "web"
 SHAPE_PART_SPRITE_URL_PREFIX = "/static/web/"
 
+# Asteroid Lab 구조화 trace log는 디버그 산출물이며 solver 입력으로 읽지 않는다.
+ASTEROID_LAB_TRACE_LOG_ENABLED = (
+    os.environ.get("ASTEROID_LAB_TRACE_LOG_ENABLED", "").strip().lower()
+    in {"1", "true", "yes", "on"}
+)
+ASTEROID_LAB_TRACE_LOG_DIR = BASE_DIR / "var" / "log" / "asteroid_lab"
+ASTEROID_LAB_TRACE_LOG_MAX_EVENTS = int(
+    os.environ.get("ASTEROID_LAB_TRACE_LOG_MAX_EVENTS", "5000")
+)
+ASTEROID_LAB_TRACE_LOG_MAX_BYTES = int(
+    os.environ.get("ASTEROID_LAB_TRACE_LOG_MAX_BYTES", "5000000")
+)
+ASTEROID_LAB_TRACE_LOG_SAMPLE_LIMIT = int(
+    os.environ.get("ASTEROID_LAB_TRACE_LOG_SAMPLE_LIMIT", "128")
+)
+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",

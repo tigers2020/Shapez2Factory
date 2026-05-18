@@ -354,6 +354,8 @@ def commit_best_genome(
                 occupied_cells=cand.occupied_cells,
                 transport_kind=cand.transport_kind,
                 route_reservation_id=reservation_id,
+                extractor=cand.extractor,
+                extensions=cand.extensions,
             )
         )
         emit_route_committed(

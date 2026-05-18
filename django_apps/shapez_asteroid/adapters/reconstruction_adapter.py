@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Iterable
+from typing import Any
 
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.reconstruction.evidence import ASTEROID_FIELD_KINDS
@@ -40,6 +41,28 @@ def _canonical_edge(a: Coord, b: Coord, *, cost: int = 1) -> TopologyEdge:
     if _lex_key(a) <= _lex_key(b):
         return TopologyEdge(a=a, b=b, edge_kind=EdgeKind.CARDINAL, traversal_cost=cost)
     return TopologyEdge(a=b, b=a, edge_kind=EdgeKind.CARDINAL, traversal_cost=cost)
+
+
+def _representative_cell_for_server_bucket(cells: list[DecodedCellDTO]) -> DecodedCellDTO:
+    """Pick one cell per server tile when multiple raw columns map to the same server coord."""
+
+    if len(cells) == 1:
+        return cells[0]
+
+    def sort_key(c: DecodedCellDTO) -> tuple[int, int, int]:
+        in_ast = 0 if c.cell_kind in ASTEROID_FIELD_KINDS else 1
+        non_tr = 0 if not is_transport_tile(c) else 1
+        return (in_ast, non_tr, int(c.x))
+
+    return min(cells, key=sort_key)
+
+
+def _trace_event(trace_logger: Any | None, **payload: Any) -> None:
+    if trace_logger is None:
+        return
+    event = getattr(trace_logger, "event", None)
+    if callable(event):
+        event(**payload)
 
 
 def decoded_cell_to_server_coord(
@@ -212,16 +235,20 @@ def build_optimization_input(
     blocked_cells: frozenset[Coord] | None = None,
     existing_transport_cells: frozenset[ExistingTransportCell] | None = None,
     existing_trunk_cells: frozenset[Coord] | None = None,
+    trace_logger: Any | None = None,
 ) -> OptimizationInput:
     """Single adapter path; greenfield = empty transport, trunk, and protected sets."""
 
     params = cleanup.server_xy_params
     recon_cells = reconstruction.cells
 
-    layout_by_server: dict[Coord, DecodedCellDTO] = {}
+    by_server: dict[Coord, list[DecodedCellDTO]] = {}
     for cell in recon_cells:
         sc = decoded_cell_to_server_coord(cell, server_xy_params=params)
-        layout_by_server[sc] = cell
+        by_server.setdefault(sc, []).append(cell)
+    layout_by_server: dict[Coord, DecodedCellDTO] = {
+        sc: _representative_cell_for_server_bucket(lst) for sc, lst in by_server.items()
+    }
 
     ignored_transport_server = frozenset(
         decoded_cell_to_server_coord(c, server_xy_params=params)
@@ -246,6 +273,9 @@ def build_optimization_input(
             transport_cells.add(sc)
         elif cell.cell_kind in ASTEROID_FIELD_KINDS:
             asteroid_cells.add(sc)
+
+    asteroid_cells.update(removed_miner_ext_server)
+    asteroid_cells -= transport_cells
 
     mineable_cells = frozenset(asteroid_cells)
 
@@ -292,7 +322,7 @@ def build_optimization_input(
         asteroid_cells=frozenset(asteroid_cells),
     )
 
-    return OptimizationInput(
+    opt_input = OptimizationInput(
         asteroid_cells=frozenset(asteroid_cells),
         mineable_cells=mineable_cells,
         rim_cells=rim_cells,
@@ -306,3 +336,71 @@ def build_optimization_input(
         topology_graph=topology,
         bbox=bbox,
     )
+    _trace_event(
+        trace_logger,
+        stage="optimization_input",
+        event="optimization_input_summary",
+        severity="info",
+        source={
+            "module": "django_apps.shapez_asteroid.adapters.reconstruction_adapter",
+            "function": "build_optimization_input",
+        },
+        diagnostic={
+            "server_xy_params": params,
+            "removed_miner_extension_anchor_server_count": len(removed_miner_ext_server),
+            "asteroid_cell_count": len(opt_input.asteroid_cells),
+            "mineable_cell_count": len(opt_input.mineable_cells),
+            "rim_cell_count": len(opt_input.rim_cells),
+            "interior_cell_count": len(opt_input.interior_cells),
+            "external_void_cell_count": len(opt_input.external_void_cells),
+            "existing_transport_cell_count": len(opt_input.existing_transport_cells),
+            "existing_trunk_cell_count": len(opt_input.existing_trunk_cells),
+            "blocked_cell_count": len(opt_input.blocked_cells),
+            "protected_corridor_cell_count": len(opt_input.protected_corridor_cells),
+            "topology_node_count": len(opt_input.topology_graph.nodes),
+            "topology_edge_count": len(opt_input.topology_graph.edges),
+            "bbox": {
+                "min_x": opt_input.bbox.min_x,
+                "max_x": opt_input.bbox.max_x,
+                "min_y": opt_input.bbox.min_y,
+                "max_y": opt_input.bbox.max_y,
+            },
+        },
+    )
+    sample_limit = int(getattr(trace_logger, "sample_limit", 128)) if trace_logger else 0
+    transport_by_coord = {e.coord: e.transport_kind for e in opt_input.existing_transport_cells}
+    sample_coords = sorted(
+        (
+            set(opt_input.asteroid_cells)
+            | set(opt_input.external_void_cells)
+            | {e.coord for e in opt_input.existing_transport_cells}
+            | set(opt_input.blocked_cells)
+            | set(opt_input.protected_corridor_cells)
+        ),
+        key=lambda c: (c.x, c.y),
+    )[:sample_limit]
+    for coord in sample_coords:
+        tk = transport_by_coord.get(coord)
+        _trace_event(
+            trace_logger,
+            stage="optimization_input",
+            event="optimization_input_cell_classified",
+            source={
+                "module": "django_apps.shapez_asteroid.adapters.reconstruction_adapter",
+                "function": "build_optimization_input",
+            },
+            coord={"server_x": coord.x, "server_y": coord.y},
+            diagnostic={
+                "coord_system": "server_xy",
+                "in_asteroid_cells": coord in opt_input.asteroid_cells,
+                "in_mineable_cells": coord in opt_input.mineable_cells,
+                "in_rim_cells": coord in opt_input.rim_cells,
+                "in_interior_cells": coord in opt_input.interior_cells,
+                "in_external_void_cells": coord in opt_input.external_void_cells,
+                "existing_transport_kind": None if tk is None else tk.value,
+                "is_existing_trunk": coord in opt_input.existing_trunk_cells,
+                "is_blocked": coord in opt_input.blocked_cells,
+                "is_protected": coord in opt_input.protected_corridor_cells,
+            },
+        )
+    return opt_input

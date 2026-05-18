@@ -29,6 +29,9 @@ from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
     persist_decoded_snapshot_for_map_input,
 )
+from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
+    persist_reconstructed_asteroid_map,
+)
 
 # decode (1) + cleanup/reconstruction (4); see cell_snapshot_service / existing_layout_service.
 _INSPECTION_EXPECTED_FRAMES = 5
@@ -37,6 +40,18 @@ _INSPECTION_EXPECTED_FRAMES = 5
 def _default_run_key(map_input_id: int, digest_hex: str) -> str:
     base = f"inspection-{map_input_id}-{digest_hex[:12]}"
     return base[:120]
+
+
+def _latest_reconstructed_map_pk(map_input_id: int, run_key: str) -> int | None:
+    row = (
+        m.ReconstructedAsteroidMap.objects.filter(
+            map_input_id=int(map_input_id),
+            run_key=run_key.strip(),
+        )
+        .order_by("-id")
+        .first()
+    )
+    return int(row.pk) if row else None
 
 
 def _latest_cell_snapshot_pk(map_input_id: int, layer: str) -> int | None:
@@ -64,6 +79,7 @@ def _result_from_completed_track(
         replay_frame_count=n,
         decoded_snapshot_id=_latest_cell_snapshot_pk(inp.pk, "decoded_blueprint_top"),
         existing_layout_snapshot_id=_latest_cell_snapshot_pk(inp.pk, "existing_layout_inspection"),
+        reconstructed_asteroid_map_id=_latest_reconstructed_map_pk(int(inp.pk), run_key),
         status="ok",
         error_message="",
         run_key=run_key,
@@ -91,6 +107,7 @@ def build_initial_replay_for_map_input(
             replay_frame_count=0,
             decoded_snapshot_id=None,
             existing_layout_snapshot_id=None,
+            reconstructed_asteroid_map_id=None,
             status="failed",
             error_message=f"AsteroidMapInput id={map_input_id} not found",
             run_key="",
@@ -133,6 +150,7 @@ def build_initial_replay_for_map_input(
                 existing_layout_snapshot_id=_latest_cell_snapshot_pk(
                     inp.pk, "existing_layout_inspection"
                 ),
+                reconstructed_asteroid_map_id=None,
                 status="failed",
                 error_message=msg,
                 run_key=rk,
@@ -150,6 +168,7 @@ def build_initial_replay_for_map_input(
             replay_frame_count=0,
             decoded_snapshot_id=None,
             existing_layout_snapshot_id=None,
+            reconstructed_asteroid_map_id=None,
             status="failed",
             error_message=str(exc),
             run_key=rk,
@@ -172,13 +191,20 @@ def build_initial_replay_for_map_input(
     dec_snap_pk = persist_decoded_cell_snapshot(int(inp.project_id), int(inp.pk), snapshot)
 
     inspection = build_existing_layout_inspection_from_input(int(inp.pk))
-    layout_frames = record_existing_layout_inspection_frames(
+    layout_frames, cleanup, recon = record_existing_layout_inspection_frames(
         track_id,
         inspection,
         boundary_run_id=f"solver_run:{int(run_dto.id)}",
     )
     layout_snap_pk = persist_existing_layout_inspection_snapshot(
         int(inp.project_id), int(inp.pk), inspection
+    )
+    recon_map_pk = persist_reconstructed_asteroid_map(
+        map_input_id=int(inp.pk),
+        run_key=rk,
+        recon=recon,
+        cleanup_summary=dict(cleanup.summary_json),
+        solver_run_id=int(run_dto.id),
     )
 
     total_frames = len(decoded_frames) + len(layout_frames)
@@ -190,6 +216,7 @@ def build_initial_replay_for_map_input(
         replay_frame_count=total_frames,
         decoded_snapshot_id=int(dec_snap_pk),
         existing_layout_snapshot_id=int(layout_snap_pk),
+        reconstructed_asteroid_map_id=int(recon_map_pk),
         status="ok",
         error_message="",
         run_key=rk,

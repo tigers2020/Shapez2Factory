@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.snapshots.blueprint_equivalence import decoded_json_layout_equivalent
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
@@ -185,3 +186,54 @@ def test_bbox_of_cells_reports_dense_and_server_width() -> None:
     assert snap.bbox_json["width"] == 3
     assert snap.bbox_json["dense_width"] == 2
     assert snap.bbox_json["server_width"] == 2
+
+
+def test_decoded_json_layout_equivalent_parallel_miner_shift() -> None:
+    base = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": 1, "Y": 0, "R": 0, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 1, "R": 0, "T": "Layout_ShapeMinerExtension"},
+            ],
+        },
+    }
+    shifted = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": 3, "Y": 0, "R": 0, "T": "Layout_ShapeMiner"},
+                {"X": 3, "Y": 1, "R": 0, "T": "Layout_ShapeMinerExtension"},
+            ],
+        },
+    }
+    assert decoded_json_layout_equivalent(base, shifted, include_transport=False)
+    assert decoded_json_layout_equivalent(base, shifted, include_transport=True)
+
+
+def test_decoded_json_layout_equivalent_dense_x_across_raw_x_seam() -> None:
+    """Same dense_x offset across negative/positive raw X (column 0 missing)."""
+
+    left = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": -1, "Y": 0, "R": 0, "T": "Layout_ShapeMiner"},
+                {"X": 1, "Y": 0, "R": 0, "T": "Layout_ShapeMinerExtension"},
+            ],
+        },
+    }
+    right = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": 1, "Y": 0, "R": 0, "T": "Layout_ShapeMiner"},
+                {"X": 2, "Y": 0, "R": 0, "T": "Layout_ShapeMinerExtension"},
+            ],
+        },
+    }
+    assert decoded_json_layout_equivalent(left, right, include_transport=False)

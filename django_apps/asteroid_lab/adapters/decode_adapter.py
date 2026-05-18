@@ -101,3 +101,13 @@ def _trim_trailing_non_base64(payload: str) -> str:
 def _pad_base64(data: str) -> str:
     missing = (-len(data)) % 4
     return data + ("=" * missing)
+
+
+def encode_copy_string(root: dict[str, Any]) -> str:
+    """Encode a blueprint root dict to a ``SHAPEZ2-4-`` copy string (gzip + base64)."""
+
+    _validate_blueprint_shape(root)
+    text = json.dumps(root, separators=(",", ":")).encode("utf-8")
+    gz = gzip.compress(text)
+    b64 = base64.b64encode(gz).decode("ascii")
+    return f"{SHAPEZ2_COPY_PREFIX_V4}{b64}"

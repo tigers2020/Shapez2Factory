@@ -442,6 +442,20 @@ class GeneticSample(models.Model):
     """유전자 샘플: 복사 문자열 저장 시 디코드되어 ``decoded_json``에 반영된다."""
 
     name = models.CharField(max_length=200, blank=True, verbose_name="이름")
+    gene_key = models.CharField(
+        max_length=256,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="gene 키",
+        help_text="전수 생성 샘플의 정본 식별자(update_or_create 기준). 수동 샘플은 비움.",
+    )
+    metadata_json = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="메타데이터",
+        help_text="예: generator 버전, transport_kind, topology 요약(게임 JSON과 분리).",
+    )
     project = models.ForeignKey(
         AsteroidProject,
         null=True,
@@ -462,6 +476,13 @@ class GeneticSample(models.Model):
         indexes = [
             models.Index(fields=["-updated_at"]),
             models.Index(fields=["project", "-updated_at"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("gene_key",),
+                name="uniq_genetic_sample_gene_key_when_set",
+                condition=models.Q(gene_key__isnull=False),
+            ),
         ]
 
     def __str__(self) -> str:
@@ -498,3 +519,51 @@ class GeneticSample(models.Model):
 
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class ReconstructedAsteroidMap(models.Model):
+    """Reconstruction 완성 소행성 (Extension T encode, asteroid_*_field import)."""
+
+    map_input = models.ForeignKey(
+        AsteroidMapInput,
+        on_delete=models.CASCADE,
+        related_name="reconstructed_maps",
+    )
+    project = models.ForeignKey(
+        AsteroidProject,
+        on_delete=models.CASCADE,
+        related_name="reconstructed_maps",
+    )
+    solver_run = models.ForeignKey(
+        SolverRun,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reconstructed_maps",
+    )
+    run_key = models.CharField(max_length=120, db_index=True)
+    copy_code = models.TextField(verbose_name="복사 문자열 (SHAPEZ2-4-…$)")
+    decoded_json = models.JSONField(default=dict, blank=True, verbose_name="디코드 JSON")
+    summary_json = models.JSONField(default=dict, blank=True, verbose_name="reconstruction 요약")
+    cell_count = models.PositiveIntegerField(default=0)
+    layout_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "복원 소행성 맵"
+        verbose_name_plural = "복원 소행성 맵"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("map_input", "run_key"),
+                name="uniq_reconstructed_map_per_map_input_run_key",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["map_input", "-created_at"]),
+            models.Index(fields=["project", "-created_at"]),
+            models.Index(fields=["layout_fingerprint"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"ReconstructedAsteroidMap #{self.pk} map_input={self.map_input_id}"

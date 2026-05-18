@@ -16,6 +16,7 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.adapters.decode_adapter import (
     AsteroidLabCopyDecodeError,
     decode_copy_string,
+    encode_copy_string,
 )
 from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
 from django_apps.asteroid_lab.services import project_service
@@ -28,6 +29,19 @@ def _encode_v4_copy(root: dict) -> str:
     gz = gzip.compress(text)
     b64 = base64.b64encode(gz).decode("ascii")
     return f"SHAPEZ2-4-{b64}"
+
+
+def test_encode_copy_string_roundtrip_entries() -> None:
+    root = {
+        "V": 3,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 0, "R": 0, "T": "SpacePipe_Forward"}],
+        },
+    }
+    back = decode_copy_string(encode_copy_string(root)).root
+    assert back["V"] == 3
+    assert back["BP"]["Entries"] == root["BP"]["Entries"]
 
 
 def test_decode_copy_string_roundtrip_minimal() -> None:

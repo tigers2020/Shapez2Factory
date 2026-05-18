@@ -119,7 +119,7 @@ def test_record_step0_decode_matches_step1_transport_full_map_empty_transport_di
     snap = css.build_decoded_blueprint_snapshot_from_input(inp.id)
     ins = els.build_existing_layout_inspection_from_input(inp.id)
     css.record_decoded_snapshot_frames(replay_track.id, snap)
-    els.record_existing_layout_inspection_frames(replay_track.id, ins)
+    els.record_existing_layout_inspection_frames(replay_track.id, ins)[0]
 
     rows = list(m.ReplayFrame.objects.filter(replay_track=replay_track).order_by("frame_index"))
     assert len(rows) >= 6

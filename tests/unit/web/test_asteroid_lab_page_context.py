@@ -222,6 +222,10 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "normalizeQuarterTurns(cell.rotation)" in js
     assert "normalizeQuarterTurns" in js
     assert "rotationToDeg" in js
+    assert "quarter 0 = E = 0deg" in js
+    assert "1 = S = 90deg clockwise on screen" in js
+    assert "scaleX(-1)" not in js
+    assert "rotateY(180deg)" not in js
     assert "LINK_KEY_TO_DIR" in js
     assert "DIR_TO_BRIDGE_SUFFIX" in js
     assert "lab-cell-sprite" in js

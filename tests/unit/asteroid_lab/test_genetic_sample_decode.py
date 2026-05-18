@@ -14,35 +14,9 @@ from django_apps.asteroid_lab.admin_lab_sprites import (
     lab_sprite_resolve,
     normalize_lab_rotation_q,
 )
+from django_apps.asteroid_lab.lab_screen_grid import sprite_rotation_deg_from_quarter
 from django_apps.asteroid_lab.models import GeneticSample
-from django_apps.shapez_core.models import (
-    ShapezBasedataRelease,
-    ShapezGameIdentifier,
-    ShapezIdentifierCategory,
-)
-
-
-@pytest.fixture
-def lab_sprite_identifiers_for_admin() -> ShapezBasedataRelease:
-    r = ShapezBasedataRelease.objects.create(
-        game_version=900_043,
-        notes="genetic-lab-sprite-test",
-        integrity_status_id=ShapezBasedataRelease.IntegrityStatus.IMPORTED.value,
-    )
-    cat = ShapezIdentifierCategory.objects.create(release=r, key="BuildingVariantIds", sort_order=0)
-    for value, rel in (
-        ("SpacePipe_LeftTurn", "SpacePipe/SpacePipe_LeftTurn.svg"),
-        ("SpacePipe_LeftFwdSplitter", "SpacePipe/SpacePipe_LeftFwdSplitter.svg"),
-        ("SpacePipe_Forward", "SpacePipe/SpacePipe_Forward.svg"),
-    ):
-        ShapezGameIdentifier.objects.create(
-            release=r,
-            identifier_category=cat,
-            value=value,
-            normalized_value=value,
-            sprite_static_relpath=rel,
-        )
-    return r
+from django_apps.shapez_core.models import ShapezBasedataRelease
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -61,6 +35,15 @@ def test_lab_sprite_relpath_space_pipe_left_turn(
 
 
 @pytest.mark.django_db
+def test_lab_sprite_relpath_space_pipe_right_turn(
+    lab_sprite_identifiers_for_admin: ShapezBasedataRelease,
+) -> None:
+    assert lab_sprite_relpath_from_tile_type("SpacePipe_RightTurn") == (
+        "SpacePipe/SpacePipe_RightTurn.svg"
+    )
+
+
+@pytest.mark.django_db
 def test_lab_sprite_relpath_space_pipe_left_fwd_splitter(
     lab_sprite_identifiers_for_admin: ShapezBasedataRelease,
 ) -> None:
@@ -75,6 +58,11 @@ def test_normalize_lab_rotation_q() -> None:
     assert normalize_lab_rotation_q(3) == 3
     assert normalize_lab_rotation_q(-1) == 3
     assert normalize_lab_rotation_q(7) == 3
+
+
+def test_sprite_rotation_deg_from_quarter_matches_normalize() -> None:
+    for r in (0, 1, 2, 3, -1, 9):
+        assert sprite_rotation_deg_from_quarter(r) == normalize_lab_rotation_q(r) * 90
 
 
 @pytest.mark.django_db

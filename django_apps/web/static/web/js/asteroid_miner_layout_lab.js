@@ -45,6 +45,9 @@
     return ((Math.trunc(n) % 4) + 4) % 4;
   }
 
+  /* Sprite canonical direction contract (East-facing assets; CSS rotate only):
+   * quarter 0 = E = 0deg, 1 = S = 90deg clockwise on screen, 2 = W = 180deg, 3 = N = 270deg.
+   * Row/col grid mapping must not alter this rotation (no scaleX/rotateY mirror tricks). */
   function rotationToDeg(q) {
     return normalizeQuarterTurns(q) * 90;
   }

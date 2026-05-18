@@ -126,6 +126,32 @@ def direction_from_a_to_b(ax: int, ay: int, bx: int, by: int) -> str | None:
     return None
 
 
+def ports_compatible(
+    cell_kind_a: str,
+    rotation_a: int,
+    cell_kind_b: str,
+    rotation_b: int,
+    dir_ab: str,
+) -> bool:
+    """True when ``B`` is in direction ``dir_ab`` from ``A`` and ports link."""
+
+    ports_a = equipment_ports(cell_kind_a, rotation_a)
+    ports_b = equipment_ports(cell_kind_b, rotation_b)
+    if ports_a is None or ports_b is None:
+        return False
+    return _port_linked(ports_a, ports_b, dir_ab, cell_kind_a, cell_kind_b)
+
+
+def primary_exit_direction(cell_kind: str, rotation: int) -> str | None:
+    """Primary exit: lowest n/e/s/w index among ``output_dirs`` (map-facing)."""
+
+    ports = equipment_ports(cell_kind, rotation)
+    if ports is None or not ports.output_dirs:
+        return None
+    outs = sorted(ports.output_dirs, key=lambda d: _DIR_ORDER.index(d))
+    return outs[0]
+
+
 def _port_linked(
     ports_a: EquipmentPorts,
     ports_b: EquipmentPorts,

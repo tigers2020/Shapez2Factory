@@ -6,9 +6,9 @@ from dataclasses import asdict
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
+from django_apps.asteroid_lab.cleanup.result import CleanupResult
+from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
-from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_result
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION,
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR,
@@ -29,6 +29,9 @@ from django_apps.asteroid_lab.services.dto import (
     ExistingLayoutInspectionDTO,
     SnapshotEventDTO,
     SnapshotFrameDTO,
+)
+from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
+    run_reconstruction_for_map_input,
 )
 from django_apps.asteroid_lab.services.replay_recorder import ReplayRecorder
 from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
@@ -59,7 +62,7 @@ def record_existing_layout_inspection_frames(
     inspection: ExistingLayoutInspectionDTO,
     *,
     boundary_run_id: str | None = None,
-) -> list[SnapshotFrameDTO]:
+) -> tuple[list[SnapshotFrameDTO], CleanupResult, ReconstructionResult]:
     """Append cleanup frames plus stepwise reconstruction replay (UI-only; never solver input)."""
 
     if inspection.map_input_id is None:
@@ -73,14 +76,11 @@ def record_existing_layout_inspection_frames(
         snap
     )
 
-    cleanup = load_cleanup_result(snap, boundary_run_id=rid)
     collector = ReconstructionTraceCollector()
-    recon = run_topology_reconstruction(
-        cleanup,
-        trace_collector=collector,
+    cleanup, recon = run_reconstruction_for_map_input(
+        mid,
         boundary_run_id=rid,
-        boundary_map_input_id=snap.map_input_id,
-        boundary_project_id=snap.project_id,
+        trace_collector=collector,
     )
     row_recon = rows_from_cells(recon.cells)
     recon_extra = {**dict(cleanup.summary_json), **dict(recon.summary_json)}
@@ -170,7 +170,8 @@ def record_existing_layout_inspection_frames(
         project_id=int(snap.project_id) if snap.project_id is not None else None,
     )
 
-    return recorder.record_many([ev_transport, ev_extractor, ev_extension, *recon_events])
+    frames = recorder.record_many([ev_transport, ev_extractor, ev_extension, *recon_events])
+    return frames, cleanup, recon
 
 
 def persist_existing_layout_inspection_snapshot(

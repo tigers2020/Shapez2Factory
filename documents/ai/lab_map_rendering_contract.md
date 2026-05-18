@@ -23,6 +23,12 @@ CANON 아님. [`django_apps/web/static/web/js/asteroid_miner_layout_lab.js`](../
 
 - **화이트리스트** `LAB_SPRITE_KNOWN`: 파일명은 ``identifiers.json`` 등에 나오는 블루프린트 ``T`` 문자열에 ``.svg``를 붙인 것과 동일한 경우만 ``<img>``로 그린다(예: ``SpacePipe_Forward`` → ``SpacePipe_Forward.svg``). ``tile_type``으로 매칭되지 않으면 ``cell_kind`` 소수 매핑으로 보조한다. ``space_pipe`` 같은 모호한 kind만으로는 스프라이트를 고르지 않는다.
 - Django Admin 유전자 샘플 미니맵은 `django_apps/asteroid_lab/admin_lab_sprites.py`의 `lab_sprite_resolve(tile_type, cell_kind, rotation)`으로 **T·kind→파일**, **R→표시 quarter**를 묶는다(파일 선택에 R 오프셋은 두지 않음).
+
+## Admin 미니맵 vs Lab 리플레이 (격자)
+
+- **Admin 유전자 미니맵**: `decoded_json`의 server bbox **tight** 격자만 그린다. 셀 래퍼에 `data-server-x` / `data-server-y` / `data-grid-row` / `data-grid-col` / `data-linear-index` / `data-sprite` / `data-rotation-deg` 계약 속성을 둔다(`django_apps/asteroid_lab/genetic_sample_mini_map.py`, 좌표 계산은 `django_apps/asteroid_lab/lab_screen_grid.py`의 `mini_map_grid_coord`와 동일).
+- **Lab 리플레이**: 동일한 dense/raw **상대 이웃** 규칙(`visualCol` + raw `y`)에 더해 **대칭 패딩**이 있을 수 있어, Admin과 **절대** 셀 인덱스를 직접 비교하지 않는다.
+- **회전 quarter**는 좌표 보정과 독립이다. 가로·세로가 “화면에서 어느 쪽이 오른쪽/아래인지” 같은 문장은 **테스트·`data-*`로 증명되는 범위**에서만 단정한다(선언만으로 고정하지 않음).
 - 화면 quarter-turn은 `normalizeQuarterTurns(serverRotation)`만 사용한다.
 - 스프라이트는 **`background-image`가 아니라 `<img class="lab-cell-sprite">`** 로만 그린다. 회전은 **`img`에만** `transform`을 적용한다. 벡터 SVG 확대 시 **`image-rendering: auto`** 를 둔다(`crisp-edges`는 `<img>` 벡터에서 흐림·픽셀화를 유발할 수 있음).
 - 베이스 URL은 `#lab-root`의 `data-lab-sprite-base`(Django `{% static 'web/assets/sprites/' %}`)에서 읽는다.

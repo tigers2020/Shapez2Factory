@@ -57,6 +57,8 @@ def build_existing_layout_inspection_from_input(map_input_id: int) -> ExistingLa
 def record_existing_layout_inspection_frames(
     track_id: int,
     inspection: ExistingLayoutInspectionDTO,
+    *,
+    boundary_run_id: str | None = None,
 ) -> list[SnapshotFrameDTO]:
     """Append cleanup frames plus stepwise reconstruction replay (UI-only; never solver input)."""
 
@@ -64,14 +66,22 @@ def record_existing_layout_inspection_frames(
         msg = "ExistingLayoutInspectionDTO.map_input_id is required for snapshot replay"
         raise ValueError(msg)
 
-    snap = build_decoded_blueprint_snapshot_from_input(int(inspection.map_input_id))
+    mid = int(inspection.map_input_id)
+    rid = boundary_run_id if boundary_run_id is not None else f"map_input:{mid}"
+    snap = build_decoded_blueprint_snapshot_from_input(mid, boundary_run_id=rid)
     _, row_transport, row_extractor, row_extension, _, _ = build_cleanup_and_reconstruction_rows(
         snap
     )
 
-    cleanup = load_cleanup_result(snap)
+    cleanup = load_cleanup_result(snap, boundary_run_id=rid)
     collector = ReconstructionTraceCollector()
-    recon = run_topology_reconstruction(cleanup, trace_collector=collector)
+    recon = run_topology_reconstruction(
+        cleanup,
+        trace_collector=collector,
+        boundary_run_id=rid,
+        boundary_map_input_id=snap.map_input_id,
+        boundary_project_id=snap.project_id,
+    )
     row_recon = rows_from_cells(recon.cells)
     recon_extra = {**dict(cleanup.summary_json), **dict(recon.summary_json)}
 

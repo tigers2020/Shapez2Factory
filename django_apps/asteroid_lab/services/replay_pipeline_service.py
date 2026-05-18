@@ -165,12 +165,18 @@ def build_initial_replay_for_map_input(
     )
     track_id = int(run_dto.replay_track_id)
 
-    snapshot = build_decoded_blueprint_snapshot_from_input(int(inp.pk))
+    snapshot = build_decoded_blueprint_snapshot_from_input(
+        int(inp.pk), boundary_run_id=f"solver_run:{int(run_dto.id)}"
+    )
     decoded_frames = record_decoded_snapshot_frames(track_id, snapshot)
     dec_snap_pk = persist_decoded_cell_snapshot(int(inp.project_id), int(inp.pk), snapshot)
 
     inspection = build_existing_layout_inspection_from_input(int(inp.pk))
-    layout_frames = record_existing_layout_inspection_frames(track_id, inspection)
+    layout_frames = record_existing_layout_inspection_frames(
+        track_id,
+        inspection,
+        boundary_run_id=f"solver_run:{int(run_dto.id)}",
+    )
     layout_snap_pk = persist_existing_layout_inspection_snapshot(
         int(inp.project_id), int(inp.pk), inspection
     )

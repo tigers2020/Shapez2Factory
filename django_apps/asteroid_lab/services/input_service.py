@@ -3,16 +3,38 @@
 from __future__ import annotations
 
 import hashlib
+from typing import Any
 
 from django.db import transaction
 
 from django_apps.asteroid_lab.models import AsteroidMapInput, AsteroidProject
+from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_jsonl
 from django_apps.asteroid_lab.services.dto import NormalizedBlueprintDTO
 from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
     absolute_layout_fingerprint_sha256,
     layout_fingerprint_sha256,
 )
 from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
+
+
+def _count_entries_with_server_xy(decoded_json: dict[str, Any]) -> tuple[int, int]:
+    """Return ``(dict_row_count, rows_with_int_server_xy_pair)`` for ``BP.Entries``."""
+
+    bp = decoded_json.get("BP")
+    if not isinstance(bp, dict):
+        return (0, 0)
+    entries_raw = bp.get("Entries")
+    entries: list[Any] = entries_raw if isinstance(entries_raw, list) else []
+    dict_rows = 0
+    with_pair = 0
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        dict_rows += 1
+        sx, sy = item.get("server_x"), item.get("server_y")
+        if isinstance(sx, int) and isinstance(sy, int):
+            with_pair += 1
+    return (dict_rows, with_pair)
 
 
 def content_sha256_for_copy_code(copy_code: str) -> str:
@@ -54,6 +76,22 @@ def persist_decoded_snapshot_for_map_input(
         msg = f"AsteroidMapInput id={map_input_id} not found"
         raise ValueError(msg)
     attach_server_coords_to_decoded_json(dto.decoded_json)
+    rid = f"map_input:{int(inp.pk)}"
+    drows, with_xy = _count_entries_with_server_xy(dto.decoded_json)
+    meta = dto.decoded_json.get("_asteroid_lab_coord_system")
+    emit_boundary_jsonl(
+        run_id=rid,
+        stage="decode",
+        boundary="decode.server_coords_attach",
+        data={
+            "map_input_id": int(inp.pk),
+            "project_id": int(inp.project_id),
+            "bp_dict_entry_rows": drows,
+            "bp_entries_with_server_xy": with_xy,
+            "missing_server_xy": drows - with_xy,
+            "coord_meta": meta if isinstance(meta, dict) else {},
+        },
+    )
     layout_fp = layout_fingerprint_sha256(dto.decoded_json)
     abs_fp = absolute_layout_fingerprint_sha256(dto.decoded_json)
     inp.decoded_json = dto.decoded_json
@@ -90,6 +128,22 @@ def persist_decoded_snapshot(project_id: int, dto: NormalizedBlueprintDTO) -> As
     inp.decoded_json = dto.decoded_json
     inp.source_kind = AsteroidMapInput.SourceKind.DECODED_JSON
     attach_server_coords_to_decoded_json(inp.decoded_json)
+    rid = f"map_input:{int(inp.pk)}"
+    drows, with_xy = _count_entries_with_server_xy(inp.decoded_json)
+    meta = inp.decoded_json.get("_asteroid_lab_coord_system")
+    emit_boundary_jsonl(
+        run_id=rid,
+        stage="decode",
+        boundary="decode.server_coords_attach",
+        data={
+            "map_input_id": int(inp.pk),
+            "project_id": int(project_id),
+            "bp_dict_entry_rows": drows,
+            "bp_entries_with_server_xy": with_xy,
+            "missing_server_xy": drows - with_xy,
+            "coord_meta": meta if isinstance(meta, dict) else {},
+        },
+    )
     inp.layout_fingerprint = layout_fingerprint_sha256(inp.decoded_json)
     inp.absolute_layout_fingerprint = absolute_layout_fingerprint_sha256(inp.decoded_json)
     inp.save(

@@ -30,7 +30,11 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
 from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
 
 
-def build_decoded_blueprint_snapshot_from_input(map_input_id: int) -> DecodedBlueprintSnapshotDTO:
+def build_decoded_blueprint_snapshot_from_input(
+    map_input_id: int,
+    *,
+    boundary_run_id: str | None = None,
+) -> DecodedBlueprintSnapshotDTO:
     """Load ``AsteroidMapInput.decoded_json`` and build a pure snapshot DTO."""
 
     inp = m.AsteroidMapInput.objects.filter(pk=int(map_input_id)).first()
@@ -39,10 +43,12 @@ def build_decoded_blueprint_snapshot_from_input(map_input_id: int) -> DecodedBlu
         raise ValueError(msg)
     raw = inp.decoded_json
     decoded: dict[str, Any] = dict(raw) if isinstance(raw, dict) else {}
+    rid = boundary_run_id if boundary_run_id is not None else f"map_input:{int(map_input_id)}"
     return build_decoded_blueprint_snapshot(
         decoded,
         project_id=int(inp.project_id),
         map_input_id=int(inp.id),
+        boundary_run_id=rid,
     )
 
 

@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Set
 from typing import TYPE_CHECKING
 
+from django_apps.asteroid_lab.observability.boundary_jsonl import (
+    emit_boundary_jsonl,
+    summarize_cell_kind_transitions,
+)
 from django_apps.asteroid_lab.reconstruction.fill import (
     TOPOLOGY_FILL_PLACEHOLDER_KIND,
     connected_components,
@@ -41,6 +45,32 @@ def _sorted_interior_components(interior: set[Coord]) -> list[set[Coord]]:
     )
 
 
+def _emit_reconstruction_stamp_boundary(
+    boundary_run_id: str | None,
+    before_cells: tuple[DecodedCellDTO, ...],
+    after_cells: tuple[DecodedCellDTO, ...],
+    *,
+    map_input_id: int | None,
+    project_id: int | None,
+    summary_json: dict[str, object],
+) -> None:
+    if not boundary_run_id:
+        return
+    transitions = summarize_cell_kind_transitions(before_cells, after_cells)
+    emit_boundary_jsonl(
+        run_id=boundary_run_id,
+        stage="reconstruction",
+        boundary="reconstruction.island_stamp_cell_kind",
+        data={
+            "map_input_id": map_input_id,
+            "project_id": project_id,
+            "transition_count": len(transitions),
+            "transitions": transitions,
+            "reconstruction_summary": dict(summary_json),
+        },
+    )
+
+
 def reconstruct_after_cleanup(
     *,
     cleaned_cells: tuple[DecodedCellDTO, ...],
@@ -50,6 +80,9 @@ def reconstruct_after_cleanup(
     bbox_bounds: tuple[int, int, int, int] | None,
     server_xy_params: tuple[int, int] | None,
     trace_collector: ReconstructionTraceCollector | None = None,
+    boundary_run_id: str | None = None,
+    boundary_map_input_id: int | None = None,
+    boundary_project_id: int | None = None,
 ) -> ReconstructionResult:
     """Flood-fill and fill enclosed holes using precomputed walls and bbox (no snapshot DTO).
 
@@ -114,10 +147,19 @@ def reconstruct_after_cleanup(
                     },
                 )
             )
+        before_skip = tuple(sorted(stripped, key=sort_key_xy_layer))
         stamped = stamp_islands_uniform(
-            tuple(sorted(stripped, key=sort_key_xy_layer)),
+            before_skip,
             original_cells=original_cells,
             removed_building_cells=removed_building_cells,
+        )
+        _emit_reconstruction_stamp_boundary(
+            boundary_run_id,
+            before_skip,
+            stamped,
+            map_input_id=boundary_map_input_id,
+            project_id=boundary_project_id,
+            summary_json=dict(summary),
         )
         return ReconstructionResult(
             cells=stamped,
@@ -263,14 +305,11 @@ def reconstruct_after_cleanup(
                 pair = server_xy_for_raw_xy(
                     x,
                     y,
-                    max_dense_x=server_xy_params[0],
+                    min_dense_x=server_xy_params[0],
                     min_raw_y=server_xy_params[1],
                 )
-                if pair is not None:
-                    sx, sy = pair
-            filled.append(
-                synthetic_field_cell(x, y, fill_layer, kind, server_x=sx, server_y=sy)
-            )
+                sx, sy = pair
+            filled.append(synthetic_field_cell(x, y, fill_layer, kind, server_x=sx, server_y=sy))
 
         if trace_collector is not None and fill_xy:
             trace_collector.append(
@@ -310,6 +349,15 @@ def reconstruct_after_cleanup(
         removed_building_cells=removed_building_cells,
     )
 
+    _emit_reconstruction_stamp_boundary(
+        boundary_run_id,
+        merged_tuple,
+        out_cells,
+        map_input_id=boundary_map_input_id,
+        project_id=boundary_project_id,
+        summary_json=dict(summary),
+    )
+
     if trace_collector is not None:
         trace_collector.append(
             ReconstructionTraceEvent(
@@ -333,6 +381,10 @@ def reconstruct_after_cleanup(
 def run_topology_reconstruction(
     cleanup: CleanupResult,
     trace_collector: ReconstructionTraceCollector | None = None,
+    *,
+    boundary_run_id: str | None = None,
+    boundary_map_input_id: int | None = None,
+    boundary_project_id: int | None = None,
 ) -> ReconstructionResult:
     """Fill enclosed holes from ``CleanupResult`` walls and bbox."""
 
@@ -344,15 +396,22 @@ def run_topology_reconstruction(
         bbox_bounds=cleanup.bbox_bounds,
         server_xy_params=cleanup.server_xy_params,
         trace_collector=trace_collector,
+        boundary_run_id=boundary_run_id,
+        boundary_map_input_id=boundary_map_input_id,
+        boundary_project_id=boundary_project_id,
     )
 
 
-def reconstruct_snapshot(snapshot: DecodedBlueprintSnapshotDTO) -> ReconstructionResult:
+def reconstruct_snapshot(
+    snapshot: DecodedBlueprintSnapshotDTO,
+    *,
+    boundary_run_id: str | None = None,
+) -> ReconstructionResult:
     """Decode snapshot → cleanup → topology reconstruction (convenience wrapper)."""
 
     from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 
-    c = deconstruct_snapshot(snapshot)
+    c = deconstruct_snapshot(snapshot, boundary_run_id=boundary_run_id)
     return reconstruct_after_cleanup(
         cleaned_cells=c.cleaned_cells,
         original_cells=c.original_cells,
@@ -360,4 +419,7 @@ def reconstruct_snapshot(snapshot: DecodedBlueprintSnapshotDTO) -> Reconstructio
         wall_coords=c.wall_coords,
         bbox_bounds=c.bbox_bounds,
         server_xy_params=c.server_xy_params,
+        boundary_run_id=boundary_run_id,
+        boundary_map_input_id=snapshot.map_input_id,
+        boundary_project_id=snapshot.project_id,
     )

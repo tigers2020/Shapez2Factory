@@ -7,7 +7,11 @@ from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO
 
 
-def load_cleanup_result(snapshot: DecodedBlueprintSnapshotDTO) -> CleanupResult:
+def load_cleanup_result(
+    snapshot: DecodedBlueprintSnapshotDTO,
+    *,
+    boundary_run_id: str | None = None,
+) -> CleanupResult:
     """Run pre-reconstruction cleanup on a decoded snapshot."""
 
-    return deconstruct_snapshot(snapshot)
+    return deconstruct_snapshot(snapshot, boundary_run_id=boundary_run_id)

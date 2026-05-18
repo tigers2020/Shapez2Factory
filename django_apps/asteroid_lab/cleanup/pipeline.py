@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.cleanup.result import BBoxBounds, CleanupResult
+from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_jsonl
 from django_apps.asteroid_lab.reconstruction.evidence import (
     MINER_EXTENSION_CELL_KINDS,
     is_asteroid_evidence,
@@ -14,7 +15,11 @@ from django_apps.asteroid_lab.snapshots.server_coords import map_bbox_dense_and_
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 
 
-def deconstruct_snapshot(snapshot: DecodedBlueprintSnapshotDTO) -> CleanupResult:
+def deconstruct_snapshot(
+    snapshot: DecodedBlueprintSnapshotDTO,
+    *,
+    boundary_run_id: str | None = None,
+) -> CleanupResult:
     """Remove strippable buildings and compute ``wall_coords`` for reconstruction."""
 
     cells = snapshot.cells
@@ -43,6 +48,24 @@ def deconstruct_snapshot(snapshot: DecodedBlueprintSnapshotDTO) -> CleanupResult
         "cleanup_ignored_transport_count": len(ignored_transport),
         "cleanup_wall_coord_count": len(wall_frozen),
     }
+
+    if boundary_run_id:
+        removed_payload = [
+            {"x": c.x, "y": c.y, "layer": c.layer, "cell_kind": c.cell_kind} for c in removed
+        ]
+        emit_boundary_jsonl(
+            run_id=boundary_run_id,
+            stage="cleanup",
+            boundary="cleanup.cell_removed",
+            data={
+                "map_input_id": snapshot.map_input_id,
+                "project_id": snapshot.project_id,
+                "removed_cell_count": len(removed_payload),
+                "removed_cells": removed_payload,
+                "cleaned_cell_count": len(cleaned),
+                "summary": dict(summary),
+            },
+        )
 
     return CleanupResult(
         cleaned_cells=cleaned,

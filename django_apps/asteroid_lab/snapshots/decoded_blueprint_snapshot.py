@@ -16,6 +16,14 @@ from django_apps.asteroid_lab.snapshots.server_coords import (
 
 
 def _as_int(val: Any) -> int:
+    """Coerce blueprint scalars; ``None`` → ``0`` (same as entry ``get('X', 0)`` style).
+
+    **Caveat:** missing ``X`` on a blueprint dict row becomes ``raw_x == 0`` on
+    :class:`~django_apps.asteroid_lab.services.dto.DecodedCellDTO`, which is **not** a valid
+    asteroid world column (there is no ``x == 0``). Prefer explicit ``X`` in JSON or treat
+    ``raw_x == 0`` as a decode/validation signal, not server indexing.
+    """
+
     if val is None:
         return 0
     if isinstance(val, bool):

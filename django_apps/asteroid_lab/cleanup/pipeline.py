@@ -11,7 +11,10 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 )
 from django_apps.asteroid_lab.reconstruction.grid import Coord, padded_bbox_bounds
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO
-from django_apps.asteroid_lab.snapshots.server_coords import map_bbox_dense_and_y
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    jsonl_coord_fields,
+    map_bbox_dense_and_y,
+)
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 
 
@@ -50,9 +53,14 @@ def deconstruct_snapshot(
     }
 
     if boundary_run_id:
-        removed_payload = [
-            {"x": c.x, "y": c.y, "layer": c.layer, "cell_kind": c.cell_kind} for c in removed
-        ]
+        removed_payload = []
+        for c in removed:
+            row = {
+                "layer": c.layer,
+                "cell_kind": c.cell_kind,
+            }
+            row.update(jsonl_coord_fields(c.x, c.y, server_xy_params=server_xy_params))
+            removed_payload.append(row)
         emit_boundary_jsonl(
             run_id=boundary_run_id,
             stage="cleanup",

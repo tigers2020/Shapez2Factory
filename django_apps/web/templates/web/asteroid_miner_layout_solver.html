@@ -378,8 +378,12 @@
                 class="pointer-events-none absolute right-3 top-3 z-20 rounded-lg border border-slate-700/70 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 shadow-lg backdrop-blur"
               >
                 <div>
-                  <span class="text-slate-400">cell</span>
+                  <span class="text-slate-400">raw</span>
                   <span id="lab-replay-grid-hud-coord" class="font-mono">—</span>
+                </div>
+                <div>
+                  <span class="text-slate-400">srv</span>
+                  <span id="lab-replay-grid-hud-server-coord" class="font-mono">—</span>
                 </div>
                 <div>
                   <span class="text-slate-400">role</span>
@@ -390,7 +394,7 @@
               <div id="lab-replay-grid-stage" class="relative block min-w-0">
                 <div
                   id="lab-replay-grid"
-                  class="grid min-w-0 opacity-100 transition-opacity duration-200"
+                  class="grid h-max w-max opacity-100 transition-opacity duration-200"
                   {% if not has_replay_frames %}style="grid-template-columns: repeat(23, minmax(0, 1.25rem));"{% endif %}
                   data-overlay=""
                 >

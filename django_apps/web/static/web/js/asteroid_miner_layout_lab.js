@@ -571,8 +571,14 @@
         if (yi > maxR) maxR = yi;
       }
     }
+    /** Bbox mins over all replay spatial targets; matches ``server_coords.server_xy_for_raw_xy`` origin. */
+    let bboxMinDenseX = 0;
+    let bboxMinRawY = 0;
     if (!any) {
       minD = maxD = minR = maxR = 0;
+    } else {
+      bboxMinDenseX = minD;
+      bboxMinRawY = minR;
     }
     const coreHalfX = Math.max(Math.max(0, -minD), Math.max(0, maxD), 1);
     const coreHalfY = Math.max(Math.max(0, -minR), Math.max(0, maxR), 1);
@@ -585,6 +591,8 @@
       maxR: halfY,
       gridW: 2 * halfX + 1,
       gridH: 2 * halfY + 1,
+      bboxMinDenseX: bboxMinDenseX,
+      bboxMinRawY: bboxMinRawY,
     };
   }
 
@@ -913,6 +921,7 @@
 
     const gridStage = document.getElementById("lab-replay-grid-stage");
     const gridHudCoord = document.getElementById("lab-replay-grid-hud-coord");
+    const gridHudServerCoord = document.getElementById("lab-replay-grid-hud-server-coord");
     const gridHudRole = document.getElementById("lab-replay-grid-hud-role");
 
     let labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
@@ -937,16 +946,22 @@
     }
 
     function applyLabGridLayoutForZoom() {
+      let zpx = null;
       if (hasServerReplay && replayLayout) {
         const gw = replayLayout.gridW;
         const gh = replayLayout.gridH;
-        const zpx = labZoomedCellEdgePx(replayFitBasePx, labViewportTransform.zoom);
+        zpx = labZoomedCellEdgePx(replayFitBasePx, labViewportTransform.zoom);
         gridEl.style.gridTemplateColumns = "repeat(" + gw + ", minmax(0, " + zpx + "px))";
         gridEl.style.gridTemplateRows = "repeat(" + gh + ", minmax(0, " + zpx + "px))";
       } else if (domCells && domCells.length) {
-        const zpx = labZoomedCellEdgePx(demoBaseCellPxAtZoom1, labViewportTransform.zoom);
+        zpx = labZoomedCellEdgePx(demoBaseCellPxAtZoom1, labViewportTransform.zoom);
         gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", minmax(0, " + zpx + "px))";
         gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", minmax(0, " + zpx + "px))";
+      }
+      if (zpx != null) {
+        /* ~0.25rem at ~20px cells in CSS; px gap tracks cell zoom so wheel pivot ratio matches layout. */
+        const gapPx = Math.max(0, Math.round(zpx * 0.2));
+        gridEl.style.setProperty("--lab-cell-gap", gapPx + "px");
       }
       applyLabViewportTransform();
     }
@@ -1524,6 +1539,23 @@
       return { x: xWorld, y: y };
     }
 
+    function domIndexToServerXY(domIdx) {
+      const w = domIndexToWorldXY(domIdx);
+      if (!w || !replayLayout) {
+        return null;
+      }
+      const d = visualCol(w.x);
+      if (d == null) {
+        return null;
+      }
+      const md = Number(replayLayout.bboxMinDenseX);
+      const my = Number(replayLayout.bboxMinRawY);
+      if (!Number.isFinite(md) || !Number.isFinite(my)) {
+        return null;
+      }
+      return { x: d - md, y: w.y - my };
+    }
+
     function findLabCellFromPoint(clientX, clientY) {
       const el = document.elementFromPoint(clientX, clientY);
       if (!el) {
@@ -1536,12 +1568,15 @@
       if (gridHudCoord) {
         gridHudCoord.textContent = "—";
       }
+      if (gridHudServerCoord) {
+        gridHudServerCoord.textContent = "—";
+      }
       if (gridHudRole) {
         gridHudRole.textContent = "—";
       }
     }
 
-    function getLabCellDisplayCoord(cellEl) {
+    function getLabCellDisplayRawCoord(cellEl) {
       const indexText = cellEl && cellEl.getAttribute ? cellEl.getAttribute("data-lab-cell-index") : null;
       const idx = Number.parseInt(indexText || "", 10);
       if (!Number.isFinite(idx)) {
@@ -1557,6 +1592,22 @@
       const demoX = idx % GRID_W;
       const demoY = Math.floor(idx / GRID_W);
       return "(" + demoX + ", " + demoY + ")";
+    }
+
+    function getLabCellDisplayServerCoord(cellEl) {
+      const indexText = cellEl && cellEl.getAttribute ? cellEl.getAttribute("data-lab-cell-index") : null;
+      const idx = Number.parseInt(indexText || "", 10);
+      if (!Number.isFinite(idx)) {
+        return "—";
+      }
+      if (hasServerReplay && replayLayout) {
+        const coord = domIndexToServerXY(idx);
+        if (!coord) {
+          return "—";
+        }
+        return "(" + coord.x + ", " + coord.y + ")";
+      }
+      return "—";
     }
 
     function getLabCellDisplayRole(cellEl) {
@@ -1585,7 +1636,10 @@
         return;
       }
       if (gridHudCoord) {
-        gridHudCoord.textContent = getLabCellDisplayCoord(cellEl);
+        gridHudCoord.textContent = getLabCellDisplayRawCoord(cellEl);
+      }
+      if (gridHudServerCoord) {
+        gridHudServerCoord.textContent = getLabCellDisplayServerCoord(cellEl);
       }
       if (gridHudRole) {
         gridHudRole.textContent = getLabCellDisplayRole(cellEl);

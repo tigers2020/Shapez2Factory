@@ -53,10 +53,13 @@ def _emit_reconstruction_stamp_boundary(
     map_input_id: int | None,
     project_id: int | None,
     summary_json: dict[str, object],
+    server_xy_params: tuple[int, int] | None,
 ) -> None:
     if not boundary_run_id:
         return
-    transitions = summarize_cell_kind_transitions(before_cells, after_cells)
+    transitions = summarize_cell_kind_transitions(
+        before_cells, after_cells, server_xy_params=server_xy_params
+    )
     emit_boundary_jsonl(
         run_id=boundary_run_id,
         stage="reconstruction",
@@ -160,6 +163,7 @@ def reconstruct_after_cleanup(
             map_input_id=boundary_map_input_id,
             project_id=boundary_project_id,
             summary_json=dict(summary),
+            server_xy_params=server_xy_params,
         )
         return ReconstructionResult(
             cells=stamped,
@@ -356,6 +360,7 @@ def reconstruct_after_cleanup(
         map_input_id=boundary_map_input_id,
         project_id=boundary_project_id,
         summary_json=dict(summary),
+        server_xy_params=server_xy_params,
     )
 
     if trace_collector is not None:

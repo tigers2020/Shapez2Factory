@@ -58,8 +58,11 @@ def test_boundary_jsonl_enabled_truthy(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_summarize_cell_kind_transitions() -> None:
     before = (_cell(1, 0, cell_kind="internal_void"), _cell(2, 0, cell_kind="space_belt"))
     after = (_cell(1, 0, cell_kind="asteroid_shape_field"), _cell(2, 0, cell_kind="space_belt"))
-    t = summarize_cell_kind_transitions(before, after)
+    t = summarize_cell_kind_transitions(before, after, server_xy_params=(0, 0))
     assert len(t) == 1
-    assert t[0]["x"] == 1
+    assert t[0]["raw_x"] == 1
+    assert t[0]["raw_y"] == 0
+    assert t[0]["server_x"] == 0
+    assert t[0]["server_y"] == 0
     assert t[0]["cell_kind_before"] == "internal_void"
     assert t[0]["cell_kind_after"] == "asteroid_shape_field"

@@ -92,6 +92,43 @@ def server_xy_for_raw_xy(
     return (dense_x - min_dense_x, raw_y - min_raw_y)
 
 
+def jsonl_coord_fields(
+    raw_x: int,
+    raw_y: int,
+    *,
+    server_xy_params: tuple[int, int] | None,
+) -> dict[str, Any]:
+    """Explicit ``raw_*`` / ``server_*`` keys for boundary JSONL (avoids ``x`` ambiguity).
+
+    When ``server_xy_params`` is ``None``, ``server_x`` / ``server_y`` are JSON ``null``.
+    """
+
+    out: dict[str, Any] = {"raw_x": int(raw_x), "raw_y": int(raw_y)}
+    if server_xy_params is not None:
+        md, my = int(server_xy_params[0]), int(server_xy_params[1])
+        sx, sy = server_xy_for_raw_xy(int(raw_x), int(raw_y), min_dense_x=md, min_raw_y=my)
+        out["server_x"] = int(sx)
+        out["server_y"] = int(sy)
+    else:
+        out["server_x"] = None
+        out["server_y"] = None
+    return out
+
+
+def full_map_row_for_boundary_jsonl(
+    row: dict[str, Any],
+    *,
+    server_xy_params: tuple[int, int] | None,
+) -> dict[str, Any]:
+    """Copy a replay ``full_map`` row and attach ``jsonl_coord_fields`` from its ``x``/``y``."""
+
+    merged = dict(row)
+    merged.update(
+        jsonl_coord_fields(int(row["x"]), int(row["y"]), server_xy_params=server_xy_params)
+    )
+    return merged
+
+
 def map_bbox_dense_and_y(entries: list[dict[str, Any]]) -> tuple[int, int] | None:
     """Return ``(min_dense_x, min_raw_y)`` from top-level blueprint dict rows, or ``None``."""
 
@@ -114,6 +151,8 @@ __all__ = [
     "COORD_SYSTEM_BBOX_LEFT_BOTTOM",
     "COORD_SYSTEM_BBOX_RIGHT_BOTTOM",
     "attach_server_coords_to_decoded_json",
+    "full_map_row_for_boundary_jsonl",
+    "jsonl_coord_fields",
     "map_bbox_dense_and_y",
     "raw_x_to_dense_index",
     "raw_x_to_dense_x",

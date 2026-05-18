@@ -16,10 +16,24 @@ from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
 from django_apps.asteroid_lab.snapshots.server_coords import (
     COORD_SYSTEM_BBOX_LEFT_BOTTOM,
     attach_server_coords_to_decoded_json,
+    full_map_row_for_boundary_jsonl,
+    jsonl_coord_fields,
     raw_x_to_dense_index,
     raw_x_to_dense_x,
     server_xy_for_raw_xy,
 )
+
+
+def test_jsonl_coord_fields_server_null_without_bbox_params() -> None:
+    d = jsonl_coord_fields(1, 2, server_xy_params=None)
+    assert d == {"raw_x": 1, "raw_y": 2, "server_x": None, "server_y": None}
+
+
+def test_full_map_row_for_boundary_jsonl_merges_keys() -> None:
+    row = {"x": 1, "y": 0, "layer": None, "cell_kind": "space_belt"}
+    out = full_map_row_for_boundary_jsonl(row, server_xy_params=(0, 0))
+    assert out["raw_x"] == 1 and out["x"] == 1
+    assert out["server_x"] == 0 and out["server_y"] == 0
 
 
 def test_raw_x_to_dense_index_examples() -> None:

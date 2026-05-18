@@ -80,8 +80,15 @@ def summarize_cell_kind_transitions(
     after: tuple[Any, ...],
     *,
     max_items: int = 8000,
+    server_xy_params: tuple[int, int] | None = None,
 ) -> list[dict[str, Any]]:
-    """Pair cells by ``(x, y, layer)`` and list ``cell_kind`` changes (for JSONL payloads)."""
+    """Pair cells by ``(x, y, layer)`` and list ``cell_kind`` changes (for JSONL payloads).
+
+    Each item includes ``raw_x`` / ``raw_y`` / ``server_x`` / ``server_y`` (explicit names;
+    ``server_*`` is ``null`` when ``server_xy_params`` is unavailable).
+    """
+
+    from django_apps.asteroid_lab.snapshots.server_coords import jsonl_coord_fields
 
     before_map: dict[tuple[int, int, int | None], str] = {}
     for c in before:
@@ -93,9 +100,9 @@ def summarize_cell_kind_transitions(
         prev = before_map.get(key)
         cur = str(c.cell_kind)
         if prev != cur:
+            coords = jsonl_coord_fields(key[0], key[1], server_xy_params=server_xy_params)
             item: dict[str, Any] = {
-                "x": key[0],
-                "y": key[1],
+                **coords,
                 "layer": key[2],
                 "cell_kind_before": prev,
                 "cell_kind_after": cur,

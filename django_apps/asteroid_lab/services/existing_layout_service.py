@@ -165,6 +165,9 @@ def record_existing_layout_inspection_frames(
         trace_events=collector.events,
         recon_summary=dict(recon_summary),
         hints=hints,
+        boundary_run_id=rid,
+        map_input_id=int(snap.map_input_id) if snap.map_input_id is not None else None,
+        project_id=int(snap.project_id) if snap.project_id is not None else None,
     )
 
     return recorder.record_many([ev_transport, ev_extractor, ev_extension, *recon_events])

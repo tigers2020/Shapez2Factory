@@ -87,12 +87,22 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 _default_sqlite = (BASE_DIR / "db.sqlite3").resolve()
-DATABASES = {
-    "default": dj_database_url.config(
-        default=f"sqlite:///{_default_sqlite.as_posix()}",
-        conn_max_age=600,
-    )
-}
+_use_sqlite = os.environ.get("DJANGO_USE_SQLITE", "").strip().lower() in {"1", "true", "yes"}
+if _use_sqlite:
+    # 로컬 개발: 시스템/`.env`에 `DATABASE_URL`(Neon 등)이 있어도 SQLite만 쓴다.
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(_default_sqlite),
+        }
+    }
+else:
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=f"sqlite:///{_default_sqlite.as_posix()}",
+            conn_max_age=600,
+        )
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

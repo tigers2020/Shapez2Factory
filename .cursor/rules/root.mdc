@@ -35,7 +35,7 @@ alwaysApply: true
 1. 범위: 워크플로 단계 식별.
 2. 경계: domain / application / adapters / interfaces 중 어디를 바꾸는지.
 3. 영향: 테스트·DTO·마이그레이션·문서 승인 게이트.
-4. 검증: `python -m pytest` → `ruff check .` → `mypy .` → `black .` 보고. 로컬은 [AGENTS.md](mdc:AGENTS.md) **pytest 구간**으로 축소 가능.
+4. 검증: **변경 범위에 맞는 `pytest`(파일·패키지·마커)** → `ruff check .` → `mypy .` → `black .` 보고. 전체 `python -m pytest` 는 꼭 필요할 때만. 로컬·에이전트 기본은 [AGENTS.md](mdc:AGENTS.md) **pytest** 표와 [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md) **pytest (기본: 변경 범위만)**.
 
 ## 도메인 용어
 

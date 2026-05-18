@@ -1,8 +1,16 @@
 # 매뉴얼: Testing · 검증
 
-## pytest (권장 실행 형태)
+## pytest (기본: 변경 범위만)
+
+- **기본:** 이번에 손댄 코드·모듈과 직접 연결된 테스트만 실행한다. 예: 바꾼 파일 옆 `tests/unit/...`의 해당 모듈, 또는 `pytest path/to/test_file.py` / `pytest tests/unit/some_package/`.
+- **전체 스위트** (`python -m pytest`, 루트에서 전부): 머지·릴리스·CI 대응·회귀가 넓게 의심될 때 등 **꼭 필요할 때만** 돌린다. 평소 에이전트/로컬 반복에는 전체를 기본으로 두지 않는다.
+- 구간·마커는 아래 **구간 실행** 표를 따른다.
 
 ```bash
+# 예: 작업 디렉터리 한정
+python -m pytest tests/unit/asteroid_lab/test_example.py
+
+# 전체 (필요 시만)
 python -m pytest
 ```
 
@@ -79,6 +87,9 @@ python -m pytest
 | 마커 | `-m unit`, `-m integration`, `-m shapez_solver`, `-m shapez_core`, `-m web`, `-m api`, `-m asteroid_lab` |
 | 조합 | `-m "unit and shapez_core"` |
 | 경로 | `python -m pytest tests/unit/shapez_solver/` · `python -m pytest tests/unit/asteroid_lab/` |
+| 단일 파일·이름 필터 | `python -m pytest tests/unit/shapez_solver/test_bar.py` · `python -m pytest -k "substring"` |
+
+프로덕션 모듈만 수정한 경우에는, 해당 동작을 검증하는 **기존** 테스트 모듈·디렉터리 경로를 인자로 주는 것이 기본이다.
 
 마커 정의: `pytest.ini`. 경로 기반 자동 마커: `tests/conftest.py`.
 
@@ -108,9 +119,11 @@ CI에서는 `black --check .`로 포맷만 검사하는 경우가 있다.
 
 ## 하네스 순서 (게이트)
 
-`pytest` → `ruff` → `mypy` → `black` 통과를 원칙으로 한다. 로컬 반복 시에만 구간 `pytest`로 단축 가능.
+**pytest:** 위 **기본(변경 범위만)** 을 먼저 적용한다. 루트에서 전체 `python -m pytest` 는 **머지·릴리스·광역 회귀·사용자 요청 등 꼭 필요할 때만**.
 
-에이전트가 짧은 주기로 전체 스위트를 반복 실행하면 CI·로컬 대기 비용이 커진다. **구간·마커·경로**로 돌리고, 머지 전에만 전체에 가깝게 확장하는 습관을 권장한다(배경: [`cursor_usage.md`](cursor_usage.md) §12).
+그다음 `ruff` → `mypy` → `black` 순을 원칙으로 한다(프로젝트·CI 정책이 다르면 그에 따름).
+
+에이전트가 짧은 주기로 **전체** 스위트를 반복 실행하면 CI·로컬 대기 비용이 커진다. **파일·패키지·마커**로 좁히고, 필요할 때만 전체로 확장한다(배경: [`cursor_usage.md`](cursor_usage.md) §12).
 
 ## 완료 보고
 
@@ -119,7 +132,7 @@ CI에서는 `black --check .`로 포맷만 검사하는 경우가 있다.
 1. **무엇을 바꿨는지** (변경 요약).
 2. **어떤 계약·불변식**에 영향이 있는지.
 3. **추가·수정한 테스트**가 무엇인지(없으면 다음 항).
-4. **실행한 기존 테스트·검증** (`pytest` 구간, `ruff`, `mypy`, `black` 등).
+4. **실행한 기존 테스트·검증** (`pytest` **경로·구간**, `ruff`, `mypy`, `black` 등). 전체 스위트를 돌리지 않았다면 그 이유·남은 위험.
 5. **새 테스트를 넣지 않은 경우** 그것이 수용 가능한 이유(예: 순수 포맷·주석만 변경).
 
 실행 못 한 명령·이유·남은 위험도 적는다.

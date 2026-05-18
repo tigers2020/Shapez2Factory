@@ -32,12 +32,12 @@ alwaysApply: true
 - **의도 정밀도**: 경로·심볼·완료 조건·로그·제약을 프롬프트에 넣어 환각·무탐색을 줄인다.
 - **이해 후 수정**: 호출 관계·정본 문서 확인 전에 솔버·채굴 배치·리플레이/리커버리 등 얽힌 영역을 바꾸지 않는다.
 - **컨텍스트**: 대형 작업은 새 스레드; 광역 탐색은 서브에이전트·Serena 등으로 격리해 본문 오염을 줄인다.
-- **검증**: 에이전트 설명을 그대로 믿지 않고, 재현·최소 케이스·회귀 테스트·`pytest`→`ruff`→`mypy`→`black`로 확인한다.
+- **검증**: 에이전트 설명을 그대로 믿지 않고, 재현·최소 케이스·회귀 테스트로 확인한다. **`pytest`는 이번에 수정한 영역에 대응하는 경로만 기본**으로 돌리고, 전체 스위트는 필요할 때만. 이어서 `ruff`→`mypy`→`black`(프로젝트 순서는 [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md) 참고).
 - **Rules vs Skills**: 상시 규칙은 `.cursor/rules`·`AGENTS.md`; 절차 묶음은 스킬·매뉴얼을 `@`로 연다.
 
 ## 테스트 구간
 
-전체 대신 마커·경로: [AGENTS.md](mdc:AGENTS.md), [`pytest.ini`](mdc:pytest.ini), [`tests/conftest.py`](mdc:tests/conftest.py). 권장: `python -m pytest`.
+**기본은 전체가 아니다.** 이번 작업 파일·패키지에 맞는 경로·마커만: [AGENTS.md](mdc:AGENTS.md), [`pytest.ini`](mdc:pytest.ini), [`tests/conftest.py`](mdc:tests/conftest.py), [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md). 루트에서 `python -m pytest` 전체는 **필요할 때만**.
 
 신규 테스트 **필요 여부·범위**: [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md) **계약 지향 테스트** 절.
 

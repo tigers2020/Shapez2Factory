@@ -14,7 +14,7 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 
 - 넓은 재작성 전에 **영향 파일·호출부**를 특정한다.
 - 작고 검증 가능한 변경을 우선한다. 비즈니스 규칙은 **뷰/템플릿에 두지 않는다** ([architecture.mdc](.cursor/rules/architecture.mdc)).
-- 코드 변경 후 **영향 구간 테스트 또는 검증 명령**을 실행하거나, 못 하면 이유·위험을 적는다.
+- 코드 변경 후 **이번 변경과 연결된 `pytest` 경로**(파일·패키지·마커) 또는 그에 준하는 검증을 실행하거나, 못 하면 이유·위험을 적는다. 루트 전체 `pytest` 는 꼭 필요할 때만.
 - 테스트 **작성·생략** 판단은 [`documents/ai/manuals/testing.md`](documents/ai/manuals/testing.md) **계약 지향 테스트** 절을 따른다.
 - 단계가 나뉜 작업은 [`documents/ai/checklist.md`](documents/ai/checklist.md)를 갱신한다.
 - 비밀값은 코드에 넣지 않는다 (`.env`/설정).
@@ -98,7 +98,8 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 |------|------|
 | 설치 | `pip install -e ".[dev]"` |
 | 서버 | `python manage.py runserver` |
-| 테스트 전체 | `python -m pytest` |
+| 테스트 (기본) | 이번에 수정한 모듈·파일에 대응하는 경로만: `python -m pytest tests/unit/<app>/...` · 단일 파일 `python -m pytest path/to/test.py` |
+| 테스트 전체 | 루트에서 `python -m pytest` — **머지 직전·CI·릴리스·광역 회귀·`pytest.ini`/`tests/conftest.py`/공용 픽스처 변경·사용자 요청 등 꼭 필요할 때만** |
 | 테스트 구간 | `python -m pytest -m unit` 등 · 경로 예: `tests/unit/shapez_solver/` |
 | 로컬 검증 | `ruff check .` → `mypy .` → `black .` |
 | CI 포맷 | `black --check .` |
@@ -126,7 +127,7 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 - 변경 요약, 변경 파일·이유.
 - 영향 **계약·불변식**(해당 시).
 - **추가·수정한 테스트**(없으면 다음 항과 함께 이유).
-- 실행한 **검증**(`pytest` 구간·`ruff`·`mypy`·`black` 등) 또는 미실행 사유·위험.
+- 실행한 **검증**(**변경 범위 `pytest` 경로**·`ruff`·`mypy`·`black` 등) 또는 미실행 사유·위험. 전체 `pytest` 를 생략했다면 이유를 적는다.
 - `black`으로 파일이 바뀌었으면 별도 명시.
 - **이후 진행 상황** 한 덩어리. 실제로 끝났을 때만 「완료」.
 

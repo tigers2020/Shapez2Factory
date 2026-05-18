@@ -36,6 +36,7 @@
 | [`documents/reports/README.md`](../reports/README.md) | `REPORT` | report index | NO | report 묶음 라우팅. 정본 계약 아님 |
 | [`documents/debug/`](../debug/) | `REPORT` | debug report | NO | 로그/복사본 분석 |
 | [`documents/notes/`](../notes/) | `REPORT` | notes | NO | 장기 메모. 정본 아님 |
+| [`documents/Algorithm/README.md`](../Algorithm/README.md) | `RESEARCH` | algorithm memos index | NO | Asteroid Lab optimization 시리즈·초안(`drafts/`). 진입점 README. 구현 정본은 코드·CANON 우선 |
 
 ## Archive·완료 문서
 

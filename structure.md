@@ -96,7 +96,8 @@ Internationalized routes (`i18n_patterns`, default language without prefix) incl
 |---|---|
 | Install dev dependencies | `pip install -e ".[dev]"` |
 | Run Django locally | `python manage.py runserver` |
-| Run tests | `python -m pytest` |
+| Run tests (default: scope to your change) | `python -m pytest <path-to-test-file-or-dir>` |
+| Run full test suite | `python -m pytest` — use before merge/release or when broad regression is needed |
 | Run unit tests | `python -m pytest -m unit` |
 | Run asteroid lab tests | `python -m pytest tests/unit/asteroid_lab/` |
 | Static analysis | `ruff check .` |

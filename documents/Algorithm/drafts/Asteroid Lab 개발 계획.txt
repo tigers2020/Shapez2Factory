@@ -1,0 +1,963 @@
+# Asteroid Lab — Start to End 개발 계획서
+
+Role: Principal Solver System Architect
+
+---
+
+# 0. 프로젝트 정의
+
+## 목표
+
+`Asteroid Lab`은 Shapez2 asteroid mining optimization을 위한:
+
+```text id="tbb55x"
+Decode
+→ Reconstruction
+→ Placement Search
+→ Routing
+→ Validation
+→ Replay Visualization
+→ Optimization Lab
+```
+
+전체 통합 연구/개발 플랫폼이다.
+
+단순 “배치기”가 아니라:
+
+```text id="coco4h"
+실시간 실험 가능한 Solver Research Platform
+```
+
+으로 설계한다.
+
+---
+
+# 1. 핵심 철학
+
+## 최우선 원칙
+
+```text id="ycbjp8"
+Everything is provisional
+until connected to exterior trunk.
+```
+
+즉:
+
+```text id="sjem9c"
+외부 trunk 연결 전까지
+모든 placement는 임시 상태
+```
+
+이다. fileciteturn0file2L691-L739
+
+---
+
+## 절대 금지
+
+### 금지 1 — Replay 기반 알고리즘
+
+```text id="xw3l3i"
+NDJSON
+Replay
+solver_summary
+```
+
+를 알고리즘 입력으로 사용 금지.
+
+---
+
+### 금지 2 — Pass-first rigid pipeline
+
+기존:
+
+```text id="kx1d7v"
+Pass1 → Pass2 → STEP4
+```
+
+강결합 구조 금지.
+
+---
+
+### 금지 3 — Routing 나중 처리
+
+반드시:
+
+```text id="xtn27f"
+placement candidate
++
+route feasibility
+```
+
+동시 평가.
+
+---
+
+# 2. 전체 시스템 구조
+
+# System Architecture
+
+```text id="469fd0"
+Asteroid Lab
+│
+├── Core Domain
+├── Decode Engine
+├── Reconstruction Engine
+├── Pattern Compiler
+├── Evolutionary Search
+├── Fast Feasibility Router
+├── Incremental Route Commit
+├── Recovery Engine
+├── Validation Engine
+├── Replay Engine
+├── Visualization UI
+├── Experiment Framework
+├── Artifact System
+└── Research Automation
+```
+
+---
+
+# 3. 개발 페이즈
+
+# PHASE 0 — Foundation
+
+## 목표
+
+프로젝트 기반 구조 확립.
+
+---
+
+## 작업
+
+### 0-1 Repository 구조
+
+```text id="i35pob"
+django_apps/
+    asteroid_lab/
+        domain/
+        decode/
+        reconstruction/
+        placement/
+        routing/
+        replay/
+        ui/
+        optimization/
+        experiments/
+        artifacts/
+```
+
+---
+
+### 0-2 Domain 정의
+
+필수 DTO:
+
+```text id="3i4vdc"
+Coord
+GridCell
+AsteroidCell
+PlacementBundle
+TransportEdge
+RouteReservation
+ReplayFrame
+SolverArtifact
+```
+
+---
+
+### 0-3 Enum 정의
+
+```text id="rjudpu"
+TransportKind
+PlacementState
+RouteState
+FailureReason
+ReplayEventKind
+TopologyType
+```
+
+---
+
+### 0-4 FSM 정의
+
+```text id="u8pj8x"
+PROVISIONAL
+→ FEASIBLE
+→ ROUTED
+→ CONFIRMED
+→ OPTIMIZED
+```
+
+---
+
+## 완료 조건
+
+- DTO 완성
+- serialization 가능
+- test 100%
+- import boundary 고정
+
+---
+
+# PHASE 1 — Decode Engine
+
+## 목표
+
+Shapez2 copy string decode.
+
+---
+
+## 처리 흐름
+
+```text id="xp4j62"
+SHAPEZ2-4-
+→ Base64 decode
+→ gzip decompress
+→ JSON parse
+→ blueprint normalize
+```
+
+fileciteturn0file0L1-L58
+
+---
+
+## 구현
+
+### 1-1 Raw Decode
+
+```python id="k1pu15"
+decode_copy_string()
+```
+
+---
+
+### 1-2 Existing Layout Analysis
+
+```text id="pjq1eh"
+source_kind
+transport_components
+equipment_attachment
+layout_issues
+```
+
+fileciteturn0file0L59-L107
+
+---
+
+### 1-3 Grid Normalize
+
+중요:
+
+```text id="k5st25"
+x == 0 column 없음
+```
+
+반드시 normalize utility 필요.
+
+---
+
+## 완료 조건
+
+- 모든 blueprint decode
+- malformed blueprint recovery
+- mixed layout detection
+- unit test coverage
+
+---
+
+# PHASE 2 — Reconstruction Engine
+
+## 목표
+
+Raw blueprint → asteroid topology reconstruction.
+
+---
+
+## 처리
+
+```text id="ak9gq2"
+extractor/extender 좌표 추출
+→ asteroid shell inference
+→ interior void detection
+→ inferred fill
+→ rim generation
+→ topology graph 생성
+```
+
+---
+
+## 핵심 규칙
+
+### inferred fill 규칙
+
+```text id="xa286h"
+interior patch는 asteroid field와 동일 속성
+void 유지 금지
+```
+
+---
+
+### topology classification
+
+```text id="j6cvzt"
+outer_rim
+interior
+void
+corridor
+external_margin
+```
+
+---
+
+## 완료 조건
+
+- hole asteroid 정상 처리
+- overfill 금지
+- topology graph 완성
+- replay overlay 가능
+
+---
+
+# PHASE 3 — Pattern Compiler
+
+## 목표
+
+Local optimal extractor bundle 생성.
+
+---
+
+## 핵심 철학
+
+DP는 전체 문제에 쓰지 않는다.
+
+```text id="jwy7jo"
+DP = local pattern compiler
+```
+
+fileciteturn0file2L74-L107
+
+---
+
+## 생성 패턴
+
+```text id="q51q4m"
+1 extractor
+2 extension
+3 extension
+linear
+corridor-safe
+rim-safe
+compact
+high-throughput
+```
+
+---
+
+## 결과물
+
+```python id="bifqhr"
+PatternBundle:
+    occupied_cells
+    output_stub
+    throughput
+    route_cost
+    congestion_score
+```
+
+---
+
+## 완료 조건
+
+- prevalidated bundle library 생성
+- deterministic generation
+- cache 가능
+
+---
+
+# PHASE 4 — Evolutionary Placement Search
+
+## 목표
+
+GA 기반 topology search.
+
+---
+
+## 중요
+
+### Cell-level GA 금지
+
+```text id="smqxjm"
+gene != cell
+gene == placement bundle
+```
+
+fileciteturn0file2L110-L154
+
+---
+
+## 구조
+
+```text id="js6zm6"
+Genome
+    bundle placements
+    output directions
+    transport types
+```
+
+---
+
+## Fitness
+
+```text id="vf559v"
++ extractor_score
++ extension_efficiency
++ connectivity
+- congestion
+- orphan transport
+- dead stub
+- isolated cluster
+```
+
+fileciteturn0file2L231-L279
+
+---
+
+## 완료 조건
+
+- stable evolution
+- convergence metrics
+- topology diversity 유지
+
+---
+
+# PHASE 5 — Fast Feasibility Routing
+
+## 목표
+
+빠른 연결 가능성 평가.
+
+---
+
+## 핵심
+
+```text id="ru8q0v"
+candidate 생성 순간
+즉시 route feasibility probe
+```
+
+fileciteturn0file2L156-L195
+
+---
+
+## 알고리즘
+
+```text id="5hvdkv"
+bounded BFS
+lightweight A*
+distance-to-margin heuristic
+```
+
+---
+
+## 주의
+
+초기에는:
+
+```text id="1kxt6v"
+perfect optimal routing 금지
+```
+
+---
+
+## 완료 조건
+
+- exterior trunk reachable
+- orphan transport 탐지
+- route island 제거
+
+---
+
+# PHASE 6 — Incremental Route Commit
+
+## 목표
+
+실제 trunk network 구축.
+
+---
+
+## 처리
+
+```text id="fhmqpa"
+feasible route
+→ provisional reservation
+→ conflict detect
+→ route merge
+→ trunk promotion
+```
+
+---
+
+## Corridor 시스템
+
+```text id="vhugse"
+hard protected
+soft protected
+replaceable corridor
+```
+
+---
+
+## 완료 조건
+
+- trunk connectivity 보장
+- reclaim safe
+- reroute 가능
+
+---
+
+# PHASE 7 — Recovery Engine
+
+## 목표
+
+막힌 topology 자동 복구.
+
+---
+
+## Recovery 종류
+
+```text id="y2evbh"
+corridor carve
+local rollback
+bundle mutation
+trunk reroute
+island recovery
+```
+
+---
+
+## 중요
+
+Recovery는:
+
+```text id="idw247"
+bounded
+incremental
+reversible
+```
+
+이어야 함.
+
+---
+
+# PHASE 8 — Validation Engine
+
+## 목표
+
+최종 assert gate.
+
+---
+
+## 검증
+
+```text id="7bkhov"
+모든 extractor output 연결 확인
+dead route 없음
+isolated cluster 없음
+invalid overlap 없음
+transport consistency 유지
+```
+
+---
+
+## 금지
+
+Validation이:
+
+```text id="ibwd55"
+새 route 생성 금지
+```
+
+---
+
+# PHASE 9 — Replay Engine
+
+## 목표
+
+전체 solver lifecycle replay.
+
+---
+
+## 프레임 종류
+
+```text id="rxzyb7"
+decode
+reconstruction
+candidate_scan
+probe
+commit
+rollback
+reroute
+recovery
+validation
+```
+
+---
+
+## UI 목표
+
+```text id="gn6c6n"
+영상 플레이어 수준 replay UX
+```
+
+---
+
+## 기능
+
+```text id="u1weie"
+play/pause
+step
+timeline scrub
+frame diff
+overlay layer
+topology modal
+heatmap
+```
+
+---
+
+# PHASE 10 — Visualization UI
+
+## 목표
+
+Research-grade visualization UI.
+
+---
+
+## 주요 뷰
+
+### 10-1 Asteroid View
+
+```text id="82shsv"
+sprite renderer
+zoom
+dynamic bbox
+overlay layer
+```
+
+---
+
+### 10-2 Topology View
+
+```text id="fz9c9g"
+corridor graph
+trunk graph
+bundle connectivity
+```
+
+---
+
+### 10-3 Solver Inspector
+
+```text id="8zgy3y"
+failure reason
+route probe
+bundle score
+mutation history
+```
+
+---
+
+### 10-4 Replay Controller
+
+```text id="adk4kr"
+timeline
+speed control
+frame jump
+bookmark
+```
+
+---
+
+# PHASE 11 — Experiment Framework
+
+## 목표
+
+Solver 연구 플랫폼화.
+
+---
+
+## 기능
+
+```text id="dlyem6"
+parameter sweep
+algorithm compare
+fitness tuning
+mutation tuning
+auto benchmark
+```
+
+---
+
+## 결과
+
+```text id="cfk3x1"
+experiment artifact
+performance graph
+heatmap
+statistical comparison
+```
+
+---
+
+# PHASE 12 — Artifact System
+
+## 목표
+
+완전한 reproducible artifact 체계.
+
+---
+
+## Artifact 종류
+
+```text id="upwmzc"
+copy_preview
+solver_run
+experiment_run
+route_analysis
+fitness_analysis
+```
+
+---
+
+## 중요
+
+Artifact는:
+
+```text id="uz50ww"
+debug/output only
+```
+
+알고리즘 입력 아님. fileciteturn0file1L1-L84
+
+---
+
+# PHASE 13 — Optimization Layer
+
+## 목표
+
+최종 throughput 최적화.
+
+---
+
+## 최적화
+
+```text id="kyz0l8"
+route shortening
+congestion reduction
+trunk balancing
+extension efficiency
+transport compression
+```
+
+---
+
+## Optional Solver
+
+```text id="z4aeea"
+CP-SAT
+local hill climbing
+memetic refinement
+```
+
+---
+
+# PHASE 14 — Research Automation
+
+## 목표
+
+AI-assisted automated solver research.
+
+---
+
+## 기능
+
+```text id="ljrkhw"
+auto regression detection
+artifact comparison
+topology anomaly detection
+parameter recommendation
+solver drift analysis
+```
+
+---
+
+# PHASE 15 — Productionization
+
+## 목표
+
+실사용 배포.
+
+---
+
+## 구성
+
+```text id="4dfypo"
+Docker
+PostgreSQL
+Redis
+Celery
+artifact storage
+worker queue
+```
+
+---
+
+## 확장
+
+```text id="g6lsar"
+multi-user experiments
+shared replay
+cloud optimization
+```
+
+---
+
+# 4. 권장 기술 스택
+
+| 영역 | 기술 |
+|---|---|
+| Backend | Python + Django |
+| Solver | Python |
+| Routing | Rust optional |
+| UI | React + TypeScript |
+| Replay | PixiJS/WebGL |
+| DB | PostgreSQL |
+| Queue | Celery + Redis |
+| Optimization | OR-Tools |
+| Visualization | D3 / WebGL |
+| Artifact | msgpack + json |
+
+---
+
+# 5. 권장 개발 순서
+
+# 실제 추천 순서
+
+```text id="8rab9m"
+1. Foundation
+2. Decode
+3. Reconstruction
+4. Replay UI
+5. Pattern Compiler
+6. Feasibility Routing
+7. Evolution Search
+8. Incremental Commit
+9. Recovery
+10. Validation
+11. Optimization
+12. Experiment Framework
+```
+
+---
+
+# 6. 예상 난이도
+
+| 영역 | 난이도 |
+|---|---|
+| Decode | 낮음 |
+| Reconstruction | 중간~높음 |
+| Pattern Compiler | 높음 |
+| Evolution Search | 매우 높음 |
+| Feasibility Routing | 매우 높음 |
+| Incremental Commit | 매우 높음 |
+| Recovery | 매우 높음 |
+| Replay/UI | 높음 |
+| Optimization | 최고 난이도 |
+
+---
+
+# 7. 핵심 리스크
+
+## 리스크 1
+
+```text id="a08ff9"
+placement-routing coupling
+```
+
+---
+
+## 리스크 2
+
+```text id="6lrq2s"
+search space explosion
+```
+
+---
+
+## 리스크 3
+
+```text id="dz5oza"
+corridor deadlock
+```
+
+---
+
+## 리스크 4
+
+```text id="ec25zc"
+interior void contamination
+```
+
+---
+
+# 8. 최종 권장 아키텍처
+
+```text id="375m91"
+Asteroid Reconstruction
+    ↓
+Pattern Compiler
+    ↓
+Evolutionary Placement
+    ↓
+Fast Feasibility Routing
+    ↓
+Incremental Commit
+    ↓
+Recovery
+    ↓
+Validation
+    ↓
+Replay + Optimization
+```
+
+fileciteturn0file2L281-L377
+
+---
+
+# 최종 결론
+
+현재 프로젝트 방향에서 가장 중요한 건:
+
+```text id="b9v9bw"
+"배치"와 "연결 가능성"을 분리하지 않는 것
+```
+
+이다.
+
+기존 v1/v2의 핵심 붕괴 원인은:
+
+```text id="0di09z"
+placement 먼저
+routing 나중
+```
+
+구조였다.
+
+Asteroid Lab은 반드시:
+
+```text id="ppwyf0"
+placement candidate 생성 순간
+즉시 exterior connectivity feasibility 평가
+```
+
+구조로 설계되어야 한다.

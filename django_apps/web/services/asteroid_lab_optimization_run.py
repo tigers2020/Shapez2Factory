@@ -11,9 +11,15 @@ from typing import Any, NamedTuple
 
 from django.db import transaction
 
-from django_apps.asteroid_lab.models import AsteroidMapInput, ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.models import (
+    AsteroidMapInput,
+    ReplayFrame,
+    ReplayTrack,
+    UIPlaybackSession,
+)
 from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
 from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_result
+from django_apps.asteroid_lab.replay.event_types import EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE
 from django_apps.asteroid_lab.services.cell_snapshot_service import (
     build_decoded_blueprint_snapshot_from_input,
 )
@@ -322,15 +328,33 @@ def run_lab_solver_optimization_for_map_input(
     with transaction.atomic():
         ReplayTrack.objects.select_for_update().filter(pk=int(replay_track_id)).first()
         n0 = ReplayFrame.objects.filter(replay_track_id=int(replay_track_id)).count()
-        last = (
-            ReplayFrame.objects.filter(replay_track_id=int(replay_track_id))
-            .order_by("-frame_index", "-id")
-            .first()
+        cut = (
+            ReplayFrame.objects.filter(
+                replay_track_id=int(replay_track_id),
+                frame_payload__event_type=EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE,
+            )
+            .order_by("frame_index", "id")
+            .last()
         )
-        if last is None:
-            msg = f"ReplayTrack id={replay_track_id} has no frames; cannot resolve baseline map"
+        if cut is None:
+            msg = (
+                f"ReplayTrack id={replay_track_id} has no reconstruction.map_complete frame; "
+                "cannot reset lab replay before optimization append"
+            )
             raise ValueError(msg)
-        baseline = _baseline_full_map_from_last_frame(last)
+        tail = ReplayFrame.objects.filter(
+            replay_track_id=int(replay_track_id),
+            frame_index__gt=int(cut.frame_index),
+        )
+        truncated_tail_frames = tail.count()
+        tail.delete()
+        sess = UIPlaybackSession.objects.filter(replay_track_id=int(replay_track_id)).first()
+        if sess is not None:
+            cap = int(cut.frame_index)
+            if int(sess.current_frame_index) > cap:
+                sess.current_frame_index = cap
+                sess.save(update_fields=["current_frame_index", "updated_at"])
+        baseline = _baseline_full_map_from_last_frame(cut)
         t_att0 = time.perf_counter()
         dtos = optimization_replay_frames_to_lab_append_dtos(
             raw_frames,
@@ -359,6 +383,7 @@ def run_lab_solver_optimization_for_map_input(
 
         debug: dict[str, Any] = {
             "n0": n0,
+            "truncated_tail_frames": truncated_tail_frames,
             "appended": appended,
             "reason": reason,
             "candidate_pool_len": pool_n,

@@ -335,6 +335,45 @@ def test_asteroid_miner_layout_run_solver_appends_optimization_frames() -> None:
     assert "optimizationReplayTrack" not in html
 
 
+def test_asteroid_miner_layout_run_solver_truncates_prior_optimization_tail() -> None:
+    """Second run-solver must drop previous optimization frames and append fresh ones."""
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    client.post(create_url, {"copy_code": copy}, follow=True)
+    proj = m.AsteroidProject.objects.get()
+    tid = m.ReplayTrack.objects.filter(project=proj).values_list("id", flat=True).first()
+    mid = m.AsteroidMapInput.objects.filter(project=proj).values_list("id", flat=True).first()
+    assert tid is not None and mid is not None
+    n0 = m.ReplayFrame.objects.filter(replay_track_id=tid).count()
+    url = reverse("web:asteroid-miner-layout-run-solver")
+    body = {
+        "project_slug": proj.slug,
+        "replay_track_id": int(tid),
+        "map_input_id": int(mid),
+    }
+    r1 = client.post(url, data=json.dumps(body), content_type="application/json")
+    assert r1.status_code == 200
+    d1 = json.loads(r1.content.decode())
+    assert d1["ok"] is True
+    a1 = int(d1["appended_optimization_frames"])
+    assert a1 > 0
+    assert int(d1["optimization_append_debug"]["truncated_tail_frames"]) == 0
+    n_mid = m.ReplayFrame.objects.filter(replay_track_id=tid).count()
+    assert n_mid == n0 + a1
+
+    r2 = client.post(url, data=json.dumps(body), content_type="application/json")
+    assert r2.status_code == 200
+    d2 = json.loads(r2.content.decode())
+    assert d2["ok"] is True
+    a2 = int(d2["appended_optimization_frames"])
+    assert a2 > 0
+    assert int(d2["optimization_append_debug"]["truncated_tail_frames"]) == a1
+    n_final = m.ReplayFrame.objects.filter(replay_track_id=tid).count()
+    assert n_final == n0 + a2
+    assert n_final != n0 + a1 + a2
+
+
 def test_lab_page_context_binds_replay_track_to_latest_map_input() -> None:
     """Latest map input's inspection track must win over an older project's replay track."""
     client = Client()

@@ -570,9 +570,9 @@
   }
 
   function computeReplayGridLayout(replayFrames) {
-    /* Lab grid uses ``visualCol`` (raw world X/Y) only. ``server_x``/``server_y`` on cells are for
-     * backend/fingerprint; mapping them to pixel columns via dense inverse makes X step by 2 on
-     * the positive side, which is confusing in this UI.
+    /* Lab grid uses ``visualCol`` (raw world X/Y) only. Optimization overlay cells from the
+     * server adapter are already projected to raw ``x``/``y``; do not use ``server_x``/``server_y``
+     * for DOM placement here.
      */
     let minD = Infinity;
     let maxD = -Infinity;

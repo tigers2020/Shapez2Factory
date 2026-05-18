@@ -8,6 +8,7 @@ adapter* in ``asteroid_lab_00_overview.md``.
 
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
@@ -63,8 +64,6 @@ def _overlay_rows_from_cells(
             if server_xy_params is not None:
                 sx = int(r["x"])
                 sy = int(r["y"])
-                r["server_x"] = sx
-                r["server_y"] = sy
                 max_dx, min_y = int(server_xy_params[0]), int(server_xy_params[1])
                 rx, ry = raw_xy_for_server_xy(
                     sx,
@@ -75,6 +74,16 @@ def _overlay_rows_from_cells(
                 )
                 r["x"] = rx
                 r["y"] = ry
+                if os.environ.get("LAB_OVERLAY_DEBUG_SERVER_COORDS", "").strip().lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                    "on",
+                ):
+                    r["debug_server_x"] = sx
+                    r["debug_server_y"] = sy
+            r.pop("server_x", None)
+            r.pop("server_y", None)
             if candidate_id:
                 r["optimization_candidate_id"] = candidate_id
             rows.append(r)
@@ -169,10 +178,6 @@ def optimization_replay_frames_to_lab_append_dtos(
     out: list[ReplayFrameAppendDTO] = []
     for local_i, frame in enumerate(frames):
         before_map = deepcopy(working)
-        bbox = map_bbox_dense_and_y_from_lab_rows(working)
-        server_xy_params: tuple[int, int] | None = (
-            (int(bbox[0]), int(bbox[1])) if bbox is not None else None
-        )
         et = frame.event_type.value
         if et in COMMIT_CLASS_OPTIMIZATION_EVENT_TYPES and commit_result is not None:
             rid = frame.metrics.get("route_reservation_id")
@@ -185,6 +190,10 @@ def optimization_replay_frames_to_lab_append_dtos(
                 )
                 _apply_reservation_path_to_rows(working, path=res.path, transport_kind_value=tk)
 
+        bbox = map_bbox_dense_and_y_from_lab_rows(working)
+        server_xy_params: tuple[int, int] | None = (
+            (int(bbox[0]), int(bbox[1])) if bbox is not None else None
+        )
         full_map_snapshot = deepcopy(working)
         metrics_src = dict(frame.metrics)
         if server_xy_params is not None:

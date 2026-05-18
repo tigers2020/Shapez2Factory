@@ -1,6 +1,10 @@
 /**
- * Pure helpers for Lab optimization overlay: server→raw projection (with baseline lookup)
- * and cumulative replay state for frames ``anchorIndex < i <= endIndex``.
+ * Pure helpers for Lab optimization overlay: cumulative replay state for frames
+ * ``anchorIndex < i <= endIndex``. Overlay cells use **raw/world** ``x``/``y`` only
+ * (Lab UI adapter output); see ``optimization_replay_to_lab_frames._overlay_rows_from_cells``.
+ *
+ * ``serverToRawWorld`` / ``serverXYParamsFromFrame`` remain exported for dense-axis
+ * unit tests and tooling; **DOM paint paths** must not use them.
  *
  * Loaded before ``asteroid_miner_layout_lab.js``; attaches ``globalThis.LabOptimizationOverlayAccumulator``.
  */
@@ -27,6 +31,7 @@
     return null;
   }
 
+  /** Dense / server-axis helper (tests, tooling). Not for overlay DOM lookup. */
   function serverToRawWorld(sx, sy, maxDx, minY, labRows) {
     var rawY = sy + minY;
     var tSx = Number(sx);
@@ -61,6 +66,7 @@
     return {};
   }
 
+  /** Metrics helper (not used by overlay paint). */
   function serverXYParamsFromFrame(frame) {
     var m = metricSource(frame);
     var p = m.server_xy_params;
@@ -86,23 +92,23 @@
     return null;
   }
 
-  function cellToRawWorld(cell, params, labRows) {
+  /**
+   * Lab overlay DOM lookup: raw/world coordinates only.
+   * Optional ``lab_world_x`` / ``lab_world_y`` override ``x`` / ``y``.
+   * ``x === 0`` is invalid in this coordinate system.
+   * Extra arguments are ignored (legacy call signature).
+   */
+  function cellToRawWorld(cell, _unusedParams, _unusedLabRows) {
     if (!cell || typeof cell !== "object") return null;
     if (cell.lab_world_x != null && cell.lab_world_y != null) {
-      return { x: Number(cell.lab_world_x), y: Number(cell.lab_world_y) };
-    }
-    var sx = cell.server_x != null ? Number(cell.server_x) : null;
-    var sy = cell.server_y != null ? Number(cell.server_y) : null;
-    if (sx != null && sy != null && params) {
-      return serverToRawWorld(sx, sy, params[0], params[1], labRows);
+      var lwx = Number(cell.lab_world_x);
+      var lwy = Number(cell.lab_world_y);
+      if (!Number.isFinite(lwx) || !Number.isFinite(lwy) || lwx === 0) return null;
+      return { x: lwx, y: lwy };
     }
     var x = Number(cell.x);
     var y = Number(cell.y);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-    var ck = cell.cell_kind != null ? String(cell.cell_kind) : "";
-    if (params && ck === "optimization_overlay") {
-      return serverToRawWorld(x, y, params[0], params[1], labRows);
-    }
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x === 0) return null;
     return { x: x, y: y };
   }
 
@@ -175,28 +181,16 @@
     return parts.join(" ");
   }
 
-  function projectCumulative(frames, anchorIndex, endIndex, resolveCellIndex, anchorLabRows) {
+  function projectCumulative(frames, anchorIndex, endIndex, resolveCellIndex, _anchorLabRows) {
     var diagnostics = { dropped: 0, reasons: [] };
     if (!Array.isArray(frames) || endIndex < 0) {
       return { directives: [], diagnostics: diagnostics };
     }
-    var labRows = Array.isArray(anchorLabRows) ? anchorLabRows : [];
     var cellState = new Map();
-
-    var fallbackParams = null;
-    var fj;
-    for (fj = anchorIndex + 1; fj <= endIndex; fj++) {
-      var p0 = serverXYParamsFromFrame(frames[fj]);
-      if (p0) {
-        fallbackParams = p0;
-        break;
-      }
-    }
 
     for (var fi = anchorIndex + 1; fi <= endIndex; fi++) {
       var fr = frames[fi];
       if (!isOptimizationLabFrame(fr)) continue;
-      var params = serverXYParamsFromFrame(fr) || fallbackParams;
       var evt = eventTypeOf(fr);
       var overlay = cellOverlayFromFrame(fr);
       var targets = overlayTargets(overlay);
@@ -209,7 +203,7 @@
       var ti, t, raw, idx, row, sev, role;
       for (ti = 0; ti < targets.length; ti++) {
         t = targets[ti];
-        raw = params ? cellToRawWorld(t.cell, params, labRows) : cellToRawWorld(t.cell, null, labRows);
+        raw = cellToRawWorld(t.cell);
         if (!raw || !Number.isFinite(raw.x) || !Number.isFinite(raw.y)) {
           diagnostics.dropped += 1;
           continue;

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from django_apps.asteroid_lab.services.optimization_replay_to_lab_frames import (
     COMMIT_CLASS_OPTIMIZATION_EVENT_TYPES,
     optimization_replay_frames_to_lab_append_dtos,
@@ -249,6 +251,13 @@ def test_candidate_geometry_dict_roles_round_trip_in_cell_overlay() -> None:
         for c in cells
     )
     assert dtos[0].metric_snapshot_json.get("server_xy_params") == [2, 0]
+    for c in cells:
+        if not isinstance(c, dict):
+            continue
+        if str(c.get("cell_kind") or "") != "optimization_overlay":
+            continue
+        assert "server_x" not in c
+        assert "server_y" not in c
 
 
 def test_overlay_frame_before_commit_matches_baseline_full_map() -> None:
@@ -315,3 +324,44 @@ def test_overlay_frame_before_commit_matches_baseline_full_map() -> None:
     by1 = {(int(r["x"]), int(r["y"])): r for r in fm1 if isinstance(r, dict)}
     assert (2, 0) in by1
     assert by1[(2, 0)].get("transport_kind") == "shape_belt"
+
+
+def test_debug_server_coords_only_when_env_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """LAB_OVERLAY_DEBUG_SERVER_COORDS=1 adds debug_server_* to overlay cells only then."""
+    base = [
+        {
+            "x": 1,
+            "y": 0,
+            "layer": 0,
+            "cell_kind": "field",
+            "transport_kind": "none",
+            "tile_type": "",
+        }
+    ]
+    fr = OptimizationReplayFrame(
+        frame_index=0,
+        event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
+        title="t",
+        description="",
+        visible_cells=(Coord(1, 0),),
+        overlay_cells=(),
+        metrics={},
+    )
+    monkeypatch.delenv("LAB_OVERLAY_DEBUG_SERVER_COORDS", raising=False)
+    dtos_off = optimization_replay_frames_to_lab_append_dtos((fr,), baseline_full_map=list(base))
+    cells_off = dtos_off[0].cell_overlay_json.get("cells") or []
+    for c in cells_off:
+        if isinstance(c, dict) and str(c.get("cell_kind") or "") == "optimization_overlay":
+            assert "debug_server_x" not in c
+            assert "debug_server_y" not in c
+
+    monkeypatch.setenv("LAB_OVERLAY_DEBUG_SERVER_COORDS", "1")
+    dtos_on = optimization_replay_frames_to_lab_append_dtos((fr,), baseline_full_map=list(base))
+    cells_on = dtos_on[0].cell_overlay_json.get("cells") or []
+    ov = [
+        c
+        for c in cells_on
+        if isinstance(c, dict) and str(c.get("cell_kind") or "") == "optimization_overlay"
+    ]
+    assert ov
+    assert any("debug_server_x" in c and "debug_server_y" in c for c in ov)

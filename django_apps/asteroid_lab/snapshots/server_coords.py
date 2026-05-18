@@ -33,6 +33,34 @@ def _as_int(val: Any) -> int:
         return 0
 
 
+def _parse_server_axis_str(val: str) -> int | None:
+    t = val.strip()
+    if not t or t.lower() == "null":
+        return None
+    try:
+        return int(t, 10)
+    except ValueError:
+        return None
+
+
+def coerce_server_axis_int(val: Any) -> int | None:
+    """Normalize ``server_x`` / ``server_y`` from JSON or DTO (reject bool; allow int-like).
+
+    Blueprint ``X``/``Y`` use :func:`_as_int` (bools allowed). Server axes must never treat
+    ``bool`` as ``int`` (``isinstance(True, int)`` is true in Python).
+    """
+
+    if val is None or isinstance(val, bool):
+        return None
+    if isinstance(val, int):
+        return int(val)
+    if isinstance(val, float):
+        return int(val) if val.is_integer() else None
+    if isinstance(val, str):
+        return _parse_server_axis_str(val)
+    return None
+
+
 def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[str, Any]:
     """Mutate ``BP.Entries`` items in-place: add ``server_x`` / ``server_y`` where raw X is valid.
 
@@ -92,6 +120,35 @@ def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[s
     return decoded_json
 
 
+def dense_x_layout_line_including_zero(x: int) -> int:
+    """Dense column index for integer layout ``x`` when ``x == 0`` is allowed (world / flatten).
+
+    Shapez2 blueprint **raw** columns omit ``x == 0``; see :func:`raw_x_to_dense_x`. Upstream may
+    still attach ``X == 0`` after offsets (e.g. parent + local). Map that seam placeholder to the
+    same dense index as raw ``x == -1`` so :func:`server_xy_for_layout_line_xy` stays contiguous
+    with the negative branch and matches :func:`server_xy_for_raw_xy` for ``x == -1``.
+    """
+
+    if x < 0:
+        return (x + 1) // 2
+    if x == 0:
+        return 0
+    return (x - 1) // 2 + 1
+
+
+def server_xy_for_layout_line_xy(
+    x: int,
+    raw_y: int,
+    *,
+    max_dense_x: int,
+    min_raw_y: int,
+) -> tuple[int, int]:
+    """Server coords for layout ``x`` including ``x == 0`` (not only strict blueprint raw)."""
+
+    dense_x = dense_x_layout_line_including_zero(x)
+    return (max_dense_x - dense_x, raw_y - min_raw_y)
+
+
 def server_xy_for_raw_xy(
     raw_x: int,
     raw_y: int,
@@ -131,7 +188,10 @@ def map_bbox_dense_and_y(entries: list[dict[str, Any]]) -> tuple[int, int] | Non
 __all__ = [
     "COORD_SYSTEM_BBOX_RIGHT_BOTTOM",
     "attach_server_coords_to_decoded_json",
+    "coerce_server_axis_int",
+    "dense_x_layout_line_including_zero",
     "map_bbox_dense_and_y",
     "raw_x_to_dense_x",
+    "server_xy_for_layout_line_xy",
     "server_xy_for_raw_xy",
 ]

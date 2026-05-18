@@ -22,6 +22,7 @@
     data-lab-map-input-id="{% if lab_map_input_id %}{{ lab_map_input_id }}{% endif %}"
     data-lab-project-slug="{{ lab_project_slug|default:'' }}"
     data-lab-sprite-base="{% static 'web/assets/sprites/' %}"
+    data-lab-optimization-overlay-enabled="{% if lab_optimization_overlay_enabled %}1{% else %}0{% endif %}"
   >
     <div class="border-b border-slate-800 bg-slate-950/90 px-6 py-4">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -392,7 +393,7 @@
               <div id="lab-replay-grid-stage" class="absolute inset-4 min-w-0">
                 <div
                   id="lab-replay-grid"
-                  class="grid min-w-0 opacity-100 transition-opacity duration-200"
+                  class="relative z-0 grid min-w-0 opacity-100 transition-opacity duration-200"
                   {% if not has_replay_frames %}style="grid-template-columns: repeat(23, minmax(0, 1.25rem));"{% endif %}
                   data-overlay=""
                 >
@@ -400,12 +401,18 @@
                     <div data-lab-cell-index="{{ forloop.counter0 }}" class="{{ cls }}"></div>
                   {% endfor %}
                 </div>
+                <div
+                  id="lab-optimization-overlay-layer"
+                  class="pointer-events-none absolute inset-0 z-10 grid min-w-0"
+                  aria-hidden="true"
+                ></div>
               </div>
             </div>
 
             <div class="mt-4 flex flex-col gap-2 rounded-2xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
               <div class="min-w-0 flex-1 space-y-1">
                 <div id="lab-replay-footer-hint" class="text-slate-500">—</div>
+                <div id="lab-optimization-overlay-diagnostics" class="font-mono text-slate-500">—</div>
               </div>
               <div class="font-mono text-cyan-300" id="lab-computation-cycle">computation_cycle #{{ initial_frame }}</div>
             </div>

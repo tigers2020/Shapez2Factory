@@ -48,6 +48,7 @@ from django_apps.web.services.asteroid_lab_optimization_run import (
 from django_apps.web.services.asteroid_lab_page_context import (
     build_lab_replay_payload,
     inspection_replay_track_for_map_input,
+    lab_optimization_overlay_enabled,
     lab_page_context,
     serialize_replay_frame,
 )
@@ -206,6 +207,7 @@ def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> di
         "hasReplayFrames": n > 0,
         "replayTrackId": int(track.pk) if track else None,
         "replayTrackKey": str(track.track_key) if track else None,
+        "optimizationOverlayEnabled": lab_optimization_overlay_enabled(),
     }
     return {
         "lab_replay_frames_json": frames,

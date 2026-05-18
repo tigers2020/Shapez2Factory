@@ -22,7 +22,7 @@ from django_apps.asteroid_lab.reconstruction.trace import (
     ReconstructionTraceEvent,
 )
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
+from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_layout_line_xy
 from django_apps.asteroid_lab.snapshots.transport_components import sort_key_xy_layer
 
 if TYPE_CHECKING:
@@ -260,14 +260,12 @@ def reconstruct_after_cleanup(
             sx: int | None = None
             sy: int | None = None
             if server_xy_params is not None:
-                pair = server_xy_for_raw_xy(
+                sx, sy = server_xy_for_layout_line_xy(
                     x,
                     y,
                     max_dense_x=server_xy_params[0],
                     min_raw_y=server_xy_params[1],
                 )
-                if pair is not None:
-                    sx, sy = pair
             filled.append(synthetic_field_cell(x, y, fill_layer, kind, server_x=sx, server_y=sy))
 
         if trace_collector is not None and fill_xy:

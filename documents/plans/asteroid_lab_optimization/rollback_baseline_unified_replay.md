@@ -44,11 +44,20 @@ optimizationReplayFrameIndex
 renderOptimizationReplayHud
 replaceOptimizationReplayPayload
 optimization_replay_attach
-projectOptimizationReplayFrameToLabOverlay
-lab-optimization-overlay-layer
 dual-track optimization replay
 no implicit sync policy
 ```
+
+### 예외(시각 전용): 통합 타임라인 위 optimization 오버레이
+
+다음은 **듀얼 트랙이 아니라**, 단일 `lab_replay_frames_json`·단일 `currentFrameIndex` 안에서 Lab 베이스 그리드 위에만 쌓는 **출력 전용 시각 레이어**로 허용한다.
+
+```text
+projectOptimizationReplayFrameToLabOverlay   # 단일 타임라인 프레임 → 오버레이 지시
+lab-optimization-overlay-layer               # #lab-replay-grid 위 DOM 레이어
+```
+
+금지는 그대로다: 별도 optimization 리플레이 JSON 스크립트, `optimizationReplayFrameIndex` 같은 **둘째 인덱스**, 두 타임라인 동기화, `optimization_replay_attach`로 별 페이로드 노출.
 
 ## 목표 아키텍처
 
@@ -132,6 +141,7 @@ if ($LASTEXITCODE -gt 1) { throw "git grep failed" }
 - 최적화 단계 프레임이 동일 리스트에 append된다.
 - frame_index는 0부터 final_count - 1까지 연속이다.
 - 렌더된 프로젝트 HTML에 `optimization-replay-json` / `optimizationReplayTrack` / `optimizationReplayFrameIndex` 문자열이 없다.
+- (예외) `#lab-optimization-overlay-layer` 및 `data-lab-optimization-overlay-enabled` 는 **단일 타임라인 시각 레이어**로 허용된다.
 - 기존 Lab 스크러버로 append된 최적화 프레임을 선택할 수 있다.
 - 리플레이는 출력 전용이며 솔버 입력으로 쓰이지 않는다.
 ```

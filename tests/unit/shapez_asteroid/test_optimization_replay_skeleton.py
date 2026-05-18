@@ -180,6 +180,25 @@ def test_replay_candidate_generated_event_recorded() -> None:
     assert OptimizationReplayEventType.CANDIDATE_GENERATED in types
 
 
+def test_replay_candidate_generated_emits_geometry_cells() -> None:
+    inp = _greenfield_square_input()
+    domain = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
+    cfg = CandidateGenerationConfig(
+        extractor_policy=ExtractorPlacementPolicy.RIM_ONLY,
+        allow_diagnostic_unreachable=True,
+        max_candidates=None,
+        route_probe_max_expansions=500,
+        transport_kinds=frozenset({TransportKind.SHAPE_BELT}),
+        route_probe_goal_priority_weight=10,
+    )
+    rec = OptimizationReplayRecorder()
+    generate_bundle_candidates(inp, domain, build_pattern_library(), cfg, replay_recorder=rec)
+    gen = next(
+        f for f in rec.frames if f.event_type is OptimizationReplayEventType.CANDIDATE_GENERATED
+    )
+    assert len(gen.visible_cells) + len(gen.overlay_cells) > 0
+
+
 def test_replay_candidate_rejected_event_recorded() -> None:
     inp = _greenfield_square_input()
     domain = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)

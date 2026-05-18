@@ -881,6 +881,125 @@
     }
   }
 
+  function isOptimizationLabFrame(fr) {
+    if (!fr || typeof fr !== "object") return false;
+    const ph = fr.phase != null ? String(fr.phase) : "";
+    if (ph === "optimization") return true;
+    const fk = fr.frame_key != null ? String(fr.frame_key) : "";
+    return fk.indexOf("optimization_") === 0;
+  }
+
+  function findLabBaseAnchorIndex(frames, i) {
+    if (!Array.isArray(frames) || i <= 0) return 0;
+    for (let j = i - 1; j >= 0; j--) {
+      const fr = frames[j];
+      if (!isOptimizationLabFrame(fr)) {
+        return j;
+      }
+    }
+    for (let j = i - 1; j >= 0; j--) {
+      if (fullMapCellsFromFrame(frames[j]).length) {
+        return j;
+      }
+    }
+    return 0;
+  }
+
+  function cellOverlayFromFrame(frame) {
+    if (!frame || typeof frame !== "object") return null;
+    const top = frame.cell_overlay_json;
+    if (top && typeof top === "object") return top;
+    const p = frame.frame_payload;
+    if (p && typeof p === "object" && p.cell_overlay_json && typeof p.cell_overlay_json === "object") {
+      return p.cell_overlay_json;
+    }
+    return null;
+  }
+
+  function labOptimizationOverlaySeverityRank(s) {
+    const x = s != null ? String(s).toLowerCase() : "info";
+    if (x === "error") return 3;
+    if (x === "warn") return 2;
+    return 1;
+  }
+
+  function labOptimizationMergeSeverity(a, b) {
+    return labOptimizationOverlaySeverityRank(a) >= labOptimizationOverlaySeverityRank(b) ? a : b;
+  }
+
+  function labOptClassesForRolesAndSeverity(roles, severity) {
+    const parts = ["lab-opt-cell-slot"];
+    if (roles.has("candidate_occupied")) {
+      parts.push("lab-opt-candidate-occupied");
+    }
+    if (roles.has("output_stub")) {
+      parts.push("lab-opt-output-stub");
+    }
+    if (roles.has("route_path")) {
+      parts.push("lab-opt-route-path");
+    }
+    const s = severity != null ? String(severity).toLowerCase() : "info";
+    if (s === "error") {
+      parts.push("lab-opt-severity-error");
+    } else if (s === "warn") {
+      parts.push("lab-opt-severity-warn");
+    }
+    return parts.join(" ");
+  }
+
+  function projectOptimizationReplayFrameToLabOverlay(frame, resolveCellIndex) {
+    const diagnostics = { dropped: 0, reasons: [] };
+    if (!frame || typeof frame !== "object") {
+      return { directives: [], diagnostics: diagnostics };
+    }
+    const overlay = cellOverlayFromFrame(frame);
+    if (!overlay || typeof overlay !== "object") {
+      return { directives: [], diagnostics: diagnostics };
+    }
+    const targets = collectOverlayPaintTargets(overlay);
+    const acc = new Map();
+    for (let ti = 0; ti < targets.length; ti++) {
+      const t = targets[ti];
+      const cell = t.cell;
+      if (!cell || typeof cell !== "object") continue;
+      const idx = resolveCellIndex(cell);
+      if (idx == null) {
+        diagnostics.dropped += 1;
+        continue;
+      }
+      const roleRaw =
+        (t.role != null && String(t.role) !== "" ? String(t.role) : null) ||
+        (cell.overlay_role != null ? String(cell.overlay_role) : "");
+      const role = roleRaw ? roleRaw.toLowerCase() : "";
+      const sev = cell.severity != null ? String(cell.severity) : "info";
+      let row = acc.get(idx);
+      if (!row) {
+        row = { roles: new Set(), severity: "info" };
+        acc.set(idx, row);
+      }
+      if (role) {
+        row.roles.add(role);
+      }
+      row.severity = labOptimizationMergeSeverity(row.severity, sev);
+    }
+    if (diagnostics.dropped > 0) {
+      diagnostics.reasons.push("missing_server_coord");
+    }
+    const directives = [];
+    acc.forEach(function (row, domIndex) {
+      directives.push({
+        domIndex: domIndex,
+        roles: row.roles,
+        severity: row.severity,
+        className: labOptClassesForRolesAndSeverity(row.roles, row.severity),
+      });
+    });
+    directives.sort(function (a, b) {
+      return a.domIndex - b.domIndex;
+    });
+    return { directives: directives, diagnostics: diagnostics };
+  }
+
   function updateFrameInfo(frame, totalCount, phaseEl, frameEl, gridEl) {
     const dash = "—";
     if (!frame || typeof frame !== "object") {
@@ -940,6 +1059,74 @@
     const gridStage = document.getElementById("lab-replay-grid-stage");
     const gridHudCoord = document.getElementById("lab-replay-grid-hud-coord");
     const gridHudRole = document.getElementById("lab-replay-grid-hud-role");
+    const optOverlayLayer = document.getElementById("lab-optimization-overlay-layer");
+    const optDiagEl = document.getElementById("lab-optimization-overlay-diagnostics");
+    const rootEl = document.getElementById("lab-root");
+
+    function optimizationOverlayFeatureOn() {
+      if (!rootEl || !rootEl.dataset) return true;
+      const v = rootEl.dataset.labOptimizationOverlayEnabled;
+      return v !== "0" && String(v).toLowerCase() !== "false";
+    }
+
+    if (rootEl && initialFromServer && initialFromServer.optimizationOverlayEnabled === false) {
+      rootEl.dataset.labOptimizationOverlayEnabled = "0";
+    } else if (rootEl && initialFromServer && initialFromServer.optimizationOverlayEnabled === true) {
+      rootEl.dataset.labOptimizationOverlayEnabled = "1";
+    }
+
+    function clearLabOptimizationOverlayLayer() {
+      if (!optOverlayLayer) return;
+      const nodes = optOverlayLayer.querySelectorAll("[data-lab-opt-overlay-index]");
+      for (let i = 0; i < nodes.length; i++) {
+        nodes[i].className = "lab-opt-cell-slot";
+      }
+    }
+
+    function renderLabOptimizationOverlayLayer(directives, diagnostics) {
+      clearLabOptimizationOverlayLayer();
+      if (optOverlayLayer && directives && directives.length) {
+        for (let i = 0; i < directives.length; i++) {
+          const d = directives[i];
+          const el = optOverlayLayer.querySelector(
+            '[data-lab-opt-overlay-index="' + String(d.domIndex) + '"]',
+          );
+          if (el && d.className) {
+            el.className = d.className;
+          }
+        }
+      }
+      if (optDiagEl) {
+        if (diagnostics && diagnostics.disabled) {
+          optDiagEl.textContent = "optimization_overlay=disabled";
+        } else {
+          const parts = ["optimization_overlay=on"];
+          if (directives && directives.length) {
+            parts.push("cells=" + String(directives.length));
+          }
+          const dr = diagnostics && diagnostics.dropped;
+          if (dr != null && dr > 0) {
+            parts.push("dropped=" + String(dr));
+            if (diagnostics.reasons && diagnostics.reasons.length) {
+              parts.push(String(diagnostics.reasons[0]));
+            }
+          }
+          optDiagEl.textContent = parts.join(" · ");
+        }
+      }
+    }
+
+    function buildOptimizationOverlaySlots(gw, gh) {
+      if (!optOverlayLayer || !Number.isFinite(gw) || !Number.isFinite(gh)) return;
+      optOverlayLayer.textContent = "";
+      const n = gw * gh;
+      for (let i = 0; i < n; i++) {
+        const div = document.createElement("div");
+        div.setAttribute("data-lab-opt-overlay-index", String(i));
+        div.className = "lab-opt-cell-slot";
+        optOverlayLayer.appendChild(div);
+      }
+    }
 
     let labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
     let labPanState = null;
@@ -975,6 +1162,19 @@
         gridEl.style.setProperty("--lab-cell-size", String(zpx) + "px");
         gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", " + zpx + "px)";
         gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", " + zpx + "px)";
+      }
+      if (optOverlayLayer) {
+        const cs = gridEl.style.getPropertyValue("--lab-cell-size");
+        if (cs) {
+          optOverlayLayer.style.setProperty("--lab-cell-size", cs);
+        }
+        optOverlayLayer.style.gridTemplateColumns = gridEl.style.gridTemplateColumns;
+        optOverlayLayer.style.gridTemplateRows = gridEl.style.gridTemplateRows;
+        const gapPx = labReplayGridGapPx(gridEl);
+        if (gapPx > 0) {
+          optOverlayLayer.style.columnGap = String(gapPx) + "px";
+          optOverlayLayer.style.rowGap = String(gapPx) + "px";
+        }
       }
       applyLabViewportTransform();
     }
@@ -1024,6 +1224,8 @@
         return row * gw + col;
       };
 
+      buildOptimizationOverlaySlots(gw, gh);
+
       const padPx = 16;
       const minCell = 4;
       const maxCell = 28;
@@ -1066,6 +1268,9 @@
       }
 
       return function cleanupReplaySurface() {
+        if (optOverlayLayer) {
+          optOverlayLayer.textContent = "";
+        }
         if (replayResizeMode === "observer" && resizeObserver) {
           try {
             resizeObserver.disconnect();
@@ -1103,7 +1308,6 @@
       });
     }
 
-    const rootEl = document.getElementById("lab-root");
     function syncLabDebugRotationClass() {
       if (!gridEl) return;
       if (labRotationDebugEnabled(rootEl)) {
@@ -1223,7 +1427,26 @@
         if (replayArrayIndex < 0) replayArrayIndex = 0;
         if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
         const fr = getCurrentReplayFrame();
-        renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
+        const optOn = optimizationOverlayFeatureOn();
+        if (!optOn) {
+          clearLabOptimizationOverlayLayer();
+          if (optDiagEl) {
+            optDiagEl.textContent = "optimization_overlay=disabled";
+          }
+          renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
+        } else if (isOptimizationLabFrame(fr)) {
+          const anchorIdx = findLabBaseAnchorIndex(replayFrames, replayArrayIndex);
+          const anchorFr = replayFrames[anchorIdx];
+          renderReplayFrame(anchorFr, baseClasses, domCells, resolveCellIndex);
+          const proj = projectOptimizationReplayFrameToLabOverlay(fr, resolveCellIndex);
+          renderLabOptimizationOverlayLayer(proj.directives, proj.diagnostics);
+        } else {
+          clearLabOptimizationOverlayLayer();
+          if (optDiagEl) {
+            optDiagEl.textContent = "—";
+          }
+          renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
+        }
         updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl);
         const cycle = document.getElementById("lab-computation-cycle");
         if (cycle) {
@@ -1238,6 +1461,11 @@
         }
         syncLabTimelineScrub();
         return;
+      }
+
+      clearLabOptimizationOverlayLayer();
+      if (optDiagEl) {
+        optDiagEl.textContent = "—";
       }
 
       if (frame < 0) frame = 0;
@@ -1510,6 +1738,11 @@
       if (rootEl && payload.lab_ui_initial && typeof payload.lab_ui_initial === "object") {
         const tid = payload.lab_ui_initial.replayTrackId;
         rootEl.dataset.labReplayTrackId = tid != null ? String(tid) : "";
+        if (payload.lab_ui_initial.optimizationOverlayEnabled === false) {
+          rootEl.dataset.labOptimizationOverlayEnabled = "0";
+        } else if (payload.lab_ui_initial.optimizationOverlayEnabled === true) {
+          rootEl.dataset.labOptimizationOverlayEnabled = "1";
+        }
       }
       if (rootEl && payload.lab_map_input_id != null) {
         rootEl.dataset.labMapInputId = String(payload.lab_map_input_id);

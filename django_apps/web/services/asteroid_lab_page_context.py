@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, cast
 
 from django.db.models import Count, Prefetch
@@ -15,6 +16,13 @@ LAB_CELL_NEUTRAL = (
     "lab-cell relative h-5 w-5 shrink-0 overflow-visible rounded-[5px] border "
     "bg-slate-950 border-slate-900"
 )
+
+
+def lab_optimization_overlay_enabled() -> bool:
+    """Env ``LAB_OPTIMIZATION_OVERLAY`` (default on): set ``0``/``false``/``off`` to disable."""
+
+    v = os.environ.get("LAB_OPTIMIZATION_OVERLAY", "1").strip().lower()
+    return v not in ("0", "false", "no", "off")
 
 
 def _neutral_overlay_matrix() -> list[list[str]]:
@@ -150,6 +158,7 @@ def neutral_lab_context() -> dict[str, Any]:
         "lab_replay_frames_json": [],
         "lab_initial_replay_frame_json": {},
         "has_replay_frames": False,
+        "lab_optimization_overlay_enabled": lab_optimization_overlay_enabled(),
         "lab_ui_initial": {
             "frame": initial_frame,
             "totalFrames": total_frames,
@@ -157,6 +166,7 @@ def neutral_lab_context() -> dict[str, Any]:
             "hasReplayFrames": False,
             "replayTrackId": None,
             "replayTrackKey": None,
+            "optimizationOverlayEnabled": lab_optimization_overlay_enabled(),
         },
     }
 
@@ -213,6 +223,7 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
             "lab_replay_frames_json": frames_json,
             "lab_initial_replay_frame_json": initial_json,
             "has_replay_frames": True,
+            "lab_optimization_overlay_enabled": lab_optimization_overlay_enabled(),
         }
     )
     ui = dict(ctx["lab_ui_initial"])
@@ -223,6 +234,7 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
             "hasReplayFrames": True,
             "replayTrackId": int(track.pk),
             "replayTrackKey": str(track.track_key),
+            "optimizationOverlayEnabled": lab_optimization_overlay_enabled(),
         }
     )
     ctx["lab_ui_initial"] = ui

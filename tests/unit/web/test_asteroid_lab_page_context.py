@@ -17,6 +17,13 @@ def test_neutral_lab_context_has_no_parallel_optimization_key() -> None:
     assert "optimization_replay" not in ctx
 
 
+def test_neutral_lab_context_has_optimization_overlay_flag() -> None:
+    ctx = alc.neutral_lab_context()
+    assert "lab_optimization_overlay_enabled" in ctx
+    assert isinstance(ctx["lab_optimization_overlay_enabled"], bool)
+    assert "optimizationOverlayEnabled" in ctx["lab_ui_initial"]
+
+
 @pytest.mark.django_db
 def test_lab_page_context_has_no_parallel_optimization_key() -> None:
     m.AsteroidProject.objects.create(name="Empty", slug="empty-opt-replay-key")
@@ -294,6 +301,9 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "LAB_VIEWPORT_MIN_SCALE" in js
     assert "__shapezLabReplaySelfTestViewportZoomStability" in js
     assert "labRunSolverUrl" in js
+    assert "projectOptimizationReplayFrameToLabOverlay" in js
+    assert "findLabBaseAnchorIndex" in js
+    assert "lab-optimization-overlay-layer" in js
 
 
 def test_lab_replay_stage_absolute_inset_template_contract() -> None:
@@ -304,6 +314,8 @@ def test_lab_replay_stage_absolute_inset_template_contract() -> None:
     assert 'id="lab-replay-grid-stage"' in tpl
     assert "absolute inset-4" in tpl
     assert "run-solver" in tpl
+    assert 'id="lab-optimization-overlay-layer"' in tpl
+    assert "lab-optimization-overlay-diagnostics" in tpl
 
 
 def test_lab_replay_viewport_css_layout_contract() -> None:
@@ -312,6 +324,7 @@ def test_lab_replay_viewport_css_layout_contract() -> None:
     assert "contain: layout paint" in css
     assert "transform: none" in css
     assert "#lab-replay-grid-stage" in css
+    assert "#lab-optimization-overlay-layer" in css
     marker = "#lab-replay-grid-stage {"
     assert marker in css
     start = css.index(marker)

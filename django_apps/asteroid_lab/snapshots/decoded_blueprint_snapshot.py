@@ -8,6 +8,7 @@ from typing import Any
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.server_coords import (
+    coerce_server_axis_int,
     map_bbox_dense_and_y,
     raw_x_to_dense_x,
     server_xy_for_raw_xy,
@@ -118,8 +119,8 @@ def build_decoded_blueprint_snapshot(
 
         sx_obj = item.get("server_x")
         sy_obj = item.get("server_y")
-        sx = sx_obj if isinstance(sx_obj, int) else None
-        sy = sy_obj if isinstance(sy_obj, int) else None
+        sx = coerce_server_axis_int(sx_obj)
+        sy = coerce_server_axis_int(sy_obj)
         if (sx is None or sy is None) and bbox_params is not None and x != 0:
             pair = server_xy_for_raw_xy(x, y, max_dense_x=bbox_params[0], min_raw_y=bbox_params[1])
             if pair is not None:

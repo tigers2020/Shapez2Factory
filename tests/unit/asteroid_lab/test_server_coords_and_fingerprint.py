@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
@@ -18,9 +19,11 @@ from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
 from django_apps.asteroid_lab.snapshots.server_coords import (
     COORD_SYSTEM_BBOX_RIGHT_BOTTOM,
     attach_server_coords_to_decoded_json,
+    coerce_server_axis_int,
     raw_x_to_dense_x,
     server_xy_for_raw_xy,
 )
+from django_apps.shapez_asteroid.adapters.reconstruction_adapter import decoded_cell_to_server_coord
 
 
 def test_raw_x_to_dense_x_examples() -> None:
@@ -44,6 +47,75 @@ def test_raw_x_zero_raises() -> None:
 def test_server_xy_right_bottom_origin_single_cell() -> None:
     pair = server_xy_for_raw_xy(1, 0, max_dense_x=1, min_raw_y=0)
     assert pair == (0, 0)
+
+
+def test_coerce_server_axis_int_rejects_bool_accepts_integral_float() -> None:
+    assert coerce_server_axis_int(None) is None
+    assert coerce_server_axis_int(True) is None
+    assert coerce_server_axis_int(False) is None
+    assert coerce_server_axis_int(0.0) == 0
+    assert coerce_server_axis_int(-6.0) == -6
+    assert coerce_server_axis_int(" -3 ") == -3
+
+
+def test_decoded_cell_to_server_coord_accepts_float_zero_server_y() -> None:
+    cell = DecodedCellDTO(
+        x=-6,
+        y=0,
+        layer=None,
+        rotation=0,
+        tile_type="",
+        cell_kind="asteroid_shape_field",
+        transport_kind="none",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={},
+        server_x=4,
+        server_y=0.0,
+    )
+    c = decoded_cell_to_server_coord(cell, server_xy_params=(1, 0))
+    assert c.x == 4 and c.y == 0
+
+
+def test_decoded_cell_to_server_coord_raw_negative_six_y_zero() -> None:
+    cell = DecodedCellDTO(
+        x=-6,
+        y=0,
+        layer=None,
+        rotation=0,
+        tile_type="",
+        cell_kind="asteroid_shape_field",
+        transport_kind="none",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={},
+        server_x=None,
+        server_y=None,
+    )
+    c = decoded_cell_to_server_coord(cell, server_xy_params=(1, 0))
+    assert (c.x, c.y) == server_xy_for_raw_xy(-6, 0, max_dense_x=1, min_raw_y=0)
+
+
+def test_decoded_cell_to_server_coord_raw_x_zero_uses_layout_line_bridge() -> None:
+    cell = DecodedCellDTO(
+        x=0,
+        y=5,
+        layer=None,
+        rotation=0,
+        tile_type="",
+        cell_kind="asteroid_shape_field",
+        transport_kind="none",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={},
+        server_x=None,
+        server_y=None,
+    )
+    c = decoded_cell_to_server_coord(cell, server_xy_params=(1, 0))
+    assert (c.x, c.y) == server_xy_for_raw_xy(-1, 5, max_dense_x=1, min_raw_y=0)
 
 
 def test_attach_server_coords_pipe_seam() -> None:

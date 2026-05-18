@@ -200,6 +200,47 @@ def test_route_committed_then_overlay_preserves_committed_full_map() -> None:
     assert by1[(1, 0)].get("cell_kind") == "transport"
 
 
+def test_candidate_geometry_dict_roles_round_trip_in_cell_overlay() -> None:
+    """Lab append DTO merges visible + overlay rows with overlay_role for UI projection."""
+    base = [
+        {
+            "x": 1,
+            "y": 0,
+            "layer": 0,
+            "cell_kind": "field",
+            "transport_kind": "none",
+            "tile_type": "",
+        }
+    ]
+    stub = {"x": 3, "y": 0, "layer": 0, "overlay_role": "output_stub", "severity": "info"}
+    path_cell = {"x": 2, "y": 0, "layer": 0, "overlay_role": "route_path", "severity": "info"}
+    fr = OptimizationReplayFrame(
+        frame_index=0,
+        event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
+        title="c",
+        description="",
+        visible_cells=(Coord(2, 0), stub),
+        overlay_cells=(path_cell,),
+        metrics={},
+    )
+    dtos = optimization_replay_frames_to_lab_append_dtos((fr,), baseline_full_map=list(base))
+    cells = dtos[0].cell_overlay_json.get("cells") or []
+    at_2 = [
+        c
+        for c in cells
+        if isinstance(c, dict) and int(c.get("x", -1)) == 2 and int(c.get("y", -1)) == 0
+    ]
+    roles_at_2 = [str(c.get("overlay_role") or "") for c in at_2]
+    assert "route_path" in roles_at_2
+    assert any(str(c.get("cell_kind") or "") == "optimization_overlay" for c in at_2)
+    assert any(
+        isinstance(c, dict)
+        and int(c.get("x", -1)) == 3
+        and str(c.get("overlay_role")) == "output_stub"
+        for c in cells
+    )
+
+
 def test_overlay_frame_before_commit_matches_baseline_full_map() -> None:
     """Non-commit frame materialized map equals baseline; commit frame then extends it."""
     base = [

@@ -75,6 +75,44 @@ def _replay_emit(
     )
 
 
+def _replay_geometry_row(
+    coord: Coord,
+    *,
+    overlay_role: str,
+    severity: str = "info",
+) -> dict[str, object]:
+    return {
+        "x": int(coord.x),
+        "y": int(coord.y),
+        "layer": 0,
+        "rotation": 0,
+        "overlay_role": overlay_role,
+        "severity": severity,
+    }
+
+
+def _geometry_attempt_cells(
+    occupied: frozenset[Coord],
+    output_stub: Coord,
+    path: tuple[Coord, ...] = (),
+    *,
+    path_overlay_role: str = "route_path",
+    footprint_severity: str = "warn",
+) -> tuple[tuple[object, ...], tuple[object, ...]]:
+    """visible: occupied + stub; overlay: route path (Lab 2D optimization overlay)."""
+    visible: list[object] = [
+        _replay_geometry_row(c, overlay_role="candidate_occupied", severity=footprint_severity)
+        for c in sorted(occupied, key=lambda z: (z.x, z.y))
+    ]
+    visible.append(
+        _replay_geometry_row(output_stub, overlay_role="output_stub", severity=footprint_severity)
+    )
+    overlay: list[object] = [
+        _replay_geometry_row(step, overlay_role=path_overlay_role, severity="info") for step in path
+    ]
+    return (tuple(visible), tuple(overlay))
+
+
 def generate_bundle_candidates(
     opt: OptimizationInput,
     route_domain: Mapping[Coord, RouteCellDomain],
@@ -166,11 +204,14 @@ def generate_bundle_candidates(
                             route_probe_result=None,
                         )
                     )
+                    vis, ovl = _geometry_attempt_cells(occupied, output_stub, ())
                     _replay_emit(
                         replay_recorder,
                         event_type=OptimizationReplayEventType.CANDIDATE_REJECTED,
                         title="Candidate rejected",
                         description="Extractor not on rim",
+                        visible_cells=vis,
+                        overlay_cells=ovl,
                         metrics={
                             "pattern_id": pattern.pattern_id,
                             "transport_kind": tk,
@@ -191,11 +232,14 @@ def generate_bundle_candidates(
                             route_probe_result=None,
                         )
                     )
+                    vis, ovl = _geometry_attempt_cells(occupied, output_stub, ())
                     _replay_emit(
                         replay_recorder,
                         event_type=OptimizationReplayEventType.CANDIDATE_REJECTED,
                         title="Candidate rejected",
                         description="Extension not mineable",
+                        visible_cells=vis,
+                        overlay_cells=ovl,
                         metrics={
                             "pattern_id": pattern.pattern_id,
                             "transport_kind": tk,
@@ -216,11 +260,14 @@ def generate_bundle_candidates(
                             route_probe_result=None,
                         )
                     )
+                    vis, ovl = _geometry_attempt_cells(occupied, output_stub, ())
                     _replay_emit(
                         replay_recorder,
                         event_type=OptimizationReplayEventType.CANDIDATE_REJECTED,
                         title="Candidate rejected",
                         description="Occupied outside asteroid",
+                        visible_cells=vis,
+                        overlay_cells=ovl,
                         metrics={
                             "pattern_id": pattern.pattern_id,
                             "transport_kind": tk,
@@ -243,11 +290,14 @@ def generate_bundle_candidates(
                             route_probe_result=None,
                         )
                     )
+                    vis, ovl = _geometry_attempt_cells(occupied, output_stub, ())
                     _replay_emit(
                         replay_recorder,
                         event_type=OptimizationReplayEventType.CANDIDATE_REJECTED,
                         title="Candidate rejected",
                         description="Pattern self-overlap",
+                        visible_cells=vis,
+                        overlay_cells=ovl,
                         metrics={
                             "pattern_id": pattern.pattern_id,
                             "transport_kind": tk,
@@ -268,11 +318,14 @@ def generate_bundle_candidates(
                             route_probe_result=None,
                         )
                     )
+                    vis, ovl = _geometry_attempt_cells(occupied, output_stub, ())
                     _replay_emit(
                         replay_recorder,
                         event_type=OptimizationReplayEventType.CANDIDATE_REJECTED,
                         title="Candidate rejected",
                         description="Output stub inside occupied",
+                        visible_cells=vis,
+                        overlay_cells=ovl,
                         metrics={
                             "pattern_id": pattern.pattern_id,
                             "transport_kind": tk,
@@ -295,11 +348,14 @@ def generate_bundle_candidates(
                             route_probe_result=None,
                         )
                     )
+                    vis, ovl = _geometry_attempt_cells(occupied, output_stub, ())
                     _replay_emit(
                         replay_recorder,
                         event_type=OptimizationReplayEventType.CANDIDATE_REJECTED,
                         title="Candidate rejected",
                         description="Output stub invalid coord",
+                        visible_cells=vis,
+                        overlay_cells=ovl,
                         metrics={
                             "pattern_id": pattern.pattern_id,
                             "transport_kind": tk,
@@ -357,11 +413,19 @@ def generate_bundle_candidates(
                         **probe_base_metrics,
                         "route_probe_failure_reason": probe_res.failure_reason,
                     }
+                    vis, ovl = _geometry_attempt_cells(
+                        occupied,
+                        output_stub,
+                        probe_res.path,
+                        footprint_severity="error",
+                    )
                     _replay_emit(
                         replay_recorder,
                         event_type=OptimizationReplayEventType.ROUTE_PROBE_FAILED,
                         title="Route probe failed",
                         description="No reachable goal from output stub",
+                        visible_cells=vis,
+                        overlay_cells=ovl,
                         metrics=fail_metrics,
                     )
                     if config.allow_diagnostic_unreachable:
@@ -373,11 +437,19 @@ def generate_bundle_candidates(
                                 route_probe_result=probe_res,
                             )
                         )
+                        vis, ovl = _geometry_attempt_cells(
+                            occupied,
+                            output_stub,
+                            probe_res.path,
+                            footprint_severity="error",
+                        )
                         _replay_emit(
                             replay_recorder,
                             event_type=OptimizationReplayEventType.CANDIDATE_REJECTED,
                             title="Candidate rejected",
                             description="Route probe unreachable (diagnostic)",
+                            visible_cells=vis,
+                            overlay_cells=ovl,
                             metrics={
                                 **probe_base_metrics,
                                 "candidate_reject_reason": (
@@ -394,11 +466,19 @@ def generate_bundle_candidates(
                     continue
 
                 ok_metrics = {**probe_base_metrics, "route_probe_failure_reason": None}
+                vis_ok, ovl_ok = _geometry_attempt_cells(
+                    occupied,
+                    output_stub,
+                    probe_res.path,
+                    footprint_severity="info",
+                )
                 _replay_emit(
                     replay_recorder,
                     event_type=OptimizationReplayEventType.ROUTE_PROBE_SUCCEEDED,
                     title="Route probe succeeded",
                     description="Reachable route goal from output stub",
+                    visible_cells=vis_ok,
+                    overlay_cells=ovl_ok,
                     metrics=ok_metrics,
                 )
 
@@ -418,11 +498,19 @@ def generate_bundle_candidates(
                 )
                 normal_raw.append(cand)
                 consecutive_streak = 0
+                vis_c, ovl_c = _geometry_attempt_cells(
+                    occupied,
+                    output_stub,
+                    probe_res.path,
+                    footprint_severity="info",
+                )
                 _replay_emit(
                     replay_recorder,
                     event_type=OptimizationReplayEventType.CANDIDATE_GENERATED,
                     title="Candidate generated",
                     description="Normal pool candidate after route probe",
+                    visible_cells=vis_c,
+                    overlay_cells=ovl_c,
                     metrics={
                         "candidate_id": candidate_id,
                         "pattern_id": pattern.pattern_id,

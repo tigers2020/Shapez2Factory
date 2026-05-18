@@ -9,7 +9,11 @@ from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.reconstruction.evidence import ASTEROID_FIELD_KINDS
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    coerce_server_axis_int,
+    server_xy_for_layout_line_xy,
+    server_xy_for_raw_xy,
+)
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 from django_apps.shapez_asteroid.optimization.coords import BBox, Coord, neighbors4_server
 from django_apps.shapez_asteroid.optimization.dto import (
@@ -43,18 +47,31 @@ def decoded_cell_to_server_coord(
     *,
     server_xy_params: tuple[int, int] | None,
 ) -> Coord:
-    if cell.server_x is not None and cell.server_y is not None:
-        return Coord(cell.server_x, cell.server_y)
+    sx = coerce_server_axis_int(cell.server_x)
+    sy = coerce_server_axis_int(cell.server_y)
+    if sx is not None and sy is not None:
+        return Coord(sx, sy)
     if server_xy_params is not None:
-        pair = server_xy_for_raw_xy(
-            cell.x,
-            cell.y,
-            max_dense_x=server_xy_params[0],
-            min_raw_y=server_xy_params[1],
+        raw_x = int(cell.x)
+        raw_y = int(cell.y)
+        max_dx, min_y = int(server_xy_params[0]), int(server_xy_params[1])
+        if raw_x == 0:
+            # Strict blueprint raw omits x==0; layout/world rows may still use 0 after offsets.
+            lx, ly = server_xy_for_layout_line_xy(raw_x, raw_y, max_dense_x=max_dx, min_raw_y=min_y)
+            return Coord(lx, ly)
+        raw_pair = server_xy_for_raw_xy(
+            raw_x,
+            raw_y,
+            max_dense_x=max_dx,
+            min_raw_y=min_y,
         )
-        if pair is None:
-            raise ValueError(f"Cannot map raw ({cell.x},{cell.y}) to server coords (raw x==0?).")
-        return Coord(pair[0], pair[1])
+        if raw_pair is None:
+            raise ValueError(
+                "server_xy_for_raw_xy returned None for non-zero raw X "
+                f"(raw=({cell.x},{cell.y}) params={server_xy_params!r} "
+                f"server=({cell.server_x!r},{cell.server_y!r}))"
+            )
+        return Coord(raw_pair[0], raw_pair[1])
     raise ValueError(
         "DecodedCellDTO missing server_x/server_y and no server_xy_params for mapping."
     )

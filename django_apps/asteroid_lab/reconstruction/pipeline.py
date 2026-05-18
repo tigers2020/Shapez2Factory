@@ -13,12 +13,12 @@ from django_apps.asteroid_lab.reconstruction.fill import (
     TOPOLOGY_FILL_PLACEHOLDER_KIND,
     connected_components,
     passes_bbox_interior,
-    passes_two_axis_evidence_guard,
     synthetic_field_cell,
 )
 from django_apps.asteroid_lab.reconstruction.flood_fill import external_reachable
 from django_apps.asteroid_lab.reconstruction.grid import Coord, iter_bbox_cells
 from django_apps.asteroid_lab.reconstruction.island import stamp_islands_uniform
+from django_apps.asteroid_lab.reconstruction.perimeter_closing import chebyshev_close_barrier
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.shell import infer_shell_barrier_coords
 from django_apps.asteroid_lab.reconstruction.trace import (
@@ -89,9 +89,9 @@ def reconstruct_after_cleanup(
 ) -> ReconstructionResult:
     """Flood-fill and fill enclosed holes using precomputed walls and bbox (no snapshot DTO).
 
-    ``wall_coords`` (cleanup evidence + removed miner/extension anchors) define fill guards.
-    ``barrier_xy = wall_coords ∪ inferred_shell`` blocks external flood-fill only; inferred
-    segments must not be passed to ``passes_two_axis_evidence_guard`` (overfill risk).
+    ``wall_coords`` (cleanup evidence + removed miner/extension anchors) feed the flood
+    barrier. ``barrier_xy = close(walls ∪ inferred_shell)`` blocks exterior flood; interior
+    components fully inside the working bbox are filled (flood-only, no two-axis guard).
 
     Topology holes are filled with a placeholder ``cell_kind``; final ``asteroid_*_field`` on
     every non-transport island comes from :func:`stamp_islands_uniform`.
@@ -177,7 +177,14 @@ def reconstruct_after_cleanup(
         wall_coords, bbox_bounds, trace_collector=trace_collector
     )
     inferred_xy: set[Coord] = set(inferred_frozen)
-    barrier_xy: set[Coord] = walls_xy | inferred_xy
+    barrier_before_close: set[Coord] = walls_xy | inferred_xy
+    barrier_xy = chebyshev_close_barrier(
+        barrier_before_close,
+        bbox_bounds,
+        wall_coords=walls_xy,
+        trace_collector=trace_collector,
+    )
+    perimeter_closed_count = len(barrier_xy) - len(barrier_before_close)
 
     if trace_collector is not None:
         trace_collector.append(
@@ -190,6 +197,7 @@ def reconstruct_after_cleanup(
                     "trace_event_type": "barrier_build",
                     "wall_cell_count": len(walls_xy),
                     "inferred_shell_cell_count": len(inferred_frozen - walls_xy),
+                    "perimeter_closed_cell_count": perimeter_closed_count,
                     "barrier_cell_count": len(barrier_xy),
                 },
             )
@@ -226,7 +234,6 @@ def reconstruct_after_cleanup(
 
     interior_comps = _sorted_interior_components(interior)
     skipped_bbox = 0
-    skipped_guard = 0
     filled_components = 0
     filled: list[DecodedCellDTO] = []
 
@@ -259,23 +266,6 @@ def reconstruct_after_cleanup(
                             "trace_event_type": "component_guard",
                             "component_index": comp_index,
                             "guard_outcome": "rejected_bbox",
-                        },
-                    )
-                )
-            continue
-        if not passes_two_axis_evidence_guard(comp, walls_xy):
-            skipped_guard += 1
-            if trace_collector is not None:
-                trace_collector.append(
-                    ReconstructionTraceEvent(
-                        phase="reconstruction",
-                        trace_event_type="component_guard",
-                        coords=frozenset(comp),
-                        summary_json={
-                            "event_key": f"step4_06_component_{comp_index:03d}_guard",
-                            "trace_event_type": "component_guard",
-                            "component_index": comp_index,
-                            "guard_outcome": "rejected_evidence",
                         },
                     )
                 )
@@ -334,12 +324,14 @@ def reconstruct_after_cleanup(
             )
 
     summary["inferred_shell_cell_count"] = len(inferred_frozen - walls_xy)
+    summary["perimeter_closed_cell_count"] = perimeter_closed_count
     summary["barrier_cell_count"] = len(barrier_xy)
     summary["external_reachable_count"] = len(external)
     summary["interior_candidate_count"] = len(interior)
+    summary["interior_patch_cell_count"] = len(interior)
     summary["interior_component_count"] = len(interior_comps)
     summary["filled_component_count"] = filled_components
-    summary["skipped_component_count"] = skipped_bbox + skipped_guard
+    summary["skipped_component_count"] = skipped_bbox
     summary["filled_hole_cell_count"] = len(filled)
 
     merged: dict[tuple[int, int, int | None], DecodedCellDTO] = dict(stripped_by_key)

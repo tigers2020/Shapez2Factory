@@ -140,7 +140,7 @@ def test_topology_graph_adjacency_matches_neighbors4_on_hole_fixture() -> None:
         assert adj.get(sv, set()) == expected
 
 
-def test_hole_interior_stays_mineable_in_optimization_input() -> None:
+def test_optimization_input_preserves_inferred_fill_as_mineable() -> None:
     cells = (
         _cell(1, 0, cell_kind="fluid_miner"),
         _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),

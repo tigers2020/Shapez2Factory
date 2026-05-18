@@ -23,25 +23,6 @@ def passes_bbox_interior(comp: set[Coord], w0: int, w1: int, h0: int, h1: int) -
     return True
 
 
-def passes_two_axis_evidence_guard(comp: set[Coord], walls: set[Coord]) -> bool:
-    """Require evidence-wall touch on both x- and y-offset directions (4-neighbor).
-
-    Pass ``cleanup.wall_coords`` only; do not pass inferred shell / flood ``barrier`` sets
-    (would self-justify fills). Barriers for flood are handled in ``pipeline``.
-    """
-
-    has_x = False
-    has_y = False
-    for x, y in comp:
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            if (x + dx, y + dy) in walls:
-                if dx != 0:
-                    has_x = True
-                if dy != 0:
-                    has_y = True
-    return has_x and has_y
-
-
 def connected_components(nodes: set[Coord]) -> list[set[Coord]]:
     """4-connected components."""
 

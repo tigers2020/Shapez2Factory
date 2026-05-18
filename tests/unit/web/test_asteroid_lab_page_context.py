@@ -217,11 +217,12 @@ def test_lab_js_replay_wiring_smoke() -> None:
     )
     js = js_path.read_text(encoding="utf-8")
     assert "LAB_SPRITE_KNOWN" in js
-    assert "LAB_SPRITE_REGISTRY" in js
+    assert "combineSpriteRotation" not in js
+    assert "normalizeQuarterTurns(cell.rotation)" in js
     assert "labPascalSegmentToSnakeLower" in js
     assert '.startsWith("SpacePipe_")' in js
-    assert "combineSpriteRotation" in js
     assert "normalizeQuarterTurns" in js
+    assert "rotationToDeg" in js
     assert "LINK_KEY_TO_DIR" in js
     assert "DIR_TO_BRIDGE_SUFFIX" in js
     assert "lab-cell-sprite" in js
@@ -242,3 +243,7 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-replay-grid-stage" in js
     assert "bindLabViewportInteractions" in js
     assert "LAB_VIEWPORT_MIN_SCALE" in js
+    assert 'translate(" + tx + "px, " + ty + "px) scale(" + zoom + ")"' in js
+    assert "gridViewport.style.transform" not in js
+    assert "gridViewport.style.width" not in js
+    assert "gridViewport.style.height" not in js

@@ -49,7 +49,7 @@ alwaysApply: true
 
 - `documents/` Markdown 본문은 [AGENTS.md](mdc:AGENTS.md) **`documents/` 작성 언어**(한국어).
 - Python 3.12, line length 100.
-- 버그·규칙 변경에는 가능하면 테스트 추가.
+- 공개 계약·분기·경계·버그 수정에는 [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md) **계약 지향 테스트**에 따라 집중 테스트를 추가·갱신한다. 순수 포맷·주석·순수 시각 조정 등 비행위 변경은 기존 관련 테스트 실행으로 충분할 수 있다.
 - 비밀값은 `.env`/설정만; 코드 하드코딩 금지.
 - 검증 미실행 시 명령·이유·남은 위험 보고.
 - `black .`으로 파일이 바뀌면 포맷 변경 보고.

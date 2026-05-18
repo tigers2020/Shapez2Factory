@@ -39,6 +39,8 @@ alwaysApply: true
 
 전체 대신 마커·경로: [AGENTS.md](mdc:AGENTS.md), [`pytest.ini`](mdc:pytest.ini), [`tests/conftest.py`](mdc:tests/conftest.py). 권장: `python -m pytest`.
 
+신규 테스트 **필요 여부·범위**: [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md) **계약 지향 테스트** 절.
+
 ## 완료 보고
 
 - 변경 파일, 검증, 미실행 시 명령·이유·위험.

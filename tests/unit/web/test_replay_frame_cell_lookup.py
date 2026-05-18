@@ -54,3 +54,86 @@ def test_lookup_overlay_only_matches_last() -> None:
     assert cell is not None
     assert cell.get("cell_kind") == "space_pipe"
     assert sources.get("overlay_cells_matched") == 2
+
+
+def test_lookup_overlay_fallback_when_full_map_misses_xy() -> None:
+    """Non-empty ``full_map`` but target only in ``cell_overlay_json.cells`` (Lab parity)."""
+
+    ser = {
+        "full_map": [{"x": 1, "y": 0, "cell_kind": "fluid_miner", "layer": None}],
+        "diff": {},
+        "cell_overlay_json": {
+            "cells": [
+                {
+                    "x": 2,
+                    "y": 0,
+                    "cell_kind": "space_pipe",
+                    "tile_type": "SpacePipe_Forward",
+                    "layer": None,
+                },
+            ],
+        },
+    }
+    cell, sources = lookup_cell_in_serialized_frame(ser, 2, 0)
+    assert cell is not None
+    assert cell.get("cell_kind") == "space_pipe"
+    assert sources.get("overlay_cells_matched") == 1
+
+
+def test_lookup_full_map_two_rows_same_xy_merge_order() -> None:
+    """All ``full_map`` rows at (x,y) merge; later dict keys overwrite earlier (``dict.update``)."""
+
+    ser = {
+        "full_map": [
+            {"x": 1, "y": 0, "cell_kind": "first", "layer": None, "rotation": 0},
+            {"x": 1, "y": 0, "cell_kind": "second", "tile_type": "T9", "layer": 1},
+        ],
+        "diff": {},
+        "cell_overlay_json": {},
+    }
+    cell, _sources = lookup_cell_in_serialized_frame(ser, 1, 0)
+    assert cell.get("cell_kind") == "second"
+    assert cell.get("tile_type") == "T9"
+
+
+def test_lookup_synthetic_lab_empty_inside_server_bbox() -> None:
+    bbox = {
+        "dense_min_x": 0,
+        "min_y": 0,
+        "server_min_x": 0,
+        "server_max_x": 5,
+        "server_min_y": 0,
+        "server_max_y": 3,
+    }
+    ser = {
+        "full_map": [{"x": 99, "y": 99, "cell_kind": "fluid_miner", "layer": None}],
+        "diff": {},
+        "cell_overlay_json": {},
+        "summary": {"bbox": bbox},
+    }
+    cell, sources = lookup_cell_in_serialized_frame(ser, 1, 0)
+    assert cell is not None
+    assert cell.get("_lab_synthetic") is True
+    assert cell.get("cell_kind") == "lab_empty"
+    assert cell.get("server_x") == 0
+    assert cell.get("server_y") == 0
+    assert sources.get("lab_synthetic") == "empty_server_cell"
+
+
+def test_lookup_synthetic_none_outside_server_bbox() -> None:
+    bbox = {
+        "dense_min_x": 0,
+        "min_y": 0,
+        "server_min_x": 0,
+        "server_max_x": 1,
+        "server_min_y": 0,
+        "server_max_y": 0,
+    }
+    ser = {
+        "full_map": [],
+        "diff": {},
+        "cell_overlay_json": {},
+        "metric_snapshot_json": {"bbox": bbox},
+    }
+    cell, _sources = lookup_cell_in_serialized_frame(ser, 5, 0)
+    assert cell is None

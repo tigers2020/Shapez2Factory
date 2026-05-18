@@ -52,6 +52,7 @@ alwaysApply: true
 
 - 로컬: [AGENTS.md](mdc:AGENTS.md) **pytest 구간**으로 축소 가능.
 - 게이트: 전체 통과 원칙.
+- 테스트 **추가·범위** 판단: [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md) **계약 지향 테스트** 절.
 - 실패·미실행: 명령·이유·다음 담당·남은 위험.
 - `black`이 파일을 바꾸면 포맷 변경을 별도 보고.
 

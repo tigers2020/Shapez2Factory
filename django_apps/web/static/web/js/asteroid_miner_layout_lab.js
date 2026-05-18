@@ -8,8 +8,8 @@
  *
  * Domain rotation contract (blueprint / server JSON; never mutate ``cell.rotation`` in JS):
  * - R = 0 means East; R increases by quarter-turns clockwise (0..3).
- * - Sprite facing fixes are display-only: ``LAB_SPRITE_REGISTRY`` offsetQ / rotationCombine and CSS
- *   ``rotate`` on the sprite ``img`` only. Do not apply ad-hoc R+1 or rewrite domain rotation.
+ * - Lab SVGs are East-facing; display rotation is CSS ``rotate`` on the sprite ``img`` from ``R`` only.
+ *   Do not apply ad-hoc R+1 or rewrite domain rotation.
  */
 (function () {
   "use strict";
@@ -49,31 +49,9 @@
     return normalizeQuarterTurns(q) * 90;
   }
 
-  /**
-   * Sprite quarter-turns from server ``cell.rotation`` (unchanged) and per-file registry ``offsetQ`` /
-   * ``rotationCombine``. Server ``R`` is never rewritten — only display math here.
-   */
-  function combineSpriteRotation(logicalQ, spec) {
-    const q = normalizeQuarterTurns(logicalQ);
-    const offsetQ = normalizeQuarterTurns(spec && spec.offsetQ != null ? spec.offsetQ : 0);
-    const mode = spec && spec.rotationCombine === "sub" ? "sub" : "add";
-    if (mode === "sub") {
-      return normalizeQuarterTurns(offsetQ - q);
-    }
-    return normalizeQuarterTurns(offsetQ + q);
-  }
-
   function snapToDevicePixel(value) {
     const dpr = window.devicePixelRatio || 1;
     return Math.round(Number(value) * dpr) / dpr;
-  }
-
-  /** Zoomed grid cell edge (px): integer tracks avoid subpixel grid + sprite blur at high zoom. */
-  function labZoomedCellEdgePx(basePx, zoom) {
-    const minCellPx = 4;
-    const raw = Number(basePx) * Number(zoom);
-    if (!Number.isFinite(raw)) return minCellPx;
-    return Math.max(minCellPx, Math.round(raw));
   }
 
   /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. ``relative`` anchors the sprite layer. */
@@ -95,69 +73,7 @@
     "space_pipe_y_merger.svg",
   ]);
 
-  /**
-   * Per-sprite-file art correction: ``offsetQ`` + ``rotationCombine`` (server ``rotation`` untouched).
-   * ``nativeFacing`` is East (0) for all current Lab SVGs; reserved for audits / tooling.
-   */
-  const LAB_SPRITE_REGISTRY = Object.freeze({
-    "layout_fluid_miner.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "layout_fluid_miner_extension.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_forward.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "sub",
-      offsetQ: 1,
-    }),
-    "space_pipe_left_fwd_merger.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "sub",
-      offsetQ: 1,
-    }),
-    "space_pipe_left_turn.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "sub",
-      offsetQ: 1,
-    }),
-    "space_pipe_right_fwd_merger.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "sub",
-      offsetQ: 1,
-    }),
-    "space_pipe_right_fwd_splitter.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "sub",
-      offsetQ: 1,
-    }),
-    "space_pipe_right_turn.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "sub",
-      offsetQ: 1,
-    }),
-    "space_pipe_triple_merger.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "sub",
-      offsetQ: 1,
-    }),
-    "space_pipe_triple_splitter.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "sub",
-      offsetQ: 1,
-    }),
-    "space_pipe_y_merger.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "sub",
-      offsetQ: 1,
-    }),
-  });
-
-  /** When true, or ``#lab-root`` has ``data-lab-debug-rotation="1"``, grid shows R/S overlay on cells with sprites. */
+  /** When true, or ``#lab-root`` has ``data-lab-debug-rotation="1"``, grid shows R overlay on cells with sprites. */
   const LAB_DEBUG_ROTATION = false;
 
   function labRotationDebugEnabled(rootEl) {
@@ -314,9 +230,7 @@
     clearLabCellSprite(el);
     if (!labSpriteBaseUrl || !cell || typeof cell !== "object") return;
     const fn = labSpriteFilenameForCell(cell);
-    if (!fn) return;
-    const spec = LAB_SPRITE_REGISTRY[fn];
-    if (!spec) return;
+    if (!fn || !LAB_SPRITE_KNOWN.has(fn)) return;
     const layer = ensureLabCellSpriteLayer(el);
     const img = layer.querySelector("img.lab-cell-sprite");
     if (!img) return;
@@ -324,8 +238,7 @@
     const base = String(labSpriteBaseUrl).replace(/\/?$/, "/");
     img.src = base + fn;
     const logicalQ = normalizeQuarterTurns(cell.rotation);
-    const spriteQ = combineSpriteRotation(logicalQ, spec);
-    const deg = rotationToDeg(spriteQ);
+    const deg = rotationToDeg(logicalQ);
     if (deg !== 0) {
       img.style.transform = "rotate(" + String(deg) + "deg)";
     } else {
@@ -335,7 +248,6 @@
     const rootDbg = document.getElementById("lab-root");
     if (labRotationDebugEnabled(rootDbg)) {
       el.setAttribute("data-r", String(logicalQ));
-      el.setAttribute("data-sprite-q", String(spriteQ));
       el.setAttribute("data-sprite-file", fn);
     }
   }
@@ -934,6 +846,57 @@
     let domCells;
     let baseClasses;
 
+    function labViewportContentOffset(clientX, clientY) {
+      if (!gridViewport) {
+        return { vx: 0, vy: 0 };
+      }
+      const vr = gridViewport.getBoundingClientRect();
+      const cs = window.getComputedStyle(gridViewport);
+      const pl = parseFloat(cs.paddingLeft) || 0;
+      const pt = parseFloat(cs.paddingTop) || 0;
+      return {
+        vx: clientX - vr.left - pl,
+        vy: clientY - vr.top - pt,
+      };
+    }
+
+    function labBaseCellAndGapPx() {
+      if (hasServerReplay && replayLayout) {
+        const cellPx = Math.max(4, Math.round(Number(replayFitBasePx)));
+        const gapPx = Math.max(0, Math.round(cellPx * 0.2));
+        return { cellPx: cellPx, gapPx: gapPx, gw: replayLayout.gridW, gh: replayLayout.gridH };
+      }
+      if (domCells && domCells.length) {
+        const cellPx = Math.max(4, Math.round(Number(demoBaseCellPxAtZoom1)));
+        const gapPx = Math.max(0, Math.round(cellPx * 0.2));
+        return { cellPx: cellPx, gapPx: gapPx, gw: GRID_W, gh: GRID_H };
+      }
+      return null;
+    }
+
+    function labWorldPointFromClient(clientX, clientY) {
+      const o = labViewportContentOffset(clientX, clientY);
+      const t = labViewportTransform;
+      const z = Number(t.zoom);
+      const zoom = Number.isFinite(z) && z > 0 ? z : 1;
+      return {
+        wx: (o.vx - t.tx) / zoom,
+        wy: (o.vy - t.ty) / zoom,
+      };
+    }
+
+    function syncLabReplayStageSizeFromGrid() {
+      if (!gridStage || !gridEl) {
+        return;
+      }
+      const w = gridEl.offsetWidth;
+      const h = gridEl.offsetHeight;
+      if (w > 0 && h > 0) {
+        gridStage.style.width = w + "px";
+        gridStage.style.height = h + "px";
+      }
+    }
+
     function applyLabViewportTransform() {
       if (!gridStage) {
         return;
@@ -941,28 +904,32 @@
       const t = labViewportTransform;
       const tx = snapToDevicePixel(t.tx);
       const ty = snapToDevicePixel(t.ty);
+      const z = Number(t.zoom);
+      const zoom = Number.isFinite(z) && z > 0 ? z : 1;
       gridStage.style.transformOrigin = "0 0";
-      gridStage.style.transform = "translate(" + tx + "px, " + ty + "px)";
+      gridStage.style.transform =
+        "translate(" + tx + "px, " + ty + "px) scale(" + zoom + ")";
     }
 
     function applyLabGridLayoutForZoom() {
-      let zpx = null;
+      let cellPx = null;
       if (hasServerReplay && replayLayout) {
         const gw = replayLayout.gridW;
         const gh = replayLayout.gridH;
-        zpx = labZoomedCellEdgePx(replayFitBasePx, labViewportTransform.zoom);
-        gridEl.style.gridTemplateColumns = "repeat(" + gw + ", minmax(0, " + zpx + "px))";
-        gridEl.style.gridTemplateRows = "repeat(" + gh + ", minmax(0, " + zpx + "px))";
+        cellPx = Math.max(4, Math.round(Number(replayFitBasePx)));
+        gridEl.style.gridTemplateColumns = "repeat(" + gw + ", minmax(0, " + cellPx + "px))";
+        gridEl.style.gridTemplateRows = "repeat(" + gh + ", minmax(0, " + cellPx + "px))";
       } else if (domCells && domCells.length) {
-        zpx = labZoomedCellEdgePx(demoBaseCellPxAtZoom1, labViewportTransform.zoom);
-        gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", minmax(0, " + zpx + "px))";
-        gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", minmax(0, " + zpx + "px))";
+        cellPx = Math.max(4, Math.round(Number(demoBaseCellPxAtZoom1)));
+        gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", minmax(0, " + cellPx + "px))";
+        gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", minmax(0, " + cellPx + "px))";
       }
-      if (zpx != null) {
-        /* ~0.25rem at ~20px cells in CSS; px gap tracks cell zoom so wheel pivot ratio matches layout. */
-        const gapPx = Math.max(0, Math.round(zpx * 0.2));
+      if (cellPx != null) {
+        /* ~0.25rem at ~20px cells in CSS; gap scales with stage ``scale()`` via world cell size. */
+        const gapPx = Math.max(0, Math.round(cellPx * 0.2));
         gridEl.style.setProperty("--lab-cell-gap", gapPx + "px");
       }
+      syncLabReplayStageSizeFromGrid();
       applyLabViewportTransform();
     }
 
@@ -1557,11 +1524,45 @@
     }
 
     function findLabCellFromPoint(clientX, clientY) {
-      const el = document.elementFromPoint(clientX, clientY);
-      if (!el) {
+      const w = labWorldPointFromClient(clientX, clientY);
+      const dims = labBaseCellAndGapPx();
+      if (!dims || !domCells || !domCells.length) {
         return null;
       }
-      return el.closest("[data-lab-cell-index]");
+      const cellPx = dims.cellPx;
+      const gapPx = dims.gapPx;
+      const gw = dims.gw;
+      const gh = dims.gh;
+      const stride = cellPx + gapPx;
+      let x = 0;
+      let col = -1;
+      for (let c = 0; c < gw; c++) {
+        if (w.wx >= x && w.wx < x + cellPx) {
+          col = c;
+          break;
+        }
+        x += stride;
+      }
+      if (col < 0) {
+        return null;
+      }
+      let y = 0;
+      let row = -1;
+      for (let r = 0; r < gh; r++) {
+        if (w.wy >= y && w.wy < y + cellPx) {
+          row = r;
+          break;
+        }
+        y += stride;
+      }
+      if (row < 0) {
+        return null;
+      }
+      const idx = row * gw + col;
+      if (idx < 0 || idx >= domCells.length) {
+        return null;
+      }
+      return domCells[idx] || null;
     }
 
     function updateLabGridHudEmpty() {
@@ -1651,24 +1652,24 @@
         return;
       }
       event.preventDefault();
-      const srect = gridStage.getBoundingClientRect();
-      const anchorX = event.clientX - srect.left;
-      const anchorY = event.clientY - srect.top;
+      const o = labViewportContentOffset(event.clientX, event.clientY);
+      const vx = o.vx;
+      const vy = o.vy;
       const oldZoom = labViewportTransform.zoom;
-      const basePx = hasServerReplay && replayLayout ? replayFitBasePx : demoBaseCellPxAtZoom1;
-      const oldCellPx = labZoomedCellEdgePx(basePx, oldZoom);
       const zoomFactor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
       const nextZoom = clampNumber(oldZoom * zoomFactor, LAB_VIEWPORT_MIN_SCALE, LAB_VIEWPORT_MAX_SCALE);
       if (nextZoom === oldZoom) {
         updateLabGridHudFromPoint(event.clientX, event.clientY);
         return;
       }
-      const newCellPx = labZoomedCellEdgePx(basePx, nextZoom);
-      const ratio = oldCellPx > 0 ? newCellPx / oldCellPx : 1;
+      const z0 = oldZoom;
+      const z1 = nextZoom;
+      const tx0 = labViewportTransform.tx;
+      const ty0 = labViewportTransform.ty;
       labViewportTransform.zoom = nextZoom;
-      labViewportTransform.tx = anchorX - (anchorX - labViewportTransform.tx) * ratio;
-      labViewportTransform.ty = anchorY - (anchorY - labViewportTransform.ty) * ratio;
-      applyLabGridLayoutForZoom();
+      labViewportTransform.tx = vx - (z1 / z0) * (vx - tx0);
+      labViewportTransform.ty = vy - (z1 / z0) * (vy - ty0);
+      applyLabViewportTransform();
       updateLabGridHudFromPoint(event.clientX, event.clientY);
     }
 

@@ -20,13 +20,28 @@
   #lab-replay-grid-viewport {
     position: relative;
     overflow: hidden;
+    contain: layout paint;
     user-select: none;
     -webkit-user-select: none;
     -webkit-user-drag: none;
     touch-action: none;
   }
 
-  #lab-replay-grid-stage,
+  /* Pan/zoom target: shares transform with grid + optimization overlay. */
+  #lab-replay-grid-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  #lab-optimization-overlay-layer {
+    pointer-events: none;
+  }
+
   #lab-replay-grid,
   .lab-cell,
   .lab-cell-sprite-layer {
@@ -60,7 +75,7 @@
 
   /* Rotation debug (toggle via JS: #lab-replay-grid.lab-debug-rotation). */
   #lab-replay-grid.lab-debug-rotation .lab-cell[data-r]::after {
-    content: "R" attr(data-r) " S" attr(data-sprite-q);
+    content: "R" attr(data-r);
     position: absolute;
     right: 2px;
     bottom: 1px;

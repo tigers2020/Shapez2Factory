@@ -1,5 +1,9 @@
 # 컨텍스트 메모
 
+## Asteroid Lab: 리플레이 셀 상세 lookup (2026-05-18)
+
+- `replay_frame_cell_lookup`: `full_map` 동일 좌표 전부 merge; 미스 시 `cell_overlay_json` 폴백; `bbox` 안 빈 칸은 `lab_empty` 합성(`_lab_synthetic`). 솔버 입력 아님.
+
 ## Asteroid Lab: 장비 번들 외곽선 (2026-05-16)
 
 - 추출기·확장기 4방 BFS는 `django_apps/asteroid_lab/snapshots/equipment_bundles.py`의 `build_equipment_bundles`; 리플레이 `cell_overlay_json.equipment_bundles` + Lab JS에서 `full_map` 렌더 직후 테두리 패스. 솔버 입력 아님.

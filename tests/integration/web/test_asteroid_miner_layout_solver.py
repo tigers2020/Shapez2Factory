@@ -50,6 +50,11 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert 'id="lab-replay-grid-stage"' in content
     assert 'id="lab-replay-grid-hud-coord"' in content
     assert 'id="lab-replay-grid-hud-role"' in content
+    assert 'id="lab-optimization-overlay-layer"' in content
+    g_stage = content.index('id="lab-replay-grid-stage"')
+    g_grid = content.index('id="lab-replay-grid"', g_stage)
+    g_overlay = content.index('id="lab-optimization-overlay-layer"', g_stage)
+    assert g_grid < g_overlay
 
 
 def test_asteroid_miner_layout_ignores_code_query_string() -> None:

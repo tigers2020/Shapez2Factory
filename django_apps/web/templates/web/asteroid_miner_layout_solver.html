@@ -391,7 +391,7 @@
                 </div>
               </div>
 
-              <div id="lab-replay-grid-stage" class="relative block min-w-0">
+              <div id="lab-replay-grid-stage" class="min-w-0">
                 <div
                   id="lab-replay-grid"
                   class="grid h-max w-max opacity-100 transition-opacity duration-200"
@@ -402,6 +402,11 @@
                     <div data-lab-cell-index="{{ forloop.counter0 }}" class="{{ cls }}"></div>
                   {% endfor %}
                 </div>
+                <div
+                  id="lab-optimization-overlay-layer"
+                  class="pointer-events-none absolute inset-0 z-10"
+                  aria-hidden="true"
+                ></div>
               </div>
             </div>
 

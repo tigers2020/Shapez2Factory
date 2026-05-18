@@ -15,6 +15,7 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 - 넓은 재작성 전에 **영향 파일·호출부**를 특정한다.
 - 작고 검증 가능한 변경을 우선한다. 비즈니스 규칙은 **뷰/템플릿에 두지 않는다** ([architecture.mdc](.cursor/rules/architecture.mdc)).
 - 코드 변경 후 **영향 구간 테스트 또는 검증 명령**을 실행하거나, 못 하면 이유·위험을 적는다.
+- 테스트 **작성·생략** 판단은 [`documents/ai/manuals/testing.md`](documents/ai/manuals/testing.md) **계약 지향 테스트** 절을 따른다.
 - 단계가 나뉜 작업은 [`documents/ai/checklist.md`](documents/ai/checklist.md)를 갱신한다.
 - 비밀값은 코드에 넣지 않는다 (`.env`/설정).
 
@@ -104,6 +105,8 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 
 마커·자동 부착: [`pytest.ini`](pytest.ini), [`tests/conftest.py`](tests/conftest.py). 자세한 표는 [`documents/ai/manuals/testing.md`](documents/ai/manuals/testing.md).
 
+테스트 **작성·생략** 판단도 위 매뉴얼의 **계약 지향 테스트** 절을 따른다.
+
 ---
 
 ## `documents/` 작성 언어
@@ -120,9 +123,14 @@ Cursor AI용 **shapez2Solver** 가이드 ([agents.md](https://agents.md/) 표준
 
 ## 완료 조건 (요약)
 
-- 변경 파일·이유·검증(또는 미실행 사유·위험).
+- 변경 요약, 변경 파일·이유.
+- 영향 **계약·불변식**(해당 시).
+- **추가·수정한 테스트**(없으면 다음 항과 함께 이유).
+- 실행한 **검증**(`pytest` 구간·`ruff`·`mypy`·`black` 등) 또는 미실행 사유·위험.
 - `black`으로 파일이 바뀌었으면 별도 명시.
 - **이후 진행 상황** 한 덩어리. 실제로 끝났을 때만 「완료」.
+
+상세·예외 판단: [`documents/ai/manuals/testing.md`](documents/ai/manuals/testing.md) **완료 보고**·**계약 지향 테스트** 절.
 
 ---
 

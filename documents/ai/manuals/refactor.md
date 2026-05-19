@@ -4,7 +4,7 @@
 
 동작을 바꾸지 않거나, 요청된 동작만 바꾼다.
 
-## 원칙 ([`.cursor/rules/root.mdc`](../../../.cursor/rules/root.mdc), [`karpathy-guidelines.mdc`](../../../.cursor/rules/karpathy-guidelines.mdc))
+## 원칙 ([`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc))
 
 - 요청과 무관한 파일은 건드리지 않는다.
 - 본인 변경으로 생긴 미사용 import·변수만 제거한다. **기존 dead code는 요청 없이 삭제하지 않는다.**
@@ -20,7 +20,7 @@
 
 ## 검증
 
-[`testing.md`](testing.md)의 최소 명령을 통과시키거나 미실행 사유를 남긴다.
+[`testing.md`](testing.md) Contract-first TDD·dual gate를 통과시키거나 미실행 사유를 남긴다. 동작 동일 리팩터는 신규 테스트 강제 없음.
 
 ## 관련
 

@@ -14,3 +14,7 @@
 ## 2026-05-06
 
 - Cursor 토큰·컨텍스트 매뉴얼(`documents/ai/manuals/cursor_usage.md`) 추가 및 `AGENTS.md` 라우팅·`cursor-usage.mdc` 참조 연결.
+
+## 2026-05-18
+
+- Context trim: alwaysApply를 [`shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc) 단일 파일로 통합. `AGENTS.md`는 라우팅 허브만. `root.mdc`·`cursor-usage.mdc`·`karpathy-guidelines.mdc` 삭제. `persona-dialogue`·`mcp`·`caveman-output`은 온디맨드/stub. Cloud VM은 `cursor_usage.md` §Cloud VM.

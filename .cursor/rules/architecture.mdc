@@ -73,9 +73,14 @@ Forbidden:
 
 경로가 pytest 마커와 대응한다. 구간 실행은 [AGENTS.md](mdc:AGENTS.md).
 
+## 채팅·레이어 설명 (Caveman)
+
+레이어 경계·의존 방향 설명은 채팅에서 장문 금지. [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc) **## Files** · **## Contracts**에 압축한다.
+
 ## References
 
 - [AGENTS.md](mdc:AGENTS.md)
+- [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc)
 - [Repository Structure](mdc:structure.md)
 - [Dominic card](mdc:persona/dominic.md)
 - [Yuri card](mdc:persona/yuri.md)

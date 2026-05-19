@@ -12,10 +12,14 @@
 
 ## 에이전트 품질 게이트
 
-- [ ] 마감 보고 **Caveman 6절** 준수 ([`caveman-output.mdc`](../../.cursor/rules/caveman-output.mdc) · [`AGENTS.md`](../../AGENTS.md))
+- [x] Context trim (2026-05-18): alwaysApply → [`shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc) 단일; [`AGENTS.md`](../../AGENTS.md) 라우팅만
+- [ ] 마감 보고 **Caveman 6절** 준수 ([`shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc) · [`AGENTS.md`](../../AGENTS.md))
+- [ ] 작업 분류(계약·구현·리팩터·문서·회귀) — [`AGENTS.md` § Contract-first TDD](../../AGENTS.md#development-mode-contract-first-tdd)
+- [ ] [Forbidden shortcuts](manuals/testing.md#forbidden-shortcuts) 해당 없음
+- [ ] 계약·불변식 변경 시 테스트 추가·갱신(또는 생략 이유 in **Tests**)
 
 ## 검증 (로컬)
 
 - [ ] `python manage.py check`
-- [ ] `python -m pytest tests/unit/asteroid_lab/ tests/integration/web/ tests/unit/test_build_locale_ko_strict.py`
-- [ ] `ruff check .` → `mypy .` → `black --check .` (변경 범위 또는 전체)
+- [ ] 반복: narrow `python -m pytest <path>` ([testing.md](manuals/testing.md))
+- [ ] PR/병합 full gate: `ruff check .` → `black --check .` → `mypy .` → `python -m pytest`

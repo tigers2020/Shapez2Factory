@@ -14,6 +14,9 @@ from django_apps.asteroid_lab.lab_screen_grid import (
     mini_map_grid_coord,
     sprite_rotation_deg_from_quarter,
 )
+from django_apps.asteroid_lab.reconstruction.display_map import (
+    full_map_server_bbox_from_decoded_json,
+)
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
@@ -167,7 +170,8 @@ def genetic_sample_mini_map_html(
         return "-"
 
     snap = build_decoded_blueprint_snapshot(decoded_json)
-    bbox = snap.bbox_json
+    full_bbox = full_map_server_bbox_from_decoded_json(decoded_json)
+    bbox = full_bbox if full_bbox is not None else snap.bbox_json
     if "server_width" not in bbox or "server_height" not in bbox:
         return mark_safe(
             '<p class="genetic-sample-map-note">server 좌표가 없어 미니맵을 그릴 수 없습니다.</p>'

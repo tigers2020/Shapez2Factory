@@ -43,6 +43,11 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert "Asteroid Mining Lab" in content
     assert "Greenfield Solver Workspace" in content
     assert "Replay Timeline" in content
+    assert 'id="lab-timeline-controls"' in content
+    assert "data-lab-timeline-controls" in content
+    controls_idx = content.index('id="lab-timeline-controls"')
+    scrub_idx = content.index('id="lab-timeline-scrub"', controls_idx)
+    assert scrub_idx > controls_idx
     assert "lab-cell-overlay-matrix-data" in content
     assert 'id="lab-ui-initial-state"' in content
     assert "G-042" not in content

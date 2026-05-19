@@ -41,10 +41,10 @@
 3. **기획자 듀오(도미닉 ↔ 유리)** — 기획서 초안, 상호 검토, 합의안. 도메인 관점과 애플리케이션(유스케이스·포트·DTO) 관점이 **상호 보정**한다. → [persona/dominic.md](../persona/dominic.md), [persona/yuri.md](../persona/yuri.md)
 4. **디렉터 재검수(시몬)** — 방향 오류·누락 시 **반려** → 3으로 되돌림.
 5. **사람 승인** — 플랜 MD 본문 승인. 위 "기획과 코딩의 분리" 3번과 같다.
-6. **개발팀** — Persona Dialogue **3단계**로 구현. 레이어는 [architecture.mdc](../.cursor/rules/architecture.mdc). 도미닉·유리·아다·지나가 각 레이어에서 동시에 움직인다. → [.cursor/rules/persona-dialogue.mdc](../.cursor/rules/persona-dialogue.mdc)
-7. **리뷰어(유리 주도, 시몬 보조)** — **기획 대비 구현·계약 정합성** 점검. 플랜·포트·유스케이스와의 일치를 본다. 스펙·코드 정합 문제를 찾고 수정 루프를 돌린다.
+6. **개발팀** — Persona Dialogue **3단계**로 구현. 레이어는 [architecture.mdc](../.cursor/rules/architecture.mdc). 도미닉·유리·아다·지나가 각 레이어에서 동시에 움직인다. → [.cursor/rules/persona-dialogue.mdc](../.cursor/rules/persona-dialogue.mdc). 에이전트 **채팅·handoff 산출**은 [caveman-output.mdc](../.cursor/rules/caveman-output.mdc) **6절**만.
+7. **리뷰어(유리 주도, 시몬 보조)** — **기획 대비 구현·계약 정합성** 점검. 플랜·포트·유스케이스와의 일치를 본다. 스펙·코드 정합 문제를 찾고 수정 루프를 돌린다. 리뷰 코멘트 handoff도 가능하면 Caveman 6절.
 8. **QA(테스)** — **실제 동작·시나리오·경계값·이상 입력**을 테스트 시트·증거(로그/캡처) 기반으로 검증. → [persona/tess.md](../persona/tess.md)
-9. **하네스(렉스)** — **자동 파이프라인**(`pytest` → `ruff check .` → `mypy .` → `black .`). 실패 시 담당 레이어로 **강제 반복**. → [persona/rex.md](../persona/rex.md)
+9. **하네스(렉스)** — **자동 검증**. 구현 중 **narrow `pytest` 우선**; PR·병합 **full gate**: `ruff check .` → `black --check .` → `mypy .` → `python -m pytest` ([testing.md](../documents/ai/manuals/testing.md) § Quality gate). 실패 시 담당 레이어로 **강제 반복**. → [persona/rex.md](../persona/rex.md)
 10. **최종 디렉터(시몬) → 위키** — 하네스 통과 후에도 **의도·스코프**를 최종 점검하고, 구조·결정 요약을 [documents/](../documents/)에 동기화해 다음 작업의 맥락 비용을 낮춘다.
 
 한 줄 정리: **3단계 Persona Dialogue는 6번(구현) 안에서만** 적용한다. 1~5는 설계·승인, 7~10은 리뷰·검증·자동화·클로징이다.
@@ -55,7 +55,7 @@
 |---|---|---|---|
 | 리뷰어 (7) | 기획대로 만들었나? | 유리 주도, 시몬 보조 | 정합성 지적·수정 루프 |
 | QA (8) | 실제로 제대로 동작하나? | 테스 | 테스트 시트 결과·증거 |
-| 하네스 (9) | 자동 검증에 통과하나? | 렉스 | `pytest`/`ruff`/`mypy`/`black` 결과 |
+| 하네스 (9) | 자동 검증에 통과하나? | 렉스 | narrow/full `pytest` · `ruff` · `mypy` · `black`/`black --check` |
 
 ## 1:1 매핑표 (영상 역할 ↔ 이 레포 용어 ↔ 페르소나)
 

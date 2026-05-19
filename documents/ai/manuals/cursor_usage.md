@@ -1,6 +1,6 @@
 # 매뉴얼: Cursor 사용 습관 · 컨텍스트 · 에이전트 네이티브 엔지니어링
 
-이 문서는 **에이전트가 매 턴 읽는 규칙을 늘리지 않기 위해** `documents/ai/manuals/`에 둔 온디맨드 참고용이다. 프로젝트 작업 절차의 정본은 [`AGENTS.md`](../../../AGENTS.md)와 [`.cursor/rules/`](../../../.cursor/rules/root.mdc)이다.
+이 문서는 **에이전트가 매 턴 읽는 규칙을 늘리지 않기 위해** `documents/ai/manuals/`에 둔 온디맨드 참고용이다. 상시 규칙 정본은 [`AGENTS.md`](../../../AGENTS.md)와 [`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc)이다.
 
 루트 [`AGENTS.md`](../../../AGENTS.md)의 **에이전트 네이티브 엔지니어링(요약)** 과 아래 본문이 같은 철학을 공유한다.
 
@@ -13,7 +13,7 @@
 
 ## 2. 하네스 관점 (Human ↔ Agent ↔ Harness)
 
-에이전트는 프롬프트·규칙, 코드 검색, 터미널, 모델의 조합으로 동작한다. 이 레포에서는 [`.cursor/rules/`](../../../.cursor/rules/root.mdc)·[`AGENTS.md`](../../../AGENTS.md)·[`protocols/README.md`](../../../protocols/README.md)·스킬([`.cursor/skills/shapez2-harness/SKILL.md`](../../../.cursor/skills/shapez2-harness/SKILL.md), [`.cursor/skills/cursor-shapez2-harness/SKILL.md`](../../../.cursor/skills/cursor-shapez2-harness/SKILL.md))이 **하네스**에 해당한다.
+에이전트는 프롬프트·규칙, 코드 검색, 터미널, 모델의 조합으로 동작한다. 이 레포에서는 [`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc)·[`AGENTS.md`](../../../AGENTS.md)·[`protocols/README.md`](../../../protocols/README.md)·스킬([`.cursor/skills/shapez2-harness/SKILL.md`](../../../.cursor/skills/shapez2-harness/SKILL.md), [`.cursor/skills/cursor-shapez2-harness/SKILL.md`](../../../.cursor/skills/cursor-shapez2-harness/SKILL.md))이 **하네스**에 해당한다.
 
 ## 3. 의도 정밀도와 프롬프트
 
@@ -53,7 +53,7 @@
 2. 명확화 질문
 3. **스스로 검증 가능한 단계**로 분해한 실행 계획
 4. 구현
-5. 검증(`pytest` **는 변경 파일·모듈에 대응하는 경로만** → 필요 시 전체, `ruff`/`mypy`/`black`)
+5. 검증 — **Contract-first TDD**([`testing.md`](testing.md)): 반복 narrow `pytest` → PR full gate(`ruff` → `black --check` → `mypy` → 전체 `pytest`)
 6. 반복
 
 큰 기능을 한 번에 구현하지 말고, 단계마다 통과 조건을 두는 것이 안전하다.
@@ -88,7 +88,7 @@
 
 | 구분 | 역할 | 이 레포 예 |
 |------|------|------------|
-| **Rules** | 상시 적용되는 짧은 지시 | `.cursor/rules/*.mdc`, `AGENTS.md` 핵심 |
+| **Rules** | 상시 적용되는 짧은 지시 | `shapez2-core.mdc` + `AGENTS.md` (glob 규칙은 작업 경로에만) |
 | **Skills** | 필요할 때만 여는 절차 묶음 | `/merge-all`, `shapez2-harness`, `cursor-shapez2-harness`, `data-pipeline-harness`, `code-review-harness`, `research-harness` 스킬, 이 매뉴얼을 `@`로 참조 |
 
 규칙 파일에 긴 본문을 중복 넣지 말고, 매뉴얼·플랜에 두고 링크한다.
@@ -102,9 +102,9 @@
 | 참조 범위 최소화 | `@파일`·`@폴더`는 **정말 필요한 경로만**. 넓은 폴더·코드베이스 전체 탐색 요청은 도구 호출·검색 결과로 컨텍스트가 불어난다. |
 | 프롬프트 구체화 | 파일 경로·심볼 이름·완료 조건(테스트 명령 등)을 적어 **불필요한 탐색**을 줄인다. |
 
-- [`.cursor/rules`](../../../.cursor/rules/root.mdc)·[`AGENTS.md`](../../../AGENTS.md) 일부는 **자주 컨텍스트에 실린다**. 같은 내용을 규칙에 길게 중복 넣지 말고, **매뉴얼·플랜 문서**에 두고 필요할 때만 `@`로 참조한다.
-- MCP는 [`.cursor/rules/mcp.mdc`](../../../.cursor/rules/mcp.mdc)대로 **선택 도구**다. 당장 쓰지 않는 MCP 서버는 끄면 컨텍스트 부담을 줄일 수 있다.
-- 구조 파악·심볼 추적이 필요하면 **Serena**로 필요한 범위만 읽는 편이 스레드 컨텍스트를 아낄 수 있다([`AGENTS.md`](../../../AGENTS.md) MCP 절, `mcp.mdc`의 Serena·`initial_instructions`).
+- [`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc)·[`AGENTS.md`](../../../AGENTS.md)만 **매 턴** 실린다. 같은 내용을 규칙에 중복 넣지 말고 **매뉴얼·플랜**에 두고 `@`로 연다.
+- MCP는 [`.cursor/rules/mcp.mdc`](../../../.cursor/rules/mcp.mdc) **온디맨드**. 미사용 MCP 서버는 끄면 부담 감소.
+- 구조·심볼 추적은 **Serena** + `@mcp` (`initial_instructions` 선행).
 
 ## 15. Transcript 철학과 프로젝트 정렬 (요약)
 
@@ -113,10 +113,69 @@
 | Plan-first | `documents/` 플랜·승인, [`checklist.md`](../checklist.md) |
 | 컨텍스트 분리 | 스레드·서브에이전트·phase 문서 |
 | 계측·리플레이 | computation_cycle, 이벤트·리커버리 트레이스 등(해당 모듈 정본 따름) |
-| 검증 게이트 | invariant·최종 검증, **변경 범위 `pytest`** → `ruff`→`mypy`→`black`(전체 pytest 는 필요 시) |
-| 추상화 경계 | recovery·replay·routing·corridor 등 **중복 추상화 감시** ([`root.mdc`](../../../.cursor/rules/root.mdc) 코드 단순성) |
+| 검증 게이트 | [`testing.md`](testing.md) dual gate: 반복 narrow `pytest` / PR `ruff`→`black --check`→`mypy`→`pytest` |
+| 추상화 경계 | recovery·replay·routing·corridor 등 **중복 추상화 감시** ([`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) 단순성) |
 
 ## 16. 관련 매뉴얼
 
 - 범위 큰 변경: [`documents/ai/`](../../README.md)의 플랜·체크리스트
 - 테스트 구간: [`testing.md`](testing.md)
+
+## Cloud VM
+
+Cursor Cloud / 원격 VM에서만 적용한다.
+
+- **서비스**: Django dev server만. Docker·Redis·Celery·외부 DB 불필요.
+- **DB**: SQLite 기본. 최초 `python3 manage.py migrate`로 `db.sqlite3` 생성(멱등).
+- **서버**: `python3 manage.py runserver 0.0.0.0:8000` (`python`은 PATH에 없을 수 있음).
+- **PATH**: `export PATH="/home/ubuntu/.local/bin:$PATH"` (`black`, `ruff`, `mypy`, `pytest`).
+- **Solver API** (`POST /api/solver/solve/`): CSRF — 페이지에서 `csrftoken` 쿠키 후 `X-CSRFToken` + cookie.
+- **프론트**: CSS/JS 번들 커밋됨. `assets/css/`, `frontend/` 수정 시만 `npm install` / `npm run build`.
+- **그래프 프리뷰**: 기본 `playwright_png`. `.env`에 `SOLVER_GRAPH_PREVIEW_RENDERER=noop` 가능(테스트는 Playwright 없이 통과).
+- **검증 명령**: [`testing.md`](testing.md) 표. `black --check .`는 `django_apps/web/views/macro_staff.py`에 기존 포맷 이슈 1건 있을 수 있음.
+
+## 17. Caveman 출력 (필수)
+
+**목적**: 채팅·마감 보고 **출력 토큰** 절감(실무 15–40% 목표; 과장 금지). **내부 추론·게이트 품질은 유지**, narration만 압축.
+
+### 3계층 (교차 참조)
+
+| 계층 | 정본 |
+|------|------|
+| 라우팅 | [`AGENTS.md`](../../../AGENTS.md) |
+| Rule (alwaysApply) | [`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) · glob [`asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc) |
+| 매뉴얼 | 본 절 · [`testing.md`](testing.md) · [`checklist.md`](../checklist.md) |
+
+레포 작업 시 장문 prose보다 **AGENTS + shapez2-core** 우선.
+
+### MUST — 6절 (순서·제목 변경 금지)
+
+```text
+## Summary
+## Files
+## Contracts
+## Tests
+## Risks
+## Next
+```
+
+| 절 | 내용 |
+|----|------|
+| Summary | 1–3 bullets; 구현 3단계는 `[시몬]`·`[담당]` bullet 후 코드 |
+| Files | `path — why` |
+| Contracts | 불변식·DTO·스키마 |
+| Tests | `cmd — pass\|fail\|skipped — note` |
+| Risks | 회귀·`uncertain:`·`assumption:` |
+| Next | 이후 진행; 끝났을 때만 「완료」 |
+
+**6절 없이 마감 = 미완료** ([`checklist.md`](../checklist.md)).
+
+### 예외 (6절 생략)
+
+1. Plan mode 플랜 본문 (구현 후 채팅은 6절)
+2. 사용자 「상세 설명·교육·리뷰」 명시
+3. `documents/` **파일 본문** 작성·수정 (한국어 정본)
+
+### 온디맨드
+
+긴 replay/DTO 세션: [`.cursor/skills/caveman-mode/SKILL.md`](../../../.cursor/skills/caveman-mode/SKILL.md) (`@caveman-mode`).

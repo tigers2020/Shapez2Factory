@@ -5,6 +5,25 @@ DTOs and enums are algorithm-facing; replay rows and ORM remain outside this pac
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.optimization.candidate_dtos import (
+    CandidateGenerationConfig,
+    CandidateGenerationResult,
+    ExtractorPlacementPolicy,
+    GeneCandidate,
+    RejectedGeneCandidate,
+    build_normal_gene_candidate,
+    make_candidate_id,
+    make_topology_signature,
+)
+from django_apps.asteroid_lab.optimization.candidate_equivalence import (
+    CandidateEquivalenceKey,
+    dedupe_gene_candidates,
+    equivalence_key_for_candidate,
+)
+from django_apps.asteroid_lab.optimization.candidate_generator import (
+    default_generation_config,
+    generate_gene_candidates,
+)
 from django_apps.asteroid_lab.optimization.candidate_geometry import (
     GeometryValidationResult,
     validate_projected_gene_geometry,
@@ -100,6 +119,9 @@ from django_apps.asteroid_lab.optimization.route_probe import (
 __all__ = [
     "BBox",
     "CapacityPlan",
+    "CandidateEquivalenceKey",
+    "CandidateGenerationConfig",
+    "CandidateGenerationResult",
     "CandidateRejectReason",
     "CommitConflictReason",
     "Coord",
@@ -112,12 +134,15 @@ __all__ = [
     "EvolutionConfig",
     "EvolutionConvergenceReason",
     "ExistingTransportCell",
+    "ExtractorPlacementPolicy",
+    "GeneCandidate",
     "GeneTemplate",
     "GenomeDiversityMetrics",
     "OptimizationInput",
     "OptimizationReplayEventType",
     "PlacementCommitState",
     "RecoveryBudget",
+    "RejectedGeneCandidate",
     "ReservationState",
     "RouteCellDomain",
     "RouteClass",
@@ -142,13 +167,20 @@ __all__ = [
     "PlannedRouteGoals",
     "RouteProbeInput",
     "RouteProbeResult",
+    "build_normal_gene_candidate",
     "build_route_domain_for_projected_gene_probe",
     "build_topology_graph",
     "cardinal_unit_toward",
+    "dedupe_gene_candidates",
+    "default_generation_config",
+    "equivalence_key_for_candidate",
+    "generate_gene_candidates",
     "gene_template_from_generated_sample",
     "greenfield_optimization_input",
     "load_gene_templates_from_json",
     "loaded_reconstruction_snapshot_from_result",
+    "make_candidate_id",
+    "make_topology_signature",
     "mineable_field_kind",
     "neighbors4_server",
     "optimization_input_from_loaded_snapshot",

@@ -104,7 +104,7 @@ Materialization: [OD-1](open_decisions.md) — reservation path **앞에** `fixe
 | `GeneTemplate`·projection | 있음 | **PR1 완료** | |
 | `candidate_geometry`·`route_probe` | 있음 | **PR2 완료** | `provisional_blocked_cells` |
 | capacity·route goal planner | 있음 | **PR2.5 완료** | |
-| candidate pool·selector·commit·materializer | 없음 | PR3–6 미착수 | |
+| candidate pool (`GeneCandidate`, dedupe, truncate) | 있음 | **PR3 완료** | selector·commit·materializer는 PR4–6 |
 | Solver A→M orchestration | 없음 | PR7 미착수 | |
 | Lab optimization replay persist/read (12F–12L) | Lab/web 측 **별도** | PR7 **재사용** | 아래 §6 |
 

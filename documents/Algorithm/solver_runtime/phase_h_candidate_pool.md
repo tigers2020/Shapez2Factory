@@ -87,9 +87,9 @@ candidate_id asc
 
 ## 완료 조건
 
-- [ ] normal/rejected 분리 deterministic
-- [ ] dedupe 후 truncate 순서 고정
-- [ ] generator가 layout을 변경하지 않음
+- [x] normal/rejected 분리 deterministic
+- [x] dedupe 후 truncate 순서 고정
+- [x] generator가 layout을 변경하지 않음
 
 ## 필수 테스트
 
@@ -104,7 +104,8 @@ test_candidate_id_is_deterministic
 
 ## 관련 코드·문서
 
-- 예정: `candidate_dtos.py`, `candidate_equivalence.py`, `candidate_generator.py`
+- 구현: `candidate_dtos.py` (`GeneCandidate`), `candidate_equivalence.py`, `candidate_generator.py`
+- 레거시 RESEARCH의 `BundleCandidate` 명칭은 사용하지 않음
 - [`asteroid_lab_03_candidate_generator.md`](../asteroid_lab_03_candidate_generator.md)
 
 ## 다음 Phase

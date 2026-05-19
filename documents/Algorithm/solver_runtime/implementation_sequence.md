@@ -131,11 +131,11 @@ test_route_goal_planner_distributes_goals_by_quadrant
 
 ### 작업
 
-- [ ] `candidate_dtos.py`
-- [ ] `candidate_equivalence.py`
-- [ ] `candidate_generator.py`
-- [ ] normal/rejected split
-- [ ] dedupe/truncate
+- [x] `candidate_dtos.py` (`GeneCandidate`, factory)
+- [x] `candidate_equivalence.py`
+- [x] `candidate_generator.py`
+- [x] normal/rejected split
+- [x] dedupe/truncate
 
 ### 필수 테스트 (PR3)
 

@@ -8,7 +8,10 @@ from unittest.mock import patch
 from django_apps.asteroid_lab.optimization.candidate_dtos import GeneCandidate
 from django_apps.asteroid_lab.optimization.candidate_score import GoalLoadKey
 from django_apps.asteroid_lab.optimization.candidate_selector import SelectedCandidatePlan
-from django_apps.asteroid_lab.optimization.commit_best_candidates import commit_selected_candidates
+from django_apps.asteroid_lab.optimization.commit_best_candidates import (
+    ConfirmedGenePlacement,
+    commit_selected_candidates,
+)
 from django_apps.asteroid_lab.optimization.enums import (
     Direction,
     PlacementCommitState,
@@ -88,6 +91,39 @@ def _shape_candidate(
         base_score=float(base_throughput),
         route_probe_result=probe,
     )
+
+
+def _shape_candidate_with_offset_probe(
+    *,
+    candidate_id: str,
+    extractor: tuple[int, int] = (0, 0),
+    reached_goal: RouteGoal | None = None,
+    transport_kind: TransportKind = TransportKind.SHAPE_BELT,
+    base_throughput: int = 8,
+) -> GeneCandidate:
+    """Probe starts after output stub (real game layout: rps=2, fot=1)."""
+
+    return _shape_candidate(
+        candidate_id=candidate_id,
+        extractor=extractor,
+        route_probe_start=(extractor[0] + 2, extractor[1]),
+        reached_goal=reached_goal,
+        transport_kind=transport_kind,
+        base_throughput=base_throughput,
+    )
+
+
+def _commit_offset_probe_candidate() -> tuple[GeneCandidate, ConfirmedGenePlacement]:
+    inp = _open_void_inp()
+    candidate = _shape_candidate_with_offset_probe(candidate_id="offset:1")
+    plan = SelectedCandidatePlan(ordered_candidate_ids=(candidate.candidate_id,))
+    result = commit_selected_candidates(
+        plan,
+        {candidate.candidate_id: candidate},
+        inp=inp,
+    )
+    assert len(result.confirmed) == 1
+    return candidate, result.confirmed[0]
 
 
 def test_incremental_commit_reprobes_latest_domain() -> None:
@@ -237,3 +273,22 @@ def test_incremental_commit_separates_shape_and_fluid_domains() -> None:
     cell = domain[overlap_cell]
     assert bool(cell.transport_mask & TransportMask.SHAPE_BELT)
     assert not bool(cell.transport_mask & TransportMask.FLUID_PIPE)
+
+
+def test_incremental_commit_reserved_cells_include_output_stub() -> None:
+    candidate, placement = _commit_offset_probe_candidate()
+    fot = candidate.fixed_output_transport
+    assert fot in placement.reservation.reserved_cells
+    assert placement.reservation.reserved_cells == frozenset(placement.reservation.path)
+
+
+def test_incremental_commit_reservation_path_starts_at_output_stub() -> None:
+    candidate, placement = _commit_offset_probe_candidate()
+    fot = candidate.fixed_output_transport
+    assert placement.reservation.path
+    assert placement.reservation.path[0] == fot
+
+
+def test_incremental_commit_reservation_excludes_extractor_body() -> None:
+    candidate, placement = _commit_offset_probe_candidate()
+    assert candidate.extractor not in placement.reservation.reserved_cells

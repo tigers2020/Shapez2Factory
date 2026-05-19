@@ -66,6 +66,16 @@ test_route_materializer_rejects_shape_fluid_overlap
 test_route_materializer_selects_y_or_triple_merger
 ```
 
+## 보강 테스트 (PR6 hardening)
+
+```text
+test_full_path_prepends_fixed_output_transport
+test_full_path_dedupes_consecutive_duplicate
+test_route_materializer_splits_shared_trunk
+test_route_materializer_selects_triple_splitter_at_hub
+test_route_materializer_cell_order_is_deterministic
+```
+
 ## 관련 코드·문서
 
 - 구현: `route_network_materializer.py` (`materialize_route_network`, `pick_tile_type`)
@@ -74,4 +84,4 @@ test_route_materializer_selects_y_or_triple_merger
 
 ## 다음 Phase
 
-→ [`phase_l_final_validation.md`](phase_l_final_validation.md)
+→ [`phase_l_final_validation.md`](phase_l_final_validation.md) (PR7: `commit_selected_candidates` → `materialize_route_network` → read-only validation → 기존 replay thin adapter; [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md))

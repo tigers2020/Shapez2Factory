@@ -17,6 +17,7 @@ from django_apps.asteroid_lab.optimization.enums import (
 )
 from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal, RouteReservation
 from django_apps.asteroid_lab.optimization.route_network_materializer import (
+    full_path_for_reservation,
     materialize_route_network,
     pick_tile_type,
 )
@@ -101,6 +102,37 @@ def _commit(
 def _tile_map(result) -> dict[tuple[int, int], str]:
     assert result.layout is not None
     return {cell.coord: cell.tile_type for cell in result.layout.cells}
+
+
+def test_full_path_prepends_fixed_output_transport() -> None:
+    """OD-1: materialization path starts at fixed_output_transport."""
+
+    fot = (1, 0)
+    path = ((2, 0), (3, 0), (3, 1))
+    candidate = _candidate(candidate_id="shape:od1", fixed_output_transport=fot, path=path)
+    reservation = _reservation(
+        candidate_id="shape:od1", path=path, transport_kind=TransportKind.SHAPE_BELT
+    )
+
+    full = full_path_for_reservation(candidate, reservation)
+
+    assert full[0] == fot
+    assert full[1:] == path
+
+
+def test_full_path_dedupes_consecutive_duplicate() -> None:
+    """OD-1: when FOT equals path[0], consecutive duplicate is removed once."""
+
+    fot = (2, 0)
+    path = ((2, 0), (3, 0), (3, 1))
+    candidate = _candidate(candidate_id="shape:dedupe", fixed_output_transport=fot, path=path)
+    reservation = _reservation(
+        candidate_id="shape:dedupe", path=path, transport_kind=TransportKind.SHAPE_BELT
+    )
+
+    full = full_path_for_reservation(candidate, reservation)
+
+    assert full == ((2, 0), (3, 0), (3, 1))
 
 
 def test_route_materializer_creates_straight_and_turns() -> None:
@@ -270,3 +302,137 @@ def test_route_materializer_selects_y_or_triple_merger() -> None:
     triple_commit_result, triple_candidates = _triple_commit()
     triple_tiles = _tile_map(materialize_route_network(triple_commit_result, triple_candidates))
     assert triple_tiles[triple_center] == "SpaceBelt_TripleMerger"
+
+
+def test_route_materializer_splits_shared_trunk() -> None:
+    """Two shape routes: hub (2, 0) has 1-in (W) / 2-out (E, N) → forward splitter."""
+
+    trunk_id = "shape:trunk"
+    branch_id = "shape:branch"
+    hub = (2, 0)
+    trunk_path = ((1, 0), hub, (3, 0))
+    branch_path = ((2, 1),)
+    trunk = _candidate(
+        candidate_id=trunk_id, fixed_output_transport=(0, 0), path=trunk_path
+    )
+    branch = _candidate(
+        candidate_id=branch_id, fixed_output_transport=hub, path=branch_path
+    )
+    commit = _commit(
+        (
+            ConfirmedGenePlacement(
+                candidate_id=trunk_id,
+                reservation=_reservation(
+                    candidate_id=trunk_id,
+                    path=trunk_path,
+                    transport_kind=TransportKind.SHAPE_BELT,
+                ),
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+            ConfirmedGenePlacement(
+                candidate_id=branch_id,
+                reservation=_reservation(
+                    candidate_id=branch_id,
+                    path=branch_path,
+                    transport_kind=TransportKind.SHAPE_BELT,
+                ),
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+        )
+    )
+
+    result = materialize_route_network(commit, {trunk_id: trunk, branch_id: branch})
+    tiles = _tile_map(result)
+
+    assert "Splitter" in tiles[hub]
+    assert tiles[hub] == "SpaceBelt_LeftFwdSplitter"
+
+
+def test_route_materializer_selects_triple_splitter_at_hub() -> None:
+    """Hub (2, 0): W in, E/W/N out → triple splitter (opposite-arm triple pattern)."""
+
+    hub = (2, 0)
+    trunk_id = "shape:trunk"
+    trunk_path = ((1, 0), hub, (3, 0))
+    trunk = _candidate(
+        candidate_id=trunk_id, fixed_output_transport=(0, 0), path=trunk_path
+    )
+    west_id = "shape:west"
+    west_path = ((1, 0),)
+    west = _candidate(candidate_id=west_id, fixed_output_transport=hub, path=west_path)
+    north_id = "shape:north"
+    north_path = ((2, 1),)
+    north = _candidate(candidate_id=north_id, fixed_output_transport=hub, path=north_path)
+
+    assert (
+        pick_tile_type(
+            TransportKind.SHAPE_BELT,
+            frozenset({Direction.W}),
+            frozenset({Direction.E, Direction.W, Direction.N}),
+        )
+        == "SpaceBelt_TripleSplitter"
+    )
+
+    commit = _commit(
+        (
+            ConfirmedGenePlacement(
+                candidate_id=trunk_id,
+                reservation=_reservation(
+                    candidate_id=trunk_id,
+                    path=trunk_path,
+                    transport_kind=TransportKind.SHAPE_BELT,
+                ),
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+            ConfirmedGenePlacement(
+                candidate_id=west_id,
+                reservation=_reservation(
+                    candidate_id=west_id,
+                    path=west_path,
+                    transport_kind=TransportKind.SHAPE_BELT,
+                ),
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+            ConfirmedGenePlacement(
+                candidate_id=north_id,
+                reservation=_reservation(
+                    candidate_id=north_id,
+                    path=north_path,
+                    transport_kind=TransportKind.SHAPE_BELT,
+                ),
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+        )
+    )
+    tiles = _tile_map(
+        materialize_route_network(
+            commit, {trunk_id: trunk, west_id: west, north_id: north}
+        )
+    )
+    assert tiles[hub] == "SpaceBelt_TripleSplitter"
+
+
+def test_route_materializer_cell_order_is_deterministic() -> None:
+    cid = "shape:det"
+    fot = (1, 0)
+    path = ((2, 0), (3, 0), (3, 1))
+    candidate = _candidate(candidate_id=cid, fixed_output_transport=fot, path=path)
+    commit = _commit(
+        (
+            ConfirmedGenePlacement(
+                candidate_id=cid,
+                reservation=_reservation(
+                    candidate_id=cid, path=path, transport_kind=TransportKind.SHAPE_BELT
+                ),
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+        )
+    )
+    candidates = {cid: candidate}
+
+    first = materialize_route_network(commit, candidates)
+    second = materialize_route_network(commit, candidates)
+
+    assert first.layout is not None
+    assert second.layout is not None
+    assert first.layout.cells == second.layout.cells

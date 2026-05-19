@@ -41,6 +41,140 @@ def _iter_bbox_cells(bb: BBox) -> list[Coord]:
     return out
 
 
+def _build_seed_cells(inp: OptimizationInput) -> dict[Coord, RouteCellDomain]:
+    transport_by_coord: dict[Coord, TransportKind] = {
+        c.coord: c.transport_kind for c in inp.existing_transport_cells
+    }
+
+    out: dict[Coord, RouteCellDomain] = {}
+    for coord in _iter_bbox_cells(inp.bbox):
+        if coord in inp.blocked_cells:
+            out[coord] = RouteCellDomain(
+                coord=coord,
+                route_class=RouteClass.BLOCKED,
+                traversal_cost=1,
+                hard_blocked=True,
+                carve_allowed=False,
+                transport_mask=TransportMask.NONE,
+            )
+            continue
+        if coord in inp.protected_corridor_cells:
+            out[coord] = RouteCellDomain(
+                coord=coord,
+                route_class=RouteClass.CORRIDOR_PROTECTED,
+                traversal_cost=1,
+                hard_blocked=False,
+                carve_allowed=False,
+                transport_mask=TransportMask.BOTH,
+            )
+            continue
+        if coord in inp.existing_trunk_cells:
+            out[coord] = RouteCellDomain(
+                coord=coord,
+                route_class=RouteClass.TRUNK,
+                traversal_cost=1,
+                hard_blocked=False,
+                carve_allowed=False,
+                transport_mask=TransportMask.BOTH,
+            )
+            continue
+        tk = transport_by_coord.get(coord)
+        if tk is not None and tk != TransportKind.NONE:
+            out[coord] = RouteCellDomain(
+                coord=coord,
+                route_class=RouteClass.TRANSPORT,
+                traversal_cost=1,
+                hard_blocked=False,
+                carve_allowed=False,
+                transport_mask=_mask_for_transport_kind(tk),
+            )
+            continue
+        if coord in inp.mineable_cells:
+            out[coord] = RouteCellDomain(
+                coord=coord,
+                route_class=RouteClass.ASTEROID,
+                traversal_cost=1,
+                hard_blocked=False,
+                carve_allowed=True,
+                transport_mask=TransportMask.BOTH,
+            )
+            continue
+        if coord in inp.external_void_cells:
+            out[coord] = RouteCellDomain(
+                coord=coord,
+                route_class=RouteClass.VOID_EXTERNAL,
+                traversal_cost=1,
+                hard_blocked=False,
+                carve_allowed=False,
+                transport_mask=TransportMask.BOTH,
+            )
+            continue
+        out[coord] = RouteCellDomain(
+            coord=coord,
+            route_class=RouteClass.VOID_EXTERNAL,
+            traversal_cost=1,
+            hard_blocked=False,
+            carve_allowed=False,
+            transport_mask=TransportMask.BOTH,
+        )
+    return out
+
+
+def _apply_blocked_overlay(
+    cells: dict[Coord, RouteCellDomain],
+    blocked: frozenset[Coord],
+) -> dict[Coord, RouteCellDomain]:
+    if not blocked:
+        return cells
+    out = dict(cells)
+    for coord in blocked:
+        if coord not in out:
+            continue
+        out[coord] = RouteCellDomain(
+            coord=coord,
+            route_class=RouteClass.BLOCKED,
+            traversal_cost=1,
+            hard_blocked=True,
+            carve_allowed=False,
+            transport_mask=TransportMask.NONE,
+        )
+    return out
+
+
+def _apply_reservation_overlay(
+    cells: dict[Coord, RouteCellDomain],
+    reservations: tuple[RouteReservation, ...],
+) -> dict[Coord, RouteCellDomain]:
+    if not reservations:
+        return cells
+
+    reserved_kind: dict[Coord, TransportKind] = {}
+    for res in reservations:
+        for coord in res.reserved_cells:
+            prev = reserved_kind.get(coord)
+            if prev is not None and prev != res.transport_kind:
+                reserved_kind[coord] = res.transport_kind
+            else:
+                reserved_kind[coord] = res.transport_kind
+
+    out = dict(cells)
+    for coord, tk in reserved_kind.items():
+        if coord not in out:
+            continue
+        cell = out[coord]
+        if cell.hard_blocked:
+            continue
+        out[coord] = RouteCellDomain(
+            coord=coord,
+            route_class=RouteClass.TRANSPORT,
+            traversal_cost=1,
+            hard_blocked=False,
+            carve_allowed=False,
+            transport_mask=_mask_for_transport_kind(tk),
+        )
+    return out
+
+
 class RouteDomainSnapshotBuilder:
     """Single entry point for ``route_domain`` snapshots (Phase 1 / 7)."""
 
@@ -58,101 +192,12 @@ class RouteDomainSnapshotBuilder:
         committed_occupied_cells: frozenset[Coord] = frozenset(),
         provisional_blocked_cells: frozenset[Coord] = frozenset(),
     ) -> dict[Coord, RouteCellDomain]:
-        """Immutable ``Coord -> RouteCellDomain`` map for probe/commit (v0 seed)."""
+        """Immutable ``Coord -> RouteCellDomain`` map for probe/commit (v0)."""
 
-        if confirmed_reservations:
-            msg = "Reservation overlay for RouteDomainSnapshotBuilder is not implemented in v0 seed"
-            raise NotImplementedError(msg)
-
-        # Candidate-phase provisional occupancy only. This does not commit placement.
         blocked_for_probe = committed_occupied_cells | provisional_blocked_cells
-
-        transport_by_coord: dict[Coord, TransportKind] = {
-            c.coord: c.transport_kind for c in inp.existing_transport_cells
-        }
-
-        out: dict[Coord, RouteCellDomain] = {}
-        for coord in _iter_bbox_cells(inp.bbox):
-            if coord in blocked_for_probe:
-                out[coord] = RouteCellDomain(
-                    coord=coord,
-                    route_class=RouteClass.BLOCKED,
-                    traversal_cost=1,
-                    hard_blocked=True,
-                    carve_allowed=False,
-                    transport_mask=TransportMask.NONE,
-                )
-                continue
-            if coord in inp.blocked_cells:
-                out[coord] = RouteCellDomain(
-                    coord=coord,
-                    route_class=RouteClass.BLOCKED,
-                    traversal_cost=1,
-                    hard_blocked=True,
-                    carve_allowed=False,
-                    transport_mask=TransportMask.NONE,
-                )
-                continue
-            if coord in inp.protected_corridor_cells:
-                out[coord] = RouteCellDomain(
-                    coord=coord,
-                    route_class=RouteClass.CORRIDOR_PROTECTED,
-                    traversal_cost=1,
-                    hard_blocked=False,
-                    carve_allowed=False,
-                    transport_mask=TransportMask.BOTH,
-                )
-                continue
-            if coord in inp.existing_trunk_cells:
-                out[coord] = RouteCellDomain(
-                    coord=coord,
-                    route_class=RouteClass.TRUNK,
-                    traversal_cost=1,
-                    hard_blocked=False,
-                    carve_allowed=False,
-                    transport_mask=TransportMask.BOTH,
-                )
-                continue
-            tk = transport_by_coord.get(coord)
-            if tk is not None and tk != TransportKind.NONE:
-                out[coord] = RouteCellDomain(
-                    coord=coord,
-                    route_class=RouteClass.TRANSPORT,
-                    traversal_cost=1,
-                    hard_blocked=False,
-                    carve_allowed=False,
-                    transport_mask=_mask_for_transport_kind(tk),
-                )
-                continue
-            if coord in inp.mineable_cells:
-                out[coord] = RouteCellDomain(
-                    coord=coord,
-                    route_class=RouteClass.ASTEROID,
-                    traversal_cost=1,
-                    hard_blocked=False,
-                    carve_allowed=True,
-                    transport_mask=TransportMask.BOTH,
-                )
-                continue
-            if coord in inp.external_void_cells:
-                out[coord] = RouteCellDomain(
-                    coord=coord,
-                    route_class=RouteClass.VOID_EXTERNAL,
-                    traversal_cost=1,
-                    hard_blocked=False,
-                    carve_allowed=False,
-                    transport_mask=TransportMask.BOTH,
-                )
-                continue
-            out[coord] = RouteCellDomain(
-                coord=coord,
-                route_class=RouteClass.VOID_EXTERNAL,
-                traversal_cost=1,
-                hard_blocked=False,
-                carve_allowed=False,
-                transport_mask=TransportMask.BOTH,
-            )
-        return out
+        base = _build_seed_cells(inp)
+        with_blocked = _apply_blocked_overlay(base, blocked_for_probe)
+        return _apply_reservation_overlay(with_blocked, confirmed_reservations)
 
 
 def assert_seed_domain_consistent(

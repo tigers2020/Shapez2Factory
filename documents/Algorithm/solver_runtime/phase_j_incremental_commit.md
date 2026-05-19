@@ -70,10 +70,10 @@ commit 이후 edge / goal load 누적. `load >= capacity`이면 동일 edge/goal
 
 ## 완료 조건
 
-- [ ] confirmed candidate마다 최신 domain reprobe 성공
-- [ ] 실패 candidate rollback/skip deterministic
-- [ ] goal load·reservation 상태 갱신
-- [ ] shape/fluid domain 분리
+- [x] confirmed candidate마다 최신 domain reprobe 성공
+- [x] 실패 candidate rollback/skip deterministic
+- [x] goal load·reservation 상태 갱신
+- [x] shape/fluid domain 분리
 
 ## 필수 테스트
 
@@ -87,7 +87,8 @@ test_incremental_commit_separates_shape_and_fluid_domains
 
 ## 관련 코드·문서
 
-- 예정: `commit_best_candidates.py`
+- 구현: `commit_best_candidates.py` (`commit_selected_candidates`)
+- 테스트: `tests/unit/asteroid_lab/test_incremental_commit.py`
 - [`asteroid_lab_07_incremental_commit.md`](../asteroid_lab_07_incremental_commit.md)
 
 ## 다음 Phase

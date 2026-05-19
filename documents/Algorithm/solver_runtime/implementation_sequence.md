@@ -178,11 +178,11 @@ test_candidate_selector_is_deterministic
 
 ### 작업
 
-- [ ] `commit_best_candidates.py`
-- [ ] commit-time reprobe
-- [ ] `RouteReservation`
-- [ ] rollback / skip
-- [ ] trunk load update
+- [x] `commit_best_candidates.py`
+- [x] commit-time reprobe
+- [x] `RouteReservation`
+- [x] rollback / skip
+- [x] trunk load update
 
 ### 필수 테스트 (PR5)
 

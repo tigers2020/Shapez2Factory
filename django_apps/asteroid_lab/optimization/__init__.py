@@ -37,6 +37,11 @@ from django_apps.asteroid_lab.optimization.candidate_selector import (
     select_gene_candidates_greedy,
 )
 from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan, plan_capacity
+from django_apps.asteroid_lab.optimization.commit_best_candidates import (
+    ConfirmedGenePlacement,
+    IncrementalCommitResult,
+    commit_selected_candidates,
+)
 from django_apps.asteroid_lab.optimization.coord_transform import (
     rotate_direction,
     rotate_offset,
@@ -132,6 +137,7 @@ __all__ = [
     "CandidateGenerationResult",
     "CandidateRejectReason",
     "CandidateScoreBreakdown",
+    "ConfirmedGenePlacement",
     "CommitConflictReason",
     "Coord",
     "Direction",
@@ -146,6 +152,7 @@ __all__ = [
     "ExtractorPlacementPolicy",
     "GeneCandidate",
     "GeneTemplate",
+    "IncrementalCommitResult",
     "GenomeDiversityMetrics",
     "OptimizationInput",
     "OptimizationReplayEventType",
@@ -201,6 +208,7 @@ __all__ = [
     "project_gene_placement",
     "ProjectedGenePlacement",
     "run_route_probe",
+    "commit_selected_candidates",
     "score_gene_candidate",
     "select_gene_candidates_greedy",
     "validate_projected_gene_geometry",

@@ -63,7 +63,7 @@ DB reconstruction map
 | PR2 | **완료** | `candidate_geometry`·`route_probe`·`provisional_blocked_cells` | E, F, G | [`phase_e_*`](phase_e_gene_projection.md) ~ [`phase_g_*`](phase_g_route_probe.md) |
 | PR3 | **완료** | `candidate_dtos`·`candidate_equivalence`·`candidate_generator` | H | [`phase_h_candidate_pool.md`](phase_h_candidate_pool.md) |
 | PR4 | **완료** | `candidate_score`·`candidate_selector` | I | [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md) |
-| PR5 | 미착수 | — | J | [`phase_j_incremental_commit.md`](phase_j_incremental_commit.md) |
+| PR5 | **완료** | `commit_best_candidates`·reservation overlay | J | [`phase_j_incremental_commit.md`](phase_j_incremental_commit.md) |
 | PR6 | 미착수 | — | K | [`phase_k_route_materialization.md`](phase_k_route_materialization.md) |
 | PR7 | 미착수 | replay **재구현 금지**·thin adapter | L, M, 01 | [`phase_l_*`](phase_l_final_validation.md), [`phase_m_*`](phase_m_persist_replay_ui.md) |
 
@@ -119,5 +119,5 @@ django_apps/shapez_asteroid/             ← 제거됨; 문서·import 금지
 
 - **있음:** `input_contracts.py`, `enums.py`, `loaded_snapshot.py`, `reconstruction_adapter.py`, `route_domain.py`, PR1 gene 모듈, PR2.5 `capacity_planner`·`route_goal_planner`, PR2 `candidate_geometry`·`route_probe`
 - **있음:** PR3 `candidate_dtos.py`·`candidate_equivalence.py`·`candidate_generator.py`
-- **예정:** `commit_best_candidates.py`, `route_network_materializer.py`, A→M orchestration (PR4–7)
+- **예정:** `route_network_materializer.py`, A→M orchestration (PR6–7)
 - Lab replay persist/read: `asteroid_lab` + web — PR7에서 **재사용** ([`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md))

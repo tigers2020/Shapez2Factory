@@ -6,12 +6,12 @@ import pytest
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string, encode_copy_string
+from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
 from django_apps.asteroid_lab.adapters.reconstruction_blueprint_export import (
     load_reconstruction_cells_from_decoded_json,
 )
-from django_apps.asteroid_lab.reconstruction.display_map import full_map_server_bbox_from_decoded_json
-from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
 from django_apps.asteroid_lab.reconstruction.display_map import (
+    full_map_server_bbox_from_decoded_json,
     merged_display_cells_from_reconstruction,
     server_bbox_from_cells,
 )

@@ -13,6 +13,7 @@ from django_apps.asteroid_lab.optimization.enums import (
 )
 from django_apps.asteroid_lab.optimization.input_contracts import (
     OptimizationInput,
+    RouteReservation,
     ValidationIssue,
     ValidationResult,
 )
@@ -20,18 +21,20 @@ from django_apps.asteroid_lab.optimization.materialization_dtos import Materiali
 
 
 def _coord_sort_key(coord: object) -> tuple[int, int]:
+    if not isinstance(coord, (tuple, list)) or len(coord) != 2:
+        return (0, 0)
     try:
-        sx, sy = coord  # type: ignore[misc]
-        return (int(sx), int(sy))
+        return (int(coord[0]), int(coord[1]))
     except (TypeError, ValueError):
         return (0, 0)
 
 
 def _coord_contract_ok(coord: object) -> bool:
+    if not isinstance(coord, (tuple, list)) or len(coord) != 2:
+        return False
     try:
-        sx, sy = coord  # type: ignore[misc]
-        int(sx)
-        int(sy)
+        int(coord[0])
+        int(coord[1])
     except (TypeError, ValueError):
         return False
     return True
@@ -79,7 +82,7 @@ def validate_final_layout(
             )
         )
 
-    reservations_by_candidate: dict[str, list] = {}
+    reservations_by_candidate: dict[str, list[RouteReservation]] = {}
     for placement in commit.confirmed:
         cid = placement.candidate_id
         reservations_by_candidate.setdefault(cid, []).append(placement.reservation)

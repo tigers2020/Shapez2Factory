@@ -116,16 +116,16 @@ from django_apps.asteroid_lab.optimization.materialization_dtos import (
     RouteMaterializationResult,
 )
 from django_apps.asteroid_lab.optimization.pipeline_result import SolverRuntimeResult
-from django_apps.asteroid_lab.optimization.replay_frame import (
-    MAX_REPLAY_CELLS_PER_FRAME,
-    MAX_REPLAY_FRAMES,
-    OptimizationReplayFrame,
-)
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     build_topology_graph,
     mineable_field_kind,
     optimization_input_from_loaded_snapshot,
     optimization_input_from_reconstruction,
+)
+from django_apps.asteroid_lab.optimization.replay_frame import (
+    MAX_REPLAY_CELLS_PER_FRAME,
+    MAX_REPLAY_FRAMES,
+    OptimizationReplayFrame,
 )
 from django_apps.asteroid_lab.optimization.route_domain import (
     RouteCellDomain,

@@ -27,9 +27,7 @@ from django_apps.asteroid_lab.optimization.route_probe import (
 def _open_void_input(*, bb: BBox | None = None):
     bb = bb or BBox(0, 4, 0, 4)
     void = frozenset(
-        (sx, sy)
-        for sx in range(bb.min_sx, bb.max_sx + 1)
-        for sy in range(bb.min_sy, bb.max_sy + 1)
+        (sx, sy) for sx in range(bb.min_sx, bb.max_sx + 1) for sy in range(bb.min_sy, bb.max_sy + 1)
     )
     return replace(greenfield_optimization_input(bbox=bb), external_void_cells=void)
 

@@ -402,9 +402,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                 )
             return redirect(redirect_url)
         try:
-            inp, _created = upsert_map_input_for_project(
-                stay_project, copy_code, source_label=""
-            )
+            inp, _created = upsert_map_input_for_project(stay_project, copy_code, source_label="")
         except AsteroidLabCopyDecodeError:
             return _respond_invalid_copy(
                 redirect_url=reverse(

@@ -153,9 +153,7 @@ def test_solver_button_pipeline_no_implicit_lab_optimization_sync() -> None:
     proj, loaded = _project_with_reconstruction()
     lab_frame_count = m.ReplayFrame.objects.filter(replay_track__project=proj).count()
     lab_frames = list(
-        m.ReplayFrame.objects.filter(replay_track__project=proj).values_list(
-            "id", "frame_index"
-        )
+        m.ReplayFrame.objects.filter(replay_track__project=proj).values_list("id", "frame_index")
     )
 
     run_dto = create_solver_run(
@@ -174,14 +172,15 @@ def test_solver_button_pipeline_no_implicit_lab_optimization_sync() -> None:
         solver_summary=result.solver_summary,
     )
 
+    assert m.ReplayFrame.objects.filter(replay_track__project=proj).count() == lab_frame_count
     assert (
-        m.ReplayFrame.objects.filter(replay_track__project=proj).count() == lab_frame_count
-    )
-    assert list(
-        m.ReplayFrame.objects.filter(replay_track__project=proj).values_list(
-            "id", "frame_index"
+        list(
+            m.ReplayFrame.objects.filter(replay_track__project=proj).values_list(
+                "id", "frame_index"
+            )
         )
-    ) == lab_frames
+        == lab_frames
+    )
 
     run = m.SolverRun.objects.get(pk=run_dto.id)
     assert SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY in run.config_json

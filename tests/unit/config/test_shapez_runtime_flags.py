@@ -26,8 +26,11 @@ def test_resolve_path_from_env_relative_under_base() -> None:
 def test_resolve_path_from_env_absolute_unchanged(tmp_path: Path) -> None:
     abs_path = (tmp_path / "preview_cache").resolve()
     abs_path.mkdir()
-    assert resolve_path_from_env(
-        str(abs_path),
-        base_dir=_BASE,
-        default=_BASE / ".graph_preview_cache",
-    ) == abs_path
+    assert (
+        resolve_path_from_env(
+            str(abs_path),
+            base_dir=_BASE,
+            default=_BASE / ".graph_preview_cache",
+        )
+        == abs_path
+    )

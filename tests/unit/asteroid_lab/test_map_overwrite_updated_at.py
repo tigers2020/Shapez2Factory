@@ -61,7 +61,7 @@ def test_upsert_overwrites_existing_map_input_decoded_json() -> None:
 
 @pytest.mark.django_db
 def test_refresh_map_input_updates_copy_and_decoded() -> None:
-    proj = m.AsteroidProject.objects.create(name="Refresh", slug="map-refresh")
+    m.AsteroidProject.objects.create(name="Refresh", slug="map-refresh")
     code = _island_copy(3)
     dto = create_project_from_copy_code(code)
     inp = m.AsteroidMapInput.objects.get(pk=dto.map_input_id)

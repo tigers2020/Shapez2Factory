@@ -34,7 +34,6 @@ from django_apps.asteroid_lab.replay.unified_event_coverage import (
     SUPPORTED_BY_9B_LAB_ADAPTER,
     SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER,
 )
-from django_apps.asteroid_lab.replay.unified_timeline_composer import compose_unified_timeline
 from django_apps.asteroid_lab.replay.unified_serialization import (
     UnifiedReplayDeserializationError,
     parse_replay_event_type,
@@ -47,6 +46,7 @@ from django_apps.asteroid_lab.replay.unified_serialization import (
     unified_replay_frame_json_round_trip,
     unified_replay_frame_to_json_dict,
 )
+from django_apps.asteroid_lab.replay.unified_timeline_composer import compose_unified_timeline
 
 __all__ = [
     "DEFERRED_POST_9B",

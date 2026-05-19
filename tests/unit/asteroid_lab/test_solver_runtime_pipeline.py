@@ -89,7 +89,9 @@ def test_pipeline_replay_event_sequence_is_deterministic() -> None:
     assert required.issubset(set(seq1))
 
     input_frame = next(
-        f for f in r1.replay_frames if f.event_type == OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED
+        f
+        for f in r1.replay_frames
+        if f.event_type == OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED
     )
     assert len(input_frame.visible_cells) >= 1
     assert "server_x" in input_frame.visible_cells[0]

@@ -128,9 +128,7 @@ def run_solver_runtime_for_project(
 
         validation_passed = bool(result.solver_summary.get("validation_passed"))
         status = (
-            m.SolverRun.RunStatus.COMPLETED
-            if validation_passed
-            else m.SolverRun.RunStatus.FAILED
+            m.SolverRun.RunStatus.COMPLETED if validation_passed else m.SolverRun.RunStatus.FAILED
         )
         m.SolverRun.objects.filter(pk=run_id).update(status=status)
 

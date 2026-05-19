@@ -11,15 +11,15 @@ from typing import Any
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
-    cell_key_xy_layer,
-    decoded_cell_to_full_map_row,
-    rows_from_cells,
-)
-from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     _replace_extensions_with_synthetic_fields as replace_extensions_with_synthetic_fields,
 )
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     _replace_miners_with_synthetic_fields as replace_miners_with_synthetic_fields,
+)
+from django_apps.asteroid_lab.replay.snapshot_map_replay import (
+    cell_key_xy_layer,
+    decoded_cell_to_full_map_row,
+    rows_from_cells,
 )
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.transport_components import (
@@ -51,12 +51,12 @@ def merge_reconstruction_display_cells(
 
 
 def merge_reconstruction_display_rows(
-    structural_rows: Sequence[dict],
+    structural_rows: Sequence[dict[str, Any]],
     recon_cells: Sequence[DecodedCellDTO],
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Row dict merge for replay (structural full_map rows + recon overlay)."""
 
-    merged: dict[tuple[int, int, int | None], dict] = {}
+    merged: dict[tuple[int, int, int | None], dict[str, Any]] = {}
     for r in structural_rows:
         if not isinstance(r, dict):
             continue
@@ -84,7 +84,7 @@ def merged_display_cells_from_reconstruction(
 def full_map_rows_from_reconstruction(
     cleanup: CleanupResult,
     recon: ReconstructionResult,
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """Full_map row list equivalent to replay ``reconstruction_complete``."""
 
     return rows_from_cells(merged_display_cells_from_reconstruction(cleanup, recon))
@@ -152,6 +152,8 @@ __all__ = [
     "merge_reconstruction_display_cells",
     "merge_reconstruction_display_rows",
     "merged_display_cells_from_reconstruction",
+    "replace_extensions_with_synthetic_fields",
+    "replace_miners_with_synthetic_fields",
     "reconstruction_meta_from_decoded_json",
     "reconstruction_summary_from_decoded_json",
     "server_bbox_from_cells",

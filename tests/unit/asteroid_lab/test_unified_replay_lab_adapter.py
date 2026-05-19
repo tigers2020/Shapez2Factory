@@ -20,7 +20,9 @@ from django_apps.asteroid_lab.replay.lab_unified_adapter import (
 )
 from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.unified_event_coverage import SUPPORTED_BY_9B_LAB_ADAPTER
-from django_apps.asteroid_lab.replay.unified_serialization import unified_replay_frame_json_round_trip
+from django_apps.asteroid_lab.replay.unified_serialization import (
+    unified_replay_frame_json_round_trip,
+)
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
 
 

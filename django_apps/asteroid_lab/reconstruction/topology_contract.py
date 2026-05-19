@@ -19,8 +19,13 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 )
 from django_apps.asteroid_lab.reconstruction.grid import Coord as RawCoord
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import build_decoded_blueprint_snapshot
-from django_apps.asteroid_lab.snapshots.server_coords import map_bbox_dense_and_y, server_xy_for_raw_xy
+from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
+    build_decoded_blueprint_snapshot,
+)
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    map_bbox_dense_and_y,
+    server_xy_for_raw_xy,
+)
 
 _DEFAULT_FIXTURES_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "asteroid_lab"
 _DIFF_LIST_CAP = 50
@@ -167,14 +172,16 @@ def build_normalized_reconstruction_topology(
     )
 
 
-def normalize_topology_for_compare(topology: NormalizedReconstructionTopology) -> NormalizedReconstructionTopology:
+def normalize_topology_for_compare(
+    topology: NormalizedReconstructionTopology,
+) -> NormalizedReconstructionTopology:
     """Identity helper; sets already server-deduped."""
 
     return topology
 
 
-def _cap_coords(coords: frozenset[Coord]) -> list[list[int]]:
-    items = sorted([list(c) for c in coords])
+def _cap_coords(coords: frozenset[Coord]) -> list[list[int | str]]:
+    items: list[list[int | str]] = [list(c) for c in sorted(coords)]
     if len(items) <= _DIFF_LIST_CAP:
         return items
     extra = len(items) - _DIFF_LIST_CAP
@@ -233,7 +240,7 @@ def topology_diff_is_empty(diff: dict[str, Any]) -> bool:
         return False
     ab = diff.get("actual_bbox", {})
     eb = diff.get("expected_bbox", {})
-    return ab == eb
+    return bool(ab == eb)
 
 
 def raw_coords_from_snapshot(snapshot: DecodedBlueprintSnapshotDTO) -> frozenset[RawCoord]:

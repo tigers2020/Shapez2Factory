@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from django_apps.asteroid_lab.optimization.candidate_dtos import GeneCandidate
 from django_apps.asteroid_lab.optimization.candidate_selector import SelectedCandidatePlan
 from django_apps.asteroid_lab.optimization.commit_best_candidates import (
     ConfirmedGenePlacement,
@@ -12,7 +11,6 @@ from django_apps.asteroid_lab.optimization.commit_best_candidates import (
     commit_selected_candidates,
 )
 from django_apps.asteroid_lab.optimization.enums import (
-    Direction,
     PlacementCommitState,
     ReservationState,
     RouteGoalKind,
@@ -21,14 +19,14 @@ from django_apps.asteroid_lab.optimization.enums import (
     ValidationSeverity,
 )
 from django_apps.asteroid_lab.optimization.final_validation import validate_final_layout
-from django_apps.asteroid_lab.optimization.input_contracts import BBox, RouteGoal, RouteReservation
+from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal, RouteReservation
 from django_apps.asteroid_lab.optimization.materialization_dtos import (
     MaterializedLayoutCells,
     MaterializedTransportCell,
 )
-from django_apps.asteroid_lab.optimization.route_network_materializer import materialize_route_network
-from django_apps.asteroid_lab.optimization.route_probe import RouteProbeResult
-
+from django_apps.asteroid_lab.optimization.route_network_materializer import (
+    materialize_route_network,
+)
 from tests.unit.asteroid_lab.test_incremental_commit import (
     _open_void_inp,
     _shape_candidate,
@@ -44,9 +42,7 @@ def test_validation_read_only() -> None:
     inp_before = replace(inp)
     commit_before = replace(
         commit,
-        confirmed=tuple(
-            replace(p, reservation=replace(p.reservation)) for p in commit.confirmed
-        ),
+        confirmed=tuple(replace(p, reservation=replace(p.reservation)) for p in commit.confirmed),
     )
 
     r1 = validate_final_layout(

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
 from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector

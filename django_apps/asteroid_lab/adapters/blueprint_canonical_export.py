@@ -24,9 +24,7 @@ OFFICIAL_ISLAND_ICON: dict[str, Any] = {
 }
 
 # User-provided connected west+branch fluid pipe (game copy; no trailing ``=`` on payload).
-_CONNECTED_BRANCH_B64_PAYLOAD = (
-    "H4sIAMsrC2oA/4yQzQrCMBCE32XwGA+lByFHUaGgUFSKRUQWGzEQ05IftJS8uzEF8SSysLDszLfLDKjAsyyfMcxL8AET13cCHIVVpBswFJdWvxcLcgR+hIwzLxW5a2vuFkx7pcYGe6NO8K0fC6fAsNTOSGGjccABfJox7CN9TX3r3XmlvGw2UguzfDqhrYynAvso6/gawxY8/8tV/+Anwd+kQzr8xdt1dBGl7MR51ZoHmQbhFBOTmkxfCZOMKcYQXgIMAFZBsdNSAQAA"
-)
+_CONNECTED_BRANCH_B64_PAYLOAD = "H4sIAMsrC2oA/4yQzQrCMBCE32XwGA+lByFHUaGgUFSKRUQWGzEQ05IftJS8uzEF8SSysLDszLfLDKjAsyyfMcxL8AET13cCHIVVpBswFJdWvxcLcgR+hIwzLxW5a2vuFkx7pcYGe6NO8K0fC6fAsNTOSGGjccABfJox7CN9TX3r3XmlvGw2UguzfDqhrYynAvso6/gawxY8/8tV/+Anwd+kQzr8xdt1dBGl7MR51ZoHmQbhFBOTmkxfCZOMKcYQXgIMAFZBsdNSAQAA"  # noqa: E501
 
 CONNECTED_BRANCH_FLUID_PIPE_COPY = f"{SHAPEZ2_COPY_PREFIX_V4}{_CONNECTED_BRANCH_B64_PAYLOAD}"
 CONNECTED_BRANCH_FLUID_PIPE_GZIP = base64.b64decode(_CONNECTED_BRANCH_B64_PAYLOAD)
@@ -189,8 +187,8 @@ def _field_export_entries(entries_raw: list[Any]) -> list[dict[str, Any]]:
 def to_game_paste_island_root(lab_layout_root: dict[str, Any]) -> dict[str, Any]:
     """Build island JSON for in-game paste.
 
-  Field tiles only (``Layout_*MinerExtension``). Game-import coordinates (``X < 0``) are kept;
-  positive lab-space layouts use ``translate_lab_entries_to_official_xy``.
+    Field tiles only (``Layout_*MinerExtension``). Game-import coordinates (``X < 0``) are kept;
+    positive lab-space layouts use ``translate_lab_entries_to_official_xy``.
     """
 
     base = strip_lab_fields_from_root(lab_layout_root)

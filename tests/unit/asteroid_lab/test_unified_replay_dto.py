@@ -170,9 +170,7 @@ def test_unified_replay_frame_json_round_trip() -> None:
 
 
 def test_unified_replay_serialization_is_json_safe() -> None:
-    frame = _sample_frame(
-        map_view=ReplayMapView(bbox=_bbox(), full_cells=(ReplayCell(x=0, y=0),))
-    )
+    frame = _sample_frame(map_view=ReplayMapView(bbox=_bbox(), full_cells=(ReplayCell(x=0, y=0),)))
     payload = unified_replay_frame_to_json_dict(frame)
     text = json.dumps(payload, default=str)
     parsed = json.loads(text)
@@ -201,7 +199,10 @@ def test_unified_replay_from_json_requires_map_view() -> None:
         )
 
 
-@pytest.mark.parametrize("module_name", ["unified_dtos.py", "unified_enums.py", "unified_serialization.py"])
+@pytest.mark.parametrize(
+    "module_name",
+    ["unified_dtos.py", "unified_enums.py", "unified_serialization.py"],
+)
 def test_unified_replay_modules_import_boundary(module_name: str) -> None:
     text = (_REPLAY_PKG / module_name).read_text(encoding="utf-8")
     for bad in _FORBIDDEN_IMPORT_FRAGMENTS:

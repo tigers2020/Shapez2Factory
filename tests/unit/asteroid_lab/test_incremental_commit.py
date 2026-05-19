@@ -23,8 +23,8 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     greenfield_optimization_input,
 )
 from django_apps.asteroid_lab.optimization.route_domain import (
-    RouteDomainSnapshotBuilder,
     RouteCellDomain,
+    RouteDomainSnapshotBuilder,
 )
 from django_apps.asteroid_lab.optimization.route_probe import RouteProbeResult
 
@@ -32,9 +32,7 @@ from django_apps.asteroid_lab.optimization.route_probe import RouteProbeResult
 def _open_void_inp(*, bb: BBox | None = None, goals: frozenset[RouteGoal] | None = None):
     bb = bb or BBox(0, 8, 0, 0)
     void = frozenset(
-        (sx, sy)
-        for sx in range(bb.min_sx, bb.max_sx + 1)
-        for sy in range(bb.min_sy, bb.max_sy + 1)
+        (sx, sy) for sx in range(bb.min_sx, bb.max_sx + 1) for sy in range(bb.min_sy, bb.max_sy + 1)
     )
     default_goal = RouteGoal(
         coord=(6, 0),

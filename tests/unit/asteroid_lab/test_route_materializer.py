@@ -253,16 +253,22 @@ def test_route_materializer_selects_y_or_triple_merger() -> None:
         ((1, 0), triple_center),
     )
 
-    assert pick_tile_type(
-        TransportKind.SHAPE_BELT,
-        frozenset({Direction.N, Direction.W, Direction.E}),
-        frozenset({Direction.E}),
-    ) == "SpaceBelt_TripleMerger"
-    assert pick_tile_type(
-        TransportKind.SHAPE_BELT,
-        frozenset({Direction.N, Direction.S, Direction.W}),
-        frozenset({Direction.E}),
-    ) == "SpaceBelt_YMerger"
+    assert (
+        pick_tile_type(
+            TransportKind.SHAPE_BELT,
+            frozenset({Direction.N, Direction.W, Direction.E}),
+            frozenset({Direction.E}),
+        )
+        == "SpaceBelt_TripleMerger"
+    )
+    assert (
+        pick_tile_type(
+            TransportKind.SHAPE_BELT,
+            frozenset({Direction.N, Direction.S, Direction.W}),
+            frozenset({Direction.E}),
+        )
+        == "SpaceBelt_YMerger"
+    )
 
     triple_flow = pick_tile_type(
         TransportKind.SHAPE_BELT,
@@ -312,12 +318,8 @@ def test_route_materializer_splits_shared_trunk() -> None:
     hub = (2, 0)
     trunk_path = ((1, 0), hub, (3, 0))
     branch_path = ((2, 1),)
-    trunk = _candidate(
-        candidate_id=trunk_id, fixed_output_transport=(0, 0), path=trunk_path
-    )
-    branch = _candidate(
-        candidate_id=branch_id, fixed_output_transport=hub, path=branch_path
-    )
+    trunk = _candidate(candidate_id=trunk_id, fixed_output_transport=(0, 0), path=trunk_path)
+    branch = _candidate(candidate_id=branch_id, fixed_output_transport=hub, path=branch_path)
     commit = _commit(
         (
             ConfirmedGenePlacement(
@@ -354,9 +356,7 @@ def test_route_materializer_selects_triple_splitter_at_hub() -> None:
     hub = (2, 0)
     trunk_id = "shape:trunk"
     trunk_path = ((1, 0), hub, (3, 0))
-    trunk = _candidate(
-        candidate_id=trunk_id, fixed_output_transport=(0, 0), path=trunk_path
-    )
+    trunk = _candidate(candidate_id=trunk_id, fixed_output_transport=(0, 0), path=trunk_path)
     west_id = "shape:west"
     west_path = ((1, 0),)
     west = _candidate(candidate_id=west_id, fixed_output_transport=hub, path=west_path)
@@ -405,9 +405,7 @@ def test_route_materializer_selects_triple_splitter_at_hub() -> None:
         )
     )
     tiles = _tile_map(
-        materialize_route_network(
-            commit, {trunk_id: trunk, west_id: west, north_id: north}
-        )
+        materialize_route_network(commit, {trunk_id: trunk, west_id: west, north_id: north})
     )
     assert tiles[hub] == "SpaceBelt_TripleSplitter"
 

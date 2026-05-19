@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from django_apps.asteroid_lab.replay.unified_dtos import (
     ReplayAnnotation,
@@ -104,7 +105,8 @@ def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
     return {
         "base_ref": map_view.base_ref,
         "full_cells": [
-            {"x": c.x, "y": c.y, "kind": c.kind, "transport": c.transport} for c in map_view.full_cells
+            {"x": c.x, "y": c.y, "kind": c.kind, "transport": c.transport}
+            for c in map_view.full_cells
         ],
         "cell_delta": [
             {
@@ -136,10 +138,10 @@ def replay_map_view_from_json_dict(data: object) -> ReplayMapView:
         ref = str(base_ref) or None
     return ReplayMapView(
         base_ref=ref,
-        full_cells=_tuple_from_list(data.get("full_cells"), _cell_from_dict),  # type: ignore[arg-type]
-        cell_delta=_tuple_from_list(data.get("cell_delta"), _cell_delta_from_dict),  # type: ignore[arg-type]
-        overlay_cells=_tuple_from_list(data.get("overlay_cells"), _overlay_from_dict),  # type: ignore[arg-type]
-        annotations=_tuple_from_list(data.get("annotations"), _annotation_from_dict),  # type: ignore[arg-type]
+        full_cells=_tuple_from_list(data.get("full_cells"), _cell_from_dict),
+        cell_delta=_tuple_from_list(data.get("cell_delta"), _cell_delta_from_dict),
+        overlay_cells=_tuple_from_list(data.get("overlay_cells"), _overlay_from_dict),
+        annotations=_tuple_from_list(data.get("annotations"), _annotation_from_dict),
         bbox=replay_bbox_from_json_dict(data.get("bbox")),
     )
 

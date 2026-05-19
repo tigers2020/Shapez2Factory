@@ -37,7 +37,9 @@ def test_unified_replay_event_type_adapter_coverage_matrix_is_explicit() -> None
 
 
 def test_unified_replay_event_type_every_enum_accounted_for() -> None:
-    accounted = SUPPORTED_BY_9B_LAB_ADAPTER | SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER | DEFERRED_POST_9B
+    accounted = (
+        SUPPORTED_BY_9B_LAB_ADAPTER | SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER | DEFERRED_POST_9B
+    )
     assert len(accounted) == len(ReplayEventType)
     for member in ReplayEventType:
         assert member in accounted

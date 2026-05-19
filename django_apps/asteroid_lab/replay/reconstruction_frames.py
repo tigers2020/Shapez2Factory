@@ -33,7 +33,6 @@ from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     cell_key_xy_layer,
     decoded_cell_to_full_map_row,
     diff_maps,
-    rows_from_cells,
     snapshot_summary_from_rows,
 )
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO, SnapshotEventDTO
@@ -111,7 +110,6 @@ def build_reconstruction_replay_events(
         except (KeyError, TypeError, ValueError):
             continue
 
-    final_rows = rows_from_cells(recon.cells)
     recon_by_key: dict[tuple[int, int, int | None], DecodedCellDTO] = {
         (c.x, c.y, c.layer): c for c in recon.cells
     }

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Mapping
+from typing import Any
 
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_DECODE_NORMALIZED,
@@ -208,7 +209,9 @@ def lab_snapshot_event_to_unified(
     )
 
 
-def _snapshot_fields_from_payload(payload: Mapping[str, Any]) -> tuple[str, str, str, str, list[Any]]:
+def _snapshot_fields_from_payload(
+    payload: Mapping[str, Any],
+) -> tuple[str, str, str, str, list[Any]]:
     phase = str(payload.get("phase") or "")
     event_type = str(payload.get("event_type") or "")
     if not event_type:

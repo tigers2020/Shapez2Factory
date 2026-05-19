@@ -131,7 +131,7 @@ Cursor Cloud / 원격 VM에서만 적용한다.
 - **PATH**: `export PATH="/home/ubuntu/.local/bin:$PATH"` (`black`, `ruff`, `mypy`, `pytest`).
 - **Solver API** (`POST /api/solver/solve/`): CSRF — 페이지에서 `csrftoken` 쿠키 후 `X-CSRFToken` + cookie.
 - **프론트**: CSS/JS 번들 커밋됨. `assets/css/`, `frontend/` 수정 시만 `npm install` / `npm run build`.
-- **그래프 프리뷰**: 기본 `playwright_png`. `.env`에 `SOLVER_GRAPH_PREVIEW_RENDERER=noop` 가능(테스트는 Playwright 없이 통과).
+- **그래프 프리뷰**: 기본 `playwright_png`. Playwright 없이 돌릴 때는 `.env.debug`에 `SOLVER_GRAPH_PREVIEW_RENDERER=noop` (`.env.debug.example` 참고, [`environment.md`](environment.md)).
 - **검증 명령**: [`testing.md`](testing.md) 표. `black --check .`는 `django_apps/web/views/macro_staff.py`에 기존 포맷 이슈 1건 있을 수 있음.
 
 ## 17. Caveman 출력 (필수)

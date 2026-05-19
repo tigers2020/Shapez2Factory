@@ -75,6 +75,7 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+!.env.debug.example
 
 # --- Virtualenv (common folder names) ---
 venv/

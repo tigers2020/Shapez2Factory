@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env.debug", override=True)
 
 SHAPEZ_BASEDATA_ROOT = Path(
     os.environ.get(

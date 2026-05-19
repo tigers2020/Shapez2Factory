@@ -37,6 +37,8 @@ python manage.py runserver
 
 설치: 루트에서 `pip install -e ".[dev]"`.
 
+환경 변수 분류·`.env` / `.env.debug` 계층: [`environment.md`](environment.md).
+
 ## 인증
 
 `django-allauth`, `accounts/` URL. OAuth 클라이언트는 코드가 아니라 환경·`SocialApp` 등으로 등록.

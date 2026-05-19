@@ -80,6 +80,8 @@ UI uses a single timeline controller unless a dedicated migration sequence opens
 
 ## Sequence 13C — Full Lab Replay Lazy-load Endpoint
 
+**환경 변수:** 구현·승인 전에는 `ASTEROID_LAB_REPLAY_JSON_DELIVERY` 등 **어떤 env 이름도 `.env`에 두지 않는다**. canonical 이름은 구현 PR과 함께 [`environment.md`](../ai/manuals/environment.md)에만 등록한다.
+
 **선호 1차 구현:** POST 응답 크기를 줄이면서 **replay frame semantics**는 바꾸지 않는다.
 
 - POST 응답: **요약·프리뷰·fetch 핸들**(예: 토큰·URL·리소스 id — 구체 형식은 승인된 설계에서 확정).

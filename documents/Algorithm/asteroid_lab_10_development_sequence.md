@@ -521,7 +521,7 @@ Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 
 | 시퀀스 | 상태 | 요약 |
 |--------|------|------|
 | 11A | 미착수 | readonly overlay projection — `projectOptimizationReplayFrameToLabOverlay(frame)` → `{ cells, diagnostics }`; Lab/optimization 인덱스·Lab 페이로드 미변경; bbox는 `metrics`에서만 |
-| 11B | 미착수 | overlay rendering — `ENABLE_LAB_OPTIMIZATION_OVERLAY` 뒤에서만; 11A projection + 별도 `#lab-optimization-overlay-layer`; Lab 셀 DOM·페이로드 비변형·인덱스 비동기화 유지 |
+| 11B | 미착수 | overlay rendering — **env 플래그 없음**(미구현); 11A projection + 별도 `#lab-optimization-overlay-layer`; Lab 셀 DOM·페이로드 비변형·인덱스 비동기화 유지. 구현 시 [`environment.md`](../ai/manuals/environment.md)에 canonical 이름 등록 |
 | 11C | 미착수 | frame sync policy — **필요할 때만** 명시적 동기화 정책 검토 (기본은 비동기화, `09` 정본 참조) |
 
 #### 11B 완료 기준 (요약)

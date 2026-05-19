@@ -324,8 +324,8 @@ Overview **「활성 좌표 ≤50 전후」**에서는 프레임당 full snapsho
 |----|------|------|
 | **9A** | `UnifiedReplayFrame` DTO + enum + JSON 직렬화 + 계약 단위 테스트 | `django_apps/asteroid_lab/replay/unified_*.py` |
 | **9B** | Lab `ReplayFrame` / snapshot 이벤트 → `UnifiedReplayFrame` adapter | `phase=decode` / `reconstruction`; 9D baseline |
-| **9C** | Optimization 이벤트 → 2D `map_view` adapter | Server→Lab 좌표; 이벤트별 projection |
-| **9D** | Timeline composer | lifecycle 전역 append; monotonic `frame_index` |
+| **9C** | Optimization 이벤트 → 2D `map_view` adapter | **완료** — `optimization_unified_adapter.py` |
+| **9D** | Timeline composer | **완료** — `unified_timeline_composer.py` |
 | **9E** | Single controller UI | 하나의 play/scrubber; phase markers |
 | **9F** | Commit frame materialization | `route.committed` → `cell_delta` |
 | **9G** | Validation/result keyframes | `validation.*`, `result.layout` snapshots |
@@ -397,6 +397,65 @@ metadata-only frame을 timeline에 단독 등록
 **9B 거부:** `candidate.*`, `routing.*`, `ga.*`, `existing_layout.*`
 
 **테스트:** `tests/unit/asteroid_lab/test_unified_replay_lab_adapter.py`, `test_unified_replay_event_coverage_matrix.py`, `test_replay_limits.py`
+
+### 9C — Optimization adapter (구현 완료)
+
+**산출:** `django_apps/asteroid_lab/replay/optimization_unified_adapter.py`, `projection_context.py`, `replay_recording_cells.py`, `unified_event_coverage.SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER`
+
+**체크리스트:**
+
+```text
+[x] optimization frame adapter (`optimization_replay_frame_to_unified`)
+[x] Server dense → Lab raw (x,y) projection (`ReplayProjectionContext.server_xy_params`)
+[x] `visible_cells` → `map_view.full_cells`; `overlay_cells` → `overlay_cells`
+[x] `REPLAY_EVENT_TYPE_TO_PHASE` (21 optimization event types)
+[x] inspector `optimization_event_type` / `source_frame_index` 보존
+[x] metrics annotation keys (`candidate_reject_reason`, `route_probe_failure_reason`, `reached_goal_kind` + 좌표)
+[x] `fallback_full_cells` / `base_ref`로 renderable 보수적 wrapping
+[x] non-renderable → `OptimizationUnifiedAdapterError`
+[x] source mutate 금지 (단위 테스트)
+[x] Runtime recorder: `visible_cell_dicts_from_loaded` / materialization overlay (output-only)
+[x] coverage matrix: `SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER` (21)
+```
+
+**금지 (9C):** timeline composer(9D), JS, ORM, `optimization_replay_persist` 키 변경, solver·GA·commit·validation 입력에 replay 사용.
+
+#### 9C `ReplayEventType` → `ReplayPhase` (요약)
+
+| 그룹 | `ReplayPhase` |
+|------|----------------|
+| `optimization.input_loaded`, `capacity.plan_created`, `route_goal.generated` | `optimization_input` |
+| `pattern.generated` | `pattern_generation` |
+| `candidate.*`, `candidate_pool.completed`, `candidate_selection.completed` | `candidate_generation` |
+| `route_probe.*` | `route_probe` |
+| `genome.*`, `best_genome.selected` | `genome_fitness` |
+| `generation.completed` | `evolution` |
+| `route.commit_*`, `route.materialized` | `incremental_commit` |
+| `route.rolled_back` | `rollback` |
+| `validation.*` | `validation` |
+| `result.layout` | `result` |
+
+**테스트:** `test_unified_replay_optimization_adapter.py`, `test_server_to_lab_projection.py`, `test_solver_runtime_pipeline.py` (visible_cells)
+
+**import:** `optimization_unified_adapter`는 `replay/__init__.py`에서 re-export하지 않음 (`optimization.replay_frame` ↔ circular import 방지). 호출부는 submodule 직접 import.
+
+### 9D — Timeline composer (구현 완료)
+
+**산출:** `django_apps/asteroid_lab/replay/unified_timeline_composer.py` — `compose_unified_timeline`
+
+**체크리스트:**
+
+```text
+[x] Lab unified frames → optimization unified frames 순서로 concat
+[x] global `frame_index` 0..n-1 재부여
+[x] `inspector.source_frame_index`에 트랙별 원본 index 보존
+[x] `MAX_UNIFIED_LAB_REPLAY_FRAMES` 초과 시 head truncate + 마지막 프레임 `replay_truncated` / `truncation_reason`
+[x] per-frame cell 재-truncate 없음 (adapter 책임)
+```
+
+**금지 (9D):** page context, JS, persist, dual-track 제거(9E), algorithm 입력.
+
+**테스트:** `test_unified_timeline_composer.py`
 
 ---
 

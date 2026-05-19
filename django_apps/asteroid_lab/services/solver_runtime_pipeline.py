@@ -6,8 +6,8 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from django_apps.asteroid_lab.optimization.candidate_dtos import CandidateGenerationConfig
 from django_apps.asteroid_lab.optimization.candidate_generator import (
-    CandidateGenerationConfig,
     default_generation_config,
     generate_gene_candidates,
 )
@@ -28,6 +28,10 @@ from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
 from django_apps.asteroid_lab.optimization.route_goal_planner import plan_route_goals
 from django_apps.asteroid_lab.optimization.route_network_materializer import (
     materialize_route_network,
+)
+from django_apps.asteroid_lab.replay.replay_recording_cells import (
+    overlay_cell_dicts_from_materialization,
+    visible_cell_dicts_from_loaded,
 )
 from django_apps.asteroid_lab.services.runtime_replay_recorder import RuntimeReplayRecorder
 
@@ -74,10 +78,12 @@ def run_solver_runtime_pipeline(
     config = generation_config or default_generation_config(max_candidates=32)
 
     inp = optimization_input_from_loaded_snapshot(loaded)
+    replay_base_cells = visible_cell_dicts_from_loaded(loaded)
     recorder.append(
         OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED,
         title="Optimization input loaded",
         metrics={"mineable_cell_count": len(inp.mineable_cells)},
+        visible_cells=replay_base_cells,
     )
 
     shape_platforms = max(12, len(inp.mineable_cells) * 8)
@@ -93,6 +99,7 @@ def run_solver_runtime_pipeline(
             "shape_goal_count": capacity.shape_goal_count,
             "fluid_goal_count": capacity.fluid_goal_count,
         },
+        visible_cells=replay_base_cells,
     )
 
     planned = plan_route_goals(inp, capacity)
@@ -101,6 +108,7 @@ def run_solver_runtime_pipeline(
         OptimizationReplayEventType.ROUTE_GOAL_GENERATED,
         title="Route goals planned",
         metrics={"route_goal_count": len(planned.goals)},
+        visible_cells=replay_base_cells,
     )
 
     templates = _load_gene_templates(template_path)
@@ -109,6 +117,7 @@ def run_solver_runtime_pipeline(
             OptimizationReplayEventType.PATTERN_GENERATED,
             title=f"Pattern {gene.gene_id}",
             metrics={"gene_id": gene.gene_id},
+            visible_cells=replay_base_cells,
         )
 
     pool = generate_gene_candidates(inp, templates, config)
@@ -119,6 +128,7 @@ def run_solver_runtime_pipeline(
             "normal_count": len(pool.normal_candidates),
             "rejected_count": len(pool.rejected_candidates),
         },
+        visible_cells=replay_base_cells,
     )
 
     plan = select_gene_candidates_greedy(pool.normal_candidates, inp=inp)
@@ -126,6 +136,7 @@ def run_solver_runtime_pipeline(
         OptimizationReplayEventType.CANDIDATE_SELECTION_COMPLETED,
         title="Candidate selection",
         metrics={"selected_count": len(plan.ordered_candidate_ids)},
+        visible_cells=replay_base_cells,
     )
 
     candidates_by_id = {c.candidate_id: c for c in pool.normal_candidates}
@@ -134,6 +145,7 @@ def run_solver_runtime_pipeline(
             OptimizationReplayEventType.ROUTE_COMMIT_ATTEMPTED,
             title=f"Commit attempt {cid}",
             metrics={"candidate_id": cid},
+            visible_cells=replay_base_cells,
         )
 
     commit = commit_selected_candidates(plan, candidates_by_id, inp=inp)
@@ -142,12 +154,14 @@ def run_solver_runtime_pipeline(
             OptimizationReplayEventType.ROUTE_COMMITTED,
             title=f"Committed {placement.candidate_id}",
             metrics={"route_reservation_id": placement.reservation.reservation_id},
+            visible_cells=replay_base_cells,
         )
     for cid in commit.skipped_candidate_ids:
         recorder.append(
             OptimizationReplayEventType.ROUTE_ROLLED_BACK,
             title=f"Skipped {cid}",
             metrics={"candidate_id": cid},
+            visible_cells=replay_base_cells,
         )
 
     materialization = materialize_route_network(commit, candidates_by_id)
@@ -156,10 +170,13 @@ def run_solver_runtime_pipeline(
     }
     if materialization.failure_reason is not None:
         mat_metrics["materialization_failure_reason"] = materialization.failure_reason.value
+    mat_overlay = overlay_cell_dicts_from_materialization(materialization)
     recorder.append(
         OptimizationReplayEventType.ROUTE_MATERIALIZED,
         title="Route materialized",
         metrics=mat_metrics,
+        visible_cells=replay_base_cells,
+        overlay_cells=mat_overlay,
     )
 
     validation = validate_final_layout(
@@ -175,6 +192,8 @@ def run_solver_runtime_pipeline(
             "passed": validation.passed,
             "issue_count": len(validation.issues),
         },
+        visible_cells=replay_base_cells,
+        overlay_cells=mat_overlay,
     )
 
     summary = _build_solver_summary(

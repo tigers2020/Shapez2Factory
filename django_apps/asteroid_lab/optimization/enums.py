@@ -126,6 +126,8 @@ class OptimizationReplayEventType(StrEnum):
     ROUTE_ROLLED_BACK = "route.rolled_back"
     ROUTE_MATERIALIZED = "route.materialized"
     VALIDATION_COMPLETED = "validation.completed"
+    VALIDATION_FAILED = "validation.failed"
+    RESULT_LAYOUT = "result.layout"
 
 
 class ReservationState(StrEnum):

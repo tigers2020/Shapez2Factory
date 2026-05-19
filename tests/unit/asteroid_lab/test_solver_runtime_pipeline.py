@@ -9,8 +9,8 @@ from django_apps.asteroid_lab.optimization.loaded_snapshot import LoadedReconstr
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_loaded_snapshot,
 )
-from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
 
@@ -44,9 +44,7 @@ def _pipeline_loaded_snapshot() -> LoadedReconstructionSnapshot:
     """Single rim mineable cell at server (0, 0) with void goals along +x."""
 
     return LoadedReconstructionSnapshot(
-        cells=(
-            _cell(1, 0, cell_kind="shape_miner_extension", server_x=0, server_y=0),
-        ),
+        cells=(_cell(1, 0, cell_kind="shape_miner_extension", server_x=0, server_y=0),),
         server_xy_params=(1, 0),
     )
 
@@ -89,3 +87,9 @@ def test_pipeline_replay_event_sequence_is_deterministic() -> None:
         OptimizationReplayEventType.VALIDATION_COMPLETED,
     }
     assert required.issubset(set(seq1))
+
+    input_frame = next(
+        f for f in r1.replay_frames if f.event_type == OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED
+    )
+    assert len(input_frame.visible_cells) >= 1
+    assert "server_x" in input_frame.visible_cells[0]

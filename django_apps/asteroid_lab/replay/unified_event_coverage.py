@@ -1,4 +1,4 @@
-"""Explicit ReplayEventType adapter coverage (Phase 9 pre-9B lock)."""
+"""Explicit ReplayEventType adapter coverage (Phase 9B / 9C)."""
 
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ SUPPORTED_BY_9B_LAB_ADAPTER: frozenset[ReplayEventType] = frozenset(
     }
 )
 
-# Sequence 9C optimization → unified map_view adapter.
-DEFERRED_TO_9C_OPTIMIZATION_ADAPTER: frozenset[ReplayEventType] = frozenset(
+# 9C optimization → unified map_view adapter.
+SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER: frozenset[ReplayEventType] = frozenset(
     {
         ReplayEventType.OPTIMIZATION_INPUT_LOADED,
         ReplayEventType.CAPACITY_PLAN_CREATED,
@@ -41,11 +41,14 @@ DEFERRED_TO_9C_OPTIMIZATION_ADAPTER: frozenset[ReplayEventType] = frozenset(
     }
 )
 
-# Reserved for post-9B adapters (candidate/routing/ga lab events, etc.).
+# Deprecated alias (pre-9C name); use SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER.
+DEFERRED_TO_9C_OPTIMIZATION_ADAPTER = SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER
+
+# Reserved for post-9B / post-9C adapters (candidate/routing/ga lab events, etc.).
 DEFERRED_POST_9B: frozenset[ReplayEventType] = frozenset()
 
 _LAB_OUTPUT = SUPPORTED_BY_9B_LAB_ADAPTER
-_OPT = DEFERRED_TO_9C_OPTIMIZATION_ADAPTER
+_OPT = SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER
 _POST = DEFERRED_POST_9B
 
 

@@ -402,6 +402,8 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert 'id="lab-replay-run-status"' in tpl
     assert 'id="lab-evolution-runs-list"' in tpl
     assert "lab-detail-first-issue" in tpl
+    assert "lab-detail-placed" in tpl
+    assert "lab-detail-issue-coord" in tpl
     assert "lab-detail-status" in tpl
     assert "lab-optimization-replay-data" not in tpl
     assert "Optimization Replay" not in tpl
@@ -413,6 +415,8 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "function upsertRunSummary" in js
     assert "lab-evolution-runs-list" in js
     assert "lab-detail-first-issue" in js
+    assert "lab-detail-placed" in js
+    assert "lab-detail-issue-coord" in js
     assert "lab-detail-status" in js
     assert "labRunSolverUrl" in js
     assert 'method: "POST"' in js

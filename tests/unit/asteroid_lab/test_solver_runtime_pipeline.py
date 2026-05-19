@@ -63,6 +63,8 @@ def test_pipeline_runs_end_to_end_without_orm() -> None:
     assert result.run_key == "unit"
     assert isinstance(result.solver_summary["validation_passed"], bool)
     assert "confirmed_count" in result.solver_summary
+    assert "issue_details" in result.solver_summary
+    assert isinstance(result.solver_summary["issue_details"], list)
     assert len(result.replay_frames) >= 5
 
 
@@ -95,3 +97,13 @@ def test_pipeline_replay_event_sequence_is_deterministic() -> None:
     )
     assert len(input_frame.visible_cells) >= 1
     assert "server_x" in input_frame.visible_cells[0]
+
+    validation_frame = next(
+        f for f in r1.replay_frames if f.event_type == OptimizationReplayEventType.VALIDATION_COMPLETED
+    )
+    metrics = validation_frame.metrics
+    assert "first_issue_detail" in metrics
+    if metrics.get("first_issue_code"):
+        detail = metrics["first_issue_detail"]
+        assert isinstance(detail, dict)
+        assert detail["issue_code"] == metrics["first_issue_code"]

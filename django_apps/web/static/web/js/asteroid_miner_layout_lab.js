@@ -1370,7 +1370,11 @@
         "lab-detail-score",
         "lab-detail-miners",
         "lab-detail-extension-cap",
-        "lab-detail-connected",
+        "lab-detail-placed",
+        "lab-detail-issue-coord",
+        "lab-detail-issue-candidate",
+        "lab-detail-issue-reservation",
+        "lab-detail-issue-message",
         "lab-detail-cost",
         "lab-detail-belts",
         "lab-detail-pipes",
@@ -1401,7 +1405,7 @@
         ["lab-detail-score", run.score != null ? run.score : dash],
         ["lab-detail-miners", run.miners != null ? run.miners : dash],
         ["lab-detail-extension-cap", ext],
-        ["lab-detail-connected", run.connected != null ? run.connected : dash],
+        ["lab-detail-placed", run.placed != null ? run.placed : dash],
         ["lab-detail-cost", run.cost != null ? run.cost : dash],
         ["lab-detail-belts", run.belts != null ? run.belts : dash],
         ["lab-detail-pipes", run.pipes != null ? run.pipes : dash],
@@ -1413,6 +1417,39 @@
         ],
         ["lab-detail-first-issue", firstIssue],
       ];
+      const detail = run.first_issue_detail;
+      if (detail && typeof detail === "object") {
+        const coord =
+          detail.coord != null && Array.isArray(detail.coord)
+            ? "[" + detail.coord.join(", ") + "]"
+            : dash;
+        map.push(
+          ["lab-detail-issue-coord", coord],
+          [
+            "lab-detail-issue-candidate",
+            detail.candidate_id != null && detail.candidate_id !== ""
+              ? String(detail.candidate_id)
+              : dash,
+          ],
+          [
+            "lab-detail-issue-reservation",
+            detail.route_reservation_id != null && detail.route_reservation_id !== ""
+              ? String(detail.route_reservation_id)
+              : dash,
+          ],
+          [
+            "lab-detail-issue-message",
+            detail.message != null && detail.message !== "" ? String(detail.message) : dash,
+          ],
+        );
+      } else {
+        map.push(
+          ["lab-detail-issue-coord", dash],
+          ["lab-detail-issue-candidate", dash],
+          ["lab-detail-issue-reservation", dash],
+          ["lab-detail-issue-message", dash],
+        );
+      }
       for (const [id, val] of map) {
         const n = document.getElementById(id);
         if (n) n.textContent = String(val);
@@ -1477,8 +1514,8 @@
           (run.miners != null ? run.miners : "—") +
           " miners</div>" +
           "<div>" +
-          (run.connected != null ? run.connected : "—") +
-          " linked</div>" +
+          (run.placed != null ? run.placed : "—") +
+          " placed</div>" +
           "<div>" +
           sat +
           " sat.</div>" +

@@ -21,6 +21,7 @@ def lab_run_summary_from_solver_summary(
     """Build Evolution Runs / Selected Run Detail payload from persisted summary."""
 
     issue_codes = list(solver_summary.get("issue_codes") or [])
+    issue_details = list(solver_summary.get("issue_details") or [])
     validation_passed = bool(solver_summary.get("validation_passed"))
     confirmed = solver_summary.get("confirmed_count", _PLACEHOLDER)
     return {
@@ -29,9 +30,10 @@ def lab_run_summary_from_solver_summary(
         "validation_passed": validation_passed,
         "issue_codes": issue_codes,
         "first_issue_code": issue_codes[0] if issue_codes else None,
+        "first_issue_detail": issue_details[0] if issue_details else None,
         "score": confirmed,
         "miners": confirmed,
-        "connected": confirmed,
+        "placed": confirmed,
         "saturation": _PLACEHOLDER,
         "cost": _PLACEHOLDER,
         "belts": _PLACEHOLDER,

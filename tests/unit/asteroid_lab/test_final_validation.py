@@ -172,6 +172,55 @@ def test_validation_fails_reserved_cells_path_mismatch() -> None:
     assert ValidationIssueCode.RESERVED_PATH_MISMATCH in codes
 
 
+def test_extractor_not_connected_issue_has_detail_fields() -> None:
+    inp = _open_void_inp()
+    candidate = _shape_candidate(candidate_id="a:1", extractor=(0, 0))
+    goal = RouteGoal(
+        coord=(6, 0),
+        goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+        transport_kind=TransportKind.SHAPE_BELT,
+        priority=10,
+        existing_trunk=False,
+    )
+    res = RouteReservation(
+        reservation_id="a:1:route:0",
+        candidate_id="a:1",
+        transport_kind=TransportKind.SHAPE_BELT,
+        path=((1, 0), (2, 0), (6, 0)),
+        reserved_cells=frozenset({(1, 0), (2, 0), (6, 0)}),
+        cost=1,
+        reached_goal=goal,
+        goal_priority=10,
+        reservation_state=ReservationState.CONFIRMED,
+        domain_cell_transitions=(),
+    )
+    commit = IncrementalCommitResult(
+        confirmed=(
+            ConfirmedGenePlacement(
+                candidate_id="a:1",
+                reservation=res,
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+        ),
+        skipped_candidate_ids=(),
+        goal_assigned_platforms={},
+    )
+    result = validate_final_layout(
+        commit,
+        None,
+        inp=inp,
+        candidates_by_id={candidate.candidate_id: candidate},
+    )
+    assert not result.passed
+    issues = [i for i in result.issues if i.issue_code is ValidationIssueCode.EXTRACTOR_NOT_CONNECTED]
+    assert len(issues) == 1
+    issue = issues[0]
+    assert issue.coord == (0, 0)
+    assert issue.candidate_id == "a:1"
+    assert issue.route_reservation_id == "a:1:route:0"
+    assert issue.message == "extractor not on reservation path"
+
+
 def test_validation_fails_candidate_without_confirmed_reservation() -> None:
     inp = _open_void_inp()
     candidate = _shape_candidate(candidate_id="a:1")

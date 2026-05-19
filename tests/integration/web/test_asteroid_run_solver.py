@@ -67,7 +67,10 @@ def test_post_run_solver_json_persists_and_returns_payload() -> None:
     assert isinstance(data.get("solver_summary"), dict)
     assert data["validation_passed"] is True
     assert data["validation_issue_codes"] == []
+    assert data["validation_issue_details"] == []
     assert isinstance(data.get("run_summary"), dict)
+    assert "connected" not in data["run_summary"]
+    assert "placed" in data["run_summary"]
     assert data["run_summary"]["id"] == str(data["solver_run_id"])
     assert data["run_summary"]["status"] == "completed"
     assert "optimization_replay" not in data

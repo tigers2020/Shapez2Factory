@@ -14,7 +14,10 @@ from django_apps.asteroid_lab.optimization.candidate_generator import (
 from django_apps.asteroid_lab.optimization.candidate_selector import select_gene_candidates_greedy
 from django_apps.asteroid_lab.optimization.capacity_planner import plan_capacity
 from django_apps.asteroid_lab.optimization.commit_best_candidates import commit_selected_candidates
-from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
+from django_apps.asteroid_lab.optimization.enums import (
+    OptimizationReplayEventType,
+    ValidationSeverity,
+)
 from django_apps.asteroid_lab.optimization.final_validation import validate_final_layout
 from django_apps.asteroid_lab.optimization.gene_template import GeneTemplate
 from django_apps.asteroid_lab.optimization.gene_template_loader import load_gene_templates_from_json
@@ -45,6 +48,21 @@ def _load_gene_templates(path: Path) -> tuple[GeneTemplate, ...]:
     return load_gene_templates_from_json(path)
 
 
+def _issue_detail(issue: ValidationIssue) -> dict[str, Any]:
+    return {
+        "issue_code": issue.issue_code.value,
+        "coord": list(issue.coord) if issue.coord is not None else None,
+        "candidate_id": issue.candidate_id,
+        "route_reservation_id": issue.route_reservation_id,
+        "transport_kind": issue.transport_kind.value if issue.transport_kind else None,
+        "message": issue.message,
+    }
+
+
+def _error_issues(issues: tuple[ValidationIssue, ...]) -> tuple[ValidationIssue, ...]:
+    return tuple(i for i in issues if i.severity is ValidationSeverity.ERROR)
+
+
 def _build_solver_summary(
     *,
     validation_passed: bool,
@@ -53,6 +71,7 @@ def _build_solver_summary(
     materialization: RouteMaterializationResult,
     issues: tuple[ValidationIssue, ...],
 ) -> dict[str, Any]:
+    error_issues = _error_issues(issues)
     return {
         "validation_passed": validation_passed,
         "confirmed_count": commit_count,
@@ -60,7 +79,8 @@ def _build_solver_summary(
         "materialization_failure_reason": (
             materialization.failure_reason.value if materialization.failure_reason else None
         ),
-        "issue_codes": [i.issue_code.value for i in issues if i.severity.value == "error"],
+        "issue_codes": [i.issue_code.value for i in error_issues],
+        "issue_details": [_issue_detail(i) for i in error_issues],
     }
 
 
@@ -185,9 +205,8 @@ def run_solver_runtime_pipeline(
         inp=inp,
         candidates_by_id=candidates_by_id,
     )
-    error_issue_codes = [
-        i.issue_code.value for i in validation.issues if i.severity.value == "error"
-    ]
+    error_issues = _error_issues(validation.issues)
+    error_issue_codes = [i.issue_code.value for i in error_issues]
     recorder.append(
         OptimizationReplayEventType.VALIDATION_COMPLETED,
         title="Validation completed",
@@ -196,6 +215,7 @@ def run_solver_runtime_pipeline(
             "issue_count": len(validation.issues),
             "first_issue_code": error_issue_codes[0] if error_issue_codes else None,
             "issue_codes": error_issue_codes,
+            "first_issue_detail": _issue_detail(error_issues[0]) if error_issues else None,
         },
         visible_cells=replay_base_cells,
         overlay_cells=mat_overlay,

@@ -170,6 +170,7 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
         "solver_summary": summary,
         "validation_passed": result.validation_passed,
         "validation_issue_codes": list(summary.get("issue_codes") or []),
+        "validation_issue_details": list(summary.get("issue_details") or []),
     }
     if result.solver_run_id is not None:
         ui_status = "completed" if result.validation_passed else "failed"

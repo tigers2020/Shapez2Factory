@@ -157,9 +157,9 @@ test_candidate_id_is_deterministic
 
 ### 작업
 
-- [ ] `candidate_score.py`
-- [ ] capacity-aware greedy selector
-- [ ] `SelectedCandidatePlan`
+- [x] `candidate_score.py`
+- [x] capacity-aware greedy selector (`candidate_selector.py`)
+- [x] `SelectedCandidatePlan`
 
 ### 필수 테스트 (PR4)
 

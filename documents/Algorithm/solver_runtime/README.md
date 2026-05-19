@@ -62,7 +62,7 @@ DB reconstruction map
 | PR2.5 | **완료** | `capacity_planner`·`route_goal_planner` | C | [`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md) |
 | PR2 | **완료** | `candidate_geometry`·`route_probe`·`provisional_blocked_cells` | E, F, G | [`phase_e_*`](phase_e_gene_projection.md) ~ [`phase_g_*`](phase_g_route_probe.md) |
 | PR3 | **완료** | `candidate_dtos`·`candidate_equivalence`·`candidate_generator` | H | [`phase_h_candidate_pool.md`](phase_h_candidate_pool.md) |
-| PR4 | 미착수 | greedy v0; GA 미사용 | I | [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md) |
+| PR4 | **완료** | `candidate_score`·`candidate_selector` | I | [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md) |
 | PR5 | 미착수 | — | J | [`phase_j_incremental_commit.md`](phase_j_incremental_commit.md) |
 | PR6 | 미착수 | — | K | [`phase_k_route_materialization.md`](phase_k_route_materialization.md) |
 | PR7 | 미착수 | replay **재구현 금지**·thin adapter | L, M, 01 | [`phase_l_*`](phase_l_final_validation.md), [`phase_m_*`](phase_m_persist_replay_ui.md) |

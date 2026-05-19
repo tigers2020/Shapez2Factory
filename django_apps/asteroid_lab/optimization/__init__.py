@@ -28,6 +28,14 @@ from django_apps.asteroid_lab.optimization.candidate_geometry import (
     GeometryValidationResult,
     validate_projected_gene_geometry,
 )
+from django_apps.asteroid_lab.optimization.candidate_score import (
+    CandidateScoreBreakdown,
+    score_gene_candidate,
+)
+from django_apps.asteroid_lab.optimization.candidate_selector import (
+    SelectedCandidatePlan,
+    select_gene_candidates_greedy,
+)
 from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan, plan_capacity
 from django_apps.asteroid_lab.optimization.coord_transform import (
     rotate_direction,
@@ -123,6 +131,7 @@ __all__ = [
     "CandidateGenerationConfig",
     "CandidateGenerationResult",
     "CandidateRejectReason",
+    "CandidateScoreBreakdown",
     "CommitConflictReason",
     "Coord",
     "Direction",
@@ -143,6 +152,7 @@ __all__ = [
     "PlacementCommitState",
     "RecoveryBudget",
     "RejectedGeneCandidate",
+    "SelectedCandidatePlan",
     "ReservationState",
     "RouteCellDomain",
     "RouteClass",
@@ -191,6 +201,8 @@ __all__ = [
     "project_gene_placement",
     "ProjectedGenePlacement",
     "run_route_probe",
+    "score_gene_candidate",
+    "select_gene_candidates_greedy",
     "validate_projected_gene_geometry",
     "rotate_direction",
     "rotate_offset",

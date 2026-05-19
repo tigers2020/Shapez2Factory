@@ -77,9 +77,9 @@ load_ratio = assigned_platform_count / capacity_by_transport_kind
 
 ## 완료 조건
 
-- [ ] 동일 pool·plan에서 선택 순서 deterministic
-- [ ] 고 throughput·저 route cost 후보가 우선
-- [ ] saturated goal에 penalty 반영
+- [x] 동일 pool·plan에서 선택 순서 deterministic
+- [x] 고 throughput·저 route cost 후보가 우선
+- [x] saturated goal에 penalty 반영
 
 ## 필수 테스트
 
@@ -91,7 +91,8 @@ test_candidate_selector_is_deterministic
 
 ## 관련 코드·문서
 
-- 예정: `candidate_score.py`, capacity-aware greedy selector
+- 구현: `candidate_score.py`, `candidate_selector.py` (`select_gene_candidates_greedy`)
+- 테스트: `tests/unit/asteroid_lab/test_candidate_selector.py`
 - 레거시 GA: [`asteroid_lab_06_evolutionary_search.md`](../asteroid_lab_06_evolutionary_search.md)
 
 ## 다음 Phase

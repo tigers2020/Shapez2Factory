@@ -68,9 +68,11 @@ class ValidationIssueCode(StrEnum):
     """Phase 8 issue codes (extend as validation grows)."""
 
     CANDIDATE_POOL_MISSING = "candidate_pool_missing"
+    CANDIDATE_RESERVATION_MISMATCH = "candidate_reservation_mismatch"
     EXTRACTOR_NOT_CONNECTED = "extractor_not_connected"
     ORPHAN_TRANSPORT = "orphan_transport"
     INVALID_COORD_CONTRACT = "invalid_coord_contract"
+    MATERIALIZATION_FAILED = "materialization_failed"
     RESERVED_PATH_MISMATCH = "reserved_path_mismatch"
 
 
@@ -106,11 +108,15 @@ class OptimizationReplayEventType(StrEnum):
     """Phase 9 replay frame event_type (value = wire string)."""
 
     OPTIMIZATION_INPUT_LOADED = "optimization.input_loaded"
+    CAPACITY_PLAN_CREATED = "capacity.plan_created"
+    ROUTE_GOAL_GENERATED = "route_goal.generated"
     PATTERN_GENERATED = "pattern.generated"
     CANDIDATE_GENERATED = "candidate.generated"
     CANDIDATE_REJECTED = "candidate.rejected"
     ROUTE_PROBE_SUCCEEDED = "route_probe.succeeded"
     ROUTE_PROBE_FAILED = "route_probe.failed"
+    CANDIDATE_POOL_COMPLETED = "candidate_pool.completed"
+    CANDIDATE_SELECTION_COMPLETED = "candidate_selection.completed"
     GENOME_GENERATED = "genome.generated"
     GENOME_EVALUATED = "genome.evaluated"
     GENERATION_COMPLETED = "generation.completed"
@@ -118,6 +124,7 @@ class OptimizationReplayEventType(StrEnum):
     ROUTE_COMMIT_ATTEMPTED = "route.commit_attempted"
     ROUTE_COMMITTED = "route.committed"
     ROUTE_ROLLED_BACK = "route.rolled_back"
+    ROUTE_MATERIALIZED = "route.materialized"
     VALIDATION_COMPLETED = "validation.completed"
 
 

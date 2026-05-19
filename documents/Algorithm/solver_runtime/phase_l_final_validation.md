@@ -62,9 +62,9 @@ topology 수정
 
 ## 완료 조건
 
-- [ ] `passed=False` 시 `issues`에 구조화된 코드만
-- [ ] validation이 layout/route/topology를 변경하지 않음
-- [ ] confirmed ↔ 단일 CONFIRMED reservation 일치
+- [x] `passed=False` 시 `issues`에 구조화된 코드만
+- [x] validation이 layout/route/topology를 변경하지 않음
+- [x] confirmed ↔ 단일 CONFIRMED reservation 일치
 
 ## 필수 테스트
 

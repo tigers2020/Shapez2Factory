@@ -107,9 +107,11 @@ Materialization: [OD-1](open_decisions.md) — reservation path **앞에** `fixe
 | candidate pool (`GeneCandidate`, dedupe, truncate) | 있음 | **PR3 완료** | |
 | candidate selection (score, greedy, `SelectedCandidatePlan`) | 있음 | **PR4 완료** | |
 | incremental commit (`commit_selected_candidates`, reservation overlay) | 있음 | **PR5 완료** | |
-| route network materialization (`materialize_route_network`) | 있음 | **PR6 완료** | PR7 orchestration·validation |
-| Solver A→M orchestration | 없음 | PR7 미착수 | |
-| Lab optimization replay persist/read (12F–12L) | Lab/web 측 **별도** | PR7 **재사용** | 아래 §6 |
+| route network materialization (`materialize_route_network`) | 있음 | **PR6 완료** | |
+| `validate_final_layout` (read-only) | 있음 | **PR7 완료** | |
+| Solver A→M orchestration (`run_solver_runtime_pipeline`) | 있음 | **PR7 완료** | HTTP·page context 읽기 후속 |
+| optimization replay persist v0 (`optimization_replay_persist`·`optimization_ui_payload`) | 있음 | **PR7 완료** | Lab `ReplayFrame` ORM 미사용; §6 |
+| Lab optimization replay HUD read (12G–12H) | web 측 **별도** | 후속 | page context |
 
 ---
 

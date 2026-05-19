@@ -65,7 +65,7 @@ DB reconstruction map
 | PR4 | **완료** | `candidate_score`·`candidate_selector` | I | [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md) |
 | PR5 | **완료** | `commit_best_candidates`·reservation overlay | J | [`phase_j_incremental_commit.md`](phase_j_incremental_commit.md) |
 | PR6 | **완료** | `route_network_materializer`·`materialization_dtos` | K | [`phase_k_route_materialization.md`](phase_k_route_materialization.md) |
-| PR7 | 미착수 | replay **재구현 금지**·thin adapter | L, M, 01 | [`phase_l_*`](phase_l_final_validation.md), [`phase_m_*`](phase_m_persist_replay_ui.md) |
+| PR7 | **완료** (HTTP·page context 읽기 후속) | `final_validation`·`solver_runtime_pipeline`·replay persist v0 | L, M, 01 | [`phase_l_*`](phase_l_final_validation.md), [`phase_m_*`](phase_m_persist_replay_ui.md) |
 
 **PR2.5 선행:** Phase C이지만 **PR2 `route_probe`가 `RouteGoal` 집합을 필요**로 하므로, 구현 순서는 **PR1B 직후 PR2.5 → PR2** ([`implementation_sequence.md`](implementation_sequence.md)). 런타임 **실행** 순서는 여전히 B 다음 C.
 
@@ -120,5 +120,5 @@ django_apps/shapez_asteroid/             ← 제거됨; 문서·import 금지
 - **있음:** `input_contracts.py`, `enums.py`, `loaded_snapshot.py`, `reconstruction_adapter.py`, `route_domain.py`, PR1 gene 모듈, PR2.5 `capacity_planner`·`route_goal_planner`, PR2 `candidate_geometry`·`route_probe`
 - **있음:** PR3 `candidate_dtos.py`·`candidate_equivalence.py`·`candidate_generator.py`
 - **있음:** PR5 `commit_best_candidates.py`, PR6 `route_network_materializer.py`·`materialization_dtos.py`
-- **예정:** A→M orchestration (PR7)
-- Lab replay persist/read: `asteroid_lab` + web — PR7에서 **재사용** ([`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md))
+- **있음:** PR7 `final_validation.py`·`solver_runtime_pipeline.py`·`optimization_replay_persist.py`·`optimization_ui_payload.py`
+- **후속:** HTTP `Run Solver` 진입·`asteroid_lab_page_context` optimization 트랙 읽기 ([`01_entry_point.md`](01_entry_point.md))

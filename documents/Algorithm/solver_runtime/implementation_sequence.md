@@ -228,11 +228,28 @@ test_route_materializer_selects_y_or_triple_merger
 
 ### 작업
 
-- [ ] validation extension (read-only)
-- [ ] `solver_summary`
-- [ ] 기존 optimization replay writer/reader에 Runtime 이벤트 **연결** (재구현 아님)
-- [ ] UI payload attach (기존 Lab JS·`SolverRun.config_json` 경로)
-- [ ] A→M orchestration wiring
+- [x] validation extension (read-only) — `final_validation.py`
+- [x] `solver_summary` — `SolverRun.config_json["solver_summary"]`
+- [x] Runtime replay thin adapter — `runtime_replay_recorder.py` + `optimization_replay_persist.py` + `optimization_ui_payload.py` (12F v0, `asteroid_lab` 정본)
+- [ ] UI payload attach (`asteroid_lab_page_context` 읽기) — **후속** (HTTP 진입점과 동일 PR 범위 밖)
+- [x] A→M orchestration — `solver_runtime_pipeline.run_solver_runtime_pipeline`
+
+### 모듈
+
+```text
+django_apps/asteroid_lab/optimization/final_validation.py
+django_apps/asteroid_lab/optimization/pipeline_result.py
+django_apps/asteroid_lab/optimization/replay_frame.py
+django_apps/asteroid_lab/services/solver_runtime_pipeline.py
+django_apps/asteroid_lab/services/runtime_replay_recorder.py
+django_apps/asteroid_lab/services/optimization_ui_payload.py
+django_apps/asteroid_lab/services/optimization_replay_persist.py
+tests/unit/asteroid_lab/test_final_validation.py
+tests/unit/asteroid_lab/test_optimization_ui_payload.py
+tests/unit/asteroid_lab/test_optimization_replay_persist.py
+tests/unit/asteroid_lab/test_solver_runtime_pipeline.py
+tests/integration/asteroid_lab/test_solver_button_pipeline.py
+```
 
 ### 필수 테스트 (PR7)
 

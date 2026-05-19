@@ -71,6 +71,7 @@ from django_apps.asteroid_lab.optimization.enums import (
     ValidationIssueCode,
     ValidationSeverity,
 )
+from django_apps.asteroid_lab.optimization.final_validation import validate_final_layout
 from django_apps.asteroid_lab.optimization.gene_projection import (
     ProjectedGenePlacement,
     project_gene_placement,
@@ -113,6 +114,12 @@ from django_apps.asteroid_lab.optimization.materialization_dtos import (
     MaterializedLayoutCells,
     MaterializedTransportCell,
     RouteMaterializationResult,
+)
+from django_apps.asteroid_lab.optimization.pipeline_result import SolverRuntimeResult
+from django_apps.asteroid_lab.optimization.replay_frame import (
+    MAX_REPLAY_CELLS_PER_FRAME,
+    MAX_REPLAY_FRAMES,
+    OptimizationReplayFrame,
 )
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     build_topology_graph,
@@ -169,11 +176,15 @@ __all__ = [
     "MaterializedTransportCell",
     "GenomeDiversityMetrics",
     "OptimizationInput",
+    "MAX_REPLAY_CELLS_PER_FRAME",
+    "MAX_REPLAY_FRAMES",
     "OptimizationReplayEventType",
+    "OptimizationReplayFrame",
     "PlacementCommitState",
     "RecoveryBudget",
     "RejectedGeneCandidate",
     "SelectedCandidatePlan",
+    "SolverRuntimeResult",
     "ReservationState",
     "RouteCellDomain",
     "RouteClass",
@@ -229,6 +240,7 @@ __all__ = [
     "pick_tile_type",
     "score_gene_candidate",
     "select_gene_candidates_greedy",
+    "validate_final_layout",
     "validate_projected_gene_geometry",
     "rotate_direction",
     "rotate_offset",

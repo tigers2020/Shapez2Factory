@@ -320,10 +320,11 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 
 ### Sequence 12H — Truncation / diagnostic metadata HUD
 
-**구현 상태 (v0, 2026-05-17): 완료**
+**구현 상태 (PR8 unified, 2026-05-19): 부분**
 
-- **템플릿 SSR:** `asteroid_miner_layout_solver.html` — `lab-optimization-replay-status` / `lab-optimization-replay-truncation` / `lab-optimization-replay-diagnostic` / `lab-optimization-replay-attach`(12J, 기본 `Attach: —`; 표시 전용; Lab 리플레이 인덱스·프레임 순서 비변경).
-- **클라이언트:** `renderOptimizationReplayHud(track)` — `normalizeOptimizationReplayTrack`가 `truncation_reason`·`optimization_replay_diagnostic_reason`을 metrics에 전달; `replaceOptimizationReplayPayload` 경로에서 HUD 재렌더.
+- **통합 타임라인:** 제품 replay는 `lab_replay_frames_json` 단일 트랙. dual-track `lab-optimization-replay-data` / `replaceOptimizationReplayPayload` / `renderOptimizationReplayHud` **미사용**.
+- **템플릿 SSR:** `lab-replay-truncation-hud`(절단·`diagnostic_reason`·`optimization_replay_diagnostic_reason`), `lab-optimization-replay-attach`(12J, POST attach 전용).
+- **클라이언트:** `updateReplayTruncationHud` · `renderOptimizationReplayAttachHud` · `replaceLabReplayPayload`가 metrics/attach를 갱신.
 - **금지(유지):** Lab ↔ optimization 암묵적 프레임 동기화, 메타데이터 상호작용(재시도·수리), 솔버·리플레이 의미 변경 없음.
 
 ### Sequence 12I — Optimization replay HUD vocabulary hardening (초안)

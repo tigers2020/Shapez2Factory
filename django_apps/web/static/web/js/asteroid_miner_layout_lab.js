@@ -298,21 +298,22 @@
     return 0;
   }
 
-  /** World x to dense column index (no x===0); mirrors server_coords.raw_x_to_dense_x. */
+  /** World x to dense column index; mirrors server_coords.raw_x_to_dense_index. */
   function rawXToDenseX(x) {
     const xi = Number(x);
-    if (!Number.isFinite(xi) || xi === 0) return null;
+    if (!Number.isFinite(xi)) return null;
     if (xi < 0) return Math.floor((xi + 1) / 2);
-    return Math.floor((xi - 1) / 2) + 1;
+    if (xi > 0) return Math.floor((xi - 1) / 2) + 1;
+    return 0;
   }
 
-  /** World x to dense visual column; x === 0 is invalid (null). Legacy Lab anchor. */
+  /** World x to dense visual column for replay grid layout (Lab anchor). */
   function visualCol(x) {
     const xi = Number(x);
     if (!Number.isFinite(xi)) return null;
-    if (xi === 0) return null;
     if (xi < 0) return xi;
-    return xi - 1;
+    if (xi > 0) return xi - 1;
+    return 0;
   }
 
   function cellIndexDemo(x, y) {
@@ -388,10 +389,31 @@
     return out;
   }
 
+  function cellDeltaCellsFromUnifiedMapView(mapView) {
+    if (!mapView || typeof mapView !== "object") return [];
+    const delta = mapView.cell_delta;
+    if (!Array.isArray(delta) || !delta.length) return [];
+    const out = [];
+    for (let i = 0; i < delta.length; i++) {
+      const c = delta[i];
+      if (!c || typeof c !== "object") continue;
+      out.push({
+        x: c.x,
+        y: c.y,
+        cell_kind: c.kind != null ? c.kind : c.cell_kind,
+        transport_kind: c.transport != null ? c.transport : c.transport_kind,
+        rotation: c.rotation,
+      });
+    }
+    return out;
+  }
+
   function fullMapCellsFromFrame(frame) {
     if (!frame || typeof frame !== "object") return [];
     const unified = labCellsFromUnifiedMapView(frame.map_view);
     if (unified.length) return unified;
+    const fromDelta = cellDeltaCellsFromUnifiedMapView(frame.map_view);
+    if (fromDelta.length) return fromDelta;
     if (Array.isArray(frame.full_map) && frame.full_map.length) return frame.full_map;
     const p = frame.frame_payload;
     if (p && typeof p === "object") {
@@ -807,6 +829,10 @@
       if (ovCells.length) {
         renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
       }
+      const deltaCells = cellDeltaCellsFromUnifiedMapView(frame.map_view);
+      if (deltaCells.length) {
+        renderFullMapCells(baseClasses, domCells, deltaCells, resolveCellIndex);
+      }
       renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
       applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
       return;
@@ -849,23 +875,53 @@
     const dash = "—";
     const fm = frame && frame.metrics && typeof frame.metrics === "object" ? frame.metrics : {};
     const tm = trackMetrics && typeof trackMetrics === "object" ? trackMetrics : {};
+    const parts = [];
+    const diag =
+      typeof tm.diagnostic_reason === "string" && tm.diagnostic_reason
+        ? tm.diagnostic_reason
+        : typeof tm.optimization_replay_diagnostic_reason === "string" &&
+            tm.optimization_replay_diagnostic_reason
+          ? tm.optimization_replay_diagnostic_reason
+          : null;
+    if (diag) {
+      parts.push("diagnostic: " + diag);
+    }
     const truncated = fm.replay_truncated === true || tm.replay_truncated === true;
-    if (!truncated) {
-      hud.textContent = dash;
-      return;
+    if (truncated) {
+      const reason =
+        typeof fm.truncation_reason === "string" && fm.truncation_reason
+          ? fm.truncation_reason
+          : typeof tm.truncation_reason === "string" && tm.truncation_reason
+            ? tm.truncation_reason
+            : "unknown";
+      let text = "truncated: " + reason;
+      const dropped = fm.dropped_frame_count != null ? fm.dropped_frame_count : tm.dropped_frame_count;
+      if (dropped != null && Number.isFinite(Number(dropped))) {
+        text += " · dropped " + String(dropped);
+      }
+      parts.push(text);
     }
-    const reason =
-      typeof fm.truncation_reason === "string" && fm.truncation_reason
-        ? fm.truncation_reason
-        : typeof tm.truncation_reason === "string" && tm.truncation_reason
-          ? tm.truncation_reason
-          : "unknown";
-    let text = "truncated: " + reason;
-    const dropped = fm.dropped_frame_count != null ? fm.dropped_frame_count : tm.dropped_frame_count;
-    if (dropped != null && Number.isFinite(Number(dropped))) {
-      text += " · dropped " + String(dropped);
+    hud.textContent = parts.length ? parts.join(" · ") : dash;
+  }
+
+  let optimizationReplayAttachHudRaw = null;
+
+  function formatOptimizationReplayAttachHud(raw) {
+    if (!raw || typeof raw !== "object") return "Attach: —";
+    const attached = raw.attached === true;
+    const reason = typeof raw.reason === "string" ? raw.reason : "—";
+    if (attached) {
+      return "Attach: attached";
     }
-    hud.textContent = text;
+    const diag = typeof raw.diagnostic === "string" && raw.diagnostic ? " (" + raw.diagnostic + ")" : "";
+    return "Attach: skipped (" + reason + ")" + diag;
+  }
+
+  function renderOptimizationReplayAttachHud(raw) {
+    optimizationReplayAttachHudRaw = raw && typeof raw === "object" ? raw : null;
+    const el = document.getElementById("lab-optimization-replay-attach");
+    if (!el) return;
+    el.textContent = formatOptimizationReplayAttachHud(optimizationReplayAttachHudRaw);
   }
 
   function init() {
@@ -2087,6 +2143,9 @@
             if (data.run_summary) {
               upsertRunSummary(data.run_summary);
             }
+            if (data.optimization_replay_attach) {
+              renderOptimizationReplayAttachHud(data.optimization_replay_attach);
+            }
             if (Array.isArray(data.lab_replay_frames_json)) {
               replaceLabReplayPayload(data);
             }
@@ -2099,6 +2158,9 @@
           renderReplayRunStatus(replayRunFeedback);
           if (data.run_summary) {
             upsertRunSummary(data.run_summary);
+          }
+          if (data.optimization_replay_attach) {
+            renderOptimizationReplayAttachHud(data.optimization_replay_attach);
           }
           replaceLabReplayPayload(data);
         })

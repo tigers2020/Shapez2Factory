@@ -8,14 +8,13 @@ import pytest
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
-from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType
 from django_apps.asteroid_lab.services.experiment_service import create_solver_run
-from django_apps.asteroid_lab.services.optimization_ui_payload import (
-    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
-)
 from django_apps.asteroid_lab.services.optimization_replay_persist import (
     persist_optimization_replay_frames_to_solver_run,
+)
+from django_apps.asteroid_lab.services.optimization_ui_payload import (
+    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 from django_apps.web.services import asteroid_lab_page_context as alc
@@ -266,6 +265,7 @@ def test_lab_page_context_composed_timeline_includes_optimization_frames() -> No
         run_dto.id,
         result.replay_frames,
         solver_summary=result.solver_summary,
+        server_xy_params=loaded.server_xy_params,
     )
 
     ctx = alc.lab_page_context(project_id=proj.pk)
@@ -406,11 +406,13 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-detail-issue-coord" in tpl
     assert "lab-detail-status" in tpl
     assert "lab-optimization-replay-data" not in tpl
+    assert 'id="lab-optimization-replay-attach"' in tpl
     assert "Optimization Replay" not in tpl
     assert "data-lab-run-solver-url" in tpl
     assert "function renderReplayRunStatus" in js
     assert "lab-replay-track-metrics-data" in js
     assert "function replaceOptimizationReplayPayload" not in js
+    assert "renderOptimizationReplayAttachHud" in js
     assert "function renderEvolutionRunsList" in js
     assert "function upsertRunSummary" in js
     assert "lab-evolution-runs-list" in js

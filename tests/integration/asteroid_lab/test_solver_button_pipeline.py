@@ -91,12 +91,13 @@ def test_solver_button_pipeline_persists_result() -> None:
         gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
         run_key="pr7-persist",
     )
-    ok = persist_optimization_replay_frames_to_solver_run(
+    attach = persist_optimization_replay_frames_to_solver_run(
         run_dto.id,
         result.replay_frames,
         solver_summary=result.solver_summary,
+        server_xy_params=loaded.server_xy_params,
     )
-    assert ok is True
+    assert attach.attached is True
 
     run = m.SolverRun.objects.get(pk=run_dto.id)
     assert run.config_json.get("seed_flag") is True
@@ -170,6 +171,7 @@ def test_solver_button_pipeline_no_implicit_lab_optimization_sync() -> None:
         run_dto.id,
         result.replay_frames,
         solver_summary=result.solver_summary,
+        server_xy_params=loaded.server_xy_params,
     )
 
     assert m.ReplayFrame.objects.filter(replay_track__project=proj).count() == lab_frame_count

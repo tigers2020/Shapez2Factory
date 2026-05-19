@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from django.db.models import Count, Prefetch
 
-from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.models import AsteroidMapInput, ReplayFrame, ReplayTrack, SolverRun
 from django_apps.asteroid_lab.optimization.replay_frame import OptimizationReplayFrame
 from django_apps.asteroid_lab.replay import replay_limits
 from django_apps.asteroid_lab.replay.lab_unified_adapter import (
@@ -27,6 +27,7 @@ from django_apps.asteroid_lab.services.optimization_replay_read import (
 )
 from django_apps.asteroid_lab.services.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY,
+    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
     deserialize_optimization_replay_frames_from_json,
 )
 from django_apps.asteroid_lab.snapshots.server_coords import map_bbox_dense_and_y
@@ -75,6 +76,52 @@ def _frame_row_from_model(frame: ReplayFrame) -> ReplayFrameRowDTO:
     )
 
 
+def _server_xy_params_from_map_input(inp: AsteroidMapInput) -> tuple[int, int] | None:
+    """Blueprint ``BP.Entries`` bbox (same source as reconstruction)."""
+
+    decoded = dict(inp.decoded_json or {})
+    bp = decoded.get("BP")
+    if not isinstance(bp, dict):
+        return None
+    entries = bp.get("Entries")
+    if not isinstance(entries, list):
+        return None
+    rows: list[dict[str, int]] = []
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        x, y = item.get("X"), item.get("Y")
+        if isinstance(x, int) and isinstance(y, int):
+            rows.append({"X": x, "Y": y})
+    return map_bbox_dense_and_y(rows)
+
+
+def _server_xy_params_from_latest_solver_run(project_id: int) -> tuple[int, int] | None:
+    run = (
+        SolverRun.objects.filter(project_id=int(project_id))
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    if run is None:
+        return None
+    config = dict(run.config_json or {})
+    raw = config.get(SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY)
+    if not isinstance(raw, (list, tuple)) or len(raw) != 2:
+        return None
+    try:
+        return (int(raw[0]), int(raw[1]))
+    except (TypeError, ValueError):
+        return None
+
+
+def _server_xy_params_from_lab_replay_track(project_id: int) -> tuple[int, int] | None:
+    track = get_latest_lab_replay_track_for_project(int(project_id))
+    if track is None:
+        return None
+    ordered = list(track.frames.all())
+    return map_bbox_dense_and_y(_blueprint_rows_from_lab_maps(ordered))
+
+
 def _blueprint_rows_from_lab_maps(frames: list[ReplayFrame]) -> list[dict[str, int]]:
     rows: list[dict[str, int]] = []
     for frame in frames:
@@ -96,13 +143,19 @@ def _blueprint_rows_from_lab_maps(frames: list[ReplayFrame]) -> list[dict[str, i
 def resolve_replay_projection_context_for_project(
     project_id: int,
 ) -> ReplayProjectionContext | None:
-    """Derive adapter projection params from latest Lab replay cells (read-only)."""
+    """Derive adapter projection params (reconstruction-aligned; read-only)."""
 
-    track = get_latest_lab_replay_track_for_project(int(project_id))
-    if track is None:
-        return None
-    ordered = list(track.frames.all())
-    params = map_bbox_dense_and_y(_blueprint_rows_from_lab_maps(ordered))
+    params = _server_xy_params_from_latest_solver_run(int(project_id))
+    if params is None:
+        inp = (
+            AsteroidMapInput.objects.filter(project_id=int(project_id))
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if inp is not None:
+            params = _server_xy_params_from_map_input(inp)
+    if params is None:
+        params = _server_xy_params_from_lab_replay_track(int(project_id))
     if params is None:
         return None
     return ReplayProjectionContext(server_xy_params=params)
@@ -221,13 +274,43 @@ def build_lab_replay_frames_for_project(
     diagnostic: str | None = None
     if projection is None and opt_unified == () and lab_unified:
         diagnostic = "missing_server_xy_params_for_optimization_projection"
+    opt_track = optimization_replay_payload_for_project(int(project_id))
+    opt_metrics = opt_track.get("metrics")
+    opt_diagnostic: str | None = None
+    if isinstance(opt_metrics, dict):
+        raw_diag = opt_metrics.get(OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY)
+        if isinstance(raw_diag, str) and raw_diag.strip():
+            opt_diagnostic = raw_diag.strip()
     metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
+    if opt_diagnostic is not None:
+        metrics["optimization_replay_diagnostic_reason"] = opt_diagnostic
     return serialized, metrics
+
+
+def optimization_replay_read_meta_for_project(project_id: int) -> dict[str, Any]:
+    """Read-only optimization replay meta for POST / HUD (never solver input)."""
+
+    track = optimization_replay_payload_for_project(int(project_id))
+    metrics = track.get("metrics")
+    diagnostic: str | None = None
+    frame_count = 0
+    if isinstance(metrics, dict):
+        raw_diag = metrics.get(OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY)
+        if isinstance(raw_diag, str) and raw_diag.strip():
+            diagnostic = raw_diag.strip()
+        raw_fc = metrics.get("frame_count")
+        if isinstance(raw_fc, int):
+            frame_count = raw_fc
+    return {
+        "diagnostic_reason": diagnostic,
+        "frame_count": frame_count,
+    }
 
 
 __all__ = [
     "REPLAY_DIAGNOSTIC_REASON_KEY",
     "build_lab_replay_frames_for_project",
     "get_latest_lab_replay_track_for_project",
+    "optimization_replay_read_meta_for_project",
     "resolve_replay_projection_context_for_project",
 ]

@@ -99,7 +99,9 @@ def test_pipeline_replay_event_sequence_is_deterministic() -> None:
     assert "server_x" in input_frame.visible_cells[0]
 
     validation_frame = next(
-        f for f in r1.replay_frames if f.event_type == OptimizationReplayEventType.VALIDATION_COMPLETED
+        f
+        for f in r1.replay_frames
+        if f.event_type == OptimizationReplayEventType.VALIDATION_COMPLETED
     )
     metrics = validation_frame.metrics
     assert "first_issue_detail" in metrics
@@ -110,10 +112,19 @@ def test_pipeline_replay_event_sequence_is_deterministic() -> None:
 
 
 def test_route_committed_metrics_include_path_diagnostics() -> None:
-    from django_apps.asteroid_lab.optimization.candidate_selector import SelectedCandidatePlan
-    from django_apps.asteroid_lab.optimization.commit_best_candidates import commit_selected_candidates
-    from django_apps.asteroid_lab.services.solver_runtime_pipeline import _route_committed_metrics
-    from tests.unit.asteroid_lab.test_incremental_commit import _open_void_inp, _shape_candidate
+    from django_apps.asteroid_lab.optimization.candidate_selector import (
+        SelectedCandidatePlan,
+    )
+    from django_apps.asteroid_lab.optimization.commit_best_candidates import (
+        commit_selected_candidates,
+    )
+    from django_apps.asteroid_lab.services.solver_runtime_pipeline import (
+        _route_committed_metrics,
+    )
+    from tests.unit.asteroid_lab.test_incremental_commit import (
+        _open_void_inp,
+        _shape_candidate,
+    )
 
     inp = _open_void_inp()
     candidate = _shape_candidate(candidate_id="a:1")

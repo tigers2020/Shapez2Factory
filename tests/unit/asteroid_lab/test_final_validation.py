@@ -256,7 +256,9 @@ def test_extractor_not_connected_output_stub_not_on_path() -> None:
         candidates_by_id={candidate.candidate_id: candidate},
     )
     assert not result.passed
-    issues = [i for i in result.issues if i.issue_code is ValidationIssueCode.EXTRACTOR_NOT_CONNECTED]
+    issues = [
+        i for i in result.issues if i.issue_code is ValidationIssueCode.EXTRACTOR_NOT_CONNECTED
+    ]
     assert len(issues) == 1
     issue = issues[0]
     assert issue.message == "output stub not on reservation path"

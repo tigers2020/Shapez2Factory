@@ -14,9 +14,11 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     loaded_reconstruction_snapshot_from_result,
 )
+from django_apps.asteroid_lab.optimization.replay_attach import OptimizationReplayAttachReason
 from django_apps.asteroid_lab.services.experiment_service import create_solver_run
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
+    optimization_replay_read_meta_for_project,
 )
 from django_apps.asteroid_lab.services.optimization_replay_persist import (
     persist_optimization_replay_frames_to_solver_run,
@@ -48,6 +50,8 @@ class SolverRuntimeEntryResult:
     replay_track_metrics: dict[str, Any]
     solver_summary: dict[str, Any]
     validation_passed: bool
+    optimization_replay_attach: dict[str, Any]
+    optimization_replay_read: dict[str, Any]
     error_code: SolverRuntimeEntryErrorCode | None = None
 
 
@@ -68,6 +72,12 @@ def run_solver_runtime_for_project(
 ) -> SolverRuntimeEntryResult:
     """Execute Phase A→M for the latest map input and persist optimization replay output."""
 
+    empty_attach = {
+        "attached": False,
+        "reason": OptimizationReplayAttachReason.EMPTY_FRAMES.value,
+    }
+    empty_read = optimization_replay_read_meta_for_project(int(project_id))
+
     if not m.AsteroidProject.objects.filter(pk=int(project_id)).exists():
         frames, metrics = _empty_replay_for_project(int(project_id))
         return SolverRuntimeEntryResult(
@@ -77,6 +87,8 @@ def run_solver_runtime_for_project(
             replay_track_metrics=metrics,
             solver_summary={},
             validation_passed=False,
+            optimization_replay_attach=empty_attach,
+            optimization_replay_read=empty_read,
             error_code=SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND,
         )
 
@@ -94,6 +106,8 @@ def run_solver_runtime_for_project(
             replay_track_metrics=metrics,
             solver_summary={},
             validation_passed=False,
+            optimization_replay_attach=empty_attach,
+            optimization_replay_read=empty_read,
             error_code=SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
         )
 
@@ -120,14 +134,16 @@ def run_solver_runtime_for_project(
             gene_template_path=template_path,
             run_key=rk,
         )
-        persisted = persist_optimization_replay_frames_to_solver_run(
+        attach = persist_optimization_replay_frames_to_solver_run(
             run_id,
             result.replay_frames,
             solver_summary=result.solver_summary,
+            server_xy_params=loaded.server_xy_params,
         )
-        if not persisted:
+        if not attach.attached:
             m.SolverRun.objects.filter(pk=run_id).update(status=m.SolverRun.RunStatus.FAILED)
             frames, metrics = _empty_replay_for_project(int(project_id))
+            read_meta = optimization_replay_read_meta_for_project(int(project_id))
             return SolverRuntimeEntryResult(
                 ok=False,
                 solver_run_id=run_id,
@@ -135,6 +151,8 @@ def run_solver_runtime_for_project(
                 replay_track_metrics=metrics,
                 solver_summary={},
                 validation_passed=False,
+                optimization_replay_attach=attach.to_json_dict(),
+                optimization_replay_read=read_meta,
                 error_code=SolverRuntimeEntryErrorCode.PERSIST_REJECTED,
             )
 
@@ -145,6 +163,7 @@ def run_solver_runtime_for_project(
         m.SolverRun.objects.filter(pk=run_id).update(status=status)
 
         frames, metrics = build_lab_replay_frames_for_project(int(project_id))
+        read_meta = optimization_replay_read_meta_for_project(int(project_id))
         return SolverRuntimeEntryResult(
             ok=True,
             solver_run_id=run_id,
@@ -152,6 +171,8 @@ def run_solver_runtime_for_project(
             replay_track_metrics=metrics,
             solver_summary=dict(result.solver_summary),
             validation_passed=validation_passed,
+            optimization_replay_attach=attach.to_json_dict(),
+            optimization_replay_read=read_meta,
         )
     except Exception:
         m.SolverRun.objects.filter(pk=run_id).update(status=m.SolverRun.RunStatus.FAILED)
@@ -171,6 +192,8 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
         "validation_passed": result.validation_passed,
         "validation_issue_codes": list(summary.get("issue_codes") or []),
         "validation_issue_details": list(summary.get("issue_details") or []),
+        "optimization_replay_attach": dict(result.optimization_replay_attach),
+        "optimization_replay_read": dict(result.optimization_replay_read),
     }
     if result.solver_run_id is not None:
         ui_status = "completed" if result.validation_passed else "failed"

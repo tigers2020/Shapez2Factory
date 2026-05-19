@@ -151,10 +151,7 @@ def validate_final_layout(
                         issue_extra=_extractor_not_connected_extra(candidate, res),
                     )
                 )
-            elif (
-                not res.path
-                and candidate.fixed_output_transport != res.reached_goal.coord
-            ):
+            elif not res.path and candidate.fixed_output_transport != res.reached_goal.coord:
                 issues.append(
                     _issue(
                         issue_code=ValidationIssueCode.EXTRACTOR_NOT_CONNECTED,

@@ -47,13 +47,13 @@ def lab_run_summary_from_orm(run: m.SolverRun) -> dict[str, Any]:
 
     config = dict(run.config_json or {})
     summary = dict(config.get(SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY) or {})
-    status = str(run.status)
+    status = run.status
     if status == m.SolverRun.RunStatus.COMPLETED:
         ui_status = "completed"
     elif status == m.SolverRun.RunStatus.FAILED:
         ui_status = "failed"
     else:
-        ui_status = status
+        ui_status = str(status)
     return lab_run_summary_from_solver_summary(
         run_id=int(run.pk),
         status=ui_status,

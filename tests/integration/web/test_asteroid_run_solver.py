@@ -46,7 +46,15 @@ def _unique_valid_copy() -> str:
 
 
 # Real layout with mineable rim (equipment bundle regression; commits on HTTP path).
-_REGRESSION_COPY_CODE = "SHAPEZ2-4-H4sIAD56CGoA/5yWUUvDMBSF/8vFxwhLsrZbHsU9DBTGlKGMIUEjFmo6khQspf/drJkgyCT3Umhpe757Tm6akgF2oDiXFYObDagBrkJ/NKBg7Rtt34DB+rW1pxe3OmhQe6jjvdo0Ory37tMDs13TpBP4D300atulAw4jg5UNrjY+ggM8gbqeM3iOl2j3GE3udN924eXhxN3X1rjVVzDW19FxZAmQCeCCwRaUvMD9kfN/5RdtqjwXntRldvkzIDFAhjK3M+iWTMAMCVR5QUpkWZlXViDKZsxx6pbInTCRJrhA6pH1OU5e4uQLZJjsNLg1TFzCP9iMhC1JVIUZUEmyKEiUxAQTtEZTKI7IRYolKVCBSEWaxQXCgPQlckxjObKz818DFzhoSYF49r/3EHcttdWu3xk3PZm2MuP4LYAAAwAZxBUl1ggAAA=="
+_REGRESSION_COPY_CODE = (
+    "SHAPEZ2-4-H4sIAD56CGoA/5yWUUvDMBSF/8vFxwhLsrZbHsU9DBTGlKGMIUEjFmo6khQspf/"
+    "drJkgyCT3Umhpe757Tm6akgF2oDiXFYObDagBrkJ/NKBg7Rtt34DB+rW1pxe3OmhQe6jjvdo0O"
+    "ry37tMDs13TpBP4D300atulAw4jg5UNrjY+ggM8gbqeM3iOl2j3GE3udN924eXhxN3X1rjVVz"
+    "DW19FxZAmQCeCCwRaUvMD9kfN/5RdtqjwXntRldvkzIDFAhjK3M+iWTMAMCVR5QUpkWZlXVi"
+    "DKZsxx6pbInTCRJrhA6pH1OU5e4uQLZJjsNLg1TFzCP9iMhC1JVIUZUEmyKEiUxAQTtEZTKI"
+    "7IRYolKVCBSEWaxQXCgPQlckxjObKz818DFzhoSYF49r/3EHcttdWu3xk3PZm2MuP4LYAAAw"
+    "AZxBUl1ggAAA=="
+)
 
 
 def _regression_copy_code() -> str:
@@ -117,7 +125,28 @@ def test_post_run_solver_json_persists_and_returns_payload() -> None:
     assert "placed" in data["run_summary"]
     assert data["run_summary"]["id"] == str(data["solver_run_id"])
     assert data["run_summary"]["status"] == "completed"
-    assert "optimization_replay" not in data
+    assert data["optimization_replay_attach"]["attached"] is True
+    assert data["optimization_replay_attach"]["reason"] == "attached"
+    assert isinstance(data.get("optimization_replay_read"), dict)
+    _assert_frames_have_js_renderable_cells(frames)
+
+
+def _assert_frames_have_js_renderable_cells(frames: list[dict]) -> None:
+    """At least one unified frame must expose lab x != 0 or overlay/delta cells."""
+
+    for frame in frames:
+        mv = frame.get("map_view")
+        if not isinstance(mv, dict):
+            continue
+        for key in ("full_cells", "overlay_cells", "cell_delta"):
+            cells = mv.get(key)
+            if not isinstance(cells, list):
+                continue
+            for cell in cells:
+                if isinstance(cell, dict) and cell.get("x") not in (None, 0):
+                    return
+    msg = "expected at least one map_view cell with non-zero lab x for grid render"
+    raise AssertionError(msg)
 
 
 def test_post_run_solver_validation_passes_for_basic_asteroid() -> None:
@@ -125,6 +154,7 @@ def test_post_run_solver_validation_passes_for_basic_asteroid() -> None:
     data = _post_run_solver(slug)
 
     assert data["ok"] is True
+    _assert_frames_have_js_renderable_cells(data.get("lab_replay_frames_json") or [])
     assert data["validation_passed"] is True
     assert data["validation_issue_codes"] == []
     assert data["validation_issue_details"] == []

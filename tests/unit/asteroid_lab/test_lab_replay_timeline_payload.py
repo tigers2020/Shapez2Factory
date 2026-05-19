@@ -132,7 +132,9 @@ def test_build_lab_replay_skips_unsupported_lab_frames() -> None:
 
 
 @pytest.mark.django_db
-def test_build_lab_replay_truncation_surfaces_track_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_lab_replay_truncation_surfaces_track_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from django_apps.asteroid_lab.replay import replay_limits
 
     monkeypatch.setattr(replay_limits, "MAX_UNIFIED_LAB_REPLAY_FRAMES", 2)

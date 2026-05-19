@@ -10,6 +10,7 @@ from django_apps.asteroid_lab.optimization.replay_frame import OptimizationRepla
 
 SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY = "optimization_replay_frames"
 SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY = "solver_summary"
+SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY = "server_xy_params"
 OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY = "optimization_replay"
 OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY = "optimization_replay_diagnostic_reason"
 

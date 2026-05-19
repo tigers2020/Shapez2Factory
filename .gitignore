@@ -88,7 +88,9 @@ env/
 
 # --- Cursor / Serena / local AI & MCP (machine-specific, not for GitHub) ---
 .cursor/
+.agents/
 .serena/
+.vscode/
 mcps/
 agents/
 .claude/
@@ -98,6 +100,8 @@ agents/
 .aider.chat.history.md
 .kilocode/
 .mcp.json
+.playwright-mcp/
+skills-lock.json
 
 # --- Misc junk ---
 *.bak
@@ -107,13 +111,9 @@ agents/
 *.swo
 *~
 
+# --- Local workflow overlays (tracked stubs remain; new local copies ignored) ---
 AGENTS.md
-.cursor/
-persona/
-.serena/
-.vscode/
 protocols/
 persona/
 *.zip
-
 shapez_2_data/

@@ -76,7 +76,8 @@ def test_solver_runtime_entry_persists_replay_and_summary() -> None:
     run = m.SolverRun.objects.get(pk=result.solver_run_id)
     assert SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY in run.config_json
     assert SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY in run.config_json
-    assert len(result.optimization_replay.get("frames") or []) >= 1
+    assert len(result.lab_replay_frames_json) >= 1
+    assert isinstance(result.replay_track_metrics, dict)
 
 
 def test_solver_runtime_entry_does_not_create_lab_replay_frames() -> None:

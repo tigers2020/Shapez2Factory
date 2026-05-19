@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from django.contrib import messages
-from django.db.models import Prefetch
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -24,6 +23,9 @@ from django_apps.asteroid_lab.models import (
 from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
     upsert_map_input_for_project,
+)
+from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
+    build_lab_replay_frames_for_project,
 )
 from django_apps.asteroid_lab.services.project_service import (
     resolve_or_create_project_slug_for_copy_code,
@@ -51,7 +53,6 @@ from django_apps.web.constants import (
 )
 from django_apps.web.models import GraphPreviewImage
 from django_apps.web.services.asteroid_lab_page_context import (
-    build_lab_replay_payload,
     lab_page_context,
     serialize_replay_frame,
 )
@@ -190,18 +191,20 @@ def _asteroid_miner_lab_page_context(
 
 def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> dict[str, Any]:
     frames: list[dict[str, Any]] = []
+    track_metrics: dict[str, Any] = {
+        "frame_count": 0,
+        "replay_truncated": False,
+        "truncation_reason": None,
+        "dropped_frame_count": None,
+        "diagnostic_reason": None,
+    }
     initial: dict[str, Any] = {}
     track: ReplayTrack | None = None
     if track_id is not None:
-        track = (
-            ReplayTrack.objects.filter(pk=int(track_id))
-            .prefetch_related(
-                Prefetch("frames", queryset=ReplayFrame.objects.order_by("frame_index", "id"))
-            )
-            .first()
-        )
-    if track is not None:
-        frames, initial = build_lab_replay_payload(track)
+        track = ReplayTrack.objects.filter(pk=int(track_id)).first()
+    if track is not None and track.project_id is not None:
+        frames, track_metrics = build_lab_replay_frames_for_project(int(track.project_id))
+        initial = dict(frames[0]) if frames else {}
     n = len(frames)
     fi = int(frames[0]["frame_index"]) if frames else 0
     ui = {
@@ -216,6 +219,7 @@ def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> di
         "lab_replay_frames_json": frames,
         "lab_initial_replay_frame_json": initial,
         "lab_ui_initial": ui,
+        "replay_track_metrics": track_metrics,
     }
 
 
@@ -255,7 +259,14 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
                 "ok": False,
                 "error_code": SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND.value,
                 "solver_run_id": None,
-                "optimization_replay": {},
+                "lab_replay_frames_json": [],
+                "replay_track_metrics": {
+                    "frame_count": 0,
+                    "replay_truncated": False,
+                    "truncation_reason": None,
+                    "dropped_frame_count": None,
+                    "diagnostic_reason": None,
+                },
                 "solver_summary": {},
                 "validation_passed": False,
             },

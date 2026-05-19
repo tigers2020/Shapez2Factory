@@ -213,18 +213,28 @@ def _build_map_view(
     frame: OptimizationReplayFrame,
     context: ReplayProjectionContext,
 ) -> tuple[ReplayMapView, dict[str, object]]:
-    full_cells = _rows_to_full_cells(frame.visible_cells, context)
-    overlay_cells = _rows_to_overlay_cells(frame.overlay_cells, context)
     cell_delta = _rows_to_cell_delta(frame.visible_cells + frame.overlay_cells, context)
     annotations = _annotations_from_metrics(frame.metrics)
     presentation_metrics: dict[str, object] = {}
 
-    if not full_cells and context.fallback_full_cells:
+    if context.fallback_full_cells:
+        # Reconstruction full map is the authoritative base.
+        # frame.visible_cells are always a partial mineable-cell subset, not a full snapshot;
+        # promote them to overlay_cells so the complete asteroid remains visible.
+        visible_as_overlay = _rows_to_overlay_cells(frame.visible_cells, context)
+        explicit_overlay = _rows_to_overlay_cells(frame.overlay_cells, context)
         full_cells = context.fallback_full_cells
-        presentation_metrics = {
-            "fallback_full_cells_used": True,
-            "fallback_full_cells_reason": _FALLBACK_FULL_CELLS_REASON,
-        }
+        overlay_cells = visible_as_overlay + explicit_overlay
+        # Only set the diagnostic flag for metadata-only frames (empty visible_cells).
+        if not visible_as_overlay:
+            presentation_metrics = {
+                "fallback_full_cells_used": True,
+                "fallback_full_cells_reason": _FALLBACK_FULL_CELLS_REASON,
+            }
+    else:
+        # No reconstruction base available: use visible_cells as full_cells (no-context path).
+        full_cells = _rows_to_full_cells(frame.visible_cells, context)
+        overlay_cells = _rows_to_overlay_cells(frame.overlay_cells, context)
 
     base_ref = context.base_ref
     bbox = _bbox_from_map_parts(full_cells, overlay_cells, cell_delta, annotations)

@@ -1,4 +1,4 @@
-"""Phase 9E — read-only unified replay page payload tests."""
+"""Product replay timeline payload (Lab ORM + persisted optimization)."""
 
 from __future__ import annotations
 
@@ -8,13 +8,12 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
 from django_apps.asteroid_lab.optimization.replay_frame import OptimizationReplayFrame
 from django_apps.asteroid_lab.replay.unified_enums import ReplayPhase
+from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
+    build_lab_replay_frames_for_project,
+    resolve_replay_projection_context_for_project,
+)
 from django_apps.asteroid_lab.services.optimization_replay_persist import (
     persist_optimization_replay_frames_to_solver_run,
-)
-from django_apps.asteroid_lab.services.unified_replay_page_payload import (
-    build_unified_replay_timeline_for_project,
-    empty_unified_replay_payload,
-    resolve_replay_projection_context_for_project,
 )
 
 
@@ -51,22 +50,20 @@ def _decode_lab_frame(
 
 
 @pytest.mark.django_db
-def test_build_unified_lab_only_monotonic_frame_indices() -> None:
+def test_build_lab_replay_lab_only_monotonic_frame_indices() -> None:
     p = m.AsteroidProject.objects.create(name="UniLab", slug="uni-lab-payload")
     t = m.ReplayTrack.objects.create(project=p, track_key="uni-tr")
     _decode_lab_frame(t, frame_index=0, x=1, y=0)
     _decode_lab_frame(t, frame_index=1, x=2, y=0)
 
-    payload = build_unified_replay_timeline_for_project(int(p.pk))
-    assert payload["enabled"] is True
-    frames = payload["frames"]
+    frames, metrics = build_lab_replay_frames_for_project(int(p.pk))
     assert [f["frame_index"] for f in frames] == [0, 1]
     assert frames[0]["phase"] == ReplayPhase.DECODE.value
-    assert payload["track_metrics"]["frame_count"] == 2
+    assert metrics["frame_count"] == 2
 
 
 @pytest.mark.django_db
-def test_build_unified_lab_precedes_optimization() -> None:
+def test_build_lab_replay_lab_precedes_optimization() -> None:
     p = m.AsteroidProject.objects.create(name="UniBoth", slug="uni-both-payload")
     t = m.ReplayTrack.objects.create(project=p, track_key="both-tr")
     _decode_lab_frame(t, frame_index=0, x=1, y=0)
@@ -95,8 +92,7 @@ def test_build_unified_lab_precedes_optimization() -> None:
     )
     persist_optimization_replay_frames_to_solver_run(int(run.pk), (opt_frame,))
 
-    payload = build_unified_replay_timeline_for_project(int(p.pk))
-    frames = payload["frames"]
+    frames, _metrics = build_lab_replay_frames_for_project(int(p.pk))
     assert len(frames) == 2
     assert frames[0]["phase"] == ReplayPhase.DECODE.value
     assert frames[1]["phase"] == ReplayPhase.OPTIMIZATION_INPUT.value
@@ -115,7 +111,7 @@ def test_resolve_projection_context_from_lab_cells() -> None:
 
 
 @pytest.mark.django_db
-def test_build_unified_skips_unsupported_lab_frames() -> None:
+def test_build_lab_replay_skips_unsupported_lab_frames() -> None:
     p = m.AsteroidProject.objects.create(name="Skip", slug="uni-skip-lab")
     t = m.ReplayTrack.objects.create(project=p, track_key="skip-tr")
     m.ReplayFrame.objects.create(
@@ -130,19 +126,13 @@ def test_build_unified_skips_unsupported_lab_frames() -> None:
     )
     _decode_lab_frame(t, frame_index=1, x=1, y=0)
 
-    payload = build_unified_replay_timeline_for_project(int(p.pk))
-    assert len(payload["frames"]) == 1
-    assert payload["frames"][0]["frame_index"] == 0
+    frames, _metrics = build_lab_replay_frames_for_project(int(p.pk))
+    assert len(frames) == 1
+    assert frames[0]["frame_index"] == 0
 
 
 @pytest.mark.django_db
-def test_empty_unified_payload_when_disabled() -> None:
-    payload = build_unified_replay_timeline_for_project(1, enabled=False)
-    assert payload == empty_unified_replay_payload(enabled=False)
-
-
-@pytest.mark.django_db
-def test_build_unified_truncation_surfaces_track_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_lab_replay_truncation_surfaces_track_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
     from django_apps.asteroid_lab.replay import replay_limits
 
     monkeypatch.setattr(replay_limits, "MAX_UNIFIED_LAB_REPLAY_FRAMES", 2)
@@ -152,7 +142,7 @@ def test_build_unified_truncation_surfaces_track_metrics(monkeypatch: pytest.Mon
     for i in range(3):
         _decode_lab_frame(t, frame_index=i, x=i + 1, y=0)
 
-    payload = build_unified_replay_timeline_for_project(int(p.pk))
-    assert len(payload["frames"]) == 2
-    assert payload["track_metrics"]["replay_truncated"] is True
-    assert payload["track_metrics"]["dropped_frame_count"] == 1
+    frames, metrics = build_lab_replay_frames_for_project(int(p.pk))
+    assert len(frames) == 2
+    assert metrics["replay_truncated"] is True
+    assert metrics["dropped_frame_count"] == 1

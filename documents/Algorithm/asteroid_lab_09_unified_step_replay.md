@@ -466,27 +466,26 @@ projection raw_x != original blueprint raw X
 
 **테스트:** `test_unified_timeline_composer.py`
 
-### 9E — Single controller UI (구현 완료)
+### 9E — 제품 replay 단일 타임라인 (구현 완료)
 
-**산출:** `django_apps/asteroid_lab/services/unified_replay_page_payload.py`, `asteroid_lab_page_context.py`, `asteroid_miner_layout_solver.html`, `asteroid_miner_layout_lab.js`
+**산출:** `django_apps/asteroid_lab/services/lab_replay_timeline_payload.py`, `asteroid_lab_page_context.py`, `asteroid_miner_layout_solver.html`, `asteroid_miner_layout_lab.js`, `solver_runtime_entry.py`
 
-**범위:** replay **presentation only** — solver runtime A→M·candidate·commit·validation·persistence semantics **불변**.
+**범위:** replay **presentation only** — solver runtime A→M·candidate·commit·validation·`optimization_replay_persist` semantics **불변**.
 
-**체크리스트:**
+**제품 계약:**
 
 ```text
-[x] `ASTEROID_LAB_UNIFIED_REPLAY_ENABLED` (default off) + `unified_replay` page JSON
-[x] read-only `build_unified_replay_timeline_for_project` (Lab ORM + persisted optimization)
-[x] `currentUnifiedFrameIndex` 단일 타임라인 인덱스 (unified on)
-[x] `map_view.full_cells` / `overlay_cells` → Lab grid render
-[x] flag off → legacy `lab_replay_frames_json` + optimization HUD 유지
-[x] truncation HUD: `replay_truncated` / `truncation_reason` / `dropped_frame_count`
-[x] optimization dual-track 패널 unified on 시 hidden (별도 scrubber 없음)
+[x] 제품 replay = `lab_replay_frames_json` (Lab ORM + persisted optimization, `UnifiedReplayFrame` JSON, `map_view` 포함)
+[x] `replay_track_metrics` — truncation·diagnostic (템플릿 `lab-replay-track-metrics-data`)
+[x] Run Solver POST — `lab_replay_frames_json` + `replay_track_metrics` ( `optimization_replay` 제거)
+[x] Replay Timeline 단일 scrubber · `replayArrayIndex`
+[x] `map_view` → Lab grid; truncation HUD · `lab-replay-run-status`
+[x] Optimization Replay 패널·`ASTEROID_LAB_UNIFIED_REPLAY_ENABLED`·dual-track page 키 제거
 ```
 
-**금지 (9E):** solver·persist writer·A→M 변경, `optimizationReplayFrameIndex`, hidden dual-index sync, 9F/9G/13 lazy-load.
+**금지 (9E):** solver·persist writer·A→M 변경, 별도 optimization scrubber, 9F/9G/13 lazy-load.
 
-**테스트:** `test_unified_replay_page_payload.py`, `test_asteroid_lab_page_context.py` (unified flag), `test_lab_js_replay_wiring_smoke`
+**테스트:** `test_lab_replay_timeline_payload.py`, `test_asteroid_lab_page_context.py`, `test_asteroid_run_solver.py`, `test_lab_js_replay_wiring_smoke`, `test_asteroid_lab_replay_timeline_smoke.py`
 
 ---
 

@@ -237,115 +237,29 @@
     }
   }
 
-  const OPTIMIZATION_REPLAY_DIAGNOSTIC_KEY = "optimization_replay_diagnostic_reason";
-
-  let optimizationReplayTrack = null;
-  let optimizationReplayRunFeedback = null;
-
-  function normalizeOptimizationReplayTrack(raw) {
-    const empty = {
-      frames: [],
-      metrics: { frame_count: 0, event_type_counts: {}, replay_truncated: false },
-    };
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      return empty;
-    }
-    const frames = Array.isArray(raw.frames) ? raw.frames : [];
-    const metricsIn = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
-    const frameCount = Number(metricsIn.frame_count);
-    const metrics = {
-      frame_count: Number.isFinite(frameCount)
-        ? Math.max(0, Math.trunc(frameCount))
-        : frames.length,
-      event_type_counts:
-        metricsIn.event_type_counts && typeof metricsIn.event_type_counts === "object"
-          ? metricsIn.event_type_counts
-          : {},
-      replay_truncated: metricsIn.replay_truncated === true,
-    };
-    if (metrics.replay_truncated) {
-      const tr = metricsIn.truncation_reason;
-      if (typeof tr === "string" && tr.trim()) {
-        metrics.truncation_reason = tr.trim();
-      }
-    }
-    const diag = metricsIn[OPTIMIZATION_REPLAY_DIAGNOSTIC_KEY];
-    if (typeof diag === "string" && diag.trim()) {
-      metrics[OPTIMIZATION_REPLAY_DIAGNOSTIC_KEY] = diag.trim();
-    }
-    return { frames: frames, metrics: metrics };
-  }
-
-  function renderOptimizationReplayHud(track, runFeedback) {
-    const statusEl = document.getElementById("lab-optimization-replay-status");
-    const truncEl = document.getElementById("lab-optimization-replay-truncation");
-    const diagEl = document.getElementById("lab-optimization-replay-diagnostic");
-    const runEl = document.getElementById("lab-optimization-replay-run");
-    const normalized = normalizeOptimizationReplayTrack(track);
-    const metrics = normalized.metrics || {};
-    const frameCount = Number(metrics.frame_count) || 0;
-    const diagnostic = metrics[OPTIMIZATION_REPLAY_DIAGNOSTIC_KEY];
+  function renderReplayRunStatus(feedback) {
+    const runEl = document.getElementById("lab-replay-run-status");
+    if (!runEl) return;
     const dash = "—";
-
-    if (statusEl) {
-      if (frameCount > 0 && !diagnostic) {
-        statusEl.textContent = "loaded (" + String(frameCount) + " frames)";
-      } else if (diagnostic) {
-        statusEl.textContent = "empty";
-      } else {
-        statusEl.textContent = "empty";
-      }
+    if (!feedback || typeof feedback !== "object") {
+      runEl.textContent = dash;
+      return;
     }
-    if (truncEl) {
-      if (metrics.replay_truncated === true) {
-        const reason =
-          typeof metrics.truncation_reason === "string" && metrics.truncation_reason
-            ? metrics.truncation_reason
-            : "unknown";
-        truncEl.textContent = "truncated: " + reason;
-      } else {
-        truncEl.textContent = dash;
-      }
+    if (feedback.running === true) {
+      runEl.textContent = "run: running…";
+    } else if (typeof feedback.error_code === "string" && feedback.error_code) {
+      runEl.textContent = "run: error " + feedback.error_code;
+    } else if (feedback.solver_run_id != null) {
+      const vp =
+        feedback.validation_passed === true
+          ? "passed"
+          : feedback.validation_passed === false
+            ? "failed"
+            : "—";
+      runEl.textContent = "run: id " + String(feedback.solver_run_id) + " validation " + vp;
+    } else {
+      runEl.textContent = dash;
     }
-    if (diagEl) {
-      diagEl.textContent = typeof diagnostic === "string" && diagnostic ? diagnostic : dash;
-    }
-    const fb = runFeedback !== undefined ? runFeedback : optimizationReplayRunFeedback;
-    if (runEl) {
-      if (fb && typeof fb === "object") {
-        if (fb.running === true) {
-          runEl.textContent = "run: running…";
-        } else if (typeof fb.error_code === "string" && fb.error_code) {
-          runEl.textContent = "run: error " + fb.error_code;
-        } else if (fb.solver_run_id != null) {
-          const vp =
-            fb.validation_passed === true
-              ? "passed"
-              : fb.validation_passed === false
-                ? "failed"
-                : "—";
-          runEl.textContent =
-            "run: id " + String(fb.solver_run_id) + " validation " + vp;
-        } else {
-          runEl.textContent = dash;
-        }
-      } else {
-        runEl.textContent = dash;
-      }
-    }
-  }
-
-  function replaceOptimizationReplayPayload(track) {
-    optimizationReplayTrack = normalizeOptimizationReplayTrack(track);
-    const scriptEl = document.getElementById("lab-optimization-replay-data");
-    if (scriptEl) {
-      try {
-        scriptEl.textContent = JSON.stringify(optimizationReplayTrack);
-      } catch {
-        /* ignore */
-      }
-    }
-    renderOptimizationReplayHud(optimizationReplayTrack);
   }
 
   function getCookie(name) {
@@ -929,7 +843,7 @@
     if (gridEl) gridEl.dataset.overlay = frame.frame_key ? String(frame.frame_key) : "";
   }
 
-  function updateUnifiedTruncationHud(frame, trackMetrics) {
+  function updateReplayTruncationHud(frame, trackMetrics) {
     const hud = document.getElementById("lab-replay-truncation-hud");
     if (!hud) return;
     const dash = "—";
@@ -958,27 +872,11 @@
     const matrix = readJsonScript("lab-cell-overlay-matrix-data");
     const runs = readJsonScript("lab-runs-data");
     const uiInitial = readJsonScript("lab-ui-initial-state");
-    const labRoot = document.getElementById("lab-root");
-    const unifiedReplayEnabled =
-      labRoot && labRoot.dataset.labUnifiedReplayEnabled === "true";
-    const unifiedPayloadRaw = readJsonScript("lab-unified-replay-data");
-    const unifiedPayload =
-      unifiedPayloadRaw && typeof unifiedPayloadRaw === "object" ? unifiedPayloadRaw : null;
-    let unifiedReplayFrames =
-      unifiedReplayEnabled && unifiedPayload && Array.isArray(unifiedPayload.frames)
-        ? unifiedPayload.frames
-        : [];
-    let unifiedTrackMetrics =
-      unifiedPayload && unifiedPayload.track_metrics && typeof unifiedPayload.track_metrics === "object"
-        ? unifiedPayload.track_metrics
-        : {};
-    let useUnifiedReplay = unifiedReplayEnabled && unifiedReplayFrames.length > 0;
-    let currentUnifiedFrameIndex = 0;
     const replayFramesRaw = readJsonScript("lab-replay-frames-data");
     let replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
-    if (useUnifiedReplay) {
-      replayFrames = unifiedReplayFrames;
-    }
+    const trackMetricsRaw = readJsonScript("lab-replay-track-metrics-data");
+    let replayTrackMetrics =
+      trackMetricsRaw && typeof trackMetricsRaw === "object" ? trackMetricsRaw : {};
     let hasServerReplay = replayFrames.length > 0;
     let initialFromServer = Object.assign(
       {},
@@ -1303,7 +1201,6 @@
     }
 
     function getCurrentTimelineIndex() {
-      if (useUnifiedReplay) return currentUnifiedFrameIndex;
       return hasServerReplay ? replayArrayIndex : frame;
     }
 
@@ -1314,9 +1211,7 @@
       const parsed = parseInt(String(nextIndex), 10);
       const raw = Number.isFinite(parsed) ? parsed : 0;
       const clamped = clampNumber(raw, 0, max);
-      if (useUnifiedReplay) {
-        currentUnifiedFrameIndex = clamped;
-      } else if (hasServerReplay) {
+      if (hasServerReplay) {
         replayArrayIndex = clamped;
       } else {
         frame = clamped;
@@ -1345,48 +1240,38 @@
 
     function getCurrentReplayFrame() {
       if (!hasServerReplay) return null;
-      if (useUnifiedReplay) {
-        return replayFrames[currentUnifiedFrameIndex] || null;
-      }
       return replayFrames[replayArrayIndex] || null;
     }
 
     function applyFrame() {
       if (hasServerReplay) {
-        if (useUnifiedReplay) {
-          if (currentUnifiedFrameIndex < 0) currentUnifiedFrameIndex = 0;
-          if (currentUnifiedFrameIndex >= replayFrames.length) {
-            currentUnifiedFrameIndex = replayFrames.length - 1;
-          }
-        } else {
-          if (replayArrayIndex < 0) replayArrayIndex = 0;
-          if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
-        }
+        if (replayArrayIndex < 0) replayArrayIndex = 0;
+        if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
         const fr = getCurrentReplayFrame();
         renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
         updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl);
-        if (useUnifiedReplay) {
-          updateUnifiedTruncationHud(fr, unifiedTrackMetrics);
-        }
+        updateReplayTruncationHud(fr, replayTrackMetrics);
         const cycle = document.getElementById("lab-computation-cycle");
         if (cycle) {
-          if (useUnifiedReplay && fr && fr.inspector && fr.inspector.source_frame_index != null) {
+          if (fr && fr.inspector && fr.inspector.source_frame_index != null) {
             cycle.textContent =
               "source_frame_index " + String(fr.inspector.source_frame_index);
+          } else if (fr && fr.frame_key != null) {
+            cycle.textContent = "frame_key " + String(fr.frame_key);
           } else {
-            cycle.textContent = fr && fr.frame_key != null ? "frame_key " + String(fr.frame_key) : "frame —";
+            cycle.textContent = fr && fr.frame_index != null ? "frame " + String(fr.frame_index) : "frame —";
           }
         }
         const hint = document.getElementById("lab-replay-footer-hint");
         if (hint) {
-          if (useUnifiedReplay && fr && fr.inspector) {
+          if (fr && fr.inspector) {
             const optEv = fr.inspector.optimization_event_type;
             const labEv = fr.inspector.lab_event_type;
             hint.textContent = optEv
               ? "optimization " + String(optEv)
               : labEv
                 ? "lab " + String(labEv)
-                : "unified frame";
+                : "replay frame";
           } else {
             hint.textContent =
               fr && fr.id != null
@@ -1432,13 +1317,8 @@
       if (isPlaying && cap > 0) {
         timerId = window.setInterval(function () {
           if (hasServerReplay) {
-            if (useUnifiedReplay) {
-              currentUnifiedFrameIndex += 1;
-              if (currentUnifiedFrameIndex >= replayFrames.length) currentUnifiedFrameIndex = 0;
-            } else {
-              replayArrayIndex += 1;
-              if (replayArrayIndex >= replayFrames.length) replayArrayIndex = 0;
-            }
+            replayArrayIndex += 1;
+            if (replayArrayIndex >= replayFrames.length) replayArrayIndex = 0;
           } else {
             frame += 1;
             if (frame >= TOTAL_FRAMES) frame = 0;
@@ -1518,11 +1398,7 @@
     function resetToInitial() {
       setPlaying(false);
       if (hasServerReplay) {
-        if (useUnifiedReplay) {
-          currentUnifiedFrameIndex = 0;
-        } else {
-          replayArrayIndex = replaySlotForServerInitialFrame();
-        }
+        replayArrayIndex = replaySlotForServerInitialFrame();
       } else {
         frame = baselineFrame;
       }
@@ -1540,11 +1416,7 @@
 
     document.getElementById("lab-timeline-prev")?.addEventListener("click", function () {
       if (hasServerReplay) {
-        if (useUnifiedReplay) {
-          currentUnifiedFrameIndex = Math.max(0, currentUnifiedFrameIndex - 1);
-        } else {
-          replayArrayIndex = Math.max(0, replayArrayIndex - 1);
-        }
+        replayArrayIndex = Math.max(0, replayArrayIndex - 1);
       } else {
         frame = Math.max(0, frame - 1);
       }
@@ -1560,14 +1432,7 @@
 
     document.getElementById("lab-timeline-next")?.addEventListener("click", function () {
       if (hasServerReplay) {
-        if (useUnifiedReplay) {
-          currentUnifiedFrameIndex = Math.min(
-            replayFrames.length - 1,
-            currentUnifiedFrameIndex + 1,
-          );
-        } else {
-          replayArrayIndex = Math.min(replayFrames.length - 1, replayArrayIndex + 1);
-        }
+        replayArrayIndex = Math.min(replayFrames.length - 1, replayArrayIndex + 1);
       } else {
         frame = Math.min(TOTAL_FRAMES, frame + 1);
       }
@@ -1625,6 +1490,9 @@
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
       replayFrames = next;
+      if (payload.replay_track_metrics && typeof payload.replay_track_metrics === "object") {
+        replayTrackMetrics = payload.replay_track_metrics;
+      }
       hasServerReplay = replayFrames.length > 0;
       if (!hasServerReplay) {
         window.location.assign(redirectTo || window.location.href);
@@ -2010,8 +1878,8 @@
       return getCookie("csrftoken") || "";
     }
 
-    optimizationReplayRunFeedback = null;
-    replaceOptimizationReplayPayload(readJsonScript("lab-optimization-replay-data"));
+    let replayRunFeedback = null;
+    renderReplayRunStatus(replayRunFeedback);
 
     const runSolverBtn = document.getElementById("lab-header-run");
     runSolverBtn?.addEventListener("click", function () {
@@ -2020,16 +1888,16 @@
           ? String(rootEl.dataset.labRunSolverUrl)
           : "";
       if (!runUrl) {
-        optimizationReplayRunFeedback = { error_code: "no_run_solver_url" };
-        renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+        replayRunFeedback = { error_code: "no_run_solver_url" };
+        renderReplayRunStatus(replayRunFeedback);
         return;
       }
       if (runSolverBtn.disabled) {
         return;
       }
       runSolverBtn.disabled = true;
-      optimizationReplayRunFeedback = { running: true };
-      renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+      replayRunFeedback = { running: true };
+      renderReplayRunStatus(replayRunFeedback);
       fetch(runUrl, {
         method: "POST",
         credentials: "same-origin",
@@ -2052,27 +1920,26 @@
           const res = bundle.res;
           const data = bundle.data || {};
           if (!res.ok || data.ok === false) {
-            optimizationReplayRunFeedback = {
+            replayRunFeedback = {
               error_code:
                 typeof data.error_code === "string" ? data.error_code : "request_failed",
             };
-            if (data.optimization_replay) {
-              replaceOptimizationReplayPayload(data.optimization_replay);
-            } else {
-              renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+            renderReplayRunStatus(replayRunFeedback);
+            if (Array.isArray(data.lab_replay_frames_json)) {
+              replaceLabReplayPayload(data);
             }
             return;
           }
-          optimizationReplayRunFeedback = {
+          replayRunFeedback = {
             solver_run_id: data.solver_run_id,
             validation_passed: data.validation_passed,
           };
-          replaceOptimizationReplayPayload(data.optimization_replay);
-          renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+          renderReplayRunStatus(replayRunFeedback);
+          replaceLabReplayPayload(data);
         })
         .catch(function () {
-          optimizationReplayRunFeedback = { error_code: "network_error" };
-          renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+          replayRunFeedback = { error_code: "network_error" };
+          renderReplayRunStatus(replayRunFeedback);
         })
         .finally(function () {
           runSolverBtn.disabled = false;

@@ -15,11 +15,11 @@ from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     loaded_reconstruction_snapshot_from_result,
 )
 from django_apps.asteroid_lab.services.experiment_service import create_solver_run
+from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
+    build_lab_replay_frames_for_project,
+)
 from django_apps.asteroid_lab.services.optimization_replay_persist import (
     persist_optimization_replay_frames_to_solver_run,
-)
-from django_apps.asteroid_lab.services.optimization_replay_read import (
-    optimization_replay_payload_for_project,
 )
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     run_reconstruction_for_map_input,
@@ -41,10 +41,15 @@ class SolverRuntimeEntryResult:
 
     ok: bool
     solver_run_id: int | None
-    optimization_replay: dict[str, Any]
+    lab_replay_frames_json: list[dict[str, Any]]
+    replay_track_metrics: dict[str, Any]
     solver_summary: dict[str, Any]
     validation_passed: bool
     error_code: SolverRuntimeEntryErrorCode | None = None
+
+
+def _empty_replay_for_project(project_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    return build_lab_replay_frames_for_project(int(project_id))
 
 
 def default_runtime_gene_templates_path() -> Path:
@@ -61,11 +66,12 @@ def run_solver_runtime_for_project(
     """Execute Phase A→M for the latest map input and persist optimization replay output."""
 
     if not m.AsteroidProject.objects.filter(pk=int(project_id)).exists():
-        empty = optimization_replay_payload_for_project(int(project_id))
+        frames, metrics = _empty_replay_for_project(int(project_id))
         return SolverRuntimeEntryResult(
             ok=False,
             solver_run_id=None,
-            optimization_replay=empty,
+            lab_replay_frames_json=frames,
+            replay_track_metrics=metrics,
             solver_summary={},
             validation_passed=False,
             error_code=SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND,
@@ -77,11 +83,12 @@ def run_solver_runtime_for_project(
         .first()
     )
     if inp is None:
-        empty = optimization_replay_payload_for_project(int(project_id))
+        frames, metrics = _empty_replay_for_project(int(project_id))
         return SolverRuntimeEntryResult(
             ok=False,
             solver_run_id=None,
-            optimization_replay=empty,
+            lab_replay_frames_json=frames,
+            replay_track_metrics=metrics,
             solver_summary={},
             validation_passed=False,
             error_code=SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
@@ -117,10 +124,12 @@ def run_solver_runtime_for_project(
         )
         if not persisted:
             m.SolverRun.objects.filter(pk=run_id).update(status=m.SolverRun.RunStatus.FAILED)
+            frames, metrics = _empty_replay_for_project(int(project_id))
             return SolverRuntimeEntryResult(
                 ok=False,
                 solver_run_id=run_id,
-                optimization_replay=optimization_replay_payload_for_project(int(project_id)),
+                lab_replay_frames_json=frames,
+                replay_track_metrics=metrics,
                 solver_summary={},
                 validation_passed=False,
                 error_code=SolverRuntimeEntryErrorCode.PERSIST_REJECTED,
@@ -132,10 +141,12 @@ def run_solver_runtime_for_project(
         )
         m.SolverRun.objects.filter(pk=run_id).update(status=status)
 
+        frames, metrics = build_lab_replay_frames_for_project(int(project_id))
         return SolverRuntimeEntryResult(
             ok=True,
             solver_run_id=run_id,
-            optimization_replay=optimization_replay_payload_for_project(int(project_id)),
+            lab_replay_frames_json=frames,
+            replay_track_metrics=metrics,
             solver_summary=dict(result.solver_summary),
             validation_passed=validation_passed,
         )
@@ -150,7 +161,8 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
     body: dict[str, Any] = {
         "ok": result.ok,
         "solver_run_id": result.solver_run_id,
-        "optimization_replay": result.optimization_replay,
+        "lab_replay_frames_json": result.lab_replay_frames_json,
+        "replay_track_metrics": result.replay_track_metrics,
         "solver_summary": result.solver_summary,
         "validation_passed": result.validation_passed,
     }

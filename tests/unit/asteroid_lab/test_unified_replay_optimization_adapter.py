@@ -162,6 +162,29 @@ def test_optimization_adapter_marks_fallback_full_cells_usage() -> None:
     assert unified.metrics["fallback_full_cells_reason"] == "metadata_only_optimization_frame"
 
 
+def test_adapter_promotes_visible_cells_to_overlay_when_fallback_available() -> None:
+    from django_apps.asteroid_lab.replay.unified_dtos import ReplayCell
+
+    fallback = (ReplayCell(x=1, y=0, kind="asteroid", transport="none"),)
+    ctx = ReplayProjectionContext(
+        server_xy_params=_PARAMS,
+        fallback_full_cells=fallback,
+    )
+    frame = OptimizationReplayFrame(
+        frame_index=0,
+        event_type=OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED,
+        title="input",
+        description="",
+        visible_cells=(_server_cell(sx=0, sy=0, kind="asteroid_shape_field"),),
+        metrics={"mineable_cell_count": 1},
+    )
+    unified = optimization_replay_frame_to_unified(frame, context=ctx)
+    assert unified.map_view.full_cells == fallback
+    assert len(unified.map_view.overlay_cells) >= 1
+    assert unified.map_view.overlay_cells[0].kind == "asteroid_shape_field"
+    assert "fallback_full_cells_used" not in unified.metrics
+
+
 def test_adapter_rejects_non_renderable_without_fallback() -> None:
     frame = OptimizationReplayFrame(
         frame_index=0,

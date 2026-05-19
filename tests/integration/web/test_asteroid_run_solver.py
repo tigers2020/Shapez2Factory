@@ -60,9 +60,13 @@ def test_post_run_solver_json_persists_and_returns_payload() -> None:
     data = json.loads(response.content.decode())
     assert data["ok"] is True
     assert data["solver_run_id"] is not None
-    assert len(data.get("optimization_replay", {}).get("frames") or []) >= 1
+    frames = data.get("lab_replay_frames_json") or []
+    assert len(frames) >= 1
+    assert isinstance(frames[0].get("map_view"), dict)
+    assert isinstance(data.get("replay_track_metrics"), dict)
     assert isinstance(data.get("solver_summary"), dict)
     assert data["validation_passed"] is True
+    assert "optimization_replay" not in data
 
 
 def test_post_run_solver_unknown_slug_404() -> None:
@@ -75,6 +79,7 @@ def test_post_run_solver_unknown_slug_404() -> None:
     data = json.loads(response.content.decode())
     assert data["ok"] is False
     assert data["error_code"] == SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND.value
+    assert data["lab_replay_frames_json"] == []
 
 
 def test_post_run_solver_no_map_input_400() -> None:
@@ -90,22 +95,23 @@ def test_post_run_solver_no_map_input_400() -> None:
     assert data["error_code"] == SolverRuntimeEntryErrorCode.NO_MAP_INPUT.value
 
 
-def test_get_project_page_includes_optimization_replay_after_run() -> None:
+def test_get_project_page_includes_composed_replay_after_run() -> None:
     slug = _project_slug_via_create()
     run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
     Client().post(run_url, HTTP_ACCEPT="application/json")
 
     page = Client().get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
     assert page.status_code == 200
-    assert b'id="lab-optimization-replay-data"' in page.content
+    assert b'id="lab-replay-frames-data"' in page.content
+    assert b"lab-optimization-replay-data" not in page.content
 
 
-def _optimization_replay_from_page(content: bytes) -> dict:
+def _lab_replay_frames_from_page(content: bytes) -> list:
     import re
 
     text = content.decode()
     m = re.search(
-        r'<script[^>]+id="lab-optimization-replay-data"[^>]*>(.*?)</script>',
+        r'<script[^>]+id="lab-replay-frames-data"[^>]*>(.*?)</script>',
         text,
         re.DOTALL,
     )
@@ -113,21 +119,12 @@ def _optimization_replay_from_page(content: bytes) -> dict:
     return json.loads(m.group(1))
 
 
-def test_post_run_solver_json_updates_page_context_track() -> None:
+def test_post_run_solver_json_updates_page_context_timeline() -> None:
     slug = _project_slug_via_create()
     run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
     Client().post(run_url, HTTP_ACCEPT="application/json")
 
     page = Client().get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
-    track = _optimization_replay_from_page(page.content)
-    metrics = track.get("metrics") or {}
-    assert int(metrics.get("frame_count") or 0) >= 1
-    assert "optimization_replay_diagnostic_reason" not in metrics
-
-
-def test_run_solver_response_does_not_include_lab_replay_frames() -> None:
-    slug = _project_slug_via_create()
-    url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
-    response = Client().post(url, HTTP_ACCEPT="application/json")
-    data = json.loads(response.content.decode())
-    assert "lab_replay_frames_json" not in data
+    frames = _lab_replay_frames_from_page(page.content)
+    assert len(frames) >= 1
+    assert isinstance(frames[0].get("map_view"), dict)

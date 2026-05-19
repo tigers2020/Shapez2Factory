@@ -9,19 +9,12 @@ import pytest
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
 from django_apps.asteroid_lab.replay import event_types as et
+from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType
 from django_apps.asteroid_lab.services.experiment_service import create_solver_run
 from django_apps.asteroid_lab.services.optimization_replay_persist import (
     persist_optimization_replay_frames_to_solver_run,
 )
-from django_apps.asteroid_lab.services.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY,
-    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
-    SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
-)
 from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
-from django_apps.asteroid_lab.services.unified_replay_page_payload import (
-    UNIFIED_REPLAY_LAB_PAYLOAD_KEY,
-)
 from django_apps.web.services import asteroid_lab_page_context as alc
 
 _GENE_TEMPLATES = (
@@ -49,72 +42,55 @@ def test_lab_page_context_neutral_when_latest_track_has_zero_frames() -> None:
 
 
 @pytest.mark.django_db
-def test_lab_page_context_picks_latest_track_with_frames() -> None:
-    p1 = m.AsteroidProject.objects.create(name="Old", slug="old-lab-ctx")
-    t1 = m.ReplayTrack.objects.create(project=p1, track_key="old-tr")
+def test_lab_page_context_without_project_id_is_neutral() -> None:
+    p = m.AsteroidProject.objects.create(name="Scoped", slug="scoped-lab-ctx")
+    t = m.ReplayTrack.objects.create(project=p, track_key="scoped-tr")
     m.ReplayFrame.objects.create(
-        replay_track=t1,
+        replay_track=t,
         frame_index=0,
-        frame_key="old",
+        frame_key="x",
         phase="decode",
-        title="Old",
+        title="T",
         description="",
-        frame_payload={"event_type": "decode.raw_loaded"},
+        frame_payload={
+            "event_type": "decode.raw_loaded",
+            "full_map": [{"x": 1, "y": 0, "cell_kind": "asteroid", "transport_kind": "none"}],
+        },
         cell_overlay_json={},
     )
-    p2 = m.AsteroidProject.objects.create(name="New", slug="new-lab-ctx")
-    t2 = m.ReplayTrack.objects.create(project=p2, track_key="new-tr")
-    m.ReplayFrame.objects.create(
-        replay_track=t2,
-        frame_index=0,
-        frame_key="new",
-        phase="existing_layout",
-        title="Newer",
-        description="d",
-        frame_payload={"event_type": "existing_layout.begin"},
-        cell_overlay_json={"cells": [{"x": 1, "y": 2, "cell_kind": "miner"}]},
-    )
     ctx = alc.lab_page_context()
-    assert ctx["has_replay_frames"] is True
-    assert ctx["lab_replay_track_id"] == t2.id
-    assert ctx["lab_replay_track_key"] == "new-tr"
-    assert ctx["total_frames"] == 1
-    assert ctx["initial_frame"] == 0
-    frames = ctx["lab_replay_frames_json"]
-    assert len(frames) == 1
-    assert frames[0]["frame_key"] == "new"
-    assert frames[0]["event_type"] == "existing_layout.begin"
-    assert frames[0]["cell_overlay_json"]["cells"][0]["x"] == 1
+    assert ctx["has_replay_frames"] is False
+    assert ctx["lab_replay_frames_json"] == []
 
 
 @pytest.mark.django_db
 def test_lab_page_context_orders_frames_by_frame_index_then_id() -> None:
     p = m.AsteroidProject.objects.create(name="Ord", slug="ord-lab-ctx")
     t = m.ReplayTrack.objects.create(project=p, track_key="ord-tr")
-    m.ReplayFrame.objects.create(
-        replay_track=t,
-        frame_index=1,
-        frame_key="b",
-        phase="p",
-        title="B",
-        description="",
-        frame_payload={"event_type": "decode.normalized"},
-        cell_overlay_json={},
-    )
-    a = m.ReplayFrame.objects.create(
-        replay_track=t,
-        frame_index=0,
-        frame_key="a",
-        phase="p",
-        title="A",
-        description="",
-        frame_payload={"event_type": "decode.raw_loaded"},
-        cell_overlay_json={},
-    )
-    ctx = alc.lab_page_context()
-    keys = [f["frame_key"] for f in ctx["lab_replay_frames_json"]]
-    assert keys == ["a", "b"]
-    assert ctx["lab_initial_replay_frame_json"]["id"] == a.id
+    for fi, fk, ev, x in (
+        (0, "a", "decode.raw_loaded", 1),
+        (1, "b", "decode.normalized", 2),
+    ):
+        m.ReplayFrame.objects.create(
+            replay_track=t,
+            frame_index=fi,
+            frame_key=fk,
+            phase="decode",
+            title=fk.upper(),
+            description="",
+            frame_payload={
+                "event_type": ev,
+                "phase": "decode",
+                "phase_step": "raw" if fi == 0 else "normalized",
+                "event_key": f"step{fi}",
+                "full_map": [{"x": x, "y": 0, "cell_kind": "asteroid", "transport_kind": "none"}],
+            },
+            cell_overlay_json={},
+        )
+    ctx = alc.lab_page_context(project_id=p.pk)
+    indices = [f["frame_index"] for f in ctx["lab_replay_frames_json"]]
+    assert indices == [0, 1]
+    assert ctx["lab_replay_frames_json"][0]["event_type"] == ReplayEventType.DECODE_STARTED.value
 
 
 @pytest.mark.django_db
@@ -148,13 +124,12 @@ def test_lab_page_context_after_pipeline_selects_non_empty_track() -> None:
     frames = ctx["lab_replay_frames_json"]
     tid = ctx["lab_replay_track_id"]
     assert tid is not None
-    assert len(frames) == m.ReplayFrame.objects.filter(replay_track_id=tid).count()
     assert len(frames) >= 6
     assert ctx["total_frames"] == len(frames)
-    assert frames[0]["event_type"] == et.EVENT_TYPE_DECODE_RAW_LOADED
-    assert frames[0]["frame_key"] == "step0_decode_raw"
-    assert frames[1]["event_type"] == et.EVENT_TYPE_DECODE_NORMALIZED
-    assert frames[1]["frame_key"] == "step0_decode"
+    event_types = {f["event_type"] for f in frames}
+    assert ReplayEventType.DECODE_STARTED.value in event_types
+    assert ReplayEventType.RECONSTRUCTION_COMPLETED.value in event_types
+    assert isinstance(frames[0]["map_view"], dict)
 
 
 @pytest.mark.django_db
@@ -209,19 +184,7 @@ def test_lab_page_context_restricted_to_project_id() -> None:
 
 
 @pytest.mark.django_db
-def test_lab_page_context_includes_empty_optimization_replay_when_no_solver_run() -> None:
-    p = m.AsteroidProject.objects.create(name="OptEmpty", slug="opt-empty-lab-ctx")
-    ctx = alc.lab_page_context(project_id=p.pk)
-    opt = ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
-    assert opt["frames"] == []
-    assert (
-        opt["metrics"][OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY]
-        == "missing_optimization_replay"
-    )
-
-
-@pytest.mark.django_db
-def test_lab_page_context_reads_persisted_optimization_replay() -> None:
+def test_lab_page_context_composed_timeline_includes_optimization_frames() -> None:
     import base64
     import gzip
     import json
@@ -280,34 +243,16 @@ def test_lab_page_context_reads_persisted_optimization_replay() -> None:
     )
 
     ctx = alc.lab_page_context(project_id=proj.pk)
-    opt = ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
-    assert len(opt["frames"]) >= 1
-    assert opt["metrics"]["frame_count"] == len(opt["frames"])
-    assert OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY not in opt["metrics"]
-    event_types = {f["event_type"] for f in opt["frames"]}
+    frames = ctx["lab_replay_frames_json"]
+    assert len(frames) >= 1
+    assert isinstance(frames[0]["map_view"], dict)
+    event_types = {f["event_type"] for f in frames}
     assert OptimizationReplayEventType.VALIDATION_COMPLETED.value in event_types
+    assert ctx["replay_track_metrics"]["frame_count"] == len(frames)
 
 
 @pytest.mark.django_db
-def test_lab_page_context_malformed_optimization_replay_does_not_crash() -> None:
-    p = m.AsteroidProject.objects.create(name="OptBad", slug="opt-bad-lab-ctx")
-    m.SolverRun.objects.create(
-        project=p,
-        run_key="bad-opt",
-        algorithm_label="runtime_v0",
-        config_json={SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY: [{"frame_index": 99}]},
-    )
-    ctx = alc.lab_page_context(project_id=p.pk)
-    opt = ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
-    assert opt["frames"] == []
-    assert (
-        opt["metrics"][OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY]
-        == "invalid_optimization_replay_payload"
-    )
-
-
-@pytest.mark.django_db
-def test_lab_page_context_optimization_replay_does_not_touch_lab_replay_orm() -> None:
+def test_lab_page_context_read_does_not_touch_lab_replay_orm() -> None:
     p = m.AsteroidProject.objects.create(name="OptOrm", slug="opt-orm-lab-ctx")
     t = m.ReplayTrack.objects.create(project=p, track_key="opt-tr")
     m.ReplayFrame.objects.create(
@@ -326,9 +271,9 @@ def test_lab_page_context_optimization_replay_does_not_touch_lab_replay_orm() ->
 
 
 @pytest.mark.django_db
-def test_lab_page_context_unified_replay_disabled_by_default() -> None:
-    p = m.AsteroidProject.objects.create(name="UniOff", slug="uni-off-ctx")
-    t = m.ReplayTrack.objects.create(project=p, track_key="uni-off-tr")
+def test_lab_page_context_exposes_replay_track_metrics() -> None:
+    p = m.AsteroidProject.objects.create(name="Metrics", slug="metrics-ctx")
+    t = m.ReplayTrack.objects.create(project=p, track_key="metrics-tr")
     m.ReplayFrame.objects.create(
         replay_track=t,
         frame_index=0,
@@ -346,39 +291,9 @@ def test_lab_page_context_unified_replay_disabled_by_default() -> None:
         cell_overlay_json={},
     )
     ctx = alc.lab_page_context(project_id=p.pk)
-    assert ctx["unified_replay_enabled"] is False
-    assert ctx[UNIFIED_REPLAY_LAB_PAYLOAD_KEY]["enabled"] is False
-    assert ctx[UNIFIED_REPLAY_LAB_PAYLOAD_KEY]["frames"] == []
-    assert len(ctx["lab_replay_frames_json"]) == 1
-
-
-@pytest.mark.django_db
-def test_lab_page_context_unified_replay_when_flag_enabled(settings) -> None:
-    settings.ASTEROID_LAB_UNIFIED_REPLAY_ENABLED = True
-    p = m.AsteroidProject.objects.create(name="UniOn", slug="uni-on-ctx")
-    t = m.ReplayTrack.objects.create(project=p, track_key="uni-on-tr")
-    m.ReplayFrame.objects.create(
-        replay_track=t,
-        frame_index=0,
-        frame_key="a",
-        phase="decode",
-        title="A",
-        description="",
-        frame_payload={
-            "event_type": "decode.raw_loaded",
-            "phase": "decode",
-            "phase_step": "raw",
-            "event_key": "step0",
-            "full_map": [{"x": 1, "y": 0, "cell_kind": "asteroid", "transport_kind": "none"}],
-        },
-        cell_overlay_json={},
-    )
-    ctx = alc.lab_page_context(project_id=p.pk)
-    assert ctx["unified_replay_enabled"] is True
-    unified = ctx[UNIFIED_REPLAY_LAB_PAYLOAD_KEY]
-    assert unified["enabled"] is True
-    assert len(unified["frames"]) >= 1
-    assert len(ctx["lab_replay_frames_json"]) == 1
+    metrics = ctx["replay_track_metrics"]
+    assert metrics["frame_count"] == len(ctx["lab_replay_frames_json"])
+    assert metrics["replay_truncated"] is False
 
 
 def test_lab_page_context_module_import_boundary() -> None:
@@ -457,29 +372,22 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert scrub_idx > controls_idx
     assert "lab_identifier_sprite_paths" in tpl
     assert "lab-identifier-sprite-paths-data" in tpl
-    assert "lab-optimization-replay-data" in tpl
-    assert 'id="lab-optimization-replay-status"' in tpl
-    assert 'id="lab-optimization-replay-truncation"' in tpl
-    assert 'id="lab-optimization-replay-diagnostic"' in tpl
-    assert 'id="lab-optimization-replay-run"' in tpl
+    assert "lab-replay-track-metrics-data" in tpl
+    assert 'id="lab-replay-run-status"' in tpl
+    assert "lab-optimization-replay-data" not in tpl
+    assert "Optimization Replay" not in tpl
     assert "data-lab-run-solver-url" in tpl
-    assert "function normalizeOptimizationReplayTrack" in js
-    assert "function renderOptimizationReplayHud" in js
-    assert "function replaceOptimizationReplayPayload" in js
-    assert "lab-optimization-replay-data" in js
+    assert "function renderReplayRunStatus" in js
+    assert "lab-replay-track-metrics-data" in js
+    assert "function replaceOptimizationReplayPayload" not in js
     assert "labRunSolverUrl" in js
     assert 'method: "POST"' in js
     assert "dataset.labRunSolverUrl" in js
     run_btn_idx = js.index("runSolverBtn")
     run_handler = js[run_btn_idx : run_btn_idx + 2500]
     assert "setPlaying(true)" not in run_handler
-    assert "replaceOptimizationReplayPayload" in run_handler
-    assert "currentUnifiedFrameIndex" in js
-    assert "lab-unified-replay-data" in js
-    assert "dataset.labUnifiedReplayEnabled" in js
-    assert "updateUnifiedTruncationHud" in js
-    assert "optimizationReplayFrameIndex" not in js
-    assert "lab-unified-replay-data" in tpl
-    assert "data-lab-unified-replay-enabled" in tpl
-    assert "lab-unified-replay-data" in tpl
+    assert "replaceLabReplayPayload" in run_handler
+    assert "currentUnifiedFrameIndex" not in js
+    assert "lab-unified-replay-data" not in js
+    assert "updateReplayTruncationHud" in js
     assert 'id="lab-replay-truncation-hud"' in tpl

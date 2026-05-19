@@ -18,7 +18,7 @@
 | 클래스 | 설명 | 예 |
 |--------|------|-----|
 | **runtime** | 로컬/배포에 필요한 인프라·데이터 경로 | `DATABASE_URL`, `DJANGO_USE_SQLITE`, `SHAPEZ_BASEDATA_ROOT` |
-| **feature** | 제품 동작 토글(코드에 reader 있음) | `ASTEROID_LAB_UNIFIED_REPLAY_ENABLED` |
+| **feature** | 제품 동작 토글(코드에 reader 있음) | (현재 Asteroid Lab replay 전용 feature 토글 없음) |
 | **infra** | 그래프 PNG 프리뷰·캐시 등 | `SOLVER_GRAPH_PREVIEW_*` |
 | **debug** | 기본 `.env`에 두지 않음 | `ASTEROID_LAB_BOUNDARY_JSONL`, `SHAPEZ_COPY_DEBUG_DIR` |
 | **unused** | `.env`에만 남은 이름 — **코드 미참조, 삭제** | `SHAPEZ_MINING_*`, `ASTEROID_LAB_REPLAY_JSON_DELIVERY` 등 |
@@ -38,7 +38,6 @@
 | `SOLVER_GRAPH_PREVIEW_RENDERER` | `playwright_png` | `config/shapez_runtime_flags.py` |
 | `SOLVER_GRAPH_PREVIEW_STORAGE` | `filesystem` | `config/shapez_runtime_flags.py` |
 | `SOLVER_GRAPH_PREVIEW_CACHE_DIR` | `<BASE_DIR>/.graph_preview_cache` | `config/shapez_runtime_flags.py` |
-| `ASTEROID_LAB_UNIFIED_REPLAY_ENABLED` | off | `config/settings.py` |
 | `ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH` | `tests/fixtures/asteroid_lab/gene_templates` | `config/settings.py` |
 | `ASTEROID_LAB_BOUNDARY_JSONL` | off | `django_apps/asteroid_lab/observability/boundary_jsonl.py` |
 | `ASTEROID_LAB_BOUNDARY_JSONL_DIR` | `var/asteroid_boundary_logs` | 동일 |

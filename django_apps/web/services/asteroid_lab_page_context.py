@@ -4,21 +4,12 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from django.conf import settings
 from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
-from django_apps.asteroid_lab.services.optimization_replay_read import (
-    empty_optimization_replay_track_with_missing_diagnostic,
-    optimization_replay_payload_for_project,
-)
-from django_apps.asteroid_lab.services.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
-)
-from django_apps.asteroid_lab.services.unified_replay_page_payload import (
-    UNIFIED_REPLAY_LAB_PAYLOAD_KEY,
-    build_unified_replay_timeline_for_project,
-    empty_unified_replay_payload,
+from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
+    build_lab_replay_frames_for_project,
+    get_latest_lab_replay_track_for_project,
 )
 
 GRID_W, GRID_H = 23, 15
@@ -56,23 +47,8 @@ def get_latest_lab_replay_track() -> ReplayTrack | None:
     )
 
 
-def get_latest_lab_replay_track_for_project(project_id: int) -> ReplayTrack | None:
-    """Latest replay track (with frames) for a single persisted AsteroidProject."""
-
-    ordered_frames = ReplayFrame.objects.order_by("frame_index", "id")
-    return cast(
-        ReplayTrack | None,
-        ReplayTrack.objects.filter(project_id=int(project_id))
-        .annotate(_frame_count=Count("frames"))
-        .filter(_frame_count__gt=0)
-        .order_by("-created_at", "-id")
-        .prefetch_related(Prefetch("frames", queryset=ordered_frames))
-        .first(),
-    )
-
-
 def serialize_replay_frame(frame: ReplayFrame) -> dict[str, Any]:
-    """JSON-serializable replay frame for the Lab UI (output artifact only)."""
+    """JSON-serializable legacy Lab ORM frame (cell lookup API only; not timeline source)."""
 
     payload: dict[str, Any] = dict(frame.frame_payload or {})
     event_type = str(payload.get("event_type") or "")
@@ -107,15 +83,6 @@ def serialize_replay_frame(frame: ReplayFrame) -> dict[str, Any]:
     }
 
 
-def build_lab_replay_payload(track: ReplayTrack) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Ordered serialized frames and the first frame dict for initial paint."""
-
-    frames_iter = sorted(track.frames.all(), key=lambda f: (int(f.frame_index), int(f.pk)))
-    serialized = [serialize_replay_frame(f) for f in frames_iter]
-    initial = serialized[0] if serialized else {}
-    return serialized, initial
-
-
 def neutral_lab_context() -> dict[str, Any]:
     matrix = _neutral_overlay_matrix()
     initial_frame = 0
@@ -136,6 +103,13 @@ def neutral_lab_context() -> dict[str, Any]:
         "lab_replay_frames_json": [],
         "lab_initial_replay_frame_json": {},
         "has_replay_frames": False,
+        "replay_track_metrics": {
+            "frame_count": 0,
+            "replay_truncated": False,
+            "truncation_reason": None,
+            "dropped_frame_count": None,
+            "diagnostic_reason": None,
+        },
         "lab_ui_initial": {
             "frame": initial_frame,
             "totalFrames": total_frames,
@@ -144,66 +118,54 @@ def neutral_lab_context() -> dict[str, Any]:
             "replayTrackId": None,
             "replayTrackKey": None,
         },
-        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: (
-            empty_optimization_replay_track_with_missing_diagnostic()
-        ),
-        UNIFIED_REPLAY_LAB_PAYLOAD_KEY: empty_unified_replay_payload(enabled=False),
-        "unified_replay": empty_unified_replay_payload(enabled=False),
-        "unified_replay_enabled": False,
     }
 
 
 def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
-    """Lab shell context. When ``project_id`` is set, replay comes from that project only."""
+    """Lab shell context. Product replay is one composed timeline per project."""
 
     ctx = neutral_lab_context()
-    unified_enabled = bool(getattr(settings, "ASTEROID_LAB_UNIFIED_REPLAY_ENABLED", False))
-    ctx["unified_replay_enabled"] = unified_enabled
-    if project_id is not None:
-        ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] = optimization_replay_payload_for_project(
-            int(project_id)
-        )
-        if unified_enabled:
-            unified = build_unified_replay_timeline_for_project(
-                int(project_id),
-                enabled=True,
-            )
-            ctx[UNIFIED_REPLAY_LAB_PAYLOAD_KEY] = unified
-            ctx["unified_replay"] = unified
-    track = (
-        get_latest_lab_replay_track_for_project(project_id)
-        if project_id is not None
-        else get_latest_lab_replay_track()
-    )
-    if track is None:
+    if project_id is None:
         return ctx
 
-    frames_json, initial_json = build_lab_replay_payload(track)
+    track = get_latest_lab_replay_track_for_project(int(project_id))
+    frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))
+
     if not frames_json:
+        if track is not None:
+            ctx["lab_replay_track_id"] = int(track.pk)
+            ctx["lab_replay_track_key"] = str(track.track_key)
+        ctx["replay_track_metrics"] = track_metrics
         return ctx
 
+    first = frames_json[0]
     n = len(frames_json)
-    first_idx = int(frames_json[0]["frame_index"])
+    first_idx = int(first.get("frame_index", 0))
+    initial_json = dict(first)
+
     ctx.update(
         {
             "total_frames": n,
             "initial_frame": first_idx,
-            "initial_replay_phase": str(frames_json[0]["phase"]),
-            "lab_replay_track_id": int(track.pk),
-            "lab_replay_track_key": str(track.track_key),
+            "initial_replay_phase": str(first.get("phase") or "—"),
             "lab_replay_frames_json": frames_json,
             "lab_initial_replay_frame_json": initial_json,
             "has_replay_frames": True,
+            "replay_track_metrics": track_metrics,
         }
     )
+    if track is not None:
+        ctx["lab_replay_track_id"] = int(track.pk)
+        ctx["lab_replay_track_key"] = str(track.track_key)
+
     ui = dict(ctx["lab_ui_initial"])
     ui.update(
         {
             "frame": first_idx,
             "totalFrames": n,
             "hasReplayFrames": True,
-            "replayTrackId": int(track.pk),
-            "replayTrackKey": str(track.track_key),
+            "replayTrackId": int(track.pk) if track is not None else None,
+            "replayTrackKey": str(track.track_key) if track is not None else None,
         }
     )
     ctx["lab_ui_initial"] = ui

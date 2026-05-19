@@ -1,4 +1,4 @@
-"""Read-only unified replay timeline for Lab page context (Phase 9E; presentation only)."""
+"""Read-only product replay timeline for Lab page (Lab ORM + persisted optimization)."""
 
 from __future__ import annotations
 
@@ -31,11 +31,22 @@ from django_apps.asteroid_lab.services.optimization_ui_payload import (
 )
 from django_apps.asteroid_lab.snapshots.server_coords import map_bbox_dense_and_y
 
-UNIFIED_REPLAY_LAB_PAYLOAD_KEY = "unified_replay"
-UNIFIED_REPLAY_DIAGNOSTIC_REASON_KEY = "unified_replay_diagnostic_reason"
+REPLAY_DIAGNOSTIC_REASON_KEY = "replay_diagnostic_reason"
 
 
-def _get_latest_lab_replay_track_for_project(project_id: int) -> ReplayTrack | None:
+def _empty_track_metrics() -> dict[str, Any]:
+    return {
+        "frame_count": 0,
+        "replay_truncated": False,
+        "truncation_reason": None,
+        "dropped_frame_count": None,
+        "diagnostic_reason": None,
+    }
+
+
+def get_latest_lab_replay_track_for_project(project_id: int) -> ReplayTrack | None:
+    """Latest replay track (with frames) for one project (display-only)."""
+
     ordered_frames = ReplayFrame.objects.order_by("frame_index", "id")
     return cast(
         ReplayTrack | None,
@@ -87,7 +98,7 @@ def resolve_replay_projection_context_for_project(
 ) -> ReplayProjectionContext | None:
     """Derive adapter projection params from latest Lab replay cells (read-only)."""
 
-    track = _get_latest_lab_replay_track_for_project(int(project_id))
+    track = get_latest_lab_replay_track_for_project(int(project_id))
     if track is None:
         return None
     ordered = list(track.frames.all())
@@ -107,7 +118,7 @@ def _fallback_cells_from_lab_unified(
 
 
 def _lab_unified_frames_for_project(project_id: int) -> tuple[UnifiedReplayFrame, ...]:
-    track = _get_latest_lab_replay_track_for_project(int(project_id))
+    track = get_latest_lab_replay_track_for_project(int(project_id))
     if track is None:
         return ()
     ordered = list(track.frames.all())
@@ -159,33 +170,20 @@ def _optimization_unified_frames_for_project(
     return tuple(out)
 
 
-def empty_unified_replay_payload(*, enabled: bool = False) -> dict[str, Any]:
-    return {
-        "enabled": enabled,
-        "frames": [],
-        "track_metrics": {
-            "frame_count": 0,
-            "replay_truncated": False,
-            "truncation_reason": None,
-            "dropped_frame_count": None,
-        },
-        "diagnostic_reason": None,
-    }
-
-
-def _track_metrics_from_serialized_frames(frames: list[dict[str, Any]]) -> dict[str, Any]:
-    n = len(frames)
-    if n == 0:
-        return {
-            "frame_count": 0,
-            "replay_truncated": False,
-            "truncation_reason": None,
-            "dropped_frame_count": None,
-        }
+def _track_metrics_from_serialized_frames(
+    frames: list[dict[str, Any]],
+    *,
+    diagnostic_reason: str | None,
+) -> dict[str, Any]:
+    if not frames:
+        out = _empty_track_metrics()
+        if diagnostic_reason:
+            out["diagnostic_reason"] = diagnostic_reason
+        return out
     last_metrics = dict(frames[-1].get("metrics") or {})
     truncated = any(bool(dict(fr.get("metrics") or {}).get("replay_truncated")) for fr in frames)
     return {
-        "frame_count": n,
+        "frame_count": len(frames),
         "replay_truncated": truncated,
         "truncation_reason": (
             str(last_metrics["truncation_reason"])
@@ -197,18 +195,14 @@ def _track_metrics_from_serialized_frames(frames: list[dict[str, Any]]) -> dict[
             if truncated and last_metrics.get("dropped_frame_count") is not None
             else None
         ),
+        "diagnostic_reason": diagnostic_reason,
     }
 
 
-def build_unified_replay_timeline_for_project(
+def build_lab_replay_frames_for_project(
     project_id: int,
-    *,
-    enabled: bool = True,
-) -> dict[str, Any]:
-    """Compose Lab + optimization unified frames for page JSON (never mutates sources)."""
-
-    if not enabled:
-        return empty_unified_replay_payload(enabled=False)
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Compose Lab + optimization into product replay JSON (never mutates sources)."""
 
     lab_unified = _lab_unified_frames_for_project(int(project_id))
     projection = resolve_replay_projection_context_for_project(int(project_id))
@@ -227,18 +221,13 @@ def build_unified_replay_timeline_for_project(
     diagnostic: str | None = None
     if projection is None and opt_unified == () and lab_unified:
         diagnostic = "missing_server_xy_params_for_optimization_projection"
-    return {
-        "enabled": True,
-        "frames": serialized,
-        "track_metrics": _track_metrics_from_serialized_frames(serialized),
-        "diagnostic_reason": diagnostic,
-    }
+    metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
+    return serialized, metrics
 
 
 __all__ = [
-    "UNIFIED_REPLAY_DIAGNOSTIC_REASON_KEY",
-    "UNIFIED_REPLAY_LAB_PAYLOAD_KEY",
-    "build_unified_replay_timeline_for_project",
-    "empty_unified_replay_payload",
+    "REPLAY_DIAGNOSTIC_REASON_KEY",
+    "build_lab_replay_frames_for_project",
+    "get_latest_lab_replay_track_for_project",
     "resolve_replay_projection_context_for_project",
 ]

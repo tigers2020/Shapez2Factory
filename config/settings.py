@@ -142,11 +142,6 @@ MEDIA_ROOT = BASE_DIR / "media"
 SHAPE_PART_SPRITE_STATIC_ROOT = BASE_DIR / "django_apps" / "web" / "static" / "web"
 SHAPE_PART_SPRITE_URL_PREFIX = "/static/web/"
 
-# Phase 9E: single unified replay timeline in Lab UI (presentation only; default off).
-ASTEROID_LAB_UNIFIED_REPLAY_ENABLED = os.environ.get(
-    "ASTEROID_LAB_UNIFIED_REPLAY_ENABLED", ""
-).lower() in ("1", "true", "yes")
-
 ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH = Path(
     os.environ.get(
         "ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH",

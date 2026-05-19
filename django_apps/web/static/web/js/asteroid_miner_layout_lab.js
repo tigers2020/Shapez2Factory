@@ -464,6 +464,11 @@
   function collectFrameSpatialTargets(frame) {
     const out = [];
     pushCellList(out, fullMapCellsFromFrame(frame), "");
+    const mapView = frame && frame.map_view;
+    if (mapView && typeof mapView === "object") {
+      pushCellList(out, overlayCellsFromUnifiedMapView(mapView), "");
+      pushCellList(out, cellDeltaCellsFromUnifiedMapView(mapView), "");
+    }
     const diffT = collectDiffPaintTargets(frame);
     for (let i = 0; i < diffT.length; i++) out.push(diffT[i]);
     return out;
@@ -1684,7 +1689,7 @@
       }
     });
 
-    function replaceLabReplayPayload(payload) {
+    function replaceLabReplayPayload(payload, opts) {
       if (!payload || typeof payload !== "object") return;
       const redirectTo = typeof payload.redirect === "string" ? payload.redirect : "";
       if (blueprintInput && typeof payload.blueprint_code === "string") {
@@ -1712,7 +1717,11 @@
       replayCleanup();
       replayCleanup = initializeServerReplaySurface(replayFrames);
       resetLabViewportTransform();
-      replayArrayIndex = replaySlotForServerInitialFrame();
+      const seekLast =
+        opts && typeof opts === "object" && opts.seekLastFrame === true;
+      replayArrayIndex = seekLast
+        ? Math.max(0, replayFrames.length - 1)
+        : replaySlotForServerInitialFrame();
       setPlaying(false);
       applyFrame();
     }
@@ -2162,7 +2171,7 @@
           if (data.optimization_replay_attach) {
             renderOptimizationReplayAttachHud(data.optimization_replay_attach);
           }
-          replaceLabReplayPayload(data);
+          replaceLabReplayPayload(data, { seekLastFrame: true });
         })
         .catch(function () {
           replayRunFeedback = { error_code: "network_error" };

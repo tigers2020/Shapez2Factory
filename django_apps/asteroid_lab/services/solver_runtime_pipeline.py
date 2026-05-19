@@ -39,6 +39,7 @@ from django_apps.asteroid_lab.optimization.route_network_materializer import (
     materialize_route_network,
 )
 from django_apps.asteroid_lab.replay.replay_recording_cells import (
+    miner_cell_dicts_from_confirmed,
     overlay_cell_dicts_from_materialization,
     visible_cell_dicts_from_loaded,
 )
@@ -228,12 +229,14 @@ def run_solver_runtime_pipeline(
     if materialization.failure_reason is not None:
         mat_metrics["materialization_failure_reason"] = materialization.failure_reason.value
     mat_overlay = overlay_cell_dicts_from_materialization(materialization)
+    miner_overlay = miner_cell_dicts_from_confirmed(commit.confirmed, candidates_by_id)
+    full_overlay = mat_overlay + miner_overlay
     recorder.append(
         OptimizationReplayEventType.ROUTE_MATERIALIZED,
         title="Route materialized",
         metrics=mat_metrics,
         visible_cells=replay_base_cells,
-        overlay_cells=mat_overlay,
+        overlay_cells=full_overlay,
     )
 
     validation = validate_final_layout(
@@ -255,7 +258,7 @@ def run_solver_runtime_pipeline(
             "first_issue_detail": _issue_detail(error_issues[0]) if error_issues else None,
         },
         visible_cells=replay_base_cells,
-        overlay_cells=mat_overlay,
+        overlay_cells=full_overlay,
     )
 
     summary = _build_solver_summary(

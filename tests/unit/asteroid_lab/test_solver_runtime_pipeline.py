@@ -111,6 +111,81 @@ def test_pipeline_replay_event_sequence_is_deterministic() -> None:
         assert detail["issue_code"] == metrics["first_issue_code"]
 
 
+_JS_RECOGNISED_CELL_KINDS = frozenset(
+    {
+        "space_belt",
+        "space_pipe",
+        "shape_miner",
+        "fluid_miner",
+        "shape_miner_extension",
+        "fluid_miner_extension",
+        "asteroid_shape_field",
+        "asteroid_fluid_field",
+    }
+)
+
+
+def test_pipeline_overlay_cells_have_js_recognised_cell_kinds() -> None:
+    """ROUTE_MATERIALIZED and VALIDATION_COMPLETED overlays must only use JS-known cell kinds."""
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_template_path=_FIXTURE_DIR / "minimal_extractor_e.json",
+        run_key="overlay_kinds_check",
+    )
+
+    for frame in result.replay_frames:
+        if frame.event_type not in (
+            OptimizationReplayEventType.ROUTE_MATERIALIZED,
+            OptimizationReplayEventType.VALIDATION_COMPLETED,
+        ):
+            continue
+        for cell in frame.overlay_cells:
+            ck = cell.get("cell_kind", "")
+            assert ck in _JS_RECOGNISED_CELL_KINDS or ck == "", (
+                f"Unknown cell_kind {ck!r} in {frame.event_type} overlay — "
+                "add it to toneForFullMapCell in JS"
+            )
+        # sentinel must never appear
+        for cell in frame.overlay_cells:
+            assert cell.get("cell_kind") != "route_materialized"
+
+
+def test_pipeline_validation_overlay_differs_from_base_cells() -> None:
+    """If any route was committed, final overlay must contain cells not in visible_cells."""
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_template_path=_FIXTURE_DIR / "minimal_extractor_e.json",
+        run_key="overlay_diff_check",
+    )
+
+    validation_frame = next(
+        f
+        for f in result.replay_frames
+        if f.event_type == OptimizationReplayEventType.VALIDATION_COMPLETED
+    )
+    input_frame = next(
+        f
+        for f in result.replay_frames
+        if f.event_type == OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED
+    )
+
+    if result.solver_summary.get("confirmed_count", 0) == 0:
+        return  # no commits — diff not required
+
+    base_coords = frozenset(
+        (c["server_x"], c["server_y"]) for c in input_frame.visible_cells
+    )
+    overlay_coords = frozenset(
+        (c["server_x"], c["server_y"]) for c in validation_frame.overlay_cells
+    )
+    # overlay must have cells not in the base asteroid field (i.e. belt/miner cells)
+    assert overlay_coords - base_coords, (
+        "VALIDATION_COMPLETED overlay has no new cells beyond the base asteroid field"
+    )
+
+
 def test_route_committed_metrics_include_path_diagnostics() -> None:
     from django_apps.asteroid_lab.optimization.candidate_selector import (
         SelectedCandidatePlan,

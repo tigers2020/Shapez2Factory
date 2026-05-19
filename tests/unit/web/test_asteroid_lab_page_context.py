@@ -276,6 +276,28 @@ def test_lab_page_context_composed_timeline_includes_optimization_frames() -> No
     assert OptimizationReplayEventType.VALIDATION_COMPLETED.value in event_types
     assert ctx["replay_track_metrics"]["frame_count"] == len(frames)
 
+    if int(result.solver_summary.get("confirmed_count") or 0) > 0:
+        val_frames = [
+            f
+            for f in frames
+            if f.get("event_type") == OptimizationReplayEventType.VALIDATION_COMPLETED.value
+        ]
+        assert len(val_frames) == 1
+        overlay = val_frames[0]["map_view"].get("overlay_cells")
+        assert isinstance(overlay, list) and overlay
+        placement_kinds = {
+            "shape_miner",
+            "fluid_miner",
+            "shape_miner_extension",
+            "fluid_miner_extension",
+            "space_belt",
+            "space_pipe",
+        }
+        assert any(
+            isinstance(c, dict) and c.get("kind") in placement_kinds and isinstance(c.get("x"), int)
+            for c in overlay
+        )
+
 
 @pytest.mark.django_db
 def test_lab_page_context_read_does_not_touch_lab_replay_orm() -> None:
@@ -364,6 +386,8 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "snapToDevicePixel" in js
     assert "data-lab-sprite-base" in js
     assert "function renderReplayFrame" in js
+    assert "overlayCellsFromUnifiedMapView(mapView)" in js
+    assert "cellDeltaCellsFromUnifiedMapView(mapView)" in js
     assert "getCurrentReplayFrame" in js
     assert "lab-replay-frames-data" in js
     assert "lab-timeline-play" in js
@@ -427,6 +451,7 @@ def test_lab_js_replay_wiring_smoke() -> None:
     run_handler = js[run_btn_idx : run_btn_idx + 2500]
     assert "setPlaying(true)" not in run_handler
     assert "replaceLabReplayPayload" in run_handler
+    assert "seekLastFrame: true" in js
     assert "currentUnifiedFrameIndex" not in js
     assert "lab-unified-replay-data" not in js
     assert "updateReplayTruncationHud" in js

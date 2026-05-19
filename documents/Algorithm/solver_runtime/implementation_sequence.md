@@ -203,10 +203,10 @@ test_incremental_commit_separates_shape_and_fluid_domains
 
 ### 작업
 
-- [ ] `route_network_materializer.py`
-- [ ] path graph aggregation
-- [ ] belt/pipe sprite kind selection
-- [ ] merger/splitter/triple conversion
+- [x] `route_network_materializer.py`
+- [x] path graph aggregation
+- [x] belt/pipe sprite kind selection
+- [x] merger/splitter/triple conversion
 
 ### 필수 테스트 (PR6)
 

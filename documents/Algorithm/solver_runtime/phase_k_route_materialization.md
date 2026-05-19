@@ -53,9 +53,9 @@ materialization 시 reservation path **앞에** `fixed_output_transport` 셀을 
 
 ## 완료 조건
 
-- [ ] straight/turn이 path topology와 일치
-- [ ] shared path에 merger/splitter 선택 deterministic
-- [ ] shape/fluid overlap reject
+- [x] straight/turn이 path topology와 일치
+- [x] shared path에 merger/splitter 선택 deterministic
+- [x] shape/fluid overlap reject
 
 ## 필수 테스트
 
@@ -68,7 +68,9 @@ test_route_materializer_selects_y_or_triple_merger
 
 ## 관련 코드·문서
 
-- 예정: `route_network_materializer.py`
+- 구현: `route_network_materializer.py` (`materialize_route_network`, `pick_tile_type`)
+- DTO: `materialization_dtos.py`
+- 테스트: `tests/unit/asteroid_lab/test_route_materializer.py`
 
 ## 다음 Phase
 

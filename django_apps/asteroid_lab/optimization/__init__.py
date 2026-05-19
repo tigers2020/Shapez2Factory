@@ -58,6 +58,7 @@ from django_apps.asteroid_lab.optimization.enums import (
     Direction,
     EdgeKind,
     EvolutionConvergenceReason,
+    MaterializationFailureReason,
     OptimizationReplayEventType,
     PlacementCommitState,
     ReservationState,
@@ -108,6 +109,11 @@ from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     LoadedReconstructionSnapshot,
     loaded_reconstruction_snapshot_from_result,
 )
+from django_apps.asteroid_lab.optimization.materialization_dtos import (
+    MaterializedLayoutCells,
+    MaterializedTransportCell,
+    RouteMaterializationResult,
+)
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     build_topology_graph,
     mineable_field_kind,
@@ -121,6 +127,11 @@ from django_apps.asteroid_lab.optimization.route_domain import (
 from django_apps.asteroid_lab.optimization.route_goal_planner import (
     PlannedRouteGoals,
     plan_route_goals,
+)
+from django_apps.asteroid_lab.optimization.route_network_materializer import (
+    full_path_for_reservation,
+    materialize_route_network,
+    pick_tile_type,
 )
 from django_apps.asteroid_lab.optimization.route_probe import (
     RouteProbeInput,
@@ -153,6 +164,9 @@ __all__ = [
     "GeneCandidate",
     "GeneTemplate",
     "IncrementalCommitResult",
+    "MaterializationFailureReason",
+    "MaterializedLayoutCells",
+    "MaterializedTransportCell",
     "GenomeDiversityMetrics",
     "OptimizationInput",
     "OptimizationReplayEventType",
@@ -168,6 +182,7 @@ __all__ = [
     "RouteGoal",
     "RouteGoalKind",
     "RouteProbeFailureReason",
+    "RouteMaterializationResult",
     "RouteReservation",
     "TopologyEdge",
     "TopologyGraph",
@@ -209,6 +224,9 @@ __all__ = [
     "ProjectedGenePlacement",
     "run_route_probe",
     "commit_selected_candidates",
+    "full_path_for_reservation",
+    "materialize_route_network",
+    "pick_tile_type",
     "score_gene_candidate",
     "select_gene_candidates_greedy",
     "validate_projected_gene_geometry",

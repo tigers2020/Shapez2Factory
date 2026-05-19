@@ -84,6 +84,12 @@ class EvolutionConvergenceReason(StrEnum):
     CANDIDATE_POOL_EXHAUSTED = "candidate_pool_exhausted"
 
 
+class MaterializationFailureReason(StrEnum):
+    """Phase K route materialization terminal failure reasons."""
+
+    TRANSPORT_KIND_OVERLAP = "transport_kind_overlap"
+
+
 class CommitConflictReason(StrEnum):
     """Phase 7 conflict reasons (StrEnum, value = stable wire string)."""
 

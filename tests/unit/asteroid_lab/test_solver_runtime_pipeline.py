@@ -107,3 +107,23 @@ def test_pipeline_replay_event_sequence_is_deterministic() -> None:
         detail = metrics["first_issue_detail"]
         assert isinstance(detail, dict)
         assert detail["issue_code"] == metrics["first_issue_code"]
+
+
+def test_route_committed_metrics_include_path_diagnostics() -> None:
+    from django_apps.asteroid_lab.optimization.candidate_selector import SelectedCandidatePlan
+    from django_apps.asteroid_lab.optimization.commit_best_candidates import commit_selected_candidates
+    from django_apps.asteroid_lab.services.solver_runtime_pipeline import _route_committed_metrics
+    from tests.unit.asteroid_lab.test_incremental_commit import _open_void_inp, _shape_candidate
+
+    inp = _open_void_inp()
+    candidate = _shape_candidate(candidate_id="a:1")
+    plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1",))
+    commit = commit_selected_candidates(plan, {candidate.candidate_id: candidate}, inp=inp)
+    assert commit.confirmed
+    placement = commit.confirmed[0]
+    metrics = _route_committed_metrics(placement, {candidate.candidate_id: candidate})
+    assert metrics["candidate_id"] == "a:1"
+    assert metrics["route_reservation_id"] == placement.reservation.reservation_id
+    assert metrics["path_len"] == metrics["reserved_cell_count"]
+    assert metrics["path_contains_output_stub"] is True
+    assert metrics["output_stub"] == list(candidate.fixed_output_transport)

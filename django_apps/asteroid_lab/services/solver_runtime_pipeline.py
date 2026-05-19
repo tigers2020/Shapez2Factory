@@ -6,14 +6,20 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from django_apps.asteroid_lab.optimization.candidate_dtos import CandidateGenerationConfig
+from django_apps.asteroid_lab.optimization.candidate_dtos import (
+    CandidateGenerationConfig,
+    GeneCandidate,
+)
 from django_apps.asteroid_lab.optimization.candidate_generator import (
     default_generation_config,
     generate_gene_candidates,
 )
 from django_apps.asteroid_lab.optimization.candidate_selector import select_gene_candidates_greedy
 from django_apps.asteroid_lab.optimization.capacity_planner import plan_capacity
-from django_apps.asteroid_lab.optimization.commit_best_candidates import commit_selected_candidates
+from django_apps.asteroid_lab.optimization.commit_best_candidates import (
+    ConfirmedGenePlacement,
+    commit_selected_candidates,
+)
 from django_apps.asteroid_lab.optimization.enums import (
     OptimizationReplayEventType,
     ValidationSeverity,
@@ -49,7 +55,7 @@ def _load_gene_templates(path: Path) -> tuple[GeneTemplate, ...]:
 
 
 def _issue_detail(issue: ValidationIssue) -> dict[str, Any]:
-    return {
+    detail: dict[str, Any] = {
         "issue_code": issue.issue_code.value,
         "coord": list(issue.coord) if issue.coord is not None else None,
         "candidate_id": issue.candidate_id,
@@ -57,6 +63,37 @@ def _issue_detail(issue: ValidationIssue) -> dict[str, Any]:
         "transport_kind": issue.transport_kind.value if issue.transport_kind else None,
         "message": issue.message,
     }
+    if issue.issue_extra:
+        for key, value in issue.issue_extra.items():
+            if key == "transport_kind" and hasattr(value, "value"):
+                detail[key] = value.value
+            elif isinstance(value, tuple) and len(value) == 2:
+                detail[key] = list(value)
+            else:
+                detail[key] = value
+    return detail
+
+
+def _route_committed_metrics(
+    placement: ConfirmedGenePlacement,
+    candidates_by_id: dict[str, GeneCandidate],
+) -> dict[str, Any]:
+    res = placement.reservation
+    metrics: dict[str, Any] = {
+        "candidate_id": placement.candidate_id,
+        "route_reservation_id": res.reservation_id,
+        "path_head": list(res.path[0]) if res.path else None,
+        "path_tail": list(res.path[-1]) if res.path else None,
+        "path_len": len(res.path),
+        "reserved_cell_count": len(res.reserved_cells),
+    }
+    candidate = candidates_by_id.get(placement.candidate_id)
+    if candidate is not None:
+        metrics["output_stub"] = list(candidate.fixed_output_transport)
+        metrics["path_contains_output_stub"] = (
+            candidate.fixed_output_transport in res.reserved_cells
+        )
+    return metrics
 
 
 def _error_issues(issues: tuple[ValidationIssue, ...]) -> tuple[ValidationIssue, ...]:
@@ -173,7 +210,7 @@ def run_solver_runtime_pipeline(
         recorder.append(
             OptimizationReplayEventType.ROUTE_COMMITTED,
             title=f"Committed {placement.candidate_id}",
-            metrics={"route_reservation_id": placement.reservation.reservation_id},
+            metrics=_route_committed_metrics(placement, candidates_by_id),
             visible_cells=replay_base_cells,
         )
     for cid in commit.skipped_candidate_ids:

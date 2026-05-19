@@ -151,6 +151,7 @@ class ValidationIssue:
     route_goal_kind: RouteGoalKind | None
     transport_kind: TransportKind | None
     message: str
+    issue_extra: dict[str, object] | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -49,6 +49,7 @@ def _issue(
     route_reservation_id: str | None = None,
     path_index: int | None = None,
     message: str,
+    issue_extra: dict[str, object] | None = None,
 ) -> ValidationIssue:
     return ValidationIssue(
         issue_code=issue_code,
@@ -60,7 +61,27 @@ def _issue(
         route_goal_kind=None,
         transport_kind=None,
         message=message,
+        issue_extra=issue_extra,
     )
+
+
+def _extractor_not_connected_extra(
+    candidate: GeneCandidate,
+    res: RouteReservation,
+) -> dict[str, object]:
+    path_set = frozenset(res.path)
+    return {
+        "extractor_coord": candidate.extractor,
+        "output_stub": candidate.fixed_output_transport,
+        "reservation_path_head": res.path[0] if res.path else None,
+        "reservation_path_tail": res.path[-1] if res.path else None,
+        "reservation_path_len": len(res.path),
+        "reservation_path_contains_output_stub": (
+            candidate.fixed_output_transport in res.reserved_cells
+        ),
+        "reservation_path_contains_extractor": candidate.extractor in path_set,
+        "transport_kind": res.transport_kind,
+    }
 
 
 def validate_final_layout(
@@ -119,25 +140,29 @@ def validate_final_layout(
 
         candidate = candidates_by_id.get(cid)
         if candidate is not None:
-            path_set = frozenset(res.path)
-            if candidate.extractor not in path_set and res.path:
+            if candidate.fixed_output_transport not in res.reserved_cells and res.path:
                 issues.append(
                     _issue(
                         issue_code=ValidationIssueCode.EXTRACTOR_NOT_CONNECTED,
                         coord=candidate.extractor,
                         candidate_id=cid,
                         route_reservation_id=res.reservation_id,
-                        message="extractor not on reservation path",
+                        message="output stub not on reservation path",
+                        issue_extra=_extractor_not_connected_extra(candidate, res),
                     )
                 )
-            elif not res.path and candidate.extractor != res.reached_goal.coord:
+            elif (
+                not res.path
+                and candidate.fixed_output_transport != res.reached_goal.coord
+            ):
                 issues.append(
                     _issue(
                         issue_code=ValidationIssueCode.EXTRACTOR_NOT_CONNECTED,
                         coord=candidate.extractor,
                         candidate_id=cid,
                         route_reservation_id=res.reservation_id,
-                        message="empty path does not connect extractor to goal",
+                        message="empty path does not connect output stub to goal",
+                        issue_extra=_extractor_not_connected_extra(candidate, res),
                     )
                 )
 

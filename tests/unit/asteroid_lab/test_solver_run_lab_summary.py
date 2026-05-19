@@ -44,7 +44,7 @@ def test_lab_run_summary_placed_and_first_issue_detail() -> None:
         "candidate_id": "a:1",
         "route_reservation_id": "a:1:route:0",
         "transport_kind": None,
-        "message": "extractor not on reservation path",
+        "message": "output stub not on reservation path",
     }
     row = lab_run_summary_from_solver_summary(
         run_id=21,

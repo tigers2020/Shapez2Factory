@@ -121,4 +121,5 @@ django_apps/shapez_asteroid/             ← 제거됨; 문서·import 금지
 - **있음:** PR3 `candidate_dtos.py`·`candidate_equivalence.py`·`candidate_generator.py`
 - **있음:** PR5 `commit_best_candidates.py`, PR6 `route_network_materializer.py`·`materialization_dtos.py`
 - **있음:** PR7 `final_validation.py`·`solver_runtime_pipeline.py`·`optimization_replay_persist.py`·`optimization_ui_payload.py`
-- **후속:** HTTP `Run Solver` 진입·`asteroid_lab_page_context` optimization 트랙 읽기 ([`01_entry_point.md`](01_entry_point.md))
+- **있음 (PR8):** HTTP `POST …/run-solver/` · `solver_runtime_entry` · `optimization_replay_read` · page context `optimization_replay` SSR
+- **후속:** Lab JS `Run Solver` fetch·optimization HUD ([`01_entry_point.md`](01_entry_point.md))

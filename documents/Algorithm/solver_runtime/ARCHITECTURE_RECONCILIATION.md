@@ -109,9 +109,11 @@ Materialization: [OD-1](open_decisions.md) — reservation path **앞에** `fixe
 | incremental commit (`commit_selected_candidates`, reservation overlay) | 있음 | **PR5 완료** | |
 | route network materialization (`materialize_route_network`) | 있음 | **PR6 완료** | |
 | `validate_final_layout` (read-only) | 있음 | **PR7 완료** | |
-| Solver A→M orchestration (`run_solver_runtime_pipeline`) | 있음 | **PR7 완료** | HTTP·page context 읽기 후속 |
+| Solver A→M orchestration (`run_solver_runtime_pipeline`) | 있음 | **PR7 완료** | |
+| HTTP entry (`solver_runtime_entry`·POST run-solver) | 있음 | **PR8 완료** | JS fetch 후속 |
 | optimization replay persist v0 (`optimization_replay_persist`·`optimization_ui_payload`) | 있음 | **PR7 완료** | Lab `ReplayFrame` ORM 미사용; §6 |
-| Lab optimization replay HUD read (12G–12H) | web 측 **별도** | 후속 | page context |
+| Lab optimization replay read (12G page context) | 있음 | **PR8 완료** | `optimization_replay_read` |
+| Lab optimization replay HUD (12H JS) | web 측 **별도** | 후속 | |
 
 ---
 

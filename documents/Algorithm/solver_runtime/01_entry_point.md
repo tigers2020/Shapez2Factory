@@ -3,7 +3,7 @@ status: ACTIVE
 owner: solver-runtime-pipeline
 last_reviewed: 2026-05-19
 phase: Entry
-pr: 7 (일부)
+pr: 8
 related_docs:
   - documents/Algorithm/solver_runtime/README.md
   - django_apps/web/views/public_pages.py
@@ -19,15 +19,18 @@ related_docs:
 
 사용자 UI: `Run Solver` / `Solver` 버튼 클릭.
 
-## 백엔드 진입 (예상)
+## 백엔드 진입
 
 ```text
-POST /asteroid-miner-layout/projects/<project>/run-solver/
+POST /asteroid-miner-layout/p/<slug>/run-solver/
 ```
 
-또는 기존 프로젝트 POST 경로의 `run_optimization=1` 분기.
+- URL name: `web:asteroid-miner-layout-project-run-solver`
+- 뷰: `asteroid_miner_layout_project_run_solver` ([`public_pages.py`](../../../django_apps/web/views/public_pages.py))
+- 서비스: `run_solver_runtime_for_project` ([`solver_runtime_entry.py`](../../../django_apps/asteroid_lab/services/solver_runtime_entry.py))
+- 응답: `Accept: application/json` → `ok`, `solver_run_id`, `optimization_replay`, `solver_summary`, `validation_passed`, 실패 시 `error_code`
 
-구현 확인: [`django_apps/web/views/public_pages.py`](../../../django_apps/web/views/public_pages.py), post-inspection evolution attach 경로.
+Lab JS `Run Solver` 클릭 연동은 **후속 PR** (SSR·POST API만 PR8).
 
 ## 입력
 
@@ -72,8 +75,10 @@ Phase M — Persist / Replay / UI Payload
 
 ## 완료 조건
 
-- [ ] 단일 orchestration 함수(또는 서비스)가 A→M 순서를 문서와 동일하게 호출.
-- [ ] PR7 통합 테스트: persist·replay event·validation read-only.
+- [x] 단일 orchestration 함수(또는 서비스)가 A→M 순서를 문서와 동일하게 호출 (`solver_runtime_pipeline` + `solver_runtime_entry`).
+- [x] PR7 통합 테스트: persist·replay event·validation read-only.
+- [x] HTTP POST 진입·`asteroid_lab_page_context` optimization 트랙 읽기 (PR8).
+- [ ] Lab JS Run Solver → POST fetch (후속).
 
 ## 필수 테스트
 

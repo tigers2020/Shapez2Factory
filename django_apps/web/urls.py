@@ -23,6 +23,11 @@ urlpatterns = [
         name="asteroid-miner-layout-replay-frame-cell",
     ),
     path(
+        "asteroid-miner-layout/p/<slug:slug>/run-solver/",
+        views.asteroid_miner_layout_project_run_solver,
+        name="asteroid-miner-layout-project-run-solver",
+    ),
+    path(
         "asteroid-miner-layout/p/<slug:slug>/",
         views.asteroid_miner_layout_project,
         name="asteroid-miner-layout-project",

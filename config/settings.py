@@ -141,6 +141,13 @@ MEDIA_ROOT = BASE_DIR / "media"
 SHAPE_PART_SPRITE_STATIC_ROOT = BASE_DIR / "django_apps" / "web" / "static" / "web"
 SHAPE_PART_SPRITE_URL_PREFIX = "/static/web/"
 
+ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH = Path(
+    os.environ.get(
+        "ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH",
+        str(BASE_DIR / "tests" / "fixtures" / "asteroid_lab" / "gene_templates"),
+    )
+).resolve()
+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",

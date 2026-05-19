@@ -231,7 +231,7 @@ test_route_materializer_selects_y_or_triple_merger
 - [x] validation extension (read-only) — `final_validation.py`
 - [x] `solver_summary` — `SolverRun.config_json["solver_summary"]`
 - [x] Runtime replay thin adapter — `runtime_replay_recorder.py` + `optimization_replay_persist.py` + `optimization_ui_payload.py` (12F v0, `asteroid_lab` 정본)
-- [ ] UI payload attach (`asteroid_lab_page_context` 읽기) — **후속** (HTTP 진입점과 동일 PR 범위 밖)
+- [x] UI payload attach (`asteroid_lab_page_context` 읽기) — PR8 `optimization_replay_read.py`
 - [x] A→M orchestration — `solver_runtime_pipeline.run_solver_runtime_pipeline`
 
 ### 모듈
@@ -262,10 +262,54 @@ test_solver_button_pipeline_no_implicit_lab_optimization_sync
 
 ---
 
+## PR 8 — HTTP Entry + Optimization Page Context (백엔드)
+
+**Phase:** Entry, M (read)  
+**문서:** [`01_entry_point.md`](01_entry_point.md)
+
+### 작업
+
+- [x] `POST /asteroid-miner-layout/p/<slug>/run-solver/` — `asteroid_miner_layout_project_run_solver`
+- [x] `solver_runtime_entry.run_solver_runtime_for_project`
+- [x] `optimization_replay_payload_for_project` + `lab_page_context` `optimization_replay`
+- [x] SSR `lab-optimization-replay-data` json_script
+- [ ] Lab JS `Run Solver` fetch·HUD — **후속**
+
+### 모듈
+
+```text
+django_apps/asteroid_lab/services/solver_runtime_entry.py
+django_apps/asteroid_lab/services/optimization_replay_read.py
+django_apps/web/services/asteroid_lab_page_context.py
+django_apps/web/views/public_pages.py
+config/settings.py  # ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH
+tests/unit/web/test_asteroid_lab_page_context.py  # optimization replay cases
+tests/unit/asteroid_lab/test_solver_runtime_entry.py
+tests/integration/web/test_asteroid_run_solver.py
+```
+
+### 필수 테스트 (PR8)
+
+```text
+test_lab_page_context_includes_empty_optimization_replay_when_no_solver_run
+test_lab_page_context_reads_persisted_optimization_replay
+test_lab_page_context_malformed_optimization_replay_does_not_crash
+test_lab_page_context_optimization_replay_does_not_touch_lab_replay_orm
+test_solver_runtime_entry_persists_replay_and_summary
+test_solver_runtime_entry_does_not_create_lab_replay_frames
+test_solver_runtime_entry_requires_map_input
+test_post_run_solver_json_persists_and_returns_payload
+test_post_run_solver_unknown_slug_404
+test_post_run_solver_no_map_input_400
+test_get_project_page_includes_optimization_replay_after_run
+```
+
+---
+
 ## 권장 구현 순서 (의존성)
 
 ```text
-PR1 (완료) → PR1B → PR2.5 → PR2 → PR3 → PR4 → PR5 → PR6 → PR7
+PR1 (완료) → PR1B → PR2.5 → PR2 → PR3 → PR4 → PR5 → PR6 → PR7 → PR8
 ```
 
 PR2.5는 PR2·PR3 이전에 `route_goals`가 필요하므로 **PR1B 직후** 권장.

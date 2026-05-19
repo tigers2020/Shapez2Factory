@@ -7,8 +7,23 @@ from pathlib import Path
 import pytest
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
 from django_apps.asteroid_lab.replay import event_types as et
+from django_apps.asteroid_lab.services.experiment_service import create_solver_run
+from django_apps.asteroid_lab.services.optimization_replay_persist import (
+    persist_optimization_replay_frames_to_solver_run,
+)
+from django_apps.asteroid_lab.services.optimization_ui_payload import (
+    OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY,
+    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+    SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
+)
+from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 from django_apps.web.services import asteroid_lab_page_context as alc
+
+_GENE_TEMPLATES = (
+    Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
+)
 
 
 @pytest.mark.django_db
@@ -190,6 +205,123 @@ def test_lab_page_context_restricted_to_project_id() -> None:
     assert ctx_b["lab_replay_track_id"] == t2.id
 
 
+@pytest.mark.django_db
+def test_lab_page_context_includes_empty_optimization_replay_when_no_solver_run() -> None:
+    p = m.AsteroidProject.objects.create(name="OptEmpty", slug="opt-empty-lab-ctx")
+    ctx = alc.lab_page_context(project_id=p.pk)
+    opt = ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
+    assert opt["frames"] == []
+    assert (
+        opt["metrics"][OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY]
+        == "missing_optimization_replay"
+    )
+
+
+@pytest.mark.django_db
+def test_lab_page_context_reads_persisted_optimization_replay() -> None:
+    import base64
+    import gzip
+    import json
+    import random
+
+    from django.test import Client
+    from django.urls import reverse
+
+    from django_apps.asteroid_lab.optimization.loaded_snapshot import (
+        loaded_reconstruction_snapshot_from_result,
+    )
+    from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
+        run_reconstruction_for_map_input,
+    )
+
+    def _copy() -> str:
+        root = {
+            "V": random.randint(1, 10_000_000),
+            "BP": {
+                "$type": "Island",
+                "Entries": [
+                    {"X": 1, "Y": 0, "T": "Layout_ProMiner"},
+                    {"X": 2, "Y": 0, "T": "SpaceBelt_Left"},
+                    {"X": 3, "Y": 1, "T": "Layout_ShapeMinerExtension"},
+                ],
+            },
+        }
+        text = json.dumps(root, separators=(",", ":")).encode("utf-8")
+        return "SHAPEZ2-4-" + base64.b64encode(gzip.compress(text)).decode("ascii")
+
+    client = Client()
+    client.post(
+        reverse("web:asteroid-miner-layout-projects-create"),
+        {"copy_code": _copy()},
+        follow=True,
+    )
+    proj = m.AsteroidProject.objects.get()
+    inp = m.AsteroidMapInput.objects.filter(project=proj).order_by("-id").first()
+    assert inp is not None
+    _cleanup, recon = run_reconstruction_for_map_input(int(inp.pk))
+    loaded = loaded_reconstruction_snapshot_from_result(recon)
+    run_dto = create_solver_run(
+        int(proj.pk),
+        run_key="ctx-opt-read",
+        algorithm_label="runtime_v0",
+        config={},
+    )
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
+    )
+    persist_optimization_replay_frames_to_solver_run(
+        run_dto.id,
+        result.replay_frames,
+        solver_summary=result.solver_summary,
+    )
+
+    ctx = alc.lab_page_context(project_id=proj.pk)
+    opt = ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
+    assert len(opt["frames"]) >= 1
+    assert opt["metrics"]["frame_count"] == len(opt["frames"])
+    assert OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY not in opt["metrics"]
+    event_types = {f["event_type"] for f in opt["frames"]}
+    assert OptimizationReplayEventType.VALIDATION_COMPLETED.value in event_types
+
+
+@pytest.mark.django_db
+def test_lab_page_context_malformed_optimization_replay_does_not_crash() -> None:
+    p = m.AsteroidProject.objects.create(name="OptBad", slug="opt-bad-lab-ctx")
+    m.SolverRun.objects.create(
+        project=p,
+        run_key="bad-opt",
+        algorithm_label="runtime_v0",
+        config_json={SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY: [{"frame_index": 99}]},
+    )
+    ctx = alc.lab_page_context(project_id=p.pk)
+    opt = ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
+    assert opt["frames"] == []
+    assert (
+        opt["metrics"][OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY]
+        == "invalid_optimization_replay_payload"
+    )
+
+
+@pytest.mark.django_db
+def test_lab_page_context_optimization_replay_does_not_touch_lab_replay_orm() -> None:
+    p = m.AsteroidProject.objects.create(name="OptOrm", slug="opt-orm-lab-ctx")
+    t = m.ReplayTrack.objects.create(project=p, track_key="opt-tr")
+    m.ReplayFrame.objects.create(
+        replay_track=t,
+        frame_index=0,
+        frame_key="x",
+        phase="decode",
+        title="T",
+        description="",
+        frame_payload={"event_type": "decode.raw_loaded"},
+        cell_overlay_json={},
+    )
+    before = m.ReplayFrame.objects.count()
+    alc.lab_page_context(project_id=p.pk)
+    assert m.ReplayFrame.objects.count() == before
+
+
 def test_lab_page_context_module_import_boundary() -> None:
     path = (
         Path(__file__).resolve().parents[3]
@@ -236,6 +368,10 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-replay-frames-data" in js
     assert "lab-timeline-play" in js
     assert "lab-timeline-scrub" in js
+    assert "lab-timeline-controls" in js
+    assert "labPointerShouldStartViewportPan" in js
+    assert "endLabViewportPan" in js
+    assert 'closest("#lab-timeline-controls, #lab-timeline-scrub")' in js
     assert "setTimelineIndex" in js
     assert "hasServerReplay" in js
     assert "replayPhaseForFrame" in js
@@ -255,5 +391,10 @@ def test_lab_js_replay_wiring_smoke() -> None:
         root / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
     )
     tpl = tpl_path.read_text(encoding="utf-8")
+    assert 'id="lab-timeline-controls"' in tpl
+    assert "data-lab-timeline-controls" in tpl
+    controls_idx = tpl.index('id="lab-timeline-controls"')
+    scrub_idx = tpl.index('id="lab-timeline-scrub"', controls_idx)
+    assert scrub_idx > controls_idx
     assert "lab_identifier_sprite_paths" in tpl
     assert "lab-identifier-sprite-paths-data" in tpl

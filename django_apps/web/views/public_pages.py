@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
+from django_apps.asteroid_lab.adapters.decode_adapter import AsteroidLabCopyDecodeError
 from django_apps.asteroid_lab.models import (
     AsteroidMapInput,
     AsteroidProject,
@@ -29,6 +30,11 @@ from django_apps.asteroid_lab.services.project_service import (
 )
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
+)
+from django_apps.asteroid_lab.services.solver_runtime_entry import (
+    SolverRuntimeEntryErrorCode,
+    entry_result_to_json_dict,
+    run_solver_runtime_for_project,
 )
 from django_apps.shapez_core.services.lab_sprite_identifier_service import (
     build_lab_identifier_sprite_relpath_map,
@@ -239,6 +245,34 @@ def asteroid_miner_layout_project(request: HttpRequest, slug: str) -> HttpRespon
 
 
 @require_POST
+def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) -> JsonResponse:
+    """POST: run solver runtime pipeline for one project; JSON response (PR8 entry)."""
+
+    project = AsteroidProject.objects.filter(slug=slug).first()
+    if project is None:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error_code": SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND.value,
+                "solver_run_id": None,
+                "optimization_replay": {},
+                "solver_summary": {},
+                "validation_passed": False,
+            },
+            status=404,
+        )
+
+    result = run_solver_runtime_for_project(int(project.pk))
+    body = entry_result_to_json_dict(result)
+    if result.error_code == SolverRuntimeEntryErrorCode.NO_MAP_INPUT:
+        return JsonResponse(body, status=400)
+    if not result.ok:
+        status = 500 if result.error_code == SolverRuntimeEntryErrorCode.PERSIST_REJECTED else 400
+        return JsonResponse(body, status=status)
+    return JsonResponse(body, status=200)
+
+
+@require_POST
 def asteroid_miner_layout_replay_frame_cell(request: HttpRequest) -> JsonResponse:
     """POST JSON: resolve one cell at world (x, y) for a persisted :class:`ReplayFrame`."""
 
@@ -322,6 +356,21 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
         body.update(replay_bundle)
         return JsonResponse(body, status=status)
 
+    def _respond_invalid_copy(*, redirect_url: str, in_place: bool) -> HttpResponse:
+        messages.error(request, _("Invalid blueprint copy code."))
+        if wants_json:
+            return _json_response(
+                ok=False,
+                redirect_url=redirect_url,
+                in_place=in_place,
+                copy_for_blueprint=copy_code,
+                replay_bundle=_lab_json_bundle_for_track_id(None, copy_code=copy_code),
+                replay_ok=False,
+                error_message="invalid_copy",
+                status=400,
+            )
+        return redirect(redirect_url)
+
     if stay_slug:
         stay_project = AsteroidProject.objects.filter(slug=stay_slug).first()
         if stay_project is None:
@@ -352,7 +401,17 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                     status=400,
                 )
             return redirect(redirect_url)
-        inp, _created = upsert_map_input_for_project(stay_project, copy_code, source_label="")
+        try:
+            inp, _created = upsert_map_input_for_project(
+                stay_project, copy_code, source_label=""
+            )
+        except AsteroidLabCopyDecodeError:
+            return _respond_invalid_copy(
+                redirect_url=reverse(
+                    "web:asteroid-miner-layout-project", kwargs={"slug": stay_slug}
+                ),
+                in_place=True,
+            )
         result = build_initial_replay_for_map_input(int(inp.pk), overwrite=True)
         if result.status != "ok" and result.error_message:
             messages.error(request, result.error_message)
@@ -384,7 +443,13 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             )
         return redirect(reverse("web:asteroid-miner-layout"))
 
-    slug = resolve_or_create_project_slug_for_copy_code(copy_code, source_label="")
+    try:
+        slug = resolve_or_create_project_slug_for_copy_code(copy_code, source_label="")
+    except AsteroidLabCopyDecodeError:
+        return _respond_invalid_copy(
+            redirect_url=reverse("web:asteroid-miner-layout"),
+            in_place=False,
+        )
     project = AsteroidProject.objects.filter(slug=slug).first()
     result = None
     if project is not None:

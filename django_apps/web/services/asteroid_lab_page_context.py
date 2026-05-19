@@ -7,6 +7,13 @@ from typing import Any, cast
 from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.services.optimization_replay_read import (
+    empty_optimization_replay_track_with_missing_diagnostic,
+    optimization_replay_payload_for_project,
+)
+from django_apps.asteroid_lab.services.optimization_ui_payload import (
+    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+)
 
 GRID_W, GRID_H = 23, 15
 CELL_COUNT = GRID_W * GRID_H
@@ -131,6 +138,9 @@ def neutral_lab_context() -> dict[str, Any]:
             "replayTrackId": None,
             "replayTrackKey": None,
         },
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: (
+            empty_optimization_replay_track_with_missing_diagnostic()
+        ),
     }
 
 
@@ -138,6 +148,10 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
     """Lab shell context. When ``project_id`` is set, replay comes from that project only."""
 
     ctx = neutral_lab_context()
+    if project_id is not None:
+        ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] = optimization_replay_payload_for_project(
+            int(project_id)
+        )
     track = (
         get_latest_lab_replay_track_for_project(project_id)
         if project_id is not None

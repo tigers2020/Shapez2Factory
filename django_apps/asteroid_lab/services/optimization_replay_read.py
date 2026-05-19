@@ -10,7 +10,7 @@ from django_apps.asteroid_lab.services.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY,
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
     build_optimization_replay_track_payload,
-    deserialize_optimization_replay_frames_from_json,
+    deserialize_optimization_replay_frames_lenient,
     empty_optimization_replay_track_payload,
 )
 
@@ -51,12 +51,17 @@ def optimization_replay_payload_for_project(project_id: int) -> dict[str, Any]:
         empty = OptimizationReplayDiagnosticReason.EMPTY_OPTIMIZATION_REPLAY_FRAMES
         return _track_with_diagnostic(empty)
 
-    frames = deserialize_optimization_replay_frames_from_json(raw)
-    if frames is None:
+    frames, omitted = deserialize_optimization_replay_frames_lenient(raw)
+    if not frames:
         return _track_with_diagnostic(
             OptimizationReplayDiagnosticReason.INVALID_OPTIMIZATION_REPLAY_PAYLOAD
         )
-    return build_optimization_replay_track_payload(frames)
+    track = build_optimization_replay_track_payload(frames)
+    if omitted > 0:
+        metrics = dict(track["metrics"])
+        metrics["omitted_frame_count"] = omitted
+        track["metrics"] = metrics
+    return track
 
 
 def empty_optimization_replay_track_with_missing_diagnostic() -> dict[str, Any]:

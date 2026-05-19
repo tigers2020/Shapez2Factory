@@ -281,7 +281,7 @@ def build_layout_root(
     if transport_kind == "belt":
         miner_t = "Layout_ShapeMiner"
         ext_t = "Layout_ShapeMinerExtension"
-        transport_t = "SpaceBelt_Left"
+        transport_t = "SpaceBelt_Forward"
     else:
         miner_t = "Layout_FluidMiner"
         ext_t = "Layout_FluidMinerExtension"

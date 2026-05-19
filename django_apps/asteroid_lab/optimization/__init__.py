@@ -138,6 +138,7 @@ from django_apps.asteroid_lab.optimization.route_goal_planner import (
 from django_apps.asteroid_lab.optimization.route_network_materializer import (
     full_path_for_reservation,
     materialize_route_network,
+    pick_tile_rotation,
     pick_tile_type,
 )
 from django_apps.asteroid_lab.optimization.route_probe import (
@@ -237,6 +238,7 @@ __all__ = [
     "commit_selected_candidates",
     "full_path_for_reservation",
     "materialize_route_network",
+    "pick_tile_rotation",
     "pick_tile_type",
     "score_gene_candidate",
     "select_gene_candidates_greedy",

@@ -266,3 +266,24 @@ def test_adapter_validation_failed_event() -> None:
     unified = optimization_replay_frame_to_unified(frame, context=_context())
     assert unified.event_type == ReplayEventType.VALIDATION_FAILED
     assert unified.phase == ReplayPhase.VALIDATION
+
+
+def test_result_layout_unified_frame_has_full_cells_not_overlay_only() -> None:
+    """RESULT_LAYOUT frame must produce non-empty full_cells (not just overlay)
+    when visible_cells contain reconstruction base cells."""
+    frame = OptimizationReplayFrame(
+        frame_index=0,
+        event_type=OptimizationReplayEventType.RESULT_LAYOUT,
+        title="Final layout",
+        description="",
+        visible_cells=(_server_cell(sx=0, sy=0), _server_cell(sx=1, sy=0)),
+        overlay_cells=(),
+        metrics={"validation_passed": True, "cell_count": 2},
+    )
+    ctx = ReplayProjectionContext(server_xy_params=_PARAMS)
+    unified = optimization_replay_frame_to_unified(frame, context=ctx)
+    assert unified.event_type == ReplayEventType.RESULT_LAYOUT
+    assert unified.phase == ReplayPhase.RESULT
+    assert (
+        len(unified.map_view.full_cells) >= 1
+    ), "RESULT_LAYOUT unified frame must have full_cells, not overlay only"

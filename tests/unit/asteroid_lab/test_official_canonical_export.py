@@ -146,3 +146,42 @@ def test_fixture_spread_branch_decode_has_server_x_hole() -> None:
 def test_fixture_connected_branch_decode_server_x_contiguous() -> None:
     good = decode_copy_string(_fixture_line("connected_branch_fluid_pipe.txt")).root
     assert _occupied_server_x_is_contiguous(good)
+
+
+def test_blueprint_identifier_version_is_resolved_not_hardcoded() -> None:
+    """resolve_blueprint_code_version must produce version-dependent prefixes
+    and raise ValueError for unknown versions."""
+    from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
+        resolve_blueprint_code_version,
+    )
+
+    prefix_v4 = resolve_blueprint_code_version(4)
+    assert prefix_v4 == "SHAPEZ2-4-"
+
+    with pytest.raises(ValueError):
+        resolve_blueprint_code_version(999)
+
+
+def test_encode_official_copy_string_uses_version_prefix() -> None:
+    """encode_official_copy_string with explicit target_game_version must
+    produce a string starting with the correct versioned prefix."""
+    from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
+        encode_official_copy_string,
+        make_minimal_official_root,
+    )
+
+    root = make_minimal_official_root()
+    result = encode_official_copy_string(root, target_game_version=4)
+    assert result.startswith("SHAPEZ2-4-")
+
+
+def test_encode_official_copy_string_unknown_version_raises() -> None:
+    """Passing an unknown target_game_version must raise ValueError."""
+    from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
+        encode_official_copy_string,
+        make_minimal_official_root,
+    )
+
+    root = make_minimal_official_root()
+    with pytest.raises(ValueError):
+        encode_official_copy_string(root, target_game_version=999)

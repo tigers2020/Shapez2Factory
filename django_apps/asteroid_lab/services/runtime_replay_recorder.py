@@ -45,9 +45,14 @@ class RuntimeReplayRecorder:
 
         vis = visible_cells
         ovl = overlay_cells
-        if len(vis) + len(ovl) > MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME:
-            vis = vis[:MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME]
-            ovl = ()
+        cap = MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME
+        if len(vis) + len(ovl) > cap:
+            # Preserve overlay_cells first (they carry the meaningful delta).
+            # Visible cells are truncated to fill the remaining budget.
+            ovl_cap = min(len(ovl), cap)
+            ovl = ovl[:ovl_cap]
+            vis_budget = max(0, cap - len(ovl))
+            vis = vis[:vis_budget]
 
         frame_metrics = dict(metrics or {})
         self._frames.append(

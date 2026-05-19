@@ -43,3 +43,20 @@ def test_unified_replay_event_type_every_enum_accounted_for() -> None:
     assert len(accounted) == len(ReplayEventType)
     for member in ReplayEventType:
         assert member in accounted
+
+
+def test_optimization_replay_event_types_match_unified_9c_set() -> None:
+    """Every OptimizationReplayEventType wire value must map to a ReplayEventType
+    that is covered by the 9C optimization adapter set.  If this fails, a new
+    OptimizationReplayEventType was added without updating unified_enums.py /
+    unified_event_coverage.py — or vice versa.
+    """
+    from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
+    from django_apps.asteroid_lab.replay.unified_serialization import parse_replay_event_type
+
+    for member in OptimizationReplayEventType:
+        unified = parse_replay_event_type(member.value)
+        assert unified in SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER, (
+            f"OptimizationReplayEventType.{member.name} ({member.value!r}) is not in "
+            "SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER — add it to unified_event_coverage.py"
+        )

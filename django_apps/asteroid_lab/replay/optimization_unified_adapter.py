@@ -95,6 +95,8 @@ def _cell_from_row(row: Mapping[str, Any], context: ReplayProjectionContext) -> 
         y=y,
         kind=str(row.get("cell_kind") or row.get("kind") or ""),
         transport=str(row.get("transport_kind") or row.get("transport") or ""),
+        tile_type=str(row.get("tile_type") or ""),
+        rotation=int(row.get("rotation") or 0),
     )
 
 
@@ -107,6 +109,8 @@ def _overlay_from_row(
         y=y,
         kind=str(row.get("cell_kind") or row.get("kind") or ""),
         transport=str(row.get("transport_kind") or row.get("transport") or ""),
+        tile_type=str(row.get("tile_type") or ""),
+        rotation=int(row.get("rotation") or 0),
     )
 
 
@@ -118,6 +122,8 @@ def _delta_from_row(row: Mapping[str, Any], context: ReplayProjectionContext) ->
         kind=str(row.get("cell_kind") or row.get("kind") or ""),
         transport=str(row.get("transport_kind") or row.get("transport") or ""),
         op=str(row.get("op") or "set"),
+        tile_type=str(row.get("tile_type") or ""),
+        rotation=int(row.get("rotation") or 0),
     )
 
 

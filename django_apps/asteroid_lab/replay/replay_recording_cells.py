@@ -75,6 +75,8 @@ def overlay_cell_dicts_from_materialization(
                 c.transport_kind.value, c.transport_kind.value
             ),
             "transport_kind": c.transport_kind.value,
+            "tile_type": c.tile_type,
+            "rotation": c.rotation,
         }
         for c in materialization.layout.cells
     )
@@ -115,3 +117,24 @@ def miner_cell_dicts_from_confirmed(
                 }
             )
     return tuple(rows)
+
+
+def full_cell_dicts_from_final_replay_state(
+    loaded: LoadedReconstructionSnapshot,
+    materialization: RouteMaterializationResult,
+    confirmed: tuple[ConfirmedGenePlacement, ...],
+    candidates_by_id: dict[str, GeneCandidate] | None = None,
+) -> tuple[dict[str, Any], ...]:
+    """Combine reconstruction field + committed transport + miner cells into a
+    single visible_cells tuple for the RESULT_LAYOUT replay frame.
+
+    This produces the final cumulative 2D snapshot: asteroid base cells first,
+    then transport (belt/pipe) cells, then extractor/extension cells.  All rows
+    use ``server_x`` / ``server_y`` so the unified adapter can project them.
+
+    Output-only — never used as solver input.
+    """
+    base = visible_cell_dicts_from_loaded(loaded)
+    transport = overlay_cell_dicts_from_materialization(materialization)
+    miners = miner_cell_dicts_from_confirmed(confirmed, candidates_by_id or {})
+    return base + transport + miners

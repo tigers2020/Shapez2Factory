@@ -368,6 +368,7 @@
         y: c.y,
         cell_kind: c.kind != null ? c.kind : c.cell_kind,
         transport_kind: c.transport != null ? c.transport : c.transport_kind,
+        tile_type: c.tile_type != null ? String(c.tile_type) : "",
         rotation: c.rotation,
       });
     }
@@ -387,6 +388,7 @@
         y: c.y,
         cell_kind: c.kind != null ? c.kind : c.cell_kind,
         transport_kind: c.transport != null ? c.transport : c.transport_kind,
+        tile_type: c.tile_type != null ? String(c.tile_type) : "",
         rotation: c.rotation,
       });
     }

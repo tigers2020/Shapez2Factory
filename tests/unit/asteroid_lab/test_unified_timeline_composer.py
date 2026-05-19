@@ -119,3 +119,71 @@ def test_unified_timeline_truncation_records_dropped_frame_count() -> None:
 
 def test_compose_empty_inputs() -> None:
     assert compose_unified_timeline(lab_frames=(), optimization_frames=()) == ()
+
+
+def test_replay_head_truncate_retains_result_layout() -> None:
+    """When the combined timeline exceeds max_frames, RESULT_LAYOUT must be
+    retained even if it is in the tail that would be dropped by naive head-truncate."""
+    lab = tuple(
+        _frame(
+            i,
+            phase=ReplayPhase.RECONSTRUCTION,
+            event=ReplayEventType.RECONSTRUCTION_STARTED,
+            tag=f"lab{i}",
+        )
+        for i in range(8)
+    )
+    opt = (
+        _frame(
+            0,
+            phase=ReplayPhase.OPTIMIZATION_INPUT,
+            event=ReplayEventType.OPTIMIZATION_INPUT_LOADED,
+            tag="opt_input",
+        ),
+        _frame(
+            1,
+            phase=ReplayPhase.RESULT,
+            event=ReplayEventType.RESULT_LAYOUT,
+            tag="result",
+        ),
+    )
+    # max_frames = 8 means 8 lab + 2 opt = 10 total, 2 dropped if naive head-cut
+    out = compose_unified_timeline(lab_frames=lab, optimization_frames=opt, max_frames=8)
+    event_types = [f.event_type for f in out]
+    assert (
+        ReplayEventType.RESULT_LAYOUT in event_types
+    ), "RESULT_LAYOUT must be retained in truncated timeline"
+    # truncation marker must still be present
+    last = out[-1]
+    assert last.metrics.get("replay_truncated") is True
+
+
+def test_replay_truncation_retains_first_reconstruction_keyframe() -> None:
+    """The first RECONSTRUCTION_COMPLETED keyframe must survive truncation."""
+    lab = tuple(
+        _frame(
+            i,
+            phase=ReplayPhase.RECONSTRUCTION,
+            event=(
+                ReplayEventType.RECONSTRUCTION_COMPLETED
+                if i == 0
+                else ReplayEventType.RECONSTRUCTION_STARTED
+            ),
+            tag=f"lab{i}",
+        )
+        for i in range(6)
+    )
+    opt = tuple(
+        _frame(
+            i,
+            phase=ReplayPhase.OPTIMIZATION_INPUT,
+            event=ReplayEventType.OPTIMIZATION_INPUT_LOADED,
+            tag=f"opt{i}",
+        )
+        for i in range(6)
+    )
+    out = compose_unified_timeline(lab_frames=lab, optimization_frames=opt, max_frames=4)
+    event_types = [f.event_type for f in out]
+    assert (
+        ReplayEventType.RECONSTRUCTION_COMPLETED in event_types
+    ), "First RECONSTRUCTION_COMPLETED keyframe must survive truncation"

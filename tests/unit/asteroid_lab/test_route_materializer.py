@@ -19,6 +19,7 @@ from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal, Rou
 from django_apps.asteroid_lab.optimization.route_network_materializer import (
     full_path_for_reservation,
     materialize_route_network,
+    pick_tile_rotation,
     pick_tile_type,
 )
 from django_apps.asteroid_lab.optimization.route_probe import RouteProbeResult
@@ -104,6 +105,11 @@ def _tile_map(result) -> dict[tuple[int, int], str]:
     return {cell.coord: cell.tile_type for cell in result.layout.cells}
 
 
+def _rotation_map(result) -> dict[tuple[int, int], int]:
+    assert result.layout is not None
+    return {cell.coord: cell.rotation for cell in result.layout.cells}
+
+
 def test_full_path_prepends_fixed_output_transport() -> None:
     """OD-1: materialization path starts at fixed_output_transport."""
 
@@ -155,11 +161,17 @@ def test_route_materializer_creates_straight_and_turns() -> None:
 
     result = materialize_route_network(commit, {cid: candidate})
     tiles = _tile_map(result)
+    rots = _rotation_map(result)
 
-    assert tiles[(1, 0)] == "SpaceBelt_Left"
-    assert tiles[(2, 0)] == "SpaceBelt_Left"
+    assert tiles[(1, 0)] == "SpaceBelt_Forward"
+    assert tiles[(2, 0)] == "SpaceBelt_Forward"
     assert tiles[(3, 0)] == "SpaceBelt_LeftTurn"
     assert tiles[(3, 1)] == "SpaceBelt_Forward"
+
+    assert rots[(1, 0)] == 0  # outgoing=E
+    assert rots[(2, 0)] == 0  # straight W→E, outgoing=E
+    assert rots[(3, 0)] == 1  # LeftTurn W→S, outgoing=S
+    assert rots[(3, 1)] == 1  # terminal incoming=N → flow=S
 
 
 def test_route_materializer_merges_same_kind_shared_paths() -> None:
@@ -408,6 +420,53 @@ def test_route_materializer_selects_triple_splitter_at_hub() -> None:
         materialize_route_network(commit, {trunk_id: trunk, west_id: west, north_id: north})
     )
     assert tiles[hub] == "SpaceBelt_TripleSplitter"
+
+
+def test_pick_tile_rotation_straight_directions() -> None:
+    """Straight tiles: rotation equals steps from canonical East."""
+    assert pick_tile_rotation(frozenset({Direction.W}), frozenset({Direction.E})) == 0
+    assert pick_tile_rotation(frozenset({Direction.N}), frozenset({Direction.S})) == 1
+    assert pick_tile_rotation(frozenset({Direction.E}), frozenset({Direction.W})) == 2
+    assert pick_tile_rotation(frozenset({Direction.S}), frozenset({Direction.N})) == 3
+
+
+def test_pick_tile_rotation_terminal_cell() -> None:
+    """Terminal cells: rotation follows flow direction (opposite of incoming)."""
+    assert pick_tile_rotation(frozenset({Direction.W}), frozenset()) == 0  # flow=E
+    assert pick_tile_rotation(frozenset({Direction.N}), frozenset()) == 1  # flow=S
+    assert pick_tile_rotation(frozenset({Direction.E}), frozenset()) == 2  # flow=W
+    assert pick_tile_rotation(frozenset({Direction.S}), frozenset()) == 3  # flow=N
+
+
+def test_route_materializer_pipe_straight_uses_forward_and_rotation() -> None:
+    """Fluid pipe straight W→E emits SpacePipe_Forward with rotation 0."""
+    cid = "fluid:straight"
+    fot = (1, 0)
+    path = ((2, 0), (3, 0))
+    candidate = _candidate(
+        candidate_id=cid,
+        fixed_output_transport=fot,
+        path=path,
+        transport_kind=TransportKind.FLUID_PIPE,
+    )
+    reservation = _reservation(candidate_id=cid, path=path, transport_kind=TransportKind.FLUID_PIPE)
+    commit = _commit(
+        (
+            ConfirmedGenePlacement(
+                candidate_id=cid,
+                reservation=reservation,
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+        )
+    )
+
+    result = materialize_route_network(commit, {cid: candidate})
+    tiles = _tile_map(result)
+    rots = _rotation_map(result)
+
+    for coord in ((1, 0), (2, 0), (3, 0)):
+        assert tiles[coord] == "SpacePipe_Forward", f"expected SpacePipe_Forward at {coord}"
+        assert rots[coord] == 0, f"expected rotation 0 at {coord}"
 
 
 def test_route_materializer_cell_order_is_deterministic() -> None:

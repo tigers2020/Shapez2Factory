@@ -16,7 +16,7 @@ from django_apps.asteroid_lab.replay.replay_limits import (
 
 def test_replay_limits_constants_match_canon_doc() -> None:
     assert MAX_OPTIMIZATION_REPLAY_FRAMES == 500
-    assert MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME == 128
+    assert MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME == 2000
     assert MAX_UNIFIED_LAB_REPLAY_FRAMES == 500
     assert MAX_UNIFIED_LAB_REPLAY_CELLS_PER_FRAME == 2000
     assert MAX_REPLAY_FRAMES == MAX_OPTIMIZATION_REPLAY_FRAMES

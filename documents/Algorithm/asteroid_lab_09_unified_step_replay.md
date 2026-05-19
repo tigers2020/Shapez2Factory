@@ -458,13 +458,16 @@ projection raw_x != original blueprint raw X
 [x] Lab unified frames → optimization unified frames 순서로 concat
 [x] global `frame_index` 0..n-1 재부여
 [x] `inspector.source_frame_index`에 트랙별 원본 index 보존
-[x] `MAX_UNIFIED_LAB_REPLAY_FRAMES` 초과 시 head truncate + 마지막 프레임 `replay_truncated` / `truncation_reason` / `dropped_frame_count`
+[x] `MAX_UNIFIED_LAB_REPLAY_FRAMES` 초과 시 keyframe+tail truncate + 마지막 프레임 `replay_truncated` / `truncation_reason` / `dropped_frame_count`
+    - 항상 보존: 첫 번째 RECONSTRUCTION_COMPLETED, 마지막 RESULT_LAYOUT
+    - 나머지 슬롯: tail 우선 (가장 최근 프레임)
+    - 시간순 정렬 유지
 [x] per-frame cell 재-truncate 없음 (adapter 책임)
 ```
 
 **금지 (9D):** page context, JS, persist, dual-track 제거(9E), algorithm 입력.
 
-**테스트:** `test_unified_timeline_composer.py`
+**테스트:** `test_unified_timeline_composer.py` (`test_replay_head_truncate_retains_result_layout`, `test_replay_truncation_retains_first_reconstruction_keyframe` 포함)
 
 ### 9E — 제품 replay 단일 타임라인 (구현 완료)
 

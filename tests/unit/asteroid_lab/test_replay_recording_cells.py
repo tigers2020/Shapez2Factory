@@ -12,6 +12,7 @@ from django_apps.asteroid_lab.optimization.enums import (
     TransportKind,
 )
 from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal, RouteReservation
+from django_apps.asteroid_lab.optimization.loaded_snapshot import LoadedReconstructionSnapshot
 from django_apps.asteroid_lab.optimization.materialization_dtos import (
     MaterializedLayoutCells,
     MaterializedTransportCell,
@@ -19,9 +20,11 @@ from django_apps.asteroid_lab.optimization.materialization_dtos import (
 )
 from django_apps.asteroid_lab.optimization.route_probe import RouteProbeResult
 from django_apps.asteroid_lab.replay.replay_recording_cells import (
+    full_cell_dicts_from_final_replay_state,
     miner_cell_dicts_from_confirmed,
     overlay_cell_dicts_from_materialization,
 )
+from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 
 # ---------------------------------------------------------------------------
 # Minimal fixture helpers
@@ -115,6 +118,41 @@ def test_materialization_shape_belt_uses_space_belt_cell_kind() -> None:
     assert rows[0]["server_y"] == 4
 
 
+def _mat_cell_with_tile(
+    coord: tuple[int, int],
+    tk: TransportKind,
+    tile_type: str,
+    rotation: int,
+) -> MaterializedTransportCell:
+    return MaterializedTransportCell(
+        coord=coord, tile_type=tile_type, transport_kind=tk, rotation=rotation
+    )
+
+
+def test_materialization_overlay_includes_tile_type_and_rotation() -> None:
+    """overlay_cell_dicts must carry tile_type and rotation for JS sprite lookup."""
+    cell = _mat_cell_with_tile((2, 0), TransportKind.SHAPE_BELT, "SpaceBelt_Forward", 0)
+    rows = overlay_cell_dicts_from_materialization(_mat_result(cell))
+    assert len(rows) == 1
+    assert rows[0]["tile_type"] == "SpaceBelt_Forward"
+    assert rows[0]["rotation"] == 0
+
+
+def test_materialization_overlay_rotation_non_zero() -> None:
+    """Rotation values other than 0 must be preserved through the wire."""
+    cell = _mat_cell_with_tile((1, 1), TransportKind.SHAPE_BELT, "SpaceBelt_LeftTurn", 1)
+    rows = overlay_cell_dicts_from_materialization(_mat_result(cell))
+    assert rows[0]["tile_type"] == "SpaceBelt_LeftTurn"
+    assert rows[0]["rotation"] == 1
+
+
+def test_materialization_overlay_pipe_tile_type_preserved() -> None:
+    cell = _mat_cell_with_tile((0, 0), TransportKind.FLUID_PIPE, "SpacePipe_RightTurn", 2)
+    rows = overlay_cell_dicts_from_materialization(_mat_result(cell))
+    assert rows[0]["tile_type"] == "SpacePipe_RightTurn"
+    assert rows[0]["rotation"] == 2
+
+
 def test_materialization_fluid_pipe_uses_space_pipe_cell_kind() -> None:
     result = _mat_result(_mat_cell((1, 2), TransportKind.FLUID_PIPE))
     rows = overlay_cell_dicts_from_materialization(result)
@@ -161,9 +199,7 @@ def test_miner_shape_belt_extractor_uses_shape_miner_kind() -> None:
 
 
 def test_miner_fluid_pipe_extractor_uses_fluid_miner_kind() -> None:
-    c = _gene_candidate(
-        candidate_id="b", extractor=(2, 7), transport_kind=TransportKind.FLUID_PIPE
-    )
+    c = _gene_candidate(candidate_id="b", extractor=(2, 7), transport_kind=TransportKind.FLUID_PIPE)
     rows = miner_cell_dicts_from_confirmed((_confirmed(c),), {c.candidate_id: c})
     assert len(rows) == 1
     assert rows[0]["cell_kind"] == "fluid_miner"
@@ -217,3 +253,79 @@ def test_miner_cell_dicts_no_route_materialized_sentinel() -> None:
     rows = miner_cell_dicts_from_confirmed((_confirmed(c),), {c.candidate_id: c})
     for row in rows:
         assert row["cell_kind"] != "route_materialized"
+
+
+# ---------------------------------------------------------------------------
+# full_cell_dicts_from_final_replay_state
+# ---------------------------------------------------------------------------
+
+
+def _loaded_snapshot_1x1(server_x: int = 0, server_y: int = 0) -> LoadedReconstructionSnapshot:
+    cell = DecodedCellDTO(
+        x=1,
+        y=0,
+        layer=None,
+        rotation=0,
+        tile_type="",
+        cell_kind="shape_miner_extension",
+        transport_kind="none",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={},
+        server_x=server_x,
+        server_y=server_y,
+    )
+    return LoadedReconstructionSnapshot(cells=(cell,), server_xy_params=(1, 0))
+
+
+def test_full_cell_dicts_includes_reconstruction_cells() -> None:
+    loaded = _loaded_snapshot_1x1(server_x=0, server_y=0)
+    mat = RouteMaterializationResult(layout=None, failure_reason=None)
+    rows = full_cell_dicts_from_final_replay_state(loaded, mat, ())
+    coords = {(r["server_x"], r["server_y"]) for r in rows}
+    assert (0, 0) in coords
+
+
+def test_full_cell_dicts_includes_transport_cells() -> None:
+    loaded = _loaded_snapshot_1x1(server_x=0, server_y=0)
+    mat = _mat_result(_mat_cell((2, 0), TransportKind.SHAPE_BELT))
+    rows = full_cell_dicts_from_final_replay_state(loaded, mat, ())
+    coords = {(r["server_x"], r["server_y"]) for r in rows}
+    assert (2, 0) in coords
+
+
+def test_full_cell_dicts_includes_miner_cells() -> None:
+    loaded = _loaded_snapshot_1x1(server_x=0, server_y=0)
+    mat = RouteMaterializationResult(layout=None, failure_reason=None)
+    c = _gene_candidate(candidate_id="m1", extractor=(1, 1))
+    rows = full_cell_dicts_from_final_replay_state(
+        loaded, mat, (_confirmed(c),), candidates_by_id={c.candidate_id: c}
+    )
+    coords = {(r["server_x"], r["server_y"]) for r in rows}
+    assert (1, 1) in coords
+
+
+def test_full_cell_dicts_has_server_xy_keys() -> None:
+    loaded = _loaded_snapshot_1x1()
+    mat = RouteMaterializationResult(layout=None, failure_reason=None)
+    rows = full_cell_dicts_from_final_replay_state(loaded, mat, ())
+    assert rows
+    for row in rows:
+        assert "server_x" in row
+        assert "server_y" in row
+
+
+def test_result_layout_matches_materialized_plus_miners() -> None:
+    """full_cell_dicts combines base + transport + miner without duplicates across types."""
+    loaded = _loaded_snapshot_1x1(server_x=0, server_y=0)
+    transport_cell = _mat_cell((3, 0), TransportKind.SHAPE_BELT)
+    mat = _mat_result(transport_cell)
+    miner = _gene_candidate(candidate_id="q1", extractor=(2, 0))
+    rows = full_cell_dicts_from_final_replay_state(
+        loaded, mat, (_confirmed(miner),), candidates_by_id={miner.candidate_id: miner}
+    )
+    coords = {(r["server_x"], r["server_y"]) for r in rows}
+    assert (0, 0) in coords  # reconstruction base cell
+    assert (3, 0) in coords  # transport belt cell
+    assert (2, 0) in coords  # miner extractor cell

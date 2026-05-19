@@ -192,15 +192,17 @@ Solver result must remain unchanged.
 
 ### 7.1 진단 reason 코드 (**12G v0 구현값**)
 
-읽기 전용·메타데이터 전용. 상수 키: `django_apps.shapez_asteroid.optimization.optimization_ui_payload.OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY` → 트랙 `metrics` 필드명 **`optimization_replay_diagnostic_reason`**.
+읽기 전용·메타데이터 전용. 상수 키: `django_apps.asteroid_lab.services.optimization_ui_payload.OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY` → 트랙 `metrics` 필드명 **`optimization_replay_diagnostic_reason`**.
 
 ```text
 missing_optimization_replay          # 어떤 SolverRun.config_json에도 optimization_replay_frames 키가 없음
 empty_optimization_replay_frames     # 키는 있으나 리스트가 비어 있음 ([])
-invalid_optimization_replay_payload  # 리스트가 아님·프레임 dict/shape·좌표·연속 frame_index 등 (알 수 없는 event_type 제외)
-invalid_truncation_contract          # replay_truncated 인데 truncation_reason 짝이 깨짐
-unsupported_or_unknown_event_type    # 알려지지 않은 event_type 문자열
+invalid_optimization_replay_payload  # 모든 프레임이 알 수 없는 event_type이거나 shape 불일치로 전부 스킵됨
 ```
+
+> **읽기 경로(lenient)**: `deserialize_optimization_replay_frames_lenient` 사용 — unknown `event_type`인 프레임은 **개별 skip**하고 `omitted_frame_count` 메트릭에 계수한다. 전체 트랙이 빈 경우에만 `invalid_optimization_replay_payload` diagnostic을 설정한다. 엄격(strict) 검증(`validate_optimization_replay_frame_list_payload`)은 **쓰기(persist) 경로**에만 유지된다.
+
+유효 프레임이 일부 스킵된 경우 트랙 `metrics`에 `omitted_frame_count` (int)가 추가된다.
 
 정상 역직렬화 시 이 필드는 **부재**한다. 솔버·리플레이 의미·정렬·집계에는 관여하지 않는다.
 

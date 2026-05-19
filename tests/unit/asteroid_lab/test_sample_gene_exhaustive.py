@@ -275,7 +275,7 @@ def test_build_layout_minimal_entries_order_deterministic() -> None:
     entries = root["BP"]["Entries"]
     assert len(entries) == 2
     types = {e["T"] for e in entries}
-    assert "Layout_ShapeMiner" in types and "SpaceBelt_Left" in types
+    assert "Layout_ShapeMiner" in types and "SpaceBelt_Forward" in types
 
 
 def test_encode_layout_with_suffix_roundtrip() -> None:

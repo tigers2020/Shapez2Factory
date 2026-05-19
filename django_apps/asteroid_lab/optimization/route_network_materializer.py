@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from django_apps.asteroid_lab.optimization.candidate_dtos import GeneCandidate
 from django_apps.asteroid_lab.optimization.commit_best_candidates import IncrementalCommitResult
+from django_apps.asteroid_lab.optimization.coord_transform import steps_from_canonical_e
 from django_apps.asteroid_lab.optimization.coords import Coord, cardinal_unit_toward
 from django_apps.asteroid_lab.optimization.enums import (
     Direction,
@@ -97,10 +98,7 @@ def _is_triple_incoming(incoming: frozenset[Direction]) -> bool:
     )
 
 
-def _straight_tile(prefix: str, incoming: Direction, outgoing: Direction) -> str:
-    axis = {incoming, outgoing}
-    if axis <= {Direction.E, Direction.W}:
-        return f"{prefix}Left" if incoming == Direction.W else f"{prefix}Right"
+def _straight_tile(prefix: str, _incoming: Direction, _outgoing: Direction) -> str:
     return f"{prefix}Forward"
 
 
@@ -143,15 +141,9 @@ def pick_tile_type(
     out_count = len(outs)
 
     if in_count == 0 and out_count == 1:
-        (only_out,) = outs
-        if only_out in {Direction.E, Direction.W}:
-            return f"{prefix}Left" if only_out == Direction.E else f"{prefix}Right"
         return f"{prefix}Forward"
 
     if in_count == 1 and out_count == 0:
-        (only_in,) = ins
-        if only_in in {Direction.E, Direction.W}:
-            return f"{prefix}Left" if only_in == Direction.E else f"{prefix}Right"
         return f"{prefix}Forward"
 
     if in_count == 1 and out_count == 1:
@@ -181,6 +173,30 @@ def pick_tile_type(
         return f"{prefix}YMerger"
 
     return f"{prefix}Forward"
+
+
+def _primary_outgoing(
+    incoming: frozenset[Direction],
+    outgoing: frozenset[Direction],
+) -> Direction:
+    """Primary output direction used to compute domain rotation."""
+    if outgoing:
+        if incoming:
+            fwd = _opposite(_sorted_directions(set(incoming))[0])
+            if fwd in outgoing:
+                return fwd
+        return _sorted_directions(set(outgoing))[0]
+    if incoming:
+        return _opposite(_sorted_directions(set(incoming))[0])
+    return Direction.E
+
+
+def pick_tile_rotation(
+    incoming: frozenset[Direction],
+    outgoing: frozenset[Direction],
+) -> int:
+    """Domain quarter-turn rotation for a materialized cell (0=E, 1=S, 2=W, 3=N)."""
+    return steps_from_canonical_e(_primary_outgoing(incoming, outgoing))
 
 
 def materialize_route_network(
@@ -213,17 +229,16 @@ def materialize_route_network(
         flows = _aggregate_flows(tuple(paths))
         for coord in sorted(flows.keys(), key=lambda c: (c[1], c[0])):
             flow = flows[coord]
-            tile_type = pick_tile_type(
-                kind,
-                frozenset(flow.incoming),
-                frozenset(flow.outgoing),
-            )
+            ins = frozenset(flow.incoming)
+            outs = frozenset(flow.outgoing)
+            tile_type = pick_tile_type(kind, ins, outs)
+            rotation = pick_tile_rotation(ins, outs)
             cells.append(
                 MaterializedTransportCell(
                     coord=coord,
                     tile_type=tile_type,
                     transport_kind=kind,
-                    rotation=0,
+                    rotation=rotation,
                 )
             )
 

@@ -19,6 +19,27 @@ SHAPEZ2_COPY_PREFIX_V4 = "SHAPEZ2-4-"
 
 OFFICIAL_BINARY_VERSION = 1137
 
+# Supported Shapez2 blueprint code version identifiers.
+_SUPPORTED_VERSIONS: dict[int, str] = {
+    4: SHAPEZ2_COPY_PREFIX_V4,
+}
+
+
+def resolve_blueprint_code_version(target_game_version: int) -> str:
+    """Return the copy-string prefix for *target_game_version*.
+
+    Raises ``ValueError`` for unsupported versions so callers fail loudly
+    instead of producing silently mis-versioned blueprints.
+    """
+    prefix = _SUPPORTED_VERSIONS.get(int(target_game_version))
+    if prefix is None:
+        supported = sorted(_SUPPORTED_VERSIONS)
+        raise ValueError(
+            f"Unsupported target_game_version={target_game_version!r}. " f"Supported: {supported}"
+        )
+    return prefix
+
+
 OFFICIAL_ISLAND_ICON: dict[str, Any] = {
     "Data": ["icon:Platforms", None, None, "shape:RuRuRuRu"],
 }
@@ -327,10 +348,32 @@ def export_dense_x_is_contiguous(entries: list[dict[str, Any]]) -> bool:
     return hi - lo + 1 == len(dense)
 
 
-def encode_official_copy_string(root: dict[str, Any]) -> str:
-    """gzip + base64 + prefix (no per-layout gzip byte pinning)."""
+def encode_official_copy_string(
+    root: dict[str, Any],
+    *,
+    target_game_version: int = 4,
+) -> str:
+    """gzip + base64 + versioned prefix.
 
+    *target_game_version* defaults to 4 (the only currently supported version).
+    Pass an unknown version to get an immediate ``ValueError`` rather than a
+    silently mis-versioned blueprint.
+    """
+    prefix = resolve_blueprint_code_version(target_game_version)
     body = serialize_game_island_export_bytes(root)
     gz = gzip.compress(body, compresslevel=9, mtime=0)
     b64 = base64.b64encode(gz).decode("ascii")
-    return f"{SHAPEZ2_COPY_PREFIX_V4}{b64}"
+    return f"{prefix}{b64}"
+
+
+def make_minimal_official_root() -> dict[str, Any]:
+    """Return a valid empty island root dict (useful for tests and stub exports)."""
+    return {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Icon": dict(OFFICIAL_ISLAND_ICON),
+            "Entries": [],
+            "BinaryVersion": OFFICIAL_BINARY_VERSION,
+        },
+    }

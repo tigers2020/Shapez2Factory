@@ -27,6 +27,8 @@ class ReplayCell:
     y: int
     kind: str = ""
     transport: str = ""
+    tile_type: str = ""
+    rotation: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +40,8 @@ class ReplayCellDelta:
     kind: str = ""
     transport: str = ""
     op: str = "set"
+    tile_type: str = ""
+    rotation: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +52,8 @@ class ReplayOverlayCell:
     y: int
     kind: str = ""
     transport: str = ""
+    tile_type: str = ""
+    rotation: int = 0
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,6 +7,7 @@ from django_apps.asteroid_lab.optimization.replay_frame import OptimizationRepla
 from django_apps.asteroid_lab.services.optimization_ui_payload import (
     build_optimization_replay_track_payload,
     deserialize_optimization_replay_frames_from_json,
+    deserialize_optimization_replay_frames_lenient,
     optimization_replay_frames_to_json_list,
     validate_optimization_replay_frame_list_payload,
 )
@@ -84,3 +85,73 @@ def test_round_trip_frames_and_track_truncation_pair() -> None:
     track = build_optimization_replay_track_payload(back)
     assert track["metrics"]["replay_truncated"] is True
     assert track["metrics"]["truncation_reason"] == "max_replay_frames"
+
+
+def test_invalid_event_type_skips_frame_not_whole_track() -> None:
+    """A single invalid event_type must not drop the entire track (lenient read path)."""
+    valid_event = OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED.value
+    raw = [
+        {
+            "frame_index": 0,
+            "event_type": valid_event,
+            "title": "first",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        },
+        {
+            "frame_index": 1,
+            "event_type": "capacity.plan_created_UNKNOWN_SUFFIX",  # invalid
+            "title": "bad",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        },
+        {
+            "frame_index": 2,
+            "event_type": OptimizationReplayEventType.VALIDATION_COMPLETED.value,
+            "title": "last",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        },
+    ]
+    # strict validator rejects the whole payload
+    assert validate_optimization_replay_frame_list_payload(raw) == "invalid_event_type"
+    assert deserialize_optimization_replay_frames_from_json(raw) is None
+
+    # lenient deserialize skips the bad frame, keeps the valid ones
+    frames, omitted = deserialize_optimization_replay_frames_lenient(raw)
+    assert omitted == 1
+    assert len(frames) == 2
+    assert frames[0].event_type == OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED
+    assert frames[1].event_type == OptimizationReplayEventType.VALIDATION_COMPLETED
+    # frame indices are re-assigned contiguously
+    assert frames[0].frame_index == 0
+    assert frames[1].frame_index == 1
+
+
+def test_lenient_deserialize_all_invalid_returns_empty() -> None:
+    raw = [
+        {
+            "frame_index": 0,
+            "event_type": "not_a_valid_event",
+            "title": "",
+            "description": "",
+            "visible_cells": [],
+            "overlay_cells": [],
+            "metrics": {},
+        },
+    ]
+    frames, omitted = deserialize_optimization_replay_frames_lenient(raw)
+    assert frames == ()
+    assert omitted == 1
+
+
+def test_lenient_deserialize_non_list_returns_empty() -> None:
+    frames, omitted = deserialize_optimization_replay_frames_lenient("not a list")
+    assert frames == ()
+    assert omitted == 0

@@ -98,9 +98,7 @@ def _server_xy_params_from_map_input(inp: AsteroidMapInput) -> tuple[int, int] |
 
 def _server_xy_params_from_latest_solver_run(project_id: int) -> tuple[int, int] | None:
     run = (
-        SolverRun.objects.filter(project_id=int(project_id))
-        .order_by("-created_at", "-id")
-        .first()
+        SolverRun.objects.filter(project_id=int(project_id)).order_by("-created_at", "-id").first()
     )
     if run is None:
         return None

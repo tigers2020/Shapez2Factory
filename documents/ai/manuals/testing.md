@@ -78,11 +78,11 @@ python -m pytest
 
 | Invariant | Canon | Representative tests / planned names |
 |-----------|-------|----------------------------------------|
-| Replay / NDJSON / artifact / metrics **output-only** — solver·algorithm **입력 금지** | [`asteroid_lab_09_replay_debug.md`](../../Algorithm/asteroid_lab_09_replay_debug.md) | `test_manual_snapshot_replay_not_used_as_algorithm_input_doc`; `test_lab_page_context_*`; `asteroid_lab_10` 체크리스트 |
+| Replay / NDJSON / artifact / metrics **output-only** — solver·algorithm **입력 금지** | [`asteroid_lab_09_unified_step_replay.md`](../../Algorithm/asteroid_lab_09_unified_step_replay.md) | `test_manual_snapshot_replay_not_used_as_algorithm_input_doc`; `test_lab_page_context_*`; `asteroid_lab_10` 체크리스트 |
 | Candidate: **placement commit 금지**; 생성 → local geometry → immediate route probe → reachable만 normal pool | [`asteroid_lab_03_candidate_generator.md`](../../Algorithm/asteroid_lab_03_candidate_generator.md) | generator 인근 unit; Phase 체크리스트 |
 | Incremental commit: **commit-time latest `route_domain` re-probe**; candidate phase reachable ≠ 최종 증명 | [`asteroid_lab_07_incremental_commit.md`](../../Algorithm/asteroid_lab_07_incremental_commit.md) | `test_incremental_commit_reprobes_latest_route_domain` (문서 명시) |
 | Validation: **read-only assert**; route·placement·topology **repair 금지** | [`asteroid_lab_08_validation.md`](../../Algorithm/asteroid_lab_08_validation.md), ADR-003 | validation read-only 체크리스트·pytest |
-| Lab replay ↔ Optimization replay **dual-track**; frame index·event order·autoplay **암묵 동기화 금지** | `asteroid_lab_09` dual-track 절 | `test_lab_js_replay_wiring_smoke`; `test_lab_page_context_*` |
+| **Unified** replay timeline; global monotonic `frame_index`; every frame **2D map_view**; 단일 play/scrubber (dual-track **폐기**) | `asteroid_lab_09_unified_step_replay` | `test_lab_js_replay_wiring_smoke`; `test_lab_page_context_*` (마이그레이션 중 dual-track 회귀는 제거 목표) |
 | `OptimizationInput` 이후 알고리즘 좌표는 **Server X/Y dense only**; raw 변환은 decode/import·final UI/export 경계만 | [`asteroid_lab_01_optimization_input.md`](../../Algorithm/asteroid_lab_01_optimization_input.md), [`asteroid_lab_00_overview.md`](../../Algorithm/asteroid_lab_00_overview.md) | `test_optimization_input.py`, `test_seed_route_domain_*` |
 | `failure_reason` · `event_type` · `issue_code` 등 **enum/const** — 자유 문자열 금지 | Phase DTO 문서 | `test_invalid_event_type_rejected`; replay contract tests |
 | 동일 seed **deterministic** (+ tie-break) | evolution 문서 | 필요 영역에 명시적 테스트 |

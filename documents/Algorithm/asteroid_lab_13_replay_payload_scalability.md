@@ -1,11 +1,11 @@
 # Sequence 13 — Replay Payload Scalability Roadmap
 
-**역할:** Lab / Optimization **replay payload** 스케일링 트랙의 **정본 로드맵**이다.  
+**역할:** **Unified replay payload** 스케일링 트랙의 **정본 로드맵**이다 (제품은 단일 timeline; Lab/optimization 귀속 명칭은 13A·13B 계측 시 historical 라벨).  
 **범위:** 문서 고정만. **13C 이후 코드·응답 계약·JS 로딩 변경은 명시적 승인 후** 별도 구현 단계에서 수행한다.
 
 **관련 정본·근거:**
 
-- 계측·현장 수치·13A·13B 상세: [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md)
+- 계측·현장 수치·13A·13B 상세: [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md) (역사) · 제품 replay 정본: [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md)
 - 개발 순서 문맥: [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md)
 - 포스트 시퀀스 우선순위: [`asteroid_lab_11_future_execution_plan_post_sequence.md`](asteroid_lab_11_future_execution_plan_post_sequence.md)
 
@@ -13,7 +13,7 @@
 
 ## 목적 (Purpose)
 
-Sequence 13은 Lab / Optimization **replay payload**가 커져 **POST JSON**과 **DevTools 관측성**(response body 캐시 eviction 등)을 망가뜨리는 문제를 해결하기 위한 **스케일링 트랙**이다.
+Sequence 13은 **unified replay timeline**의 프레임 페이로드가 커져 **POST JSON**과 **DevTools 관측성**(response body 캐시 eviction 등)을 망가뜨리는 문제를 해결하기 위한 **스케일링 트랙**이다.
 
 - **replay semantics(리플레이 의미)**는 유지한다.
 - **replay / debug artifact**는 계속 **output-only**이다.
@@ -35,7 +35,7 @@ Sequence 13은 Lab / Optimization **replay payload**가 커져 **POST JSON**과 
 | 단계 | 내용 |
 |------|------|
 | **13A** | 결정적 JSON 섹션 계측(`measure_json_sections` 등), optimization replay **하드 캡** 회귀 검증, HAR·증거 문서화 |
-| **13B** | Lab replay 귀속, `full_map` / 셀 수 / redundancy 분석, 상위 프레임 랭킹, **Lab replay는 optimization replay 상수(`MAX_REPLAY_*`)로 캡되지 않음** 문서화·테스트 키 |
+| **13B** | Lab replay 귀속, `full_map` / 셀 수 / redundancy 분석, 상위 프레임 랭킹, **13B 계측 시점:** Lab replay는 optimization replay 상수(`MAX_REPLAY_*`)로 캡되지 않음 — **historical 관측**. 제품 상한: [`asteroid_lab_09_unified_step_replay`](asteroid_lab_09_unified_step_replay.md) 통합 timeline 단일 `MAX_REPLAY_*` |
 
 **구현으로의 전환:** 위는 **계측·설계·회귀 키**까지이며, **POST 본문 축소·lazy-load·delta 등 런타임 동작 변경은 13C 이후**이며 **별도 승인**이 필요하다.
 
@@ -59,12 +59,12 @@ Sequence 13은 Lab / Optimization **replay payload**가 커져 **POST JSON**과 
 
 ```text
 Replay is output-only.
-Lab / Optimization replay remain dual-track.
-No implicit sync.
+One unified product replay timeline (dual-track policy deprecated 2026-05-19).
+Every frame must remain 2D-renderable (map_view) when payload shape changes.
 No solver / algorithm reads replay payload.
 Replay semantic equivalence must be preserved.
 No large golden JSON unless explicitly approved.
-UI / overlay ownership stays unchanged unless a dedicated UI sequence opens.
+UI uses a single timeline controller unless a dedicated migration sequence opens.
 ```
 
 **구현 승인 전 금지 (이 문서 단계 포함):**
@@ -94,7 +94,7 @@ UI / overlay ownership stays unchanged unless a dedicated UI sequence opens.
 
 - UI는 **replay controller가 전체 Lab replay가 필요할 때** 로드한다.
 - **로딩 / 오류 상태**를 노출한다.
-- **Lab vs Optimization replay 소유권**을 바꾸지 않는다 (`asteroid_lab_09` dual-track 정본 유지).
+- **단일 unified timeline controller**를 유지한다 ([`asteroid_lab_09_unified_step_replay`](asteroid_lab_09_unified_step_replay.md); dual-track 폐기).
 - 마이그레이션 기간 **인라인 모드 폴백**은 허용된다.
 
 **시맨틱 리스크:** 두 소스(인라인 vs fetch)가 **동시에 “권위”**를 주장하면 드리프트; 하나의 명시적 소스 우선순위가 필요하다.

@@ -11,6 +11,7 @@ from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
     get_latest_lab_replay_track_for_project,
 )
+from django_apps.asteroid_lab.services.solver_run_lab_summary import solver_runs_for_lab_project
 
 GRID_W, GRID_H = 23, 15
 CELL_COUNT = GRID_W * GRID_H
@@ -127,6 +128,8 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
     ctx = neutral_lab_context()
     if project_id is None:
         return ctx
+
+    ctx["runs"] = solver_runs_for_lab_project(int(project_id))
 
     track = get_latest_lab_replay_track_for_project(int(project_id))
     frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))

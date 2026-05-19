@@ -66,6 +66,10 @@ def test_post_run_solver_json_persists_and_returns_payload() -> None:
     assert isinstance(data.get("replay_track_metrics"), dict)
     assert isinstance(data.get("solver_summary"), dict)
     assert data["validation_passed"] is True
+    assert data["validation_issue_codes"] == []
+    assert isinstance(data.get("run_summary"), dict)
+    assert data["run_summary"]["id"] == str(data["solver_run_id"])
+    assert data["run_summary"]["status"] == "completed"
     assert "optimization_replay" not in data
 
 
@@ -117,6 +121,24 @@ def _lab_replay_frames_from_page(content: bytes) -> list:
     )
     assert m is not None
     return json.loads(m.group(1))
+
+
+def test_get_project_page_lists_solver_runs_after_run() -> None:
+    slug = _project_slug_via_create()
+    run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
+    Client().post(run_url, HTTP_ACCEPT="application/json")
+
+    page = Client().get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
+    assert page.status_code == 200
+    text = page.content.decode()
+    assert 'data-lab-run-id="' in text
+    import re
+
+    m = re.search(r'<script[^>]+id="lab-runs-data"[^>]*>(.*?)</script>', text, re.DOTALL)
+    assert m is not None
+    runs = json.loads(m.group(1))
+    assert len(runs) >= 1
+    assert runs[0]["id"] is not None
 
 
 def test_post_run_solver_json_updates_page_context_timeline() -> None:

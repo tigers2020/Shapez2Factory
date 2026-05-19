@@ -11,6 +11,9 @@ from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventT
 from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType
 from django_apps.asteroid_lab.services.experiment_service import create_solver_run
+from django_apps.asteroid_lab.services.optimization_ui_payload import (
+    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
+)
 from django_apps.asteroid_lab.services.optimization_replay_persist import (
     persist_optimization_replay_frames_to_solver_run,
 )
@@ -20,6 +23,29 @@ from django_apps.web.services import asteroid_lab_page_context as alc
 _GENE_TEMPLATES = (
     Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
 )
+
+
+@pytest.mark.django_db
+def test_lab_page_context_includes_solver_runs_for_project() -> None:
+    proj = m.AsteroidProject.objects.create(name="RunsCtx", slug="runs-ctx-lab")
+    m.SolverRun.objects.create(
+        project=proj,
+        run_key="r1",
+        algorithm_label="runtime_v0",
+        status=m.SolverRun.RunStatus.FAILED,
+        config_json={
+            SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY: {
+                "validation_passed": False,
+                "confirmed_count": 0,
+                "issue_codes": ["orphan_transport"],
+            }
+        },
+    )
+    ctx = alc.lab_page_context(project_id=proj.pk)
+    assert len(ctx["runs"]) == 1
+    assert ctx["runs"][0]["id"] is not None
+    assert ctx["runs"][0]["status"] == "failed"
+    assert ctx["runs"][0]["first_issue_code"] == "orphan_transport"
 
 
 @pytest.mark.django_db
@@ -374,12 +400,20 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-identifier-sprite-paths-data" in tpl
     assert "lab-replay-track-metrics-data" in tpl
     assert 'id="lab-replay-run-status"' in tpl
+    assert 'id="lab-evolution-runs-list"' in tpl
+    assert "lab-detail-first-issue" in tpl
+    assert "lab-detail-status" in tpl
     assert "lab-optimization-replay-data" not in tpl
     assert "Optimization Replay" not in tpl
     assert "data-lab-run-solver-url" in tpl
     assert "function renderReplayRunStatus" in js
     assert "lab-replay-track-metrics-data" in js
     assert "function replaceOptimizationReplayPayload" not in js
+    assert "function renderEvolutionRunsList" in js
+    assert "function upsertRunSummary" in js
+    assert "lab-evolution-runs-list" in js
+    assert "lab-detail-first-issue" in js
+    assert "lab-detail-status" in js
     assert "labRunSolverUrl" in js
     assert 'method: "POST"' in js
     assert "dataset.labRunSolverUrl" in js

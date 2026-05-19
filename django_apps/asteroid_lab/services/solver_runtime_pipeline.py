@@ -185,12 +185,17 @@ def run_solver_runtime_pipeline(
         inp=inp,
         candidates_by_id=candidates_by_id,
     )
+    error_issue_codes = [
+        i.issue_code.value for i in validation.issues if i.severity.value == "error"
+    ]
     recorder.append(
         OptimizationReplayEventType.VALIDATION_COMPLETED,
         title="Validation completed",
         metrics={
             "passed": validation.passed,
             "issue_count": len(validation.issues),
+            "first_issue_code": error_issue_codes[0] if error_issue_codes else None,
+            "issue_codes": error_issue_codes,
         },
         visible_cells=replay_base_cells,
         overlay_cells=mat_overlay,

@@ -870,7 +870,10 @@
 
   function init() {
     const matrix = readJsonScript("lab-cell-overlay-matrix-data");
-    const runs = readJsonScript("lab-runs-data");
+    let runs = readJsonScript("lab-runs-data");
+    if (!Array.isArray(runs)) {
+      runs = [];
+    }
     const uiInitial = readJsonScript("lab-ui-initial-state");
     const replayFramesRaw = readJsonScript("lab-replay-frames-data");
     let replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
@@ -1349,9 +1352,21 @@
       });
     }
 
+    function runDetailStatusLabel(run) {
+      if (!run || typeof run !== "object") return "—";
+      if (run.status === "failed" || run.validation_passed === false) {
+        return "validation failed";
+      }
+      if (run.status === "completed" || run.validation_passed === true) {
+        return "completed";
+      }
+      return run.status != null ? String(run.status) : "—";
+    }
+
     function setRunDetail(run) {
       const dash = "—";
       const detailIds = [
+        "lab-detail-status",
         "lab-detail-score",
         "lab-detail-miners",
         "lab-detail-extension-cap",
@@ -1360,6 +1375,7 @@
         "lab-detail-belts",
         "lab-detail-pipes",
         "lab-detail-saturation",
+        "lab-detail-first-issue",
       ];
       if (!run) {
         for (const id of detailIds) {
@@ -1374,7 +1390,14 @@
         run.extension_cap != null && run.extension_cap !== ""
           ? String(run.extension_cap)
           : dash;
+      const firstIssue =
+        run.first_issue_code != null && run.first_issue_code !== ""
+          ? String(run.first_issue_code)
+          : Array.isArray(run.issue_codes) && run.issue_codes.length
+            ? String(run.issue_codes[0])
+            : dash;
       const map = [
+        ["lab-detail-status", runDetailStatusLabel(run)],
         ["lab-detail-score", run.score != null ? run.score : dash],
         ["lab-detail-miners", run.miners != null ? run.miners : dash],
         ["lab-detail-extension-cap", ext],
@@ -1384,15 +1407,110 @@
         ["lab-detail-pipes", run.pipes != null ? run.pipes : dash],
         [
           "lab-detail-saturation",
-          run.saturation != null && run.saturation !== "" ? String(run.saturation) + "%" : dash,
+          run.saturation != null && run.saturation !== "" && run.saturation !== dash
+            ? String(run.saturation) + "%"
+            : dash,
         ],
+        ["lab-detail-first-issue", firstIssue],
       ];
       for (const [id, val] of map) {
         const n = document.getElementById(id);
         if (n) n.textContent = String(val);
       }
       const title = document.getElementById("lab-detail-run-id");
-      if (title) title.textContent = run.id != null ? String(run.id) : dash;
+      if (title) {
+        title.textContent = run.id != null ? "Run #" + String(run.id) : dash;
+      }
+    }
+
+    function evolutionRunButtonClasses(run, selected) {
+      const failed = run && (run.status === "failed" || run.validation_passed === false);
+      if (selected) {
+        return failed
+          ? "w-full rounded-xl border p-3 text-left transition border-rose-500/80 bg-rose-950/40"
+          : "w-full rounded-xl border p-3 text-left transition border-cyan-500 bg-cyan-500/10";
+      }
+      return failed
+        ? "w-full rounded-xl border p-3 text-left transition border-rose-800/80 bg-rose-950/20 hover:border-rose-700"
+        : "w-full rounded-xl border p-3 text-left transition border-slate-800 bg-slate-900 hover:border-slate-700";
+    }
+
+    function renderEvolutionRunsList(selectedRunId) {
+      const list = document.getElementById("lab-evolution-runs-list");
+      if (!list) return;
+      list.innerHTML = "";
+      if (!runs.length) {
+        const empty = document.createElement("p");
+        empty.className = "text-sm text-slate-500";
+        empty.textContent = "No runs";
+        list.appendChild(empty);
+        return;
+      }
+      const selected =
+        selectedRunId != null ? String(selectedRunId) : runs[0] && runs[0].id ? String(runs[0].id) : null;
+      runs.forEach(function (run) {
+        if (!run || run.id == null) return;
+        const rid = String(run.id);
+        const failed = run.status === "failed" || run.validation_passed === false;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("data-lab-run-id", rid);
+        btn.className = evolutionRunButtonClasses(run, selected === rid);
+        const scoreLabel = failed ? "validation failed" : run.score != null ? String(run.score) : "—";
+        const sat =
+          run.saturation != null && run.saturation !== "" && run.saturation !== "—"
+            ? String(run.saturation) + "%"
+            : "—";
+        btn.innerHTML =
+          '<div class="flex items-center justify-between gap-2">' +
+          '<div class="font-medium">Run #' +
+          rid +
+          "</div>" +
+          '<div class="text-sm ' +
+          (failed ? "text-rose-300" : "text-cyan-300") +
+          '">' +
+          scoreLabel +
+          "</div>" +
+          "</div>" +
+          '<div class="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-400">' +
+          "<div>" +
+          (run.miners != null ? run.miners : "—") +
+          " miners</div>" +
+          "<div>" +
+          (run.connected != null ? run.connected : "—") +
+          " linked</div>" +
+          "<div>" +
+          sat +
+          " sat.</div>" +
+          "</div>";
+        if (run.first_issue_code) {
+          const issue = document.createElement("p");
+          issue.className = "mt-2 truncate text-xs text-rose-300/90";
+          issue.title = String(run.first_issue_code);
+          issue.textContent = String(run.first_issue_code);
+          btn.appendChild(issue);
+        }
+        btn.addEventListener("click", function () {
+          applyRunSelectionHighlight(rid);
+          setRunDetail(run);
+        });
+        list.appendChild(btn);
+      });
+    }
+
+    function upsertRunSummary(runSummary) {
+      if (!runSummary || typeof runSummary !== "object" || runSummary.id == null) {
+        return;
+      }
+      const id = String(runSummary.id);
+      runs = [runSummary].concat(
+        (runs || []).filter(function (r) {
+          return r && String(r.id) !== id;
+        }),
+      );
+      renderEvolutionRunsList(id);
+      applyRunSelectionHighlight(id);
+      setRunDetail(runSummary);
     }
 
     function resetToInitial() {
@@ -1924,7 +2042,14 @@
               error_code:
                 typeof data.error_code === "string" ? data.error_code : "request_failed",
             };
+            if (data.solver_run_id != null) {
+              replayRunFeedback.solver_run_id = data.solver_run_id;
+              replayRunFeedback.validation_passed = data.validation_passed;
+            }
             renderReplayRunStatus(replayRunFeedback);
+            if (data.run_summary) {
+              upsertRunSummary(data.run_summary);
+            }
             if (Array.isArray(data.lab_replay_frames_json)) {
               replaceLabReplayPayload(data);
             }
@@ -1935,6 +2060,9 @@
             validation_passed: data.validation_passed,
           };
           renderReplayRunStatus(replayRunFeedback);
+          if (data.run_summary) {
+            upsertRunSummary(data.run_summary);
+          }
           replaceLabReplayPayload(data);
         })
         .catch(function () {

@@ -24,6 +24,9 @@ from django_apps.asteroid_lab.services.optimization_replay_persist import (
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     run_reconstruction_for_map_input,
 )
+from django_apps.asteroid_lab.services.solver_run_lab_summary import (
+    lab_run_summary_from_solver_summary,
+)
 from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 
 
@@ -158,14 +161,23 @@ def run_solver_runtime_for_project(
 def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any]:
     """JSON-serializable body for Lab POST responses."""
 
+    summary = dict(result.solver_summary)
     body: dict[str, Any] = {
         "ok": result.ok,
         "solver_run_id": result.solver_run_id,
         "lab_replay_frames_json": result.lab_replay_frames_json,
         "replay_track_metrics": result.replay_track_metrics,
-        "solver_summary": result.solver_summary,
+        "solver_summary": summary,
         "validation_passed": result.validation_passed,
+        "validation_issue_codes": list(summary.get("issue_codes") or []),
     }
+    if result.solver_run_id is not None:
+        ui_status = "completed" if result.validation_passed else "failed"
+        body["run_summary"] = lab_run_summary_from_solver_summary(
+            run_id=int(result.solver_run_id),
+            status=ui_status,
+            solver_summary=summary,
+        )
     if result.error_code is not None:
         body["error_code"] = result.error_code.value
     return body

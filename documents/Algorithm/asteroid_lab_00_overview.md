@@ -206,9 +206,13 @@ fitness: corridor·narrow passage·future expansion·trunk sharing·route goal q
 대신 artifact·메모리 폭주를 막기 위해 **하드 캡**만 둔다 (Phase 9).
 
 ```text
-MAX_REPLAY_CELLS_PER_FRAME = 128
-MAX_REPLAY_FRAMES = 500
+MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME = 128
+MAX_OPTIMIZATION_REPLAY_FRAMES = 500
+MAX_UNIFIED_LAB_REPLAY_CELLS_PER_FRAME = 2000
+MAX_UNIFIED_LAB_REPLAY_FRAMES = 500
 ```
+
+정본 모듈: `django_apps/asteroid_lab/replay/replay_limits.py`.
 
 초과 시 이후 프레임 생략 또는 트렁케이트 후 `metrics`에 `replay_truncated: true` 등을 기록한다.
 

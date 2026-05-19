@@ -299,16 +299,20 @@ optimization·solver 내부 이벤트는 **관측용 로그가 아니라** `Unif
 
 Overview **「활성 좌표 ≤50 전후」**에서는 프레임당 full snapshot을 허용한다. 대용량은 [`asteroid_lab_13`](asteroid_lab_13_replay_payload_scalability.md) 로드맵을 따른다.
 
-**문서 상수 (기본값):**
+**코드 상수 (트랙별, 정본: `django_apps/asteroid_lab/replay/replay_limits.py`):**
 
-```text
-MAX_REPLAY_CELLS_PER_FRAME = 128   # map_view 셀 합산 상한 (full + delta + overlay)
-MAX_REPLAY_FRAMES = 500
-```
+| 상수 | 값 | 적용 |
+|------|-----|------|
+| `MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME` | 128 | optimization in-memory recorder (`visible_cells` + `overlay_cells`) |
+| `MAX_OPTIMIZATION_REPLAY_FRAMES` | 500 | optimization recorder 프레임 수 |
+| `MAX_UNIFIED_LAB_REPLAY_CELLS_PER_FRAME` | 2000 | Lab / unified adapter·composer (9B는 truncate 미적용) |
+| `MAX_UNIFIED_LAB_REPLAY_FRAMES` | 500 | 통합 timeline 목표 상한 (9D composer) |
+
+`optimization/replay_frame.py`의 `MAX_REPLAY_*`는 **optimization 트랙 별칭**(deprecated 이름)이다.
 
 초과 시 프레임 요약·기록 중단; `metrics.replay_truncated = true`, 선택 `replay_omit_reason`.
 
-**통합 timeline 기준:** 상한은 **Lab·Optimization 구분 없이** `UnifiedReplayTimeline` 전체에 적용한다 (dual-track별 상한 폐기).
+**통합 timeline (9D+):** composer가 Lab·Optimization 프레임을 합칠 때 위 상한을 **트랙별로** 적용한다. dual-track별 상한 폐기.
 
 ---
 
@@ -358,6 +362,41 @@ metadata-only frame을 timeline에 단독 등록
 두 번째 optimization timeline controller 유지 (목표 상태)
 암묵적 Lab↔Optimization index sync (deprecated 정책 재도입)
 ```
+
+### 9B — Lab adapter (구현 완료)
+
+**산출:** `django_apps/asteroid_lab/replay/lab_unified_adapter.py`, `unified_event_coverage.py`, `replay_limits.py`
+
+**체크리스트:**
+
+```text
+[x] lab frame adapter (`lab_snapshot_event_to_unified`, `lab_replay_row_to_unified`)
+[x] Lab frame_index → unified frame_index 보존 (9D 전 composer 이전)
+[x] phase 매핑: decode → DECODE; reconstruction·layout_cleanup → RECONSTRUCTION
+[x] event_type 고정 매핑표 (`LAB_EVENT_TYPE_TO_UNIFIED`)
+[x] full_map → ReplayCell; bbox min_x/min_y/max_x/max_y
+[x] inspector/metrics output-only passthrough (`lab_event_type` 등 보존)
+[x] malformed / 미지원 Lab frame → LabUnifiedAdapterError
+[x] source mutate 금지 (단위 테스트)
+[x] deterministic JSON round-trip
+[x] ReplayEventType coverage matrix (9B / 9C / post-9B partition)
+```
+
+**금지 (9B):** optimization projection, delta 압축, lazy-load, JS, ORM, persist, solver 변경.
+
+#### 9B Lab `event_type` → unified `ReplayEventType` (출력)
+
+| Lab `event_type` | Unified |
+|------------------|---------|
+| `decode.raw_loaded` | `decode.started` |
+| `decode.normalized` | `decode.completed` |
+| `reconstruction.begin` … `reconstruction.mineable_finalized` | `reconstruction.started` |
+| `reconstruction.map_complete` | `reconstruction.completed` |
+| `replay.snapshot.cleanup_*` / `replay.snapshot.reconstruction` | `reconstruction.started` (`layout_cleanup` phase 포함) |
+
+**9B 거부:** `candidate.*`, `routing.*`, `ga.*`, `existing_layout.*`
+
+**테스트:** `tests/unit/asteroid_lab/test_unified_replay_lab_adapter.py`, `test_unified_replay_event_coverage_matrix.py`, `test_replay_limits.py`
 
 ---
 

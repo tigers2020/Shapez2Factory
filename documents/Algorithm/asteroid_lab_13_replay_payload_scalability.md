@@ -35,7 +35,7 @@ Sequence 13은 **unified replay timeline**의 프레임 페이로드가 커져 *
 | 단계 | 내용 |
 |------|------|
 | **13A** | 결정적 JSON 섹션 계측(`measure_json_sections` 등), optimization replay **하드 캡** 회귀 검증, HAR·증거 문서화 |
-| **13B** | Lab replay 귀속, `full_map` / 셀 수 / redundancy 분석, 상위 프레임 랭킹, **13B 계측 시점:** Lab replay는 optimization replay 상수(`MAX_REPLAY_*`)로 캡되지 않음 — **historical 관측**. 제품 상한: [`asteroid_lab_09_unified_step_replay`](asteroid_lab_09_unified_step_replay.md) 통합 timeline 단일 `MAX_REPLAY_*` |
+| **13B** | Lab replay 귀속, `full_map` / 셀 수 / redundancy 분석, 상위 프레임 랭킹, **13B 계측 시점:** Lab replay는 optimization 상한(`MAX_OPTIMIZATION_*`)으로 캡되지 않음 — **historical 관측**. 제품 상한: Lab `MAX_UNIFIED_LAB_*`, optimization `MAX_OPTIMIZATION_*` ([`replay_limits.py`](../../django_apps/asteroid_lab/replay/replay_limits.py), [`asteroid_lab_09_unified_step_replay`](asteroid_lab_09_unified_step_replay.md)) |
 
 **구현으로의 전환:** 위는 **계측·설계·회귀 키**까지이며, **POST 본문 축소·lazy-load·delta 등 런타임 동작 변경은 13C 이후**이며 **별도 승인**이 필요하다.
 

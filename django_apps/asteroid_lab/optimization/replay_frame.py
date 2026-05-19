@@ -6,9 +6,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
+from django_apps.asteroid_lab.replay.replay_limits import (
+    MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME,
+    MAX_OPTIMIZATION_REPLAY_FRAMES,
+)
 
-MAX_REPLAY_FRAMES = 500
-MAX_REPLAY_CELLS_PER_FRAME = 2000
+MAX_REPLAY_FRAMES = MAX_OPTIMIZATION_REPLAY_FRAMES
+MAX_REPLAY_CELLS_PER_FRAME = MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME
 
 
 @dataclass(frozen=True, slots=True)

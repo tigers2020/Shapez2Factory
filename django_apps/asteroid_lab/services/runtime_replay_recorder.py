@@ -5,17 +5,17 @@ from __future__ import annotations
 from typing import Any
 
 from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
-from django_apps.asteroid_lab.optimization.replay_frame import (
-    MAX_REPLAY_CELLS_PER_FRAME,
-    MAX_REPLAY_FRAMES,
-    OptimizationReplayFrame,
+from django_apps.asteroid_lab.optimization.replay_frame import OptimizationReplayFrame
+from django_apps.asteroid_lab.replay.replay_limits import (
+    MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME,
+    MAX_OPTIMIZATION_REPLAY_FRAMES,
 )
 
 
 class RuntimeReplayRecorder:
     """Append-only optimization replay frames (output-only)."""
 
-    def __init__(self, *, max_frames: int = MAX_REPLAY_FRAMES) -> None:
+    def __init__(self, *, max_frames: int = MAX_OPTIMIZATION_REPLAY_FRAMES) -> None:
         self._max_frames = max(1, int(max_frames))
         self._frames: list[OptimizationReplayFrame] = []
         self._truncated = False
@@ -45,8 +45,8 @@ class RuntimeReplayRecorder:
 
         vis = visible_cells
         ovl = overlay_cells
-        if len(vis) + len(ovl) > MAX_REPLAY_CELLS_PER_FRAME:
-            vis = vis[:MAX_REPLAY_CELLS_PER_FRAME]
+        if len(vis) + len(ovl) > MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME:
+            vis = vis[:MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME]
             ovl = ()
 
         frame_metrics = dict(metrics or {})

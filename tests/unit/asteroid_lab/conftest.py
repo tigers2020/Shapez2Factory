@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from django_apps.asteroid_lab.reconstruction.topology_contract import (
+    load_reconstruction_fixture_line_pairs,
+)
 from django_apps.shapez_core.models import (
     ShapezBasedataRelease,
     ShapezGameIdentifier,
@@ -33,3 +36,8 @@ def lab_sprite_identifiers_for_admin() -> ShapezBasedataRelease:
             sprite_static_relpath=rel,
         )
     return r
+
+
+@pytest.fixture(params=range(len(load_reconstruction_fixture_line_pairs())))
+def reconstruction_fixture_line_index(request: pytest.FixtureRequest) -> int:
+    return int(request.param)

@@ -82,11 +82,9 @@ def test_persist_reconstructed_map_idempotent(hole_island_copy: str) -> None:
     assert m.ReconstructedAsteroidMap.objects.filter(map_input=inp).count() == 1
     row = m.ReconstructedAsteroidMap.objects.get(pk=pk1)
     assert row.copy_code.endswith("$")
-    assert row.rebuilt_copy_code.endswith("$")
-    assert row.export_json.get("BP")
-    assert row.reconstruction_json.get("reconstructed_cells") is not None
-    assert row.entries.count() >= 1
-    assert row.cell_count >= 1
+    assert row.original_copy_code == hole_island_copy.strip()
+    assert row.original_decoded_json.get("BP")
+    assert row.decoded_json.get("BP", {}).get("Entries")
 
 
 @pytest.mark.django_db

@@ -75,6 +75,21 @@ def _vote_xy_set(
     return coords
 
 
+def _is_topology_fill_cell(cell: DecodedCellDTO) -> bool:
+    raw = cell.raw_entry_json
+    return isinstance(raw, dict) and raw.get("_reconstruction") == "topology_fill"
+
+
+def _is_stamp_target(cell: DecodedCellDTO) -> bool:
+    return cell.cell_kind in ASTEROID_FIELD_KINDS or _is_topology_fill_cell(cell)
+
+
+def _is_traversable_for_island(cell: DecodedCellDTO) -> bool:
+    """Stamp targets plus ``unknown`` bridges (walls are not recolored)."""
+
+    return _is_stamp_target(cell) or cell.cell_kind == "unknown"
+
+
 def resolve_island_kind(
     island_keys: set[CellKey],
     key_to_cell: dict[CellKey, DecodedCellDTO],
@@ -99,16 +114,23 @@ def stamp_islands_uniform(
     original_cells: Iterable[DecodedCellDTO],
     removed_building_cells: Iterable[DecodedCellDTO],
 ) -> tuple[DecodedCellDTO, ...]:
-    """Stamp every non-transport island to one ``asteroid_*_field`` from original evidence."""
+    """Uniform ``asteroid_*_field`` on stamp targets; ``unknown`` walls stay traversable only."""
 
     evidence = build_original_evidence_by_xy(original_cells, removed_building_cells)
     key_to_cell: dict[CellKey, DecodedCellDTO] = {(c.x, c.y, c.layer): c for c in out_cells}
-    node_keys = {k for k, c in key_to_cell.items() if not is_transport_tile(c)}
+    stamp_target_keys = {
+        k for k, c in key_to_cell.items() if not is_transport_tile(c) and _is_stamp_target(c)
+    }
+    traversable_keys = {
+        k
+        for k, c in key_to_cell.items()
+        if not is_transport_tile(c) and _is_traversable_for_island(c)
+    }
 
     visited: set[CellKey] = set()
     stamp_by_key: dict[CellKey, str] = {}
 
-    for start_key in sorted(node_keys):
+    for start_key in sorted(traversable_keys):
         if start_key in visited:
             continue
         comp: set[CellKey] = set()
@@ -120,7 +142,7 @@ def stamp_islands_uniform(
             cur = key_to_cell[k]
             for nx, ny, nl in iter_four_neighbors(cur.x, cur.y, cur.layer):
                 nk = (nx, ny, nl)
-                if nk not in node_keys or nk in visited:
+                if nk not in traversable_keys or nk in visited:
                     continue
                 nxt = key_to_cell[nk]
                 if not _allow_edge(cur, nxt, evidence):
@@ -129,8 +151,11 @@ def stamp_islands_uniform(
                 comp.add(nk)
                 q.append(nk)
 
-        kind = resolve_island_kind(comp, key_to_cell, evidence)
-        for k in comp:
+        targets_in_comp = {k for k in comp if k in stamp_target_keys}
+        if not targets_in_comp:
+            continue
+        kind = resolve_island_kind(targets_in_comp, key_to_cell, evidence)
+        for k in targets_in_comp:
             stamp_by_key[k] = kind
 
     out: list[DecodedCellDTO] = []

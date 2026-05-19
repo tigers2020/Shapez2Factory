@@ -85,7 +85,7 @@ def test_pipeline_overwrite_reuses_run_key_and_reconstructed_row() -> None:
     assert r2.run_key == run_key
     assert r2.reconstructed_asteroid_map_id == recon_pk
     row = m.ReconstructedAsteroidMap.objects.get(pk=recon_pk)
-    assert row.export_json.get("BP")
+    assert row.decoded_json.get("BP")
     assert row.updated_at is not None
 
 
@@ -110,4 +110,4 @@ def test_refresh_reconstructed_map_overwrites_layers() -> None:
     assert pk1 == pk2
     row2 = m.ReconstructedAsteroidMap.objects.get(pk=pk2)
     assert row2.updated_at > t0
-    assert row2.reconstruction_json.get("reconstructed_cells")
+    assert row2.decoded_json.get("BP", {}).get("Entries")

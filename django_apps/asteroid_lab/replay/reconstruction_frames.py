@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
-from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_jsonl
+from django_apps.asteroid_lab.reconstruction.display_map import merge_reconstruction_display_rows
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.trace import (
     ReconstructionTraceCollector,
@@ -37,7 +37,6 @@ from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     snapshot_summary_from_rows,
 )
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO, SnapshotEventDTO
-from django_apps.asteroid_lab.snapshots.server_coords import full_map_row_for_boundary_jsonl
 
 __all__ = [
     "ReconstructionTraceCollector",
@@ -87,13 +86,6 @@ def _title_for_trace(tt: str) -> str:
     return tt.replace("_", " ").title()
 
 
-_RAW_X_ZERO_NOTE = (
-    "raw_x==0 is not a valid asteroid world column (no x==0). It usually means blueprint "
-    "entry X was missing or non-int: decoded_blueprint_snapshot._as_int maps None→0. "
-    "That value is still stored as DecodedCellDTO.x (blueprint raw channel), not server grid."
-)
-
-
 def build_reconstruction_replay_events(
     *,
     structural_rows: list[dict[str, Any]],
@@ -102,9 +94,6 @@ def build_reconstruction_replay_events(
     trace_events: Sequence[ReconstructionTraceEvent],
     recon_summary: dict[str, Any],
     hints: dict[str, Any],
-    boundary_run_id: str | None = None,
-    map_input_id: int | None = None,
-    project_id: int | None = None,
 ) -> list[SnapshotEventDTO]:
     """Convert trace events into persisted replay frames (full_map + diff per step).
 
@@ -182,13 +171,10 @@ def build_reconstruction_replay_events(
                 next_merged[key3] = decoded_cell_to_full_map_row(cell)
 
         if tt == "reconstruction_final":
-            # Overlay stamped reconstruction onto the structural map. Replacing the entire
-            # merged dict with recon rows alone drops keys present in structural_rows but
-            # absent from ``recon.cells`` (e.g. replay synthetic field anchors where cleanup
-            # removed the building entry entirely).
-            next_merged = dict(merged)
-            for r in final_rows:
-                next_merged[cell_key_xy_layer(r)] = dict(r)
+            next_display_rows = merge_reconstruction_display_rows(
+                list(merged.values()), recon.cells
+            )
+            next_merged = {cell_key_xy_layer(r): dict(r) for r in next_display_rows}
 
         next_display = _sort_rows(list(next_merged.values()))
         if tt in marker_trace_types:
@@ -268,29 +254,5 @@ def build_reconstruction_replay_events(
             summary=dict(final_frame_summary),
         )
         out.append(complete_dto)
-
-        if boundary_run_id:
-            params = cleanup.server_xy_params
-            enriched = [
-                full_map_row_for_boundary_jsonl(dict(r), server_xy_params=params)
-                for r in complete_display
-                if isinstance(r, dict)
-            ]
-            zx = sum(1 for r in complete_display if isinstance(r, dict) and int(r.get("x", 0)) == 0)
-            emit_boundary_jsonl(
-                run_id=boundary_run_id,
-                stage="reconstruction",
-                boundary="reconstruction.reconstruction_complete",
-                data={
-                    "map_input_id": map_input_id,
-                    "project_id": project_id,
-                    "phase_step": "asteroid_map_complete",
-                    "event_key": "step4_10_asteroid_map_complete",
-                    "full_map_cell_count": len(enriched),
-                    "raw_x_zero_count": zx,
-                    "raw_x_zero_note": _RAW_X_ZERO_NOTE,
-                    "full_map_snapshot": enriched,
-                },
-            )
 
     return out

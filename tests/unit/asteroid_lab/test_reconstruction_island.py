@@ -100,8 +100,27 @@ def test_stamp_islands_uniform_preserves_cell_count_and_keys() -> None:
     assert {(c.x, c.y, c.layer) for c in after} == {(c.x, c.y, c.layer) for c in before}
 
 
-def test_neighbor_vote_includes_four_neighbors_of_island_cells() -> None:
-    """Original evidence on a wall-only neighbor coordinate still counts for an interior hole."""
+def test_unknown_walls_are_not_stamped() -> None:
+    """``unknown`` tiles bridge islands but keep ``cell_kind`` unchanged."""
+
+    wall_a = _cell(0, 0, tile_type="UnknownTile_A", cell_kind="unknown")
+    wall_b = _cell(1, 0, tile_type="UnknownTile_B", cell_kind="unknown")
+    field_a = _cell(0, 1, cell_kind="asteroid_shape_field")
+    field_b = _cell(1, 1, cell_kind="asteroid_shape_field")
+    out = stamp_islands_uniform(
+        (wall_a, wall_b, field_a, field_b),
+        original_cells=(field_a, field_b),
+        removed_building_cells=(),
+    )
+    by_xy = {(c.x, c.y): c for c in out}
+    assert by_xy[(0, 0)].cell_kind == "unknown"
+    assert by_xy[(1, 0)].cell_kind == "unknown"
+    assert by_xy[(0, 1)].cell_kind == "asteroid_shape_field"
+    assert by_xy[(1, 1)].cell_kind == "asteroid_shape_field"
+
+
+def test_neighbor_vote_includes_adjacent_decoded_field_evidence() -> None:
+    """Decoded ``asteroid_*_field`` on a 4-neighbor island cell counts toward the hole stamp."""
 
     hole = _cell(1, 1, cell_kind="asteroid_shape_field", tile_type="SynthHole")
     fluid_wall = _cell(1, 0, cell_kind="asteroid_fluid_field")

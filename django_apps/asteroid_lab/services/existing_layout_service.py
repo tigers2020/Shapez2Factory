@@ -7,6 +7,7 @@ from typing import Any
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
+from django_apps.asteroid_lab.reconstruction.confidence import reconstruction_acceptance_ok
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
 from django_apps.asteroid_lab.replay.event_types import (
@@ -83,7 +84,11 @@ def record_existing_layout_inspection_frames(
         trace_collector=collector,
     )
     row_recon = rows_from_cells(recon.cells)
-    recon_extra = {**dict(cleanup.summary_json), **dict(recon.summary_json)}
+    recon_extra = {
+        **dict(cleanup.summary_json),
+        **dict(recon.summary_json),
+        "reconstruction_acceptance_ok": reconstruction_acceptance_ok(recon),
+    }
 
     recorder = ReplayRecorder(int(track_id))
     phase = "layout_cleanup"
@@ -165,9 +170,6 @@ def record_existing_layout_inspection_frames(
         trace_events=collector.events,
         recon_summary=dict(recon_summary),
         hints=hints,
-        boundary_run_id=rid,
-        map_input_id=int(snap.map_input_id) if snap.map_input_id is not None else None,
-        project_id=int(snap.project_id) if snap.project_id is not None else None,
     )
 
     frames = recorder.record_many([ev_transport, ev_extractor, ev_extension, *recon_events])

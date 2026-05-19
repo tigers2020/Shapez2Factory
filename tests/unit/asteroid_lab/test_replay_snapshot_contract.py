@@ -141,14 +141,18 @@ def test_replay_frames_are_full_map_snapshots_not_event_only() -> None:
     assert isinstance(fm4, list)
     assert all(c.get("cell_kind") != "internal_void" for c in fm4)
     hole = next(c for c in fm4 if c.get("x") == 2 and c.get("y") == 2)
-    assert hole.get("cell_kind") == "asteroid_shape_field"
+    assert hole.get("cell_kind") in ("asteroid_shape_field", "asteroid_fluid_field")
+    for xy in ((1, 1), (2, 1), (3, 1), (1, 2), (3, 2), (1, 3), (2, 3), (3, 3)):
+        wall = next(c for c in fm4 if c.get("x") == xy[0] and c.get("y") == xy[1])
+        assert wall.get("cell_kind") == "unknown"
     diff4 = final_payload.get("diff") or {}
     added_kinds = {c.get("cell_kind") for c in (diff4.get("added") or [])}
     if added_kinds:
-        assert "asteroid_shape_field" in added_kinds
+        assert added_kinds & {"asteroid_shape_field", "asteroid_fluid_field"}
     rs = final_payload.get("summary") or {}
     assert int(rs.get("barrier_cell_count", 0)) >= int(rs.get("wall_cell_count", 0))
-    assert "inferred_shell_cell_count" in rs
+    assert int(rs.get("inferred_shell_cell_count", -1)) == 0
+    assert int(rs.get("sealed_slit_cell_count", -1)) == 0
     assert "external_reachable_count" in rs
     assert int(rs.get("filled_hole_cell_count", -1)) >= 1
     assert complete_payload.get("summary") == rs

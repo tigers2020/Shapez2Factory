@@ -157,7 +157,7 @@ def test_optimization_input_preserves_inferred_fill_as_mineable() -> None:
     res = reconstruct_snapshot(_snapshot(cells))
     inp = optimization_input_from_reconstruction(res)
     hole = next(c for c in res.cells if c.x == 2 and c.y == 2)
-    assert hole.cell_kind == "asteroid_shape_field"
+    assert hole.cell_kind in ("asteroid_shape_field", "asteroid_fluid_field")
     assert _server_coord(hole, res) in inp.mineable_cells
 
 

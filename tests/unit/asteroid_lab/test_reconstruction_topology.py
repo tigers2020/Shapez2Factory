@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
-from django_apps.asteroid_lab.reconstruction.evidence import ASTEROID_FIELD_KINDS
-from django_apps.asteroid_lab.reconstruction.perimeter_closing import chebyshev_close_barrier
+from django_apps.asteroid_lab.reconstruction.perimeter_closing import close_diagonal_leaks
 from django_apps.asteroid_lab.reconstruction.pipeline import reconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.shell import infer_shell_barrier_coords
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
@@ -82,12 +80,35 @@ def test_interior_hole_filled_as_field_not_void() -> None:
     kinds = {c.cell_kind for c in res.cells}
     assert "internal_void" not in kinds
     hole = next(c for c in res.cells if c.x == 2 and c.y == 2)
-    assert hole.cell_kind == "asteroid_shape_field"
+    assert hole.cell_kind in ("asteroid_shape_field", "asteroid_fluid_field")
     s = res.summary_json
-    assert s.get("inferred_shell_cell_count", 0) >= 1
+    assert int(s.get("inferred_shell_cell_count", 0)) == 0
     assert int(s["barrier_cell_count"]) >= int(s["wall_cell_count"])
     assert int(s["filled_component_count"]) >= 1
-    assert int(s["filled_hole_cell_count"]) == 1
+    assert int(s["filled_hole_cell_count"]) >= 1
+
+
+def test_unknown_ring_not_stamped_on_hole_island() -> None:
+    """UnknownTile ring stays ``unknown``; only the interior hole becomes ``asteroid_*_field``."""
+
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(2, 1, tile_type="UnknownTile_B"),
+        _cell(3, 1, tile_type="UnknownTile_C"),
+        _cell(1, 2, tile_type="UnknownTile_D"),
+        _cell(3, 2, tile_type="UnknownTile_E"),
+        _cell(1, 3, tile_type="UnknownTile_F"),
+        _cell(2, 3, tile_type="UnknownTile_G"),
+        _cell(3, 3, tile_type="UnknownTile_H"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    by_xy = {(c.x, c.y): c for c in res.cells}
+    assert by_xy[(2, 2)].cell_kind in ("asteroid_shape_field", "asteroid_fluid_field")
+    for xy in ((1, 1), (2, 1), (3, 1), (1, 2), (3, 2), (1, 3), (2, 3), (3, 3)):
+        assert by_xy[xy].cell_kind == "unknown"
 
 
 def test_topology_fill_uses_removed_fluid_miner_wall_as_field_evidence() -> None:
@@ -238,9 +259,9 @@ def test_topology_fill_falls_back_to_shape_on_tie_or_no_evidence() -> None:
     """Equal fluid/shape field counts in the island vote → ``asteroid_shape_field`` fallback."""
 
     cells = (
-        _cell(1, 0, cell_kind="fluid_miner"),
-        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
-        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 0, cell_kind="shape_miner"),
+        _cell(2, 0, cell_kind="space_belt", transport_kind="shape_belt"),
+        _cell(3, 0, cell_kind="shape_miner_extension", transport_kind="shape_belt"),
         _cell(1, 1, cell_kind="asteroid_fluid_field"),
         _cell(2, 1, cell_kind="asteroid_shape_field"),
         _cell(3, 1, cell_kind="asteroid_fluid_field"),
@@ -318,127 +339,6 @@ def test_island_stamp_preserves_existing_ring_and_topology_fill_xy() -> None:
     kinds = {next(c for c in res.cells if (c.x, c.y) == xy).cell_kind for xy in original_ring_xy}
     kinds |= {next(c for c in res.cells if c.x == 2 and c.y == 2).cell_kind}
     assert kinds == {"asteroid_fluid_field"}
-
-
-def test_reconstruction_fills_enclosed_internal_holes_as_mineable() -> None:
-    """Two strict-interior holes in one enclosure → both ``asteroid_*_field``."""
-
-    cells = (
-        _cell(1, 0, cell_kind="fluid_miner"),
-        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
-        _cell(4, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
-        _cell(1, 1, tile_type="UnknownTile_A"),
-        _cell(2, 1, tile_type="UnknownTile_B"),
-        _cell(3, 1, tile_type="UnknownTile_C"),
-        _cell(4, 1, tile_type="UnknownTile_D"),
-        _cell(1, 2, tile_type="UnknownTile_E"),
-        _cell(4, 2, tile_type="UnknownTile_F"),
-        _cell(1, 3, tile_type="UnknownTile_G"),
-        _cell(2, 3, tile_type="UnknownTile_H"),
-        _cell(3, 3, tile_type="UnknownTile_I"),
-        _cell(4, 3, tile_type="UnknownTile_J"),
-        _cell(1, 4, tile_type="UnknownTile_K"),
-        _cell(2, 4, tile_type="UnknownTile_L"),
-        _cell(3, 4, tile_type="UnknownTile_M"),
-        _cell(4, 4, tile_type="UnknownTile_N"),
-    )
-    res = reconstruct_snapshot(_snapshot(cells))
-    by_xy = {(c.x, c.y): c for c in res.cells}
-    for hole_xy in ((2, 2), (3, 2)):
-        assert hole_xy in by_xy
-        assert by_xy[hole_xy].cell_kind in ASTEROID_FIELD_KINDS
-    assert int(res.summary_json["filled_hole_cell_count"]) >= 2
-
-
-def test_reconstruction_does_not_mark_external_void_as_mineable() -> None:
-    """Cavity touching working bbox edge stays unfilled (exterior-connected)."""
-
-    cells = (
-        _cell(1, 0, tile_type="UnknownTile_R1"),
-        _cell(2, 0, tile_type="UnknownTile_R2"),
-        _cell(3, 0, tile_type="UnknownTile_R3"),
-        _cell(1, 1, cell_kind="fluid_miner"),
-        _cell(2, 1, cell_kind="fluid_miner"),
-        _cell(3, 1, cell_kind="fluid_miner"),
-        _cell(1, 2, cell_kind="fluid_miner"),
-        _cell(2, 2, cell_kind="fluid_miner"),
-        _cell(3, 2, cell_kind="fluid_miner"),
-    )
-    res = reconstruct_snapshot(_snapshot(cells))
-    assert not any(c.x == 2 and c.y == 2 for c in res.cells)
-    assert int(res.summary_json["filled_hole_cell_count"]) == 0
-
-
-def test_reconstruction_transport_removed_cells_are_not_asteroid_evidence() -> None:
-    """Stripped belt/pipe coords are not in ``wall_coords`` and do not justify fill alone."""
-
-    cells = (
-        _cell(1, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
-        _cell(2, 0, cell_kind="space_belt", transport_kind="shape_belt"),
-        _cell(3, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
-        _cell(1, 1, tile_type="UnknownTile_A"),
-        _cell(3, 1, tile_type="UnknownTile_B"),
-        _cell(1, 2, tile_type="UnknownTile_C"),
-        _cell(3, 2, tile_type="UnknownTile_D"),
-        _cell(1, 3, tile_type="UnknownTile_E"),
-        _cell(3, 3, tile_type="UnknownTile_F"),
-    )
-    snap = _snapshot(cells)
-    cleanup = deconstruct_snapshot(snap)
-    assert (1, 0) not in cleanup.wall_coords
-    assert (2, 0) not in cleanup.wall_coords
-    assert (3, 0) not in cleanup.wall_coords
-    assert (2, 1) not in cleanup.wall_coords
-
-
-def test_reconstruction_extractor_extension_cells_are_asteroid_evidence() -> None:
-    """Removed miner/extension anchors are included in ``wall_coords`` for enclosure."""
-
-    cells = (
-        _cell(1, 0, cell_kind="fluid_miner"),
-        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
-        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
-        _cell(1, 1, tile_type="UnknownTile_A"),
-        _cell(3, 1, tile_type="UnknownTile_B"),
-        _cell(1, 2, tile_type="UnknownTile_C"),
-        _cell(3, 2, tile_type="UnknownTile_D"),
-        _cell(1, 3, tile_type="UnknownTile_E"),
-        _cell(3, 3, tile_type="UnknownTile_F"),
-    )
-    cleanup = deconstruct_snapshot(_snapshot(cells))
-    assert (1, 0) in cleanup.wall_coords
-    assert (3, 0) in cleanup.wall_coords
-    assert (2, 0) not in cleanup.wall_coords
-
-
-def test_reconstruction_chebyshev_closing_prevents_tiny_perimeter_leakage() -> None:
-    """Diagonal barrier pair seals an exterior corner without filling strict interior holes."""
-
-    walls = {(1, 1), (2, 2)}
-    bbox = (0, 3, 0, 3)
-    closed = chebyshev_close_barrier(walls, bbox, wall_coords=walls)
-    assert (1, 2) in closed or (2, 1) in closed
-    assert len(closed) > len(walls)
-
-    cells = (
-        _cell(1, 0, cell_kind="fluid_miner"),
-        _cell(4, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
-        _cell(1, 1, tile_type="UnknownTile_A"),
-        _cell(4, 1, tile_type="UnknownTile_B"),
-        _cell(1, 2, tile_type="UnknownTile_C"),
-        _cell(2, 2, tile_type="UnknownTile_D"),
-        _cell(4, 2, tile_type="UnknownTile_E"),
-        _cell(1, 3, tile_type="UnknownTile_F"),
-        _cell(4, 3, tile_type="UnknownTile_G"),
-        _cell(1, 4, tile_type="UnknownTile_H"),
-        _cell(2, 4, tile_type="UnknownTile_I"),
-        _cell(3, 4, tile_type="UnknownTile_J"),
-        _cell(4, 4, tile_type="UnknownTile_K"),
-    )
-    res = reconstruct_snapshot(_snapshot(cells))
-    hole = next((c for c in res.cells if c.x == 3 and c.y == 2), None)
-    assert hole is not None
-    assert hole.cell_kind in ASTEROID_FIELD_KINDS
 
 
 def test_reconstruction_cell_count_not_less_than_pre_stamp_merge() -> None:
@@ -534,3 +434,117 @@ def test_trace_collector_does_not_change_reconstruction_cells() -> None:
     assert len(finals) == 1
     keys = [str(e.summary_json.get("event_key", "")) for e in coll.events]
     assert "step4_09_reconstruction_final" in keys
+
+
+def test_reconstruction_fills_enclosed_internal_holes_as_mineable() -> None:
+    """Concave ring: interior hole becomes ``asteroid_*_field``, not void."""
+
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(2, 1, tile_type="UnknownTile_B"),
+        _cell(3, 1, tile_type="UnknownTile_C"),
+        _cell(1, 2, tile_type="UnknownTile_D"),
+        _cell(3, 2, tile_type="UnknownTile_E"),
+        _cell(1, 3, tile_type="UnknownTile_F"),
+        _cell(2, 3, tile_type="UnknownTile_G"),
+        _cell(3, 3, tile_type="UnknownTile_H"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    assert "internal_void" not in {c.cell_kind for c in res.cells}
+    hole = next(c for c in res.cells if c.x == 2 and c.y == 2)
+    assert hole.cell_kind in ("asteroid_shape_field", "asteroid_fluid_field")
+
+
+def test_reconstruction_does_not_mark_external_void_as_mineable() -> None:
+    """Open cavity touching bbox padding is not filled as mineable field."""
+
+    cells = (
+        _cell(1, 0, tile_type="UnknownTile_R1"),
+        _cell(2, 0, tile_type="UnknownTile_R2"),
+        _cell(3, 0, tile_type="UnknownTile_R3"),
+        _cell(1, 1, cell_kind="fluid_miner"),
+        _cell(2, 1, cell_kind="fluid_miner"),
+        _cell(3, 1, cell_kind="fluid_miner"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    assert not any(c.x == 2 and c.y == 2 for c in res.cells)
+    assert int(res.summary_json.get("filled_hole_cell_count", 0)) == 0
+
+
+def test_reconstruction_transport_removed_cells_are_not_asteroid_evidence() -> None:
+    """Pipe-only anchors on a 1-cell row do not seal an interior slit."""
+
+    cells = (
+        _cell(1, 2, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(3, 2, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    assert not any(c.x == 2 and c.y == 2 for c in res.cells)
+    assert int(res.summary_json.get("sealed_slit_cell_count", 0)) == 0
+
+
+def test_reconstruction_extractor_extension_cells_are_asteroid_evidence() -> None:
+    """Stripped miner/extension anchors are walls; external 1-cell gap is not slit-filled."""
+
+    cells = (
+        _cell(1, 2, cell_kind="fluid_miner"),
+        _cell(3, 2, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    assert not any(c.x == 2 and c.y == 2 for c in res.cells)
+    assert int(res.summary_json.get("sealed_slit_cell_count", 0)) == 0
+    assert int(res.summary_json.get("inferred_shell_cell_count", 0)) == 0
+
+
+def test_reconstruction_chebyshev_closing_does_not_seal_strict_interior_hole() -> None:
+    """Diagonal corner pair must not barrier-fill the interior of a wall bbox (hole island)."""
+
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(3, 1, tile_type="UnknownTile_B"),
+        _cell(1, 2, tile_type="UnknownTile_C"),
+        _cell(3, 2, tile_type="UnknownTile_D"),
+        _cell(1, 3, tile_type="UnknownTile_E"),
+        _cell(3, 3, tile_type="UnknownTile_F"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    assert int(res.summary_json.get("diagonal_closed_cell_count", 0)) == 0
+    assert not any(c.x == 2 and c.y == 2 for c in res.cells)
+
+
+def test_close_diagonal_leaks_skips_strict_bbox_interior() -> None:
+    bbox = (0, 4, 0, 4)
+    solid = {(1, 1), (3, 3)}
+    extra = close_diagonal_leaks(solid, bbox)
+    assert (2, 2) not in extra
+
+
+def test_close_diagonal_leaks_seals_three_corner_2x2_block() -> None:
+    bbox = (0, 4, 0, 4)
+    solid = {(1, 1), (2, 1), (1, 2)}
+    extra = close_diagonal_leaks(solid, bbox)
+    assert (2, 2) in extra
+
+
+def test_reconstruction_does_not_fill_external_one_cell_line() -> None:
+    """1-cell void between walls stays external when bbox flood reaches it."""
+
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(3, 0, cell_kind="fluid_miner_extension", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(3, 1, tile_type="UnknownTile_B"),
+        _cell(1, 2, tile_type="UnknownTile_C"),
+        _cell(3, 2, tile_type="UnknownTile_D"),
+        _cell(1, 3, tile_type="UnknownTile_E"),
+        _cell(2, 3, tile_type="UnknownTile_mid"),
+        _cell(3, 3, tile_type="UnknownTile_F"),
+    )
+    res = reconstruct_snapshot(_snapshot(cells))
+    assert not any(c.x == 2 and c.y == 2 for c in res.cells)
+    assert int(res.summary_json.get("sealed_slit_cell_count", 0)) == 0

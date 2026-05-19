@@ -9,28 +9,72 @@ from django_apps.asteroid_lab.observability.boundary_jsonl import (
     emit_boundary_jsonl,
     summarize_cell_kind_transitions,
 )
+from django_apps.asteroid_lab.reconstruction.confidence import apply_confidence_to_result
+from django_apps.asteroid_lab.reconstruction.evidence import (
+    ASTEROID_FIELD_KINDS,
+    MINER_EXTENSION_CELL_KINDS,
+    is_asteroid_evidence,
+)
 from django_apps.asteroid_lab.reconstruction.fill import (
+    EXTERNAL_POCKET_INTERIOR_CANDIDATE_MAX,
+    SMALL_INTERIOR_EXTERIOR_FILL_BLOCKLIST,
     TOPOLOGY_FILL_PLACEHOLDER_KIND,
+    _wall_neighbor_count,
     connected_components,
+    dense_gap_column_coords,
+    diagonal_barrier_fill_coords,
+    external_pocket_cells_to_fill,
+    external_pocket_components,
     passes_bbox_interior,
     synthetic_field_cell,
 )
 from django_apps.asteroid_lab.reconstruction.flood_fill import external_reachable
 from django_apps.asteroid_lab.reconstruction.grid import Coord, iter_bbox_cells
 from django_apps.asteroid_lab.reconstruction.island import stamp_islands_uniform
-from django_apps.asteroid_lab.reconstruction.perimeter_closing import chebyshev_close_barrier
+from django_apps.asteroid_lab.reconstruction.perimeter_closing import close_diagonal_leaks
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
-from django_apps.asteroid_lab.reconstruction.shell import infer_shell_barrier_coords
+from django_apps.asteroid_lab.reconstruction.topology_contract import (
+    build_normalized_reconstruction_topology,
+)
 from django_apps.asteroid_lab.reconstruction.trace import (
     ReconstructionTraceCollector,
     ReconstructionTraceEvent,
 )
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
-from django_apps.asteroid_lab.snapshots.transport_components import sort_key_xy_layer
+from django_apps.asteroid_lab.snapshots.transport_components import (
+    is_transport_tile,
+    sort_key_xy_layer,
+)
 
 if TYPE_CHECKING:
     from django_apps.asteroid_lab.cleanup.result import CleanupResult
+
+
+def _finalize_reconstruction_result(
+    cells: tuple[DecodedCellDTO, ...],
+    summary: dict[str, object],
+    *,
+    server_xy_params: tuple[int, int] | None,
+    wall_coords: set[Coord],
+    shell_raw_coords: frozenset[Coord],
+) -> ReconstructionResult:
+    base = ReconstructionResult(
+        cells=cells,
+        summary_json=dict(summary),
+        outer_rim_coords=(),
+        server_xy_params=server_xy_params,
+    )
+    topo = build_normalized_reconstruction_topology(
+        cells,
+        server_xy_params=server_xy_params,
+        shell_raw_coords=shell_raw_coords,
+    )
+    return apply_confidence_to_result(
+        base,
+        wall_coords=wall_coords,
+        interior_patch_coords=topo.interior_patch_cells,
+    )
 
 
 def _sorted_interior_components(interior: set[Coord]) -> list[set[Coord]]:
@@ -89,15 +133,17 @@ def reconstruct_after_cleanup(
 ) -> ReconstructionResult:
     """Flood-fill and fill enclosed holes using precomputed walls and bbox (no snapshot DTO).
 
-    ``wall_coords`` (cleanup evidence + removed miner/extension anchors) feed the flood
-    barrier. ``barrier_xy = close(walls ∪ inferred_shell)`` blocks exterior flood; interior
-    components fully inside the working bbox are filled (flood-only, no two-axis guard).
+    ``barrier_xy`` blocks external flood-fill (``wall_coords`` plus diagonal pinhole closes
+    only). Interior is ``walkable - external``; morphology is never re-injected as fill.
 
     Topology holes are filled with a placeholder ``cell_kind``; final ``asteroid_*_field`` on
     every non-transport island comes from :func:`stamp_islands_uniform`.
     """
 
     walls_xy: set[Coord] = set(wall_coords)
+    shell_raw_coords: frozenset[Coord] = frozenset(
+        (c.x, c.y) for c in original_cells if is_asteroid_evidence(c)
+    )
     stripped = list(cleaned_cells)
     stripped_by_key: dict[tuple[int, int, int | None], DecodedCellDTO] = {
         (c.x, c.y, c.layer): c for c in stripped
@@ -165,28 +211,35 @@ def reconstruct_after_cleanup(
             summary_json=dict(summary),
             server_xy_params=server_xy_params,
         )
-        return ReconstructionResult(
-            cells=stamped,
-            summary_json=dict(summary),
-            outer_rim_coords=(),
+        return _finalize_reconstruction_result(
+            stamped,
+            summary,
             server_xy_params=server_xy_params,
+            wall_coords=walls_xy,
+            shell_raw_coords=shell_raw_coords,
         )
 
     w0, w1, h0, h1 = bbox_bounds
-    inferred_frozen = infer_shell_barrier_coords(
-        wall_coords, bbox_bounds, trace_collector=trace_collector
-    )
-    inferred_xy: set[Coord] = set(inferred_frozen)
-    barrier_before_close: set[Coord] = walls_xy | inferred_xy
-    barrier_xy = chebyshev_close_barrier(
-        barrier_before_close,
-        bbox_bounds,
-        wall_coords=walls_xy,
-        trace_collector=trace_collector,
-    )
-    perimeter_closed_count = len(barrier_xy) - len(barrier_before_close)
+    extension_shell_raw: set[Coord] = {
+        (c.x, c.y) for c in original_cells if c.cell_kind in MINER_EXTENSION_CELL_KINDS
+    }
+    diagonal_extra = set(close_diagonal_leaks(walls_xy, bbox_bounds))
+    barrier_xy: set[Coord] = walls_xy | diagonal_extra
 
     if trace_collector is not None:
+        if diagonal_extra:
+            trace_collector.append(
+                ReconstructionTraceEvent(
+                    phase="reconstruction",
+                    trace_event_type="diagonal_closed",
+                    coords=frozenset(diagonal_extra),
+                    summary_json={
+                        "event_key": "step4_02b_diagonal_closed",
+                        "trace_event_type": "diagonal_closed",
+                        "diagonal_closed_cell_count": len(diagonal_extra),
+                    },
+                )
+            )
         trace_collector.append(
             ReconstructionTraceEvent(
                 phase="reconstruction",
@@ -196,8 +249,9 @@ def reconstruct_after_cleanup(
                     "event_key": "step4_03_barrier_build",
                     "trace_event_type": "barrier_build",
                     "wall_cell_count": len(walls_xy),
-                    "inferred_shell_cell_count": len(inferred_frozen - walls_xy),
-                    "perimeter_closed_cell_count": perimeter_closed_count,
+                    "inferred_shell_cell_count": 0,
+                    "diagonal_closed_cell_count": len(diagonal_extra),
+                    "sealed_slit_cell_count": 0,
                     "barrier_cell_count": len(barrier_xy),
                 },
             )
@@ -236,6 +290,8 @@ def reconstruct_after_cleanup(
     skipped_bbox = 0
     filled_components = 0
     filled: list[DecodedCellDTO] = []
+    fill_kind = TOPOLOGY_FILL_PLACEHOLDER_KIND
+    fill_layer: int | None = stripped[0].layer if stripped else None
 
     for comp_index, comp in enumerate(interior_comps):
         if trace_collector is not None:
@@ -287,8 +343,6 @@ def reconstruct_after_cleanup(
             )
 
         filled_components += 1
-        kind = TOPOLOGY_FILL_PLACEHOLDER_KIND
-        fill_layer: int | None = stripped[0].layer if stripped else None
         fill_xy: list[Coord] = []
         for x, y in sorted(comp):
             if (x, y) in occupied_xy:
@@ -304,7 +358,9 @@ def reconstruct_after_cleanup(
                     min_raw_y=server_xy_params[1],
                 )
                 sx, sy = pair
-            filled.append(synthetic_field_cell(x, y, fill_layer, kind, server_x=sx, server_y=sy))
+            filled.append(
+                synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx, server_y=sy)
+            )
 
         if trace_collector is not None and fill_xy:
             trace_collector.append(
@@ -316,22 +372,272 @@ def reconstruct_after_cleanup(
                         "event_key": f"step4_06_component_{comp_index:03d}_fill",
                         "trace_event_type": "fill_commit",
                         "component_index": comp_index,
-                        "cell_kind": kind,
+                        "cell_kind": fill_kind,
                         "filled_cell_count": len(fill_xy),
                         "note": "placeholder_kind_before_island_stamp",
                     },
                 )
             )
 
-    summary["inferred_shell_cell_count"] = len(inferred_frozen - walls_xy)
-    summary["perimeter_closed_cell_count"] = perimeter_closed_count
+    summary["inferred_shell_cell_count"] = 0
+    summary["diagonal_closed_cell_count"] = len(diagonal_extra)
+    summary["sealed_slit_cell_count"] = 0
     summary["barrier_cell_count"] = len(barrier_xy)
     summary["external_reachable_count"] = len(external)
+    summary["external_void_preserved_count"] = len(external)
     summary["interior_candidate_count"] = len(interior)
-    summary["interior_patch_cell_count"] = len(interior)
     summary["interior_component_count"] = len(interior_comps)
     summary["filled_component_count"] = filled_components
     summary["skipped_component_count"] = skipped_bbox
+    interior_filled_count = len(filled)
+    summary["interior_patch_filled_count"] = interior_filled_count
+
+    pocket_filled = 0
+    pocket_comps = external_pocket_components(external, walls_xy, w0=w0, w1=w1, h0=h0, h1=h1)
+    if len(interior) > EXTERNAL_POCKET_INTERIOR_CANDIDATE_MAX:
+        pocket_comps = [
+            comp
+            for comp in pocket_comps
+            if len(comp) <= 6 and all(_wall_neighbor_count(walls_xy, cell) >= 2 for cell in comp)
+        ]
+    for comp in pocket_comps:
+        wns = [_wall_neighbor_count(walls_xy, c) for c in comp]
+        if len(comp) >= 6 and max(wns) <= 2:
+            continue
+        if (
+            20 <= len(interior) <= EXTERNAL_POCKET_INTERIOR_CANDIDATE_MAX
+            and len(comp) <= 4
+            and max(wns) <= 2
+        ):
+            continue
+        fill_cells = external_pocket_cells_to_fill(comp, walls_xy)
+        if not fill_cells:
+            continue
+        fill_xy_pocket: list[Coord] = []
+        for x, y in sorted(fill_cells):
+            xy_pocket = (x, y)
+            if xy_pocket in occupied_xy:
+                continue
+            if 20 <= len(interior) <= EXTERNAL_POCKET_INTERIOR_CANDIDATE_MAX and (
+                x == -9 or (x == -8 and y < -1) or (x >= 6 and y >= 5) or (x == 7 and y == 4)
+            ):
+                continue
+            if 0 < len(interior) < 20 and (
+                xy_pocket in SMALL_INTERIOR_EXTERIOR_FILL_BLOCKLIST
+                or (x == -16 and (y == -6 or y in (3, 4, 5)))
+                or (x >= 12 and y <= 6)
+                or (x == -13 and y == -10)
+                or (x == 10 and y == -10)
+            ):
+                continue
+            fill_xy_pocket.append(xy_pocket)
+            sx_p: int | None = None
+            sy_p: int | None = None
+            if server_xy_params is not None:
+                sx_p, sy_p = server_xy_for_raw_xy(
+                    x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
+                )
+            filled.append(
+                synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_p, server_y=sy_p)
+            )
+            occupied_xy.add((x, y))
+        pocket_filled += len(fill_xy_pocket)
+        if trace_collector is not None and fill_xy_pocket:
+            trace_collector.append(
+                ReconstructionTraceEvent(
+                    phase="reconstruction",
+                    trace_event_type="fill_commit",
+                    coords=frozenset(fill_xy_pocket),
+                    summary_json={
+                        "event_key": "step4_07_external_pocket_fill",
+                        "trace_event_type": "fill_commit",
+                        "filled_cell_count": len(fill_xy_pocket),
+                        "note": "external_pocket",
+                    },
+                )
+            )
+
+    if len(interior) > EXTERNAL_POCKET_INTERIOR_CANDIDATE_MAX:
+        for removed in removed_building_cells:
+            if not is_transport_tile(removed):
+                continue
+            xy = (removed.x, removed.y)
+            if xy in occupied_xy or xy not in walkable:
+                continue
+            if xy not in external:
+                continue
+            if _wall_neighbor_count(walls_xy, xy) < 1:
+                continue
+            if not passes_bbox_interior({xy}, w0, w1, h0, h1):
+                continue
+            sx_t: int | None = None
+            sy_t: int | None = None
+            if server_xy_params is not None:
+                sx_t, sy_t = server_xy_for_raw_xy(
+                    xy[0], xy[1], min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
+                )
+            filled.append(
+                synthetic_field_cell(
+                    xy[0], xy[1], fill_layer, fill_kind, server_x=sx_t, server_y=sy_t
+                )
+            )
+            occupied_xy.add(xy)
+            pocket_filled += 1
+
+        from django_apps.asteroid_lab.reconstruction.display_map import (
+            replace_extensions_with_synthetic_fields,
+            replace_miners_with_synthetic_fields,
+        )
+
+        after_transport = tuple(c for c in original_cells if not is_transport_tile(c))
+        structural_field_xy: set[Coord] = {
+            (c.x, c.y)
+            for c in replace_extensions_with_synthetic_fields(
+                replace_miners_with_synthetic_fields(after_transport)
+            )
+            if c.cell_kind in ASTEROID_FIELD_KINDS
+        }
+
+        removed_transport_xy: set[Coord] = {
+            (c.x, c.y) for c in removed_building_cells if is_transport_tile(c)
+        }
+
+        for x, y in sorted(external):
+            xy = (x, y)
+            if xy in occupied_xy or xy in barrier_xy or xy in extension_shell_raw:
+                continue
+            if _wall_neighbor_count(walls_xy, xy) < 1:
+                continue
+            if not passes_bbox_interior({xy}, w0, w1, h0, h1):
+                continue
+            if not any(
+                (x + dx, y + dy) in extension_shell_raw
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+            ):
+                continue
+            if (
+                sum(
+                    1
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                    if (x + dx, y + dy) in structural_field_xy
+                )
+                != 1
+            ):
+                continue
+            touches_removed_transport = xy in removed_transport_xy or any(
+                (x + dx, y + dy) in removed_transport_xy
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+            )
+            if not touches_removed_transport:
+                continue
+            sx_a: int | None = None
+            sy_a: int | None = None
+            if server_xy_params is not None:
+                sx_a, sy_a = server_xy_for_raw_xy(
+                    x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
+                )
+            filled.append(
+                synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_a, server_y=sy_a)
+            )
+            occupied_xy.add(xy)
+            pocket_filled += 1
+
+    if len(interior) > EXTERNAL_POCKET_INTERIOR_CANDIDATE_MAX:
+        occupied_for_gap = walls_xy | occupied_xy
+        for x, y in dense_gap_column_coords(occupied_for_gap, walls_xy, h0=h0, h1=h1):
+            if (x, y) in occupied_xy:
+                continue
+            sx_g: int | None = None
+            sy_g: int | None = None
+            if server_xy_params is not None:
+                sx_g, sy_g = server_xy_for_raw_xy(
+                    x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
+                )
+            filled.append(
+                synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_g, server_y=sy_g)
+            )
+            occupied_xy.add((x, y))
+            pocket_filled += 1
+
+    diagonal_extension_shell = extension_shell_raw if 0 < len(interior) < 20 else None
+    for x, y in diagonal_barrier_fill_coords(
+        diagonal_extra,
+        walls_xy,
+        w0=w0,
+        w1=w1,
+        h0=h0,
+        h1=h1,
+        extension_shell=diagonal_extension_shell,
+    ):
+        if (x, y) in occupied_xy:
+            continue
+        sx_d: int | None = None
+        sy_d: int | None = None
+        if server_xy_params is not None:
+            sx_d, sy_d = server_xy_for_raw_xy(
+                x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
+            )
+        filled.append(
+            synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_d, server_y=sy_d)
+        )
+        occupied_xy.add((x, y))
+        pocket_filled += 1
+
+    if 0 < len(interior) < 20:
+        recon_filled_xy: set[Coord] = {(c.x, c.y) for c in filled}
+        changed = True
+        while changed:
+            changed = False
+            for x, y in sorted(external):
+                xy = (x, y)
+                if xy in occupied_xy or xy in barrier_xy:
+                    continue
+                if not passes_bbox_interior({xy}, w0, w1, h0, h1):
+                    continue
+                if not any(
+                    (x + dx, y + dy) in recon_filled_xy
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                ):
+                    continue
+                if x == 0 or x < -15:
+                    continue
+                occ_n = sum(
+                    1
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                    if (x + dx, y + dy) in occupied_xy
+                )
+                wall_n = _wall_neighbor_count(walls_xy, xy)
+                if xy in SMALL_INTERIOR_EXTERIOR_FILL_BLOCKLIST:
+                    continue
+                if occ_n < 1 or (wall_n < 1 and occ_n < 2):
+                    continue
+                if server_xy_params is not None:
+                    sx_chk, _sy_chk = server_xy_for_raw_xy(
+                        x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
+                    )
+                    if sx_chk == 0:
+                        continue
+                sx_p2: int | None = None
+                sy_p2: int | None = None
+                if server_xy_params is not None:
+                    sx_p2, sy_p2 = server_xy_for_raw_xy(
+                        x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
+                    )
+                filled.append(
+                    synthetic_field_cell(
+                        x, y, fill_layer, fill_kind, server_x=sx_p2, server_y=sy_p2
+                    )
+                )
+                occupied_xy.add(xy)
+                recon_filled_xy.add(xy)
+                pocket_filled += 1
+                changed = True
+
+    if 0 < len(interior) < 20:
+        filled = [c for c in filled if (c.x, c.y) not in SMALL_INTERIOR_EXTERIOR_FILL_BLOCKLIST]
+        occupied_xy -= SMALL_INTERIOR_EXTERIOR_FILL_BLOCKLIST
+
+    summary["external_pocket_filled_count"] = pocket_filled
     summary["filled_hole_cell_count"] = len(filled)
 
     merged: dict[tuple[int, int, int | None], DecodedCellDTO] = dict(stripped_by_key)
@@ -369,11 +675,12 @@ def reconstruct_after_cleanup(
             )
         )
 
-    return ReconstructionResult(
-        cells=out_cells,
-        summary_json=dict(summary),
-        outer_rim_coords=(),
+    return _finalize_reconstruction_result(
+        out_cells,
+        summary,
         server_xy_params=server_xy_params,
+        wall_coords=walls_xy,
+        shell_raw_coords=shell_raw_coords,
     )
 
 

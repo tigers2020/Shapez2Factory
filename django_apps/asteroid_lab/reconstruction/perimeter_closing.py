@@ -1,69 +1,103 @@
-"""Chebyshev (8-neighbor) perimeter closing for flood barriers (reconstruction-only)."""
+"""Perimeter morphology before external flood (diagonal closing + orthogonal slit seal)."""
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.reconstruction.grid import Coord
+from django_apps.asteroid_lab.reconstruction.grid import Coord, iter_bbox_cells
 from django_apps.asteroid_lab.reconstruction.shell import _strict_bbox_interior_cells
-from django_apps.asteroid_lab.reconstruction.trace import (
-    ReconstructionTraceCollector,
-    ReconstructionTraceEvent,
-)
 
 
-def _in_working_bbox(x: int, y: int, w0: int, w1: int, h0: int, h1: int) -> bool:
-    if x == 0:
-        return False
-    return w0 <= x <= w1 and h0 <= y <= h1
+def _touches_bbox_edge(c: Coord, w0: int, w1: int, h0: int, h1: int) -> bool:
+    x, y = c
+    return x <= w0 or x >= w1 or y <= h0 or y >= h1
 
 
-def chebyshev_close_barrier(
-    barrier_xy: set[Coord],
+def close_diagonal_leaks(
+    solid: set[Coord],
     bbox_bounds: tuple[int, int, int, int],
-    *,
-    wall_coords: set[Coord],
-    trace_collector: ReconstructionTraceCollector | None = None,
-) -> set[Coord]:
-    """Seal diagonal 1-cell perimeter gaps without filling strict interior holes.
+) -> frozenset[Coord]:
+    """Chebyshev 1-step perimeter close (flood barrier only; not interior holes).
 
-    For each diagonal barrier pair, add the two cardinal corner cells between them
-    unless the corner lies in ``_strict_bbox_interior_cells(wall_coords)`` (same
-    rule as inferred row/column shell).
+    - Diagonally opposing solid corners (nw/se or ne/sw)
+    - 2x2 blocks with exactly three solid corners (fourth cell sealed)
+    - Skips cells in the strict interior of the wall bbox (enclosed holes stay walkable)
     """
 
     w0, w1, h0, h1 = bbox_bounds
-    skip_infer = _strict_bbox_interior_cells(wall_coords)
-    closed = set(barrier_xy)
-    added: set[Coord] = set()
-    barrier_list = tuple(barrier_xy)
+    extra: set[Coord] = set()
+    merged = set(solid)
+    skip_interior = _strict_bbox_interior_cells(merged)
 
-    for x1, y1 in barrier_list:
-        for x2, y2 in barrier_list:
-            if x1 >= x2 and (x1 != x2 or y1 >= y2):
+    for x, y in iter_bbox_cells(w0, w1, h0, h1):
+        c = (x, y)
+        if c in merged:
+            continue
+        if c in skip_interior:
+            continue
+        if _touches_bbox_edge(c, w0, w1, h0, h1):
+            continue
+        nw = (x - 1, y - 1)
+        se = (x + 1, y + 1)
+        ne = (x - 1, y + 1)
+        sw = (x + 1, y - 1)
+        if nw in merged and se in merged:
+            extra.add(c)
+            merged.add(c)
+        elif ne in merged and sw in merged:
+            extra.add(c)
+            merged.add(c)
+
+    for x in range(w0, w1):
+        if x == 0:
+            continue
+        for y in range(h0, h1):
+            block = ((x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1))
+            if any(c[0] == 0 for c in block):
                 continue
-            if abs(x1 - x2) != 1 or abs(y1 - y2) != 1:
+            if block[3][0] > w1 or block[3][1] > h1:
                 continue
-            for cx, cy in ((x1, y2), (x2, y1)):
-                if not _in_working_bbox(cx, cy, w0, w1, h0, h1):
-                    continue
-                c = (cx, cy)
-                if c in closed or c in skip_infer:
-                    continue
-                closed.add(c)
-                added.add(c)
+            in_s = [c for c in block if c in merged]
+            if len(in_s) != 3:
+                continue
+            missing = next(c for c in block if c not in merged)
+            if missing in skip_interior:
+                continue
+            if _touches_bbox_edge(missing, w0, w1, h0, h1):
+                continue
+            extra.add(missing)
+            merged.add(missing)
 
-    if trace_collector is not None and added:
-        trace_collector.append(
-            ReconstructionTraceEvent(
-                phase="reconstruction",
-                trace_event_type="perimeter_close",
-                coords=frozenset(added),
-                summary_json={
-                    "event_key": "step4_02_perimeter_close",
-                    "trace_event_type": "perimeter_close",
-                    "perimeter_closed_cell_count": len(added),
-                    "barrier_cell_count_after": len(closed),
-                },
-            )
-        )
+    return frozenset(extra)
 
-    return closed
+
+def close_orthogonal_one_cell_slits(
+    candidate_void: set[Coord],
+    slit_solid: set[Coord],
+    bbox_bounds: tuple[int, int, int, int],
+) -> frozenset[Coord]:
+    """Seal width-1 orthogonal voids opposed by ``slit_solid`` (fixed-point; bbox edge skipped).
+
+    Deprecated: not used by ``pipeline.reconstruct_after_cleanup`` (overcloses external seams).
+    Kept for unit-level morphology experiments only.
+    """
+
+    w0, w1, h0, h1 = bbox_bounds
+    sealed: set[Coord] = set()
+    solid = set(slit_solid)
+
+    changed = True
+    while changed:
+        changed = False
+        for c in candidate_void - sealed:
+            x, y = c
+            if x == 0:
+                continue
+            if _touches_bbox_edge(c, w0, w1, h0, h1):
+                continue
+            horizontal = (x - 1, y) in solid and (x + 1, y) in solid
+            vertical = (x, y - 1) in solid and (x, y + 1) in solid
+            if horizontal or vertical:
+                sealed.add(c)
+                solid.add(c)
+                changed = True
+
+    return frozenset(sealed)

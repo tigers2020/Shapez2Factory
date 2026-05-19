@@ -1,4 +1,4 @@
-"""ReconstructionResult → OptimizationInput (Sequence 1B)."""
+"""Reconstruction snapshot → OptimizationInput (Sequence 1B / Solver Runtime PR1B)."""
 
 from __future__ import annotations
 
@@ -12,8 +12,13 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     TopologyGraph,
     TopologyNode,
 )
+from django_apps.asteroid_lab.optimization.loaded_snapshot import (
+    LoadedReconstructionSnapshot,
+    loaded_reconstruction_snapshot_from_result,
+)
 from django_apps.asteroid_lab.reconstruction.evidence import (
-    ASTEROID_FIELD_KINDS,
+    evidence_field_kind,
+    inferred_field_kind_from_removed_miner_extension,
     is_asteroid_evidence,
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
@@ -35,6 +40,15 @@ def _server_xy(cell: DecodedCellDTO, params: tuple[int, int] | None) -> Coord:
         )
     msg = "DecodedCellDTO.server_x/server_y missing and ReconstructionResult.server_xy_params unset"
     raise ValueError(msg)
+
+
+def mineable_field_kind(cell: DecodedCellDTO) -> str | None:
+    """§0.3 adapter-only field kind for mineable sets (does not mutate ``cell``)."""
+
+    inferred = inferred_field_kind_from_removed_miner_extension(cell)
+    if inferred is not None:
+        return inferred
+    return evidence_field_kind(cell)
 
 
 def _parse_transport_kind(raw: str) -> TransportKind:
@@ -102,17 +116,23 @@ def _bbox_from_coords(coords: frozenset[Coord]) -> BBox:
     return BBox(min(xs), max(xs), min(ys), max(ys))
 
 
-def optimization_input_from_reconstruction(result: ReconstructionResult) -> OptimizationInput:
-    """Map lab reconstruction cells to ``OptimizationInput`` (v0 heuristics, Server X/Y only)."""
+def optimization_input_from_loaded_snapshot(
+    snapshot: LoadedReconstructionSnapshot,
+) -> OptimizationInput:
+    """Map Phase A snapshot to ``OptimizationInput`` (Server X/Y only, §0.3 at adapter)."""
 
-    cells = result.cells
-    params = result.server_xy_params
+    cells = snapshot.cells
+    params = snapshot.server_xy_params
     by_sv: dict[Coord, DecodedCellDTO] = {}
     for c in cells:
         sv = _server_xy(c, params)
         by_sv[sv] = c
 
-    mineable: set[Coord] = {sv for sv, c in by_sv.items() if c.cell_kind in ASTEROID_FIELD_KINDS}
+    mineable: set[Coord] = set()
+    for sv, c in by_sv.items():
+        if mineable_field_kind(c) is not None:
+            mineable.add(sv)
+
     asteroid_evidence: set[Coord] = set(mineable)
     for sv, c in by_sv.items():
         if is_asteroid_evidence(c):
@@ -167,3 +187,10 @@ def optimization_input_from_reconstruction(result: ReconstructionResult) -> Opti
         topology_graph=topo,
         bbox=bbox,
     )
+
+
+def optimization_input_from_reconstruction(result: ReconstructionResult) -> OptimizationInput:
+    """Thin wrapper over :func:`optimization_input_from_loaded_snapshot`."""
+
+    snap = loaded_reconstruction_snapshot_from_result(result)
+    return optimization_input_from_loaded_snapshot(snap)

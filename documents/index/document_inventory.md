@@ -9,14 +9,15 @@
 
 | 문서 | 상태 | 종류 | 정본 여부 | 비고 |
 |------|------|------|-----------|------|
-| [`AGENTS.md`](../../AGENTS.md) | `CANON` | workflow spec | YES | 프로젝트 상시 규칙과 routing |
-| [`.cursor/rules/root.mdc`](../../.cursor/rules/root.mdc) | `CANON` | rule | YES | Cursor 상시 규칙 |
+| [`AGENTS.md`](../../AGENTS.md) | `CANON` | workflow spec | YES | 라우팅·문서 권위·승인 금지 |
+| [`.cursor/rules/shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc) | `CANON` | rule | YES | Cursor 단일 alwaysApply (Caveman·게이트·검증) |
 | [`documents/ai/START_HERE.md`](../ai/START_HERE.md) | `CANON` | context entrypoint | YES | AI context 선택 시작점 |
 | [`documents/ai/manuals/`](../ai/manuals/) | `CANON` | workflow manuals | YES | 작업 유형별 온디맨드 매뉴얼 |
 | [`documents/index/document_lifecycle.md`](document_lifecycle.md) | `CANON` | document governance | YES | 문서 상태 enum과 읽기 우선순위 |
 | [`documents/index/document_inventory.md`](document_inventory.md) | `CANON` | document governance | YES | 현재 문서 authority 지도 |
 | [`documents/adr/`](../adr/) | `CANON` | architecture decisions | YES | 정본 spec의 결정 이유 |
 | [`documents/game_rules/`](../game_rules/) | `CANON` | domain spec | YES | shapez 2 규칙과 solver domain abstraction |
+| [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md) | `CANON` | domain throughput | YES | Asteroid Miner/Pump·Space Belt/Pipe 절대 L/min·shapes/min |
 | [`documents/research/research_blueprint_grid_coordinates_2026-05-10.md`](../research/research_blueprint_grid_coordinates_2026-05-10.md) | `CANON` | domain invariant | YES | blueprint grid coordinate invariant |
 
 ## Active 작업·백로그
@@ -27,12 +28,14 @@
 | [`documents/ai/checklist.md`](../ai/checklist.md) | `ACTIVE` | checklist | NO | 진행 상태와 검증 게이트 |
 | [`documents/plans/`](../plans/) | `ACTIVE` | plans/backlog | NO | 완료 근거 미확정 계획 |
 | [`documents/ai/plans/`](../ai/plans/) | `ACTIVE` | scoped plans | NO | 범위 한정 플랜 |
+| [`documents/Algorithm/solver_runtime/`](../Algorithm/solver_runtime/) | `ACTIVE` | solver button pipeline | NO | Phase A–M·PR1–7; 충돌 해소 [`ARCHITECTURE_RECONCILIATION.md`](../Algorithm/solver_runtime/ARCHITECTURE_RECONCILIATION.md) |
 
 ## Research·Report
 
 | 문서 | 상태 | 종류 | 정본 여부 | 비고 |
 |------|------|------|-----------|------|
 | [`documents/research/`](../research/) | `RESEARCH` | research | NO | 조사·근거. 개별 문서만 정본 승격 가능 |
+| [`documents/research/research_shapez2_space_transport_throughput_2026-05-18.md`](../research/research_shapez2_space_transport_throughput_2026-05-18.md) | `SUPERSEDED` | game throughput | NO | → [`game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md) |
 | [`documents/reports/README.md`](../reports/README.md) | `REPORT` | report index | NO | report 묶음 라우팅. 정본 계약 아님 |
 | [`documents/debug/`](../debug/) | `REPORT` | debug report | NO | 로그/복사본 분석 |
 | [`documents/notes/`](../notes/) | `REPORT` | notes | NO | 장기 메모. 정본 아님 |

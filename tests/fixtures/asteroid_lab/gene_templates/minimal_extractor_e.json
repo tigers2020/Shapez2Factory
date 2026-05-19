@@ -1,0 +1,12 @@
+{
+  "gene_id": "fixture_minimal_extractor_e",
+  "name": "Fixture E Solo",
+  "extractor_offset": [0, 0],
+  "extension_offsets": [],
+  "occupied_offsets": [[0, 0]],
+  "output_dir": "e",
+  "fixed_output_transport_offset": [1, 0],
+  "route_probe_start_offset": [2, 0],
+  "throughput_factor": 4,
+  "topology_signature_base": "fixture_minimal_extractor_e"
+}

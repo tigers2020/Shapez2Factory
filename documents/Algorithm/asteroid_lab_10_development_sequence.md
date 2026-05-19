@@ -1,6 +1,8 @@
 # Asteroid Lab Optimization — Development Sequence
 
 > **문서 베이스라인 (2026-05-18):** 코드 기준 **Decode → Reconstruction** 완료 이후 optimization 시퀀스는 문서상 **미착수**다. 아래 `[ ]` 체크리스트는 재설정된 상태이며, pytest·통과 수·fixture 목록은 **갱신하지 않음**(역사 인용 보관). Lab 앱: `django_apps/asteroid_lab/` · 상위 [`README.md`](README.md).
+>
+> **Solver 버튼 v0:** merge·실행 계약·PR 상태는 [`solver_runtime/`](solver_runtime/) 이 정본이다. 본 문서 체크박스와 **상태가 다를 수 있음** — [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md).
 
 ## 목적
 

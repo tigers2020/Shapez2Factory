@@ -90,6 +90,8 @@ W
 
 ## Throughput 모델
 
+게임 처리량 **절대값 정본** (30 shapes/min, 300 L/min, Space Belt 480×12, Space Pipe 28.8kL/m×12, 포화 12/72): [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md).
+
 기본 모델:
 
 ```text

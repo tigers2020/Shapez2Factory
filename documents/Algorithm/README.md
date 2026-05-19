@@ -8,12 +8,23 @@
 - **아래 시리즈 체크리스트**는 동일 날짜에 **전부 미착수(`[ ]`)로 재설정**했다. optimization·POST GA·replay persistence 등은 **향후 작업**으로만 본다.
 - **테스트:** 이 폴더 정리에서는 pytest 경로·통과 수·fixture 목록을 **갱신하지 않는다**. 본문에 남은 명령줄은 역사적 보관일 수 있다.
 
+## Solver Runtime (Solver 버튼)
+
+**구현 순서 정본:** [`solver_runtime/README.md`](solver_runtime/README.md) · [`solver_runtime/implementation_sequence.md`](solver_runtime/implementation_sequence.md)
+
+- **문서 정체:** Solver 버튼 **E2E v0** 계획 (전체 optimization 미착수 아님)
+- **충돌 해소:** [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md)
+- **PR1 완료** · **PR1B 부분** (`reconstruction_adapter`, DTO) · **PR2–7 미착수**
+- 패키지: `django_apps/asteroid_lab/optimization/` only (`shapez_asteroid` 제거)
+- v0 선택: **greedy**; GA는 legacy reference
+
 ## 읽기 순서
 
 1. [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md) — 개요·좌표·금지 사항  
 2. [`asteroid_lab_01_optimization_input.md`](asteroid_lab_01_optimization_input.md) ~ [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md) — Phase 계약  
 3. [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) — 구현 순서(체크리스트)  
-4. [`asteroid_lab_11_future_execution_plan_post_sequence.md`](asteroid_lab_11_future_execution_plan_post_sequence.md) ~ [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md) — 이후 로드맵·런타임 배선·페이로드
+4. [`asteroid_lab_11_future_execution_plan_post_sequence.md`](asteroid_lab_11_future_execution_plan_post_sequence.md) ~ [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md) — 이후 로드맵·런타임 배선·페이로드  
+5. **Solver 버튼:** [`solver_runtime/README.md`](solver_runtime/README.md) → `00`~`phase_m` → `implementation_sequence.md`
 
 ## 파일 목록
 
@@ -33,6 +44,7 @@
 | `asteroid_lab_11_future_execution_plan_post_sequence.md` | `RESEARCH` | 시퀀스 이후 실행 계획 |
 | `asteroid_lab_12_runtime_replay_wiring.md` | `RESEARCH` | 런타임 리플레이 배선 |
 | `asteroid_lab_13_replay_payload_scalability.md` | `RESEARCH` | 페이로드·지연 로드 로드맵 |
+| [`solver_runtime/`](solver_runtime/) | `ACTIVE` | Solver 버튼 런타임 Phase A–M·PR1–7·[`ARCHITECTURE_RECONCILIATION`](solver_runtime/ARCHITECTURE_RECONCILIATION.md) |
 
 ## 초안 (`drafts/`)
 

@@ -10,6 +10,7 @@
 | Shapez 2 wiki.gg | 도형은 layer/part 구조이며 절단·페인팅 등 처리 가능 | 중간~높음 |
 | Shapez 2 wiki.gg | Cutter, Stacker, Crystal Generator, Simulated Swapper 동작 요약 | 중간 |
 | Steam devlog | Shapez 2는 floating shape를 막고, Pin을 도입해 부유 구조를 표현 | 높음 |
+| 프로젝트 확정 ([shapez2_asteroid_space_transport_throughput.md](shapez2_asteroid_space_transport_throughput.md)) | 소행성 Miner 30/m·Pump 300 L/m, 확장 ×4 스텝(최대 ×16), Belt 480×12, Pipe 28.8kL/m×12, 포화 12/72 | **정본** |
 
 ## 외부 링크(식별자·URL은 원문 유지)
 

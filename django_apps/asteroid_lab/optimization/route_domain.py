@@ -56,6 +56,7 @@ class RouteDomainSnapshotBuilder:
         *,
         confirmed_reservations: tuple[RouteReservation, ...] = (),
         committed_occupied_cells: frozenset[Coord] = frozenset(),
+        provisional_blocked_cells: frozenset[Coord] = frozenset(),
     ) -> dict[Coord, RouteCellDomain]:
         """Immutable ``Coord -> RouteCellDomain`` map for probe/commit (v0 seed)."""
 
@@ -63,13 +64,16 @@ class RouteDomainSnapshotBuilder:
             msg = "Reservation overlay for RouteDomainSnapshotBuilder is not implemented in v0 seed"
             raise NotImplementedError(msg)
 
+        # Candidate-phase provisional occupancy only. This does not commit placement.
+        blocked_for_probe = committed_occupied_cells | provisional_blocked_cells
+
         transport_by_coord: dict[Coord, TransportKind] = {
             c.coord: c.transport_kind for c in inp.existing_transport_cells
         }
 
         out: dict[Coord, RouteCellDomain] = {}
         for coord in _iter_bbox_cells(inp.bbox):
-            if coord in committed_occupied_cells:
+            if coord in blocked_for_probe:
                 out[coord] = RouteCellDomain(
                     coord=coord,
                     route_class=RouteClass.BLOCKED,
@@ -137,7 +141,7 @@ class RouteDomainSnapshotBuilder:
                     traversal_cost=1,
                     hard_blocked=False,
                     carve_allowed=False,
-                    transport_mask=TransportMask.NONE,
+                    transport_mask=TransportMask.BOTH,
                 )
                 continue
             out[coord] = RouteCellDomain(
@@ -146,7 +150,7 @@ class RouteDomainSnapshotBuilder:
                 traversal_cost=1,
                 hard_blocked=False,
                 carve_allowed=False,
-                transport_mask=TransportMask.NONE,
+                transport_mask=TransportMask.BOTH,
             )
         return out
 

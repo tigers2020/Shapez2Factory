@@ -18,6 +18,7 @@ shapez / shapez 2 계열의 **도형 대수·솔버 관점** 규칙을 주제별
 | [shapez2_swapper.md](shapez2_swapper.md) | Simulated Swapper(서쪽 반쪽 교환) |
 | [shapez2_pin_support.md](shapez2_pin_support.md) | Pin·부유 도형·지지 검증 |
 | [shapez2_crystal.md](shapez2_crystal.md) | Crystal Generator 요약·구현 링크 |
+| [shapez2_asteroid_space_transport_throughput.md](shapez2_asteroid_space_transport_throughput.md) | 소행성 Miner/Pump·Space Belt/Pipe 절대 처리량 (30/m, 300 L/m, ×16, 12·72 포화) |
 | [crystal_mechanics.md](crystal_mechanics.md) | Crystal 생성·클러스터·shatter·연산별 메모(정본) |
 | [solver_domain_model.md](solver_domain_model.md) | `shapez_core` 실제 타입(`ShapePart`, `ShapeLayer`, `Shape`) |
 | [solver_operation_interface.md](solver_operation_interface.md) | 연산 인터페이스·필수 연산 목록 |

@@ -338,6 +338,13 @@
                   <p id="lab-replay-truncation-hud" class="mt-2 font-mono text-xs text-amber-300/90">—</p>
                   <p id="lab-optimization-replay-attach" class="mt-1 font-mono text-xs text-slate-400">Attach: —</p>
                   <p id="lab-replay-run-status" class="mt-1 font-mono text-xs text-cyan-300/90">—</p>
+                  <p id="lab-gene-catalog-hud" class="mt-1 font-mono text-xs text-slate-500">
+                    {% if gene_template_catalog.needs_seed %}
+                      genes: DB empty — run seed_exhaustive_sample_genes
+                    {% else %}
+                      genes: DB {{ gene_template_catalog.db_gene_count }} ({{ gene_template_catalog.generator_version }})
+                    {% endif %}
+                  </p>
                 </div>
               </div>
               <div

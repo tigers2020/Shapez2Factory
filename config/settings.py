@@ -142,12 +142,20 @@ MEDIA_ROOT = BASE_DIR / "media"
 SHAPE_PART_SPRITE_STATIC_ROOT = BASE_DIR / "django_apps" / "web" / "static" / "web"
 SHAPE_PART_SPRITE_URL_PREFIX = "/static/web/"
 
+# Deprecated: Run Solver now reads gene templates from GeneticSample DB only.
+# This setting is no longer used by the runtime path; kept for backwards compatibility.
 ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH = Path(
     os.environ.get(
         "ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH",
         str(BASE_DIR / "tests" / "fixtures" / "asteroid_lab" / "gene_templates"),
     )
 ).resolve()
+
+# Generator version used when loading GeneticSample rows for the Run Solver runtime.
+ASTEROID_LAB_RUNTIME_GENE_GENERATOR_VERSION = os.environ.get(
+    "ASTEROID_LAB_RUNTIME_GENE_GENERATOR_VERSION",
+    "exhaustive_sample_gene_v1",
+)
 
 STORAGES = {
     "default": {

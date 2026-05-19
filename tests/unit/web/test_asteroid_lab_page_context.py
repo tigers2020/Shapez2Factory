@@ -16,12 +16,15 @@ from django_apps.asteroid_lab.services.optimization_replay_persist import (
 from django_apps.asteroid_lab.services.optimization_ui_payload import (
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
+from django_apps.asteroid_lab.optimization.gene_template_loader import load_gene_templates_from_json
 from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 from django_apps.web.services import asteroid_lab_page_context as alc
 
 _GENE_TEMPLATES = (
     Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
 )
+
+_MINIMAL_GENE_TEMPLATES = load_gene_templates_from_json(_GENE_TEMPLATES / "minimal_extractor_e.json")
 
 
 @pytest.mark.django_db
@@ -55,6 +58,17 @@ def test_lab_page_context_neutral_when_no_replay_frames() -> None:
     assert ctx["total_frames"] == 0
     assert ctx["lab_replay_frames_json"] == []
     assert ctx["lab_initial_replay_frame_json"] == {}
+
+
+@pytest.mark.django_db
+def test_unified_payload_authoritative_no_optimization_replay_track() -> None:
+    """Page context must expose lab_replay_frames_json (single unified timeline)
+    and must NOT contain the legacy optimization_replay top-level key."""
+    ctx = alc.neutral_lab_context()
+    assert "lab_replay_frames_json" in ctx
+    assert "replay_track_metrics" in ctx
+    # 9E contract: dual-track key must not appear in page context
+    assert "optimization_replay" not in ctx
 
 
 @pytest.mark.django_db
@@ -259,7 +273,7 @@ def test_lab_page_context_composed_timeline_includes_optimization_frames() -> No
     )
     result = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
+        gene_templates=_MINIMAL_GENE_TEMPLATES,
     )
     persist_optimization_replay_frames_to_solver_run(
         run_dto.id,

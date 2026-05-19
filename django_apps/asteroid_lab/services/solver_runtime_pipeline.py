@@ -1,9 +1,8 @@
-"""Solver Runtime A→M orchestration (PR7)."""
+"""Solver Runtime A→M orchestration (PR7). No ORM; receives gene_templates as input."""
 
 from __future__ import annotations
 
 from dataclasses import replace
-from pathlib import Path
 from typing import Any
 
 from django_apps.asteroid_lab.optimization.candidate_dtos import (
@@ -26,7 +25,6 @@ from django_apps.asteroid_lab.optimization.enums import (
 )
 from django_apps.asteroid_lab.optimization.final_validation import validate_final_layout
 from django_apps.asteroid_lab.optimization.gene_template import GeneTemplate
-from django_apps.asteroid_lab.optimization.gene_template_loader import load_gene_templates_from_json
 from django_apps.asteroid_lab.optimization.input_contracts import ValidationIssue
 from django_apps.asteroid_lab.optimization.loaded_snapshot import LoadedReconstructionSnapshot
 from django_apps.asteroid_lab.optimization.materialization_dtos import RouteMaterializationResult
@@ -39,20 +37,12 @@ from django_apps.asteroid_lab.optimization.route_network_materializer import (
     materialize_route_network,
 )
 from django_apps.asteroid_lab.replay.replay_recording_cells import (
+    full_cell_dicts_from_final_replay_state,
     miner_cell_dicts_from_confirmed,
     overlay_cell_dicts_from_materialization,
     visible_cell_dicts_from_loaded,
 )
 from django_apps.asteroid_lab.services.runtime_replay_recorder import RuntimeReplayRecorder
-
-
-def _load_gene_templates(path: Path) -> tuple[GeneTemplate, ...]:
-    if path.is_dir():
-        templates: list[GeneTemplate] = []
-        for json_path in sorted(path.glob("*.json")):
-            templates.extend(load_gene_templates_from_json(json_path))
-        return tuple(templates)
-    return load_gene_templates_from_json(path)
 
 
 def _issue_detail(issue: ValidationIssue) -> dict[str, Any]:
@@ -125,14 +115,13 @@ def _build_solver_summary(
 def run_solver_runtime_pipeline(
     *,
     loaded: LoadedReconstructionSnapshot,
-    gene_template_path: str | Path,
+    gene_templates: tuple[GeneTemplate, ...],
     run_key: str = "runtime",
     generation_config: CandidateGenerationConfig | None = None,
 ) -> SolverRuntimeResult:
-    """Execute Phase A→M in documented order (no ORM; replay is output-only)."""
+    """Execute Phase A→M in documented order (no ORM; receives gene_templates as input)."""
 
     recorder = RuntimeReplayRecorder()
-    template_path = Path(gene_template_path)
     config = generation_config or default_generation_config(max_candidates=32)
 
     inp = optimization_input_from_loaded_snapshot(loaded)
@@ -169,7 +158,7 @@ def run_solver_runtime_pipeline(
         visible_cells=replay_base_cells,
     )
 
-    templates = _load_gene_templates(template_path)
+    templates = gene_templates
     for gene in templates:
         recorder.append(
             OptimizationReplayEventType.PATTERN_GENERATED,
@@ -259,6 +248,19 @@ def run_solver_runtime_pipeline(
         },
         visible_cells=replay_base_cells,
         overlay_cells=full_overlay,
+    )
+
+    final_cells = full_cell_dicts_from_final_replay_state(
+        loaded,
+        materialization,
+        commit.confirmed,
+        candidates_by_id=candidates_by_id,
+    )
+    recorder.append(
+        OptimizationReplayEventType.RESULT_LAYOUT,
+        title="Final layout",
+        metrics={"validation_passed": validation.passed, "cell_count": len(final_cells)},
+        visible_cells=final_cells,
     )
 
     summary = _build_solver_summary(

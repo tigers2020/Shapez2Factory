@@ -6,7 +6,6 @@ import base64
 import gzip
 import json
 import random
-from pathlib import Path
 
 import pytest
 from django.test import Client
@@ -14,8 +13,15 @@ from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.optimization_ui_payload import (
+    SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
+)
+from django_apps.asteroid_lab.services.runtime_gene_template_source import (
+    GeneTemplateSourceKind,
+)
+from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+    generate_exhaustive_sample_genes,
 )
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     SolverRuntimeEntryErrorCode,
@@ -23,10 +29,6 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import (
 )
 
 pytestmark = pytest.mark.django_db
-
-_GENE_TEMPLATES = (
-    Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
-)
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -62,13 +64,23 @@ def _project_with_map_input() -> m.AsteroidProject:
     return m.AsteroidProject.objects.get()
 
 
-def test_solver_runtime_entry_persists_replay_and_summary() -> None:
-    proj = _project_with_map_input()
-    result = run_solver_runtime_for_project(
-        int(proj.pk),
-        run_key="entry-persist",
-        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
+def _seed_minimal_gene_samples(generator_version: str = "exhaustive_sample_gene_v1") -> None:
+    """Seed one belt + one pipe solo-extractor sample for entry tests."""
+    genes, _ = generate_exhaustive_sample_genes(
+        max_extensions=0, transport_kinds=("belt",), generator_version=generator_version
     )
+    assert genes
+    g = genes[0]
+    m.GeneticSample.objects.update_or_create(
+        gene_key=g.key,
+        defaults={"name": g.name, "code": g.encoded_copy_string, "metadata_json": dict(g.metadata)},
+    )
+
+
+def test_solver_runtime_entry_persists_replay_and_summary() -> None:
+    _seed_minimal_gene_samples()
+    proj = _project_with_map_input()
+    result = run_solver_runtime_for_project(int(proj.pk), run_key="entry-persist")
     assert result.ok is True
     assert result.solver_run_id is not None
     assert result.validation_passed is True
@@ -80,13 +92,27 @@ def test_solver_runtime_entry_persists_replay_and_summary() -> None:
     assert isinstance(result.replay_track_metrics, dict)
 
 
+def test_solver_runtime_entry_persists_gene_template_source() -> None:
+    _seed_minimal_gene_samples()
+    proj = _project_with_map_input()
+    result = run_solver_runtime_for_project(int(proj.pk), run_key="entry-gene-source")
+    assert result.ok is True
+
+    run = m.SolverRun.objects.get(pk=result.solver_run_id)
+    assert SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY in run.config_json
+    src = run.config_json[SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY]
+    assert src["source"] == GeneTemplateSourceKind.GENETIC_SAMPLE_DB.value
+    assert src["gene_count"] >= 1
+    assert isinstance(src["gene_ids"], list)
+
+    assert result.gene_template_source["source"] == GeneTemplateSourceKind.GENETIC_SAMPLE_DB.value
+
+
 def test_solver_runtime_entry_does_not_create_lab_replay_frames() -> None:
+    _seed_minimal_gene_samples()
     proj = _project_with_map_input()
     lab_count = m.ReplayFrame.objects.filter(replay_track__project=proj).count()
-    run_solver_runtime_for_project(
-        int(proj.pk),
-        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
-    )
+    run_solver_runtime_for_project(int(proj.pk))
     assert m.ReplayFrame.objects.filter(replay_track__project=proj).count() == lab_count
 
 
@@ -95,3 +121,12 @@ def test_solver_runtime_entry_requires_map_input() -> None:
     result = run_solver_runtime_for_project(int(proj.pk))
     assert result.ok is False
     assert result.error_code == SolverRuntimeEntryErrorCode.NO_MAP_INPUT
+
+
+def test_solver_runtime_entry_fails_when_no_gene_templates_in_db() -> None:
+    """If DB has no seeded GeneticSample rows, entry returns NO_GENE_TEMPLATES_IN_DB."""
+    proj = _project_with_map_input()
+    # DB is empty (django_db gives clean state per test)
+    result = run_solver_runtime_for_project(int(proj.pk))
+    assert result.ok is False
+    assert result.error_code == SolverRuntimeEntryErrorCode.NO_GENE_TEMPLATES_IN_DB

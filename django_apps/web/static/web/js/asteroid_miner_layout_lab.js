@@ -256,7 +256,11 @@
           : feedback.validation_passed === false
             ? "failed"
             : "—";
-      runEl.textContent = "run: id " + String(feedback.solver_run_id) + " validation " + vp;
+      let statusText = "run: id " + String(feedback.solver_run_id) + " validation " + vp;
+      if (feedback.gene_template_source && feedback.gene_template_source.gene_count != null) {
+        statusText += " genes:" + String(feedback.gene_template_source.gene_count);
+      }
+      runEl.textContent = statusText;
     } else {
       runEl.textContent = dash;
     }
@@ -2163,6 +2167,7 @@
           replayRunFeedback = {
             solver_run_id: data.solver_run_id,
             validation_passed: data.validation_passed,
+            gene_template_source: data.gene_template_source || null,
           };
           renderReplayRunStatus(replayRunFeedback);
           if (data.run_summary) {

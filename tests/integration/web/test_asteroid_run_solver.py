@@ -15,11 +15,32 @@ from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.services.runtime_gene_template_source import GeneTemplateSourceKind
+from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+    generate_exhaustive_sample_genes,
+)
 from django_apps.asteroid_lab.services.solver_runtime_entry import SolverRuntimeEntryErrorCode
 
 pytestmark = pytest.mark.django_db
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab"
+
+
+@pytest.fixture(autouse=True)
+def seed_gene_templates_db() -> None:
+    """Seed minimal GeneticSample rows so Run Solver DB resolver can load templates."""
+    genes, _ = generate_exhaustive_sample_genes(
+        max_extensions=0, transport_kinds=("belt",), generator_version="exhaustive_sample_gene_v1"
+    )
+    for g in genes:
+        m.GeneticSample.objects.update_or_create(
+            gene_key=g.key,
+            defaults={
+                "name": g.name,
+                "code": g.encoded_copy_string,
+                "metadata_json": dict(g.metadata),
+            },
+        )
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -113,9 +134,9 @@ def _assert_validation_completed_has_placement_overlays(frames: list[dict[str, A
     mv = val_frames[0].get("map_view")
     assert isinstance(mv, dict), "validation.completed must expose map_view"
     overlay = mv.get("overlay_cells")
-    assert isinstance(overlay, list) and overlay, (
-        "validation.completed map_view.overlay_cells must be non-empty when commits exist"
-    )
+    assert (
+        isinstance(overlay, list) and overlay
+    ), "validation.completed map_view.overlay_cells must be non-empty when commits exist"
     placement = [
         c
         for c in overlay
@@ -165,6 +186,11 @@ def test_post_run_solver_json_persists_and_returns_payload() -> None:
     assert data["optimization_replay_attach"]["reason"] == "attached"
     assert isinstance(data.get("optimization_replay_read"), dict)
     _assert_frames_have_js_renderable_cells(frames)
+
+    src = data.get("gene_template_source")
+    assert isinstance(src, dict)
+    assert src["source"] == GeneTemplateSourceKind.GENETIC_SAMPLE_DB.value
+    assert src["gene_count"] >= 1
 
 
 def _assert_frames_have_js_renderable_cells(frames: list[dict]) -> None:
@@ -287,3 +313,16 @@ def test_post_run_solver_json_updates_page_context_timeline() -> None:
     frames = _lab_replay_frames_from_page(page.content)
     assert len(frames) >= 1
     assert isinstance(frames[0].get("map_view"), dict)
+
+
+@pytest.mark.django_db
+def test_post_run_solver_no_gene_templates_in_db_400(seed_gene_templates_db: None) -> None:
+    """If DB has no gene templates, run-solver returns 400 with NO_GENE_TEMPLATES_IN_DB."""
+    m.GeneticSample.objects.all().delete()
+    slug = _project_slug_via_create()
+    url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
+    response = Client().post(url, HTTP_ACCEPT="application/json")
+    assert response.status_code == 400
+    data = json.loads(response.content.decode())
+    assert data["ok"] is False
+    assert data["error_code"] == SolverRuntimeEntryErrorCode.NO_GENE_TEMPLATES_IN_DB.value

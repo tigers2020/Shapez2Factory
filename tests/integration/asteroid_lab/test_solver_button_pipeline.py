@@ -30,6 +30,7 @@ from django_apps.asteroid_lab.services.optimization_ui_payload import (
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     run_reconstruction_for_map_input,
 )
+from django_apps.asteroid_lab.optimization.gene_template_loader import load_gene_templates_from_json
 from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 
 pytestmark = pytest.mark.django_db
@@ -37,6 +38,8 @@ pytestmark = pytest.mark.django_db
 _GENE_TEMPLATES = (
     Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
 )
+
+_MINIMAL_GENE_TEMPLATES = load_gene_templates_from_json(_GENE_TEMPLATES / "minimal_extractor_e.json")
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -88,7 +91,7 @@ def test_solver_button_pipeline_persists_result() -> None:
     )
     result = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
+        gene_templates=_MINIMAL_GENE_TEMPLATES,
         run_key="pr7-persist",
     )
     attach = persist_optimization_replay_frames_to_solver_run(
@@ -110,7 +113,7 @@ def test_solver_button_pipeline_emits_replay_events() -> None:
     _proj, loaded = _project_with_reconstruction()
     result = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
+        gene_templates=_MINIMAL_GENE_TEMPLATES,
     )
     seq = [f.event_type for f in result.replay_frames]
     required = {
@@ -127,7 +130,7 @@ def test_solver_button_pipeline_emits_replay_events() -> None:
 
     result2 = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
+        gene_templates=_MINIMAL_GENE_TEMPLATES,
     )
     assert [f.event_type for f in result2.replay_frames] == seq
 
@@ -138,11 +141,11 @@ def test_solver_button_pipeline_validation_read_only() -> None:
 
     r1 = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
+        gene_templates=_MINIMAL_GENE_TEMPLATES,
     )
     r2 = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
+        gene_templates=_MINIMAL_GENE_TEMPLATES,
     )
 
     assert loaded.cells == cells_before
@@ -165,7 +168,7 @@ def test_solver_button_pipeline_no_implicit_lab_optimization_sync() -> None:
     )
     result = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_GENE_TEMPLATES / "minimal_extractor_e.json",
+        gene_templates=_MINIMAL_GENE_TEMPLATES,
     )
     persist_optimization_replay_frames_to_solver_run(
         run_dto.id,

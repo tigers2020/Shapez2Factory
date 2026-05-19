@@ -11,6 +11,7 @@ from django_apps.asteroid_lab.optimization.replay_frame import OptimizationRepla
 SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY = "optimization_replay_frames"
 SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY = "solver_summary"
 SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY = "server_xy_params"
+SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY = "gene_template_source"
 OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY = "optimization_replay"
 OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY = "optimization_replay_diagnostic_reason"
 
@@ -77,6 +78,40 @@ def deserialize_optimization_replay_frames_from_json(
         return None
     assert isinstance(raw, list)
     return tuple(frame_from_json_dict(dict(item)) for item in raw)
+
+
+def deserialize_optimization_replay_frames_lenient(
+    raw: object,
+) -> tuple[tuple[OptimizationReplayFrame, ...], int]:
+    """Lenient read-path deserialize: skip frames with unknown/invalid event_type.
+
+    Returns ``(frames, omitted_count)``.  Valid frames are re-indexed contiguously
+    starting at 0.  Frames whose ``event_type`` is not in ``_KNOWN_EVENT_TYPES``,
+    or whose shape is malformed, are counted in ``omitted_count`` but never raise.
+
+    The strict ``validate_*`` / ``deserialize_*`` functions remain unchanged for
+    the write (persist) path; this function is for the read (replay display) path.
+    """
+    if not isinstance(raw, list):
+        return (), 0
+    frames: list[OptimizationReplayFrame] = []
+    omitted = 0
+    for item in raw:
+        if not isinstance(item, dict):
+            omitted += 1
+            continue
+        event_type = item.get("event_type")
+        if not isinstance(event_type, str) or event_type not in _KNOWN_EVENT_TYPES:
+            omitted += 1
+            continue
+        metrics = item.get("metrics")
+        if metrics is not None and not isinstance(metrics, dict):
+            omitted += 1
+            continue
+        patched = dict(item)
+        patched["frame_index"] = len(frames)
+        frames.append(frame_from_json_dict(patched))
+    return tuple(frames), omitted
 
 
 def _aggregate_replay_truncated(

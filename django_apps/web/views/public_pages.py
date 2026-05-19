@@ -283,7 +283,10 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
 
     result = run_solver_runtime_for_project(int(project.pk))
     body = entry_result_to_json_dict(result)
-    if result.error_code == SolverRuntimeEntryErrorCode.NO_MAP_INPUT:
+    if result.error_code in (
+        SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
+        SolverRuntimeEntryErrorCode.NO_GENE_TEMPLATES_IN_DB,
+    ):
         return JsonResponse(body, status=400)
     if not result.ok:
         status = 500 if result.error_code == SolverRuntimeEntryErrorCode.PERSIST_REJECTED else 400

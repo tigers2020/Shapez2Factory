@@ -6,12 +6,39 @@ from typing import Any, cast
 
 from django.db.models import Count, Prefetch
 
-from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
     get_latest_lab_replay_track_for_project,
 )
+from django_apps.asteroid_lab.services.runtime_gene_template_source import GeneTemplateSourceKind
 from django_apps.asteroid_lab.services.solver_run_lab_summary import solver_runs_for_lab_project
+
+_DEFAULT_GENERATOR_VERSION = "exhaustive_sample_gene_v1"
+
+
+def _gene_template_catalog() -> dict[str, Any]:
+    """Read-only DB summary of available gene templates (display only, never solver input)."""
+    db_count = GeneticSample.objects.filter(
+        gene_key__isnull=False,
+        metadata_json__generator=_DEFAULT_GENERATOR_VERSION,
+    ).count()
+    top_ids = list(
+        GeneticSample.objects.filter(
+            gene_key__isnull=False,
+            metadata_json__generator=_DEFAULT_GENERATOR_VERSION,
+        )
+        .order_by("gene_key")
+        .values_list("gene_key", flat=True)[:10]
+    )
+    return {
+        "source": GeneTemplateSourceKind.GENETIC_SAMPLE_DB.value,
+        "db_gene_count": db_count,
+        "generator_version": _DEFAULT_GENERATOR_VERSION,
+        "sample_gene_ids": top_ids,
+        "seed_command_hint": "python manage.py seed_exhaustive_sample_genes",
+        "needs_seed": db_count == 0,
+    }
 
 GRID_W, GRID_H = 23, 15
 CELL_COUNT = GRID_W * GRID_H
@@ -119,6 +146,7 @@ def neutral_lab_context() -> dict[str, Any]:
             "replayTrackId": None,
             "replayTrackKey": None,
         },
+        "gene_template_catalog": _gene_template_catalog(),
     }
 
 

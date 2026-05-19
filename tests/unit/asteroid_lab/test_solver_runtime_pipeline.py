@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
+from django_apps.asteroid_lab.optimization.gene_template_loader import load_gene_templates_from_json
 from django_apps.asteroid_lab.optimization.loaded_snapshot import LoadedReconstructionSnapshot
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_loaded_snapshot,
@@ -13,6 +14,10 @@ from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
+
+
+def _minimal_gene_templates() -> tuple:
+    return load_gene_templates_from_json(_FIXTURE_DIR / "minimal_extractor_e.json")
 
 
 def _cell(
@@ -56,7 +61,7 @@ def test_pipeline_runs_end_to_end_without_orm() -> None:
 
     result = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_FIXTURE_DIR / "minimal_extractor_e.json",
+        gene_templates=_minimal_gene_templates(),
         run_key="unit",
     )
 
@@ -70,10 +75,10 @@ def test_pipeline_runs_end_to_end_without_orm() -> None:
 
 def test_pipeline_replay_event_sequence_is_deterministic() -> None:
     loaded = _pipeline_loaded_snapshot()
-    path = _FIXTURE_DIR / "minimal_extractor_e.json"
+    templates = _minimal_gene_templates()
 
-    r1 = run_solver_runtime_pipeline(loaded=loaded, gene_template_path=path)
-    r2 = run_solver_runtime_pipeline(loaded=loaded, gene_template_path=path)
+    r1 = run_solver_runtime_pipeline(loaded=loaded, gene_templates=templates)
+    r2 = run_solver_runtime_pipeline(loaded=loaded, gene_templates=templates)
 
     seq1 = [f.event_type for f in r1.replay_frames]
     seq2 = [f.event_type for f in r2.replay_frames]
@@ -130,7 +135,7 @@ def test_pipeline_overlay_cells_have_js_recognised_cell_kinds() -> None:
     loaded = _pipeline_loaded_snapshot()
     result = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_FIXTURE_DIR / "minimal_extractor_e.json",
+        gene_templates=_minimal_gene_templates(),
         run_key="overlay_kinds_check",
     )
 
@@ -156,7 +161,7 @@ def test_pipeline_validation_overlay_differs_from_base_cells() -> None:
     loaded = _pipeline_loaded_snapshot()
     result = run_solver_runtime_pipeline(
         loaded=loaded,
-        gene_template_path=_FIXTURE_DIR / "minimal_extractor_e.json",
+        gene_templates=_minimal_gene_templates(),
         run_key="overlay_diff_check",
     )
 
@@ -174,16 +179,63 @@ def test_pipeline_validation_overlay_differs_from_base_cells() -> None:
     if result.solver_summary.get("confirmed_count", 0) == 0:
         return  # no commits — diff not required
 
-    base_coords = frozenset(
-        (c["server_x"], c["server_y"]) for c in input_frame.visible_cells
-    )
+    base_coords = frozenset((c["server_x"], c["server_y"]) for c in input_frame.visible_cells)
     overlay_coords = frozenset(
         (c["server_x"], c["server_y"]) for c in validation_frame.overlay_cells
     )
     # overlay must have cells not in the base asteroid field (i.e. belt/miner cells)
-    assert overlay_coords - base_coords, (
-        "VALIDATION_COMPLETED overlay has no new cells beyond the base asteroid field"
+    assert (
+        overlay_coords - base_coords
+    ), "VALIDATION_COMPLETED overlay has no new cells beyond the base asteroid field"
+
+
+def test_runtime_pipeline_emits_only_known_replay_event_types() -> None:
+    """All event_type values in recorder output must be valid OptimizationReplayEventType."""
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_templates=_minimal_gene_templates(),
+        run_key="event_types_check",
     )
+    known = frozenset(OptimizationReplayEventType)
+    for frame in result.replay_frames:
+        assert (
+            frame.event_type in known
+        ), f"Unknown event_type {frame.event_type!r} emitted by runtime pipeline"
+
+
+def test_solver_runtime_emits_result_layout_after_validation() -> None:
+    """Pipeline must emit a RESULT_LAYOUT frame as the last replay event."""
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_templates=_minimal_gene_templates(),
+        run_key="result_layout_check",
+    )
+    assert result.replay_frames, "replay_frames must not be empty"
+    last = result.replay_frames[-1]
+    assert (
+        last.event_type == OptimizationReplayEventType.RESULT_LAYOUT
+    ), f"Last frame must be RESULT_LAYOUT, got {last.event_type!r}"
+    assert "validation_passed" in last.metrics
+
+
+def test_result_layout_has_full_cells_not_overlay_only() -> None:
+    """RESULT_LAYOUT frame must carry reconstruction cells in visible_cells
+    so the unified adapter can populate map_view.full_cells (not overlay only)."""
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_templates=_minimal_gene_templates(),
+        run_key="result_layout_cells_check",
+    )
+    result_frame = next(
+        f for f in result.replay_frames if f.event_type == OptimizationReplayEventType.RESULT_LAYOUT
+    )
+    assert (
+        len(result_frame.visible_cells) >= 1
+    ), "RESULT_LAYOUT frame must include reconstruction visible_cells for full_cells projection"
+    assert any("server_x" in c for c in result_frame.visible_cells)
 
 
 def test_route_committed_metrics_include_path_diagnostics() -> None:

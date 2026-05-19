@@ -30,7 +30,7 @@ POST /asteroid-miner-layout/p/<slug>/run-solver/
 - 서비스: `run_solver_runtime_for_project` ([`solver_runtime_entry.py`](../../../django_apps/asteroid_lab/services/solver_runtime_entry.py))
 - 응답: `Accept: application/json` → `ok`, `solver_run_id`, `optimization_replay`, `solver_summary`, `validation_passed`, 실패 시 `error_code`
 
-Lab JS `Run Solver` 클릭 연동은 **후속 PR** (SSR·POST API만 PR8).
+Lab JS `Run Solver` → POST run-solver + optimization replay HUD는 **PR9**에서 연동.
 
 ## 입력
 
@@ -78,7 +78,7 @@ Phase M — Persist / Replay / UI Payload
 - [x] 단일 orchestration 함수(또는 서비스)가 A→M 순서를 문서와 동일하게 호출 (`solver_runtime_pipeline` + `solver_runtime_entry`).
 - [x] PR7 통합 테스트: persist·replay event·validation read-only.
 - [x] HTTP POST 진입·`asteroid_lab_page_context` optimization 트랙 읽기 (PR8).
-- [ ] Lab JS Run Solver → POST fetch (후속).
+- [x] Lab JS Run Solver → POST fetch + 12H HUD (PR9).
 
 ## 필수 테스트
 

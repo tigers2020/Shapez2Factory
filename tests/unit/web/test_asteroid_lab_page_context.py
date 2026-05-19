@@ -398,3 +398,20 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert scrub_idx > controls_idx
     assert "lab_identifier_sprite_paths" in tpl
     assert "lab-identifier-sprite-paths-data" in tpl
+    assert "lab-optimization-replay-data" in tpl
+    assert 'id="lab-optimization-replay-status"' in tpl
+    assert 'id="lab-optimization-replay-truncation"' in tpl
+    assert 'id="lab-optimization-replay-diagnostic"' in tpl
+    assert 'id="lab-optimization-replay-run"' in tpl
+    assert "data-lab-run-solver-url" in tpl
+    assert "function normalizeOptimizationReplayTrack" in js
+    assert "function renderOptimizationReplayHud" in js
+    assert "function replaceOptimizationReplayPayload" in js
+    assert "lab-optimization-replay-data" in js
+    assert "labRunSolverUrl" in js
+    assert 'method: "POST"' in js
+    assert 'dataset.labRunSolverUrl' in js
+    run_btn_idx = js.index("runSolverBtn")
+    run_handler = js[run_btn_idx : run_btn_idx + 2500]
+    assert "setPlaying(true)" not in run_handler
+    assert "replaceOptimizationReplayPayload" in run_handler

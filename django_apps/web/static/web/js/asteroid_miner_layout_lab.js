@@ -237,6 +237,117 @@
     }
   }
 
+  const OPTIMIZATION_REPLAY_DIAGNOSTIC_KEY = "optimization_replay_diagnostic_reason";
+
+  let optimizationReplayTrack = null;
+  let optimizationReplayRunFeedback = null;
+
+  function normalizeOptimizationReplayTrack(raw) {
+    const empty = {
+      frames: [],
+      metrics: { frame_count: 0, event_type_counts: {}, replay_truncated: false },
+    };
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return empty;
+    }
+    const frames = Array.isArray(raw.frames) ? raw.frames : [];
+    const metricsIn = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
+    const frameCount = Number(metricsIn.frame_count);
+    const metrics = {
+      frame_count: Number.isFinite(frameCount)
+        ? Math.max(0, Math.trunc(frameCount))
+        : frames.length,
+      event_type_counts:
+        metricsIn.event_type_counts && typeof metricsIn.event_type_counts === "object"
+          ? metricsIn.event_type_counts
+          : {},
+      replay_truncated: metricsIn.replay_truncated === true,
+    };
+    if (metrics.replay_truncated) {
+      const tr = metricsIn.truncation_reason;
+      if (typeof tr === "string" && tr.trim()) {
+        metrics.truncation_reason = tr.trim();
+      }
+    }
+    const diag = metricsIn[OPTIMIZATION_REPLAY_DIAGNOSTIC_KEY];
+    if (typeof diag === "string" && diag.trim()) {
+      metrics[OPTIMIZATION_REPLAY_DIAGNOSTIC_KEY] = diag.trim();
+    }
+    return { frames: frames, metrics: metrics };
+  }
+
+  function renderOptimizationReplayHud(track, runFeedback) {
+    const statusEl = document.getElementById("lab-optimization-replay-status");
+    const truncEl = document.getElementById("lab-optimization-replay-truncation");
+    const diagEl = document.getElementById("lab-optimization-replay-diagnostic");
+    const runEl = document.getElementById("lab-optimization-replay-run");
+    const normalized = normalizeOptimizationReplayTrack(track);
+    const metrics = normalized.metrics || {};
+    const frameCount = Number(metrics.frame_count) || 0;
+    const diagnostic = metrics[OPTIMIZATION_REPLAY_DIAGNOSTIC_KEY];
+    const dash = "—";
+
+    if (statusEl) {
+      if (frameCount > 0 && !diagnostic) {
+        statusEl.textContent = "loaded (" + String(frameCount) + " frames)";
+      } else if (diagnostic) {
+        statusEl.textContent = "empty";
+      } else {
+        statusEl.textContent = "empty";
+      }
+    }
+    if (truncEl) {
+      if (metrics.replay_truncated === true) {
+        const reason =
+          typeof metrics.truncation_reason === "string" && metrics.truncation_reason
+            ? metrics.truncation_reason
+            : "unknown";
+        truncEl.textContent = "truncated: " + reason;
+      } else {
+        truncEl.textContent = dash;
+      }
+    }
+    if (diagEl) {
+      diagEl.textContent = typeof diagnostic === "string" && diagnostic ? diagnostic : dash;
+    }
+    const fb = runFeedback !== undefined ? runFeedback : optimizationReplayRunFeedback;
+    if (runEl) {
+      if (fb && typeof fb === "object") {
+        if (fb.running === true) {
+          runEl.textContent = "run: running…";
+        } else if (typeof fb.error_code === "string" && fb.error_code) {
+          runEl.textContent = "run: error " + fb.error_code;
+        } else if (fb.solver_run_id != null) {
+          const vp =
+            fb.validation_passed === true
+              ? "passed"
+              : fb.validation_passed === false
+                ? "failed"
+                : "—";
+          runEl.textContent =
+            "run: id " + String(fb.solver_run_id) + " validation " + vp;
+        } else {
+          runEl.textContent = dash;
+        }
+      } else {
+        runEl.textContent = dash;
+      }
+    }
+  }
+
+  function replaceOptimizationReplayPayload(track) {
+    optimizationReplayTrack = normalizeOptimizationReplayTrack(track);
+    const scriptEl = document.getElementById("lab-optimization-replay-data");
+    if (scriptEl) {
+      try {
+        scriptEl.textContent = JSON.stringify(optimizationReplayTrack);
+      } catch {
+        /* ignore */
+      }
+    }
+    renderOptimizationReplayHud(optimizationReplayTrack);
+  }
+
   function getCookie(name) {
     const prefix = "; " + name + "=";
     const raw = document.cookie;
@@ -1299,11 +1410,6 @@
       resetToInitial();
     });
 
-    document.getElementById("lab-header-run")?.addEventListener("click", function () {
-      setPlaying(true);
-      applyFrame();
-    });
-
     document.getElementById("lab-timeline-prev")?.addEventListener("click", function () {
       if (hasServerReplay) {
         replayArrayIndex = Math.max(0, replayArrayIndex - 1);
@@ -1330,6 +1436,10 @@
     });
 
     if (scrubEl) {
+      scrubEl.addEventListener("pointerdown", function (event) {
+        event.stopPropagation();
+        setPlaying(false);
+      });
       scrubEl.addEventListener("input", function () {
         setTimelineIndex(scrubEl.value, { pause: true });
       });
@@ -1651,8 +1761,40 @@
       updateLabGridHudFromPoint(event.clientX, event.clientY);
     }
 
-    function handleLabViewportPointerDown(event) {
+    function labPointerShouldStartViewportPan(event) {
       if (!gridViewport || event.button !== 0) {
+        return false;
+      }
+      const t = event.target;
+      if (!(t instanceof Element)) {
+        return false;
+      }
+      if (t.closest("#lab-timeline-controls, #lab-timeline-scrub")) {
+        return false;
+      }
+      if (t.closest("input, button, select, textarea, a, label")) {
+        return false;
+      }
+      return true;
+    }
+
+    function endLabViewportPan(event) {
+      if (!labPanState || labPanState.pointerId !== event.pointerId) {
+        return;
+      }
+      if (
+        labPanState.dragging &&
+        typeof gridViewport.releasePointerCapture === "function" &&
+        typeof gridViewport.hasPointerCapture === "function" &&
+        gridViewport.hasPointerCapture(event.pointerId)
+      ) {
+        gridViewport.releasePointerCapture(event.pointerId);
+      }
+      labPanState = null;
+    }
+
+    function handleLabViewportPointerDown(event) {
+      if (!labPointerShouldStartViewportPan(event)) {
         return;
       }
       labPanState = {
@@ -1687,26 +1829,12 @@
     }
 
     function handleLabViewportPointerUp(event) {
-      if (!labPanState || labPanState.pointerId !== event.pointerId) {
-        return;
-      }
-      if (
-        labPanState.dragging &&
-        typeof gridViewport.releasePointerCapture === "function" &&
-        typeof gridViewport.hasPointerCapture === "function" &&
-        gridViewport.hasPointerCapture(event.pointerId)
-      ) {
-        gridViewport.releasePointerCapture(event.pointerId);
-      }
-      labPanState = null;
+      endLabViewportPan(event);
     }
 
     function handleLabViewportPointerLeave(event) {
       updateLabGridHudEmpty();
-      if (!labPanState || labPanState.pointerId !== event.pointerId) {
-        return;
-      }
-      labPanState = null;
+      endLabViewportPan(event);
     }
 
     function bindLabViewportInteractions() {
@@ -1742,6 +1870,75 @@
       }
       return getCookie("csrftoken") || "";
     }
+
+    optimizationReplayRunFeedback = null;
+    replaceOptimizationReplayPayload(readJsonScript("lab-optimization-replay-data"));
+
+    const runSolverBtn = document.getElementById("lab-header-run");
+    runSolverBtn?.addEventListener("click", function () {
+      const runUrl =
+        rootEl && rootEl.dataset && rootEl.dataset.labRunSolverUrl
+          ? String(rootEl.dataset.labRunSolverUrl)
+          : "";
+      if (!runUrl) {
+        optimizationReplayRunFeedback = { error_code: "no_run_solver_url" };
+        renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+        return;
+      }
+      if (runSolverBtn.disabled) {
+        return;
+      }
+      runSolverBtn.disabled = true;
+      optimizationReplayRunFeedback = { running: true };
+      renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+      fetch(runUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-CSRFToken": labCsrfToken(),
+        },
+      })
+        .then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return { ok: false };
+            })
+            .then(function (data) {
+              return { res: res, data: data };
+            });
+        })
+        .then(function (bundle) {
+          const res = bundle.res;
+          const data = bundle.data || {};
+          if (!res.ok || data.ok === false) {
+            optimizationReplayRunFeedback = {
+              error_code:
+                typeof data.error_code === "string" ? data.error_code : "request_failed",
+            };
+            if (data.optimization_replay) {
+              replaceOptimizationReplayPayload(data.optimization_replay);
+            } else {
+              renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+            }
+            return;
+          }
+          optimizationReplayRunFeedback = {
+            solver_run_id: data.solver_run_id,
+            validation_passed: data.validation_passed,
+          };
+          replaceOptimizationReplayPayload(data.optimization_replay);
+          renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+        })
+        .catch(function () {
+          optimizationReplayRunFeedback = { error_code: "network_error" };
+          renderOptimizationReplayHud(optimizationReplayTrack, optimizationReplayRunFeedback);
+        })
+        .finally(function () {
+          runSolverBtn.disabled = false;
+        });
+    });
 
     const LAB_CELL_DETAIL_KEY_ORDER = [
       "x",

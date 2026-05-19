@@ -21,6 +21,9 @@
     data-lab-replay-cell-url="{% url 'web:asteroid-miner-layout-replay-frame-cell' %}"
     data-lab-replay-track-id="{% if lab_replay_track_id %}{{ lab_replay_track_id }}{% endif %}"
     data-lab-project-slug="{{ lab_project_slug|default:'' }}"
+    {% if lab_project_slug %}
+    data-lab-run-solver-url="{% url 'web:asteroid-miner-layout-project-run-solver' slug=lab_project_slug %}"
+    {% endif %}
     data-lab-sprite-base="{% static 'web/assets/sprites/' %}"
   >
     <div class="border-b border-slate-800 bg-slate-950/90 px-6 py-4">
@@ -436,6 +439,19 @@
       </section>
 
       <section class="space-y-5">
+        <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
+          <div class="p-4">
+            <h2 class="font-semibold">Optimization Replay</h2>
+            <p class="mt-1 text-xs text-slate-500">Metadata / overlay observation (dual-track; no Lab sync)</p>
+            <div class="mt-4 space-y-2 font-mono text-xs text-slate-300">
+              <div id="lab-optimization-replay-status">—</div>
+              <div id="lab-optimization-replay-truncation" class="text-amber-300/90">—</div>
+              <div id="lab-optimization-replay-diagnostic" class="text-rose-300/90">—</div>
+              <div id="lab-optimization-replay-run" class="text-cyan-300/90">—</div>
+            </div>
+          </div>
+        </div>
+
         <div class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
           <div class="p-4">
             <div class="flex items-center justify-between">

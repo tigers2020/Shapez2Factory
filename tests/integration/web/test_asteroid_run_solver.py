@@ -98,3 +98,36 @@ def test_get_project_page_includes_optimization_replay_after_run() -> None:
     page = Client().get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
     assert page.status_code == 200
     assert b'id="lab-optimization-replay-data"' in page.content
+
+
+def _optimization_replay_from_page(content: bytes) -> dict:
+    import re
+
+    text = content.decode()
+    m = re.search(
+        r'<script[^>]+id="lab-optimization-replay-data"[^>]*>(.*?)</script>',
+        text,
+        re.DOTALL,
+    )
+    assert m is not None
+    return json.loads(m.group(1))
+
+
+def test_post_run_solver_json_updates_page_context_track() -> None:
+    slug = _project_slug_via_create()
+    run_url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
+    Client().post(run_url, HTTP_ACCEPT="application/json")
+
+    page = Client().get(reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug}))
+    track = _optimization_replay_from_page(page.content)
+    metrics = track.get("metrics") or {}
+    assert int(metrics.get("frame_count") or 0) >= 1
+    assert "optimization_replay_diagnostic_reason" not in metrics
+
+
+def test_run_solver_response_does_not_include_lab_replay_frames() -> None:
+    slug = _project_slug_via_create()
+    url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": slug})
+    response = Client().post(url, HTTP_ACCEPT="application/json")
+    data = json.loads(response.content.decode())
+    assert "lab_replay_frames_json" not in data

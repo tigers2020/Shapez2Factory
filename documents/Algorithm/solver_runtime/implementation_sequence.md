@@ -273,7 +273,7 @@ test_solver_button_pipeline_no_implicit_lab_optimization_sync
 - [x] `solver_runtime_entry.run_solver_runtime_for_project`
 - [x] `optimization_replay_payload_for_project` + `lab_page_context` `optimization_replay`
 - [x] SSR `lab-optimization-replay-data` json_script
-- [ ] Lab JS `Run Solver` fetch·HUD — **후속**
+- [x] Lab JS `Run Solver` fetch·HUD (PR9)
 
 ### 모듈
 
@@ -306,10 +306,43 @@ test_get_project_page_includes_optimization_replay_after_run
 
 ---
 
+## PR 9 — Lab Run Solver JS + Optimization Replay HUD (12H)
+
+**Phase:** M (UI read)  
+**문서:** [`asteroid_lab_12_runtime_replay_wiring.md`](../asteroid_lab_12_runtime_replay_wiring.md) §12H
+
+### 작업
+
+- [x] `#lab-optimization-replay-*` HUD 노드 (SSR)
+- [x] `data-lab-run-solver-url` on `#lab-root`
+- [x] `normalizeOptimizationReplayTrack` · `renderOptimizationReplayHud` · `replaceOptimizationReplayPayload`
+- [x] `#lab-header-run` → POST run-solver (Lab timeline play는 `#lab-timeline-play`만)
+
+### 모듈
+
+```text
+django_apps/web/templates/web/asteroid_miner_layout_solver.html
+django_apps/web/static/web/js/asteroid_miner_layout_lab.js
+tests/unit/web/test_asteroid_lab_page_context.py  # JS smoke 확장
+tests/integration/web/test_asteroid_run_solver.py
+tests/integration/web/test_asteroid_lab_optimization_replay_hud.py
+```
+
+### 필수 테스트 (PR9)
+
+```text
+test_lab_template_includes_optimization_replay_hud_nodes
+test_lab_js_replay_wiring_smoke  # optimization replay + run-solver wiring
+test_post_run_solver_json_updates_page_context_track
+test_run_solver_response_does_not_include_lab_replay_frames
+```
+
+---
+
 ## 권장 구현 순서 (의존성)
 
 ```text
-PR1 (완료) → PR1B → PR2.5 → PR2 → PR3 → PR4 → PR5 → PR6 → PR7 → PR8
+PR1 (완료) → … → PR8 → PR9
 ```
 
 PR2.5는 PR2·PR3 이전에 `route_goals`가 필요하므로 **PR1B 직후** 권장.

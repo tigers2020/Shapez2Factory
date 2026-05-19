@@ -436,8 +436,48 @@
     }
   }
 
+  function labCellsFromUnifiedMapView(mapView) {
+    if (!mapView || typeof mapView !== "object") return [];
+    const full = mapView.full_cells;
+    if (!Array.isArray(full) || !full.length) return [];
+    const out = [];
+    for (let i = 0; i < full.length; i++) {
+      const c = full[i];
+      if (!c || typeof c !== "object") continue;
+      out.push({
+        x: c.x,
+        y: c.y,
+        cell_kind: c.kind != null ? c.kind : c.cell_kind,
+        transport_kind: c.transport != null ? c.transport : c.transport_kind,
+        rotation: c.rotation,
+      });
+    }
+    return out;
+  }
+
+  function overlayCellsFromUnifiedMapView(mapView) {
+    if (!mapView || typeof mapView !== "object") return [];
+    const ov = mapView.overlay_cells;
+    if (!Array.isArray(ov) || !ov.length) return [];
+    const out = [];
+    for (let i = 0; i < ov.length; i++) {
+      const c = ov[i];
+      if (!c || typeof c !== "object") continue;
+      out.push({
+        x: c.x,
+        y: c.y,
+        cell_kind: c.kind != null ? c.kind : c.cell_kind,
+        transport_kind: c.transport != null ? c.transport : c.transport_kind,
+        rotation: c.rotation,
+      });
+    }
+    return out;
+  }
+
   function fullMapCellsFromFrame(frame) {
     if (!frame || typeof frame !== "object") return [];
+    const unified = labCellsFromUnifiedMapView(frame.map_view);
+    if (unified.length) return unified;
     if (Array.isArray(frame.full_map) && frame.full_map.length) return frame.full_map;
     const p = frame.frame_payload;
     if (p && typeof p === "object") {
@@ -849,6 +889,10 @@
     const fm = fullMapCellsFromFrame(frame);
     if (fm.length) {
       renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
+      const ovCells = overlayCellsFromUnifiedMapView(frame.map_view);
+      if (ovCells.length) {
+        renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
+      }
       renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
       applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
       return;
@@ -885,12 +929,56 @@
     if (gridEl) gridEl.dataset.overlay = frame.frame_key ? String(frame.frame_key) : "";
   }
 
+  function updateUnifiedTruncationHud(frame, trackMetrics) {
+    const hud = document.getElementById("lab-replay-truncation-hud");
+    if (!hud) return;
+    const dash = "—";
+    const fm = frame && frame.metrics && typeof frame.metrics === "object" ? frame.metrics : {};
+    const tm = trackMetrics && typeof trackMetrics === "object" ? trackMetrics : {};
+    const truncated = fm.replay_truncated === true || tm.replay_truncated === true;
+    if (!truncated) {
+      hud.textContent = dash;
+      return;
+    }
+    const reason =
+      typeof fm.truncation_reason === "string" && fm.truncation_reason
+        ? fm.truncation_reason
+        : typeof tm.truncation_reason === "string" && tm.truncation_reason
+          ? tm.truncation_reason
+          : "unknown";
+    let text = "truncated: " + reason;
+    const dropped = fm.dropped_frame_count != null ? fm.dropped_frame_count : tm.dropped_frame_count;
+    if (dropped != null && Number.isFinite(Number(dropped))) {
+      text += " · dropped " + String(dropped);
+    }
+    hud.textContent = text;
+  }
+
   function init() {
     const matrix = readJsonScript("lab-cell-overlay-matrix-data");
     const runs = readJsonScript("lab-runs-data");
     const uiInitial = readJsonScript("lab-ui-initial-state");
+    const labRoot = document.getElementById("lab-root");
+    const unifiedReplayEnabled =
+      labRoot && labRoot.dataset.labUnifiedReplayEnabled === "true";
+    const unifiedPayloadRaw = readJsonScript("lab-unified-replay-data");
+    const unifiedPayload =
+      unifiedPayloadRaw && typeof unifiedPayloadRaw === "object" ? unifiedPayloadRaw : null;
+    let unifiedReplayFrames =
+      unifiedReplayEnabled && unifiedPayload && Array.isArray(unifiedPayload.frames)
+        ? unifiedPayload.frames
+        : [];
+    let unifiedTrackMetrics =
+      unifiedPayload && unifiedPayload.track_metrics && typeof unifiedPayload.track_metrics === "object"
+        ? unifiedPayload.track_metrics
+        : {};
+    let useUnifiedReplay = unifiedReplayEnabled && unifiedReplayFrames.length > 0;
+    let currentUnifiedFrameIndex = 0;
     const replayFramesRaw = readJsonScript("lab-replay-frames-data");
     let replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
+    if (useUnifiedReplay) {
+      replayFrames = unifiedReplayFrames;
+    }
     let hasServerReplay = replayFrames.length > 0;
     let initialFromServer = Object.assign(
       {},
@@ -1215,6 +1303,7 @@
     }
 
     function getCurrentTimelineIndex() {
+      if (useUnifiedReplay) return currentUnifiedFrameIndex;
       return hasServerReplay ? replayArrayIndex : frame;
     }
 
@@ -1225,7 +1314,9 @@
       const parsed = parseInt(String(nextIndex), 10);
       const raw = Number.isFinite(parsed) ? parsed : 0;
       const clamped = clampNumber(raw, 0, max);
-      if (hasServerReplay) {
+      if (useUnifiedReplay) {
+        currentUnifiedFrameIndex = clamped;
+      } else if (hasServerReplay) {
         replayArrayIndex = clamped;
       } else {
         frame = clamped;
@@ -1254,26 +1345,54 @@
 
     function getCurrentReplayFrame() {
       if (!hasServerReplay) return null;
+      if (useUnifiedReplay) {
+        return replayFrames[currentUnifiedFrameIndex] || null;
+      }
       return replayFrames[replayArrayIndex] || null;
     }
 
     function applyFrame() {
       if (hasServerReplay) {
-        if (replayArrayIndex < 0) replayArrayIndex = 0;
-        if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
+        if (useUnifiedReplay) {
+          if (currentUnifiedFrameIndex < 0) currentUnifiedFrameIndex = 0;
+          if (currentUnifiedFrameIndex >= replayFrames.length) {
+            currentUnifiedFrameIndex = replayFrames.length - 1;
+          }
+        } else {
+          if (replayArrayIndex < 0) replayArrayIndex = 0;
+          if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
+        }
         const fr = getCurrentReplayFrame();
         renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
         updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl);
+        if (useUnifiedReplay) {
+          updateUnifiedTruncationHud(fr, unifiedTrackMetrics);
+        }
         const cycle = document.getElementById("lab-computation-cycle");
         if (cycle) {
-          cycle.textContent = fr && fr.frame_key != null ? "frame_key " + String(fr.frame_key) : "frame —";
+          if (useUnifiedReplay && fr && fr.inspector && fr.inspector.source_frame_index != null) {
+            cycle.textContent =
+              "source_frame_index " + String(fr.inspector.source_frame_index);
+          } else {
+            cycle.textContent = fr && fr.frame_key != null ? "frame_key " + String(fr.frame_key) : "frame —";
+          }
         }
         const hint = document.getElementById("lab-replay-footer-hint");
         if (hint) {
-          hint.textContent =
-            fr && fr.id != null
-              ? "ReplayFrame id " + String(fr.id) + (fr.is_keyframe ? " · keyframe" : "")
-              : "—";
+          if (useUnifiedReplay && fr && fr.inspector) {
+            const optEv = fr.inspector.optimization_event_type;
+            const labEv = fr.inspector.lab_event_type;
+            hint.textContent = optEv
+              ? "optimization " + String(optEv)
+              : labEv
+                ? "lab " + String(labEv)
+                : "unified frame";
+          } else {
+            hint.textContent =
+              fr && fr.id != null
+                ? "ReplayFrame id " + String(fr.id) + (fr.is_keyframe ? " · keyframe" : "")
+                : "—";
+          }
         }
         syncLabTimelineScrub();
         return;
@@ -1313,8 +1432,13 @@
       if (isPlaying && cap > 0) {
         timerId = window.setInterval(function () {
           if (hasServerReplay) {
-            replayArrayIndex += 1;
-            if (replayArrayIndex >= replayFrames.length) replayArrayIndex = 0;
+            if (useUnifiedReplay) {
+              currentUnifiedFrameIndex += 1;
+              if (currentUnifiedFrameIndex >= replayFrames.length) currentUnifiedFrameIndex = 0;
+            } else {
+              replayArrayIndex += 1;
+              if (replayArrayIndex >= replayFrames.length) replayArrayIndex = 0;
+            }
           } else {
             frame += 1;
             if (frame >= TOTAL_FRAMES) frame = 0;
@@ -1394,7 +1518,11 @@
     function resetToInitial() {
       setPlaying(false);
       if (hasServerReplay) {
-        replayArrayIndex = replaySlotForServerInitialFrame();
+        if (useUnifiedReplay) {
+          currentUnifiedFrameIndex = 0;
+        } else {
+          replayArrayIndex = replaySlotForServerInitialFrame();
+        }
       } else {
         frame = baselineFrame;
       }
@@ -1412,7 +1540,11 @@
 
     document.getElementById("lab-timeline-prev")?.addEventListener("click", function () {
       if (hasServerReplay) {
-        replayArrayIndex = Math.max(0, replayArrayIndex - 1);
+        if (useUnifiedReplay) {
+          currentUnifiedFrameIndex = Math.max(0, currentUnifiedFrameIndex - 1);
+        } else {
+          replayArrayIndex = Math.max(0, replayArrayIndex - 1);
+        }
       } else {
         frame = Math.max(0, frame - 1);
       }
@@ -1428,7 +1560,14 @@
 
     document.getElementById("lab-timeline-next")?.addEventListener("click", function () {
       if (hasServerReplay) {
-        replayArrayIndex = Math.min(replayFrames.length - 1, replayArrayIndex + 1);
+        if (useUnifiedReplay) {
+          currentUnifiedFrameIndex = Math.min(
+            replayFrames.length - 1,
+            currentUnifiedFrameIndex + 1,
+          );
+        } else {
+          replayArrayIndex = Math.min(replayFrames.length - 1, replayArrayIndex + 1);
+        }
       } else {
         frame = Math.min(TOTAL_FRAMES, frame + 1);
       }

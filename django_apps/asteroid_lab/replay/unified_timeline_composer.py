@@ -20,10 +20,12 @@ def compose_unified_timeline(
     """Concatenate lab then optimization frames; assign global ``frame_index`` 0..n-1."""
 
     combined = list(lab_frames) + list(optimization_frames)
+    original_count = len(combined)
     cap = max(1, int(max_frames))
-    truncated = len(combined) > cap
+    truncated = original_count > cap
     if truncated:
         combined = combined[:cap]
+    dropped_frame_count = original_count - len(combined) if truncated else 0
 
     out: list[UnifiedReplayFrame] = []
     for new_index, frame in enumerate(combined):
@@ -34,6 +36,8 @@ def compose_unified_timeline(
         if truncated and new_index == len(combined) - 1:
             metrics["replay_truncated"] = True
             metrics["truncation_reason"] = _TRUNCATION_REASON
+            if dropped_frame_count > 0:
+                metrics["dropped_frame_count"] = dropped_frame_count
         out.append(
             replace(
                 frame,

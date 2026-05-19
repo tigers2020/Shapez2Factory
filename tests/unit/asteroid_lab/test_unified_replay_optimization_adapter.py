@@ -142,6 +142,26 @@ def test_adapter_uses_fallback_full_cells_when_visible_empty() -> None:
     assert unified.map_view.full_cells == fallback
 
 
+def test_optimization_adapter_marks_fallback_full_cells_usage() -> None:
+    from django_apps.asteroid_lab.replay.unified_dtos import ReplayCell
+
+    fallback = (ReplayCell(x=1, y=0, kind="asteroid", transport="none"),)
+    ctx = ReplayProjectionContext(
+        server_xy_params=_PARAMS,
+        fallback_full_cells=fallback,
+    )
+    frame = OptimizationReplayFrame(
+        frame_index=5,
+        event_type=OptimizationReplayEventType.CAPACITY_PLAN_CREATED,
+        title="capacity",
+        description="",
+        metrics={},
+    )
+    unified = optimization_replay_frame_to_unified(frame, context=ctx)
+    assert unified.metrics["fallback_full_cells_used"] is True
+    assert unified.metrics["fallback_full_cells_reason"] == "metadata_only_optimization_frame"
+
+
 def test_adapter_rejects_non_renderable_without_fallback() -> None:
     frame = OptimizationReplayFrame(
         frame_index=0,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from django.conf import settings
 from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack
@@ -13,6 +14,11 @@ from django_apps.asteroid_lab.services.optimization_replay_read import (
 )
 from django_apps.asteroid_lab.services.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+)
+from django_apps.asteroid_lab.services.unified_replay_page_payload import (
+    UNIFIED_REPLAY_LAB_PAYLOAD_KEY,
+    build_unified_replay_timeline_for_project,
+    empty_unified_replay_payload,
 )
 
 GRID_W, GRID_H = 23, 15
@@ -141,6 +147,9 @@ def neutral_lab_context() -> dict[str, Any]:
         OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: (
             empty_optimization_replay_track_with_missing_diagnostic()
         ),
+        UNIFIED_REPLAY_LAB_PAYLOAD_KEY: empty_unified_replay_payload(enabled=False),
+        "unified_replay": empty_unified_replay_payload(enabled=False),
+        "unified_replay_enabled": False,
     }
 
 
@@ -148,10 +157,19 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
     """Lab shell context. When ``project_id`` is set, replay comes from that project only."""
 
     ctx = neutral_lab_context()
+    unified_enabled = bool(getattr(settings, "ASTEROID_LAB_UNIFIED_REPLAY_ENABLED", False))
+    ctx["unified_replay_enabled"] = unified_enabled
     if project_id is not None:
         ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] = optimization_replay_payload_for_project(
             int(project_id)
         )
+        if unified_enabled:
+            unified = build_unified_replay_timeline_for_project(
+                int(project_id),
+                enabled=True,
+            )
+            ctx[UNIFIED_REPLAY_LAB_PAYLOAD_KEY] = unified
+            ctx["unified_replay"] = unified
     track = (
         get_latest_lab_replay_track_for_project(project_id)
         if project_id is not None

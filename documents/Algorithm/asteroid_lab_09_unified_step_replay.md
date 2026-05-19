@@ -326,7 +326,7 @@ Overview **「활성 좌표 ≤50 전후」**에서는 프레임당 full snapsho
 | **9B** | Lab `ReplayFrame` / snapshot 이벤트 → `UnifiedReplayFrame` adapter | `phase=decode` / `reconstruction`; 9D baseline |
 | **9C** | Optimization 이벤트 → 2D `map_view` adapter | **완료** — `optimization_unified_adapter.py` |
 | **9D** | Timeline composer | **완료** — `unified_timeline_composer.py` |
-| **9E** | Single controller UI | 하나의 play/scrubber; phase markers |
+| **9E** | Single controller UI | **완료** — feature flag + `currentUnifiedFrameIndex` |
 | **9F** | Commit frame materialization | `route.committed` → `cell_delta` |
 | **9G** | Validation/result keyframes | `validation.*`, `result.layout` snapshots |
 | **9H** | Payload scale strategy | 13 시리즈와 정렬; lazy-load·delta는 **의미 동일** 하에 |
@@ -416,6 +416,15 @@ metadata-only frame을 timeline에 단독 등록
 [x] source mutate 금지 (단위 테스트)
 [x] Runtime recorder: `visible_cell_dicts_from_loaded` / materialization overlay (output-only)
 [x] coverage matrix: `SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER` (21)
+[x] metadata-only frame: `fallback_full_cells_used` / `fallback_full_cells_reason` (presentation metrics)
+```
+
+**Projection ambiguity (9C, 9E 구현자 필독):**
+
+```text
+dense_x == 0 → raw_x == 0 은 projection/intermediate display contract일 뿐,
+original blueprint raw X==0 과 동일시하지 않는다.
+projection raw_x != original blueprint raw X
 ```
 
 **금지 (9C):** timeline composer(9D), JS, ORM, `optimization_replay_persist` 키 변경, solver·GA·commit·validation 입력에 replay 사용.
@@ -449,13 +458,35 @@ metadata-only frame을 timeline에 단독 등록
 [x] Lab unified frames → optimization unified frames 순서로 concat
 [x] global `frame_index` 0..n-1 재부여
 [x] `inspector.source_frame_index`에 트랙별 원본 index 보존
-[x] `MAX_UNIFIED_LAB_REPLAY_FRAMES` 초과 시 head truncate + 마지막 프레임 `replay_truncated` / `truncation_reason`
+[x] `MAX_UNIFIED_LAB_REPLAY_FRAMES` 초과 시 head truncate + 마지막 프레임 `replay_truncated` / `truncation_reason` / `dropped_frame_count`
 [x] per-frame cell 재-truncate 없음 (adapter 책임)
 ```
 
 **금지 (9D):** page context, JS, persist, dual-track 제거(9E), algorithm 입력.
 
 **테스트:** `test_unified_timeline_composer.py`
+
+### 9E — Single controller UI (구현 완료)
+
+**산출:** `django_apps/asteroid_lab/services/unified_replay_page_payload.py`, `asteroid_lab_page_context.py`, `asteroid_miner_layout_solver.html`, `asteroid_miner_layout_lab.js`
+
+**범위:** replay **presentation only** — solver runtime A→M·candidate·commit·validation·persistence semantics **불변**.
+
+**체크리스트:**
+
+```text
+[x] `ASTEROID_LAB_UNIFIED_REPLAY_ENABLED` (default off) + `unified_replay` page JSON
+[x] read-only `build_unified_replay_timeline_for_project` (Lab ORM + persisted optimization)
+[x] `currentUnifiedFrameIndex` 단일 타임라인 인덱스 (unified on)
+[x] `map_view.full_cells` / `overlay_cells` → Lab grid render
+[x] flag off → legacy `lab_replay_frames_json` + optimization HUD 유지
+[x] truncation HUD: `replay_truncated` / `truncation_reason` / `dropped_frame_count`
+[x] optimization dual-track 패널 unified on 시 hidden (별도 scrubber 없음)
+```
+
+**금지 (9E):** solver·persist writer·A→M 변경, `optimizationReplayFrameIndex`, hidden dual-index sync, 9F/9G/13 lazy-load.
+
+**테스트:** `test_unified_replay_page_payload.py`, `test_asteroid_lab_page_context.py` (unified flag), `test_lab_js_replay_wiring_smoke`
 
 ---
 
@@ -475,7 +506,11 @@ evolution_convergence_reason
 route_reservation_id
 reservation_state
 replay_truncated
+truncation_reason
+dropped_frame_count
 replay_omit_reason
+fallback_full_cells_used
+fallback_full_cells_reason
 ```
 
 ---

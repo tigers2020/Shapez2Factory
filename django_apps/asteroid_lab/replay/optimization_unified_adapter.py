@@ -206,17 +206,25 @@ def _annotations_from_metrics(metrics: Mapping[str, Any]) -> tuple[ReplayAnnotat
     return tuple(out)
 
 
+_FALLBACK_FULL_CELLS_REASON = "metadata_only_optimization_frame"
+
+
 def _build_map_view(
     frame: OptimizationReplayFrame,
     context: ReplayProjectionContext,
-) -> ReplayMapView:
+) -> tuple[ReplayMapView, dict[str, object]]:
     full_cells = _rows_to_full_cells(frame.visible_cells, context)
     overlay_cells = _rows_to_overlay_cells(frame.overlay_cells, context)
     cell_delta = _rows_to_cell_delta(frame.visible_cells + frame.overlay_cells, context)
     annotations = _annotations_from_metrics(frame.metrics)
+    presentation_metrics: dict[str, object] = {}
 
     if not full_cells and context.fallback_full_cells:
         full_cells = context.fallback_full_cells
+        presentation_metrics = {
+            "fallback_full_cells_used": True,
+            "fallback_full_cells_reason": _FALLBACK_FULL_CELLS_REASON,
+        }
 
     base_ref = context.base_ref
     bbox = _bbox_from_map_parts(full_cells, overlay_cells, cell_delta, annotations)
@@ -231,7 +239,7 @@ def _build_map_view(
     if not replay_map_view_is_renderable(map_view):
         msg = "optimization frame has no renderable map_view"
         raise OptimizationUnifiedAdapterError(msg)
-    return map_view
+    return map_view, presentation_metrics
 
 
 def optimization_replay_frame_to_unified(
@@ -245,7 +253,9 @@ def optimization_replay_frame_to_unified(
     wire = frame.event_type.value
     unified_event = _event_type_from_wire(wire)
     idx = int(frame.frame_index) if frame_index is None else int(frame_index)
-    map_view = _build_map_view(frame, context)
+    map_view, presentation_metrics = _build_map_view(frame, context)
+    metrics = dict(frame.metrics)
+    metrics.update(presentation_metrics)
     return UnifiedReplayFrame(
         frame_index=idx,
         phase=_phase_for_event(unified_event),
@@ -257,5 +267,5 @@ def optimization_replay_frame_to_unified(
             "optimization_event_type": wire,
             "source_frame_index": int(frame.frame_index),
         },
-        metrics=dict(frame.metrics),
+        metrics=metrics,
     )

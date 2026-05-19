@@ -19,6 +19,9 @@ from django_apps.asteroid_lab.services.optimization_ui_payload import (
     SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
 )
 from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
+from django_apps.asteroid_lab.services.unified_replay_page_payload import (
+    UNIFIED_REPLAY_LAB_PAYLOAD_KEY,
+)
 from django_apps.web.services import asteroid_lab_page_context as alc
 
 _GENE_TEMPLATES = (
@@ -322,6 +325,62 @@ def test_lab_page_context_optimization_replay_does_not_touch_lab_replay_orm() ->
     assert m.ReplayFrame.objects.count() == before
 
 
+@pytest.mark.django_db
+def test_lab_page_context_unified_replay_disabled_by_default() -> None:
+    p = m.AsteroidProject.objects.create(name="UniOff", slug="uni-off-ctx")
+    t = m.ReplayTrack.objects.create(project=p, track_key="uni-off-tr")
+    m.ReplayFrame.objects.create(
+        replay_track=t,
+        frame_index=0,
+        frame_key="a",
+        phase="decode",
+        title="A",
+        description="",
+        frame_payload={
+            "event_type": "decode.raw_loaded",
+            "phase": "decode",
+            "phase_step": "raw",
+            "event_key": "step0",
+            "full_map": [{"x": 1, "y": 0, "cell_kind": "asteroid", "transport_kind": "none"}],
+        },
+        cell_overlay_json={},
+    )
+    ctx = alc.lab_page_context(project_id=p.pk)
+    assert ctx["unified_replay_enabled"] is False
+    assert ctx[UNIFIED_REPLAY_LAB_PAYLOAD_KEY]["enabled"] is False
+    assert ctx[UNIFIED_REPLAY_LAB_PAYLOAD_KEY]["frames"] == []
+    assert len(ctx["lab_replay_frames_json"]) == 1
+
+
+@pytest.mark.django_db
+def test_lab_page_context_unified_replay_when_flag_enabled(settings) -> None:
+    settings.ASTEROID_LAB_UNIFIED_REPLAY_ENABLED = True
+    p = m.AsteroidProject.objects.create(name="UniOn", slug="uni-on-ctx")
+    t = m.ReplayTrack.objects.create(project=p, track_key="uni-on-tr")
+    m.ReplayFrame.objects.create(
+        replay_track=t,
+        frame_index=0,
+        frame_key="a",
+        phase="decode",
+        title="A",
+        description="",
+        frame_payload={
+            "event_type": "decode.raw_loaded",
+            "phase": "decode",
+            "phase_step": "raw",
+            "event_key": "step0",
+            "full_map": [{"x": 1, "y": 0, "cell_kind": "asteroid", "transport_kind": "none"}],
+        },
+        cell_overlay_json={},
+    )
+    ctx = alc.lab_page_context(project_id=p.pk)
+    assert ctx["unified_replay_enabled"] is True
+    unified = ctx[UNIFIED_REPLAY_LAB_PAYLOAD_KEY]
+    assert unified["enabled"] is True
+    assert len(unified["frames"]) >= 1
+    assert len(ctx["lab_replay_frames_json"]) == 1
+
+
 def test_lab_page_context_module_import_boundary() -> None:
     path = (
         Path(__file__).resolve().parents[3]
@@ -410,8 +469,17 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-optimization-replay-data" in js
     assert "labRunSolverUrl" in js
     assert 'method: "POST"' in js
-    assert 'dataset.labRunSolverUrl' in js
+    assert "dataset.labRunSolverUrl" in js
     run_btn_idx = js.index("runSolverBtn")
     run_handler = js[run_btn_idx : run_btn_idx + 2500]
     assert "setPlaying(true)" not in run_handler
     assert "replaceOptimizationReplayPayload" in run_handler
+    assert "currentUnifiedFrameIndex" in js
+    assert "lab-unified-replay-data" in js
+    assert "dataset.labUnifiedReplayEnabled" in js
+    assert "updateUnifiedTruncationHud" in js
+    assert "optimizationReplayFrameIndex" not in js
+    assert "lab-unified-replay-data" in tpl
+    assert "data-lab-unified-replay-enabled" in tpl
+    assert "lab-unified-replay-data" in tpl
+    assert 'id="lab-replay-truncation-hud"' in tpl

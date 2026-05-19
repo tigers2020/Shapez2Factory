@@ -92,5 +92,30 @@ def test_compose_truncation_sets_metrics_pair() -> None:
     assert last.metrics.get("truncation_reason") == "max_unified_replay_frames"
 
 
+def test_unified_timeline_truncation_records_dropped_frame_count() -> None:
+    lab = tuple(
+        _frame(
+            i,
+            phase=ReplayPhase.RECONSTRUCTION,
+            event=ReplayEventType.RECONSTRUCTION_STARTED,
+            tag=f"l{i}",
+        )
+        for i in range(3)
+    )
+    opt = tuple(
+        _frame(
+            i,
+            phase=ReplayPhase.OPTIMIZATION_INPUT,
+            event=ReplayEventType.OPTIMIZATION_INPUT_LOADED,
+            tag=f"o{i}",
+        )
+        for i in range(3)
+    )
+    out = compose_unified_timeline(lab_frames=lab, optimization_frames=opt, max_frames=4)
+    assert len(out) == 4
+    last = out[-1]
+    assert last.metrics.get("dropped_frame_count") == 2
+
+
 def test_compose_empty_inputs() -> None:
     assert compose_unified_timeline(lab_frames=(), optimization_frames=()) == ()

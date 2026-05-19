@@ -498,7 +498,7 @@ Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 
 
 ## Asteroid Lab — Optimization replay UI (시퀀스 10A–10F) — **마이그레이션 대상**
 
-> **2026-05-19:** 제품 정본은 [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md). 아래 10A–10F·11A–11B(dual-track·별도 optimization controller·HUD-only)는 **obsolete**이다. 신규 작업은 **Phase 9 시퀀스 9A–9E**를 따른다.
+> **2026-05-19:** 제품 정본은 [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md). 아래 10A–10F·11A–11B(dual-track·별도 optimization controller·HUD-only)는 **obsolete**이다. 신규 작업은 **Phase 9 시퀀스 9A–9H**를 따른다. **9E**(단일 unified controller UI)는 2026-05-19 구현 완료.
 
 **번호 주의:** 아래 `10A–10F`는 Lab 페이지 **optimization 리플레이 UI** 전용 진행 번호(역사)이다. 본 문서 상단의 `## Sequence 10 — Regression Fixtures`(회귀 fixture)와 **같은 “10” 계층이 아니다.**
 

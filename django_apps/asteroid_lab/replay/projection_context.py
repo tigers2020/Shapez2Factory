@@ -9,7 +9,11 @@ from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_x
 
 
 def dense_index_to_raw_x(dense_x: int) -> int:
-    """Inverse of ``raw_x_to_dense_index`` (column 0 omitted in blueprint maps to dense 0)."""
+    """Inverse of ``raw_x_to_dense_index`` (column 0 omitted in blueprint maps to dense 0).
+
+    ``dense_x == 0`` → ``raw_x == 0`` is projection/display contract only; it must not be read as
+    original blueprint ``raw X == 0``. Projection ``raw_x`` != original blueprint raw X.
+    """
 
     if dense_x < 0:
         return dense_x

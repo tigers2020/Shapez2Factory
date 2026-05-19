@@ -1,19 +1,40 @@
 # Current plan
 
-**상태 (2026-05-16)**: `django_apps.shapez_asteroid` 앱 제거 이후 웹·솔버·`asteroid_lab` green 유지.
+**상태 (2026-05-19)**: Solver 버튼 v0 E2E 파이프라인 완료 (PR1–PR9 + 9A–9E). 768 tests green.
 
-## Asteroid reconstruction (topology fill)
+## 완료된 것
 
-- **`cleanup.wall_coords`**: 디코드 evidence + 제거된 extractor/extension 좌표; belt/pipe는 포함하지 않음 (기존 계약 유지).
-- **`reconstruction` barrier**: `barrier_xy = wall_coords ∪ infer_shell_barrier_coords(...)` — **외부 `external_reachable` flood만** 차단하는 추론 shell(행·열 span 등). cleanup 산출물이 아님.
-- **Fill 허가**: `passes_two_axis_evidence_guard`는 **원본 `wall_coords`만** 사용. `barrier_xy`를 guard에 넣지 않음(추론 벽으로 자기증명·과충전 방지).
+| PR | Phase | 내용 |
+|----|-------|------|
+| PR1 | D | GeneTemplate, projection |
+| PR1B | A, B | Reconstruction → OptimizationInput, §0.3 adapter |
+| PR2.5 | C | Capacity planner, RouteGoal planner |
+| PR2 | E, F, G | Geometry validation, route probe |
+| PR3 | H | Candidate pool (dedupe, truncate) |
+| PR4 | I | Candidate selection v0 (greedy) |
+| PR5 | J | Incremental commit, reservation overlay |
+| PR6 | K | Route network materialization |
+| PR7 | L, M, Entry | Final validation, persist, orchestration (A→M) |
+| PR8 | Entry | HTTP POST run-solver, optimization replay page context |
+| PR9 | M UI | Lab JS Run Solver, optimization replay HUD (12H) |
+| 9A–9E | — | 통합 replay DTO·adapter·timeline·UI 계약 |
 
-## 현재 초점
+## 패키지 정본
 
-- **Solver Runtime (PR1B–PR2.5–PR2):** `django_apps/asteroid_lab/optimization/` — 입력 adapter·capacity/route goals·geometry/route probe 완료. 다음 merge 단위 **PR3** (candidate pool).
-- 웹·솔버·`asteroid_lab` 경로가 `manage.py check`·`pytest`·로케일 strict 빌드로 green인지 유지한다.
-- 문서 링크 깨짐(`mining_solver_cursor_sessions` 등)은 inventory·README 수준에서 정리 완료. 세부 archive stem은 필요 시 사람이 선별한다.
+```text
+django_apps/asteroid_lab/optimization/   ← 모든 Runtime 모듈
+django_apps/shapez_asteroid/             ← 제거됨 (import 금지)
+```
 
-## 금지
+## 다음 초점 (v1 후보 — 사람 승인 후 착수)
 
-- 제거된 `shapez_asteroid` 패키지나 삭제된 테스트 경로를 전제로 한 새 기능 요구를 문서만으로 «살아 있는 계약»처럼 취급하지 않는다.
+Open Decisions 잔여 항목 ([`open_decisions.md`](../Algorithm/solver_runtime/open_decisions.md)):
+
+- **OD-3**: capacity enforcement v1 — hard edge capacity + reroute / trunk split
+- **OD-4**: GA selector v1 — Evolution Search (route/probe/commit 안정화 후)
+
+## 불변식·금지
+
+- `reconstruction` barrier: `barrier_xy = wall_coords ∪ infer_shell_barrier_coords(...)` — `passes_two_axis_evidence_guard`는 원본 `wall_coords`만 사용.
+- replay artifact를 solver 입력으로 주입 금지.
+- 제거된 `shapez_asteroid` 패키지 전제 코드 작성 금지.

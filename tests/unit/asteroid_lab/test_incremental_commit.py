@@ -167,7 +167,7 @@ def test_incremental_commit_confirms_connected_candidate() -> None:
     assert placement.reservation.reservation_state == ReservationState.CONFIRMED
     assert placement.reservation.candidate_id == "a:1"
     assert placement.reservation.reservation_id == "a:1:route:0"
-    assert placement.reservation.path[0] == (0, 0)
+    assert placement.reservation.path[0] == candidate.fixed_output_transport
     assert placement.reservation.path[-1] == (6, 0)
 
 

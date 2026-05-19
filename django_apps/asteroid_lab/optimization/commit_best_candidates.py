@@ -151,8 +151,12 @@ def commit_selected_candidates(
 
         path = probe.path
         fot = candidate.fixed_output_transport
-        if path and fot not in frozenset(path):
-            path = (fot,) + path
+        if path:
+            if fot in path:
+                idx = path.index(fot)
+                path = path[idx:]
+            else:
+                path = (fot,) + path
         skip_reason: CommitConflictReason | None = (
             _path_transport_conflict(path, candidate.transport_kind, tuple(reservations))
             or _protected_corridor_conflict(path, inp)

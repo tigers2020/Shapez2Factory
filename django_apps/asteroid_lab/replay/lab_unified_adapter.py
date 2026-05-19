@@ -93,6 +93,8 @@ def _cell_from_row(row: Mapping[str, Any]) -> ReplayCell:
         y=int(row["y"]),
         kind=str(row.get("cell_kind") or row.get("kind") or ""),
         transport=str(row.get("transport_kind") or row.get("transport") or ""),
+        tile_type=str(row.get("tile_type") or row.get("sprite_identifier") or ""),
+        rotation=int(row.get("rotation") or 0),
     )
 
 
@@ -102,6 +104,8 @@ def _overlay_from_row(row: Mapping[str, Any]) -> ReplayOverlayCell:
         y=int(row["y"]),
         kind=str(row.get("cell_kind") or row.get("kind") or ""),
         transport=str(row.get("transport_kind") or row.get("transport") or ""),
+        tile_type=str(row.get("tile_type") or row.get("sprite_identifier") or ""),
+        rotation=int(row.get("rotation") or 0),
     )
 
 

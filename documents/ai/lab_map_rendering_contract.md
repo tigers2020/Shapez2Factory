@@ -21,7 +21,39 @@ CANON 아님. [`django_apps/web/static/web/js/asteroid_miner_layout_lab.js`](../
 
 ## 스프라이트
 
-- **화이트리스트** `LAB_SPRITE_KNOWN`: 파일명은 ``identifiers.json`` 등에 나오는 블루프린트 ``T`` 문자열에 ``.svg``를 붙인 것과 동일한 경우만 ``<img>``로 그린다(예: ``SpacePipe_Forward`` → ``SpacePipe_Forward.svg``). ``tile_type``으로 매칭되지 않으면 ``cell_kind`` 소수 매핑으로 보조한다. ``space_pipe`` 같은 모호한 kind만으로는 스프라이트를 고르지 않는다.
+### 스프라이트 키 정책
+
+| 필드 | 책임 | 예시 |
+|------|------|------|
+| `cell_kind` / `kind` | 도메인 의미 (`space_belt`, `space_pipe`, 등) | **Identifier와 통일 금지** |
+| `tile_type` | **Canonical 스프라이트 키** = blueprint `T` = `ShapezGameIdentifier.value` | `SpaceBelt_Forward`, `SpacePipe_LeftTurn` |
+| `sprite_identifier` | `tile_type`의 **alias** (wire JSON에 동시 출력) | 항상 `tile_type`과 동일 값 |
+| `transport_kind` / `transport` | 도메인 채널 (`shape_belt`, `fluid_pipe`) | 스프라이트 lookup에 **직접 사용하지 않는다** |
+| `rotation` | quarter-turn (0–3) | 별도 변환 없이 CSS `rotate(90deg × R)` |
+
+**transport(belt/pipe) 스프라이트는 `tile_type`(= `sprite_identifier`) 필수다.** `cell_kind = space_belt`만으로는 variant(`Forward` / `LeftTurn` / `TripleSplitter` 등)를 구분할 수 없으므로 스프라이트를 선택하지 않는다. materializer `pick_tile_type`이 정본 T 값을 생성한다.
+
+### JS 스프라이트 resolution 순서
+
+1. `cell.sprite_identifier || cell.tile_type` → `labIdentifierSpriteRelpaths[t]` (DB 경로).
+2. 없으면 prefix fallback: `SpaceBelt_*` → `SpaceBelt/<T>.svg`, `SpacePipe_*` → `SpacePipe/<T>.svg`.
+3. 없으면 `cell_kind` → `LAB_SPRITE_CELL_KIND_TO_IDENTIFIER` (miner/extension 전용).
+4. 최후 fallback: `inferTransportSpriteIdentifier(cell)` — `Forward` variant만 반환 (turn·splitter는 `tile_type` 없으면 스프라이트 포기).
+
+### Wire JSON 계약
+
+`unified_serialization.replay_map_view_to_json_dict`가 `full_cells` / `overlay_cells` / `cell_delta` 각 셀에 아래 두 필드를 **항상** 함께 출력한다:
+
+```json
+{ "tile_type": "SpaceBelt_Forward", "sprite_identifier": "SpaceBelt_Forward" }
+```
+
+`sprite_identifier`는 추가 처리 없이 `tile_type`과 동일한 값이다. 소비자(JS / 서드파티)는 둘 중 어느 쪽을 읽어도 무방하다.
+
+### LAB_SPRITE_KNOWN (구 이름, 현재 없음)
+
+이전 문서에서 언급된 `LAB_SPRITE_KNOWN` 화이트리스트 및 `labSpriteFilenameForCell`은 현재 JS 구현에 존재하지 않는다. 위 resolution 순서와 `labIdentifierSpriteRelpaths` (DB 경로 맵)이 정본이다.
+
 - Django Admin 유전자 샘플 미니맵은 `django_apps/asteroid_lab/admin_lab_sprites.py`의 `lab_sprite_resolve(tile_type, cell_kind, rotation)`으로 **T·kind→파일**, **R→표시 quarter**를 묶는다(파일 선택에 R 오프셋은 두지 않음).
 
 ## Admin 미니맵 vs Lab 리플레이 (격자)

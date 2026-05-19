@@ -60,7 +60,7 @@ def _cell_from_dict(data: dict[str, Any]) -> ReplayCell:
         y=_require_int(data.get("y"), field="cell.y"),
         kind=str(data.get("kind") or ""),
         transport=str(data.get("transport") or ""),
-        tile_type=str(data.get("tile_type") or ""),
+        tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
     )
 
@@ -72,7 +72,7 @@ def _cell_delta_from_dict(data: dict[str, Any]) -> ReplayCellDelta:
         kind=str(data.get("kind") or ""),
         transport=str(data.get("transport") or ""),
         op=str(data.get("op") or "set"),
-        tile_type=str(data.get("tile_type") or ""),
+        tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
     )
 
@@ -83,7 +83,7 @@ def _overlay_from_dict(data: dict[str, Any]) -> ReplayOverlayCell:
         y=_require_int(data.get("y"), field="overlay.y"),
         kind=str(data.get("kind") or ""),
         transport=str(data.get("transport") or ""),
-        tile_type=str(data.get("tile_type") or ""),
+        tile_type=str(data.get("tile_type") or data.get("sprite_identifier") or ""),
         rotation=int(data.get("rotation") or 0),
     )
 
@@ -117,6 +117,7 @@ def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
                 "kind": c.kind,
                 "transport": c.transport,
                 "tile_type": c.tile_type,
+                "sprite_identifier": c.tile_type,
                 "rotation": c.rotation,
             }
             for c in map_view.full_cells
@@ -129,6 +130,7 @@ def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
                 "transport": c.transport,
                 "op": c.op,
                 "tile_type": c.tile_type,
+                "sprite_identifier": c.tile_type,
                 "rotation": c.rotation,
             }
             for c in map_view.cell_delta
@@ -140,6 +142,7 @@ def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
                 "kind": c.kind,
                 "transport": c.transport,
                 "tile_type": c.tile_type,
+                "sprite_identifier": c.tile_type,
                 "rotation": c.rotation,
             }
             for c in map_view.overlay_cells

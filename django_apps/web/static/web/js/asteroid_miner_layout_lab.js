@@ -135,7 +135,10 @@
     const t = tileType == null ? "" : String(tileType).trim();
     if (!t) return null;
     const rel = labIdentifierSpriteRelpaths[t];
-    return typeof rel === "string" && rel.length ? rel : null;
+    if (typeof rel === "string" && rel.length) return rel;
+    if (t.startsWith("SpaceBelt_")) return "SpaceBelt/" + t + ".svg";
+    if (t.startsWith("SpacePipe_")) return "SpacePipe/" + t + ".svg";
+    return null;
   }
 
   function labSpriteRelpathFromCellKind(cellKind) {
@@ -146,11 +149,27 @@
     return labSpriteRelpathFromTileType(ident);
   }
 
+  /** Last-resort: infer Forward-only sprite from transport kind when tile_type is absent.
+   * Turn/splitter/merger variants require server-provided tile_type — no topology inference here. */
+  function inferTransportSpriteIdentifier(cell) {
+    const tk = cell.transport_kind || cell.transport;
+    if (!tk) return null;
+    if (tk === "shape_belt" || cell.cell_kind === "space_belt") return "SpaceBelt_Forward";
+    if (tk === "fluid_pipe" || cell.cell_kind === "space_pipe") return "SpacePipe_Forward";
+    return null;
+  }
+
   function labSpriteRelpathForCell(cell) {
     if (!cell || typeof cell !== "object") return null;
-    let rel = labSpriteRelpathFromTileType(cell.tile_type);
+    // sprite_identifier is the alias emitted alongside tile_type; prefer it so either field works.
+    const tileKey = cell.sprite_identifier || cell.tile_type;
+    let rel = labSpriteRelpathFromTileType(tileKey);
     if (!rel && cell.cell_kind != null) {
       rel = labSpriteRelpathFromCellKind(cell.cell_kind);
+    }
+    if (!rel) {
+      const inferred = inferTransportSpriteIdentifier(cell);
+      if (inferred) rel = labSpriteRelpathFromTileType(inferred);
     }
     return rel;
   }
@@ -369,6 +388,7 @@
         cell_kind: c.kind != null ? c.kind : c.cell_kind,
         transport_kind: c.transport != null ? c.transport : c.transport_kind,
         tile_type: c.tile_type != null ? String(c.tile_type) : "",
+        sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
         rotation: c.rotation,
       });
     }
@@ -389,6 +409,7 @@
         cell_kind: c.kind != null ? c.kind : c.cell_kind,
         transport_kind: c.transport != null ? c.transport : c.transport_kind,
         tile_type: c.tile_type != null ? String(c.tile_type) : "",
+        sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
         rotation: c.rotation,
       });
     }
@@ -408,6 +429,8 @@
         y: c.y,
         cell_kind: c.kind != null ? c.kind : c.cell_kind,
         transport_kind: c.transport != null ? c.transport : c.transport_kind,
+        tile_type: c.tile_type != null ? String(c.tile_type) : "",
+        sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
         rotation: c.rotation,
       });
     }

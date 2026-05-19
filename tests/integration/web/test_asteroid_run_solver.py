@@ -150,6 +150,15 @@ def _assert_validation_completed_has_placement_overlays(frames: list[dict[str, A
         "validation.completed overlay must include at least one projected placement cell "
         f"(kinds {_PLACEMENT_OVERLAY_KINDS!r})"
     )
+    # Transport overlay cells must carry tile_type + sprite_identifier for front sprite lookup.
+    transport_cells = [c for c in placement if c["kind"] in ("space_belt", "space_pipe")]
+    for tc in transport_cells:
+        assert isinstance(tc.get("tile_type"), str) and tc["tile_type"], (
+            f"transport overlay cell missing tile_type: {tc!r}"
+        )
+        assert tc.get("sprite_identifier") == tc["tile_type"], (
+            f"sprite_identifier must equal tile_type in wire JSON: {tc!r}"
+        )
 
 
 def _lab_replay_frames_from_page(content: bytes) -> list[dict[str, Any]]:

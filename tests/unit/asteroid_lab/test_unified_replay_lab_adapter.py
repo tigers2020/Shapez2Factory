@@ -228,3 +228,117 @@ def test_lab_adapter_rejects_candidate_event_type() -> None:
     )
     with pytest.raises(LabUnifiedAdapterError):
         lab_snapshot_event_to_unified(event, frame_index=0)
+
+
+def test_lab_adapter_preserves_transport_tile_type() -> None:
+    """full_map row with tile_type must survive the adapter as map_view.full_cells[].tile_type."""
+    event = SnapshotEventDTO(
+        event_key="step0_with_belt",
+        phase="decode",
+        event_type=EVENT_TYPE_DECODE_RAW_LOADED,
+        title="raw decode",
+        full_map=[
+            {
+                "x": 1,
+                "y": 0,
+                "cell_kind": "space_belt",
+                "transport_kind": "shape_belt",
+                "tile_type": "SpaceBelt_Forward",
+                "rotation": 0,
+            }
+        ],
+    )
+    frame = lab_snapshot_event_to_unified(event, frame_index=0)
+    assert len(frame.map_view.full_cells) == 1
+    cell = frame.map_view.full_cells[0]
+    assert cell.tile_type == "SpaceBelt_Forward"
+    assert cell.rotation == 0
+
+
+def test_lab_adapter_transport_tile_type_round_trips_as_sprite_identifier() -> None:
+    """After JSON round-trip, sprite_identifier alias must equal tile_type."""
+    event = SnapshotEventDTO(
+        event_key="rt_belt",
+        phase="decode",
+        event_type=EVENT_TYPE_DECODE_RAW_LOADED,
+        title="raw",
+        full_map=[
+            {
+                "x": 2,
+                "y": 1,
+                "cell_kind": "space_pipe",
+                "transport_kind": "fluid_pipe",
+                "tile_type": "SpacePipe_LeftTurn",
+                "rotation": 1,
+            }
+        ],
+    )
+    frame = lab_snapshot_event_to_unified(event, frame_index=0)
+    restored = unified_replay_frame_json_round_trip(frame)
+    cell = restored.map_view.full_cells[0]
+    assert cell.tile_type == "SpacePipe_LeftTurn"
+    assert cell.rotation == 1
+
+
+def test_lab_adapter_sprite_identifier_fallback_in_input() -> None:
+    """Rows carrying sprite_identifier (no tile_type) must still resolve the sprite key."""
+    event = SnapshotEventDTO(
+        event_key="alias_only",
+        phase="decode",
+        event_type=EVENT_TYPE_DECODE_RAW_LOADED,
+        title="raw",
+        full_map=[
+            {
+                "x": 3,
+                "y": 0,
+                "cell_kind": "space_belt",
+                "transport_kind": "shape_belt",
+                "sprite_identifier": "SpaceBelt_RightTurn",
+                "rotation": 3,
+            }
+        ],
+    )
+    frame = lab_snapshot_event_to_unified(event, frame_index=0)
+    cell = frame.map_view.full_cells[0]
+    assert cell.tile_type == "SpaceBelt_RightTurn"
+    assert cell.rotation == 3
+
+
+def test_lab_adapter_sprite_identifier_in_serialized_json() -> None:
+    """Serialized map_view JSON must contain sprite_identifier == tile_type for every cell."""
+    from django_apps.asteroid_lab.replay.unified_serialization import (
+        unified_replay_frame_to_json_dict,
+    )
+
+    event = SnapshotEventDTO(
+        event_key="serial_check",
+        phase="decode",
+        event_type=EVENT_TYPE_DECODE_RAW_LOADED,
+        title="raw",
+        full_map=[
+            {
+                "x": 1,
+                "y": 0,
+                "cell_kind": "space_belt",
+                "transport_kind": "shape_belt",
+                "tile_type": "SpaceBelt_Forward",
+                "rotation": 0,
+            },
+            {
+                "x": 2,
+                "y": 0,
+                "cell_kind": "space_pipe",
+                "transport_kind": "fluid_pipe",
+                "tile_type": "SpacePipe_LeftTurn",
+                "rotation": 1,
+            },
+        ],
+    )
+    frame = lab_snapshot_event_to_unified(event, frame_index=0)
+    d = unified_replay_frame_to_json_dict(frame)
+    for cell in d["map_view"]["full_cells"]:
+        assert "sprite_identifier" in cell, "sprite_identifier alias missing from serialized cell"
+        assert cell["sprite_identifier"] == cell["tile_type"], (
+            "sprite_identifier must equal tile_type in wire JSON"
+        )
+

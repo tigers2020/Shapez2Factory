@@ -82,6 +82,10 @@ test_route_materializer_cell_order_is_deterministic
 - DTO: `materialization_dtos.py`
 - 테스트: `tests/unit/asteroid_lab/test_route_materializer.py`
 
+## Placement equipment (K2)
+
+CONFIRMED extractor·extension 승격: [`phase_k2_placement_materialization.md`](phase_k2_placement_materialization.md) (`merge_materialized_layout` after route cells).
+
 ## 다음 Phase
 
-→ [`phase_l_final_validation.md`](phase_l_final_validation.md) (PR7: `commit_selected_candidates` → `materialize_route_network` → read-only validation → 기존 replay thin adapter; [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md))
+→ [`phase_l_final_validation.md`](phase_l_final_validation.md) (PR7: `commit_selected_candidates` → route + placement materialize → read-only validation → replay; [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md))

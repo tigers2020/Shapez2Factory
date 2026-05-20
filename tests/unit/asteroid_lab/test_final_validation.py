@@ -20,9 +20,20 @@ from django_apps.asteroid_lab.optimization.enums import (
 )
 from django_apps.asteroid_lab.optimization.final_validation import validate_final_layout
 from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal, RouteReservation
+from django_apps.asteroid_lab.optimization.gene_template import (
+    CANONICAL_EXTRACTOR_OFFSET,
+    CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+    CANONICAL_OUTPUT_DIR,
+    CANONICAL_ROUTE_PROBE_START_OFFSET,
+    GeneTemplate,
+)
 from django_apps.asteroid_lab.optimization.materialization_dtos import (
     MaterializedLayoutCells,
     MaterializedTransportCell,
+)
+from django_apps.asteroid_lab.optimization.placement_network_materializer import (
+    materialize_confirmed_placements,
+    merge_materialized_layout,
 )
 from django_apps.asteroid_lab.optimization.route_network_materializer import (
     materialize_route_network,
@@ -33,12 +44,36 @@ from tests.unit.asteroid_lab.test_incremental_commit import (
 )
 
 
+def _test_gene_template() -> GeneTemplate:
+    return GeneTemplate(
+        gene_id="test_gene",
+        name="test",
+        occupied_offsets=frozenset({CANONICAL_EXTRACTOR_OFFSET}),
+        extractor_offset=CANONICAL_EXTRACTOR_OFFSET,
+        extension_offsets=(),
+        output_dir=CANONICAL_OUTPUT_DIR,
+        fixed_output_transport_offset=CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+        route_probe_start_offset=CANONICAL_ROUTE_PROBE_START_OFFSET,
+        throughput_factor=8,
+        topology_signature_base="test_gene",
+    )
+
+
+def _merged_layout(commit, candidates_by_id):
+    tpl = _test_gene_template()
+    route = materialize_route_network(commit, candidates_by_id)
+    equipment = materialize_confirmed_placements(
+        commit, candidates_by_id, gene_templates_by_id={tpl.gene_id: tpl}
+    )
+    return merge_materialized_layout(route, equipment).layout
+
+
 def test_validation_read_only() -> None:
     inp = _open_void_inp()
     candidate = _shape_candidate(candidate_id="a:1")
     plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1",))
     commit = commit_selected_candidates(plan, {candidate.candidate_id: candidate}, inp=inp)
-    mat = materialize_route_network(commit, {candidate.candidate_id: candidate})
+    layout = _merged_layout(commit, {candidate.candidate_id: candidate})
     inp_before = replace(inp)
     commit_before = replace(
         commit,
@@ -47,13 +82,13 @@ def test_validation_read_only() -> None:
 
     r1 = validate_final_layout(
         commit,
-        mat.layout,
+        layout,
         inp=inp,
         candidates_by_id={candidate.candidate_id: candidate},
     )
     r2 = validate_final_layout(
         commit,
-        mat.layout,
+        layout,
         inp=inp,
         candidates_by_id={candidate.candidate_id: candidate},
     )
@@ -106,12 +141,12 @@ def test_validation_passes_connected_layout() -> None:
     candidate = _shape_candidate(candidate_id="a:1")
     plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1",))
     commit = commit_selected_candidates(plan, {candidate.candidate_id: candidate}, inp=inp)
-    mat = materialize_route_network(commit, {candidate.candidate_id: candidate})
-    assert mat.layout is not None
+    layout = _merged_layout(commit, {candidate.candidate_id: candidate})
+    assert layout is not None
 
     result = validate_final_layout(
         commit,
-        mat.layout,
+        layout,
         inp=inp,
         candidates_by_id={candidate.candidate_id: candidate},
     )

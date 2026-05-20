@@ -155,8 +155,13 @@ def run_solver_runtime_for_project(
     run_id = int(run_dto.id)
 
     server_xy_params = loaded.server_xy_params
+    gene_templates_by_id = {g.gene_id: g for g in gene_templates}
     recorder: SolverRuntimeReplayRecorder | None = (
-        SolverRuntimeReplayRecorder(loaded, server_xy_params)
+        SolverRuntimeReplayRecorder(
+            loaded,
+            server_xy_params,
+            gene_templates_by_id=gene_templates_by_id,
+        )
         if server_xy_params is not None
         else None
     )

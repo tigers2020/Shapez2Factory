@@ -351,8 +351,30 @@ def _minimal_gene_candidate(
 
 
 def test_record_candidate_pool_details_emits_generated_and_probe_frames() -> None:
+    from django_apps.asteroid_lab.optimization.gene_template import (
+        CANONICAL_EXTRACTOR_OFFSET,
+        CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+        CANONICAL_OUTPUT_DIR,
+        CANONICAL_ROUTE_PROBE_START_OFFSET,
+        GeneTemplate,
+    )
+
     loaded = _minimal_loaded()
-    rec = SolverRuntimeReplayRecorder(loaded, _SERVER_XY_PARAMS)
+    tpl = GeneTemplate(
+        gene_id="test_gene",
+        name="test",
+        occupied_offsets=frozenset({CANONICAL_EXTRACTOR_OFFSET}),
+        extractor_offset=CANONICAL_EXTRACTOR_OFFSET,
+        extension_offsets=(),
+        output_dir=CANONICAL_OUTPUT_DIR,
+        fixed_output_transport_offset=CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+        route_probe_start_offset=CANONICAL_ROUTE_PROBE_START_OFFSET,
+        throughput_factor=8,
+        topology_signature_base="test_gene",
+    )
+    rec = SolverRuntimeReplayRecorder(
+        loaded, _SERVER_XY_PARAMS, gene_templates_by_id={tpl.gene_id: tpl}
+    )
     candidate = _minimal_gene_candidate()
     pool = CandidateGenerationResult(normal_candidates=(candidate,), rejected_candidates=())
     rec.record_candidate_pool_details(pool)
@@ -365,6 +387,351 @@ def test_record_candidate_pool_details_emits_generated_and_probe_frames() -> Non
     )
     assert gen_frame.inspector["candidate_id"] == candidate.candidate_id
     assert gen_frame.map_view.overlay_cells
+    assert gen_frame.map_view.overlay_cells[0].kind == "shape_miner"
+
+
+def test_record_route_materialized_includes_equipment_cell_delta() -> None:
+    from django_apps.asteroid_lab.optimization.gene_template import (
+        CANONICAL_EXTRACTOR_OFFSET,
+        CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+        CANONICAL_OUTPUT_DIR,
+        CANONICAL_ROUTE_PROBE_START_OFFSET,
+        GeneTemplate,
+    )
+    from django_apps.asteroid_lab.optimization.placement_network_materializer import (
+        materialize_confirmed_placements,
+        merge_materialized_layout,
+    )
+    from django_apps.asteroid_lab.optimization.route_network_materializer import (
+        materialize_route_network,
+    )
+    from django_apps.asteroid_lab.replay.replay_recording_cells import (
+        materialized_cells_to_cell_delta,
+    )
+
+    loaded = _minimal_loaded()
+    tpl = GeneTemplate(
+        gene_id="test_gene",
+        name="test",
+        occupied_offsets=frozenset({CANONICAL_EXTRACTOR_OFFSET}),
+        extractor_offset=CANONICAL_EXTRACTOR_OFFSET,
+        extension_offsets=(),
+        output_dir=CANONICAL_OUTPUT_DIR,
+        fixed_output_transport_offset=CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+        route_probe_start_offset=CANONICAL_ROUTE_PROBE_START_OFFSET,
+        throughput_factor=8,
+        topology_signature_base="test_gene",
+    )
+    rec = SolverRuntimeReplayRecorder(loaded, _SERVER_XY_PARAMS)
+    base_probe = _minimal_gene_candidate().route_probe_result
+    assert base_probe.reached_goal is not None
+    probe = RouteProbeResult(
+        reachable=True,
+        path=((1, 0), (2, 0), (3, 0)),
+        cost=3,
+        expanded_nodes=3,
+        reached_goal=base_probe.reached_goal,
+        goal_priority=base_probe.goal_priority,
+        failure_reason=None,
+    )
+    candidate = GeneCandidate(
+        candidate_id="g:0,0:e:shape_belt",
+        gene_id="test_gene",
+        topology_signature="sig",
+        extractor=(0, 0),
+        extensions=(),
+        occupied_cells=frozenset({(0, 0)}),
+        route_probe_start=(2, 0),
+        fixed_output_transport=(1, 0),
+        output_dir=Direction.E,
+        transport_kind=TransportKind.SHAPE_BELT,
+        base_throughput=8,
+        base_score=8.0,
+        route_probe_result=probe,
+    )
+    probe = candidate.route_probe_result
+    assert probe.reached_goal is not None
+    fot = candidate.fixed_output_transport
+    path = probe.path
+    if fot in path:
+        path = path[path.index(fot) :]
+    commit = IncrementalCommitResult(
+        confirmed=(
+            ConfirmedGenePlacement(
+                candidate_id=candidate.candidate_id,
+                reservation=RouteReservation(
+                    reservation_id=f"{candidate.candidate_id}:route:0",
+                    candidate_id=candidate.candidate_id,
+                    transport_kind=candidate.transport_kind,
+                    path=path,
+                    reserved_cells=frozenset(path),
+                    cost=probe.cost,
+                    reached_goal=probe.reached_goal,
+                    goal_priority=probe.goal_priority,
+                    reservation_state=ReservationState.CONFIRMED,
+                    domain_cell_transitions=(),
+                ),
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+        ),
+        skipped_candidate_ids=(),
+        goal_assigned_platforms={},
+    )
+    route = materialize_route_network(commit, {candidate.candidate_id: candidate})
+    equipment = materialize_confirmed_placements(
+        commit, {candidate.candidate_id: candidate}, gene_templates_by_id={tpl.gene_id: tpl}
+    )
+    merged = merge_materialized_layout(route, equipment)
+    assert merged.layout is not None
+    rec.record_route_materialized(merged)
+    delta = materialized_cells_to_cell_delta(merged.layout, rec._ctx)
+    kinds = {d.kind for d in delta}
+    assert "shape_miner" in kinds
+    route_frame = next(
+        f for f in rec.build_frames() if f.event_type == ReplayEventType.ROUTE_MATERIALIZED
+    )
+    assert route_frame.inspector["materialized_equipment_cell_count"] >= 1
+    assert route_frame.map_view.cell_delta == delta
+
+
+def test_route_materialized_and_result_layout_share_cell_delta() -> None:
+    from django_apps.asteroid_lab.optimization.gene_template import (
+        CANONICAL_EXTRACTOR_OFFSET,
+        CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+        CANONICAL_OUTPUT_DIR,
+        CANONICAL_ROUTE_PROBE_START_OFFSET,
+        GeneTemplate,
+    )
+    from django_apps.asteroid_lab.optimization.placement_network_materializer import (
+        materialize_confirmed_placements,
+        merge_materialized_layout,
+    )
+    from django_apps.asteroid_lab.optimization.route_network_materializer import (
+        materialize_route_network,
+    )
+
+    loaded = _minimal_loaded()
+    tpl = GeneTemplate(
+        gene_id="test_gene",
+        name="test",
+        occupied_offsets=frozenset({CANONICAL_EXTRACTOR_OFFSET}),
+        extractor_offset=CANONICAL_EXTRACTOR_OFFSET,
+        extension_offsets=(),
+        output_dir=CANONICAL_OUTPUT_DIR,
+        fixed_output_transport_offset=CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+        route_probe_start_offset=CANONICAL_ROUTE_PROBE_START_OFFSET,
+        throughput_factor=8,
+        topology_signature_base="test_gene",
+    )
+    rec = SolverRuntimeReplayRecorder(
+        loaded, _SERVER_XY_PARAMS, gene_templates_by_id={tpl.gene_id: tpl}
+    )
+    base_probe = _minimal_gene_candidate().route_probe_result
+    assert base_probe.reached_goal is not None
+    probe = RouteProbeResult(
+        reachable=True,
+        path=((1, 0), (2, 0), (3, 0)),
+        cost=3,
+        expanded_nodes=3,
+        reached_goal=base_probe.reached_goal,
+        goal_priority=base_probe.goal_priority,
+        failure_reason=None,
+    )
+    candidate = GeneCandidate(
+        candidate_id="g:0,0:e:shape_belt",
+        gene_id="test_gene",
+        topology_signature="sig",
+        extractor=(0, 0),
+        extensions=(),
+        occupied_cells=frozenset({(0, 0)}),
+        route_probe_start=(2, 0),
+        fixed_output_transport=(1, 0),
+        output_dir=Direction.E,
+        transport_kind=TransportKind.SHAPE_BELT,
+        base_throughput=8,
+        base_score=8.0,
+        route_probe_result=probe,
+    )
+    assert candidate.route_probe_result.reached_goal is not None
+    fot = candidate.fixed_output_transport
+    path = candidate.route_probe_result.path
+    if fot in path:
+        path = path[path.index(fot) :]
+    commit = IncrementalCommitResult(
+        confirmed=(
+            ConfirmedGenePlacement(
+                candidate_id=candidate.candidate_id,
+                reservation=RouteReservation(
+                    reservation_id=f"{candidate.candidate_id}:route:0",
+                    candidate_id=candidate.candidate_id,
+                    transport_kind=candidate.transport_kind,
+                    path=path,
+                    reserved_cells=frozenset(path),
+                    cost=probe.cost,
+                    reached_goal=probe.reached_goal,
+                    goal_priority=probe.goal_priority,
+                    reservation_state=ReservationState.CONFIRMED,
+                    domain_cell_transitions=(),
+                ),
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+        ),
+        skipped_candidate_ids=(),
+        goal_assigned_platforms={},
+    )
+    route = materialize_route_network(commit, {candidate.candidate_id: candidate})
+    equipment = materialize_confirmed_placements(
+        commit, {candidate.candidate_id: candidate}, gene_templates_by_id={tpl.gene_id: tpl}
+    )
+    merged = merge_materialized_layout(route, equipment)
+    assert merged.layout is not None
+    validation = ValidationResult(passed=True, issues=())
+    rec.record_route_materialized(merged)
+    rec.record_result_layout(
+        commit=commit,
+        materialization=merged,
+        validation=validation,
+        solver_summary={"issue_codes": []},
+    )
+    route_frame = next(
+        f for f in rec.build_frames() if f.event_type == ReplayEventType.ROUTE_MATERIALIZED
+    )
+    result_frame = next(
+        f for f in rec.build_frames() if f.event_type == ReplayEventType.RESULT_LAYOUT
+    )
+    assert route_frame.map_view.cell_delta == result_frame.map_view.cell_delta
+
+
+def test_candidate_generated_keeps_equipment_in_overlay_not_full_cells() -> None:
+    loaded = _minimal_loaded()
+    from django_apps.asteroid_lab.optimization.gene_template import (
+        CANONICAL_EXTRACTOR_OFFSET,
+        CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+        CANONICAL_OUTPUT_DIR,
+        CANONICAL_ROUTE_PROBE_START_OFFSET,
+        GeneTemplate,
+    )
+
+    tpl = GeneTemplate(
+        gene_id="test_gene",
+        name="test",
+        occupied_offsets=frozenset({CANONICAL_EXTRACTOR_OFFSET}),
+        extractor_offset=CANONICAL_EXTRACTOR_OFFSET,
+        extension_offsets=(),
+        output_dir=CANONICAL_OUTPUT_DIR,
+        fixed_output_transport_offset=CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
+        route_probe_start_offset=CANONICAL_ROUTE_PROBE_START_OFFSET,
+        throughput_factor=8,
+        topology_signature_base="test_gene",
+    )
+    rec = SolverRuntimeReplayRecorder(
+        loaded, _SERVER_XY_PARAMS, gene_templates_by_id={tpl.gene_id: tpl}
+    )
+    candidate = _minimal_gene_candidate()
+    pool = CandidateGenerationResult(normal_candidates=(candidate,), rejected_candidates=())
+    rec.record_candidate_pool_details(pool)
+    gen_frame = next(
+        f for f in rec.build_frames() if f.event_type == ReplayEventType.CANDIDATE_GENERATED
+    )
+    overlay_kinds = {c.kind for c in gen_frame.map_view.overlay_cells}
+    full_kinds = {c.kind for c in gen_frame.map_view.full_cells}
+    assert "shape_miner" in overlay_kinds
+    assert "shape_miner" not in full_kinds
+
+
+def test_materialized_cell_delta_emits_transport_before_equipment() -> None:
+    from django_apps.asteroid_lab.optimization.gene_template_loader import (
+        gene_template_from_generated_sample,
+    )
+    from django_apps.asteroid_lab.optimization.placement_network_materializer import (
+        materialize_confirmed_placements,
+        merge_materialized_layout,
+    )
+    from django_apps.asteroid_lab.optimization.route_network_materializer import (
+        materialize_route_network,
+    )
+    from django_apps.asteroid_lab.replay.replay_recording_cells import (
+        materialized_cells_to_cell_delta,
+    )
+    from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+        generate_exhaustive_sample_genes,
+    )
+
+    genes, _ = generate_exhaustive_sample_genes(max_extensions=0, transport_kinds=("belt",))
+    tpl = gene_template_from_generated_sample(genes[0])
+    goal = RouteGoal(
+        coord=(6, 0),
+        goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+        transport_kind=TransportKind.SHAPE_BELT,
+        priority=10,
+        existing_trunk=False,
+    )
+    cand = GeneCandidate(
+        candidate_id="order:test",
+        gene_id=tpl.gene_id,
+        topology_signature="sig",
+        extractor=(0, 0),
+        extensions=(),
+        occupied_cells=frozenset({(0, 0)}),
+        route_probe_start=(2, 0),
+        fixed_output_transport=(1, 0),
+        output_dir=Direction.E,
+        transport_kind=TransportKind.SHAPE_BELT,
+        base_throughput=8,
+        base_score=8.0,
+        route_probe_result=RouteProbeResult(
+            reachable=True,
+            path=((1, 0), (2, 0), (3, 0), (6, 0)),
+            cost=4,
+            expanded_nodes=4,
+            reached_goal=goal,
+            goal_priority=10,
+            failure_reason=None,
+        ),
+    )
+
+    probe = cand.route_probe_result
+    assert probe.reached_goal is not None
+    fot = cand.fixed_output_transport
+    path = probe.path
+    if fot in path:
+        path = path[path.index(fot) :]
+    commit = IncrementalCommitResult(
+        confirmed=(
+            ConfirmedGenePlacement(
+                candidate_id=cand.candidate_id,
+                reservation=RouteReservation(
+                    reservation_id="order:test:route:0",
+                    candidate_id=cand.candidate_id,
+                    transport_kind=cand.transport_kind,
+                    path=path,
+                    reserved_cells=frozenset(path),
+                    cost=probe.cost,
+                    reached_goal=probe.reached_goal,
+                    goal_priority=probe.goal_priority,
+                    reservation_state=ReservationState.CONFIRMED,
+                    domain_cell_transitions=(),
+                ),
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+        ),
+        skipped_candidate_ids=(),
+        goal_assigned_platforms={},
+    )
+    route = materialize_route_network(commit, {cand.candidate_id: cand})
+    equipment = materialize_confirmed_placements(
+        commit, {cand.candidate_id: cand}, gene_templates_by_id={tpl.gene_id: tpl}
+    )
+    merged = merge_materialized_layout(route, equipment)
+    assert merged.layout is not None
+    ctx = ReplayProjectionContext(server_xy_params=_SERVER_XY_PARAMS)
+    delta = materialized_cells_to_cell_delta(merged.layout, ctx)
+    transport_idxs = [i for i, d in enumerate(delta) if d.kind == "transport"]
+    equipment_idxs = [
+        i for i, d in enumerate(delta) if d.kind in ("shape_miner", "shape_miner_extension")
+    ]
+    assert transport_idxs and equipment_idxs
+    assert max(transport_idxs) < min(equipment_idxs)
 
 
 def test_record_candidate_pool_details_emits_rejected_with_probe_frames() -> None:

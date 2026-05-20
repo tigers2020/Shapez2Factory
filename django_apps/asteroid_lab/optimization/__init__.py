@@ -110,11 +110,16 @@ from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     loaded_reconstruction_snapshot_from_result,
 )
 from django_apps.asteroid_lab.optimization.materialization_dtos import (
+    MaterializedEquipmentCell,
     MaterializedLayoutCells,
     MaterializedTransportCell,
     RouteMaterializationResult,
 )
 from django_apps.asteroid_lab.optimization.pipeline_result import SolverRuntimeResult
+from django_apps.asteroid_lab.optimization.placement_network_materializer import (
+    materialize_confirmed_placements,
+    merge_materialized_layout,
+)
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     build_topology_graph,
     mineable_field_kind,
@@ -167,8 +172,11 @@ __all__ = [
     "GeneTemplate",
     "IncrementalCommitResult",
     "MaterializationFailureReason",
+    "MaterializedEquipmentCell",
     "MaterializedLayoutCells",
     "MaterializedTransportCell",
+    "materialize_confirmed_placements",
+    "merge_materialized_layout",
     "GenomeDiversityMetrics",
     "OptimizationInput",
     "PlacementCommitState",

@@ -30,6 +30,8 @@ server x/y 순서대로 deterministic candidate enumeration
 
 좌표 순서는 **후보 생성 순서**일 뿐 **commit 순서가 아니다.**
 
+**CONFIRMED 이후 허용:** [`phase_k2_placement_materialization.md`](phase_k2_placement_materialization.md) — commit 성공 placement + route reservation을 `MaterializedLayoutCells`로 승격 (replay·validation 출력). enumeration·probe 단계의 즉시 설치와 구분한다.
+
 ## 0.2 외곽 void에 실제 목표 belt/pipe를 먼저 설치하지 않는다
 
 **금지:**

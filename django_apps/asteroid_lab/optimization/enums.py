@@ -74,6 +74,7 @@ class ValidationIssueCode(StrEnum):
     ORPHAN_TRANSPORT = "orphan_transport"
     INVALID_COORD_CONTRACT = "invalid_coord_contract"
     MATERIALIZATION_FAILED = "materialization_failed"
+    PLACEMENT_NOT_MATERIALIZED = "placement_not_materialized"
     RESERVED_PATH_MISMATCH = "reserved_path_mismatch"
 
 
@@ -92,6 +93,7 @@ class MaterializationFailureReason(StrEnum):
     """Phase K route materialization terminal failure reasons."""
 
     TRANSPORT_KIND_OVERLAP = "transport_kind_overlap"
+    EQUIPMENT_TRANSPORT_COORD_OVERLAP = "equipment_transport_coord_overlap"
 
 
 class CommitConflictReason(StrEnum):

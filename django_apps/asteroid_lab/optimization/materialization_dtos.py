@@ -1,4 +1,4 @@
-"""Phase K — materialized transport layout DTOs (PR6)."""
+"""Phase K — materialized layout DTOs (transport + confirmed placement equipment)."""
 
 from __future__ import annotations
 
@@ -19,10 +19,21 @@ class MaterializedTransportCell:
 
 
 @dataclass(frozen=True, slots=True)
+class MaterializedEquipmentCell:
+    """One confirmed extractor or extension cell on the Server X/Y grid."""
+
+    coord: Coord
+    tile_type: str
+    cell_kind: str
+    rotation: int = 0
+
+
+@dataclass(frozen=True, slots=True)
 class MaterializedLayoutCells:
-    """Deterministically ordered transport cells from route materialization."""
+    """Deterministically ordered transport + equipment cells from commit materialization."""
 
     cells: tuple[MaterializedTransportCell, ...]
+    equipment_cells: tuple[MaterializedEquipmentCell, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

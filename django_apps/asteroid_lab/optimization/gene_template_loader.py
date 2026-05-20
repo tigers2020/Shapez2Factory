@@ -13,7 +13,9 @@ from django_apps.asteroid_lab.optimization.gene_template import (
     CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
     CANONICAL_OUTPUT_DIR,
     CANONICAL_ROUTE_PROBE_START_OFFSET,
+    ExtensionAttachment,
     GeneTemplate,
+    extension_attachments_parent_first,
     throughput_factor_for_extension_count,
 )
 from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
@@ -124,6 +126,36 @@ def parse_gene_template_record(record: dict[str, Any]) -> GeneTemplate:
         msg = "topology_signature_base must be a non-empty string"
         raise ValueError(msg)
 
+    raw_attach = record.get("extension_attachments", [])
+    extension_attachments: tuple[ExtensionAttachment, ...] = ()
+    if raw_attach:
+        if not isinstance(raw_attach, list):
+            msg = "extension_attachments must be a list"
+            raise ValueError(msg)
+        parsed: list[ExtensionAttachment] = []
+        for item in raw_attach:
+            if not isinstance(item, dict):
+                msg = "extension_attachments[] must be objects"
+                raise ValueError(msg)
+            ad = item.get("attach_dir")
+            if not isinstance(ad, str) or not ad:
+                msg = "extension_attachments[].attach_dir required"
+                raise ValueError(msg)
+            parsed.append(
+                ExtensionAttachment(
+                    parent_offset=_parse_coord_pair(
+                        item.get("parent_offset"), field="parent_offset"
+                    ),
+                    child_offset=_parse_coord_pair(
+                        item.get("child_offset"), field="child_offset"
+                    ),
+                    attach_dir=ad,
+                )
+            )
+        extension_attachments = tuple(
+            sorted(parsed, key=lambda a: (a.child_offset[0], a.child_offset[1]))
+        )
+
     return GeneTemplate(
         gene_id=gene_id,
         name=name,
@@ -135,7 +167,29 @@ def parse_gene_template_record(record: dict[str, Any]) -> GeneTemplate:
         route_probe_start_offset=route_probe_start_offset,
         throughput_factor=throughput_factor,
         topology_signature_base=topology_signature_base,
+        extension_attachments=extension_attachments,
     )
+
+
+def _extension_attachments_from_generated(
+    gene: GeneratedSampleGene,
+) -> tuple[ExtensionAttachment, ...]:
+    by_id = {n.node_id: n for n in gene.nodes}
+    parsed: list[ExtensionAttachment] = []
+    for node in gene.nodes:
+        if node.kind != "extension" or node.parent_id is None or node.attach_dir is None:
+            continue
+        parent = by_id.get(node.parent_id)
+        if parent is None:
+            continue
+        parsed.append(
+            ExtensionAttachment(
+                parent_offset=parent.coord,
+                child_offset=node.coord,
+                attach_dir=str(node.attach_dir),
+            )
+        )
+    return extension_attachments_parent_first(tuple(parsed))
 
 
 def load_gene_templates_from_json(path: str | Path) -> tuple[GeneTemplate, ...]:
@@ -198,4 +252,5 @@ def gene_template_from_generated_sample(gene: GeneratedSampleGene) -> GeneTempla
         route_probe_start_offset=_ROUTE_PROBE_START_OFFSET_CANONICAL,
         throughput_factor=throughput_factor_for_extension_count(gene.extension_count),
         topology_signature_base=gene.key,
+        extension_attachments=_extension_attachments_from_generated(gene),
     )

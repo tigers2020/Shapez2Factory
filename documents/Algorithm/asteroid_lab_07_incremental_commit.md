@@ -19,7 +19,7 @@ best genome
 → reserve path
 → detect conflict
 → commit route + **route_domain 전면 재빌드(RouteDomainSnapshotBuilder)**
-→ promote placement
+→ promote placement (route_domain `committed_occupied_cells` + K2 `equipment_cells` materialization)
 → rollback failed candidate
 ```
 

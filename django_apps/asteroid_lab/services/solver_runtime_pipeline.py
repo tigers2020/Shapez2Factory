@@ -20,6 +20,10 @@ from django_apps.asteroid_lab.optimization.input_contracts import ValidationIssu
 from django_apps.asteroid_lab.optimization.loaded_snapshot import LoadedReconstructionSnapshot
 from django_apps.asteroid_lab.optimization.materialization_dtos import RouteMaterializationResult
 from django_apps.asteroid_lab.optimization.pipeline_result import SolverRuntimeResult
+from django_apps.asteroid_lab.optimization.placement_network_materializer import (
+    materialize_confirmed_placements,
+    merge_materialized_layout,
+)
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_loaded_snapshot,
 )
@@ -126,7 +130,14 @@ def run_solver_runtime_pipeline(
         recorder.record_route_committed(commit)
         recorder.record_commit_details(plan, candidates_by_id, commit)
 
-    materialization = materialize_route_network(commit, candidates_by_id)
+    gene_templates_by_id = {g.gene_id: g for g in gene_templates}
+    route_materialization = materialize_route_network(commit, candidates_by_id)
+    equipment = materialize_confirmed_placements(
+        commit,
+        candidates_by_id,
+        gene_templates_by_id=gene_templates_by_id,
+    )
+    materialization = merge_materialized_layout(route_materialization, equipment)
     if recorder is not None:
         recorder.record_route_materialized(materialization)
 

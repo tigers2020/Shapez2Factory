@@ -207,6 +207,7 @@ test_incremental_commit_separates_shape_and_fluid_domains
 - [x] path graph aggregation
 - [x] belt/pipe sprite kind selection
 - [x] merger/splitter/triple conversion
+- [x] K2 `placement_network_materializer.py` — CONFIRMED equipment + `merge_materialized_layout`
 
 ### 필수 테스트 (PR6)
 
@@ -215,6 +216,12 @@ test_route_materializer_creates_straight_and_turns
 test_route_materializer_merges_same_kind_shared_paths
 test_route_materializer_rejects_shape_fluid_overlap
 test_route_materializer_selects_y_or_triple_merger
+```
+
+### K2 placement tests
+
+```text
+tests/unit/asteroid_lab/test_placement_materializer.py
 ```
 
 ---

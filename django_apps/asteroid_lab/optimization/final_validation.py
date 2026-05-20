@@ -197,6 +197,31 @@ def validate_final_layout(
                     )
                 )
 
+        equipment_coords = {c.coord: c.cell_kind for c in layout.equipment_cells}
+        for placement in commit.confirmed:
+            candidate = candidates_by_id.get(placement.candidate_id)
+            if candidate is None:
+                continue
+            if candidate.extractor not in equipment_coords:
+                issues.append(
+                    _issue(
+                        issue_code=ValidationIssueCode.PLACEMENT_NOT_MATERIALIZED,
+                        coord=candidate.extractor,
+                        candidate_id=placement.candidate_id,
+                        message="extractor not present in materialized equipment",
+                    )
+                )
+            for ext in candidate.extensions:
+                if ext not in equipment_coords:
+                    issues.append(
+                        _issue(
+                            issue_code=ValidationIssueCode.PLACEMENT_NOT_MATERIALIZED,
+                            coord=ext,
+                            candidate_id=placement.candidate_id,
+                            message="extension not present in materialized equipment",
+                        )
+                    )
+
     for coord in sorted(reserved_all, key=_coord_sort_key):
         if not _coord_contract_ok(coord):
             issues.append(

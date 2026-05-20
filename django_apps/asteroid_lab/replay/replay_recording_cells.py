@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.optimization.candidate_dtos import GeneCandidate
+from django_apps.asteroid_lab.optimization.gene_template import GeneTemplate
 from django_apps.asteroid_lab.optimization.loaded_snapshot import LoadedReconstructionSnapshot
 from django_apps.asteroid_lab.optimization.materialization_dtos import MaterializedLayoutCells
+from django_apps.asteroid_lab.optimization.placement_network_materializer import (
+    preview_equipment_for_candidate,
+)
 from django_apps.asteroid_lab.replay.projection_context import (
     ReplayProjectionContext,
     lab_xy_from_server_xy,
@@ -87,7 +91,11 @@ def materialized_cells_to_cell_delta(
     *,
     cap: int = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME,
 ) -> tuple[ReplayCellDelta, ...]:
-    """Convert materialized transport cells to replay cell_delta entries (server → Lab)."""
+    """Convert materialized transport + equipment to replay cell_delta (server → Lab).
+
+    Transport deltas are emitted first, then equipment, so Lab paint order keeps
+    miners/extensions visible if a coord ever slipped through (merge must still fail).
+    """
     out: list[ReplayCellDelta] = []
     for cell in layout.cells:
         sx, sy = cell.coord
@@ -98,6 +106,22 @@ def materialized_cells_to_cell_delta(
                 y=y,
                 kind="transport",
                 transport=cell.transport_kind.value,
+                tile_type=cell.tile_type,
+                rotation=cell.rotation,
+                op="set",
+            )
+        )
+        if len(out) >= cap:
+            break
+    for cell in layout.equipment_cells:
+        sx, sy = cell.coord
+        x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=ctx.server_xy_params)
+        out.append(
+            ReplayCellDelta(
+                x=x,
+                y=y,
+                kind=cell.cell_kind,
+                transport="",
                 tile_type=cell.tile_type,
                 rotation=cell.rotation,
                 op="set",
@@ -128,14 +152,24 @@ def candidate_occupied_to_overlay_cells(
     candidate: GeneCandidate,
     ctx: ReplayProjectionContext,
     *,
+    gene: GeneTemplate | None = None,
     cap: int = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME,
 ) -> tuple[ReplayOverlayCell, ...]:
     """Convert candidate extractor + extensions to replay overlay cells (server → Lab)."""
-    coords: list[tuple[int, int]] = [candidate.extractor, *candidate.extensions]
     out: list[ReplayOverlayCell] = []
-    for sx, sy in coords:
+    for eq in preview_equipment_for_candidate(candidate, gene=gene):
+        sx, sy = eq.coord
         x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=ctx.server_xy_params)
-        out.append(ReplayOverlayCell(x=x, y=y, kind="candidate", tile_type="candidate"))
+        out.append(
+            ReplayOverlayCell(
+                x=x,
+                y=y,
+                kind=eq.cell_kind,
+                transport="",
+                tile_type=eq.tile_type,
+                rotation=eq.rotation,
+            )
+        )
         if len(out) >= cap:
             break
     return tuple(out)

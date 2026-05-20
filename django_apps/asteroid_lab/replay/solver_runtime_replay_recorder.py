@@ -17,6 +17,7 @@ from django_apps.asteroid_lab.optimization.candidate_dtos import (
 from django_apps.asteroid_lab.optimization.candidate_selector import SelectedCandidatePlan
 from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan
 from django_apps.asteroid_lab.optimization.commit_best_candidates import IncrementalCommitResult
+from django_apps.asteroid_lab.optimization.gene_template import GeneTemplate
 from django_apps.asteroid_lab.optimization.input_contracts import (
     OptimizationInput,
     ValidationResult,
@@ -57,9 +58,12 @@ class SolverRuntimeReplayRecorder:
         self,
         loaded: LoadedReconstructionSnapshot,
         server_xy_params: tuple[int, int],
+        *,
+        gene_templates_by_id: Mapping[str, GeneTemplate] | None = None,
     ) -> None:
         self._loaded = loaded
         self._ctx = ReplayProjectionContext(server_xy_params=server_xy_params)
+        self._gene_templates_by_id = dict(gene_templates_by_id or {})
         self._frames: list[ReplayTimelineFrame] = []
         self._base_cells_cache: tuple | None = None
 
@@ -197,7 +201,11 @@ class SolverRuntimeReplayRecorder:
 
         cells = self._base_cells
         for candidate in pool.normal_candidates[:max_per_type]:
-            occupied_overlay = candidate_occupied_to_overlay_cells(candidate, self._ctx)
+            occupied_overlay = candidate_occupied_to_overlay_cells(
+                candidate,
+                self._ctx,
+                gene=self._gene_templates_by_id.get(candidate.gene_id),
+            )
             map_view = ReplayMapView(
                 bbox=bbox_from_replay_cells(cells, overlay_cells=occupied_overlay),
                 full_cells=cells,
@@ -461,15 +469,21 @@ class SolverRuntimeReplayRecorder:
             cell_delta=cell_delta,
         )
         failure = materialization.failure_reason.value if materialization.failure_reason else None
-        mat_count = len(materialization.layout.cells) if materialization.layout else 0
+        layout = materialization.layout
+        transport_count = len(layout.cells) if layout is not None else 0
+        equipment_count = len(layout.equipment_cells) if layout is not None else 0
         self._append(
             phase=ReplayPhase.INCREMENTAL_COMMIT,
             event_type=ReplayEventType.ROUTE_MATERIALIZED,
             title="Route Network Materialized",
-            description=f"{mat_count} transport cells",
+            description=(
+                f"{transport_count} transport, {equipment_count} equipment cells"
+            ),
             map_view=map_view,
             inspector={
-                "materialized_cell_count": mat_count,
+                "materialized_transport_cell_count": transport_count,
+                "materialized_equipment_cell_count": equipment_count,
+                "materialized_cell_count": transport_count + equipment_count,
                 "failure_reason": failure,
             },
         )
@@ -524,7 +538,9 @@ class SolverRuntimeReplayRecorder:
             full_cells=cells,
             cell_delta=cell_delta,
         )
-        mat_count = len(materialization.layout.cells) if materialization.layout else 0
+        layout = materialization.layout
+        transport_count = len(layout.cells) if layout is not None else 0
+        equipment_count = len(layout.equipment_cells) if layout is not None else 0
         self._append(
             phase=ReplayPhase.RESULT,
             event_type=ReplayEventType.RESULT_LAYOUT,
@@ -537,7 +553,9 @@ class SolverRuntimeReplayRecorder:
                 "confirmed_count": len(commit.confirmed),
                 "validation_passed": validation.passed,
                 "issue_codes": list(solver_summary.get("issue_codes") or []),
-                "materialized_cell_count": mat_count,
+                "materialized_transport_cell_count": transport_count,
+                "materialized_equipment_cell_count": equipment_count,
+                "materialized_cell_count": transport_count + equipment_count,
             },
         )
 

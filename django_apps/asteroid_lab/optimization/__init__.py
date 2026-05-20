@@ -59,7 +59,6 @@ from django_apps.asteroid_lab.optimization.enums import (
     EdgeKind,
     EvolutionConvergenceReason,
     MaterializationFailureReason,
-    OptimizationReplayEventType,
     PlacementCommitState,
     ReservationState,
     RouteClass,
@@ -122,11 +121,6 @@ from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_loaded_snapshot,
     optimization_input_from_reconstruction,
 )
-from django_apps.asteroid_lab.optimization.replay_frame import (
-    MAX_REPLAY_CELLS_PER_FRAME,
-    MAX_REPLAY_FRAMES,
-    OptimizationReplayFrame,
-)
 from django_apps.asteroid_lab.optimization.route_domain import (
     RouteCellDomain,
     RouteDomainSnapshotBuilder,
@@ -177,10 +171,6 @@ __all__ = [
     "MaterializedTransportCell",
     "GenomeDiversityMetrics",
     "OptimizationInput",
-    "MAX_REPLAY_CELLS_PER_FRAME",
-    "MAX_REPLAY_FRAMES",
-    "OptimizationReplayEventType",
-    "OptimizationReplayFrame",
     "PlacementCommitState",
     "RecoveryBudget",
     "RejectedGeneCandidate",

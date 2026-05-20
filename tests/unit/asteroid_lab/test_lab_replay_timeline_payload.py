@@ -1,19 +1,14 @@
-"""Product replay timeline payload (Lab ORM + persisted optimization)."""
+"""Product replay timeline payload (Lab ORM only)."""
 
 from __future__ import annotations
 
 import pytest
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
-from django_apps.asteroid_lab.optimization.replay_frame import OptimizationReplayFrame
 from django_apps.asteroid_lab.replay.unified_enums import ReplayPhase
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
     resolve_replay_projection_context_for_project,
-)
-from django_apps.asteroid_lab.services.optimization_replay_persist import (
-    persist_optimization_replay_frames_to_solver_run,
 )
 
 
@@ -60,43 +55,6 @@ def test_build_lab_replay_lab_only_monotonic_frame_indices() -> None:
     assert [f["frame_index"] for f in frames] == [0, 1]
     assert frames[0]["phase"] == ReplayPhase.DECODE.value
     assert metrics["frame_count"] == 2
-
-
-@pytest.mark.django_db
-def test_build_lab_replay_lab_precedes_optimization() -> None:
-    p = m.AsteroidProject.objects.create(name="UniBoth", slug="uni-both-payload")
-    t = m.ReplayTrack.objects.create(project=p, track_key="both-tr")
-    _decode_lab_frame(t, frame_index=0, x=1, y=0)
-
-    run = m.SolverRun.objects.create(
-        project=p,
-        run_key="uni-run",
-        algorithm_label="runtime_v0",
-        config_json={},
-    )
-    opt_frame = OptimizationReplayFrame(
-        frame_index=0,
-        event_type=OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED,
-        title="input",
-        description="",
-        metrics={},
-        visible_cells=(
-            {
-                "server_x": 0,
-                "server_y": 0,
-                "cell_kind": "asteroid",
-                "transport_kind": "none",
-            },
-        ),
-        overlay_cells=(),
-    )
-    persist_optimization_replay_frames_to_solver_run(int(run.pk), (opt_frame,))
-
-    frames, _metrics = build_lab_replay_frames_for_project(int(p.pk))
-    assert len(frames) == 2
-    assert frames[0]["phase"] == ReplayPhase.DECODE.value
-    assert frames[1]["phase"] == ReplayPhase.OPTIMIZATION_INPUT.value
-    assert frames[1]["inspector"]["source_frame_index"] == 0
 
 
 @pytest.mark.django_db

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.services.optimization_ui_payload import (
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 

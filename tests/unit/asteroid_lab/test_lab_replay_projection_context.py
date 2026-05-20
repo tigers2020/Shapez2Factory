@@ -8,7 +8,7 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     resolve_replay_projection_context_for_project,
 )
-from django_apps.asteroid_lab.services.optimization_ui_payload import (
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
 )
 

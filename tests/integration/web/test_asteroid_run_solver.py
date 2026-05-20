@@ -112,55 +112,6 @@ def _runs_from_page(content: bytes) -> list[dict[str, Any]]:
     return runs
 
 
-def _frames_by_event(frames: list[dict[str, Any]], event_type: str) -> list[dict[str, Any]]:
-    return [f for f in frames if f.get("event_type") == event_type]
-
-
-_PLACEMENT_OVERLAY_KINDS = frozenset(
-    {
-        "shape_miner",
-        "fluid_miner",
-        "shape_miner_extension",
-        "fluid_miner_extension",
-        "space_belt",
-        "space_pipe",
-    }
-)
-
-
-def _assert_validation_completed_has_placement_overlays(frames: list[dict[str, Any]]) -> None:
-    val_frames = _frames_by_event(frames, "validation.completed")
-    assert len(val_frames) == 1, "expected exactly one validation.completed frame"
-    mv = val_frames[0].get("map_view")
-    assert isinstance(mv, dict), "validation.completed must expose map_view"
-    overlay = mv.get("overlay_cells")
-    assert (
-        isinstance(overlay, list) and overlay
-    ), "validation.completed map_view.overlay_cells must be non-empty when commits exist"
-    placement = [
-        c
-        for c in overlay
-        if isinstance(c, dict)
-        and isinstance(c.get("kind"), str)
-        and c["kind"] in _PLACEMENT_OVERLAY_KINDS
-        and isinstance(c.get("x"), int)
-        and isinstance(c.get("y"), int)
-    ]
-    assert placement, (
-        "validation.completed overlay must include at least one projected placement cell "
-        f"(kinds {_PLACEMENT_OVERLAY_KINDS!r})"
-    )
-    # Transport overlay cells must carry tile_type + sprite_identifier for front sprite lookup.
-    transport_cells = [c for c in placement if c["kind"] in ("space_belt", "space_pipe")]
-    for tc in transport_cells:
-        assert isinstance(tc.get("tile_type"), str) and tc["tile_type"], (
-            f"transport overlay cell missing tile_type: {tc!r}"
-        )
-        assert tc.get("sprite_identifier") == tc["tile_type"], (
-            f"sprite_identifier must equal tile_type in wire JSON: {tc!r}"
-        )
-
-
 def _lab_replay_frames_from_page(content: bytes) -> list[dict[str, Any]]:
     text = content.decode()
     match = re.search(
@@ -191,9 +142,8 @@ def test_post_run_solver_json_persists_and_returns_payload() -> None:
     assert "placed" in data["run_summary"]
     assert data["run_summary"]["id"] == str(data["solver_run_id"])
     assert data["run_summary"]["status"] == "completed"
-    assert data["optimization_replay_attach"]["attached"] is True
-    assert data["optimization_replay_attach"]["reason"] == "attached"
-    assert isinstance(data.get("optimization_replay_read"), dict)
+    assert "optimization_replay_attach" not in data
+    assert "optimization_replay_read" not in data
     _assert_frames_have_js_renderable_cells(frames)
 
     src = data.get("gene_template_source")
@@ -238,21 +188,9 @@ def test_post_run_solver_validation_passes_for_basic_asteroid() -> None:
     assert run["placed"] > 0
     assert "connected" not in run
 
-    frames = data.get("lab_replay_frames_json") or []
-    _assert_validation_completed_has_placement_overlays(frames)
-    val_metrics = _frames_by_event(frames, "validation.completed")[0]["metrics"]
-    assert val_metrics["passed"] is True
-    assert val_metrics.get("issue_codes") == []
-    assert val_metrics.get("first_issue_code") in (None, "")
-
-    route_frames = _frames_by_event(frames, "route.committed")
-    assert route_frames
-    for frame in route_frames:
-        route_metrics = frame["metrics"]
-        assert route_metrics["path_contains_output_stub"] is True
-        assert route_metrics["path_len"] >= 1
-        assert route_metrics["reserved_cell_count"] >= route_metrics["path_len"]
-        assert route_metrics["path_head"] == route_metrics["output_stub"]
+    summary = data["solver_summary"]
+    assert summary["validation_passed"] is True
+    assert int(summary.get("confirmed_count") or 0) > 0
 
 
 def test_post_run_solver_unknown_slug_404() -> None:

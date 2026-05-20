@@ -104,32 +104,6 @@ class CommitConflictReason(StrEnum):
     ROUTE_PROBE_FAILED = "route_probe_failed"
 
 
-class OptimizationReplayEventType(StrEnum):
-    """Phase 9 replay frame event_type (value = wire string)."""
-
-    OPTIMIZATION_INPUT_LOADED = "optimization.input_loaded"
-    CAPACITY_PLAN_CREATED = "capacity.plan_created"
-    ROUTE_GOAL_GENERATED = "route_goal.generated"
-    PATTERN_GENERATED = "pattern.generated"
-    CANDIDATE_GENERATED = "candidate.generated"
-    CANDIDATE_REJECTED = "candidate.rejected"
-    ROUTE_PROBE_SUCCEEDED = "route_probe.succeeded"
-    ROUTE_PROBE_FAILED = "route_probe.failed"
-    CANDIDATE_POOL_COMPLETED = "candidate_pool.completed"
-    CANDIDATE_SELECTION_COMPLETED = "candidate_selection.completed"
-    GENOME_GENERATED = "genome.generated"
-    GENOME_EVALUATED = "genome.evaluated"
-    GENERATION_COMPLETED = "generation.completed"
-    BEST_GENOME_SELECTED = "best_genome.selected"
-    ROUTE_COMMIT_ATTEMPTED = "route.commit_attempted"
-    ROUTE_COMMITTED = "route.committed"
-    ROUTE_ROLLED_BACK = "route.rolled_back"
-    ROUTE_MATERIALIZED = "route.materialized"
-    VALIDATION_COMPLETED = "validation.completed"
-    VALIDATION_FAILED = "validation.failed"
-    RESULT_LAYOUT = "result.layout"
-
-
 class ReservationState(StrEnum):
     """Phase 7 reservation lifecycle."""
 

@@ -13,24 +13,20 @@ from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
+from django_apps.asteroid_lab.optimization.gene_template_loader import load_gene_templates_from_json
 from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     LoadedReconstructionSnapshot,
     loaded_reconstruction_snapshot_from_result,
 )
 from django_apps.asteroid_lab.services.experiment_service import create_solver_run
-from django_apps.asteroid_lab.services.optimization_replay_persist import (
-    persist_optimization_replay_frames_to_solver_run,
-)
-from django_apps.asteroid_lab.services.optimization_ui_payload import (
-    SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
-    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
-    deserialize_optimization_replay_frames_from_json,
-)
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     run_reconstruction_for_map_input,
 )
-from django_apps.asteroid_lab.optimization.gene_template_loader import load_gene_templates_from_json
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
+    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
+)
+from django_apps.asteroid_lab.services.solver_runtime_entry import _persist_solver_run_outcome
 from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 
 pytestmark = pytest.mark.django_db
@@ -39,7 +35,9 @@ _GENE_TEMPLATES = (
     Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
 )
 
-_MINIMAL_GENE_TEMPLATES = load_gene_templates_from_json(_GENE_TEMPLATES / "minimal_extractor_e.json")
+_MINIMAL_GENE_TEMPLATES = load_gene_templates_from_json(
+    _GENE_TEMPLATES / "minimal_extractor_e.json"
+)
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -81,7 +79,7 @@ def _project_with_reconstruction() -> tuple[m.AsteroidProject, LoadedReconstruct
     return proj, loaded
 
 
-def test_solver_button_pipeline_persists_result() -> None:
+def test_solver_button_pipeline_persists_summary() -> None:
     proj, loaded = _project_with_reconstruction()
     run_dto = create_solver_run(
         int(proj.pk),
@@ -94,45 +92,17 @@ def test_solver_button_pipeline_persists_result() -> None:
         gene_templates=_MINIMAL_GENE_TEMPLATES,
         run_key="pr7-persist",
     )
-    attach = persist_optimization_replay_frames_to_solver_run(
+    _persist_solver_run_outcome(
         run_dto.id,
-        result.replay_frames,
         solver_summary=result.solver_summary,
         server_xy_params=loaded.server_xy_params,
     )
-    assert attach.attached is True
 
     run = m.SolverRun.objects.get(pk=run_dto.id)
     assert run.config_json.get("seed_flag") is True
-    assert SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY in run.config_json
     assert SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY in run.config_json
+    assert SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY in run.config_json
     assert isinstance(run.config_json[SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY], dict)
-
-
-def test_solver_button_pipeline_emits_replay_events() -> None:
-    _proj, loaded = _project_with_reconstruction()
-    result = run_solver_runtime_pipeline(
-        loaded=loaded,
-        gene_templates=_MINIMAL_GENE_TEMPLATES,
-    )
-    seq = [f.event_type for f in result.replay_frames]
-    required = {
-        OptimizationReplayEventType.OPTIMIZATION_INPUT_LOADED,
-        OptimizationReplayEventType.VALIDATION_COMPLETED,
-        OptimizationReplayEventType.ROUTE_MATERIALIZED,
-    }
-    assert required.issubset(set(seq))
-
-    raw = [f.to_json_dict() for f in result.replay_frames]
-    restored = deserialize_optimization_replay_frames_from_json(raw)
-    assert restored is not None
-    assert [f.event_type for f in restored] == seq
-
-    result2 = run_solver_runtime_pipeline(
-        loaded=loaded,
-        gene_templates=_MINIMAL_GENE_TEMPLATES,
-    )
-    assert [f.event_type for f in result2.replay_frames] == seq
 
 
 def test_solver_button_pipeline_validation_read_only() -> None:
@@ -153,7 +123,7 @@ def test_solver_button_pipeline_validation_read_only() -> None:
     assert r1.validation == r2.validation
 
 
-def test_solver_button_pipeline_no_implicit_lab_optimization_sync() -> None:
+def test_solver_button_pipeline_does_not_mutate_lab_replay_orm() -> None:
     proj, loaded = _project_with_reconstruction()
     lab_frame_count = m.ReplayFrame.objects.filter(replay_track__project=proj).count()
     lab_frames = list(
@@ -170,9 +140,8 @@ def test_solver_button_pipeline_no_implicit_lab_optimization_sync() -> None:
         loaded=loaded,
         gene_templates=_MINIMAL_GENE_TEMPLATES,
     )
-    persist_optimization_replay_frames_to_solver_run(
+    _persist_solver_run_outcome(
         run_dto.id,
-        result.replay_frames,
         solver_summary=result.solver_summary,
         server_xy_params=loaded.server_xy_params,
     )
@@ -186,6 +155,3 @@ def test_solver_button_pipeline_no_implicit_lab_optimization_sync() -> None:
         )
         == lab_frames
     )
-
-    run = m.SolverRun.objects.get(pk=run_dto.id)
-    assert SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY in run.config_json

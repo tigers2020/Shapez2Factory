@@ -12,8 +12,6 @@ from django_apps.asteroid_lab.replay.lab_unified_adapter import (
     lab_snapshot_event_to_unified,
 )
 from django_apps.asteroid_lab.replay.replay_limits import (
-    MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME,
-    MAX_OPTIMIZATION_REPLAY_FRAMES,
     MAX_UNIFIED_LAB_REPLAY_CELLS_PER_FRAME,
     MAX_UNIFIED_LAB_REPLAY_FRAMES,
 )
@@ -30,9 +28,7 @@ from django_apps.asteroid_lab.replay.unified_dtos import (
 from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.unified_event_coverage import (
     DEFERRED_POST_9B,
-    DEFERRED_TO_9C_OPTIMIZATION_ADAPTER,
     SUPPORTED_BY_9B_LAB_ADAPTER,
-    SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER,
 )
 from django_apps.asteroid_lab.replay.unified_serialization import (
     UnifiedReplayDeserializationError,
@@ -50,16 +46,12 @@ from django_apps.asteroid_lab.replay.unified_timeline_composer import compose_un
 
 __all__ = [
     "DEFERRED_POST_9B",
-    "DEFERRED_TO_9C_OPTIMIZATION_ADAPTER",
     "LAB_EVENT_TYPE_TO_UNIFIED",
     "LabUnifiedAdapterError",
-    "MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME",
-    "MAX_OPTIMIZATION_REPLAY_FRAMES",
     "MAX_UNIFIED_LAB_REPLAY_CELLS_PER_FRAME",
     "MAX_UNIFIED_LAB_REPLAY_FRAMES",
     "SNAPSHOT_EVENT_TYPES",
     "SUPPORTED_BY_9B_LAB_ADAPTER",
-    "SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER",
     "compose_unified_timeline",
     "ReplayAnnotation",
     "ReplayBBox",

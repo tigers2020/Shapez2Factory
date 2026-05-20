@@ -269,14 +269,6 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
                 },
                 "solver_summary": {},
                 "validation_passed": False,
-                "optimization_replay_attach": {
-                    "attached": False,
-                    "reason": "empty_frames",
-                },
-                "optimization_replay_read": {
-                    "diagnostic_reason": None,
-                    "frame_count": 0,
-                },
             },
             status=404,
         )

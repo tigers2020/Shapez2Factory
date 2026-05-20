@@ -1,4 +1,4 @@
-"""Merge Lab + optimization unified frames into one global timeline (Phase 9D)."""
+"""Merge Lab unified frames into one global timeline (Phase 9D)."""
 
 from __future__ import annotations
 
@@ -38,7 +38,6 @@ def _retain_keyframes_and_tail(
     if len(frames) <= cap:
         return frames, 0
 
-    # Identify pinned keyframe indices.
     pinned_indices: set[int] = set()
     first_recon = next(
         (
@@ -65,7 +64,6 @@ def _retain_keyframes_and_tail(
     if remaining_slots < 0:
         remaining_slots = 0
 
-    # Fill remaining slots from the tail (excluding already-pinned indices).
     tail_indices: list[int] = []
     for i in reversed(range(len(frames))):
         if i in pinned_indices:
@@ -83,17 +81,16 @@ def _retain_keyframes_and_tail(
 def compose_unified_timeline(
     *,
     lab_frames: Sequence[UnifiedReplayFrame],
-    optimization_frames: Sequence[UnifiedReplayFrame],
     max_frames: int = MAX_UNIFIED_LAB_REPLAY_FRAMES,
 ) -> tuple[UnifiedReplayFrame, ...]:
-    """Concatenate lab then optimization frames; assign global ``frame_index`` 0..n-1.
+    """Assign global ``frame_index`` 0..n-1; truncate when over *max_frames*.
 
-    When the combined count exceeds *max_frames*, required keyframes
+    When the count exceeds *max_frames*, required keyframes
     (RECONSTRUCTION_COMPLETED, RESULT_LAYOUT) are always retained; remaining
     slots are filled with tail frames in temporal order.
     """
 
-    combined = list(lab_frames) + list(optimization_frames)
+    combined = list(lab_frames)
     original_count = len(combined)
     cap = max(1, int(max_frames))
     truncated = original_count > cap

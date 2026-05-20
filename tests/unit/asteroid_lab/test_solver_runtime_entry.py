@@ -12,9 +12,9 @@ from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.services.optimization_ui_payload import (
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
-    SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
+    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 from django_apps.asteroid_lab.services.runtime_gene_template_source import (
@@ -77,7 +77,7 @@ def _seed_minimal_gene_samples(generator_version: str = "exhaustive_sample_gene_
     )
 
 
-def test_solver_runtime_entry_persists_replay_and_summary() -> None:
+def test_solver_runtime_entry_persists_summary_and_projection_params() -> None:
     _seed_minimal_gene_samples()
     proj = _project_with_map_input()
     result = run_solver_runtime_for_project(int(proj.pk), run_key="entry-persist")
@@ -86,8 +86,8 @@ def test_solver_runtime_entry_persists_replay_and_summary() -> None:
     assert result.validation_passed is True
 
     run = m.SolverRun.objects.get(pk=result.solver_run_id)
-    assert SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY in run.config_json
     assert SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY in run.config_json
+    assert SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY in run.config_json
     assert len(result.lab_replay_frames_json) >= 1
     assert isinstance(result.replay_track_metrics, dict)
 

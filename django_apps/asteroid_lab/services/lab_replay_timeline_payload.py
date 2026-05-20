@@ -1,4 +1,4 @@
-"""Read-only product replay timeline for Lab page (Lab ORM + persisted optimization)."""
+"""Read-only product replay timeline for Lab page (Lab ORM only)."""
 
 from __future__ import annotations
 
@@ -7,28 +7,18 @@ from typing import Any, cast
 from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.models import AsteroidMapInput, ReplayFrame, ReplayTrack, SolverRun
-from django_apps.asteroid_lab.optimization.replay_frame import OptimizationReplayFrame
 from django_apps.asteroid_lab.replay import replay_limits
 from django_apps.asteroid_lab.replay.lab_unified_adapter import (
     LabUnifiedAdapterError,
     lab_replay_row_to_unified,
 )
-from django_apps.asteroid_lab.replay.optimization_unified_adapter import (
-    OptimizationUnifiedAdapterError,
-    optimization_replay_frame_to_unified,
-)
 from django_apps.asteroid_lab.replay.projection_context import ReplayProjectionContext
-from django_apps.asteroid_lab.replay.unified_dtos import ReplayCell, UnifiedReplayFrame
+from django_apps.asteroid_lab.replay.unified_dtos import UnifiedReplayFrame
 from django_apps.asteroid_lab.replay.unified_serialization import unified_replay_frame_to_json_dict
 from django_apps.asteroid_lab.replay.unified_timeline_composer import compose_unified_timeline
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
-from django_apps.asteroid_lab.services.optimization_replay_read import (
-    optimization_replay_payload_for_project,
-)
-from django_apps.asteroid_lab.services.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY,
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
-    deserialize_optimization_replay_frames_from_json,
 )
 from django_apps.asteroid_lab.snapshots.server_coords import map_bbox_dense_and_y
 
@@ -159,15 +149,6 @@ def resolve_replay_projection_context_for_project(
     return ReplayProjectionContext(server_xy_params=params)
 
 
-def _fallback_cells_from_lab_unified(
-    lab_unified: tuple[UnifiedReplayFrame, ...],
-) -> tuple[ReplayCell, ...]:
-    for frame in reversed(lab_unified):
-        if frame.map_view.full_cells:
-            return frame.map_view.full_cells
-    return ()
-
-
 def _lab_unified_frames_for_project(project_id: int) -> tuple[UnifiedReplayFrame, ...]:
     track = get_latest_lab_replay_track_for_project(int(project_id))
     if track is None:
@@ -178,45 +159,6 @@ def _lab_unified_frames_for_project(project_id: int) -> tuple[UnifiedReplayFrame
         try:
             out.append(lab_replay_row_to_unified(_frame_row_from_model(frame)))
         except LabUnifiedAdapterError:
-            continue
-    return tuple(out)
-
-
-def _optimization_unified_frames_for_project(
-    project_id: int,
-    *,
-    context: ReplayProjectionContext | None,
-    fallback_full_cells: tuple[ReplayCell, ...],
-) -> tuple[UnifiedReplayFrame, ...]:
-    track = optimization_replay_payload_for_project(int(project_id))
-    metrics = track.get("metrics")
-    if isinstance(metrics, dict) and metrics.get(OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY):
-        return ()
-    raw_frames = track.get("frames")
-    if not isinstance(raw_frames, list):
-        return ()
-    opt_frames = deserialize_optimization_replay_frames_from_json(raw_frames)
-    if opt_frames is None:
-        return ()
-    if context is None:
-        return ()
-
-    projection = ReplayProjectionContext(
-        server_xy_params=context.server_xy_params,
-        fallback_full_cells=fallback_full_cells,
-    )
-    out: list[UnifiedReplayFrame] = []
-    for frame in opt_frames:
-        if not isinstance(frame, OptimizationReplayFrame):
-            continue
-        try:
-            out.append(
-                optimization_replay_frame_to_unified(
-                    frame,
-                    context=projection,
-                )
-            )
-        except OptimizationUnifiedAdapterError:
             continue
     return tuple(out)
 
@@ -253,62 +195,21 @@ def _track_metrics_from_serialized_frames(
 def build_lab_replay_frames_for_project(
     project_id: int,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Compose Lab + optimization into product replay JSON (never mutates sources)."""
+    """Compose Lab replay into product JSON (never mutates sources)."""
 
     lab_unified = _lab_unified_frames_for_project(int(project_id))
-    projection = resolve_replay_projection_context_for_project(int(project_id))
-    fallback = _fallback_cells_from_lab_unified(lab_unified)
-    opt_unified = _optimization_unified_frames_for_project(
-        int(project_id),
-        context=projection,
-        fallback_full_cells=fallback,
-    )
     combined = compose_unified_timeline(
         lab_frames=lab_unified,
-        optimization_frames=opt_unified,
         max_frames=replay_limits.MAX_UNIFIED_LAB_REPLAY_FRAMES,
     )
     serialized = [unified_replay_frame_to_json_dict(fr) for fr in combined]
-    diagnostic: str | None = None
-    if projection is None and opt_unified == () and lab_unified:
-        diagnostic = "missing_server_xy_params_for_optimization_projection"
-    opt_track = optimization_replay_payload_for_project(int(project_id))
-    opt_metrics = opt_track.get("metrics")
-    opt_diagnostic: str | None = None
-    if isinstance(opt_metrics, dict):
-        raw_diag = opt_metrics.get(OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY)
-        if isinstance(raw_diag, str) and raw_diag.strip():
-            opt_diagnostic = raw_diag.strip()
-    metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
-    if opt_diagnostic is not None:
-        metrics["optimization_replay_diagnostic_reason"] = opt_diagnostic
+    metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=None)
     return serialized, metrics
-
-
-def optimization_replay_read_meta_for_project(project_id: int) -> dict[str, Any]:
-    """Read-only optimization replay meta for POST / HUD (never solver input)."""
-
-    track = optimization_replay_payload_for_project(int(project_id))
-    metrics = track.get("metrics")
-    diagnostic: str | None = None
-    frame_count = 0
-    if isinstance(metrics, dict):
-        raw_diag = metrics.get(OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY)
-        if isinstance(raw_diag, str) and raw_diag.strip():
-            diagnostic = raw_diag.strip()
-        raw_fc = metrics.get("frame_count")
-        if isinstance(raw_fc, int):
-            frame_count = raw_fc
-    return {
-        "diagnostic_reason": diagnostic,
-        "frame_count": frame_count,
-    }
 
 
 __all__ = [
     "REPLAY_DIAGNOSTIC_REASON_KEY",
     "build_lab_replay_frames_for_project",
     "get_latest_lab_replay_track_for_project",
-    "optimization_replay_read_meta_for_project",
     "resolve_replay_projection_context_for_project",
 ]

@@ -64,17 +64,9 @@
   /** Map blueprint ``T`` (:class:`ShapezGameIdentifier` ``value``) → ``sprite_static_relpath``; from ``json_script`` id ``lab-identifier-sprite-paths-data``. */
   let labIdentifierSpriteRelpaths = {};
 
-  /** When true, or ``#lab-root`` has ``data-lab-debug-rotation="1"``, grid shows R overlay on cells with sprites. */
-  const LAB_DEBUG_ROTATION = false;
-
+  /** When ``#lab-root`` has ``data-lab-debug-rotation="1"``, grid shows R overlay on cells with sprites. */
   function labRotationDebugEnabled(rootEl) {
-    if (LAB_DEBUG_ROTATION) {
-      return true;
-    }
-    if (rootEl && rootEl.dataset && rootEl.dataset.labDebugRotation === "1") {
-      return true;
-    }
-    return false;
+    return Boolean(rootEl && rootEl.dataset && rootEl.dataset.labDebugRotation === "1");
   }
 
   /** ``cell_kind`` → blueprint ``T`` when ``tile_type`` is missing (not used for ambiguous kinds like ``space_pipe``). */
@@ -911,12 +903,7 @@
     const tm = trackMetrics && typeof trackMetrics === "object" ? trackMetrics : {};
     const parts = [];
     const diag =
-      typeof tm.diagnostic_reason === "string" && tm.diagnostic_reason
-        ? tm.diagnostic_reason
-        : typeof tm.optimization_replay_diagnostic_reason === "string" &&
-            tm.optimization_replay_diagnostic_reason
-          ? tm.optimization_replay_diagnostic_reason
-          : null;
+      typeof tm.diagnostic_reason === "string" && tm.diagnostic_reason ? tm.diagnostic_reason : null;
     if (diag) {
       parts.push("diagnostic: " + diag);
     }
@@ -936,26 +923,6 @@
       parts.push(text);
     }
     hud.textContent = parts.length ? parts.join(" · ") : dash;
-  }
-
-  let optimizationReplayAttachHudRaw = null;
-
-  function formatOptimizationReplayAttachHud(raw) {
-    if (!raw || typeof raw !== "object") return "Attach: —";
-    const attached = raw.attached === true;
-    const reason = typeof raw.reason === "string" ? raw.reason : "—";
-    if (attached) {
-      return "Attach: attached";
-    }
-    const diag = typeof raw.diagnostic === "string" && raw.diagnostic ? " (" + raw.diagnostic + ")" : "";
-    return "Attach: skipped (" + reason + ")" + diag;
-  }
-
-  function renderOptimizationReplayAttachHud(raw) {
-    optimizationReplayAttachHudRaw = raw && typeof raw === "object" ? raw : null;
-    const el = document.getElementById("lab-optimization-replay-attach");
-    if (!el) return;
-    el.textContent = formatOptimizationReplayAttachHud(optimizationReplayAttachHudRaw);
   }
 
   function init() {
@@ -2183,9 +2150,6 @@
             if (data.run_summary) {
               upsertRunSummary(data.run_summary);
             }
-            if (data.optimization_replay_attach) {
-              renderOptimizationReplayAttachHud(data.optimization_replay_attach);
-            }
             if (Array.isArray(data.lab_replay_frames_json)) {
               replaceLabReplayPayload(data);
             }
@@ -2199,9 +2163,6 @@
           renderReplayRunStatus(replayRunFeedback);
           if (data.run_summary) {
             upsertRunSummary(data.run_summary);
-          }
-          if (data.optimization_replay_attach) {
-            renderOptimizationReplayAttachHud(data.optimization_replay_attach);
           }
           replaceLabReplayPayload(data, { seekLastFrame: true });
         })

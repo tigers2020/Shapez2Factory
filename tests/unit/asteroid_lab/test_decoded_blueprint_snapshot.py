@@ -102,6 +102,25 @@ def test_bbox_and_counts() -> None:
     assert snap.transport_kind_counts_json["none"] == 1
 
 
+def test_raw_x_zero_entry_gets_explicit_server_xy_for_algorithm_boundary() -> None:
+    """Raw blueprint ``X == 0`` has no dense horizontal index; DTO still carries server (0, Δy)."""
+
+    decoded = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [
+                {"X": 0, "Y": -6, "R": 0, "T": "SpaceBelt_Left"},
+                {"X": 1, "Y": -6, "R": 0, "T": "SpaceBelt_Left"},
+            ],
+        },
+    }
+    snap = build_decoded_blueprint_snapshot(decoded)
+    c0 = next(c for c in snap.cells if c.x == 0)
+    assert c0.server_x == 0
+    assert c0.server_y == 0
+
+
 def test_snapshot_dto_json_serializable() -> None:
     decoded = {
         "V": 1,

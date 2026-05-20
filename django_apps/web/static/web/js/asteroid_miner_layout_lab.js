@@ -277,6 +277,22 @@
     }
   }
 
+  /**
+   * Sequence 11D — overlay lifecycle invariants (see tests in ``test_asteroid_lab_page_context.py``).
+   * - Lab viewport transform owner: ``#lab-replay-grid-stage`` (``applyLabViewportTransform``); overlay shell
+   *   must not retain pan/zoom ``transform`` (cleared in ``clearOptimizationReplayOverlay``).
+   * - ``renderOptimizationReplayOverlay``: ``syncOptimizationOverlayLayerGridStyles`` →
+   *   ``clearOptimizationReplayOverlay`` → project → commit (cells + diagnostics).
+   * - ``replaceOptimizationReplayPayload``: ``clearOptimizationReplayOverlay`` before track swap.
+   * - ``applyLabGridLayoutForZoom`` / ``resetLabViewportTransform``: refresh overlay ctx then
+   *   ``renderOptimizationReplayOverlay`` (clear + render order preserved).
+   */
+  window.__shapezLabReplayOverlayLifecycle = Object.freeze({
+    getOptimizationReplayOverlayRenderSeq: function () {
+      return optimizationReplayOverlayRenderSeq;
+    },
+  });
+
   function getCookie(name) {
     const prefix = "; " + name + "=";
     const raw = document.cookie;

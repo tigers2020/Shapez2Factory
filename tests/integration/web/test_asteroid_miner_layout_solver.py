@@ -3,12 +3,17 @@ import gzip
 import json
 import random
 import unittest.mock as mock
+from pathlib import Path
 
 import pytest
 from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.services.optimization_replay_persist import (
+    OptimizationReplayAttachResult,
+    build_optimization_replay_attach_diagnostic,
+)
 from django_apps.shapez_asteroid.optimization.enums import OptimizationReplayEventType
 from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
@@ -18,8 +23,20 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     empty_optimization_replay_track_payload_with_diagnostic,
 )
 from django_apps.web.services import asteroid_lab_page_context as alc
+from tests.support.measure_json_sections import (
+    assert_lab_replay_not_capped_by_optimization_constants,
+    assert_optimization_replay_hard_caps,
+    measure_json_sections,
+)
 
 pytestmark = [pytest.mark.django_db, pytest.mark.slow]
+
+
+def _read_asteroid_lab_js_text() -> str:
+    root = Path(__file__).resolve().parents[3]
+    return (
+        root / "django_apps" / "web" / "static" / "web" / "js" / "asteroid_miner_layout_lab.js"
+    ).read_text(encoding="utf-8")
 
 
 def _lab_html_with_optimization_replay(client: Client, opt_payload: dict) -> str:
@@ -108,6 +125,22 @@ def _unique_valid_copy() -> str:
                 "Entries": [
                     {"X": 1, "Y": 0, "T": "Layout_ProMiner"},
                     {"X": 2, "Y": 0, "T": "SpaceBelt_Left"},
+                ],
+            },
+        }
+    )
+
+
+def _server_x_zero_copy() -> str:
+    return _encode_v4_copy(
+        {
+            "V": random.randint(1, 10_000_000),
+            "BP": {
+                "$type": "Island",
+                "Entries": [
+                    {"X": 0, "Y": -6, "T": "Layout_ProMiner"},
+                    {"X": 1, "Y": -6, "T": "SpaceBelt_Left"},
+                    {"X": 1, "Y": -5, "T": "Layout_1x1BalancedShapeMiner"},
                 ],
             },
         }
@@ -371,6 +404,233 @@ def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
     _assert_optimization_replay_lab_payload(data)
     attach = data.get("optimization_replay_attach")
     assert isinstance(attach, dict) and attach.get("reason") == "attached"
+
+
+def test_post_json_optimization_replay_contract_keys() -> None:
+    """12E/12I — POST JSON includes optimization replay + attach (no DevTools).
+
+    Read-side ``optimization_replay_diagnostic_reason`` and write-side
+    ``optimization_replay_attach.reason`` are separate; do not conflate them.
+    """
+
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    required = {
+        "ok",
+        "replay_ok",
+        "lab_replay_frames_json",
+        "lab_ui_initial",
+        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
+        "optimization_replay_attach",
+    }
+    assert required.issubset(data.keys())
+    attach = data["optimization_replay_attach"]
+    assert isinstance(attach, dict)
+    assert "attached" in attach and "reason" in attach
+    assert attach["attached"] is True
+    assert attach["reason"] == "attached"
+    assert "diagnostic" not in attach
+    _assert_optimization_replay_lab_payload(data)
+    opt = data[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
+    assert isinstance(opt, dict)
+    if attach.get("attached") is True:
+        assert int(opt.get("frame_count") or 0) >= 1
+
+
+def test_post_json_optimization_input_does_not_raw_convert_server_coords() -> None:
+    client = Client()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": _server_x_zero_copy()},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict)
+    assert "Cannot map raw" not in json.dumps(data)
+    reason = str(attach.get("reason") or "")
+    assert reason in {
+        "attached",
+        "empty_frames",
+        "empty_candidate_pool",
+        "non_ok_result",
+        "missing_solver_run_id",
+        "solver_run_not_found",
+        "evolution_failed",
+        "invalid_replay_payload",
+    }
+    if attach.get("attached") is True:
+        assert reason == "attached"
+        _assert_optimization_replay_lab_payload(data)
+    else:
+        diagnostic = attach.get("diagnostic")
+        assert isinstance(diagnostic, dict)
+        assert diagnostic.get("stage") != "optimization_input"
+        assert "Cannot map raw" not in str(diagnostic.get("error_message") or "")
+        if reason == "evolution_failed":
+            # Prior regression: server X==0 was mistaken for raw at optimization_input.
+            assert diagnostic.get("stage") in {
+                "route_probe",
+                "candidate_generation",
+                "evolution_search",
+            }, diagnostic
+
+
+@mock.patch(
+    "django_apps.web.views.public_pages."
+    "run_post_inspection_evolution_and_attach_optimization_replay",
+)
+def test_post_json_attach_reason_vs_read_diagnostic(mock_attach: mock.MagicMock) -> None:
+    """When attach skips, read-side diagnostic may still be ``missing_optimization_replay``."""
+
+    mock_attach.return_value = OptimizationReplayAttachResult(
+        attached=False,
+        reason="empty_candidate_pool",
+    )
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict)
+    assert attach["attached"] is False
+    assert attach["reason"] == "empty_candidate_pool"
+    opt = data[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
+    assert isinstance(opt, dict)
+    assert int(opt.get("frame_count") or 0) == 0
+    metrics = opt.get("metrics") or {}
+    assert metrics.get("optimization_replay_diagnostic_reason") == "missing_optimization_replay"
+    mock_attach.assert_called()
+    js = _read_asteroid_lab_js_text()
+    assert 'return "Attach: skipped (" + reason + ")"' in js
+    assert metrics.get("optimization_replay_diagnostic_reason") != attach.get("reason")
+
+
+@mock.patch(
+    "django_apps.web.views.public_pages."
+    "run_post_inspection_evolution_and_attach_optimization_replay",
+)
+def test_post_json_attach_diagnostic_does_not_overwrite_read_diagnostic(
+    mock_attach: mock.MagicMock,
+) -> None:
+    mock_attach.return_value = OptimizationReplayAttachResult(
+        attached=False,
+        reason="evolution_failed",
+        diagnostic=build_optimization_replay_attach_diagnostic(
+            stage="validation",
+            validation_passed=False,
+            error_type="ValueError",
+            error_message="validation_ut_short",
+        ),
+    )
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    attach = data.get("optimization_replay_attach")
+    assert isinstance(attach, dict)
+    assert attach.get("reason") == "evolution_failed"
+    assert attach.get("diagnostic", {}).get("stage") == "validation"
+    assert attach.get("diagnostic", {}).get("error_message") == "validation_ut_short"
+    opt = data[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY]
+    metrics = opt.get("metrics") or {}
+    assert metrics.get("optimization_replay_diagnostic_reason") == "missing_optimization_replay"
+    assert "frames" not in attach.get("diagnostic", {})
+
+
+def test_post_json_attach_true_matches_hud_attached_vocabulary() -> None:
+    """12J — attach JSON `{attached: true}` matches HUD ``Attach: attached`` branch in lab JS."""
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    attach = data.get("optimization_replay_attach")
+    assert attach == {"attached": True, "reason": "attached"}
+    js = _read_asteroid_lab_js_text()
+    assert 'reason === "attached" ? "Attach: attached"' in js
+
+
+def test_post_json_attach_skipped_empty_candidate_pool_hud_vocabulary() -> None:
+    """12J — skipped attach with reason is a separate write-channel string from read diagnostic."""
+    js = _read_asteroid_lab_js_text()
+    assert "empty_candidate_pool" in js
+    assert 'return "Attach: skipped (" + reason + ")"' in js
+
+
+def test_post_projects_json_size_attribution_and_optimization_replay_hard_caps() -> None:
+    """13A/13B — POST JSON is measurable; optimization replay obeys MAX_REPLAY_*.
+
+    Lab replay uses ``full_map`` / inspection pipeline and is **not** clamped by
+    ``MAX_REPLAY_CELLS_PER_FRAME`` (optimization-only constant). 13B adds redundancy
+    and largest-frame metadata only (no payload reduction).
+    """
+
+    client = Client()
+    copy = _unique_valid_copy()
+    create_url = reverse("web:asteroid-miner-layout-projects-create")
+    response = client.post(
+        create_url,
+        {"copy_code": copy},
+        HTTP_ACCEPT="application/json",
+    )
+    assert response.status_code == 200
+    data = json.loads(response.content.decode())
+    assert data["ok"] is True
+    assert_optimization_replay_hard_caps(data)
+    lab_n = assert_lab_replay_not_capped_by_optimization_constants(data)
+    assert lab_n >= 5
+    stats = measure_json_sections(data)
+    enc = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    assert stats["total_bytes"] == len(enc)
+    assert stats["lab_replay"]["frame_count"] == lab_n
+    assert stats["lab_replay"]["lab_frame_count"] == lab_n
+    tlk = stats["top_level_key_bytes"]
+    assert stats["lab_replay"]["lab_total_bytes"] == tlk["lab_replay_frames_json"]
+    assert stats["lab_replay"]["max_lab_frame_bytes"] == stats["lab_replay"]["max_frame_bytes"]
+    red = stats["lab_replay"]["redundancy"]
+    assert isinstance(red, dict)
+    assert isinstance(red.get("adjacent_identical_full_map_count"), int)
+    assert red["adjacent_identical_full_map_count"] >= 0
+    assert isinstance(red.get("cell_row_duplicate_instance_estimate"), int)
+    assert red["cell_row_duplicate_instance_estimate"] >= 0
+    assert stats["lab_replay"]["largest_lab_frames"]
+    assert len(stats["lab_replay"]["largest_lab_frames"]) <= 8
+    largest = stats["lab_replay"]["largest_lab_frames"]
+    assert all("bytes" in x and "list_index" in x for x in largest)
+    assert stats["optimization_replay"]["frame_count"] >= 1
+    assert stats["optimization_replay"]["visible_plus_overlay_max"] <= 128
+    assert OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY in stats["top_level_key_bytes"]
+    assert stats["top_level_key_bytes"]["lab_replay_frames_json"] > 0
+    assert stats["top_level_key_bytes"][OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] > 0
 
 
 def test_asteroid_miner_layout_post_empty_redirects_to_base() -> None:

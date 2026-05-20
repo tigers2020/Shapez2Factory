@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -61,6 +62,8 @@ from django_apps.web.services.graph_preview import (
     png_bytes_are_valid,
 )
 from django_apps.web.services.replay_frame_cell_lookup import lookup_cell_in_serialized_frame
+
+_logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=8)

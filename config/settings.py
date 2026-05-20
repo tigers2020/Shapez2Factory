@@ -243,3 +243,50 @@ if _google_cid and _google_sec:
         "AUTH_PARAMS": {"access_type": "online"},
     }
 SOCIALACCOUNT_PROVIDERS = _social_providers
+
+# --- Asteroid Lab POST / optimization replay observability (12K) ---
+# Writes ``django_apps.web.views.public_pages`` (``asteroid_lab_projects_json``) and
+# ``django_apps.web.services.asteroid_lab_post_inspection_evolution`` (attach summary)
+# to ``var/log/asteroid_lab.log`` (gitignored). Set ``ASTEROID_LAB_FILE_LOG=0`` to disable.
+_asteroid_lab_file_log = os.environ.get("ASTEROID_LAB_FILE_LOG", "1").strip().lower() not in (
+    "",
+    "0",
+    "false",
+    "no",
+)
+_VAR_LOG_DIR = BASE_DIR / "var" / "log"
+if _asteroid_lab_file_log:
+    _VAR_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "asteroid_lab_file": {
+                "format": "{levelname} {asctime} {name} {message}",
+                "style": "{",
+            },
+        },
+        "handlers": {
+            "asteroid_lab_file": {
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": str(_VAR_LOG_DIR / "asteroid_lab.log"),
+                "maxBytes": 5 * 1024 * 1024,
+                "backupCount": 3,
+                "formatter": "asteroid_lab_file",
+            },
+        },
+        "loggers": {
+            "django_apps.web.views.public_pages": {
+                "handlers": ["asteroid_lab_file"],
+                "level": "INFO",
+                "propagate": True,
+            },
+            "django_apps.web.services.asteroid_lab_post_inspection_evolution": {
+                "handlers": ["asteroid_lab_file"],
+                "level": "INFO",
+                "propagate": True,
+            },
+        },
+    }
+else:
+    LOGGING = {}

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from django_apps.asteroid_lab.cleanup.result import BBoxBounds, CleanupResult
 from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_jsonl
 from django_apps.asteroid_lab.reconstruction.evidence import (
@@ -25,7 +27,13 @@ def deconstruct_snapshot(
 ) -> CleanupResult:
     """Remove strippable buildings and compute ``wall_coords`` for reconstruction."""
 
-    cells = snapshot.cells
+    raw_cells = snapshot.cells
+    params = map_bbox_dense_and_y([{"X": c.x, "Y": c.y} for c in raw_cells])
+    server_xy_params: tuple[int, int] | None = None
+    if params is not None:
+        server_xy_params = (int(params[0]), int(params[1]))
+
+    cells = _attach_missing_server_coords(raw_cells, server_xy_params=server_xy_params)
     removed = tuple(c for c in cells if is_strippable_building(c))
     ignored_transport = tuple(c for c in removed if is_transport_tile(c))
     cleaned = tuple(c for c in cells if not is_strippable_building(c))
@@ -41,11 +49,6 @@ def deconstruct_snapshot(
     wall_frozen = frozenset(walls)
     bbox_bounds: BBoxBounds | None
     bbox_bounds = padded_bbox_bounds(set(wall_frozen), pad=1)
-    server_xy_params: tuple[int, int] | None = None
-    params = map_bbox_dense_and_y([{"X": c.x, "Y": c.y} for c in cells])
-    if params is not None:
-        server_xy_params = (int(params[0]), int(params[1]))
-
     summary: dict[str, object] = {
         "cleanup_removed_building_count": len(removed),
         "cleanup_ignored_transport_count": len(ignored_transport),

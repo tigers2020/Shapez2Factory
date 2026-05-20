@@ -2,7 +2,7 @@
 
 Role: Asteroid Lab Runtime Replay Wiring Architect
 
-**문서 상태:** ACTIVE. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. 그 외 시퀀스는 설계·경계 고정용이다.  
+**문서 상태:** ACTIVE. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. **Sequence 12J**(POST `optimization_replay_attach` 전용 HUD 줄)는 Lab 템플릿·`asteroid_miner_layout_lab.js`·테스트·§12J 문서로 구현 완료(2026-05-17). **Sequence 12K**(POST attach `diagnostic` 스칼라·`evolution_failed` 단계 관측)는 §12K·코드·테스트로 구현 완료(2026-05-17). **Sequence 12L**(decode/fill·`decoded_cell_to_server_coord`에서 raw ``X==0``을 dense server로 명시; optimization 트리·post-inspection에서 ``server_coords`` 브리지 금지·정적 테스트)는 2026-05-17 반영. 그 외 시퀀스는 설계·경계 고정용이다.  
 **범위:** Lab persistence·UI 읽기 경로에 optimization replay를 안전하게 연결하는 방법만 다룬다.  
 **금지:** 본 문서만으로는 **솔버·리플레이 이벤트 의미·DTO·테스트 전용 fixture 파서 동작**을 바꾸지 않는다. 실제 배선 구현은 별도 PR·승인 후 진행한다.
 
@@ -89,6 +89,16 @@ Optimization 실행 / post-inspection
 | `asteroid_lab` | `SolverRun`에 출력 병합 저장, import 경계 |
 | `web` (page context) | 읽기 전용 어댑터: 역직렬화 실패 시 빈 트랙 + `metrics.optimization_replay_diagnostic_reason`(12G, 메타데이터만) |
 | 테스트 fixture 파서 | 회귀 정본만; 프로덕션 의존 **비권장** |
+
+### 3.3 Sequence 12L — Server 좌표 경계 (optimization 입력)
+
+```text
+OptimizationInput 이후(및 동일 좌표를 쓰는 candidate·route·evolution·replay 기록)는 Server X/Y만 사용한다.
+raw blueprint X/Y·dense 변환은 decode/import·cleanup/reconstruction 경계에서만 수행한다.
+django_apps.shapez_asteroid.optimization 패키지와 asteroid_lab_post_inspection_evolution.py는
+asteroid_lab.snapshots.server_coords 의 raw→dense 브리지를 직접 참조하지 않는다(회귀: tests/unit/shapez_asteroid/test_import_boundaries.py).
+raw X==0 열은 dense 가로 인덱스가 없으므로, decode·토폴로지 fill에서 server_x=0·server_y=Y-min_raw_y 로 명시한다.
+```
 
 ---
 
@@ -305,7 +315,7 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 
 **구현 상태 (v0, 2026-05-17): 완료**
 
-- **템플릿 SSR:** `asteroid_miner_layout_solver.html` — `lab-optimization-replay-status` / `lab-optimization-replay-truncation` / `lab-optimization-replay-diagnostic` (표시 전용; Lab 리플레이 인덱스·프레임 순서 비변경).
+- **템플릿 SSR:** `asteroid_miner_layout_solver.html` — `lab-optimization-replay-status` / `lab-optimization-replay-truncation` / `lab-optimization-replay-diagnostic` / `lab-optimization-replay-attach`(12J, 기본 `Attach: —`; 표시 전용; Lab 리플레이 인덱스·프레임 순서 비변경).
 - **클라이언트:** `renderOptimizationReplayHud(track)` — `normalizeOptimizationReplayTrack`가 `truncation_reason`·`optimization_replay_diagnostic_reason`을 metrics에 전달; `replaceOptimizationReplayPayload` 경로에서 HUD 재렌더.
 - **금지(유지):** Lab ↔ optimization 암묵적 프레임 동기화, 메타데이터 상호작용(재시도·수리), 솔버·리플레이 의미 변경 없음.
 
@@ -369,6 +379,27 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - **금지 재확인:** 프레임 인덱스 동기화, Lab `currentFrameIndex`와 optimization 스텝 맞추기, 오버레이 레이어 소유권 이동, `renderOptimizationReplayHud` 책임 확대 — **전부 비범위**. 문제가 보이면 **버그 리포트·별도 시퀀스**로 분리한다.
 
 **구현 시 스코프 요약:** 3축 어휘·JS const·attach↔diagnostic 매핑 표·M1–M7 행렬·체인 테스트를 **한 PR 또는 12I 전용 소PR 연속**으로 묶되, 각 PR은 §3 output-only·§9 dual-track·§11 비목표를 위반하지 않는다.
+
+### Sequence 12J — Optimization replay attach HUD (POST write channel, 별도 줄)
+
+**구현 상태 (2026-05-17): 완료**
+
+- **목표:** `Accept: application/json` POST 응답의 `optimization_replay_attach` `{ attached, reason }`를 **읽기 진단(`metrics.optimization_replay_diagnostic_reason`)과 섞지 않고**, Optimization Replay 패널에 **`#lab-optimization-replay-attach`** 한 줄로만 노출한다.
+- **표시 규칙 (클라이언트):** `formatOptimizationReplayAttachHudLine` — `attached === true` 이고 `reason === "attached"` 이면 `Attach: attached`; `attached === false` 이면 `Attach: skipped (<reason>)` (`reason` 없으면 `unknown`); 메타 없음·비객체·`attached` 비불리언이면 `Attach: —`.
+- **렌더:** `renderOptimizationReplayHud(track)`가 status / truncation / diagnostic을 **기존과 동일**으로 갱신한 뒤, 캐시된 POST 값(`optimizationReplayAttachHudRaw`)으로 attach 줄을 갱신한다. `replaceOptimizationReplayPayload`만 호출될 때는 attach 캐시를 바꾸지 않으므로 **마지막 POST의 attach 표시가 유지**된다(읽기 트랙 교체와 쓰기 관측 축 분리).
+- **`renderOptimizationReplayAttachHud(raw)`:** POST 처리 경로에서만 호출; 캐시를 갱신한 뒤 `renderOptimizationReplayHud(optimizationReplayTrack)`로 HUD 전체를 다시 그린다.
+- **비범위(유지):** 솔버·GA·`optimization_replay_persist` 동작 변경 없음; read diagnostic 의미 변경 없음; `optimization_replay_diagnostic_reason`에 attach reason을 **합치지 않음**; 페이로드 압축·Lab/Optimization 암묵 동기·오버레이 수명 변경 없음.
+- **12I.6과의 관계:** 12I.6의 “`renderOptimizationReplayHud` 책임 확대” 비범위는 **오버레이·Lab 인덱스 동기·렌더 소유권 이동**을 가리킨다. 12J는 **POST attach 메타 한 줄(쓰기 관측)** 만 추가한다.
+
+### Sequence 12K — POST attach scalar diagnostics (`evolution_failed` stage)
+
+**구현 상태 (2026-05-17): 완료**
+
+- **목표:** `optimization_replay_attach.reason`은 **기존 어휘를 유지**한 채(특히 `evolution_failed`·`empty_candidate_pool` 등), 실패 원인을 **스칼라 `optimization_replay_attach.diagnostic`** 으로만 구분한다. **읽기 축** `metrics.optimization_replay_diagnostic_reason`(persist 스캔·역직렬화)과 **쓰기 축** attach 진단은 **계속 분리**한다(12J 불변).
+- **필드:** `stage`, 후보·리코더 카운트,`best_genome_present`, `evolution_convergence_reason`, (예약) commit/validation 스칼라, `error_type` / 짧은 `error_message` — **프레임 배열·경로·전체 traceback·대형 맵 없음**. 허용 `stage` 값은 코드 상수 `OPTIMIZATION_REPLAY_ATTACH_DIAGNOSTIC_STAGES`로 고정.
+- **경로:** `django_apps/web/services/asteroid_lab_post_inspection_evolution.py`에서 단계 변수로 예외 매핑; `optimization_replay_persist.attach_optimization_replay_frames_after_successful_replay_build`는 attach 실패 시 `replay_serialization` / `attach_persist` 등 단계를 병합. `public_pages` JSON·INFO 로그에 `diagnostic.stage`를 노출(추가 HUD 줄 **비목표**).
+- **비범위(유지):** 솔버·GA·후보 생성·incremental commit·검증 **의미 변경 없음**; Lab/optimization 리플레이 동기·오버레이·페이로드 압축 없음.
+- **테스트(회귀):** `tests/unit/asteroid_lab/test_optimization_replay_persist.py`의 12K 전용 케이스(`evolution_search` 예외는 후보 풀을 테스트 헬퍼로 고정), `tests/integration/web/test_asteroid_miner_layout_solver.py`의 `test_post_json_attach_diagnostic_does_not_overwrite_read_diagnostic` 등.
 
 ---
 
@@ -447,3 +478,14 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 | Dual-track | Lab map 권한 vs optimization 관측; 암묵 동기 없음 |
 | 12F-v0 | 프레임 리스트 가드만; 봉투·HUD·cap·migration **제외** |
 | 12I (초안, 미구현) | §12I: HUD **status / reason / diagnostic** 3축·JS const·`optimization_replay_attach.reason`↔diagnostic 매핑·malformed 행렬(M1–M7)·persist→deserialize→`replaceOptimizationReplayPayload`→HUD **표시 보존** 테스트; 오버레이 완전성·동기화/렌더 ownership 변경 **비범위(관측만)** |
+| 12J (구현 완료) | §12J: POST **`optimization_replay_attach` 전용 HUD 줄** (`Attach: …`); read **`optimization_replay_diagnostic_reason` 불변**; 솔버/attach/persist **비변경** |
+| 12K (구현 완료) | §12K: attach **`reason` 어휘 유지** + **`diagnostic` 스칼라**(`stage`·카운트·짧은 오류); read 진단과 분리; 솔버 의미·동기화 **비변경** |
+## Sequence 12L 좌표 경계 보강 (2026-05-17)
+
+- Critical invariant: decode/import normalization이 Server X/Y를 만든 뒤에는 알고리즘 코드에서 raw 좌표가 불법이다.
+- optimization replay write path는 solver output 관측 계층이며, 입력 구성은 Server X/Y만 사용한다.
+- post-inspection evolution은 `build_optimization_input` 이후 raw 좌표 변환기를 호출하지 않는다.
+- raw `X`/`Y`, `raw_to_server`, `server_to_raw`, `server_xy_for_raw_xy` 계열 변환은 import/decode 및 최종 display/export projection 경계에서만 허용한다.
+- server `x == 0`은 replay/route/evolution 진단에서 유효 좌표로 유지한다.
+- **12L-hardening:** `test_import_boundaries`(projection 모듈 AST + 금지 토큰), POST `test_post_json_optimization_input_does_not_raw_convert_server_coords`로 `evolution_failed` 시 `stage`가 `optimization_input`에 머물지 않음을 추가로 고정한다.
+- 12L에서 UI/overlay projection 변경은 범위 밖이다. projection boundary 문제가 발견되면 별도 UI/export boundary 작업으로 분리한다.

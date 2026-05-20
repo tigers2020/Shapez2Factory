@@ -37,15 +37,17 @@ yes, materialization should prepend fixed_output_transport before reservation pa
 
 → [`phase_k_route_materialization.md`](phase_k_route_materialization.md)
 
-## OD-2: avg_gene_footprint default
+## OD-2: platform footprint + packing efficiency
 
 v0 권장:
 
 ```text
-avg_gene_footprint = 5
+PLATFORM_FOOTPRINT_CELLS = 5   # gene pattern max footprint (not a game rule)
+DEFAULT_MINEABLE_PACKING_EFFICIENCY = 0.75
+estimated_extractor_groups = floor(mineable * packing_efficiency / 5)
 ```
 
-용량 추정 **휴리스틱**일 뿐 placement 보장이 아니다. → [`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md)
+`mineable / 5` 단독은 거부. 용량 추정은 **geometry 휴리스틱**일 뿐 placement 보장이 아니다. → [`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md)
 
 ## OD-3: capacity enforcement level
 

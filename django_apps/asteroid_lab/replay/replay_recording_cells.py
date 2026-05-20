@@ -134,6 +134,7 @@ def materialized_cells_to_cell_delta(
 
 ROUTE_PROBE_OVERLAY_KIND = "route_probe"
 CONFIRMED_ROUTE_OVERLAY_KIND = "confirmed_route"
+ROUTE_GOAL_OVERLAY_KIND = "route_goal"
 
 
 def path_to_overlay_cells(
@@ -212,6 +213,48 @@ def candidate_occupied_to_overlay_cells(
     return tuple(out)
 
 
+def merge_overlay_cells(
+    *layers: tuple[ReplayOverlayCell, ...],
+) -> tuple[ReplayOverlayCell, ...]:
+    """Merge overlay layers; later layers win on duplicate ``(x, y)``."""
+
+    by_xy: dict[tuple[int, int], ReplayOverlayCell] = {}
+    for layer in layers:
+        for cell in layer:
+            by_xy[(cell.x, cell.y)] = cell
+    if not by_xy:
+        return ()
+    return tuple(by_xy[key] for key in sorted(by_xy))
+
+
+def route_goals_to_overlay_cells(
+    goals: frozenset,
+    ctx: ReplayProjectionContext,
+    *,
+    cap: int = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME,
+) -> tuple[ReplayOverlayCell, ...]:
+    """Planned RouteGoal coords → replay overlay (server → Lab)."""
+    out: list[ReplayOverlayCell] = []
+    for goal in sorted(goals, key=lambda g: (g.coord[0], g.coord[1])):
+        sx, sy = goal.coord
+        x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=ctx.server_xy_params)
+        transport = (
+            goal.transport_kind.value if goal.transport_kind is not None else ""
+        )
+        out.append(
+            ReplayOverlayCell(
+                x=x,
+                y=y,
+                kind=ROUTE_GOAL_OVERLAY_KIND,
+                transport=transport,
+                tile_type=ROUTE_GOAL_OVERLAY_KIND,
+            )
+        )
+        if len(out) >= cap:
+            break
+    return tuple(out)
+
+
 def goal_annotations(
     goals: frozenset,
     ctx: ReplayProjectionContext,
@@ -227,13 +270,16 @@ def goal_annotations(
 
 __all__ = [
     "CONFIRMED_ROUTE_OVERLAY_KIND",
+    "ROUTE_GOAL_OVERLAY_KIND",
     "ROUTE_PROBE_OVERLAY_KIND",
     "bbox_from_replay_cells",
     "candidate_occupied_to_overlay_cells",
     "confirmed_paths_to_overlay_cells",
     "goal_annotations",
     "materialized_cells_to_cell_delta",
+    "merge_overlay_cells",
     "path_to_overlay_cells",
     "probe_path_to_overlay_cells",
+    "route_goals_to_overlay_cells",
     "visible_cells_from_loaded_snapshot",
 ]

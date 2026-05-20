@@ -609,6 +609,7 @@
     route_probe: true,
     route_probe_path: true,
     confirmed_route: true,
+    route_goal: true,
   };
 
   function isRouteOverlayCellKind(cellKind) {
@@ -617,6 +618,9 @@
 
   function toneForRouteOverlayKind(cellKind) {
     const ck = String(cellKind || "");
+    if (ck === "route_goal") {
+      return "lab-route-goal-tone ring-2 ring-inset ring-violet-400/90 bg-violet-500/35";
+    }
     if (ck === "confirmed_route") {
       return "lab-route-confirmed-tone ring-2 ring-inset ring-lime-400/90 bg-lime-500/35";
     }
@@ -693,6 +697,7 @@
       const tone = toneForFullMapCell(cell);
       const el = domCells[idx];
       el.className = base + " " + tone;
+      const ck = cell.cell_kind != null ? String(cell.cell_kind) : "";
       const hudRole =
         cell.overlay_role != null
           ? String(cell.overlay_role)

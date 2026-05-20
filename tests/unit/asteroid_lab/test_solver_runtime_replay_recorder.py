@@ -92,12 +92,27 @@ def _minimal_loaded() -> LoadedReconstructionSnapshot:
 def _minimal_capacity() -> CapacityPlan:
     return CapacityPlan(
         mineable_cell_count=3,
-        estimated_max_samples=1,
-        estimated_shape_platforms=12,
-        estimated_fluid_platforms=0,
-        shape_goal_count=1,
+        estimated_extractor_groups=0,
+        shape_goal_count=0,
         fluid_goal_count=0,
-        avg_gene_footprint=5,
+        packing_efficiency=0.75,
+        platform_footprint_cells=5,
+    )
+
+
+def _empty_planned_route_goals(
+    capacity: CapacityPlan | None = None,
+) -> PlannedRouteGoals:
+    cap = capacity if capacity is not None else _minimal_capacity()
+    return PlannedRouteGoals(
+        goals=frozenset(),
+        capacity_plan=cap,
+        shape_goals_requested=0,
+        shape_goals_placed=0,
+        fluid_goals_requested=0,
+        fluid_goals_placed=0,
+        selected_cardinal=None,
+        spread_axis=None,
     )
 
 
@@ -106,7 +121,7 @@ def _full_recorder_run() -> SolverRuntimeReplayRecorder:
     rec = SolverRuntimeReplayRecorder(loaded, _SERVER_XY_PARAMS)
     inp = greenfield_optimization_input()
     capacity = _minimal_capacity()
-    planned = PlannedRouteGoals(goals=frozenset(), capacity_plan=capacity)
+    planned = _empty_planned_route_goals(capacity)
     pool = CandidateGenerationResult(normal_candidates=(), rejected_candidates=())
     plan = SelectedCandidatePlan(ordered_candidate_ids=())
     commit = IncrementalCommitResult(
@@ -363,6 +378,92 @@ def test_route_probe_succeeded_frame_includes_path_overlay() -> None:
     overlay_kinds = {c.kind for c in probe_frame.map_view.overlay_cells}
     assert "route_probe" in overlay_kinds
     assert len(probe_frame.map_view.overlay_cells) == len(candidate.route_probe_result.path)
+
+
+def test_record_route_goals_generated_includes_goal_overlay() -> None:
+    from dataclasses import replace
+
+    from django_apps.asteroid_lab.optimization.enums import RouteGoalKind
+    from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal
+    from django_apps.asteroid_lab.optimization.route_goal_planner import PlannedRouteGoals
+
+    loaded = _minimal_loaded()
+    capacity = _minimal_capacity()
+    goal = RouteGoal(
+        coord=(3, 0),
+        goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+        transport_kind=TransportKind.SHAPE_BELT,
+        priority=20,
+        existing_trunk=False,
+    )
+    planned = PlannedRouteGoals(
+        goals=frozenset({goal}),
+        capacity_plan=capacity,
+        shape_goals_requested=1,
+        shape_goals_placed=1,
+        fluid_goals_requested=0,
+        fluid_goals_placed=0,
+        selected_cardinal=Direction.E,
+        spread_axis="x",
+    )
+    rec = SolverRuntimeReplayRecorder(loaded, _SERVER_XY_PARAMS)
+    rec.record_route_goals_generated(planned)
+    frame = rec.build_frames()[0]
+    assert frame.event_type == ReplayEventType.ROUTE_GOAL_GENERATED
+    overlay_kinds = {c.kind for c in frame.map_view.overlay_cells}
+    assert "route_goal" in overlay_kinds
+    assert frame.inspector["shape_goals_requested"] == 1
+
+
+def test_route_goal_overlay_persists_until_result_layout() -> None:
+    from dataclasses import replace
+
+    from django_apps.asteroid_lab.optimization.enums import RouteGoalKind
+    from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal
+    from django_apps.asteroid_lab.optimization.route_goal_planner import PlannedRouteGoals
+
+    loaded = _minimal_loaded()
+    capacity = replace(_minimal_capacity(), shape_goal_count=1)
+    goal = RouteGoal(
+        coord=(3, 0),
+        goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+        transport_kind=TransportKind.SHAPE_BELT,
+        priority=20,
+        existing_trunk=False,
+    )
+    planned = PlannedRouteGoals(
+        goals=frozenset({goal}),
+        capacity_plan=capacity,
+        shape_goals_requested=1,
+        shape_goals_placed=1,
+        fluid_goals_requested=0,
+        fluid_goals_placed=0,
+        selected_cardinal=Direction.E,
+        spread_axis="x",
+    )
+    rec = SolverRuntimeReplayRecorder(loaded, _SERVER_XY_PARAMS)
+    rec.record_route_goals_generated(planned)
+    rec.record_candidate_pool_completed(
+        CandidateGenerationResult(normal_candidates=(), rejected_candidates=())
+    )
+    rec.record_result_layout(
+        commit=IncrementalCommitResult(
+            confirmed=(), skipped_candidate_ids=(), goal_assigned_platforms={}
+        ),
+        materialization=RouteMaterializationResult(
+            layout=MaterializedLayoutCells(cells=()), failure_reason=None
+        ),
+        validation=ValidationResult(passed=True, issues=()),
+        solver_summary={"issue_codes": []},
+    )
+    goal_idx = next(
+        i
+        for i, f in enumerate(rec.build_frames())
+        if f.event_type == ReplayEventType.ROUTE_GOAL_GENERATED
+    )
+    for frame in rec.build_frames()[goal_idx:]:
+        kinds = {c.kind for c in frame.map_view.overlay_cells}
+        assert "route_goal" in kinds, frame.event_type
 
 
 def test_record_candidate_pool_details_emits_generated_and_probe_frames() -> None:
@@ -913,7 +1014,7 @@ def test_full_recorder_with_all_new_methods_frame_index_monotonic() -> None:
     rec = SolverRuntimeReplayRecorder(loaded, _SERVER_XY_PARAMS)
     inp = greenfield_optimization_input()
     capacity = _minimal_capacity()
-    planned = PlannedRouteGoals(goals=frozenset(), capacity_plan=capacity)
+    planned = _empty_planned_route_goals(capacity)
     candidate = _minimal_gene_candidate("detail_c")
     pool = CandidateGenerationResult(normal_candidates=(candidate,), rejected_candidates=())
     plan = SelectedCandidatePlan(ordered_candidate_ids=("detail_c",))

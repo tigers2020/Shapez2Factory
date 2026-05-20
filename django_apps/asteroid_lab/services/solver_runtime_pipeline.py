@@ -111,12 +111,7 @@ def run_solver_runtime_pipeline(
     if recorder is not None:
         recorder.record_optimization_input_loaded(inp)
 
-    shape_platforms = max(12, len(inp.mineable_cells) * 8)
-    capacity = plan_capacity(
-        mineable_cell_count=len(inp.mineable_cells),
-        shape_platform_count=shape_platforms,
-        fluid_platform_count=0,
-    )
+    capacity = plan_capacity(mineable_cell_count=len(inp.mineable_cells))
     if recorder is not None:
         recorder.record_capacity_plan_created(capacity)
 

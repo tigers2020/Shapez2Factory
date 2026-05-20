@@ -63,6 +63,8 @@ existing trunk 연결
 
 세부 비용은 Phase 4 `RouteCellDomain.traversal_cost`와 probe 정책이 맞춘다.
 
+Phase C에서 `route_goals` 좌표는 **rim에서 5칸 이상 떨어진 `external_void`**, **단일 N/E/S/W sector**, 처리량 기반 goal 개수로 생성한다 ([`solver_runtime/phase_c_capacity_route_goals.md`](solver_runtime/phase_c_capacity_route_goals.md)).
+
 ### `RouteGoal.priority` 정렬 규칙
 
 **숫자가 작을수록 선호(우선 매칭·낮은 penalty)** 로 고정한다. 구현자가 “높은 값이 좋은지” 해석하지 않게 한다.

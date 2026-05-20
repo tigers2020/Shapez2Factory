@@ -157,6 +157,10 @@
   }
 
   /* Solver runtime route overlays (replay map_view.overlay_cells). */
+  .lab-route-goal-tone {
+    box-shadow: 0 0 7px rgb(167 139 250 / 0.55);
+  }
+
   .lab-route-probe-tone {
     box-shadow: 0 0 6px rgb(245 158 11 / 0.45);
   }

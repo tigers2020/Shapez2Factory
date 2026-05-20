@@ -49,20 +49,29 @@ Fluid:
 
 CANON: [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../../game_rules/shapez2_asteroid_space_transport_throughput.md).
 
-### 추정
+### 추정 (geometry 휴리스틱)
+
+`mineable / 5` 단독은 게임 규칙이 아니다. 패턴 최대 footprint(추출기+확장+출구 stub ≈ 5 cells)와 소행성 형태 편차를 분리한다.
 
 ```python
-estimated_max_samples = floor(len(mineable_cells) / avg_gene_footprint)
+PLATFORM_FOOTPRINT_CELLS = 5
+DEFAULT_MINEABLE_PACKING_EFFICIENCY = 0.75  # v0; solver config로 튜닝 가능(v1)
+
+estimated_extractor_groups = floor(
+    mineable_cell_count * packing_efficiency / PLATFORM_FOOTPRINT_CELLS
+)
 ```
 
-v0 기본: `avg_gene_footprint = 5` ([`open_decisions.md`](open_decisions.md) OD-2).
+OD-2: [`open_decisions.md`](open_decisions.md).
 
-### Goal 수
+### Goal 수 (처리량 CANON)
 
 ```python
-shape_goal_count = ceil(estimated_shape_platforms / 12)
-fluid_goal_count = ceil(estimated_fluid_platforms / 72)
+shape_goal_count = ceil(estimated_extractor_groups / 12)
+fluid_goal_count = ceil(fluid_platform_count / 72)
 ```
+
+`12` / `72` 는 Space Belt / Space Pipe 포화 비율 ([`shapez2_asteroid_space_transport_throughput.md`](../../game_rules/shapez2_asteroid_space_transport_throughput.md), 커뮤니티·위키와 정합).
 
 ### RouteGoal 생성
 
@@ -78,12 +87,27 @@ RouteGoal(
 )
 ```
 
+### Goal 수 상한 (shape)
+
+```python
+throughput = ceil(estimated_extractor_groups / 12)
+extractor_scaled = estimated_extractor_groups * 2
+shape_goal_count = min(8, max(2, min(throughput, extractor_scaled)))
+```
+
+extractor 2개 수준에서는 throughput(1)보다 `groups*2` 쪽이 우선되어 goal이 과다하지 않게 한다.
+
 ### Goal 선택 정책 (v0)
 
-1. `external_void_cells` 중 bbox margin에 가까운 셀 우선
-2. 방향 분산: N/E/S/W 또는 quadrant별 균등
-3. `transport_kind`별 별도 goal set
-4. 동일 좌표에 shape/fluid goal 가능 — `route_domain`에서 mask 분리
+1. `external_void_cells` 중 **mineable에서 BFS 거리 ≥ 5**
+2. **넓은 면 양쪽 분할** (`width >= height` → 좌/우 `x` band, else 상/하 `y` band; `side_band_width = max(2, span//8)`)
+3. `left_count = total // 2`, `right_count = total - left_count` — 각 side에서 rim 축(`y` 또는 `x`) 기준 `span / (count + 1)` even target → 가장 가까운 void snap (바깥쪽 tie-break)
+4. **shape goals** 먼저 bilateral 배치, **fluid**는 별도 bilateral pass (`used` 공유로 좌표 겹침 금지)
+5. **폐기:** 단일 face·cardinal sector·한쪽 모서리 클러스터
+
+`PlannedRouteGoals`는 `spread_axis`(`x`=좌우 bilateral), `shape_goals_shortfall` / `fluid_goals_shortfall` 를 기록한다.
+
+**Replay:** `ROUTE_GOAL_GENERATED` 이후 모든 timeline frame의 `map_view.overlay_cells`에 `route_goal` 오버레이가 누적 유지된다 (`merge_overlay_cells` + recorder persistent layer).
 
 ## 금지
 
@@ -97,16 +121,19 @@ RouteGoal(
 
 - [ ] `capacity_plan`에 shape/fluid goal count 산출 근거 기록
 - [ ] `PlannedRouteGoals`가 transport materialization 없이 생성됨
-- [ ] quadrant/방향 분산 정책이 deterministic
+- [ ] bilateral wide-face even spacing·rim 거리 정책이 deterministic
 
 ## 필수 테스트
 
 ```text
+test_capacity_planner_estimates_extractor_groups_with_packing
 test_capacity_planner_estimates_shape_goal_count_by_12
 test_capacity_planner_estimates_fluid_goal_count_by_72
+test_route_goal_rim_distance_filter_excludes_near_void
+test_route_goals_bilateral_left_right_even_y
+test_capacity_shape_goals_capped_by_extractor_scale
 test_route_goal_planner_creates_multiple_external_margin_goals
 test_route_goal_planner_does_not_materialize_transport
-test_route_goal_planner_distributes_goals_by_quadrant
 ```
 
 ## 관련 코드·문서

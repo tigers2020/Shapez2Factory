@@ -1,3 +1,11 @@
+---
+status: ARCHIVED
+last_reviewed: 2026-05-16
+superseded_by: []
+---
+
+> **보관 전제 (2026-05-16)**: 본 감사가 인용한 `documents/Algorithm/mining_solver_cursor_sessions/` 트리는 저장소에서 제거되었다. **삭제된 정본 경로를 현재 구현 근거로 쓰지 않는다.** 감사 시점의 live surface는 `django_apps/asteroid_lab` 계열이다. 이후 상황은 [`documents/index/document_inventory.md`](../../index/document_inventory.md), [`documents/ai/current_plan.md`](../../ai/current_plan.md)를 본다.
+
 # Asteroid Solver Refactor Audit — Global Summary
 
 ## 감사 범위

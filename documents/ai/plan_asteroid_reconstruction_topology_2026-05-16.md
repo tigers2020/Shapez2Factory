@@ -28,7 +28,7 @@ related_epics: []
 
 ## 데이터 (reconstruction 입력)
 
-- `cleaned_cells` + `wall_coords` + `bbox_bounds` (+ server 좌표 변환용 파라미터)
+- `cleaned_cells` + `wall_coords` + `bbox_bounds` (+ server 좌표·핑거프린트는 [`../research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md`](../research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md) 참고)
 - **fill 종(shape/fluid)**: MVP에서는 디코드에 남은 `asteroid_*_field` 및 기존 다수결만 사용; 제거된 채굴기 타입으로 fill 결정하지 않음 (`field_vote_hints` 없음)
 
 ## Reconstruction 단계 (flood 전·후)

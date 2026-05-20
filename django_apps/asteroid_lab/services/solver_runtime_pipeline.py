@@ -75,6 +75,35 @@ def _error_issues(issues: tuple[ValidationIssue, ...]) -> tuple[ValidationIssue,
     return tuple(i for i in issues if i.severity is ValidationSeverity.ERROR)
 
 
+def _unique_gene_ids_used_count(pool_normal_candidates: tuple) -> int:
+    return len({getattr(c, "gene_id", None) for c in pool_normal_candidates} - {None})
+
+
+def _pool_throughput(pool_normal_candidates: tuple) -> int:
+    return sum(getattr(c, "base_throughput", 0) for c in pool_normal_candidates)
+
+
+def _selected_throughput(
+    plan: SelectedCandidatePlan,
+    candidates_by_id: dict[str, Any],
+) -> int:
+    return sum(
+        getattr(candidates_by_id[cid], "base_throughput", 0)
+        for cid in plan.ordered_candidate_ids
+        if cid in candidates_by_id
+    )
+
+
+def _confirmed_throughput(commit: Any, candidates_by_id: dict[str, Any]) -> int:
+    total = 0
+    for placement in commit.confirmed:
+        candidate = candidates_by_id.get(placement.candidate_id)
+        if candidate is None:
+            continue
+        total += getattr(candidate, "base_throughput", 0)
+    return total
+
+
 def _build_solver_summary(
     *,
     validation_passed: bool,
@@ -88,6 +117,7 @@ def _build_solver_summary(
     pool_metrics: dict[str, int],
     plan: SelectedCandidatePlan,
     commit_attempt_count: int,
+    throughput_metrics: dict[str, int],
 ) -> dict[str, Any]:
     error_issues = _error_issues(issues)
     commit_rolled_back_count = len(skipped)
@@ -99,7 +129,7 @@ def _build_solver_summary(
         "materialization_failure_reason": (
             materialization.failure_reason.value if materialization.failure_reason else None
         ),
-        "issue_codes": [i.issue_code.value for i in error_issues],
+        "issue_codes": [i.issue_code.value for i in issues],
         "issue_details": [_issue_detail(i) for i in error_issues],
         "timing": timing.to_dict(),
         "route_out_count": targets.route_out_count,
@@ -116,6 +146,15 @@ def _build_solver_summary(
         "commit_attempt_count": commit_attempt_count,
         "commit_confirmed_count": commit_count,
         "commit_rolled_back_count": commit_rolled_back_count,
+        # NOTE:
+        # target_miner_bundle_count is historically named.
+        # In the runtime greedy-v0 contract it represents throughput target units,
+        # not a strict count of selected bundles.
+        "target_throughput": throughput_metrics["target_throughput"],
+        "normal_pool_throughput": throughput_metrics["normal_pool_throughput"],
+        "selected_throughput": throughput_metrics["selected_throughput"],
+        "confirmed_throughput": throughput_metrics["confirmed_throughput"],
+        "unique_gene_ids_used_count": throughput_metrics["unique_gene_ids_used_count"],
     }
 
 
@@ -193,6 +232,7 @@ def run_solver_runtime_pipeline(
         materialization.layout,
         inp=inp,
         candidates_by_id=candidates_by_id,
+        targets=targets,
     )
     timing.validation_ms = (time.perf_counter() - validation_start) * 1000.0
     if recorder is not None:
@@ -205,6 +245,13 @@ def run_solver_runtime_pipeline(
         "normal_candidate_count_after_probe": len(pool.normal_candidates),
         "rejected_candidate_count": len(pool.rejected_candidates),
         "deduped_candidate_count": pool.deduped_candidate_count,
+    }
+    throughput_metrics = {
+        "target_throughput": targets.target_miner_bundle_count,
+        "normal_pool_throughput": _pool_throughput(pool.normal_candidates),
+        "selected_throughput": _selected_throughput(plan, candidates_by_id),
+        "confirmed_throughput": _confirmed_throughput(commit, candidates_by_id),
+        "unique_gene_ids_used_count": _unique_gene_ids_used_count(pool.normal_candidates),
     }
     commit_attempt_count = len(plan.ordered_candidate_ids)
     summary = _build_solver_summary(
@@ -219,6 +266,7 @@ def run_solver_runtime_pipeline(
         pool_metrics=pool_metrics,
         plan=plan,
         commit_attempt_count=commit_attempt_count,
+        throughput_metrics=throughput_metrics,
     )
 
     if recorder is not None:

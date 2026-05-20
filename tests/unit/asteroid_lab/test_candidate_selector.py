@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
+    compute_bundle_selection_targets,
+)
 from django_apps.asteroid_lab.optimization.candidate_dtos import GeneCandidate
 from django_apps.asteroid_lab.optimization.candidate_score import (
     CORRIDOR_CELL_WEIGHT,
@@ -281,6 +284,44 @@ def test_select_gene_candidates_does_not_mutate_optimization_input() -> None:
 
     assert inp.route_goals == before_goals
     assert inp.protected_corridor_cells == before_corridor
+
+
+def test_selector_cap_uses_target_bundle_count_not_route_out_count() -> None:
+    """Selector cap is target_miner_bundle_count (84), not route_out_count (7).
+
+    Invariant: len(ordered) == min(len(pool), targets.target_miner_bundle_count).
+    This proves that "7 routes → 7 miners" must be a generation-pool problem,
+    not a selector capping problem.
+    """
+    route_out_count = 7
+    goals = frozenset(_goal((x * 2, 0)) for x in range(route_out_count))
+    inp = _minimal_inp(goals=goals)
+    targets = compute_bundle_selection_targets(goals)
+
+    assert targets.route_out_count == route_out_count
+    assert targets.target_miner_bundle_count == route_out_count * 12  # 84
+
+    pool_candidates: list[GeneCandidate] = []
+    for goal in goals:
+        for i in range(2):
+            pool_candidates.append(
+                _gene_candidate(
+                    candidate_id=f"g{goal.coord[0]}:{i}",
+                    base_throughput=4,
+                    cost=i + 1,
+                    goal_priority=10,
+                    reached_goal=goal,
+                )
+            )
+
+    assert len(pool_candidates) == 14
+
+    plan = select_gene_candidates_greedy(tuple(pool_candidates), inp=inp, targets=targets)
+
+    assert len(plan.ordered_candidate_ids) == min(
+        len(pool_candidates), targets.target_miner_bundle_count
+    )  # 14 — pool exhausted before cap
+    assert len(plan.ordered_candidate_ids) > route_out_count  # 14 > 7
 
 
 def test_trunk_load_penalty_increases_with_assigned_platforms() -> None:

@@ -76,6 +76,7 @@ class ValidationIssueCode(StrEnum):
     MATERIALIZATION_FAILED = "materialization_failed"
     PLACEMENT_NOT_MATERIALIZED = "placement_not_materialized"
     RESERVED_PATH_MISMATCH = "reserved_path_mismatch"
+    UNDER_TARGET_THROUGHPUT = "under_target_throughput"
 
 
 class EvolutionConvergenceReason(StrEnum):

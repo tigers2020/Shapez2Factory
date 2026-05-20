@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from django_apps.asteroid_lab.optimization.bundle_selection_targets import BundleSelectionTargets
 from django_apps.asteroid_lab.optimization.candidate_dtos import GeneCandidate
 from django_apps.asteroid_lab.optimization.commit_best_candidates import IncrementalCommitResult
 from django_apps.asteroid_lab.optimization.enums import (
@@ -65,6 +66,24 @@ def _issue(
     )
 
 
+def _confirmed_throughput_sum(
+    commit: IncrementalCommitResult,
+    candidates_by_id: Mapping[str, GeneCandidate],
+) -> int:
+    """Sum base_throughput for confirmed placements whose candidate is in the pool.
+
+    Missing-candidate cases are deliberately skipped: the existing
+    CANDIDATE_POOL_MISSING check owns that issue.
+    """
+    total = 0
+    for placement in commit.confirmed:
+        candidate = candidates_by_id.get(placement.candidate_id)
+        if candidate is None:
+            continue
+        total += candidate.base_throughput
+    return total
+
+
 def _extractor_not_connected_extra(
     candidate: GeneCandidate,
     res: RouteReservation,
@@ -90,6 +109,7 @@ def validate_final_layout(
     *,
     inp: OptimizationInput,
     candidates_by_id: Mapping[str, GeneCandidate],
+    targets: BundleSelectionTargets | None = None,
 ) -> ValidationResult:
     """Assert final layout and reservations satisfy solver contracts (read-only)."""
 
@@ -229,6 +249,21 @@ def validate_final_layout(
                     issue_code=ValidationIssueCode.INVALID_COORD_CONTRACT,
                     coord=(int(coord[0]), int(coord[1])) if len(coord) == 2 else None,
                     message="reservation path coord violates server contract",
+                )
+            )
+
+    if targets is not None:
+        confirmed_tp = _confirmed_throughput_sum(commit, candidates_by_id)
+        if confirmed_tp < targets.target_miner_bundle_count:
+            issues.append(
+                _issue(
+                    issue_code=ValidationIssueCode.UNDER_TARGET_THROUGHPUT,
+                    severity=ValidationSeverity.WARNING,
+                    message="confirmed throughput is below selection target",
+                    issue_extra={
+                        "confirmed_throughput": confirmed_tp,
+                        "target_throughput": targets.target_miner_bundle_count,
+                    },
                 )
             )
 

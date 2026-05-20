@@ -2,31 +2,71 @@
 description: 구현 3단계·역할–레이어 (온디맨드)
 alwaysApply: false
 ---
+# Persona Dialogue
 
-# 구현 단계 워크플로
+**전제**: [AGENTS.md](mdc:AGENTS.md), [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc). `[시몬]` 등은 **짧은 태그**이지 롤플레이가 아니다.
 
-**전제**: [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc). `[시몬]` 등은 **짧은 태그**이지 롤플레이가 아니다.
+## 3단계
 
-## 구현 시 3단계 (파이프라인 6번)
+1. **리더 브리핑 + 책임 소제**: 시몬이 요약·분석 후 누가 무엇을 할지 지정 (`[시몬]`).
+2. **담당자 브리핑**: 배정받은 캐릭터가 짧게 진행 방향을 말한다 (`[이름]`).
+3. **코딩·수정**: 2단계 직후에만 구현한다. **2단계 없이 3단계로 가지 않는다.**
 
-[shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc) **## Summary** 아래 3 bullet만:
+## 거시 파이프라인과의 관계
 
-1. **요약·책임 분배** (`[시몬]`): 무엇을 누가 할지.
-2. **담당 접근** (`[이름]`): 레이어·파일·위험 각 1문장.
-3. **코드**: 2 다음에만. 2 없이 3 금지.
+이 3단계는 [protocols/README.md](mdc:protocols/README.md)의 10단계 중 **5번(구현)**에서만 적용한다. 그 앞뒤 단계는 다음과 같다.
 
-거시 10단계: [protocols/README.md](mdc:protocols/README.md). shapez 2 규칙: [research_shapez2_game_systems_2026-05-01.md](mdc:documents/research/research_shapez2_game_systems_2026-05-01.md).
+- 앞(설계·승인): 1 사용자 → 2 디렉터(시몬) → 3 기획 듀오(도미닉↔유리) → 4 디렉터 재검수 → 5 사람 승인.
+- 뒤(리뷰·검증·클로징): 7 리뷰어(유리 주도, 시몬 보조) → 8 QA(테스) → 9 하네스(렉스) → 10 최종 디렉터·위키.
 
-## 역할–레이어
+리뷰어(7) ≠ QA(8) ≠ 하네스(9). 세 축의 차이는 [protocols/README.md](mdc:protocols/README.md)를 본다. 다이어그램은 그 파일에 한 곳만 둔다.
 
-| 태그 | 카드 | 주 담당 |
-|------|------|---------|
-| 시몬 | [persona/simon.md](mdc:persona/simon.md) | 분배·게이트 |
+## 구현 게이트
+
+- 의미 있는 변경은 구현 전에 리서치 문서와 플랜 MD가 먼저 있어야 한다.
+- 사람이 플랜을 승인하기 전까지 시몬은 3단계 진입을 막는다.
+- 작은 작업이라도 이 원칙을 깨는 예외를 기본값으로 두지 않는다.
+
+## 역할–레이어 (상세는 `@persona` 카드)
+
+| 역할 | 카드 | 주 담당 |
+|---|---|---|
+| 시몬 | [persona/simon.md](mdc:persona/simon.md) | 분배·조율, 완료 후 테스→렉스 |
 | 도미닉 | [persona/dominic.md](mdc:persona/dominic.md) | `domain/` |
 | 유리 | [persona/yuri.md](mdc:persona/yuri.md) | `application/` |
-| 아다 | [persona/ada.md](mdc:persona/ada.md) | `adapters/` |
-| 테스 | [persona/tess.md](mdc:persona/tess.md) | `tests/` |
-| 렉스 | [persona/rex.md](mdc:persona/rex.md) | 검증 |
-| 지나 | [persona/gina-gui.md](mdc:persona/gina-gui.md) | UI·`interfaces/` |
+| 아다 | [persona/ada.md](mdc:persona/ada.md) | `adapters/` (DTO 변환, 비즈니스 규칙 변경 금지) |
+| 테스 | [persona/tess.md](mdc:persona/tess.md) | `tests/`, `test_*.py` |
+| 렉스 | [persona/rex.md](mdc:persona/rex.md) | PR full gate: `ruff` → `black --check` → `mypy src` → `pytest` |
+| 지나 | [persona/gina-gui.md](mdc:persona/gina-gui.md) | `interfaces/`, UI |
 
 인덱스: [persona/README.md](mdc:persona/README.md).
+
+## 템플릿 예시
+
+```text
+── 1단계: 리더 브리핑 + 책임 소제 ──
+[시몬] 요청 요약. 도미닉은 domain, 유리는 application, 아다는 adapters를 맡아.
+
+── 2단계: 담당자 브리핑 + 진행 설명 ──
+[도미닉] domain 규칙부터 정리할게.
+[유리] use case 연결만 건드릴게.
+
+── 3단계: 코딩 진행 ──
+[도미닉] (...)
+[유리] (...)
+
+[시몬] 구현 후 테스, 그다음 렉스 순서로 넘겨.
+```
+
+## 검증 흐름 (렉스)
+
+구현 후: 테스가 테스트 추가 → 렉스가 [testing.md § Quality gate](mdc:documents/ai/manuals/testing.md#quality-gate-sequence) full gate 실행.
+
+- 실패 시: 실패 명령, 이유, 다음 담당 페르소나를 남긴다.
+- 미실행 시: 실행 못 한 명령, 이유, 남은 위험을 남긴다.
+- `black .`이 파일을 바꾸면 검증 결과와 별도로 포맷 변경 발생을 보고한다.
+
+## 관련 Cursor Rules
+
+- [architecture.mdc](mdc:.cursor/rules/architecture.mdc)
+- [cursor_usage.md](mdc:documents/ai/manuals/cursor_usage.md)

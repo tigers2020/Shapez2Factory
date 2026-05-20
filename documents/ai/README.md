@@ -26,5 +26,14 @@
 |--------|------|
 | [`manuals/testing.md`](manuals/testing.md) | **Contract-first TDD** · invariant · dual gate · PR 체크리스트 정본 |
 | [`manuals/cursor_usage.md`](manuals/cursor_usage.md) | Cursor·컨텍스트·에이전트 네이티브 엔지니어링 |
+| [`manuals/cursor_slim_setup.md`](manuals/cursor_slim_setup.md) | MCP·플러그인·User Rules slim 설정 가이드 |
 
-참고: [`AGENTS.md`](../../AGENTS.md) § Development Mode: Contract-first TDD — 라우팅 요약.
+## 런북
+
+[`runbooks/`](runbooks/) — 반복 개발 절차.
+
+| 런북 | 용도 |
+|------|------|
+| [`runbooks/dev_commands.md`](runbooks/dev_commands.md) | pytest·runserver·pycache·빌드 명령 빠른 참조 |
+
+참고: [`AGENTS.md`](../../AGENTS.md) Manual Routing — 작업 유형별 매뉴얼 라우팅 표.

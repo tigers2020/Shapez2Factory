@@ -1,0 +1,28 @@
+{
+  "candidates": [
+    {
+      "candidate_id": "a:saturate",
+      "base_throughput": 16,
+      "cost": 1,
+      "goal_priority": 10,
+      "goal_coord": [6, 0],
+      "transport_kind": "shape_belt"
+    },
+    {
+      "candidate_id": "b:to_a",
+      "base_throughput": 8,
+      "cost": 1,
+      "goal_priority": 10,
+      "goal_coord": [6, 0],
+      "transport_kind": "shape_belt"
+    },
+    {
+      "candidate_id": "c:to_b",
+      "base_throughput": 8,
+      "cost": 1,
+      "goal_priority": 10,
+      "goal_coord": [8, 0],
+      "transport_kind": "shape_belt"
+    }
+  ]
+}

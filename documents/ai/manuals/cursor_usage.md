@@ -103,7 +103,7 @@
 | 프롬프트 구체화 | 파일 경로·심볼 이름·완료 조건(테스트 명령 등)을 적어 **불필요한 탐색**을 줄인다. |
 
 - [`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc)·[`AGENTS.md`](../../../AGENTS.md)만 **매 턴** 실린다. 같은 내용을 규칙에 중복 넣지 말고 **매뉴얼·플랜**에 두고 `@`로 연다.
-- MCP는 [`.cursor/rules/mcp.mdc`](../../../.cursor/rules/mcp.mdc) **온디맨드**. 미사용 MCP 서버는 끄면 부담 감소.
+- MCP는 온디맨드. 미사용 MCP 서버는 끄면 부담 감소 (Cursor slim 가이드: [`cursor_slim_setup.md`](cursor_slim_setup.md)).
 - 구조·심볼 추적은 **Serena** + `@mcp` (`initial_instructions` 선행).
 
 ## 15. Transcript 철학과 프로젝트 정렬 (요약)

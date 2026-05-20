@@ -1,4 +1,4 @@
-"""Read-only product replay timeline for Lab page (Lab ORM only)."""
+"""Read-only product replay timeline for Lab page (Lab ORM + solver runtime frames)."""
 
 from __future__ import annotations
 
@@ -14,10 +14,14 @@ from django_apps.asteroid_lab.replay.lab_unified_adapter import (
 )
 from django_apps.asteroid_lab.replay.projection_context import ReplayProjectionContext
 from django_apps.asteroid_lab.replay.unified_dtos import UnifiedReplayFrame
-from django_apps.asteroid_lab.replay.unified_serialization import unified_replay_frame_to_json_dict
+from django_apps.asteroid_lab.replay.unified_serialization import (
+    unified_replay_frame_from_json_dict,
+    unified_replay_frame_to_json_dict,
+)
 from django_apps.asteroid_lab.replay.unified_timeline_composer import compose_unified_timeline
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
     SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
 )
 from django_apps.asteroid_lab.snapshots.server_coords import map_bbox_dense_and_y
@@ -149,6 +153,32 @@ def resolve_replay_projection_context_for_project(
     return ReplayProjectionContext(server_xy_params=params)
 
 
+def _solver_runtime_unified_frames_for_project(
+    project_id: int,
+) -> tuple[UnifiedReplayFrame, ...]:
+    """Load persisted solver runtime replay frames from latest SolverRun.config_json."""
+    run = (
+        SolverRun.objects.filter(project_id=int(project_id))
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    if run is None:
+        return ()
+    config = dict(run.config_json or {})
+    raw = config.get(SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY)
+    if not isinstance(raw, list) or not raw:
+        return ()
+    out: list[UnifiedReplayFrame] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        try:
+            out.append(unified_replay_frame_from_json_dict(item))
+        except Exception:  # noqa: BLE001
+            continue
+    return tuple(out)
+
+
 def _lab_unified_frames_for_project(project_id: int) -> tuple[UnifiedReplayFrame, ...]:
     track = get_latest_lab_replay_track_for_project(int(project_id))
     if track is None:
@@ -195,11 +225,12 @@ def _track_metrics_from_serialized_frames(
 def build_lab_replay_frames_for_project(
     project_id: int,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Compose Lab replay into product JSON (never mutates sources)."""
+    """Compose Lab + solver runtime replay into unified product JSON (never mutates sources)."""
 
     lab_unified = _lab_unified_frames_for_project(int(project_id))
+    solver_unified = _solver_runtime_unified_frames_for_project(int(project_id))
     combined = compose_unified_timeline(
-        lab_frames=lab_unified,
+        lab_frames=(*lab_unified, *solver_unified),
         max_frames=replay_limits.MAX_UNIFIED_LAB_REPLAY_FRAMES,
     )
     serialized = [unified_replay_frame_to_json_dict(fr) for fr in combined]
@@ -212,4 +243,5 @@ __all__ = [
     "build_lab_replay_frames_for_project",
     "get_latest_lab_replay_track_for_project",
     "resolve_replay_projection_context_for_project",
+    "_solver_runtime_unified_frames_for_project",
 ]

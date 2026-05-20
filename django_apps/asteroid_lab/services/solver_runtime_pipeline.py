@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django_apps.asteroid_lab.optimization.candidate_dtos import CandidateGenerationConfig
 from django_apps.asteroid_lab.optimization.candidate_generator import (
@@ -27,6 +27,11 @@ from django_apps.asteroid_lab.optimization.route_goal_planner import plan_route_
 from django_apps.asteroid_lab.optimization.route_network_materializer import (
     materialize_route_network,
 )
+
+if TYPE_CHECKING:
+    from django_apps.asteroid_lab.replay.solver_runtime_unified_recorder import (
+        SolverRuntimeReplayRecorder,
+    )
 
 
 def _issue_detail(issue: ValidationIssue) -> dict[str, Any]:
@@ -80,12 +85,15 @@ def run_solver_runtime_pipeline(
     gene_templates: tuple[GeneTemplate, ...],
     run_key: str = "runtime",
     generation_config: CandidateGenerationConfig | None = None,
+    recorder: SolverRuntimeReplayRecorder | None = None,
 ) -> SolverRuntimeResult:
     """Execute Phase A→M in documented order (no ORM; receives gene_templates as input)."""
 
     config = generation_config or default_generation_config(max_candidates=32)
 
     inp = optimization_input_from_loaded_snapshot(loaded)
+    if recorder is not None:
+        recorder.record_optimization_input_loaded(inp)
 
     shape_platforms = max(12, len(inp.mineable_cells) * 8)
     capacity = plan_capacity(
@@ -93,23 +101,40 @@ def run_solver_runtime_pipeline(
         shape_platform_count=shape_platforms,
         fluid_platform_count=0,
     )
+    if recorder is not None:
+        recorder.record_capacity_plan_created(capacity)
 
     planned = plan_route_goals(inp, capacity)
     inp = replace(inp, route_goals=planned.goals)
+    if recorder is not None:
+        recorder.record_route_goals_generated(planned)
 
     templates = gene_templates
     pool = generate_gene_candidates(inp, templates, config)
+    if recorder is not None:
+        recorder.record_candidate_pool_completed(pool)
+
     plan = select_gene_candidates_greedy(pool.normal_candidates, inp=inp)
+    if recorder is not None:
+        recorder.record_candidate_selection_completed(plan)
 
     candidates_by_id = {c.candidate_id: c for c in pool.normal_candidates}
     commit = commit_selected_candidates(plan, candidates_by_id, inp=inp)
+    if recorder is not None:
+        recorder.record_route_committed(commit)
+
     materialization = materialize_route_network(commit, candidates_by_id)
+    if recorder is not None:
+        recorder.record_route_materialized(materialization)
+
     validation = validate_final_layout(
         commit,
         materialization.layout,
         inp=inp,
         candidates_by_id=candidates_by_id,
     )
+    if recorder is not None:
+        recorder.record_validation_completed(validation)
 
     summary = _build_solver_summary(
         validation_passed=validation.passed,
@@ -118,6 +143,14 @@ def run_solver_runtime_pipeline(
         materialization=materialization,
         issues=validation.issues,
     )
+
+    if recorder is not None:
+        recorder.record_result_layout(
+            commit=commit,
+            materialization=materialization,
+            validation=validation,
+            solver_summary=summary,
+        )
 
     return SolverRuntimeResult(
         run_key=run_key,

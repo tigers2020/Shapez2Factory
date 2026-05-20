@@ -11,6 +11,10 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     loaded_reconstruction_snapshot_from_result,
 )
+from django_apps.asteroid_lab.replay.solver_runtime_unified_recorder import (
+    SolverRuntimeReplayRecorder,
+)
+from django_apps.asteroid_lab.replay.unified_serialization import unified_replay_frame_to_json_dict
 from django_apps.asteroid_lab.services.experiment_service import create_solver_run
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
@@ -23,6 +27,7 @@ from django_apps.asteroid_lab.services.runtime_gene_template_resolver import (
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
+    SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
     SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
@@ -63,6 +68,7 @@ def _persist_solver_run_outcome(
     *,
     solver_summary: dict[str, Any],
     server_xy_params: tuple[int, int],
+    runtime_replay_frames_json: list[dict[str, Any]] | None = None,
 ) -> None:
     run = m.SolverRun.objects.get(pk=int(run_id))
     config = dict(run.config_json or {})
@@ -71,6 +77,8 @@ def _persist_solver_run_outcome(
         int(server_xy_params[0]),
         int(server_xy_params[1]),
     ]
+    if runtime_replay_frames_json is not None:
+        config[SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY] = runtime_replay_frames_json
     m.SolverRun.objects.filter(pk=int(run_id)).update(config_json=config)
 
 
@@ -144,16 +152,32 @@ def run_solver_runtime_for_project(
     )
     run_id = int(run_dto.id)
 
+    server_xy_params = loaded.server_xy_params
+    recorder: SolverRuntimeReplayRecorder | None = (
+        SolverRuntimeReplayRecorder(loaded, server_xy_params)
+        if server_xy_params is not None
+        else None
+    )
+
     try:
         result = run_solver_runtime_pipeline(
             loaded=loaded,
             gene_templates=gene_templates,
             run_key=rk,
+            recorder=recorder,
         )
+        runtime_replay_frames_json: list[dict[str, Any]] | None = None
+        if recorder is not None:
+            frames = recorder.build_frames()
+            if frames:
+                runtime_replay_frames_json = [
+                    unified_replay_frame_to_json_dict(f) for f in frames
+                ]
         _persist_solver_run_outcome(
             run_id,
             solver_summary=result.solver_summary,
             server_xy_params=loaded.server_xy_params,
+            runtime_replay_frames_json=runtime_replay_frames_json,
         )
 
         validation_passed = bool(result.solver_summary.get("validation_passed"))

@@ -18,3 +18,7 @@
 ## 2026-05-18
 
 - Context trim: alwaysApply를 [`shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc) 단일 파일로 통합. `AGENTS.md`는 라우팅 허브만. `root.mdc`·`cursor-usage.mdc`·`karpathy-guidelines.mdc` 삭제. `persona-dialogue`·`mcp`·`caveman-output`은 온디맨드/stub. Cloud VM은 `cursor_usage.md` §Cloud VM.
+
+## 2026-05-19
+
+- Harness slim 2차: `AGENTS.md` ~246줄 → ~90줄 라우팅 허브. `caveman-output.mdc`·`cursor-usage.mdc`·`mcp.mdc` stub 3개 삭제. 스킬 16개 → 활성 5개(`bug-fix`, `write-tests`, `doc-update`, `shapez2-workflow`, `git-workflow`) + `_archive/`. `shapez2-workflow`가 `shapez2-harness`+`cursor-shapez2-harness` 통합. `cursor_slim_setup.md` + `mcp.json.example` 신설. `shapez2-core.mdc`에 페르소나 5단계-only 정책 추가.

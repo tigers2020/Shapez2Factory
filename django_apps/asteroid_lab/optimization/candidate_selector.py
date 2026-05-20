@@ -9,6 +9,7 @@ from django_apps.asteroid_lab.optimization.candidate_score import (
     GoalLoadKey,
     goal_load_key_for_candidate,
     score_gene_candidate,
+    would_exceed_trunk_capacity,
 )
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 
@@ -50,8 +51,14 @@ def select_gene_candidates_greedy(
     ordered_ids: list[str] = []
 
     while remaining:
+        eligible = [
+            c
+            for c in remaining
+            if not would_exceed_trunk_capacity(c, goal_assigned_platforms=goal_load)
+        ]
+        pool = eligible if eligible else remaining
         best = max(
-            remaining,
+            pool,
             key=lambda c: _selection_sort_key(c, inp=inp, goal_load=goal_load),
         )
         ordered_ids.append(best.candidate_id)

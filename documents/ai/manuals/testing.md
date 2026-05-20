@@ -152,12 +152,13 @@ python -m black <paths>        # 로컬 포맷 수정 허용
 ```bash
 python -m ruff check .
 python -m black --check .
-python -m mypy .
+python -m mypy src
 python -m pytest
 ```
 
 - 로컬에서 포맷을 고칠 때는 `black .` 허용.
 - PR·Caveman **Tests** 절에는 `black --check .` 결과를 기록한다.
+- Phase 2부터: `mypy src` → `mypy django_apps config src`로 확장 (AGENTS.md 단일 변경).
 
 [`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) · [`protocols/README.md`](../../../protocols/README.md) · 하네스 스킬은 위 **이중 모드**와 동일하게 맞춘다.
 
@@ -239,7 +240,7 @@ npm --prefix frontend/recipe_graph_editor test
 
 ```bash
 ruff check .
-mypy .
+mypy src
 black .
 ```
 

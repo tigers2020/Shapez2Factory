@@ -1,4 +1,4 @@
-"""Explicit ReplayEventType adapter coverage (Phase 9B Lab)."""
+"""Explicit ReplayEventType adapter coverage (Phase 9B Lab / Phase 9F solver runtime)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,39 @@ SUPPORTED_BY_9B_LAB_ADAPTER: frozenset[ReplayEventType] = frozenset(
         ReplayEventType.DECODE_COMPLETED,
         ReplayEventType.RECONSTRUCTION_STARTED,
         ReplayEventType.RECONSTRUCTION_COMPLETED,
+    }
+)
+
+# Solver runtime recorder (v0 pipeline — no evolutionary search loop).
+SUPPORTED_BY_SOLVER_RUNTIME_RECORDER: frozenset[ReplayEventType] = frozenset(
+    {
+        ReplayEventType.OPTIMIZATION_INPUT_LOADED,
+        ReplayEventType.CAPACITY_PLAN_CREATED,
+        ReplayEventType.ROUTE_GOAL_GENERATED,
+        ReplayEventType.CANDIDATE_POOL_COMPLETED,
+        ReplayEventType.CANDIDATE_SELECTION_COMPLETED,
+        ReplayEventType.ROUTE_COMMITTED,
+        ReplayEventType.ROUTE_MATERIALIZED,
+        ReplayEventType.VALIDATION_COMPLETED,
+        ReplayEventType.VALIDATION_FAILED,
+        ReplayEventType.RESULT_LAYOUT,
+    }
+)
+
+# GA/evolution events not emitted by v0 pipeline (no evolutionary search loop).
+DEFERRED_NO_EVOLUTION_V0: frozenset[ReplayEventType] = frozenset(
+    {
+        ReplayEventType.PATTERN_GENERATED,
+        ReplayEventType.CANDIDATE_GENERATED,
+        ReplayEventType.CANDIDATE_REJECTED,
+        ReplayEventType.ROUTE_PROBE_SUCCEEDED,
+        ReplayEventType.ROUTE_PROBE_FAILED,
+        ReplayEventType.GENOME_GENERATED,
+        ReplayEventType.GENOME_EVALUATED,
+        ReplayEventType.GENERATION_COMPLETED,
+        ReplayEventType.BEST_GENOME_SELECTED,
+        ReplayEventType.ROUTE_COMMIT_ATTEMPTED,
+        ReplayEventType.ROUTE_ROLLED_BACK,
     }
 )
 

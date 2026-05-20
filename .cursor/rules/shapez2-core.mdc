@@ -1,0 +1,117 @@
+---
+description: "shapez2 Factory Planner 상시 규칙: Caveman 6절·게이트·검증·Forbidden shortcuts"
+alwaysApply: true
+---
+
+# shapez2 Factory Planner — Core Rules
+
+정본 매뉴얼: [`AGENTS.md`](mdc:AGENTS.md) · [`documents/ai/manuals/cursor_usage.md`](mdc:documents/ai/manuals/cursor_usage.md) · [`documents/ai/manuals/testing.md`](mdc:documents/ai/manuals/testing.md)
+
+---
+
+## 작업 분류 (시작 시 필수)
+
+변경 시작 전 분류(복수 가능): **계약 변경** · **구현 변경** · **리팩터링** · **문서 변경** · **회귀 수정** · **UI 변경**
+
+| 분류 | 테스트·문서 순서 |
+|------|-----------------|
+| 계약 변경 | 테스트·관련 문서 **먼저** |
+| 회귀 수정 | 재현 테스트 **먼저** |
+| 구현 변경 | 가장 좁은 단위 테스트부터 |
+| 리팩터링 | 동작 동일이면 기존 테스트로 충분; 계약 변경 시 테스트 갱신 필수 |
+| 문서 변경 | pytest 필수 아님; 코드 계약을 바꾸면 Tests 절에 계획 |
+| UI 변경 | DOM·serialization·JS 또는 fixture 회귀 먼저 |
+
+---
+
+## 검증 게이트 (Dual Gate)
+
+### 반복 (구현 중 — red-green)
+
+```bash
+python -m pytest <narrow path>
+python -m ruff check <paths>        # green 후
+```
+
+### PR / 병합 / CI (Full Gate)
+
+```bash
+python -m ruff check .
+python -m black --check .
+python -m mypy src
+python -m pytest
+```
+
+**Phase 2부터**: `mypy src`를 `mypy django_apps config src`로 확장 (AGENTS.md 단일 변경).
+
+---
+
+## Caveman 6절 출력 (마감 필수)
+
+**6절 없이 마감 = 미완료.** 예외: Plan mode 본문 · 사용자 「상세 설명」 명시 · `documents/` 파일 본문.
+
+```
+## Summary
+## Files
+## Contracts
+## Tests
+## Risks
+## Next
+```
+
+| 절 | 내용 |
+|----|------|
+| Summary | 1–3 bullets; 작업 분류 명시 |
+| Files | `path — why` |
+| Contracts | 불변식·DTO·스키마 변경; 테스트 추가/생략 이유 |
+| Tests | `cmd — pass\|fail\|skipped — note` |
+| Risks | 회귀·`uncertain:`·`assumption:` |
+| Next | 이후 진행; 끝났을 때만 「완료」 |
+
+상세: [`cursor_usage.md` §17](mdc:documents/ai/manuals/cursor_usage.md)
+
+---
+
+## Forbidden Shortcuts (절대 금지)
+
+- 테스트 삭제·완화만으로 green.
+- replay·artifact·metrics를 solver·algorithm **입력**으로 사용.
+- `route_domain` 다중 patch (`RouteDomainSnapshotBuilder` 단일 소유).
+- validation에 repair logic (read-only assert만).
+- candidate 순서를 commit order로 사용; candidate reachable을 최종 commit 증명으로 사용.
+- optimization 내부 raw↔server 재변환.
+- `failure_reason`·`event_type`·`issue_code` 등 **자유 문자열** (enum/const + 테스트 동시 갱신).
+- 계획 미승인 상태에서 구현 진행.
+- 검증 없이 완료 선언.
+
+전체: [`testing.md § Forbidden shortcuts`](mdc:documents/ai/manuals/testing.md)
+
+---
+
+## 레이어 경계
+
+- `domain` — I/O·UI·DB·외부 API 호출 금지.
+- `application` — 구체 adapter import 금지.
+- `adapters` — 비즈니스 정책 금지.
+- 비즈니스 규칙은 뷰/템플릿에 두지 않는다.
+
+상세: [architecture.mdc](mdc:.cursor/rules/architecture.mdc)
+
+---
+
+## 페르소나 정책
+
+Persona 3단계([`persona-dialogue.mdc`](mdc:.cursor/rules/persona-dialogue.mdc))는 [`protocols/README.md`](mdc:protocols/README.md) **5단계(구현)에서만** 적용한다. Plan·문서-only·리뷰-only 작업에는 적용하지 않는다.
+
+---
+
+## BLOCKED 형식
+
+검증 명령 미발견·도메인 규칙 충돌·기준 테스트 없는 회귀·고위험 변경 시 중단:
+
+```
+BLOCKED:
+- missing context:
+- risky change:
+- recommended next step:
+```

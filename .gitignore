@@ -87,7 +87,13 @@ env/
 *.iml
 
 # --- Cursor / Serena / local AI & MCP (machine-specific, not for GitHub) ---
-.cursor/
+# .cursor/rules/ and .cursor/skills/ are tracked for team harness sharing.
+# Machine-specific items remain ignored:
+.cursor/plans/
+.cursor/settings.json
+.cursor/mcp.json
+.cursor/debug-*.log
+.cursor/*.json
 .agents/
 .serena/
 .vscode/

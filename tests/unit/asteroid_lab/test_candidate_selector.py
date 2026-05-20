@@ -89,7 +89,7 @@ def test_candidate_selector_prefers_high_throughput_low_cost() -> None:
     inp = _minimal_inp(goals=frozenset({goal}))
     high = _gene_candidate(
         candidate_id="a:high",
-        base_throughput=16,
+        base_throughput=10,
         cost=3,
         goal_priority=10,
         reached_goal=goal,
@@ -107,7 +107,8 @@ def test_candidate_selector_prefers_high_throughput_low_cost() -> None:
     assert plan.ordered_candidate_ids[0] == "a:high"
 
 
-def test_candidate_selector_penalizes_saturated_goal() -> None:
+def test_candidate_selector_prefers_alternate_trunk_when_goal_saturated() -> None:
+    """OD-3 v1: overflow-on-goal candidates skipped when another trunk is available."""
     goal_a = _goal((6, 0))
     goal_b = _goal((8, 0))
     inp = _minimal_inp(goals=frozenset({goal_a, goal_b}))
@@ -135,9 +136,32 @@ def test_candidate_selector_penalizes_saturated_goal() -> None:
 
     plan = select_gene_candidates_greedy((to_b, to_a, saturate_a), inp=inp)
 
-    assert plan.ordered_candidate_ids[0] == "a:saturate"
-    assert plan.ordered_candidate_ids[1] == "c:to_b"
-    assert plan.ordered_candidate_ids[2] == "b:to_a"
+    assert plan.ordered_candidate_ids[0] == "c:to_b"
+    assert plan.ordered_candidate_ids[1] == "b:to_a"
+    assert plan.ordered_candidate_ids[2] == "a:saturate"
+
+
+def test_candidate_selector_hard_rejects_only_when_all_trunks_overflow() -> None:
+    goal = _goal((6, 0))
+    inp = _minimal_inp(goals=frozenset({goal}))
+    heavy = _gene_candidate(
+        candidate_id="a:heavy",
+        base_throughput=16,
+        cost=1,
+        goal_priority=10,
+        reached_goal=goal,
+    )
+    light = _gene_candidate(
+        candidate_id="b:light",
+        base_throughput=14,
+        cost=1,
+        goal_priority=10,
+        reached_goal=goal,
+    )
+
+    plan = select_gene_candidates_greedy((heavy, light), inp=inp)
+
+    assert plan.ordered_candidate_ids == ("a:heavy", "b:light")
 
 
 def test_candidate_selector_is_deterministic() -> None:

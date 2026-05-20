@@ -1,29 +1,29 @@
-# persona
+# Persona Index
 
-**shapez2Solver**는 [shapez 2](https://shapez2.com/)의 도형·공장·물류 규칙을 코드로 옮기는 프로젝트다. 게임 용어·시스템 요약은 [documents/research_shapez2_game_systems_2026-05-01.md](../documents/research_shapez2_game_systems_2026-05-01.md)를 우선한다.
+이 디렉터리는 팀 페르소나 카드를 보관한다. 각 카드는 역할, 담당 레이어, DO/DON'T, 검증 책임을 한 페이지로 정의한다.
 
-Persona Dialogue: 요청을 `[시몬]`이 나누고, 레이어 담당이 한두 문장 브리핑한 뒤 구현한다. 검증은 `[테스]`·`[렉스]`(pytest → ruff → mypy → black) 순.
+## 역할 요약
 
-**거시 파이프라인 10단계 정본**은 [../protocols/README.md](../protocols/README.md)를 본다. 아래 표의 "파이프라인 단계"는 그 10단계 번호에 대응한다.
+| 페르소나 | 카드 | 주 담당 레이어 | 핵심 역할 |
+|---|---|---|---|
+| 시몬 | [simon.md](simon.md) | 전체 | 분배·조율, 완료 후 테스→렉스 |
+| 도미닉 | [dominic.md](dominic.md) | `domain/` | 순수 규칙, 값 객체, 정책 |
+| 유리 | [yuri.md](yuri.md) | `application/` | use case, DTO, port 추상화 |
+| 아다 | [ada.md](ada.md) | `adapters/` | DTO 변환, 외부 시스템 연동 |
+| 테스 | [tess.md](tess.md) | `tests/` | 테스트 작성·보강 |
+| 렉스 | [rex.md](rex.md) | CI/검증 | pytest→ruff→mypy→black 체인 |
+| 지나 | [gina-gui.md](gina-gui.md) | `interfaces/` | UI 화면, 사용자 상태 |
 
-| 역할 | 주 담당 경로 | 파이프라인 단계 |
-|------|----------------|-----------------|
-| 시몬 | 분배·게이트·`bootstrap/` | 2·4·10 (+ 7 보조) |
-| 도미닉 | `domain/` | 3·6 |
-| 유리 | `application/` | 3·6·**7 (리뷰어 주도)** |
-| 아다 | `adapters/` | 6 |
-| 지나 | `interfaces/` (UI) | 6 |
-| 테스 | `tests/` | 8 (QA) |
-| 렉스 | 검증 파이프라인 | 9 (하네스) |
+## 페르소나 다이얼로그 규칙
 
-각주:
+페르소나는 구현(10단계 중 5번)에서만 대화 형식으로 등장한다. 상세는 [persona-dialogue.mdc](../.cursor/rules/persona-dialogue.mdc)와 [protocols/README.md](../protocols/README.md)를 본다.
 
-- **기획 듀오** = 도미닉 + 유리 (플랜 단계, 3번)
-- **디렉터 검수** = 시몬 (2·4·10번)
-- **리뷰어** = 유리 주도 + 시몬 보조 (7번, QA와 별개)
-- **QA** = 테스 (8번)
-- **하네스** = 렉스 (9번)
+## 레이어 의존 방향
 
-전체 표와 3단계 규칙은 [AGENTS.md](../AGENTS.md)를 본다. UI 화면 세부 카드는 [gina-gui.md](gina-gui.md).
-
-**Serena MCP**: 시맨틱 코드베이스 탐색·심볼 단위 작업은 [AGENTS.md](../AGENTS.md) **MCP: Serena**와 [mcp.mdc](../.cursor/rules/mcp.mdc)를 본다. 브리핑에서 광역 탐색이 필요하면 시몬이 활용을 명시하고, 도미닉·유리·아다·지나는 담당 구현에서 적극 고려한다.
+```
+interfaces ──► application (유리)
+adapters   ──► application.ports (유리)
+application──► domain (도미닉)
+bootstrap  ──► 모든 레이어 (시몬 조립)
+domain     ──► (없음)
+```

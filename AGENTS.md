@@ -1,56 +1,43 @@
 # AGENTS.md
 
-Cursor AI용 **shapez2Solver** 라우팅 허브 ([agents.md](https://agents.md/) 표준).
+## Mission
 
-**역할**: 작업 유형 → 매뉴얼 연결 · 문서 권위 · 승인 금지 목록. 상시 규칙(Caveman·게이트·검증)은 [`.cursor/rules/shapez2-core.mdc`](.cursor/rules/shapez2-core.mdc). 절차·토큰·Cloud VM은 [`documents/ai/manuals/cursor_usage.md`](documents/ai/manuals/cursor_usage.md). 파이프라인 정본: [`protocols/README.md`](protocols/README.md). 스킬: [`shapez2-harness`](.cursor/skills/shapez2-harness/SKILL.md) · [`cursor-shapez2-harness`](.cursor/skills/cursor-shapez2-harness/SKILL.md).
+이 저장소의 목표는 **shapez2 Factory Planner** 이다.
+당신은 항상 **작은 안전한 변경 + 빠른 검증 + 문서 동기화** 원칙으로 행동한다.
 
----
+상시 규칙(Caveman 6절·게이트·검증·Forbidden): [`.cursor/rules/shapez2-core.mdc`](.cursor/rules/shapez2-core.mdc)  
+절차·컨텍스트·Cloud VM: [`documents/ai/manuals/cursor_usage.md`](documents/ai/manuals/cursor_usage.md)  
+파이프라인 정본: [`protocols/README.md`](protocols/README.md)  
+구현 오케스트레이션: [`@shapez2-workflow`](.cursor/skills/shapez2-workflow/SKILL.md)
 
-## Core
+## Trigger
 
-- 변경 전 **영향 파일·호출부** 특정. 작고 검증 가능한 단위 우선.
-- 비즈니스 규칙은 뷰/템플릿에 두지 않는다 ([@architecture.mdc](.cursor/rules/architecture.mdc)).
-- **Contract-first TDD**: [testing.md](documents/ai/manuals/testing.md) 정본. 반복 = narrow `pytest` 우선; PR·병합 = [testing.md § Quality gate](documents/ai/manuals/testing.md#quality-gate-sequence) full gate.
-- 의미 있는 변경: `documents/` 리서치·플랜 → **사람 승인** 후 구현. 진행 중 [`current_plan.md`](documents/ai/current_plan.md) · [`checklist.md`](documents/ai/checklist.md).
-- 비밀값은 `.env`/설정만. `documents/` Markdown 본문은 **한국어**.
+- 새 기능 요청 / 버그 리포트 / 테스트 실패 / 리팩터 요청 / 성능·안정성 개선
 
----
+## Repository map
 
-## Development Mode: Contract-first TDD
+| 경로 | 목적 |
+|---|---|
+| `config/`, `manage.py` | Django 설정·진입 |
+| `django_apps/shapez_core/` | shape 규칙·파싱·preview (도미닉) |
+| `django_apps/shapez_solver/` | recipe graph·planner·solver (유리) |
+| `django_apps/asteroid_lab/` | 소행성 실험실·replay·optimization (유리) |
+| `django_apps/web/` | UI·템플릿·정적 (지나) |
+| `tests/` | unit / integration / golden (테스) |
+| `frontend/` | React Flow editor 등 |
+| `documents/` | CANON·플랜·리서치 정본 |
+| `src/shapez2_factory/` | Phase 2+ hexagonal 추출 목표 |
 
-**기본 흐름**: 계약·불변식·회귀를 테스트로 고정 → 최소 구현 → 게이트 통과. line coverage가 아니라 **다시 발견하기 비싼 계약**을 우선한다.
+참조: [`structure.md`](structure.md) · [`docs/`](docs/) · [`.cursor/rules/`](.cursor/rules/) · [`.cursor/skills/`](.cursor/skills/)
 
-작업 시작 시 변경 범위를 분류한다(복수 가능):
+## Required workflow
 
-| 분류 | 테스트·문서 순서 |
-|------|------------------|
-| **계약 변경** | 테스트·관련 문서 **먼저** |
-| **회귀 수정** | 재현 테스트 **먼저** |
-| **구현 변경** | 가장 좁은 단위 테스트부터 |
-| **리팩터링** | 동작 동일이면 기존 테스트로 충분; 계약 변경 시 테스트 갱신 필수 |
-| **문서 변경** | pytest 필수 아님; **코드 계약**을 바꾸면 Caveman **Tests**에 테스트 계획 |
-| **UI 변경** | DOM·serialization·JS 또는 fixture 회귀 **먼저** |
-
-**Agent MUST NOT** (요약 — 상세·체크리스트는 [testing.md § Forbidden shortcuts](documents/ai/manuals/testing.md#forbidden-shortcuts)):
-
-- 테스트 삭제·완화만으로 green.
-- replay·artifact·metrics를 solver·algorithm **입력**으로 사용.
-- `route_domain` 다중 patch (`RouteDomainSnapshotBuilder` 단일 소유).
-- validation에 repair logic.
-- candidate 순서를 commit order로 사용; candidate reachable을 최종 commit 증명으로 사용.
-- optimization 내부 raw↔server 재변환.
-- `failure_reason`·`event_type`·`issue_code` 등 **자유 문자열** (enum·const + 테스트 동시 갱신).
-
-Asteroid Lab: [@asteroid-lab-invariants.mdc](.cursor/rules/asteroid-lab-invariants.mdc). TDD 상세: [testing.md](documents/ai/manuals/testing.md).
-
----
-
-## 문서 Authority
-
-- 시작: [`START_HERE.md`](documents/ai/START_HERE.md) · [`document_inventory.md`](documents/index/document_inventory.md) · [`document_lifecycle.md`](documents/index/document_lifecycle.md).
-- `CANON`만 계약. `ACTIVE` 플랜 · `RESEARCH` 근거 · `REPORT` 관측. `ARCHIVED`/`SUPERSEDED`는 역사용.
-
----
+1. 관련 `docs/`, `documents/` 정본·코드를 읽고 문제를 재정의한다.
+2. Plan Mode로 변경 대상·리스크·검증 방법을 정리하고 **사람 승인**을 받는다.
+3. 가장 작은 단위로 구현한다.
+4. 변경 후 검증을 실행한다 ([shapez2-core.mdc](.cursor/rules/shapez2-core.mdc) Dual Gate).
+5. 동작·설계가 바뀌면 `docs/`·`documents/` plan을 갱신한다.
+6. 마감: [shapez2-core.mdc Caveman 6절](.cursor/rules/shapez2-core.mdc) 필수.
 
 ## Manual Routing
 
@@ -65,26 +52,45 @@ Asteroid Lab: [@asteroid-lab-invariants.mdc](.cursor/rules/asteroid-lab-invarian
 | DB · 마이그레이션 | [database.md](documents/ai/manuals/database.md) |
 | Cursor · 컨텍스트 · Cloud | [cursor_usage.md](documents/ai/manuals/cursor_usage.md) |
 
-인덱스: [`documents/ai/README.md`](documents/ai/README.md). 리서치·코드리뷰·데이터 파이프라인: 해당 harness 스킬 또는 [document_lifecycle.md](documents/index/document_lifecycle.md).
+TDD 상세·Forbidden shortcuts: [testing.md](documents/ai/manuals/testing.md)  
+Asteroid Lab 불변식: [asteroid-lab-invariants.mdc](.cursor/rules/asteroid-lab-invariants.mdc)
 
-구현·페르소나 3단계: [@persona-dialogue.mdc](.cursor/rules/persona-dialogue.mdc). MCP: [@mcp.mdc](.cursor/rules/mcp.mdc).
+## Permissions
 
----
+| 권한 유형 | 내용 |
+|-----------|------|
+| 기본 | 읽기·검색·계획 수립 |
+| 허용 쓰기 | workspace 내부 소스·테스트·문서 |
+| 사람 승인 필요 | `.env`·`pyproject.toml` 대형 변경 / CI·배포 / 보안·권한 / 대규모 rename·delete |
+| 금지 | secrets 노출 / 생성 산출물 직접 수정 / 검증 없이 완료 선언 |
 
-## 명시적 승인 없이 하지 말 것
+## BLOCKED 형식
 
-대규모 폴더 이동 · DB 스키마/마이그레이션 · 미증명 레거시 삭제 · 솔버 핵심 전면 교체 · 공개 URL/API 계약 깨기.
+도메인 충돌·검증 명령 미발견·기준 테스트 없는 회귀·고위험 변경 시:
 
----
+```
+BLOCKED:
+- missing context:
+- risky change:
+- recommended next step:
+```
 
-## 참조
+## Definition of done
+
+- 요청 범위를 벗어나지 않았다.
+- 테스트·빌드·검증 결과가 제시되었다.
+- 실패한 검증이 남아 있으면 명시되었다.
+- 문서와 코드가 서로 모순되지 않는다.
+
+## References
 
 | 항목 | 경로 |
 |------|------|
 | 상시 규칙 | [shapez2-core.mdc](.cursor/rules/shapez2-core.mdc) |
 | 레이어·앱 소유 | [architecture.mdc](.cursor/rules/architecture.mdc) |
+| 저장소 구조 | [structure.md](structure.md) |
 | AI 허브 | [documents/ai/](documents/ai/) |
 | 페르소나 | [persona/](persona/) |
 | 게임 근거 | [research_shapez2_game_systems_2026-05-01.md](documents/research/research_shapez2_game_systems_2026-05-01.md) |
 
-우선순위: `AGENTS.md` → `shapez2-core.mdc` → glob 규칙.
+**우선순위**: `AGENTS.md` → `shapez2-core.mdc` → glob 규칙.

@@ -28,12 +28,14 @@
 | [`documents/ai/checklist.md`](../ai/checklist.md) | `ACTIVE` | checklist | NO | 진행 상태와 검증 게이트 |
 | [`documents/plans/`](../plans/) | `ACTIVE` | plans/backlog | NO | 완료 근거 미확정 계획 |
 | [`documents/ai/plans/`](../ai/plans/) | `ACTIVE` | scoped plans | NO | 범위 한정 플랜 |
-| [`documents/Algorithm/solver_runtime/`](../Algorithm/solver_runtime/) | `ACTIVE` | solver button pipeline | NO | Phase A–M·PR1–7; 충돌 해소 [`ARCHITECTURE_RECONCILIATION.md`](../Algorithm/solver_runtime/ARCHITECTURE_RECONCILIATION.md) |
+| [`documents/Algorithm/solver_runtime/`](../Algorithm/solver_runtime/) | `ACTIVE` | solver button pipeline | NO | Phase A–M·PR1–9; v0 **구현 완료**는 [`current_plan.md`](../ai/current_plan.md) 정본 |
+| [`documents/Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md`](../Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md) | `ACTIVE` | post-v0 roadmap | NO | 2026-05-18 스펙·체크리스트 미착수 베이스라인; v0 완료와 **대조 금지** — [`current_plan.md`](../ai/current_plan.md) 우선 |
 
 ## Research·Report
 
 | 문서 | 상태 | 종류 | 정본 여부 | 비고 |
 |------|------|------|-----------|------|
+| [`project_harness_research.md`](../../project_harness_research.md) | `RESEARCH` | harness design | NO | Cursor 하니스·에이전트 운영 설계 보고서 (루트 위치, 2026-05-19) |
 | [`documents/research/`](../research/) | `RESEARCH` | research | NO | 조사·근거. 개별 문서만 정본 승격 가능 |
 | [`documents/research/research_shapez2_space_transport_throughput_2026-05-18.md`](../research/research_shapez2_space_transport_throughput_2026-05-18.md) | `SUPERSEDED` | game throughput | NO | → [`game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md) |
 | [`documents/reports/README.md`](../reports/README.md) | `REPORT` | report index | NO | report 묶음 라우팅. 정본 계약 아님 |

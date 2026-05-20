@@ -42,10 +42,23 @@ def goal_load_key_for_candidate(candidate: GeneCandidate) -> GoalLoadKey:
     return (goal.coord, kind)
 
 
-def _trunk_capacity(transport_kind: TransportKind) -> int:
+def trunk_platform_capacity(transport_kind: TransportKind) -> int:
+    """Per-goal trunk platform budget (CANON 12 shape / 72 fluid)."""
     if transport_kind == TransportKind.FLUID_PIPE:
         return FLUID_PLATFORMS_PER_GOAL
     return SHAPE_PLATFORMS_PER_GOAL
+
+
+def would_exceed_trunk_capacity(
+    candidate: GeneCandidate,
+    *,
+    goal_assigned_platforms: Mapping[GoalLoadKey, int],
+) -> bool:
+    """True when assigning this candidate would exceed hard trunk capacity (OD-3 v1)."""
+    key = goal_load_key_for_candidate(candidate)
+    assigned = goal_assigned_platforms.get(key, 0)
+    capacity = trunk_platform_capacity(key[1])
+    return assigned + candidate.base_throughput > capacity
 
 
 def _corridor_pressure_penalty(
@@ -67,7 +80,7 @@ def _trunk_load_penalty(
 ) -> float:
     key = goal_load_key_for_candidate(candidate)
     assigned = goal_assigned_platforms.get(key, 0)
-    capacity = _trunk_capacity(candidate.transport_kind)
+    capacity = trunk_platform_capacity(candidate.transport_kind)
     load_ratio = assigned / capacity
     return load_ratio * TRUNK_LOAD_WEIGHT
 

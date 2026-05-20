@@ -63,7 +63,7 @@ trunk capacity = 72 fully boosted platforms
 load_ratio = assigned_platform_count / capacity_by_transport_kind
 ```
 
-포화에 가까운 goal은 penalty 증가. v0는 hard reject보다 penalty 우선 ([OD-3](open_decisions.md)).
+포화에 가까운 goal은 penalty 증가. **v1 (OD-3):** alternate trunk가 있으면 hard reject; 전부 overflow면 penalty pool fallback ([OD-3](open_decisions.md)).
 
 ### 정책
 

@@ -49,16 +49,26 @@ avg_gene_footprint = 5
 
 ## OD-3: capacity enforcement level
 
-**v0:**
+**v0 (완료):**
 
 ```text
 goal load penalty / edge sharing penalty
 ```
 
-**v1:**
+**v1 selector (2026-05-19, 완료):**
 
 ```text
-hard edge capacity with reroute / trunk split
+hard trunk capacity in select_gene_candidates_greedy
+skip overflow when alternate GoalLoadKey exists (trunk split)
+fallback to penalty-only pool when all remaining would overflow
+```
+
+구현: `would_exceed_trunk_capacity`, `trunk_platform_capacity` in `candidate_score.py`.
+
+**v1.1 (미착수):**
+
+```text
+commit-time reroute / trunk split in incremental commit
 ```
 
 ## OD-4: selector before GA

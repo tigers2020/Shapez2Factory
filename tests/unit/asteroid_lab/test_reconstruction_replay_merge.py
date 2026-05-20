@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
-from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
+from django_apps.asteroid_lab.reconstruction.trace import (
+    ReconstructionTraceCollector,
+    ReconstructionTraceEvent,
+)
 from django_apps.asteroid_lab.replay.reconstruction_frames import build_reconstruction_replay_events
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     build_cleanup_and_reconstruction_rows,
@@ -65,6 +68,58 @@ def _snapshot(cells: tuple[DecodedCellDTO, ...]) -> DecodedBlueprintSnapshotDTO:
         cells=cells,
         summary_json={},
     )
+
+
+def test_diagonal_closed_trace_emits_replay_trace_markers_in_diff() -> None:
+    """``diagonal_closed`` must use marker diff.added like other trace steps."""
+
+    from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
+
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(2, 1, tile_type="UnknownTile_B"),
+        _cell(1, 2, tile_type="UnknownTile_C"),
+        _cell(2, 2, tile_type="UnknownTile_D"),
+    )
+    snap = _snapshot(cells)
+    _, _, _, row_extension, _, _ = build_cleanup_and_reconstruction_rows(snap)
+    cleanup = deconstruct_snapshot(snap)
+    recon = run_topology_reconstruction(cleanup)
+    trace = (
+        ReconstructionTraceEvent(
+            phase="reconstruction",
+            trace_event_type="diagonal_closed",
+            coords=frozenset({(2, 2)}),
+            summary_json={
+                "event_key": "step4_02b_diagonal_closed",
+                "trace_event_type": "diagonal_closed",
+            },
+        ),
+        ReconstructionTraceEvent(
+            phase="reconstruction",
+            trace_event_type="reconstruction_final",
+            coords=frozenset(),
+            summary_json={
+                "event_key": "step4_09_reconstruction_final",
+                "trace_event_type": "reconstruction_final",
+            },
+        ),
+    )
+    events = build_reconstruction_replay_events(
+        structural_rows=list(row_extension),
+        cleanup=cleanup,
+        recon=recon,
+        trace_events=trace,
+        recon_summary={},
+        hints={},
+    )
+    diag = next(e for e in events if e.event_key == "step4_02b_diagonal_closed")
+    added = diag.diff.get("added") or []
+    assert added
+    assert all(c.get("_replay_trace") for c in added)
+    assert {(int(c["x"]), int(c["y"])) for c in added} == {(2, 2)}
 
 
 def test_reconstruction_final_full_map_merges_overlay_not_replace() -> None:

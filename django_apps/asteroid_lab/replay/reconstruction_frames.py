@@ -67,6 +67,7 @@ def _snapshot_event_type_for_trace(tt: str) -> str:
         "shell_row_span",
         "shell_col_span",
         "inferred_shell_complete",
+        "diagonal_closed",
         "barrier_build",
     ):
         return EVENT_TYPE_RECONSTRUCTION_SHELL_DETECTED
@@ -126,6 +127,7 @@ def build_reconstruction_replay_events(
             "shell_row_span",
             "shell_col_span",
             "inferred_shell_complete",
+            "diagonal_closed",
             "barrier_build",
             "flood_seed",
             "flood_batch",

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 from django_apps.asteroid_lab.cleanup.result import BBoxBounds, CleanupResult
 from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_jsonl
 from django_apps.asteroid_lab.reconstruction.evidence import (

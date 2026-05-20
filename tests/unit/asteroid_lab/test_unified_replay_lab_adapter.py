@@ -24,8 +24,8 @@ from django_apps.asteroid_lab.replay.unified_serialization import (
     unified_replay_frame_json_round_trip,
     unified_replay_frame_to_json_dict,
 )
-from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
+from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
 
 
 def _cell_row(*, x: int, y: int, kind: str = "asteroid") -> dict[str, object]:
@@ -379,7 +379,6 @@ def test_lab_adapter_sprite_identifier_in_serialized_json() -> None:
     d = unified_replay_frame_to_json_dict(frame)
     for cell in d["map_view"]["full_cells"]:
         assert "sprite_identifier" in cell, "sprite_identifier alias missing from serialized cell"
-        assert cell["sprite_identifier"] == cell["tile_type"], (
-            "sprite_identifier must equal tile_type in wire JSON"
-        )
-
+        assert (
+            cell["sprite_identifier"] == cell["tile_type"]
+        ), "sprite_identifier must equal tile_type in wire JSON"

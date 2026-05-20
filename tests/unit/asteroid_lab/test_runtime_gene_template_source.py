@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.services.solver_run_config_keys import (
-    SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
-)
 from django_apps.asteroid_lab.services.runtime_gene_template_source import (
     GeneTemplateLoadErrorCode,
     GeneTemplateSourceKind,
     GeneTemplateSourceMetadata,
+)
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
 )
 
 

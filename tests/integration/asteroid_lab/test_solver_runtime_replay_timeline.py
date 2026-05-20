@@ -107,15 +107,15 @@ def test_run_solver_timeline_contains_reconstruction_and_solver_phases() -> None
 
     event_types = [f["event_type"] for f in frames]
 
-    assert ReplayEventType.RECONSTRUCTION_COMPLETED.value in event_types, (
-        "reconstruction.completed must be present (Lab ORM)"
-    )
-    assert ReplayEventType.OPTIMIZATION_INPUT_LOADED.value in event_types, (
-        "optimization.input_loaded must be present (solver runtime recorder)"
-    )
-    assert ReplayEventType.RESULT_LAYOUT.value in event_types, (
-        "result.layout must be present (final keyframe)"
-    )
+    assert (
+        ReplayEventType.RECONSTRUCTION_COMPLETED.value in event_types
+    ), "reconstruction.completed must be present (Lab ORM)"
+    assert (
+        ReplayEventType.OPTIMIZATION_INPUT_LOADED.value in event_types
+    ), "optimization.input_loaded must be present (solver runtime recorder)"
+    assert (
+        ReplayEventType.RESULT_LAYOUT.value in event_types
+    ), "result.layout must be present (final keyframe)"
 
 
 def test_run_solver_last_frame_is_result_layout() -> None:

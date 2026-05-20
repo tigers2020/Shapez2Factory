@@ -8,8 +8,6 @@ from pathlib import Path
 import pytest
 from django.test import Client
 from django.urls import reverse
-
-from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.optimization_replay_persist import (
     OptimizationReplayAttachResult,
     build_optimization_replay_attach_diagnostic,
@@ -22,6 +20,8 @@ from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
     empty_optimization_replay_track_payload,
     empty_optimization_replay_track_payload_with_diagnostic,
 )
+
+from django_apps.asteroid_lab import models as m
 from django_apps.web.services import asteroid_lab_page_context as alc
 from tests.support.measure_json_sections import (
     assert_lab_replay_not_capped_by_optimization_constants,

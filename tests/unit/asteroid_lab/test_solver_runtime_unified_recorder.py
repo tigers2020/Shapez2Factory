@@ -149,9 +149,9 @@ def test_recorder_required_solver_event_types_present() -> None:
 def test_recorder_frames_are_renderable_when_loaded_has_cells() -> None:
     rec = _full_recorder_run()
     for frame in rec.build_frames():
-        assert replay_map_view_is_renderable(frame.map_view), (
-            f"Frame {frame.event_type} is not renderable"
-        )
+        assert replay_map_view_is_renderable(
+            frame.map_view
+        ), f"Frame {frame.event_type} is not renderable"
 
 
 def test_recorder_result_layout_inspector_has_required_keys() -> None:

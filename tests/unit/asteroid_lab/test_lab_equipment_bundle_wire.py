@@ -12,12 +12,13 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.asteroid_lab.replay.lab_unified_adapter import lab_replay_row_to_unified
 from django_apps.asteroid_lab.services import project_service
-from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     _frame_row_from_model,
     build_lab_replay_frames_for_project,
 )
-from django_apps.asteroid_lab.services.replay_pipeline_service import build_initial_replay_for_map_input
+from django_apps.asteroid_lab.services.replay_pipeline_service import (
+    build_initial_replay_for_map_input,
+)
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -60,6 +61,7 @@ def test_pipeline_persisted_cleanup_transport_has_equipment_bundles() -> None:
     assert wire_eb, f"unified missing bundles; full_map kinds={kinds}"
     frames, _ = build_lab_replay_frames_for_project(int(dto.project_id))
     assert any(
-        isinstance(f.get("cell_overlay_json"), dict) and f["cell_overlay_json"].get("equipment_bundles")
+        isinstance(f.get("cell_overlay_json"), dict)
+        and f["cell_overlay_json"].get("equipment_bundles")
         for f in frames
     )

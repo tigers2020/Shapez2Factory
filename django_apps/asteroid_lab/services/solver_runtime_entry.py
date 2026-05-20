@@ -170,9 +170,7 @@ def run_solver_runtime_for_project(
         if recorder is not None:
             frames = recorder.build_frames()
             if frames:
-                runtime_replay_frames_json = [
-                    unified_replay_frame_to_json_dict(f) for f in frames
-                ]
+                runtime_replay_frames_json = [unified_replay_frame_to_json_dict(f) for f in frames]
         _persist_solver_run_outcome(
             run_id,
             solver_summary=result.solver_summary,

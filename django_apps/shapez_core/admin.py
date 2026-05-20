@@ -8,11 +8,11 @@ from django.contrib import admin
 from django.http import HttpRequest
 
 from django_apps.shapez_core import models as m
-from django_apps.shapez_core.admin_identifier_sprite import identifier_sprite_admin_preview
 from django_apps.shapez_core.admin_filters import (
     GameIdentifierCategoryKeyFilter,
     GameIdentifierReleaseVersionFilter,
 )
+from django_apps.shapez_core.admin_identifier_sprite import identifier_sprite_admin_preview
 
 
 class _IvvdReadOnlyAdminMixin:

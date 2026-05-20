@@ -158,9 +158,7 @@ def _solver_runtime_unified_frames_for_project(
 ) -> tuple[UnifiedReplayFrame, ...]:
     """Load persisted solver runtime replay frames from latest SolverRun.config_json."""
     run = (
-        SolverRun.objects.filter(project_id=int(project_id))
-        .order_by("-created_at", "-id")
-        .first()
+        SolverRun.objects.filter(project_id=int(project_id)).order_by("-created_at", "-id").first()
     )
     if run is None:
         return ()

@@ -85,13 +85,8 @@ class EquipmentPorts:
 # Base ports at rotation 0 — calibrated on a real asteroid blueprint (shape miners/extensions):
 # input from ``e`` (field / upstream), outputs on ``n``, ``s``, ``w`` (T excluding east).
 # ``rotation`` is decode ``R`` (quarter-turns from East at 0, increasing CW on the map); port dirs
-<<<<<<< HEAD
-# rotate CW by ``rotation % 4``. Lab ``<img>`` rotation matches ``R``; no per-file art offset in JS.
-# Bundle port math stays aligned with map ``R`` only.
-=======
-# rotate CW by ``rotation % 4``. Lab sprite display uses ``LAB_SPRITE_REGISTRY`` only;
-# do not duplicate that math here or bundle topology drifts.
->>>>>>> origin/docs/sequence-13-replay-scalability-roadmap
+# rotate CW by ``rotation % 4``. Lab ``<img>`` rotation matches map ``R`` via
+# ``LAB_SPRITE_REGISTRY`` only; do not duplicate sprite math here or bundle topology drifts.
 _BASE_PORTS_R0: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "fluid_miner": (frozenset({"e"}), frozenset({"n", "s", "w"})),
     "fluid_miner_extension": (frozenset({"e"}), frozenset({"n", "s", "w"})),

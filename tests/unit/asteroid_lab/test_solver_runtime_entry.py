@@ -12,16 +12,16 @@ from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.services.solver_run_config_keys import (
-    SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
-    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
-    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
-)
 from django_apps.asteroid_lab.services.runtime_gene_template_source import (
     GeneTemplateSourceKind,
 )
 from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
     generate_exhaustive_sample_genes,
+)
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
+    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
+    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     SolverRuntimeEntryErrorCode,

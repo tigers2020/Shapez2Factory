@@ -40,12 +40,12 @@ def _gene_template_catalog() -> dict[str, Any]:
         "needs_seed": db_count == 0,
     }
 
-
 GRID_W, GRID_H = 23, 15
 CELL_COUNT = GRID_W * GRID_H
 
 LAB_CELL_NEUTRAL = (
-    "lab-cell relative h-7 w-7 shrink-0 overflow-visible border " "bg-slate-950 border-slate-900"
+    "lab-cell relative h-7 w-7 shrink-0 overflow-visible border "
+    "bg-slate-950 border-slate-900"
 )
 
 

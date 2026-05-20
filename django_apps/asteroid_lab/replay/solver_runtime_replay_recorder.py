@@ -19,8 +19,13 @@ from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan
 from django_apps.asteroid_lab.optimization.commit_best_candidates import IncrementalCommitResult
 from django_apps.asteroid_lab.optimization.gene_template import GeneTemplate
 from django_apps.asteroid_lab.optimization.input_contracts import (
+    MAX_GOAL_DISTANCE_FROM_MINEABLE,
+    MIN_GOAL_DISTANCE_FROM_MINEABLE,
+    OUTER_VOID_PADDING,
+    BBox,
     OptimizationInput,
     ValidationResult,
+    cells_in_bbox,
 )
 from django_apps.asteroid_lab.optimization.loaded_snapshot import LoadedReconstructionSnapshot
 from django_apps.asteroid_lab.optimization.materialization_dtos import RouteMaterializationResult
@@ -49,6 +54,15 @@ from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayMapView,
     ReplayTimelineFrame,
 )
+
+
+def _server_bbox_dict(bb: BBox) -> dict[str, int]:
+    return {
+        "min_sx": bb.min_sx,
+        "max_sx": bb.max_sx,
+        "min_sy": bb.min_sy,
+        "max_sy": bb.max_sy,
+    }
 
 
 class SolverRuntimeReplayRecorder:
@@ -128,6 +142,7 @@ class SolverRuntimeReplayRecorder:
         recorded_count = len(cells)
         cap = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME
         map_view = self._build_map_view(cells)
+        route_domain_cell_count = len(cells_in_bbox(inp.route_domain_bbox))
         self._append(
             phase=ReplayPhase.OPTIMIZATION_INPUT,
             event_type=ReplayEventType.OPTIMIZATION_INPUT_LOADED,
@@ -142,6 +157,11 @@ class SolverRuntimeReplayRecorder:
                 "mineable_cell_count": len(inp.mineable_cells),
                 "rim_cell_count": len(inp.rim_cells),
                 "route_goal_count": len(inp.route_goals),
+                "asteroid_bbox": _server_bbox_dict(inp.asteroid_bbox),
+                "route_domain_bbox": _server_bbox_dict(inp.route_domain_bbox),
+                "outer_void_padding": OUTER_VOID_PADDING,
+                "external_void_cell_count": len(inp.external_void_cells),
+                "route_domain_cell_count": route_domain_cell_count,
                 "full_cell_count": recorded_count,
                 "source_cell_count": source_count,
                 "recorded_cell_cap": cap,
@@ -192,6 +212,8 @@ class SolverRuntimeReplayRecorder:
             map_view=map_view,
             inspector={
                 "route_goal_count": len(planned.goals),
+                "min_goal_distance": MIN_GOAL_DISTANCE_FROM_MINEABLE,
+                "max_goal_distance": MAX_GOAL_DISTANCE_FROM_MINEABLE,
                 "selected_cardinal": cardinal,
                 "shape_goals_requested": planned.shape_goals_requested,
                 "shape_goals_placed": planned.shape_goals_placed,

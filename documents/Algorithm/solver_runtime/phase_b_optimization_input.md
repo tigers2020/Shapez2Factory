@@ -36,9 +36,21 @@ OptimizationInput(
     protected_corridor_cells=...,
     blocked_cells=...,
     topology_graph=...,
-    bbox=...,
+    asteroid_bbox=...,
+    route_domain_bbox=...,
+    bbox=...,  # deprecated alias == route_domain_bbox
 )
 ```
+
+### Dual bbox (Phase B adapter)
+
+| Field | Meaning |
+|-------|---------|
+| `asteroid_bbox` | Tight inclusive bbox over `mineable_cells` (fallback: all decoded server coords if empty) |
+| `route_domain_bbox` | `expand_bbox(asteroid_bbox, OUTER_VOID_PADDING)` with `OUTER_VOID_PADDING = 10` |
+| `bbox` | Legacy alias; must equal `route_domain_bbox` |
+
+`external_void_cells` = all coords in `route_domain_bbox` that are **not** occupied decoded cells (`all_sv`). Reconstruction topology compare bbox stays tight (see `topology_contract`); only optimization routing expands.
 
 ### `route_goals` 경계 (Phase B vs C)
 
@@ -56,6 +68,7 @@ Phase B 완료 조건에 “모든 external margin goal이 채워짐”을 **넣
 3. belt / pipe 제거 좌표 → asteroid evidence 아님 → `existing_transport_cells` 또는 route domain evidence
 4. `shapeMinerExtension` / `fluidMinerExtension` 등 → field kind 정규화 ([`00_core_principles.md`](00_core_principles.md) §0.3)
 5. 모든 coord를 Server X/Y로 확정
+6. `asteroid_bbox` / `route_domain_bbox` 분리 및 padded `external_void_cells` 생성 (`reconstruction_adapter`)
 
 ## 금지
 

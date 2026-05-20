@@ -63,7 +63,7 @@ existing trunk 연결
 
 세부 비용은 Phase 4 `RouteCellDomain.traversal_cost`와 probe 정책이 맞춘다.
 
-Phase C에서 `route_goals` 좌표는 **rim에서 5칸 이상 떨어진 `external_void`**, **단일 N/E/S/W sector**, 처리량 기반 goal 개수로 생성한다 ([`solver_runtime/phase_c_capacity_route_goals.md`](solver_runtime/phase_c_capacity_route_goals.md)).
+Phase C에서 `route_goals` 좌표는 **padded `external_void` 중 mineable BFS 거리 3–5**, **넓은 면 양쪽 even spacing**, 처리량 기반 goal 개수로 생성한다 ([`solver_runtime/phase_c_capacity_route_goals.md`](solver_runtime/phase_c_capacity_route_goals.md)).
 
 ### `RouteGoal.priority` 정렬 규칙
 
@@ -148,7 +148,18 @@ class OptimizationInput:
     protected_corridor_cells: frozenset[Coord]
     blocked_cells: frozenset[Coord]
     topology_graph: TopologyGraph
-    bbox: BBox
+    asteroid_bbox: BBox
+    route_domain_bbox: BBox
+    bbox: BBox  # deprecated alias == route_domain_bbox
+```
+
+**BBox 의미 (v0):**
+
+```text
+asteroid_bbox       = tight mineable topology extent
+route_domain_bbox   = asteroid_bbox expanded by OUTER_VOID_PADDING (default 10)
+bbox                = route_domain_bbox (transition alias)
+external_void_cells = route_domain_bbox cells not occupied by decoded snapshot cells
 ```
 
 **하위 호환(문서만):** 기존 이름 `existing_transport_by_coord`를 코드에 남길 경우, 내용은 `MappingProxyType` 등 **읽기 전용 뷰**이거나 `existing_transport_cells`에서만 유도해야 한다.
@@ -193,6 +204,8 @@ cardinal_unit_toward(src: Coord, dst: Coord) -> Direction
 [ ] topology_graph·probe의 이웃이 `neighbors4_server`와 동일 계약
 [ ] inferred interior fill must be mineable asteroid field
 [ ] external void must not be mineable
+[ ] asteroid_bbox ⊆ route_domain_bbox; padded route domain when OUTER_VOID_PADDING applied
+[ ] external_void_cells ⊆ cells(route_domain_bbox)
 [ ] belt/pipe removed positions must not become asteroid evidence by default
 [ ] extractor/extension removed positions must become asteroid evidence
 [ ] route_goals: 각 goal은 goal_kind·priority·existing_trunk 의미를 가진다

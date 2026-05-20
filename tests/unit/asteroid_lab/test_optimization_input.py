@@ -11,6 +11,9 @@ from django_apps.asteroid_lab.optimization.coords import cardinal_unit_toward, n
 from django_apps.asteroid_lab.optimization.enums import Direction, TransportKind, TransportMask
 from django_apps.asteroid_lab.optimization.input_contracts import (
     BBox,
+    OUTER_VOID_PADDING,
+    cells_in_bbox,
+    expand_bbox,
     greenfield_optimization_input,
 )
 from django_apps.asteroid_lab.optimization.loaded_snapshot import (
@@ -295,6 +298,35 @@ def test_optimization_package_has_no_legacy_camelcase_extension_kind_strings() -
         text = py.read_text(encoding="utf-8")
         for token in forbidden:
             assert token not in text, f"{token} found in {py.name}"
+
+
+def test_optimization_input_bbox_alias_equals_route_domain_bbox() -> None:
+    inp = greenfield_optimization_input(bbox=BBox(1, 3, 2, 4))
+    assert inp.bbox == inp.route_domain_bbox
+    assert inp.asteroid_bbox == inp.route_domain_bbox
+
+
+def test_optimization_input_route_domain_bbox_expands_asteroid_by_padding() -> None:
+    res = _hole_reconstruction()
+    inp = optimization_input_from_reconstruction(res)
+    assert inp.route_domain_bbox.min_sx == inp.asteroid_bbox.min_sx - OUTER_VOID_PADDING
+    assert inp.route_domain_bbox.max_sx == inp.asteroid_bbox.max_sx + OUTER_VOID_PADDING
+    assert inp.route_domain_bbox.min_sy == inp.asteroid_bbox.min_sy - OUTER_VOID_PADDING
+    assert inp.route_domain_bbox.max_sy == inp.asteroid_bbox.max_sy + OUTER_VOID_PADDING
+    assert inp.route_domain_bbox == expand_bbox(inp.asteroid_bbox, OUTER_VOID_PADDING)
+    assert inp.bbox == inp.route_domain_bbox
+
+
+def test_optimization_input_external_void_fills_padded_ring() -> None:
+    res = _hole_reconstruction()
+    inp = optimization_input_from_reconstruction(res)
+    route_cells = cells_in_bbox(inp.route_domain_bbox)
+    assert inp.external_void_cells <= route_cells
+    assert inp.external_void_cells & inp.mineable_cells == frozenset()
+    sample = (inp.asteroid_bbox.min_sx - 1, inp.asteroid_bbox.min_sy)
+    assert sample in route_cells
+    assert sample not in inp.mineable_cells
+    assert sample in inp.external_void_cells
 
 
 def test_seed_route_domain_blocked_matches_optimization_input() -> None:

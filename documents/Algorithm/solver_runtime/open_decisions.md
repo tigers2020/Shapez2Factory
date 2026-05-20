@@ -89,3 +89,21 @@ route/probe/commit correctness should stabilize before GA expands search complex
 ```
 
 → [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md) · [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) §3
+
+## OD-5: route domain outer void padding
+
+**v0 (완료):**
+
+```text
+OUTER_VOID_PADDING = 10  # fixed in input_contracts / reconstruction_adapter
+MIN_GOAL_DISTANCE_FROM_MINEABLE = 3
+MAX_GOAL_DISTANCE_FROM_MINEABLE = 5
+asteroid_bbox vs route_domain_bbox split on OptimizationInput
+```
+
+**v1 (미착수):**
+
+```text
+solver config overrides for padding and goal distance band
+ui_view_bbox separate from route_domain_bbox when replay viewport needs margin
+```

@@ -7,9 +7,13 @@ from dataclasses import dataclass
 from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan
 from django_apps.asteroid_lab.optimization.coords import Coord, neighbors4_server
 from django_apps.asteroid_lab.optimization.enums import Direction, RouteGoalKind, TransportKind
-from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput, RouteGoal
-
-MIN_RIM_VOID_DISTANCE = 5
+from django_apps.asteroid_lab.optimization.input_contracts import (
+    MAX_GOAL_DISTANCE_FROM_MINEABLE,
+    MIN_GOAL_DISTANCE_FROM_MINEABLE,
+    OptimizationInput,
+    RouteGoal,
+    cells_in_bbox,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,22 +76,19 @@ def _distance_to_mineable(
 def _eligible_void_cells(
     inp: OptimizationInput,
     *,
-    min_distance: int = MIN_RIM_VOID_DISTANCE,
+    min_distance: int = MIN_GOAL_DISTANCE_FROM_MINEABLE,
+    max_distance: int = MAX_GOAL_DISTANCE_FROM_MINEABLE,
 ) -> list[tuple[Coord, int]]:
-    """Void cells at least ``min_distance`` steps from the nearest mineable cell."""
+    """Void cells with mineable BFS distance in ``[min_distance, max_distance]``."""
 
-    bb_cells = frozenset(
-        (sx, sy)
-        for sx in range(inp.bbox.min_sx, inp.bbox.max_sx + 1)
-        for sy in range(inp.bbox.min_sy, inp.bbox.max_sy + 1)
-    )
+    bb_cells = cells_in_bbox(inp.route_domain_bbox)
     if len(bb_cells) > 50_000:
         return []
     dist_map = _distance_to_mineable(inp.mineable_cells, bbox_cells=bb_cells)
     eligible: list[tuple[Coord, int]] = []
     for coord in inp.external_void_cells:
         d = dist_map.get(coord)
-        if d is not None and d >= min_distance:
+        if d is not None and min_distance <= d <= max_distance:
             eligible.append((coord, d))
     return eligible
 
@@ -119,23 +120,26 @@ def _split_bilateral_pools(
     int,
     int,
 ]:
-    """Split eligible void into two wide-face pools (left/right or north/south)."""
+    """Split eligible void into pools on the two **wide** faces of the mineable bbox.
+
+    ``width >= height`` → top/bottom bands (long horizontal rims); else left/right.
+    """
 
     min_sx, max_sx, min_sy, max_sy = _mineable_extent(mineable)
     width = max_sx - min_sx + 1
     height = max_sy - min_sy + 1
     if width >= height:
         band = _side_band_width(width)
-        first = [(c, d) for c, d in eligible if c[0] <= min_sx + band]
-        second = [(c, d) for c, d in eligible if c[0] >= max_sx - band]
-        spread_axis = "x"
-        spread_min, spread_max = min_sy, max_sy
-    else:
-        band = _side_band_width(height)
         first = [(c, d) for c, d in eligible if c[1] <= min_sy + band]
         second = [(c, d) for c, d in eligible if c[1] >= max_sy - band]
-        spread_axis = "y"
+        spread_axis = "x"
         spread_min, spread_max = min_sx, max_sx
+    else:
+        band = _side_band_width(height)
+        first = [(c, d) for c, d in eligible if c[0] <= min_sx + band]
+        second = [(c, d) for c, d in eligible if c[0] >= max_sx - band]
+        spread_axis = "y"
+        spread_min, spread_max = min_sy, max_sy
     return first, second, spread_axis, spread_min, spread_max, min_sx, max_sx
 
 
@@ -154,17 +158,17 @@ def _pick_on_side(
     def key(item: tuple[Coord, int]) -> tuple[int, int, int, int, int]:
         coord, dist = item
         if spread_axis == "x":
-            spread_delta = abs(coord[1] - target_spread)
-            if outer_side == "first":
-                lateral = (coord[0], abs(coord[0]))
-            else:
-                lateral = (-coord[0], abs(coord[0]))
-        else:
             spread_delta = abs(coord[0] - target_spread)
             if outer_side == "first":
                 lateral = (coord[1], abs(coord[1]))
             else:
                 lateral = (-coord[1], abs(coord[1]))
+        else:
+            spread_delta = abs(coord[1] - target_spread)
+            if outer_side == "first":
+                lateral = (coord[0], abs(coord[0]))
+            else:
+                lateral = (-coord[0], abs(coord[0]))
         return (spread_delta, lateral[0], lateral[1], -dist, coord[0], coord[1])
 
     return min(available, key=key)[0]
@@ -228,13 +232,18 @@ def plan_route_goals(
     capacity: CapacityPlan,
     *,
     default_priority: int = 20,
-    min_rim_distance: int = MIN_RIM_VOID_DISTANCE,
+    min_goal_distance: int = MIN_GOAL_DISTANCE_FROM_MINEABLE,
+    max_goal_distance: int = MAX_GOAL_DISTANCE_FROM_MINEABLE,
 ) -> PlannedRouteGoals:
-    """Place fixed external margin goals on both wide faces (rim distance >= min)."""
+    """Place external margin goals on both wide faces (mineable distance band)."""
 
     shape_requested = capacity.shape_goal_count
     fluid_requested = capacity.fluid_goal_count
-    eligible = _eligible_void_cells(inp, min_distance=min_rim_distance)
+    eligible = _eligible_void_cells(
+        inp,
+        min_distance=min_goal_distance,
+        max_distance=max_goal_distance,
+    )
     used: set[Coord] = set()
 
     shape_coords, spread_axis = _place_bilateral_even(

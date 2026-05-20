@@ -99,13 +99,15 @@ extractor 2개 수준에서는 throughput(1)보다 `groups*2` 쪽이 우선되�
 
 ### Goal 선택 정책 (v0)
 
-1. `external_void_cells` 중 **mineable에서 BFS 거리 ≥ 5**
-2. **넓은 면 양쪽 분할** (`width >= height` → 좌/우 `x` band, else 상/하 `y` band; `side_band_width = max(2, span//8)`)
-3. `left_count = total // 2`, `right_count = total - left_count` — 각 side에서 rim 축(`y` 또는 `x`) 기준 `span / (count + 1)` even target → 가장 가까운 void snap (바깥쪽 tie-break)
+전제: Phase B가 `route_domain_bbox = asteroid_bbox + OUTER_VOID_PADDING(10)` 및 padded `external_void_cells`를 제공한다.
+
+1. `external_void_cells` 중 **mineable BFS 거리 `3 <= d <= 5`** (`route_domain_bbox` 내부 BFS)
+2. **넓은 면 양쪽 분할** — side band·even spacing은 **`mineable_cells` / `asteroid_bbox` extent** 기준 (`width >= height` → **상/하 wide face** `y` band, even spread along `x`; else **좌/우 wide face** `x` band, spread along `y`; `side_band_width = max(2, wide_face_span//8)`)
+3. `first_count = total // 2`, `second_count = total - first_count` — 각 wide face에서 **긴 rim 축** 기준 `span / (count + 1)` even target → 가장 가까운 void snap (바깥쪽 tie-break)
 4. **shape goals** 먼저 bilateral 배치, **fluid**는 별도 bilateral pass (`used` 공유로 좌표 겹침 금지)
 5. **폐기:** 단일 face·cardinal sector·한쪽 모서리 클러스터
 
-`PlannedRouteGoals`는 `spread_axis`(`x`=좌우 bilateral), `shape_goals_shortfall` / `fluid_goals_shortfall` 를 기록한다.
+`PlannedRouteGoals`는 `spread_axis`(`x`=긴 rim을 가로축 even spacing, `y`=세로), `shape_goals_shortfall` / `fluid_goals_shortfall` 를 기록한다.
 
 **Replay:** `ROUTE_GOAL_GENERATED` 이후 모든 timeline frame의 `map_view.overlay_cells`에 `route_goal` 오버레이가 누적 유지된다 (`merge_overlay_cells` + recorder persistent layer).
 
@@ -129,8 +131,8 @@ extractor 2개 수준에서는 throughput(1)보다 `groups*2` 쪽이 우선되�
 test_capacity_planner_estimates_extractor_groups_with_packing
 test_capacity_planner_estimates_shape_goal_count_by_12
 test_capacity_planner_estimates_fluid_goal_count_by_72
-test_route_goal_rim_distance_filter_excludes_near_void
-test_route_goals_bilateral_left_right_even_y
+test_route_goal_distance_band_excludes_near_and_far_void
+test_route_goals_bilateral_wide_faces_top_bottom_even_x
 test_capacity_shape_goals_capped_by_extractor_scale
 test_route_goal_planner_creates_multiple_external_margin_goals
 test_route_goal_planner_does_not_materialize_transport

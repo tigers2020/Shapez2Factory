@@ -47,7 +47,7 @@ def _build_seed_cells(inp: OptimizationInput) -> dict[Coord, RouteCellDomain]:
     }
 
     out: dict[Coord, RouteCellDomain] = {}
-    for coord in _iter_bbox_cells(inp.bbox):
+    for coord in _iter_bbox_cells(inp.route_domain_bbox):
         if coord in inp.blocked_cells:
             out[coord] = RouteCellDomain(
                 coord=coord,
@@ -180,7 +180,7 @@ def optimization_input_cache_key(inp: OptimizationInput) -> tuple[object, ...]:
         sorted((cell.coord, cell.transport_kind) for cell in inp.existing_transport_cells)
     )
     return (
-        inp.bbox,
+        inp.route_domain_bbox,
         inp.blocked_cells,
         inp.protected_corridor_cells,
         inp.existing_trunk_cells,

@@ -11,7 +11,7 @@ from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import BBox
-from django_apps.asteroid_lab.optimization.reconstruction_adapter import _bbox_from_coords
+from django_apps.asteroid_lab.optimization.input_contracts import bbox_from_coords
 from django_apps.asteroid_lab.reconstruction.evidence import (
     ASTEROID_FIELD_KINDS,
     MINER_EXTENSION_CELL_KINDS,
@@ -151,7 +151,7 @@ def build_normalized_reconstruction_topology(
 
     asteroid = frozenset(mineable | wall)
     all_sv = frozenset(occupied)
-    bbox = _bbox_from_coords(all_sv if all_sv else frozenset(mineable))
+    bbox = bbox_from_coords(all_sv if all_sv else frozenset(mineable))
 
     external_void: set[Coord] = set()
     if bbox.max_sx >= bbox.min_sx and bbox.max_sy >= bbox.min_sy:

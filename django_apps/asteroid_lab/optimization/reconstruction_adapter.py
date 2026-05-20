@@ -5,12 +5,15 @@ from __future__ import annotations
 from django_apps.asteroid_lab.optimization.coords import Coord, neighbors4_server
 from django_apps.asteroid_lab.optimization.enums import EdgeKind, TopologyNodeKind, TransportKind
 from django_apps.asteroid_lab.optimization.input_contracts import (
-    BBox,
+    OUTER_VOID_PADDING,
     ExistingTransportCell,
     OptimizationInput,
     TopologyEdge,
     TopologyGraph,
     TopologyNode,
+    bbox_from_coords,
+    cells_in_bbox,
+    expand_bbox,
 )
 from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     LoadedReconstructionSnapshot,
@@ -108,14 +111,6 @@ def build_topology_graph(
     return TopologyGraph(nodes=frozenset(nodes), edges=frozenset(edges))
 
 
-def _bbox_from_coords(coords: frozenset[Coord]) -> BBox:
-    if not coords:
-        return BBox(0, 0, 0, 0)
-    xs = [c[0] for c in coords]
-    ys = [c[1] for c in coords]
-    return BBox(min(xs), max(xs), min(ys), max(ys))
-
-
 def optimization_input_from_loaded_snapshot(
     snapshot: LoadedReconstructionSnapshot,
 ) -> OptimizationInput:
@@ -162,14 +157,11 @@ def optimization_input_from_loaded_snapshot(
             interior.add(sv)
 
     all_sv = frozenset(by_sv)
-    bbox = _bbox_from_coords(all_sv)
-    external_void: set[Coord] = set()
-    for sx in range(bbox.min_sx, bbox.max_sx + 1):
-        for sy in range(bbox.min_sy, bbox.max_sy + 1):
-            ccoord = (sx, sy)
-            if ccoord in all_sv:
-                continue
-            external_void.add(ccoord)
+    asteroid_bbox = bbox_from_coords(mineable_f if mineable_f else all_sv)
+    route_domain_bbox = expand_bbox(asteroid_bbox, OUTER_VOID_PADDING)
+    external_void = {
+        c for c in cells_in_bbox(route_domain_bbox) if c not in all_sv
+    }
 
     topo = build_topology_graph(cells, mineable=mineable_f, server_xy_params=params)
 
@@ -185,7 +177,9 @@ def optimization_input_from_loaded_snapshot(
         protected_corridor_cells=frozenset(),
         blocked_cells=frozenset(blocked),
         topology_graph=topo,
-        bbox=bbox,
+        asteroid_bbox=asteroid_bbox,
+        route_domain_bbox=route_domain_bbox,
+        bbox=route_domain_bbox,
     )
 
 

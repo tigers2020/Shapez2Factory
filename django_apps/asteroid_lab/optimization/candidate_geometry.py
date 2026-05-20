@@ -18,7 +18,7 @@ class GeometryValidationResult:
 
 def _coord_in_bbox(coord: Coord, inp: OptimizationInput) -> bool:
     sx, sy = coord
-    bb = inp.bbox
+    bb = inp.route_domain_bbox
     return bb.min_sx <= sx <= bb.max_sx and bb.min_sy <= sy <= bb.max_sy
 
 

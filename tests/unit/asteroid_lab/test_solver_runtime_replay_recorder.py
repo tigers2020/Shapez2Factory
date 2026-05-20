@@ -303,6 +303,11 @@ def test_record_optimization_input_loaded_uses_full_loaded_snapshot() -> None:
     assert frame.inspector["full_cell_count"] == len(expected_cells)
     assert frame.inspector["source_cell_count"] == len(loaded.cells)
     assert frame.inspector["truncated"] is False
+    assert frame.inspector["asteroid_bbox"]["min_sx"] == inp.asteroid_bbox.min_sx
+    assert frame.inspector["route_domain_bbox"]["max_sx"] == inp.route_domain_bbox.max_sx
+    assert frame.inspector["outer_void_padding"] == 10
+    assert frame.inspector["external_void_cell_count"] == len(inp.external_void_cells)
+    assert frame.inspector["route_domain_cell_count"] > len(inp.mineable_cells)
 
 
 def test_recorder_build_frames_is_idempotent() -> None:

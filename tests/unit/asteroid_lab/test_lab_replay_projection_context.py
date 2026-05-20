@@ -1,4 +1,4 @@
-"""Projection context resolution for unified optimization replay (read path)."""
+"""Projection context resolution for Lab replay timeline (read path)."""
 
 from __future__ import annotations
 

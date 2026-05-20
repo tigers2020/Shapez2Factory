@@ -7,10 +7,6 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
-)
-
 _DEFAULT_LARGEST_FRAMES_N = 8
 
 
@@ -151,18 +147,6 @@ def _lab_redundancy_and_sizes(lab_list: list[Any]) -> tuple[dict[str, Any], list
     return redundancy, meta_sorted
 
 
-def _optimization_cell_totals(frame: object) -> tuple[int, int, int]:
-    """Return (visible_len, overlay_len, total) for one optimization frame dict."""
-
-    if not isinstance(frame, dict):
-        return 0, 0, 0
-    vis = frame.get("visible_cells")
-    ovl = frame.get("overlay_cells")
-    vn = len(vis) if isinstance(vis, list) else 0
-    on = len(ovl) if isinstance(ovl, list) else 0
-    return vn, on, vn + on
-
-
 def measure_json_sections(
     root: Mapping[str, Any],
     *,
@@ -172,8 +156,7 @@ def measure_json_sections(
 
     * ``top_level_key_bytes[k]`` — UTF-8 length of ``json.dumps(value)`` for that key only
       (not including the key string or outer object punctuation; for contribution estimates).
-    * Lab / optimization subsection stats use the same JSON encoding as ``total_bytes`` slices
-      where noted.
+    * Lab subsection stats use the same JSON encoding as ``total_bytes`` slices where noted.
     * Sequence 13B: Lab replay redundancy (adjacent identical ``full_map``, row-identity
       duplication estimates, diff vs ``full_map`` byte sums) and largest-frame index metadata
       — tests and diagnostics only; does not change runtime payloads.
@@ -192,19 +175,7 @@ def measure_json_sections(
     lab_key = "lab_replay_frames_json"
     lab_top_level_value_bytes = int(top_level_key_bytes.get(lab_key, 0))
 
-    opt_root = root.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY)
-    opt_frames: list[Any] = []
-    if isinstance(opt_root, dict):
-        raw_frames = opt_root.get("frames")
-        if isinstance(raw_frames, list):
-            opt_frames = list(raw_frames)
-    opt_frame_bytes = [_json_bytes(f) for f in opt_frames]
-    opt_cell_totals = [_optimization_cell_totals(f)[2] for f in opt_frames]
-    opt_vis = [_optimization_cell_totals(f)[0] for f in opt_frames]
-    opt_ovl = [_optimization_cell_totals(f)[1] for f in opt_frames]
-
     n_lab = len(lab_frame_bytes)
-    n_opt = len(opt_frame_bytes)
     sum_lab_fb = sum(lab_frame_bytes)
     max_lab_fb = max(lab_frame_bytes) if lab_frame_bytes else 0
     avg_lab = (sum_lab_fb / n_lab) if n_lab else 0.0
@@ -236,38 +207,7 @@ def measure_json_sections(
             "largest_lab_frames": largest_cut,
             "redundancy": redundancy,
         },
-        "optimization_replay": {
-            "frame_count": n_opt,
-            "sum_frame_bytes": sum(opt_frame_bytes),
-            "max_frame_bytes": max(opt_frame_bytes) if opt_frame_bytes else 0,
-            "avg_frame_bytes": (sum(opt_frame_bytes) / n_opt) if n_opt else 0.0,
-            "visible_len_max": max(opt_vis) if opt_vis else 0,
-            "overlay_len_max": max(opt_ovl) if opt_ovl else 0,
-            "visible_plus_overlay_max": max(opt_cell_totals) if opt_cell_totals else 0,
-        },
     }
-
-
-def assert_optimization_replay_hard_caps(
-    root: Mapping[str, Any],
-    *,
-    max_frames: int = 500,
-    max_cells_per_frame: int = 128,
-) -> None:
-    """Assert v0 optimization replay caps on a decoded POST-style dict (raises AssertionError)."""
-
-    opt_root = root.get(OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY)
-    assert isinstance(opt_root, dict), "optimization_replay missing or not a dict"
-    raw_frames = opt_root.get("frames")
-    assert isinstance(raw_frames, list), "optimization_replay.frames must be a list"
-    assert (
-        len(raw_frames) <= max_frames
-    ), f"optimization frame_count {len(raw_frames)} exceeds max_frames {max_frames}"
-    for i, fr in enumerate(raw_frames):
-        vn, on, total = _optimization_cell_totals(fr)
-        assert (
-            total <= max_cells_per_frame
-        ), f"optimization frame {i}: visible+overlay={total} exceeds {max_cells_per_frame}"
 
 
 def assert_lab_replay_not_capped_by_optimization_constants(root: Mapping[str, Any]) -> int:

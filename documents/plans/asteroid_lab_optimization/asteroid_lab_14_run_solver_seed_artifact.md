@@ -1,6 +1,6 @@
 # Asteroid Lab — Sequence 14: Run Solver Seed Artifact 경계
 
-> **상태:** ACTIVE (사람 승인 후 구현). Lab 단일 `ReplayTrack`·append 정본은 `rollback_baseline_unified_replay.md`와 `asteroid_lab_00_overview.md` §1b를 따른다.
+> **상태:** ACTIVE (사람 승인 후 구현). Lab 단일 `ReplayTrack`·append 정본은 `rollback_baseline_lab_replay_timeline.md`와 `asteroid_lab_00_overview.md` §1b를 따른다.
 
 ## 1. 역할 (Architecture Reviewer 합의)
 

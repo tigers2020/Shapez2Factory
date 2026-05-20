@@ -1,4 +1,4 @@
-"""Phase 9A — unified replay DTO contract tests."""
+"""Phase 9A — Lab replay timeline DTO contract tests."""
 
 from __future__ import annotations
 
@@ -7,23 +7,23 @@ from pathlib import Path
 
 import pytest
 
-from django_apps.asteroid_lab.replay.unified_dtos import (
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayAnnotation,
     ReplayBBox,
     ReplayCell,
     ReplayCellDelta,
     ReplayMapView,
     ReplayOverlayCell,
-    UnifiedReplayFrame,
+    ReplayTimelineFrame,
     replay_map_view_is_renderable,
 )
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
-from django_apps.asteroid_lab.replay.unified_serialization import (
-    UnifiedReplayDeserializationError,
+from django_apps.asteroid_lab.replay.timeline_serialization import (
+    ReplayTimelineDeserializationError,
     parse_replay_event_type,
-    unified_replay_frame_from_json_dict,
-    unified_replay_frame_json_round_trip,
-    unified_replay_frame_to_json_dict,
+    replay_timeline_frame_from_json_dict,
+    replay_timeline_frame_json_round_trip,
+    replay_timeline_frame_to_json_dict,
 )
 
 _REPLAY_PKG = Path(__file__).resolve().parents[3] / "django_apps" / "asteroid_lab" / "replay"
@@ -59,8 +59,8 @@ def _bbox() -> ReplayBBox:
     return ReplayBBox(min_x=0, min_y=0, max_x=10, max_y=10)
 
 
-def _sample_frame(*, map_view: ReplayMapView) -> UnifiedReplayFrame:
-    return UnifiedReplayFrame(
+def _sample_frame(*, map_view: ReplayMapView) -> ReplayTimelineFrame:
+    return ReplayTimelineFrame(
         frame_index=0,
         phase=ReplayPhase.DECODE,
         event_type=ReplayEventType.DECODE_STARTED,
@@ -80,7 +80,7 @@ def test_replay_event_type_enum_values_fixed() -> None:
     assert ReplayEventType.CAPACITY_PLAN_CREATED.value == "capacity.plan_created"
 
 
-def test_unified_replay_dtos_are_immutable() -> None:
+def test_replay_timeline_dtos_are_immutable() -> None:
     frame = _sample_frame(
         map_view=ReplayMapView(
             bbox=_bbox(),
@@ -93,7 +93,7 @@ def test_unified_replay_dtos_are_immutable() -> None:
 
 def test_unified_replay_frame_requires_map_view_field() -> None:
     with pytest.raises(TypeError):
-        UnifiedReplayFrame(  # type: ignore[call-arg]
+        ReplayTimelineFrame(  # type: ignore[call-arg]
             frame_index=0,
             phase=ReplayPhase.DECODE,
             event_type=ReplayEventType.DECODE_STARTED,
@@ -103,7 +103,7 @@ def test_unified_replay_frame_requires_map_view_field() -> None:
 
 
 def test_parse_replay_event_type_rejects_arbitrary_string() -> None:
-    with pytest.raises(UnifiedReplayDeserializationError):
+    with pytest.raises(ReplayTimelineDeserializationError):
         parse_replay_event_type("not.a.real.event")
 
 
@@ -111,9 +111,9 @@ def test_unified_replay_frame_index_is_int() -> None:
     mv = ReplayMapView(bbox=_bbox(), overlay_cells=(ReplayOverlayCell(x=1, y=1),))
     frame = _sample_frame(map_view=mv)
     assert isinstance(frame.frame_index, int)
-    payload = unified_replay_frame_to_json_dict(frame)
-    with pytest.raises(UnifiedReplayDeserializationError):
-        unified_replay_frame_from_json_dict({**payload, "frame_index": "0"})
+    payload = replay_timeline_frame_to_json_dict(frame)
+    with pytest.raises(ReplayTimelineDeserializationError):
+        replay_timeline_frame_from_json_dict({**payload, "frame_index": "0"})
 
 
 def test_map_view_full_snapshot_is_renderable() -> None:
@@ -147,8 +147,8 @@ def test_metadata_only_map_view_is_not_renderable() -> None:
     assert not replay_map_view_is_renderable(mv)
 
 
-def test_unified_replay_frame_json_round_trip() -> None:
-    frame = UnifiedReplayFrame(
+def test_replay_timeline_frame_json_round_trip() -> None:
+    frame = ReplayTimelineFrame(
         frame_index=42,
         phase=ReplayPhase.ROUTE_PROBE,
         event_type=ReplayEventType.ROUTE_PROBE_SUCCEEDED,
@@ -165,13 +165,13 @@ def test_unified_replay_frame_json_round_trip() -> None:
         inspector={"candidate_id": "cand_017"},
         metrics={"goal_priority": 2},
     )
-    restored = unified_replay_frame_json_round_trip(frame)
+    restored = replay_timeline_frame_json_round_trip(frame)
     assert restored == frame
 
 
 def test_unified_replay_serialization_is_json_safe() -> None:
     frame = _sample_frame(map_view=ReplayMapView(bbox=_bbox(), full_cells=(ReplayCell(x=0, y=0),)))
-    payload = unified_replay_frame_to_json_dict(frame)
+    payload = replay_timeline_frame_to_json_dict(frame)
     text = json.dumps(payload, default=str)
     parsed = json.loads(text)
     assert isinstance(parsed, dict)
@@ -180,15 +180,15 @@ def test_unified_replay_serialization_is_json_safe() -> None:
 
 def test_unified_replay_from_json_rejects_unknown_event_type() -> None:
     frame = _sample_frame(map_view=ReplayMapView(bbox=_bbox(), base_ref="k1"))
-    payload = unified_replay_frame_to_json_dict(frame)
+    payload = replay_timeline_frame_to_json_dict(frame)
     payload["event_type"] = "free.form.string"
-    with pytest.raises(UnifiedReplayDeserializationError):
-        unified_replay_frame_from_json_dict(payload)
+    with pytest.raises(ReplayTimelineDeserializationError):
+        replay_timeline_frame_from_json_dict(payload)
 
 
 def test_unified_replay_from_json_requires_map_view() -> None:
-    with pytest.raises(UnifiedReplayDeserializationError):
-        unified_replay_frame_from_json_dict(
+    with pytest.raises(ReplayTimelineDeserializationError):
+        replay_timeline_frame_from_json_dict(
             {
                 "frame_index": 0,
                 "phase": "decode",
@@ -201,7 +201,7 @@ def test_unified_replay_from_json_requires_map_view() -> None:
 
 @pytest.mark.parametrize(
     "module_name",
-    ["unified_dtos.py", "unified_enums.py", "unified_serialization.py"],
+    ["timeline_dtos.py", "replay_enums.py", "timeline_serialization.py"],
 )
 def test_unified_replay_modules_import_boundary(module_name: str) -> None:
     text = (_REPLAY_PKG / module_name).read_text(encoding="utf-8")

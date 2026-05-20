@@ -1,4 +1,4 @@
-"""Unified wire must carry equipment_bundles for Lab map highlight."""
+"""Timeline wire must carry equipment_bundles for Lab map highlight."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay import event_types as et
-from django_apps.asteroid_lab.replay.lab_unified_adapter import lab_replay_row_to_unified
+from django_apps.asteroid_lab.replay.lab_timeline_adapter import lab_replay_row_to_timeline_frame
 from django_apps.asteroid_lab.services import project_service
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     _frame_row_from_model,
@@ -56,9 +56,9 @@ def test_pipeline_persisted_cleanup_transport_has_equipment_bundles() -> None:
     kinds = {c.get("cell_kind") for c in fm if isinstance(c, dict)}
     eb = co.get("equipment_bundles")
     assert isinstance(eb, list), f"ORM overlay keys={list(co.keys())}"
-    unified = lab_replay_row_to_unified(_frame_row_from_model(row))
-    wire_eb = unified.cell_overlay_json.get("equipment_bundles")
-    assert wire_eb, f"unified missing bundles; full_map kinds={kinds}"
+    timeline_frame = lab_replay_row_to_timeline_frame(_frame_row_from_model(row))
+    wire_eb = timeline_frame.cell_overlay_json.get("equipment_bundles")
+    assert wire_eb, f"timeline frame missing bundles; full_map kinds={kinds}"
     frames, _ = build_lab_replay_frames_for_project(int(dto.project_id))
     assert any(
         isinstance(f.get("cell_overlay_json"), dict)

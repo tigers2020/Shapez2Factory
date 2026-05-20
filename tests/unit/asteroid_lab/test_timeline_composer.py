@@ -1,15 +1,15 @@
-"""Phase 9D — unified timeline composer tests."""
+"""Phase 9D — replay timeline composer tests."""
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.replay.unified_dtos import (
+from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayBBox,
     ReplayCell,
     ReplayMapView,
-    UnifiedReplayFrame,
+    ReplayTimelineFrame,
 )
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
-from django_apps.asteroid_lab.replay.unified_timeline_composer import compose_unified_timeline
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.timeline_composer import compose_replay_timeline
 
 
 def _frame(
@@ -18,9 +18,9 @@ def _frame(
     phase: ReplayPhase,
     event: ReplayEventType,
     tag: str,
-) -> UnifiedReplayFrame:
+) -> ReplayTimelineFrame:
     cell = ReplayCell(x=idx, y=0, kind=tag, transport="none")
-    return UnifiedReplayFrame(
+    return ReplayTimelineFrame(
         frame_index=idx,
         phase=phase,
         event_type=event,
@@ -38,7 +38,7 @@ def _frame(
 def test_compose_preserves_cell_overlay_json() -> None:
     lab_cell = ReplayCell(x=1, y=0, kind="shape_miner", transport="none")
     lab = (
-        UnifiedReplayFrame(
+        ReplayTimelineFrame(
             frame_index=0,
             phase=ReplayPhase.DECODE,
             event_type=ReplayEventType.DECODE_STARTED,
@@ -55,14 +55,14 @@ def test_compose_preserves_cell_overlay_json() -> None:
             },
         ),
     )
-    out = compose_unified_timeline(lab_frames=lab)
+    out = compose_replay_timeline(lab_frames=lab)
     assert out[0].cell_overlay_json.get("equipment_bundles")
 
 
 def test_compose_preserves_inspector_replay_frame_id() -> None:
     lab_cell = ReplayCell(x=1, y=0, kind="lab", transport="none")
     lab = (
-        UnifiedReplayFrame(
+        ReplayTimelineFrame(
             frame_index=3,
             phase=ReplayPhase.DECODE,
             event_type=ReplayEventType.DECODE_STARTED,
@@ -76,7 +76,7 @@ def test_compose_preserves_inspector_replay_frame_id() -> None:
             metrics={},
         ),
     )
-    out = compose_unified_timeline(lab_frames=lab)
+    out = compose_replay_timeline(lab_frames=lab)
     assert len(out) == 1
     assert out[0].inspector["replay_frame_id"] == 42
 
@@ -86,7 +86,7 @@ def test_compose_reindexes_global_frame_index_monotonic() -> None:
         _frame(10, phase=ReplayPhase.DECODE, event=ReplayEventType.DECODE_STARTED, tag="a"),
         _frame(11, phase=ReplayPhase.DECODE, event=ReplayEventType.DECODE_COMPLETED, tag="b"),
     )
-    out = compose_unified_timeline(lab_frames=lab)
+    out = compose_replay_timeline(lab_frames=lab)
     assert [f.frame_index for f in out] == [0, 1]
     assert out[0].inspector["source_frame_index"] == 10
     assert out[1].inspector["source_frame_index"] == 11
@@ -102,11 +102,11 @@ def test_compose_truncation_sets_metrics_pair() -> None:
         )
         for i in range(6)
     )
-    out = compose_unified_timeline(lab_frames=lab, max_frames=4)
+    out = compose_replay_timeline(lab_frames=lab, max_frames=4)
     assert len(out) == 4
     last = out[-1]
     assert last.metrics.get("replay_truncated") is True
-    assert last.metrics.get("truncation_reason") == "max_unified_replay_frames"
+    assert last.metrics.get("truncation_reason") == "max_lab_replay_timeline_frames"
 
 
 def test_unified_timeline_truncation_records_dropped_frame_count() -> None:
@@ -119,14 +119,14 @@ def test_unified_timeline_truncation_records_dropped_frame_count() -> None:
         )
         for i in range(6)
     )
-    out = compose_unified_timeline(lab_frames=lab, max_frames=4)
+    out = compose_replay_timeline(lab_frames=lab, max_frames=4)
     assert len(out) == 4
     last = out[-1]
     assert last.metrics.get("dropped_frame_count") == 2
 
 
 def test_compose_empty_inputs() -> None:
-    assert compose_unified_timeline(lab_frames=()) == ()
+    assert compose_replay_timeline(lab_frames=()) == ()
 
 
 def test_replay_head_truncate_retains_result_layout() -> None:
@@ -147,7 +147,7 @@ def test_replay_head_truncate_retains_result_layout() -> None:
             tag="result",
         ),
     )
-    out = compose_unified_timeline(lab_frames=lab, max_frames=8)
+    out = compose_replay_timeline(lab_frames=lab, max_frames=8)
     event_types = [f.event_type for f in out]
     assert ReplayEventType.RESULT_LAYOUT in event_types
     last = out[-1]
@@ -169,6 +169,6 @@ def test_replay_truncation_retains_first_reconstruction_keyframe() -> None:
         )
         for i in range(6)
     )
-    out = compose_unified_timeline(lab_frames=lab, max_frames=4)
+    out = compose_replay_timeline(lab_frames=lab, max_frames=4)
     event_types = [f.event_type for f in out]
     assert ReplayEventType.RECONSTRUCTION_COMPLETED in event_types

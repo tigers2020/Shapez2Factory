@@ -153,7 +153,7 @@ def test_post_run_solver_json_persists_and_returns_payload() -> None:
 
 
 def _assert_frames_have_js_renderable_cells(frames: list[dict]) -> None:
-    """At least one unified frame must expose lab x != 0 or overlay/delta cells."""
+    """At least one timeline frame must expose lab x != 0 or overlay/delta cells."""
 
     for frame in frames:
         mv = frame.get("map_view")

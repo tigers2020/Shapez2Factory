@@ -11,10 +11,12 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     loaded_reconstruction_snapshot_from_result,
 )
-from django_apps.asteroid_lab.replay.solver_runtime_unified_recorder import (
+from django_apps.asteroid_lab.replay.solver_runtime_replay_recorder import (
     SolverRuntimeReplayRecorder,
 )
-from django_apps.asteroid_lab.replay.unified_serialization import unified_replay_frame_to_json_dict
+from django_apps.asteroid_lab.replay.timeline_serialization import (
+    replay_timeline_frame_to_json_dict,
+)
 from django_apps.asteroid_lab.services.experiment_service import create_solver_run
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
@@ -170,7 +172,7 @@ def run_solver_runtime_for_project(
         if recorder is not None:
             frames = recorder.build_frames()
             if frames:
-                runtime_replay_frames_json = [unified_replay_frame_to_json_dict(f) for f in frames]
+                runtime_replay_frames_json = [replay_timeline_frame_to_json_dict(f) for f in frames]
         _persist_solver_run_outcome(
             run_id,
             solver_summary=result.solver_summary,

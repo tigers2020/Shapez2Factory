@@ -9,7 +9,7 @@ from django_apps.asteroid_lab.replay.projection_context import (
     lab_xy_from_server_xy,
 )
 from django_apps.asteroid_lab.replay.replay_limits import MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME
-from django_apps.asteroid_lab.replay.unified_dtos import (
+from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayAnnotation,
     ReplayBBox,
     ReplayCell,

@@ -1,4 +1,4 @@
-"""JSON serialization for unified replay DTOs (Phase 9A)."""
+"""JSON serialization for Lab replay timeline DTOs (Phase 9A)."""
 
 from __future__ import annotations
 
@@ -6,25 +6,25 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
-from django_apps.asteroid_lab.replay.unified_dtos import (
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayAnnotation,
     ReplayBBox,
     ReplayCell,
     ReplayCellDelta,
     ReplayMapView,
     ReplayOverlayCell,
-    UnifiedReplayFrame,
+    ReplayTimelineFrame,
 )
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
 
 
-class UnifiedReplayDeserializationError(ValueError):
-    """Raised when wire JSON violates the unified replay contract."""
+class ReplayTimelineDeserializationError(ValueError):
+    """Raised when wire JSON violates the replay timeline contract."""
 
 
 def _require_int(value: object, *, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise UnifiedReplayDeserializationError(f"{field} must be int")
+        raise ReplayTimelineDeserializationError(f"{field} must be int")
     return value
 
 
@@ -45,7 +45,7 @@ def replay_bbox_to_json_dict(bbox: ReplayBBox) -> dict[str, int]:
 
 def replay_bbox_from_json_dict(data: object) -> ReplayBBox:
     if not isinstance(data, dict):
-        raise UnifiedReplayDeserializationError("bbox must be object")
+        raise ReplayTimelineDeserializationError("bbox must be object")
     return ReplayBBox(
         min_x=_require_int(data.get("min_x"), field="bbox.min_x"),
         min_y=_require_int(data.get("min_y"), field="bbox.min_y"),
@@ -102,7 +102,7 @@ def _tuple_from_list(raw: object, factory: Any) -> tuple[Any, ...]:
     out: list[Any] = []
     for item in raw:
         if not isinstance(item, dict):
-            raise UnifiedReplayDeserializationError("cell list items must be objects")
+            raise ReplayTimelineDeserializationError("cell list items must be objects")
         out.append(factory(dict(item)))
     return tuple(out)
 
@@ -154,7 +154,7 @@ def replay_map_view_to_json_dict(map_view: ReplayMapView) -> dict[str, Any]:
 
 def replay_map_view_from_json_dict(data: object) -> ReplayMapView:
     if not isinstance(data, dict):
-        raise UnifiedReplayDeserializationError("map_view must be object")
+        raise ReplayTimelineDeserializationError("map_view must be object")
     base_ref = data.get("base_ref")
     ref: str | None
     if base_ref is None:
@@ -171,7 +171,7 @@ def replay_map_view_from_json_dict(data: object) -> ReplayMapView:
     )
 
 
-def unified_replay_frame_to_json_dict(frame: UnifiedReplayFrame) -> dict[str, Any]:
+def replay_timeline_frame_to_json_dict(frame: ReplayTimelineFrame) -> dict[str, Any]:
     out: dict[str, Any] = {
         "frame_index": int(frame.frame_index),
         "phase": frame.phase.value,
@@ -185,31 +185,37 @@ def unified_replay_frame_to_json_dict(frame: UnifiedReplayFrame) -> dict[str, An
     overlay = dict(frame.cell_overlay_json or {})
     if overlay:
         out["cell_overlay_json"] = overlay
+    if frame.diff:
+        out["diff"] = dict(frame.diff)
     return out
 
 
 def parse_replay_phase(raw: object) -> ReplayPhase:
     if not isinstance(raw, str):
-        raise UnifiedReplayDeserializationError("phase must be string")
+        raise ReplayTimelineDeserializationError("phase must be string")
     try:
         return ReplayPhase(raw)
     except ValueError as exc:
-        raise UnifiedReplayDeserializationError(f"unknown phase: {raw!r}") from exc
+        raise ReplayTimelineDeserializationError(f"unknown phase: {raw!r}") from exc
 
 
 def parse_replay_event_type(raw: object) -> ReplayEventType:
     if not isinstance(raw, str):
-        raise UnifiedReplayDeserializationError("event_type must be string")
+        raise ReplayTimelineDeserializationError("event_type must be string")
     try:
         return ReplayEventType(raw)
     except ValueError as exc:
-        raise UnifiedReplayDeserializationError(f"unknown event_type: {raw!r}") from exc
+        raise ReplayTimelineDeserializationError(f"unknown event_type: {raw!r}") from exc
 
 
-def unified_replay_frame_from_json_dict(data: Mapping[str, Any]) -> UnifiedReplayFrame:
+def replay_timeline_frame_from_json_dict(data: Mapping[str, Any]) -> ReplayTimelineFrame:
     if "map_view" not in data:
-        raise UnifiedReplayDeserializationError("map_view is required")
-    return UnifiedReplayFrame(
+        raise ReplayTimelineDeserializationError("map_view is required")
+    raw_diff = data.get("diff")
+    diff_out: dict[str, Any] | None = None
+    if isinstance(raw_diff, dict) and raw_diff:
+        diff_out = dict(raw_diff)
+    return ReplayTimelineFrame(
         frame_index=_require_int(data.get("frame_index"), field="frame_index"),
         phase=parse_replay_phase(data.get("phase")),
         event_type=parse_replay_event_type(data.get("event_type")),
@@ -219,14 +225,15 @@ def unified_replay_frame_from_json_dict(data: Mapping[str, Any]) -> UnifiedRepla
         inspector=_mapping(data.get("inspector")),
         metrics=_mapping(data.get("metrics")),
         cell_overlay_json=_mapping(data.get("cell_overlay_json")),
+        diff=diff_out,
     )
 
 
-def unified_replay_frame_json_round_trip(frame: UnifiedReplayFrame) -> UnifiedReplayFrame:
+def replay_timeline_frame_json_round_trip(frame: ReplayTimelineFrame) -> ReplayTimelineFrame:
     """Serialize to JSON text and back (contract helper for tests)."""
-    payload = unified_replay_frame_to_json_dict(frame)
+    payload = replay_timeline_frame_to_json_dict(frame)
     text = json.dumps(payload, default=str)
     restored = json.loads(text)
     if not isinstance(restored, dict):
-        raise UnifiedReplayDeserializationError("round-trip did not yield object")
-    return unified_replay_frame_from_json_dict(restored)
+        raise ReplayTimelineDeserializationError("round-trip did not yield object")
+    return replay_timeline_frame_from_json_dict(restored)

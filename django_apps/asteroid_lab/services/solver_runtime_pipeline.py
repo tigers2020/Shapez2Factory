@@ -29,7 +29,7 @@ from django_apps.asteroid_lab.optimization.route_network_materializer import (
 )
 
 if TYPE_CHECKING:
-    from django_apps.asteroid_lab.replay.solver_runtime_unified_recorder import (
+    from django_apps.asteroid_lab.replay.solver_runtime_replay_recorder import (
         SolverRuntimeReplayRecorder,
     )
 

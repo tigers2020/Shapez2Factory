@@ -22,7 +22,7 @@ from django.test import Client
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
     generate_exhaustive_sample_genes,
 )

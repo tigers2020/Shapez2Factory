@@ -1,4 +1,4 @@
-"""Lab ReplayFrame / SnapshotEventDTO → UnifiedReplayFrame (Phase 9B; output-only)."""
+"""Lab ReplayFrame / SnapshotEventDTO → ReplayTimelineFrame (Phase 9B; output-only)."""
 
 from __future__ import annotations
 
@@ -22,16 +22,16 @@ from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
     EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION,
 )
-from django_apps.asteroid_lab.replay.unified_dtos import (
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.replay_event_coverage import SUPPORTED_BY_9B_LAB_ADAPTER
+from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayBBox,
     ReplayCell,
     ReplayMapView,
     ReplayOverlayCell,
-    UnifiedReplayFrame,
+    ReplayTimelineFrame,
     replay_map_view_is_renderable,
 )
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
-from django_apps.asteroid_lab.replay.unified_event_coverage import SUPPORTED_BY_9B_LAB_ADAPTER
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
 from django_apps.asteroid_lab.snapshots.equipment_bundles import (
     cell_overlay_json_for_bundle_highlight,
@@ -44,7 +44,7 @@ LAB_PHASE_LAYOUT_CLEANUP = "layout_cleanup"
 
 _LAB_PHASES_9B = frozenset({LAB_PHASE_DECODE, LAB_PHASE_RECONSTRUCTION, LAB_PHASE_LAYOUT_CLEANUP})
 
-LAB_EVENT_TYPE_TO_UNIFIED: dict[str, ReplayEventType] = {
+LAB_EVENT_TYPE_TO_TIMELINE: dict[str, ReplayEventType] = {
     EVENT_TYPE_DECODE_RAW_LOADED: ReplayEventType.DECODE_STARTED,
     EVENT_TYPE_DECODE_NORMALIZED: ReplayEventType.DECODE_COMPLETED,
     EVENT_TYPE_RECONSTRUCTION_BEGIN: ReplayEventType.RECONSTRUCTION_STARTED,
@@ -61,34 +61,34 @@ LAB_EVENT_TYPE_TO_UNIFIED: dict[str, ReplayEventType] = {
     EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION: ReplayEventType.RECONSTRUCTION_STARTED,
 }
 
-LAB_PHASE_TO_UNIFIED: dict[str, ReplayPhase] = {
+LAB_PHASE_TO_TIMELINE: dict[str, ReplayPhase] = {
     LAB_PHASE_DECODE: ReplayPhase.DECODE,
     LAB_PHASE_RECONSTRUCTION: ReplayPhase.RECONSTRUCTION,
     LAB_PHASE_LAYOUT_CLEANUP: ReplayPhase.RECONSTRUCTION,
 }
 
 
-class LabUnifiedAdapterError(ValueError):
+class LabTimelineAdapterError(ValueError):
     """Raised when a Lab replay frame cannot be conservatively wrapped for 9B."""
 
 
-def _lab_phase_to_unified(phase: str) -> ReplayPhase:
+def _lab_phase_to_timeline(phase: str) -> ReplayPhase:
     try:
-        return LAB_PHASE_TO_UNIFIED[phase]
+        return LAB_PHASE_TO_TIMELINE[phase]
     except KeyError as exc:
         msg = f"Lab phase not supported by 9B adapter: {phase!r}"
-        raise LabUnifiedAdapterError(msg) from exc
+        raise LabTimelineAdapterError(msg) from exc
 
 
-def _lab_event_type_to_unified(event_type: str) -> ReplayEventType:
-    unified = LAB_EVENT_TYPE_TO_UNIFIED.get(event_type)
-    if unified is None:
+def _lab_event_type_to_timeline(event_type: str) -> ReplayEventType:
+    timeline_event = LAB_EVENT_TYPE_TO_TIMELINE.get(event_type)
+    if timeline_event is None:
         msg = f"Lab event_type not supported by 9B adapter: {event_type!r}"
-        raise LabUnifiedAdapterError(msg)
-    if unified not in SUPPORTED_BY_9B_LAB_ADAPTER:
-        msg = f"Mapped unified event_type not in 9B output set: {unified!r}"
-        raise LabUnifiedAdapterError(msg)
-    return unified
+        raise LabTimelineAdapterError(msg)
+    if timeline_event not in SUPPORTED_BY_9B_LAB_ADAPTER:
+        msg = f"Mapped timeline event_type not in 9B output set: {timeline_event!r}"
+        raise LabTimelineAdapterError(msg)
+    return timeline_event
 
 
 def _cell_from_row(row: Mapping[str, Any]) -> ReplayCell:
@@ -151,13 +151,64 @@ def _overlay_rows_from_json(overlay_json: Mapping[str, Any]) -> tuple[ReplayOver
     return tuple(out)
 
 
+def _normalize_lab_diff(diff: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(diff, dict):
+        return None
+    added = diff.get("added")
+    removed = diff.get("removed")
+    changed = diff.get("changed")
+    has_added = isinstance(added, list) and bool(added)
+    has_removed = isinstance(removed, list) and bool(removed)
+    has_changed = isinstance(changed, list) and bool(changed)
+    if not (has_added or has_removed or has_changed):
+        return None
+    return {
+        "added": list(added) if isinstance(added, list) else [],
+        "removed": list(removed) if isinstance(removed, list) else [],
+        "changed": list(changed) if isinstance(changed, list) else [],
+    }
+
+
+def _trace_overlay_cells_from_diff(diff: Mapping[str, Any] | None) -> tuple[ReplayOverlayCell, ...]:
+    if not isinstance(diff, dict):
+        return ()
+    added = diff.get("added")
+    if not isinstance(added, list):
+        return ()
+    out: list[ReplayOverlayCell] = []
+    for raw in added:
+        if not isinstance(raw, dict) or "x" not in raw or "y" not in raw:
+            continue
+        if not raw.get("_replay_trace"):
+            continue
+        out.append(_overlay_from_row(raw))
+    return tuple(out)
+
+
+def _merge_overlay_cells(
+    persisted: tuple[ReplayOverlayCell, ...],
+    trace: tuple[ReplayOverlayCell, ...],
+) -> tuple[ReplayOverlayCell, ...]:
+    """Trace highlights win on duplicate ``(x, y)``."""
+
+    by_xy: dict[tuple[int, int], ReplayOverlayCell] = {(o.x, o.y): o for o in persisted}
+    for cell in trace:
+        by_xy[(cell.x, cell.y)] = cell
+    if not by_xy:
+        return ()
+    return tuple(by_xy[key] for key in sorted(by_xy))
+
+
 def _build_map_view(
     *,
     full_map: list[Any],
     cell_overlay_json: Mapping[str, Any],
+    diff: Mapping[str, Any] | None = None,
 ) -> ReplayMapView:
     full_cells = _rows_to_full_cells(full_map)
-    overlay_cells = _overlay_rows_from_json(cell_overlay_json)
+    persisted_overlay = _overlay_rows_from_json(cell_overlay_json)
+    trace_overlay = _trace_overlay_cells_from_diff(diff)
+    overlay_cells = _merge_overlay_cells(persisted_overlay, trace_overlay)
     bbox = _bbox_from_cells(full_cells, overlay_cells)
     map_view = ReplayMapView(
         bbox=bbox,
@@ -166,11 +217,11 @@ def _build_map_view(
     )
     if not replay_map_view_is_renderable(map_view):
         msg = "Lab frame has no renderable map_view (empty full_map and no overlay/base_ref)"
-        raise LabUnifiedAdapterError(msg)
+        raise LabTimelineAdapterError(msg)
     return map_view
 
 
-def _cell_overlay_json_for_unified_lab_frame(
+def _cell_overlay_json_for_timeline_lab_frame(
     overlay_json: Mapping[str, Any],
     *,
     full_map: list[Any],
@@ -216,26 +267,28 @@ def _inspector_from_lab(
     }
 
 
-def lab_snapshot_event_to_unified(
+def lab_snapshot_event_to_timeline_frame(
     event: SnapshotEventDTO,
     *,
     frame_index: int,
-) -> UnifiedReplayFrame:
+) -> ReplayTimelineFrame:
     """Wrap one in-memory Lab snapshot event (does not mutate ``event``)."""
 
     phase = str(event.phase)
     event_type = str(event.event_type)
-    _lab_phase_to_unified(phase)
-    unified_event = _lab_event_type_to_unified(event_type)
+    _lab_phase_to_timeline(phase)
+    timeline_event = _lab_event_type_to_timeline(event_type)
+    diff_norm = _normalize_lab_diff(event.diff)
     map_view = _build_map_view(
         full_map=list(event.full_map),
         cell_overlay_json=dict(event.cell_overlay_json or {}),
+        diff=diff_norm,
     )
     overlay_json = dict(event.cell_overlay_json or {})
-    return UnifiedReplayFrame(
+    return ReplayTimelineFrame(
         frame_index=int(frame_index),
-        phase=_lab_phase_to_unified(phase),
-        event_type=unified_event,
+        phase=_lab_phase_to_timeline(phase),
+        event_type=timeline_event,
         title=str(event.title),
         description=str(event.description),
         map_view=map_view,
@@ -246,11 +299,12 @@ def lab_snapshot_event_to_unified(
             lab_event_type=event_type,
         ),
         metrics=dict(event.metrics_json or {}),
-        cell_overlay_json=_cell_overlay_json_for_unified_lab_frame(
+        cell_overlay_json=_cell_overlay_json_for_timeline_lab_frame(
             overlay_json,
             full_map=list(event.full_map),
             map_view=map_view,
         ),
+        diff=diff_norm,
     )
 
 
@@ -261,7 +315,7 @@ def _snapshot_fields_from_payload(
     event_type = str(payload.get("event_type") or "")
     if not event_type:
         msg = "frame_payload missing event_type"
-        raise LabUnifiedAdapterError(msg)
+        raise LabTimelineAdapterError(msg)
     event_key = str(payload.get("event_key") or "")
     phase_step = str(payload.get("phase_step") or "")
     full_map = payload.get("full_map")
@@ -270,20 +324,26 @@ def _snapshot_fields_from_payload(
     return phase, event_type, event_key, phase_step, full_map
 
 
-def lab_replay_row_to_unified(row: ReplayFrameRowDTO) -> UnifiedReplayFrame:
+def lab_replay_row_to_timeline_frame(row: ReplayFrameRowDTO) -> ReplayTimelineFrame:
     """Wrap one persisted Lab ``ReplayFrame`` row (does not mutate ``row``)."""
 
     payload = row.frame_payload
     if not isinstance(payload, dict):
         msg = "ReplayFrameRowDTO.frame_payload must be a dict"
-        raise LabUnifiedAdapterError(msg)
+        raise LabTimelineAdapterError(msg)
     phase, event_type, event_key, phase_step, full_map = _snapshot_fields_from_payload(payload)
-    _lab_phase_to_unified(phase)
-    unified_event = _lab_event_type_to_unified(event_type)
+    _lab_phase_to_timeline(phase)
+    timeline_event = _lab_event_type_to_timeline(event_type)
     overlay_json = row.cell_overlay_json if isinstance(row.cell_overlay_json, dict) else {}
     if not overlay_json and isinstance(payload.get("cell_overlay_json"), dict):
         overlay_json = dict(payload["cell_overlay_json"])
-    map_view = _build_map_view(full_map=full_map, cell_overlay_json=overlay_json)
+    raw_diff = payload.get("diff")
+    diff_norm = _normalize_lab_diff(raw_diff if isinstance(raw_diff, dict) else None)
+    map_view = _build_map_view(
+        full_map=full_map,
+        cell_overlay_json=overlay_json,
+        diff=diff_norm,
+    )
     metrics: dict[str, Any] = {}
     if isinstance(row.metric_snapshot_json, dict):
         metrics.update(row.metric_snapshot_json)
@@ -297,20 +357,21 @@ def lab_replay_row_to_unified(row: ReplayFrameRowDTO) -> UnifiedReplayFrame:
         lab_event_type=event_type,
     )
     inspector["replay_frame_id"] = int(row.id)
-    return UnifiedReplayFrame(
+    return ReplayTimelineFrame(
         frame_index=int(row.frame_index),
-        phase=_lab_phase_to_unified(phase),
-        event_type=unified_event,
+        phase=_lab_phase_to_timeline(phase),
+        event_type=timeline_event,
         title=str(row.title),
         description=str(row.description),
         map_view=map_view,
         inspector=inspector,
         metrics=metrics,
-        cell_overlay_json=_cell_overlay_json_for_unified_lab_frame(
+        cell_overlay_json=_cell_overlay_json_for_timeline_lab_frame(
             overlay_json,
             full_map=full_map,
             map_view=map_view,
         ),
+        diff=diff_norm,
     )
 
 

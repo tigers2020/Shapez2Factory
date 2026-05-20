@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-업로드된 `Algorithm.zip`은 실행 가능한 코드보다 **계약 문서와 구현 계획 문서**에 가깝지만, 그 문서들만으로도 현재 리플레이가 “제대로 안 되는” 가장 유력한 구조적 원인은 꽤 선명하게 드러납니다. 핵심은 **이벤트 타입 계약 불일치**, **dual-track에서 unified timeline으로의 마이그레이션 미완료**, 그리고 **누적 상태를 최종 2D 맵으로 고정하는 `route.materialized`/`result.layout` 계층의 공백**입니다. 특히 런타임 쪽 문서는 아직 `optimization_replay` 별도 트랙과 strict payload 검증을 전제로 하는 반면, 제품 정본 문서는 하나의 `lab_replay_frames_json` 단일 타임라인을 권위로 삼고 있어, 실제 실행 시에는 “프레임이 비거나 일부만 보이는 현상”, “누적 fill 실패”, “최종 결과 맵/코드 부재”가 자연스럽게 발생할 수 있습니다. 또한 Shapez 2는 공식적으로 블루프린트 저장·로드·내보내기·공유를 지원하지만, 커뮤니티 codec/spec를 보면 블루프린트 identifier는 **버전 의존적**이며, 오래된 형식이 새 버전에서 그대로 동작한다고 보장되지 않으므로 `SHAPEZ2-4-...=$`를 하드코딩하면 코드 불일치가 재발할 위험이 큽니다. citeturn3view0turn4view0turn3view2turn6view0
+업로드된 `Algorithm.zip`은 실행 가능한 코드보다 **계약 문서와 구현 계획 문서**에 가깝지만, 그 문서들만으로도 현재 리플레이가 “제대로 안 되는” 가장 유력한 구조적 원인은 꽤 선명하게 드러납니다. 핵심은 **이벤트 타입 계약 불일치**, **dual-track에서 replay timeline으로의 마이그레이션 미완료**, 그리고 **누적 상태를 최종 2D 맵으로 고정하는 `route.materialized`/`result.layout` 계층의 공백**입니다. 특히 런타임 쪽 문서는 아직 `optimization_replay` 별도 트랙과 strict payload 검증을 전제로 하는 반면, 제품 정본 문서는 하나의 `lab_replay_frames_json` 단일 타임라인을 권위로 삼고 있어, 실제 실행 시에는 “프레임이 비거나 일부만 보이는 현상”, “누적 fill 실패”, “최종 결과 맵/코드 부재”가 자연스럽게 발생할 수 있습니다. 또한 Shapez 2는 공식적으로 블루프린트 저장·로드·내보내기·공유를 지원하지만, 커뮤니티 codec/spec를 보면 블루프린트 identifier는 **버전 의존적**이며, 오래된 형식이 새 버전에서 그대로 동작한다고 보장되지 않으므로 `SHAPEZ2-4-...=$`를 하드코딩하면 코드 불일치가 재발할 위험이 큽니다. citeturn3view0turn4view0turn3view2turn6view0
 
 ## 분석 근거와 전제
 
@@ -14,7 +14,7 @@
 
 | 근거 | 내용 | 자체평가 |
 |---|---|---|
-| 업로드 문서 `asteroid_lab_09_unified_step_replay.md` | 제품 리플레이 정본이 **single unified timeline**이며, `lab_replay_frames_json`가 권위라고 선언 | 높음 |
+| 업로드 문서 `asteroid_lab_09_replay_timeline.md` | 제품 리플레이 정본이 **single replay timeline**이며, `lab_replay_frames_json`가 권위라고 선언 | 높음 |
 | 업로드 문서 `solver_runtime/phase_m_persist_replay_ui.md`, `solver_runtime/01_entry_point.md` | 런타임 출력이 아직 `optimization_replay` 별도 트랙을 전제로 서술됨 | 높음 |
 | 업로드 문서 `asteroid_lab_12_runtime_replay_wiring.md` | unknown event, malformed payload, truncation contract 위반 시 **empty payload**로 떨어뜨리는 strict 정책이 명시됨 | 높음 |
 | 업로드 문서 `asteroid_lab_01_optimization_input.md`, `asteroid_lab_00_overview.md` | 좌표 정본이 **Server X/Y dense**이며 `raw↔server` 변환 재호출 금지, 특히 `x==0` 경계가 반복 강조됨 | 높음 |
@@ -53,7 +53,7 @@ flowchart LR
     B --> C{이벤트 타입이\nUnified 계약에 포함되는가}
     C -- 아니오 --> D[payload empty 처리\nunknown event diagnostic]
     C -- 예 --> E[optimization_unified_adapter]
-    E --> F[compose_unified_timeline]
+    E --> F[compose_replay_timeline]
     F --> G{base_ref가 살아있는가}
     G -- 아니오 --> H[좌표 누락/맵 왜곡]
     G -- 예 --> I[Single replay controller]
@@ -67,10 +67,10 @@ flowchart LR
 
 | 영역 | 문서상 정본/요구 | 동시에 존재하는 다른 문서 서술 | 실제 증상으로 이어지는 방식 |
 |---|---|---|---|
-| 페이로드 권위 | `asteroid_lab_09_unified_step_replay.md`의 9E는 **제품 replay = `lab_replay_frames_json`**, `optimization_replay` 제거라고 명시 | `solver_runtime/01_entry_point.md`는 응답에 `optimization_replay` 포함, `phase_m_persist_replay_ui.md`도 `optimization replay track + layout preview`를 출력으로 서술 | 프런트/백엔드가 서로 다른 payload key를 보거나, 두 권위가 공존해 동기화 실패 |
+| 페이로드 권위 | `asteroid_lab_09_replay_timeline.md`의 9E는 **제품 replay = `lab_replay_frames_json`**, `optimization_replay` 제거라고 명시 | `solver_runtime/01_entry_point.md`는 응답에 `optimization_replay` 포함, `phase_m_persist_replay_ui.md`도 `optimization replay track + layout preview`를 출력으로 서술 | 프런트/백엔드가 서로 다른 payload key를 보거나, 두 권위가 공존해 동기화 실패 |
 | 이벤트 타입 계약 | unified 문서의 `ReplayEventType` 예시는 16개 이벤트만 열거 | 같은 unified 문서의 9C phase mapping은 21개 optimization event를 전제, `phase_m`은 최소 15개 필수 runtime event를 기록하라고 요구 | strict parser가 “unknown event_type”로 payload 전체를 empty 처리할 수 있음 |
 | 누적 상태 표현 | unified 계약은 모든 프레임이 2D-renderable이어야 하며 최종 layout까지 보여야 함 | 9F `Commit frame materialization`, 9G `Validation/result keyframes`는 완료 표시가 없음 | overlay는 보이지만 누적 상태가 final map으로 굳지 않아 “fill이 안 되는” 현상 발생 |
-| truncation | 9D는 `MAX_UNIFIED_LAB_REPLAY_FRAMES` 초과 시 **head truncate** 규칙을 가짐 | `ReplayMapView`는 `base_ref` 참조 키프레임을 허용 | 잘린 앞부분에 기반 snapshot이 있으면 이후 frame이 base를 잃고 비거나 왜곡될 수 있음 |
+| truncation | 9D는 `MAX_LAB_REPLAY_TIMELINE_FRAMES` 초과 시 **head truncate** 규칙을 가짐 | `ReplayMapView`는 `base_ref` 참조 키프레임을 허용 | 잘린 앞부분에 기반 snapshot이 있으면 이후 frame이 base를 잃고 비거나 왜곡될 수 있음 |
 
 가능한 증상을 사용자 요구 항목 기준으로 점검하면 아래와 같습니다.
 
@@ -190,10 +190,10 @@ for frame in frames:
 
 | 우선순위 | 원인 | 세부 내용 | 근거 | 정확도 |
 |---|---|---|---|---|
-| P0 | **이벤트 taxonomy 불일치** | unified `ReplayEventType` 예시에 없는 `capacity.plan_created`, `route_goal.generated`, `candidate_pool.completed`, `candidate_selection.completed`, `route.materialized` 등이 런타임 필수 이벤트로 서술됨 | `asteroid_lab_09_unified_step_replay.md`와 `solver_runtime/phase_m_persist_replay_ui.md`, `asteroid_lab_12_runtime_replay_wiring.md`의 strict unknown-event empty 정책 | 높음 |
-| P0 | **unified migration 미완료** | 제품 정본은 단일 `lab_replay_frames_json`인데, 엔트리/Phase M은 아직 `optimization_replay` 별도 트랙을 반환하는 구조를 유지 | `asteroid_lab_09_unified_step_replay.md` 9E vs `solver_runtime/01_entry_point.md`, `solver_runtime/phase_m_persist_replay_ui.md` | 높음 |
+| P0 | **이벤트 taxonomy 불일치** | unified `ReplayEventType` 예시에 없는 `capacity.plan_created`, `route_goal.generated`, `candidate_pool.completed`, `candidate_selection.completed`, `route.materialized` 등이 런타임 필수 이벤트로 서술됨 | `asteroid_lab_09_replay_timeline.md`와 `solver_runtime/phase_m_persist_replay_ui.md`, `asteroid_lab_12_runtime_replay_wiring.md`의 strict unknown-event empty 정책 | 높음 |
+| P0 | **unified migration 미완료** | 제품 정본은 단일 `lab_replay_frames_json`인데, 엔트리/Phase M은 아직 `optimization_replay` 별도 트랙을 반환하는 구조를 유지 | `asteroid_lab_09_replay_timeline.md` 9E vs `solver_runtime/01_entry_point.md`, `solver_runtime/phase_m_persist_replay_ui.md` | 높음 |
 | P1 | **누적 fill을 finalize하는 frame 부재** | `candidate.generated`는 overlay 성격이고, 실제 누적 상태는 `route.committed`/`route.materialized`/`result.layout`로 굳어야 하는데 9F·9G가 비완료 상태 | unified 문서의 9F/9G 상태와 frame contract | 높음 |
-| P1 | **head truncate가 keyframe을 끊을 가능성** | `ReplayMapView.base_ref`를 허용하는데 9D는 head truncate만 명시하고 surviving frame rebase/pin 전략이 없음 | `asteroid_lab_09_unified_step_replay.md`의 `ReplayMapView`/9D | 중간~높음 |
+| P1 | **head truncate가 keyframe을 끊을 가능성** | `ReplayMapView.base_ref`를 허용하는데 9D는 head truncate만 명시하고 surviving frame rebase/pin 전략이 없음 | `asteroid_lab_09_replay_timeline.md`의 `ReplayMapView`/9D | 중간~높음 |
 | P1 | **좌표 경계 오염** | `server_x==0`은 유효 좌표인데, replay/display/export 경계에서 raw↔server 변환을 다시 호출하면 누락·왜곡·중복이 발생할 수 있음 | `asteroid_lab_00_overview.md`, `asteroid_lab_01_optimization_input.md`, unified 문서의 projection ambiguity | 중간 |
 | P2 | **SHAPEZ 코드 export source 불일치** | replay payload는 output-only artifact인데, 이를 그대로 blueprint export source로 쓰면 overlay/annotation이 섞이거나 누적 상태가 불완전할 수 있음 | output-only invariant + 내부 문서에 export generator 부재 | 중간 |
 | P2 | **identifier version 하드코딩 위험** | 내부 초안은 `SHAPEZ2-4-` 전제를 암시하지만, 커뮤니티 spec은 version segment가 버전 의존이라고 설명하고 converter는 호환성 비보장을 경고 | 커뮤니티 spec/codec/converter | 중간 citeturn3view2turn4view0turn6view0 |
@@ -263,7 +263,7 @@ diff --git a/django_apps/web/services/asteroid_lab_page_context.py b/django_apps
 - context["optimization_replay"] = build_optimization_replay_track_payload(persisted_frames)
 + lab_frames = load_lab_replay_frames(...)
 + optimization_frames = load_persisted_optimization_frames(...)
-+ unified_frames = compose_unified_timeline(
++ unified_frames = compose_replay_timeline(
 +     lab_frames=lab_frames,
 +     optimization_frames=optimization_frames,
 + )
@@ -306,15 +306,15 @@ diff --git a/django_apps/asteroid_lab/services/runtime_replay_recorder.py b/djan
 이 패치는 사용자가 기대한 “extractor/expander 세트들이 누적치로 asteroid 좌표를 filling”하는 요구를 만족시키는 핵심입니다. `candidate.generated`와 `route_probe.*`는 원칙적으로 overlay여도 되지만, **최종 committed/materialized 결과**는 반드시 누적 상태를 반영한 delta 혹은 snapshot으로 굳어야 합니다. 그렇지 않으면 스크러버를 끝까지 당겨도 최종 2D 맵이 완성되지 않습니다.
 
 ```diff
-diff --git a/django_apps/asteroid_lab/replay/unified_timeline_composer.py b/django_apps/asteroid_lab/replay/unified_timeline_composer.py
+diff --git a/django_apps/asteroid_lab/replay/timeline_composer.py b/django_apps/asteroid_lab/replay/timeline_composer.py
 @@
-- if len(frames) > MAX_UNIFIED_LAB_REPLAY_FRAMES:
--     frames = frames[-MAX_UNIFIED_LAB_REPLAY_FRAMES:]
+- if len(frames) > MAX_LAB_REPLAY_TIMELINE_FRAMES:
+-     frames = frames[-MAX_LAB_REPLAY_TIMELINE_FRAMES:]
 -     mark_truncated(frames[-1], dropped_frame_count=...)
-+ if len(frames) > MAX_UNIFIED_LAB_REPLAY_FRAMES:
++ if len(frames) > MAX_LAB_REPLAY_TIMELINE_FRAMES:
 +     frames = retain_required_keyframes_and_tail(
 +         frames,
-+         limit=MAX_UNIFIED_LAB_REPLAY_FRAMES,
++         limit=MAX_LAB_REPLAY_TIMELINE_FRAMES,
 +     )
 +     frames = rebase_surviving_frames(frames)
 +     mark_truncated(frames[-1], dropped_frame_count=...)

@@ -480,7 +480,7 @@ Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 
 ## Sequence 13 — Replay payload scalability (로드맵, 구현 게이트)
 
 **정본:** [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md)  
-계측·13A·13B 역사: [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md) · **제품 replay:** [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md) (단일 unified timeline; dual-track **폐기**). 13A·13B의 Lab/optimization **귀속(attribution)** 명칭은 계측 시점의 historical 라벨이다.
+계측·13A·13B 역사: [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md) · **제품 replay:** [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) (단일 replay timeline; dual-track **폐기**). 13A·13B의 Lab/optimization **귀속(attribution)** 명칭은 계측 시점의 historical 라벨이다.
 
 | 하위 | 상태 | 요약 |
 |------|------|------|
@@ -498,7 +498,7 @@ Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 
 
 ## Asteroid Lab — Optimization replay UI (시퀀스 10A–10F) — **마이그레이션 대상**
 
-> **2026-05-19:** 제품 정본은 [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md). 아래 10A–10F·11A–11B(dual-track·별도 optimization controller·HUD-only)는 **obsolete**이다. 신규 작업은 **Phase 9 시퀀스 9A–9H**를 따른다. **9E**(제품 replay = `lab_replay_frames_json` 단일 타임라인, feature flag·Optimization Replay 패널 제거)는 2026-05-19 구현 완료.
+> **2026-05-19:** 제품 정본은 [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md). 아래 10A–10F·11A–11B(dual-track·별도 optimization controller·HUD-only)는 **obsolete**이다. 신규 작업은 **Phase 9 시퀀스 9A–9H**를 따른다. **9E**(제품 replay = `lab_replay_frames_json` 단일 타임라인, feature flag·Optimization Replay 패널 제거)는 2026-05-19 구현 완료.
 
 **번호 주의:** 아래 `10A–10F`는 Lab 페이지 **optimization 리플레이 UI** 전용 진행 번호(역사)이다. 본 문서 상단의 `## Sequence 10 — Regression Fixtures`(회귀 fixture)와 **같은 “10” 계층이 아니다.**
 

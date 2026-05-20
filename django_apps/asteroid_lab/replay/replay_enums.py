@@ -1,4 +1,4 @@
-"""Unified step replay enums (Phase 9A product contract)."""
+"""Lab replay timeline enums (Phase 9A product contract)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from enum import StrEnum
 
 
 class ReplayPhase(StrEnum):
-    """Lifecycle phase marker on a unified replay frame (not a separate track)."""
+    """Lifecycle phase marker on a replay timeline frame (not a separate track)."""
 
     DECODE = "decode"
     RECONSTRUCTION = "reconstruction"
@@ -23,7 +23,7 @@ class ReplayPhase(StrEnum):
 
 
 class ReplayEventType(StrEnum):
-    """Wire ``event_type`` for unified replay frames (free strings forbidden)."""
+    """Wire ``event_type`` for replay timeline frames (free strings forbidden)."""
 
     # Lifecycle (decode ~ reconstruction)
     DECODE_STARTED = "decode.started"

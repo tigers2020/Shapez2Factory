@@ -77,6 +77,12 @@
     shape_miner_extension: "Layout_ShapeMinerExtension",
   });
 
+  /** Mineable asteroid field tiles (``cell_kind`` wins over export ``Layout_*MinerExtension`` ``T``). */
+  const LAB_SPRITE_CELL_KIND_STATIC_RELPATH = Object.freeze({
+    asteroid_fluid_field: "AsteroidField_Fluid.svg",
+    asteroid_shape_field: "AsteroidField_Shape.svg",
+  });
+
   /** Sprite stack container; styles in ``assets/css/input.css`` (``.lab-cell-sprite-layer``). */
   const LAB_CELL_SPRITE_LAYER_CLASS = "lab-cell-sprite-layer";
 
@@ -153,6 +159,9 @@
 
   function labSpriteRelpathForCell(cell) {
     if (!cell || typeof cell !== "object") return null;
+    const ck = cell.cell_kind != null ? String(cell.cell_kind) : "";
+    const fieldRel = ck ? LAB_SPRITE_CELL_KIND_STATIC_RELPATH[ck] : null;
+    if (fieldRel) return fieldRel;
     // sprite_identifier is the alias emitted alongside tile_type; prefer it so either field works.
     const tileKey = cell.sprite_identifier || cell.tile_type;
     let rel = labSpriteRelpathFromTileType(tileKey);
@@ -366,7 +375,7 @@
     }
   }
 
-  function labCellsFromUnifiedMapView(mapView) {
+  function labCellsFromMapView(mapView) {
     if (!mapView || typeof mapView !== "object") return [];
     const full = mapView.full_cells;
     if (!Array.isArray(full) || !full.length) return [];
@@ -387,7 +396,7 @@
     return out;
   }
 
-  function overlayCellsFromUnifiedMapView(mapView) {
+  function overlayCellsFromMapView(mapView) {
     if (!mapView || typeof mapView !== "object") return [];
     const ov = mapView.overlay_cells;
     if (!Array.isArray(ov) || !ov.length) return [];
@@ -408,7 +417,7 @@
     return out;
   }
 
-  function cellDeltaCellsFromUnifiedMapView(mapView) {
+  function cellDeltaCellsFromMapView(mapView) {
     if (!mapView || typeof mapView !== "object") return [];
     const delta = mapView.cell_delta;
     if (!Array.isArray(delta) || !delta.length) return [];
@@ -431,9 +440,9 @@
 
   function fullMapCellsFromFrame(frame) {
     if (!frame || typeof frame !== "object") return [];
-    const unified = labCellsFromUnifiedMapView(frame.map_view);
-    if (unified.length) return unified;
-    const fromDelta = cellDeltaCellsFromUnifiedMapView(frame.map_view);
+    const fromMapView = labCellsFromMapView(frame.map_view);
+    if (fromMapView.length) return fromMapView;
+    const fromDelta = cellDeltaCellsFromMapView(frame.map_view);
     if (fromDelta.length) return fromDelta;
     if (Array.isArray(frame.full_map) && frame.full_map.length) return frame.full_map;
     const p = frame.frame_payload;
@@ -487,8 +496,8 @@
     pushCellList(out, fullMapCellsFromFrame(frame), "");
     const mapView = frame && frame.map_view;
     if (mapView && typeof mapView === "object") {
-      pushCellList(out, overlayCellsFromUnifiedMapView(mapView), "");
-      pushCellList(out, cellDeltaCellsFromUnifiedMapView(mapView), "");
+      pushCellList(out, overlayCellsFromMapView(mapView), "");
+      pushCellList(out, cellDeltaCellsFromMapView(mapView), "");
     }
     const diffT = collectDiffPaintTargets(frame);
     for (let i = 0; i < diffT.length; i++) out.push(diffT[i]);
@@ -627,6 +636,9 @@
     }
     if (ck === "asteroid_shape_field") {
       return "ring-1 ring-inset ring-emerald-400/50 bg-emerald-950/28";
+    }
+    if (ck === "internal_void") {
+      return "ring-1 ring-inset ring-fuchsia-400/55 bg-fuchsia-950/28";
     }
     return overlayToneClasses("", cell);
   }
@@ -851,11 +863,11 @@
     const fm = fullMapCellsFromFrame(frame);
     if (fm.length) {
       renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
-      const ovCells = overlayCellsFromUnifiedMapView(frame.map_view);
+      const ovCells = overlayCellsFromMapView(frame.map_view);
       if (ovCells.length) {
         renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
       }
-      const deltaCells = cellDeltaCellsFromUnifiedMapView(frame.map_view);
+      const deltaCells = cellDeltaCellsFromMapView(frame.map_view);
       if (deltaCells.length) {
         renderFullMapCells(baseClasses, domCells, deltaCells, resolveCellIndex);
       }
@@ -2211,7 +2223,7 @@
       return Number.isFinite(cx) && Number.isFinite(cy) && cx === x && cy === y;
     }
 
-    function labUnifiedWireCellToDetail(cell) {
+    function labTimelineWireCellToDetail(cell) {
       if (!cell || typeof cell !== "object") {
         return null;
       }
@@ -2253,7 +2265,7 @@
           const c = full[i];
           if (labCellMatchesWorldXY(c, x, y)) {
             sources.map_view_full_cells = c;
-            const mapped = labUnifiedWireCellToDetail(c);
+            const mapped = labTimelineWireCellToDetail(c);
             if (mapped) {
               layers.push(mapped);
             }
@@ -2266,7 +2278,7 @@
           const d = delta[j];
           if (labCellMatchesWorldXY(d, x, y)) {
             sources.map_view_cell_delta = d;
-            const mapped = labUnifiedWireCellToDetail(d);
+            const mapped = labTimelineWireCellToDetail(d);
             if (mapped) {
               layers.push(mapped);
             }
@@ -2280,7 +2292,7 @@
           const o = overlay[k];
           if (labCellMatchesWorldXY(o, x, y)) {
             matches.push(o);
-            const mapped = labUnifiedWireCellToDetail(o);
+            const mapped = labTimelineWireCellToDetail(o);
             if (mapped) {
               layers.push(mapped);
             }
@@ -2300,7 +2312,7 @@
       return { cell: merged, sources: sources };
     }
 
-    function labCellDetailFromUnifiedFrame(fr, x, y) {
+    function labCellDetailFromTimelineFrame(fr, x, y) {
       const lookup = labCellDetailLookupInMapView(fr.map_view, x, y);
       const payload = {
         ok: true,
@@ -2564,7 +2576,7 @@
         if (frameOrmId == null) {
           openCellDetailModal();
           if (cellDetailBody) {
-            labCellDetailRenderSuccess(cellDetailBody, labCellDetailFromUnifiedFrame(fr, xy.x, xy.y));
+            labCellDetailRenderSuccess(cellDetailBody, labCellDetailFromTimelineFrame(fr, xy.x, xy.y));
           }
           setLabCellDetailUnavailableHint("cell detail from map_view (no persisted ReplayFrame)");
           return;

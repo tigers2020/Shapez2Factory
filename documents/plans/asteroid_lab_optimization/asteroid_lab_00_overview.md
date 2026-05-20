@@ -57,7 +57,7 @@ debug artifact
 
 ### 1b. 통합 Lab 리플레이 타임라인 (정본)
 
-최적화 단계 리플레이는 **별도 JSON/프론트 트랙이 아니라** 동일 `ReplayTrack`의 `ReplayFrame`에만 append한다. 프론트는 `lab-replay-frames-data`와 **단일** scrub 인덱스만 사용한다. 듀얼 트랙·`optimizationReplayFrameIndex` 등 금지·롤백 기준: `rollback_baseline_unified_replay.md`.
+최적화 단계 리플레이는 **별도 JSON/프론트 트랙이 아니라** 동일 `ReplayTrack`의 `ReplayFrame`에만 append한다. 프론트는 `lab-replay-frames-data`와 **단일** scrub 인덱스만 사용한다. 듀얼 트랙·`optimizationReplayFrameIndex` 등 금지·롤백 기준: `rollback_baseline_lab_replay_timeline.md`.
 
 ### 1c. 앱 경계 예외 — output-only adapter
 

@@ -36,7 +36,7 @@ TDD·테스트 보호 대상 표: [testing.md § Domain invariants](mdc:document
 
 | **좌표** | `raw_x`/`raw_y` 보존(게임·디코드). 알고리즘·OptimizationInput 이후는 **Server X/Y** only. `raw_x==0` → server 부착 없음. normalize 이후 알고리즘 계층에서 raw↔server 재변환 금지. | [`asteroid_lab_01`](mdc:documents/Algorithm/asteroid_lab_01_optimization_input.md); `test_optimization_input.py` |
 
-| **Replay** | 스키마·append 의미 변경 시 버전·문서. payload **의미 대체** 금지. metrics/NDJSON/artifact는 **algorithm input 금지**. **단일 unified timeline**; 모든 프레임 2D `map_view`. | [`asteroid_lab_09_unified`](mdc:documents/Algorithm/asteroid_lab_09_unified_step_replay.md); `test_manual_snapshot_replay_not_used_as_algorithm_input_doc` |
+| **Replay** | 스키마·append 의미 변경 시 버전·문서. payload **의미 대체** 금지. metrics/NDJSON/artifact는 **algorithm input 금지**. **단일 replay timeline**; 모든 프레임 2D `map_view`. | [`asteroid_lab_09_replay_timeline`](mdc:documents/Algorithm/asteroid_lab_09_replay_timeline.md); `test_manual_snapshot_replay_not_used_as_algorithm_input_doc` |
 
 | **DTO·fingerprint** | 하위 호환. `coord_system` 없이 layout fingerprint 금지. | [`asteroid_server_coords`](mdc:documents/refactory/asteroid_server_coords_layout_fingerprint_2026-05-16.md) |
 
@@ -48,7 +48,7 @@ TDD·테스트 보호 대상 표: [testing.md § Domain invariants](mdc:document
 
 | **Validation** | read-only assert; route·placement·topology **repair 금지**. | [`asteroid_lab_08`](mdc:documents/Algorithm/asteroid_lab_08_validation.md); [ADR-003](mdc:documents/adr/ADR-003-final-validation-assertion-gate.md) |
 
-| **Unified replay timeline** | 제품 replay **하나**; global monotonic `frame_index`. **두 번째 optimization controller 금지**(목표). dual-track 정책 **폐기**. | `asteroid_lab_09_unified_step_replay`; `test_lab_js_replay_wiring_smoke` |
+| **Lab replay timeline** | 제품 replay **하나**; global monotonic `frame_index`. **두 번째 optimization controller 금지**(목표). dual-track 정책 **폐기**. | `asteroid_lab_09_replay_timeline`; `test_lab_js_replay_wiring_smoke` |
 
 | **Enums** | `issue_code`·`event_type`·`failure_reason` 등 **StrEnum/const** — 자유 문자열 금지. | Phase DTO 문서; `test_invalid_event_type_rejected` |
 
@@ -68,7 +68,7 @@ TDD·테스트 보호 대상 표: [testing.md § Domain invariants](mdc:document
 
 - [`documents/Algorithm/asteroid_lab_08_validation.md`](mdc:documents/Algorithm/asteroid_lab_08_validation.md)
 
-- [`documents/Algorithm/asteroid_lab_09_unified_step_replay.md`](mdc:documents/Algorithm/asteroid_lab_09_unified_step_replay.md)
+- [`documents/Algorithm/asteroid_lab_09_replay_timeline.md`](mdc:documents/Algorithm/asteroid_lab_09_replay_timeline.md)
 
 - [`documents/refactory/asteroid_server_coords_layout_fingerprint_2026-05-16.md`](mdc:documents/refactory/asteroid_server_coords_layout_fingerprint_2026-05-16.md)
 

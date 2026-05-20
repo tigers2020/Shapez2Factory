@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType
-from django_apps.asteroid_lab.replay.unified_event_coverage import (
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
+from django_apps.asteroid_lab.replay.replay_event_coverage import (
     DEFERRED_POST_9B,
     SUPPORTED_BY_9B_LAB_ADAPTER,
     replay_event_type_coverage_partitions,

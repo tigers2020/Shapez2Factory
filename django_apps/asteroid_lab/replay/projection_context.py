@@ -1,10 +1,10 @@
-"""Server dense grid → Lab raw (x, y) projection for unified replay adapters (Phase 9C)."""
+"""Server dense grid → Lab raw (x, y) projection for replay timeline adapters (Phase 9C)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from django_apps.asteroid_lab.replay.unified_dtos import ReplayCell
+from django_apps.asteroid_lab.replay.timeline_dtos import ReplayCell
 from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
 
 

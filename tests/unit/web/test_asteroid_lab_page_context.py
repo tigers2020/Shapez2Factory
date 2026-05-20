@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
@@ -56,7 +56,7 @@ def test_lab_page_context_neutral_when_no_replay_frames() -> None:
 
 @pytest.mark.django_db
 def test_unified_payload_authoritative_no_optimization_replay_track() -> None:
-    """Page context must expose lab_replay_frames_json (single unified timeline)
+    """Page context must expose lab_replay_frames_json (single replay timeline)
     and must NOT contain the legacy optimization_replay top-level key."""
     ctx = alc.neutral_lab_context()
     assert "lab_replay_frames_json" in ctx
@@ -316,11 +316,16 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "LINK_KEY_TO_DIR" in js
     assert "DIR_TO_BRIDGE_SUFFIX" in js
     assert "lab-cell-sprite" in js
+    assert "LAB_SPRITE_CELL_KIND_STATIC_RELPATH" in js
+    assert "AsteroidField_Fluid.svg" in js
+    assert "AsteroidField_Shape.svg" in js
+    assert "asteroid_fluid_field" in js
+    assert "asteroid_shape_field" in js
     assert "snapToDevicePixel" in js
     assert "data-lab-sprite-base" in js
     assert "function renderReplayFrame" in js
-    assert "overlayCellsFromUnifiedMapView(mapView)" in js
-    assert "cellDeltaCellsFromUnifiedMapView(mapView)" in js
+    assert "overlayCellsFromMapView(mapView)" in js
+    assert "cellDeltaCellsFromMapView(mapView)" in js
     assert "getCurrentReplayFrame" in js
     assert "lab-replay-frames-data" in js
     assert "lab-timeline-play" in js

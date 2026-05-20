@@ -8,17 +8,17 @@ from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.models import AsteroidMapInput, ReplayFrame, ReplayTrack, SolverRun
 from django_apps.asteroid_lab.replay import replay_limits
-from django_apps.asteroid_lab.replay.lab_unified_adapter import (
-    LabUnifiedAdapterError,
-    lab_replay_row_to_unified,
+from django_apps.asteroid_lab.replay.lab_timeline_adapter import (
+    LabTimelineAdapterError,
+    lab_replay_row_to_timeline_frame,
 )
 from django_apps.asteroid_lab.replay.projection_context import ReplayProjectionContext
-from django_apps.asteroid_lab.replay.unified_dtos import UnifiedReplayFrame
-from django_apps.asteroid_lab.replay.unified_serialization import (
-    unified_replay_frame_from_json_dict,
-    unified_replay_frame_to_json_dict,
+from django_apps.asteroid_lab.replay.timeline_composer import compose_replay_timeline
+from django_apps.asteroid_lab.replay.timeline_dtos import ReplayTimelineFrame
+from django_apps.asteroid_lab.replay.timeline_serialization import (
+    replay_timeline_frame_from_json_dict,
+    replay_timeline_frame_to_json_dict,
 )
-from django_apps.asteroid_lab.replay.unified_timeline_composer import compose_unified_timeline
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
@@ -153,9 +153,9 @@ def resolve_replay_projection_context_for_project(
     return ReplayProjectionContext(server_xy_params=params)
 
 
-def _solver_runtime_unified_frames_for_project(
+def _solver_runtime_timeline_frames_for_project(
     project_id: int,
-) -> tuple[UnifiedReplayFrame, ...]:
+) -> tuple[ReplayTimelineFrame, ...]:
     """Load persisted solver runtime replay frames from latest SolverRun.config_json."""
     run = (
         SolverRun.objects.filter(project_id=int(project_id)).order_by("-created_at", "-id").first()
@@ -166,27 +166,27 @@ def _solver_runtime_unified_frames_for_project(
     raw = config.get(SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY)
     if not isinstance(raw, list) or not raw:
         return ()
-    out: list[UnifiedReplayFrame] = []
+    out: list[ReplayTimelineFrame] = []
     for item in raw:
         if not isinstance(item, dict):
             continue
         try:
-            out.append(unified_replay_frame_from_json_dict(item))
+            out.append(replay_timeline_frame_from_json_dict(item))
         except Exception:  # noqa: BLE001
             continue
     return tuple(out)
 
 
-def _lab_unified_frames_for_project(project_id: int) -> tuple[UnifiedReplayFrame, ...]:
+def _lab_timeline_frames_for_project(project_id: int) -> tuple[ReplayTimelineFrame, ...]:
     track = get_latest_lab_replay_track_for_project(int(project_id))
     if track is None:
         return ()
     ordered = list(track.frames.all())
-    out: list[UnifiedReplayFrame] = []
+    out: list[ReplayTimelineFrame] = []
     for frame in ordered:
         try:
-            out.append(lab_replay_row_to_unified(_frame_row_from_model(frame)))
-        except LabUnifiedAdapterError:
+            out.append(lab_replay_row_to_timeline_frame(_frame_row_from_model(frame)))
+        except LabTimelineAdapterError:
             continue
     return tuple(out)
 
@@ -223,15 +223,15 @@ def _track_metrics_from_serialized_frames(
 def build_lab_replay_frames_for_project(
     project_id: int,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Compose Lab + solver runtime replay into unified product JSON (never mutates sources)."""
+    """Compose Lab + solver runtime replay into product timeline JSON (never mutates sources)."""
 
-    lab_unified = _lab_unified_frames_for_project(int(project_id))
-    solver_unified = _solver_runtime_unified_frames_for_project(int(project_id))
-    combined = compose_unified_timeline(
-        lab_frames=(*lab_unified, *solver_unified),
-        max_frames=replay_limits.MAX_UNIFIED_LAB_REPLAY_FRAMES,
+    lab_frames = _lab_timeline_frames_for_project(int(project_id))
+    runtime_frames = _solver_runtime_timeline_frames_for_project(int(project_id))
+    combined = compose_replay_timeline(
+        lab_frames=(*lab_frames, *runtime_frames),
+        max_frames=replay_limits.MAX_LAB_REPLAY_TIMELINE_FRAMES,
     )
-    serialized = [unified_replay_frame_to_json_dict(fr) for fr in combined]
+    serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
     metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=None)
     return serialized, metrics
 
@@ -241,5 +241,5 @@ __all__ = [
     "build_lab_replay_frames_for_project",
     "get_latest_lab_replay_track_for_project",
     "resolve_replay_projection_context_for_project",
-    "_solver_runtime_unified_frames_for_project",
+    "_solver_runtime_timeline_frames_for_project",
 ]

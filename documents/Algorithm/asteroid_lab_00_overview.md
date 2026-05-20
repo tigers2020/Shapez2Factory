@@ -208,8 +208,8 @@ fitness: corridor·narrow passage·future expansion·trunk sharing·route goal q
 ```text
 MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME = 128
 MAX_OPTIMIZATION_REPLAY_FRAMES = 500
-MAX_UNIFIED_LAB_REPLAY_CELLS_PER_FRAME = 2000
-MAX_UNIFIED_LAB_REPLAY_FRAMES = 500
+MAX_LAB_REPLAY_TIMELINE_CELLS_PER_FRAME = 2000
+MAX_LAB_REPLAY_TIMELINE_FRAMES = 500
 ```
 
 정본 모듈: `django_apps/asteroid_lab/replay/replay_limits.py`.

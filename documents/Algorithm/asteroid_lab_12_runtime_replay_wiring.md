@@ -2,7 +2,7 @@
 
 Role: Asteroid Lab Runtime Replay Wiring Architect
 
-**문서 상태:** ACTIVE. **제품 replay North Star (2026-05-19):** [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md) — dual-track 폐기; 본 문서 §1·§9의 dual-track 문단은 마이그레이션 전 스냅샷이다. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. **Sequence 12J**(POST `optimization_replay_attach` 전용 HUD 줄)는 Lab 템플릿·`asteroid_miner_layout_lab.js`·테스트·§12J 문서로 구현 완료(2026-05-17). **Sequence 12K**(POST attach `diagnostic` 스칼라·`evolution_failed` 단계 관측)는 §12K·코드·테스트로 구현 완료(2026-05-17). **Sequence 12L**(decode/fill·`decoded_cell_to_server_coord`에서 raw ``X==0``을 dense server로 명시; optimization 트리·post-inspection에서 ``server_coords`` 브리지 금지·정적 테스트)는 2026-05-17 반영. 그 외 시퀀스는 설계·경계 고정용이다.  
+**문서 상태:** ACTIVE. **제품 replay North Star (2026-05-19):** [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) — dual-track 폐기; 본 문서 §1·§9의 dual-track 문단은 마이그레이션 전 스냅샷이다. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. **Sequence 12J**(POST `optimization_replay_attach` 전용 HUD 줄)는 Lab 템플릿·`asteroid_miner_layout_lab.js`·테스트·§12J 문서로 구현 완료(2026-05-17). **Sequence 12K**(POST attach `diagnostic` 스칼라·`evolution_failed` 단계 관측)는 §12K·코드·테스트로 구현 완료(2026-05-17). **Sequence 12L**(decode/fill·`decoded_cell_to_server_coord`에서 raw ``X==0``을 dense server로 명시; optimization 트리·post-inspection에서 ``server_coords`` 브리지 금지·정적 테스트)는 2026-05-17 반영. 그 외 시퀀스는 설계·경계 고정용이다.  
 **범위:** Lab persistence·UI 읽기 경로에 optimization replay를 안전하게 연결하는 방법만 다룬다.  
 **금지:** 본 문서만으로는 **솔버·리플레이 이벤트 의미·DTO·테스트 전용 fixture 파서 동작**을 바꾸지 않는다. 실제 배선 구현은 별도 PR·승인 후 진행한다.
 
@@ -18,10 +18,10 @@ Role: Asteroid Lab Runtime Replay Wiring Architect
 - 무엇을 어디에 저장할지
 - UI는 무엇을 어떻게 읽을지
 - 무엇이 영원히 output-only인지
-- 제품 replay는 단일 unified timeline으로 수렴한다 (Phase 9; dual-track 폐기)
+- 제품 replay는 단일 replay timeline으로 수렴한다 (Phase 9; dual-track 폐기)
 ```
 
-를 구현 전에 문서로 고정한다. **제품 replay 정본:** [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md).
+를 구현 전에 문서로 고정한다. **제품 replay 정본:** [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md).
 
 ---
 
@@ -38,7 +38,7 @@ Role: Asteroid Lab Runtime Replay Wiring Architect
 | Long replay stitching JSON v0 | `tests/fixtures/shapez_asteroid/replay_long/` |
 | `replay_truncated` / `truncation_reason` (fixture 봉투 짝) | 골든 + `replay_json` 계약 |
 | `commit.survivability_summary` 리플레이 프레임 | 도메인 이벤트·회귀 테스트와 정합 |
-| Lab / Optimization **dual-track** replay 정책 | **Deprecated** → unified timeline ([`asteroid_lab_09_unified_step_replay`](asteroid_lab_09_unified_step_replay.md)) |
+| Lab / Optimization **dual-track** replay 정책 | **Deprecated** → replay timeline ([`asteroid_lab_09_replay_timeline`](asteroid_lab_09_replay_timeline.md)) |
 
 **중요:** 위 fixture 파서·골든 JSON은 **계약·회귀용**이다. 프로덕션에서 동일 파서/봉투를 솔버 입력 경로에 붙이지 않는다.
 
@@ -223,7 +223,7 @@ invalid_optimization_replay_payload  # 모든 프레임이 알 수 없는 event_
 
 ## 9. Dual-track UI policy (듀얼 트랙) — **Deprecated historical**
 
-> **구현·리뷰·테스트 설계에 적용하지 않는다.** 제품 정본: [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md).
+> **구현·리뷰·테스트 설계에 적용하지 않는다.** 제품 정본: [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md).
 
 <details>
 <summary>Deprecated historical: Dual-track UI policy (펼치기)</summary>
@@ -388,7 +388,7 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - **완전성:** “모든 셀/모든 이벤트가 오버레이에 그려졌는가”는 **관측 지표**(로그, 스크린샷, 수동 체크리스트)로만 기록한다. 12I는 이를 **PASS/FAIL 게이트**로 문서화하지 않는다.
 - **금지 재확인:** 프레임 인덱스 동기화, Lab `currentFrameIndex`와 optimization 스텝 맞추기, 오버레이 레이어 소유권 이동, `renderOptimizationReplayHud` 책임 확대 — **전부 비범위**. 문제가 보이면 **버그 리포트·별도 시퀀스**로 분리한다.
 
-**구현 시 스코프 요약:** 3축 어휘·JS const·attach↔diagnostic 매핑 표·M1–M7 행렬·체인 테스트를 **한 PR 또는 12I 전용 소PR 연속**으로 묶되, 각 PR은 §3 output-only·§11 비목표를 위반하지 않는다. (§9 dual-track는 historical — unified timeline 정본 참조.)
+**구현 시 스코프 요약:** 3축 어휘·JS const·attach↔diagnostic 매핑 표·M1–M7 행렬·체인 테스트를 **한 PR 또는 12I 전용 소PR 연속**으로 묶되, 각 PR은 §3 output-only·§11 비목표를 위반하지 않는다. (§9 dual-track는 historical — replay timeline 정본 참조.)
 
 ### Sequence 12J — Optimization replay attach HUD (POST write channel, 별도 줄)
 
@@ -485,7 +485,7 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 | schema_version | v0 sibling **미도입**; deserialize + 12F shape 가드 |
 | truncation_reason | **프레임 metrics → `build` → track.metrics**; 첫 reason 정본; sibling **없음** |
 | Malformed | 빈 트랙 + 진단 문자열(12G); Lab 페이지 비파괴 |
-| Dual-track | **Deprecated** → unified timeline ([`asteroid_lab_09_unified_step_replay`](asteroid_lab_09_unified_step_replay.md)) |
+| Dual-track | **Deprecated** → replay timeline ([`asteroid_lab_09_replay_timeline`](asteroid_lab_09_replay_timeline.md)) |
 | 12F-v0 | 프레임 리스트 가드만; 봉투·HUD·cap·migration **제외** |
 | 12I (초안, 미구현) | §12I: HUD **status / reason / diagnostic** 3축·JS const·`optimization_replay_attach.reason`↔diagnostic 매핑·malformed 행렬(M1–M7)·persist→deserialize→`replaceOptimizationReplayPayload`→HUD **표시 보존** 테스트; 오버레이 완전성·동기화/렌더 ownership 변경 **비범위(관측만)** |
 | 12J (구현 완료) | §12J: POST **`optimization_replay_attach` 전용 HUD 줄** (`Attach: …`); read **`optimization_replay_diagnostic_reason` 불변**; 솔버/attach/persist **비변경** |

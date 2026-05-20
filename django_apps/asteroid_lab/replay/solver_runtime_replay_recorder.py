@@ -1,6 +1,6 @@
-"""Solver runtime replay recorder: A→M pipeline steps → UnifiedReplayFrame (output-only).
+"""Solver runtime replay recorder: A→M pipeline steps → ReplayTimelineFrame (output-only).
 
-Records optimization pipeline events as UnifiedReplayFrame objects. The resulting
+Records optimization pipeline events as ReplayTimelineFrame objects. The resulting
 frames are a presentation-only artifact and must never be fed back into the solver.
 """
 
@@ -23,22 +23,22 @@ from django_apps.asteroid_lab.replay.projection_context import (
     ReplayProjectionContext,
     lab_xy_from_server_xy,
 )
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.replay_recording_cells import (
     bbox_from_replay_cells,
     goal_annotations,
     materialized_cells_to_cell_delta,
     visible_cells_from_loaded_snapshot,
 )
-from django_apps.asteroid_lab.replay.unified_dtos import (
+from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayAnnotation,
     ReplayMapView,
-    UnifiedReplayFrame,
+    ReplayTimelineFrame,
 )
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
 
 
 class SolverRuntimeReplayRecorder:
-    """Accumulates solver runtime events as UnifiedReplayFrame objects (output-only).
+    """Accumulates solver runtime events as ReplayTimelineFrame objects (output-only).
 
     Created by the entry layer before pipeline invocation. After the pipeline
     returns, call ``build_frames()`` to retrieve the recorded frames for persist.
@@ -52,7 +52,7 @@ class SolverRuntimeReplayRecorder:
     ) -> None:
         self._loaded = loaded
         self._ctx = ReplayProjectionContext(server_xy_params=server_xy_params)
-        self._frames: list[UnifiedReplayFrame] = []
+        self._frames: list[ReplayTimelineFrame] = []
         # Populated from OptimizationInput.asteroid_cells on first record call.
         # Using opt-input cells gives reliable server-coord coverage even when
         # loaded.cells (recon topology cells) is sparse for simple blueprints.
@@ -60,7 +60,7 @@ class SolverRuntimeReplayRecorder:
 
     def _cells_from_opt_input(self, inp: OptimizationInput) -> tuple:
         """Convert OptimizationInput asteroid/rim cells to replay cells (server → Lab)."""
-        from django_apps.asteroid_lab.replay.unified_dtos import ReplayCell
+        from django_apps.asteroid_lab.replay.timeline_dtos import ReplayCell
 
         coords = sorted(inp.asteroid_cells | inp.rim_cells, key=lambda c: (c[0], c[1]))
         cap = 128  # MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME
@@ -91,7 +91,7 @@ class SolverRuntimeReplayRecorder:
         metrics: dict[str, Any] | None = None,
     ) -> None:
         self._frames.append(
-            UnifiedReplayFrame(
+            ReplayTimelineFrame(
                 frame_index=len(self._frames),
                 phase=phase,
                 event_type=event_type,
@@ -304,7 +304,7 @@ class SolverRuntimeReplayRecorder:
             },
         )
 
-    def build_frames(self) -> tuple[UnifiedReplayFrame, ...]:
+    def build_frames(self) -> tuple[ReplayTimelineFrame, ...]:
         """Return recorded frames in recording order (output-only; never solver input)."""
         return tuple(self._frames)
 

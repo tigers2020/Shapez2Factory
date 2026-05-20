@@ -1,4 +1,4 @@
-"""Phase 9B — Lab ReplayFrame → UnifiedReplayFrame adapter tests."""
+"""Phase 9B — Lab ReplayFrame → ReplayTimelineFrame adapter tests."""
 
 from __future__ import annotations
 
@@ -8,21 +8,22 @@ import pytest
 
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_DECODE_RAW_LOADED,
+    EVENT_TYPE_RECONSTRUCTION_BEGIN,
     EVENT_TYPE_RECONSTRUCTION_SHELL_DETECTED,
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
 )
-from django_apps.asteroid_lab.replay.lab_unified_adapter import (
-    LAB_EVENT_TYPE_TO_UNIFIED,
-    LabUnifiedAdapterError,
-    lab_replay_row_to_unified,
+from django_apps.asteroid_lab.replay.lab_timeline_adapter import (
+    LAB_EVENT_TYPE_TO_TIMELINE,
+    LabTimelineAdapterError,
+    lab_replay_row_to_timeline_frame,
     lab_snapshot_event_payload_copy,
-    lab_snapshot_event_to_unified,
+    lab_snapshot_event_to_timeline_frame,
 )
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
-from django_apps.asteroid_lab.replay.unified_event_coverage import SUPPORTED_BY_9B_LAB_ADAPTER
-from django_apps.asteroid_lab.replay.unified_serialization import (
-    unified_replay_frame_json_round_trip,
-    unified_replay_frame_to_json_dict,
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.replay_event_coverage import SUPPORTED_BY_9B_LAB_ADAPTER
+from django_apps.asteroid_lab.replay.timeline_serialization import (
+    replay_timeline_frame_json_round_trip,
+    replay_timeline_frame_to_json_dict,
 )
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
 from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
@@ -53,7 +54,7 @@ def _decode_event() -> SnapshotEventDTO:
 
 def test_lab_replay_frame_to_unified_decode_frame() -> None:
     event = _decode_event()
-    frame = lab_snapshot_event_to_unified(event, frame_index=7)
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=7)
     assert frame.frame_index == 7
     assert frame.phase == ReplayPhase.DECODE
     assert frame.event_type == ReplayEventType.DECODE_STARTED
@@ -63,6 +64,109 @@ def test_lab_replay_frame_to_unified_decode_frame() -> None:
     assert frame.map_view.bbox.max_x == 1
     assert frame.inspector["lab_event_type"] == EVENT_TYPE_DECODE_RAW_LOADED
     assert frame.metrics["entry_count"] == 3
+
+
+def test_lab_adapter_promotes_replay_trace_diff_to_overlay_cells() -> None:
+    """Reconstruction trace markers in diff.added must appear in map_view.overlay_cells."""
+
+    event = SnapshotEventDTO(
+        event_key="step4_00_wall_projection",
+        phase="reconstruction",
+        phase_step="wall_projection",
+        event_type=EVENT_TYPE_RECONSTRUCTION_BEGIN,
+        title="Wall Projection",
+        description="trace",
+        full_map=[_cell_row(x=1, y=1, kind="unknown")],
+        diff={
+            "added": [
+                {
+                    "x": 1,
+                    "y": 1,
+                    "layer": None,
+                    "cell_kind": "internal_void",
+                    "transport_kind": "none",
+                    "tile_type": "",
+                    "_replay_trace": True,
+                },
+                {
+                    "x": 2,
+                    "y": 1,
+                    "layer": None,
+                    "cell_kind": "asteroid_shape_field",
+                    "transport_kind": "none",
+                    "tile_type": "",
+                },
+            ],
+            "removed": [],
+            "changed": [],
+        },
+    )
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=5)
+    assert len(frame.map_view.overlay_cells) == 1
+    ov = frame.map_view.overlay_cells[0]
+    assert ov.x == 1 and ov.y == 1
+    assert ov.kind == "internal_void"
+    assert frame.diff is not None
+    assert len(frame.diff.get("added") or []) == 2
+
+
+def test_lab_adapter_trace_overlay_wins_on_same_xy_as_persisted_overlay() -> None:
+    event = SnapshotEventDTO(
+        event_key="step4_trace",
+        phase="reconstruction",
+        phase_step="flood_seed",
+        event_type=EVENT_TYPE_RECONSTRUCTION_BEGIN,
+        title="Flood Seed",
+        full_map=[_cell_row(x=0, y=0, kind="unknown")],
+        cell_overlay_json={"cells": [_cell_row(x=0, y=0, kind="unknown")]},
+        diff={
+            "added": [
+                {
+                    "x": 0,
+                    "y": 0,
+                    "cell_kind": "internal_void",
+                    "transport_kind": "none",
+                    "_replay_trace": True,
+                }
+            ],
+            "removed": [],
+            "changed": [],
+        },
+    )
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=0)
+    assert len(frame.map_view.overlay_cells) == 1
+    assert frame.map_view.overlay_cells[0].kind == "internal_void"
+
+
+def test_lab_adapter_preserves_diff_on_wire_json() -> None:
+    event = SnapshotEventDTO(
+        event_key="step4_barrier",
+        phase="reconstruction",
+        phase_step="barrier_build",
+        event_type=EVENT_TYPE_RECONSTRUCTION_SHELL_DETECTED,
+        title="Barrier Build",
+        full_map=[_cell_row(x=3, y=4, kind="unknown")],
+        diff={
+            "added": [
+                {
+                    "x": 3,
+                    "y": 4,
+                    "cell_kind": "internal_void",
+                    "_replay_trace": True,
+                }
+            ],
+            "removed": [],
+            "changed": [],
+        },
+    )
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=0)
+    wire = replay_timeline_frame_to_json_dict(frame)
+    assert isinstance(wire.get("diff"), dict)
+    assert len(wire["diff"].get("added") or []) == 1
+    assert wire["map_view"]["overlay_cells"]
+    restored = replay_timeline_frame_json_round_trip(frame)
+    assert restored.diff == frame.diff
+    assert restored.map_view.overlay_cells == frame.map_view.overlay_cells
 
 
 def test_lab_replay_frame_to_unified_reconstruction_frame() -> None:
@@ -76,7 +180,7 @@ def test_lab_replay_frame_to_unified_reconstruction_frame() -> None:
         full_map=[_cell_row(x=5, y=6, kind="internal_void")],
         metrics_json={"trace_event_type": "shell_row_span"},
     )
-    frame = lab_snapshot_event_to_unified(event, frame_index=12)
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=12)
     assert frame.phase == ReplayPhase.RECONSTRUCTION
     assert frame.event_type == ReplayEventType.RECONSTRUCTION_STARTED
     assert frame.metrics["trace_event_type"] == "shell_row_span"
@@ -92,7 +196,7 @@ def test_lab_adapter_maps_layout_cleanup_to_reconstruction() -> None:
         description="baseline",
         full_map=[_cell_row(x=0, y=0)],
     )
-    frame = lab_snapshot_event_to_unified(event, frame_index=3)
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=3)
     assert frame.phase == ReplayPhase.RECONSTRUCTION
     assert frame.event_type == ReplayEventType.RECONSTRUCTION_STARTED
     assert frame.inspector["lab_phase"] == "layout_cleanup"
@@ -113,7 +217,7 @@ def test_lab_adapter_preserves_global_frame_index() -> None:
         is_placeholder=False,
         is_keyframe=True,
     )
-    frame = lab_replay_row_to_unified(row)
+    frame = lab_replay_row_to_timeline_frame(row)
     assert frame.frame_index == 42
     assert frame.inspector["replay_frame_id"] == 99
     assert frame.metrics.get("from_row") is True
@@ -150,10 +254,10 @@ def test_lab_adapter_preserves_equipment_bundles_on_wire() -> None:
         is_placeholder=False,
         is_keyframe=False,
     )
-    frame = lab_replay_row_to_unified(row)
+    frame = lab_replay_row_to_timeline_frame(row)
     wire_bundles = frame.cell_overlay_json.get("equipment_bundles")
     assert isinstance(wire_bundles, list) and len(wire_bundles) == len(bundles)
-    payload = unified_replay_frame_to_json_dict(frame)
+    payload = replay_timeline_frame_to_json_dict(frame)
     assert "cell_overlay_json" in payload
     assert payload["cell_overlay_json"]["equipment_bundles"]
 
@@ -161,7 +265,7 @@ def test_lab_adapter_preserves_equipment_bundles_on_wire() -> None:
 def test_lab_adapter_does_not_mutate_source_frame() -> None:
     event = _decode_event()
     before = lab_snapshot_event_payload_copy(event)
-    lab_snapshot_event_to_unified(event, frame_index=0)
+    lab_snapshot_event_to_timeline_frame(event, frame_index=0)
     after = lab_snapshot_event_payload_copy(event)
     assert before == after
 
@@ -179,7 +283,7 @@ def test_lab_adapter_does_not_mutate_source_frame() -> None:
         is_placeholder=False,
         is_keyframe=False,
     )
-    lab_replay_row_to_unified(row)
+    lab_replay_row_to_timeline_frame(row)
     assert payload_before == dict(asdict(event))
 
 
@@ -192,8 +296,8 @@ def test_lab_adapter_rejects_unrenderable_map_view() -> None:
         full_map=[],
         cell_overlay_json={},
     )
-    with pytest.raises(LabUnifiedAdapterError):
-        lab_snapshot_event_to_unified(event, frame_index=0)
+    with pytest.raises(LabTimelineAdapterError):
+        lab_snapshot_event_to_timeline_frame(event, frame_index=0)
 
 
 def test_lab_adapter_uses_replay_bbox_wire_shape() -> None:
@@ -204,7 +308,7 @@ def test_lab_adapter_uses_replay_bbox_wire_shape() -> None:
         title="t",
         full_map=[_cell_row(x=2, y=4), _cell_row(x=10, y=1)],
     )
-    frame = lab_snapshot_event_to_unified(event, frame_index=0)
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=0)
     bbox = frame.map_view.bbox
     assert bbox.min_x == 2
     assert bbox.min_y == 1
@@ -213,7 +317,7 @@ def test_lab_adapter_uses_replay_bbox_wire_shape() -> None:
 
 
 def test_lab_adapter_event_type_mapping_is_enum_only() -> None:
-    frame = lab_snapshot_event_to_unified(_decode_event(), frame_index=0)
+    frame = lab_snapshot_event_to_timeline_frame(_decode_event(), frame_index=0)
     assert frame.event_type in ReplayEventType
     assert frame.event_type in SUPPORTED_BY_9B_LAB_ADAPTER
 
@@ -227,19 +331,19 @@ def test_lab_adapter_metrics_are_output_only_passthrough() -> None:
         full_map=[_cell_row(x=0, y=0)],
         metrics_json={"replay_truncated": False, "custom": 1},
     )
-    frame = lab_snapshot_event_to_unified(event, frame_index=0)
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=0)
     assert frame.metrics["custom"] == 1
     assert frame.metrics["replay_truncated"] is False
 
 
 def test_lab_adapter_deterministic_json_round_trip() -> None:
-    frame = lab_snapshot_event_to_unified(_decode_event(), frame_index=99)
-    restored = unified_replay_frame_json_round_trip(frame)
+    frame = lab_snapshot_event_to_timeline_frame(_decode_event(), frame_index=99)
+    restored = replay_timeline_frame_json_round_trip(frame)
     assert restored == frame
 
 
 def test_lab_adapter_event_mapping_matrix_is_explicit() -> None:
-    assert set(LAB_EVENT_TYPE_TO_UNIFIED.keys()) == {
+    assert set(LAB_EVENT_TYPE_TO_TIMELINE.keys()) == {
         "decode.raw_loaded",
         "decode.normalized",
         "reconstruction.begin",
@@ -255,8 +359,8 @@ def test_lab_adapter_event_mapping_matrix_is_explicit() -> None:
         "replay.snapshot.cleanup_extension",
         "replay.snapshot.reconstruction",
     }
-    for unified in LAB_EVENT_TYPE_TO_UNIFIED.values():
-        assert unified in SUPPORTED_BY_9B_LAB_ADAPTER
+    for timeline_event in LAB_EVENT_TYPE_TO_TIMELINE.values():
+        assert timeline_event in SUPPORTED_BY_9B_LAB_ADAPTER
 
 
 def test_lab_adapter_rejects_candidate_event_type() -> None:
@@ -267,8 +371,8 @@ def test_lab_adapter_rejects_candidate_event_type() -> None:
         title="t",
         full_map=[_cell_row(x=0, y=0)],
     )
-    with pytest.raises(LabUnifiedAdapterError):
-        lab_snapshot_event_to_unified(event, frame_index=0)
+    with pytest.raises(LabTimelineAdapterError):
+        lab_snapshot_event_to_timeline_frame(event, frame_index=0)
 
 
 def test_lab_adapter_preserves_transport_tile_type() -> None:
@@ -289,7 +393,7 @@ def test_lab_adapter_preserves_transport_tile_type() -> None:
             }
         ],
     )
-    frame = lab_snapshot_event_to_unified(event, frame_index=0)
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=0)
     assert len(frame.map_view.full_cells) == 1
     cell = frame.map_view.full_cells[0]
     assert cell.tile_type == "SpaceBelt_Forward"
@@ -314,8 +418,8 @@ def test_lab_adapter_transport_tile_type_round_trips_as_sprite_identifier() -> N
             }
         ],
     )
-    frame = lab_snapshot_event_to_unified(event, frame_index=0)
-    restored = unified_replay_frame_json_round_trip(frame)
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=0)
+    restored = replay_timeline_frame_json_round_trip(frame)
     cell = restored.map_view.full_cells[0]
     assert cell.tile_type == "SpacePipe_LeftTurn"
     assert cell.rotation == 1
@@ -339,7 +443,7 @@ def test_lab_adapter_sprite_identifier_fallback_in_input() -> None:
             }
         ],
     )
-    frame = lab_snapshot_event_to_unified(event, frame_index=0)
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=0)
     cell = frame.map_view.full_cells[0]
     assert cell.tile_type == "SpaceBelt_RightTurn"
     assert cell.rotation == 3
@@ -347,8 +451,8 @@ def test_lab_adapter_sprite_identifier_fallback_in_input() -> None:
 
 def test_lab_adapter_sprite_identifier_in_serialized_json() -> None:
     """Serialized map_view JSON must contain sprite_identifier == tile_type for every cell."""
-    from django_apps.asteroid_lab.replay.unified_serialization import (
-        unified_replay_frame_to_json_dict,
+    from django_apps.asteroid_lab.replay.timeline_serialization import (
+        replay_timeline_frame_to_json_dict,
     )
 
     event = SnapshotEventDTO(
@@ -375,8 +479,8 @@ def test_lab_adapter_sprite_identifier_in_serialized_json() -> None:
             },
         ],
     )
-    frame = lab_snapshot_event_to_unified(event, frame_index=0)
-    d = unified_replay_frame_to_json_dict(frame)
+    frame = lab_snapshot_event_to_timeline_frame(event, frame_index=0)
+    d = replay_timeline_frame_to_json_dict(frame)
     for cell in d["map_view"]["full_cells"]:
         assert "sprite_identifier" in cell, "sprite_identifier alias missing from serialized cell"
         assert (

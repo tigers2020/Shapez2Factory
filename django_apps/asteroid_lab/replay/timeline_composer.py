@@ -1,15 +1,15 @@
-"""Merge Lab unified frames into one global timeline (Phase 9D)."""
+"""Merge Lab and runtime frames into one product replay timeline (Phase 9D)."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import replace
 
-from django_apps.asteroid_lab.replay.replay_limits import MAX_UNIFIED_LAB_REPLAY_FRAMES
-from django_apps.asteroid_lab.replay.unified_dtos import UnifiedReplayFrame
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
+from django_apps.asteroid_lab.replay.replay_limits import MAX_LAB_REPLAY_TIMELINE_FRAMES
+from django_apps.asteroid_lab.replay.timeline_dtos import ReplayTimelineFrame
 
-_TRUNCATION_REASON = "max_unified_replay_frames"
+_TRUNCATION_REASON = "max_lab_replay_timeline_frames"
 
 # Event types that must be retained when truncating (never dropped).
 _REQUIRED_KEYFRAME_EVENTS: frozenset[ReplayEventType] = frozenset(
@@ -21,9 +21,9 @@ _REQUIRED_KEYFRAME_EVENTS: frozenset[ReplayEventType] = frozenset(
 
 
 def _retain_keyframes_and_tail(
-    frames: list[UnifiedReplayFrame],
+    frames: list[ReplayTimelineFrame],
     cap: int,
-) -> tuple[list[UnifiedReplayFrame], int]:
+) -> tuple[list[ReplayTimelineFrame], int]:
     """Retain required keyframes + tail frames within *cap* slots.
 
     Strategy:
@@ -78,11 +78,11 @@ def _retain_keyframes_and_tail(
     return retained, dropped
 
 
-def compose_unified_timeline(
+def compose_replay_timeline(
     *,
-    lab_frames: Sequence[UnifiedReplayFrame],
-    max_frames: int = MAX_UNIFIED_LAB_REPLAY_FRAMES,
-) -> tuple[UnifiedReplayFrame, ...]:
+    lab_frames: Sequence[ReplayTimelineFrame],
+    max_frames: int = MAX_LAB_REPLAY_TIMELINE_FRAMES,
+) -> tuple[ReplayTimelineFrame, ...]:
     """Assign global ``frame_index`` 0..n-1; truncate when over *max_frames*.
 
     When the count exceeds *max_frames*, required keyframes
@@ -99,7 +99,7 @@ def compose_unified_timeline(
     else:
         dropped_frame_count = 0
 
-    out: list[UnifiedReplayFrame] = []
+    out: list[ReplayTimelineFrame] = []
     for new_index, frame in enumerate(combined):
         inspector = dict(frame.inspector)
         if "source_frame_index" not in inspector:

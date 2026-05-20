@@ -5,7 +5,8 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.replay.unified_enums import ReplayPhase
+from django_apps.asteroid_lab.replay.event_types import EVENT_TYPE_RECONSTRUCTION_BEGIN
+from django_apps.asteroid_lab.replay.replay_enums import ReplayPhase
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
     resolve_replay_projection_context_for_project,
@@ -90,12 +91,63 @@ def test_build_lab_replay_skips_unsupported_lab_frames() -> None:
 
 
 @pytest.mark.django_db
+def test_build_lab_replay_preserves_reconstruction_trace_on_wire() -> None:
+    p = m.AsteroidProject.objects.create(name="Trace", slug="uni-trace-payload")
+    t = m.ReplayTrack.objects.create(project=p, track_key="trace-tr")
+    m.ReplayFrame.objects.create(
+        replay_track=t,
+        frame_index=0,
+        frame_key="step4_00_wall_projection",
+        phase="reconstruction",
+        title="Wall Projection",
+        description="",
+        frame_payload={
+            "event_type": EVENT_TYPE_RECONSTRUCTION_BEGIN,
+            "phase": "reconstruction",
+            "phase_step": "wall_projection",
+            "event_key": "step4_00_wall_projection",
+            "full_map": [
+                {
+                    "x": 1,
+                    "y": 0,
+                    "cell_kind": "unknown",
+                    "transport_kind": "none",
+                }
+            ],
+            "diff": {
+                "added": [
+                    {
+                        "x": 1,
+                        "y": 0,
+                        "cell_kind": "internal_void",
+                        "transport_kind": "none",
+                        "_replay_trace": True,
+                    }
+                ],
+                "removed": [],
+                "changed": [],
+            },
+        },
+        cell_overlay_json={},
+    )
+
+    frames, _metrics = build_lab_replay_frames_for_project(int(p.pk))
+    assert len(frames) == 1
+    wire = frames[0]
+    overlay = wire.get("map_view", {}).get("overlay_cells") or []
+    diff_added = (wire.get("diff") or {}).get("added") or []
+    assert overlay or diff_added
+    if overlay:
+        assert overlay[0].get("kind") == "internal_void"
+
+
+@pytest.mark.django_db
 def test_build_lab_replay_truncation_surfaces_track_metrics(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from django_apps.asteroid_lab.replay import replay_limits
 
-    monkeypatch.setattr(replay_limits, "MAX_UNIFIED_LAB_REPLAY_FRAMES", 2)
+    monkeypatch.setattr(replay_limits, "MAX_LAB_REPLAY_TIMELINE_FRAMES", 2)
 
     p = m.AsteroidProject.objects.create(name="Trunc", slug="uni-trunc")
     t = m.ReplayTrack.objects.create(project=p, track_key="trunc-tr")

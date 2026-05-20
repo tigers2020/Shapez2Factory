@@ -5,7 +5,7 @@
 
 **관련 정본·근거:**
 
-- 계측·현장 수치·13A·13B 상세: [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md) (역사) · 제품 replay 정본: [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md)
+- 계측·현장 수치·13A·13B 상세: [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md) (역사) · 제품 replay 정본: [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md)
 - 개발 순서 문맥: [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md)
 - 포스트 시퀀스 우선순위: [`asteroid_lab_11_future_execution_plan_post_sequence.md`](asteroid_lab_11_future_execution_plan_post_sequence.md)
 
@@ -13,7 +13,7 @@
 
 ## 목적 (Purpose)
 
-Sequence 13은 **unified replay timeline**의 프레임 페이로드가 커져 **POST JSON**과 **DevTools 관측성**(response body 캐시 eviction 등)을 망가뜨리는 문제를 해결하기 위한 **스케일링 트랙**이다.
+Sequence 13은 **Lab replay timeline**의 프레임 페이로드가 커져 **POST JSON**과 **DevTools 관측성**(response body 캐시 eviction 등)을 망가뜨리는 문제를 해결하기 위한 **스케일링 트랙**이다.
 
 - **replay semantics(리플레이 의미)**는 유지한다.
 - **replay / debug artifact**는 계속 **output-only**이다.
@@ -35,7 +35,7 @@ Sequence 13은 **unified replay timeline**의 프레임 페이로드가 커져 *
 | 단계 | 내용 |
 |------|------|
 | **13A** | 결정적 JSON 섹션 계측(`measure_json_sections` 등), optimization replay **하드 캡** 회귀 검증, HAR·증거 문서화 |
-| **13B** | Lab replay 귀속, `full_map` / 셀 수 / redundancy 분석, 상위 프레임 랭킹, **13B 계측 시점:** Lab replay는 optimization 상한(`MAX_OPTIMIZATION_*`)으로 캡되지 않음 — **historical 관측**. 제품 상한: Lab `MAX_UNIFIED_LAB_*`, optimization `MAX_OPTIMIZATION_*` ([`replay_limits.py`](../../django_apps/asteroid_lab/replay/replay_limits.py), [`asteroid_lab_09_unified_step_replay`](asteroid_lab_09_unified_step_replay.md)) |
+| **13B** | Lab replay 귀속, `full_map` / 셀 수 / redundancy 분석, 상위 프레임 랭킹, **13B 계측 시점:** Lab replay는 optimization 상한(`MAX_OPTIMIZATION_*`)으로 캡되지 않음 — **historical 관측**. 제품 상한: Lab `MAX_UNIFIED_LAB_*`, optimization `MAX_OPTIMIZATION_*` ([`replay_limits.py`](../../django_apps/asteroid_lab/replay/replay_limits.py), [`asteroid_lab_09_replay_timeline`](asteroid_lab_09_replay_timeline.md)) |
 
 **구현으로의 전환:** 위는 **계측·설계·회귀 키**까지이며, **POST 본문 축소·lazy-load·delta 등 런타임 동작 변경은 13C 이후**이며 **별도 승인**이 필요하다.
 
@@ -96,7 +96,7 @@ UI uses a single timeline controller unless a dedicated migration sequence opens
 
 - UI는 **replay controller가 전체 Lab replay가 필요할 때** 로드한다.
 - **로딩 / 오류 상태**를 노출한다.
-- **단일 unified timeline controller**를 유지한다 ([`asteroid_lab_09_unified_step_replay`](asteroid_lab_09_unified_step_replay.md); dual-track 폐기).
+- **단일 replay timeline controller**를 유지한다 ([`asteroid_lab_09_replay_timeline`](asteroid_lab_09_replay_timeline.md); dual-track 폐기).
 - 마이그레이션 기간 **인라인 모드 폴백**은 허용된다.
 
 **시맨틱 리스크:** 두 소스(인라인 vs fetch)가 **동시에 “권위”**를 주장하면 드리프트; 하나의 명시적 소스 우선순위가 필요하다.

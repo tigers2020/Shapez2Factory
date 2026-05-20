@@ -24,11 +24,11 @@ from django_apps.asteroid_lab.optimization.materialization_dtos import (
     RouteMaterializationResult,
 )
 from django_apps.asteroid_lab.optimization.route_goal_planner import PlannedRouteGoals
-from django_apps.asteroid_lab.replay.solver_runtime_unified_recorder import (
+from django_apps.asteroid_lab.replay.solver_runtime_replay_recorder import (
     SolverRuntimeReplayRecorder,
 )
-from django_apps.asteroid_lab.replay.unified_dtos import replay_map_view_is_renderable
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.timeline_dtos import replay_map_view_is_renderable
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 
 _SERVER_XY_PARAMS: tuple[int, int] = (0, 0)

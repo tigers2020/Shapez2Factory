@@ -21,7 +21,7 @@
 ## 읽기 순서
 
 1. [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md) — 개요·좌표·금지 사항  
-2. [`asteroid_lab_01_optimization_input.md`](asteroid_lab_01_optimization_input.md) ~ [`asteroid_lab_09_unified_step_replay.md`](asteroid_lab_09_unified_step_replay.md) — Phase 계약 (09: [`replay_debug`](asteroid_lab_09_replay_debug.md) deprecated)  
+2. [`asteroid_lab_01_optimization_input.md`](asteroid_lab_01_optimization_input.md) ~ [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) — Phase 계약 (09: [`replay_debug`](asteroid_lab_09_replay_debug.md) deprecated)  
 3. [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) — 구현 순서(체크리스트)  
 4. [`asteroid_lab_11_future_execution_plan_post_sequence.md`](asteroid_lab_11_future_execution_plan_post_sequence.md) ~ [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md) — 이후 로드맵·런타임 배선·페이로드  
 5. **Solver 버튼:** [`solver_runtime/README.md`](solver_runtime/README.md) → `00`~`phase_m` → `implementation_sequence.md`
@@ -39,7 +39,7 @@
 | `asteroid_lab_06_evolutionary_search.md` | `RESEARCH` | 진화 탐색 v0 |
 | `asteroid_lab_07_incremental_commit.md` | `RESEARCH` | 증분 커밋 |
 | `asteroid_lab_08_validation.md` | `RESEARCH` | 검증 게이트 |
-| `asteroid_lab_09_unified_step_replay.md` | `ACTIVE` | 통합 Step Replay Timeline (제품 정본) |
+| `asteroid_lab_09_replay_timeline.md` | `ACTIVE` | 통합 Step Replay Timeline (제품 정본) |
 | `asteroid_lab_09_replay_debug.md` | `ARCHIVED` | dual-track 역사·13A·13B 근거; deprecated stub |
 | `asteroid_lab_10_development_sequence.md` | `RESEARCH` | 시퀀스별 체크리스트 |
 | `asteroid_lab_11_future_execution_plan_post_sequence.md` | `RESEARCH` | 시퀀스 이후 실행 계획 |

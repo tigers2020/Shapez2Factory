@@ -1,6 +1,6 @@
 # Asteroid Lab Optimization — Development Sequence
 
-> **Superseded by Unified Lab Replay Timeline:** 아래 **Sequence 9** 등에서 말하는 *optimization track 추가·듀얼 트랙* 은 구현 정본과 다르다. 최적화 리플레이는 **기존 Lab `ReplayTrack`에만** 프레임을 붙이고, 별도 `optimizationReplayFrameIndex` / `optimization-replay-json` 런타임 경로는 두지 않는다. 정본: `rollback_baseline_unified_replay.md`. *(계획 문서 `asteroid_lab_12_runtime_replay_wiring.md`, `asteroid_lab_13_replay_payload_scalability.md`가 추가될 때도 동일 정본을 따른다 — “Lab / Optimization dual-track 불변” 조항은 폐기.)*
+> **Superseded by Unified Lab Replay Timeline:** 아래 **Sequence 9** 등에서 말하는 *optimization track 추가·듀얼 트랙* 은 구현 정본과 다르다. 최적화 리플레이는 **기존 Lab `ReplayTrack`에만** 프레임을 붙이고, 별도 `optimizationReplayFrameIndex` / `optimization-replay-json` 런타임 경로는 두지 않는다. 정본: `rollback_baseline_lab_replay_timeline.md`. *(계획 문서 `asteroid_lab_12_runtime_replay_wiring.md`, `asteroid_lab_13_replay_payload_scalability.md`가 추가될 때도 동일 정본을 따른다 — “Lab / Optimization dual-track 불변” 조항은 폐기.)*
 
 ## 목적
 

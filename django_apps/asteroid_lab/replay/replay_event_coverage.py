@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
 
-# Lab adapter may emit only these unified lifecycle wire values.
+# Lab adapter may emit only these timeline lifecycle wire values.
 SUPPORTED_BY_9B_LAB_ADAPTER: frozenset[ReplayEventType] = frozenset(
     {
         ReplayEventType.DECODE_STARTED,

@@ -7,24 +7,11 @@ from pathlib import Path
 import pytest
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.optimization.enums import OptimizationReplayEventType
 from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType
-from django_apps.asteroid_lab.services.experiment_service import create_solver_run
-from django_apps.asteroid_lab.services.optimization_replay_persist import (
-    persist_optimization_replay_frames_to_solver_run,
-)
-from django_apps.asteroid_lab.services.optimization_ui_payload import (
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
-from django_apps.asteroid_lab.optimization.gene_template_loader import load_gene_templates_from_json
-from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
 from django_apps.web.services import asteroid_lab_page_context as alc
-
-_GENE_TEMPLATES = (
-    Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
-)
-
-_MINIMAL_GENE_TEMPLATES = load_gene_templates_from_json(_GENE_TEMPLATES / "minimal_extractor_e.json")
 
 
 @pytest.mark.django_db
@@ -246,97 +233,6 @@ def test_lab_page_context_restricted_to_project_id() -> None:
 
 
 @pytest.mark.django_db
-def test_lab_page_context_composed_timeline_includes_optimization_frames() -> None:
-    import base64
-    import gzip
-    import json
-    import random
-
-    from django.test import Client
-    from django.urls import reverse
-
-    from django_apps.asteroid_lab.optimization.loaded_snapshot import (
-        loaded_reconstruction_snapshot_from_result,
-    )
-    from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
-        run_reconstruction_for_map_input,
-    )
-
-    def _copy() -> str:
-        root = {
-            "V": random.randint(1, 10_000_000),
-            "BP": {
-                "$type": "Island",
-                "Entries": [
-                    {"X": 1, "Y": 0, "T": "Layout_ProMiner"},
-                    {"X": 2, "Y": 0, "T": "SpaceBelt_Left"},
-                    {"X": 3, "Y": 1, "T": "Layout_ShapeMinerExtension"},
-                ],
-            },
-        }
-        text = json.dumps(root, separators=(",", ":")).encode("utf-8")
-        return "SHAPEZ2-4-" + base64.b64encode(gzip.compress(text)).decode("ascii")
-
-    client = Client()
-    client.post(
-        reverse("web:asteroid-miner-layout-projects-create"),
-        {"copy_code": _copy()},
-        follow=True,
-    )
-    proj = m.AsteroidProject.objects.get()
-    inp = m.AsteroidMapInput.objects.filter(project=proj).order_by("-id").first()
-    assert inp is not None
-    _cleanup, recon = run_reconstruction_for_map_input(int(inp.pk))
-    loaded = loaded_reconstruction_snapshot_from_result(recon)
-    run_dto = create_solver_run(
-        int(proj.pk),
-        run_key="ctx-opt-read",
-        algorithm_label="runtime_v0",
-        config={},
-    )
-    result = run_solver_runtime_pipeline(
-        loaded=loaded,
-        gene_templates=_MINIMAL_GENE_TEMPLATES,
-    )
-    persist_optimization_replay_frames_to_solver_run(
-        run_dto.id,
-        result.replay_frames,
-        solver_summary=result.solver_summary,
-        server_xy_params=loaded.server_xy_params,
-    )
-
-    ctx = alc.lab_page_context(project_id=proj.pk)
-    frames = ctx["lab_replay_frames_json"]
-    assert len(frames) >= 1
-    assert isinstance(frames[0]["map_view"], dict)
-    event_types = {f["event_type"] for f in frames}
-    assert OptimizationReplayEventType.VALIDATION_COMPLETED.value in event_types
-    assert ctx["replay_track_metrics"]["frame_count"] == len(frames)
-
-    if int(result.solver_summary.get("confirmed_count") or 0) > 0:
-        val_frames = [
-            f
-            for f in frames
-            if f.get("event_type") == OptimizationReplayEventType.VALIDATION_COMPLETED.value
-        ]
-        assert len(val_frames) == 1
-        overlay = val_frames[0]["map_view"].get("overlay_cells")
-        assert isinstance(overlay, list) and overlay
-        placement_kinds = {
-            "shape_miner",
-            "fluid_miner",
-            "shape_miner_extension",
-            "fluid_miner_extension",
-            "space_belt",
-            "space_pipe",
-        }
-        assert any(
-            isinstance(c, dict) and c.get("kind") in placement_kinds and isinstance(c.get("x"), int)
-            for c in overlay
-        )
-
-
-@pytest.mark.django_db
 def test_lab_page_context_read_does_not_touch_lab_replay_orm() -> None:
     p = m.AsteroidProject.objects.create(name="OptOrm", slug="opt-orm-lab-ctx")
     t = m.ReplayTrack.objects.create(project=p, track_key="opt-tr")
@@ -467,13 +363,13 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-detail-issue-coord" in tpl
     assert "lab-detail-status" in tpl
     assert "lab-optimization-replay-data" not in tpl
-    assert 'id="lab-optimization-replay-attach"' in tpl
+    assert 'id="lab-optimization-replay-attach"' not in tpl
     assert "Optimization Replay" not in tpl
     assert "data-lab-run-solver-url" in tpl
     assert "function renderReplayRunStatus" in js
     assert "lab-replay-track-metrics-data" in js
     assert "function replaceOptimizationReplayPayload" not in js
-    assert "renderOptimizationReplayAttachHud" in js
+    assert "renderOptimizationReplayAttachHud" not in js
     assert "function renderEvolutionRunsList" in js
     assert "function upsertRunSummary" in js
     assert "lab-evolution-runs-list" in js

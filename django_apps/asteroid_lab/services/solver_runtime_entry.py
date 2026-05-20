@@ -178,6 +178,7 @@ def run_solver_runtime_for_project(
             gene_templates=gene_templates,
             run_key=rk,
             generation_config=generation_config,
+            run_config=run_config,
             recorder=recorder,
         )
         runtime_replay_frames_json: list[dict[str, Any]] | None = None

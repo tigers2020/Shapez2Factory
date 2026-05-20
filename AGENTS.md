@@ -66,14 +66,7 @@ Asteroid Lab 불변식: [asteroid-lab-invariants.mdc](.cursor/rules/asteroid-lab
 
 ## BLOCKED 형식
 
-도메인 충돌·검증 명령 미발견·기준 테스트 없는 회귀·고위험 변경 시:
-
-```
-BLOCKED:
-- missing context:
-- risky change:
-- recommended next step:
-```
+→ [shapez2-core.mdc §BLOCKED](.cursor/rules/shapez2-core.mdc)
 
 ## Definition of done
 

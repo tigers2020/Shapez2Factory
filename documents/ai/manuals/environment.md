@@ -39,6 +39,7 @@
 | `SOLVER_GRAPH_PREVIEW_STORAGE` | `filesystem` | `config/shapez_runtime_flags.py` |
 | `SOLVER_GRAPH_PREVIEW_CACHE_DIR` | `<BASE_DIR>/.graph_preview_cache` | `config/shapez_runtime_flags.py` |
 | `ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH` | `tests/fixtures/asteroid_lab/gene_templates` | `config/settings.py` |
+| `ASTEROID_LAB_MINERS_PER_ROUTE_OUT` | `12` | `config/settings.py` (shape belt goals per-route bundle budget) |
 | `ASTEROID_LAB_BOUNDARY_JSONL` | off | `django_apps/asteroid_lab/observability/boundary_jsonl.py` |
 | `ASTEROID_LAB_BOUNDARY_JSONL_DIR` | `var/asteroid_boundary_logs` | 동일 |
 | `SHAPEZ_COPY_DEBUG_DIR` | off (빈 문자열) | `config/shapez_runtime_flags.py` (소비 코드 없음 — 덤프 경로 예약) |

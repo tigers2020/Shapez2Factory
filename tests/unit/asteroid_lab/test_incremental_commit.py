@@ -220,7 +220,7 @@ def test_incremental_commit_updates_goal_load() -> None:
     )
 
     key: GoalLoadKey = (goal.coord, TransportKind.SHAPE_BELT)
-    assert result.goal_assigned_platforms[key] == 16
+    assert result.goal_assigned_platforms[key] == 2
 
 
 def test_incremental_commit_separates_shape_and_fluid_domains() -> None:

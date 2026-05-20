@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
+    BundleSelectionTargets,
+)
 from django_apps.asteroid_lab.optimization.candidate_dtos import GeneCandidate
 from django_apps.asteroid_lab.optimization.candidate_score import (
     GoalLoadKey,
@@ -43,6 +46,7 @@ def select_gene_candidates_greedy(
     candidates: tuple[GeneCandidate, ...],
     *,
     inp: OptimizationInput,
+    targets: BundleSelectionTargets | None = None,
 ) -> SelectedCandidatePlan:
     """Order normal candidates for incremental commit (PR5); does not mutate ``inp``."""
 
@@ -63,7 +67,10 @@ def select_gene_candidates_greedy(
         )
         ordered_ids.append(best.candidate_id)
         key = goal_load_key_for_candidate(best)
-        goal_load[key] = goal_load.get(key, 0) + best.base_throughput
+        goal_load[key] = goal_load.get(key, 0) + 1
         remaining.remove(best)
+
+    if targets is not None and len(ordered_ids) > targets.target_miner_bundle_count:
+        ordered_ids = ordered_ids[: targets.target_miner_bundle_count]
 
     return SelectedCandidatePlan(ordered_candidate_ids=tuple(ordered_ids))

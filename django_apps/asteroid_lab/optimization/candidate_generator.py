@@ -277,7 +277,10 @@ def generate_gene_candidates(
 
     timing.finalize(total_ms=(time.perf_counter() - gen_start) * 1000.0)
 
+    pre_dedupe_normal_count = len(normal)
+    projected_candidate_count_before_probe = len(winners_by_key)
     deduped = dedupe_gene_candidates(tuple(normal))
+    deduped_candidate_count = len(deduped)
     if config.max_candidates is not None:
         deduped = _truncate_normal_candidates(deduped, config.max_candidates)
 
@@ -285,6 +288,9 @@ def generate_gene_candidates(
         normal_candidates=deduped,
         rejected_candidates=tuple(rejected),
         timing=timing,
+        projected_candidate_count_before_probe=projected_candidate_count_before_probe,
+        pre_dedupe_normal_count=pre_dedupe_normal_count,
+        deduped_candidate_count=deduped_candidate_count,
     )
 
 

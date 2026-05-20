@@ -107,38 +107,34 @@ def test_candidate_selector_prefers_high_throughput_low_cost() -> None:
     assert plan.ordered_candidate_ids[0] == "a:high"
 
 
-def test_candidate_selector_prefers_alternate_trunk_when_goal_saturated() -> None:
-    """OD-3 v1: overflow-on-goal candidates skipped when another trunk is available."""
+def test_candidate_selector_prefers_alternate_trunk_when_goal_at_platform_cap() -> None:
+    """OD-3 v1: per-goal platform cap (12) forces later picks to another trunk."""
     goal_a = _goal((6, 0))
     goal_b = _goal((8, 0))
     inp = _minimal_inp(goals=frozenset({goal_a, goal_b}))
-    saturate_a = _gene_candidate(
-        candidate_id="a:saturate",
-        base_throughput=16,
-        cost=1,
-        goal_priority=10,
-        reached_goal=goal_a,
-    )
-    to_a = _gene_candidate(
-        candidate_id="b:to_a",
-        base_throughput=8,
-        cost=1,
-        goal_priority=10,
-        reached_goal=goal_a,
+    fill_a = tuple(
+        _gene_candidate(
+            candidate_id=f"a:{i}",
+            base_throughput=4,
+            cost=1,
+            goal_priority=10,
+            reached_goal=goal_a,
+        )
+        for i in range(12)
     )
     to_b = _gene_candidate(
         candidate_id="c:to_b",
-        base_throughput=8,
-        cost=1,
+        base_throughput=4,
+        cost=99,
         goal_priority=10,
         reached_goal=goal_b,
     )
 
-    plan = select_gene_candidates_greedy((to_b, to_a, saturate_a), inp=inp)
+    plan = select_gene_candidates_greedy(fill_a + (to_b,), inp=inp)
 
-    assert plan.ordered_candidate_ids[0] == "c:to_b"
-    assert plan.ordered_candidate_ids[1] == "b:to_a"
-    assert plan.ordered_candidate_ids[2] == "a:saturate"
+    assert plan.ordered_candidate_ids[-1] == "c:to_b"
+    assert len(plan.ordered_candidate_ids) == 13
+    assert len([cid for cid in plan.ordered_candidate_ids if cid.startswith("a:")]) == 12
 
 
 def test_candidate_selector_hard_rejects_only_when_all_trunks_overflow() -> None:
@@ -228,6 +224,46 @@ def test_score_gene_candidate_matches_phase_i_formula() -> None:
     )
 
 
+def test_selector_allows_multiple_bundles_per_goal_when_throughput_high() -> None:
+    goal = _goal((6, 0))
+    inp = _minimal_inp(goals=frozenset({goal}))
+    candidates = tuple(
+        _gene_candidate(
+            candidate_id=f"m:{i}",
+            base_throughput=16,
+            cost=i,
+            goal_priority=10,
+            reached_goal=goal,
+        )
+        for i in range(5)
+    )
+
+    plan = select_gene_candidates_greedy(candidates, inp=inp)
+
+    assert len(plan.ordered_candidate_ids) == 5
+
+
+def test_selector_ordered_count_can_exceed_route_out_count() -> None:
+    goals = frozenset({_goal((6, 0)), _goal((8, 0))})
+    inp = _minimal_inp(goals=goals)
+    pool: list = []
+    for goal in sorted(goals, key=lambda g: g.coord):
+        for i in range(4):
+            pool.append(
+                _gene_candidate(
+                    candidate_id=f"{goal.coord[0]}:{i}",
+                    base_throughput=16,
+                    cost=i,
+                    goal_priority=10,
+                    reached_goal=goal,
+                )
+            )
+
+    plan = select_gene_candidates_greedy(tuple(pool), inp=inp)
+
+    assert len(plan.ordered_candidate_ids) > len(goals)
+
+
 def test_select_gene_candidates_does_not_mutate_optimization_input() -> None:
     goal = _goal((6, 0))
     inp = _minimal_inp(goals=frozenset({goal}))
@@ -261,7 +297,7 @@ def test_trunk_load_penalty_increases_with_assigned_platforms() -> None:
     loaded = score_gene_candidate(
         candidate,
         inp=inp,
-        goal_assigned_platforms={(goal.coord, TransportKind.SHAPE_BELT): 16},
+        goal_assigned_platforms={(goal.coord, TransportKind.SHAPE_BELT): 8},
     )
 
     assert loaded.trunk_load_penalty > empty.trunk_load_penalty

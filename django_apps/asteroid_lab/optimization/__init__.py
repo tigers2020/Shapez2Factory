@@ -36,6 +36,11 @@ from django_apps.asteroid_lab.optimization.candidate_selector import (
     SelectedCandidatePlan,
     select_gene_candidates_greedy,
 )
+from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
+    BundleSelectionTargets,
+    bundle_selection_targets_from_run_config,
+    compute_bundle_selection_targets,
+)
 from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan, plan_capacity
 from django_apps.asteroid_lab.optimization.commit_best_candidates import (
     ConfirmedGenePlacement,
@@ -149,6 +154,9 @@ from django_apps.asteroid_lab.optimization.route_probe import (
 
 __all__ = [
     "BBox",
+    "BundleSelectionTargets",
+    "bundle_selection_targets_from_run_config",
+    "compute_bundle_selection_targets",
     "CapacityPlan",
     "CandidateEquivalenceKey",
     "CandidateGenerationConfig",

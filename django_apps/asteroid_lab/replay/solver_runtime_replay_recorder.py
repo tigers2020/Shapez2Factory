@@ -9,6 +9,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
+    BundleSelectionTargets,
+)
 from django_apps.asteroid_lab.optimization.candidate_dtos import (
     CandidateGenerationResult,
     GeneCandidate,
@@ -238,11 +241,22 @@ class SolverRuntimeReplayRecorder:
             map_view=map_view,
             inspector={
                 "normal_candidate_count": len(pool.normal_candidates),
+                "normal_candidate_count_after_probe": len(pool.normal_candidates),
                 "rejected_candidate_count": len(pool.rejected_candidates),
+                "projected_candidate_count_before_probe": (
+                    pool.projected_candidate_count_before_probe
+                ),
+                "deduped_candidate_count": pool.deduped_candidate_count,
+                "pre_dedupe_normal_count": pool.pre_dedupe_normal_count,
             },
         )
 
-    def record_candidate_selection_completed(self, plan: SelectedCandidatePlan) -> None:
+    def record_candidate_selection_completed(
+        self,
+        plan: SelectedCandidatePlan,
+        *,
+        targets: BundleSelectionTargets | None = None,
+    ) -> None:
         cells = self._base_cells
         map_view = self._build_map_view(cells)
         self._append(
@@ -251,7 +265,19 @@ class SolverRuntimeReplayRecorder:
             title="Candidate Selection Completed",
             description=f"{len(plan.ordered_candidate_ids)} candidates selected for commit",
             map_view=map_view,
-            inspector={"selected_count": len(plan.ordered_candidate_ids)},
+            inspector={
+                "selected_count": len(plan.ordered_candidate_ids),
+                "best_genome_enabled_gene_count": len(plan.ordered_candidate_ids),
+                **(
+                    {
+                        "route_out_count": targets.route_out_count,
+                        "target_miner_bundle_count": targets.target_miner_bundle_count,
+                        "miners_per_route": targets.miners_per_shape_route,
+                    }
+                    if targets is not None
+                    else {}
+                ),
+            },
         )
 
     def record_candidate_pool_details(
@@ -368,6 +394,7 @@ class SolverRuntimeReplayRecorder:
         plan: SelectedCandidatePlan,
         *,
         pool: CandidateGenerationResult | None = None,
+        targets: BundleSelectionTargets | None = None,
     ) -> None:
         """Emit GA-cycle scaffold frames for greedy selection (output-only)."""
 
@@ -398,10 +425,22 @@ class SolverRuntimeReplayRecorder:
             title="Best Genome Selected",
             description=f"{selected_count} candidates",
             map_view=map_view,
-            inspector={"best_candidate_ids": list(plan.ordered_candidate_ids)},
+            inspector={
+                "best_candidate_ids": list(plan.ordered_candidate_ids),
+                "best_genome_enabled_gene_count": selected_count,
+                **(
+                    {
+                        "route_out_count": targets.route_out_count,
+                        "target_miner_bundle_count": targets.target_miner_bundle_count,
+                    }
+                    if targets is not None
+                    else {}
+                ),
+            },
             metrics={
                 "best_fitness": float(selected_count),
                 "generation_count": 1,
+                "best_genome_enabled_gene_count": selected_count,
             },
         )
         self._append(

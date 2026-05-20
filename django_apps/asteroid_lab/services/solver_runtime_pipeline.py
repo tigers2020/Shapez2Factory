@@ -6,12 +6,19 @@ import time
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
+from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
+    BundleSelectionTargets,
+    bundle_selection_targets_from_run_config,
+)
 from django_apps.asteroid_lab.optimization.candidate_dtos import CandidateGenerationConfig
 from django_apps.asteroid_lab.optimization.candidate_generator import (
     default_generation_config,
     generate_gene_candidates,
 )
-from django_apps.asteroid_lab.optimization.candidate_selector import select_gene_candidates_greedy
+from django_apps.asteroid_lab.optimization.candidate_selector import (
+    SelectedCandidatePlan,
+    select_gene_candidates_greedy,
+)
 from django_apps.asteroid_lab.optimization.capacity_planner import plan_capacity
 from django_apps.asteroid_lab.optimization.commit_best_candidates import commit_selected_candidates
 from django_apps.asteroid_lab.optimization.enums import ValidationSeverity
@@ -76,11 +83,18 @@ def _build_solver_summary(
     materialization: RouteMaterializationResult,
     issues: tuple[ValidationIssue, ...],
     timing: SolverRuntimeTimingMetrics,
+    targets: BundleSelectionTargets,
+    raw_pattern_count: int,
+    pool_metrics: dict[str, int],
+    plan: SelectedCandidatePlan,
+    commit_attempt_count: int,
 ) -> dict[str, Any]:
     error_issues = _error_issues(issues)
+    commit_rolled_back_count = len(skipped)
     return {
         "validation_passed": validation_passed,
         "confirmed_count": commit_count,
+        "confirmed_miner_count": commit_count,
         "skipped_candidate_ids": list(skipped),
         "materialization_failure_reason": (
             materialization.failure_reason.value if materialization.failure_reason else None
@@ -88,6 +102,20 @@ def _build_solver_summary(
         "issue_codes": [i.issue_code.value for i in error_issues],
         "issue_details": [_issue_detail(i) for i in error_issues],
         "timing": timing.to_dict(),
+        "route_out_count": targets.route_out_count,
+        "miners_per_route": targets.miners_per_shape_route,
+        "target_miner_bundle_count": targets.target_miner_bundle_count,
+        "raw_pattern_count": raw_pattern_count,
+        "projected_candidate_count_before_probe": pool_metrics[
+            "projected_candidate_count_before_probe"
+        ],
+        "normal_candidate_count_after_probe": pool_metrics["normal_candidate_count_after_probe"],
+        "rejected_candidate_count": pool_metrics["rejected_candidate_count"],
+        "deduped_candidate_count": pool_metrics["deduped_candidate_count"],
+        "best_genome_enabled_gene_count": len(plan.ordered_candidate_ids),
+        "commit_attempt_count": commit_attempt_count,
+        "commit_confirmed_count": commit_count,
+        "commit_rolled_back_count": commit_rolled_back_count,
     }
 
 
@@ -97,6 +125,7 @@ def run_solver_runtime_pipeline(
     gene_templates: tuple[GeneTemplate, ...],
     run_key: str = "runtime",
     generation_config: CandidateGenerationConfig | None = None,
+    run_config: dict[str, Any] | None = None,
     recorder: SolverRuntimeReplayRecorder | None = None,
 ) -> SolverRuntimeResult:
     """Execute Phase A→M in documented order (no ORM; receives gene_templates as input)."""
@@ -117,6 +146,7 @@ def run_solver_runtime_pipeline(
 
     planned = plan_route_goals(inp, capacity)
     inp = replace(inp, route_goals=planned.goals)
+    targets = bundle_selection_targets_from_run_config(inp.route_goals, run_config)
     if recorder is not None:
         recorder.record_route_goals_generated(planned)
 
@@ -129,11 +159,15 @@ def run_solver_runtime_pipeline(
         recorder.record_candidate_pool_details(pool)
 
     select_start = time.perf_counter()
-    plan = select_gene_candidates_greedy(pool.normal_candidates, inp=inp)
+    plan = select_gene_candidates_greedy(
+        pool.normal_candidates,
+        inp=inp,
+        targets=targets,
+    )
     timing.evolution_ms = (time.perf_counter() - select_start) * 1000.0
     if recorder is not None:
-        recorder.record_candidate_selection_completed(plan)
-        recorder.record_genome_scaffold(plan, pool=pool)
+        recorder.record_candidate_selection_completed(plan, targets=targets)
+        recorder.record_genome_scaffold(plan, pool=pool, targets=targets)
 
     candidates_by_id = {c.candidate_id: c for c in pool.normal_candidates}
     commit, commit_timing = commit_selected_candidates(plan, candidates_by_id, inp=inp)
@@ -166,6 +200,13 @@ def run_solver_runtime_pipeline(
 
     timing.total_ms = (time.perf_counter() - pipeline_start) * 1000.0
 
+    pool_metrics = {
+        "projected_candidate_count_before_probe": pool.projected_candidate_count_before_probe,
+        "normal_candidate_count_after_probe": len(pool.normal_candidates),
+        "rejected_candidate_count": len(pool.rejected_candidates),
+        "deduped_candidate_count": pool.deduped_candidate_count,
+    }
+    commit_attempt_count = len(plan.ordered_candidate_ids)
     summary = _build_solver_summary(
         validation_passed=validation.passed,
         commit_count=len(commit.confirmed),
@@ -173,6 +214,11 @@ def run_solver_runtime_pipeline(
         materialization=materialization,
         issues=validation.issues,
         timing=timing,
+        targets=targets,
+        raw_pattern_count=len(gene_templates),
+        pool_metrics=pool_metrics,
+        plan=plan,
+        commit_attempt_count=commit_attempt_count,
     )
 
     if recorder is not None:

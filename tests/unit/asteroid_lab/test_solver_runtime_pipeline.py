@@ -69,6 +69,10 @@ def test_pipeline_runs_end_to_end_without_orm() -> None:
     assert "confirmed_count" in result.solver_summary
     assert "issue_details" in result.solver_summary
     assert isinstance(result.solver_summary["issue_details"], list)
+    assert "route_out_count" in result.solver_summary
+    assert "target_miner_bundle_count" in result.solver_summary
+    assert "best_genome_enabled_gene_count" in result.solver_summary
+    assert "commit_attempt_count" in result.solver_summary
 
 
 def test_pipeline_solver_summary_is_deterministic() -> None:

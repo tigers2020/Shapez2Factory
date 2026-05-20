@@ -64,6 +64,9 @@ class CandidateGenerationResult:
     normal_candidates: tuple[GeneCandidate, ...]
     rejected_candidates: tuple[RejectedGeneCandidate, ...]
     timing: CandidateGenerationTiming | None = None
+    projected_candidate_count_before_probe: int = 0
+    pre_dedupe_normal_count: int = 0
+    deduped_candidate_count: int = 0
 
 
 def make_candidate_id(

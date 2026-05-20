@@ -54,11 +54,11 @@ def would_exceed_trunk_capacity(
     *,
     goal_assigned_platforms: Mapping[GoalLoadKey, int],
 ) -> bool:
-    """True when assigning this candidate would exceed hard trunk capacity (OD-3 v1)."""
+    """True when assigning one more bundle would exceed per-goal platform count (OD-3 v1)."""
     key = goal_load_key_for_candidate(candidate)
     assigned = goal_assigned_platforms.get(key, 0)
     capacity = trunk_platform_capacity(key[1])
-    return assigned + candidate.base_throughput > capacity
+    return assigned + 1 > capacity
 
 
 def _corridor_pressure_penalty(

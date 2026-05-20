@@ -1,7 +1,7 @@
 ---
 status: ACTIVE
 owner: solver-runtime-pipeline
-last_reviewed: 2026-05-19
+last_reviewed: 2026-05-20
 phase: I
 pr: 4
 related_docs:
@@ -63,7 +63,21 @@ trunk capacity = 72 fully boosted platforms
 load_ratio = assigned_platform_count / capacity_by_transport_kind
 ```
 
-포화에 가까운 goal은 penalty 증가. **v1 (OD-3):** alternate trunk가 있으면 hard reject; 전부 overflow면 penalty pool fallback ([OD-3](open_decisions.md)).
+`goal_assigned_platforms` 값은 **플랫폼 개수** (+1 per bundle). `base_throughput` 합산은 사용하지 않는다 (fully boosted ×16도 1 platform).
+
+### Bundle selection budget (route slot vs miner count)
+
+```text
+route_out_count = len(route_goals)
+target_miner_bundle_count = sum per goal (
+  shape belt goals × miners_per_shape_route (default 12, env ASTEROID_LAB_MINERS_PER_ROUTE_OUT)
+  fluid pipe goals × 72 (FLUID_PLATFORMS_PER_GOAL)
+)
+```
+
+`route_out_count`는 외부 route slot 수; `target_miner_bundle_count`는 선택·commit **시도** 상한(확정 수 아님). 구현: `bundle_selection_targets.py` · `solver_summary` / replay inspector.
+
+포화에 가까운 goal은 penalty 증가. **v1 (OD-3):** per-goal platform cap(12/72) 초과 시 alternate `GoalLoadKey` 우선; 전부 overflow면 penalty pool fallback ([OD-3](open_decisions.md)).
 
 ### 정책
 

@@ -157,6 +157,11 @@ ASTEROID_LAB_RUNTIME_GENE_GENERATOR_VERSION = os.environ.get(
     "exhaustive_sample_gene_v1",
 )
 
+# Shape belt route goals: max miner bundles per external route slot (CANON 12).
+ASTEROID_LAB_MINERS_PER_ROUTE_OUT = int(
+    os.environ.get("ASTEROID_LAB_MINERS_PER_ROUTE_OUT", "12")
+)
+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",

@@ -214,7 +214,7 @@ def commit_selected_candidates(
             else candidate.transport_kind
         )
         key: GoalLoadKey = (reached.coord, kind)
-        goal_load[key] = goal_load.get(key, 0) + candidate.base_throughput
+        goal_load[key] = goal_load.get(key, 0) + 1
         confirmed.append(
             ConfirmedGenePlacement(
                 candidate_id=cid,

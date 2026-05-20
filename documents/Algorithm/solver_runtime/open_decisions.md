@@ -67,6 +67,8 @@ fallback to penalty-only pool when all remaining would overflow
 
 구현: `would_exceed_trunk_capacity`, `trunk_platform_capacity` in `candidate_score.py`.
 
+**2026-05-20 수정:** trunk load는 **platform count** (`assigned + 1 > capacity`). 이전 `base_throughput` 합산은 문서와 불일치했으며, ×16 bundle이 goal당 1개로만 선택되는 회귀 원인이었다.
+
 **v1.1 (미착수):**
 
 ```text

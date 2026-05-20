@@ -66,6 +66,12 @@ CANON 아님. [`django_apps/web/static/web/js/asteroid_miner_layout_lab.js`](../
 - 스프라이트는 **`background-image`가 아니라 `<img class="lab-cell-sprite">`** 로만 그린다. 회전은 **`img`에만** `transform`을 적용한다. 벡터 SVG 확대 시 **`image-rendering: auto`** 를 둔다(`crisp-edges`는 `<img>` 벡터에서 흐림·픽셀화를 유발할 수 있음).
 - 베이스 URL은 `#lab-root`의 `data-lab-sprite-base`(Django `{% static 'web/assets/sprites/' %}`)에서 읽는다.
 
+## 셀 모양·크기
+
+- Lab 리플레이 격자 셀(`.lab-cell`, `.lab-cell-sprite-layer`)은 **둥근 사각형**이다. `#lab-replay-grid`의 `--lab-cell-radius`를 쓴다(기본 4px; JS가 `applyLabGridLayoutForZoom`에서 갱신).
+- 계산: `round(cellPx × 0.14)`, clamp **`[2, 7]`** px. 데모 SSR 기본 셀은 `h-7 w-7`(28px); 리플레이 fit 상한 `maxCell` 36px.
+- Admin 유전자 미니맵(`genetic_sample_mini_map`)은 동일 비율을 인라인 `border-radius`로 적용한다(`_mini_map_cell_radius_px`; 기본 `cell_px` 52).
+
 ## 번들 브리지
 
 - `bundle_links` 문자열의 `e` / `s` / `w` / `n`은 `LINK_KEY_TO_DIR` → `DIR_TO_BRIDGE_SUFFIX`를 거쳐 `lab-bundle-bridge-*` 클래스로만 붙인다 (CSS 기하는 [`assets/css/input.css`](../../assets/css/input.css)의 `#lab-replay-grid --lab-cell-gap`과 정합).

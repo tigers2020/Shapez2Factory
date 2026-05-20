@@ -97,6 +97,7 @@
   /* Lab replay grid: single source for Tailwind gap-1 (0.25rem) and bundle gap bridges. */
   #lab-replay-grid {
     --lab-cell-gap: 0.25rem;
+    --lab-cell-radius: 4px;
     gap: var(--lab-cell-gap);
   }
 
@@ -158,6 +159,7 @@
   .lab-cell {
     position: relative;
     overflow: visible;
+    border-radius: var(--lab-cell-radius, 4px);
   }
 
   .lab-cell-sprite-layer {
@@ -169,7 +171,7 @@
     justify-content: center;
     pointer-events: none;
     overflow: hidden;
-    border-radius: 5px;
+    border-radius: var(--lab-cell-radius, 4px);
   }
 
   .lab-cell-sprite {

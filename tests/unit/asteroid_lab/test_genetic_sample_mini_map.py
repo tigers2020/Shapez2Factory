@@ -52,7 +52,7 @@ def _by_server(cells: list[dict[str, int | str]]) -> dict[tuple[int, int], dict[
 def test_for_list_wrap_includes_four_by_four_viewport_css(
     lab_sprite_identifiers_for_admin: object,
 ) -> None:
-    """Changelist mini-map: outer box fits 4×4 cells at 44px (see genetic_sample_mini_map)."""
+    """Changelist mini-map: outer box fits 4×4 cells at 52px (see genetic_sample_mini_map)."""
 
     decoded = {
         "V": 88,
@@ -64,12 +64,13 @@ def test_for_list_wrap_includes_four_by_four_viewport_css(
         },
     }
     html = str(genetic_sample_mini_map_html(decoded, for_list=True))
-    cell_px, cols, rows, gap, pad = 44, 4, 4, 2, 12
+    cell_px, cols, rows, gap, pad = 52, 4, 4, 2, 12
     vw = cols * cell_px + (cols - 1) * gap + pad
     vh = rows * cell_px + (rows - 1) * gap + pad
-    assert vw == vh == 194
+    assert vw == vh == 226
     assert f"min-width:{vw}px" in html
     assert f"max-height:{vh}px" in html
+    assert "border-radius:" in html
 
 
 @pytest.mark.django_db

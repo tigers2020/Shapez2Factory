@@ -59,7 +59,7 @@
 
   /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. ``relative`` anchors the sprite layer. */
   const LAB_CELL_BASE =
-    "lab-cell relative shrink-0 overflow-visible rounded-[5px] border bg-slate-950 border-slate-900";
+    "lab-cell relative shrink-0 overflow-visible border bg-slate-950 border-slate-900";
 
   /** Map blueprint ``T`` (:class:`ShapezGameIdentifier` ``value``) → ``sprite_static_relpath``; from ``json_script`` id ``lab-identifier-sprite-paths-data``. */
   let labIdentifierSpriteRelpaths = {};
@@ -1091,6 +1091,8 @@
         /* ~0.25rem at ~20px cells in CSS; gap scales with stage ``scale()`` via world cell size. */
         const gapPx = Math.max(0, Math.round(cellPx * 0.2));
         gridEl.style.setProperty("--lab-cell-gap", gapPx + "px");
+        const radiusPx = Math.max(2, Math.min(7, Math.round(cellPx * 0.14)));
+        gridEl.style.setProperty("--lab-cell-radius", radiusPx + "px");
       }
       syncLabReplayStageSizeFromGrid();
       applyLabViewportTransform();
@@ -1143,7 +1145,7 @@
 
       const padPx = 16;
       const minCell = 4;
-      const maxCell = 28;
+      const maxCell = 36;
 
       function applyReplayGridSizing() {
         if (!gridViewport || !replayLayout) return;

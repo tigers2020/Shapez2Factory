@@ -23,7 +23,7 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
 )
 
 # Change-form preview: larger cells. Changelist uses same cell size inside a scroll box.
-_DEFAULT_CELL_PX = 44
+_DEFAULT_CELL_PX = 52
 _GAP_PX = 2
 # Admin grid: never smaller than this (empty cells if blueprint bbox is tighter).
 _MIN_ADMIN_GRID_COLS = 4
@@ -80,6 +80,12 @@ def _mini_map_cell_block(
     return inner, sprite_relpath, deg
 
 
+def _mini_map_cell_radius_px(cell_px: int) -> int:
+    """Match Lab ``--lab-cell-radius``: round(cellPx * 0.14), clamp [2, 7]."""
+
+    return max(2, min(7, round(cell_px * 0.14)))
+
+
 def _genetic_sample_mini_map_cell_div(
     *,
     sx: int,
@@ -88,13 +94,15 @@ def _genetic_sample_mini_map_cell_div(
     inner: SafeString | str,
     sprite_relpath: str,
     rot_deg: int,
+    cell_px: int,
 ) -> SafeString:
+    radius_px = _mini_map_cell_radius_px(cell_px)
     return format_html(
         '<div class="genetic-sample-mini-map-cell" '
         'data-server-x="{}" data-server-y="{}" '
         'data-grid-row="{}" data-grid-col="{}" data-linear-index="{}" data-sprite="{}" '
         'data-rotation-deg="{}" style="background:#020617;border:1px solid #1e293b;'
-        'display:flex;align-items:center;justify-content:center;overflow:hidden;">'
+        'border-radius:{}px;display:flex;align-items:center;justify-content:center;overflow:hidden;">'
         "{}</div>",
         sx,
         sy,
@@ -103,6 +111,7 @@ def _genetic_sample_mini_map_cell_div(
         coord.linear_index,
         sprite_relpath,
         rot_deg,
+        radius_px,
         inner,
     )
 
@@ -148,6 +157,7 @@ def _genetic_sample_mini_map_cells_html(
                     inner=inner,
                     sprite_relpath=sprite_relpath,
                     rot_deg=rot_deg,
+                    cell_px=cell_px,
                 )
             )
     return cells_html

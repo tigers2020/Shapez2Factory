@@ -50,6 +50,13 @@ def test_lab_page_context_includes_solver_runs_for_project() -> None:
     assert ctx["runs"][0]["first_issue_code"] == "orphan_transport"
 
 
+def test_lab_cell_neutral_rounded_rect_not_circle() -> None:
+    """Lab SSR cells use h-7 w-7; radius comes from CSS --lab-cell-radius, not rounded-[5px]."""
+
+    assert "h-7 w-7" in alc.LAB_CELL_NEUTRAL
+    assert "rounded-[5px]" not in alc.LAB_CELL_NEUTRAL
+
+
 @pytest.mark.django_db
 def test_lab_page_context_neutral_when_no_replay_frames() -> None:
     m.AsteroidProject.objects.create(name="Empty", slug="empty-lab-ctx")

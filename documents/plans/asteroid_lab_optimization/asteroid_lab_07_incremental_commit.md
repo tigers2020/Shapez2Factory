@@ -191,18 +191,18 @@ candidate가 commit 실패하면 해당 candidate만 rollback한다.
 ## Invariant
 
 ```text
-[x] confirmed placement must have connected route (재-probe 성공 스냅샷)
-[x] failed commit must not mutate confirmed routes
-[x] shape belt and fluid pipe reservations are separated
-[x] route reservation does not occupy extractor/extension cells
-[x] rollback is local and reversible
-[x] RouteReservation.reservation_id가 Phase 8 route_reservation_id와 동일 규칙으로 생성된다
-[x] CONFIRMED 후 route_domain 재빌드가 후속 probe 입력에 반영된다
-[x] commit 시도 순서는 선택 genome의 `Gene.commit_order` 정본 (rim 스캔·candidate 생성 순을 기본 commit 순서로 쓰지 않음)
-[x] reserved_cells 집합이 path와 모순 없이 동기화된다 (Validation Phase 8 교차)
-[x] domain_cell_transitions의 각 원소가 RouteClass 계약과 모순 없다 (빈 튜플은 “route_class 변경 없음”을 의미할 수 있음)
-[x] RecoveryBudget 초과 시 thrashing이 무한 반복되지 않는다
-[x] `blocked_cells` 경로 교차는 `HARD_BLOCKED_CONFLICT`, 보호 복도 **정책 위반**은 `HARD_PROTECTED_CONFLICT`로 구분한다 (의미 혼선 금지)
+[ ] confirmed placement must have connected route (재-probe 성공 스냅샷)
+[ ] failed commit must not mutate confirmed routes
+[ ] shape belt and fluid pipe reservations are separated
+[ ] route reservation does not occupy extractor/extension cells
+[ ] rollback is local and reversible
+[ ] RouteReservation.reservation_id가 Phase 8 route_reservation_id와 동일 규칙으로 생성된다
+[ ] CONFIRMED 후 route_domain 재빌드가 후속 probe 입력에 반영된다
+[ ] commit 시도 순서는 선택 genome의 `Gene.commit_order` 정본 (rim 스캔·candidate 생성 순을 기본 commit 순서로 쓰지 않음)
+[ ] reserved_cells 집합이 path와 모순 없이 동기화된다 (Validation Phase 8 교차)
+[ ] domain_cell_transitions의 각 원소가 RouteClass 계약과 모순 없다 (빈 튜플은 “route_class 변경 없음”을 의미할 수 있음)
+[ ] RecoveryBudget 초과 시 thrashing이 무한 반복되지 않는다
+[ ] `blocked_cells` 경로 교차는 `HARD_BLOCKED_CONFLICT`, 보호 복도 **정책 위반**은 `HARD_PROTECTED_CONFLICT`로 구분한다 (의미 혼선 금지)
 ```
 
 ## 테스트
@@ -239,12 +239,12 @@ test_incremental_commit_occupied_cell_conflict_on_path
 ## 완료 조건
 
 ```text
-[x] best genome commit pipeline 구현
-[x] RouteReservation (reservation_id·reached_goal·goal_priority·state·domain_cell_transitions) 구현
-[x] RecoveryBudget 계약 및 초과 시 종료 경로
-[x] CommitConflictReason StrEnum (`HARD_BLOCKED_CONFLICT`·`HARD_PROTECTED_CONFLICT` 등)
-[x] commit 후 route_domain 갱신 계약 구현·테스트
-[x] commit 시도 순서가 genome `Gene.commit_order` 정본(생성·rim 순 기본값 아님)
-[x] local rollback 구현
-[x] confirmed route invariant 테스트 통과
+[ ] best genome commit pipeline 구현
+[ ] RouteReservation (reservation_id·reached_goal·goal_priority·state·domain_cell_transitions) 구현
+[ ] RecoveryBudget 계약 및 초과 시 종료 경로
+[ ] CommitConflictReason StrEnum (`HARD_BLOCKED_CONFLICT`·`HARD_PROTECTED_CONFLICT` 등)
+[ ] commit 후 route_domain 갱신 계약 구현·테스트
+[ ] commit 시도 순서가 genome `Gene.commit_order` 정본(생성·rim 순 기본값 아님)
+[ ] local rollback 구현
+[ ] confirmed route invariant 테스트 통과
 ```

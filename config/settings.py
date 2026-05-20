@@ -1,7 +1,6 @@
 """Django settings for the shapez2 factory planner scaffold."""
 
 import os
-import sys
 from pathlib import Path
 
 import dj_database_url
@@ -120,11 +119,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# pytest-django loads settings after ``import pytest``; skip slow PBKDF2 + validators in tests only.
-if "pytest" in sys.modules:
-    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
-    AUTH_PASSWORD_VALIDATORS = []
-
 LANGUAGE_CODE = "en"
 TIME_ZONE = "UTC"
 USE_I18N = True
@@ -139,10 +133,6 @@ LOCALE_PATHS = [BASE_DIR / "locale"]
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-
-# Lab shell ``asteroid_miner_layout_lab.js`` URL query; bump or set
-# ``SHAPEZ_LAB_JS_VERSION`` to bust cache.
-SHAPEZ_LAB_JS_VERSION = os.environ.get("SHAPEZ_LAB_JS_VERSION", "4").strip() or "4"
 
 # General user uploads (not shape part sprites; see SHAPE_PART_SPRITE_*).
 MEDIA_URL = "/media/"

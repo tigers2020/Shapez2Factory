@@ -9,6 +9,7 @@ from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.server_coords import (
+    coerce_server_axis_int,
     map_bbox_dense_and_y,
     raw_x_to_dense_index,
     server_xy_for_raw_xy,

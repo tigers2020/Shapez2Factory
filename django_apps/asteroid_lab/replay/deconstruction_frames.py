@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO

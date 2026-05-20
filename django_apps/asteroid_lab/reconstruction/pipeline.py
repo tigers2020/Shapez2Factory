@@ -172,6 +172,11 @@ def reconstruct_after_cleanup(
 
     if bbox_bounds is None:
         summary["skip_reason"] = "no_topology_barriers"
+        stamped = stamp_islands_uniform(
+            tuple(sorted(stripped, key=sort_key_xy_layer)),
+            original_cells=original_cells,
+            removed_building_cells=removed_building_cells,
+        )
         if trace_collector is not None:
             trace_collector.append(
                 ReconstructionTraceEvent(
@@ -189,10 +194,11 @@ def reconstruct_after_cleanup(
                 ReconstructionTraceEvent(
                     phase="reconstruction",
                     trace_event_type="reconstruction_final",
-                    coords=frozenset(),
+                    coords=frozenset((c.x, c.y) for c in stamped),
                     summary_json={
                         "event_key": "step4_09_reconstruction_final",
                         "trace_event_type": "reconstruction_final",
+                        "coord_space": "raw_xy",
                     },
                 )
             )
@@ -351,7 +357,7 @@ def reconstruct_after_cleanup(
             sx: int | None = None
             sy: int | None = None
             if server_xy_params is not None:
-                pair = server_xy_for_raw_xy(
+                sx, sy = server_xy_for_layout_line_xy(
                     x,
                     y,
                     min_dense_x=server_xy_params[0],
@@ -667,10 +673,12 @@ def reconstruct_after_cleanup(
             ReconstructionTraceEvent(
                 phase="reconstruction",
                 trace_event_type="reconstruction_final",
-                coords=frozenset(),
+                coords=frozenset((c.x, c.y) for c in out_cells),
                 summary_json={
                     "event_key": "step4_09_reconstruction_final",
                     "trace_event_type": "reconstruction_final",
+                    "coord_space": "raw_xy",
+                    "filled_hole_cell_count": len(filled),
                 },
             )
         )

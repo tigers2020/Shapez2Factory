@@ -43,6 +43,7 @@
   }
 
   #lab-replay-grid,
+  #lab-optimization-overlay-layer,
   .lab-cell,
   .lab-cell-sprite-layer {
     user-select: none;

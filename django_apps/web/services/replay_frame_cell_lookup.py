@@ -158,6 +158,14 @@ def lookup_cell_in_serialized_frame(
     sources: dict[str, Any] = {}
     base_layers: list[dict[str, Any]] = []
 
+    overlay_matches: list[dict[str, Any]] = []
+    ov2 = ser.get("cell_overlay_json")
+    if isinstance(ov2, dict):
+        overlay_cells = _collect_overlay_cells(ov2)
+        overlay_matches = [dict(m) for m in _cells_at_xy(overlay_cells, x, y)]
+        if overlay_matches:
+            sources["overlay_cells_matched"] = len(overlay_matches)
+
     full_map_raw = ser.get("full_map")
     if isinstance(full_map_raw, list) and len(full_map_raw) > 0:
         for row in full_map_raw:
@@ -185,13 +193,8 @@ def lookup_cell_in_serialized_frame(
     if base_layers:
         return _merge_layers(base_layers), sources
 
-    ov2 = ser.get("cell_overlay_json")
-    if isinstance(ov2, dict):
-        overlay_cells = _collect_overlay_cells(ov2)
-        matches = _cells_at_xy(overlay_cells, x, y)
-        if matches:
-            sources["overlay_cells_matched"] = len(matches)
-            return _merge_layers([dict(m) for m in matches]), sources
+    if overlay_matches:
+        return _merge_layers(overlay_matches), sources
 
     synthetic, syn_src = _try_synthetic_lab_empty(ser, x, y)
     if synthetic is not None:

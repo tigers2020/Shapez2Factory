@@ -79,6 +79,35 @@ def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[s
     return decoded_json
 
 
+def dense_x_layout_line_including_zero(x: int) -> int:
+    """Dense column index for integer layout ``x`` when ``x == 0`` is allowed (world / flatten).
+
+    Shapez2 blueprint **raw** columns omit ``x == 0``; see :func:`raw_x_to_dense_x`. Upstream may
+    still attach ``X == 0`` after offsets (e.g. parent + local). Map that seam placeholder to the
+    same dense index as raw ``x == -1`` so :func:`server_xy_for_layout_line_xy` stays contiguous
+    with the negative branch and matches :func:`server_xy_for_raw_xy` for ``x == -1``.
+    """
+
+    if x < 0:
+        return (x + 1) // 2
+    if x == 0:
+        return 0
+    return (x - 1) // 2 + 1
+
+
+def server_xy_for_layout_line_xy(
+    x: int,
+    raw_y: int,
+    *,
+    max_dense_x: int,
+    min_raw_y: int,
+) -> tuple[int, int]:
+    """Server coords for layout ``x`` including ``x == 0`` (not only strict blueprint raw)."""
+
+    dense_x = dense_x_layout_line_including_zero(x)
+    return (max_dense_x - dense_x, raw_y - min_raw_y)
+
+
 def server_xy_for_raw_xy(
     raw_x: int,
     raw_y: int,
@@ -156,5 +185,6 @@ __all__ = [
     "map_bbox_dense_and_y",
     "raw_x_to_dense_index",
     "raw_x_to_dense_x",
+    "server_xy_for_layout_line_xy",
     "server_xy_for_raw_xy",
 ]

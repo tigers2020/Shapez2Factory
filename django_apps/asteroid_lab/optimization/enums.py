@@ -42,6 +42,7 @@ class RouteProbeFailureReason(StrEnum):
     BLOCKED_BY_OCCUPIED = "blocked_by_occupied"
     INVALID_TRANSPORT_KIND = "invalid_transport_kind"
     INVALID_ROUTE_DOMAIN = "invalid_route_domain"
+    WALL_CLOCK_ABORT = "wall_clock_abort"
 
 
 class CandidateRejectReason(StrEnum):
@@ -82,6 +83,7 @@ class EvolutionConvergenceReason(StrEnum):
     MAX_GENERATION = "max_generation"
     MAX_STALL_GENERATION = "max_stall_generation"
     TIME_BUDGET_MS = "time_budget_ms"
+    WALL_CLOCK_DEADLINE = "wall_clock_deadline"
     NO_IMPROVEMENT = "no_improvement"
     CANDIDATE_POOL_EXHAUSTED = "candidate_pool_exhausted"
 

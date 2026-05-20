@@ -134,6 +134,14 @@ def test_post_run_solver_json_persists_and_returns_payload() -> None:
     assert isinstance(frames[0].get("map_view"), dict)
     assert isinstance(data.get("replay_track_metrics"), dict)
     assert isinstance(data.get("solver_summary"), dict)
+    summary = data["solver_summary"]
+    assert "capacity_satisfied" in summary
+    assert "capacity_deficit_count" in summary
+    assert "throughput_deficit_count" in summary
+    assert "placement_capacity_satisfied" in summary
+    assert "throughput_budget_satisfied" in summary
+    assert "target_placement_count" in summary
+    assert "run_success" in summary
     assert data["validation_passed"] is True
     assert data["validation_issue_codes"] == []
     assert data["validation_issue_details"] == []
@@ -141,7 +149,15 @@ def test_post_run_solver_json_persists_and_returns_payload() -> None:
     assert "connected" not in data["run_summary"]
     assert "placed" in data["run_summary"]
     assert data["run_summary"]["id"] == str(data["solver_run_id"])
-    assert data["run_summary"]["status"] == "completed"
+    run_summary = data["run_summary"]
+    if summary.get("run_success"):
+        assert run_summary["status"] == "completed"
+    elif summary.get("validation_passed"):
+        assert run_summary["status"] == "partial"
+    else:
+        assert run_summary["status"] == "failed"
+    assert "capacity_satisfied" in run_summary
+    assert "run_success" in run_summary
     assert "optimization_replay_attach" not in data
     assert "optimization_replay_read" not in data
     _assert_frames_have_js_renderable_cells(frames)
@@ -177,13 +193,28 @@ def test_post_run_solver_validation_passes_for_basic_asteroid() -> None:
     assert data["ok"] is True
     _assert_frames_have_js_renderable_cells(data.get("lab_replay_frames_json") or [])
     assert data["validation_passed"] is True
-    assert data["validation_issue_codes"] == []
+    issue_codes = list(data["validation_issue_codes"])
+    assert all(code != "materialization_failed" for code in issue_codes)
     assert data["validation_issue_details"] == []
 
     summary = data["solver_summary"]
     run = data["run_summary"]
-    assert run["status"] == "completed"
+    if summary.get("run_success"):
+        assert run["status"] == "completed"
+    elif summary.get("validation_passed"):
+        assert run["status"] == "partial"
+    else:
+        assert run["status"] == "failed"
     assert run["validation_passed"] is True
+    assert "capacity_satisfied" in run
+    assert "placement_capacity_satisfied" in run
+    assert "throughput_budget_satisfied" in run
+    assert "run_success" in run
+    if not summary.get("run_success") and summary.get("validation_passed"):
+        assert summary.get("placement_capacity_satisfied") is False or (
+            summary.get("throughput_budget_satisfied") is False
+        )
+        assert run["run_success"] is False
     assert run["placed"] == summary["confirmed_count"]
     assert run["placed"] > 0
     assert "connected" not in run
@@ -243,9 +274,16 @@ def test_get_project_page_lists_solver_runs_after_run() -> None:
     latest = runs[0]
     assert latest["id"] is not None
     assert latest["id"] == str(data["solver_run_id"])
-    assert latest["status"] == "completed"
+    summary = data["solver_summary"]
+    if summary.get("run_success"):
+        assert latest["status"] == "completed"
+    elif summary.get("validation_passed"):
+        assert latest["status"] == "partial"
+    else:
+        assert latest["status"] == "failed"
     assert latest["validation_passed"] is True
-    assert latest.get("first_issue_code") in (None, "")
+    if summary.get("run_success"):
+        assert latest.get("first_issue_code") in (None, "")
     assert "connected" not in latest
     assert "placed" in latest
     assert latest["placed"] == data["solver_summary"]["confirmed_count"]

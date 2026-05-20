@@ -145,6 +145,7 @@ class SolverRun(models.Model):
         PENDING = "pending", "Pending"
         RUNNING = "running", "Running"
         COMPLETED = "completed", "Completed"
+        PARTIAL = "partial", "Partial"
         FAILED = "failed", "Failed"
         CANCELLED = "cancelled", "Cancelled"
 

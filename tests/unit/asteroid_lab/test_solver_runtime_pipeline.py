@@ -7,6 +7,7 @@ from pathlib import Path
 from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
     BundleSelectionTargets,
 )
+from django_apps.asteroid_lab.optimization.candidate_selector import SelectedCandidatePlan
 from django_apps.asteroid_lab.optimization.commit_best_candidates import IncrementalCommitResult
 from django_apps.asteroid_lab.optimization.enums import (
     ValidationIssueCode,
@@ -19,12 +20,17 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     greenfield_optimization_input,
 )
 from django_apps.asteroid_lab.optimization.loaded_snapshot import LoadedReconstructionSnapshot
-from django_apps.asteroid_lab.optimization.materialization_dtos import MaterializedLayoutCells
+from django_apps.asteroid_lab.optimization.materialization_dtos import (
+    MaterializedLayoutCells,
+    RouteMaterializationResult,
+)
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_loaded_snapshot,
 )
+from django_apps.asteroid_lab.optimization.timing_metrics import SolverRuntimeTimingMetrics
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.services.solver_runtime_pipeline import (
+    _build_solver_summary,
     _gate_c_branch_hint,
     run_solver_runtime_pipeline,
 )
@@ -90,6 +96,16 @@ def test_pipeline_runs_end_to_end_without_orm() -> None:
     assert "target_miner_bundle_count" in result.solver_summary
     assert "best_genome_enabled_gene_count" in result.solver_summary
     assert "commit_attempt_count" in result.solver_summary
+    for key in (
+        "capacity_satisfied",
+        "capacity_deficit_count",
+        "throughput_deficit_count",
+        "placement_capacity_satisfied",
+        "throughput_budget_satisfied",
+        "target_placement_count",
+        "run_success",
+    ):
+        assert key in result.solver_summary
 
 
 def test_solver_summary_includes_commit_skip_reason_fields() -> None:
@@ -312,6 +328,140 @@ def test_validation_warns_under_target_throughput_without_failing() -> None:
     assert len(matching) == 1, f"expected 1 UNDER_TARGET_THROUGHPUT issue, got {len(matching)}"
     assert matching[0].severity == ValidationSeverity.WARNING
     assert "confirmed throughput is below selection target" in matching[0].message
+
+
+def _minimal_pool_metrics() -> dict[str, int]:
+    return {
+        "projected_candidate_count_before_probe": 0,
+        "normal_candidate_count_after_probe": 0,
+        "rejected_candidate_count": 0,
+        "deduped_candidate_count": 0,
+    }
+
+
+def test_build_solver_summary_capacity_fields_when_under_target() -> None:
+    targets = BundleSelectionTargets(
+        route_out_count=7,
+        miners_per_shape_route=12,
+        pumps_per_fluid_route=1,
+        target_miner_bundle_count=84,
+        shape_route_out_count=7,
+        fluid_route_out_count=0,
+    )
+    summary = _build_solver_summary(
+        validation_passed=True,
+        commit_count=6,
+        skipped_records=(),
+        materialization=RouteMaterializationResult(layout=None, failure_reason=None),
+        issues=(),
+        timing=SolverRuntimeTimingMetrics(),
+        targets=targets,
+        raw_pattern_count=0,
+        pool_metrics=_minimal_pool_metrics(),
+        plan=SelectedCandidatePlan(ordered_candidate_ids=()),
+        commit_attempt_count=6,
+        throughput_metrics={
+            "target_throughput": 84,
+            "normal_pool_throughput": 6,
+            "selected_throughput": 6,
+            "confirmed_throughput": 6,
+            "unique_gene_ids_used_count": 1,
+        },
+        anchor_metrics={},
+        generation_metrics={},
+    )
+    assert summary["validation_passed"] is True
+    assert summary["placement_capacity_satisfied"] is False
+    assert summary["throughput_budget_satisfied"] is False
+    assert summary["capacity_satisfied"] is False
+    assert summary["capacity_deficit_count"] == 78
+    assert summary["throughput_deficit_count"] == 78
+    assert summary["run_success"] is False
+
+
+def test_build_solver_summary_run64_mirror() -> None:
+    """Run #64: 6 placements, throughput 96/84 — placement fails, throughput OK."""
+
+    targets = BundleSelectionTargets(
+        route_out_count=7,
+        miners_per_shape_route=12,
+        pumps_per_fluid_route=1,
+        target_miner_bundle_count=84,
+        shape_route_out_count=7,
+        fluid_route_out_count=0,
+    )
+    summary = _build_solver_summary(
+        validation_passed=True,
+        commit_count=6,
+        skipped_records=(),
+        materialization=RouteMaterializationResult(layout=None, failure_reason=None),
+        issues=(),
+        timing=SolverRuntimeTimingMetrics(),
+        targets=targets,
+        raw_pattern_count=102,
+        pool_metrics=_minimal_pool_metrics(),
+        plan=SelectedCandidatePlan(ordered_candidate_ids=("a", "b", "c", "d", "e", "f")),
+        commit_attempt_count=6,
+        throughput_metrics={
+            "target_throughput": 84,
+            "normal_pool_throughput": 1024,
+            "selected_throughput": 96,
+            "confirmed_throughput": 96,
+            "unique_gene_ids_used_count": 4,
+        },
+        anchor_metrics={},
+        generation_metrics={},
+    )
+    assert summary["confirmed_count"] == 6
+    assert summary["target_miner_bundle_count"] == 84
+    assert summary["target_placement_count"] == 84
+    assert summary["target_throughput"] == 84
+    assert summary["confirmed_throughput"] == 96
+    assert summary["placement_capacity_satisfied"] is False
+    assert summary["throughput_budget_satisfied"] is True
+    assert summary["capacity_satisfied"] is False
+    assert summary["run_success"] is False
+    assert summary["capacity_deficit_count"] == 78
+    assert summary["throughput_deficit_count"] == 0
+
+
+def test_build_solver_summary_run_success_when_capacity_met() -> None:
+    targets = BundleSelectionTargets(
+        route_out_count=1,
+        miners_per_shape_route=12,
+        pumps_per_fluid_route=1,
+        target_miner_bundle_count=12,
+        shape_route_out_count=1,
+        fluid_route_out_count=0,
+    )
+    summary = _build_solver_summary(
+        validation_passed=True,
+        commit_count=12,
+        skipped_records=(),
+        materialization=RouteMaterializationResult(layout=None, failure_reason=None),
+        issues=(),
+        timing=SolverRuntimeTimingMetrics(),
+        targets=targets,
+        raw_pattern_count=0,
+        pool_metrics=_minimal_pool_metrics(),
+        plan=SelectedCandidatePlan(ordered_candidate_ids=()),
+        commit_attempt_count=12,
+        throughput_metrics={
+            "target_throughput": 12,
+            "normal_pool_throughput": 12,
+            "selected_throughput": 12,
+            "confirmed_throughput": 12,
+            "unique_gene_ids_used_count": 1,
+        },
+        anchor_metrics={},
+        generation_metrics={},
+    )
+    assert summary["placement_capacity_satisfied"] is True
+    assert summary["throughput_budget_satisfied"] is True
+    assert summary["capacity_satisfied"] is True
+    assert summary["capacity_deficit_count"] == 0
+    assert summary["throughput_deficit_count"] == 0
+    assert summary["run_success"] is True
 
 
 def test_pipeline_solver_summary_is_deterministic() -> None:

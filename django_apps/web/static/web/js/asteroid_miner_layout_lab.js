@@ -259,6 +259,41 @@
     }
   }
 
+  function runCapacityFailed(run) {
+    if (!run || typeof run !== "object") return false;
+    if (run.run_success === true || run.capacity_satisfied === true) return false;
+    if (run.status === "partial") return true;
+    return run.validation_passed === true && run.capacity_satisfied === false;
+  }
+
+  function capacityFailedStatusText(run) {
+    const placed =
+      run.placed != null && run.placed !== "" && run.placed !== "—" ? run.placed : "—";
+    const target =
+      run.target_miner_bundle_count != null && run.target_miner_bundle_count !== ""
+        ? run.target_miner_bundle_count
+        : run.target_placement_count != null
+          ? run.target_placement_count
+          : "—";
+    let text =
+      "validation passed, capacity failed, placements short: " +
+      String(placed) +
+      " / " +
+      String(target);
+    if (run.throughput_budget_satisfied === true) {
+      const tp =
+        run.confirmed_throughput != null && run.confirmed_throughput !== ""
+          ? run.confirmed_throughput
+          : "—";
+      const tgtTp =
+        run.target_throughput != null && run.target_throughput !== ""
+          ? run.target_throughput
+          : target;
+      text += ", throughput OK: " + String(tp) + " / " + String(tgtTp);
+    }
+    return text;
+  }
+
   function renderReplayRunStatus(feedback) {
     const runEl = document.getElementById("lab-replay-run-status");
     if (!runEl) return;
@@ -279,6 +314,10 @@
             ? "failed"
             : "—";
       let statusText = "run: id " + String(feedback.solver_run_id) + " validation " + vp;
+      const rs = feedback.run_summary;
+      if (rs && runCapacityFailed(rs)) {
+        statusText += " (" + capacityFailedStatusText(rs) + ")";
+      }
       if (feedback.gene_template_source && feedback.gene_template_source.gene_count != null) {
         statusText += " genes:" + String(feedback.gene_template_source.gene_count);
       }
@@ -1460,7 +1499,10 @@
       if (run.status === "failed" || run.validation_passed === false) {
         return "validation failed";
       }
-      if (run.status === "completed" || run.validation_passed === true) {
+      if (runCapacityFailed(run)) {
+        return capacityFailedStatusText(run);
+      }
+      if (run.status === "completed" || run.run_success === true) {
         return "completed";
       }
       return run.status != null ? String(run.status) : "—";
@@ -1565,14 +1607,23 @@
 
     function evolutionRunButtonClasses(run, selected) {
       const failed = run && (run.status === "failed" || run.validation_passed === false);
+      const partial = run && !failed && runCapacityFailed(run);
       if (selected) {
-        return failed
-          ? "w-full rounded-xl border p-3 text-left transition border-rose-500/80 bg-rose-950/40"
-          : "w-full rounded-xl border p-3 text-left transition border-cyan-500 bg-cyan-500/10";
+        if (failed) {
+          return "w-full rounded-xl border p-3 text-left transition border-rose-500/80 bg-rose-950/40";
+        }
+        if (partial) {
+          return "w-full rounded-xl border p-3 text-left transition border-amber-500/80 bg-amber-950/40";
+        }
+        return "w-full rounded-xl border p-3 text-left transition border-cyan-500 bg-cyan-500/10";
       }
-      return failed
-        ? "w-full rounded-xl border p-3 text-left transition border-rose-800/80 bg-rose-950/20 hover:border-rose-700"
-        : "w-full rounded-xl border p-3 text-left transition border-slate-800 bg-slate-900 hover:border-slate-700";
+      if (failed) {
+        return "w-full rounded-xl border p-3 text-left transition border-rose-800/80 bg-rose-950/20 hover:border-rose-700";
+      }
+      if (partial) {
+        return "w-full rounded-xl border p-3 text-left transition border-amber-800/80 bg-amber-950/20 hover:border-amber-700";
+      }
+      return "w-full rounded-xl border p-3 text-left transition border-slate-800 bg-slate-900 hover:border-slate-700";
     }
 
     function renderEvolutionRunsList(selectedRunId) {
@@ -1592,11 +1643,22 @@
         if (!run || run.id == null) return;
         const rid = String(run.id);
         const failed = run.status === "failed" || run.validation_passed === false;
+        const partial = !failed && runCapacityFailed(run);
         const btn = document.createElement("button");
         btn.type = "button";
         btn.setAttribute("data-lab-run-id", rid);
         btn.className = evolutionRunButtonClasses(run, selected === rid);
-        const scoreLabel = failed ? "validation failed" : run.score != null ? String(run.score) : "—";
+        const scoreLabel = failed
+          ? "validation failed"
+          : partial
+            ? "capacity failed (" +
+              String(run.placed != null ? run.placed : run.score) +
+              "/" +
+              String(run.target_miner_bundle_count) +
+              ")"
+            : run.score != null
+              ? String(run.score)
+              : "—";
         const sat =
           run.saturation != null && run.saturation !== "" && run.saturation !== "—"
             ? String(run.saturation) + "%"
@@ -1607,7 +1669,7 @@
           rid +
           "</div>" +
           '<div class="text-sm ' +
-          (failed ? "text-rose-300" : "text-cyan-300") +
+          (failed ? "text-rose-300" : partial ? "text-amber-300" : "text-cyan-300") +
           '">' +
           scoreLabel +
           "</div>" +
@@ -2202,6 +2264,7 @@
           replayRunFeedback = {
             solver_run_id: data.solver_run_id,
             validation_passed: data.validation_passed,
+            run_summary: data.run_summary || null,
             gene_template_source: data.gene_template_source || null,
           };
           renderReplayRunStatus(replayRunFeedback);

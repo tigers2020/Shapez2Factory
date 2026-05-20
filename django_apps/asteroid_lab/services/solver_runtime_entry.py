@@ -207,9 +207,14 @@ def run_solver_runtime_for_project(
         )
 
         validation_passed = bool(result.solver_summary.get("validation_passed"))
-        status = (
-            m.SolverRun.RunStatus.COMPLETED if validation_passed else m.SolverRun.RunStatus.FAILED
-        )
+        capacity_satisfied = bool(result.solver_summary.get("capacity_satisfied"))
+        run_success = validation_passed and capacity_satisfied
+        if run_success:
+            status = m.SolverRun.RunStatus.COMPLETED
+        elif validation_passed:
+            status = m.SolverRun.RunStatus.PARTIAL
+        else:
+            status = m.SolverRun.RunStatus.FAILED
         m.SolverRun.objects.filter(pk=run_id).update(status=status)
 
         frames, metrics = build_lab_replay_frames_for_project(int(project_id))
@@ -243,7 +248,14 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
         "gene_template_source": dict(result.gene_template_source),
     }
     if result.solver_run_id is not None:
-        ui_status = "completed" if result.validation_passed else "failed"
+        run_success = bool(summary.get("run_success"))
+        validation_passed = bool(summary.get("validation_passed"))
+        if run_success:
+            ui_status = "completed"
+        elif validation_passed:
+            ui_status = "partial"
+        else:
+            ui_status = "failed"
         body["run_summary"] = lab_run_summary_from_solver_summary(
             run_id=int(result.solver_run_id),
             status=ui_status,

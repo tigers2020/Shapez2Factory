@@ -37,6 +37,41 @@ def test_lab_run_summary_from_solver_summary_failed() -> None:
     assert row["first_issue_detail"] is None
 
 
+def test_lab_run_summary_capacity_fields_partial() -> None:
+    row = lab_run_summary_from_solver_summary(
+        run_id=64,
+        status="partial",
+        solver_summary={
+            "validation_passed": True,
+            "capacity_satisfied": False,
+            "run_success": False,
+            "placement_capacity_satisfied": False,
+            "throughput_budget_satisfied": True,
+            "confirmed_count": 6,
+            "confirmed_throughput": 96,
+            "target_miner_bundle_count": 84,
+            "target_placement_count": 84,
+            "target_throughput": 84,
+            "capacity_deficit_count": 78,
+            "throughput_deficit_count": 0,
+            "issue_codes": ["under_target_throughput"],
+        },
+    )
+    assert row["status"] == "partial"
+    assert row["validation_passed"] is True
+    assert row["capacity_satisfied"] is False
+    assert row["run_success"] is False
+    assert row["placement_capacity_satisfied"] is False
+    assert row["throughput_budget_satisfied"] is True
+    assert row["target_miner_bundle_count"] == 84
+    assert row["target_placement_count"] == 84
+    assert row["target_throughput"] == 84
+    assert row["confirmed_throughput"] == 96
+    assert row["capacity_deficit_count"] == 78
+    assert row["throughput_deficit_count"] == 0
+    assert row["placed"] == 6
+
+
 def test_lab_run_summary_placed_and_first_issue_detail() -> None:
     detail = {
         "issue_code": "extractor_not_connected",
@@ -97,3 +132,37 @@ def test_solver_runs_for_lab_project_orders_newest_first() -> None:
     assert rows[1]["id"] == str(older.pk)
     assert rows[1]["first_issue_code"] == "materialization_failed"
     assert lab_run_summary_from_orm(older)["status"] == "failed"
+
+
+def test_lab_run_summary_from_orm_partial_status() -> None:
+    proj = m.AsteroidProject.objects.create(name="Partial", slug="runs-partial")
+    partial = m.SolverRun.objects.create(
+        project=proj,
+        run_key="partial",
+        algorithm_label="runtime_v0",
+        status=m.SolverRun.RunStatus.PARTIAL,
+        config_json={
+            SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY: {
+                "validation_passed": True,
+                "capacity_satisfied": False,
+                "run_success": False,
+                "placement_capacity_satisfied": False,
+                "throughput_budget_satisfied": True,
+                "confirmed_count": 6,
+                "confirmed_throughput": 96,
+                "target_miner_bundle_count": 84,
+                "target_placement_count": 84,
+                "capacity_deficit_count": 78,
+                "throughput_deficit_count": 0,
+                "issue_codes": ["under_target_throughput"],
+            }
+        },
+    )
+    row = lab_run_summary_from_orm(partial)
+    assert row["status"] == "partial"
+    assert row["capacity_satisfied"] is False
+    assert row["placement_capacity_satisfied"] is False
+    assert row["throughput_budget_satisfied"] is True
+    assert row["placed"] == 6
+    assert row["capacity_deficit_count"] == 78
+    assert row["throughput_deficit_count"] == 0

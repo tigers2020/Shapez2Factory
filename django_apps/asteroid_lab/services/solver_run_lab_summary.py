@@ -23,11 +23,31 @@ def lab_run_summary_from_solver_summary(
     issue_codes = list(solver_summary.get("issue_codes") or [])
     issue_details = list(solver_summary.get("issue_details") or [])
     validation_passed = bool(solver_summary.get("validation_passed"))
+    capacity_satisfied = bool(solver_summary.get("capacity_satisfied"))
+    run_success = bool(solver_summary.get("run_success"))
+    placement_capacity_satisfied = bool(solver_summary.get("placement_capacity_satisfied"))
+    throughput_budget_satisfied = bool(solver_summary.get("throughput_budget_satisfied"))
     confirmed = solver_summary.get("confirmed_count", _PLACEHOLDER)
+    target = solver_summary.get("target_miner_bundle_count", _PLACEHOLDER)
+    target_placement = solver_summary.get("target_placement_count", target)
+    target_throughput = solver_summary.get("target_throughput", target)
+    confirmed_throughput = solver_summary.get("confirmed_throughput", _PLACEHOLDER)
+    capacity_deficit_count = solver_summary.get("capacity_deficit_count", _PLACEHOLDER)
+    throughput_deficit_count = solver_summary.get("throughput_deficit_count", _PLACEHOLDER)
     return {
         "id": str(run_id),
         "status": status,
         "validation_passed": validation_passed,
+        "capacity_satisfied": capacity_satisfied,
+        "run_success": run_success,
+        "placement_capacity_satisfied": placement_capacity_satisfied,
+        "throughput_budget_satisfied": throughput_budget_satisfied,
+        "target_miner_bundle_count": target,
+        "target_placement_count": target_placement,
+        "target_throughput": target_throughput,
+        "confirmed_throughput": confirmed_throughput,
+        "capacity_deficit_count": capacity_deficit_count,
+        "throughput_deficit_count": throughput_deficit_count,
         "issue_codes": issue_codes,
         "first_issue_code": issue_codes[0] if issue_codes else None,
         "first_issue_detail": issue_details[0] if issue_details else None,
@@ -50,6 +70,8 @@ def lab_run_summary_from_orm(run: m.SolverRun) -> dict[str, Any]:
     status = run.status
     if status == m.SolverRun.RunStatus.COMPLETED:
         ui_status = "completed"
+    elif status == m.SolverRun.RunStatus.PARTIAL:
+        ui_status = "partial"
     elif status == m.SolverRun.RunStatus.FAILED:
         ui_status = "failed"
     else:

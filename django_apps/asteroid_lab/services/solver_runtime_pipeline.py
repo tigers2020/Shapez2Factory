@@ -252,6 +252,16 @@ def _build_solver_summary(
     error_issues = _error_issues(issues)
     commit_rolled_back_count = len(skipped_records)
     skip_summary = _commit_skip_summary(skipped_records)
+    confirmed_tp = throughput_metrics["confirmed_throughput"]
+    target_placement_count = targets.target_miner_bundle_count
+    # v0: same numeric budget for placement count and throughput units (greedy-v0).
+    target_throughput = target_placement_count
+    placement_capacity_satisfied = commit_count >= target_placement_count
+    throughput_budget_satisfied = confirmed_tp >= target_throughput
+    capacity_satisfied = placement_capacity_satisfied and throughput_budget_satisfied
+    capacity_deficit_count = max(0, target_placement_count - commit_count)
+    throughput_deficit_count = max(0, target_throughput - confirmed_tp)
+    run_success = validation_passed and capacity_satisfied
     return {
         "validation_passed": validation_passed,
         "confirmed_count": commit_count,
@@ -267,6 +277,7 @@ def _build_solver_summary(
         "route_out_count": targets.route_out_count,
         "miners_per_route": targets.miners_per_shape_route,
         "target_miner_bundle_count": targets.target_miner_bundle_count,
+        "target_placement_count": target_placement_count,
         "raw_pattern_count": raw_pattern_count,
         "projected_candidate_count_before_probe": pool_metrics[
             "projected_candidate_count_before_probe"
@@ -278,15 +289,19 @@ def _build_solver_summary(
         "commit_attempt_count": commit_attempt_count,
         "commit_confirmed_count": commit_count,
         "commit_rolled_back_count": commit_rolled_back_count,
-        # NOTE:
-        # target_miner_bundle_count is historically named.
-        # In the runtime greedy-v0 contract it represents throughput target units,
-        # not a strict count of selected bundles.
-        "target_throughput": throughput_metrics["target_throughput"],
+        # NOTE: target_miner_bundle_count / target_placement_count / target_throughput
+        # share the same v0 numeric budget (route slots × miners_per_route).
+        "target_throughput": target_throughput,
         "normal_pool_throughput": throughput_metrics["normal_pool_throughput"],
         "selected_throughput": throughput_metrics["selected_throughput"],
         "confirmed_throughput": throughput_metrics["confirmed_throughput"],
         "unique_gene_ids_used_count": throughput_metrics["unique_gene_ids_used_count"],
+        "placement_capacity_satisfied": placement_capacity_satisfied,
+        "throughput_budget_satisfied": throughput_budget_satisfied,
+        "capacity_satisfied": capacity_satisfied,
+        "capacity_deficit_count": capacity_deficit_count,
+        "throughput_deficit_count": throughput_deficit_count,
+        "run_success": run_success,
         **anchor_metrics,
         **generation_metrics,
     }

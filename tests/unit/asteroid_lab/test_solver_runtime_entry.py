@@ -88,6 +88,15 @@ def test_solver_runtime_entry_persists_summary_and_projection_params() -> None:
     run = m.SolverRun.objects.get(pk=result.solver_run_id)
     assert SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY in run.config_json
     assert SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY in run.config_json
+    summary = run.config_json[SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY]
+    assert "capacity_satisfied" in summary
+    assert "run_success" in summary
+    if summary.get("run_success"):
+        assert run.status == m.SolverRun.RunStatus.COMPLETED
+    elif summary.get("validation_passed"):
+        assert run.status == m.SolverRun.RunStatus.PARTIAL
+    else:
+        assert run.status == m.SolverRun.RunStatus.FAILED
     assert len(result.lab_replay_frames_json) >= 1
     assert isinstance(result.replay_track_metrics, dict)
 

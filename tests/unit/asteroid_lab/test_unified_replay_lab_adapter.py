@@ -22,7 +22,9 @@ from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, Repla
 from django_apps.asteroid_lab.replay.unified_event_coverage import SUPPORTED_BY_9B_LAB_ADAPTER
 from django_apps.asteroid_lab.replay.unified_serialization import (
     unified_replay_frame_json_round_trip,
+    unified_replay_frame_to_json_dict,
 )
+from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
 
 
@@ -113,8 +115,47 @@ def test_lab_adapter_preserves_global_frame_index() -> None:
     )
     frame = lab_replay_row_to_unified(row)
     assert frame.frame_index == 42
+    assert frame.inspector["replay_frame_id"] == 99
     assert frame.metrics.get("from_row") is True
     assert frame.metrics.get("entry_count") == 3
+
+
+def test_lab_adapter_preserves_equipment_bundles_on_wire() -> None:
+    miner_rows = [
+        _cell_row(x=-1, y=0, kind="shape_miner"),
+        _cell_row(x=-1, y=1, kind="shape_miner_extension"),
+    ]
+    bundles = build_equipment_bundles(miner_rows)
+    assert bundles
+    event = SnapshotEventDTO(
+        event_key="step1_cleanup_transport",
+        phase="layout_cleanup",
+        phase_step="transport",
+        event_type=EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT,
+        title="After transport cleanup",
+        description="baseline",
+        full_map=miner_rows,
+        cell_overlay_json={"cells": miner_rows, "equipment_bundles": bundles},
+    )
+    row = ReplayFrameRowDTO(
+        id=7,
+        frame_index=0,
+        frame_key="step1_cleanup_transport",
+        phase="layout_cleanup",
+        title="After transport cleanup",
+        description="baseline",
+        frame_payload=dict(asdict(event)),
+        cell_overlay_json={"cells": miner_rows, "equipment_bundles": bundles},
+        metric_snapshot_json={},
+        is_placeholder=False,
+        is_keyframe=False,
+    )
+    frame = lab_replay_row_to_unified(row)
+    wire_bundles = frame.cell_overlay_json.get("equipment_bundles")
+    assert isinstance(wire_bundles, list) and len(wire_bundles) == len(bundles)
+    payload = unified_replay_frame_to_json_dict(frame)
+    assert "cell_overlay_json" in payload
+    assert payload["cell_overlay_json"]["equipment_bundles"]
 
 
 def test_lab_adapter_does_not_mutate_source_frame() -> None:

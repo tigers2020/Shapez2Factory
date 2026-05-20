@@ -31,6 +31,7 @@ def test_classify_fluid_miner_and_extension() -> None:
 
 def test_classify_shape_miner_and_extension() -> None:
     assert classify_blueprint_entry("Layout_ShapeMiner") == ("shape_miner", "shape_belt")
+    assert classify_blueprint_entry("Layout_ProMiner") == ("shape_miner", "shape_belt")
     assert classify_blueprint_entry("Layout_ShapeMinerExtension") == (
         "shape_miner_extension",
         "shape_belt",

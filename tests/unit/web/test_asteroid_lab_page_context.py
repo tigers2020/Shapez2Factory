@@ -176,6 +176,22 @@ def test_lab_page_context_after_pipeline_selects_non_empty_track() -> None:
     assert ReplayEventType.DECODE_STARTED.value in event_types
     assert ReplayEventType.RECONSTRUCTION_COMPLETED.value in event_types
     assert isinstance(frames[0]["map_view"], dict)
+    with_bundles = [
+        f
+        for f in frames
+        if isinstance(f.get("cell_overlay_json"), dict)
+        and f["cell_overlay_json"].get("equipment_bundles")
+    ]
+    assert with_bundles, "decode/replay frames must expose cell_overlay_json.equipment_bundles for Lab highlight"
+    with_replay_frame_id = [
+        f
+        for f in frames
+        if isinstance(f.get("inspector"), dict) and f["inspector"].get("replay_frame_id") is not None
+    ]
+    assert with_replay_frame_id, "Lab ORM frames must expose inspector.replay_frame_id for cell detail POST"
+    first_rid = int(with_replay_frame_id[0]["inspector"]["replay_frame_id"])
+    row = m.ReplayFrame.objects.get(pk=first_rid)
+    assert int(row.replay_track_id) == int(tid)
 
 
 @pytest.mark.django_db

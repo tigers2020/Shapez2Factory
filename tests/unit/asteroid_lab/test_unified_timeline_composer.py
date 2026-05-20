@@ -35,6 +35,52 @@ def _frame(
     )
 
 
+def test_compose_preserves_cell_overlay_json() -> None:
+    lab_cell = ReplayCell(x=1, y=0, kind="shape_miner", transport="none")
+    lab = (
+        UnifiedReplayFrame(
+            frame_index=0,
+            phase=ReplayPhase.DECODE,
+            event_type=ReplayEventType.DECODE_STARTED,
+            title="lab",
+            description="",
+            map_view=ReplayMapView(
+                bbox=ReplayBBox(min_x=1, min_y=0, max_x=1, max_y=0),
+                full_cells=(lab_cell,),
+            ),
+            inspector={},
+            metrics={},
+            cell_overlay_json={
+                "equipment_bundles": [{"bundle_id": 1, "cells_json": [{"x": 1, "y": 0}]}]
+            },
+        ),
+    )
+    out = compose_unified_timeline(lab_frames=lab, optimization_frames=())
+    assert out[0].cell_overlay_json.get("equipment_bundles")
+
+
+def test_compose_preserves_inspector_replay_frame_id() -> None:
+    lab_cell = ReplayCell(x=1, y=0, kind="lab", transport="none")
+    lab = (
+        UnifiedReplayFrame(
+            frame_index=3,
+            phase=ReplayPhase.DECODE,
+            event_type=ReplayEventType.DECODE_STARTED,
+            title="lab",
+            description="",
+            map_view=ReplayMapView(
+                bbox=ReplayBBox(min_x=1, min_y=0, max_x=1, max_y=0),
+                full_cells=(lab_cell,),
+            ),
+            inspector={"replay_frame_id": 42, "tag": "lab"},
+            metrics={},
+        ),
+    )
+    out = compose_unified_timeline(lab_frames=lab, optimization_frames=())
+    assert len(out) == 1
+    assert out[0].inspector["replay_frame_id"] == 42
+
+
 def test_compose_reindexes_global_frame_index_monotonic() -> None:
     lab = (_frame(10, phase=ReplayPhase.DECODE, event=ReplayEventType.DECODE_STARTED, tag="lab"),)
     opt = (

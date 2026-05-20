@@ -17,6 +17,7 @@ from django_apps.asteroid_lab.snapshots.asteroid_map_coords import (
     left_of,
     right_of,
 )
+from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 
 # Cardinal dirs aligned with ``iter_four_neighbors_map`` and Lab JS ``bundle_edges``.
 # Map step: east = ``right_of(x)``, west = ``left_of(x)``, south = ``y + 1``, north = ``y - 1``.
@@ -202,11 +203,22 @@ class _UnionFind:
             self._p[rb] = ra
 
 
+def _effective_equipment_cell_kind(row: Mapping[str, Any]) -> str:
+    ck = str(row.get("cell_kind") or "")
+    if ck in _EQUIPMENT_KINDS:
+        return ck
+    tt = str(row.get("tile_type") or "")
+    if tt:
+        resolved, _ = classify_blueprint_entry(tt)
+        return resolved
+    return ck
+
+
 def _iter_equipment_rows(
     rows: Sequence[Mapping[str, Any]],
 ) -> Iterator[tuple[_Pos, Mapping[str, Any], EquipmentPorts, str, str]]:
     for row in rows:
-        ck = str(row.get("cell_kind") or "")
+        ck = _effective_equipment_cell_kind(row)
         if ck not in _EQUIPMENT_KINDS:
             continue
         fam = _equipment_family(ck)
@@ -253,6 +265,38 @@ def _bundle_links_for_cell(
         if npos in bundle_positions:
             parts.append(d)
     return "".join(sorted(parts, key=lambda s: _DIR_ORDER.index(s)))
+
+
+def equipment_bundle_overlay_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Lab replay wire passthrough for bundle highlight JS (output-only; not solver input)."""
+
+    bundles = build_equipment_bundles(rows)
+    if not bundles:
+        return {}
+    return {"equipment_bundles": bundles}
+
+
+def cell_overlay_json_for_bundle_highlight(
+    overlay_json: Mapping[str, Any],
+    *,
+    full_map: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Prefer persisted ``equipment_bundles``; else build from overlay/full_map cell rows."""
+
+    bundles = overlay_json.get("equipment_bundles")
+    if isinstance(bundles, list) and bundles:
+        return {"equipment_bundles": list(bundles)}
+    rows: list[dict[str, Any]] = []
+    cells = overlay_json.get("cells")
+    if isinstance(cells, list):
+        for raw in cells:
+            if isinstance(raw, dict):
+                rows.append(dict(raw))
+    if not rows and full_map is not None:
+        for raw in full_map:
+            if isinstance(raw, dict):
+                rows.append(dict(raw))
+    return equipment_bundle_overlay_from_rows(rows)
 
 
 def build_equipment_bundles(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -74,6 +74,7 @@ CANON 아님. [`django_apps/web/static/web/js/asteroid_miner_layout_lab.js`](../
 
 ## 번들 브리지
 
+- Unified 타임라인 JSON(`lab_replay_frames_json`)은 **`cell_overlay_json.equipment_bundles`** 를 포함한다(있을 때만). Lab JS `cellOverlayJsonFromFrame` → `applyEquipmentBundleGroupVisualsFromOverlay`가 외곽(`bundle_edges`)·연결선(`bundle_links`)을 그린다. Optimization 프레임은 `map_view` 셀에서 서버가 번들을 재계산한다.
 - `bundle_links` 문자열의 `e` / `s` / `w` / `n`은 `LINK_KEY_TO_DIR` → `DIR_TO_BRIDGE_SUFFIX`를 거쳐 `lab-bundle-bridge-*` 클래스로만 붙인다 (CSS 기하는 [`assets/css/input.css`](../../assets/css/input.css)의 `#lab-replay-grid --lab-cell-gap`과 정합).
 
 ## 뷰포트

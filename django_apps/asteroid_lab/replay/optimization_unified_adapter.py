@@ -25,6 +25,7 @@ from django_apps.asteroid_lab.replay.unified_event_coverage import (
     SUPPORTED_BY_9C_OPTIMIZATION_ADAPTER,
 )
 from django_apps.asteroid_lab.replay.unified_serialization import parse_replay_event_type
+from django_apps.asteroid_lab.snapshots.equipment_bundles import equipment_bundle_overlay_from_rows
 
 REPLAY_EVENT_TYPE_TO_PHASE: dict[ReplayEventType, ReplayPhase] = {
     ReplayEventType.OPTIMIZATION_INPUT_LOADED: ReplayPhase.OPTIMIZATION_INPUT,
@@ -258,6 +259,31 @@ def _build_map_view(
     return map_view, presentation_metrics
 
 
+def _equipment_bundle_overlay_for_map_view(map_view: ReplayMapView) -> dict[str, Any]:
+    seen: set[tuple[int, int]] = set()
+    rows: list[dict[str, Any]] = []
+    for cell in (
+        *map_view.full_cells,
+        *map_view.overlay_cells,
+        *map_view.cell_delta,
+    ):
+        key = (int(cell.x), int(cell.y))
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(
+            {
+                "x": int(cell.x),
+                "y": int(cell.y),
+                "cell_kind": str(cell.kind),
+                "transport_kind": str(cell.transport),
+                "rotation": int(cell.rotation),
+                "tile_type": str(cell.tile_type),
+            }
+        )
+    return equipment_bundle_overlay_from_rows(rows)
+
+
 def optimization_replay_frame_to_unified(
     frame: OptimizationReplayFrame,
     *,
@@ -284,4 +310,5 @@ def optimization_replay_frame_to_unified(
             "source_frame_index": int(frame.frame_index),
         },
         metrics=metrics,
+        cell_overlay_json=_equipment_bundle_overlay_for_map_view(map_view),
     )

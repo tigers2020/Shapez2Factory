@@ -33,6 +33,10 @@ from django_apps.asteroid_lab.replay.unified_dtos import (
 from django_apps.asteroid_lab.replay.unified_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.unified_event_coverage import SUPPORTED_BY_9B_LAB_ADAPTER
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO, SnapshotEventDTO
+from django_apps.asteroid_lab.snapshots.equipment_bundles import (
+    cell_overlay_json_for_bundle_highlight,
+    equipment_bundle_overlay_from_rows,
+)
 
 LAB_PHASE_DECODE = "decode"
 LAB_PHASE_RECONSTRUCTION = "reconstruction"
@@ -166,6 +170,37 @@ def _build_map_view(
     return map_view
 
 
+def _cell_overlay_json_for_unified_lab_frame(
+    overlay_json: Mapping[str, Any],
+    *,
+    full_map: list[Any],
+    map_view: ReplayMapView,
+) -> dict[str, Any]:
+    """Wire overlay for bundle highlight: persisted bundles, else rebuild from map cells."""
+
+    overlay = cell_overlay_json_for_bundle_highlight(overlay_json, full_map=full_map)
+    if overlay.get("equipment_bundles"):
+        return overlay
+    rows: list[dict[str, Any]] = []
+    seen: set[tuple[int, int]] = set()
+    for cell in (*map_view.full_cells, *map_view.overlay_cells):
+        key = (int(cell.x), int(cell.y))
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append(
+            {
+                "x": key[0],
+                "y": key[1],
+                "cell_kind": str(cell.kind),
+                "transport_kind": str(cell.transport),
+                "rotation": int(cell.rotation),
+                "tile_type": str(cell.tile_type),
+            }
+        )
+    return equipment_bundle_overlay_from_rows(rows) or overlay
+
+
 def _inspector_from_lab(
     *,
     event_key: str,
@@ -196,6 +231,7 @@ def lab_snapshot_event_to_unified(
         full_map=list(event.full_map),
         cell_overlay_json=dict(event.cell_overlay_json or {}),
     )
+    overlay_json = dict(event.cell_overlay_json or {})
     return UnifiedReplayFrame(
         frame_index=int(frame_index),
         phase=_lab_phase_to_unified(phase),
@@ -210,6 +246,11 @@ def lab_snapshot_event_to_unified(
             lab_event_type=event_type,
         ),
         metrics=dict(event.metrics_json or {}),
+        cell_overlay_json=_cell_overlay_json_for_unified_lab_frame(
+            overlay_json,
+            full_map=list(event.full_map),
+            map_view=map_view,
+        ),
     )
 
 
@@ -249,6 +290,13 @@ def lab_replay_row_to_unified(row: ReplayFrameRowDTO) -> UnifiedReplayFrame:
     payload_metrics = payload.get("metrics_json")
     if isinstance(payload_metrics, dict):
         metrics.update(payload_metrics)
+    inspector = _inspector_from_lab(
+        event_key=event_key,
+        lab_phase=phase,
+        lab_phase_step=phase_step,
+        lab_event_type=event_type,
+    )
+    inspector["replay_frame_id"] = int(row.id)
     return UnifiedReplayFrame(
         frame_index=int(row.frame_index),
         phase=_lab_phase_to_unified(phase),
@@ -256,13 +304,13 @@ def lab_replay_row_to_unified(row: ReplayFrameRowDTO) -> UnifiedReplayFrame:
         title=str(row.title),
         description=str(row.description),
         map_view=map_view,
-        inspector=_inspector_from_lab(
-            event_key=event_key,
-            lab_phase=phase,
-            lab_phase_step=phase_step,
-            lab_event_type=event_type,
-        ),
+        inspector=inspector,
         metrics=metrics,
+        cell_overlay_json=_cell_overlay_json_for_unified_lab_frame(
+            overlay_json,
+            full_map=full_map,
+            map_view=map_view,
+        ),
     )
 
 

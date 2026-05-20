@@ -89,6 +89,7 @@ class UnifiedReplayFrame:
     map_view: ReplayMapView
     inspector: Mapping[str, Any] = field(default_factory=dict)
     metrics: Mapping[str, Any] = field(default_factory=dict)
+    cell_overlay_json: Mapping[str, Any] = field(default_factory=dict)
 
 
 def replay_map_view_is_renderable(map_view: ReplayMapView) -> bool:

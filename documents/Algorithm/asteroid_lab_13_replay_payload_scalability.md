@@ -155,7 +155,8 @@ same frame_count
 same frame_index order
 same frame_key / event metadata
 same full_map / diff semantics
-cell detail lookup compatibility
+cell detail lookup compatibility: Lab ORM frames expose ``inspector.replay_frame_id`` (persisted ``ReplayFrame.pk``); optimization-only frames use client ``map_view`` lookup (no ORM row)
+equipment bundle highlight: unified wire includes ``cell_overlay_json.equipment_bundles`` when present (Lab passthrough or optimization rebuild from ``map_view``)
 no algorithm reads replay payload
 lazy-load failure: explicit UI error, current replay state corrupted 금지
 ```

@@ -98,7 +98,7 @@
   const REPLAY_GRID_EDGE_PADDING = 5;
 
   const LAB_VIEWPORT_MIN_SCALE = 0.35;
-  const LAB_VIEWPORT_MAX_SCALE = 3.5;
+  const LAB_VIEWPORT_MAX_SCALE = 7;
   const LAB_VIEWPORT_DRAG_THRESHOLD_PX = 6;
 
   let labViewportInteractionsBound = false;
@@ -2214,6 +2214,155 @@
         });
     });
 
+    function labReplayFrameOrmId(fr) {
+      if (!fr || typeof fr !== "object") {
+        return null;
+      }
+      if (fr.id != null && fr.id !== "") {
+        const legacy = parseInt(String(fr.id), 10);
+        if (Number.isFinite(legacy)) {
+          return legacy;
+        }
+      }
+      const insp = fr.inspector;
+      if (insp && typeof insp === "object" && insp.replay_frame_id != null) {
+        const fromInsp = parseInt(String(insp.replay_frame_id), 10);
+        if (Number.isFinite(fromInsp)) {
+          return fromInsp;
+        }
+      }
+      return null;
+    }
+
+    function setLabCellDetailUnavailableHint(message) {
+      const hint = document.getElementById("lab-replay-footer-hint");
+      if (hint) {
+        hint.textContent = message;
+      }
+    }
+
+    function labCellMatchesWorldXY(cell, x, y) {
+      if (!cell || typeof cell !== "object") {
+        return false;
+      }
+      const cx = Number(cell.x);
+      const cy = Number(cell.y);
+      return Number.isFinite(cx) && Number.isFinite(cy) && cx === x && cy === y;
+    }
+
+    function labUnifiedWireCellToDetail(cell) {
+      if (!cell || typeof cell !== "object") {
+        return null;
+      }
+      const out = {
+        x: cell.x,
+        y: cell.y,
+        rotation: cell.rotation != null ? cell.rotation : 0,
+        cell_kind: cell.kind != null ? cell.kind : cell.cell_kind != null ? cell.cell_kind : "",
+        transport_kind:
+          cell.transport != null ? cell.transport : cell.transport_kind != null ? cell.transport_kind : "",
+        tile_type:
+          cell.tile_type != null
+            ? String(cell.tile_type)
+            : cell.sprite_identifier != null
+              ? String(cell.sprite_identifier)
+              : "",
+      };
+      if (cell.layer != null) {
+        out.layer = cell.layer;
+      }
+      if (cell.server_x != null) {
+        out.server_x = cell.server_x;
+      }
+      if (cell.server_y != null) {
+        out.server_y = cell.server_y;
+      }
+      return out;
+    }
+
+    function labCellDetailLookupInMapView(mapView, x, y) {
+      if (!mapView || typeof mapView !== "object") {
+        return { cell: null, sources: {} };
+      }
+      const sources = {};
+      const layers = [];
+      const full = mapView.full_cells;
+      if (Array.isArray(full)) {
+        for (let i = 0; i < full.length; i++) {
+          const c = full[i];
+          if (labCellMatchesWorldXY(c, x, y)) {
+            sources.map_view_full_cells = c;
+            const mapped = labUnifiedWireCellToDetail(c);
+            if (mapped) {
+              layers.push(mapped);
+            }
+          }
+        }
+      }
+      const delta = mapView.cell_delta;
+      if (Array.isArray(delta)) {
+        for (let j = 0; j < delta.length; j++) {
+          const d = delta[j];
+          if (labCellMatchesWorldXY(d, x, y)) {
+            sources.map_view_cell_delta = d;
+            const mapped = labUnifiedWireCellToDetail(d);
+            if (mapped) {
+              layers.push(mapped);
+            }
+          }
+        }
+      }
+      const overlay = mapView.overlay_cells;
+      if (Array.isArray(overlay)) {
+        const matches = [];
+        for (let k = 0; k < overlay.length; k++) {
+          const o = overlay[k];
+          if (labCellMatchesWorldXY(o, x, y)) {
+            matches.push(o);
+            const mapped = labUnifiedWireCellToDetail(o);
+            if (mapped) {
+              layers.push(mapped);
+            }
+          }
+        }
+        if (matches.length) {
+          sources.map_view_overlay_cells = matches.length === 1 ? matches[0] : matches;
+        }
+      }
+      if (!layers.length) {
+        return { cell: null, sources: sources };
+      }
+      const merged = {};
+      for (let m = 0; m < layers.length; m++) {
+        Object.assign(merged, layers[m]);
+      }
+      return { cell: merged, sources: sources };
+    }
+
+    function labCellDetailFromUnifiedFrame(fr, x, y) {
+      const lookup = labCellDetailLookupInMapView(fr.map_view, x, y);
+      const payload = {
+        ok: true,
+        cell: lookup.cell,
+        sources: lookup.sources,
+        message: lookup.cell ? "" : "no_cell_at_xy",
+        frame_index: fr.frame_index != null ? fr.frame_index : null,
+      };
+      if (fr.event_type != null) {
+        payload.event_type = String(fr.event_type);
+      }
+      const insp = fr.inspector;
+      if (insp && insp.optimization_event_type != null) {
+        payload.optimization_event_type = String(insp.optimization_event_type);
+      }
+      if (lookup.sources.map_view_full_cells || lookup.sources.map_view_cell_delta) {
+        payload.detail_source = "map_view_client";
+      } else if (Object.keys(lookup.sources).length) {
+        payload.detail_source = "map_view_overlay_client";
+      }
+      return payload;
+    }
+
     const LAB_CELL_DETAIL_KEY_ORDER = [
       "x",
       "y",
@@ -2437,15 +2586,26 @@
           return;
         }
         const fr = getCurrentReplayFrame();
-        if (!fr || fr.id == null) {
+        if (!fr) {
+          setLabCellDetailUnavailableHint("cell detail unavailable (no replay frame)");
           return;
         }
+        const frameOrmId = labReplayFrameOrmId(fr);
         const cellUrl = rootEl && rootEl.dataset ? rootEl.dataset.labReplayCellUrl || "" : "";
         const trackIdStr =
           rootEl && rootEl.dataset && rootEl.dataset.labReplayTrackId != null
             ? String(rootEl.dataset.labReplayTrackId)
             : "";
         if (!cellUrl || !trackIdStr) {
+          setLabCellDetailUnavailableHint("cell detail unavailable (replay track not configured)");
+          return;
+        }
+        if (frameOrmId == null) {
+          openCellDetailModal();
+          if (cellDetailBody) {
+            labCellDetailRenderSuccess(cellDetailBody, labCellDetailFromUnifiedFrame(fr, xy.x, xy.y));
+          }
+          setLabCellDetailUnavailableHint("cell detail from map_view (no persisted ReplayFrame)");
           return;
         }
         const projectSlug =
@@ -2453,7 +2613,7 @@
             ? String(rootEl.dataset.labProjectSlug)
             : "";
         const payload = {
-          replay_frame_id: fr.id,
+          replay_frame_id: frameOrmId,
           replay_track_id: parseInt(trackIdStr, 10),
           x: xy.x,
           y: xy.y,

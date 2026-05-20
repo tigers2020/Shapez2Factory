@@ -172,7 +172,7 @@ def replay_map_view_from_json_dict(data: object) -> ReplayMapView:
 
 
 def unified_replay_frame_to_json_dict(frame: UnifiedReplayFrame) -> dict[str, Any]:
-    return {
+    out: dict[str, Any] = {
         "frame_index": int(frame.frame_index),
         "phase": frame.phase.value,
         "event_type": frame.event_type.value,
@@ -182,6 +182,10 @@ def unified_replay_frame_to_json_dict(frame: UnifiedReplayFrame) -> dict[str, An
         "inspector": dict(frame.inspector),
         "metrics": dict(frame.metrics),
     }
+    overlay = dict(frame.cell_overlay_json or {})
+    if overlay:
+        out["cell_overlay_json"] = overlay
+    return out
 
 
 def parse_replay_phase(raw: object) -> ReplayPhase:
@@ -214,6 +218,7 @@ def unified_replay_frame_from_json_dict(data: Mapping[str, Any]) -> UnifiedRepla
         map_view=replay_map_view_from_json_dict(data.get("map_view")),
         inspector=_mapping(data.get("inspector")),
         metrics=_mapping(data.get("metrics")),
+        cell_overlay_json=_mapping(data.get("cell_overlay_json")),
     )
 
 

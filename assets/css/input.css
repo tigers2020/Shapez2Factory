@@ -156,6 +156,15 @@
     transform: translateX(-50%);
   }
 
+  /* Solver runtime route overlays (replay map_view.overlay_cells). */
+  .lab-route-probe-tone {
+    box-shadow: 0 0 6px rgb(245 158 11 / 0.45);
+  }
+
+  .lab-route-confirmed-tone {
+    box-shadow: 0 0 8px rgb(132 204 22 / 0.5);
+  }
+
   /* Lab map cells: anchor absolute sprite layer + bridges. */
   .lab-cell {
     position: relative;

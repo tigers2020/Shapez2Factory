@@ -132,6 +132,27 @@ def materialized_cells_to_cell_delta(
     return tuple(out)
 
 
+ROUTE_PROBE_OVERLAY_KIND = "route_probe"
+CONFIRMED_ROUTE_OVERLAY_KIND = "confirmed_route"
+
+
+def path_to_overlay_cells(
+    path: tuple[tuple[int, int], ...],
+    ctx: ReplayProjectionContext,
+    *,
+    kind: str,
+    cap: int = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME,
+) -> tuple[ReplayOverlayCell, ...]:
+    """Convert a server-space route path to replay overlay cells (server → Lab)."""
+    out: list[ReplayOverlayCell] = []
+    for sx, sy in path:
+        x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=ctx.server_xy_params)
+        out.append(ReplayOverlayCell(x=x, y=y, kind=kind, tile_type=kind))
+        if len(out) >= cap:
+            break
+    return tuple(out)
+
+
 def probe_path_to_overlay_cells(
     path: tuple[tuple[int, int], ...],
     ctx: ReplayProjectionContext,
@@ -139,13 +160,29 @@ def probe_path_to_overlay_cells(
     cap: int = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME,
 ) -> tuple[ReplayOverlayCell, ...]:
     """Convert a route probe path to replay overlay cells (server → Lab)."""
-    out: list[ReplayOverlayCell] = []
-    for sx, sy in path:
-        x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=ctx.server_xy_params)
-        out.append(ReplayOverlayCell(x=x, y=y, kind="route_probe", tile_type="route_probe"))
-        if len(out) >= cap:
-            break
-    return tuple(out)
+    return path_to_overlay_cells(
+        path, ctx, kind=ROUTE_PROBE_OVERLAY_KIND, cap=cap
+    )
+
+
+def confirmed_paths_to_overlay_cells(
+    paths: tuple[tuple[tuple[int, int], ...], ...],
+    ctx: ReplayProjectionContext,
+    *,
+    cap: int = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME,
+) -> tuple[ReplayOverlayCell, ...]:
+    """Merge confirmed reservation paths into one overlay (dedupe by Lab coord)."""
+    by_xy: dict[tuple[int, int], ReplayOverlayCell] = {}
+    for path in paths:
+        for cell in path_to_overlay_cells(
+            path, ctx, kind=CONFIRMED_ROUTE_OVERLAY_KIND, cap=cap
+        ):
+            by_xy[(cell.x, cell.y)] = cell
+            if len(by_xy) >= cap:
+                return tuple(by_xy[key] for key in sorted(by_xy))
+    if not by_xy:
+        return ()
+    return tuple(by_xy[key] for key in sorted(by_xy))
 
 
 def candidate_occupied_to_overlay_cells(
@@ -189,10 +226,14 @@ def goal_annotations(
 
 
 __all__ = [
+    "CONFIRMED_ROUTE_OVERLAY_KIND",
+    "ROUTE_PROBE_OVERLAY_KIND",
     "bbox_from_replay_cells",
     "candidate_occupied_to_overlay_cells",
+    "confirmed_paths_to_overlay_cells",
     "goal_annotations",
     "materialized_cells_to_cell_delta",
+    "path_to_overlay_cells",
     "probe_path_to_overlay_cells",
     "visible_cells_from_loaded_snapshot",
 ]

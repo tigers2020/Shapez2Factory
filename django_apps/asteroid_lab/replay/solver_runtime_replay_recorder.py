@@ -32,10 +32,13 @@ from django_apps.asteroid_lab.replay.projection_context import (
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
 from django_apps.asteroid_lab.replay.replay_limits import MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME
 from django_apps.asteroid_lab.replay.replay_recording_cells import (
+    CONFIRMED_ROUTE_OVERLAY_KIND,
     bbox_from_replay_cells,
     candidate_occupied_to_overlay_cells,
+    confirmed_paths_to_overlay_cells,
     goal_annotations,
     materialized_cells_to_cell_delta,
+    path_to_overlay_cells,
     probe_path_to_overlay_cells,
     visible_cells_from_loaded_snapshot,
 )
@@ -384,15 +387,15 @@ class SolverRuntimeReplayRecorder:
         for cid in plan.ordered_candidate_ids[:max_candidates]:
             candidate = candidates_by_id.get(cid)
             confirmed = confirmed_by_id.get(cid)
-            path_overlay: tuple = ()
+            preview_overlay: tuple = ()
             if candidate is not None and candidate.route_probe_result.path:
-                path_overlay = probe_path_to_overlay_cells(
+                preview_overlay = probe_path_to_overlay_cells(
                     candidate.route_probe_result.path, self._ctx
                 )
-            map_view = ReplayMapView(
-                bbox=bbox_from_replay_cells(cells, overlay_cells=path_overlay),
+            attempted_map = ReplayMapView(
+                bbox=bbox_from_replay_cells(cells, overlay_cells=preview_overlay),
                 full_cells=cells,
-                overlay_cells=path_overlay,
+                overlay_cells=preview_overlay,
             )
             reservation_id = confirmed.reservation.reservation_id if confirmed else None
             self._append(
@@ -400,7 +403,7 @@ class SolverRuntimeReplayRecorder:
                 event_type=ReplayEventType.ROUTE_COMMIT_ATTEMPTED,
                 title="Route Commit Attempted",
                 description=cid,
-                map_view=map_view,
+                map_view=attempted_map,
                 inspector={
                     "candidate_id": cid,
                     "reservation_id": reservation_id,
@@ -409,12 +412,20 @@ class SolverRuntimeReplayRecorder:
             )
             if confirmed is not None:
                 res = confirmed.reservation
+                committed_overlay = path_to_overlay_cells(
+                    res.path, self._ctx, kind=CONFIRMED_ROUTE_OVERLAY_KIND
+                )
+                committed_map = ReplayMapView(
+                    bbox=bbox_from_replay_cells(cells, overlay_cells=committed_overlay),
+                    full_cells=cells,
+                    overlay_cells=committed_overlay,
+                )
                 self._append(
                     phase=ReplayPhase.INCREMENTAL_COMMIT,
                     event_type=ReplayEventType.ROUTE_COMMITTED,
                     title="Route Committed",
                     description=cid,
-                    map_view=map_view,
+                    map_view=committed_map,
                     inspector={
                         "candidate_id": cid,
                         "reservation_id": res.reservation_id,
@@ -433,14 +444,20 @@ class SolverRuntimeReplayRecorder:
                     event_type=ReplayEventType.ROUTE_ROLLED_BACK,
                     title="Route Rolled Back",
                     description=cid,
-                    map_view=map_view,
+                    map_view=attempted_map,
                     inspector={"candidate_id": cid},
                     metrics={"candidate_id": cid},
                 )
 
     def record_route_committed(self, commit: IncrementalCommitResult) -> None:
         cells = self._base_cells
-        map_view = ReplayMapView(bbox=bbox_from_replay_cells(cells), full_cells=cells)
+        confirmed_paths = tuple(c.reservation.path for c in commit.confirmed)
+        path_overlay = confirmed_paths_to_overlay_cells(confirmed_paths, self._ctx)
+        map_view = ReplayMapView(
+            bbox=bbox_from_replay_cells(cells, overlay_cells=path_overlay),
+            full_cells=cells,
+            overlay_cells=path_overlay,
+        )
         self._append(
             phase=ReplayPhase.INCREMENTAL_COMMIT,
             event_type=ReplayEventType.ROUTE_COMMITTED,
@@ -533,9 +550,14 @@ class SolverRuntimeReplayRecorder:
             if materialization.layout is not None
             else ()
         )
+        confirmed_paths = tuple(c.reservation.path for c in commit.confirmed)
+        route_overlay = confirmed_paths_to_overlay_cells(confirmed_paths, self._ctx)
         map_view = ReplayMapView(
-            bbox=bbox_from_replay_cells(cells, cell_delta=cell_delta),
+            bbox=bbox_from_replay_cells(
+                cells, overlay_cells=route_overlay, cell_delta=cell_delta
+            ),
             full_cells=cells,
+            overlay_cells=route_overlay,
             cell_delta=cell_delta,
         )
         layout = materialization.layout

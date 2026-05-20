@@ -222,6 +222,8 @@
   function applyLabCellSprite(el, cell) {
     clearLabCellSprite(el);
     if (!labSpriteBaseUrl || !cell || typeof cell !== "object") return;
+    const ck = cell.cell_kind != null ? String(cell.cell_kind) : "";
+    if (isRouteOverlayCellKind(ck)) return;
     const rel = labSpriteRelpathForCell(cell);
     if (!rel) return;
     const layer = ensureLabCellSpriteLayer(el);
@@ -603,6 +605,27 @@
     };
   }
 
+  var ROUTE_OVERLAY_CELL_KINDS = {
+    route_probe: true,
+    route_probe_path: true,
+    confirmed_route: true,
+  };
+
+  function isRouteOverlayCellKind(cellKind) {
+    return ROUTE_OVERLAY_CELL_KINDS[String(cellKind || "")] === true;
+  }
+
+  function toneForRouteOverlayKind(cellKind) {
+    const ck = String(cellKind || "");
+    if (ck === "confirmed_route") {
+      return "lab-route-confirmed-tone ring-2 ring-inset ring-lime-400/90 bg-lime-500/35";
+    }
+    if (ck === "route_probe" || ck === "route_probe_path") {
+      return "lab-route-probe-tone ring-2 ring-inset ring-amber-400/85 bg-amber-500/30";
+    }
+    return "";
+  }
+
   function overlayToneClasses(role, cell) {
     const r = String(role || "");
     if (r === "equipment" || r === "equipment_cells") {
@@ -622,6 +645,8 @@
 
   function toneForFullMapCell(cell) {
     const ck = cell && cell.cell_kind != null ? String(cell.cell_kind) : "";
+    const routeTone = toneForRouteOverlayKind(ck);
+    if (routeTone) return routeTone;
     if (ck === "space_pipe" || ck === "space_belt") {
       return "ring-1 ring-inset ring-cyan-400/40 bg-cyan-950/20";
     }
@@ -668,11 +693,13 @@
       const tone = toneForFullMapCell(cell);
       const el = domCells[idx];
       el.className = base + " " + tone;
-      applyLabCellHudAttributes(
-        el,
-        cell,
-        cell.overlay_role != null ? String(cell.overlay_role) : "",
-      );
+      const hudRole =
+        cell.overlay_role != null
+          ? String(cell.overlay_role)
+          : isRouteOverlayCellKind(ck)
+            ? ck
+            : "";
+      applyLabCellHudAttributes(el, cell, hudRole);
       applyLabCellSprite(el, cell);
     }
   }

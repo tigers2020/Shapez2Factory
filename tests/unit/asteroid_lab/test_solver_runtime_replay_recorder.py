@@ -350,6 +350,21 @@ def _minimal_gene_candidate(
     )
 
 
+def test_route_probe_succeeded_frame_includes_path_overlay() -> None:
+    loaded = _minimal_loaded()
+    rec = SolverRuntimeReplayRecorder(loaded, _SERVER_XY_PARAMS)
+    candidate = _minimal_gene_candidate()
+    pool = CandidateGenerationResult(normal_candidates=(candidate,), rejected_candidates=())
+    rec.record_candidate_pool_details(pool)
+
+    probe_frame = next(
+        f for f in rec.build_frames() if f.event_type == ReplayEventType.ROUTE_PROBE_SUCCEEDED
+    )
+    overlay_kinds = {c.kind for c in probe_frame.map_view.overlay_cells}
+    assert "route_probe" in overlay_kinds
+    assert len(probe_frame.map_view.overlay_cells) == len(candidate.route_probe_result.path)
+
+
 def test_record_candidate_pool_details_emits_generated_and_probe_frames() -> None:
     from django_apps.asteroid_lab.optimization.gene_template import (
         CANONICAL_EXTRACTOR_OFFSET,
@@ -819,6 +834,43 @@ def test_record_commit_details_emits_attempted_and_committed() -> None:
     committed = rec.build_frames()[1]
     assert committed.inspector["reservation_id"] == "commit_ok:route:0"
     assert committed.inspector["reservation_state"] == ReservationState.CONFIRMED.value
+    overlay_kinds = {c.kind for c in committed.map_view.overlay_cells}
+    assert "confirmed_route" in overlay_kinds
+    assert len(committed.map_view.overlay_cells) == len(reservation.path)
+
+
+def test_record_route_committed_includes_all_confirmed_paths() -> None:
+    loaded = _minimal_loaded()
+    rec = SolverRuntimeReplayRecorder(loaded, _SERVER_XY_PARAMS)
+    candidate = _minimal_gene_candidate("commit_ok")
+    reservation = RouteReservation(
+        reservation_id="commit_ok:route:0",
+        candidate_id="commit_ok",
+        transport_kind=TransportKind.SHAPE_BELT,
+        path=((0, 0), (1, 0)),
+        reserved_cells=frozenset({(0, 0), (1, 0)}),
+        cost=2,
+        reached_goal=candidate.route_probe_result.reached_goal,
+        goal_priority=10,
+        reservation_state=ReservationState.CONFIRMED,
+        domain_cell_transitions=(),
+    )
+    commit = IncrementalCommitResult(
+        confirmed=(
+            ConfirmedGenePlacement(
+                candidate_id="commit_ok",
+                reservation=reservation,
+                commit_state=PlacementCommitState.CONFIRMED,
+            ),
+        ),
+        skipped_candidate_ids=(),
+        goal_assigned_platforms={},
+    )
+    rec.record_route_committed(commit)
+
+    frame = rec.build_frames()[0]
+    assert frame.event_type == ReplayEventType.ROUTE_COMMITTED
+    assert {c.kind for c in frame.map_view.overlay_cells} == {"confirmed_route"}
 
 
 def test_record_commit_details_emits_rolled_back_for_skipped() -> None:

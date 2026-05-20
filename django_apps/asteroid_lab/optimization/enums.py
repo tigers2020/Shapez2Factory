@@ -107,6 +107,7 @@ class CommitConflictReason(StrEnum):
     HARD_PROTECTED_CONFLICT = "hard_protected_conflict"
     TRUNK_DEADLOCK = "trunk_deadlock"
     ROUTE_PROBE_FAILED = "route_probe_failed"
+    EQUIPMENT_TRANSPORT_OVERLAP = "equipment_transport_overlap"
 
 
 class ReservationState(StrEnum):

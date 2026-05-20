@@ -5,9 +5,15 @@ DTOs and enums are algorithm-facing; replay rows and ORM remain outside this pac
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
+    BundleSelectionTargets,
+    bundle_selection_targets_from_run_config,
+    compute_bundle_selection_targets,
+)
 from django_apps.asteroid_lab.optimization.candidate_dtos import (
     CandidateGenerationConfig,
     CandidateGenerationResult,
+    GenerationDiagnostics,
     ExtractorPlacementPolicy,
     GeneCandidate,
     RejectedGeneCandidate,
@@ -33,20 +39,19 @@ from django_apps.asteroid_lab.optimization.candidate_score import (
     score_gene_candidate,
 )
 from django_apps.asteroid_lab.optimization.candidate_selector import (
+    DEFAULT_MAX_SELECTED_VARIANTS_PER_EXTRACTOR,
     SelectedCandidatePlan,
+    SelectionDiagnostics,
     select_gene_candidates_greedy,
-)
-from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
-    BundleSelectionTargets,
-    bundle_selection_targets_from_run_config,
-    compute_bundle_selection_targets,
 )
 from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan, plan_capacity
 from django_apps.asteroid_lab.optimization.commit_best_candidates import (
     ConfirmedGenePlacement,
     IncrementalCommitResult,
+    SkippedCandidateRecord,
     commit_selected_candidates,
 )
+from django_apps.asteroid_lab.optimization.commit_order_diversity import diversify_commit_order
 from django_apps.asteroid_lab.optimization.coord_transform import (
     rotate_direction,
     rotate_offset,
@@ -161,6 +166,7 @@ __all__ = [
     "CandidateEquivalenceKey",
     "CandidateGenerationConfig",
     "CandidateGenerationResult",
+    "GenerationDiagnostics",
     "CandidateRejectReason",
     "CandidateScoreBreakdown",
     "ConfirmedGenePlacement",
@@ -179,6 +185,7 @@ __all__ = [
     "GeneCandidate",
     "GeneTemplate",
     "IncrementalCommitResult",
+    "SkippedCandidateRecord",
     "MaterializationFailureReason",
     "MaterializedEquipmentCell",
     "MaterializedLayoutCells",
@@ -191,6 +198,8 @@ __all__ = [
     "RecoveryBudget",
     "RejectedGeneCandidate",
     "SelectedCandidatePlan",
+    "SelectionDiagnostics",
+    "DEFAULT_MAX_SELECTED_VARIANTS_PER_EXTRACTOR",
     "SolverRuntimeResult",
     "ReservationState",
     "RouteCellDomain",
@@ -248,6 +257,7 @@ __all__ = [
     "pick_tile_type",
     "score_gene_candidate",
     "select_gene_candidates_greedy",
+    "diversify_commit_order",
     "validate_final_layout",
     "validate_projected_gene_geometry",
     "rotate_direction",

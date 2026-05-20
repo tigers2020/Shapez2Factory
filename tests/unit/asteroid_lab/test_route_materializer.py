@@ -95,7 +95,7 @@ def _commit(
 ) -> IncrementalCommitResult:
     return IncrementalCommitResult(
         confirmed=placements,
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
 

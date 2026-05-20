@@ -465,7 +465,7 @@ class SolverRuntimeReplayRecorder:
 
         cells = self._base_cells
         confirmed_by_id = {c.candidate_id: c for c in commit.confirmed}
-        skipped_set = frozenset(commit.skipped_candidate_ids)
+        skipped_by_id = {r.candidate_id: r for r in commit.skipped_candidates}
 
         for cid in plan.ordered_candidate_ids[:max_candidates]:
             candidate = candidates_by_id.get(cid)
@@ -515,15 +515,34 @@ class SolverRuntimeReplayRecorder:
                         "reserved_cells_count": len(res.reserved_cells),
                     },
                 )
-            elif cid in skipped_set:
+            elif cid in skipped_by_id:
+                skip = skipped_by_id[cid]
+                probe_failure = (
+                    skip.route_probe_failure_reason.value
+                    if skip.route_probe_failure_reason is not None
+                    else None
+                )
+                rollback_inspector: dict[str, Any] = {
+                    "candidate_id": cid,
+                    "commit_conflict_reason": skip.reason.value,
+                    "route_probe_failure_reason": probe_failure,
+                    "anchor_coord": (
+                        list(skip.anchor_coord) if skip.anchor_coord is not None else None
+                    ),
+                    "reached_goal_coord": (
+                        list(skip.reached_goal_coord)
+                        if skip.reached_goal_coord is not None
+                        else None
+                    ),
+                }
                 self._append(
                     phase=ReplayPhase.ROLLBACK,
                     event_type=ReplayEventType.ROUTE_ROLLED_BACK,
                     title="Route Rolled Back",
                     description=cid,
                     map_view=attempted_map,
-                    inspector={"candidate_id": cid},
-                    metrics={"candidate_id": cid},
+                    inspector=rollback_inspector,
+                    metrics=rollback_inspector,
                 )
 
     def record_route_committed(self, commit: IncrementalCommitResult) -> None:
@@ -531,6 +550,10 @@ class SolverRuntimeReplayRecorder:
         confirmed_paths = tuple(c.reservation.path for c in commit.confirmed)
         path_overlay = confirmed_paths_to_overlay_cells(confirmed_paths, self._ctx)
         map_view = self._build_map_view(cells, frame_overlay=path_overlay)
+        skipped_by_reason: dict[str, int] = {}
+        for record in commit.skipped_candidates:
+            key = record.reason.value
+            skipped_by_reason[key] = skipped_by_reason.get(key, 0) + 1
         self._append(
             phase=ReplayPhase.INCREMENTAL_COMMIT,
             event_type=ReplayEventType.ROUTE_COMMITTED,
@@ -543,6 +566,12 @@ class SolverRuntimeReplayRecorder:
             inspector={
                 "confirmed_count": len(commit.confirmed),
                 "skipped_count": len(commit.skipped_candidate_ids),
+                "skipped_by_reason": skipped_by_reason,
+            },
+            metrics={
+                "confirmed_count": len(commit.confirmed),
+                "skipped_count": len(commit.skipped_candidate_ids),
+                "skipped_by_reason": skipped_by_reason,
             },
         )
 

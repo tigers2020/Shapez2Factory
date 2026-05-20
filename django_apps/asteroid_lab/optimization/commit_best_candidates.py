@@ -13,6 +13,7 @@ from django_apps.asteroid_lab.optimization.enums import (
     CommitConflictReason,
     PlacementCommitState,
     ReservationState,
+    RouteProbeFailureReason,
     TransportKind,
 )
 from django_apps.asteroid_lab.optimization.input_contracts import (
@@ -24,7 +25,11 @@ from django_apps.asteroid_lab.optimization.route_domain import (
     RouteCellDomain,
     RouteDomainSnapshotBuilder,
 )
-from django_apps.asteroid_lab.optimization.route_probe import RouteProbeInput, run_route_probe
+from django_apps.asteroid_lab.optimization.route_probe import (
+    RouteProbeInput,
+    RouteProbeResult,
+    run_route_probe,
+)
 from django_apps.asteroid_lab.optimization.timing_metrics import CommitTiming
 
 DEFAULT_COMMIT_PROBE_MAX_EXPANSIONS = 256
@@ -38,10 +43,23 @@ class ConfirmedGenePlacement:
 
 
 @dataclass(frozen=True, slots=True)
+class SkippedCandidateRecord:
+    candidate_id: str
+    reason: CommitConflictReason
+    route_probe_failure_reason: RouteProbeFailureReason | None = None
+    anchor_coord: tuple[int, int] | None = None
+    reached_goal_coord: tuple[int, int] | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class IncrementalCommitResult:
     confirmed: tuple[ConfirmedGenePlacement, ...]
-    skipped_candidate_ids: tuple[str, ...]
+    skipped_candidates: tuple[SkippedCandidateRecord, ...]
     goal_assigned_platforms: dict[GoalLoadKey, int]
+
+    @property
+    def skipped_candidate_ids(self) -> tuple[str, ...]:
+        return tuple(r.candidate_id for r in self.skipped_candidates)
 
 
 def _path_transport_conflict(
@@ -66,6 +84,30 @@ def _occupied_conflict(
 ) -> CommitConflictReason | None:
     if occupied & committed_occupied:
         return CommitConflictReason.OCCUPIED_CELL_CONFLICT
+    return None
+
+
+def _equipment_cells_for_candidate(candidate: GeneCandidate) -> frozenset[tuple[int, int]]:
+    return candidate.occupied_cells | frozenset(
+        {candidate.extractor, candidate.fixed_output_transport}
+    )
+
+
+def _equipment_transport_overlap(
+    *,
+    candidate: GeneCandidate,
+    path: tuple[tuple[int, int], ...],
+    committed_equipment_cells: frozenset[tuple[int, int]],
+    committed_route_cells: frozenset[tuple[int, int]],
+) -> CommitConflictReason | None:
+    """Mirror ``merge_materialized_layout`` — route cells must not touch equipment cells."""
+
+    path_set = frozenset(path)
+    equipment = _equipment_cells_for_candidate(candidate)
+    if path_set & committed_equipment_cells:
+        return CommitConflictReason.EQUIPMENT_TRANSPORT_OVERLAP
+    if equipment & committed_route_cells:
+        return CommitConflictReason.EQUIPMENT_TRANSPORT_OVERLAP
     return None
 
 
@@ -109,6 +151,30 @@ def _domain_cell_transitions(
     return tuple(out)
 
 
+def _record_skip(
+    skipped_records: list[SkippedCandidateRecord],
+    *,
+    candidate: GeneCandidate,
+    reason: CommitConflictReason,
+    probe: RouteProbeResult | None = None,
+) -> None:
+    reached_goal_coord: tuple[int, int] | None = None
+    route_probe_failure_reason: RouteProbeFailureReason | None = None
+    if probe is not None:
+        route_probe_failure_reason = probe.failure_reason
+        if probe.reached_goal is not None:
+            reached_goal_coord = probe.reached_goal.coord
+    skipped_records.append(
+        SkippedCandidateRecord(
+            candidate_id=candidate.candidate_id,
+            reason=reason,
+            route_probe_failure_reason=route_probe_failure_reason,
+            anchor_coord=candidate.extractor,
+            reached_goal_coord=reached_goal_coord,
+        )
+    )
+
+
 def commit_selected_candidates(
     plan: SelectedCandidatePlan,
     candidates_by_id: Mapping[str, GeneCandidate],
@@ -122,16 +188,22 @@ def commit_selected_candidates(
 
     reservations: list[RouteReservation] = []
     committed_occupied: set[tuple[int, int]] = set()
+    committed_equipment_cells: set[tuple[int, int]] = set()
+    committed_route_cells: set[tuple[int, int]] = set()
     goal_load: dict[GoalLoadKey, int] = {}
     confirmed: list[ConfirmedGenePlacement] = []
-    skipped: list[str] = []
+    skipped_records: list[SkippedCandidateRecord] = []
     ordinal = 0
 
     for cid in plan.ordered_candidate_ids:
         candidate = candidates_by_id[cid]
         occ = frozenset(committed_occupied)
         if _occupied_conflict(candidate.occupied_cells, occ) is not None:
-            skipped.append(cid)
+            _record_skip(
+                skipped_records,
+                candidate=candidate,
+                reason=CommitConflictReason.OCCUPIED_CELL_CONFLICT,
+            )
             continue
 
         before_domain = RouteDomainSnapshotBuilder.build_snapshot(
@@ -155,7 +227,12 @@ def commit_selected_candidates(
         commit_timing.commit_reprobe_ms += (time.perf_counter() - probe_start) * 1000.0
 
         if not probe.reachable or probe.reached_goal is None or probe.goal_priority is None:
-            skipped.append(cid)
+            _record_skip(
+                skipped_records,
+                candidate=candidate,
+                reason=CommitConflictReason.ROUTE_PROBE_FAILED,
+                probe=probe,
+            )
             continue
 
         path = probe.path
@@ -170,9 +247,20 @@ def commit_selected_candidates(
             _path_transport_conflict(path, candidate.transport_kind, tuple(reservations))
             or _protected_corridor_conflict(path, inp)
             or _hard_blocked_conflict(path, inp)
+            or _equipment_transport_overlap(
+                candidate=candidate,
+                path=path,
+                committed_equipment_cells=frozenset(committed_equipment_cells),
+                committed_route_cells=frozenset(committed_route_cells),
+            )
         )
         if skip_reason is not None:
-            skipped.append(cid)
+            _record_skip(
+                skipped_records,
+                candidate=candidate,
+                reason=skip_reason,
+                probe=probe,
+            )
             continue
 
         temp_reservation = RouteReservation(
@@ -207,6 +295,8 @@ def commit_selected_candidates(
         )
         reservations.append(reservation)
         committed_occupied.update(candidate.occupied_cells)
+        committed_equipment_cells.update(_equipment_cells_for_candidate(candidate))
+        committed_route_cells.update(path)
         reached = probe.reached_goal
         kind = (
             reached.transport_kind
@@ -226,7 +316,7 @@ def commit_selected_candidates(
 
     result = IncrementalCommitResult(
         confirmed=tuple(confirmed),
-        skipped_candidate_ids=tuple(skipped),
+        skipped_candidates=tuple(skipped_records),
         goal_assigned_platforms=dict(goal_load),
     )
     return result, commit_timing

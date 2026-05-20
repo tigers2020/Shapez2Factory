@@ -21,9 +21,11 @@ from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan
 from django_apps.asteroid_lab.optimization.commit_best_candidates import (
     ConfirmedGenePlacement,
     IncrementalCommitResult,
+    SkippedCandidateRecord,
 )
 from django_apps.asteroid_lab.optimization.enums import (
     CandidateRejectReason,
+    CommitConflictReason,
     Direction,
     PlacementCommitState,
     ReservationState,
@@ -89,6 +91,15 @@ def _minimal_loaded() -> LoadedReconstructionSnapshot:
     )
 
 
+def _skipped_records(
+    *candidate_ids: str,
+    reason: CommitConflictReason = CommitConflictReason.ROUTE_PROBE_FAILED,
+) -> tuple[SkippedCandidateRecord, ...]:
+    return tuple(
+        SkippedCandidateRecord(candidate_id=cid, reason=reason) for cid in candidate_ids
+    )
+
+
 def _minimal_capacity() -> CapacityPlan:
     return CapacityPlan(
         mineable_cell_count=3,
@@ -125,7 +136,7 @@ def _full_recorder_run() -> SolverRuntimeReplayRecorder:
     pool = CandidateGenerationResult(normal_candidates=(), rejected_candidates=())
     plan = SelectedCandidatePlan(ordered_candidate_ids=())
     commit = IncrementalCommitResult(
-        confirmed=(), skipped_candidate_ids=(), goal_assigned_platforms={}
+        confirmed=(), skipped_candidates=(), goal_assigned_platforms={}
     )
     materialization = RouteMaterializationResult(
         layout=MaterializedLayoutCells(cells=()), failure_reason=None
@@ -453,7 +464,7 @@ def test_route_goal_overlay_persists_until_result_layout() -> None:
     )
     rec.record_result_layout(
         commit=IncrementalCommitResult(
-            confirmed=(), skipped_candidate_ids=(), goal_assigned_platforms={}
+            confirmed=(), skipped_candidates=(), goal_assigned_platforms={}
         ),
         materialization=RouteMaterializationResult(
             layout=MaterializedLayoutCells(cells=()), failure_reason=None
@@ -595,7 +606,7 @@ def test_record_route_materialized_includes_equipment_cell_delta() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     route = materialize_route_network(commit, {candidate.candidate_id: candidate})
@@ -697,7 +708,7 @@ def test_route_materialized_and_result_layout_share_cell_delta() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     route = materialize_route_network(commit, {candidate.candidate_id: candidate})
@@ -836,7 +847,7 @@ def test_materialized_cell_delta_emits_transport_before_equipment() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     route = materialize_route_network(commit, {cand.candidate_id: cand})
@@ -926,7 +937,7 @@ def test_record_commit_details_emits_attempted_and_committed() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     plan = SelectedCandidatePlan(ordered_candidate_ids=("commit_ok",))
@@ -969,7 +980,7 @@ def test_record_route_committed_includes_all_confirmed_paths() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     rec.record_route_committed(commit)
@@ -985,7 +996,7 @@ def test_record_commit_details_emits_rolled_back_for_skipped() -> None:
     candidate = _minimal_gene_candidate("skip_me")
     commit = IncrementalCommitResult(
         confirmed=(),
-        skipped_candidate_ids=("skip_me",),
+        skipped_candidates=_skipped_records("skip_me"),
         goal_assigned_platforms={},
     )
     plan = SelectedCandidatePlan(ordered_candidate_ids=("skip_me",))
@@ -996,6 +1007,9 @@ def test_record_commit_details_emits_rolled_back_for_skipped() -> None:
         ReplayEventType.ROUTE_COMMIT_ATTEMPTED,
         ReplayEventType.ROUTE_ROLLED_BACK,
     ]
+    rolled_back = rec.build_frames()[-1]
+    assert rolled_back.metrics["commit_conflict_reason"] == "route_probe_failed"
+    assert rolled_back.metrics["candidate_id"] == "skip_me"
 
 
 def test_record_commit_details_caps_at_max_candidates() -> None:
@@ -1005,7 +1019,7 @@ def test_record_commit_details_caps_at_max_candidates() -> None:
     candidates = {cid: _minimal_gene_candidate(cid) for cid in ids}
     commit = IncrementalCommitResult(
         confirmed=(),
-        skipped_candidate_ids=ids,
+        skipped_candidates=_skipped_records(*ids),
         goal_assigned_platforms={},
     )
     plan = SelectedCandidatePlan(ordered_candidate_ids=ids)
@@ -1025,7 +1039,7 @@ def test_full_recorder_with_all_new_methods_frame_index_monotonic() -> None:
     plan = SelectedCandidatePlan(ordered_candidate_ids=("detail_c",))
     commit = IncrementalCommitResult(
         confirmed=(),
-        skipped_candidate_ids=("detail_c",),
+        skipped_candidates=_skipped_records("detail_c"),
         goal_assigned_platforms={},
     )
     materialization = RouteMaterializationResult(

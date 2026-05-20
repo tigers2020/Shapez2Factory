@@ -10,6 +10,7 @@ from django_apps.asteroid_lab.optimization.candidate_dtos import (
     CandidateGenerationResult,
     ExtractorPlacementPolicy,
     GeneCandidate,
+    GenerationDiagnostics,
     RejectedGeneCandidate,
     build_normal_gene_candidate,
     make_candidate_id,
@@ -65,19 +66,43 @@ class _ProbeWinner:
     equivalence_key: CandidateEquivalenceKey
 
 
-def _truncate_normal_candidates(
+def _candidate_rank_key(candidate: GeneCandidate) -> tuple[float, int, str]:
+    return (
+        -candidate.base_score,
+        candidate.route_probe_result.cost,
+        candidate.candidate_id,
+    )
+
+
+def _truncate_with_anchor_floor(
     candidates: tuple[GeneCandidate, ...],
     max_candidates: int,
 ) -> tuple[GeneCandidate, ...]:
-    ranked = sorted(
-        candidates,
-        key=lambda c: (
-            -c.base_score,
-            c.route_probe_result.cost,
-            c.candidate_id,
-        ),
-    )
-    return tuple(ranked[:max_candidates])
+    """Keep one best candidate per extractor, then fill remaining slots by global rank."""
+
+    if len(candidates) <= max_candidates:
+        return candidates
+
+    ranked = sorted(candidates, key=_candidate_rank_key)
+    best_per_anchor: dict[Coord, GeneCandidate] = {}
+    for candidate in ranked:
+        if candidate.extractor not in best_per_anchor:
+            best_per_anchor[candidate.extractor] = candidate
+
+    floor = sorted(best_per_anchor.values(), key=_candidate_rank_key)
+    if len(floor) >= max_candidates:
+        return tuple(floor[:max_candidates])
+
+    chosen_ids = {c.candidate_id for c in floor}
+    result: list[GeneCandidate] = list(floor)
+    for candidate in ranked:
+        if len(result) >= max_candidates:
+            break
+        if candidate.candidate_id in chosen_ids:
+            continue
+        result.append(candidate)
+        chosen_ids.add(candidate.candidate_id)
+    return tuple(result)
 
 
 def _unreachable_prefilter_result() -> RouteProbeResult:
@@ -118,13 +143,76 @@ def _sort_winners_for_probe(
     )
 
 
-def _cap_probe_winners(
+def _variants_per_anchor_max(candidates: tuple[GeneCandidate, ...]) -> int:
+    per_anchor: dict[Coord, int] = {}
+    for candidate in candidates:
+        per_anchor[candidate.extractor] = per_anchor.get(candidate.extractor, 0) + 1
+    return max(per_anchor.values(), default=0)
+
+
+def _winner_probe_sort_key(
+    winner: _ProbeWinner,
+    base_dist_maps: dict[TransportKind, dict[Coord, int]],
+) -> tuple[int, str]:
+    return (_winner_base_distance(winner, base_dist_maps), winner.candidate_id)
+
+
+@dataclass(frozen=True, slots=True)
+class _ProbeCapResult:
+    winners: tuple[_ProbeWinner, ...]
+    floor_reserved_count: int
+    fill_count: int
+
+
+def _cap_probe_winners_with_anchor_floor(
     winners: tuple[_ProbeWinner, ...],
     probe_budget: int,
-) -> tuple[_ProbeWinner, ...]:
+    base_dist_maps: dict[TransportKind, dict[Coord, int]],
+) -> _ProbeCapResult:
+    """Reserve one best winner per extractor, then fill remaining probe slots by distance rank."""
+
+    unique_anchors = len({w.projected.extractor for w in winners})
     if len(winners) <= probe_budget:
-        return winners
-    return winners[:probe_budget]
+        return _ProbeCapResult(
+            winners=winners,
+            floor_reserved_count=unique_anchors,
+            fill_count=max(0, len(winners) - unique_anchors),
+        )
+
+    best_per_anchor: dict[Coord, _ProbeWinner] = {}
+    for winner in winners:
+        extractor = winner.projected.extractor
+        if extractor not in best_per_anchor:
+            best_per_anchor[extractor] = winner
+
+    floor = sorted(
+        best_per_anchor.values(),
+        key=lambda w: _winner_probe_sort_key(w, base_dist_maps),
+    )
+    if len(floor) >= probe_budget:
+        capped = tuple(floor[:probe_budget])
+        return _ProbeCapResult(
+            winners=capped,
+            floor_reserved_count=probe_budget,
+            fill_count=0,
+        )
+
+    chosen_ids = {w.candidate_id for w in floor}
+    result: list[_ProbeWinner] = list(floor)
+    floor_in_result = len(result)
+    for winner in winners:
+        if len(result) >= probe_budget:
+            break
+        if winner.candidate_id in chosen_ids:
+            continue
+        result.append(winner)
+        chosen_ids.add(winner.candidate_id)
+
+    return _ProbeCapResult(
+        winners=tuple(result),
+        floor_reserved_count=floor_in_result,
+        fill_count=len(result) - floor_in_result,
+    )
 
 
 def generate_gene_candidates(
@@ -217,13 +305,36 @@ def generate_gene_candidates(
             continue
         reachable_winners.append(winner)
 
+    reachable_anchors_after_prefilter_count = len(
+        {w.projected.extractor for w in reachable_winners}
+    )
+
     sorted_winners = _sort_winners_for_probe(
         tuple(reachable_winners),
         base_dist_maps,
     )
     probe_budget = _probe_budget(config)
     if probe_budget is not None:
-        sorted_winners = _cap_probe_winners(sorted_winners, probe_budget)
+        cap_result = _cap_probe_winners_with_anchor_floor(
+            sorted_winners,
+            probe_budget,
+            base_dist_maps,
+        )
+        sorted_winners = cap_result.winners
+        probe_cap_floor_reserved = cap_result.floor_reserved_count
+        probe_cap_fill = cap_result.fill_count
+    else:
+        unique_probe_anchors = len({w.projected.extractor for w in sorted_winners})
+        probe_cap_floor_reserved = unique_probe_anchors
+        probe_cap_fill = max(0, len(sorted_winners) - unique_probe_anchors)
+
+    unique_anchors_after_probe_budget_count = len(
+        {w.projected.extractor for w in sorted_winners}
+    )
+    anchors_dropped_by_probe_budget_count = max(
+        0,
+        reachable_anchors_after_prefilter_count - unique_anchors_after_probe_budget_count,
+    )
 
     domain_by_blocked: dict[frozenset[Coord], dict] = {}
     for winner in sorted_winners:
@@ -281,8 +392,27 @@ def generate_gene_candidates(
     projected_candidate_count_before_probe = len(winners_by_key)
     deduped = dedupe_gene_candidates(tuple(normal))
     deduped_candidate_count = len(deduped)
+    pre_truncation_count = len(deduped)
+    anchors_after_dedupe = len({c.extractor for c in deduped})
     if config.max_candidates is not None:
-        deduped = _truncate_normal_candidates(deduped, config.max_candidates)
+        deduped = _truncate_with_anchor_floor(deduped, config.max_candidates)
+    truncated_by_max_candidates_count = max(0, pre_truncation_count - len(deduped))
+    anchors_in_pool = len({c.extractor for c in deduped})
+    anchor_dropped = max(0, anchors_after_dedupe - anchors_in_pool)
+
+    generation_diagnostics = GenerationDiagnostics(
+        rim_cell_count=len(inp.rim_cells),
+        reachable_anchors_after_prefilter_count=reachable_anchors_after_prefilter_count,
+        truncated_by_max_candidates_count=truncated_by_max_candidates_count,
+        normal_pool_variants_per_anchor_max=_variants_per_anchor_max(deduped),
+        unique_anchors_after_probe_budget_count=unique_anchors_after_probe_budget_count,
+        anchors_dropped_by_probe_budget_count=anchors_dropped_by_probe_budget_count,
+        probe_budget_floor_reserved_count=probe_cap_floor_reserved,
+        probe_budget_fill_count=probe_cap_fill,
+        unique_anchors_after_dedupe_count=anchors_after_dedupe,
+        anchor_preserved_by_truncation_count=anchors_in_pool,
+        anchor_dropped_by_truncation_count=anchor_dropped,
+    )
 
     return CandidateGenerationResult(
         normal_candidates=deduped,
@@ -291,6 +421,7 @@ def generate_gene_candidates(
         projected_candidate_count_before_probe=projected_candidate_count_before_probe,
         pre_dedupe_normal_count=pre_dedupe_normal_count,
         deduped_candidate_count=deduped_candidate_count,
+        generation_diagnostics=generation_diagnostics,
     )
 
 

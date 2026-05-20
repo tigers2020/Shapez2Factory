@@ -24,6 +24,7 @@ GOLDEN_NAME = "candidate_selector_trunk_split"
 def _gene_from_row(row: dict) -> GeneCandidate:
     coord = tuple(row["goal_coord"])
     kind = TransportKind(row["transport_kind"])
+    extractor = tuple(row.get("extractor", [0, 0]))
     goal = RouteGoal(
         coord=coord,
         goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
@@ -44,11 +45,11 @@ def _gene_from_row(row: dict) -> GeneCandidate:
         candidate_id=str(row["candidate_id"]),
         gene_id="golden",
         topology_signature="sig",
-        extractor=(0, 0),
+        extractor=extractor,
         extensions=(),
-        occupied_cells=frozenset({(0, 0)}),
-        route_probe_start=(2, 0),
-        fixed_output_transport=(1, 0),
+        occupied_cells=frozenset({extractor}),
+        route_probe_start=(extractor[0] + 2, extractor[1]),
+        fixed_output_transport=(extractor[0] + 1, extractor[1]),
         output_dir=Direction.E,
         transport_kind=kind,
         base_throughput=int(row["base_throughput"]),
@@ -67,6 +68,6 @@ def test_golden_candidate_selector_trunk_split_order() -> None:
         greenfield_optimization_input(bbox=BBox(0, 10, 0, 0)),
         route_goals=goals,
     )
-    plan = select_gene_candidates_greedy(candidates, inp=inp)
+    plan, _diag = select_gene_candidates_greedy(candidates, inp=inp)
     actual = {"ordered_candidate_ids": list(plan.ordered_candidate_ids)}
     assert_golden_match(actual, golden_path(GOLDEN_NAME, kind="expected"))

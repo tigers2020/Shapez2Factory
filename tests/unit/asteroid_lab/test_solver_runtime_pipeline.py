@@ -24,7 +24,10 @@ from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_loaded_snapshot,
 )
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.services.solver_runtime_pipeline import run_solver_runtime_pipeline
+from django_apps.asteroid_lab.services.solver_runtime_pipeline import (
+    _gate_c_branch_hint,
+    run_solver_runtime_pipeline,
+)
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
 
@@ -89,6 +92,161 @@ def test_pipeline_runs_end_to_end_without_orm() -> None:
     assert "commit_attempt_count" in result.solver_summary
 
 
+def test_solver_summary_includes_commit_skip_reason_fields() -> None:
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_templates=_minimal_gene_templates(),
+        run_key="skip_reason",
+    )
+    summary = result.solver_summary
+    assert "skipped_by_reason" in summary
+    assert isinstance(summary["skipped_by_reason"], dict)
+    assert sum(summary["skipped_by_reason"].values()) == summary["commit_rolled_back_count"]
+    for key in (
+        "commit_occupied_cell_conflict_count",
+        "commit_route_cell_conflict_count",
+        "commit_route_probe_failed_count",
+        "commit_transport_kind_conflict_count",
+        "commit_hard_blocked_conflict_count",
+        "commit_hard_protected_conflict_count",
+    ):
+        assert key in summary
+        assert isinstance(summary[key], int)
+    assert (
+        summary["commit_occupied_cell_conflict_count"]
+        + summary["commit_route_cell_conflict_count"]
+        + summary["commit_route_probe_failed_count"]
+        + summary["commit_transport_kind_conflict_count"]
+        + summary["commit_hard_blocked_conflict_count"]
+        + summary["commit_hard_protected_conflict_count"]
+    ) == summary["commit_rolled_back_count"]
+
+
+def test_gate_c_branch_hint_classifies_supply_bottleneck() -> None:
+    assert _gate_c_branch_hint(rim_cell_count=10, reachable_anchors_after_prefilter_count=7, unique_anchors_in_normal_pool_count=7) == "c1_probe_domain"
+    assert _gate_c_branch_hint(rim_cell_count=7, reachable_anchors_after_prefilter_count=12, unique_anchors_in_normal_pool_count=7) == "c3_dedupe_truncation"
+    assert _gate_c_branch_hint(rim_cell_count=7, reachable_anchors_after_prefilter_count=7, unique_anchors_in_normal_pool_count=7) == "c2_rim_topology"
+
+
+def test_gate_c_branch_hint_7_route_snapshot_geometry_limited() -> None:
+    """Post-PR-1 production snapshot: rim == reachable == pool anchors → Gate C2."""
+
+    assert (
+        _gate_c_branch_hint(
+            rim_cell_count=7,
+            reachable_anchors_after_prefilter_count=7,
+            unique_anchors_in_normal_pool_count=7,
+        )
+        == "c2_rim_topology"
+    )
+
+
+def test_solver_summary_generation_gate_c_metric_chain() -> None:
+    """Six-stage anchor funnel: rim >= reachable >= probe >= dedupe >= truncate >= pool."""
+
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_templates=_minimal_gene_templates(),
+        run_key="gate_c_chain",
+    )
+    summary = result.solver_summary
+    rim = summary["rim_cell_count"]
+    reachable = summary["reachable_anchors_after_prefilter_count"]
+    probe_anchors = summary["unique_anchors_after_probe_budget_count"]
+    dedupe_anchors = summary["unique_anchors_after_dedupe_count"]
+    truncate_anchors = summary["unique_anchors_after_truncate_count"]
+    pool_anchors = summary["unique_anchors_in_normal_pool_count"]
+    assert rim >= reachable >= probe_anchors >= dedupe_anchors >= truncate_anchors
+    assert truncate_anchors == pool_anchors
+    assert (
+        summary["anchors_dropped_by_probe_budget_count"] + probe_anchors == reachable
+    )
+    assert (
+        summary["anchor_preserved_by_truncation_count"]
+        + summary["anchor_dropped_by_truncation_count"]
+        == dedupe_anchors
+    )
+    assert summary["gate_c_branch_hint"] == _gate_c_branch_hint(
+        rim_cell_count=rim,
+        reachable_anchors_after_prefilter_count=reachable,
+        unique_anchors_in_normal_pool_count=pool_anchors,
+    )
+
+
+def test_solver_summary_includes_generation_anchor_diagnostic_fields() -> None:
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_templates=_minimal_gene_templates(),
+        run_key="gen_diag",
+    )
+    summary = result.solver_summary
+    for key in (
+        "rim_cell_count",
+        "reachable_anchors_after_prefilter_count",
+        "unique_anchors_after_probe_budget_count",
+        "anchors_dropped_by_probe_budget_count",
+        "probe_budget_floor_reserved_count",
+        "probe_budget_fill_count",
+        "truncated_by_max_candidates_count",
+        "normal_pool_variants_per_anchor_max",
+        "unique_anchors_after_dedupe_count",
+        "unique_anchors_after_truncate_count",
+        "anchor_preserved_by_truncation_count",
+        "anchor_dropped_by_truncation_count",
+    ):
+        assert key in summary, f"missing summary field: {key!r}"
+        assert isinstance(summary[key], int)
+    assert "unique_anchors_after_dedupe_before_truncate_count" not in summary
+    assert isinstance(summary["gate_c_branch_hint"], str)
+    assert summary["gate_c_branch_hint"] in (
+        "c1_probe_domain",
+        "c2_rim_topology",
+        "c3_dedupe_truncation",
+        "unknown",
+    )
+
+
+def test_solver_summary_includes_selection_throughput_stop_fields() -> None:
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_templates=_minimal_gene_templates(),
+        run_key="sel_tp_stop",
+    )
+    summary = result.solver_summary
+    assert "selection_stopped_by_throughput_budget" in summary
+    assert "selected_throughput_at_stop" in summary
+    assert isinstance(summary["selection_stopped_by_throughput_budget"], int)
+    assert isinstance(summary["selected_throughput_at_stop"], int)
+    assert "commit_equipment_transport_overlap_count" in summary
+
+
+def test_solver_summary_includes_anchor_diversity_fields() -> None:
+    loaded = _pipeline_loaded_snapshot()
+    result = run_solver_runtime_pipeline(
+        loaded=loaded,
+        gene_templates=_minimal_gene_templates(),
+        run_key="anchor_div",
+    )
+    summary = result.solver_summary
+    for key in (
+        "unique_anchors_in_normal_pool_count",
+        "unique_anchors_selected_count",
+        "variants_per_anchor_max",
+        "selected_duplicate_anchor_count",
+        "selection_skipped_duplicate_anchor_count",
+        "max_selected_variants_per_extractor",
+    ):
+        assert key in summary, f"missing summary field: {key!r}"
+        assert isinstance(summary[key], int)
+    assert summary["selected_duplicate_anchor_count"] == 0
+    assert summary["variants_per_anchor_max"] <= summary["max_selected_variants_per_extractor"]
+    assert summary["unique_anchors_selected_count"] <= summary["unique_anchors_in_normal_pool_count"]
+
+
 def test_solver_summary_includes_capacity_diagnostic_fields() -> None:
     """New throughput-chain fields are present and typed as int."""
     loaded = _pipeline_loaded_snapshot()
@@ -130,7 +288,7 @@ def test_validation_warns_under_target_throughput_without_failing() -> None:
 
     empty_commit = IncrementalCommitResult(
         confirmed=(),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
 

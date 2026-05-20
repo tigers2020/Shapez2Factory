@@ -60,6 +60,23 @@ class RejectedGeneCandidate:
 
 
 @dataclass(frozen=True, slots=True)
+class GenerationDiagnostics:
+    """Gate C supply-chain counters (summary/replay only; does not affect pool)."""
+
+    rim_cell_count: int = 0
+    reachable_anchors_after_prefilter_count: int = 0
+    truncated_by_max_candidates_count: int = 0
+    normal_pool_variants_per_anchor_max: int = 0
+    unique_anchors_after_probe_budget_count: int = 0
+    anchors_dropped_by_probe_budget_count: int = 0
+    probe_budget_floor_reserved_count: int = 0
+    probe_budget_fill_count: int = 0
+    unique_anchors_after_dedupe_count: int = 0
+    anchor_preserved_by_truncation_count: int = 0
+    anchor_dropped_by_truncation_count: int = 0
+
+
+@dataclass(frozen=True, slots=True)
 class CandidateGenerationResult:
     normal_candidates: tuple[GeneCandidate, ...]
     rejected_candidates: tuple[RejectedGeneCandidate, ...]
@@ -67,6 +84,7 @@ class CandidateGenerationResult:
     projected_candidate_count_before_probe: int = 0
     pre_dedupe_normal_count: int = 0
     deduped_candidate_count: int = 0
+    generation_diagnostics: GenerationDiagnostics = GenerationDiagnostics()
 
 
 def make_candidate_id(

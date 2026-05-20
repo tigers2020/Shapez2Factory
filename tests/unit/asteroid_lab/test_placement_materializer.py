@@ -121,7 +121,7 @@ def test_placement_materializer_emits_extractor_solo() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     equipment = materialize_confirmed_placements(
@@ -147,7 +147,7 @@ def test_placement_materializer_emits_extractor_and_extension() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     equipment = materialize_confirmed_placements(
@@ -172,7 +172,7 @@ def test_merge_materialized_layout_includes_equipment_and_transport() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     route = materialize_route_network(commit, {cand.candidate_id: cand})
@@ -199,7 +199,7 @@ def test_merge_rejects_equipment_on_transport_coord() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     route = materialize_route_network(commit, {cand.candidate_id: cand})
@@ -235,7 +235,7 @@ def test_merge_success_keeps_disjoint_transport_and_equipment_coords() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     route = materialize_route_network(commit, {cand.candidate_id: cand})

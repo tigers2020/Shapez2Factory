@@ -128,7 +128,7 @@ def test_validation_issue_codes_explicit() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     result = validate_final_layout(commit, None, inp=inp, candidates_by_id={})
@@ -188,7 +188,7 @@ def test_validation_fails_reserved_cells_path_mismatch() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     layout = MaterializedLayoutCells(
@@ -241,7 +241,7 @@ def test_validation_passes_output_stub_on_path() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     result = validate_final_layout(
@@ -285,7 +285,7 @@ def test_extractor_not_connected_output_stub_not_on_path() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     result = validate_final_layout(
@@ -335,7 +335,7 @@ def test_extractor_not_connected_issue_extra_fields() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     result = validate_final_layout(
@@ -389,7 +389,7 @@ def test_validation_fails_candidate_without_confirmed_reservation() -> None:
                 commit_state=PlacementCommitState.CONFIRMED,
             ),
         ),
-        skipped_candidate_ids=(),
+        skipped_candidates=(),
         goal_assigned_platforms={},
     )
     result = validate_final_layout(

@@ -10,18 +10,26 @@ from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
     BundleSelectionTargets,
     bundle_selection_targets_from_run_config,
 )
-from django_apps.asteroid_lab.optimization.candidate_dtos import CandidateGenerationConfig
+from django_apps.asteroid_lab.optimization.candidate_dtos import (
+    CandidateGenerationConfig,
+    CandidateGenerationResult,
+)
 from django_apps.asteroid_lab.optimization.candidate_generator import (
     default_generation_config,
     generate_gene_candidates,
 )
 from django_apps.asteroid_lab.optimization.candidate_selector import (
     SelectedCandidatePlan,
+    SelectionDiagnostics,
     select_gene_candidates_greedy,
 )
 from django_apps.asteroid_lab.optimization.capacity_planner import plan_capacity
-from django_apps.asteroid_lab.optimization.commit_best_candidates import commit_selected_candidates
-from django_apps.asteroid_lab.optimization.enums import ValidationSeverity
+from django_apps.asteroid_lab.optimization.commit_best_candidates import (
+    SkippedCandidateRecord,
+    commit_selected_candidates,
+)
+from django_apps.asteroid_lab.optimization.commit_order_diversity import diversify_commit_order
+from django_apps.asteroid_lab.optimization.enums import CommitConflictReason, ValidationSeverity
 from django_apps.asteroid_lab.optimization.final_validation import validate_final_layout
 from django_apps.asteroid_lab.optimization.gene_template import GeneTemplate
 from django_apps.asteroid_lab.optimization.input_contracts import ValidationIssue
@@ -94,6 +102,126 @@ def _selected_throughput(
     )
 
 
+def _commit_skip_summary(
+    skipped_records: tuple[SkippedCandidateRecord, ...],
+) -> dict[str, Any]:
+    skipped_by_reason: dict[str, int] = {}
+    for record in skipped_records:
+        key = record.reason.value
+        skipped_by_reason[key] = skipped_by_reason.get(key, 0) + 1
+
+    def _count(reason: CommitConflictReason) -> int:
+        return skipped_by_reason.get(reason.value, 0)
+
+    return {
+        "skipped_by_reason": skipped_by_reason,
+        "commit_occupied_cell_conflict_count": _count(
+            CommitConflictReason.OCCUPIED_CELL_CONFLICT
+        ),
+        "commit_route_cell_conflict_count": _count(CommitConflictReason.ROUTE_CELL_CONFLICT),
+        "commit_route_probe_failed_count": _count(CommitConflictReason.ROUTE_PROBE_FAILED),
+        "commit_transport_kind_conflict_count": _count(
+            CommitConflictReason.TRANSPORT_KIND_CONFLICT
+        ),
+        "commit_hard_blocked_conflict_count": _count(
+            CommitConflictReason.HARD_BLOCKED_CONFLICT
+        ),
+        "commit_hard_protected_conflict_count": _count(
+            CommitConflictReason.HARD_PROTECTED_CONFLICT
+        ),
+        "commit_equipment_transport_overlap_count": _count(
+            CommitConflictReason.EQUIPMENT_TRANSPORT_OVERLAP
+        ),
+    }
+
+
+def _gate_c_branch_hint(
+    *,
+    rim_cell_count: int,
+    reachable_anchors_after_prefilter_count: int,
+    unique_anchors_in_normal_pool_count: int,
+) -> str:
+    """Gate C branch for PR-2 scope (read-only; no algorithm change in PR-1).
+
+    Decision table (solver_summary ``gate_c_branch_hint``):
+    | Branch | Condition | Bottleneck | PR-2 |
+    | C1 | rim > reachable | probe/domain prefilter | reachable expansion |
+    | C2 | rim == reachable | rim/topology supply | rim expansion |
+    | C3 | reachable > pool anchors | dedupe/truncation | max_candidates policy |
+
+    Production 7-route snapshot (rim=reachable=pool=7) → ``c2_rim_topology``.
+    """
+
+    if rim_cell_count > reachable_anchors_after_prefilter_count:
+        return "c1_probe_domain"
+    if reachable_anchors_after_prefilter_count > unique_anchors_in_normal_pool_count:
+        return "c3_dedupe_truncation"
+    if rim_cell_count == reachable_anchors_after_prefilter_count:
+        return "c2_rim_topology"
+    return "unknown"
+
+
+def _generation_diagnostics_metrics(pool: CandidateGenerationResult) -> dict[str, int | str]:
+    diag = pool.generation_diagnostics
+    pool_anchor_count = len({c.extractor for c in pool.normal_candidates})
+    return {
+        "rim_cell_count": diag.rim_cell_count,
+        "reachable_anchors_after_prefilter_count": diag.reachable_anchors_after_prefilter_count,
+        "truncated_by_max_candidates_count": diag.truncated_by_max_candidates_count,
+        "normal_pool_variants_per_anchor_max": diag.normal_pool_variants_per_anchor_max,
+        "unique_anchors_after_probe_budget_count": diag.unique_anchors_after_probe_budget_count,
+        "anchors_dropped_by_probe_budget_count": diag.anchors_dropped_by_probe_budget_count,
+        "probe_budget_floor_reserved_count": diag.probe_budget_floor_reserved_count,
+        "probe_budget_fill_count": diag.probe_budget_fill_count,
+        "unique_anchors_after_dedupe_count": diag.unique_anchors_after_dedupe_count,
+        "unique_anchors_after_truncate_count": pool_anchor_count,
+        "anchor_preserved_by_truncation_count": diag.anchor_preserved_by_truncation_count,
+        "anchor_dropped_by_truncation_count": diag.anchor_dropped_by_truncation_count,
+        "gate_c_branch_hint": _gate_c_branch_hint(
+            rim_cell_count=diag.rim_cell_count,
+            reachable_anchors_after_prefilter_count=diag.reachable_anchors_after_prefilter_count,
+            unique_anchors_in_normal_pool_count=pool_anchor_count,
+        ),
+    }
+
+
+def _anchor_diversity_metrics(
+    pool: CandidateGenerationResult,
+    plan: SelectedCandidatePlan,
+    candidates_by_id: dict[str, Any],
+    selection_diag: SelectionDiagnostics,
+) -> dict[str, int]:
+    pool_anchors = {c.extractor for c in pool.normal_candidates}
+    selected_extractors: list[tuple[int, int]] = []
+    for cid in plan.ordered_candidate_ids:
+        candidate = candidates_by_id.get(cid)
+        if candidate is not None:
+            selected_extractors.append(candidate.extractor)
+
+    unique_selected = len(set(selected_extractors))
+    per_anchor: dict[tuple[int, int], int] = {}
+    for coord in selected_extractors:
+        per_anchor[coord] = per_anchor.get(coord, 0) + 1
+    variants_per_anchor_max = max(per_anchor.values(), default=0)
+
+    return {
+        "unique_anchors_in_normal_pool_count": len(pool_anchors),
+        "unique_anchors_selected_count": unique_selected,
+        "variants_per_anchor_max": variants_per_anchor_max,
+        "selected_duplicate_anchor_count": len(selected_extractors) - unique_selected,
+        "selection_skipped_duplicate_anchor_count": (
+            selection_diag.selection_skipped_duplicate_anchor_count
+        ),
+        "max_selected_variants_per_extractor": (
+            selection_diag.max_selected_variants_per_extractor
+        ),
+        "selection_stopped_by_throughput_budget": int(
+            selection_diag.selection_stopped_by_throughput_budget
+        ),
+        "selected_throughput_at_stop": selection_diag.selected_throughput_at_stop,
+    }
+
+
 def _confirmed_throughput(commit: Any, candidates_by_id: dict[str, Any]) -> int:
     total = 0
     for placement in commit.confirmed:
@@ -108,7 +236,7 @@ def _build_solver_summary(
     *,
     validation_passed: bool,
     commit_count: int,
-    skipped: tuple[str, ...],
+    skipped_records: tuple[SkippedCandidateRecord, ...],
     materialization: RouteMaterializationResult,
     issues: tuple[ValidationIssue, ...],
     timing: SolverRuntimeTimingMetrics,
@@ -118,14 +246,18 @@ def _build_solver_summary(
     plan: SelectedCandidatePlan,
     commit_attempt_count: int,
     throughput_metrics: dict[str, int],
+    anchor_metrics: dict[str, int],
+    generation_metrics: dict[str, int | str],
 ) -> dict[str, Any]:
     error_issues = _error_issues(issues)
-    commit_rolled_back_count = len(skipped)
+    commit_rolled_back_count = len(skipped_records)
+    skip_summary = _commit_skip_summary(skipped_records)
     return {
         "validation_passed": validation_passed,
         "confirmed_count": commit_count,
         "confirmed_miner_count": commit_count,
-        "skipped_candidate_ids": list(skipped),
+        "skipped_candidate_ids": [r.candidate_id for r in skipped_records],
+        **skip_summary,
         "materialization_failure_reason": (
             materialization.failure_reason.value if materialization.failure_reason else None
         ),
@@ -155,6 +287,8 @@ def _build_solver_summary(
         "selected_throughput": throughput_metrics["selected_throughput"],
         "confirmed_throughput": throughput_metrics["confirmed_throughput"],
         "unique_gene_ids_used_count": throughput_metrics["unique_gene_ids_used_count"],
+        **anchor_metrics,
+        **generation_metrics,
     }
 
 
@@ -198,7 +332,7 @@ def run_solver_runtime_pipeline(
         recorder.record_candidate_pool_details(pool)
 
     select_start = time.perf_counter()
-    plan = select_gene_candidates_greedy(
+    plan, selection_diag = select_gene_candidates_greedy(
         pool.normal_candidates,
         inp=inp,
         targets=targets,
@@ -209,11 +343,12 @@ def run_solver_runtime_pipeline(
         recorder.record_genome_scaffold(plan, pool=pool, targets=targets)
 
     candidates_by_id = {c.candidate_id: c for c in pool.normal_candidates}
-    commit, commit_timing = commit_selected_candidates(plan, candidates_by_id, inp=inp)
+    commit_plan = diversify_commit_order(plan, candidates_by_id)
+    commit, commit_timing = commit_selected_candidates(commit_plan, candidates_by_id, inp=inp)
     timing.absorb_commit(commit_timing)
     if recorder is not None:
         recorder.record_route_committed(commit)
-        recorder.record_commit_details(plan, candidates_by_id, commit)
+        recorder.record_commit_details(commit_plan, candidates_by_id, commit)
 
     gene_templates_by_id = {g.gene_id: g for g in gene_templates}
     route_materialization = materialize_route_network(commit, candidates_by_id)
@@ -254,10 +389,14 @@ def run_solver_runtime_pipeline(
         "unique_gene_ids_used_count": _unique_gene_ids_used_count(pool.normal_candidates),
     }
     commit_attempt_count = len(plan.ordered_candidate_ids)
+    anchor_metrics = _anchor_diversity_metrics(
+        pool, plan, candidates_by_id, selection_diag
+    )
+    generation_metrics = _generation_diagnostics_metrics(pool)
     summary = _build_solver_summary(
         validation_passed=validation.passed,
         commit_count=len(commit.confirmed),
-        skipped=commit.skipped_candidate_ids,
+        skipped_records=commit.skipped_candidates,
         materialization=materialization,
         issues=validation.issues,
         timing=timing,
@@ -267,6 +406,8 @@ def run_solver_runtime_pipeline(
         plan=plan,
         commit_attempt_count=commit_attempt_count,
         throughput_metrics=throughput_metrics,
+        anchor_metrics=anchor_metrics,
+        generation_metrics=generation_metrics,
     )
 
     if recorder is not None:

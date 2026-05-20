@@ -12,6 +12,7 @@ from django_apps.asteroid_lab.optimization.candidate_dtos import (
 )
 from django_apps.asteroid_lab.optimization.candidate_equivalence import dedupe_gene_candidates
 from django_apps.asteroid_lab.optimization.candidate_generator import (
+    _truncate_with_anchor_floor,
     default_generation_config,
     generate_gene_candidates,
 )
@@ -147,6 +148,167 @@ def test_dedupe_gene_candidates_keeps_lowest_candidate_id() -> None:
 
     deduped = dedupe_gene_candidates((dup_high, dup_low))
     assert deduped == (dup_low,)
+
+
+def test_generation_diagnostics_counts_reachable_before_dedupe() -> None:
+    inp = _two_rim_reachable_input()
+    gene = _minimal_gene()
+    result = generate_gene_candidates(inp, (gene,), _default_config())
+
+    diag = result.generation_diagnostics
+    assert diag.rim_cell_count == len(inp.rim_cells) == 2
+    assert diag.reachable_anchors_after_prefilter_count >= 1
+    assert diag.reachable_anchors_after_prefilter_count <= diag.rim_cell_count
+    assert len({c.extractor for c in result.normal_candidates}) <= (
+        diag.reachable_anchors_after_prefilter_count
+    )
+
+
+def _five_rim_reachable_input():
+    bb = BBox(0, 10, 0, 0)
+    mineable = frozenset((sx, 0) for sx in range(0, 10, 2))
+    void = frozenset((sx, 0) for sx in range(bb.min_sx, bb.max_sx + 1))
+    goal = RouteGoal(
+        coord=(10, 0),
+        goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+        transport_kind=TransportKind.SHAPE_BELT,
+        priority=10,
+        existing_trunk=False,
+    )
+    return replace(
+        greenfield_optimization_input(bbox=bb),
+        asteroid_cells=mineable,
+        mineable_cells=mineable,
+        rim_cells=mineable,
+        external_void_cells=void,
+        route_goals=frozenset({goal}),
+    )
+
+
+def _candidates_for_rim_anchors(inp, gene, anchors: tuple[tuple[int, int], ...]):
+    out = []
+    for anchor in anchors:
+        projected = project_gene_placement(anchor=anchor, rotation=Direction.E, gene=gene)
+        domain = build_route_domain_for_projected_gene_probe(inp, projected)
+        probe = run_route_probe(
+            RouteProbeInput(
+                start=projected.route_probe_start,
+                goals=inp.route_goals,
+                route_domain=domain,
+                topology_graph=inp.topology_graph,
+                max_expansions=256,
+                transport_kind=TransportKind.SHAPE_BELT,
+            )
+        )
+        out.append(
+            build_normal_gene_candidate(
+                gene=gene,
+                projected=projected,
+                rotation=Direction.E,
+                transport_kind=TransportKind.SHAPE_BELT,
+                route_probe_result=probe,
+            )
+        )
+    return tuple(out)
+
+
+def test_anchor_floor_preserves_distinct_extractors_before_fill() -> None:
+    inp = _five_rim_reachable_input()
+    gene = _minimal_gene()
+    anchors = tuple(sorted(inp.rim_cells))
+    raw = _candidates_for_rim_anchors(inp, gene, anchors)
+    deduped = dedupe_gene_candidates(raw)
+    truncated = _truncate_with_anchor_floor(deduped, max_candidates=len(anchors))
+
+    assert len({c.extractor for c in truncated}) == len(anchors)
+
+
+def test_anchor_floor_caps_when_anchors_exceed_max() -> None:
+    inp = _five_rim_reachable_input()
+    gene = _minimal_gene()
+    anchors = tuple(sorted(inp.rim_cells))
+    deduped = dedupe_gene_candidates(_candidates_for_rim_anchors(inp, gene, anchors))
+    max_candidates = 3
+    truncated = _truncate_with_anchor_floor(deduped, max_candidates=max_candidates)
+
+    assert len(truncated) == max_candidates
+    assert len({c.extractor for c in truncated}) == max_candidates
+
+
+def test_probe_budget_preserves_distinct_extractors() -> None:
+    inp = _five_rim_reachable_input()
+    gene = _minimal_gene()
+    result = generate_gene_candidates(
+        inp,
+        (gene,),
+        _default_config(max_candidates=3, probe_budget_factor=1),
+    )
+    diag = result.generation_diagnostics
+    assert diag.unique_anchors_after_probe_budget_count == 3
+    assert diag.probe_budget_floor_reserved_count >= 3
+
+
+def test_probe_budget_floor_reserved_and_fill_counts() -> None:
+    inp = _five_rim_reachable_input()
+    gene = _minimal_gene()
+    result = generate_gene_candidates(
+        inp,
+        (gene,),
+        _default_config(max_candidates=10, probe_budget_factor=1),
+    )
+    diag = result.generation_diagnostics
+    assert diag.probe_budget_floor_reserved_count >= 5
+    assert (
+        diag.probe_budget_floor_reserved_count + diag.probe_budget_fill_count
+        <= 10
+    )
+
+
+def test_funnel_identity_probe_plus_dedupe() -> None:
+    inp = _five_rim_reachable_input()
+    gene = _minimal_gene()
+    result = generate_gene_candidates(inp, (gene,), _default_config())
+    diag = result.generation_diagnostics
+    assert (
+        diag.anchors_dropped_by_probe_budget_count
+        + diag.unique_anchors_after_probe_budget_count
+        == diag.reachable_anchors_after_prefilter_count
+    )
+
+
+def test_generation_truncation_metrics_identity() -> None:
+    inp = _five_rim_reachable_input()
+    gene = _minimal_gene()
+    result = generate_gene_candidates(
+        inp,
+        (gene,),
+        _default_config(max_candidates=3),
+    )
+    diag = result.generation_diagnostics
+    assert (
+        diag.anchor_preserved_by_truncation_count + diag.anchor_dropped_by_truncation_count
+        == diag.unique_anchors_after_dedupe_count
+    )
+    assert diag.unique_anchors_after_dedupe_count >= 5
+
+
+def test_generation_truncated_by_max_candidates_count() -> None:
+    inp = _five_rim_reachable_input()
+    gene = _minimal_gene()
+    result = generate_gene_candidates(
+        inp,
+        (gene,),
+        _default_config(max_candidates=2),
+    )
+    diag = result.generation_diagnostics
+    assert result.deduped_candidate_count >= 5
+    assert len(result.normal_candidates) == 2
+    assert len({c.extractor for c in result.normal_candidates}) == 2
+    assert diag.truncated_by_max_candidates_count == result.deduped_candidate_count - 2
+    assert diag.truncated_by_max_candidates_count > 0
+    assert diag.anchor_dropped_by_truncation_count == (
+        diag.unique_anchors_after_dedupe_count - 2
+    )
 
 
 def test_candidate_generator_dedupes_before_max_candidates() -> None:

@@ -60,6 +60,7 @@ def _gene_candidate(
     reached_goal: RouteGoal,
     transport_kind: TransportKind = TransportKind.SHAPE_BELT,
     path: tuple[tuple[int, int], ...] = (),
+    extractor: tuple[int, int] = (0, 0),
 ) -> GeneCandidate:
     probe = RouteProbeResult(
         reachable=True,
@@ -74,11 +75,11 @@ def _gene_candidate(
         candidate_id=candidate_id,
         gene_id="test_gene",
         topology_signature="sig",
-        extractor=(0, 0),
+        extractor=extractor,
         extensions=(),
-        occupied_cells=frozenset({(0, 0)}),
-        route_probe_start=(2, 0),
-        fixed_output_transport=(1, 0),
+        occupied_cells=frozenset({extractor}),
+        route_probe_start=(extractor[0] + 2, extractor[1]),
+        fixed_output_transport=(extractor[0] + 1, extractor[1]),
         output_dir=Direction.E,
         transport_kind=transport_kind,
         base_throughput=base_throughput,
@@ -96,6 +97,7 @@ def test_candidate_selector_prefers_high_throughput_low_cost() -> None:
         cost=3,
         goal_priority=10,
         reached_goal=goal,
+        extractor=(0, 0),
     )
     low = _gene_candidate(
         candidate_id="b:low",
@@ -103,9 +105,10 @@ def test_candidate_selector_prefers_high_throughput_low_cost() -> None:
         cost=10,
         goal_priority=10,
         reached_goal=goal,
+        extractor=(4, 0),
     )
 
-    plan = select_gene_candidates_greedy((low, high), inp=inp)
+    plan, _diag = select_gene_candidates_greedy((low, high), inp=inp)
 
     assert plan.ordered_candidate_ids[0] == "a:high"
 
@@ -122,6 +125,7 @@ def test_candidate_selector_prefers_alternate_trunk_when_goal_at_platform_cap() 
             cost=1,
             goal_priority=10,
             reached_goal=goal_a,
+            extractor=(i, 0),
         )
         for i in range(12)
     )
@@ -131,9 +135,10 @@ def test_candidate_selector_prefers_alternate_trunk_when_goal_at_platform_cap() 
         cost=99,
         goal_priority=10,
         reached_goal=goal_b,
+        extractor=(20, 0),
     )
 
-    plan = select_gene_candidates_greedy(fill_a + (to_b,), inp=inp)
+    plan, _diag = select_gene_candidates_greedy(fill_a + (to_b,), inp=inp)
 
     assert plan.ordered_candidate_ids[-1] == "c:to_b"
     assert len(plan.ordered_candidate_ids) == 13
@@ -149,6 +154,7 @@ def test_candidate_selector_hard_rejects_only_when_all_trunks_overflow() -> None
         cost=1,
         goal_priority=10,
         reached_goal=goal,
+        extractor=(0, 0),
     )
     light = _gene_candidate(
         candidate_id="b:light",
@@ -156,9 +162,10 @@ def test_candidate_selector_hard_rejects_only_when_all_trunks_overflow() -> None
         cost=1,
         goal_priority=10,
         reached_goal=goal,
+        extractor=(4, 0),
     )
 
-    plan = select_gene_candidates_greedy((heavy, light), inp=inp)
+    plan, _diag = select_gene_candidates_greedy((heavy, light), inp=inp)
 
     assert plan.ordered_candidate_ids == ("a:heavy", "b:light")
 
@@ -172,6 +179,7 @@ def test_candidate_selector_is_deterministic() -> None:
         cost=5,
         goal_priority=10,
         reached_goal=goal,
+        extractor=(0, 0),
     )
     c2 = _gene_candidate(
         candidate_id="a:2",
@@ -179,6 +187,7 @@ def test_candidate_selector_is_deterministic() -> None:
         cost=4,
         goal_priority=10,
         reached_goal=goal,
+        extractor=(4, 0),
     )
     c3 = _gene_candidate(
         candidate_id="m:3",
@@ -186,13 +195,14 @@ def test_candidate_selector_is_deterministic() -> None:
         cost=2,
         goal_priority=10,
         reached_goal=goal,
+        extractor=(8, 0),
     )
 
     pool_a = (c1, c2, c3)
     pool_b = (c3, c1, c2)
-    plan_a = select_gene_candidates_greedy(pool_a, inp=inp)
-    plan_b = select_gene_candidates_greedy(pool_b, inp=inp)
-    plan_a2 = select_gene_candidates_greedy(pool_a, inp=inp)
+    plan_a, _ = select_gene_candidates_greedy(pool_a, inp=inp)
+    plan_b, _ = select_gene_candidates_greedy(pool_b, inp=inp)
+    plan_a2, _ = select_gene_candidates_greedy(pool_a, inp=inp)
 
     assert plan_a.ordered_candidate_ids == plan_b.ordered_candidate_ids
     assert plan_a.ordered_candidate_ids == plan_a2.ordered_candidate_ids
@@ -227,6 +237,73 @@ def test_score_gene_candidate_matches_phase_i_formula() -> None:
     )
 
 
+def test_selector_limits_one_variant_per_extractor() -> None:
+    goal = _goal((6, 0))
+    inp = _minimal_inp(goals=frozenset({goal}))
+    candidates = tuple(
+        _gene_candidate(
+            candidate_id=f"v:{i}",
+            base_throughput=16 - i,
+            cost=i,
+            goal_priority=10,
+            reached_goal=goal,
+            extractor=(0, 0),
+        )
+        for i in range(3)
+    )
+
+    plan, diag = select_gene_candidates_greedy(candidates, inp=inp)
+
+    assert plan.ordered_candidate_ids == ("v:0",)
+    assert diag.selection_skipped_duplicate_anchor_count == 2
+
+
+def test_selector_anchor_diversity_preserves_best_per_anchor() -> None:
+    goal = _goal((6, 0))
+    inp = _minimal_inp(goals=frozenset({goal}))
+    anchor_a = (
+        _gene_candidate(
+            candidate_id="a:high",
+            base_throughput=16,
+            cost=1,
+            goal_priority=10,
+            reached_goal=goal,
+            extractor=(0, 0),
+        ),
+        _gene_candidate(
+            candidate_id="a:low",
+            base_throughput=8,
+            cost=1,
+            goal_priority=10,
+            reached_goal=goal,
+            extractor=(0, 0),
+        ),
+    )
+    anchor_b = (
+        _gene_candidate(
+            candidate_id="b:high",
+            base_throughput=14,
+            cost=2,
+            goal_priority=10,
+            reached_goal=goal,
+            extractor=(8, 0),
+        ),
+        _gene_candidate(
+            candidate_id="b:low",
+            base_throughput=6,
+            cost=2,
+            goal_priority=10,
+            reached_goal=goal,
+            extractor=(8, 0),
+        ),
+    )
+
+    plan, diag = select_gene_candidates_greedy(anchor_a + anchor_b, inp=inp)
+
+    assert set(plan.ordered_candidate_ids) == {"a:high", "b:high"}
+    assert diag.selection_skipped_duplicate_anchor_count == 2
+
+
 def test_selector_allows_multiple_bundles_per_goal_when_throughput_high() -> None:
     goal = _goal((6, 0))
     inp = _minimal_inp(goals=frozenset({goal}))
@@ -237,11 +314,12 @@ def test_selector_allows_multiple_bundles_per_goal_when_throughput_high() -> Non
             cost=i,
             goal_priority=10,
             reached_goal=goal,
+            extractor=(i * 4, 0),
         )
         for i in range(5)
     )
 
-    plan = select_gene_candidates_greedy(candidates, inp=inp)
+    plan, _diag = select_gene_candidates_greedy(candidates, inp=inp)
 
     assert len(plan.ordered_candidate_ids) == 5
 
@@ -259,10 +337,11 @@ def test_selector_ordered_count_can_exceed_route_out_count() -> None:
                     cost=i,
                     goal_priority=10,
                     reached_goal=goal,
+                    extractor=(goal.coord[0] + i, 0),
                 )
             )
 
-    plan = select_gene_candidates_greedy(tuple(pool), inp=inp)
+    plan, _diag = select_gene_candidates_greedy(tuple(pool), inp=inp)
 
     assert len(plan.ordered_candidate_ids) > len(goals)
 
@@ -286,6 +365,61 @@ def test_select_gene_candidates_does_not_mutate_optimization_input() -> None:
     assert inp.protected_corridor_cells == before_corridor
 
 
+def test_selector_stops_when_cumulative_throughput_reaches_target() -> None:
+    goals = frozenset(_goal((x * 2, 0)) for x in range(7))
+    inp = _minimal_inp(goals=goals)
+    targets = compute_bundle_selection_targets(goals)
+    assert targets.target_miner_bundle_count == 84
+
+    pool = tuple(
+        _gene_candidate(
+            candidate_id=f"m:{i}",
+            base_throughput=16,
+            cost=1,
+            goal_priority=10,
+            reached_goal=_goal((6, 0)),
+            extractor=(i * 4, 0),
+        )
+        for i in range(20)
+    )
+
+    plan, diag = select_gene_candidates_greedy(pool, inp=inp, targets=targets)
+
+    assert diag.selection_stopped_by_throughput_budget is True
+    assert diag.selected_throughput_at_stop >= targets.target_miner_bundle_count
+    assert len(plan.ordered_candidate_ids) == 6
+    assert diag.selected_throughput_at_stop == 96
+
+
+def test_selector_does_not_select_all_pool_when_throughput_budget_low() -> None:
+    """Regression: many pool anchors must not all be selected when target is 84 tp."""
+
+    goals = frozenset(_goal((x * 2, 0)) for x in range(7))
+    inp = _minimal_inp(goals=goals)
+    targets = compute_bundle_selection_targets(goals)
+    assert targets.target_miner_bundle_count == 84
+
+    pool = tuple(
+        _gene_candidate(
+            candidate_id=f"a{x}:{i}",
+            base_throughput=16,
+            cost=1,
+            goal_priority=10,
+            reached_goal=_goal((x * 2, 0)),
+            extractor=(x * 10 + i, 0),
+        )
+        for x in range(7)
+        for i in range(3)
+    )
+
+    plan, diag = select_gene_candidates_greedy(pool, inp=inp, targets=targets)
+
+    assert len(pool) == 21
+    assert len(plan.ordered_candidate_ids) <= 7
+    assert diag.selection_stopped_by_throughput_budget is True
+    assert diag.selected_throughput_at_stop >= 84
+
+
 def test_selector_cap_uses_target_bundle_count_not_route_out_count() -> None:
     """Selector cap is target_miner_bundle_count (84), not route_out_count (7).
 
@@ -302,7 +436,7 @@ def test_selector_cap_uses_target_bundle_count_not_route_out_count() -> None:
     assert targets.target_miner_bundle_count == route_out_count * 12  # 84
 
     pool_candidates: list[GeneCandidate] = []
-    for goal in goals:
+    for gi, goal in enumerate(sorted(goals, key=lambda g: g.coord)):
         for i in range(2):
             pool_candidates.append(
                 _gene_candidate(
@@ -311,12 +445,15 @@ def test_selector_cap_uses_target_bundle_count_not_route_out_count() -> None:
                     cost=i + 1,
                     goal_priority=10,
                     reached_goal=goal,
+                    extractor=(gi * 10 + i, 0),
                 )
             )
 
     assert len(pool_candidates) == 14
 
-    plan = select_gene_candidates_greedy(tuple(pool_candidates), inp=inp, targets=targets)
+    plan, _diag = select_gene_candidates_greedy(
+        tuple(pool_candidates), inp=inp, targets=targets
+    )
 
     assert len(plan.ordered_candidate_ids) == min(
         len(pool_candidates), targets.target_miner_bundle_count

@@ -13,10 +13,12 @@ from django_apps.asteroid_lab.optimization.commit_best_candidates import (
     commit_selected_candidates,
 )
 from django_apps.asteroid_lab.optimization.enums import (
+    CommitConflictReason,
     Direction,
     PlacementCommitState,
     ReservationState,
     RouteGoalKind,
+    RouteProbeFailureReason,
     TransportKind,
     TransportMask,
 )
@@ -29,7 +31,7 @@ from django_apps.asteroid_lab.optimization.route_domain import (
     RouteCellDomain,
     RouteDomainSnapshotBuilder,
 )
-from django_apps.asteroid_lab.optimization.route_probe import RouteProbeResult
+from django_apps.asteroid_lab.optimization.route_probe import RouteProbeResult, run_route_probe
 
 
 def _open_void_inp(*, bb: BBox | None = None, goals: frozenset[RouteGoal] | None = None):
@@ -129,7 +131,7 @@ def _commit_offset_probe_candidate() -> tuple[GeneCandidate, ConfirmedGenePlacem
 def test_incremental_commit_reprobes_latest_domain() -> None:
     inp = _open_void_inp()
     c1 = _shape_candidate(candidate_id="a:1", extractor=(0, 0), route_probe_start=(0, 0))
-    c2 = _shape_candidate(candidate_id="b:2", extractor=(2, 0), route_probe_start=(2, 0))
+    c2 = _shape_candidate(candidate_id="b:2", extractor=(8, 0), route_probe_start=(8, 0))
     plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1", "b:2"))
     snapshot_ids: list[int] = []
     original = RouteDomainSnapshotBuilder.build_snapshot
@@ -174,17 +176,40 @@ def test_incremental_commit_confirms_connected_candidate() -> None:
 def test_incremental_commit_rolls_back_unreachable_candidate() -> None:
     inp = _open_void_inp()
     ok = _shape_candidate(candidate_id="a:ok", extractor=(0, 0), route_probe_start=(0, 0))
-    blocked = _shape_candidate(candidate_id="b:blocked", extractor=(0, 0), route_probe_start=(1, 0))
+    blocked = _shape_candidate(candidate_id="b:blocked", extractor=(2, 0), route_probe_start=(1, 0))
     plan = SelectedCandidatePlan(ordered_candidate_ids=("a:ok", "b:blocked"))
-
-    result, _commit_timing = commit_selected_candidates(
-        plan,
-        {ok.candidate_id: ok, blocked.candidate_id: blocked},
-        inp=inp,
+    unreachable = RouteProbeResult(
+        reachable=False,
+        path=(),
+        cost=0,
+        expanded_nodes=0,
+        reached_goal=None,
+        goal_priority=None,
+        failure_reason=RouteProbeFailureReason.EXHAUSTED,
     )
+
+    def _probe_side_effect(probe_inp):
+        if probe_inp.start == blocked.route_probe_start:
+            return unreachable
+        return run_route_probe(probe_inp)
+
+    with patch(
+        "django_apps.asteroid_lab.optimization.commit_best_candidates.run_route_probe",
+        side_effect=_probe_side_effect,
+    ):
+        result, _commit_timing = commit_selected_candidates(
+            plan,
+            {ok.candidate_id: ok, blocked.candidate_id: blocked},
+            inp=inp,
+        )
 
     assert [c.candidate_id for c in result.confirmed] == ["a:ok"]
     assert result.skipped_candidate_ids == ("b:blocked",)
+    assert len(result.skipped_candidate_ids) == 1
+    skip = result.skipped_candidates[0]
+    assert skip.reason is CommitConflictReason.ROUTE_PROBE_FAILED
+    assert skip.reason.value == "route_probe_failed"
+    assert skip.route_probe_failure_reason is RouteProbeFailureReason.EXHAUSTED
     assert len(result.confirmed[0].reservation.reserved_cells) > 0
 
 
@@ -206,8 +231,8 @@ def test_incremental_commit_updates_goal_load() -> None:
     )
     c2 = _shape_candidate(
         candidate_id="b:2",
-        extractor=(2, 0),
-        route_probe_start=(2, 0),
+        extractor=(8, 0),
+        route_probe_start=(8, 0),
         reached_goal=goal,
         base_throughput=4,
     )
@@ -264,6 +289,9 @@ def test_incremental_commit_separates_shape_and_fluid_domains() -> None:
     assert len(result.confirmed) == 1
     assert result.confirmed[0].candidate_id == "shape:1"
     assert result.skipped_candidate_ids == ("fluid:1",)
+    skip = result.skipped_candidates[0]
+    assert skip.reason is CommitConflictReason.ROUTE_PROBE_FAILED
+    assert skip.route_probe_failure_reason is RouteProbeFailureReason.START_BLOCKED
 
     overlap_cell = result.confirmed[0].reservation.path[2]
     domain = RouteDomainSnapshotBuilder.build_snapshot(
@@ -292,3 +320,169 @@ def test_incremental_commit_reservation_path_starts_at_output_stub() -> None:
 def test_incremental_commit_reservation_excludes_extractor_body() -> None:
     candidate, placement = _commit_offset_probe_candidate()
     assert candidate.extractor not in placement.reservation.reserved_cells
+
+
+def test_incremental_commit_skipped_record_transport_kind_conflict() -> None:
+    shape_goal = RouteGoal(
+        coord=(6, 0),
+        goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+        transport_kind=TransportKind.SHAPE_BELT,
+        priority=10,
+        existing_trunk=False,
+    )
+    fluid_goal = RouteGoal(
+        coord=(6, 0),
+        goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+        transport_kind=TransportKind.FLUID_PIPE,
+        priority=10,
+        existing_trunk=False,
+    )
+    inp = _open_void_inp(goals=frozenset({shape_goal, fluid_goal}))
+    shape = _shape_candidate(
+        candidate_id="shape:1",
+        extractor=(0, 0),
+        route_probe_start=(0, 0),
+        reached_goal=shape_goal,
+        transport_kind=TransportKind.SHAPE_BELT,
+    )
+    fluid = _shape_candidate(
+        candidate_id="fluid:1",
+        extractor=(3, 0),
+        route_probe_start=(3, 0),
+        reached_goal=fluid_goal,
+        transport_kind=TransportKind.FLUID_PIPE,
+    )
+    overlap_path = ((1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0))
+    fluid_probe = RouteProbeResult(
+        reachable=True,
+        path=overlap_path,
+        cost=len(overlap_path),
+        expanded_nodes=1,
+        reached_goal=fluid_goal,
+        goal_priority=fluid_goal.priority,
+        failure_reason=None,
+    )
+    plan = SelectedCandidatePlan(ordered_candidate_ids=("shape:1", "fluid:1"))
+
+    def _probe_side_effect(probe_inp):
+        if probe_inp.start == fluid.route_probe_start:
+            return fluid_probe
+        return run_route_probe(probe_inp)
+
+    with patch(
+        "django_apps.asteroid_lab.optimization.commit_best_candidates.run_route_probe",
+        side_effect=_probe_side_effect,
+    ):
+        result, _commit_timing = commit_selected_candidates(
+            plan,
+            {shape.candidate_id: shape, fluid.candidate_id: fluid},
+            inp=inp,
+        )
+
+    assert len(result.confirmed) == 1
+    assert result.skipped_candidate_ids == ("fluid:1",)
+    assert result.skipped_candidates[0].reason is CommitConflictReason.TRANSPORT_KIND_CONFLICT
+
+
+def test_commit_skips_equipment_transport_overlap() -> None:
+    goal = RouteGoal(
+        coord=(6, 0),
+        goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+        transport_kind=TransportKind.SHAPE_BELT,
+        priority=10,
+        existing_trunk=False,
+    )
+    inp = _open_void_inp(goals=frozenset({goal}))
+    first = _shape_candidate(
+        candidate_id="a:1",
+        extractor=(0, 0),
+        route_probe_start=(0, 0),
+        reached_goal=goal,
+    )
+    second = _shape_candidate(
+        candidate_id="b:2",
+        extractor=(10, 0),
+        route_probe_start=(10, 0),
+        reached_goal=goal,
+    )
+    overlap_path = (
+        (0, 0),
+        first.fixed_output_transport,
+        (2, 0),
+        (3, 0),
+        (4, 0),
+        (5, 0),
+        (6, 0),
+    )
+    second_probe = RouteProbeResult(
+        reachable=True,
+        path=overlap_path,
+        cost=len(overlap_path),
+        expanded_nodes=1,
+        reached_goal=goal,
+        goal_priority=goal.priority,
+        failure_reason=None,
+    )
+    plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1", "b:2"))
+
+    def _probe_side_effect(probe_inp):
+        if probe_inp.start == second.route_probe_start:
+            return second_probe
+        return run_route_probe(probe_inp)
+
+    with patch(
+        "django_apps.asteroid_lab.optimization.commit_best_candidates.run_route_probe",
+        side_effect=_probe_side_effect,
+    ):
+        result, _commit_timing = commit_selected_candidates(
+            plan,
+            {first.candidate_id: first, second.candidate_id: second},
+            inp=inp,
+        )
+
+    assert len(result.confirmed) == 1
+    assert result.skipped_candidate_ids == ("b:2",)
+    assert (
+        result.skipped_candidates[0].reason
+        is CommitConflictReason.EQUIPMENT_TRANSPORT_OVERLAP
+    )
+
+
+def test_incremental_commit_skipped_record_occupied_cell_conflict() -> None:
+    inp = _open_void_inp()
+    first = _shape_candidate(candidate_id="a:1", extractor=(0, 0), route_probe_start=(0, 0))
+    second = _shape_candidate(candidate_id="b:2", extractor=(0, 0), route_probe_start=(0, 0))
+    plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1", "b:2"))
+
+    result, _commit_timing = commit_selected_candidates(
+        plan,
+        {first.candidate_id: first, second.candidate_id: second},
+        inp=inp,
+    )
+
+    assert len(result.confirmed) == 1
+    assert result.skipped_candidate_ids == ("b:2",)
+    skip = result.skipped_candidates[0]
+    assert skip.reason is CommitConflictReason.OCCUPIED_CELL_CONFLICT
+    assert skip.anchor_coord == (0, 0)
+    assert skip.route_probe_failure_reason is None
+
+
+def test_incremental_commit_conflict_reason_enum_only() -> None:
+    inp = _open_void_inp()
+    ok = _shape_candidate(candidate_id="a:ok", extractor=(0, 0), route_probe_start=(0, 0))
+    blocked = _shape_candidate(candidate_id="b:blocked", extractor=(2, 0), route_probe_start=(1, 0))
+    duplicate = _shape_candidate(candidate_id="c:dup", extractor=(0, 0), route_probe_start=(0, 0))
+    plan = SelectedCandidatePlan(ordered_candidate_ids=("a:ok", "b:blocked", "c:dup"))
+
+    result, _commit_timing = commit_selected_candidates(
+        plan,
+        {ok.candidate_id: ok, blocked.candidate_id: blocked, duplicate.candidate_id: duplicate},
+        inp=inp,
+    )
+
+    for record in result.skipped_candidates:
+        assert isinstance(record.reason, CommitConflictReason)
+        assert record.reason.value in {m.value for m in CommitConflictReason}
+        if record.route_probe_failure_reason is not None:
+            assert isinstance(record.route_probe_failure_reason, RouteProbeFailureReason)

@@ -6,7 +6,8 @@
       "cost": 1,
       "goal_priority": 10,
       "goal_coord": [6, 0],
-      "transport_kind": "shape_belt"
+      "transport_kind": "shape_belt",
+      "extractor": [0, 0]
     },
     {
       "candidate_id": "b:to_a",
@@ -14,7 +15,8 @@
       "cost": 1,
       "goal_priority": 10,
       "goal_coord": [6, 0],
-      "transport_kind": "shape_belt"
+      "transport_kind": "shape_belt",
+      "extractor": [4, 0]
     },
     {
       "candidate_id": "c:to_b",
@@ -22,7 +24,8 @@
       "cost": 1,
       "goal_priority": 10,
       "goal_coord": [8, 0],
-      "transport_kind": "shape_belt"
+      "transport_kind": "shape_belt",
+      "extractor": [8, 0]
     }
   ]
 }

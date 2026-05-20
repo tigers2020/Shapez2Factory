@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.optimization.coords import cardinal_unit_toward, neighbors4_server
 from django_apps.asteroid_lab.optimization.enums import Direction, TransportKind, TransportMask
 from django_apps.asteroid_lab.optimization.input_contracts import (
@@ -15,6 +16,7 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
 from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     LoadedReconstructionSnapshot,
     loaded_reconstruction_snapshot_from_result,
+    loaded_reconstruction_snapshot_from_run,
 )
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     mineable_field_kind,
@@ -22,7 +24,13 @@ from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_reconstruction,
 )
 from django_apps.asteroid_lab.optimization.route_domain import RouteDomainSnapshotBuilder
-from django_apps.asteroid_lab.reconstruction.pipeline import reconstruct_snapshot
+from django_apps.asteroid_lab.reconstruction.display_map import (
+    merged_display_cells_from_reconstruction,
+)
+from django_apps.asteroid_lab.reconstruction.pipeline import (
+    reconstruct_snapshot,
+    run_topology_reconstruction,
+)
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
@@ -266,6 +274,19 @@ def test_loaded_reconstruction_snapshot_from_result_preserves_cells() -> None:
     inp1 = optimization_input_from_reconstruction(res)
     inp2 = optimization_input_from_loaded_snapshot(loaded)
     assert inp1 == inp2
+
+
+def test_loaded_reconstruction_snapshot_from_run_uses_merged_display_cells() -> None:
+    snap = _snapshot(_hole_fixture_cells())
+    cleanup = deconstruct_snapshot(snap)
+    recon = run_topology_reconstruction(cleanup)
+    merged = merged_display_cells_from_reconstruction(cleanup, recon)
+    loaded = loaded_reconstruction_snapshot_from_run(cleanup, recon)
+    assert loaded.cells == merged
+    assert len(merged) >= len(recon.cells)
+    inp = optimization_input_from_loaded_snapshot(loaded)
+    assert inp.mineable_cells
+    assert inp.bbox is not None
 
 
 def test_optimization_package_has_no_legacy_camelcase_extension_kind_strings() -> None:

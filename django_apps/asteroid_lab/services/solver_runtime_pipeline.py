@@ -113,15 +113,18 @@ def run_solver_runtime_pipeline(
     pool = generate_gene_candidates(inp, templates, config)
     if recorder is not None:
         recorder.record_candidate_pool_completed(pool)
+        recorder.record_candidate_pool_details(pool)
 
     plan = select_gene_candidates_greedy(pool.normal_candidates, inp=inp)
     if recorder is not None:
         recorder.record_candidate_selection_completed(plan)
+        recorder.record_genome_scaffold(plan, pool=pool)
 
     candidates_by_id = {c.candidate_id: c for c in pool.normal_candidates}
     commit = commit_selected_candidates(plan, candidates_by_id, inp=inp)
     if recorder is not None:
         recorder.record_route_committed(commit)
+        recorder.record_commit_details(plan, candidates_by_id, commit)
 
     materialization = materialize_route_network(commit, candidates_by_id)
     if recorder is not None:

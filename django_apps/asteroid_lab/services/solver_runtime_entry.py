@@ -9,7 +9,7 @@ from typing import Any
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.loaded_snapshot import (
-    loaded_reconstruction_snapshot_from_result,
+    loaded_reconstruction_snapshot_from_run,
 )
 from django_apps.asteroid_lab.replay.solver_runtime_replay_recorder import (
     SolverRuntimeReplayRecorder,
@@ -140,8 +140,8 @@ def run_solver_runtime_for_project(
     rk = run_key or f"runtime-{uuid.uuid4().hex[:12]}"
     gene_source_dict = gene_meta.to_json_dict() if gene_meta is not None else {}
 
-    _cleanup, recon = run_reconstruction_for_map_input(int(inp.pk))
-    loaded = loaded_reconstruction_snapshot_from_result(recon)
+    cleanup, recon = run_reconstruction_for_map_input(int(inp.pk))
+    loaded = loaded_reconstruction_snapshot_from_run(cleanup, recon)
 
     run_config = dict(config or {})
     run_config[SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY] = gene_source_dict

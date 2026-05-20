@@ -6,9 +6,14 @@ frames are a presentation-only artifact and must never be fed back into the solv
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
-from django_apps.asteroid_lab.optimization.candidate_dtos import CandidateGenerationResult
+from django_apps.asteroid_lab.optimization.candidate_dtos import (
+    CandidateGenerationResult,
+    GeneCandidate,
+    RejectedGeneCandidate,
+)
 from django_apps.asteroid_lab.optimization.candidate_selector import SelectedCandidatePlan
 from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan
 from django_apps.asteroid_lab.optimization.commit_best_candidates import IncrementalCommitResult
@@ -24,10 +29,13 @@ from django_apps.asteroid_lab.replay.projection_context import (
     lab_xy_from_server_xy,
 )
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.replay_limits import MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME
 from django_apps.asteroid_lab.replay.replay_recording_cells import (
     bbox_from_replay_cells,
+    candidate_occupied_to_overlay_cells,
     goal_annotations,
     materialized_cells_to_cell_delta,
+    probe_path_to_overlay_cells,
     visible_cells_from_loaded_snapshot,
 )
 from django_apps.asteroid_lab.replay.timeline_dtos import (
@@ -53,29 +61,11 @@ class SolverRuntimeReplayRecorder:
         self._loaded = loaded
         self._ctx = ReplayProjectionContext(server_xy_params=server_xy_params)
         self._frames: list[ReplayTimelineFrame] = []
-        # Populated from OptimizationInput.asteroid_cells on first record call.
-        # Using opt-input cells gives reliable server-coord coverage even when
-        # loaded.cells (recon topology cells) is sparse for simple blueprints.
         self._base_cells_cache: tuple | None = None
-
-    def _cells_from_opt_input(self, inp: OptimizationInput) -> tuple:
-        """Convert OptimizationInput asteroid/rim cells to replay cells (server → Lab)."""
-        from django_apps.asteroid_lab.replay.timeline_dtos import ReplayCell
-
-        coords = sorted(inp.asteroid_cells | inp.rim_cells, key=lambda c: (c[0], c[1]))
-        cap = 128  # MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME
-        out: list[ReplayCell] = []
-        for sx, sy in coords:
-            x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=self._ctx.server_xy_params)
-            out.append(ReplayCell(x=x, y=y, kind="asteroid"))
-            if len(out) >= cap:
-                break
-        return tuple(out)
 
     @property
     def _base_cells(self) -> tuple:
         if self._base_cells_cache is None:
-            # Fallback: use loaded.cells (may be sparse for simple blueprints)
             self._base_cells_cache = visible_cells_from_loaded_snapshot(self._loaded, self._ctx)
         return self._base_cells_cache
 
@@ -104,11 +94,10 @@ class SolverRuntimeReplayRecorder:
         )
 
     def record_optimization_input_loaded(self, inp: OptimizationInput) -> None:
-        # Populate base cells from opt-input (server coords, always reliable).
-        opt_cells = self._cells_from_opt_input(inp)
-        if opt_cells:
-            self._base_cells_cache = opt_cells
         cells = self._base_cells
+        source_count = len(self._loaded.cells)
+        recorded_count = len(cells)
+        cap = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME
         map_view = ReplayMapView(bbox=bbox_from_replay_cells(cells), full_cells=cells)
         self._append(
             phase=ReplayPhase.OPTIMIZATION_INPUT,
@@ -124,6 +113,11 @@ class SolverRuntimeReplayRecorder:
                 "mineable_cell_count": len(inp.mineable_cells),
                 "rim_cell_count": len(inp.rim_cells),
                 "route_goal_count": len(inp.route_goals),
+                "full_cell_count": recorded_count,
+                "source_cell_count": source_count,
+                "recorded_cell_cap": cap,
+                "truncated": source_count > recorded_count,
+                "dropped_cell_count": max(0, source_count - recorded_count),
             },
         )
 
@@ -192,6 +186,249 @@ class SolverRuntimeReplayRecorder:
             map_view=map_view,
             inspector={"selected_count": len(plan.ordered_candidate_ids)},
         )
+
+    def record_candidate_pool_details(
+        self,
+        pool: CandidateGenerationResult,
+        *,
+        max_per_type: int = 8,
+    ) -> None:
+        """Emit per-candidate generated/rejected and route probe frames (output-only)."""
+
+        cells = self._base_cells
+        for candidate in pool.normal_candidates[:max_per_type]:
+            occupied_overlay = candidate_occupied_to_overlay_cells(candidate, self._ctx)
+            map_view = ReplayMapView(
+                bbox=bbox_from_replay_cells(cells, overlay_cells=occupied_overlay),
+                full_cells=cells,
+                overlay_cells=occupied_overlay,
+            )
+            probe = candidate.route_probe_result
+            self._append(
+                phase=ReplayPhase.CANDIDATE_GENERATION,
+                event_type=ReplayEventType.CANDIDATE_GENERATED,
+                title="Candidate Generated",
+                description=candidate.candidate_id,
+                map_view=map_view,
+                inspector={
+                    "candidate_id": candidate.candidate_id,
+                    "transport_kind": candidate.transport_kind.value,
+                    "base_score": candidate.base_score,
+                },
+                metrics={
+                    "candidate_id": candidate.candidate_id,
+                    "transport_kind": candidate.transport_kind.value,
+                    "base_score": candidate.base_score,
+                    "route_cost": probe.cost,
+                },
+            )
+            path_overlay = probe_path_to_overlay_cells(probe.path, self._ctx)
+            probe_map = ReplayMapView(
+                bbox=bbox_from_replay_cells(cells, overlay_cells=path_overlay),
+                full_cells=cells,
+                overlay_cells=path_overlay,
+            )
+            reached = probe.reached_goal
+            self._append(
+                phase=ReplayPhase.ROUTE_PROBE,
+                event_type=ReplayEventType.ROUTE_PROBE_SUCCEEDED,
+                title="Route Probe Succeeded",
+                description=candidate.candidate_id,
+                map_view=probe_map,
+                inspector={
+                    "candidate_id": candidate.candidate_id,
+                    "reached_goal_kind": (
+                        reached.goal_kind.value if reached is not None else None
+                    ),
+                    "goal_priority": probe.goal_priority,
+                },
+                metrics={
+                    "candidate_id": candidate.candidate_id,
+                    "route_cost": probe.cost,
+                    "expanded_nodes": probe.expanded_nodes,
+                    "goal_priority": probe.goal_priority,
+                },
+            )
+
+        for rejected in pool.rejected_candidates[:max_per_type]:
+            self._record_rejected_candidate_detail(rejected, cells)
+
+    def _record_rejected_candidate_detail(
+        self,
+        rejected: RejectedGeneCandidate,
+        cells: tuple,
+    ) -> None:
+        annotations: list[ReplayAnnotation] = []
+        if rejected.extractor is not None:
+            sx, sy = rejected.extractor
+            x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=self._ctx.server_xy_params)
+            annotations.append(
+                ReplayAnnotation(x=x, y=y, label=rejected.rejection_reason.value)
+            )
+        map_view = ReplayMapView(
+            bbox=bbox_from_replay_cells(cells),
+            full_cells=cells,
+            annotations=tuple(annotations),
+        )
+        self._append(
+            phase=ReplayPhase.CANDIDATE_GENERATION,
+            event_type=ReplayEventType.CANDIDATE_REJECTED,
+            title="Candidate Rejected",
+            description=rejected.rejection_reason.value,
+            map_view=map_view,
+            inspector={
+                "attempted_gene_id": rejected.attempted_gene_id,
+                "rejection_reason": rejected.rejection_reason.value,
+            },
+            metrics={"rejection_reason": rejected.rejection_reason.value},
+        )
+        probe = rejected.route_probe_result
+        if probe is None:
+            return
+        path_overlay = probe_path_to_overlay_cells(probe.path, self._ctx)
+        probe_map = ReplayMapView(
+            bbox=bbox_from_replay_cells(cells, overlay_cells=path_overlay),
+            full_cells=cells,
+            overlay_cells=path_overlay,
+        )
+        failure = probe.failure_reason.value if probe.failure_reason else None
+        self._append(
+            phase=ReplayPhase.ROUTE_PROBE,
+            event_type=ReplayEventType.ROUTE_PROBE_FAILED,
+            title="Route Probe Failed",
+            description=rejected.rejection_reason.value,
+            map_view=probe_map,
+            inspector={
+                "attempted_gene_id": rejected.attempted_gene_id,
+                "failure_reason": failure,
+            },
+            metrics={
+                "failure_reason": failure,
+                "expanded_nodes": probe.expanded_nodes,
+            },
+        )
+
+    def record_genome_scaffold(
+        self,
+        plan: SelectedCandidatePlan,
+        *,
+        pool: CandidateGenerationResult | None = None,
+    ) -> None:
+        """Emit GA-cycle scaffold frames for greedy selection (output-only)."""
+
+        cells = self._base_cells
+        evaluated_count = (
+            len(pool.normal_candidates) + len(pool.rejected_candidates) if pool is not None else 0
+        )
+        selected_count = len(plan.ordered_candidate_ids)
+        map_view = ReplayMapView(bbox=bbox_from_replay_cells(cells), full_cells=cells)
+        self._append(
+            phase=ReplayPhase.GENOME_FITNESS,
+            event_type=ReplayEventType.GENOME_EVALUATED,
+            title="Genome Evaluated",
+            description=f"evaluated={evaluated_count}, selected={selected_count}",
+            map_view=map_view,
+            inspector={
+                "evaluated_count": evaluated_count,
+                "selected_count": selected_count,
+            },
+            metrics={
+                "fitness_total": float(selected_count),
+                "selected_candidate_count": selected_count,
+            },
+        )
+        self._append(
+            phase=ReplayPhase.EVOLUTION,
+            event_type=ReplayEventType.BEST_GENOME_SELECTED,
+            title="Best Genome Selected",
+            description=f"{selected_count} candidates",
+            map_view=map_view,
+            inspector={"best_candidate_ids": list(plan.ordered_candidate_ids)},
+            metrics={
+                "best_fitness": float(selected_count),
+                "generation_count": 1,
+            },
+        )
+        self._append(
+            phase=ReplayPhase.EVOLUTION,
+            event_type=ReplayEventType.GENERATION_COMPLETED,
+            title="Generation Completed",
+            description="generation=1 (greedy scaffold)",
+            map_view=map_view,
+            inspector={"generation": 1},
+            metrics={"generation": 1, "fitness": float(selected_count)},
+        )
+
+    def record_commit_details(
+        self,
+        plan: SelectedCandidatePlan,
+        candidates_by_id: Mapping[str, GeneCandidate],
+        commit: IncrementalCommitResult,
+        *,
+        max_candidates: int = 8,
+    ) -> None:
+        """Emit per-candidate commit attempted / committed / rolled-back frames."""
+
+        cells = self._base_cells
+        confirmed_by_id = {c.candidate_id: c for c in commit.confirmed}
+        skipped_set = frozenset(commit.skipped_candidate_ids)
+
+        for cid in plan.ordered_candidate_ids[:max_candidates]:
+            candidate = candidates_by_id.get(cid)
+            confirmed = confirmed_by_id.get(cid)
+            path_overlay: tuple = ()
+            if candidate is not None and candidate.route_probe_result.path:
+                path_overlay = probe_path_to_overlay_cells(
+                    candidate.route_probe_result.path, self._ctx
+                )
+            map_view = ReplayMapView(
+                bbox=bbox_from_replay_cells(cells, overlay_cells=path_overlay),
+                full_cells=cells,
+                overlay_cells=path_overlay,
+            )
+            reservation_id = confirmed.reservation.reservation_id if confirmed else None
+            self._append(
+                phase=ReplayPhase.INCREMENTAL_COMMIT,
+                event_type=ReplayEventType.ROUTE_COMMIT_ATTEMPTED,
+                title="Route Commit Attempted",
+                description=cid,
+                map_view=map_view,
+                inspector={
+                    "candidate_id": cid,
+                    "reservation_id": reservation_id,
+                },
+                metrics={"candidate_id": cid, "reservation_id": reservation_id},
+            )
+            if confirmed is not None:
+                res = confirmed.reservation
+                self._append(
+                    phase=ReplayPhase.INCREMENTAL_COMMIT,
+                    event_type=ReplayEventType.ROUTE_COMMITTED,
+                    title="Route Committed",
+                    description=cid,
+                    map_view=map_view,
+                    inspector={
+                        "candidate_id": cid,
+                        "reservation_id": res.reservation_id,
+                        "reservation_state": res.reservation_state.value,
+                    },
+                    metrics={
+                        "candidate_id": cid,
+                        "reservation_id": res.reservation_id,
+                        "reservation_state": res.reservation_state.value,
+                        "reserved_cells_count": len(res.reserved_cells),
+                    },
+                )
+            elif cid in skipped_set:
+                self._append(
+                    phase=ReplayPhase.ROLLBACK,
+                    event_type=ReplayEventType.ROUTE_ROLLED_BACK,
+                    title="Route Rolled Back",
+                    description=cid,
+                    map_view=map_view,
+                    inspector={"candidate_id": cid},
+                    metrics={"candidate_id": cid},
+                )
 
     def record_route_committed(self, commit: IncrementalCommitResult) -> None:
         cells = self._base_cells

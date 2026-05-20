@@ -6,5 +6,5 @@ from __future__ import annotations
 MAX_LAB_REPLAY_TIMELINE_FRAMES = 500
 MAX_LAB_REPLAY_TIMELINE_CELLS_PER_FRAME = 2000
 
-# Solver runtime recorder: per-frame cell cap for in-memory recording (v0).
-MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME = 128
+# Solver runtime recorder: align with Lab full_map cap (parity with reconstruction.completed).
+MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME = MAX_LAB_REPLAY_TIMELINE_CELLS_PER_FRAME

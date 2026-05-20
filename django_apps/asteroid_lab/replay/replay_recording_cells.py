@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.optimization.candidate_dtos import GeneCandidate
 from django_apps.asteroid_lab.optimization.loaded_snapshot import LoadedReconstructionSnapshot
 from django_apps.asteroid_lab.optimization.materialization_dtos import MaterializedLayoutCells
 from django_apps.asteroid_lab.replay.projection_context import (
@@ -123,6 +124,23 @@ def probe_path_to_overlay_cells(
     return tuple(out)
 
 
+def candidate_occupied_to_overlay_cells(
+    candidate: GeneCandidate,
+    ctx: ReplayProjectionContext,
+    *,
+    cap: int = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME,
+) -> tuple[ReplayOverlayCell, ...]:
+    """Convert candidate extractor + extensions to replay overlay cells (server → Lab)."""
+    coords: list[tuple[int, int]] = [candidate.extractor, *candidate.extensions]
+    out: list[ReplayOverlayCell] = []
+    for sx, sy in coords:
+        x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=ctx.server_xy_params)
+        out.append(ReplayOverlayCell(x=x, y=y, kind="candidate", tile_type="candidate"))
+        if len(out) >= cap:
+            break
+    return tuple(out)
+
+
 def goal_annotations(
     goals: frozenset,
     ctx: ReplayProjectionContext,
@@ -138,6 +156,7 @@ def goal_annotations(
 
 __all__ = [
     "bbox_from_replay_cells",
+    "candidate_occupied_to_overlay_cells",
     "goal_annotations",
     "materialized_cells_to_cell_delta",
     "probe_path_to_overlay_cells",

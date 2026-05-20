@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
+from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
@@ -45,3 +46,18 @@ def loaded_reconstruction_snapshot_from_result(
         quality_flags=result.quality_flags,
         quality_tier=result.quality_tier,
     )
+
+
+def loaded_reconstruction_snapshot_from_run(
+    cleanup: CleanupResult,
+    recon: ReconstructionResult,
+) -> LoadedReconstructionSnapshot:
+    """Phase A snapshot with Lab-parity display cells (structural cleanup + recon overlay)."""
+
+    from django_apps.asteroid_lab.reconstruction.display_map import (
+        merged_display_cells_from_reconstruction,
+    )
+
+    base = loaded_reconstruction_snapshot_from_result(recon)
+    merged = merged_display_cells_from_reconstruction(cleanup, recon)
+    return replace(base, cells=merged)

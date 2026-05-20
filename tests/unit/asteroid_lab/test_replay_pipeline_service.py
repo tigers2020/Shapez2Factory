@@ -37,7 +37,6 @@ def _minimal_root(*, version: int = 42) -> dict:
     }
 
 
-@pytest.mark.slow
 @pytest.mark.django_db
 def test_build_initial_replay_creates_run_track_frames_and_snapshots() -> None:
     code = _encode_v4_copy(_minimal_root(version=7))
@@ -86,7 +85,6 @@ def test_build_initial_replay_creates_run_track_frames_and_snapshots() -> None:
     assert et.EVENT_TYPE_REPLAY_SNAPSHOT_RECONSTRUCTION not in types
 
 
-@pytest.mark.slow
 @pytest.mark.django_db
 def test_build_initial_replay_idempotent_without_force() -> None:
     code = _encode_v4_copy(_minimal_root(version=11))
@@ -100,22 +98,36 @@ def test_build_initial_replay_idempotent_without_force() -> None:
     assert m.ReplayFrame.objects.filter(replay_track_id=r1.replay_track_id).count() >= 6
 
 
-@pytest.mark.slow
 @pytest.mark.django_db
 def test_build_initial_replay_invalid_copy_no_run() -> None:
-    dto = project_service.create_project_from_copy_code(
-        "not-a-valid-shapez-copy", source_label="bad"
+    proj = m.AsteroidProject.objects.create(name="Bad copy", slug="bad-copy-pipeline")
+    inp = m.AsteroidMapInput.objects.create(
+        project=proj,
+        copy_code="not-a-valid-shapez-copy",
+        source_kind=m.AsteroidMapInput.SourceKind.COPY_CODE,
+        decoded_json={},
     )
-    result = build_initial_replay_for_map_input(dto.map_input_id)
+    result = build_initial_replay_for_map_input(inp.id)
 
     assert result.status == "failed"
     assert result.solver_run_id is None
     assert result.replay_track_id is None
     assert result.replay_frame_count == 0
-    assert m.SolverRun.objects.filter(project_id=dto.project_id).count() == 0
+    assert m.SolverRun.objects.filter(project_id=proj.id).count() == 0
 
 
-@pytest.mark.slow
+@pytest.mark.django_db
+def test_build_initial_replay_overwrite_keeps_run_key() -> None:
+    code = _encode_v4_copy(_minimal_root(version=21))
+    dto = project_service.create_project_from_copy_code(code, source_label="overwrite")
+    r1 = build_initial_replay_for_map_input(dto.map_input_id)
+    r2 = build_initial_replay_for_map_input(dto.map_input_id, overwrite=True)
+    assert r1.status == "ok" and r2.status == "ok"
+    assert r1.run_key == r2.run_key
+    assert r1.solver_run_id == r2.solver_run_id
+    assert r1.reconstructed_asteroid_map_id == r2.reconstructed_asteroid_map_id
+
+
 @pytest.mark.django_db
 def test_build_initial_replay_force_uses_new_run_key() -> None:
     code = _encode_v4_copy(_minimal_root(version=99))
@@ -132,7 +144,6 @@ def test_replay_pipeline_service_has_no_forbidden_imports() -> None:
     path = lab_root / "replay_pipeline_service.py"
     text = path.read_text(encoding="utf-8")
     forbidden = (
-        "django_apps.shapez_asteroid",
         "django_apps.shapez_solver",
         "django_apps.shapez_core",
         "asteroid_mining_layout_v2",

@@ -1,0 +1,73 @@
+﻿# Secrets & credentials
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+secrets.json
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+wheels/
+*.whl
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+.python-version
+
+# Type checker caches
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# Linter & formatter caches
+.ruff_cache/
+
+# Test & coverage outputs
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+coverage.json
+nosetests.xml
+test-results/
+
+# IDE & editor
+.idea/
+*.iml
+.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Large binaries & generated outputs
+*.bin
+*.pkl
+*.db
+*.sqlite
+*.sqlite3
+harness/outputs/

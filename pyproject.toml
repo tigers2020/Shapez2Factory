@@ -1,100 +1,52 @@
-[build-system]
-requires = ["setuptools>=69", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "shapez2-solver"
+name = "shapez2-factory-planner"
 version = "0.1.0"
-description = "Django scaffold for a shapez 2 factory planner."
-readme = "structure.md"
+description = "shapez2 Factory Planner"
 requires-python = ">=3.12"
+readme = "README.md"
 dependencies = [
-    "dj-database-url>=2.3,<3.0",
     "django>=5.2,<6.0",
-    "polib>=1.2,<2.0",
-    "pillow>=10,<12",
-    "django-allauth[socialaccount]>=65.0,<66.0",
-    "gunicorn>=23.0,<24.0",
-    "psycopg[binary]>=3.2,<4.0",
-    "python-dotenv>=1.0,<2.0",
-    "whitenoise>=6.9,<7.0",
+    "django-allauth",
+    "dj-database-url",
+    "python-dotenv",
+    "whitenoise",
+    "jsonschema",
+    "Pillow",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "black",
-    "mypy",
-    "types-polib",
-    "pytest",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "black>=24.0.0",
+    "pytest>=8.0.0",
     "pytest-django",
-    "pytest-xdist",
-    "ruff",
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
 
-[tool.black]
-line-length = 100
-target-version = ["py312"]
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "B", "UP", "W"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
 
 [tool.mypy]
-python_version = "3.12"
 strict = true
-warn_unused_configs = true
-cache_dir = ".mypy_cache"
-exclude = "(^django_apps/.*/migrations/|^tests/integration/|^build/)"
+files = ["src"]
+python_version = "3.12"
 
-[[tool.mypy.overrides]]
-module = ["django.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["dj_database_url"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["build_locale_ko", "compile_locale_messages"]
-disable_error_code = ["import-untyped"]
-
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = [
-    "config.*",
-    "manage",
-    "django_apps.shapez_core.apps",
-    "django_apps.shapez_core.urls",
-    "django_apps.shapez_core.views",
-    "django_apps.shapez_solver.admin",
-    "django_apps.shapez_solver.apps",
-    "django_apps.shapez_solver.models",
-    "django_apps.web.admin",
-    "django_apps.web.apps",
-    "django_apps.web.social_adapter",
-    "django_apps.web.socialaccount_forms",
-    "django_apps.web.urls",
-    "django_apps.web.views",
-    "django_apps.web.views.macro_staff",
-    "django_apps.web.views.public_pages",
-    "django_apps.asteroid_lab.admin",
-    "django_apps.asteroid_lab.apps",
-    "django_apps.asteroid_lab.models",
-    "django_apps.asteroid_lab.services.dto",
-    "django_apps.asteroid_lab.services.experiment_service",
-    "django_apps.asteroid_lab.services.input_service",
-    "django_apps.asteroid_lab.services.project_service",
-    "django_apps.asteroid_lab.services.replay_service",
-    "django_apps.asteroid_lab.services.topology_service",
-    "django_apps.asteroid_lab.services",
-]
-ignore_errors = true
+# Phase 2+: expand to django_apps, config (see AGENTS.md Validation commands)
+# plugins = ["mypy_django_plugin.main"]
+# [[tool.mypy.overrides]]
+# module = "django_apps.*"

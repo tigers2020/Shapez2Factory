@@ -344,3 +344,4 @@ class InitialReplayPipelineResultDTO:
     status: str
     error_message: str = ""
     run_key: str = ""
+    reconstructed_asteroid_map_id: int | None = None

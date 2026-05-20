@@ -5,6 +5,7 @@ Solver code must consume DTOs only; these models are for persistence, cache, UI,
 
 from __future__ import annotations
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -53,12 +54,14 @@ class AsteroidMapInput(models.Model):
     layout_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
     absolute_layout_fingerprint = models.CharField(max_length=64, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ("-created_at",)
+        ordering = ("-updated_at",)
         indexes = [
             models.Index(fields=["project", "source_kind"]),
             models.Index(fields=["content_sha256"]),
+            models.Index(fields=["-updated_at"]),
         ]
 
     def __str__(self) -> str:
@@ -435,3 +438,142 @@ class TopologyRuleModalContent(models.Model):
 
     def __str__(self) -> str:
         return f"modal:{self.rule.rule_key}"
+
+
+class GeneticSample(models.Model):
+    """유전자 샘플: 복사 문자열 저장 시 디코드되어 ``decoded_json``에 반영된다."""
+
+    name = models.CharField(max_length=200, blank=True, verbose_name="이름")
+    gene_key = models.CharField(
+        max_length=256,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="gene 키",
+        help_text="전수 생성 샘플의 정본 식별자(update_or_create 기준). 수동 샘플은 비움.",
+    )
+    metadata_json = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="메타데이터",
+        help_text="예: generator 버전, transport_kind, topology 요약(게임 JSON과 분리).",
+    )
+    project = models.ForeignKey(
+        AsteroidProject,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="genetic_samples",
+        verbose_name="프로젝트",
+    )
+    code = models.TextField(verbose_name="복사 문자열")
+    decoded_json = models.JSONField(default=dict, blank=True, verbose_name="디코드 JSON")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-updated_at",)
+        verbose_name = "유전자 샘플"
+        verbose_name_plural = "유전자 샘플"
+        indexes = [
+            models.Index(fields=["-updated_at"]),
+            models.Index(fields=["project", "-updated_at"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("gene_key",),
+                name="uniq_genetic_sample_gene_key_when_set",
+                condition=models.Q(gene_key__isnull=False),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        if self.name:
+            return str(self.name)
+        return f"GeneticSample #{self.pk}" if self.pk else "GeneticSample (unsaved)"
+
+    def clean(self) -> None:
+        super().clean()
+        from django_apps.asteroid_lab.adapters.decode_adapter import (
+            AsteroidLabCopyDecodeError,
+            decode_copy_string,
+        )
+        from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
+        from django_apps.asteroid_lab.snapshots.server_coords import (
+            attach_server_coords_to_decoded_json,
+        )
+
+        code = (self.code or "").strip()
+        if not code:
+            self.decoded_json = {}
+            return
+        try:
+            raw = decode_copy_string(code)
+            dto = normalize_decoded_blueprint(raw)
+            merged = dict(dto.decoded_json)
+            attach_server_coords_to_decoded_json(merged)
+            self.decoded_json = merged
+        except AsteroidLabCopyDecodeError as exc:
+            raise ValidationError({"code": str(exc)}) from exc
+
+    def save(self, *args, **kwargs) -> None:
+        """Ensure ``decoded_json`` is populated even when ``save()`` is called outside ModelForm."""
+
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class ReconstructedAsteroidMap(models.Model):
+    """Reconstruction-complete full_map: original snapshot + merged lab copy/json."""
+
+    map_input = models.ForeignKey(
+        AsteroidMapInput,
+        on_delete=models.CASCADE,
+        related_name="reconstructed_maps",
+    )
+    project = models.ForeignKey(
+        AsteroidProject,
+        on_delete=models.CASCADE,
+        related_name="reconstructed_maps",
+    )
+    solver_run = models.ForeignKey(
+        SolverRun,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reconstructed_maps",
+    )
+    run_key = models.CharField(max_length=120, db_index=True)
+    original_copy_code = models.TextField(blank=True, verbose_name="원본 paste copy")
+    original_decoded_json = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="원본 디코드 JSON (persist 시점 스냅샷)",
+    )
+    copy_code = models.TextField(blank=True, verbose_name="full_map lab copy (SHAPEZ2-4-…$)")
+    decoded_json = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="full_map lab 디코드 JSON",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-updated_at",)
+        verbose_name = "복원 소행성 맵"
+        verbose_name_plural = "복원 소행성 맵"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("map_input", "run_key"),
+                name="uniq_reconstructed_map_per_map_input_run_key",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["map_input", "-updated_at"]),
+            models.Index(fields=["project", "-updated_at"]),
+            models.Index(fields=["-updated_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"ReconstructedAsteroidMap #{self.pk} map_input={self.map_input_id}"

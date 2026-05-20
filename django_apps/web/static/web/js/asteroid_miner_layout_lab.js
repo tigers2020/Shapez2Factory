@@ -8,28 +8,14 @@
  *
  * Domain rotation contract (blueprint / server JSON; never mutate ``cell.rotation`` in JS):
  * - R = 0 means East; R increases by quarter-turns clockwise (0..3).
- * - Sprite facing fixes are display-only: ``LAB_SPRITE_REGISTRY`` offsetQ / rotationCombine and CSS
- *   ``rotate`` on the sprite ``img`` only. Do not apply ad-hoc R+1 or rewrite domain rotation.
+ * - Lab SVGs are East-facing; display rotation is CSS ``rotate`` on the sprite ``img`` from ``R`` only.
+ *   Do not apply ad-hoc R+1 or rewrite domain rotation.
  */
 (function () {
   "use strict";
 
   const GRID_W = 23;
   const GRID_H = 15;
-
-  /** Lab optimization overlay (11B): when true, paint projection in ``#lab-optimization-overlay-layer`` only. */
-  const ENABLE_LAB_OPTIMIZATION_OVERLAY = false;
-
-  /** Mutable context for 11B overlay renderer (assigned from ``init`` / ``replaceLabReplayPayload``). */
-  const labOverlayCtx = {
-    gridEl: null,
-    hasServerReplay: false,
-    replayLayout: null,
-    resolveCellIndex: null,
-  };
-
-  /** Called after optimization frame panel DOM updates; assigned in ``init`` to refresh 11B overlay. */
-  let labAfterOptimizationPanelDom = function () {};
 
   /** Canonical map rotation: 0 = East, 1 = South, 2 = West, 3 = North; quarter-turns clockwise. */
   const DIR = Object.freeze({
@@ -59,22 +45,11 @@
     return ((Math.trunc(n) % 4) + 4) % 4;
   }
 
+  /* Sprite canonical direction contract (East-facing assets; CSS rotate only):
+   * quarter 0 = E = 0deg, 1 = S = 90deg clockwise on screen, 2 = W = 180deg, 3 = N = 270deg.
+   * Row/col grid mapping must not alter this rotation (no scaleX/rotateY mirror tricks). */
   function rotationToDeg(q) {
     return normalizeQuarterTurns(q) * 90;
-  }
-
-  /**
-   * Sprite quarter-turns from server ``cell.rotation`` (unchanged) and per-file registry ``offsetQ`` /
-   * ``rotationCombine``. Server ``R`` is never rewritten — only display math here.
-   */
-  function combineSpriteRotation(logicalQ, spec) {
-    const q = normalizeQuarterTurns(logicalQ);
-    const offsetQ = normalizeQuarterTurns(spec && spec.offsetQ != null ? spec.offsetQ : 0);
-    const mode = spec && spec.rotationCombine === "sub" ? "sub" : "add";
-    if (mode === "sub") {
-      return normalizeQuarterTurns(offsetQ - q);
-    }
-    return normalizeQuarterTurns(offsetQ + q);
   }
 
   function snapToDevicePixel(value) {
@@ -82,137 +57,24 @@
     return Math.round(Number(value) * dpr) / dpr;
   }
 
-  /** Resolved column gap in px for ``#lab-replay-grid`` (row gap matches uniform ``gap``). */
-  function labReplayGridGapPx(gridEl) {
-    if (!gridEl || typeof window.getComputedStyle !== "function") {
-      return 0;
-    }
-    const st = window.getComputedStyle(gridEl);
-    const col = parseFloat(String(st.columnGap || st.gap || "0"));
-    return Number.isFinite(col) && col > 0 ? col : 0;
-  }
-
-  /** Zoomed grid cell edge length (px), snapped to device pixels to reduce SVG/img blur. */
-  function labZoomedCellEdgePx(basePx, zoom) {
-    const minCellPx = 4;
-    const raw = Number(basePx) * Number(zoom);
-    if (!Number.isFinite(raw)) return minCellPx;
-    const snapped = snapToDevicePixel(raw);
-    return Math.max(minCellPx, Math.round(snapped));
-  }
-
   /** Base cell look; replay grid uses grid cell size instead of h-5 w-5. ``relative`` anchors the sprite layer. */
   const LAB_CELL_BASE =
-    "lab-cell relative shrink-0 overflow-visible rounded-[5px] border bg-slate-950 border-slate-900";
+    "lab-cell relative shrink-0 overflow-visible border bg-slate-950 border-slate-900";
 
-  /** Filenames under ``web/assets/sprites/`` (whitelist for ``tile_type`` → URL). */
-  const LAB_SPRITE_KNOWN = new Set([
-    "layout_fluid_miner.svg",
-    "layout_fluid_miner_extension.svg",
-    "layout_shape_miner.svg",
-    "layout_shape_miner_extension.svg",
-    "space_pipe_forward.svg",
-    "space_pipe_left_fwd_merger.svg",
-    "space_pipe_left_turn.svg",
-    "space_pipe_right_fwd_merger.svg",
-    "space_pipe_right_fwd_splitter.svg",
-    "space_pipe_right_turn.svg",
-    "space_pipe_triple_merger.svg",
-    "space_pipe_triple_splitter.svg",
-    "space_pipe_y_merger.svg",
-  ]);
+  /** Map blueprint ``T`` (:class:`ShapezGameIdentifier` ``value``) → ``sprite_static_relpath``; from ``json_script`` id ``lab-identifier-sprite-paths-data``. */
+  let labIdentifierSpriteRelpaths = {};
 
-  /**
-   * Per-sprite-file art correction: ``offsetQ`` + ``rotationCombine`` (server ``rotation`` untouched).
-   * ``nativeFacing`` is East (0) for all current Lab SVGs; reserved for audits / tooling.
-   */
-  const LAB_SPRITE_REGISTRY = Object.freeze({
-    "layout_fluid_miner.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "layout_fluid_miner_extension.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "layout_shape_miner.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "layout_shape_miner_extension.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_forward.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_left_fwd_merger.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_left_turn.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_right_fwd_merger.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_right_fwd_splitter.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_right_turn.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_triple_merger.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_triple_splitter.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-    "space_pipe_y_merger.svg": Object.freeze({
-      nativeFacing: DIR.EAST,
-      rotationCombine: "add",
-      offsetQ: 0,
-    }),
-  });
-
-  /** When true, or ``#lab-root`` has ``data-lab-debug-rotation="1"``, grid shows R/S overlay on cells with sprites. */
-  const LAB_DEBUG_ROTATION = false;
-
+  /** When ``#lab-root`` has ``data-lab-debug-rotation="1"``, grid shows R overlay on cells with sprites. */
   function labRotationDebugEnabled(rootEl) {
-    if (LAB_DEBUG_ROTATION) {
-      return true;
-    }
-    if (rootEl && rootEl.dataset && rootEl.dataset.labDebugRotation === "1") {
-      return true;
-    }
-    return false;
+    return Boolean(rootEl && rootEl.dataset && rootEl.dataset.labDebugRotation === "1");
   }
 
-  /** ``cell_kind`` → sprite file when ``tile_type`` is missing (not used for ambiguous kinds like ``space_pipe``). */
-  const LAB_SPRITE_CELL_KIND_FALLBACK = Object.freeze({
-    fluid_miner: "layout_fluid_miner.svg",
-    fluid_miner_extension: "layout_fluid_miner_extension.svg",
-    shape_miner: "layout_shape_miner.svg",
-    shape_miner_extension: "layout_shape_miner_extension.svg",
+  /** ``cell_kind`` → blueprint ``T`` when ``tile_type`` is missing (not used for ambiguous kinds like ``space_pipe``). */
+  const LAB_SPRITE_CELL_KIND_TO_IDENTIFIER = Object.freeze({
+    fluid_miner: "Layout_FluidMiner",
+    fluid_miner_extension: "Layout_FluidMinerExtension",
+    shape_miner: "Layout_ShapeMiner",
+    shape_miner_extension: "Layout_ShapeMinerExtension",
   });
 
   /** Sprite stack container; styles in ``assets/css/input.css`` (``.lab-cell-sprite-layer``). */
@@ -228,8 +90,7 @@
   const REPLAY_GRID_EDGE_PADDING = 5;
 
   const LAB_VIEWPORT_MIN_SCALE = 0.35;
-  /** Upper bound for wheel cell-pixel zoom (base cell px × zoom). */
-  const LAB_VIEWPORT_MAX_SCALE = 6;
+  const LAB_VIEWPORT_MAX_SCALE = 7;
   const LAB_VIEWPORT_DRAG_THRESHOLD_PX = 6;
 
   let labViewportInteractionsBound = false;
@@ -262,48 +123,47 @@
     }
   }
 
-  /** ``LeftFwdMerger`` / ``YMerger`` → ``left_fwd_merger`` / ``y_merger`` (asset basename segment). */
-  function labPascalSegmentToSnakeLower(segment) {
-    return String(segment)
-      .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
-      .replace(/([a-z\d])([A-Z])/g, "$1_$2")
-      .toLowerCase();
-  }
-
-  function labSpriteFilenameFromTileType(tileType) {
-    const t = tileType == null ? "" : String(tileType);
+  function labSpriteRelpathFromTileType(tileType) {
+    const t = tileType == null ? "" : String(tileType).trim();
     if (!t) return null;
-    let name = null;
-    if (t.startsWith("SpacePipe_")) {
-      const rest = t.slice("SpacePipe_".length);
-      if (!rest) return null;
-      const slug = labPascalSegmentToSnakeLower(rest);
-      name = "space_pipe_" + slug + ".svg";
-    } else if (t === "Layout_FluidMiner") {
-      name = "layout_fluid_miner.svg";
-    } else if (t === "Layout_FluidMinerExtension") {
-      name = "layout_fluid_miner_extension.svg";
-    }
-    // Shape miners: add ``layout_shape_miner*.svg`` under ``web/assets/sprites/`` and whitelist in ``LAB_SPRITE_KNOWN``.
-    if (!name || !LAB_SPRITE_KNOWN.has(name)) return null;
-    return name;
+    const rel = labIdentifierSpriteRelpaths[t];
+    if (typeof rel === "string" && rel.length) return rel;
+    if (t.startsWith("SpaceBelt_")) return "SpaceBelt/" + t + ".svg";
+    if (t.startsWith("SpacePipe_")) return "SpacePipe/" + t + ".svg";
+    return null;
   }
 
-  function labSpriteFilenameFromCellKind(cellKind) {
+  function labSpriteRelpathFromCellKind(cellKind) {
     const ck = cellKind == null ? "" : String(cellKind);
     if (!ck) return null;
-    const fn = LAB_SPRITE_CELL_KIND_FALLBACK[ck];
-    if (!fn || !LAB_SPRITE_KNOWN.has(fn)) return null;
-    return fn;
+    const ident = LAB_SPRITE_CELL_KIND_TO_IDENTIFIER[ck];
+    if (!ident) return null;
+    return labSpriteRelpathFromTileType(ident);
   }
 
-  function labSpriteFilenameForCell(cell) {
+  /** Last-resort: infer Forward-only sprite from transport kind when tile_type is absent.
+   * Turn/splitter/merger variants require server-provided tile_type — no topology inference here. */
+  function inferTransportSpriteIdentifier(cell) {
+    const tk = cell.transport_kind || cell.transport;
+    if (!tk) return null;
+    if (tk === "shape_belt" || cell.cell_kind === "space_belt") return "SpaceBelt_Forward";
+    if (tk === "fluid_pipe" || cell.cell_kind === "space_pipe") return "SpacePipe_Forward";
+    return null;
+  }
+
+  function labSpriteRelpathForCell(cell) {
     if (!cell || typeof cell !== "object") return null;
-    let fn = labSpriteFilenameFromTileType(cell.tile_type);
-    if (!fn && cell.cell_kind != null) {
-      fn = labSpriteFilenameFromCellKind(cell.cell_kind);
+    // sprite_identifier is the alias emitted alongside tile_type; prefer it so either field works.
+    const tileKey = cell.sprite_identifier || cell.tile_type;
+    let rel = labSpriteRelpathFromTileType(tileKey);
+    if (!rel && cell.cell_kind != null) {
+      rel = labSpriteRelpathFromCellKind(cell.cell_kind);
     }
-    return fn;
+    if (!rel) {
+      const inferred = inferTransportSpriteIdentifier(cell);
+      if (inferred) rel = labSpriteRelpathFromTileType(inferred);
+    }
+    return rel;
   }
 
   function attachLabSpriteImgNoDrag(img) {
@@ -353,30 +213,26 @@
   function applyLabCellSprite(el, cell) {
     clearLabCellSprite(el);
     if (!labSpriteBaseUrl || !cell || typeof cell !== "object") return;
-    const fn = labSpriteFilenameForCell(cell);
-    if (!fn) return;
-    const spec = LAB_SPRITE_REGISTRY[fn];
-    if (!spec) return;
+    const rel = labSpriteRelpathForCell(cell);
+    if (!rel) return;
     const layer = ensureLabCellSpriteLayer(el);
     const img = layer.querySelector("img.lab-cell-sprite");
     if (!img) return;
     attachLabSpriteImgNoDrag(img);
     const base = String(labSpriteBaseUrl).replace(/\/?$/, "/");
-    img.src = base + fn;
+    img.src = base + rel;
     const logicalQ = normalizeQuarterTurns(cell.rotation);
-    const spriteQ = combineSpriteRotation(logicalQ, spec);
-    const deg = rotationToDeg(spriteQ);
+    const deg = rotationToDeg(logicalQ);
     if (deg !== 0) {
       img.style.transform = "rotate(" + String(deg) + "deg)";
     } else {
       img.style.transform = "";
     }
-    layer.setAttribute("data-lab-sprite", fn);
+    layer.setAttribute("data-lab-sprite", rel);
     const rootDbg = document.getElementById("lab-root");
     if (labRotationDebugEnabled(rootDbg)) {
       el.setAttribute("data-r", String(logicalQ));
-      el.setAttribute("data-sprite-q", String(spriteQ));
-      el.setAttribute("data-sprite-file", fn);
+      el.setAttribute("data-sprite-file", rel);
     }
   }
 
@@ -392,761 +248,34 @@
     }
   }
 
-  /**
-   * Sequence 10A — optimization replay bootstrap (parse + frozen metadata only).
-   * Missing ``#optimization-replay-json`` or malformed JSON yields ``EMPTY_OPTIMIZATION_REPLAY_TRACK``
-   * (fallback contract; no throw, no console, not wired to solver or replay renderer).
-   */
-  const OPTIMIZATION_REPLAY_SCRIPT_ID = "optimization-replay-json";
-  const EMPTY_OPTIMIZATION_REPLAY_TRACK = Object.freeze({
-    track_id: "optimization",
-    track_label: "Optimization",
-    frame_count: 0,
-    frames: Object.freeze([]),
-    metrics: Object.freeze({
-      frame_count: 0,
-      event_type_counts: Object.freeze({}),
-      replay_truncated: false,
-    }),
-  });
-
-  function readJsonScriptPayload(scriptId, fallback) {
-    const el = document.getElementById(scriptId);
-    if (!el) return fallback;
-    try {
-      const parsed = JSON.parse(el.textContent || "null");
-      return parsed == null ? fallback : parsed;
-    } catch (_err) {
-      return fallback;
-    }
-  }
-
-  function normalizeOptimizationReplayTrack(raw) {
-    if (!raw || typeof raw !== "object") return EMPTY_OPTIMIZATION_REPLAY_TRACK;
-
-    const frames = Array.isArray(raw.frames) ? raw.frames.slice() : [];
-    const metricsRaw = raw.metrics && typeof raw.metrics === "object" ? raw.metrics : {};
-    const truncReasonRaw = metricsRaw.truncation_reason;
-    const truncReason =
-      typeof truncReasonRaw === "string" && truncReasonRaw.trim() ? truncReasonRaw.trim() : null;
-    const diagRaw = metricsRaw.optimization_replay_diagnostic_reason;
-    const diagnosticReason =
-      typeof diagRaw === "string" && diagRaw.trim() ? diagRaw.trim() : null;
-
-    const metricsOut = {
-      frame_count: Number.isFinite(Number(metricsRaw.frame_count))
-        ? Number(metricsRaw.frame_count)
-        : frames.length,
-      event_type_counts:
-        metricsRaw.event_type_counts && typeof metricsRaw.event_type_counts === "object"
-          ? Object.freeze({ ...metricsRaw.event_type_counts })
-          : Object.freeze({}),
-      replay_truncated: Boolean(metricsRaw.replay_truncated),
-    };
-    if (truncReason) {
-      metricsOut.truncation_reason = truncReason;
-    }
-    if (diagnosticReason) {
-      metricsOut.optimization_replay_diagnostic_reason = diagnosticReason;
-    }
-
-    return Object.freeze({
-      track_id: typeof raw.track_id === "string" ? raw.track_id : "optimization",
-      track_label: typeof raw.track_label === "string" ? raw.track_label : "Optimization",
-      frame_count: Number.isFinite(Number(raw.frame_count)) ? Number(raw.frame_count) : frames.length,
-      frames: Object.freeze(frames),
-      metrics: Object.freeze(metricsOut),
-    });
-  }
-
-  let optimizationReplayTrack = normalizeOptimizationReplayTrack(
-    readJsonScriptPayload(OPTIMIZATION_REPLAY_SCRIPT_ID, EMPTY_OPTIMIZATION_REPLAY_TRACK),
-  );
-
-  /** Cached POST ``optimization_replay_attach`` for HUD (12J write channel; not read diagnostic). */
-  let optimizationReplayAttachHudRaw;
-
-  /**
-   * Sequence 10B — optimization replay metadata only (no overlay, no lab frame index sync).
-   * Do not read optimization frame geometry here; lab replay still drives the grid.
-   */
-  function hasOptimizationReplayFrames(track) {
-    return Boolean(track && Array.isArray(track.frames) && track.frames.length > 0);
-  }
-
-  function optimizationReplayFrameCount(track) {
-    return track && Array.isArray(track.frames) ? track.frames.length : 0;
-  }
-
-  function optimizationReplayEventTypeCounts(track) {
-    const metrics = track && track.metrics && typeof track.metrics === "object" ? track.metrics : {};
-    const counts =
-      metrics.event_type_counts && typeof metrics.event_type_counts === "object"
-        ? metrics.event_type_counts
-        : {};
-    return Object.freeze({ ...counts });
-  }
-
-  function buildOptimizationReplayTrackSummary(track) {
-    const frameCount = optimizationReplayFrameCount(track);
-    const counts = optimizationReplayEventTypeCounts(track);
-    return Object.freeze({
-      trackId: typeof track?.track_id === "string" ? track.track_id : "optimization",
-      trackLabel: typeof track?.track_label === "string" ? track.track_label : "Optimization",
-      frameCount,
-      replayTruncated: Boolean(track?.metrics?.replay_truncated),
-      eventTypeCounts: counts,
-    });
-  }
-
-  /**
-   * Sequence 10C — optimization replay summary panel (format + render helpers).
-   */
-  function formatOptimizationReplaySummary(summary) {
-    const label =
-      summary && typeof summary.trackLabel === "string" ? summary.trackLabel : "Optimization";
-    const count =
-      summary && Number.isFinite(Number(summary.frameCount)) ? Number(summary.frameCount) : 0;
-    const truncated = Boolean(summary && summary.replayTruncated);
-    const suffix = truncated ? " · truncated" : "";
-    return label + ": " + String(count) + " frame" + (count === 1 ? "" : "s") + suffix;
-  }
-
-  /**
-   * Sequence 12H — truncation / read-diagnostic HUD (display-only; no Lab sync, no frame reorder).
-   * Sequence 12I — §7.1-aligned diagnostic codes + attach reason helpers (M1–M5; M6–M7 reserved in docs).
-   */
-  const OPTIMIZATION_REPLAY_DIAGNOSTIC_CODE = Object.freeze({
-    EMPTY_OPTIMIZATION_REPLAY_FRAMES: "empty_optimization_replay_frames",
-    INVALID_OPTIMIZATION_REPLAY_PAYLOAD: "invalid_optimization_replay_payload",
-    INVALID_TRUNCATION_CONTRACT: "invalid_truncation_contract",
-    MISSING_OPTIMIZATION_REPLAY: "missing_optimization_replay",
-    UNSUPPORTED_OR_UNKNOWN_EVENT_TYPE: "unsupported_or_unknown_event_type",
-  });
-
-  const OPTIMIZATION_REPLAY_HUD_STATUS = Object.freeze({
-    FALLBACK_EMPTY: "Replay status: fallback-empty",
-    NEUTRAL_DASH: "—",
-    NORMAL: "Replay status: normal",
-    TRUNCATED: "Replay status: truncated",
-  });
-
-  const OPTIMIZATION_REPLAY_HUD_REASON = Object.freeze({
-    DIAGNOSTIC_PREFIX: "Diagnostic: ",
-    TRUNCATION_PREFIX: "Truncation: ",
-    TRUNCATION_UNKNOWN: "unknown",
-  });
-
-  const OPTIMIZATION_REPLAY_ATTACH_REASON = Object.freeze({
-    ATTACHED: "attached",
-    EMPTY_CANDIDATE_POOL: "empty_candidate_pool",
-    EMPTY_FRAMES: "empty_frames",
-    EVOLUTION_FAILED: "evolution_failed",
-    INVALID_REPLAY_PAYLOAD: "invalid_replay_payload",
-    MISSING_SOLVER_RUN_ID: "missing_solver_run_id",
-    NON_OK_RESULT: "non_ok_result",
-    SOLVER_RUN_NOT_FOUND: "solver_run_not_found",
-  });
-
-  function mapOptimizationReplayAttachReasonToDiagnostic(reason) {
-    if (reason === OPTIMIZATION_REPLAY_ATTACH_REASON.INVALID_REPLAY_PAYLOAD) {
-      return OPTIMIZATION_REPLAY_DIAGNOSTIC_CODE.INVALID_OPTIMIZATION_REPLAY_PAYLOAD;
-    }
-    return null;
-  }
-
-  function mapOptimizationReplayAttachReasonToHudStatusDisplay(reason) {
-    if (reason === OPTIMIZATION_REPLAY_ATTACH_REASON.INVALID_REPLAY_PAYLOAD) {
-      return OPTIMIZATION_REPLAY_HUD_STATUS.FALLBACK_EMPTY;
-    }
-    return null;
-  }
-
-  function renderOptimizationReplayHud(track) {
-    const attachEl = document.getElementById("lab-optimization-replay-attach");
-    if (attachEl) {
-      attachEl.textContent = formatOptimizationReplayAttachHudLine(optimizationReplayAttachHudRaw);
-    }
-
-    const statusEl = document.getElementById("lab-optimization-replay-status");
-    const truncEl = document.getElementById("lab-optimization-replay-truncation");
-    const diagEl = document.getElementById("lab-optimization-replay-diagnostic");
-    if (!statusEl || !truncEl || !diagEl) {
+  function renderReplayRunStatus(feedback) {
+    const runEl = document.getElementById("lab-replay-run-status");
+    if (!runEl) return;
+    const dash = "—";
+    if (!feedback || typeof feedback !== "object") {
+      runEl.textContent = dash;
       return;
     }
-
-    const framesLen = optimizationReplayFrameCount(track);
-    const metrics = track && track.metrics && typeof track.metrics === "object" ? track.metrics : {};
-    const truncated = Boolean(metrics.replay_truncated);
-    const truncReason =
-      typeof metrics.truncation_reason === "string" && metrics.truncation_reason.trim()
-        ? metrics.truncation_reason.trim()
-        : truncated
-          ? OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_UNKNOWN
-          : "";
-    const diagnostic =
-      typeof metrics.optimization_replay_diagnostic_reason === "string" &&
-      metrics.optimization_replay_diagnostic_reason.trim()
-        ? metrics.optimization_replay_diagnostic_reason.trim()
-        : "";
-
-    truncEl.textContent = truncated
-      ? OPTIMIZATION_REPLAY_HUD_REASON.TRUNCATION_PREFIX + truncReason
-      : "";
-    diagEl.textContent = diagnostic
-      ? OPTIMIZATION_REPLAY_HUD_REASON.DIAGNOSTIC_PREFIX + diagnostic
-      : "";
-    if (truncated) {
-      truncEl.classList.remove("hidden");
+    if (feedback.running === true) {
+      runEl.textContent = "run: running…";
+    } else if (typeof feedback.error_code === "string" && feedback.error_code) {
+      runEl.textContent = "run: error " + feedback.error_code;
+    } else if (feedback.solver_run_id != null) {
+      const vp =
+        feedback.validation_passed === true
+          ? "passed"
+          : feedback.validation_passed === false
+            ? "failed"
+            : "—";
+      let statusText = "run: id " + String(feedback.solver_run_id) + " validation " + vp;
+      if (feedback.gene_template_source && feedback.gene_template_source.gene_count != null) {
+        statusText += " genes:" + String(feedback.gene_template_source.gene_count);
+      }
+      runEl.textContent = statusText;
     } else {
-      truncEl.classList.add("hidden");
-    }
-    if (diagnostic) {
-      diagEl.classList.remove("hidden");
-    } else {
-      diagEl.classList.add("hidden");
-    }
-
-    const baseStatus = "text-xs font-medium ";
-    if (framesLen === 0 && !diagnostic) {
-      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.NEUTRAL_DASH;
-      statusEl.className = baseStatus + "text-slate-500";
-    } else if (framesLen === 0 && diagnostic) {
-      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.FALLBACK_EMPTY;
-      statusEl.className = baseStatus + "text-amber-200/90";
-    } else if (truncated) {
-      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.TRUNCATED;
-      statusEl.className = baseStatus + "text-amber-200/90";
-    } else {
-      statusEl.textContent = OPTIMIZATION_REPLAY_HUD_STATUS.NORMAL;
-      statusEl.className = baseStatus + "text-emerald-200/80";
+      runEl.textContent = dash;
     }
   }
-
-  /**
-   * Sequence 12J — POST ``optimization_replay_attach`` display-only (write channel; not diagnostic).
-   */
-  function formatOptimizationReplayAttachHudLine(raw) {
-    if (raw == null || typeof raw !== "object") {
-      return "Attach: —";
-    }
-    const attached = raw.attached;
-    const reason =
-      typeof raw.reason === "string" && raw.reason.trim() ? raw.reason.trim() : "";
-    if (typeof attached !== "boolean") {
-      return "Attach: —";
-    }
-    if (attached) {
-      return reason === "attached" ? "Attach: attached" : "Attach: attached (" + reason + ")";
-    }
-    if (reason) {
-      return "Attach: skipped (" + reason + ")";
-    }
-    return "Attach: skipped (unknown)";
-  }
-
-  function renderOptimizationReplayAttachHud(raw) {
-    optimizationReplayAttachHudRaw = raw;
-    renderOptimizationReplayHud(optimizationReplayTrack);
-  }
-
-  function formatOptimizationReplayEventCounts(summary) {
-    const counts =
-      summary && summary.eventTypeCounts && typeof summary.eventTypeCounts === "object"
-        ? summary.eventTypeCounts
-        : {};
-    const keys = Object.keys(counts).sort();
-    if (!keys.length) return "No optimization events";
-    return keys
-      .slice(0, 3)
-      .map(function (k) {
-        return k + ": " + counts[k];
-      })
-      .join(" · ");
-  }
-
-  function renderOptimizationReplaySummary(summary) {
-    const el = document.getElementById("lab-optimization-replay-summary-value");
-    if (!el) return;
-    el.textContent = formatOptimizationReplaySummary(summary);
-    const ev = document.getElementById("lab-optimization-replay-event-counts");
-    if (!ev) return;
-    ev.textContent = formatOptimizationReplayEventCounts(summary);
-  }
-
-  renderOptimizationReplaySummary(
-    buildOptimizationReplayTrackSummary(optimizationReplayTrack),
-  );
-  renderOptimizationReplayHud(optimizationReplayTrack);
-
-  /**
-   * Sequence 10D — selected optimization replay frame metadata (text only; no geometry, no lab sync).
-   */
-  function selectedOptimizationReplayFrame(track, frameIndex) {
-    if (!track || !Array.isArray(track.frames)) return null;
-    if (!Number.isInteger(frameIndex)) return null;
-    if (frameIndex < 0 || frameIndex >= track.frames.length) return null;
-    return track.frames[frameIndex] || null;
-  }
-
-  function formatOptimizationReplayFrameMetadata(frame) {
-    if (!frame || typeof frame !== "object") {
-      return Object.freeze({
-        title: "No optimization frame selected",
-        eventType: "—",
-        description: "—",
-        metricsSummary: "No metrics",
-      });
-    }
-
-    const metrics =
-      frame.metrics && typeof frame.metrics === "object" ? frame.metrics : {};
-
-    const metricKeys = Object.keys(metrics).sort();
-
-    return Object.freeze({
-      title:
-        typeof frame.title === "string" && frame.title ? frame.title : "Optimization Frame",
-      eventType: typeof frame.event_type === "string" ? frame.event_type : "—",
-      description:
-        typeof frame.description === "string" && frame.description ? frame.description : "—",
-      metricsSummary:
-        metricKeys.length > 0 ? metricKeys.slice(0, 5).join(" · ") : "No metrics",
-    });
-  }
-
-  function renderOptimizationReplayFrameMetadata(meta) {
-    const titleEl = document.getElementById("lab-optimization-frame-title");
-    if (titleEl) titleEl.textContent = meta.title;
-    const evEl = document.getElementById("lab-optimization-frame-event");
-    if (evEl) evEl.textContent = meta.eventType;
-    const descEl = document.getElementById("lab-optimization-frame-description");
-    if (descEl) descEl.textContent = meta.description;
-    const metEl = document.getElementById("lab-optimization-frame-metrics");
-    if (metEl) metEl.textContent = meta.metricsSummary;
-  }
-
-  /**
-   * Sequence 10E — optimization replay frame navigation (metadata + index display only; no lab sync).
-   */
-  let optimizationReplayFrameIndex = 0;
-
-  function clampOptimizationReplayFrameIndex(track, idx) {
-    const len = Array.isArray(track?.frames) ? track.frames.length : 0;
-    if (len <= 0) return 0;
-    return Math.max(0, Math.min(len - 1, idx));
-  }
-
-  function currentOptimizationReplayFrame(track) {
-    return selectedOptimizationReplayFrame(
-      track,
-      clampOptimizationReplayFrameIndex(track, optimizationReplayFrameIndex),
-    );
-  }
-
-  function renderOptimizationReplayFramePanel() {
-    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
-    const meta = formatOptimizationReplayFrameMetadata(frame);
-
-    renderOptimizationReplayFrameMetadata(meta);
-
-    const el = document.getElementById("lab-optimization-frame-display");
-    if (!el) {
-      labAfterOptimizationPanelDom();
-      return;
-    }
-
-    const len = optimizationReplayFrameCount(optimizationReplayTrack);
-    const current =
-      len > 0
-        ? clampOptimizationReplayFrameIndex(optimizationReplayTrack, optimizationReplayFrameIndex) +
-          1
-        : 0;
-
-    el.textContent = String(current) + " / " + String(len);
-    labAfterOptimizationPanelDom();
-  }
-
-  document.getElementById("lab-optimization-frame-prev")?.addEventListener("click", function () {
-    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
-      optimizationReplayTrack,
-      optimizationReplayFrameIndex - 1,
-    );
-    renderOptimizationReplayFramePanel();
-  });
-
-  document.getElementById("lab-optimization-frame-next")?.addEventListener("click", function () {
-    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
-      optimizationReplayTrack,
-      optimizationReplayFrameIndex + 1,
-    );
-    renderOptimizationReplayFramePanel();
-  });
-
-  renderOptimizationReplayFramePanel();
-
-  /**
-   * Sequence 12A — swap optimization replay track from Run Solver JSON without touching Lab replay.
-   * Does not call ``applyFrame``; does not sync ``optimizationReplayFrameIndex`` with Lab frame index.
-   */
-  function replaceOptimizationReplayPayload(nextPayload) {
-    if (nextPayload == null || typeof nextPayload !== "object") {
-      return;
-    }
-    /* 11D: clear stale optimization overlay DOM before attaching a new track (clear → HUD → panel → render). */
-    clearOptimizationReplayOverlay();
-    optimizationReplayTrack = normalizeOptimizationReplayTrack(nextPayload);
-    optimizationReplayFrameIndex = 0;
-    renderOptimizationReplaySummary(
-      buildOptimizationReplayTrackSummary(optimizationReplayTrack),
-    );
-    renderOptimizationReplayHud(optimizationReplayTrack);
-    optimizationReplayFrameIndex = clampOptimizationReplayFrameIndex(
-      optimizationReplayTrack,
-      optimizationReplayFrameIndex,
-    );
-    renderOptimizationReplayFramePanel();
-  }
-
-  /**
-   * Sequence 11A — readonly overlay projection adapter.
-   *
-   * Input: a single optimization replay ``frame`` object (``visible_cells`` / ``overlay_cells`` JSON).
-   * Output: ``{ cells, diagnostics }`` for future overlay renderers (11B). **projection ≠ rendering**.
-   *
-   * - Does **not** mutate ``frame`` or Lab replay frame payloads.
-   * - Does **not** read or write Lab replay timeline index or optimization-only frame index (no implicit sync).
-   * - Server-dense ``Coord`` ``{x,y}`` → Lab **world** ``(x,y)`` (same convention as ``lab_replay`` cells)
-   *   using right-bottom bbox seam: ``dense_x = max_dense_x - server_x``, ``raw_x = 2 * dense_x - 1``,
-   *   ``raw_y = server_y + min_raw_y`` (mirrors ``server_coords.server_xy_for_raw_xy`` inverse).
-   * - Bbox: ``frame.metrics.lab_projection_max_dense_x`` + ``lab_projection_min_raw_y``, or
-   *   ``frame.metrics.server_xy_params`` as ``[max_dense_x, min_raw_y]``. Missing → cells dropped
-   *   with ``missing_lab_projection_bbox``.
-   * - Optional passthrough: ``lab_world_x`` / ``lab_world_y`` on a cell (non-zero x) skips server conversion.
-   *
-   * Sequence 11D — projection cache policy: **no memoization** (pure function of the frame argument;
-   * deterministic recomputation each overlay render; no cross-frame cache).
-   */
-  function projectOptimizationReplayFrameToLabOverlay(frame) {
-    const diagnostics = {
-      inputVisibleCellCount: 0,
-      inputOverlayCellCount: 0,
-      projectedCellCount: 0,
-      droppedCellCount: 0,
-      dropReasons: {},
-    };
-
-    function bumpDrop(reason) {
-      const r = String(reason || "unknown");
-      diagnostics.droppedCellCount += 1;
-      diagnostics.dropReasons[r] = (diagnostics.dropReasons[r] || 0) + 1;
-    }
-
-    if (!frame || typeof frame !== "object") {
-      return { cells: [], diagnostics: diagnostics };
-    }
-
-    const metrics = frame.metrics && typeof frame.metrics === "object" ? frame.metrics : null;
-    let maxDenseX = null;
-    let minRawY = null;
-    if (metrics) {
-      const md = metrics.lab_projection_max_dense_x;
-      const my = metrics.lab_projection_min_raw_y;
-      if (Number.isFinite(Number(md)) && Number.isFinite(Number(my))) {
-        maxDenseX = Number(md);
-        minRawY = Number(my);
-      } else if (Array.isArray(metrics.server_xy_params) && metrics.server_xy_params.length >= 2) {
-        maxDenseX = Number(metrics.server_xy_params[0]);
-        minRawY = Number(metrics.server_xy_params[1]);
-      }
-    }
-    const bboxOk =
-      Number.isFinite(maxDenseX) &&
-      Number.isFinite(minRawY) &&
-      Number.isInteger(maxDenseX) &&
-      Number.isInteger(minRawY) &&
-      maxDenseX >= 0;
-
-    const vis = Array.isArray(frame.visible_cells) ? frame.visible_cells : [];
-    const ovl = Array.isArray(frame.overlay_cells) ? frame.overlay_cells : [];
-    diagnostics.inputVisibleCellCount = vis.length;
-    diagnostics.inputOverlayCellCount = ovl.length;
-
-    const eventType =
-      typeof frame.event_type === "string" && frame.event_type ? frame.event_type : null;
-
-    function extractSpatial(cell) {
-      if (!cell || typeof cell !== "object") return null;
-      const lwx = cell.lab_world_x;
-      const lwy = cell.lab_world_y;
-      if (lwx != null && lwy != null) {
-        const wx = Number(lwx);
-        const wy = Number(lwy);
-        if (Number.isFinite(wx) && Number.isFinite(wy) && wx !== 0) {
-          return { mode: "lab_world", rawX: wx, rawY: wy };
-        }
-      }
-      const coord = cell.coord && typeof cell.coord === "object" ? cell.coord : cell;
-      const sx = Number(coord.x);
-      const sy = Number(coord.y);
-      if (!Number.isFinite(sx) || !Number.isFinite(sy)) return null;
-      return { mode: "server", serverX: sx, serverY: sy };
-    }
-
-    function serverDenseToLabWorldXY(serverX, serverY) {
-      const denseX = maxDenseX - serverX;
-      const rawX = 2 * denseX - 1;
-      const rawY = serverY + minRawY;
-      return { rawX: rawX, rawY: rawY };
-    }
-
-    function projectOne(cell, layer) {
-      const sp = extractSpatial(cell);
-      if (!sp) {
-        bumpDrop("missing_coord");
-        return null;
-      }
-      let rawX;
-      let rawY;
-      if (sp.mode === "lab_world") {
-        rawX = sp.rawX;
-        rawY = sp.rawY;
-      } else {
-        if (!bboxOk) {
-          bumpDrop("missing_lab_projection_bbox");
-          return null;
-        }
-        const w = serverDenseToLabWorldXY(sp.serverX, sp.serverY);
-        rawX = w.rawX;
-        rawY = w.rawY;
-      }
-      if (rawX === 0 || !Number.isFinite(rawX) || !Number.isFinite(rawY)) {
-        bumpDrop("invalid_lab_world_xy");
-        return null;
-      }
-      if (visualCol(rawX) == null) {
-        bumpDrop("invalid_lab_world_xy");
-        return null;
-      }
-
-      const candidateId =
-        cell.candidate_id != null
-          ? String(cell.candidate_id)
-          : cell.candidateId != null
-            ? String(cell.candidateId)
-            : null;
-      const routeReservationId =
-        cell.route_reservation_id != null
-          ? String(cell.route_reservation_id)
-          : cell.routeReservationId != null
-            ? String(cell.routeReservationId)
-            : null;
-      let transportKind =
-        cell.transport_kind != null
-          ? String(cell.transport_kind)
-          : cell.transportKind != null
-            ? String(cell.transportKind)
-            : null;
-      if (transportKind === "null") transportKind = null;
-
-      let severity = null;
-      if (cell.severity != null) severity = String(cell.severity);
-
-      diagnostics.projectedCellCount += 1;
-      return {
-        x: rawX,
-        y: rawY,
-        role: "optimization_overlay",
-        source: "optimization_replay",
-        overlayLayer: layer,
-        eventType: eventType,
-        candidateId: candidateId,
-        routeReservationId: routeReservationId,
-        transportKind: transportKind,
-        severity: severity,
-      };
-    }
-
-    const out = [];
-    for (let i = 0; i < vis.length; i++) {
-      const row = projectOne(vis[i], "visible");
-      if (row) out.push(row);
-    }
-    for (let j = 0; j < ovl.length; j++) {
-      const row2 = projectOne(ovl[j], "overlay");
-      if (row2) out.push(row2);
-    }
-
-    return { cells: out, diagnostics: diagnostics };
-  }
-
-  /**
-   * Sequence 11B — feature-flagged optimization replay overlay rendering.
-   *
-   * Renders only into ``#lab-optimization-overlay-layer`` (never mutates ``#lab-replay-grid`` cell nodes).
-   * Geometry comes exclusively from ``projectOptimizationReplayFrameToLabOverlay``; no Lab vs optimization
-   * frame index sync and no Lab replay payload mutation.
-   */
-  function clearOptimizationReplayOverlay() {
-    const layer = document.getElementById("lab-optimization-overlay-layer");
-    if (!layer) return;
-    /* 11D: viewport pan/zoom lives on ``#lab-replay-grid-stage`` only; never accumulate transform on overlay. */
-    layer.style.transform = "";
-    layer.style.transformOrigin = "";
-    layer.replaceChildren();
-  }
-
-  function syncOptimizationOverlayLayerGridStyles() {
-    const layer = document.getElementById("lab-optimization-overlay-layer");
-    if (!layer || !labOverlayCtx.gridEl) return;
-    const g = labOverlayCtx.gridEl;
-    layer.style.display = "grid";
-    layer.style.gridTemplateColumns = g.style.gridTemplateColumns || "";
-    layer.style.gridTemplateRows = g.style.gridTemplateRows || "";
-    const cs = g.style.getPropertyValue("--lab-cell-size");
-    if (cs) {
-      layer.style.setProperty("--lab-cell-size", cs);
-    }
-    const gap = window.getComputedStyle(g).gap;
-    if (gap) {
-      layer.style.gap = gap;
-    }
-  }
-
-  function renderLabOptimizationOverlayDiagnostics(diagnostics, frame) {
-    const el = document.getElementById("lab-optimization-overlay-diagnostics");
-    if (!el) return;
-    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
-      el.textContent = "—";
-      return;
-    }
-    if (!diagnostics || typeof diagnostics !== "object") {
-      el.textContent = "—";
-      return;
-    }
-    const p = Number(diagnostics.projectedCellCount) || 0;
-    const dr = Number(diagnostics.droppedCellCount) || 0;
-    const reasons =
-      diagnostics.dropReasons && typeof diagnostics.dropReasons === "object"
-        ? diagnostics.dropReasons
-        : {};
-    const mb = Number(reasons.missing_lab_projection_bbox) || 0;
-    const m = frame && frame.metrics && typeof frame.metrics === "object" ? frame.metrics : null;
-    const trunc = Boolean(m && m.replay_truncated === true);
-    const truncNote = trunc ? " · replay_truncated (frame metrics)" : "";
-    el.textContent =
-      "projected: " +
-      String(p) +
-      " · dropped: " +
-      String(dr) +
-      " · missing bbox: " +
-      String(mb) +
-      truncNote;
-  }
-
-  function renderLabOptimizationOverlayCells(projectionCells) {
-    const layer = document.getElementById("lab-optimization-overlay-layer");
-    if (!layer || !Array.isArray(projectionCells)) return;
-    layer.replaceChildren();
-    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) return;
-    const ctx = labOverlayCtx;
-    if (!ctx.hasServerReplay || !ctx.replayLayout || typeof ctx.resolveCellIndex !== "function") {
-      return;
-    }
-    const rl = ctx.replayLayout;
-    const gw = rl.gridW;
-    for (let i = 0; i < projectionCells.length; i++) {
-      const c = projectionCells[i];
-      if (!c || typeof c !== "object") continue;
-      const idx = ctx.resolveCellIndex({ x: c.x, y: c.y });
-      if (idx == null || idx < 0) continue;
-      const col = idx % gw;
-      const row = Math.floor(idx / gw);
-      const mark = document.createElement("div");
-      mark.setAttribute("data-lab-opt-overlay-cell", "1");
-      mark.setAttribute("aria-hidden", "true");
-      mark.className =
-        "pointer-events-none min-h-0 min-w-0 rounded-[5px] ring-2 ring-inset ring-fuchsia-400/45";
-      mark.style.gridColumn = String(col + 1);
-      mark.style.gridRow = String(row + 1);
-      layer.appendChild(mark);
-    }
-  }
-
-  /**
-   * Sequence 11D — monotonic overlay render generation (anchor for stale async projection guards).
-   * Incremented at the start of every ``renderOptimizationReplayOverlay`` invocation.
-   */
-  let optimizationReplayOverlayRenderSeq = 0;
-
-  /**
-   * Stale-render guard: commit projected overlay only if this render generation is still current.
-   * (Synchronous today; guards against future async projection without implicit Lab/optimization sync.)
-   */
-  function commitOptimizationOverlayRender(seq, projection) {
-    if (seq !== optimizationReplayOverlayRenderSeq) {
-      return false;
-    }
-    if (!projection || typeof projection !== "object") {
-      return false;
-    }
-    renderLabOptimizationOverlayCells(projection.cells);
-    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
-    renderLabOptimizationOverlayDiagnostics(projection.diagnostics, frame);
-    return true;
-  }
-
-  function renderOptimizationReplayOverlay() {
-    const seq = ++optimizationReplayOverlayRenderSeq;
-    const shell = document.getElementById("lab-optimization-overlay-layer");
-    if (!ENABLE_LAB_OPTIMIZATION_OVERLAY) {
-      clearOptimizationReplayOverlay();
-      if (shell) shell.classList.add("hidden");
-      renderLabOptimizationOverlayDiagnostics(null, null);
-      return;
-    }
-    if (shell) shell.classList.remove("hidden");
-
-    if (!labOverlayCtx.hasServerReplay || !labOverlayCtx.replayLayout) {
-      clearOptimizationReplayOverlay();
-      if (shell) shell.classList.add("hidden");
-      const el = document.getElementById("lab-optimization-overlay-diagnostics");
-      if (el) {
-        el.textContent =
-          "projected: 0 · dropped: 0 · missing bbox: 0 (needs server Lab replay grid + flag)";
-      }
-      return;
-    }
-
-    syncOptimizationOverlayLayerGridStyles();
-    clearOptimizationReplayOverlay();
-
-    const frame = currentOptimizationReplayFrame(optimizationReplayTrack);
-    const projection = projectOptimizationReplayFrameToLabOverlay(frame);
-    if (!commitOptimizationOverlayRender(seq, projection)) {
-      const el = document.getElementById("lab-optimization-overlay-diagnostics");
-      if (el) {
-        el.textContent = "—";
-      }
-      return;
-    }
-  }
-
-  /**
-   * Sequence 11D — overlay lifecycle invariants (see tests in ``test_asteroid_lab_page_context.py``).
-   * - Lab viewport transform owner: ``#lab-replay-grid-stage`` (``applyLabViewportTransform``); overlay shell
-   *   must not retain pan/zoom ``transform`` (cleared in ``clearOptimizationReplayOverlay``).
-   * - ``renderOptimizationReplayOverlay``: ``syncOptimizationOverlayLayerGridStyles`` →
-   *   ``clearOptimizationReplayOverlay`` → project → commit (cells + diagnostics).
-   * - ``replaceOptimizationReplayPayload``: ``clearOptimizationReplayOverlay`` before track swap.
-   * - ``applyLabGridLayoutForZoom`` / ``resetLabViewportTransform``: refresh overlay ctx then
-   *   ``renderOptimizationReplayOverlay`` (clear + render order preserved).
-   */
-  window.__shapezLabReplayOverlayLifecycle = Object.freeze({
-    getOptimizationReplayOverlayRenderSeq: function () {
-      return optimizationReplayOverlayRenderSeq;
-    },
-  });
 
   function getCookie(name) {
     const prefix = "; " + name + "=";
@@ -1184,21 +313,22 @@
     return 0;
   }
 
-  /** World x to dense column index (no x===0); mirrors server_coords.raw_x_to_dense_x. */
+  /** World x to dense column index; mirrors server_coords.raw_x_to_dense_index. */
   function rawXToDenseX(x) {
     const xi = Number(x);
-    if (!Number.isFinite(xi) || xi === 0) return null;
+    if (!Number.isFinite(xi)) return null;
     if (xi < 0) return Math.floor((xi + 1) / 2);
-    return Math.floor((xi - 1) / 2) + 1;
+    if (xi > 0) return Math.floor((xi - 1) / 2) + 1;
+    return 0;
   }
 
-  /** World x to dense visual column; x === 0 is invalid (null). Legacy Lab anchor. */
+  /** World x to dense visual column for replay grid layout (Lab anchor). */
   function visualCol(x) {
     const xi = Number(x);
     if (!Number.isFinite(xi)) return null;
-    if (xi === 0) return null;
     if (xi < 0) return xi;
-    return xi - 1;
+    if (xi > 0) return xi - 1;
+    return 0;
   }
 
   function cellIndexDemo(x, y) {
@@ -1236,8 +366,75 @@
     }
   }
 
+  function labCellsFromUnifiedMapView(mapView) {
+    if (!mapView || typeof mapView !== "object") return [];
+    const full = mapView.full_cells;
+    if (!Array.isArray(full) || !full.length) return [];
+    const out = [];
+    for (let i = 0; i < full.length; i++) {
+      const c = full[i];
+      if (!c || typeof c !== "object") continue;
+      out.push({
+        x: c.x,
+        y: c.y,
+        cell_kind: c.kind != null ? c.kind : c.cell_kind,
+        transport_kind: c.transport != null ? c.transport : c.transport_kind,
+        tile_type: c.tile_type != null ? String(c.tile_type) : "",
+        sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
+        rotation: c.rotation,
+      });
+    }
+    return out;
+  }
+
+  function overlayCellsFromUnifiedMapView(mapView) {
+    if (!mapView || typeof mapView !== "object") return [];
+    const ov = mapView.overlay_cells;
+    if (!Array.isArray(ov) || !ov.length) return [];
+    const out = [];
+    for (let i = 0; i < ov.length; i++) {
+      const c = ov[i];
+      if (!c || typeof c !== "object") continue;
+      out.push({
+        x: c.x,
+        y: c.y,
+        cell_kind: c.kind != null ? c.kind : c.cell_kind,
+        transport_kind: c.transport != null ? c.transport : c.transport_kind,
+        tile_type: c.tile_type != null ? String(c.tile_type) : "",
+        sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
+        rotation: c.rotation,
+      });
+    }
+    return out;
+  }
+
+  function cellDeltaCellsFromUnifiedMapView(mapView) {
+    if (!mapView || typeof mapView !== "object") return [];
+    const delta = mapView.cell_delta;
+    if (!Array.isArray(delta) || !delta.length) return [];
+    const out = [];
+    for (let i = 0; i < delta.length; i++) {
+      const c = delta[i];
+      if (!c || typeof c !== "object") continue;
+      out.push({
+        x: c.x,
+        y: c.y,
+        cell_kind: c.kind != null ? c.kind : c.cell_kind,
+        transport_kind: c.transport != null ? c.transport : c.transport_kind,
+        tile_type: c.tile_type != null ? String(c.tile_type) : "",
+        sprite_identifier: c.sprite_identifier != null ? String(c.sprite_identifier) : (c.tile_type != null ? String(c.tile_type) : ""),
+        rotation: c.rotation,
+      });
+    }
+    return out;
+  }
+
   function fullMapCellsFromFrame(frame) {
     if (!frame || typeof frame !== "object") return [];
+    const unified = labCellsFromUnifiedMapView(frame.map_view);
+    if (unified.length) return unified;
+    const fromDelta = cellDeltaCellsFromUnifiedMapView(frame.map_view);
+    if (fromDelta.length) return fromDelta;
     if (Array.isArray(frame.full_map) && frame.full_map.length) return frame.full_map;
     const p = frame.frame_payload;
     if (p && typeof p === "object") {
@@ -1288,6 +485,11 @@
   function collectFrameSpatialTargets(frame) {
     const out = [];
     pushCellList(out, fullMapCellsFromFrame(frame), "");
+    const mapView = frame && frame.map_view;
+    if (mapView && typeof mapView === "object") {
+      pushCellList(out, overlayCellsFromUnifiedMapView(mapView), "");
+      pushCellList(out, cellDeltaCellsFromUnifiedMapView(mapView), "");
+    }
     const diffT = collectDiffPaintTargets(frame);
     for (let i = 0; i < diffT.length; i++) out.push(diffT[i]);
     return out;
@@ -1367,8 +569,14 @@
         if (yi > maxR) maxR = yi;
       }
     }
+    /** Bbox mins over all replay spatial targets; matches ``server_coords.server_xy_for_raw_xy`` origin. */
+    let bboxMinDenseX = 0;
+    let bboxMinRawY = 0;
     if (!any) {
       minD = maxD = minR = maxR = 0;
+    } else {
+      bboxMinDenseX = minD;
+      bboxMinRawY = minR;
     }
     const coreHalfX = Math.max(Math.max(0, -minD), Math.max(0, maxD), 1);
     const coreHalfY = Math.max(Math.max(0, -minR), Math.max(0, maxR), 1);
@@ -1381,6 +589,8 @@
       maxR: halfY,
       gridW: 2 * halfX + 1,
       gridH: 2 * halfY + 1,
+      bboxMinDenseX: bboxMinDenseX,
+      bboxMinRawY: bboxMinRawY,
     };
   }
 
@@ -1641,6 +851,14 @@
     const fm = fullMapCellsFromFrame(frame);
     if (fm.length) {
       renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
+      const ovCells = overlayCellsFromUnifiedMapView(frame.map_view);
+      if (ovCells.length) {
+        renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
+      }
+      const deltaCells = cellDeltaCellsFromUnifiedMapView(frame.map_view);
+      if (deltaCells.length) {
+        renderFullMapCells(baseClasses, domCells, deltaCells, resolveCellIndex);
+      }
       renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
       applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
       return;
@@ -1677,12 +895,48 @@
     if (gridEl) gridEl.dataset.overlay = frame.frame_key ? String(frame.frame_key) : "";
   }
 
+  function updateReplayTruncationHud(frame, trackMetrics) {
+    const hud = document.getElementById("lab-replay-truncation-hud");
+    if (!hud) return;
+    const dash = "—";
+    const fm = frame && frame.metrics && typeof frame.metrics === "object" ? frame.metrics : {};
+    const tm = trackMetrics && typeof trackMetrics === "object" ? trackMetrics : {};
+    const parts = [];
+    const diag =
+      typeof tm.diagnostic_reason === "string" && tm.diagnostic_reason ? tm.diagnostic_reason : null;
+    if (diag) {
+      parts.push("diagnostic: " + diag);
+    }
+    const truncated = fm.replay_truncated === true || tm.replay_truncated === true;
+    if (truncated) {
+      const reason =
+        typeof fm.truncation_reason === "string" && fm.truncation_reason
+          ? fm.truncation_reason
+          : typeof tm.truncation_reason === "string" && tm.truncation_reason
+            ? tm.truncation_reason
+            : "unknown";
+      let text = "truncated: " + reason;
+      const dropped = fm.dropped_frame_count != null ? fm.dropped_frame_count : tm.dropped_frame_count;
+      if (dropped != null && Number.isFinite(Number(dropped))) {
+        text += " · dropped " + String(dropped);
+      }
+      parts.push(text);
+    }
+    hud.textContent = parts.length ? parts.join(" · ") : dash;
+  }
+
   function init() {
     const matrix = readJsonScript("lab-cell-overlay-matrix-data");
-    const runs = readJsonScript("lab-runs-data");
+    let runs = readJsonScript("lab-runs-data");
+    if (!Array.isArray(runs)) {
+      runs = [];
+    }
     const uiInitial = readJsonScript("lab-ui-initial-state");
     const replayFramesRaw = readJsonScript("lab-replay-frames-data");
     let replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
+    const trackMetricsRaw = readJsonScript("lab-replay-track-metrics-data");
+    let replayTrackMetrics =
+      trackMetricsRaw && typeof trackMetricsRaw === "object" ? trackMetricsRaw : {};
     let hasServerReplay = replayFrames.length > 0;
     let initialFromServer = Object.assign(
       {},
@@ -1709,6 +963,7 @@
 
     const gridStage = document.getElementById("lab-replay-grid-stage");
     const gridHudCoord = document.getElementById("lab-replay-grid-hud-coord");
+    const gridHudServerCoord = document.getElementById("lab-replay-grid-hud-server-coord");
     const gridHudRole = document.getElementById("lab-replay-grid-hud-role");
 
     let labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
@@ -1721,6 +976,57 @@
     let domCells;
     let baseClasses;
 
+    function labViewportContentOffset(clientX, clientY) {
+      if (!gridViewport) {
+        return { vx: 0, vy: 0 };
+      }
+      const vr = gridViewport.getBoundingClientRect();
+      const cs = window.getComputedStyle(gridViewport);
+      const pl = parseFloat(cs.paddingLeft) || 0;
+      const pt = parseFloat(cs.paddingTop) || 0;
+      return {
+        vx: clientX - vr.left - pl,
+        vy: clientY - vr.top - pt,
+      };
+    }
+
+    function labBaseCellAndGapPx() {
+      if (hasServerReplay && replayLayout) {
+        const cellPx = Math.max(4, Math.round(Number(replayFitBasePx)));
+        const gapPx = Math.max(0, Math.round(cellPx * 0.2));
+        return { cellPx: cellPx, gapPx: gapPx, gw: replayLayout.gridW, gh: replayLayout.gridH };
+      }
+      if (domCells && domCells.length) {
+        const cellPx = Math.max(4, Math.round(Number(demoBaseCellPxAtZoom1)));
+        const gapPx = Math.max(0, Math.round(cellPx * 0.2));
+        return { cellPx: cellPx, gapPx: gapPx, gw: GRID_W, gh: GRID_H };
+      }
+      return null;
+    }
+
+    function labWorldPointFromClient(clientX, clientY) {
+      const o = labViewportContentOffset(clientX, clientY);
+      const t = labViewportTransform;
+      const z = Number(t.zoom);
+      const zoom = Number.isFinite(z) && z > 0 ? z : 1;
+      return {
+        wx: (o.vx - t.tx) / zoom,
+        wy: (o.vy - t.ty) / zoom,
+      };
+    }
+
+    function syncLabReplayStageSizeFromGrid() {
+      if (!gridStage || !gridEl) {
+        return;
+      }
+      const w = gridEl.offsetWidth;
+      const h = gridEl.offsetHeight;
+      if (w > 0 && h > 0) {
+        gridStage.style.width = w + "px";
+        gridStage.style.height = h + "px";
+      }
+    }
+
     function applyLabViewportTransform() {
       if (!gridStage) {
         return;
@@ -1728,27 +1034,35 @@
       const t = labViewportTransform;
       const tx = snapToDevicePixel(t.tx);
       const ty = snapToDevicePixel(t.ty);
+      const z = Number(t.zoom);
+      const zoom = Number.isFinite(z) && z > 0 ? z : 1;
       gridStage.style.transformOrigin = "0 0";
-      gridStage.style.transform = "translate3d(" + tx + "px," + ty + "px,0)";
+      gridStage.style.transform =
+        "translate(" + tx + "px, " + ty + "px) scale(" + zoom + ")";
     }
 
     function applyLabGridLayoutForZoom() {
+      let cellPx = null;
       if (hasServerReplay && replayLayout) {
         const gw = replayLayout.gridW;
         const gh = replayLayout.gridH;
-        const zpx = labZoomedCellEdgePx(replayFitBasePx, labViewportTransform.zoom);
-        gridEl.style.setProperty("--lab-cell-size", String(zpx) + "px");
-        gridEl.style.gridTemplateColumns = "repeat(" + gw + ", " + zpx + "px)";
-        gridEl.style.gridTemplateRows = "repeat(" + gh + ", " + zpx + "px)";
+        cellPx = Math.max(4, Math.round(Number(replayFitBasePx)));
+        gridEl.style.gridTemplateColumns = "repeat(" + gw + ", minmax(0, " + cellPx + "px))";
+        gridEl.style.gridTemplateRows = "repeat(" + gh + ", minmax(0, " + cellPx + "px))";
       } else if (domCells && domCells.length) {
-        const zpx = labZoomedCellEdgePx(demoBaseCellPxAtZoom1, labViewportTransform.zoom);
-        gridEl.style.setProperty("--lab-cell-size", String(zpx) + "px");
-        gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", " + zpx + "px)";
-        gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", " + zpx + "px)";
+        cellPx = Math.max(4, Math.round(Number(demoBaseCellPxAtZoom1)));
+        gridEl.style.gridTemplateColumns = "repeat(" + GRID_W + ", minmax(0, " + cellPx + "px))";
+        gridEl.style.gridTemplateRows = "repeat(" + GRID_H + ", minmax(0, " + cellPx + "px))";
       }
+      if (cellPx != null) {
+        /* ~0.25rem at ~20px cells in CSS; gap scales with stage ``scale()`` via world cell size. */
+        const gapPx = Math.max(0, Math.round(cellPx * 0.2));
+        gridEl.style.setProperty("--lab-cell-gap", gapPx + "px");
+        const radiusPx = Math.max(2, Math.min(7, Math.round(cellPx * 0.14)));
+        gridEl.style.setProperty("--lab-cell-radius", radiusPx + "px");
+      }
+      syncLabReplayStageSizeFromGrid();
       applyLabViewportTransform();
-      refreshLabOverlayCtx();
-      renderOptimizationReplayOverlay();
     }
 
     function resetLabViewportTransform() {
@@ -1764,13 +1078,6 @@
     let resizeObserver = null;
     let replayResizeMode = null;
     let replayCleanup = function () {};
-
-    function refreshLabOverlayCtx() {
-      labOverlayCtx.gridEl = gridEl;
-      labOverlayCtx.hasServerReplay = hasServerReplay;
-      labOverlayCtx.replayLayout = replayLayout;
-      labOverlayCtx.resolveCellIndex = resolveCellIndex;
-    }
 
     function initializeServerReplaySurface(framesArr) {
       const neutralClass = LAB_CELL_BASE;
@@ -1805,20 +1112,16 @@
 
       const padPx = 16;
       const minCell = 4;
-      const maxCell = 28;
+      const maxCell = 36;
 
       function applyReplayGridSizing() {
         if (!gridViewport || !replayLayout) return;
         const cw = gridViewport.clientWidth - padPx * 2;
         const ch = gridViewport.clientHeight - padPx * 2;
-        const gw = replayLayout.gridW;
-        const gh = replayLayout.gridH;
-        const gapPx = labReplayGridGapPx(gridEl);
-        const gapCols = Math.max(0, gw - 1) * gapPx;
-        const gapRows = Math.max(0, gh - 1) * gapPx;
-        const cellFromW = Math.floor((cw - gapCols) / gw);
-        const cellFromH = Math.floor((ch - gapRows) / gh);
-        replayFitBasePx = Math.max(minCell, Math.min(maxCell, Math.min(cellFromW, cellFromH)));
+        replayFitBasePx = Math.max(
+          minCell,
+          Math.min(maxCell, Math.floor(Math.min(cw / replayLayout.gridW, ch / replayLayout.gridH))),
+        );
         applyLabGridLayoutForZoom();
       }
 
@@ -1862,37 +1165,25 @@
 
     if (hasServerReplay) {
       if (!matrix || !Array.isArray(matrix)) {
-        hasServerReplay = false;
-        replayFrames = [];
-      } else {
-        try {
-          replayCleanup = initializeServerReplaySurface(replayFrames);
-        } catch (_err) {
-          hasServerReplay = false;
-          replayFrames = [];
-        }
+        return;
       }
-    }
-    if (!hasServerReplay) {
+      replayCleanup = initializeServerReplaySurface(replayFrames);
+    } else {
       if (!matrix || !Array.isArray(matrix) || cells.length !== matrix.length) {
-        domCells = [];
-        baseClasses = [];
-      } else {
-        domCells = Array.prototype.slice.call(cells);
-        baseClasses = domCells.map(function (el) {
-          return String(el.className || "");
-        });
-        requestAnimationFrame(function () {
-          const first = domCells[0];
-          if (first && first.offsetWidth > 0) {
-            demoBaseCellPxAtZoom1 = Math.max(4, first.offsetWidth);
-          }
-          applyLabGridLayoutForZoom();
-        });
+        return;
       }
+      domCells = Array.prototype.slice.call(cells);
+      baseClasses = domCells.map(function (el) {
+        return String(el.className || "");
+      });
+      requestAnimationFrame(function () {
+        const first = domCells[0];
+        if (first && first.offsetWidth > 0) {
+          demoBaseCellPxAtZoom1 = Math.max(4, first.offsetWidth);
+        }
+        applyLabGridLayoutForZoom();
+      });
     }
-
-    refreshLabOverlayCtx();
 
     const rootEl = document.getElementById("lab-root");
     function syncLabDebugRotationClass() {
@@ -1904,6 +1195,11 @@
       }
     }
     syncLabDebugRotationClass();
+    const idSpriteRaw = readJsonScript("lab-identifier-sprite-paths-data");
+    labIdentifierSpriteRelpaths =
+      idSpriteRaw && typeof idSpriteRaw === "object" && !Array.isArray(idSpriteRaw)
+        ? idSpriteRaw
+        : {};
     labSpriteBaseUrl =
       rootEl && rootEl.dataset && rootEl.dataset.labSpriteBase != null
         ? String(rootEl.dataset.labSpriteBase)
@@ -2016,20 +1312,36 @@
         const fr = getCurrentReplayFrame();
         renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
         updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl);
+        updateReplayTruncationHud(fr, replayTrackMetrics);
         const cycle = document.getElementById("lab-computation-cycle");
         if (cycle) {
-          cycle.textContent = fr && fr.frame_key != null ? "frame_key " + String(fr.frame_key) : "frame —";
+          if (fr && fr.inspector && fr.inspector.source_frame_index != null) {
+            cycle.textContent =
+              "source_frame_index " + String(fr.inspector.source_frame_index);
+          } else if (fr && fr.frame_key != null) {
+            cycle.textContent = "frame_key " + String(fr.frame_key);
+          } else {
+            cycle.textContent = fr && fr.frame_index != null ? "frame " + String(fr.frame_index) : "frame —";
+          }
         }
         const hint = document.getElementById("lab-replay-footer-hint");
         if (hint) {
-          hint.textContent =
-            fr && fr.id != null
-              ? "ReplayFrame id " + String(fr.id) + (fr.is_keyframe ? " · keyframe" : "")
-              : "—";
+          if (fr && fr.inspector) {
+            const optEv = fr.inspector.optimization_event_type;
+            const labEv = fr.inspector.lab_event_type;
+            hint.textContent = optEv
+              ? "optimization " + String(optEv)
+              : labEv
+                ? "lab " + String(labEv)
+                : "replay frame";
+          } else {
+            hint.textContent =
+              fr && fr.id != null
+                ? "ReplayFrame id " + String(fr.id) + (fr.is_keyframe ? " · keyframe" : "")
+                : "—";
+          }
         }
         syncLabTimelineScrub();
-        refreshLabOverlayCtx();
-        renderOptimizationReplayOverlay();
         return;
       }
 
@@ -2051,8 +1363,6 @@
       const cycle = document.getElementById("lab-computation-cycle");
       if (cycle) cycle.textContent = "computation_cycle #" + String(frame);
       syncLabTimelineScrub();
-      refreshLabOverlayCtx();
-      renderOptimizationReplayOverlay();
     }
 
     function setPlaying(next) {
@@ -2101,17 +1411,34 @@
       });
     }
 
+    function runDetailStatusLabel(run) {
+      if (!run || typeof run !== "object") return "—";
+      if (run.status === "failed" || run.validation_passed === false) {
+        return "validation failed";
+      }
+      if (run.status === "completed" || run.validation_passed === true) {
+        return "completed";
+      }
+      return run.status != null ? String(run.status) : "—";
+    }
+
     function setRunDetail(run) {
       const dash = "—";
       const detailIds = [
+        "lab-detail-status",
         "lab-detail-score",
         "lab-detail-miners",
         "lab-detail-extension-cap",
-        "lab-detail-connected",
+        "lab-detail-placed",
+        "lab-detail-issue-coord",
+        "lab-detail-issue-candidate",
+        "lab-detail-issue-reservation",
+        "lab-detail-issue-message",
         "lab-detail-cost",
         "lab-detail-belts",
         "lab-detail-pipes",
         "lab-detail-saturation",
+        "lab-detail-first-issue",
       ];
       if (!run) {
         for (const id of detailIds) {
@@ -2126,25 +1453,160 @@
         run.extension_cap != null && run.extension_cap !== ""
           ? String(run.extension_cap)
           : dash;
+      const firstIssue =
+        run.first_issue_code != null && run.first_issue_code !== ""
+          ? String(run.first_issue_code)
+          : Array.isArray(run.issue_codes) && run.issue_codes.length
+            ? String(run.issue_codes[0])
+            : dash;
       const map = [
+        ["lab-detail-status", runDetailStatusLabel(run)],
         ["lab-detail-score", run.score != null ? run.score : dash],
         ["lab-detail-miners", run.miners != null ? run.miners : dash],
         ["lab-detail-extension-cap", ext],
-        ["lab-detail-connected", run.connected != null ? run.connected : dash],
+        ["lab-detail-placed", run.placed != null ? run.placed : dash],
         ["lab-detail-cost", run.cost != null ? run.cost : dash],
         ["lab-detail-belts", run.belts != null ? run.belts : dash],
         ["lab-detail-pipes", run.pipes != null ? run.pipes : dash],
         [
           "lab-detail-saturation",
-          run.saturation != null && run.saturation !== "" ? String(run.saturation) + "%" : dash,
+          run.saturation != null && run.saturation !== "" && run.saturation !== dash
+            ? String(run.saturation) + "%"
+            : dash,
         ],
+        ["lab-detail-first-issue", firstIssue],
       ];
+      const detail = run.first_issue_detail;
+      if (detail && typeof detail === "object") {
+        const coord =
+          detail.coord != null && Array.isArray(detail.coord)
+            ? "[" + detail.coord.join(", ") + "]"
+            : dash;
+        map.push(
+          ["lab-detail-issue-coord", coord],
+          [
+            "lab-detail-issue-candidate",
+            detail.candidate_id != null && detail.candidate_id !== ""
+              ? String(detail.candidate_id)
+              : dash,
+          ],
+          [
+            "lab-detail-issue-reservation",
+            detail.route_reservation_id != null && detail.route_reservation_id !== ""
+              ? String(detail.route_reservation_id)
+              : dash,
+          ],
+          [
+            "lab-detail-issue-message",
+            detail.message != null && detail.message !== "" ? String(detail.message) : dash,
+          ],
+        );
+      } else {
+        map.push(
+          ["lab-detail-issue-coord", dash],
+          ["lab-detail-issue-candidate", dash],
+          ["lab-detail-issue-reservation", dash],
+          ["lab-detail-issue-message", dash],
+        );
+      }
       for (const [id, val] of map) {
         const n = document.getElementById(id);
         if (n) n.textContent = String(val);
       }
       const title = document.getElementById("lab-detail-run-id");
-      if (title) title.textContent = run.id != null ? String(run.id) : dash;
+      if (title) {
+        title.textContent = run.id != null ? "Run #" + String(run.id) : dash;
+      }
+    }
+
+    function evolutionRunButtonClasses(run, selected) {
+      const failed = run && (run.status === "failed" || run.validation_passed === false);
+      if (selected) {
+        return failed
+          ? "w-full rounded-xl border p-3 text-left transition border-rose-500/80 bg-rose-950/40"
+          : "w-full rounded-xl border p-3 text-left transition border-cyan-500 bg-cyan-500/10";
+      }
+      return failed
+        ? "w-full rounded-xl border p-3 text-left transition border-rose-800/80 bg-rose-950/20 hover:border-rose-700"
+        : "w-full rounded-xl border p-3 text-left transition border-slate-800 bg-slate-900 hover:border-slate-700";
+    }
+
+    function renderEvolutionRunsList(selectedRunId) {
+      const list = document.getElementById("lab-evolution-runs-list");
+      if (!list) return;
+      list.innerHTML = "";
+      if (!runs.length) {
+        const empty = document.createElement("p");
+        empty.className = "text-sm text-slate-500";
+        empty.textContent = "No runs";
+        list.appendChild(empty);
+        return;
+      }
+      const selected =
+        selectedRunId != null ? String(selectedRunId) : runs[0] && runs[0].id ? String(runs[0].id) : null;
+      runs.forEach(function (run) {
+        if (!run || run.id == null) return;
+        const rid = String(run.id);
+        const failed = run.status === "failed" || run.validation_passed === false;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("data-lab-run-id", rid);
+        btn.className = evolutionRunButtonClasses(run, selected === rid);
+        const scoreLabel = failed ? "validation failed" : run.score != null ? String(run.score) : "—";
+        const sat =
+          run.saturation != null && run.saturation !== "" && run.saturation !== "—"
+            ? String(run.saturation) + "%"
+            : "—";
+        btn.innerHTML =
+          '<div class="flex items-center justify-between gap-2">' +
+          '<div class="font-medium">Run #' +
+          rid +
+          "</div>" +
+          '<div class="text-sm ' +
+          (failed ? "text-rose-300" : "text-cyan-300") +
+          '">' +
+          scoreLabel +
+          "</div>" +
+          "</div>" +
+          '<div class="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-400">' +
+          "<div>" +
+          (run.miners != null ? run.miners : "—") +
+          " miners</div>" +
+          "<div>" +
+          (run.placed != null ? run.placed : "—") +
+          " placed</div>" +
+          "<div>" +
+          sat +
+          " sat.</div>" +
+          "</div>";
+        if (run.first_issue_code) {
+          const issue = document.createElement("p");
+          issue.className = "mt-2 truncate text-xs text-rose-300/90";
+          issue.title = String(run.first_issue_code);
+          issue.textContent = String(run.first_issue_code);
+          btn.appendChild(issue);
+        }
+        btn.addEventListener("click", function () {
+          applyRunSelectionHighlight(rid);
+          setRunDetail(run);
+        });
+        list.appendChild(btn);
+      });
+    }
+
+    function upsertRunSummary(runSummary) {
+      if (!runSummary || typeof runSummary !== "object" || runSummary.id == null) {
+        return;
+      }
+      const id = String(runSummary.id);
+      runs = [runSummary].concat(
+        (runs || []).filter(function (r) {
+          return r && String(r.id) !== id;
+        }),
+      );
+      renderEvolutionRunsList(id);
+      applyRunSelectionHighlight(id);
+      setRunDetail(runSummary);
     }
 
     function resetToInitial() {
@@ -2164,16 +1626,6 @@
 
     document.getElementById("lab-header-reset")?.addEventListener("click", function () {
       resetToInitial();
-    });
-
-    document.getElementById("lab-header-run")?.addEventListener("click", function () {
-      const form = document.getElementById("lab-import-project-form");
-      if (form) {
-        runLabBlueprintRebuildViaImportForm(form);
-        return;
-      }
-      setPlaying(true);
-      applyFrame();
     });
 
     document.getElementById("lab-timeline-prev")?.addEventListener("click", function () {
@@ -2202,6 +1654,10 @@
     });
 
     if (scrubEl) {
+      scrubEl.addEventListener("pointerdown", function (event) {
+        event.stopPropagation();
+        setPlaying(false);
+      });
       scrubEl.addEventListener("input", function () {
         setTimelineIndex(scrubEl.value, { pause: true });
       });
@@ -2231,7 +1687,7 @@
       }
     });
 
-    function replaceLabReplayPayload(payload) {
+    function replaceLabReplayPayload(payload, opts) {
       if (!payload || typeof payload !== "object") return;
       const redirectTo = typeof payload.redirect === "string" ? payload.redirect : "";
       if (blueprintInput && typeof payload.blueprint_code === "string") {
@@ -2248,6 +1704,9 @@
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
       replayFrames = next;
+      if (payload.replay_track_metrics && typeof payload.replay_track_metrics === "object") {
+        replayTrackMetrics = payload.replay_track_metrics;
+      }
       hasServerReplay = replayFrames.length > 0;
       if (!hasServerReplay) {
         window.location.assign(redirectTo || window.location.href);
@@ -2255,9 +1714,12 @@
       }
       replayCleanup();
       replayCleanup = initializeServerReplaySurface(replayFrames);
-      refreshLabOverlayCtx();
       resetLabViewportTransform();
-      replayArrayIndex = replaySlotForServerInitialFrame();
+      const seekLast =
+        opts && typeof opts === "object" && opts.seekLastFrame === true;
+      replayArrayIndex = seekLast
+        ? Math.max(0, replayFrames.length - 1)
+        : replaySlotForServerInitialFrame();
       setPlaying(false);
       applyFrame();
     }
@@ -2282,82 +1744,61 @@
       }
     }
 
-    let labImportPostInFlight = false;
-
-    function runLabBlueprintRebuildViaImportForm(form) {
-      if (!form || !form.action || labImportPostInFlight) {
-        return;
-      }
-      labImportPostInFlight = true;
-      const fd = new FormData(form);
-      fetch(form.action, {
-        method: "POST",
-        body: fd,
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      })
-        .then(function (res) {
-          return res
-            .json()
-            .catch(function () {
-              return { ok: false };
-            })
-            .then(function (data) {
-              return { res: res, data: data };
-            });
-        })
-        .then(function (bundle) {
-          const res = bundle.res;
-          const data = bundle.data;
-          if (!res.ok || !data || data.ok === false) {
-            if (data && data.redirect) {
-              window.location.assign(data.redirect);
-            } else {
-              window.location.reload();
-            }
-            return;
-          }
-          if (data.in_place) {
-            replaceLabReplayPayload(data);
-            if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
-              replaceOptimizationReplayPayload(data.optimization_replay);
-            }
-            renderOptimizationReplayAttachHud(data.optimization_replay_attach);
-            return;
-          }
-          if (data.redirect) {
-            if (typeof history.pushState === "function") {
-              try {
-                history.pushState(null, "", data.redirect);
-                syncProjectSlugHiddenFromRedirect(form, data.redirect);
-              } catch {
-                window.location.assign(data.redirect);
-                return;
-              }
-            } else {
-              window.location.assign(data.redirect);
-              return;
-            }
-          }
-          replaceLabReplayPayload(data);
-          if (data.optimization_replay != null && typeof data.optimization_replay === "object") {
-            replaceOptimizationReplayPayload(data.optimization_replay);
-          }
-          renderOptimizationReplayAttachHud(data.optimization_replay_attach);
-        })
-        .catch(function () {
-          form.submit();
-        })
-        .finally(function () {
-          labImportPostInFlight = false;
-        });
-    }
-
     const importForm = document.getElementById("lab-import-project-form");
     if (importForm) {
       importForm.addEventListener("submit", function (ev) {
         ev.preventDefault();
-        runLabBlueprintRebuildViaImportForm(importForm);
+        const fd = new FormData(importForm);
+        fetch(importForm.action, {
+          method: "POST",
+          body: fd,
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        })
+          .then(function (res) {
+            return res
+              .json()
+              .catch(function () {
+                return { ok: false };
+              })
+              .then(function (data) {
+                return { res: res, data: data };
+              });
+          })
+          .then(function (bundle) {
+            const res = bundle.res;
+            const data = bundle.data;
+            if (!res.ok || !data || data.ok === false) {
+              if (data && data.redirect) {
+                window.location.assign(data.redirect);
+              } else {
+                window.location.reload();
+              }
+              return;
+            }
+            if (data.in_place) {
+              replaceLabReplayPayload(data);
+              return;
+            }
+            if (data.redirect) {
+              if (typeof history.pushState === "function") {
+                try {
+                  history.pushState(null, "", data.redirect);
+                  syncProjectSlugHiddenFromRedirect(importForm, data.redirect);
+                } catch {
+                  window.location.assign(data.redirect);
+                  return;
+                }
+              } else {
+                window.location.assign(data.redirect);
+                return;
+              }
+            }
+            replaceLabReplayPayload(data);
+          })
+          .catch(function () {
+            importForm.submit();
+          });
       });
     }
 
@@ -2378,24 +1819,78 @@
       return { x: xWorld, y: y };
     }
 
-    function findLabCellFromPoint(clientX, clientY) {
-      const el = document.elementFromPoint(clientX, clientY);
-      if (!el) {
+    function domIndexToServerXY(domIdx) {
+      const w = domIndexToWorldXY(domIdx);
+      if (!w || !replayLayout) {
         return null;
       }
-      return el.closest("[data-lab-cell-index]");
+      const d = visualCol(w.x);
+      if (d == null) {
+        return null;
+      }
+      const md = Number(replayLayout.bboxMinDenseX);
+      const my = Number(replayLayout.bboxMinRawY);
+      if (!Number.isFinite(md) || !Number.isFinite(my)) {
+        return null;
+      }
+      return { x: d - md, y: w.y - my };
+    }
+
+    function findLabCellFromPoint(clientX, clientY) {
+      const w = labWorldPointFromClient(clientX, clientY);
+      const dims = labBaseCellAndGapPx();
+      if (!dims || !domCells || !domCells.length) {
+        return null;
+      }
+      const cellPx = dims.cellPx;
+      const gapPx = dims.gapPx;
+      const gw = dims.gw;
+      const gh = dims.gh;
+      const stride = cellPx + gapPx;
+      let x = 0;
+      let col = -1;
+      for (let c = 0; c < gw; c++) {
+        if (w.wx >= x && w.wx < x + cellPx) {
+          col = c;
+          break;
+        }
+        x += stride;
+      }
+      if (col < 0) {
+        return null;
+      }
+      let y = 0;
+      let row = -1;
+      for (let r = 0; r < gh; r++) {
+        if (w.wy >= y && w.wy < y + cellPx) {
+          row = r;
+          break;
+        }
+        y += stride;
+      }
+      if (row < 0) {
+        return null;
+      }
+      const idx = row * gw + col;
+      if (idx < 0 || idx >= domCells.length) {
+        return null;
+      }
+      return domCells[idx] || null;
     }
 
     function updateLabGridHudEmpty() {
       if (gridHudCoord) {
         gridHudCoord.textContent = "—";
       }
+      if (gridHudServerCoord) {
+        gridHudServerCoord.textContent = "—";
+      }
       if (gridHudRole) {
         gridHudRole.textContent = "—";
       }
     }
 
-    function getLabCellDisplayCoord(cellEl) {
+    function getLabCellDisplayRawCoord(cellEl) {
       const indexText = cellEl && cellEl.getAttribute ? cellEl.getAttribute("data-lab-cell-index") : null;
       const idx = Number.parseInt(indexText || "", 10);
       if (!Number.isFinite(idx)) {
@@ -2411,6 +1906,22 @@
       const demoX = idx % GRID_W;
       const demoY = Math.floor(idx / GRID_W);
       return "(" + demoX + ", " + demoY + ")";
+    }
+
+    function getLabCellDisplayServerCoord(cellEl) {
+      const indexText = cellEl && cellEl.getAttribute ? cellEl.getAttribute("data-lab-cell-index") : null;
+      const idx = Number.parseInt(indexText || "", 10);
+      if (!Number.isFinite(idx)) {
+        return "—";
+      }
+      if (hasServerReplay && replayLayout) {
+        const coord = domIndexToServerXY(idx);
+        if (!coord) {
+          return "—";
+        }
+        return "(" + coord.x + ", " + coord.y + ")";
+      }
+      return "—";
     }
 
     function getLabCellDisplayRole(cellEl) {
@@ -2439,7 +1950,10 @@
         return;
       }
       if (gridHudCoord) {
-        gridHudCoord.textContent = getLabCellDisplayCoord(cellEl);
+        gridHudCoord.textContent = getLabCellDisplayRawCoord(cellEl);
+      }
+      if (gridHudServerCoord) {
+        gridHudServerCoord.textContent = getLabCellDisplayServerCoord(cellEl);
       }
       if (gridHudRole) {
         gridHudRole.textContent = getLabCellDisplayRole(cellEl);
@@ -2451,29 +1965,61 @@
         return;
       }
       event.preventDefault();
-      const srect = gridStage.getBoundingClientRect();
-      const anchorX = event.clientX - srect.left;
-      const anchorY = event.clientY - srect.top;
+      const o = labViewportContentOffset(event.clientX, event.clientY);
+      const vx = o.vx;
+      const vy = o.vy;
       const oldZoom = labViewportTransform.zoom;
-      const basePx = hasServerReplay && replayLayout ? replayFitBasePx : demoBaseCellPxAtZoom1;
-      const oldCellPx = labZoomedCellEdgePx(basePx, oldZoom);
       const zoomFactor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
       const nextZoom = clampNumber(oldZoom * zoomFactor, LAB_VIEWPORT_MIN_SCALE, LAB_VIEWPORT_MAX_SCALE);
       if (nextZoom === oldZoom) {
         updateLabGridHudFromPoint(event.clientX, event.clientY);
         return;
       }
-      const newCellPx = labZoomedCellEdgePx(basePx, nextZoom);
-      const ratio = oldCellPx > 0 ? newCellPx / oldCellPx : 1;
+      const z0 = oldZoom;
+      const z1 = nextZoom;
+      const tx0 = labViewportTransform.tx;
+      const ty0 = labViewportTransform.ty;
       labViewportTransform.zoom = nextZoom;
-      labViewportTransform.tx = anchorX - (anchorX - labViewportTransform.tx) * ratio;
-      labViewportTransform.ty = anchorY - (anchorY - labViewportTransform.ty) * ratio;
-      applyLabGridLayoutForZoom();
+      labViewportTransform.tx = vx - (z1 / z0) * (vx - tx0);
+      labViewportTransform.ty = vy - (z1 / z0) * (vy - ty0);
+      applyLabViewportTransform();
       updateLabGridHudFromPoint(event.clientX, event.clientY);
     }
 
-    function handleLabViewportPointerDown(event) {
+    function labPointerShouldStartViewportPan(event) {
       if (!gridViewport || event.button !== 0) {
+        return false;
+      }
+      const t = event.target;
+      if (!(t instanceof Element)) {
+        return false;
+      }
+      if (t.closest("#lab-timeline-controls, #lab-timeline-scrub")) {
+        return false;
+      }
+      if (t.closest("input, button, select, textarea, a, label")) {
+        return false;
+      }
+      return true;
+    }
+
+    function endLabViewportPan(event) {
+      if (!labPanState || labPanState.pointerId !== event.pointerId) {
+        return;
+      }
+      if (
+        labPanState.dragging &&
+        typeof gridViewport.releasePointerCapture === "function" &&
+        typeof gridViewport.hasPointerCapture === "function" &&
+        gridViewport.hasPointerCapture(event.pointerId)
+      ) {
+        gridViewport.releasePointerCapture(event.pointerId);
+      }
+      labPanState = null;
+    }
+
+    function handleLabViewportPointerDown(event) {
+      if (!labPointerShouldStartViewportPan(event)) {
         return;
       }
       labPanState = {
@@ -2508,26 +2054,12 @@
     }
 
     function handleLabViewportPointerUp(event) {
-      if (!labPanState || labPanState.pointerId !== event.pointerId) {
-        return;
-      }
-      if (
-        labPanState.dragging &&
-        typeof gridViewport.releasePointerCapture === "function" &&
-        typeof gridViewport.hasPointerCapture === "function" &&
-        gridViewport.hasPointerCapture(event.pointerId)
-      ) {
-        gridViewport.releasePointerCapture(event.pointerId);
-      }
-      labPanState = null;
+      endLabViewportPan(event);
     }
 
     function handleLabViewportPointerLeave(event) {
       updateLabGridHudEmpty();
-      if (!labPanState || labPanState.pointerId !== event.pointerId) {
-        return;
-      }
-      labPanState = null;
+      endLabViewportPan(event);
     }
 
     function bindLabViewportInteractions() {
@@ -2562,6 +2094,234 @@
         return mc.value;
       }
       return getCookie("csrftoken") || "";
+    }
+
+    let replayRunFeedback = null;
+    renderReplayRunStatus(replayRunFeedback);
+
+    const runSolverBtn = document.getElementById("lab-header-run");
+    runSolverBtn?.addEventListener("click", function () {
+      const runUrl =
+        rootEl && rootEl.dataset && rootEl.dataset.labRunSolverUrl
+          ? String(rootEl.dataset.labRunSolverUrl)
+          : "";
+      if (!runUrl) {
+        replayRunFeedback = { error_code: "no_run_solver_url" };
+        renderReplayRunStatus(replayRunFeedback);
+        return;
+      }
+      if (runSolverBtn.disabled) {
+        return;
+      }
+      runSolverBtn.disabled = true;
+      replayRunFeedback = { running: true };
+      renderReplayRunStatus(replayRunFeedback);
+      fetch(runUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-CSRFToken": labCsrfToken(),
+        },
+      })
+        .then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return { ok: false };
+            })
+            .then(function (data) {
+              return { res: res, data: data };
+            });
+        })
+        .then(function (bundle) {
+          const res = bundle.res;
+          const data = bundle.data || {};
+          if (!res.ok || data.ok === false) {
+            replayRunFeedback = {
+              error_code:
+                typeof data.error_code === "string" ? data.error_code : "request_failed",
+            };
+            if (data.solver_run_id != null) {
+              replayRunFeedback.solver_run_id = data.solver_run_id;
+              replayRunFeedback.validation_passed = data.validation_passed;
+            }
+            renderReplayRunStatus(replayRunFeedback);
+            if (data.run_summary) {
+              upsertRunSummary(data.run_summary);
+            }
+            if (Array.isArray(data.lab_replay_frames_json)) {
+              replaceLabReplayPayload(data);
+            }
+            return;
+          }
+          replayRunFeedback = {
+            solver_run_id: data.solver_run_id,
+            validation_passed: data.validation_passed,
+            gene_template_source: data.gene_template_source || null,
+          };
+          renderReplayRunStatus(replayRunFeedback);
+          if (data.run_summary) {
+            upsertRunSummary(data.run_summary);
+          }
+          replaceLabReplayPayload(data, { seekLastFrame: true });
+        })
+        .catch(function () {
+          replayRunFeedback = { error_code: "network_error" };
+          renderReplayRunStatus(replayRunFeedback);
+        })
+        .finally(function () {
+          runSolverBtn.disabled = false;
+        });
+    });
+
+    function labReplayFrameOrmId(fr) {
+      if (!fr || typeof fr !== "object") {
+        return null;
+      }
+      if (fr.id != null && fr.id !== "") {
+        const legacy = parseInt(String(fr.id), 10);
+        if (Number.isFinite(legacy)) {
+          return legacy;
+        }
+      }
+      const insp = fr.inspector;
+      if (insp && typeof insp === "object" && insp.replay_frame_id != null) {
+        const fromInsp = parseInt(String(insp.replay_frame_id), 10);
+        if (Number.isFinite(fromInsp)) {
+          return fromInsp;
+        }
+      }
+      return null;
+    }
+
+    function setLabCellDetailUnavailableHint(message) {
+      const hint = document.getElementById("lab-replay-footer-hint");
+      if (hint) {
+        hint.textContent = message;
+      }
+    }
+
+    function labCellMatchesWorldXY(cell, x, y) {
+      if (!cell || typeof cell !== "object") {
+        return false;
+      }
+      const cx = Number(cell.x);
+      const cy = Number(cell.y);
+      return Number.isFinite(cx) && Number.isFinite(cy) && cx === x && cy === y;
+    }
+
+    function labUnifiedWireCellToDetail(cell) {
+      if (!cell || typeof cell !== "object") {
+        return null;
+      }
+      const out = {
+        x: cell.x,
+        y: cell.y,
+        rotation: cell.rotation != null ? cell.rotation : 0,
+        cell_kind: cell.kind != null ? cell.kind : cell.cell_kind != null ? cell.cell_kind : "",
+        transport_kind:
+          cell.transport != null ? cell.transport : cell.transport_kind != null ? cell.transport_kind : "",
+        tile_type:
+          cell.tile_type != null
+            ? String(cell.tile_type)
+            : cell.sprite_identifier != null
+              ? String(cell.sprite_identifier)
+              : "",
+      };
+      if (cell.layer != null) {
+        out.layer = cell.layer;
+      }
+      if (cell.server_x != null) {
+        out.server_x = cell.server_x;
+      }
+      if (cell.server_y != null) {
+        out.server_y = cell.server_y;
+      }
+      return out;
+    }
+
+    function labCellDetailLookupInMapView(mapView, x, y) {
+      if (!mapView || typeof mapView !== "object") {
+        return { cell: null, sources: {} };
+      }
+      const sources = {};
+      const layers = [];
+      const full = mapView.full_cells;
+      if (Array.isArray(full)) {
+        for (let i = 0; i < full.length; i++) {
+          const c = full[i];
+          if (labCellMatchesWorldXY(c, x, y)) {
+            sources.map_view_full_cells = c;
+            const mapped = labUnifiedWireCellToDetail(c);
+            if (mapped) {
+              layers.push(mapped);
+            }
+          }
+        }
+      }
+      const delta = mapView.cell_delta;
+      if (Array.isArray(delta)) {
+        for (let j = 0; j < delta.length; j++) {
+          const d = delta[j];
+          if (labCellMatchesWorldXY(d, x, y)) {
+            sources.map_view_cell_delta = d;
+            const mapped = labUnifiedWireCellToDetail(d);
+            if (mapped) {
+              layers.push(mapped);
+            }
+          }
+        }
+      }
+      const overlay = mapView.overlay_cells;
+      if (Array.isArray(overlay)) {
+        const matches = [];
+        for (let k = 0; k < overlay.length; k++) {
+          const o = overlay[k];
+          if (labCellMatchesWorldXY(o, x, y)) {
+            matches.push(o);
+            const mapped = labUnifiedWireCellToDetail(o);
+            if (mapped) {
+              layers.push(mapped);
+            }
+          }
+        }
+        if (matches.length) {
+          sources.map_view_overlay_cells = matches.length === 1 ? matches[0] : matches;
+        }
+      }
+      if (!layers.length) {
+        return { cell: null, sources: sources };
+      }
+      const merged = {};
+      for (let m = 0; m < layers.length; m++) {
+        Object.assign(merged, layers[m]);
+      }
+      return { cell: merged, sources: sources };
+    }
+
+    function labCellDetailFromUnifiedFrame(fr, x, y) {
+      const lookup = labCellDetailLookupInMapView(fr.map_view, x, y);
+      const payload = {
+        ok: true,
+        cell: lookup.cell,
+        sources: lookup.sources,
+        message: lookup.cell ? "" : "no_cell_at_xy",
+        frame_index: fr.frame_index != null ? fr.frame_index : null,
+      };
+      if (fr.event_type != null) {
+        payload.event_type = String(fr.event_type);
+      }
+      const insp = fr.inspector;
+      if (insp && insp.optimization_event_type != null) {
+        payload.optimization_event_type = String(insp.optimization_event_type);
+      }
+      if (lookup.sources.map_view_full_cells || lookup.sources.map_view_cell_delta) {
+        payload.detail_source = "map_view_client";
+      } else if (Object.keys(lookup.sources).length) {
+        payload.detail_source = "map_view_overlay_client";
+      }
+      return payload;
     }
 
     const LAB_CELL_DETAIL_KEY_ORDER = [
@@ -2787,15 +2547,26 @@
           return;
         }
         const fr = getCurrentReplayFrame();
-        if (!fr || fr.id == null) {
+        if (!fr) {
+          setLabCellDetailUnavailableHint("cell detail unavailable (no replay frame)");
           return;
         }
+        const frameOrmId = labReplayFrameOrmId(fr);
         const cellUrl = rootEl && rootEl.dataset ? rootEl.dataset.labReplayCellUrl || "" : "";
         const trackIdStr =
           rootEl && rootEl.dataset && rootEl.dataset.labReplayTrackId != null
             ? String(rootEl.dataset.labReplayTrackId)
             : "";
         if (!cellUrl || !trackIdStr) {
+          setLabCellDetailUnavailableHint("cell detail unavailable (replay track not configured)");
+          return;
+        }
+        if (frameOrmId == null) {
+          openCellDetailModal();
+          if (cellDetailBody) {
+            labCellDetailRenderSuccess(cellDetailBody, labCellDetailFromUnifiedFrame(fr, xy.x, xy.y));
+          }
+          setLabCellDetailUnavailableHint("cell detail from map_view (no persisted ReplayFrame)");
           return;
         }
         const projectSlug =
@@ -2803,7 +2574,7 @@
             ? String(rootEl.dataset.labProjectSlug)
             : "";
         const payload = {
-          replay_frame_id: fr.id,
+          replay_frame_id: frameOrmId,
           replay_track_id: parseInt(trackIdStr, 10),
           x: xy.x,
           y: xy.y,
@@ -2897,46 +2668,11 @@
       visualCol: visualCol,
       rawXToDenseX: rawXToDenseX,
       replaceLabReplayPayload: replaceLabReplayPayload,
-      replaceOptimizationReplayPayload: replaceOptimizationReplayPayload,
-    };
-
-    /** DevTools-only: assert #lab-replay-grid-viewport rect is stable across cell-pixel zoom. */
-    window.__shapezLabReplaySelfTestViewportZoomStability = function () {
-      if (!gridViewport || typeof gridViewport.getBoundingClientRect !== "function") {
-        return { ok: false, reason: "no_viewport" };
-      }
-      const r0 = gridViewport.getBoundingClientRect();
-      const z0 = labViewportTransform.zoom;
-      let zTry = Math.min(LAB_VIEWPORT_MAX_SCALE, z0 * 2);
-      if (zTry <= z0) {
-        zTry = Math.min(LAB_VIEWPORT_MAX_SCALE, z0 + 0.25);
-      }
-      if (zTry <= z0) {
-        return { ok: true, skipped: true, reason: "already_at_max_zoom" };
-      }
-      labViewportTransform.zoom = zTry;
-      applyLabGridLayoutForZoom();
-      const r1 = gridViewport.getBoundingClientRect();
-      labViewportTransform.zoom = z0;
-      applyLabGridLayoutForZoom();
-      const dw = Math.abs(r1.width - r0.width);
-      const dh = Math.abs(r1.height - r0.height);
-      return {
-        ok: dw <= 1 && dh <= 1,
-        r0: { width: r0.width, height: r0.height },
-        r1: { width: r1.width, height: r1.height },
-        dw: dw,
-        dh: dh,
-      };
     };
 
     applyLabGridLayoutForZoom();
     updateLabGridHudEmpty();
     bindLabViewportInteractions();
-
-    labAfterOptimizationPanelDom = function () {
-      renderOptimizationReplayOverlay();
-    };
 
     setRunDetail(baselineRun);
     applyFrame();

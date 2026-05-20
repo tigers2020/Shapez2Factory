@@ -11,7 +11,7 @@ from django_apps.asteroid_lab.models import AsteroidMapInput, AsteroidProject
 from django_apps.asteroid_lab.services.dto import CreateProjectFromCopyCodeResultDTO
 from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
-    create_copy_code_map_input,
+    upsert_map_input_for_project,
 )
 
 
@@ -30,10 +30,9 @@ def create_project_from_copy_code(
     *,
     source_label: str = "",
 ) -> CreateProjectFromCopyCodeResultDTO:
-    """Create ``AsteroidProject`` + ``AsteroidMapInput`` with raw copy text.
+    """Create ``AsteroidProject`` + ``AsteroidMapInput`` with decoded snapshot.
 
-    ``decoded_json`` stays empty until :func:`decode_copy_string` /
-    :func:`normalize_decoded_blueprint` + :func:`persist_decoded_snapshot` populate it.
+    :func:`create_copy_code_map_input` decodes copy text and attaches server coords.
     Does **not** import asteroid mining v1/v2 solver internals.
 
     Persisted rows are for UI/cache/inspection — **not** solver algorithm input.
@@ -43,7 +42,7 @@ def create_project_from_copy_code(
     name = label if label else "Copy import"
     slug = _unique_slug_from_label(label or "copy-import")
     project = AsteroidProject.objects.create(name=name[:200], slug=slug)
-    inp = create_copy_code_map_input(project, copy_code, source_label=source_label)
+    inp, _created = upsert_map_input_for_project(project, copy_code, source_label=source_label)
     return CreateProjectFromCopyCodeResultDTO(
         project_id=project.id,
         slug=project.slug,

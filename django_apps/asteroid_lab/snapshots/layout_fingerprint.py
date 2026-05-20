@@ -8,8 +8,8 @@ from typing import Any
 
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.server_coords import (
-    COORD_SYSTEM_BBOX_RIGHT_BOTTOM,
-    raw_x_to_dense_x,
+    COORD_SYSTEM_BBOX_LEFT_BOTTOM,
+    raw_x_to_dense_index,
 )
 
 _SCHEMA_LAYOUT = "asteroid-miner-layout-map.v1"
@@ -100,8 +100,8 @@ def layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "schema": _SCHEMA_LAYOUT,
-        "coord_system": COORD_SYSTEM_BBOX_RIGHT_BOTTOM,
-        "origin": "right_bottom",
+        "coord_system": COORD_SYSTEM_BBOX_LEFT_BOTTOM,
+        "origin": "left_bottom",
         "axis": {"x": "left_positive", "y": "up_positive"},
         "bbox": {
             "server_width": 0 if max_sx < 0 else max_sx + 1,
@@ -137,12 +137,7 @@ def absolute_layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[st
             continue
         x = _as_int(item.get("X"))
         y = _as_int(item.get("Y"))
-        if x == 0:
-            continue
-        try:
-            dense_x = raw_x_to_dense_x(x)
-        except ValueError:
-            continue
+        dense_x = raw_x_to_dense_index(x)
         r = _as_int(item.get("R"))
         rows.append(
             {

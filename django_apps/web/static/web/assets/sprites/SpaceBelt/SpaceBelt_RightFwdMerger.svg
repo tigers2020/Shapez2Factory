@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" shape-rendering="geometricPrecision" data-sprite="SpaceBelt_LeftFwdMerger" data-output-dir="E">
+<defs>
+  <linearGradient id="beltGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d3c37"/><stop offset=".55" stop-color="#252522"/><stop offset="1" stop-color="#111514"/></linearGradient>
+  <linearGradient id="orangeGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5a018"/><stop offset=".55" stop-color="#d87905"/><stop offset="1" stop-color="#8d4b02"/></linearGradient>
+  <linearGradient id="metalGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#77766d"/><stop offset=".5" stop-color="#3f413b"/><stop offset="1" stop-color="#161b19"/></linearGradient>
+  <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8a8880"/><stop offset="1" stop-color="#4a4a45"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="2" stdDeviation="1.3" flood-color="#000" flood-opacity=".45"/></filter>
+  <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g id="shadow"><rect x="7" y="9" width="50" height="48" rx="7" fill="#050707" opacity=".25"/></g>
+<g id="orange-casing" filter="url(#shadow)"><rect x="5" y="20" width="54" height="24" rx="6" fill="url(#orangeGrad)"/><rect x="22" y="5" width="20" height="54" rx="6" fill="url(#orangeGrad)" opacity=".96"/></g>
+<g id="belt-channel" stroke-linecap="round" stroke-linejoin="round">
+<path d="M 64 32 L 32 32" fill="none" stroke="#121514" stroke-width="22"/>
+<path d="M 64 32 L 32 32" fill="none" stroke="url(#beltGrad)" stroke-width="17"/>
+<path d="M 64 32 L 32 32" fill="none" stroke="#464540" stroke-width="2" opacity=".45"/>
+<path d="M 32 0 L 32 32" fill="none" stroke="#121514" stroke-width="22"/>
+<path d="M 32 0 L 32 32" fill="none" stroke="url(#beltGrad)" stroke-width="17"/>
+<path d="M 32 0 L 32 32" fill="none" stroke="#464540" stroke-width="2" opacity=".45"/>
+<path d="M 0 32 L 32 32" fill="none" stroke="#121514" stroke-width="22"/>
+<path d="M 0 32 L 32 32" fill="none" stroke="url(#beltGrad)" stroke-width="17"/>
+<path d="M 0 32 L 32 32" fill="none" stroke="#464540" stroke-width="2" opacity=".45"/>
+</g>
+<g id="junction"><circle cx="32" cy="32" r="13" fill="#242522" stroke="#77736a" stroke-width="3"/><circle cx="32" cy="32" r="8" fill="#141716"/></g>
+<g id="direction-mark">
+<polygon points="19.0,32.0 10.0,35.0 10.0,29.0" fill="url(#arrowGrad)" opacity=".42"/>
+<polygon points="32.0,19.0 29.0,10.0 35.0,10.0" fill="url(#arrowGrad)" opacity=".42"/>
+<polygon points="55.0,32.0 46.0,35.0 46.0,29.0" fill="url(#arrowGrad)" opacity=".92"/>
+</g>
+<g id="edge-glow" opacity=".55"><path d="M8 50 C18 58 46 58 56 50" fill="none" stroke="#25c8ff" stroke-width="2" filter="url(#softGlow)"/><path d="M54 18 C60 26 60 38 54 46" fill="none" stroke="#e36cff" stroke-width="1.4" filter="url(#softGlow)"/></g>
+<desc>SpaceBelt_LeftFwdMerger: canonical East-facing SpaceBelt sprite. Inputs=['W', 'N']; outputs=['E']; kind=merger.</desc>
+</svg>

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
+
 
 def _xy_match(row: Any, x: int, y: int) -> bool:
     if not isinstance(row, dict):
@@ -86,23 +88,90 @@ def _merge_layers(layers: list[dict[str, Any]]) -> dict[str, Any]:
     return merged
 
 
+def _server_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, Any] | None:
+    """Decode-style bbox with ``dense_min_x``, ``min_y``, and ``server_*`` ranges, or ``None``."""
+
+    for block in (ser.get("summary"), ser.get("metric_snapshot_json")):
+        if not isinstance(block, dict):
+            continue
+        bb = block.get("bbox")
+        if not isinstance(bb, dict):
+            continue
+        try:
+            dense_min_x = int(bb["dense_min_x"])
+            min_y = int(bb["min_y"])
+            sminx = int(bb["server_min_x"])
+            smaxx = int(bb["server_max_x"])
+            sminy = int(bb["server_min_y"])
+            smaxy = int(bb["server_max_y"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        return {
+            "dense_min_x": dense_min_x,
+            "min_y": min_y,
+            "server_min_x": sminx,
+            "server_max_x": smaxx,
+            "server_min_y": sminy,
+            "server_max_y": smaxy,
+        }
+    return None
+
+
+def _try_synthetic_lab_empty(
+    ser: dict[str, Any], x: int, y: int
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Lab UI only: slot inside decode server bbox with no persisted row (not solver input)."""
+
+    bb = _server_bbox_from_serialized(ser)
+    if bb is None:
+        return None, {}
+    sx, sy = server_xy_for_raw_xy(
+        int(x),
+        int(y),
+        min_dense_x=int(bb["dense_min_x"]),
+        min_raw_y=int(bb["min_y"]),
+    )
+    sminx, smaxx = int(bb["server_min_x"]), int(bb["server_max_x"])
+    sminy, smaxy = int(bb["server_min_y"]), int(bb["server_max_y"])
+    if not (sminx <= sx <= smaxx and sminy <= sy <= smaxy):
+        return None, {}
+    cell: dict[str, Any] = {
+        "x": int(x),
+        "y": int(y),
+        "layer": None,
+        "rotation": 0,
+        "cell_kind": "lab_empty",
+        "transport_kind": "none",
+        "tile_type": "",
+        "server_x": int(sx),
+        "server_y": int(sy),
+        "_lab_synthetic": True,
+    }
+    return cell, {"lab_synthetic": "empty_server_cell"}
+
+
 def lookup_cell_in_serialized_frame(
     ser: dict[str, Any], x: int, y: int
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """Match lab grid paint order: full_map + diff layers; else overlay-only."""
+    """Paint order: full_map + diff; else overlay; else bbox-empty synthetic cell."""
 
     sources: dict[str, Any] = {}
+    base_layers: list[dict[str, Any]] = []
+
+    overlay_matches: list[dict[str, Any]] = []
+    ov2 = ser.get("cell_overlay_json")
+    if isinstance(ov2, dict):
+        overlay_cells = _collect_overlay_cells(ov2)
+        overlay_matches = [dict(m) for m in _cells_at_xy(overlay_cells, x, y)]
+        if overlay_matches:
+            sources["overlay_cells_matched"] = len(overlay_matches)
 
     full_map_raw = ser.get("full_map")
     if isinstance(full_map_raw, list) and len(full_map_raw) > 0:
-        full_map_list: list[Any] = full_map_raw
-        base_layers: list[dict[str, Any]] = []
-
-        for row in full_map_list:
+        for row in full_map_raw:
             if isinstance(row, dict) and _xy_match(row, x, y):
                 sources["full_map"] = row
                 base_layers.append(dict(row))
-                break
 
         diff = ser.get("diff")
         if isinstance(diff, dict):
@@ -121,16 +190,15 @@ def lookup_cell_in_serialized_frame(
                         sources["diff_changed_after"] = after
                         base_layers.append(dict(after))
 
-        if not base_layers:
-            return None, sources
+    if base_layers:
         return _merge_layers(base_layers), sources
 
-    ov2 = ser.get("cell_overlay_json")
-    if isinstance(ov2, dict):
-        overlay_cells = _collect_overlay_cells(ov2)
-        matches = _cells_at_xy(overlay_cells, x, y)
-        if matches:
-            sources["overlay_cells_matched"] = len(matches)
-            return _merge_layers([dict(m) for m in matches]), sources
+    if overlay_matches:
+        return _merge_layers(overlay_matches), sources
+
+    synthetic, syn_src = _try_synthetic_lab_empty(ser, x, y)
+    if synthetic is not None:
+        sources.update(syn_src)
+        return synthetic, sources
 
     return None, sources

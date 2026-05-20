@@ -1,12 +1,24 @@
-# shapez2Solver repository structure
+# shapez2 Factory Planner repository structure
 
 이 저장소는 Django-first 프로젝트다. 런타임 소유권은 `config/`, `manage.py`, `django_apps/`에 있고, 테스트는 `tests/unit/`과 `tests/integration/`으로 나뉜다.
+
+## Documentation layers
+
+| 트리 | 역할 |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | 에이전트 운영 계약 (최우선) |
+| [`docs/`](docs/) | domain·architecture·runbook·ADR **요약** (에이전트 친화) |
+| [`documents/`](documents/README.md) | CANON·플랜·리서치 **정본** |
+| [`structure.md`](structure.md) | 저장소 경로·앱·URL·테스트 배치 (본 문서) |
+| [`src/shapez2_factory/`](src/shapez2_factory/) | Phase 2+ hexagonal 추출 목표 (현재 stub) |
 
 ## Top-level layout
 
 | Path | Purpose |
 |---|---|
-| `AGENTS.md` | 에이전트/기여자 라우팅, 품질 게이트, 매뉴얼 인덱스 |
+| `AGENTS.md` | 에이전트/기여자 운영 계약, 품질 게이트, 매뉴얼 인덱스 |
+| `docs/` | domain·architecture·runbook·ADR 요약 |
+| `src/shapez2_factory/` | hexagonal 추출 목표 (Phase 2+, stub) |
 | `config/` | Django 설정, 루트 URL, WSGI/ASGI, 런타임 플래그 |
 | `django_apps/shapez_core/` | shape 파싱, 정규화, preview API, canonical game data |
 | `django_apps/shapez_solver/` | solver 프로젝트/런 모델, recipe graph, macro pattern, planner 서비스 |
@@ -96,11 +108,12 @@ Internationalized routes (`i18n_patterns`, default language without prefix) incl
 |---|---|
 | Install dev dependencies | `pip install -e ".[dev]"` |
 | Run Django locally | `python manage.py runserver` |
-| Run tests | `python -m pytest` |
+| Run tests (default: scope to your change) | `python -m pytest <path-to-test-file-or-dir>` |
+| Run full test suite | `python -m pytest` — use before merge/release or when broad regression is needed |
 | Run unit tests | `python -m pytest -m unit` |
 | Run asteroid lab tests | `python -m pytest tests/unit/asteroid_lab/` |
 | Static analysis | `ruff check .` |
-| Type-check | `mypy .` |
+| Type-check | `mypy django_apps config src` |
 | Format check | `black --check .` |
 | Build CSS | `npm run build:css` |
 | Build Recipe Graph editor | `npm run build:recipe-graph-editor` |

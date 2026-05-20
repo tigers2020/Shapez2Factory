@@ -31,12 +31,37 @@ related_epics: []
 - `cleaned_cells` + `wall_coords` + `bbox_bounds` (+ server 좌표·핑거프린트는 [`../research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md`](../research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md) 참고)
 - **fill 종(shape/fluid)**: MVP에서는 디코드에 남은 `asteroid_*_field` 및 기존 다수결만 사용; 제거된 채굴기 타입으로 fill 결정하지 않음 (`field_vote_hints` 없음)
 
+## Reconstruction 단계 (flood 전·후)
+
+1. `close_diagonal_leaks(wall_coords)` — Chebyshev(L∞) pinhole만: **evidence walls 입력만**; strict wall-bbox **내부** 셀은 봉인하지 않음 (내부 hole 유지)
+2. `barrier = wall_coords ∪ diagonal_closed`
+3. `external_reachable` — **4-neighbor** flood from padded bbox border
+4. `interior = walkable - external` → component fill — 가드는 **`passes_bbox_interior`만**
+5. `stamp_islands_uniform` — 최종 `asteroid_*_field`
+
+- bbox margin flood에 닿는 1칸 void(좁은 외부 통로·분리선 포함)는 **external** — fill 하지 않음
+- flood 미도달 void만 **interior_patch** 후보
+
+- topology graph / routing adjacency: **4-neighbor** (`neighbors4_server`) — closing morphology와 분리
+
 ## 금지
 
 - 최종 `full_map`에 `internal_void`
 - filled hole 전용 디버그 overlay
 - replay 로그·summary·제거 타입을 fill 판정 입력으로 사용
+- **orthogonal 1-cell slit sealing** 전역 적용 (`close_orthogonal_one_cell_slits`를 pipeline에서 호출)
+- **inferred shell / sealed slit / diagonal close** 결과를 fill 후보로 재주입 (morphology → interior union)
+- **추론 shell·봉인 결과**를 다음 morphology pass의 opposing solid로 재사용 (recursive closure)
 
 ## 검증
 
-- `tests/unit/asteroid_lab/test_reconstruction_topology.py` 등 단위 + `test_replay_snapshot_contract.py` 갱신
+- `tests/unit/asteroid_lab/test_reconstruction_topology.py`
+- `tests/unit/asteroid_lab/test_reconstruction_regression_overclose.py` (fixture `regression_narrow_external_channels.txt`)
+- `tests/unit/asteroid_lab/test_reconstruction_fixture_contract.py` — `reconstruction_required_.txt` ↔ `reconstruction_complete_solved.txt` **라인별** Server X/Y topology (solved는 decode-only)
+- `test_replay_snapshot_contract.py`
+
+## Confidence / acceptance (실전)
+
+- `django_apps/asteroid_lab/reconstruction/confidence.py` — `confirmed_cells`, `ambiguous_cells`, `confidence_score`, `quality_tier`
+- 실전 통과: `ambiguous_ratio ≤ 0.05`, `confidence_score ≥ 0.95`, `reconstruction_acceptance_ok(result)` (`CONFIDENT_RECONSTRUCTION`)
+- solved fixture는 **정답률**이 아니라 calibration(overlap 리포트)용만 — `test_reconstruction_canon_line_confidence_calibration`

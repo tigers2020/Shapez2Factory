@@ -17,6 +17,7 @@ from django_apps.asteroid_lab.snapshots.asteroid_map_coords import (
     left_of,
     right_of,
 )
+from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 
 # Cardinal dirs aligned with ``iter_four_neighbors_map`` and Lab JS ``bundle_edges``.
 # Map step: east = ``right_of(x)``, west = ``left_of(x)``, south = ``y + 1``, north = ``y - 1``.
@@ -84,8 +85,8 @@ class EquipmentPorts:
 # Base ports at rotation 0 — calibrated on a real asteroid blueprint (shape miners/extensions):
 # input from ``e`` (field / upstream), outputs on ``n``, ``s``, ``w`` (T excluding east).
 # ``rotation`` is decode ``R`` (quarter-turns from East at 0, increasing CW on the map); port dirs
-# rotate CW by ``rotation % 4``. Lab sprite display uses ``LAB_SPRITE_REGISTRY`` only;
-# do not duplicate that math here or bundle topology drifts.
+# rotate CW by ``rotation % 4``. Lab ``<img>`` rotation matches map ``R`` via
+# ``LAB_SPRITE_REGISTRY`` only; do not duplicate sprite math here or bundle topology drifts.
 _BASE_PORTS_R0: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "fluid_miner": (frozenset({"e"}), frozenset({"n", "s", "w"})),
     "fluid_miner_extension": (frozenset({"e"}), frozenset({"n", "s", "w"})),
@@ -124,6 +125,32 @@ def direction_from_a_to_b(ax: int, ay: int, bx: int, by: int) -> str | None:
     if bx == ax and by == ay - 1:
         return "n"
     return None
+
+
+def ports_compatible(
+    cell_kind_a: str,
+    rotation_a: int,
+    cell_kind_b: str,
+    rotation_b: int,
+    dir_ab: str,
+) -> bool:
+    """True when ``B`` is in direction ``dir_ab`` from ``A`` and ports link."""
+
+    ports_a = equipment_ports(cell_kind_a, rotation_a)
+    ports_b = equipment_ports(cell_kind_b, rotation_b)
+    if ports_a is None or ports_b is None:
+        return False
+    return _port_linked(ports_a, ports_b, dir_ab, cell_kind_a, cell_kind_b)
+
+
+def primary_exit_direction(cell_kind: str, rotation: int) -> str | None:
+    """Primary exit: lowest n/e/s/w index among ``output_dirs`` (map-facing)."""
+
+    ports = equipment_ports(cell_kind, rotation)
+    if ports is None or not ports.output_dirs:
+        return None
+    outs = sorted(ports.output_dirs, key=lambda d: _DIR_ORDER.index(d))
+    return outs[0]
 
 
 def _port_linked(
@@ -176,11 +203,22 @@ class _UnionFind:
             self._p[rb] = ra
 
 
+def _effective_equipment_cell_kind(row: Mapping[str, Any]) -> str:
+    ck = str(row.get("cell_kind") or "")
+    if ck in _EQUIPMENT_KINDS:
+        return ck
+    tt = str(row.get("tile_type") or "")
+    if tt:
+        resolved, _ = classify_blueprint_entry(tt)
+        return resolved
+    return ck
+
+
 def _iter_equipment_rows(
     rows: Sequence[Mapping[str, Any]],
 ) -> Iterator[tuple[_Pos, Mapping[str, Any], EquipmentPorts, str, str]]:
     for row in rows:
-        ck = str(row.get("cell_kind") or "")
+        ck = _effective_equipment_cell_kind(row)
         if ck not in _EQUIPMENT_KINDS:
             continue
         fam = _equipment_family(ck)
@@ -227,6 +265,38 @@ def _bundle_links_for_cell(
         if npos in bundle_positions:
             parts.append(d)
     return "".join(sorted(parts, key=lambda s: _DIR_ORDER.index(s)))
+
+
+def equipment_bundle_overlay_from_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Lab replay wire passthrough for bundle highlight JS (output-only; not solver input)."""
+
+    bundles = build_equipment_bundles(rows)
+    if not bundles:
+        return {}
+    return {"equipment_bundles": bundles}
+
+
+def cell_overlay_json_for_bundle_highlight(
+    overlay_json: Mapping[str, Any],
+    *,
+    full_map: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Prefer persisted ``equipment_bundles``; else build from overlay/full_map cell rows."""
+
+    bundles = overlay_json.get("equipment_bundles")
+    if isinstance(bundles, list) and bundles:
+        return {"equipment_bundles": list(bundles)}
+    rows: list[dict[str, Any]] = []
+    cells = overlay_json.get("cells")
+    if isinstance(cells, list):
+        for raw in cells:
+            if isinstance(raw, dict):
+                rows.append(dict(raw))
+    if not rows and full_map is not None:
+        for raw in full_map:
+            if isinstance(raw, dict):
+                rows.append(dict(raw))
+    return equipment_bundle_overlay_from_rows(rows)
 
 
 def build_equipment_bundles(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

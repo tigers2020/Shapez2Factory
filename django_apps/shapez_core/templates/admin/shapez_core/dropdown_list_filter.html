@@ -1,0 +1,14 @@
+{% load i18n %}
+<h3>{{ title }}</h3>
+<select
+  class="ivvd-admin-dropdown-filter"
+  style="width: 100%; max-width: 22rem; margin-bottom: 0.75rem;"
+  onchange="(function(sel){var q=sel.options[sel.selectedIndex].getAttribute('data-qs')||''; window.location=window.location.pathname+q;})(this)"
+>
+{% for choice in choices %}
+  <option
+    data-qs="{{ choice.query_string }}"
+    {% if choice.selected %}selected{% endif %}
+  >{{ choice.display }}</option>
+{% endfor %}
+</select>

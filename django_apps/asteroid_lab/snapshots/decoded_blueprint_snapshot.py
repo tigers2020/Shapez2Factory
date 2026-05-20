@@ -5,16 +5,25 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_jsonl
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.server_coords import (
     map_bbox_dense_and_y,
-    raw_x_to_dense_x,
+    raw_x_to_dense_index,
     server_xy_for_raw_xy,
 )
 
 
 def _as_int(val: Any) -> int:
+    """Coerce blueprint scalars; ``None`` → ``0`` (same as entry ``get('X', 0)`` style).
+
+    **Caveat:** missing ``X`` on a blueprint dict row becomes ``raw_x == 0`` on
+    :class:`~django_apps.asteroid_lab.services.dto.DecodedCellDTO`, which is **not** a valid
+    asteroid world column (there is no ``x == 0``). Prefer explicit ``X`` in JSON or treat
+    ``raw_x == 0`` as a decode/validation signal, not server indexing.
+    """
+
     if val is None:
         return 0
     if isinstance(val, bool):
@@ -68,6 +77,7 @@ def build_decoded_blueprint_snapshot(
     *,
     project_id: int | None = None,
     map_input_id: int | None = None,
+    boundary_run_id: str | None = None,
 ) -> DecodedBlueprintSnapshotDTO:
     """Parse top-level ``BP.Entries`` into cell DTOs and aggregate metadata.
 
@@ -90,6 +100,9 @@ def build_decoded_blueprint_snapshot(
     xs: list[int] = []
     ys: list[int] = []
     dense_xs: list[int] = []
+    server_xy_from_json = 0
+    server_xy_computed = 0
+    server_xy_missing = 0
 
     for item in entries:
         if not isinstance(item, dict):
@@ -98,11 +111,7 @@ def build_decoded_blueprint_snapshot(
         y = _as_int(item.get("Y"))
         xs.append(x)
         ys.append(y)
-        if x != 0:
-            try:
-                dense_xs.append(raw_x_to_dense_x(x))
-            except ValueError:
-                pass
+        dense_xs.append(raw_x_to_dense_index(x))
 
         t_raw = item.get("T")
         tile_type = str(t_raw) if isinstance(t_raw, str) else ""
@@ -118,15 +127,22 @@ def build_decoded_blueprint_snapshot(
 
         sx_obj = item.get("server_x")
         sy_obj = item.get("server_y")
-        sx = sx_obj if isinstance(sx_obj, int) else None
-        sy = sy_obj if isinstance(sy_obj, int) else None
-        if (sx is None or sy is None) and bbox_params is not None and x != 0:
-            pair = server_xy_for_raw_xy(x, y, max_dense_x=bbox_params[0], min_raw_y=bbox_params[1])
-            if pair is not None:
-                sx, sy = pair
-        elif (sx is None or sy is None) and bbox_params is not None and x == 0:
-            # Raw X==0: no dense horizontal index; explicit server for algorithm layers.
-            sx, sy = 0, y - bbox_params[1]
+        sx: int | None = None
+        sy: int | None = None
+        if bbox_params is not None:
+            sx, sy = server_xy_for_raw_xy(
+                x, y, min_dense_x=bbox_params[0], min_raw_y=bbox_params[1]
+            )
+            had_json = isinstance(sx_obj, int) and isinstance(sy_obj, int)
+            if had_json and (sx_obj, sy_obj) == (sx, sy):
+                server_xy_from_json += 1
+            else:
+                server_xy_computed += 1
+        else:
+            sx = sx_obj if isinstance(sx_obj, int) else None
+            sy = sy_obj if isinstance(sy_obj, int) else None
+            if sx is None or sy is None:
+                server_xy_missing += 1
 
         cells.append(
             DecodedCellDTO(
@@ -191,7 +207,7 @@ def build_decoded_blueprint_snapshot(
     summary_src = decoded_json.get("_asteroid_lab_summary")
     summary_json: dict[str, Any] = dict(summary_src) if isinstance(summary_src, dict) else {}
 
-    return DecodedBlueprintSnapshotDTO(
+    dto = DecodedBlueprintSnapshotDTO(
         project_id=project_id,
         map_input_id=map_input_id,
         binary_version=binary_version,
@@ -203,3 +219,30 @@ def build_decoded_blueprint_snapshot(
         cells=tuple(cells),
         summary_json=summary_json,
     )
+
+    if boundary_run_id:
+        with_xy = sum(1 for c in cells if c.server_x is not None and c.server_y is not None)
+        sxs_b = [c.server_x for c in cells if c.server_x is not None]
+        sys_b = [c.server_y for c in cells if c.server_y is not None]
+        emit_boundary_jsonl(
+            run_id=boundary_run_id,
+            stage="decode",
+            boundary="decode.server_xy_cell_resolve",
+            data={
+                "map_input_id": map_input_id,
+                "project_id": project_id,
+                "bbox_params_present": bbox_params is not None,
+                "bbox_params": list(bbox_params) if bbox_params is not None else None,
+                "parent_bp_dict_entries": len(entry_dicts),
+                "server_xy_attached": with_xy,
+                "missing_server_xy": len(entry_dicts) - with_xy,
+                "server_xy_from_json": server_xy_from_json,
+                "server_xy_computed": server_xy_computed,
+                "server_xy_missing": server_xy_missing,
+                "server_x_range": [min(sxs_b), max(sxs_b)] if sxs_b else None,
+                "server_y_range": [min(sys_b), max(sys_b)] if sys_b else None,
+                "cell_kind_counts": dict(cell_kind_counts),
+            },
+        )
+
+    return dto

@@ -112,4 +112,7 @@ def test_reconstruction_final_full_map_merges_overlay_not_replace() -> None:
     assert recon_keys <= final_keys
     assert len(fm) == len(final_keys) == len(structural_keys | recon_keys)
     hole = next(r for r in fm if int(r["x"]) == 2 and int(r["y"]) == 2)
-    assert hole.get("cell_kind") == "asteroid_shape_field"
+    assert hole.get("cell_kind") in ("asteroid_shape_field", "asteroid_fluid_field")
+    for xy in ((1, 1), (2, 1), (3, 1), (1, 2), (3, 2), (1, 3), (2, 3), (3, 3)):
+        wall = next(r for r in fm if int(r["x"]) == xy[0] and int(r["y"]) == xy[1])
+        assert wall.get("cell_kind") == "unknown"

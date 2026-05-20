@@ -256,6 +256,12 @@ Supporter Edition은 추가 음악과 철도 장식 요소가 포함된 후원 �
 
 ---
 
+# 관련 연구 (처리량·소행성)
+
+- 소행성 Space Belt/Pipe 절대 처리량: [`../game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md) (`CANON`). 구 커뮤니티 초안: [`research_shapez2_space_transport_throughput_2026-05-18.md`](research_shapez2_space_transport_throughput_2026-05-18.md) (`SUPERSEDED`)
+
+---
+
 # 결론
 
 **shapez 2는 “전투 없는 Factorio식 도형 자동화 퍼즐”에 가깝다.**  

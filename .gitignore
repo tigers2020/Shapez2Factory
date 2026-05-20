@@ -75,6 +75,7 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+!.env.debug.example
 
 # --- Virtualenv (common folder names) ---
 venv/
@@ -86,8 +87,16 @@ env/
 *.iml
 
 # --- Cursor / Serena / local AI & MCP (machine-specific, not for GitHub) ---
-.cursor/
+# .cursor/rules/ and .cursor/skills/ are tracked for team harness sharing.
+# Machine-specific items remain ignored:
+.cursor/plans/
+.cursor/settings.json
+.cursor/mcp.json
+.cursor/debug-*.log
+.cursor/*.json
+.agents/
 .serena/
+.vscode/
 mcps/
 agents/
 .claude/
@@ -97,6 +106,8 @@ agents/
 .aider.chat.history.md
 .kilocode/
 .mcp.json
+.playwright-mcp/
+skills-lock.json
 
 # --- Misc junk ---
 *.bak
@@ -106,12 +117,9 @@ agents/
 *.swo
 *~
 
+# --- Local workflow overlays (tracked stubs remain; new local copies ignored) ---
 AGENTS.md
-.cursor/
-persona/
-.serena/
-.vscode/
 protocols/
 persona/
 *.zip
-
+shapez_2_data/

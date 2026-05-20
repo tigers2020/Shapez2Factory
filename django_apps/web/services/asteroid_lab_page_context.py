@@ -4,25 +4,47 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from django.conf import settings
 from django.db.models import Count, Prefetch
 
-from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack, SolverRun
-from django_apps.shapez_asteroid.optimization.optimization_ui_payload import (
-    OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY,
-    SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY,
-    build_optimization_replay_track_payload,
-    deserialize_optimization_replay_frames_from_json,
-    diagnostic_reason_after_failed_optimization_replay_scan,
-    empty_optimization_replay_track_payload,
-    empty_optimization_replay_track_payload_with_diagnostic,
+from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
+    build_lab_replay_frames_for_project,
+    get_latest_lab_replay_track_for_project,
 )
+from django_apps.asteroid_lab.services.runtime_gene_template_source import GeneTemplateSourceKind
+from django_apps.asteroid_lab.services.solver_run_lab_summary import solver_runs_for_lab_project
+
+_DEFAULT_GENERATOR_VERSION = "exhaustive_sample_gene_v1"
+
+
+def _gene_template_catalog() -> dict[str, Any]:
+    """Read-only DB summary of available gene templates (display only, never solver input)."""
+    db_count = GeneticSample.objects.filter(
+        gene_key__isnull=False,
+        metadata_json__generator=_DEFAULT_GENERATOR_VERSION,
+    ).count()
+    top_ids = list(
+        GeneticSample.objects.filter(
+            gene_key__isnull=False,
+            metadata_json__generator=_DEFAULT_GENERATOR_VERSION,
+        )
+        .order_by("gene_key")
+        .values_list("gene_key", flat=True)[:10]
+    )
+    return {
+        "source": GeneTemplateSourceKind.GENETIC_SAMPLE_DB.value,
+        "db_gene_count": db_count,
+        "generator_version": _DEFAULT_GENERATOR_VERSION,
+        "sample_gene_ids": top_ids,
+        "seed_command_hint": "python manage.py seed_exhaustive_sample_genes",
+        "needs_seed": db_count == 0,
+    }
 
 GRID_W, GRID_H = 23, 15
 CELL_COUNT = GRID_W * GRID_H
 
 LAB_CELL_NEUTRAL = (
-    "lab-cell relative h-5 w-5 shrink-0 overflow-visible rounded-[5px] border "
+    "lab-cell relative h-7 w-7 shrink-0 overflow-visible border "
     "bg-slate-950 border-slate-900"
 )
 
@@ -53,23 +75,8 @@ def get_latest_lab_replay_track() -> ReplayTrack | None:
     )
 
 
-def get_latest_lab_replay_track_for_project(project_id: int) -> ReplayTrack | None:
-    """Latest replay track (with frames) for a single persisted AsteroidProject."""
-
-    ordered_frames = ReplayFrame.objects.order_by("frame_index", "id")
-    return cast(
-        ReplayTrack | None,
-        ReplayTrack.objects.filter(project_id=int(project_id))
-        .annotate(_frame_count=Count("frames"))
-        .filter(_frame_count__gt=0)
-        .order_by("-created_at", "-id")
-        .prefetch_related(Prefetch("frames", queryset=ordered_frames))
-        .first(),
-    )
-
-
 def serialize_replay_frame(frame: ReplayFrame) -> dict[str, Any]:
-    """JSON-serializable replay frame for the Lab UI (output artifact only)."""
+    """JSON-serializable legacy Lab ORM frame (cell lookup API only; not timeline source)."""
 
     payload: dict[str, Any] = dict(frame.frame_payload or {})
     event_type = str(payload.get("event_type") or "")
@@ -104,68 +111,6 @@ def serialize_replay_frame(frame: ReplayFrame) -> dict[str, Any]:
     }
 
 
-def _solver_runs_config_only_newest_first(project_id: int) -> list[SolverRun]:
-    return list(
-        SolverRun.objects.filter(project_id=int(project_id))
-        .order_by("-created_at", "-id")
-        .only("config_json")
-    )
-
-
-def get_latest_optimization_replay_for_project(project_id: int) -> tuple[Any, ...] | None:
-    """Latest persisted optimization replay frames for the project (read-only).
-
-    Walks :class:`~django_apps.asteroid_lab.models.SolverRun` rows newest-first and
-    returns the first non-empty, well-formed
-    ``config_json[SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY]`` list.
-    Returns ``None`` when no such payload exists.
-    """
-
-    key = SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY
-    for run in _solver_runs_config_only_newest_first(project_id):
-        raw = (run.config_json or {}).get(key)
-        frames = deserialize_optimization_replay_frames_from_json(raw)
-        if frames:
-            return frames
-    return None
-
-
-def optimization_replay_payload_for_project(project_id: int | None) -> dict[str, Any]:
-    """JSON-safe optimization replay track for the Lab shell (12A/12B bridge).
-
-    When no persisted optimization replay exists for the project, returns the same
-    envelope as :func:`empty_optimization_replay_track_payload` plus
-    ``metrics.optimization_replay_diagnostic_reason`` when a read fallback occurred
-    (Sequence 12G).
-    """
-
-    if project_id is None:
-        return empty_optimization_replay_track_payload()
-    key = SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY
-    runs = _solver_runs_config_only_newest_first(int(project_id))
-    for run in runs:
-        raw = (run.config_json or {}).get(key)
-        frames = deserialize_optimization_replay_frames_from_json(raw)
-        if frames:
-            return cast(dict[str, Any], build_optimization_replay_track_payload(frames))
-    reason = diagnostic_reason_after_failed_optimization_replay_scan(
-        [dict(r.config_json or {}) for r in runs]
-    )
-    return cast(
-        dict[str, Any],
-        empty_optimization_replay_track_payload_with_diagnostic(reason),
-    )
-
-
-def build_lab_replay_payload(track: ReplayTrack) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Ordered serialized frames and the first frame dict for initial paint."""
-
-    frames_iter = sorted(track.frames.all(), key=lambda f: (int(f.frame_index), int(f.pk)))
-    serialized = [serialize_replay_frame(f) for f in frames_iter]
-    initial = serialized[0] if serialized else {}
-    return serialized, initial
-
-
 def neutral_lab_context() -> dict[str, Any]:
     matrix = _neutral_overlay_matrix()
     initial_frame = 0
@@ -186,6 +131,13 @@ def neutral_lab_context() -> dict[str, Any]:
         "lab_replay_frames_json": [],
         "lab_initial_replay_frame_json": {},
         "has_replay_frames": False,
+        "replay_track_metrics": {
+            "frame_count": 0,
+            "replay_truncated": False,
+            "truncation_reason": None,
+            "dropped_frame_count": None,
+            "diagnostic_reason": None,
+        },
         "lab_ui_initial": {
             "frame": initial_frame,
             "totalFrames": total_frames,
@@ -194,50 +146,57 @@ def neutral_lab_context() -> dict[str, Any]:
             "replayTrackId": None,
             "replayTrackKey": None,
         },
-        OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY: empty_optimization_replay_track_payload(),
-        "lab_js_version": settings.SHAPEZ_LAB_JS_VERSION,
+        "gene_template_catalog": _gene_template_catalog(),
     }
 
 
 def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
-    """Lab shell context. When ``project_id`` is set, replay comes from that project only."""
+    """Lab shell context. Product replay is one composed timeline per project."""
 
     ctx = neutral_lab_context()
-    ctx[OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY] = optimization_replay_payload_for_project(project_id)
-    track = (
-        get_latest_lab_replay_track_for_project(project_id)
-        if project_id is not None
-        else get_latest_lab_replay_track()
-    )
-    if track is None:
+    if project_id is None:
         return ctx
 
-    frames_json, initial_json = build_lab_replay_payload(track)
+    ctx["runs"] = solver_runs_for_lab_project(int(project_id))
+
+    track = get_latest_lab_replay_track_for_project(int(project_id))
+    frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))
+
     if not frames_json:
+        if track is not None:
+            ctx["lab_replay_track_id"] = int(track.pk)
+            ctx["lab_replay_track_key"] = str(track.track_key)
+        ctx["replay_track_metrics"] = track_metrics
         return ctx
 
+    first = frames_json[0]
     n = len(frames_json)
-    first_idx = int(frames_json[0]["frame_index"])
+    first_idx = int(first.get("frame_index", 0))
+    initial_json = dict(first)
+
     ctx.update(
         {
             "total_frames": n,
             "initial_frame": first_idx,
-            "initial_replay_phase": str(frames_json[0]["phase"]),
-            "lab_replay_track_id": int(track.pk),
-            "lab_replay_track_key": str(track.track_key),
+            "initial_replay_phase": str(first.get("phase") or "—"),
             "lab_replay_frames_json": frames_json,
             "lab_initial_replay_frame_json": initial_json,
             "has_replay_frames": True,
+            "replay_track_metrics": track_metrics,
         }
     )
+    if track is not None:
+        ctx["lab_replay_track_id"] = int(track.pk)
+        ctx["lab_replay_track_key"] = str(track.track_key)
+
     ui = dict(ctx["lab_ui_initial"])
     ui.update(
         {
             "frame": first_idx,
             "totalFrames": n,
             "hasReplayFrames": True,
-            "replayTrackId": int(track.pk),
-            "replayTrackKey": str(track.track_key),
+            "replayTrackId": int(track.pk) if track is not None else None,
+            "replayTrackKey": str(track.track_key) if track is not None else None,
         }
     )
     ctx["lab_ui_initial"] = ui

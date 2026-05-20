@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import json
+
 from django.contrib import admin
+from django.utils.html import format_html
+from django.utils.safestring import SafeString
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.genetic_sample_mini_map import genetic_sample_mini_map_html
+from django_apps.asteroid_lab.reconstruction.display_map import (
+    reconstruction_summary_from_decoded_json,
+)
 
 
 class ReplayFrameInline(admin.TabularInline):
@@ -133,3 +141,156 @@ class TopologyRuleAdmin(admin.ModelAdmin):
 class TopologyRuleModalContentAdmin(admin.ModelAdmin):
     list_display = ("id", "rule", "modal_title", "updated_at")
     raw_id_fields = ("rule",)
+
+
+@admin.register(m.GeneticSample)
+class GeneticSampleAdmin(admin.ModelAdmin):
+    list_display = ("id", "mini_map_list", "name", "gene_key", "project", "updated_at")
+    list_display_links = ("id", "name")
+    list_select_related = ("project",)
+    search_fields = ("name", "gene_key", "code")
+    raw_id_fields = ("project",)
+    readonly_fields = (
+        "decoded_json_pretty",
+        "mini_map_preview",
+        "metadata_json_pretty",
+        "created_at",
+        "updated_at",
+    )
+    fieldsets = (
+        (None, {"fields": ("name", "gene_key", "project", "code")}),
+        ("디코드", {"fields": ("decoded_json_pretty", "mini_map_preview")}),
+        ("메타", {"fields": ("metadata_json_pretty", "created_at", "updated_at")}),
+    )
+
+    @admin.display(description="디코드 JSON")
+    def decoded_json_pretty(self, obj: m.GeneticSample) -> SafeString | str:
+        if not obj.decoded_json:
+            return "-"
+        text = json.dumps(obj.decoded_json, indent=2, ensure_ascii=False)
+        pre_style = (
+            "max-height:420px;overflow:auto;font-size:11px;line-height:1.35;"
+            "background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;"
+            "white-space:pre-wrap;word-break:break-word;"
+        )
+        return format_html('<pre style="{}">{}</pre>', pre_style, text)
+
+    @admin.display(description="맵")
+    def mini_map_list(self, obj: m.GeneticSample) -> SafeString | str:
+        return genetic_sample_mini_map_html(obj.decoded_json, for_list=True)
+
+    @admin.display(description="미니맵")
+    def mini_map_preview(self, obj: m.GeneticSample) -> SafeString | str:
+        if obj.pk is None:
+            return "저장 후 미니맵이 표시됩니다."
+        return genetic_sample_mini_map_html(obj.decoded_json)
+
+    @admin.display(description="metadata_json")
+    def metadata_json_pretty(self, obj: m.GeneticSample) -> SafeString | str:
+        meta = obj.metadata_json
+        if not meta:
+            return "-"
+        text = json.dumps(meta, indent=2, ensure_ascii=False)
+        pre_style = (
+            "max-height:280px;overflow:auto;font-size:11px;line-height:1.35;"
+            "background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;"
+            "white-space:pre-wrap;word-break:break-word;"
+        )
+        return format_html('<pre style="{}">{}</pre>', pre_style, text)
+
+
+@admin.register(m.ReconstructedAsteroidMap)
+class ReconstructedAsteroidMapAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "mini_map_list",
+        "reconstruction_quality_tier",
+        "reconstruction_acceptance",
+        "map_input",
+        "run_key",
+        "updated_at",
+        "created_at",
+    )
+    list_display_links = ("id",)
+    list_select_related = ("map_input", "project")
+    search_fields = ("run_key", "copy_code", "original_copy_code")
+    raw_id_fields = ("map_input", "project", "solver_run")
+    readonly_fields = (
+        "original_decoded_json_pretty",
+        "decoded_json_pretty",
+        "mini_map_preview",
+        "created_at",
+        "updated_at",
+    )
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "map_input",
+                    "project",
+                    "solver_run",
+                    "run_key",
+                    "original_copy_code",
+                    "copy_code",
+                )
+            },
+        ),
+        (
+            "원본 JSON",
+            {"fields": ("original_decoded_json_pretty",)},
+        ),
+        (
+            "full_map JSON",
+            {"fields": ("decoded_json_pretty", "mini_map_preview")},
+        ),
+        (None, {"fields": ("created_at", "updated_at")}),
+    )
+
+    @admin.display(description="원본 디코드 JSON")
+    def original_decoded_json_pretty(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
+        if not obj.original_decoded_json:
+            return "-"
+        text = json.dumps(obj.original_decoded_json, indent=2, ensure_ascii=False)
+        pre_style = (
+            "max-height:420px;overflow:auto;font-size:11px;line-height:1.35;"
+            "background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;"
+            "white-space:pre-wrap;word-break:break-word;"
+        )
+        return format_html('<pre style="{}">{}</pre>', pre_style, text)
+
+    @admin.display(description="full_map 디코드 JSON")
+    def decoded_json_pretty(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
+        if not obj.decoded_json:
+            return "-"
+        text = json.dumps(obj.decoded_json, indent=2, ensure_ascii=False)
+        pre_style = (
+            "max-height:420px;overflow:auto;font-size:11px;line-height:1.35;"
+            "background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;"
+            "white-space:pre-wrap;word-break:break-word;"
+        )
+        return format_html('<pre style="{}">{}</pre>', pre_style, text)
+
+    @admin.display(description="품질")
+    def reconstruction_quality_tier(self, obj: m.ReconstructedAsteroidMap) -> str:
+        summary = reconstruction_summary_from_decoded_json(obj.decoded_json or {})
+        return str(summary.get("quality_tier") or "-")
+
+    @admin.display(description="수용")
+    def reconstruction_acceptance(self, obj: m.ReconstructedAsteroidMap) -> str:
+        summary = reconstruction_summary_from_decoded_json(obj.decoded_json or {})
+        if summary.get("reconstruction_acceptance_ok") is True:
+            return "ok"
+        if summary.get("reconstruction_acceptance_ok") is False:
+            return "no"
+        return "-"
+
+    @admin.display(description="맵")
+    def mini_map_list(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
+        return genetic_sample_mini_map_html(obj.decoded_json, for_list=True)
+
+    @admin.display(description="미니맵")
+    def mini_map_preview(self, obj: m.ReconstructedAsteroidMap) -> SafeString | str:
+        if obj.pk is None:
+            return "저장 후 미니맵이 표시됩니다."
+        return genetic_sample_mini_map_html(obj.decoded_json)

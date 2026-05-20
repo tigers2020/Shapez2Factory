@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from django_apps.asteroid_lab.cleanup.result import CleanupResult
+from django_apps.asteroid_lab.reconstruction.display_map import merge_reconstruction_display_rows
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.trace import (
     ReconstructionTraceCollector,
@@ -32,7 +33,6 @@ from django_apps.asteroid_lab.replay.snapshot_map_replay import (
     cell_key_xy_layer,
     decoded_cell_to_full_map_row,
     diff_maps,
-    rows_from_cells,
     snapshot_summary_from_rows,
 )
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO, SnapshotEventDTO
@@ -110,7 +110,6 @@ def build_reconstruction_replay_events(
         except (KeyError, TypeError, ValueError):
             continue
 
-    final_rows = rows_from_cells(recon.cells)
     recon_by_key: dict[tuple[int, int, int | None], DecodedCellDTO] = {
         (c.x, c.y, c.layer): c for c in recon.cells
     }
@@ -170,13 +169,10 @@ def build_reconstruction_replay_events(
                 next_merged[key3] = decoded_cell_to_full_map_row(cell)
 
         if tt == "reconstruction_final":
-            # Overlay stamped reconstruction onto the structural map. Replacing the entire
-            # merged dict with recon rows alone drops keys present in structural_rows but
-            # absent from ``recon.cells`` (e.g. replay synthetic field anchors where cleanup
-            # removed the building entry entirely).
-            next_merged = dict(merged)
-            for r in final_rows:
-                next_merged[cell_key_xy_layer(r)] = dict(r)
+            next_display_rows = merge_reconstruction_display_rows(
+                list(merged.values()), recon.cells
+            )
+            next_merged = {cell_key_xy_layer(r): dict(r) for r in next_display_rows}
 
         next_display = _sort_rows(list(next_merged.values()))
         if tt in marker_trace_types:

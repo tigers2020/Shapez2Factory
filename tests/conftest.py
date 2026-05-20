@@ -4,17 +4,12 @@ Markers are applied automatically from file location (no per-test decorators):
 - unit / integration — top-level under tests/
 - shapez_core / shapez_solver / web / api — second segment when present
 
-The ``slow`` marker is declared in ``pytest.ini`` and attached on selected
-modules/tests (replay-heavy paths). Use ``-m "not slow"`` for a faster loop.
-
 Examples:
   pytest -m unit
   pytest -m integration
   pytest -m shapez_solver
   pytest -m "unit and shapez_core"
   pytest tests/integration/web/
-  pytest -m "not slow"
-  pytest -m slow
 """
 
 from __future__ import annotations
@@ -29,10 +24,7 @@ _LAYER_MARKERS = frozenset({"shapez_core", "shapez_solver", "web", "api", "aster
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """pytest-django: 테스트 DB 재사용.
-
-    pytest.ini ``--reuse-db``와 동일, addopts 미적용 환경 보조.
-    """
+    """pytest-django: 테스트 DB 재사용 (`--reuse-db`; addopts 미적용 시 보조)."""
     opt = config.option
     if getattr(opt, "create_db", False):
         return

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" shape-rendering="geometricPrecision">
+<defs>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#68635a"/><stop offset="0.55" stop-color="#30342f"/><stop offset="1" stop-color="#131716"/></linearGradient>
+  <linearGradient id="dark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#333735"/><stop offset="1" stop-color="#141817"/></linearGradient>
+  <linearGradient id="orange" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2a21a"/><stop offset="1" stop-color="#b65a08"/></linearGradient>
+  <linearGradient id="belt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#202423"/><stop offset="1" stop-color="#35322d"/></linearGradient>
+  <linearGradient id="fluid" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#21d7ff"/><stop offset="0.55" stop-color="#70ffe2"/><stop offset="1" stop-color="#b65cff"/></linearGradient>
+  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g id="shadow" opacity="0.32"><ellipse cx="32" cy="35" rx="28" ry="22" fill="#000"/></g>
+<g id="square_ratio_guard">
+  <rect x="6" y="6" width="52" height="52" rx="9" fill="url(#metal)" stroke="#0d1110" stroke-width="1.5"/>
+  <rect x="12" y="13" width="40" height="38" rx="5" fill="#1d211f" stroke="#646158" stroke-width="1.3"/>
+</g>
+<g id="orange_frame">
+  <path d="M12 12 H52 V23 H43 V41 H52 V52 H12 V41 H21 V23 H12 Z" fill="url(#orange)" stroke="#753600" stroke-width="1.2"/>
+  <rect x="18" y="22" width="28" height="20" rx="4" fill="#242927" stroke="#0f1211" stroke-width="1.2"/>
+</g>
+<g id="mechanical_core">
+  <circle cx="32" cy="32" r="10" fill="#181b1b" stroke="#7d766b" stroke-width="3"/>
+  <path d="M25 25 L39 39 M39 25 L25 39" stroke="#d0c7ba" stroke-width="3" stroke-linecap="round" opacity="0.72"/>
+  <rect x="52" y="27" width="7" height="10" rx="2" fill="url(#belt)" stroke="#0d0f0e" stroke-width="1"/>
+  <rect x="56" y="30" width="4" height="4" rx="1" fill="#3ec8ff" filter="url(#glow)"/>
+</g>
+</svg>

@@ -1,7 +1,6 @@
 """Django settings for the shapez2 factory planner scaffold."""
 
 import os
-import sys
 from pathlib import Path
 
 import dj_database_url
@@ -9,6 +8,14 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env.debug", override=True)
+
+SHAPEZ_BASEDATA_ROOT = Path(
+    os.environ.get(
+        "SHAPEZ_BASEDATA_ROOT",
+        str(BASE_DIR / "documents" / "shapez_2_data" / "basedata-v1137"),
+    )
+).resolve()
 
 # SHAPEZ_COPY_DEBUG_DIR / SOLVER_GRAPH_* 런타임 플래그는 ``shapez_runtime_flags`` 참고.
 from . import shapez_runtime_flags as _shapez_runtime_flags  # noqa: E402
@@ -88,12 +95,22 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 _default_sqlite = (BASE_DIR / "db.sqlite3").resolve()
-DATABASES = {
-    "default": dj_database_url.config(
-        default=f"sqlite:///{_default_sqlite.as_posix()}",
-        conn_max_age=600,
-    )
-}
+_use_sqlite = os.environ.get("DJANGO_USE_SQLITE", "").strip().lower() in {"1", "true", "yes"}
+if _use_sqlite:
+    # 로컬 개발: 시스템/`.env`에 `DATABASE_URL`(Neon 등)이 있어도 SQLite만 쓴다.
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": str(_default_sqlite),
+        }
+    }
+else:
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=f"sqlite:///{_default_sqlite.as_posix()}",
+            conn_max_age=600,
+        )
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -101,11 +118,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
-
-# pytest-django loads settings after ``import pytest``; skip slow PBKDF2 + validators in tests only.
-if "pytest" in sys.modules:
-    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
-    AUTH_PASSWORD_VALIDATORS = []
 
 LANGUAGE_CODE = "en"
 TIME_ZONE = "UTC"
@@ -122,10 +134,6 @@ LOCALE_PATHS = [BASE_DIR / "locale"]
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Lab shell ``asteroid_miner_layout_lab.js`` URL query; bump or set
-# ``SHAPEZ_LAB_JS_VERSION`` to bust cache.
-SHAPEZ_LAB_JS_VERSION = os.environ.get("SHAPEZ_LAB_JS_VERSION", "4").strip() or "4"
-
 # General user uploads (not shape part sprites; see SHAPE_PART_SPRITE_*).
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -133,6 +141,21 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Baked atomic part PNGs live under app static so they can be versioned like other assets.
 SHAPE_PART_SPRITE_STATIC_ROOT = BASE_DIR / "django_apps" / "web" / "static" / "web"
 SHAPE_PART_SPRITE_URL_PREFIX = "/static/web/"
+
+# Deprecated: Run Solver now reads gene templates from GeneticSample DB only.
+# This setting is no longer used by the runtime path; kept for backwards compatibility.
+ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH = Path(
+    os.environ.get(
+        "ASTEROID_LAB_RUNTIME_GENE_TEMPLATES_PATH",
+        str(BASE_DIR / "tests" / "fixtures" / "asteroid_lab" / "gene_templates"),
+    )
+).resolve()
+
+# Generator version used when loading GeneticSample rows for the Run Solver runtime.
+ASTEROID_LAB_RUNTIME_GENE_GENERATOR_VERSION = os.environ.get(
+    "ASTEROID_LAB_RUNTIME_GENE_GENERATOR_VERSION",
+    "exhaustive_sample_gene_v1",
+)
 
 STORAGES = {
     "default": {

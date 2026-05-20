@@ -6,9 +6,10 @@ from dataclasses import asdict
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.reconstruction.pipeline import run_topology_reconstruction
+from django_apps.asteroid_lab.cleanup.result import CleanupResult
+from django_apps.asteroid_lab.reconstruction.confidence import reconstruction_acceptance_ok
+from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
-from django_apps.asteroid_lab.replay.deconstruction_frames import load_cleanup_result
 from django_apps.asteroid_lab.replay.event_types import (
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTENSION,
     EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR,
@@ -29,6 +30,9 @@ from django_apps.asteroid_lab.services.dto import (
     ExistingLayoutInspectionDTO,
     SnapshotEventDTO,
     SnapshotFrameDTO,
+)
+from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
+    run_reconstruction_for_map_input,
 )
 from django_apps.asteroid_lab.services.replay_recorder import ReplayRecorder
 from django_apps.asteroid_lab.snapshots.equipment_bundles import build_equipment_bundles
@@ -57,23 +61,34 @@ def build_existing_layout_inspection_from_input(map_input_id: int) -> ExistingLa
 def record_existing_layout_inspection_frames(
     track_id: int,
     inspection: ExistingLayoutInspectionDTO,
-) -> list[SnapshotFrameDTO]:
+    *,
+    boundary_run_id: str | None = None,
+) -> tuple[list[SnapshotFrameDTO], CleanupResult, ReconstructionResult]:
     """Append cleanup frames plus stepwise reconstruction replay (UI-only; never solver input)."""
 
     if inspection.map_input_id is None:
         msg = "ExistingLayoutInspectionDTO.map_input_id is required for snapshot replay"
         raise ValueError(msg)
 
-    snap = build_decoded_blueprint_snapshot_from_input(int(inspection.map_input_id))
+    mid = int(inspection.map_input_id)
+    rid = boundary_run_id if boundary_run_id is not None else f"map_input:{mid}"
+    snap = build_decoded_blueprint_snapshot_from_input(mid, boundary_run_id=rid)
     _, row_transport, row_extractor, row_extension, _, _ = build_cleanup_and_reconstruction_rows(
         snap
     )
 
-    cleanup = load_cleanup_result(snap)
     collector = ReconstructionTraceCollector()
-    recon = run_topology_reconstruction(cleanup, trace_collector=collector)
+    cleanup, recon = run_reconstruction_for_map_input(
+        mid,
+        boundary_run_id=rid,
+        trace_collector=collector,
+    )
     row_recon = rows_from_cells(recon.cells)
-    recon_extra = {**dict(cleanup.summary_json), **dict(recon.summary_json)}
+    recon_extra = {
+        **dict(cleanup.summary_json),
+        **dict(recon.summary_json),
+        "reconstruction_acceptance_ok": reconstruction_acceptance_ok(recon),
+    }
 
     recorder = ReplayRecorder(int(track_id))
     phase = "layout_cleanup"
@@ -157,7 +172,8 @@ def record_existing_layout_inspection_frames(
         hints=hints,
     )
 
-    return recorder.record_many([ev_transport, ev_extractor, ev_extension, *recon_events])
+    frames = recorder.record_many([ev_transport, ev_extractor, ev_extension, *recon_events])
+    return frames, cleanup, recon
 
 
 def persist_existing_layout_inspection_snapshot(

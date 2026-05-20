@@ -1,0 +1,12 @@
+{
+  "gene_id": "fixture_ext1_n",
+  "name": "Fixture E + N extension",
+  "extractor_offset": [0, 0],
+  "extension_offsets": [[0, -1]],
+  "occupied_offsets": [[0, 0], [0, -1]],
+  "output_dir": "e",
+  "fixed_output_transport_offset": [1, 0],
+  "route_probe_start_offset": [2, 0],
+  "throughput_factor": 8,
+  "topology_signature_base": "fixture_ext1_n"
+}

@@ -12,7 +12,7 @@ from django_apps.asteroid_lab.services.dto import (
     ExistingLayoutInspectionDTO,
     ExistingTransportComponentDTO,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_x
+from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_index
 from django_apps.asteroid_lab.snapshots.transport_components import (
     cell_position_key,
     is_transport_tile,
@@ -69,12 +69,7 @@ def _bbox_of_cells(cells: list[DecodedCellDTO]) -> dict[str, Any]:
     }
     dense_vals: list[int] = []
     for c in cells:
-        if c.x == 0:
-            continue
-        try:
-            dense_vals.append(raw_x_to_dense_x(c.x))
-        except ValueError:
-            pass
+        dense_vals.append(raw_x_to_dense_index(c.x))
     if dense_vals:
         mndx, mxdx = min(dense_vals), max(dense_vals)
         out["dense_min_x"] = mndx

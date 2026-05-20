@@ -54,7 +54,7 @@ def test_record_existing_layout_inspection_frames_order_and_types(
 ) -> None:
     _, inp = project_and_input
     ins = els.build_existing_layout_inspection_from_input(inp.id)
-    frames = els.record_existing_layout_inspection_frames(replay_track.id, ins)
+    frames, _cleanup, _recon = els.record_existing_layout_inspection_frames(replay_track.id, ins)
     assert len(frames) >= 4
     assert frames[0].event_type == et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_TRANSPORT
     assert frames[1].event_type == et.EVENT_TYPE_REPLAY_SNAPSHOT_CLEANUP_EXTRACTOR

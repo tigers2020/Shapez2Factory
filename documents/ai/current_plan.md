@@ -1,6 +1,6 @@
 # Current plan
 
-**상태 (2026-05-19)**: Solver 버튼 v0 E2E 파이프라인 완료 (PR1–PR9 + 9A–9E). 통합 runtime replay recorder·timeline 연동 완료. **813** tests green (full gate).
+**상태 (2026-05-19)**: Solver 버튼 v0 E2E 파이프라인 완료 (PR1–PR9 + 9A–9E). 통합 runtime replay recorder·timeline 연동 완료. `master`에 `integration/merge-all-2026-05-19` 병합 완료 (`9ca1b812`). **818** tests green (full gate).
 
 ## 완료된 것
 

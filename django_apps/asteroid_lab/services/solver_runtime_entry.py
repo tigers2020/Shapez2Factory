@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 import uuid
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -26,6 +27,9 @@ from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
 )
 from django_apps.asteroid_lab.services.runtime_gene_template_resolver import (
     resolve_runtime_gene_templates_from_db,
+)
+from django_apps.asteroid_lab.services.solver_generation_config import (
+    generation_config_from_run_config,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
@@ -166,21 +170,37 @@ def run_solver_runtime_for_project(
         else None
     )
 
+    generation_config = generation_config_from_run_config(run_config)
+
     try:
         result = run_solver_runtime_pipeline(
             loaded=loaded,
             gene_templates=gene_templates,
             run_key=rk,
+            generation_config=generation_config,
             recorder=recorder,
         )
         runtime_replay_frames_json: list[dict[str, Any]] | None = None
+        replay_build_ms = 0.0
+        json_serialize_ms = 0.0
         if recorder is not None:
+            replay_start = time.perf_counter()
             frames = recorder.build_frames()
+            replay_build_ms = (time.perf_counter() - replay_start) * 1000.0
             if frames:
-                runtime_replay_frames_json = [replay_timeline_frame_to_json_dict(f) for f in frames]
+                ser_start = time.perf_counter()
+                runtime_replay_frames_json = [
+                    replay_timeline_frame_to_json_dict(f) for f in frames
+                ]
+                json_serialize_ms = (time.perf_counter() - ser_start) * 1000.0
+        timing_dict = dict(result.solver_summary.get("timing") or {})
+        timing_dict["replay_build_ms"] = round(replay_build_ms, 3)
+        timing_dict["json_serialize_ms"] = round(json_serialize_ms, 3)
+        result_summary = dict(result.solver_summary)
+        result_summary["timing"] = timing_dict
         _persist_solver_run_outcome(
             run_id,
-            solver_summary=result.solver_summary,
+            solver_summary=result_summary,
             server_xy_params=loaded.server_xy_params,
             runtime_replay_frames_json=runtime_replay_frames_json,
         )
@@ -197,7 +217,7 @@ def run_solver_runtime_for_project(
             solver_run_id=run_id,
             lab_replay_frames_json=frames,
             replay_track_metrics=metrics,
-            solver_summary=dict(result.solver_summary),
+            solver_summary=result_summary,
             validation_passed=validation_passed,
             gene_template_source=gene_source_dict,
         )

@@ -72,7 +72,9 @@ def test_validation_read_only() -> None:
     inp = _open_void_inp()
     candidate = _shape_candidate(candidate_id="a:1")
     plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1",))
-    commit = commit_selected_candidates(plan, {candidate.candidate_id: candidate}, inp=inp)
+    commit, _commit_timing = commit_selected_candidates(
+        plan, {candidate.candidate_id: candidate}, inp=inp
+    )
     layout = _merged_layout(commit, {candidate.candidate_id: candidate})
     inp_before = replace(inp)
     commit_before = replace(
@@ -140,7 +142,9 @@ def test_validation_passes_connected_layout() -> None:
     inp = _open_void_inp()
     candidate = _shape_candidate(candidate_id="a:1")
     plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1",))
-    commit = commit_selected_candidates(plan, {candidate.candidate_id: candidate}, inp=inp)
+    commit, _commit_timing = commit_selected_candidates(
+        plan, {candidate.candidate_id: candidate}, inp=inp
+    )
     layout = _merged_layout(commit, {candidate.candidate_id: candidate})
     assert layout is not None
 

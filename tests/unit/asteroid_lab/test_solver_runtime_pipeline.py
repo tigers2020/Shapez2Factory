@@ -78,4 +78,12 @@ def test_pipeline_solver_summary_is_deterministic() -> None:
     r1 = run_solver_runtime_pipeline(loaded=loaded, gene_templates=templates)
     r2 = run_solver_runtime_pipeline(loaded=loaded, gene_templates=templates)
 
-    assert r1.solver_summary == r2.solver_summary
+    def _summary_without_timing(summary: dict) -> dict:
+        out = dict(summary)
+        out.pop("timing", None)
+        return out
+
+    assert _summary_without_timing(r1.solver_summary) == _summary_without_timing(
+        r2.solver_summary
+    )
+    assert r1.commit == r2.commit

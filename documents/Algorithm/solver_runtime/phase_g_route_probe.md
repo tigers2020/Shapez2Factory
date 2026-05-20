@@ -81,10 +81,13 @@ Candidate-phase provisional occupancy only. This does not commit placement.
 
 ### Search
 
-- bounded uniform-cost search
+- v0 unit-cost domain: **bounded BFS** fast path
+- non-uniform `traversal_cost`: bounded uniform-cost (heap)
 - `hard_blocked` skip
 - `transport_mask` mismatch skip
 - goal `transport_kind` filter
+- candidate phase: reverse distance-map prefilter (unreachable stub reject) then full probe for survivors
+- `RouteDomainSnapshotBuilder` seed cells cached per `OptimizationInput` signature; overlays always new dict
 
 ### Goal selection
 
@@ -122,6 +125,8 @@ test_route_probe_respects_transport_mask
 test_route_probe_budget_exceeded
 test_route_probe_selects_goal_by_priority_weighted_score
 test_route_probe_uses_route_probe_start_not_fixed_output_transport
+test_route_probe_bfs_matches_uniform_cost_on_unit_cost_domain
+test_seed_domain_cache_reuses_seed_and_overlay_is_independent
 ```
 
 ## 관련 코드·문서

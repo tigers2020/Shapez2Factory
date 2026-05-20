@@ -175,14 +175,47 @@ def _apply_reservation_overlay(
     return out
 
 
+def optimization_input_cache_key(inp: OptimizationInput) -> tuple[object, ...]:
+    transport_sig = tuple(
+        sorted((cell.coord, cell.transport_kind) for cell in inp.existing_transport_cells)
+    )
+    return (
+        inp.bbox,
+        inp.blocked_cells,
+        inp.protected_corridor_cells,
+        inp.existing_trunk_cells,
+        transport_sig,
+        inp.mineable_cells,
+        inp.external_void_cells,
+    )
+
+
+_SEED_DOMAIN_CACHE: dict[tuple[object, ...], dict[Coord, RouteCellDomain]] = {}
+
+
+def clear_seed_domain_cache() -> None:
+    """Clear cached seed domains (tests / run boundaries)."""
+
+    _SEED_DOMAIN_CACHE.clear()
+
+
+def _cached_seed_cells(inp: OptimizationInput) -> dict[Coord, RouteCellDomain]:
+    key = optimization_input_cache_key(inp)
+    cached = _SEED_DOMAIN_CACHE.get(key)
+    if cached is None:
+        cached = _build_seed_cells(inp)
+        _SEED_DOMAIN_CACHE[key] = cached
+    return cached
+
+
 class RouteDomainSnapshotBuilder:
     """Single entry point for ``route_domain`` snapshots (Phase 1 / 7)."""
 
     @staticmethod
     def build_seed_snapshot(inp: OptimizationInput) -> dict[Coord, RouteCellDomain]:
-        """Same as ``build_snapshot`` with empty reservations / occupancy."""
+        """Cached immutable seed cells (no overlays)."""
 
-        return RouteDomainSnapshotBuilder.build_snapshot(inp)
+        return dict(_cached_seed_cells(inp))
 
     @staticmethod
     def build_snapshot(
@@ -195,7 +228,7 @@ class RouteDomainSnapshotBuilder:
         """Immutable ``Coord -> RouteCellDomain`` map for probe/commit (v0)."""
 
         blocked_for_probe = committed_occupied_cells | provisional_blocked_cells
-        base = _build_seed_cells(inp)
+        base = dict(_cached_seed_cells(inp))
         with_blocked = _apply_blocked_overlay(base, blocked_for_probe)
         return _apply_reservation_overlay(with_blocked, confirmed_reservations)
 

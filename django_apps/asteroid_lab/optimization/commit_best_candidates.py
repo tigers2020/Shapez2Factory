@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -24,8 +25,9 @@ from django_apps.asteroid_lab.optimization.route_domain import (
     RouteDomainSnapshotBuilder,
 )
 from django_apps.asteroid_lab.optimization.route_probe import RouteProbeInput, run_route_probe
+from django_apps.asteroid_lab.optimization.timing_metrics import CommitTiming
 
-DEFAULT_COMMIT_PROBE_MAX_EXPANSIONS = 500
+DEFAULT_COMMIT_PROBE_MAX_EXPANSIONS = 256
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,8 +115,10 @@ def commit_selected_candidates(
     *,
     inp: OptimizationInput,
     max_probe_expansions: int = DEFAULT_COMMIT_PROBE_MAX_EXPANSIONS,
-) -> IncrementalCommitResult:
+) -> tuple[IncrementalCommitResult, CommitTiming]:
     """Commit candidates in plan order; reprobe on latest route_domain each attempt."""
+
+    commit_timing = CommitTiming()
 
     reservations: list[RouteReservation] = []
     committed_occupied: set[tuple[int, int]] = set()
@@ -135,6 +139,7 @@ def commit_selected_candidates(
             confirmed_reservations=tuple(reservations),
             committed_occupied_cells=frozenset(committed_occupied),
         )
+        probe_start = time.perf_counter()
         probe = run_route_probe(
             RouteProbeInput(
                 start=candidate.route_probe_start,
@@ -145,6 +150,10 @@ def commit_selected_candidates(
                 transport_kind=candidate.transport_kind,
             )
         )
+        commit_timing.route_probe_count += 1
+        commit_timing.route_probe_expanded_nodes_total += probe.expanded_nodes
+        commit_timing.commit_reprobe_ms += (time.perf_counter() - probe_start) * 1000.0
+
         if not probe.reachable or probe.reached_goal is None or probe.goal_priority is None:
             skipped.append(cid)
             continue
@@ -215,8 +224,9 @@ def commit_selected_candidates(
         )
         ordinal += 1
 
-    return IncrementalCommitResult(
+    result = IncrementalCommitResult(
         confirmed=tuple(confirmed),
         skipped_candidate_ids=tuple(skipped),
         goal_assigned_platforms=dict(goal_load),
     )
+    return result, commit_timing

@@ -14,6 +14,7 @@ from django_apps.asteroid_lab.optimization.enums import (
 from django_apps.asteroid_lab.optimization.gene_projection import ProjectedGenePlacement
 from django_apps.asteroid_lab.optimization.gene_template import GeneTemplate
 from django_apps.asteroid_lab.optimization.route_probe import RouteProbeResult
+from django_apps.asteroid_lab.optimization.timing_metrics import CandidateGenerationTiming
 
 
 class ExtractorPlacementPolicy(StrEnum):
@@ -30,6 +31,7 @@ class CandidateGenerationConfig:
     route_probe_max_expansions: int
     transport_kinds: frozenset[TransportKind]
     route_probe_goal_priority_weight: int = 10
+    probe_budget_factor: int = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +63,7 @@ class RejectedGeneCandidate:
 class CandidateGenerationResult:
     normal_candidates: tuple[GeneCandidate, ...]
     rejected_candidates: tuple[RejectedGeneCandidate, ...]
+    timing: CandidateGenerationTiming | None = None
 
 
 def make_candidate_id(

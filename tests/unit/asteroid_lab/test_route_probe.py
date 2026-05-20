@@ -21,6 +21,7 @@ from django_apps.asteroid_lab.optimization.route_probe import (
     RouteProbeInput,
     build_route_domain_for_projected_gene_probe,
     run_route_probe,
+    run_route_probe_uniform_cost,
 )
 
 
@@ -235,3 +236,31 @@ def test_route_probe_uses_route_probe_start_not_fixed_output_transport() -> None
     assert result.reachable is True
     assert result.path[0] == projected.route_probe_start
     assert projected.fixed_output_transport not in result.path
+
+
+def test_route_probe_bfs_matches_uniform_cost_on_unit_cost_domain() -> None:
+    inp = _open_void_input()
+    goal = RouteGoal(
+        coord=(4, 0),
+        goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+        transport_kind=TransportKind.SHAPE_BELT,
+        priority=10,
+        existing_trunk=False,
+    )
+    inp = replace(inp, route_goals=frozenset({goal}))
+    domain = RouteDomainSnapshotBuilder.build_seed_snapshot(inp)
+    probe = RouteProbeInput(
+        start=(0, 0),
+        goals=inp.route_goals,
+        route_domain=domain,
+        topology_graph=inp.topology_graph,
+        max_expansions=200,
+        transport_kind=TransportKind.SHAPE_BELT,
+    )
+    bfs = run_route_probe(probe)
+    ucs = run_route_probe_uniform_cost(probe)
+    assert bfs.reachable == ucs.reachable
+    assert bfs.cost == ucs.cost
+    assert bfs.path == ucs.path
+    assert bfs.reached_goal == ucs.reached_goal
+    assert bfs.failure_reason == ucs.failure_reason

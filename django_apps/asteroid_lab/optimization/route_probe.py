@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import heapq
+from collections import deque
 from dataclasses import dataclass
 
 from django_apps.asteroid_lab.optimization.coords import Coord, neighbors4_server
@@ -79,9 +80,11 @@ def _selection_score(path_cost: int, goal: RouteGoal, weight: int) -> tuple[int,
     return (path_cost + weight * goal.priority, goal.priority, goal.coord, goal.goal_kind.value)
 
 
-def run_route_probe(probe: RouteProbeInput) -> RouteProbeResult:
-    """Uniform-cost search from ``route_probe_start``; does not materialize transport."""
+def _domain_uses_uniform_unit_cost(domain: dict[Coord, RouteCellDomain]) -> bool:
+    return all(cell.traversal_cost == 1 for cell in domain.values())
 
+
+def _probe_early_exit(probe: RouteProbeInput) -> RouteProbeResult | None:
     domain = probe.route_domain
     start = probe.start
     if start not in domain:
@@ -95,8 +98,7 @@ def run_route_probe(probe: RouteProbeInput) -> RouteProbeResult:
             failure_reason=RouteProbeFailureReason.INVALID_ROUTE_DOMAIN,
         )
 
-    start_cell = domain[start]
-    if start_cell.hard_blocked:
+    if domain[start].hard_blocked:
         return RouteProbeResult(
             reachable=False,
             path=(),
@@ -107,8 +109,7 @@ def run_route_probe(probe: RouteProbeInput) -> RouteProbeResult:
             failure_reason=RouteProbeFailureReason.START_BLOCKED,
         )
 
-    goal_cells = _goal_cells(probe.goals, probe.transport_kind)
-    if not goal_cells:
+    if not _goal_cells(probe.goals, probe.transport_kind):
         return RouteProbeResult(
             reachable=False,
             path=(),
@@ -118,13 +119,63 @@ def run_route_probe(probe: RouteProbeInput) -> RouteProbeResult:
             goal_priority=None,
             failure_reason=RouteProbeFailureReason.NO_GOAL_CELLS,
         )
+    return None
 
+
+def _finalize_unreachable(*, expanded: int, max_expansions: int) -> RouteProbeResult:
+    reason = (
+        RouteProbeFailureReason.BUDGET_EXCEEDED
+        if expanded >= max_expansions
+        else RouteProbeFailureReason.EXHAUSTED
+    )
+    return RouteProbeResult(
+        reachable=False,
+        path=(),
+        cost=0,
+        expanded_nodes=expanded,
+        reached_goal=None,
+        goal_priority=None,
+        failure_reason=reason,
+    )
+
+
+def _build_success_result(
+    *,
+    best_goal: RouteGoal,
+    best_path_cost: int,
+    parent: dict[Coord, Coord | None],
+    expanded: int,
+) -> RouteProbeResult:
+    path_rev: list[Coord] = []
+    cur: Coord | None = best_goal.coord
+    while cur is not None:
+        path_rev.append(cur)
+        cur = parent.get(cur)
+    path = tuple(reversed(path_rev))
+    return RouteProbeResult(
+        reachable=True,
+        path=path,
+        cost=best_path_cost,
+        expanded_nodes=expanded,
+        reached_goal=best_goal,
+        goal_priority=best_goal.priority,
+        failure_reason=None,
+    )
+
+
+def _run_bounded_uniform_cost(probe: RouteProbeInput) -> RouteProbeResult:
+    early = _probe_early_exit(probe)
+    if early is not None:
+        return early
+
+    domain = probe.route_domain
+    start = probe.start
+    goal_cells = _goal_cells(probe.goals, probe.transport_kind)
     goals_by_coord: dict[Coord, RouteGoal] = {}
     for g in probe.goals:
         if g.coord in goal_cells:
             goals_by_coord[g.coord] = g
 
-    # (cost, coord)
     frontier: list[tuple[int, Coord]] = [(0, start)]
     heapq.heapify(frontier)
     best_cost: dict[Coord, int] = {start: 0}
@@ -157,7 +208,7 @@ def run_route_probe(probe: RouteProbeInput) -> RouteProbeResult:
                 continue
             if not _mask_allows(probe.transport_kind, cell.transport_mask):
                 continue
-            new_cost = cost + 1
+            new_cost = cost + cell.traversal_cost
             if nb in best_cost and best_cost[nb] <= new_cost:
                 continue
             best_cost[nb] = new_cost
@@ -165,35 +216,84 @@ def run_route_probe(probe: RouteProbeInput) -> RouteProbeResult:
             heapq.heappush(frontier, (new_cost, nb))
 
     if best_goal is None:
-        reason = (
-            RouteProbeFailureReason.BUDGET_EXCEEDED
-            if expanded >= probe.max_expansions
-            else RouteProbeFailureReason.EXHAUSTED
-        )
-        return RouteProbeResult(
-            reachable=False,
-            path=(),
-            cost=0,
-            expanded_nodes=expanded,
-            reached_goal=None,
-            goal_priority=None,
-            failure_reason=reason,
-        )
-
-    # Reconstruct path to best_goal.coord
-    path_rev: list[Coord] = []
-    cur: Coord | None = best_goal.coord
-    while cur is not None:
-        path_rev.append(cur)
-        cur = parent.get(cur)
-    path = tuple(reversed(path_rev))
-
-    return RouteProbeResult(
-        reachable=True,
-        path=path,
-        cost=best_path_cost,
-        expanded_nodes=expanded,
-        reached_goal=best_goal,
-        goal_priority=best_goal.priority,
-        failure_reason=None,
+        return _finalize_unreachable(expanded=expanded, max_expansions=probe.max_expansions)
+    return _build_success_result(
+        best_goal=best_goal,
+        best_path_cost=best_path_cost,
+        parent=parent,
+        expanded=expanded,
     )
+
+
+def _run_bounded_bfs(probe: RouteProbeInput) -> RouteProbeResult:
+    early = _probe_early_exit(probe)
+    if early is not None:
+        return early
+
+    domain = probe.route_domain
+    start = probe.start
+    goal_cells = _goal_cells(probe.goals, probe.transport_kind)
+    goals_by_coord: dict[Coord, RouteGoal] = {}
+    for g in probe.goals:
+        if g.coord in goal_cells:
+            goals_by_coord[g.coord] = g
+
+    frontier: deque[Coord] = deque([start])
+    best_cost: dict[Coord, int] = {start: 0}
+    parent: dict[Coord, Coord | None] = {start: None}
+    expanded = 0
+
+    best_goal: RouteGoal | None = None
+    best_path_cost = 0
+    best_score: tuple[int, int, Coord, str] | None = None
+
+    while frontier and expanded < probe.max_expansions:
+        current = frontier.popleft()
+        cost = best_cost[current]
+        expanded += 1
+
+        if current in goal_cells:
+            g = goals_by_coord[current]
+            score = _selection_score(cost, g, probe.goal_priority_weight)
+            if best_score is None or score < best_score:
+                best_score = score
+                best_goal = g
+                best_path_cost = cost
+
+        for nb in neighbors4_server(current):
+            if nb not in domain:
+                continue
+            cell = domain[nb]
+            if cell.hard_blocked:
+                continue
+            if not _mask_allows(probe.transport_kind, cell.transport_mask):
+                continue
+            new_cost = cost + 1
+            if nb in best_cost and best_cost[nb] <= new_cost:
+                continue
+            best_cost[nb] = new_cost
+            parent[nb] = current
+            frontier.append(nb)
+
+    if best_goal is None:
+        return _finalize_unreachable(expanded=expanded, max_expansions=probe.max_expansions)
+    return _build_success_result(
+        best_goal=best_goal,
+        best_path_cost=best_path_cost,
+        parent=parent,
+        expanded=expanded,
+    )
+
+
+def run_route_probe(probe: RouteProbeInput) -> RouteProbeResult:
+    """Bounded feasibility search from ``route_probe_start``; does not materialize transport."""
+
+    if _domain_uses_uniform_unit_cost(probe.route_domain):
+        return _run_bounded_bfs(probe)
+    return _run_bounded_uniform_cost(probe)
+
+
+def run_route_probe_uniform_cost(probe: RouteProbeInput) -> RouteProbeResult:
+    """Force heap-based uniform-cost search (tests / parity)."""
+
+    return _run_bounded_uniform_cost(probe)

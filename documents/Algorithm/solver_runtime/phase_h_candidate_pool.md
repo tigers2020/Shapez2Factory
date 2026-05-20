@@ -67,7 +67,8 @@ topology_signature
 
 ### Dedupe
 
-동일 key는 `candidate_id` 오름차순 **첫 번째만** 유지.
+동일 `CandidateEquivalenceKey`는 **route_probe 이전**에 `candidate_id` 최솟값 승자만 probe한다.  
+probe 후 `dedupe_gene_candidates`는 truncate 전 **2차 안전망**이다.
 
 ### Truncate
 
@@ -100,6 +101,8 @@ test_candidate_generator_dedupes_before_max_candidates
 test_candidate_generator_does_not_commit_placements
 test_candidate_generator_uses_server_coords_only
 test_candidate_id_is_deterministic
+test_dedupe_skips_duplicate_route_probe
+test_candidate_generator_exposes_timing
 ```
 
 ## 관련 코드·문서

@@ -117,7 +117,7 @@ def _commit_offset_probe_candidate() -> tuple[GeneCandidate, ConfirmedGenePlacem
     inp = _open_void_inp()
     candidate = _shape_candidate_with_offset_probe(candidate_id="offset:1")
     plan = SelectedCandidatePlan(ordered_candidate_ids=(candidate.candidate_id,))
-    result = commit_selected_candidates(
+    result, _commit_timing = commit_selected_candidates(
         plan,
         {candidate.candidate_id: candidate},
         inp=inp,
@@ -140,7 +140,7 @@ def test_incremental_commit_reprobes_latest_domain() -> None:
         return domain
 
     with patch.object(RouteDomainSnapshotBuilder, "build_snapshot", side_effect=tracking_build):
-        commit_selected_candidates(
+        _, _commit_timing = commit_selected_candidates(
             plan,
             {"a:1": c1, "b:2": c2},
             inp=inp,
@@ -155,7 +155,7 @@ def test_incremental_commit_confirms_connected_candidate() -> None:
     candidate = _shape_candidate(candidate_id="a:1")
     plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1",))
 
-    result = commit_selected_candidates(
+    result, _commit_timing = commit_selected_candidates(
         plan,
         {candidate.candidate_id: candidate},
         inp=inp,
@@ -177,7 +177,7 @@ def test_incremental_commit_rolls_back_unreachable_candidate() -> None:
     blocked = _shape_candidate(candidate_id="b:blocked", extractor=(0, 0), route_probe_start=(1, 0))
     plan = SelectedCandidatePlan(ordered_candidate_ids=("a:ok", "b:blocked"))
 
-    result = commit_selected_candidates(
+    result, _commit_timing = commit_selected_candidates(
         plan,
         {ok.candidate_id: ok, blocked.candidate_id: blocked},
         inp=inp,
@@ -213,7 +213,7 @@ def test_incremental_commit_updates_goal_load() -> None:
     )
     plan = SelectedCandidatePlan(ordered_candidate_ids=("a:1", "b:2"))
 
-    result = commit_selected_candidates(
+    result, _commit_timing = commit_selected_candidates(
         plan,
         {c1.candidate_id: c1, c2.candidate_id: c2},
         inp=inp,
@@ -255,7 +255,7 @@ def test_incremental_commit_separates_shape_and_fluid_domains() -> None:
     )
     plan = SelectedCandidatePlan(ordered_candidate_ids=("shape:1", "fluid:1"))
 
-    result = commit_selected_candidates(
+    result, _commit_timing = commit_selected_candidates(
         plan,
         {shape.candidate_id: shape, fluid.candidate_id: fluid},
         inp=inp,

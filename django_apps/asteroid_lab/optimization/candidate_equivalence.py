@@ -4,9 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from django_apps.asteroid_lab.optimization.candidate_dtos import GeneCandidate
+from django_apps.asteroid_lab.optimization.candidate_dtos import (
+    GeneCandidate,
+    make_topology_signature,
+)
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.enums import Direction, TransportKind
+from django_apps.asteroid_lab.optimization.gene_projection import ProjectedGenePlacement
+from django_apps.asteroid_lab.optimization.gene_template import GeneTemplate
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +22,28 @@ class CandidateEquivalenceKey:
     transport_kind: TransportKind
     base_throughput: int
     topology_signature: str
+
+
+def equivalence_key_for_attempt(
+    *,
+    gene: GeneTemplate,
+    projected: ProjectedGenePlacement,
+    rotation: Direction,
+    transport_kind: TransportKind,
+) -> CandidateEquivalenceKey:
+    return CandidateEquivalenceKey(
+        occupied_cells=projected.occupied_cells,
+        route_probe_start=projected.route_probe_start,
+        output_dir=projected.output_dir,
+        transport_kind=transport_kind,
+        base_throughput=gene.throughput_factor,
+        topology_signature=make_topology_signature(
+            gene=gene,
+            projected=projected,
+            rotation=rotation,
+            transport_kind=transport_kind,
+        ),
+    )
 
 
 def equivalence_key_for_candidate(candidate: GeneCandidate) -> CandidateEquivalenceKey:

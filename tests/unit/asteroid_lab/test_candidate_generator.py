@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, wraps
 
 from django_apps.asteroid_lab.optimization.candidate_dtos import (
     build_normal_gene_candidate,
@@ -245,3 +245,73 @@ def test_build_normal_gene_candidate_rejects_unreachable_probe() -> None:
             transport_kind=TransportKind.SHAPE_BELT,
             route_probe_result=bad,
         )
+
+
+def test_dedupe_skips_duplicate_route_probe() -> None:
+    inp = _two_rim_reachable_input()
+    gene = _minimal_gene()
+    config = _default_config(route_probe_max_expansions=256)
+    call_count = 0
+    original = run_route_probe
+
+    @wraps(original)
+    def counting_probe(probe):
+        nonlocal call_count
+        call_count += 1
+        return original(probe)
+
+    with patch(
+        "django_apps.asteroid_lab.optimization.candidate_generator.run_route_probe",
+        side_effect=counting_probe,
+    ):
+        result = generate_gene_candidates(inp, (gene,), config)
+
+    naive_upper = len(inp.rim_cells) * 4 * len(config.transport_kinds)
+    assert call_count <= naive_upper
+    assert result.timing is not None
+    assert result.timing.route_probe_count == call_count
+    assert call_count <= naive_upper
+
+
+def test_candidate_generator_exposes_timing() -> None:
+    inp = _reachable_void_input()
+    gene = _minimal_gene()
+    result = generate_gene_candidates(inp, (gene,), _default_config())
+    assert result.timing is not None
+    assert result.timing.route_probe_count >= 0
+    assert result.timing.candidate_generation_ms >= 0.0
+
+
+def test_probe_budget_caps_route_probe_count() -> None:
+    inp = _two_rim_reachable_input()
+    gene = _minimal_gene()
+    config = _default_config(max_candidates=1, probe_budget_factor=2)
+    result = generate_gene_candidates(inp, (gene,), config)
+    assert result.timing is not None
+    assert result.timing.route_probe_count <= 2
+
+
+def test_base_reverse_bfs_runs_once_per_transport_kind() -> None:
+    from django_apps.asteroid_lab.optimization.route_distance_cache import (
+        _build_reverse_distance_map,
+    )
+
+    inp = _two_rim_reachable_input()
+    gene = _minimal_gene()
+    config = _default_config()
+    bfs_calls = 0
+    original = _build_reverse_distance_map
+
+    @wraps(original)
+    def counting_bfs(*args, **kwargs):
+        nonlocal bfs_calls
+        bfs_calls += 1
+        return original(*args, **kwargs)
+
+    with patch(
+        "django_apps.asteroid_lab.optimization.candidate_generator._build_reverse_distance_map",
+        side_effect=counting_bfs,
+    ):
+        generate_gene_candidates(inp, (gene,), config)
+
+    assert bfs_calls == len(config.transport_kinds)

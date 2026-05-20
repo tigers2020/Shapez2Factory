@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
@@ -27,9 +28,14 @@ from django_apps.asteroid_lab.optimization.placement_network_materializer import
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_loaded_snapshot,
 )
+from django_apps.asteroid_lab.optimization.route_domain import clear_seed_domain_cache
 from django_apps.asteroid_lab.optimization.route_goal_planner import plan_route_goals
 from django_apps.asteroid_lab.optimization.route_network_materializer import (
     materialize_route_network,
+)
+from django_apps.asteroid_lab.optimization.timing_metrics import (
+    CandidateGenerationTiming,
+    SolverRuntimeTimingMetrics,
 )
 
 if TYPE_CHECKING:
@@ -69,6 +75,7 @@ def _build_solver_summary(
     skipped: tuple[str, ...],
     materialization: RouteMaterializationResult,
     issues: tuple[ValidationIssue, ...],
+    timing: SolverRuntimeTimingMetrics,
 ) -> dict[str, Any]:
     error_issues = _error_issues(issues)
     return {
@@ -80,6 +87,7 @@ def _build_solver_summary(
         ),
         "issue_codes": [i.issue_code.value for i in error_issues],
         "issue_details": [_issue_detail(i) for i in error_issues],
+        "timing": timing.to_dict(),
     }
 
 
@@ -93,7 +101,11 @@ def run_solver_runtime_pipeline(
 ) -> SolverRuntimeResult:
     """Execute Phase A→M in documented order (no ORM; receives gene_templates as input)."""
 
-    config = generation_config or default_generation_config(max_candidates=32)
+    pipeline_start = time.perf_counter()
+    timing = SolverRuntimeTimingMetrics()
+    clear_seed_domain_cache()
+
+    config = generation_config or default_generation_config()
 
     inp = optimization_input_from_loaded_snapshot(loaded)
     if recorder is not None:
@@ -115,17 +127,22 @@ def run_solver_runtime_pipeline(
 
     templates = gene_templates
     pool = generate_gene_candidates(inp, templates, config)
+    if isinstance(pool.timing, CandidateGenerationTiming):
+        timing.absorb_candidate_generation(pool.timing)
     if recorder is not None:
         recorder.record_candidate_pool_completed(pool)
         recorder.record_candidate_pool_details(pool)
 
+    select_start = time.perf_counter()
     plan = select_gene_candidates_greedy(pool.normal_candidates, inp=inp)
+    timing.evolution_ms = (time.perf_counter() - select_start) * 1000.0
     if recorder is not None:
         recorder.record_candidate_selection_completed(plan)
         recorder.record_genome_scaffold(plan, pool=pool)
 
     candidates_by_id = {c.candidate_id: c for c in pool.normal_candidates}
-    commit = commit_selected_candidates(plan, candidates_by_id, inp=inp)
+    commit, commit_timing = commit_selected_candidates(plan, candidates_by_id, inp=inp)
+    timing.absorb_commit(commit_timing)
     if recorder is not None:
         recorder.record_route_committed(commit)
         recorder.record_commit_details(plan, candidates_by_id, commit)
@@ -141,14 +158,18 @@ def run_solver_runtime_pipeline(
     if recorder is not None:
         recorder.record_route_materialized(materialization)
 
+    validation_start = time.perf_counter()
     validation = validate_final_layout(
         commit,
         materialization.layout,
         inp=inp,
         candidates_by_id=candidates_by_id,
     )
+    timing.validation_ms = (time.perf_counter() - validation_start) * 1000.0
     if recorder is not None:
         recorder.record_validation_completed(validation)
+
+    timing.total_ms = (time.perf_counter() - pipeline_start) * 1000.0
 
     summary = _build_solver_summary(
         validation_passed=validation.passed,
@@ -156,6 +177,7 @@ def run_solver_runtime_pipeline(
         skipped=commit.skipped_candidate_ids,
         materialization=materialization,
         issues=validation.issues,
+        timing=timing,
     )
 
     if recorder is not None:

@@ -8,6 +8,7 @@ from django.contrib import admin
 from django.http import HttpRequest
 
 from django_apps.shapez_core import models as m
+from django_apps.shapez_core.admin_identifier_sprite import identifier_sprite_admin_preview
 from django_apps.shapez_core.admin_filters import (
     GameIdentifierCategoryKeyFilter,
     GameIdentifierReleaseVersionFilter,
@@ -211,6 +212,7 @@ class ShapezIntegrityIssueCodeAdmin(_IvvdReadOnlyAdminMixin, admin.ModelAdmin):
 class ShapezGameIdentifierAdmin(_IvvdReadOnlyAdminMixin, admin.ModelAdmin):
     list_display = (
         "value",
+        "sprite_preview_thumb",
         "sprite_static_relpath",
         "release",
         "identifier_category",
@@ -232,7 +234,42 @@ class ShapezGameIdentifierAdmin(_IvvdReadOnlyAdminMixin, admin.ModelAdmin):
         "value",
         "normalized_value",
         "sprite_static_relpath",
+        "sprite_preview",
     )
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "release",
+                    "identifier_category",
+                    "value",
+                    "normalized_value",
+                ),
+            },
+        ),
+        (
+            "Lab sprite",
+            {
+                "fields": (
+                    "sprite_static_relpath",
+                    "sprite_preview",
+                ),
+            },
+        ),
+    )
+
+    @admin.display(description="Sprite")
+    def sprite_preview_thumb(self, obj: m.ShapezGameIdentifier) -> str:
+        return identifier_sprite_admin_preview(obj.sprite_static_relpath, img_px=32)
+
+    @admin.display(description="Sprite preview")
+    def sprite_preview(self, obj: m.ShapezGameIdentifier) -> str:
+        return identifier_sprite_admin_preview(
+            obj.sprite_static_relpath,
+            img_px=64,
+            show_relpath=True,
+        )
 
 
 @admin.register(m.ShapezValidationRun)

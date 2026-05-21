@@ -113,6 +113,15 @@ def canonical_research_cost(
     return _slug("cost", parent_kind, parent_id, str(order_index), shape_hash)
 
 
+def canonical_research_prerequisite(
+    parent_kind: str,
+    parent_key: str,
+    requirement_kind: str,
+    requirement_key: str,
+) -> str:
+    return _slug("prereq", parent_kind, parent_key, requirement_kind, requirement_key)
+
+
 def canonical_toolbar_node(
     *,
     source_stable_id: str,

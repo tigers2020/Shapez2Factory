@@ -579,10 +579,31 @@ class GlobalBeltSpeedPolicyAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
     raw_id_fields = ("import_batch", "research_upgrade", "simulation_system")
 
 
-@admin.register(m.SimulationRuntimeAudit)
-class SimulationRuntimeAuditAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("simulation_system",)
+@admin.register(m.SimulationRuntimeAuditIssue)
+class SimulationRuntimeAuditIssueAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = ("simulation_system", "issue_code", "severity", "source_path")
+    list_filter = ("issue_code", "severity")
     raw_id_fields = ("simulation_system",)
+
+
+@admin.register(m.GameDataNamespace)
+class GameDataNamespaceAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = ("code", "label", "order")
+    ordering = ("order", "code")
+
+
+@admin.register(m.GameDataSection)
+class GameDataSectionAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = ("namespace", "code", "label", "django_model_label", "order")
+    list_filter = ("namespace",)
+    ordering = ("namespace__order", "order")
+
+
+@admin.register(m.GameDataReference)
+class GameDataReferenceAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = ("import_batch", "ref_kind", "ref_value", "resolved", "from_source", "to_source")
+    list_filter = ("ref_kind", "resolved", ImportBatchFilter)
+    raw_id_fields = ("import_batch", "from_source", "to_source")
 
 
 # --- Toolbar ---
@@ -600,6 +621,8 @@ class ToolbarTreeNodeAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
         "node_kind",
         "internal_name",
         "localized_title_key",
+        "required_mechanic",
+        "icon_content_asset",
         "tree_path_audit",
     )
     list_display_links = ("canonical_id_short",)

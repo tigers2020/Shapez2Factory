@@ -10,7 +10,7 @@ Do **not** add `GameDataImportRun`, `GameDataSourceFile`, etc. in parallel.
 | `ExportWarning` | Export caveats | manifest | `warnings[]` | → batch | |
 | `ExportIncompleteSection` | Failed sections | manifest, translations | `incomplete_sections[]` | → batch | |
 | `LocalizationExportStatus` | Empty l10n export | translations | `translations.json` + manifest | → batch | 1:1 batch |
-| `SourceObject` | `source_object_record` | Row provenance | all planned | `[i]` envelope | → batch | |
+| `SourceObject` | `source_object_record` | Row provenance | all planned | `[i]` envelope | → batch; optional `source_path` (auxiliary) | UK: `(batch, file, row_index)` |
 | `UnknownProperty` | `unknown_property` | Ignored / unmapped keys | all planned | any | → batch | preview + `reason_code`; not `GameDataIgnoredField` |
 | `GameContentAsset` | Merged prefab/sprite/material | prefabs, sprites, materials, asset_references | `[*].{stable_id,*_path}` | ← meta | `content_kind` enum |
 | `AssetMetaReference` | Meta → content bridge | asset_references | `[*].ref_stable_id` | → `GameContentAsset` | |
@@ -34,7 +34,7 @@ Do **not** add `GameDataImportRun`, `GameDataSourceFile`, etc. in parallel.
 | `ResearchSideQuest` | Side quests | research_unlocks | `ResearchSideQuest` | costs | |
 | `ResearchSideUpgrade` | Branch upgrades | research_unlocks | `ResearchSideUpgrade` | | |
 | `ResearchUnlockCost` | Shape payment | research_unlocks | `Costs[].ShapeHash` | → `ShapeRecipe` | FK resolved |
-| `ResearchPrerequisite` | Dependencies | research_unlocks | planned | upgrade/mechanic | v1 partial |
+| `ResearchPrerequisite` | Dependencies | research_unlocks | `RequiredUpgrades` / `RequiredMechanics` | upgrade/mechanic FK | imported for milestones & side quests |
 | `ResearchGlobalConfig` | Global tunables | research_unlocks | manager row | batch | placeholder |
 | `SimulationSystem` | Sim registration (180 rows) | simulation_systems | `simulation_parameters` | profile FK, types | UK `(batch, source_stable_id)` |
 | `SimulationProfile` | Profile keys | detected signature | — | no enum migration |
@@ -43,8 +43,10 @@ Do **not** add `GameDataImportRun`, `GameDataSourceFile`, etc. in parallel.
 | `GlobalBeltSpeedPolicy` | Batch-global belt speed | simulation_systems | `BeltSpeed` row | → `ResearchUpgrade` | synced from buffable |
 | `SimulationBuffableSpeed` | `BuffableBeltSpeed` | simulation_systems | per param key | → `ResearchUpgrade` | |
 | `SimulationMultipleBeltSpeed` | `MultipleBeltSpeed` | simulation_systems | `JumpSpeed` | → `SimulationBuffableSpeed` | |
-| `SimulationRuntimeAudit` | Heavy capture | simulation_systems | converter blobs | → entry | **JSONField audit only** |
-| `ToolbarTreeNode` | Toolbar structure | toolbar_entries | `display_name_key` (debug `tree_path`) | parent/child_index UK | `canonical_id` from `stable_id` first |
+| `SimulationRuntimeAuditIssue` | Converter/runtime audit rows | simulation_systems | converter profile | → `SimulationSystem` | enum `issue_code` / `severity`; no JSONField |
+| `GameDataNamespace` / `GameDataSection` | Admin menu taxonomy only | — | — | — | maps `verbose_name_plural` → sections; **not** domain FKs |
+| `GameDataReference` | Unresolved import refs (staging) | import pass | string targets | `from_source` → `SourceObject` | typed FK remains source of truth |
+| `ToolbarTreeNode` | Toolbar structure | toolbar_entries | `display_name_key` (debug `tree_path`) | parent/child_index UK; `required_mechanic`; `icon_content_asset` | `source_object` FK |
 | `ToolbarElement` | ACTION leaf only | toolbar_entries | placer rows | 1:1 `tree_node`, placements | 142 in current dump |
 | `ToolbarBuildingPlacement` | Build action | toolbar_entries | `BuildingDefinition` | → `BuildingVariant` | resolves via Definitions[] |
 | `ToolbarIslandPlacement` | Island action | toolbar_entries | `IslandGroup` | via `toolbar_element` | no `tree_path` on payload |

@@ -5,7 +5,12 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from django_apps.game_data.models import ImportBatch, UnknownProperty
+from django_apps.game_data.models import (
+    GameDataReference,
+    ImportBatch,
+    SourceObject,
+    UnknownProperty,
+)
 from django_apps.game_data.services.identifiers import hash_preview
 
 _CHILD_INDEX_RE = re.compile(r"Children\[(\d+)\]$")
@@ -54,6 +59,53 @@ class ImportContext:
         )
         if created:
             self.summary["unknown_fields"] = int(self.summary["unknown_fields"]) + 1
+
+    def record_source_row(
+        self,
+        filename: str,
+        index: int,
+        row: dict[str, Any],
+        *,
+        source_path: str = "",
+        system_id: str = "",
+        clr_type: str = "",
+    ) -> SourceObject:
+        """Upsert row-level provenance; UK remains (batch, file, row_index)."""
+        stable = str(row.get("stable_id", ""))
+        dump_type = str(row.get("source_type_name", ""))
+        obj, _ = SourceObject.objects.update_or_create(
+            import_batch=self.batch,
+            source_file=filename,
+            source_row_index=index,
+            defaults={
+                "source_stable_id": stable,
+                "dump_source_type": dump_type or clr_type,
+                "source_path": source_path,
+                "system_id": system_id or stable,
+                "clr_type": clr_type or dump_type,
+            },
+        )
+        return obj
+
+    def record_unresolved_reference(
+        self,
+        from_source: SourceObject,
+        ref_kind: str,
+        ref_value: str,
+        *,
+        to_source: SourceObject | None = None,
+    ) -> GameDataReference:
+        ref, _ = GameDataReference.objects.update_or_create(
+            import_batch=self.batch,
+            from_source=from_source,
+            ref_kind=ref_kind,
+            ref_value=ref_value[:512],
+            defaults={
+                "to_source": to_source,
+                "resolved": False,
+            },
+        )
+        return ref
 
 
 def dig(obj: dict[str, Any], *keys: str, default: Any = None) -> Any:

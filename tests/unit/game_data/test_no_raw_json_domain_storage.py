@@ -7,7 +7,7 @@ from django.apps import apps
 from django.db import models
 
 FORBIDDEN_JSON_NAMES = frozenset({"raw_json", "payload", "data", "source_dump"})
-ALLOWED_JSON_MODELS = frozenset({"SimulationRuntimeAudit"})
+ALLOWED_JSON_MODELS: frozenset[str] = frozenset()
 
 
 @pytest.mark.parametrize("model", list(apps.get_app_config("game_data").get_models()))

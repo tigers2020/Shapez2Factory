@@ -15,10 +15,10 @@ from django_apps.game_data.importers.base import ImportContext
 from django_apps.game_data.importers.simulation_systems import import_simulation_systems
 from django_apps.game_data.models import (
     ConnectableSimulation,
-    SimulationClrProvenance,
     ImportBatch,
+    SimulationClrProvenance,
     SimulationConnectorProperty,
-    SimulationRuntimeAudit,
+    SimulationRuntimeAuditIssue,
     SimulationSystem,
 )
 
@@ -56,7 +56,7 @@ def test_import_simulation_systems_min_batch(min_sim_rows: list[dict]) -> None:
     )
     assert prov.canonical_id.startswith("sim-clr-prov:")
     assert "SplitterTShapeSimulation" in prov.clr_type_string
-    assert SimulationRuntimeAudit.objects.count() == 1
+    assert SimulationRuntimeAuditIssue.objects.count() == 1
     assert ConnectableSimulation.objects.filter(simulation_system__import_batch=batch).count() == 2
 
     canonical_ids = list(
@@ -144,11 +144,8 @@ def test_full_simulation_systems_import_180_rows(game_data_dir: Path) -> None:
 
 
 @pytest.mark.django_db
-def test_no_domain_jsonfield_except_runtime_audit() -> None:
-    allowed = frozenset({"SimulationRuntimeAudit"})
+def test_no_domain_jsonfield_on_game_data_models() -> None:
     for model in apps.get_app_config("game_data").get_models():
-        if model.__name__ in allowed:
-            continue
         for field in model._meta.fields:
             if isinstance(field, models.JSONField):
                 pytest.fail(f"{model.__name__}.{field.name} must not use JSONField on domain model")

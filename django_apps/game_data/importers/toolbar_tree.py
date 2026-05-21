@@ -8,6 +8,8 @@ from typing import Any
 from django_apps.game_data.importers.base import ImportContext, dig, parse_toolbar_child_index
 from django_apps.game_data.importers.toolbar_identity import toolbar_row_identity
 from django_apps.game_data.models import (
+    GameContentAsset,
+    ResearchMechanic,
     ToolbarBuildingPlacement,
     ToolbarElement,
     ToolbarIslandPlacement,
@@ -137,6 +139,34 @@ def import_toolbar_tree(ctx: ImportContext, rows: list[dict[str, Any]]) -> None:
             parent_canonical_id=parent_cid,
             child_index=pending.child_index,
         )
+        row = path_to_row[path]
+        snap = pending.snapshot
+        mechanic = None
+        mech_key = str(dig(snap, "MechanicRequiredToUnlock", "Id", default=""))
+        if mech_key:
+            mechanic = ResearchMechanic.objects.filter(mechanic_key=mech_key).first()
+        icon_asset = None
+        if pending.icon_identifier:
+            icon_asset = (
+                GameContentAsset.objects.filter(
+                    import_batch=ctx.batch,
+                    content_kind=GameContentAsset.ContentKind.SPRITE,
+                    content_path__icontains=pending.icon_identifier,
+                ).first()
+                or GameContentAsset.objects.filter(
+                    import_batch=ctx.batch,
+                    content_kind=GameContentAsset.ContentKind.SPRITE,
+                    display_name_key__icontains=pending.icon_identifier,
+                ).first()
+            )
+        src = ctx.record_source_row(
+            "toolbar_entries.json",
+            pending.source_row_index,
+            row,
+            source_path=pending.tree_path,
+            system_id=pending.source_stable_id,
+            clr_type=str(row.get("source_type_name", "")),
+        )
         node, _ = ToolbarTreeNode.objects.update_or_create(
             canonical_id=cid,
             defaults={
@@ -151,7 +181,10 @@ def import_toolbar_tree(ctx: ImportContext, rows: list[dict[str, Any]]) -> None:
                 "internal_name": pending.internal_name,
                 "localized_title_key": pending.localized_title_key,
                 "icon_identifier": pending.icon_identifier,
+                "required_mechanic": mechanic,
+                "icon_content_asset": icon_asset,
                 "source_row_index": pending.source_row_index,
+                "source_object": src,
             },
         )
         persisted[path] = node

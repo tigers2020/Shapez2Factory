@@ -35,6 +35,7 @@ from django_apps.game_data.models import (
     LocalizationExportStatus,
     ResearchMechanic,
     ResearchMilestone,
+    ResearchPrerequisite,
     ResearchSideQuest,
     ResearchSideUpgrade,
     ResearchUnlockCost,
@@ -124,18 +125,25 @@ class GameDataImporter:
             self.ctx.bump("import_batch")
         return batch
 
-    def _source_object(self, filename: str, index: int, row: dict[str, Any]) -> SourceObject:
+    def _source_object(
+        self,
+        filename: str,
+        index: int,
+        row: dict[str, Any],
+        *,
+        source_path: str = "",
+        system_id: str = "",
+        clr_type: str = "",
+    ) -> SourceObject:
         assert self.ctx is not None
-        obj, _ = SourceObject.objects.update_or_create(
-            import_batch=self.ctx.batch,
-            source_file=filename,
-            source_row_index=index,
-            defaults={
-                "source_stable_id": str(row.get("stable_id", "")),
-                "dump_source_type": str(row.get("source_type_name", "")),
-            },
+        return self.ctx.record_source_row(
+            filename,
+            index,
+            row,
+            source_path=source_path,
+            system_id=system_id,
+            clr_type=clr_type,
         )
-        return obj
 
     def _import_fluids(self) -> None:
         assert self.ctx is not None
@@ -234,6 +242,7 @@ class GameDataImporter:
             if not internal:
                 continue
             cid = identifiers.canonical_building_variant(internal)
+            src = self._source_object("building_variants.json", i, row)
             variant, _ = BuildingVariant.objects.update_or_create(
                 canonical_id=cid,
                 defaults={
@@ -246,6 +255,7 @@ class GameDataImporter:
                     "size_y": int(dig(snap, "ConnectorData", "TileDimensions", "y", default=0) or 0),
                     "size_z": int(dig(snap, "ConnectorData", "TileDimensions", "z", default=0) or 0),
                     "source_row_index": i,
+                    "source_object": src,
                 },
             )
             connectors = dig(snap, "ConnectorData", "AllBuildingConnectors", default=[]) or []
@@ -293,6 +303,7 @@ class GameDataImporter:
             return None
         snap = row.get("definition_snapshot") or {}
         cid = identifiers.canonical_building_group(group_key)
+        src = self._source_object(filename, index, row)
         group, _ = BuildingGroup.objects.update_or_create(
             canonical_id=cid,
             defaults={
@@ -308,6 +319,7 @@ class GameDataImporter:
                 "removable": bool(dig(snap, "Removable", default=True)),
                 "auto_connect": bool(dig(snap, "AutoConnect", default=False)),
                 "source_row_index": index,
+                "source_object": src,
             },
         )
         sim = row.get("simulation_parameters") or {}
@@ -390,6 +402,7 @@ class GameDataImporter:
                 stable = str(row.get("stable_id", ""))
                 path = str(row.get(path_key, ""))
                 cid = identifiers.canonical_content_asset(kind, stable)
+                src = self._source_object(filename, i, row)
                 GameContentAsset.objects.update_or_create(
                     canonical_id=cid,
                     defaults={
@@ -402,6 +415,7 @@ class GameDataImporter:
                         "dump_source_type": str(row.get("source_type_name", "")),
                         "unity_source_guid": str(row.get("source_guid", "")),
                         "source_row_index": i,
+                        "source_object": src,
                     },
                 )
                 self.ctx.bump("game_content_asset")
@@ -533,6 +547,7 @@ class GameDataImporter:
                         owner_model="ResearchMilestone",
                         owner_key=key,
                     )
+                    src = self._source_object("research_unlocks.json", _i, row)
                     ResearchMilestone.objects.update_or_create(
                         canonical_id=identifiers.canonical_research_node("milestone", key),
                         defaults={
@@ -541,9 +556,15 @@ class GameDataImporter:
                             "title_lazy": title_lazy,
                             "description_lazy": description_lazy,
                             "source_stable_id": stable,
+                            "source_object": src,
                         },
                     )
                     self._import_research_costs(snap, milestone_key=key)
+                    self._import_research_prerequisites(
+                        snap,
+                        parent_kind="milestone",
+                        parent_key=key,
+                    )
                     self.ctx.bump("research_milestone")
             elif "ResearchSideQuest" in stype:
                 key = str(dig(snap, "Id", "Id", default=""))
@@ -569,6 +590,11 @@ class GameDataImporter:
                         },
                     )
                     self._import_research_costs(snap, side_quest=quest)
+                    self._import_research_prerequisites(
+                        snap,
+                        parent_kind="side_quest",
+                        parent_key=key,
+                    )
                     self.ctx.bump("research_side_quest")
             elif "ResearchSideUpgrade" in stype:
                 key = str(dig(snap, "Id", "Id", default=""))
@@ -582,6 +608,61 @@ class GameDataImporter:
                         },
                     )
                     self.ctx.bump("research_side_upgrade")
+
+    def _import_research_prerequisites(
+        self,
+        snap: dict[str, Any],
+        *,
+        parent_kind: str,
+        parent_key: str,
+    ) -> None:
+        assert self.ctx is not None
+
+        def _ref_key(item: object) -> str:
+            if isinstance(item, dict):
+                raw = item.get("Id")
+                if isinstance(raw, dict):
+                    return str(raw.get("Id", "") or "")
+                return str(raw or "")
+            return str(item)
+
+        for item in snap.get("RequiredUpgrades") or []:
+            key = _ref_key(item)
+            if not key:
+                continue
+            upgrade = ResearchUpgrade.objects.filter(upgrade_key=key).first()
+            cid = identifiers.canonical_research_prerequisite(
+                parent_kind, parent_key, "upgrade", key
+            )
+            ResearchPrerequisite.objects.update_or_create(
+                canonical_id=cid,
+                defaults={
+                    "parent_kind": parent_kind,
+                    "parent_key": parent_key,
+                    "required_upgrade": upgrade,
+                    "required_mechanic": None,
+                },
+            )
+            self.ctx.bump("research_prerequisite")
+
+        for item in snap.get("RequiredMechanics") or []:
+            key = _ref_key(item)
+            if not key:
+                continue
+            mechanic = ResearchMechanic.objects.filter(mechanic_key=key).first()
+            cid = identifiers.canonical_research_prerequisite(
+                parent_kind, parent_key, "mechanic", key
+            )
+            ResearchPrerequisite.objects.update_or_create(
+                canonical_id=cid,
+                defaults={
+                    "parent_kind": parent_kind,
+                    "parent_key": parent_key,
+                    "required_upgrade": None,
+                    "required_mechanic": mechanic,
+                },
+            )
+            self.ctx.bump("research_prerequisite")
 
     def _import_research_costs(
         self,

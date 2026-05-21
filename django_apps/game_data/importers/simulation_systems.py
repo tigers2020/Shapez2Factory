@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from django_apps.game_data.enums import SimulationAuditIssueCode, SimulationAuditSeverity
 from django_apps.game_data.importers.base import ImportContext
 from django_apps.game_data.importers.simulation_speeds import import_simulation_speeds
 from django_apps.game_data.models import (
@@ -16,7 +17,7 @@ from django_apps.game_data.models import (
     SimulationLaneDefinition,
     SimulationLaneRuntimeState,
     SimulationProfile,
-    SimulationRuntimeAudit,
+    SimulationRuntimeAuditIssue,
     SimulationStateType,
     SimulationSystem,
     SimulationTileBounds,
@@ -249,6 +250,13 @@ def import_simulation_systems(ctx: ImportContext, rows: list[dict[str, Any]]) ->
         )
         group_id = identifiers.canonical_simulation_group_id(group_key)
         stable_id = str(row.get("stable_id", ""))
+        src = ctx.record_source_row(
+            "simulation_systems.json",
+            i,
+            row,
+            clr_type=stype,
+            system_id=stable_id,
+        )
 
         system, _ = SimulationSystem.objects.update_or_create(
             import_batch=ctx.batch,
@@ -259,6 +267,7 @@ def import_simulation_systems(ctx: ImportContext, rows: list[dict[str, Any]]) ->
                 "system_family": parsed.family[:128],
                 "profile": profile,
                 "display_name_key": str(row.get("display_name_key", ""))[:512],
+                "source_object": src,
             },
         )
 
@@ -315,11 +324,16 @@ def import_simulation_systems(ctx: ImportContext, rows: list[dict[str, Any]]) ->
                 if isinstance(att, dict):
                     _import_connectable_attachment(ctx, system, att, ai)
         elif profile_key == PROFILE_CONVERTER:
-            SimulationRuntimeAudit.objects.update_or_create(
+            SimulationRuntimeAuditIssue.objects.update_or_create(
                 simulation_system=system,
-                defaults={"audit_blob": {"profile": profile_key, "row_index": i}},
+                issue_code=SimulationAuditIssueCode.CONVERTER_PROFILE,
+                defaults={
+                    "severity": SimulationAuditSeverity.INFO,
+                    "message": f"converter capture row_index={i}",
+                    "source_path": f"simulation_systems.json[{i}]",
+                },
             )
-            ctx.bump("simulation_runtime_audit")
+            ctx.bump("simulation_runtime_audit_issue")
         elif profile_key == PROFILE_FACTORY:
             pass
 

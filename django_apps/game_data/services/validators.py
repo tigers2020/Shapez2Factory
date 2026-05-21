@@ -7,7 +7,7 @@ from django.db import models
 
 FORBIDDEN_JSON_FIELD_NAMES = frozenset({"raw_json", "payload", "data", "source_dump"})
 
-ALLOWED_JSON_MODELS = frozenset({"SimulationRuntimeAudit"})
+ALLOWED_JSON_MODELS: frozenset[str] = frozenset()
 
 
 def assert_no_domain_json_fields() -> None:

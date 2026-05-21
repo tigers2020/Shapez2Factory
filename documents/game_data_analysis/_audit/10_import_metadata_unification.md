@@ -13,7 +13,7 @@ Early review drafts proposed `GameDataImportRun`, `GameDataSourceFile`, `GameDat
 | `export_warning` | `ExportWarning` | Manifest export warning line |
 | `export_incomplete_section` | `ExportIncompleteSection` | Manifest incomplete section code |
 | `localization_export_status` | `LocalizationExportStatus` | Translations export health (1:1 batch) |
-| `source_object_record` | `SourceObject` | Per **JSON row** provenance (`source_file`, `source_row_index`) |
+| `source_object_record` | `SourceObject` | Per **JSON row** provenance (`source_file`, `source_row_index`); auxiliary `source_path`, `system_id`, `clr_type` |
 | `unknown_property` | `UnknownProperty` | Ignored / unmapped field (preview + hash; `reason_code`, `classification`) |
 
 ## Rejected parallel names (do not implement)
@@ -51,7 +51,7 @@ SourceObject         → one array element [i] in that file
 | CLR string | `SimulationClrProvenance` |
 | Param key registry | `SimulationSystemParameterKey`, `SimulationSystemParameterOccurrence` |
 | Speed config | `SimulationBuffableSpeed`, `SimulationMultipleBeltSpeed` |
-| Converter blob | `SimulationRuntimeAudit` (only simulation JSONField) |
+| Converter audit rows | `SimulationRuntimeAuditIssue` (no JSONField on domain models) |
 
 ## Migration policy
 

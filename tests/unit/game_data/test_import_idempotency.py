@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from django_apps.game_data.importers import GameDataImporter
@@ -15,14 +13,6 @@ from django_apps.game_data.models import (
     ShapeRecipe,
     SimulationSystem,
 )
-
-
-@pytest.fixture
-def game_data_dir() -> Path:
-    root = Path(__file__).resolve().parents[3] / "documents" / "game_data"
-    if not (root / "manifest.json").is_file():
-        pytest.skip("documents/game_data not present")
-    return root
 
 
 def _model_counts() -> dict[str, int]:
@@ -38,12 +28,15 @@ def _model_counts() -> dict[str, int]:
 
 @pytest.mark.django_db
 def test_import_is_idempotent(game_data_dir: Path) -> None:
-    importer = GameDataImporter(game_data_dir, batch_name="pytest")
+    """Full manifest re-import is idempotent (see also per-slice re-import tests)."""
+    batch_name = "pytest-idempotency"
+    importer = GameDataImporter(game_data_dir, batch_name=batch_name)
     importer.run()
     first = _model_counts()
-    first_batch_hash = ImportBatch.objects.get().manifest_self_hash
+    first_batch_hash = ImportBatch.objects.get(batch_name=batch_name).manifest_self_hash
+    batch_rows = ImportBatch.objects.filter(batch_name=batch_name).count()
     importer.run()
     second = _model_counts()
     assert first == second
-    assert ImportBatch.objects.count() == 1
-    assert ImportBatch.objects.get().manifest_self_hash == first_batch_hash
+    assert ImportBatch.objects.filter(batch_name=batch_name).count() == batch_rows
+    assert ImportBatch.objects.get(batch_name=batch_name).manifest_self_hash == first_batch_hash

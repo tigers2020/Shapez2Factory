@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from django_apps.game_data.models import ImportBatch, ResearchSideQuest
 from django_apps.game_data.services.lazy_localized_text import parse_lazy_localized_text
 
 SAMPLE_SIDE_GOAL = {
@@ -42,20 +43,11 @@ def test_parse_none_returns_none() -> None:
     assert parse_lazy_localized_text(None) is None
 
 
-@pytest.fixture
-def game_data_dir() -> Path:
-    root = Path(__file__).resolve().parents[3] / "documents" / "game_data"
-    if not (root / "manifest.json").is_file():
-        pytest.skip("documents/game_data not present")
-    return root
-
-
 @pytest.mark.django_db
-def test_research_side_quest_stores_lazy_ref_not_raw_dict_string(game_data_dir: Path) -> None:
-    from django_apps.game_data.importers import GameDataImporter
-    from django_apps.game_data.models import ResearchSideQuest
-
-    GameDataImporter(game_data_dir, batch_name="l10n").run()
+def test_research_side_quest_stores_lazy_ref_not_raw_dict_string(
+    imported_game_data_batch: ImportBatch,
+) -> None:
+    del imported_game_data_batch
     quest = ResearchSideQuest.objects.filter(node_key="SG_PostFinalT3_1_1").first()
     if quest is None:
         pytest.skip("SG_PostFinalT3_1_1 not in dump")

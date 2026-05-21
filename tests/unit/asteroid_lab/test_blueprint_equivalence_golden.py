@@ -5,33 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 
 from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
-    CONNECTED_BRANCH_FLUID_PIPE_COPY,
     encode_official_copy_string,
     to_official_island_root,
 )
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
-    build_layout_root,
-    generate_exhaustive_sample_genes,
-)
+from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import build_layout_root
 from django_apps.asteroid_lab.snapshots.blueprint_equivalence import decoded_json_layout_equivalent
-
-CONNECTED_BRANCH_GENE_KEY = (
-    '{"e":[[[-1,1],[-1,2],"S"],[[0,0],[0,1],"S"],[[0,1],[-1,1],"W"]],"ec":3,"tk":"pipe"}'
-)
 
 
 def _line(fname: str) -> str:
     p = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / fname
     return p.read_text(encoding="utf-8").splitlines()[0].strip()
-
-
-def test_connected_branch_gene_matches_user_fixture_layout() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
-    match = next(g for g in genes if g.key == CONNECTED_BRANCH_GENE_KEY)
-    official = to_official_island_root(match.layout_json)
-    ref = decode_copy_string(CONNECTED_BRANCH_FLUID_PIPE_COPY).root
-    assert decoded_json_layout_equivalent(official, ref, include_transport=True)
 
 
 def test_spread_bug_and_connected_fixture_copies_not_layout_equivalent() -> None:

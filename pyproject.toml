@@ -11,6 +11,7 @@ dev = [
     "mypy>=1.10.0",
     "black>=24.0.0",
     "pytest>=8.0.0",
+    "pytest-xdist>=3.5.0",
 ]
 
 [build-system]
@@ -23,6 +24,18 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+exclude = [
+    ".git",
+    ".venv",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    "graphify-out",
+    "django_apps/game_data/graphify-out",
+    "build",
+    "dist",
+    "node_modules",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "W"]
@@ -30,6 +43,7 @@ select = ["E", "F", "I", "B", "UP", "W"]
 [tool.black]
 line-length = 100
 target-version = ["py312"]
+extend-exclude = "/(\\.git|\\.venv|graphify-out|django_apps/game_data/graphify-out)/"
 
 [tool.mypy]
 strict = true

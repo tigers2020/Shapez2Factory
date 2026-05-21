@@ -221,8 +221,13 @@ python -m pytest
 | 조합 | `-m "unit and shapez_core"` |
 | 경로 | `python -m pytest tests/unit/shapez_solver/` · `python -m pytest tests/unit/asteroid_lab/` |
 | 단일 파일·이름 필터 | `python -m pytest tests/unit/shapez_solver/test_bar.py` · `python -m pytest -k "substring"` |
+| 병렬 전체 | `python -m pytest -n auto --dist loadscope -q` |
+| 빠른 unit | `python -m pytest -m "unit and not slow" -q` |
+| slow만 | `python -m pytest -m slow -q` |
 
 프로덕션 모듈만 수정한 경우에는, 해당 동작을 검증하는 **기존** 테스트 모듈·디렉터리 경로를 인자로 주는 것이 기본이다.
+
+PR·CI full gate의 `python -m pytest`는 `-n auto --dist loadscope` 병렬을 쓸 수 있다. 로컬 반복은 narrow path 또는 `unit and not slow`를 기본으로 한다.
 
 마커 정의: `pytest.ini`. 경로 기반 자동 마커: `tests/conftest.py`.
 

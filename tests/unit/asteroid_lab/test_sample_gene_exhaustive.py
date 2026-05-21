@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 import copy
-from pathlib import Path
 from typing import Any
 
 import pytest
 from django.core.management import call_command
 
-from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
-    CONNECTED_BRANCH_FLUID_PIPE_COPY,
-    CONNECTED_BRANCH_FLUID_PIPE_JSON_BYTES,
-    export_dense_x_is_contiguous,
-    serialize_game_island_export_bytes,
-    to_official_island_root,
-)
+from django_apps.asteroid_lab.adapters.blueprint_canonical_export import to_official_island_root
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.models import GeneticSample
 from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
@@ -24,21 +17,11 @@ from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
     abstract_grid_to_raw_xy,
     assert_blueprint_entries_raw_x_nonzero,
     build_layout_root,
-    encode_layout_with_suffix,
     generate_exhaustive_sample_genes,
 )
-from django_apps.asteroid_lab.snapshots.blueprint_equivalence import decoded_json_layout_equivalent
 from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
 
-CONNECTED_BRANCH_GENE_KEY = (
-    '{"e":[[[-1,1],[-1,2],"S"],[[0,0],[0,1],"S"],[[0,1],[-1,1],"W"]],"ec":3,"tk":"pipe"}'
-)
-SPREAD_BUG_FIXTURE = (
-    Path(__file__).resolve().parents[2]
-    / "fixtures"
-    / "asteroid_lab"
-    / "spread_branch_fluid_pipe_bug.txt"
-)
+pytestmark = pytest.mark.slow
 
 
 def test_assert_blueprint_entries_raw_x_nonzero_raises() -> None:
@@ -188,33 +171,15 @@ def test_exhaustive_generator_names_have_no_spaces() -> None:
         assert " " not in g.name
 
 
-def test_exhaustive_generator_copy_string_roundtrip() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_copy_string_roundtrip(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     for g in genes[:5]:
         assert g.encoded_copy_string.startswith("SHAPEZ2-4-")
         assert g.encoded_copy_string.endswith("$")
         dto = decode_copy_string(g.encoded_copy_string.strip().removesuffix("$"))
         assert dto.root.get("V") == 1137
-
-
-def test_exhaustive_connected_branch_pipe_matches_user_golden_json() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
-    match = next(g for g in genes if g.key == CONNECTED_BRANCH_GENE_KEY)
-    official = to_official_island_root(match.layout_json)
-    assert serialize_game_island_export_bytes(official) == CONNECTED_BRANCH_FLUID_PIPE_JSON_BYTES
-    ref = decode_copy_string(CONNECTED_BRANCH_FLUID_PIPE_COPY).root
-    assert decoded_json_layout_equivalent(official, ref, include_transport=True)
-
-
-def test_exhaustive_connected_branch_encode_not_spread_bug_fixture() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
-    match = next(g for g in genes if g.key == CONNECTED_BRANCH_GENE_KEY)
-    got = match.encoded_copy_string.strip().removesuffix("$")
-    bug = SPREAD_BUG_FIXTURE.read_text(encoding="utf-8").splitlines()[0].strip()
-    assert got != bug
-    for row in decode_copy_string(got).root["BP"]["Entries"]:
-        assert row.get("X") != -3
-    assert export_dense_x_is_contiguous(decode_copy_string(got).root["BP"]["Entries"])
 
 
 @pytest.mark.django_db
@@ -276,12 +241,6 @@ def test_build_layout_minimal_entries_order_deterministic() -> None:
     assert len(entries) == 2
     types = {e["T"] for e in entries}
     assert "Layout_ShapeMiner" in types and "SpaceBelt_Forward" in types
-
-
-def test_encode_layout_with_suffix_roundtrip() -> None:
-    root = build_layout_root(transport_kind="pipe", exts=[])
-    code = encode_layout_with_suffix(root)
-    decode_copy_string(code.strip())
 
 
 def test_extension_rotations_ports_compatible_with_parent() -> None:

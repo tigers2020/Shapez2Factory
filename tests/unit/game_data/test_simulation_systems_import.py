@@ -178,9 +178,3 @@ def test_no_domain_jsonfield_on_game_data_models() -> None:
                 pytest.fail(f"{model.__name__}.{field.name} must not use JSONField on domain model")
 
 
-@pytest.fixture
-def game_data_dir() -> Path:
-    root = Path(__file__).resolve().parents[3] / "documents" / "game_data"
-    if not (root / "manifest.json").is_file():
-        pytest.skip("documents/game_data not present")
-    return root

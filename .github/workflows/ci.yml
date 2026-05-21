@@ -31,5 +31,5 @@ jobs:
             lint)      ruff check . ;;
             typecheck) mypy src ;;
             format)    black --check . ;;
-            test)      pytest -q ;;
+            test)      pytest -n auto --dist loadscope -q ;;
           esac

@@ -2,21 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
-from django_apps.game_data.importers import GameDataImporter
 from django_apps.game_data.importers.toolbar_identity import toolbar_row_identity
-from django_apps.game_data.models import ToolbarElement, ToolbarIslandPlacement, ToolbarTreeNode
-
-
-@pytest.fixture
-def game_data_dir() -> Path:
-    root = Path(__file__).resolve().parents[3] / "documents" / "game_data"
-    if not (root / "manifest.json").is_file():
-        pytest.skip("documents/game_data not present")
-    return root
+from django_apps.game_data.models import (
+    ImportBatch,
+    ToolbarElement,
+    ToolbarIslandPlacement,
+    ToolbarTreeNode,
+)
 
 
 def test_toolbar_row_identity_island_uses_group_name() -> None:
@@ -35,8 +29,8 @@ def test_toolbar_row_identity_island_uses_group_name() -> None:
 
 
 @pytest.mark.django_db
-def test_island_via_tree_node_not_path_label(game_data_dir: Path) -> None:
-    GameDataImporter(game_data_dir, batch_name="toolbar-id").run()
+def test_island_via_tree_node_not_path_label(imported_game_data_batch: ImportBatch) -> None:
+    del imported_game_data_batch
     path = "root/Children[7]/Children[3]/Children[2]"
     node = ToolbarTreeNode.objects.get(tree_path=path)
     placement = ToolbarIslandPlacement.objects.select_related("toolbar_element").get(

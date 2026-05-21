@@ -36,9 +36,7 @@ from django_apps.asteroid_lab.optimization.route_network_materializer import (
     materialize_route_network,
 )
 from django_apps.asteroid_lab.optimization.route_probe import RouteProbeResult
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
-    generate_exhaustive_sample_genes,
-)
+from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import GeneratedSampleGene
 from django_apps.asteroid_lab.snapshots.equipment_bundles import ports_compatible
 
 
@@ -109,8 +107,10 @@ def _reservation(candidate: GeneCandidate) -> RouteReservation:
     )
 
 
-def test_placement_materializer_emits_extractor_solo() -> None:
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=0, transport_kinds=("belt",))
+def test_placement_materializer_emits_extractor_solo(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], object],
+) -> None:
+    genes, _ = exhaustive_genes_ext0_belt
     tpl = gene_template_from_generated_sample(genes[0])
     cand = _candidate_from_gene(gene_template=tpl)
     commit = IncrementalCommitResult(
@@ -134,8 +134,10 @@ def test_placement_materializer_emits_extractor_solo() -> None:
     assert equipment[0].coord == cand.extractor
 
 
-def test_placement_materializer_emits_extractor_and_extension() -> None:
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=1, transport_kinds=("belt",))
+def test_placement_materializer_emits_extractor_and_extension(
+    exhaustive_genes_ext1_belt: tuple[list[GeneratedSampleGene], object],
+) -> None:
+    genes, _ = exhaustive_genes_ext1_belt
     with_ext = next(g for g in genes if g.extension_count == 1)
     tpl = gene_template_from_generated_sample(with_ext)
     cand = _candidate_from_gene(gene_template=tpl)
@@ -160,8 +162,10 @@ def test_placement_materializer_emits_extractor_and_extension() -> None:
     assert len(equipment) == 1 + len(cand.extensions)
 
 
-def test_merge_materialized_layout_includes_equipment_and_transport() -> None:
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=0, transport_kinds=("belt",))
+def test_merge_materialized_layout_includes_equipment_and_transport(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], object],
+) -> None:
+    genes, _ = exhaustive_genes_ext0_belt
     tpl = gene_template_from_generated_sample(genes[0])
     cand = _candidate_from_gene(gene_template=tpl)
     commit = IncrementalCommitResult(
@@ -187,8 +191,10 @@ def test_merge_materialized_layout_includes_equipment_and_transport() -> None:
     assert merged.layout.equipment_cells[0].cell_kind == "shape_miner"
 
 
-def test_merge_rejects_equipment_on_transport_coord() -> None:
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=0, transport_kinds=("belt",))
+def test_merge_rejects_equipment_on_transport_coord(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], object],
+) -> None:
+    genes, _ = exhaustive_genes_ext0_belt
     tpl = gene_template_from_generated_sample(genes[0])
     cand = _candidate_from_gene(gene_template=tpl)
     commit = IncrementalCommitResult(
@@ -222,8 +228,10 @@ def test_merge_rejects_equipment_on_transport_coord() -> None:
     assert merged.failure_reason is MaterializationFailureReason.EQUIPMENT_TRANSPORT_COORD_OVERLAP
 
 
-def test_merge_success_keeps_disjoint_transport_and_equipment_coords() -> None:
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=1, transport_kinds=("belt",))
+def test_merge_success_keeps_disjoint_transport_and_equipment_coords(
+    exhaustive_genes_ext1_belt: tuple[list[GeneratedSampleGene], object],
+) -> None:
+    genes, _ = exhaustive_genes_ext1_belt
     with_ext = next(g for g in genes if g.extension_count == 1)
     tpl = gene_template_from_generated_sample(with_ext)
     cand = _candidate_from_gene(gene_template=tpl)
@@ -250,8 +258,10 @@ def test_merge_success_keeps_disjoint_transport_and_equipment_coords() -> None:
     assert len(merged.layout.cells) + len(merged.layout.equipment_cells) > 0
 
 
-def test_extension_attachments_parent_first_orders_multi_extension_chain() -> None:
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=3, transport_kinds=("belt",))
+def test_extension_attachments_parent_first_orders_multi_extension_chain(
+    exhaustive_genes_ext3: tuple[list[GeneratedSampleGene], object],
+) -> None:
+    genes, _ = exhaustive_genes_ext3
     chain = next(
         g
         for g in genes
@@ -268,8 +278,10 @@ def test_extension_attachments_parent_first_orders_multi_extension_chain() -> No
         seen.add(edge.child_offset)
 
 
-def test_multi_extension_chain_preview_equipment() -> None:
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=3, transport_kinds=("belt",))
+def test_multi_extension_chain_preview_equipment(
+    exhaustive_genes_ext3: tuple[list[GeneratedSampleGene], object],
+) -> None:
+    genes, _ = exhaustive_genes_ext3
     chain = next(
         g
         for g in genes
@@ -288,8 +300,9 @@ def test_multi_extension_chain_preview_equipment() -> None:
 )
 def test_extension_rotation_ports_valid_for_cardinal_placements(
     rotation: Direction,
+    exhaustive_genes_ext1_belt: tuple[list[GeneratedSampleGene], object],
 ) -> None:
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=1, transport_kinds=("belt",))
+    genes, _ = exhaustive_genes_ext1_belt
     with_ext = next(g for g in genes if g.extension_count == 1)
     tpl = gene_template_from_generated_sample(with_ext)
     cand = _candidate_from_gene(gene_template=tpl, anchor=(12, 7), rotation=rotation)

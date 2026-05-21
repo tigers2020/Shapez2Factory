@@ -15,17 +15,12 @@ from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
 )
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+    GeneratedSampleGene,
     build_layout_root,
     encode_layout_with_suffix,
-    generate_exhaustive_sample_genes,
 )
 from django_apps.asteroid_lab.snapshots.blueprint_equivalence import decoded_json_layout_equivalent
 from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
-
-CONNECTED_BRANCH_GENE_KEY = (
-    '{"e":[[[-1,1],[-1,2],"S"],[[0,0],[0,1],"S"],[[0,1],[-1,1],"W"]],"ec":3,"tk":"pipe"}'
-)
-
 
 def _fixture_line(name: str) -> str:
     p = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / name
@@ -57,19 +52,19 @@ def test_connected_branch_fixture_matches_module_constant() -> None:
     assert text == CONNECTED_BRANCH_FLUID_PIPE_COPY
 
 
-def test_connected_branch_gene_encode_json_matches_user_golden_bytes() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
-    match = next(g for g in genes if g.key == CONNECTED_BRANCH_GENE_KEY)
-    official = to_official_island_root(match.layout_json)
+def test_connected_branch_gene_encode_json_matches_user_golden_bytes(
+    connected_branch_gene_ext3: GeneratedSampleGene,
+) -> None:
+    official = to_official_island_root(connected_branch_gene_ext3.layout_json)
     body = serialize_game_island_export_bytes(official)
     assert body == CONNECTED_BRANCH_FLUID_PIPE_JSON_BYTES
     assert export_dense_x_is_contiguous(official["BP"]["Entries"])
 
 
-def test_connected_branch_gene_layout_equivalent_to_fixture_decode() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
-    match = next(g for g in genes if g.key == CONNECTED_BRANCH_GENE_KEY)
-    official = to_official_island_root(match.layout_json)
+def test_connected_branch_gene_layout_equivalent_to_fixture_decode(
+    connected_branch_gene_ext3: GeneratedSampleGene,
+) -> None:
+    official = to_official_island_root(connected_branch_gene_ext3.layout_json)
     ref = decode_copy_string(CONNECTED_BRANCH_FLUID_PIPE_COPY).root
     assert decoded_json_layout_equivalent(official, ref, include_transport=True)
 
@@ -125,10 +120,10 @@ def test_west_branch_official_entries_no_x_minus_three() -> None:
     assert _occupied_server_x_is_contiguous(official)
 
 
-def test_connected_branch_gene_encode_not_equal_spread_bug_fixture() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
-    match = next(g for g in genes if g.key == CONNECTED_BRANCH_GENE_KEY)
-    got = match.encoded_copy_string.strip().removesuffix("$")
+def test_connected_branch_gene_encode_not_equal_spread_bug_fixture(
+    connected_branch_gene_ext3: GeneratedSampleGene,
+) -> None:
+    got = connected_branch_gene_ext3.encoded_copy_string.strip().removesuffix("$")
     bug = _fixture_line("spread_branch_fluid_pipe_bug.txt")
     assert got != bug
     assert not decoded_json_layout_equivalent(

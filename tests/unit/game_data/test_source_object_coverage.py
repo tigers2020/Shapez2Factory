@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
-from django_apps.game_data.importers import GameDataImporter
 from django_apps.game_data.models import (
     BuildingGroup,
     BuildingVariant,
@@ -18,24 +15,6 @@ from django_apps.game_data.models import (
     ToolbarNodeKind,
     ToolbarTreeNode,
 )
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
-GAME_DATA_DIR = REPO_ROOT / "documents" / "game_data"
-
-
-@pytest.fixture
-def game_data_dir() -> Path:
-    if not (GAME_DATA_DIR / "manifest.json").is_file():
-        pytest.skip("documents/game_data not present")
-    return GAME_DATA_DIR
-
-
-@pytest.fixture
-def imported_batch(game_data_dir: Path) -> ImportBatch:
-    GameDataImporter(game_data_dir).run()
-    batch = ImportBatch.objects.order_by("-imported_at").first()
-    assert batch is not None
-    return batch
 
 
 @pytest.mark.django_db

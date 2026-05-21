@@ -9,10 +9,7 @@ from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
     export_dense_x_set,
     to_official_island_root,
 )
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
-    build_layout_root,
-    generate_exhaustive_sample_genes,
-)
+from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import build_layout_root
 from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_index
 
 
@@ -51,8 +48,10 @@ def test_export_dense_x_contiguous_west_branch_lab() -> None:
     assert -2 not in dense or len(dense) <= 2
 
 
-def test_exhaustive_genes_official_export_dense_x_never_gapped() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_genes_official_export_dense_x_never_gapped(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     for g in genes:
         official = to_official_island_root(g.layout_json)
         entries = official["BP"]["Entries"]

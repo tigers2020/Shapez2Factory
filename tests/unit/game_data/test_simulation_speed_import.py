@@ -117,14 +117,6 @@ def test_reimport_speed_rows_idempotent(speed_rows: list[dict], speed_batch: Imp
     assert SimulationMultipleBeltSpeed.objects.count() == 1
 
 
-@pytest.fixture
-def game_data_dir() -> Path:
-    root = Path(__file__).resolve().parents[3] / "documents" / "game_data"
-    if not (root / "manifest.json").is_file():
-        pytest.skip("documents/game_data not present")
-    return root
-
-
 @pytest.mark.django_db
 @pytest.mark.slow
 def test_full_dump_speed_key_counts(game_data_dir: Path) -> None:

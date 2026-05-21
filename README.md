@@ -1,74 +1,82 @@
-# shapez2 Factory Planner
+# {{PROJECT_NAME}}
 
-> Cursor를 "코드 작성기"가 아니라 **하니스 실행기**로 다루는 프로젝트. 루트 `AGENTS.md`로 운영 계약을 만들고, `.cursor/rules/`로 경로별 가이드를 붙이며, `.cursor/skills/`로 반복 업무를 패키징하고, `docs/domain/`과 `tests/golden/`으로 지식과 검증을 외부화한다.
+> Cursor를 "코드 작성기"가 아니라 **하니스 실행기**로 다루는 프로젝트. 루트 `AGENTS.md`로 운영 계약을 만들고, `.cursor/rules/`로 경로별 가이드를 붙이며, `.cursor/skills/`로 반복 업무를 패키징하고, `docs/domain/`과 `tests/golden/`으로 지식과 검증을 외부화한다. — [research.md](research.md) 결론
 
 ## Quick Start
 
 ```bash
-# 1. 의존성 설치
+# 1. 개발 의존성 설치
 pip install -e ".[dev]"
 
-# 2. 로컬 DB (선택)
-# set DJANGO_USE_SQLITE=1
-
-# 3. 검증 체인 (PR full gate — testing.md 정본)
-python -m ruff check .
-python -m black --check .
-python -m mypy src
-python -m pytest -q
-
-# 4. 개발 서버
-python manage.py runserver
+# 2. 검증 체인 실행 (렉스 4단계)
+pytest -q
+ruff check .
+mypy src
+black --check .
 ```
+
+모든 단계가 통과하면 개발 환경이 정상이다.
 
 ## Directory Map
 
 ```
-shapez2 Factory Planner/
+{{PROJECT_NAME}}/
 ├── AGENTS.md                        # 운영 계약서 (최우선 참조)
-├── manage.py / config/              # Django 진입 (Phase 1 런타임)
-├── django_apps/
-│   ├── shapez_core/                 # shape 규칙·파싱·preview
-│   ├── shapez_solver/               # recipe graph·planner
-│   ├── asteroid_lab/                # 소행성 실험실·replay
-│   └── web/                         # UI·템플릿·정적
-├── src/shapez2_factory/             # hexagonal 추출 목표 (Phase 2+, 현재 stub)
+├── pyproject.toml                   # Python 3.12, ruff/black/mypy/pytest 설정
+├── .cursorignore                    # AI 컨텍스트 제외 목록
+├── .cursor/
+│   ├── rules/                       # 경로별 기계 친화 규칙 (.mdc)
+│   └── skills/                      # 반복 작업 스킬 패키지
+├── src/{{package_name}}/
+│   ├── domain/                      # 순수 비즈니스 규칙 (도미닉)
+│   ├── application/
+│   │   ├── ports/                   # Port 추상화 (Protocol/ABC)
+│   │   └── use_cases/               # Use case 오케스트레이션 (유리)
+│   ├── adapters/                    # 외부 시스템 구현 (아다)
+│   ├── interfaces/                  # UI 화면·상태 (지나)
+│   └── bootstrap/                   # 의존성 조립 (시몬)
 ├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── golden/                      # phase2
-├── docs/                            # 에이전트 친화 요약
-├── documents/                       # CANON·플랜·리서치 정본
-├── frontend/                        # React Flow editor 등
+│   ├── unit/                        # Domain + use case 단위 테스트
+│   ├── integration/                 # Adapter 통합 테스트
+│   └── golden/                      # 결정적 회귀 데이터 (phase2)
+├── docs/
+│   ├── domain/                      # 도메인 매뉴얼 (도미닉)
+│   ├── architecture/                # 레이어 구조·의존 방향
+│   ├── runbooks/                    # 반복 개발 절차
+│   └── adr/                         # 아키텍처 결정 기록
 ├── persona/                         # 팀 페르소나 카드
-├── protocols/                       # 10단계 파이프라인
-└── .github/workflows/ci.yml
+├── protocols/                       # 거시 10단계 파이프라인 정본
+├── documents/                       # 메모, 플랜, 리서치 문서
+└── .github/workflows/ci.yml         # GitHub Actions CI
 ```
 
 ## Architecture
 
-- **현재**: Django-first — [`structure.md`](structure.md), [`docs/architecture/README.md`](docs/architecture/README.md)
-- **목표**: `src/shapez2_factory/` hexagonal layers (점진 추출)
+의존 방향: `interfaces` → `application` → `domain` ← (adapters → ports)
+
+상세: [docs/architecture/README.md](docs/architecture/README.md)
 
 ## Workflow
 
-1. `AGENTS.md`와 관련 `docs/`·`documents/`를 먼저 읽는다.
+모든 작업은 **계획 → 구현 → 검증 → 문서** 루프를 따른다.
+
+1. `AGENTS.md`와 관련 `docs/`를 먼저 읽는다.
 2. 변경 대상·리스크·검증 방법을 계획한다.
 3. 가장 작은 단위로 구현한다.
-4. [testing.md](documents/ai/manuals/testing.md) full gate를 실행한다.
-5. 문서를 동기화한다.
+4. 렉스 4단계 검증을 실행한다.
+5. 문서를 동기화한다 (`doc-update` 스킬).
 
 ## Team Personas
 
 | 이름 | 역할 |
 |---|---|
 | 시몬 | 분배·조율, 구현 게이트 |
-| 도미닉 | domain — 비즈니스 규칙 |
-| 유리 | application — use case, ports |
-| 아다 | adapters — 외부 시스템 |
-| 테스 | tests — QA |
+| 도미닉 | `domain/` — 비즈니스 규칙 |
+| 유리 | `application/` — use case, ports |
+| 아다 | `adapters/` — 외부 시스템 |
+| 테스 | `tests/` — QA |
 | 렉스 | CI/검증 체인 |
-| 지나 | interfaces — UI |
+| 지나 | `interfaces/` — UI |
 
 인덱스: [persona/README.md](persona/README.md)
 
@@ -80,7 +88,7 @@ shapez2 Factory Planner/
 
 | Phase | 내용 |
 |---|---|
-| Phase 1 (현재) | 운영 계약·규칙·문서 하이브리드 정렬; Django 런타임 유지 |
-| Phase 2 | `tests/golden/`, `harness/validators/` |
-| Phase 3 | `src/shapez2_factory/` 도메인 추출 시작 |
-| Phase 4~5 | MCP, hooks, Cloud Agent |
+| Phase 1 (현재) | 운영 계약·규칙·스킬·문서 골격 |
+| Phase 2 | `tests/golden/`, `harness/validators/` — 검증 확보 |
+| Phase 3 | `feature-add`·`refactor` 스킬, `.cursor/hooks.json` 자동 루프 |
+| Phase 4~5 | MCP, Bugbot, Cloud Agent |

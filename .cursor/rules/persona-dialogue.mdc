@@ -1,10 +1,6 @@
----
-description: 구현 3단계·역할–레이어 (온디맨드)
-alwaysApply: false
----
 # Persona Dialogue
 
-**전제**: [AGENTS.md](mdc:AGENTS.md), [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc). `[시몬]` 등은 **짧은 태그**이지 롤플레이가 아니다.
+**전제**: [AGENTS.md](mdc:AGENTS.md), [root.mdc](mdc:.cursor/rules/root.mdc)와 동일. 코딩·진행은 아래 3단계를 따른다.
 
 ## 3단계
 
@@ -14,7 +10,7 @@ alwaysApply: false
 
 ## 거시 파이프라인과의 관계
 
-이 3단계는 [protocols/README.md](mdc:protocols/README.md)의 10단계 중 **5번(구현)**에서만 적용한다. 그 앞뒤 단계는 다음과 같다.
+이 3단계는 [protocols/README.md](mdc:protocols/README.md)의 10단계 중 **6번(구현)**에서만 적용한다. 그 앞뒤 단계는 다음과 같다.
 
 - 앞(설계·승인): 1 사용자 → 2 디렉터(시몬) → 3 기획 듀오(도미닉↔유리) → 4 디렉터 재검수 → 5 사람 승인.
 - 뒤(리뷰·검증·클로징): 7 리뷰어(유리 주도, 시몬 보조) → 8 QA(테스) → 9 하네스(렉스) → 10 최종 디렉터·위키.
@@ -36,7 +32,7 @@ alwaysApply: false
 | 유리 | [persona/yuri.md](mdc:persona/yuri.md) | `application/` |
 | 아다 | [persona/ada.md](mdc:persona/ada.md) | `adapters/` (DTO 변환, 비즈니스 규칙 변경 금지) |
 | 테스 | [persona/tess.md](mdc:persona/tess.md) | `tests/`, `test_*.py` |
-| 렉스 | [persona/rex.md](mdc:persona/rex.md) | PR full gate: `ruff` → `black --check` → `mypy src` → `pytest` |
+| 렉스 | [persona/rex.md](mdc:persona/rex.md) | `pytest` → `ruff check .` → `mypy src` → `black .` |
 | 지나 | [persona/gina-gui.md](mdc:persona/gina-gui.md) | `interfaces/`, UI |
 
 인덱스: [persona/README.md](mdc:persona/README.md).
@@ -60,7 +56,7 @@ alwaysApply: false
 
 ## 검증 흐름 (렉스)
 
-구현 후: 테스가 테스트 추가 → 렉스가 [testing.md § Quality gate](mdc:documents/ai/manuals/testing.md#quality-gate-sequence) full gate 실행.
+구현 후: 테스가 테스트 추가 → 렉스가 `pytest` → `ruff check .` → `mypy src` → `black .` 순서로 검증.
 
 - 실패 시: 실패 명령, 이유, 다음 담당 페르소나를 남긴다.
 - 미실행 시: 실행 못 한 명령, 이유, 남은 위험을 남긴다.
@@ -68,5 +64,7 @@ alwaysApply: false
 
 ## 관련 Cursor Rules
 
+- [root.mdc](mdc:.cursor/rules/root.mdc)
 - [architecture.mdc](mdc:.cursor/rules/architecture.mdc)
-- [cursor_usage.md](mdc:documents/ai/manuals/cursor_usage.md)
+- [mcp.mdc](mdc:.cursor/rules/mcp.mdc)
+- [cursor-usage.mdc](mdc:.cursor/rules/cursor-usage.mdc)

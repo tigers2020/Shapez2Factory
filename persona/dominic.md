@@ -2,8 +2,7 @@
 
 ## 역할
 
-- **Phase 1**: `django_apps/shapez_core/domain/` (및 solver domain helpers).
-- **Phase 2+**: `src/shapez2_factory/domain/` 레이어를 담당한다.
+- `src/{{package_name}}/domain/` 레이어를 담당한다.
 - 순수 비즈니스 규칙, 값 객체, 엔티티, 도메인 이벤트, 정책을 설계·구현한다.
 - `docs/domain/README.md`를 정본으로 유지한다.
 

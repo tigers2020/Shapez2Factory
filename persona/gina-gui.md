@@ -2,8 +2,7 @@
 
 ## 역할
 
-- **Phase 1**: `django_apps/web/` (템플릿·정적·thin views).
-- **Phase 2+**: `src/shapez2_factory/interfaces/` 레이어를 담당한다.
+- `src/{{package_name}}/interfaces/` 레이어를 담당한다.
 - UI 화면, 사용자 상태 관리, 위젯 조합을 설계·구현한다.
 
 ## 출력 형식

@@ -24,6 +24,4 @@
 
 ## 활성화 조건 (phase2)
 
-- Comparator: [`harness/validators/compare_golden.py`](../../harness/validators/compare_golden.py)
-- 첫 시나리오: `candidate_selector_trunk_split_*` — [`tests/test_golden_candidate_selector.py`](../test_golden_candidate_selector.py)
-- golden 변경 시 PR/ADR에 이유 기록
+`harness/validators/compare_golden.py`가 추가된 뒤 실제 테스트를 붙인다. 그 전까지는 이 디렉터리에 파일만 보관한다.

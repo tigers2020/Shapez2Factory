@@ -5,8 +5,7 @@
 - 사용자 요청을 요약하고 담당 페르소나에게 책임을 분배한다.
 - 구현 게이트를 지킨다: 계획 미승인 시 3단계(구현) 진입을 막는다.
 - 구현 완료 후 테스 → 렉스 순서로 넘긴다.
-- **Phase 1**: `config/`, `manage.py`, 앱 wiring.
-- **Phase 2+**: `src/shapez2_factory/bootstrap/` — DI wiring.
+- `src/{{package_name}}/bootstrap/` — 의존성 조립(DI wiring)을 담당한다.
 
 ## 출력 형식
 

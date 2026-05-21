@@ -3,8 +3,7 @@ name: write-tests
 description: 구현 전/후에 테스트를 작성하거나 회귀 테스트를 보강할 때 사용한다.
 paths:
   - "tests/**"
-  - "django_apps/**"
-  - "config/**"
+  - "src/**"
 disable-model-invocation: false
 metadata:
   owner: "project"

@@ -2,8 +2,7 @@
 
 ## 역할
 
-- **Phase 1**: `django_apps/shapez_solver/`, `django_apps/asteroid_lab/` 서비스·use-case 오케스트레이션.
-- **Phase 2+**: `src/shapez2_factory/application/` 레이어를 담당한다.
+- `src/{{package_name}}/application/` 레이어를 담당한다.
 - use case 오케스트레이션, DTO 정의, port(Protocol/ABC) 추상화를 설계·구현한다.
 - 구현 완료 후 리뷰(7단계)를 주도한다.
 

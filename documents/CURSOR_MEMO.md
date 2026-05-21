@@ -6,7 +6,7 @@
 ## 업데이트 규칙
 
 - 갱신 형식: `YYYY-MM-DD | 이유 한 줄`
-- 사용자가 요청할 때만 갱신한다 ([`cursor_usage.md`](ai/manuals/cursor_usage.md) 참조).
+- 사용자가 요청할 때만 갱신한다 (`cursor-usage.mdc` 참조).
 - 오래된 항목은 `### 아카이브` 섹션으로 이동한다.
 
 ---
@@ -16,8 +16,7 @@
 | 날짜 | 결정 | 이유 |
 |---|---|---|
 | 2026-05-19 | phase1 골격 생성 (AGENTS.md, rules, skills, docs, persona, protocols) | research.md 보고서 기반 첫 2주 기초 정렬 |
-| 2026-05-19 | 프로젝트명 **shapez2 Factory Planner** / 패키지 **shapez2_factory** 확정 | AGENTS·룰 하이브리드 적용; Django 런타임 유지 |
-| 2026-05-19 | Phase 1 = django_apps + docs 요약; Phase 2+ = src/shapez2_factory 추출 | 코드 이동 없이 문서·계약 정렬 우선 |
+| 2026-05-19 | {{PROJECT_NAME}} / {{package_name}} placeholder 유지 | 프로젝트 이름 미확정 — 추후 일괄 치환 |
 
 ## 반복 실수 / 주의사항
 
@@ -25,17 +24,12 @@ _아직 없음._
 
 ## 다음 할 일 (phase2 이후)
 
-- [x] {{PROJECT_NAME}}, {{package_name}} placeholder → shapez2 Factory Planner / shapez2_factory
+- [ ] {{PROJECT_NAME}}, {{package_name}} placeholder 실제 이름으로 치환
 - [ ] `tests/golden/` 결정적 회귀 데이터셋 추가 (phase2)
 - [ ] `harness/validators/` 검증 스크립트 추가 (phase2)
-- [ ] `src/shapez2_factory/` 도메인 추출 시작 (phase3)
 - [ ] `feature-add`, `refactor` 스킬 활성화 (phase3 — golden test 확보 후)
 - [ ] `.cursor/hooks.json` 자동 검증 루프 설정 (phase3)
 - [ ] `.cursor/mcp.json` 프로젝트 MCP 설정 (phase4)
 - [ ] `.cursor/BUGBOT.md` PR 리뷰 규칙 (phase5)
 
 ### 아카이브
-
-| 날짜 | 결정 | 이유 |
-|---|---|---|
-| 2026-05-19 | {{PROJECT_NAME}} / {{package_name}} placeholder 유지 | 프로젝트 이름 미확정 — shapez2_factory로 대체됨 |

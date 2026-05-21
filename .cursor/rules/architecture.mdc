@@ -1,92 +1,17 @@
----
-description: "shapez2 Factory Planner: Django delivery + hexagonal target layers"
-alwaysApply: false
----
-# shapez2 Factory Planner Architecture
+# {{PROJECT_NAME}} Architecture
 
-## Phase 1 — Django delivery (현재 런타임)
-
-### App ownership
-
-| Layer | Path | Owner | Responsibility |
-|---|---|---|---|
-| shapez_core | `django_apps/shapez_core/` | 도미닉 | shape rules, parsing, normalization, preview serialization |
-| shapez_solver | `django_apps/shapez_solver/` | 유리 | solver use cases, planner/solver services, persisted solver runs |
-| asteroid_lab | `django_apps/asteroid_lab/` | 유리 | asteroid lab ORM, decode, replay, layout optimization |
-| web | `django_apps/web/` | 지나 | page composition, templates, static assets, thin view controllers |
-| tests | `tests/` | 테스 | unit and integration coverage |
-
-### Dependency direction
-
-- `shapez_core` imports no `web`, no `shapez_solver`, and no `asteroid_lab`.
-- `shapez_solver` may import `shapez_core` only (not `asteroid_lab`).
-- `asteroid_lab` may import `shapez_core` only (not `shapez_solver`).
-- `web` may import `shapez_core`, `shapez_solver`, and `asteroid_lab`.
-- HTTP endpoints belong to the app that owns the behavior, not to a generic API hub.
-
-Allowed:
-
-- `django_apps.shapez_solver -> django_apps.shapez_core`
-- `django_apps.asteroid_lab -> django_apps.shapez_core`
-- `django_apps.web -> django_apps.shapez_core`
-- `django_apps.web -> django_apps.shapez_solver`
-- `django_apps.web -> django_apps.asteroid_lab`
-
-Forbidden:
-
-- `django_apps.shapez_core -> django_apps.web`
-- `django_apps.shapez_core -> django_apps.shapez_solver`
-- `django_apps.shapez_core -> django_apps.asteroid_lab`
-- `django_apps.shapez_solver -> django_apps.web`
-- `django_apps.shapez_solver <-> django_apps.asteroid_lab` (서로 import 금지)
-- `django_apps.asteroid_lab -> django_apps.web`
-
-### Solver vs recipe graph vs UI
-
-- **Solver·도메인 규칙**은 `shapez_core` / `shapez_solver`에 둔다. Django 뷰에 비즈니스 규칙을 넣지 않는다.
-- **그래프 편집·렌더링·라벨**은 웹 레이어(`django_apps/web/` 정적·템플릿)와 어댑터 경계에서 처리하고, **물리 그래프 로직**과 **요약 수치만 있는 수요 로직**을 섞지 않는다.
-- 아래를 혼동하지 않는다: demand summary · source quantity · target output · materialized nodes · visual labels · operation/intermediate structure. 요약이 맞다고 **연결 그래프**가 증명되지는 않는다.
-- 연산 출력은 **중간 도형 노드**를 거친다; 한 연산 출력을 다른 연산 입력으로 **직접 접합**하지 않는다 (프로젝트 모델 규칙).
-
-### Placement rules (Django)
-
-- Core domain objects and canonical shape data: `django_apps/shapez_core/domain/`.
-- Parsing and preview response composition: `django_apps/shapez_core/services/`.
-- Solver persistence and orchestration: `django_apps/shapez_solver/`.
-- Asteroid lab services, replay, optimization: `django_apps/asteroid_lab/`.
-- HTML rendering and browser assets: `django_apps/web/`.
-
-### Asteroid Lab coordinates
-
-Blueprint grid·replay·좌표 불변식은 [@asteroid-lab-invariants.mdc](mdc:.cursor/rules/asteroid-lab-invariants.mdc)를 본다 (중복 기술 금지).
-
-### Test placement (Django)
-
-- Core parsing/rendering logic: `tests/unit/shapez_core/`
-- Solver logic and models: `tests/unit/shapez_solver/`
-- Asteroid lab: `tests/unit/asteroid_lab/`
-- Request/response and page smoke tests: `tests/integration/`
-
-경로가 pytest 마커와 대응한다. 구간 실행은 [AGENTS.md](mdc:AGENTS.md).
-
----
-
-## Phase 2+ — Hexagonal target (`src/shapez2_factory/`)
-
-점진 추출 목표. 현재는 stub만 존재한다.
-
-### 레이어
+## 레이어
 
 | 레이어 | 경로 | 담당 | 원칙 |
 |---|---|---|---|
-| domain | `src/shapez2_factory/domain/` | 도미닉 | 순수 규칙, 값 객체, 정책 |
-| application | `src/shapez2_factory/application/` | 유리 | use case, DTO, port 추상화 |
-| adapters | `src/shapez2_factory/adapters/` | 아다 | 외부 시스템 구현, 응답→DTO 변환 |
-| interfaces | `src/shapez2_factory/interfaces/` | 지나 | UI 화면, 사용자 상태, 위젯 조합 |
-| bootstrap | `src/shapez2_factory/bootstrap/` | 시몬 | 조립, dependency wiring |
+| domain | `src/{{package_name}}/domain/` | 도미닉 | 순수 규칙, 값 객체, 정책 |
+| application | `src/{{package_name}}/application/` | 유리 | use case, DTO, port 추상화 |
+| adapters | `src/{{package_name}}/adapters/` | 아다 | 외부 시스템 구현, 응답→DTO 변환 |
+| interfaces | `src/{{package_name}}/interfaces/` | 지나 | UI 화면, 사용자 상태, 위젯 조합 |
+| bootstrap | `src/{{package_name}}/bootstrap/` | 시몬 | 조립, dependency wiring |
 | tests | `tests/` | 테스 | unit/integration/golden |
 
-### 의존 방향
+## 의존 방향
 
 - `domain`은 다른 레이어를 import하지 않는다.
 - `application`은 `domain`과 `application.ports`에 의존한다.
@@ -94,38 +19,21 @@ Blueprint grid·replay·좌표 불변식은 [@asteroid-lab-invariants.mdc](mdc:.
 - `interfaces`는 use case 또는 application DTO에 의존하되 adapter 구현 세부를 직접 알지 않는다.
 - `bootstrap`에서 구체 adapter와 UI/use case를 조립한다.
 
-### Port 규칙
+## Port 규칙
 
-- port는 `src/shapez2_factory/application/ports/`에 둔다.
+- port는 `src/{{package_name}}/application/ports/`에 둔다.
 - use case는 구체 클래스가 아니라 port protocol/abstract interface에 의존한다.
 - adapter는 port 계약을 만족시키고 외부 응답을 application DTO로 변환한다.
 - port 변경은 유리, adapter 구현 변경은 아다, domain 규칙 변경은 도미닉에게 책임을 나눈다.
 
-### Django → hexagonal 매핑 (추출 시)
+## 테스트 배치
 
-| Django (Phase 1) | Target layer |
-|---|---|
-| `shapez_core/domain/` | `domain/` |
-| `shapez_solver/services/`, use-case orchestration | `application/use_cases/` |
-| `shapez_solver/ports/`, protocol boundaries | `application/ports/` |
-| ORM models, external I/O, `services/` adapters | `adapters/` |
-| `django_apps/web/` | `interfaces/` |
-| `config/`, app wiring | `bootstrap/` |
+- domain 규칙: `tests/unit/` 우선.
+- use case 흐름: port fake를 사용한 unit test 우선.
+- adapter/DB/FS: 필요 시 `tests/integration/`.
 
----
+## 참조
 
-## 채팅·레이어 설명 (Caveman)
-
-레이어 경계·의존 방향 설명은 채팅에서 장문 금지. [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc) **## Files** · **## Contracts**에 압축한다.
-
-## References
-
-- [AGENTS.md](mdc:AGENTS.md)
-- [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc)
-- [asteroid-lab-invariants.mdc](mdc:.cursor/rules/asteroid-lab-invariants.mdc)
-- [Repository Structure](mdc:structure.md)
-- [docs/architecture/README.md](mdc:docs/architecture/README.md)
 - [Dominic card](mdc:persona/dominic.md)
 - [Yuri card](mdc:persona/yuri.md)
 - [Ada card](mdc:persona/ada.md)
-- [Gina card](mdc:persona/gina-gui.md)

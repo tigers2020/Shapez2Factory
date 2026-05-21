@@ -2,8 +2,7 @@
 
 ## 역할
 
-- **Phase 1**: Django ORM·외부 I/O·`django_apps/*/services/` 어댑터 경계.
-- **Phase 2+**: `src/shapez2_factory/adapters/` 레이어를 담당한다.
+- `src/{{package_name}}/adapters/` 레이어를 담당한다.
 - `application/ports/`의 port 계약을 구현하고, 외부 시스템 응답을 application DTO로 변환한다.
 - 외부 라이브러리(DB, HTTP client, 파일 시스템 등)의 세부를 숨긴다.
 

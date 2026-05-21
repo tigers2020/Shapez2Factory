@@ -16,7 +16,7 @@
 
 ## 페르소나 다이얼로그 규칙
 
-페르소나는 구현(10단계 중 5번)에서만 대화 형식으로 등장한다. 상세는 [persona-dialogue.mdc](../.cursor/rules/persona-dialogue.mdc)와 [protocols/README.md](../protocols/README.md)를 본다.
+페르소나는 구현(10단계 중 6번)에서만 대화 형식으로 등장한다. 상세는 [persona-dialogue.mdc](../.cursor/rules/persona-dialogue.mdc)와 [protocols/README.md](../protocols/README.md)를 본다.
 
 ## 레이어 의존 방향
 

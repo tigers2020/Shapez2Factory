@@ -20,7 +20,9 @@ from django_apps.game_data.services.simulation_speed_extract import (
     validate_multiple_shape,
 )
 
-FIXTURE = Path(__file__).resolve().parents[3] / "documents" / "game_data" / "simulation_systems.json"
+FIXTURE = (
+    Path(__file__).resolve().parents[3] / "documents" / "game_data" / "simulation_systems.json"
+)
 
 
 def _load_rows() -> list[dict]:

@@ -49,6 +49,10 @@ from django_apps.game_data.models import (
 )
 from django_apps.game_data.services import classifiers, identifiers
 from django_apps.game_data.services.identifiers import InvalidCanonicalIdError
+from django_apps.game_data.services.import_guards import (
+    assert_import_preconditions,
+    run_post_import_guards,
+)
 from django_apps.game_data.services.lazy_localized_text import parse_lazy_localized_text
 
 
@@ -59,6 +63,7 @@ class GameDataImporter:
         self.ctx: ImportContext | None = None
 
     def run(self) -> dict[str, Any]:
+        assert_import_preconditions()
         with transaction.atomic():
             batch = self._load_manifest()
             self.ctx = ImportContext(batch)
@@ -81,7 +86,9 @@ class GameDataImporter:
             self._import_transport_registry()
             self._import_clr_types()
         assert self.ctx is not None
-        return dict(self.ctx.summary)
+        summary = dict(self.ctx.summary)
+        run_post_import_guards()
+        return summary
 
     def _path(self, name: str) -> Path:
         return self.source_dir / name
@@ -251,9 +258,15 @@ class GameDataImporter:
                     "source_stable_id": str(row.get("stable_id", "")),
                     "display_name_key": str(row.get("display_name_key", "")),
                     "is_mirrored": internal.endswith("Mirrored"),
-                    "size_x": int(dig(snap, "ConnectorData", "TileDimensions", "x", default=0) or 0),
-                    "size_y": int(dig(snap, "ConnectorData", "TileDimensions", "y", default=0) or 0),
-                    "size_z": int(dig(snap, "ConnectorData", "TileDimensions", "z", default=0) or 0),
+                    "size_x": int(
+                        dig(snap, "ConnectorData", "TileDimensions", "x", default=0) or 0
+                    ),
+                    "size_y": int(
+                        dig(snap, "ConnectorData", "TileDimensions", "y", default=0) or 0
+                    ),
+                    "size_z": int(
+                        dig(snap, "ConnectorData", "TileDimensions", "z", default=0) or 0
+                    ),
                     "source_row_index": i,
                     "source_object": src,
                 },
@@ -298,7 +311,9 @@ class GameDataImporter:
         profile: str,
     ) -> BuildingGroup | None:
         assert self.ctx is not None
-        group_key = str(row.get("source_guid") or dig(row, "definition_snapshot", "Id", "Id", default=""))
+        group_key = str(
+            row.get("source_guid") or dig(row, "definition_snapshot", "Id", "Id", default="")
+        )
         if not group_key:
             return None
         snap = row.get("definition_snapshot") or {}
@@ -328,8 +343,12 @@ class GameDataImporter:
             defaults={
                 "is_transport_building": bool(sim.get("IsTransportBuilding", False)),
                 "pipette_override_id": str(dig(sim, "PipetteOverrideId", "Id", default="")),
-                "show_stat_belt_processing_time": bool(sim.get("ShowStatBeltProcessingTime", False)),
-                "show_stat_buildings_per_full_belt": bool(sim.get("ShowStatBuildingsPerFullBelt", False)),
+                "show_stat_belt_processing_time": bool(
+                    sim.get("ShowStatBeltProcessingTime", False)
+                ),
+                "show_stat_buildings_per_full_belt": bool(
+                    sim.get("ShowStatBuildingsPerFullBelt", False)
+                ),
                 "show_in_speed_overview": bool(sim.get("ShowInSpeedOverview", False)),
             },
         )
@@ -345,7 +364,9 @@ class GameDataImporter:
         BuildingGroupMember.objects.filter(building_group=group).delete()
         for oi, member in enumerate(snap.get("Definitions") or []):
             internal = str(dig(member, "Id", "Name", default=""))
-            variant = BuildingVariant.objects.filter(internal_name=internal).first() if internal else None
+            variant = (
+                BuildingVariant.objects.filter(internal_name=internal).first() if internal else None
+            )
             resolution = BuildingGroupMember.MemberResolution.EMBEDDED
             cycle = ""
             if "$cycle" in member:
@@ -376,7 +397,10 @@ class GameDataImporter:
         rows = load_json(self._path("building_groups.json"))
         for i, row in enumerate(rows):
             if self._upsert_building_group(
-                row, filename="building_groups.json", index=i, profile=BuildingGroup.DisplayProfile.LAZY
+                row,
+                filename="building_groups.json",
+                index=i,
+                profile=BuildingGroup.DisplayProfile.LAZY,
             ):
                 self.ctx.bump("building_group")
 

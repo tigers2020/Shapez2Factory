@@ -201,9 +201,10 @@ fitness: corridor·narrow passage·future expansion·trunk sharing·route goal q
 ```text
 1) candidate canonical dedupe — CandidateEquivalenceKey 등 동치 키로 동일 기하·stub·처리량·topology_signature 후보 축소 (Phase 3)
 2) route_domain 단일 소유 — RouteDomainSnapshotBuilder만 스냅샷 생성; reservation·commit 반영은 전면 재빌드, 제자리 in-place mutation 금지 (Phase 1·4·7)
-3) probe 낙관성 대응 — candidate 시점 reachable ≠ commit 시 corridor starvation 동치; fitness에 route_fragility·shared corridor pressure 등 보수적 프록시 (Phase 4·5)
+3) probe 낙관성 대응 — predictive fragility/corridor penalties (`PenaltyMode.CONSERVATIVE`; Phase 4·5)
 4) Recovery budget — max_removed_candidates·max_carve_cells·max_reroute_attempts 등 thrashing 상한 (Phase 7)
-5) evolution diversity — GenomeDiversityMetrics(로그·replay metrics)·forced distant mutation 등 국소 최적 붕괴 완화 (Phase 6)
+5) evolution diversity — forced distant mutation(**seed-stable hash**; Phase 6)
+8) observed survivability — solver/GA 입력 금지 (Phase 10B)
 6) domain 전이 기록 — 예약으로 domain이 바뀔 때 coord별 before/after route_class 등 최소 전이 DTO (Phase 7; frozenset[Coord]만으로는 디버그 복구 불충분)
 7) validation 확장 — corridor 잔여·trunk 중복·격리 위험은 v0 최소 검증 유지, 심화는 v1+ (Phase 8)
 ```

@@ -1,5 +1,7 @@
 # Phase 5 — Genome and Fitness
 
+> Fitness input contract·predictive vs observed 분리 — Algorithm [`asteroid_lab_05_genome_fitness.md`](../../Algorithm/asteroid_lab_05_genome_fitness.md) 정본.
+
 ## 목적
 
 Candidate pool에서 어떤 bundle 조합을 선택할지 평가하는 genome 구조와 fitness 함수를 정의한다.

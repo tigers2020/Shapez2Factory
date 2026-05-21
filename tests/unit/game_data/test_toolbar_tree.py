@@ -94,9 +94,10 @@ def test_ancestor_chain_children_5_8_4(game_data_dir: Path) -> None:
     assert nodes["root"].depth == 0
     assert nodes["root/Children[5]"].parent_id == nodes["root"].id
     assert nodes["root/Children[5]/Children[8]"].parent_id == nodes["root/Children[5]"].id
-    assert nodes["root/Children[5]/Children[8]/Children[4]"].parent_id == nodes[
-        "root/Children[5]/Children[8]"
-    ].id
+    assert (
+        nodes["root/Children[5]/Children[8]/Children[4]"].parent_id
+        == nodes["root/Children[5]/Children[8]"].id
+    )
     assert nodes["root/Children[5]/Children[8]/Children[4]"].node_kind == ToolbarNodeKind.ACTION
 
 

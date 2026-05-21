@@ -1,5 +1,23 @@
 # Phase 5 — Genome and Fitness
 
+## Fitness input contract
+
+| 역할 | 데이터 소스 | 금지 |
+|------|-------------|------|
+| **Predictive fitness** | candidate 시점 `route_probe_result` + provisional `route_domain` | commit 재-probe 결과를 fitness 입력으로 쓰지 않음 |
+| **Commit proof** | Phase 7 최신 `RouteDomainSnapshotBuilder.build_snapshot` 재-probe | fitness total이 commit 성공의 논리적 함의가 아님 |
+
+`route_fragility_penalty` / `shared_corridor_pressure_penalty`는 **predictive estimate**이다. **Observed** `CommitSurvivabilityMetrics`는 replay·post-commit 전용([`asteroid_lab_10`](asteroid_lab_10_development_sequence.md) §10B) — **solver/GA 입력 금지**. replay `commit.survivability_summary` 프레임의 `0.0` placeholder는 “패널티 없음”이 아니라 **해당 프레임이 fitness breakdown을 소유하지 않음**을 뜻한다.
+
+`PenaltyMode.CONSERVATIVE` 최소 휴리스틱 (구현: `compute_conservative_fragility_penalties`):
+
+```text
+shared_corridor_pressure_penalty = α * |path_cells ∩ other_candidate_path_cells|
+route_fragility_penalty = β * narrow_route_class_segment_count
+```
+
+`PenaltyMode.OFF` → 두 항목 0.
+
 ## 목적
 
 Candidate pool에서 어떤 bundle 조합을 선택할지 평가하는 genome 구조와 fitness 함수를 정의한다.
@@ -85,7 +103,7 @@ class FitnessBreakdown:
 
 `route_goal_quality_score` / `route_goal_priority_penalty`는 **같은 reachable이라도** trunk 부착·soft corridor·margin·carve 필요 여부를 구분한다. 입력은 candidate에 저장된 `route_probe_result.reached_goal`·`goal_priority`를 사용한다.
 
-`route_fragility_penalty` / `shared_corridor_pressure_penalty`는 **candidate 시점 reachable이 commit에서 깨질 위험**을 줄이기 위한 보수적 항목이다. v0에서는 **0 또는 단순 휴리스틱**(예: path가 공유 복도 셀을 몇 번 지나는지, narrow `RouteClass` 구간 길이)으로 시작하고, **필드는 breakdown에 고정**해 구현 drift를 막는다 (Phase 4 feasibility vs commitability 절 참조).
+`route_fragility_penalty` / `shared_corridor_pressure_penalty`는 **candidate 시점 reachable이 commit에서 깨질 위험**을 줄이기 위한 보수적 항목이다. **`PenaltyMode.OFF`에서만 0**; `CONSERVATIVE`에서는 위 휴리스틱이 non-zero일 수 있다. **필드는 breakdown에 고정** (Phase 4 feasibility vs commitability 절 참조).
 
 ### `unreachable_penalty`가 필요한 이유
 

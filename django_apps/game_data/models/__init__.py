@@ -1,4 +1,4 @@
-﻿"""Re-export all game_data ORM models (stable ``django_apps.game_data.models`` import path)."""
+"""Re-export all game_data ORM models (stable ``django_apps.game_data.models`` import path)."""
 
 # ruff: noqa: E501
 

@@ -117,7 +117,12 @@ class OptimizationInput:
 
 @dataclass(frozen=True, slots=True)
 class EvolutionConfig:
-    """Phase 6 evolution parameters."""
+    """Phase 6 evolution parameters.
+
+    ``forced_distant_mutation_period``: when set, distant replacement uses
+    ``evolution_distant_mutation_slot_index(seed, generation, genome_id)`` —
+    never unseeded ``random``, ``time``, or ``uuid4``.
+    """
 
     seed: int
     population_size: int

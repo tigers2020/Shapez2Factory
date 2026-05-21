@@ -6,6 +6,9 @@ Role: Asteroid Lab Runtime Replay Wiring Architect
 **범위:** Lab persistence·UI 읽기 경로에 optimization replay를 안전하게 연결하는 방법만 다룬다.  
 **금지:** 본 문서만으로는 **솔버·리플레이 이벤트 의미·DTO·테스트 전용 fixture 파서 동작**을 바꾸지 않는다. 실제 배선 구현은 별도 PR·승인 후 진행한다.
 
+> **FIXTURE ENVELOPE SCHEMA ≠ RUNTIME PERSISTENCE SCHEMA**  
+> 테스트 골든 봉투(`replay_summary.replay_truncated` + 최상위 `truncation_reason`)와 런타임 persist(프레임 리스트 + 프레임 `metrics` 집계)는 **다른 스키마**이다. 구현 시 `payload["truncation_reason"]` top-level persist **금지** — §6.1 정본.
+
 ---
 
 ## 1. Purpose (목적)
@@ -42,19 +45,19 @@ Role: Asteroid Lab Runtime Replay Wiring Architect
 
 **중요:** 위 fixture 파서·골든 JSON은 **계약·회귀용**이다. 프로덕션에서 동일 파서/봉투를 솔버 입력 경로에 붙이지 않는다.
 
-### 2.1 런타임에 이미 존재하는 조각 (코드 기준)
+### 2.1 런타임에 이미 존재하는 조각 (코드 기준, 2026-05-21)
 
-- **저장:** `django_apps.asteroid_lab.services.optimization_replay_persist` — `SolverRun.config_json`에 `SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY` (`"optimization_replay_frames"`)로 **프레임 리스트만** 병합 저장. 다른 `config_json` 키는 보존.
-- **직렬화:** `optimization_replay_frames_to_json_list` — 프레임 단위 dict 리스트.
-- **UI:** `django_apps.web.services.asteroid_lab_page_context` — 최신 `SolverRun`에서 위 키를 읽고 `deserialize_optimization_replay_frames_from_json` 성공 시에만 `build_optimization_replay_track_payload`로 `OPTIMIZATION_REPLAY_LAB_PAYLOAD_KEY` (`"optimization_replay"`) 트랙을 채운다. 실패·없음이면 `empty_optimization_replay_track_payload()`와 동일한 빈 트랙에 더해 **`metrics.optimization_replay_diagnostic_reason`**(12G, 메타데이터 전용)을 붙인다. **12H:** `asteroid_miner_layout_solver.html` SSR + `asteroid_miner_layout_lab.js`의 `renderOptimizationReplayHud`가 `replay_truncated` / `truncation_reason` / 진단 reason을 표시 전용으로 노출한다.
-- **트랙 `metrics`:** `build_optimization_replay_track_payload`가 `frame_count`, `event_type_counts`, `replay_truncated`를 채운다. `replay_truncated`는 프레임 `metrics` 집계 (`_aggregate_replay_truncated`).
+- **합성·페이로드:** `django_apps.asteroid_lab.services.lab_replay_timeline_payload.build_lab_replay_frames_for_project` — Lab `ReplayTrack` + solver runtime segment → 단일 timeline frames + track `metrics`.
+- **UI:** `django_apps.web.services.asteroid_lab_page_context` + `django_apps/web/static/web/js/asteroid_miner_layout_lab.js` — **`updateReplayTruncationHud`** 가 track `metrics.replay_truncated` / `metrics.truncation_reason` / `diagnostic_reason` 표시(표시 전용).
+- **트랙 `metrics`:** `_track_metrics_from_serialized_frames` — `replay_truncated`는 프레임 OR; `truncation_reason`·`dropped_frame_count`는 **마지막 프레임** `metrics`에서 읽음 (§6.1).
+- **Deprecated (dual-track):** `build_optimization_replay_track_payload`, `renderOptimizationReplayHud`, `#lab-optimization-replay-status` — 제거·미사용; 신규 코드에서 참조 금지.
 
 ### 2.2 Fixture 봉투 vs 런타임 persist 형상
 
 | 항목 | 골든 long replay (`replay_long/`) | 현재 persist + UI |
 |------|-----------------------------------|---------------------|
 | `schema_version` | 봉투 최상위 | persist에는 **없음** (프레임 리스트만) |
-| `replay_summary` / `replay_event_sequence` | 봉투에 명시 | UI에서 `build_optimization_replay_track_payload`가 **재계산** |
+| `replay_summary` / `replay_event_sequence` | 봉투에 명시 | `build_lab_replay_frames_for_project`가 **재계산** |
 | `truncation_reason` | 봉투 최상위 (짝 계약) | **12F v0 이후:** 프레임 `metrics` → 트랙 `metrics.truncation_reason` 집계 (아래 §6.1) |
 
 이 표로 **테스트 봉투 ≠ 런타임 persist**를 분리해, fixture 파서를 production parser처럼 가져오는 실수를 방지한다.
@@ -160,7 +163,7 @@ page context / UI payload builder
 **`truncation_reason`은 `SolverRun.config_json` sibling으로 저장하지 않는다.**
 
 - **발행:** 잘림을 나타내는 프레임의 `metrics`에 `replay_truncated: true`와 `truncation_reason: <non-empty string>`을 **함께** 둔다.
-- **집계:** `build_optimization_replay_track_payload`가 프레임 `metrics`에서 `truncation_reason`을 읽어 **`metrics.truncation_reason`**으로 올린다. 여러 프레임에 reason이 있으면 **첫 번째** reason을 정본으로 사용한다.
+- **집계:** `_track_metrics_from_serialized_frames`(`lab_replay_timeline_payload.py`)가 프레임 `metrics`에서 **`metrics.truncation_reason`**으로 올린다. `replay_truncated == true`일 때 reason·`dropped_frame_count`는 **마지막 프레임** `metrics` 정본(코드 L204–212).
 - **v1 대안:** `config_json` sibling은 설계상 보류이며, 필요 시 별도 문서/PR에서만 재검토한다.
 
 **트랙 `metrics` 짝 계약 (UI·가드의 공통 기준):**

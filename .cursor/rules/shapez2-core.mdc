@@ -38,11 +38,11 @@ python -m ruff check <paths>        # green 후
 ```bash
 python -m ruff check .
 python -m black --check .
-python -m mypy src
+python -m mypy django_apps config src
 python -m pytest
 ```
 
-**Phase 2부터**: `mypy src`를 `mypy django_apps config src`로 확장 (AGENTS.md 단일 변경).
+PR full gate: `mypy django_apps config src` ([AGENTS.md](mdc:AGENTS.md)).
 
 ---
 

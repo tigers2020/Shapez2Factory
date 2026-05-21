@@ -10,7 +10,7 @@
 ```bash
 pytest -q           # 1. 테스트
 ruff check .        # 2. 린트
-mypy src            # 3. 타입 검사
+mypy django_apps config src  # 3. 타입 검사
 black --check .     # 4. 포맷 확인
 ```
 

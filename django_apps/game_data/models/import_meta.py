@@ -1,4 +1,4 @@
-﻿"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
+"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
 
 # ruff: noqa: E501
 
@@ -40,7 +40,9 @@ class ArtifactChecksum(models.Model):
     Maps manifest ``file_hashes`` — not the same as ``SourceObject`` (row index).
     """
 
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="checksums")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="checksums"
+    )
     artifact_filename = models.CharField(max_length=128)
     expected_sha256 = models.CharField(max_length=80)
     import_status = models.CharField(max_length=32, default="pending")
@@ -81,7 +83,9 @@ class ExportWarning(models.Model):
 
 
 class ExportIncompleteSection(models.Model):
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="incomplete_sections")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="incomplete_sections"
+    )
     section_code = models.CharField(max_length=64)
 
     class Meta:
@@ -119,7 +123,9 @@ class LocalizationExportStatus(models.Model):
 class SourceObject(models.Model):
     """Row-level provenance for a JSON array element (canonical: ``source_object_record``)."""
 
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="source_objects")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="source_objects"
+    )
     source_file = models.CharField(max_length=128)
     source_row_index = models.PositiveIntegerField()
     source_stable_id = models.CharField(max_length=64, blank=True, default="")
@@ -153,7 +159,9 @@ class UnknownProperty(models.Model):
     Stores ``reason_code`` + ``classification`` + value preview/hash only — never full JSON blobs.
     """
 
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="unknown_properties")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="unknown_properties"
+    )
     owner_model = models.CharField(max_length=64)
     owner_key = models.CharField(max_length=255)
     json_path = models.TextField()

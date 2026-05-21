@@ -129,7 +129,7 @@ latest route_domain snapshot
 
 # Priority 1 — Sequence 10 Completion
 
-**상태 정리 (2026-05-17):** Regression Fixtures 하위 **10B-v0**(metrics contract·minimal survivability 비교)는 완료. **10B narrow corridor expansion(GitHub #14)** 은 `tests/unit/shapez_asteroid/test_corridor_survivability_expansion.py`에 랜드됨. **대칭 rim goal narrow bridge**(`build_symmetric_*`, `tests/unit/shapez_asteroid/test_symmetric_corridor_fixture.py`)로 commit_order가 브리지 소비 순서를 결정함을 별도 고정; **rim_right 단일 goal 비대칭 픽스처**는 의도적 분리 유지. **narrow corridor JSON 골든(v0)** 은 `tests/fixtures/shapez_asteroid/optimization/` + `test_narrow_corridor_optimization_json_fixtures.py`로 반영. **테스트 전용 JSON 계약 파서**(`tests/unit/shapez_asteroid/fixtures/optimization_json.py`, `schema_version` 1 엄격 검증, 프로덕션 솔버 입력 아님)와 `test_optimization_fixture_json_contract.py`가 동일 픽스처에 대해 라운드트립·빌더 동등성을 고정한다. **Replay-track JSON 골든(v0)** 은 `tests/fixtures/shapez_asteroid/replay/` + `fixtures/replay_json.py` + `test_replay_fixture_json_contract.py`로 출력 계약·이벤트 순서·요약 메트릭을 고정(솔버 입력·프로덕션 런타임 배선 아님). **Long replay stitching JSON(v0)** 은 `tests/fixtures/shapez_asteroid/replay_long/` + `test_long_replay_fixture_contract.py`로 진화 구간→`best_genome.selected`→incremental commit→`commit.survivability_summary` 스티칭과 `replay_truncated`·최상위 `truncation_reason` 짝을 계약 테스트로 고정했으며(동일 `replay_json` 파서, 출력 전용), **프로덕션 런타임 replay JSON persistence·도메인 DTO 역직렬화·전역 진화 JSON 팩** 등은 여전히 후속이다. “Sequence 10 전부 완료”로 읽지 말 것.
+**상태 정리 (2026-05-21, 실제 트리 기준 재정렬):** [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) §10B — **계약·관측 목표만 문서화, 구현·fixture 미착수**. 아래 경로는 **설계·계획용**이며 현재 저장소에 없을 수 있다: `tests/fixtures/shapez_asteroid/`, `tests/unit/shapez_asteroid/`. **실제 v0 검증**은 `tests/unit/asteroid_lab/`(예: `test_incremental_commit.py`, `test_lab_replay_timeline_payload.py`). **10B narrow corridor / survivability 회귀 팩·JSON 골든·replay_long 봉투**는 후속(§10B·Priority 1). **Lab unified replay** truncation 짝은 런타임 **프레임 `metrics` → 트랙 `metrics`** ([`asteroid_lab_12_runtime_replay_wiring.md`](asteroid_lab_12_runtime_replay_wiring.md)); fixture 봉투의 최상위 `truncation_reason`은 **골든 전용**이며 persist에 쓰지 않는다. “Sequence 10 전부 완료”로 읽지 말 것.
 
 ## 목표
 
@@ -234,13 +234,13 @@ test_transport_kind_corridor_conflict_regression
 # Sequence 10B — Route Fragility Regression Pack
 
 ```text
-10B-v0: metrics contract + minimal survivability comparison — complete
-10B narrow corridor expansion (#14): landed in tests/unit/shapez_asteroid/test_corridor_survivability_expansion.py
-10B symmetric dual-goal narrow bridge: tests/unit/shapez_asteroid/test_symmetric_corridor_fixture.py + narrow_corridor.py helpers
-JSON fixture pack: narrow corridor v0 landed; replay-track JSON v0 landed under tests/fixtures/shapez_asteroid/replay/; long replay stitching (replay_long/) + truncation_reason contract landed; full evolution optimization JSON golden / production runtime replay persist still open
+10B-v0: metrics contract + PenaltyMode — spec only (see asteroid_lab_10 §10B, not implemented)
+10B narrow corridor expansion (#14): [ ] planned under tests/unit/asteroid_lab/ or future shapez_asteroid fixtures
+10B symmetric dual-goal narrow bridge: [ ] planned
+JSON fixture pack (shapez_asteroid/replay/, replay_long/): [ ] planned; fixture envelope ≠ runtime persist
 ```
 
-> **구현 교차 참조 (2026-05-17):** `asteroid_lab_10_development_sequence.md`의 Regression Fixtures **Sequence 10B-v0**에 `CommitSurvivabilityMetrics`·`PenaltyMode`·`commit.survivability_summary` 리플레이가 land했다. **#14 회귀 팩·대칭 goal 변형**은 위 테스트·픽스처로 반영되었고, **narrow corridor 직렬화 JSON 골든(v0)** 은 `tests/fixtures/shapez_asteroid/optimization/`에 반영되었다. **테스트 전용 JSON 계약 파서**(`tests/unit/shapez_asteroid/fixtures/optimization_json.py`)로 `schema_version`·필수 키·최상위 키 화이트리스트를 고정했으며, **replay-track JSON 골든(v0)** 과 `fixtures/replay_json.py`로 리플레이 출력·이벤트 순서·요약을 별도 고정했다(솔버 입력 아님). **Long replay stitching** 은 `tests/fixtures/shapez_asteroid/replay_long/`·`test_long_replay_fixture_contract.py`로 스티칭 순서·절단 경계·`truncation_reason` 짝을 고정했다(출력 전용). **프로덕션 솔버 입력 배선·도메인 DTO 역직렬화·전역 팩**은 후속이다.
+> **구현 교차 참조 (2026-05-21):** `CommitSurvivabilityMetrics`·`PenaltyMode`·`COMMIT_SURVIVABILITY_SUMMARY`는 **문서 계약만** 존재. Python DTO·골든·`summarize_incremental_commit`는 미착수. **Predictive** `route_fragility_penalty` / `shared_corridor_pressure_penalty`는 Phase 5 [`asteroid_lab_05_genome_fitness.md`](asteroid_lab_05_genome_fitness.md); **observed** survivability는 replay·post-commit 전용(솔버/GA 입력 금지).
 
 ## 목적
 
@@ -530,16 +530,19 @@ test_forced_distant_mutation_breaks_local_optimum
 
 # Sequence 12B — Commit Survivability Fitness
 
+**타임라인:** **v0.1 (선행)** — Phase 5 `PenaltyMode.CONSERVATIVE` + predictive `route_fragility_penalty` / `shared_corridor_pressure_penalty` (candidate domain, [`asteroid_lab_05`](asteroid_lab_05_genome_fitness.md)). **v1+ (본 절)** — post-commit survivability **estimation** (observed metrics는 여전히 solver 입력 금지).
+
 ## 목적
 
-fitness와 실제 commit 성공률 정렬.
+fitness **predictive** 추정과 실제 commit 성공률의 정렬(전역 commit 예측기 아님).
 
 ---
 
 ## 작업
 
 ```text
-[ ] post-commit survivability estimation
+[ ] v0.1: conservative fragility/corridor penalties in FitnessBreakdown (Phase 5)
+[ ] v1+: post-commit survivability estimation (observability / replay only)
 [ ] reservation pressure heuristic
 [ ] future expansion survivability scoring
 ```

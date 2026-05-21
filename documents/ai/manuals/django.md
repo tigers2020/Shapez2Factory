@@ -10,6 +10,29 @@
 | shapez_solver | `django_apps/shapez_solver/` | 솔버 유스케이스·서비스 |
 | asteroid_lab | `django_apps/asteroid_lab/` | 소행성 실험실(ORM·디코드·리플레이; 레시피 솔버와 별도) |
 | web | `django_apps/web/` | 템플릿·정적 자산·얇은 뷰 |
+| game_data | `django_apps/game_data/` | 게임 덤프 ORM·importer·admin·browse |
+
+페르소나: [`persona/denny.md`](../../../persona/denny.md). 경로 glob 규칙: [`.cursor/rules/django-apps.mdc`](../../../.cursor/rules/django-apps.mdc).
+
+### `game_data` 레이아웃
+
+| 경로 | 책임 |
+|------|------|
+| `models/` | 구체 필드·FK/OneToOne·`Meta.constraints` (도메인 모델) |
+| `importers/` | JSON → ORM 결정적 import |
+| `services/` | 분류·검증·`validators.assert_no_domain_json_fields` |
+| `browse/` | taxonomy → admin 대시보드 (thin view) |
+| `admin.py` | aggregate root `ModelAdmin`·inlines |
+| `management/commands/import_game_data.py` | CLI import + post-import guards |
+
+Browse URL: `config/urls.py` → `path("admin/game-data/", include("django_apps.game_data.browse.urls"))`.
+
+## domain JSON 금지 (`game_data`)
+
+- 도메인 모델에 **`JSONField` 금지** (스키마 없는 덤프 방지).
+- 필드명 `raw_json`, `payload`, `data`, `source_dump`, `audit_blob` **금지**.
+- 예외: `ALLOWED_JSON_MODELS`에 모델명을 명시하고 **플랜·ADR 승인** 후에만 ([`validators.py`](../../../django_apps/game_data/services/validators.py), [`test_no_raw_json_domain_storage.py`](../../../tests/unit/game_data/test_no_raw_json_domain_storage.py)).
+- `audit_blob` 등 레거시는 **마이그레이션으로 concrete 테이블**로 이전; 런타임 모델에 남기지 않는다.
 
 ## 블루프린트 격자 좌표 (공통)
 
@@ -20,7 +43,11 @@
 - `shapez_core` → `web`, `shapez_solver`, `asteroid_lab` **import 금지**
 - `shapez_solver` → `shapez_core` 만 허용 · `web`·`asteroid_lab` import **금지**
 - `asteroid_lab` → `shapez_core` 만 허용(향후)·스켈레톤에서는 미사용 가능 · `web`·`shapez_solver` import **금지**
-- `web` → `shapez_core`, `shapez_solver`, `asteroid_lab` 허용
+- `web` → `shapez_core`, `shapez_solver`, `asteroid_lab`, `game_data` 허용
+- `game_data` → `web`, `shapez_solver`, `asteroid_lab` **import 금지** (`shapez_core`만 허용, 향후)
+- `shapez_core`·`shapez_solver`·`asteroid_lab` → `game_data` **import 금지**
+
+기계 검증: [`tests/unit/architecture/test_django_app_import_boundaries.py`](../../../tests/unit/architecture/test_django_app_import_boundaries.py).
 
 정본: [`.cursor/rules/architecture.mdc`](../../../.cursor/rules/architecture.mdc).
 

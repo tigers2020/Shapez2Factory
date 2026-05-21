@@ -1,4 +1,4 @@
-﻿"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
+"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
 
 # ruff: noqa: E501
 
@@ -57,9 +57,12 @@ class LazyLocalizedPlaceholderReplacement(models.Model):
     def __str__(self) -> str:
         return f"{self.replacement_key} → {self.nested_message_key or self.value_kind}"
 
+
 class LocalizedMessage(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="localized_messages")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="localized_messages"
+    )
     message_key = models.CharField(max_length=512)
     locale_code = models.CharField(max_length=16, default="en")
     message_text = models.TextField()

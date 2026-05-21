@@ -1,5 +1,7 @@
 # Phase 6 — Evolutionary Search v0
 
+> **v0 pipeline:** GA 미구현 — Algorithm [`asteroid_lab_06_evolutionary_search.md`](../../Algorithm/asteroid_lab_06_evolutionary_search.md) 정본(배너·deterministic distant mutation).
+
 ## 목적
 
 Bundle candidate 조합을 evolutionary search로 최적화한다.
@@ -42,7 +44,7 @@ class EvolutionConfig:
     forced_distant_mutation_period: int | None
 ```
 
-`forced_distant_mutation_period`가 `N`이면 **매 N세대마다** 최소 한 번은 `replace_with_nearby_candidate`가 아닌 **원거리 후보 치환**(예: rim 극단 간 swap, 랜덤 후보 주입)을 **결정적 규칙**으로 강제한다. `None`이면 비활성(v0 최소 구현 허용). 국소 최적에만 갇히는 붕괴 완화용이다.
+`forced_distant_mutation_period`: **pool 내 결정적 인덱스** (`evolution_distant_mutation_slot_index`); unseeded random **금지**. Algorithm 정본 §Deterministic distant mutation 참조.
 
 `population_size`·`elite_count`·`tournament_size`는 `population_size > 0`, `0 <= elite_count < population_size` 등 **빌더에서 검증**한다.
 

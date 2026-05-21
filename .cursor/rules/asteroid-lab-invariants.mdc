@@ -44,7 +44,10 @@ TDD·테스트 보호 대상 표: [testing.md § Domain invariants](mdc:document
 
 | **Candidate** | placement **commit 금지**. 생성 → local geometry → immediate route probe → reachable만 normal pool. | [`asteroid_lab_03`](mdc:documents/Algorithm/asteroid_lab_03_candidate_generator.md) |
 
-| **Commit** | commit-time **latest `route_domain` re-probe**. `RouteDomainSnapshotBuilder` **단일** 진입. candidate reachable ≠ 최종 증명. | [`asteroid_lab_07`](mdc:documents/Algorithm/asteroid_lab_07_incremental_commit.md); `test_incremental_commit_reprobes_latest_route_domain` |
+| **Commit** | commit-time **latest `route_domain` re-probe**. `RouteDomainSnapshotBuilder.build_snapshot` **정본**; `build_commit_snapshot` 별도 semantics 금지. candidate reachable ≠ 최종 증명. | [`asteroid_lab_07`](mdc:documents/Algorithm/asteroid_lab_07_incremental_commit.md); `test_incremental_commit_reprobes_latest_domain` |
+| **Fitness vs survivability** | `FitnessBreakdown` penalties = **predictive** (candidate probe). `CommitSurvivabilityMetrics` = **observed** — solver/GA/replay→input **금지**. | [`asteroid_lab_05`](mdc:documents/Algorithm/asteroid_lab_05_genome_fitness.md); [`asteroid_lab_10`](mdc:documents/Algorithm/asteroid_lab_10_development_sequence.md) §10B |
+| **Replay truncation** | **Fixture envelope ≠ runtime persist.** Track `truncation_reason` from **last frame** `metrics`; top-level persist **금지**. | [`asteroid_lab_12`](mdc:documents/Algorithm/asteroid_lab_12_runtime_replay_wiring.md) §6.1; `test_build_lab_replay_truncation_surfaces_track_metrics` |
+| **Evolution RNG** | `forced_distant_mutation` via **seed-stable hash** only; unseeded `random`/`uuid4` **금지**. v0: GA loop deferred. | [`asteroid_lab_06`](mdc:documents/Algorithm/asteroid_lab_06_evolutionary_search.md); `test_evolution_distant_mutation_slot_deterministic` |
 
 | **Validation** | read-only assert; route·placement·topology **repair 금지**. | [`asteroid_lab_08`](mdc:documents/Algorithm/asteroid_lab_08_validation.md); [ADR-003](mdc:documents/adr/ADR-003-final-validation-assertion-gate.md) |
 

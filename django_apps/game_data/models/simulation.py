@@ -1,4 +1,4 @@
-﻿"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
+"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
 
 # ruff: noqa: E501
 
@@ -25,7 +25,9 @@ class SimulationProfile(models.Model):
 
 
 class SimulationSystem(models.Model):
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="simulation_systems")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="simulation_systems"
+    )
     source_stable_id = models.CharField(max_length=64)
     source_row_index = models.PositiveIntegerField()
     system_family = models.CharField(max_length=128)
@@ -125,7 +127,11 @@ class ConnectableSimulation(models.Model):
     connectable_key = models.CharField(max_length=64)
     attachment_index = models.PositiveIntegerField()
     building_variant = models.ForeignKey(
-        BuildingVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name="connectables"
+        BuildingVariant,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="connectables",
     )
     num_connectors = models.PositiveIntegerField(default=0)
     num_occupied_tiles = models.PositiveIntegerField(default=0)
@@ -295,7 +301,11 @@ class GlobalBeltSpeedPolicy(models.Model):
     )
     base_speed = models.CharField(max_length=64, blank=True, default="")
     research_upgrade = models.ForeignKey(
-        ResearchUpgrade, on_delete=models.SET_NULL, null=True, blank=True, related_name="belt_policies"
+        ResearchUpgrade,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="belt_policies",
     )
     steps_per_tick = models.PositiveIntegerField(default=0)
 
@@ -457,10 +467,15 @@ class SimulationRuntimeAuditIssue(models.Model):
     source_path = models.CharField(max_length=512, blank=True, default="")
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["simulation_system", "issue_code"],
+                name="uq_sim_runtime_audit_issue_system_code",
+            ),
+        ]
         verbose_name = "simulation runtime audit issue"
         verbose_name_plural = "⑥ Simulation · Runtime audit issues"
         ordering = ["simulation_system_id", "issue_code"]
 
     def __str__(self) -> str:
         return f"{self.issue_code}:{self.simulation_system_id}"
-

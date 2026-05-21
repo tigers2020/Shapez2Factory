@@ -24,8 +24,7 @@ def test_parse_lazy_localized_text_extracts_all_observed_fields() -> None:
     assert parsed.message_key == "side-goal.hard-postFinalT3-1"
     assert parsed.lazy_text_type == "Core.Localization.LazyLocalizedText"
     assert (
-        parsed.placeholder_resolver_type
-        == "Core.Localization.LazyLocalizedTextPlaceholderResolver"
+        parsed.placeholder_resolver_type == "Core.Localization.LazyLocalizedTextPlaceholderResolver"
     )
     assert parsed.is_cycle_reference is False
     assert parsed.cycle_reference == ""

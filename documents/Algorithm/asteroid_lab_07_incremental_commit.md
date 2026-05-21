@@ -149,9 +149,14 @@ commit이 **성공(CONFIRMED)** 하면:
 
 ## RouteDomainSnapshotBuilder — route_domain 스냅샷 정본 API
 
-- **정본 진입점**: `RouteDomainSnapshotBuilder.build_snapshot(inp, *, confirmed_reservations=(), committed_occupied_cells=frozenset())`  
-  - 선택 인자: `confirmed_reservations`, `committed_occupied_cells` (둘 다 비어 있으면 시드 스냅샷과 동등하게 `build_seed_snapshot` 경로).
-- **하위 호환**: `build_commit_snapshot(...)`는 위 `build_snapshot`에 **얇게 위임**하는 래퍼로 남길 수 있다.
+| API | 역할 | 비고 |
+|-----|------|------|
+| `build_snapshot(inp, *, confirmed_reservations=(), committed_occupied_cells=frozenset(), provisional_blocked_cells=frozenset())` | **정본** — probe·commit 오버레이 | 별도 semantics 금지 |
+| `build_seed_snapshot(inp)` | 빈 오버레이 convenience | `build_snapshot(..., all overlays empty)`와 동등 |
+| `build_route_domain_for_projected_gene_probe(inp, projected)` | candidate **provisional** only | [route_probe.py](django_apps/asteroid_lab/optimization/route_probe.py) 단일 허용 래퍼 |
+| `build_commit_snapshot(...)` | **미구현·선택** | 추가 시 `build_snapshot` 1줄 위임 + `@deprecated`만; commit 전용 semantics 금지 |
+
+- **구현 진입:** `commit_selected_candidates` ([commit_best_candidates.py](django_apps/asteroid_lab/optimization/commit_best_candidates.py)) — `commit_best_genome` / `_invoke_build_commit` **없음**(구 문서 폐기).
 - 빌더는 셀 도메인을 **불변 스냅샷**으로 구성한다; commit 쪽은 반환된 맵을 **새로 받아** 쓰고, 기존 `RouteCellDomain` 인스턴스를 제자리로 고치지 않는다.
 
 ## `blocked_cells` vs `protected_corridor_cells` (의미 분리)
@@ -207,7 +212,7 @@ candidate가 commit 실패하면 해당 candidate만 rollback한다.
 
 ## 테스트
 
-`tests/unit/shapez_asteroid/test_incremental_commit.py`:
+`tests/unit/asteroid_lab/test_incremental_commit.py`:
 
 ```text
 test_incremental_commit_confirms_connected_candidate
@@ -232,7 +237,7 @@ test_incremental_commit_occupied_cell_conflict_on_path
 ```
 
 - **`HARD_BLOCKED_CONFLICT`**: `test_incremental_commit_hard_blocked_conflict`
-- **`build_snapshot` 단일 진입**: 전용 테스트명 `test_incremental_commit_uses_build_snapshot_single_entry`는 없음. 구현상 `commit_best_genome`이 `_invoke_build_commit` → `RouteDomainSnapshotBuilder.build_snapshot`만 호출하며, 동등 검증으로 `test_incremental_commit_reprobes_latest_route_domain`(프로브마다 새 `route_domain` 객체)·`test_incremental_commit_confirmed_occupied_cells_become_hard_blocked`(오버레이 스냅샷) 등을 참고한다.
+- **`build_snapshot` 단일 진입**: `commit_selected_candidates`가 `RouteDomainSnapshotBuilder.build_snapshot`만 호출. 동등 검증: `test_incremental_commit_reprobes_latest_domain`(프로브마다 새 `route_domain` 객체)·`test_incremental_commit_confirmed_occupied_cells_become_hard_blocked`(오버레이 스냅샷).
 
 본 문서 범위는 Sequence 6 incremental commit 계약 동기화이며, **Sequence 7 validation (`ValidationIssueCode` 등) 구현·UI·CP-SAT·replay·recovery 로직은 추가하지 않는다.**
 

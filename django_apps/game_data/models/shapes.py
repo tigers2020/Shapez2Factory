@@ -1,4 +1,4 @@
-﻿"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
+"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
 
 # ruff: noqa: E501
 
@@ -11,7 +11,9 @@ from django_apps.game_data.models.import_meta import ImportBatch, SourceObject
 
 class FluidColor(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="fluid_colors")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="fluid_colors"
+    )
     color_name = models.CharField(max_length=64, unique=True)
     fluid_kind = models.CharField(max_length=32, default="ColorFluid")
     source_stable_id = models.CharField(max_length=64, blank=True, default="")
@@ -45,12 +47,16 @@ class ShapeRecipe(models.Model):
         ITEMS = "items", "items.json subset"
 
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="shape_recipes")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="shape_recipes"
+    )
     operation_uid = models.PositiveIntegerField(unique=True)
     shape_hash = models.CharField(max_length=128, unique=True)
     quadrant_count = models.PositiveSmallIntegerField(default=4)
     layer_count = models.PositiveSmallIntegerField(default=1)
-    catalog_source = models.CharField(max_length=16, choices=CatalogSource.choices, default=CatalogSource.FULL)
+    catalog_source = models.CharField(
+        max_length=16, choices=CatalogSource.choices, default=CatalogSource.FULL
+    )
     source_stable_id = models.CharField(max_length=64, blank=True, default="")
     source_object = models.ForeignKey(
         SourceObject,
@@ -98,7 +104,9 @@ class ShapeQuadrantSlot(models.Model):
     shape_component_kind = models.ForeignKey(
         ShapeComponentKind, on_delete=models.SET_NULL, null=True, blank=True, related_name="slots"
     )
-    fluid_color = models.ForeignKey(FluidColor, on_delete=models.SET_NULL, null=True, blank=True, related_name="slots")
+    fluid_color = models.ForeignKey(
+        FluidColor, on_delete=models.SET_NULL, null=True, blank=True, related_name="slots"
+    )
     is_empty_shape = models.BooleanField(default=False)
     is_empty_color = models.BooleanField(default=False)
     hash_token = models.CharField(max_length=8, blank=True, default="")

@@ -1,4 +1,4 @@
-﻿"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
+"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
 
 # ruff: noqa: E501
 
@@ -22,7 +22,9 @@ class ToolbarNodeKind(models.TextChoices):
 
 class ToolbarTreeNode(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="toolbar_tree_nodes")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="toolbar_tree_nodes"
+    )
     source_stable_id = models.CharField(max_length=64, blank=True, default="")
     parent = models.ForeignKey(
         "self",
@@ -95,7 +97,9 @@ class ToolbarElement(models.Model):
         OTHER = "other", "Other"
 
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="toolbar_elements")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="toolbar_elements"
+    )
     tree_node = models.OneToOneField(
         ToolbarTreeNode, on_delete=models.CASCADE, related_name="toolbar_element"
     )

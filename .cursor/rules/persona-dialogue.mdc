@@ -32,8 +32,9 @@
 | 유리 | [persona/yuri.md](mdc:persona/yuri.md) | `application/` |
 | 아다 | [persona/ada.md](mdc:persona/ada.md) | `adapters/` (DTO 변환, 비즈니스 규칙 변경 금지) |
 | 테스 | [persona/tess.md](mdc:persona/tess.md) | `tests/`, `test_*.py` |
-| 렉스 | [persona/rex.md](mdc:persona/rex.md) | `pytest` → `ruff check .` → `mypy src` → `black .` |
+| 렉스 | [persona/rex.md](mdc:persona/rex.md) | `pytest` → `ruff check .` → `mypy django_apps config src` → `black .` |
 | 지나 | [persona/gina-gui.md](mdc:persona/gina-gui.md) | `interfaces/`, UI |
+| 데니 | [persona/denny.md](mdc:persona/denny.md) | `django_apps/`, `config/`, Django admin·ORM·importer |
 
 인덱스: [persona/README.md](mdc:persona/README.md).
 
@@ -41,11 +42,12 @@
 
 ```text
 ── 1단계: 리더 브리핑 + 책임 소제 ──
-[시몬] 요청 요약. 도미닉은 domain, 유리는 application, 아다는 adapters를 맡아.
+[시몬] 요청 요약. 도미닉은 domain, 유리는 application, 아다는 adapters, 데니는 django_apps를 맡아.
 
 ── 2단계: 담당자 브리핑 + 진행 설명 ──
 [도미닉] domain 규칙부터 정리할게.
 [유리] use case 연결만 건드릴게.
+[데니] django.md·database.md 확인. 계약 테스트 먼저.
 
 ── 3단계: 코딩 진행 ──
 [도미닉] (...)
@@ -56,7 +58,7 @@
 
 ## 검증 흐름 (렉스)
 
-구현 후: 테스가 테스트 추가 → 렉스가 `pytest` → `ruff check .` → `mypy src` → `black .` 순서로 검증.
+구현 후: 테스가 테스트 추가 → 렉스가 `pytest` → `ruff check .` → `mypy django_apps config src` → `black .` 순서로 검증.
 
 - 실패 시: 실패 명령, 이유, 다음 담당 페르소나를 남긴다.
 - 미실행 시: 실행 못 한 명령, 이유, 남은 위험을 남긴다.

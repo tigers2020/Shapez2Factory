@@ -74,7 +74,9 @@ def speed_batch() -> ImportBatch:
 
 
 @pytest.mark.django_db
-def test_import_buffable_and_multiple_belt_speed(speed_rows: list[dict], speed_batch: ImportBatch) -> None:
+def test_import_buffable_and_multiple_belt_speed(
+    speed_rows: list[dict], speed_batch: ImportBatch
+) -> None:
     import_simulation_systems(ImportContext(speed_batch), speed_rows)
 
     belt_system = SimulationSystem.objects.get(
@@ -150,15 +152,19 @@ def test_full_dump_speed_key_counts(game_data_dir: Path) -> None:
     )
     import_simulation_systems(ImportContext(batch), rows)
 
-    assert SimulationBuffableSpeed.objects.filter(parameter_name="BeltSpeed").count() == counts[
-        "BeltSpeed"
-    ]
-    assert SimulationBuffableSpeed.objects.filter(parameter_name="ConveyorSpeed").count() == counts[
-        "ConveyorSpeed"
-    ]
-    assert SimulationBuffableSpeed.objects.filter(parameter_name="SpaceConveyorSpeed").count() == counts[
-        "SpaceConveyorSpeed"
-    ]
-    assert SimulationMultipleBeltSpeed.objects.filter(parameter_name="JumpSpeed").count() == counts[
-        "JumpSpeed"
-    ]
+    assert (
+        SimulationBuffableSpeed.objects.filter(parameter_name="BeltSpeed").count()
+        == counts["BeltSpeed"]
+    )
+    assert (
+        SimulationBuffableSpeed.objects.filter(parameter_name="ConveyorSpeed").count()
+        == counts["ConveyorSpeed"]
+    )
+    assert (
+        SimulationBuffableSpeed.objects.filter(parameter_name="SpaceConveyorSpeed").count()
+        == counts["SpaceConveyorSpeed"]
+    )
+    assert (
+        SimulationMultipleBeltSpeed.objects.filter(parameter_name="JumpSpeed").count()
+        == counts["JumpSpeed"]
+    )

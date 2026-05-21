@@ -1,4 +1,4 @@
-﻿"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
+"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
 
 # ruff: noqa: E501
 
@@ -11,7 +11,9 @@ from django_apps.game_data.models.import_meta import ImportBatch, SourceObject
 
 class BuildingVariant(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="building_variants")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="building_variants"
+    )
     internal_name = models.CharField(max_length=255, unique=True)
     source_stable_id = models.CharField(max_length=64)
     display_name_key = models.CharField(max_length=512, blank=True, default="")
@@ -40,7 +42,9 @@ class BuildingVariant(models.Model):
 
 class BuildingConnector(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    building_variant = models.ForeignKey(BuildingVariant, on_delete=models.CASCADE, related_name="connectors")
+    building_variant = models.ForeignKey(
+        BuildingVariant, on_delete=models.CASCADE, related_name="connectors"
+    )
     order_index = models.PositiveSmallIntegerField()
     connector_role = models.CharField(max_length=64)
     tile_direction = models.CharField(max_length=32, blank=True, default="")
@@ -68,7 +72,9 @@ class BuildingConnector(models.Model):
 
 class BuildingFootprintTile(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    building_variant = models.ForeignKey(BuildingVariant, on_delete=models.CASCADE, related_name="footprint_tiles")
+    building_variant = models.ForeignKey(
+        BuildingVariant, on_delete=models.CASCADE, related_name="footprint_tiles"
+    )
     order_index = models.PositiveSmallIntegerField()
     x = models.SmallIntegerField(default=0)
     y = models.SmallIntegerField(default=0)
@@ -95,7 +101,9 @@ class BuildingGroup(models.Model):
         LAZY = "lazy_overlay", "building_groups.json"
 
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="building_groups")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="building_groups"
+    )
     group_key = models.CharField(max_length=255, unique=True)
     registry_stable_id = models.CharField(max_length=64, blank=True, default="")
     display_profile = models.CharField(max_length=16, choices=DisplayProfile.choices)
@@ -164,9 +172,15 @@ class BuildingGroupMember(models.Model):
         CYCLE_REF = "cycle_ref", "Cycle reference"
 
     canonical_id = models.CharField(max_length=255, unique=True)
-    building_group = models.ForeignKey(BuildingGroup, on_delete=models.CASCADE, related_name="members")
+    building_group = models.ForeignKey(
+        BuildingGroup, on_delete=models.CASCADE, related_name="members"
+    )
     building_variant = models.ForeignKey(
-        BuildingVariant, on_delete=models.PROTECT, null=True, blank=True, related_name="group_memberships"
+        BuildingVariant,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="group_memberships",
     )
     order_index = models.PositiveSmallIntegerField()
     member_resolution = models.CharField(max_length=16, choices=MemberResolution.choices)
@@ -185,13 +199,19 @@ class BuildingGroupMember(models.Model):
         ordering = ["order_index"]
 
     def __str__(self) -> str:
-        variant = self.building_variant.internal_name if self.building_variant_id else self.internal_variant_name
+        variant = (
+            self.building_variant.internal_name
+            if self.building_variant_id
+            else self.internal_variant_name
+        )
         return f"{self.building_group.group_key} → {variant}"
 
 
 class BuildingPlacementRule(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    building_group = models.ForeignKey(BuildingGroup, on_delete=models.CASCADE, related_name="placement_rules")
+    building_group = models.ForeignKey(
+        BuildingGroup, on_delete=models.CASCADE, related_name="placement_rules"
+    )
     order_index = models.PositiveSmallIntegerField()
     rule_kind = models.CharField(max_length=128)
 
@@ -212,7 +232,9 @@ class BuildingPlacementRule(models.Model):
 
 class TransportBuildingRegistry(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="transport_registry")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="transport_registry"
+    )
     transport_kind = models.CharField(max_length=128, unique=True)
     transport_category = models.CharField(max_length=32, blank=True, default="")
     building_variant = models.ForeignKey(

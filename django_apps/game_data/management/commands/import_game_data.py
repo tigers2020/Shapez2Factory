@@ -7,6 +7,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand, CommandParser
 
 from django_apps.game_data.importers import GameDataImporter
+from django_apps.game_data.services.import_guards import GameDataImportBlockedError
 
 
 class Command(BaseCommand):
@@ -32,8 +33,11 @@ class Command(BaseCommand):
         if not (source / "manifest.json").is_file():
             self.stderr.write(self.style.ERROR(f"manifest.json not found in {source}"))
             return
-        importer = GameDataImporter(source, batch_name=batch_name)
-        summary = importer.run()
+        try:
+            summary = GameDataImporter(source, batch_name=batch_name).run()
+        except GameDataImportBlockedError as exc:
+            self.stderr.write(self.style.ERROR(str(exc)))
+            return
         self.stdout.write(self.style.SUCCESS("Import complete"))
         for key, value in summary.items():
             self.stdout.write(f"  {key}: {value}")

@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 # Typed per-system speed tables: SimulationBuffableSpeed, SimulationMultipleBeltSpeed.
 
 import django.db.models.deletion
@@ -14,7 +15,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationBuffableSpeed",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("canonical_id", models.CharField(max_length=255, unique=True)),
                 ("parameter_name", models.CharField(max_length=100)),
                 ("dump_type", models.CharField(default="BuffableBeltSpeed", max_length=64)),
@@ -47,7 +53,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationMultipleBeltSpeed",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("canonical_id", models.CharField(max_length=255, unique=True)),
                 ("parameter_name", models.CharField(default="JumpSpeed", max_length=100)),
                 ("dump_type", models.CharField(default="MultipleBeltSpeed", max_length=64)),

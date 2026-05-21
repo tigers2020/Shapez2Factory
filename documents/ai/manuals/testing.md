@@ -87,6 +87,8 @@ python -m pytest
 | `failure_reason` · `event_type` · `issue_code` 등 **enum/const** — 자유 문자열 금지 | Phase DTO 문서 | `test_invalid_event_type_rejected`; replay contract tests |
 | 동일 seed **deterministic** (+ tie-break) | evolution 문서 | 필요 영역에 명시적 테스트 |
 | **Regression fixture** — 버그 재발 시점에 추가 | 본 매뉴얼 | `tests/fixtures/asteroid_lab/`; corridor·starvation·replay·coord·UI sync 우선 |
+| **Replay truncation schema** — fixture 봉투(`replay_summary`·top-level `truncation_reason`) **≠** runtime persist (frame `metrics` → track `metrics`) | [`asteroid_lab_12_runtime_replay_wiring.md`](../../Algorithm/asteroid_lab_12_runtime_replay_wiring.md) | `test_lab_replay_timeline_payload.py`, `test_timeline_composer.py`; `tests/fixtures/shapez_asteroid/replay*` = **planned** |
+| **Fitness vs commit survivability** — predictive penalties vs observed metrics; observed → solver input **금지** | [`asteroid_lab_05_genome_fitness.md`](../../Algorithm/asteroid_lab_05_genome_fitness.md) | `test_fitness_contracts.py` |
 
 표에 있는 **미구현** invariant 테스트는 이후 **구현 PR** 범위다. 본 문서는 요구사항·보호 대상만 고정한다.
 

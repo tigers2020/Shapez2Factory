@@ -4,12 +4,19 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from django.contrib import admin
 from django.http import HttpRequest
+from django.utils.html import format_html
 
 from django_apps.game_data import models as m
+from django_apps.game_data.browse.registry import (
+    AGGREGATE_ROOT_SPECS,
+    AggregateRootSpec,
+    RelatedChangelistSpec,
+    related_changelist_url,
+)
 
 
 class GameDataReadOnlyAdminMixin:
@@ -23,6 +30,34 @@ class GameDataReadOnlyAdminMixin:
 
     def has_delete_permission(self, request: HttpRequest, _obj: Any | None = None) -> bool:
         return bool(request.user.is_superuser)
+
+
+class GameDataAggregateAdminMixin:
+    """Aggregate roots expose child inlines plus filtered changelist links for loose FKs."""
+
+    game_data_related_changelists: ClassVar[tuple[RelatedChangelistSpec, ...]] = ()
+
+    @admin.display(description="Related sub-tables")
+    def related_subtable_links(self, obj: Any) -> str:
+        if obj is None or not self.game_data_related_changelists:
+            return "—"
+        links = []
+        for spec in self.game_data_related_changelists:
+            url = related_changelist_url(spec, obj)
+            if url:
+                links.append(format_html('<a href="{}">{}</a>', url, spec.description))
+        if not links:
+            return "—"
+        sep = format_html("<br>")
+        combined = sep.join(links)
+        return combined
+
+
+def _aggregate_spec(model_label: str) -> AggregateRootSpec | None:
+    for spec in AGGREGATE_ROOT_SPECS:
+        if spec.model_label == model_label:
+            return spec
+    return None
 
 
 class ImportBatchFilter(admin.SimpleListFilter):
@@ -122,6 +157,137 @@ class ResearchUnlockCostInline(admin.TabularInline):
     raw_id_fields = ("shape_recipe",)
     ordering = ("order_index",)
     fk_name = "milestone"
+
+
+class BuildingPlacementRuleInline(admin.TabularInline):
+    model = m.BuildingPlacementRule
+    extra = 0
+    can_delete = False
+    fields = ("order_index", "rule_kind")
+    readonly_fields = fields
+    ordering = ("order_index",)
+
+
+class BuildingLocalizationOverlayInline(admin.StackedInline):
+    model = m.BuildingLocalizationOverlay
+    extra = 0
+    max_num = 1
+    can_delete = False
+    fields = ("title_key", "description_key", "lazy_text_namespace")
+    readonly_fields = fields
+
+
+class BuildingSimulationSettingInline(admin.StackedInline):
+    model = m.BuildingSimulationSetting
+    extra = 0
+    max_num = 1
+    can_delete = False
+    fields = (
+        "is_transport_building",
+        "pipette_override_id",
+        "show_stat_belt_processing_time",
+        "show_stat_buildings_per_full_belt",
+        "show_in_speed_overview",
+    )
+    readonly_fields = fields
+
+
+class TransportBuildingRegistryInline(admin.TabularInline):
+    model = m.TransportBuildingRegistry
+    extra = 0
+    can_delete = False
+    fields = ("transport_kind", "transport_category", "display_name_key")
+    readonly_fields = fields
+
+
+class SimulationSystemParameterOccurrenceInline(admin.TabularInline):
+    model = m.SimulationSystemParameterOccurrence
+    extra = 0
+    can_delete = False
+    fields = ("parameter_key", "source_path")
+    readonly_fields = fields
+    raw_id_fields = ("parameter_key",)
+
+
+class ConnectableSimulationSystemInline(admin.TabularInline):
+    model = m.ConnectableSimulation
+    extra = 0
+    can_delete = False
+    fields = (
+        "connectable_key",
+        "attachment_index",
+        "building_variant",
+        "num_connectors",
+        "num_occupied_tiles",
+    )
+    readonly_fields = fields
+    raw_id_fields = ("building_variant",)
+
+
+class SimulationRuntimeAuditIssueInline(admin.TabularInline):
+    model = m.SimulationRuntimeAuditIssue
+    extra = 0
+    can_delete = False
+    fields = ("issue_code", "severity", "message", "source_path")
+    readonly_fields = fields
+
+
+class SimulationTypeInline(admin.StackedInline):
+    model = m.SimulationType
+    extra = 0
+    max_num = 1
+    can_delete = False
+    fields = ("simulation_class", "assembly_name")
+    readonly_fields = fields
+
+
+class SimulationStateTypeInline(admin.StackedInline):
+    model = m.SimulationStateType
+    extra = 0
+    max_num = 1
+    can_delete = False
+    fields = ("state_class", "assembly_name")
+    readonly_fields = fields
+
+
+class SimulationBuffableSpeedInline(admin.TabularInline):
+    model = m.SimulationBuffableSpeed
+    extra = 0
+    can_delete = False
+    fields = ("parameter_name", "base_speed", "steps_per_tick", "dump_type")
+    readonly_fields = fields
+
+
+class SimulationMultipleBeltSpeedInline(admin.TabularInline):
+    model = m.SimulationMultipleBeltSpeed
+    extra = 0
+    can_delete = False
+    fields = ("parameter_name", "multiplier", "steps_per_tick", "cycle_ref_type")
+    readonly_fields = fields
+
+
+class ToolbarTreeNodeChildInline(admin.TabularInline):
+    model = m.ToolbarTreeNode
+    fk_name = "parent"
+    extra = 0
+    can_delete = False
+    fields = ("child_index", "order_index", "node_kind", "internal_name", "localized_title_key")
+    readonly_fields = fields
+    ordering = ("child_index",)
+
+
+class ToolbarElementInline(admin.StackedInline):
+    model = m.ToolbarElement
+    extra = 0
+    max_num = 1
+    can_delete = False
+    fields = ("element_kind", "stable_key", "display_name", "section_index")
+    readonly_fields = fields
+
+
+def _related_for(model_label: str) -> tuple[RelatedChangelistSpec, ...]:
+    spec = _aggregate_spec(model_label)
+    return spec.related_changelists if spec else ()
 
 
 # --- Import ---
@@ -275,7 +441,13 @@ class ShapeRecipeLayerAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
 @admin.register(m.ShapeQuadrantSlot)
 class ShapeQuadrantSlotAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("layer", "quadrant_index", "shape_component_kind", "fluid_color", "is_empty_shape")
+    list_display = (
+        "layer",
+        "quadrant_index",
+        "shape_component_kind",
+        "fluid_color",
+        "is_empty_shape",
+    )
     raw_id_fields = ("layer", "shape_component_kind", "fluid_color")
 
 
@@ -283,7 +455,9 @@ class ShapeQuadrantSlotAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(m.BuildingVariant)
-class BuildingVariantAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+class BuildingVariantAdmin(
+    GameDataAggregateAdminMixin, GameDataReadOnlyAdminMixin, admin.ModelAdmin
+):
     list_display = (
         "internal_name",
         "connector_count",
@@ -295,7 +469,11 @@ class BuildingVariantAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
     list_filter = (ImportBatchFilter, "is_mirrored")
     search_fields = ("internal_name", "canonical_id", "display_name_key")
     raw_id_fields = ("import_batch",)
-    inlines = (BuildingConnectorInline, BuildingFootprintTileInline)
+    inlines = (
+        BuildingConnectorInline,
+        BuildingFootprintTileInline,
+        TransportBuildingRegistryInline,
+    )
 
 
 @admin.register(m.BuildingConnector)
@@ -313,7 +491,7 @@ class BuildingFootprintTileAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(m.BuildingGroup)
-class BuildingGroupAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+class BuildingGroupAdmin(GameDataAggregateAdminMixin, GameDataReadOnlyAdminMixin, admin.ModelAdmin):
     list_display = (
         "group_key",
         "display_profile",
@@ -321,10 +499,20 @@ class BuildingGroupAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
         "player_buildable",
         "import_batch",
     )
-    list_filter = (ImportBatchFilter, "display_profile", "is_transport_building", "player_buildable")
+    list_filter = (
+        ImportBatchFilter,
+        "display_profile",
+        "is_transport_building",
+        "player_buildable",
+    )
     search_fields = ("group_key", "canonical_id", "display_name_key")
     raw_id_fields = ("import_batch",)
-    inlines = (BuildingGroupMemberInline,)
+    inlines = (
+        BuildingGroupMemberInline,
+        BuildingPlacementRuleInline,
+        BuildingLocalizationOverlayInline,
+        BuildingSimulationSettingInline,
+    )
 
 
 @admin.register(m.BuildingLocalizationOverlay)
@@ -413,12 +601,16 @@ class LazyLocalizedTextRefAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(m.ResearchMilestone)
-class ResearchMilestoneAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+class ResearchMilestoneAdmin(
+    GameDataAggregateAdminMixin, GameDataReadOnlyAdminMixin, admin.ModelAdmin
+):
     list_display = ("node_key", "title_message_key", "import_batch")
     list_filter = (ImportBatchFilter,)
     search_fields = ("node_key", "canonical_id", "title_lazy__message_key")
     raw_id_fields = ("import_batch", "title_lazy", "description_lazy")
+    readonly_fields = ("related_subtable_links",)
     inlines = (ResearchUnlockCostInline,)
+    game_data_related_changelists = _related_for("game_data.ResearchMilestone")
 
     @admin.display(description="Title key")
     def title_message_key(self, obj: m.ResearchMilestone) -> str:
@@ -457,7 +649,14 @@ class ResearchSideUpgradeAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
 @admin.register(m.ResearchUnlockCost)
 class ResearchUnlockCostAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("parent_kind", "shape_recipe", "amount", "order_index", "milestone", "side_quest")
+    list_display = (
+        "parent_kind",
+        "shape_recipe",
+        "amount",
+        "order_index",
+        "milestone",
+        "side_quest",
+    )
     list_filter = ("parent_kind",)
     raw_id_fields = ("shape_recipe", "milestone", "side_quest")
 
@@ -495,7 +694,9 @@ class SimulationProfileAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(m.SimulationSystem)
-class SimulationSystemAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+class SimulationSystemAdmin(
+    GameDataAggregateAdminMixin, GameDataReadOnlyAdminMixin, admin.ModelAdmin
+):
     list_display = (
         "system_family",
         "source_row_index",
@@ -507,6 +708,17 @@ class SimulationSystemAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
     list_filter = (ImportBatchFilter, "profile", "system_family")
     search_fields = ("system_family", "canonical_id", "source_stable_id", "display_name_key")
     raw_id_fields = ("import_batch", "profile")
+    readonly_fields = ("related_subtable_links",)
+    inlines = (
+        SimulationSystemParameterOccurrenceInline,
+        ConnectableSimulationSystemInline,
+        SimulationRuntimeAuditIssueInline,
+        SimulationTypeInline,
+        SimulationStateTypeInline,
+        SimulationBuffableSpeedInline,
+        SimulationMultipleBeltSpeedInline,
+    )
+    game_data_related_changelists = _related_for("game_data.SimulationSystem")
 
 
 @admin.register(m.ConnectableSimulation)
@@ -575,7 +787,13 @@ class SimulationMultipleBeltSpeedAdmin(GameDataReadOnlyAdminMixin, admin.ModelAd
 
 @admin.register(m.GlobalBeltSpeedPolicy)
 class GlobalBeltSpeedPolicyAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("import_batch", "base_speed", "research_upgrade", "steps_per_tick", "simulation_system")
+    list_display = (
+        "import_batch",
+        "base_speed",
+        "research_upgrade",
+        "steps_per_tick",
+        "simulation_system",
+    )
     raw_id_fields = ("import_batch", "research_upgrade", "simulation_system")
 
 
@@ -610,7 +828,9 @@ class GameDataReferenceAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
 
 @admin.register(m.ToolbarTreeNode)
-class ToolbarTreeNodeAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+class ToolbarTreeNodeAdmin(
+    GameDataAggregateAdminMixin, GameDataReadOnlyAdminMixin, admin.ModelAdmin
+):
     list_display = (
         "canonical_id_short",
         "source_stable_id_short",
@@ -635,6 +855,8 @@ class ToolbarTreeNodeAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
         "tree_path",
     )
     raw_id_fields = ("import_batch", "parent")
+    inlines = (ToolbarTreeNodeChildInline, ToolbarElementInline)
+    game_data_related_changelists = _related_for("game_data.ToolbarTreeNode")
     readonly_fields = (
         "canonical_id",
         "source_stable_id",
@@ -649,6 +871,7 @@ class ToolbarTreeNodeAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
         "tree_path",
         "import_batch",
         "source_row_index",
+        "related_subtable_links",
     )
     fieldsets = (
         (
@@ -775,7 +998,9 @@ class ToolbarIslandPlacementAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
         cid = obj.toolbar_element.canonical_id if obj.toolbar_element_id else ""
         return cid[:48] + "…" if len(cid) > 48 else (cid or "—")
 
-    @admin.display(description="Tree path (audit)", ordering="toolbar_element__tree_node__tree_path")
+    @admin.display(
+        description="Tree path (audit)", ordering="toolbar_element__tree_node__tree_path"
+    )
     def tree_path_audit(self, obj: m.ToolbarIslandPlacement) -> str:
         elem = obj.toolbar_element
         if elem is None or elem.tree_node_id is None:

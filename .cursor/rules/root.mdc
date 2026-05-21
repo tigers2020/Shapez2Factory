@@ -17,7 +17,7 @@
 1. 범위 확인: 요청이 프로젝트 워크플로우의 어느 단계인지 식별한다.
 2. 경계 확인: domain/application/adapters/interfaces 중 어느 레이어를 바꾸는지 확인한다.
 3. 영향 확인: 테스트, DTO/port, 테마, DB migration, 문서 승인 게이트 영향 여부를 확인한다.
-4. 검증 확인: `pytest` → `ruff check .` → `mypy src` → `black .` 실행 가능 여부를 보고한다.
+4. 검증 확인: `pytest` → `ruff check .` → `mypy django_apps config src` → `black .` 실행 가능 여부를 보고한다.
 
 ## 도메인 용어
 

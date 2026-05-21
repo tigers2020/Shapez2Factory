@@ -208,7 +208,7 @@ commit 성공 후 **reserved path**는 다음 probe를 위해 `RouteDomainSnapsh
 candidate probe 성공 ≠ 최종 commit 성공의 논리적 함의
 ```
 
-대응은 **Phase 7에서 항상 최신 domain으로 재-probe**, **Phase 5 fitness**에 route_fragility·shared corridor pressure 등 **보수적 프록시**(v0는 0 가능), **Phase 8 validation**으로 분산한다.
+대응은 **Phase 7에서 항상 최신 domain으로 재-probe**, **Phase 5 fitness**에 route_fragility·shared corridor pressure 등 **보수적 프록시**(`PenaltyMode.CONSERVATIVE`; `OFF`에서만 0), **Phase 8 validation**으로 분산한다.
 
 ## Invariant
 

@@ -50,7 +50,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="GameDataNamespace",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("code", models.CharField(max_length=64, unique=True)),
                 ("label", models.CharField(max_length=128)),
                 ("order", models.PositiveIntegerField(default=0)),
@@ -64,7 +69,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="GameDataSection",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("code", models.CharField(max_length=128)),
                 ("label", models.CharField(max_length=128)),
                 ("order", models.PositiveIntegerField(default=0)),

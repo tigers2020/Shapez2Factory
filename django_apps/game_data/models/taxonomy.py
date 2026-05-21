@@ -1,4 +1,4 @@
-﻿"""Admin menu taxonomy only — not a substitute for relational FKs."""
+"""Admin menu taxonomy only — not a substitute for relational FKs."""
 
 # ruff: noqa: E501
 

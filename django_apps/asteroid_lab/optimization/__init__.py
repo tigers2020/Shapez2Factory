@@ -69,6 +69,7 @@ from django_apps.asteroid_lab.optimization.enums import (
     EdgeKind,
     EvolutionConvergenceReason,
     MaterializationFailureReason,
+    PenaltyMode,
     PlacementCommitState,
     ReservationState,
     RouteClass,
@@ -81,6 +82,13 @@ from django_apps.asteroid_lab.optimization.enums import (
     ValidationSeverity,
 )
 from django_apps.asteroid_lab.optimization.final_validation import validate_final_layout
+from django_apps.asteroid_lab.optimization.fitness_contracts import (
+    CommitSurvivabilityMetrics,
+    FitnessBreakdown,
+    FitnessMetrics,
+    compute_conservative_fragility_penalties,
+    evolution_distant_mutation_slot_index,
+)
 from django_apps.asteroid_lab.optimization.gene_projection import (
     ProjectedGenePlacement,
     project_gene_placement,
@@ -178,8 +186,13 @@ __all__ = [
     "CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET",
     "CANONICAL_OUTPUT_DIR",
     "CANONICAL_ROUTE_PROBE_START_OFFSET",
+    "CommitSurvivabilityMetrics",
     "EvolutionConfig",
     "EvolutionConvergenceReason",
+    "FitnessBreakdown",
+    "FitnessMetrics",
+    "compute_conservative_fragility_penalties",
+    "evolution_distant_mutation_slot_index",
     "ExistingTransportCell",
     "ExtractorPlacementPolicy",
     "GeneCandidate",
@@ -194,6 +207,7 @@ __all__ = [
     "merge_materialized_layout",
     "GenomeDiversityMetrics",
     "OptimizationInput",
+    "PenaltyMode",
     "PlacementCommitState",
     "RecoveryBudget",
     "RejectedGeneCandidate",

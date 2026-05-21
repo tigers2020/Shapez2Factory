@@ -89,7 +89,10 @@
   /** Set in ``init`` from ``#lab-root`` ``data-lab-sprite-base`` (Django ``{% static %}``). */
   let labSpriteBaseUrl = "";
 
-  const rawTotal = window.__ASTEROID_LAB_TOTAL_FRAMES__;
+  const labRootForTotals = document.getElementById("lab-root");
+  const rawTotal = labRootForTotals
+    ? Number(labRootForTotals.dataset.labTotalFrames)
+    : NaN;
   const TOTAL_FRAMES = Number.isFinite(rawTotal) ? rawTotal : 0;
 
   /** Extra empty cells beyond union bbox on each side (visual col / row), symmetric around (1,0). */

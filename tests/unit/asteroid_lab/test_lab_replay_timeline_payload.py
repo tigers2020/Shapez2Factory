@@ -157,4 +157,5 @@ def test_build_lab_replay_truncation_surfaces_track_metrics(
     frames, metrics = build_lab_replay_frames_for_project(int(p.pk))
     assert len(frames) == 2
     assert metrics["replay_truncated"] is True
+    assert metrics["truncation_reason"] == "max_lab_replay_timeline_frames"
     assert metrics["dropped_frame_count"] == 1

@@ -64,8 +64,7 @@ def test_classify_known_keys() -> None:
         == ParameterClassification.REFLECTION_DUMP
     )
     assert (
-        classify_simulation_parameter_key("ReceivedShapes")
-        == ParameterClassification.RUNTIME_STATE
+        classify_simulation_parameter_key("ReceivedShapes") == ParameterClassification.RUNTIME_STATE
     )
 
 
@@ -103,10 +102,7 @@ def test_import_records_parameter_occurrences_without_values(
         simulation_system=converter,
         parameter_key__name="ISimulationSystem.OnSimulationCreated",
     )
-    assert (
-        delegate_occ.parameter_key.classification
-        == ParameterClassification.REFLECTION_DUMP
-    )
+    assert delegate_occ.parameter_key.classification == ParameterClassification.REFLECTION_DUMP
 
     sim_key = SimulationSystemParameterKey.objects.get(name="SimulationFactory")
     assert sim_key.occurrence_count == 1
@@ -123,9 +119,7 @@ def test_reimport_does_not_inflate_occurrence_count(
 
     key = SimulationSystemParameterKey.objects.get(name="SimulationFactory")
     assert key.occurrence_count == 1
-    assert (
-        SimulationSystemParameterOccurrence.objects.filter(parameter_key=key).count() == 1
-    )
+    assert SimulationSystemParameterOccurrence.objects.filter(parameter_key=key).count() == 1
 
 
 @pytest.mark.django_db

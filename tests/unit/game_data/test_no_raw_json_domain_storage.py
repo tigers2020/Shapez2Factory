@@ -6,7 +6,7 @@ import pytest
 from django.apps import apps
 from django.db import models
 
-FORBIDDEN_JSON_NAMES = frozenset({"raw_json", "payload", "data", "source_dump"})
+FORBIDDEN_JSON_NAMES = frozenset({"raw_json", "payload", "data", "source_dump", "audit_blob"})
 ALLOWED_JSON_MODELS: frozenset[str] = frozenset()
 
 
@@ -16,8 +16,8 @@ def test_domain_models_avoid_jsonfield(model: type[models.Model]) -> None:
         return
     for field in model._meta.fields:
         if isinstance(field, models.JSONField):
-            assert model.__name__ in ALLOWED_JSON_MODELS, (
-                f"{model.__name__}.{field.name} must not use JSONField"
-            )
+            assert (
+                model.__name__ in ALLOWED_JSON_MODELS
+            ), f"{model.__name__}.{field.name} must not use JSONField"
         if field.name in FORBIDDEN_JSON_NAMES:
             pytest.fail(f"{model.__name__}.{field.name} is forbidden")

@@ -1,4 +1,4 @@
-﻿"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
+"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
 
 # ruff: noqa: E501
 
@@ -15,7 +15,9 @@ from django_apps.game_data.models.shapes import ShapeRecipe
 
 class ResearchUpgrade(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="research_upgrades")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="research_upgrades"
+    )
     upgrade_key = models.CharField(max_length=255, unique=True)
     source_stable_id = models.CharField(max_length=64, blank=True, default="")
 
@@ -29,7 +31,9 @@ class ResearchUpgrade(models.Model):
 
 class ResearchMechanic(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="research_mechanics")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="research_mechanics"
+    )
     mechanic_key = models.CharField(max_length=255, unique=True)
     source_stable_id = models.CharField(max_length=64, blank=True, default="")
 
@@ -43,7 +47,9 @@ class ResearchMechanic(models.Model):
 
 class ResearchMilestone(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="research_milestones")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="research_milestones"
+    )
     node_key = models.CharField(max_length=255, unique=True)
     title_lazy = models.ForeignKey(
         LazyLocalizedTextRef,
@@ -79,7 +85,9 @@ class ResearchMilestone(models.Model):
 
 class ResearchSideQuest(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="research_side_quests")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="research_side_quests"
+    )
     node_key = models.CharField(max_length=255, unique=True)
     title_lazy = models.ForeignKey(
         LazyLocalizedTextRef,
@@ -107,7 +115,9 @@ class ResearchSideQuest(models.Model):
 
 class ResearchSideUpgrade(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="research_side_upgrades")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="research_side_upgrades"
+    )
     node_key = models.CharField(max_length=255, unique=True)
     source_stable_id = models.CharField(max_length=64, blank=True, default="")
 
@@ -133,7 +143,9 @@ class ResearchUnlockCost(models.Model):
     side_quest = models.ForeignKey(
         ResearchSideQuest, on_delete=models.CASCADE, null=True, blank=True, related_name="costs"
     )
-    shape_recipe = models.ForeignKey(ShapeRecipe, on_delete=models.PROTECT, related_name="unlock_costs")
+    shape_recipe = models.ForeignKey(
+        ShapeRecipe, on_delete=models.PROTECT, related_name="unlock_costs"
+    )
     order_index = models.PositiveSmallIntegerField()
     amount = models.PositiveIntegerField(default=1)
 
@@ -151,10 +163,18 @@ class ResearchPrerequisite(models.Model):
     parent_kind = models.CharField(max_length=16)
     parent_key = models.CharField(max_length=255)
     required_upgrade = models.ForeignKey(
-        ResearchUpgrade, on_delete=models.CASCADE, null=True, blank=True, related_name="prerequisites"
+        ResearchUpgrade,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="prerequisites",
     )
     required_mechanic = models.ForeignKey(
-        ResearchMechanic, on_delete=models.CASCADE, null=True, blank=True, related_name="prerequisites"
+        ResearchMechanic,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="prerequisites",
     )
 
     class Meta:
@@ -166,7 +186,9 @@ class ResearchPrerequisite(models.Model):
 
 
 class ResearchGlobalConfig(models.Model):
-    import_batch = models.OneToOneField(ImportBatch, on_delete=models.CASCADE, related_name="research_config")
+    import_batch = models.OneToOneField(
+        ImportBatch, on_delete=models.CASCADE, related_name="research_config"
+    )
     config_key = models.CharField(max_length=64, default="default")
     config_value = models.TextField(blank=True, default="")
 

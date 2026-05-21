@@ -1,5 +1,6 @@
 # ruff: noqa: E501
 """Generate documents/game_data_analysis/_audit/*.md cross-document audit."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -478,12 +479,12 @@ Fields that must remain audit/source columns, not domain entities.
 
 ## Reports with strongest leakage discipline
 
-Best: **asset_references**, **prefabs**, **sprites**, **materials**, **fluids**, **manifest**  
+Best: **asset_references**, **prefabs**, **sprites**, **materials**, **fluids**, **manifest**
 Needs enforcement: **simulation_systems**, **toolbar_entries**, **research_unlocks**
 """,
     "09_final_canonical_schema.md": r"""# Final Canonical Schema Recommendation
 
-Unified domain model for `game_data` imports.  
+Unified domain model for `game_data` imports.
 **Source report structure ≠ final DB structure.**
 
 Status: **Approved** | **Needs review** | **Rejected**

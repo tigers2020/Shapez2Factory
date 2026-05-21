@@ -2,8 +2,9 @@
 
 Phase 4 route probe should use ``ProjectedGenePlacement.route_probe_start`` as
 ``RouteProbeInput.start``. Overlay bundle occupancy via
-``RouteDomainSnapshotBuilder.build_snapshot(..., committed_occupied_cells=...)``
-as *provisional* geometry only — CandidateGenerator must not commit placements.
+``build_route_domain_for_projected_gene_probe`` (``provisional_blocked_cells`` via
+``RouteDomainSnapshotBuilder.build_snapshot``) as *provisional* geometry only —
+CandidateGenerator must not commit placements.
 """
 
 from __future__ import annotations

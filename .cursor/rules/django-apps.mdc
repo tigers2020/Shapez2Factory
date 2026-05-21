@@ -1,0 +1,42 @@
+---
+description: "Django runtime ownership — Denny persona, thin views, game_data contracts (glob 작업 시 MUST)"
+globs:
+  - django_apps/**
+  - config/**
+  - manage.py
+alwaysApply: false
+---
+
+# Django apps (MUST)
+
+페르소나: [denny.md](mdc:persona/denny.md). 매뉴얼: [django.md](mdc:documents/ai/manuals/django.md). 마이그레이션·모델: [database.md](mdc:documents/ai/manuals/database.md).
+
+`django_apps/**`·`config/**` 변경은 **데니** 소유. hexagonal `src/shapez2_factory/` 는 도미닉·유리·아다·지나.
+
+## 편집 전 MUST
+
+1. `@persona/denny.md`, `@documents/ai/manuals/django.md`
+2. models/migrations 시 `@documents/ai/manuals/database.md`
+3. `game_data` 시 `@django_apps/game_data/services/validators.py`, `tests/unit/game_data/`
+
+## Forbidden shortcuts
+
+- domain 모델에 `JSONField`, `raw_json`, `audit_blob`, `payload`, `data`, `source_dump` — `ALLOWED_JSON_MODELS`·플랜 승인 없이 금지 ([validators.py](mdc:django_apps/game_data/services/validators.py))
+- 계약 변경 전 플랜·승인 없이 구현
+- `game_data`·browse·admin·importer 터치 시 `test_no_raw_json_domain_storage`, `test_admin_browse` 생략 금지
+- [django.md](mdc:documents/ai/manuals/django.md) import 행렬 위반 cross-app import
+
+## Thin view
+
+- HTTP·URL은 동작 소유 앱에 둔다 (`game_data.browse` → `config/urls.py` include).
+- 뷰는 서비스/importer/registry에 위임; 템플릿은 표시만.
+
+## 검증 (렉스)
+
+```bash
+python -m pytest tests/unit/<app>/   # narrow
+python -m ruff check <paths>
+python -m mypy django_apps config src
+```
+
+마감: [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc) Caveman 6절.

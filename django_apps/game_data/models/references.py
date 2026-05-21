@@ -1,4 +1,4 @@
-﻿"""Unresolved cross-references during import (staging only)."""
+"""Unresolved cross-references during import (staging only)."""
 
 # ruff: noqa: E501
 
@@ -11,7 +11,9 @@ from django_apps.game_data.models.import_meta import ImportBatch, SourceObject
 
 
 class GameDataReference(models.Model):
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="data_references")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="data_references"
+    )
     from_source = models.ForeignKey(
         SourceObject,
         on_delete=models.CASCADE,

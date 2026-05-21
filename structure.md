@@ -60,6 +60,15 @@
 - 소행성 맵 입력·디코드 스냅샷·리플레이 트랙 등 실험실 데이터 모델과 서비스.
 - `django_apps.shapez_asteroid`(제거됨) 및 채굴 레이아웃 솔버 패키지에 **의존하지 않는다**(경계 테스트로 고정).
 
+### `django_apps/game_data/`
+
+- `models/`: canonical game dump ORM (concrete fields, relations, constraints; no domain `JSONField`).
+- `importers/`: deterministic `GameDataImporter` and section importers.
+- `services/`: classifiers, identifiers, `validators`, import guards.
+- `browse/`: staff browse dashboard (`registry.py`, thin `views.py`, `urls.py`).
+- `admin.py`: aggregate-root `ModelAdmin` and inlines aligned with `browse/registry.py` specs.
+- Tests: `tests/unit/game_data/`.
+
 ### `django_apps/web/`
 
 - `views.py`, `views/`: public pages, gallery, demo, support, asteroid mining lab UI, solver UI, pattern lab, staff macro-pattern flows.
@@ -74,6 +83,7 @@ Root routing (`config/urls.py`):
 
 | Path | Owner |
 |---|---|
+| `/admin/game-data/` | `django_apps.game_data.browse` |
 | `/admin/` | Django admin |
 | `/i18n/` | Django language switching |
 | `/accounts/` | django-allauth |
@@ -86,6 +96,8 @@ Internationalized routes (`i18n_patterns`, default language without prefix) incl
 - `tests/unit/shapez_core/`: parser, render scene, SVG preview, geometry.
 - `tests/unit/shapez_solver/`: solver engine, recipe graph, models, catalog, pattern lab.
 - `tests/unit/asteroid_lab/`: 실험실 ORM·디코드·서비스 경계.
+- `tests/unit/game_data/`: import, models, admin browse, JSON ban, simulation contracts.
+- `tests/unit/architecture/`: Django app import boundary matrix.
 - `tests/unit/web/`: template/markup and web-specific checks.
 - `tests/integration/api/`: health/API integration checks.
 - `tests/integration/web/`: page smoke, auth, pattern lab, macro-pattern staff flows.

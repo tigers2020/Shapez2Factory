@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """One-off: split game_data/models.py into models/ package. Run from repo root."""
 
 from __future__ import annotations
@@ -41,16 +42,22 @@ for name, (start, end) in RANGES.items():
     body = chunk.replace("class ImportBatch", "class ImportBatch")  # noqa
     if name != "import_meta":
         body = (
-            'from django_apps.game_data.models.import_meta import ImportBatch, SourceObject\n\n'
+            "from django_apps.game_data.models.import_meta import ImportBatch, SourceObject\n\n"
             + body
         )
     else:
-        body = HEADER.strip() + "\n\n" + body.split("\n", 1)[1] if body.startswith('"""') else HEADER + body
+        body = (
+            HEADER.strip() + "\n\n" + body.split("\n", 1)[1]
+            if body.startswith('"""')
+            else HEADER + body
+        )
     if name == "import_meta":
         content = HEADER + "".join(lines[9:177])  # lines 10-177
     elif name == "shapes":
-        content = HEADER + 'from django_apps.game_data.models.import_meta import ImportBatch, SourceObject\n\n' + "".join(
-            lines[224:327]
+        content = (
+            HEADER
+            + "from django_apps.game_data.models.import_meta import ImportBatch, SourceObject\n\n"
+            + "".join(lines[224:327])
         )
     elif name == "research":
         content = (
@@ -82,12 +89,16 @@ for name, (start, end) in RANGES.items():
             + "".join(lines[329:533])
         )
     elif name == "assets":
-        content = HEADER + 'from django_apps.game_data.models.import_meta import ImportBatch\n\n' + "".join(
-            lines[179:222]
+        content = (
+            HEADER
+            + "from django_apps.game_data.models.import_meta import ImportBatch\n\n"
+            + "".join(lines[179:222])
         )
     elif name == "reflection":
-        content = HEADER + 'from django_apps.game_data.models.import_meta import ImportBatch\n\n' + "".join(
-            lines[1299:1320]
+        content = (
+            HEADER
+            + "from django_apps.game_data.models.import_meta import ImportBatch\n\n"
+            + "".join(lines[1299:1320])
         )
     elif name == "l10n":
         # LazyLocalized 564-610 from research + LocalizedMessage at end

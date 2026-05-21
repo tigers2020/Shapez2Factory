@@ -178,6 +178,13 @@ external_void_cells = route_domain_bbox cells not occupied by decoded snapshot c
 입력: OptimizationInput 기반 불변 스냅샷 + (commit 루프에서) CONFIRMED RouteReservation·placement occupied 등 문서화된 누적 상태
 금지: candidate generator·probe·evolution이 RouteCellDomain을 제자리(in-place)로 패치하는 것
 권장: reservation append / commit 성공 후에는 항상 전면 재빌드로 다음 스냅샷을 만든다
+
+| 메서드 | 용도 |
+|--------|------|
+| `build_snapshot(...)` | **정본** — `confirmed_reservations`, `committed_occupied_cells`, `provisional_blocked_cells` |
+| `build_seed_snapshot(inp)` | 시드만 (`build_snapshot`과 오버레이 전부 empty 시 동등) |
+| `build_route_domain_for_projected_gene_probe` | candidate provisional only (Phase 4) |
+| `build_commit_snapshot` | 선택적 deprecated wrapper — **미구현**; semantics는 `build_snapshot`에만 둔다 |
 ```
 
 예외 없이 **한 빌더**가 `hard_blocked`·`transport_mask`·`traversal_cost` 일관성을 책임진다. Phase 4 입력 계약·Phase 7 commit 루프와 교차 참조한다.

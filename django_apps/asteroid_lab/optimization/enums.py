@@ -79,6 +79,13 @@ class ValidationIssueCode(StrEnum):
     UNDER_TARGET_THROUGHPUT = "under_target_throughput"
 
 
+class PenaltyMode(StrEnum):
+    """Phase 5 / 10B conservative fitness penalties."""
+
+    OFF = "off"
+    CONSERVATIVE = "conservative"
+
+
 class EvolutionConvergenceReason(StrEnum):
     """Phase 6 termination mapping."""
 

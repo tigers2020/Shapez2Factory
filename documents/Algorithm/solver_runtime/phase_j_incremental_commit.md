@@ -85,6 +85,14 @@ test_incremental_commit_updates_goal_load
 test_incremental_commit_separates_shape_and_fluid_domains
 ```
 
+## RouteDomainSnapshotBuilder (commit)
+
+| API | commit 사용 |
+|-----|-------------|
+| `build_snapshot(..., confirmed_reservations, committed_occupied_cells)` | **정본** — 매 시도 직전·성공 후 재빌드 |
+| `build_seed_snapshot` | 시드만 |
+| `build_commit_snapshot` | 미구현·선택 deprecated wrapper — semantics 금지 |
+
 ## 관련 코드·문서
 
 - 구현: `commit_best_candidates.py` (`commit_selected_candidates`)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from django.apps import apps
 from django.db import models
 
-FORBIDDEN_JSON_FIELD_NAMES = frozenset({"raw_json", "payload", "data", "source_dump"})
+FORBIDDEN_JSON_FIELD_NAMES = frozenset({"raw_json", "payload", "data", "source_dump", "audit_blob"})
 
 ALLOWED_JSON_MODELS: frozenset[str] = frozenset()
 
@@ -21,9 +21,7 @@ def assert_no_domain_json_fields() -> None:
                         f"{model.__name__}.{field.name} JSONField not allowed on domain model"
                     )
                 if field.name in FORBIDDEN_JSON_FIELD_NAMES:
-                    raise AssertionError(
-                        f"{model.__name__}.{field.name} forbidden JSONField name"
-                    )
+                    raise AssertionError(f"{model.__name__}.{field.name} forbidden JSONField name")
 
 
 def assert_canonical_ids_unique(model_label: str) -> int:

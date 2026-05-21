@@ -1,4 +1,4 @@
-﻿"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
+"""Canonical game_data domain models (see documents/game_data_analysis/_audit/09)."""
 
 # ruff: noqa: E501
 
@@ -16,7 +16,9 @@ class GameContentAsset(models.Model):
         MATERIAL = "material", "Material"
 
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="content_assets")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="content_assets"
+    )
     content_kind = models.CharField(max_length=16, choices=ContentKind.choices)
     source_stable_id = models.CharField(max_length=64)
     content_path = models.CharField(max_length=512)
@@ -46,9 +48,13 @@ class GameContentAsset(models.Model):
 
 class AssetMetaReference(models.Model):
     canonical_id = models.CharField(max_length=255, unique=True)
-    import_batch = models.ForeignKey(ImportBatch, on_delete=models.CASCADE, related_name="meta_references")
+    import_batch = models.ForeignKey(
+        ImportBatch, on_delete=models.CASCADE, related_name="meta_references"
+    )
     meta_stable_id = models.CharField(max_length=64, unique=True)
-    content_asset = models.ForeignKey(GameContentAsset, on_delete=models.PROTECT, related_name="meta_links")
+    content_asset = models.ForeignKey(
+        GameContentAsset, on_delete=models.PROTECT, related_name="meta_links"
+    )
     logical_path = models.CharField(max_length=512, unique=True)
     display_name_key = models.CharField(max_length=512, blank=True, default="")
     source_row_index = models.PositiveIntegerField()

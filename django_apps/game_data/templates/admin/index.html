@@ -1,0 +1,23 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="module" id="game-data-browse-entry">
+  <table>
+    <caption>
+      <a href="{% url 'game_data_browse:index' %}" class="section">
+        {% trans "Game data (imported)" %}
+      </a>
+    </caption>
+    <tr>
+      <th scope="row">
+        <a href="{% url 'game_data_browse:index' %}">{% trans "Browse by bounded context" %}</a>
+      </th>
+      <td>
+        {% trans "Namespace → section → changelist; aggregate roots use parent detail inlines." %}
+      </td>
+    </tr>
+  </table>
+</div>
+{{ block.super }}
+{% endblock %}

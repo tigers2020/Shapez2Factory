@@ -1,0 +1,94 @@
+"""Static import matrix for django_apps (see documents/ai/manuals/django.md)."""
+
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+import pytest
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_DJANGO_APPS = _REPO_ROOT / "django_apps"
+
+# source app folder name -> forbidden django_apps.* import prefixes
+_FORBIDDEN_IMPORTS: dict[str, frozenset[str]] = {
+    "shapez_core": frozenset(
+        {
+            "django_apps.web",
+            "django_apps.shapez_solver",
+            "django_apps.asteroid_lab",
+            "django_apps.game_data",
+        }
+    ),
+    "shapez_solver": frozenset(
+        {
+            "django_apps.web",
+            "django_apps.asteroid_lab",
+            "django_apps.game_data",
+        }
+    ),
+    "asteroid_lab": frozenset(
+        {
+            "django_apps.web",
+            "django_apps.shapez_solver",
+            "django_apps.game_data",
+        }
+    ),
+    "game_data": frozenset(
+        {
+            "django_apps.web",
+            "django_apps.shapez_solver",
+            "django_apps.asteroid_lab",
+        }
+    ),
+}
+
+
+def _app_py_files(app_name: str) -> list[Path]:
+    root = _DJANGO_APPS / app_name
+    if not root.is_dir():
+        return []
+    return sorted(p for p in root.rglob("*.py") if p.is_file())
+
+
+def _imported_django_app_modules(tree: ast.AST) -> set[str]:
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and node.module.startswith("django_apps.")
+        ):
+            found.add(node.module)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                name = alias.name
+                if name.startswith("django_apps."):
+                    found.add(name)
+    return found
+
+
+def _violations_for_file(path: Path, app_name: str) -> list[str]:
+    forbidden = _FORBIDDEN_IMPORTS.get(app_name)
+    if not forbidden:
+        return []
+    rel = path.relative_to(_REPO_ROOT)
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+    except SyntaxError as exc:
+        return [f"{rel}: syntax error {exc}"]
+    issues: list[str] = []
+    for module in sorted(_imported_django_app_modules(tree)):
+        for bad in forbidden:
+            if module == bad or module.startswith(f"{bad}."):
+                issues.append(f"{rel}: forbidden import {module!r} ({app_name} app)")
+                break
+    return issues
+
+
+@pytest.mark.parametrize("app_name", sorted(_FORBIDDEN_IMPORTS))
+def test_django_app_import_matrix(app_name: str) -> None:
+    violations: list[str] = []
+    for path in _app_py_files(app_name):
+        violations.extend(_violations_for_file(path, app_name))
+    assert violations == [], "\n".join(violations)

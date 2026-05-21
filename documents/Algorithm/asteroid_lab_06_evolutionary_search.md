@@ -1,5 +1,7 @@
 # Phase 6 — Evolutionary Search v0
 
+> **v0 pipeline (2026-05-21):** 현재 런타임은 **candidate select + incremental commit** only. GA 루프·`FitnessEvaluator`는 **미구현** (`replay_event_coverage.DEFERRED_NO_EVOLUTION_V0`). 본 문서는 **DTO·알고리즘 계약** 정본이다.
+
 ## 목적
 
 Bundle candidate 조합을 evolutionary search로 최적화한다.
@@ -42,7 +44,21 @@ class EvolutionConfig:
     forced_distant_mutation_period: int | None
 ```
 
-`forced_distant_mutation_period`가 `N`이면 **매 N세대마다** 최소 한 번은 `replace_with_nearby_candidate`가 아닌 **원거리 후보 치환**(예: rim 극단 간 swap, 랜덤 후보 주입)을 **결정적 규칙**으로 강제한다. `None`이면 비활성(v0 최소 구현 허용). 국소 최적에만 갇히는 붕괴 완화용이다.
+`forced_distant_mutation_period`가 `N`이면 **매 N세대마다** 최소 한 번은 `replace_with_nearby_candidate`가 아닌 **원거리 후보 치환**(예: rim 극단 간 swap, **pool 내 결정적 인덱스 선택**)을 **결정적 규칙**으로 강제한다. `None`이면 비활성. **금지:** `random`·`time`·`uuid4` 등 unseeded 난수.
+
+## Deterministic distant mutation
+
+```python
+slot_index = evolution_distant_mutation_slot_index(
+    seed=config.seed,
+    generation=generation,
+    genome_id=genome.genome_id,
+    population_size=config.population_size,
+)
+# rim extreme swap: ordered candidate_ids[slot_index], candidate_ids[(slot_index + 1) % pool_size]
+```
+
+`same seed` + 동일 `generation`·`genome_id` → 동일 `slot_index` → 동일 치환 대상. 구현: [`fitness_contracts.py`](django_apps/asteroid_lab/optimization/fitness_contracts.py).
 
 `population_size`·`elite_count`·`tournament_size`는 `population_size > 0`, `0 <= elite_count < population_size` 등 **빌더에서 검증**한다.
 

@@ -8,6 +8,7 @@ from django.urls import include, path
 from django.views.i18n import JavaScriptCatalog
 
 urlpatterns = [
+    path("admin/game-data/", include("django_apps.game_data.browse.urls")),
     path("admin/", admin.site.urls),
     path("i18n/", include("django.conf.urls.i18n")),
     path("accounts/", include("allauth.urls")),

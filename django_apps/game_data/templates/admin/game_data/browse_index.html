@@ -1,0 +1,71 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{% url 'game_data_browse:index' %}">{% trans 'Game data browse' %}</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+<p>
+  Bounded-context navigation driven by <code>GameDataNamespace</code> /
+  <code>GameDataSection</code> metadata — not <code>verbose_name_plural</code> sorting alone.
+</p>
+
+{% if section_errors %}
+<div class="messagelist">
+  {% for err in section_errors %}
+  <p class="errornote">{{ err }}</p>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if missing_count %}
+<p class="warning">
+  {{ missing_count }} section(s) lack a registered Django admin changelist target.
+</p>
+{% endif %}
+
+{% for group in groups %}
+<section class="module" id="namespace-{{ group.code }}">
+  <h2>{{ group.label }}</h2>
+  <table class="browse-sections">
+    <thead>
+      <tr>
+        <th scope="col">Section</th>
+        <th scope="col">Model</th>
+        <th scope="col">Rows</th>
+        <th scope="col">Role</th>
+        <th scope="col">Open</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in group.sections %}
+      <tr>
+        <th scope="row">{{ row.section_label }}</th>
+        <td><code>{{ row.model_label }}</code></td>
+        <td>{{ row.row_count }}</td>
+        <td>
+          {% if row.is_aggregate_root %}aggregate root{% else %}entity{% endif %}
+        </td>
+        <td>
+          {% if row.changelist_url %}
+          <a href="{{ row.changelist_url }}">Changelist</a>
+          {% else %}
+          <span class="quiet">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% empty %}
+<p>No taxonomy namespaces seeded. Run migrations for <code>game_data</code>.</p>
+{% endfor %}
+{% endblock %}

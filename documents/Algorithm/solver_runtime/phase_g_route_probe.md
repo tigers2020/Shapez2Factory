@@ -61,15 +61,7 @@ def build_route_domain_for_projected_gene_probe(builder, inp, projected):
     )
 ```
 
-**과도기 (현재 코드):** `committed_occupied_cells=` 이름으로 같은 집합을 넘길 수 있으나 **의미는 provisional only**. commit 단계의 `committed_occupied_cells`와 혼동 금지.
-
-```python
-# 과도기 — PR2에서 provisional_blocked_cells 로 이전
-return builder.build_snapshot(
-    inp,
-    committed_occupied_cells=projected.occupied_cells,  # NOT a layout commit
-)
-```
+**구현:** `build_route_domain_for_projected_gene_probe` → `build_snapshot(..., provisional_blocked_cells=...)`. `committed_occupied_cells`에 provisional을 넣지 않는다.
 
 wrapper·call site **필수 주석:**
 

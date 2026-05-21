@@ -1,5 +1,8 @@
 # Phase 9 — Lab Replay Timeline
 
+> **FIXTURE ENVELOPE SCHEMA ≠ RUNTIME PERSISTENCE SCHEMA**  
+> 골든 JSON(`tests/fixtures/shapez_asteroid/replay*`, `replay_summary`·최상위 `truncation_reason`)은 **회귀·파서 계약 전용**이다. 프로덕션 persist·Lab UI는 **프레임 `metrics` → 트랙 `metrics`** ([`asteroid_lab_12_runtime_replay_wiring.md`](asteroid_lab_12_runtime_replay_wiring.md) §6.1). `SolverRun.config_json` 최상위에 `truncation_reason`을 저장하지 않는다.
+
 **상태:** `ACTIVE` (제품 replay 정본)  
 **이전 정본:** [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md) — dual-track 정책 **폐기(deprecated)**  
 **페이로드 스케일:** [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md)  

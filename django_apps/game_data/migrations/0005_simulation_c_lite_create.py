@@ -29,7 +29,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationProfile",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("profile_key", models.CharField(max_length=64, unique=True)),
                 ("profile_name", models.CharField(blank=True, default="", max_length=128)),
             ],
@@ -41,7 +46,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationSystem",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("source_stable_id", models.CharField(max_length=64)),
                 ("source_row_index", models.PositiveIntegerField()),
                 ("system_family", models.CharField(max_length=128)),
@@ -79,7 +89,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationType",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("simulation_class", models.CharField(max_length=128)),
                 ("assembly_name", models.CharField(blank=True, default="", max_length=128)),
                 (
@@ -99,7 +114,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationStateType",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("state_class", models.CharField(max_length=128)),
                 ("assembly_name", models.CharField(blank=True, default="", max_length=128)),
                 (
@@ -119,9 +139,17 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="ImportAudit",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("canonical_id", models.CharField(max_length=255, unique=True)),
-                ("source_file", models.CharField(default="simulation_systems.json", max_length=128)),
+                (
+                    "source_file",
+                    models.CharField(default="simulation_systems.json", max_length=128),
+                ),
                 ("source_stable_id", models.CharField(max_length=64)),
                 ("source_row_index", models.PositiveIntegerField()),
                 ("clr_type_string", models.TextField()),
@@ -150,7 +178,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="ConnectableSimulation",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("canonical_id", models.CharField(max_length=255, unique=True)),
                 ("connectable_key", models.CharField(max_length=64)),
                 ("attachment_index", models.PositiveIntegerField()),
@@ -192,7 +225,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationConnector",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("canonical_id", models.CharField(max_length=255, unique=True)),
                 ("order_index", models.PositiveIntegerField()),
                 ("direction", models.CharField(blank=True, default="", max_length=32)),
@@ -223,7 +261,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationConnectorProperty",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("property_key", models.CharField(max_length=64)),
                 ("value_int", models.BigIntegerField(blank=True, null=True)),
                 ("value_float", models.FloatField(blank=True, null=True)),
@@ -253,7 +296,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationLaneDefinition",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("canonical_id", models.CharField(max_length=255, unique=True)),
                 ("lane_key", models.CharField(max_length=64)),
                 ("lane_index", models.PositiveIntegerField()),
@@ -285,7 +333,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationLaneRuntimeState",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("state_key", models.CharField(max_length=64)),
                 ("state_value_text", models.TextField(blank=True, default="")),
                 (
@@ -312,7 +365,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationChunkBounds",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("order_index", models.PositiveSmallIntegerField(default=0)),
                 ("min_x", models.IntegerField(default=0)),
                 ("min_y", models.IntegerField(default=0)),
@@ -337,7 +395,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="SimulationTileBounds",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("order_index", models.PositiveSmallIntegerField(default=0)),
                 ("min_x", models.IntegerField(default=0)),
                 ("min_y", models.IntegerField(default=0)),

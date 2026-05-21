@@ -24,6 +24,8 @@
 | `src/shapez2_factory/adapters/` | 외부 시스템 구현, 응답→DTO 변환 (아다) |
 | `src/shapez2_factory/interfaces/` | UI 화면, 사용자 상태, 위젯 조합 (지나) |
 | `src/shapez2_factory/bootstrap/` | 조립, dependency wiring (시몬) |
+| `django_apps/` | Django-first 런타임 앱 (데니) |
+| `config/` | Django 설정·루트 URL (데니) |
 | `tests/` | unit / integration / golden (테스) |
 | `docs/domain/` | 도메인 매뉴얼 — 도메인 용어, 불변식 |
 | `docs/architecture/` | 시스템 구조·모듈 책임·데이터 흐름 |
@@ -38,6 +40,21 @@
 | `tests/golden/` | 결정적 회귀 검증 데이터셋 (phase2) |
 
 참조: `@docs/domain/`, `@docs/architecture/`, `@docs/runbooks/`, `@.cursor/rules/`, `@.cursor/skills/`
+
+## Manual routing
+
+작업 유형 하나를 고른 뒤 **해당 페르소나·매뉴얼만** 연다 ([`documents/ai/manuals/`](documents/ai/manuals/)).
+
+| Work type | Persona | Must read |
+|-----------|---------|-----------|
+| `django` | [데니](persona/denny.md) | [`documents/ai/manuals/django.md`](documents/ai/manuals/django.md); models/migrations 시 [`database.md`](documents/ai/manuals/database.md) |
+| `database` | 데니 | `database.md` + `django.md` |
+| `solver` | 도미닉·유리 | [`solver.md`](documents/ai/manuals/solver.md) |
+| `frontend` / `graph UI` | 지나 | web/frontend 관련 매뉴얼 |
+| `tests` | 테스 | [`testing.md`](documents/ai/manuals/testing.md) |
+| `asteroid_lab` | 데니 + 불변식 | [`asteroid-lab-invariants.mdc`](.cursor/rules/asteroid-lab-invariants.mdc) |
+
+`django_apps/**`·`config/**` 변경은 **데니** 소유. hexagonal `src/shapez2_factory/` 만 도미닉·유리·아다·지나.
 
 ## Required workflow
 

@@ -2,7 +2,7 @@
 
 ## Mission
 
-이 저장소의 목표는 `{{PROJECT_NAME}}` 이다.
+이 저장소의 목표는 `shapez2 Factory Planner` 이다.
 당신은 항상 **작은 안전한 변경 + 빠른 검증 + 문서 동기화** 원칙으로 행동한다.
 
 ## Trigger
@@ -19,11 +19,11 @@
 
 | 경로 | 목적 |
 |---|---|
-| `src/{{package_name}}/domain/` | 순수 비즈니스 규칙, 값 객체, 정책 (도미닉) |
-| `src/{{package_name}}/application/` | use case, DTO, port 추상화 (유리) |
-| `src/{{package_name}}/adapters/` | 외부 시스템 구현, 응답→DTO 변환 (아다) |
-| `src/{{package_name}}/interfaces/` | UI 화면, 사용자 상태, 위젯 조합 (지나) |
-| `src/{{package_name}}/bootstrap/` | 조립, dependency wiring (시몬) |
+| `src/shapez2_factory/domain/` | 순수 비즈니스 규칙, 값 객체, 정책 (도미닉) |
+| `src/shapez2_factory/application/` | use case, DTO, port 추상화 (유리) |
+| `src/shapez2_factory/adapters/` | 외부 시스템 구현, 응답→DTO 변환 (아다) |
+| `src/shapez2_factory/interfaces/` | UI 화면, 사용자 상태, 위젯 조합 (지나) |
+| `src/shapez2_factory/bootstrap/` | 조립, dependency wiring (시몬) |
 | `tests/` | unit / integration / golden (테스) |
 | `docs/domain/` | 도메인 매뉴얼 — 도메인 용어, 불변식 |
 | `docs/architecture/` | 시스템 구조·모듈 책임·데이터 흐름 |
@@ -53,11 +53,11 @@
 ```bash
 pytest -q
 ruff check .
-mypy src
+mypy django_apps config src
 black --check .
 ```
 
-순서: `pytest` → `ruff check .` → `mypy src` → `black --check .`
+순서: `pytest` → `ruff check .` → `mypy django_apps config src` → `black --check .`
 실패 시 억지로 완료 선언하지 않고 `BLOCKED:` 형식으로 보고한다.
 
 ## Permissions

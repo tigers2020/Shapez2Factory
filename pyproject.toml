@@ -1,7 +1,7 @@
 [project]
-name = "{{package_name}}"
+name = "shapez2_factory"
 version = "0.1.0"
-description = "{{PROJECT_NAME}}"
+description = "shapez2 Factory Planner"
 requires-python = ">=3.12"
 readme = "README.md"
 

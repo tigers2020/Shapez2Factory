@@ -54,7 +54,24 @@ Browse URL: `config/urls.py` → `path("admin/game-data/", include("django_apps.
 ## 뷰·엔드포인트
 
 - HTTP 엔드포인트는 **동작을 소유한 앱**에 둔다.
-- 뷰는 얇게: 도메인·솔버 규칙은 서비스/유스케이스로.
+- 뷰는 얇게: 도메인·솔버 규칙은 `services/`·`importers/`·use case로 ([데니](../../../persona/denny.md) · 아래 참조 Rule 1).
+
+## 참조 (외부 — Django 작업 시)
+
+이 레포 정본은 [`.cursor/rules/django-apps.mdc`](../../../.cursor/rules/django-apps.mdc) + 본 매뉴얼이다. 아래는 **보조 참고**이며, 충돌 시 레포 규칙·import 행렬·`game_data` JSON 금지가 우선한다.
+
+| 주제 | 링크 | 이 레포에서의 쓰임 |
+|------|------|-------------------|
+| Cursor modular rules · thin views · query/migration/testing 습관 | [Cursor Rules for Django (DEV)](https://dev.to/olivia_craft/cursor-rules-for-django-the-complete-guide-to-ai-assisted-django-development-3je5) | `.cursor/rules/*.mdc` 분리 방식과 동일; 뷰 30줄 smell·`select_related`·서비스 레이어는 데니 체크리스트와 정합 |
+| 객체 단위 권한 · predicate · `ObjectPermissionBackend` | [django-rules — Using rules with Django](https://github.com/dfunckt/django-rules#using-rules-with-django) | **신규** staff/API object permission 도입 시: `rules` 앱·backend 설정·`rules.add_perm` / `Model` `Meta.rules_permissions` 패턴을 이 문서 기준으로 맞춘다. 현재 레포는 django-allauth + `LoginRequiredMixin` / `@staff_member_required` 위주 |
+
+**DEV 가이드 ↔ 레포 매핑 (요약)**
+
+- Rule 1 (fat models / thin views) → [django-apps.mdc](../../../.cursor/rules/django-apps.mdc) Thin view 절
+- Rule 2 (query discipline) → list/admin/browse queryset에 `select_related` / `prefetch_related` 검토
+- Rule 3–4 (migrations, settings) → [`database.md`](database.md), [`environment.md`](environment.md)
+- Rule 5 (testing) → [`testing.md`](testing.md), `tests/unit/<app>/`
+- Modular rules → `django-apps.mdc` + [`asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc) (앱별 glob)
 
 ## 실행
 

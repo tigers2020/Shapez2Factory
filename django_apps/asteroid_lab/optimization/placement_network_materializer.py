@@ -32,12 +32,7 @@ def _miner_tile_type(transport_kind: TransportKind) -> str:
 
 
 def _extension_tile_type(transport_kind: TransportKind) -> str:
-    if transport_kind == TransportKind.SHAPE_BELT:
-        return "Layout_ShapeMinerExtension"
-    if transport_kind == TransportKind.FLUID_PIPE:
-        return "Layout_FluidMinerExtension"
-    msg = f"unsupported transport kind for equipment: {transport_kind!r}"
-    raise ValueError(msg)
+    return _miner_tile_type(transport_kind) + "Extension"
 
 
 def _extractor_cell_kind(transport_kind: TransportKind) -> str:

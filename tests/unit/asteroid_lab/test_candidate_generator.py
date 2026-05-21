@@ -258,10 +258,7 @@ def test_probe_budget_floor_reserved_and_fill_counts() -> None:
     )
     diag = result.generation_diagnostics
     assert diag.probe_budget_floor_reserved_count >= 5
-    assert (
-        diag.probe_budget_floor_reserved_count + diag.probe_budget_fill_count
-        <= 10
-    )
+    assert diag.probe_budget_floor_reserved_count + diag.probe_budget_fill_count <= 10
 
 
 def test_funnel_identity_probe_plus_dedupe() -> None:
@@ -270,8 +267,7 @@ def test_funnel_identity_probe_plus_dedupe() -> None:
     result = generate_gene_candidates(inp, (gene,), _default_config())
     diag = result.generation_diagnostics
     assert (
-        diag.anchors_dropped_by_probe_budget_count
-        + diag.unique_anchors_after_probe_budget_count
+        diag.anchors_dropped_by_probe_budget_count + diag.unique_anchors_after_probe_budget_count
         == diag.reachable_anchors_after_prefilter_count
     )
 
@@ -306,9 +302,7 @@ def test_generation_truncated_by_max_candidates_count() -> None:
     assert len({c.extractor for c in result.normal_candidates}) == 2
     assert diag.truncated_by_max_candidates_count == result.deduped_candidate_count - 2
     assert diag.truncated_by_max_candidates_count > 0
-    assert diag.anchor_dropped_by_truncation_count == (
-        diag.unique_anchors_after_dedupe_count - 2
-    )
+    assert diag.anchor_dropped_by_truncation_count == (diag.unique_anchors_after_dedupe_count - 2)
 
 
 def test_candidate_generator_dedupes_before_max_candidates() -> None:

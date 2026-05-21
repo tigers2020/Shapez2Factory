@@ -56,9 +56,7 @@ def cells_in_bbox(bb: BBox) -> frozenset[Coord]:
     """All integer grid coords inside inclusive ``bb``."""
 
     return frozenset(
-        (sx, sy)
-        for sx in range(bb.min_sx, bb.max_sx + 1)
-        for sy in range(bb.min_sy, bb.max_sy + 1)
+        (sx, sy) for sx in range(bb.min_sx, bb.max_sx + 1) for sy in range(bb.min_sy, bb.max_sy + 1)
     )
 
 

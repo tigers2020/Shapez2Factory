@@ -161,9 +161,7 @@ def probe_path_to_overlay_cells(
     cap: int = MAX_SOLVER_RUNTIME_REPLAY_CELLS_PER_FRAME,
 ) -> tuple[ReplayOverlayCell, ...]:
     """Convert a route probe path to replay overlay cells (server → Lab)."""
-    return path_to_overlay_cells(
-        path, ctx, kind=ROUTE_PROBE_OVERLAY_KIND, cap=cap
-    )
+    return path_to_overlay_cells(path, ctx, kind=ROUTE_PROBE_OVERLAY_KIND, cap=cap)
 
 
 def confirmed_paths_to_overlay_cells(
@@ -175,9 +173,7 @@ def confirmed_paths_to_overlay_cells(
     """Merge confirmed reservation paths into one overlay (dedupe by Lab coord)."""
     by_xy: dict[tuple[int, int], ReplayOverlayCell] = {}
     for path in paths:
-        for cell in path_to_overlay_cells(
-            path, ctx, kind=CONFIRMED_ROUTE_OVERLAY_KIND, cap=cap
-        ):
+        for cell in path_to_overlay_cells(path, ctx, kind=CONFIRMED_ROUTE_OVERLAY_KIND, cap=cap):
             by_xy[(cell.x, cell.y)] = cell
             if len(by_xy) >= cap:
                 return tuple(by_xy[key] for key in sorted(by_xy))
@@ -238,9 +234,7 @@ def route_goals_to_overlay_cells(
     for goal in sorted(goals, key=lambda g: (g.coord[0], g.coord[1])):
         sx, sy = goal.coord
         x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=ctx.server_xy_params)
-        transport = (
-            goal.transport_kind.value if goal.transport_kind is not None else ""
-        )
+        transport = goal.transport_kind.value if goal.transport_kind is not None else ""
         out.append(
             ReplayOverlayCell(
                 x=x,

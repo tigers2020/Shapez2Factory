@@ -197,15 +197,11 @@ class SolverRuntimeReplayRecorder:
 
     def record_route_goals_generated(self, planned: PlannedRouteGoals) -> None:
         cells = self._base_cells
-        self._persistent_route_goal_overlay = route_goals_to_overlay_cells(
-            planned.goals, self._ctx
-        )
+        self._persistent_route_goal_overlay = route_goals_to_overlay_cells(planned.goals, self._ctx)
         annotations = goal_annotations(planned.goals, self._ctx)
         map_view = self._build_map_view(cells, annotations=annotations)
         cardinal = (
-            planned.selected_cardinal.value
-            if planned.selected_cardinal is not None
-            else None
+            planned.selected_cardinal.value if planned.selected_cardinal is not None else None
         )
         self._append(
             phase=ReplayPhase.OPTIMIZATION_INPUT,
@@ -326,9 +322,7 @@ class SolverRuntimeReplayRecorder:
                 map_view=probe_map,
                 inspector={
                     "candidate_id": candidate.candidate_id,
-                    "reached_goal_kind": (
-                        reached.goal_kind.value if reached is not None else None
-                    ),
+                    "reached_goal_kind": (reached.goal_kind.value if reached is not None else None),
                     "goal_priority": probe.goal_priority,
                 },
                 metrics={
@@ -351,9 +345,7 @@ class SolverRuntimeReplayRecorder:
         if rejected.extractor is not None:
             sx, sy = rejected.extractor
             x, y = lab_xy_from_server_xy(sx, sy, server_xy_params=self._ctx.server_xy_params)
-            annotations.append(
-                ReplayAnnotation(x=x, y=y, label=rejected.rejection_reason.value)
-            )
+            annotations.append(ReplayAnnotation(x=x, y=y, label=rejected.rejection_reason.value))
         map_view = self._build_map_view(cells, annotations=tuple(annotations))
         self._append(
             phase=ReplayPhase.CANDIDATE_GENERATION,
@@ -494,9 +486,7 @@ class SolverRuntimeReplayRecorder:
                 committed_overlay = path_to_overlay_cells(
                     res.path, self._ctx, kind=CONFIRMED_ROUTE_OVERLAY_KIND
                 )
-                committed_map = self._build_map_view(
-                    cells, frame_overlay=committed_overlay
-                )
+                committed_map = self._build_map_view(cells, frame_overlay=committed_overlay)
                 self._append(
                     phase=ReplayPhase.INCREMENTAL_COMMIT,
                     event_type=ReplayEventType.ROUTE_COMMITTED,
@@ -591,9 +581,7 @@ class SolverRuntimeReplayRecorder:
             phase=ReplayPhase.INCREMENTAL_COMMIT,
             event_type=ReplayEventType.ROUTE_MATERIALIZED,
             title="Route Network Materialized",
-            description=(
-                f"{transport_count} transport, {equipment_count} equipment cells"
-            ),
+            description=(f"{transport_count} transport, {equipment_count} equipment cells"),
             map_view=map_view,
             inspector={
                 "materialized_transport_cell_count": transport_count,
@@ -646,9 +634,7 @@ class SolverRuntimeReplayRecorder:
         )
         confirmed_paths = tuple(c.reservation.path for c in commit.confirmed)
         route_overlay = confirmed_paths_to_overlay_cells(confirmed_paths, self._ctx)
-        map_view = self._build_map_view(
-            cells, frame_overlay=route_overlay, cell_delta=cell_delta
-        )
+        map_view = self._build_map_view(cells, frame_overlay=route_overlay, cell_delta=cell_delta)
         layout = materialization.layout
         transport_count = len(layout.cells) if layout is not None else 0
         equipment_count = len(layout.equipment_cells) if layout is not None else 0

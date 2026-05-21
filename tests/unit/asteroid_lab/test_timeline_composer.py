@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
+from django_apps.asteroid_lab.replay.timeline_composer import compose_replay_timeline
 from django_apps.asteroid_lab.replay.timeline_dtos import (
     ReplayBBox,
     ReplayCell,
     ReplayMapView,
     ReplayTimelineFrame,
 )
-from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType, ReplayPhase
-from django_apps.asteroid_lab.replay.timeline_composer import compose_replay_timeline
 
 
 def _frame(

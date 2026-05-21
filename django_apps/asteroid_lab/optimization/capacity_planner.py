@@ -75,9 +75,7 @@ def plan_capacity(
         raise ValueError(msg)
 
     estimated_extractor_groups = int(
-        math.floor(
-            mineable_cell_count * packing_efficiency / platform_footprint_cells
-        )
+        math.floor(mineable_cell_count * packing_efficiency / platform_footprint_cells)
     )
     shape_goals = _shape_goal_count(estimated_extractor_groups)
     fluid_goals = math.ceil(fluid_platform_count / FLUID_PLATFORMS_PER_GOAL)

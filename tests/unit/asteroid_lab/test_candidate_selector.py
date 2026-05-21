@@ -451,9 +451,7 @@ def test_selector_cap_uses_target_bundle_count_not_route_out_count() -> None:
 
     assert len(pool_candidates) == 14
 
-    plan, _diag = select_gene_candidates_greedy(
-        tuple(pool_candidates), inp=inp, targets=targets
-    )
+    plan, _diag = select_gene_candidates_greedy(tuple(pool_candidates), inp=inp, targets=targets)
 
     assert len(plan.ordered_candidate_ids) == min(
         len(pool_candidates), targets.target_miner_bundle_count

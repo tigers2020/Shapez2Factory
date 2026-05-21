@@ -8,9 +8,9 @@ from django_apps.asteroid_lab.optimization.capacity_planner import plan_capacity
 from django_apps.asteroid_lab.optimization.coords import neighbors4_server
 from django_apps.asteroid_lab.optimization.enums import RouteGoalKind, TransportKind
 from django_apps.asteroid_lab.optimization.input_contracts import (
-    BBox,
     MAX_GOAL_DISTANCE_FROM_MINEABLE,
     MIN_GOAL_DISTANCE_FROM_MINEABLE,
+    BBox,
     cells_in_bbox,
     greenfield_optimization_input,
 )
@@ -33,9 +33,7 @@ def _large_void_grid_input() -> tuple:
             rim_set.add(sv)
     rim = frozenset(rim_set)
     interior = mineable - rim
-    external_void = frozenset(
-        c for c in cells_in_bbox(route_bb) if c not in mineable
-    )
+    external_void = frozenset(c for c in cells_in_bbox(route_bb) if c not in mineable)
     inp = greenfield_optimization_input(bbox=route_bb)
     return replace(
         inp,
@@ -98,7 +96,8 @@ def test_route_goals_bilateral_wide_faces_top_bottom_even_x() -> None:
     inp = _large_void_grid_input()
     min_sy = min(c[1] for c in inp.mineable_cells)
     max_sy = max(c[1] for c in inp.mineable_cells)
-    band = max(2, (max(c[0] for c in inp.mineable_cells) - min(c[0] for c in inp.mineable_cells) + 1) // 8)
+    xs = [c[0] for c in inp.mineable_cells]
+    band = max(2, (max(xs) - min(xs) + 1) // 8)
     capacity = replace(
         plan_capacity(mineable_cell_count=len(inp.mineable_cells)),
         shape_goal_count=4,

@@ -158,9 +158,7 @@ ASTEROID_LAB_RUNTIME_GENE_GENERATOR_VERSION = os.environ.get(
 )
 
 # Shape belt route goals: max miner bundles per external route slot (CANON 12).
-ASTEROID_LAB_MINERS_PER_ROUTE_OUT = int(
-    os.environ.get("ASTEROID_LAB_MINERS_PER_ROUTE_OUT", "12")
-)
+ASTEROID_LAB_MINERS_PER_ROUTE_OUT = int(os.environ.get("ASTEROID_LAB_MINERS_PER_ROUTE_OUT", "12"))
 
 STORAGES = {
     "default": {

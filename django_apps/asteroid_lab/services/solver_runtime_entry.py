@@ -190,9 +190,7 @@ def run_solver_runtime_for_project(
             replay_build_ms = (time.perf_counter() - replay_start) * 1000.0
             if frames:
                 ser_start = time.perf_counter()
-                runtime_replay_frames_json = [
-                    replay_timeline_frame_to_json_dict(f) for f in frames
-                ]
+                runtime_replay_frames_json = [replay_timeline_frame_to_json_dict(f) for f in frames]
                 json_serialize_ms = (time.perf_counter() - ser_start) * 1000.0
         timing_dict = dict(result.solver_summary.get("timing") or {})
         timing_dict["replay_build_ms"] = round(replay_build_ms, 3)

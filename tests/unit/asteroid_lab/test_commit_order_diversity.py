@@ -89,9 +89,7 @@ def test_diversify_commit_order_round_robins_across_anchors() -> None:
         reached_goal=goal,
         base_throughput=12,
     )
-    by_id = {
-        c.candidate_id: c for c in (a1, a2, b1, b2)
-    }
+    by_id = {c.candidate_id: c for c in (a1, a2, b1, b2)}
     greedy_order = SelectedCandidatePlan(
         ordered_candidate_ids=("anchor_a:g1", "anchor_a:g2", "anchor_b:g1", "anchor_b:g2")
     )
@@ -125,9 +123,7 @@ def test_diversify_preserves_multiset_of_candidates() -> None:
 
     diversified = diversify_commit_order(original, by_id)
 
-    assert sorted(diversified.ordered_candidate_ids) == sorted(
-        original.ordered_candidate_ids
-    )
+    assert sorted(diversified.ordered_candidate_ids) == sorted(original.ordered_candidate_ids)
 
 
 def test_diversify_reduces_consecutive_same_diversity_bucket() -> None:
@@ -148,9 +144,7 @@ def test_diversify_reduces_consecutive_same_diversity_bucket() -> None:
     by_id = {c.candidate_id: c for c in candidates}
     greedy_order = SelectedCandidatePlan(
         ordered_candidate_ids=tuple(
-            f"{anchor_x}:g{gene_idx}"
-            for anchor_x in (0, 8, 16)
-            for gene_idx in range(3)
+            f"{anchor_x}:g{gene_idx}" for anchor_x in (0, 8, 16) for gene_idx in range(3)
         )
     )
 
@@ -159,9 +153,7 @@ def test_diversify_reduces_consecutive_same_diversity_bucket() -> None:
         return sum(1 for i in range(len(keys) - 1) if keys[i] == keys[i + 1])
 
     greedy_runs = _consecutive_same_bucket_count(greedy_order)
-    diversified_runs = _consecutive_same_bucket_count(
-        diversify_commit_order(greedy_order, by_id)
-    )
+    diversified_runs = _consecutive_same_bucket_count(diversify_commit_order(greedy_order, by_id))
     assert greedy_runs == 6
     assert diversified_runs == 0
     assert diversified_runs < greedy_runs

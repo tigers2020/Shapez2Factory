@@ -8,7 +8,6 @@ from django_apps.asteroid_lab.optimization.capacity_planner import (
     DEFAULT_MINEABLE_PACKING_EFFICIENCY,
     FLUID_PLATFORMS_PER_GOAL,
     PLATFORM_FOOTPRINT_CELLS,
-    SHAPE_PLATFORMS_PER_GOAL,
     plan_capacity,
 )
 

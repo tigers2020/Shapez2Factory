@@ -18,10 +18,7 @@ def domain_cells_signature(
     domain: dict[Coord, RouteCellDomain],
 ) -> tuple[DomainCellSig, ...]:
     return tuple(
-        sorted(
-            (coord, cell.hard_blocked, cell.transport_mask)
-            for coord, cell in domain.items()
-        )
+        sorted((coord, cell.hard_blocked, cell.transport_mask) for coord, cell in domain.items())
     )
 
 

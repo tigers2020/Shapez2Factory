@@ -95,9 +95,7 @@ def _skipped_records(
     *candidate_ids: str,
     reason: CommitConflictReason = CommitConflictReason.ROUTE_PROBE_FAILED,
 ) -> tuple[SkippedCandidateRecord, ...]:
-    return tuple(
-        SkippedCandidateRecord(candidate_id=cid, reason=reason) for cid in candidate_ids
-    )
+    return tuple(SkippedCandidateRecord(candidate_id=cid, reason=reason) for cid in candidate_ids)
 
 
 def _minimal_capacity() -> CapacityPlan:
@@ -397,7 +395,6 @@ def test_route_probe_succeeded_frame_includes_path_overlay() -> None:
 
 
 def test_record_route_goals_generated_includes_goal_overlay() -> None:
-    from dataclasses import replace
 
     from django_apps.asteroid_lab.optimization.enums import RouteGoalKind
     from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal

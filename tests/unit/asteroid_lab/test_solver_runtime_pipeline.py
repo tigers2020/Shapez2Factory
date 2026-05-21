@@ -140,9 +140,30 @@ def test_solver_summary_includes_commit_skip_reason_fields() -> None:
 
 
 def test_gate_c_branch_hint_classifies_supply_bottleneck() -> None:
-    assert _gate_c_branch_hint(rim_cell_count=10, reachable_anchors_after_prefilter_count=7, unique_anchors_in_normal_pool_count=7) == "c1_probe_domain"
-    assert _gate_c_branch_hint(rim_cell_count=7, reachable_anchors_after_prefilter_count=12, unique_anchors_in_normal_pool_count=7) == "c3_dedupe_truncation"
-    assert _gate_c_branch_hint(rim_cell_count=7, reachable_anchors_after_prefilter_count=7, unique_anchors_in_normal_pool_count=7) == "c2_rim_topology"
+    assert (
+        _gate_c_branch_hint(
+            rim_cell_count=10,
+            reachable_anchors_after_prefilter_count=7,
+            unique_anchors_in_normal_pool_count=7,
+        )
+        == "c1_probe_domain"
+    )
+    assert (
+        _gate_c_branch_hint(
+            rim_cell_count=7,
+            reachable_anchors_after_prefilter_count=12,
+            unique_anchors_in_normal_pool_count=7,
+        )
+        == "c3_dedupe_truncation"
+    )
+    assert (
+        _gate_c_branch_hint(
+            rim_cell_count=7,
+            reachable_anchors_after_prefilter_count=7,
+            unique_anchors_in_normal_pool_count=7,
+        )
+        == "c2_rim_topology"
+    )
 
 
 def test_gate_c_branch_hint_7_route_snapshot_geometry_limited() -> None:
@@ -176,9 +197,7 @@ def test_solver_summary_generation_gate_c_metric_chain() -> None:
     pool_anchors = summary["unique_anchors_in_normal_pool_count"]
     assert rim >= reachable >= probe_anchors >= dedupe_anchors >= truncate_anchors
     assert truncate_anchors == pool_anchors
-    assert (
-        summary["anchors_dropped_by_probe_budget_count"] + probe_anchors == reachable
-    )
+    assert summary["anchors_dropped_by_probe_budget_count"] + probe_anchors == reachable
     assert (
         summary["anchor_preserved_by_truncation_count"]
         + summary["anchor_dropped_by_truncation_count"]
@@ -260,7 +279,9 @@ def test_solver_summary_includes_anchor_diversity_fields() -> None:
         assert isinstance(summary[key], int)
     assert summary["selected_duplicate_anchor_count"] == 0
     assert summary["variants_per_anchor_max"] <= summary["max_selected_variants_per_extractor"]
-    assert summary["unique_anchors_selected_count"] <= summary["unique_anchors_in_normal_pool_count"]
+    assert (
+        summary["unique_anchors_selected_count"] <= summary["unique_anchors_in_normal_pool_count"]
+    )
 
 
 def test_solver_summary_includes_capacity_diagnostic_fields() -> None:
@@ -280,9 +301,9 @@ def test_solver_summary_includes_capacity_diagnostic_fields() -> None:
         "unique_gene_ids_used_count",
     ):
         assert key in summary, f"missing summary field: {key!r}"
-        assert isinstance(summary[key], int), (
-            f"summary[{key!r}] expected int, got {type(summary[key])}"
-        )
+        assert isinstance(
+            summary[key], int
+        ), f"summary[{key!r}] expected int, got {type(summary[key])}"
 
 
 def test_validation_warns_under_target_throughput_without_failing() -> None:
@@ -321,9 +342,7 @@ def test_validation_warns_under_target_throughput_without_failing() -> None:
     assert result.passed is True  # only WARNING issued; no ERROR
 
     matching = [
-        i
-        for i in result.issues
-        if i.issue_code == ValidationIssueCode.UNDER_TARGET_THROUGHPUT
+        i for i in result.issues if i.issue_code == ValidationIssueCode.UNDER_TARGET_THROUGHPUT
     ]
     assert len(matching) == 1, f"expected 1 UNDER_TARGET_THROUGHPUT issue, got {len(matching)}"
     assert matching[0].severity == ValidationSeverity.WARNING
@@ -476,7 +495,5 @@ def test_pipeline_solver_summary_is_deterministic() -> None:
         out.pop("timing", None)
         return out
 
-    assert _summary_without_timing(r1.solver_summary) == _summary_without_timing(
-        r2.solver_summary
-    )
+    assert _summary_without_timing(r1.solver_summary) == _summary_without_timing(r2.solver_summary)
     assert r1.commit == r2.commit

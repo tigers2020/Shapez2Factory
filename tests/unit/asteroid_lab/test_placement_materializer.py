@@ -256,10 +256,7 @@ def test_extension_attachments_parent_first_orders_multi_extension_chain() -> No
         g
         for g in genes
         if g.extension_count >= 2
-        and any(
-            n.kind == "extension" and n.parent_id not in (None, "E0")
-            for n in g.nodes
-        )
+        and any(n.kind == "extension" and n.parent_id not in (None, "E0") for n in g.nodes)
     )
     tpl = gene_template_from_generated_sample(chain)
     ordered = extension_attachments_parent_first(tpl.extension_attachments)
@@ -277,10 +274,7 @@ def test_multi_extension_chain_preview_equipment() -> None:
         g
         for g in genes
         if g.extension_count >= 2
-        and any(
-            n.kind == "extension" and n.parent_id not in (None, "E0")
-            for n in g.nodes
-        )
+        and any(n.kind == "extension" and n.parent_id not in (None, "E0") for n in g.nodes)
     )
     tpl = gene_template_from_generated_sample(chain)
     cand = _candidate_from_gene(gene_template=tpl, anchor=(5, 10), rotation=Direction.N)

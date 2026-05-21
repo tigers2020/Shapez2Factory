@@ -159,9 +159,7 @@ def optimization_input_from_loaded_snapshot(
     all_sv = frozenset(by_sv)
     asteroid_bbox = bbox_from_coords(mineable_f if mineable_f else all_sv)
     route_domain_bbox = expand_bbox(asteroid_bbox, OUTER_VOID_PADDING)
-    external_void = {
-        c for c in cells_in_bbox(route_domain_bbox) if c not in all_sv
-    }
+    external_void = {c for c in cells_in_bbox(route_domain_bbox) if c not in all_sv}
 
     topo = build_topology_graph(cells, mineable=mineable_f, server_xy_params=params)
 

@@ -10,8 +10,8 @@ from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.optimization.coords import cardinal_unit_toward, neighbors4_server
 from django_apps.asteroid_lab.optimization.enums import Direction, TransportKind, TransportMask
 from django_apps.asteroid_lab.optimization.input_contracts import (
-    BBox,
     OUTER_VOID_PADDING,
+    BBox,
     cells_in_bbox,
     expand_bbox,
     greenfield_optimization_input,

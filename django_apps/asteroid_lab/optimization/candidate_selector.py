@@ -61,10 +61,7 @@ def _anchor_slots_available(
     anchor_use_count: dict[Coord, int],
     max_selected_variants_per_extractor: int,
 ) -> bool:
-    return (
-        anchor_use_count.get(candidate.extractor, 0)
-        < max_selected_variants_per_extractor
-    )
+    return anchor_use_count.get(candidate.extractor, 0) < max_selected_variants_per_extractor
 
 
 def select_gene_candidates_greedy(
@@ -128,10 +125,7 @@ def select_gene_candidates_greedy(
         anchor_use_count[best.extractor] = anchor_use_count.get(best.extractor, 0) + 1
         remaining.remove(best)
 
-        if (
-            targets is not None
-            and cumulative_throughput >= targets.target_miner_bundle_count
-        ):
+        if targets is not None and cumulative_throughput >= targets.target_miner_bundle_count:
             selection_stopped_by_throughput_budget = True
             break
 

@@ -19,7 +19,6 @@ from django_apps.asteroid_lab.optimization.enums import (
     ValidationSeverity,
 )
 from django_apps.asteroid_lab.optimization.final_validation import validate_final_layout
-from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal, RouteReservation
 from django_apps.asteroid_lab.optimization.gene_template import (
     CANONICAL_EXTRACTOR_OFFSET,
     CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
@@ -27,6 +26,7 @@ from django_apps.asteroid_lab.optimization.gene_template import (
     CANONICAL_ROUTE_PROBE_START_OFFSET,
     GeneTemplate,
 )
+from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal, RouteReservation
 from django_apps.asteroid_lab.optimization.materialization_dtos import (
     MaterializedLayoutCells,
     MaterializedTransportCell,

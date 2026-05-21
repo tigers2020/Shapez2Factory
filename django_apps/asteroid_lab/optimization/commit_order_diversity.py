@@ -57,9 +57,7 @@ def diversify_commit_order(
         buckets[diversity_bucket_key(candidate)].append(candidate_id)
 
     for bucket_key in buckets:
-        buckets[bucket_key].sort(
-            key=lambda cid: _within_bucket_sort_key(cid, candidates_by_id)
-        )
+        buckets[bucket_key].sort(key=lambda cid: _within_bucket_sort_key(cid, candidates_by_id))
 
     bucket_keys = sorted(buckets.keys())
     queues = [buckets[key] for key in bucket_keys]

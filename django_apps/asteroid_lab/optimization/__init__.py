@@ -13,9 +13,9 @@ from django_apps.asteroid_lab.optimization.bundle_selection_targets import (
 from django_apps.asteroid_lab.optimization.candidate_dtos import (
     CandidateGenerationConfig,
     CandidateGenerationResult,
-    GenerationDiagnostics,
     ExtractorPlacementPolicy,
     GeneCandidate,
+    GenerationDiagnostics,
     RejectedGeneCandidate,
     build_normal_gene_candidate,
     make_candidate_id,

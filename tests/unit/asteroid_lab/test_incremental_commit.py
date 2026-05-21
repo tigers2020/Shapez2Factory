@@ -442,10 +442,7 @@ def test_commit_skips_equipment_transport_overlap() -> None:
 
     assert len(result.confirmed) == 1
     assert result.skipped_candidate_ids == ("b:2",)
-    assert (
-        result.skipped_candidates[0].reason
-        is CommitConflictReason.EQUIPMENT_TRANSPORT_OVERLAP
-    )
+    assert result.skipped_candidates[0].reason is CommitConflictReason.EQUIPMENT_TRANSPORT_OVERLAP
 
 
 def test_incremental_commit_skipped_record_occupied_cell_conflict() -> None:

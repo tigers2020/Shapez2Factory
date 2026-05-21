@@ -115,17 +115,13 @@ def _commit_skip_summary(
 
     return {
         "skipped_by_reason": skipped_by_reason,
-        "commit_occupied_cell_conflict_count": _count(
-            CommitConflictReason.OCCUPIED_CELL_CONFLICT
-        ),
+        "commit_occupied_cell_conflict_count": _count(CommitConflictReason.OCCUPIED_CELL_CONFLICT),
         "commit_route_cell_conflict_count": _count(CommitConflictReason.ROUTE_CELL_CONFLICT),
         "commit_route_probe_failed_count": _count(CommitConflictReason.ROUTE_PROBE_FAILED),
         "commit_transport_kind_conflict_count": _count(
             CommitConflictReason.TRANSPORT_KIND_CONFLICT
         ),
-        "commit_hard_blocked_conflict_count": _count(
-            CommitConflictReason.HARD_BLOCKED_CONFLICT
-        ),
+        "commit_hard_blocked_conflict_count": _count(CommitConflictReason.HARD_BLOCKED_CONFLICT),
         "commit_hard_protected_conflict_count": _count(
             CommitConflictReason.HARD_PROTECTED_CONFLICT
         ),
@@ -212,9 +208,7 @@ def _anchor_diversity_metrics(
         "selection_skipped_duplicate_anchor_count": (
             selection_diag.selection_skipped_duplicate_anchor_count
         ),
-        "max_selected_variants_per_extractor": (
-            selection_diag.max_selected_variants_per_extractor
-        ),
+        "max_selected_variants_per_extractor": (selection_diag.max_selected_variants_per_extractor),
         "selection_stopped_by_throughput_budget": int(
             selection_diag.selection_stopped_by_throughput_budget
         ),
@@ -404,9 +398,7 @@ def run_solver_runtime_pipeline(
         "unique_gene_ids_used_count": _unique_gene_ids_used_count(pool.normal_candidates),
     }
     commit_attempt_count = len(plan.ordered_candidate_ids)
-    anchor_metrics = _anchor_diversity_metrics(
-        pool, plan, candidates_by_id, selection_diag
-    )
+    anchor_metrics = _anchor_diversity_metrics(pool, plan, candidates_by_id, selection_diag)
     generation_metrics = _generation_diagnostics_metrics(pool)
     summary = _build_solver_summary(
         validation_passed=validation.passed,

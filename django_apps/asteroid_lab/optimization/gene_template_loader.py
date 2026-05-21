@@ -146,9 +146,7 @@ def parse_gene_template_record(record: dict[str, Any]) -> GeneTemplate:
                     parent_offset=_parse_coord_pair(
                         item.get("parent_offset"), field="parent_offset"
                     ),
-                    child_offset=_parse_coord_pair(
-                        item.get("child_offset"), field="child_offset"
-                    ),
+                    child_offset=_parse_coord_pair(item.get("child_offset"), field="child_offset"),
                     attach_dir=ad,
                 )
             )

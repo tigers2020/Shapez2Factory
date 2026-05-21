@@ -328,9 +328,7 @@ def generate_gene_candidates(
         probe_cap_floor_reserved = unique_probe_anchors
         probe_cap_fill = max(0, len(sorted_winners) - unique_probe_anchors)
 
-    unique_anchors_after_probe_budget_count = len(
-        {w.projected.extractor for w in sorted_winners}
-    )
+    unique_anchors_after_probe_budget_count = len({w.projected.extractor for w in sorted_winners})
     anchors_dropped_by_probe_budget_count = max(
         0,
         reachable_anchors_after_prefilter_count - unique_anchors_after_probe_budget_count,

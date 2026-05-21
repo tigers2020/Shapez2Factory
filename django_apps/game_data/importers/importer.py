@@ -11,6 +11,7 @@ from typing import Any
 from django.db import transaction
 
 from django_apps.game_data.importers.base import ImportContext, dig
+from django_apps.game_data.importers.simulation_systems import import_simulation_systems
 from django_apps.game_data.importers.source_loader import load_json, sha256_file
 from django_apps.game_data.importers.toolbar_tree import import_toolbar_tree
 from django_apps.game_data.models import (
@@ -28,7 +29,6 @@ from django_apps.game_data.models import (
     ExportWarning,
     FluidColor,
     GameContentAsset,
-    GlobalBeltSpeedPolicy,
     ImportBatch,
     LazyLocalizedPlaceholderReplacement,
     LazyLocalizedTextRef,
@@ -43,8 +43,6 @@ from django_apps.game_data.models import (
     ShapeQuadrantSlot,
     ShapeRecipe,
     ShapeRecipeLayer,
-    SimulationFactoryStub,
-    SimulationSystemEntry,
     SourceObject,
     TransportBuildingRegistry,
 )
@@ -624,38 +622,7 @@ class GameDataImporter:
     def _import_simulation_systems(self) -> None:
         assert self.ctx is not None
         rows = load_json(self._path("simulation_systems.json"))
-        for i, row in enumerate(rows):
-            stype = str(row.get("source_type_name", ""))
-            kind_key = classifiers.simulation_kind_key(stype)
-            cid = identifiers.canonical_simulation_entry(self.ctx.batch.id, i)
-            entry, _ = SimulationSystemEntry.objects.update_or_create(
-                canonical_id=cid,
-                defaults={
-                    "import_batch": self.ctx.batch,
-                    "source_stable_id": str(row.get("stable_id", "")),
-                    "simulation_kind_key": kind_key,
-                    "clr_type_audit": stype[:4000],
-                    "display_name_key": str(row.get("display_name_key", "")),
-                    "source_row_index": i,
-                },
-            )
-            snap = row.get("definition_snapshot") or {}
-            if "SimulationFactory" in stype or snap.get("$type", "").endswith("SimulationFactory"):
-                SimulationFactoryStub.objects.update_or_create(
-                    simulation_entry=entry,
-                    defaults={"factory_type_name": str(snap.get("$type", ""))[:255]},
-                )
-            if i == 0 and "BeltSpeed" in str(snap):
-                upgrade = ResearchUpgrade.objects.filter(upgrade_key="BeltSpeed").first()
-                GlobalBeltSpeedPolicy.objects.update_or_create(
-                    import_batch=self.ctx.batch,
-                    defaults={
-                        "base_speed": str(snap.get("BaseSpeed", "")),
-                        "research_upgrade": upgrade,
-                        "steps_per_tick": int(dig(snap, "StepsPerTick", "Value", default=0) or 0),
-                    },
-                )
-            self.ctx.bump("simulation_system_entry")
+        import_simulation_systems(self.ctx, rows)
 
     def _import_toolbar(self) -> None:
         assert self.ctx is not None

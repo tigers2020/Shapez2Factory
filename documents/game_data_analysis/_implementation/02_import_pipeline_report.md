@@ -18,7 +18,7 @@ python manage.py import_game_data --source documents/game_data --batch-name <nam
 8. `prefabs.json` / `sprites.json` / `materials.json` → `GameContentAsset`
 9. `asset_references.json` → `AssetMetaReference` (requires content assets)
 10. `research_unlocks.json` → research tables + costs
-11. `simulation_systems.json` → `SimulationSystemEntry`, belt policy
+11. `simulation_systems.json` → `SimulationSystem` (C-lite), `SimulationClrProvenance`, connectable children, belt policy
 12. `toolbar_entries.json` → toolbar tables + FK to variants
 13. `translations.json` → `LocalizationExportStatus` only
 14. `belts_pipes_transport.json` → `TransportBuildingRegistry` (no variant duplicate)

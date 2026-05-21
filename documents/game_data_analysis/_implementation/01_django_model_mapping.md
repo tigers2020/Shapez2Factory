@@ -1,14 +1,17 @@
 # Django Model Mapping
 
-| Django model | Purpose | Source reports | Source JSON paths | Cross references | Notes |
-| ------------ | ------- | -------------- | ----------------- | ---------------- | ----- |
-| `ImportBatch` | Export bundle header | manifest, all | `manifest.json` root | → all tables | UK: `manifest_self_hash` |
-| `ArtifactChecksum` | Per-file SHA gate | manifest | `file_hashes.*` | → batch | |
+**Import metadata:** canonical logical names → Django classes — see [`_audit/10_import_metadata_unification.md`](../_audit/10_import_metadata_unification.md).  
+Do **not** add `GameDataImportRun`, `GameDataSourceFile`, etc. in parallel.
+
+| Django model | Canonical name | Purpose | Source reports | Source JSON paths | Cross references | Notes |
+| ------------ | -------------- | ------- | -------------- | ----------------- | ---------------- | ----- |
+| `ImportBatch` | `game_data_import_batch` | Import **run** / manifest header | manifest, all | `manifest.json` root | → all tables | UK: `manifest_self_hash` |
+| `ArtifactChecksum` | `game_data_artifact_checksum` | Per **file** SHA gate | manifest | `file_hashes.*` | → batch | Not `SourceObject` |
 | `ExportWarning` | Export caveats | manifest | `warnings[]` | → batch | |
 | `ExportIncompleteSection` | Failed sections | manifest, translations | `incomplete_sections[]` | → batch | |
 | `LocalizationExportStatus` | Empty l10n export | translations | `translations.json` + manifest | → batch | 1:1 batch |
-| `SourceObject` | Row provenance | all planned | `[i]` envelope | → batch | |
-| `UnknownProperty` | Unmapped keys | all planned | any | → batch | preview only |
+| `SourceObject` | `source_object_record` | Row provenance | all planned | `[i]` envelope | → batch | |
+| `UnknownProperty` | `unknown_property` | Ignored / unmapped keys | all planned | any | → batch | preview + `reason_code`; not `GameDataIgnoredField` |
 | `GameContentAsset` | Merged prefab/sprite/material | prefabs, sprites, materials, asset_references | `[*].{stable_id,*_path}` | ← meta | `content_kind` enum |
 | `AssetMetaReference` | Meta → content bridge | asset_references | `[*].ref_stable_id` | → `GameContentAsset` | |
 | `FluidColor` | Paint palette | fluids | `definition_snapshot.Color.name` | ← shape slots | UK: `color_name` |
@@ -33,9 +36,13 @@
 | `ResearchUnlockCost` | Shape payment | research_unlocks | `Costs[].ShapeHash` | → `ShapeRecipe` | FK resolved |
 | `ResearchPrerequisite` | Dependencies | research_unlocks | planned | upgrade/mechanic | v1 partial |
 | `ResearchGlobalConfig` | Global tunables | research_unlocks | manager row | batch | placeholder |
-| `SimulationSystemEntry` | Sim registration | simulation_systems | `[*].source_type_name` | audit, factory | `clr_type_audit` TEXT |
-| `SimulationFactoryStub` | Factory shell | simulation_systems | factory rows | → entry | |
-| `GlobalBeltSpeedPolicy` | Belt speed | simulation_systems | row 0 | → `ResearchUpgrade` | |
+| `SimulationSystem` | Sim registration (180 rows) | simulation_systems | `simulation_parameters` | profile FK, types | UK `(batch, source_stable_id)` |
+| `SimulationProfile` | Profile keys | detected signature | — | no enum migration |
+| `SimulationClrProvenance` | CLR `source_type_name` capture | `source_type_name` | — | not domain-queryable; was `ImportAudit` |
+| `ConnectableSimulation` + children | Connectable graph | `ConnectableSimulations[]` | building_variant FK | `connectable_key` + signatures |
+| `GlobalBeltSpeedPolicy` | Batch-global belt speed | simulation_systems | `BeltSpeed` row | → `ResearchUpgrade` | synced from buffable |
+| `SimulationBuffableSpeed` | `BuffableBeltSpeed` | simulation_systems | per param key | → `ResearchUpgrade` | |
+| `SimulationMultipleBeltSpeed` | `MultipleBeltSpeed` | simulation_systems | `JumpSpeed` | → `SimulationBuffableSpeed` | |
 | `SimulationRuntimeAudit` | Heavy capture | simulation_systems | converter blobs | → entry | **JSONField audit only** |
 | `ToolbarTreeNode` | Toolbar structure | toolbar_entries | `display_name_key` (debug `tree_path`) | parent/child_index UK | `canonical_id` from `stable_id` first |
 | `ToolbarElement` | ACTION leaf only | toolbar_entries | placer rows | 1:1 `tree_node`, placements | 142 in current dump |

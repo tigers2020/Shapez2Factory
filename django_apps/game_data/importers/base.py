@@ -33,19 +33,27 @@ class ImportContext:
         json_path: str,
         key: str,
         value: Any,
+        *,
+        reason_code: str = "",
+        classification: str = "",
     ) -> None:
         preview, digest = hash_preview(value)
-        UnknownProperty.objects.create(
+        _, created = UnknownProperty.objects.update_or_create(
             import_batch=self.batch,
             owner_model=owner_model,
             owner_key=owner_key,
             json_path=json_path,
-            key=key,
-            value_type=type(value).__name__,
-            value_preview=preview,
-            value_hash=digest,
+            defaults={
+                "key": key,
+                "value_type": type(value).__name__,
+                "value_preview": preview,
+                "value_hash": digest,
+                "reason_code": reason_code,
+                "classification": classification,
+            },
         )
-        self.summary["unknown_fields"] = int(self.summary["unknown_fields"]) + 1
+        if created:
+            self.summary["unknown_fields"] = int(self.summary["unknown_fields"]) + 1
 
 
 def dig(obj: dict[str, Any], *keys: str, default: Any = None) -> Any:

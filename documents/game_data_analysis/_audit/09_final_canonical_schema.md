@@ -9,7 +9,9 @@ Status: **Approved** | **Needs review** | **Rejected**
 
 ## Layer 0 — Import & integrity
 
-### `game_data_import_batch` — **Approved**
+> **Django mapping:** [`10_import_metadata_unification.md`](10_import_metadata_unification.md) — `ImportBatch`, `ArtifactChecksum`, `SourceObject`, `UnknownProperty` (no parallel `GameData*` tables).
+
+### `game_data_import_batch` — **Approved** (`ImportBatch`)
 
 | Column | Constraints |
 | ------ | ----------- |
@@ -21,7 +23,7 @@ Status: **Approved** | **Needs review** | **Rejected**
 
 **Origins:** all reports, manifest.
 
-### `game_data_artifact_checksum` — **Approved**
+### `game_data_artifact_checksum` — **Approved** (`ArtifactChecksum`)
 
 UK: `(import_batch_id, artifact_filename)`. Columns: `expected_sha256`, `import_status`, `is_incomplete`.
 
@@ -35,7 +37,7 @@ UK: `(import_batch_id, artifact_filename)`. Columns: `expected_sha256`, `import_
 
 **Origins:** translations, manifest.
 
-### `source_object_record`, `unknown_property` — **Approved**
+### `source_object_record`, `unknown_property` — **Approved** (`SourceObject`, `UnknownProperty`)
 
 **Origins:** all planned.
 
@@ -141,9 +143,11 @@ Shared children: **`research_unlock_cost`** (→ shape_recipe), **`research_unlo
 
 ## Layer 5 — Simulation & UI
 
-### `simulation_system_entry` + stubs — **Approved**
+### `simulation_system` (C-lite) — **Approved**
 
-Children: `simulation_factory_stub`, `global_belt_speed_policy`, `connectable_simulation_attachment` (review), `simulation_runtime_audit` (JSON audit only).
+`simulation_profile` FK, `simulation_type`, `simulation_state_type`, `simulation_clr_provenance` (CLR only; renamed from `ImportAudit`), `connectable_simulation` + connector/lane/bounds children, `global_belt_speed_policy`, `simulation_runtime_audit` (JSON audit only). UK upsert: `(import_batch, source_stable_id)`. `canonical_id` grouped, non-unique.
+
+**Removed:** `simulation_system_entry`, `simulation_factory_stub`, domain `clr_type_audit`.
 
 ### `toolbar_element` + extensions — **Approved**
 
@@ -202,7 +206,7 @@ Children: `simulation_factory_stub`, `global_belt_speed_policy`, `connectable_si
 | prefabs/sprites/materials | game_content_asset |
 | asset_references | asset_meta_reference |
 | research_unlocks | research_* |
-| simulation_systems | simulation_system_entry* |
+| simulation_systems | simulation_system* (C-lite) |
 | toolbar_entries | toolbar_* |
 | translations | localization_export_status |
 | raw_type_index | clr_type_registry_entry |

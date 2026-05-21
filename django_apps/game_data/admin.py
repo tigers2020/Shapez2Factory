@@ -26,7 +26,7 @@ class GameDataReadOnlyAdminMixin:
 
 
 class ImportBatchFilter(admin.SimpleListFilter):
-    title = "import batch"
+    title = "import run"
     parameter_name = "import_batch"
 
     def lookups(self, request: HttpRequest, model_admin: admin.ModelAdmin) -> list[tuple[str, str]]:
@@ -199,8 +199,16 @@ class SourceObjectAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
 @admin.register(m.UnknownProperty)
 class UnknownPropertyAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("owner_model", "key", "value_type", "import_batch", "owner_key")
-    list_filter = (ImportBatchFilter, "owner_model", "value_type")
+    list_display = (
+        "owner_model",
+        "key",
+        "reason_code",
+        "classification",
+        "value_type",
+        "import_batch",
+        "owner_key",
+    )
+    list_filter = (ImportBatchFilter, "owner_model", "reason_code", "classification", "value_type")
     search_fields = ("owner_key", "key", "json_path")
     raw_id_fields = ("import_batch",)
 
@@ -470,35 +478,111 @@ class ResearchGlobalConfigAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 # --- Simulation ---
 
 
-@admin.register(m.SimulationSystemEntry)
-class SimulationSystemEntryAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+class SimulationConnectorInline(admin.TabularInline):
+    model = m.SimulationConnector
+    extra = 0
+
+
+class SimulationLaneDefinitionInline(admin.TabularInline):
+    model = m.SimulationLaneDefinition
+    extra = 0
+
+
+@admin.register(m.SimulationProfile)
+class SimulationProfileAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = ("profile_key", "profile_name")
+    search_fields = ("profile_key", "profile_name")
+
+
+@admin.register(m.SimulationSystem)
+class SimulationSystemAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
     list_display = (
-        "simulation_kind_key",
+        "system_family",
         "source_row_index",
+        "source_stable_id",
+        "profile",
+        "canonical_id",
         "import_batch",
-        "display_name_key",
     )
-    list_filter = (ImportBatchFilter, "simulation_kind_key", "system_family", "parameter_profile")
-    search_fields = ("simulation_kind_key", "display_name_key", "canonical_id")
+    list_filter = (ImportBatchFilter, "profile", "system_family")
+    search_fields = ("system_family", "canonical_id", "source_stable_id", "display_name_key")
+    raw_id_fields = ("import_batch", "profile")
+
+
+@admin.register(m.ConnectableSimulation)
+class ConnectableSimulationAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "connectable_key",
+        "attachment_index",
+        "building_variant",
+        "num_connectors",
+        "simulation_system",
+    )
+    list_filter = (ImportBatchFilter,)
+    inlines = (SimulationConnectorInline, SimulationLaneDefinitionInline)
+    raw_id_fields = ("simulation_system", "building_variant")
+
+
+@admin.register(m.SimulationSystemParameterKey)
+class SimulationSystemParameterKeyAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = ("name", "classification", "occurrence_count")
+    list_filter = ("classification",)
+    search_fields = ("name",)
+
+
+@admin.register(m.SimulationSystemParameterOccurrence)
+class SimulationSystemParameterOccurrenceAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = ("simulation_system", "parameter_key", "source_path")
+    list_filter = ("parameter_key__classification",)
+    raw_id_fields = ("simulation_system", "parameter_key")
+
+
+@admin.register(m.SimulationClrProvenance)
+class SimulationClrProvenanceAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = ("source_row_index", "source_stable_id", "profile_signature", "import_batch")
+    list_filter = (ImportBatchFilter, "profile_signature")
+    search_fields = ("source_stable_id", "clr_type_string")
     raw_id_fields = ("import_batch",)
 
 
-@admin.register(m.SimulationFactoryStub)
-class SimulationFactoryStubAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("simulation_entry", "factory_type_name")
-    raw_id_fields = ("simulation_entry",)
+@admin.register(m.SimulationBuffableSpeed)
+class SimulationBuffableSpeedAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "parameter_name",
+        "base_speed",
+        "steps_per_tick",
+        "dump_type",
+        "research_upgrade",
+        "simulation_system",
+    )
+    list_filter = ("parameter_name", "dump_type")
+    raw_id_fields = ("simulation_system", "research_upgrade")
+
+
+@admin.register(m.SimulationMultipleBeltSpeed)
+class SimulationMultipleBeltSpeedAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "parameter_name",
+        "cycle_ref_type",
+        "multiplier",
+        "steps_per_tick",
+        "buffable_base",
+        "simulation_system",
+    )
+    list_filter = ("dump_type",)
+    raw_id_fields = ("simulation_system", "buffable_base")
 
 
 @admin.register(m.GlobalBeltSpeedPolicy)
 class GlobalBeltSpeedPolicyAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("import_batch", "base_speed", "research_upgrade", "steps_per_tick")
-    raw_id_fields = ("import_batch", "research_upgrade")
+    list_display = ("import_batch", "base_speed", "research_upgrade", "steps_per_tick", "simulation_system")
+    raw_id_fields = ("import_batch", "research_upgrade", "simulation_system")
 
 
 @admin.register(m.SimulationRuntimeAudit)
 class SimulationRuntimeAuditAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("simulation_entry",)
-    raw_id_fields = ("simulation_entry",)
+    list_display = ("simulation_system",)
+    raw_id_fields = ("simulation_system",)
 
 
 # --- Toolbar ---

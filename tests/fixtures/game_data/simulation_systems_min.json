@@ -1,0 +1,61 @@
+[
+  {
+    "stable_id": "min-factory-001",
+    "source_type_name": "AtomicStatefulBuildingSimulationSystem`2[[SplitterTShapeSimulation, Game.Content, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null],[PrioritySplitterSimulationState, Game.Content, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "display_name_key": "AtomicStatefulBuildingSimulationSystem`2",
+    "definition_snapshot": {},
+    "simulation_parameters": {
+      "SimulationFactory": {"$type": "SimulationFactory"}
+    }
+  },
+  {
+    "stable_id": "min-connectable-002",
+    "source_type_name": "AtomicStatefulIslandSimulationSystem`2[[SpaceConveyorSimulation, Game.Content, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null],[SpaceConveyorSimulationState, Game.Content, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+    "display_name_key": "AtomicStatefulIslandSimulationSystem`2",
+    "definition_snapshot": {},
+    "simulation_parameters": {
+      "ConnectableSimulations": [
+        {
+          "NumConnectors": 1,
+          "NumOccupiedTiles": 1,
+          "Connectors": [
+            {
+              "Pivot": "(0,0,0);North",
+              "$type": "ItemReceiverConnector",
+              "UpdatePriority": "MeFirst"
+            }
+          ],
+          "Simulation": {
+            "$type": "SpaceConveyorSimulation",
+            "_Lanes": ["lane-a"]
+          }
+        },
+        {
+          "NumConnectors": 1,
+          "NumOccupiedTiles": 1,
+          "Connectors": [
+            {
+              "Pivot": "(0,0,0);South",
+              "$type": "ItemReceiverConnector",
+              "UpdatePriority": "MeFirst"
+            }
+          ],
+          "Simulation": {
+            "$type": "SpaceConveyorSimulation",
+            "_Lanes": ["lane-b"]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "stable_id": "min-converter-003",
+    "source_type_name": "Game.Content.AtomicIslands.Converters.SpaceConverterSystem",
+    "display_name_key": "SpaceConverterSystem",
+    "definition_snapshot": {"ISimulationSystem.OnSimulationCreated": "audit-only"},
+    "simulation_parameters": {
+      "Simulations": [],
+      "ISimulationSystem.OnSimulationCreated": "audit-only"
+    }
+  }
+]

@@ -129,7 +129,54 @@ def canonical_toolbar_element(stable_key: str) -> str:
 
 
 def canonical_simulation_entry(batch_id: int, row_index: int) -> str:
+    """Legacy Phase A row id — prefer canonical_simulation_group_id for grouping."""
     return _slug("sim", str(batch_id), str(row_index))
+
+
+def canonical_simulation_group_key(
+    family: str,
+    simulation_class: str | None,
+    state_class: str | None,
+    profile_key: str,
+) -> str:
+    payload = "\0".join(
+        [
+            (family or "unknown").strip(),
+            (simulation_class or "_").strip(),
+            (state_class or "_").strip(),
+            (profile_key or "other").strip(),
+        ]
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
+
+
+def canonical_simulation_group_id(group_key: str) -> str:
+    return _slug("sim", group_key)
+
+
+def canonical_connectable_simulation(system_id: int, connectable_key: str) -> str:
+    return _slug("connectable", str(system_id), connectable_key)
+
+
+def canonical_simulation_connector(connectable_cid: str, order_index: int) -> str:
+    return _slug(connectable_cid, "connector", str(order_index))
+
+
+def canonical_simulation_lane_definition(connectable_cid: str, lane_key: str) -> str:
+    return _slug(connectable_cid, "lane", lane_key)
+
+
+def canonical_simulation_clr_provenance(batch_id: int, source_stable_id: str) -> str:
+    """Stable id for ``SimulationClrProvenance`` (CLR ``source_type_name`` capture)."""
+    return _slug("sim-clr-prov", str(batch_id), source_stable_id)
+
+
+def canonical_simulation_buffable_speed(simulation_system_id: int, parameter_name: str) -> str:
+    return _slug("sim-buffable-speed", str(simulation_system_id), parameter_name)
+
+
+def canonical_simulation_multiple_belt_speed(simulation_system_id: int, parameter_name: str) -> str:
+    return _slug("sim-multiple-speed", str(simulation_system_id), parameter_name)
 
 
 def canonical_clr_type(type_name: str, assembly_name: str) -> str:

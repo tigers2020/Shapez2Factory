@@ -50,6 +50,8 @@
 | `simulation_delegate_binding` | Runtime hooks |
 | `island_config_blob` | Converter Config |
 
-## Highest risk
+## Highest risk (mitigated in C-lite)
 
-**Storing `definition_snapshot` / `simulation_parameters` wholesale in domain JSONField** — reproduces 38 MB anti-pattern. **Mitigation:** profile-based extraction + audit-only blob for converter captures.
+**Storing `definition_snapshot` / full params in domain JSONField** — mitigated by normalized tables + `simulation_runtime_audit` only for converters.
+
+**Post-migration:** Re-run `import_game_data` after `0008` so `SimulationSystem` rows populate (`0006` clears legacy).

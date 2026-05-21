@@ -13,6 +13,7 @@ from django_apps.game_data.models import (
     GameContentAsset,
     ImportBatch,
     ShapeRecipe,
+    SimulationSystem,
 )
 
 
@@ -31,6 +32,7 @@ def _model_counts() -> dict[str, int]:
         "shape_recipe": ShapeRecipe.objects.count(),
         "building_variant": BuildingVariant.objects.count(),
         "content_asset": GameContentAsset.objects.count(),
+        "simulation_system": SimulationSystem.objects.count(),
     }
 
 

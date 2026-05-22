@@ -38,6 +38,7 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import (
     entry_result_to_json_dict,
     run_solver_runtime_for_project,
 )
+from django_apps.game_data.snapshots.errors import SnapshotBuildError
 from django_apps.shapez_core.services.lab_sprite_identifier_service import (
     build_lab_identifier_sprite_relpath_map,
 )
@@ -52,6 +53,9 @@ from django_apps.web.constants import (
     HOME_INITIAL_SHAPE_CODE,
 )
 from django_apps.web.models import GraphPreviewImage
+from django_apps.web.services.asteroid_game_data_snapshot import (
+    build_asteroid_game_data_snapshot,
+)
 from django_apps.web.services.asteroid_lab_page_context import (
     lab_page_context,
     serialize_replay_frame,
@@ -273,7 +277,16 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
             status=404,
         )
 
-    result = run_solver_runtime_for_project(int(project.pk))
+    game_data_snapshot = None
+    try:
+        game_data_snapshot = build_asteroid_game_data_snapshot()
+    except SnapshotBuildError:
+        pass
+
+    result = run_solver_runtime_for_project(
+        int(project.pk),
+        game_data_snapshot=game_data_snapshot,
+    )
     body = entry_result_to_json_dict(result)
     if result.error_code in (
         SolverRuntimeEntryErrorCode.NO_MAP_INPUT,

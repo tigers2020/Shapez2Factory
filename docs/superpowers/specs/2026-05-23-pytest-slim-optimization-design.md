@@ -55,7 +55,11 @@ When D1 removes a test, update the **Removed in D1** subsection below (append-on
 
 | Removed test | Owner | PR/commit |
 |--------------|-------|-----------|
-| _(populate during D1; skip rows if already removed before Phase D)_ | | |
+| `test_exhaustive_connected_branch_pipe_matches_user_golden_json` | `test_official_canonical_export.py` | skipped—pre-D |
+| `test_exhaustive_connected_branch_encode_not_spread_bug_fixture` | `test_official_canonical_export.py` | skipped—pre-D |
+| `test_encode_layout_with_suffix_roundtrip` | `test_official_canonical_export.py` | skipped—pre-D |
+| `test_connected_branch_gene_matches_user_fixture_layout` | `test_official_canonical_export.py` | skipped—pre-D |
+| _(none — generic re-import dupes)_ | `test_import_idempotency.py` | D1—no generic dupes remain |
 
 ---
 

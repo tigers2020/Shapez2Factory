@@ -1,0 +1,63 @@
+object {
+  "definition_snapshot":
+    // $type: ShapeItem×70
+    object {
+      "$type":
+        string
+      "Definition":
+        // $type: ShapeDefinition×70
+        object {
+          "$type":
+            string
+          "Hash":
+            string
+          "Id":
+            object {
+              "Uid":
+                integer
+            }
+          "Layers":
+            array<
+              object {
+                "Parts":
+                  array<
+                    object {
+                      "Color":
+                        object {
+                          "$unity":
+                            string
+                          "instance_id":
+                            integer
+                          "name":
+                            string
+                        }
+                      "Shape":
+                        object {
+                          "$unity":
+                            string
+                          "instance_id":
+                            integer
+                          "name":
+                            string
+                        }
+                    }
+                  >
+              }
+            >
+          "PartCount":
+            integer
+          "UniqueOperationId":
+            integer
+        }
+    }
+  "display_name_key":
+    string
+  "source_guid":
+    string
+  "source_path":
+    string
+  "source_type_name":
+    string
+  "stable_id":
+    string
+}

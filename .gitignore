@@ -1,4 +1,6 @@
 # --- env & tooling (project) ---
+# Regenerate: python scripts/analyze_game_data_json_deep.py (often >100MB; GitHub limit)
+docs/domain/game_data_json_deep/*.paths.tsv
 .worktrees/
 .conda/
 .venv/

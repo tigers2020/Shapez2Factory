@@ -21,6 +21,11 @@ from django_apps.game_data.services.toolbar_node_kind import (
     compute_action_subtree,
     is_separator_row,
 )
+from tests.unit.game_data._stratified import (
+    TOOLBAR_CANONICAL_ID_ANCHOR_PATHS,
+    merge_unique_paths,
+    pick_stratified_by_key,
+)
 
 
 def _source_rows(game_data_dir: Path) -> list[dict]:
@@ -144,9 +149,48 @@ def test_island_placer_id_matches_json(imported_game_data_batch_module: ImportBa
     assert placement.placer_id == "95"
 
 
+def _canonical_id_by_tree_path(batch: ImportBatch, paths: list[str]) -> dict[str, str]:
+    rows = ToolbarTreeNode.objects.filter(import_batch=batch, tree_path__in=paths).values_list(
+        "tree_path",
+        "canonical_id",
+    )
+    return dict(rows)
+
+
+@pytest.mark.django_db
+def test_canonical_id_fast_stability_stratified_toolbar_sample(
+    game_data_dir: Path,
+    imported_game_data_batch_module: ImportBatch,
+) -> None:
+    """Stratified sample: canonical_id per tree_path stable after re-import.
+
+    Module fixture = first snapshot; one in-test re-import (not full-tree set compare).
+    """
+
+    batch = imported_game_data_batch_module
+    nodes = list(ToolbarTreeNode.objects.filter(import_batch=batch).order_by("tree_path"))
+    assert len(nodes) >= 15
+    available = {n.tree_path for n in nodes}
+    stratified_nodes = pick_stratified_by_key(nodes, n=5, key=lambda node: node.tree_path)
+    stratified_paths = [node.tree_path for node in stratified_nodes]
+    paths = merge_unique_paths(
+        stratified_paths,
+        TOOLBAR_CANONICAL_ID_ANCHOR_PATHS,
+        available=available,
+    )
+    assert len(paths) >= 10
+    first = _canonical_id_by_tree_path(batch, paths)
+    assert set(first) == set(paths)
+
+    GameDataImporter(game_data_dir, batch_name="pytest-module").run()
+    batch_after = ImportBatch.objects.get(pk=batch.pk)
+    second = _canonical_id_by_tree_path(batch_after, paths)
+    assert second == first
+
+
 @pytest.mark.django_db
 @pytest.mark.slow
-def test_canonical_id_stable_across_reimport(game_data_dir: Path) -> None:
+def test_canonical_id_stable_across_reimport_full_toolbar_tree(game_data_dir: Path) -> None:
     GameDataImporter(game_data_dir, batch_name="tree-a").run()
     first = set(ToolbarTreeNode.objects.values_list("canonical_id", flat=True))
     GameDataImporter(game_data_dir, batch_name="tree-a").run()

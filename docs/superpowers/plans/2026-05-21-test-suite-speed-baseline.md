@@ -86,3 +86,10 @@ Target ≤70s not met after D2 (**100.6s**). Applied `@pytest.mark.slow` on top 
 - wall: `test_fast.ps1` **27.5s** (pytest 22.9s) — **≤70s target met**
 - passed/skipped: **854** passed, **1** skipped
 - Phase D3: fast target met. No further slow-tag changes required in this pass.
+
+## Phase E — stratified toolbar canonical_id (2026-05-23)
+
+- `tests/unit/game_data/_stratified.py`: head/mid/tail + `TOOLBAR_CANONICAL_ID_ANCHOR_PATHS`
+- Fast contract: `test_canonical_id_fast_stability_stratified_toolbar_sample` (module fixture + 1× re-import)
+- Slow contract: `test_canonical_id_stable_across_reimport_full_toolbar_tree` (renamed from prior slow test)
+- Uses `imported_game_data_batch_module` → auto-`slow`; not in `test_fast` slice by design

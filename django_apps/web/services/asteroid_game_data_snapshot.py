@@ -71,8 +71,7 @@ def build_asteroid_game_data_snapshot(*, db_alias: str = "default") -> AsteroidG
         for b in sorted(bundle.buildings, key=lambda b: (b.internal_name, b.canonical_id))
     )
     transport_registry = tuple(
-        _transport_dto(r)
-        for r in sorted(bundle.transport_registry, key=lambda t: t.transport_kind)
+        _transport_dto(r) for r in sorted(bundle.transport_registry, key=lambda t: t.transport_kind)
     )
     built_at_utc = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     meta = build_snapshot_meta(

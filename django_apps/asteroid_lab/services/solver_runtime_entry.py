@@ -202,21 +202,25 @@ def run_solver_runtime_for_project(
         json_serialize_ms = 0.0
         if recorder is not None:
             replay_start = time.perf_counter()
-            frames = recorder.build_frames()
+            replay_timeline_frames = recorder.build_frames()
             replay_build_ms = (time.perf_counter() - replay_start) * 1000.0
-            if frames:
+            if replay_timeline_frames:
                 ser_start = time.perf_counter()
-                runtime_replay_frames_json = [replay_timeline_frame_to_json_dict(f) for f in frames]
+                runtime_replay_frames_json = [
+                    replay_timeline_frame_to_json_dict(f) for f in replay_timeline_frames
+                ]
                 json_serialize_ms = (time.perf_counter() - ser_start) * 1000.0
         timing_dict = dict(result.solver_summary.get("timing") or {})
         timing_dict["replay_build_ms"] = round(replay_build_ms, 3)
         timing_dict["json_serialize_ms"] = round(json_serialize_ms, 3)
         result_summary = dict(result.solver_summary)
         result_summary["timing"] = timing_dict
+        if server_xy_params is None:
+            raise RuntimeError("server_xy_params required to persist solver run outcome")
         _persist_solver_run_outcome(
             run_id,
             solver_summary=result_summary,
-            server_xy_params=loaded.server_xy_params,
+            server_xy_params=server_xy_params,
             runtime_replay_frames_json=runtime_replay_frames_json,
         )
 

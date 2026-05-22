@@ -4,6 +4,8 @@ from collections import defaultdict
 
 from django_apps.game_data.selectors.buildings import (
     GAME_DATA_READ_ALIAS,
+    BuildingConnectorRow,
+    BuildingFootprintRow,
     fetch_building_rows_for_batch,
 )
 from django_apps.game_data.selectors.transport_registry import (
@@ -19,12 +21,12 @@ from django_apps.game_data.snapshots.rows import (
 )
 
 
-def _footprint_sort_key(row) -> tuple[int, int, int]:
+def _footprint_sort_key(row: BuildingFootprintRow) -> tuple[int, int, int]:
     return (row.y, row.x, row.order_index)
 
 
-def _connector_sort_key(row) -> int:
-    return row.order_index
+def _connector_sort_key(row: BuildingConnectorRow) -> int:
+    return int(row.order_index)
 
 
 def build_game_data_row_bundle(
@@ -36,7 +38,7 @@ def build_game_data_row_bundle(
     variant_ids = {variant.id for variant in building_rows.variants}
     building_canonical_ids = {variant.canonical_id for variant in building_rows.variants}
 
-    footprints_by_variant: dict[int, list] = defaultdict(list)
+    footprints_by_variant: dict[int, list[BuildingFootprintRow]] = defaultdict(list)
     for footprint in building_rows.footprints:
         variant_id = footprint.building_variant_id
         if variant_id not in variant_ids:
@@ -46,7 +48,7 @@ def build_game_data_row_bundle(
             )
         footprints_by_variant[variant_id].append(footprint)
 
-    connectors_by_variant: dict[int, list] = defaultdict(list)
+    connectors_by_variant: dict[int, list[BuildingConnectorRow]] = defaultdict(list)
     for connector in building_rows.connectors:
         variant_id = connector.building_variant_id
         if variant_id not in variant_ids:
@@ -95,10 +97,7 @@ def build_game_data_row_bundle(
         if canonical_id not in building_canonical_ids:
             raise SnapshotBuildError(
                 SnapshotBuildErrorCode.ORPHAN_TRANSPORT,
-                (
-                    "transport references unknown building_variant "
-                    f"canonical_id={canonical_id!r}"
-                ),
+                ("transport references unknown building_variant " f"canonical_id={canonical_id!r}"),
             )
     transport_registry = tuple(
         TransportRegistryRow(

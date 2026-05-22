@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
 
 
 def backfill_shape_recipe_appearances(apps, schema_editor) -> None:
@@ -13,9 +13,7 @@ def backfill_shape_recipe_appearances(apps, schema_editor) -> None:
         if recipe.source_object_id is None:
             continue
         src = recipe.source_object
-        filename = (
-            "shapes.json" if recipe.catalog_source == "full" else "items.json"
-        )
+        filename = "shapes.json" if recipe.catalog_source == "full" else "items.json"
         ShapeRecipeSourceAppearance.objects.get_or_create(
             import_batch_id=recipe.import_batch_id,
             artifact_filename=filename,

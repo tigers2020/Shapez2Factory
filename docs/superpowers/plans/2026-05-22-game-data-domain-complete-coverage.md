@@ -501,9 +501,9 @@ If audit classifies `ChainPositions` as `IGNORE_AUDIT`, Phase 2 is **skip** — 
 
 ## Phase 3 — Documentation
 
-- [ ] **Task 3.1:** Create `docs/domain/game_data_coverage.md` — copy manifest table + principles block from spec
-- [ ] **Task 3.2:** Link from `docs/domain/README.md` and `documents/ai/manuals/django.md` import section
-- [ ] **Task 3.3:** Update spec status → `Implemented` when Phase 1 gate green
+- [x] **Task 3.1:** Create `docs/domain/game_data_coverage.md` — copy manifest table + principles block from spec
+- [x] **Task 3.2:** Link from `docs/domain/README.md` and `documents/ai/manuals/django.md` import section
+- [x] **Task 3.3:** Update spec status → Phase 0–1d + 3 implemented (commit `097e2a28`)
 
 Optional: `docs/adr/ADR-005-game-data-coverage-boundary.md` (defer unless snapshot/solver touch needed).
 
@@ -540,7 +540,9 @@ No TBD steps. Overlap helper uses same key extraction as importer will.
 | Phase | Status |
 | ----- | ------ |
 | 0 Manifest + red/green tests + audit script | **Done** (2026-05-22) |
-| 1 P1 migrations + importer + assembly audit | **Done** — `0021`–`0022` |
+| 1 P1 migrations + importer + assembly audit | **Done** — `0021`–`0024` |
+| 1.4 pair-UK `(operation_uid, shape_hash)` | **Done** — `f13fb90e`, migration `0024` |
 | 1d `catalog_source` removal | **Done** |
-| 2 Conditional promotion | **Deferred** — audit TSV review required |
+| PR merge | **Done** — [#25](https://github.com/tigers2020/Shapez2Factory/pull/25) → `master` (`70c0da76`) |
+| 2 Conditional promotion | **Deferred** — audit TSV human review required |
 | 3 Docs | **Done** — `docs/domain/game_data_coverage.md` |

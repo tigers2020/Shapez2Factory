@@ -448,9 +448,7 @@ class ShapeRecipeAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
     @admin.display(description="Catalog appearances")
     def catalog_appearances_summary(self, obj: m.ShapeRecipe) -> str:
-        labels = sorted(
-            obj.source_appearances.values_list("catalog_source", flat=True).distinct()
-        )
+        labels = sorted(obj.source_appearances.values_list("catalog_source", flat=True).distinct())
         return ",".join(labels) if labels else "—"
 
 

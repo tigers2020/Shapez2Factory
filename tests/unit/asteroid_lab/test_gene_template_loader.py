@@ -19,7 +19,8 @@ from django_apps.asteroid_lab.optimization.gene_template_loader import (
     parse_gene_template_record,
 )
 from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
-    generate_exhaustive_sample_genes,
+    ExhaustiveGenerationStats,
+    GeneratedSampleGene,
 )
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"
@@ -39,8 +40,10 @@ def test_gene_template_loader_loads_fixture_json() -> None:
     assert minimal.throughput_factor == 4
 
 
-def test_gene_template_from_generated_sample_uses_canonical_e() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=1, transport_kinds=("belt",))
+def test_gene_template_from_generated_sample_uses_canonical_e(
+    exhaustive_genes_ext1_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+) -> None:
+    genes, _stats = exhaustive_genes_ext1_belt
     assert genes
     tpl = gene_template_from_generated_sample(genes[0])
     assert tpl.output_dir is Direction.E
@@ -94,13 +97,18 @@ def test_gene_template_rejects_transport_inside_occupied() -> None:
 def test_gene_template_throughput_factor_matches_extension_count(
     extension_count: int,
     expected_factor: int,
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+    exhaustive_genes_ext1_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+    exhaustive_genes_ext3: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
 ) -> None:
     assert throughput_factor_for_extension_count(extension_count) == expected_factor
 
-    genes, _ = generate_exhaustive_sample_genes(
-        max_extensions=extension_count,
-        transport_kinds=("pipe",),
-    )
+    if extension_count == 0:
+        genes, _ = exhaustive_genes_ext0_belt
+    elif extension_count == 1:
+        genes, _ = exhaustive_genes_ext1_belt
+    else:
+        genes, _ = exhaustive_genes_ext3
     match = [g for g in genes if g.extension_count == extension_count]
     assert match
     tpl = gene_template_from_generated_sample(match[0])

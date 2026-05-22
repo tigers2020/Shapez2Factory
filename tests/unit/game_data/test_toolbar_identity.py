@@ -29,8 +29,8 @@ def test_toolbar_row_identity_island_uses_group_name() -> None:
 
 
 @pytest.mark.django_db
-def test_island_via_tree_node_not_path_label(imported_game_data_batch: ImportBatch) -> None:
-    del imported_game_data_batch
+def test_island_via_tree_node_not_path_label(imported_game_data_batch_module: ImportBatch) -> None:
+    del imported_game_data_batch_module
     path = "root/Children[7]/Children[3]/Children[2]"
     node = ToolbarTreeNode.objects.get(tree_path=path)
     placement = ToolbarIslandPlacement.objects.select_related("toolbar_element").get(

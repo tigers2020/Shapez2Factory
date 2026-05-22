@@ -40,9 +40,7 @@ def test_imported_db_io_channel_types_are_exhaustively_mapped(
 ) -> None:
     from django_apps.game_data.models import BuildingConnector
 
-    distinct = sorted(
-        set(BuildingConnector.objects.values_list("io_channel_type", flat=True))
-    )
+    distinct = sorted(set(BuildingConnector.objects.values_list("io_channel_type", flat=True)))
     assert distinct, "expected connectors after import"
     for channel in distinct:
         map_io_channel_to_transport_kind(channel)

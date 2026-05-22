@@ -16,7 +16,8 @@ from django_apps.asteroid_lab.services.runtime_gene_template_source import (
     GeneTemplateSourceKind,
 )
 from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
-    generate_exhaustive_sample_genes,
+    ExhaustiveGenerationStats,
+    GeneratedSampleGene,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
@@ -64,11 +65,11 @@ def _project_with_map_input() -> m.AsteroidProject:
     return m.AsteroidProject.objects.get()
 
 
-def _seed_minimal_gene_samples(generator_version: str = "exhaustive_sample_gene_v1") -> None:
-    """Seed one belt + one pipe solo-extractor sample for entry tests."""
-    genes, _ = generate_exhaustive_sample_genes(
-        max_extensions=0, transport_kinds=("belt",), generator_version=generator_version
-    )
+def _seed_minimal_gene_samples(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+) -> None:
+    """Seed one belt solo-extractor sample for entry tests."""
+    genes, _ = exhaustive_genes_ext0_belt
     assert genes
     g = genes[0]
     m.GeneticSample.objects.update_or_create(
@@ -77,8 +78,10 @@ def _seed_minimal_gene_samples(generator_version: str = "exhaustive_sample_gene_
     )
 
 
-def test_solver_runtime_entry_persists_summary_and_projection_params() -> None:
-    _seed_minimal_gene_samples()
+def test_solver_runtime_entry_persists_summary_and_projection_params(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+) -> None:
+    _seed_minimal_gene_samples(exhaustive_genes_ext0_belt)
     proj = _project_with_map_input()
     result = run_solver_runtime_for_project(int(proj.pk), run_key="entry-persist")
     assert result.ok is True
@@ -101,8 +104,10 @@ def test_solver_runtime_entry_persists_summary_and_projection_params() -> None:
     assert isinstance(result.replay_track_metrics, dict)
 
 
-def test_solver_runtime_entry_persists_gene_template_source() -> None:
-    _seed_minimal_gene_samples()
+def test_solver_runtime_entry_persists_gene_template_source(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+) -> None:
+    _seed_minimal_gene_samples(exhaustive_genes_ext0_belt)
     proj = _project_with_map_input()
     result = run_solver_runtime_for_project(int(proj.pk), run_key="entry-gene-source")
     assert result.ok is True
@@ -117,8 +122,10 @@ def test_solver_runtime_entry_persists_gene_template_source() -> None:
     assert result.gene_template_source["source"] == GeneTemplateSourceKind.GENETIC_SAMPLE_DB.value
 
 
-def test_solver_runtime_entry_does_not_create_lab_replay_frames() -> None:
-    _seed_minimal_gene_samples()
+def test_solver_runtime_entry_does_not_create_lab_replay_frames(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+) -> None:
+    _seed_minimal_gene_samples(exhaustive_genes_ext0_belt)
     proj = _project_with_map_input()
     lab_count = m.ReplayFrame.objects.filter(replay_track__project=proj).count()
     run_solver_runtime_for_project(int(proj.pk))

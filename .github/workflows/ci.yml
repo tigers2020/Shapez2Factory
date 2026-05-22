@@ -12,7 +12,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, typecheck, format, test]
+        task: [lint, typecheck, format, test-fast, test-slow, test-integration]
+
+    env:
+      DJANGO_USE_SQLITE: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -31,5 +34,7 @@ jobs:
             lint)      ruff check . ;;
             typecheck) mypy src ;;
             format)    black --check . ;;
-            test)      pytest -n auto --dist loadscope -q ;;
+            test-fast) pytest -m "unit and not slow" -n auto --dist loadscope -q ;;
+            test-slow) pytest -m slow -n auto --dist loadscope -q ;;
+            test-integration) pytest -m integration -n auto --dist loadscope -q ;;
           esac

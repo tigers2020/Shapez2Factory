@@ -16,9 +16,6 @@ from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.runtime_gene_template_source import GeneTemplateSourceKind
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
-    generate_exhaustive_sample_genes,
-)
 from django_apps.asteroid_lab.services.solver_runtime_entry import SolverRuntimeEntryErrorCode
 
 pytestmark = pytest.mark.django_db
@@ -26,21 +23,11 @@ pytestmark = pytest.mark.django_db
 _FIXTURE_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab"
 
 
-@pytest.fixture(autouse=True)
-def seed_gene_templates_db() -> None:
-    """Seed minimal GeneticSample rows so Run Solver DB resolver can load templates."""
-    genes, _ = generate_exhaustive_sample_genes(
-        max_extensions=0, transport_kinds=("belt",), generator_version="exhaustive_sample_gene_v1"
-    )
-    for g in genes:
-        m.GeneticSample.objects.update_or_create(
-            gene_key=g.key,
-            defaults={
-                "name": g.name,
-                "code": g.encoded_copy_string,
-                "metadata_json": dict(g.metadata),
-            },
-        )
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module):
+    """Run-solver HTTP builds snapshot from pinned import batch (one import per module)."""
+
+    return imported_game_data_batch_module
 
 
 def _encode_v4_copy(root: dict) -> str:
@@ -301,7 +288,7 @@ def test_post_run_solver_json_updates_page_context_timeline() -> None:
 
 
 @pytest.mark.django_db
-def test_post_run_solver_no_gene_templates_in_db_400(seed_gene_templates_db: None) -> None:
+def test_post_run_solver_no_gene_templates_in_db_400() -> None:
     """If DB has no gene templates, run-solver returns 400 with NO_GENE_TEMPLATES_IN_DB."""
     m.GeneticSample.objects.all().delete()
     slug = _project_slug_via_create()

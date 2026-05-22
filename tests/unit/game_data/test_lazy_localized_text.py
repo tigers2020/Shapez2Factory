@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from django_apps.game_data.models import ImportBatch, ResearchSideQuest
@@ -45,9 +43,9 @@ def test_parse_none_returns_none() -> None:
 
 @pytest.mark.django_db
 def test_research_side_quest_stores_lazy_ref_not_raw_dict_string(
-    imported_game_data_batch: ImportBatch,
+    imported_game_data_batch_module: ImportBatch,
 ) -> None:
-    del imported_game_data_batch
+    del imported_game_data_batch_module
     quest = ResearchSideQuest.objects.filter(node_key="SG_PostFinalT3_1_1").first()
     if quest is None:
         pytest.skip("SG_PostFinalT3_1_1 not in dump")

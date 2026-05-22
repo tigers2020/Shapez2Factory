@@ -46,10 +46,9 @@ def test_shape_recipe_appearance_links_source_object(
     imported_game_data_batch_module: ImportBatch,
 ) -> None:
     del imported_game_data_batch_module
-    app = (
-        ShapeRecipeSourceAppearance.objects.select_related("shape_recipe", "source_object")
-        .first()
-    )
+    app = ShapeRecipeSourceAppearance.objects.select_related(
+        "shape_recipe", "source_object"
+    ).first()
     assert app is not None
     assert app.source_object.source_file == app.artifact_filename
 

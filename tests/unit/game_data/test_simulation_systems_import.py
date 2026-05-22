@@ -176,5 +176,3 @@ def test_no_domain_jsonfield_on_game_data_models() -> None:
         for field in model._meta.fields:
             if isinstance(field, models.JSONField):
                 pytest.fail(f"{model.__name__}.{field.name} must not use JSONField on domain model")
-
-

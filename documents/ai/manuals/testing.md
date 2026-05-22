@@ -231,6 +231,20 @@ PR·CI full gate의 `python -m pytest`는 `-n auto --dist loadscope` 병렬을 �
 
 마커 정의: `pytest.ini`. 경로 기반 자동 마커: `tests/conftest.py`.
 
+**`slow` 자동 부여:** `imported_game_data_batch`·`exhaustive_genes_*` 등 비용 큰 픽스처를 쓰는 테스트, 또는 `test_macro_recipe_staff_catalog.py` 등 무거운 모듈은 수집 시 `slow`가 붙는다(`tests/conftest.py`). 로컬 반복 기본은 `-m "unit and not slow"` + `-n auto --dist loadscope`.
+
+### 로컬 스크립트 (권장)
+
+| 스크립트 | 용도 |
+|----------|------|
+| `powershell -File scripts/test_fast.ps1` | **일상 TDD** — `unit and not slow`, 병렬 |
+| `powershell -File scripts/test_slow.ps1` | 느린 계약·import·exhaustive |
+| `powershell -File scripts/test_full.ps1` | PR 직전 — 전체 pytest |
+
+에이전트 반복 검증 기본: changed narrow path → `test_fast.ps1`. PR/CI: full gate (`test_full.ps1` 또는 AGENTS.md 순서).
+
+CI는 동일 세 shard를 **병렬 job**으로 실행: `test-fast`, `test-slow`, `test-integration` (`.github/workflows/ci.yml`).
+
 ## Recipe Graph 에디터 (Vitest)
 
 와이어·입력 arity·carrier 정렬은 Python과 공유 픽스처로 검증한다.

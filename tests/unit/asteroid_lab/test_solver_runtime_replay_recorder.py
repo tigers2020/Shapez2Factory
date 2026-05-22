@@ -768,7 +768,9 @@ def test_candidate_generated_keeps_equipment_in_overlay_not_full_cells() -> None
     assert "shape_miner" not in full_kinds
 
 
-def test_materialized_cell_delta_emits_transport_before_equipment() -> None:
+def test_materialized_cell_delta_emits_transport_before_equipment(
+    exhaustive_genes_ext0_belt,
+) -> None:
     from django_apps.asteroid_lab.optimization.gene_template_loader import (
         gene_template_from_generated_sample,
     )
@@ -782,11 +784,8 @@ def test_materialized_cell_delta_emits_transport_before_equipment() -> None:
     from django_apps.asteroid_lab.replay.replay_recording_cells import (
         materialized_cells_to_cell_delta,
     )
-    from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
-        generate_exhaustive_sample_genes,
-    )
 
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=0, transport_kinds=("belt",))
+    genes, _ = exhaustive_genes_ext0_belt
     tpl = gene_template_from_generated_sample(genes[0])
     goal = RouteGoal(
         coord=(6, 0),

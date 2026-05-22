@@ -11,12 +11,13 @@ dev = [
     "mypy>=1.10.0",
     "black>=24.0.0",
     "pytest>=8.0.0",
+    "pytest-django>=4.8.0",
     "pytest-xdist>=3.5.0",
 ]
 
 [build-system]
 requires = ["setuptools>=70"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]

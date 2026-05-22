@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, typecheck, format, test]
+        task: [lint, typecheck, format, test-fast, test-slow, test-integration]
 
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +29,9 @@ jobs:
         run: |
           case "${{ matrix.task }}" in
             lint)      ruff check . ;;
-            typecheck) mypy src ;;
+            typecheck) mypy django_apps config src ;;
             format)    black --check . ;;
-            test)      pytest -n auto --dist loadscope -q ;;
+            test-fast) pytest -m "unit and not slow" -n auto --dist loadscope -q ;;
+            test-slow) pytest -m slow -n auto --dist loadscope -q ;;
+            test-integration) pytest -m integration -n auto --dist loadscope -q ;;
           esac

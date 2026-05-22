@@ -9,9 +9,9 @@ import pytest
 from django_apps.game_data.importers.source_loader import load_json
 from django_apps.game_data.models import (
     ImportBatch,
+    ShapeQuadrantSlot,
     ShapeRecipe,
     ShapeRecipeLayer,
-    ShapeQuadrantSlot,
     SourceObject,
 )
 from django_apps.game_data.models.shapes import ShapeRecipeSourceAppearance
@@ -130,3 +130,17 @@ def test_shape_recipe_count_matches_unique_pairs_after_import(
     shapes = load_json(game_data_dir / "shapes.json")
     shape_keys = {shape_row_key(r) for r in shapes if shape_row_key(r)[0]}
     assert ShapeRecipe.objects.count() == len(shape_keys)
+
+
+@pytest.mark.django_db
+def test_shape_recipe_db_distinct_pairs_match_row_count(
+    imported_game_data_batch_module: ImportBatch,
+) -> None:
+    """Pre/post pair-UK: distinct (operation_uid, shape_hash) == row count."""
+    del imported_game_data_batch_module
+    total = ShapeRecipe.objects.count()
+    distinct_pairs = (
+        ShapeRecipe.objects.values("operation_uid", "shape_hash").distinct().count()
+    )
+    assert total == distinct_pairs
+    assert total > 0

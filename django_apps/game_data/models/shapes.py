@@ -48,8 +48,8 @@ class ShapeRecipe(models.Model):
     import_batch = models.ForeignKey(
         ImportBatch, on_delete=models.CASCADE, related_name="shape_recipes"
     )
-    operation_uid = models.PositiveIntegerField(unique=True)
-    shape_hash = models.CharField(max_length=128, unique=True)
+    operation_uid = models.PositiveIntegerField()
+    shape_hash = models.CharField(max_length=128)
     quadrant_count = models.PositiveSmallIntegerField(default=4)
     layer_count = models.PositiveSmallIntegerField(default=1)
     source_stable_id = models.CharField(max_length=64, blank=True, default="")
@@ -62,6 +62,12 @@ class ShapeRecipe(models.Model):
     )
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["operation_uid", "shape_hash"],
+                name="uq_shape_recipe_op_uid_hash",
+            ),
+        ]
         verbose_name = "shape recipe"
         verbose_name_plural = "③ Shapes · Recipes"
         ordering = ["operation_uid"]

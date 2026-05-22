@@ -53,7 +53,7 @@ def test_canonical_fluid_id_deterministic() -> None:
     assert canonical_fluid_color("Red") == canonical_fluid_color("Red")
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_shape_recipe_canonical_unique() -> None:
     batch = ImportBatch.objects.create(
         batch_name="b",
@@ -80,3 +80,28 @@ def test_shape_recipe_canonical_unique() -> None:
         color_name="Red",
         source_row_index=0,
     )
+    with pytest.raises(IntegrityError):
+        ShapeRecipe.objects.create(
+            canonical_id="shape:1:AbAbAbAb",
+            import_batch=batch,
+            operation_uid=2,
+            shape_hash="CdCdCdCd",
+            quadrant_count=4,
+            layer_count=1,
+        )
+    with pytest.raises(IntegrityError):
+        ShapeRecipe.objects.create(
+            canonical_id="shape:3:AbAbAbAb",
+            import_batch=batch,
+            operation_uid=1,
+            shape_hash="AbAbAbAb",
+            quadrant_count=4,
+            layer_count=1,
+        )
+    with pytest.raises(IntegrityError):
+        FluidColor.objects.create(
+            canonical_id="fluid:Blue",
+            import_batch=batch,
+            color_name="Red",
+            source_row_index=1,
+        )

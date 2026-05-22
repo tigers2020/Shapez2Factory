@@ -322,7 +322,6 @@ git commit -m "test: use module exhaustive gene fixtures in exhaustive tests"
 
 **Files:**
 - Create: `tests/integration/conftest.py`
-- Modify: `tests/integration/web/test_solver_with_game_data_snapshot.py`
 - Modify: `tests/integration/web/test_asteroid_run_solver.py`
 - Modify: `tests/integration/asteroid_lab/test_solver_runtime_replay_timeline.py`
 
@@ -358,12 +357,12 @@ Note: `exhaustive_genes_ext0_belt` is defined in `tests/unit/asteroid_lab/confte
 
 In each integration file listed above, delete local `seed_gene_templates_db` fixture and `generate_exhaustive_sample_genes` import if unused.
 
-If a file needs `max_extensions=3`, add a file-level fixture overriding autouse (document in comment)—default belt-only seed matches current `test_solver_with_game_data_snapshot.py`.
+If a file needs `max_extensions=3`, add a file-level fixture overriding autouse (document in comment).
 
 - [ ] **Step 3: Run integration slice**
 
 ```powershell
-python -m pytest tests/integration/web/test_solver_with_game_data_snapshot.py tests/integration/web/test_asteroid_run_solver.py tests/integration/asteroid_lab/test_solver_runtime_replay_timeline.py -q
+python -m pytest tests/integration/web/test_asteroid_run_solver.py tests/integration/asteroid_lab/test_solver_runtime_replay_timeline.py -q
 ```
 
 Expected: PASS.

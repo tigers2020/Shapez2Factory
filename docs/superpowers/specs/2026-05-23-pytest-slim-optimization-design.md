@@ -100,8 +100,8 @@ When D1 removes a test, update the **Removed in D1** subsection below (append-on
 2. **`test_source_object_coverage.py`** — single parametrized test over model + queryset filter; preserve `pytest.skip` for empty milestone set.
 3. **Integration** — add `tests/integration/conftest.py` (or `tests/integration/asteroid_lab/conftest.py`) with `genes_for_solver_smoke` reusing asteroid module fixtures; migrate:
    - `tests/integration/web/test_asteroid_run_solver.py`
-   - `tests/integration/web/test_solver_with_game_data_snapshot.py`
    - `tests/integration/asteroid_lab/test_solver_runtime_replay_timeline.py`
+   - (Out of scope for Phase D: `test_solver_with_game_data_snapshot.py` — lives on `feature/asteroid-lab-game-data-integration`.)
 4. **Optional helper** — `tests/unit/game_data/_assertions.py` with `assert_no_missing_source_object(model, batch)` if parametrized test stays readable.
 
 ---

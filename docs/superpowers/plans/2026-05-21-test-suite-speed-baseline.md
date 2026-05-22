@@ -62,9 +62,8 @@ Measured: `pytest -m "unit and not slow" -n auto --dist loadscope --durations=25
 |------|--------------|--------------|
 | 1 | 81.70 | `tests/unit/game_data/test_toolbar_tree.py::test_canonical_id_stable_across_reimport` |
 | 2 | 80.92 | `tests/unit/game_data/test_import_idempotency.py::test_import_is_idempotent` |
-| 3 | 38.82 | `tests/unit/web/test_asteroid_game_data_snapshot.py::test_assemble_snapshot_matches_pinned_revision` |
-| 4 | 10.43 | `tests/unit/game_data/test_admin_browse.py::test_game_data_browse_groups_sections_by_namespace` (setup) |
-| 5 | 10.14 | `tests/unit/asteroid_lab/test_cell_snapshot_service.py::test_build_decoded_blueprint_snapshot_from_input_reads_decoded_json` (setup) |
+| 3 | 10.43 | `tests/unit/game_data/test_admin_browse.py::test_game_data_browse_groups_sections_by_namespace` (setup) |
+| 4 | 10.14 | `tests/unit/asteroid_lab/test_cell_snapshot_service.py::test_build_decoded_blueprint_snapshot_from_input_reads_decoded_json` (setup) |
 
 Wall for this run (before slow tags): **99.78s** (857 passed, 1 skipped).
 
@@ -76,7 +75,6 @@ Target ≤70s not met after D2 (**100.6s**). Applied `@pytest.mark.slow` on top 
 |-----------|------|----------------------------|----------|
 | `test_canonical_id_stable_across_reimport` | test mark | 81.7s call, double full import | yes |
 | `test_import_is_idempotent` | test mark | 80.9s call, full manifest import ×2 | yes |
-| `test_assemble_snapshot_matches_pinned_revision` | test mark | 38.8s call, GameDataImporter + snapshot | yes |
 | `test_admin_browse.py` setup cluster | module suffix | ~10s setup (many tests share DB) | no — setup only |
 | `imported_game_data_batch_module` | fixture | already auto-slow | already |
 
@@ -86,6 +84,10 @@ Target ≤70s not met after D2 (**100.6s**). Applied `@pytest.mark.slow` on top 
 - wall: `test_fast.ps1` **27.5s** (pytest 22.9s) — **≤70s target met**
 - passed/skipped: **854** passed, **1** skipped
 - Phase D3: fast target met. No further slow-tag changes required in this pass.
+
+## Phase D scope note (2026-05-23)
+
+Game-data snapshot tests (`test_asteroid_game_data_snapshot`, `test_solver_with_game_data_snapshot`) were removed from `phase-d-pytest-slim`; they belong on `feature/asteroid-lab-game-data-integration`, not the pytest-slim branch.
 
 ## Phase E — stratified toolbar canonical_id (2026-05-23)
 

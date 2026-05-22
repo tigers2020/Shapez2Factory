@@ -1,4 +1,6 @@
-# Validation Plan — `simulation_systems.json`
+﻿# Validation Plan — `simulation_systems.json`
+
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 ## Module
 

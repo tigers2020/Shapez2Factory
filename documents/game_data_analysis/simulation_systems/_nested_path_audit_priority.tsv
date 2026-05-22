@@ -1,0 +1,251 @@
+﻿norm_path	hits	max_list_len
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.TileBasedSystems[].ChainPositions	96	129
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.ISimulator.Simulations	48	129
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.Layout.Buildings	48	129
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.Layout.Islands	48	129
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.Systems	48	129
+simulation_parameters.ISimulationSystem.OnSimulationCreated.Listeners[].Target.ISimulator.Simulations	48	129
+simulation_parameters.ISimulationSystem.OnSimulationCreated.Listeners[].Target.Systems	48	129
+definition_snapshot.IShapeCollectorSystem.OnShapesCollected.Listeners[].Method.Module.Assembly.DefinedTypes	44	129
+definition_snapshot.IShapeCollectorSystem.OnShapesCollected.Listeners[].Method.Module.Assembly.ExportedTypes	44	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.LocalizedSimulationType.Assembly.DefinedTypes	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.LocalizedSimulationType.Assembly.ExportedTypes	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.Buildings	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.Islands	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.LayoutModel.Buildings	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.LayoutModel.Islands	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.Map.Buildings	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.Map.IReadOnlyMap.Buildings	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.Map.IReadOnlyMap.Islands	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.Map.Islands	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.Map.SuperChunks	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.ResourcesAccessor.SuperChunks	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Map.SuperChunks	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.SimulationType.Assembly.DefinedTypes	36	129
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.SimulationType.Assembly.ExportedTypes	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.AllDefinitions	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.PlayerLevelConfig.IconicLevelShapes	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.WikiDatabase.KnowledgePanelEntries	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.OnChanged.Listeners	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.OnResearchLocked.Listeners	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.OnResearchUnlocked.Listeners	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.AllUpgrades	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.SideQuests	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.WikiConfiguration.WikiReferences	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression._AllUpgrades	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression._SideQuests	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.UnlockedRewards	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager._CachedEffectiveUnlockedUpgrades	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager._CachedUnlockedRewards	36	129
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager._ManuallyUnlockedUpgrades	36	129
+definition_snapshot.Logger.Info.LogAction.Method.Module.Assembly.CustomAttributes	8	129
+definition_snapshot.Logger.Info.LogAction.Method.Module.Assembly.DefinedTypes	8	129
+definition_snapshot.Logger.Info.LogAction.Method.Module.Assembly.ExportedTypes	8	129
+definition_snapshot.ChainPositions	4	129
+definition_snapshot.OnSimulationCreated.Listeners[].Target.TileBasedSystems[].ChainPositions	4	129
+definition_snapshot.OnSimulationCreated.Listeners[].Target.ISimulator.Simulations	2	129
+definition_snapshot.OnSimulationCreated.Listeners[].Target.Layout.Buildings	2	129
+definition_snapshot.OnSimulationCreated.Listeners[].Target.Layout.Islands	2	129
+definition_snapshot.OnSimulationCreated.Listeners[].Target.Systems	2	129
+definition_snapshot.TrainIslands.Navigation.Catcher.Layout.ChunkInformationByPosition.(0, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Catcher.Layout.ChunkInformationByPosition.(0, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Catcher.Layout.ChunkInformationByPosition.(0, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Launcher.Layout.ChunkInformationByPosition.(0, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Launcher.Layout.ChunkInformationByPosition.(0, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Launcher.Layout.ChunkInformationByPosition.(0, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.QuickStation.Layout.ChunkInformationByPosition.(0, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.QuickStation.Layout.ChunkInformationByPosition.(0, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.QuickStation.Layout.ChunkInformationByPosition.(0, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(0, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(0, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(0, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(1, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(1, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(1, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(2, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(2, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(2, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(3, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(3, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(3, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(4, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(4, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.Twister.Layout.ChunkInformationByPosition.(4, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.WaitStation.Layout.ChunkInformationByPosition.(0, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.WaitStation.Layout.ChunkInformationByPosition.(0, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Navigation.WaitStation.Layout.ChunkInformationByPosition.(0, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Production.FillerCargoFactory.Layout.ChunkInformationByPosition.(0, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Production.FillerCargoFactory.Layout.ChunkInformationByPosition.(0, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Production.FillerCargoFactory.Layout.ChunkInformationByPosition.(0, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Production.FluidCargoFactory.Layout.ChunkInformationByPosition.(0, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Production.FluidCargoFactory.Layout.ChunkInformationByPosition.(0, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Production.FluidCargoFactory.Layout.ChunkInformationByPosition.(0, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainIslands.Production.ShapeCargoFactory.Layout.ChunkInformationByPosition.(0, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot.TrainIslands.Production.ShapeCargoFactory.Layout.ChunkInformationByPosition.(0, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot.TrainIslands.Production.ShapeCargoFactory.Layout.ChunkInformationByPosition.(0, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot.TrainsSimulation.TrainsProductionSimulator.TrainSpawnerValidator.NavigationSimulator.NavigationCoordinators[].BlockedCoordinates	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(-1, -1, 0).TileBuildableFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(-1, -1, 0).TileNotchFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(-1, -1, 0).TileVoidFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(-1, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(-1, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(-1, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(-1, 1, 0).TileBuildableFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(-1, 1, 0).TileNotchFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(-1, 1, 0).TileVoidFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(0, -1, 0).TileBuildableFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(0, -1, 0).TileNotchFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(0, -1, 0).TileVoidFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(0, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(0, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(0, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(0, 1, 0).TileBuildableFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(0, 1, 0).TileNotchFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(0, 1, 0).TileVoidFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(1, -1, 0).TileBuildableFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(1, -1, 0).TileNotchFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(1, -1, 0).TileVoidFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(1, 0, 0).TileBuildableFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(1, 0, 0).TileNotchFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(1, 0, 0).TileVoidFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(1, 1, 0).TileBuildableFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(1, 1, 0).TileNotchFlags_L	2	129
+definition_snapshot._HubIslands[].Definition.Layout.ChunkInformationByPosition.(1, 1, 0).TileVoidFlags_L	2	129
+simulation_parameters.OnSimulationCreated.Listeners[].Target.ISimulator.Simulations	2	129
+simulation_parameters.OnSimulationCreated.Listeners[].Target.Systems	2	129
+simulation_parameters.TrainsSimulation.TrainSimulationCoordinators[].BlockedCoordinates	2	129
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Method.Module.Assembly.DefinedTypes	48	106
+definition_snapshot.OnSimulationCreated.Listeners[].Method.Module.Assembly.DefinedTypes	2	106
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.TileBasedSystems	48	101
+simulation_parameters.ISimulationSystem.OnSimulationCreated.Listeners[].Target.TileBasedSystems	48	101
+definition_snapshot.OnSimulationCreated.Listeners[].Target.TileBasedSystems	2	101
+simulation_parameters.OnSimulationCreated.Listeners[].Target.TileBasedSystems	2	101
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Method.Module.Assembly.ExportedTypes	48	89
+definition_snapshot.OnSimulationCreated.Listeners[].Method.Module.Assembly.ExportedTypes	2	89
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Method.ReflectedTypeInternal.DeclaredMembers	48	82
+definition_snapshot.OnSimulationCreated.Listeners[].Method.ReflectedTypeInternal.DeclaredMembers	2	82
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.ChunkBasedSystems	48	77
+simulation_parameters.ISimulationSystem.OnSimulationCreated.Listeners[].Target.ChunkBasedSystems	48	77
+definition_snapshot.OnSimulationCreated.Listeners[].Target.ChunkBasedSystems	2	77
+simulation_parameters.OnSimulationCreated.Listeners[].Target.ChunkBasedSystems	2	77
+definition_snapshot.Interlock.ResearchUnlockManager.CostManager.PointStorage.OnChanged.Listeners	36	67
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Buildings.All	36	67
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Buildings._All	36	67
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager._CachedUnlockedBuildingGroupIds	36	67
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.AllDefinitionGroups	36	64
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager._CachedUnlockedIslandGroupIds	36	64
+definition_snapshot.Logger.Info.LogAction.Method.ReflectedTypeInternal.DeclaredMembers	8	63
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.TileBasedSystems[].ExtractorPositions	96	58
+definition_snapshot.ExtractorPositions	4	58
+definition_snapshot.OnSimulationCreated.Listeners[].Target.TileBasedSystems[].ExtractorPositions	4	58
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Method.ReflectedTypeInternal.DeclaredMethods	48	54
+definition_snapshot.ConnectableSimulations[].Simulation.DemandComparison.Method.ReflectedTypeInternal.DeclaredMembers	2	54
+definition_snapshot.OnSimulationCreated.Listeners[].Method.ReflectedTypeInternal.DeclaredMethods	2	54
+definition_snapshot.Logger.Info.LogAction.Method.ReflectedTypeInternal.DeclaredMethods	8	53
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.SideUpgrades	36	51
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression._SideUpgrades	36	51
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.Systems[].ConnectableSimulations	94	47
+definition_snapshot.ConnectableSimulations	12	47
+simulation_parameters.ConnectableSimulations	12	47
+definition_snapshot.OnSimulationCreated.Listeners[].Target.Systems[].ConnectableSimulations	4	47
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.SimulationGraph.Clusters	48	44
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.SimulationGraph.Game.Core.Map.Simulation.Clustering.ISimulationGraph.Clusters	48	44
+definition_snapshot.OnSimulationCreated.Listeners[].Target.SimulationGraph.Clusters	2	44
+definition_snapshot.OnSimulationCreated.Listeners[].Target.SimulationGraph.Game.Core.Map.Simulation.Clustering.ISimulationGraph.Clusters	2	44
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.SideQuestGroups	36	41
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression._SideQuestGroups	36	41
+definition_snapshot.ConnectableSimulations[].Simulation.DemandComparison.Method.ReturnType.DeclaredMembers	2	38
+definition_snapshot.ConnectableSimulations[].Simulation.DemandComparison.Method.ReturnType.DeclaredMethods	2	35
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Method.ReflectedTypeInternal.DeclaredMembers	72	32
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.SimulationGraph.UpdateTasks	48	32
+definition_snapshot.TrainsSimulation.NavigationPredictor.NavigationCoordinators[].RailsIds	6	32
+simulation_parameters.TrainsSimulation.NavigationPredictor.NavigationCoordinators[].RailsIds	6	32
+definition_snapshot.ConnectableSimulations[].Simulation.DemandComparison.Method.ReflectedTypeInternal.DeclaredMethods	2	32
+definition_snapshot.OnSimulationCreated.Listeners[].Target.SimulationGraph.UpdateTasks	2	32
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Mechanics.Mechanics	36	31
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.ShopItems	36	29
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression._ShopItems	36	29
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.ConverterHub.Layout.ChunkInformation	36	27
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.ConverterHub.Layout.ChunkPositions	36	27
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.SpaceBelts	36	27
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.SpacePipes	36	27
+definition_snapshot.TrainsSimulation.TrainsProductionSimulator.TrainSpawnerValidator.NavigationSimulator.NavigationCoordinators[].RailsIds	6	27
+simulation_parameters.TrainsSimulation.TrainSimulationCoordinators[].RailsIds	6	27
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.FoundationIslands	36	26
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.UpdateableSystems	48	23
+simulation_parameters.ISimulationSystem.OnSimulationCreated.Listeners[].Target.UpdateableSystems	48	23
+definition_snapshot.IShapeCollectorSystem.OnShapesCollected.Listeners[].Target.<>4__this.ShapeCollectors	44	23
+definition_snapshot.OnSimulationCreated.Listeners[].Target.UpdateableSystems	2	23
+simulation_parameters.OnSimulationCreated.Listeners[].Target.UpdateableSystems	2	23
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager._CachedUnlockedMechanics	36	21
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Method.ReflectedTypeInternal.DeclaredMethods	72	20
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Method.ReflectedTypeInternal.DeclaredFields	48	20
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.LocalizedSimulationType.DeclaredMembers	36	20
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.SimulationType.DeclaredMembers	36	20
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.ConverterHub.IEntityDefinition.CustomData.All	36	20
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.ConverterHub.IEntityDefinition.CustomData.CustomData	36	20
+definition_snapshot.TrainIslands.Production._Producers[].IEntityDefinition.CustomData.All	14	20
+definition_snapshot.TrainIslands.Production._Producers[].IEntityDefinition.CustomData.CustomData	14	20
+definition_snapshot.TrainIslands.Exchange.FluidLoaders[].IEntityDefinition.CustomData.All	4	20
+definition_snapshot.TrainIslands.Exchange.FluidLoaders[].IEntityDefinition.CustomData.CustomData	4	20
+definition_snapshot.TrainIslands.Exchange.FluidUnloaders[].IEntityDefinition.CustomData.All	4	20
+definition_snapshot.TrainIslands.Exchange.FluidUnloaders[].IEntityDefinition.CustomData.CustomData	4	20
+definition_snapshot.TrainIslands.Exchange.ShapeLoaders[].IEntityDefinition.CustomData.All	4	20
+definition_snapshot.TrainIslands.Exchange.ShapeLoaders[].IEntityDefinition.CustomData.CustomData	4	20
+definition_snapshot.TrainIslands.Exchange.ShapeUnloaders[].IEntityDefinition.CustomData.All	4	20
+definition_snapshot.TrainIslands.Exchange.ShapeUnloaders[].IEntityDefinition.CustomData.CustomData	4	20
+definition_snapshot.TrainIslands.Navigation.Loops[].IEntityDefinition.CustomData.All	4	20
+definition_snapshot.TrainIslands.Navigation.Loops[].IEntityDefinition.CustomData.CustomData	4	20
+definition_snapshot.OnSimulationCreated.Listeners[].Method.ReflectedTypeInternal.DeclaredFields	2	20
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.WikiDatabase.Entries.WKWires_MaM.<Entries>k__BackingField	36	19
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.WikiDatabase.Entries.WKWires_MaM.Entries	36	19
+definition_snapshot.TrainIslands.Navigation.Launcher.IEntityDefinition.CustomData.All	2	19
+definition_snapshot.TrainIslands.Navigation.Launcher.IEntityDefinition.CustomData.CustomData	2	19
+definition_snapshot.TrainIslands.Navigation.Twister.IEntityDefinition.CustomData.All	2	19
+definition_snapshot.TrainIslands.Navigation.Twister.IEntityDefinition.CustomData.CustomData	2	19
+definition_snapshot.IShapeCollectorSystem.OnShapesCollected.Listeners[].Method.ReflectedTypeInternal.ReflectedType.DeclaredMembers	44	18
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.RocketProducerSystems	36	18
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Target.Systems	36	18
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.ConverterIslands	36	18
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.Hub.IEntityDefinition.CustomData.All	36	18
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.Hub.IEntityDefinition.CustomData.CustomData	36	18
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.WikiDatabase.Entries.WKWires_VirtualProcessing.<Entries>k__BackingField	36	18
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.WikiDatabase.Entries.WKWires_VirtualProcessing.Entries	36	18
+definition_snapshot.TrainIslands.Navigation.Catcher.IEntityDefinition.CustomData.All	2	18
+definition_snapshot.TrainIslands.Navigation.Catcher.IEntityDefinition.CustomData.CustomData	2	18
+definition_snapshot.TrainIslands.Production.FillerCargoFactory.IEntityDefinition.CustomData.All	2	18
+definition_snapshot.TrainIslands.Production.FillerCargoFactory.IEntityDefinition.CustomData.CustomData	2	18
+definition_snapshot.TrainIslands.Production.FluidCargoFactory.IEntityDefinition.CustomData.All	2	18
+definition_snapshot.TrainIslands.Production.FluidCargoFactory.IEntityDefinition.CustomData.CustomData	2	18
+definition_snapshot.TrainIslands.Production.ShapeCargoFactory.IEntityDefinition.CustomData.All	2	18
+definition_snapshot.TrainIslands.Production.ShapeCargoFactory.IEntityDefinition.CustomData.CustomData	2	18
+definition_snapshot._HubIslands[].Definition.IEntityDefinition.CustomData.All	2	18
+definition_snapshot._HubIslands[].Definition.IEntityDefinition.CustomData.All[].DrawingContext	2	18
+definition_snapshot._HubIslands[].Definition.IEntityDefinition.CustomData.CustomData	2	18
+definition_snapshot.TrainIslands.Navigation.Rails[].IEntityDefinition.CustomData.All	26	17
+definition_snapshot.TrainIslands.Navigation.Rails[].IEntityDefinition.CustomData.CustomData	26	17
+definition_snapshot.TrainIslands.Navigation.QuickStation.IEntityDefinition.CustomData.All	2	17
+definition_snapshot.TrainIslands.Navigation.QuickStation.IEntityDefinition.CustomData.CustomData	2	17
+definition_snapshot.TrainIslands.Navigation.WaitStation.IEntityDefinition.CustomData.All	2	17
+definition_snapshot.TrainIslands.Navigation.WaitStation.IEntityDefinition.CustomData.CustomData	2	17
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Target.GenericIslandObserverSystems[].ConnectableSimulations	96	16
+definition_snapshot.IRocketProducerSystem.OnRocketProduced.Listeners[].Method.ReflectedTypeInternal.BaseType.DeclaredMembers	36	16
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.MapGenerationParameters.ShapePatchGenerationLikeliness	36	16
+definition_snapshot.OnSimulationCreated.Listeners[].Target.GenericIslandObserverSystems[].ConnectableSimulations	4	16
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.PlayerLevelConfig.GoalLines	36	14
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.WikiDatabase.Entries.WKWires_LogicGates.<Entries>k__BackingField	36	14
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.WikiDatabase.Entries.WKWires_LogicGates.Entries	36	14
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.WikiConfiguration.Categories	36	14
+definition_snapshot.TrainsSimulation.NavigationPredictor.InputsByRoutedOutput.Activator.Method.ReflectedTypeInternal.DeclaredMembers	2	14
+definition_snapshot.TrainsSimulation.NavigationPredictor.RoutesByInput.Activator.Method.ReflectedTypeInternal.DeclaredMembers	2	14
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Buildings.All[].Definitions	2412	13
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Buildings.All[]._Definitions	2412	13
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.SideUpgrades[].<Rewards>k__BackingField	1836	13
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.SideUpgrades[].Rewards	1836	13
+definition_snapshot.Interlock.ResearchUnlockManager.Mode.Islands.Trains.Navigation.Rails	36	13
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression.Levels	36	13
+definition_snapshot.Interlock.ResearchUnlockManager.UnlockProgressManager.Progression._Levels	36	13
+definition_snapshot.TrainIslands.Navigation.Rails	2	13
+definition_snapshot.ISimulationSystem.OnSimulationCreated.Listeners[].Method.ReflectedTypeInternal.BaseType.DeclaredMembers	46	12
+definition_snapshot.ConnectableSimulations[].Simulation.InputLanes	32	12
+definition_snapshot.ConnectableSimulations[].Simulation.NextBundle	32	12

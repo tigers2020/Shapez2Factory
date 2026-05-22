@@ -66,6 +66,8 @@ class BuildingSnapshot:
     def __post_init__(self) -> None:
         if not isinstance(self.footprint_cells, tuple):
             raise TypeError("footprint_cells must be tuple")
+        if not isinstance(self.connectors, tuple):
+            raise TypeError("connectors must be tuple")
 
 
 @dataclass(frozen=True, slots=True)

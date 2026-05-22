@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from django_apps.game_data.models import (
     BuildingConnector,
@@ -11,11 +12,35 @@ from django_apps.game_data.models import (
 GAME_DATA_READ_ALIAS = "default"
 
 
+class BuildingVariantRow(NamedTuple):
+    id: int
+    canonical_id: str
+    internal_name: str
+
+
+class BuildingFootprintRow(NamedTuple):
+    building_variant_id: int
+    x: int
+    y: int
+    order_index: int
+
+
+class BuildingConnectorRow(NamedTuple):
+    building_variant_id: int
+    order_index: int
+    connector_role: str
+    tile_direction: str
+    io_channel_type: str
+    position_x: int
+    position_y: int
+    position_z: int
+
+
 @dataclass(frozen=True)
 class BuildingRowsBundle:
-    variants: list
-    footprints: list
-    connectors: list
+    variants: list[BuildingVariantRow]
+    footprints: list[BuildingFootprintRow]
+    connectors: list[BuildingConnectorRow]
 
 
 def fetch_building_rows_for_batch(
@@ -23,19 +48,19 @@ def fetch_building_rows_for_batch(
     *,
     db_alias: str = GAME_DATA_READ_ALIAS,
 ) -> BuildingRowsBundle:
-    variants = list(
+    variants: list[BuildingVariantRow] = list(
         BuildingVariant.objects.using(db_alias)
         .filter(import_batch_id=batch_id)
         .order_by("internal_name", "canonical_id")
         .values_list("id", "canonical_id", "internal_name", named=True)
     )
-    footprints = list(
+    footprints: list[BuildingFootprintRow] = list(
         BuildingFootprintTile.objects.using(db_alias)
         .filter(building_variant__import_batch_id=batch_id)
         .order_by("building_variant_id", "order_index")
         .values_list("building_variant_id", "x", "y", "order_index", named=True)
     )
-    connectors = list(
+    connectors: list[BuildingConnectorRow] = list(
         BuildingConnector.objects.using(db_alias)
         .filter(building_variant__import_batch_id=batch_id)
         .order_by("building_variant_id", "order_index")

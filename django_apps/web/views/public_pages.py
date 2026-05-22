@@ -53,9 +53,7 @@ from django_apps.web.constants import (
     HOME_INITIAL_SHAPE_CODE,
 )
 from django_apps.web.models import GraphPreviewImage
-from django_apps.web.services.asteroid_game_data_snapshot import (
-    build_asteroid_game_data_snapshot,
-)
+from django_apps.web.services.asteroid_game_data_snapshot import build_asteroid_game_data_snapshot
 from django_apps.web.services.asteroid_lab_page_context import (
     lab_page_context,
     serialize_replay_frame,
@@ -277,11 +275,27 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
             status=404,
         )
 
-    game_data_snapshot = None
     try:
         game_data_snapshot = build_asteroid_game_data_snapshot()
-    except SnapshotBuildError:
-        pass
+    except SnapshotBuildError as exc:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error_code": exc.code.value,
+                "solver_run_id": None,
+                "lab_replay_frames_json": [],
+                "replay_track_metrics": {
+                    "frame_count": 0,
+                    "replay_truncated": False,
+                    "truncation_reason": None,
+                    "dropped_frame_count": None,
+                    "diagnostic_reason": None,
+                },
+                "solver_summary": {},
+                "validation_passed": False,
+            },
+            status=400,
+        )
 
     result = run_solver_runtime_for_project(
         int(project.pk),

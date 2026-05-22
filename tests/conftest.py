@@ -14,6 +14,8 @@ Examples:
 
 from __future__ import annotations
 
+pytest_plugins = ["tests.unit.game_data.fixtures"]
+
 from pathlib import Path
 
 import pytest

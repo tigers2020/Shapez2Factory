@@ -25,6 +25,7 @@
 3. [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) — 구현 순서(체크리스트)  
 4. [`asteroid_lab_11_future_execution_plan_post_sequence.md`](asteroid_lab_11_future_execution_plan_post_sequence.md) ~ [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md) — 이후 로드맵·런타임 배선·페이로드  
 5. **Solver 버튼:** [`solver_runtime/README.md`](solver_runtime/README.md) → `00`~`phase_m` → `implementation_sequence.md`
+6. **채굴기·확장기 (정본 재정렬):** [`asteroid_lab_mining_installation/README.md`](asteroid_lab_mining_installation/README.md) → `00` → `01` → `02` → `03` (DB 교차 참조); `04` (설치 가이드)
 
 ## 파일 목록
 
@@ -46,6 +47,7 @@
 | `asteroid_lab_12_runtime_replay_wiring.md` | `RESEARCH` | 런타임 리플레이 배선 |
 | `asteroid_lab_13_replay_payload_scalability.md` | `RESEARCH` | 페이로드·지연 로드 로드맵 |
 | [`solver_runtime/`](solver_runtime/) | `ACTIVE` | Solver 버튼 런타임 Phase A–M·PR1–7·[`ARCHITECTURE_RECONCILIATION`](solver_runtime/ARCHITECTURE_RECONCILIATION.md) |
+| [`asteroid_lab_mining_installation/`](asteroid_lab_mining_installation/) | `AUDIT` | 채굴기·확장기 정본·모순 표·drift·설치 가이드 (D2) |
 
 ## 초안 (`drafts/`)
 

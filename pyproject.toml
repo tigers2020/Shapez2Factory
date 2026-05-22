@@ -16,6 +16,7 @@ dependencies = [
     "numpy>=2",
     "Pillow>=11",
     "jsonschema>=4.23",
+    "polib>=1.2",
 ]
 
 [project.optional-dependencies]

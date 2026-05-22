@@ -6,9 +6,7 @@ Regenerate via docs/runbooks/game_data_tier_a_release_gate.md when the dump chan
 
 from __future__ import annotations
 
-PINNED_MANIFEST_HASH = (
-    "sha256:a7f71325bb779ff6c2a1665ff6c9fa3067943cc6335a7926567d2ee76be8dd09"
-)
+PINNED_MANIFEST_HASH = "sha256:a7f71325bb779ff6c2a1665ff6c9fa3067943cc6335a7926567d2ee76be8dd09"
 
 PINNED_IMPORT_BATCH_PK = 1
 PINNED_BATCH_NAME = "default"

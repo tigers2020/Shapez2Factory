@@ -113,5 +113,3 @@ def test_reimport_speed_rows_idempotent(speed_rows: list[dict], speed_batch: Imp
 
     assert SimulationBuffableSpeed.objects.count() == 2
     assert SimulationMultipleBeltSpeed.objects.count() == 1
-
-

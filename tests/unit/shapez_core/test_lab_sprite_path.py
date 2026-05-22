@@ -10,6 +10,7 @@ import pytest
 from django_apps.shapez_core.lab_sprite_path import (
     default_lab_sprites_root,
     resolve_sprite_static_relpath,
+    scan_committed_lab_sprite_identifier_map,
 )
 
 
@@ -38,6 +39,18 @@ def test_default_lab_sprites_root_points_under_django_apps() -> None:
     p = default_lab_sprites_root()
     assert p.name == "sprites"
     assert "static" in p.parts
+
+
+def test_resolve_sprite_static_relpath_layout_pro_miner_alias() -> None:
+    rel = resolve_sprite_static_relpath("Layout_ProMiner")
+    assert rel == "Miner/Layout_ShapeMiner.svg"
+
+
+def test_scan_committed_lab_sprite_identifier_map_includes_transport_and_miner() -> None:
+    scanned = scan_committed_lab_sprite_identifier_map()
+    assert scanned.get("SpaceBelt_Forward") == "SpaceBelt/SpaceBelt_Forward.svg"
+    assert scanned.get("Layout_ShapeMiner") == "Miner/Layout_ShapeMiner.svg"
+    assert scanned.get("Layout_ProMiner") == "Miner/Layout_ShapeMiner.svg"
 
 
 @pytest.mark.django_db

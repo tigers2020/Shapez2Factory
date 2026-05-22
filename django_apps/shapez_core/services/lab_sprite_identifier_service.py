@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import cast
 
+from django_apps.shapez_core.lab_sprite_path import scan_committed_lab_sprite_identifier_map
 from django_apps.shapez_core.models import ShapezBasedataRelease, ShapezGameIdentifier
 
 
@@ -59,22 +60,24 @@ def get_lab_sprite_relpath_for_value(value: str, *, release_id: int | None = Non
 def build_lab_identifier_sprite_relpath_map(*, release_id: int | None = None) -> dict[str, str]:
     """Map blueprint ``T`` (:attr:`ShapezGameIdentifier.value`) → ``sprite_static_relpath``.
 
+    Starts from committed static SVGs (works without basedata import), then overlays DB paths.
     When ``release_id`` is omitted, merge rows from all releases: for each ``T`` keep the path from
     the **highest** ``game_version`` that defines a non-empty lab sprite for that value.
     """
 
+    out: dict[str, str] = dict(scan_committed_lab_sprite_identifier_map())
+
     if release_id is not None:
         release = resolve_lab_release_for_sprites(release_id=release_id)
         if release is None:
-            return {}
-        out: dict[str, str] = {}
+            return out
         qs = (
             ShapezGameIdentifier.objects.filter(release=release)
             .exclude(sprite_static_relpath="")
             .values_list("value", "sprite_static_relpath")
         )
         for value, relpath in qs.iterator(chunk_size=500):
-            if value and relpath and value not in out:
+            if value and relpath:
                 out[str(value)] = str(relpath)
         return out
 
@@ -91,4 +94,6 @@ def build_lab_identifier_sprite_relpath_map(*, release_id: int | None = None) ->
         prev = best.get(str(value))
         if prev is None or gvi > prev[0]:
             best[str(value)] = (gvi, str(relpath))
-    return {k: v[1] for k, v in best.items()}
+    for value, (_gv, relpath) in best.items():
+        out[value] = relpath
+    return out

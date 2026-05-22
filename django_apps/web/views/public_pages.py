@@ -384,6 +384,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
         replay_bundle: dict[str, Any],
         replay_ok: bool,
         error_message: str,
+        project_slug: str = "",
         status: int = 200,
     ) -> JsonResponse:
         body: dict[str, Any] = {
@@ -394,6 +395,13 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             "replay_ok": replay_ok,
             "error_message": error_message,
         }
+        slug = project_slug.strip()
+        if slug:
+            body["project_slug"] = slug
+            body["run_solver_url"] = reverse(
+                "web:asteroid-miner-layout-project-run-solver",
+                kwargs={"slug": slug},
+            )
         body.update(replay_bundle)
         return JsonResponse(body, status=status)
 
@@ -465,6 +473,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
                 replay_bundle=bundle,
                 replay_ok=result.status == "ok",
                 error_message=result.error_message or "",
+                project_slug=stay_slug,
             )
         return redirect(redirect_url)
 
@@ -528,6 +537,7 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             replay_bundle=bundle,
             replay_ok=replay_ok,
             error_message=err,
+            project_slug=slug,
         )
     return redirect(redirect_url)
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 
 from django_apps.shapez_core.domain.shape_catalog import COLOR_KINDS, SHAPE_KINDS
@@ -51,6 +52,49 @@ def make_sprite_key(
     """Stable manifest / DB key: ``{8-char layer}:{renderer_version}`` (e.g. ``Cr------:v1``)."""
     layer = atomic_layer_game_code(shape_code, color_code, quadrant_index)
     return f"{layer}:{renderer_version}"
+
+
+_SHAPE_PART_SPRITE_UPLOAD_PREFIX = "assets/shape_part_sprites/"
+_DJANGO_UPLOAD_HASH_SUFFIX_RE = re.compile(r"^(.+)_v(\d+)_[A-Za-z0-9]{5,}\.png$")
+
+
+def sprite_key_to_storage_basename(sprite_key: str) -> str:
+    """PNG basename for ``sprite_key`` (``:`` → ``_``; safe on Windows)."""
+
+    return sprite_key.replace(":", "_") + ".png"
+
+
+def sprite_key_from_storage_basename(basename: str) -> str | None:
+    """Inverse of :func:`sprite_key_to_storage_basename`; ``None`` when not a baked part key."""
+
+    name = basename.strip()
+    if not name.lower().endswith(".png"):
+        return None
+    stem = name[:-4]
+    if not stem:
+        return None
+    idx = stem.rfind("_v")
+    if idx < 1:
+        return None
+    version = stem[idx + 1 :]
+    if not version.startswith("v") or not version[1:].isdigit():
+        return None
+    return f"{stem[:idx]}:{version}"
+
+
+def canonical_shape_part_sprite_basename(basename: str) -> str:
+    """Strip Django collision suffixes (``*_v1_Ab12cdE.png`` → ``*_v1.png``)."""
+
+    m = _DJANGO_UPLOAD_HASH_SUFFIX_RE.match(basename)
+    if m:
+        return f"{m.group(1)}_v{m.group(2)}.png"
+    return basename
+
+
+def shape_part_sprite_image_relpath(sprite_key: str) -> str:
+    """Value for :class:`~django_apps.web.models.ShapePartSprite` ``image`` field."""
+
+    return _SHAPE_PART_SPRITE_UPLOAD_PREFIX + sprite_key_to_storage_basename(sprite_key)
 
 
 def iter_atomic_sprite_specs(
@@ -133,8 +177,12 @@ __all__ = [
     "atomic_layer_game_code",
     "build_atomic_preview_scene",
     "build_pedestal_only_preview_scene",
+    "canonical_shape_part_sprite_basename",
     "iter_atomic_sprite_specs",
     "make_pedestal_sprite_key",
     "make_sprite_key",
     "make_tank_vortex_sprite_key",
+    "shape_part_sprite_image_relpath",
+    "sprite_key_from_storage_basename",
+    "sprite_key_to_storage_basename",
 ]

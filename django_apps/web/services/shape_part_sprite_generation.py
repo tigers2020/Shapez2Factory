@@ -26,6 +26,7 @@ from django_apps.web.services.shape_part_sprites import (
     make_pedestal_sprite_key,
     make_sprite_key,
     make_tank_vortex_sprite_key,
+    sprite_key_to_storage_basename,
 )
 
 JOB_CACHE_PREFIX = "shape_part_sprite_job:"
@@ -384,7 +385,7 @@ def _persist_sprite_variant_row(
     with pil_image.open(io.BytesIO(png_bytes)) as im:
         w, h = im.size
 
-    safe_name = sprite_key.replace(":", "_") + ".png"
+    safe_name = sprite_key_to_storage_basename(sprite_key)
     defaults = {
         "sprite_key": sprite_key,
         "image_width": w,

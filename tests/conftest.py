@@ -14,11 +14,11 @@ Examples:
 
 from __future__ import annotations
 
-pytest_plugins = ["tests.unit.game_data.fixtures"]
-
 from pathlib import Path
 
 import pytest
+
+pytest_plugins = ["tests.unit.game_data.fixtures"]
 
 _TESTS_ROOT = Path(__file__).resolve().parent
 

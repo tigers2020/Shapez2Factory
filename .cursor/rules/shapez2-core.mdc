@@ -29,9 +29,11 @@ alwaysApply: true
 ### 반복 (구현 중 — red-green)
 
 ```bash
-python -m pytest <narrow path>
+python -m pytest <narrow path>      # -q / --quiet / --tb=no 금지
 python -m ruff check <paths>        # green 후
 ```
+
+**pytest 출력 억제 플래그 금지**: `-q`, `--quiet`, `--tb=no`, `-p no:terminal` — 에러 감지 불가.
 
 ### PR / 병합 / CI (Full Gate)
 

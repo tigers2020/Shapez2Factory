@@ -36,7 +36,7 @@ alwaysApply: false
 ## 검증 (렉스)
 
 ```bash
-python -m pytest tests/unit/<app>/   # narrow
+python -m pytest tests/unit/<app>/   # narrow; -q / --quiet / --tb=no 금지
 python -m ruff check <paths>
 python -m mypy django_apps config src
 ```

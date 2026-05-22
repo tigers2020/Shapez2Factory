@@ -8,10 +8,10 @@
 # 1. 개발 의존성 설치
 pip install -e ".[dev]"
 
-# 2. 검증 체인 실행 (렉스 4단계)
-pytest -q
+# 2. 검증 체인 실행 (렉스 4단계; pytest -q/--quiet/--tb=no 금지)
+powershell -File scripts/test_fast.ps1
 ruff check .
-mypy src
+mypy django_apps config src
 black --check .
 ```
 

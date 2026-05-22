@@ -67,14 +67,16 @@
 
 ## Validation commands
 
+로컬 pytest 기본: `powershell -File scripts/test_fast.ps1` (상세: [`documents/ai/manuals/testing.md`](documents/ai/manuals/testing.md) § 로컬 스크립트).
+
 ```bash
-pytest -q
+powershell -File scripts/test_fast.ps1   # 일상 TDD
 ruff check .
 mypy django_apps config src
 black --check .
 ```
 
-순서: `pytest` → `ruff check .` → `mypy django_apps config src` → `black --check .`
+PR/병합 full gate: `powershell -File scripts/test_full.ps1` → `ruff check .` → `mypy django_apps config src` → `black --check .`
 실패 시 억지로 완료 선언하지 않고 `BLOCKED:` 형식으로 보고한다.
 
 ## Permissions

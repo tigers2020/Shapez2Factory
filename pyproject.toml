@@ -6,7 +6,8 @@ requires-python = ">=3.12"
 readme = "README.md"
 dependencies = [
     "Django>=5.2",
-    "django-allauth>=65",
+    # socialaccount extra: PyJWT (import jwt), oauthlib, requests (Google OAuth)
+    "django-allauth[socialaccount]>=65",
     "requests>=2.32",
     "dj-database-url>=2.3",
     "python-dotenv>=1.0",

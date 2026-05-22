@@ -220,6 +220,19 @@ MAX_LAB_REPLAY_TIMELINE_FRAMES = 500
 ## Trunk vs existing transport (정본)
 
 `existing_transport_cells`(coord + `TransportKind`)와 `existing_trunk_cells`(coord 집합)를 **함께** 둔다. **trunk 멤버십의 정본은 `existing_trunk_cells`** 이다. `ExistingTransportCell`에는 trunk 플래그를 두지 않는다 (중복 표현 제거). adapter는 `existing_trunk_cells ⊆ coords(existing_transport_cells)` invariant를 강제한다.
+## GameData snapshot (ADR-004)
+
+Asteroid Lab consumes normalized building and transport data via a **revision-pinned snapshot**, not live ORM in the solver path.
+
+| Reference | Content |
+|-----------|---------|
+| [ADR-004: game_data snapshot boundary](../../docs/adr/ADR-004-game-data-snapshot-boundary.md) | `game_data` selectors/builder → `web` assembler → `asteroid_lab` adapter; `default` DB only in v0 |
+| [Asteroid game_data snapshot (domain)](../../docs/domain/asteroid_game_data_snapshot.md) | `AsteroidGameDataSnapshot`, `SnapshotMeta`, canonical row order |
+| [Coord transform spec](../../docs/domain/asteroid_coord_transform_spec.md) | Server X/Y after decode; no raw coords in optimization |
+| [Deploy runbook](../../docs/runbooks/game_data_snapshot_deploy.md) | `import_game_data --verify`, pytest gate, rolling deploy |
+
+**v0 rule:** snapshot meta in `SolverRun.config_json` is provenance only until PatternLibrary / solver-input ADR approves algorithm use.
+
 ## Sequence 12L 좌표 경계 보강 (2026-05-17)
 
 - Critical invariant: decode/import normalization이 Server X/Y를 만든 뒤에는 알고리즘 코드에서 raw 좌표가 불법이다.

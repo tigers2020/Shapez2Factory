@@ -34,6 +34,7 @@ def build_game_data_row_bundle(
 ) -> GameDataRowBundle:
     building_rows = fetch_building_rows_for_batch(batch_id, db_alias=db_alias)
     variant_ids = {variant.id for variant in building_rows.variants}
+    building_canonical_ids = {variant.canonical_id for variant in building_rows.variants}
 
     footprints_by_variant: dict[int, list] = defaultdict(list)
     for footprint in building_rows.footprints:
@@ -50,7 +51,7 @@ def build_game_data_row_bundle(
         variant_id = connector.building_variant_id
         if variant_id not in variant_ids:
             raise SnapshotBuildError(
-                SnapshotBuildErrorCode.ORPHAN_FOOTPRINT,
+                SnapshotBuildErrorCode.ORPHAN_CONNECTOR,
                 f"connector references unknown building_variant_id={variant_id}",
             )
         connectors_by_variant[variant_id].append(connector)
@@ -88,13 +89,24 @@ def build_game_data_row_bundle(
             )
         )
 
+    transport_rows = fetch_transport_rows_for_batch(batch_id, db_alias=db_alias)
+    for row in transport_rows:
+        canonical_id = row.building_variant__canonical_id
+        if canonical_id not in building_canonical_ids:
+            raise SnapshotBuildError(
+                SnapshotBuildErrorCode.ORPHAN_TRANSPORT,
+                (
+                    "transport references unknown building_variant "
+                    f"canonical_id={canonical_id!r}"
+                ),
+            )
     transport_registry = tuple(
         TransportRegistryRow(
             transport_kind=row.transport_kind,
             transport_category=row.transport_category,
             building_variant_canonical_id=row.building_variant__canonical_id,
         )
-        for row in fetch_transport_rows_for_batch(batch_id, db_alias=db_alias)
+        for row in transport_rows
     )
 
     return GameDataRowBundle(

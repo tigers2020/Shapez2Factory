@@ -24,3 +24,14 @@ def test_building_rows_split_queries(imported_game_data_batch):
         rows = fetch_building_rows_for_batch(imported_game_data_batch.pk)
     assert len(ctx) <= 3
     assert len({r.id for r in rows.variants}) == len(rows.variants)
+
+
+@pytest.mark.django_db
+def test_transport_registry_ordered_by_kind(imported_game_data_batch):
+    from django_apps.game_data.selectors.transport_registry import (
+        fetch_transport_rows_for_batch,
+    )
+
+    rows = fetch_transport_rows_for_batch(imported_game_data_batch.pk)
+    kinds = [row.transport_kind for row in rows]
+    assert kinds == sorted(kinds)

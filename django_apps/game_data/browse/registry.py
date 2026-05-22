@@ -122,6 +122,7 @@ SUBTABLE_MODEL_LABELS: frozenset[str] = frozenset(
         "game_data.LazyLocalizedPlaceholderReplacement",
         "game_data.ShapeQuadrantSlot",
         "game_data.ShapeRecipeLayer",
+        "game_data.ShapeRecipeSourceAppearance",
         "game_data.SimulationChunkBounds",
         "game_data.SimulationConnector",
         "game_data.SimulationConnectorProperty",

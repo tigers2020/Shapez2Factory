@@ -42,9 +42,7 @@ class ShapeComponentKind(models.Model):
 
 
 class ShapeRecipe(models.Model):
-    class CatalogSource(models.TextChoices):
-        FULL = "full", "shapes.json"
-        ITEMS = "items", "items.json subset"
+    """Canonical geometry row; provenance lives on ``ShapeRecipeSourceAppearance``."""
 
     canonical_id = models.CharField(max_length=255, unique=True)
     import_batch = models.ForeignKey(
@@ -54,9 +52,6 @@ class ShapeRecipe(models.Model):
     shape_hash = models.CharField(max_length=128, unique=True)
     quadrant_count = models.PositiveSmallIntegerField(default=4)
     layer_count = models.PositiveSmallIntegerField(default=1)
-    catalog_source = models.CharField(
-        max_length=16, choices=CatalogSource.choices, default=CatalogSource.FULL
-    )
     source_stable_id = models.CharField(max_length=64, blank=True, default="")
     source_object = models.ForeignKey(
         SourceObject,
@@ -73,6 +68,47 @@ class ShapeRecipe(models.Model):
 
     def __str__(self) -> str:
         return f"{self.shape_hash} (uid={self.operation_uid})"
+
+
+class ShapeRecipeSourceAppearance(models.Model):
+    """Per-artifact row provenance for a canonical ``ShapeRecipe`` (P1 policy)."""
+
+    class CatalogSource(models.TextChoices):
+        FULL = "full", "shapes.json"
+        ITEMS = "items", "items.json subset"
+
+    shape_recipe = models.ForeignKey(
+        ShapeRecipe,
+        on_delete=models.CASCADE,
+        related_name="source_appearances",
+    )
+    source_object = models.ForeignKey(
+        SourceObject,
+        on_delete=models.PROTECT,
+        related_name="shape_recipe_appearances",
+    )
+    import_batch = models.ForeignKey(
+        ImportBatch,
+        on_delete=models.CASCADE,
+        related_name="shape_recipe_appearances",
+    )
+    catalog_source = models.CharField(max_length=16, choices=CatalogSource.choices)
+    artifact_filename = models.CharField(max_length=64)
+    source_row_index = models.PositiveIntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["import_batch", "artifact_filename", "source_row_index"],
+                name="uq_shape_appearance_batch_file_row",
+            ),
+        ]
+        verbose_name = "shape recipe source appearance"
+        verbose_name_plural = "③ Shapes · Recipe appearances"
+        ordering = ["artifact_filename", "source_row_index"]
+
+    def __str__(self) -> str:
+        return f"{self.shape_recipe.shape_hash} ← {self.artifact_filename}[{self.source_row_index}]"
 
 
 class ShapeRecipeLayer(models.Model):

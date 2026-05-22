@@ -46,6 +46,7 @@ from django_apps.game_data.models.shapes import (
     ShapeQuadrantSlot,
     ShapeRecipe,
     ShapeRecipeLayer,
+    ShapeRecipeSourceAppearance,
 )
 from django_apps.game_data.models.simulation import (
     ConnectableSimulation,
@@ -111,6 +112,7 @@ __all__ = [
     "ShapeQuadrantSlot",
     "ShapeRecipe",
     "ShapeRecipeLayer",
+    "ShapeRecipeSourceAppearance",
     "SimulationBuffableSpeed",
     "SimulationChunkBounds",
     "SimulationClrProvenance",

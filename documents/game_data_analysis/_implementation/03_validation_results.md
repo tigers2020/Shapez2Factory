@@ -1,11 +1,13 @@
-# Validation Results
+﻿# Validation Results
+
+> **pytest:** [`documents/ai/manuals/testing.md`](../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 ## Commands
 
 ```bash
 python manage.py makemigrations game_data
 python manage.py migrate game_data
-python -m pytest tests/unit/game_data -q
+python -m pytest tests/unit/game_data
 python -m ruff check django_apps/game_data tests/unit/game_data --fix
 ```
 

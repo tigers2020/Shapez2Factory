@@ -1,4 +1,6 @@
-# Test Suite Speed Implementation Plan
+﻿# Test Suite Speed Implementation Plan
+
+> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**. (베이스라인 측정 기록에 `-q`가 남아 있으면 **당시** 명령이며, 재실행 시 제거.)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -44,7 +46,7 @@ Run:
 
 ```powershell
 cd f:\Python_Projects\shapez2Factory
-python -m pytest -m unit --durations=40 -q --tb=no 2>&1 | Tee-Object docs/superpowers/plans/2026-05-21-test-suite-speed-baseline.md
+python -m pytest -m unit --durations=40 2>&1 | Tee-Object docs/superpowers/plans/2026-05-21-test-suite-speed-baseline.md
 ```
 
 Expected: file lists ~40 slowest tests; note top modules (`test_sample_gene_exhaustive`, `test_toolbar_tree`, `test_macro_recipe_staff_catalog`, `test_solver_runtime_replay_recorder`, etc.).
@@ -54,7 +56,7 @@ Expected: file lists ~40 slowest tests; note top modules (`test_sample_gene_exha
 Run:
 
 ```powershell
-python -m pytest --collect-only -q 2>&1 | Select-Object -Last 1
+python -m pytest --collect-only 2>&1 | Select-Object -Last 1
 ```
 
 Expected: `1053 tests collected` (± a few if suite changed).
@@ -95,7 +97,7 @@ Expected: no import error.
 - [ ] **Step 3: Smoke parallel collect**
 
 ```powershell
-python -m pytest --collect-only -n 2 -q 2>&1 | Select-Object -Last 1
+python -m pytest --collect-only -n 2 2>&1 | Select-Object -Last 1
 ```
 
 Expected: same test count as serial collect.
@@ -129,9 +131,9 @@ Add rows:
 
 | 방식 | 예 |
 |------|-----|
-| 병렬 전체 | `python -m pytest -n auto --dist loadscope -q` |
-| 빠른 unit | `python -m pytest -m "unit and not slow" -q` |
-| slow만 | `python -m pytest -m slow -q` |
+| 병렬 전체 | `python -m pytest -n auto --dist loadscope` |
+| 빠른 unit | `python -m pytest -m "unit and not slow"` |
+| slow만 | `python -m pytest -m slow` |
 
 Under PR full gate, note: CI may use `-n auto --dist loadscope`; local iteration should prefer narrow path or `unit and not slow`.
 
@@ -229,7 +231,7 @@ Files with local `game_data_dir` / `GameDataImporter.run()`:
 - [ ] **Step 5: Run narrow then game_data unit**
 
 ```powershell
-python -m pytest tests/unit/game_data/ -q
+python -m pytest tests/unit/game_data/
 ```
 
 Expected: all pass.
@@ -313,7 +315,7 @@ pytestmark = pytest.mark.slow
 - [ ] **Step 6: Run asteroid_lab unit**
 
 ```powershell
-python -m pytest tests/unit/asteroid_lab/ -q
+python -m pytest tests/unit/asteroid_lab/
 ```
 
 Expected: pass.
@@ -384,10 +386,10 @@ git commit -m "chore: exclude generated dirs from ruff and black"
 
 - [ ] **Step 1: Use xdist on test matrix job**
 
-Change test command from `pytest -q` to:
+Change test command from `pytest` to:
 
 ```yaml
-test)      pytest -n auto --dist loadscope -q ;;
+test)      pytest -n auto --dist loadscope ;;
 ```
 
 - [ ] **Step 2: Commit** (only after local parallel run green)
@@ -404,13 +406,13 @@ git commit -m "ci: parallel pytest with loadscope for Django DB safety"
 - [ ] **Step 1: Fast unit slice**
 
 ```powershell
-python -m pytest -m "unit and not slow" -q
+python -m pytest -m "unit and not slow"
 ```
 
 - [ ] **Step 2: Full unit**
 
 ```powershell
-python -m pytest -m unit -n auto --dist loadscope -q
+python -m pytest -m unit -n auto --dist loadscope
 ```
 
 - [ ] **Step 3: Full gate (PR)**
@@ -419,7 +421,7 @@ python -m pytest -m unit -n auto --dist loadscope -q
 python -m ruff check .
 python -m black --check .
 python -m mypy django_apps config src
-python -m pytest -n auto --dist loadscope -q
+python -m pytest -n auto --dist loadscope
 ```
 
 Record before/after wall times in `2026-05-21-test-suite-speed-baseline.md`.
@@ -455,7 +457,7 @@ Delete these functions entirely—they duplicate official export / decode_adapte
 - [ ] **Step 2: Run owners + exhaustive module**
 
 ```powershell
-python -m pytest tests/unit/asteroid_lab/test_decode_adapter.py tests/unit/asteroid_lab/test_official_canonical_export.py tests/unit/asteroid_lab/test_sample_gene_exhaustive.py -q
+python -m pytest tests/unit/asteroid_lab/test_decode_adapter.py tests/unit/asteroid_lab/test_official_canonical_export.py tests/unit/asteroid_lab/test_sample_gene_exhaustive.py
 ```
 
 Expected: pass.
@@ -481,7 +483,7 @@ If `test_official_canonical_export.py` already covers layout equivalence + golde
 - [ ] **Step 2: Run**
 
 ```powershell
-python -m pytest tests/unit/asteroid_lab/test_blueprint_equivalence_golden.py tests/unit/asteroid_lab/test_official_canonical_export.py -q
+python -m pytest tests/unit/asteroid_lab/test_blueprint_equivalence_golden.py tests/unit/asteroid_lab/test_official_canonical_export.py
 ```
 
 - [ ] **Step 3: Commit**
@@ -509,7 +511,7 @@ If the test only asserts row counts unchanged after second `GameDataImporter.run
 - [ ] **Step 2: Run game_data unit**
 
 ```powershell
-python -m pytest tests/unit/game_data/ -q
+python -m pytest tests/unit/game_data/
 ```
 
 - [ ] **Step 3: Commit**
@@ -526,7 +528,7 @@ git commit -m "test: drop redundant game_data re-import idempotency copies"
 - [ ] **Step 1: Collect count delta**
 
 ```powershell
-python -m pytest --collect-only -q 2>&1 | Select-Object -Last 1
+python -m pytest --collect-only 2>&1 | Select-Object -Last 1
 ```
 
 Expected: fewer than 1053 tests (roughly 5–15 removed); document exact number in baseline md.
@@ -537,7 +539,7 @@ Expected: fewer than 1053 tests (roughly 5–15 removed); document exact number 
 python -m ruff check .
 python -m black --check .
 python -m mypy django_apps config src
-python -m pytest -n auto --dist loadscope -q
+python -m pytest -n auto --dist loadscope
 ```
 
 - [ ] **Step 3: Update `documents/ai/checklist.md`**

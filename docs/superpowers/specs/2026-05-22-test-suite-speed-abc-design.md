@@ -1,4 +1,6 @@
-# Test Suite Speed (A+B+C) — Design Spec
+﻿# Test Suite Speed (A+B+C) — Design Spec
+
+> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 **Status:** Approved 2026-05-22  
 **Supersedes:** Extends [`2026-05-21-test-suite-speed`](../plans/2026-05-21-test-suite-speed.md) (Phase 1 largely done)
@@ -45,9 +47,9 @@ Developers need three speed wins:
 
 Replace single `test` matrix cell with **three parallel pytest jobs**:
 
-- `test-fast`: `-m "unit and not slow" -n auto --dist loadscope -q`
-- `test-slow`: `-m slow -n auto --dist loadscope -q`
-- `test-integration`: `-m integration -n auto --dist loadscope -q`
+- `test-fast`: `-m "unit and not slow" -n auto --dist loadscope`
+- `test-slow`: `-m slow -n auto --dist loadscope`
+- `test-integration`: `-m integration -n auto --dist loadscope`
 
 Lint/typecheck/format unchanged. All three must pass for green CI.
 

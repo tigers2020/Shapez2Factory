@@ -1,4 +1,4 @@
-# Cursor AI 기준 새 프로젝트 하니스와 에이전트 운영 설계 보고서
+﻿# Cursor AI 기준 새 프로젝트 하니스와 에이전트 운영 설계 보고서
 
 Role: AI Systems Architect
 
@@ -425,8 +425,8 @@ disable-model-invocation: true
 # Python 예시
 ruff check .
 mypy .
-pytest -q
-pytest tests/smoke -q
+pytest
+pytest tests/smoke
 
 # Node/TypeScript 예시
 pnpm lint

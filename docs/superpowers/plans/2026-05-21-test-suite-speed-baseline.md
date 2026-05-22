@@ -1,4 +1,4 @@
-# Test suite speed baseline (2026-05-21)
+﻿# Test suite speed baseline (2026-05-21)
 
 Pre-change collection: **1053 tests collected** (unit 977 / integration 75).
 
@@ -17,7 +17,7 @@ Implementation notes:
 
 2026-05-22 follow-up (auto `slow` in `tests/conftest.py`):
 - Collect: **864** `unit and not slow`, **117** `slow` (of 1057 total).
-- Wall time (Win dev, parallel): `pytest -m "unit and not slow" -n auto --dist loadscope -q` ≈ **100s** (863 passed, 1 skipped).
+- Wall time (Win dev, parallel): `pytest -m "unit and not slow" -n auto --dist loadscope` ≈ **100s** (863 passed, 1 skipped).
 
 PR2-before (2026-05-22): `test_fast.ps1` ≈ **100s** (baseline for module import + dedup work).
 
@@ -39,7 +39,7 @@ PR3 (2026-05-22): CI matrix `test-fast` | `test-slow` | `test-integration`; `myp
 
 ## Phase D pre-D1 (2026-05-23)
 
-- collect: `python -m pytest -m "unit and not slow" --collect-only -q` → **858** collected (205 deselected)
+- collect: `python -m pytest -m "unit and not slow" --collect-only` → **858** collected (205 deselected)
 - wall: `test_fast.ps1` **88.6s** (pytest reports 84.2s)
 - passed/skipped: **857** passed, **1** skipped
 

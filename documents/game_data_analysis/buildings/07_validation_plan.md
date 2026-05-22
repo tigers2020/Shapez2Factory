@@ -1,4 +1,6 @@
-# Validation Plan — `buildings.json`
+﻿# Validation Plan — `buildings.json`
+
+> **pytest:** [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 Path: `tests/unit/game_data/test_building_import.py`
 
@@ -75,4 +77,4 @@ def test_snapshot_hash_matches_building_groups(import_service, buildings_path, g
 
 ## CI
 
-`pytest tests/unit/game_data/test_building_import.py -q`
+`pytest tests/unit/game_data/test_building_import.py`

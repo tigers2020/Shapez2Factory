@@ -34,9 +34,9 @@ pytest tests/ -k "<관련 테스트 이름>" -v
 ### 4. 검증
 
 ```bash
-pytest -q                   # 전체 테스트
+python -m pytest            # 전체 (-q / --quiet / --tb=no 금지)
 ruff check .                # 린트
-mypy src                    # 타입 검사
+mypy django_apps config src # 타입 검사
 black --check .             # 포맷
 ```
 
@@ -47,7 +47,7 @@ black --check .             # 포맷
 ```
 Summary: (버그 원인 한 줄)
 Files changed:
-Commands run: pytest -q / ruff check . / mypy src / black --check .
+Commands run: python -m pytest / ruff check . / mypy django_apps config src / black --check .
 Validation: (통과/실패 상세)
 Risks / follow-up:
 Docs updated:

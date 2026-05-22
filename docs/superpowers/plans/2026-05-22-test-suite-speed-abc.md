@@ -1,4 +1,6 @@
-# Test Suite Speed (A+B+C) Implementation Plan
+﻿# Test Suite Speed (A+B+C) Implementation Plan
+
+> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지** (본 문서 예시·스크립트·CI와 동일).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -47,7 +49,7 @@
 # Daily TDD — fast unit slice (see documents/ai/manuals/testing.md)
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
-python -m pytest -m "unit and not slow" -n auto --dist loadscope -q @args
+python -m pytest -m "unit and not slow" -n auto --dist loadscope @args
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
@@ -76,7 +78,7 @@ git commit -m "chore: add test_fast.ps1 for daily pytest loop"
 ```powershell
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
-python -m pytest -m slow -n auto --dist loadscope -q @args
+python -m pytest -m slow -n auto --dist loadscope @args
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
@@ -85,7 +87,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```powershell
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
-python -m pytest -n auto --dist loadscope -q @args
+python -m pytest -n auto --dist loadscope @args
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
@@ -160,7 +162,7 @@ Append line: `PR2-before test_fast: <N>s`
 - [ ] **Step 2: Record slow top tests (optional, ~2–5 min)**
 
 ```powershell
-python -m pytest -m slow --durations=20 -q --tb=no 2>&1 | Select-Object -Last 25
+python -m pytest -m slow --durations=20 2>&1 | Select-Object -Last 25
 ```
 
 Append slowest module names to baseline file.
@@ -216,7 +218,7 @@ Modify `tests/conftest.py` `_SLOW_FIXTURE_NAMES` add:
 - [ ] **Step 3: Run game_data collect smoke**
 
 ```powershell
-python -m pytest tests/unit/game_data/ --collect-only -q 2>&1 | Select-Object -Last 1
+python -m pytest tests/unit/game_data/ --collect-only 2>&1 | Select-Object -Last 1
 ```
 
 Expected: collect succeeds.
@@ -250,7 +252,7 @@ Keep `game_data_dir` where JSON source rows are read from disk.
 - [ ] **Step 2: Run file**
 
 ```powershell
-python -m pytest tests/unit/game_data/test_toolbar_tree.py -q
+python -m pytest tests/unit/game_data/test_toolbar_tree.py
 ```
 
 Expected: all pass; **one** import per module (watch logs or time — faster than 7× import).
@@ -276,7 +278,7 @@ Replace parameter `imported_batch` with `imported_batch_module` in all tests; up
 - [ ] **Step 2: Run file**
 
 ```powershell
-python -m pytest tests/unit/game_data/test_source_object_coverage.py -q
+python -m pytest tests/unit/game_data/test_source_object_coverage.py
 ```
 
 Expected: pass.
@@ -308,7 +310,7 @@ Same rename pattern as Task 6. If a test runs a **second** `GameDataImporter.run
 - [ ] **Step 2: Run game_data unit**
 
 ```powershell
-python -m pytest tests/unit/game_data/ -n auto --dist loadscope -q
+python -m pytest tests/unit/game_data/ -n auto --dist loadscope
 ```
 
 Expected: pass.
@@ -340,7 +342,7 @@ Remove these functions entirely from `test_sample_gene_exhaustive.py`:
 - [ ] **Step 2: Run owners + exhaustive**
 
 ```powershell
-python -m pytest tests/unit/asteroid_lab/test_decode_adapter.py tests/unit/asteroid_lab/test_official_canonical_export.py tests/unit/asteroid_lab/test_sample_gene_exhaustive.py -q
+python -m pytest tests/unit/asteroid_lab/test_decode_adapter.py tests/unit/asteroid_lab/test_official_canonical_export.py tests/unit/asteroid_lab/test_sample_gene_exhaustive.py
 ```
 
 Expected: pass.
@@ -366,7 +368,7 @@ Delete `test_connected_branch_gene_matches_user_fixture_layout` if `test_officia
 - [ ] **Step 2: Run**
 
 ```powershell
-python -m pytest tests/unit/asteroid_lab/test_blueprint_equivalence_golden.py tests/unit/asteroid_lab/test_official_canonical_export.py -q
+python -m pytest tests/unit/asteroid_lab/test_blueprint_equivalence_golden.py tests/unit/asteroid_lab/test_official_canonical_export.py
 ```
 
 - [ ] **Step 3: Commit**
@@ -394,7 +396,7 @@ Remove tests that only assert row counts unchanged on second `GameDataImporter.r
 - [ ] **Step 2: Run game_data**
 
 ```powershell
-python -m pytest tests/unit/game_data/ -q
+python -m pytest tests/unit/game_data/
 ```
 
 - [ ] **Step 3: Commit**
@@ -430,7 +432,7 @@ Add fixture parameters to test signatures. Use `exhaustive_genes_ext3` / `exhaus
 - [ ] **Step 2: Run asteroid_lab unit**
 
 ```powershell
-python -m pytest tests/unit/asteroid_lab/ -n auto --dist loadscope -q
+python -m pytest tests/unit/asteroid_lab/ -n auto --dist loadscope
 ```
 
 - [ ] **Step 3: Commit**
@@ -451,7 +453,7 @@ git commit -m "test: use module exhaustive gene fixtures in asteroid_lab"
 
 ```powershell
 Measure-Command { powershell -File scripts/test_fast.ps1 } | Select-Object TotalSeconds
-python -m pytest -m "unit and not slow" --collect-only -q 2>&1 | Select-Object -Last 1
+python -m pytest -m "unit and not slow" --collect-only 2>&1 | Select-Object -Last 1
 ```
 
 Target: fewer collected tests than 864 if dedup removed unit tests from fast slice; wall **≤70s** aspirational.
@@ -502,9 +504,9 @@ task: [lint, typecheck, format, test-fast, test-slow, test-integration]
             lint)      ruff check . ;;
             typecheck) mypy django_apps config src ;;
             format)    black --check . ;;
-            test-fast) pytest -m "unit and not slow" -n auto --dist loadscope -q ;;
-            test-slow) pytest -m slow -n auto --dist loadscope -q ;;
-            test-integration) pytest -m integration -n auto --dist loadscope -q ;;
+            test-fast) pytest -m "unit and not slow" -n auto --dist loadscope ;;
+            test-slow) pytest -m slow -n auto --dist loadscope ;;
+            test-integration) pytest -m integration -n auto --dist loadscope ;;
           esac
 ```
 
@@ -524,9 +526,9 @@ git commit -m "ci: shard pytest into fast, slow, and integration jobs"
 - [ ] **Step 1: Local emulate shards**
 
 ```powershell
-python -m pytest -m "unit and not slow" -n auto --dist loadscope -q
-python -m pytest -m slow -n auto --dist loadscope -q
-python -m pytest -m integration -n auto --dist loadscope -q
+python -m pytest -m "unit and not slow" -n auto --dist loadscope
+python -m pytest -m slow -n auto --dist loadscope
+python -m pytest -m integration -n auto --dist loadscope
 ```
 
 Expected: all three pass.

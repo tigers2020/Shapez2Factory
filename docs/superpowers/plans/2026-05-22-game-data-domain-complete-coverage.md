@@ -1,4 +1,6 @@
-# game_data Domain-Complete Coverage — Implementation Plan
+﻿# game_data Domain-Complete Coverage — Implementation Plan
+
+> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -37,8 +39,8 @@
 
 ```powershell
 cd f:\Python_Projects\shapez2Factory
-python -m pytest tests/unit/game_data/test_shape_recipe_provenance.py -q --tb=short
-python -m pytest tests/unit/game_data/test_toolbar_closure.py -q --tb=short
+python -m pytest tests/unit/game_data/test_shape_recipe_provenance.py --tb=short
+python -m pytest tests/unit/game_data/test_toolbar_closure.py --tb=short
 python -m ruff check django_apps/game_data tests/unit/game_data
 ```
 
@@ -120,7 +122,7 @@ def test_manifest_entry_has_disposition_and_note(key: str) -> None:
     assert note.strip()
 ```
 
-- [ ] **Step 2: Run** `python -m pytest tests/unit/game_data/test_domain_coverage_manifest.py -q` → PASS
+- [ ] **Step 2: Run** `python -m pytest tests/unit/game_data/test_domain_coverage_manifest.py` → PASS
 
 ---
 
@@ -240,7 +242,7 @@ def test_items_layer_slot_parity_by_source_object(
         assert ShapeQuadrantSlot.objects.filter(layer__shape_recipe=recipe).count() == exp_slots
 ```
 
-- [ ] **Step 3: Run** `python -m pytest tests/unit/game_data/test_shape_recipe_provenance.py -q`  
+- [ ] **Step 3: Run** `python -m pytest tests/unit/game_data/test_shape_recipe_provenance.py`  
   Expected: **FAIL** (`ShapeRecipeSourceAppearance` missing or import not creating rows)
 
 ---
@@ -312,7 +314,7 @@ def test_toolbar_acyclic(imported_game_data_batch_module):
             cur = by_id[cur.parent_id]
 ```
 
-- [ ] **Step 3: Run** `python -m pytest tests/unit/game_data/test_toolbar_closure.py -q` → expect PASS (mostly) or fix importer gaps if fail
+- [ ] **Step 3: Run** `python -m pytest tests/unit/game_data/test_toolbar_closure.py` → expect PASS (mostly) or fix importer gaps if fail
 
 ---
 
@@ -478,7 +480,7 @@ Record via `ctx.record_unknown(..., reason_code=REFLECTION_METADATA, classificat
 **Phase 1 gate:**
 
 ```powershell
-python -m pytest tests/unit/game_data/test_shape_recipe_provenance.py tests/unit/game_data/test_toolbar_closure.py tests/unit/game_data/test_cross_references.py -q
+python -m pytest tests/unit/game_data/test_shape_recipe_provenance.py tests/unit/game_data/test_toolbar_closure.py tests/unit/game_data/test_cross_references.py
 python -m ruff check django_apps/game_data
 python -m mypy django_apps/game_data
 ```

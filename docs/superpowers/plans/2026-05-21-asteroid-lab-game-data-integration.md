@@ -1,4 +1,6 @@
-# Asteroid Lab ↔ game_data DB Integration Implementation Plan
+﻿# Asteroid Lab ↔ game_data DB Integration Implementation Plan
+
+> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
@@ -28,7 +30,7 @@
 
 ```powershell
 cd f:\Python_Projects\shapez2Factory\.worktrees\asteroid-lab-game-data
-python -m pytest <path>::<test_name> -q --tb=short
+python -m pytest <path>::<test_name> --tb=short
 python -m ruff check <paths>
 ```
 
@@ -118,7 +120,7 @@ python -m ruff check <paths>
 - [x] **T030** Test footprint sort stable regardless of input order *(master WIP)*
 - [x] **T031** Test `build_snapshot_meta` hashable *(master WIP)*
 - [x] **T032** Test rejects list footprint · **3 min** *(add if missing)*
-- [ ] **T033** Run: `pytest tests/unit/asteroid_lab/test_game_data_contracts.py -q` → PASS · **2 min**
+- [ ] **T033** Run: `pytest tests/unit/asteroid_lab/test_game_data_contracts.py` → PASS · **2 min**
 - [ ] **T034** Commit: `test(asteroid_lab): game_data contract ordering` · **2 min**
 
 ### T035–T039: Content hash
@@ -131,7 +133,7 @@ python -m ruff check <paths>
 
 **Commit bundle B:** T022 + T027 + T034 + T039.
 
-**Phase 1 gate:** `pytest tests/unit/asteroid_lab/test_game_data_contracts.py -q`
+**Phase 1 gate:** `pytest tests/unit/asteroid_lab/test_game_data_contracts.py`
 
 ---
 
@@ -143,7 +145,7 @@ python -m ruff check <paths>
 - [x] **T041** Create `selectors/import_batch.py` with `GAME_DATA_READ_ALIAS` *(master WIP)*
 - [x] **T042** Implement `pin_latest_import_batch()` · raise if None · **5 min** *(verify)*
 - [x] **T043** Test `test_pin_import_batch_returns_manifest_self_hash` *(master WIP)*
-- [ ] **T044** Run: `pytest tests/unit/game_data/test_snapshot_selectors.py::test_pin_import_batch_returns_manifest_self_hash -q` · **3 min**
+- [ ] **T044** Run: `pytest tests/unit/game_data/test_snapshot_selectors.py::test_pin_import_batch_returns_manifest_self_hash` · **3 min**
 
 ### T045–T050: Split building queries
 
@@ -168,11 +170,11 @@ python -m ruff check <paths>
 - [x] **T057** Create `snapshots/rows.py` — row tuple types *(master WIP)*
 - [x] **T058** Create `snapshots/builder.py` — `build_game_data_row_bundle()` *(master WIP)*
 - [x] **T059** Tests: determinism + orphan footprint fail-fast *(master WIP)*
-- [ ] **T059b** Run: `pytest tests/unit/game_data/test_snapshot_builder.py -q` → PASS · **3 min**
+- [ ] **T059b** Run: `pytest tests/unit/game_data/test_snapshot_builder.py` → PASS · **3 min**
 - [ ] **T059c** `ruff check django_apps/game_data/selectors django_apps/game_data/snapshots` · **2 min**
 - [ ] **T059d** Commit: `feat(game_data): snapshot row builder` · **2 min**
 
-**Phase 2 gate:** `pytest tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py -q`
+**Phase 2 gate:** `pytest tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py`
 
 ---
 
@@ -210,7 +212,7 @@ python -m ruff check <paths>
 **Phase 3 gate:**
 
 ```powershell
-python -m pytest tests/unit/web/test_asteroid_game_data_snapshot.py tests/unit/asteroid_lab/test_game_data_snapshot_adapter.py tests/integration/web/test_solver_with_game_data_snapshot.py -q
+python -m pytest tests/unit/web/test_asteroid_game_data_snapshot.py tests/unit/asteroid_lab/test_game_data_snapshot_adapter.py tests/integration/web/test_solver_with_game_data_snapshot.py
 ```
 
 ---
@@ -258,7 +260,7 @@ python -m pytest `
   tests/unit/asteroid_lab/test_game_data_snapshot_determinism.py `
   tests/unit/web/test_asteroid_game_data_snapshot.py `
   tests/integration/web/test_solver_with_game_data_snapshot.py `
-  -q
+ 
 ```
 
 ---

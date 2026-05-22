@@ -1,4 +1,6 @@
-# Validation Plan — `materials.json`
+﻿# Validation Plan — `materials.json`
+
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 ## Module (proposed)
 

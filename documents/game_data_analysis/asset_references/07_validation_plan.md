@@ -1,4 +1,6 @@
-# Validation Plan — `asset_references.json`
+﻿# Validation Plan — `asset_references.json`
+
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 Pytest-focused tests for import pipeline and schema invariants. Tests should run against **fixture slices** (3 sampled rows + minimal prefab/sprite/material targets) and **full bundle integration** (optional, marked slow).
 
@@ -202,7 +204,7 @@ Generate fixtures from seed `20260521` for reproducibility.
 
 | Tier | Command | Scope |
 | ---- | ------- | ----- |
-| Narrow | `pytest tests/unit/game_data/test_asset_meta_reference_import.py -q` | fixtures |
+| Narrow | `pytest tests/unit/game_data/test_asset_meta_reference_import.py` | fixtures |
 | Full gate | `pytest` after all game_data importers exist | whole suite |
 
 ---

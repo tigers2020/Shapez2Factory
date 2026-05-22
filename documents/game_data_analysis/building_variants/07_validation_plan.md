@@ -1,4 +1,6 @@
-# Validation Plan — `building_variants.json`
+﻿# Validation Plan — `building_variants.json`
+
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 Path: `tests/unit/game_data/test_building_variant_import.py`
 
@@ -156,4 +158,4 @@ def test_source_guid_equals_internal_name(db, imported_variants):
 
 ## CI
 
-`pytest tests/unit/game_data/test_building_variant_import.py -q`
+`pytest tests/unit/game_data/test_building_variant_import.py`

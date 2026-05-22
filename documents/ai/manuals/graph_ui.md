@@ -25,7 +25,7 @@
 
 ### 연산·와이어 규칙 변경 시 (체크리스트)
 
-연산 종류·입력 슬롯·material/fluid carrier 규칙을 바꿀 때는 **`django_apps/shapez_solver/services/recipe_graph_input_carrier.py`**(정본)와 **`frontend/recipe_graph_editor/src/recipeConnection.ts`**, **`operationArity.ts`**를 함께 수정한다. 공통 시나리오는 **`tests/fixtures/recipe_connection_rule_scenarios.json`**에 추가·갱신한 뒤 `python -m pytest tests/unit/shapez_solver/test_recipe_connection_rule_fixture_alignment.py` 및 `npm --prefix frontend/recipe_graph_editor test`로 양쪽을 검증한다.
+연산 종류·입력 슬롯·material/fluid carrier 규칙을 바꿀 때는 **`django_apps/shapez_solver/services/recipe_graph_input_carrier.py`**(정본)와 **`frontend/recipe_graph_editor/src/recipeConnection.ts`**, **`operationArity.ts`**를 함께 수정한다. 공통 시나리오는 **`tests/fixtures/recipe_connection_rule_scenarios.json`**에 추가·갱신한 뒤 `python -m pytest tests/unit/shapez_solver/test_recipe_connection_rule_fixture_alignment.py` 및 `npm --prefix frontend/recipe_graph_editor test`로 양쪽을 검증한다 (`-q` / `--quiet` / `--tb=no` 금지 — [`testing.md`](testing.md)).
 
 ## 브라우저 확인
 

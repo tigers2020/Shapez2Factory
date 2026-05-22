@@ -1,6 +1,6 @@
 # game_data Domain-Complete Coverage — Design Spec
 
-**Status:** Phase 0–1, 1d, 3 implemented — Phase 2 audit pending  
+**Status:** Phase 0–1, 1d, 3 + Phase 2 simulation path audit implemented (2026-05-22)  
 **Scope:** `documents/game_data/` (A) vs normalized ORM (B) — **not** byte-identical backup  
 **Plan:** [`2026-05-22-game-data-domain-complete-coverage.md`](../plans/2026-05-22-game-data-domain-complete-coverage.md)  
 **Domain guide:** [`game_data_coverage.md`](../../domain/game_data_coverage.md)

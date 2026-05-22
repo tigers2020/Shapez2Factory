@@ -53,7 +53,7 @@
 2. 명확화 질문
 3. **스스로 검증 가능한 단계**로 분해한 실행 계획
 4. 구현
-5. 검증 — **Contract-first TDD**([`testing.md`](testing.md)): 반복 narrow `pytest` → PR full gate(`ruff` → `black --check` → `mypy` → 전체 `pytest`)
+5. 검증 — **Contract-first TDD**([`testing.md`](testing.md)): 반복 narrow `pytest` → PR full gate(`ruff` → `black --check` → `mypy` → 전체 `pytest`). **`-q` / `--quiet` / `--tb=no` 금지** (실패 상세 누락).
 6. 반복
 
 큰 기능을 한 번에 구현하지 말고, 단계마다 통과 조건을 두는 것이 안전하다.
@@ -80,7 +80,7 @@
 
 ## 12. 테스트와 CI 비용
 
-에이전트 시대에는 테스트·린트·타입체크를 **짧은 주기로 많이** 돌리게 되므로, **느린 스위트·전체 pytest 남발**이 비용과 대기 시간을 키운다. **기본은 이번에 수정한 코드에 대응하는 테스트 파일·디렉터리만** 실행하고, 마커·경로로 좁힌다 ([`testing.md`](testing.md) 상단, [`AGENTS.md`](../../../AGENTS.md) 테스트 표). 루트에서 `python -m pytest` 전체는 **꼭 필요할 때만**.
+에이전트 시대에는 테스트·린트·타입체크를 **짧은 주기로 많이** 돌리게 되므로, **느린 스위트·전체 pytest 남발**이 비용과 대기 시간을 키운다. **기본은 이번에 수정한 코드에 대응하는 테스트 파일·디렉터리만** 실행하고, 마커·경로로 좁힌다 ([`testing.md`](testing.md) 상단, [`AGENTS.md`](../../../AGENTS.md) 테스트 표). 루트에서 `python -m pytest` 전체는 **꼭 필요할 때만**. 출력 억제(`-q`, `--quiet`, `--tb=no`)는 **금지** — [`testing.md` § pytest 출력 규칙](testing.md).
 
 회귀 방지를 위해 기능·버그 수정마다 **가능한 한 테스트**를 남기는 것을 권장한다.
 

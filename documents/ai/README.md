@@ -24,7 +24,7 @@
 
 | 매뉴얼 | 용도 |
 |--------|------|
-| [`manuals/testing.md`](manuals/testing.md) | **Contract-first TDD** · invariant · dual gate · PR 체크리스트 정본 |
+| [`manuals/testing.md`](manuals/testing.md) | **Contract-first TDD** · invariant · dual gate · PR 체크리스트 · **pytest 출력 규칙** (`-q` 금지) 정본 |
 | [`manuals/cursor_usage.md`](manuals/cursor_usage.md) | Cursor·컨텍스트·에이전트 네이티브 엔지니어링 |
 | [`manuals/django.md`](manuals/django.md) § 참조 | Django 외부 참고(DEV Cursor rules, django-rules) — `django` 작업 시 |
 | [`manuals/cursor_slim_setup.md`](manuals/cursor_slim_setup.md) | MCP·플러그인·User Rules slim 설정 가이드 |

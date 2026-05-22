@@ -24,5 +24,5 @@
 - [ ] `python manage.py check`
 - [x] 반복: unified replay + selector narrow pytest (2026-05-19)
 - [x] PR/병합 full gate: `pytest` 813 passed (2026-05-19)
-- [ ] PR/병합 full gate 재실행: `ruff check .` → `black --check .` → `mypy django_apps config src` → `python -m pytest -n auto --dist loadscope`
+- [ ] PR/병합 full gate 재실행: `ruff check .` → `black --check .` → `mypy django_apps config src` → `python -m pytest -n auto --dist loadscope` (또는 `test_full.ps1`; `-q`/`--quiet`/`--tb=no` 금지 — [`testing.md`](manuals/testing.md))
 - [x] 테스트 속도 (2026-05-21): session `game_data` import, module exhaustive-gene fixtures, `pytest-xdist`, `slow` 마커, 중복 테스트 제거 — [`docs/superpowers/plans/2026-05-21-test-suite-speed.md`](../superpowers/plans/2026-05-21-test-suite-speed.md)

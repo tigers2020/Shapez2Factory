@@ -28,7 +28,7 @@
 ## 테스트
 
 ```bash
-python -m pytest tests/unit/shapez_solver/
+python -m pytest tests/unit/shapez_solver/   # -q / --quiet / --tb=no 금지
 ```
 
 `recipe_graph_input_carrier`와 프론트 `recipeConnection`/`operationArity`의 정합은 **`tests/fixtures/recipe_connection_rule_scenarios.json`**과 `tests/unit/shapez_solver/test_recipe_connection_rule_fixture_alignment.py`로 고정한다. 프론트 측 동일 픽스처 검증은 `npm --prefix frontend/recipe_graph_editor test`를 실행한다.

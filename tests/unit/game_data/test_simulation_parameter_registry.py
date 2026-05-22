@@ -152,8 +152,12 @@ def test_converter_records_reflection_delegate_as_unknown_property(
         owner_model="SimulationSystem",
         owner_key="min-converter-003",
     )
-    assert ignored.count() == 2
-    reflection = ignored.get(key="ISimulationSystem.OnSimulationCreated")
+    assert set(ignored.values_list("key", flat=True)) == {
+        "ISimulationSystem.OnSimulationCreated",
+        "Simulations",
+    }
+    reflection = ignored.filter(key="ISimulationSystem.OnSimulationCreated").first()
+    assert reflection is not None
     assert reflection.reason_code == REASON_SIM_PARAM_REFLECTION_DUMP
     assert reflection.classification == ParameterClassification.REFLECTION_DUMP
     assert reflection.json_path == "simulation_parameters.ISimulationSystem.OnSimulationCreated"

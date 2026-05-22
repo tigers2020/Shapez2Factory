@@ -23,6 +23,13 @@ pytestmark = pytest.mark.django_db
 _FIXTURE_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab"
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module):
+    """Run-solver HTTP builds snapshot from pinned import batch (one import per module)."""
+
+    return imported_game_data_batch_module
+
+
 def _encode_v4_copy(root: dict) -> str:
     text = json.dumps(root, separators=(",", ":")).encode("utf-8")
     gz = gzip.compress(text)

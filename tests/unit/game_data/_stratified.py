@@ -17,7 +17,7 @@ TOOLBAR_CANONICAL_ID_ANCHOR_PATHS: tuple[str, ...] = (
 )
 
 
-def pick_stratified_by_key(items: Sequence[T], *, n: int, key: Callable[[T], str]) -> list[T]:
+def pick_stratified_by_key[T](items: Sequence[T], *, n: int, key: Callable[[T], str]) -> list[T]:
     """Return up to ``3 * n`` items: first ``n``, middle ``n``, last ``n`` by ``key`` order."""
 
     ordered = sorted(items, key=key)

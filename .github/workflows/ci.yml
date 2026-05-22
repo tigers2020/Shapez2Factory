@@ -14,6 +14,9 @@ jobs:
       matrix:
         task: [lint, typecheck, format, test-fast, test-slow, test-integration]
 
+    env:
+      DJANGO_USE_SQLITE: "1"
+
     steps:
       - uses: actions/checkout@v4
 

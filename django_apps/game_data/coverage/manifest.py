@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from django_apps.game_data.coverage import reason_codes as rc
 
 
-class Disposition(str, Enum):
+class Disposition(StrEnum):
     PROMOTED = "promoted"
     CROSS_REF = "cross_ref"
     IGNORE_AUDIT = "ignore_audit"

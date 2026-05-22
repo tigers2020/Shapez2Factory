@@ -1,6 +1,12 @@
-"""Importer idempotency against documents/game_data."""
+"""Importer idempotency against documents/game_data.
+
+Global manifest re-import idempotency: ``test_import_is_idempotent``.
+Domain-specific re-import tests live in ``test_simulation_*`` modules.
+"""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 
@@ -27,6 +33,7 @@ def _model_counts() -> dict[str, int]:
 
 
 @pytest.mark.django_db
+@pytest.mark.slow
 def test_import_is_idempotent(game_data_dir: Path) -> None:
     """Full manifest re-import is idempotent (see also per-slice re-import tests)."""
     batch_name = "pytest-idempotency"

@@ -139,8 +139,6 @@ def test_shape_recipe_db_distinct_pairs_match_row_count(
     """Pre/post pair-UK: distinct (operation_uid, shape_hash) == row count."""
     del imported_game_data_batch_module
     total = ShapeRecipe.objects.count()
-    distinct_pairs = (
-        ShapeRecipe.objects.values("operation_uid", "shape_hash").distinct().count()
-    )
+    distinct_pairs = ShapeRecipe.objects.values("operation_uid", "shape_hash").distinct().count()
     assert total == distinct_pairs
     assert total > 0

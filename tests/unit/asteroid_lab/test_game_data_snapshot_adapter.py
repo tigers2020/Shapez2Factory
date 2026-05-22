@@ -9,8 +9,6 @@ from django_apps.asteroid_lab.adapters.game_data_snapshot_adapter import (
 )
 from django_apps.asteroid_lab.optimization.enums import TransportKind
 
-pytest_plugins = ["tests.unit.game_data.conftest"]
-
 # Documented IOType values from game_data analysis + empty model default.
 _KNOWN_IO_CHANNEL_CASES: tuple[tuple[str, TransportKind], ...] = (
     ("", TransportKind.NONE),

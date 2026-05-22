@@ -8,7 +8,6 @@ from django_apps.asteroid_lab.optimization.game_data_snapshot_hash import snapsh
 from django_apps.game_data.models import ImportBatch
 from django_apps.web.services.asteroid_game_data_snapshot import build_asteroid_game_data_snapshot
 
-pytest_plugins = ["tests.unit.game_data.conftest"]
 pytestmark = pytest.mark.django_db
 
 

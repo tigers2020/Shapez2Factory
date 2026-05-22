@@ -22,7 +22,6 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import run_solver_ru
 from django_apps.web.services.asteroid_game_data_snapshot import build_asteroid_game_data_snapshot
 
 pytestmark = pytest.mark.django_db
-pytest_plugins = ["tests.unit.game_data.conftest"]
 
 
 @pytest.fixture(autouse=True)

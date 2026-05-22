@@ -11,6 +11,8 @@ from typing import Any
 from django.db import transaction
 
 from django_apps.game_data.importers.base import ImportContext, dig
+from django_apps.game_data.importers.building_assembly_audit import record_assembly_reflection_audit
+from django_apps.game_data.importers.shape_recipes import import_shape_rows
 from django_apps.game_data.importers.simulation_systems import import_simulation_systems
 from django_apps.game_data.importers.source_loader import load_json, sha256_file
 from django_apps.game_data.importers.toolbar_tree import import_toolbar_tree
@@ -40,10 +42,8 @@ from django_apps.game_data.models import (
     ResearchSideUpgrade,
     ResearchUnlockCost,
     ResearchUpgrade,
-    ShapeComponentKind,
-    ShapeQuadrantSlot,
     ShapeRecipe,
-    ShapeRecipeLayer,
+    ShapeRecipeSourceAppearance,
     SourceObject,
     TransportBuildingRegistry,
 )
@@ -69,10 +69,12 @@ class GameDataImporter:
             self.ctx = ImportContext(batch)
             self._import_fluids()
             self._import_shapes(
-                catalog_source=ShapeRecipe.CatalogSource.FULL, filename="shapes.json"
+                catalog_source=ShapeRecipeSourceAppearance.CatalogSource.FULL,
+                filename="shapes.json",
             )
             self._import_shapes(
-                catalog_source=ShapeRecipe.CatalogSource.ITEMS, filename="items.json"
+                catalog_source=ShapeRecipeSourceAppearance.CatalogSource.ITEMS,
+                filename="items.json",
             )
             self._import_building_variants()
             self._import_buildings_plain()
@@ -171,74 +173,16 @@ class GameDataImporter:
             )
             self.ctx.bump("fluid_color")
 
-    def _shape_definition(self, row: dict[str, Any]) -> dict[str, Any]:
-        snap = row.get("definition_snapshot") or {}
-        if isinstance(snap.get("Definition"), dict):
-            return snap["Definition"]
-        return snap if isinstance(snap, dict) else {}
-
     def _import_shapes(self, *, catalog_source: str, filename: str) -> None:
         assert self.ctx is not None
         rows = load_json(self._path(filename))
-        for i, row in enumerate(rows):
-            defn = self._shape_definition(row)
-            op_uid = int(defn.get("UniqueOperationId") or dig(defn, "Id", "Uid") or 0)
-            shape_hash = str(defn.get("Hash", ""))
-            if not op_uid or not shape_hash:
-                continue
-            src = self._source_object(filename, i, row)
-            cid = identifiers.canonical_shape_recipe(op_uid, shape_hash)
-            recipe, _ = ShapeRecipe.objects.update_or_create(
-                canonical_id=cid,
-                defaults={
-                    "import_batch": self.ctx.batch,
-                    "operation_uid": op_uid,
-                    "shape_hash": shape_hash,
-                    "quadrant_count": int(defn.get("PartCount", 4)),
-                    "layer_count": len(defn.get("Layers") or []),
-                    "catalog_source": catalog_source,
-                    "source_stable_id": str(row.get("stable_id", "")),
-                    "source_object": src,
-                },
-            )
-            ShapeRecipeLayer.objects.filter(shape_recipe=recipe).delete()
-            ShapeQuadrantSlot.objects.filter(layer__shape_recipe=recipe).delete()
-            for layer_index, layer in enumerate(defn.get("Layers") or []):
-                layer_cid = identifiers.canonical_shape_layer(cid, layer_index)
-                layer_obj, _ = ShapeRecipeLayer.objects.update_or_create(
-                    canonical_id=layer_cid,
-                    defaults={
-                        "shape_recipe": recipe,
-                        "layer_index": layer_index,
-                        "sort_order": layer_index,
-                    },
-                )
-                for qidx, part in enumerate(layer.get("Parts") or []):
-                    shape_name = dig(part, "Shape", "name", default="") or ""
-                    color_name = dig(part, "Color", "name", default="") or ""
-                    comp = None
-                    if shape_name:
-                        comp_cid = identifiers.canonical_component_kind(shape_name)
-                        comp, _ = ShapeComponentKind.objects.update_or_create(
-                            canonical_id=comp_cid,
-                            defaults={"component_key": shape_name},
-                        )
-                    fluid = None
-                    if color_name:
-                        fluid = FluidColor.objects.filter(color_name=color_name).first()
-                    slot_cid = identifiers.canonical_quadrant_slot(layer_cid, qidx)
-                    ShapeQuadrantSlot.objects.update_or_create(
-                        canonical_id=slot_cid,
-                        defaults={
-                            "layer": layer_obj,
-                            "quadrant_index": qidx,
-                            "shape_component_kind": comp,
-                            "fluid_color": fluid,
-                            "is_empty_shape": shape_name == "",
-                            "is_empty_color": color_name == "",
-                        },
-                    )
-            self.ctx.bump("shape_recipe")
+        import_shape_rows(
+            self.ctx,
+            catalog_source=catalog_source,
+            filename=filename,
+            rows=rows,
+            record_source_row=self._source_object,
+        )
 
     def _import_building_variants(self) -> None:
         assert self.ctx is not None
@@ -390,6 +334,11 @@ class GameDataImporter:
                 order_index=oi,
                 rule_kind=kind[:128],
             )
+        record_assembly_reflection_audit(
+            self.ctx,
+            owner_key=group_key,
+            definition_snapshot=snap if isinstance(snap, dict) else {},
+        )
         return group
 
     def _import_building_groups(self) -> None:

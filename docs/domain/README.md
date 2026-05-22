@@ -25,6 +25,14 @@
 - INV-1: (설명)
 - INV-2: (설명)
 
+## 목차
+
+| 문서 | 개념 |
+|------|------|
+| [`asteroid_game_data_snapshot.md`](asteroid_game_data_snapshot.md) | Asteroid Lab `game_data` consumer snapshot — ordering, `SnapshotMeta`, `content_hash`, fail-fast |
+| [`asteroid_coord_transform_spec.md`](asteroid_coord_transform_spec.md) | Canonical E → server rotation — `rotate_offset`, anchor placement, footprint adapter rule |
+| [`game_data_coverage.md`](game_data_coverage.md) | Domain-complete import — A vs B, manifest dispositions, provenance, Phase 2 audit pending |
+
 ## 파일 구성 규칙
 
 - 파일 하나는 하나의 개념(엔티티/값 객체/정책)만 다룬다.

@@ -27,6 +27,8 @@
 
 Browse URL: `config/urls.py` → `path("admin/game-data/", include("django_apps.game_data.browse.urls"))`.
 
+**Domain-complete coverage** (A vs B, manifest, shape provenance, Phase 2 audit pending): [`docs/domain/game_data_coverage.md`](../../../docs/domain/game_data_coverage.md).
+
 ## domain JSON 금지 (`game_data`)
 
 - 도메인 모델에 **`JSONField` 금지** (스키마 없는 덤프 방지).

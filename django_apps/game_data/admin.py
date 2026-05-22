@@ -148,6 +148,16 @@ class ShapeRecipeLayerInline(admin.TabularInline):
     ordering = ("layer_index",)
 
 
+class ShapeRecipeSourceAppearanceInline(admin.TabularInline):
+    model = m.ShapeRecipeSourceAppearance
+    extra = 0
+    can_delete = False
+    fields = ("catalog_source", "artifact_filename", "source_row_index", "source_object")
+    readonly_fields = fields
+    raw_id_fields = ("source_object",)
+    ordering = ("artifact_filename", "source_row_index")
+
+
 class ResearchUnlockCostInline(admin.TabularInline):
     model = m.ResearchUnlockCost
     extra = 0
@@ -424,11 +434,24 @@ class ShapeComponentKindAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
 
 @admin.register(m.ShapeRecipe)
 class ShapeRecipeAdmin(GameDataReadOnlyAdminMixin, admin.ModelAdmin):
-    list_display = ("shape_hash", "operation_uid", "layer_count", "catalog_source", "import_batch")
-    list_filter = (ImportBatchFilter, "catalog_source", "layer_count")
+    list_display = (
+        "shape_hash",
+        "operation_uid",
+        "layer_count",
+        "catalog_appearances_summary",
+        "import_batch",
+    )
+    list_filter = (ImportBatchFilter, "source_appearances__catalog_source", "layer_count")
     search_fields = ("shape_hash", "canonical_id", "operation_uid")
     raw_id_fields = ("import_batch", "source_object")
-    inlines = (ShapeRecipeLayerInline,)
+    inlines = (ShapeRecipeSourceAppearanceInline, ShapeRecipeLayerInline)
+
+    @admin.display(description="Catalog appearances")
+    def catalog_appearances_summary(self, obj: m.ShapeRecipe) -> str:
+        labels = sorted(
+            obj.source_appearances.values_list("catalog_source", flat=True).distinct()
+        )
+        return ",".join(labels) if labels else "—"
 
 
 @admin.register(m.ShapeRecipeLayer)

@@ -9,6 +9,7 @@ from enum import StrEnum
 from typing import Any
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.optimization.game_data_contracts import AsteroidGameDataSnapshot
 from django_apps.asteroid_lab.optimization.loaded_snapshot import (
     loaded_reconstruction_snapshot_from_run,
 )
@@ -32,6 +33,7 @@ from django_apps.asteroid_lab.services.solver_generation_config import (
     generation_config_from_run_config,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_META_KEY,
     SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
     SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
     SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
@@ -69,6 +71,15 @@ def _empty_replay_for_project(project_id: int) -> tuple[list[dict[str, Any]], di
     return build_lab_replay_frames_for_project(int(project_id))
 
 
+def _snapshot_meta_for_config(snapshot: AsteroidGameDataSnapshot) -> dict[str, str]:
+    meta = snapshot.meta
+    return {
+        "schema_version": meta.schema_version,
+        "data_revision": meta.data_revision,
+        "content_hash": meta.content_hash,
+    }
+
+
 def _persist_solver_run_outcome(
     run_id: int,
     *,
@@ -94,6 +105,7 @@ def run_solver_runtime_for_project(
     run_key: str | None = None,
     config: dict[str, Any] | None = None,
     generator_version: str = "exhaustive_sample_gene_v1",
+    game_data_snapshot: AsteroidGameDataSnapshot | None = None,
 ) -> SolverRuntimeEntryResult:
     """Execute Phase A→M for the latest map input."""
 
@@ -149,6 +161,10 @@ def run_solver_runtime_for_project(
 
     run_config = dict(config or {})
     run_config[SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY] = gene_source_dict
+    if game_data_snapshot is not None:
+        run_config[SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_META_KEY] = _snapshot_meta_for_config(
+            game_data_snapshot
+        )
 
     run_dto = create_solver_run(
         int(project_id),

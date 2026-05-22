@@ -1,4 +1,5 @@
 # --- env & tooling (project) ---
+.worktrees/
 .conda/
 .venv/
 node_modules/

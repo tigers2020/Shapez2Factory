@@ -1,0 +1,144 @@
+# Pytest Slim & Optimization (Phase D) — Design Spec
+
+**Status:** Approved 2026-05-23  
+**Extends:** [`2026-05-22-test-suite-speed-abc-design.md`](2026-05-22-test-suite-speed-abc-design.md) (A+B+C largely landed)  
+**Plan:** [`2026-05-23-pytest-slim-optimization.md`](../plans/2026-05-23-pytest-slim-optimization.md)
+
+## Problem
+
+Developers need **both**:
+
+| Axis | Pain | Success criteria |
+|------|------|------------------|
+| **Speed** | `test_fast.ps1` still ~93–108s (target ≤70s from A+B+C) | Measurable fast-slice reduction without weakening contracts |
+| **Maintainability** | Duplicate tests, inline heavy generators, copy-paste asserts | Fewer lines; failures still name the invariant |
+
+**Constraint (approved):** Speed and maintainability are **equal**. Deletion/slim uses the **more conservative** rule: no coverage gap; no “delete failing tests”; expand slow tagging before deleting more tests.
+
+## Already landed (do not redo)
+
+- `scripts/test_fast.ps1` / `test_slow.ps1` / `test_full.ps1`
+- Auto `slow` in `tests/conftest.py`; module `exhaustive_genes_*`; `imported_game_data_batch_module`
+- CI matrix: `test-fast` | `test-slow` | `test-integration`
+- Phase 2 deletes in `test_sample_gene_exhaustive.py` (3 roundtrip/golden names) and `test_blueprint_equivalence_golden.py` connected_branch dup — **already absent in tree** (baseline: Tasks 9–10 skip)
+
+## Approach (approved): Phase D — conservative dedup + structure
+
+Workflow: **D1** ownership-backed deletes → **D2** fixture/parametrize consolidation → **D3** durations evidence + slow-tag candidates (not mass delete).
+
+**Forbidden:** Session-scoped `game_data` import; mock-replace Django tests; `pytest.ini` default `-n auto`; deleting tests without a row in the ownership table.
+
+---
+
+## Invariant coverage ownership table
+
+**D1 is not done until this table is current** (every removed test maps to a canonical owner; every kept re-import test has a “distinct invariant” note).
+
+| Invariant | Canonical owner (after cleanup) | Notes |
+|-----------|----------------------------------|-------|
+| `encode_copy_string` / v4 decode roundtrip | `tests/unit/asteroid_lab/test_decode_adapter.py` | |
+| `encode_layout_with_suffix` + official `V`/`BinaryVersion` | `tests/unit/asteroid_lab/test_official_canonical_export.py::test_encode_layout_with_suffix_roundtrip_decode` | |
+| connected_branch golden bytes + layout equiv | `tests/unit/asteroid_lab/test_official_canonical_export.py` (3 connected_branch tests) | |
+| spread vs connected_branch regression | `test_official_canonical_export.py` **or** one test in `test_blueprint_equivalence_golden.py` — not both for same bytes | |
+| exhaustive generator structural laws (coords, ports, extensions) | `tests/unit/asteroid_lab/test_sample_gene_exhaustive.py` | Keep; slim via fixtures not delete |
+| full `documents/game_data` import idempotent | `tests/unit/game_data/test_import_idempotency.py` | |
+| per-domain re-import idempotent (row counts only) | **Delete** if duplicate of global import | |
+| simulation_systems audit unique + re-import | `tests/unit/game_data/test_simulation_systems_import.py::test_converter_audit_issue_unique_and_reimport_idempotent` | **Keep** |
+| simulation parameter occurrence not inflated | `tests/unit/game_data/test_simulation_parameter_registry.py::test_reimport_does_not_inflate_occurrence_count` | **Keep** |
+| simulation speed rows idempotent | `tests/unit/game_data/test_simulation_speed_import.py::test_reimport_speed_rows_idempotent` | **Keep** if distinct from global |
+| Domain roots have `SourceObject` | `tests/unit/game_data/test_source_object_coverage.py` (parametrized) | Consolidate 6× copy-paste, same invariant |
+| Solver smoke gene set | `tests/integration/**` via shared fixture | D2 |
+
+When D1 removes a test, update the **Removed in D1** subsection below (append-only audit).
+
+### Removed in D1 (audit log)
+
+| Removed test | Owner | PR/commit |
+|--------------|-------|-----------|
+| _(populate during D1; skip rows if already removed before Phase D)_ | | |
+
+---
+
+## Scope
+
+### In
+
+- `tests/unit/**`, `tests/integration/**`
+- Provably duplicate **test functions** (ownership table)
+- Inline `generate_exhaustive_sample_genes` → existing module fixtures
+- Parametrize / small helpers (e.g. `source_object` coverage)
+- `--durations` on fast + slow slices; extend `_SLOW_MODULE_SUFFIXES` when justified
+- Baseline timings in [`2026-05-21-test-suite-speed-baseline.md`](../plans/2026-05-21-test-suite-speed-baseline.md)
+
+### Out
+
+- Vitest / frontend tests
+- Production behavior changes
+- Aggressive merge of `test_sample_gene_exhaustive` into a handful of opaque parametrized tests
+- Deleting tests because `test_fast` missed ≤70s (use slow-tag path instead)
+
+---
+
+## Delete vs consolidate vs keep
+
+| Action | When |
+|--------|------|
+| **Delete** | Canonical owner already proves the same invariant; row added to ownership **Removed in D1** |
+| **Parametrize / fixture** | Same invariant, duplicated boilerplate only |
+| **Keep** | Distinct failure mode, DB mutation, empty-DB precondition, or domain-specific re-import |
+| **Never slim** | Tests that only assert import succeeded with no contract; implementation-line-number names |
+
+---
+
+## Structural consolidation (D2)
+
+1. **`test_sample_gene_exhaustive.py`** — replace remaining inline `generate_exhaustive_sample_genes(...)` with `exhaustive_genes_ext3` / `ext0_belt` / `ext1_belt` from `tests/unit/asteroid_lab/conftest.py` where parameters match.
+2. **`test_source_object_coverage.py`** — single parametrized test over model + queryset filter; preserve `pytest.skip` for empty milestone set.
+3. **Integration** — add `tests/integration/conftest.py` (or `tests/integration/asteroid_lab/conftest.py`) with `genes_for_solver_smoke` reusing asteroid module fixtures; migrate:
+   - `tests/integration/web/test_asteroid_run_solver.py`
+   - `tests/integration/web/test_solver_with_game_data_snapshot.py`
+   - `tests/integration/asteroid_lab/test_solver_runtime_replay_timeline.py`
+4. **Optional helper** — `tests/unit/game_data/_assertions.py` with `assert_no_missing_source_object(model, batch)` if parametrized test stays readable.
+
+---
+
+## Speed tactics (D3)
+
+1. Run `python -m pytest -m "unit and not slow" -n auto --dist loadscope --durations=25 -q` (and slow slice separately).
+2. If wall **>70s**, produce **deliverables** (do not widen deletion):
+   - **Slow-tag candidate list** — module or fixture names worth adding to `_SLOW_FIXTURE_NAMES` / `_SLOW_MODULE_SUFFIXES`
+   - **Duration evidence table** — top 25 tests/modules with seconds (paste into baseline doc)
+3. Apply only justified slow tags; re-run `test_fast.ps1` and record after timing.
+4. Caveman **Risks** must cite gap if still >70s after tagging.
+
+---
+
+## Verification
+
+| Gate | Command |
+|------|---------|
+| Daily | `powershell -File scripts/test_fast.ps1` |
+| Slow | `powershell -File scripts/test_slow.ps1` |
+| PR | `test_full.ps1` + ruff / black / mypy per `AGENTS.md` |
+| D1 | Owner modules narrow pytest before merge |
+| D3 | Baseline doc + slow-tag candidate artifact |
+
+Forbidden shortcuts: [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) § Forbidden shortcuts.
+
+---
+
+## PR phases
+
+| PR | Focus | Done when |
+|----|--------|-----------|
+| **D1** | Phase 2 re-import audit; ownership table + **Removed in D1** complete; any remaining dedup | Owner pytest green; table rows match tree |
+| **D2** | Fixtures, parametrized source_object, integration conftest | LOC down; `test_fast` re-measured |
+| **D3** | Durations, slow tags, baseline | ≤70s **or** candidate list + measurement table in baseline/Risks |
+
+---
+
+## References
+
+- [`2026-05-21-test-suite-speed.md`](../plans/2026-05-21-test-suite-speed.md) Phase 2 tasks
+- [`2026-05-21-test-suite-speed-baseline.md`](../plans/2026-05-21-test-suite-speed-baseline.md)
+- [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md)

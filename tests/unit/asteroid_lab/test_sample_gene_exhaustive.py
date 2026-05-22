@@ -17,7 +17,6 @@ from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
     abstract_grid_to_raw_xy,
     assert_blueprint_entries_raw_x_nonzero,
     build_layout_root,
-    generate_exhaustive_sample_genes,
 )
 from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
 
@@ -35,8 +34,10 @@ def test_assert_blueprint_entries_raw_x_nonzero_raises() -> None:
         assert rx != 0
 
 
-def test_exhaustive_generator_all_layout_entries_raw_x_nonzero() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_all_layout_entries_raw_x_nonzero(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     for g in genes:
         for row in g.layout_json["BP"]["Entries"]:
             assert row["X"] != 0
@@ -65,10 +66,12 @@ def _official_export_occupied_server_x_contiguous(layout_root: dict[str, Any]) -
     return hi - lo + 1 == len(set(sxs))
 
 
-def test_exhaustive_generator_official_export_server_x_always_contiguous() -> None:
+def test_exhaustive_generator_official_export_server_x_always_contiguous(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
     """Dense-delta export_x: west branches must not leave a gap in bbox server_x columns."""
 
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+    genes, _stats = exhaustive_genes_ext3
     for g in genes:
         assert _official_export_occupied_server_x_contiguous(g.layout_json)
 
@@ -82,8 +85,10 @@ def test_abstract_grid_to_raw_xy_skips_x_zero_column() -> None:
     assert rx != 0
 
 
-def test_exhaustive_generator_includes_extractor_solo() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=0)
+def test_exhaustive_generator_includes_extractor_solo(
+    exhaustive_genes_ext0: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext0
     solos = [g for g in genes if g.extension_count == 0]
     assert len(solos) == 2
     kinds = {g.transport_kind for g in solos}
@@ -93,13 +98,17 @@ def test_exhaustive_generator_includes_extractor_solo() -> None:
         assert g.nodes[0].kind == "extractor"
 
 
-def test_exhaustive_generator_generates_belt_and_pipe_variants() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_generates_belt_and_pipe_variants(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     assert {g.transport_kind for g in genes} == {"belt", "pipe"}
 
 
-def test_exhaustive_generator_extension_count_0_to_3() -> None:
-    genes, stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_extension_count_0_to_3(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, stats = exhaustive_genes_ext3
     by_ec: dict[int, int] = {}
     for g in genes:
         by_ec[g.extension_count] = by_ec.get(g.extension_count, 0) + 1
@@ -108,8 +117,10 @@ def test_exhaustive_generator_extension_count_0_to_3() -> None:
     assert by_ec[0] == 2
 
 
-def test_exhaustive_generator_never_attaches_extension_to_r() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_never_attaches_extension_to_r(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     for g in genes:
         for n in g.nodes:
             if n.kind == "extension":
@@ -117,8 +128,10 @@ def test_exhaustive_generator_never_attaches_extension_to_r() -> None:
                 assert n.attach_dir is not None
 
 
-def test_exhaustive_generator_all_extensions_connected_to_extractor_tree() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_all_extensions_connected_to_extractor_tree(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     for g in genes:
         by_id = {n.node_id: n for n in g.nodes}
         for n in g.nodes:
@@ -133,15 +146,19 @@ def test_exhaustive_generator_all_extensions_connected_to_extractor_tree() -> No
                 assert walk == "E0"
 
 
-def test_exhaustive_generator_all_coords_unique() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_all_coords_unique(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     for g in genes:
         coords = [n.coord for n in g.nodes] + [OUTPUT_TRANSPORT_GRID]
         assert len(coords) == len(set(coords))
 
 
-def test_exhaustive_generator_output_transport_required_at_r() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_output_transport_required_at_r(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     for g in genes:
         assert g.transport_cells == (OUTPUT_TRANSPORT_GRID,)
         entries = g.layout_json["BP"]["Entries"]
@@ -152,21 +169,27 @@ def test_exhaustive_generator_output_transport_required_at_r() -> None:
         assert "Belt" in t or "Pipe" in t
 
 
-def test_exhaustive_generator_transport_not_occupied() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_transport_not_occupied(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     for g in genes:
         ext_coords = {n.coord for n in g.nodes if n.kind == "extension"}
         assert OUTPUT_TRANSPORT_GRID not in ext_coords
 
 
-def test_exhaustive_generator_canonical_keys_unique() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_canonical_keys_unique(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     keys = [g.key for g in genes]
     assert len(keys) == len(set(keys))
 
 
-def test_exhaustive_generator_names_have_no_spaces() -> None:
-    genes, _stats = generate_exhaustive_sample_genes(max_extensions=3)
+def test_exhaustive_generator_names_have_no_spaces(
+    exhaustive_genes_ext3: tuple[list, object],
+) -> None:
+    genes, _stats = exhaustive_genes_ext3
     for g in genes:
         assert " " not in g.name
 
@@ -221,9 +244,11 @@ def test_seed_exhaustive_sample_genes_overwrites_stale_decoded_json() -> None:
 
 
 @pytest.mark.django_db
-def test_seed_exhaustive_sample_genes_stale_delete_respects_generator() -> None:
+def test_seed_exhaustive_sample_genes_stale_delete_respects_generator(
+    exhaustive_genes_ext0: tuple[list, object],
+) -> None:
     call_command("seed_exhaustive_sample_genes", verbosity=0)
-    genes, _ = generate_exhaustive_sample_genes(max_extensions=0)
+    genes, _ = exhaustive_genes_ext0
     assert len(genes) == 2
     orphan = GeneticSample.objects.create(
         gene_key="stale_test_only_key",

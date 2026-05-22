@@ -8,8 +8,8 @@ import pytest
 
 from django_apps.game_data.importers import GameDataImporter
 from django_apps.game_data.importers.source_loader import load_json
-from django_apps.game_data.models import ImportBatch
 from django_apps.game_data.models import (
+    ImportBatch,
     ToolbarElement,
     ToolbarIslandPlacement,
     ToolbarNodeKind,
@@ -51,9 +51,9 @@ def _expected_action_count(rows: list[dict]) -> int:
 @pytest.mark.django_db
 def test_tree_node_count_matches_source(
     game_data_dir: Path,
-    imported_game_data_batch: ImportBatch,
+    imported_game_data_batch_module: ImportBatch,
 ) -> None:
-    del imported_game_data_batch
+    del imported_game_data_batch_module
     rows = _source_rows(game_data_dir)
     assert ToolbarTreeNode.objects.count() == _expected_node_count(rows)
 
@@ -61,9 +61,9 @@ def test_tree_node_count_matches_source(
 @pytest.mark.django_db
 def test_actionable_count_matches_source(
     game_data_dir: Path,
-    imported_game_data_batch: ImportBatch,
+    imported_game_data_batch_module: ImportBatch,
 ) -> None:
-    del imported_game_data_batch
+    del imported_game_data_batch_module
     rows = _source_rows(game_data_dir)
     expected = _expected_action_count(rows)
     assert ToolbarElement.objects.count() == expected
@@ -71,8 +71,10 @@ def test_actionable_count_matches_source(
 
 
 @pytest.mark.django_db
-def test_separator_nodes_have_no_toolbar_element(imported_game_data_batch: ImportBatch) -> None:
-    del imported_game_data_batch
+def test_separator_nodes_have_no_toolbar_element(
+    imported_game_data_batch_module: ImportBatch,
+) -> None:
+    del imported_game_data_batch_module
     separators = ToolbarTreeNode.objects.filter(node_kind=ToolbarNodeKind.SEPARATOR)
     assert separators.exists()
     for node in separators:
@@ -80,8 +82,8 @@ def test_separator_nodes_have_no_toolbar_element(imported_game_data_batch: Impor
 
 
 @pytest.mark.django_db
-def test_ancestor_chain_children_5_8_4(imported_game_data_batch: ImportBatch) -> None:
-    del imported_game_data_batch
+def test_ancestor_chain_children_5_8_4(imported_game_data_batch_module: ImportBatch) -> None:
+    del imported_game_data_batch_module
     paths = [
         "root",
         "root/Children[5]",
@@ -101,8 +103,8 @@ def test_ancestor_chain_children_5_8_4(imported_game_data_batch: ImportBatch) ->
 
 
 @pytest.mark.django_db
-def test_sibling_child_index_unique(imported_game_data_batch: ImportBatch) -> None:
-    del imported_game_data_batch
+def test_sibling_child_index_unique(imported_game_data_batch_module: ImportBatch) -> None:
+    del imported_game_data_batch_module
     parent = ToolbarTreeNode.objects.get(tree_path="root/Children[6]/Children[7]")
     indices = list(
         ToolbarTreeNode.objects.filter(parent=parent).values_list("child_index", flat=True)
@@ -111,8 +113,8 @@ def test_sibling_child_index_unique(imported_game_data_batch: ImportBatch) -> No
 
 
 @pytest.mark.django_db
-def test_folder_nodes_no_placement(imported_game_data_batch: ImportBatch) -> None:
-    del imported_game_data_batch
+def test_folder_nodes_no_placement(imported_game_data_batch_module: ImportBatch) -> None:
+    del imported_game_data_batch_module
     structural = ToolbarTreeNode.objects.filter(
         node_kind__in=[
             ToolbarNodeKind.ROOT,
@@ -126,16 +128,16 @@ def test_folder_nodes_no_placement(imported_game_data_batch: ImportBatch) -> Non
 
 
 @pytest.mark.django_db
-def test_no_element_display_from_tree_path(imported_game_data_batch: ImportBatch) -> None:
-    del imported_game_data_batch
+def test_no_element_display_from_tree_path(imported_game_data_batch_module: ImportBatch) -> None:
+    del imported_game_data_batch_module
     for elem in ToolbarElement.objects.all():
         assert "root/Children" not in (elem.display_name or "")
         assert "Island placement:" not in str(elem)
 
 
 @pytest.mark.django_db
-def test_island_placer_id_matches_json(imported_game_data_batch: ImportBatch) -> None:
-    del imported_game_data_batch
+def test_island_placer_id_matches_json(imported_game_data_batch_module: ImportBatch) -> None:
+    del imported_game_data_batch_module
     node = ToolbarTreeNode.objects.get(tree_path="root/Children[6]/Children[7]/Children[0]")
     placement = ToolbarIslandPlacement.objects.get(toolbar_element__tree_node=node)
     assert placement.island_group_name == "TrainQuickStationsGroup"
@@ -143,6 +145,7 @@ def test_island_placer_id_matches_json(imported_game_data_batch: ImportBatch) ->
 
 
 @pytest.mark.django_db
+@pytest.mark.slow
 def test_canonical_id_stable_across_reimport(game_data_dir: Path) -> None:
     GameDataImporter(game_data_dir, batch_name="tree-a").run()
     first = set(ToolbarTreeNode.objects.values_list("canonical_id", flat=True))

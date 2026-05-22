@@ -32,3 +32,22 @@ def imported_game_data_batch(game_data_dir: Path, db: None) -> ImportBatch:
 @pytest.fixture
 def imported_batch(imported_game_data_batch: ImportBatch) -> ImportBatch:
     return imported_game_data_batch
+
+
+@pytest.fixture(scope="module")
+def imported_game_data_batch_module(
+    game_data_dir: Path,
+    django_db_setup: None,
+    django_db_blocker,
+) -> ImportBatch:
+    """One full import per test module; tests only read imported ORM state."""
+    with django_db_blocker.unblock():
+        GameDataImporter(game_data_dir, batch_name="pytest-module").run()
+        batch = ImportBatch.objects.order_by("-imported_at").first()
+        assert batch is not None
+    return batch
+
+
+@pytest.fixture(scope="module")
+def imported_batch_module(imported_game_data_batch_module: ImportBatch) -> ImportBatch:
+    return imported_game_data_batch_module

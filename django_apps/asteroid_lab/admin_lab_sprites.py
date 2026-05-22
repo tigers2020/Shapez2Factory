@@ -15,6 +15,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from django_apps.shapez_core.lab_sprite_path import resolve_sprite_static_relpath
 from django_apps.shapez_core.services.lab_sprite_identifier_service import (
     get_lab_sprite_relpath_for_value,
 )
@@ -49,6 +50,9 @@ def lab_sprite_relpath_from_tile_type(tile_type: str | None) -> str | None:
     t = "" if tile_type is None else str(tile_type).strip()
     if not t:
         return None
+    rel = resolve_sprite_static_relpath(t)
+    if rel:
+        return rel
     rel = get_lab_sprite_relpath_for_value(t)
     return rel if rel else None
 

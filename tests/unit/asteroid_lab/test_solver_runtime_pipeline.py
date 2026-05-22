@@ -256,6 +256,7 @@ def test_solver_summary_includes_selection_throughput_stop_fields() -> None:
     assert "selected_throughput_at_stop" in summary
     assert isinstance(summary["selection_stopped_by_throughput_budget"], int)
     assert isinstance(summary["selected_throughput_at_stop"], int)
+    assert "commit_inlet_on_shared_transport_count" in summary
     assert "commit_equipment_transport_overlap_count" in summary
 
 
@@ -346,7 +347,7 @@ def test_validation_warns_under_target_throughput_without_failing() -> None:
     ]
     assert len(matching) == 1, f"expected 1 UNDER_TARGET_THROUGHPUT issue, got {len(matching)}"
     assert matching[0].severity == ValidationSeverity.WARNING
-    assert "confirmed throughput is below selection target" in matching[0].message
+    assert "confirmed bundle count is below selection target" in matching[0].message
 
 
 def _minimal_pool_metrics() -> dict[str, int]:
@@ -399,7 +400,7 @@ def test_build_solver_summary_capacity_fields_when_under_target() -> None:
 
 
 def test_build_solver_summary_run64_mirror() -> None:
-    """Run #64: 6 placements, throughput 96/84 — placement fails, throughput OK."""
+    """Run #64: 6 placements vs target 84 bundles — both capacity flags false."""
 
     targets = BundleSelectionTargets(
         route_out_count=7,
@@ -437,11 +438,11 @@ def test_build_solver_summary_run64_mirror() -> None:
     assert summary["target_throughput"] == 84
     assert summary["confirmed_throughput"] == 96
     assert summary["placement_capacity_satisfied"] is False
-    assert summary["throughput_budget_satisfied"] is True
+    assert summary["throughput_budget_satisfied"] is False
     assert summary["capacity_satisfied"] is False
     assert summary["run_success"] is False
     assert summary["capacity_deficit_count"] == 78
-    assert summary["throughput_deficit_count"] == 0
+    assert summary["throughput_deficit_count"] == 78
 
 
 def test_build_solver_summary_run_success_when_capacity_met() -> None:

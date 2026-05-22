@@ -1,4 +1,6 @@
-# Validation Plan — `research_unlocks.json`
+﻿# Validation Plan — `research_unlocks.json`
+
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 ## Module
 

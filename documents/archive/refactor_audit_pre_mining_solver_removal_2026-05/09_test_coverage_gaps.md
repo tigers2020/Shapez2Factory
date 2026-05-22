@@ -1,8 +1,8 @@
-# Test Coverage Gaps
+﻿# Test Coverage Gaps
 
 ## 실행 확인
 
-- structural suite: `python -m pytest tests/unit/asteroid_lab tests/unit/web/test_asteroid_lab_page_context.py tests/integration/web/test_asteroid_miner_layout_solver.py -q`
+- structural suite: `python -m pytest tests/unit/asteroid_lab tests/unit/web/test_asteroid_lab_page_context.py tests/integration/web/test_asteroid_miner_layout_solver.py`
 - result: `147 passed`
 
 현재 테스트는 live lab shell의 안정성은 꽤 잘 잡지만, canonical solver drift를 막는 테스트는 거의 없다.

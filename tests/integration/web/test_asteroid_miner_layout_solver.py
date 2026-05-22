@@ -226,6 +226,11 @@ def test_asteroid_miner_layout_create_json_accept_existing_project() -> None:
     assert data["blueprint_code"] == copy2
     assert len(data.get("lab_replay_frames_json") or []) >= 1
     assert data["redirect"] == reverse("web:asteroid-miner-layout-project", kwargs={"slug": slug})
+    assert data["project_slug"] == slug
+    assert data["run_solver_url"] == reverse(
+        "web:asteroid-miner-layout-project-run-solver",
+        kwargs={"slug": slug},
+    )
     assert m.AsteroidMapInput.objects.filter(project_id=proj.pk).count() == n_inputs + 1
 
 
@@ -271,6 +276,11 @@ def test_asteroid_miner_layout_create_json_accept_new_project() -> None:
     proj = m.AsteroidProject.objects.get()
     expected = reverse("web:asteroid-miner-layout-project", kwargs={"slug": proj.slug})
     assert data["redirect"] == expected
+    assert data["project_slug"] == proj.slug
+    assert data["run_solver_url"] == reverse(
+        "web:asteroid-miner-layout-project-run-solver",
+        kwargs={"slug": proj.slug},
+    )
     assert len(data.get("lab_replay_frames_json") or []) >= 5
 
 

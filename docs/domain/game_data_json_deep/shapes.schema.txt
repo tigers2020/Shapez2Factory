@@ -1,0 +1,62 @@
+object {
+  "definition_snapshot":
+    // $type: ShapeDefinition×1170
+    object {
+      "$type":
+        string
+      "Hash":
+        string
+      "Id":
+        object {
+          "Uid":
+            integer
+        }
+      "Layers":
+        array<
+          object {
+            "Parts":
+              array<
+                object {
+                  "Color":
+                    object {
+                      "$unity":
+                        string
+                      "instance_id":
+                        integer
+                      "name":
+                        string
+                    }
+                  "Shape":
+                    object {
+                      "$unity":
+                        string
+                      "instance_id":
+                        integer
+                      "name":
+                        string
+                    }
+                }
+              >
+          }
+        >
+      "PartCount":
+        integer
+      "UniqueOperationId":
+        integer
+    }
+  "display_name_key":
+    string
+  "simulation_parameters":
+    object {
+      "UniqueOperationId":
+        integer
+    }
+  "source_guid":
+    string
+  "source_path":
+    string
+  "source_type_name":
+    string
+  "stable_id":
+    string
+}

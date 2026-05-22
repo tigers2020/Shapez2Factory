@@ -77,6 +77,15 @@
     shape_miner_extension: "Layout_ShapeMinerExtension",
   });
 
+  /** Blueprint ``T`` alias when art matches another identifier (mirrors ``lab_sprite_path.py``). */
+  const LAB_SPRITE_TILE_TYPE_ALIASES = Object.freeze({
+    Layout_ProMiner: "Layout_ShapeMiner",
+    SpaceBelt_Left: "SpaceBelt_LeftTurn",
+    SpacePipe_Left: "SpacePipe_LeftTurn",
+    SpaceBelt_Right: "SpaceBelt_RightTurn",
+    SpacePipe_Right: "SpacePipe_RightTurn",
+  });
+
   /** Mineable asteroid field tiles (``cell_kind`` wins over export ``Layout_*MinerExtension`` ``T``). */
   const LAB_SPRITE_CELL_KIND_STATIC_RELPATH = Object.freeze({
     asteroid_fluid_field: "AsteroidField_Fluid.svg",
@@ -132,13 +141,21 @@
     }
   }
 
-  function labSpriteRelpathFromTileType(tileType) {
+  function canonicalLabTileType(tileType) {
     const t = tileType == null ? "" : String(tileType).trim();
+    if (!t) return "";
+    const alias = LAB_SPRITE_TILE_TYPE_ALIASES[t];
+    return alias || t;
+  }
+
+  function labSpriteRelpathFromTileType(tileType) {
+    const t = canonicalLabTileType(tileType);
     if (!t) return null;
     const rel = labIdentifierSpriteRelpaths[t];
     if (typeof rel === "string" && rel.length) return rel;
     if (t.startsWith("SpaceBelt_")) return "SpaceBelt/" + t + ".svg";
     if (t.startsWith("SpacePipe_")) return "SpacePipe/" + t + ".svg";
+    if (t.startsWith("Layout_")) return "Miner/" + t + ".svg";
     return null;
   }
 
@@ -1796,8 +1813,41 @@
       }
     });
 
+    function labProjectSlugFromRedirect(redirectUrl) {
+      if (!redirectUrl) {
+        return "";
+      }
+      try {
+        const u = new URL(redirectUrl, window.location.origin);
+        const m = u.pathname.match(/\/asteroid-miner-layout\/p\/([^/]+)\/?/);
+        return m ? decodeURIComponent(m[1]) : "";
+      } catch {
+        return "";
+      }
+    }
+
+    function syncLabProjectEndpoints(payload) {
+      if (!rootEl || !payload || typeof payload !== "object") {
+        return;
+      }
+      let slug =
+        typeof payload.project_slug === "string" ? payload.project_slug.trim() : "";
+      let runUrl =
+        typeof payload.run_solver_url === "string" ? payload.run_solver_url.trim() : "";
+      if (!slug && typeof payload.redirect === "string") {
+        slug = labProjectSlugFromRedirect(payload.redirect);
+      }
+      if (slug) {
+        rootEl.dataset.labProjectSlug = slug;
+      }
+      if (runUrl) {
+        rootEl.dataset.labRunSolverUrl = runUrl;
+      }
+    }
+
     function replaceLabReplayPayload(payload, opts) {
       if (!payload || typeof payload !== "object") return;
+      syncLabProjectEndpoints(payload);
       const redirectTo = typeof payload.redirect === "string" ? payload.redirect : "";
       if (blueprintInput && typeof payload.blueprint_code === "string") {
         blueprintInput.value = payload.blueprint_code;
@@ -1885,6 +1935,7 @@
               }
               return;
             }
+            syncLabProjectEndpoints(data);
             if (data.in_place) {
               replaceLabReplayPayload(data);
               return;
@@ -1894,6 +1945,7 @@
                 try {
                   history.pushState(null, "", data.redirect);
                   syncProjectSlugHiddenFromRedirect(importForm, data.redirect);
+                  syncLabProjectEndpoints(data);
                 } catch {
                   window.location.assign(data.redirect);
                   return;
@@ -2215,7 +2267,7 @@
           ? String(rootEl.dataset.labRunSolverUrl)
           : "";
       if (!runUrl) {
-        replayRunFeedback = { error_code: "no_run_solver_url" };
+        replayRunFeedback = { error_code: "save_project_first" };
         renderReplayRunStatus(replayRunFeedback);
         return;
       }

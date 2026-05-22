@@ -18,7 +18,7 @@
 - 소스는 TypeScript 모듈(`graphLayoutEngine.ts` 진입 + `graphLayout*.ts` 단계별 구현). 타임라인·에디터 공통 로직이다.
 - Django 정적 번들 **`django_apps/web/static/web/js/solver_graph_layout.js`**, **`editor_graph_layout.js`** 는 **esbuild 출력물**이다. 저장소에 두되 **직접 수정하지 않는다.** 레이아웃 로직을 바꾼 뒤에는 반드시 재생성한다.
 - 재생성: 레포 루트에서 `npm run build:graph-layout` (루트 `package.json`의 `build` 스크립트에 포함됨).
-- Python 단위 테스트 `tests/unit/web/test_editor_graph_layout.py`는 Node가 `editor_graph_layout.js`를 import 하므로, 엔진 변경 후 위 명령으로 정적 파일을 갱신한 뒤 pytest를 돌린다.
+- Python 단위 테스트 `tests/unit/web/test_editor_graph_layout.py`는 Node가 `editor_graph_layout.js`를 import 하므로, 엔진 변경 후 위 명령으로 정적 파일을 갱신한 뒤 pytest를 돌린다 (`-q` / `--quiet` / `--tb=no` 금지 — [`testing.md`](testing.md)).
 
 ## 원칙
 

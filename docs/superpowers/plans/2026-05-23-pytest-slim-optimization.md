@@ -1,4 +1,6 @@
-# Pytest Slim & Optimization (Phase D) Implementation Plan
+﻿# Pytest Slim & Optimization (Phase D) Implementation Plan
+
+> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -51,7 +53,7 @@ powershell -File scripts/test_fast.ps1
 Append under heading `Phase D pre-D1 (YYYY-MM-DD)`:
 
 ```markdown
-- collect: `python -m pytest -m "unit and not slow" --collect-only -q`
+- collect: `python -m pytest -m "unit and not slow" --collect-only`
 - wall: <seconds>s
 - passed/skipped: <N> passed, <M> skipped
 ```
@@ -97,7 +99,7 @@ If grep finds any name still present, delete that function and record PR commit 
 - [ ] **Step 3: Run canonical owners**
 
 ```powershell
-python -m pytest tests/unit/asteroid_lab/test_decode_adapter.py tests/unit/asteroid_lab/test_official_canonical_export.py tests/unit/asteroid_lab/test_sample_gene_exhaustive.py tests/unit/asteroid_lab/test_blueprint_equivalence_golden.py -q
+python -m pytest tests/unit/asteroid_lab/test_decode_adapter.py tests/unit/asteroid_lab/test_official_canonical_export.py tests/unit/asteroid_lab/test_sample_gene_exhaustive.py tests/unit/asteroid_lab/test_blueprint_equivalence_golden.py
 ```
 
 Expected: PASS.
@@ -149,7 +151,7 @@ In `test_import_idempotency.py` module docstring or a short comment:
 - [ ] **Step 3: Run game_data unit**
 
 ```powershell
-python -m pytest tests/unit/game_data/ -q
+python -m pytest tests/unit/game_data/
 ```
 
 Expected: PASS.
@@ -180,7 +182,7 @@ Confirm:
 - [ ] **Step 2: Record post-D1 collect**
 
 ```powershell
-python -m pytest -m "unit and not slow" --collect-only -q
+python -m pytest -m "unit and not slow" --collect-only
 ```
 
 Append count to baseline doc `Phase D post-D1`.
@@ -260,7 +262,7 @@ Keep `test_research_milestones_have_source_object_when_present` and `test_source
 - [ ] **Step 3: Run file**
 
 ```powershell
-python -m pytest tests/unit/game_data/test_source_object_coverage.py -q
+python -m pytest tests/unit/game_data/test_source_object_coverage.py
 ```
 
 Expected: PASS (6 parametrized cases + 2 dedicated tests).
@@ -304,7 +306,7 @@ Remove unused import `generate_exhaustive_sample_genes` if no inline calls remai
 - [ ] **Step 2: Run module**
 
 ```powershell
-python -m pytest tests/unit/asteroid_lab/test_sample_gene_exhaustive.py -q
+python -m pytest tests/unit/asteroid_lab/test_sample_gene_exhaustive.py
 ```
 
 Expected: PASS.
@@ -363,7 +365,7 @@ If a file needs `max_extensions=3`, add a file-level fixture overriding autouse 
 - [ ] **Step 3: Run integration slice**
 
 ```powershell
-python -m pytest tests/integration/web/test_solver_with_game_data_snapshot.py tests/integration/web/test_asteroid_run_solver.py tests/integration/asteroid_lab/test_solver_runtime_replay_timeline.py -q
+python -m pytest tests/integration/web/test_solver_with_game_data_snapshot.py tests/integration/web/test_asteroid_run_solver.py tests/integration/asteroid_lab/test_solver_runtime_replay_timeline.py
 ```
 
 Expected: PASS.
@@ -408,7 +410,7 @@ git commit -m "docs: Phase D2 fast slice timing"
 - [ ] **Step 1: Run durations**
 
 ```powershell
-python -m pytest -m "unit and not slow" -n auto --dist loadscope --durations=25 -q
+python -m pytest -m "unit and not slow" -n auto --dist loadscope --durations=25
 ```
 
 - [ ] **Step 2: Paste evidence table into baseline**
@@ -425,7 +427,7 @@ Under `## Phase D D3 — duration evidence (fast slice)`:
 Also run slow slice for reference:
 
 ```powershell
-python -m pytest -m slow -n auto --dist loadscope --durations=15 -q
+python -m pytest -m slow -n auto --dist loadscope --durations=15
 ```
 
 Add subsection `### slow slice top 15`.

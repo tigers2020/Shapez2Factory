@@ -50,5 +50,13 @@ def test_build_lab_identifier_sprite_relpath_map(
 ) -> None:
     m = build_lab_identifier_sprite_relpath_map(release_id=lab_sprite_release_with_identifiers.pk)
     assert m.get("SpacePipe_Forward") == "SpacePipe/SpacePipe_Forward.svg"
+    assert m.get("Layout_ShapeMiner") == "Miner/Layout_ShapeMiner.svg"
     m_all = build_lab_identifier_sprite_relpath_map()
     assert m_all.get("SpacePipe_Forward") == "SpacePipe/SpacePipe_Forward.svg"
+    assert m_all.get("Layout_ProMiner") == "Miner/Layout_ShapeMiner.svg"
+
+
+def test_build_lab_identifier_sprite_relpath_map_without_db() -> None:
+    m = build_lab_identifier_sprite_relpath_map()
+    assert m.get("SpaceBelt_LeftTurn") == "SpaceBelt/SpaceBelt_LeftTurn.svg"
+    assert m.get("SpaceBelt_Left") == "SpaceBelt/SpaceBelt_LeftTurn.svg"

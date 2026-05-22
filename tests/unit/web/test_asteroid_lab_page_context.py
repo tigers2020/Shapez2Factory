@@ -324,6 +324,10 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "LAB_SPRITE_CELL_KIND_STATIC_RELPATH" in js
     assert "AsteroidField_Fluid.svg" in js
     assert "AsteroidField_Shape.svg" in js
+    assert "LAB_SPRITE_TILE_TYPE_ALIASES" in js
+    assert "Layout_ProMiner" in js
+    assert 'startsWith("Layout_")' in js
+    assert 'return "Miner/" + t + ".svg"' in js
     assert "asteroid_fluid_field" in js
     assert "asteroid_shape_field" in js
     assert "snapToDevicePixel" in js
@@ -388,6 +392,8 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-detail-issue-coord" in js
     assert "lab-detail-status" in js
     assert "labRunSolverUrl" in js
+    assert "function syncLabProjectEndpoints" in js
+    assert "run_solver_url" in js
     assert 'method: "POST"' in js
     assert "dataset.labRunSolverUrl" in js
     run_btn_idx = js.index("runSolverBtn")

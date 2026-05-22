@@ -34,7 +34,7 @@ jobs:
             lint)      ruff check . ;;
             typecheck) mypy src ;;
             format)    black --check . ;;
-            test-fast) pytest -m "unit and not slow" -n auto --dist loadscope -q ;;
-            test-slow) pytest -m slow -n auto --dist loadscope -q ;;
-            test-integration) pytest -m integration -n auto --dist loadscope -q ;;
+            test-fast) pytest -m "unit and not slow" -n auto --dist loadscope ;;
+            test-slow) pytest -m slow -n auto --dist loadscope ;;
+            test-integration) pytest -m integration -n auto --dist loadscope ;;
           esac

@@ -33,7 +33,7 @@ metadata:
    - use case 흐름: port fake 사용 unit test
    - 외부 의존: `tests/integration/`
    - 결정적 회귀: `tests/golden/`
-5. 테스트가 통과하면 `pytest -q`로 전체 suite를 돌린다.
+5. 테스트가 통과하면 narrow `pytest` → 필요 시 `powershell -File scripts/test_fast.ps1` 또는 full gate (`-q` / `--quiet` / `--tb=no` 금지 — [`testing.md`](../../../documents/ai/manuals/testing.md)).
 6. flaky 가능성이 있으면 원인과 완화책을 주석으로 기록한다.
 
 ## Output

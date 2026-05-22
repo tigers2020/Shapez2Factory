@@ -43,7 +43,7 @@ disable-model-invocation: true
 
 **반복(구현 중):**
 ```bash
-python -m pytest <narrow path>
+python -m pytest <narrow path>   # -q / --quiet / --tb=no 금지
 python -m ruff check <paths>
 ```
 

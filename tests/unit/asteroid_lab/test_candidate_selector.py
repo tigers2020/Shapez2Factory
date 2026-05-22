@@ -18,6 +18,9 @@ from django_apps.asteroid_lab.optimization.candidate_score import (
 from django_apps.asteroid_lab.optimization.candidate_selector import (
     select_gene_candidates_greedy,
 )
+from django_apps.asteroid_lab.optimization.commit_best_candidates import (
+    commit_selected_candidates,
+)
 from django_apps.asteroid_lab.optimization.enums import Direction, RouteGoalKind, TransportKind
 from django_apps.asteroid_lab.optimization.input_contracts import (
     BBox,
@@ -51,6 +54,19 @@ def _minimal_inp(*, goals: frozenset[RouteGoal] | None = None):
     )
 
 
+def _void_inp(*, goals: frozenset[RouteGoal] | None = None):
+    bb = BBox(0, 8, 0, 0)
+    void = frozenset(
+        (sx, sy) for sx in range(bb.min_sx, bb.max_sx + 1) for sy in range(bb.min_sy, bb.max_sy + 1)
+    )
+    default_goals = frozenset({_goal((6, 0))})
+    return replace(
+        greenfield_optimization_input(bbox=bb),
+        external_void_cells=void,
+        route_goals=goals if goals is not None else default_goals,
+    )
+
+
 def _gene_candidate(
     *,
     candidate_id: str,
@@ -61,6 +77,8 @@ def _gene_candidate(
     transport_kind: TransportKind = TransportKind.SHAPE_BELT,
     path: tuple[tuple[int, int], ...] = (),
     extractor: tuple[int, int] = (0, 0),
+    occupied_cells: frozenset[tuple[int, int]] | None = None,
+    route_probe_start: tuple[int, int] | None = None,
 ) -> GeneCandidate:
     probe = RouteProbeResult(
         reachable=True,
@@ -77,8 +95,10 @@ def _gene_candidate(
         topology_signature="sig",
         extractor=extractor,
         extensions=(),
-        occupied_cells=frozenset({extractor}),
-        route_probe_start=(extractor[0] + 2, extractor[1]),
+        occupied_cells=occupied_cells if occupied_cells is not None else frozenset({extractor}),
+        route_probe_start=route_probe_start
+        if route_probe_start is not None
+        else (extractor[0] + 2, extractor[1]),
         fixed_output_transport=(extractor[0] + 1, extractor[1]),
         output_dir=Direction.E,
         transport_kind=transport_kind,
@@ -86,6 +106,72 @@ def _gene_candidate(
         base_score=float(base_throughput),
         route_probe_result=probe,
     )
+
+
+def test_selector_skips_footprint_overlap_with_already_selected() -> None:
+    """Commit-time occupied_cell_conflict: do not order overlapping bundles."""
+
+    goal = _goal((6, 0))
+    inp = _minimal_inp(goals=frozenset({goal}))
+    shared = (1, 0)
+    high = _gene_candidate(
+        candidate_id="a:high",
+        base_throughput=16,
+        cost=1,
+        goal_priority=10,
+        reached_goal=goal,
+        extractor=(0, 0),
+        occupied_cells=frozenset({(0, 0), shared}),
+    )
+    low = _gene_candidate(
+        candidate_id="b:low",
+        base_throughput=8,
+        cost=1,
+        goal_priority=10,
+        reached_goal=goal,
+        extractor=(2, 0),
+        occupied_cells=frozenset({(2, 0), shared}),
+    )
+
+    plan, _diag = select_gene_candidates_greedy((low, high), inp=inp)
+
+    assert plan.ordered_candidate_ids == ("a:high",)
+
+
+def test_selector_keeps_disjoint_footprints_on_adjacent_anchors() -> None:
+    goal = _goal((6, 0))
+    inp = _minimal_inp(goals=frozenset({goal}))
+    left = _gene_candidate(
+        candidate_id="left",
+        base_throughput=16,
+        cost=1,
+        goal_priority=10,
+        reached_goal=goal,
+        extractor=(0, 0),
+        occupied_cells=frozenset({(0, 0), (1, 0)}),
+    )
+    overlap = _gene_candidate(
+        candidate_id="overlap",
+        base_throughput=14,
+        cost=1,
+        goal_priority=10,
+        reached_goal=goal,
+        extractor=(2, 0),
+        occupied_cells=frozenset({(2, 0), (1, 0)}),
+    )
+    right = _gene_candidate(
+        candidate_id="right",
+        base_throughput=12,
+        cost=1,
+        goal_priority=10,
+        reached_goal=goal,
+        extractor=(4, 0),
+        occupied_cells=frozenset({(4, 0), (5, 0)}),
+    )
+
+    plan, _diag = select_gene_candidates_greedy((overlap, right, left), inp=inp)
+
+    assert plan.ordered_candidate_ids == ("left", "right")
 
 
 def test_candidate_selector_prefers_high_throughput_low_cost() -> None:
@@ -365,11 +451,38 @@ def test_select_gene_candidates_does_not_mutate_optimization_input() -> None:
     assert inp.protected_corridor_cells == before_corridor
 
 
-def test_selector_stops_when_cumulative_throughput_reaches_target() -> None:
+def test_selector_stops_when_bundle_count_reaches_target() -> None:
     goals = frozenset(_goal((x * 2, 0)) for x in range(7))
     inp = _minimal_inp(goals=goals)
     targets = compute_bundle_selection_targets(goals)
     assert targets.target_miner_bundle_count == 84
+
+    pool = tuple(
+        _gene_candidate(
+            candidate_id=f"m:{i}",
+            base_throughput=16,
+            cost=1,
+            goal_priority=10,
+            reached_goal=_goal((6, 0)),
+            extractor=(i * 4, 0),
+        )
+        for i in range(100)
+    )
+
+    plan, diag = select_gene_candidates_greedy(pool, inp=inp, targets=targets)
+
+    assert diag.selection_stopped_by_throughput_budget is True
+    assert len(plan.ordered_candidate_ids) == 84
+    assert diag.selected_throughput_at_stop == 84 * 16
+
+
+def test_selector_does_not_stop_early_when_throughput_sum_hits_target_before_bundle_count() -> None:
+    """Regression: 6×16 throughput sum must not cap target 96 bundle count at 6 miners."""
+
+    goals = frozenset(_goal((x * 2, 0)) for x in range(8))
+    inp = _minimal_inp(goals=goals)
+    targets = compute_bundle_selection_targets(goals)
+    assert targets.target_miner_bundle_count == 96
 
     pool = tuple(
         _gene_candidate(
@@ -385,15 +498,12 @@ def test_selector_stops_when_cumulative_throughput_reaches_target() -> None:
 
     plan, diag = select_gene_candidates_greedy(pool, inp=inp, targets=targets)
 
-    assert diag.selection_stopped_by_throughput_budget is True
-    assert diag.selected_throughput_at_stop >= targets.target_miner_bundle_count
-    assert len(plan.ordered_candidate_ids) == 6
-    assert diag.selected_throughput_at_stop == 96
+    assert len(plan.ordered_candidate_ids) == 20
+    assert diag.selection_stopped_by_throughput_budget is False
+    assert diag.selected_throughput_at_stop == 20 * 16
 
 
-def test_selector_does_not_select_all_pool_when_throughput_budget_low() -> None:
-    """Regression: many pool anchors must not all be selected when target is 84 tp."""
-
+def test_selector_selects_entire_pool_when_smaller_than_bundle_target() -> None:
     goals = frozenset(_goal((x * 2, 0)) for x in range(7))
     inp = _minimal_inp(goals=goals)
     targets = compute_bundle_selection_targets(goals)
@@ -415,9 +525,9 @@ def test_selector_does_not_select_all_pool_when_throughput_budget_low() -> None:
     plan, diag = select_gene_candidates_greedy(pool, inp=inp, targets=targets)
 
     assert len(pool) == 21
-    assert len(plan.ordered_candidate_ids) <= 7
-    assert diag.selection_stopped_by_throughput_budget is True
-    assert diag.selected_throughput_at_stop >= 84
+    assert len(plan.ordered_candidate_ids) == 21
+    assert diag.selection_stopped_by_throughput_budget is False
+    assert diag.selected_throughput_at_stop == 21 * 16
 
 
 def test_selector_cap_uses_target_bundle_count_not_route_out_count() -> None:
@@ -478,3 +588,37 @@ def test_trunk_load_penalty_increases_with_assigned_platforms() -> None:
 
     assert loaded.trunk_load_penalty > empty.trunk_load_penalty
     assert loaded.total < empty.total
+
+
+def test_greedy_plan_footprint_filter_avoids_commit_occupied_skip() -> None:
+    goal = _goal((6, 0))
+    inp = _void_inp(goals=frozenset({goal}))
+    shared = (1, 0)
+    high = _gene_candidate(
+        candidate_id="a:high",
+        base_throughput=16,
+        cost=0,
+        goal_priority=10,
+        reached_goal=goal,
+        extractor=(0, 0),
+        route_probe_start=(0, 0),
+        occupied_cells=frozenset({(0, 0), shared}),
+    )
+    low = _gene_candidate(
+        candidate_id="b:low",
+        base_throughput=8,
+        cost=0,
+        goal_priority=10,
+        reached_goal=goal,
+        extractor=(2, 0),
+        route_probe_start=(2, 0),
+        occupied_cells=frozenset({(2, 0), shared}),
+    )
+    by_id = {high.candidate_id: high, low.candidate_id: low}
+
+    plan, _diag = select_gene_candidates_greedy((low, high), inp=inp)
+    result, _timing, _diag = commit_selected_candidates(plan, by_id, inp=inp)
+
+    assert plan.ordered_candidate_ids == (high.candidate_id,)
+    assert len(result.confirmed) == 1
+    assert result.skipped_candidate_ids == ()

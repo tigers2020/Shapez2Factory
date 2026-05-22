@@ -46,6 +46,7 @@ from django_apps.asteroid_lab.optimization.candidate_selector import (
 )
 from django_apps.asteroid_lab.optimization.capacity_planner import CapacityPlan, plan_capacity
 from django_apps.asteroid_lab.optimization.commit_best_candidates import (
+    CommitDiagnostics,
     ConfirmedGenePlacement,
     IncrementalCommitResult,
     SkippedCandidateRecord,
@@ -197,6 +198,7 @@ __all__ = [
     "ExtractorPlacementPolicy",
     "GeneCandidate",
     "GeneTemplate",
+    "CommitDiagnostics",
     "IncrementalCommitResult",
     "SkippedCandidateRecord",
     "MaterializationFailureReason",

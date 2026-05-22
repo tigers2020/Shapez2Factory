@@ -1,4 +1,6 @@
-# Validation Plan — `building_groups.json`
+﻿# Validation Plan — `building_groups.json`
+
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 Suggested path: `tests/unit/game_data/test_building_group_import.py`
 
@@ -168,5 +170,5 @@ def test_groups_match_buildings_guid_set(import_service, groups_path, buildings_
 
 | Tier | Command |
 | ---- | ------- |
-| Narrow | `pytest tests/unit/game_data/test_building_group_import.py -q` |
+| Narrow | `pytest tests/unit/game_data/test_building_group_import.py` |
 | Full | `pytest` when game_data importers exist |

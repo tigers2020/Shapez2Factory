@@ -64,6 +64,18 @@ def _anchor_slots_available(
     return anchor_use_count.get(candidate.extractor, 0) < max_selected_variants_per_extractor
 
 
+def _footprint_overlaps_selected(
+    candidate: GeneCandidate,
+    *,
+    selected_occupied: frozenset[Coord],
+) -> bool:
+    """True when bundle footprint intersects already-selected occupied cells (commit contract)."""
+
+    if not selected_occupied:
+        return False
+    return bool(candidate.occupied_cells & selected_occupied)
+
+
 def select_gene_candidates_greedy(
     candidates: tuple[GeneCandidate, ...],
     *,
@@ -80,12 +92,14 @@ def select_gene_candidates_greedy(
     remaining = list(candidates)
     goal_load: dict[GoalLoadKey, int] = {}
     anchor_use_count: dict[Coord, int] = {}
+    selected_occupied: set[Coord] = set()
     ordered_ids: list[str] = []
     selection_skipped_duplicate_anchor = 0
     cumulative_throughput = 0
     selection_stopped_by_throughput_budget = False
 
     while remaining:
+        selected_occ_frozen = frozenset(selected_occupied)
         eligible = [
             c
             for c in remaining
@@ -94,6 +108,10 @@ def select_gene_candidates_greedy(
                 c,
                 anchor_use_count=anchor_use_count,
                 max_selected_variants_per_extractor=max_selected_variants_per_extractor,
+            )
+            and not _footprint_overlaps_selected(
+                c,
+                selected_occupied=selected_occ_frozen,
             )
         ]
         if eligible:
@@ -112,6 +130,22 @@ def select_gene_candidates_greedy(
             if trunk_ok_anchor_full:
                 selection_skipped_duplicate_anchor += len(trunk_ok_anchor_full)
                 break
+            trunk_ok_footprint_blocked = [
+                c
+                for c in remaining
+                if not would_exceed_trunk_capacity(c, goal_assigned_platforms=goal_load)
+                and _anchor_slots_available(
+                    c,
+                    anchor_use_count=anchor_use_count,
+                    max_selected_variants_per_extractor=max_selected_variants_per_extractor,
+                )
+                and _footprint_overlaps_selected(
+                    c,
+                    selected_occupied=selected_occ_frozen,
+                )
+            ]
+            if trunk_ok_footprint_blocked:
+                break
             pool = remaining
 
         best = max(
@@ -123,9 +157,13 @@ def select_gene_candidates_greedy(
         key = goal_load_key_for_candidate(best)
         goal_load[key] = goal_load.get(key, 0) + 1
         anchor_use_count[best.extractor] = anchor_use_count.get(best.extractor, 0) + 1
+        selected_occupied.update(best.occupied_cells)
         remaining.remove(best)
 
-        if targets is not None and cumulative_throughput >= targets.target_miner_bundle_count:
+        if (
+            targets is not None
+            and len(ordered_ids) >= targets.target_miner_bundle_count
+        ):
             selection_stopped_by_throughput_budget = True
             break
 

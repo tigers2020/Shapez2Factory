@@ -1,4 +1,6 @@
-# Validation Plan — `fluids.json`
+﻿# Validation Plan — `fluids.json`
+
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 Path: `tests/unit/game_data/test_fluid_color_import.py`
 
@@ -111,4 +113,4 @@ def test_sampled_rows(db, imported_fluid_colors, index, name):
 
 ## CI
 
-`pytest tests/unit/game_data/test_fluid_color_import.py -q`
+`pytest tests/unit/game_data/test_fluid_color_import.py`

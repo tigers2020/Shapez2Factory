@@ -79,6 +79,21 @@ black --check .
 PR/병합 full gate: `powershell -File scripts/test_full.ps1` → `ruff check .` → `mypy django_apps config src` → `black --check .`
 실패 시 억지로 완료 선언하지 않고 `BLOCKED:` 형식으로 보고한다.
 
+### pytest 출력 규칙 (필수)
+
+**pytest 실행 시 출력 억제 플래그 사용 금지.**
+
+| 금지 플래그 | 이유 |
+|---|---|
+| `-q` / `--quiet` | 실패 상세가 숨겨져 에러를 놓침 |
+| `--tb=no` | traceback 제거로 디버그 불가 |
+| `--no-header` | 단독 사용 시 컨텍스트 소실 |
+| `-p no:terminal` | 출력 완전 억제 |
+
+허용: `-v`, `-s`, `--tb=short` (기본값), `--tb=long`, `-x`, `--maxfail=N`.
+
+상세·Forbidden shortcuts: [`documents/ai/manuals/testing.md`](documents/ai/manuals/testing.md) § pytest 출력 규칙.
+
 ## Permissions
 
 - 기본 권한: 읽기, 검색, 계획 수립

@@ -1,0 +1,14 @@
+object {
+  "display_name_key":
+    string
+  "source_guid":
+    string
+  "source_path":
+    string
+  "source_type_name":
+    string
+  "sprite_path":
+    string
+  "stable_id":
+    string
+}

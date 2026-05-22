@@ -56,6 +56,11 @@ python manage.py seed_exhaustive_sample_genes
 옵션: `--transport-kind`, `--max-extensions`, `--limit`, `--delete-stale-generated`, `--generator-version`.  
 `--delete-stale-generated`는 `metadata_json.generator`가 일치하고 이번 실행 결과 `gene_key`에 없는 행만 삭제; **`--limit`이 있으면 스킵**.
 
+## Django Admin
+
+`GeneticSample` changelist 상단 **「전수 샘플 gene 시드」** 폼 → `seed_exhaustive_sample_genes` (`dry-run`, `delete_stale_generated` 체크박스).  
+구현: `django_apps/asteroid_lab/admin.py` · `django_apps/web/templates/admin/asteroid_lab/geneticsample/change_list.html` (`TEMPLATES['DIRS']`).
+
 ## 검증
 
 - `python -m pytest tests/unit/asteroid_lab -k "sample_gene or exhaustive"`

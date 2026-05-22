@@ -65,6 +65,12 @@ def test_sprite_rotation_deg_from_quarter_matches_normalize() -> None:
         assert sprite_rotation_deg_from_quarter(r) == normalize_lab_rotation_q(r) * 90
 
 
+def test_lab_sprite_relpath_layout_pro_miner_without_db() -> None:
+    assert lab_sprite_relpath_from_tile_type("Layout_ProMiner") == (
+        "Miner/Layout_ShapeMiner.svg"
+    )
+
+
 @pytest.mark.django_db
 def test_lab_sprite_resolve_uses_t_and_r(
     lab_sprite_identifiers_for_admin: ShapezBasedataRelease,

@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import json
+from io import StringIO
 
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.shortcuts import redirect
+from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
@@ -145,6 +151,7 @@ class TopologyRuleModalContentAdmin(admin.ModelAdmin):
 
 @admin.register(m.GeneticSample)
 class GeneticSampleAdmin(admin.ModelAdmin):
+    change_list_template = "admin/asteroid_lab/geneticsample/change_list.html"
     list_display = ("id", "mini_map_list", "name", "gene_key", "project", "updated_at")
     list_display_links = ("id", "name")
     list_select_related = ("project",)
@@ -162,6 +169,65 @@ class GeneticSampleAdmin(admin.ModelAdmin):
         ("디코드", {"fields": ("decoded_json_pretty", "mini_map_preview")}),
         ("메타", {"fields": ("metadata_json_pretty", "created_at", "updated_at")}),
     )
+
+    def get_urls(self):
+        info = self.model._meta.app_label, self.model._meta.model_name
+        return [
+            path(
+                "seed-exhaustive-samples/",
+                self.admin_site.admin_view(self.seed_exhaustive_samples_view),
+                name=f"{info[0]}_{info[1]}_seed_exhaustive_samples",
+            ),
+            *super().get_urls(),
+        ]
+
+    def seed_exhaustive_samples_view(self, request):
+        changelist_url = reverse("admin:asteroid_lab_geneticsample_changelist")
+        if not self.has_change_permission(request):
+            raise PermissionDenied
+
+        if request.method != "POST":
+            self.message_user(
+                request,
+                "목록 상단 버튼으로 전수 샘플 시드를 실행하세요.",
+                level=messages.INFO,
+            )
+            return redirect(changelist_url)
+
+        dry_run = request.POST.get("dry_run") == "on"
+        delete_stale = request.POST.get("delete_stale_generated") == "on"
+        out = StringIO()
+        cmd_kwargs: dict[str, object] = {
+            "verbosity": 1,
+            "stdout": out,
+        }
+        if dry_run:
+            cmd_kwargs["dry_run"] = True
+        if delete_stale:
+            cmd_kwargs["delete_stale_generated"] = True
+
+        try:
+            call_command("seed_exhaustive_sample_genes", **cmd_kwargs)
+        except CommandError as exc:
+            self.message_user(request, str(exc), level=messages.ERROR)
+            return redirect(changelist_url)
+
+        output = out.getvalue().strip()
+        if dry_run:
+            self.message_user(
+                request,
+                "dry-run: DB 변경 없음. "
+                + (output.splitlines()[-1] if output else "통계만 출력됨."),
+                level=messages.SUCCESS,
+            )
+        else:
+            tail = output.splitlines()[-1] if output else "시드 완료."
+            self.message_user(request, tail, level=messages.SUCCESS)
+            if delete_stale and "deleted stale" in output:
+                for line in output.splitlines():
+                    if "deleted stale" in line:
+                        self.message_user(request, line.strip(), level=messages.WARNING)
+        return redirect(changelist_url)
 
     @admin.display(description="디코드 JSON")
     def decoded_json_pretty(self, obj: m.GeneticSample) -> SafeString | str:

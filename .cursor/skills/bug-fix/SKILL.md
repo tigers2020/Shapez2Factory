@@ -31,7 +31,7 @@ metadata:
 3. 수정 전 실패 테스트가 없으면 최소 재현 테스트를 먼저 작성한다.
 4. 수정은 smallest diff 원칙으로 수행한다.
 5. 동일 종류 회귀를 막는 테스트 한 개 이상을 추가한다.
-6. 검증 체인을 실행한다: `pytest -q` → `ruff check .` → `mypy src` → `black --check .`
+6. 검증 체인을 실행한다: narrow `python -m pytest <path>` → `ruff check .` → `mypy django_apps config src` → `black --check .` (`-q` / `--quiet` / `--tb=no` 금지 — [`testing.md`](../../../documents/ai/manuals/testing.md)).
 7. 변경 원인과 검증 결과를 Output 형식으로 요약한다.
 
 ## Output

@@ -66,24 +66,6 @@ def _issue(
     )
 
 
-def _confirmed_throughput_sum(
-    commit: IncrementalCommitResult,
-    candidates_by_id: Mapping[str, GeneCandidate],
-) -> int:
-    """Sum base_throughput for confirmed placements whose candidate is in the pool.
-
-    Missing-candidate cases are deliberately skipped: the existing
-    CANDIDATE_POOL_MISSING check owns that issue.
-    """
-    total = 0
-    for placement in commit.confirmed:
-        candidate = candidates_by_id.get(placement.candidate_id)
-        if candidate is None:
-            continue
-        total += candidate.base_throughput
-    return total
-
-
 def _extractor_not_connected_extra(
     candidate: GeneCandidate,
     res: RouteReservation,
@@ -218,6 +200,7 @@ def validate_final_layout(
                 )
 
         equipment_coords = {c.coord: c.cell_kind for c in layout.equipment_cells}
+        transport_coords = {c.coord for c in layout.cells}
         for placement in commit.confirmed:
             candidate = candidates_by_id.get(placement.candidate_id)
             if candidate is None:
@@ -232,15 +215,19 @@ def validate_final_layout(
                     )
                 )
             for ext in candidate.extensions:
-                if ext not in equipment_coords:
-                    issues.append(
-                        _issue(
-                            issue_code=ValidationIssueCode.PLACEMENT_NOT_MATERIALIZED,
-                            coord=ext,
-                            candidate_id=placement.candidate_id,
-                            message="extension not present in materialized equipment",
-                        )
+                if ext in equipment_coords:
+                    continue
+                # Shared trunk: merge drops equipment on transport coords (transport wins).
+                if ext in transport_coords:
+                    continue
+                issues.append(
+                    _issue(
+                        issue_code=ValidationIssueCode.PLACEMENT_NOT_MATERIALIZED,
+                        coord=ext,
+                        candidate_id=placement.candidate_id,
+                        message="extension not present in materialized equipment",
                     )
+                )
 
     for coord in sorted(reserved_all, key=_coord_sort_key):
         if not _coord_contract_ok(coord):
@@ -253,16 +240,16 @@ def validate_final_layout(
             )
 
     if targets is not None:
-        confirmed_tp = _confirmed_throughput_sum(commit, candidates_by_id)
-        if confirmed_tp < targets.target_miner_bundle_count:
+        confirmed_count = len(commit.confirmed)
+        if confirmed_count < targets.target_miner_bundle_count:
             issues.append(
                 _issue(
                     issue_code=ValidationIssueCode.UNDER_TARGET_THROUGHPUT,
                     severity=ValidationSeverity.WARNING,
-                    message="confirmed throughput is below selection target",
+                    message="confirmed bundle count is below selection target",
                     issue_extra={
-                        "confirmed_throughput": confirmed_tp,
-                        "target_throughput": targets.target_miner_bundle_count,
+                        "confirmed_bundle_count": confirmed_count,
+                        "target_miner_bundle_count": targets.target_miner_bundle_count,
                     },
                 )
             )

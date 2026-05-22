@@ -36,7 +36,7 @@ CANON 아님. [`django_apps/web/static/web/js/asteroid_miner_layout_lab.js`](../
 ### JS 스프라이트 resolution 순서
 
 1. `cell.sprite_identifier || cell.tile_type` → `labIdentifierSpriteRelpaths[t]` (DB 경로).
-2. 없으면 prefix fallback: `SpaceBelt_*` → `SpaceBelt/<T>.svg`, `SpacePipe_*` → `SpacePipe/<T>.svg`.
+2. 없으면 prefix fallback: `SpaceBelt_*` → `SpaceBelt/<T>.svg`, `SpacePipe_*` → `SpacePipe/<T>.svg`, `Layout_*` → `Miner/<T>.svg` (`LAB_SPRITE_TILE_TYPE_ALIASES`로 `Layout_ProMiner` → `Layout_ShapeMiner` 등).
 3. 없으면 `cell_kind` → `LAB_SPRITE_CELL_KIND_TO_IDENTIFIER` (miner/extension 전용).
 4. 최후 fallback: `inferTransportSpriteIdentifier(cell)` — `Forward` variant만 반환 (turn·splitter는 `tile_type` 없으면 스프라이트 포기).
 

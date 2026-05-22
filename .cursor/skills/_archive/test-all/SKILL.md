@@ -14,7 +14,7 @@ shapez2Solver 품질 검증을 한 흐름으로 돌리고, **실패 시 코드�
 
 ## 명령
 
-- **pytest(전체·병렬 권장)**: `python -m pytest -n auto --dist loadscope` — 워커가 수집된 테스트를 나눠 병렬 실행한다. `pytest-xdist`는 `pip install -e ".[dev]"`에 포함([`pyproject.toml`](../../../pyproject.toml)). Django DB 경로에서는 **`--dist loadscope`를 유지**한다([`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md)).
+- **pytest(전체·병렬 권장)**: `python -m pytest -n auto --dist loadscope` — 워커가 수집된 테스트를 나눠 병렬 실행한다. `pytest-xdist`는 `pip install -e ".[dev]"`에 포함([`pyproject.toml`](../../../pyproject.toml)). Django DB 경로에서는 **`--dist loadscope`를 유지**한다([`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md)). **`-q` / `--quiet` / `--tb=no` 금지** (동 매뉴얼 § pytest 출력 규칙).
 - **Makefile**: 루트 [`Makefile`](../../../Makefile)의 `make test-all`은 위와 동일하게 pytest에 `-n auto --dist loadscope`를 쓴다.
 - `ruff check .` — 린트
 - `mypy .` — 타입 체크

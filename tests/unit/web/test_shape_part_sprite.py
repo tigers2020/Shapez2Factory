@@ -27,9 +27,13 @@ from django_apps.web.services.shape_part_sprites import (
     atomic_layer_game_code,
     build_atomic_preview_scene,
     build_pedestal_only_preview_scene,
+    canonical_shape_part_sprite_basename,
     iter_atomic_sprite_specs,
     make_sprite_key,
     make_tank_vortex_sprite_key,
+    shape_part_sprite_image_relpath,
+    sprite_key_from_storage_basename,
+    sprite_key_to_storage_basename,
 )
 from django_apps.web.shape_part_sprite_storage import shape_part_sprite_storage
 
@@ -155,6 +159,19 @@ def test_make_tank_vortex_sprite_key() -> None:
 
 def test_make_sprite_key_stable() -> None:
     assert make_sprite_key("R", "r", 0, "v1") == "Rr------:v1"
+
+
+def test_sprite_key_storage_basename_roundtrip() -> None:
+    key = make_sprite_key("C", "r", 0, "v1")
+    assert sprite_key_to_storage_basename(key) == "Cr------_v1.png"
+    assert sprite_key_from_storage_basename("Cr------_v1.png") == key
+    assert shape_part_sprite_image_relpath(key) == "assets/shape_part_sprites/Cr------_v1.png"
+
+
+def test_canonical_shape_part_sprite_basename_strips_django_hash() -> None:
+    assert (
+        canonical_shape_part_sprite_basename("cr------_v1_FoEFwqa.png") == "cr------_v1.png"
+    )
 
 
 def test_atomic_layer_game_code_examples() -> None:

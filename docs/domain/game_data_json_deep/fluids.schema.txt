@@ -1,0 +1,27 @@
+object {
+  "definition_snapshot":
+    // $type: ColorFluid×9
+    object {
+      "$type":
+        string
+      "Color":
+        object {
+          "$unity":
+            string
+          "instance_id":
+            integer
+          "name":
+            string
+        }
+    }
+  "display_name_key":
+    string
+  "source_guid":
+    string
+  "source_path":
+    string
+  "source_type_name":
+    string
+  "stable_id":
+    string
+}

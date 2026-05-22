@@ -1,4 +1,6 @@
-# Validation Plan — `toolbar_entries.json`
+﻿# Validation Plan — `toolbar_entries.json`
+
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 `tests/unit/game_data_import/test_toolbar_entries_import.py`
 

@@ -22,6 +22,7 @@ from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
 from django_apps.asteroid_lab.snapshots.blueprint_equivalence import decoded_json_layout_equivalent
 from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
 
+
 def _fixture_line(name: str) -> str:
     p = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / name
     return p.read_text(encoding="utf-8").splitlines()[0].strip()

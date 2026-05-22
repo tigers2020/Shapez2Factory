@@ -12,16 +12,17 @@ from django_apps.asteroid_lab.services.genetic_sample_gene_export import (
     load_gene_templates_from_genetic_samples,
 )
 from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
-    generate_exhaustive_sample_genes,
+    ExhaustiveGenerationStats,
+    GeneratedSampleGene,
 )
 
 pytestmark = pytest.mark.django_db
 
 
-def _seed_one_sample(generator_version: str = "exhaustive_sample_gene_v1") -> GeneticSample:
-    genes, _ = generate_exhaustive_sample_genes(
-        max_extensions=0, generator_version=generator_version
-    )
+def _seed_one_sample(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+) -> GeneticSample:
+    genes, _ = exhaustive_genes_ext0_belt
     assert genes, "exhaustive generator must produce at least one gene with max_extensions=0"
     g = genes[0]
     sample, _ = GeneticSample.objects.update_or_create(
@@ -35,8 +36,10 @@ def _seed_one_sample(generator_version: str = "exhaustive_sample_gene_v1") -> Ge
     return sample
 
 
-def test_gene_template_from_genetic_sample_success() -> None:
-    sample = _seed_one_sample()
+def test_gene_template_from_genetic_sample_success(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+) -> None:
+    sample = _seed_one_sample(exhaustive_genes_ext0_belt)
     template, err = gene_template_from_genetic_sample(sample)
     assert err is None
     assert isinstance(template, GeneTemplate)
@@ -62,8 +65,10 @@ def test_gene_template_from_genetic_sample_unknown_gene_key() -> None:
     assert err == GeneTemplateExportErrorCode.GENE_KEY_NOT_IN_CACHE
 
 
-def test_load_gene_templates_from_genetic_samples_basic() -> None:
-    _seed_one_sample()
+def test_load_gene_templates_from_genetic_samples_basic(
+    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
+) -> None:
+    _seed_one_sample(exhaustive_genes_ext0_belt)
     qs = GeneticSample.objects.filter(
         gene_key__isnull=False,
         metadata_json__generator="exhaustive_sample_gene_v1",

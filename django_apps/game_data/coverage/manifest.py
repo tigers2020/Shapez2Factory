@@ -2,16 +2,9 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
-
 from django_apps.game_data.coverage import reason_codes as rc
-
-
-class Disposition(StrEnum):
-    PROMOTED = "promoted"
-    CROSS_REF = "cross_ref"
-    IGNORE_AUDIT = "ignore_audit"
-
+from django_apps.game_data.coverage.disposition import Disposition
+from django_apps.game_data.coverage.simulation_paths import manifest_entries_from_rules
 
 MANIFEST: dict[str, tuple[Disposition, str]] = {
     "items.json:definition_snapshot.Definition.Layers": (
@@ -34,10 +27,6 @@ MANIFEST: dict[str, tuple[Disposition, str]] = {
         Disposition.CROSS_REF,
         "flattened to row paths",
     ),
-    "simulation_systems.json:ConnectableSimulations": (
-        Disposition.PROMOTED,
-        "ConnectableSimulation",
-    ),
     "simulation_systems.json:ISimulationSystem": (
         Disposition.IGNORE_AUDIT,
         rc.RUNTIME_DELEGATE,
@@ -59,3 +48,4 @@ MANIFEST: dict[str, tuple[Disposition, str]] = {
         "BuildingGroupMember",
     ),
 }
+MANIFEST.update(manifest_entries_from_rules())

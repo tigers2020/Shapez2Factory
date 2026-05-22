@@ -6,6 +6,9 @@ from typing import Any
 
 from django_apps.game_data.enums import SimulationAuditIssueCode, SimulationAuditSeverity
 from django_apps.game_data.importers.base import ImportContext
+from django_apps.game_data.importers.simulation_definition_snapshot_audit import (
+    sync_definition_snapshot_coverage_audit,
+)
 from django_apps.game_data.importers.simulation_speeds import import_simulation_speeds
 from django_apps.game_data.models import (
     BuildingVariant,
@@ -316,6 +319,15 @@ def import_simulation_systems(ctx: ImportContext, rows: list[dict[str, Any]]) ->
         ignored_n = sync_ignored_simulation_parameters(ctx, stable_id, params)
         for _ in range(ignored_n):
             ctx.bump("ignored_simulation_parameter")
+
+        snap = row.get("definition_snapshot")
+        audit_n = sync_definition_snapshot_coverage_audit(
+            ctx,
+            owner_key=stable_id,
+            definition_snapshot=snap if isinstance(snap, dict) else None,
+        )
+        if audit_n:
+            ctx.bump("definition_snapshot_coverage_audit", audit_n)
 
         import_simulation_speeds(ctx, system, params, source_stable_id=stable_id)
 

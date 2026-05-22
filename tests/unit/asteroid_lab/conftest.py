@@ -69,15 +69,6 @@ def exhaustive_genes_ext0_belt() -> tuple[list[GeneratedSampleGene], ExhaustiveG
 
 
 @pytest.fixture(scope="module")
-def exhaustive_genes_ext0_belt_v1() -> tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats]:
-    return generate_exhaustive_sample_genes(
-        max_extensions=0,
-        transport_kinds=("belt",),
-        generator_version="exhaustive_sample_gene_v1",
-    )
-
-
-@pytest.fixture(scope="module")
 def exhaustive_genes_ext1_belt() -> tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats]:
     return generate_exhaustive_sample_genes(max_extensions=1, transport_kinds=("belt",))
 

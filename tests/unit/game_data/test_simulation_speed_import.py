@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
 
@@ -115,48 +113,3 @@ def test_reimport_speed_rows_idempotent(speed_rows: list[dict], speed_batch: Imp
 
     assert SimulationBuffableSpeed.objects.count() == 2
     assert SimulationMultipleBeltSpeed.objects.count() == 1
-
-
-@pytest.mark.django_db
-@pytest.mark.slow
-def test_full_dump_speed_key_counts(game_data_dir: Path) -> None:
-    path = game_data_dir / "simulation_systems.json"
-    if not path.is_file():
-        pytest.skip("simulation_systems.json missing")
-
-    rows = json.loads(path.read_text(encoding="utf-8"))
-    counts = {k: 0 for k in ("BeltSpeed", "ConveyorSpeed", "SpaceConveyorSpeed", "JumpSpeed")}
-    for row in rows:
-        params = row.get("simulation_parameters") or {}
-        for key in counts:
-            if key in params:
-                counts[key] += 1
-
-    batch = ImportBatch.objects.create(
-        batch_name="sim-speed-full",
-        manifest_self_hash="sha256:sim-speed-full",
-        game_version="test",
-        unity_version="test",
-        dump_mod_version="1",
-        dump_schema_version="1",
-        dump_timestamp_utc=datetime(2026, 5, 21, 12, 0, 0, tzinfo=UTC),
-        source_method="test",
-    )
-    import_simulation_systems(ImportContext(batch), rows)
-
-    assert (
-        SimulationBuffableSpeed.objects.filter(parameter_name="BeltSpeed").count()
-        == counts["BeltSpeed"]
-    )
-    assert (
-        SimulationBuffableSpeed.objects.filter(parameter_name="ConveyorSpeed").count()
-        == counts["ConveyorSpeed"]
-    )
-    assert (
-        SimulationBuffableSpeed.objects.filter(parameter_name="SpaceConveyorSpeed").count()
-        == counts["SpaceConveyorSpeed"]
-    )
-    assert (
-        SimulationMultipleBeltSpeed.objects.filter(parameter_name="JumpSpeed").count()
-        == counts["JumpSpeed"]
-    )

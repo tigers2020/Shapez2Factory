@@ -7,12 +7,14 @@ readme = "README.md"
 dependencies = [
     "Django>=5.2",
     "django-allauth>=65",
+    "requests>=2.32",
     "dj-database-url>=2.3",
     "python-dotenv>=1.0",
     "whitenoise>=6.6",
     "PyYAML>=6",
     "numpy>=2",
     "Pillow>=11",
+    "jsonschema>=4.23",
 ]
 
 [project.optional-dependencies]

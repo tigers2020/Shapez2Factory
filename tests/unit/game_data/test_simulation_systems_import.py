@@ -10,7 +10,6 @@ import pytest
 from django.apps import apps
 from django.db import models
 
-from django_apps.game_data.importers import GameDataImporter
 from django_apps.game_data.importers.base import ImportContext
 from django_apps.game_data.importers.simulation_systems import import_simulation_systems
 from django_apps.game_data.models import (
@@ -149,25 +148,6 @@ def test_connector_property_typed_filter(min_sim_rows: list[dict]) -> None:
         property_key="update_priority",
         value_text="MeFirst",
     ).exists()
-
-
-@pytest.mark.django_db
-@pytest.mark.slow
-def test_full_simulation_systems_import_180_rows(game_data_dir: Path) -> None:
-    if not (game_data_dir / "simulation_systems.json").is_file():
-        pytest.skip("simulation_systems.json missing")
-    importer = GameDataImporter(game_data_dir, batch_name="sim-full")
-    importer.run()
-    batch = ImportBatch.objects.get()
-    assert SimulationSystem.objects.filter(import_batch=batch).count() == 180
-    assert SimulationSystem._meta.get_field("canonical_id").unique is False
-    distinct_canonical = (
-        SimulationSystem.objects.filter(import_batch=batch)
-        .values("canonical_id")
-        .distinct()
-        .count()
-    )
-    assert distinct_canonical < 180
 
 
 @pytest.mark.django_db

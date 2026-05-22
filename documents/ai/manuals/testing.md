@@ -16,6 +16,21 @@ python -m pytest tests/unit/asteroid_lab/test_example.py
 python -m pytest
 ```
 
+### pytest 출력 규칙 (필수)
+
+**pytest 실행 시 출력 억제 플래그 사용 금지.** ([`AGENTS.md`](../../../AGENTS.md) 동일)
+
+| 금지 플래그 | 이유 |
+|---|---|
+| `-q` / `--quiet` | 실패 상세가 숨겨져 에러를 놓침 |
+| `--tb=no` | traceback 제거로 디버그 불가 |
+| `--no-header` | 단독 사용 시 컨텍스트 소실 |
+| `-p no:terminal` | 출력 완전 억제 |
+
+허용: `-v`, `-s`, `--tb=short` (기본값), `--tb=long`, `-x`, `--maxfail=N`.
+
+로컬 스크립트(`scripts/test_fast.ps1` 등)·CI·에이전트 narrow/full gate 모두 위 규칙을 따른다.
+
 ---
 
 ## Development Mode: Contract-first TDD
@@ -140,7 +155,7 @@ python -m pytest
 에이전트·구현 중 **기본**. narrow `pytest` **먼저**, green 후 필요 시 좁은 lint.
 
 ```bash
-python -m pytest <narrow path>
+python -m pytest <narrow path>   # -q / --quiet / --tb=no 금지
 # green 후
 python -m ruff check <paths>   # 또는 .
 python -m mypy <paths>         # 선택
@@ -193,6 +208,7 @@ python -m pytest
 - `failure_reason` · `event_type` · `issue_code` 등 **자유 문자열** 추가 — **enum/const + 테스트** 동시 갱신.
 - Lab replay frame index와 Optimization replay frame index **암묵 동기화**.
 - “큰 테스트 한 방”으로 TDD 시작.
+- pytest에 **출력 억제** (`-q`, `--quiet`, `--tb=no`, `-p no:terminal`) — 실패·traceback 누락.
 
 ---
 
@@ -221,9 +237,9 @@ python -m pytest
 | 조합 | `-m "unit and shapez_core"` |
 | 경로 | `python -m pytest tests/unit/shapez_solver/` · `python -m pytest tests/unit/asteroid_lab/` |
 | 단일 파일·이름 필터 | `python -m pytest tests/unit/shapez_solver/test_bar.py` · `python -m pytest -k "substring"` |
-| 병렬 전체 | `python -m pytest -n auto --dist loadscope -q` |
-| 빠른 unit | `python -m pytest -m "unit and not slow" -q` |
-| slow만 | `python -m pytest -m slow -q` |
+| 병렬 전체 | `python -m pytest -n auto --dist loadscope` |
+| 빠른 unit | `python -m pytest -m "unit and not slow" -n auto --dist loadscope` |
+| slow만 | `python -m pytest -m slow -n auto --dist loadscope` |
 
 프로덕션 모듈만 수정한 경우에는, 해당 동작을 검증하는 **기존** 테스트 모듈·디렉터리 경로를 인자로 주는 것이 기본이다.
 
@@ -242,6 +258,14 @@ PR·CI full gate의 `python -m pytest`는 `-n auto --dist loadscope` 병렬을 �
 | `powershell -File scripts/test_full.ps1` | PR 직전 — 전체 pytest |
 
 에이전트 반복 검증 기본: changed narrow path → `test_fast.ps1`. PR/CI: full gate (`test_full.ps1` 또는 AGENTS.md 순서).
+
+### game_data unit fixture (Tier B)
+
+- Full ORM seed: `game_data_backup/game_data_dump.json` via `loaddata` (`tests/unit/game_data/fixtures.py`).
+- Pinned `ImportBatch.manifest_self_hash` in `tests/unit/game_data/_dump_expectations.py` — dump regen 시 함께 갱신.
+- Missing dump: `pytest.fail` when `CI` or `REQUIRE_GAME_DATA_DUMP=1`; otherwise `pytest.skip`.
+- Tier A (`import_game_data` / `--verify` / dump regen): [game_data_tier_a_release_gate.md](../../../docs/runbooks/game_data_tier_a_release_gate.md) — **not** `test_fast`.
+- Slice importer tests: `tests/fixtures/game_data/*.json` only (not `documents/game_data/`).
 
 CI는 동일 세 shard를 **병렬 job**으로 실행: `test-fast`, `test-slow`, `test-integration` (`.github/workflows/ci.yml`).
 

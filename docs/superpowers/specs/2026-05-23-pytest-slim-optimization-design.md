@@ -1,4 +1,6 @@
-# Pytest Slim & Optimization (Phase D) — Design Spec
+﻿# Pytest Slim & Optimization (Phase D) — Design Spec
+
+> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 **Status:** Approved 2026-05-23  
 **Extends:** [`2026-05-22-test-suite-speed-abc-design.md`](2026-05-22-test-suite-speed-abc-design.md) (A+B+C largely landed)  
@@ -41,7 +43,7 @@ Workflow: **D1** ownership-backed deletes → **D2** fixture/parametrize consoli
 | connected_branch golden bytes + layout equiv | `tests/unit/asteroid_lab/test_official_canonical_export.py` (3 connected_branch tests) | |
 | spread vs connected_branch regression | `test_official_canonical_export.py` **or** one test in `test_blueprint_equivalence_golden.py` — not both for same bytes | |
 | exhaustive generator structural laws (coords, ports, extensions) | `tests/unit/asteroid_lab/test_sample_gene_exhaustive.py` | Keep; slim via fixtures not delete |
-| full `documents/game_data` import idempotent | `tests/unit/game_data/test_import_idempotency.py` | |
+| full `documents/game_data` import idempotent | manual CI / release gate ([`game_data_tier_a_release_gate.md`](../../runbooks/game_data_tier_a_release_gate.md)) | Removed from unit pytest 2026-05-22 |
 | per-domain re-import idempotent (row counts only) | **Delete** if duplicate of global import | |
 | simulation_systems audit unique + re-import | `tests/unit/game_data/test_simulation_systems_import.py::test_converter_audit_issue_unique_and_reimport_idempotent` | **Keep** |
 | simulation parameter occurrence not inflated | `tests/unit/game_data/test_simulation_parameter_registry.py::test_reimport_does_not_inflate_occurrence_count` | **Keep** |
@@ -108,7 +110,7 @@ When D1 removes a test, update the **Removed in D1** subsection below (append-on
 
 ## Speed tactics (D3)
 
-1. Run `python -m pytest -m "unit and not slow" -n auto --dist loadscope --durations=25 -q` (and slow slice separately).
+1. Run `python -m pytest -m "unit and not slow" -n auto --dist loadscope --durations=25` (and slow slice separately).
 2. If wall **>70s**, produce **deliverables** (do not widen deletion):
    - **Slow-tag candidate list** — module or fixture names worth adding to `_SLOW_FIXTURE_NAMES` / `_SLOW_MODULE_SUFFIXES`
    - **Duration evidence table** — top 25 tests/modules with seconds (paste into baseline doc)

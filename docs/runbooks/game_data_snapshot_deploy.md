@@ -1,4 +1,6 @@
-# game_data snapshot deploy runbook
+﻿# game_data snapshot deploy runbook
+
+> **pytest:** [`documents/ai/manuals/testing.md`](../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
 
 **Scope:** Asteroid Lab `game_data` snapshot boundary (ADR-004, v0).  
 **Owner:** django (`game_data`) + `web` assembler + `asteroid_lab` adapter.
@@ -6,7 +8,7 @@
 ## Prerequisites
 
 - Application code on the target revision (selectors, snapshot builder, web assembler, solver adapter).
-- `documents/game_data/` bundle present with valid `manifest.json`.
+- Pinned Tier B dump in DB (`game_data_backup/game_data_dump.json` via `loaddata`) or fresh Tier A import per [game_data_tier_a_release_gate.md](game_data_tier_a_release_gate.md).
 - Database on **`default`** alias only (v0: no replica reads for snapshot builds).
 
 ## Deploy sequence
@@ -26,7 +28,7 @@ python manage.py import_game_data --verify
 ### Step 2 — Unit gate (selectors + builder + contracts)
 
 ```bash
-python -m pytest tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py tests/unit/asteroid_lab/test_game_data_contracts.py tests/unit/asteroid_lab/test_game_data_snapshot_adapter.py tests/unit/asteroid_lab/test_game_data_coord_transform_golden.py tests/unit/asteroid_lab/test_game_data_snapshot_determinism.py tests/unit/web/test_asteroid_game_data_snapshot.py -q
+python -m pytest tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py tests/unit/asteroid_lab/test_game_data_contracts.py tests/unit/asteroid_lab/test_game_data_snapshot_adapter.py tests/unit/asteroid_lab/test_game_data_coord_transform_golden.py tests/unit/asteroid_lab/test_game_data_snapshot_determinism.py tests/unit/web/test_asteroid_game_data_snapshot.py
 ```
 
 Confirms ordered row tuples, `SnapshotMeta.data_revision`, adapter mapping, and coord golden invariants.
@@ -34,7 +36,7 @@ Confirms ordered row tuples, `SnapshotMeta.data_revision`, adapter mapping, and 
 ### Step 3 — Integration smoke (solver + snapshot)
 
 ```bash
-python -m pytest tests/integration/web/test_solver_with_game_data_snapshot.py -q
+python -m pytest tests/integration/web/test_solver_with_game_data_snapshot.py
 ```
 
 Exercises the cross-app path: `web.services.asteroid_game_data_snapshot` → solver runtime entry with a pinned snapshot.
@@ -65,7 +67,7 @@ Do **not** enable in v0 deploy. Follow-up plan (placeholder):
 ## PR gate (post-deploy / pre-merge)
 
 ```powershell
-python -m pytest tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py tests/unit/asteroid_lab/test_game_data_contracts.py tests/unit/asteroid_lab/test_game_data_snapshot_adapter.py tests/unit/asteroid_lab/test_game_data_coord_transform_golden.py tests/unit/asteroid_lab/test_game_data_snapshot_determinism.py tests/unit/web/test_asteroid_game_data_snapshot.py tests/integration/web/test_solver_with_game_data_snapshot.py -q
+python -m pytest tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py tests/unit/asteroid_lab/test_game_data_contracts.py tests/unit/asteroid_lab/test_game_data_snapshot_adapter.py tests/unit/asteroid_lab/test_game_data_coord_transform_golden.py tests/unit/asteroid_lab/test_game_data_snapshot_determinism.py tests/unit/web/test_asteroid_game_data_snapshot.py tests/integration/web/test_solver_with_game_data_snapshot.py
 
 python -m ruff check django_apps/game_data/selectors django_apps/game_data/snapshots django_apps/asteroid_lab/optimization/game_data_contracts.py django_apps/asteroid_lab/adapters/game_data_snapshot_adapter.py django_apps/web/services/asteroid_game_data_snapshot.py django_apps/asteroid_lab/services/solver_runtime_entry.py
 

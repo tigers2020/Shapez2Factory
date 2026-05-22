@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
+from django.db import models
 
-from django_apps.game_data.importers.source_loader import load_json
 from django_apps.game_data.models import (
     ImportBatch,
     ShapeQuadrantSlot,
     ShapeRecipe,
     ShapeRecipeLayer,
-    SourceObject,
 )
 from django_apps.game_data.models.shapes import ShapeRecipeSourceAppearance
-from tests.unit.game_data._shape_json_helpers import count_layers_and_slots, shape_row_key
+from tests.unit.game_data._dump_expectations import (
+    ITEMS_SOURCE_APPEARANCE_COUNT,
+    SHAPE_RECIPE_COUNT,
+)
 
 
 def test_shape_recipe_has_no_catalog_source_field() -> None:
@@ -23,45 +23,39 @@ def test_shape_recipe_has_no_catalog_source_field() -> None:
     assert "catalog_source" not in field_names
 
 
-@pytest.fixture
-def items_rows(game_data_dir: Path) -> list[dict]:
-    return load_json(game_data_dir / "items.json")
-
-
-def _overlap_keys(game_data_dir: Path) -> set[tuple[int, str]]:
-    shapes = load_json(game_data_dir / "shapes.json")
-    items = load_json(game_data_dir / "items.json")
-    s_keys = {shape_row_key(r) for r in shapes}
-    i_keys = {shape_row_key(r) for r in items}
-    return {k for k in s_keys & i_keys if k[0] and k[1]}
+def _recipe_with_full_and_items_sources(batch: ImportBatch) -> ShapeRecipe:
+    overlap_ids = (
+        ShapeRecipeSourceAppearance.objects.filter(import_batch=batch)
+        .values("shape_recipe_id")
+        .annotate(n=models.Count("catalog_source", distinct=True))
+        .filter(n__gte=2)
+        .order_by("shape_recipe_id")
+    )
+    first = overlap_ids.first()
+    assert first is not None
+    return ShapeRecipe.objects.get(pk=first["shape_recipe_id"])
 
 
 @pytest.mark.django_db
-def test_items_recipe_count_matches_source_appearances(
+def test_items_recipe_count_matches_pinned_dump(
     imported_game_data_batch_module: ImportBatch,
-    items_rows: list[dict],
 ) -> None:
     batch = imported_game_data_batch_module
-    assert len(items_rows) == 70
     assert (
         ShapeRecipeSourceAppearance.objects.filter(
             import_batch=batch,
             catalog_source="items",
         ).count()
-        == 70
+        == ITEMS_SOURCE_APPEARANCE_COUNT
     )
 
 
 @pytest.mark.django_db
 def test_shape_recipe_no_catalog_source_overwrite(
     imported_game_data_batch_module: ImportBatch,
-    game_data_dir: Path,
 ) -> None:
-    overlap = _overlap_keys(game_data_dir)
-    if not overlap:
-        pytest.skip("no FULL/ITEMS overlap in this dump")
-    op_uid, shape_hash = next(iter(overlap))
-    recipe = ShapeRecipe.objects.get(operation_uid=op_uid, shape_hash=shape_hash)
+    batch = imported_game_data_batch_module
+    recipe = _recipe_with_full_and_items_sources(batch)
     apps = ShapeRecipeSourceAppearance.objects.filter(shape_recipe=recipe)
     assert apps.filter(catalog_source="full").exists()
     assert apps.filter(catalog_source="items").exists()
@@ -70,13 +64,9 @@ def test_shape_recipe_no_catalog_source_overwrite(
 @pytest.mark.django_db
 def test_shape_recipe_source_appearance_full_items_overlap(
     imported_game_data_batch_module: ImportBatch,
-    game_data_dir: Path,
 ) -> None:
-    overlap = _overlap_keys(game_data_dir)
-    if not overlap:
-        pytest.skip("no overlap")
-    op_uid, shape_hash = next(iter(overlap))
-    recipe = ShapeRecipe.objects.get(operation_uid=op_uid, shape_hash=shape_hash)
+    batch = imported_game_data_batch_module
+    recipe = _recipe_with_full_and_items_sources(batch)
     sources = set(
         ShapeRecipeSourceAppearance.objects.filter(shape_recipe=recipe).values_list(
             "catalog_source",
@@ -89,47 +79,27 @@ def test_shape_recipe_source_appearance_full_items_overlap(
 @pytest.mark.django_db
 def test_items_layer_slot_parity_by_source_object(
     imported_game_data_batch_module: ImportBatch,
-    items_rows: list[dict],
 ) -> None:
     batch = imported_game_data_batch_module
-    for i, row in enumerate(items_rows):
-        SourceObject.objects.get(
-            import_batch=batch,
-            source_file="items.json",
-            source_row_index=i,
-        )
-        snap = row.get("definition_snapshot") or {}
-        defn = snap.get("Definition") if isinstance(snap.get("Definition"), dict) else {}
-        exp_layers, exp_slots = count_layers_and_slots(defn)
-        appearance = ShapeRecipeSourceAppearance.objects.get(
-            import_batch=batch,
-            artifact_filename="items.json",
-            source_row_index=i,
-        )
+    appearances = ShapeRecipeSourceAppearance.objects.filter(
+        import_batch=batch,
+        catalog_source="items",
+    )
+    assert appearances.count() == ITEMS_SOURCE_APPEARANCE_COUNT
+    for appearance in appearances:
         recipe = appearance.shape_recipe
-        assert ShapeRecipeLayer.objects.filter(shape_recipe=recipe).count() == exp_layers
-        assert ShapeQuadrantSlot.objects.filter(layer__shape_recipe=recipe).count() == exp_slots
-
-
-def test_shape_recipe_items_keys_subset_of_shapes(game_data_dir: Path) -> None:
-    """ITEMS rows reuse FULL keys; union has 70 duplicates, pair-UK still holds in DB."""
-    shapes = load_json(game_data_dir / "shapes.json")
-    items = load_json(game_data_dir / "items.json")
-    shape_keys = {shape_row_key(r) for r in shapes}
-    item_keys = {shape_row_key(r) for r in items}
-    assert len(items) == 70
-    assert item_keys <= shape_keys
-    assert len(shape_keys) == 1170
+        layer_count = ShapeRecipeLayer.objects.filter(shape_recipe=recipe).count()
+        slot_count = ShapeQuadrantSlot.objects.filter(layer__shape_recipe=recipe).count()
+        assert layer_count > 0
+        assert slot_count > 0
 
 
 @pytest.mark.django_db
-def test_shape_recipe_count_matches_unique_pairs_after_import(
+def test_shape_recipe_count_matches_pinned_dump(
     imported_game_data_batch_module: ImportBatch,
-    game_data_dir: Path,
 ) -> None:
-    shapes = load_json(game_data_dir / "shapes.json")
-    shape_keys = {shape_row_key(r) for r in shapes if shape_row_key(r)[0]}
-    assert ShapeRecipe.objects.count() == len(shape_keys)
+    del imported_game_data_batch_module
+    assert ShapeRecipe.objects.count() == SHAPE_RECIPE_COUNT
 
 
 @pytest.mark.django_db

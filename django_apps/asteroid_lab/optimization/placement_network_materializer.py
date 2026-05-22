@@ -198,8 +198,8 @@ def merge_materialized_layout(
     """Combine route materialization with placement equipment.
 
     Keeps ``cells`` and ``equipment_cells`` as separate tuples (no coord dict merge).
-    Any shared server coord between transport and equipment is an immediate failure —
-    never silent overwrite of one layer by the other.
+    On coord overlap, transport wins (equipment on shared trunk coords is dropped).
+    Remaining overlap after drop is a hard failure.
     """
 
     if isinstance(equipment, MaterializationFailureReason):
@@ -208,8 +208,11 @@ def merge_materialized_layout(
         return route_result
 
     transport_coords = {c.coord for c in route_result.layout.cells}
-    equipment_coords = {eq.coord for eq in equipment}
-    overlap = transport_coords & equipment_coords
+    overlap = transport_coords & {eq.coord for eq in equipment}
+    if overlap:
+        # Shared trunk: belt/pipe owns the coord; drop equipment on transport cells.
+        equipment = tuple(eq for eq in equipment if eq.coord not in overlap)
+        overlap = transport_coords & {eq.coord for eq in equipment}
     if overlap:
         return RouteMaterializationResult(
             layout=None,

@@ -12,7 +12,6 @@ from django_apps.asteroid_lab.optimization.commit_best_candidates import (
 from django_apps.asteroid_lab.optimization.coord_transform import steps_from_canonical_e
 from django_apps.asteroid_lab.optimization.enums import (
     Direction,
-    MaterializationFailureReason,
     PlacementCommitState,
     ReservationState,
     RouteGoalKind,
@@ -26,6 +25,12 @@ from django_apps.asteroid_lab.optimization.gene_template_loader import (
     gene_template_from_generated_sample,
 )
 from django_apps.asteroid_lab.optimization.input_contracts import RouteGoal, RouteReservation
+from django_apps.asteroid_lab.optimization.materialization_dtos import (
+    MaterializedEquipmentCell,
+    MaterializedLayoutCells,
+    MaterializedTransportCell,
+    RouteMaterializationResult,
+)
 from django_apps.asteroid_lab.optimization.placement_network_materializer import (
     _direction_child_to_parent_server,
     materialize_confirmed_placements,
@@ -191,41 +196,47 @@ def test_merge_materialized_layout_includes_equipment_and_transport(
     assert merged.layout.equipment_cells[0].cell_kind == "shape_miner"
 
 
-def test_merge_rejects_equipment_on_transport_coord(
-    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], object],
-) -> None:
-    genes, _ = exhaustive_genes_ext0_belt
-    tpl = gene_template_from_generated_sample(genes[0])
-    cand = _candidate_from_gene(gene_template=tpl)
-    commit = IncrementalCommitResult(
-        confirmed=(
-            ConfirmedGenePlacement(
-                candidate_id=cand.candidate_id,
-                reservation=_reservation(cand),
-                commit_state=PlacementCommitState.CONFIRMED,
+def test_merge_transport_wins_on_shared_trunk_coord_overlap() -> None:
+    """Shared belt trunk coord: transport layer wins over extension equipment."""
+
+    shared_trunk = (3, 0)
+    route = RouteMaterializationResult(
+        layout=MaterializedLayoutCells(
+            cells=(
+                MaterializedTransportCell(
+                    coord=shared_trunk,
+                    tile_type="SpaceBelt_Forward",
+                    transport_kind=TransportKind.SHAPE_BELT,
+                    rotation=0,
+                ),
             ),
         ),
-        skipped_candidates=(),
-        goal_assigned_platforms={},
+        failure_reason=None,
     )
-    route = materialize_route_network(commit, {cand.candidate_id: cand})
-    assert route.layout is not None
-    equipment = materialize_confirmed_placements(
-        commit, {cand.candidate_id: cand}, gene_templates_by_id={tpl.gene_id: tpl}
-    )
-    assert isinstance(equipment, tuple)
-    overlap_coord = route.layout.cells[0].coord
-    forced_overlap = tuple(equipment) + (
-        type(equipment[0])(
-            coord=overlap_coord,
+    equipment = (
+        MaterializedEquipmentCell(
+            coord=(0, 0),
             tile_type="Layout_ShapeMiner",
             cell_kind="shape_miner",
             rotation=0,
         ),
+        MaterializedEquipmentCell(
+            coord=shared_trunk,
+            tile_type="Layout_ShapeMinerExtension",
+            cell_kind="shape_miner_extension",
+            rotation=0,
+        ),
     )
-    merged = merge_materialized_layout(route, forced_overlap)
-    assert merged.layout is None
-    assert merged.failure_reason is MaterializationFailureReason.EQUIPMENT_TRANSPORT_COORD_OVERLAP
+
+    merged = merge_materialized_layout(route, equipment)
+
+    assert merged.failure_reason is None
+    assert merged.layout is not None
+    transport_coords = {c.coord for c in merged.layout.cells}
+    equipment_coords = {c.coord for c in merged.layout.equipment_cells}
+    assert shared_trunk in transport_coords
+    assert shared_trunk not in equipment_coords
+    assert not transport_coords & equipment_coords
 
 
 def test_merge_success_keeps_disjoint_transport_and_equipment_coords(

@@ -43,6 +43,11 @@ for candidate in selected_order:
         reserve path
         promote placement to confirmed
         update trunk load
+
+deferred retry (v0, C-GATE — [`deferred-commit-retry`](../../../docs/superpowers/specs/2026-05-22-deferred-commit-retry-design.md)):
+  primary pass queues ROUTE_PROBE_FAILED only (Variant A — not in skipped until retry exhausted)
+  one deterministic retry round in plan order on latest domain
+  max_retry_rounds default 1; 0 disables (legacy single-pass)
 ```
 
 ### Commit-time probe is authoritative
@@ -53,10 +58,13 @@ commit success proof = latest route_domain reprobe
 
 candidate phase route result는 참고용만.
 
-### Route sharing
+### Route sharing (v0 — [`shared-transport-inlet`](../../../docs/superpowers/specs/2026-05-22-shared-transport-inlet-design.md))
 
-- 허용: same transport kind path sharing
-- 제한/금지: shape belt / fluid pipe **same cell** sharing
+- **허용:** same `TransportKind` route path / reserved cells **공유** (merge trunk)
+- **금지:** `fixed_output_transport` 가 이미 committed transport cell 위에 놓임 (`INLET_ON_SHARED_TRANSPORT`) — 입구 봉쇄
+- **허용:** extension coord 가 committed transport cell 위 (shared trunk; K2 transport wins) — [`commit-extension-shared-trunk`](../../../docs/superpowers/specs/2026-05-22-commit-extension-shared-trunk-design.md)
+- **금지:** `occupied_cells` (extractor+extensions) 교집합 (`OCCUPIED_CELL_CONFLICT`)
+- **금지:** shape belt vs fluid pipe 동일 cell (`TRANSPORT_KIND_CONFLICT`)
 
 ### Capacity
 

@@ -77,6 +77,12 @@ target_miner_bundle_count = sum per goal (
 
 `route_out_count`는 외부 route slot 수; `target_miner_bundle_count`는 선택·commit **시도** 상한(확정 수 아님). 구현: `bundle_selection_targets.py` · `solver_summary` / replay inspector.
 
+**선택 예산 종료(v0):** `target_miner_bundle_count`에 도달하면 `len(ordered_candidate_ids)` 기준으로 종료한다. `base_throughput` 합은 `selected_throughput_at_stop` 진단용만 쓰며, 예산 비교에 사용하지 않는다.
+
+**Footprint 비중복(v0):** greedy 선택 시 이미 고른 후보의 `occupied_cells`와 교차하는 번들은 commit order에 넣지 않는다 (Phase J `occupied_cell_conflict`와 동일 집합 계약).
+
+**Shared transport inlet(v0):** [`shared-transport-inlet`](../../../docs/superpowers/specs/2026-05-22-shared-transport-inlet-design.md) — `fixed_output_transport` 가 이미 선택/committed route cell 위이면 제외; same-kind path cell sharing은 허용.
+
 포화에 가까운 goal은 penalty 증가. **v1 (OD-3):** per-goal platform cap(12/72) 초과 시 alternate `GoalLoadKey` 우선; 전부 overflow면 penalty pool fallback ([OD-3](open_decisions.md)).
 
 ### 정책

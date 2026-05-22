@@ -25,6 +25,7 @@ from django_apps.asteroid_lab.optimization.candidate_selector import (
 )
 from django_apps.asteroid_lab.optimization.capacity_planner import plan_capacity
 from django_apps.asteroid_lab.optimization.commit_best_candidates import (
+    CommitDiagnostics,
     SkippedCandidateRecord,
     commit_selected_candidates,
 )
@@ -124,6 +125,9 @@ def _commit_skip_summary(
         "commit_hard_blocked_conflict_count": _count(CommitConflictReason.HARD_BLOCKED_CONFLICT),
         "commit_hard_protected_conflict_count": _count(
             CommitConflictReason.HARD_PROTECTED_CONFLICT
+        ),
+        "commit_inlet_on_shared_transport_count": _count(
+            CommitConflictReason.INLET_ON_SHARED_TRANSPORT
         ),
         "commit_equipment_transport_overlap_count": _count(
             CommitConflictReason.EQUIPMENT_TRANSPORT_OVERLAP
@@ -231,6 +235,7 @@ def _build_solver_summary(
     validation_passed: bool,
     commit_count: int,
     skipped_records: tuple[SkippedCandidateRecord, ...],
+    commit_diagnostics: CommitDiagnostics | None = None,
     materialization: RouteMaterializationResult,
     issues: tuple[ValidationIssue, ...],
     timing: SolverRuntimeTimingMetrics,
@@ -246,15 +251,15 @@ def _build_solver_summary(
     error_issues = _error_issues(issues)
     commit_rolled_back_count = len(skipped_records)
     skip_summary = _commit_skip_summary(skipped_records)
-    confirmed_tp = throughput_metrics["confirmed_throughput"]
+    diag = commit_diagnostics or CommitDiagnostics()
     target_placement_count = targets.target_miner_bundle_count
-    # v0: same numeric budget for placement count and throughput units (greedy-v0).
+    # v0: target_miner_bundle_count is platform/bundle count (not base_throughput sum).
     target_throughput = target_placement_count
     placement_capacity_satisfied = commit_count >= target_placement_count
-    throughput_budget_satisfied = confirmed_tp >= target_throughput
+    throughput_budget_satisfied = commit_count >= target_placement_count
     capacity_satisfied = placement_capacity_satisfied and throughput_budget_satisfied
     capacity_deficit_count = max(0, target_placement_count - commit_count)
-    throughput_deficit_count = max(0, target_throughput - confirmed_tp)
+    throughput_deficit_count = max(0, target_placement_count - commit_count)
     run_success = validation_passed and capacity_satisfied
     return {
         "validation_passed": validation_passed,
@@ -283,8 +288,13 @@ def _build_solver_summary(
         "commit_attempt_count": commit_attempt_count,
         "commit_confirmed_count": commit_count,
         "commit_rolled_back_count": commit_rolled_back_count,
+        "commit_primary_route_probe_failed_count": diag.primary_route_probe_failed_count,
+        "commit_deferred_retry_eligible_count": diag.deferred_retry_eligible_count,
+        "commit_deferred_retry_recovered_count": diag.deferred_retry_recovered_count,
+        "commit_deferred_retry_still_failed_count": diag.deferred_retry_still_failed_count,
+        "commit_deferred_retry_rounds": diag.deferred_retry_rounds,
         # NOTE: target_miner_bundle_count / target_placement_count / target_throughput
-        # share the same v0 numeric budget (route slots × miners_per_route).
+        # share the same v0 bundle-count budget (route slots × miners_per_route).
         "target_throughput": target_throughput,
         "normal_pool_throughput": throughput_metrics["normal_pool_throughput"],
         "selected_throughput": throughput_metrics["selected_throughput"],
@@ -353,7 +363,9 @@ def run_solver_runtime_pipeline(
 
     candidates_by_id = {c.candidate_id: c for c in pool.normal_candidates}
     commit_plan = diversify_commit_order(plan, candidates_by_id)
-    commit, commit_timing = commit_selected_candidates(commit_plan, candidates_by_id, inp=inp)
+    commit, commit_timing, commit_diagnostics = commit_selected_candidates(
+        commit_plan, candidates_by_id, inp=inp
+    )
     timing.absorb_commit(commit_timing)
     if recorder is not None:
         recorder.record_route_committed(commit)
@@ -404,6 +416,7 @@ def run_solver_runtime_pipeline(
         validation_passed=validation.passed,
         commit_count=len(commit.confirmed),
         skipped_records=commit.skipped_candidates,
+        commit_diagnostics=commit_diagnostics,
         materialization=materialization,
         issues=validation.issues,
         timing=timing,

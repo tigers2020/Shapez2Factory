@@ -32,7 +32,7 @@ Mapping[gene_id, GeneTemplate]  # extension_attachments for R
 ```text
 materialize_route_network
 → materialize_confirmed_placements
-→ merge_materialized_layout  # rejects equipment∩transport coord overlap
+→ merge_materialized_layout  # transport wins on shared trunk coord overlap
 ```
 
 ## 금지
@@ -45,7 +45,7 @@ materialize_route_network
 - [x] CONFIRMED마다 extractor + extensions가 equipment_cells에 포함
 - [x] extension R은 `GeneTemplate.extension_attachments` + server 4-neighbor ports
 - [x] replay `cell_delta`에 equipment + transport 동시 기록
-- [x] `validate_final_layout` — `placement_not_materialized` issue
+- [x] `validate_final_layout` — `placement_not_materialized` unless extension coord is materialized transport (shared trunk)
 
 ## 관련 코드
 

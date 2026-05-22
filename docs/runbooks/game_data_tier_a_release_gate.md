@@ -34,6 +34,7 @@ Then update pytest pins in the same PR:
 
 1. Set `PINNED_MANIFEST_HASH` in `tests/unit/game_data/_dump_expectations.py` from the new `ImportBatch.manifest_self_hash`
 2. Recompute ORM counts (script or SQLite query) and update `_dump_expectations.py`
+3. Confirm `game_data.shaperecipe` fixture rows **do not** include `catalog_source` (P1d: provenance is on `ShapeRecipeSourceAppearance` only)
 3. Verify unit slice:
 
 ```powershell

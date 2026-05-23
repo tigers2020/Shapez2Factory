@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
+from django.template import Context, Template
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
@@ -124,6 +128,14 @@ def test_lab_page_context_orders_frames_by_frame_index_then_id() -> None:
     indices = [f["frame_index"] for f in ctx["lab_replay_frames_json"]]
     assert indices == [0, 1]
     assert ctx["lab_replay_frames_json"][0]["event_type"] == ReplayEventType.DECODE_STARTED.value
+    assert ctx["initial_frame"] == 0
+    assert ctx["total_frames"] == 2
+    assert (
+        _LAB_FRAME_DISPLAY_SNIPPET.render(
+            Context({"initial_frame": ctx["initial_frame"], "total_frames": ctx["total_frames"]}),
+        )
+        == "1 / 2"
+    )
 
 
 @pytest.mark.django_db
@@ -405,3 +417,74 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-unified-replay-data" not in js
     assert "updateReplayTruncationHud" in js
     assert 'id="lab-replay-truncation-hud"' in tpl
+    assert "function formatLabFrameCounter(zeroBasedSlot, totalCount)" in js
+    assert "formatLabFrameCounter(replayArrayIndex, replayFrames.length)" in js
+    assert "{{ initial_frame|add:1 }} / {{ total_frames }}" in tpl
+
+
+_LAB_FRAME_DISPLAY_SNIPPET = Template(
+    "{% if total_frames %}{{ initial_frame|add:1 }} / {{ total_frames }}"
+    "{% else %}0 / 0{% endif %}"
+)
+
+_FORMAT_LAB_FRAME_COUNTER_JS = """
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+function formatLabFrameCounter(zeroBasedSlot, totalCount) {
+  const total = Number.isFinite(totalCount) && totalCount > 0 ? Math.floor(totalCount) : 0;
+  if (total <= 0) {
+    return "0 / 0";
+  }
+  const slot = Number.isFinite(zeroBasedSlot) ? Math.floor(zeroBasedSlot) : 0;
+  const clamped = clampNumber(slot, 0, total - 1);
+  return String(clamped + 1) + " / " + String(total);
+}
+const payload = JSON.parse(process.argv[1]);
+console.log(formatLabFrameCounter(payload.slot, payload.total));
+"""
+
+
+def _eval_format_lab_frame_counter_js(*, slot: object, total: int) -> str:
+    if shutil.which("node") is None:
+        pytest.skip("node not on PATH")
+    proc = subprocess.run(
+        ["node", "-e", _FORMAT_LAB_FRAME_COUNTER_JS, json.dumps({"slot": slot, "total": total})],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return proc.stdout.strip()
+
+
+def test_lab_frame_display_ssr_renders_one_based_counter() -> None:
+    assert (
+        _LAB_FRAME_DISPLAY_SNIPPET.render(
+            Context({"initial_frame": 0, "total_frames": 22}),
+        )
+        == "1 / 22"
+    )
+    assert (
+        _LAB_FRAME_DISPLAY_SNIPPET.render(
+            Context({"initial_frame": 21, "total_frames": 22}),
+        )
+        == "22 / 22"
+    )
+    assert (
+        _LAB_FRAME_DISPLAY_SNIPPET.render(
+            Context({"initial_frame": 0, "total_frames": 0}),
+        )
+        == "0 / 0"
+    )
+
+
+@pytest.mark.parametrize(
+    ("slot", "total", "expected"),
+    [
+        (0, 22, "1 / 22"),
+        (21, 22, "22 / 22"),
+        (None, 22, "1 / 22"),
+    ],
+)
+def test_format_lab_frame_counter_js(slot: object, total: int, expected: str) -> None:
+    assert _eval_format_lab_frame_counter_js(slot=slot, total=total) == expected

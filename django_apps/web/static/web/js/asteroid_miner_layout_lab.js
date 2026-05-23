@@ -117,6 +117,17 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  /** Human-readable timeline position (1-based slot / total frame count). */
+  function formatLabFrameCounter(zeroBasedSlot, totalCount) {
+    const total = Number.isFinite(totalCount) && totalCount > 0 ? Math.floor(totalCount) : 0;
+    if (total <= 0) {
+      return "0 / 0";
+    }
+    const slot = Number.isFinite(zeroBasedSlot) ? Math.floor(zeroBasedSlot) : 0;
+    const clamped = clampNumber(slot, 0, total - 1);
+    return String(clamped + 1) + " / " + String(total);
+  }
+
   /** HUD: ``data-overlay-role``, ``data-cell-kind``, ``data-tile-type`` (cleared in ``resetGridBase``). */
   function applyLabCellHudAttributes(el, cell, overlayRoleForAttr) {
     if (!el) return;
@@ -972,8 +983,9 @@
     }
   }
 
-  function updateFrameInfo(frame, totalCount, phaseEl, frameEl, gridEl) {
+  function updateFrameInfo(frame, totalCount, phaseEl, frameEl, gridEl, timelineSlotIndex) {
     const dash = "—";
+    const denom = Number.isFinite(totalCount) ? totalCount : 0;
     if (!frame || typeof frame !== "object") {
       if (phaseEl) phaseEl.textContent = dash;
       const et = document.getElementById("lab-replay-event-type");
@@ -982,7 +994,7 @@
       if (et) et.textContent = dash;
       if (ti) ti.textContent = dash;
       if (de) de.textContent = dash;
-      if (frameEl) frameEl.textContent = "0 / " + String(totalCount);
+      if (frameEl) frameEl.textContent = formatLabFrameCounter(0, denom);
       return;
     }
     if (phaseEl) phaseEl.textContent = frame.phase != null ? String(frame.phase) : dash;
@@ -992,9 +1004,12 @@
     if (et) et.textContent = frame.event_type ? String(frame.event_type) : dash;
     if (ti) ti.textContent = frame.title != null ? String(frame.title) : dash;
     if (de) de.textContent = frame.description != null ? String(frame.description) : dash;
-    const denom = Number.isFinite(totalCount) ? totalCount : 0;
-    const fi = frame.frame_index != null ? String(frame.frame_index) : "?";
-    if (frameEl) frameEl.textContent = fi + " / " + String(denom);
+    let slot = timelineSlotIndex;
+    if (slot == null || !Number.isFinite(Number(slot))) {
+      const fi = Number(frame.frame_index);
+      slot = Number.isFinite(fi) ? fi : 0;
+    }
+    if (frameEl) frameEl.textContent = formatLabFrameCounter(slot, denom);
     if (gridEl) gridEl.dataset.overlay = frame.frame_key ? String(frame.frame_key) : "";
   }
 
@@ -1414,7 +1429,7 @@
         if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
         const fr = getCurrentReplayFrame();
         renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
-        updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl);
+        updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl, replayArrayIndex);
         updateReplayTruncationHud(fr, replayTrackMetrics);
         const cycle = document.getElementById("lab-computation-cycle");
         if (cycle) {
@@ -1424,7 +1439,7 @@
           } else if (fr && fr.frame_key != null) {
             cycle.textContent = "frame_key " + String(fr.frame_key);
           } else {
-            cycle.textContent = fr && fr.frame_index != null ? "frame " + String(fr.frame_index) : "frame —";
+            cycle.textContent = formatLabFrameCounter(replayArrayIndex, replayFrames.length);
           }
         }
         const hint = document.getElementById("lab-replay-footer-hint");
@@ -1461,7 +1476,7 @@
       if (phaseEl) {
         phaseEl.textContent = TOTAL_FRAMES <= 0 ? "—" : replayPhaseForFrame(frame);
       }
-      if (frameEl) frameEl.textContent = String(frame) + " / " + String(TOTAL_FRAMES);
+      if (frameEl) frameEl.textContent = formatLabFrameCounter(frame, TOTAL_FRAMES);
       if (gridEl) gridEl.dataset.overlay = overlay;
       const cycle = document.getElementById("lab-computation-cycle");
       if (cycle) cycle.textContent = "computation_cycle #" + String(frame);
@@ -2915,7 +2930,14 @@
         renderExistingLayoutOverlay(baseClasses, domCells, ov, resolveCellIndex);
       },
       updateFrameInfo: function (fr) {
-        updateFrameInfo(fr, hasServerReplay ? replayFrames.length : 0, phaseEl, frameEl, gridEl);
+        updateFrameInfo(
+          fr,
+          hasServerReplay ? replayFrames.length : 0,
+          phaseEl,
+          frameEl,
+          gridEl,
+          replayArrayIndex,
+        );
       },
       collectOverlayPaintTargets: collectOverlayPaintTargets,
       visualCol: visualCol,

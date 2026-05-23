@@ -63,6 +63,7 @@ def test_entry_result_to_json_dict_includes_error_code_and_message() -> None:
     result = run_solver_runtime_for_project(int(proj.pk), config={"rttp_enabled": False})
     body = entry_result_to_json_dict(result)
     assert body["ok"] is False
+    assert body["lab_replay_frame_count"] == 0
     assert body["error_code"] == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE.value
     assert body["message"] == SOLVER_NOT_AVAILABLE_MESSAGE
 
@@ -111,6 +112,8 @@ def test_rttp_runtime_solver_summary_unchanged_when_replay_persisted() -> None:
         assert off.solver_summary[key] == on.solver_summary[key]
 
     run = m.SolverRun.objects.get(pk=int(on.solver_run_id))
-    track = m.ReplayTrack.objects.get(project_id=project_id, track_key="rb1-on")
+    track = m.ReplayTrack.objects.get(project_id=project_id, track_key="rb1-on:rttp")
     assert track.solver_run_id == run.id
     assert m.ReplayFrame.objects.filter(replay_track_id=track.id).count() >= 4
+    lab_track = m.ReplayTrack.objects.get(project_id=project_id, track_key="rb1-on")
+    assert m.ReplayFrame.objects.filter(replay_track_id=lab_track.id).count() == 0

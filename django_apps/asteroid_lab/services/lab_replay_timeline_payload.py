@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Prefetch, Q
 
 from django_apps.asteroid_lab.models import AsteroidMapInput, ReplayFrame, ReplayTrack, SolverRun
+from django_apps.asteroid_lab.optimization.replay_track_keys import (
+    RTTP_OPTIMIZATION_TRACK_SUFFIX,
+    RTTP_TRACK_KEY_PREFIX,
+)
 from django_apps.asteroid_lab.replay import replay_limits
 from django_apps.asteroid_lab.replay.lab_timeline_adapter import (
     LabTimelineAdapterError,
@@ -27,6 +31,10 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
 from django_apps.asteroid_lab.snapshots.server_coords import map_bbox_dense_and_y
 
 REPLAY_DIAGNOSTIC_REASON_KEY = "replay_diagnostic_reason"
+DIAGNOSTIC_RTTP_TRACK_BLOCKED_LAB_TIMELINE = "rttp_track_blocked_lab_timeline"
+DIAGNOSTIC_NO_REPLAY_FRAMES = "no_replay_frames"
+DIAGNOSTIC_LAB_TIMELINE_ADAPTER_FILTERED_ALL = "lab_timeline_adapter_filtered_all"
+INSPECTION_TRACK_KEY_PREFIX = "inspection-"
 
 
 def _empty_track_metrics() -> dict[str, Any]:
@@ -46,6 +54,10 @@ def get_latest_lab_replay_track_for_project(project_id: int) -> ReplayTrack | No
     return cast(
         ReplayTrack | None,
         ReplayTrack.objects.filter(project_id=int(project_id))
+        .exclude(
+            Q(track_key__startswith=RTTP_TRACK_KEY_PREFIX)
+            | Q(track_key__endswith=RTTP_OPTIMIZATION_TRACK_SUFFIX)
+        )
         .annotate(_frame_count=Count("frames"))
         .filter(_frame_count__gt=0)
         .order_by("-created_at", "-id")
@@ -177,8 +189,7 @@ def _solver_runtime_timeline_frames_for_project(
     return tuple(out)
 
 
-def _lab_timeline_frames_for_project(project_id: int) -> tuple[ReplayTimelineFrame, ...]:
-    track = get_latest_lab_replay_track_for_project(int(project_id))
+def _lab_timeline_frames_from_track(track: ReplayTrack | None) -> tuple[ReplayTimelineFrame, ...]:
     if track is None:
         return ()
     ordered = list(track.frames.all())
@@ -189,6 +200,68 @@ def _lab_timeline_frames_for_project(project_id: int) -> tuple[ReplayTimelineFra
         except LabTimelineAdapterError:
             continue
     return tuple(out)
+
+
+def _latest_inspection_replay_track(project_id: int) -> ReplayTrack | None:
+    ordered_frames = ReplayFrame.objects.order_by("frame_index", "id")
+    return cast(
+        ReplayTrack | None,
+        ReplayTrack.objects.filter(
+            project_id=int(project_id),
+            track_key__startswith=INSPECTION_TRACK_KEY_PREFIX,
+        )
+        .annotate(_frame_count=Count("frames"))
+        .filter(_frame_count__gt=0)
+        .order_by("-created_at", "-id")
+        .prefetch_related(Prefetch("frames", queryset=ordered_frames))
+        .first(),
+    )
+
+
+def _lab_replay_diagnostic_reason(project_id: int, *, composed_count: int) -> str | None:
+    if composed_count > 0:
+        return None
+    pid = int(project_id)
+    has_inspection = (
+        ReplayTrack.objects.filter(
+            project_id=pid,
+            track_key__startswith=INSPECTION_TRACK_KEY_PREFIX,
+        )
+        .annotate(_fc=Count("frames"))
+        .filter(_fc__gt=0)
+        .exists()
+    )
+    has_rttp_orm_frames = (
+        ReplayTrack.objects.filter(project_id=pid)
+        .filter(
+            Q(track_key__startswith=RTTP_TRACK_KEY_PREFIX)
+            | Q(track_key__endswith=RTTP_OPTIMIZATION_TRACK_SUFFIX)
+        )
+        .annotate(_fc=Count("frames"))
+        .filter(_fc__gt=0)
+        .exists()
+    )
+    if has_inspection and has_rttp_orm_frames:
+        return DIAGNOSTIC_RTTP_TRACK_BLOCKED_LAB_TIMELINE
+    if (
+        ReplayTrack.objects.filter(project_id=pid)
+        .annotate(_fc=Count("frames"))
+        .filter(_fc__gt=0)
+        .exists()
+    ):
+        return DIAGNOSTIC_LAB_TIMELINE_ADAPTER_FILTERED_ALL
+    return DIAGNOSTIC_NO_REPLAY_FRAMES
+
+
+def _lab_timeline_frames_for_project(project_id: int) -> tuple[ReplayTimelineFrame, ...]:
+    track = get_latest_lab_replay_track_for_project(int(project_id))
+    out = _lab_timeline_frames_from_track(track)
+    if out:
+        return out
+    fallback = _latest_inspection_replay_track(int(project_id))
+    if fallback is not None and (track is None or int(fallback.pk) != int(track.pk)):
+        return _lab_timeline_frames_from_track(fallback)
+    return out
 
 
 def _track_metrics_from_serialized_frames(
@@ -232,11 +305,14 @@ def build_lab_replay_frames_for_project(
         max_frames=replay_limits.MAX_LAB_REPLAY_TIMELINE_FRAMES,
     )
     serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
-    metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=None)
+    diagnostic = _lab_replay_diagnostic_reason(int(project_id), composed_count=len(serialized))
+    metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
     return serialized, metrics
 
 
 __all__ = [
+    "DIAGNOSTIC_NO_REPLAY_FRAMES",
+    "DIAGNOSTIC_RTTP_TRACK_BLOCKED_LAB_TIMELINE",
     "REPLAY_DIAGNOSTIC_REASON_KEY",
     "build_lab_replay_frames_for_project",
     "get_latest_lab_replay_track_for_project",

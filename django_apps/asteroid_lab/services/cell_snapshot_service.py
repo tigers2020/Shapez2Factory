@@ -62,9 +62,6 @@ def _overlay_cell_dict(c: DecodedCellDTO) -> dict[str, Any]:
         "transport_kind": c.transport_kind,
         "tile_type": c.tile_type,
     }
-    if c.server_x is not None and c.server_y is not None:
-        row["server_x"] = c.server_x
-        row["server_y"] = c.server_y
     return row
 
 

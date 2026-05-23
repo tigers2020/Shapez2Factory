@@ -1,4 +1,4 @@
-"""Unit tests for RTTP full-snapshot compose projection (Sequence 3B-S)."""
+﻿"""Unit tests for RTTP full-snapshot compose projection (Sequence 3B-S)."""
 
 from __future__ import annotations
 
@@ -110,8 +110,6 @@ def test_project_rttp_overlay_ignores_legacy_server_fields_on_full_cells() -> No
             {
                 "x": 10,
                 "y": 20,
-                "server_x": 5,
-                "server_y": 6,
                 "kind": "asteroid_shape_field",
             },
         ],

@@ -1,7 +1,7 @@
 """Shapez2 copy JSON island-local coordinates (``BP.Entries``).
 
-Decoded paste / export JSON uses a **blueprint island local** grid — not asteroid
-world tiles, not lab ``server_x``/``server_y``, not reconstruction world map coords.
+Decoded paste / export JSON uses a **blueprint island local** grid, not asteroid
+world tiles and not reconstruction world map coords.
 
 Normative rules (verified against in-game paste, 2026-05-23):
 
@@ -14,8 +14,8 @@ See ``documents/research/research_shapez2_copy_json_island_local_coords_2026-05-
 and ``docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md``.
 
 Tagged boundary: :func:`entry_island_raw_coord` → :class:`~coord_frames.IslandRawCoord`.
-Lab ``server_x`` / ``server_y`` from :mod:`server_coords` remain **deprecated** dense
-projection until PR-F.
+Export-column projection is kept here because it is a copy JSON serialization rule,
+not a runtime coordinate frame.
 """
 
 from __future__ import annotations
@@ -78,11 +78,26 @@ def entries_have_explicit_raw_x_zero(entries: list[dict[str, Any]]) -> bool:
     """Whether any entry uses raw column ``X == 0``.
 
     Includes entries with **omitted** ``X`` (decoded as ``0``). When true,
-    :func:`django_apps.asteroid_lab.snapshots.server_coords.raw_x_to_dense_index`
-    keeps positive ``X`` values distinct from column ``0`` (no ``1`` → dense ``0`` collapse).
+    export-column projection keeps positive ``X`` values distinct from column ``0``.
     """
 
     return any(entry_raw_x(row) == 0 for row in entries)
+
+
+def raw_x_to_export_column(raw_x: int, *, has_explicit_raw_x_zero: bool = False) -> int:
+    """Map copy JSON ``X`` to the compact official-export column.
+
+    이 변환은 파일 내보내기용 열 번호 계산에만 쓰며, 런타임 좌표 프레임으로
+    저장하거나 DTO에 싣지 않는다.
+    """
+
+    if raw_x < 0:
+        return raw_x
+    if raw_x == 0:
+        return 0
+    if has_explicit_raw_x_zero:
+        return raw_x
+    return raw_x - 1
 
 
 def iter_entry_dicts(decoded_json: dict[str, Any]) -> list[dict[str, Any]]:
@@ -108,4 +123,5 @@ __all__ = [
     "entry_raw_x",
     "entry_raw_y",
     "iter_entry_dicts",
+    "raw_x_to_export_column",
 ]

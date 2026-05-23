@@ -1,4 +1,4 @@
-"""Reconstruction result → OptimizationInput (RTTP PR-2; no shadow/RD imports)."""
+"""Reconstruction result -> OptimizationInput (RTTP PR-2; no shadow/RD imports)."""
 
 from __future__ import annotations
 
@@ -12,11 +12,10 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
 )
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_reconstruction,
-    server_coord_for_cell,
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame, server_coord_to_tuple
+from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 
@@ -31,17 +30,7 @@ def _parse_transport_kind(raw: str) -> TransportKind | None:
     return None
 
 
-def _cells_by_server_coord(
-    cells: tuple[DecodedCellDTO, ...],
-    params: tuple[int, int] | None,
-) -> dict[Coord, DecodedCellDTO]:
-    by_sv: dict[Coord, DecodedCellDTO] = {}
-    for cell in cells:
-        by_sv[server_coord_to_tuple(server_coord_for_cell(cell, params))] = cell
-    return by_sv
-
-
-def _cells_by_island_coord(cells: tuple[DecodedCellDTO, ...]) -> dict[Coord, DecodedCellDTO]:
+def _cells_by_coord(cells: tuple[DecodedCellDTO, ...]) -> dict[Coord, DecodedCellDTO]:
     return {(cell.x, cell.y): cell for cell in cells}
 
 
@@ -60,16 +49,16 @@ def _is_reconstruction_transport_cell(cell: DecodedCellDTO) -> bool:
 
 
 def _existing_transport(
-    by_sv: dict[Coord, DecodedCellDTO],
+    by_coord: dict[Coord, DecodedCellDTO],
 ) -> frozenset[ExistingTransportCell]:
     transport: list[ExistingTransportCell] = []
-    for sv, cell in by_sv.items():
+    for coord, cell in by_coord.items():
         if not _is_reconstruction_transport_cell(cell):
             continue
         kind = _parse_transport_kind(cell.transport_kind)
         if kind is None:
             continue
-        transport.append(ExistingTransportCell(coord=sv, transport_kind=kind))
+        transport.append(ExistingTransportCell(coord=coord, transport_kind=kind))
     return frozenset(transport)
 
 
@@ -122,20 +111,17 @@ def _external_margin_route_goals(
 def optimization_input_from_reconstruction(
     result: ReconstructionResult,
     *,
-    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
+    coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
 ) -> OptimizationInput:
-    """Map reconstruction topology to ``OptimizationInput``."""
+    """Map reconstruction topology to ``OptimizationInput`` using raw island ``x/y``."""
 
     topo = acceptance_topology_from_reconstruction(result, coord_frame=coord_frame)
-    if coord_frame == CoordFrame.ISLAND_RAW or result.coord_frame == CoordFrame.ISLAND_RAW:
-        by_sv = _cells_by_island_coord(result.cells)
-    else:
-        by_sv = _cells_by_server_coord(result.cells, result.server_xy_params)
+    by_coord = _cells_by_coord(result.cells)
     mineable = topo.mineable_cells
     external_void = topo.external_void_cells
     rim = _rim_cells(mineable)
     inner = mineable - rim
-    existing_transport = _existing_transport(by_sv)
+    existing_transport = _existing_transport(by_coord)
     transport_kind = _default_transport_kind(existing_transport)
     existing_trunk = _existing_trunk_cells(existing_transport)
     route_goals = _external_margin_route_goals(rim, external_void, transport_kind)

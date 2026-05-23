@@ -44,9 +44,9 @@ def build_ring_options(mineable_cells: frozenset[Coord]) -> tuple[RingOption, ..
     frame = _frame_from_bbox(bbox)
     usable = frozenset(cell for cell in frame if cell not in mineable_cells)
 
-    top = frozenset((sx, bbox.min_sy - 1) for sx in range(bbox.min_sx - 1, bbox.max_sx + 2))
-    left = frozenset((bbox.min_sx - 1, sy) for sy in range(bbox.min_sy, bbox.max_sy + 1))
-    right = frozenset((bbox.max_sx + 1, sy) for sy in range(bbox.min_sy, bbox.max_sy + 1))
+    top = frozenset((x, bbox.min_y - 1) for x in range(bbox.min_x - 1, bbox.max_x + 2))
+    left = frozenset((bbox.min_x - 1, y) for y in range(bbox.min_y, bbox.max_y + 1))
+    right = frozenset((bbox.max_x + 1, y) for y in range(bbox.min_y, bbox.max_y + 1))
 
     full_ring = usable
     one_side_spine = usable & top
@@ -62,12 +62,12 @@ def build_ring_options(mineable_cells: frozenset[Coord]) -> tuple[RingOption, ..
 
 def _frame_from_bbox(bbox: BBox) -> frozenset[Coord]:
     cells: set[Coord] = set()
-    for sx in range(bbox.min_sx - 1, bbox.max_sx + 2):
-        cells.add((sx, bbox.min_sy - 1))
-        cells.add((sx, bbox.max_sy + 1))
-    for sy in range(bbox.min_sy, bbox.max_sy + 1):
-        cells.add((bbox.min_sx - 1, sy))
-        cells.add((bbox.max_sx + 1, sy))
+    for x in range(bbox.min_x - 1, bbox.max_x + 2):
+        cells.add((x, bbox.min_y - 1))
+        cells.add((x, bbox.max_y + 1))
+    for y in range(bbox.min_y, bbox.max_y + 1):
+        cells.add((bbox.min_x - 1, y))
+        cells.add((bbox.max_x + 1, y))
     return frozenset(cells)
 
 

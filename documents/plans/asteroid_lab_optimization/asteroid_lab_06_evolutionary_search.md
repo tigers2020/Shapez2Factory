@@ -1,5 +1,8 @@
 # Phase 6 — Evolutionary Search v0
 
+
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_06_evolutionary_search.md`](../../Algorithm/asteroid_lab_06_evolutionary_search.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 > **v0 pipeline:** GA 미구현 — Algorithm [`asteroid_lab_06_evolutionary_search.md`](../../Algorithm/asteroid_lab_06_evolutionary_search.md) 정본(배너·deterministic distant mutation).
 
 ## 목적

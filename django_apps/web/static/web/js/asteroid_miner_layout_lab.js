@@ -1,12 +1,12 @@
-/**
+﻿/**
  * Client-side replay controls for the asteroid mining lab page (shell UI).
  *
- * Shapez2 asteroid map invariant (Lab + server replay):
+ * Shapez2 asteroid map invariant (Lab + runtime replay):
  * - There is no x == 0 column. Horizontal order: ..., -2, -1, 1, 2, ...
  * - (-1, y) is horizontally adjacent to (1, y), not (0, y).
  * - World (1, 0) is the UI anchor: visual column index 0, row y = 0 at grid center (symmetric padding).
  *
- * Domain rotation contract (blueprint / server JSON; never mutate ``cell.rotation`` in JS):
+ * Domain rotation contract (blueprint JSON; never mutate ``cell.rotation`` in JS):
  * - R = 0 means East; R increases by quarter-turns clockwise (0..3).
  * - Lab SVGs are East-facing; display rotation is CSS ``rotate`` on the sprite ``img`` from ``R`` only.
  *   Do not apply ad-hoc R+1 or rewrite domain rotation.
@@ -179,7 +179,7 @@
   }
 
   /** Last-resort: infer Forward-only sprite from transport kind when tile_type is absent.
-   * Turn/splitter/merger variants require server-provided tile_type — no topology inference here. */
+   * Turn/splitter/merger variants require replay-provided tile_type — no topology inference here. */
   function inferTransportSpriteIdentifier(cell) {
     const tk = cell.transport_kind || cell.transport;
     if (!tk) return null;
@@ -394,7 +394,7 @@
     return 0;
   }
 
-  /** World x to dense column index; mirrors server_coords.raw_x_to_dense_index. */
+  /** World x to dense visual column index (lab map: no x == 0 column). */
   function rawXToDenseX(x) {
     const xi = Number(x);
     if (!Number.isFinite(xi)) return null;
@@ -623,9 +623,7 @@
   }
 
   function computeReplayGridLayout(replayFrames) {
-    /* Lab grid uses island-local ``cell.x`` / ``cell.y`` (visualCol). PR-F: do not project
-     * ``server_x``/``server_y`` through dense inverse — legacy fields may be absent.
-     */
+    /* Lab grid uses island-local ``cell.x`` / ``cell.y`` (visualCol); no dense server frame. */
     let minD = Infinity;
     let maxD = -Infinity;
     let minR = Infinity;
@@ -649,14 +647,8 @@
         if (yi > maxR) maxR = yi;
       }
     }
-    /** Bbox mins from replay cell island x/y (left-bottom anchor for grid padding). */
-    let bboxMinDenseX = 0;
-    let bboxMinRawY = 0;
     if (!any) {
       minD = maxD = minR = maxR = 0;
-    } else {
-      bboxMinDenseX = minD;
-      bboxMinRawY = minR;
     }
     const coreHalfX = Math.max(Math.max(0, -minD), Math.max(0, maxD), 1);
     const coreHalfY = Math.max(Math.max(0, -minR), Math.max(0, maxR), 1);
@@ -669,8 +661,6 @@
       maxR: halfY,
       gridW: 2 * halfX + 1,
       gridH: 2 * halfY + 1,
-      bboxMinDenseX: bboxMinDenseX,
-      bboxMinRawY: bboxMinRawY,
     };
   }
 
@@ -1127,12 +1117,11 @@
 
     const gridStage = document.getElementById("lab-replay-grid-stage");
     const gridHudCoord = document.getElementById("lab-replay-grid-hud-coord");
-    const gridHudServerCoord = document.getElementById("lab-replay-grid-hud-server-coord");
     const gridHudRole = document.getElementById("lab-replay-grid-hud-role");
 
     let labViewportTransform = { zoom: 1, tx: 0, ty: 0 };
     let labPanState = null;
-    /** Fitted cell edge (px) at zoom 1 for server replay; from ``applyReplayGridSizing``. */
+    /** Fitted cell edge (px) at zoom 1 for runtime replay; from ``applyReplayGridSizing``. */
     let replayFitBasePx = 20;
     /** Measured cell edge (px) at zoom 1 for demo matrix grid. */
     let demoBaseCellPxAtZoom1 = 20;
@@ -2134,23 +2123,6 @@
       return { x: xWorld, y: y };
     }
 
-    function domIndexToServerXY(domIdx) {
-      const w = domIndexToWorldXY(domIdx);
-      if (!w || !replayLayout) {
-        return null;
-      }
-      const d = visualCol(w.x);
-      if (d == null) {
-        return null;
-      }
-      const md = Number(replayLayout.bboxMinDenseX);
-      const my = Number(replayLayout.bboxMinRawY);
-      if (!Number.isFinite(md) || !Number.isFinite(my)) {
-        return null;
-      }
-      return { x: d - md, y: w.y - my };
-    }
-
     function findLabCellFromPoint(clientX, clientY) {
       const w = labWorldPointFromClient(clientX, clientY);
       const dims = labBaseCellAndGapPx();
@@ -2197,9 +2169,6 @@
       if (gridHudCoord) {
         gridHudCoord.textContent = "—";
       }
-      if (gridHudServerCoord) {
-        gridHudServerCoord.textContent = "—";
-      }
       if (gridHudRole) {
         gridHudRole.textContent = "—";
       }
@@ -2221,22 +2190,6 @@
       const demoX = idx % GRID_W;
       const demoY = Math.floor(idx / GRID_W);
       return "(" + demoX + ", " + demoY + ")";
-    }
-
-    function getLabCellDisplayServerCoord(cellEl) {
-      const indexText = cellEl && cellEl.getAttribute ? cellEl.getAttribute("data-lab-cell-index") : null;
-      const idx = Number.parseInt(indexText || "", 10);
-      if (!Number.isFinite(idx)) {
-        return "—";
-      }
-      if (hasServerReplay && replayLayout) {
-        const coord = domIndexToServerXY(idx);
-        if (!coord) {
-          return "—";
-        }
-        return "(" + coord.x + ", " + coord.y + ")";
-      }
-      return "—";
     }
 
     function getLabCellDisplayRole(cellEl) {
@@ -2266,9 +2219,6 @@
       }
       if (gridHudCoord) {
         gridHudCoord.textContent = getLabCellDisplayRawCoord(cellEl);
-      }
-      if (gridHudServerCoord) {
-        gridHudServerCoord.textContent = getLabCellDisplayServerCoord(cellEl);
       }
       if (gridHudRole) {
         gridHudRole.textContent = getLabCellDisplayRole(cellEl);
@@ -2548,12 +2498,6 @@
       if (cell.layer != null) {
         out.layer = cell.layer;
       }
-      if (cell.server_x != null) {
-        out.server_x = cell.server_x;
-      }
-      if (cell.server_y != null) {
-        out.server_y = cell.server_y;
-      }
       return out;
     }
 
@@ -2643,14 +2587,16 @@
     const LAB_CELL_DETAIL_KEY_ORDER = [
       "x",
       "y",
-      "server_x",
-      "server_y",
       "layer",
       "rotation",
       "cell_kind",
       "tile_type",
       "transport_kind",
     ];
+
+    function labCellDetailIsSuppressedKey(key) {
+      return String(key || "").startsWith("server_");
+    }
 
     function labCellDetailEscapeHtml(s) {
       return String(s)
@@ -2673,7 +2619,7 @@
       }
       const rest = keys
         .filter(function (k) {
-          return !seen[k];
+          return !seen[k] && !labCellDetailIsSuppressedKey(k);
         })
         .sort();
       return out.concat(rest);
@@ -2820,7 +2766,7 @@
         }
         html +=
           '<section class="space-y-3">' +
-          '<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">Sources (server)</h3>' +
+          '<h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">Sources</h3>' +
           srcHtml +
           "</section>";
       }

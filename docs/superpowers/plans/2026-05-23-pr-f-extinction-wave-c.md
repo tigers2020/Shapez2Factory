@@ -4,7 +4,7 @@
 
 **Goal:** In one coordinated wave, remove runtime dependence on dense server `(server_x, server_y)` and `server_xy_params` across reconstruction persist, replay/RTTP/web adapters, while keeping **one-release read-compat** for legacy persisted JSON.
 
-**Architecture:** Introduce shared **island bbox** helpers (`island_bbox.py`). Reconstruction topology/confidence/export emit **only island `(x,y)`** keys and `full_map_island_bbox` meta. Replay/web/RTTP treat overlay `(x,y)` as island-local (identity projection). `server_coords.py` remains a **test-only shim** for dense math regression until a follow-up deletes it. AST allowlists for `server_xy_for_raw_xy` shrink to **empty** in reconstruction/replay/web/cleanup.
+**Architecture:** Introduce shared **island bbox** helpers (`island_bbox.py`). Reconstruction topology/confidence/export emit **only island `(x,y)`** keys and `full_map_island_bbox` meta. Replay/web/RTTP treat overlay `(x,y)` as island-local (identity projection). **`server_coords.py` deleted** (product + tests); AST gate forbids `server_*` tokens in `django_apps`/`src`. Doc sweep: 2026-05-23.
 
 **Tech Stack:** Python 3.12+, Django 5.2, pytest, ruff, mypy (`django_apps config src`), existing `CoordFrame` / `IslandRawCoord` in `coord_frames.py`.
 
@@ -37,7 +37,7 @@
 | **Modify** `tests/unit/asteroid_lab/test_coordinate_frame_ast_gate.py` | Empty allowlists + `map_bbox_dense_and_y` gate |
 | **Modify** tests listed per task | Contract updates |
 | **Modify** `documents/Algorithm/asteroid_lab_03_candidate_generator.md`, `.cursor/rules/asteroid-lab-invariants.mdc` | Docs sync |
-| **Keep** `snapshots/server_coords.py` | Unit-tested dense math only; no production imports outside tests + re-export shim doc |
+| **Delete** `snapshots/server_coords.py` | Removed PR-F; historical spec in archived research doc |
 
 ---
 

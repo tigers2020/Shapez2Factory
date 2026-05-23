@@ -32,7 +32,7 @@ def create_project_from_copy_code(
 ) -> CreateProjectFromCopyCodeResultDTO:
     """Create ``AsteroidProject`` + ``AsteroidMapInput`` with decoded snapshot.
 
-    :func:`create_copy_code_map_input` decodes copy text and attaches server coords.
+    :func:`create_copy_code_map_input` decodes copy text with island-local coords.
     Does **not** import asteroid mining v1/v2 solver internals.
 
     Persisted rows are for UI/cache/inspection — **not** solver algorithm input.

@@ -14,10 +14,6 @@ from django_apps.asteroid_lab.reconstruction.display_map import (
     full_map_island_bbox_from_decoded_json,
     merged_display_cells_from_reconstruction,
 )
-from django_apps.asteroid_lab.snapshots.island_bbox import (
-    island_bbox_from_cells,
-    island_bbox_from_xy_dicts,
-)
 from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
 from django_apps.asteroid_lab.replay.reconstruction_frames import build_reconstruction_replay_events
 from django_apps.asteroid_lab.replay.snapshot_map_replay import (
@@ -31,6 +27,10 @@ from django_apps.asteroid_lab.services.input_service import persist_decoded_snap
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     persist_reconstructed_asteroid_map,
     run_reconstruction_for_map_input,
+)
+from django_apps.asteroid_lab.snapshots.island_bbox import (
+    island_bbox_from_cells,
+    island_bbox_from_xy_dicts,
 )
 
 
@@ -71,7 +71,7 @@ def hole_island_copy() -> str:
 
 @pytest.mark.django_db
 def test_persist_full_map_matches_replay_complete_bbox(hole_island_copy: str) -> None:
-    """Regression: recon.cells-only subset shrinks server bbox vs merged full_map."""
+    """Regression: recon.cells-only subset shrinks bbox vs merged full_map."""
 
     proj = m.AsteroidProject.objects.create(name="BBox", slug="persist-full-map-bbox")
     inp = m.AsteroidMapInput.objects.create(project=proj, copy_code=hole_island_copy)

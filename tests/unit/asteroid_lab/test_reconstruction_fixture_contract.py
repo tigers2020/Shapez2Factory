@@ -1,4 +1,4 @@
-"""Per-line reconstruction fixture topology + confidence contracts."""
+﻿"""Per-line reconstruction fixture topology + confidence contracts."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_reconstruction,
 )
-from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.reconstruction.confidence import (
     QUALITY_TIER_CONFIDENT,
     reconstruction_acceptance_ok,
@@ -29,7 +28,10 @@ from django_apps.asteroid_lab.reconstruction.topology_contract import (
     raw_coords_from_snapshot,
     topology_diff_is_empty,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import entries_have_explicit_raw_x_zero
+from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
+from django_apps.asteroid_lab.snapshots.copy_json_coords import (
+    entries_have_explicit_raw_x_zero,
+)
 
 
 def _run_line(line_index: int):
@@ -98,7 +100,7 @@ def test_reconstruction_fixture_line_coord_and_optimization_contract(
     for cell in recon.cells:
         assert isinstance(cell.x, int) and isinstance(cell.y, int)
         if cell.raw_entry_json.get("_replay_synthetic"):
-            assert cell.server_x is None and cell.server_y is None
+            continue
     req_entries = [c.raw_entry_json for c in _snap_req.cells if c.raw_entry_json]
     has_explicit_x0 = entries_have_explicit_raw_x_zero(req_entries)
     if reconstruction_fixture_line_index != 1 and not has_explicit_x0:

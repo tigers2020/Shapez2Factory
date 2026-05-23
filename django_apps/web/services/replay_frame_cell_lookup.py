@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from django_apps.asteroid_lab.snapshots.island_bbox import island_bbox_from_xy_dicts
-
 
 def _xy_match(row: Any, x: int, y: int) -> bool:
     if not isinstance(row, dict):
@@ -115,53 +113,11 @@ def _island_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, int] | None:
     return None
 
 
-def _server_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, Any] | None:
-    """Legacy decode bbox with ``dense_min_x`` and ``server_*`` ranges, or ``None``."""
-
-    for bb in _bbox_blocks(ser):
-        try:
-            dense_min_x = int(bb["dense_min_x"])
-            min_y = int(bb["min_y"])
-            sminx = int(bb["server_min_x"])
-            smaxx = int(bb["server_max_x"])
-            sminy = int(bb["server_min_y"])
-            smaxy = int(bb["server_max_y"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        return {
-            "dense_min_x": dense_min_x,
-            "min_y": min_y,
-            "server_min_x": sminx,
-            "server_max_x": smaxx,
-            "server_min_y": sminy,
-            "server_max_y": smaxy,
-        }
-    return None
-
-
-def _island_bbox_from_legacy_server_serialized(ser: dict[str, Any]) -> dict[str, int] | None:
-    """Read-compat: derive island extent from persisted ``full_map`` / ``map_view`` rows."""
-
-    rows: list[dict[str, Any]] = []
-    full_map = ser.get("full_map")
-    if isinstance(full_map, list):
-        rows.extend(c for c in full_map if isinstance(c, dict))
-    map_view = ser.get("map_view")
-    if isinstance(map_view, dict):
-        full_cells = map_view.get("full_cells")
-        if isinstance(full_cells, list):
-            rows.extend(c for c in full_cells if isinstance(c, dict))
-    return island_bbox_from_xy_dicts(rows)
-
-
 def _lab_empty_synthetic_cell(
     x: int,
     y: int,
-    *,
-    server_x: int | None,
-    server_y: int | None,
 ) -> dict[str, Any]:
-    cell: dict[str, Any] = {
+    return {
         "x": int(x),
         "y": int(y),
         "layer": None,
@@ -171,10 +127,6 @@ def _lab_empty_synthetic_cell(
         "tile_type": "",
         "_lab_synthetic": True,
     }
-    if server_x is not None and server_y is not None:
-        cell["server_x"] = int(server_x)
-        cell["server_y"] = int(server_y)
-    return cell
 
 
 def _try_synthetic_lab_empty(
@@ -184,8 +136,6 @@ def _try_synthetic_lab_empty(
 
     island_bb = _island_bbox_from_serialized(ser)
     if island_bb is None:
-        island_bb = _island_bbox_from_legacy_server_serialized(ser)
-    if island_bb is None:
         return None, {}
     if not (
         island_bb["min_x"] <= int(x) <= island_bb["max_x"]
@@ -193,7 +143,7 @@ def _try_synthetic_lab_empty(
     ):
         return None, {}
     return (
-        _lab_empty_synthetic_cell(x, y, server_x=None, server_y=None),
+        _lab_empty_synthetic_cell(x, y),
         {"lab_synthetic": "empty_island_cell"},
     )
 

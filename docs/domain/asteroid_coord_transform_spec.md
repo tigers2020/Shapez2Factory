@@ -1,14 +1,14 @@
-# Asteroid Lab — coordinate transform (canonical E → server)
+# Asteroid Lab — coordinate transform (canonical E → island map grid)
 
 **Owner:** Dominic (domain) · **Implementation:** `django_apps/asteroid_lab/optimization/coord_transform.py`, `gene_template.py`, `gene_projection.py`  
-**Status:** Phase 0 domain contract (v0)  
+**Status:** Phase 0 domain contract (v0) · **PR-F (2026-05):** island-local map grid; dense server removed  
 **Consumers:** gene projection, placement materialization, `game_data` snapshot adapter (footprint/port rotation)
 
 ## Purpose
 
-Gene topology and `game_data` building geometry are authored in a **building-local** frame with **canonical output facing E**. The optimization layer places bundles on the dense **Server X/Y** grid by rotating local offsets clockwise, then translating by an anchor (extractor server coord). This document is the normative spec for that transform; code must match it exactly.
+Gene topology and `game_data` building geometry are authored in a **building-local** frame with **canonical output facing E**. The optimization layer places bundles on the **island-local map grid** (`CoordFrame.ISLAND_RAW`) by rotating local offsets clockwise, then translating by an anchor (extractor island coord). This document is the normative spec for that transform; code must match it exactly.
 
-**Out of scope here:** dense-column export (`raw_x_to_dense_index`) and server bbox attach — see [`copy_json_coords.py`](../../django_apps/asteroid_lab/snapshots/copy_json_coords.py) and [`research_shapez2_copy_json_island_local_coords_2026-05-23.md`](../../documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md). The snapshot and solver paths use **server coords only** — never raw.
+**Out of scope here:** copy JSON serialize rules — [`copy_json_coords.py`](../../django_apps/asteroid_lab/snapshots/copy_json_coords.py). **Removed (PR-F):** dense server bbox attach (`server_coords.py`). Algorithm paths use **island `Coord` only** after normalize — never raw blueprint re-conversion.
 
 ## Coordinate frames
 
@@ -17,10 +17,10 @@ Gene topology and `game_data` building geometry are authored in a **building-loc
 | **Copy JSON island-local** | Pasted island `BP.Entries`; omitted `X`/`Y`/`R` → `0`; `X+1` right, `Y+1` down; **`X==0` valid**; tagged `IslandRawCoord` via `entry_island_raw_coord` | Game paste decode, export serialize; migration: [`2026-05-23-coordinate-tagged-frames-design.md`](../superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md) |
 | **Canonical E (gene-local)** | Extractor at `(0, 0)`; bundle `output_dir == E` | `GeneTemplate`, `ExtensionAttachment` offsets |
 | **Building-local (`game_data`)** | Per-variant footprint / connector import frame | `BuildingFootprintCell.x/y` in `AsteroidGameDataSnapshot` |
-| **Server (dense)** | Map bbox-normalized grid; algorithm input after normalize | `Coord`, materialized cells, fingerprints |
+| **Island map grid (`Coord`)** | `CoordFrame.ISLAND_RAW`; algorithm input after normalize | `Coord`, materialized cells, fingerprints |
 | **World / reconstruction map** | Asteroid evidence grid; **`x==0` column does not exist** | Transport BFS, reconstruction ([`research_blueprint_grid_coordinates_2026-05-10.md`](../../documents/research/research_blueprint_grid_coordinates_2026-05-10.md)) |
 
-After `OptimizationInput` normalization, the algorithm layer must **not** convert raw ↔ server again ([`asteroid_lab_01`](../../documents/Algorithm/asteroid_lab_01_optimization_input.md)).
+After `OptimizationInput` normalization, the algorithm layer must **not** convert copy JSON ↔ map grid again ([`asteroid_lab_01`](../../documents/Algorithm/asteroid_lab_01_optimization_input.md)).
 
 ## Canonical E gene storage
 
@@ -66,13 +66,13 @@ return (x, y)
 
 Rotate a cardinal `Direction` by the same number of CW quarter-turns using `_DIRECTION_CW_ORDER`.
 
-## Server placement
+## Island map placement
 
 Placement is implemented in `gene_projection._translate` / `project_gene_placement`:
 
-1. `steps = steps_from_canonical_e(rotation)` where `rotation` is the bundle’s output facing on the server grid.
+1. `steps = steps_from_canonical_e(rotation)` where `rotation` is the bundle’s output facing on the map grid.
 2. For each gene-local offset `rel`: `(rx, ry) = rotate_offset(rel, steps)`.
-3. **Server cell:** `server = (anchor_sx + rx, anchor_sy + ry)` with `anchor` = extractor server position.
+3. **Map cell:** `(anchor_x + rx, anchor_y + ry)` with `anchor` = extractor island position.
 
 ```python
 def _translate(anchor: Coord, rel: Coord, steps: int) -> Coord:
@@ -89,25 +89,25 @@ Equipment materialization (`placement_network_materializer`) uses the same `_tra
 
 - Footprint cells and connector positions in `AsteroidGameDataSnapshot` are **building-local** (see [`asteroid_game_data_snapshot.md`](asteroid_game_data_snapshot.md)).
 - When a building variant is placed at server `(anchor_sx, anchor_sy)` with rotation `steps`, the adapter applies **`rotate_offset` + anchor add** to each local `(x, y)` — the same rule as gene offsets.
-- Port compatibility checks use server coords after rotation; extension parent/child edges use server 4-neighbors (`_direction_child_to_parent_server`).
+- Port compatibility checks use island map coords after rotation; extension parent/child edges use `grid_contract.neighbors4`.
 
-## Copy JSON vs server vs world (decode boundary)
+## Copy JSON vs island map vs world (decode boundary)
 
 | Frame | `X==0` / `x==0` | Notes |
 |-------|-----------------|-------|
 | Copy JSON island-local | **Allowed** | Not asteroid world position; relative layout inside paste |
-| Server bbox (`server_x`) | Derived from raw via `attach_server_coords_to_decoded_json` | Optimization / fingerprint only after attach |
-| World / lab map | **No `x==0` column** | Do not feed copy-local `(X,Y)` into BFS as world tiles |
+| Island map grid (`Coord`) | Same semantics as copy local at lab boundary | Optimization / fingerprint after normalize |
+| World / reconstruction map | **No `x==0` column** | Transport BFS only; do not mix with paste grid |
 
 ## Raw column rule (decode-only)
 
 | Rule | Where |
 |------|--------|
 | Preserve island-local `X`/`Y` on decode (omitted → `0`) | `copy_json_coords`, reconstruction, export |
-| `raw_x_to_dense_index` + bbox → `server_x` / `server_y` | `server_coords` at decode/normalize boundary |
-| Snapshot build, gene projection, route probe, commit | **Server X/Y only** — no raw fields |
+| **Removed:** dense server attach | PR-F — see archived research doc |
+| Snapshot build, gene projection, route probe, commit | **Island `Coord` only** — no raw re-conversion |
 
-Violating raw↔server conversion inside the algorithm layer after normalize is forbidden ([`asteroid-lab-invariants`](../../.cursor/rules/asteroid-lab-invariants.mdc)).
+Violating copy↔map grid conversion inside the algorithm layer after normalize is forbidden ([`asteroid-lab-invariants`](../../.cursor/rules/asteroid-lab-invariants.mdc)).
 
 ## Golden vectors
 

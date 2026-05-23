@@ -1,4 +1,4 @@
-"""Product replay timeline payload (Lab ORM only)."""
+﻿"""Product replay timeline payload (Lab ORM only)."""
 
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ def test_resolve_projection_context_from_lab_cells() -> None:
     _decode_lab_frame(t, frame_index=0, x=1, y=2)
 
     ctx = resolve_replay_projection_context_for_project(int(p.pk))
-    assert ctx.server_xy_params is None
+    assert ctx.fallback_full_cells == ()
 
 
 @pytest.mark.django_db

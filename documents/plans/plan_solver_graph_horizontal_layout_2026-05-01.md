@@ -1,5 +1,8 @@
 # Plan: Solver Graph Horizontal Layout
 
+
+> **Plans (misc):** Project planning memo; not Asteroid Lab coordinate canon. See [`documents/Algorithm/`](../Algorithm/) and [`docs/superpowers/specs/`](../docs/superpowers/specs/) for active specs.
+
 ## Summary
 
 Relax the solver graph's fixed depth-column `x` placement while keeping deterministic left-to-right DAG edges. The goal is to let late-joining parallel branches spread horizontally before they merge, so related work stays readable without forcing every same-depth node onto the same vertical band.

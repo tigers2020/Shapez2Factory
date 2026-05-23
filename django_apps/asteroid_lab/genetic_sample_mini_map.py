@@ -1,4 +1,4 @@
-"""HTML mini-map for :class:`~django_apps.asteroid_lab.models.GeneticSample` admin (readonly)."""
+﻿"""HTML mini-map for :class:`~django_apps.asteroid_lab.models.GeneticSample` admin (readonly)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,6 @@ from django_apps.asteroid_lab.lab_screen_grid import (
 )
 from django_apps.asteroid_lab.reconstruction.display_map import (
     full_map_island_bbox_from_decoded_json,
-    full_map_server_bbox_from_decoded_json,
 )
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
@@ -29,15 +28,15 @@ _GAP_PX = 2
 # Admin grid: never smaller than this (empty cells if blueprint bbox is tighter).
 _MIN_ADMIN_GRID_COLS = 4
 _MIN_ADMIN_GRID_ROWS = 4
-# Changelist column: scroll viewport matches min grid so ~4×4 cells fit before scroll.
+# Changelist column: scroll viewport matches min grid so ~4횞4 cells fit before scroll.
 _LIST_VIEWPORT_COLS = _MIN_ADMIN_GRID_COLS
 _LIST_VIEWPORT_ROWS = _MIN_ADMIN_GRID_ROWS
-# Matches inner ``.genetic-sample-mini-map`` padding (6px × 2).
+# Matches inner ``.genetic-sample-mini-map`` padding (6px 횞 2).
 _INNER_PAD_PX = 12
 
 
 def _list_viewport_max_px(*, cell_px: int) -> tuple[int, int]:
-    """``for_list`` outer box: max-width / max-height so ~cols×rows cells fit before scroll."""
+    """``for_list`` outer box: max-width / max-height so ~cols횞rows cells fit before scroll."""
 
     g = _GAP_PX
     p = _INNER_PAD_PX
@@ -49,7 +48,7 @@ def _list_viewport_max_px(*, cell_px: int) -> tuple[int, int]:
 def _mini_map_cell_block(
     at_cell: DecodedCellDTO, *, cell_px: int, img_px: int
 ) -> tuple[SafeString | str, str, int]:
-    """One ``lab_sprite_resolve`` call → inner HTML, ``data-sprite`` relpath, rotation degrees."""
+    """One ``lab_sprite_resolve`` call ??inner HTML, ``data-sprite`` relpath, rotation degrees."""
 
     relpath, _ = lab_sprite_resolve(
         tile_type=at_cell.tile_type,
@@ -89,8 +88,8 @@ def _mini_map_cell_radius_px(cell_px: int) -> int:
 
 def _genetic_sample_mini_map_cell_div(
     *,
-    sx: int,
-    sy: int,
+    x: int,
+    y: int,
     coord: MiniMapGridCoord,
     inner: SafeString | str,
     sprite_relpath: str,
@@ -100,13 +99,13 @@ def _genetic_sample_mini_map_cell_div(
     radius_px = _mini_map_cell_radius_px(cell_px)
     return format_html(
         '<div class="genetic-sample-mini-map-cell" '
-        'data-server-x="{}" data-server-y="{}" '
+        'data-raw-x="{}" data-raw-y="{}" '
         'data-grid-row="{}" data-grid-col="{}" data-linear-index="{}" data-sprite="{}" '
         'data-rotation-deg="{}" style="background:#020617;border:1px solid #1e293b;'
         'border-radius:{}px;display:flex;align-items:center;justify-content:center;overflow:hidden;">'
         "{}</div>",
-        sx,
-        sy,
+        x,
+        y,
         coord.row,
         coord.col,
         coord.linear_index,
@@ -119,27 +118,27 @@ def _genetic_sample_mini_map_cell_div(
 
 def _genetic_sample_mini_map_cells_html(
     *,
-    sw: int,
-    sh: int,
-    sminx: int,
-    sminy: int,
+    width: int,
+    height: int,
+    min_x: int,
+    min_y: int,
     by_pos: dict[tuple[int, int], DecodedCellDTO],
     cell_px: int,
     img_px: int,
 ) -> list[SafeString]:
     cells_html: list[SafeString] = []
-    # Row 0 at top = smallest server_y (= smallest raw Y). Grid order is defined by
+    # Row 0 at top = smallest raw Y. Grid order is defined by
     # ``mini_map_grid_coord``; tests assert it matches this loop (no rotation mixed into row/col).
-    for grid_r in range(sh):
-        for grid_c in range(sw):
-            sx = sminx + grid_c
-            sy = sminy + grid_r
+    for grid_r in range(height):
+        for grid_c in range(width):
+            x = min_x + grid_c
+            y = min_y + grid_r
             coord = mini_map_grid_coord(
-                sx,
-                sy,
-                server_min_x=sminx,
-                server_min_y=sminy,
-                server_width=sw,
+                x,
+                y,
+                min_x=min_x,
+                min_y=min_y,
+                width=width,
             )
             at_cell = by_pos.get((grid_c, grid_r))
             if at_cell is None:
@@ -152,8 +151,8 @@ def _genetic_sample_mini_map_cells_html(
                 )
             cells_html.append(
                 _genetic_sample_mini_map_cell_div(
-                    sx=sx,
-                    sy=sy,
+                    x=x,
+                    y=y,
                     coord=coord,
                     inner=inner,
                     sprite_relpath=sprite_relpath,
@@ -172,9 +171,9 @@ def genetic_sample_mini_map_html(
 ) -> SafeString | str:
     """CSS grid of blueprint cells; optional ``img`` from ``web/assets/sprites/``.
 
-    ``for_list``: wrap in a bounded viewport (at least ~4×4 cells at default ``cell_px``)
+    ``for_list``: wrap in a bounded viewport (at least ~4횞4 cells at default ``cell_px``)
     with scroll.
-    The drawn grid is at least 4×4 even when the blueprint bbox is smaller (empty cells).
+    The drawn grid is at least 4횞4 even when the blueprint bbox is smaller (empty cells).
     """
 
     if not decoded_json or not isinstance(decoded_json.get("BP"), dict):
@@ -182,32 +181,19 @@ def genetic_sample_mini_map_html(
 
     snap = build_decoded_blueprint_snapshot(decoded_json)
     island_full = full_map_island_bbox_from_decoded_json(decoded_json)
-    if island_full is not None:
-        bbox = island_full
-    else:
-        legacy_full = full_map_server_bbox_from_decoded_json(decoded_json)
-        bbox = legacy_full if legacy_full is not None else snap.bbox_json
+    bbox = island_full if island_full is not None else snap.bbox_json
 
     by_pos: dict[tuple[int, int], DecodedCellDTO] = {}
     if "min_x" in bbox and "width" in bbox:
-        sminx = int(bbox["min_x"])
-        sminy = int(bbox["min_y"])
+        min_x = int(bbox["min_x"])
+        min_y = int(bbox["min_y"])
         sw = max(int(bbox["width"]), _MIN_ADMIN_GRID_COLS)
         sh = max(int(bbox["height"]), _MIN_ADMIN_GRID_ROWS)
         for cell in snap.cells:
-            by_pos[(int(cell.x) - sminx, int(cell.y) - sminy)] = cell
-    elif "server_width" in bbox and "server_height" in bbox:
-        sw = max(int(bbox["server_width"]), _MIN_ADMIN_GRID_COLS)
-        sh = max(int(bbox["server_height"]), _MIN_ADMIN_GRID_ROWS)
-        sminx = int(bbox["server_min_x"])
-        sminy = int(bbox["server_min_y"])
-        for cell in snap.cells:
-            if cell.server_x is None or cell.server_y is None:
-                continue
-            by_pos[(int(cell.server_x) - sminx, int(cell.server_y) - sminy)] = cell
+            by_pos[(int(cell.x) - min_x, int(cell.y) - min_y)] = cell
     else:
         return mark_safe(
-            '<p class="genetic-sample-map-note">bbox가 없어 미니맵을 그릴 수 없습니다.</p>'
+            '<p class="genetic-sample-map-note">bbox媛 ?놁뼱 誘몃땲留듭쓣 洹몃┫ ???놁뒿?덈떎.</p>'
         )
 
     img_px = max(18, cell_px - 6)
@@ -219,10 +205,10 @@ def genetic_sample_mini_map_html(
     )
 
     cells_html = _genetic_sample_mini_map_cells_html(
-        sw=sw,
-        sh=sh,
-        sminx=sminx,
-        sminy=sminy,
+        width=sw,
+        height=sh,
+        min_x=min_x,
+        min_y=min_y,
         by_pos=by_pos,
         cell_px=cell_px,
         img_px=img_px,

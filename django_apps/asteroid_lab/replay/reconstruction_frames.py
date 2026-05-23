@@ -1,4 +1,4 @@
-"""Replay helpers: topology reconstruction rows and stepwise snapshot events.
+﻿"""Replay helpers: topology reconstruction rows and stepwise snapshot events.
 
 ``reconstruction_final`` map rows use island-uniform ``asteroid_*_field`` (canonical).
 ``fill_commit`` may still show the topology placeholder ``cell_kind`` before stamping.
@@ -165,8 +165,6 @@ def build_reconstruction_replay_events(
                             "_replay_synthetic": True,
                             "_reconstruction": "topology_fill",
                         },
-                        server_x=None,
-                        server_y=None,
                     )
                 next_merged[key3] = decoded_cell_to_full_map_row(cell)
 

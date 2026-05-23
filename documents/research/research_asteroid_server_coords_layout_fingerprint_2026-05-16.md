@@ -1,13 +1,15 @@
 ---
-status: RESEARCH
+status: ARCHIVED
 owner: asteroid-lab
-last_reviewed: 2026-05-16
+last_reviewed: 2026-05-23
 supersedes: []
-superseded_by: []
-related_epics: []
+superseded_by: documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md
+related_epics: [PR-F coordinate extinction]
 ---
 
-# Asteroid Lab: server 좌표계 및 레이아웃 핑거프린트 (결정안)
+> **ARCHIVED (PR-F, 2026-05):** Dense server `(server_x, server_y)` and `server_coords.py` are **removed** from product code. Use island-local coords: [`research_shapez2_copy_json_island_local_coords_2026-05-23.md`](research_shapez2_copy_json_island_local_coords_2026-05-23.md). Normative spec: [`docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md`](../../docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md).
+
+# Asteroid Lab: server 좌표계 및 레이아웃 핑거프린트 (결정안, 역사)
 
 **종류**: 구현 메모 (CANON 아님). topology·Lab UI와 연계해 [`documents/ai/plan_asteroid_reconstruction_topology_2026-05-16.md`](../ai/plan_asteroid_reconstruction_topology_2026-05-16.md), [`documents/ai/lab_map_rendering_contract.md`](../ai/lab_map_rendering_contract.md)와 함께 읽는다.
 

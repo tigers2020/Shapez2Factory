@@ -1,4 +1,4 @@
-"""Island-local bbox helpers (PR-F Wave C)."""
+﻿"""Island-local bbox helpers (PR-F Wave C)."""
 
 from __future__ import annotations
 
@@ -23,8 +23,6 @@ def test_island_bbox_from_cells_tight_extent() -> None:
             nested_entry_count=0,
             nested_type_counts_json={},
             raw_entry_json={},
-            server_x=None,
-            server_y=None,
         ),
         DecodedCellDTO(
             x=1,
@@ -38,8 +36,6 @@ def test_island_bbox_from_cells_tight_extent() -> None:
             nested_entry_count=0,
             nested_type_counts_json={},
             raw_entry_json={},
-            server_x=None,
-            server_y=None,
         ),
     )
     bb = island_bbox_from_cells(cells)
@@ -74,8 +70,6 @@ def test_reconstructed_export_writes_full_map_island_bbox_not_server_on_entries(
         nested_entry_count=0,
         nested_type_counts_json={},
         raw_entry_json={"X": 1, "Y": 0, "T": "SpacePipe_Forward"},
-        server_x=None,
-        server_y=None,
     )
     root = build_reconstructed_blueprint_root(
         (cell,),
@@ -88,8 +82,5 @@ def test_reconstructed_export_writes_full_map_island_bbox_not_server_on_entries(
             "height": 1,
         },
     )
-    entry = root["BP"]["Entries"][0]
-    assert "server_x" not in entry and "server_y" not in entry
     meta = root["_asteroid_lab_reconstruction"]
     assert "full_map_island_bbox" in meta
-    assert "full_map_server_bbox" not in meta

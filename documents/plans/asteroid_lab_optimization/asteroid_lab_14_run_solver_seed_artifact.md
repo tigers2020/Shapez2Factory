@@ -1,5 +1,8 @@
 # Asteroid Lab — Sequence 14: Run Solver Seed Artifact 경계
 
+
+> **Plans snapshot:** Not mirrored in `documents/Algorithm/`. For live contracts see [`documents/Algorithm/`](../../Algorithm/). **PR-F (2026-05):** dense server coords removed from product code.
+
 > **상태:** ACTIVE (사람 승인 후 구현). Lab 단일 `ReplayTrack`·append 정본은 `rollback_baseline_lab_replay_timeline.md`와 `asteroid_lab_00_overview.md` §1b를 따른다.
 
 ## 1. 역할 (Architecture Reviewer 합의)

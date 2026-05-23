@@ -14,7 +14,7 @@
 | `Y + 1` | 화면에서 **아래쪽** 한 칸 |
 | `X == 0` | copy JSON에서 **유효** (중앙 extension 등) |
 
-**혼동 금지**: lab **Server dense** (`server_x` / `server_y`), reconstruction **world map** (`x == 0` 열 없음), gene **canonical E** — 별도 프레임. 변환은 `server_coords.attach_server_coords_to_decoded_json` 등 **명시적 경계**에서만.
+**혼동 금지**: copy **island-local**, reconstruction **world map** (`x == 0` 열 없음), gene **canonical E** — 별도 프레임. **PR-F:** dense server `(server_x, server_y)` **삭제** — archived: [`research_asteroid_server_coords_layout_fingerprint_2026-05-16.md`](research_asteroid_server_coords_layout_fingerprint_2026-05-16.md).
 
 ## 검증 예시 (3-ext + miner + belt)
 
@@ -58,7 +58,7 @@ Y=1:  (-2,1) (-1,1) (0,1) (1,1) miner
 | 프레임 | `X==0` | 용도 |
 |--------|--------|------|
 | **Copy JSON island-local** | 허용 | 게임 paste / export `BP.Entries` |
-| **Lab server bbox** | dense 규칙 (`raw_x_to_dense_index`) | fingerprint, optimization input |
+| **Island map grid (`Coord`)** | copy-local과 lab 경계에서 동일 | fingerprint, optimization input (PR-F) |
 | **World / reconstruction map** | **열 없음** | transport BFS, asteroid evidence |
 
 상세 (world map): [`research_blueprint_grid_coordinates_2026-05-10.md`](research_blueprint_grid_coordinates_2026-05-10.md).
@@ -69,10 +69,10 @@ Y=1:  (-2,1) (-1,1) (0,1) (1,1) miner
 |------|------|
 | 디코드 (omitted → 0 문서) | `decode_adapter`, `shapez_copy_decode` |
 | island-local 읽기 | `copy_json_coords` |
-| raw → server bbox | `server_coords.attach_server_coords_to_decoded_json` |
+| island meta attach | `attach_island_coord_meta_to_decoded_json` / `island_bbox.py` |
 | lab → game export XY | `blueprint_canonical_export.translate_lab_entries_to_official_xy` |
 
 ## 테스트
 
 - `tests/unit/asteroid_lab/test_copy_json_island_local_coords.py` — 생략 키·검증 copy string
-- `tests/unit/asteroid_lab/test_server_coords_and_fingerprint.py` — dense / server 부착
+- `tests/unit/asteroid_lab/test_island_bbox.py` — island bbox / persist meta

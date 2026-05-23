@@ -1,6 +1,7 @@
 # 리플레이 버그 집중 분석 보고서
 
-> Role: Runtime Replay Debug Architect
+> Role: Runtime Replay Debug Architect  
+> **Note (2026-05-23 doc sweep):** 좌표 관련 §는 PR-F 이전 가정(dense server)을 포함할 수 있음. 현재 정본: island-local only — [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md), [`docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md`](../../docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md).
 
 ## Executive Summary
 

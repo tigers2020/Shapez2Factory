@@ -1,5 +1,8 @@
 # Rollback Baseline — Lab Replay Timeline Refactor Agent Boundary
 
+
+> **Plans snapshot:** Not mirrored in `documents/Algorithm/`. For live contracts see [`documents/Algorithm/`](../../Algorithm/). **PR-F (2026-05):** dense server coords removed from product code.
+
 ## 목적
 
 이 문서는 **통합 Lab 리플레이 리팩터** 작업 시 에이전트·인간 모두가 따를 **경계(정본)** 를 고정한다.

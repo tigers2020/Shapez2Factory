@@ -1,4 +1,4 @@
-"""Unit tests for replay frame (x, y) cell lookup (lab POST detail)."""
+﻿"""Unit tests for replay frame (x, y) cell lookup (lab POST detail)."""
 
 from __future__ import annotations
 
@@ -96,17 +96,12 @@ def test_lookup_full_map_two_rows_same_xy_merge_order() -> None:
     assert cell.get("tile_type") == "T9"
 
 
-def test_lookup_synthetic_lab_empty_inside_server_bbox() -> None:
+def test_lookup_synthetic_lab_empty_inside_raw_bbox() -> None:
     bbox = {
         "min_x": 0,
         "max_x": 5,
         "min_y": 0,
         "max_y": 3,
-        "dense_min_x": 0,
-        "server_min_x": 0,
-        "server_max_x": 5,
-        "server_min_y": 0,
-        "server_max_y": 3,
     }
     ser = {
         "full_map": [{"x": 99, "y": 99, "cell_kind": "fluid_miner", "layer": None}],
@@ -118,8 +113,6 @@ def test_lookup_synthetic_lab_empty_inside_server_bbox() -> None:
     assert cell is not None
     assert cell.get("_lab_synthetic") is True
     assert cell.get("cell_kind") == "lab_empty"
-    assert cell.get("server_x") is None
-    assert cell.get("server_y") is None
     assert sources.get("lab_synthetic") == "empty_island_cell"
 
 
@@ -135,18 +128,29 @@ def test_lookup_synthetic_lab_empty_inside_island_bbox_only() -> None:
     assert cell is not None
     assert cell.get("_lab_synthetic") is True
     assert cell.get("cell_kind") == "lab_empty"
-    assert "server_x" not in cell
     assert sources.get("lab_synthetic") == "empty_island_cell"
 
 
-def test_lookup_synthetic_none_outside_server_bbox() -> None:
+def test_lookup_does_not_infer_empty_from_all_full_map_xy() -> None:
+    ser = {
+        "full_map": [
+            {"x": 0, "y": 0, "cell_kind": "space_belt"},
+            {"x": 10, "y": 0, "cell_kind": "space_belt"},
+        ],
+        "diff": {},
+        "cell_overlay_json": {},
+    }
+    cell, sources = lookup_cell_in_serialized_frame(ser, 5, 0)
+    assert cell is None
+    assert "lab_synthetic" not in sources
+
+
+def test_lookup_synthetic_none_outside_raw_bbox() -> None:
     bbox = {
-        "dense_min_x": 0,
+        "min_x": 0,
+        "max_x": 1,
         "min_y": 0,
-        "server_min_x": 0,
-        "server_max_x": 1,
-        "server_min_y": 0,
-        "server_max_y": 0,
+        "max_y": 0,
     }
     ser = {
         "full_map": [],

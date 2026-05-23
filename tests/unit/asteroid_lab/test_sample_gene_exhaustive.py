@@ -1,14 +1,10 @@
-"""Exhaustive sample-gene generator and seed command (contract tests)."""
+﻿"""Exhaustive sample-gene generator and seed command (contract tests)."""
 
 from __future__ import annotations
-
-import copy
-from typing import Any
 
 import pytest
 from django.core.management import call_command
 
-from django_apps.asteroid_lab.adapters.blueprint_canonical_export import to_official_island_root
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     DELTA_NWS,
@@ -18,7 +14,6 @@ from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     build_layout_root,
 )
 from django_apps.asteroid_lab.models import GeneticSample
-from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
 
 pytestmark = pytest.mark.slow
 
@@ -41,39 +36,6 @@ def test_exhaustive_generator_all_layout_entries_raw_x_nonzero(
     for g in genes:
         for row in g.layout_json["BP"]["Entries"]:
             assert row["X"] != 0
-
-
-def _official_export_occupied_server_x_contiguous(layout_root: dict[str, Any]) -> bool:
-    """Lab layout ??official island XY ??attach_server_coords; no holes in server_x columns."""
-
-    official = to_official_island_root(copy.deepcopy(layout_root))
-    d = copy.deepcopy(official)
-    attach_server_coords_to_decoded_json(d)
-    bp = d.get("BP")
-    if not isinstance(bp, dict):
-        return False
-    entries = bp.get("Entries")
-    if not isinstance(entries, list):
-        return False
-    sxs = [
-        int(e["server_x"])
-        for e in entries
-        if isinstance(e, dict) and isinstance(e.get("server_x"), int)
-    ]
-    if not sxs:
-        return True
-    lo, hi = min(sxs), max(sxs)
-    return hi - lo + 1 == len(set(sxs))
-
-
-def test_exhaustive_generator_official_export_server_x_always_contiguous(
-    exhaustive_genes_ext3: tuple[list, object],
-) -> None:
-    """Dense-delta export_x: west branches must not leave a gap in bbox server_x columns."""
-
-    genes, _stats = exhaustive_genes_ext3
-    for g in genes:
-        assert _official_export_occupied_server_x_contiguous(g.layout_json)
 
 
 def test_abstract_grid_to_raw_xy_skips_x_zero_column() -> None:

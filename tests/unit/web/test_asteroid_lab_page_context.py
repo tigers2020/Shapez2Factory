@@ -1,4 +1,4 @@
-"""A6.1 Lab page context: read-only replay frames for UI (never solver input)."""
+﻿"""A6.1 Lab page context: read-only replay frames for UI (never solver input)."""
 
 from __future__ import annotations
 
@@ -372,10 +372,14 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert 'closest("#lab-timeline-controls, #lab-timeline-scrub")' in js
     assert "setTimelineIndex" in js
     assert "hasServerReplay" in js
+    assert "labCellDetailIsSuppressedKey" in js
+    assert 'startsWith("server_")' in js
+    assert "out.server_x" not in js
+    assert "Sources (server)" not in js
     assert "replayPhaseForFrame" in js
     assert "updateFrameInfo" in js
     assert "replaceLabReplayPayload" in js
-    assert "bootStartedWithServerReplay" not in js
+    assert "bootStartedWithRuntimeReplay" not in js
     assert "syncProjectSlugHiddenFromRedirect" in js
     assert "lab-replay-grid-stage" in js
     assert "bindLabViewportInteractions" in js
@@ -384,6 +388,9 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "gridViewport.style.transform" not in js
     assert "gridViewport.style.width" not in js
     assert "gridViewport.style.height" not in js
+    assert "lab-replay-grid-hud-server-coord" not in js
+    assert "getLabCellDisplayServerCoord" not in js
+    assert "domIndexToServerXY" not in js
 
     tpl_path = (
         root / "django_apps" / "web" / "templates" / "web" / "asteroid_miner_layout_solver.html"
@@ -398,6 +405,8 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "lab-identifier-sprite-paths-data" in tpl
     assert "lab-replay-track-metrics-data" in tpl
     assert 'id="lab-replay-run-status"' in tpl
+    assert 'id="lab-replay-grid-hud-server-coord"' not in tpl
+    assert ">srv<" not in tpl
     assert 'id="lab-evolution-runs-list"' in tpl
     assert "lab-detail-first-issue" in tpl
     assert "lab-detail-placed" in tpl

@@ -46,7 +46,7 @@ class OptimizationInput:
     transport_kind: TransportKind
     route_goals: tuple[RouteGoal, ...]
     existing_transport_cells: frozenset[ExistingTransportCell]
-    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE
+    coord_frame: CoordFrame = CoordFrame.ISLAND_RAW
 
 
 @dataclass(frozen=True, slots=True)

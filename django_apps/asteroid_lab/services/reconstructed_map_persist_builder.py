@@ -15,8 +15,8 @@ from django_apps.asteroid_lab.reconstruction.confidence import reconstruction_pe
 from django_apps.asteroid_lab.reconstruction.display_map import (
     merged_display_cells_from_reconstruction,
 )
-from django_apps.asteroid_lab.snapshots.island_bbox import island_bbox_from_cells
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
+from django_apps.asteroid_lab.snapshots.island_bbox import island_bbox_from_cells
 
 
 @dataclass(frozen=True, slots=True)

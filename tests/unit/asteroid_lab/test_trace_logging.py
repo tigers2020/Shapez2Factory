@@ -1,4 +1,4 @@
-"""Asteroid Lab structured trace logging contracts."""
+﻿"""Asteroid Lab structured trace logging contracts."""
 
 from __future__ import annotations
 
@@ -24,7 +24,6 @@ def test_trace_logger_writes_stage_jsonl_and_summary(tmp_path) -> None:
         stage="decode.coord_projection",
         event="coord_projected",
         source={"module": "m", "function": "f"},
-        cell={"raw_x": 1, "raw_y": 0, "server_x": 0, "server_y": 0},
     )
     logger.close()
 
@@ -34,7 +33,6 @@ def test_trace_logger_writes_stage_jsonl_and_summary(tmp_path) -> None:
     assert rows[0]["project_slug"] == "proj-a"
     assert rows[0]["solver_run_id"] == 42
     assert rows[0]["stage"] == "decode.coord_projection"
-    assert rows[0]["cell"]["server_x"] == 0
     summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
     assert summary["event_count"] == 1
     assert summary["stage_counts"]["decode.coord_projection"] == 1

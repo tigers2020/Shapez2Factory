@@ -1,5 +1,8 @@
 # Phase 7 — Incremental Route Commit
 
+
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_07_incremental_commit.md`](../../Algorithm/asteroid_lab_07_incremental_commit.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 ## 목적
 
 Evolutionary search가 선택한 best genome을 실제 layout candidate로 확정한다.

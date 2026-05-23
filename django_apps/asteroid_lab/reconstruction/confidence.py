@@ -30,7 +30,7 @@ _CONFIDENCE_SCORE_MIN = 0.95
 
 def _topology_coord(
     cell: DecodedCellDTO,
-    params: tuple[int, int] | None,
+    params: object | None = None,
     *,
     coord_frame: CoordFrame,
 ) -> Coord | None:
@@ -57,9 +57,8 @@ def build_candidate_masks(
     cells: Sequence[DecodedCellDTO],
     *,
     wall_coords: Iterable[Coord],
-    server_xy_params: tuple[int, int] | None,
     interior_patch_coords: Iterable[Coord],
-    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
+    coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
 ) -> tuple[frozenset[Coord], frozenset[Coord]]:
     """Two topology-coordinate masks: interior-patch hint and wall-adjacent fill."""
 
@@ -69,7 +68,7 @@ def build_candidate_masks(
     for cell in cells:
         if not _is_inferred_fill(cell):
             continue
-        sv = _topology_coord(cell, server_xy_params, coord_frame=coord_frame)
+        sv = _topology_coord(cell, coord_frame=coord_frame)
         if sv is None:
             continue
         x, y = cell.x, cell.y
@@ -171,11 +170,10 @@ def apply_confidence_to_result(
     """Attach confidence fields and summary metrics to a reconstruction result."""
 
     coord_frame = result.coord_frame
-    params = result.server_xy_params
     hard: set[Coord] = set()
     mineable: set[Coord] = set()
     for cell in result.cells:
-        sv = _topology_coord(cell, params, coord_frame=coord_frame)
+        sv = _topology_coord(cell, coord_frame=coord_frame)
         if sv is None:
             continue
         if cell.cell_kind in ASTEROID_FIELD_KINDS:
@@ -186,7 +184,6 @@ def apply_confidence_to_result(
     mask_a, mask_b = build_candidate_masks(
         result.cells,
         wall_coords=wall_coords,
-        server_xy_params=params,
         interior_patch_coords=interior_patch_coords,
         coord_frame=coord_frame,
     )
@@ -209,7 +206,6 @@ def apply_confidence_to_result(
         summary_json=dict(result.summary_json),
         outer_rim_coords=result.outer_rim_coords,
         coord_frame=coord_frame,
-        server_xy_params=params,
         confirmed_cells=confirmed,
         ambiguous_cells=ambiguous,
         external_void_cells=external_void,
@@ -244,7 +240,6 @@ def apply_confidence_to_result(
         summary_json=summary,
         outer_rim_coords=result.outer_rim_coords,
         coord_frame=coord_frame,
-        server_xy_params=params,
         confirmed_cells=confirmed,
         ambiguous_cells=ambiguous,
         external_void_cells=external_void,

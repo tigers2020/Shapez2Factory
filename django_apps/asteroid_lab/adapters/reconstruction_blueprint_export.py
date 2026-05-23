@@ -1,4 +1,4 @@
-"""Reconstructed island: ``asteroid_*_field`` ↔ ``Layout_*MinerExtension`` blueprint I/O."""
+﻿"""Reconstructed island: ``asteroid_*_field`` ??``Layout_*MinerExtension`` blueprint I/O."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ _T_TO_KIND: dict[str, str] = {
 
 
 def tile_type_for_reconstruction_export(cell: DecodedCellDTO) -> str:
-    """Map reconstruction cell to game ``T`` for persisted copy/json (fields → Extension only)."""
+    """Map reconstruction cell to game ``T`` for persisted copy/json (fields ??Extension only)."""
 
     if cell.cell_kind in ASTEROID_FIELD_KINDS:
         mapped = _KIND_TO_T.get(cell.cell_kind)
@@ -113,7 +113,7 @@ def cells_for_field_export_from_decoded_json(
 
 
 def cell_kind_for_reconstruction_import(tile_type: str) -> tuple[str, str]:
-    """Return ``(cell_kind, transport_kind)``; Extension ``T`` → asteroid field kinds."""
+    """Return ``(cell_kind, transport_kind)``; Extension ``T`` ??asteroid field kinds."""
 
     if tile_type == T_SHAPE_FIELD:
         return ("asteroid_shape_field", "none")
@@ -216,7 +216,7 @@ def build_reconstructed_normalized_dto(
 
 
 def encode_reconstructed_copy_string(root: dict[str, Any]) -> str:
-    """``SHAPEZ2-4-…`` with trailing ``$`` (game paste convention)."""
+    """``SHAPEZ2-4-??` with trailing ``$`` (game paste convention)."""
 
     return f"{encode_copy_string(root)}$"
 
@@ -224,7 +224,7 @@ def encode_reconstructed_copy_string(root: dict[str, Any]) -> str:
 def entries_to_reconstruction_cells(
     entries: list[dict[str, Any]],
 ) -> tuple[DecodedCellDTO, ...]:
-    """Import ``BP.Entries`` with Extension → ``asteroid_*_field`` (not miner_extension)."""
+    """Import ``BP.Entries`` with Extension ??``asteroid_*_field`` (not miner_extension)."""
 
     cells: list[DecodedCellDTO] = []
 
@@ -256,8 +256,6 @@ def entries_to_reconstruction_cells(
                 nested_entry_count=nested_count,
                 nested_type_counts_json=nested_type_counts,
                 raw_entry_json=raw_entry,
-                server_x=None,
-                server_y=None,
             )
         )
 

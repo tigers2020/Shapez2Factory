@@ -1,4 +1,4 @@
-"""Genetic sample admin mini-map: ``data-*`` contract, grid neighbors, rotation degrees."""
+﻿"""Genetic sample admin mini-map: ``data-*`` contract, grid neighbors, rotation degrees."""
 
 from __future__ import annotations
 
@@ -30,8 +30,8 @@ class _MiniMapCellParser(HTMLParser):
             return
         self.cells.append(
             {
-                "data-server-x": int(d["data-server-x"]),
-                "data-server-y": int(d["data-server-y"]),
+                "data-raw-x": int(d["data-raw-x"]),
+                "data-raw-y": int(d["data-raw-y"]),
                 "data-grid-row": int(d["data-grid-row"]),
                 "data-grid-col": int(d["data-grid-col"]),
                 "data-linear-index": int(d["data-linear-index"]),
@@ -48,15 +48,15 @@ def _parse_mini_map_cells(html: str) -> list[dict[str, int | str]]:
     return p.cells
 
 
-def _by_server(cells: list[dict[str, int | str]]) -> dict[tuple[int, int], dict[str, int | str]]:
-    return {(int(c["data-server-x"]), int(c["data-server-y"])): c for c in cells}
+def _by_raw(cells: list[dict[str, int | str]]) -> dict[tuple[int, int], dict[str, int | str]]:
+    return {(int(c["data-raw-x"]), int(c["data-raw-y"])): c for c in cells}
 
 
 @pytest.mark.django_db
 def test_for_list_wrap_includes_four_by_four_viewport_css(
     lab_sprite_identifiers_for_admin: object,
 ) -> None:
-    """Changelist mini-map: outer box fits 4×4 cells at 52px (see genetic_sample_mini_map)."""
+    """Changelist mini-map: outer box fits 4횞4 cells at 52px (see genetic_sample_mini_map)."""
 
     decoded = {
         "V": 88,
@@ -95,7 +95,7 @@ def test_mini_map_forward_r_quarters_degrees(
     }
     html = str(genetic_sample_mini_map_html(decoded))
     cells = _parse_mini_map_cells(html)
-    by_s = _by_server(cells)
+    by_s = _by_raw(cells)
     fwd = "SpacePipe/SpacePipe_Forward.svg"
     assert by_s[(1, 0)]["data-sprite"] == fwd and by_s[(1, 0)]["data-rotation-deg"] == 0
     assert by_s[(2, 0)]["data-sprite"] == fwd and by_s[(2, 0)]["data-rotation-deg"] == 90
@@ -121,7 +121,7 @@ def test_mini_map_neighbor_col_and_row_increment(
     }
     html = str(genetic_sample_mini_map_html(decoded))
     cells = _parse_mini_map_cells(html)
-    by_s = _by_server(cells)
+    by_s = _by_raw(cells)
     a00 = by_s[(1, 0)]
     a10 = by_s[(2, 0)]
     a01 = by_s[(1, 1)]
@@ -157,9 +157,9 @@ def test_mini_map_data_attrs_match_mini_map_grid_coord(
     sminy = int(bbox["min_y"])
     sw = max(int(bbox["width"]), 4)
     for c in cells:
-        sx = int(c["data-server-x"])
-        sy = int(c["data-server-y"])
-        g = mini_map_grid_coord(sx, sy, server_min_x=sminx, server_min_y=sminy, server_width=sw)
+        sx = int(c["data-raw-x"])
+        sy = int(c["data-raw-y"])
+        g = mini_map_grid_coord(sx, sy, min_x=sminx, min_y=sminy, width=sw)
         assert c["data-grid-row"] == g.row
         assert c["data-grid-col"] == g.col
         assert c["data-linear-index"] == g.linear_index
@@ -169,13 +169,13 @@ def test_mini_map_data_attrs_match_mini_map_grid_coord(
 def test_mini_map_renders_distinct_cells_when_raw_x_zero_and_one_share_row(
     lab_sprite_identifiers_for_admin: object,
 ) -> None:
-    """Regression: ``X==0`` miner and ``X==1`` pipe must not collide on one server cell."""
+    """Regression: ``X==0`` miner and ``X==1`` pipe must not collide on one raw cell."""
 
     norm = normalize_decoded_blueprint(
         decode_copy_string(USER_FLUID_MINER_J_COPY.strip().removesuffix("$"))
     )
     html = str(genetic_sample_mini_map_html(norm.decoded_json))
-    by_s = _by_server(_parse_mini_map_cells(html))
+    by_s = _by_raw(_parse_mini_map_cells(html))
     assert (0, -1) in by_s
     assert (1, -1) in by_s
     assert "Miner/" in str(by_s[(0, -1)]["data-sprite"])
@@ -197,6 +197,6 @@ def test_mini_map_left_and_right_turn_sprites(
         },
     }
     html = str(genetic_sample_mini_map_html(decoded))
-    by_s = _by_server(_parse_mini_map_cells(html))
+    by_s = _by_raw(_parse_mini_map_cells(html))
     assert by_s[(1, 0)]["data-sprite"] == "SpacePipe/SpacePipe_LeftTurn.svg"
     assert by_s[(2, 0)]["data-sprite"] == "SpacePipe/SpacePipe_RightTurn.svg"

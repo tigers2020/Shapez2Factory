@@ -1,5 +1,8 @@
 # Phase 5 — Genome and Fitness
 
+
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_05_genome_fitness.md`](../../Algorithm/asteroid_lab_05_genome_fitness.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 > Fitness input contract·predictive vs observed 분리 — Algorithm [`asteroid_lab_05_genome_fitness.md`](../../Algorithm/asteroid_lab_05_genome_fitness.md) 정본.
 
 ## 목적

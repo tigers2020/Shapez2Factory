@@ -1,4 +1,4 @@
-"""Interior component detection, enclosure guards, and topology placeholder fill."""
+﻿"""Interior component detection, enclosure guards, and topology placeholder fill."""
 
 from __future__ import annotations
 
@@ -158,7 +158,7 @@ def external_pocket_components(
 
 
 def _is_narrow_external_channel(comp: set[Coord]) -> bool:
-    """1-cell-wide external run (vertical seam / hole-island slit) — preserve as void."""
+    """1-cell-wide external run (vertical seam / hole-island slit) ??preserve as void."""
 
     if len(comp) > 9:
         return False
@@ -293,9 +293,6 @@ def synthetic_field_cell(
     y: int,
     layer: int | None,
     field_kind: str,
-    *,
-    server_x: int | None = None,
-    server_y: int | None = None,
 ) -> DecodedCellDTO:
     """Replay-only filled hole cell (placeholder ``cell_kind`` until island stamp)."""
 
@@ -311,6 +308,4 @@ def synthetic_field_cell(
         nested_entry_count=0,
         nested_type_counts_json={},
         raw_entry_json={"_replay_synthetic": True, "_reconstruction": "topology_fill"},
-        server_x=server_x,
-        server_y=server_y,
     )

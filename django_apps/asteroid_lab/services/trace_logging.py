@@ -1,6 +1,6 @@
-"""Asteroid Lab 구조화 trace JSONL writer.
+﻿"""Asteroid Lab 援ъ“??trace JSONL writer.
 
-로그는 디버그 산출물이며 solver 입력으로 읽지 않는다.
+濡쒓렇???붾쾭洹??곗텧臾쇱씠硫?solver ?낅젰?쇰줈 ?쎌? ?딅뒗??
 """
 
 from __future__ import annotations
@@ -76,7 +76,7 @@ def _new_run_id() -> str:
 
 
 class AsteroidLabTraceLogger:
-    """run_id/stage 단위 JSONL writer."""
+    """run_id/stage ?⑥쐞 JSONL writer."""
 
     def __init__(
         self,
@@ -110,7 +110,7 @@ class AsteroidLabTraceLogger:
         solver_run_id: int | None = None,
         replay_track_id: int | None = None,
     ) -> None:
-        """나중에 생성된 DB 식별자를 이후 이벤트 컨텍스트에 붙인다."""
+        """?섏쨷???앹꽦??DB ?앸퀎?먮? ?댄썑 ?대깽??而⑦뀓?ㅽ듃??遺숈씤??"""
 
         if solver_run_id is not None:
             self.solver_run_id = int(solver_run_id)
@@ -126,7 +126,7 @@ class AsteroidLabTraceLogger:
         source: Mapping[str, Any] | None = None,
         **payload: Any,
     ) -> None:
-        """한 이벤트를 stage별 JSONL 파일에 append한다."""
+        """???대깽?몃? stage蹂?JSONL ?뚯씪??append?쒕떎."""
 
         if self._truncated:
             return
@@ -146,7 +146,7 @@ class AsteroidLabTraceLogger:
         self._write_event(row)
 
     def close(self) -> None:
-        """summary.json을 갱신한다."""
+        """summary.json??媛깆떊?쒕떎."""
 
         summary = {
             "schema_version": _SCHEMA_VERSION,
@@ -224,7 +224,7 @@ def create_asteroid_lab_trace_logger(
     replay_track_id: int | None = None,
     run_id: str | None = None,
 ) -> AsteroidLabTraceLogger | None:
-    """settings flag가 켜져 있을 때만 파일 logger를 만든다."""
+    """settings flag媛 耳쒖졇 ?덉쓣 ?뚮쭔 ?뚯씪 logger瑜?留뚮뱺??"""
 
     if not _settings_bool("ASTEROID_LAB_TRACE_LOG_ENABLED", False):
         return None
@@ -248,15 +248,13 @@ def record_decoded_snapshot_trace(
     copy_code_hash: str,
     input_length: int,
 ) -> None:
-    """decode 요약과 raw/server 좌표 projection sample을 기록한다."""
+    """decode 요약과 raw 좌표 projection sample을 기록한다."""
 
     if trace_logger is None:
         return
     cells = tuple(snapshot.cells)
-    server_pairs = [
-        (c.server_x, c.server_y) for c in cells if c.server_x is not None and c.server_y is not None
-    ]
-    dup_pairs = sum(n - 1 for n in Counter(server_pairs).values() if n > 1)
+    raw_pairs = [(c.x, c.y) for c in cells]
+    dup_pairs = sum(n - 1 for n in Counter(raw_pairs).values() if n > 1)
     trace_logger.event(
         stage="decode.raw",
         event="raw_blueprint_loaded",
@@ -272,16 +270,9 @@ def record_decoded_snapshot_trace(
             "cell_count": len({(c.x, c.y, c.layer) for c in cells}),
             "raw_bbox": dict(snapshot.bbox_json),
             "raw_x_zero_count": sum(1 for c in cells if int(c.x) == 0),
-            "missing_server_coord_count": sum(
-                1 for c in cells if c.server_x is None or c.server_y is None
-            ),
-            "duplicate_server_coord_count": dup_pairs,
-            "duplicate_server_coord_note": (
-                "pairs of blueprint raw_x columns map to one dense_x strip; "
-                "multiple buildings may share (server_x, server_y) by design"
-            ),
-            "coord_projection_sample_limit": int(trace_logger.sample_limit),
-            "coord_projection_rows_logged": min(len(cells), int(trace_logger.sample_limit)),
+            "duplicate_raw_coord_count": dup_pairs,
+            "coord_sample_limit": int(trace_logger.sample_limit),
+            "coord_rows_logged": min(len(cells), int(trace_logger.sample_limit)),
             "cell_kind_counts": dict(snapshot.cell_kind_counts_json),
             "transport_kind_counts": dict(snapshot.transport_kind_counts_json),
         },
@@ -290,11 +281,9 @@ def record_decoded_snapshot_trace(
         reason = None
         if int(cell.x) == 0:
             reason = "raw_x_zero"
-        elif cell.server_x is None or cell.server_y is None:
-            reason = "missing_server_coord"
         trace_logger.event(
-            stage="decode.coord_projection",
-            event="coord_projected" if reason is None else "coord_projection_diagnostic",
+            stage="decode.coord",
+            event="coord_recorded" if reason is None else "coord_diagnostic",
             source={
                 "module": "django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot",
                 "function": "build_decoded_blueprint_snapshot",
@@ -302,13 +291,10 @@ def record_decoded_snapshot_trace(
             cell={
                 "raw_x": cell.x,
                 "raw_y": cell.y,
-                "server_x": cell.server_x,
-                "server_y": cell.server_y,
                 "layer": cell.layer,
                 "cell_kind": cell.cell_kind,
                 "tile_type": cell.tile_type,
                 "transport_kind": cell.transport_kind,
-                "projection_policy": "server_bbox_right_bottom_dense_x_v1",
             },
             diagnostic={} if reason is None else {"reason": reason},
         )
@@ -318,7 +304,7 @@ def record_reconstruction_trace_events(
     trace_logger: AsteroidLabTraceLogger | None,
     trace_events: Sequence[Any],
 ) -> None:
-    """기존 reconstruction trace collector 이벤트를 JSONL에도 복사한다."""
+    """湲곗〈 reconstruction trace collector ?대깽?몃? JSONL?먮룄 蹂듭궗?쒕떎."""
 
     if trace_logger is None:
         return

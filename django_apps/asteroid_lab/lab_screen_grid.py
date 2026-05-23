@@ -1,4 +1,4 @@
-"""Admin genetic-sample mini-map: server bbox → grid row/col (no mirror, no direction strings)."""
+"""Admin genetic-sample mini-map: island bbox -> grid row/col."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from django_apps.asteroid_lab.admin_lab_sprites import normalize_lab_rotation_q
 
 @dataclass(frozen=True)
 class MiniMapGridCoord:
-    """Tight server bbox: ``row``/``col`` vs ``server_min_*``; ``linear_index`` row-major."""
+    """Tight island bbox: ``row``/``col`` vs ``min_*``; ``linear_index`` row-major."""
 
     row: int
     col: int
@@ -17,40 +17,40 @@ class MiniMapGridCoord:
 
 
 def mini_map_grid_coord(
-    server_x: int,
-    server_y: int,
+    x: int,
+    y: int,
     *,
-    server_min_x: int,
-    server_min_y: int,
-    server_width: int,
+    min_x: int,
+    min_y: int,
+    width: int,
 ) -> MiniMapGridCoord:
-    row = int(server_y) - int(server_min_y)
-    col = int(server_x) - int(server_min_x)
+    row = int(y) - int(min_y)
+    col = int(x) - int(min_x)
     return MiniMapGridCoord(
         row=row,
         col=col,
-        linear_index=row * int(server_width) + col,
+        linear_index=row * int(width) + col,
     )
 
 
 def mini_map_linear_index(
-    server_x: int,
-    server_y: int,
+    x: int,
+    y: int,
     *,
-    server_min_x: int,
-    server_min_y: int,
-    server_width: int,
+    min_x: int,
+    min_y: int,
+    width: int,
 ) -> int:
     return mini_map_grid_coord(
-        server_x,
-        server_y,
-        server_min_x=server_min_x,
-        server_min_y=server_min_y,
-        server_width=server_width,
+        x,
+        y,
+        min_x=min_x,
+        min_y=min_y,
+        width=width,
     ).linear_index
 
 
 def sprite_rotation_deg_from_quarter(rotation: object) -> int:
-    """Domain quarter ``R`` → CSS ``rotate`` degrees (East-facing asset, CW quarter steps)."""
+    """Domain quarter ``R`` -> CSS ``rotate`` degrees (East-facing asset, CW quarter steps)."""
 
     return normalize_lab_rotation_q(rotation) * 90

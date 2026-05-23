@@ -11,6 +11,8 @@ related_epics:
 
 # Asteroid Lab / Optimization Layer 개발 진행 보고서
 
+> **Plans snapshot (REPORT, 2026-05-17):** Historical progress only. Coordinate canon: [`documents/Algorithm/asteroid_lab_00_overview.md`](../../Algorithm/asteroid_lab_00_overview.md). **PR-F (2026-05):** dense server coords removed; do not treat “Server Dense Grid” statements below as current.
+
 **역할**: Principal Solver System Architect
 
 **기준 시점**: 2026-05-17
@@ -98,7 +100,7 @@ Replay / NDJSON / artifact는:
 **완료 요약**
 
 - **DTO·Enum 고정**: `RouteGoal`, `TopologyGraph`, `OptimizationInput`, `RouteProbeFailureReason`, `CandidateRejectReason`, `ValidationIssueCode`, `CommitConflictReason`, `OptimizationReplayEventType`, `ReservationState` 등 핵심 계약을 enum 기반으로 고정.
-- **Server Dense Grid 정본화**: 최적화 계층 전체는 `Coord = Server X/Y`만 사용한다. 즉 `..., -1, 0, 1, ...` 밀집 좌표계를 정본으로 사용.
+- **Island map grid (historical note, PR-F):** was Server Dense; now `CoordFrame.ISLAND_RAW`.
 - **RouteDomainSnapshotBuilder 도입**: `route_domain`의 단일 생성 책임을 `RouteDomainSnapshotBuilder`로 고정하여 candidate / probe / commit / validation 간 drift를 줄였다.
 
 ### Sequence 2: Pattern Library

@@ -1,4 +1,4 @@
-"""G3 proof policy — island-paste vs world-equivalence tracks."""
+﻿"""G3 proof policy ??island-paste vs world-equivalence tracks."""
 
 from __future__ import annotations
 
@@ -32,14 +32,11 @@ def test_lab_solver_defaults_to_island_raw_frame() -> None:
     assert lab_solver_optimization_coord_frame({}) == CoordFrame.ISLAND_RAW
 
 
-def test_lab_solver_honors_explicit_server_dense_override() -> None:
-    assert (
-        lab_solver_optimization_coord_frame({"coord_frame": "server_dense"})
-        == CoordFrame.SERVER_DENSE
-    )
+def test_lab_solver_honors_explicit_world_raw_override() -> None:
+    assert lab_solver_optimization_coord_frame({"coord_frame": "world_raw"}) == CoordFrame.WORLD_RAW
 
 
-def test_infer_topology_coord_frame_is_island_when_no_server_on_cells() -> None:
+def test_infer_topology_coord_frame_is_island_for_cells() -> None:
     cells = (
         DecodedCellDTO(
             x=1,
@@ -53,8 +50,6 @@ def test_infer_topology_coord_frame_is_island_when_no_server_on_cells() -> None:
             nested_entry_count=0,
             nested_type_counts_json={},
             raw_entry_json={},
-            server_x=None,
-            server_y=None,
         ),
     )
     assert infer_topology_coord_frame(cells) == CoordFrame.ISLAND_RAW

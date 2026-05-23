@@ -1,5 +1,7 @@
 # Phase 1 — Optimization Input Contract
 
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_01_optimization_input.md`](../../Algorithm/asteroid_lab_01_optimization_input.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 ## 목적
 
 Reconstruction 결과를 optimization layer가 안정적으로 사용할 수 있는 입력 DTO로 변환한다.
@@ -25,11 +27,9 @@ existing belt / pipe / trunk / protected corridor
 
 **belt vs pipe(kind)** 는 좌표만으로 재추론하지 않는다. `RouteCellDomain.transport_mask` 생성은 `existing_transport_cells`(또는 이에서 유도한 coord→kind)를 우선 소스로 한다 (Phase 4 빌더).
 
-## 좌표 정본 (Server X/Y, 12L)
+## 좌표 정본 (Island-local, PR-F)
 
-OptimizationInput 이후 모든 Coord는 Server X/Y dense coord이며, raw 좌표는 입력으로 허용하지 않는다. normalize(디코드·cleanup·reconstruction) 이후 알고리즘 계층에서 raw↔server 변환을 다시 호출하는 것은 금지다. raw↔server 변환은 decode/import boundary 또는 final UI/export projection boundary에서만 허용된다.
-
-**검증(12L-hardening):** `tests/unit/shapez_asteroid/test_import_boundaries.py`(AST·금지 토큰), `tests/unit/asteroid_lab/test_coordinate_boundary.py`(import 경계 `raw_x==0` 가드), `tests/unit/shapez_asteroid/test_optimization_input.py`(server `x==0`·전 셀 Server X/Y), `tests/integration/web/test_asteroid_miner_layout_solver.py`의 `test_post_json_optimization_input_does_not_raw_convert_server_coords`(POST 회귀).
+See **Algorithm** doc. Summary: `CoordFrame.ISLAND_RAW`; dense server **removed**; `test_coordinate_frame_ast_gate.py` forbids `server_*` tokens in product code.
 
 ## Route goal 계약
 
@@ -80,7 +80,7 @@ existing trunk 연결
 
 ## Topology graph 계약
 
-셀 집합만으로는 라우팅·corridor·fitness가 반복해서 **Server 격자** 이웃 유틸(예: `neighbors4_server`)을 호출하게 된다.
+셀 집합만으로는 라우팅·corridor·fitness가 반복해서 **island map grid** 이웃 유틸(예: `grid_contract.neighbors4`)을 호출하게 된다.
 
 **TopologyGraph**는 reconstruction 완료 시점에 한 번 만들고 `OptimizationInput`에 넣어, 이후 탐색·분석의 공통 입력으로 쓴다.
 
@@ -171,24 +171,24 @@ class OptimizationInput:
 
 ## 좌표 규칙
 
-본 플랜과 `OptimizationInput` 이후 전 계층에서 **`Coord` = (Server X, Server Y)** 만을 쓴다. 정수 **밀집 격자**(…, -1, 0, 1, …)이며, 카테인 이웃은 `(x±1, y)`, `(x, y±1)`이다.
+본 플랜과 `OptimizationInput` 이후 전 계층에서 **`Coord` = (island x, island y)** 만을 쓴다. 정수 **밀집 격자**(…, -1, 0, 1, …)이며, 카테인 이웃은 `(x±1, y)`, `(x, y±1)`이다.
 
 Reconstruction·스냅샷 adapter는 이 계약을 만족하는 `Coord`만 `OptimizationInput`에 넣는다.
 
-필수 utility (`Coord` = Server 전용):
+필수 utility (`Coord` = island map):
 
 ```python
-neighbors4_server(coord: Coord) -> tuple[Coord, ...]
+grid_contract.neighbors4(coord, frame) -> tuple[Coord, ...]
 cardinal_unit_toward(src: Coord, dst: Coord) -> Direction
 ```
 
-`neighbors4_server`는 **표준 4방향** 밀집 규칙이다. `topology_graph` 엣지·probe fallback 이웃 나열과 **동일 계약**으로 맞춘다. 엣지 집합과 이웃 유틸은 **단일 출처**를 가진다.
+`grid_contract.neighbors4`는 **표준 4방향** 밀집 규칙이다. `topology_graph` 엣지·probe fallback 이웃 나열과 **동일 계약**으로 맞춘다. 엣지 집합과 이웃 유틸은 **단일 출처**를 가진다.
 
 ## Invariant
 
 ```text
-[ ] 모든 Coord·셀 집합이 Server X/Y (`neighbors4_server` 밀집 4방 계약)
-[ ] topology_graph·probe의 이웃이 `neighbors4_server`와 동일 계약
+[ ] 모든 Coord·셀 집합이 island-local (x, y) (`grid_contract.neighbors4` 밀집 4방 계약)
+[ ] topology_graph·probe의 이웃이 `grid_contract.neighbors4`와 동일 계약
 [ ] inferred interior fill must be mineable asteroid field
 [ ] external void must not be mineable
 [ ] belt/pipe removed positions must not become asteroid evidence by default
@@ -209,7 +209,7 @@ test_optimization_input_preserves_inferred_fill_as_mineable
 test_optimization_input_marks_rim_cells
 test_optimization_input_route_goals_touch_external_void_or_trunk_contract
 test_optimization_input_transport_removed_not_asteroid_evidence
-test_optimization_input_topology_graph_adjacency_matches_neighbors4_server
+test_optimization_input_topology_graph_adjacency_matches_neighbors4
 test_optimization_input_existing_transport_sets_transport_mask_inputs
 test_optimization_input_existing_transport_unique_coord
 test_optimization_input_greenfield_is_empty_transport_and_trunk_and_protected
@@ -221,7 +221,7 @@ test_optimization_input_trunk_cells_subset_of_transport_cells
 ```text
 [ ] OptimizationInput DTO 구현 (route_goals·topology_graph·existing_transport_cells·trunk·protected 포함)
 [ ] Reconstruction → OptimizationInput adapter + **RouteDomainSnapshotBuilder** 시드 경로 (개발 시퀀스 1B와 동일 범위)
-[ ] Server 밀집 이웃(`neighbors4_server`) 테스트 통과
+[ ] island 4-neighbor(`grid_contract.neighbors4`) 테스트 통과
 [ ] hole asteroid 등 topology 어댑터 검증은 시퀀스 1B 완료 기준(개발 시퀀스 10)으로 분리
 ```
 

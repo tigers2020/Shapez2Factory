@@ -41,7 +41,7 @@ export_x = raw_x_to_dense_index(raw_x) - e_dense
 export_y = raw_y - e_y - 1
 ```
 
-[`server_coords.raw_x_to_dense_index`](../../django_apps/asteroid_lab/snapshots/server_coords.py) 와 동일 seam → decode 후 `attach_server_coords` / `_asteroid_lab_coord_system` (`dense_x_minus_min_dense_x`) 와 정합.
+Export-column projection: [`copy_json_coords.py`](../../django_apps/asteroid_lab/snapshots/copy_json_coords.py) (PR-F: no `server_coords.py`). Persist: `island_bbox_left_bottom_raw_xy_v1`.
 
 **생산기** [`sample_gene_exhaustive_generator.py`](../../django_apps/asteroid_lab/services/sample_gene_exhaustive_generator.py) 의 `abstract_grid_to_raw_xy` / NWS 배치는 변경하지 않는다 (버그는 export 층만).
 

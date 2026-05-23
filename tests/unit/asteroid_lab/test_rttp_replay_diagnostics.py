@@ -97,9 +97,7 @@ def test_rttp_lift_column_overlay_clipped_to_valid_domain() -> None:
 
     payload = build_pipeline_start_replay_payload(skeleton)
     probe_coords = {
-        (c["x"], c["y"])
-        for c in payload.cell_overlay_json["cells"]
-        if c["kind"] == "probe.start"
+        (c["x"], c["y"]) for c in payload.cell_overlay_json["cells"] if c["kind"] == "probe.start"
     }
     assert probe_coords == {(0, 0)}
     assert (50, 50) not in probe_coords

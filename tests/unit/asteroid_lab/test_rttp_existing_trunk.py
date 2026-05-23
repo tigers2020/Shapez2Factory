@@ -13,6 +13,7 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     RttpSkeletonConfig,
     TransportKind,
 )
+from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_reconstruction,
 )
@@ -91,3 +92,18 @@ def test_reachable_candidate_attaches_to_existing_trunk() -> None:
 
     assert len(result.normal_candidates) >= 1
     assert any(candidate.reachable for candidate in result.normal_candidates)
+
+
+def test_existing_trunk_pipeline_commits_deterministically() -> None:
+    """P1 map class: full pipeline (select → commit) on reconstruction-seeded trunk."""
+
+    inp = _existing_trunk_optimization_input()
+    first = run_rttp_pipeline(inp, policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM)
+    second = run_rttp_pipeline(inp, policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM)
+
+    assert first.normal_count >= 1
+    assert len(first.commit_result.committed_ids) >= 1
+    assert first.validation_passed
+    assert first == second
+    assert first.commit_result.committed_ids == second.commit_result.committed_ids
+    assert first.genome.commit_order == second.genome.commit_order

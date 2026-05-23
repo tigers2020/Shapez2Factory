@@ -11,8 +11,7 @@ from django_apps.asteroid_lab.replay.replay_enums import ReplayEventType
 
 def test_replay_event_type_enum_includes_rttp_snapshots() -> None:
     assert (
-        ReplayEventType.RTTP_ROUTE_DOMAIN_SNAPSHOT.value
-        == et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT
+        ReplayEventType.RTTP_ROUTE_DOMAIN_SNAPSHOT.value == et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT
     )
     assert (
         ReplayEventType.RTTP_CANDIDATE_POOL_SNAPSHOT.value

@@ -52,7 +52,10 @@ REPLACEMENTS: list[tuple[str, str]] = [
         "**Sequence 12L** (optimization 경계 AST) 2026-05-17. **PR-F:** island-local replay; "
         "`server_coords` 삭제.",
     ),
-    ("### 3.3 Sequence 12L — Server 좌표 경계 (optimization 입력)", "### 3.3 Sequence 12L — Island-local coord boundary"),
+    (
+        "### 3.3 Sequence 12L — Server 좌표 경계 (optimization 입력)",
+        "### 3.3 Sequence 12L — Island-local coord boundary",
+    ),
     (
         "OptimizationInput 이후(및 동일 좌표를 쓰는 candidate·route·evolution·replay 기록)는 Server X/Y만 사용한다.",
         "OptimizationInput 이후는 `CoordFrame.ISLAND_RAW` island `(x, y)` only (PR-F).",
@@ -71,10 +74,19 @@ REPLACEMENTS: list[tuple[str, str]] = [
     ("``server_xy_for_raw_xy``", "dense bridge (removed PR-F)"),
     ("`server_xy_for_raw_xy`", "dense bridge (removed PR-F)"),
     ("server_xy_for_raw_xy", "dense bridge (removed PR-F)"),
-    ("raw `X`/`Y`, `raw_to_server`, `server_to_raw`,", "copy JSON `X`/`Y`; forbidden re-conversion:"),
+    (
+        "raw `X`/`Y`, `raw_to_server`, `server_to_raw`,",
+        "copy JSON `X`/`Y`; forbidden re-conversion:",
+    ),
     ("이미 채워진 `server_x`/`server_y`만 소비하며", "island `Coord` only;"),
-    ("Critical invariant: decode/import normalization이 Server X/Y를 만든 뒤에는", "Critical invariant: after decode/normalize to island grid,"),
-    ("알고리즘 계층의 정본 좌표는 Server X/Y dense grid이다.", "canonical coords are island-local (PR-F)."),
+    (
+        "Critical invariant: decode/import normalization이 Server X/Y를 만든 뒤에는",
+        "Critical invariant: after decode/normalize to island grid,",
+    ),
+    (
+        "알고리즘 계층의 정본 좌표는 Server X/Y dense grid이다.",
+        "canonical coords are island-local (PR-F).",
+    ),
     ("입력 구성은 Server X/Y만 사용한다.", "input uses island-local coords only."),
     ("all Coord satisfy Server dense grid contract", "all Coord satisfy island map grid contract"),
     (

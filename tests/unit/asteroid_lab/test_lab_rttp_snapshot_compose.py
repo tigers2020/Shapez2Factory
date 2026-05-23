@@ -247,23 +247,6 @@ def test_interleave_legacy_write_buffer_rows_emit_canonical_product_types() -> N
     assert out[1]["event_type"] == et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT
 
 
-def test_interleave_legacy_write_buffer_rows_emit_canonical_product_types() -> None:
-    map_frames = [_map_frame(0)]
-    rows = [
-        {
-            "event_type": et.EVENT_TYPE_ROUTING_PROBE_STARTED,
-            "phase": "rttp_pipeline",
-            "title": "legacy probe",
-            "description": "legacy",
-            "metrics": {},
-            "cell_overlay_json": {},
-        },
-    ]
-    out = interleave_rttp_snapshot_frames(map_frames, rows)
-    assert len(out) == 2
-    assert out[1]["event_type"] == et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT
-
-
 def test_interleave_skips_rttp_when_no_renderable_base() -> None:
     rows = [
         {

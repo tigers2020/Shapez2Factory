@@ -22,9 +22,7 @@ def test_island_paste_only_allows_island_raw_promotion_without_world_adapter() -
 
 
 def test_world_equivalence_track_does_not_allow_island_raw_shortcut() -> None:
-    assert not island_raw_promotion_allowed(
-        FixtureCoordProof.REQUIRES_ISLAND_WORLD_EQUIVALENCE
-    )
+    assert not island_raw_promotion_allowed(FixtureCoordProof.REQUIRES_ISLAND_WORLD_EQUIVALENCE)
 
 
 def test_lab_solver_defaults_to_island_raw_frame() -> None:

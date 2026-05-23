@@ -3,6 +3,8 @@
 Pipeline matches the public Shapez 2 copy pipeline (whitespace strip, prefix,
 base64, gzip, UTF-8 JSON object) implemented elsewhere in this repo, but **no**
 decode module is imported here so ``asteroid_lab`` stays decoupled.
+
+``BP.Entries`` coordinates are island-local blueprint cells (omitted ``X``/``Y``/``R`` → ``0``).
 """
 
 from __future__ import annotations

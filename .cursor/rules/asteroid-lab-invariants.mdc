@@ -34,7 +34,7 @@ TDD·테스트 보호 대상 표: [testing.md § Domain invariants](mdc:document
 
 |------|------|-------------------|
 
-| **좌표** | `raw_x`/`raw_y` 보존(게임·디코드). 알고리즘·OptimizationInput 이후는 **Server X/Y** only. `raw_x==0` → server 부착 없음. normalize 이후 알고리즘 계층에서 raw↔server 재변환 금지. | [`asteroid_lab_01`](mdc:documents/Algorithm/asteroid_lab_01_optimization_input.md); `test_optimization_input.py` |
+| **좌표** | Copy JSON `X`/`Y` = **island-local** (omitted→0; `X==0` valid; `X+1` right, `Y+1` down). `raw_x`/`raw_y` 보존(디코드). 알고리즘·OptimizationInput 이후 **Server X/Y** only. World map: `x==0` 열 없음 — copy local을 world로 혼용 금지. normalize 이후 raw↔server 재변환 금지. | [`research_shapez2_copy_json_island_local_coords_2026-05-23.md`](mdc:documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md); [`asteroid_lab_01`](mdc:documents/Algorithm/asteroid_lab_01_optimization_input.md) |
 
 | **Replay** | 스키마·append 의미 변경 시 버전·문서. payload **의미 대체** 금지. metrics/NDJSON/artifact는 **algorithm input 금지**. **단일 replay timeline**; 모든 프레임 2D `map_view`. | [`asteroid_lab_09_replay_timeline`](mdc:documents/Algorithm/asteroid_lab_09_replay_timeline.md); `test_manual_snapshot_replay_not_used_as_algorithm_input_doc` |
 

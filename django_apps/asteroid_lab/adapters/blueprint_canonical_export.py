@@ -1,6 +1,8 @@
 """Official-style Shapez2 v4 island blueprint JSON bytes + copy-string encoding.
 
-``BP.Entries`` use **game raw** ``X`` (…, ``-1``, ``1``, ``2``, … — no column ``0``).
+``BP.Entries`` ``X``/``Y``/``R`` are **island-local** (omitted key → ``0``; ``X+1`` right,
+``Y+1`` down). See ``snapshots.copy_json_coords``.
+
 Export from lab raw positions uses ``raw_x_to_dense_index`` for horizontal anchoring
 (``export_x = dense(raw_x) - dense(extractor_x)``) and ``export_y = raw_y - extractor_y - 1``.
 Do not use ``raw_x - (extractor_x + 1)`` — it leaves a gap in dense columns for west branches.

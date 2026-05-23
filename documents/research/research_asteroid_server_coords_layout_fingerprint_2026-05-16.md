@@ -13,7 +13,8 @@ related_epics: []
 
 ## 목적
 
-- Shapez2 디코드 **raw `X`/`Y`**는 게임·재생성·디버그용으로 **유지**한다.
+- Shapez2 디코드 **raw `X`/`Y`**는 **copy JSON island-local** 값이다 (생략 → `0`; 월드/asteroid 절대 좌표 아님). 정본: [`research_shapez2_copy_json_island_local_coords_2026-05-23.md`](research_shapez2_copy_json_island_local_coords_2026-05-23.md).
+- 게임·재생성·디버그용으로 island-local raw는 **유지**한다.
 - **내부 계산**: layout hash·`decoded_json` 부착·Lab 그리드(가능 시)는 **`server_x` / `server_y`** 를 쓴다.
 - **운송 BFS(`existing_layout_inspection`)** 는 **raw `iter_four_neighbors`** 를 유지한다. rank `dense_x` 가 연속 양의 raw `X`(예: 1과 2)에서 충돌할 수 있어, 서버 격자 4이웃만으로는 기존 관측과 어긋날 수 있기 때문이다.
 - **coord_system** 문자열: `server_bbox_right_bottom_dense_x_v1`

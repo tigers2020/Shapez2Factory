@@ -1,0 +1,62 @@
+"""Copy JSON island-local coordinate rules (not server / world map)."""
+
+from __future__ import annotations
+
+from django_apps.asteroid_lab.snapshots.copy_json_coords import (
+    as_entry_int,
+    entries_have_explicit_raw_x_zero,
+    entry_island_local_xy,
+    entry_raw_r,
+    entry_raw_x,
+    entry_raw_y,
+    iter_entry_dicts,
+)
+from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
+from django_apps.shapez_core.services.shapez_copy_decode import decode_shapez2_copy
+
+# 3× ShapeMinerExtension + miner + belt above miner (in-game paste, 2026-05-23).
+_THREE_EXT_MINER_BELT_COPY = (
+    "SHAPEZ2-4-H4sIAJmKEWoA/5SQwQrCMBBE/2XwGA+1ByFHsUJBQaqIIiJLGzEQ05KkaCn5d9PmInqShYVl38zA9DiAJ0k6Z1hswXtMXNcIcORWka7AkJe1Hh5LcgR+hgw33ypyt9o8LJhulYoL9k6N4EUbBxfPkGlnpLBB2OMIPp0xnEIgwz5krKmrW3fdDbKN1MJkLye0lSHQs8gnf/D/GAewAE8jvmuoFAuh3HVVmyeZ6oM6fbE/1vCX0J3UZLqDMGPGWKj3bwEGAPvbCnpcAQAA"
+)
+
+
+def test_as_entry_int_defaults_missing_to_zero() -> None:
+    assert as_entry_int(None) == 0
+    assert as_entry_int(3) == 3
+
+
+def test_entry_raw_axes_default_omitted_keys() -> None:
+    row = {"Y": 1, "T": "Layout_ShapeMinerExtension"}
+    assert entry_raw_x(row) == 0
+    assert entry_raw_y(row) == 1
+    assert entry_raw_r(row) == 0
+
+
+def test_three_ext_miner_belt_copy_decodes_to_expected_island_local_xy() -> None:
+    root = decode_shapez2_copy(_THREE_EXT_MINER_BELT_COPY)
+    by_t = {(entry_raw_x(e), entry_raw_y(e)): e["T"] for e in iter_entry_dicts(root)}
+    assert by_t[(-2, 1)] == "Layout_ShapeMinerExtension"
+    assert by_t[(-1, 1)] == "Layout_ShapeMinerExtension"
+    assert by_t[(0, 1)] == "Layout_ShapeMinerExtension"
+    assert by_t[(1, 0)] == "SpaceBelt_Forward"
+    assert by_t[(1, 1)] == "Layout_ShapeMiner"
+
+
+def test_three_ext_layout_uses_raw_x_zero_column() -> None:
+    root = decode_shapez2_copy(_THREE_EXT_MINER_BELT_COPY)
+    rows = iter_entry_dicts(root)
+    assert entries_have_explicit_raw_x_zero(rows)
+
+
+def test_island_local_xy_differs_from_server_after_attach() -> None:
+    """Copy local (1,1) is not the same numeric pair as lab server_x/server_y."""
+
+    root = decode_shapez2_copy(_THREE_EXT_MINER_BELT_COPY)
+    attach_server_coords_to_decoded_json(root)
+    miner = next(
+        e
+        for e in iter_entry_dicts(root)
+        if e.get("T") == "Layout_ShapeMiner"
+    )
+    assert entry_island_local_xy(miner) == (1, 1)
+    assert miner["server_x"] != 1 or miner["server_y"] != 1

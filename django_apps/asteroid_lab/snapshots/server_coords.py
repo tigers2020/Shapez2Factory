@@ -1,20 +1,25 @@
-"""Shapez2 asteroid map: dense x (raw +1 skips column 0) + bbox server (left-bottom origin).
+"""Project copy JSON island-local raw ``X``/``Y`` into lab server bbox coordinates.
+
+Input ``BP.Entries`` ``X``/``Y`` are **island blueprint local** (see
+``copy_json_coords``). This module maps them to contiguous ``server_x`` /
+``server_y`` for fingerprints and optimization — not asteroid world tiles.
 
 Pure helpers — no Django imports. See
-``documents/refactory/asteroid_server_coords_layout_fingerprint_2026-05-16.md``.
+``documents/research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md``.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from django_apps.asteroid_lab.snapshots.copy_json_coords import (
+    as_entry_int,
+    entries_have_explicit_raw_x_zero,
+    entry_raw_x,
+    entry_raw_y,
+)
+
 COORD_SYSTEM_BBOX_LEFT_BOTTOM = "server_bbox_left_bottom_dense_x_v1"
-
-
-def entries_have_explicit_raw_x_zero(entries: list[dict[str, Any]]) -> bool:
-    """True when any top-level blueprint row uses explicit raw ``X == 0``."""
-
-    return any(isinstance(item, dict) and _as_int(item.get("X")) == 0 for item in entries)
 
 
 def unpack_server_xy_params(params: tuple[int, ...] | None) -> tuple[int, int, bool]:
@@ -49,24 +54,12 @@ def raw_x_to_dense_index(raw_x: int, *, has_explicit_raw_x_zero: bool = False) -
 raw_x_to_dense_x = raw_x_to_dense_index
 
 
-def _as_int(val: Any) -> int:
-    if val is None:
-        return 0
-    if isinstance(val, bool):
-        return int(val)
-    if isinstance(val, int):
-        return val
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return 0
-
-
 def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[str, Any]:
     """Mutate ``BP.Entries`` dict rows in-place: set ``server_x`` / ``server_y`` from parent bbox.
 
-    Uses ``entry.get('X'/'Y', 0)`` semantics via ``_as_int``. Nested ``B`` / building entries are
-    not scanned. Overwrites any prior ``server_x`` / ``server_y`` on each top-level dict row.
+    Reads island-local raw ``X``/``Y`` via ``entry_raw_x`` / ``entry_raw_y`` (omitted → 0).
+    Nested ``B`` / building entries are not scanned. Overwrites any prior ``server_x`` /
+    ``server_y`` on each top-level dict row.
     """
 
     bp = decoded_json.get("BP")
@@ -81,16 +74,15 @@ def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[s
 
     has_zero = entries_have_explicit_raw_x_zero(dict_rows)
     dense_vals = [
-        raw_x_to_dense_index(_as_int(e.get("X")), has_explicit_raw_x_zero=has_zero)
-        for e in dict_rows
+        raw_x_to_dense_index(entry_raw_x(e), has_explicit_raw_x_zero=has_zero) for e in dict_rows
     ]
-    raw_y_vals = [_as_int(e.get("Y")) for e in dict_rows]
+    raw_y_vals = [entry_raw_y(e) for e in dict_rows]
     min_dense_x = min(dense_vals)
     min_raw_y = min(raw_y_vals)
 
     for item in dict_rows:
-        raw_x = _as_int(item.get("X"))
-        raw_y = _as_int(item.get("Y"))
+        raw_x = entry_raw_x(item)
+        raw_y = entry_raw_y(item)
         dense_x = raw_x_to_dense_index(raw_x, has_explicit_raw_x_zero=has_zero)
         item["server_x"] = dense_x - min_dense_x
         item["server_y"] = raw_y - min_raw_y
@@ -198,9 +190,9 @@ def map_bbox_dense_and_y(entries: list[dict[str, Any]]) -> tuple[int, int, bool]
     raw_y_vals: list[int] = []
     for item in dict_rows:
         dense_vals.append(
-            raw_x_to_dense_index(_as_int(item.get("X")), has_explicit_raw_x_zero=has_zero)
+            raw_x_to_dense_index(entry_raw_x(item), has_explicit_raw_x_zero=has_zero)
         )
-        raw_y_vals.append(_as_int(item.get("Y")))
+        raw_y_vals.append(entry_raw_y(item))
     return (min(dense_vals), min(raw_y_vals), has_zero)
 
 
@@ -210,8 +202,11 @@ COORD_SYSTEM_BBOX_RIGHT_BOTTOM = COORD_SYSTEM_BBOX_LEFT_BOTTOM
 __all__ = [
     "COORD_SYSTEM_BBOX_LEFT_BOTTOM",
     "COORD_SYSTEM_BBOX_RIGHT_BOTTOM",
+    "as_entry_int",
     "attach_server_coords_to_decoded_json",
     "entries_have_explicit_raw_x_zero",
+    "entry_raw_x",
+    "entry_raw_y",
     "full_map_row_for_boundary_jsonl",
     "jsonl_coord_fields",
     "map_bbox_dense_and_y",

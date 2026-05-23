@@ -28,6 +28,10 @@ export_y = raw_y - (extractor_y + 2)
 - 각 `Entries` 항목: `X`/`Y`/`R`는 값이 **0일 때 키 생략**, `T`는 항상 마지막
 - `Icon`: `icon:Platforms` + `shape:RuRuRuRu`
 
+## Copy JSON island-local (디코드 입력)
+
+`BP.Entries` `X`/`Y`/`R` 는 **섬 블루프린트 로컬** (생략 → `0`, `X+1` 오른쪽, `Y+1` 아래). 월드/Server 좌표 아님. 정본: [`research_shapez2_copy_json_island_local_coords_2026-05-23.md`](../../research/research_shapez2_copy_json_island_local_coords_2026-05-23.md).
+
 ## 좌표 (랩 raw → 게임 export)
 
 extractor raw \((e_x, e_y)\), `e_dense = raw_x_to_dense_index(e_x)`:

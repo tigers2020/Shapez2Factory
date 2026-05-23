@@ -1,12 +1,18 @@
-# 블루프린트 격자 좌표 (정수 X/Y) — 프로젝트 전제
+# Asteroid / world map grid coordinates (no `x == 0` column)
 
 **상태**: 규약 고정 (플랜 실험용 초안 아님)
 
-## 명제
+## Copy JSON vs world map (do not mix)
 
-게임 블루프린트(Island **`Entries`**)에서 쓰는 정수 **열 X** 가운데 **`X == 0`인 타일·열은 존재하지 않는다.**
+**Shapez2 copy JSON** `BP.Entries` `X`/`Y` are **island blueprint local** coordinates (omitted → `0`; `X==0` is valid). See [`research_shapez2_copy_json_island_local_coords_2026-05-23.md`](research_shapez2_copy_json_island_local_coords_2026-05-23.md).
 
-코드에서 타일 좌표를 `(x, y)`로 둘 때도 마찬가지로 **`x == 0`인 칸은 없다.** 이것은 디코드 실수 방어용 규칙이 아니라 **격자 모델 자체의 명제**이다.
+**This document** applies to the **asteroid / lab world map** after reconstruction (`asteroid_map_coords`, transport BFS): integer column **`x == 0` does not exist**.
+
+## 명제 (world map)
+
+소행성·랩 월드 격자에서 정수 **열 x** 가운데 **`x == 0`인 타일·열은 존재하지 않는다.**
+
+코드에서 타일 좌표를 `(x, y)`로 둘 때도 마찬가지로 **`x == 0`인 칸은 없다.** 디코드 실수 방어가 아니라 **월드 격자 모델**의 명제이다.
 
 ## 동서 방향·인접
 

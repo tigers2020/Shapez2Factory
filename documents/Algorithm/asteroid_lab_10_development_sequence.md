@@ -5,6 +5,8 @@
 > **Solver 버튼 v0:** merge·실행 계약·PR 상태는 [`solver_runtime/`](solver_runtime/) 이 정본이다. 본 문서 체크박스와 **상태가 다를 수 있음** — [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md).
 >
 > **RTTP Hybrid C v0.1 gate sync (2026-05-23):** `django_apps/asteroid_lab/optimization/` + `tests/unit/asteroid_lab/test_rttp_*.py` 기준으로 **Sequence 2·3·3B·6·7(부분)** 체크박스를 갱신했다. **Sequence 4·5(GA/evolution)** 는 v0.1 범위 밖(greedy-regret `PlacementGenome` 사용). 정본 설계: [`docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md). Narrow gate: `python -m pytest tests/unit/asteroid_lab/ -k rttp`.
+>
+> **RTTP v1 MacroBundleT3 gates (2026-05-23):** PR-A..H merged on `master` — `optimization/macros/`, `selection/macro_greedy_regret.py`, `commit/incremental_macro_commit.py`, `macro_only_mode` pipeline branch. Gates **RTTP-G9..G16** in `test_rttp_macro_bundle_t3.py`, `test_rttp_pipeline_macro_greenfield.py`, `test_rttp_replay_parity.py` (`test_macro_pipeline_replay_parity`). Spec: [`2026-05-23-rttp-v1-macrobundle-t3-design.md`](../../docs/superpowers/specs/2026-05-23-rttp-v1-macrobundle-t3-design.md).
 
 ## 목적
 

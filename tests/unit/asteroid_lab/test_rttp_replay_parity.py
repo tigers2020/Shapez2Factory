@@ -11,7 +11,10 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_generator import
 )
 from django_apps.asteroid_lab.optimization.commit.incremental_commit import incremental_commit
 from django_apps.asteroid_lab.optimization.commit.local_lns import run_local_lns
-from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
+from django_apps.asteroid_lab.optimization.input_contracts import (
+    OptimizationInput,
+    RttpPipelineConfig,
+)
 from django_apps.asteroid_lab.optimization.pipeline import PipelineResult, run_rttp_pipeline
 from django_apps.asteroid_lab.optimization.replay_sink import (
     InMemoryRttpReplaySink,
@@ -61,6 +64,22 @@ def test_rttp_replay_events_carry_descriptions_and_overlays(
         cells = event.cell_overlay_json.get("cells")
         assert isinstance(cells, list)
         assert len(cells) >= 1
+
+
+def test_macro_pipeline_replay_parity() -> None:
+    from tests.support.macro_triple_greenfield_fixture import build_macro_triple_greenfield_input
+
+    inp = build_macro_triple_greenfield_input()
+    config = RttpPipelineConfig(macro_only_mode=True)
+    off = run_rttp_pipeline(
+        inp,
+        replay_sink=NullRttpReplaySink(),
+        pipeline_config=config,
+    )
+    mem = InMemoryRttpReplaySink()
+    on = run_rttp_pipeline(inp, replay_sink=mem, pipeline_config=config)
+    assert mem.events
+    assert _pipeline_results_equal(off, on)
 
 
 def test_rttp_replay_on_off_parity(greenfield_optimization_input: OptimizationInput) -> None:

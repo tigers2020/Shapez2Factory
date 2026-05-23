@@ -69,6 +69,15 @@ class LiftColumn:
     target_lane: int
 
 
+@dataclass(frozen=True, slots=True)
+class RttpPipelineConfig:
+    """RTTP pipeline mode (v0.1 default; v1 macro-only when ``macro_only_mode``)."""
+
+    macro_only_mode: bool = False
+    allow_singleton_genome_slots: bool = False
+    max_macro_candidates: int = 64
+
+
 __all__ = [
     "CoordFrame",
     "ExistingTransportCell",
@@ -77,6 +86,7 @@ __all__ = [
     "RingPort",
     "RouteGoal",
     "RouteGoalKind",
+    "RttpPipelineConfig",
     "RttpSkeletonConfig",
     "TransportKind",
 ]

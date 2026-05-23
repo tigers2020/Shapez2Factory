@@ -27,6 +27,7 @@ class CommitConflictReason(StrEnum):
     TRANSPORT_KIND_CONFLICT = "transport_kind_conflict"
     HARD_PROTECTED_CONFLICT = "hard_protected_conflict"
     CANDIDATE_NOT_FOUND = "candidate_not_found"
+    MACRO_CHILD_CONFLICT = "macro_child_conflict"
 
 
 @dataclass(frozen=True, slots=True)

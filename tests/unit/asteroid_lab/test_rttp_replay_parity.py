@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import inspect
+from unittest.mock import MagicMock, patch
 
+from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
     generate_candidates,
 )
@@ -77,6 +79,18 @@ def test_rttp_replay_sink_return_value_is_ignored(
         replay_sink=WeirdSink(),
     )
     assert baseline == weird
+
+
+def test_run_rttp_pipeline_does_not_read_replay_frames(
+    greenfield_optimization_input: OptimizationInput,
+) -> None:
+    """RTTP-RB2: pipeline must not query ReplayFrame ORM rows."""
+    with patch.object(m.ReplayFrame.objects, "filter", MagicMock()) as mock_filter:
+        run_rttp_pipeline(
+            greenfield_optimization_input,
+            replay_sink=InMemoryRttpReplaySink(),
+        )
+        mock_filter.assert_not_called()
 
 
 def test_rttp_layer_functions_do_not_accept_replay_sink() -> None:

@@ -10,6 +10,7 @@ from django_apps.asteroid_lab.snapshots.existing_layout_inspection import (
     inspect_existing_layout,
 )
 from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
+    COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM,
     absolute_layout_fingerprint_sha256,
     layout_fingerprint_payload,
     layout_fingerprint_sha256,
@@ -125,14 +126,15 @@ def test_layout_fingerprint_payload_has_schema_and_coord_system() -> None:
             ],
         },
     }
-    attach_server_coords_to_decoded_json(decoded)
     p = layout_fingerprint_payload(decoded)
-    assert p["schema"] == "asteroid-miner-layout-map.v1"
-    assert p["coord_system"] == COORD_SYSTEM_BBOX_LEFT_BOTTOM
+    assert p["schema"] == "asteroid-miner-layout-map.v2"
+    assert p["coord_system"] == COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM
     assert p["origin"] == "left_bottom"
     assert len(p["cells"]) == 2
     kinds = {c["kind"] for c in p["cells"]}
     assert kinds == {"extractor", "extension"}
+    assert all("x" in c and "y" in c for c in p["cells"])
+    assert all("server_x" not in c for c in p["cells"])
 
 
 def test_layout_fingerprint_deterministic_hex() -> None:
@@ -143,7 +145,6 @@ def test_layout_fingerprint_deterministic_hex() -> None:
             "Entries": [{"X": 1, "Y": 0, "R": 2, "T": "Layout_ShapeMiner"}],
         },
     }
-    attach_server_coords_to_decoded_json(decoded)
     h1 = layout_fingerprint_sha256(decoded)
     h2 = layout_fingerprint_sha256(decoded)
     assert len(h1) == 64 and h1 == h2
@@ -158,8 +159,6 @@ def test_absolute_fingerprint_changes_with_raw_translation() -> None:
         "V": 1,
         "BP": {"$type": "Island", "Entries": [{"X": 3, "Y": 0, "R": 0, "T": "Layout_ShapeMiner"}]},
     }
-    attach_server_coords_to_decoded_json(a)
-    attach_server_coords_to_decoded_json(b)
     assert layout_fingerprint_sha256(a) == layout_fingerprint_sha256(b)
     assert absolute_layout_fingerprint_sha256(a) != absolute_layout_fingerprint_sha256(b)
 

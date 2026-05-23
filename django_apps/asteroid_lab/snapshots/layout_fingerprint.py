@@ -8,12 +8,10 @@ from typing import Any
 
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    COORD_SYSTEM_BBOX_LEFT_BOTTOM,
-    raw_x_to_dense_index,
-)
+from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_index
 
-_SCHEMA_LAYOUT = "asteroid-miner-layout-map.v1"
+COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM = "island_bbox_left_bottom_raw_xy_v1"
+_SCHEMA_LAYOUT = "asteroid-miner-layout-map.v2"
 _SCHEMA_ABSOLUTE = "asteroid-miner-layout-absolute-dense.v1"
 _COORD_ABSOLUTE = "absolute_dense_x_raw_y_v1"
 
@@ -52,7 +50,11 @@ def _compact_json(data: Any) -> bytes:
 
 
 def layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
-    """Canonical dict for bbox-normalized server layout (miners/extensions only)."""
+    """Canonical dict for bbox-normalized island layout (miners/extensions only).
+
+    Uses copy JSON island-local ``X``/``Y`` via ``entry_island_raw_coord``; does not require
+    ``server_x``/``server_y`` on entries (PR-F).
+    """
 
     bp = decoded_json.get("BP")
     if not isinstance(bp, dict):
@@ -60,9 +62,7 @@ def layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
     entries_raw = bp.get("Entries")
     entries: list[Any] = entries_raw if isinstance(entries_raw, list) else []
 
-    rows: list[dict[str, Any]] = []
-    max_sx = -1
-    max_sy = -1
+    staged: list[tuple[int, int, str, int, str]] = []
     for item in entries:
         if not isinstance(item, dict):
             continue
@@ -72,42 +72,44 @@ def layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
         fk = _fingerprint_kind(cell_kind)
         if fk is None:
             continue
-        sx = item.get("server_x")
-        sy = item.get("server_y")
-        if not isinstance(sx, int) or not isinstance(sy, int):
-            continue
-        r = _as_int(item.get("R"))
-        rows.append(
-            {
-                "server_x": sx,
-                "server_y": sy,
-                "kind": fk,
-                "r": r,
-                "transport": _transport_label(cell_kind),
-            }
-        )
-        max_sx = max(max_sx, sx)
-        max_sy = max(max_sy, sy)
+        island = entry_island_raw_coord(item)
+        staged.append((island.x, island.y, fk, _as_int(item.get("R")), _transport_label(cell_kind)))
 
-    rows.sort(
-        key=lambda row: (
-            row["server_x"],
-            row["server_y"],
-            row["kind"],
-            row["transport"],
-            row["r"],
-        )
-    )
+    rows: list[dict[str, Any]] = []
+    if staged:
+        min_x = min(s[0] for s in staged)
+        min_y = min(s[1] for s in staged)
+        max_nx = -1
+        max_ny = -1
+        for raw_x, raw_y, fk, rot, transport in staged:
+            nx = raw_x - min_x
+            ny = raw_y - min_y
+            rows.append(
+                {
+                    "x": nx,
+                    "y": ny,
+                    "kind": fk,
+                    "r": rot,
+                    "transport": transport,
+                }
+            )
+            max_nx = max(max_nx, nx)
+            max_ny = max(max_ny, ny)
+        bbox = {
+            "island_width": 0 if max_nx < 0 else max_nx + 1,
+            "island_height": 0 if max_ny < 0 else max_ny + 1,
+        }
+    else:
+        bbox = {"island_width": 0, "island_height": 0}
+
+    rows.sort(key=lambda row: (row["x"], row["y"], row["kind"], row["transport"], row["r"]))
 
     return {
         "schema": _SCHEMA_LAYOUT,
-        "coord_system": COORD_SYSTEM_BBOX_LEFT_BOTTOM,
+        "coord_system": COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM,
         "origin": "left_bottom",
         "axis": {"x": "left_positive", "y": "up_positive"},
-        "bbox": {
-            "server_width": 0 if max_sx < 0 else max_sx + 1,
-            "server_height": 0 if max_sy < 0 else max_sy + 1,
-        },
+        "bbox": bbox,
         "cells": rows,
     }
 
@@ -173,6 +175,7 @@ def absolute_layout_fingerprint_sha256(decoded_json: dict[str, Any]) -> str:
 
 
 __all__ = [
+    "COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM",
     "absolute_layout_fingerprint_payload",
     "absolute_layout_fingerprint_sha256",
     "layout_fingerprint_payload",

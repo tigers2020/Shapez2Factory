@@ -310,7 +310,13 @@ def build_lab_replay_frames_for_project(
     )
     serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
     rttp_rows = load_rttp_compose_rows_for_project(int(project_id))
-    serialized = interleave_rttp_snapshot_frames(serialized, rttp_rows)
+    projection = resolve_replay_projection_context_for_project(int(project_id))
+    server_xy_params = projection.server_xy_params if projection is not None else None
+    serialized = interleave_rttp_snapshot_frames(
+        serialized,
+        rttp_rows,
+        server_xy_params=server_xy_params,
+    )
     diagnostic = _lab_replay_diagnostic_reason(int(project_id), composed_count=len(serialized))
     metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
     return serialized, metrics

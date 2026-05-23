@@ -15,6 +15,7 @@ from django_apps.asteroid_lab.replay.event_types import (
     is_rttp_milestone_event_type,
     normalize_rttp_milestone_event_type,
 )
+from django_apps.asteroid_lab.replay.projection_context import lab_xy_from_server_xy
 
 _RECONSTRUCTION_COMPLETED = "reconstruction.completed"
 
@@ -97,17 +98,79 @@ def _overlay_cells_from_cell_overlay_json(overlay: dict[str, Any] | None) -> lis
     return []
 
 
+def _is_asteroid_footprint_kind(kind: str) -> bool:
+    return kind.startswith("asteroid") or kind == "mineable"
+
+
+def _base_map_overlay_anchors(
+    base_map_view: dict[str, Any],
+) -> tuple[frozenset[tuple[int, int]], dict[tuple[int, int], tuple[int, int]]]:
+    """Lab ``(x,y)`` anchors and server→lab map from ``full_cells`` (RTTP uses server coords)."""
+
+    lab_coords: set[tuple[int, int]] = set()
+    server_to_lab: dict[tuple[int, int], tuple[int, int]] = {}
+    full_cells = base_map_view.get("full_cells")
+    if not isinstance(full_cells, list):
+        return frozenset(), {}
+    for raw in full_cells:
+        if not isinstance(raw, dict) or "x" not in raw or "y" not in raw:
+            continue
+        kind = str(raw.get("kind") or raw.get("cell_kind") or "")
+        if not _is_asteroid_footprint_kind(kind):
+            continue
+        lab_xy = (int(raw["x"]), int(raw["y"]))
+        lab_coords.add(lab_xy)
+        sx, sy = raw.get("server_x"), raw.get("server_y")
+        if isinstance(sx, int) and isinstance(sy, int):
+            server_to_lab[(sx, sy)] = lab_xy
+    return frozenset(lab_coords), server_to_lab
+
+
+def clip_overlay_cells_to_base_map_domain(
+    overlay_cells: list[dict[str, Any]],
+    base_map_view: dict[str, Any],
+    *,
+    server_xy_params: tuple[int, int] | None = None,
+) -> list[dict[str, Any]]:
+    lab_anchors, server_to_lab = _base_map_overlay_anchors(base_map_view)
+    if not lab_anchors:
+        return []
+    clipped: list[dict[str, Any]] = []
+    for cell in overlay_cells:
+        if "x" not in cell or "y" not in cell:
+            continue
+        ox, oy = int(cell["x"]), int(cell["y"])
+        if (ox, oy) in lab_anchors:
+            clipped.append(dict(cell))
+            continue
+        lab_xy = server_to_lab.get((ox, oy))
+        if lab_xy is None and server_xy_params is not None:
+            lab_xy = lab_xy_from_server_xy(ox, oy, server_xy_params=server_xy_params)
+        if lab_xy is not None and lab_xy in lab_anchors:
+            projected = dict(cell)
+            projected["x"] = lab_xy[0]
+            projected["y"] = lab_xy[1]
+            clipped.append(projected)
+    return clipped
+
+
 def project_rttp_row_to_product_frame(
     row: dict[str, Any],
     *,
     base_map_view: dict[str, Any],
+    server_xy_params: tuple[int, int] | None = None,
 ) -> dict[str, Any]:
     mv = copy.deepcopy(base_map_view)
     overlay_from_row = _overlay_cells_from_cell_overlay_json(
         row.get("cell_overlay_json") if isinstance(row.get("cell_overlay_json"), dict) else None
     )
-    if overlay_from_row:
-        mv["overlay_cells"] = overlay_from_row
+    clipped = clip_overlay_cells_to_base_map_domain(
+        overlay_from_row,
+        base_map_view,
+        server_xy_params=server_xy_params,
+    )
+    if clipped:
+        mv["overlay_cells"] = clipped
     else:
         mv.setdefault("overlay_cells", [])
     return {
@@ -125,6 +188,8 @@ def project_rttp_row_to_product_frame(
 def interleave_rttp_snapshot_frames(
     base_frames: list[dict[str, Any]],
     rttp_rows: list[dict[str, Any]],
+    *,
+    server_xy_params: tuple[int, int] | None = None,
 ) -> list[dict[str, Any]]:
     unified: list[dict[str, Any]] = [copy.deepcopy(fr) for fr in base_frames]
     if not rttp_rows:
@@ -143,7 +208,11 @@ def interleave_rttp_snapshot_frames(
             continue
         insert_at = _find_anchor_index_for_rttp_row(unified, event_type)
         base_mv = _map_view_at_index(unified, insert_at)
-        projected = project_rttp_row_to_product_frame(row, base_map_view=base_mv)
+        projected = project_rttp_row_to_product_frame(
+            row,
+            base_map_view=base_mv,
+            server_xy_params=server_xy_params,
+        )
         unified.insert(insert_at + 1, projected)
 
     for i, fr in enumerate(unified):
@@ -187,6 +256,7 @@ def load_rttp_compose_rows_for_project(
 
 
 __all__ = [
+    "clip_overlay_cells_to_base_map_domain",
     "frame_has_renderable_map",
     "interleave_rttp_snapshot_frames",
     "last_renderable_frame_index",

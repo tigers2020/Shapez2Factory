@@ -1,7 +1,7 @@
 """RTTP greenfield pipeline golden — deterministic commit (G8 v0.1).
 
-v0.1: asserts identical ``PipelineResult`` on repeated runs. Replay artifact on/off
-parity is deferred to v0.2 when optimization replay wiring exists.
+v0.1: identical ``PipelineResult`` on repeated runs.
+v0.2 replay on/off parity: ``test_rttp_replay_on_off_parity`` in ``test_rttp_replay_parity.py``.
 """
 
 from __future__ import annotations

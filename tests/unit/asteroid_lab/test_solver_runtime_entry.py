@@ -5,12 +5,17 @@ from __future__ import annotations
 import base64
 import gzip
 import json
+from dataclasses import replace
 
 import pytest
 from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.optimization import pipeline as rttp_pipeline
 from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
+from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
+    RTTP_MILESTONE_EVENT_TYPES,
+)
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     SOLVER_NOT_AVAILABLE_MESSAGE,
     SolverRuntimeEntryErrorCode,
@@ -117,3 +122,56 @@ def test_rttp_runtime_solver_summary_unchanged_when_replay_persisted() -> None:
     assert m.ReplayFrame.objects.filter(replay_track_id=track.id).count() >= 4
     lab_track = m.ReplayTrack.objects.get(project_id=project_id, track_key="rb1-on")
     assert m.ReplayFrame.objects.filter(replay_track_id=lab_track.id).count() == 0
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_entry_result_json_includes_optimization_milestone_section() -> None:
+    proj = m.AsteroidProject.objects.create(name="MileJson", slug="mile-json")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    result = run_solver_runtime_for_project(
+        int(proj.pk),
+        run_key="mile-json",
+        config={"rttp_record_replay": True},
+    )
+    body = entry_result_to_json_dict(result)
+    assert "lab_optimization_milestone_frames_json" in body
+    assert "lab_optimization_milestone_frame_count" in body
+    assert "lab_optimization_milestone_track_metrics" in body
+    mile_types = {fr.get("event_type") for fr in body["lab_optimization_milestone_frames_json"]}
+    assert RTTP_MILESTONE_EVENT_TYPES <= mile_types
+    lab_types = {fr.get("event_type") for fr in body["lab_replay_frames_json"]}
+    assert lab_types.isdisjoint(RTTP_MILESTONE_EVENT_TYPES)
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_rttp_validation_failure_still_returns_optimization_milestones_section(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_run = rttp_pipeline.run_rttp_pipeline
+
+    def _run_with_failed_validation(
+        *args: object, **kwargs: object
+    ) -> rttp_pipeline.PipelineResult:
+        result = real_run(*args, **kwargs)
+        return replace(result, validation_passed=False)
+
+    monkeypatch.setattr(rttp_pipeline, "run_rttp_pipeline", _run_with_failed_validation)
+
+    proj = m.AsteroidProject.objects.create(name="MileFail", slug="mile-fail")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    result = run_solver_runtime_for_project(
+        int(proj.pk),
+        run_key="mile-fail",
+        config={"rttp_record_replay": True},
+    )
+    assert result.ok is False
+    assert result.validation_passed is False
+    assert result.error_code == SolverRuntimeEntryErrorCode.RTTP_VALIDATION_FAILED
+    assert len(result.lab_optimization_milestone_frames_json) >= 4
+    body = entry_result_to_json_dict(result)
+    assert body["lab_optimization_milestone_frame_count"] == len(
+        body["lab_optimization_milestone_frames_json"]
+    )
+    assert RTTP_MILESTONE_EVENT_TYPES <= {
+        fr.get("event_type") for fr in body["lab_optimization_milestone_frames_json"]
+    }

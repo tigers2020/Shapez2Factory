@@ -39,10 +39,10 @@ def test_pipeline_records_four_milestone_events(
     run_rttp_pipeline(greenfield_optimization_input, replay_sink=sink)
     types = [event.event_type for event in sink.events]
     assert types == [
-        et.EVENT_TYPE_ROUTING_PROBE_STARTED,
-        et.EVENT_TYPE_CANDIDATE_GENERATED,
-        et.EVENT_TYPE_GA_BEST_UPDATED,
-        et.EVENT_TYPE_ROUTING_COMMITTED,
+        et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT,
+        et.EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT,
+        et.EVENT_TYPE_RTTP_GENOME_SELECTION_SNAPSHOT,
+        et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT,
     ]
     final = sink.events[-1]
     assert final.metrics_json["validation_passed"] is True

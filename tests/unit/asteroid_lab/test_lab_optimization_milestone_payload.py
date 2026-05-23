@@ -129,7 +129,7 @@ def test_skips_payload_with_forbidden_map_keys() -> None:
         run_key="run-map",
     )
     assert len(frames) == 1
-    assert frames[0]["event_type"] == et.EVENT_TYPE_ROUTING_PROBE_STARTED
+    assert frames[0]["event_type"] == et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT
 
 
 def test_skips_non_milestone_registered_event_type() -> None:

@@ -166,6 +166,15 @@ Registered in `django_apps/asteroid_lab/replay/event_types.py` / `RTTP_MILESTONE
 - **3B-S-2:** enrich `:rttp` rows with real `cell_overlay_json`, `description`, finer lifecycle anchors at record time where parity-safe.
 - **3B-S-3 (optional):** add canonical `rttp.*` values to `ReplayEventType` StrEnum; migrate projected frames and tests.
 
+Canonical wire values (legacy v0.2 strings normalized at compose/read):
+
+| Canonical `event_type` | Legacy v0.2 write-buffer | Typical `phase` |
+|------------------------|--------------------------|-----------------|
+| `rttp.route_domain_snapshot` | `routing.probe_started` | `rttp_pipeline` |
+| `rttp.candidate_pool_snapshot` | `candidate.generated` | `candidate_generation` |
+| `rttp.genome_selection_snapshot` | `ga.best_updated` | `genome_fitness` |
+| `rttp.commit_domain_snapshot` | `routing.committed` | `incremental_commit` |
+
 ### Interleave anchor resolution (v0)
 
 For each `:rttp` row (same `run_key` / solver run scope), insert after:
@@ -247,8 +256,8 @@ test_rttp_track_not_exposed_as_product_timeline:
 |----|--------|
 | **Spec** | This document; supersedes 3B-R inherited_snapshot **product** behavior |
 | **3B-S-1** | Compose interleave, full map projection, H1-S + exposure tests, remove inherited_snapshot product path |
-| **3B-S-2** | Enrich `:rttp` rows (overlays, descriptions, finer anchors at record time) | **Implemented** on `feat/sequence-3b-s-2-rttp-replay-enrichment` |
-| **3B-S-3** | Optional: canonical `rttp.*` `ReplayEventType` values + migration |
+| **3B-S-2** | Enrich `:rttp` rows (overlays, descriptions, finer anchors at record time) | **Merged** (#47) |
+| **3B-S-3** | Optional: canonical `rttp.*` `ReplayEventType` values + migration | **Implemented** on `feat/sequence-3b-s-3-rttp-enum-hardening` |
 
 ---
 

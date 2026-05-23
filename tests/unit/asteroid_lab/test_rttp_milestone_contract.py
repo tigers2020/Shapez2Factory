@@ -6,13 +6,13 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
 )
 
 
-def test_rttp_milestone_event_types_match_v02_contract() -> None:
+def test_rttp_milestone_event_types_match_v03_contract() -> None:
     expected = frozenset(
         {
-            et.EVENT_TYPE_ROUTING_PROBE_STARTED,
-            et.EVENT_TYPE_CANDIDATE_GENERATED,
-            et.EVENT_TYPE_GA_BEST_UPDATED,
-            et.EVENT_TYPE_ROUTING_COMMITTED,
+            et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT,
+            et.EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT,
+            et.EVENT_TYPE_RTTP_GENOME_SELECTION_SNAPSHOT,
+            et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT,
         }
     )
     assert RTTP_MILESTONE_EVENT_TYPES == expected

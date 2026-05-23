@@ -93,7 +93,7 @@ def run_rttp_pipeline(
     _record_replay(
         sink,
         event_key="rttp-pipeline-start",
-        event_type=et.EVENT_TYPE_ROUTING_PROBE_STARTED,
+        event_type=et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT,
         phase="rttp_pipeline",
         title="RTTP pipeline started",
         description=start_payload.description,
@@ -106,7 +106,7 @@ def run_rttp_pipeline(
     _record_replay(
         sink,
         event_key="rttp-candidates",
-        event_type=et.EVENT_TYPE_CANDIDATE_GENERATED,
+        event_type=et.EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT,
         phase="candidate_generation",
         title="RTTP candidates generated",
         description=candidates_payload.description,
@@ -122,7 +122,7 @@ def run_rttp_pipeline(
     _record_replay(
         sink,
         event_key="rttp-selection",
-        event_type=et.EVENT_TYPE_GA_BEST_UPDATED,
+        event_type=et.EVENT_TYPE_RTTP_GENOME_SELECTION_SNAPSHOT,
         phase="genome_fitness",
         title="RTTP selection complete",
         description=selection_payload.description,
@@ -168,7 +168,7 @@ def run_rttp_pipeline(
     _record_replay(
         sink,
         event_key="rttp-commit-final",
-        event_type=et.EVENT_TYPE_ROUTING_COMMITTED,
+        event_type=et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT,
         phase="incremental_commit",
         title="RTTP commit complete",
         description=commit_payload.description,

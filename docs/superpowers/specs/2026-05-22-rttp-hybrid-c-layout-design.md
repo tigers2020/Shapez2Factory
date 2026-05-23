@@ -282,7 +282,7 @@ Both use the same four layers; skeleton builder **seeds** from `existing_trunk_c
 | **RTTP-G5** | Lift + trunk mask reflected in probe domain (test: surrounded platform still reachable via lift) |
 | **RTTP-G6** | Inlet conflict rejects commit with enum, not free string |
 | **RTTP-G7** | LNS runs only after commit failure; validation unchanged |
-| **RTTP-G8** | Greenfield golden: N bundles committed; **v0.1** = repeated `run_rttp_pipeline` deterministic (replay on/off deferred v0.2) |
+| **RTTP-G8** | Greenfield golden: N bundles committed; **v0.1** = repeated `run_rttp_pipeline` deterministic; **v0.2** replay on/off parity + DB ``:rttp`` track — [`2026-05-23-rttp-v0.2-replay-parity-design.md`](2026-05-23-rttp-v0.2-replay-parity-design.md) |
 
 ---
 

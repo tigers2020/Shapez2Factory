@@ -1,4 +1,13 @@
-"""RTTP runtime — DB replay persistence smoke (PR-B)."""
+"""RTTP runtime — DB replay persistence smoke (PR-B) + H2 Lab track split.
+
+PR-B smoke (required):
+  - ``ReplayTrack`` at ``rttp_optimization_track_key(run_key)`` with >= 4 frames
+  - RTTP milestone ``event_type`` values on that track only
+
+H2 (forbidden as PR-B proof):
+  - Asserting RTTP milestones inside ``lab_replay_frames_json``
+  - Use ``test_run_solver_lab_json_uses_inspection_not_rttp_optimization_track`` instead
+"""
 
 from __future__ import annotations
 
@@ -11,7 +20,6 @@ from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.replay_track_keys import rttp_optimization_track_key
-from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
@@ -20,15 +28,7 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import (
     entry_result_to_json_dict,
     run_solver_runtime_for_project,
 )
-
-RTTP_MILESTONE_EVENT_TYPES = frozenset(
-    {
-        et.EVENT_TYPE_ROUTING_PROBE_STARTED,
-        et.EVENT_TYPE_CANDIDATE_GENERATED,
-        et.EVENT_TYPE_GA_BEST_UPDATED,
-        et.EVENT_TYPE_ROUTING_COMMITTED,
-    }
-)
+from tests.support.rttp_v02_contract import RTTP_PIPELINE_MILESTONE_EVENT_TYPES
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
 
@@ -89,7 +89,7 @@ def test_run_solver_lab_json_uses_inspection_not_rttp_optimization_track() -> No
     assert body["lab_replay_frame_count"] == len(body["lab_replay_frames_json"])
     assert body["lab_replay_frame_count"] > 0
     lab_event_types = {fr.get("event_type") for fr in body["lab_replay_frames_json"]}
-    assert lab_event_types.isdisjoint(RTTP_MILESTONE_EVENT_TYPES)
+    assert lab_event_types.isdisjoint(RTTP_PIPELINE_MILESTONE_EVENT_TYPES)
 
     rttp_track = m.ReplayTrack.objects.get(
         project_id=int(proj.pk),
@@ -102,4 +102,4 @@ def test_run_solver_lab_json_uses_inspection_not_rttp_optimization_track() -> No
             flat=True,
         )
     )
-    assert RTTP_MILESTONE_EVENT_TYPES <= rttp_types
+    assert RTTP_PIPELINE_MILESTONE_EVENT_TYPES <= rttp_types

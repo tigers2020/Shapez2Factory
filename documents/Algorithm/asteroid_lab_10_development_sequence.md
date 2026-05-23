@@ -153,6 +153,8 @@ pytest tests/unit/shapez_asteroid/test_candidate_route_probe_integration.py
 
 candidate/probe 디버깅을 **Sequence 8까지 미루지 않으면** 구현 난이도가 급증한다. UI timeline 전체는 Sequence 8이 담당하고, 여기서는 **기록 파이프라인만** 최소로 연다.
 
+> **RTTP v0.2 (merged, 2026-05-23):** PR-B already records four pipeline milestones on DB track **`{run_key}:rttp`**. Lab **`lab_replay_frames_json`** stays inspection/reconstruction-only (PR #39); 1-based frame counter UI (PR #41). **Sequence 3B** adds Lab UI compose of optimization milestones + fuller event matrix — **not** duplicate v0.2 DB persistence. Contract: [`docs/superpowers/specs/2026-05-23-rttp-v0.2-replay-parity-design.md`](../../docs/superpowers/specs/2026-05-23-rttp-v0.2-replay-parity-design.md) § H2.
+
 ### 작업
 
 ```text

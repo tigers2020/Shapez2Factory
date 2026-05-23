@@ -14,12 +14,35 @@ from django_apps.asteroid_lab.services.input_service import create_copy_code_map
 from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
     RTTP_MILESTONE_EVENT_TYPES,
 )
+from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
+    build_lab_replay_frames_for_project,
+)
 from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import (
     frame_has_renderable_map,
     interleave_rttp_snapshot_frames,
     last_renderable_frame_index,
     project_rttp_row_to_product_frame,
 )
+from django_apps.asteroid_lab.services.replay_pipeline_service import build_initial_replay_for_map_input
+from django_apps.asteroid_lab.services.solver_runtime_entry import run_solver_runtime_for_project
+
+
+def _minimal_valid_copy() -> str:
+    payload = json.dumps(
+        {
+            "V": 1,
+            "BP": {
+                "$type": "Island",
+                "Entries": [
+                    {"X": 1, "Y": 0, "T": "Layout_ProMiner"},
+                    {"X": 2, "Y": 0, "T": "SpaceBelt_Left"},
+                ],
+            },
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+    b64 = base64.b64encode(gzip.compress(payload)).decode("ascii")
+    return f"SHAPEZ2-4-{b64}"
 
 
 def _map_frame(idx: int, event_type: str = "reconstruction.completed") -> dict:
@@ -100,3 +123,19 @@ def test_last_renderable_prefers_candidate_generated_over_decode() -> None:
         _map_frame(1, "candidate.generated"),
     ]
     assert last_renderable_frame_index(frames) == 1
+
+
+@pytest.mark.django_db
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_build_lab_replay_has_no_inherited_snapshot_when_rttp_track_exists() -> None:
+    proj = m.AsteroidProject.objects.create(name="3bs", slug="3bs-compose")
+    inp = create_copy_code_map_input(proj, _minimal_valid_copy())
+    build_initial_replay_for_map_input(int(inp.pk), overwrite=True)
+    run_solver_runtime_for_project(int(proj.pk), run_key="3bs", config={"rttp_record_replay": True})
+    frames, _ = build_lab_replay_frames_for_project(int(proj.pk))
+    assert frames
+    assert all(fr.get("render_mode") != "inherited_snapshot" for fr in frames)
+    rttp = [fr for fr in frames if fr["event_type"] in RTTP_MILESTONE_EVENT_TYPES]
+    assert len(rttp) >= 4
+    for fr in rttp:
+        assert len(fr.get("map_view", {}).get("full_cells") or []) >= 1

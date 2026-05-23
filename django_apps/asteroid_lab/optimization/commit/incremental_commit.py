@@ -12,6 +12,7 @@ from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (
     RouteCellDomain,
     build_route_domain_from_skeleton,
 )
+from django_apps.asteroid_lab.optimization.routing.route_goals import probe_goal_coords
 from django_apps.asteroid_lab.optimization.routing.route_probe import probe_route
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
@@ -24,7 +25,6 @@ class CommitConflictReason(StrEnum):
     ROUTE_CELL_CONFLICT = "route_cell_conflict"
     OCCUPIED_CELL_CONFLICT = "occupied_cell_conflict"
     TRANSPORT_KIND_CONFLICT = "transport_kind_conflict"
-    HARD_BLOCKED_CONFLICT = "hard_blocked_conflict"
     HARD_PROTECTED_CONFLICT = "hard_protected_conflict"
     CANDIDATE_NOT_FOUND = "candidate_not_found"
 
@@ -68,14 +68,6 @@ def initial_commit_domain(
     )
 
 
-def _goal_coords(inp: OptimizationInput) -> frozenset[Coord]:
-    return frozenset(
-        goal.coord
-        for goal in inp.route_goals
-        if goal.transport_kind is None or goal.transport_kind is inp.transport_kind
-    )
-
-
 def _rebuild_domain(
     skeleton: RttpSkeleton,
     inp: OptimizationInput,
@@ -112,7 +104,7 @@ def incremental_commit(
 ) -> CommitResult:
     """Commit candidates in genome order; re-probe latest domain before each confirm."""
 
-    goals = _goal_coords(inp)
+    goals = probe_goal_coords(inp, skeleton)
     committed_ids: list[str] = []
     conflicts: list[CommitConflict] = []
     committed_occupied = domain.committed_occupied

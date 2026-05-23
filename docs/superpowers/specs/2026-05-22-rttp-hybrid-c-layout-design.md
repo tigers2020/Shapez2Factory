@@ -120,7 +120,7 @@ Anchor coord must ∈ `rim_cells ∪ inner_cells` per policy; still **no greedy 
 generate → local geometry validate → route probe → reachable → normal pool
 ```
 
-**Probe start:** `output_stub` absolute Server coord; domain includes `trunk_mask_cells`, `lift_columns` as traversable/reserved per policy, `RouteGoal` from skeleton ports + `OptimizationInput.route_goals`.
+**Probe start:** `output_stub` absolute Server coord; domain includes `trunk_mask_cells`, `lift_columns` as traversable/reserved per policy. **Probe goals (v0.1):** `probe_goal_coords(inp, skeleton)` = adapter `route_goals` ∪ `skeleton.ring_ports` coords.
 
 ### Layer 3 — Selection
 
@@ -282,7 +282,7 @@ Both use the same four layers; skeleton builder **seeds** from `existing_trunk_c
 | **RTTP-G5** | Lift + trunk mask reflected in probe domain (test: surrounded platform still reachable via lift) |
 | **RTTP-G6** | Inlet conflict rejects commit with enum, not free string |
 | **RTTP-G7** | LNS runs only after commit failure; validation unchanged |
-| **RTTP-G8** | Greenfield golden test: N bundles committed, replay on/off identical candidate set |
+| **RTTP-G8** | Greenfield golden: N bundles committed; **v0.1** = repeated `run_rttp_pipeline` deterministic (replay on/off deferred v0.2) |
 
 ---
 

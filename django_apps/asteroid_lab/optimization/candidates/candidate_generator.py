@@ -18,6 +18,7 @@ from django_apps.asteroid_lab.optimization.input_contracts import OptimizationIn
 from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (
     build_route_domain_from_skeleton,
 )
+from django_apps.asteroid_lab.optimization.routing.route_goals import probe_goal_coords
 from django_apps.asteroid_lab.optimization.routing.route_probe import probe_route
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 
@@ -35,14 +36,6 @@ def _anchor_cells(
         msg = f"unsupported extractor policy: {policy!r}"
         raise ValueError(msg)
     return tuple(sorted(cells))
-
-
-def _goal_coords(inp: OptimizationInput) -> frozenset[Coord]:
-    return frozenset(
-        goal.coord
-        for goal in inp.route_goals
-        if goal.transport_kind is None or goal.transport_kind is inp.transport_kind
-    )
 
 
 def _translate_offset(anchor: Coord, offset: Coord) -> Coord:
@@ -98,7 +91,7 @@ def generate_candidates(
     """Enumerate anchor × pattern placements; probe before normal pool admission."""
 
     domain = build_route_domain_from_skeleton(skeleton, inp)
-    goals = _goal_coords(inp)
+    goals = probe_goal_coords(inp, skeleton)
     patterns = build_pattern_library()
     anchors = _anchor_cells(inp, skeleton, policy)
 

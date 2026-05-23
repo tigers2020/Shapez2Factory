@@ -37,6 +37,13 @@ def test_interior_and_rim_unreachable_goes_to_rejected(
 ) -> None:
     inp = replace(greenfield_optimization_input, route_goals=())
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+    # No adapter goals and no ring ports → probe has no targets (v0.1 probe_goal_coords).
+    skeleton = replace(
+        skeleton,
+        ring_ports=(),
+        lift_columns=(),
+        trunk_mask_cells=frozenset(),
+    )
     result = generate_candidates(inp, skeleton, policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM)
 
     assert result.normal_candidates == ()

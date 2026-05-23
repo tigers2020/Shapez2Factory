@@ -1,4 +1,8 @@
-"""RTTP greenfield pipeline golden — RTTP-G8 (PR-5)."""
+"""RTTP greenfield pipeline golden — deterministic commit (G8 v0.1).
+
+v0.1: asserts identical ``PipelineResult`` on repeated runs. Replay artifact on/off
+parity is deferred to v0.2 when optimization replay wiring exists.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +13,7 @@ from django_apps.asteroid_lab.optimization.input_contracts import OptimizationIn
 from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
 
 
-def test_greenfield_pipeline_commits_n_bundles(
+def test_greenfield_pipeline_deterministic_commits_n_bundles(
     greenfield_optimization_input: OptimizationInput,
 ) -> None:
     first = run_rttp_pipeline(

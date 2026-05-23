@@ -1,4 +1,8 @@
-"""Greedy-regret genome selection for RTTP Layer 3 (PR-4)."""
+"""Greedy-regret genome selection for RTTP Layer 3 (PR-4).
+
+v0.1: regret is computed per ``anchor_coord`` (not full ``CandidateEquivalenceKey``).
+Selection ``committed_route_cells`` tracks output stubs only; commit uses full paths.
+"""
 
 from __future__ import annotations
 

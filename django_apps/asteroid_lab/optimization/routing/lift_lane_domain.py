@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
+from django_apps.asteroid_lab.optimization.routing.route_goals import probe_goal_coords
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4_server
 
@@ -45,7 +46,7 @@ def build_route_domain_from_skeleton(
     platform_cells = frozenset(edge.platform_coord for edge in lift_edges)
     lift_coords = frozenset(edge.lift_coord for edge in lift_edges)
     trunk_mask = frozenset(skeleton.trunk_mask_cells)
-    goal_coords = frozenset(goal.coord for goal in inp.route_goals)
+    goal_coords = probe_goal_coords(inp, skeleton)
 
     blocked = frozenset(
         (inp.mineable_cells | inp.external_void_cells)

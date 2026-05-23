@@ -1,4 +1,4 @@
-"""Solver runtime entry stub tests (optimization pipeline removed)."""
+"""Solver runtime entry — RTTP library exists; entry not wired (v0.1)."""
 
 from __future__ import annotations
 

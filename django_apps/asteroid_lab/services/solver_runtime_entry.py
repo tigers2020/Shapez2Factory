@@ -1,4 +1,4 @@
-"""Solver runtime entry stub — reconstruction remains; optimization pipeline removed."""
+"""Solver runtime entry — reconstruction active; RTTP library in optimization/ (not wired here)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
 )
 
 SOLVER_NOT_AVAILABLE_MESSAGE = (
-    "Solver runtime has been removed; reconstruction is still available."
+    "Solver runtime entry is not wired to RTTP yet; reconstruction is still available."
 )
 
 
@@ -65,7 +65,7 @@ def run_solver_runtime_for_project(
     generator_version: str = "exhaustive_sample_gene_v1",
     game_data_snapshot: AsteroidGameDataSnapshot | None = None,
 ) -> SolverRuntimeEntryResult:
-    """Return SOLVER_NOT_AVAILABLE — optimization pipeline removed (2026-05-22)."""
+    """Return SOLVER_NOT_AVAILABLE until config enables RTTP pipeline (library-only v0.1)."""
 
     del run_key, replace_existing_run, config, generator_version, game_data_snapshot
 

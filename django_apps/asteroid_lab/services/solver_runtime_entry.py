@@ -31,6 +31,10 @@ from django_apps.asteroid_lab.services.experiment_service import (
     ensure_default_replay_track,
 )
 from django_apps.asteroid_lab.services.input_service import refresh_map_input_from_copy_code
+from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
+    _empty_track_metrics,
+    build_lab_optimization_milestone_frames_for_project,
+)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
@@ -62,6 +66,10 @@ class SolverRuntimeEntryErrorCode(StrEnum):
     RTTP_VALIDATION_FAILED = "rttp_validation_failed"
 
 
+def _default_lab_optimization_milestone_track_metrics() -> dict[str, Any]:
+    return _empty_track_metrics()
+
+
 @dataclass(frozen=True, slots=True)
 class SolverRuntimeEntryResult:
     ok: bool
@@ -73,10 +81,25 @@ class SolverRuntimeEntryResult:
     gene_template_source: dict[str, Any] = field(default_factory=dict)
     error_code: SolverRuntimeEntryErrorCode | None = None
     message: str | None = None
+    lab_optimization_milestone_frames_json: list[dict[str, Any]] = field(default_factory=list)
+    lab_optimization_milestone_track_metrics: dict[str, Any] = field(
+        default_factory=_default_lab_optimization_milestone_track_metrics
+    )
 
 
 def _empty_replay_for_project(project_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     return build_lab_replay_frames_for_project(int(project_id))
+
+
+def _milestone_payload_for_project(
+    project_id: int,
+    *,
+    run_key: str | None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    return build_lab_optimization_milestone_frames_for_project(
+        int(project_id),
+        run_key=run_key,
+    )
 
 
 def _rttp_enabled(config: dict[str, Any] | None) -> bool:
@@ -283,6 +306,10 @@ def _run_rttp_solver_for_map_input(
     )
 
     frames, metrics = build_lab_replay_frames_for_project(int(project_id))
+    milestone_frames, milestone_metrics = _milestone_payload_for_project(
+        int(project_id),
+        run_key=rk,
+    )
     if not pipeline_result.validation_passed:
         return SolverRuntimeEntryResult(
             ok=False,
@@ -293,6 +320,8 @@ def _run_rttp_solver_for_map_input(
             validation_passed=False,
             error_code=SolverRuntimeEntryErrorCode.RTTP_VALIDATION_FAILED,
             message="RTTP pipeline finished but final validation did not pass.",
+            lab_optimization_milestone_frames_json=milestone_frames,
+            lab_optimization_milestone_track_metrics=milestone_metrics,
         )
 
     return SolverRuntimeEntryResult(
@@ -302,6 +331,8 @@ def _run_rttp_solver_for_map_input(
         replay_track_metrics=metrics,
         solver_summary=summary,
         validation_passed=True,
+        lab_optimization_milestone_frames_json=milestone_frames,
+        lab_optimization_milestone_track_metrics=milestone_metrics,
     )
 
 
@@ -360,14 +391,27 @@ def run_solver_runtime_for_project(
     )
 
 
+def _normalize_milestone_track_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
+    """Ensure Run Solver JSON matches SSR neutral milestone metrics shape."""
+    if metrics.get("frame_count") is not None:
+        return dict(metrics)
+    return _empty_track_metrics()
+
+
 def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any]:
     frames = list(result.lab_replay_frames_json)
+    milestone_frames = list(result.lab_optimization_milestone_frames_json)
     body: dict[str, Any] = {
         "ok": result.ok,
         "solver_run_id": result.solver_run_id,
         "lab_replay_frame_count": len(frames),
         "lab_replay_frames_json": frames,
         "replay_track_metrics": result.replay_track_metrics,
+        "lab_optimization_milestone_frame_count": len(milestone_frames),
+        "lab_optimization_milestone_frames_json": milestone_frames,
+        "lab_optimization_milestone_track_metrics": _normalize_milestone_track_metrics(
+            result.lab_optimization_milestone_track_metrics
+        ),
         "solver_summary": dict(result.solver_summary),
         "validation_passed": result.validation_passed,
         "validation_issue_codes": list(result.solver_summary.get("issue_codes") or []),

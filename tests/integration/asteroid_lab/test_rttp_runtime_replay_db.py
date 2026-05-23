@@ -21,6 +21,9 @@ from django.test import override_settings
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.optimization.replay_track_keys import rttp_optimization_track_key
 from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
+from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
+    RTTP_MILESTONE_EVENT_TYPES,
+)
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
 )
@@ -28,7 +31,6 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import (
     entry_result_to_json_dict,
     run_solver_runtime_for_project,
 )
-from tests.support.rttp_v02_contract import RTTP_PIPELINE_MILESTONE_EVENT_TYPES
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
 
@@ -89,7 +91,16 @@ def test_run_solver_lab_json_uses_inspection_not_rttp_optimization_track() -> No
     assert body["lab_replay_frame_count"] == len(body["lab_replay_frames_json"])
     assert body["lab_replay_frame_count"] > 0
     lab_event_types = {fr.get("event_type") for fr in body["lab_replay_frames_json"]}
-    assert lab_event_types.isdisjoint(RTTP_PIPELINE_MILESTONE_EVENT_TYPES)
+    assert lab_event_types.isdisjoint(RTTP_MILESTONE_EVENT_TYPES)
+
+    milestones = body["lab_optimization_milestone_frames_json"]
+    assert body["lab_optimization_milestone_frame_count"] == len(milestones)
+    assert len(milestones) >= 4
+    mile_types = {fr.get("event_type") for fr in milestones}
+    assert RTTP_MILESTONE_EVENT_TYPES <= mile_types
+    for fr in milestones:
+        assert "map_view" not in fr
+        assert "full_map" not in fr
 
     rttp_track = m.ReplayTrack.objects.get(
         project_id=int(proj.pk),
@@ -102,4 +113,4 @@ def test_run_solver_lab_json_uses_inspection_not_rttp_optimization_track() -> No
             flat=True,
         )
     )
-    assert RTTP_PIPELINE_MILESTONE_EVENT_TYPES <= rttp_types
+    assert RTTP_MILESTONE_EVENT_TYPES <= rttp_types

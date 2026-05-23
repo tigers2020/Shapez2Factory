@@ -7,6 +7,9 @@ from typing import Any, cast
 from django.db.models import Count, Prefetch
 
 from django_apps.asteroid_lab.models import GeneticSample, ReplayFrame, ReplayTrack
+from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
+    build_lab_optimization_milestone_frames_for_project,
+)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
     get_latest_lab_replay_track_for_project,
@@ -138,6 +141,17 @@ def neutral_lab_context() -> dict[str, Any]:
             "dropped_frame_count": None,
             "diagnostic_reason": None,
         },
+        "lab_optimization_milestone_frames_json": [],
+        "lab_optimization_milestone_track_metrics": {
+            "track_key": None,
+            "frame_count": 0,
+            "event_types": [],
+            "replay_truncated": False,
+            "truncation_reason": None,
+            "dropped_frame_count": None,
+            "diagnostic_reason": None,
+            "source_solver_run_id": None,
+        },
         "lab_ui_initial": {
             "frame": initial_frame,
             "totalFrames": total_frames,
@@ -161,6 +175,11 @@ def lab_page_context(*, project_id: int | None = None) -> dict[str, Any]:
 
     track = get_latest_lab_replay_track_for_project(int(project_id))
     frames_json, track_metrics = build_lab_replay_frames_for_project(int(project_id))
+    milestone_frames, milestone_metrics = build_lab_optimization_milestone_frames_for_project(
+        int(project_id)
+    )
+    ctx["lab_optimization_milestone_frames_json"] = milestone_frames
+    ctx["lab_optimization_milestone_track_metrics"] = milestone_metrics
 
     if not frames_json:
         if track is not None:

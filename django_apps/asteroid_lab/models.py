@@ -524,6 +524,38 @@ class GeneticSample(models.Model):
         super().save(*args, **kwargs)
 
 
+class IslandExtractorBlueprint(models.Model):
+    """In-game island blueprint for a shape/fluid extractor variant (balance / omni / fluid)."""
+
+    variant_key = models.CharField(
+        max_length=64,
+        unique=True,
+        verbose_name="variant key",
+        help_text="예: shape_balance, shape_omni, fluid_default",
+    )
+    carrier_kind = models.CharField(max_length=16, verbose_name="carrier")
+    display_name = models.CharField(max_length=120, verbose_name="표시 이름")
+    summary = models.TextField(blank=True, verbose_name="설명")
+    layout_t = models.CharField(max_length=80, verbose_name="Layout T")
+    copy_code = models.TextField(verbose_name="SHAPEZ2-4- 복사 문자열")
+    inner_fingerprint = models.CharField(
+        max_length=64,
+        blank=True,
+        verbose_name="내부 B.Entries 지문",
+    )
+    metadata_json = models.JSONField(default=dict, blank=True, verbose_name="메타데이터")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("variant_key",)
+        verbose_name = "섬 추출기 기본 블루프린트"
+        verbose_name_plural = "섬 추출기 기본 블루프린트"
+        indexes = [models.Index(fields=["carrier_kind", "variant_key"])]
+
+    def __str__(self) -> str:
+        return f"{self.variant_key} ({self.layout_t})"
+
+
 class ReconstructedAsteroidMap(models.Model):
     """Reconstruction-complete full_map: original snapshot + merged lab copy/json."""
 

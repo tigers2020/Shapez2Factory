@@ -59,6 +59,7 @@ def _raw_to_server_xy(raw_x: int, raw_y: int, server_xy_params: tuple[int, ...])
         raw_x, raw_y, min_dense_x=md, min_raw_y=my, has_explicit_raw_x_zero=hz
     )
 
+
 if TYPE_CHECKING:
     from django_apps.asteroid_lab.cleanup.result import CleanupResult
 
@@ -123,9 +124,7 @@ def _fill_seam_column_gap_coords(
         if server_xy_params is not None:
             sx_gap, sy_gap = _raw_to_server_xy(x, y, server_xy_params)
         filled.append(
-            synthetic_field_cell(
-                x, y, fill_layer, fill_kind, server_x=sx_gap, server_y=sy_gap
-            )
+            synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_gap, server_y=sy_gap)
         )
         occupied_xy.add((x, y))
         added += 1
@@ -270,9 +269,7 @@ def reconstruct_after_cleanup(
         (c.x, c.y) for c in original_cells if c.cell_kind in MINER_EXTENSION_CELL_KINDS
     }
     diagonal_extra = set(
-        close_diagonal_leaks(
-            walls_xy, bbox_bounds, include_raw_x_zero=include_raw_x_zero
-        )
+        close_diagonal_leaks(walls_xy, bbox_bounds, include_raw_x_zero=include_raw_x_zero)
     )
     barrier_xy: set[Coord] = walls_xy | diagonal_extra
 
@@ -337,9 +334,7 @@ def reconstruct_after_cleanup(
             )
         )
 
-    interior_comps = _sorted_interior_components(
-        interior, include_raw_x_zero=include_raw_x_zero
-    )
+    interior_comps = _sorted_interior_components(interior, include_raw_x_zero=include_raw_x_zero)
     skipped_bbox = 0
     filled_components = 0
     filled: list[DecodedCellDTO] = []
@@ -552,12 +547,7 @@ def reconstruct_after_cleanup(
                 continue
             if include_raw_x_zero and x == 0 and xy not in extension_shell_raw:
                 continue
-            if (
-                include_raw_x_zero
-                and x != 0
-                and (0, y) in walkable
-                and (0, y) not in barrier_xy
-            ):
+            if include_raw_x_zero and x != 0 and (0, y) in walkable and (0, y) not in barrier_xy:
                 continue
             if _wall_neighbor_count(walls_xy, xy) < 1:
                 continue

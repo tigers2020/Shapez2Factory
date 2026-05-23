@@ -17,8 +17,7 @@ def _module_import_names(module_path: Path) -> set[str]:
             for alias in node.names:
                 names.add(alias.name.split(".")[0])
         elif isinstance(node, ast.ImportFrom) and node.module:
-            names.add(node.module.split(".")[-1]
-                       if node.level else node.module.split(".")[-1])
+            names.add(node.module.split(".")[-1] if node.level else node.module.split(".")[-1])
     return names
 
 

@@ -528,107 +528,6 @@ msgid ""
 "load, and bottleneck checks in a single planning surface."
 msgstr "목표 도형 하나를 잡고 분해·분당 입력·채굴 부하·병목까지 한 화면에서 따라가 봅니다."
 
-msgid "shapez2 planner | Graph: {{ code }} (staff)"
-msgstr "shapez2 planner · 그래프 {{ code }}(스태프)"
-
-msgid "shapez2 planner | Macro catalog (staff)"
-msgstr "shapez2 planner · 매크로 목록(스태프)"
-
-msgid "Staff"
-msgstr "스태프"
-
-msgid "Macro pattern catalog"
-msgstr "매크로 패턴 목록"
-
-msgid "New recipe"
-msgstr "새 레시피"
-
-msgid "Family"
-msgstr "패밀리"
-
-msgid "Strategy"
-msgstr "전략"
-
-msgid "Active"
-msgstr "활성"
-
-msgid "Actions"
-msgstr "작업"
-
-msgid "yes"
-msgstr "예"
-
-msgid "no"
-msgstr "아니오"
-
-msgid "Graph"
-msgstr "그래프"
-
-msgid "Edit"
-msgstr "편집"
-
-msgid "Delete"
-msgstr "삭제"
-
-msgid "No macro recipes yet — create one."
-msgstr "아직 매크로 레시피가 없습니다. 새로 만드세요."
-
-msgid ""
-"Manage macro recipes for Pattern Lab and solver catalog strategies. Use "
-"separate pages for metadata vs graph canvas."
-msgstr "패턴 랩과 솔버용 매크로 레시피를 여기서 다룹니다. 메타 정보와 그래프 캔버스는 페이지가 나뉘어 있습니다."
-
-msgid "shapez2 planner | New macro recipe (staff)"
-msgstr "shapez2 planner · 새 매크로 레시피(스태프)"
-
-msgid "New macro recipe"
-msgstr "새 매크로 레시피"
-
-msgid "← Back to catalog"
-msgstr "← 카탈로그로"
-
-msgid "Display name (optional)"
-msgstr "표시 이름(선택)"
-
-msgid "Cancel"
-msgstr "취소"
-
-msgid "Create & open graph editor"
-msgstr "만들고 그래프 편집기로"
-
-msgid "Untitled macro"
-msgstr "제목 없는 매크로"
-
-msgid ""
-"Creates a draft row with the placeholder graph-draft pattern family (solver "
-"macro lookup uses exact pattern signature — drafts do not match real "
-"patterns until you assign a real family on the metadata page). Recipe code, "
-"strategy, costs, and priority are set automatically or from the graph "
-"editor."
-msgstr ""
-"placeholder graph-draft 패밀리로 초안 행을 만듭니다. 솔버 매크로 조회는 패턴 시그니처가 정확히 맞아야 하므로, 메타"
-" 페이지에서 실제 패밀리를 지정하기 전까지 초안은 실제 패턴과 맞지 않습니다. 레시피 코드·전략·비용·우선순위는 자동으로 채우거나 그래프"
-" 편집기에서 가져옵니다."
-
-msgid "Staff · Recipe metadata"
-msgstr "스태프 · 레시피 정보"
-
-msgid "← Catalog"
-msgstr "← 카탈로그"
-
-msgid "Open graph editor →"
-msgstr "그래프 편집기 열기 →"
-
-msgid "shapez2 planner | Edit: {{ code }} (staff)"
-msgstr "shapez2 planner · 편집 {{ code }}(스태프)"
-
-msgid ""
-"Family, slug code, strategy, and activation. Estimated costs and solver "
-"priority are derived from the recipe graph when you save from the graph "
-"editor (commit)."
-msgstr ""
-"패밀리·슬러그·전략·활성 여부입니다. 예상 비용과 솔버 우선순위는 그래프 편집기에서 저장(커밋)할 때 레시피 그래프에서 끌어옵니다."
-
 msgid "Language"
 msgstr "언어"
 
@@ -654,9 +553,6 @@ msgstr "패턴 랩"
 
 msgid "Asteroid layout"
 msgstr "Asteroid layout"
-
-msgid "Macro catalog"
-msgstr "매크로 목록"
 
 msgid "Support"
 msgstr "후원"
@@ -724,6 +620,12 @@ msgstr "매크로 후보"
 msgid "Macro"
 msgstr "매크로"
 
+msgid "Strategy"
+msgstr "전략"
+
+msgid "Family"
+msgstr "패밀리"
+
 msgid "Cost"
 msgstr "비용"
 
@@ -775,9 +677,11 @@ msgid "in [{{ in_slots }}] -> out [{{ out_slots }}]"
 msgstr "입력 [{{ in_slots }}] -> 출력 [{{ out_slots }}]"
 
 msgid ""
-"No active DB macro matched this signature. Load the seed fixture or add a "
-"MacroRecipe in admin."
-msgstr "이 시그니처와 맞는 활성 매크로가 DB에 없습니다. 시드 픽스처를 넣거나 관리자에서 MacroRecipe를 추가하세요."
+"No macro catalog entry matched this signature (pattern catalog tables were "
+"removed)."
+msgstr ""
+"No macro catalog entry matched this signature (pattern catalog tables were "
+"removed)."
 
 msgid "shapez2 planner | Shape solver"
 msgstr "shapez2 planner · 도형 솔버"

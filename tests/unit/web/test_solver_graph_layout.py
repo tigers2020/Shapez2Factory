@@ -12,7 +12,8 @@ from django.conf import settings
 def _run_layout(graph: dict[str, object]) -> dict[str, Any]:
     static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web" / "js"
     module_url = (static_root / "solver_graph_layout.js").as_uri()
-    script = textwrap.dedent(f"""
+    script = textwrap.dedent(
+        f"""
         import {{ COLUMN_GAP, computeGraphLayout, NODE_HEIGHT, NODE_WIDTH }} from "{module_url}";
 
         const graph = {json.dumps(graph)};
@@ -30,7 +31,8 @@ def _run_layout(graph: dict[str, object]) -> dict[str, Any]:
           nodeHeight: NODE_HEIGHT,
           nodeWidth: NODE_WIDTH,
         }}));
-        """).strip()
+        """
+    ).strip()
     completed = subprocess.run(
         ["node", "--input-type=module", "-e", script],
         check=True,

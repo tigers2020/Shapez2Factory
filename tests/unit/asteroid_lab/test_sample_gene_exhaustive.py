@@ -10,7 +10,6 @@ from django.core.management import call_command
 
 from django_apps.asteroid_lab.adapters.blueprint_canonical_export import to_official_island_root
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
-from django_apps.asteroid_lab.models import GeneticSample
 from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     DELTA_NWS,
     OUTPUT_TRANSPORT_GRID,
@@ -18,6 +17,7 @@ from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     assert_blueprint_entries_raw_x_nonzero,
     build_layout_root,
 )
+from django_apps.asteroid_lab.models import GeneticSample
 from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
 
 pytestmark = pytest.mark.slow

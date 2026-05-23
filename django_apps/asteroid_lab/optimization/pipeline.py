@@ -49,8 +49,7 @@ def run_rttp_pipeline(
     generation = generate_candidates(inp, skeleton, policy=policy)
     genome = select_genome(generation.normal_candidates, skeleton, inp)
     candidates_by_id = {
-        candidate.candidate_id: candidate
-        for candidate in generation.normal_candidates
+        candidate.candidate_id: candidate for candidate in generation.normal_candidates
     }
     domain = initial_commit_domain(skeleton, inp)
     commit_result = incremental_commit(

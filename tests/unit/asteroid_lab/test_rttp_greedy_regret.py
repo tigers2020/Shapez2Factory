@@ -42,9 +42,7 @@ def _bundle_candidate(
     pattern = _pattern_by_id(pattern_id)
     occupied = frozenset(_translate(anchor, offset) for offset in pattern.occupied_offsets)
     output_stub = _translate(anchor, pattern.output_stub_offset)
-    throughput = (
-        throughput_factor if throughput_factor is not None else pattern.throughput_factor
-    )
+    throughput = throughput_factor if throughput_factor is not None else pattern.throughput_factor
     return BundleCandidate(
         candidate_id=f"{anchor[0]},{anchor[1]}:{pattern.pattern_id}:shape_belt",
         anchor_coord=anchor,

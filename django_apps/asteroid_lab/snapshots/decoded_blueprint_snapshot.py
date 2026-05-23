@@ -112,9 +112,7 @@ def build_decoded_blueprint_snapshot(
         y = _as_int(item.get("Y"))
         xs.append(x)
         ys.append(y)
-        dense_xs.append(
-            raw_x_to_dense_index(x, has_explicit_raw_x_zero=bbox_has_raw_x_zero)
-        )
+        dense_xs.append(raw_x_to_dense_index(x, has_explicit_raw_x_zero=bbox_has_raw_x_zero))
 
         t_raw = item.get("T")
         tile_type = str(t_raw) if isinstance(t_raw, str) else ""

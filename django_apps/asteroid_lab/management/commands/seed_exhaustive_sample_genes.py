@@ -6,12 +6,12 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 
-from django_apps.asteroid_lab.models import GeneticSample
 from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     ExhaustiveGenerationStats,
     TransportKind,
     generate_exhaustive_sample_genes,
 )
+from django_apps.asteroid_lab.models import GeneticSample
 
 
 class Command(BaseCommand):  # type: ignore[misc]

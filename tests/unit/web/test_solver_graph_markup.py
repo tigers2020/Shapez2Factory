@@ -95,7 +95,8 @@ def _render_graph_markup(graph: dict[str, object]) -> dict[str, Any]:
     ) as handle:
         json.dump(graph, handle)
         graph_json_path = handle.name
-    script = textwrap.dedent(f"""
+    script = textwrap.dedent(
+        f"""
         import fs from "node:fs";
         import {{ computeEdgeGeometry, renderSolverGraph }} from "{module_url}";
 
@@ -139,7 +140,8 @@ def _render_graph_markup(graph: dict[str, object]) -> dict[str, Any]:
           geometryA,
           geometryB,
         }}));
-        """).strip()
+        """
+    ).strip()
     try:
         completed = subprocess.run(
             ["node", "--input-type=module", "-e", script],

@@ -374,7 +374,7 @@
                   </button>
                   <div class="ml-2 border-l border-slate-700 pl-3 text-xs">
                     <div class="text-slate-500">Frame</div>
-                    <div class="font-semibold text-slate-100"><span id="lab-frame-display">{{ initial_frame }} / {{ total_frames }}</span></div>
+                    <div class="font-semibold text-slate-100"><span id="lab-frame-display">{% if total_frames %}{{ initial_frame|add:1 }} / {{ total_frames }}{% else %}0 / 0{% endif %}</span></div>
                   </div>
                 </div>
                 <label class="sr-only" for="lab-timeline-scrub">Replay frame</label>

@@ -179,6 +179,8 @@ Stop on time budget or no improvement. Do not mutate validation outcomes.
 
 ## v1 — MacroBundle T3 (spec only in v0.1)
 
+> **v1 design spec (2026-05-23):** Implementable contract lives in [`2026-05-23-rttp-v1-macrobundle-t3-design.md`](2026-05-23-rttp-v1-macrobundle-t3-design.md). This section remains the historical sketch only.
+
 **T3 is not a `BundlePattern`.** It is a **`MacroBundle`**:
 
 ```text

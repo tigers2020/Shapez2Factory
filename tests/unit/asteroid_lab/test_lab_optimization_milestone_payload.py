@@ -141,6 +141,25 @@ def test_missing_rttp_track_diagnostic() -> None:
     assert metrics["diagnostic_reason"] == DIAGNOSTIC_MISSING_OPTIMIZATION_MILESTONE_TRACK
 
 
+def test_missing_rttp_track_includes_run_context() -> None:
+    project = m.AsteroidProject.objects.create(name="RunNoTrack", slug="run-no-track")
+    run = m.SolverRun.objects.create(
+        project=project,
+        run_key="orphan",
+        algorithm_label="rttp_v0.1",
+        config_json={},
+    )
+    track_key = rttp_optimization_track_key("orphan")
+    frames, metrics = build_lab_optimization_milestone_frames_for_project(
+        int(project.pk),
+        run_key="orphan",
+    )
+    assert frames == []
+    assert metrics["diagnostic_reason"] == DIAGNOSTIC_MISSING_OPTIMIZATION_MILESTONE_TRACK
+    assert metrics["track_key"] == track_key
+    assert metrics["source_solver_run_id"] == int(run.pk)
+
+
 def test_empty_rttp_track_diagnostic() -> None:
     project = m.AsteroidProject.objects.create(name="Empty", slug="empty-rttp")
     run = m.SolverRun.objects.create(

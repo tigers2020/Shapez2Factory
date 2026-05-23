@@ -109,7 +109,9 @@ def build_lab_optimization_milestone_frames_for_project(
     ).first()
     if track is None:
         return [], _empty_track_metrics(
-            diagnostic_reason=DIAGNOSTIC_MISSING_OPTIMIZATION_MILESTONE_TRACK
+            track_key=track_key,
+            source_solver_run_id=run_id,
+            diagnostic_reason=DIAGNOSTIC_MISSING_OPTIMIZATION_MILESTONE_TRACK,
         )
     rows = ReplayFrame.objects.filter(replay_track_id=int(track.pk)).order_by("frame_index", "id")
     if not rows.exists():

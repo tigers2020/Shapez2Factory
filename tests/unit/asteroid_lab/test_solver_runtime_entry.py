@@ -71,6 +71,11 @@ def test_entry_result_to_json_dict_includes_error_code_and_message() -> None:
     assert body["lab_replay_frame_count"] == 0
     assert body["error_code"] == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE.value
     assert body["message"] == SOLVER_NOT_AVAILABLE_MESSAGE
+    mile_metrics = body["lab_optimization_milestone_track_metrics"]
+    assert mile_metrics["frame_count"] == 0
+    assert mile_metrics["event_types"] == []
+    assert "track_key" in mile_metrics
+    assert "source_solver_run_id" in mile_metrics
 
 
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)

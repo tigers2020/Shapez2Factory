@@ -32,6 +32,7 @@ from django_apps.asteroid_lab.services.experiment_service import (
 )
 from django_apps.asteroid_lab.services.input_service import refresh_map_input_from_copy_code
 from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
+    _empty_track_metrics,
     build_lab_optimization_milestone_frames_for_project,
 )
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
@@ -65,6 +66,10 @@ class SolverRuntimeEntryErrorCode(StrEnum):
     RTTP_VALIDATION_FAILED = "rttp_validation_failed"
 
 
+def _default_lab_optimization_milestone_track_metrics() -> dict[str, Any]:
+    return _empty_track_metrics()
+
+
 @dataclass(frozen=True, slots=True)
 class SolverRuntimeEntryResult:
     ok: bool
@@ -77,7 +82,9 @@ class SolverRuntimeEntryResult:
     error_code: SolverRuntimeEntryErrorCode | None = None
     message: str | None = None
     lab_optimization_milestone_frames_json: list[dict[str, Any]] = field(default_factory=list)
-    lab_optimization_milestone_track_metrics: dict[str, Any] = field(default_factory=dict)
+    lab_optimization_milestone_track_metrics: dict[str, Any] = field(
+        default_factory=_default_lab_optimization_milestone_track_metrics
+    )
 
 
 def _empty_replay_for_project(project_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -384,6 +391,13 @@ def run_solver_runtime_for_project(
     )
 
 
+def _normalize_milestone_track_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
+    """Ensure Run Solver JSON matches SSR neutral milestone metrics shape."""
+    if metrics.get("frame_count") is not None:
+        return dict(metrics)
+    return _empty_track_metrics()
+
+
 def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any]:
     frames = list(result.lab_replay_frames_json)
     milestone_frames = list(result.lab_optimization_milestone_frames_json)
@@ -395,8 +409,8 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
         "replay_track_metrics": result.replay_track_metrics,
         "lab_optimization_milestone_frame_count": len(milestone_frames),
         "lab_optimization_milestone_frames_json": milestone_frames,
-        "lab_optimization_milestone_track_metrics": dict(
-            result.lab_optimization_milestone_track_metrics or {}
+        "lab_optimization_milestone_track_metrics": _normalize_milestone_track_metrics(
+            result.lab_optimization_milestone_track_metrics
         ),
         "solver_summary": dict(result.solver_summary),
         "validation_passed": result.validation_passed,

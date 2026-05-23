@@ -169,9 +169,7 @@ def test_sprite_key_storage_basename_roundtrip() -> None:
 
 
 def test_canonical_shape_part_sprite_basename_strips_django_hash() -> None:
-    assert (
-        canonical_shape_part_sprite_basename("cr------_v1_FoEFwqa.png") == "cr------_v1.png"
-    )
+    assert canonical_shape_part_sprite_basename("cr------_v1_FoEFwqa.png") == "cr------_v1.png"
 
 
 def test_atomic_layer_game_code_examples() -> None:

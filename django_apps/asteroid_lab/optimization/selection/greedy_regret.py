@@ -48,9 +48,7 @@ def _fragmentation_penalty(
         return 0.0
     isolated = 0
     for cell in remaining:
-        if not any(
-            neighbor in remaining for neighbor in neighbors4_server(cell)
-        ):
+        if not any(neighbor in remaining for neighbor in neighbors4_server(cell)):
             isolated += 1
     return float(isolated) / float(len(remaining))
 
@@ -80,8 +78,7 @@ def _base_score(
         1000.0 * float(candidate.throughput_factor)
         + config.rim_port_alignment_weight * _rim_port_alignment(candidate, skeleton)
         - 30.0 * float(candidate.route_probe_cost)
-        - config.fragmentation_weight
-        * _fragmentation_penalty(candidate, inp, committed_occupied)
+        - config.fragmentation_weight * _fragmentation_penalty(candidate, inp, committed_occupied)
     )
 
 
@@ -105,9 +102,7 @@ def _regret_scores(
             continue
         second_best = base_scores[ordered[1].candidate_id]
         for candidate in ordered:
-            regrets[candidate.candidate_id] = (
-                base_scores[candidate.candidate_id] - second_best
-            )
+            regrets[candidate.candidate_id] = base_scores[candidate.candidate_id] - second_best
     return regrets
 
 
@@ -121,11 +116,7 @@ def _priority(
     config: SelectionConfig,
 ) -> float:
     inlet = _inlet_fragility(candidate, skeleton, committed_route_cells)
-    return (
-        base_score
-        + config.lambda_regret * regret
-        - config.inlet_fragility_weight * inlet
-    )
+    return base_score + config.lambda_regret * regret - config.inlet_fragility_weight * inlet
 
 
 def _overlaps(candidate: BundleCandidate, occupied: frozenset[Coord]) -> bool:

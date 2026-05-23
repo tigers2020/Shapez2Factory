@@ -16,6 +16,7 @@ from django_apps.web.views.public_pages import (
     support,
 )
 from django_apps.web.views.staff_shared import (
+    macro_pattern_staff_api_graph_preview_warm,
     shape_part_sprite_manifest,
     staff_site_required,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "gallery",
     "graph_preview_cache",
     "home",
+    "macro_pattern_staff_api_graph_preview_warm",
     "pattern_lab",
     "shape_part_sprite_manifest",
     "solver",

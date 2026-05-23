@@ -66,9 +66,7 @@ def test_sprite_rotation_deg_from_quarter_matches_normalize() -> None:
 
 
 def test_lab_sprite_relpath_layout_pro_miner_without_db() -> None:
-    assert lab_sprite_relpath_from_tile_type("Layout_ProMiner") == (
-        "Miner/Layout_ShapeMiner.svg"
-    )
+    assert lab_sprite_relpath_from_tile_type("Layout_ProMiner") == ("Miner/Layout_ShapeMiner.svg")
 
 
 @pytest.mark.django_db

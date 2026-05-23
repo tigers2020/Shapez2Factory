@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import pytest
 
-from django_apps.asteroid_lab.models import GeneticSample
+from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
+    ExhaustiveGenerationStats,
+    GeneratedSampleGene,
+)
 from django_apps.asteroid_lab.genetic_sample.gene_template import GeneTemplate
+from django_apps.asteroid_lab.models import GeneticSample
 from django_apps.asteroid_lab.services.genetic_sample_gene_export import (
     GeneTemplateExportErrorCode,
     gene_template_from_genetic_sample,
     load_gene_templates_from_genetic_samples,
-)
-from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
-    ExhaustiveGenerationStats,
-    GeneratedSampleGene,
 )
 
 pytestmark = pytest.mark.django_db

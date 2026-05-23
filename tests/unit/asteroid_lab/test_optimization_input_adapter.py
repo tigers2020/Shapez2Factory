@@ -53,9 +53,9 @@ def _belt_cell(sx: int, sy: int) -> DecodedCellDTO:
 def _assert_coord_pair(value: object, path: str) -> None:
     assert isinstance(value, tuple), f"{path}: expected tuple coord, got {type(value)!r}"
     assert len(value) == 2, f"{path}: expected 2-tuple, got {value!r}"
-    assert isinstance(value[0], int) and isinstance(value[1], int), (
-        f"{path}: coord components must be int, got {value!r}"
-    )
+    assert isinstance(value[0], int) and isinstance(
+        value[1], int
+    ), f"{path}: coord components must be int, got {value!r}"
 
 
 def _assert_optimization_input_server_coords_only(inp: OptimizationInput) -> None:
@@ -102,7 +102,5 @@ def test_optimization_input_adapter_greenfield_has_external_margin_goal() -> Non
     assert inp.existing_transport_cells == frozenset()
     assert inp.existing_trunk_cells == frozenset()
     assert len(inp.route_goals) >= 1
-    void_neighbors = inp.external_void_cells & frozenset(
-        goal.coord for goal in inp.route_goals
-    )
+    void_neighbors = inp.external_void_cells & frozenset(goal.coord for goal in inp.route_goals)
     assert void_neighbors

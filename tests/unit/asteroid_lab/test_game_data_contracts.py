@@ -3,14 +3,12 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab.contracts.game_data_snapshot import (
-    validate_building_snapshot,
-)
-from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     BuildingConnectorSnapshot,
     BuildingFootprintCell,
     BuildingSnapshot,
     TransportRegistryEntry,
     build_snapshot_meta,
+    validate_building_snapshot,
 )
 
 
@@ -98,8 +96,6 @@ def test_content_hash_stable_across_building_order() -> None:
     from django_apps.asteroid_lab.contracts.game_data_snapshot import (
         AsteroidGameDataSnapshot,
         BuildingSnapshot,
-    )
-    from django_apps.asteroid_lab.contracts.game_data_snapshot import (
         snapshot_content_hash,
     )
 
@@ -130,8 +126,6 @@ def test_content_hash_stable_across_building_order() -> None:
 def test_content_hash_stable_when_footprint_order_permuted() -> None:
     from django_apps.asteroid_lab.contracts.game_data_snapshot import (
         AsteroidGameDataSnapshot,
-    )
-    from django_apps.asteroid_lab.contracts.game_data_snapshot import (
         snapshot_content_hash,
     )
 
@@ -164,8 +158,6 @@ def test_content_hash_stable_when_footprint_order_permuted() -> None:
 def test_content_hash_stable_when_connector_order_permuted() -> None:
     from django_apps.asteroid_lab.contracts.game_data_snapshot import (
         AsteroidGameDataSnapshot,
-    )
-    from django_apps.asteroid_lab.contracts.game_data_snapshot import (
         snapshot_content_hash,
     )
 
@@ -215,8 +207,6 @@ def test_content_hash_stable_when_transport_registry_order_permuted() -> None:
     from django_apps.asteroid_lab.contracts.game_data_snapshot import (
         AsteroidGameDataSnapshot,
         BuildingSnapshot,
-    )
-    from django_apps.asteroid_lab.contracts.game_data_snapshot import (
         snapshot_content_hash,
     )
 

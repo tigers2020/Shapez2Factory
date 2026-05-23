@@ -48,6 +48,11 @@ urlpatterns = [
         name="shape-part-sprite-manifest",
     ),
     path(
+        "internal/staff/macro-patterns/api/graph-preview/warm/",
+        views.macro_pattern_staff_api_graph_preview_warm,
+        name="macro-pattern-staff-api-graph-preview-warm",
+    ),
+    path(
         "signup/",
         RedirectView.as_view(pattern_name="account_signup", permanent=False),
         name="sign-up",

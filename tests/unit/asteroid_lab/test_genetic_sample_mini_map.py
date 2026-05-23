@@ -11,9 +11,7 @@ from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_bl
 from django_apps.asteroid_lab.genetic_sample_mini_map import genetic_sample_mini_map_html
 from django_apps.asteroid_lab.lab_screen_grid import mini_map_grid_coord
 
-USER_FLUID_MINER_J_COPY = (
-    "SHAPEZ2-4-H4sIAAAAAAACCo2QwQrCMBBE/2XwGA+lByFHUaGgUFRKRUSWNmIgJiVJ0VLy78Z48SKUhYVl38zAjKjAsyxfMCxL8BEzP3QCHIVTpFswFI3Rn8eKPIGfIePNS0X+ZuzDgeleqe+Cu1Mn+L7/Di6BYa29lcJF4YgafJ4xnGIgwzFmbGkwvb9uVC/bndTCrl9eaCdjYGDjB5z/IxOwB8+nOkWjyXid8J/4Q0eNKGUnrhtjn2RbhEssTGqyQyVsEqYWQ3gD2adCLVEBAAA="
-)
+USER_FLUID_MINER_J_COPY = "SHAPEZ2-4-H4sIAAAAAAACCo2QwQrCMBBE/2XwGA+lByFHUaGgUFRKRUSWNmIgJiVJ0VLy78Z48SKUhYVl38zAjKjAsyxfMCxL8BEzP3QCHIVTpFswFI3Rn8eKPIGfIePNS0X+ZuzDgeleqe+Cu1Mn+L7/Di6BYa29lcJF4YgafJ4xnGIgwzFmbGkwvb9uVC/bndTCrl9eaCdjYGDjB5z/IxOwB8+nOkWjyXid8J/4Q0eNKGUnrhtjn2RbhEssTGqyQyVsEqYWQ3gD2adCLVEBAAA="  # noqa: E501
 
 
 class _MiniMapCellParser(HTMLParser):

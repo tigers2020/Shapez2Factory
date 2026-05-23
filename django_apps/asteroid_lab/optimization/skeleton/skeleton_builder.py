@@ -49,10 +49,7 @@ class RttpSkeletonBuilder:
     def build(inp: OptimizationInput, *, config: RttpSkeletonConfig) -> RttpSkeleton:
         base_inner = _resolve_inner_cells(inp)
         ring_options = build_ring_options(inp.mineable_cells)
-        scored = [
-            _score_option(inp, config, option, base_inner)
-            for option in ring_options
-        ]
+        scored = [_score_option(inp, config, option, base_inner) for option in ring_options]
         scored.sort(key=lambda item: (-item.score, item.skeleton.skeleton_id))
         return scored[0].skeleton
 

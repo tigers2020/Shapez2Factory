@@ -7,6 +7,10 @@ from pathlib import Path
 import pytest
 
 from django_apps.asteroid_lab.genetic_sample.enums import Direction
+from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
+    ExhaustiveGenerationStats,
+    GeneratedSampleGene,
+)
 from django_apps.asteroid_lab.genetic_sample.gene_template import (
     CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
     CANONICAL_ROUTE_PROBE_START_OFFSET,
@@ -17,10 +21,6 @@ from django_apps.asteroid_lab.genetic_sample.gene_template_loader import (
     gene_template_from_generated_sample,
     load_gene_templates_from_json,
     parse_gene_template_record,
-)
-from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
-    ExhaustiveGenerationStats,
-    GeneratedSampleGene,
 )
 
 _FIXTURE_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / "gene_templates"

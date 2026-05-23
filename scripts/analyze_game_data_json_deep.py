@@ -282,7 +282,7 @@ def analyze_file(json_path: Path) -> dict[str, Any]:
         path_stats.setdefault("<root>", PathStat()).row_hits = 1
         _walk_paths(data, "", path_stats, 0)
         root_schema.merge_value(data, 0)
-        envelope = [f"| key | present |", "| --- |:---:|"] + [
+        envelope = ["| key | present |", "| --- |:---:|"] + [
             f"| `{k}` | yes |" for k in sorted(data.keys())
         ]
         root_kind = f"object[{len(data)} keys]"
@@ -317,7 +317,10 @@ def _write_readme(summaries: list[dict[str, Any]]) -> None:
     lines = [
         "# game_data JSON — deep structure appendix",
         "",
-        "**목표:** 데이터 구조 분석. **중복 파일도 각각 전량 기록** (`buildings` ≠ `building_groups` 부록 분리).",
+        (
+            "**목표:** 데이터 구조 분석. **중복 파일도 각각 전량 기록** "
+            "(`buildings` ≠ `building_groups` 부록 분리)."
+        ),
         "",
         "생성: `python scripts/analyze_game_data_json_deep.py`",
         "",

@@ -488,3 +488,71 @@ def test_lab_frame_display_ssr_renders_one_based_counter() -> None:
 )
 def test_format_lab_frame_counter_js(slot: object, total: int, expected: str) -> None:
     assert _eval_format_lab_frame_counter_js(slot=slot, total=total) == expected
+
+
+@pytest.mark.django_db
+def test_lab_page_context_includes_optimization_milestone_keys() -> None:
+    ctx = alc.neutral_lab_context()
+    assert "lab_optimization_milestone_frames_json" in ctx
+    assert "lab_optimization_milestone_track_metrics" in ctx
+    assert ctx["lab_optimization_milestone_frames_json"] == []
+
+
+@pytest.mark.django_db
+def test_lab_json_bundle_uses_latest_solver_run_for_section_b_v0() -> None:
+    from django_apps.asteroid_lab.optimization.replay_track_keys import rttp_optimization_track_key
+    from django_apps.asteroid_lab.replay import event_types as et
+    from django_apps.asteroid_lab.services.dto import SnapshotEventDTO
+    from django_apps.asteroid_lab.services.replay_recorder import ReplayRecorder
+    from django_apps.web.views.public_pages import _lab_json_bundle_for_track_id
+
+    project = m.AsteroidProject.objects.create(name="BundleV0", slug="bundle-v0")
+    inspection_run = m.SolverRun.objects.create(
+        project=project,
+        run_key="inspection-old",
+        algorithm_label="inspection_only",
+        config_json={},
+    )
+    inspection_track = m.ReplayTrack.objects.create(
+        project=project,
+        track_key="inspection-old-track",
+        solver_run=inspection_run,
+    )
+    ReplayRecorder(inspection_track.id).record_event(
+        SnapshotEventDTO(
+            event_key="recon",
+            phase="reconstruction",
+            event_type=et.EVENT_TYPE_RECONSTRUCTION_MAP_COMPLETE,
+            title="Reconstruction",
+            is_decision_point=True,
+            full_map=[{"x": 1, "y": 0, "cell_kind": "asteroid_shape_field"}],
+        )
+    )
+
+    newer_run = m.SolverRun.objects.create(
+        project=project,
+        run_key="rttp-newer",
+        algorithm_label="rttp_v0.1",
+        config_json={},
+    )
+    rttp_track = m.ReplayTrack.objects.create(
+        project=project,
+        track_key=rttp_optimization_track_key("rttp-newer"),
+        solver_run=newer_run,
+    )
+    ReplayRecorder(rttp_track.id).record_event(
+        SnapshotEventDTO(
+            event_key="mile",
+            phase="rttp_pipeline",
+            event_type=et.EVENT_TYPE_ROUTING_PROBE_STARTED,
+            title="RTTP started",
+            is_decision_point=True,
+        )
+    )
+
+    bundle = _lab_json_bundle_for_track_id(int(inspection_track.pk), copy_code="")
+    assert bundle["lab_optimization_milestone_frame_count"] >= 1
+    assert (
+        bundle["lab_optimization_milestone_track_metrics"]["track_key"]
+        == rttp_optimization_track_key("rttp-newer")
+    )

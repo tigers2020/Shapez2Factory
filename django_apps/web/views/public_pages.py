@@ -28,6 +28,9 @@ from django_apps.asteroid_lab.services.lab_map_reset_service import (
     LabMapResetErrorCode,
     reset_project_map_to_inspection_clean,
 )
+from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
+    build_lab_optimization_milestone_frames_for_project,
+)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
@@ -208,8 +211,25 @@ def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> di
     track: ReplayTrack | None = None
     if track_id is not None:
         track = ReplayTrack.objects.filter(pk=int(track_id)).first()
+    milestone_frames: list[dict[str, Any]] = []
+    milestone_metrics: dict[str, Any] = {
+        "track_key": None,
+        "frame_count": 0,
+        "event_types": [],
+        "replay_truncated": False,
+        "truncation_reason": None,
+        "dropped_frame_count": None,
+        "diagnostic_reason": None,
+        "source_solver_run_id": None,
+    }
     if track is not None and track.project_id is not None:
-        frames, track_metrics = build_lab_replay_frames_for_project(int(track.project_id))
+        project_id = int(track.project_id)
+        frames, track_metrics = build_lab_replay_frames_for_project(project_id)
+        # 3B v0: Section B binds to latest SolverRun on project (not inspection track_id).
+        milestone_frames, milestone_metrics = build_lab_optimization_milestone_frames_for_project(
+            project_id,
+            run_key=None,
+        )
         initial = dict(frames[0]) if frames else {}
     n = len(frames)
     fi = int(frames[0]["frame_index"]) if frames else 0
@@ -226,6 +246,9 @@ def _lab_json_bundle_for_track_id(track_id: int | None, *, copy_code: str) -> di
         "lab_initial_replay_frame_json": initial,
         "lab_ui_initial": ui,
         "replay_track_metrics": track_metrics,
+        "lab_optimization_milestone_frames_json": milestone_frames,
+        "lab_optimization_milestone_frame_count": len(milestone_frames),
+        "lab_optimization_milestone_track_metrics": milestone_metrics,
     }
 
 

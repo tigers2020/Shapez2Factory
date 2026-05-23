@@ -247,7 +247,7 @@ test_rttp_track_not_exposed_as_product_timeline:
 |----|--------|
 | **Spec** | This document; supersedes 3B-R inherited_snapshot **product** behavior |
 | **3B-S-1** | Compose interleave, full map projection, H1-S + exposure tests, remove inherited_snapshot product path |
-| **3B-S-2** | Enrich `:rttp` rows (overlays, descriptions, finer anchors at record time) |
+| **3B-S-2** | Enrich `:rttp` rows (overlays, descriptions, finer anchors at record time) | **Implemented** on `feat/sequence-3b-s-2-rttp-replay-enrichment` |
 | **3B-S-3** | Optional: canonical `rttp.*` `ReplayEventType` values + migration |
 
 ---

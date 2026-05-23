@@ -23,16 +23,11 @@ RTTP_MILESTONE_EVENT_TYPES: frozenset[str] = frozenset(
 
 
 def _payload_has_forbidden_map_material(payload: dict[str, Any]) -> bool:
-    """Reject rows that carry renderable map material (empty RTTP persist keys are OK)."""
+    """Reject Section B rows with renderable map bodies (not RTTP overlay snapshots)."""
     if "map_view" in payload:
         return True
     full_map = payload.get("full_map")
-    if isinstance(full_map, list) and len(full_map) > 0:
-        return True
-    overlay = payload.get("cell_overlay_json")
-    if isinstance(overlay, dict) and bool(overlay):
-        return True
-    return False
+    return isinstance(full_map, list) and len(full_map) > 0
 
 
 def _empty_track_metrics(

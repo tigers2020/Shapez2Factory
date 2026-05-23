@@ -7,11 +7,20 @@ from typing import Any
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack, SolverRun
 from django_apps.asteroid_lab.optimization.replay_track_keys import rttp_optimization_track_key
+from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
     RTTP_MILESTONE_EVENT_TYPES,
 )
 
 _RECONSTRUCTION_COMPLETED = "reconstruction.completed"
+
+# Finer interleave: each RTTP milestone inserts after its lifecycle predecessor.
+_RTTP_ANCHOR_AFTER_EVENT: dict[str, str] = {
+    et.EVENT_TYPE_ROUTING_PROBE_STARTED: _RECONSTRUCTION_COMPLETED,
+    et.EVENT_TYPE_CANDIDATE_GENERATED: et.EVENT_TYPE_ROUTING_PROBE_STARTED,
+    et.EVENT_TYPE_GA_BEST_UPDATED: et.EVENT_TYPE_CANDIDATE_GENERATED,
+    et.EVENT_TYPE_ROUTING_COMMITTED: et.EVENT_TYPE_GA_BEST_UPDATED,
+}
 
 
 def frame_has_renderable_map(frame: dict[str, Any]) -> bool:
@@ -44,13 +53,35 @@ def _find_reconstruction_completed_index(frames: list[dict[str, Any]]) -> int | 
 
 
 def resolve_insert_index(base_frames: list[dict[str, Any]]) -> int:
-    """Anchor: last renderable; fallback reconstruction.completed; fallback last renderable."""
+    """Fallback anchor: reconstruction.completed, else last renderable frame."""
     if not base_frames:
         return 0
     recon = _find_reconstruction_completed_index(base_frames)
     if recon is not None:
         return recon
     return last_renderable_frame_index(base_frames)
+
+
+def _find_anchor_index_for_rttp_row(
+    unified: list[dict[str, Any]],
+    event_type: str,
+) -> int:
+    preferred = _RTTP_ANCHOR_AFTER_EVENT.get(event_type)
+    if preferred is not None:
+        for idx in range(len(unified) - 1, -1, -1):
+            if str(unified[idx].get("event_type") or "") == preferred:
+                if frame_has_renderable_map(unified[idx]):
+                    return idx
+    return resolve_insert_index(unified)
+
+
+def _map_view_at_index(frames: list[dict[str, Any]], index: int) -> dict[str, Any]:
+    if not frames:
+        return {}
+    safe = max(0, min(index, len(frames) - 1))
+    if frame_has_renderable_map(frames[safe]):
+        return dict(frames[safe].get("map_view") or {})
+    return dict(frames[last_renderable_frame_index(frames)].get("map_view") or {})
 
 
 def _overlay_cells_from_cell_overlay_json(overlay: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -102,15 +133,15 @@ def interleave_rttp_snapshot_frames(
             fr["frame_index"] = i
         return unified
 
-    insert_at = resolve_insert_index(unified)
-    base_mv = dict(unified[insert_at].get("map_view") or {})
-    projected: list[dict[str, Any]] = []
     for row in rttp_rows:
-        if str(row.get("event_type") or "") not in RTTP_MILESTONE_EVENT_TYPES:
+        event_type = str(row.get("event_type") or "")
+        if event_type not in RTTP_MILESTONE_EVENT_TYPES:
             continue
-        projected.append(project_rttp_row_to_product_frame(row, base_map_view=base_mv))
+        insert_at = _find_anchor_index_for_rttp_row(unified, event_type)
+        base_mv = _map_view_at_index(unified, insert_at)
+        projected = project_rttp_row_to_product_frame(row, base_map_view=base_mv)
+        unified.insert(insert_at + 1, projected)
 
-    unified[insert_at + 1 : insert_at + 1] = projected
     for i, fr in enumerate(unified):
         fr["frame_index"] = i
     return unified

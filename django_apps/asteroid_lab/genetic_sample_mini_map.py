@@ -15,6 +15,7 @@ from django_apps.asteroid_lab.lab_screen_grid import (
     sprite_rotation_deg_from_quarter,
 )
 from django_apps.asteroid_lab.reconstruction.display_map import (
+    full_map_island_bbox_from_decoded_json,
     full_map_server_bbox_from_decoded_json,
 )
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
@@ -180,8 +181,12 @@ def genetic_sample_mini_map_html(
         return "-"
 
     snap = build_decoded_blueprint_snapshot(decoded_json)
-    full_bbox = full_map_server_bbox_from_decoded_json(decoded_json)
-    bbox = full_bbox if full_bbox is not None else snap.bbox_json
+    island_full = full_map_island_bbox_from_decoded_json(decoded_json)
+    if island_full is not None:
+        bbox = island_full
+    else:
+        legacy_full = full_map_server_bbox_from_decoded_json(decoded_json)
+        bbox = legacy_full if legacy_full is not None else snap.bbox_json
 
     by_pos: dict[tuple[int, int], DecodedCellDTO] = {}
     if "min_x" in bbox and "width" in bbox:

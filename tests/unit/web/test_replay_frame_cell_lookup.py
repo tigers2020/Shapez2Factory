@@ -118,8 +118,8 @@ def test_lookup_synthetic_lab_empty_inside_server_bbox() -> None:
     assert cell is not None
     assert cell.get("_lab_synthetic") is True
     assert cell.get("cell_kind") == "lab_empty"
-    assert cell.get("server_x") == 0
-    assert cell.get("server_y") == 0
+    assert cell.get("server_x") is None
+    assert cell.get("server_y") is None
     assert sources.get("lab_synthetic") == "empty_island_cell"
 
 

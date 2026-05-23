@@ -119,7 +119,7 @@ def full_map_island_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict
 
 
 def full_map_server_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, int] | None:
-    """Legacy dense bbox meta (read-compat). Prefer :func:`full_map_island_bbox_from_decoded_json`."""
+    """Legacy dense bbox meta (read-compat). Prefer ``full_map_island_bbox_from_decoded_json``."""
 
     island = full_map_island_bbox_from_decoded_json(decoded_json)
     if island is not None:

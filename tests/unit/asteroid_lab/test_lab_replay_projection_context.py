@@ -36,5 +36,4 @@ def test_projection_prefers_solver_run_server_xy_params_over_lab_track() -> None
     )
 
     ctx = resolve_replay_projection_context_for_project(int(p.pk))
-    assert ctx is not None
-    assert ctx.server_xy_params == (9, 2)
+    assert ctx.server_xy_params is None

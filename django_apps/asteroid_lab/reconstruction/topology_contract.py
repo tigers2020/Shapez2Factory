@@ -25,10 +25,6 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
 from django_apps.asteroid_lab.snapshots.grid_contract import BBox, Coord, bbox_from_coords
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    map_bbox_dense_and_y,
-    server_xy_for_raw_xy,
-)
 
 _DEFAULT_FIXTURES_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "asteroid_lab"
 _DIFF_LIST_CAP = 50
@@ -96,8 +92,9 @@ def decode_shapez_copy_string(copy_string: str) -> DecodedBlueprintSnapshotDTO:
 
 
 def _params_from_cells(cells: Sequence[DecodedCellDTO]) -> tuple[int, int] | None:
-    rows = [{"X": c.x, "Y": c.y} for c in cells]
-    return map_bbox_dense_and_y(rows)
+    if infer_topology_coord_frame(cells) == CoordFrame.ISLAND_RAW:
+        return None
+    return None
 
 
 def _is_mineable_occupied(cell: DecodedCellDTO) -> bool:
@@ -116,14 +113,7 @@ def _shell_topology_coords(
         return frozenset()
     if coord_frame == CoordFrame.ISLAND_RAW:
         return frozenset(shell_raw_coords)
-    if params is None:
-        return frozenset()
-    md, my = int(params[0]), int(params[1])
-    hz = bool(params[2]) if len(params) > 2 else False
-    return frozenset(
-        server_xy_for_raw_xy(x, y, min_dense_x=md, min_raw_y=my, has_explicit_raw_x_zero=hz)
-        for x, y in shell_raw_coords
-    )
+    return frozenset()
 
 
 def build_normalized_reconstruction_topology(

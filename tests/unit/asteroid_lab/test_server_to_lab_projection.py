@@ -6,8 +6,10 @@ import pytest
 
 from django_apps.asteroid_lab.replay.projection_context import (
     ReplayProjectionContext,
-    dense_index_to_raw_x,
     lab_xy_from_replay_cell,
+)
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    dense_index_to_raw_x,
     lab_xy_from_server_xy,
     lab_xy_round_trip,
 )

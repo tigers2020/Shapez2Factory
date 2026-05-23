@@ -8,7 +8,6 @@ from typing import Any
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_reconstruction,
     constraint_violation_count,
-    infer_topology_coord_frame,
     topology_coord_for_cell,
 )
 from django_apps.asteroid_lab.reconstruction.evidence import (
@@ -171,8 +170,8 @@ def apply_confidence_to_result(
 ) -> ReconstructionResult:
     """Attach confidence fields and summary metrics to a reconstruction result."""
 
+    coord_frame = result.coord_frame
     params = result.server_xy_params
-    coord_frame = infer_topology_coord_frame(result.cells)
     hard: set[Coord] = set()
     mineable: set[Coord] = set()
     for cell in result.cells:
@@ -209,6 +208,7 @@ def apply_confidence_to_result(
         cells=result.cells,
         summary_json=dict(result.summary_json),
         outer_rim_coords=result.outer_rim_coords,
+        coord_frame=coord_frame,
         server_xy_params=params,
         confirmed_cells=confirmed,
         ambiguous_cells=ambiguous,
@@ -243,6 +243,7 @@ def apply_confidence_to_result(
         cells=result.cells,
         summary_json=summary,
         outer_rim_coords=result.outer_rim_coords,
+        coord_frame=coord_frame,
         server_xy_params=params,
         confirmed_cells=confirmed,
         ambiguous_cells=ambiguous,

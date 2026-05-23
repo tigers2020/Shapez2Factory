@@ -144,6 +144,52 @@ def server_xy_for_raw_xy(
     return (dense_x - min_dense_x, raw_y - min_raw_y)
 
 
+def dense_index_to_raw_x(dense_x: int, *, has_explicit_raw_x_zero: bool = False) -> int:
+    """Inverse of ``raw_x_to_dense_index`` (legacy replay projection tests only)."""
+
+    if dense_x < 0:
+        return dense_x
+    if dense_x == 0:
+        return 0
+    if has_explicit_raw_x_zero:
+        return dense_x
+    return dense_x + 1
+
+
+def lab_xy_from_server_xy(
+    server_x: int,
+    server_y: int,
+    *,
+    server_xy_params: tuple[int, int],
+) -> tuple[int, int]:
+    """Dense server → island-local (legacy; PR-F product path uses island ``x``/``y``)."""
+
+    min_dense_x, min_raw_y, has_zero = unpack_server_xy_params(server_xy_params)
+    dense_x = int(server_x) + min_dense_x
+    raw_x = dense_index_to_raw_x(dense_x, has_explicit_raw_x_zero=has_zero)
+    raw_y = int(server_y) + min_raw_y
+    return raw_x, raw_y
+
+
+def lab_xy_round_trip(
+    raw_x: int,
+    raw_y: int,
+    *,
+    server_xy_params: tuple[int, int],
+) -> tuple[int, int]:
+    """Round-trip through dense server (legacy tests only)."""
+
+    md, my, hz = unpack_server_xy_params(server_xy_params)
+    sx, sy = server_xy_for_raw_xy(
+        int(raw_x),
+        int(raw_y),
+        min_dense_x=md,
+        min_raw_y=my,
+        has_explicit_raw_x_zero=hz,
+    )
+    return lab_xy_from_server_xy(sx, sy, server_xy_params=server_xy_params)
+
+
 def jsonl_coord_fields(
     raw_x: int,
     raw_y: int,
@@ -208,6 +254,9 @@ __all__ = [
     "COORD_SYSTEM_BBOX_RIGHT_BOTTOM",
     "as_entry_int",
     "attach_server_coords_to_decoded_json",
+    "dense_index_to_raw_x",
+    "lab_xy_from_server_xy",
+    "lab_xy_round_trip",
     "entries_have_explicit_raw_x_zero",
     "entry_raw_x",
     "entry_raw_y",

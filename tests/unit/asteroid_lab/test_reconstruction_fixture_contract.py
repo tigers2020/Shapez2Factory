@@ -40,12 +40,15 @@ def _run_line(line_index: int):
     recon = run_topology_reconstruction(cleanup)
     merged = merged_display_cells_from_reconstruction(cleanup, recon)
     shell = raw_coords_from_snapshot(snap_req)
-    params = cleanup.server_xy_params
     actual = build_normalized_reconstruction_topology(
-        merged, server_xy_params=params, shell_raw_coords=shell
+        merged,
+        shell_raw_coords=shell,
+        coord_frame=CoordFrame.ISLAND_RAW,
     )
     expected = build_normalized_reconstruction_topology(
-        snap_sol.cells, server_xy_params=params, shell_raw_coords=shell
+        snap_sol.cells,
+        shell_raw_coords=shell,
+        coord_frame=CoordFrame.ISLAND_RAW,
     )
     return snap_req, snap_sol, cleanup, recon, merged, actual, expected
 
@@ -76,8 +79,8 @@ def test_reconstruction_fixture_line_export_topology_equivalent(
     roundtrip = decode_shapez_copy_string(copy)
     export_topo = build_normalized_reconstruction_topology(
         roundtrip.cells,
-        server_xy_params=cleanup.server_xy_params,
         shell_raw_coords=raw_coords_from_snapshot(snap_req),
+        coord_frame=CoordFrame.ISLAND_RAW,
     )
     diff = diff_topology(export_topo, expected)
     assert topology_diff_is_empty(diff), json.dumps(diff, ensure_ascii=False)

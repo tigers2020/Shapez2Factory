@@ -308,7 +308,7 @@ def _run_rttp_solver_for_map_input(
     _persist_solver_run_outcome(
         run_id,
         solver_summary=summary,
-        server_xy_params=recon.server_xy_params,
+        server_xy_params=None,
     )
 
     frames, metrics = build_lab_replay_frames_for_project(int(project_id))

@@ -65,8 +65,7 @@ def test_resolve_projection_context_from_lab_cells() -> None:
     _decode_lab_frame(t, frame_index=0, x=1, y=2)
 
     ctx = resolve_replay_projection_context_for_project(int(p.pk))
-    assert ctx is not None
-    assert ctx.server_xy_params[0] >= 0
+    assert ctx.server_xy_params is None
 
 
 @pytest.mark.django_db

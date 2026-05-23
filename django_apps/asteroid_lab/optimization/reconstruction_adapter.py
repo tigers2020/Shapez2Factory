@@ -127,7 +127,7 @@ def optimization_input_from_reconstruction(
     """Map reconstruction topology to ``OptimizationInput``."""
 
     topo = acceptance_topology_from_reconstruction(result, coord_frame=coord_frame)
-    if coord_frame == CoordFrame.ISLAND_RAW:
+    if coord_frame == CoordFrame.ISLAND_RAW or result.coord_frame == CoordFrame.ISLAND_RAW:
         by_sv = _cells_by_island_coord(result.cells)
     else:
         by_sv = _cells_by_server_coord(result.cells, result.server_xy_params)

@@ -8,24 +8,10 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parents[3]
 
 # Modules allowed to import ``server_xy_for_raw_xy`` until PR-F (frozen allowlist).
-_RECONSTRUCTION_SERVER_XY_ALLOWLIST: frozenset[str] = frozenset(
-    {
-        "django_apps/asteroid_lab/reconstruction/pipeline.py",
-        "django_apps/asteroid_lab/reconstruction/topology_contract.py",
-        "django_apps/asteroid_lab/reconstruction/acceptance_topology.py",
-        "django_apps/asteroid_lab/reconstruction/confidence.py",
-    }
-)
-_REPLAY_SERVER_XY_ALLOWLIST: frozenset[str] = frozenset(
-    {
-        "django_apps/asteroid_lab/replay/projection_context.py",
-    }
-)
-_WEB_SERVER_XY_ALLOWLIST: frozenset[str] = frozenset(
-    {
-        "django_apps/web/services/replay_frame_cell_lookup.py",
-    }
-)
+_RECONSTRUCTION_SERVER_XY_ALLOWLIST: frozenset[str] = frozenset()
+_REPLAY_SERVER_XY_ALLOWLIST: frozenset[str] = frozenset()
+_WEB_SERVER_XY_ALLOWLIST: frozenset[str] = frozenset()
+_CLEANUP_DENSE_BBOX_ALLOWLIST: frozenset[str] = frozenset()
 _OPTIMIZATION_SERVER_XY_ALLOWLIST: frozenset[str] = frozenset()
 
 # PR-F: no server dense bridge symbols in algorithm layer.
@@ -139,3 +125,14 @@ def test_web_services_server_xy_imports_match_allowlist() -> None:
     assert not violations, "unexpected server_xy_for_raw_xy in web/services: " + ", ".join(
         violations
     )
+
+
+def test_cleanup_does_not_import_map_bbox_dense_and_y() -> None:
+    root = _REPO / "django_apps" / "asteroid_lab" / "cleanup"
+    violations = _violations_importing(
+        root,
+        symbol="map_bbox_dense_and_y",
+        module_substring="server_coords",
+        allowlist=_CLEANUP_DENSE_BBOX_ALLOWLIST,
+    )
+    assert not violations, "map_bbox_dense_and_y in cleanup: " + ", ".join(violations)

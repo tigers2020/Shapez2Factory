@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
+from django_apps.asteroid_lab.snapshots.island_bbox import island_bbox_from_xy_dicts
 
 
 def _xy_match(row: Any, x: int, y: int) -> bool:
@@ -139,6 +139,21 @@ def _server_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
+def _island_bbox_from_legacy_server_serialized(ser: dict[str, Any]) -> dict[str, int] | None:
+    """Read-compat: derive island extent from persisted ``full_map`` / ``map_view`` rows."""
+
+    rows: list[dict[str, Any]] = []
+    full_map = ser.get("full_map")
+    if isinstance(full_map, list):
+        rows.extend(c for c in full_map if isinstance(c, dict))
+    map_view = ser.get("map_view")
+    if isinstance(map_view, dict):
+        full_cells = map_view.get("full_cells")
+        if isinstance(full_cells, list):
+            rows.extend(c for c in full_cells if isinstance(c, dict))
+    return island_bbox_from_xy_dicts(rows)
+
+
 def _lab_empty_synthetic_cell(
     x: int,
     y: int,
@@ -168,43 +183,18 @@ def _try_synthetic_lab_empty(
     """Lab UI only: slot inside frame bbox with no persisted row (not solver input)."""
 
     island_bb = _island_bbox_from_serialized(ser)
-    if island_bb is not None:
-        if not (
-            island_bb["min_x"] <= int(x) <= island_bb["max_x"]
-            and island_bb["min_y"] <= int(y) <= island_bb["max_y"]
-        ):
-            return None, {}
-        server_bb = _server_bbox_from_serialized(ser)
-        sx: int | None = None
-        sy: int | None = None
-        if server_bb is not None:
-            sx, sy = server_xy_for_raw_xy(
-                int(x),
-                int(y),
-                min_dense_x=int(server_bb["dense_min_x"]),
-                min_raw_y=int(server_bb["min_y"]),
-            )
-        return (
-            _lab_empty_synthetic_cell(x, y, server_x=sx, server_y=sy),
-            {"lab_synthetic": "empty_island_cell"},
-        )
-
-    bb = _server_bbox_from_serialized(ser)
-    if bb is None:
+    if island_bb is None:
+        island_bb = _island_bbox_from_legacy_server_serialized(ser)
+    if island_bb is None:
         return None, {}
-    sx, sy = server_xy_for_raw_xy(
-        int(x),
-        int(y),
-        min_dense_x=int(bb["dense_min_x"]),
-        min_raw_y=int(bb["min_y"]),
-    )
-    sminx, smaxx = int(bb["server_min_x"]), int(bb["server_max_x"])
-    sminy, smaxy = int(bb["server_min_y"]), int(bb["server_max_y"])
-    if not (sminx <= sx <= smaxx and sminy <= sy <= smaxy):
+    if not (
+        island_bb["min_x"] <= int(x) <= island_bb["max_x"]
+        and island_bb["min_y"] <= int(y) <= island_bb["max_y"]
+    ):
         return None, {}
     return (
-        _lab_empty_synthetic_cell(x, y, server_x=int(sx), server_y=int(sy)),
-        {"lab_synthetic": "empty_server_cell"},
+        _lab_empty_synthetic_cell(x, y, server_x=None, server_y=None),
+        {"lab_synthetic": "empty_island_cell"},
     )
 
 

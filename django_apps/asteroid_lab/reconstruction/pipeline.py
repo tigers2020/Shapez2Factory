@@ -43,7 +43,8 @@ from django_apps.asteroid_lab.reconstruction.trace import (
     ReconstructionTraceEvent,
 )
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.server_coords import unpack_server_xy_params
+from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
+from django_apps.asteroid_lab.snapshots.copy_json_coords import entries_have_explicit_raw_x_zero
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
     sort_key_xy_layer,
@@ -65,12 +66,14 @@ def _finalize_reconstruction_result(
         cells=cells,
         summary_json=dict(summary),
         outer_rim_coords=(),
-        server_xy_params=server_xy_params,
+        coord_frame=CoordFrame.ISLAND_RAW,
+        server_xy_params=None,
     )
     topo = build_normalized_reconstruction_topology(
         cells,
-        server_xy_params=server_xy_params,
+        server_xy_params=None,
         shell_raw_coords=shell_raw_coords,
+        coord_frame=CoordFrame.ISLAND_RAW,
     )
     return apply_confidence_to_result(
         base,
@@ -245,8 +248,8 @@ def reconstruct_after_cleanup(
         )
 
     w0, w1, h0, h1 = bbox_bounds
-    _, _, include_raw_x_zero = unpack_server_xy_params(
-        server_xy_params if server_xy_params is not None else None
+    include_raw_x_zero = entries_have_explicit_raw_x_zero(
+        [{"X": c.x, "Y": c.y} for c in original_cells]
     )
     extension_shell_raw: set[Coord] = {
         (c.x, c.y) for c in original_cells if c.cell_kind in MINER_EXTENSION_CELL_KINDS

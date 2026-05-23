@@ -23,10 +23,6 @@ from django_apps.asteroid_lab.snapshots.grid_contract import (
     cells_in_bbox,
     expand_bbox,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    server_xy_for_raw_xy,
-    unpack_server_xy_params,
-)
 
 
 def infer_topology_coord_frame(cells: Sequence[DecodedCellDTO]) -> CoordFrame:
@@ -53,21 +49,11 @@ def topology_coord_for_cell(
 
 
 def server_coord_for_cell(cell: DecodedCellDTO, params: tuple[int, int] | None) -> ServerCoord:
+    del params
     sx, sy = cell.server_x, cell.server_y
     if isinstance(sx, int) and isinstance(sy, int):
         return ServerCoord(sx, sy)
-    if params is not None:
-        md, my, hz = unpack_server_xy_params(params)
-        tx, ty = server_xy_for_raw_xy(
-            cell.x,
-            cell.y,
-            min_dense_x=md,
-            min_raw_y=my,
-            has_explicit_raw_x_zero=hz,
-        )
-        return ServerCoord(tx, ty)
-    msg = "DecodedCellDTO.server_x/server_y missing and ReconstructionResult.server_xy_params unset"
-    raise ValueError(msg)
+    return ServerCoord(cell.x, cell.y)
 
 
 def mineable_field_kind(cell: DecodedCellDTO) -> str | None:
@@ -109,20 +95,20 @@ def _cells_by_island_coord(cells: tuple[DecodedCellDTO, ...]) -> dict[Coord, Dec
 def acceptance_topology_from_reconstruction(
     result: ReconstructionResult,
     *,
-    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
+    coord_frame: CoordFrame | None = None,
 ) -> AcceptanceTopology:
     """Compute mineable and external void sets for one reconstruction result."""
 
-    if coord_frame == CoordFrame.WORLD_RAW:
+    cells = result.cells
+    frame = coord_frame if coord_frame is not None else result.coord_frame
+    if frame == CoordFrame.WORLD_RAW:
         msg = "WORLD_RAW acceptance topology not implemented — proof gate required"
         raise ValueError(msg)
-
-    cells = result.cells
     params = result.server_xy_params
-    if coord_frame == CoordFrame.ISLAND_RAW:
+    if frame == CoordFrame.ISLAND_RAW:
         by_sv = _cells_by_island_coord(cells)
     else:
-        by_sv = _cells_by_server_coord(cells, params, coord_frame=coord_frame)
+        by_sv = _cells_by_server_coord(cells, params, coord_frame=frame)
 
     mineable: set[Coord] = set()
     for sv, cell in by_sv.items():

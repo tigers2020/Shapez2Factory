@@ -1,4 +1,8 @@
-"""Server dense grid → Lab raw (x, y) projection for replay timeline adapters (Phase 9C)."""
+"""Replay coordinate projection (Phase 9C; PR-F island-native frames).
+
+Replay ``full_map`` rows use island-local ``(x, y)`` (copy JSON). ``lab_xy_from_server_xy``
+remains for legacy frames that store dense ``server_x``/``server_y`` only.
+"""
 
 from __future__ import annotations
 
@@ -59,6 +63,12 @@ def lab_xy_round_trip(
         has_explicit_raw_x_zero=hz,
     )
     return lab_xy_from_server_xy(sx, sy, server_xy_params=server_xy_params)
+
+
+def lab_xy_from_replay_cell(x: int, y: int) -> tuple[int, int]:
+    """Island-local replay cell coordinates (identity; PR-F canonical path)."""
+
+    return int(x), int(y)
 
 
 @dataclass(frozen=True, slots=True)

@@ -98,8 +98,11 @@ def test_lookup_full_map_two_rows_same_xy_merge_order() -> None:
 
 def test_lookup_synthetic_lab_empty_inside_server_bbox() -> None:
     bbox = {
-        "dense_min_x": 0,
+        "min_x": 0,
+        "max_x": 5,
         "min_y": 0,
+        "max_y": 3,
+        "dense_min_x": 0,
         "server_min_x": 0,
         "server_max_x": 5,
         "server_min_y": 0,
@@ -117,7 +120,23 @@ def test_lookup_synthetic_lab_empty_inside_server_bbox() -> None:
     assert cell.get("cell_kind") == "lab_empty"
     assert cell.get("server_x") == 0
     assert cell.get("server_y") == 0
-    assert sources.get("lab_synthetic") == "empty_server_cell"
+    assert sources.get("lab_synthetic") == "empty_island_cell"
+
+
+def test_lookup_synthetic_lab_empty_inside_island_bbox_only() -> None:
+    bbox = {"min_x": -2, "max_x": 2, "min_y": 0, "max_y": 1}
+    ser = {
+        "full_map": [],
+        "diff": {},
+        "cell_overlay_json": {},
+        "summary": {"bbox": bbox},
+    }
+    cell, sources = lookup_cell_in_serialized_frame(ser, 0, 0)
+    assert cell is not None
+    assert cell.get("_lab_synthetic") is True
+    assert cell.get("cell_kind") == "lab_empty"
+    assert "server_x" not in cell
+    assert sources.get("lab_synthetic") == "empty_island_cell"
 
 
 def test_lookup_synthetic_none_outside_server_bbox() -> None:

@@ -88,15 +88,37 @@ def _merge_layers(layers: list[dict[str, Any]]) -> dict[str, Any]:
     return merged
 
 
-def _server_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, Any] | None:
-    """Decode-style bbox with ``dense_min_x``, ``min_y``, and ``server_*`` ranges, or ``None``."""
+def _bbox_blocks(ser: dict[str, Any]) -> list[dict[str, Any]]:
+    blocks: list[dict[str, Any]] = []
+    for key in ("summary", "metric_snapshot_json"):
+        block = ser.get(key)
+        if isinstance(block, dict):
+            bb = block.get("bbox")
+            if isinstance(bb, dict):
+                blocks.append(bb)
+    return blocks
 
-    for block in (ser.get("summary"), ser.get("metric_snapshot_json")):
-        if not isinstance(block, dict):
+
+def _island_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, int] | None:
+    """Island-local min/max x/y from replay frame bbox (PR-F preferred)."""
+
+    for bb in _bbox_blocks(ser):
+        try:
+            return {
+                "min_x": int(bb["min_x"]),
+                "max_x": int(bb["max_x"]),
+                "min_y": int(bb["min_y"]),
+                "max_y": int(bb["max_y"]),
+            }
+        except (KeyError, TypeError, ValueError):
             continue
-        bb = block.get("bbox")
-        if not isinstance(bb, dict):
-            continue
+    return None
+
+
+def _server_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, Any] | None:
+    """Legacy decode bbox with ``dense_min_x`` and ``server_*`` ranges, or ``None``."""
+
+    for bb in _bbox_blocks(ser):
         try:
             dense_min_x = int(bb["dense_min_x"])
             min_y = int(bb["min_y"])
@@ -117,10 +139,55 @@ def _server_bbox_from_serialized(ser: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
+def _lab_empty_synthetic_cell(
+    x: int,
+    y: int,
+    *,
+    server_x: int | None,
+    server_y: int | None,
+) -> dict[str, Any]:
+    cell: dict[str, Any] = {
+        "x": int(x),
+        "y": int(y),
+        "layer": None,
+        "rotation": 0,
+        "cell_kind": "lab_empty",
+        "transport_kind": "none",
+        "tile_type": "",
+        "_lab_synthetic": True,
+    }
+    if server_x is not None and server_y is not None:
+        cell["server_x"] = int(server_x)
+        cell["server_y"] = int(server_y)
+    return cell
+
+
 def _try_synthetic_lab_empty(
     ser: dict[str, Any], x: int, y: int
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """Lab UI only: slot inside decode server bbox with no persisted row (not solver input)."""
+    """Lab UI only: slot inside frame bbox with no persisted row (not solver input)."""
+
+    island_bb = _island_bbox_from_serialized(ser)
+    if island_bb is not None:
+        if not (
+            island_bb["min_x"] <= int(x) <= island_bb["max_x"]
+            and island_bb["min_y"] <= int(y) <= island_bb["max_y"]
+        ):
+            return None, {}
+        server_bb = _server_bbox_from_serialized(ser)
+        sx: int | None = None
+        sy: int | None = None
+        if server_bb is not None:
+            sx, sy = server_xy_for_raw_xy(
+                int(x),
+                int(y),
+                min_dense_x=int(server_bb["dense_min_x"]),
+                min_raw_y=int(server_bb["min_y"]),
+            )
+        return (
+            _lab_empty_synthetic_cell(x, y, server_x=sx, server_y=sy),
+            {"lab_synthetic": "empty_island_cell"},
+        )
 
     bb = _server_bbox_from_serialized(ser)
     if bb is None:
@@ -135,19 +202,10 @@ def _try_synthetic_lab_empty(
     sminy, smaxy = int(bb["server_min_y"]), int(bb["server_max_y"])
     if not (sminx <= sx <= smaxx and sminy <= sy <= smaxy):
         return None, {}
-    cell: dict[str, Any] = {
-        "x": int(x),
-        "y": int(y),
-        "layer": None,
-        "rotation": 0,
-        "cell_kind": "lab_empty",
-        "transport_kind": "none",
-        "tile_type": "",
-        "server_x": int(sx),
-        "server_y": int(sy),
-        "_lab_synthetic": True,
-    }
-    return cell, {"lab_synthetic": "empty_server_cell"}
+    return (
+        _lab_empty_synthetic_cell(x, y, server_x=int(sx), server_y=int(sy)),
+        {"lab_synthetic": "empty_server_cell"},
+    )
 
 
 def lookup_cell_in_serialized_frame(

@@ -7,6 +7,7 @@ import pytest
 from django_apps.asteroid_lab.replay.projection_context import (
     ReplayProjectionContext,
     dense_index_to_raw_x,
+    lab_xy_from_replay_cell,
     lab_xy_from_server_xy,
     lab_xy_round_trip,
 )
@@ -33,6 +34,10 @@ def test_server_to_lab_dense_zero_column() -> None:
     params = (0, 0)
     sx, sy = server_xy_for_raw_xy(0, 1, min_dense_x=0, min_raw_y=0)
     assert lab_xy_from_server_xy(sx, sy, server_xy_params=params) == (0, 1)
+
+
+def test_lab_xy_from_replay_cell_is_identity() -> None:
+    assert lab_xy_from_replay_cell(-3, 7) == (-3, 7)
 
 
 def test_replay_projection_context_is_frozen() -> None:

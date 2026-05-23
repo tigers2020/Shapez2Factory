@@ -48,9 +48,7 @@ def test_build_milestone_frames_from_rttp_track() -> None:
     )
     rec = ReplayRecorder(track.id)
     for i, etype in enumerate(sorted(RTTP_MILESTONE_EVENT_TYPES)):
-        rec.record_event(
-            _rttp_event(etype, frame_key=f"k{i}", metrics_json={"step": i})
-        )
+        rec.record_event(_rttp_event(etype, frame_key=f"k{i}", metrics_json={"step": i}))
 
     frames, metrics = build_lab_optimization_milestone_frames_for_project(
         int(project.pk),

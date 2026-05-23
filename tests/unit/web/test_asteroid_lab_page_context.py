@@ -552,7 +552,6 @@ def test_lab_json_bundle_uses_latest_solver_run_for_section_b_v0() -> None:
 
     bundle = _lab_json_bundle_for_track_id(int(inspection_track.pk), copy_code="")
     assert bundle["lab_optimization_milestone_frame_count"] >= 1
-    assert (
-        bundle["lab_optimization_milestone_track_metrics"]["track_key"]
-        == rttp_optimization_track_key("rttp-newer")
-    )
+    assert bundle["lab_optimization_milestone_track_metrics"][
+        "track_key"
+    ] == rttp_optimization_track_key("rttp-newer")

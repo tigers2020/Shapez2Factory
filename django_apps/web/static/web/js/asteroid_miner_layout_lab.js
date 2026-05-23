@@ -2381,14 +2381,25 @@
       runSolverBtn.disabled = true;
       replayRunFeedback = { running: true };
       renderReplayRunStatus(replayRunFeedback);
-      fetch(runUrl, {
+      const macroOnlyEl = document.getElementById("lab-macro-only-mode");
+      const macroOnlyMode = Boolean(macroOnlyEl && macroOnlyEl.checked);
+      const runSolverHeaders = {
+        Accept: "application/json",
+        "X-CSRFToken": labCsrfToken(),
+      };
+      const runSolverInit = {
         method: "POST",
         credentials: "same-origin",
-        headers: {
-          Accept: "application/json",
-          "X-CSRFToken": labCsrfToken(),
-        },
-      })
+        headers: runSolverHeaders,
+      };
+      if (macroOnlyMode) {
+        runSolverHeaders["Content-Type"] = "application/json";
+        runSolverInit.body = JSON.stringify({
+          macro_only_mode: true,
+          rttp_record_replay: true,
+        });
+      }
+      fetch(runUrl, runSolverInit)
         .then(function (res) {
           return res
             .json()

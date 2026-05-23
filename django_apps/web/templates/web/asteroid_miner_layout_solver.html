@@ -40,7 +40,22 @@
           <h1 class="mt-1 text-2xl font-semibold tracking-tight">Greenfield Solver Workspace</h1>
           <p class="mt-1 max-w-3xl text-sm text-slate-400">—</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4">
+          {% if lab_project_slug %}
+          <label
+            for="lab-macro-only-mode"
+            class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-2 text-sm text-slate-200"
+            title="RTTP macro-only pipeline (macro_id genome slots)"
+          >
+            <input
+              type="checkbox"
+              id="lab-macro-only-mode"
+              class="h-4 w-4 rounded border-slate-600 bg-slate-950 text-cyan-500 focus:ring-cyan-500/40"
+            />
+            <span>Macro-only mode</span>
+          </label>
+          {% endif %}
+          <div class="flex gap-2">
           <button
             type="button"
             id="lab-header-reset"
@@ -62,6 +77,7 @@
             </svg>
             Run Solver
           </button>
+          </div>
         </div>
       </div>
     </div>

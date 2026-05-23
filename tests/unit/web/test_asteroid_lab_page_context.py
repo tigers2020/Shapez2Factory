@@ -416,6 +416,7 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert 'id="lab-optimization-replay-attach"' not in tpl
     assert "Optimization Replay" not in tpl
     assert "data-lab-run-solver-url" in tpl
+    assert 'id="lab-macro-only-mode"' in tpl
     assert "function renderReplayRunStatus" in js
     assert "lab-replay-track-metrics-data" in js
     assert "function replaceOptimizationReplayPayload" not in js
@@ -434,6 +435,8 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "dataset.labRunSolverUrl" in js
     run_btn_idx = js.index("runSolverBtn")
     run_handler = js[run_btn_idx : run_btn_idx + 2500]
+    assert "macro_only_mode" in run_handler
+    assert "lab-macro-only-mode" in run_handler
     assert "setPlaying(true)" not in run_handler
     assert "replaceLabReplayPayload" in run_handler
     assert "seekLastFrame: true" in js

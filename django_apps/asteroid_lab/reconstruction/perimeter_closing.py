@@ -14,6 +14,8 @@ def _touches_bbox_edge(c: Coord, w0: int, w1: int, h0: int, h1: int) -> bool:
 def close_diagonal_leaks(
     solid: set[Coord],
     bbox_bounds: tuple[int, int, int, int],
+    *,
+    include_raw_x_zero: bool = False,
 ) -> frozenset[Coord]:
     """Chebyshev 1-step perimeter close (flood barrier only; not interior holes).
 
@@ -27,7 +29,7 @@ def close_diagonal_leaks(
     merged = set(solid)
     skip_interior = _strict_bbox_interior_cells(merged)
 
-    for x, y in iter_bbox_cells(w0, w1, h0, h1):
+    for x, y in iter_bbox_cells(w0, w1, h0, h1, include_raw_x_zero=include_raw_x_zero):
         c = (x, y)
         if c in merged:
             continue
@@ -47,7 +49,7 @@ def close_diagonal_leaks(
             merged.add(c)
 
     for x in range(w0, w1):
-        if x == 0:
+        if x == 0 and not include_raw_x_zero:
             continue
         for y in range(h0, h1):
             block = ((x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1))

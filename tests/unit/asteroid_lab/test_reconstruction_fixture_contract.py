@@ -28,6 +28,7 @@ from django_apps.asteroid_lab.reconstruction.topology_contract import (
     raw_coords_from_snapshot,
     topology_diff_is_empty,
 )
+from django_apps.asteroid_lab.snapshots.server_coords import entries_have_explicit_raw_x_zero
 
 
 def _run_line(line_index: int):
@@ -90,7 +91,9 @@ def test_reconstruction_fixture_line_coord_and_optimization_contract(
     topo = acceptance_topology_from_reconstruction(recon)
     for cell in recon.cells:
         assert isinstance(cell.server_x, int) and isinstance(cell.server_y, int)
-    if reconstruction_fixture_line_index != 1:
+    req_entries = [c.raw_entry_json for c in _snap_req.cells if c.raw_entry_json]
+    has_explicit_x0 = entries_have_explicit_raw_x_zero(req_entries)
+    if reconstruction_fixture_line_index != 1 and not has_explicit_x0:
         assert not any(c.x == 0 and c.raw_entry_json.get("_replay_synthetic") for c in recon.cells)
     assert topo.mineable_cells <= actual.mineable_cells
     if reconstruction_fixture_line_index == 1:

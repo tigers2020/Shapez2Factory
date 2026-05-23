@@ -1,4 +1,4 @@
-"""Minimal optimization input contracts for RTTP Layer 1 (PR-1)."""
+"""Minimal optimization input contracts for RTTP Layer 1 (PR-1 + PR-2)."""
 
 from __future__ import annotations
 
@@ -13,6 +13,27 @@ class TransportKind(StrEnum):
     FLUID_PIPE = "fluid_pipe"
 
 
+class RouteGoalKind(StrEnum):
+    TRUNK_SEED = "trunk_seed"
+    EXTERNAL_MARGIN = "external_margin"
+    CORRIDOR_ENTRY = "corridor_entry"
+
+
+@dataclass(frozen=True, slots=True)
+class RouteGoal:
+    coord: Coord
+    goal_kind: RouteGoalKind
+    transport_kind: TransportKind | None
+    priority: int
+    existing_trunk: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ExistingTransportCell:
+    coord: Coord
+    transport_kind: TransportKind
+
+
 @dataclass(frozen=True, slots=True)
 class OptimizationInput:
     mineable_cells: frozenset[Coord]
@@ -22,6 +43,8 @@ class OptimizationInput:
     protected_corridor_cells: frozenset[Coord]
     existing_trunk_cells: frozenset[Coord]
     transport_kind: TransportKind
+    route_goals: tuple[RouteGoal, ...]
+    existing_transport_cells: frozenset[ExistingTransportCell]
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,9 +68,12 @@ class LiftColumn:
 
 
 __all__ = [
+    "ExistingTransportCell",
     "LiftColumn",
     "OptimizationInput",
     "RingPort",
+    "RouteGoal",
+    "RouteGoalKind",
     "RttpSkeletonConfig",
     "TransportKind",
 ]

@@ -7,6 +7,8 @@ import pytest
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import (
     OptimizationInput,
+    RouteGoal,
+    RouteGoalKind,
     TransportKind,
 )
 
@@ -31,6 +33,30 @@ def _external_void_ring(mineable: frozenset[Coord]) -> frozenset[Coord]:
     return frozenset(void)
 
 
+def _external_margin_goals(
+    rim: frozenset[Coord],
+    external_void: frozenset[Coord],
+) -> tuple[RouteGoal, ...]:
+    seen: set[Coord] = set()
+    goals: list[RouteGoal] = []
+    for rim_cell in sorted(rim):
+        for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            neighbor = (rim_cell[0] + dx, rim_cell[1] + dy)
+            if neighbor not in external_void or neighbor in seen:
+                continue
+            seen.add(neighbor)
+            goals.append(
+                RouteGoal(
+                    coord=neighbor,
+                    goal_kind=RouteGoalKind.EXTERNAL_MARGIN,
+                    transport_kind=TransportKind.SHAPE_BELT,
+                    priority=20,
+                    existing_trunk=False,
+                )
+            )
+    return tuple(goals)
+
+
 @pytest.fixture
 def greenfield_optimization_input() -> OptimizationInput:
     """Minimal greenfield map: 4×4 mineable block (16 cells), empty trunk/protected."""
@@ -38,12 +64,15 @@ def greenfield_optimization_input() -> OptimizationInput:
     mineable = frozenset((x, y) for x in range(5, 9) for y in range(5, 9))
     rim = _perimeter_cells(mineable)
     inner = mineable - rim
+    external_void = _external_void_ring(mineable)
     return OptimizationInput(
         mineable_cells=mineable,
         rim_cells=rim,
         inner_cells=inner,
-        external_void_cells=_external_void_ring(mineable),
+        external_void_cells=external_void,
         protected_corridor_cells=frozenset(),
         existing_trunk_cells=frozenset(),
         transport_kind=TransportKind.SHAPE_BELT,
+        route_goals=_external_margin_goals(rim, external_void),
+        existing_transport_cells=frozenset(),
     )

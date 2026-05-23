@@ -11,17 +11,38 @@ from typing import Any
 COORD_SYSTEM_BBOX_LEFT_BOTTOM = "server_bbox_left_bottom_dense_x_v1"
 
 
-def raw_x_to_dense_index(raw_x: int) -> int:
+def entries_have_explicit_raw_x_zero(entries: list[dict[str, Any]]) -> bool:
+    """True when any top-level blueprint row uses explicit raw ``X == 0``."""
+
+    return any(isinstance(item, dict) and _as_int(item.get("X")) == 0 for item in entries)
+
+
+def unpack_server_xy_params(params: tuple[int, ...] | None) -> tuple[int, int, bool]:
+    """``(min_dense_x, min_raw_y[, has_explicit_raw_x_zero])`` from persisted params."""
+
+    if params is None:
+        return 0, 0, False
+    md = int(params[0])
+    my = int(params[1]) if len(params) > 1 else 0
+    hz = bool(params[2]) if len(params) > 2 else False
+    return md, my, hz
+
+
+def raw_x_to_dense_index(raw_x: int, *, has_explicit_raw_x_zero: bool = False) -> int:
     """Map raw blueprint ``X`` to a contiguous dense column index.
 
-    Raw ``..., -2, -1, 1, 2, ...`` (no 0 column). Omitted / explicit ``X == 0`` → dense ``0``.
+    Raw ``..., -2, -1, 1, 2, ...`` normally omit column 0; positive ``X`` compress with
+    ``X - 1``. When the map also contains explicit ``X == 0`` (game seam column), positive
+    ``X`` keeps its value so ``0`` and ``1`` do not share a dense column.
     """
 
     if raw_x < 0:
         return raw_x
-    if raw_x > 0:
-        return raw_x - 1
-    return 0
+    if raw_x == 0:
+        return 0
+    if has_explicit_raw_x_zero:
+        return raw_x
+    return raw_x - 1
 
 
 # Backward-compatible name used across snapshots / inspection.
@@ -58,7 +79,11 @@ def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[s
     if not dict_rows:
         return decoded_json
 
-    dense_vals = [raw_x_to_dense_index(_as_int(e.get("X"))) for e in dict_rows]
+    has_zero = entries_have_explicit_raw_x_zero(dict_rows)
+    dense_vals = [
+        raw_x_to_dense_index(_as_int(e.get("X")), has_explicit_raw_x_zero=has_zero)
+        for e in dict_rows
+    ]
     raw_y_vals = [_as_int(e.get("Y")) for e in dict_rows]
     min_dense_x = min(dense_vals)
     min_raw_y = min(raw_y_vals)
@@ -66,7 +91,7 @@ def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[s
     for item in dict_rows:
         raw_x = _as_int(item.get("X"))
         raw_y = _as_int(item.get("Y"))
-        dense_x = raw_x_to_dense_index(raw_x)
+        dense_x = raw_x_to_dense_index(raw_x, has_explicit_raw_x_zero=has_zero)
         item["server_x"] = dense_x - min_dense_x
         item["server_y"] = raw_y - min_raw_y
 
@@ -75,6 +100,7 @@ def attach_server_coords_to_decoded_json(decoded_json: dict[str, Any]) -> dict[s
         meta["coord_system"] = COORD_SYSTEM_BBOX_LEFT_BOTTOM
         meta["server_x_rule"] = "dense_x_minus_min_dense_x"
         meta["server_y_rule"] = "raw_y_minus_min_y"
+        meta["has_explicit_raw_x_zero"] = has_zero
 
     return decoded_json
 
@@ -114,10 +140,11 @@ def server_xy_for_raw_xy(
     *,
     min_dense_x: int,
     min_raw_y: int,
+    has_explicit_raw_x_zero: bool = False,
 ) -> tuple[int, int]:
     """Server grid coords given map bbox (left-bottom origin)."""
 
-    dense_x = raw_x_to_dense_index(raw_x)
+    dense_x = raw_x_to_dense_index(raw_x, has_explicit_raw_x_zero=has_explicit_raw_x_zero)
     return (dense_x - min_dense_x, raw_y - min_raw_y)
 
 
@@ -134,8 +161,10 @@ def jsonl_coord_fields(
 
     out: dict[str, Any] = {"raw_x": int(raw_x), "raw_y": int(raw_y)}
     if server_xy_params is not None:
-        md, my = int(server_xy_params[0]), int(server_xy_params[1])
-        sx, sy = server_xy_for_raw_xy(int(raw_x), int(raw_y), min_dense_x=md, min_raw_y=my)
+        md, my, hz = unpack_server_xy_params(server_xy_params)
+        sx, sy = server_xy_for_raw_xy(
+            int(raw_x), int(raw_y), min_dense_x=md, min_raw_y=my, has_explicit_raw_x_zero=hz
+        )
         out["server_x"] = int(sx)
         out["server_y"] = int(sy)
     else:
@@ -158,19 +187,21 @@ def full_map_row_for_boundary_jsonl(
     return merged
 
 
-def map_bbox_dense_and_y(entries: list[dict[str, Any]]) -> tuple[int, int] | None:
-    """Return ``(min_dense_x, min_raw_y)`` from top-level blueprint dict rows, or ``None``."""
+def map_bbox_dense_and_y(entries: list[dict[str, Any]]) -> tuple[int, int, bool] | None:
+    """Return ``(min_dense_x, min_raw_y, has_explicit_raw_x_zero)`` or ``None``."""
 
+    dict_rows = [item for item in entries if isinstance(item, dict)]
+    if not dict_rows:
+        return None
+    has_zero = entries_have_explicit_raw_x_zero(dict_rows)
     dense_vals: list[int] = []
     raw_y_vals: list[int] = []
-    for item in entries:
-        if not isinstance(item, dict):
-            continue
-        dense_vals.append(raw_x_to_dense_index(_as_int(item.get("X"))))
+    for item in dict_rows:
+        dense_vals.append(
+            raw_x_to_dense_index(_as_int(item.get("X")), has_explicit_raw_x_zero=has_zero)
+        )
         raw_y_vals.append(_as_int(item.get("Y")))
-    if not dense_vals:
-        return None
-    return (min(dense_vals), min(raw_y_vals))
+    return (min(dense_vals), min(raw_y_vals), has_zero)
 
 
 # Backward-compatible name; same coord-system id as ``COORD_SYSTEM_BBOX_LEFT_BOTTOM``.
@@ -180,6 +211,7 @@ __all__ = [
     "COORD_SYSTEM_BBOX_LEFT_BOTTOM",
     "COORD_SYSTEM_BBOX_RIGHT_BOTTOM",
     "attach_server_coords_to_decoded_json",
+    "entries_have_explicit_raw_x_zero",
     "full_map_row_for_boundary_jsonl",
     "jsonl_coord_fields",
     "map_bbox_dense_and_y",
@@ -187,4 +219,5 @@ __all__ = [
     "raw_x_to_dense_x",
     "server_xy_for_layout_line_xy",
     "server_xy_for_raw_xy",
+    "unpack_server_xy_params",
 ]

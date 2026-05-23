@@ -58,6 +58,19 @@ def test_raw_x_zero_maps_to_dense_zero() -> None:
     assert raw_x_to_dense_index(0) == 0
 
 
+def test_raw_x_zero_and_positive_do_not_share_dense_column() -> None:
+    """Official export can place miner at ``X==0`` and pipe at ``X==1`` on the same row."""
+
+    assert raw_x_to_dense_index(0, has_explicit_raw_x_zero=True) == 0
+    assert raw_x_to_dense_index(1, has_explicit_raw_x_zero=True) == 1
+    assert raw_x_to_dense_index(-1, has_explicit_raw_x_zero=True) == -1
+    kw = {"min_dense_x": -1, "min_raw_y": -1, "has_explicit_raw_x_zero": True}
+    pair_zero = server_xy_for_raw_xy(0, -1, **kw)
+    pair_one = server_xy_for_raw_xy(1, -1, **kw)
+    assert pair_zero == (1, 0)
+    assert pair_one == (2, 0)
+
+
 def test_server_xy_left_bottom_origin_single_cell() -> None:
     pair = server_xy_for_raw_xy(1, 0, min_dense_x=0, min_raw_y=0)
     assert pair == (0, 0)

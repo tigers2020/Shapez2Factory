@@ -95,6 +95,7 @@ def build_decoded_blueprint_snapshot(
 
     entry_dicts = [e for e in entries if isinstance(e, dict)]
     bbox_params = map_bbox_dense_and_y(entry_dicts)
+    bbox_has_raw_x_zero = bool(bbox_params[2]) if bbox_params is not None else False
 
     cells: list[DecodedCellDTO] = []
     xs: list[int] = []
@@ -111,7 +112,9 @@ def build_decoded_blueprint_snapshot(
         y = _as_int(item.get("Y"))
         xs.append(x)
         ys.append(y)
-        dense_xs.append(raw_x_to_dense_index(x))
+        dense_xs.append(
+            raw_x_to_dense_index(x, has_explicit_raw_x_zero=bbox_has_raw_x_zero)
+        )
 
         t_raw = item.get("T")
         tile_type = str(t_raw) if isinstance(t_raw, str) else ""
@@ -131,7 +134,11 @@ def build_decoded_blueprint_snapshot(
         sy: int | None = None
         if bbox_params is not None:
             sx, sy = server_xy_for_raw_xy(
-                x, y, min_dense_x=bbox_params[0], min_raw_y=bbox_params[1]
+                x,
+                y,
+                min_dense_x=bbox_params[0],
+                min_raw_y=bbox_params[1],
+                has_explicit_raw_x_zero=bbox_params[2],
             )
             had_json = isinstance(sx_obj, int) and isinstance(sy_obj, int)
             if had_json and (sx_obj, sy_obj) == (sx, sy):

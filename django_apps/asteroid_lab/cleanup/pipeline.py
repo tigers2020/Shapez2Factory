@@ -44,7 +44,7 @@ def deconstruct_snapshot(
     server_xy_params: tuple[int, int] | None = None
     params = map_bbox_dense_and_y([{"X": c.x, "Y": c.y} for c in cells])
     if params is not None:
-        server_xy_params = (int(params[0]), int(params[1]))
+        server_xy_params = tuple(int(v) for v in params[:3])
 
     summary: dict[str, object] = {
         "cleanup_removed_building_count": len(removed),

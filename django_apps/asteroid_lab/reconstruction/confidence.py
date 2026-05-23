@@ -16,7 +16,10 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
-from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    server_xy_for_raw_xy,
+    unpack_server_xy_params,
+)
 
 QUALITY_TIER_CONFIDENT = "CONFIDENT_RECONSTRUCTION"
 QUALITY_TIER_PARTIAL = "PARTIAL"
@@ -32,7 +35,10 @@ def _server_xy(cell: DecodedCellDTO, params: tuple[int, int] | None) -> Coord | 
         return (int(cell.server_x), int(cell.server_y))
     if params is None:
         return None
-    return server_xy_for_raw_xy(cell.x, cell.y, min_dense_x=params[0], min_raw_y=params[1])
+    md, my, hz = unpack_server_xy_params(params)
+    return server_xy_for_raw_xy(
+        cell.x, cell.y, min_dense_x=md, min_raw_y=my, has_explicit_raw_x_zero=hz
+    )
 
 
 def _is_hard_evidence_cell(cell: DecodedCellDTO) -> bool:

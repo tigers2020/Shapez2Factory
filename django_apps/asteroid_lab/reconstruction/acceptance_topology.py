@@ -17,7 +17,10 @@ from django_apps.asteroid_lab.snapshots.grid_contract import (
     cells_in_bbox,
     expand_bbox,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    server_xy_for_raw_xy,
+    unpack_server_xy_params,
+)
 
 
 def server_coord_for_cell(cell: DecodedCellDTO, params: tuple[int, int] | None) -> Coord:
@@ -25,11 +28,13 @@ def server_coord_for_cell(cell: DecodedCellDTO, params: tuple[int, int] | None) 
     if isinstance(sx, int) and isinstance(sy, int):
         return (sx, sy)
     if params is not None:
+        md, my, hz = unpack_server_xy_params(params)
         return server_xy_for_raw_xy(
             cell.x,
             cell.y,
-            min_dense_x=params[0],
-            min_raw_y=params[1],
+            min_dense_x=md,
+            min_raw_y=my,
+            has_explicit_raw_x_zero=hz,
         )
     msg = "DecodedCellDTO.server_x/server_y missing and ReconstructionResult.server_xy_params unset"
     raise ValueError(msg)

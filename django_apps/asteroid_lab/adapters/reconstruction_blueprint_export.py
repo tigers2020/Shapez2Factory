@@ -255,7 +255,11 @@ def entries_to_reconstruction_cells(
         sy: int | None = None
         if bbox_params is not None:
             sx, sy = server_xy_for_raw_xy(
-                x, y, min_dense_x=bbox_params[0], min_raw_y=bbox_params[1]
+                x,
+                y,
+                min_dense_x=bbox_params[0],
+                min_raw_y=bbox_params[1],
+                has_explicit_raw_x_zero=bbox_params[2],
             )
             if isinstance(sx_obj, int) and isinstance(sy_obj, int):
                 sx, sy = sx_obj, sy_obj

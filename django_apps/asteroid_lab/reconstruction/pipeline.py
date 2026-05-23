@@ -41,11 +41,21 @@ from django_apps.asteroid_lab.reconstruction.trace import (
     ReconstructionTraceEvent,
 )
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
+from django_apps.asteroid_lab.snapshots.server_coords import (
+    server_xy_for_raw_xy,
+    unpack_server_xy_params,
+)
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
     sort_key_xy_layer,
 )
+
+
+def _raw_to_server_xy(raw_x: int, raw_y: int, server_xy_params: tuple[int, ...]) -> tuple[int, int]:
+    md, my, hz = unpack_server_xy_params(server_xy_params)
+    return server_xy_for_raw_xy(
+        raw_x, raw_y, min_dense_x=md, min_raw_y=my, has_explicit_raw_x_zero=hz
+    )
 
 if TYPE_CHECKING:
     from django_apps.asteroid_lab.cleanup.result import CleanupResult
@@ -351,12 +361,7 @@ def reconstruct_after_cleanup(
             sx: int | None = None
             sy: int | None = None
             if server_xy_params is not None:
-                pair = server_xy_for_raw_xy(
-                    x,
-                    y,
-                    min_dense_x=server_xy_params[0],
-                    min_raw_y=server_xy_params[1],
-                )
+                pair = _raw_to_server_xy(x, y, server_xy_params)
                 sx, sy = pair
             filled.append(
                 synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx, server_y=sy)
@@ -434,9 +439,7 @@ def reconstruct_after_cleanup(
             sx_p: int | None = None
             sy_p: int | None = None
             if server_xy_params is not None:
-                sx_p, sy_p = server_xy_for_raw_xy(
-                    x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
-                )
+                sx_p, sy_p = _raw_to_server_xy(x, y, server_xy_params)
             filled.append(
                 synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_p, server_y=sy_p)
             )
@@ -473,9 +476,7 @@ def reconstruct_after_cleanup(
             sx_t: int | None = None
             sy_t: int | None = None
             if server_xy_params is not None:
-                sx_t, sy_t = server_xy_for_raw_xy(
-                    xy[0], xy[1], min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
-                )
+                sx_t, sy_t = _raw_to_server_xy(xy[0], xy[1], server_xy_params)
             filled.append(
                 synthetic_field_cell(
                     xy[0], xy[1], fill_layer, fill_kind, server_x=sx_t, server_y=sy_t
@@ -533,9 +534,7 @@ def reconstruct_after_cleanup(
             sx_a: int | None = None
             sy_a: int | None = None
             if server_xy_params is not None:
-                sx_a, sy_a = server_xy_for_raw_xy(
-                    x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
-                )
+                sx_a, sy_a = _raw_to_server_xy(x, y, server_xy_params)
             filled.append(
                 synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_a, server_y=sy_a)
             )
@@ -550,9 +549,7 @@ def reconstruct_after_cleanup(
             sx_g: int | None = None
             sy_g: int | None = None
             if server_xy_params is not None:
-                sx_g, sy_g = server_xy_for_raw_xy(
-                    x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
-                )
+                sx_g, sy_g = _raw_to_server_xy(x, y, server_xy_params)
             filled.append(
                 synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_g, server_y=sy_g)
             )
@@ -574,9 +571,7 @@ def reconstruct_after_cleanup(
         sx_d: int | None = None
         sy_d: int | None = None
         if server_xy_params is not None:
-            sx_d, sy_d = server_xy_for_raw_xy(
-                x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
-            )
+            sx_d, sy_d = _raw_to_server_xy(x, y, server_xy_params)
         filled.append(
             synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_d, server_y=sy_d)
         )
@@ -612,17 +607,13 @@ def reconstruct_after_cleanup(
                 if occ_n < 1 or (wall_n < 1 and occ_n < 2):
                     continue
                 if server_xy_params is not None:
-                    sx_chk, _sy_chk = server_xy_for_raw_xy(
-                        x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
-                    )
+                    sx_chk, _sy_chk = _raw_to_server_xy(x, y, server_xy_params)
                     if sx_chk == 0:
                         continue
                 sx_p2: int | None = None
                 sy_p2: int | None = None
                 if server_xy_params is not None:
-                    sx_p2, sy_p2 = server_xy_for_raw_xy(
-                        x, y, min_dense_x=server_xy_params[0], min_raw_y=server_xy_params[1]
-                    )
+                    sx_p2, sy_p2 = _raw_to_server_xy(x, y, server_xy_params)
                 filled.append(
                     synthetic_field_cell(
                         x, y, fill_layer, fill_kind, server_x=sx_p2, server_y=sy_p2

@@ -6,8 +6,14 @@ from html.parser import HTMLParser
 
 import pytest
 
+from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
+from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
 from django_apps.asteroid_lab.genetic_sample_mini_map import genetic_sample_mini_map_html
 from django_apps.asteroid_lab.lab_screen_grid import mini_map_grid_coord
+
+USER_FLUID_MINER_J_COPY = (
+    "SHAPEZ2-4-H4sIAAAAAAACCo2QwQrCMBBE/2XwGA+lByFHUaGgUFRKRUSWNmIgJiVJ0VLy78Z48SKUhYVl38zAjKjAsyxfMCxL8BEzP3QCHIVTpFswFI3Rn8eKPIGfIePNS0X+ZuzDgeleqe+Cu1Mn+L7/Di6BYa29lcJF4YgafJ4xnGIgwzFmbGkwvb9uVC/bndTCrl9eaCdjYGDjB5z/IxOwB8+nOkWjyXid8J/4Q0eNKGUnrhtjn2RbhEssTGqyQyVsEqYWQ3gD2adCLVEBAAA="
+)
 
 
 class _MiniMapCellParser(HTMLParser):
@@ -151,6 +157,23 @@ def test_mini_map_data_attrs_match_mini_map_grid_coord(
         assert c["data-grid-row"] == g.row
         assert c["data-grid-col"] == g.col
         assert c["data-linear-index"] == g.linear_index
+
+
+@pytest.mark.django_db
+def test_mini_map_renders_distinct_cells_when_raw_x_zero_and_one_share_row(
+    lab_sprite_identifiers_for_admin: object,
+) -> None:
+    """Regression: ``X==0`` miner and ``X==1`` pipe must not collide on one server cell."""
+
+    norm = normalize_decoded_blueprint(
+        decode_copy_string(USER_FLUID_MINER_J_COPY.strip().removesuffix("$"))
+    )
+    html = str(genetic_sample_mini_map_html(norm.decoded_json))
+    by_s = _by_server(_parse_mini_map_cells(html))
+    assert (1, 0) in by_s
+    assert (2, 0) in by_s
+    assert "Miner/" in str(by_s[(1, 0)]["data-sprite"])
+    assert "SpacePipe/" in str(by_s[(2, 0)]["data-sprite"])
 
 
 @pytest.mark.django_db

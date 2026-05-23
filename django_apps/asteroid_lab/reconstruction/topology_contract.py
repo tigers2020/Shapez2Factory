@@ -95,7 +95,10 @@ def _server_xy(cell: DecodedCellDTO, params: tuple[int, int] | None) -> Coord | 
         return (int(cell.server_x), int(cell.server_y))
     if params is None:
         return None
-    return server_xy_for_raw_xy(cell.x, cell.y, min_dense_x=params[0], min_raw_y=params[1])
+    hz = bool(params[2]) if len(params) > 2 else False
+    return server_xy_for_raw_xy(
+        cell.x, cell.y, min_dense_x=params[0], min_raw_y=params[1], has_explicit_raw_x_zero=hz
+    )
 
 
 def _params_from_cells(cells: Sequence[DecodedCellDTO]) -> tuple[int, int] | None:
@@ -115,9 +118,11 @@ def _shell_server_coords(
 ) -> frozenset[Coord]:
     if not shell_raw_coords or params is None:
         return frozenset()
-    md, my = params
+    md, my = int(params[0]), int(params[1])
+    hz = bool(params[2]) if len(params) > 2 else False
     return frozenset(
-        server_xy_for_raw_xy(x, y, min_dense_x=md, min_raw_y=my) for x, y in shell_raw_coords
+        server_xy_for_raw_xy(x, y, min_dense_x=md, min_raw_y=my, has_explicit_raw_x_zero=hz)
+        for x, y in shell_raw_coords
     )
 
 

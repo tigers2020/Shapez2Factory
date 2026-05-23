@@ -144,8 +144,22 @@ def test_entry_result_json_includes_optimization_milestone_section() -> None:
     assert "lab_optimization_milestone_track_metrics" in body
     mile_types = {fr.get("event_type") for fr in body["lab_optimization_milestone_frames_json"]}
     assert RTTP_MILESTONE_EVENT_TYPES <= mile_types
-    lab_types = {fr.get("event_type") for fr in body["lab_replay_frames_json"]}
-    assert lab_types.isdisjoint(RTTP_MILESTONE_EVENT_TYPES)
+    frames = body["lab_replay_frames_json"]
+    assert body["lab_replay_frame_count"] == len(frames)
+    first_inherited = next(
+        (i for i, fr in enumerate(frames) if fr.get("render_mode") == "inherited_snapshot"),
+        None,
+    )
+    map_prefix = frames if first_inherited is None else frames[:first_inherited]
+    map_types = {fr.get("event_type") for fr in map_prefix}
+    assert map_types.isdisjoint(RTTP_MILESTONE_EVENT_TYPES)
+    tail = [fr for fr in frames if fr.get("render_mode") == "inherited_snapshot"]
+    assert len(tail) >= 4
+    assert RTTP_MILESTONE_EVENT_TYPES <= {fr["event_type"] for fr in tail}
+    for fr in tail:
+        assert fr.get("base_frame_index") is not None
+        assert "full_map" not in fr
+        assert not (fr.get("map_view") or {}).get("full_cells")
 
 
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)

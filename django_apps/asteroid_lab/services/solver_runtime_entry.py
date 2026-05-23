@@ -48,6 +48,9 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
+from django_apps.asteroid_lab.snapshots.coord_proof_policy import (
+    lab_solver_optimization_coord_frame,
+)
 
 SOLVER_NOT_AVAILABLE_MESSAGE = (
     "Solver runtime entry is not wired to RTTP yet; reconstruction is still available."
@@ -252,7 +255,10 @@ def _run_rttp_solver_for_map_input(
         int(inp.pk),
         boundary_run_id=rk,
     )
-    opt_inp = optimization_input_from_reconstruction(recon)
+    opt_inp = optimization_input_from_reconstruction(
+        recon,
+        coord_frame=lab_solver_optimization_coord_frame(run_config),
+    )
 
     if replace_existing_run:
         run_dto = create_or_replace_solver_run(

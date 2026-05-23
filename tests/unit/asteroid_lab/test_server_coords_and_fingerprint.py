@@ -183,7 +183,8 @@ def test_inspect_transport_raw_bfs_after_attach() -> None:
     assert fluid[0].cell_count == 2
 
 
-def test_bbox_of_cells_reports_dense_and_server_width() -> None:
+def test_bbox_of_decoded_snapshot_is_island_raw_only() -> None:
+    """PR-F: decode DTO bbox uses island ``X`` span; dense/server live on JSON attach only."""
     decoded = {
         "V": 1,
         "BP": {
@@ -197,8 +198,11 @@ def test_bbox_of_cells_reports_dense_and_server_width() -> None:
     attach_server_coords_to_decoded_json(decoded)
     snap = build_decoded_blueprint_snapshot(decoded)
     assert snap.bbox_json["width"] == 3
-    assert snap.bbox_json["dense_width"] == 2
-    assert snap.bbox_json["server_width"] == 2
+    assert "dense_width" not in snap.bbox_json
+    assert "server_width" not in snap.bbox_json
+    for entry in decoded["BP"]["Entries"]:
+        assert isinstance(entry.get("server_x"), int)
+        assert isinstance(entry.get("server_y"), int)
 
 
 def test_decoded_json_layout_equivalent_parallel_miner_shift() -> None:

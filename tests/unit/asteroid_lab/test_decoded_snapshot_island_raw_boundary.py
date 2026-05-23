@@ -19,3 +19,12 @@ def test_build_decoded_snapshot_cell_xy_matches_island_raw_coord() -> None:
         island = entry_island_raw_coord(cell.raw_entry_json)
         assert cell.x == island.x
         assert cell.y == island.y
+
+
+def test_build_decoded_snapshot_does_not_attach_server_xy_on_dto() -> None:
+    snap = build_decoded_blueprint_snapshot(decode_shapez2_copy(_COPY))
+    assert snap.cells
+    for cell in snap.cells:
+        assert cell.server_x is None
+        assert cell.server_y is None
+    assert "server_min_x" not in snap.bbox_json

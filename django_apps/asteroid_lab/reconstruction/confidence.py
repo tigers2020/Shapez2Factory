@@ -8,6 +8,8 @@ from typing import Any
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_reconstruction,
     constraint_violation_count,
+    infer_topology_coord_frame,
+    topology_coord_for_cell,
 )
 from django_apps.asteroid_lab.reconstruction.evidence import (
     ASTEROID_FIELD_KINDS,
@@ -15,11 +17,8 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.grid_contract import Coord
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    server_xy_for_raw_xy,
-    unpack_server_xy_params,
-)
 
 QUALITY_TIER_CONFIDENT = "CONFIDENT_RECONSTRUCTION"
 QUALITY_TIER_PARTIAL = "PARTIAL"
@@ -30,15 +29,16 @@ _AMBIGUOUS_RATIO_MAX = 0.05
 _CONFIDENCE_SCORE_MIN = 0.95
 
 
-def _server_xy(cell: DecodedCellDTO, params: tuple[int, int] | None) -> Coord | None:
-    if isinstance(cell.server_x, int) and isinstance(cell.server_y, int):
-        return (int(cell.server_x), int(cell.server_y))
-    if params is None:
+def _topology_coord(
+    cell: DecodedCellDTO,
+    params: tuple[int, int] | None,
+    *,
+    coord_frame: CoordFrame,
+) -> Coord | None:
+    try:
+        return topology_coord_for_cell(cell, params, coord_frame=coord_frame)
+    except ValueError:
         return None
-    md, my, hz = unpack_server_xy_params(params)
-    return server_xy_for_raw_xy(
-        cell.x, cell.y, min_dense_x=md, min_raw_y=my, has_explicit_raw_x_zero=hz
-    )
 
 
 def _is_hard_evidence_cell(cell: DecodedCellDTO) -> bool:
@@ -60,8 +60,9 @@ def build_candidate_masks(
     wall_coords: Iterable[Coord],
     server_xy_params: tuple[int, int] | None,
     interior_patch_coords: Iterable[Coord],
+    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
 ) -> tuple[frozenset[Coord], frozenset[Coord]]:
-    """Two server-coordinate masks: interior-patch hint and wall-adjacent fill."""
+    """Two topology-coordinate masks: interior-patch hint and wall-adjacent fill."""
 
     walls = frozenset(wall_coords)
     interior_patch = frozenset(interior_patch_coords)
@@ -69,7 +70,7 @@ def build_candidate_masks(
     for cell in cells:
         if not _is_inferred_fill(cell):
             continue
-        sv = _server_xy(cell, server_xy_params)
+        sv = _topology_coord(cell, server_xy_params, coord_frame=coord_frame)
         if sv is None:
             continue
         x, y = cell.x, cell.y
@@ -171,10 +172,11 @@ def apply_confidence_to_result(
     """Attach confidence fields and summary metrics to a reconstruction result."""
 
     params = result.server_xy_params
+    coord_frame = infer_topology_coord_frame(result.cells)
     hard: set[Coord] = set()
     mineable: set[Coord] = set()
     for cell in result.cells:
-        sv = _server_xy(cell, params)
+        sv = _topology_coord(cell, params, coord_frame=coord_frame)
         if sv is None:
             continue
         if cell.cell_kind in ASTEROID_FIELD_KINDS:
@@ -187,6 +189,7 @@ def apply_confidence_to_result(
         wall_coords=wall_coords,
         server_xy_params=params,
         interior_patch_coords=interior_patch_coords,
+        coord_frame=coord_frame,
     )
     confirmed, ambiguous, by_cell = merge_mask_agreement(
         frozenset(mineable),
@@ -196,7 +199,9 @@ def apply_confidence_to_result(
     )
 
     try:
-        external_void = acceptance_topology_from_reconstruction(result).external_void_cells
+        external_void = acceptance_topology_from_reconstruction(
+            result, coord_frame=coord_frame
+        ).external_void_cells
     except ValueError:
         external_void = frozenset()
 

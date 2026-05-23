@@ -25,11 +25,7 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     _extract_layer,
     _nested_b_summary,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    attach_server_coords_to_decoded_json,
-    map_bbox_dense_and_y,
-    server_xy_for_raw_xy,
-)
+from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
     sort_key_xy_layer,
@@ -231,8 +227,6 @@ def entries_to_reconstruction_cells(
 ) -> tuple[DecodedCellDTO, ...]:
     """Import ``BP.Entries`` with Extension → ``asteroid_*_field`` (not miner_extension)."""
 
-    entry_dicts = [e for e in entries if isinstance(e, dict)]
-    bbox_params = map_bbox_dense_and_y(entry_dicts)
     cells: list[DecodedCellDTO] = []
 
     for item in entries:
@@ -250,24 +244,6 @@ def entries_to_reconstruction_cells(
         layer = _extract_layer(item)
         raw_entry: dict[str, Any] = dict(item)
 
-        sx_obj = item.get("server_x")
-        sy_obj = item.get("server_y")
-        sx: int | None = None
-        sy: int | None = None
-        if bbox_params is not None:
-            sx, sy = server_xy_for_raw_xy(
-                x,
-                y,
-                min_dense_x=bbox_params[0],
-                min_raw_y=bbox_params[1],
-                has_explicit_raw_x_zero=bbox_params[2],
-            )
-            if isinstance(sx_obj, int) and isinstance(sy_obj, int):
-                sx, sy = sx_obj, sy_obj
-        else:
-            sx = sx_obj if isinstance(sx_obj, int) else None
-            sy = sy_obj if isinstance(sy_obj, int) else None
-
         cells.append(
             DecodedCellDTO(
                 x=x,
@@ -281,8 +257,8 @@ def entries_to_reconstruction_cells(
                 nested_entry_count=nested_count,
                 nested_type_counts_json=nested_type_counts,
                 raw_entry_json=raw_entry,
-                server_x=sx,
-                server_y=sy,
+                server_x=None,
+                server_y=None,
             )
         )
 

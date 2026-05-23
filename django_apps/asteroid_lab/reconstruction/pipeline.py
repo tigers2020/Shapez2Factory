@@ -119,13 +119,7 @@ def _fill_seam_column_gap_coords(
     for x, y in coords:
         if (x, y) in occupied_xy:
             continue
-        sx_gap: int | None = None
-        sy_gap: int | None = None
-        if server_xy_params is not None:
-            sx_gap, sy_gap = _raw_to_server_xy(x, y, server_xy_params)
-        filled.append(
-            synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_gap, server_y=sy_gap)
-        )
+        filled.append(synthetic_field_cell(x, y, fill_layer, fill_kind))
         occupied_xy.add((x, y))
         added += 1
     return added
@@ -396,14 +390,7 @@ def reconstruct_after_cleanup(
             if (x, y) in occupied_xy:
                 continue
             fill_xy.append((x, y))
-            sx: int | None = None
-            sy: int | None = None
-            if server_xy_params is not None:
-                pair = _raw_to_server_xy(x, y, server_xy_params)
-                sx, sy = pair
-            filled.append(
-                synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx, server_y=sy)
-            )
+            filled.append(synthetic_field_cell(x, y, fill_layer, fill_kind))
 
         if trace_collector is not None and fill_xy:
             trace_collector.append(
@@ -474,13 +461,7 @@ def reconstruct_after_cleanup(
             ):
                 continue
             fill_xy_pocket.append(xy_pocket)
-            sx_p: int | None = None
-            sy_p: int | None = None
-            if server_xy_params is not None:
-                sx_p, sy_p = _raw_to_server_xy(x, y, server_xy_params)
-            filled.append(
-                synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_p, server_y=sy_p)
-            )
+            filled.append(synthetic_field_cell(x, y, fill_layer, fill_kind))
             occupied_xy.add((x, y))
         pocket_filled += len(fill_xy_pocket)
         if trace_collector is not None and fill_xy_pocket:
@@ -511,15 +492,7 @@ def reconstruct_after_cleanup(
                 continue
             if not passes_bbox_interior({xy}, w0, w1, h0, h1):
                 continue
-            sx_t: int | None = None
-            sy_t: int | None = None
-            if server_xy_params is not None:
-                sx_t, sy_t = _raw_to_server_xy(xy[0], xy[1], server_xy_params)
-            filled.append(
-                synthetic_field_cell(
-                    xy[0], xy[1], fill_layer, fill_kind, server_x=sx_t, server_y=sy_t
-                )
-            )
+            filled.append(synthetic_field_cell(xy[0], xy[1], fill_layer, fill_kind))
             occupied_xy.add(xy)
             pocket_filled += 1
 
@@ -573,13 +546,7 @@ def reconstruct_after_cleanup(
             )
             if not touches_removed_transport:
                 continue
-            sx_a: int | None = None
-            sy_a: int | None = None
-            if server_xy_params is not None:
-                sx_a, sy_a = _raw_to_server_xy(x, y, server_xy_params)
-            filled.append(
-                synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_a, server_y=sy_a)
-            )
+            filled.append(synthetic_field_cell(x, y, fill_layer, fill_kind))
             occupied_xy.add(xy)
             pocket_filled += 1
 
@@ -588,13 +555,7 @@ def reconstruct_after_cleanup(
         for x, y in dense_gap_column_coords(occupied_for_gap, walls_xy, h0=h0, h1=h1):
             if (x, y) in occupied_xy:
                 continue
-            sx_g: int | None = None
-            sy_g: int | None = None
-            if server_xy_params is not None:
-                sx_g, sy_g = _raw_to_server_xy(x, y, server_xy_params)
-            filled.append(
-                synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_g, server_y=sy_g)
-            )
+            filled.append(synthetic_field_cell(x, y, fill_layer, fill_kind))
             occupied_xy.add((x, y))
             pocket_filled += 1
 
@@ -610,13 +571,7 @@ def reconstruct_after_cleanup(
     ):
         if (x, y) in occupied_xy:
             continue
-        sx_d: int | None = None
-        sy_d: int | None = None
-        if server_xy_params is not None:
-            sx_d, sy_d = _raw_to_server_xy(x, y, server_xy_params)
-        filled.append(
-            synthetic_field_cell(x, y, fill_layer, fill_kind, server_x=sx_d, server_y=sy_d)
-        )
+        filled.append(synthetic_field_cell(x, y, fill_layer, fill_kind))
         occupied_xy.add((x, y))
         pocket_filled += 1
 
@@ -654,15 +609,7 @@ def reconstruct_after_cleanup(
                     sx_chk, _sy_chk = _raw_to_server_xy(x, y, server_xy_params)
                     if sx_chk == 0:
                         continue
-                sx_p2: int | None = None
-                sy_p2: int | None = None
-                if server_xy_params is not None:
-                    sx_p2, sy_p2 = _raw_to_server_xy(x, y, server_xy_params)
-                filled.append(
-                    synthetic_field_cell(
-                        x, y, fill_layer, fill_kind, server_x=sx_p2, server_y=sy_p2
-                    )
-                )
+                filled.append(synthetic_field_cell(x, y, fill_layer, fill_kind))
                 occupied_xy.add(xy)
                 recon_filled_xy.add(xy)
                 pocket_filled += 1

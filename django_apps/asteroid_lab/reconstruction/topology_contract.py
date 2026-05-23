@@ -9,6 +9,10 @@ from typing import Any
 
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
+from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
+    infer_topology_coord_frame,
+    topology_coord_for_cell,
+)
 from django_apps.asteroid_lab.reconstruction.evidence import (
     ASTEROID_FIELD_KINDS,
     MINER_EXTENSION_CELL_KINDS,
@@ -16,6 +20,7 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 )
 from django_apps.asteroid_lab.reconstruction.grid import Coord as RawCoord
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
+from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
@@ -90,17 +95,6 @@ def decode_shapez_copy_string(copy_string: str) -> DecodedBlueprintSnapshotDTO:
     return build_decoded_blueprint_snapshot(norm.decoded_json)
 
 
-def _server_xy(cell: DecodedCellDTO, params: tuple[int, int] | None) -> Coord | None:
-    if isinstance(cell.server_x, int) and isinstance(cell.server_y, int):
-        return (int(cell.server_x), int(cell.server_y))
-    if params is None:
-        return None
-    hz = bool(params[2]) if len(params) > 2 else False
-    return server_xy_for_raw_xy(
-        cell.x, cell.y, min_dense_x=params[0], min_raw_y=params[1], has_explicit_raw_x_zero=hz
-    )
-
-
 def _params_from_cells(cells: Sequence[DecodedCellDTO]) -> tuple[int, int] | None:
     rows = [{"X": c.x, "Y": c.y} for c in cells]
     return map_bbox_dense_and_y(rows)
@@ -112,11 +106,17 @@ def _is_mineable_occupied(cell: DecodedCellDTO) -> bool:
     return cell.cell_kind in MINER_EXTENSION_CELL_KINDS
 
 
-def _shell_server_coords(
+def _shell_topology_coords(
     shell_raw_coords: frozenset[RawCoord] | None,
     params: tuple[int, int] | None,
+    *,
+    coord_frame: CoordFrame,
 ) -> frozenset[Coord]:
-    if not shell_raw_coords or params is None:
+    if not shell_raw_coords:
+        return frozenset()
+    if coord_frame == CoordFrame.ISLAND_RAW:
+        return frozenset(shell_raw_coords)
+    if params is None:
         return frozenset()
     md, my = int(params[0]), int(params[1])
     hz = bool(params[2]) if len(params) > 2 else False
@@ -131,17 +131,20 @@ def build_normalized_reconstruction_topology(
     *,
     server_xy_params: tuple[int, int] | None = None,
     shell_raw_coords: frozenset[RawCoord] | None = None,
+    coord_frame: CoordFrame | None = None,
 ) -> NormalizedReconstructionTopology:
     """Build compare topology from decoded or reconstruction-merged cells."""
 
     params = server_xy_params if server_xy_params is not None else _params_from_cells(cells)
+    frame = coord_frame if coord_frame is not None else infer_topology_coord_frame(cells)
     mineable: set[Coord] = set()
     wall: set[Coord] = set()
     occupied: set[Coord] = set()
 
     for cell in cells:
-        sv = _server_xy(cell, params)
-        if sv is None:
+        try:
+            sv = topology_coord_for_cell(cell, params, coord_frame=frame)
+        except ValueError:
             continue
         occupied.add(sv)
         if _is_mineable_occupied(cell):
@@ -149,7 +152,7 @@ def build_normalized_reconstruction_topology(
         elif is_asteroid_evidence(cell):
             wall.add(sv)
 
-    shell_sv = _shell_server_coords(shell_raw_coords, params)
+    shell_sv = _shell_topology_coords(shell_raw_coords, params, coord_frame=frame)
     interior_patch = mineable - shell_sv if shell_sv else frozenset(mineable)
 
     asteroid = frozenset(mineable | wall)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from django_apps.asteroid_lab.reconstruction.evidence import (
@@ -26,6 +27,29 @@ from django_apps.asteroid_lab.snapshots.server_coords import (
     server_xy_for_raw_xy,
     unpack_server_xy_params,
 )
+
+
+def infer_topology_coord_frame(cells: Sequence[DecodedCellDTO]) -> CoordFrame:
+    """When decode/reconstruction omit ``server_x``/``server_y``, use island-local topology."""
+
+    if not cells:
+        return CoordFrame.SERVER_DENSE
+    if all(not isinstance(c.server_x, int) for c in cells):
+        return CoordFrame.ISLAND_RAW
+    return CoordFrame.SERVER_DENSE
+
+
+def topology_coord_for_cell(
+    cell: DecodedCellDTO,
+    params: tuple[int, int] | None,
+    *,
+    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
+) -> Coord:
+    """Mineable / void topology key for one cell (server dense or island-local)."""
+
+    if coord_frame == CoordFrame.ISLAND_RAW:
+        return (cell.x, cell.y)
+    return server_coord_to_tuple(server_coord_for_cell(cell, params))
 
 
 def server_coord_for_cell(cell: DecodedCellDTO, params: tuple[int, int] | None) -> ServerCoord:
@@ -66,11 +90,13 @@ class AcceptanceTopology:
 def _cells_by_server_coord(
     cells: tuple[DecodedCellDTO, ...],
     params: tuple[int, int] | None,
+    *,
+    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
 ) -> dict[Coord, DecodedCellDTO]:
     by_sv: dict[Coord, DecodedCellDTO] = {}
     for cell in cells:
-        sc = server_coord_for_cell(cell, params)
-        by_sv[server_coord_to_tuple(sc)] = cell
+        key = topology_coord_for_cell(cell, params, coord_frame=coord_frame)
+        by_sv[key] = cell
     return by_sv
 
 
@@ -96,7 +122,7 @@ def acceptance_topology_from_reconstruction(
     if coord_frame == CoordFrame.ISLAND_RAW:
         by_sv = _cells_by_island_coord(cells)
     else:
-        by_sv = _cells_by_server_coord(cells, params)
+        by_sv = _cells_by_server_coord(cells, params, coord_frame=coord_frame)
 
     mineable: set[Coord] = set()
     for sv, cell in by_sv.items():
@@ -151,4 +177,6 @@ __all__ = [
     "mineable_field_kind",
     "mineable_server_coords_from_reconstruction",
     "server_coord_for_cell",
+    "infer_topology_coord_frame",
+    "topology_coord_for_cell",
 ]

@@ -20,6 +20,10 @@ from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_reconstruction,
 )
+from django_apps.asteroid_lab.optimization.replay_sink import (
+    DbRttpReplaySink,
+    NullRttpReplaySink,
+)
 from django_apps.asteroid_lab.services.experiment_service import (
     create_or_replace_solver_run,
     create_solver_run,
@@ -34,6 +38,7 @@ from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_META_KEY,
+    SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
     SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
@@ -76,6 +81,12 @@ def _rttp_enabled(config: dict[str, Any] | None) -> bool:
     if config is not None and "rttp_enabled" in config:
         return bool(config["rttp_enabled"])
     return bool(getattr(settings, "ASTEROID_LAB_RTTP_ENABLED", True))
+
+
+def _rttp_record_replay_enabled(config: dict[str, Any]) -> bool:
+    if SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY in config:
+        return bool(config[SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY])
+    return True
 
 
 def _snapshot_meta_for_config(snapshot: AsteroidGameDataSnapshot) -> dict[str, str]:
@@ -217,10 +228,6 @@ def _run_rttp_solver_for_map_input(
         boundary_run_id=rk,
     )
     opt_inp = optimization_input_from_reconstruction(recon)
-    pipeline_result = run_rttp_pipeline(
-        opt_inp,
-        policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
-    )
 
     if replace_existing_run:
         run_dto = create_or_replace_solver_run(
@@ -237,6 +244,17 @@ def _run_rttp_solver_for_map_input(
             config=run_config,
         )
     run_id = int(run_dto.id)
+    track_id = int(run_dto.replay_track_id)
+    replay_sink = (
+        DbRttpReplaySink(track_id)
+        if _rttp_record_replay_enabled(run_config)
+        else NullRttpReplaySink()
+    )
+    pipeline_result = run_rttp_pipeline(
+        opt_inp,
+        policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
+        replay_sink=replay_sink,
+    )
 
     persist_reconstructed_asteroid_map(
         map_input_id=int(inp.pk),

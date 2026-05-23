@@ -74,3 +74,43 @@ def test_solver_runtime_entry_rttp_returns_solver_run_id() -> None:
     result = run_solver_runtime_for_project(int(proj.pk))
     assert result.solver_run_id is not None
     assert result.error_code != SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE
+
+
+_SUMMARY_COMPARE_KEYS = (
+    "algorithm",
+    "validation_passed",
+    "run_success",
+    "confirmed_count",
+    "target_miner_bundle_count",
+    "commit_order",
+    "normal_candidate_count",
+)
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_rttp_runtime_solver_summary_unchanged_when_replay_persisted() -> None:
+    """RTTP-RB1: DB replay frames must not change solver_summary scalars."""
+    proj = m.AsteroidProject.objects.create(name="RttpRb1", slug="entry-rttp-rb1")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    project_id = int(proj.pk)
+
+    off = run_solver_runtime_for_project(
+        project_id,
+        run_key="rb1-off",
+        config={"rttp_record_replay": False},
+    )
+    on = run_solver_runtime_for_project(
+        project_id,
+        run_key="rb1-on",
+        config={"rttp_record_replay": True},
+    )
+
+    assert off.solver_summary
+    assert on.solver_summary
+    for key in _SUMMARY_COMPARE_KEYS:
+        assert off.solver_summary[key] == on.solver_summary[key]
+
+    run = m.SolverRun.objects.get(pk=int(on.solver_run_id))
+    track = m.ReplayTrack.objects.get(project_id=project_id, track_key="rb1-on")
+    assert track.solver_run_id == run.id
+    assert m.ReplayFrame.objects.filter(replay_track_id=track.id).count() >= 4

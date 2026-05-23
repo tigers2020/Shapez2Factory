@@ -13,7 +13,7 @@ from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
 from django_apps.asteroid_lab.optimization.selection.equivalence import dedupe_candidates
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
-from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4_server
+from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,7 +48,7 @@ def _fragmentation_penalty(
         return 0.0
     isolated = 0
     for cell in remaining:
-        if not any(neighbor in remaining for neighbor in neighbors4_server(cell)):
+        if not any(neighbor in remaining for neighbor in neighbors4(cell)):
             isolated += 1
     return float(isolated) / float(len(remaining))
 

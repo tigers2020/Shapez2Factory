@@ -15,7 +15,10 @@ from django_apps.asteroid_lab.replay.event_types import (
     is_rttp_milestone_event_type,
     normalize_rttp_milestone_event_type,
 )
-from django_apps.asteroid_lab.replay.projection_context import lab_xy_from_server_xy
+from django_apps.asteroid_lab.replay.projection_context import (
+    lab_xy_from_replay_cell,
+    lab_xy_from_server_xy,
+)
 
 _RECONSTRUCTION_COMPLETED = "reconstruction.completed"
 
@@ -146,6 +149,8 @@ def clip_overlay_cells_to_base_map_domain(
         lab_xy = server_to_lab.get((ox, oy))
         if lab_xy is None and server_xy_params is not None:
             lab_xy = lab_xy_from_server_xy(ox, oy, server_xy_params=server_xy_params)
+        elif lab_xy is None:
+            lab_xy = lab_xy_from_replay_cell(ox, oy)
         if lab_xy is not None and lab_xy in lab_anchors:
             projected = dict(cell)
             projected["x"] = lab_xy[0]

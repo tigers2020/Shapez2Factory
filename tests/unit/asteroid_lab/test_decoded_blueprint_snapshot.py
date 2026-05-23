@@ -102,8 +102,8 @@ def test_bbox_and_counts() -> None:
     assert snap.transport_kind_counts_json["none"] == 1
 
 
-def test_raw_x_zero_entry_gets_explicit_server_xy_for_algorithm_boundary() -> None:
-    """Raw blueprint ``X == 0`` has no dense horizontal index; DTO still carries server (0, ?y)."""
+def test_raw_x_zero_entry_keeps_island_xy_without_server_attach() -> None:
+    """PR-F: ``X == 0`` is valid island-local; DTO does not attach server dense coords."""
 
     decoded = {
         "V": 1,
@@ -117,8 +117,8 @@ def test_raw_x_zero_entry_gets_explicit_server_xy_for_algorithm_boundary() -> No
     }
     snap = build_decoded_blueprint_snapshot(decoded)
     c0 = next(c for c in snap.cells if c.x == 0)
-    assert c0.server_x == 0
-    assert c0.server_y == 0
+    assert c0.x == 0 and c0.y == -6
+    assert c0.server_x is None and c0.server_y is None
 
 
 def test_snapshot_dto_json_serializable() -> None:

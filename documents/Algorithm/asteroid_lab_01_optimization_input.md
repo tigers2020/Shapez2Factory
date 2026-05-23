@@ -25,11 +25,17 @@ existing belt / pipe / trunk / protected corridor
 
 **belt vs pipe(kind)** 는 좌표만으로 재추론하지 않는다. `RouteCellDomain.transport_mask` 생성은 `existing_transport_cells`(또는 이에서 유도한 coord→kind)를 우선 소스로 한다 (Phase 4 빌더).
 
-## 좌표 정본 (Server X/Y, 12L)
+## 좌표 정본 (PR-F island-local, RTTP default)
 
-OptimizationInput 이후 모든 Coord는 Server X/Y dense coord이며, raw 좌표는 입력으로 허용하지 않는다. normalize(디코드·cleanup·reconstruction) 이후 알고리즘 계층에서 raw↔server 변환을 다시 호출하는 것은 금지다. raw↔server 변환은 decode/import boundary 또는 final UI/export projection boundary에서만 허용된다.
+**Lab RTTP (2026-05):** `OptimizationInput.coord_frame` 기본값은 `ISLAND_RAW`. `Coord`는 copy JSON island-local `(x, y)` (reconstruction cell `x`/`y`와 동일). `run_config["coord_frame"]="server_dense"`만 legacy 비교용.
 
-**검증(12L-hardening):** `tests/unit/shapez_asteroid/test_import_boundaries.py`(AST·금지 토큰), `tests/unit/asteroid_lab/test_coordinate_boundary.py`(import 경계 `raw_x==0` 가드), `tests/unit/shapez_asteroid/test_optimization_input.py`(server `x==0`·전 셀 Server X/Y), `tests/integration/web/test_asteroid_miner_layout_solver.py`의 `test_post_json_optimization_input_does_not_raw_convert_server_coords`(POST 회귀).
+**Persist / fingerprint:** map layout v2·absolute v2·`_asteroid_lab_coord_system` = `island_bbox_left_bottom_raw_xy_v1` / `island_raw_xy_v1`. 새 persist 경로는 `server_x`/`server_y` JSON attach **금지** (`attach_island_coord_meta_to_decoded_json`).
+
+**금지:** optimization·candidate·probe·commit·validation 내부에서 `server_coords` 브리지 import 또는 raw↔server 재변환. 4-neighbor는 `grid_contract.neighbors4` (프레임에 맞는 정수 격자).
+
+**Legacy Server dense:** `SERVER_DENSE`·`server_coord_for_cell`·replay `lab_xy_from_server_xy`는 strangler 잔존; 신규 코드는 island frame만.
+
+**검증:** `tests/unit/asteroid_lab/test_coordinate_frame_ast_gate.py`, `test_optimization_input_coord_frame.py`, `test_coord_proof_policy.py`, `test_import_boundaries.py`(shapez_asteroid).
 
 ## Route goal 계약
 

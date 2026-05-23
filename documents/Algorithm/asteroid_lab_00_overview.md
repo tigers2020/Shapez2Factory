@@ -37,14 +37,17 @@ Everything is provisional until connected to exterior trunk.
 
 즉, extractor / extension bundle은 외부 trunk 연결 가능성이 확인되기 전까지 확정 배치가 아니다.
 
-## 좌표 공간 (정본)
+## 좌표 공간 (정본 — PR-F migration)
 
 ```text
-OptimizationInput·TopologyGraph·RouteGoal.coord·candidate·probe·commit·validation·replay에 등장하는 모든 Coord = Server X / Server Y.
-Server 격자는 정수 밀집(…, -1, 0, 1, …)이며 카테인 이웃은 일반 ±1 규칙이다. 본 최적화 플랜에는 다른 좌표 표현을 두지 않는다.
+Copy JSON X/Y = island-local (paste truth).
+Lab RTTP OptimizationInput.coord_frame default = ISLAND_RAW → Coord = island (x, y).
+4-neighbor = grid_contract.neighbors4 on that integer grid.
 ```
 
-**Sequence 12L (좌표 경계):** decode/cleanup/reconstruction이 붙인 **Server X/Y** 이후 알고리즘 계층에서는 raw blueprint ``X``/``Y``·``server_xy_for_raw_xy``를 쓰지 않는다. raw ``X==0`` 열은 dense 가로 인덱스가 없으므로 decode·토폴로지 fill에서 ``server_x=0``, ``server_y=Y-min_raw_y``로 **명시**한다. ``django_apps.shapez_asteroid.optimization`` 패키지와 post-inspection evolution 모듈은 ``asteroid_lab.snapshots.server_coords`` 브리지를 직접 참조하지 않는다(어댑터·decode 경계만).
+**Strangler (제거 중):** `server_coords.py`·`SERVER_DENSE`·replay dense projection·JSON `server_x`/`server_y` on persist — legacy read/UI only. 상세: [`docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md`](../superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md).
+
+**금지:** optimization 패키지에서 `server_coords` 브리지 import; metrics/replay를 algorithm 입력으로 사용.
 
 ## 금지 사항
 

@@ -98,9 +98,12 @@ def test_genetic_sample_clean_decodes_with_dollar_suffix() -> None:
     assert isinstance(bp, dict)
     entries = bp.get("Entries")
     assert isinstance(entries, list) and len(entries) == 1
+    meta = sample.decoded_json.get("_asteroid_lab_coord_system")
+    assert isinstance(meta, dict)
+    assert meta.get("frame") == "island_raw"
     row = entries[0]
-    assert isinstance(row.get("server_x"), int)
-    assert isinstance(row.get("server_y"), int)
+    assert row.get("X") == 1 and row.get("Y") == 0
+    assert "server_x" not in row and "server_y" not in row
 
 
 def test_genetic_sample_clean_invalid_code() -> None:

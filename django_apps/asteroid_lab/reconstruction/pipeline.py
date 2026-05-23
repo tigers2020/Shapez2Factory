@@ -43,22 +43,11 @@ from django_apps.asteroid_lab.reconstruction.trace import (
     ReconstructionTraceEvent,
 )
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    server_xy_for_raw_xy,
-    unpack_server_xy_params,
-)
+from django_apps.asteroid_lab.snapshots.server_coords import unpack_server_xy_params
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
     sort_key_xy_layer,
 )
-
-
-def _raw_to_server_xy(raw_x: int, raw_y: int, server_xy_params: tuple[int, ...]) -> tuple[int, int]:
-    md, my, hz = unpack_server_xy_params(server_xy_params)
-    return server_xy_for_raw_xy(
-        raw_x, raw_y, min_dense_x=md, min_raw_y=my, has_explicit_raw_x_zero=hz
-    )
-
 
 if TYPE_CHECKING:
     from django_apps.asteroid_lab.cleanup.result import CleanupResult
@@ -605,10 +594,8 @@ def reconstruct_after_cleanup(
                     continue
                 if occ_n < 1 or (wall_n < 1 and occ_n < 2):
                     continue
-                if server_xy_params is not None:
-                    sx_chk, _sy_chk = _raw_to_server_xy(x, y, server_xy_params)
-                    if sx_chk == 0:
-                        continue
+                if include_raw_x_zero and x == 0:
+                    continue
                 filled.append(synthetic_field_cell(x, y, fill_layer, fill_kind))
                 occupied_xy.add(xy)
                 recon_filled_xy.add(xy)

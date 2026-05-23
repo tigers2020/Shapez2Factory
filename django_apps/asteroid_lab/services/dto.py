@@ -200,8 +200,14 @@ class DecodedCellDTO:
     nested_entry_count: int
     nested_type_counts_json: dict[str, int]
     raw_entry_json: dict[str, Any]
-    server_x: int | None = field(default=None)
-    server_y: int | None = field(default=None)
+    server_x: int | None = field(
+        default=None,
+        metadata={"deprecated": "PR-F: use island x/y; dense server attach removed from persist"},
+    )
+    server_y: int | None = field(
+        default=None,
+        metadata={"deprecated": "PR-F: use island x/y; dense server attach removed from persist"},
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,8 +252,14 @@ class ExistingEquipmentDTO:
     cell_kind: str
     transport_kind: str
     raw_entry_json: dict[str, Any]
-    server_x: int | None = field(default=None)
-    server_y: int | None = field(default=None)
+    server_x: int | None = field(
+        default=None,
+        metadata={"deprecated": "PR-F: use island x/y"},
+    )
+    server_y: int | None = field(
+        default=None,
+        metadata={"deprecated": "PR-F: use island x/y"},
+    )
 
 
 @dataclass(frozen=True, slots=True)

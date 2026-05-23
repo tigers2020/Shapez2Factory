@@ -13,6 +13,7 @@ from django_apps.asteroid_lab.snapshots.coord_frames import (
     neighbors4_island,
     server_coord_to_tuple,
 )
+from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4, neighbors4_server
 
 
 def test_coord_frame_enum_values_reserved() -> None:
@@ -48,3 +49,8 @@ def test_neighbors4_island_standard_grid() -> None:
 def test_tuple_conversion_helpers() -> None:
     assert island_to_tuple(IslandRawCoord(-1, 0)) == (-1, 0)
     assert server_coord_to_tuple(ServerCoord(3, 4)) == (3, 4)
+
+
+def test_neighbors4_server_is_deprecated_alias() -> None:
+    c = (2, 3)
+    assert neighbors4_server(c) == neighbors4(c)

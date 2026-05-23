@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import RouteCellDomain
-from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4_server
+from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,7 +95,7 @@ def probe_route(
                 queue.append((edge.lift_coord, "trunk", cost + 1))
             continue
 
-        for neighbor in neighbors4_server(coord):
+        for neighbor in neighbors4(coord):
             if neighbor in domain.blocked_cells:
                 continue
             if neighbor not in domain.traversable_cells and neighbor not in goals:

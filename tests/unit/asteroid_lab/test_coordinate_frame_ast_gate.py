@@ -36,6 +36,7 @@ _OPTIMIZATION_SERVER_BRIDGE_SYMBOLS: frozenset[str] = frozenset(
         "attach_island_coord_meta_to_decoded_json",
         "raw_x_to_dense_index",
         "raw_x_to_dense_x",
+        "neighbors4_server",
     }
 )
 

@@ -1,8 +1,9 @@
-"""Dense Server X/Y grid helpers (reconstruction + lab; not solver runtime).
+"""Integer topology grid helpers (reconstruction + optimization + lab).
 
-Migration: ``Coord`` is still ``tuple[int, int]`` with **ServerCoord** semantics
-(see ``coord_frames.ServerCoord``). Tagged island/world types live in
-``coord_frames.py``; ``OptimizationInput.coord_frame`` arrives in PR-E only.
+``Coord`` is ``tuple[int, int]`` in the active frame: island-local ``(x, y)`` when
+``OptimizationInput.coord_frame`` is ``ISLAND_RAW`` (PR-F default for lab RTTP),
+or legacy server-dense keys when ``SERVER_DENSE``. Use ``neighbors4`` for
+4-neighbor steps; ``neighbors4_server`` is a deprecated alias.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ OUTER_VOID_PADDING = 10
 
 @dataclass(frozen=True, slots=True)
 class BBox:
-    """Inclusive Server X/Y bounding box."""
+    """Inclusive topology bounding box (island or server-dense per frame)."""
 
     min_sx: int
     max_sx: int
@@ -53,11 +54,17 @@ def cells_in_bbox(bb: BBox) -> frozenset[Coord]:
     )
 
 
-def neighbors4_server(coord: Coord) -> tuple[Coord, Coord, Coord, Coord]:
-    """Standard 4-neighbors on the dense integer grid (includes ``x == 0``)."""
+def neighbors4(coord: Coord) -> tuple[Coord, Coord, Coord, Coord]:
+    """Standard 4-neighbors on the active integer topology grid."""
 
     x, y = coord
     return ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1))
+
+
+def neighbors4_server(coord: Coord) -> tuple[Coord, Coord, Coord, Coord]:
+    """Deprecated alias for :func:`neighbors4` (PR-F — prefer ``neighbors4``)."""
+
+    return neighbors4(coord)
 
 
 __all__ = [
@@ -67,5 +74,6 @@ __all__ = [
     "bbox_from_coords",
     "cells_in_bbox",
     "expand_bbox",
+    "neighbors4",
     "neighbors4_server",
 ]

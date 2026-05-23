@@ -97,10 +97,10 @@ def test_mini_map_forward_r_quarters_degrees(
     cells = _parse_mini_map_cells(html)
     by_s = _by_server(cells)
     fwd = "SpacePipe/SpacePipe_Forward.svg"
-    assert by_s[(0, 0)]["data-sprite"] == fwd and by_s[(0, 0)]["data-rotation-deg"] == 0
-    assert by_s[(1, 0)]["data-sprite"] == fwd and by_s[(1, 0)]["data-rotation-deg"] == 90
-    assert by_s[(2, 0)]["data-sprite"] == fwd and by_s[(2, 0)]["data-rotation-deg"] == 180
-    assert by_s[(3, 0)]["data-sprite"] == fwd and by_s[(3, 0)]["data-rotation-deg"] == 270
+    assert by_s[(1, 0)]["data-sprite"] == fwd and by_s[(1, 0)]["data-rotation-deg"] == 0
+    assert by_s[(2, 0)]["data-sprite"] == fwd and by_s[(2, 0)]["data-rotation-deg"] == 90
+    assert by_s[(3, 0)]["data-sprite"] == fwd and by_s[(3, 0)]["data-rotation-deg"] == 180
+    assert by_s[(4, 0)]["data-sprite"] == fwd and by_s[(4, 0)]["data-rotation-deg"] == 270
 
 
 @pytest.mark.django_db
@@ -122,9 +122,9 @@ def test_mini_map_neighbor_col_and_row_increment(
     html = str(genetic_sample_mini_map_html(decoded))
     cells = _parse_mini_map_cells(html)
     by_s = _by_server(cells)
-    a00 = by_s[(0, 0)]
-    a10 = by_s[(1, 0)]
-    a01 = by_s[(0, 1)]
+    a00 = by_s[(1, 0)]
+    a10 = by_s[(2, 0)]
+    a01 = by_s[(1, 1)]
     assert a00["data-grid-row"] == a10["data-grid-row"]
     assert int(a10["data-grid-col"]) == int(a00["data-grid-col"]) + 1
     assert int(a01["data-grid-row"]) == int(a00["data-grid-row"]) + 1
@@ -147,7 +147,15 @@ def test_mini_map_data_attrs_match_mini_map_grid_coord(
     }
     html = str(genetic_sample_mini_map_html(decoded))
     cells = _parse_mini_map_cells(html)
-    sminx, sminy, sw = 0, 0, 4
+    from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
+        build_decoded_blueprint_snapshot,
+    )
+
+    snap = build_decoded_blueprint_snapshot(decoded)
+    bbox = snap.bbox_json
+    sminx = int(bbox["min_x"])
+    sminy = int(bbox["min_y"])
+    sw = max(int(bbox["width"]), 4)
     for c in cells:
         sx = int(c["data-server-x"])
         sy = int(c["data-server-y"])
@@ -168,10 +176,10 @@ def test_mini_map_renders_distinct_cells_when_raw_x_zero_and_one_share_row(
     )
     html = str(genetic_sample_mini_map_html(norm.decoded_json))
     by_s = _by_server(_parse_mini_map_cells(html))
-    assert (1, 0) in by_s
-    assert (2, 0) in by_s
-    assert "Miner/" in str(by_s[(1, 0)]["data-sprite"])
-    assert "SpacePipe/" in str(by_s[(2, 0)]["data-sprite"])
+    assert (0, -1) in by_s
+    assert (1, -1) in by_s
+    assert "Miner/" in str(by_s[(0, -1)]["data-sprite"])
+    assert "SpacePipe/" in str(by_s[(1, -1)]["data-sprite"])
 
 
 @pytest.mark.django_db
@@ -190,5 +198,5 @@ def test_mini_map_left_and_right_turn_sprites(
     }
     html = str(genetic_sample_mini_map_html(decoded))
     by_s = _by_server(_parse_mini_map_cells(html))
-    assert by_s[(0, 0)]["data-sprite"] == "SpacePipe/SpacePipe_LeftTurn.svg"
-    assert by_s[(1, 0)]["data-sprite"] == "SpacePipe/SpacePipe_RightTurn.svg"
+    assert by_s[(1, 0)]["data-sprite"] == "SpacePipe/SpacePipe_LeftTurn.svg"
+    assert by_s[(2, 0)]["data-sprite"] == "SpacePipe/SpacePipe_RightTurn.svg"

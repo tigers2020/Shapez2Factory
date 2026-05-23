@@ -623,9 +623,8 @@
   }
 
   function computeReplayGridLayout(replayFrames) {
-    /* Lab grid uses ``visualCol`` (raw world X/Y) only. ``server_x``/``server_y`` on cells are for
-     * backend/fingerprint; mapping them to pixel columns via dense inverse makes X step by 2 on
-     * the positive side, which is confusing in this UI.
+    /* Lab grid uses island-local ``cell.x`` / ``cell.y`` (visualCol). PR-F: do not project
+     * ``server_x``/``server_y`` through dense inverse — legacy fields may be absent.
      */
     let minD = Infinity;
     let maxD = -Infinity;
@@ -650,7 +649,7 @@
         if (yi > maxR) maxR = yi;
       }
     }
-    /** Bbox mins over all replay spatial targets; matches ``server_coords.server_xy_for_raw_xy`` origin. */
+    /** Bbox mins from replay cell island x/y (left-bottom anchor for grid padding). */
     let bboxMinDenseX = 0;
     let bboxMinRawY = 0;
     if (!any) {

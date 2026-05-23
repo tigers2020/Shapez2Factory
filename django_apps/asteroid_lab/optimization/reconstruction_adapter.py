@@ -17,7 +17,7 @@ from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame, server_coord_to_tuple
-from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4_server
+from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 
 _EXTERNAL_MARGIN_PRIORITY = 20
@@ -48,7 +48,7 @@ def _cells_by_island_coord(cells: tuple[DecodedCellDTO, ...]) -> dict[Coord, Dec
 def _rim_cells(mineable: frozenset[Coord]) -> frozenset[Coord]:
     rim: set[Coord] = set()
     for coord in mineable:
-        if any(neighbor not in mineable for neighbor in neighbors4_server(coord)):
+        if any(neighbor not in mineable for neighbor in neighbors4(coord)):
             rim.add(coord)
     return frozenset(rim)
 
@@ -103,7 +103,7 @@ def _external_margin_route_goals(
     seen: set[Coord] = set()
     goals: list[RouteGoal] = []
     for rim in sorted(rim_cells):
-        for neighbor in neighbors4_server(rim):
+        for neighbor in neighbors4(rim):
             if neighbor not in external_void_cells or neighbor in seen:
                 continue
             seen.add(neighbor)

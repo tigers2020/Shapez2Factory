@@ -21,7 +21,7 @@ from django_apps.asteroid_lab.optimization.skeleton.ring_builder import (
     build_ring_options,
 )
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
-from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4_server
+from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4
 
 # CANON throughput heuristics — see shapez2_asteroid_space_transport_throughput.md
 CELLS_PER_PLATFORM_ESTIMATE = 5
@@ -159,7 +159,7 @@ def _lift_columns(
 
 
 def _nearest_ring_cell(platform: Coord, ring_cells: frozenset[Coord]) -> Coord | None:
-    candidates = [neighbor for neighbor in neighbors4_server(platform) if neighbor in ring_cells]
+    candidates = [neighbor for neighbor in neighbors4(platform) if neighbor in ring_cells]
     if not candidates:
         return None
     return min(candidates)

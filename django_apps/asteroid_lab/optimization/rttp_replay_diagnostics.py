@@ -17,7 +17,7 @@ from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
-from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4_server
+from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +55,7 @@ def _transport_wire(kind: TransportKind) -> str:
 def _coord_adjacent_to_inner(coord: Coord, inner_cells: frozenset[Coord]) -> bool:
     if not inner_cells:
         return False
-    return any(neighbor in inner_cells for neighbor in neighbors4_server(coord))
+    return any(neighbor in inner_cells for neighbor in neighbors4(coord))
 
 
 def skeleton_lift_platform_coords(skeleton: RttpSkeleton) -> frozenset[Coord]:

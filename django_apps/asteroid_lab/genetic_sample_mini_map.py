@@ -130,9 +130,9 @@ def _genetic_sample_mini_map_cells_html(
     # Row 0 at top = smallest server_y (= smallest raw Y). Grid order is defined by
     # ``mini_map_grid_coord``; tests assert it matches this loop (no rotation mixed into row/col).
     for grid_r in range(sh):
-        sy = sminy + grid_r
         for grid_c in range(sw):
             sx = sminx + grid_c
+            sy = sminy + grid_r
             coord = mini_map_grid_coord(
                 sx,
                 sy,
@@ -140,7 +140,7 @@ def _genetic_sample_mini_map_cells_html(
                 server_min_y=sminy,
                 server_width=sw,
             )
-            at_cell = by_pos.get((sx, sy))
+            at_cell = by_pos.get((grid_c, grid_r))
             if at_cell is None:
                 inner = ""
                 sprite_relpath = ""
@@ -182,21 +182,28 @@ def genetic_sample_mini_map_html(
     snap = build_decoded_blueprint_snapshot(decoded_json)
     full_bbox = full_map_server_bbox_from_decoded_json(decoded_json)
     bbox = full_bbox if full_bbox is not None else snap.bbox_json
-    if "server_width" not in bbox or "server_height" not in bbox:
-        return mark_safe(
-            '<p class="genetic-sample-map-note">server 좌표가 없어 미니맵을 그릴 수 없습니다.</p>'
-        )
-
-    sw = max(int(bbox["server_width"]), _MIN_ADMIN_GRID_COLS)
-    sh = max(int(bbox["server_height"]), _MIN_ADMIN_GRID_ROWS)
-    sminx = int(bbox["server_min_x"])
-    sminy = int(bbox["server_min_y"])
 
     by_pos: dict[tuple[int, int], DecodedCellDTO] = {}
-    for cell in snap.cells:
-        if cell.server_x is None or cell.server_y is None:
-            continue
-        by_pos[(int(cell.server_x), int(cell.server_y))] = cell
+    if "min_x" in bbox and "width" in bbox:
+        sminx = int(bbox["min_x"])
+        sminy = int(bbox["min_y"])
+        sw = max(int(bbox["width"]), _MIN_ADMIN_GRID_COLS)
+        sh = max(int(bbox["height"]), _MIN_ADMIN_GRID_ROWS)
+        for cell in snap.cells:
+            by_pos[(int(cell.x) - sminx, int(cell.y) - sminy)] = cell
+    elif "server_width" in bbox and "server_height" in bbox:
+        sw = max(int(bbox["server_width"]), _MIN_ADMIN_GRID_COLS)
+        sh = max(int(bbox["server_height"]), _MIN_ADMIN_GRID_ROWS)
+        sminx = int(bbox["server_min_x"])
+        sminy = int(bbox["server_min_y"])
+        for cell in snap.cells:
+            if cell.server_x is None or cell.server_y is None:
+                continue
+            by_pos[(int(cell.server_x) - sminx, int(cell.server_y) - sminy)] = cell
+    else:
+        return mark_safe(
+            '<p class="genetic-sample-map-note">bbox가 없어 미니맵을 그릴 수 없습니다.</p>'
+        )
 
     img_px = max(18, cell_px - 6)
     style = (

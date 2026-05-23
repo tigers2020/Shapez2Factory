@@ -43,6 +43,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 - Persisted `full_map_server_bbox` → `full_map_island_bbox` read-compat (one release; `island_bbox.py`)
 - **CLOSED (2026-05-23):** RTTP v1 MacroBundleT3 **PR-A..J** on `master` (PR-I @ `2fa55aac`; PR-J runtime integration fixture) — closure basis: local narrow gates green + `master==origin/master` + scope compliance. **CI not established** on GitHub for this SHA (no registered commit statuses / workflow runs; not a failure, checks absent). Plan: [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md)
 - **DONE (2026-05-23):** PR-J `run_solver` macro-only integration — `test_rttp_run_solver_macro_integration.py` (runtime `config_json.macro_only_mode` → DB `:rttp` + Section B milestones; default v0.1 non-macro).
-- **OPS (when ready):** enable macro-only in production via `SolverRun.config_json={"macro_only_mode": true}` (opt-in; default v0.1 unchanged)
+- **DONE (2026-05-23):** PR-K web `run-solver` POST forwards JSON `config` → `run_solver_runtime_for_project` (`application/json` only; invalid JSON → 400).
+- **OPS (when ready):** Lab UI / browser `fetch` with `{"macro_only_mode": true}` on correct project slug (see web run-solver URL from page).
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
 - ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절

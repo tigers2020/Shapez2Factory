@@ -277,9 +277,32 @@ def asteroid_miner_layout_project(request: HttpRequest, slug: str) -> HttpRespon
     )
 
 
+def _run_solver_request_config(request: HttpRequest) -> tuple[dict[str, Any], JsonResponse | None]:
+    """Parse optional JSON POST body into runtime ``config`` (PR-K)."""
+
+    if not request.body:
+        return {}, None
+    content_type = (request.content_type or "").lower()
+    if "application/json" not in content_type:
+        return {}, None
+    try:
+        parsed = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        err = JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
+        return {}, err
+    if not isinstance(parsed, dict):
+        err = JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
+        return {}, err
+    return dict(parsed), None
+
+
 @require_POST
 def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) -> JsonResponse:
     """POST: run solver runtime pipeline for one project; JSON response (PR8 entry)."""
+
+    run_config, config_err = _run_solver_request_config(request)
+    if config_err is not None:
+        return config_err
 
     project = AsteroidProject.objects.filter(slug=slug).first()
     if project is None:
@@ -326,6 +349,7 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
 
     result = run_solver_runtime_for_project(
         int(project.pk),
+        config=run_config,
         game_data_snapshot=game_data_snapshot,
     )
     body = entry_result_to_json_dict(result)

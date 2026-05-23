@@ -8,6 +8,10 @@ from django_apps.asteroid_lab.optimization.macros import (
     compile_macros,
     probe_macro_shared_lift,
 )
+from django_apps.asteroid_lab.optimization.macros.macro_compiler import (
+    _derive_shared_lift_stub_plan,
+    _derive_shared_ring_port_intent,
+)
 from django_apps.asteroid_lab.optimization.macros.macro_dtos import SharedLiftStubPlan
 from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (
     build_route_domain_from_skeleton,
@@ -74,6 +78,37 @@ def test_macro_probe_rejects_unreachable_shared_trunk() -> None:
     assert (
         result.macro_rejected[0].rejection_reason is MacroRejectReason.SHARED_LIFT_UNREACHABLE
     )
+
+
+def test_macro_compiler_rejects_existing_shared_lift_when_probe_unreachable() -> None:
+    """RTTP-G10: derived shared lift plan exists but probe fails → probe rejection branch."""
+
+    fixture = build_macro_triple_greenfield_fixture()
+    assert fixture.skeleton.lift_columns
+    assert fixture.skeleton.ring_ports
+
+    shared_lift = _derive_shared_lift_stub_plan(fixture.skeleton)
+    shared_ring = _derive_shared_ring_port_intent(fixture.skeleton)
+    assert shared_lift is not None
+    assert shared_ring is not None
+
+    domain = build_route_domain_from_skeleton(fixture.skeleton, fixture.inp)
+    probe = probe_macro_shared_lift(domain, shared_lift, max_expansions=0)
+    assert probe.reachable is False
+
+    config = MacroCompileConfig(max_probe_expansions=0)
+    result = compile_macros(
+        fixture.valid_triple,
+        fixture.skeleton,
+        fixture.inp,
+        config=config,
+    )
+
+    assert result.macro_normal == ()
+    assert len(result.macro_rejected) == 1
+    rejected = result.macro_rejected[0]
+    assert rejected.rejection_reason is MacroRejectReason.SHARED_LIFT_UNREACHABLE
+    assert rejected.route_probe_cost is not None
 
 
 def test_macro_compiler_caps_enumeration_at_max_macro_candidates() -> None:

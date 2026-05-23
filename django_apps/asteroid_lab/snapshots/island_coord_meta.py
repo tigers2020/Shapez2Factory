@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from django_apps.asteroid_lab.snapshots.layout_fingerprint import COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM
+from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
+    COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM,
+)
 
 
 def attach_island_coord_meta_to_decoded_json(decoded_json: dict[str, Any]) -> dict[str, Any]:

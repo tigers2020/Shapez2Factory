@@ -25,7 +25,9 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     _extract_layer,
     _nested_b_summary,
 )
-from django_apps.asteroid_lab.snapshots.island_coord_meta import attach_island_coord_meta_to_decoded_json
+from django_apps.asteroid_lab.snapshots.island_coord_meta import (
+    attach_island_coord_meta_to_decoded_json,
+)
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
     sort_key_xy_layer,

@@ -12,11 +12,13 @@ from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_bl
 from django_apps.asteroid_lab.models import AsteroidMapInput, AsteroidProject
 from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_jsonl
 from django_apps.asteroid_lab.services.dto import NormalizedBlueprintDTO
+from django_apps.asteroid_lab.snapshots.island_coord_meta import (
+    attach_island_coord_meta_to_decoded_json,
+)
 from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
     absolute_layout_fingerprint_sha256,
     layout_fingerprint_sha256,
 )
-from django_apps.asteroid_lab.snapshots.island_coord_meta import attach_island_coord_meta_to_decoded_json
 
 
 def _count_bp_dict_entries(decoded_json: dict[str, Any]) -> int:

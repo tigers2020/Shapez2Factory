@@ -25,6 +25,12 @@ from django_apps.asteroid_lab.optimization.replay_sink import (
     RttpReplaySink,
     resolve_replay_sink,
 )
+from django_apps.asteroid_lab.optimization.rttp_replay_diagnostics import (
+    build_candidates_replay_payload,
+    build_commit_replay_payload,
+    build_pipeline_start_replay_payload,
+    build_selection_replay_payload,
+)
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import (
     PlacementGenome,
     select_genome,
@@ -52,7 +58,9 @@ def _record_replay(
     event_type: str,
     phase: str,
     title: str,
+    description: str = "",
     metrics_json: dict[str, Any] | None = None,
+    cell_overlay_json: dict[str, Any] | None = None,
 ) -> None:
     sink.record(
         SnapshotEventDTO(
@@ -61,9 +69,9 @@ def _record_replay(
             phase_step="",
             event_type=event_type,
             title=title,
-            description="",
+            description=description,
             metrics_json=dict(metrics_json or {}),
-            cell_overlay_json={},
+            cell_overlay_json=dict(cell_overlay_json or {}),
             full_map=[],
             is_decision_point=True,
         )
@@ -81,36 +89,45 @@ def run_rttp_pipeline(
     sink = resolve_replay_sink(replay_sink)
 
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+    start_payload = build_pipeline_start_replay_payload(skeleton)
     _record_replay(
         sink,
         event_key="rttp-pipeline-start",
         event_type=et.EVENT_TYPE_ROUTING_PROBE_STARTED,
         phase="rttp_pipeline",
         title="RTTP pipeline started",
+        description=start_payload.description,
         metrics_json={"skeleton_id": skeleton.skeleton_id},
+        cell_overlay_json=start_payload.cell_overlay_json,
     )
 
     generation = generate_candidates(inp, skeleton, policy=policy)
+    candidates_payload = build_candidates_replay_payload(generation)
     _record_replay(
         sink,
         event_key="rttp-candidates",
         event_type=et.EVENT_TYPE_CANDIDATE_GENERATED,
         phase="candidate_generation",
         title="RTTP candidates generated",
+        description=candidates_payload.description,
         metrics_json={
             "normal_count": len(generation.normal_candidates),
             "rejected_count": len(generation.rejected_candidates),
         },
+        cell_overlay_json=candidates_payload.cell_overlay_json,
     )
 
     genome = select_genome(generation.normal_candidates, skeleton, inp)
+    selection_payload = build_selection_replay_payload(genome, generation.normal_candidates)
     _record_replay(
         sink,
         event_key="rttp-selection",
         event_type=et.EVENT_TYPE_GA_BEST_UPDATED,
         phase="genome_fitness",
         title="RTTP selection complete",
+        description=selection_payload.description,
         metrics_json={"commit_order": list(genome.commit_order)},
+        cell_overlay_json=selection_payload.cell_overlay_json,
     )
 
     candidates_by_id = {
@@ -142,12 +159,19 @@ def run_rttp_pipeline(
         inp,
     )
 
+    commit_payload = build_commit_replay_payload(
+        commit_result,
+        validation_passed=validation_passed,
+        normal_count=len(generation.normal_candidates),
+        commit_order=tuple(genome.commit_order),
+    )
     _record_replay(
         sink,
         event_key="rttp-commit-final",
         event_type=et.EVENT_TYPE_ROUTING_COMMITTED,
         phase="incremental_commit",
         title="RTTP commit complete",
+        description=commit_payload.description,
         metrics_json={
             "committed_ids": list(commit_result.committed_ids),
             "commit_order": list(genome.commit_order),
@@ -155,6 +179,7 @@ def run_rttp_pipeline(
             "conflict_count": len(commit_result.conflicts),
             "normal_count": len(generation.normal_candidates),
         },
+        cell_overlay_json=commit_payload.cell_overlay_json,
     )
 
     return PipelineResult(

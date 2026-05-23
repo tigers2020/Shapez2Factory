@@ -50,6 +50,19 @@ def test_pipeline_records_four_milestone_events(
     assert final.metrics_json["commit_order"]
 
 
+def test_rttp_replay_events_carry_descriptions_and_overlays(
+    greenfield_optimization_input: OptimizationInput,
+) -> None:
+    sink = InMemoryRttpReplaySink()
+    run_rttp_pipeline(greenfield_optimization_input, replay_sink=sink)
+    for event in sink.events:
+        assert event.description.strip()
+        assert isinstance(event.cell_overlay_json, dict)
+        cells = event.cell_overlay_json.get("cells")
+        assert isinstance(cells, list)
+        assert len(cells) >= 1
+
+
 def test_rttp_replay_on_off_parity(greenfield_optimization_input: OptimizationInput) -> None:
     off = run_rttp_pipeline(
         greenfield_optimization_input,

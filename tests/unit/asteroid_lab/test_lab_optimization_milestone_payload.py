@@ -65,6 +65,40 @@ def test_build_milestone_frames_from_rttp_track() -> None:
         assert isinstance(fr["metrics"], dict)
 
 
+def test_milestone_payload_allows_overlay_in_write_buffer_not_in_section_b() -> None:
+    project = m.AsteroidProject.objects.create(name="OverlayBuf", slug="overlay-buf")
+    run = m.SolverRun.objects.create(
+        project=project,
+        run_key="run-ov",
+        algorithm_label="rttp_v0.1",
+        config_json={},
+    )
+    track = m.ReplayTrack.objects.create(
+        project=project,
+        track_key=rttp_optimization_track_key("run-ov"),
+        solver_run=run,
+    )
+    rec = ReplayRecorder(track.id)
+    rec.record_event(
+        SnapshotEventDTO(
+            event_key="ov",
+            phase="rttp_pipeline",
+            event_type=et.EVENT_TYPE_ROUTING_PROBE_STARTED,
+            title="RTTP started",
+            description="route domain snapshot",
+            cell_overlay_json={"cells": [{"x": 1, "y": 0, "kind": "probe.start"}]},
+        )
+    )
+    frames, metrics = build_lab_optimization_milestone_frames_for_project(
+        int(project.pk),
+        run_key="run-ov",
+    )
+    assert len(frames) == 1
+    assert metrics["frame_count"] == 1
+    assert frames[0]["description"] == "route domain snapshot"
+    assert set(frames[0].keys()).isdisjoint(FORBIDDEN_MILESTONE_MAP_KEYS)
+
+
 def test_skips_payload_with_forbidden_map_keys() -> None:
     project = m.AsteroidProject.objects.create(name="MapKey", slug="map-key")
     run = m.SolverRun.objects.create(

@@ -119,6 +119,58 @@ def test_interleave_inserts_after_renderable_not_tail_only() -> None:
             assert len(fr["map_view"]["full_cells"]) >= 1
 
 
+def test_interleave_per_row_anchor_chain_after_reconstruction() -> None:
+    map_frames = [_map_frame(0), _map_frame(1)]
+    rows = [
+        {
+            "event_type": "routing.probe_started",
+            "phase": "rttp_pipeline",
+            "title": "RTTP started",
+            "description": "probe",
+            "metrics": {},
+            "cell_overlay_json": {"cells": [{"x": 9, "y": 0, "kind": "probe.start"}]},
+        },
+        {
+            "event_type": "candidate.generated",
+            "phase": "candidate_generation",
+            "title": "Candidates",
+            "description": "cands",
+            "metrics": {},
+            "cell_overlay_json": {},
+        },
+        {
+            "event_type": "ga.best_updated",
+            "phase": "genome_fitness",
+            "title": "Selection",
+            "description": "sel",
+            "metrics": {},
+            "cell_overlay_json": {},
+        },
+        {
+            "event_type": "routing.committed",
+            "phase": "incremental_commit",
+            "title": "Commit",
+            "description": "commit",
+            "metrics": {},
+            "cell_overlay_json": {"cells": [{"x": 5, "y": 0, "kind": "route.committed_path"}]},
+        },
+    ]
+    out = interleave_rttp_snapshot_frames(map_frames, rows)
+    assert len(out) == 6
+    assert [f["event_type"] for f in out] == [
+        "reconstruction.completed",
+        "reconstruction.completed",
+        "routing.probe_started",
+        "candidate.generated",
+        "ga.best_updated",
+        "routing.committed",
+    ]
+    probe = out[2]
+    assert probe["description"] == "probe"
+    assert len(probe["map_view"]["overlay_cells"]) == 1
+    assert out[5]["map_view"]["overlay_cells"][0]["kind"] == "route.committed_path"
+
+
 def test_interleave_skips_rttp_when_no_renderable_base() -> None:
     rows = [
         {
@@ -156,3 +208,5 @@ def test_build_lab_replay_has_no_inherited_snapshot_when_rttp_track_exists() -> 
     assert len(rttp) >= 4
     for fr in rttp:
         assert len(fr.get("map_view", {}).get("full_cells") or []) >= 1
+        assert fr.get("description", "").strip()
+        assert len(fr.get("map_view", {}).get("overlay_cells") or []) >= 1

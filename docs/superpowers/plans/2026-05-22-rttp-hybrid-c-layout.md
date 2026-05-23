@@ -12,6 +12,26 @@
 
 **Out of v0.1:** MacroBundle T3, merger auto-place, full 2F JPS, CP-SAT, validation route repair.
 
+**Worktree:** `F:\Python_Projects\shapez2Factory\.worktrees\rttp-hybrid-c` · branch `feature/rttp-hybrid-c`  
+**Plan status:** Ready for execution (self-review 2026-05-22)
+
+---
+
+## Spec → plan coverage
+
+| Spec section | Plan slice |
+|--------------|------------|
+| Layer 1 `RttpSkeleton` | PR-1 (+ minimal `OptimizationInput` stub) |
+| Layer / lane abstraction | PR-2 `lift_lane_domain.py` |
+| Layer 2 candidates + probe | PR-3 |
+| Layer 3 greedy-regret | PR-4 |
+| Layer 4 commit + LNS + validation read-only | PR-5 |
+| RTTP-G1–G8 | PR-1..5 tests (see gate column per PR) |
+| Map class P0 greenfield | PR-1 conftest + PR-5 pipeline test |
+| Map class P1 existing trunk | PR-6 (after PR-5) |
+| v1 MacroBundle T3 | §v1 follow-on only |
+| Non-goals (merger, JPS, CP-SAT) | Out of v0.1 header |
+
 ---
 
 ## Package layout (target)
@@ -77,8 +97,13 @@ Test-Path django_apps/asteroid_lab/optimization
 
 **Files:**
 
+- Create: `optimization/__init__.py`, `optimization/coords.py` (re-export only)
+- Create: `optimization/input_contracts.py` — **minimal** frozen `OptimizationInput` + `RttpSkeletonConfig` (mineable, rim, inner, external_void, protected, transport kind only; full `route_goals` / adapter in PR-2)
 - Create: `optimization/skeleton/rttp_skeleton.py`, `ring_builder.py`, `skeleton_builder.py`
+- Create: `tests/unit/asteroid_lab/conftest.py` — `greenfield_optimization_input` factory (≤20 mineable cells, no replay)
 - Create: `tests/unit/asteroid_lab/test_rttp_skeleton.py`
+
+- [ ] **Step 0:** Scaffold empty package dirs per layout — commit `chore(optimization): scaffold RTTP package layout` (if not done in pre-flight).
 
 - [ ] **Step 1: Write failing test** `test_rttp_skeleton_deterministic_for_same_input`
 
@@ -92,7 +117,7 @@ def test_rttp_skeleton_deterministic_for_same_input(greenfield_optimization_inpu
 
 - [ ] **Step 2:** Run `python -m pytest tests/unit/asteroid_lab/test_rttp_skeleton.py::test_rttp_skeleton_deterministic_for_same_input -v` — expect FAIL.
 
-- [ ] **Step 3:** Implement `RttpSkeleton` frozen dataclass (fields per spec §Layer 1). Implement ring option enumeration + `skeleton_score` pick.
+- [ ] **Step 3:** Implement `RttpSkeleton` frozen dataclass (fields per spec §Layer 1). Implement ring option enumeration + `skeleton_score` pick. Set `capacity_goals` from CANON ratios (shape: `ceil(platforms/12)`, fluid: `ceil(platforms/72)` heuristic from mineable footprint / 5 cells — document constants in `skeleton_builder.py`).
 
 - [ ] **Step 4:** Add `test_rttp_skeleton_has_no_equipment_cells` — skeleton only sets coord sets / ports / lift_columns, never miner types.
 
@@ -247,6 +272,26 @@ Import `Coord` only via `optimization/coords.py` → `snapshots.grid_contract`.
 
 ---
 
+## PR-6 — Existing trunk (P1 map class) — post PR-5
+
+**Gate:** skeleton seeds `trunk_mask_cells` from `existing_trunk_cells`; at least one candidate reaches trunk attachment goal.
+
+**Files:**
+
+- Modify: `optimization/skeleton/skeleton_builder.py` — merge `existing_trunk_cells` into trunk mask
+- Modify: `optimization/reconstruction_adapter.py` — populate trunk from reconstruction
+- Create: `tests/unit/asteroid_lab/test_rttp_existing_trunk.py`
+
+- [ ] **Step 1:** Test `test_skeleton_includes_existing_trunk_cells` on fixture with non-empty trunk (use reconstruction fixture line or minimal synthetic).
+
+- [ ] **Step 2:** Test `test_reachable_candidate_attaches_to_existing_trunk` — one commit path in probe-only or pipeline dry-run.
+
+- [ ] **Step 3:** pytest + ruff; commit `test(rttp): existing trunk map class P1`
+
+Run only after PR-5 targeted suite is green.
+
+---
+
 ## v1 follow-on (separate spec/plan)
 
 - `MacroBundleT3` compiler
@@ -254,3 +299,16 @@ Import `Coord` only via `optimization/coords.py` → `snapshots.grid_contract`.
 - Merger on trunk, JPS profiling
 
 Do not start v1 until v0.1 PR-5 merges and targeted gates stay green.
+
+---
+
+## Execution handoff
+
+Plan saved: `docs/superpowers/plans/2026-05-22-rttp-hybrid-c-layout.md` (commit `b03950a7` on `feature/rttp-hybrid-c`; amend or follow-up commit if this self-review section is edited).
+
+**Choose execution mode:**
+
+1. **Subagent-driven (recommended)** — fresh subagent per PR (1→6), review between PRs; skill: `subagent-driven-development`
+2. **Inline** — this session runs pre-flight + PR-1 with checkpoints; skill: `executing-plans`
+
+Reply with `1` or `2` (or `PR-1 inline` to start pre-flight + skeleton only).

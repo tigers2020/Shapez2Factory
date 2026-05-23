@@ -16,6 +16,9 @@ from django_apps.asteroid_lab.services.input_service import create_copy_code_map
 from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
     RTTP_MILESTONE_EVENT_TYPES,
 )
+from django_apps.asteroid_lab.services.replay_pipeline_service import (
+    build_initial_replay_for_map_input,
+)
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     SOLVER_NOT_AVAILABLE_MESSAGE,
     SolverRuntimeEntryErrorCode,
@@ -132,7 +135,8 @@ def test_rttp_runtime_solver_summary_unchanged_when_replay_persisted() -> None:
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_entry_result_json_includes_optimization_milestone_section() -> None:
     proj = m.AsteroidProject.objects.create(name="MileJson", slug="mile-json")
-    create_copy_code_map_input(proj, _minimal_valid_copy())
+    inp = create_copy_code_map_input(proj, _minimal_valid_copy())
+    build_initial_replay_for_map_input(int(inp.pk), overwrite=True)
     result = run_solver_runtime_for_project(
         int(proj.pk),
         run_key="mile-json",
@@ -146,20 +150,15 @@ def test_entry_result_json_includes_optimization_milestone_section() -> None:
     assert RTTP_MILESTONE_EVENT_TYPES <= mile_types
     frames = body["lab_replay_frames_json"]
     assert body["lab_replay_frame_count"] == len(frames)
-    first_inherited = next(
-        (i for i, fr in enumerate(frames) if fr.get("render_mode") == "inherited_snapshot"),
-        None,
-    )
-    map_prefix = frames if first_inherited is None else frames[:first_inherited]
+    assert not any(fr.get("render_mode") == "inherited_snapshot" for fr in frames)
+    rttp_frames = [fr for fr in frames if fr.get("event_type") in RTTP_MILESTONE_EVENT_TYPES]
+    assert len(rttp_frames) >= 4
+    for fr in rttp_frames:
+        assert len((fr.get("map_view") or {}).get("full_cells") or []) >= 1
+    first_rttp_idx = frames.index(rttp_frames[0])
+    map_prefix = frames[:first_rttp_idx]
     map_types = {fr.get("event_type") for fr in map_prefix}
     assert map_types.isdisjoint(RTTP_MILESTONE_EVENT_TYPES)
-    tail = [fr for fr in frames if fr.get("render_mode") == "inherited_snapshot"]
-    assert len(tail) >= 4
-    assert RTTP_MILESTONE_EVENT_TYPES <= {fr["event_type"] for fr in tail}
-    for fr in tail:
-        assert fr.get("base_frame_index") is not None
-        assert "full_map" not in fr
-        assert not (fr.get("map_view") or {}).get("full_cells")
 
 
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)

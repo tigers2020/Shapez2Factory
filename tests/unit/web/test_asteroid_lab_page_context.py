@@ -70,6 +70,19 @@ def test_unified_payload_authoritative_no_optimization_replay_track() -> None:
 
 
 @pytest.mark.django_db
+def test_rttp_track_not_exposed_as_product_timeline() -> None:
+    """3B-S: one product timeline; no rttp_replay_frames_json or second scrubber payload."""
+    ctx = alc.neutral_lab_context()
+    assert "lab_replay_frames_json" in ctx
+    assert "rttp_replay_frames_json" not in ctx
+    assert "optimization_replay" not in ctx
+    mile = ctx.get("lab_optimization_milestone_frames_json")
+    lab = ctx.get("lab_replay_frames_json")
+    if mile is not None and lab is not None:
+        assert lab is not mile
+
+
+@pytest.mark.django_db
 def test_lab_page_context_neutral_when_latest_track_has_zero_frames() -> None:
     p = m.AsteroidProject.objects.create(name="NoFrames", slug="no-frames-lab")
     m.ReplayTrack.objects.create(project=p, track_key="empty-track")
@@ -345,11 +358,7 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "snapToDevicePixel" in js
     assert "data-lab-sprite-base" in js
     assert "function renderReplayFrame" in js
-    assert "inherited_snapshot" in js
-    assert "lastRenderableReplayFrame" in js
-    assert "resolveInheritedSnapshotBaseFrame" in js
-    assert "seedLastRenderableReplayFrame" in js
-    assert "base_frame_index" in js
+    assert "overlayCellsFromMapView(mapView)" in js
     assert "formatOptimizationMilestoneHint" in js
     assert "overlayCellsFromMapView(mapView)" in js
     assert "cellDeltaCellsFromMapView(mapView)" in js

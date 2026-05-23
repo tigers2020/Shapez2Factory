@@ -4,9 +4,10 @@ PR-B smoke (required):
   - ``ReplayTrack`` at ``rttp_optimization_track_key(run_key)`` with >= 4 frames
   - RTTP milestone ``event_type`` values on that track
 
-H1-R (unified ``lab_replay_frames_json``):
-  - Map-prefix frames exclude RTTP milestone event types
-  - Tail frames use ``render_mode == inherited_snapshot`` and carry RTTP milestones
+H1-S (unified ``lab_replay_frames_json`` full-snapshot interleave):
+  - No ``render_mode == inherited_snapshot`` on product frames
+  - RTTP milestone frames have non-empty ``map_view.full_cells``
+  - Map-prefix before first RTTP block excludes RTTP milestone event types
   - Section B ``lab_optimization_milestone_frames_json`` remains diagnostic (no map payload)
 """
 
@@ -75,8 +76,8 @@ def test_run_solver_persists_rttp_replay_frames_when_recording_enabled() -> None
 
 
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
-def test_run_solver_lab_json_unified_replay_includes_rttp_at_tail() -> None:
-    """H1-R: lab JSON has inherited-snapshot RTTP tail; ``:rttp`` track still persisted."""
+def test_run_solver_lab_json_h1_s_interleaved_rttp_full_snapshots() -> None:
+    """H1-S: lab JSON interleaves full-snapshot RTTP frames; ``:rttp`` track still persisted."""
 
     proj = m.AsteroidProject.objects.create(name="RttpLabSplit", slug="rttp-lab-split")
     inp = create_copy_code_map_input(proj, _minimal_valid_copy())
@@ -92,26 +93,19 @@ def test_run_solver_lab_json_unified_replay_includes_rttp_at_tail() -> None:
 
     assert body["lab_replay_frame_count"] == len(frames)
     assert body["lab_replay_frame_count"] > 0
+    assert not any(fr.get("render_mode") == "inherited_snapshot" for fr in frames)
 
-    first_inherited = next(
-        (i for i, fr in enumerate(frames) if fr.get("render_mode") == "inherited_snapshot"),
-        None,
-    )
-    if first_inherited is None:
-        map_prefix = frames
-    else:
-        map_prefix = frames[:first_inherited]
+    rttp_frames = [fr for fr in frames if fr.get("event_type") in RTTP_MILESTONE_EVENT_TYPES]
+    assert len(rttp_frames) >= 4
+    for fr in rttp_frames:
+        map_view = fr.get("map_view") or {}
+        assert len(map_view.get("full_cells") or []) >= 1
+
+    first_rttp_idx = frames.index(rttp_frames[0])
+    assert first_rttp_idx < len(frames) - 1
+    map_prefix = frames[:first_rttp_idx]
     map_types = {fr.get("event_type") for fr in map_prefix}
     assert map_types.isdisjoint(RTTP_MILESTONE_EVENT_TYPES)
-
-    tail = [fr for fr in frames if fr.get("render_mode") == "inherited_snapshot"]
-    assert len(tail) >= 4
-    assert RTTP_MILESTONE_EVENT_TYPES <= {fr["event_type"] for fr in tail}
-    for fr in tail:
-        assert fr.get("base_frame_index") is not None
-        assert "full_map" not in fr
-        map_view = fr.get("map_view") or {}
-        assert not map_view.get("full_cells")
 
     milestones = body["lab_optimization_milestone_frames_json"]
     assert body["lab_optimization_milestone_frame_count"] == len(milestones)

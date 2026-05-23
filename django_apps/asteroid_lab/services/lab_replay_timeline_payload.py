@@ -24,11 +24,9 @@ from django_apps.asteroid_lab.replay.timeline_serialization import (
     replay_timeline_frame_to_json_dict,
 )
 from django_apps.asteroid_lab.services.dto import ReplayFrameRowDTO
-from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
-    build_lab_optimization_milestone_frames_for_project,
-)
-from django_apps.asteroid_lab.services.lab_unified_replay_append import (
-    append_algorithm_frames_to_unified_lab_replay,
+from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import (
+    interleave_rttp_snapshot_frames,
+    load_rttp_compose_rows_for_project,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
@@ -311,11 +309,8 @@ def build_lab_replay_frames_for_project(
         max_frames=replay_limits.MAX_LAB_REPLAY_TIMELINE_FRAMES,
     )
     serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
-    milestone_frames, _milestone_metrics = build_lab_optimization_milestone_frames_for_project(
-        int(project_id),
-        run_key=None,
-    )
-    serialized = append_algorithm_frames_to_unified_lab_replay(serialized, milestone_frames)
+    rttp_rows = load_rttp_compose_rows_for_project(int(project_id))
+    serialized = interleave_rttp_snapshot_frames(serialized, rttp_rows)
     diagnostic = _lab_replay_diagnostic_reason(int(project_id), composed_count=len(serialized))
     metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
     return serialized, metrics

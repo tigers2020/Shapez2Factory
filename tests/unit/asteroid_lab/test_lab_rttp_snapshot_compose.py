@@ -19,6 +19,7 @@ from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
 from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import (
+    clip_overlay_cells_to_base_map_domain,
     frame_has_renderable_map,
     interleave_rttp_snapshot_frames,
     last_renderable_frame_index,
@@ -78,7 +79,7 @@ def test_project_rttp_row_has_concrete_full_cells_no_inherited_mode() -> None:
         "title": "RTTP pipeline started",
         "description": "probe domain snapshot",
         "metrics": {"skeleton_id": "sk1"},
-        "cell_overlay_json": {"cells": [{"x": 1, "y": 0, "kind": "probe.path"}]},
+        "cell_overlay_json": {"cells": [{"x": 0, "y": 0, "kind": "probe.path"}]},
     }
     out = project_rttp_row_to_product_frame(row, base_map_view=dict(base["map_view"]))
     assert out.get("render_mode") != "inherited_snapshot"
@@ -86,6 +87,73 @@ def test_project_rttp_row_has_concrete_full_cells_no_inherited_mode() -> None:
     assert len(out["map_view"]["full_cells"]) >= 1
     assert out["description"] == "probe domain snapshot"
     assert len(out["map_view"]["overlay_cells"]) == 1
+
+
+def test_project_rttp_overlay_cells_clipped_to_base_map_domain() -> None:
+    base_mv = {
+        "full_cells": [{"x": 0, "y": 0, "kind": "asteroid_shape_field"}],
+        "cell_delta": [],
+        "overlay_cells": [],
+        "bbox": {"min_x": 0, "min_y": 0, "max_x": 0, "max_y": 0},
+    }
+    overlay = [
+        {"x": 0, "y": 0, "kind": "route_domain.preferred"},
+        {"x": 9, "y": 0, "kind": "probe.start"},
+    ]
+    clipped = clip_overlay_cells_to_base_map_domain(overlay, base_mv)
+    assert clipped == [{"x": 0, "y": 0, "kind": "route_domain.preferred"}]
+
+
+def test_project_rttp_overlay_maps_server_coords_via_full_cell_server_fields() -> None:
+    base_mv = {
+        "full_cells": [
+            {
+                "x": 10,
+                "y": 20,
+                "server_x": 5,
+                "server_y": 6,
+                "kind": "asteroid_shape_field",
+            },
+        ],
+        "cell_delta": [],
+        "overlay_cells": [],
+        "bbox": {"min_x": 10, "min_y": 20, "max_x": 10, "max_y": 20},
+    }
+    overlay = [{"x": 5, "y": 6, "kind": "probe.start"}]
+    clipped = clip_overlay_cells_to_base_map_domain(overlay, base_mv)
+    assert clipped == [{"x": 10, "y": 20, "kind": "probe.start"}]
+
+
+def test_project_rttp_overlay_maps_server_coords_via_projection_params() -> None:
+    from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
+
+    params = (0, 0)
+    lab_xy = (0, 1)
+    sx, sy = server_xy_for_raw_xy(lab_xy[0], lab_xy[1], min_dense_x=params[0], min_raw_y=params[1])
+    base_mv = {
+        "full_cells": [{"x": lab_xy[0], "y": lab_xy[1], "kind": "asteroid_shape_field"}],
+        "cell_delta": [],
+        "overlay_cells": [],
+        "bbox": {"min_x": 0, "min_y": 1, "max_x": 0, "max_y": 1},
+    }
+    overlay = [{"x": sx, "y": sy, "kind": "probe.start"}]
+    clipped = clip_overlay_cells_to_base_map_domain(
+        overlay,
+        base_mv,
+        server_xy_params=params,
+    )
+    assert clipped == [{"x": lab_xy[0], "y": lab_xy[1], "kind": "probe.start"}]
+
+    row = {
+        "event_type": et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT,
+        "phase": "rttp_pipeline",
+        "title": "RTTP",
+        "description": "void overlay clipped",
+        "metrics": {},
+        "cell_overlay_json": {"cells": overlay},
+    }
+    out = project_rttp_row_to_product_frame(row, base_map_view=base_mv)
+    assert out["map_view"]["overlay_cells"] == clipped
 
 
 def test_interleave_inserts_after_renderable_not_tail_only() -> None:
@@ -168,8 +236,8 @@ def test_interleave_per_row_anchor_chain_after_reconstruction() -> None:
     ]
     probe = out[2]
     assert probe["description"] == "probe"
-    assert len(probe["map_view"]["overlay_cells"]) == 1
-    assert out[5]["map_view"]["overlay_cells"][0]["kind"] == "route.committed_path"
+    assert probe["map_view"]["overlay_cells"] == []
+    assert out[5]["map_view"]["overlay_cells"] == []
 
 
 def test_interleave_legacy_write_buffer_rows_emit_canonical_product_types() -> None:

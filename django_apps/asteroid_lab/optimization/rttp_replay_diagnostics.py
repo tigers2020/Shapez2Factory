@@ -17,6 +17,7 @@ from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
+from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4_server
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,13 +52,46 @@ def _transport_wire(kind: TransportKind) -> str:
     return str(kind.value)
 
 
+def _coord_adjacent_to_inner(coord: Coord, inner_cells: frozenset[Coord]) -> bool:
+    if not inner_cells:
+        return False
+    return any(neighbor in inner_cells for neighbor in neighbors4_server(coord))
+
+
+def skeleton_lift_platform_coords(skeleton: RttpSkeleton) -> frozenset[Coord]:
+    """Lift platforms on the mineable rim (4-neighbor of inner), excluding void outliers."""
+
+    return frozenset(
+        column.platform_coord
+        for column in skeleton.lift_columns
+        if column.platform_coord in skeleton.inner_cells
+        or _coord_adjacent_to_inner(column.platform_coord, skeleton.inner_cells)
+    )
+
+
+def skeleton_route_visible_domain(skeleton: RttpSkeleton) -> frozenset[Coord]:
+    """Mineable footprint cells where RTTP route-domain overlays may be drawn."""
+
+    return frozenset(skeleton.inner_cells | skeleton_lift_platform_coords(skeleton))
+
+
+def coords_in_route_visible_domain(
+    coords: tuple[Coord, ...] | frozenset[Coord],
+    skeleton: RttpSkeleton,
+) -> frozenset[Coord]:
+    visible = skeleton_route_visible_domain(skeleton)
+    return frozenset(c for c in coords if c in visible)
+
+
 def build_pipeline_start_replay_payload(skeleton: RttpSkeleton) -> RttpReplayPayload:
+    trunk_coords = coords_in_route_visible_domain(skeleton.trunk_mask_cells, skeleton)
+    lift_coords = skeleton_lift_platform_coords(skeleton)
     trunk_cells = overlay_cells_from_coords(
-        skeleton.trunk_mask_cells,
+        trunk_coords,
         kind="route_domain.preferred",
     )
     lift_cells = overlay_cells_from_coords(
-        frozenset(col.platform_coord for col in skeleton.lift_columns),
+        lift_coords,
         kind="probe.start",
     )
     cells = trunk_cells + lift_cells
@@ -167,5 +201,8 @@ __all__ = [
     "build_commit_replay_payload",
     "build_pipeline_start_replay_payload",
     "build_selection_replay_payload",
+    "coords_in_route_visible_domain",
     "overlay_cells_from_coords",
+    "skeleton_lift_platform_coords",
+    "skeleton_route_visible_domain",
 ]

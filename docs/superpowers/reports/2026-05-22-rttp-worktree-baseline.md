@@ -15,10 +15,10 @@ powershell -File scripts/test_fast.ps1
 ## Result (after baseline cleanup)
 
 ```text
-1044 passed
+1061 passed (1044 pre-RTTP + 16 RTTP + 1 conftest merge)
 0 failed
 0 errors
-~31s (pytest-xdist 16 workers)
+~25s (pytest-xdist 16 workers)
 ```
 
 **Classification:** baseline cleanup (회귀 수정) — not RTTP feature code.
@@ -47,7 +47,7 @@ Root cause: explicit raw `X == 0` seam maps still used legacy dense-gap walkable
 
 | Suite | Expectation |
 |-------|-------------|
-| Full `test_fast.ps1` | **Must** stay green (1044+ passed, 0 failed, 0 errors) |
+| Full `test_fast.ps1` | **Must** stay green (1061+ on branch with RTTP; 0 failed, 0 errors) |
 | RTTP targeted tests (`tests/unit/asteroid_lab/test_rttp_*.py`) | **Must** be green per PR |
 | Merge bar | RTTP-G1~G8 green; fast suite failure count must **not increase** vs this report |
 

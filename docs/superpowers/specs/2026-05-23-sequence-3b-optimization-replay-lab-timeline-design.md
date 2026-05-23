@@ -352,6 +352,40 @@ After review of this spec:
 
 ---
 
+## 3B-R Amendment (2026-05-23)
+
+**Supersedes:** § Recommendation (Approach B panel), § UI contract (Optimization Milestones panel as primary), INV-3B-1 (H1 full disjoint).
+
+Sequence **3B-R** adopts unified append into the single Lab product timeline. Implementation plan: [`2026-05-23-sequence-3b-r-unified-rttp-replay.md`](../plans/2026-05-23-sequence-3b-r-unified-rttp-replay.md).
+
+| Topic | 3B v0 (superseded UI) | 3B-R |
+|-------|------------------------|------|
+| Primary Lab timeline | `lab_replay_frames_json` = map only | `lab_replay_frames_json` = map prefix + RTTP algorithm tail |
+| Approach B panel | Separate Optimization Milestones panel (Section B primary) | **Superseded** — panel hidden; not a UI primary path |
+| Unified timeline | Approach A rejected; Approach C deferred | **Approach C (unified):** append RTTP milestones into `lab_replay_frames_json` with `render_mode: inherited_snapshot` and `base_frame_index` |
+| H1 | `lab_event_types ∩ RTTP = ∅` | **H1-R:** RTTP milestone types allowed **at tail only**; map-only prefix unchanged |
+| Section B field | `lab_optimization_milestone_frames_json` primary for panel | **Diagnostic-only** (API compat); UI must not read it as primary after PR-2 |
+
+### H1-R invariants (normative)
+
+```text
+lab_replay_frames_json may include RTTP_MILESTONE_EVENT_TYPES at the tail only.
+
+Every algorithm (tail) frame must:
+  - render_mode == "inherited_snapshot"
+  - base_frame_index points to last renderable map frame (global index)
+  - no full_map / non-empty map_view / non-empty cell_overlay_json on the frame body
+  - inspector.kind == "optimization_milestone" (or equivalent stable key)
+
+frame_index is continuous 0 .. lab_replay_frame_count - 1.
+
+Replay remains output-only: optimization/ must not import replay read adapters or ReplayFrame ORM.
+```
+
+`lab_optimization_milestone_frames_json` and `lab_optimization_milestone_track_metrics` remain on the wire for debugging and contract tests; they are not the Lab scrubber source of truth.
+
+---
+
 ## References
 
 - RTTP v0.2 milestones table: [`2026-05-23-rttp-v0.2-replay-parity-design.md`](2026-05-23-rttp-v0.2-replay-parity-design.md) §2  

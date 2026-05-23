@@ -12,8 +12,7 @@ from django.conf import settings
 def _run_editor_layout(graph: dict[str, object]) -> dict[str, Any]:
     static_root = Path(settings.BASE_DIR) / "django_apps" / "web" / "static" / "web" / "js"
     module_url = (static_root / "editor_graph_layout.js").as_uri()
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         import {{ computeEditorGraphLayout }} from "{module_url}";
 
         const graph = {json.dumps(graph)};
@@ -23,8 +22,7 @@ def _run_editor_layout(graph: dict[str, object]) -> dict[str, Any]:
         );
 
         console.log(JSON.stringify({{ positions, width: layout.width, height: layout.height }}));
-        """
-    ).strip()
+        """).strip()
     completed = subprocess.run(
         ["node", "--input-type=module", "-e", script],
         check=True,

@@ -1,4 +1,4 @@
-"""``replay_service`` — append, payload ordering, playback upsert."""
+"""``replay_service`` ??append, payload ordering, playback upsert."""
 
 from __future__ import annotations
 
@@ -94,7 +94,7 @@ def test_update_playback_session_upsert(replay_track: m.ReplayTrack) -> None:
 
 @pytest.mark.django_db
 def test_update_playback_session_idempotent_single_row(replay_track: m.ReplayTrack) -> None:
-    """``UIPlaybackSession`` is one-to-one with ``ReplayTrack`` — no duplicate rows per track."""
+    """``UIPlaybackSession`` is one-to-one with ``ReplayTrack`` ??no duplicate rows per track."""
 
     replay_service.update_playback_session(
         replay_track.id,

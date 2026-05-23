@@ -222,7 +222,7 @@ def test_javascript_catalog_ko_prefixed_url() -> None:
 def test_ko_gallery_contains_korean_label() -> None:
     response = Client().get("/ko/gallery/")
     assert response.status_code == 200
-    assert "스크린샷".encode() in response.content
+    assert "?�크린샷".encode() in response.content
 
 
 def test_operation_icon_assets_exist() -> None:

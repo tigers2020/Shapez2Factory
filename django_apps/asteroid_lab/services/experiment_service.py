@@ -47,6 +47,34 @@ def create_solver_run(
     return _solver_run_dto(run, replay_track_id=track.track_id)
 
 
+@transaction.atomic
+def create_or_replace_solver_run(
+    project_id: int,
+    *,
+    run_key: str,
+    algorithm_label: str,
+    config: dict[str, Any],
+) -> SolverRunDTO:
+    """Insert a ``SolverRun``, replacing any prior row for the same ``(project, run_key)``.
+
+    Clears replay frames on the default track, deletes the prior run (cascade metric rows),
+    then creates a fresh run and re-links the track.
+    """
+
+    existing = SolverRun.objects.filter(project_id=project_id, run_key=run_key).first()
+    if existing is not None:
+        track = ReplayTrack.objects.filter(project_id=project_id, track_key=run_key).first()
+        if track is not None:
+            track.frames.all().delete()
+        existing.delete()
+    return create_solver_run(
+        project_id,
+        run_key=run_key,
+        algorithm_label=algorithm_label,
+        config=dict(config or {}),
+    )
+
+
 def _solver_run_dto(run: SolverRun, *, replay_track_id: int) -> SolverRunDTO:
     return SolverRunDTO(
         id=run.id,
@@ -125,4 +153,9 @@ def resolve_inspection_solver_run(
     )
 
 
-__all__ = ["create_solver_run", "ensure_default_replay_track", "resolve_inspection_solver_run"]
+__all__ = [
+    "create_or_replace_solver_run",
+    "create_solver_run",
+    "ensure_default_replay_track",
+    "resolve_inspection_solver_run",
+]

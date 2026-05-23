@@ -1,52 +1,46 @@
 # Algorithm 문서
 
-알고리즘·optimization 레이어 계약 메모를 모아 둔다. **구현 정본**은 코드·[`documents/index/document_inventory.md`](../index/document_inventory.md)의 `CANON`·[`documents/ai/START_HERE.md`](../ai/START_HERE.md)를 우선한다. 이 디렉터리 문서는 주로 `RESEARCH`에 가깝다.
+알고리즘·Lab 계약 메모를 모아 둔다. **구현 정본**은 코드·[`documents/index/document_inventory.md`](../index/document_inventory.md)의 `CANON`·[`documents/ai/START_HERE.md`](../ai/START_HERE.md)를 우선한다.
 
-## 구현 베이스라인 (문서 기준일: 2026-05-18)
+## 구현 베이스라인 (2026-05-22)
 
-- **코드 기준으로 완료로 본다:** Decode → Reconstruction(청사진 디코드·정리·재구성·Lab 맥락의 지도/리플레이 입력까지).
-- **아래 시리즈 체크리스트**는 동일 날짜에 **전부 미착수(`[ ]`)로 재설정**했다. optimization·POST GA·replay persistence 등은 **향후 작업**으로만 본다.
-- **테스트:** 이 폴더 정리에서는 pytest 경로·통과 수·fixture 목록을 **갱신하지 않는다**. 본문에 남은 명령줄은 역사적 보관일 수 있다.
+| 레이어 | 상태 | 코드 |
+|--------|------|------|
+| **Reconstruction** | **ACTIVE** | `django_apps/asteroid_lab/reconstruction/`, `cleanup/`, Lab persist·replay |
+| **Optimization / Solver runtime** | **REMOVED** | `django_apps/asteroid_lab/optimization/` 삭제; `solver_runtime_entry`는 `SOLVER_NOT_AVAILABLE` 스텁만 |
+| **Genetic sample (admin)** | **ACTIVE** | `django_apps/asteroid_lab/genetic_sample/` |
+| **Game data snapshot** | **ACTIVE** | `django_apps/asteroid_lab/contracts/game_data_snapshot.py` |
 
-## Solver Runtime (Solver 버튼)
+**Surgery spec:** [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md)
 
-**구현 순서 정본:** [`solver_runtime/README.md`](solver_runtime/README.md) · [`solver_runtime/implementation_sequence.md`](solver_runtime/implementation_sequence.md)
+## Solver Runtime (ARCHIVED)
 
-- **문서 정체:** Solver 버튼 **E2E v0** 계획 (전체 optimization 미착수 아님)
-- **충돌 해소:** [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md)
-- **PR1 완료** · **PR1B 부분** (`reconstruction_adapter`, DTO) · **PR2–7 미착수**
-- 패키지: `django_apps/asteroid_lab/optimization/` only (`shapez_asteroid` 제거)
-- v0 선택: **greedy**; GA는 legacy reference
+**상태:** 2026-05-22 제거. Phase C–M·PR3–7 계약은 역사 보관.
 
-## 읽기 순서
+- **인덱스:** [`solver_runtime/README.md`](solver_runtime/README.md) (`status: ARCHIVED`)
+- **충돌 해소 (역사):** [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md)
+- **HTTP 진입 (스텁):** [`solver_runtime/01_entry_point.md`](solver_runtime/01_entry_point.md) → `run_solver_runtime_for_project` → `SOLVER_NOT_AVAILABLE`
 
-1. [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md) — 개요·좌표·금지 사항  
-2. [`asteroid_lab_01_optimization_input.md`](asteroid_lab_01_optimization_input.md) ~ [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) — Phase 계약 (09: [`replay_debug`](asteroid_lab_09_replay_debug.md) deprecated)  
-3. [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) — 구현 순서(체크리스트)  
-4. [`asteroid_lab_11_future_execution_plan_post_sequence.md`](asteroid_lab_11_future_execution_plan_post_sequence.md) ~ [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md) — 이후 로드맵·런타임 배선·페이로드  
-5. **Solver 버튼:** [`solver_runtime/README.md`](solver_runtime/README.md) → `00`~`phase_m` → `implementation_sequence.md`
+## 읽기 순서 (reconstruction-first)
+
+1. [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md) — 개요·좌표·금지 사항
+2. Reconstruction·cleanup·topology — `reconstruction/` 코드 + [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) (Lab replay **ACTIVE**)
+3. **Legacy optimization 시리즈** `asteroid_lab_01`–`08` — `RESEARCH` / 역사 참고만 (구현 삭제됨)
+4. [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) — 시퀀스 체크리스트 (미갱신 항목 다수)
+5. **삭제된 solver 버튼:** `solver_runtime/phase_*` — 모두 `ARCHIVED`
 6. **채굴기·확장기 (정본 재정렬):** [`asteroid_lab_mining_installation/README.md`](asteroid_lab_mining_installation/README.md) → `00` → `01` → `02` → `03` (DB 교차 참조); `04` (설치 가이드)
 
 ## 파일 목록
 
 | 파일 | 상태 | 설명 |
 |------|------|------|
-| `asteroid_lab_00_overview.md` | `RESEARCH` | Optimization layer 개요·원칙 |
-| `asteroid_lab_01_optimization_input.md` | `RESEARCH` | `OptimizationInput`·좌표 계약 |
-| `asteroid_lab_02_pattern_library.md` | `RESEARCH` | 번들 패턴 라이브러리 |
-| `asteroid_lab_03_candidate_generator.md` | `RESEARCH` | 후보 생성 |
-| `asteroid_lab_04_route_probe.md` | `RESEARCH` | 경로 탐침 |
-| `asteroid_lab_05_genome_fitness.md` | `RESEARCH` | 게놈·적합도 |
-| `asteroid_lab_06_evolutionary_search.md` | `RESEARCH` | 진화 탐색 v0 |
-| `asteroid_lab_07_incremental_commit.md` | `RESEARCH` | 증분 커밋 |
-| `asteroid_lab_08_validation.md` | `RESEARCH` | 검증 게이트 |
-| `asteroid_lab_09_replay_timeline.md` | `ACTIVE` | 통합 Step Replay Timeline (제품 정본) |
-| `asteroid_lab_09_replay_debug.md` | `ARCHIVED` | dual-track 역사·13A·13B 근거; deprecated stub |
-| `asteroid_lab_10_development_sequence.md` | `RESEARCH` | 시퀀스별 체크리스트 |
-| `asteroid_lab_11_future_execution_plan_post_sequence.md` | `RESEARCH` | 시퀀스 이후 실행 계획 |
-| `asteroid_lab_12_runtime_replay_wiring.md` | `RESEARCH` | 런타임 리플레이 배선 |
-| `asteroid_lab_13_replay_payload_scalability.md` | `RESEARCH` | 페이로드·지연 로드 로드맵 |
-| [`solver_runtime/`](solver_runtime/) | `ACTIVE` | Solver 버튼 런타임 Phase A–M·PR1–7·[`ARCHITECTURE_RECONCILIATION`](solver_runtime/ARCHITECTURE_RECONCILIATION.md) |
+| `asteroid_lab_00_overview.md` | `RESEARCH` | Lab·좌표 원칙 |
+| `asteroid_lab_01`–`08` | `ARCHIVED` | Optimization layer (코드 없음) |
+| `asteroid_lab_09_replay_timeline.md` | `ACTIVE` | Lab Step Replay Timeline |
+| `asteroid_lab_09_replay_debug.md` | `ARCHIVED` | dual-track 역사 |
+| `asteroid_lab_10`–`13` | `RESEARCH` | 로드맵·배선 |
+| [`solver_runtime/`](solver_runtime/) | `ARCHIVED` | Solver 버튼 Phase A–M (2026-05-22 제거) |
+| [`plans/asteroid_lab_optimization/`](plans/asteroid_lab_optimization/README.md) | `ARCHIVED` | 2026-05 이전 optimization 플랜 복사본 |
 | [`asteroid_lab_mining_installation/`](asteroid_lab_mining_installation/) | `AUDIT` | 채굴기·확장기 정본·모순 표·drift·설치 가이드 (D2) |
 
 ## 초안 (`drafts/`)
@@ -60,7 +54,8 @@
 
 ## 경로·패키지 주의
 
-- **2026-05-15:** `django_apps.shapez_asteroid` 앱·채굴 레이아웃 솔버·세션 스펙(`mining_solver_cursor_sessions/`)은 저장소에서 제거되었다. 과거 mining 스펙은 **git 기록**을 본다.
-- 시리즈 본문에 남은 `shapez_asteroid`·삭제된 `tests/unit/shapez_asteroid/` 등 인용은 **역사적**이며, 현재 Lab 표면은 **`django_apps/asteroid_lab/`** 등과 1:1로 맞지 않을 수 있다. 교차 확인: [`documents/refactor_audit/00_global_summary.md`](../refactor_audit/00_global_summary.md).
+- **`django_apps/shapez_asteroid`** · **`asteroid_lab/optimization/`** — 저장소에서 제거됨. 문서 인용은 역사적.
+- Gene template·coord: **`genetic_sample/`** · grid: **`snapshots/grid_contract.py`**
+- 교차 확인: [`documents/refactor_audit/00_global_summary.md`](../refactor_audit/00_global_summary.md)
 
-새 알고리즘 정본이 필요하면 `documents/ai/` 플랜·`documents/index/document_inventory.md` 갱신 후 별도 문서로 추가한다.
+새 알고리즘 정본은 `documents/ai/` 플랜·`document_inventory.md` 갱신 후 추가한다.

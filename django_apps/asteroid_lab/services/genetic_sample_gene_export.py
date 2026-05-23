@@ -8,13 +8,13 @@ from enum import StrEnum
 from django.db.models import QuerySet
 
 from django_apps.asteroid_lab.models import GeneticSample
-from django_apps.asteroid_lab.optimization.gene_template import GeneTemplate
-from django_apps.asteroid_lab.optimization.gene_template_loader import (
-    gene_template_from_generated_sample,
-)
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     GeneratedSampleGene,
     generate_exhaustive_sample_genes,
+)
+from django_apps.asteroid_lab.genetic_sample.gene_template import GeneTemplate
+from django_apps.asteroid_lab.genetic_sample.gene_template_loader import (
+    gene_template_from_generated_sample,
 )
 
 logger = logging.getLogger(__name__)

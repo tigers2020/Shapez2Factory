@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from typing import Any
 
-from django_apps.asteroid_lab.optimization.coords import Coord
-from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
-    optimization_input_from_reconstruction,
+from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
+    acceptance_topology_from_reconstruction,
+    constraint_violation_count,
 )
 from django_apps.asteroid_lab.reconstruction.evidence import (
     ASTEROID_FIELD_KINDS,
@@ -15,6 +15,7 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
 
 QUALITY_TIER_CONFIDENT = "CONFIDENT_RECONSTRUCTION"
@@ -152,15 +153,7 @@ def reconstruction_acceptance_ok(result: ReconstructionResult) -> bool:
 
 
 def _constraint_violations(result: ReconstructionResult) -> int:
-    try:
-        inp = optimization_input_from_reconstruction(result)
-    except ValueError:
-        return 1
-    violations = 0
-    for sv in result.ambiguous_cells:
-        if sv not in inp.mineable_cells:
-            violations += 1
-    return violations
+    return constraint_violation_count(result, ambiguous=result.ambiguous_cells)
 
 
 def apply_confidence_to_result(
@@ -197,8 +190,7 @@ def apply_confidence_to_result(
     )
 
     try:
-        inp = optimization_input_from_reconstruction(result)
-        external_void = inp.external_void_cells
+        external_void = acceptance_topology_from_reconstruction(result).external_void_cells
     except ValueError:
         external_void = frozenset()
 

@@ -1,4 +1,4 @@
-"""A4 ``ReplayRecorder`` — append-only frames, policy, ordering."""
+"""A4 ``ReplayRecorder`` ??append-only frames, policy, ordering."""
 
 from __future__ import annotations
 

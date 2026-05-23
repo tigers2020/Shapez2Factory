@@ -1,4 +1,4 @@
-"""Snapshot row bundle builder — determinism and fail-fast."""
+"""Snapshot row bundle builder ??determinism and fail-fast."""
 
 from __future__ import annotations
 

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from django_apps.asteroid_lab.optimization.coord_transform import (
+from django_apps.asteroid_lab.genetic_sample.coord_transform import (
     rotate_direction,
     rotate_offset,
 )
-from django_apps.asteroid_lab.optimization.enums import Direction
+from django_apps.asteroid_lab.genetic_sample.enums import Direction
 
 _REFERENCE_OFFSET = (1, 0)
 _REFERENCE_DIRECTION = Direction.E

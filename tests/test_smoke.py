@@ -1,4 +1,4 @@
-"""Smoke test — CI pipeline sanity check."""
+"""Smoke test ??CI pipeline sanity check."""
 
 
 def test_smoke() -> None:

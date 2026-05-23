@@ -7,7 +7,7 @@ import pytest
 from django_apps.asteroid_lab.reconstruction.topology_contract import (
     load_reconstruction_fixture_line_pairs,
 )
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     ExhaustiveGenerationStats,
     GeneratedSampleGene,
     generate_exhaustive_sample_genes,

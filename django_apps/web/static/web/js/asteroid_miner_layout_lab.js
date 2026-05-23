@@ -1750,9 +1750,71 @@
       applyFrame();
     }
 
-    document.getElementById("lab-header-reset")?.addEventListener("click", function () {
-      resetToInitial();
+    const resetMapBtn = document.getElementById("lab-header-reset");
+    resetMapBtn?.addEventListener("click", function () {
+      const resetUrl =
+        rootEl && rootEl.dataset && rootEl.dataset.labResetMapUrl
+          ? String(rootEl.dataset.labResetMapUrl)
+          : "";
+      if (!resetUrl) {
+        replayRunFeedback = { error_code: "save_project_first" };
+        renderReplayRunStatus(replayRunFeedback);
+        return;
+      }
+      if (resetMapBtn.disabled) {
+        return;
+      }
+      const confirmed = window.confirm(
+        "Reset map to inspection baseline? Runtime solver data in the database will be removed.",
+      );
+      if (!confirmed) {
+        return;
+      }
+      resetMapBtn.disabled = true;
+      replayRunFeedback = { running: true, reset: true };
+      renderReplayRunStatus(replayRunFeedback);
+      fetch(resetUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-CSRFToken": labCsrfToken(),
+        },
+      })
+        .then(function (res) {
+          return res
+            .json()
+            .catch(function () {
+              return { ok: false };
+            })
+            .then(function (data) {
+              return { res: res, data: data };
+            });
+        })
+        .then(function (bundle) {
+          const res = bundle.res;
+          const data = bundle.data || {};
+          if (!res.ok || data.ok === false || data.replay_ok === false) {
+            replayRunFeedback = {
+              error_code:
+                typeof data.error_code === "string" ? data.error_code : "reset_failed",
+            };
+            renderReplayRunStatus(replayRunFeedback);
+            return;
+          }
+          replayRunFeedback = null;
+          renderReplayRunStatus(replayRunFeedback);
+          window.location.assign(window.location.pathname);
+        })
+        .catch(function () {
+          replayRunFeedback = { error_code: "network_error" };
+          renderReplayRunStatus(replayRunFeedback);
+        })
+        .finally(function () {
+          syncLabActionButtons();
+        });
     });
+    syncLabActionButtons();
 
     document.getElementById("lab-timeline-prev")?.addEventListener("click", function () {
       if (hasServerReplay) {
@@ -1842,6 +1904,35 @@
       }
       if (runUrl) {
         rootEl.dataset.labRunSolverUrl = runUrl;
+      }
+      const resetUrl =
+        typeof payload.reset_map_url === "string" ? payload.reset_map_url.trim() : "";
+      if (resetUrl) {
+        rootEl.dataset.labResetMapUrl = resetUrl;
+      }
+      syncLabActionButtons();
+    }
+
+    function syncLabActionButtons() {
+      const runUrl =
+        rootEl && rootEl.dataset && rootEl.dataset.labRunSolverUrl
+          ? String(rootEl.dataset.labRunSolverUrl)
+          : "";
+      const resetUrl =
+        rootEl && rootEl.dataset && rootEl.dataset.labResetMapUrl
+          ? String(rootEl.dataset.labResetMapUrl)
+          : "";
+      const runBtn = document.getElementById("lab-header-run");
+      const resetBtn = document.getElementById("lab-header-reset");
+      if (runBtn) {
+        runBtn.disabled = !runUrl;
+        runBtn.classList.toggle("opacity-50", !runUrl);
+        runBtn.classList.toggle("cursor-not-allowed", !runUrl);
+      }
+      if (resetBtn) {
+        resetBtn.disabled = !resetUrl;
+        resetBtn.classList.toggle("opacity-50", !resetUrl);
+        resetBtn.classList.toggle("cursor-not-allowed", !resetUrl);
       }
     }
 

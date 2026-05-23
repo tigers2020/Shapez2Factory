@@ -1,5 +1,7 @@
 ---
-status: ACTIVE
+status: ARCHIVED
+archived_reason: Solver optimization pipeline removed 2026-05-22
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
 owner: solver-runtime-pipeline
 last_reviewed: 2026-05-19
 phase: B
@@ -9,19 +11,19 @@ related_docs:
   - documents/Algorithm/asteroid_lab_01_optimization_input.md
 ---
 
-# Phase B — Build OptimizationInput
+# Phase B ??Build OptimizationInput
 
 ## 목적
 
-reconstruction snapshot을 optimization layer의 정본 DTO로 변환한다. §0.3 extension kind → field kind 정규화는 **본 adapter 경계**에서 수행한다.
+reconstruction snapshot??optimization layer???�본 DTO�?변?�한?? §0.3 extension kind ??field kind ?�규?�는 **�?adapter 경계**?�서 ?�행?�다.
 
-## 입력
+## ?�력
 
 ```text
 LoadedReconstructionSnapshot
 ```
 
-## 산출물
+## ?�출�?
 
 ```python
 OptimizationInput(
@@ -30,7 +32,7 @@ OptimizationInput(
     rim_cells=...,
     interior_cells=...,
     external_void_cells=...,
-    route_goals=...,              # seed only — see below
+    route_goals=...,              # seed only ??see below
     existing_transport_cells=...,
     existing_trunk_cells=...,
     protected_corridor_cells=...,
@@ -54,47 +56,47 @@ OptimizationInput(
 
 ### `route_goals` 경계 (Phase B vs C)
 
-| Phase | `route_goals` 역할 |
+| Phase | `route_goals` ??�� |
 |-------|-------------------|
-| **B** | **seed / basic only** — 비어 있거나(`frozenset()`), 기존 trunk·transport에서 추출한 최소 goal. **planned set 완성 책임 없음.** |
-| **C** | **planned `RouteGoal` 정본** — capacity planner·external margin/void 선택으로 생성·보강. PR2 probe·PR3+는 **C 이후** goal 집합 사용. |
+| **B** | **seed / basic only** ??비어 ?�거??`frozenset()`), 기존 trunk·transport?�서 추출??최소 goal. **planned set ?�성 책임 ?�음.** |
+| **C** | **planned `RouteGoal` ?�본** ??capacity planner·external margin/void ?�택?�로 ?�성·보강. PR2 probe·PR3+??**C ?�후** goal 집합 ?�용. |
 
-Phase B 완료 조건에 “모든 external margin goal이 채워짐”을 **넣지 않는다.**
+Phase B ?�료 조건???�모??external margin goal??채워짐”을 **?��? ?�는??**
 
-## 작업
+## ?�업
 
-1. extractor / miner / extension 제거 좌표 → asteroid evidence → `asteroid_cells` + `mineable_cells`
-2. `asteroid_shape_field` / `asteroid_fluid_field` → 둘 다 mineable asteroid field
-3. belt / pipe 제거 좌표 → asteroid evidence 아님 → `existing_transport_cells` 또는 route domain evidence
-4. `shapeMinerExtension` / `fluidMinerExtension` 등 → field kind 정규화 ([`00_core_principles.md`](00_core_principles.md) §0.3)
-5. 모든 coord를 Server X/Y로 확정
-6. `asteroid_bbox` / `route_domain_bbox` 분리 및 padded `external_void_cells` 생성 (`reconstruction_adapter`)
+1. extractor / miner / extension ?�거 좌표 ??asteroid evidence ??`asteroid_cells` + `mineable_cells`
+2. `asteroid_shape_field` / `asteroid_fluid_field` ??????mineable asteroid field
+3. belt / pipe ?�거 좌표 ??asteroid evidence ?�님 ??`existing_transport_cells` ?�는 route domain evidence
+4. `shapeMinerExtension` / `fluidMinerExtension` ????field kind ?�규??([`00_core_principles.md`](00_core_principles.md) §0.3)
+5. 모든 coord�?Server X/Y�??�정
+6. `asteroid_bbox` / `route_domain_bbox` 분리 �?padded `external_void_cells` ?�성 (`reconstruction_adapter`)
 
-## 금지
+## 금�?
 
-- optimizer·candidate_geometry·route_probe 내부에서 cell.kind로 mineable 판정
-- optimization 내부 raw↔server 재변환
-- DB 원본 수정
+- optimizer·candidate_geometry·route_probe ?��??�서 cell.kind�?mineable ?�정
+- optimization ?��? raw?�server ?��???
+- DB ?�본 ?�정
 
-## 완료 조건
+## ?�료 조건
 
 - [ ] all coords are Server X/Y
 - [ ] mineable field kind does not depend on strict fluid kind in optimizer
 - [ ] extension/miner evidence is represented as mineable asteroid field sets
-- [ ] `RouteDomainSnapshotBuilder` 단일 진입으로 `route_domain` 시드 가능
-- [ ] `route_goals`는 empty 또는 seed만 — planned goal은 Phase C 책임
+- [ ] `RouteDomainSnapshotBuilder` ?�일 진입?�로 `route_domain` ?�드 가??
+- [ ] `route_goals`??empty ?�는 seed�???planned goal?� Phase C 책임
 
-## 필수 테스트
+## ?�수 ?�스??
 
-PR1B — `tests/unit/asteroid_lab/test_optimization_input.py` (DTO·adapter·좌표) — [`implementation_sequence.md`](implementation_sequence.md).
+PR1B ??`tests/unit/asteroid_lab/test_optimization_input.py` (DTO·adapter·좌표) ??[`implementation_sequence.md`](implementation_sequence.md).
 
-## 관련 코드·문서
+## 관??코드·문서
 
 - [`asteroid_lab_01_optimization_input.md`](../asteroid_lab_01_optimization_input.md)
-- `django_apps/asteroid_lab/optimization/` — `OptimizationInput` DTO
-- **PR1B 부분 완료:** `reconstruction_adapter.optimization_input_from_reconstruction`, `route_domain.py` ([`implementation_sequence.md`](implementation_sequence.md))
-- **패키지 정본:** `asteroid_lab/optimization` only — `shapez_asteroid` 제거됨 ([`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) §2)
+- `django_apps/asteroid_lab/optimization/` ??`OptimizationInput` DTO
+- **PR1B 부�??�료:** `reconstruction_adapter.optimization_input_from_reconstruction`, `route_domain.py` ([`implementation_sequence.md`](implementation_sequence.md))
+- **?�키지 ?�본:** `asteroid_lab/optimization` only ??`shapez_asteroid` ?�거??([`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) §2)
 
-## 다음 Phase
+## ?�음 Phase
 
-→ [`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md)
+??[`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md)

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from django_apps.asteroid_lab.optimization.game_data_contracts import SCHEMA_VERSION
-from django_apps.asteroid_lab.optimization.game_data_snapshot_hash import snapshot_content_hash
+from django_apps.asteroid_lab.contracts.game_data_snapshot import (
+    SCHEMA_VERSION,
+    snapshot_content_hash,
+)
 from django_apps.game_data.models import ImportBatch
 from django_apps.web.services.asteroid_game_data_snapshot import build_asteroid_game_data_snapshot
 

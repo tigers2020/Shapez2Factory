@@ -1,4 +1,4 @@
-"""Phase 9C — server dense grid ↔ Lab raw projection tests."""
+"""Phase 9C ??server dense grid ??Lab raw projection tests."""
 
 from __future__ import annotations
 

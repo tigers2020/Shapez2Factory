@@ -24,7 +24,7 @@ from django_apps.asteroid_lab.services.replay_pipeline_service import (
 
 @pytest.fixture
 def hole_island_decoded() -> dict:
-    """Ring of UnknownTile around (2,2) + fluid miner — yields filled asteroid field after recon."""
+    """Ring of UnknownTile around (2,2) + fluid miner ??yields filled asteroid field after recon."""
 
     return {
         "V": 21,

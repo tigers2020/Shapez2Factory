@@ -1,4 +1,4 @@
-"""Macro recipe graph_document vs PatternFamily — P3 최소 검증."""
+"""Recipe graph_document vs pattern family signature — validation helpers."""
 
 from __future__ import annotations
 

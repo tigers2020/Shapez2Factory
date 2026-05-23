@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from django_apps.asteroid_lab.optimization.enums import TransportKind
+from django_apps.asteroid_lab.snapshots.transport_kind import TransportKind
 
 # Observed ``IOType`` / ``io_channel_type`` values from imported game_data (see
 # documents/game_data_analysis/building_variants/02_domain_classification.md).

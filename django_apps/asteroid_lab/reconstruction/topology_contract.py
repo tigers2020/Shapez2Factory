@@ -9,8 +9,6 @@ from typing import Any
 
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
-from django_apps.asteroid_lab.optimization.coords import Coord
-from django_apps.asteroid_lab.optimization.input_contracts import BBox, bbox_from_coords
 from django_apps.asteroid_lab.reconstruction.evidence import (
     ASTEROID_FIELD_KINDS,
     MINER_EXTENSION_CELL_KINDS,
@@ -21,6 +19,7 @@ from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, D
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
+from django_apps.asteroid_lab.snapshots.grid_contract import BBox, Coord, bbox_from_coords
 from django_apps.asteroid_lab.snapshots.server_coords import (
     map_bbox_dense_and_y,
     server_xy_for_raw_xy,

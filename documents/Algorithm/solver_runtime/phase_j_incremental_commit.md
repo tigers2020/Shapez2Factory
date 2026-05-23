@@ -1,5 +1,7 @@
 ---
-status: ACTIVE
+status: ARCHIVED
+archived_reason: Solver optimization pipeline removed 2026-05-22
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
 owner: solver-runtime-pipeline
 last_reviewed: 2026-05-19
 phase: J
@@ -9,20 +11,20 @@ related_docs:
   - documents/Algorithm/asteroid_lab_07_incremental_commit.md
 ---
 
-# Phase J — Incremental Commit
+# Phase J ??Incremental Commit
 
 ## 목적
 
-선택된 candidate를 실제 layout 후보로 **확정**한다. commit-time probe가 유일한 연결 증명이다.
+?�택??candidate�??�제 layout ?�보�?**?�정**?�다. commit-time probe가 ?�일???�결 증명?�다.
 
-## 입력
+## ?�력
 
 ```text
 SelectedCandidatePlan
-OptimizationInput (latest route_domain 누적)
+OptimizationInput (latest route_domain ?�적)
 ```
 
-## 산출물
+## ?�출�?
 
 ```text
 Confirmed placements
@@ -30,7 +32,19 @@ RouteReservation(s)
 updated trunk / goal load
 ```
 
-## 작업
+## Commit order (before incremental commit)
+
+Phase I produces `SelectedCandidatePlan`; commit order may reorder IDs (same multiset) before Phase J.
+
+| Policy (`CommitOrderPolicy`) | v0 pipeline default (T1.1) | Behavior |
+|------------------------------|----------------------------|----------|
+| `inlet_aware_probe_fragile_first` | **yes** (T1.2) | Inlet-vulnerable tier first, then probe-fragile within tier ([`2026-05-22-commit-order-inlet-aware-design.md`](../../../docs/superpowers/specs/2026-05-22-commit-order-inlet-aware-design.md)) |
+| `probe_fragile_first` | rollback / compare | Total sort only (T1.1) |
+| `round_robin_diversity` | tests / rollback | Round-robin across goal/corridor/anchor buckets (`diversify_commit_order`) |
+
+Deferred retry and reprobe rules unchanged; order affects **when** each ID sees the live `route_domain`.
+
+## ?�업
 
 ```text
 for candidate in selected_order:
@@ -44,8 +58,8 @@ for candidate in selected_order:
         promote placement to confirmed
         update trunk load
 
-deferred retry (v0, C-GATE — [`deferred-commit-retry`](../../../docs/superpowers/specs/2026-05-22-deferred-commit-retry-design.md)):
-  primary pass queues ROUTE_PROBE_FAILED only (Variant A — not in skipped until retry exhausted)
+deferred retry (v0, C-GATE ??[`deferred-commit-retry`](../../../docs/superpowers/specs/2026-05-22-deferred-commit-retry-design.md)):
+  primary pass queues ROUTE_PROBE_FAILED only (Variant A ??not in skipped until retry exhausted)
   one deterministic retry round in plan order on latest domain
   max_retry_rounds default 1; 0 disables (legacy single-pass)
 ```
@@ -56,34 +70,34 @@ deferred retry (v0, C-GATE — [`deferred-commit-retry`](../../../docs/superpowe
 commit success proof = latest route_domain reprobe
 ```
 
-candidate phase route result는 참고용만.
+candidate phase route result??참고?�만.
 
-### Route sharing (v0 — [`shared-transport-inlet`](../../../docs/superpowers/specs/2026-05-22-shared-transport-inlet-design.md))
+### Route sharing (v0 ??[`shared-transport-inlet`](../../../docs/superpowers/specs/2026-05-22-shared-transport-inlet-design.md))
 
-- **허용:** same `TransportKind` route path / reserved cells **공유** (merge trunk)
-- **금지:** `fixed_output_transport` 가 이미 committed transport cell 위에 놓임 (`INLET_ON_SHARED_TRANSPORT`) — 입구 봉쇄
-- **허용:** extension coord 가 committed transport cell 위 (shared trunk; K2 transport wins) — [`commit-extension-shared-trunk`](../../../docs/superpowers/specs/2026-05-22-commit-extension-shared-trunk-design.md)
-- **금지:** `occupied_cells` (extractor+extensions) 교집합 (`OCCUPIED_CELL_CONFLICT`)
-- **금지:** shape belt vs fluid pipe 동일 cell (`TRANSPORT_KIND_CONFLICT`)
+- **?�용:** same `TransportKind` route path / reserved cells **공유** (merge trunk)
+- **금�?:** `fixed_output_transport` 가 ?��? committed transport cell ?�에 ?�임 (`INLET_ON_SHARED_TRANSPORT`) ???�구 봉쇄
+- **?�용:** extension coord 가 committed transport cell ??(shared trunk; K2 transport wins) ??[`commit-extension-shared-trunk`](../../../docs/superpowers/specs/2026-05-22-commit-extension-shared-trunk-design.md)
+- **금�?:** `occupied_cells` (extractor+extensions) 교집??(`OCCUPIED_CELL_CONFLICT`)
+- **금�?:** shape belt vs fluid pipe ?�일 cell (`TRANSPORT_KIND_CONFLICT`)
 
 ### Capacity
 
-commit 이후 edge / goal load 누적. `load >= capacity`이면 동일 edge/goal 사용 후보에 high cost 또는 reject ([OD-3](open_decisions.md)).
+commit ?�후 edge / goal load ?�적. `load >= capacity`?�면 ?�일 edge/goal ?�용 ?�보??high cost ?�는 reject ([OD-3](open_decisions.md)).
 
-## 금지
+## 금�?
 
-- candidate probe만으로 commit 확정 ([§0.5](00_core_principles.md))
-- `route_domain` in-place mutation (`RouteDomainSnapshotBuilder` 재빌드만)
-- validation에서 repair
+- candidate probe만으�?commit ?�정 ([§0.5](00_core_principles.md))
+- `route_domain` in-place mutation (`RouteDomainSnapshotBuilder` ?�빌?�만)
+- validation?�서 repair
 
-## 완료 조건
+## ?�료 조건
 
-- [x] confirmed candidate마다 최신 domain reprobe 성공
-- [x] 실패 candidate rollback/skip deterministic
-- [x] goal load·reservation 상태 갱신
+- [x] confirmed candidate마다 최신 domain reprobe ?�공
+- [x] ?�패 candidate rollback/skip deterministic
+- [x] goal load·reservation ?�태 갱신
 - [x] shape/fluid domain 분리
 
-## 필수 테스트
+## ?�수 ?�스??
 
 ```text
 test_incremental_commit_reprobes_latest_domain
@@ -95,18 +109,18 @@ test_incremental_commit_separates_shape_and_fluid_domains
 
 ## RouteDomainSnapshotBuilder (commit)
 
-| API | commit 사용 |
+| API | commit ?�용 |
 |-----|-------------|
-| `build_snapshot(..., confirmed_reservations, committed_occupied_cells)` | **정본** — 매 시도 직전·성공 후 재빌드 |
-| `build_seed_snapshot` | 시드만 |
-| `build_commit_snapshot` | 미구현·선택 deprecated wrapper — semantics 금지 |
+| `build_snapshot(..., confirmed_reservations, committed_occupied_cells)` | **?�본** ??�??�도 직전·?�공 ???�빌??|
+| `build_seed_snapshot` | ?�드�?|
+| `build_commit_snapshot` | 미구?�·선??deprecated wrapper ??semantics 금�? |
 
-## 관련 코드·문서
+## 관??코드·문서
 
 - 구현: `commit_best_candidates.py` (`commit_selected_candidates`)
-- 테스트: `tests/unit/asteroid_lab/test_incremental_commit.py`
+- ?�스?? `tests/unit/asteroid_lab/test_incremental_commit.py`
 - [`asteroid_lab_07_incremental_commit.md`](../asteroid_lab_07_incremental_commit.md)
 
-## 다음 Phase
+## ?�음 Phase
 
-→ [`phase_k_route_materialization.md`](phase_k_route_materialization.md)
+??[`phase_k_route_materialization.md`](phase_k_route_materialization.md)

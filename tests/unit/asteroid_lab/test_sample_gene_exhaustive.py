@@ -11,7 +11,7 @@ from django.core.management import call_command
 from django_apps.asteroid_lab.adapters.blueprint_canonical_export import to_official_island_root
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.models import GeneticSample
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     DELTA_NWS,
     OUTPUT_TRANSPORT_GRID,
     abstract_grid_to_raw_xy,
@@ -44,7 +44,7 @@ def test_exhaustive_generator_all_layout_entries_raw_x_nonzero(
 
 
 def _official_export_occupied_server_x_contiguous(layout_root: dict[str, Any]) -> bool:
-    """Lab layout → official island XY → attach_server_coords; no holes in server_x columns."""
+    """Lab layout ??official island XY ??attach_server_coords; no holes in server_x columns."""
 
     official = to_official_island_root(copy.deepcopy(layout_root))
     d = copy.deepcopy(official)
@@ -271,7 +271,7 @@ def test_build_layout_minimal_entries_order_deterministic() -> None:
 def test_extension_rotations_ports_compatible_with_parent() -> None:
     """Each extension ``R`` must link to parent (equipment_bundles port contract)."""
 
-    from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+    from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
         compute_extension_rotations_by_parent,
     )
     from django_apps.asteroid_lab.snapshots.equipment_bundles import (

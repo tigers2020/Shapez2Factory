@@ -24,6 +24,10 @@ from django_apps.asteroid_lab.services.input_service import (
     content_sha256_for_copy_code,
     upsert_map_input_for_project,
 )
+from django_apps.asteroid_lab.services.lab_map_reset_service import (
+    LabMapResetErrorCode,
+    reset_project_map_to_inspection_clean,
+)
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
@@ -304,12 +308,72 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
     body = entry_result_to_json_dict(result)
     if result.error_code in (
         SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
-        SolverRuntimeEntryErrorCode.NO_GENE_TEMPLATES_IN_DB,
+        SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND,
     ):
-        return JsonResponse(body, status=400)
-    if not result.ok:
-        status = 500 if result.error_code == SolverRuntimeEntryErrorCode.PERSIST_REJECTED else 400
+        status = 404 if result.error_code == SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND else 400
         return JsonResponse(body, status=status)
+    if result.error_code == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE:
+        return JsonResponse(body, status=200)
+    if not result.ok:
+        return JsonResponse(body, status=400)
+    return JsonResponse(body, status=200)
+
+
+@require_POST
+def asteroid_miner_layout_project_reset_map(request: HttpRequest, slug: str) -> JsonResponse:
+    """POST: purge runtime solver DB artifacts and rebuild inspection replay (map clean)."""
+
+    project = AsteroidProject.objects.filter(slug=slug).first()
+    if project is None:
+        return JsonResponse(
+            {
+                "ok": False,
+                "replay_ok": False,
+                "error_code": LabMapResetErrorCode.PROJECT_NOT_FOUND.value,
+                "error_message": LabMapResetErrorCode.PROJECT_NOT_FOUND.value,
+                "lab_replay_frames_json": [],
+                "replay_track_metrics": {
+                    "frame_count": 0,
+                    "replay_truncated": False,
+                    "truncation_reason": None,
+                    "dropped_frame_count": None,
+                    "diagnostic_reason": None,
+                },
+            },
+            status=404,
+        )
+
+    inp = (
+        AsteroidMapInput.objects.filter(project_id=int(project.pk))
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    copy_code = (inp.copy_code if inp else "") or ""
+
+    result = reset_project_map_to_inspection_clean(int(project.pk))
+    bundle = _lab_json_bundle_for_track_id(result.replay_track_id, copy_code=copy_code)
+    body: dict[str, Any] = {
+        "ok": result.status == "ok",
+        "replay_ok": result.status == "ok",
+        "error_message": result.error_message or "",
+        "project_slug": slug,
+        "run_solver_url": reverse(
+            "web:asteroid-miner-layout-project-run-solver",
+            kwargs={"slug": slug},
+        ),
+        "reset_map_url": reverse(
+            "web:asteroid-miner-layout-project-reset-map",
+            kwargs={"slug": slug},
+        ),
+        **bundle,
+    }
+    if result.status != "ok":
+        body["error_code"] = (
+            result.error_message
+            if result.error_message in {e.value for e in LabMapResetErrorCode}
+            else LabMapResetErrorCode.RESET_FAILED.value
+        )
+        return JsonResponse(body, status=400)
     return JsonResponse(body, status=200)
 
 
@@ -400,6 +464,10 @@ def asteroid_miner_layout_create_project(request: HttpRequest) -> HttpResponse:
             body["project_slug"] = slug
             body["run_solver_url"] = reverse(
                 "web:asteroid-miner-layout-project-run-solver",
+                kwargs={"slug": slug},
+            )
+            body["reset_map_url"] = reverse(
+                "web:asteroid-miner-layout-project-reset-map",
                 kwargs={"slug": slug},
             )
         body.update(replay_bundle)

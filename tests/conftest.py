@@ -1,8 +1,8 @@
 """Pytest configuration: path-based markers for selective test runs.
 
 Markers are applied automatically from file location (no per-test decorators):
-- unit / integration — top-level under tests/
-- shapez_core / shapez_solver / web / api — second segment when present
+- unit / integration - top-level under tests/
+- shapez_core / shapez_solver / web / api - second segment when present
 
 Examples:
   pytest -m unit
@@ -41,7 +41,6 @@ _SLOW_FIXTURE_NAMES = frozenset(
 # Whole modules that are intentionally heavy even without the shared fixtures above.
 _SLOW_MODULE_SUFFIXES = (
     "test_sample_gene_exhaustive.py",
-    "test_macro_recipe_staff_catalog.py",
     "test_solver_runtime_replay_recorder.py",
     "test_simulation_systems_import.py",
     "test_simulation_speed_import.py",
@@ -49,23 +48,12 @@ _SLOW_MODULE_SUFFIXES = (
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """pytest-django: 테스트 DB 재사용 (`--reuse-db`; addopts 미적용 시 보조)."""
+    """pytest-django: reuse test DB when ``--reuse-db`` is available."""
     opt = config.option
     if getattr(opt, "create_db", False):
         return
     if hasattr(opt, "reuse_db"):
         opt.reuse_db = True
-
-
-@pytest.fixture
-def without_canonical_catalog_macros() -> None:
-    """Remove migration-seeded macro recipes so tests can define their own catalog rows."""
-
-    from django_apps.shapez_solver.models import MacroRecipe
-
-    MacroRecipe.objects.filter(
-        code__in=("abcc-batch", "swap-rotate-swap-checker"),
-    ).delete()
 
 
 def _apply_path_markers(item: pytest.Item, path: Path, rel: Path) -> None:

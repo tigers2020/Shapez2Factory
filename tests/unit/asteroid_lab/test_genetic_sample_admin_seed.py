@@ -31,7 +31,7 @@ def test_genetic_sample_changelist_shows_seed_form(staff_client: Client) -> None
     response = staff_client.get(url)
     assert response.status_code == 200
     html = response.content.decode()
-    assert "전수 샘플 gene 시드" in html
+    assert "?�수 ?�플 gene ?�드" in html
     assert reverse("admin:asteroid_lab_geneticsample_seed_exhaustive_samples") in html
 
 

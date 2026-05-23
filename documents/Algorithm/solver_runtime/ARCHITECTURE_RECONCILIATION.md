@@ -1,12 +1,16 @@
 ---
-status: ACTIVE
+status: ARCHIVED
 owner: solver-runtime-pipeline
-last_reviewed: 2026-05-19
+last_reviewed: 2026-05-22
+archived_reason: Solver optimization pipeline removed from repository (2026-05-22)
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
 related_docs:
   - documents/Algorithm/solver_runtime/README.md
   - documents/Algorithm/asteroid_lab_10_development_sequence.md
   - documents/Algorithm/asteroid_lab_12_runtime_replay_wiring.md
 ---
+
+> **2026-05-22:** `django_apps/asteroid_lab/optimization/` 및 A→M orchestration **삭제됨**. 아래 인벤토리·「PR 완료」 표는 **역사 스냅샷**이다.
 
 # Architecture Reconciliation — Runtime vs 레거시 문서
 

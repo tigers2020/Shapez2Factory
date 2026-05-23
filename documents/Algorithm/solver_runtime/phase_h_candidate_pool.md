@@ -1,5 +1,7 @@
 ---
-status: ACTIVE
+status: ARCHIVED
+archived_reason: Solver optimization pipeline removed 2026-05-22
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
 owner: solver-runtime-pipeline
 last_reviewed: 2026-05-19
 phase: H
@@ -9,13 +11,13 @@ related_docs:
   - documents/Algorithm/asteroid_lab_03_candidate_generator.md
 ---
 
-# Phase H — Candidate Pool Build / Dedupe / Truncate
+# Phase H ??Candidate Pool Build / Dedupe / Truncate
 
 ## 목적
 
-geometry + route probe를 통과한 attempt만 **normal candidate**로 만든다.
+geometry + route probe�??�과??attempt�?**normal candidate**�?만든??
 
-## 입력
+## ?�력
 
 ```text
 GeometryValidationResult (pass)
@@ -23,13 +25,13 @@ RouteProbeResult (reachable)
 ProjectedGenePlacement
 ```
 
-## 산출물
+## ?�출�?
 
 ```text
 CandidatePool (normal + rejected)
 ```
 
-## 작업
+## ?�업
 
 ### Normal candidate 조건
 
@@ -67,12 +69,12 @@ topology_signature
 
 ### Dedupe
 
-동일 `CandidateEquivalenceKey`는 **route_probe 이전**에 `candidate_id` 최솟값 승자만 probe한다.  
-probe 후 `dedupe_gene_candidates`는 truncate 전 **2차 안전망**이다.
+?�일 `CandidateEquivalenceKey`??**route_probe ?�전**??`candidate_id` 최솟�??�자�?probe?�다.  
+probe ??`dedupe_gene_candidates`??truncate ??**2�??�전�?*?�다.
 
 ### Truncate
 
-`max_candidates`가 있으면 dedupe 후:
+`max_candidates`가 ?�으�?dedupe ??
 
 ```text
 base_score desc
@@ -80,19 +82,19 @@ route_probe_result.cost asc
 candidate_id asc
 ```
 
-## 금지
+## 금�?
 
 - placement commit
-- unreachable을 normal pool에 포함 ([§0.4](00_core_principles.md))
-- server coord 이외 좌표
+- unreachable??normal pool???�함 ([§0.4](00_core_principles.md))
+- server coord ?�외 좌표
 
-## 완료 조건
+## ?�료 조건
 
 - [x] normal/rejected 분리 deterministic
-- [x] dedupe 후 truncate 순서 고정
-- [x] generator가 layout을 변경하지 않음
+- [x] dedupe ??truncate ?�서 고정
+- [x] generator가 layout??변경하지 ?�음
 
-## 필수 테스트
+## ?�수 ?�스??
 
 ```text
 test_candidate_generator_reachable_only_enters_normal_pool
@@ -105,12 +107,12 @@ test_dedupe_skips_duplicate_route_probe
 test_candidate_generator_exposes_timing
 ```
 
-## 관련 코드·문서
+## 관??코드·문서
 
 - 구현: `candidate_dtos.py` (`GeneCandidate`), `candidate_equivalence.py`, `candidate_generator.py`
-- 레거시 RESEARCH의 `BundleCandidate` 명칭은 사용하지 않음
+- ?�거??RESEARCH??`BundleCandidate` 명칭?� ?�용?��? ?�음
 - [`asteroid_lab_03_candidate_generator.md`](../asteroid_lab_03_candidate_generator.md)
 
-## 다음 Phase
+## ?�음 Phase
 
-→ [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md)
+??[`phase_i_candidate_selection.md`](phase_i_candidate_selection.md)

@@ -1,4 +1,4 @@
-"""P1 provenance gates — ShapeRecipeSourceAppearance lineage."""
+"""P1 provenance gates ??ShapeRecipeSourceAppearance lineage."""
 
 from __future__ import annotations
 

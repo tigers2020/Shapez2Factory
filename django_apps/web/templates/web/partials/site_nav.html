@@ -48,13 +48,6 @@
           class="rounded-lg px-3 py-2 no-underline {% if current == 'asteroid-miner-layout' or current == 'asteroid-miner-layout-project' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
           {% if current == "asteroid-miner-layout" or current == "asteroid-miner-layout-project" %}aria-current="page"{% endif %}
         >{% trans "Asteroid layout" %}</a>
-        {% if request.user.is_staff %}
-          <a
-            href="{% url 'web:macro-pattern-staff' %}"
-            class="rounded-lg px-3 py-2 no-underline {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"
-            {% if current == 'macro-pattern-staff' or current == 'macro-pattern-new' or current == 'macro-pattern-recipe-edit' or current == 'macro-pattern-graph' %}aria-current="page"{% endif %}
-          >{% trans "Macro catalog" %}</a>
-        {% endif %}
         <a
           href="{% url 'web:support' %}"
           class="rounded-lg px-3 py-2 no-underline {% if current == 'support' %}text-cyan-200{% else %}text-slate-400{% endif %} hover:text-cyan-300"

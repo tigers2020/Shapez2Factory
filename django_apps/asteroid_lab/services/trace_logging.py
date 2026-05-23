@@ -26,13 +26,9 @@ _STAGE_FILES: tuple[tuple[str, str], ...] = (
     ("decode", "01_decode.jsonl"),
     ("cleanup", "02_cleanup.jsonl"),
     ("reconstruction", "03_reconstruction.jsonl"),
-    ("optimization_input", "04_optimization_input.jsonl"),
-    ("candidate_probe", "05_candidate_probe.jsonl"),
-    ("evolution", "06_evolution.jsonl"),
-    ("incremental_commit", "07_commit.jsonl"),
-    ("validation", "08_validation.jsonl"),
-    ("replay_payload", "09_replay_payload.jsonl"),
-    ("response_payload", "10_response_payload.jsonl"),
+    ("validation", "04_validation.jsonl"),
+    ("replay_payload", "05_replay_payload.jsonl"),
+    ("response_payload", "06_response_payload.jsonl"),
 )
 
 

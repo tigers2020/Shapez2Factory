@@ -143,11 +143,11 @@ Table-driven tests for this table are planned in Phase 1 (`test_coord_transform_
 
 | Concern | Module |
 |---------|--------|
-| `rotate_offset`, `rotate_direction`, `steps_from_canonical_e` | `optimization/coord_transform.py` |
-| Canonical E template invariants | `optimization/gene_template.py` |
-| Anchor + rotation → server cells | `optimization/gene_projection.py` |
-| Equipment cells + extension rotation | `optimization/placement_network_materializer.py` |
-| Building-local snapshot (pre-rotation) | `optimization/game_data_contracts.py` (consumer) |
+| `rotate_offset`, `rotate_direction`, `steps_from_canonical_e` | `genetic_sample/coord_transform.py` |
+| Canonical E template invariants | `genetic_sample/gene_template.py` |
+| Anchor + rotation → server cells | *(removed with solver — gene projection deleted)* |
+| Equipment cells + extension rotation | *(removed with solver)* |
+| Building-local snapshot (pre-rotation) | `contracts/game_data_snapshot.py` (consumer) |
 
 ## References
 

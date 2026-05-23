@@ -61,7 +61,7 @@ def _snapshot(cells: tuple[DecodedCellDTO, ...]) -> DecodedBlueprintSnapshotDTO:
 
 
 def test_interior_hole_filled_as_field_not_void() -> None:
-    """No decoded asteroid_*_field around the hole → island resolves to ``asteroid_shape_field``."""
+    """No decoded asteroid_*_field around the hole ??island resolves to ``asteroid_shape_field``."""
 
     cells = (
         _cell(1, 0, cell_kind="fluid_miner"),
@@ -133,7 +133,7 @@ def test_topology_fill_uses_removed_fluid_miner_wall_as_field_evidence() -> None
 
 
 def test_fluid_miner_inside_shell_fill_kind_not_from_miner_type() -> None:
-    """Miner equipment type is not fill evidence; dominant decoded shape field → shape fill."""
+    """Miner equipment type is not fill evidence; dominant decoded shape field ??shape fill."""
 
     cells = (
         _cell(1, 0, cell_kind="fluid_miner"),
@@ -154,7 +154,7 @@ def test_fluid_miner_inside_shell_fill_kind_not_from_miner_type() -> None:
 
 
 def test_incomplete_shell_does_not_overfill() -> None:
-    """Single wall row: cavity touches bbox / fails two-axis guard → no fill."""
+    """Single wall row: cavity touches bbox / fails two-axis guard ??no fill."""
 
     cells = (
         _cell(1, 0, tile_type="UnknownTile_R1"),
@@ -256,7 +256,7 @@ def test_topology_fill_follows_fluid_field_majority_evidence() -> None:
 
 
 def test_topology_fill_falls_back_to_shape_on_tie_or_no_evidence() -> None:
-    """Equal fluid/shape field counts in the island vote → ``asteroid_shape_field`` fallback."""
+    """Equal fluid/shape field counts in the island vote ??``asteroid_shape_field`` fallback."""
 
     cells = (
         _cell(1, 0, cell_kind="shape_miner"),
@@ -342,7 +342,7 @@ def test_island_stamp_preserves_existing_ring_and_topology_fill_xy() -> None:
 
 
 def test_reconstruction_cell_count_not_less_than_pre_stamp_merge() -> None:
-    """Island stamp runs on cleaned ∪ fill; cell count never drops vs merged pre-stamp."""
+    """Island stamp runs on cleaned ??fill; cell count never drops vs merged pre-stamp."""
 
     from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
     from django_apps.asteroid_lab.reconstruction.island import stamp_islands_uniform

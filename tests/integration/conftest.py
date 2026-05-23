@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     ExhaustiveGenerationStats,
     GeneratedSampleGene,
     generate_exhaustive_sample_genes,

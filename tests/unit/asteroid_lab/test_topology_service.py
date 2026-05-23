@@ -1,4 +1,4 @@
-"""``topology_service`` — modal payload + structured misses."""
+"""``topology_service`` ??modal payload + structured misses."""
 
 from __future__ import annotations
 

@@ -209,6 +209,7 @@ python -m pytest
 - Lab replay frame index와 Optimization replay frame index **암묵 동기화**.
 - “큰 테스트 한 방”으로 TDD 시작.
 - pytest에 **출력 억제** (`-q`, `--quiet`, `--tb=no`, `-p no:terminal`) — 실패·traceback 누락.
+- 식별자 **선행 underscore만** 바꾸는 rename (`func`↔`_func`, `name`↔`_name`) — 동작·계약과 무관한 스타일·린트·private/public 정리 목적 금지. 사용자 명시 rename 또는 승인된 계약 변경만 예외.
 
 ---
 

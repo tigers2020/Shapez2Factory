@@ -20,6 +20,7 @@ from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4_server
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 
 _EXTERNAL_MARGIN_PRIORITY = 20
+_TRANSPORT_CELL_KINDS = frozenset({"space_belt", "space_pipe"})
 
 
 def _parse_transport_kind(raw: str) -> TransportKind | None:
@@ -47,18 +48,32 @@ def _rim_cells(mineable: frozenset[Coord]) -> frozenset[Coord]:
     return frozenset(rim)
 
 
+def _is_reconstruction_transport_cell(cell: DecodedCellDTO) -> bool:
+    """Match reconstruction ``cell_kind`` to snapshot transport classifier."""
+
+    return cell.cell_kind in _TRANSPORT_CELL_KINDS or is_transport_tile(cell)
+
+
 def _existing_transport(
     by_sv: dict[Coord, DecodedCellDTO],
 ) -> frozenset[ExistingTransportCell]:
     transport: list[ExistingTransportCell] = []
     for sv, cell in by_sv.items():
-        if not is_transport_tile(cell):
+        if not _is_reconstruction_transport_cell(cell):
             continue
         kind = _parse_transport_kind(cell.transport_kind)
         if kind is None:
             continue
         transport.append(ExistingTransportCell(coord=sv, transport_kind=kind))
     return frozenset(transport)
+
+
+def _existing_trunk_cells(
+    existing_transport: frozenset[ExistingTransportCell],
+) -> frozenset[Coord]:
+    """P1 map class: reconstruction transport coords seed skeleton trunk mask."""
+
+    return frozenset(cell.coord for cell in existing_transport)
 
 
 def _default_transport_kind(
@@ -110,11 +125,7 @@ def optimization_input_from_reconstruction(result: ReconstructionResult) -> Opti
     inner = mineable - rim
     existing_transport = _existing_transport(by_sv)
     transport_kind = _default_transport_kind(existing_transport)
-    existing_trunk = (
-        frozenset(cell.coord for cell in existing_transport)
-        if existing_transport
-        else frozenset()
-    )
+    existing_trunk = _existing_trunk_cells(existing_transport)
     route_goals = _external_margin_route_goals(rim, external_void, transport_kind)
 
     return OptimizationInput(

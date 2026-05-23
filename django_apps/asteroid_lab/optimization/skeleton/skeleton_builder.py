@@ -72,7 +72,8 @@ def _score_option(
     inner_cells = base_inner - option.ring_cells - inp.protected_corridor_cells
     ring_ports = _ring_ports(option.ring_cells, inp.external_void_cells)
     lift_columns = _lift_columns(inp.rim_cells, option.ring_cells)
-    trunk_mask_cells = frozenset(set(option.ring_cells) | set(inp.existing_trunk_cells))
+    # P1 map class: merge ring spine with reconstruction existing trunk seed.
+    trunk_mask_cells = frozenset(option.ring_cells | inp.existing_trunk_cells)
     capacity_goals = _capacity_goals(inp)
     skeleton_id = _skeleton_id(
         option.variant,

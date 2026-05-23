@@ -959,28 +959,130 @@
     }
   }
 
-  function renderReplayFrame(frame, baseClasses, domCells, resolveCellIndex) {
-    resetGridBase(domCells, baseClasses);
-    if (!frame || typeof frame !== "object") return;
+  let lastRenderableReplayFrame = null;
+
+  function frameHasRenderableMap(frame) {
+    return fullMapCellsFromFrame(frame).length > 0;
+  }
+
+  function seedLastRenderableReplayFrame(frames) {
+    lastRenderableReplayFrame = null;
+    if (!Array.isArray(frames)) {
+      return;
+    }
+    for (let i = frames.length - 1; i >= 0; i--) {
+      const fr = frames[i];
+      if (fr && frameHasRenderableMap(fr)) {
+        lastRenderableReplayFrame = fr;
+        return;
+      }
+    }
+  }
+
+  function resolveInheritedSnapshotBaseFrame(frame, allFrames) {
+    if (!frame || typeof frame !== "object") {
+      return null;
+    }
+    if (frame.base_frame_index != null && Array.isArray(allFrames)) {
+      const idx = Number(frame.base_frame_index);
+      if (Number.isFinite(idx) && idx >= 0 && idx < allFrames.length) {
+        const byIndex = allFrames[idx];
+        if (byIndex && frameHasRenderableMap(byIndex)) {
+          return byIndex;
+        }
+      }
+    }
+    if (lastRenderableReplayFrame && frameHasRenderableMap(lastRenderableReplayFrame)) {
+      return lastRenderableReplayFrame;
+    }
+    if (Array.isArray(allFrames)) {
+      for (let i = allFrames.length - 1; i >= 0; i--) {
+        const fr = allFrames[i];
+        if (fr && frameHasRenderableMap(fr)) {
+          return fr;
+        }
+      }
+    }
+    return null;
+  }
+
+  function formatOptimizationMilestoneHint(frame) {
+    if (!frame || typeof frame !== "object") {
+      return "—";
+    }
+    const parts = [];
+    if (frame.event_type) {
+      parts.push(String(frame.event_type));
+    }
+    const m = frame.metrics;
+    if (m && typeof m === "object") {
+      if (m.normal_count != null) {
+        parts.push("normal_count=" + String(m.normal_count));
+      }
+      if (m.rejected_count != null) {
+        parts.push("rejected_count=" + String(m.rejected_count));
+      }
+      if (m.commit_order != null) {
+        parts.push("commit_order=" + String(m.commit_order));
+      }
+      if (parts.length <= 1) {
+        const keys = Object.keys(m).slice(0, 4);
+        for (let ki = 0; ki < keys.length; ki++) {
+          const k = keys[ki];
+          parts.push(k + "=" + String(m[k]));
+        }
+      }
+    }
+    return parts.length ? parts.join(" · ") : "optimization milestone";
+  }
+
+  function renderFullMapReplayFrame(frame, baseClasses, domCells, resolveCellIndex) {
+    const fm = fullMapCellsFromFrame(frame);
+    if (!fm.length) return false;
+    renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
+    const ovCells = overlayCellsFromMapView(frame.map_view);
+    if (ovCells.length) {
+      renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
+    }
+    const deltaCells = cellDeltaCellsFromMapView(frame.map_view);
+    if (deltaCells.length) {
+      renderFullMapCells(baseClasses, domCells, deltaCells, resolveCellIndex);
+    }
+    renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
+    applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
+    return true;
+  }
+
+  function renderReplayFrame(frame, baseClasses, domCells, resolveCellIndex, allFrames) {
+    if (
+      frame &&
+      typeof frame === "object" &&
+      frame.render_mode === "inherited_snapshot"
+    ) {
+      const base = resolveInheritedSnapshotBaseFrame(frame, allFrames);
+      if (base) {
+        renderReplayFrame(base, baseClasses, domCells, resolveCellIndex, allFrames);
+        return;
+      }
+    }
+    if (!frame || typeof frame !== "object") {
+      resetGridBase(domCells, baseClasses);
+      return;
+    }
     const fm = fullMapCellsFromFrame(frame);
     if (fm.length) {
-      renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
-      const ovCells = overlayCellsFromMapView(frame.map_view);
-      if (ovCells.length) {
-        renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
-      }
-      const deltaCells = cellDeltaCellsFromMapView(frame.map_view);
-      if (deltaCells.length) {
-        renderFullMapCells(baseClasses, domCells, deltaCells, resolveCellIndex);
-      }
-      renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
-      applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
+      resetGridBase(domCells, baseClasses);
+      lastRenderableReplayFrame = frame;
+      renderFullMapReplayFrame(frame, baseClasses, domCells, resolveCellIndex);
       return;
     }
     const ov = frame.cell_overlay_json;
     if (ov && typeof ov === "object") {
+      resetGridBase(domCells, baseClasses);
       renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
+      return;
     }
+    resetGridBase(domCells, baseClasses);
   }
 
   function updateFrameInfo(frame, totalCount, phaseEl, frameEl, gridEl, timelineSlotIndex) {
@@ -1052,6 +1154,7 @@
     const uiInitial = readJsonScript("lab-ui-initial-state");
     const replayFramesRaw = readJsonScript("lab-replay-frames-data");
     let replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
+    seedLastRenderableReplayFrame(replayFrames);
     const trackMetricsRaw = readJsonScript("lab-replay-track-metrics-data");
     let replayTrackMetrics =
       trackMetricsRaw && typeof trackMetricsRaw === "object" ? trackMetricsRaw : {};
@@ -1428,7 +1531,7 @@
         if (replayArrayIndex < 0) replayArrayIndex = 0;
         if (replayArrayIndex >= replayFrames.length) replayArrayIndex = replayFrames.length - 1;
         const fr = getCurrentReplayFrame();
-        renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
+        renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex, replayFrames);
         updateFrameInfo(fr, replayFrames.length, phaseEl, frameEl, gridEl, replayArrayIndex);
         updateReplayTruncationHud(fr, replayTrackMetrics);
         const cycle = document.getElementById("lab-computation-cycle");
@@ -1444,7 +1547,9 @@
         }
         const hint = document.getElementById("lab-replay-footer-hint");
         if (hint) {
-          if (fr && fr.inspector) {
+          if (fr && fr.render_mode === "inherited_snapshot") {
+            hint.textContent = formatOptimizationMilestoneHint(fr);
+          } else if (fr && fr.inspector) {
             const optEv = fr.inspector.optimization_event_type;
             const labEv = fr.inspector.lab_event_type;
             hint.textContent = optEv
@@ -1969,6 +2074,7 @@
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
       replayFrames = next;
+      seedLastRenderableReplayFrame(replayFrames);
       if (payload.replay_track_metrics && typeof payload.replay_track_metrics === "object") {
         replayTrackMetrics = payload.replay_track_metrics;
       }
@@ -2912,7 +3018,7 @@
     window.AsteroidLabReplay = {
       getCurrentReplayFrame: getCurrentReplayFrame,
       renderReplayFrame: function (fr) {
-        renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex);
+        renderReplayFrame(fr, baseClasses, domCells, resolveCellIndex, replayFrames);
       },
       renderCellOverlay: function (ov) {
         resetGridBase(domCells, baseClasses);

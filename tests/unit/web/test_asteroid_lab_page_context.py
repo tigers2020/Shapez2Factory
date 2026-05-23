@@ -345,6 +345,12 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "snapToDevicePixel" in js
     assert "data-lab-sprite-base" in js
     assert "function renderReplayFrame" in js
+    assert "inherited_snapshot" in js
+    assert "lastRenderableReplayFrame" in js
+    assert "resolveInheritedSnapshotBaseFrame" in js
+    assert "seedLastRenderableReplayFrame" in js
+    assert "base_frame_index" in js
+    assert "formatOptimizationMilestoneHint" in js
     assert "overlayCellsFromMapView(mapView)" in js
     assert "cellDeltaCellsFromMapView(mapView)" in js
     assert "getCurrentReplayFrame" in js

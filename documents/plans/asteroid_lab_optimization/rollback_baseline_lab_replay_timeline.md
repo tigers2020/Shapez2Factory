@@ -6,6 +6,8 @@
 
 별도 Optimization 리플레이 **프론트/런타임 트랙**이 들어가기 전 상태로 의도적으로 롤백한 뒤, 최적화 단계 리플레이는 **기존 Lab 리플레이 타임라인에 프레임을 덧붙이는 방식**으로만 재구축한다.
 
+**Sequence 3B-R (unified RTTP append):** [`docs/superpowers/plans/2026-05-23-sequence-3b-r-unified-rttp-replay.md`](../../docs/superpowers/plans/2026-05-23-sequence-3b-r-unified-rttp-replay.md)
+
 ## 기준선(Baseline)
 
 권위 있는 기준 커밋(롤백 직전 한 커밋의 부모):

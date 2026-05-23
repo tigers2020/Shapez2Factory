@@ -1,5 +1,7 @@
 # Sequence 3B — RTTP Optimization Milestones Lab Timeline Implementation Plan
 
+> **SUPERSEDED (2026-05-23):** PR-2 “Section B panel” and H1 disjoint timeline are replaced by **[Sequence 3B-R — Unified RTTP Algorithm Replay Frames](2026-05-23-sequence-3b-r-unified-rttp-replay.md)** (`inherited_snapshot` append into `lab_replay_frames_json`). PR #43 backend adapter remains; UI primary path is unified scrubber only.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Expose DB `{run_key}:rttp` RTTP milestone frames in Lab as Section B (`lab_optimization_milestone_frames_json`) while Section A map scrubber stays on `lab_replay_frames_json` only (H1 preserved).

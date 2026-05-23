@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+from types import SimpleNamespace
 
 import pytest
 
@@ -75,6 +76,21 @@ def test_for_list_wrap_includes_four_by_four_viewport_css(
     assert f"min-width:{vw}px" in html
     assert f"max-height:{vh}px" in html
     assert "border-radius:" in html
+
+
+def test_missing_bbox_renders_readable_korean_note(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "django_apps.asteroid_lab.genetic_sample_mini_map.build_decoded_blueprint_snapshot",
+        lambda decoded_json: SimpleNamespace(bbox_json={}, cells=()),
+    )
+    monkeypatch.setattr(
+        "django_apps.asteroid_lab.genetic_sample_mini_map.full_map_island_bbox_from_decoded_json",
+        lambda decoded_json: None,
+    )
+
+    html = str(genetic_sample_mini_map_html({"V": 88, "BP": {"$type": "Island", "Entries": []}}))
+
+    assert "bbox가 없어 미니맵을 그릴 수 없습니다." in html
 
 
 @pytest.mark.django_db

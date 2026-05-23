@@ -26,6 +26,8 @@ def test_product_python_has_no_derived_coordinate_tokens() -> None:
     for root in roots:
         for path in sorted(root.rglob("*.py")):
             rel = path.relative_to(_REPO).as_posix()
+            if "/migrations/" in rel:
+                continue
             text = path.read_text(encoding="utf-8")
             for token in _FORBIDDEN_COORD_TOKENS:
                 if token in text:

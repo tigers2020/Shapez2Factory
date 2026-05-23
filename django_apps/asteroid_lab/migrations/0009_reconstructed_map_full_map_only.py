@@ -27,6 +27,14 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveField(
             model_name="reconstructedasteroidmap",
+            name="anchor_server_x",
+        ),
+        migrations.RemoveField(
+            model_name="reconstructedasteroidmap",
+            name="anchor_server_y",
+        ),
+        migrations.RemoveField(
+            model_name="reconstructedasteroidmap",
             name="cell_count",
         ),
         migrations.RemoveField(

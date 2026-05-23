@@ -193,7 +193,7 @@ def genetic_sample_mini_map_html(
             by_pos[(int(cell.x) - min_x, int(cell.y) - min_y)] = cell
     else:
         return mark_safe(
-            '<p class="genetic-sample-map-note">bbox媛 ?놁뼱 誘몃땲留듭쓣 洹몃┫ ???놁뒿?덈떎.</p>'
+            '<p class="genetic-sample-map-note">bbox가 없어 미니맵을 그릴 수 없습니다.</p>'
         )
 
     img_px = max(18, cell_px - 6)

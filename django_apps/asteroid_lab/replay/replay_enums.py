@@ -53,3 +53,9 @@ class ReplayEventType(StrEnum):
     VALIDATION_COMPLETED = "validation.completed"
     VALIDATION_FAILED = "validation.failed"
     RESULT_LAYOUT = "result.layout"
+
+    # RTTP diagnostic snapshots (3B-S-3; distinct from generic optimization wire types)
+    RTTP_ROUTE_DOMAIN_SNAPSHOT = "rttp.route_domain_snapshot"
+    RTTP_CANDIDATE_POOL_SNAPSHOT = "rttp.candidate_pool_snapshot"
+    RTTP_GENOME_SELECTION_SNAPSHOT = "rttp.genome_selection_snapshot"
+    RTTP_COMMIT_DOMAIN_SNAPSHOT = "rttp.commit_domain_snapshot"

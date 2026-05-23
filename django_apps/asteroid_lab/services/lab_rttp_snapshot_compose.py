@@ -7,19 +7,23 @@ from typing import Any
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack, SolverRun
 from django_apps.asteroid_lab.optimization.replay_track_keys import rttp_optimization_track_key
-from django_apps.asteroid_lab.replay import event_types as et
-from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
-    RTTP_MILESTONE_EVENT_TYPES,
+from django_apps.asteroid_lab.replay.event_types import (
+    EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT,
+    EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT,
+    EVENT_TYPE_RTTP_GENOME_SELECTION_SNAPSHOT,
+    EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT,
+    is_rttp_milestone_event_type,
+    normalize_rttp_milestone_event_type,
 )
 
 _RECONSTRUCTION_COMPLETED = "reconstruction.completed"
 
 # Finer interleave: each RTTP milestone inserts after its lifecycle predecessor.
 _RTTP_ANCHOR_AFTER_EVENT: dict[str, str] = {
-    et.EVENT_TYPE_ROUTING_PROBE_STARTED: _RECONSTRUCTION_COMPLETED,
-    et.EVENT_TYPE_CANDIDATE_GENERATED: et.EVENT_TYPE_ROUTING_PROBE_STARTED,
-    et.EVENT_TYPE_GA_BEST_UPDATED: et.EVENT_TYPE_CANDIDATE_GENERATED,
-    et.EVENT_TYPE_ROUTING_COMMITTED: et.EVENT_TYPE_GA_BEST_UPDATED,
+    EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT: _RECONSTRUCTION_COMPLETED,
+    EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT: EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT,
+    EVENT_TYPE_RTTP_GENOME_SELECTION_SNAPSHOT: EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT,
+    EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT: EVENT_TYPE_RTTP_GENOME_SELECTION_SNAPSHOT,
 }
 
 
@@ -109,7 +113,7 @@ def project_rttp_row_to_product_frame(
     return {
         "frame_index": 0,
         "phase": str(row.get("phase") or ""),
-        "event_type": str(row.get("event_type") or ""),
+        "event_type": normalize_rttp_milestone_event_type(str(row.get("event_type") or "")),
         "title": str(row.get("title") or ""),
         "description": str(row.get("description") or ""),
         "map_view": mv,
@@ -134,8 +138,8 @@ def interleave_rttp_snapshot_frames(
         return unified
 
     for row in rttp_rows:
-        event_type = str(row.get("event_type") or "")
-        if event_type not in RTTP_MILESTONE_EVENT_TYPES:
+        event_type = normalize_rttp_milestone_event_type(str(row.get("event_type") or ""))
+        if not is_rttp_milestone_event_type(str(row.get("event_type") or "")):
             continue
         insert_at = _find_anchor_index_for_rttp_row(unified, event_type)
         base_mv = _map_view_at_index(unified, insert_at)

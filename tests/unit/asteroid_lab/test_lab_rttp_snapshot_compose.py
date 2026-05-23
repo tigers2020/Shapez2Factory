@@ -10,6 +10,7 @@ import pytest
 from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
 from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
     RTTP_MILESTONE_EVENT_TYPES,
@@ -160,15 +161,32 @@ def test_interleave_per_row_anchor_chain_after_reconstruction() -> None:
     assert [f["event_type"] for f in out] == [
         "reconstruction.completed",
         "reconstruction.completed",
-        "routing.probe_started",
-        "candidate.generated",
-        "ga.best_updated",
-        "routing.committed",
+        et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT,
+        et.EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT,
+        et.EVENT_TYPE_RTTP_GENOME_SELECTION_SNAPSHOT,
+        et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT,
     ]
     probe = out[2]
     assert probe["description"] == "probe"
     assert len(probe["map_view"]["overlay_cells"]) == 1
     assert out[5]["map_view"]["overlay_cells"][0]["kind"] == "route.committed_path"
+
+
+def test_interleave_legacy_write_buffer_rows_emit_canonical_product_types() -> None:
+    map_frames = [_map_frame(0)]
+    rows = [
+        {
+            "event_type": et.EVENT_TYPE_ROUTING_PROBE_STARTED,
+            "phase": "rttp_pipeline",
+            "title": "legacy probe",
+            "description": "legacy",
+            "metrics": {},
+            "cell_overlay_json": {},
+        },
+    ]
+    out = interleave_rttp_snapshot_frames(map_frames, rows)
+    assert len(out) == 2
+    assert out[1]["event_type"] == et.EVENT_TYPE_RTTP_ROUTE_DOMAIN_SNAPSHOT
 
 
 def test_interleave_skips_rttp_when_no_renderable_base() -> None:

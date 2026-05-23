@@ -6,20 +6,15 @@ from typing import Any
 
 from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack, SolverRun
 from django_apps.asteroid_lab.optimization.replay_track_keys import rttp_optimization_track_key
-from django_apps.asteroid_lab.replay import event_types as et
+from django_apps.asteroid_lab.replay.event_types import (
+    RTTP_MILESTONE_EVENT_TYPES,
+    is_rttp_milestone_event_type,
+    normalize_rttp_milestone_event_type,
+)
 
 DIAGNOSTIC_MISSING_OPTIMIZATION_MILESTONE_TRACK = "missing_optimization_milestone_track"
 DIAGNOSTIC_EMPTY_OPTIMIZATION_MILESTONE_FRAMES = "empty_optimization_milestone_frames"
 DIAGNOSTIC_INVALID_OPTIMIZATION_MILESTONE_PAYLOAD = "invalid_optimization_milestone_payload"
-
-RTTP_MILESTONE_EVENT_TYPES: frozenset[str] = frozenset(
-    {
-        et.EVENT_TYPE_ROUTING_PROBE_STARTED,
-        et.EVENT_TYPE_CANDIDATE_GENERATED,
-        et.EVENT_TYPE_GA_BEST_UPDATED,
-        et.EVENT_TYPE_ROUTING_COMMITTED,
-    }
-)
 
 
 def _payload_has_forbidden_map_material(payload: dict[str, Any]) -> bool:
@@ -62,12 +57,12 @@ def replay_frame_to_optimization_milestone_json(frame: ReplayFrame) -> dict[str,
     if _payload_has_forbidden_map_material(payload):
         return None
     event_type = str(payload.get("event_type") or "")
-    if event_type not in RTTP_MILESTONE_EVENT_TYPES:
+    if not is_rttp_milestone_event_type(event_type):
         return None
     return {
         "frame_index": int(frame.frame_index),
         "phase": str(frame.phase),
-        "event_type": event_type,
+        "event_type": normalize_rttp_milestone_event_type(event_type),
         "title": str(frame.title),
         "description": str(frame.description or ""),
         "inspector": {},

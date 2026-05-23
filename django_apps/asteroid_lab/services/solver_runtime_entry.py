@@ -24,9 +24,11 @@ from django_apps.asteroid_lab.optimization.replay_sink import (
     DbRttpReplaySink,
     NullRttpReplaySink,
 )
+from django_apps.asteroid_lab.optimization.replay_track_keys import rttp_optimization_track_key
 from django_apps.asteroid_lab.services.experiment_service import (
     create_or_replace_solver_run,
     create_solver_run,
+    ensure_default_replay_track,
 )
 from django_apps.asteroid_lab.services.input_service import refresh_map_input_from_copy_code
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
@@ -244,12 +246,15 @@ def _run_rttp_solver_for_map_input(
             config=run_config,
         )
     run_id = int(run_dto.id)
-    track_id = int(run_dto.replay_track_id)
-    replay_sink = (
-        DbRttpReplaySink(track_id)
-        if _rttp_record_replay_enabled(run_config)
-        else NullRttpReplaySink()
-    )
+    replay_sink: DbRttpReplaySink | NullRttpReplaySink = NullRttpReplaySink()
+    if _rttp_record_replay_enabled(run_config):
+        rttp_track = ensure_default_replay_track(
+            int(project_id),
+            run_id,
+            track_key=rttp_optimization_track_key(rk),
+            title="RTTP optimization replay",
+        )
+        replay_sink = DbRttpReplaySink(int(rttp_track.track_id))
     pipeline_result = run_rttp_pipeline(
         opt_inp,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
@@ -356,10 +361,12 @@ def run_solver_runtime_for_project(
 
 
 def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any]:
+    frames = list(result.lab_replay_frames_json)
     body: dict[str, Any] = {
         "ok": result.ok,
         "solver_run_id": result.solver_run_id,
-        "lab_replay_frames_json": result.lab_replay_frames_json,
+        "lab_replay_frame_count": len(frames),
+        "lab_replay_frames_json": frames,
         "replay_track_metrics": result.replay_track_metrics,
         "solver_summary": dict(result.solver_summary),
         "validation_passed": result.validation_passed,

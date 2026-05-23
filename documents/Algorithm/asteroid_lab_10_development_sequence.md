@@ -3,6 +3,8 @@
 > **문서 베이스라인 (2026-05-18):** 코드 기준 **Decode → Reconstruction** 완료 이후 optimization 시퀀스는 문서상 **미착수**다. 아래 `[ ]` 체크리스트는 재설정된 상태이며, pytest·통과 수·fixture 목록은 **갱신하지 않음**(역사 인용 보관). Lab 앱: `django_apps/asteroid_lab/` · 상위 [`README.md`](README.md).
 >
 > **Solver 버튼 v0:** merge·실행 계약·PR 상태는 [`solver_runtime/`](solver_runtime/) 이 정본이다. 본 문서 체크박스와 **상태가 다를 수 있음** — [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md).
+>
+> **RTTP Hybrid C v0.1 gate sync (2026-05-23):** `django_apps/asteroid_lab/optimization/` + `tests/unit/asteroid_lab/test_rttp_*.py` 기준으로 **Sequence 2·3·3B·6·7(부분)** 체크박스를 갱신했다. **Sequence 4·5(GA/evolution)** 는 v0.1 범위 밖(greedy-regret `PlacementGenome` 사용). 정본 설계: [`docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md). Narrow gate: `python -m pytest tests/unit/asteroid_lab/ -k rttp`.
 
 ## 목적
 
@@ -85,27 +87,29 @@ pytest tests/unit/shapez_asteroid/test_route_cell_domain_builder.py (파일명�
 
 ## Sequence 2 — Pattern Library
 
+> **RTTP v0.1 (merged):** `optimization/candidates/pattern_library.py` — dedicated `test_pattern_library.py` 없음; `test_rttp_candidate_generator.py`·`test_rttp_greedy_regret.py`가 소비 계약을 gate.
+
 ### 작업
 
 ```text
-[ ] BundlePattern DTO (attachments·throughput_factor)
-[ ] linear 0~3 extension pattern
-[ ] rotation support
-[ ] deterministic pattern id
+[x] BundlePattern DTO (attachments·throughput_factor)
+[x] linear 0~3 extension pattern
+[x] rotation support (N/E/S/W)
+[x] deterministic pattern id
 ```
 
 ### 테스트
 
 ```text
-pytest tests/unit/shapez_asteroid/test_pattern_library.py
+python -m pytest tests/unit/asteroid_lab/test_rttp_candidate_generator.py tests/unit/asteroid_lab/test_rttp_greedy_regret.py -v
 ```
 
 ### 완료 기준
 
 ```text
-[ ] ExtensionAttachment·throughput_factor·canonical E (output_dir=E) 계약
-[ ] extractor + 0~3 extension linear pattern 생성
-[ ] output_stub가 occupied_cells에 포함되지 않음
+[x] throughput_factor 4/8/12/16 · canonical E rotation (`build_pattern_library`)
+[x] extractor + 0~3 extension linear pattern 생성
+[x] output_stub 별도 occupied 셀 (generator/probe 경로)
 ```
 
 ---
@@ -114,37 +118,37 @@ pytest tests/unit/shapez_asteroid/test_pattern_library.py
 
 후보가 normal pool에 들어가기 전 **반드시** probe를 통과한다.
 
+> **RTTP v0.1 (merged):** `candidate_generator.py` + `routing/route_probe.py` + `lift_lane_domain` / `route_goals`.
+
 ### 작업
 
 ```text
-[ ] BundleCandidate DTO (topology_signature·probe 스냅샷; factory만 생성; normal은 rejection 필드 없음)
-[ ] CandidateGenerationResult (normal vs rejected)
-[ ] CandidateEquivalenceKey + dedupe (max_candidates 전)
-[ ] rim-only extractor **후보 생성만** — commit·greedy rim 설치 없음
-[ ] extension mineable validation
-[ ] reject reason tracking (enum)
-[ ] RouteProbeInput / RouteProbeResult (route_domain·RouteGoal·reached_goal·topology_graph·goal_priority_weight)
-[ ] bounded uniform-cost probe + transport mask
-[ ] reachable → normal pool / unreachable → diagnostic 또는 폐기
+[x] BundleCandidate DTO (topology_signature·probe 스냅샷)
+[x] CandidateGenerationResult (normal vs rejected)
+[x] CandidateEquivalenceKey + dedupe (`selection/equivalence.py`; selection 단계)
+[x] INTERIOR_AND_RIM anchor ∈ rim ∪ inner (v0.1 default policy)
+[x] extension mineable validation (generator)
+[x] reject reason tracking (`CandidateRejectReason` StrEnum)
+[x] RouteProbeResult (bounded BFS; lift + trunk mask)
+[x] reachable → normal pool / unreachable → rejected
 ```
 
 ### 테스트
 
 ```text
-pytest tests/unit/shapez_asteroid/test_bundle_candidate_generator.py
-pytest tests/unit/shapez_asteroid/test_route_probe.py
-pytest tests/unit/shapez_asteroid/test_candidate_route_probe_integration.py
+python -m pytest tests/unit/asteroid_lab/test_rttp_candidate_generator.py tests/unit/asteroid_lab/test_rttp_lift_lane_domain.py tests/unit/asteroid_lab/test_rttp_route_goals.py -v
 ```
 
 ### 완료 기준
 
 ```text
-[ ] valid candidate와 rejected candidate가 deterministic
-[ ] 연결 불가능 candidate가 normal pool에 들어가지 않음
-[ ] Candidate Generator가 placement를 확정하지 않음 (풀·probe만)
-[ ] output_stub에서 RouteGoal 계약에 맞는 도달성 평가
-[ ] blocked / hard_blocked 통과 금지
-[ ] budget exceeded failure reason 기록
+[x] unreachable → rejected (`test_interior_and_rim_unreachable_goes_to_rejected`)
+[x] generator does not commit (`test_candidate_generator_does_not_commit`)
+[x] reachable in normal pool (`test_reachable_candidate_in_normal_pool`)
+[x] lift edge + trunk mask (`test_lift_edge_connects_stub_to_trunk_mask`)
+[x] ring ports in probe goals (`test_probe_goal_coords_include_ring_ports`)
+[ ] topology_graph·goal_priority_weight (legacy Phase 문서; v0.1 미구현)
+[ ] budget exceeded failure reason 전용 테스트 (미추가)
 ```
 
 ---
@@ -153,36 +157,43 @@ pytest tests/unit/shapez_asteroid/test_candidate_route_probe_integration.py
 
 candidate/probe 디버깅을 **Sequence 8까지 미루지 않으면** 구현 난이도가 급증한다. UI timeline 전체는 Sequence 8이 담당하고, 여기서는 **기록 파이프라인만** 최소로 연다.
 
-> **RTTP v0.2 (merged, 2026-05-23):** PR-B already records four pipeline milestones on DB track **`{run_key}:rttp`**. Lab **`lab_replay_frames_json`** stays inspection/reconstruction-only (PR #39); 1-based frame counter UI (PR #41). **Sequence 3B** adds Lab UI compose of optimization milestones + fuller event matrix — **not** duplicate v0.2 DB persistence. Contract: [`docs/superpowers/specs/2026-05-23-rttp-v0.2-replay-parity-design.md`](../../docs/superpowers/specs/2026-05-23-rttp-v0.2-replay-parity-design.md) § H2.
+> **RTTP v0.2 + 3B-S (merged, 2026-05-23):** 네 milestone on **`{run_key}:rttp`**; Lab **`lab_replay_frames_json`** = inspection/reconstruction + **interleaved full-snapshot RTTP** (`lab_rttp_snapshot_compose`). Contracts: [`2026-05-23-rttp-v0.2-replay-parity-design.md`](../../docs/superpowers/specs/2026-05-23-rttp-v0.2-replay-parity-design.md), [`2026-05-23-sequence-3b-s-rttp-full-snapshot-replay-design.md`](../../docs/superpowers/specs/2026-05-23-sequence-3b-s-rttp-full-snapshot-replay-design.md).
 
 ### 작업
 
 ```text
-[ ] OptimizationReplayEventType + OptimizationReplayFrame 직렬화 (Phase 9 상수 MAX_REPLAY_*·replay_truncated 포함)
-[ ] candidate.generated / candidate.rejected / route_probe.succeeded|failed 이벤트만 우선 기록
-[ ] replay artifact는 algorithm input 금지 invariant 단위 테스트
+[x] canonical `rttp.*` milestone event types (four snapshots)
+[x] pipeline records four milestones + cell overlays (`rttp_replay_diagnostics`)
+[x] replay on/off `PipelineResult` parity (G8 v0.2)
+[x] replay sink not algorithm input; layers do not accept sink
+[x] DbRttpReplaySink + solver entry persistence (integration)
+[x] Lab product timeline interleave (3B-S; no inherited_snapshot)
 ```
 
 ### 테스트
 
 ```text
-pytest tests/unit/shapez_asteroid/test_optimization_replay_skeleton.py (파일명은 구현에 맞게)
+python -m pytest tests/unit/asteroid_lab/test_rttp_replay_parity.py tests/unit/asteroid_lab/test_rttp_replay_sink.py tests/unit/asteroid_lab/test_rttp_db_replay_sink.py tests/unit/asteroid_lab/test_lab_rttp_snapshot_compose.py -v
 ```
 
 ### 완료 기준
 
 ```text
-[ ] Sequence 3에서 한 번의 run에 대해 replay NDJSON(또는 동등 바이너리)이 쓰이고, 탐색 결과는 replay on/off 동일(Phase 9 invariant)
+[x] replay on/off 동일 candidate/commit ids (`test_rttp_replay_on_off_parity`)
+[x] four milestone events + descriptions/overlays
+[ ] full Phase 9 event matrix (candidate.rejected per-frame 등) — v0.1 부분만
 ```
 
 ---
 
 ## Sequence 4 — Genome / Fitness
 
+> **RTTP v0.1: 범위 밖.** Hybrid C Layer 3는 **greedy-regret `PlacementGenome`** (`test_rttp_greedy_regret.py`). GA `Gene`/`FitnessBreakdown` 시퀀스는 v1 또는 별도 evolution track.
+
 ### 작업
 
 ```text
-[ ] Gene / Genome DTO (Gene.commit_order)
+[ ] Gene / Genome DTO (Gene.commit_order) — legacy GA track
 [ ] FitnessBreakdown + FitnessMetrics
 [ ] overlap penalty
 [ ] unreachable penalty
@@ -193,21 +204,23 @@ pytest tests/unit/shapez_asteroid/test_optimization_replay_skeleton.py (파일�
 ### 테스트
 
 ```text
-pytest tests/unit/shapez_asteroid/test_genome_fitness.py
+# v0.1 대체 gate:
+python -m pytest tests/unit/asteroid_lab/test_rttp_greedy_regret.py -v
 ```
 
 ### 완료 기준
 
 ```text
-[ ] same input + same seed = same fitness
-[ ] overlap/unreachable penalty가 throughput gain보다 강함
-[ ] trunk vs margin 등 동일 reachable이라도 route goal 품질이 점수에 반영됨
-[ ] 좁은 통로 점유 시나리오에서 탐욕적 고처리량 우위가 깨질 수 있는 훅(패널티 필드) 존재
+[x] explicit commit_order ≠ rim scan (`test_commit_order_is_explicit_not_rim_scan`) — RTTP v0.1
+[x] regret/scarcity ordering (`test_regret_prefers_high_scarcity_candidate`) — RTTP v0.1
+[ ] GA fitness 동일 seed deterministic — 미착수
 ```
 
 ---
 
 ## Sequence 5 — Evolution Search v0
+
+> **RTTP v0.1: 범위 밖** (MacroBundle / dense interior / GA evolution — [`rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md) § v1).
 
 ### 작업
 
@@ -223,76 +236,75 @@ pytest tests/unit/shapez_asteroid/test_genome_fitness.py
 ### 테스트
 
 ```text
-pytest tests/unit/shapez_asteroid/test_evolutionary_search.py
+# (미착수 — v0.1은 single-pass greedy-regret + LNS only)
 ```
 
 ### 완료 기준
 
 ```text
-[ ] same seed deterministic (population·mutation·fitness tie-break 포함)
-[ ] best fitness non-decreasing under elitism
-[ ] best genome 반환
+[ ] (미착수)
 ```
 
 ---
 
 ## Sequence 6 — Incremental Commit
 
+> **RTTP v0.1 (merged):** `commit/incremental_commit.py` + bounded `local_lns.py`. Regression: `test_rttp_narrow_corridor.py` (probe≠commit, protected bridge).
+
 ### 작업
 
 ```text
-[ ] best genome candidate 정렬 (**Gene.commit_order** 정본; candidate 생성·rim 순 기본 금지)
-[ ] route probe 재실행 (갱신된 route_domain)
-[ ] RouteReservation (reservation_id·reached_goal·goal_priority·state·domain_cell_transitions)
-[ ] CommitConflictReason 처리
-[ ] commit / rollback + route_domain 반영
+[x] PlacementGenome commit_order (greedy-regret; explicit order)
+[x] route probe 재실행 at commit (`domain.version` increments)
+[x] CommitConflictReason StrEnum (incl. INLET_ON_SHARED_TRANSPORT, REPROBE_FAILED, HARD_PROTECTED_CONFLICT)
+[x] incremental commit + reservation merge into trunk mask
+[x] local LNS after commit failure only
 ```
 
 ### 테스트
 
 ```text
-pytest tests/unit/shapez_asteroid/test_incremental_commit.py
+python -m pytest tests/unit/asteroid_lab/test_rttp_commit.py tests/unit/asteroid_lab/test_rttp_lns.py tests/unit/asteroid_lab/test_rttp_narrow_corridor.py tests/unit/asteroid_lab/test_rttp_greedy_regret.py -v
 ```
 
 ### 완료 기준
 
 ```text
-[ ] confirmed candidate는 exterior trunk route를 가진다
-[ ] commit 실패 candidate는 local rollback된다
-[ ] commit 순서가 genome `commit_order`와 일치하고 생성 enumeration 순에 묶이지 않는다
+[x] inlet on shared transport rejects (`test_commit_rejects_inlet_on_shared_transport`)
+[x] commit reprobes domain (`test_commit_reprobes_latest_domain`)
+[x] probe reachable ≠ commit success (`test_narrow_corridor_probe_vs_commit_regression`)
+[x] protected corridor → HARD_PROTECTED_CONFLICT (`test_narrow_corridor_protected_bridge_regression`)
+[x] commit_order explicit (`test_commit_order_is_explicit_not_rim_scan`)
+[ ] RouteReservation DTO (legacy Phase 7 필드 전부) — v0.1 단순화
 ```
 
 ---
 
 ## Sequence 7 — Validation
 
+> **RTTP v0.1 (부분):** `validation/final_validation.py` read-only asserts; pipeline `validation_passed`. Full `ValidationIssue` matrix는 미구현.
+
 ### 작업
 
 ```text
-[ ] final validation result
-[ ] confirmed candidate ↔ 정확히 하나의 CONFIRMED RouteReservation 검증
-[ ] reserved_cells ↔ path 일관성 검증
-[ ] ValidationIssue (ValidationIssueCode·route_goal_kind·transport_kind·optional route_reservation_id·path_index)
-[ ] extractor output connectivity check
-[ ] orphan transport check
-[ ] overlap check
-[ ] Coord·`neighbors4` island 격자 검증
-[ ] RouteGoal·transport 일관성 (read-only 검증만)
+[x] final validation read-only (`validate_final_layout`)
+[x] overlap / mineable subset / reserved route checks (minimal)
+[ ] ValidationIssue enum + per-issue reporting (legacy Phase 8)
+[ ] orphan transport / full connectivity matrix
 ```
 
 ### 테스트
 
 ```text
-pytest tests/unit/shapez_asteroid/test_optimization_validation.py
+python -m pytest tests/unit/asteroid_lab/test_rttp_pipeline_greenfield.py tests/unit/asteroid_lab/test_rttp_reconstruction_fixture_e2e.py tests/unit/asteroid_lab/test_rttp_existing_trunk.py -v
 ```
 
 ### 완료 기준
 
 ```text
-[ ] validation은 read-only
-[ ] Validation must not invent new routes.
-[ ] Validation must not mutate placement.
-[ ] Validation must not fix topology.
+[x] validation read-only (no repair imports in validation module)
+[x] pipeline reports validation_passed on green paths (E2E tests)
+[ ] Validation must not invent routes / mutate placement — module-level; no dedicated negative suite
 ```
 
 (정본 서술: `documents/plans/asteroid_lab_optimization/asteroid_lab_08_validation.md` — 계약(금지))

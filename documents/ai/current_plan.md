@@ -43,4 +43,4 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 - Persisted `full_map_server_bbox` → `full_map_island_bbox` read-compat (one release; `island_bbox.py`)
 - RTTP **v1** (`MacroBundleT3`, dense interior regret) — 별도 spec/plan 후 착수 ([`2026-05-22-rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md) § v1)
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
-- `asteroid_lab_10` Sequence 2–7 체크박스를 gate 테스트와 동기화
+- ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절

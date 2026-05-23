@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from django_apps.asteroid_lab.optimization.macros import (
     MacroCompileConfig,
     MacroRejectReason,
@@ -12,10 +14,14 @@ from django_apps.asteroid_lab.optimization.macros.macro_compiler import (
     _derive_shared_lift_stub_plan,
     _derive_shared_ring_port_intent,
 )
-from django_apps.asteroid_lab.optimization.macros.macro_dtos import SharedLiftStubPlan
+from django_apps.asteroid_lab.optimization.macros.macro_dtos import (
+    MacroBundleCandidate,
+    SharedLiftStubPlan,
+)
 from django_apps.asteroid_lab.optimization.routing.lift_lane_domain import (
     build_route_domain_from_skeleton,
 )
+from django_apps.asteroid_lab.optimization.selection.macro_equivalence import dedupe_macros
 from tests.support.macro_triple_greenfield_fixture import (
     build_macro_triple_greenfield_fixture,
     build_overlapping_macro_triple_candidates,
@@ -109,6 +115,39 @@ def test_macro_compiler_rejects_existing_shared_lift_when_probe_unreachable() ->
     rejected = result.macro_rejected[0]
     assert rejected.rejection_reason is MacroRejectReason.SHARED_LIFT_UNREACHABLE
     assert rejected.route_probe_cost is not None
+
+
+def test_macro_equivalence_dedupe_deterministic() -> None:
+    """RTTP-G11: equivalent macros collapse; lowest macro_id wins."""
+
+    fixture = build_macro_triple_greenfield_fixture()
+    compiled = compile_macros(fixture.valid_triple, fixture.skeleton, fixture.inp)
+    assert len(compiled.macro_normal) == 1
+    base_row = compiled.macro_normal[0]
+
+    low_macro = replace(base_row.macro, macro_id="a" * 64)
+    high_macro = replace(base_row.macro, macro_id="f" * 64)
+    low_row = MacroBundleCandidate(
+        macro_id=low_macro.macro_id,
+        macro=low_macro,
+        route_probe_cost=base_row.route_probe_cost,
+        reachable=True,
+    )
+    high_row = MacroBundleCandidate(
+        macro_id=high_macro.macro_id,
+        macro=high_macro,
+        route_probe_cost=base_row.route_probe_cost,
+        reachable=True,
+    )
+
+    deduped = dedupe_macros((high_row, low_row, high_row))
+    assert len(deduped) == 1
+    assert deduped[0].macro_id == low_row.macro_id
+
+    permuted_pool = fixture.valid_triple[1:] + fixture.valid_triple[:1]
+    permuted = compile_macros(permuted_pool, fixture.skeleton, fixture.inp)
+    assert len(permuted.macro_normal) == 1
+    assert permuted.macro_normal[0].macro_id == base_row.macro_id
 
 
 def test_macro_compiler_caps_enumeration_at_max_macro_candidates() -> None:

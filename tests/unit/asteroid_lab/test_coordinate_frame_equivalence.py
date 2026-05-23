@@ -50,3 +50,14 @@ def test_equivalence_gate_documents_island_fixture() -> None:
             IslandRawCoord(1, 1),
         }
     )
+
+
+def test_island_paste_only_track_does_not_require_world_xfail_test() -> None:
+    """G3 partial gate: island paste fixtures use coord_proof_policy, not world adapter."""
+
+    from django_apps.asteroid_lab.snapshots.coord_proof_policy import (
+        THREE_EXT_MINER_BELT_PROOF,
+        island_raw_promotion_allowed,
+    )
+
+    assert island_raw_promotion_allowed(THREE_EXT_MINER_BELT_PROOF)

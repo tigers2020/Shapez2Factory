@@ -28,6 +28,16 @@ _WEB_SERVER_XY_ALLOWLIST: frozenset[str] = frozenset(
 )
 _OPTIMIZATION_SERVER_XY_ALLOWLIST: frozenset[str] = frozenset()
 
+# PR-F: no server dense bridge symbols in algorithm layer.
+_OPTIMIZATION_SERVER_BRIDGE_SYMBOLS: frozenset[str] = frozenset(
+    {
+        "server_xy_for_raw_xy",
+        "attach_server_coords_to_decoded_json",
+        "raw_x_to_dense_index",
+        "raw_x_to_dense_x",
+    }
+)
+
 
 def _rel(path: Path) -> str:
     return path.relative_to(_REPO).as_posix()
@@ -60,15 +70,19 @@ def _violations_importing(
     return found
 
 
-def test_optimization_does_not_import_server_xy_for_raw_xy() -> None:
+def test_optimization_does_not_import_server_bridge_symbols() -> None:
     root = _REPO / "django_apps" / "asteroid_lab" / "optimization"
-    violations = _violations_importing(
-        root,
-        symbol="server_xy_for_raw_xy",
-        module_substring="server_coords",
-        allowlist=_OPTIMIZATION_SERVER_XY_ALLOWLIST,
-    )
-    assert not violations, "server_xy_for_raw_xy in optimization: " + ", ".join(violations)
+    violations: list[str] = []
+    for symbol in _OPTIMIZATION_SERVER_BRIDGE_SYMBOLS:
+        violations.extend(
+            _violations_importing(
+                root,
+                symbol=symbol,
+                module_substring="server_coords",
+                allowlist=_OPTIMIZATION_SERVER_XY_ALLOWLIST,
+            )
+        )
+    assert not violations, "server bridge import in optimization: " + ", ".join(violations)
 
 
 def test_reconstruction_server_xy_imports_match_allowlist() -> None:

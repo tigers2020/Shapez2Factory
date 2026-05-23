@@ -160,7 +160,7 @@ Existing bare tuples may remain until touched; **new** edits in gated paths must
 |----|-------------|-------------------|
 | G1 | Island paste truth | `test_copy_json_island_local_coords.py` |
 | G2 | World map invariants | `test_asteroid_map_coords.py` |
-| G3 | Equivalence fixtures | New `test_coordinate_frame_equivalence.py` — same layout via copy-decode vs reconstruction-import; topology sets match under **explicit** adapter or documented world-only/island-only fixture |
+| G3 | Equivalence fixtures | `test_coordinate_frame_equivalence.py` — **world track** (xfail until `island_to_world` adapter); **island-paste track** via `coord_proof_policy.py` (`ISLAND_PASTE_ONLY` → may use `CoordFrame.ISLAND_RAW` without world proof) |
 | G4 | No silent tuple in gated paths | `test_coordinate_frame_ast_gate.py` |
 | G5 | Algorithm docs updated | `asteroid_lab_01`, `asteroid-lab-invariants.mdc` |
 

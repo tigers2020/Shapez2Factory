@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from django_apps.asteroid_lab.optimization.coords import Coord
+from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 
 
 class TransportKind(StrEnum):
@@ -45,6 +46,7 @@ class OptimizationInput:
     transport_kind: TransportKind
     route_goals: tuple[RouteGoal, ...]
     existing_transport_cells: frozenset[ExistingTransportCell]
+    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +70,7 @@ class LiftColumn:
 
 
 __all__ = [
+    "CoordFrame",
     "ExistingTransportCell",
     "LiftColumn",
     "OptimizationInput",

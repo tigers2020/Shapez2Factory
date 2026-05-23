@@ -10,7 +10,11 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.coord_frames import ServerCoord, server_coord_to_tuple
+from django_apps.asteroid_lab.snapshots.coord_frames import (
+    CoordFrame,
+    ServerCoord,
+    server_coord_to_tuple,
+)
 from django_apps.asteroid_lab.snapshots.grid_contract import (
     OUTER_VOID_PADDING,
     Coord,
@@ -70,12 +74,29 @@ def _cells_by_server_coord(
     return by_sv
 
 
-def acceptance_topology_from_reconstruction(result: ReconstructionResult) -> AcceptanceTopology:
+def _cells_by_island_coord(cells: tuple[DecodedCellDTO, ...]) -> dict[Coord, DecodedCellDTO]:
+    """Island-local ``(cell.x, cell.y)`` keys — no server dense projection."""
+
+    return {(cell.x, cell.y): cell for cell in cells}
+
+
+def acceptance_topology_from_reconstruction(
+    result: ReconstructionResult,
+    *,
+    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
+) -> AcceptanceTopology:
     """Compute mineable and external void sets for one reconstruction result."""
+
+    if coord_frame == CoordFrame.WORLD_RAW:
+        msg = "WORLD_RAW acceptance topology not implemented — proof gate required"
+        raise ValueError(msg)
 
     cells = result.cells
     params = result.server_xy_params
-    by_sv = _cells_by_server_coord(cells, params)
+    if coord_frame == CoordFrame.ISLAND_RAW:
+        by_sv = _cells_by_island_coord(cells)
+    else:
+        by_sv = _cells_by_server_coord(cells, params)
 
     mineable: set[Coord] = set()
     for sv, cell in by_sv.items():

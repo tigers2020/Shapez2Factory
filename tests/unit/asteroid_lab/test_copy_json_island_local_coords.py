@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.snapshots.coord_frames import IslandRawCoord
 from django_apps.asteroid_lab.snapshots.copy_json_coords import (
     as_entry_int,
     entries_have_explicit_raw_x_zero,
     entry_island_local_xy,
+    entry_island_raw_coord,
     entry_raw_r,
     entry_raw_x,
     entry_raw_y,
@@ -30,6 +32,12 @@ def test_entry_raw_axes_default_omitted_keys() -> None:
     assert entry_raw_x(row) == 0
     assert entry_raw_y(row) == 1
     assert entry_raw_r(row) == 0
+
+
+def test_entry_island_raw_coord_wraps_entry_raw_xy() -> None:
+    row = {"Y": 1, "T": "Layout_ShapeMinerExtension"}
+    assert entry_island_raw_coord(row) == IslandRawCoord(0, 1)
+    assert entry_island_raw_coord(row) == IslandRawCoord(*entry_island_local_xy(row))
 
 
 def test_three_ext_miner_belt_copy_decodes_to_expected_island_local_xy() -> None:

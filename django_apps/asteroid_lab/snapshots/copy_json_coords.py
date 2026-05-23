@@ -10,12 +10,19 @@ Normative rules (verified against in-game paste, 2026-05-23):
 - ``Y + 1`` → one cell **down** on screen.
 - ``X == 0`` is a valid column in copy JSON (unlike lab world map ``x == 0``).
 
-See ``documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md``.
+See ``documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md``
+and ``docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md``.
+
+Tagged boundary: :func:`entry_island_raw_coord` → :class:`~coord_frames.IslandRawCoord`.
+Lab ``server_x`` / ``server_y`` from :mod:`server_coords` remain **deprecated** dense
+projection until PR-F.
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+from django_apps.asteroid_lab.snapshots.coord_frames import IslandRawCoord
 
 COPY_JSON_AXIS_X_RIGHT = "copy_json_x_increases_screen_right"
 COPY_JSON_AXIS_Y_DOWN = "copy_json_y_increases_screen_down"
@@ -60,6 +67,13 @@ def entry_island_local_xy(entry: dict[str, Any]) -> tuple[int, int]:
     return (entry_raw_x(entry), entry_raw_y(entry))
 
 
+def entry_island_raw_coord(entry: dict[str, Any]) -> IslandRawCoord:
+    """Island-local paste coord as :class:`~coord_frames.IslandRawCoord`."""
+
+    x, y = entry_island_local_xy(entry)
+    return IslandRawCoord(x, y)
+
+
 def entries_have_explicit_raw_x_zero(entries: list[dict[str, Any]]) -> bool:
     """Whether any entry uses raw column ``X == 0``.
 
@@ -89,6 +103,7 @@ __all__ = [
     "as_entry_int",
     "entries_have_explicit_raw_x_zero",
     "entry_island_local_xy",
+    "entry_island_raw_coord",
     "entry_raw_r",
     "entry_raw_x",
     "entry_raw_y",

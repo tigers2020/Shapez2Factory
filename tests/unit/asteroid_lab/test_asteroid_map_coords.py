@@ -7,9 +7,12 @@ import pytest
 from django_apps.asteroid_lab.snapshots.asteroid_map_coords import (
     iter_four_neighbors_map,
     left_of,
+    neighbors4_world,
     right_of,
     visual_col,
+    world_raw_coord,
 )
+from django_apps.asteroid_lab.snapshots.coord_frames import WorldRawCoord
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
@@ -34,6 +37,20 @@ def test_left_right_of_seam() -> None:
     assert right_of(-1) == 1
     assert left_of(2) == 1
     assert right_of(1) == 2
+
+
+def test_world_raw_coord_rejects_x_zero() -> None:
+    with pytest.raises(ValueError, match="x == 0"):
+        world_raw_coord(0, 1)
+
+
+def test_neighbors4_world_matches_map_cardinals() -> None:
+    c = WorldRawCoord(-1, 2)
+    nbrs = neighbors4_world(c)
+    assert WorldRawCoord(1, 2) in nbrs
+    assert WorldRawCoord(-2, 2) in nbrs
+    assert WorldRawCoord(-1, 3) in nbrs
+    assert WorldRawCoord(-1, 1) in nbrs
 
 
 def test_iter_four_neighbors_skips_x_zero() -> None:

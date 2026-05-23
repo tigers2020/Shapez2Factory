@@ -14,7 +14,7 @@ Gene topology and `game_data` building geometry are authored in a **building-loc
 
 | Frame | Origin | Used by |
 |-------|--------|---------|
-| **Copy JSON island-local** | Pasted island `BP.Entries`; omitted `X`/`Y`/`R` → `0`; `X+1` right, `Y+1` down; **`X==0` valid** | Game paste decode, export serialize |
+| **Copy JSON island-local** | Pasted island `BP.Entries`; omitted `X`/`Y`/`R` → `0`; `X+1` right, `Y+1` down; **`X==0` valid**; tagged `IslandRawCoord` via `entry_island_raw_coord` | Game paste decode, export serialize; migration: [`2026-05-23-coordinate-tagged-frames-design.md`](../superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md) |
 | **Canonical E (gene-local)** | Extractor at `(0, 0)`; bundle `output_dir == E` | `GeneTemplate`, `ExtensionAttachment` offsets |
 | **Building-local (`game_data`)** | Per-variant footprint / connector import frame | `BuildingFootprintCell.x/y` in `AsteroidGameDataSnapshot` |
 | **Server (dense)** | Map bbox-normalized grid; algorithm input after normalize | `Coord`, materialized cells, fingerprints |

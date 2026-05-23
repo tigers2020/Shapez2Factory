@@ -10,6 +10,7 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from django_apps.asteroid_lab.snapshots.coord_frames import ServerCoord, server_coord_to_tuple
 from django_apps.asteroid_lab.snapshots.grid_contract import (
     OUTER_VOID_PADDING,
     Coord,
@@ -23,19 +24,20 @@ from django_apps.asteroid_lab.snapshots.server_coords import (
 )
 
 
-def server_coord_for_cell(cell: DecodedCellDTO, params: tuple[int, int] | None) -> Coord:
+def server_coord_for_cell(cell: DecodedCellDTO, params: tuple[int, int] | None) -> ServerCoord:
     sx, sy = cell.server_x, cell.server_y
     if isinstance(sx, int) and isinstance(sy, int):
-        return (sx, sy)
+        return ServerCoord(sx, sy)
     if params is not None:
         md, my, hz = unpack_server_xy_params(params)
-        return server_xy_for_raw_xy(
+        tx, ty = server_xy_for_raw_xy(
             cell.x,
             cell.y,
             min_dense_x=md,
             min_raw_y=my,
             has_explicit_raw_x_zero=hz,
         )
+        return ServerCoord(tx, ty)
     msg = "DecodedCellDTO.server_x/server_y missing and ReconstructionResult.server_xy_params unset"
     raise ValueError(msg)
 
@@ -63,7 +65,8 @@ def _cells_by_server_coord(
 ) -> dict[Coord, DecodedCellDTO]:
     by_sv: dict[Coord, DecodedCellDTO] = {}
     for cell in cells:
-        by_sv[server_coord_for_cell(cell, params)] = cell
+        sc = server_coord_for_cell(cell, params)
+        by_sv[server_coord_to_tuple(sc)] = cell
     return by_sv
 
 

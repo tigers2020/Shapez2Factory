@@ -1,4 +1,9 @@
-"""Dense Server X/Y grid helpers (reconstruction + lab; not solver runtime)."""
+"""Dense Server X/Y grid helpers (reconstruction + lab; not solver runtime).
+
+Migration: ``Coord`` is still ``tuple[int, int]`` with **ServerCoord** semantics
+(see ``coord_frames.ServerCoord``). Tagged island/world types live in
+``coord_frames.py``; ``OptimizationInput.coord_frame`` arrives in PR-E only.
+"""
 
 from __future__ import annotations
 

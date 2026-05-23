@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+from django_apps.asteroid_lab.snapshots.coord_frames import WorldRawCoord
+
 _MSG_NO_X0 = "Shapez2 asteroid grid has no x == 0 coordinate"
 
 
@@ -58,3 +60,20 @@ def iter_four_neighbors_map(
     yield (left_of(x), y, layer)
     yield (x, y + 1, layer)
     yield (x, y - 1, layer)
+
+
+def world_raw_coord(x: int, y: int) -> WorldRawCoord:
+    """Construct a world-map coordinate (rejects ``x == 0``)."""
+
+    return WorldRawCoord(x, y)
+
+
+def neighbors4_world(c: WorldRawCoord) -> tuple[WorldRawCoord, ...]:
+    """Cardinal neighbors on the asteroid world map (no ``x == 0`` column)."""
+
+    if c.x == 0:
+        return ()
+    out: list[WorldRawCoord] = []
+    for nx, ny, _layer in iter_four_neighbors_map(c.x, c.y, None):
+        out.append(WorldRawCoord(nx, ny))
+    return tuple(out)

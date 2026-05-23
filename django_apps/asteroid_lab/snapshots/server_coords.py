@@ -1,5 +1,9 @@
 """Project copy JSON island-local raw ``X``/``Y`` into lab server bbox coordinates.
 
+**Deprecated (PR-F):** ``server_x`` / ``server_y`` dense bbox — use
+``copy_json_coords.entry_island_raw_coord`` at paste boundaries until
+``CoordFrame`` promotion (see ``docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md``).
+
 Input ``BP.Entries`` ``X``/``Y`` are **island blueprint local** (see
 ``copy_json_coords``). This module maps them to contiguous ``server_x`` /
 ``server_y`` for fingerprints and optimization — not asteroid world tiles.

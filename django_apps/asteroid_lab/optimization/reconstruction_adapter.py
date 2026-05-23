@@ -16,6 +16,7 @@ from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from django_apps.asteroid_lab.snapshots.coord_frames import server_coord_to_tuple
 from django_apps.asteroid_lab.snapshots.grid_contract import neighbors4_server
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 
@@ -36,7 +37,7 @@ def _cells_by_server_coord(
 ) -> dict[Coord, DecodedCellDTO]:
     by_sv: dict[Coord, DecodedCellDTO] = {}
     for cell in cells:
-        by_sv[server_coord_for_cell(cell, params)] = cell
+        by_sv[server_coord_to_tuple(server_coord_for_cell(cell, params))] = cell
     return by_sv
 
 

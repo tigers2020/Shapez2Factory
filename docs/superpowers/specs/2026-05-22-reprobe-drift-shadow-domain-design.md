@@ -1,11 +1,16 @@
-# Reprobe Drift — Phase I′ Shadow Domain Parity — Design Spec
+---
+status: CANCELLED
+cancelled_date: 2026-05-22
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
+---
+# Reprobe Drift ??Phase I??Shadow Domain Parity ??Design Spec
 
 **Status:** Approved 2026-05-22 (strong gate revision)  
 **Owner:** solver-runtime-pipeline  
-**Track:** C (commit survivability) — reprobe drift (domain + path)  
+**Track:** C (commit survivability) ??reprobe drift (domain + path)  
 **Parent / related:**
 - [`2026-05-22-phase-i-commit-survivability-design.md`](2026-05-22-phase-i-commit-survivability-design.md) (Tier 1 / 1.2b)
-- [`2026-05-22-commit-order-inlet-aware-design.md`](2026-05-22-commit-order-inlet-aware-design.md) (T1.2 commit order — unchanged)
+- [`2026-05-22-commit-order-inlet-aware-design.md`](2026-05-22-commit-order-inlet-aware-design.md) (T1.2 commit order ??unchanged)
 - [`2026-05-22-shared-transport-inlet-design.md`](2026-05-22-shared-transport-inlet-design.md)
 - [`2026-05-22-deferred-commit-retry-design.md`](2026-05-22-deferred-commit-retry-design.md)
 - [`phase_i_candidate_selection.md`](../../../documents/Algorithm/solver_runtime/phase_i_candidate_selection.md)
@@ -35,7 +40,7 @@ Phase I cannot *prove* commit success (forbidden). It must **predict** J failure
 
 ## Design goal (explicit)
 
-**Not:** “reduce drift a little” or `confirmed_count >= 23` as spec success.
+**Not:** ?�reduce drift a little??or `confirmed_count >= 23` as spec success.
 
 **Yes:** On the reference asteroid, **eliminate residual drift at commit** while keeping selection budget and validation contract:
 
@@ -48,31 +53,28 @@ commit_inlet_on_shared_transport_count == 0
 
 **Milestone only (not spec pass/fail):** `confirmed_count >= 23` during incremental implementation.
 
-## Approved approach: I′ Shadow domain parity
+## Approved approach: I??Shadow domain parity
 
 Extend Phase I greedy selection with an in-memory **shadow commit state** updated after each pick using **the same** domain builder and reprobe API as Phase J.
 
 ```text
-Phase H (unchanged) → generation route_probe_result (reference only)
-        ↓
-Phase I′ (shadow_domain_parity)
+Phase H (unchanged) ??generation route_probe_result (reference only)
+        ??Phase I??(shadow_domain_parity)
   greedy loop:
     eligible = footprint + trunk + anchor
-             + inlet: fot ∉ shadow.committed_route_cells  (reprobed union, NOT gen mirror)
+             + inlet: fot ??shadow.committed_route_cells  (reprobed union, NOT gen mirror)
              + shadow reprobe reachable on RouteDomainSnapshotBuilder snapshot
     pick by score; shadow_try_confirm until success or pool exhausted
-    on shadow success → append ordered id + update shadow reservations / occupied / route cells
-        ↓
-SelectedCandidatePlan (≤24 ids, target 24)
-        ↓
-Phase J (unchanged authority) → reprobe on live domain; deferred retry unchanged
+    on shadow success ??append ordered id + update shadow reservations / occupied / route cells
+        ??SelectedCandidatePlan (??4 ids, target 24)
+        ??Phase J (unchanged authority) ??reprobe on live domain; deferred retry unchanged
 ```
 
 ### Authority separation
 
 | Layer | Role |
 |-------|------|
-| Shadow (Phase I′) | Predictive filter + ordering input; same rules as J pre-confirm checks |
+| Shadow (Phase I?? | Predictive filter + ordering input; same rules as J pre-confirm checks |
 | Commit (Phase J) | **Only** proof of confirmed placement |
 
 Shadow pass + J fail on reference gate = **shadow parity incomplete** (not an acceptable residual).
@@ -121,7 +123,7 @@ class SelectionShadowState:
 - When `SHADOW_DOMAIN_PARITY`:
   - Do **not** use `selection_mirror_route_cells` for inlet (shadow `committed_route_cells` only).
   - Eligible pool: shadow reprobe reachable + inlet hard filter on shadow cells.
-  - Pick loop: highest score candidate → `shadow_try_confirm`; on failure skip candidate for this iteration (diagnostics++), try next score; on success commit to plan + shadow state.
+  - Pick loop: highest score candidate ??`shadow_try_confirm`; on failure skip candidate for this iteration (diagnostics++), try next score; on success commit to plan + shadow state.
 
 **File:** `solver_runtime_pipeline.py`
 
@@ -158,7 +160,7 @@ selection_shadow_reprobe_count: int = 0
 | Key | Meaning |
 |-----|---------|
 | `selection_shadow_policy` | `SelectionShadowPolicy` value |
-| `selected_candidate_count` | `len(selection_plan.ordered_candidate_ids)` — **add if missing** (alias acceptable: document vs `best_genome_enabled_gene_count` only if equal by definition) |
+| `selected_candidate_count` | `len(selection_plan.ordered_candidate_ids)` ??**add if missing** (alias acceptable: document vs `best_genome_enabled_gene_count` only if equal by definition) |
 | `selection_skipped_shadow_probe_failed_count` | Shadow reprobe unreachable |
 | `selection_skipped_shadow_inlet_on_shared_transport_count` | Shadow inlet hard reject |
 | `selection_shadow_reprobe_count` | Total shadow reprobes executed |
@@ -167,7 +169,7 @@ Existing commit keys unchanged: `confirmed_count`, `commit_route_probe_failed_co
 
 ## Success criteria
 
-### Reference hard gate (RD-GATE — spec pass/fail)
+### Reference hard gate (RD-GATE ??spec pass/fail)
 
 | ID | Gate |
 |----|------|
@@ -179,12 +181,12 @@ Existing commit keys unchanged: `confirmed_count`, `commit_route_probe_failed_co
 | RD6 | `selection_shadow_policy == "shadow_domain_parity"` |
 | RD7 | No replay / persisted metric as solver algorithm input (review + tests) |
 
-### Milestone (implementation only — not spec closure)
+### Milestone (implementation only ??not spec closure)
 
 | Milestone | Gate |
 |-----------|------|
-| M1 | `confirmed_count >= 23` with RD2–RD3 still failing → continue I′ tuning |
-| M2 | RD2–RD3 green, RD5 failing → commit order / pool size, not rollback shadow |
+| M1 | `confirmed_count >= 23` with RD2?�RD3 still failing ??continue I??tuning |
+| M2 | RD2?�RD3 green, RD5 failing ??commit order / pool size, not rollback shadow |
 
 ### Non-goals
 
@@ -200,10 +202,10 @@ Existing commit keys unchanged: `confirmed_count`, `commit_route_probe_failed_co
 
 | Test | Behavior |
 |------|----------|
-| `test_shadow_reprobe_excludes_unreachable_after_prior_pick` | Prior shadow pick blocks domain → next candidate gen-reachable but shadow unreachable → not ordered |
-| `test_shadow_inlet_uses_reprobed_path_not_gen_prefix` | Prior shadow reprobed path includes cell X; candidate fot X not on gen path → skipped at selection |
+| `test_shadow_reprobe_excludes_unreachable_after_prior_pick` | Prior shadow pick blocks domain ??next candidate gen-reachable but shadow unreachable ??not ordered |
+| `test_shadow_inlet_uses_reprobed_path_not_gen_prefix` | Prior shadow reprobed path includes cell X; candidate fot X not on gen path ??skipped at selection |
 | `test_selector_shadow_policy_off_matches_tier_1_2b` | `OFF` preserves `selection_mirror_route_cells` inlet behavior |
-| `test_shadow_try_confirm_shares_j_skip_reasons` | Inlet on shadow trunk → same `CommitConflictReason` family as J |
+| `test_shadow_try_confirm_shares_j_skip_reasons` | Inlet on shadow trunk ??same `CommitConflictReason` family as J |
 | `test_pipeline_summary_includes_shadow_diagnostics` | Summary keys present when policy ON |
 
 **Regression:**
@@ -227,27 +229,26 @@ python manage.py run_solver --slug copy-import-e954a2cb --run-key agent-smoke
 3. GREEN: wire `candidate_selector` pick loop with shadow confirm runner-up policy.
 4. Pipeline: policy default ON, summary keys, `selected_candidate_count`.
 5. Doc sync: `phase_i_candidate_selection.md`, `phase-i` follow-up link.
-6. Reference RD-GATE run; if shadow pass but J fail → treat as parity bug (shared helper extraction), not “allowed residual.”
-
+6. Reference RD-GATE run; if shadow pass but J fail ??treat as parity bug (shared helper extraction), not ?�allowed residual.??
 ## Risks
 
 | Risk | Mitigation |
 |------|------------|
 | Selection CPU increase (many shadow reprobes) | Reprobe only eligible pool; cache seed domain; profile reference run |
-| Pool cannot fill 24 under shadow | Log shadow skip counts; **do not** weaken RD4–RD5; investigate pool generation |
+| Pool cannot fill 24 under shadow | Log shadow skip counts; **do not** weaken RD4?�RD5; investigate pool generation |
 | Shadow/J rule drift | Share skip predicates with J via thin shared module or tested parity matrix |
-| **Shadow pass · J fail on reference** | **Not allowed** for RD-GATE closure — shadow parity incomplete |
+| **Shadow pass · J fail on reference** | **Not allowed** for RD-GATE closure ??shadow parity incomplete |
 
 ## Alternatives rejected
 
 | Alternative | Why not |
 |-------------|---------|
 | Gen-path mirror only (Tier 1.2b extension) | Reference still inlet 1 + probe 2 |
-| Score-only fragility / pressure tuning | Does not guarantee RD2–RD3 == 0 |
+| Score-only fragility / pressure tuning | Does not guarantee RD2?�RD3 == 0 |
 | Post-select shadow dry-run dropping IDs | Breaks RD4; blurs deferred-retry non-goal |
 | `commit_route_probe_failed_count <= 1` as spec gate | User-rejected; masks incomplete parity |
 | `confirmed_count >= 23` as spec success | Milestone only; spec requires 24/24/0/0 |
-| Commit metrics → selection / fitness | Forbidden shortcut |
+| Commit metrics ??selection / fitness | Forbidden shortcut |
 
 ## Rollback
 

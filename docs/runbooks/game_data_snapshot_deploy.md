@@ -67,11 +67,11 @@ Do **not** enable in v0 deploy. Follow-up plan (placeholder):
 ## PR gate (post-deploy / pre-merge)
 
 ```powershell
-python -m pytest tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py tests/unit/asteroid_lab/test_game_data_contracts.py tests/unit/asteroid_lab/test_game_data_snapshot_adapter.py tests/unit/asteroid_lab/test_game_data_coord_transform_golden.py tests/unit/asteroid_lab/test_game_data_snapshot_determinism.py tests/unit/web/test_asteroid_game_data_snapshot.py tests/integration/web/test_solver_with_game_data_snapshot.py
+python -m pytest tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py tests/unit/asteroid_lab/test_game_data_contracts.py tests/unit/asteroid_lab/test_game_data_snapshot_adapter.py tests/unit/asteroid_lab/test_game_data_coord_transform_golden.py tests/unit/asteroid_lab/test_game_data_snapshot_determinism.py tests/unit/web/test_asteroid_game_data_snapshot.py tests/integration/web/test_asteroid_run_solver.py
 
-python -m ruff check django_apps/game_data/selectors django_apps/game_data/snapshots django_apps/asteroid_lab/optimization/game_data_contracts.py django_apps/asteroid_lab/adapters/game_data_snapshot_adapter.py django_apps/web/services/asteroid_game_data_snapshot.py django_apps/asteroid_lab/services/solver_runtime_entry.py
+python -m ruff check django_apps/game_data/selectors django_apps/game_data/snapshots django_apps/asteroid_lab/contracts django_apps/asteroid_lab/adapters/game_data_snapshot_adapter.py django_apps/web/services/asteroid_game_data_snapshot.py django_apps/asteroid_lab/services/solver_runtime_entry.py
 
 python -m mypy django_apps/game_data django_apps/asteroid_lab django_apps/web
 
-python -m black --check django_apps/game_data/selectors django_apps/game_data/snapshots django_apps/asteroid_lab/optimization/game_data_contracts.py django_apps/asteroid_lab/adapters/game_data_snapshot_adapter.py django_apps/web/services/asteroid_game_data_snapshot.py django_apps/asteroid_lab/services/solver_runtime_entry.py tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py tests/unit/asteroid_lab/test_game_data_contracts.py tests/unit/web/test_asteroid_game_data_snapshot.py
+python -m black --check django_apps/game_data/selectors django_apps/game_data/snapshots django_apps/asteroid_lab/contracts django_apps/asteroid_lab/adapters/game_data_snapshot_adapter.py django_apps/web/services/asteroid_game_data_snapshot.py django_apps/asteroid_lab/services/solver_runtime_entry.py tests/unit/game_data/test_snapshot_selectors.py tests/unit/game_data/test_snapshot_builder.py tests/unit/asteroid_lab/test_game_data_contracts.py tests/unit/web/test_asteroid_game_data_snapshot.py
 ```

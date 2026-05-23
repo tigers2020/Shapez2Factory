@@ -15,7 +15,7 @@ Asteroid Lab must consume normalized building and transport data from the `game_
 ## Decision
 
 1. **`game_data/selectors`** plus **`game_data/snapshots/builder`** own read-only ORM access. They materialize **ordered row tuples** (stable sort keys, no nested mutables on the consumer path).
-2. **`web/services/asteroid_game_data_snapshot.py`** is the sole cross-app assembler. It imports both `game_data` and `asteroid_lab` (permitted by the matrix) and builds frozen **`asteroid_lab.optimization.game_data_contracts`** DTOs.
+2. **`web/services/asteroid_game_data_snapshot.py`** is the sole cross-app assembler. It imports both `game_data` and `asteroid_lab` (permitted by the matrix) and builds frozen **`asteroid_lab.contracts.game_data_snapshot`** DTOs.
 3. **`asteroid_lab/adapters/game_data_snapshot_adapter.py`** maps those DTOs into solver-facing enums and structures. It performs **no ORM** access and does not import `game_data`.
 4. **`SnapshotMeta.data_revision`** is set to **`ImportBatch.manifest_self_hash`** of the pinned import batch for the snapshot build.
 5. **v0 database policy**: only the **`default`** DB alias is used. Replica reads are **forbidden** until revision pinning and a replica lag policy are specified and tested.

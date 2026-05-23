@@ -1,5 +1,7 @@
 ---
-status: ACTIVE
+status: ARCHIVED
+archived_reason: Solver optimization pipeline removed 2026-05-22
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
 owner: solver-runtime-pipeline
 last_reviewed: 2026-05-19
 phase: L
@@ -9,13 +11,13 @@ related_docs:
   - documents/adr/ADR-003-final-validation-assertion-gate.md
 ---
 
-# Phase L — Final Validation
+# Phase L ??Final Validation
 
 ## 목적
 
-최종 layout이 solver contract를 만족하는지 **read-only**로 검증한다.
+최종 layout??solver contract�?만족?�는지 **read-only**�?검증한??
 
-## 입력
+## ?�력
 
 ```text
 MaterializedLayoutCells
@@ -24,7 +26,7 @@ RouteReservation(s)
 OptimizationInput (final)
 ```
 
-## 산출물
+## ?�출�?
 
 ```python
 ValidationResult(
@@ -33,9 +35,9 @@ ValidationResult(
 )
 ```
 
-## 작업
+## ?�업
 
-검증 항목:
+검�???��:
 
 ```text
 all extractor outputs connected
@@ -45,36 +47,36 @@ no invalid overlap
 transport kind consistency
 reserved_cells match path
 confirmed candidate has exactly one confirmed reservation
-capacity violation 없음
+capacity violation ?�음
 ```
 
-`ValidationIssueCode` 등 **enum**만 사용 — 자유 문자열 금지.
+`ValidationIssueCode` ??**enum**�??�용 ???�유 문자??금�?.
 
-## 금지
+## 금�?
 
-Validation은 다음을 하지 않는다:
+Validation?� ?�음???��? ?�는??
 
 ```text
-new route 생성
-placement 수정
-topology 수정
+new route ?�성
+placement ?�정
+topology ?�정
 ```
 
-## 완료 조건
+## ?�료 조건
 
-- [x] `passed=False` 시 `issues`에 구조화된 코드만
-- [x] validation이 layout/route/topology를 변경하지 않음
-- [x] confirmed ↔ 단일 CONFIRMED reservation 일치
+- [x] `passed=False` ??`issues`??구조?�된 코드�?
+- [x] validation??layout/route/topology�?변경하지 ?�음
+- [x] confirmed ???�일 CONFIRMED reservation ?�치
 
-## 필수 테스트
+## ?�수 ?�스??
 
-PR7 — `test_solver_button_pipeline_validation_read_only` ([`implementation_sequence.md`](implementation_sequence.md)).
+PR7 ??`test_solver_button_pipeline_validation_read_only` ([`implementation_sequence.md`](implementation_sequence.md)).
 
-## 관련 코드·문서
+## 관??코드·문서
 
 - [`asteroid_lab_08_validation.md`](../asteroid_lab_08_validation.md)
 - ADR-003 (validation gate)
 
-## 다음 Phase
+## ?�음 Phase
 
-→ [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md)
+??[`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md)

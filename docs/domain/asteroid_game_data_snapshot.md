@@ -1,6 +1,6 @@
 # Asteroid Lab — `game_data` consumer snapshot
 
-**Owner:** Dominic (domain) · **Consumers:** `asteroid_lab.optimization.game_data_contracts`, `web.services.asteroid_game_data_snapshot`  
+**Owner:** Dominic (domain) · **Consumers:** `asteroid_lab.contracts.game_data_snapshot`, `web.services.asteroid_game_data_snapshot`  
 **Status:** Phase 0 domain contract (v0)  
 **ADR:** [ADR-004: game_data snapshot boundary](../adr/ADR-004-game-data-snapshot-boundary.md)
 
@@ -51,12 +51,12 @@ Every collection below is sorted by its sort key **before** the snapshot is cons
 
 ### Validation
 
-- `asteroid_lab.optimization.game_data_contract_validation` may reorder nested tuples to match the keys above; the returned snapshot must already satisfy these orders at the assembler boundary.
+- `asteroid_lab.contracts.game_data_snapshot` validation may reorder nested tuples to match the keys above; the returned snapshot must already satisfy these orders at the assembler boundary.
 - Input order of buildings or child rows must **not** affect `content_hash` after canonicalization.
 
 ## `SnapshotMeta` (minimum fields)
 
-Frozen dataclass spec for provenance and solver-run pinning. Implement in `django_apps/asteroid_lab/optimization/game_data_contracts.py`.
+Frozen dataclass spec for provenance and solver-run pinning. Implement in `django_apps/asteroid_lab/contracts/game_data_snapshot.py`.
 
 ```python
 @dataclass(frozen=True, slots=True)

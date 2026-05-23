@@ -1,25 +1,20 @@
 ---
-status: ACTIVE
+status: ARCHIVED
 owner: solver-runtime-pipeline
-last_reviewed: 2026-05-19
+last_reviewed: 2026-05-22
+archived_reason: Solver A→M orchestration removed; HTTP entry returns SOLVER_NOT_AVAILABLE only
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
 phase: Entry
-pr: 8
 related_docs:
   - documents/Algorithm/solver_runtime/README.md
   - django_apps/web/views/public_pages.py
 ---
 
-# Solver Button Entry Point
+# Solver Button Entry Point (stub)
 
-## 목적
+## 현재 동작 (2026-05-22)
 
-사용자 UI에서 `Run Solver` 또는 `Solver` 버튼 클릭 시 백엔드 파이프라인을 시작한다. Phase A부터 M까지의 오케스트레이션 진입점을 정의한다.
-
-## 트리거
-
-사용자 UI: `Run Solver` / `Solver` 버튼 클릭.
-
-## 백엔드 진입
+`Run Solver` / `Solver` 버튼은 **HTTP 200** + JSON `ok: false`, `error_code: "SOLVER_NOT_AVAILABLE"` 를 반환한다. **500 금지.**
 
 ```text
 POST /asteroid-miner-layout/p/<slug>/run-solver/
@@ -28,92 +23,29 @@ POST /asteroid-miner-layout/p/<slug>/run-solver/
 - URL name: `web:asteroid-miner-layout-project-run-solver`
 - 뷰: `asteroid_miner_layout_project_run_solver` ([`public_pages.py`](../../../django_apps/web/views/public_pages.py))
 - 서비스: `run_solver_runtime_for_project` ([`solver_runtime_entry.py`](../../../django_apps/asteroid_lab/services/solver_runtime_entry.py))
-- 응답: `Accept: application/json` → `ok`, `solver_run_id`, `optimization_replay`, `solver_summary`, `validation_passed`, 실패 시 `error_code`
+- Lab replay frames: 프로젝트에 저장된 reconstruction 타임라인만 (`build_lab_replay_frames_for_project`)
 
-Lab JS `Run Solver` → POST run-solver + optimization replay HUD는 **PR9**에서 연동.
+## 제거됨
 
-## CLI (에이전트 / 로컬 스모크)
+- `solver_runtime_pipeline` (A→M orchestration)
+- `manage.py run_solver`, `scripts/run_solver.ps1`
+- `optimization/` 패키지 전체
+- Optimization replay persist·12H optimization HUD 입력
 
-HTTP 버튼 없이 동일 entry 경로:
+## Reconstruction (ACTIVE)
 
-```bash
-python manage.py run_solver --slug <slug> --run-key agent-smoke-YYYYMMDD
-# run_key is unique per project — change suffix each run (e.g. agent-smoke-t12)
-python manage.py run_solver --project-id <id> --run-key agent-smoke
-python manage.py run_solver --slug <slug> --json   # full solver_summary one line
-# Windows 래퍼: powershell -File scripts/run_solver.ps1 --slug <slug> --run-key agent-smoke
-```
+맵 디코드·재구성·persist·Lab replay는 Solver 버튼과 **독립** 경로로 유지한다. [`asteroid_lab_09_replay_timeline.md`](../asteroid_lab_09_replay_timeline.md).
 
-로컬 reference 프로젝트가 있으면 `python manage.py shell -c "from django_apps.asteroid_lab import models as m; print(list(m.AsteroidProject.objects.values_list('slug', flat=True)))"` 로 slug 확인.
+## 금지 (불변)
 
-전제: `migrate`, `import_game_data`, `seed_exhaustive_sample_genes`, 프로젝트 + 최신 map input.
+- replay artifact를 algorithm **입력**으로 사용
+- 진입점에서 layout commit·belt/pipe 선설치
 
-## Solver summary stack log
+## 테스트
 
-Run Solver(HTTP·CLI) 완료 시 `solver_summary`가 프로젝트별 JSON stack에 기록된다 (solver 입력으로 읽지 않음).
+- `tests/integration/web/test_asteroid_run_solver.py` — POST → `SOLVER_NOT_AVAILABLE`
+- `tests/unit/asteroid_lab/test_solver_runtime_entry.py`
 
-- 경로: `<BASE_DIR>/var/log/solver_summary_stack/` (env `ASTEROID_LAB_SOLVER_SUMMARY_STACK_LOG_DIR`)
-- 파일: `{slug}.json` + `project_{id}.json` (동일 내용, 최신이 `entries[0]`, 최대 5건)
-- 끄기: `ASTEROID_LAB_SOLVER_SUMMARY_STACK_LOG=0`
+## 역사
 
-## 입력
-
-```text
-project_id / slug
-latest SolverRun or Reconstruction artifact id
-optional solver config
-```
-
-## 출력
-
-```text
-solver_run_id
-optimization_replay payload
-final layout preview / materialized map payload
-solver_summary
-validation_result
-```
-
-## Runtime Phase Overview
-
-```text
-Phase A — Load Reconstruction Map
-Phase B — Build OptimizationInput
-Phase C — Capacity Planner / RouteGoal Planner
-Phase D — Load GeneTemplate Library
-Phase E — Project Genes to Candidate Attempts
-Phase F — Geometry Validation
-Phase G — Route Probe
-Phase H — Candidate Pool Build / Dedupe / Truncate
-Phase I — Candidate Selection v0
-Phase J — Incremental Commit
-Phase K — Route Network Materialization
-Phase L — Final Validation
-Phase M — Persist / Replay / UI Payload
-```
-
-## 금지
-
-- 진입점에서 layout commit·belt/pipe 선설치.
-- replay artifact를 solver 입력으로 주입.
-
-## 완료 조건
-
-- [x] 단일 orchestration 함수(또는 서비스)가 A→M 순서를 문서와 동일하게 호출 (`solver_runtime_pipeline` + `solver_runtime_entry`).
-- [x] PR7 통합 테스트: persist·replay event·validation read-only.
-- [x] HTTP POST 진입·`asteroid_lab_page_context` optimization 트랙 읽기 (PR8).
-- [x] Lab JS Run Solver → POST fetch + 12H HUD (PR9).
-
-## 필수 테스트
-
-PR7 — [`implementation_sequence.md`](implementation_sequence.md) § PR7 참조.
-
-## 관련 코드·문서
-
-- [`phase_a_load_reconstruction.md`](phase_a_load_reconstruction.md) — 첫 단계
-- [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md) — 마지막 단계
-- [`asteroid_lab_12_runtime_replay_wiring.md`](../asteroid_lab_12_runtime_replay_wiring.md)
-
-## 다음 Phase
-
-→ [`phase_a_load_reconstruction.md`](phase_a_load_reconstruction.md)
+Phase A–M 계약: `phase_*.md` (모두 `ARCHIVED`). strip spec: [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md).

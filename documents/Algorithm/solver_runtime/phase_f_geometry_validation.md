@@ -1,5 +1,7 @@
 ---
-status: ACTIVE
+status: ARCHIVED
+archived_reason: Solver optimization pipeline removed 2026-05-22
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
 owner: solver-runtime-pipeline
 last_reviewed: 2026-05-19
 phase: F
@@ -9,39 +11,39 @@ related_docs:
   - documents/Algorithm/solver_runtime/00_core_principles.md
 ---
 
-# Phase F — Geometry Validation
+# Phase F ??Geometry Validation
 
 ## 목적
 
-투영된 gene이 asteroid topology 위에서 물리적으로 가능한지 검사한다. **OptimizationInput을 변경하지 않는다.**
+?�영??gene??asteroid topology ?�에??물리?�으�?가?�한지 검?�한?? **OptimizationInput??변경하지 ?�는??**
 
-## 입력
+## ?�력
 
 ```text
 OptimizationInput
 ProjectedGenePlacement
 ```
 
-## 산출물
+## ?�출�?
 
 ```text
 GeometryValidationResult
 ```
 
-## 작업
+## ?�업
 
-검사 항목:
+검????��:
 
 ```text
-extractor ∈ rim_cells
-extensions ⊆ mineable_cells
-occupied_cells ⊆ asteroid_cells
-route_probe_start ∉ occupied_cells
+extractor ??rim_cells
+extensions ??mineable_cells
+occupied_cells ??asteroid_cells
+route_probe_start ??occupied_cells
 route_probe_start valid in bbox / route domain candidate area
-self-overlap 없음
+self-overlap ?�음
 ```
 
-`mineable_cells` / `rim_cells` / `asteroid_cells` 집합만 사용 — cell.kind 직접 판정 금지 ([§0.3](00_core_principles.md)).
+`mineable_cells` / `rim_cells` / `asteroid_cells` 집합�??�용 ??cell.kind 직접 ?�정 금�? ([§0.3](00_core_principles.md)).
 
 ### Reject reason (enum)
 
@@ -50,25 +52,25 @@ extractor_not_rim
 extension_not_mineable
 occupied_outside_asteroid
 pattern_overlap_self
-output_stub_inside_occupied      # legacy enum member — 의미 = route_probe_start inside occupied
-output_stub_invalid_coord        # legacy enum member — 의미 = route_probe_start invalid coord
+output_stub_inside_occupied      # legacy enum member ???��? = route_probe_start inside occupied
+output_stub_invalid_coord        # legacy enum member ???��? = route_probe_start invalid coord
 ```
 
-**신규 테스트명:** [`00_core_principles.md`](00_core_principles.md) §0.7 — `test_geometry_rejects_route_probe_start_*` only.
+**?�규 ?�스?�명:** [`00_core_principles.md`](00_core_principles.md) §0.7 ??`test_geometry_rejects_route_probe_start_*` only.
 
-## 금지
+## 금�?
 
-- validation에서 placement/route 수정
+- validation?�서 placement/route ?�정
 - `OptimizationInput` mutation
-- kind 문자열로 mineable 판정
+- kind 문자?�로 mineable ?�정
 
-## 완료 조건
+## ?�료 조건
 
-- [ ] valid/invalid 케이스가 deterministic reject reason 반환
-- [ ] geometry 단계가 route probe보다 먼저 실행
-- [ ] 입력 DTO 불변
+- [ ] valid/invalid 케?�스가 deterministic reject reason 반환
+- [ ] geometry ?�계가 route probe보다 먼�? ?�행
+- [ ] ?�력 DTO 불�?
 
-## 필수 테스트
+## ?�수 ?�스??
 
 ```text
 test_geometry_accepts_valid_projected_gene
@@ -80,11 +82,11 @@ test_geometry_rejects_route_probe_start_invalid_coord
 test_geometry_does_not_mutate_optimization_input
 ```
 
-## 관련 코드·문서
+## 관??코드·문서
 
-- 예정: `django_apps/asteroid_lab/optimization/candidate_geometry.py`
-- `tests/unit/asteroid_lab/test_candidate_geometry.py` (예정)
+- ?�정: `django_apps/asteroid_lab/optimization/candidate_geometry.py`
+- `tests/unit/asteroid_lab/test_candidate_geometry.py` (?�정)
 
-## 다음 Phase
+## ?�음 Phase
 
-→ [`phase_g_route_probe.md`](phase_g_route_probe.md)
+??[`phase_g_route_probe.md`](phase_g_route_probe.md)

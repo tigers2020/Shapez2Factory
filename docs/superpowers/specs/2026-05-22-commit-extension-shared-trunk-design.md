@@ -1,4 +1,9 @@
-# Commit — Extension on Shared Transport Trunk
+---
+status: CANCELLED
+cancelled_date: 2026-05-22
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
+---
+# Commit ??Extension on Shared Transport Trunk
 
 **Status:** Approved 2026-05-22 (implements deferred item from shared-transport spec)  
 **Related:** [`2026-05-22-shared-transport-inlet-design.md`](2026-05-22-shared-transport-inlet-design.md), [`phase_k2_placement_materialization.md`](../../../documents/Algorithm/solver_runtime/phase_k2_placement_materialization.md)
@@ -13,9 +18,9 @@ Root cause: `_equipment_transport_overlap` rejects when **any** `equipment & com
 
 | Check | Rule |
 |-------|------|
-| Inlet | `fixed_output_transport ∈ committed_route_cells` → `INLET_ON_SHARED_TRANSPORT` (unchanged) |
-| Route through equipment | `path ∩ committed_equipment_cells` → `EQUIPMENT_TRANSPORT_OVERLAP` (unchanged) |
-| Extractor on transport | `extractor ∈ committed_route_cells` → `EQUIPMENT_TRANSPORT_OVERLAP` |
+| Inlet | `fixed_output_transport ??committed_route_cells` ??`INLET_ON_SHARED_TRANSPORT` (unchanged) |
+| Route through equipment | `path ??committed_equipment_cells` ??`EQUIPMENT_TRANSPORT_OVERLAP` (unchanged) |
+| Extractor on transport | `extractor ??committed_route_cells` ??`EQUIPMENT_TRANSPORT_OVERLAP` |
 | Extension on shared trunk | **Allowed** at commit (materializes as transport layer) |
 
 ## Tests

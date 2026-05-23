@@ -52,23 +52,15 @@ DB reconstruction map
 5. [`open_decisions.md`](open_decisions.md)  
 6. [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) — 레거시·코드·PR 상태 충돌 해소 — OD-1–4
 
-## PR ↔ Phase 표 (Runtime 계약·테스트 기준)
+## PR ↔ Phase 표 (역사 — 2026-05-22 제거)
 
-**「미착수」** = 해당 PR의 Solver-button 계약·필수 테스트·orchestration 미완. **코드 인벤토리와 별도** — [`ARCHITECTURE_RECONCILIATION.md` §5](ARCHITECTURE_RECONCILIATION.md).
+2026-05-22 strip surgery로 **PR1–7 코드·`optimization/` 패키지 삭제**. Phase 문서는 `ARCHIVED` 보관.
 
-| PR | Runtime 상태 | 코드 스냅샷 | Phase | 문서 |
-|----|--------------|-------------|-------|------|
-| PR1 | **완료** | `GeneTemplate`·projection green | D | [`phase_d_gene_templates.md`](phase_d_gene_templates.md) |
-| PR1B | **완료** | `LoadedReconstructionSnapshot`·§0.3 adapter·회귀 테스트 green | A, B | [`phase_a_*`](phase_a_load_reconstruction.md), [`phase_b_*`](phase_b_optimization_input.md) |
-| PR2.5 | **완료** | `capacity_planner`·`route_goal_planner` | C | [`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md) |
-| PR2 | **완료** | `candidate_geometry`·`route_probe`·`provisional_blocked_cells` | E, F, G | [`phase_e_*`](phase_e_gene_projection.md) ~ [`phase_g_*`](phase_g_route_probe.md) |
-| PR3 | **완료** | `candidate_dtos`·`candidate_equivalence`·`candidate_generator` | H | [`phase_h_candidate_pool.md`](phase_h_candidate_pool.md) |
-| PR4 | **완료** | `candidate_score`·`candidate_selector` | I | [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md) |
-| PR5 | **완료** | `commit_best_candidates`·reservation overlay | J | [`phase_j_incremental_commit.md`](phase_j_incremental_commit.md) |
-| PR6 | **완료** | `route_network_materializer`·`materialization_dtos` | K | [`phase_k_route_materialization.md`](phase_k_route_materialization.md) |
-| PR7 | **완료** (HTTP·page context 읽기 후속) | `final_validation`·`solver_runtime_pipeline`·replay persist v0 | L, M, 01 | [`phase_l_*`](phase_l_final_validation.md), [`phase_m_*`](phase_m_persist_replay_ui.md) |
+| PR | Phase | 문서 |
+|----|-------|------|
+| PR1–7 | A–M | `phase_*.md` — [`strip-solver spec`](../../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md) |
 
-**PR2.5 선행:** Phase C이지만 **PR2 `route_probe`가 `RouteGoal` 집합을 필요**로 하므로, 구현 순서는 **PR1B 직후 PR2.5 → PR2** ([`implementation_sequence.md`](implementation_sequence.md)). 런타임 **실행** 순서는 여전히 B 다음 C.
+**유지:** reconstruction (`phase_a` load 개념은 `reconstruction/`로 이전), Lab replay ([`asteroid_lab_09_replay_timeline.md`](../asteroid_lab_09_replay_timeline.md)), genetic sample admin.
 
 ## 레거시 시리즈와의 관계
 
@@ -84,9 +76,11 @@ DB reconstruction map
 
 포화·목표 수 계산: [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../../game_rules/shapez2_asteroid_space_transport_throughput.md).
 
-## Final Runtime Contract (15단계)
+## Final Runtime Contract (15단계) — REMOVED 2026-05-22
 
-Solver 버튼을 눌렀을 때:
+> 아래 단계는 **삭제된** optimization 파이프라인 역사 계약이다. 현재 `Run Solver` → `SOLVER_NOT_AVAILABLE` only.
+
+Solver 버튼을 눌렀을 때 (역사):
 
 ```text
 1. Load DB reconstruction map.
@@ -111,16 +105,14 @@ Candidate generation explores possibilities.
 Only incremental commit creates confirmed layout.
 ```
 
-## 코드 패키지 (정본)
+## 코드 패키지 (2026-05-22 이후)
 
 ```text
-django_apps/asteroid_lab/optimization/   ← 모든 Runtime PR
-django_apps/shapez_asteroid/             ← 제거됨; 문서·import 금지
+django_apps/asteroid_lab/reconstruction/   ← ACTIVE (topology, complete)
+django_apps/asteroid_lab/contracts/        ← game_data snapshot DTOs
+django_apps/asteroid_lab/genetic_sample/     ← admin gene templates
+django_apps/asteroid_lab/services/solver_runtime_entry.py  ← SOLVER_NOT_AVAILABLE stub
+django_apps/asteroid_lab/optimization/       ← REMOVED
 ```
 
-- **있음:** `input_contracts.py`, `enums.py`, `loaded_snapshot.py`, `reconstruction_adapter.py`, `route_domain.py`, PR1 gene 모듈, PR2.5 `capacity_planner`·`route_goal_planner`, PR2 `candidate_geometry`·`route_probe`
-- **있음:** PR3 `candidate_dtos.py`·`candidate_equivalence.py`·`candidate_generator.py`
-- **있음:** PR5 `commit_best_candidates.py`, PR6 `route_network_materializer.py`·`materialization_dtos.py`
-- **있음:** PR7 `final_validation.py`·`solver_runtime_pipeline.py`·`optimization_replay_persist.py`·`optimization_ui_payload.py`
-- **있음 (PR8):** HTTP `POST …/run-solver/` · `solver_runtime_entry` · `optimization_replay_read` · page context `optimization_replay` SSR
-- **있음 (PR9):** Lab JS `Run Solver` POST · 12H optimization replay HUD ([`01_entry_point.md`](01_entry_point.md))
+HTTP `POST …/run-solver/` 는 유지하나 optimization body는 반환하지 않음 ([`01_entry_point.md`](01_entry_point.md)).

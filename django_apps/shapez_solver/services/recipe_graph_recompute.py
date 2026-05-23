@@ -215,7 +215,7 @@ def validate_graph_document(raw: object) -> dict[str, Any]:
 
 
 def default_empty_graph_document() -> dict[str, Any]:
-    """검증을 통과한 빈 레시피 그래프(JSON). 신규 ``MacroRecipe`` 기본값으로 쓴다."""
+    """검증을 통과한 빈 레시피 그래프(JSON)."""
     return validate_graph_document(
         {"schema_version": RECIPE_GRAPH_SCHEMA_VERSION, "nodes": [], "edges": []},
     )
@@ -838,7 +838,7 @@ def try_pattern_macro_step_rows_from_graph_document(raw: object) -> list[dict[st
     """
     Pattern Lab·스태프 카탈로그용: ``graph_document``에서 operation 위상순 스텝 요약을 만든다.
 
-    - 검증 실패·DAG 사이클·operation 노드 없음 → ``None`` (DB ``MacroRecipeStep`` 사용).
+    - 검증 실패·DAG 사이클·operation 노드 없음 → ``None``.
     - 성공 시 ``step_index``는 1부터 위상순으로 채운다.
     - ``input_slots``: ``source_carrier=fluid`` 입력은 균일 잉크 한 글자(예: ``r``)만 넣는다.
       재료(shape) 입력은 ``shape_code`` 그대로 (유체 전층 코드와 도형 코드 혼동 방지).

@@ -1,8 +1,13 @@
-# Reprobe Drift Shadow Domain Parity — Implementation Plan
+---
+status: CANCELLED
+cancelled_date: 2026-05-22
+superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md
+---
+# Reprobe Drift Shadow Domain Parity ??Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Phase I′ shadow domain parity — selection uses the same route-domain builder and reprobe skip rules as Phase J so reference `copy-import-e954a2cb` reaches RD-GATE (24 selected, 24 confirmed, 0 probe_fail, 0 inlet).
+**Goal:** Phase I??shadow domain parity ??selection uses the same route-domain builder and reprobe skip rules as Phase J so reference `copy-import-e954a2cb` reaches RD-GATE (24 selected, 24 confirmed, 0 probe_fail, 0 inlet).
 
 **Architecture:** New `selection_shadow_state.py` maintains in-memory reservations/occupied/route cells; `commit_route_feasibility.py` shares J pre-confirm predicates; `candidate_selector` runs greedy with `shadow_try_confirm` runner-up policy when `SelectionShadowPolicy.SHADOW_DOMAIN_PARITY`; pipeline wires policy + summary keys.
 
@@ -10,7 +15,7 @@
 
 **Spec:** [`docs/superpowers/specs/2026-05-22-reprobe-drift-shadow-domain-design.md`](../specs/2026-05-22-reprobe-drift-shadow-domain-design.md)
 
-**Revision:** 2026-05-22 architect review — feasibility aggregator split, Task 3/4 test isolation, domain test via `committed_occupied`, `ShadowConfirmOutcome` in product module, call-site audit, M1 diagnostic-only.
+**Revision:** 2026-05-22 architect review ??feasibility aggregator split, Task 3/4 test isolation, domain test via `committed_occupied`, `ShadowConfirmOutcome` in product module, call-site audit, M1 diagnostic-only.
 
 **Execution:** **Subagent-Driven** (approved). One task per subagent; regression gate between tasks.
 
@@ -38,7 +43,7 @@
 **Files:**
 - Modify: `django_apps/asteroid_lab/optimization/enums.py` (after `CommitOrderPolicy`)
 - Modify: `django_apps/asteroid_lab/optimization/candidate_selector.py` (`SelectionDiagnostics`)
-- Test: `tests/unit/asteroid_lab/test_solver_runtime_pipeline.py` (temporary import smoke — optional)
+- Test: `tests/unit/asteroid_lab/test_solver_runtime_pipeline.py` (temporary import smoke ??optional)
 
 - [ ] **Step 1: Add enum**
 
@@ -46,7 +51,7 @@ In `enums.py`:
 
 ```python
 class SelectionShadowPolicy(StrEnum):
-    """Phase I′ shadow reprobe policy (predictive; J remains authoritative)."""
+    """Phase I??shadow reprobe policy (predictive; J remains authoritative)."""
 
     OFF = "off"
     SHADOW_DOMAIN_PARITY = "shadow_domain_parity"
@@ -108,7 +113,7 @@ Move (copy then delete private copies in J) these functions from `commit_best_ca
 - `protected_corridor_conflict`
 - `hard_blocked_conflict`
 
-Add **two** aggregators — do not put `occupied_conflict` inside `commit_skip_reason_for_path` (name must match scope):
+Add **two** aggregators ??do not put `occupied_conflict` inside `commit_skip_reason_for_path` (name must match scope):
 
 ```python
 def commit_skip_reason_for_path(
@@ -158,7 +163,7 @@ def commit_preconfirm_skip_reason(
     )
 ```
 
-**J refactor rule:** `_process_candidate_attempt` keeps `occupied_conflict` **before** `run_route_probe`; `_attempt_commit_one` calls only `commit_skip_reason_for_path` after normalize. `shadow_try_confirm` mirrors that split (occupied → reprobe → `commit_skip_reason_for_path`).
+**J refactor rule:** `_process_candidate_attempt` keeps `occupied_conflict` **before** `run_route_probe`; `_attempt_commit_one` calls only `commit_skip_reason_for_path` after normalize. `shadow_try_confirm` mirrors that split (occupied ??reprobe ??`commit_skip_reason_for_path`).
 
 - [ ] **Step 2: Rewire `commit_best_candidates.py`**
 
@@ -181,7 +186,7 @@ git commit -m "refactor(asteroid_lab): share commit route feasibility checks for
 
 ---
 
-### Task 3: `selection_shadow_state` — empty state + reprobe (no `shadow_try_confirm`)
+### Task 3: `selection_shadow_state` ??empty state + reprobe (no `shadow_try_confirm`)
 
 **Scope:** Prove `RouteDomainSnapshotBuilder.build_snapshot` sees shadow `committed_occupied_cells`. **Do not** call `shadow_try_confirm` here (Task 4).
 
@@ -189,7 +194,7 @@ git commit -m "refactor(asteroid_lab): share commit route feasibility checks for
 - Create: `django_apps/asteroid_lab/optimization/selection_shadow_state.py`
 - Create: `tests/unit/asteroid_lab/test_selection_shadow_state.py`
 
-- [ ] **Step 1: Write failing test — domain reflects `committed_occupied`**
+- [ ] **Step 1: Write failing test ??domain reflects `committed_occupied`**
 
 `tests/unit/asteroid_lab/test_selection_shadow_state.py`:
 
@@ -203,9 +208,9 @@ from django_apps.asteroid_lab.optimization.selection_shadow_state import (
 
 Test `test_shadow_reprobe_uses_committed_occupied_in_domain`:
 
-- **Do not** rely on same-transport reservation “blocking” a trunk cell (v0 overlays promote TRANSPORT; shared-kind paths may stay reachable).
+- **Do not** rely on same-transport reservation ?�blocking??a trunk cell (v0 overlays promote TRANSPORT; shared-kind paths may stay reachable).
 - Build `inp` with void corridor to goal `(6, 0)`.
-- Candidate `b` with `route_probe_start` and gen path through cell `(2, 0)`; assert `shadow_reprobe(b, inp, empty_state)` → `reachable is True`.
+- Candidate `b` with `route_probe_start` and gen path through cell `(2, 0)`; assert `shadow_reprobe(b, inp, empty_state)` ??`reachable is True`.
 - Construct `SelectionShadowState` **manually** (no confirm helper):
 
 ```python
@@ -220,9 +225,9 @@ state = SelectionShadowState(
 
 - Assert `shadow_reprobe(b, inp, state).reachable is False`.
 
-Optional second case (transport mask): state with one `SHAPE_BELT` reservation on `(3,0)` and candidate `FLUID_PIPE` reprobe → unreachable or wrong kind (document expected probe outcome in test comment).
+Optional second case (transport mask): state with one `SHAPE_BELT` reservation on `(3,0)` and candidate `FLUID_PIPE` reprobe ??unreachable or wrong kind (document expected probe outcome in test comment).
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [ ] **Step 2: Run test ??expect FAIL**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_selection_shadow_state.py::test_shadow_reprobe_uses_committed_occupied_in_domain -v
@@ -273,7 +278,7 @@ def shadow_reprobe(
     )
 ```
 
-- [ ] **Step 4: Run test — expect PASS**
+- [ ] **Step 4: Run test ??expect PASS**
 
 - [ ] **Step 5: Commit**
 
@@ -290,7 +295,7 @@ git commit -m "feat(asteroid_lab): selection shadow state and reprobe"
 - Modify: `django_apps/asteroid_lab/optimization/selection_shadow_state.py` (add `ShadowConfirmOutcome` + `shadow_try_confirm`)
 - Modify: `tests/unit/asteroid_lab/test_selection_shadow_state.py`
 
-- [ ] **Step 1: Write failing test — inlet on shadow reprobed path**
+- [ ] **Step 1: Write failing test ??inlet on shadow reprobed path**
 
 Define outcome type in **product** module `selection_shadow_state.py` (tests import only):
 
@@ -306,18 +311,18 @@ class ShadowConfirmOutcome:
 Test `test_shadow_confirm_rejects_inlet_on_reprobed_trunk`:
 - Confirm `a` with path `((0,0),(1,0),(2,0),(3,0)...(6,0))`, `fot=(2,0)`.
 - Candidate `b` with `fot=(1,0)` (on `a`'s reprobed path prefix, not on `b`'s gen-only mirror).
-- `shadow_try_confirm(b, ...)` → `kind == "skipped"`, `reason == CommitConflictReason.INLET_ON_SHARED_TRANSPORT`.
+- `shadow_try_confirm(b, ...)` ??`kind == "skipped"`, `reason == CommitConflictReason.INLET_ON_SHARED_TRANSPORT`.
 
-- [ ] **Step 2: Run — expect FAIL**
+- [ ] **Step 2: Run ??expect FAIL**
 
 - [ ] **Step 3: Implement `shadow_try_confirm`**
 
 Flow (mirror J):
-1. `occupied_conflict` → `skipped` if set
+1. `occupied_conflict` ??`skipped` if set
 2. `shadow_reprobe`
-3. If not reachable → `probe_failed`
+3. If not reachable ??`probe_failed`
 4. `path = normalize_probe_path(candidate, probe.path)`
-5. `reason = commit_skip_reason_for_path(...)` — **not** `commit_preconfirm_skip_reason` (occupied already checked)
+5. `reason = commit_skip_reason_for_path(...)` ??**not** `commit_preconfirm_skip_reason` (occupied already checked)
 6. If `reason`: return `ShadowConfirmOutcome("skipped", reason, None)`
 - Else build `RouteReservation` (CONFIRMED, ordinal from `len(state.reservations)`), return new state:
 
@@ -327,7 +332,7 @@ committed_equipment = state.committed_equipment_cells | equipment_cells_for_cand
 committed_occupied = state.committed_occupied | candidate.occupied_cells
 ```
 
-- [ ] **Step 4: Run shadow tests — PASS**
+- [ ] **Step 4: Run shadow tests ??PASS**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_selection_shadow_state.py -v
@@ -342,7 +347,7 @@ git commit -m "feat(asteroid_lab): shadow_try_confirm with J feasibility parity"
 
 ---
 
-### Task 5: Wire `candidate_selector` — shadow greedy loop
+### Task 5: Wire `candidate_selector` ??shadow greedy loop
 
 **Files:**
 - Modify: `django_apps/asteroid_lab/optimization/candidate_selector.py`
@@ -351,7 +356,7 @@ git commit -m "feat(asteroid_lab): shadow_try_confirm with J feasibility parity"
 
 - [ ] **Step 0: Call-site audit**
 
-`select_gene_candidates_greedy` already requires keyword `inp=`. New kwargs are optional with defaults — verify no positional breakage.
+`select_gene_candidates_greedy` already requires keyword `inp=`. New kwargs are optional with defaults ??verify no positional breakage.
 
 ```bash
 rg "select_gene_candidates_greedy" --glob "*.py"
@@ -367,7 +372,7 @@ Known call sites (must pass `inp=` explicitly after any signature change):
 
 Fix any site missing `inp=` before green Task 5.
 
-- [ ] **Step 1: Write failing test — domain drift**
+- [ ] **Step 1: Write failing test ??domain drift**
 
 `test_shadow_reprobe_excludes_unreachable_after_prior_pick` in `test_candidate_selector.py`:
 - Two candidates; first wins shadow confirm and blocks corridor.
@@ -375,12 +380,12 @@ Fix any site missing `inp=` before green Task 5.
 - Assert second id **not** in `plan.ordered_candidate_ids`.
 - Assert `selection_skipped_shadow_probe_failed_count >= 1` OR second never picked (document which counter increments when runner-up exhausts).
 
-- [ ] **Step 2: Write failing test — policy OFF regression**
+- [ ] **Step 2: Write failing test ??policy OFF regression**
 
 `test_selector_shadow_policy_off_matches_tier_1_2b`:
 - Copy assertions from `test_selector_skips_stub_on_prefix_path_cell_before_normalized_tail` with `selection_shadow_policy=SelectionShadowPolicy.OFF`.
 
-- [ ] **Step 3: Run both — FAIL**
+- [ ] **Step 3: Run both ??FAIL**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_candidate_selector.py::test_shadow_reprobe_excludes_unreachable_after_prior_pick tests/unit/asteroid_lab/test_candidate_selector.py::test_selector_shadow_policy_off_matches_tier_1_2b -v
@@ -431,7 +436,7 @@ When `OFF`: keep existing loop body unchanged (Tier 1.2b mirror).
 
 Set `selection_shadow_policy` on returned `SelectionDiagnostics`.
 
-- [ ] **Step 5: Run selector tests — PASS**
+- [ ] **Step 5: Run selector tests ??PASS**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_candidate_selector.py -v
@@ -519,11 +524,11 @@ git commit -m "feat(asteroid_lab): wire shadow selection policy and summary keys
 
 **Files:**
 - Modify: `documents/Algorithm/solver_runtime/phase_i_candidate_selection.md`
-- Modify: `docs/superpowers/specs/2026-05-22-reprobe-drift-shadow-domain-design.md` (Status → Implemented after RD-GATE)
+- Modify: `docs/superpowers/specs/2026-05-22-reprobe-drift-shadow-domain-design.md` (Status ??Implemented after RD-GATE)
 
 - [ ] **Step 1: Update phase I doc**
 
-Add section **Phase I′ shadow domain parity** after Tier 1.2b:
+Add section **Phase I??shadow domain parity** after Tier 1.2b:
 - `SelectionShadowPolicy.SHADOW_DOMAIN_PARITY`
 - Shadow state uses `RouteDomainSnapshotBuilder` + `shadow_try_confirm`
 - Inlet uses `committed_route_cells` from shadow reprobed paths
@@ -584,27 +589,27 @@ Set spec **Status:** Implemented YYYY-MM-DD only when all RD rows pass.
 | Spec requirement | Task |
 |------------------|------|
 | `SelectionShadowPolicy` | 1 |
-| `SelectionShadowState` + operations | 3–4 |
+| `SelectionShadowState` + operations | 3?? |
 | J/shared skip predicates (`for_path` + `preconfirm`) | 2, 4 |
 | Phase I shadow loop | 5 |
 | Pipeline default ON + summary keys | 6 |
-| Tests listed in spec | 3–6 |
+| Tests listed in spec | 3?? |
 | RD-GATE manual | 8 |
 | Doc sync | 7 |
 | Phase J unchanged | 2 regression only |
 | Forbidden replay input | 6 (no new imports); code review in 8 |
 | Rollback `OFF` | 5 test + `DEFAULT_SELECTION_SHADOW_POLICY` doc |
 
-**Milestone M1 (`confirmed >= 23`):** diagnostic-only during Task 8 iteration. **Do not** mark implementation or spec “Implemented” unless **full RD-GATE** passes (24/24/0/0).
+**Milestone M1 (`confirmed >= 23`):** diagnostic-only during Task 8 iteration. **Do not** mark implementation or spec ?�Implemented??unless **full RD-GATE** passes (24/24/0/0).
 
 ---
 
 ## Execution handoff
 
-**Approved:** Subagent-Driven execution of Tasks 1→8 in order.
+**Approved:** Subagent-Driven execution of Tasks 1?? in order.
 
-Per task: implement → narrow pytest → ruff on touched paths → parent review before next task.
+Per task: implement ??narrow pytest ??ruff on touched paths ??parent review before next task.
 
 Plan: [`docs/superpowers/plans/2026-05-22-reprobe-drift-shadow-domain.md`](2026-05-22-reprobe-drift-shadow-domain.md)
 
-To start implementation in this session, reply **「Task 1 시작」** (or spawn subagent with Task 1 prompt from this file).
+To start implementation in this session, reply **?�Task 1 ?�작??* (or spawn subagent with Task 1 prompt from this file).

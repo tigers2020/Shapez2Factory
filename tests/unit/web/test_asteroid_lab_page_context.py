@@ -130,9 +130,12 @@ def test_lab_page_context_orders_frames_by_frame_index_then_id() -> None:
     assert ctx["lab_replay_frames_json"][0]["event_type"] == ReplayEventType.DECODE_STARTED.value
     assert ctx["initial_frame"] == 0
     assert ctx["total_frames"] == 2
-    assert _LAB_FRAME_DISPLAY_SNIPPET.render(
-        Context({"initial_frame": ctx["initial_frame"], "total_frames": ctx["total_frames"]}),
-    ) == "1 / 2"
+    assert (
+        _LAB_FRAME_DISPLAY_SNIPPET.render(
+            Context({"initial_frame": ctx["initial_frame"], "total_frames": ctx["total_frames"]}),
+        )
+        == "1 / 2"
+    )
 
 
 @pytest.mark.django_db
@@ -416,7 +419,7 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert 'id="lab-replay-truncation-hud"' in tpl
     assert "function formatLabFrameCounter(zeroBasedSlot, totalCount)" in js
     assert "formatLabFrameCounter(replayArrayIndex, replayFrames.length)" in js
-    assert '{{ initial_frame|add:1 }} / {{ total_frames }}' in tpl
+    assert "{{ initial_frame|add:1 }} / {{ total_frames }}" in tpl
 
 
 _LAB_FRAME_DISPLAY_SNIPPET = Template(
@@ -455,15 +458,24 @@ def _eval_format_lab_frame_counter_js(*, slot: object, total: int) -> str:
 
 
 def test_lab_frame_display_ssr_renders_one_based_counter() -> None:
-    assert _LAB_FRAME_DISPLAY_SNIPPET.render(
-        Context({"initial_frame": 0, "total_frames": 22}),
-    ) == "1 / 22"
-    assert _LAB_FRAME_DISPLAY_SNIPPET.render(
-        Context({"initial_frame": 21, "total_frames": 22}),
-    ) == "22 / 22"
-    assert _LAB_FRAME_DISPLAY_SNIPPET.render(
-        Context({"initial_frame": 0, "total_frames": 0}),
-    ) == "0 / 0"
+    assert (
+        _LAB_FRAME_DISPLAY_SNIPPET.render(
+            Context({"initial_frame": 0, "total_frames": 22}),
+        )
+        == "1 / 22"
+    )
+    assert (
+        _LAB_FRAME_DISPLAY_SNIPPET.render(
+            Context({"initial_frame": 21, "total_frames": 22}),
+        )
+        == "22 / 22"
+    )
+    assert (
+        _LAB_FRAME_DISPLAY_SNIPPET.render(
+            Context({"initial_frame": 0, "total_frames": 0}),
+        )
+        == "0 / 0"
+    )
 
 
 @pytest.mark.parametrize(

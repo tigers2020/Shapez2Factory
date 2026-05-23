@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.island_bbox import (
+    full_map_island_bbox_from_decoded_json,
     island_bbox_from_cells,
     island_bbox_from_xy_dicts,
 )
@@ -51,6 +52,43 @@ def test_island_bbox_from_cells_tight_extent() -> None:
 
 def test_island_bbox_from_xy_dicts_empty_returns_none() -> None:
     assert island_bbox_from_xy_dicts([]) is None
+
+
+_LEGACY_BBOX = {
+    "min_x": 0,
+    "max_x": 2,
+    "min_y": -1,
+    "max_y": 0,
+    "width": 3,
+    "height": 2,
+}
+
+
+def test_full_map_island_bbox_reads_legacy_server_bbox_meta() -> None:
+    decoded_json = {
+        "_asteroid_lab_reconstruction": {"full_map_server_bbox": dict(_LEGACY_BBOX)},
+        "BP": {"Entries": []},
+    }
+    assert full_map_island_bbox_from_decoded_json(decoded_json) == _LEGACY_BBOX
+
+
+def test_full_map_island_bbox_prefers_island_over_legacy_server_meta() -> None:
+    island_only = {
+        "min_x": 1,
+        "max_x": 1,
+        "min_y": 1,
+        "max_y": 1,
+        "width": 1,
+        "height": 1,
+    }
+    decoded_json = {
+        "_asteroid_lab_reconstruction": {
+            "full_map_island_bbox": dict(island_only),
+            "full_map_server_bbox": dict(_LEGACY_BBOX),
+        },
+        "BP": {"Entries": []},
+    }
+    assert full_map_island_bbox_from_decoded_json(decoded_json) == island_only
 
 
 def test_reconstructed_export_writes_full_map_island_bbox_not_server_on_entries() -> None:

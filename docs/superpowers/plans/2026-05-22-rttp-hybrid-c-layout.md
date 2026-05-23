@@ -294,11 +294,9 @@ Run only after PR-5 targeted suite is green.
 
 ## v1 follow-on (separate spec/plan)
 
-- `MacroBundleT3` compiler
-- Dense interior regret on macro slots
-- Merger on trunk, JPS profiling
+**Execution plan:** [`2026-05-23-rttp-v1-macrobundle-t3.md`](2026-05-23-rttp-v1-macrobundle-t3.md) (PR-A..H). **Spec:** [`2026-05-23-rttp-v1-macrobundle-t3-design.md`](../specs/2026-05-23-rttp-v1-macrobundle-t3-design.md).
 
-Do not start v1 until v0.1 PR-5 merges and targeted gates stay green.
+Do not start v1 code until v0.1 PR-5+ gates stay green on `master`.
 
 ---
 

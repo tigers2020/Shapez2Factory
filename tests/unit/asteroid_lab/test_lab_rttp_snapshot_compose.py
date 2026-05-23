@@ -23,7 +23,9 @@ from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import (
     last_renderable_frame_index,
     project_rttp_row_to_product_frame,
 )
-from django_apps.asteroid_lab.services.replay_pipeline_service import build_initial_replay_for_map_input
+from django_apps.asteroid_lab.services.replay_pipeline_service import (
+    build_initial_replay_for_map_input,
+)
 from django_apps.asteroid_lab.services.solver_runtime_entry import run_solver_runtime_for_project
 
 

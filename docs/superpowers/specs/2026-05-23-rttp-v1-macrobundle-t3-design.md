@@ -1,6 +1,6 @@
 # RTTP v1 — MacroBundleT3 Design Spec
 
-**Status:** Draft (design-only; **no implementation** until this spec is approved and a separate implementation plan is executed)  
+**Status:** Approved for algorithm direction (2026-05-23). **No implementation** until [`2026-05-23-rttp-v1-macrobundle-t3.md`](../plans/2026-05-23-rttp-v1-macrobundle-t3.md) slices (PR-A..H) execute.  
 **Owner:** asteroid-lab / RTTP  
 **Parent:** [`2026-05-22-rttp-hybrid-c-layout-design.md`](2026-05-22-rttp-hybrid-c-layout-design.md) § v1 — MacroBundle T3  
 **Prerequisite:** RTTP Hybrid C **v0.1** gates RTTP-G1~G8 green on `master`; v0.2 replay parity + 3B-S Lab compose merged  
@@ -348,26 +348,27 @@ python -m pytest tests/unit/asteroid_lab/test_rttp_macro_bundle_t3.py -v
 
 ---
 
-## Open decisions (to resolve before implementation plan)
+## Locked decisions (2026-05-23)
 
-| ID | Question | Proposed default |
-|----|----------|------------------|
-| OD-MACRO-1 | Allow singleton + macro slots in same genome? | **No** (macro-only v1 pipeline flag) |
+| ID | Question | Decision |
+|----|----------|----------|
+| **OD-MACRO-1** | Allow singleton + macro slots in same genome? | **No.** v1 selection is **macro-only** when `macro_only_mode=True`. `PlacementGenome.commit_order` lists **`macro_id` only**. `allow_singleton_genome_slots` default **false**; do not implement mixed-mode regret in v1. |
 | OD-MACRO-2 | `macro_throughput_factor` = sum or min of children? | **Sum** (CANON throughput story) |
-| OD-MACRO-3 | Max macro candidates enumerated per run? | Config `max_macro_candidates: int = 64` |
-| OD-MACRO-4 | New replay `event_type` for macro-only debug? | **No** (metrics on existing four) |
+| OD-MACRO-3 | Max macro candidates enumerated per run? | `RttpPipelineConfig.max_macro_candidates: int = 64` |
+| OD-MACRO-4 | New replay `event_type` for macro-only debug? | **No** (metrics on existing four `rttp.*` milestones) |
 | OD-MACRO-5 | LNS swaps macros or re-runs compiler? | **Swap macro slots** only; compiler deterministic |
 
 ---
 
 ## Approval checklist
 
-- [ ] Hierarchy: MacroBundleT3 composes BundleCandidates, not BundlePatterns
-- [ ] Atomic macro commit (no partial 1-of-3)
-- [ ] Shared lift/trunk = route-only reservation
-- [ ] RTTP-G9+ gate list accepted
-- [ ] Replay / validation boundaries unchanged
-- [ ] Implementation plan issued (separate doc; no code in spec PR)
+- [x] Hierarchy: MacroBundleT3 composes BundleCandidates, not BundlePatterns
+- [x] Atomic macro commit (no partial 1-of-3)
+- [x] Shared lift/trunk = route-only reservation
+- [x] RTTP-G9+ gate list accepted
+- [x] Replay / validation boundaries unchanged
+- [x] OD-MACRO-1: macro-only genome (no singleton+macro mix)
+- [x] Implementation plan: [`2026-05-23-rttp-v1-macrobundle-t3.md`](../plans/2026-05-23-rttp-v1-macrobundle-t3.md)
 
 ---
 

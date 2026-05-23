@@ -161,6 +161,13 @@ ASTEROID_LAB_RUNTIME_GENE_GENERATOR_VERSION = os.environ.get(
 # Shape belt route goals: max miner bundles per external route slot (CANON 12).
 ASTEROID_LAB_MINERS_PER_ROUTE_OUT = int(os.environ.get("ASTEROID_LAB_MINERS_PER_ROUTE_OUT", "12"))
 
+# Run Solver HTTP entry: when True, ``run_solver_runtime_for_project`` runs RTTP v0.1.
+ASTEROID_LAB_RTTP_ENABLED = os.environ.get("ASTEROID_LAB_RTTP_ENABLED", "1").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",

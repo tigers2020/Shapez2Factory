@@ -1,0 +1,97 @@
+"""RTTP P1 map class — existing trunk from reconstruction (PR-6)."""
+
+from __future__ import annotations
+
+from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
+    ExtractorPlacementPolicy,
+)
+from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
+    generate_candidates,
+)
+from django_apps.asteroid_lab.optimization.input_contracts import (
+    OptimizationInput,
+    RttpSkeletonConfig,
+    TransportKind,
+)
+from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
+    optimization_input_from_reconstruction,
+)
+from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
+from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
+from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+
+
+def _field_cell(sx: int, sy: int) -> DecodedCellDTO:
+    return DecodedCellDTO(
+        x=sx,
+        y=sy,
+        layer=None,
+        rotation=0,
+        tile_type="AsteroidShapeField",
+        cell_kind="asteroid_shape_field",
+        transport_kind="none",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={"X": sx, "Y": sy, "T": "AsteroidShapeField"},
+        server_x=sx,
+        server_y=sy,
+    )
+
+
+def _belt_cell(sx: int, sy: int) -> DecodedCellDTO:
+    return DecodedCellDTO(
+        x=sx,
+        y=sy,
+        layer=None,
+        rotation=0,
+        tile_type="SpaceBelt_Forward",
+        cell_kind="space_belt",
+        transport_kind="shape_belt",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={"X": sx, "Y": sy, "T": "SpaceBelt_Forward"},
+        server_x=sx,
+        server_y=sy,
+    )
+
+
+def _existing_trunk_reconstruction_result() -> ReconstructionResult:
+    """4×4 mineable block with one west-rim belt cell as existing trunk."""
+
+    cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
+    cells = cells + (_belt_cell(4, 5),)
+    return ReconstructionResult(cells=cells, server_xy_params=None)
+
+
+def _existing_trunk_optimization_input() -> OptimizationInput:
+    return optimization_input_from_reconstruction(_existing_trunk_reconstruction_result())
+
+
+def test_skeleton_includes_existing_trunk_cells() -> None:
+    inp = _existing_trunk_optimization_input()
+
+    assert inp.existing_trunk_cells
+    assert inp.existing_trunk_cells <= frozenset(
+        cell.coord for cell in inp.existing_transport_cells
+    )
+
+    skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+
+    assert inp.existing_trunk_cells <= skeleton.trunk_mask_cells
+    assert inp.existing_trunk_cells.issubset(skeleton.trunk_mask_cells)
+
+
+def test_reachable_candidate_attaches_to_existing_trunk() -> None:
+    inp = _existing_trunk_optimization_input()
+
+    assert inp.existing_trunk_cells
+    assert inp.route_goals
+    assert inp.transport_kind is TransportKind.SHAPE_BELT
+
+    skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+    result = generate_candidates(inp, skeleton, policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM)
+
+    assert len(result.normal_candidates) >= 1
+    assert any(candidate.reachable for candidate in result.normal_candidates)

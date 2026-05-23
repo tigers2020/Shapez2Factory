@@ -1,20 +1,48 @@
-"""Solver runtime entry stub — reconstruction remains; optimization pipeline removed."""
+"""Solver runtime entry — reconstruction + optional RTTP optimization (v0.1)."""
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from django.conf import settings
+from django.db import transaction
+
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.adapters.decode_adapter import AsteroidLabCopyDecodeError
 from django_apps.asteroid_lab.contracts.game_data_snapshot import AsteroidGameDataSnapshot
+from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
+    ExtractorPlacementPolicy,
+)
+from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
+from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
+    optimization_input_from_reconstruction,
+)
+from django_apps.asteroid_lab.services.experiment_service import (
+    create_or_replace_solver_run,
+    create_solver_run,
+)
+from django_apps.asteroid_lab.services.input_service import refresh_map_input_from_copy_code
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
+from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
+    persist_reconstructed_asteroid_map,
+    run_reconstruction_for_map_input,
+)
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_META_KEY,
+    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
+    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
+)
 
 SOLVER_NOT_AVAILABLE_MESSAGE = (
-    "Solver runtime has been removed; reconstruction is still available."
+    "Solver runtime entry is not wired to RTTP yet; reconstruction is still available."
 )
+
+RTTP_ALGORITHM_LABEL = "rttp_v0.1"
 
 
 class SolverRuntimeEntryErrorCode(StrEnum):
@@ -22,7 +50,9 @@ class SolverRuntimeEntryErrorCode(StrEnum):
 
     PROJECT_NOT_FOUND = "project_not_found"
     NO_MAP_INPUT = "no_map_input"
+    DECODE_FAILED = "decode_failed"
     SOLVER_NOT_AVAILABLE = "SOLVER_NOT_AVAILABLE"
+    RTTP_VALIDATION_FAILED = "rttp_validation_failed"
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +72,38 @@ def _empty_replay_for_project(project_id: int) -> tuple[list[dict[str, Any]], di
     return build_lab_replay_frames_for_project(int(project_id))
 
 
+def _rttp_enabled(config: dict[str, Any] | None) -> bool:
+    if config is not None and "rttp_enabled" in config:
+        return bool(config["rttp_enabled"])
+    return bool(getattr(settings, "ASTEROID_LAB_RTTP_ENABLED", True))
+
+
+def _snapshot_meta_for_config(snapshot: AsteroidGameDataSnapshot) -> dict[str, str]:
+    meta = snapshot.meta
+    return {
+        "schema_version": meta.schema_version,
+        "data_revision": meta.data_revision,
+        "content_hash": meta.content_hash,
+    }
+
+
+def _persist_solver_run_outcome(
+    run_id: int,
+    *,
+    solver_summary: dict[str, Any],
+    server_xy_params: tuple[int, int] | None,
+) -> None:
+    run = m.SolverRun.objects.get(pk=int(run_id))
+    config = dict(run.config_json or {})
+    config[SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY] = dict(solver_summary)
+    if server_xy_params is not None:
+        config[SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY] = [
+            int(server_xy_params[0]),
+            int(server_xy_params[1]),
+        ]
+    m.SolverRun.objects.filter(pk=int(run_id)).update(config_json=config)
+
+
 def _solver_not_available_result(project_id: int) -> SolverRuntimeEntryResult:
     frames, metrics = _empty_replay_for_project(int(project_id))
     return SolverRuntimeEntryResult(
@@ -56,6 +118,170 @@ def _solver_not_available_result(project_id: int) -> SolverRuntimeEntryResult:
     )
 
 
+def _failure_result(
+    project_id: int,
+    *,
+    error_code: SolverRuntimeEntryErrorCode,
+    message: str,
+) -> SolverRuntimeEntryResult:
+    frames, metrics = _empty_replay_for_project(int(project_id))
+    return SolverRuntimeEntryResult(
+        ok=False,
+        solver_run_id=None,
+        lab_replay_frames_json=frames,
+        replay_track_metrics=metrics,
+        solver_summary={},
+        validation_passed=False,
+        error_code=error_code,
+        message=message,
+    )
+
+
+def _decoded_json_ready(inp: m.AsteroidMapInput) -> bool:
+    raw = inp.decoded_json
+    return isinstance(raw, dict) and isinstance(raw.get("BP"), dict)
+
+
+def _ensure_map_input_decoded(
+    inp: m.AsteroidMapInput,
+    project_id: int,
+) -> SolverRuntimeEntryResult | None:
+    if _decoded_json_ready(inp):
+        return None
+    code = (inp.copy_code or "").strip()
+    if not code:
+        return _failure_result(
+            int(project_id),
+            error_code=SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
+            message="Map input has no decoded blueprint and no copy code.",
+        )
+    try:
+        refresh_map_input_from_copy_code(int(inp.pk), code)
+    except AsteroidLabCopyDecodeError as exc:
+        return _failure_result(
+            int(project_id),
+            error_code=SolverRuntimeEntryErrorCode.DECODE_FAILED,
+            message=str(exc),
+        )
+    return None
+
+
+def _rttp_solver_summary(
+    *,
+    pipeline_ok: bool,
+    committed_count: int,
+    normal_count: int,
+    commit_order: tuple[str, ...],
+) -> dict[str, Any]:
+    return {
+        "algorithm": RTTP_ALGORITHM_LABEL,
+        "validation_passed": pipeline_ok,
+        "run_success": pipeline_ok,
+        "capacity_satisfied": pipeline_ok,
+        "placement_capacity_satisfied": pipeline_ok,
+        "throughput_budget_satisfied": pipeline_ok,
+        "confirmed_count": committed_count,
+        "target_miner_bundle_count": len(commit_order),
+        "target_placement_count": len(commit_order),
+        "normal_candidate_count": normal_count,
+        "commit_order": list(commit_order),
+        "issue_codes": [] if pipeline_ok else ["rttp_validation_failed"],
+        "issue_details": [] if pipeline_ok else [],
+    }
+
+
+@transaction.atomic  # type: ignore[untyped-decorator]
+def _run_rttp_solver_for_map_input(
+    project_id: int,
+    inp: m.AsteroidMapInput,
+    *,
+    run_key: str | None,
+    replace_existing_run: bool,
+    config: dict[str, Any] | None,
+    game_data_snapshot: AsteroidGameDataSnapshot | None,
+) -> SolverRuntimeEntryResult:
+    decode_err = _ensure_map_input_decoded(inp, int(project_id))
+    if decode_err is not None:
+        return decode_err
+
+    rk = (run_key or f"rttp-{uuid.uuid4().hex[:12]}").strip()
+    run_config = dict(config or {})
+    run_config["rttp_enabled"] = True
+    if game_data_snapshot is not None:
+        run_config[SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_META_KEY] = _snapshot_meta_for_config(
+            game_data_snapshot
+        )
+
+    cleanup, recon = run_reconstruction_for_map_input(
+        int(inp.pk),
+        boundary_run_id=rk,
+    )
+    opt_inp = optimization_input_from_reconstruction(recon)
+    pipeline_result = run_rttp_pipeline(
+        opt_inp,
+        policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
+    )
+
+    if replace_existing_run:
+        run_dto = create_or_replace_solver_run(
+            int(project_id),
+            run_key=rk,
+            algorithm_label=RTTP_ALGORITHM_LABEL,
+            config=run_config,
+        )
+    else:
+        run_dto = create_solver_run(
+            int(project_id),
+            run_key=rk,
+            algorithm_label=RTTP_ALGORITHM_LABEL,
+            config=run_config,
+        )
+    run_id = int(run_dto.id)
+
+    persist_reconstructed_asteroid_map(
+        map_input_id=int(inp.pk),
+        run_key=rk,
+        recon=recon,
+        cleanup=cleanup,
+        solver_run_id=run_id,
+    )
+
+    committed = pipeline_result.commit_result.committed_ids
+    summary = _rttp_solver_summary(
+        pipeline_ok=pipeline_result.validation_passed,
+        committed_count=len(committed),
+        normal_count=pipeline_result.normal_count,
+        commit_order=pipeline_result.genome.commit_order,
+    )
+    _persist_solver_run_outcome(
+        run_id,
+        solver_summary=summary,
+        server_xy_params=recon.server_xy_params,
+    )
+
+    frames, metrics = build_lab_replay_frames_for_project(int(project_id))
+    if not pipeline_result.validation_passed:
+        return SolverRuntimeEntryResult(
+            ok=False,
+            solver_run_id=run_id,
+            lab_replay_frames_json=frames,
+            replay_track_metrics=metrics,
+            solver_summary=summary,
+            validation_passed=False,
+            error_code=SolverRuntimeEntryErrorCode.RTTP_VALIDATION_FAILED,
+            message="RTTP pipeline finished but final validation did not pass.",
+        )
+
+    return SolverRuntimeEntryResult(
+        ok=True,
+        solver_run_id=run_id,
+        lab_replay_frames_json=frames,
+        replay_track_metrics=metrics,
+        solver_summary=summary,
+        validation_passed=True,
+    )
+
+
 def run_solver_runtime_for_project(
     project_id: int,
     *,
@@ -65,9 +291,9 @@ def run_solver_runtime_for_project(
     generator_version: str = "exhaustive_sample_gene_v1",
     game_data_snapshot: AsteroidGameDataSnapshot | None = None,
 ) -> SolverRuntimeEntryResult:
-    """Return SOLVER_NOT_AVAILABLE — optimization pipeline removed (2026-05-22)."""
+    """Run RTTP when enabled; otherwise return ``SOLVER_NOT_AVAILABLE``."""
 
-    del run_key, replace_existing_run, config, generator_version, game_data_snapshot
+    del generator_version
 
     if not m.AsteroidProject.objects.filter(pk=int(project_id)).exists():
         frames, metrics = _empty_replay_for_project(int(project_id))
@@ -98,7 +324,17 @@ def run_solver_runtime_for_project(
             error_code=SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
         )
 
-    return _solver_not_available_result(int(project_id))
+    if not _rttp_enabled(config):
+        return _solver_not_available_result(int(project_id))
+
+    return _run_rttp_solver_for_map_input(
+        int(project_id),
+        inp,
+        run_key=run_key,
+        replace_existing_run=replace_existing_run,
+        config=config,
+        game_data_snapshot=game_data_snapshot,
+    )
 
 
 def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any]:
@@ -109,8 +345,8 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
         "replay_track_metrics": result.replay_track_metrics,
         "solver_summary": dict(result.solver_summary),
         "validation_passed": result.validation_passed,
-        "validation_issue_codes": [],
-        "validation_issue_details": [],
+        "validation_issue_codes": list(result.solver_summary.get("issue_codes") or []),
+        "validation_issue_details": list(result.solver_summary.get("issue_details") or []),
         "gene_template_source": dict(result.gene_template_source),
     }
     if result.error_code is not None:
@@ -121,6 +357,7 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
 
 
 __all__ = [
+    "RTTP_ALGORITHM_LABEL",
     "SOLVER_NOT_AVAILABLE_MESSAGE",
     "SolverRuntimeEntryErrorCode",
     "SolverRuntimeEntryResult",

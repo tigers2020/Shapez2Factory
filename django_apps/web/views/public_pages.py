@@ -314,6 +314,9 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
         return JsonResponse(body, status=status)
     if result.error_code == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE:
         return JsonResponse(body, status=200)
+    # RTTP may finish with validation failure but still persist a SolverRun (never 500).
+    if result.solver_run_id is not None:
+        return JsonResponse(body, status=200)
     if not result.ok:
         return JsonResponse(body, status=400)
     return JsonResponse(body, status=200)

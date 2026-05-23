@@ -1,10 +1,10 @@
 # RTTP worktree baseline — fast suite green (post baseline cleanup)
 
-**Branch:** `master` (baseline cleanup landed on main workspace)  
-**Worktree:** `F:\Python_Projects\shapez2Factory`  
+**Branch:** `feature/rttp-hybrid-c` (merged `master` @ `3216a50d` seam baseline)  
+**Worktree:** `F:\Python_Projects\shapez2Factory\.worktrees\rttp-hybrid-c`  
 **Base:** `37975015` (`fix(asteroid_lab): raw X=0과 양수 X가 admin 미니맵에서 겹치지 않도록 서버 좌표 보정`)  
-**Recorded:** 2026-05-22 (initial known-red)  
-**Updated:** 2026-05-22 (baseline cleanup — full fast suite green)
+**Recorded:** 2026-05-22 (initial known-red on branch fork)  
+**Updated:** 2026-05-22 (baseline cleanup merged from `master`; RTTP PR-1..6 on branch tip)
 
 ## Command
 
@@ -15,10 +15,10 @@ powershell -File scripts/test_fast.ps1
 ## Result (after baseline cleanup)
 
 ```text
-1044 passed
+1061 passed (1044 pre-RTTP + 16 RTTP + 1 conftest merge)
 0 failed
 0 errors
-~31s (pytest-xdist 16 workers)
+~25s (pytest-xdist 16 workers)
 ```
 
 **Classification:** baseline cleanup (회귀 수정) — not RTTP feature code.
@@ -47,7 +47,7 @@ Root cause: explicit raw `X == 0` seam maps still used legacy dense-gap walkable
 
 | Suite | Expectation |
 |-------|-------------|
-| Full `test_fast.ps1` | **Must** stay green (1044+ passed, 0 failed, 0 errors) |
+| Full `test_fast.ps1` | **Must** stay green (1061+ on branch with RTTP; 0 failed, 0 errors) |
 | RTTP targeted tests (`tests/unit/asteroid_lab/test_rttp_*.py`) | **Must** be green per PR |
 | Merge bar | RTTP-G1~G8 green; fast suite failure count must **not increase** vs this report |
 
@@ -61,12 +61,13 @@ powershell -File scripts/test_fast.ps1 2>&1 | Select-String "passed|failed|error
 
 | Check | Status |
 |-------|--------|
-| `django_apps/asteroid_lab/optimization/` removed | yes (strip-solver executed) |
+| `django_apps/asteroid_lab/optimization/` present (RTTP rebuild) | yes on `feature/rttp-hybrid-c` |
 | `reconstruction/` imports `optimization` | no matches |
 | `Coord` / grid types | `django_apps/asteroid_lab/snapshots/grid_contract.py` |
-| Solver entry | `solver_runtime_entry.py` returns `SOLVER_NOT_AVAILABLE` |
-| Reconstruction fixture contract | green on `master` after seam topology fix |
+| Solver entry | `solver_runtime_entry.py` returns `SOLVER_NOT_AVAILABLE` (runtime wire optional PR-5 step 8) |
+| Reconstruction fixture contract | green after seam topology fix (`3216a50d`) |
+| RTTP targeted suite (16 tests) | green on branch tip |
 
 ## Historical note
 
-Initial capture on `feature/rttp-hybrid-c` worktree: **947 passed, 6 failed, 10 errors**. Those failures were pre-existing on branch tip, not caused by RTTP implementation. Cleanup landed on `master` workspace 2026-05-22.
+Initial capture on `feature/rttp-hybrid-c` worktree: **947 passed, 6 failed, 10 errors**. Those failures were pre-existing on branch fork, not caused by RTTP implementation. Cleanup landed on `master` as `3216a50d` 2026-05-22; merged into feature branch before RTTP merge gate.

@@ -19,6 +19,7 @@ from django_apps.asteroid_lab.services.dto import (
     RawDecodedBlueprintDTO,
 )
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
+from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
 from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     _as_int,
     _extract_layer,
@@ -237,8 +238,8 @@ def entries_to_reconstruction_cells(
     for item in entries:
         if not isinstance(item, dict):
             continue
-        x = _as_int(item.get("X"))
-        y = _as_int(item.get("Y"))
+        island = entry_island_raw_coord(item)
+        x, y = island.x, island.y
         t_raw = item.get("T")
         tile_type = str(t_raw) if isinstance(t_raw, str) else ""
         cell_kind, transport_kind = cell_kind_for_reconstruction_import(tile_type)

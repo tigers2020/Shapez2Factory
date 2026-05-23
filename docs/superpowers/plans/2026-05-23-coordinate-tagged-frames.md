@@ -287,7 +287,7 @@ def test_neighbors4_world_matches_map_cardinals():
 
 ### Task D1: Equivalence scaffold
 
-- [ ] **Step 1: Write test** (initially xfail or skip until adapter exists):
+- [x] **Step 1: Write test** (initially xfail or skip until adapter exists):
 
 ```python
 import pytest
@@ -302,11 +302,11 @@ def test_three_ext_layout_island_and_world_topology_equivalent():
     pytest.skip("implement after explicit island→world proof module")
 ```
 
-- [ ] **Step 2:** Document in test module docstring: gate closed until xfail removed.
+- [x] **Step 2:** Document in test module docstring: gate closed until xfail removed.
 
-- [ ] **Step 3:** Run `python -m pytest tests/unit/asteroid_lab/test_coordinate_frame_equivalence.py -v` — xfail/skip acceptable.
+- [x] **Step 3:** Run `python -m pytest tests/unit/asteroid_lab/test_coordinate_frame_equivalence.py -v` — xfail/skip acceptable.
 
-- [ ] **Step 4:** Commit `test(coords): equivalence gate scaffold (PR-D)`
+- [x] **Step 4:** Commit `test(coords): equivalence gate scaffold (PR-D)`
 
 **Exit criterion for PR-E:** Remove xfail/skip on ≥1 fixture; G3 green.
 
@@ -356,7 +356,15 @@ coord_frame: CoordFrame = CoordFrame.SERVER_DENSE
 
 ---
 
-## PR-F — Remove server bridge
+## PR-D follow-up — scaffold + wiring (committed after PR-A–C)
+
+- [x] `test_coordinate_frame_equivalence.py` (G3 xfail + island fixture)
+- [x] `entry_island_raw_coord` in decode / normalization / fingerprint / export import
+- [x] AST allowlists: `optimization`, `reconstruction`, `replay`, `web/services`
+
+---
+
+## PR-F — Remove server bridge (north star: server x/y extinction)
 
 **Blocked until PR-E stable on chosen frame.**
 
@@ -366,6 +374,19 @@ coord_frame: CoordFrame = CoordFrame.SERVER_DENSE
 - Remove: `lab_xy_from_server_xy` usage in replay after UI uses promoted frame
 - Update: `coord_system` fingerprint version + golden tests
 - Modify: `documents/Algorithm/asteroid_lab_00_overview.md`, `asteroid_lab_03_candidate_generator.md`
+
+### PR-F extinction order (delete sequence)
+
+1. `django_apps/asteroid_lab/snapshots/server_coords.py` — bridge (last consumer wins)
+2. `django_apps/asteroid_lab/replay/projection_context.py` — `lab_xy_from_server_xy`
+3. `django_apps/web/services/replay_frame_cell_lookup.py`
+4. `django_apps/web/static/web/js/asteroid_miner_layout_lab.js` — dense mirror
+5. `reconstruction/pipeline.py`, `topology_contract.py`, `confidence.py` — stop emitting server tuples
+6. `decoded_blueprint_snapshot.py` — drop `server_x`/`server_y` attach; island-only DTO coords
+7. `services/dto.py` — remove `server_x`/`server_y` fields (or legacy read one release)
+8. `layout_fingerprint.py` — new `coord_system` string + golden refresh
+9. `optimization/**` — `neighbors4_server` → island/world neighbors; AST allowlists **empty**
+10. `.cursor/rules/asteroid-lab-invariants.mdc`, `asteroid_lab_01` — raw frame canonical
 
 ### Task F1: Forbidden token expansion
 

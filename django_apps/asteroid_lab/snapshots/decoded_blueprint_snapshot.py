@@ -8,6 +8,7 @@ from typing import Any
 from django_apps.asteroid_lab.observability.boundary_jsonl import emit_boundary_jsonl
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
+from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
 from django_apps.asteroid_lab.snapshots.server_coords import (
     map_bbox_dense_and_y,
     raw_x_to_dense_index,
@@ -108,8 +109,8 @@ def build_decoded_blueprint_snapshot(
     for item in entries:
         if not isinstance(item, dict):
             continue
-        x = _as_int(item.get("X"))
-        y = _as_int(item.get("Y"))
+        island = entry_island_raw_coord(item)
+        x, y = island.x, island.y
         xs.append(x)
         ys.append(y)
         dense_xs.append(raw_x_to_dense_index(x, has_explicit_raw_x_zero=bbox_has_raw_x_zero))

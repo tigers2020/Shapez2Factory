@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from django_apps.asteroid_lab.services.dto import NormalizedBlueprintDTO, RawDecodedBlueprintDTO
+from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
 
 _SUMMARY_SCHEMA_VERSION = 1
 
@@ -35,8 +36,8 @@ def _build_summary(root: dict[str, Any]) -> dict[str, Any]:
     for item in entries:
         if not isinstance(item, dict):
             continue
-        x = _as_int(item.get("X"))
-        y = _as_int(item.get("Y"))
+        island = entry_island_raw_coord(item)
+        x, y = island.x, island.y
         xs.append(x)
         ys.append(y)
         cells.add((x, y))

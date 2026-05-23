@@ -27,7 +27,21 @@ If server dense coords were produced from a wrong or ambiguous raw→server brid
 
 **Current contract conflict:** Algorithm docs require `OptimizationInput` and all post-normalize `Coord` = Server X/Y only. A premature “single raw Coord” rename would violate that contract without proof that island-local and world frames describe the same topology for lab inputs.
 
-## Goal
+## North star (end state)
+
+**Eliminate `server_x` / `server_y` and the dense server bridge entirely.**
+
+| Removed at completion | Replaced by |
+|-----------------------|-------------|
+| `server_coords.py` bridge (`attach_server_coords`, `server_xy_for_raw_xy`, `raw_x_to_dense_index` on algorithm paths) | `IslandRawCoord` and/or `WorldRawCoord` only |
+| `DecodedCellDTO.server_x` / `server_y` (wire + semantics) | Island or world tagged coords + `cell.x`/`cell.y` as island-local where applicable |
+| `Coord` = dense server tuple in `OptimizationInput`+ | Single `CoordFrame` on `OptimizationInput` (PR-E) then typed coords (PR-F) |
+| `lab_xy_from_server_xy`, JS dense mirror | Direct island/world → screen tile mapping |
+| `coord_system=server_bbox_left_bottom_dense_x_v1` fingerprints | New `coord_system` version keyed to chosen raw frame |
+
+Tagged types are a **strangler**, not the destination. `ServerCoord` exists only until PR-F deletes it.
+
+## Goal (migration means)
 
 Introduce **explicit tagged coordinate types** and a **strangler migration** that:
 
@@ -35,6 +49,7 @@ Introduce **explicit tagged coordinate types** and a **strangler migration** tha
 2. Preserves **world map invariants** at reconstruction / transport BFS boundaries.
 3. **Deprecates** `ServerCoord` / `server_x` / `server_y` without deleting until equivalence is proven.
 4. Allows **one canonical frame** on `OptimizationInput` only after the **proof gate** (PR-E).
+5. **Deletes** all server dense artifacts in **PR-F** once PR-E is stable (north star).
 
 ## Non-goals
 

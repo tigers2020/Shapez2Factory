@@ -7,6 +7,7 @@ import json
 from typing import Any
 
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
+from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
 from django_apps.asteroid_lab.snapshots.server_coords import (
     COORD_SYSTEM_BBOX_LEFT_BOTTOM,
     raw_x_to_dense_index,
@@ -135,8 +136,8 @@ def absolute_layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[st
         fk = _fingerprint_kind(cell_kind)
         if fk is None:
             continue
-        x = _as_int(item.get("X"))
-        y = _as_int(item.get("Y"))
+        island = entry_island_raw_coord(item)
+        x, y = island.x, island.y
         dense_x = raw_x_to_dense_index(x)
         r = _as_int(item.get("R"))
         rows.append(

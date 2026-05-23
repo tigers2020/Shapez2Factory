@@ -149,6 +149,26 @@ class TopologyRuleModalContentAdmin(admin.ModelAdmin):
     raw_id_fields = ("rule",)
 
 
+@admin.register(m.IslandExtractorBlueprint)
+class IslandExtractorBlueprintAdmin(admin.ModelAdmin):
+    list_display = (
+        "variant_key",
+        "carrier_kind",
+        "layout_t",
+        "display_name",
+        "inner_fingerprint_short",
+        "updated_at",
+    )
+    list_filter = ("carrier_kind",)
+    search_fields = ("variant_key", "display_name", "layout_t")
+    readonly_fields = ("inner_fingerprint", "updated_at")
+
+    @staticmethod
+    def inner_fingerprint_short(obj: m.IslandExtractorBlueprint) -> str:
+        fp = (obj.inner_fingerprint or "").strip()
+        return fp[:12] + "…" if len(fp) > 12 else fp or "-"
+
+
 @admin.register(m.GeneticSample)
 class GeneticSampleAdmin(admin.ModelAdmin):
     change_list_template = "admin/asteroid_lab/geneticsample/change_list.html"

@@ -11,6 +11,7 @@
 | 3 | [`02_doc_drift_matrix.md`](02_doc_drift_matrix.md) | PR-0 | 기존 문서 카탈로그 + drift 유형 + 조치 |
 | 4 | [`03_db_cross_reference.md`](03_db_cross_reference.md) | PR-1 | 정규화 DB + dump 반영 행 목록 |
 | 5 | [`04_installation_guide.md`](04_installation_guide.md) | PR-2 | 끝까지 읽는 설치 흐름 (후보 ≠ 확정) — **작성 완료** |
+| 6 | [`05_island_extractor_variants.md`](05_island_extractor_variants.md) | — | 섬 추출기 기본 블루프린트 (balance / omni / fluid) copy 정본 |
 
 **상위 목차:** [`documents/Algorithm/README.md`](../README.md) 6번 항목.
 
@@ -27,7 +28,8 @@
 
 Phase 본문을 여기에 통째로 복사하지 않는다. **판정**과 **링크**는 `01` / `02`에서 갱신한다.
 
-## 허브 상태 (2026-05-22)
+## 허브 상태 (2026-05-23)
 
-- **완료:** PR-0–PR-2 (`00`–`04`); 메타 정합 갱신 (`00`·`01`·`02`)
+- **완료:** PR-0–PR-2 (`00`–`04`); `05` 섬 추출기 copy 카탈로그 + `IslandExtractorBlueprint` 시드
+- **이전:** PR-0–PR-2 (`00`–`04`); 메타 정합 갱신 (`00`·`01`·`02`)
 - **잔여:** `01` throughput `needs-review` (simulation rate → import); `asteroid_lab_03` RESEARCH 본문(선택); Lab JS per-control replay 라벨

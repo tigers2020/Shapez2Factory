@@ -8,12 +8,11 @@ from typing import Any
 
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
 from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw_coord
-from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_index
 
 COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM = "island_bbox_left_bottom_raw_xy_v1"
 _SCHEMA_LAYOUT = "asteroid-miner-layout-map.v2"
-_SCHEMA_ABSOLUTE = "asteroid-miner-layout-absolute-dense.v1"
-_COORD_ABSOLUTE = "absolute_dense_x_raw_y_v1"
+_SCHEMA_ABSOLUTE = "asteroid-miner-layout-absolute.v2"
+COORD_ABSOLUTE_ISLAND = "island_raw_xy_v1"
 
 
 def _as_int(val: Any) -> int:
@@ -120,7 +119,7 @@ def layout_fingerprint_sha256(decoded_json: dict[str, Any]) -> str:
 
 
 def absolute_layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
-    """Canonical dict using dense x + raw y (translation-sensitive vs bbox-normalized layout)."""
+    """Canonical dict using island-local x/y (translation-sensitive vs bbox-normalized layout)."""
 
     bp = decoded_json.get("BP")
     if not isinstance(bp, dict):
@@ -139,32 +138,22 @@ def absolute_layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[st
         if fk is None:
             continue
         island = entry_island_raw_coord(item)
-        x, y = island.x, island.y
-        dense_x = raw_x_to_dense_index(x)
         r = _as_int(item.get("R"))
         rows.append(
             {
-                "dense_x": dense_x,
-                "raw_y": y,
+                "x": island.x,
+                "y": island.y,
                 "kind": fk,
                 "r": r,
                 "transport": _transport_label(cell_kind),
             }
         )
 
-    rows.sort(
-        key=lambda row: (
-            row["dense_x"],
-            row["raw_y"],
-            row["kind"],
-            row["transport"],
-            row["r"],
-        )
-    )
+    rows.sort(key=lambda row: (row["x"], row["y"], row["kind"], row["transport"], row["r"]))
 
     return {
         "schema": _SCHEMA_ABSOLUTE,
-        "coord_system": _COORD_ABSOLUTE,
+        "coord_system": COORD_ABSOLUTE_ISLAND,
         "cells": rows,
     }
 
@@ -176,6 +165,7 @@ def absolute_layout_fingerprint_sha256(decoded_json: dict[str, Any]) -> str:
 
 __all__ = [
     "COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM",
+    "COORD_ABSOLUTE_ISLAND",
     "absolute_layout_fingerprint_payload",
     "absolute_layout_fingerprint_sha256",
     "layout_fingerprint_payload",

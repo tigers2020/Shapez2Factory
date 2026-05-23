@@ -7,6 +7,7 @@ import pytest
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.adapters.decode_adapter import encode_copy_string
 from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
+from django_apps.asteroid_lab.snapshots.layout_fingerprint import COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM
 
 
 @pytest.fixture
@@ -33,13 +34,10 @@ def test_create_copy_code_map_input_populates_decoded_json(tiny_island_copy: str
     assert inp.decoded_json.get("BP", {}).get("Entries")
     entries = inp.decoded_json["BP"]["Entries"]
     assert len(entries) >= 2
-    with_xy = sum(
-        1
-        for e in entries
-        if isinstance(e, dict)
-        and isinstance(e.get("server_x"), int)
-        and isinstance(e.get("server_y"), int)
-    )
-    assert with_xy == len([e for e in entries if isinstance(e, dict)])
+    for e in entries:
+        if isinstance(e, dict):
+            assert "server_x" not in e or e.get("server_x") is None
     assert inp.decoded_json.get("_asteroid_lab_summary") is not None
-    assert inp.decoded_json.get("_asteroid_lab_coord_system") is not None
+    meta = inp.decoded_json.get("_asteroid_lab_coord_system")
+    assert isinstance(meta, dict)
+    assert meta.get("coord_system") == COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM

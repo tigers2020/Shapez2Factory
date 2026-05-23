@@ -500,8 +500,8 @@ class GeneticSample(models.Model):
             decode_copy_string,
         )
         from django_apps.asteroid_lab.adapters.normalization import normalize_decoded_blueprint
-        from django_apps.asteroid_lab.snapshots.server_coords import (
-            attach_server_coords_to_decoded_json,
+        from django_apps.asteroid_lab.snapshots.island_coord_meta import (
+            attach_island_coord_meta_to_decoded_json,
         )
 
         code = (self.code or "").strip()
@@ -512,7 +512,7 @@ class GeneticSample(models.Model):
             raw = decode_copy_string(code)
             dto = normalize_decoded_blueprint(raw)
             merged = dict(dto.decoded_json)
-            attach_server_coords_to_decoded_json(merged)
+            attach_island_coord_meta_to_decoded_json(merged)
             self.decoded_json = merged
         except AsteroidLabCopyDecodeError as exc:
             raise ValidationError({"code": str(exc)}) from exc

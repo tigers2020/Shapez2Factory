@@ -9,8 +9,11 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
 from django_apps.asteroid_lab.snapshots.existing_layout_inspection import (
     inspect_existing_layout,
 )
+from django_apps.asteroid_lab.snapshots.island_coord_meta import attach_island_coord_meta_to_decoded_json
 from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
+    COORD_ABSOLUTE_ISLAND,
     COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM,
+    absolute_layout_fingerprint_payload,
     absolute_layout_fingerprint_sha256,
     layout_fingerprint_payload,
     layout_fingerprint_sha256,
@@ -148,6 +151,36 @@ def test_layout_fingerprint_deterministic_hex() -> None:
     h1 = layout_fingerprint_sha256(decoded)
     h2 = layout_fingerprint_sha256(decoded)
     assert len(h1) == 64 and h1 == h2
+
+
+def test_attach_island_coord_meta_without_server_xy_on_entries() -> None:
+    decoded = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 1, "Y": 0, "R": 0, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    attach_island_coord_meta_to_decoded_json(decoded)
+    meta = decoded.get("_asteroid_lab_coord_system")
+    assert isinstance(meta, dict)
+    assert meta.get("coord_system") == COORD_SYSTEM_ISLAND_BBOX_LEFT_BOTTOM
+    entry = decoded["BP"]["Entries"][0]
+    assert entry.get("server_x") is None
+    assert entry.get("server_y") is None
+
+
+def test_absolute_fingerprint_uses_island_raw_xy() -> None:
+    decoded = {
+        "V": 1,
+        "BP": {
+            "$type": "Island",
+            "Entries": [{"X": 2, "Y": 1, "R": 0, "T": "Layout_ShapeMiner"}],
+        },
+    }
+    p = absolute_layout_fingerprint_payload(decoded)
+    assert p["coord_system"] == COORD_ABSOLUTE_ISLAND
+    assert p["cells"][0]["x"] == 2 and p["cells"][0]["y"] == 1
 
 
 def test_absolute_fingerprint_changes_with_raw_translation() -> None:

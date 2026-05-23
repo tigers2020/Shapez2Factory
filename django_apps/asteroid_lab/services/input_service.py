@@ -16,27 +16,16 @@ from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
     absolute_layout_fingerprint_sha256,
     layout_fingerprint_sha256,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
+from django_apps.asteroid_lab.snapshots.island_coord_meta import attach_island_coord_meta_to_decoded_json
 
 
-def _count_entries_with_server_xy(decoded_json: dict[str, Any]) -> tuple[int, int]:
-    """Return ``(dict_row_count, rows_with_int_server_xy_pair)`` for ``BP.Entries``."""
-
+def _count_bp_dict_entries(decoded_json: dict[str, Any]) -> int:
     bp = decoded_json.get("BP")
     if not isinstance(bp, dict):
-        return (0, 0)
+        return 0
     entries_raw = bp.get("Entries")
     entries: list[Any] = entries_raw if isinstance(entries_raw, list) else []
-    dict_rows = 0
-    with_pair = 0
-    for item in entries:
-        if not isinstance(item, dict):
-            continue
-        dict_rows += 1
-        sx, sy = item.get("server_x"), item.get("server_y")
-        if isinstance(sx, int) and isinstance(sy, int):
-            with_pair += 1
-    return (dict_rows, with_pair)
+    return sum(1 for item in entries if isinstance(item, dict))
 
 
 def content_sha256_for_copy_code(copy_code: str) -> str:
@@ -52,7 +41,7 @@ def create_copy_code_map_input(
     *,
     source_label: str = "",
 ) -> AsteroidMapInput:
-    """Persist raw copy text and decoded ``decoded_json`` with server coords attached.
+    """Persist raw copy text and decoded ``decoded_json`` with island coord metadata.
 
     This row is UI/persistence only — **not** an algorithm input surface for the solver core.
     Decode failure rolls back the row (no copy-only orphan).
@@ -123,20 +112,18 @@ def persist_decoded_snapshot_for_map_input(
     if inp is None:
         msg = f"AsteroidMapInput id={map_input_id} not found"
         raise ValueError(msg)
-    attach_server_coords_to_decoded_json(dto.decoded_json)
+    attach_island_coord_meta_to_decoded_json(dto.decoded_json)
     rid = f"map_input:{int(inp.pk)}"
-    drows, with_xy = _count_entries_with_server_xy(dto.decoded_json)
+    drows = _count_bp_dict_entries(dto.decoded_json)
     meta = dto.decoded_json.get("_asteroid_lab_coord_system")
     emit_boundary_jsonl(
         run_id=rid,
         stage="decode",
-        boundary="decode.server_coords_attach",
+        boundary="decode.island_coord_meta_attach",
         data={
             "map_input_id": int(inp.pk),
             "project_id": int(inp.project_id),
             "bp_dict_entry_rows": drows,
-            "bp_entries_with_server_xy": with_xy,
-            "missing_server_xy": drows - with_xy,
             "coord_meta": meta if isinstance(meta, dict) else {},
         },
     )
@@ -176,20 +163,18 @@ def persist_decoded_snapshot(project_id: int, dto: NormalizedBlueprintDTO) -> As
         raise ValueError(msg)
     inp.decoded_json = dto.decoded_json
     inp.source_kind = AsteroidMapInput.SourceKind.DECODED_JSON
-    attach_server_coords_to_decoded_json(inp.decoded_json)
+    attach_island_coord_meta_to_decoded_json(inp.decoded_json)
     rid = f"map_input:{int(inp.pk)}"
-    drows, with_xy = _count_entries_with_server_xy(inp.decoded_json)
+    drows = _count_bp_dict_entries(inp.decoded_json)
     meta = inp.decoded_json.get("_asteroid_lab_coord_system")
     emit_boundary_jsonl(
         run_id=rid,
         stage="decode",
-        boundary="decode.server_coords_attach",
+        boundary="decode.island_coord_meta_attach",
         data={
             "map_input_id": int(inp.pk),
             "project_id": int(project_id),
             "bp_dict_entry_rows": drows,
-            "bp_entries_with_server_xy": with_xy,
-            "missing_server_xy": drows - with_xy,
             "coord_meta": meta if isinstance(meta, dict) else {},
         },
     )

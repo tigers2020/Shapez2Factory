@@ -25,7 +25,7 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     _extract_layer,
     _nested_b_summary,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
+from django_apps.asteroid_lab.snapshots.island_coord_meta import attach_island_coord_meta_to_decoded_json
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
     sort_key_xy_layer,
@@ -212,7 +212,7 @@ def build_reconstructed_normalized_dto(
     )
     dto = normalize_decoded_blueprint(RawDecodedBlueprintDTO(root=root))
     merged = dict(dto.decoded_json)
-    attach_server_coords_to_decoded_json(merged)
+    attach_island_coord_meta_to_decoded_json(merged)
     return NormalizedBlueprintDTO(decoded_json=merged)
 
 

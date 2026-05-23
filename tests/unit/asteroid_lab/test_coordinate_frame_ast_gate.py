@@ -33,8 +33,15 @@ _OPTIMIZATION_SERVER_BRIDGE_SYMBOLS: frozenset[str] = frozenset(
     {
         "server_xy_for_raw_xy",
         "attach_server_coords_to_decoded_json",
+        "attach_island_coord_meta_to_decoded_json",
         "raw_x_to_dense_index",
         "raw_x_to_dense_x",
+    }
+)
+
+_ATTACH_SERVER_COORDS_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "django_apps/asteroid_lab/snapshots/server_coords.py",
     }
 )
 
@@ -107,6 +114,17 @@ def test_replay_server_xy_imports_match_allowlist() -> None:
         allowlist=_REPLAY_SERVER_XY_ALLOWLIST,
     )
     assert not violations, "unexpected server_xy_for_raw_xy in replay: " + ", ".join(violations)
+
+
+def test_attach_server_coords_import_confined_to_bridge_module() -> None:
+    root = _REPO / "django_apps"
+    violations = _violations_importing(
+        root,
+        symbol="attach_server_coords_to_decoded_json",
+        module_substring="server_coords",
+        allowlist=_ATTACH_SERVER_COORDS_ALLOWLIST,
+    )
+    assert not violations, "attach_server_coords outside bridge: " + ", ".join(violations)
 
 
 def test_web_services_server_xy_imports_match_allowlist() -> None:

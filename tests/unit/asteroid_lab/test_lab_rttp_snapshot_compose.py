@@ -117,6 +117,21 @@ def test_interleave_inserts_after_renderable_not_tail_only() -> None:
             assert len(fr["map_view"]["full_cells"]) >= 1
 
 
+def test_interleave_skips_rttp_when_no_renderable_base() -> None:
+    rows = [
+        {
+            "event_type": "routing.probe_started",
+            "phase": "rttp_pipeline",
+            "title": "RTTP started",
+            "description": "",
+            "metrics": {},
+            "cell_overlay_json": {},
+        },
+    ]
+    out = interleave_rttp_snapshot_frames([], rows)
+    assert out == []
+
+
 def test_last_renderable_prefers_candidate_generated_over_decode() -> None:
     frames = [
         _map_frame(0, "decode.started"),

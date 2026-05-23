@@ -97,6 +97,11 @@ def interleave_rttp_snapshot_frames(
             fr["frame_index"] = i
         return unified
 
+    if not unified or not any(frame_has_renderable_map(fr) for fr in unified):
+        for i, fr in enumerate(unified):
+            fr["frame_index"] = i
+        return unified
+
     insert_at = resolve_insert_index(unified)
     base_mv = dict(unified[insert_at].get("map_view") or {})
     projected: list[dict[str, Any]] = []

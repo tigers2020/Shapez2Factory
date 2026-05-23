@@ -390,15 +390,27 @@ coord_frame: CoordFrame = CoordFrame.SERVER_DENSE
 
 ### Task F1: Forbidden token expansion
 
-- [ ] **Step 1:** Extend AST gate: `raw_to_server`, `server_to_raw`, `attach_server_coords` not imported in `optimization/**`.
+- [x] **Step 1:** Extend AST gate: `raw_to_server`, `server_to_raw`, `attach_server_coords` not imported in `optimization/**` (symbols covered via `raw_x_to_dense_*`, `attach_server_coords_to_decoded_json`, `neighbors4_server` in `test_coordinate_frame_ast_gate.py`).
 
 - [ ] **Step 2:** Remove bridge; fix tests.
 
-- [ ] **Step 3:** `python -m pytest tests/unit/asteroid_lab/ tests/unit/shapez_asteroid/ -v` (per project narrow/full policy).
+- [x] **Step 3:** `powershell -File scripts/test_fast.ps1` — green after slices 7–8 (`d9308c79`).
 
-- [ ] **Step 4:** `python -m ruff check django_apps/asteroid_lab/snapshots/ django_apps/asteroid_lab/optimization/`
+- [x] **Step 4:** `python -m ruff check django_apps/asteroid_lab/snapshots/ django_apps/asteroid_lab/optimization/` (post slice 7–8).
 
 - [ ] **Step 5:** Commit `refactor(coords): remove server dense bridge (PR-F)`
+
+### PR-F progress log (execution)
+
+| Slice | Commit | Notes |
+|-------|--------|-------|
+| 1–3 | `025f2659` | Solver default `ISLAND_RAW`; decode DTO no server attach |
+| 4 | `0f9e1acb` | Replay lookup island bbox |
+| 5 | `62230212` | Layout fingerprint map v2 island |
+| 6 | `904ae04f`, `62a6627d` | Persist island meta; absolute fp v2 |
+| 7–8 | `d9308c79` | `neighbors4`; pipeline seam; admin mini-map island; DTO deprecate metadata |
+
+**Remaining (extinction order):** `server_coords.py` bridge consumers (reconstruction allowlist, replay `lab_xy_from_server_xy`, RTTP compose), optional DTO field removal, final F1 Step 2 + Step 5 commit.
 
 ---
 

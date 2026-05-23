@@ -131,9 +131,6 @@ def _entry_dict_from_cell(cell: DecodedCellDTO) -> dict[str, Any]:
     row: dict[str, Any] = {"X": cell.x, "Y": cell.y, "T": t}
     if cell.rotation:
         row["R"] = cell.rotation
-    if cell.server_x is not None and cell.server_y is not None:
-        row["server_x"] = cell.server_x
-        row["server_y"] = cell.server_y
     return row
 
 
@@ -171,7 +168,7 @@ def build_reconstructed_blueprint_root(
     map_input_id: int | None = None,
     run_key: str = "",
     summary_json: dict[str, Any] | None = None,
-    full_map_server_bbox: dict[str, int] | None = None,
+    full_map_island_bbox: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Build lab blueprint root with Extension ``T`` for asteroid field cells."""
 
@@ -187,8 +184,8 @@ def build_reconstructed_blueprint_root(
         "field_tile_mapping": "Layout_*MinerExtension",
         "summary_json": dict(summary_json or {}),
     }
-    if full_map_server_bbox:
-        recon_meta["full_map_server_bbox"] = dict(full_map_server_bbox)
+    if full_map_island_bbox:
+        recon_meta["full_map_island_bbox"] = dict(full_map_island_bbox)
     root[_RECON_META_KEY] = recon_meta
     return root
 
@@ -200,9 +197,9 @@ def build_reconstructed_normalized_dto(
     map_input_id: int | None = None,
     run_key: str = "",
     summary_json: dict[str, Any] | None = None,
-    full_map_server_bbox: dict[str, int] | None = None,
+    full_map_island_bbox: dict[str, int] | None = None,
 ) -> NormalizedBlueprintDTO:
-    """Root with summary + server coords attached (persist ``decoded_json``)."""
+    """Root with summary + island coord meta (persist ``decoded_json``)."""
 
     root = build_reconstructed_blueprint_root(
         cells,
@@ -210,7 +207,7 @@ def build_reconstructed_normalized_dto(
         map_input_id=map_input_id,
         run_key=run_key,
         summary_json=summary_json,
-        full_map_server_bbox=full_map_server_bbox,
+        full_map_island_bbox=full_map_island_bbox,
     )
     dto = normalize_decoded_blueprint(RawDecodedBlueprintDTO(root=root))
     merged = dict(dto.decoded_json)

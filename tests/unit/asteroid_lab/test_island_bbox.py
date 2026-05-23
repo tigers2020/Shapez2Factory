@@ -55,3 +55,41 @@ def test_island_bbox_from_cells_tight_extent() -> None:
 
 def test_island_bbox_from_xy_dicts_empty_returns_none() -> None:
     assert island_bbox_from_xy_dicts([]) is None
+
+
+def test_reconstructed_export_writes_full_map_island_bbox_not_server_on_entries() -> None:
+    from django_apps.asteroid_lab.adapters.reconstruction_blueprint_export import (
+        build_reconstructed_blueprint_root,
+    )
+
+    cell = DecodedCellDTO(
+        x=1,
+        y=0,
+        layer=None,
+        rotation=0,
+        tile_type="SpacePipe_Forward",
+        cell_kind="transport",
+        transport_kind="forward",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={"X": 1, "Y": 0, "T": "SpacePipe_Forward"},
+        server_x=None,
+        server_y=None,
+    )
+    root = build_reconstructed_blueprint_root(
+        (cell,),
+        full_map_island_bbox={
+            "min_x": 1,
+            "max_x": 1,
+            "min_y": 0,
+            "max_y": 0,
+            "width": 1,
+            "height": 1,
+        },
+    )
+    entry = root["BP"]["Entries"][0]
+    assert "server_x" not in entry and "server_y" not in entry
+    meta = root["_asteroid_lab_reconstruction"]
+    assert "full_map_island_bbox" in meta
+    assert "full_map_server_bbox" not in meta

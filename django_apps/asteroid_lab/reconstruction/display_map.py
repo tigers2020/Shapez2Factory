@@ -108,9 +108,29 @@ def reconstruction_summary_from_decoded_json(decoded_json: dict[str, Any]) -> di
     return dict(summary) if isinstance(summary, dict) else {}
 
 
-def full_map_server_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, int] | None:
-    """Topology extent from persist (may be wider than field-only ``BP.Entries`` bbox)."""
+def full_map_island_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, int] | None:
+    """Topology extent from persist (island-local; PR-F Wave C)."""
 
+    from django_apps.asteroid_lab.snapshots.island_bbox import (
+        full_map_island_bbox_from_decoded_json as _island_bbox,
+    )
+
+    return _island_bbox(decoded_json)
+
+
+def full_map_server_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, int] | None:
+    """Legacy dense bbox meta (read-compat). Prefer :func:`full_map_island_bbox_from_decoded_json`."""
+
+    island = full_map_island_bbox_from_decoded_json(decoded_json)
+    if island is not None:
+        return {
+            "server_min_x": island["min_x"],
+            "server_max_x": island["max_x"],
+            "server_min_y": island["min_y"],
+            "server_max_y": island["max_y"],
+            "server_width": island["width"],
+            "server_height": island["height"],
+        }
     meta = reconstruction_meta_from_decoded_json(decoded_json)
     bb = meta.get("full_map_server_bbox")
     if not isinstance(bb, dict):
@@ -148,6 +168,7 @@ def server_bbox_from_cells(cells: Sequence[DecodedCellDTO]) -> dict[str, int]:
 
 __all__ = [
     "full_map_rows_from_reconstruction",
+    "full_map_island_bbox_from_decoded_json",
     "full_map_server_bbox_from_decoded_json",
     "merge_reconstruction_display_cells",
     "merge_reconstruction_display_rows",

@@ -111,6 +111,7 @@ def test_connected_branch_gene_encode_not_equal_spread_bug_fixture(
         include_transport=True,
     )
 
+
 def test_blueprint_identifier_version_is_resolved_not_hardcoded() -> None:
     """resolve_blueprint_code_version must produce version-dependent prefixes
     and raise ValueError for unknown versions."""

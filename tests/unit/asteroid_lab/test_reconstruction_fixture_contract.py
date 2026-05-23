@@ -94,9 +94,7 @@ def test_reconstruction_fixture_line_coord_and_optimization_contract(
     _snap_req, snap_sol, cleanup, recon, _merged, actual, expected = _run_line(
         reconstruction_fixture_line_index
     )
-    topo = acceptance_topology_from_reconstruction(
-        recon, coord_frame=CoordFrame.ISLAND_RAW
-    )
+    topo = acceptance_topology_from_reconstruction(recon, coord_frame=CoordFrame.ISLAND_RAW)
     for cell in recon.cells:
         assert isinstance(cell.x, int) and isinstance(cell.y, int)
         if cell.raw_entry_json.get("_replay_synthetic"):

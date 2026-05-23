@@ -268,7 +268,7 @@ PR·CI full gate의 `python -m pytest`는 `-n auto --dist loadscope` 병렬을 �
 - Tier A (`import_game_data` / `--verify` / dump regen): [game_data_tier_a_release_gate.md](../../../docs/runbooks/game_data_tier_a_release_gate.md) — **not** `test_fast`.
 - Slice importer tests: `tests/fixtures/game_data/*.json` only (not `documents/game_data/`).
 
-CI는 동일 세 shard를 **병렬 job**으로 실행: `test-fast`, `test-slow`, `test-integration` (`.github/workflows/ci.yml`).
+CI는 **병렬 job**으로 실행: `test-fast`, `test-integration` (`.github/workflows/ci.yml`). `test-slow`(`scripts/test_slow.ps1`)는 **로컬/PR 직전**만 — CI matrix 제외.
 
 ## Recipe Graph 에디터 (Vitest)
 

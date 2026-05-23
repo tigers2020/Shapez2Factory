@@ -1,10 +1,10 @@
-# RTTP worktree baseline — known pre-existing red
+# RTTP worktree baseline — fast suite green (post baseline cleanup)
 
-**Branch:** `feature/rttp-hybrid-c`  
+**Branch:** `feature/rttp-hybrid-c` (merged `master` @ `3216a50d` seam baseline)  
 **Worktree:** `F:\Python_Projects\shapez2Factory\.worktrees\rttp-hybrid-c`  
-**Base:** `master` @ `37975015` (`fix(asteroid_lab): raw X=0과 양수 X가 admin 미니맵에서 겹치지 않도록 서버 좌표 보정`)  
-**Recorded:** 2026-05-22  
-**RTTP source edits at capture:** none (docs-only branch start)
+**Base:** `37975015` (`fix(asteroid_lab): raw X=0과 양수 X가 admin 미니맵에서 겹치지 않도록 서버 좌표 보정`)  
+**Recorded:** 2026-05-22 (initial known-red on branch fork)  
+**Updated:** 2026-05-22 (baseline cleanup merged from `master`; RTTP PR-1..6 on branch tip)
 
 ## Command
 
@@ -12,56 +12,46 @@
 powershell -File scripts/test_fast.ps1
 ```
 
-## Result
+## Result (after baseline cleanup)
 
 ```text
-947 passed
-6 failed
-10 errors
-~29s (pytest-xdist 16 workers)
+1044 passed
+0 failed
+0 errors
+~31s (pytest-xdist 16 workers)
 ```
 
-**Classification:** pre-existing baseline on branch tip; **not** caused by RTTP implementation.
+**Classification:** baseline cleanup (회귀 수정) — not RTTP feature code.
 
-## Policy on this branch
+## What was fixed
+
+### Collection errors (10 → 0)
+
+| Area | Fix |
+|------|-----|
+| `test_asteroid_lab_replay_timeline_smoke.py` | Restored `_project_slug_via_create` in `test_asteroid_run_solver.py` |
+| 9 modules with `SyntaxError` / invalid UTF-8 | Restored Korean literals from `6175607c` or UTF-8-safe rewrite (`test_genetic_sample_admin_seed.py`) |
+
+### Reconstruction fixture contract (6 → 0)
+
+Root cause: explicit raw `X == 0` seam maps still used legacy dense-gap walkable/flood (column `x == 0` skipped).
+
+| Change | Module |
+|--------|--------|
+| `include_raw_x_zero` on bbox iteration, external flood, components, diagonal close | `grid.py`, `flood_fill.py`, `fill.py`, `perimeter_closing.py`, `pipeline.py` |
+| Seam span + bridge gap fills before merge | `fill.py` (`seam_column_span_gap_fill_coords`, `seam_column_bridge_gap_fill_coords`), `pipeline.py` |
+| Extension-shell / small-pocket guards for seam column | `pipeline.py` |
+| Allow `_replay_synthetic` at `x == 0` when map has explicit raw X=0 | `test_reconstruction_fixture_contract.py` |
+
+## Policy on RTTP branch (`feature/rttp-hybrid-c`)
 
 | Suite | Expectation |
 |-------|-------------|
-| Full `test_fast.ps1` | Recorded as known-red; do **not** claim global green until baseline cleanup lands (separate effort) |
+| Full `test_fast.ps1` | **Must** stay green (1044+ passed, 0 failed, 0 errors) |
 | RTTP targeted tests (`tests/unit/asteroid_lab/test_rttp_*.py`) | **Must** be green per PR |
 | Merge bar | RTTP-G1~G8 green; fast suite failure count must **not increase** vs this report |
 
-## Failures (6)
-
-All in `tests/unit/asteroid_lab/test_reconstruction_fixture_contract.py`:
-
-| Test | Notes |
-|------|-------|
-| `test_reconstruction_fixture_line_topology_matches_solved[0]` | mineable/topology diff vs fixture line 0 |
-| `test_reconstruction_fixture_line_topology_matches_solved[1]` | mineable/topology diff vs fixture line 1 |
-| `test_reconstruction_fixture_line_export_topology_equivalent[0]` | export roundtrip topology drift |
-| `test_reconstruction_fixture_line_export_topology_equivalent[1]` | export roundtrip topology drift |
-| `test_reconstruction_fixture_line_coord_and_optimization_contract[1]` | `(17,20)` extra vs `(16,*)` missing on line 1 |
-| `test_reconstruction_canon_line_confident_and_topology_match` | canon line 1 topology |
-
-Representative diff (line 1): extra mineable `(17, 20)`; missing cells around `(16, 4)`–`(16, 20)`.
-
-## Collection errors (10)
-
-| Module | Error kind |
-|--------|------------|
-| `tests/integration/web/test_asteroid_lab_replay_timeline_smoke.py` | `ImportError`: `_project_slug_via_create` missing from `test_asteroid_run_solver` |
-| `tests/integration/web/test_web_smoke.py` | `SyntaxError`: non-UTF-8 on line 225 (encoding) |
-| `tests/unit/asteroid_lab/test_equipment_bundles.py` | collection / parse error |
-| `tests/unit/asteroid_lab/test_genetic_sample_admin_seed.py` | collection / parse error |
-| `tests/unit/asteroid_lab/test_models.py` | collection / parse error |
-| `tests/unit/shapez_core/test_admin_identifier_sprite.py` | collection / parse error |
-| `tests/unit/shapez_solver/test_macro_recipe_graph_visual.py` | collection / parse error |
-| `tests/unit/shapez_solver/test_recipe_graph_react_flow_adapter.py` | collection / parse error |
-| `tests/unit/shapez_solver/test_recipe_graph_recompute.py` | collection / parse error |
-| `tests/unit/web/test_shape_part_sprite.py` | collection / parse error |
-
-Re-run after RTTP PRs to diff counts:
+Re-run after RTTP PRs:
 
 ```powershell
 powershell -File scripts/test_fast.ps1 2>&1 | Select-String "passed|failed|error"
@@ -69,9 +59,15 @@ powershell -File scripts/test_fast.ps1 2>&1 | Select-String "passed|failed|error
 
 ## Prerequisites verified for RTTP work
 
-| Check | Status on `37975015` |
-|-------|----------------------|
-| `django_apps/asteroid_lab/optimization/` removed | yes (strip-solver executed) |
+| Check | Status |
+|-------|--------|
+| `django_apps/asteroid_lab/optimization/` present (RTTP rebuild) | yes on `feature/rttp-hybrid-c` |
 | `reconstruction/` imports `optimization` | no matches |
 | `Coord` / grid types | `django_apps/asteroid_lab/snapshots/grid_contract.py` |
-| Solver entry | `solver_runtime_entry.py` returns `SOLVER_NOT_AVAILABLE` |
+| Solver entry | `solver_runtime_entry.py` returns `SOLVER_NOT_AVAILABLE` (runtime wire optional PR-5 step 8) |
+| Reconstruction fixture contract | green after seam topology fix (`3216a50d`) |
+| RTTP targeted suite (16 tests) | green on branch tip |
+
+## Historical note
+
+Initial capture on `feature/rttp-hybrid-c` worktree: **947 passed, 6 failed, 10 errors**. Those failures were pre-existing on branch fork, not caused by RTTP implementation. Cleanup landed on `master` as `3216a50d` 2026-05-22; merged into feature branch before RTTP merge gate.

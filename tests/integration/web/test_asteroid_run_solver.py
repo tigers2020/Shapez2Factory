@@ -24,6 +24,15 @@ def client() -> Client:
     return Client()
 
 
+def _project_slug_via_create() -> str:
+    proj = m.AsteroidProject.objects.create(
+        name="ReplayTimelineSmoke",
+        slug="replay-timeline-smoke",
+    )
+    m.AsteroidMapInput.objects.create(project=proj, copy_code="SHAPEZ2-4-e30=")
+    return str(proj.slug)
+
+
 def test_run_solver_post_returns_solver_not_available(client: Client) -> None:
     proj = m.AsteroidProject.objects.create(name="RunSolver", slug="run-solver-stub")
     m.AsteroidMapInput.objects.create(project=proj, copy_code="SHAPEZ2-4-e30=")

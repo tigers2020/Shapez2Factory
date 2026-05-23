@@ -26,6 +26,8 @@ from django_apps.asteroid_lab.reconstruction.fill import (
     external_pocket_cells_to_fill,
     external_pocket_components,
     passes_bbox_interior,
+    seam_column_bridge_gap_fill_coords,
+    seam_column_span_gap_fill_coords,
     synthetic_field_cell,
 )
 from django_apps.asteroid_lab.reconstruction.flood_fill import external_reachable
@@ -87,8 +89,12 @@ def _finalize_reconstruction_result(
     )
 
 
-def _sorted_interior_components(interior: set[Coord]) -> list[set[Coord]]:
-    comps = connected_components(interior)
+def _sorted_interior_components(
+    interior: set[Coord],
+    *,
+    include_raw_x_zero: bool,
+) -> list[set[Coord]]:
+    comps = connected_components(interior, include_raw_x_zero=include_raw_x_zero)
     return sorted(
         comps,
         key=lambda comp: (
@@ -97,6 +103,33 @@ def _sorted_interior_components(interior: set[Coord]) -> list[set[Coord]]:
             len(comp),
         ),
     )
+
+
+def _fill_seam_column_gap_coords(
+    coords: list[Coord],
+    *,
+    filled: list[DecodedCellDTO],
+    occupied_xy: set[Coord],
+    fill_layer: int | None,
+    fill_kind: str,
+    server_xy_params: tuple[int, int] | None,
+) -> int:
+    added = 0
+    for x, y in coords:
+        if (x, y) in occupied_xy:
+            continue
+        sx_gap: int | None = None
+        sy_gap: int | None = None
+        if server_xy_params is not None:
+            sx_gap, sy_gap = _raw_to_server_xy(x, y, server_xy_params)
+        filled.append(
+            synthetic_field_cell(
+                x, y, fill_layer, fill_kind, server_x=sx_gap, server_y=sy_gap
+            )
+        )
+        occupied_xy.add((x, y))
+        added += 1
+    return added
 
 
 def _emit_reconstruction_stamp_boundary(
@@ -230,10 +263,17 @@ def reconstruct_after_cleanup(
         )
 
     w0, w1, h0, h1 = bbox_bounds
+    _, _, include_raw_x_zero = unpack_server_xy_params(
+        server_xy_params if server_xy_params is not None else None
+    )
     extension_shell_raw: set[Coord] = {
         (c.x, c.y) for c in original_cells if c.cell_kind in MINER_EXTENSION_CELL_KINDS
     }
-    diagonal_extra = set(close_diagonal_leaks(walls_xy, bbox_bounds))
+    diagonal_extra = set(
+        close_diagonal_leaks(
+            walls_xy, bbox_bounds, include_raw_x_zero=include_raw_x_zero
+        )
+    )
     barrier_xy: set[Coord] = walls_xy | diagonal_extra
 
     if trace_collector is not None:
@@ -268,7 +308,7 @@ def reconstruct_after_cleanup(
         )
 
     walkable: set[Coord] = set()
-    for xy in iter_bbox_cells(w0, w1, h0, h1):
+    for xy in iter_bbox_cells(w0, w1, h0, h1, include_raw_x_zero=include_raw_x_zero):
         if xy not in barrier_xy:
             walkable.add(xy)
 
@@ -278,6 +318,7 @@ def reconstruct_after_cleanup(
         w1=w1,
         h0=h0,
         h1=h1,
+        include_raw_x_zero=include_raw_x_zero,
         trace_collector=trace_collector,
     )
     interior = walkable - external
@@ -296,7 +337,9 @@ def reconstruct_after_cleanup(
             )
         )
 
-    interior_comps = _sorted_interior_components(interior)
+    interior_comps = _sorted_interior_components(
+        interior, include_raw_x_zero=include_raw_x_zero
+    )
     skipped_bbox = 0
     filled_components = 0
     filled: list[DecodedCellDTO] = []
@@ -507,6 +550,15 @@ def reconstruct_after_cleanup(
             xy = (x, y)
             if xy in occupied_xy or xy in barrier_xy or xy in extension_shell_raw:
                 continue
+            if include_raw_x_zero and x == 0 and xy not in extension_shell_raw:
+                continue
+            if (
+                include_raw_x_zero
+                and x != 0
+                and (0, y) in walkable
+                and (0, y) not in barrier_xy
+            ):
+                continue
             if _wall_neighbor_count(walls_xy, xy) < 1:
                 continue
             if not passes_bbox_interior({xy}, w0, w1, h0, h1):
@@ -541,7 +593,7 @@ def reconstruct_after_cleanup(
             occupied_xy.add(xy)
             pocket_filled += 1
 
-    if len(interior) > EXTERNAL_POCKET_INTERIOR_CANDIDATE_MAX:
+    if include_raw_x_zero or len(interior) > EXTERNAL_POCKET_INTERIOR_CANDIDATE_MAX:
         occupied_for_gap = walls_xy | occupied_xy
         for x, y in dense_gap_column_coords(occupied_for_gap, walls_xy, h0=h0, h1=h1):
             if (x, y) in occupied_xy:
@@ -587,6 +639,8 @@ def reconstruct_after_cleanup(
                 xy = (x, y)
                 if xy in occupied_xy or xy in barrier_xy:
                     continue
+                if include_raw_x_zero and x == 0 and xy not in extension_shell_raw:
+                    continue
                 if not passes_bbox_interior({xy}, w0, w1, h0, h1):
                     continue
                 if not any(
@@ -594,7 +648,7 @@ def reconstruct_after_cleanup(
                     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
                 ):
                     continue
-                if x == 0 or x < -15:
+                if (x == 0 and not include_raw_x_zero) or x < -15:
                     continue
                 occ_n = sum(
                     1
@@ -629,6 +683,25 @@ def reconstruct_after_cleanup(
         occupied_xy -= SMALL_INTERIOR_EXTERIOR_FILL_BLOCKLIST
 
     summary["external_pocket_filled_count"] = pocket_filled
+
+    if include_raw_x_zero:
+        pocket_filled += _fill_seam_column_gap_coords(
+            seam_column_span_gap_fill_coords(extension_shell_raw, occupied_xy),
+            filled=filled,
+            occupied_xy=occupied_xy,
+            fill_layer=fill_layer,
+            fill_kind=fill_kind,
+            server_xy_params=server_xy_params,
+        )
+        pocket_filled += _fill_seam_column_gap_coords(
+            seam_column_bridge_gap_fill_coords(occupied_xy),
+            filled=filled,
+            occupied_xy=occupied_xy,
+            fill_layer=fill_layer,
+            fill_kind=fill_kind,
+            server_xy_params=server_xy_params,
+        )
+
     summary["filled_hole_cell_count"] = len(filled)
 
     merged: dict[tuple[int, int, int | None], DecodedCellDTO] = dict(stripped_by_key)

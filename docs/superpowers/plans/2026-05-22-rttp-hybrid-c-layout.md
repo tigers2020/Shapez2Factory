@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.12+, Django 5.2, frozen dataclasses, `StrEnum`, pytest; CANON throughput [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../../../documents/game_rules/shapez2_asteroid_space_transport_throughput.md).
 
-**Baseline policy:** [`2026-05-22-rttp-worktree-baseline.md`](../reports/2026-05-22-rttp-worktree-baseline.md) — full fast suite known-red; RTTP `test_rttp_*` must green.
+**Baseline policy:** [`2026-05-22-rttp-worktree-baseline.md`](../reports/2026-05-22-rttp-worktree-baseline.md) — full fast suite green (1044+); RTTP `test_rttp_*` must green; do not increase failure count.
 
 **Out of v0.1:** MacroBundle T3, merger auto-place, full 2F JPS, CP-SAT, validation route repair.
 

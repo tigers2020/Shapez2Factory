@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections import deque
 
-from django_apps.asteroid_lab.reconstruction.grid import Coord
+from django_apps.asteroid_lab.reconstruction.grid import Coord, reconstruction_cardinal_neighbors
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.transport_components import iter_four_neighbors
 
 ASTEROID_SHAPE_FIELD = "asteroid_shape_field"
 
@@ -42,7 +41,11 @@ def passes_two_axis_evidence_guard(comp: set[Coord], walls: set[Coord]) -> bool:
     return has_x and has_y
 
 
-def connected_components(nodes: set[Coord]) -> list[set[Coord]]:
+def connected_components(
+    nodes: set[Coord],
+    *,
+    include_raw_x_zero: bool = False,
+) -> list[set[Coord]]:
     """4-connected components."""
 
     remaining = set(nodes)
@@ -53,7 +56,9 @@ def connected_components(nodes: set[Coord]) -> list[set[Coord]]:
         q: deque[Coord] = deque([start])
         while q:
             x, y = q.popleft()
-            for nx, ny, _nl in iter_four_neighbors(x, y, None):
+            for nx, ny in reconstruction_cardinal_neighbors(
+                x, y, include_raw_x_zero=include_raw_x_zero
+            ):
                 n = (nx, ny)
                 if n not in remaining or n in comp:
                     continue
@@ -176,6 +181,43 @@ def external_pocket_cells_to_fill(comp: set[Coord], walls: set[Coord]) -> set[Co
     if mx >= 3:
         return {c for c in comp if _wall_neighbor_count(walls, c) >= 1}
     return {c for c in comp if _wall_neighbor_count(walls, c) >= 2 or len(comp) <= 2}
+
+
+def seam_column_bridge_gap_fill_coords(occupied: set[Coord]) -> list[Coord]:
+    """Fill raw ``x == 0`` holes between two occupied seam cells (e.g. ``y=5`` and ``y=8``)."""
+
+    ys = sorted({y for x, y in occupied if x == 0})
+    fills: list[Coord] = []
+    for y_a, y_b in zip(ys, ys[1:], strict=False):
+        if y_b - y_a <= 1:
+            continue
+        for y in range(y_a + 1, y_b):
+            c = (0, y)
+            if c not in occupied:
+                fills.append(c)
+    return fills
+
+
+def seam_column_span_gap_fill_coords(
+    extension_shell_raw: set[Coord],
+    occupied: set[Coord],
+) -> list[Coord]:
+    """Fill raw ``x == 0`` gaps between extension-shell rows on the explicit seam column."""
+
+    seam_shell_ys = sorted({y for x, y in extension_shell_raw if x == 0})
+    if len(seam_shell_ys) < 2:
+        return []
+    y_lo, y_hi = seam_shell_ys[0], seam_shell_ys[-1]
+    shell_y = set(seam_shell_ys)
+    fills: list[Coord] = []
+    for y in range(y_lo, y_hi + 1):
+        c = (0, y)
+        if c in occupied:
+            continue
+        if not any(sy < y for sy in shell_y) or not any(sy > y for sy in shell_y):
+            continue
+        fills.append(c)
+    return fills
 
 
 def dense_gap_column_coords(

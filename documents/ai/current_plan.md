@@ -1,6 +1,6 @@
 # Current plan
 
-**상태 (2026-05-22)**: Asteroid Lab **solver/optimization 파이프라인 제거** 완료. Reconstruction → persist → Lab replay만 유지. HTTP `Run Solver` → `SOLVER_NOT_AVAILABLE` (200, never 500).
+**상태 (2026-05-23)**: Asteroid Lab **solver/optimization 파이프라인 제거** 완료. **PR-F** island-local 좌표 병합 완료([#49](https://github.com/tigers2020/Shapez2Factory/pull/49)). Reconstruction → persist → Lab replay만 유지. HTTP `Run Solver` → `SOLVER_NOT_AVAILABLE` (200, never 500).
 
 **Surgery:** [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md) · 실행 기록: [`docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md`](../../docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md)
 
@@ -28,7 +28,9 @@ python -m ruff check django_apps/asteroid_lab/reconstruction django_apps/asteroi
 
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
-## 다음 초점 (미정)
+## 다음 초점
 
-- Reconstruction replay·topology 회귀만 유지
+- Reconstruction replay·topology 회귀 유지 (narrow gate below)
+- Persisted `full_map_server_bbox` → `full_map_island_bbox` read-compat (one release; `island_bbox.py`)
+- RTTP **3B-S-3** canonical `rttp.*` types — merged on `master` (2026-05-23)
 - Solver 재구현 시 **새 spec** 필수 (strip spec이 취소한 shadow/commit/RD gate 설계 구현 금지)

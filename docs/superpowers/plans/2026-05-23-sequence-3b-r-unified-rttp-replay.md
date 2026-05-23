@@ -1,5 +1,7 @@
 # Sequence 3B-R — Unified RTTP Algorithm Replay Frames Implementation Plan
 
+> **SUPERSEDED (product behavior):** [Sequence 3B-S full-snapshot interleaved replay](../specs/2026-05-23-sequence-3b-s-rttp-full-snapshot-replay-design.md). `inherited_snapshot` tail append is obsolete. ORM `:rttp` write buffer remains. Implementation: [2026-05-23-sequence-3b-s-rttp-full-snapshot-replay.md](2026-05-23-sequence-3b-s-rttp-full-snapshot-replay.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Append RTTP algorithm milestone frames into the single Lab product timeline (`lab_replay_frames_json`) so one scrubber advances through map frames then algorithm frames, using `render_mode: inherited_snapshot` when no map payload exists.

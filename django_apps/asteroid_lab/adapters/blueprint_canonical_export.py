@@ -337,9 +337,7 @@ def export_dense_x_set(entries: list[dict[str, Any]]) -> set[int]:
     """Dense column indices for export ``X`` values (omitted ``X`` → 0)."""
 
     return {
-        raw_x_to_export_column(_as_int(row.get("X")))
-        for row in entries
-        if isinstance(row, dict)
+        raw_x_to_export_column(_as_int(row.get("X"))) for row in entries if isinstance(row, dict)
     }
 
 

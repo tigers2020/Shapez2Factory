@@ -81,13 +81,13 @@ RTTP_MILESTONE_LEGACY_TO_CANONICAL: dict[str, str] = {
 
 def is_rttp_milestone_event_type(event_type: str) -> bool:
     return (
-        event_type in RTTP_MILESTONE_EVENT_TYPES
-        or event_type in RTTP_MILESTONE_LEGACY_EVENT_TYPES
+        event_type in RTTP_MILESTONE_EVENT_TYPES or event_type in RTTP_MILESTONE_LEGACY_EVENT_TYPES
     )
 
 
 def normalize_rttp_milestone_event_type(event_type: str) -> str:
     return RTTP_MILESTONE_LEGACY_TO_CANONICAL.get(event_type, event_type)
+
 
 # --- existing layout inspection (A6; UI/replay only) ---
 EVENT_TYPE_EXISTING_LAYOUT_BEGIN = "existing_layout.begin"

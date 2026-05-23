@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -25,16 +24,20 @@ GENERIC_BANNER = (
 
 ROOT_BANNER = (
     "> **Plans (misc):** Project planning memo; not Asteroid Lab coordinate canon. "
-    "See [`documents/Algorithm/`](../Algorithm/) and [`docs/superpowers/specs/`](../docs/superpowers/specs/) for active specs.\n"
+    "See [`documents/Algorithm/`](../Algorithm/) and "
+    "[`docs/superpowers/specs/`](../docs/superpowers/specs/) for active specs.\n"
 )
 
 README_EXTRA = """
 ## Doc sweep (2026-05-23)
 
-Each `asteroid_lab_*.md` file has a top-of-file banner pointing at **`documents/Algorithm/`** when a matching CANON doc exists.
+Each `asteroid_lab_*.md` file has a top-of-file banner pointing at
+**`documents/Algorithm/`** when a matching CANON doc exists.
 
-- **PR-F:** Product code uses **island-local** `(x, y)` only; `server_coords.py` and dense server HUD are **removed**.
-- Checklists mentioning Server X/Y or `neighbors4_server` in this folder are **historical** (pre–PR-F copies).
+- **PR-F:** Product code uses **island-local** `(x, y)` only;
+  `server_coords.py` and dense server HUD are **removed**.
+- Checklists mentioning Server X/Y or `neighbors4_server` in this folder are
+  **historical** (pre–PR-F copies).
 """
 
 

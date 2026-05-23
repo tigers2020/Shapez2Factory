@@ -124,9 +124,7 @@ def _emit_reconstruction_stamp_boundary(
 ) -> None:
     if not boundary_run_id:
         return
-    transitions = summarize_cell_kind_transitions(
-        before_cells, after_cells
-    )
+    transitions = summarize_cell_kind_transitions(before_cells, after_cells)
     emit_boundary_jsonl(
         run_id=boundary_run_id,
         stage="reconstruction",

@@ -84,9 +84,7 @@ def acceptance_topology_from_reconstruction(
         raise ValueError(msg)
 
     by_coord = _cells_by_topology_coord(result.cells, coord_frame=frame)
-    mineable = {
-        coord for coord, cell in by_coord.items() if mineable_field_kind(cell) is not None
-    }
+    mineable = {coord for coord, cell in by_coord.items() if mineable_field_kind(cell) is not None}
 
     mineable_f = frozenset(mineable)
     all_coords = frozenset(by_coord)

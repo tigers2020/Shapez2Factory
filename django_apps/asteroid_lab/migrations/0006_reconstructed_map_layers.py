@@ -116,9 +116,7 @@ class Migration(migrations.Migration):
                 "verbose_name": "복원 소행성 엔트리",
                 "verbose_name_plural": "복원 소행성 엔트리",
                 "indexes": [
-                    models.Index(
-                        fields=["map", "x", "y"], name="asteroid_la_map_id_b0a570_idx"
-                    )
+                    models.Index(fields=["map", "x", "y"], name="asteroid_la_map_id_b0a570_idx")
                 ],
                 "constraints": [
                     models.UniqueConstraint(

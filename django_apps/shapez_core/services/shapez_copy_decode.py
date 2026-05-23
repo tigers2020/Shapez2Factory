@@ -2,8 +2,9 @@
 
 Pipeline: ``SHAPEZ2-4-`` prefix removal → Base64 → gzip → JSON object.
 
-Decoded ``BP.Entries`` ``X``/``Y``/``R`` are island-local (omitted → ``0``). Not asteroid
-world coordinates — see ``documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md``.
+Decoded ``BP.Entries`` ``X``/``Y``/``R`` are island-local (omitted → ``0``). Not
+asteroid world coordinates — see
+``documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md``.
 """
 
 from __future__ import annotations

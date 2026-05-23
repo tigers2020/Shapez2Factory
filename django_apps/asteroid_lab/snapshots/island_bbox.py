@@ -50,10 +50,7 @@ def full_map_island_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict
     if isinstance(meta, dict):
         bb = meta.get("full_map_island_bbox")
         if isinstance(bb, dict) and "min_x" in bb and "width" in bb:
-            return {
-                k: int(bb[k])
-                for k in ("min_x", "max_x", "min_y", "max_y", "width", "height")
-            }
+            return {k: int(bb[k]) for k in ("min_x", "max_x", "min_y", "max_y", "width", "height")}
     bp = decoded_json.get("BP")
     if not isinstance(bp, dict):
         return None

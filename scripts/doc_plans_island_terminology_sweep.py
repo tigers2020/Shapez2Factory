@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+# ruff: noqa: E501
 """Replace legacy server-coordinate wording in documents/plans body text (PR-F)."""
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]

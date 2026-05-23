@@ -46,7 +46,7 @@ pytest tests/unit/shapez_asteroid/test_optimization_input.py (DTO·좌표·빈 t
 [ ] 관련 DTO·enum import 가능 (순환 없음)
 [ ] enum 멤버 이름·값이 Phase 문서와 동기화됨
 [ ] OptimizationInput·그래프·goal의 모든 Coord가 Server X/Y 정본
-[ ] `neighbors4_server` 밀집 4방 이웃 단위 테스트 (server x=0 포함 케이스)
+[ ] `neighbors4` island 4방 이웃 단위 테스트 (copy `X==0` 포함 케이스)
 [ ] route_goals가 kind·priority 계약을 만족하는 최소 factory 가능
 [ ] greenfield = existing_transport_cells 비어 있음 ∧ trunk·protected 공집합 (별도 코드 경로 없음)
 ```
@@ -63,7 +63,7 @@ pytest tests/unit/shapez_asteroid/test_optimization_input.py (DTO·좌표·빈 t
 [ ] Reconstruction → OptimizationInput adapter
 [ ] rim / interior / route_goals 추출
 [ ] RouteCellDomain 빌더 초안 (**RouteDomainSnapshotBuilder**; existing_transport_cells → transport_mask, trunk·protected·blocked 반영)
-[ ] topology_graph 이웃이 neighbors4_server와 모순 없음 (그래프 빌더 테스트)
+[ ] topology_graph 이웃이 `neighbors4`와 모순 없음 (그래프 빌더 테스트)
 ```
 
 ### 테스트
@@ -276,7 +276,7 @@ pytest tests/unit/shapez_asteroid/test_incremental_commit.py
 [ ] extractor output connectivity check
 [ ] orphan transport check
 [ ] overlap check
-[ ] Coord·`neighbors4_server` 밀집 격자 검증
+[ ] Coord·`neighbors4` island 격자 검증
 [ ] RouteGoal·transport 일관성 (read-only 검증만)
 ```
 

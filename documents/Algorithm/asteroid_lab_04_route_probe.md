@@ -19,7 +19,7 @@ not global optimal route
 
 - 기본: `topology_graph`의 **무방향** 인접을 사용해 이웃을 enumerates한다 (Phase 1). `traversal_cost`는 엣지·노드 정책과 합치되게 domain과 조합한다.
 - `route_domain`에 키가 없는 coord는 아래 **도메인 경계 정책**을 따른다.
-- `topology_graph`가 비어 있거나 stub 구현이면 **fallback**: `neighbors4_server(coord)`로 이웃을 만들되, Phase 1 테스트와 **동일 인접(밀집 4방)** 을 보장해야 한다.
+- `topology_graph`가 비어 있거나 stub 구현이면 **fallback**: `grid_contract.neighbors4(coord, frame)`로 이웃을 만들되, Phase 1 테스트와 **동일 인접(4방)** 을 보장해야 한다.
 
 즉 “topology만 보고 domain을 무시” 또는 “domain만 보고 graph를 무시”가 되면 안 된다. **확장 후보 이웃은 graph 규칙, 셀 통과·비용·mask는 `RouteCellDomain`** 이다.
 
@@ -214,7 +214,7 @@ candidate probe 성공 ≠ 최종 commit 성공의 논리적 함의
 
 ```text
 [ ] uniform-cost 탐색은 hard_blocked 셀로 확장하지 않는다
-[ ] 이웃 나열은 topology_graph 무방향 계약과 모순 없음 (fallback 시 neighbors4_server와 동일)
+[ ] 이웃 나열은 topology_graph 무방향 계약과 모순 없음 (fallback 시 `neighbors4`와 동일)
 [ ] shape belt and fluid pipe route domains are separated
 [ ] reachable=True requires path length > 0 unless start is goal
 [ ] reachable=True 이면 reached_goal·goal_priority가 계약에 맞게 채워진다
@@ -230,7 +230,7 @@ candidate probe 성공 ≠ 최종 commit 성공의 논리적 함의
 test_route_probe_reaches_prioritized_route_goal
 test_route_probe_rejects_blocked_start
 test_route_probe_never_crosses_hard_blocked_cells
-test_route_probe_respects_server_cardinal_adjacency
+test_route_probe_respects_island_cardinal_adjacency
 test_route_probe_budget_exceeded
 test_route_probe_transport_kind_separation
 test_route_probe_respects_transport_mask_per_cell

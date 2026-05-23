@@ -1,4 +1,4 @@
-"""Existing-layout inspection from A5 decoded top-level cells (read-only; no ORM / replay reads)."""
+﻿"""Existing-layout inspection from A5 decoded top-level cells (read-only; no ORM / replay reads)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from django_apps.asteroid_lab.services.dto import (
     ExistingLayoutInspectionDTO,
     ExistingTransportComponentDTO,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_index
 from django_apps.asteroid_lab.snapshots.transport_components import (
     cell_position_key,
     is_transport_tile,
@@ -45,9 +44,6 @@ def _overlay_cell(cell: DecodedCellDTO, **extra: Any) -> dict[str, Any]:
         "transport_kind": cell.transport_kind,
         "tile_type": cell.tile_type,
     }
-    if cell.server_x is not None and cell.server_y is not None:
-        row["server_x"] = cell.server_x
-        row["server_y"] = cell.server_y
     row.update(extra)
     return row
 
@@ -67,25 +63,6 @@ def _bbox_of_cells(cells: list[DecodedCellDTO]) -> dict[str, Any]:
         "width": mx_x - mn_x + 1,
         "height": mx_y - mn_y + 1,
     }
-    dense_vals: list[int] = []
-    for c in cells:
-        dense_vals.append(raw_x_to_dense_index(c.x))
-    if dense_vals:
-        mndx, mxdx = min(dense_vals), max(dense_vals)
-        out["dense_min_x"] = mndx
-        out["dense_max_x"] = mxdx
-        out["dense_width"] = mxdx - mndx + 1
-    if all(c.server_x is not None and c.server_y is not None for c in cells):
-        sxs = [int(c.server_x) for c in cells if c.server_x is not None]
-        sys_ = [int(c.server_y) for c in cells if c.server_y is not None]
-        smn_x, smx_x = min(sxs), max(sxs)
-        smn_y, smx_y = min(sys_), max(sys_)
-        out["server_min_x"] = smn_x
-        out["server_max_x"] = smx_x
-        out["server_min_y"] = smn_y
-        out["server_max_y"] = smx_y
-        out["server_width"] = smx_x - smn_x + 1
-        out["server_height"] = smx_y - smn_y + 1
     return out
 
 
@@ -109,10 +86,9 @@ def _index_transport_components(
     cells: tuple[DecodedCellDTO, ...],
     snapshot_bbox: dict[str, Any],
 ) -> tuple[list[ExistingTransportComponentDTO], dict[tuple[int, int, int | None], int]]:
-    """Return transport DTO rows and transport cell → component id map.
+    """Return transport DTO rows and transport cell ??component id map.
 
-    BFS uses raw ``iter_four_neighbors`` (not ``server_x``/``server_y``): rank-dense ``X`` can
-    collide for invalid consecutive positives in fixtures. Server coords stay for fingerprint/UI.
+    BFS uses raw ``iter_four_neighbors`` so fixture positions stay island-local end to end.
     """
 
     by_key: dict[tuple[int, int, int | None], DecodedCellDTO] = {
@@ -237,8 +213,6 @@ def inspect_existing_layout(
                 cell_kind=c.cell_kind,
                 transport_kind=c.transport_kind,
                 raw_entry_json=dict(c.raw_entry_json),
-                server_x=c.server_x,
-                server_y=c.server_y,
             )
         )
 

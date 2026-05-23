@@ -11,11 +11,7 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.coord_frames import (
-    CoordFrame,
-    ServerCoord,
-    server_coord_to_tuple,
-)
+from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 from django_apps.asteroid_lab.snapshots.grid_contract import (
     OUTER_VOID_PADDING,
     Coord,
@@ -23,51 +19,28 @@ from django_apps.asteroid_lab.snapshots.grid_contract import (
     cells_in_bbox,
     expand_bbox,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    server_xy_for_raw_xy,
-    unpack_server_xy_params,
-)
 
 
 def infer_topology_coord_frame(cells: Sequence[DecodedCellDTO]) -> CoordFrame:
-    """When decode/reconstruction omit ``server_x``/``server_y``, use island-local topology."""
+    """Decoded/reconstructed cells use island-local topology."""
 
-    if not cells:
-        return CoordFrame.SERVER_DENSE
-    if all(not isinstance(c.server_x, int) for c in cells):
-        return CoordFrame.ISLAND_RAW
-    return CoordFrame.SERVER_DENSE
+    del cells
+    return CoordFrame.ISLAND_RAW
 
 
 def topology_coord_for_cell(
     cell: DecodedCellDTO,
-    params: tuple[int, int] | None,
+    params: object | None = None,
     *,
-    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
+    coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
 ) -> Coord:
-    """Mineable / void topology key for one cell (server dense or island-local)."""
+    """Mineable / void topology key for one island-local cell."""
 
-    if coord_frame == CoordFrame.ISLAND_RAW:
-        return (cell.x, cell.y)
-    return server_coord_to_tuple(server_coord_for_cell(cell, params))
-
-
-def server_coord_for_cell(cell: DecodedCellDTO, params: tuple[int, int] | None) -> ServerCoord:
-    sx, sy = cell.server_x, cell.server_y
-    if isinstance(sx, int) and isinstance(sy, int):
-        return ServerCoord(sx, sy)
-    if params is not None:
-        md, my, hz = unpack_server_xy_params(params)
-        tx, ty = server_xy_for_raw_xy(
-            cell.x,
-            cell.y,
-            min_dense_x=md,
-            min_raw_y=my,
-            has_explicit_raw_x_zero=hz,
-        )
-        return ServerCoord(tx, ty)
-    msg = "DecodedCellDTO.server_x/server_y missing and ReconstructionResult.server_xy_params unset"
-    raise ValueError(msg)
+    del params
+    if coord_frame == CoordFrame.WORLD_RAW:
+        msg = "WORLD_RAW acceptance topology not implemented - proof gate required"
+        raise ValueError(msg)
+    return (cell.x, cell.y)
 
 
 def mineable_field_kind(cell: DecodedCellDTO) -> str | None:
@@ -81,59 +54,45 @@ def mineable_field_kind(cell: DecodedCellDTO) -> str | None:
 
 @dataclass(frozen=True, slots=True)
 class AcceptanceTopology:
-    """Server-coordinate sets used by reconstruction confidence / acceptance."""
+    """Island-coordinate sets used by reconstruction confidence / acceptance."""
 
     mineable_cells: frozenset[Coord]
     external_void_cells: frozenset[Coord]
 
 
-def _cells_by_server_coord(
+def _cells_by_topology_coord(
     cells: tuple[DecodedCellDTO, ...],
-    params: tuple[int, int] | None,
     *,
-    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
+    coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
 ) -> dict[Coord, DecodedCellDTO]:
-    by_sv: dict[Coord, DecodedCellDTO] = {}
+    by_coord: dict[Coord, DecodedCellDTO] = {}
     for cell in cells:
-        key = topology_coord_for_cell(cell, params, coord_frame=coord_frame)
-        by_sv[key] = cell
-    return by_sv
-
-
-def _cells_by_island_coord(cells: tuple[DecodedCellDTO, ...]) -> dict[Coord, DecodedCellDTO]:
-    """Island-local ``(cell.x, cell.y)`` keys — no server dense projection."""
-
-    return {(cell.x, cell.y): cell for cell in cells}
+        by_coord[topology_coord_for_cell(cell, coord_frame=coord_frame)] = cell
+    return by_coord
 
 
 def acceptance_topology_from_reconstruction(
     result: ReconstructionResult,
     *,
-    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
+    coord_frame: CoordFrame | None = None,
 ) -> AcceptanceTopology:
     """Compute mineable and external void sets for one reconstruction result."""
 
-    if coord_frame == CoordFrame.WORLD_RAW:
-        msg = "WORLD_RAW acceptance topology not implemented — proof gate required"
+    frame = coord_frame if coord_frame is not None else result.coord_frame
+    if frame == CoordFrame.WORLD_RAW:
+        msg = "WORLD_RAW acceptance topology not implemented - proof gate required"
         raise ValueError(msg)
 
-    cells = result.cells
-    params = result.server_xy_params
-    if coord_frame == CoordFrame.ISLAND_RAW:
-        by_sv = _cells_by_island_coord(cells)
-    else:
-        by_sv = _cells_by_server_coord(cells, params, coord_frame=coord_frame)
-
-    mineable: set[Coord] = set()
-    for sv, cell in by_sv.items():
-        if mineable_field_kind(cell) is not None:
-            mineable.add(sv)
+    by_coord = _cells_by_topology_coord(result.cells, coord_frame=frame)
+    mineable = {
+        coord for coord, cell in by_coord.items() if mineable_field_kind(cell) is not None
+    }
 
     mineable_f = frozenset(mineable)
-    all_sv = frozenset(by_sv)
-    asteroid_bbox = bbox_from_coords(mineable_f if mineable_f else all_sv)
+    all_coords = frozenset(by_coord)
+    asteroid_bbox = bbox_from_coords(mineable_f if mineable_f else all_coords)
     route_domain_bbox = expand_bbox(asteroid_bbox, OUTER_VOID_PADDING)
-    external_void = frozenset(c for c in cells_in_bbox(route_domain_bbox) if c not in all_sv)
+    external_void = frozenset(c for c in cells_in_bbox(route_domain_bbox) if c not in all_coords)
 
     return AcceptanceTopology(
         mineable_cells=mineable_f,
@@ -141,13 +100,11 @@ def acceptance_topology_from_reconstruction(
     )
 
 
-def mineable_server_coords_from_reconstruction(result: ReconstructionResult) -> frozenset[Coord]:
+def mineable_coords_from_reconstruction(result: ReconstructionResult) -> frozenset[Coord]:
     return acceptance_topology_from_reconstruction(result).mineable_cells
 
 
-def external_void_server_coords_from_reconstruction(
-    result: ReconstructionResult,
-) -> frozenset[Coord]:
+def external_void_coords_from_reconstruction(result: ReconstructionResult) -> frozenset[Coord]:
     return acceptance_topology_from_reconstruction(result).external_void_cells
 
 
@@ -162,21 +119,16 @@ def constraint_violation_count(
         topo = acceptance_topology_from_reconstruction(result)
     except ValueError:
         return 1
-    violations = 0
-    for sv in ambiguous:
-        if sv not in topo.mineable_cells:
-            violations += 1
-    return violations
+    return sum(1 for coord in ambiguous if coord not in topo.mineable_cells)
 
 
 __all__ = [
     "AcceptanceTopology",
     "acceptance_topology_from_reconstruction",
     "constraint_violation_count",
-    "external_void_server_coords_from_reconstruction",
-    "mineable_field_kind",
-    "mineable_server_coords_from_reconstruction",
-    "server_coord_for_cell",
+    "external_void_coords_from_reconstruction",
     "infer_topology_coord_frame",
+    "mineable_coords_from_reconstruction",
+    "mineable_field_kind",
     "topology_coord_for_cell",
 ]

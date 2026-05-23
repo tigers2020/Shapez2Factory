@@ -1,4 +1,4 @@
-"""Full-map snapshot steps for lab replay (output-only; not solver input)."""
+﻿"""Full-map snapshot steps for lab replay (output-only; not solver input)."""
 
 from __future__ import annotations
 
@@ -33,9 +33,6 @@ def decoded_cell_to_full_map_row(cell: DecodedCellDTO, **extra: Any) -> dict[str
         "transport_kind": cell.transport_kind,
         "tile_type": cell.tile_type,
     }
-    if cell.server_x is not None and cell.server_y is not None:
-        row["server_x"] = cell.server_x
-        row["server_y"] = cell.server_y
     row.update(extra)
     return row
 
@@ -78,8 +75,6 @@ def _synthetic_asteroid_field_cell(source: DecodedCellDTO, field_cell_kind: str)
         nested_entry_count=0,
         nested_type_counts_json={},
         raw_entry_json={"_replay_synthetic": True, "_from_cell_kind": source.cell_kind},
-        server_x=source.server_x,
-        server_y=source.server_y,
     )
 
 

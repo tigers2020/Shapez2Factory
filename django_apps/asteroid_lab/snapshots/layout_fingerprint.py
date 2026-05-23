@@ -51,8 +51,7 @@ def _compact_json(data: Any) -> bytes:
 def layout_fingerprint_payload(decoded_json: dict[str, Any]) -> dict[str, Any]:
     """Canonical dict for bbox-normalized island layout (miners/extensions only).
 
-    Uses copy JSON island-local ``X``/``Y`` via ``entry_island_raw_coord``; does not require
-    ``server_x``/``server_y`` on entries (PR-F).
+    Uses copy JSON island-local ``X``/``Y`` via ``entry_island_raw_coord``.
     """
 
     bp = decoded_json.get("BP")

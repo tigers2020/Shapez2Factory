@@ -45,7 +45,6 @@ from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_META_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
-    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
 from django_apps.asteroid_lab.snapshots.coord_proof_policy import (
@@ -130,16 +129,10 @@ def _persist_solver_run_outcome(
     run_id: int,
     *,
     solver_summary: dict[str, Any],
-    server_xy_params: tuple[int, int] | None,
 ) -> None:
     run = m.SolverRun.objects.get(pk=int(run_id))
     config = dict(run.config_json or {})
     config[SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY] = dict(solver_summary)
-    if server_xy_params is not None:
-        config[SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY] = [
-            int(server_xy_params[0]),
-            int(server_xy_params[1]),
-        ]
     m.SolverRun.objects.filter(pk=int(run_id)).update(config_json=config)
 
 
@@ -308,7 +301,6 @@ def _run_rttp_solver_for_map_input(
     _persist_solver_run_outcome(
         run_id,
         solver_summary=summary,
-        server_xy_params=recon.server_xy_params,
     )
 
     frames, metrics = build_lab_replay_frames_for_project(int(project_id))

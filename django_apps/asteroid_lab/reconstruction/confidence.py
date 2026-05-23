@@ -8,7 +8,6 @@ from typing import Any
 from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
     acceptance_topology_from_reconstruction,
     constraint_violation_count,
-    infer_topology_coord_frame,
     topology_coord_for_cell,
 )
 from django_apps.asteroid_lab.reconstruction.evidence import (
@@ -31,7 +30,7 @@ _CONFIDENCE_SCORE_MIN = 0.95
 
 def _topology_coord(
     cell: DecodedCellDTO,
-    params: tuple[int, int] | None,
+    params: object | None = None,
     *,
     coord_frame: CoordFrame,
 ) -> Coord | None:
@@ -58,9 +57,8 @@ def build_candidate_masks(
     cells: Sequence[DecodedCellDTO],
     *,
     wall_coords: Iterable[Coord],
-    server_xy_params: tuple[int, int] | None,
     interior_patch_coords: Iterable[Coord],
-    coord_frame: CoordFrame = CoordFrame.SERVER_DENSE,
+    coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
 ) -> tuple[frozenset[Coord], frozenset[Coord]]:
     """Two topology-coordinate masks: interior-patch hint and wall-adjacent fill."""
 
@@ -70,7 +68,7 @@ def build_candidate_masks(
     for cell in cells:
         if not _is_inferred_fill(cell):
             continue
-        sv = _topology_coord(cell, server_xy_params, coord_frame=coord_frame)
+        sv = _topology_coord(cell, coord_frame=coord_frame)
         if sv is None:
             continue
         x, y = cell.x, cell.y
@@ -171,12 +169,11 @@ def apply_confidence_to_result(
 ) -> ReconstructionResult:
     """Attach confidence fields and summary metrics to a reconstruction result."""
 
-    params = result.server_xy_params
-    coord_frame = infer_topology_coord_frame(result.cells)
+    coord_frame = result.coord_frame
     hard: set[Coord] = set()
     mineable: set[Coord] = set()
     for cell in result.cells:
-        sv = _topology_coord(cell, params, coord_frame=coord_frame)
+        sv = _topology_coord(cell, coord_frame=coord_frame)
         if sv is None:
             continue
         if cell.cell_kind in ASTEROID_FIELD_KINDS:
@@ -187,7 +184,6 @@ def apply_confidence_to_result(
     mask_a, mask_b = build_candidate_masks(
         result.cells,
         wall_coords=wall_coords,
-        server_xy_params=params,
         interior_patch_coords=interior_patch_coords,
         coord_frame=coord_frame,
     )
@@ -209,7 +205,7 @@ def apply_confidence_to_result(
         cells=result.cells,
         summary_json=dict(result.summary_json),
         outer_rim_coords=result.outer_rim_coords,
-        server_xy_params=params,
+        coord_frame=coord_frame,
         confirmed_cells=confirmed,
         ambiguous_cells=ambiguous,
         external_void_cells=external_void,
@@ -243,7 +239,7 @@ def apply_confidence_to_result(
         cells=result.cells,
         summary_json=summary,
         outer_rim_coords=result.outer_rim_coords,
-        server_xy_params=params,
+        coord_frame=coord_frame,
         confirmed_cells=confirmed,
         ambiguous_cells=ambiguous,
         external_void_cells=external_void,

@@ -1,5 +1,8 @@
 # Phase 9 — Replay and Debug Artifact
 
+
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_09_replay_debug.md`](../../Algorithm/asteroid_lab_09_replay_debug.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 > **Superseded narrative (dual-track):** 본 문서의 UI·런타임 관점에서 **Lab 리플레이와 Optimization 리플레이를 별도 트랙·독립 `optimizationReplayFrameIndex`로 취급**하는 서술이 있었다면, 구현 정본은 **Unified Lab Replay Timeline**이다. 최적화 이벤트는 동일 `ReplayTrack`의 `ReplayFrame`에 append되고, 프론트는 `lab-replay-frames-data`와 단일 scrub 인덱스만 사용한다. 상세·금지 심볼 목록: `rollback_baseline_lab_replay_timeline.md`.
 
 ## 목적

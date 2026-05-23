@@ -14,9 +14,9 @@ from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.reconstruction.confidence import reconstruction_persist_summary
 from django_apps.asteroid_lab.reconstruction.display_map import (
     merged_display_cells_from_reconstruction,
-    server_bbox_from_cells,
 )
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
+from django_apps.asteroid_lab.snapshots.island_bbox import island_bbox_from_cells
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +46,10 @@ def build_reconstructed_map_persist_payload(
         raise ValueError(msg)
 
     merged = merged_display_cells_from_reconstruction(cleanup, recon)
-    full_map_bbox = server_bbox_from_cells(merged)
+    full_map_bbox = island_bbox_from_cells(merged)
+    if full_map_bbox is None:
+        msg = "full_map merge produced no cells for island bbox"
+        raise ValueError(msg)
 
     norm = build_reconstructed_normalized_dto(
         merged,
@@ -54,7 +57,7 @@ def build_reconstructed_map_persist_payload(
         map_input_id=map_input_id,
         run_key=run_key.strip(),
         summary_json=reconstruction_persist_summary(recon),
-        full_map_server_bbox=full_map_bbox,
+        full_map_island_bbox=full_map_bbox,
     )
     decoded = dict(norm.decoded_json)
     copy_code = encode_reconstructed_copy_string(decoded)

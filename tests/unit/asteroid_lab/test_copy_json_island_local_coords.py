@@ -1,4 +1,4 @@
-"""Copy JSON island-local coordinate rules (not server / world map)."""
+"""Copy JSON island-local coordinate rules."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from django_apps.asteroid_lab.snapshots.copy_json_coords import (
     entry_raw_y,
     iter_entry_dicts,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
 from django_apps.shapez_core.services.shapez_copy_decode import decode_shapez2_copy
 
 # 3× ShapeMinerExtension + miner + belt above miner (in-game paste, 2026-05-23).
@@ -56,15 +55,3 @@ def test_three_ext_layout_uses_raw_x_zero_column() -> None:
     assert entries_have_explicit_raw_x_zero(rows)
 
 
-def test_island_local_xy_differs_from_server_after_attach() -> None:
-    """Copy local (1,1) is not the same numeric pair as lab server_x/server_y."""
-
-    root = decode_shapez2_copy(_THREE_EXT_MINER_BELT_COPY)
-    attach_server_coords_to_decoded_json(root)
-    miner = next(
-        e
-        for e in iter_entry_dicts(root)
-        if e.get("T") == "Layout_ShapeMiner"
-    )
-    assert entry_island_local_xy(miner) == (1, 1)
-    assert miner["server_x"] != 1 or miner["server_y"] != 1

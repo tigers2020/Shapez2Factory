@@ -233,7 +233,7 @@ unreachable candidate는 normal pool에 넣지 않는다. diagnostic은 `allow_d
 [ ] output_stub not in occupied_cells
 [ ] extractor in rim_cells
 [ ] extensions in mineable_cells
-[ ] topology_graph·occupied가 Server 밀집 격자·`neighbors4_server`와 모순 없음 (server x=0 허용)
+[ ] topology_graph·occupied가 island 격자·`grid_contract.neighbors4`와 모순 없음 (copy `X==0` 허용)
 [ ] 모든 절대 Coord·셀 집합이 Server X/Y (Phase 1 좌표 규칙과 동일)
 [ ] normal_candidates의 각 원소: route_probe_result.reachable is True
 [ ] normal_candidates: route_probe_result.reached_goal is not None (v0 성공 계약)
@@ -247,7 +247,7 @@ unreachable candidate는 normal pool에 넣지 않는다. diagnostic은 `allow_d
 test_candidate_generator_rim_only_extractors
 test_candidate_generator_extensions_must_be_mineable
 test_candidate_generator_output_stub_not_occupied
-test_candidate_generator_server_coord_contract
+test_candidate_generator_island_coord_contract
 test_candidate_generator_deterministic_ids
 test_candidate_generator_topology_signature_deterministic
 test_candidate_generator_records_rejection_reason_enum

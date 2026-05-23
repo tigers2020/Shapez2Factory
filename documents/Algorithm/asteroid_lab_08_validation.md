@@ -64,7 +64,7 @@ all extractor outputs connected
 all routes reach a RouteGoal that matches trunk/margin/attachment contract (not “any void cell”)
 no orphan transport
 no invalid overlap
-all Coord satisfy Server dense grid contract (Phase 1)
+all Coord satisfy island map grid contract (Phase 1, `CoordFrame.ISLAND_RAW`)
 transport kind consistency
 extension attached to extractor/extension chain
 max 3 extensions per extractor

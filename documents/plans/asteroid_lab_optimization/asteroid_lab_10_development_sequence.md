@@ -1,5 +1,8 @@
 # Asteroid Lab Optimization — Development Sequence
 
+
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_10_development_sequence.md`](../../Algorithm/asteroid_lab_10_development_sequence.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 > **Superseded by Unified Lab Replay Timeline:** 아래 **Sequence 9** 등에서 말하는 *optimization track 추가·듀얼 트랙* 은 구현 정본과 다르다. 최적화 리플레이는 **기존 Lab `ReplayTrack`에만** 프레임을 붙이고, 별도 `optimizationReplayFrameIndex` / `optimization-replay-json` 런타임 경로는 두지 않는다. 정본: `rollback_baseline_lab_replay_timeline.md`. *(계획 문서 `asteroid_lab_12_runtime_replay_wiring.md`, `asteroid_lab_13_replay_payload_scalability.md`가 추가될 때도 동일 정본을 따른다 — “Lab / Optimization dual-track 불변” 조항은 폐기.)*
 
 ## 목적
@@ -38,8 +41,8 @@ pytest tests/unit/shapez_asteroid/test_optimization_input.py (DTO·좌표·빈 t
 ```text
 [ ] 관련 DTO·enum import 가능 (순환 없음)
 [ ] enum 멤버 이름·값이 Phase 문서와 동기화됨
-[ ] OptimizationInput·그래프·goal의 모든 Coord가 Server X/Y 정본
-[ ] `neighbors4_server` 밀집 4방 이웃 단위 테스트 (server x=0 포함 케이스)
+[ ] OptimizationInput·그래프·goal의 모든 Coord가 island-local (x, y) 정본
+[ ] `grid_contract.neighbors4` 밀집 4방 이웃 단위 테스트 (copy JSON X==0 포함 케이스)
 [ ] route_goals가 kind·priority 계약을 만족하는 최소 factory 가능
 [ ] greenfield = existing_transport_cells 비어 있음 ∧ trunk·protected 공집합 (별도 코드 경로 없음)
 ```
@@ -56,7 +59,7 @@ pytest tests/unit/shapez_asteroid/test_optimization_input.py (DTO·좌표·빈 t
 [ ] Reconstruction → OptimizationInput adapter
 [ ] rim / interior / route_goals 추출
 [ ] RouteCellDomain 빌더 초안 (**RouteDomainSnapshotBuilder**; existing_transport_cells → transport_mask, trunk·protected·blocked 반영)
-[ ] topology_graph 이웃이 neighbors4_server와 모순 없음 (그래프 빌더 테스트)
+[ ] topology_graph 이웃이 grid_contract.neighbors4와 모순 없음 (그래프 빌더 테스트)
 ```
 
 ### 테스트
@@ -267,7 +270,7 @@ commit 순서가 genome `commit_order`와 일치하고 생성 enumeration 순에
 [ ] extractor output connectivity check
 [ ] orphan transport check
 [ ] overlap check
-[ ] Coord·`neighbors4_server` 밀집 격자 검증
+[ ] Coord·`grid_contract.neighbors4` 밀집 격자 검증
 [ ] RouteGoal·transport 일관성 (read-only 검증만)
 ```
 

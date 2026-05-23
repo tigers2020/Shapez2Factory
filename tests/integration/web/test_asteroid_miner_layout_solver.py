@@ -55,6 +55,7 @@ def test_asteroid_miner_layout_page_renders_lab_shell() -> None:
     assert 'id="lab-replay-grid-stage"' in content
     assert 'id="lab-replay-grid-hud-coord"' in content
     assert 'id="lab-replay-grid-hud-role"' in content
+    assert 'id="lab-replay-grid-hud-server-coord"' not in content
     assert 'id="lab-optimization-overlay-layer"' in content
     g_stage = content.index('id="lab-replay-grid-stage"')
     g_grid = content.index('id="lab-replay-grid"', g_stage)

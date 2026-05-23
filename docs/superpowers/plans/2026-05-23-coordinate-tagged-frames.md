@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Introduce `IslandRawCoord`, `WorldRawCoord`, deprecated `ServerCoord`, and reserved `CoordFrame` names; migrate via PR-A–F without breaking `OptimizationInput` Server canonical frame until the proof gate (PR-E) is green.
+**Goal:** Island/world tagged frames; **`ServerCoord` / `server_coords.py` removed (PR-F, 2026-05)**. Default `OptimizationInput.coord_frame` = `ISLAND_RAW`.
 
-**Architecture:** Tagged frozen dataclasses in `snapshots/coord_frames.py`; strangler at decode/reconstruction/replay boundaries; AST + mypy gates; server bridge removal only in PR-F. RTTP branch may land PR-A–C only per spec §RTTP branch policy.
+**Architecture:** `coord_frames.py` + `island_bbox.py`; identity replay projection; AST gate (`test_coordinate_frame_ast_gate.py`). RTTP: PR-A–C only per spec §RTTP branch policy.
 
 **Tech Stack:** Python 3.12+, frozen dataclasses, `enum.StrEnum`, pytest, ruff, mypy (`django_apps config src`).
 
@@ -12,7 +12,7 @@
 
 **Spec:** [`../specs/2026-05-23-coordinate-tagged-frames-design.md`](../specs/2026-05-23-coordinate-tagged-frames-design.md)
 
-**Plan status:** Ready for execution (self-review 2026-05-23)
+**Plan status:** PR-F product extinction **done** (2026-05); doc sweep 2026-05-23. Remaining: optional legacy JSON migration only.
 
 ---
 
@@ -410,7 +410,7 @@ coord_frame: CoordFrame = CoordFrame.SERVER_DENSE
 | 6 | `904ae04f`, `62a6627d` | Persist island meta; absolute fp v2 |
 | 7–8 | `d9308c79` | `neighbors4`; pipeline seam; admin mini-map island; DTO deprecate metadata |
 
-**Remaining (extinction order):** `server_coords.py` bridge consumers (reconstruction allowlist, replay `lab_xy_from_server_xy`, RTTP compose), optional DTO field removal, final F1 Step 2 + Step 5 commit.
+**PR-F extinction (2026-05):** `server_coords.py` deleted; replay identity projection; Lab UI island-only. Optional follow-up: legacy DB JSON field strip (not required for read-compat).
 
 ---
 

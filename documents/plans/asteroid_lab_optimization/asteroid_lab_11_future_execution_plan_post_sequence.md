@@ -1,5 +1,8 @@
 # Asteroid Lab — Future Execution Plan (Post Sequence 11)
 
+
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md`](../../Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 Role: Principal Solver System Architect
 
 ---

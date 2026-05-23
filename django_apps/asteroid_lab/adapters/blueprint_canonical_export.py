@@ -3,8 +3,9 @@
 ``BP.Entries`` ``X``/``Y``/``R`` are **island-local** (omitted key → ``0``; ``X+1`` right,
 ``Y+1`` down). See ``snapshots.copy_json_coords``.
 
-Export from lab raw positions uses ``raw_x_to_dense_index`` for horizontal anchoring
-(``export_x = dense(raw_x) - dense(extractor_x)``) and ``export_y = raw_y - extractor_y - 1``.
+Export from lab raw positions uses compact export columns for horizontal anchoring
+(``export_x = export_col(raw_x) - export_col(extractor_x)``) and
+``export_y = raw_y - extractor_y - 1``.
 Do not use ``raw_x - (extractor_x + 1)`` — it leaves a gap in dense columns for west branches.
 """
 
@@ -15,7 +16,7 @@ import gzip
 import json
 from typing import Any
 
-from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_index
+from django_apps.asteroid_lab.snapshots.copy_json_coords import raw_x_to_export_column
 
 SHAPEZ2_COPY_PREFIX_V4 = "SHAPEZ2-4-"
 
@@ -129,7 +130,7 @@ def _coords_look_like_game_export(entries: list[dict[str, Any]]) -> bool:
 
 
 def strip_lab_fields_from_root(root: dict[str, Any]) -> dict[str, Any]:
-    """Return a shallow copy without lab-only top-level keys; entries lose ``server_*``."""
+    """Return a shallow copy without lab-only top-level keys."""
 
     bp_in = root.get("BP")
     if not isinstance(bp_in, dict):
@@ -144,8 +145,7 @@ def strip_lab_fields_from_root(root: dict[str, Any]) -> dict[str, Any]:
     for item in entries_raw:
         if not isinstance(item, dict):
             continue
-        clean = {k: v for k, v in item.items() if k not in ("server_x", "server_y")}
-        entries.append(clean)
+        entries.append(dict(item))
 
     bp: dict[str, Any] = {"$type": str(bp_in.get("$type", "Island")), "Entries": entries}
     for k in ("Icon", "BinaryVersion", "B"):
@@ -164,23 +164,22 @@ def translate_lab_entries_to_official_xy(entries: list[dict[str, Any]]) -> list[
     """Lab raw ``X,Y`` → game export ``X,Y`` (dense column anchor).
 
     Let ``(ex_x, ex_y)`` be the extractor raw cell (minimum ``(X,Y)`` among miners). Let
-    ``ex_dense = raw_x_to_dense_index(ex_x)``. For each entry raw ``(x, y)``:
+    ``ex_col = raw_x_to_export_column(ex_x)``. For each entry raw ``(x, y)``:
 
-    - ``export_x = raw_x_to_dense_index(x) - ex_dense``
+    - ``export_x = raw_x_to_export_column(x) - ex_col``
     - ``export_y = raw_y - ex_y - 1``
 
-    ``X=0`` / ``Y=0`` are omitted at serialize time. Same horizontal seam as
-    ``server_coords`` / ``_asteroid_lab_coord_system``.
+    ``X=0`` / ``Y=0`` are omitted at serialize time.
     """
 
     stripped = [_strip_lab_entry(dict(e)) for e in entries if isinstance(e, dict)]
     ex_x, ex_y = _extractor_anchor(stripped)
-    ex_dense = raw_x_to_dense_index(ex_x)
+    ex_col = raw_x_to_export_column(ex_x)
     out: list[dict[str, Any]] = []
     for row in stripped:
         x = _as_int(row.get("X"))
         y = _as_int(row.get("Y"))
-        ox = raw_x_to_dense_index(x) - ex_dense
+        ox = raw_x_to_export_column(x) - ex_col
         oy = y - ex_y - 1
         r = _as_int(row.get("R"))
         t = row.get("T")
@@ -337,7 +336,11 @@ def serialize_game_island_export_bytes(root: dict[str, Any]) -> bytes:
 def export_dense_x_set(entries: list[dict[str, Any]]) -> set[int]:
     """Dense column indices for export ``X`` values (omitted ``X`` → 0)."""
 
-    return {raw_x_to_dense_index(_as_int(row.get("X"))) for row in entries if isinstance(row, dict)}
+    return {
+        raw_x_to_export_column(_as_int(row.get("X")))
+        for row in entries
+        if isinstance(row, dict)
+    }
 
 
 def export_dense_x_is_contiguous(entries: list[dict[str, Any]]) -> bool:

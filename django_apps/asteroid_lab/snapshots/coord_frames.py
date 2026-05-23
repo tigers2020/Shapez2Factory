@@ -1,9 +1,8 @@
-"""Tagged map coordinate frames (island copy, world evidence, deprecated server dense).
+"""Tagged map coordinate frames (island copy, world evidence).
 
 Normative spec: ``docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md``.
 
-During migration, ``grid_contract.Coord`` remains ``tuple[int, int]`` with **ServerCoord**
-semantics until PR-E/F. New boundaries should use the frozen dataclasses below.
+New boundaries should use the frozen dataclasses below.
 """
 
 from __future__ import annotations
@@ -17,7 +16,6 @@ _MSG_WORLD_NO_X0 = "Shapez2 world grid has no x == 0 coordinate"
 class CoordFrame(StrEnum):
     """Reserved for ``OptimizationInput.coord_frame`` (PR-E). Document-only until then."""
 
-    SERVER_DENSE = "server_dense"
     ISLAND_RAW = "island_raw"
     WORLD_RAW = "world_raw"
 
@@ -42,14 +40,6 @@ class WorldRawCoord:
             raise ValueError(_MSG_WORLD_NO_X0)
 
 
-@dataclass(frozen=True, slots=True)
-class ServerCoord:
-    """Deprecated dense bbox ``server_x`` / ``server_y`` until PR-F."""
-
-    x: int
-    y: int
-
-
 def neighbors4_island(
     c: IslandRawCoord,
 ) -> tuple[IslandRawCoord, IslandRawCoord, IslandRawCoord, IslandRawCoord]:
@@ -68,16 +58,10 @@ def island_to_tuple(c: IslandRawCoord) -> tuple[int, int]:
     return (c.x, c.y)
 
 
-def server_coord_to_tuple(c: ServerCoord) -> tuple[int, int]:
-    return (c.x, c.y)
-
-
 __all__ = [
     "CoordFrame",
     "IslandRawCoord",
-    "ServerCoord",
     "WorldRawCoord",
     "island_to_tuple",
     "neighbors4_island",
-    "server_coord_to_tuple",
 ]

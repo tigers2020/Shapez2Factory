@@ -34,11 +34,11 @@ TDD·테스트 보호 대상 표: [testing.md § Domain invariants](mdc:document
 
 |------|------|-------------------|
 
-| **좌표** | Copy JSON `X`/`Y` = **island-local** (omitted→0; `X==0` valid). Persist/fingerprint: `island_bbox_left_bottom_raw_xy_v1` / `island_raw_xy_v1` (PR-F). RTTP solver default `CoordFrame.ISLAND_RAW`. Legacy server dense (`server_x`/`server_y` on JSON) — strangler only; new persist paths must not attach. World map: `x==0` 열 없음. normalize 이후 raw↔server 재변환 금지 (optimization). | [`research_shapez2_copy_json_island_local_coords_2026-05-23.md`](mdc:documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md); [`2026-05-23-coordinate-tagged-frames-design.md`](mdc:docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md) |
+| **좌표** | Copy JSON `X`/`Y` = **island-local** (omitted→0; `X==0` valid). Persist/fingerprint: `island_bbox_left_bottom_raw_xy_v1` / `island_raw_xy_v1` (PR-F). RTTP solver default `CoordFrame.ISLAND_RAW`. **금지:** dense server `(server_x`,`server_y`)·`server_coords` bridge·persist attach. World map: `x==0` 열 없음. AST: `test_coordinate_frame_ast_gate`. Lab UI: island `x`/`y` only. | [`research_shapez2_copy_json_island_local_coords_2026-05-23.md`](mdc:documents/research/research_shapez2_copy_json_island_local_coords_2026-05-23.md); [`2026-05-23-coordinate-tagged-frames-design.md`](mdc:docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md) |
 
 | **Replay** | 스키마·append 의미 변경 시 버전·문서. payload **의미 대체** 금지. metrics/NDJSON/artifact는 **algorithm input 금지**. **단일 replay timeline**; 모든 프레임 2D `map_view`. | [`asteroid_lab_09_replay_timeline`](mdc:documents/Algorithm/asteroid_lab_09_replay_timeline.md); `test_manual_snapshot_replay_not_used_as_algorithm_input_doc` |
 
-| **DTO·fingerprint** | `coord_system` 필수. Layout map v2 = island bbox-normalized; absolute v2 = island raw x/y. | [`layout_fingerprint.py`](mdc:django_apps/asteroid_lab/snapshots/layout_fingerprint.py); legacy server doc (historical) |
+| **DTO·fingerprint** | `coord_system` 필수. Layout map v2 = island bbox-normalized; absolute v2 = island raw x/y. | [`layout_fingerprint.py`](mdc:django_apps/asteroid_lab/snapshots/layout_fingerprint.py) |
 
 | **Export** | dense 앵커 export; [`sample_gene_exhaustive_generator`](mdc:django_apps/asteroid_lab/services/sample_gene_exhaustive_generator.py) NWS 배치는 **export 층만** 변경. | [`official_blueprint_canonical_export`](mdc:documents/ai/plans/official_blueprint_canonical_export.md) |
 

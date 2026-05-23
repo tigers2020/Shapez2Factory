@@ -1,5 +1,8 @@
 # Phase 3 — Bundle Candidate Generator
 
+
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_03_candidate_generator.md`](../../Algorithm/asteroid_lab_03_candidate_generator.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 ## 목적
 
 PatternLibrary를 실제 asteroid topology 위에 배치해 가능한 bundle candidate를 생성한다.
@@ -233,8 +236,8 @@ unreachable candidate는 normal pool에 넣지 않는다. diagnostic은 `allow_d
 [ ] output_stub not in occupied_cells
 [ ] extractor in rim_cells
 [ ] extensions in mineable_cells
-[ ] topology_graph·occupied가 Server 밀집 격자·`neighbors4_server`와 모순 없음 (server x=0 허용)
-[ ] 모든 절대 Coord·셀 집합이 Server X/Y (Phase 1 좌표 규칙과 동일)
+[ ] topology_graph·occupied가 island map grid·`grid_contract.neighbors4`와 모순 없음 (copy JSON X==0 허용)
+[ ] 모든 절대 Coord·셀 집합이 island-local (x, y) (Phase 1 좌표 규칙과 동일)
 [ ] normal_candidates의 각 원소: route_probe_result.reachable is True
 [ ] normal_candidates: route_probe_result.reached_goal is not None (v0 성공 계약)
 [ ] rejected_candidates: rejection_reason은 항상 CandidateRejectReason
@@ -247,7 +250,7 @@ unreachable candidate는 normal pool에 넣지 않는다. diagnostic은 `allow_d
 test_candidate_generator_rim_only_extractors
 test_candidate_generator_extensions_must_be_mineable
 test_candidate_generator_output_stub_not_occupied
-test_candidate_generator_server_coord_contract
+test_candidate_generator_island_coord_contract
 test_candidate_generator_deterministic_ids
 test_candidate_generator_topology_signature_deterministic
 test_candidate_generator_records_rejection_reason_enum

@@ -1,4 +1,4 @@
-"""Reconstructed island: ``asteroid_*_field`` ↔ ``Layout_*MinerExtension`` blueprint I/O."""
+﻿"""Reconstructed island: ``asteroid_*_field`` ??``Layout_*MinerExtension`` blueprint I/O."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ _T_TO_KIND: dict[str, str] = {
 
 
 def tile_type_for_reconstruction_export(cell: DecodedCellDTO) -> str:
-    """Map reconstruction cell to game ``T`` for persisted copy/json (fields → Extension only)."""
+    """Map reconstruction cell to game ``T`` for persisted copy/json (fields ??Extension only)."""
 
     if cell.cell_kind in ASTEROID_FIELD_KINDS:
         mapped = _KIND_TO_T.get(cell.cell_kind)
@@ -113,7 +113,7 @@ def cells_for_field_export_from_decoded_json(
 
 
 def cell_kind_for_reconstruction_import(tile_type: str) -> tuple[str, str]:
-    """Return ``(cell_kind, transport_kind)``; Extension ``T`` → asteroid field kinds."""
+    """Return ``(cell_kind, transport_kind)``; Extension ``T`` ??asteroid field kinds."""
 
     if tile_type == T_SHAPE_FIELD:
         return ("asteroid_shape_field", "none")
@@ -131,9 +131,6 @@ def _entry_dict_from_cell(cell: DecodedCellDTO) -> dict[str, Any]:
     row: dict[str, Any] = {"X": cell.x, "Y": cell.y, "T": t}
     if cell.rotation:
         row["R"] = cell.rotation
-    if cell.server_x is not None and cell.server_y is not None:
-        row["server_x"] = cell.server_x
-        row["server_y"] = cell.server_y
     return row
 
 
@@ -171,7 +168,7 @@ def build_reconstructed_blueprint_root(
     map_input_id: int | None = None,
     run_key: str = "",
     summary_json: dict[str, Any] | None = None,
-    full_map_server_bbox: dict[str, int] | None = None,
+    full_map_island_bbox: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Build lab blueprint root with Extension ``T`` for asteroid field cells."""
 
@@ -187,8 +184,8 @@ def build_reconstructed_blueprint_root(
         "field_tile_mapping": "Layout_*MinerExtension",
         "summary_json": dict(summary_json or {}),
     }
-    if full_map_server_bbox:
-        recon_meta["full_map_server_bbox"] = dict(full_map_server_bbox)
+    if full_map_island_bbox:
+        recon_meta["full_map_island_bbox"] = dict(full_map_island_bbox)
     root[_RECON_META_KEY] = recon_meta
     return root
 
@@ -200,9 +197,9 @@ def build_reconstructed_normalized_dto(
     map_input_id: int | None = None,
     run_key: str = "",
     summary_json: dict[str, Any] | None = None,
-    full_map_server_bbox: dict[str, int] | None = None,
+    full_map_island_bbox: dict[str, int] | None = None,
 ) -> NormalizedBlueprintDTO:
-    """Root with summary + server coords attached (persist ``decoded_json``)."""
+    """Root with summary + island coord meta (persist ``decoded_json``)."""
 
     root = build_reconstructed_blueprint_root(
         cells,
@@ -210,7 +207,7 @@ def build_reconstructed_normalized_dto(
         map_input_id=map_input_id,
         run_key=run_key,
         summary_json=summary_json,
-        full_map_server_bbox=full_map_server_bbox,
+        full_map_island_bbox=full_map_island_bbox,
     )
     dto = normalize_decoded_blueprint(RawDecodedBlueprintDTO(root=root))
     merged = dict(dto.decoded_json)
@@ -219,7 +216,7 @@ def build_reconstructed_normalized_dto(
 
 
 def encode_reconstructed_copy_string(root: dict[str, Any]) -> str:
-    """``SHAPEZ2-4-…`` with trailing ``$`` (game paste convention)."""
+    """``SHAPEZ2-4-??` with trailing ``$`` (game paste convention)."""
 
     return f"{encode_copy_string(root)}$"
 
@@ -227,7 +224,7 @@ def encode_reconstructed_copy_string(root: dict[str, Any]) -> str:
 def entries_to_reconstruction_cells(
     entries: list[dict[str, Any]],
 ) -> tuple[DecodedCellDTO, ...]:
-    """Import ``BP.Entries`` with Extension → ``asteroid_*_field`` (not miner_extension)."""
+    """Import ``BP.Entries`` with Extension ??``asteroid_*_field`` (not miner_extension)."""
 
     cells: list[DecodedCellDTO] = []
 
@@ -259,8 +256,6 @@ def entries_to_reconstruction_cells(
                 nested_entry_count=nested_count,
                 nested_type_counts_json=nested_type_counts,
                 raw_entry_json=raw_entry,
-                server_x=None,
-                server_y=None,
             )
         )
 

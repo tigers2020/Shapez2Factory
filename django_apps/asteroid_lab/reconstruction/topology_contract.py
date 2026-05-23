@@ -1,4 +1,4 @@
-"""Normalized reconstruction topology for fixture pair acceptance (Server X/Y only)."""
+"""Normalized reconstruction topology for fixture pair acceptance (raw island X/Y only)."""
 
 from __future__ import annotations
 
@@ -25,10 +25,6 @@ from django_apps.asteroid_lab.snapshots.decoded_blueprint_snapshot import (
     build_decoded_blueprint_snapshot,
 )
 from django_apps.asteroid_lab.snapshots.grid_contract import BBox, Coord, bbox_from_coords
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    map_bbox_dense_and_y,
-    server_xy_for_raw_xy,
-)
 
 _DEFAULT_FIXTURES_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "asteroid_lab"
 _DIFF_LIST_CAP = 50
@@ -36,7 +32,7 @@ _DIFF_LIST_CAP = 50
 
 @dataclass(frozen=True, slots=True)
 class NormalizedReconstructionTopology:
-    """Server-grid topology sets for compare (layer duplicates collapse to ``(sx, sy)``)."""
+    """Island-grid topology sets for compare (layer duplicates collapse to ``(x, y)``)."""
 
     mineable_cells: frozenset[Coord]
     wall_cells: frozenset[Coord]
@@ -44,7 +40,6 @@ class NormalizedReconstructionTopology:
     external_void_cells: frozenset[Coord]
     asteroid_cells: frozenset[Coord]
     bbox: BBox
-    server_xy_params: tuple[int, int] | None
 
 
 def _fixtures_dir(fixtures_dir: Path | None) -> Path:
@@ -95,11 +90,6 @@ def decode_shapez_copy_string(copy_string: str) -> DecodedBlueprintSnapshotDTO:
     return build_decoded_blueprint_snapshot(norm.decoded_json)
 
 
-def _params_from_cells(cells: Sequence[DecodedCellDTO]) -> tuple[int, int] | None:
-    rows = [{"X": c.x, "Y": c.y} for c in cells]
-    return map_bbox_dense_and_y(rows)
-
-
 def _is_mineable_occupied(cell: DecodedCellDTO) -> bool:
     if cell.cell_kind in ASTEROID_FIELD_KINDS:
         return True
@@ -108,7 +98,6 @@ def _is_mineable_occupied(cell: DecodedCellDTO) -> bool:
 
 def _shell_topology_coords(
     shell_raw_coords: frozenset[RawCoord] | None,
-    params: tuple[int, int] | None,
     *,
     coord_frame: CoordFrame,
 ) -> frozenset[Coord]:
@@ -116,26 +105,17 @@ def _shell_topology_coords(
         return frozenset()
     if coord_frame == CoordFrame.ISLAND_RAW:
         return frozenset(shell_raw_coords)
-    if params is None:
-        return frozenset()
-    md, my = int(params[0]), int(params[1])
-    hz = bool(params[2]) if len(params) > 2 else False
-    return frozenset(
-        server_xy_for_raw_xy(x, y, min_dense_x=md, min_raw_y=my, has_explicit_raw_x_zero=hz)
-        for x, y in shell_raw_coords
-    )
+    return frozenset()
 
 
 def build_normalized_reconstruction_topology(
     cells: Sequence[DecodedCellDTO],
     *,
-    server_xy_params: tuple[int, int] | None = None,
     shell_raw_coords: frozenset[RawCoord] | None = None,
     coord_frame: CoordFrame | None = None,
 ) -> NormalizedReconstructionTopology:
     """Build compare topology from decoded or reconstruction-merged cells."""
 
-    params = server_xy_params if server_xy_params is not None else _params_from_cells(cells)
     frame = coord_frame if coord_frame is not None else infer_topology_coord_frame(cells)
     mineable: set[Coord] = set()
     wall: set[Coord] = set()
@@ -143,7 +123,7 @@ def build_normalized_reconstruction_topology(
 
     for cell in cells:
         try:
-            sv = topology_coord_for_cell(cell, params, coord_frame=frame)
+            sv = topology_coord_for_cell(cell, coord_frame=frame)
         except ValueError:
             continue
         occupied.add(sv)
@@ -152,7 +132,7 @@ def build_normalized_reconstruction_topology(
         elif is_asteroid_evidence(cell):
             wall.add(sv)
 
-    shell_sv = _shell_topology_coords(shell_raw_coords, params, coord_frame=frame)
+    shell_sv = _shell_topology_coords(shell_raw_coords, coord_frame=frame)
     interior_patch = mineable - shell_sv if shell_sv else frozenset(mineable)
 
     asteroid = frozenset(mineable | wall)
@@ -160,10 +140,10 @@ def build_normalized_reconstruction_topology(
     bbox = bbox_from_coords(all_sv if all_sv else frozenset(mineable))
 
     external_void: set[Coord] = set()
-    if bbox.max_sx >= bbox.min_sx and bbox.max_sy >= bbox.min_sy:
-        for sx in range(bbox.min_sx, bbox.max_sx + 1):
-            for sy in range(bbox.min_sy, bbox.max_sy + 1):
-                c = (sx, sy)
+    if bbox.max_x >= bbox.min_x and bbox.max_y >= bbox.min_y:
+        for x in range(bbox.min_x, bbox.max_x + 1):
+            for y in range(bbox.min_y, bbox.max_y + 1):
+                c = (x, y)
                 if c not in occupied:
                     external_void.add(c)
 
@@ -174,14 +154,13 @@ def build_normalized_reconstruction_topology(
         external_void_cells=frozenset(external_void),
         asteroid_cells=asteroid,
         bbox=bbox,
-        server_xy_params=params,
     )
 
 
 def normalize_topology_for_compare(
     topology: NormalizedReconstructionTopology,
 ) -> NormalizedReconstructionTopology:
-    """Identity helper; sets already server-deduped."""
+    """Identity helper; sets already island-deduped."""
 
     return topology
 
@@ -215,16 +194,16 @@ def diff_topology(
         "wrong_external_void_cells": _cap_coords(frozenset(wrong_external)),
         "wrong_interior_patch_cells": _cap_coords(frozenset(wrong_interior)),
         "actual_bbox": {
-            "min_sx": actual.bbox.min_sx,
-            "max_sx": actual.bbox.max_sx,
-            "min_sy": actual.bbox.min_sy,
-            "max_sy": actual.bbox.max_sy,
+            "min_x": actual.bbox.min_x,
+            "max_x": actual.bbox.max_x,
+            "min_y": actual.bbox.min_y,
+            "max_y": actual.bbox.max_y,
         },
         "expected_bbox": {
-            "min_sx": expected.bbox.min_sx,
-            "max_sx": expected.bbox.max_sx,
-            "min_sy": expected.bbox.min_sy,
-            "max_sy": expected.bbox.max_sy,
+            "min_x": expected.bbox.min_x,
+            "max_x": expected.bbox.max_x,
+            "min_y": expected.bbox.min_y,
+            "max_y": expected.bbox.max_y,
         },
     }
 

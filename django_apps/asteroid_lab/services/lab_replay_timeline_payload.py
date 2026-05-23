@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from django.db.models import Count, Prefetch, Q
 
-from django_apps.asteroid_lab.models import AsteroidMapInput, ReplayFrame, ReplayTrack, SolverRun
+from django_apps.asteroid_lab.models import ReplayFrame, ReplayTrack, SolverRun
 from django_apps.asteroid_lab.optimization.replay_track_keys import (
     RTTP_OPTIMIZATION_TRACK_SUFFIX,
     RTTP_TRACK_KEY_PREFIX,
@@ -30,9 +30,7 @@ from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import (
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RUNTIME_REPLAY_FRAMES_KEY,
-    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
 )
-from django_apps.asteroid_lab.snapshots.server_coords import map_bbox_dense_and_y
 
 REPLAY_DIAGNOSTIC_REASON_KEY = "replay_diagnostic_reason"
 DIAGNOSTIC_RTTP_TRACK_BLOCKED_LAB_TIMELINE = "rttp_track_blocked_lab_timeline"
@@ -86,87 +84,13 @@ def _frame_row_from_model(frame: ReplayFrame) -> ReplayFrameRowDTO:
     )
 
 
-def _server_xy_params_from_map_input(inp: AsteroidMapInput) -> tuple[int, int] | None:
-    """Blueprint ``BP.Entries`` bbox (same source as reconstruction)."""
-
-    decoded = dict(inp.decoded_json or {})
-    bp = decoded.get("BP")
-    if not isinstance(bp, dict):
-        return None
-    entries = bp.get("Entries")
-    if not isinstance(entries, list):
-        return None
-    rows: list[dict[str, int]] = []
-    for item in entries:
-        if not isinstance(item, dict):
-            continue
-        x, y = item.get("X"), item.get("Y")
-        if isinstance(x, int) and isinstance(y, int):
-            rows.append({"X": x, "Y": y})
-    return map_bbox_dense_and_y(rows)
-
-
-def _server_xy_params_from_latest_solver_run(project_id: int) -> tuple[int, int] | None:
-    run = (
-        SolverRun.objects.filter(project_id=int(project_id)).order_by("-created_at", "-id").first()
-    )
-    if run is None:
-        return None
-    config = dict(run.config_json or {})
-    raw = config.get(SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY)
-    if not isinstance(raw, (list, tuple)) or len(raw) != 2:
-        return None
-    try:
-        return (int(raw[0]), int(raw[1]))
-    except (TypeError, ValueError):
-        return None
-
-
-def _server_xy_params_from_lab_replay_track(project_id: int) -> tuple[int, int] | None:
-    track = get_latest_lab_replay_track_for_project(int(project_id))
-    if track is None:
-        return None
-    ordered = list(track.frames.all())
-    return map_bbox_dense_and_y(_blueprint_rows_from_lab_maps(ordered))
-
-
-def _blueprint_rows_from_lab_maps(frames: list[ReplayFrame]) -> list[dict[str, int]]:
-    rows: list[dict[str, int]] = []
-    for frame in frames:
-        payload = frame.frame_payload or {}
-        full_map = payload.get("full_map")
-        if not isinstance(full_map, list):
-            co = frame.cell_overlay_json or {}
-            cells = co.get("cells")
-            full_map = cells if isinstance(cells, list) else []
-        for cell in full_map:
-            if not isinstance(cell, dict):
-                continue
-            x, y = cell.get("x"), cell.get("y")
-            if isinstance(x, int) and isinstance(y, int):
-                rows.append({"X": x, "Y": y})
-    return rows
-
-
 def resolve_replay_projection_context_for_project(
     project_id: int,
-) -> ReplayProjectionContext | None:
-    """Derive adapter projection params (reconstruction-aligned; read-only)."""
+) -> ReplayProjectionContext:
+    """Island-local replay projection (PR-F Wave C; no dense server params)."""
 
-    params = _server_xy_params_from_latest_solver_run(int(project_id))
-    if params is None:
-        inp = (
-            AsteroidMapInput.objects.filter(project_id=int(project_id))
-            .order_by("-created_at", "-id")
-            .first()
-        )
-        if inp is not None:
-            params = _server_xy_params_from_map_input(inp)
-    if params is None:
-        params = _server_xy_params_from_lab_replay_track(int(project_id))
-    if params is None:
-        return None
-    return ReplayProjectionContext(server_xy_params=params)
+    del project_id
+    return ReplayProjectionContext()
 
 
 def _solver_runtime_timeline_frames_for_project(
@@ -310,13 +234,7 @@ def build_lab_replay_frames_for_project(
     )
     serialized = [replay_timeline_frame_to_json_dict(fr) for fr in combined]
     rttp_rows = load_rttp_compose_rows_for_project(int(project_id))
-    projection = resolve_replay_projection_context_for_project(int(project_id))
-    server_xy_params = projection.server_xy_params if projection is not None else None
-    serialized = interleave_rttp_snapshot_frames(
-        serialized,
-        rttp_rows,
-        server_xy_params=server_xy_params,
-    )
+    serialized = interleave_rttp_snapshot_frames(serialized, rttp_rows)
     diagnostic = _lab_replay_diagnostic_reason(int(project_id), composed_count=len(serialized))
     metrics = _track_metrics_from_serialized_frames(serialized, diagnostic_reason=diagnostic)
     return serialized, metrics

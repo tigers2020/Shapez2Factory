@@ -10,7 +10,7 @@ from django_apps.asteroid_lab.snapshots.layout_fingerprint import (
 
 
 def attach_island_coord_meta_to_decoded_json(decoded_json: dict[str, Any]) -> dict[str, Any]:
-    """Record canonical coord system on decode persist without server dense attach."""
+    """Record canonical raw coord system on decode persist."""
 
     meta = decoded_json.setdefault("_asteroid_lab_coord_system", {})
     if isinstance(meta, dict):

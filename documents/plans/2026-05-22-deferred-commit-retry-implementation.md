@@ -1,5 +1,8 @@
 # Deferred Commit Retry — Implementation Plan (C-GATE)
 
+
+> **Plans (misc):** Project planning memo; not Asteroid Lab coordinate canon. See [`documents/Algorithm/`](../Algorithm/) and [`docs/superpowers/specs/`](../docs/superpowers/specs/) for active specs.
+
 **Spec:** [`docs/superpowers/specs/2026-05-22-deferred-commit-retry-design.md`](../../docs/superpowers/specs/2026-05-22-deferred-commit-retry-design.md) (Approved)
 
 ## Vertical slices (TDD)

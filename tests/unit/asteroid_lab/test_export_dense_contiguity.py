@@ -1,4 +1,4 @@
-"""Export ``X`` columns: dense index set must have no gaps (west-branch spread regression)."""
+﻿"""Export ``X`` columns: dense index set must have no gaps (west-branch spread regression)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
     to_official_island_root,
 )
 from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import build_layout_root
-from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_index
+from django_apps.asteroid_lab.snapshots.copy_json_coords import raw_x_to_export_column
 
 
 def _lab_to_official_entries(
@@ -63,6 +63,6 @@ def test_spread_bug_pattern_dense_set_has_gap() -> None:
     """Historical bug export: dense columns {-3, -1, 0} with missing -2."""
 
     export_x_values = (-3, -1, 0)
-    dense = {raw_x_to_dense_index(x) for x in export_x_values}
+    dense = {raw_x_to_export_column(x) for x in export_x_values}
     assert dense == {-3, -1, 0}
     assert not (max(dense) - min(dense) + 1 == len(dense))

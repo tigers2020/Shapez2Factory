@@ -108,47 +108,19 @@ def reconstruction_summary_from_decoded_json(decoded_json: dict[str, Any]) -> di
     return dict(summary) if isinstance(summary, dict) else {}
 
 
-def full_map_server_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, int] | None:
-    """Topology extent from persist (may be wider than field-only ``BP.Entries`` bbox)."""
+def full_map_island_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict[str, int] | None:
+    """Topology extent from persist (island-local; PR-F Wave C)."""
 
-    meta = reconstruction_meta_from_decoded_json(decoded_json)
-    bb = meta.get("full_map_server_bbox")
-    if not isinstance(bb, dict):
-        return None
-    if "server_width" not in bb or "server_height" not in bb:
-        return None
-    return dict(bb)
+    from django_apps.asteroid_lab.snapshots.island_bbox import (
+        full_map_island_bbox_from_decoded_json as _island_bbox,
+    )
 
-
-def server_bbox_from_cells(cells: Sequence[DecodedCellDTO]) -> dict[str, int]:
-    """Server grid bbox from cells with ``server_x`` / ``server_y`` attached."""
-
-    sxs = [int(c.server_x) for c in cells if isinstance(c.server_x, int)]
-    sys_ = [int(c.server_y) for c in cells if isinstance(c.server_y, int)]
-    if not sxs or not sys_:
-        return {
-            "server_min_x": 0,
-            "server_max_x": 0,
-            "server_min_y": 0,
-            "server_max_y": 0,
-            "server_width": 0,
-            "server_height": 0,
-        }
-    mn_x, mx_x = min(sxs), max(sxs)
-    mn_y, mx_y = min(sys_), max(sys_)
-    return {
-        "server_min_x": mn_x,
-        "server_max_x": mx_x,
-        "server_min_y": mn_y,
-        "server_max_y": mx_y,
-        "server_width": mx_x - mn_x + 1,
-        "server_height": mx_y - mn_y + 1,
-    }
+    return _island_bbox(decoded_json)
 
 
 __all__ = [
     "full_map_rows_from_reconstruction",
-    "full_map_server_bbox_from_decoded_json",
+    "full_map_island_bbox_from_decoded_json",
     "merge_reconstruction_display_cells",
     "merge_reconstruction_display_rows",
     "merged_display_cells_from_reconstruction",
@@ -156,6 +128,5 @@ __all__ = [
     "replace_miners_with_synthetic_fields",
     "reconstruction_meta_from_decoded_json",
     "reconstruction_summary_from_decoded_json",
-    "server_bbox_from_cells",
     "structural_cells_from_cleanup",
 ]

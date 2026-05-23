@@ -1,4 +1,4 @@
-"""Build :class:`DecodedBlueprintSnapshotDTO` from persisted ``decoded_json`` (pure, ORM-free)."""
+﻿"""Build :class:`DecodedBlueprintSnapshotDTO` from persisted ``decoded_json`` (pure, ORM-free)."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ from django_apps.asteroid_lab.snapshots.copy_json_coords import entry_island_raw
 
 
 def _as_int(val: Any) -> int:
-    """Coerce blueprint scalars; ``None`` → ``0`` (same as entry ``get('X', 0)`` style).
+    """Coerce blueprint scalars; ``None`` ??``0`` (same as entry ``get('X', 0)`` style).
 
     **Caveat:** missing ``X`` on a blueprint dict row becomes ``raw_x == 0`` on
     :class:`~django_apps.asteroid_lab.services.dto.DecodedCellDTO`, which is **not** a valid
     asteroid world column (there is no ``x == 0``). Prefer explicit ``X`` in JSON or treat
-    ``raw_x == 0`` as a decode/validation signal, not server indexing.
+    ``raw_x == 0`` as a decode/validation signal.
     """
 
     if val is None:
@@ -78,8 +78,7 @@ def build_decoded_blueprint_snapshot(
     """Parse top-level ``BP.Entries`` into cell DTOs and aggregate metadata.
 
     Does not call decode, reconstruction, or solver code. Does not read replay rows.
-    Cell ``x``/``y`` are island-local copy JSON coordinates; ``server_x``/``server_y`` are
-    not populated here (PR-F — server dense attach removed from decode DTO path).
+    Cell ``x``/``y`` are island-local copy JSON coordinates.
     """
 
     bp = decoded_json.get("BP")
@@ -130,8 +129,6 @@ def build_decoded_blueprint_snapshot(
                 nested_entry_count=nested_count,
                 nested_type_counts_json=nested_type_counts,
                 raw_entry_json=raw_entry,
-                server_x=None,
-                server_y=None,
             )
         )
 

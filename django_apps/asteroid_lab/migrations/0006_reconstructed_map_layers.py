@@ -23,16 +23,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="reconstructedasteroidmap",
-            name="anchor_server_x",
-            field=models.IntegerField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name="reconstructedasteroidmap",
-            name="anchor_server_y",
-            field=models.IntegerField(blank=True, null=True),
-        ),
-        migrations.AddField(
-            model_name="reconstructedasteroidmap",
             name="coord_system",
             field=models.CharField(blank=True, default="", max_length=80),
         ),
@@ -77,8 +67,8 @@ class Migration(migrations.Migration):
                 ),
                 ("raw_x", models.IntegerField(blank=True, null=True)),
                 ("raw_y", models.IntegerField(blank=True, null=True)),
-                ("server_x", models.IntegerField()),
-                ("server_y", models.IntegerField()),
+                ("x", models.IntegerField()),
+                ("y", models.IntegerField()),
                 ("t", models.IntegerField(blank=True, null=True, verbose_name="numeric T")),
                 ("layout_id", models.CharField(blank=True, max_length=128)),
                 ("layout_name", models.CharField(blank=True, max_length=128)),
@@ -127,12 +117,12 @@ class Migration(migrations.Migration):
                 "verbose_name_plural": "복원 소행성 엔트리",
                 "indexes": [
                     models.Index(
-                        fields=["map", "server_x", "server_y"], name="asteroid_la_map_id_b0a570_idx"
+                        fields=["map", "x", "y"], name="asteroid_la_map_id_b0a570_idx"
                     )
                 ],
                 "constraints": [
                     models.UniqueConstraint(
-                        fields=("map", "server_x", "server_y", "kind", "source"),
+                        fields=("map", "x", "y", "kind", "source"),
                         name="uniq_recon_entry_map_xy_kind_source",
                     )
                 ],

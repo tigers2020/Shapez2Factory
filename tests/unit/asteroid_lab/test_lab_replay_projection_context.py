@@ -1,4 +1,4 @@
-"""Projection context resolution for Lab replay timeline (read path)."""
+"""Projection context resolution for Lab replay timeline."""
 
 from __future__ import annotations
 
@@ -8,13 +8,10 @@ from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     resolve_replay_projection_context_for_project,
 )
-from django_apps.asteroid_lab.services.solver_run_config_keys import (
-    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
-)
 
 
 @pytest.mark.django_db
-def test_projection_prefers_solver_run_server_xy_params_over_lab_track() -> None:
+def test_projection_context_uses_fallback_full_cells() -> None:
     p = m.AsteroidProject.objects.create(name="Proj", slug="proj-params-priority")
     t = m.ReplayTrack.objects.create(project=p, track_key="lab-tr")
     m.ReplayFrame.objects.create(
@@ -32,9 +29,7 @@ def test_projection_prefers_solver_run_server_xy_params_over_lab_track() -> None
     m.SolverRun.objects.create(
         project=p,
         run_key="rk",
-        config_json={SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY: [9, 2]},
     )
 
     ctx = resolve_replay_projection_context_for_project(int(p.pk))
-    assert ctx is not None
-    assert ctx.server_xy_params == (9, 2)
+    assert ctx.fallback_full_cells == ()

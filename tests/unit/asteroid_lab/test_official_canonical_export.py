@@ -1,4 +1,4 @@
-"""Official island export: dense anchor, connected-branch golden JSON, spread bug regression."""
+﻿"""Official island export: dense anchor, connected-branch golden JSON, spread bug regression."""
 
 from __future__ import annotations
 
@@ -20,32 +20,11 @@ from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     encode_layout_with_suffix,
 )
 from django_apps.asteroid_lab.snapshots.blueprint_equivalence import decoded_json_layout_equivalent
-from django_apps.asteroid_lab.snapshots.server_coords import attach_server_coords_to_decoded_json
 
 
 def _fixture_line(name: str) -> str:
     p = Path(__file__).resolve().parents[2] / "fixtures" / "asteroid_lab" / name
     return p.read_text(encoding="utf-8").splitlines()[0].strip()
-
-
-def _occupied_server_x_is_contiguous(decoded: dict) -> bool:
-    d = dict(decoded)
-    attach_server_coords_to_decoded_json(d)
-    bp = d.get("BP")
-    if not isinstance(bp, dict):
-        return False
-    entries = bp.get("Entries")
-    if not isinstance(entries, list):
-        return False
-    sxs = [
-        int(e["server_x"])
-        for e in entries
-        if isinstance(e, dict) and isinstance(e.get("server_x"), int)
-    ]
-    if not sxs:
-        return True
-    lo, hi = min(sxs), max(sxs)
-    return hi - lo + 1 == len(set(sxs))
 
 
 def test_connected_branch_fixture_matches_module_constant() -> None:
@@ -118,7 +97,6 @@ def test_west_branch_official_entries_no_x_minus_three() -> None:
     for row in official["BP"]["Entries"]:
         assert row.get("X") != -3
     assert export_dense_x_is_contiguous(official["BP"]["Entries"])
-    assert _occupied_server_x_is_contiguous(official)
 
 
 def test_connected_branch_gene_encode_not_equal_spread_bug_fixture(
@@ -132,17 +110,6 @@ def test_connected_branch_gene_encode_not_equal_spread_bug_fixture(
         decode_copy_string(bug).root,
         include_transport=True,
     )
-
-
-def test_fixture_spread_branch_decode_has_server_x_hole() -> None:
-    bad = decode_copy_string(_fixture_line("spread_branch_fluid_pipe_bug.txt")).root
-    assert not _occupied_server_x_is_contiguous(bad)
-
-
-def test_fixture_connected_branch_decode_server_x_contiguous() -> None:
-    good = decode_copy_string(_fixture_line("connected_branch_fluid_pipe.txt")).root
-    assert _occupied_server_x_is_contiguous(good)
-
 
 def test_blueprint_identifier_version_is_resolved_not_hardcoded() -> None:
     """resolve_blueprint_code_version must produce version-dependent prefixes

@@ -1,4 +1,4 @@
-"""RTTP P1 map class — existing trunk from reconstruction (PR-6)."""
+﻿"""RTTP P1 map class ??existing trunk from reconstruction (PR-6)."""
 
 from __future__ import annotations
 
@@ -34,8 +34,6 @@ def _field_cell(sx: int, sy: int) -> DecodedCellDTO:
         nested_entry_count=0,
         nested_type_counts_json={},
         raw_entry_json={"X": sx, "Y": sy, "T": "AsteroidShapeField"},
-        server_x=sx,
-        server_y=sy,
     )
 
 
@@ -52,17 +50,15 @@ def _belt_cell(sx: int, sy: int) -> DecodedCellDTO:
         nested_entry_count=0,
         nested_type_counts_json={},
         raw_entry_json={"X": sx, "Y": sy, "T": "SpaceBelt_Forward"},
-        server_x=sx,
-        server_y=sy,
     )
 
 
 def _existing_trunk_reconstruction_result() -> ReconstructionResult:
-    """4×4 mineable block with one west-rim belt cell as existing trunk."""
+    """4횞4 mineable block with one west-rim belt cell as existing trunk."""
 
     cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
     cells = cells + (_belt_cell(4, 5),)
-    return ReconstructionResult(cells=cells, server_xy_params=None)
+    return ReconstructionResult(cells=cells)
 
 
 def _existing_trunk_optimization_input() -> OptimizationInput:

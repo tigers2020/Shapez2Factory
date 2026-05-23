@@ -1,4 +1,4 @@
-"""Unit tests for ``django_apps.asteroid_lab.reconstruction`` topology fill."""
+﻿"""Unit tests for ``django_apps.asteroid_lab.reconstruction`` topology fill."""
 
 from __future__ import annotations
 
@@ -370,7 +370,6 @@ def test_reconstruction_cell_count_not_less_than_pre_stamp_merge() -> None:
         removed_building_cells=c.removed_building_cells,
         wall_coords=c.wall_coords,
         bbox_bounds=c.bbox_bounds,
-        server_xy_params=c.server_xy_params,
     )
     stripped_by_key = {(cell.x, cell.y, cell.layer): cell for cell in c.cleaned_cells}
     stripped_xy = {(x, y) for x, y, _ in stripped_by_key}
@@ -416,7 +415,6 @@ def test_trace_collector_does_not_change_reconstruction_cells() -> None:
         removed_building_cells=c.removed_building_cells,
         wall_coords=c.wall_coords,
         bbox_bounds=c.bbox_bounds,
-        server_xy_params=c.server_xy_params,
     )
     coll = ReconstructionTraceCollector()
     with_trace = reconstruct_after_cleanup(
@@ -425,7 +423,6 @@ def test_trace_collector_does_not_change_reconstruction_cells() -> None:
         removed_building_cells=c.removed_building_cells,
         wall_coords=c.wall_coords,
         bbox_bounds=c.bbox_bounds,
-        server_xy_params=c.server_xy_params,
         trace_collector=coll,
     )
     assert without.cells == with_trace.cells

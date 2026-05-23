@@ -43,7 +43,8 @@ from django_apps.asteroid_lab.reconstruction.trace import (
     ReconstructionTraceEvent,
 )
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO, DecodedCellDTO
-from django_apps.asteroid_lab.snapshots.server_coords import unpack_server_xy_params
+from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
+from django_apps.asteroid_lab.snapshots.copy_json_coords import entries_have_explicit_raw_x_zero
 from django_apps.asteroid_lab.snapshots.transport_components import (
     is_transport_tile,
     sort_key_xy_layer,
@@ -57,7 +58,6 @@ def _finalize_reconstruction_result(
     cells: tuple[DecodedCellDTO, ...],
     summary: dict[str, object],
     *,
-    server_xy_params: tuple[int, int] | None,
     wall_coords: set[Coord],
     shell_raw_coords: frozenset[Coord],
 ) -> ReconstructionResult:
@@ -65,12 +65,12 @@ def _finalize_reconstruction_result(
         cells=cells,
         summary_json=dict(summary),
         outer_rim_coords=(),
-        server_xy_params=server_xy_params,
+        coord_frame=CoordFrame.ISLAND_RAW,
     )
     topo = build_normalized_reconstruction_topology(
         cells,
-        server_xy_params=server_xy_params,
         shell_raw_coords=shell_raw_coords,
+        coord_frame=CoordFrame.ISLAND_RAW,
     )
     return apply_confidence_to_result(
         base,
@@ -102,7 +102,6 @@ def _fill_seam_column_gap_coords(
     occupied_xy: set[Coord],
     fill_layer: int | None,
     fill_kind: str,
-    server_xy_params: tuple[int, int] | None,
 ) -> int:
     added = 0
     for x, y in coords:
@@ -122,12 +121,11 @@ def _emit_reconstruction_stamp_boundary(
     map_input_id: int | None,
     project_id: int | None,
     summary_json: dict[str, object],
-    server_xy_params: tuple[int, int] | None,
 ) -> None:
     if not boundary_run_id:
         return
     transitions = summarize_cell_kind_transitions(
-        before_cells, after_cells, server_xy_params=server_xy_params
+        before_cells, after_cells
     )
     emit_boundary_jsonl(
         run_id=boundary_run_id,
@@ -150,7 +148,6 @@ def reconstruct_after_cleanup(
     removed_building_cells: tuple[DecodedCellDTO, ...] = (),
     wall_coords: Set[Coord] | frozenset[Coord],
     bbox_bounds: tuple[int, int, int, int] | None,
-    server_xy_params: tuple[int, int] | None,
     trace_collector: ReconstructionTraceCollector | None = None,
     boundary_run_id: str | None = None,
     boundary_map_input_id: int | None = None,
@@ -234,19 +231,17 @@ def reconstruct_after_cleanup(
             map_input_id=boundary_map_input_id,
             project_id=boundary_project_id,
             summary_json=dict(summary),
-            server_xy_params=server_xy_params,
         )
         return _finalize_reconstruction_result(
             stamped,
             summary,
-            server_xy_params=server_xy_params,
             wall_coords=walls_xy,
             shell_raw_coords=shell_raw_coords,
         )
 
     w0, w1, h0, h1 = bbox_bounds
-    _, _, include_raw_x_zero = unpack_server_xy_params(
-        server_xy_params if server_xy_params is not None else None
+    include_raw_x_zero = entries_have_explicit_raw_x_zero(
+        [{"X": c.x, "Y": c.y} for c in original_cells]
     )
     extension_shell_raw: set[Coord] = {
         (c.x, c.y) for c in original_cells if c.cell_kind in MINER_EXTENSION_CELL_KINDS
@@ -615,7 +610,6 @@ def reconstruct_after_cleanup(
             occupied_xy=occupied_xy,
             fill_layer=fill_layer,
             fill_kind=fill_kind,
-            server_xy_params=server_xy_params,
         )
         pocket_filled += _fill_seam_column_gap_coords(
             seam_column_bridge_gap_fill_coords(occupied_xy),
@@ -623,7 +617,6 @@ def reconstruct_after_cleanup(
             occupied_xy=occupied_xy,
             fill_layer=fill_layer,
             fill_kind=fill_kind,
-            server_xy_params=server_xy_params,
         )
 
     summary["filled_hole_cell_count"] = len(filled)
@@ -647,7 +640,6 @@ def reconstruct_after_cleanup(
         map_input_id=boundary_map_input_id,
         project_id=boundary_project_id,
         summary_json=dict(summary),
-        server_xy_params=server_xy_params,
     )
 
     if trace_collector is not None:
@@ -666,7 +658,6 @@ def reconstruct_after_cleanup(
     return _finalize_reconstruction_result(
         out_cells,
         summary,
-        server_xy_params=server_xy_params,
         wall_coords=walls_xy,
         shell_raw_coords=shell_raw_coords,
     )
@@ -688,7 +679,6 @@ def run_topology_reconstruction(
         removed_building_cells=cleanup.removed_building_cells,
         wall_coords=cleanup.wall_coords,
         bbox_bounds=cleanup.bbox_bounds,
-        server_xy_params=cleanup.server_xy_params,
         trace_collector=trace_collector,
         boundary_run_id=boundary_run_id,
         boundary_map_input_id=boundary_map_input_id,
@@ -712,7 +702,6 @@ def reconstruct_snapshot(
         removed_building_cells=c.removed_building_cells,
         wall_coords=c.wall_coords,
         bbox_bounds=c.bbox_bounds,
-        server_xy_params=c.server_xy_params,
         boundary_run_id=boundary_run_id,
         boundary_map_input_id=snapshot.map_input_id,
         boundary_project_id=snapshot.project_id,

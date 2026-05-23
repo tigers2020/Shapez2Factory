@@ -11,9 +11,8 @@ from django_apps.asteroid_lab.adapters.reconstruction_blueprint_export import (
     load_reconstruction_cells_from_decoded_json,
 )
 from django_apps.asteroid_lab.reconstruction.display_map import (
-    full_map_server_bbox_from_decoded_json,
+    full_map_island_bbox_from_decoded_json,
     merged_display_cells_from_reconstruction,
-    server_bbox_from_cells,
 )
 from django_apps.asteroid_lab.reconstruction.trace import ReconstructionTraceCollector
 from django_apps.asteroid_lab.replay.reconstruction_frames import build_reconstruction_replay_events
@@ -29,17 +28,21 @@ from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     persist_reconstructed_asteroid_map,
     run_reconstruction_for_map_input,
 )
+from django_apps.asteroid_lab.snapshots.island_bbox import (
+    island_bbox_from_cells,
+    island_bbox_from_xy_dicts,
+)
+
+
+def _extent_from_island_bbox(bb: dict[str, int]) -> dict[str, int]:
+    return {"width": bb["width"], "height": bb["height"]}
 
 
 def _bbox_from_full_map_rows(rows: list[dict]) -> dict[str, int]:
-    sxs = [int(r["server_x"]) for r in rows if isinstance(r.get("server_x"), int)]
-    sys_ = [int(r["server_y"]) for r in rows if isinstance(r.get("server_y"), int)]
-    if not sxs or not sys_:
-        return {"server_width": 0, "server_height": 0}
-    return {
-        "server_width": max(sxs) - min(sxs) + 1,
-        "server_height": max(sys_) - min(sys_) + 1,
-    }
+    bb = island_bbox_from_xy_dicts(rows)
+    if bb is None:
+        return {"width": 0, "height": 0}
+    return _extent_from_island_bbox(bb)
 
 
 @pytest.fixture
@@ -68,7 +71,7 @@ def hole_island_copy() -> str:
 
 @pytest.mark.django_db
 def test_persist_full_map_matches_replay_complete_bbox(hole_island_copy: str) -> None:
-    """Regression: recon.cells-only subset shrinks server bbox vs merged full_map."""
+    """Regression: recon.cells-only subset shrinks bbox vs merged full_map."""
 
     proj = m.AsteroidProject.objects.create(name="BBox", slug="persist-full-map-bbox")
     inp = m.AsteroidMapInput.objects.create(project=proj, copy_code=hole_island_copy)
@@ -79,10 +82,12 @@ def test_persist_full_map_matches_replay_complete_bbox(hole_island_copy: str) ->
     _, _, _, row_extension, _, _ = build_cleanup_and_reconstruction_rows(snap)
     cleanup, recon = run_reconstruction_for_map_input(inp.id)
     merged = merged_display_cells_from_reconstruction(cleanup, recon)
-    replay_bbox = server_bbox_from_cells(merged)
-    recon_only_bbox = server_bbox_from_cells(tuple(recon.cells))
-    assert replay_bbox["server_width"] >= recon_only_bbox["server_width"]
-    assert replay_bbox["server_height"] >= recon_only_bbox["server_height"]
+    replay_bbox = island_bbox_from_cells(merged)
+    assert replay_bbox is not None
+    recon_only_bbox = island_bbox_from_cells(tuple(recon.cells))
+    assert recon_only_bbox is not None
+    assert replay_bbox["width"] >= recon_only_bbox["width"]
+    assert replay_bbox["height"] >= recon_only_bbox["height"]
 
     collector = ReconstructionTraceCollector()
     cleanup2, recon2 = run_reconstruction_for_map_input(inp.id, trace_collector=collector)
@@ -106,13 +111,13 @@ def test_persist_full_map_matches_replay_complete_bbox(hole_island_copy: str) ->
         cleanup=cleanup,
     )
     row = m.ReconstructedAsteroidMap.objects.get(pk=pk)
-    meta_bbox = full_map_server_bbox_from_decoded_json(dict(row.decoded_json))
+    meta_bbox = full_map_island_bbox_from_decoded_json(dict(row.decoded_json))
     assert meta_bbox is not None
-    assert meta_bbox["server_width"] == replay_bbox["server_width"]
-    assert meta_bbox["server_height"] == replay_bbox["server_height"]
+    assert meta_bbox["width"] == replay_bbox["width"]
+    assert meta_bbox["height"] == replay_bbox["height"]
     assert fm_bbox == {
-        "server_width": replay_bbox["server_width"],
-        "server_height": replay_bbox["server_height"],
+        "width": replay_bbox["width"],
+        "height": replay_bbox["height"],
     }
 
     entries = row.decoded_json.get("BP", {}).get("Entries") or []

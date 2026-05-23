@@ -1,6 +1,6 @@
 # Coordinate Tagged Frames — Design Spec
 
-**Status:** Approved 2026-05-23 (Coordinate Systems Migration Reviewer)  
+**Status:** Approved 2026-05-23 · **PR-F completed 2026-05** (dense server bridge removed from product code)  
 **Owner:** asteroid-lab / domain (Dominic) · implementation (Denny adapters + solver consumers)  
 **Epic branch (suggested):** `fix/coordinate-tagged-frames` or `refactor/coord-frames-strangler`  
 **Out of scope on RTTP branch:** PR-E / PR-F (see §RTTP branch policy)
@@ -21,15 +21,13 @@
 
 ## Problem
 
-Copy JSON **island-local** `(X,Y)` semantics are proven (in-game paste, regression fixture). **World / reconstruction** map semantics are documented separately (`x == 0` column absent; `1 ↔ -1` east jump). **Server dense** `(server_x, server_y)` is a derived bbox used today as `Coord` across `OptimizationInput`, candidates, replay projection, and UI overlays.
+Copy JSON **island-local** `(X,Y)` semantics are proven (in-game paste, regression fixture). **World / reconstruction** map semantics are documented separately (`x == 0` column absent; `1 ↔ -1` east jump). **Historical (pre–PR-F):** Server dense `(server_x, server_y)` was a derived bbox used as `Coord`. That bridge is **removed**; product paths use **island-local** `(x, y)` (`CoordFrame.ISLAND_RAW`).
 
-If server dense coords were produced from a wrong or ambiguous raw→server bridge, fixing overlay projection alone cannot restore solver correctness — every downstream layer trusted the same polluted frame.
+**Current contract:** `OptimizationInput.coord_frame` defaults to `ISLAND_RAW`. Replay/Lab project island cells with identity projection. World map (`x==0` absent) remains a separate frame for reconstruction transport only.
 
-**Current contract conflict:** Algorithm docs require `OptimizationInput` and all post-normalize `Coord` = Server X/Y only. A premature “single raw Coord” rename would violate that contract without proof that island-local and world frames describe the same topology for lab inputs.
+## North star (end state) — ACHIEVED (PR-F, 2026-05)
 
-## North star (end state)
-
-**Eliminate `server_x` / `server_y` and the dense server bridge entirely.**
+Dense server bridge **removed from product code**. Table records the migration mapping:
 
 | Removed at completion | Replaced by |
 |-----------------------|-------------|
@@ -75,7 +73,7 @@ Introduce **explicit tagged coordinate types** and a **strangler migration** tha
 |------|---------|-------------------|----------|
 | `IslandRawCoord` | Copy JSON / paste-local `X`,`Y` | `neighbors4_island`: `(x±1,y)`, `(x,y±1)` | **Valid** |
 | `WorldRawCoord` | Asteroid / lab world evidence | `asteroid_map_coords`: `left_of` / `right_of`, `y±1` | **Forbidden** (`__post_init__` raises) |
-| `ServerCoord` | **DEPRECATED** dense bbox (`server_x`,`server_y`) | `neighbors4_server` until removal | Valid in dense grid |
+| `ServerCoord` | **REMOVED** (PR-F) — do not reintroduce | — | — |
 | `GeneLocalCoord` | Canonical-E gene offsets | `rotate_offset` + anchor translate | N/A (not map tile) |
 
 **Module home (normative target):** `django_apps/asteroid_lab/snapshots/coord_frames.py`
@@ -168,13 +166,11 @@ If G3 fails: gate stays closed; keep `SERVER_DENSE` as runtime canonical; do **n
 
 ---
 
-## Server deprecation (§5)
+## Server deprecation (§5) — COMPLETE (PR-F)
 
-- `server_x`, `server_y`, `server_xy_params`, `coord_system=server_bbox_left_bottom_dense_x_v1` remain for fingerprint transition.
-- **Only** these modules may construct `ServerCoord` from raw/island during migration:
-  - `django_apps/asteroid_lab/snapshots/server_coords.py` (`attach_server_coords_to_decoded_json`, `server_xy_for_raw_xy`)
-  - Explicit deprecated wrappers called from reconstruction adapter until PR-F
-- New call sites **must not** invoke `server_xy_for_raw_xy` outside the allowlist (AST gate extends forbidden-token list).
+- **Deleted:** `django_apps/asteroid_lab/snapshots/server_coords.py`, dense server unit tests, Lab `server_*` HUD/wire.
+- **Forbidden in product code:** `server_x`, `server_y`, `server_xy_params`, `attach_server_coords*`, `server_xy_for_raw_xy`, `lab_xy_from_server_xy` (AST: `test_coordinate_frame_ast_gate.py`).
+- **Legacy persisted JSON:** may still contain `server_*` keys; readers **ignore** for display and algorithm input. No migration script in PR-F.
 
 ---
 
@@ -182,13 +178,12 @@ If G3 fails: gate stays closed; keep `SERVER_DENSE` as runtime canonical; do **n
 
 **RTTP / current branch (symptom relief only):**
 
-- Overlay may label cells with `IslandRawCoord` for paste-aligned display.
-- Solver / `OptimizationInput` / candidate generator remain **`ServerCoord`** until PR-E.
+- Overlay labels cells with island-local `(x, y)`.
 
-**PR-E/F (fundamental):**
+**PR-F (done):**
 
-- Tile position = promoted single `CoordFrame` value.
-- Remove `lab_xy_from_server_xy` mirror path when server bridge is deleted.
+- `OptimizationInput.coord_frame` default `ISLAND_RAW`.
+- `lab_xy_from_server_xy` and dense HUD **removed** from Lab JS.
 
 ---
 
@@ -240,3 +235,4 @@ Replay remains **output-only**. Lab / optimization replay stays **single timelin
 | 2026-05-23 | `CoordFrame` names reserved pre–PR-E |
 | 2026-05-23 | AST gate for silent tuple/dict coords |
 | 2026-05-23 | RTTP overlap narrowed to PR-A–C consumption only |
+| 2026-05 | PR-F: `server_coords.py` removed; island-local canonical for Lab/replay/optimization default |

@@ -1,4 +1,4 @@
-"""GeneticSample: decode-on-clean/save and admin sprite relpath helper."""
+﻿"""GeneticSample: decode-on-clean/save and admin sprite relpath helper."""
 
 from __future__ import annotations
 
@@ -103,7 +103,6 @@ def test_genetic_sample_clean_decodes_with_dollar_suffix() -> None:
     assert meta.get("frame") == "island_raw"
     row = entries[0]
     assert row.get("X") == 1 and row.get("Y") == 0
-    assert "server_x" not in row and "server_y" not in row
 
 
 def test_genetic_sample_clean_invalid_code() -> None:

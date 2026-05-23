@@ -1,5 +1,8 @@
 # Solve Progress Rendering Plan
 
+
+> **Plans (misc):** Project planning memo; not Asteroid Lab coordinate canon. See [`documents/Algorithm/`](../Algorithm/) and [`docs/superpowers/specs/`](../docs/superpowers/specs/) for active specs.
+
 ## Purpose
 
 The renderer is now a core product surface, not just a demo preview. Solver

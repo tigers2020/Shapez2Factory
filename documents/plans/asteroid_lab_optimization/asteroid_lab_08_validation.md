@@ -1,5 +1,8 @@
 # Phase 8 — Final Validation
 
+
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_08_validation.md`](../../Algorithm/asteroid_lab_08_validation.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 ## 목적
 
 최종 layout이 solver contract를 만족하는지 assert한다.
@@ -64,7 +67,7 @@ all extractor outputs connected
 all routes reach a RouteGoal that matches trunk/margin/attachment contract (not “any void cell”)
 no orphan transport
 no invalid overlap
-all Coord satisfy Server dense grid contract (Phase 1)
+all Coord satisfy island map grid contract (Phase 1)
 transport kind consistency
 extension attached to extractor/extension chain
 max 3 extensions per extractor

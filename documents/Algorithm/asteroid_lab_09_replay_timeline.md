@@ -424,7 +424,7 @@ metadata-only frame을 timeline에 단독 등록
 
 ```text
 [x] optimization frame adapter (`optimization_replay_frame_to_unified`)
-[x] Server dense → Lab raw (x,y) projection (`ReplayProjectionContext.server_xy_params`)
+[x] Island-local replay cells → Lab grid (`lab_xy_from_replay_cell`; PR-F: no `server_xy_params`)
 [x] `visible_cells` → `map_view.full_cells`; `overlay_cells` → `overlay_cells`
 [x] `REPLAY_EVENT_TYPE_TO_PHASE` (21 optimization event types)
 [x] inspector `optimization_event_type` / `source_frame_index` 보존
@@ -462,7 +462,7 @@ projection raw_x != original blueprint raw X
 | `validation.*` | `validation` |
 | `result.layout` | `result` |
 
-**테스트:** `test_unified_replay_optimization_adapter.py`, `test_server_to_lab_projection.py`, `test_solver_runtime_pipeline.py` (visible_cells)
+**테스트:** `test_unified_replay_optimization_adapter.py`, `test_lab_rttp_snapshot_compose.py`, `test_solver_runtime_pipeline.py` (visible_cells)
 
 **import:** `optimization_unified_adapter`는 `replay/__init__.py`에서 re-export하지 않음 (`optimization.replay_frame` ↔ circular import 방지). 호출부는 submodule 직접 import.
 

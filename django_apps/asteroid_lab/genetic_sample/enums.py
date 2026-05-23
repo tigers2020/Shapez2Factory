@@ -6,7 +6,7 @@ from enum import StrEnum
 
 
 class Direction(StrEnum):
-    """Cardinal direction on the dense Server X/Y grid."""
+    """Cardinal direction on the raw island grid."""
 
     N = "n"
     E = "e"

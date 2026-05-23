@@ -11,10 +11,6 @@ from django_apps.asteroid_lab.reconstruction.evidence import (
 )
 from django_apps.asteroid_lab.reconstruction.grid import Coord, padded_bbox_bounds
 from django_apps.asteroid_lab.services.dto import DecodedBlueprintSnapshotDTO
-from django_apps.asteroid_lab.snapshots.server_coords import (
-    jsonl_coord_fields,
-    map_bbox_dense_and_y,
-)
 from django_apps.asteroid_lab.snapshots.transport_components import is_transport_tile
 
 
@@ -41,11 +37,6 @@ def deconstruct_snapshot(
     wall_frozen = frozenset(walls)
     bbox_bounds: BBoxBounds | None
     bbox_bounds = padded_bbox_bounds(set(wall_frozen), pad=1)
-    server_xy_params: tuple[int, int] | None = None
-    params = map_bbox_dense_and_y([{"X": c.x, "Y": c.y} for c in cells])
-    if params is not None:
-        server_xy_params = tuple(int(v) for v in params[:3])
-
     summary: dict[str, object] = {
         "cleanup_removed_building_count": len(removed),
         "cleanup_ignored_transport_count": len(ignored_transport),
@@ -56,10 +47,11 @@ def deconstruct_snapshot(
         removed_payload = []
         for c in removed:
             row = {
+                "raw_x": c.x,
+                "raw_y": c.y,
                 "layer": c.layer,
                 "cell_kind": c.cell_kind,
             }
-            row.update(jsonl_coord_fields(c.x, c.y, server_xy_params=server_xy_params))
             removed_payload.append(row)
         emit_boundary_jsonl(
             run_id=boundary_run_id,
@@ -81,7 +73,6 @@ def deconstruct_snapshot(
         ignored_transport_cells=ignored_transport,
         wall_coords=wall_frozen,
         bbox_bounds=bbox_bounds,
-        server_xy_params=server_xy_params,
         original_cells=tuple(cells),
         summary_json=dict(summary),
     )

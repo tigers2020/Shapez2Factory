@@ -14,3 +14,10 @@ superseded_by: docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complet
 - **활성 정본:** [`documents/Algorithm/asteroid_lab_09_replay_timeline.md`](../../Algorithm/asteroid_lab_09_replay_timeline.md), strip-solver spec (링크 상단).
 
 새 작업은 이 폴더를 수정하지 말고, reconstruction 또는 별도 spec에서 시작한다.
+
+## Doc sweep (2026-05-23)
+
+Each `asteroid_lab_*.md` file has a top-of-file banner pointing at **`documents/Algorithm/`** when a matching CANON doc exists.
+
+- **PR-F:** Product code uses **island-local** `(x, y)` only; `server_coords.py` and dense server HUD are **removed**.
+- Body text updated to island-local terminology (2026-05-23); banners still mention removed server frame for context.

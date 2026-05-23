@@ -1,5 +1,8 @@
 # Factory Throughput Layer Plan
 
+
+> **Plans (misc):** Project planning memo; not Asteroid Lab coordinate canon. See [`documents/Algorithm/`](../Algorithm/) and [`docs/superpowers/specs/`](../docs/superpowers/specs/) for active specs.
+
 ## Summary
 
 - Layer 2 adds factory-oriented quantity planning on top of the existing single-target recipe solver.

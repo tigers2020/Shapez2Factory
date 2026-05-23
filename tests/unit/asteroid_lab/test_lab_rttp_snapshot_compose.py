@@ -1,4 +1,4 @@
-"""Unit tests for RTTP full-snapshot compose projection (Sequence 3B-S)."""
+﻿"""Unit tests for RTTP full-snapshot compose projection (Sequence 3B-S)."""
 
 from __future__ import annotations
 
@@ -104,14 +104,12 @@ def test_project_rttp_overlay_cells_clipped_to_base_map_domain() -> None:
     assert clipped == [{"x": 0, "y": 0, "kind": "route_domain.preferred"}]
 
 
-def test_project_rttp_overlay_maps_server_coords_via_full_cell_server_fields() -> None:
+def test_project_rttp_overlay_ignores_legacy_server_fields_on_full_cells() -> None:
     base_mv = {
         "full_cells": [
             {
                 "x": 10,
                 "y": 20,
-                "server_x": 5,
-                "server_y": 6,
                 "kind": "asteroid_shape_field",
             },
         ],
@@ -119,29 +117,21 @@ def test_project_rttp_overlay_maps_server_coords_via_full_cell_server_fields() -
         "overlay_cells": [],
         "bbox": {"min_x": 10, "min_y": 20, "max_x": 10, "max_y": 20},
     }
-    overlay = [{"x": 5, "y": 6, "kind": "probe.start"}]
+    overlay = [{"x": 10, "y": 20, "kind": "probe.start"}]
     clipped = clip_overlay_cells_to_base_map_domain(overlay, base_mv)
     assert clipped == [{"x": 10, "y": 20, "kind": "probe.start"}]
 
 
-def test_project_rttp_overlay_maps_server_coords_via_projection_params() -> None:
-    from django_apps.asteroid_lab.snapshots.server_coords import server_xy_for_raw_xy
-
-    params = (0, 0)
+def test_project_rttp_overlay_clips_island_coords_to_base_anchors() -> None:
     lab_xy = (0, 1)
-    sx, sy = server_xy_for_raw_xy(lab_xy[0], lab_xy[1], min_dense_x=params[0], min_raw_y=params[1])
     base_mv = {
         "full_cells": [{"x": lab_xy[0], "y": lab_xy[1], "kind": "asteroid_shape_field"}],
         "cell_delta": [],
         "overlay_cells": [],
         "bbox": {"min_x": 0, "min_y": 1, "max_x": 0, "max_y": 1},
     }
-    overlay = [{"x": sx, "y": sy, "kind": "probe.start"}]
-    clipped = clip_overlay_cells_to_base_map_domain(
-        overlay,
-        base_mv,
-        server_xy_params=params,
-    )
+    overlay = [{"x": lab_xy[0], "y": lab_xy[1], "kind": "probe.start"}]
+    clipped = clip_overlay_cells_to_base_map_domain(overlay, base_mv)
     assert clipped == [{"x": lab_xy[0], "y": lab_xy[1], "kind": "probe.start"}]
 
     row = {

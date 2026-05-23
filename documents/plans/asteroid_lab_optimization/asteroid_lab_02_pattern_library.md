@@ -1,5 +1,8 @@
 # Phase 2 — Pattern Library / Local DP Compiler
 
+
+> **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_02_pattern_library.md`](../../Algorithm/asteroid_lab_02_pattern_library.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
+
 ## 목적
 
 Extractor + extension의 작은 로컬 패턴을 deterministic하게 생성한다.
@@ -12,7 +15,7 @@ DP = local pattern compiler
 
 ## RouteGoal / probe와의 연결
 
-패턴은 **offsets·`output_dir`·`output_stub_offset`** 로 기하를 고정한다. 오프셋·투영 후 절대 셀은 **Server X/Y** (`Coord`)이다. `RouteProbeInput.start`는 배치 후 **`output_stub` 절대 좌표**로 투영된다 (Phase 3). `RouteGoal` 집합·`RouteCellDomain`은 `OptimizationInput`에서 오며 패턴 DTO에 중복 저장하지 않는다.
+패턴은 **offsets·`output_dir`·`output_stub_offset`** 로 기하를 고정한다. 오프셋·투영 후 절대 셀은 **island-local (x, y)** (`Coord`)이다. `RouteProbeInput.start`는 배치 후 **`output_stub` 절대 좌표**로 투영된다 (Phase 3). `RouteGoal` 집합·`RouteCellDomain`은 `OptimizationInput`에서 오며 패턴 DTO에 중복 저장하지 않는다.
 
 확장기 부착 규칙(추출기·이전 확장기·R 방향 등)은 **v0 linear**에서는 암시적으로 복원 가능하지만, v1 분기·회전 후 facing 혼동을 막기 위해 **부착 그래프를 명시**한다.
 
@@ -120,7 +123,7 @@ extractor only = x4
 [ ] extension_count <= 3
 [ ] occupied_offsets contains extractor + extensions only
 [ ] attachments 길이 == extension_count (v0 linear)
-[ ] 회전 후 오프셋·투영이 Server 정수 격자에서 결정적
+[ ] 회전 후 오프셋·투영이 island map grid에서 결정적
 [ ] throughput_factor in {4, 8, 12, 16} and matches extension_count
 ```
 
@@ -130,7 +133,7 @@ extractor only = x4
 test_pattern_library_generates_linear_0_to_3_extensions
 test_pattern_library_pattern_ids_are_deterministic
 test_pattern_library_output_stub_not_occupied
-test_pattern_library_rotations_deterministic_on_server_grid
+test_pattern_library_rotations_deterministic_on_island_grid
 test_pattern_library_throughput_factor_matches_extension_count
 test_pattern_library_attachments_linear_chain
 ```

@@ -1,9 +1,6 @@
 """Decoded blueprint layout equivalence (ORM-free, translation-invariant for miners).
 
-Horizontal comparison uses **dense column index** ``raw_x_to_dense_index`` (raw ``X`` has
-no column ``0``) so layouts align with lab ``_asteroid_lab_coord_system`` / fingerprint
-rules (``server_bbox_left_bottom_dense_x_v1``, ``dense_x_minus_min_dense_x``). Vertical
-offset uses raw ``Y`` (same family as ``server_y_rule`` ``raw_y_minus_min_y`` before bbox).
+Horizontal comparison uses compact export columns, while vertical offset uses raw ``Y``.
 """
 
 from __future__ import annotations
@@ -12,8 +9,8 @@ from typing import Any
 
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
 from django_apps.asteroid_lab.snapshots.cell_classifier import classify_blueprint_entry
+from django_apps.asteroid_lab.snapshots.copy_json_coords import raw_x_to_export_column
 from django_apps.asteroid_lab.snapshots.layout_fingerprint import layout_fingerprint_payload
-from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_index
 
 # Re-export for ``snapshots.__init__`` (historical name).
 layout_map_payload = layout_fingerprint_payload
@@ -78,8 +75,8 @@ def _filter_entries(
     return out
 
 
-def _extractor_anchor_dense_xy(rows: list[dict[str, Any]]) -> tuple[int, int] | None:
-    """Anchor ``(dense_x, raw_y)`` for the minimum (dense_x, raw_y) extractor."""
+def _extractor_anchor_export_xy(rows: list[dict[str, Any]]) -> tuple[int, int] | None:
+    """Anchor ``(export_x, raw_y)`` for the minimum extractor."""
 
     candidates: list[tuple[int, int]] = []
     for row in rows:
@@ -88,16 +85,16 @@ def _extractor_anchor_dense_xy(rows: list[dict[str, Any]]) -> tuple[int, int] | 
         if _is_extractor_tile(t):
             rx = _as_int(row.get("X"))
             ry = _as_int(row.get("Y"))
-            candidates.append((raw_x_to_dense_index(rx), ry))
+            candidates.append((raw_x_to_export_column(rx), ry))
     if not candidates:
         return None
     return min(candidates)
 
 
-def _fallback_anchor_dense_xy(rows: list[dict[str, Any]]) -> tuple[int, int]:
+def _fallback_anchor_export_xy(rows: list[dict[str, Any]]) -> tuple[int, int]:
     if not rows:
         return (0, 0)
-    dense_vals = [raw_x_to_dense_index(_as_int(r.get("X"))) for r in rows]
+    dense_vals = [raw_x_to_export_column(_as_int(r.get("X"))) for r in rows]
     raw_y_vals = [_as_int(r.get("Y")) for r in rows]
     return (min(dense_vals), min(raw_y_vals))
 
@@ -108,9 +105,9 @@ def _normalized_signature(
     include_transport: bool,
 ) -> tuple[tuple[int, int, int, str], ...]:
     filtered = _filter_entries(rows, include_transport=include_transport)
-    anchor = _extractor_anchor_dense_xy(filtered)
+    anchor = _extractor_anchor_export_xy(filtered)
     if anchor is None:
-        odx, oy = _fallback_anchor_dense_xy(filtered)
+        odx, oy = _fallback_anchor_export_xy(filtered)
     else:
         odx, oy = anchor
     norm: list[tuple[int, int, int, str]] = []
@@ -120,7 +117,7 @@ def _normalized_signature(
         t = str(t_raw) if isinstance(t_raw, str) else ""
         rx = _as_int(clean.get("X"))
         rry = _as_int(clean.get("Y"))
-        nx = raw_x_to_dense_index(rx) - odx
+        nx = raw_x_to_export_column(rx) - odx
         ny = rry - oy
         nr = _as_int(clean.get("R"))
         norm.append((nx, ny, nr, t))
@@ -134,11 +131,7 @@ def decoded_json_layout_equivalent(
     *,
     include_transport: bool,
 ) -> bool:
-    """True if entries match up to translation on dense_x and raw Y (extractor anchor).
-
-    Matches the horizontal seam model behind ``_asteroid_lab_coord_system`` /
-    ``server_bbox_left_bottom_dense_x_v1`` (see ``server_coords.raw_x_to_dense_index``).
-    """
+    """True if entries match up to translation on export-column X and raw Y."""
 
     sig_a = _normalized_signature(_entries(a), include_transport=include_transport)
     sig_b = _normalized_signature(_entries(b), include_transport=include_transport)

@@ -27,13 +27,13 @@ existing belt / pipe / trunk / protected corridor
 
 ## 좌표 정본 (PR-F island-local, RTTP default)
 
-**Lab RTTP (2026-05):** `OptimizationInput.coord_frame` 기본값은 `ISLAND_RAW`. `Coord`는 copy JSON island-local `(x, y)` (reconstruction cell `x`/`y`와 동일). `run_config["coord_frame"]="server_dense"`만 legacy 비교용.
+**Lab RTTP (2026-05, PR-F):** `OptimizationInput.coord_frame` 기본값은 `ISLAND_RAW`. `Coord`는 copy JSON island-local `(x, y)` (reconstruction cell `x`/`y`와 동일). `server_dense`·`SERVER_DENSE` 런타임 경로 **삭제**.
 
-**Persist / fingerprint:** map layout v2·absolute v2·`_asteroid_lab_coord_system` = `island_bbox_left_bottom_raw_xy_v1` / `island_raw_xy_v1`. 새 persist 경로는 `server_x`/`server_y` JSON attach **금지** (`attach_island_coord_meta_to_decoded_json`).
+**Persist / fingerprint:** map layout v2·absolute v2·`_asteroid_lab_coord_system` = `island_bbox_left_bottom_raw_xy_v1` / `island_raw_xy_v1`. `server_x`/`server_y` JSON attach·`server_coords.py` **금지** (`attach_island_coord_meta_to_decoded_json` only).
 
-**금지:** optimization·candidate·probe·commit·validation 내부에서 `server_coords` 브리지 import 또는 raw↔server 재변환. 4-neighbor는 `grid_contract.neighbors4` (프레임에 맞는 정수 격자).
+**금지:** optimization·candidate·probe·commit·validation 내부에서 dense server 브리지 import 또는 raw↔server 재변환. 4-neighbor는 `grid_contract.neighbors4` on island grid.
 
-**Legacy Server dense:** `SERVER_DENSE`·`server_coord_for_cell`·replay `lab_xy_from_server_xy`는 strangler 잔존; 신규 코드는 island frame만.
+**역사:** dense server 좌표 — [`research_asteroid_server_coords_layout_fingerprint_2026-05-16.md`](../research/research_asteroid_server_coords_layout_fingerprint_2026-05-16.md) (ARCHIVED).
 
 **검증:** `tests/unit/asteroid_lab/test_coordinate_frame_ast_gate.py`, `test_optimization_input_coord_frame.py`, `test_coord_proof_policy.py`, `test_import_boundaries.py`(shapez_asteroid).
 

@@ -61,10 +61,7 @@ def _window_bundle_ids(
         candidate = candidates_by_id.get(candidate_id)
         if candidate is None:
             continue
-        if any(
-            _manhattan(candidate.anchor_coord, anchor) <= radius
-            for anchor in conflict_anchors
-        ):
+        if any(_manhattan(candidate.anchor_coord, anchor) <= radius for anchor in conflict_anchors):
             remove.add(candidate_id)
     return frozenset(remove)
 
@@ -99,15 +96,11 @@ def run_local_lns(
             conflict_anchors,
             radius=resolved.radius,
         )
-        kept_ids = [
-            cid for cid in best_genome.commit_order if cid not in window_ids
-        ]
+        kept_ids = [cid for cid in best_genome.commit_order if cid not in window_ids]
         regen = generate_candidates(inp, skeleton, policy=policy)
         regen_by_id = {item.candidate_id: item for item in regen.normal_candidates}
         merged: dict[str, BundleCandidate] = {
-            cid: candidates_by_id[cid]
-            for cid in kept_ids
-            if cid in candidates_by_id
+            cid: candidates_by_id[cid] for cid in kept_ids if cid in candidates_by_id
         }
         merged.update(regen_by_id)
         pool = tuple(merged.values())
@@ -115,11 +108,7 @@ def run_local_lns(
             break
 
         candidate_genome = select_genome(pool, skeleton, inp)
-        ordered = kept_ids + [
-            cid
-            for cid in candidate_genome.commit_order
-            if cid not in kept_ids
-        ]
+        ordered = kept_ids + [cid for cid in candidate_genome.commit_order if cid not in kept_ids]
         retry_genome = PlacementGenome(commit_order=tuple(ordered))
         domain = initial_commit_domain(skeleton, inp)
         retry_result = incremental_commit(
@@ -137,6 +126,8 @@ def run_local_lns(
             candidates_by_id.update(merged)
 
         if not retry_result.conflicts:
+            candidates_by_id.clear()
+            candidates_by_id.update(merged)
             return retry_genome, retry_result
 
     return best_genome, best_result

@@ -88,6 +88,4 @@ def test_rttp_layer_functions_do_not_accept_replay_sink() -> None:
     ]
     for fn in targets:
         sig = inspect.signature(fn)
-        assert "replay_sink" not in sig.parameters, (
-            f"{fn.__qualname__} must not take replay_sink"
-        )
+        assert "replay_sink" not in sig.parameters, f"{fn.__qualname__} must not take replay_sink"

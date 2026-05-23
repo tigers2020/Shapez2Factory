@@ -959,28 +959,58 @@
     }
   }
 
+  let lastRenderableReplayFrame = null;
+
+  function frameHasRenderableMap(frame) {
+    return fullMapCellsFromFrame(frame).length > 0;
+  }
+
+  function renderFullMapReplayFrame(frame, baseClasses, domCells, resolveCellIndex) {
+    const fm = fullMapCellsFromFrame(frame);
+    if (!fm.length) return false;
+    renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
+    const ovCells = overlayCellsFromMapView(frame.map_view);
+    if (ovCells.length) {
+      renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
+    }
+    const deltaCells = cellDeltaCellsFromMapView(frame.map_view);
+    if (deltaCells.length) {
+      renderFullMapCells(baseClasses, domCells, deltaCells, resolveCellIndex);
+    }
+    renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
+    applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
+    return true;
+  }
+
   function renderReplayFrame(frame, baseClasses, domCells, resolveCellIndex) {
-    resetGridBase(domCells, baseClasses);
-    if (!frame || typeof frame !== "object") return;
+    if (
+      frame &&
+      typeof frame === "object" &&
+      frame.render_mode === "inherited_snapshot" &&
+      lastRenderableReplayFrame &&
+      frameHasRenderableMap(lastRenderableReplayFrame)
+    ) {
+      renderReplayFrame(lastRenderableReplayFrame, baseClasses, domCells, resolveCellIndex);
+      return;
+    }
+    if (!frame || typeof frame !== "object") {
+      resetGridBase(domCells, baseClasses);
+      return;
+    }
     const fm = fullMapCellsFromFrame(frame);
     if (fm.length) {
-      renderFullMapCells(baseClasses, domCells, fm, resolveCellIndex);
-      const ovCells = overlayCellsFromMapView(frame.map_view);
-      if (ovCells.length) {
-        renderFullMapCells(baseClasses, domCells, ovCells, resolveCellIndex);
-      }
-      const deltaCells = cellDeltaCellsFromMapView(frame.map_view);
-      if (deltaCells.length) {
-        renderFullMapCells(baseClasses, domCells, deltaCells, resolveCellIndex);
-      }
-      renderDiffOverlays(baseClasses, domCells, frame, resolveCellIndex);
-      applyEquipmentBundleStrokeClasses(frame, domCells, resolveCellIndex);
+      resetGridBase(domCells, baseClasses);
+      lastRenderableReplayFrame = frame;
+      renderFullMapReplayFrame(frame, baseClasses, domCells, resolveCellIndex);
       return;
     }
     const ov = frame.cell_overlay_json;
     if (ov && typeof ov === "object") {
+      resetGridBase(domCells, baseClasses);
       renderCellOverlay(baseClasses, domCells, ov, resolveCellIndex);
+      return;
     }
+    resetGridBase(domCells, baseClasses);
   }
 
   function updateFrameInfo(frame, totalCount, phaseEl, frameEl, gridEl, timelineSlotIndex) {
@@ -1968,6 +1998,7 @@
       }
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
+      lastRenderableReplayFrame = null;
       replayFrames = next;
       if (payload.replay_track_metrics && typeof payload.replay_track_metrics === "object") {
         replayTrackMetrics = payload.replay_track_metrics;

@@ -42,6 +42,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 - Reconstruction replay·topology 회귀 유지 (narrow gate below)
 - Persisted `full_map_server_bbox` → `full_map_island_bbox` read-compat (one release; `island_bbox.py`)
 - **DONE (2026-05-23):** RTTP v1 MacroBundleT3 PR-A..H on `master` — macro DTOs, compiler, dedupe, macro regret/commit, `macro_only_mode` pipeline, replay metrics, G9–G16 tests. Plan: [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md)
-- **NEXT:** RTTP DB integration hardening — **after PR-H** only; not parallel to v1 algorithm work
+- **DONE (2026-05-23):** PR-I DB `:rttp` macro persist/read — `SolverRun.config_json` keys `macro_only_mode` / `max_macro_candidates` → `RttpPipelineConfig`; unit tests `test_rttp_db_macro_integration.py`
+- **NEXT:** enable macro-only in production solver runs via `config_json` when ready; optional integration `run_solver` macro fixture
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
 - ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절

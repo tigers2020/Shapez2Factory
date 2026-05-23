@@ -16,6 +16,7 @@ from django_apps.asteroid_lab.contracts.game_data_snapshot import AsteroidGameDa
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
 )
+from django_apps.asteroid_lab.optimization.input_contracts import RttpPipelineConfig
 from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_reconstruction,
@@ -44,6 +45,8 @@ from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_META_KEY,
+    SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
+    SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
@@ -114,6 +117,18 @@ def _rttp_record_replay_enabled(config: dict[str, Any]) -> bool:
     if SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY in config:
         return bool(config[SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY])
     return True
+
+
+def _rttp_pipeline_config_from_run_config(config: dict[str, Any]) -> RttpPipelineConfig:
+    """Map ``SolverRun.config_json`` RTTP keys to ``RttpPipelineConfig`` (PR-I)."""
+
+    macro_only = bool(config.get(SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY, False))
+    max_raw = config.get(SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY, 64)
+    max_macro = int(max_raw) if max_raw is not None else 64
+    return RttpPipelineConfig(
+        macro_only_mode=macro_only,
+        max_macro_candidates=max_macro,
+    )
 
 
 def _snapshot_meta_for_config(snapshot: AsteroidGameDataSnapshot) -> dict[str, str]:
@@ -281,6 +296,7 @@ def _run_rttp_solver_for_map_input(
         opt_inp,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
         replay_sink=replay_sink,
+        pipeline_config=_rttp_pipeline_config_from_run_config(run_config),
     )
 
     persist_reconstructed_asteroid_map(

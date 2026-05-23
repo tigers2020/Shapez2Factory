@@ -42,5 +42,5 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 - Reconstruction replay·topology 회귀 유지 (narrow gate below)
 - Persisted `full_map_server_bbox` → `full_map_island_bbox` read-compat (one release; `island_bbox.py`)
 - RTTP **v1** (`MacroBundleT3`, dense interior regret) — 별도 spec/plan 후 착수 ([`2026-05-22-rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md) § v1)
-- Hole-asteroid / copy-code **회귀 fixture**로 end-to-end RTTP pipeline (reconstruction → commit)
+- RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
 - `asteroid_lab_10` Sequence 2–7 체크박스를 gate 테스트와 동기화

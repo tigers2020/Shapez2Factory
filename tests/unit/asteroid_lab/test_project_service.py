@@ -1,4 +1,4 @@
-"""``project_service`` — copy-seeded project creation."""
+"""``project_service`` ??copy-seeded project creation."""
 
 from __future__ import annotations
 

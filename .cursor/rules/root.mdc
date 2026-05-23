@@ -42,6 +42,7 @@
 - adapters에 비즈니스 정책을 넣지 않는다.
 - 검증하지 못한 명령을 통과했다고 보고하지 않는다.
 - 플랜 미승인 상태에서 구현으로 넘어가지 않는다.
+- `func`↔`_func`처럼 **선행 underscore만** 다른 rename으로 diff를 키우지 않는다 ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc) Forbidden Shortcuts).
 
 ## 참조
 

@@ -1,1 +1,1 @@
-"""Integration tests — adapters against real or sandboxed external systems."""
+"""Integration tests ??adapters against real or sandboxed external systems."""

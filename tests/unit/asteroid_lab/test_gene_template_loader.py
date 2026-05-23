@@ -6,19 +6,19 @@ from pathlib import Path
 
 import pytest
 
-from django_apps.asteroid_lab.optimization.enums import Direction
-from django_apps.asteroid_lab.optimization.gene_template import (
+from django_apps.asteroid_lab.genetic_sample.enums import Direction
+from django_apps.asteroid_lab.genetic_sample.gene_template import (
     CANONICAL_FIXED_OUTPUT_TRANSPORT_OFFSET,
     CANONICAL_ROUTE_PROBE_START_OFFSET,
     GeneTemplate,
     throughput_factor_for_extension_count,
 )
-from django_apps.asteroid_lab.optimization.gene_template_loader import (
+from django_apps.asteroid_lab.genetic_sample.gene_template_loader import (
     gene_template_from_generated_sample,
     load_gene_templates_from_json,
     parse_gene_template_record,
 )
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
+from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     ExhaustiveGenerationStats,
     GeneratedSampleGene,
 )

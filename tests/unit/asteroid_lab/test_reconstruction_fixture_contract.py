@@ -9,8 +9,8 @@ from django_apps.asteroid_lab.adapters.reconstruction_blueprint_export import (
     encode_reconstructed_copy_string,
 )
 from django_apps.asteroid_lab.cleanup.pipeline import deconstruct_snapshot
-from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
-    optimization_input_from_reconstruction,
+from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
+    acceptance_topology_from_reconstruction,
 )
 from django_apps.asteroid_lab.reconstruction.confidence import (
     QUALITY_TIER_CONFIDENT,
@@ -87,12 +87,12 @@ def test_reconstruction_fixture_line_coord_and_optimization_contract(
     _snap_req, snap_sol, cleanup, recon, _merged, actual, expected = _run_line(
         reconstruction_fixture_line_index
     )
-    inp = optimization_input_from_reconstruction(recon)
+    topo = acceptance_topology_from_reconstruction(recon)
     for cell in recon.cells:
         assert isinstance(cell.server_x, int) and isinstance(cell.server_y, int)
     if reconstruction_fixture_line_index != 1:
         assert not any(c.x == 0 and c.raw_entry_json.get("_replay_synthetic") for c in recon.cells)
-    assert inp.mineable_cells <= actual.mineable_cells
+    assert topo.mineable_cells <= actual.mineable_cells
     if reconstruction_fixture_line_index == 1:
         assert actual.mineable_cells == expected.mineable_cells
 

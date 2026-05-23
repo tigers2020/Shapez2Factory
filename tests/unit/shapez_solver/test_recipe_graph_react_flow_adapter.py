@@ -61,7 +61,7 @@ def test_domain_to_react_flow_minimal_chain_round_trip() -> None:
 
 
 def test_domain_to_react_flow_target_shape_node_type() -> None:
-    """target 역할 shape는 React Flow 노드 type ``output`` 으로 매핑한다(엣지 없이 타입만 검증)."""
+    """target ??�� shape??React Flow ?�드 type ``output`` ?�로 매핑?�다(?��? ?�이 ?�?�만 검�?."""
     raw = {
         "schema_version": 1,
         "nodes": [
@@ -94,7 +94,7 @@ def test_domain_to_react_flow_target_shape_node_type() -> None:
 
 
 def test_react_flow_round_trip_preserves_fractional_positions() -> None:
-    """캔버스 드래그 좌표는 graph_document x,y에 보존된다(저장·재로드 정합)."""
+    """캔버???�래�?좌표??graph_document x,y??보존?�다(?�?�·재로드 ?�합)."""
     raw = {
         "schema_version": 1,
         "nodes": [
@@ -122,7 +122,7 @@ def test_react_flow_round_trip_preserves_fractional_positions() -> None:
 
 
 def test_domain_to_react_flow_two_output_source_handles() -> None:
-    """다출력 연산은 React Flow ``sourceHandle``을 레인별로 나눈다."""
+    """?�출???�산?� React Flow ``sourceHandle``???�인별로 ?�눈??"""
     raw = {
         "schema_version": 1,
         "nodes": [
@@ -222,7 +222,7 @@ def test_react_flow_round_trip_preserves_source_carrier_fluid() -> None:
 
 
 def test_domain_to_react_flow_binary_input_handles_follow_slot_not_list_order() -> None:
-    """Painter 등 슬롯이 있는 입력은 edges 배열 순서와 무관하게 ``targetHandle``에 반영된다."""
+    """Painter ???�롯???�는 ?�력?� edges 배열 ?�서?� 무�??�게 ``targetHandle``??반영?�다."""
     raw = {
         "schema_version": 1,
         "nodes": [

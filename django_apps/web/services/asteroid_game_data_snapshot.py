@@ -5,18 +5,16 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 
-from django_apps.asteroid_lab.optimization.game_data_contract_validation import (
-    validate_building_snapshot,
-)
-from django_apps.asteroid_lab.optimization.game_data_contracts import (
+from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     AsteroidGameDataSnapshot,
     BuildingConnectorSnapshot,
     BuildingFootprintCell,
     BuildingSnapshot,
     TransportRegistryEntry,
     build_snapshot_meta,
+    snapshot_content_hash,
+    validate_building_snapshot,
 )
-from django_apps.asteroid_lab.optimization.game_data_snapshot_hash import snapshot_content_hash
 from django_apps.game_data.selectors.import_batch import pin_latest_import_batch
 from django_apps.game_data.snapshots.builder import build_game_data_row_bundle
 from django_apps.game_data.snapshots.rows import (

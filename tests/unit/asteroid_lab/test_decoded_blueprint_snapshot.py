@@ -103,7 +103,7 @@ def test_bbox_and_counts() -> None:
 
 
 def test_raw_x_zero_entry_gets_explicit_server_xy_for_algorithm_boundary() -> None:
-    """Raw blueprint ``X == 0`` has no dense horizontal index; DTO still carries server (0, Δy)."""
+    """Raw blueprint ``X == 0`` has no dense horizontal index; DTO still carries server (0, ?y)."""
 
     decoded = {
         "V": 1,

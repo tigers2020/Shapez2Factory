@@ -212,7 +212,7 @@ def test_pin_pusher_adds_bottom_pin_layer() -> None:
 
 def test_crystal_generator_fills_gaps_and_pins() -> None:
     engine = OperationEngine()
-    # SW=Ru, NW=--, NE=Ru, SE=-- → gaps NW/SE → RuccRucc
+    # SW=Ru, NW=--, NE=Ru, SE=-- ??gaps NW/SE ??RuccRucc
     base = _shape("Ru--Ru--")
     (out,) = engine.apply(OperationType.CRYSTAL_GENERATOR, (base, base), color="c")
 

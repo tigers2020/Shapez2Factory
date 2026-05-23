@@ -9,7 +9,7 @@ from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
     to_official_island_root,
 )
 from django_apps.asteroid_lab.adapters.decode_adapter import decode_copy_string
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import build_layout_root
+from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import build_layout_root
 from django_apps.asteroid_lab.snapshots.blueprint_equivalence import decoded_json_layout_equivalent
 
 

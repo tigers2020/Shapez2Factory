@@ -42,6 +42,9 @@
 | `ASTEROID_LAB_MINERS_PER_ROUTE_OUT` | `12` | `config/settings.py` (shape belt goals per-route bundle budget) |
 | `ASTEROID_LAB_BOUNDARY_JSONL` | off | `django_apps/asteroid_lab/observability/boundary_jsonl.py` |
 | `ASTEROID_LAB_BOUNDARY_JSONL_DIR` | `var/asteroid_boundary_logs` | 동일 |
+| `ASTEROID_LAB_SOLVER_SUMMARY_STACK_LOG` | on (`1`) | `django_apps/asteroid_lab/observability/solver_summary_stack_log.py` |
+| `ASTEROID_LAB_SOLVER_SUMMARY_STACK_LOG_DIR` | `var/log/solver_summary_stack` | 동일 |
+| `ASTEROID_LAB_SOLVER_SUMMARY_STACK_MAX` | `5` | 동일 (파일당 stack 최대 건수, 1–20) |
 | `SHAPEZ_COPY_DEBUG_DIR` | off (빈 문자열) | `config/shapez_runtime_flags.py` (소비 코드 없음 — 덤프 경로 예약) |
 
 OAuth·Support URL 등은 `config/settings.py`를 본다.

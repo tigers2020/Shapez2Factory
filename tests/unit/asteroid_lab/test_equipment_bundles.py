@@ -55,7 +55,7 @@ def _shape_rows_from_copy(copy_code: str) -> list[dict]:
 
 
 def test_user_blueprint_shape_thirteen_bundles() -> None:
-    """Golden: first calibration map → 13 shape equipment bundles."""
+    """Golden: first calibration map ??13 shape equipment bundles."""
 
     shape_rows = _shape_rows_from_copy(_USER_BLUEPRINT_COPY)
     bundles = build_equipment_bundles(shape_rows)
@@ -107,7 +107,7 @@ def test_bundle_edges_and_links_disjoint_on_shape_blueprint() -> None:
 
 
 def test_adjacent_extractors_never_merge() -> None:
-    """Two 4-neighbor extractors stay in separate bundles (miner–miner edge forbidden)."""
+    """Two 4-neighbor extractors stay in separate bundles (miner?�miner edge forbidden)."""
 
     rows = [
         _row(-1, 0, "fluid_miner", rotation=0),

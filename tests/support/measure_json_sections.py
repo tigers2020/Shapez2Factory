@@ -1,4 +1,4 @@
-"""Sequence 13A/13B — deterministic JSON size attribution for Lab POST payloads (tests only)."""
+"""Sequence 13A/13B ??deterministic JSON size attribution for Lab POST payloads (tests only)."""
 
 from __future__ import annotations
 
@@ -154,12 +154,12 @@ def measure_json_sections(
 ) -> dict[str, Any]:
     """Attribute serialized size of a JSON-compatible mapping (e.g. POST JsonResponse body).
 
-    * ``top_level_key_bytes[k]`` — UTF-8 length of ``json.dumps(value)`` for that key only
+    * ``top_level_key_bytes[k]`` ??UTF-8 length of ``json.dumps(value)`` for that key only
       (not including the key string or outer object punctuation; for contribution estimates).
     * Lab subsection stats use the same JSON encoding as ``total_bytes`` slices where noted.
     * Sequence 13B: Lab replay redundancy (adjacent identical ``full_map``, row-identity
       duplication estimates, diff vs ``full_map`` byte sums) and largest-frame index metadata
-      — tests and diagnostics only; does not change runtime payloads.
+      ??tests and diagnostics only; does not change runtime payloads.
     """
 
     total_bytes = _json_bytes(root)

@@ -1,4 +1,4 @@
-"""Reconstructed blueprint export/import: Extension T ↔ asteroid_*_field."""
+"""Reconstructed blueprint export/import: Extension T ??asteroid_*_field."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def test_import_maps_extension_to_asteroid_field_kinds() -> None:
     ext_sk, ext_tk = cell_kind_for_reconstruction_import(T_SHAPE_FIELD)
     assert ext_sk == "asteroid_shape_field"
     assert ext_tk == "none"
-    # generic classifier would be miner_extension — must not use here for our T
+    # generic classifier would be miner_extension ??must not use here for our T
     assert ext_sk != "shape_miner_extension"
 
 

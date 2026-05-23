@@ -32,7 +32,7 @@ def test_pattern_lab_page_shows_ready_macro_candidate(db, without_canonical_cata
         operation="stacker",
         input_slots=["AB_half", "CC_half"],
         output_slots=["ABCC"],
-        note="표시용 step",
+        note="?�시??step",
     )
 
     response = Client().get(reverse("web:pattern-lab"), {"code": "CuRuSuSu"})

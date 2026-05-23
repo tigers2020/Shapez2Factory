@@ -96,7 +96,7 @@ Deprecate or narrow semantics of `EQUIPMENT_TRANSPORT_OVERLAP` in docs/tests: v0
 |------|----------|--------|
 | `test_commit_rejects_fixed_output_transport_on_committed_route_cell` | stub on committed transport cell → `INLET_ON_SHARED_TRANSPORT` | done |
 | `test_commit_allows_same_kind_route_path_sharing_after_stub` | `path[1:]` shares trunk; distinct stubs → both confirmed | done |
-| `test_selector_skips_stub_on_accumulated_transport_cells` | Phase I mirror | deferred |
+| `test_selector_skips_stub_on_accumulated_transport_cells` | Phase I mirror | done ([`2026-05-22-phase-i-commit-survivability-design.md`](2026-05-22-phase-i-commit-survivability-design.md)) |
 | Regression | `test_incremental_commit.py` full module | green |
 
 ## Out of scope (v0)

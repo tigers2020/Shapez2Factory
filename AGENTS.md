@@ -69,6 +69,8 @@
 
 로컬 pytest 기본: `powershell -File scripts/test_fast.ps1` (상세: [`documents/ai/manuals/testing.md`](documents/ai/manuals/testing.md) § 로컬 스크립트).
 
+Asteroid Lab Run Solver (UI 없이): `python manage.py run_solver --slug <slug>` — stack log: `var/log/solver_summary_stack/` ([`01_entry_point.md`](documents/Algorithm/solver_runtime/01_entry_point.md)).
+
 ```bash
 powershell -File scripts/test_fast.ps1   # 일상 TDD
 ruff check .
@@ -108,6 +110,9 @@ PR/병합 full gate: `powershell -File scripts/test_full.ps1` → `ruff check .`
   - `.env`, credential, token 파일 노출
   - 생성 산출물 직접 수정
   - 검증 없이 완료 선언
+  - **선행 underscore 토글 rename** — `func`↔`_func` 등 이름이 선행 `_` 추가·제거만 다른 변경(함수·메서드·변수·파라미터·동일 의미 import alias). 스타일 정리·린트 맞추기·가독성 목적으로 하지 않는다. 요청·승인 스펙·버그 수정에 **필수인 새 심볼**만 예외.
+
+상세: [`.cursor/rules/shapez2-core.mdc`](.cursor/rules/shapez2-core.mdc) Forbidden Shortcuts · [`testing.md`](documents/ai/manuals/testing.md) § Forbidden shortcuts.
 
 ## Tools
 

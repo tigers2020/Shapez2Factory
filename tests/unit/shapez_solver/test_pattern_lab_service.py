@@ -43,7 +43,7 @@ def test_pattern_lab_lists_db_macro_candidate_metadata(
         operation="stacker",
         input_slots=["AB_half", "CC_half"],
         output_slots=["ABCC"],
-        note="표시용 step",
+        note="?�시??step",
     )
 
     analysis = analyze_pattern_lab_shape("CuRuSuSu")

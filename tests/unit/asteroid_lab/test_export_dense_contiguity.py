@@ -9,7 +9,7 @@ from django_apps.asteroid_lab.adapters.blueprint_canonical_export import (
     export_dense_x_set,
     to_official_island_root,
 )
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import build_layout_root
+from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import build_layout_root
 from django_apps.asteroid_lab.snapshots.server_coords import raw_x_to_dense_index
 
 

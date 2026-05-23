@@ -1,4 +1,4 @@
-"""Phase 9 pre-9B — ReplayEventType adapter coverage matrix."""
+"""Phase 9 pre-9B ??ReplayEventType adapter coverage matrix."""
 
 from __future__ import annotations
 

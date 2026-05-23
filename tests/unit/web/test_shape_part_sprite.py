@@ -80,7 +80,7 @@ def test_shape_part_sprite_storage_ok_when_both_set(tmp_path: Path) -> None:
 
 @pytest.fixture(autouse=True)
 def cleanup_shape_part_sprite_files() -> Iterator[None]:
-    """테스트가 실제 정적 스프라이트 디렉터리에 남긴 파일을 정리한다."""
+    """?�스?��? ?�제 ?�적 ?�프?�이???�렉?�리???�긴 ?�일???�리?�다."""
 
     image_field = ShapePartSprite._meta.get_field("image")
     storage_root = Path(image_field.storage.location)

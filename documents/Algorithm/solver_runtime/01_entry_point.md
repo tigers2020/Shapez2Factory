@@ -32,6 +32,30 @@ POST /asteroid-miner-layout/p/<slug>/run-solver/
 
 Lab JS `Run Solver` → POST run-solver + optimization replay HUD는 **PR9**에서 연동.
 
+## CLI (에이전트 / 로컬 스모크)
+
+HTTP 버튼 없이 동일 entry 경로:
+
+```bash
+python manage.py run_solver --slug <slug> --run-key agent-smoke-YYYYMMDD
+# run_key is unique per project — change suffix each run (e.g. agent-smoke-t12)
+python manage.py run_solver --project-id <id> --run-key agent-smoke
+python manage.py run_solver --slug <slug> --json   # full solver_summary one line
+# Windows 래퍼: powershell -File scripts/run_solver.ps1 --slug <slug> --run-key agent-smoke
+```
+
+로컬 reference 프로젝트가 있으면 `python manage.py shell -c "from django_apps.asteroid_lab import models as m; print(list(m.AsteroidProject.objects.values_list('slug', flat=True)))"` 로 slug 확인.
+
+전제: `migrate`, `import_game_data`, `seed_exhaustive_sample_genes`, 프로젝트 + 최신 map input.
+
+## Solver summary stack log
+
+Run Solver(HTTP·CLI) 완료 시 `solver_summary`가 프로젝트별 JSON stack에 기록된다 (solver 입력으로 읽지 않음).
+
+- 경로: `<BASE_DIR>/var/log/solver_summary_stack/` (env `ASTEROID_LAB_SOLVER_SUMMARY_STACK_LOG_DIR`)
+- 파일: `{slug}.json` + `project_{id}.json` (동일 내용, 최신이 `entries[0]`, 최대 5건)
+- 끄기: `ASTEROID_LAB_SOLVER_SUMMARY_STACK_LOG=0`
+
 ## 입력
 
 ```text

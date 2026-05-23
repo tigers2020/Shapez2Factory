@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
 
 @dataclass(frozen=True, slots=True)

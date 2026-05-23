@@ -85,6 +85,7 @@ PR full gate: `mypy django_apps config src` ([AGENTS.md](mdc:AGENTS.md)).
 - `failure_reason`·`event_type`·`issue_code` 등 **자유 문자열** (enum/const + 테스트 동시 갱신).
 - 계획 미승인 상태에서 구현 진행.
 - 검증 없이 완료 선언.
+- 식별자 **선행 underscore만** 바꾸는 rename (`func`↔`_func`, `name`↔`_name`, import alias 동일) — 스타일·린트·“private/public 정리” 목적 금지. **예외**: 사용자가 rename을 명시했거나, 승인된 계약·스펙이 새 이름을 요구할 때만.
 
 전체: [`testing.md § Forbidden shortcuts`](mdc:documents/ai/manuals/testing.md)
 

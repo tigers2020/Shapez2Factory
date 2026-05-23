@@ -1,7 +1,8 @@
 ---
-status: ACTIVE
+status: ARCHIVED
 owner: solver-runtime-pipeline
-last_reviewed: 2026-05-19
+last_reviewed: 2026-05-22
+archived_reason: Solver optimization pipeline removed; reconstruction-only (see docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md)
 ---
 
 # Solver Runtime — Solver 버튼 파이프라인

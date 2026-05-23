@@ -24,6 +24,7 @@
     data-lab-project-slug="{{ lab_project_slug|default:'' }}"
     {% if lab_project_slug %}
     data-lab-run-solver-url="{% url 'web:asteroid-miner-layout-project-run-solver' slug=lab_project_slug %}"
+    data-lab-reset-map-url="{% url 'web:asteroid-miner-layout-project-reset-map' slug=lab_project_slug %}"
     {% endif %}
     data-lab-sprite-base="{% static 'web/assets/sprites/' %}"
   >

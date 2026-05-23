@@ -1,6 +1,6 @@
 """Pure existing-layout inspection (A6).
 
-Blueprint ``X`` coordinates follow the asteroid map rule: no ``x == 0`` (fixtures use 1, 2, …).
+Blueprint ``X`` coordinates follow the asteroid map rule: no ``x == 0`` (fixtures use 1, 2, ??.
 """
 
 from __future__ import annotations

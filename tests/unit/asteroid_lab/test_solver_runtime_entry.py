@@ -1,135 +1,18 @@
-"""Solver runtime HTTP entry service tests (PR8)."""
+"""Solver runtime entry stub tests (optimization pipeline removed)."""
 
 from __future__ import annotations
 
-import base64
-import gzip
-import json
-import random
-
 import pytest
-from django.test import Client
-from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.services.runtime_gene_template_source import (
-    GeneTemplateSourceKind,
-)
-from django_apps.asteroid_lab.services.sample_gene_exhaustive_generator import (
-    ExhaustiveGenerationStats,
-    GeneratedSampleGene,
-)
-from django_apps.asteroid_lab.services.solver_run_config_keys import (
-    SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY,
-    SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY,
-    SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
-)
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
+    SOLVER_NOT_AVAILABLE_MESSAGE,
     SolverRuntimeEntryErrorCode,
+    entry_result_to_json_dict,
     run_solver_runtime_for_project,
 )
 
 pytestmark = pytest.mark.django_db
-
-
-def _encode_v4_copy(root: dict) -> str:
-    text = json.dumps(root, separators=(",", ":")).encode("utf-8")
-    gz = gzip.compress(text)
-    b64 = base64.b64encode(gz).decode("ascii")
-    return f"SHAPEZ2-4-{b64}"
-
-
-def _unique_valid_copy() -> str:
-    return _encode_v4_copy(
-        {
-            "V": random.randint(1, 10_000_000),
-            "BP": {
-                "$type": "Island",
-                "Entries": [
-                    {"X": 1, "Y": 0, "T": "Layout_ProMiner"},
-                    {"X": 2, "Y": 0, "T": "SpaceBelt_Left"},
-                    {"X": 3, "Y": 1, "T": "Layout_ShapeMinerExtension"},
-                ],
-            },
-        }
-    )
-
-
-def _project_with_map_input() -> m.AsteroidProject:
-    client = Client()
-    client.post(
-        reverse("web:asteroid-miner-layout-projects-create"),
-        {"copy_code": _unique_valid_copy()},
-        follow=True,
-    )
-    return m.AsteroidProject.objects.get()
-
-
-def _seed_minimal_gene_samples(
-    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
-) -> None:
-    """Seed one belt solo-extractor sample for entry tests."""
-    genes, _ = exhaustive_genes_ext0_belt
-    assert genes
-    g = genes[0]
-    m.GeneticSample.objects.update_or_create(
-        gene_key=g.key,
-        defaults={"name": g.name, "code": g.encoded_copy_string, "metadata_json": dict(g.metadata)},
-    )
-
-
-def test_solver_runtime_entry_persists_summary_and_projection_params(
-    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
-) -> None:
-    _seed_minimal_gene_samples(exhaustive_genes_ext0_belt)
-    proj = _project_with_map_input()
-    result = run_solver_runtime_for_project(int(proj.pk), run_key="entry-persist")
-    assert result.ok is True
-    assert result.solver_run_id is not None
-    assert result.validation_passed is True
-
-    run = m.SolverRun.objects.get(pk=result.solver_run_id)
-    assert SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY in run.config_json
-    assert SOLVER_RUN_CONFIG_SERVER_XY_PARAMS_KEY in run.config_json
-    summary = run.config_json[SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY]
-    assert "capacity_satisfied" in summary
-    assert "run_success" in summary
-    if summary.get("run_success"):
-        assert run.status == m.SolverRun.RunStatus.COMPLETED
-    elif summary.get("validation_passed"):
-        assert run.status == m.SolverRun.RunStatus.PARTIAL
-    else:
-        assert run.status == m.SolverRun.RunStatus.FAILED
-    assert len(result.lab_replay_frames_json) >= 1
-    assert isinstance(result.replay_track_metrics, dict)
-
-
-def test_solver_runtime_entry_persists_gene_template_source(
-    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
-) -> None:
-    _seed_minimal_gene_samples(exhaustive_genes_ext0_belt)
-    proj = _project_with_map_input()
-    result = run_solver_runtime_for_project(int(proj.pk), run_key="entry-gene-source")
-    assert result.ok is True
-
-    run = m.SolverRun.objects.get(pk=result.solver_run_id)
-    assert SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY in run.config_json
-    src = run.config_json[SOLVER_RUN_CONFIG_GENE_TEMPLATE_SOURCE_KEY]
-    assert src["source"] == GeneTemplateSourceKind.GENETIC_SAMPLE_DB.value
-    assert src["gene_count"] >= 1
-    assert isinstance(src["gene_ids"], list)
-
-    assert result.gene_template_source["source"] == GeneTemplateSourceKind.GENETIC_SAMPLE_DB.value
-
-
-def test_solver_runtime_entry_does_not_create_lab_replay_frames(
-    exhaustive_genes_ext0_belt: tuple[list[GeneratedSampleGene], ExhaustiveGenerationStats],
-) -> None:
-    _seed_minimal_gene_samples(exhaustive_genes_ext0_belt)
-    proj = _project_with_map_input()
-    lab_count = m.ReplayFrame.objects.filter(replay_track__project=proj).count()
-    run_solver_runtime_for_project(int(proj.pk))
-    assert m.ReplayFrame.objects.filter(replay_track__project=proj).count() == lab_count
 
 
 def test_solver_runtime_entry_requires_map_input() -> None:
@@ -139,10 +22,20 @@ def test_solver_runtime_entry_requires_map_input() -> None:
     assert result.error_code == SolverRuntimeEntryErrorCode.NO_MAP_INPUT
 
 
-def test_solver_runtime_entry_fails_when_no_gene_templates_in_db() -> None:
-    """If DB has no seeded GeneticSample rows, entry returns NO_GENE_TEMPLATES_IN_DB."""
-    proj = _project_with_map_input()
-    # DB is empty (django_db gives clean state per test)
+def test_solver_runtime_entry_returns_solver_not_available_when_map_input_exists() -> None:
+    proj = m.AsteroidProject.objects.create(name="Lab", slug="entry-stub")
+    m.AsteroidMapInput.objects.create(project=proj, copy_code="SHAPEZ2-4-e30=")
     result = run_solver_runtime_for_project(int(proj.pk))
     assert result.ok is False
-    assert result.error_code == SolverRuntimeEntryErrorCode.NO_GENE_TEMPLATES_IN_DB
+    assert result.error_code == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE
+    assert result.message == SOLVER_NOT_AVAILABLE_MESSAGE
+
+
+def test_entry_result_to_json_dict_includes_error_code_and_message() -> None:
+    proj = m.AsteroidProject.objects.create(name="Lab2", slug="entry-stub-json")
+    m.AsteroidMapInput.objects.create(project=proj, copy_code="SHAPEZ2-4-e30=")
+    result = run_solver_runtime_for_project(int(proj.pk))
+    body = entry_result_to_json_dict(result)
+    assert body["ok"] is False
+    assert body["error_code"] == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE.value
+    assert body["message"] == SOLVER_NOT_AVAILABLE_MESSAGE

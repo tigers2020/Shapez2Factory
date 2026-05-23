@@ -28,6 +28,11 @@ urlpatterns = [
         name="asteroid-miner-layout-project-run-solver",
     ),
     path(
+        "asteroid-miner-layout/p/<slug:slug>/reset-map/",
+        views.asteroid_miner_layout_project_reset_map,
+        name="asteroid-miner-layout-project-reset-map",
+    ),
+    path(
         "asteroid-miner-layout/p/<slug:slug>/",
         views.asteroid_miner_layout_project,
         name="asteroid-miner-layout-project",

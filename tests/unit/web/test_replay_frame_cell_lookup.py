@@ -16,7 +16,7 @@ def test_lookup_full_map_empty_cell_returns_none() -> None:
 
 
 def test_lookup_removed_transport_coord_has_no_full_map_source() -> None:
-    """step0-style frame: pipe only in diff.removed, not in full_map — no sources['full_map']."""
+    """step0-style frame: pipe only in diff.removed, not in full_map ??no sources['full_map']."""
     ser = {
         "full_map": [{"x": 1, "y": 0, "cell_kind": "fluid_miner", "layer": None}],
         "diff": {

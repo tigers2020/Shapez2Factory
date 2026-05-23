@@ -35,7 +35,7 @@ def test_pattern_catalog_repository_returns_active_macro_candidates(
         operation="stacker",
         input_slots=["AB_half", "CC_half"],
         output_slots=["ABCC"],
-        note="표시용 step",
+        note="?�시??step",
     )
 
     candidates = PatternCatalogRepository().find_macro_candidates(signature="ABCC")

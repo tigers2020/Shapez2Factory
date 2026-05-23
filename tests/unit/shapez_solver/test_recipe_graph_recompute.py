@@ -334,7 +334,7 @@ def test_recompute_cutter_splits_quantity_evenly_when_ge_two() -> None:
 
 
 def test_recompute_autocreate_second_cutter_output_uses_grid_not_stack() -> None:
-    """세컨드 출력이 없을 때 자동 생성 노드는 2열 그리드(가로 오프셋)로 둔다."""
+    """?�컨??출력???�을 ???�동 ?�성 ?�드??2??그리??가�??�프??�??�다."""
     ox, oy = 200.0, 50.0
     doc = {
         "schema_version": 1,
@@ -388,7 +388,7 @@ def test_recompute_autocreate_second_cutter_output_uses_grid_not_stack() -> None
     )
     assert e2.get("slot") == "1"
     s_first = next(n for n in out["nodes"] if n["id"] == "s_first")
-    # 첫 번째 슬롯(갱신)은 이전 x,y 유지, 두 번째는 열 1 → 가로로 분리
+    # �?번째 ?�롯(갱신)?� ?�전 x,y ?��?, ??번째????1 ??가로로 분리
     assert abs(s_first["x"] - auto["x"]) >= float(RECIPE_GRAPH_AUTO_OUTPUT_COL_SPACING) * 0.9
     assert s_first["quantity"] == 2
     assert auto["quantity"] == 2

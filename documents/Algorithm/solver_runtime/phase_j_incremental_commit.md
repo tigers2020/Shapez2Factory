@@ -30,6 +30,18 @@ RouteReservation(s)
 updated trunk / goal load
 ```
 
+## Commit order (before incremental commit)
+
+Phase I produces `SelectedCandidatePlan`; commit order may reorder IDs (same multiset) before Phase J.
+
+| Policy (`CommitOrderPolicy`) | v0 pipeline default (T1.1) | Behavior |
+|------------------------------|----------------------------|----------|
+| `inlet_aware_probe_fragile_first` | **yes** (T1.2) | Inlet-vulnerable tier first, then probe-fragile within tier ([`2026-05-22-commit-order-inlet-aware-design.md`](../../../docs/superpowers/specs/2026-05-22-commit-order-inlet-aware-design.md)) |
+| `probe_fragile_first` | rollback / compare | Total sort only (T1.1) |
+| `round_robin_diversity` | tests / rollback | Round-robin across goal/corridor/anchor buckets (`diversify_commit_order`) |
+
+Deferred retry and reprobe rules unchanged; order affects **when** each ID sees the live `route_domain`.
+
 ## 작업
 
 ```text

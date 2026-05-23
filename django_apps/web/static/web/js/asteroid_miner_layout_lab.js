@@ -959,51 +959,8 @@
     }
   }
 
-  let lastRenderableReplayFrame = null;
-
   function frameHasRenderableMap(frame) {
     return fullMapCellsFromFrame(frame).length > 0;
-  }
-
-  function seedLastRenderableReplayFrame(frames) {
-    lastRenderableReplayFrame = null;
-    if (!Array.isArray(frames)) {
-      return;
-    }
-    for (let i = frames.length - 1; i >= 0; i--) {
-      const fr = frames[i];
-      if (fr && frameHasRenderableMap(fr)) {
-        lastRenderableReplayFrame = fr;
-        return;
-      }
-    }
-  }
-
-  function resolveInheritedSnapshotBaseFrame(frame, allFrames) {
-    if (!frame || typeof frame !== "object") {
-      return null;
-    }
-    if (frame.base_frame_index != null && Array.isArray(allFrames)) {
-      const idx = Number(frame.base_frame_index);
-      if (Number.isFinite(idx) && idx >= 0 && idx < allFrames.length) {
-        const byIndex = allFrames[idx];
-        if (byIndex && frameHasRenderableMap(byIndex)) {
-          return byIndex;
-        }
-      }
-    }
-    if (lastRenderableReplayFrame && frameHasRenderableMap(lastRenderableReplayFrame)) {
-      return lastRenderableReplayFrame;
-    }
-    if (Array.isArray(allFrames)) {
-      for (let i = allFrames.length - 1; i >= 0; i--) {
-        const fr = allFrames[i];
-        if (fr && frameHasRenderableMap(fr)) {
-          return fr;
-        }
-      }
-    }
-    return null;
   }
 
   function formatOptimizationMilestoneHint(frame) {
@@ -1054,17 +1011,6 @@
   }
 
   function renderReplayFrame(frame, baseClasses, domCells, resolveCellIndex, allFrames) {
-    if (
-      frame &&
-      typeof frame === "object" &&
-      frame.render_mode === "inherited_snapshot"
-    ) {
-      const base = resolveInheritedSnapshotBaseFrame(frame, allFrames);
-      if (base) {
-        renderReplayFrame(base, baseClasses, domCells, resolveCellIndex, allFrames);
-        return;
-      }
-    }
     if (!frame || typeof frame !== "object") {
       resetGridBase(domCells, baseClasses);
       return;
@@ -1072,7 +1018,6 @@
     const fm = fullMapCellsFromFrame(frame);
     if (fm.length) {
       resetGridBase(domCells, baseClasses);
-      lastRenderableReplayFrame = frame;
       renderFullMapReplayFrame(frame, baseClasses, domCells, resolveCellIndex);
       return;
     }
@@ -1154,7 +1099,6 @@
     const uiInitial = readJsonScript("lab-ui-initial-state");
     const replayFramesRaw = readJsonScript("lab-replay-frames-data");
     let replayFrames = Array.isArray(replayFramesRaw) ? replayFramesRaw : [];
-    seedLastRenderableReplayFrame(replayFrames);
     const trackMetricsRaw = readJsonScript("lab-replay-track-metrics-data");
     let replayTrackMetrics =
       trackMetricsRaw && typeof trackMetricsRaw === "object" ? trackMetricsRaw : {};
@@ -1547,8 +1491,8 @@
         }
         const hint = document.getElementById("lab-replay-footer-hint");
         if (hint) {
-          if (fr && fr.render_mode === "inherited_snapshot") {
-            hint.textContent = formatOptimizationMilestoneHint(fr);
+          if (fr && fr.description) {
+            hint.textContent = String(fr.description);
           } else if (fr && fr.inspector) {
             const optEv = fr.inspector.optimization_event_type;
             const labEv = fr.inspector.lab_event_type;
@@ -2074,7 +2018,6 @@
       baselineFrame = parseFrame(initialFromServer.frame, datasetFrame);
       const next = Array.isArray(payload.lab_replay_frames_json) ? payload.lab_replay_frames_json : [];
       replayFrames = next;
-      seedLastRenderableReplayFrame(replayFrames);
       if (payload.replay_track_metrics && typeof payload.replay_track_metrics === "object") {
         replayTrackMetrics = payload.replay_track_metrics;
       }

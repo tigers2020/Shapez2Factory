@@ -46,6 +46,7 @@ from django_apps.asteroid_lab.optimization.replay_track_keys import rttp_optimiz
 from django_apps.asteroid_lab.optimization.rttp_solver_summary import (
     RTTP_ALGORITHM_LABEL,
     build_rttp_solver_summary,
+    catalog_slice_step_from_slice,
     reconstruction_step_from_result,
 )
 from django_apps.asteroid_lab.services.experiment_service import (
@@ -418,6 +419,7 @@ def _run_rttp_solver_for_map_input(
         algorithm_steps=pipeline_result.algorithm_steps,
         macro_only_mode=pipeline_config.macro_only_mode,
         reconstruction_step=reconstruction_step_from_result(recon),
+        catalog_slice_step=catalog_slice_step_from_slice(catalog_slice),
     )
     _persist_solver_run_outcome(
         run_id,

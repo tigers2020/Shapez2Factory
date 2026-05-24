@@ -121,9 +121,9 @@ HTTP `POST …/run-solver/` 는 유지하나 optimization body는 반환하지 �
 
 ## RTTP pipeline status (2026-05-24)
 
-> **Note:** Frontmatter `ARCHIVED` above is **historical** (2026-05-22 strip surgery). Current `feature/b2-t2-per-cell-transport` runs **RTTP Hybrid C** when `ASTEROID_LAB_RTTP_ENABLED=True`. Code 정본: [`documents/ai/current_plan.md`](../../ai/current_plan.md).
+> **Note:** Frontmatter `ARCHIVED` above is **historical** (2026-05-22 strip surgery). Current `master` runs **RTTP Hybrid C** when `ASTEROID_LAB_RTTP_ENABLED=True`. Code 정본: [`documents/ai/current_plan.md`](../../ai/current_plan.md).
 
-### Track B2-T2: Per-Cell Transport Resolution
+### Track B2-T2: Per-Cell Transport Resolution (CLOSED — PR #62)
 
 > **Plan:** [`2026-05-24-b2-t2-per-cell-transport-resolution.md`](../../../docs/superpowers/plans/2026-05-24-b2-t2-per-cell-transport-resolution.md)  
 > **Spec:** [`2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](../../../docs/superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md)
@@ -132,6 +132,15 @@ HTTP `POST …/run-solver/` 는 유지하나 optimization body는 반환하지 �
 - [x] **Task 2** — `reconstruction_adapter._existing_transport` T2 wire (`lookup` once; `coord=` on policy API)
 - [x] **Task 3** — `docs/domain/asteroid_game_data_snapshot.md` T2 paragraph + parent B2 spec cross-link
 - [x] **Task 4** — `test_catalog_consumption_boundaries`, catalog/entry transport tests, reconstruction narrow gate, ruff (B2-T2 paths)
-- [x] **Task 5** — PR-ready branch verification (see final report; Ops smoke B post-merge)
+- [x] **Task 5** — Ops smoke B (`copy-import-495e552c`, post-merge)
 
-**Next track:** B2-T3 transport-aware route domain — after T2 merges to `master` ([spec](../../../docs/superpowers/specs/2026-05-24-b2-t3-transport-aware-route-domain-design.md)).
+### Track B2-T3: Transport-Aware Route Domain (CLOSED — PR #61)
+
+> **Plan:** [`2026-05-24-b2-t3-transport-aware-route-domain.md`](../../../docs/superpowers/plans/2026-05-24-b2-t3-transport-aware-route-domain.md)  
+> **Spec:** [`2026-05-24-b2-t3-transport-aware-route-domain-design.md`](../../../docs/superpowers/specs/2026-05-24-b2-t3-transport-aware-route-domain-design.md)
+
+- [x] **Task 1–4** — `partition_existing_transport`, adapter `blocked_incompatible_transport_cells`, skeleton/route-domain trunk subtract + blocked union, pipeline metrics
+- [x] **Task 5** — domain doc + `current_plan` (see repo `documents/ai/current_plan.md`)
+- [x] **Ops smoke C** — `test_rttp_transport_kind_route_domain.py` + mixed adapter partition test (mixed-kind 실맵 `run_solver`는 OPS `copy-import` 클래스에서 transport 0 — topology strips transport pre-adapter)
+
+**Next track:** Track D catalog footprint/connector — [`building-catalog-slice-first-consumption-design.md`](../../../docs/superpowers/specs/2026-05-24-building-catalog-slice-first-consumption-design.md) (brainstorming / plan TBD).

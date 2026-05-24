@@ -165,7 +165,7 @@ RTTP resolves each reconstruction transport cell through `catalog_transport_poli
 
 **Implementation plan:** [`2026-05-24-b2-t2-per-cell-transport-resolution.md`](../plans/2026-05-24-b2-t2-per-cell-transport-resolution.md)
 
-**Next track:** [B2-T3 transport-aware route domain](2026-05-24-b2-t3-transport-aware-route-domain-design.md) — on `master` (distinct from footprint / Track D geometry).
+**Next track:** Track D catalog footprint/connector consumption (distinct from B2-T3 transport-domain slice). **CLOSED on `master`:** [B2-T3](2026-05-24-b2-t3-transport-aware-route-domain-design.md) (PR #61), [B2-T2](2026-05-24-b2-t2-per-cell-transport-resolution-design.md) (PR #62).
 
 ## `OptimizationInput` extension
 

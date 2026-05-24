@@ -34,11 +34,16 @@ def _require_game_data_import_batch(imported_game_data_batch_module: object) -> 
     return imported_game_data_batch_module
 
 
-_RTTP_STEP_IDS = (
+_RTTP_PIPELINE_STEP_IDS = (
     RttpAlgorithmStepId.RTTP_ROUTE_DOMAIN,
     RttpAlgorithmStepId.RTTP_CANDIDATE_POOL,
     RttpAlgorithmStepId.RTTP_GENOME_SELECTION,
     RttpAlgorithmStepId.RTTP_COMMIT,
+)
+
+_RTTP_RUNTIME_STEP_IDS_AFTER_RECON = (
+    RttpAlgorithmStepId.RTTP_CATALOG_SLICE,
+    *_RTTP_PIPELINE_STEP_IDS,
 )
 
 
@@ -103,7 +108,7 @@ def test_rttp_pipeline_algorithm_steps_match_milestone_event_types(
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
     )
     step_ids = [row["step_id"] for row in result.algorithm_steps]
-    assert step_ids == [sid.value for sid in _RTTP_STEP_IDS]
+    assert step_ids == [sid.value for sid in _RTTP_PIPELINE_STEP_IDS]
     event_types = {row["event_type"] for row in result.algorithm_steps}
     assert event_types == set(RTTP_MILESTONE_EVENT_TYPES)
     commit_row = result.algorithm_steps[-1]
@@ -138,5 +143,5 @@ def test_runtime_solver_summary_exposes_full_algorithm_steps() -> None:
     steps = result.solver_summary.get("algorithm_steps") or []
     step_ids = [row["step_id"] for row in steps]
     assert step_ids[0] == RttpAlgorithmStepId.RECONSTRUCTION.value
-    assert step_ids[1:] == [sid.value for sid in _RTTP_STEP_IDS]
+    assert step_ids[1:] == [sid.value for sid in _RTTP_RUNTIME_STEP_IDS_AFTER_RECON]
     assert result.solver_summary.get("commit_order") == steps[-1]["metrics"].get("commit_order")

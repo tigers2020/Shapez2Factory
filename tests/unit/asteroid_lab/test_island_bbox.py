@@ -64,12 +64,12 @@ _LEGACY_BBOX = {
 }
 
 
-def test_full_map_island_bbox_reads_legacy_server_bbox_meta() -> None:
+def test_full_map_island_bbox_ignores_legacy_server_bbox_meta() -> None:
     decoded_json = {
         "_asteroid_lab_reconstruction": {"full_map_server_bbox": dict(_LEGACY_BBOX)},
         "BP": {"Entries": []},
     }
-    assert full_map_island_bbox_from_decoded_json(decoded_json) == _LEGACY_BBOX
+    assert full_map_island_bbox_from_decoded_json(decoded_json) is None
 
 
 def test_full_map_island_bbox_prefers_island_over_legacy_server_meta() -> None:

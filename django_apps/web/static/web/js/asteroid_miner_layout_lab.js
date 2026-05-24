@@ -2220,7 +2220,7 @@
       }
     }
 
-    function getLabCellDisplayRawCoord(cellEl) {
+    function getLabCellDisplayIslandCoord(cellEl) {
       const indexText = cellEl && cellEl.getAttribute ? cellEl.getAttribute("data-lab-cell-index") : null;
       const idx = Number.parseInt(indexText || "", 10);
       if (!Number.isFinite(idx)) {
@@ -2264,7 +2264,7 @@
         return;
       }
       if (gridHudCoord) {
-        gridHudCoord.textContent = getLabCellDisplayRawCoord(cellEl);
+        gridHudCoord.textContent = getLabCellDisplayIslandCoord(cellEl);
       }
       if (gridHudRole) {
         gridHudRole.textContent = getLabCellDisplayRole(cellEl);

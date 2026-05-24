@@ -407,6 +407,8 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert 'id="lab-replay-run-status"' in tpl
     assert 'id="lab-replay-grid-hud-server-coord"' not in tpl
     assert ">srv<" not in tpl
+    assert ">raw<" not in tpl
+    assert ">xy<" in tpl
     assert 'id="lab-evolution-runs-list"' in tpl
     assert "lab-detail-first-issue" in tpl
     assert "lab-detail-placed" in tpl

@@ -49,8 +49,6 @@ def full_map_island_bbox_from_decoded_json(decoded_json: dict[str, Any]) -> dict
     meta = decoded_json.get(_RECON_META_KEY)
     if isinstance(meta, dict):
         bb = meta.get("full_map_island_bbox")
-        if not isinstance(bb, dict) or "min_x" not in bb or "width" not in bb:
-            bb = meta.get("full_map_server_bbox")  # read-compat one release (PR-F)
         if isinstance(bb, dict) and "min_x" in bb and "width" in bb:
             return {k: int(bb[k]) for k in ("min_x", "max_x", "min_y", "max_y", "width", "height")}
     bp = decoded_json.get("BP")

@@ -95,7 +95,16 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** **deferred commit retry** (RTTP core). Decontamination PR-A..E complete on `master`.
+**Open next:** **deferred commit retry PR-2+** (RTTP core). Decontamination PR-A..E complete on `master`.
+
+### Deferred commit retry — PR-1 shadow (observe-only)
+
+| Step | Status | Evidence |
+|------|--------|----------|
+| Spec | ✅ | [`2026-05-24-deferred-commit-retry-shadow-pr1-design.md`](specs/2026-05-24-deferred-commit-retry-shadow-pr1-design.md) |
+| Plan | ✅ | [`2026-05-24-deferred-commit-retry-shadow-pr1.md`](plans/2026-05-24-deferred-commit-retry-shadow-pr1.md) |
+| Pure builder + pipeline step `rttp.deferred_commit_retry_shadow` | 🔄 | branch `feat/deferred-commit-retry-shadow-pr1` |
+| PR-2 policy DTO wiring / PR-3 execution / PR-4 ops | ⏸ | after PR-1 merge |
 
 ---
 

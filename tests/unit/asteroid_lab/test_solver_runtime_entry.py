@@ -221,6 +221,7 @@ def test_rttp_run_persists_game_data_snapshot_provenance() -> None:
         int(proj.pk),
         game_data_snapshot=build.snapshot,
         game_data_provenance=build.provenance,
+        catalog_slice=build.catalog_slice,
     )
     assert result.solver_run_id is not None
     run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
@@ -239,7 +240,47 @@ def test_rttp_run_without_provenance_returns_provenance_incomplete() -> None:
         int(proj.pk),
         game_data_snapshot=build.snapshot,
         game_data_provenance=None,
+        catalog_slice=None,
     )
     assert result.ok is False
     assert result.error_code == SolverRuntimeEntryErrorCode.PROVENANCE_INCOMPLETE
     assert result.solver_run_id is None
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_rttp_run_without_catalog_slice_returns_catalog_slice_required() -> None:
+    build = build_asteroid_game_data_snapshot_with_provenance()
+    proj = m.AsteroidProject.objects.create(name="NoSlice", slug="no-slice-gate")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    result = run_solver_runtime_for_project(
+        int(proj.pk),
+        game_data_snapshot=build.snapshot,
+        game_data_provenance=build.provenance,
+        catalog_slice=None,
+    )
+    assert result.ok is False
+    assert result.error_code == SolverRuntimeEntryErrorCode.CATALOG_SLICE_REQUIRED
+    assert result.solver_run_id is None
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_rttp_run_catalog_slice_hash_mismatch() -> None:
+    from dataclasses import replace
+
+    from django_apps.asteroid_lab.contracts.building_catalog_slice_hash import (
+        catalog_slice_hash,
+    )
+
+    build = build_asteroid_game_data_snapshot_with_provenance()
+    bad_prov = replace(build.provenance, catalog_slice_hash="b" * 64)
+    proj = m.AsteroidProject.objects.create(name="Hash", slug="hash-mismatch")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    result = run_solver_runtime_for_project(
+        int(proj.pk),
+        game_data_snapshot=build.snapshot,
+        game_data_provenance=bad_prov,
+        catalog_slice=build.catalog_slice,
+    )
+    assert result.ok is False
+    assert result.error_code == SolverRuntimeEntryErrorCode.CATALOG_SLICE_HASH_MISMATCH
+    assert catalog_slice_hash(build.catalog_slice) != bad_prov.catalog_slice_hash

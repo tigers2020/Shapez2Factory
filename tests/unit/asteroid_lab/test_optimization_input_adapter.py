@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.contracts.building_catalog_slice import (
+    SLICE_VERSION,
+    BuildingCatalogSlice,
+)
+from django_apps.asteroid_lab.contracts.game_data_snapshot import TransportRegistryEntry
 from django_apps.asteroid_lab.optimization.input_contracts import (
     ExistingTransportCell,
     RouteGoal,
+    TransportKind,
 )
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
     optimization_input_from_reconstruction,
@@ -89,3 +95,23 @@ def test_optimization_input_adapter_greenfield_has_external_margin_goal() -> Non
     assert len(inp.route_goals) >= 1
     void_neighbors = inp.external_void_cells & frozenset(goal.coord for goal in inp.route_goals)
     assert void_neighbors
+
+
+def test_greenfield_default_transport_uses_catalog_slice_t1() -> None:
+    cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
+    catalog_slice = BuildingCatalogSlice(
+        SLICE_VERSION,
+        (TransportRegistryEntry("space_belt", "belt", "bv:1"),),
+        (),
+    )
+    inp = optimization_input_from_reconstruction(
+        ReconstructionResult(cells=cells),
+        catalog_slice=catalog_slice,
+    )
+    assert inp.transport_kind is TransportKind.SHAPE_BELT
+
+
+def test_greenfield_without_catalog_slice_uses_legacy_heuristic() -> None:
+    cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
+    inp = optimization_input_from_reconstruction(ReconstructionResult(cells=cells))
+    assert inp.transport_kind is TransportKind.SHAPE_BELT

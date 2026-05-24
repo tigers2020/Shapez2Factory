@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 
@@ -47,6 +48,7 @@ class OptimizationInput:
     route_goals: tuple[RouteGoal, ...]
     existing_transport_cells: frozenset[ExistingTransportCell]
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW
+    catalog_slice: BuildingCatalogSlice | None = None
 
 
 @dataclass(frozen=True, slots=True)

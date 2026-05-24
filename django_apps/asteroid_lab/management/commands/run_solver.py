@@ -92,6 +92,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             config=config or None,
             game_data_snapshot=game_data_build.snapshot,
             game_data_provenance=game_data_build.provenance,
+            catalog_slice=game_data_build.catalog_slice,
         )
         body = entry_result_to_json_dict(result)
 

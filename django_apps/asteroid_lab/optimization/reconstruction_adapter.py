@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
+    resolve_default_asteroid_transport_kind,
+)
+from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import (
     ExistingTransportCell,
@@ -112,6 +116,7 @@ def optimization_input_from_reconstruction(
     result: ReconstructionResult,
     *,
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW,
+    catalog_slice: BuildingCatalogSlice | None = None,
 ) -> OptimizationInput:
     """Map reconstruction topology to ``OptimizationInput`` using raw island ``x/y``."""
 
@@ -122,7 +127,10 @@ def optimization_input_from_reconstruction(
     rim = _rim_cells(mineable)
     inner = mineable - rim
     existing_transport = _existing_transport(by_coord)
-    transport_kind = _default_transport_kind(existing_transport)
+    if not existing_transport and catalog_slice is not None:
+        transport_kind = resolve_default_asteroid_transport_kind(catalog_slice)
+    else:
+        transport_kind = _default_transport_kind(existing_transport)
     existing_trunk = _existing_trunk_cells(existing_transport)
     route_goals = _external_margin_route_goals(rim, external_void, transport_kind)
 
@@ -137,6 +145,7 @@ def optimization_input_from_reconstruction(
         route_goals=route_goals,
         existing_transport_cells=existing_transport,
         coord_frame=coord_frame,
+        catalog_slice=catalog_slice,
     )
 
 

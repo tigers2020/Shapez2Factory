@@ -25,5 +25,6 @@ def run_solver_runtime_with_pinned_game_data(
         project_id,
         game_data_snapshot=build.snapshot,
         game_data_provenance=build.provenance,
+        catalog_slice=build.catalog_slice,
         **kwargs,
     )

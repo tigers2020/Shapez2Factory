@@ -27,6 +27,12 @@ Asteroid Lab must consume normalized building and transport data from the `game_
 8. Snapshot **body** (`buildings`, `transport_registry`) remains **not** algorithm input until a future solver-input ADR. Optimization modules may read validated provenance as metadata only.
 9. **RTTP disabled (P1):** HTTP/CLI still build and validate snapshot+provenance; no `SolverRun` is created. Stub responses may expose a slim deploy diagnostic (`content_hash`, reproducibility fields) — not a substitute for run persistence.
 
+### Building catalog slice (Track B2, 2026-05-24)
+
+10. RTTP MAY consume **`BuildingCatalogSlice`** only for transport registry and building/variant identity lookup (T1: empty-map default `TransportKind`). This does **not** grant topology, placement geometry, throughput, route-domain, or candidate-validation authority to the snapshot body. Any expansion requires a new ADR or Track D approval.
+11. New RTTP runs MUST persist provenance **v2** (10 wire keys including required `catalog_slice_version` and `catalog_slice_hash`). Historical v1 (8 keys) is parse-only via `parse_provenance_config_v1`.
+12. **`reproducibility_key_v1()`** remains the Track A 3-tuple. **`reproducibility_key()`** is the B2 5-tuple including catalog fields.
+
 ## Consequences
 
 ### Positive

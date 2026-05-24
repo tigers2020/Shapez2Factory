@@ -11,7 +11,17 @@ from django.conf import settings
 from django.db import transaction
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
+    CatalogTransportUnresolvedError,
+)
 from django_apps.asteroid_lab.adapters.decode_adapter import AsteroidLabCopyDecodeError
+from django_apps.asteroid_lab.contracts.building_catalog_slice import (
+    BuildingCatalogSlice,
+    catalog_slice_from_snapshot,
+)
+from django_apps.asteroid_lab.contracts.building_catalog_slice_hash import (
+    catalog_slice_hash,
+)
 from django_apps.asteroid_lab.contracts.game_data_snapshot import AsteroidGameDataSnapshot
 from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
     GameDataSnapshotProvenance,
@@ -81,6 +91,9 @@ class SolverRuntimeEntryErrorCode(StrEnum):
     DECODE_FAILED = "decode_failed"
     SOLVER_NOT_AVAILABLE = "SOLVER_NOT_AVAILABLE"
     PROVENANCE_INCOMPLETE = "provenance_incomplete"
+    CATALOG_SLICE_REQUIRED = "catalog_slice_required"
+    CATALOG_SLICE_HASH_MISMATCH = "catalog_slice_hash_mismatch"
+    CATALOG_TRANSPORT_UNRESOLVED = "catalog_transport_unresolved"
     RTTP_VALIDATION_FAILED = "rttp_validation_failed"
 
 
@@ -144,15 +157,37 @@ def _rttp_pipeline_config_from_run_config(config: dict[str, Any]) -> RttpPipelin
     )
 
 
+def _validate_catalog_slice_for_run(
+    *,
+    snapshot: AsteroidGameDataSnapshot,
+    provenance: GameDataSnapshotProvenance,
+    catalog_slice: BuildingCatalogSlice,
+) -> None:
+    expected_hash = catalog_slice_hash(catalog_slice)
+    if provenance.catalog_slice_hash != expected_hash:
+        msg = "game_data provenance catalog_slice_hash does not match catalog slice"
+        raise ValueError(msg)
+    extracted = catalog_slice_from_snapshot(snapshot)
+    if catalog_slice_hash(extracted) != expected_hash:
+        msg = "catalog slice extract hash does not match expected catalog_slice_hash"
+        raise ValueError(msg)
+
+
 def _prepare_rttp_run_config_with_provenance(
     run_config: dict[str, Any],
     *,
     snapshot: AsteroidGameDataSnapshot,
     provenance: GameDataSnapshotProvenance,
+    catalog_slice: BuildingCatalogSlice,
 ) -> dict[str, Any]:
     if provenance.content_hash != snapshot.meta.content_hash:
         msg = "game_data provenance content_hash does not match snapshot.meta.content_hash"
         raise ValueError(msg)
+    _validate_catalog_slice_for_run(
+        snapshot=snapshot,
+        provenance=provenance,
+        catalog_slice=catalog_slice,
+    )
     out = dict(run_config)
     wire = provenance_to_config_dict(provenance)
     parse_provenance_config(wire)
@@ -263,6 +298,7 @@ def _run_rttp_solver_for_map_input(
     config: dict[str, Any] | None,
     game_data_snapshot: AsteroidGameDataSnapshot | None,
     game_data_provenance: GameDataSnapshotProvenance | None,
+    catalog_slice: BuildingCatalogSlice | None,
 ) -> SolverRuntimeEntryResult:
     decode_err = _ensure_map_input_decoded(inp, int(project_id))
     if decode_err is not None:
@@ -274,6 +310,12 @@ def _run_rttp_solver_for_map_input(
             error_code=SolverRuntimeEntryErrorCode.PROVENANCE_INCOMPLETE,
             message="RTTP run requires game_data snapshot and provenance.",
         )
+    if catalog_slice is None:
+        return _failure_result(
+            int(project_id),
+            error_code=SolverRuntimeEntryErrorCode.CATALOG_SLICE_REQUIRED,
+            message="RTTP run requires BuildingCatalogSlice.",
+        )
 
     rk = (run_key or f"rttp-{uuid.uuid4().hex[:12]}").strip()
     run_config = dict(config or {})
@@ -283,22 +325,38 @@ def _run_rttp_solver_for_map_input(
             run_config,
             snapshot=game_data_snapshot,
             provenance=game_data_provenance,
+            catalog_slice=catalog_slice,
         )
     except (ProvenanceParseError, ValueError) as exc:
+        msg = str(exc)
+        if "catalog_slice_hash" in msg:
+            return _failure_result(
+                int(project_id),
+                error_code=SolverRuntimeEntryErrorCode.CATALOG_SLICE_HASH_MISMATCH,
+                message=msg,
+            )
         return _failure_result(
             int(project_id),
             error_code=SolverRuntimeEntryErrorCode.PROVENANCE_INCOMPLETE,
-            message=str(exc),
+            message=msg,
         )
 
     cleanup, recon = run_reconstruction_for_map_input(
         int(inp.pk),
         boundary_run_id=rk,
     )
-    opt_inp = optimization_input_from_reconstruction(
-        recon,
-        coord_frame=lab_solver_optimization_coord_frame(run_config),
-    )
+    try:
+        opt_inp = optimization_input_from_reconstruction(
+            recon,
+            coord_frame=lab_solver_optimization_coord_frame(run_config),
+            catalog_slice=catalog_slice,
+        )
+    except CatalogTransportUnresolvedError as exc:
+        return _failure_result(
+            int(project_id),
+            error_code=SolverRuntimeEntryErrorCode.CATALOG_TRANSPORT_UNRESOLVED,
+            message=str(exc),
+        )
 
     if replace_existing_run:
         run_dto = create_or_replace_solver_run(
@@ -405,6 +463,7 @@ def run_solver_runtime_for_project(
     generator_version: str = "exhaustive_sample_gene_v1",
     game_data_snapshot: AsteroidGameDataSnapshot | None = None,
     game_data_provenance: GameDataSnapshotProvenance | None = None,
+    catalog_slice: BuildingCatalogSlice | None = None,
 ) -> SolverRuntimeEntryResult:
     """Run RTTP when enabled; otherwise return ``SOLVER_NOT_AVAILABLE``."""
 
@@ -450,6 +509,7 @@ def run_solver_runtime_for_project(
         config=config,
         game_data_snapshot=game_data_snapshot,
         game_data_provenance=game_data_provenance,
+        catalog_slice=catalog_slice,
     )
 
 

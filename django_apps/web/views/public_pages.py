@@ -357,6 +357,7 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
         config=run_config,
         game_data_snapshot=game_data_build.snapshot,
         game_data_provenance=game_data_build.provenance,
+        catalog_slice=game_data_build.catalog_slice,
     )
     body = entry_result_to_json_dict(result)
     if result.error_code in (

@@ -5,6 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
+from django_apps.asteroid_lab.contracts.building_catalog_slice import (
+    BuildingCatalogSlice,
+    catalog_slice_from_snapshot,
+)
 from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     AsteroidGameDataSnapshot,
     BuildingConnectorSnapshot,
@@ -34,6 +38,7 @@ from django_apps.game_data.snapshots.rows import (
 class GameDataSnapshotBuildResult:
     snapshot: AsteroidGameDataSnapshot
     provenance: GameDataSnapshotProvenance
+    catalog_slice: BuildingCatalogSlice
 
 
 def _footprint_dto(row: FootprintCellRow) -> BuildingFootprintCell:
@@ -108,8 +113,17 @@ def build_asteroid_game_data_snapshot_with_provenance(
 
     batch = pin_latest_import_batch(db_alias=db_alias)
     snapshot = _build_asteroid_game_data_snapshot_for_batch(batch, db_alias=db_alias)
-    provenance = provenance_from_snapshot(snapshot, import_batch_id=int(batch.pk))
-    return GameDataSnapshotBuildResult(snapshot=snapshot, provenance=provenance)
+    catalog_slice = catalog_slice_from_snapshot(snapshot)
+    provenance = provenance_from_snapshot(
+        snapshot,
+        import_batch_id=int(batch.pk),
+        catalog_slice=catalog_slice,
+    )
+    return GameDataSnapshotBuildResult(
+        snapshot=snapshot,
+        provenance=provenance,
+        catalog_slice=catalog_slice,
+    )
 
 
 def build_asteroid_game_data_snapshot(*, db_alias: str = "default") -> AsteroidGameDataSnapshot:

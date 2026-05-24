@@ -7,6 +7,7 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     TransportKind,
 )
 from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
+    mismatched_existing_transport_metrics,
     optimization_input_from_reconstruction,
     partition_existing_transport,
 )
@@ -91,6 +92,18 @@ def test_incompatible_on_ring_excluded_from_trunk_not_traversable() -> None:
     assert (5, 5) not in domain.trunk_mask_cells
     assert (5, 5) not in domain.traversable_cells
     assert (5, 5) in domain.blocked_cells
+
+
+def test_transport_kind_mismatch_diagnostics_from_partition() -> None:
+    belt = ExistingTransportCell(coord=(1, 1), transport_kind=TransportKind.SHAPE_BELT)
+    pipe_a = ExistingTransportCell(coord=(2, 2), transport_kind=TransportKind.FLUID_PIPE)
+    pipe_b = ExistingTransportCell(coord=(3, 3), transport_kind=TransportKind.FLUID_PIPE)
+    _trunk, blocked, by_kind = partition_existing_transport(
+        frozenset({belt, pipe_a, pipe_b}), TransportKind.SHAPE_BELT
+    )
+    metrics = mismatched_existing_transport_metrics(blocked, by_kind=by_kind)
+    assert metrics["mismatched_existing_transport_count"] == 2
+    assert metrics["mismatched_existing_transport_by_kind"] == {"fluid_pipe": 2}
 
 
 def test_route_probe_ignores_mismatched_existing_transport_kind() -> None:

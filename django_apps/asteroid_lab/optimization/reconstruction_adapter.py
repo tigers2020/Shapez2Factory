@@ -108,6 +108,19 @@ def partition_existing_transport(
     return frozenset(trunk), frozenset(blocked), by_kind
 
 
+def mismatched_existing_transport_metrics(
+    blocked_incompatible: frozenset[Coord],
+    *,
+    by_kind: dict[str, int],
+) -> dict[str, int | dict[str, int]]:
+    """Output-only metrics for ``RTTP_ROUTE_DOMAIN`` (never solver input)."""
+
+    return {
+        "mismatched_existing_transport_count": len(blocked_incompatible),
+        "mismatched_existing_transport_by_kind": dict(by_kind),
+    }
+
+
 def _default_transport_kind(
     existing_transport: frozenset[ExistingTransportCell],
 ) -> TransportKind:
@@ -187,6 +200,7 @@ def optimization_input_from_reconstruction(
 
 
 __all__ = [
+    "mismatched_existing_transport_metrics",
     "optimization_input_from_reconstruction",
     "partition_existing_transport",
 ]

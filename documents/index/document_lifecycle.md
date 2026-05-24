@@ -14,6 +14,10 @@
 | `ARCHIVED` | 오래되었거나 보관용인 문서. 현재 설계 판단에 쓰지 않는다. | 아니오 |
 | `SUPERSEDED` | 다른 문서가 대체한 문서. 상단에 `superseded_by`를 남긴다. | 아니오 |
 
+### Operational label: QUARANTINE
+
+Inventory may label paths **QUARANTINE** for AI routing. Map to lifecycle `ARCHIVED` or `SUPERSEDED` and set `do_not_use_as_authority: true` in front matter. QUARANTINE docs are historical context only — not implementation authority.
+
 ## 읽기 우선순위
 
 1. `AGENTS.md`, `.cursor/rules/`, `documents/ai/manuals/`
@@ -33,6 +37,7 @@ owner: solver-architecture
 last_reviewed: 2026-05-15
 supersedes: []
 superseded_by:
+do_not_use_as_authority: false
 related_epics: []
 ```
 

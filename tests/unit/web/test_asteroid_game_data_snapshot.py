@@ -9,7 +9,10 @@ from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     snapshot_content_hash,
 )
 from django_apps.game_data.models import ImportBatch
-from django_apps.web.services.asteroid_game_data_snapshot import build_asteroid_game_data_snapshot
+from django_apps.web.services.asteroid_game_data_snapshot import (
+    build_asteroid_game_data_snapshot,
+    build_asteroid_game_data_snapshot_with_provenance,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -31,3 +34,12 @@ def test_assemble_snapshot_matches_pinned_revision(imported_game_data_batch: Imp
     snap_again = build_asteroid_game_data_snapshot(db_alias="default")
     assert snap_again.meta.data_revision == snap.meta.data_revision
     assert snap_again.meta.content_hash == snap.meta.content_hash
+
+
+def test_build_with_provenance_sets_import_batch_id(
+    imported_game_data_batch: ImportBatch,
+) -> None:
+    result = build_asteroid_game_data_snapshot_with_provenance(db_alias="default")
+    assert result.provenance.import_batch_id == int(imported_game_data_batch.pk)
+    assert result.provenance.data_revision == imported_game_data_batch.manifest_self_hash
+    assert result.provenance.content_hash == result.snapshot.meta.content_hash

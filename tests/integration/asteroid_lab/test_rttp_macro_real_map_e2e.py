@@ -14,10 +14,8 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
-from django_apps.asteroid_lab.services.solver_runtime_entry import (
-    entry_result_to_json_dict,
-    run_solver_runtime_for_project,
-)
+from django_apps.asteroid_lab.services.solver_runtime_entry import entry_result_to_json_dict
+from tests.unit.asteroid_lab._runtime_game_data import run_solver_runtime_with_pinned_game_data
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
 
@@ -49,7 +47,7 @@ def test_run_solver_macro_only_on_real_map_copy_fixture() -> None:
     )
     create_copy_code_map_input(proj, _macro_e2e_copy_code())
 
-    result = run_solver_runtime_for_project(
+    result = run_solver_runtime_with_pinned_game_data(
         int(proj.pk),
         run_key="macro-real-map-e2e",
         config={

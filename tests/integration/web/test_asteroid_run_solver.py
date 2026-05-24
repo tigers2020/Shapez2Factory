@@ -12,7 +12,11 @@ from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
+from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
+    parse_provenance_config,
+)
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
 )
@@ -58,6 +62,41 @@ def _project_slug_via_create() -> str:
     )
     create_copy_code_map_input(proj, _minimal_valid_copy())
     return str(proj.slug)
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_run_solver_post_persists_provenance_on_solver_run(client: Client) -> None:
+    proj = m.AsteroidProject.objects.create(name="ProvInt", slug="prov-int")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": proj.slug})
+    response = client.post(url)
+    assert response.status_code == 200
+    data = response.json()
+    run_id = data.get("solver_run_id")
+    assert run_id is not None
+    run = m.SolverRun.objects.get(pk=int(run_id))
+    prov = parse_provenance_config(
+        run.config_json[SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY]
+    )
+    assert prov.import_batch_id > 0
+    assert len(prov.content_hash) == 64
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=False)
+def test_run_solver_stub_still_reports_game_data_snapshot_ready(client: Client) -> None:
+    proj = m.AsteroidProject.objects.create(name="StubProv", slug="stub-prov")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": proj.slug})
+    response = client.post(url)
+    assert response.status_code == 200
+    data = response.json()
+    assert data.get("game_data_snapshot_ready") is True
+    assert data.get("error_code") == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE.value
+    assert data.get("solver_run_id") is None
+    repro = data.get("game_data_snapshot_provenance")
+    assert isinstance(repro, dict)
+    assert "content_hash" in repro
+    assert "built_at_utc" not in repro
 
 
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=False)

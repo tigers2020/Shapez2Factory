@@ -19,7 +19,9 @@ from django_apps.asteroid_lab.services.solver_runtime_entry import (
     run_solver_runtime_for_project,
 )
 from django_apps.game_data.snapshots.errors import SnapshotBuildError
-from django_apps.web.services.asteroid_game_data_snapshot import build_asteroid_game_data_snapshot
+from django_apps.web.services.asteroid_game_data_snapshot import (
+    build_asteroid_game_data_snapshot_with_provenance,
+)
 
 
 class Command(BaseCommand):  # type: ignore[misc]
@@ -73,7 +75,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             raise CommandError(f"Project {slug!r} has no map input.")
 
         try:
-            game_data_snapshot = build_asteroid_game_data_snapshot()
+            game_data_build = build_asteroid_game_data_snapshot_with_provenance()
         except SnapshotBuildError as exc:
             raise CommandError(f"game_data snapshot failed: {exc.code.value}") from exc
 
@@ -88,7 +90,8 @@ class Command(BaseCommand):  # type: ignore[misc]
             int(project.pk),
             run_key=str(run_key).strip() if run_key else None,
             config=config or None,
-            game_data_snapshot=game_data_snapshot,
+            game_data_snapshot=game_data_build.snapshot,
+            game_data_provenance=game_data_build.provenance,
         )
         body = entry_result_to_json_dict(result)
 

@@ -29,12 +29,15 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
 )
-from django_apps.asteroid_lab.services.solver_runtime_entry import (
-    entry_result_to_json_dict,
-    run_solver_runtime_for_project,
-)
+from django_apps.asteroid_lab.services.solver_runtime_entry import entry_result_to_json_dict
+from tests.unit.asteroid_lab._runtime_game_data import run_solver_runtime_with_pinned_game_data
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
 
 
 def _minimal_valid_copy() -> str:
@@ -60,7 +63,7 @@ def test_run_solver_persists_rttp_replay_frames_when_recording_enabled() -> None
     proj = m.AsteroidProject.objects.create(name="RttpInt", slug="rttp-int-db")
     create_copy_code_map_input(proj, _minimal_valid_copy())
 
-    result = run_solver_runtime_for_project(
+    result = run_solver_runtime_with_pinned_game_data(
         int(proj.pk),
         run_key="rttp-int",
         config={"rttp_record_replay": True},
@@ -83,7 +86,7 @@ def test_run_solver_lab_json_h1_s_interleaved_rttp_full_snapshots() -> None:
     inp = create_copy_code_map_input(proj, _minimal_valid_copy())
     build_initial_replay_for_map_input(int(inp.pk), overwrite=True)
 
-    result = run_solver_runtime_for_project(
+    result = run_solver_runtime_with_pinned_game_data(
         int(proj.pk),
         run_key="rttp-lab",
         config={"rttp_record_replay": True},

@@ -270,13 +270,22 @@ def test_last_renderable_prefers_candidate_generated_over_decode() -> None:
     assert last_renderable_frame_index(frames) == 1
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
+
+
 @pytest.mark.django_db
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_build_lab_replay_has_no_inherited_snapshot_when_rttp_track_exists() -> None:
     proj = m.AsteroidProject.objects.create(name="3bs", slug="3bs-compose")
     inp = create_copy_code_map_input(proj, _minimal_valid_copy())
     build_initial_replay_for_map_input(int(inp.pk), overwrite=True)
-    run_solver_runtime_for_project(int(proj.pk), run_key="3bs", config={"rttp_record_replay": True})
+    from tests.unit.asteroid_lab._runtime_game_data import run_solver_runtime_with_pinned_game_data
+
+    run_solver_runtime_with_pinned_game_data(
+        int(proj.pk), run_key="3bs", config={"rttp_record_replay": True}
+    )
     frames, _ = build_lab_replay_frames_for_project(int(proj.pk))
     assert frames
     assert all(fr.get("render_mode") != "inherited_snapshot" for fr in frames)

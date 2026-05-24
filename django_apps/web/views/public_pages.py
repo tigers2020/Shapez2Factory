@@ -14,6 +14,9 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from django_apps.asteroid_lab.adapters.decode_adapter import AsteroidLabCopyDecodeError
+from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
+    provenance_stub_diagnostic_dict,
+)
 from django_apps.asteroid_lab.models import (
     AsteroidMapInput,
     AsteroidProject,
@@ -60,7 +63,9 @@ from django_apps.web.constants import (
     HOME_INITIAL_SHAPE_CODE,
 )
 from django_apps.web.models import GraphPreviewImage
-from django_apps.web.services.asteroid_game_data_snapshot import build_asteroid_game_data_snapshot
+from django_apps.web.services.asteroid_game_data_snapshot import (
+    build_asteroid_game_data_snapshot_with_provenance,
+)
 from django_apps.web.services.asteroid_lab_page_context import (
     lab_page_context,
     serialize_replay_frame,
@@ -326,7 +331,7 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
         )
 
     try:
-        game_data_snapshot = build_asteroid_game_data_snapshot()
+        game_data_build = build_asteroid_game_data_snapshot_with_provenance()
     except SnapshotBuildError as exc:
         return JsonResponse(
             {
@@ -350,7 +355,8 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
     result = run_solver_runtime_for_project(
         int(project.pk),
         config=run_config,
-        game_data_snapshot=game_data_snapshot,
+        game_data_snapshot=game_data_build.snapshot,
+        game_data_provenance=game_data_build.provenance,
     )
     body = entry_result_to_json_dict(result)
     if result.error_code in (
@@ -360,6 +366,10 @@ def asteroid_miner_layout_project_run_solver(request: HttpRequest, slug: str) ->
         status = 404 if result.error_code == SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND else 400
         return JsonResponse(body, status=status)
     if result.error_code == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE:
+        body["game_data_snapshot_ready"] = True
+        body["game_data_snapshot_provenance"] = provenance_stub_diagnostic_dict(
+            game_data_build.provenance
+        )
         return JsonResponse(body, status=200)
     # RTTP may finish with validation failure but still persist a SolverRun (never 500).
     if result.solver_run_id is not None:

@@ -85,7 +85,28 @@ Constants (implementation):
 - `SCHEMA_VERSION = "game_data_snapshot_v1"`
 - `RULE_VERSION = "asteroid_v0"`
 
-v0 note: snapshot meta is written to `SolverRun.config_json` as **provenance only**; it must not become algorithm input until a separate PatternLibrary / solver-input ADR approves it.
+v0 note: snapshot **body** must not become algorithm input until a separate PatternLibrary / solver-input ADR approves it. Run **provenance** (below) is required on every RTTP `SolverRun`.
+
+## `GameDataSnapshotProvenance` (Track A)
+
+Frozen contract: `django_apps/asteroid_lab/contracts/game_data_snapshot_provenance.py`.
+
+| Field | Role |
+|-------|------|
+| `snapshot_schema_version` | DTO wire schema (`game_data_snapshot_v1`) |
+| `rule_version` | Adapter gate (`asteroid_v0`) |
+| `data_revision` | `ImportBatch.manifest_self_hash` (content identity across DB rebuilds) |
+| `import_batch_id` | DB join key (positive int; wire as decimal string in JSON) |
+| `content_hash` | Solver-subset SHA-256 hex (64 chars) — see **`content_hash` scope** |
+| `game_version` | From pinned import batch |
+| `db_alias` | v0 `"default"` |
+| `built_at_utc` | Audit timestamp only — **excluded** from reproducibility key |
+
+**Wire key:** `SolverRun.config_json["game_data_snapshot_provenance"]`. Unknown keys inside the object are rejected at parse time.
+
+**Writer ownership:** Only `web/services/asteroid_game_data_snapshot.py` builds snapshot+provenance (single `pin_latest_import_batch` per build). `solver_runtime_entry` persists and validates; optimization code must not import `game_data`.
+
+**Reproducibility key:** `(import_batch_id, snapshot_schema_version, content_hash)`.
 
 ## Collection policy — `tuple` only
 
@@ -97,7 +118,7 @@ v0 note: snapshot meta is written to `SolverRun.config_json` as **provenance onl
 
 ## `content_hash` scope
 
-`content_hash` is the SHA-256 digest (hex) of **canonical JSON** (`sort_keys=True`, compact separators) over the **solver-relevant subset** of the snapshot body.
+`content_hash` is the SHA-256 digest (hex) of **canonical JSON** (`sort_keys=True`, compact separators) over the **solver-relevant subset** of the snapshot body. It is **not** `ImportBatch.manifest_self_hash` (`data_revision`) and **not** a full `game_data` dump hash.
 
 ### Included (solver subset)
 

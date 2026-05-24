@@ -19,12 +19,22 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
 )
+from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
+    parse_provenance_config,
+)
+from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY,
+)
 from django_apps.asteroid_lab.services.solver_runtime_entry import (
     SOLVER_NOT_AVAILABLE_MESSAGE,
     SolverRuntimeEntryErrorCode,
     entry_result_to_json_dict,
     run_solver_runtime_for_project,
 )
+from django_apps.web.services.asteroid_game_data_snapshot import (
+    build_asteroid_game_data_snapshot_with_provenance,
+)
+from tests.unit.asteroid_lab._runtime_game_data import run_solver_runtime_with_pinned_game_data
 
 pytestmark = pytest.mark.django_db
 
@@ -81,11 +91,16 @@ def test_entry_result_to_json_dict_includes_error_code_and_message() -> None:
     assert "source_solver_run_id" in mile_metrics
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
+
+
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_solver_runtime_entry_rttp_returns_solver_run_id() -> None:
     proj = m.AsteroidProject.objects.create(name="Rttp", slug="entry-rttp")
     create_copy_code_map_input(proj, _minimal_valid_copy())
-    result = run_solver_runtime_for_project(int(proj.pk))
+    result = run_solver_runtime_with_pinned_game_data(int(proj.pk))
     assert result.solver_run_id is not None
     assert result.error_code != SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE
 
@@ -110,12 +125,12 @@ def test_rttp_runtime_solver_summary_unchanged_when_replay_persisted() -> None:
     create_copy_code_map_input(proj, _minimal_valid_copy())
     project_id = int(proj.pk)
 
-    off = run_solver_runtime_for_project(
+    off = run_solver_runtime_with_pinned_game_data(
         project_id,
         run_key="rb1-off",
         config={"rttp_record_replay": False},
     )
-    on = run_solver_runtime_for_project(
+    on = run_solver_runtime_with_pinned_game_data(
         project_id,
         run_key="rb1-on",
         config={"rttp_record_replay": True},
@@ -139,7 +154,7 @@ def test_entry_result_json_includes_optimization_milestone_section() -> None:
     proj = m.AsteroidProject.objects.create(name="MileJson", slug="mile-json")
     inp = create_copy_code_map_input(proj, _minimal_valid_copy())
     build_initial_replay_for_map_input(int(inp.pk), overwrite=True)
-    result = run_solver_runtime_for_project(
+    result = run_solver_runtime_with_pinned_game_data(
         int(proj.pk),
         run_key="mile-json",
         config={"rttp_record_replay": True},
@@ -179,7 +194,7 @@ def test_rttp_validation_failure_still_returns_optimization_milestones_section(
 
     proj = m.AsteroidProject.objects.create(name="MileFail", slug="mile-fail")
     create_copy_code_map_input(proj, _minimal_valid_copy())
-    result = run_solver_runtime_for_project(
+    result = run_solver_runtime_with_pinned_game_data(
         int(proj.pk),
         run_key="mile-fail",
         config={"rttp_record_replay": True},
@@ -195,3 +210,36 @@ def test_rttp_validation_failure_still_returns_optimization_milestones_section(
     assert RTTP_MILESTONE_EVENT_TYPES <= {
         fr.get("event_type") for fr in body["lab_optimization_milestone_frames_json"]
     }
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_rttp_run_persists_game_data_snapshot_provenance() -> None:
+    build = build_asteroid_game_data_snapshot_with_provenance()
+    proj = m.AsteroidProject.objects.create(name="Prov", slug="prov-gate")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    result = run_solver_runtime_for_project(
+        int(proj.pk),
+        game_data_snapshot=build.snapshot,
+        game_data_provenance=build.provenance,
+    )
+    assert result.solver_run_id is not None
+    run = m.SolverRun.objects.get(pk=int(result.solver_run_id))
+    parsed = parse_provenance_config(
+        run.config_json[SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY]
+    )
+    assert parsed == build.provenance
+
+
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_rttp_run_without_provenance_returns_provenance_incomplete() -> None:
+    build = build_asteroid_game_data_snapshot_with_provenance()
+    proj = m.AsteroidProject.objects.create(name="NoProv", slug="no-prov-gate")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    result = run_solver_runtime_for_project(
+        int(proj.pk),
+        game_data_snapshot=build.snapshot,
+        game_data_provenance=None,
+    )
+    assert result.ok is False
+    assert result.error_code == SolverRuntimeEntryErrorCode.PROVENANCE_INCOMPLETE
+    assert result.solver_run_id is None

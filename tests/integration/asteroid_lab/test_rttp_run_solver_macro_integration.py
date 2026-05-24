@@ -26,13 +26,16 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
 )
-from django_apps.asteroid_lab.services.solver_runtime_entry import (
-    entry_result_to_json_dict,
-    run_solver_runtime_for_project,
-)
+from django_apps.asteroid_lab.services.solver_runtime_entry import entry_result_to_json_dict
+from tests.unit.asteroid_lab._runtime_game_data import run_solver_runtime_with_pinned_game_data
 from tests.support.macro_triple_greenfield_fixture import build_macro_triple_greenfield_input
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
 
 
 def _minimal_valid_copy() -> str:
@@ -117,7 +120,7 @@ def test_run_solver_runtime_passes_macro_only_pipeline_config(
 
     proj = m.AsteroidProject.objects.create(name="MacroSpy", slug="macro-j-spy")
     create_copy_code_map_input(proj, _minimal_valid_copy())
-    run_solver_runtime_for_project(
+    run_solver_runtime_with_pinned_game_data(
         int(proj.pk),
         run_key="macro-j-spy",
         config={
@@ -155,7 +158,7 @@ def test_run_solver_runtime_macro_only_db_and_milestone_readback(
     create_copy_code_map_input(proj, _minimal_valid_copy())
     run_key = "macro-j-run"
 
-    result = run_solver_runtime_for_project(
+    result = run_solver_runtime_with_pinned_game_data(
         int(proj.pk),
         run_key=run_key,
         config={
@@ -262,7 +265,7 @@ def test_run_solver_runtime_default_config_stays_v01_non_macro(
     create_copy_code_map_input(proj, _minimal_valid_copy())
     run_key = "macro-j-default"
 
-    result = run_solver_runtime_for_project(
+    result = run_solver_runtime_with_pinned_game_data(
         int(proj.pk),
         run_key=run_key,
         config={"rttp_record_replay": True},

@@ -25,9 +25,12 @@ from django_apps.asteroid_lab.services.input_service import create_copy_code_map
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     run_reconstruction_for_map_input,
 )
-from django_apps.asteroid_lab.services.solver_runtime_entry import run_solver_runtime_for_project
-
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
+    return imported_game_data_batch_module
 
 _RTTP_STEP_IDS = (
     RttpAlgorithmStepId.RTTP_ROUTE_DOMAIN,
@@ -123,7 +126,9 @@ def test_reconstruction_step_from_result_uses_summary_json() -> None:
 def test_runtime_solver_summary_exposes_full_algorithm_steps() -> None:
     proj = m.AsteroidProject.objects.create(name="SummarySteps", slug="summary-steps")
     create_copy_code_map_input(proj, _minimal_valid_copy())
-    result = run_solver_runtime_for_project(
+    from tests.unit.asteroid_lab._runtime_game_data import run_solver_runtime_with_pinned_game_data
+
+    result = run_solver_runtime_with_pinned_game_data(
         int(proj.pk),
         run_key="summary-steps",
         config={"rttp_record_replay": False},

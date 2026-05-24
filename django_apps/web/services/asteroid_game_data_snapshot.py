@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
 from django_apps.asteroid_lab.contracts.game_data_snapshot import (
@@ -15,6 +15,11 @@ from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     snapshot_content_hash,
     validate_building_snapshot,
 )
+from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
+    GameDataSnapshotProvenance,
+    provenance_from_snapshot,
+)
+from django_apps.game_data.models import ImportBatch
 from django_apps.game_data.selectors.import_batch import pin_latest_import_batch
 from django_apps.game_data.snapshots.builder import build_game_data_row_bundle
 from django_apps.game_data.snapshots.rows import (
@@ -23,6 +28,12 @@ from django_apps.game_data.snapshots.rows import (
     FootprintCellRow,
     TransportRegistryRow,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class GameDataSnapshotBuildResult:
+    snapshot: AsteroidGameDataSnapshot
+    provenance: GameDataSnapshotProvenance
 
 
 def _footprint_dto(row: FootprintCellRow) -> BuildingFootprintCell:
@@ -59,10 +70,11 @@ def _transport_dto(row: TransportRegistryRow) -> TransportRegistryEntry:
     )
 
 
-def build_asteroid_game_data_snapshot(*, db_alias: str = "default") -> AsteroidGameDataSnapshot:
-    """Pin latest import batch, map rows to consumer DTOs, set deterministic ``content_hash``."""
-
-    batch = pin_latest_import_batch(db_alias=db_alias)
+def _build_asteroid_game_data_snapshot_for_batch(
+    batch: ImportBatch,
+    *,
+    db_alias: str,
+) -> AsteroidGameDataSnapshot:
     bundle = build_game_data_row_bundle(batch.pk, db_alias=db_alias)
     buildings = tuple(
         _building_dto(b)
@@ -88,4 +100,26 @@ def build_asteroid_game_data_snapshot(*, db_alias: str = "default") -> AsteroidG
     return replace(snap, meta=replace(snap.meta, content_hash=content_hash))
 
 
-__all__ = ["build_asteroid_game_data_snapshot"]
+def build_asteroid_game_data_snapshot_with_provenance(
+    *,
+    db_alias: str = "default",
+) -> GameDataSnapshotBuildResult:
+    """Pin latest import batch once; return snapshot + provenance (sole construction site)."""
+
+    batch = pin_latest_import_batch(db_alias=db_alias)
+    snapshot = _build_asteroid_game_data_snapshot_for_batch(batch, db_alias=db_alias)
+    provenance = provenance_from_snapshot(snapshot, import_batch_id=int(batch.pk))
+    return GameDataSnapshotBuildResult(snapshot=snapshot, provenance=provenance)
+
+
+def build_asteroid_game_data_snapshot(*, db_alias: str = "default") -> AsteroidGameDataSnapshot:
+    """Return snapshot only; prefer ``build_asteroid_game_data_snapshot_with_provenance``."""
+
+    return build_asteroid_game_data_snapshot_with_provenance(db_alias=db_alias).snapshot
+
+
+__all__ = [
+    "GameDataSnapshotBuildResult",
+    "build_asteroid_game_data_snapshot",
+    "build_asteroid_game_data_snapshot_with_provenance",
+]

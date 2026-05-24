@@ -20,6 +20,13 @@ Asteroid Lab must consume normalized building and transport data from the `game_
 4. **`SnapshotMeta.data_revision`** is set to **`ImportBatch.manifest_self_hash`** of the pinned import batch for the snapshot build.
 5. **v0 database policy**: only the **`default`** DB alias is used. Replica reads are **forbidden** until revision pinning and a replica lag policy are specified and tested.
 
+### Provenance gate (Track A, 2026-05-24)
+
+6. Every RTTP **`SolverRun`** MUST persist **`game_data_snapshot_provenance`** in `config_json` (8 required fields via `GameDataSnapshotProvenance`). Construction is owned by **`web/services/asteroid_game_data_snapshot.py`** (`build_asteroid_game_data_snapshot_with_provenance`); **`solver_runtime_entry`** merges and validates before `create_solver_run`, then readbacks from DB before the pipeline runs.
+7. **`content_hash`** is the SHA-256 hex of the **solver subset** of `AsteroidGameDataSnapshot` only — not `ImportBatch.manifest_self_hash` and not full dump hash. **`built_at_utc` MUST NOT** participate in `content_hash` or the reproducibility key `(import_batch_id, snapshot_schema_version, content_hash)`.
+8. Snapshot **body** (`buildings`, `transport_registry`) remains **not** algorithm input until a future solver-input ADR. Optimization modules may read validated provenance as metadata only.
+9. **RTTP disabled (P1):** HTTP/CLI still build and validate snapshot+provenance; no `SolverRun` is created. Stub responses may expose a slim deploy diagnostic (`content_hash`, reproducibility fields) — not a substitute for run persistence.
+
 ## Consequences
 
 ### Positive

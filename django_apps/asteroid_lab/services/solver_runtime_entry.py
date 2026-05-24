@@ -13,6 +13,13 @@ from django.db import transaction
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.adapters.decode_adapter import AsteroidLabCopyDecodeError
 from django_apps.asteroid_lab.contracts.game_data_snapshot import AsteroidGameDataSnapshot
+from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
+    GameDataSnapshotProvenance,
+    ProvenanceParseError,
+    ProvenanceParseErrorCode,
+    parse_provenance_config,
+    provenance_to_config_dict,
+)
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
 )
@@ -49,7 +56,7 @@ from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     run_reconstruction_for_map_input,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
-    SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_META_KEY,
+    SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
@@ -73,6 +80,7 @@ class SolverRuntimeEntryErrorCode(StrEnum):
     NO_MAP_INPUT = "no_map_input"
     DECODE_FAILED = "decode_failed"
     SOLVER_NOT_AVAILABLE = "SOLVER_NOT_AVAILABLE"
+    PROVENANCE_INCOMPLETE = "provenance_incomplete"
     RTTP_VALIDATION_FAILED = "rttp_validation_failed"
 
 
@@ -136,13 +144,40 @@ def _rttp_pipeline_config_from_run_config(config: dict[str, Any]) -> RttpPipelin
     )
 
 
-def _snapshot_meta_for_config(snapshot: AsteroidGameDataSnapshot) -> dict[str, str]:
-    meta = snapshot.meta
-    return {
-        "schema_version": meta.schema_version,
-        "data_revision": meta.data_revision,
-        "content_hash": meta.content_hash,
-    }
+def _prepare_rttp_run_config_with_provenance(
+    run_config: dict[str, Any],
+    *,
+    snapshot: AsteroidGameDataSnapshot,
+    provenance: GameDataSnapshotProvenance,
+) -> dict[str, Any]:
+    if provenance.content_hash != snapshot.meta.content_hash:
+        msg = "game_data provenance content_hash does not match snapshot.meta.content_hash"
+        raise ValueError(msg)
+    out = dict(run_config)
+    wire = provenance_to_config_dict(provenance)
+    parse_provenance_config(wire)
+    out[SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY] = wire
+    return out
+
+
+def _readback_solver_run_provenance(
+    run_id: int,
+    *,
+    expected: GameDataSnapshotProvenance,
+) -> None:
+    run = m.SolverRun.objects.get(pk=int(run_id))
+    config = dict(run.config_json or {})
+    raw = config.get(SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY)
+    if raw is None:
+        msg = "SolverRun.config_json missing game_data_snapshot_provenance after persist"
+        raise ProvenanceParseError(
+            ProvenanceParseErrorCode.MISSING_FIELD,
+            msg,
+        )
+    parsed = parse_provenance_config(raw)
+    if parsed != expected:
+        msg = "SolverRun provenance readback does not match expected build"
+        raise ValueError(msg)
 
 
 def _persist_solver_run_outcome(
@@ -227,17 +262,33 @@ def _run_rttp_solver_for_map_input(
     replace_existing_run: bool,
     config: dict[str, Any] | None,
     game_data_snapshot: AsteroidGameDataSnapshot | None,
+    game_data_provenance: GameDataSnapshotProvenance | None,
 ) -> SolverRuntimeEntryResult:
     decode_err = _ensure_map_input_decoded(inp, int(project_id))
     if decode_err is not None:
         return decode_err
 
+    if game_data_snapshot is None or game_data_provenance is None:
+        return _failure_result(
+            int(project_id),
+            error_code=SolverRuntimeEntryErrorCode.PROVENANCE_INCOMPLETE,
+            message="RTTP run requires game_data snapshot and provenance.",
+        )
+
     rk = (run_key or f"rttp-{uuid.uuid4().hex[:12]}").strip()
     run_config = dict(config or {})
     run_config["rttp_enabled"] = True
-    if game_data_snapshot is not None:
-        run_config[SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_META_KEY] = _snapshot_meta_for_config(
-            game_data_snapshot
+    try:
+        run_config = _prepare_rttp_run_config_with_provenance(
+            run_config,
+            snapshot=game_data_snapshot,
+            provenance=game_data_provenance,
+        )
+    except (ProvenanceParseError, ValueError) as exc:
+        return _failure_result(
+            int(project_id),
+            error_code=SolverRuntimeEntryErrorCode.PROVENANCE_INCOMPLETE,
+            message=str(exc),
         )
 
     cleanup, recon = run_reconstruction_for_map_input(
@@ -264,6 +315,16 @@ def _run_rttp_solver_for_map_input(
             config=run_config,
         )
     run_id = int(run_dto.id)
+    try:
+        _readback_solver_run_provenance(run_id, expected=game_data_provenance)
+    except (ProvenanceParseError, ValueError) as exc:
+        transaction.set_rollback(True)
+        return _failure_result(
+            int(project_id),
+            error_code=SolverRuntimeEntryErrorCode.PROVENANCE_INCOMPLETE,
+            message=str(exc),
+        )
+
     replay_sink: DbRttpReplaySink | NullRttpReplaySink = NullRttpReplaySink()
     if _rttp_record_replay_enabled(run_config):
         rttp_track = ensure_default_replay_track(
@@ -343,6 +404,7 @@ def run_solver_runtime_for_project(
     config: dict[str, Any] | None = None,
     generator_version: str = "exhaustive_sample_gene_v1",
     game_data_snapshot: AsteroidGameDataSnapshot | None = None,
+    game_data_provenance: GameDataSnapshotProvenance | None = None,
 ) -> SolverRuntimeEntryResult:
     """Run RTTP when enabled; otherwise return ``SOLVER_NOT_AVAILABLE``."""
 
@@ -387,6 +449,7 @@ def run_solver_runtime_for_project(
         replace_existing_run=replace_existing_run,
         config=config,
         game_data_snapshot=game_data_snapshot,
+        game_data_provenance=game_data_provenance,
     )
 
 

@@ -1,6 +1,6 @@
 # Deferred Commit Retry Shadow — PR-1 (Observe-Only) Design
 
-**Status:** Approved 2026-05-24 (RTTP Core Contract Architect)  
+**Status:** CLOSED 2026-05-24 — merged `1e021f20` (PR #72)  
 **Owner:** asteroid-lab / RTTP Axis B  
 **Track:** RTTP core — deferred commit retry slice 1 of 4  
 **Supersedes (naming only):** [`2026-05-22-deferred-commit-retry-design.md`](2026-05-22-deferred-commit-retry-design.md) (CANCELLED; pre-RTTP v0.1 pipeline)  

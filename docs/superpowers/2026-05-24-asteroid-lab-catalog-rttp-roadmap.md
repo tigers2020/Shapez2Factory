@@ -97,14 +97,15 @@ Parallel — MacroBundle T3
 
 **Open next:** **deferred commit retry PR-2+** (RTTP core). Decontamination PR-A..E complete on `master`.
 
-### Deferred commit retry — PR-1 shadow (observe-only)
+### Deferred commit retry — PR-1 shadow (observe-only) — master CLOSED
 
 | Step | Status | Evidence |
 |------|--------|----------|
 | Spec | ✅ | [`2026-05-24-deferred-commit-retry-shadow-pr1-design.md`](specs/2026-05-24-deferred-commit-retry-shadow-pr1-design.md) |
 | Plan | ✅ | [`2026-05-24-deferred-commit-retry-shadow-pr1.md`](plans/2026-05-24-deferred-commit-retry-shadow-pr1.md) |
-| Pure builder + pipeline step `rttp.deferred_commit_retry_shadow` | 🔄 | branch `feat/deferred-commit-retry-shadow-pr1` |
-| PR-2 policy DTO wiring / PR-3 execution / PR-4 ops | ⏸ | after PR-1 merge |
+| Pure builder + pipeline step `rttp.deferred_commit_retry_shadow` | ✅ | [`1e021f20`](https://github.com/tigers2020/Shapez2Factory/commit/1e021f20) PR #72 |
+| PR-2 policy DTO wiring / no-op | 🔄 | **open next** |
+| PR-3 bounded execution / PR-4 ops | ⏸ | after PR-2 |
 
 ---
 

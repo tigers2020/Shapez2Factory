@@ -88,7 +88,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** **Deferred commit retry PR-4** (real-map ops smoke — design only; separate brainstorming). **PR-3 bounded execution CLOSED** (`d3de9645`, PR #75). **PR-2 policy wiring CLOSED** (`a5cfca87`, PR #73). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **Deferred commit retry slice 1–4 CLOSED** (PR-4 ops smoke pending merge). **PR-4** on branch `feat/deferred-commit-retry-pr4-ops-smoke`. **PR-3 bounded execution CLOSED** (`d3de9645`, PR #75). **PR-2 policy wiring CLOSED** (`a5cfca87`, PR #73). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -281,6 +281,18 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Plan: [`docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr3-bounded-execution.md`](../../docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr3-bounded-execution.md)
   - Evidence: `test_deferred_commit_retry_pr3_execute.py` 9 PASS; `test_deferred_commit_retry_shadow.py` + `test_deferred_commit_retry_pr2_policy.py` + `test_rttp_commit.py` + `test_rttp_commit_survivability.py` PASS; step `rttp.deferred_commit_retry_execute`; `scripts/test_full.ps1` 1526 passed; CI `ci` + `rttp-lab-macro-smoke` success (2026-05-24)
   - LNS receives merged `CommitResult` when execution runs; PR-2 shadow envelope unchanged
+
+- Deferred commit retry PR-4 — Real-map ops smoke (`--deferred-retry-execute`)
+  - Status: **CLOSED** (pending merge to `master`)
+  - Branch: `feat/deferred-commit-retry-pr4-ops-smoke`
+  - Spec: [`docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr4-ops-smoke-design.md`](../../docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr4-ops-smoke-design.md)
+  - Plan: [`docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr4-ops-smoke.md`](../../docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr4-ops-smoke.md)
+  - Ops evidence: `python manage.py run_solver --slug copy-import-495e552c --deferred-retry-execute` exit 0 (`solver_run_id` 57, `run_key` `rttp-c49cc31fa973`)
+  - Config readback: `deferred_retry_shadow.enabled` true, `observe_only` false
+  - Steps present: `rttp.deferred_commit_retry_shadow`, `rttp.deferred_commit_retry_execute`; order indices shadow(5) < execute(6) < commit(7) < catalog(8)
+  - Execute metrics (informational): `deferred_retry_recovered_count` 0, `deferred_retry_eligible_count` 0, `deferred_retry_rounds_executed` 0
+  - `validation_passed` / `run_success` true; `issue_codes` `[]`
+  - PR-4-15 note: final `rttp.commit` step is post-LNS snapshot (not before shadow)
 
 - Decontamination PR-E — Dead code deletion
   - Status: **CLOSED** (master)

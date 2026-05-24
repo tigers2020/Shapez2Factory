@@ -10,6 +10,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from django_apps.asteroid_lab import models as m
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
 )
@@ -56,6 +57,14 @@ class Command(BaseCommand):  # type: ignore[misc]
             action="store_true",
             help="Print full entry_result_to_json_dict JSON to stdout.",
         )
+        parser.add_argument(
+            "--deferred-retry-execute",
+            action="store_true",
+            help=(
+                "Set config_json deferred_retry_shadow to enabled=true, "
+                "observe_only=false (PR-4 normative ops entrypoint)."
+            ),
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
         slug = str(options["slug"]).strip()
@@ -78,10 +87,20 @@ class Command(BaseCommand):  # type: ignore[misc]
             raise CommandError(f"game_data snapshot failed: {exc.code.value}") from exc
 
         config: dict[str, Any] = {}
+        if options["macro_only"] and options["deferred_retry_execute"]:
+            raise CommandError(
+                "Cannot combine --macro-only with --deferred-retry-execute "
+                "(v0.1 normal RTTP path only)."
+            )
         if options["macro_only"]:
             config[SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY] = True
         if options["no_replay"]:
             config[SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY] = False
+        if options["deferred_retry_execute"]:
+            config[SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY] = {
+                "enabled": True,
+                "observe_only": False,
+            }
 
         run_key = options.get("run_key")
         result = run_solver_runtime_for_project(

@@ -1,4 +1,5 @@
 # Run RTTP solver for one Lab project slug (wraps manage.py run_solver).
+# PR-4 ops: -DeferredRetryExecute -> manage.py --deferred-retry-execute
 param(
     [Parameter(Mandatory = $true, Position = 0)]
     [string]$Slug,
@@ -6,7 +7,8 @@ param(
     [string]$RunKey,
     [switch]$MacroOnly,
     [switch]$NoReplay,
-    [switch]$Json
+    [switch]$Json,
+    [switch]$DeferredRetryExecute
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,6 +26,9 @@ if ($NoReplay) {
 }
 if ($Json) {
     $argsList += "--json"
+}
+if ($DeferredRetryExecute) {
+    $argsList += "--deferred-retry-execute"
 }
 
 python @argsList

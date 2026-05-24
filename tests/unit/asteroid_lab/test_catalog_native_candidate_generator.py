@@ -54,9 +54,7 @@ def test_normal_occupied_matches_catalog_footprint(
     for cand in result.normal_candidates:
         ref = cand.catalog_placement_ref
         assert ref is not None
-        geom = next(
-            g for g in sl.variant_geometries if g.canonical_id == ref.canonical_id
-        )
+        geom = next(g for g in sl.variant_geometries if g.canonical_id == ref.canonical_id)
         expected = expected_footprint_coords(
             geom.footprint_cells,
             anchor_coord=ref.anchor_coord,

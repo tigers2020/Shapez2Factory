@@ -23,16 +23,12 @@ def build_minimal_test_catalog_slice(
         BuildingFootprintCell(0, 0, 0),
         BuildingFootprintCell(1, 0, 1),
     )
-    connectors = (
-        BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),
-    )
+    connectors = (BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),)
     return BuildingCatalogSlice(
         slice_version=SLICE_VERSION,
         transport_registry=(TransportRegistryEntry("space_belt", "belt", canonical_id),),
         variants=(VariantIdentity(canonical_id, "miner"),),
-        variant_geometries=(
-            VariantGeometryCatalog(canonical_id, "miner", footprint, connectors),
-        ),
+        variant_geometries=(VariantGeometryCatalog(canonical_id, "miner", footprint, connectors),),
     )
 
 

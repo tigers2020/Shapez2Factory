@@ -66,9 +66,7 @@ def build_catalog_placement_specs(
                     throughput_factor=throughput,
                 )
             )
-    return tuple(
-        sorted(specs, key=lambda s: (s.canonical_id, s.rotation.value, s.pattern_id))
-    )
+    return tuple(sorted(specs, key=lambda s: (s.canonical_id, s.rotation.value, s.pattern_id)))
 
 
 __all__ = ["build_catalog_placement_specs"]

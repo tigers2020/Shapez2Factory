@@ -6,17 +6,7 @@ from dataclasses import replace
 
 import pytest
 
-from django_apps.asteroid_lab.contracts.building_catalog_slice import (
-    SLICE_VERSION,
-    BuildingCatalogSlice,
-    VariantGeometryCatalog,
-    VariantIdentity,
-)
-from django_apps.asteroid_lab.contracts.game_data_snapshot import (
-    BuildingConnectorSnapshot,
-    BuildingFootprintCell,
-    TransportRegistryEntry,
-)
+from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
 from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     ExhaustiveGenerationStats,
     GeneratedSampleGene,

@@ -22,16 +22,12 @@ from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
 
 def _slice_with_output() -> BuildingCatalogSlice:
     footprint = (BuildingFootprintCell(0, 0, 0), BuildingFootprintCell(1, 0, 1))
-    connectors = (
-        BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),
-    )
+    connectors = (BuildingConnectorSnapshot(0, "output", "East", "Regular", 1, 0, 0),)
     return BuildingCatalogSlice(
         slice_version=SLICE_VERSION,
         transport_registry=(TransportRegistryEntry("space_belt", "belt", "bv:1"),),
         variants=(VariantIdentity("bv:1", "miner"),),
-        variant_geometries=(
-            VariantGeometryCatalog("bv:1", "miner", footprint, connectors),
-        ),
+        variant_geometries=(VariantGeometryCatalog("bv:1", "miner", footprint, connectors),),
     )
 
 

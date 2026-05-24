@@ -170,10 +170,7 @@ def _deferred_retry_shadow_config_from_run_config(
     if not isinstance(raw, dict):
         msg = "deferred_retry_shadow must be an object"
         raise ValueError(msg)
-    if "observe_only" in raw:
-        if not _require_bool(raw["observe_only"], field="observe_only"):
-            msg = "deferred_retry_shadow.observe_only must remain true in PR-2"
-            raise ValueError(msg)
+    observe_only = _require_bool(raw.get("observe_only", True), field="observe_only")
     enabled = _require_bool(raw.get("enabled", True), field="enabled")
     max_rounds_raw = raw.get("max_retry_rounds", 1)
     if not isinstance(max_rounds_raw, int):
@@ -193,7 +190,7 @@ def _deferred_retry_shadow_config_from_run_config(
         raise ValueError(msg)
     return DeferredRetryShadowConfig(
         enabled=enabled,
-        observe_only=True,
+        observe_only=observe_only,
         max_retry_rounds=max_rounds_raw,
         max_candidates=max_candidates,
         route_probe_max_expansions=expansions_raw,

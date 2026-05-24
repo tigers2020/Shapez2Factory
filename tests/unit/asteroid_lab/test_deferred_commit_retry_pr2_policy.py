@@ -60,16 +60,17 @@ def test_enabled_true_with_overrides() -> None:
     assert cfg.route_probe_max_expansions == 250
 
 
-def test_observe_only_false_raises() -> None:
-    with pytest.raises(ValueError, match="observe_only"):
-        _deferred_retry_shadow_config_from_run_config(
-            {
-                SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY: {
-                    "enabled": True,
-                    "observe_only": False,
-                }
+def test_observe_only_false_maps_when_enabled() -> None:
+    cfg = _deferred_retry_shadow_config_from_run_config(
+        {
+            SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY: {
+                "enabled": True,
+                "observe_only": False,
             }
-        )
+        }
+    )
+    assert cfg.enabled is True
+    assert cfg.observe_only is False
 
 
 def test_enabled_string_false_raises() -> None:

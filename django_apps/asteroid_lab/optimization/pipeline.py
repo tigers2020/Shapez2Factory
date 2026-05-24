@@ -19,6 +19,10 @@ from django_apps.asteroid_lab.contracts.catalog_placement import (
     CatalogValidationMode,
 )
 from django_apps.asteroid_lab.contracts.catalog_validation import CatalogValidationResult
+from django_apps.asteroid_lab.contracts.deferred_retry_execute import (
+    DeferredRetryExecuteResult,
+    deferred_retry_execute_metrics,
+)
 from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
@@ -26,6 +30,9 @@ from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
     generate_candidates,
+)
+from django_apps.asteroid_lab.optimization.commit.deferred_retry_execute import (
+    run_bounded_deferred_retry,
 )
 from django_apps.asteroid_lab.optimization.commit.deferred_retry_shadow import (
     build_deferred_retry_shadow_summary,
@@ -188,6 +195,29 @@ def _append_deferred_retry_shadow_step(
                 "event_type": "rttp.deferred_commit_retry_shadow",
                 "title": "Deferred commit retry shadow (observe-only)",
                 "summary": ("Primary-pass deferred retry queue shadow; no retry executed."),
+                "metrics": metrics,
+                "passed": True,
+            }
+        )
+    )
+
+
+def _append_deferred_retry_execute_step(
+    steps: list[dict[str, Any]],
+    *,
+    execute_out: DeferredRetryExecuteResult,
+) -> None:
+    """Record bounded deferred retry execution metrics (PR-3)."""
+
+    metrics = deferred_retry_execute_metrics(execute_out)
+    steps.append(
+        algorithm_step_summary_to_json(
+            {
+                "step_id": RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_EXECUTE.value,
+                "phase": "incremental_commit",
+                "event_type": et.EVENT_TYPE_RTTP_DEFERRED_COMMIT_RETRY_EXECUTE,
+                "title": "Deferred commit retry execute",
+                "summary": "Bounded deferred retry round after primary commit.",
                 "metrics": metrics,
                 "passed": True,
             }
@@ -361,14 +391,27 @@ def _run_v01_rttp_pipeline(
         candidates_by_id=candidates_by_id,
         inp=inp,
     )
+    shadow_cfg = config.deferred_retry_shadow
+    should_execute_deferred_retry = shadow_cfg.enabled and not shadow_cfg.observe_only
     commit_result = primary_commit_result
-    if primary_commit_result.conflicts:
+    if should_execute_deferred_retry:
+        execute_out = run_bounded_deferred_retry(
+            primary_commit_result=primary_commit_result,
+            commit_order=genome.commit_order,
+            candidates_by_id=candidates_by_id,
+            inp=inp,
+            skeleton=skeleton,
+            config=shadow_cfg,
+        )
+        commit_result = execute_out.merged_commit_result
+        _append_deferred_retry_execute_step(steps, execute_out=execute_out)
+    if commit_result.conflicts:
         genome, commit_result = run_local_lns(
             inp,
             skeleton,
             genome,
             candidates_by_id,
-            primary_commit_result,
+            commit_result,
             policy=policy,
         )
 

@@ -1,43 +1,52 @@
 # shapez2 Factory Planner repository structure
 
-이 저장소는 Django-first 프로젝트다. 런타임 소유권은 `config/`, `manage.py`, `django_apps/`에 있고, 테스트는 `tests/unit/`과 `tests/integration/`으로 나뉜다.
+Django-first project: runtime ownership is `config/`, `manage.py`, and `django_apps/`. Tests split into `tests/unit/` and `tests/integration/`.
+
+**Repository map SoT:** This file. [`AGENTS.md`](AGENTS.md) is the agent operating contract and router (work types, gates, manuals) — on path conflicts, **structure.md wins**.
 
 ## Documentation layers
 
-| 트리 | 역할 |
+| Tree | Role |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | 에이전트 운영 계약 (최우선) |
-| [`docs/`](docs/) | domain·architecture·runbook·ADR **요약** (에이전트 친화) |
-| [`documents/`](documents/README.md) | CANON·플랜·리서치 **정본** |
-| [`structure.md`](structure.md) | 저장소 경로·앱·URL·테스트 배치 (본 문서) |
-| [`src/shapez2_factory/`](src/shapez2_factory/) | Phase 2+ hexagonal 추출 목표 (현재 stub) |
+| [`AGENTS.md`](AGENTS.md) | Agent operating contract (highest priority for workflow); **not** the path map SoT |
+| [`structure.md`](structure.md) | **Repository map SoT** — paths, apps, URLs, tests, commands |
+| [`docs/`](docs/) | Domain, architecture, runbook, ADR summaries (agent-friendly) |
+| [`docs/superpowers/specs/`](docs/superpowers/specs/), [`docs/superpowers/plans/`](docs/superpowers/plans/) | Approved design specs and implementation plans |
+| [`documents/`](documents/README.md) | Canonical body text, CANON, plans, research |
+| [`src/shapez2_factory/`](src/shapez2_factory/) | Phase 2+ hexagonal extraction target (currently stub) |
 
 ## Top-level layout
 
 | Path | Purpose |
 |---|---|
-| `AGENTS.md` | 에이전트/기여자 운영 계약, 품질 게이트, 매뉴얼 인덱스 |
-| `docs/` | domain·architecture·runbook·ADR 요약 |
-| `src/shapez2_factory/` | hexagonal 추출 목표 (Phase 2+, stub) |
-| `config/` | Django 설정, 루트 URL, WSGI/ASGI, 런타임 플래그 |
-| `django_apps/shapez_core/` | shape 파싱, 정규화, preview API, canonical game data |
-| `django_apps/shapez_solver/` | solver 프로젝트/런 모델, recipe graph, macro pattern, planner 서비스 |
-| `django_apps/asteroid_lab/` | 소행성 실험실(ORM·디코드·리플레이; 레시피 솔버와 별도) |
-| `django_apps/web/` | 페이지 템플릿, 정적 자산, thin view, staff tooling |
-| `tests/unit/` | core/solver/web/asteroid_lab 등 단위 테스트 |
-| `tests/integration/` | Django request/response, page/API integration smoke |
-| `documents/` | 문서 authority, 계획, 연구, 보고, archive. 정본 지도는 [`documents/README.md`](documents/README.md) |
-| `protocols/` | multi-step pipeline 절차 ([`protocols/README.md`](protocols/README.md)) |
-| `persona/` | 역할 카드와 라우팅 ([`persona/README.md`](persona/README.md)) |
-| `.cursor/` | Cursor rules, skills, plans, editor guidance |
+| `AGENTS.md` | Agent/contributor operating contract, quality gates, manual routing |
+| `structure.md` | Repository map SoT (this document) |
+| `docs/` | Domain, architecture, runbook, ADR summaries |
+| `config/` | Django settings, root URLs, WSGI/ASGI, runtime flags |
+| `django_apps/shapez_core/` | Shape parsing, normalization, preview API |
+| `django_apps/shapez_solver/` | Solver projects/runs, recipe graph, macro patterns, planner services |
+| `django_apps/asteroid_lab/` | Asteroid lab ORM, decode, replay (separate from recipe solver) |
+| `django_apps/game_data/` | Canonical game dump ORM, importers, validators, staff browse |
+| `django_apps/web/` | Page templates, static assets, thin views, staff tooling |
+| `src/shapez2_factory/` | Hexagonal extraction target (Phase 2+, stub) |
+| `tests/unit/` | Unit tests by app/domain |
+| `tests/integration/` | Django request/response, page/API smoke |
+| `tests/fixtures/` | Shared test inputs |
+| `tests/golden/` | Deterministic regression datasets |
+| `tests/support/` | Shared test helpers and contracts |
+| `harness/validators/` | Golden comparators (e.g. `compare_golden.py`) |
+| `documents/` | Document authority, plans, research, reports, archive — [`documents/README.md`](documents/README.md) |
+| `protocols/` | Multi-step pipeline ([`protocols/README.md`](protocols/README.md)) |
+| `persona/` | Role cards and routing ([`persona/README.md`](persona/README.md)) |
+| `.cursor/` | Cursor rules, skills, editor guidance |
 | `assets/css/` | Tailwind input CSS source |
 | `frontend/recipe_graph_editor/` | Vite + React Flow editor source |
 | `frontend/graph_layout/` | TypeScript graph layout engine source |
 | `locale/` | gettext catalog |
-| `scripts/` | locale, graph-preview, diagnostics helper scripts |
-| `var/` | 로컬 실행 trace/debug 산출물. 소스 정본 아님 |
+| `scripts/` | Locale build, graph preview, diagnostics helpers |
+| `var/` | Local run traces/debug output — not source of truth |
 
-`node_modules/`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`, `.graph_preview_cache*/`, `db.sqlite3`, `.env`는 로컬/생성 산출물이며 구조 정본이 아니다.
+`node_modules/`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`, `.graph_preview_cache*/`, `db.sqlite3`, `.env` are local/generated artifacts, not structural canon.
 
 ## Django app ownership
 
@@ -50,15 +59,15 @@
 ### `django_apps/shapez_solver/`
 
 - `models.py`: persisted solver projects/runs, macro pattern/recipe graph storage.
-- `domain/`: operation metadata, factory demand, search cost 등 solver-side domain helper.
+- `domain/`: operation metadata, factory demand, search cost, and other solver-side domain helpers.
 - `services/`: operation engine, recipe graph adapters/validation, planner/scaffold, pattern lab, catalog repository.
 - `dto/`: solver-facing DTO.
-- Solver UI와 관련 JSON endpoint는 `django_apps.web` route를 통해 제공된다.
+- Solver UI and related JSON endpoints are served via `django_apps.web` routes.
 
 ### `django_apps/asteroid_lab/`
 
-- 소행성 맵 입력·디코드 스냅샷·리플레이 트랙 등 실험실 데이터 모델과 서비스.
-- `django_apps.shapez_asteroid`(제거됨) 및 채굴 레이아웃 솔버 패키지에 **의존하지 않는다**(경계 테스트로 고정).
+- Asteroid map input, decode snapshots, replay tracks, and lab services.
+- Does **not** depend on removed `django_apps.shapez_asteroid` or legacy mining layout solver packages (enforced by boundary tests).
 
 ### `django_apps/game_data/`
 
@@ -95,9 +104,9 @@ Internationalized routes (`i18n_patterns`, default language without prefix) incl
 
 - `tests/unit/shapez_core/`: parser, render scene, SVG preview, geometry.
 - `tests/unit/shapez_solver/`: solver engine, recipe graph, models, catalog, pattern lab.
-- `tests/unit/asteroid_lab/`: 실험실 ORM·디코드·서비스 경계.
+- `tests/unit/asteroid_lab/`: lab ORM, decode, service boundaries.
 - `tests/unit/game_data/`: import, models, admin browse, JSON ban, simulation contracts.
-- `tests/unit/architecture/`: Django app import boundary matrix.
+- `tests/unit/architecture/`: Django app import boundaries and repository map governance.
 - `tests/unit/web/`: template/markup and web-specific checks.
 - `tests/integration/api/`: health/API integration checks.
 - `tests/integration/web/`: page smoke, auth, pattern lab, macro-pattern staff flows.
@@ -108,7 +117,7 @@ Internationalized routes (`i18n_patterns`, default language without prefix) incl
 - [`documents/index/document_lifecycle.md`](documents/index/document_lifecycle.md): `CANON`, `ACTIVE`, `RESEARCH`, `REPORT`, `COMPLETED`, `ARCHIVED`, `SUPERSEDED` definitions.
 - [`documents/index/document_inventory.md`](documents/index/document_inventory.md): current authority inventory.
 - [`documents/ai/`](documents/ai/README.md): current plan, context notes, checklist, manuals, active AI plans.
-- [`documents/Algorithm/README.md`](documents/Algorithm/README.md): algorithm 문서 슬롯(현재 채굴 솔버 정본 없음).
+- [`documents/Algorithm/README.md`](documents/Algorithm/README.md): algorithm document slots (no canonical mining solver content at present).
 - [`documents/plans/`](documents/plans/): active or not-yet-confirmed implementation plans.
 - [`documents/research/`](documents/research/): active research and domain evidence.
 - [`documents/reports/`](documents/reports/README.md): observation/debug/audit reports, not canonical contracts.

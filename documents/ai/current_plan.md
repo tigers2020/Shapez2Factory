@@ -60,19 +60,31 @@ powershell -File scripts/test_reconstruction_narrow.ps1
 Or pytest only:
 
 ```bash
-python -m pytest tests/unit/asteroid_lab/test_reconstruction_fixture_contract.py tests/unit/asteroid_lab/test_reconstruction_persist_full_map_bbox.py tests/unit/asteroid_lab/test_reconstruction_replay_merge.py tests/unit/asteroid_lab/test_island_bbox.py tests/unit/asteroid_lab/test_persistence_does_not_read_replay_frames.py tests/unit/asteroid_lab/test_replay_snapshot_contract.py
+powershell -File scripts/test_reconstruction_narrow.ps1
+```
+
+Or pytest only (seven modules — includes B-CS4 boundary; **no** `test_rttp_replay_*`):
+
+```bash
+python -m pytest tests/unit/asteroid_lab/test_reconstruction_fixture_contract.py tests/unit/asteroid_lab/test_reconstruction_persist_full_map_bbox.py tests/unit/asteroid_lab/test_reconstruction_replay_merge.py tests/unit/asteroid_lab/test_island_bbox.py tests/unit/asteroid_lab/test_persistence_does_not_read_replay_frames.py tests/unit/asteroid_lab/test_replay_snapshot_contract.py tests/unit/asteroid_lab/test_b_cs4_reconstruction_replay_boundary.py
 python -m ruff check django_apps/asteroid_lab/reconstruction django_apps/asteroid_lab/replay django_apps/asteroid_lab/snapshots/island_bbox.py django_apps/asteroid_lab/services/reconstructed_map_persist_builder.py
 ```
 
-Coverage: fixture topology·export, replay `reconstruction_final` merge + `step4_10` parity, persist bbox vs replay complete, `full_map_island_bbox` read-compat (meta·BP·legacy server ignore), persist path does not reference replay ORM, initial replay full_map contract.
+Coverage: fixture topology·export, replay `reconstruction_final` merge + `step4_10` parity, persist bbox vs replay complete, `full_map_island_bbox` read-compat (meta·BP·legacy server ignore), persist path does not reference replay ORM (`filter`/`get`/`all` sentinels in B-CS4), initial replay full_map contract, AST boundaries for reconstruction + audited replay modules (B-CS4).
+
+## Maintenance / Standing Gates
+
+- **Replay contract narrow gate owner:** `powershell -File scripts/test_reconstruction_narrow.ps1`
+  - Includes `test_b_cs4_reconstruction_replay_boundary.py`; **excludes** `test_rttp_replay_*`
+  - Failure after B-CS4 CLOSED = regression bug track (do not re-open B-CS4 ⬜ without contract change)
 
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** Maintain reconstruction replay/topology narrow gate; **Axis B B-CS4** replay contract narrow gate (ongoing). **Axis A D+ PR-1..PR-3 CLOSED**; **B-CS2 CLOSED** (2026-05-24); **B-CS3 CLOSED** (2026-05-24). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **Axis B B-CS1–B-CS4 formal milestones CLOSED** (2026-05-24). Maintain **standing gate** `scripts/test_reconstruction_narrow.ps1` (excludes `test_rttp_replay_*`). **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro track PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
-- Maintain reconstruction replay·topology regression (narrow gate below)
+- Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
 - **CLOSED (2026-05-23):** RTTP v1 MacroBundleT3 **PR-A..J** on `master` — plan: [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md)
 - **CLOSED (2026-05-23):** PR-K web `run-solver` POST → `run_solver_runtime_for_project(config=...)` (`macro_only_mode`, `rttp_record_replay`; invalid JSON → 400).
@@ -190,6 +202,14 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Spec: [`docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md)
   - Ops smoke E5: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 54)
   - Evidence: `normal_count` 127; `unmapped_candidate_count` 0; `validation_passed` true; `catalog_placement_ref` on all normal candidates; `lin_*` test-only
+
+- B-CS4 — Reconstruction / Lab replay boundary audit
+  - Status: **CLOSED**
+  - Spec: [`docs/superpowers/specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md`](../../docs/superpowers/specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md)
+  - Plan: [`docs/superpowers/plans/2026-05-24-b-cs4-reconstruction-replay-boundary.md`](../../docs/superpowers/plans/2026-05-24-b-cs4-reconstruction-replay-boundary.md)
+  - Evidence: `powershell -File scripts/test_reconstruction_narrow.ps1` — 55 PASS; `test_b_cs4_reconstruction_replay_boundary.py` — 31 PASS
+  - PR-C: reconstruction/replay contamination portion absorbed (B-CS4-9); validation portion remains B-CS3
+  - No production reconstruction/replay code changes
 
 - B-CS3 — Validation gate boundary audit
   - Status: **CLOSED**

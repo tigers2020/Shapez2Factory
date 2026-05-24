@@ -1,6 +1,6 @@
 # Current plan
 
-**상태 (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track A/B2** game_data provenance + `BuildingCatalogSlice` T1 on `master` (`1c4baecd`, CI green). 다음 우선: **Ops smoke** (Run Solver + provenance v2 + catalog slice 실맵). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
+**상태 (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track A/B2** game_data provenance + `BuildingCatalogSlice` T1 on `master` (`1c4baecd`). **B2-T2** per-cell catalog transport on `master` (`94027496`, PR #62). 다음 우선: **B2-T3** transport-aware route domain (T2 prerequisite satisfied). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
 
 **Runtime (코드 정본):**
 
@@ -55,7 +55,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## 다음 초점
 
-**우선순위:** **B2-T3** transport-aware route domain — branch `feature/b2-t3-transport-aware-route-domain`; plan [`2026-05-24-b2-t3-transport-aware-route-domain.md`](../../docs/superpowers/plans/2026-05-24-b2-t3-transport-aware-route-domain.md). **CLOSED:** B2-T2 per-cell transport (PR #60). **RTTP macro track PAUSE** — 추가 macro/E2E 없음. reconstruction replay/topology narrow gate 유지. 금지: macro 재작업·selection/fitness 변경·validation 완화·footprint/connector full geometry·replay를 solver input으로 사용.
+**우선순위:** **B2-T3** transport-aware route domain — branch `feature/b2-t3-transport-aware-route-domain`; plan [`2026-05-24-b2-t3-transport-aware-route-domain.md`](../../docs/superpowers/plans/2026-05-24-b2-t3-transport-aware-route-domain.md). **CLOSED:** B2-T2 per-cell transport (PR #62, `94027496`). **RTTP macro track PAUSE** — 추가 macro/E2E 없음. reconstruction replay/topology narrow gate 유지. 금지: macro 재작업·selection/fitness 변경·validation 완화·footprint/connector full geometry·replay를 solver input으로 사용.
 
 - Reconstruction replay·topology 회귀 유지 (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat 제거 — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -75,6 +75,11 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - RTTP default transport resolved to `SHAPE_BELT`
   - `ok: true`, `validation_passed: true`, `issue_codes: []`
   - Note: `solver_summary_stack` file exists; latest run stack entry depends on stack-log env.
+- **CLOSED (2026-05-24):** Ops smoke B — existing transport on real slug `copy-import-495e552c` (post B2-T2 PR #62)
+  - `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 45)
+  - `game_data_snapshot_provenance` v2 (10 keys); `catalog_slice_hash` present
+  - `ok: true`, `validation_passed: true`, `issue_codes: []`
+  - `rttp.route_domain`: `mismatched_existing_transport_count` 0 (B2-T3 metrics; no `CATALOG_TRANSPORT_UNRESOLVED`)
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
 - ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절
 
@@ -90,9 +95,22 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Merged into master: `1c4baecd`
   - Plan: [`docs/superpowers/plans/2026-05-24-building-catalog-slice-first-consumption.md`](../../docs/superpowers/plans/2026-05-24-building-catalog-slice-first-consumption.md)
   - Ops smoke A: CLOSED (`copy-import-495e552c`, 2026-05-24)
-  - Next: B2-T2 per-cell transport resolution
+
+- B2-T2 — Per-cell catalog transport resolution
+  - Status: CLOSED
+  - Merged into master: `94027496`
+  - PR: #62
+  - Plan: [`docs/superpowers/plans/2026-05-24-b2-t2-per-cell-transport-resolution.md`](../../docs/superpowers/plans/2026-05-24-b2-t2-per-cell-transport-resolution.md)
+  - Spec: [`docs/superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](../../docs/superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md)
+  - Ops smoke B: CLOSED (`copy-import-495e552c`, 2026-05-24)
+  - Prerequisite for B2-T3: satisfied (`catalog_transport_policy` + adapter wiring on `master`)
 
 - Ops smoke A — provenance v2 + catalog slice on real slug
   - Status: CLOSED
   - Slug: `copy-import-495e552c`
   - Evidence: `manage.py run_solver` exit 0; provenance 10 keys; `SHAPE_BELT`; validation passed
+
+- Ops smoke B — existing transport + catalog registry on real slug
+  - Status: CLOSED
+  - Slug: `copy-import-495e552c`
+  - Evidence: `manage.py run_solver` exit 0 post PR #62; provenance 10 keys; validation passed; route-domain mismatch metrics present (0 mismatch on shape run)

@@ -37,6 +37,9 @@ _AUDIT_MODULE = _REPO_ROOT / "django_apps/asteroid_lab/adapters/catalog_placemen
 _LAYOUT_VALIDATION_MODULE = (
     _REPO_ROOT / "django_apps/asteroid_lab/optimization/validation/catalog_layout_validation.py"
 )
+_FINAL_VALIDATION_MODULE = (
+    _REPO_ROOT / "django_apps/asteroid_lab/optimization/validation/final_validation.py"
+)
 
 _FORBIDDEN_IMPORT_PREFIXES = (
     "django_apps.asteroid_lab.optimization.routing.route_probe",
@@ -49,6 +52,7 @@ _GUARDED_MODULES = (
     _VALIDATION_MODULE,
     _AUDIT_MODULE,
     _LAYOUT_VALIDATION_MODULE,
+    _FINAL_VALIDATION_MODULE,
 )
 
 

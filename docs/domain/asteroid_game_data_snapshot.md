@@ -121,7 +121,7 @@ Frozen contract: `django_apps/asteroid_lab/contracts/game_data_snapshot_provenan
 
 **Slice:** `BuildingCatalogSlice` — `transport_registry` + `variants` only; built via `catalog_slice_from_snapshot`. RTTP T1: empty-map default `TransportKind` from belt channel in registry (`resolve_default_asteroid_transport_kind`).
 
-**T2 (RTTP):** Per transport cell, `resolve_cell_transport_kind` maps reconstruction `transport_kind` wire strings through `transport_registry` (`transport_kind` key → `transport_category` → `TransportKind`). Domain enum values (`shape_belt`, `fluid_pipe`) pass through. Unresolved transport tiles with a catalog slice fail closed (`catalog_transport_unresolved`; adapter message includes coord + raw wire).
+**T2 (RTTP):** Per transport cell, `resolve_cell_transport_kind` maps reconstruction `transport_kind` wire strings through `transport_registry` (`transport_kind` key → `transport_category` → `TransportKind`). Domain enum values (`shape_belt`, `fluid_pipe`) pass through. Unresolved transport tiles with a catalog slice fail closed (`catalog_transport_unresolved`). Duplicate registry keys with the same resolved `TransportKind` use deterministic last-wins; conflicting kinds fail closed at lookup build. Spec: [`2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](../superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md).
 
 ## Collection policy — `tuple` only
 

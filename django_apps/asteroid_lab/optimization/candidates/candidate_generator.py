@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+from django_apps.asteroid_lab.adapters.catalog_candidate_placements import (
+    build_catalog_placement_specs,
+)
+from django_apps.asteroid_lab.contracts.catalog_candidate import CatalogPlacementSpec
+from django_apps.asteroid_lab.contracts.catalog_placement import CatalogPlacementRef
+from django_apps.asteroid_lab.optimization.candidates.bundle_pattern import BundlePattern
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
     CandidateGenerationResult,
     CandidateRejectReason,
     ExtractorPlacementPolicy,
     RejectedBundleCandidate,
-)
-from django_apps.asteroid_lab.optimization.candidates.pattern_library import (
-    BundlePattern,
-    build_pattern_library,
 )
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import OptimizationInput
@@ -42,19 +44,36 @@ def _translate_offset(anchor: Coord, offset: Coord) -> Coord:
     return (anchor[0] + offset[0], anchor[1] + offset[1])
 
 
-def _project_pattern(anchor: Coord, pattern: BundlePattern) -> tuple[frozenset[Coord], Coord]:
-    occupied = frozenset(_translate_offset(anchor, offset) for offset in pattern.occupied_offsets)
-    output_stub = _translate_offset(anchor, pattern.output_stub_offset)
+def _bundle_pattern_from_spec(spec: CatalogPlacementSpec) -> BundlePattern:
+    sorted_cells = sorted(spec.occupied_offsets)
+    extractor = sorted_cells[0]
+    extensions = tuple(c for c in sorted_cells if c != extractor)
+    return BundlePattern(
+        pattern_id=spec.pattern_id,
+        extension_count=min(3, max(0, len(sorted_cells) - 1)),
+        occupied_offsets=spec.occupied_offsets,
+        extractor_offset=extractor,
+        extension_offsets=extensions,
+        output_dir=spec.output_dir,
+        output_stub_offset=spec.output_stub_offset,
+        throughput_factor=spec.throughput_factor,
+        topology_kind=spec.topology_kind,
+    )
+
+
+def _project_spec(anchor: Coord, spec: CatalogPlacementSpec) -> tuple[frozenset[Coord], Coord]:
+    occupied = frozenset(_translate_offset(anchor, offset) for offset in spec.occupied_offsets)
+    output_stub = _translate_offset(anchor, spec.output_stub_offset)
     return occupied, output_stub
 
 
 def _validate_geometry(
     inp: OptimizationInput,
-    pattern: BundlePattern,
+    spec: CatalogPlacementSpec,
     occupied: frozenset[Coord],
     output_stub: Coord,
 ) -> CandidateRejectReason | None:
-    if len(occupied) != len(pattern.occupied_offsets):
+    if len(occupied) != len(spec.occupied_offsets):
         return CandidateRejectReason.OVERLAP
     if not occupied.issubset(inp.mineable_cells):
         return CandidateRejectReason.GEOMETRY_INVALID
@@ -72,12 +91,8 @@ def _dedupe_signature(
     return (tuple(sorted(occupied)), output_stub, output_dir, throughput_factor)
 
 
-def _make_candidate_id(
-    anchor: Coord,
-    pattern: BundlePattern,
-    transport_kind_value: str,
-) -> str:
-    return f"{anchor[0]},{anchor[1]}:{pattern.pattern_id}:{transport_kind_value}"
+def _make_candidate_id(anchor: Coord, pattern_id: str, transport_kind_value: str) -> str:
+    return f"{anchor[0]},{anchor[1]}:{pattern_id}:{transport_kind_value}"
 
 
 def generate_candidates(
@@ -88,11 +103,14 @@ def generate_candidates(
     max_candidates: int | None = None,
     max_expansions: int = 500,
 ) -> CandidateGenerationResult:
-    """Enumerate anchor × pattern placements; probe before normal pool admission."""
+    """Enumerate anchor × catalog placement specs; probe before normal pool admission."""
+
+    if inp.catalog_slice is None:
+        return CandidateGenerationResult(normal_candidates=(), rejected_candidates=())
 
     domain = build_route_domain_from_skeleton(skeleton, inp)
     goals = probe_goal_coords(inp, skeleton)
-    patterns = build_pattern_library()
+    specs = build_catalog_placement_specs(inp.catalog_slice, transport_kind=inp.transport_kind)
     anchors = _anchor_cells(inp, skeleton, policy)
 
     normal_by_signature: dict[
@@ -102,17 +120,19 @@ def generate_candidates(
     rejected: list[RejectedBundleCandidate] = []
 
     for anchor in anchors:
-        for pattern in patterns:
-            occupied, output_stub = _project_pattern(anchor, pattern)
-            candidate_id = _make_candidate_id(anchor, pattern, inp.transport_kind.value)
+        for spec in specs:
+            pattern = _bundle_pattern_from_spec(spec)
+            occupied, output_stub = _project_spec(anchor, spec)
+            candidate_id = _make_candidate_id(anchor, spec.pattern_id, inp.transport_kind.value)
+            ref = CatalogPlacementRef(spec.canonical_id, anchor, spec.rotation)
 
-            geometry_reason = _validate_geometry(inp, pattern, occupied, output_stub)
+            geometry_reason = _validate_geometry(inp, spec, occupied, output_stub)
             if geometry_reason is not None:
                 rejected.append(
                     RejectedBundleCandidate(
                         candidate_id=candidate_id,
                         anchor_coord=anchor,
-                        pattern_id=pattern.pattern_id,
+                        pattern_id=spec.pattern_id,
                         rejection_reason=geometry_reason,
                         route_probe_cost=None,
                     )
@@ -130,7 +150,7 @@ def generate_candidates(
                     RejectedBundleCandidate(
                         candidate_id=candidate_id,
                         anchor_coord=anchor,
-                        pattern_id=pattern.pattern_id,
+                        pattern_id=spec.pattern_id,
                         rejection_reason=CandidateRejectReason.NOT_REACHABLE,
                         route_probe_cost=probe.cost,
                     )
@@ -143,17 +163,18 @@ def generate_candidates(
                 pattern=pattern,
                 occupied_cells=occupied,
                 output_stub=output_stub,
-                output_dir=pattern.output_dir,
+                output_dir=spec.output_dir,
                 transport_kind=inp.transport_kind,
-                throughput_factor=pattern.throughput_factor,
+                throughput_factor=spec.throughput_factor,
                 route_probe_cost=probe.cost,
                 reachable=True,
+                catalog_placement_ref=ref,
             )
             signature = _dedupe_signature(
                 occupied,
                 output_stub,
-                pattern.output_dir,
-                pattern.throughput_factor,
+                spec.output_dir,
+                spec.throughput_factor,
             )
             existing = normal_by_signature.get(signature)
             if existing is None or candidate.candidate_id < existing.candidate_id:

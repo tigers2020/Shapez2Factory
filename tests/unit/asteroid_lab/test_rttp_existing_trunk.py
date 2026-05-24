@@ -69,6 +69,7 @@ def _existing_trunk_optimization_input() -> OptimizationInput:
 def test_skeleton_includes_existing_trunk_cells() -> None:
     inp = _existing_trunk_optimization_input()
 
+    assert inp.blocked_incompatible_transport_cells == frozenset()
     assert inp.existing_trunk_cells
     assert inp.existing_trunk_cells <= frozenset(
         cell.coord for cell in inp.existing_transport_cells

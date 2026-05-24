@@ -22,6 +22,7 @@ from django_apps.asteroid_lab.contracts.building_catalog_slice import (
 from django_apps.asteroid_lab.contracts.building_catalog_slice_hash import (
     catalog_slice_hash,
 )
+from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
 from django_apps.asteroid_lab.contracts.game_data_snapshot import AsteroidGameDataSnapshot
 from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
     GameDataSnapshotProvenance,
@@ -71,6 +72,7 @@ from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY,
+    SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY,
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
@@ -150,15 +152,65 @@ def _rttp_record_replay_enabled(config: dict[str, Any]) -> bool:
     return True
 
 
+def _require_bool(value: object, *, field: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    msg = f"deferred_retry_shadow.{field} must be a boolean"
+    raise ValueError(msg)
+
+
+def _deferred_retry_shadow_config_from_run_config(
+    config: dict[str, Any],
+) -> DeferredRetryShadowConfig:
+    """Map ``config_json`` shadow policy (PR-2); never reads solver_summary."""
+
+    raw = config.get(SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY)
+    if raw is None:
+        return DeferredRetryShadowConfig()
+    if not isinstance(raw, dict):
+        msg = "deferred_retry_shadow must be an object"
+        raise ValueError(msg)
+    if "observe_only" in raw:
+        if not _require_bool(raw["observe_only"], field="observe_only"):
+            msg = "deferred_retry_shadow.observe_only must remain true in PR-2"
+            raise ValueError(msg)
+    enabled = _require_bool(raw.get("enabled", True), field="enabled")
+    max_rounds_raw = raw.get("max_retry_rounds", 1)
+    if not isinstance(max_rounds_raw, int):
+        msg = "deferred_retry_shadow.max_retry_rounds must be an integer"
+        raise ValueError(msg)
+    max_candidates_raw = raw.get("max_candidates")
+    if max_candidates_raw is None:
+        max_candidates: int | None = None
+    elif isinstance(max_candidates_raw, int):
+        max_candidates = max_candidates_raw
+    else:
+        msg = "deferred_retry_shadow.max_candidates must be an integer or null"
+        raise ValueError(msg)
+    expansions_raw = raw.get("route_probe_max_expansions", 500)
+    if not isinstance(expansions_raw, int):
+        msg = "deferred_retry_shadow.route_probe_max_expansions must be an integer"
+        raise ValueError(msg)
+    return DeferredRetryShadowConfig(
+        enabled=enabled,
+        observe_only=True,
+        max_retry_rounds=max_rounds_raw,
+        max_candidates=max_candidates,
+        route_probe_max_expansions=expansions_raw,
+    )
+
+
 def _rttp_pipeline_config_from_run_config(config: dict[str, Any]) -> RttpPipelineConfig:
     """Map ``SolverRun.config_json`` RTTP keys to ``RttpPipelineConfig`` (PR-I)."""
 
     macro_only = bool(config.get(SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY, False))
     max_raw = config.get(SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY, 64)
     max_macro = int(max_raw) if max_raw is not None else 64
+    shadow = _deferred_retry_shadow_config_from_run_config(config)
     return RttpPipelineConfig(
         macro_only_mode=macro_only,
         max_macro_candidates=max_macro,
+        deferred_retry_shadow=shadow,
     )
 
 

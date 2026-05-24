@@ -60,7 +60,17 @@ def transport_kind_lookup_from_slice(
         kind = _TRANSPORT_CATEGORY_TO_KIND.get(category)
         if kind is None:
             continue
-        lookup[entry.transport_kind] = kind
+        key = entry.transport_kind
+        existing = lookup.get(key)
+        if existing is not None and existing is not kind:
+            raise CatalogTransportUnresolvedError(
+                CatalogTransportErrorCode.CATALOG_TRANSPORT_UNRESOLVED,
+                (
+                    f"conflicting transport_kind registry key {key!r}: "
+                    f"{existing.value!r} vs {kind.value!r}"
+                ),
+            )
+        lookup[key] = kind
     return lookup
 
 
@@ -69,8 +79,9 @@ def resolve_cell_transport_kind(
     *,
     catalog_slice: BuildingCatalogSlice | None,
     lookup: dict[str, TransportKind] | None = None,
+    coord: tuple[int, int] | None = None,
 ) -> TransportKind | None:
-    """Resolve one cell wire string; RTTP callers pass ``catalog_slice`` and fail via adapter."""
+    """Resolve one cell wire string; RTTP callers pass ``catalog_slice``."""
 
     for member in TransportKind:
         if member.value == raw:
@@ -81,9 +92,10 @@ def resolve_cell_transport_kind(
     mapped = table.get(raw)
     if mapped is not None:
         return mapped
+    where = f" at coord {coord!r}" if coord is not None else ""
     raise CatalogTransportUnresolvedError(
         CatalogTransportErrorCode.CATALOG_TRANSPORT_UNRESOLVED,
-        f"cannot resolve transport_kind wire {raw!r} from catalog registry",
+        f"cannot resolve transport_kind wire {raw!r}{where} from catalog registry",
     )
 
 

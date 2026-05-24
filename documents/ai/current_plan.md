@@ -55,7 +55,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## 다음 초점
 
-**우선순위 (2026-05-24, Release lead):** **Ops smoke (A)** — Run Solver + provenance v2 + catalog slice on a real lab slug (`manage.py run_solver` / Lab POST; stack log `var/log/solver_summary_stack/`). **B2-T2 (B)** per-cell transport — 별도 PR, smoke green 후. **RTTP macro track PAUSE** — 추가 macro/E2E 없음. reconstruction replay/topology narrow gate 유지. 금지: 알고리즘 확장·selection/validation 완화·LNS·replay lazy-load 13C·macro 재작업.
+**우선순위 (2026-05-24, Release lead):** **B2-T2** per-cell transport resolution — 별도 PR, narrow scope (`writing-plans` first). **RTTP macro track PAUSE** — 추가 macro/E2E 없음. reconstruction replay/topology narrow gate 유지. 금지: macro 재작업·selection/fitness 변경·validation 완화·footprint/connector full geometry·replay를 solver input으로 사용.
 
 - Reconstruction replay·topology 회귀 유지 (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat 제거 — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -68,6 +68,13 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 - **CLOSED (2026-05-24):** 실맵 macro E2E — `tests/fixtures/asteroid_lab/macro_e2e_copy.code` + `test_rttp_macro_real_map_e2e.py` (no monkeypatch).
 - **PAUSE (2026-05-24):** macro track — 추가 solver/macro/E2E 작업 없음. 로컬 `app.css` / `solver_runtime/*.md` / `migration 0012_*` 커밋 금지(별도 의도 확인 전).
 - **CLOSED (2026-05-24):** reconstruction replay·topology narrow gate — `scripts/test_reconstruction_narrow.ps1` + tightened `test_island_bbox` / `test_reconstruction_replay_merge`.
+- **CLOSED (2026-05-24):** Ops smoke A — real lab slug `copy-import-495e552c`
+  - `python manage.py run_solver --slug copy-import-495e552c` exit 0
+  - `game_data_snapshot_provenance` v2 persisted with 10 keys
+  - `catalog_slice_hash` parsed successfully
+  - RTTP default transport resolved to `SHAPE_BELT`
+  - `ok: true`, `validation_passed: true`, `issue_codes: []`
+  - Note: `solver_summary_stack` file exists; latest run stack entry depends on stack-log env.
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
 - ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절
 
@@ -82,4 +89,10 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Status: CLOSED
   - Merged into master: `1c4baecd`
   - Plan: [`docs/superpowers/plans/2026-05-24-building-catalog-slice-first-consumption.md`](../../docs/superpowers/plans/2026-05-24-building-catalog-slice-first-consumption.md)
-  - Deferred: B2-T2 per-cell transport resolution
+  - Ops smoke A: CLOSED (`copy-import-495e552c`, 2026-05-24)
+  - Next: B2-T2 per-cell transport resolution
+
+- Ops smoke A — provenance v2 + catalog slice on real slug
+  - Status: CLOSED
+  - Slug: `copy-import-495e552c`
+  - Evidence: `manage.py run_solver` exit 0; provenance 10 keys; `SHAPE_BELT`; validation passed

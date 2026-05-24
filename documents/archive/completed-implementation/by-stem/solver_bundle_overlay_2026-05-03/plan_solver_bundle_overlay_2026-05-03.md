@@ -5,13 +5,13 @@ Related research: [research_solver_bundle_overlay_2026-05-03.md](./research_solv
 
 ## Goal
 
-- materialized graph의 원자 node/edge는 그대로 유지한다.
+- materialized graph의 원자 node/edge는 그대로 preserved.
 - `quad_stage`, `checker_stage`, `swap_stage`를 별도 `bundle_overlay` annotation으로 표현한다.
 - 기존 `groups`는 operation 중심 layout projection으로 유지하고, bundle은 의미 단위 macro cover로 분리한다.
 
 ## Data Model
 
-후속 구현에서 새 DTO 모듈을 추가한다.
+후속 구현에서 새 DTO 모듈을 added.
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -52,7 +52,7 @@ SolverGraph
   -> serialize_solver_graph()
 ```
 
-구현 후보:
+Implementation candidates:
 
 - `BundlePatternDetector` protocol: `macro_type`, `detect(graph) -> list[GraphBundle]`
 - `QuadStageDetector`: source/base에서 시작해 cut, rotate, stacker, painter 계열을 따라 quad-ready shape까지 묶는다.
@@ -87,7 +87,7 @@ selection key:
 
 ## JSON Contract
 
-기존 `nodes`, `edges`, `groups`는 변경하지 않는다.
+기존 `nodes`, `edges`, `groups`는 do not change.
 
 ```json
 {
@@ -156,7 +156,7 @@ Phase 2에서 collapsed graph를 만든다.
 
 ## Validation Commands
 
-후속 구현 완료 후 렉스가 아래 순서로 검증한다.
+후속 구현 done 후 렉스가 아래 순서로 검증한다.
 
 ```text
 pytest
@@ -174,11 +174,11 @@ CI에서는 파일 변경이 없는 `black --check .`를 사용한다.
 
 ## CURSOR_MEMO Update
 
-- `documents/CURSOR_MEMO.md`가 존재하므로, 이번 결정은 짧게 추가한다.
+- `documents/CURSOR_MEMO.md`가 존재하므로, 이번 결정은 짧게 added.
 - 기록 내용은 "bundle은 graph 병합이 아니라 overlay이며, 기존 groups와 분리한다"로 제한한다.
 
 ## Assumptions
 
-- checker 판정은 초기 구현에서 shape parser 기반 휴리스틱으로 시작한다.
+- checker 판정은 초기 구현에서 shape parser 기반 휴리스틱으로 start with.
 - 정확한 shapez 2 checker rule 고도화와 config 파일화는 Phase 3로 분리한다.
 - 후속 구현 전 사람 승인을 다시 받는다.

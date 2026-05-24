@@ -1,61 +1,61 @@
-# 매뉴얼: Testing · 검증
+# Manual: Testing · Verification
 
-TDD·계약·게이트 **상세 정본**. 라우팅·작업 분류 요약은 [`AGENTS.md`](../../../AGENTS.md) **Development Mode: Contract-first TDD**.
+**Canonical detail** for TDD, contracts, and gates. Routing and work classification summaries are in [`AGENTS.md`](../../../AGENTS.md) **Development Mode: Contract-first TDD**.
 
-## pytest (기본: 변경 범위만)
+## pytest (default: changed scope only)
 
-- **기본:** 이번에 손댄 코드·모듈과 직접 연결된 테스트만 실행한다. 예: 바꾼 파일 옆 `tests/unit/...`의 해당 모듈, 또는 `pytest path/to/test_file.py` / `pytest tests/unit/some_package/`.
-- **전체 스위트** (`python -m pytest`, 루트에서 전부): PR·병합·CI·광역 회귀 등 **꼭 필요할 때만** ([Quality gate sequence](#quality-gate-sequence) PR full gate 참고).
-- 구간·마커는 아래 **구간 실행** 표를 따른다.
+- **Default:** Run only tests directly tied to the code or modules you touched this session. Example: the matching module under `tests/unit/...` next to the changed file, or `pytest path/to/test_file.py` / `pytest tests/unit/some_package/`.
+- **Full suite** (`python -m pytest`, everything from repo root): only when **strictly needed** — PR, merge, CI, broad regression ([Quality gate sequence](#quality-gate-sequence) PR full gate).
+- Use markers and scopes per the **Scoped execution** table below.
 
 ```bash
-# 예: 작업 디렉터리 한정
+# Example: single working directory
 python -m pytest tests/unit/asteroid_lab/test_example.py
 
-# 전체 (PR / 병합 / CI)
+# Full (PR / merge / CI)
 python -m pytest
 ```
 
-### pytest 출력 규칙 (필수)
+### pytest output rules (required)
 
-**pytest 실행 시 출력 억제 플래그 사용 금지.** ([`AGENTS.md`](../../../AGENTS.md) 동일)
+**Do not use pytest output-suppression flags when running pytest.** (Same as [`AGENTS.md`](../../../AGENTS.md))
 
-| 금지 플래그 | 이유 |
+| Forbidden flag | Reason |
 |---|---|
-| `-q` / `--quiet` | 실패 상세가 숨겨져 에러를 놓침 |
-| `--tb=no` | traceback 제거로 디버그 불가 |
-| `--no-header` | 단독 사용 시 컨텍스트 소실 |
-| `-p no:terminal` | 출력 완전 억제 |
+| `-q` / `--quiet` | Hides failure detail; errors are easy to miss |
+| `--tb=no` | Removes traceback; debugging is impossible |
+| `--no-header` | Loses context when used alone |
+| `-p no:terminal` | Suppresses all output |
 
-허용: `-v`, `-s`, `--tb=short` (기본값), `--tb=long`, `-x`, `--maxfail=N`.
+Allowed: `-v`, `-s`, `--tb=short` (default), `--tb=long`, `-x`, `--maxfail=N`.
 
-로컬 스크립트(`scripts/test_fast.ps1` 등)·CI·에이전트 narrow/full gate 모두 위 규칙을 따른다.
+Local scripts (`scripts/test_fast.ps1`, etc.), CI, and agent narrow/full gates all follow the rules above.
 
 ---
 
 ## Development Mode: Contract-first TDD
 
-**기본 흐름**: 공개 행위·도메인 계약·불변식·회귀·데이터 변환 경계를 **테스트로 먼저 고정** → **최소 구현** → 게이트 통과. “구현 먼저 → 나중에 테스트”를 기본으로 두지 않는다.
+**Default flow**: Lock **public behavior, domain contracts, invariants, regression, and data-conversion boundaries in tests first** → **minimal implementation** → pass gates. Do not default to “implement first → test later.”
 
-**과격한 line coverage TDD는 아니다.** 모든 줄·내부 헬퍼마다 테스트를 늘리지 않는다. 깨진 뒤 **다시 발견하기 비싼 계약**만 테스트한다.
+**This is not aggressive line-coverage TDD.** Do not add tests for every line or internal helper. Test only **contracts that are expensive to rediscover after they break**.
 
-작업 시작 시 [`AGENTS.md`](../../../AGENTS.md) 분류(복수 가능): `계약 변경` · `구현 변경` · `리팩터링` · `문서 변경` · `회귀 수정`.
+At work start, classify per [`AGENTS.md`](../../../AGENTS.md) (one or more): `contract change` · `implementation change` · `refactoring` · `documentation change` · `regression fix`.
 
 ---
 
 ## When to write or update tests
 
-다음을 바꾸면 보통 **집중 테스트**를 추가하거나 기존 테스트를 **먼저** 갱신한다.
+When you change any of the following, you usually add **focused tests** or update existing tests **first**.
 
-1. **공개 행위**: API 응답 형태, 함수 출력 계약, CLI, UI에 보이는 동작, 저장 데이터 형태, 직렬화·역직렬화 형식.
-2. **도메인 계약**: DTO 필드, **enum / StrEnum / 상수**, 상태 전이, 소유·수명 규칙, 검증, 허용·금지 상태.
-3. **데이터 변환**: 좌표 변환(`raw` ↔ Server X/Y), 정규화, 파싱, 인코딩·디코딩, import/export 경계, 스키마 마이그레이션, DB 매핑.
-4. **제어 흐름 분기**: 성공/실패, 수락/거절, 커밋/롤백, 재시도·건너뛰기·폴백, 오류 분류, 가드·게이트·권한.
-5. **영속·외부 경계**: DB, 파일 출력, POST/GET 페이로드, 백그라운드 잡, **replay payload**, **validation 결과**, 아티팩트·로그·metrics·NDJSON 계약.
-6. **버그 수정**: 재현 **회귀 테스트**를 수정 전에 추가(불가능·비현실적이면 Caveman **Tests/Risks**에 이유).
-7. **최근 취약 구역**: narrow corridor, route starvation, replay, coordinate boundary, UI replay sync 등 — 해당 **불변식** 테스트 최소 하나.
+1. **Public behavior**: API response shape, function output contracts, CLI, user-visible UI behavior, persisted data shape, serialization/deserialization formats.
+2. **Domain contracts**: DTO fields, **enum / StrEnum / constants**, state transitions, ownership/lifetime rules, validation, allowed/forbidden states.
+3. **Data conversion**: coordinate conversion (`raw` ↔ Server X/Y), normalization, parsing, encoding/decoding, import/export boundaries, schema migration, DB mapping.
+4. **Control-flow branches**: success/failure, accept/reject, commit/rollback, retry/skip/fallback, error classification, guards/gates/permissions.
+5. **Persistence and external boundaries**: DB, file output, POST/GET payloads, background jobs, **replay payload**, **validation results**, artifact/log/metrics/NDJSON contracts.
+6. **Bug fixes**: add a reproducing **regression test** before the fix (if impossible or unrealistic, state why in Caveman **Tests/Risks**).
+7. **Recently fragile areas**: narrow corridor, route starvation, replay, coordinate boundary, UI replay sync, etc. — at least one test for the relevant **invariant**.
 
-**외부 계약 변경 시 우선 대상** (테스트·enum 동시 갱신):
+**Priority when external contracts change** (update tests and enums together):
 
 - DTO · enum · serialization
 - coordinate conversion · `route_domain` · candidate pool
@@ -65,23 +65,23 @@ python -m pytest
 
 ## When not to add new tests
 
-다음은 **새 테스트를 기본 추가하지 않고**, 관련 **기존 테스트·검증 명령**으로 충분할 수 있다.
+The following usually **do not warrant new tests by default**; existing tests and validation commands may suffice.
 
-- 포맷만, 주석만, 로그 문구만, CSS 색·간격 등 순수 시각 조정만.
-- 비행위 변경인 비공개 심볼 리네임.
-- **동작 계약이 동일한** 내부 리팩터·dead code 삭제(기존 테스트가 충분).
-- 픽스처 정리 등 **프로덕션 동작 변화 없음**.
+- Format-only, comment-only, log-message-only, or pure visual tweaks (CSS color/spacing, etc.).
+- Non-behavior renames of private symbols.
+- Internal refactors or dead-code removal where **behavior contracts are unchanged** (existing tests are enough).
+- Fixture cleanup with **no production behavior change**.
 
-단, **동작 계약이 바뀌면** 테스트 갱신은 필수다.
+If **behavior contracts change**, test updates are mandatory.
 
 ---
 
 ## Required red-green-refactor workflow
 
-1. 작업 분류 후, **가장 좁은 계약 테스트 하나**를 추가하거나 기존 테스트를 실패 상태로 갱신한다(red).
-2. **해당 테스트 경로만** `pytest`로 green을 만든다.
-3. 범위를 넓히기 전에 같은 사이클을 반복한다.
-4. **큰 통합 테스트를 한 번에** 먼저 쓰지 않는다. 통합·E2E는 단위로 같은 불변식을 증명할 수 없을 때만.
+1. After classifying the work, add the **narrowest single contract test** or update an existing test to fail (red).
+2. Make **only that test path** green with `pytest`.
+3. Repeat the same cycle before widening scope.
+4. Do **not** start with one large integration test. Integration/E2E only when the same invariant cannot be proven at unit level.
 
 ---
 
@@ -89,82 +89,82 @@ python -m pytest
 
 ### Asteroid Lab (solver / optimization)
 
-시맨틱 정본은 `documents/Algorithm/asteroid_lab_*.md` · [ADR-003](../../adr/ADR-003-final-validation-assertion-gate.md). glob 작업 시 [`.cursor/rules/asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc).
+Semantic canon: `documents/Algorithm/asteroid_lab_*.md` · [ADR-003](../../adr/ADR-003-final-validation-assertion-gate.md). For glob work, see [`.cursor/rules/asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc).
 
 | Invariant | Canon | Representative tests / planned names |
 |-----------|-------|----------------------------------------|
-| Replay / NDJSON / artifact / metrics **output-only** — solver·algorithm **입력 금지** | [`asteroid_lab_09_replay_timeline.md`](../../Algorithm/asteroid_lab_09_replay_timeline.md) | `test_manual_snapshot_replay_not_used_as_algorithm_input_doc`; `test_lab_page_context_*`; `asteroid_lab_10` 체크리스트 |
-| Candidate: **placement commit 금지**; 생성 → local geometry → immediate route probe → reachable만 normal pool | [`asteroid_lab_03_candidate_generator.md`](../../Algorithm/asteroid_lab_03_candidate_generator.md) | generator 인근 unit; Phase 체크리스트 |
-| Incremental commit: **commit-time latest `route_domain` re-probe**; candidate phase reachable ≠ 최종 증명 | [`asteroid_lab_07_incremental_commit.md`](../../Algorithm/asteroid_lab_07_incremental_commit.md) | `test_incremental_commit_reprobes_latest_route_domain` (문서 명시) |
-| Validation: **read-only assert**; route·placement·topology **repair 금지** | [`asteroid_lab_08_validation.md`](../../Algorithm/asteroid_lab_08_validation.md), ADR-003 | validation read-only 체크리스트·pytest |
-| **Lab replay timeline**; global monotonic `frame_index`; every frame **2D map_view**; 단일 play/scrubber (dual-track **폐기**) | `asteroid_lab_09_replay_timeline` | `test_lab_js_replay_wiring_smoke`; `test_lab_page_context_*` |
-| `OptimizationInput` 이후 알고리즘 좌표는 **Server X/Y dense only**; raw 변환은 decode/import·final UI/export 경계만 | [`asteroid_lab_01_optimization_input.md`](../../Algorithm/asteroid_lab_01_optimization_input.md), [`asteroid_lab_00_overview.md`](../../Algorithm/asteroid_lab_00_overview.md) | `test_optimization_input.py`, `test_seed_route_domain_*` |
-| `failure_reason` · `event_type` · `issue_code` 등 **enum/const** — 자유 문자열 금지 | Phase DTO 문서 | `test_invalid_event_type_rejected`; replay contract tests |
-| 동일 seed **deterministic** (+ tie-break) | evolution 문서 | 필요 영역에 명시적 테스트 |
-| **Regression fixture** — 버그 재발 시점에 추가 | 본 매뉴얼 | `tests/fixtures/asteroid_lab/`; corridor·starvation·replay·coord·UI sync 우선 |
-| **Replay truncation schema** — fixture 봉투(`replay_summary`·top-level `truncation_reason`) **≠** runtime persist (frame `metrics` → track `metrics`) | [`asteroid_lab_12_runtime_replay_wiring.md`](../../Algorithm/asteroid_lab_12_runtime_replay_wiring.md) | `test_lab_replay_timeline_payload.py`, `test_timeline_composer.py`; `tests/fixtures/shapez_asteroid/replay*` = **planned** |
-| **Fitness vs commit survivability** — predictive penalties vs observed metrics; observed → solver input **금지** | [`asteroid_lab_05_genome_fitness.md`](../../Algorithm/asteroid_lab_05_genome_fitness.md) | `test_fitness_contracts.py` |
+| Replay / NDJSON / artifact / metrics **output-only** — **forbidden as solver/algorithm input** | [`asteroid_lab_09_replay_timeline.md`](../../Algorithm/asteroid_lab_09_replay_timeline.md) | `test_manual_snapshot_replay_not_used_as_algorithm_input_doc`; `test_lab_page_context_*`; `asteroid_lab_10` checklist |
+| Candidate: **no placement commit**; generate → local geometry → immediate route probe → reachable only in normal pool | [`asteroid_lab_03_candidate_generator.md`](../../Algorithm/asteroid_lab_03_candidate_generator.md) | generator-adjacent unit; Phase checklist |
+| Incremental commit: **commit-time latest `route_domain` re-probe**; candidate-phase reachable ≠ final proof | [`asteroid_lab_07_incremental_commit.md`](../../Algorithm/asteroid_lab_07_incremental_commit.md) | `test_incremental_commit_reprobes_latest_route_domain` (documented) |
+| Validation: **read-only assert**; **no** route/placement/topology **repair** | [`asteroid_lab_08_validation.md`](../../Algorithm/asteroid_lab_08_validation.md), ADR-003 | validation read-only checklist · pytest |
+| **Lab replay timeline**; global monotonic `frame_index`; every frame **2D map_view**; single play/scrubber (dual-track **deprecated**) | `asteroid_lab_09_replay_timeline` | `test_lab_js_replay_wiring_smoke`; `test_lab_page_context_*` |
+| After `OptimizationInput`, algorithm coordinates are **Server X/Y dense only**; raw conversion only at decode/import and final UI/export boundaries | [`asteroid_lab_01_optimization_input.md`](../../Algorithm/asteroid_lab_01_optimization_input.md), [`asteroid_lab_00_overview.md`](../../Algorithm/asteroid_lab_00_overview.md) | `test_optimization_input.py`, `test_seed_route_domain_*` |
+| `failure_reason` · `event_type` · `issue_code` etc. are **enum/const** — no free-form strings | Phase DTO docs | `test_invalid_event_type_rejected`; replay contract tests |
+| Same seed **deterministic** (+ tie-break) | evolution docs | explicit tests where needed |
+| **Regression fixture** — add at bug recurrence | this manual | `tests/fixtures/asteroid_lab/`; corridor · starvation · replay · coord · UI sync first |
+| **Replay truncation schema** — fixture envelope (`replay_summary` · top-level `truncation_reason`) **≠** runtime persist (frame `metrics` → track `metrics`) | [`asteroid_lab_12_runtime_replay_wiring.md`](../../Algorithm/asteroid_lab_12_runtime_replay_wiring.md) | `test_lab_replay_timeline_payload.py`, `test_timeline_composer.py`; `tests/fixtures/shapez_asteroid/replay*` = **planned** |
+| **Fitness vs commit survivability** — predictive penalties vs observed metrics; observed → solver input **forbidden** | [`asteroid_lab_05_genome_fitness.md`](../../Algorithm/asteroid_lab_05_genome_fitness.md) | `test_fitness_contracts.py` |
 
-표에 있는 **미구현** invariant 테스트는 이후 **구현 PR** 범위다. 본 문서는 요구사항·보호 대상만 고정한다.
+**Unimplemented** invariant tests listed in the table are in scope for a later **implementation PR**. This document only fixes requirements and what must be protected.
 
 ### shapez_solver · Graph
 
-- demand summary · source quantity · target output · materialized nodes · visual labels · operation nodes **구분** ([`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) Solver/Graph).
-- 연산 출력 → 연산 **직접 접합 금지**; 중간 도형 노드 경유.
+- Keep **demand summary · source quantity · target output · materialized nodes · visual labels · operation nodes** distinct ([`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) Solver/Graph).
+- Operation output → operation **direct adjacency forbidden**; route through intermediate shape nodes.
 
 ---
 
 ## Test selection strategy
 
-### 의미 있는 변경 시 최소 셋
+### Minimum set for meaningful changes
 
-(1) happy path (2) 중요한 실패 경로 (3) 불변식 또는 엣지 하나. 같은 계약을 여러 테스트가 중복 증명하지 않게 한다.
+(1) happy path (2) one important failure path (3) one invariant or edge case. Avoid multiple tests proving the same contract.
 
-### 층위 선택
+### Layer choice
 
-- 순수 로직 → **단위**
-- 오케스트레이션 → **서비스/유스케이스**
-- 경계 넘나듦 → **통합**
-- 하위에서 계약을 증명할 수 없을 때만 **E2E**
+- Pure logic → **unit**
+- Orchestration → **service/use case**
+- Cross-boundary → **integration**
+- **E2E** only when lower layers cannot prove the contract
 
-느린 통합이 단위로 같은 불변식을 증명할 수 있으면 통합을 늘리지 않는다.
+Do not add slow integration tests when a unit test can prove the same invariant.
 
-### 회귀·fixture
+### Regression · fixtures
 
-버그 수정마다: **무엇이 잘못됐는지**, **어느 불변식이 깨졌는지**, **어떤 테스트가 재발을 막는지**. 계약 커버가 비어 있던 버그는 **계약 소유자(도메인·직렬화·경계)** 근처에 테스트를 둔다.
+Per bug fix: **what went wrong**, **which invariant broke**, **which test prevents recurrence**. If contract coverage was empty, place the test near the **contract owner** (domain · serialization · boundary).
 
-**Regression fixture**는 재발 순간에 추가한다. 우선순위: narrow corridor, route starvation, replay payload, coordinate boundary, UI replay sync.
+Add **regression fixtures** at recurrence time. Priority: narrow corridor, route starvation, replay payload, coordinate boundary, UI replay sync.
 
-### 기존 테스트 재사용
+### Reuse existing tests
 
-추가 전에 동일 계약을 검증하는 테스트가 있는지 찾는다. 있으면 **확장**, 없을 때만 새 케이스. 구현 디테일에 묶인 이름은 피한다.
+Before adding, search for tests that already verify the same contract. **Extend** if found; add a new case only when none exists. Avoid names tied to implementation details.
 
-### 테스트 이름
+### Test names
 
-**행위·불변식** 기준.
+Name by **behavior · invariant**.
 
-- 좋음: `test_rejects_invalid_payload_without_crashing`, `test_commit_failure_does_not_mutate_confirmed_state`
-- 나쁨: `test_helper_line_42`, `test_new_code_path`
+- Good: `test_rejects_invalid_payload_without_crashing`, `test_commit_failure_does_not_mutate_confirmed_state`
+- Bad: `test_helper_line_42`, `test_new_code_path`
 
 ---
 
 ## Quality gate sequence
 
-### 반복 (로컬 red-green)
+### Iteration (local red-green)
 
-에이전트·구현 중 **기본**. narrow `pytest` **먼저**, green 후 필요 시 좁은 lint.
+**Default** during agent work and implementation. Narrow `pytest` **first**; after green, narrow lint if needed.
 
 ```bash
-python -m pytest <narrow path>   # -q / --quiet / --tb=no 금지
-# green 후
-python -m ruff check <paths>   # 또는 .
-python -m mypy <paths>         # 선택
-python -m black <paths>        # 로컬 포맷 수정 허용
+python -m pytest <narrow path>   # -q / --quiet / --tb=no forbidden
+# after green
+python -m ruff check <paths>   # or .
+python -m mypy <paths>         # optional
+python -m black <paths>        # local format fix allowed
 ```
 
-### PR / 병합 / CI (full gate)
+### PR / merge / CI (full gate)
 
-마감·머지·CI에서는 **전체** 검증. 순서:
+At close, merge, and CI, run **full** verification. Order:
 
 ```bash
 python -m ruff check .
@@ -173,116 +173,116 @@ python -m mypy src
 python -m pytest
 ```
 
-- 로컬에서 포맷을 고칠 때는 `black .` 허용.
-- PR·Caveman **Tests** 절에는 `black --check .` 결과를 기록한다.
-- Phase 2부터: `mypy src` → `mypy django_apps config src`로 확장 (AGENTS.md 단일 변경).
+- Local format fixes: `black .` allowed.
+- Record `black --check .` results in PR and Caveman **Tests**.
+- From Phase 2: extend `mypy src` → `mypy django_apps config src` (single AGENTS.md change).
 
-[`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) · [`protocols/README.md`](../../../protocols/README.md) · 하네스 스킬은 위 **이중 모드**와 동일하게 맞춘다.
+[`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) · [`protocols/README.md`](../../../protocols/README.md) · harness skills align with this **dual-mode** sequence.
 
 ---
 
 ## Agent behavior rules
 
-- 작업 시작 전 변경 범위를 **계약 / 구현 / 리팩터 / 문서 / 회귀**로 분류한다([`AGENTS.md`](../../../AGENTS.md)).
-- **계약 변경** → 테스트·관련 문서 먼저.
-- **회귀 수정** → 재현 테스트 먼저.
-- **구현 변경** → 가장 좁은 단위 테스트부터.
-- **UI 변경** → DOM·serialization·JS behavior 또는 fixture 회귀 먼저.
-- **문서만** → pytest 필수 아님; 문서가 **코드 계약**을 바꾸면 Caveman **Contracts/Tests**에 테스트 계획을 적는다.
-- 마감은 Caveman 6절만([`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc)); **Contracts**에 불변식·테스트 추가/생략 이유, **Tests**에 실행 명령·결과.
-- 동일 seed deterministic 영역은 **tie-break**까지 테스트로 고정한다.
+- Before starting, classify scope as **contract / implementation / refactor / documentation / regression** ([`AGENTS.md`](../../../AGENTS.md)).
+- **Contract change** → tests and related docs first.
+- **Regression fix** → repro test first.
+- **Implementation change** → narrowest unit test first.
+- **UI change** → DOM · serialization · JS behavior or fixture regression first.
+- **Documentation only** → pytest not required; if docs change **code contracts**, note test plan in Caveman **Contracts/Tests**.
+- Close with Caveman 6 sections only ([`shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc)); **Contracts** states invariants and why tests were added/skipped; **Tests** lists commands and results.
+- For same-seed deterministic areas, lock **tie-break** in tests too.
 
 ---
 
 ## Forbidden shortcuts
 
-에이전트·PR에서 **금지**:
+**Forbidden** for agents and PRs:
 
-- 실패를 **테스트 삭제·완화**만으로 green — 삭제/완화 시 이유와 **대체 invariant**를 문서화.
-- replay · artifact · metrics · NDJSON을 **solver / algorithm 입력**으로 읽는 변경.
-- `route_domain`을 여러 곳에서 직접 patch — **`RouteDomainSnapshotBuilder` 단일 소유** 유지.
-- validation 단계에 **repair** (route 생성, placement·topology 수정).
-- candidate enumeration·rim 스캔 순서를 **`Gene.commit_order` / commit 순서**로 사용.
-- candidate phase reachable을 **최종 commit 증명**으로 사용(commit-time re-probe 필수).
-- `OptimizationInput` 이후 알고리즘 계층에서 **raw ↔ server 좌표 재변환**.
-- `failure_reason` · `event_type` · `issue_code` 등 **자유 문자열** 추가 — **enum/const + 테스트** 동시 갱신.
-- Lab replay frame index와 Optimization replay frame index **암묵 동기화**.
-- “큰 테스트 한 방”으로 TDD 시작.
-- pytest에 **출력 억제** (`-q`, `--quiet`, `--tb=no`, `-p no:terminal`) — 실패·traceback 누락.
-- 식별자 **선행 underscore만** 바꾸는 rename (`func`↔`_func`, `name`↔`_name`) — 동작·계약과 무관한 스타일·린트·private/public 정리 목적 금지. 사용자 명시 rename 또는 승인된 계약 변경만 예외.
+- Making green by **deleting or weakening tests only** — if deleted/weakened, document reason and **replacement invariant**.
+- Reading replay · artifact · metrics · NDJSON as **solver / algorithm input**.
+- Patching `route_domain` in multiple places — keep **`RouteDomainSnapshotBuilder` as sole owner**.
+- **Repair** in validation (route creation, placement/topology mutation).
+- Using candidate enumeration · rim scan order as **`Gene.commit_order` / commit order**.
+- Using candidate-phase reachable as **final commit proof** (commit-time re-probe required).
+- **Raw ↔ server coordinate re-conversion** in the algorithm layer after `OptimizationInput`.
+- Adding **free-form strings** for `failure_reason` · `event_type` · `issue_code` — update **enum/const + tests** together.
+- **Implicit sync** between Lab replay frame index and Optimization replay frame index.
+- Starting TDD with “one big test.”
+- **Output suppression** in pytest (`-q`, `--quiet`, `--tb=no`, `-p no:terminal`) — misses failures/tracebacks.
+- Renames that change **only a leading underscore** (`func`↔`_func`, `name`↔`_name`) — forbidden for style · lint · private/public cleanup unrelated to behavior/contracts. Exception: explicit user rename or approved contract change.
 
 ---
 
 ## PR / commit checklist
 
-[`documents/ai/checklist.md`](../checklist.md)와 함께 본다.
+Use together with [`documents/ai/checklist.md`](../checklist.md).
 
-- [ ] 작업 분류(계약·구현·리팩터·문서·회귀)를 Caveman **Summary** 또는 **Contracts**에 명시.
-- [ ] 계약·불변식·회귀 변경 시 테스트 추가·갱신(또는 생략 이유).
-- [ ] Forbidden shortcuts 해당 없음 확인.
-- [ ] 반복: narrow `pytest` green.
-- [ ] PR/병합: [full gate](#pr--병합--ci-full-gate) 또는 생략 이유(**Tests/Risks**).
-- [ ] Asteroid Lab이면 [`asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc) 표 준수.
+- [ ] State work classification (contract · implementation · refactor · documentation · regression) in Caveman **Summary** or **Contracts**.
+- [ ] Add/update tests for contract · invariant · regression changes (or state skip reason).
+- [ ] Confirm no forbidden shortcuts apply.
+- [ ] Iteration: narrow `pytest` green.
+- [ ] PR/merge: [full gate](#pr--merge--ci-full-gate) or skip reason in **Tests/Risks**.
+- [ ] For Asteroid Lab, follow [`asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc) table.
 
-**마감 전 (구현 PR)** — 다음 중 하나라도 해당하면 집중 테스트 확인(예외는 **Tests**에 이유):
+**Before close (implementation PR)** — if any of the following apply, confirm focused tests (state exception reason in **Tests**):
 
-- 공개 행위 · 직렬화 · 분기·게이트 · 외부 경계 · 버그 수정 · 취약 경로.
+- Public behavior · serialization · branches/gates · external boundaries · bug fix · fragile path.
 
 ---
 
-## 구간 실행
+## Scoped execution
 
-| 방식 | 예 |
+| Method | Example |
 |------|-----|
-| 마커 | `-m unit`, `-m integration`, `-m shapez_solver`, `-m shapez_core`, `-m web`, `-m api`, `-m asteroid_lab` |
-| 조합 | `-m "unit and shapez_core"` |
-| 경로 | `python -m pytest tests/unit/shapez_solver/` · `python -m pytest tests/unit/asteroid_lab/` |
-| 단일 파일·이름 필터 | `python -m pytest tests/unit/shapez_solver/test_bar.py` · `python -m pytest -k "substring"` |
-| 병렬 전체 | `python -m pytest -n auto --dist loadscope` |
-| 빠른 unit | `python -m pytest -m "unit and not slow" -n auto --dist loadscope` |
-| slow만 | `python -m pytest -m slow -n auto --dist loadscope` |
+| Marker | `-m unit`, `-m integration`, `-m shapez_solver`, `-m shapez_core`, `-m web`, `-m api`, `-m asteroid_lab` |
+| Combination | `-m "unit and shapez_core"` |
+| Path | `python -m pytest tests/unit/shapez_solver/` · `python -m pytest tests/unit/asteroid_lab/` |
+| Single file · name filter | `python -m pytest tests/unit/shapez_solver/test_bar.py` · `python -m pytest -k "substring"` |
+| Parallel full | `python -m pytest -n auto --dist loadscope` |
+| Fast unit | `python -m pytest -m "unit and not slow" -n auto --dist loadscope` |
+| slow only | `python -m pytest -m slow -n auto --dist loadscope` |
 
-프로덕션 모듈만 수정한 경우에는, 해당 동작을 검증하는 **기존** 테스트 모듈·디렉터리 경로를 인자로 주는 것이 기본이다.
+When only production modules changed, default to passing the **existing** test module or directory path that verifies that behavior.
 
-PR·CI full gate의 `python -m pytest`는 `-n auto --dist loadscope` 병렬을 쓸 수 있다. 로컬 반복은 narrow path 또는 `unit and not slow`를 기본으로 한다.
+PR · CI full gate `python -m pytest` may use `-n auto --dist loadscope` parallelism. Local iteration defaults to narrow path or `unit and not slow`.
 
-마커 정의: `pytest.ini`. 경로 기반 자동 마커: `tests/conftest.py`.
+Marker definitions: `pytest.ini`. Path-based auto-markers: `tests/conftest.py`.
 
-**`slow` 자동 부여:** `imported_game_data_batch`·`exhaustive_genes_*` 등 비용 큰 픽스처를 쓰는 테스트, 또는 `test_macro_recipe_staff_catalog.py` 등 무거운 모듈은 수집 시 `slow`가 붙는다(`tests/conftest.py`). 로컬 반복 기본은 `-m "unit and not slow"` + `-n auto --dist loadscope`.
+**Auto `slow`:** tests using expensive fixtures such as `imported_game_data_batch` · `exhaustive_genes_*`, or heavy modules like `test_macro_recipe_staff_catalog.py`, get `slow` at collection (`tests/conftest.py`). Local iteration default: `-m "unit and not slow"` + `-n auto --dist loadscope`.
 
-### 로컬 스크립트 (권장)
+### Local scripts (recommended)
 
-| 스크립트 | 용도 |
+| Script | Purpose |
 |----------|------|
-| `powershell -File scripts/test_fast.ps1` | **일상 TDD** — `unit and not slow`, 병렬 |
-| `powershell -File scripts/test_slow.ps1` | 느린 계약·import·exhaustive |
-| `powershell -File scripts/test_full.ps1` | PR 직전 — 전체 pytest |
+| `powershell -File scripts/test_fast.ps1` | **Daily TDD** — `unit and not slow`, parallel |
+| `powershell -File scripts/test_slow.ps1` | Slow contracts · import · exhaustive |
+| `powershell -File scripts/test_full.ps1` | Before PR — full pytest |
 
-에이전트 반복 검증 기본: changed narrow path → `test_fast.ps1`. PR/CI: full gate (`test_full.ps1` 또는 AGENTS.md 순서).
+Agent iteration default: changed narrow path → `test_fast.ps1`. PR/CI: full gate (`test_full.ps1` or AGENTS.md order).
 
 ### game_data unit fixture (Tier B)
 
 - Full ORM seed: `game_data_backup/game_data_dump.json` via `loaddata` (`tests/unit/game_data/fixtures.py`).
-- Pinned `ImportBatch.manifest_self_hash` in `tests/unit/game_data/_dump_expectations.py` — dump regen 시 함께 갱신.
+- Pinned `ImportBatch.manifest_self_hash` in `tests/unit/game_data/_dump_expectations.py` — update together when regenerating dump.
 - Missing dump: `pytest.fail` when `CI` or `REQUIRE_GAME_DATA_DUMP=1`; otherwise `pytest.skip`.
 - Tier A (`import_game_data` / `--verify` / dump regen): [game_data_tier_a_release_gate.md](../../../docs/runbooks/game_data_tier_a_release_gate.md) — **not** `test_fast`.
 - Slice importer tests: `tests/fixtures/game_data/*.json` only (not `documents/game_data/`).
 
-CI는 **병렬 job**으로 실행: `test-fast`, `test-integration` (`.github/workflows/ci.yml`). `test-slow`(`scripts/test_slow.ps1`)는 **로컬/PR 직전**만 — CI matrix 제외.
+CI runs as **parallel jobs**: `test-fast`, `test-integration` (`.github/workflows/ci.yml`). `test-slow` (`scripts/test_slow.ps1`) is **local / pre-PR only** — excluded from CI matrix.
 
-## Recipe Graph 에디터 (Vitest)
+## Recipe Graph editor (Vitest)
 
-와이어·입력 arity·carrier 정렬은 Python과 공유 픽스처로 검증한다.
+Wire · input arity · carrier alignment verified against Python via shared fixtures.
 
 ```bash
 npm --prefix frontend/recipe_graph_editor test
 ```
 
-픽스처: `tests/fixtures/recipe_connection_rule_scenarios.json` · Python: `tests/unit/shapez_solver/test_recipe_connection_rule_fixture_alignment.py`
+Fixtures: `tests/fixtures/recipe_connection_rule_scenarios.json` · Python: `tests/unit/shapez_solver/test_recipe_connection_rule_fixture_alignment.py`
 
-## 린트 · 타입 · 포맷
+## Lint · type · format
 
-로컬 수정:
+Local fixes:
 
 ```bash
 ruff check .
@@ -290,23 +290,23 @@ mypy src
 black .
 ```
 
-PR·CI 검증은 [Quality gate sequence](#quality-gate-sequence) PR full gate를 따른다.
+PR · CI verification follows [Quality gate sequence](#quality-gate-sequence) PR full gate.
 
-## 로케일(`ko`)
+## Locale (`ko`)
 
-템플릿·지정 Python 경로의 gettext msgid를 반영하려면 루트에서 `python scripts/build_locale_ko.py`를 실행한다. PR/CI에서는 `python scripts/build_locale_ko.py --strict`로 `django_apps/web/views/public_pages.py`에 등장하는 리터럴 `_("...")`가 `scripts/build_locale_ko.py`의 `KO`에 모두 있는지 검증한다(`tests/unit/test_build_locale_ko_strict.py`).
+To reflect gettext msgids in templates and designated Python paths, run `python scripts/build_locale_ko.py` from repo root. In PR/CI, `python scripts/build_locale_ko.py --strict` verifies every literal `_("...")` in `django_apps/web/views/public_pages.py` exists in `KO` inside `scripts/build_locale_ko.py` (`tests/unit/test_build_locale_ko_strict.py`).
 
-## 완료 보고
+## Completion reporting
 
-에이전트·PR 설명은 [`AGENTS.md`](../../../AGENTS.md) · [`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc) **Caveman 6절만** 쓴다. **6절 없이 완료 보고 금지.**
+Agent and PR descriptions use **Caveman 6 sections only** per [`AGENTS.md`](../../../AGENTS.md) · [`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc). **Do not report completion without all 6 sections.**
 
-| Caveman 절 | 포함할 내용 |
+| Caveman section | Include |
 |------------|-------------|
-| **Summary** | 변경 요약·작업 분류 |
-| **Files** | 변경 파일·이유 |
-| **Contracts** | 계약·불변식; 테스트 추가/생략 이유 |
+| **Summary** | Change summary · work classification |
+| **Files** | Changed files · why |
+| **Contracts** | Contracts · invariants; why tests were added/skipped |
 | **Tests** | narrow/full `pytest` · `ruff` · `mypy` · `black`/`black --check` — pass/fail/skipped |
-| **Risks** | 미실행 명령·남은 위험 |
-| **Next** | 이후 진행; 「완료」는 여기만 |
+| **Risks** | Unrun commands · remaining risk |
+| **Next** | Follow-up; use “complete” only here |
 
-예외: Plan mode 본문 · 사용자 상세 설명 요청 · `documents/` 파일 본문. 상세: [`cursor_usage.md`](cursor_usage.md) §17.
+Exceptions: Plan mode body · user-requested detailed explanation · `documents/` file body. Details: [`cursor_usage.md`](cursor_usage.md) §17.

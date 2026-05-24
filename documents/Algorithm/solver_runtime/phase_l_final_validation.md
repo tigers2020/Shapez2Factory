@@ -11,13 +11,13 @@ related_docs:
   - documents/adr/ADR-003-final-validation-assertion-gate.md
 ---
 
-# Phase L ??Final Validation
+# Phase L ? Final Validation
 
-## ëª©ì 
+## Purpose
 
-ìµœì¢… layout??solver contractë¥?ë§Œì¡±?˜ëŠ”ì§€ **read-only**ë¡?ê²€ì¦í•œ??
+**Read-only** verification that final layout satisfies solver contract.
 
-## ?…ë ¥
+## Input
 
 ```text
 MaterializedLayoutCells
@@ -26,7 +26,7 @@ RouteReservation(s)
 OptimizationInput (final)
 ```
 
-## ?°ì¶œë¬?
+## Output
 
 ```python
 ValidationResult(
@@ -35,9 +35,9 @@ ValidationResult(
 )
 ```
 
-## ?‘ì—…
+## Tasks
 
-ê²€ì¦???ª©:
+Validation scope:
 
 ```text
 all extractor outputs connected
@@ -47,36 +47,36 @@ no invalid overlap
 transport kind consistency
 reserved_cells match path
 confirmed candidate has exactly one confirmed reservation
-capacity violation ?†ìŒ
+no capacity violation
 ```
 
-`ValidationIssueCode` ??**enum**ë§??¬ìš© ???ìœ  ë¬¸ì??ê¸ˆì?.
+`ValidationIssueCode` ? **enum only**; free-form strings forbidden.
 
-## ê¸ˆì?
+## Forbidden
 
-Validation?€ ?¤ìŒ???˜ì? ?ŠëŠ”??
+Validation must not:
 
 ```text
-new route ?ì„±
-placement ?˜ì •
-topology ?˜ì •
+create new route
+modify placement
+modify topology
 ```
 
-## ?„ë£Œ ì¡°ê±´
+## Completion criteria
 
-- [x] `passed=False` ??`issues`??êµ¬ì¡°?”ëœ ì½”ë“œë§?
-- [x] validation??layout/route/topologyë¥?ë³€ê²½í•˜ì§€ ?ŠìŒ
-- [x] confirmed ???¨ì¼ CONFIRMED reservation ?¼ì¹˜
+- [x] `passed=False` ? `issues` has structured codes only
+- [x] validation does not change layout/route/topology
+- [x] each confirmed has exactly one CONFIRMED reservation match
 
-## ?„ìˆ˜ ?ŒìŠ¤??
+## Prerequisite phase
 
-PR7 ??`test_solver_button_pipeline_validation_read_only` ([`implementation_sequence.md`](implementation_sequence.md)).
+PR7 ? `test_solver_button_pipeline_validation_read_only` ([`implementation_sequence.md`](implementation_sequence.md)).
 
-## ê´€??ì½”ë“œÂ·ë¬¸ì„œ
+## Related code?documents
 
 - [`asteroid_lab_08_validation.md`](../asteroid_lab_08_validation.md)
 - ADR-003 (validation gate)
 
-## ?¤ìŒ Phase
+## Next Phase
 
-??[`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md)
+? [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md)

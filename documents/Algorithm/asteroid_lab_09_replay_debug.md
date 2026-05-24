@@ -1,11 +1,11 @@
 # Phase 9 — Replay and Debug Artifact (DEPRECATED)
 
-> **이 문서의 제품 정본은 [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) 로 이전되었다.**  
-> 아래 dual-track·HUD-only optimization replay·별도 optimization controller 정책은 **obsolete**이다. 구현·리뷰·테스트 설계 시 **적용하지 않는다.**
+> **Product canonical for this document has moved to [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md).**  
+> The dual-track, HUD-only optimization replay, and separate optimization controller policies below are **obsolete**. Do **not** apply them in implementation, review, or test design.
 
 ---
 
-## Deprecated policy (요약)
+## Deprecated policy (summary)
 
 ```text
 Deprecated:
@@ -14,66 +14,66 @@ The product replay model is now a single Lab replay timeline.
 Optimization events must be projected into 2D map frames, not displayed as HUD-only metadata.
 ```
 
-| 폐기 문장 | 새 정본 |
+| Deprecated statement | New canonical |
 |-----------|---------|
-| Lab replay authoritative; Optimization metadata only | 하나의 Lab Replay Timeline |
-| Run Solver는 Lab timeline을 바꾸지 않음 | 전 lifecycle이 동일 timeline에 append |
-| Lab frame index ↔ Optimization frame index 연결 금지 | **하나의** global monotonic `frame_index` |
-| 11A/11B optional overlay | 9C–9E 핵심 map projection·렌더 파이프라인 |
+| Lab replay authoritative; Optimization metadata only | One Lab Replay Timeline |
+| Run Solver does not change Lab timeline | Full lifecycle appends to the same timeline |
+| Lab frame index ↔ Optimization frame index linking forbidden | **One** global monotonic `frame_index` |
+| 11A/11B optional overlay | 9C–9E core map projection and render pipeline |
 
-**새 North Star:** [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md)
+**New North Star:** [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md)
 
 ---
 
-## 역사 보관 (dual-track 원문)
+## Historical archive (dual-track original)
 
 <details>
-<summary>Frontend Dual-track Replay Policy (폐기 — 펼치기)</summary>
+<summary>Frontend Dual-track Replay Policy (deprecated — expand)</summary>
 
-프론트엔드에서 **Lab replay**와 **Optimization replay**는 **이중 트랙(dual-track)**으로 취급했다.
+The frontend treated **Lab replay** and **Optimization replay** as **dual-track**.
 
-- Lab: `lab_replay_frames_json` — map 렌더 권위
-- Optimization: metadata only (10E까지); 11B에서 optional overlay
+- Lab: `lab_replay_frames_json` — map render authority
+- Optimization: metadata only (through 10E); optional overlay in 11B
 - `no implicit index sync` between Lab and Optimization frame indices
-- 별도 `optimizationReplayFrameIndex`
+- Separate `optimizationReplayFrameIndex`
 
-**→ 제품 목표 변경으로 전부 폐기.** 상세: unified 정본 문서 「Deprecated」절.
+**→ All deprecated due to product goal change.** Details: unified canonical document 「Deprecated」 section.
 
 </details>
 
 ---
 
-## 역사 보관 (계측·스케일 — 여전히 참고 가능)
+## Historical archive (instrumentation and scale — still referenceable)
 
-Sequence **13A·13B** 계측·HAR·`measure_json_sections`·Lab `full_map` 미캡 갭 등은 **페이로드 연구 근거**로 유효하다. 다만 불변 조건 문구 중 **「dual-track 유지」**는 replay timeline 정본으로 **대체**한다.
+Sequence **13A·13B** instrumentation, HAR, `measure_json_sections`, Lab `full_map` uncapped gap, etc. remain valid as **payload research evidence**. However, invariant wording **「maintain dual-track」** is **replaced** by the replay timeline canonical.
 
-- **13 로드맵 정본:** [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md)
-- **13A·13B 상세 (본 파일 git 역사 또는 archive):** HAR ~22.6MB, `MAX_REPLAY_FRAMES`/`MAX_REPLAY_CELLS_PER_FRAME`, Lab vs optimization attribution
+- **13 roadmap canonical:** [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md)
+- **13A·13B detail (this file's git history or archive):** HAR ~22.6MB, `MAX_REPLAY_FRAMES`/`MAX_REPLAY_CELLS_PER_FRAME`, Lab vs optimization attribution
 
-**13 시리즈에서 갱신할 불변 (2026-05-19):**
+**Invariants to update in the 13 series (2026-05-19):**
 
 ```text
-Replay is output-only.                    # 유지
-One unified product replay timeline.      # dual-track → 대체
-No solver reads replay payload.           # 유지
+Replay is output-only.                    # retained
+One unified product replay timeline.      # replaces dual-track
+No solver reads replay payload.           # retained
 ```
 
 ---
 
-## 마이그레이션 포인터
+## Migration pointers
 
-| 이전 개념 | 새 위치 |
+| Previous concept | New location |
 |-----------|---------|
 | `OptimizationReplayFrame` | `ReplayTimelineFrame` + `ReplayMapView` |
-| `OptimizationReplayEventType` | `ReplayEventType` (value 문자열 호환 가능) |
+| `OptimizationReplayEventType` | `ReplayEventType` (value strings may remain compatible) |
 | Sequence 11A projection | Sequence **9C** |
-| Sequence 11B overlay layer | Sequence **9E** (단일 map, overlay는 `map_view.overlay_cells`) |
-| Phase 9 invariant·테스트 | unified 정본 「Invariants」「Test Plan」 |
+| Sequence 11B overlay layer | Sequence **9E** (single map; overlay via `map_view.overlay_cells`) |
+| Phase 9 invariants and tests | unified canonical 「Invariants」「Test Plan」 |
 
 ---
 
-## 링크
+## Links
 
-- **정본:** [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md)
-- **개발 순서:** [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md)
-- **런타임 배선:** [`asteroid_lab_12_runtime_replay_wiring.md`](asteroid_lab_12_runtime_replay_wiring.md)
+- **Canonical:** [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md)
+- **Development sequence:** [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md)
+- **Runtime wiring:** [`asteroid_lab_12_runtime_replay_wiring.md`](asteroid_lab_12_runtime_replay_wiring.md)

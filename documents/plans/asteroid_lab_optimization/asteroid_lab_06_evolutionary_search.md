@@ -3,15 +3,15 @@
 
 > **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_06_evolutionary_search.md`](../../Algorithm/asteroid_lab_06_evolutionary_search.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
 
-> **v0 pipeline:** GA 미구현 — Algorithm [`asteroid_lab_06_evolutionary_search.md`](../../Algorithm/asteroid_lab_06_evolutionary_search.md) 정본(배너·deterministic distant mutation).
+> **v0 pipeline:** GA not implemented — Algorithm [`asteroid_lab_06_evolutionary_search.md`](../../Algorithm/asteroid_lab_06_evolutionary_search.md) authority (banner·deterministic distant mutation).
 
-## 목적
+## Purpose
 
-Bundle candidate 조합을 evolutionary search로 최적화한다.
+Optimize bundle candidate combinations via evolutionary search.
 
-## v0 전략
+## v0 strategy
 
-초기 버전은 복잡한 crossover보다 mutation + repair + elitism 위주로 간다.
+Initial version favors mutation + repair + elitism over complex crossover.
 
 ```text
 initial population
@@ -23,7 +23,7 @@ initial population
 → repeat
 ```
 
-## 입력
+## Input
 
 ```python
 CandidatePool
@@ -47,26 +47,26 @@ class EvolutionConfig:
     forced_distant_mutation_period: int | None
 ```
 
-`forced_distant_mutation_period`: **pool 내 결정적 인덱스** (`evolution_distant_mutation_slot_index`); unseeded random **금지**. Algorithm 정본 §Deterministic distant mutation 참조.
+`forced_distant_mutation_period`: **deterministic index within pool** (`evolution_distant_mutation_slot_index`); unseeded random **forbidden**. See Algorithm authority §Deterministic distant mutation.
 
-`population_size`·`elite_count`·`tournament_size`는 `population_size > 0`, `0 <= elite_count < population_size` 등 **빌더에서 검증**한다.
+**Builder validates** `population_size`·`elite_count`·`tournament_size` e.g. `population_size > 0`, `0 <= elite_count < population_size`.
 
-`mutation_rate`는 **`0.0 <= mutation_rate <= 1.0`** 을 만족해야 한다.
+`mutation_rate` must satisfy **`0.0 <= mutation_rate <= 1.0`**.
 
-## 탐색 대상 (책임 경계)
+## Search target (responsibility boundary)
 
-Evolutionary Search는 **이미 geometry·1차 probe를 통과한 candidate pool**을 입력으로 받는다.
+Evolutionary Search takes **candidate pool that already passed geometry·first-pass probe**.
 
 ```text
-조합(bundle id 집합) 선택만 담당
-셀 단위 직접 배치 금지
-벨트·파이프 경로 직접 생성 금지
-rim 순회 순서·candidate 생성 순서를 설치 순서로 상속하지 않는다
+Responsible for combination (bundle id set) selection only
+Forbidden: direct cell-level placement
+Forbidden: direct belt·pipe path creation
+Does not inherit rim traversal·candidate generation order as install order
 ```
 
-배치 확정·경로 예약은 Phase 7 Incremental Commit이 `Gene.commit_order` 등 genome 계약에 따라 수행한다.
+Placement confirmation·path reservation performed by Phase 7 Incremental Commit per genome contract such as `Gene.commit_order`.
 
-## 출력
+## Output
 
 ```python
 class EvolutionConvergenceReason(Enum):
@@ -87,9 +87,9 @@ class EvolutionResult:
     convergence_reason: EvolutionConvergenceReason
 ```
 
-`convergence_reason`은 **자유 문자열 금지**. 위 enum만 사용한다.
+`convergence_reason`: **free strings forbidden**. Use enum above only.
 
-## Mutation 종류
+## Mutation types
 
 ```text
 add_candidate
@@ -100,9 +100,9 @@ toggle_candidate
 commit_order_shuffle
 ```
 
-(`Gene`의 `commit_order` 필드와 정렬; 예전 `priority_shuffle` 명칭 폐기.)
+(Align with `Gene` `commit_order` field; deprecated name `priority_shuffle`.)
 
-## Repair 종류
+## Repair types
 
 ```text
 remove_overlap_low_score
@@ -114,15 +114,15 @@ limit_bundle_count
 
 ## Selection
 
-v0 추천:
+v0 recommendation:
 
 ```text
 elitism + tournament selection
 ```
 
-## Population diversity (로그·replay metrics)
+## Population diversity (log·replay metrics)
 
-탐색이 동일 `topology_signature`·비슷한 rim 위치에 수렴하는지 관측하기 위해 **세대 요약**을 남길 수 있다. 알고리즘 입력으로 쓰이지 않는다.
+May leave **generation summaries** to observe convergence to same `topology_signature`·similar rim positions. Not used as algorithm input.
 
 ```python
 @dataclass(frozen=True)
@@ -132,11 +132,11 @@ class GenomeDiversityMetrics:
     transport_kind_mix_score: float
 ```
 
-`EvolutionResult`에 필수 필드로 둘지, replay `metrics`에만 넣을지는 구현 선택이다. v0는 **계산 생략·0 채움**을 허용하되, **DTO 자리**는 문서에 고정한다.
+Whether required field on `EvolutionResult` or only in replay `metrics` is implementation choice. v0 may **omit computation·fill 0**, but **DTO slot fixed** in docs.
 
-## 종료 조건
+## Termination conditions
 
-종료 조건은 **`EvolutionConvergenceReason`** 과 1:1로 매핑한다.
+Map termination to **`EvolutionConvergenceReason`** 1:1.
 
 ```text
 max_generation -> MAX_GENERATION
@@ -146,32 +146,32 @@ no_improvement -> NO_IMPROVEMENT
 candidate_pool_exhausted -> CANDIDATE_POOL_EXHAUSTED
 ```
 
-## 동점·결정성 (필수)
+## Tie-break·determinism (required)
 
-`same seed produces same result` 외에, **동일 fitness**에서의 순위를 고정한다.
+Beyond `same seed produces same result`, fix ranking at **equal fitness**.
 
 ```text
-fitness tie-break (우선순위, 동일 total일 때):
-1) FitnessBreakdown.total 내림차순 (높을수록 우선)
-2) FitnessMetrics.selected_candidate_count 내림차순 (높을수록 우선; throughput 기회 보존)
-3) genome_id 문자열 오름차순
+fitness tie-break (priority when same total):
+1) FitnessBreakdown.total descending (higher preferred)
+2) FitnessMetrics.selected_candidate_count descending (higher preferred; preserve throughput opportunity)
+3) genome_id string ascending
 ```
 
-구현은 위 키를 **단일 `sort_key` 튜플**로 고정해 `sorted(...)` / `heapq`에 사용한다.
+Implementation fixes above as **single `sort_key` tuple** for `sorted(...)` / `heapq`.
 
 ## Invariant
 
 ```text
-[ ] same seed produces same result (population 초기화·mutation·tie-break 포함)
-[ ] best fitness is non-decreasing under elitism (total 기준)
+[ ] same seed produces same result (population init·mutation·tie-break included)
+[ ] best fitness is non-decreasing under elitism (by total)
 [ ] repair never creates unknown candidate id
 [ ] mutation never generates cell-level genes
 [ ] result includes convergence_reason (EvolutionConvergenceReason enum)
-[ ] fitness 동점 시 tie-break 키가 문서와 구현에서 동일하다
-[ ] commit_order는 genome 필드로 유지되며 rim·candidate 풀 enumeration 순을 그대로 commit 정본으로 쓰지 않는다 (Phase 7)
+[ ] fitness tie-break key same in docs and implementation
+[ ] commit_order kept as genome field; does not use rim·candidate pool enumeration order as commit authority (Phase 7)
 ```
 
-## 테스트
+## Tests
 
 ```text
 test_evolution_same_seed_deterministic
@@ -182,14 +182,14 @@ test_evolution_result_has_convergence_reason_enum
 test_evolution_fitness_tie_break_deterministic
 ```
 
-## 완료 조건
+## Completion criteria
 
 ```text
-[ ] EvolutionConfig DTO 구현
-[ ] random initial population 구현
-[ ] mutation-only search 구현
-[ ] repair 구현
-[ ] EvolutionConvergenceReason enum + EvolutionResult 반영
-[ ] deterministic seed·tie-break 테스트 통과
-[ ] best genome 반환
+[ ] EvolutionConfig DTO implemented
+[ ] random initial population implemented
+[ ] mutation-only search implemented
+[ ] repair implemented
+[ ] EvolutionConvergenceReason enum + EvolutionResult reflected
+[ ] deterministic seed·tie-break tests pass
+[ ] best genome returned
 ```

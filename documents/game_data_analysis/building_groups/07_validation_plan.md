@@ -1,6 +1,6 @@
 ﻿# Validation Plan — `building_groups.json`
 
-> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden**.
 
 Suggested path: `tests/unit/game_data/test_building_group_import.py`
 

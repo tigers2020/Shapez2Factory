@@ -127,7 +127,7 @@ related_docs:
 
 # Asteroid Lab — Source of Truth (miner / extension / installation)
 
-이 폴더는 **채굴기·확장기·설치 흐름**에 대한 정본 재정렬 프로그램의 감사(audit) 산출물이다. PR-0는 모순 표와 drift matrix만 제공한다. narrative 가이드는 `04_installation_guide.md` (PR-2)에서 작성한다.
+This folder holds audit outputs from the canonical realignment program for **miner · extension · installation flow**. PR-0 provides only the contradiction table and drift matrix. The narrative guide is written in `04_installation_guide.md` (PR-2).
 
 ## Priority stack
 
@@ -155,8 +155,8 @@ Evidence is distributed across building geometry tables, toolbar placement recor
 ```
 
 ```text
-현재 game_data dump는 miner/extension/throughput을 단일 전용 정규화 테이블로 제공하지 않는다.
-증거는 building geometry, toolbar placement, simulation/reflection row, Lab code invariant에 분산되어 있다.
+Current game_data dump does not provide miner/extension/throughput in a single dedicated normalized table.
+Evidence is scattered across building geometry, toolbar placement, simulation/reflection rows, and Lab code invariants.
 ```
 
 ## Evidence layers (A–E)
@@ -169,7 +169,7 @@ Evidence is distributed across building geometry tables, toolbar placement recor
 | D | `test_evidence` | pytest paths, `ReplayEventType` wire values | high for behavior lock |
 | E | `manual_gameplay_evidence` | player-facing rules when A–D insufficient | low — explicit only |
 
-**Throughput:** Dedicated rate table absence is **not** a verdict. Route through B + C + [`shapez2_asteroid_space_transport_throughput.md`](../../game_rules/shapez2_asteroid_space_transport_throughput.md) + D. Never close a row with “DB에 없음 → BLOCKED”.
+**Throughput:** Dedicated rate table absence is **not** a verdict. Route through B + C + [`shapez2_asteroid_space_transport_throughput.md`](../../game_rules/shapez2_asteroid_space_transport_throughput.md) + D. Never close a row with "not in DB → BLOCKED".
 
 ## Naming guard
 
@@ -270,18 +270,18 @@ related_docs:
 ## PR-0 closure checklist
 
 - [ ] All `needs-review` rows list owner + evidence gap + next PR
-- [ ] No row uses “DB에 없음” as final `verdict`
+- [ ] No row uses "not in DB" as final `verdict`
 - [ ] `03_db_cross_reference.md` not created in PR-0 (reserved PR-1)
 ```
 
 - [ ] **Step 2: Verify row count and forbidden verdict language**
 
 ```powershell
-rg "DB에 없음|BLOCKED" documents/Algorithm/asteroid_lab_mining_installation/01_rule_reconciliation.md
+rg "not in DB|BLOCKED" documents/Algorithm/asteroid_lab_mining_installation/01_rule_reconciliation.md
 rg "needs-review" documents/Algorithm/asteroid_lab_mining_installation/01_rule_reconciliation.md
 ```
 
-Expected: no `DB에 없음` / `BLOCKED` as verdict; at least 2 `needs-review` rows with owner in `action` column
+Expected: no `not in DB` / `BLOCKED` as verdict; at least 2 `needs-review` rows with owner in `action` column
 
 - [ ] **Step 3: Commit**
 
@@ -365,17 +365,17 @@ git commit -m "docs(asteroid-lab): add miner/extension doc drift matrix (PR-0)"
 ### Task 4: Index — `documents/Algorithm/README.md`
 
 **Files:**
-- Modify: `documents/Algorithm/README.md` (after line 27 in “읽기 순서”, and file list table)
+- Modify: `documents/Algorithm/README.md` (after line 27 in "read order", and file list table)
 
-- [ ] **Step 1: Add read-order bullet after item 5 (Solver 버튼)**
+- [ ] **Step 1: Add read-order bullet after item 5 (Solver button)**
 
-Insert after line containing `5. **Solver 버튼:**`:
+Insert after line containing `5. **Solver button:**`:
 
 ```markdown
 6. **Miner / extension (reconcile):** [`asteroid_lab_mining_installation/00_source_of_truth.md`](asteroid_lab_mining_installation/00_source_of_truth.md) → `01` → `02` (PR-0 audit); `03`–`04` follow PR-1/PR-2
 ```
 
-- [ ] **Step 2: Add file-list table row before `## 초안`**
+- [ ] **Step 2: Add file-list table row before `## Draft`**
 
 ```markdown
 | [`asteroid_lab_mining_installation/`](asteroid_lab_mining_installation/) | `AUDIT` | Miner/extension SoT, reconciliation, drift (D2 program) |

@@ -7,18 +7,18 @@ Role: Principal Solver System Architect
 
 ---
 
-# 목적
+# Purpose
 
-현재까지 완료된:
+Completed so far:
 
 ```text
 Sequence 1A–11B
 12C–12E
 ```
 
-이후의 개발 우선순위·범위·금지사항·검증 조건을 정본 수준으로 고정한다.
+This document fixes subsequent development priorities, scope, prohibitions, and verification criteria at canonical level.
 
-본 문서는:
+This document is a follow-up plan to extend the following in a long-term maintainable form:
 
 ```text
 Optimization replay
@@ -28,13 +28,11 @@ UI replay
 Regression stability
 ```
 
-를 장기적으로 유지 가능한 형태로 확장하기 위한 후속 계획이다.
-
 ---
 
-# 현재 상태 요약
+# Current State Summary
 
-현재 구현 상태:
+Current implementation status:
 
 ```text
 [x] DTO / topology / route domain
@@ -51,7 +49,7 @@ Regression stability
 [x] POST optimization replay persist
 ```
 
-남은 핵심 리스크:
+Remaining key risks:
 
 ```text
 - narrow corridor starvation
@@ -64,7 +62,7 @@ Regression stability
 
 ---
 
-# 핵심 원칙 (계속 유지)
+# Core Principles (maintained)
 
 ## 1. Replay is output only
 
@@ -83,7 +81,7 @@ Lab replay
 Optimization replay
 ```
 
-명시적 정책 없이:
+Without explicit policy, the following are prohibited:
 
 ```text
 - frame index coupling
@@ -91,13 +89,11 @@ Optimization replay
 - timeline ownership merge
 ```
 
-금지.
-
 ---
 
 ## 3. Placement never bypasses feasibility
 
-계속 유지:
+Continue to maintain:
 
 ```text
 candidate generation
@@ -109,43 +105,41 @@ immediate route feasibility
 
 ## 4. Commit-time probe is authoritative
 
-candidate 단계 reachable은:
+Candidate-stage reachable is:
 
 ```text
-commit success guarantee 아님
+not a commit success guarantee
 ```
 
-항상:
+Always:
 
 ```text
-latest route_domain snapshot
+re-probe against latest route_domain snapshot
 ```
-
-기준 재-probe.
 
 ---
 
-# 다음 우선순위
+# Next Priorities
 
 # Priority 1 — Sequence 10 Completion
 
-**상태 정리 (2026-05-21, 실제 트리 기준 재정렬):** [`asteroid_lab_10_development_sequence.md`](../../Algorithm/asteroid_lab_10_development_sequence.md) §10B — **계약·관측 목표만 문서화, 구현·fixture 미착수**. 아래 경로는 **설계·계획용**이며 현재 저장소에 없을 수 있다: `tests/fixtures/shapez_asteroid/`, `tests/unit/shapez_asteroid/`. **실제 v0 검증**은 `tests/unit/asteroid_lab/`. **10B narrow corridor / survivability 회귀 팩·JSON 골든·replay_long 봉투**는 후속. **Lab unified replay** truncation 짝은 런타임 **프레임 `metrics` → 트랙 `metrics`**; fixture 봉투 최상위 `truncation_reason`은 **골든 전용**. “Sequence 10 전부 완료”로 읽지 말 것.
+**Status update (2026-05-21, realigned to actual tree):** [`asteroid_lab_10_development_sequence.md`](../../Algorithm/asteroid_lab_10_development_sequence.md) §10B — **contract and observability goals documented only; implementation and fixtures not started**. Paths below are **design/planning only** and may not exist in the current repository: `tests/fixtures/shapez_asteroid/`, `tests/unit/shapez_asteroid/`. **Actual v0 verification** is in `tests/unit/asteroid_lab/`. **10B narrow corridor / survivability regression pack, JSON golden, replay_long envelope** are follow-up work. **Lab unified replay** truncation pairing is runtime **frame `metrics` → track `metrics`**; fixture envelope top-level `truncation_reason` is **golden-only**. Do not read this as "Sequence 10 fully complete".
 
-## 목표
+## Goal
+
+Establish a regression validation foundation for:
 
 ```text
 corridor / congestion / route fragility
 ```
 
-회귀 검증 기반 확보.
-
 ---
 
 # Sequence 10A — Narrow Corridor Fixture
 
-## 목적
+## Purpose
 
-좁은 corridor 환경에서:
+In narrow corridor environments, make the following reproducible:
 
 ```text
 - trunk sharing
@@ -154,11 +148,9 @@ corridor / congestion / route fragility
 - route starvation
 ```
 
-을 재현 가능하게 만든다.
-
 ---
 
-## Fixture 요구사항
+## Fixture Requirements
 
 ```text
 single narrow corridor
@@ -170,18 +162,18 @@ protected corridor overlap risk
 
 ---
 
-## 포함해야 하는 상황
+## Situations to Include
 
-### 상황 1
+### Situation 1
 
 ```text
 candidate probe reachable
-→ commit 단계 unreachable
+→ commit stage unreachable
 ```
 
 ---
 
-### 상황 2
+### Situation 2
 
 ```text
 high throughput candidate
@@ -190,7 +182,7 @@ blocks future expansion
 
 ---
 
-### 상황 3
+### Situation 3
 
 ```text
 shared corridor pressure
@@ -199,7 +191,7 @@ causes rollback
 
 ---
 
-### 상황 4
+### Situation 4
 
 ```text
 shape belt corridor
@@ -208,7 +200,7 @@ fluid pipe conflict
 
 ---
 
-## 테스트
+## Tests
 
 ```text
 test_narrow_corridor_probe_vs_commit_regression
@@ -220,7 +212,7 @@ test_transport_kind_corridor_conflict_regression
 
 ---
 
-## 완료 조건
+## Completion Criteria
 
 ```text
 [ ] deterministic optimization result
@@ -240,22 +232,22 @@ test_transport_kind_corridor_conflict_regression
 JSON fixture pack (shapez_asteroid/replay/, replay_long/): [ ] planned; fixture envelope ≠ runtime persist
 ```
 
-> **구현 교차 참조 (2026-05-21):** `CommitSurvivabilityMetrics`·`PenaltyMode`·`COMMIT_SURVIVABILITY_SUMMARY`는 **문서 계약만** 존재. Python DTO·골든·`summarize_incremental_commit`는 미착수. **Predictive** penalties는 Phase 5; **observed** survivability는 replay·post-commit 전용(솔버/GA 입력 금지).
+> **Implementation cross-reference (2026-05-21):** `CommitSurvivabilityMetrics`, `PenaltyMode`, and `COMMIT_SURVIVABILITY_SUMMARY` exist as **documentation contracts only**. Python DTO, golden, and `summarize_incremental_commit` are not started. **Predictive** penalties are Phase 5; **observed** survivability is replay and post-commit only (solver/GA input forbidden).
 
-## 목적
+## Purpose
 
-fitness의:
+Verify that fitness:
 
 ```text
 route_fragility_penalty
 shared_corridor_pressure_penalty
 ```
 
-가 실제 commit survivability와 연결되는지 검증.
+connect to actual commit survivability.
 
 ---
 
-## 작업
+## Work
 
 ```text
 [ ] reservation accumulation fixture
@@ -265,11 +257,11 @@ shared_corridor_pressure_penalty
 
 ---
 
-## 완료 조건
+## Completion Criteria
 
 ```text
-[ ] fragility penalty 없는 경우 regression 재현 가능
-[ ] penalty 적용 시 regression 감소 확인
+[ ] regression reproducible without fragility penalty
+[ ] confirm regression reduction when penalty applied
 ```
 
 ---
@@ -278,26 +270,26 @@ shared_corridor_pressure_penalty
 
 # Sequence 11C — Explicit Replay Sync Policy
 
-## 상태
+## Status
 
 ```text
 optional
 not default
 ```
 
-현재 기본 정책:
+Current default policy:
 
 ```text
 no implicit sync
 ```
 
-유지.
+maintained.
 
 ---
 
-## 이 시퀀스를 시작하는 조건
+## Conditions to Start This Sequence
 
-다음 UX 요구가 실제로 필요할 때만:
+Only when the following UX requirements are actually needed:
 
 ```text
 - coupled playback
@@ -308,9 +300,9 @@ no implicit sync
 
 ---
 
-## 금지
+## Prohibited
 
-다음은 절대 자동 연결 금지:
+The following must never be auto-connected:
 
 ```text
 same frame number
@@ -320,17 +312,17 @@ same playback speed
 
 ---
 
-## 허용 방식
+## Allowed Approach
 
-반드시:
+Must provide:
 
 ```text
 explicit sync mode
 ```
 
-를 사용자 toggle로 둔다.
+as a user toggle.
 
-예:
+Example:
 
 ```text
 [ ] Sync optimization timeline with lab replay
@@ -338,37 +330,37 @@ explicit sync mode
 
 ---
 
-## 요구 사항
+## Requirements
 
 ### Sync ownership
 
-동기화 상태에서도:
+Even in synchronized state:
 
 ```text
 Lab replay owns map rendering
 Optimization replay owns optimization metadata
 ```
 
-유지.
+maintained.
 
 ---
 
-### One-way sync 우선
+### One-way sync first
 
-v0 권장:
+v0 recommendation:
 
 ```text
 optimization frame
 → optional lab replay jump
 ```
 
-단방향.
+one-way.
 
-역방향 autoplay coupling 금지.
+Reverse-direction autoplay coupling prohibited.
 
 ---
 
-## 테스트
+## Tests
 
 ```text
 test_explicit_sync_mode_disabled_by_default
@@ -378,7 +370,7 @@ test_explicit_sync_mode_preserves_overlay_ownership
 
 ---
 
-## 완료 조건
+## Completion Criteria
 
 ```text
 [ ] sync mode optional
@@ -390,27 +382,25 @@ test_explicit_sync_mode_preserves_overlay_ownership
 
 # Priority 3 — Overlay Lifecycle Stability
 
-주의:
+Note:
 
 ```text
-현재 정본 시퀀스에는 없음
+not in current canonical sequence
 ```
 
-필요 시:
+If needed, extend as:
 
 ```text
 11D
 ```
 
-로 확장.
-
 ---
 
 # Proposed Sequence 11D — Overlay Lifecycle Stability
 
-## 목적
+## Purpose
 
-overlay replay가:
+Ensure overlay replay remains stable under:
 
 ```text
 large replay
@@ -419,11 +409,9 @@ zoom/pan
 DOM rebuild
 ```
 
-상황에서 안정적으로 유지되게 한다.
-
 ---
 
-## 작업
+## Work
 
 ```text
 [ ] projection cache
@@ -435,7 +423,7 @@ DOM rebuild
 
 ---
 
-## 핵심 invariant
+## Core Invariant
 
 ```text
 Overlay never owns viewport transform.
@@ -449,7 +437,7 @@ Lab stage only
 
 ---
 
-## 테스트
+## Tests
 
 ```text
 test_overlay_projection_cache_deterministic
@@ -460,12 +448,12 @@ test_overlay_partial_repaint
 
 ---
 
-## 완료 조건
+## Completion Criteria
 
 ```text
 [ ] overlay redraw deterministic
-[ ] rapid scrub race 없음
-[ ] zoom drift 없음
+[ ] no rapid scrub race
+[ ] no zoom drift
 [ ] replay_truncated visible
 ```
 
@@ -473,33 +461,29 @@ test_overlay_partial_repaint
 
 # Priority 4 — Evolution Search v1
 
-현재는:
+Currently centered on:
 
 ```text
 mutation-only + repair
 ```
 
-중심.
-
-다음 단계는:
+Next step is:
 
 ```text
 diversity stabilization
 ```
 
-이다.
-
 ---
 
 # Sequence 12A — Diversity Stabilization
 
-## 목적
+## Purpose
 
-국소 최적 붕괴 방지.
+Prevent local optimum collapse.
 
 ---
 
-## 작업
+## Work
 
 ```text
 [ ] topology diversity metrics
@@ -510,7 +494,7 @@ diversity stabilization
 
 ---
 
-## 테스트
+## Tests
 
 ```text
 test_population_diversity_survives_long_run
@@ -519,10 +503,10 @@ test_forced_distant_mutation_breaks_local_optimum
 
 ---
 
-## 완료 조건
+## Completion Criteria
 
 ```text
-[ ] repeated same-topology collapse 감소
+[ ] reduced repeated same-topology collapse
 [ ] deterministic under same seed
 ```
 
@@ -530,15 +514,15 @@ test_forced_distant_mutation_breaks_local_optimum
 
 # Sequence 12B — Commit Survivability Fitness
 
-**타임라인:** **v0.1 (선행)** — Phase 5 `PenaltyMode.CONSERVATIVE` + predictive penalties (candidate domain). **v1+ (본 절)** — post-commit survivability estimation (observed metrics는 solver 입력 금지).
+**Timeline:** **v0.1 (prerequisite)** — Phase 5 `PenaltyMode.CONSERVATIVE` + predictive penalties (candidate domain). **v1+ (this section)** — post-commit survivability estimation (observed metrics forbidden as solver input).
 
-## 목적
+## Purpose
 
-fitness **predictive** 추정과 실제 commit 성공률의 정렬(전역 commit 예측기 아님).
+Align fitness **predictive** estimation with actual commit success rate (not a global commit predictor).
 
 ---
 
-## 작업
+## Work
 
 ```text
 [ ] v0.1: conservative fragility/corridor penalties in FitnessBreakdown (Phase 5)
@@ -549,43 +533,39 @@ fitness **predictive** 추정과 실제 commit 성공률의 정렬(전역 commit
 
 ---
 
-## 완료 조건
+## Completion Criteria
 
 ```text
-[ ] reachable-but-uncommittable candidate 감소
+[ ] reduced reachable-but-uncommittable candidates
 ```
 
 ---
 
 # Priority 5 — Replay Scalability
 
-현재:
+Currently assumes:
 
 ```text
 full snapshot replay
 ```
 
-전제.
-
-활성 셀 증가 시:
+As active cells grow, need to address:
 
 ```text
 memory / payload / DOM pressure
 ```
 
-대응 필요.
-
 ---
 
 # Sequence 13A — Replay Compression Research
 
-## 목적
+## Purpose
 
-large replay artifact 대응.
+Handle large replay artifacts.
 
 ---
 
-## 작업
+## Work
 
 ```text
 [ ] delta frame prototype
@@ -596,11 +576,11 @@ large replay artifact 대응.
 
 ---
 
-## 중요
+## Important
 
-v0 replay contract 깨지면 안 된다.
+Must not break v0 replay contract.
 
-즉:
+That is:
 
 ```text
 serialization optimization
@@ -610,7 +590,7 @@ semantic replay mutation
 
 ---
 
-## 테스트
+## Tests
 
 ```text
 test_compressed_replay_equivalent_to_full_snapshot
@@ -619,40 +599,40 @@ test_replay_deterministic_after_compression
 
 ---
 
-## 완료 조건
+## Completion Criteria
 
 ```text
-[ ] replay semantic equivalence 유지
-[ ] payload 감소 확인
+[ ] replay semantic equivalence maintained
+[ ] confirm payload reduction
 ```
 
 ---
 
 # Sequence 13B — Lab replay payload attribution (reduction design only)
 
-**범위:** ``measure_json_sections`` Lab 전용 확장, POST 회귀에서 중복·상위 프레임 메타 키 존재, ``asteroid_lab_09_replay_debug.md`` 「Sequence 13B」·본 절 동기화. **페이로드 축소 구현은 13C.**
+**Scope:** Lab-only extension of ``measure_json_sections``, duplicate and top-level frame meta key presence in POST regression, sync with ``asteroid_lab_09_replay_debug.md`` "Sequence 13B" and this section. **Payload reduction implementation is 13C.**
 
-## 완료 조건
+## Completion Criteria
 
 ```text
-[x] Lab replay 기여도·중복 프로파일을 테스트 헬퍼로 측정 가능
-[x] optimization ``MAX_REPLAY_*`` vs Lab 미캡 경계 문서화
-[x] 13C 옵션 순위·시맨틱 리스크·동등성 테스트 설계 초안
+[x] Lab replay contribution and duplicate profile measurable via test helper
+[x] optimization ``MAX_REPLAY_*`` vs Lab uncapped boundary documented
+[x] 13C option ranking, semantic risk, and equivalence test design draft
 ```
 
 ---
 
 # Sequence 13C — Lab replay payload reduction (implementation TBD)
 
-13B 설계·계측 승인 후: delta·intern·엔드포인트 분리·HTTP 압축 등 **별도 구현 PR**. 본 문서는 13C 착수 시 ``asteroid_lab_09`` 「13C」절과 실행 순서를 갱신한다.
+After 13B design and measurement approval: delta, intern, endpoint separation, HTTP compression, etc. in a **separate implementation PR**. When 13C starts, this document and ``asteroid_lab_09`` "13C" section will update execution order.
 
 ---
 
 # Priority 6 — Full Repository Quality Gates
 
-**2026-05-17 로컬 확인:** `python -m ruff check .` · `python -m black --check .` · `python -m mypy .` · `python -m pytest` 전부 green (792 tests, 코드 변경 없음). CI·타 환경에서의 재현은 별도 관측.
+**2026-05-17 local verification:** `python -m ruff check .` · `python -m black --check .` · `python -m mypy .` · `python -m pytest` all green (792 tests, no code changes). Reproduction in CI and other environments is separate observation.
 
-과거 메모(병합 전 known debt로 남기던 항목):
+Past memo (items left as known debt before merge):
 
 ```text
 ruff
@@ -664,53 +644,51 @@ black --check
 
 # Sequence 14A — Repository Gate Cleanup
 
-## 작업
+## Work
 
 ```text
-[x] 전 저장소 `ruff check .` 실행·green (2026-05-17 로컬)
-[x] 전 저장소 `black --check .` 실행·green (동일)
-[x] 전 저장소 `mypy .` 실행·green (동일)
-[x] 전 저장소 `pytest` 실행·green (792 passed, 동일; 코드 변경 없음)
+[x] full-repository `ruff check .` run and green (2026-05-17 local)
+[x] full-repository `black --check .` run and green (same)
+[x] full-repository `mypy .` run and green (same)
+[x] full-repository `pytest` run and green (792 passed, same; no code changes)
 ```
 
-> 본 스윕에서는 위 게이트가 이미 green이라 **추가 기계적 수정 PR 본문은 없음**. 향후 드리프트 시 E501·스텁·포맷 이슈를 다시 이 표로 추적한다.
+> In this sweep the above gates were already green, so **no additional mechanical fix PR body**. Track E501, stub, and format issues in this table again on future drift.
 
 ---
 
-## 금지
+## Prohibited
 
-optimization architecture 변경 금지.
+No optimization architecture changes.
 
-이 시퀀스는:
+This sequence is:
 
 ```text
 repository hygiene only
 ```
 
-이다.
-
 ---
 
-## 완료 조건
+## Completion Criteria
 
 ```text
-[x] ruff check . green (2026-05-17 로컬)
-[x] black --check . green (2026-05-17 로컬)
-[x] mypy . green (2026-05-17 로컬)
-[x] pytest full suite green (792 passed, 동일 날짜 로컬)
+[x] ruff check . green (2026-05-17 local)
+[x] black --check . green (2026-05-17 local)
+[x] mypy . green (2026-05-17 local)
+[x] pytest full suite green (792 passed, same date local)
 ```
 
 ---
 
-# 장기 계획 (v2+)
+# Long-Term Plan (v2+)
 
-다음은 v0/v1 이후.
+The following is after v0/v1.
 
 ---
 
 # Sequence 20+ — Advanced Optimization
 
-## 후보
+## Candidates
 
 ```text
 CP-SAT hybrid refinement
@@ -722,9 +700,9 @@ advanced reroute planner
 
 ---
 
-## 금지
+## Prohibited
 
-다음은 여전히 금지:
+The following remain prohibited:
 
 ```text
 cell-level GA
@@ -734,7 +712,7 @@ implicit replay coupling
 
 ---
 
-# 최종 우선순위 요약
+# Final Priority Summary
 
 ## Immediate
 
@@ -759,13 +737,13 @@ implicit replay coupling
 ```text
 5. Sequence 12A diversity stabilization
 6. Sequence 12B commit survivability fitness
-7. Sequence 13A replay scalability — 연구/계측 단계(13A): ``tests/support/measure_json_sections.py``,
-   통합 테스트 ``test_post_projects_json_size_attribution_and_optimization_replay_hard_caps``,
-   근거·갭·후보 전략은 ``asteroid_lab_09_replay_debug.md`` 「Sequence 13A」 참고.
-   (즉시 delta 구현·DTO 의미 변경은 범위 밖)
-8. Sequence 13B Lab replay payload attribution — 13A 계측 확장(Lab 중복·상위 프레임·``lab_total_bytes``),
-   동일 통합 테스트에서 13B 키 회귀, 설계·13C 로드맵은 ``asteroid_lab_09_replay_debug.md`` 「Sequence 13B」.
-   (POST 페이로드 실제 축소는 13C)
+7. Sequence 13A replay scalability — research/measurement phase (13A): ``tests/support/measure_json_sections.py``,
+   integration test ``test_post_projects_json_size_attribution_and_optimization_replay_hard_caps``,
+   rationale, gaps, and candidate strategies in ``asteroid_lab_09_replay_debug.md`` "Sequence 13A".
+   (immediate delta implementation and DTO semantic changes are out of scope)
+8. Sequence 13B Lab replay payload attribution — 13A measurement extension (Lab duplicates, top-level frame, ``lab_total_bytes``),
+   13B key regression in same integration test, design and 13C roadmap in ``asteroid_lab_09_replay_debug.md`` "Sequence 13B".
+   (actual POST payload reduction is 13C)
 ```
 
 ---
@@ -778,9 +756,9 @@ implicit replay coupling
 
 ---
 
-# 최종 결론
+# Final Conclusion
 
-현재 가장 중요한 건:
+The most important thing now is to make the situation where:
 
 ```text
 route feasibility
@@ -788,9 +766,9 @@ route feasibility
 commit survivability
 ```
 
-상황을 regression fixture 수준에서 안정적으로 재현·검증 가능하게 만드는 것이다.
+reproducible and verifiable at regression fixture level.
 
-따라서 다음 실질 우선순위는:
+Therefore the next practical priority is:
 
 ```text
 narrow corridor
@@ -798,15 +776,12 @@ shared corridor pressure
 reservation accumulation
 ```
 
-fixture 기반 regression 강화다.
+fixture-based regression strengthening.
 
-그 이후에만:
+Only after that is it safe to proceed to:
 
 ```text
 explicit replay sync
 advanced overlay lifecycle
 replay scaling
 ```
-
-으로 가는 것이 안전하다.
-

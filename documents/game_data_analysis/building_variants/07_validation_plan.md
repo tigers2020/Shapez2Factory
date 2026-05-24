@@ -1,6 +1,6 @@
 ﻿# Validation Plan — `building_variants.json`
 
-> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden**.
 
 Path: `tests/unit/game_data/test_building_variant_import.py`
 

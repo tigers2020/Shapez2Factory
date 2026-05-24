@@ -10,13 +10,13 @@ related_docs:
   - documents/Algorithm/solver_runtime/open_decisions.md
 ---
 
-# Phase K ??Route Network Materialization
+# Phase K ? Route Network Materialization
 
-## ëª©ì 
+## Purpose
 
-?•ì •??route reservationsë¥??¤ì œ belt/pipe sprite/layout êµ¬ì¡°ë¡?ë³€?˜í•œ?? **merger/splitter ë³€?˜ì? ë³??¨ê³„?ì„œë§?* ?˜í–‰?œë‹¤.
+Convert confirmed route reservations to actual belt/pipe sprite/layout structure. **merger/splitter conversion happens only in this stage.**
 
-## ?…ë ¥
+## Input
 
 ```text
 confirmed placements
@@ -26,40 +26,40 @@ transport kind
 flow direction observations
 ```
 
-## ?°ì¶œë¬?
+## Output
 
 ```text
 MaterializedLayoutCells
 ```
 
-## ?‘ì—…
+## Tasks
 
-### ë³€??ê·œì¹™
+### Conversion rules
 
 ```text
-single path ??straight / turn
-multiple incoming same kind ??merger / yMerger / triple merger
-multiple outgoing same kind ??splitter / ySplitter / triple splitter
-vertical / lift variants ??later
+single path ? straight / turn
+multiple incoming same kind ? merger / yMerger / triple merger
+multiple outgoing same kind ? splitter / ySplitter / triple splitter
+vertical / lift variants ? later
 ```
 
-### OD-1 ê¶Œì¥
+### OD-1 recommendation
 
-materialization ??reservation path **?ì—** `fixed_output_transport` ?€??prepend ([`open_decisions.md`](open_decisions.md)).
+Prepend `fixed_output_transport` cell **before** reservation path during materialization ([`open_decisions.md`](open_decisions.md)).
 
-## ê¸ˆì?
+## Forbidden
 
-- candidate placement ì¤?merger/splitter ë³€??
-- void ? ì„¤ì¹?transport ([Â§0.2](00_core_principles.md))
-- shape belt / fluid pipe ?™ì¼ ?€ ê³µìœ 
+- candidate placement stage merger/splitter conversion
+- Pre-install transport in void ([§0.2](00_core_principles.md))
+- shape belt / fluid pipe sharing same cell
 
-## ?„ë£Œ ì¡°ê±´
+## Completion criteria
 
-- [x] straight/turn??path topology?€ ?¼ì¹˜
-- [x] shared path??merger/splitter ? íƒ deterministic
+- [x] straight/turn match path topology
+- [x] shared path merger/splitter selection deterministic
 - [x] shape/fluid overlap reject
 
-## ?„ìˆ˜ ?ŒìŠ¤??
+## Prerequisite phase
 
 ```text
 test_route_materializer_creates_straight_and_turns
@@ -68,7 +68,7 @@ test_route_materializer_rejects_shape_fluid_overlap
 test_route_materializer_selects_y_or_triple_merger
 ```
 
-## ë³´ê°• ?ŒìŠ¤??(PR6 hardening)
+## Hardening tests (PR6)
 
 ```text
 test_full_path_prepends_fixed_output_transport
@@ -78,16 +78,16 @@ test_route_materializer_selects_triple_splitter_at_hub
 test_route_materializer_cell_order_is_deterministic
 ```
 
-## ê´€??ì½”ë“œÂ·ë¬¸ì„œ
+## Related code?documents
 
-- êµ¬í˜„: `route_network_materializer.py` (`materialize_route_network`, `pick_tile_type`)
+- Implementation: `route_network_materializer.py` (`materialize_route_network`, `pick_tile_type`)
 - DTO: `materialization_dtos.py`
-- ?ŒìŠ¤?? `tests/unit/asteroid_lab/test_route_materializer.py`
+- Tests: `tests/unit/asteroid_lab/test_route_materializer.py`
 
 ## Placement equipment (K2)
 
-CONFIRMED extractorÂ·extension ?¹ê²©: [`phase_k2_placement_materialization.md`](phase_k2_placement_materialization.md) (`merge_materialized_layout` after route cells).
+CONFIRMED extractor?extension tiles: [`phase_k2_placement_materialization.md`](phase_k2_placement_materialization.md) (`merge_materialized_layout` after route cells).
 
-## ?¤ìŒ Phase
+## Next Phase
 
-??[`phase_l_final_validation.md`](phase_l_final_validation.md) (PR7: `commit_selected_candidates` ??route + placement materialize ??read-only validation ??replay; [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md))
+? [`phase_l_final_validation.md`](phase_l_final_validation.md) (PR7: `commit_selected_candidates` ? route + placement materialize ? read-only validation ? replay; [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md))

@@ -2,8 +2,8 @@
 
 **Date:** 2026-05-22  
 **Status:** Approved — PR-0 plan: [`2026-05-22-asteroid-miner-extension-reconcile-pr0.md`](../plans/2026-05-22-asteroid-miner-extension-reconcile-pr0.md)  
-**Scope:** 문서 변경 only (PR-0/PR-1/PR-2); 코드·DB schema 변경 없음 (PR-0)  
-**Language:** K/E — 한국어 narrative, 영어 enum·경로·표 헤더·verdict  
+**Scope:** documentation change only (PR-0/PR-1/PR-2); no code or DB schema changes (PR-0)  
+**Language:** K/E — Korean narrative, English enums · paths · table headers · verdict  
 **Approach:** D2 Reconcile-first Mixed Guide (structure **#1**, not guide-first D)
 
 **Canonical doc tree (implementation):**  
@@ -20,15 +20,15 @@
 
 ## 1. Problem
 
-Asteroid Lab “채굴기·확장기 설치” 설명이 여러 문서에 분산되어 있고, 일부 `RESEARCH`/`REPORT` 문서가 최신 solver 흐름·DB import 결과와 어긋날 수 있다. 가이드를 먼저 쓰면 오래된 CANON이 재복제된다.
+Asteroid Lab miner/extension installation explanations are scattered across documents, and some `RESEARCH`/`REPORT` docs may diverge from latest solver flow and DB import results. Writing guides first replicates stale CANON.
 
-**Goal:** 정본 재정렬 → drift 관리 → narrative 가이드. 핵심은 **후보 생성 ≠ 확정 설치**.
+**Goal:** Realign canonical docs → drift management → narrative guide. Core principle: **candidate creation ≠ confirmed installation**.
 
 ---
 
 ## 2. Source of Truth (priority stack)
 
-고정 문서: `00_source_of_truth.md`.
+Fixed document: `00_source_of_truth.md`.
 
 | Priority | Source | Role |
 |:--:|---|---|
@@ -53,11 +53,11 @@ The current game_data dump does not expose miner/extension/throughput as a singl
 Evidence is distributed across building geometry tables, toolbar placement records, simulation/reflection rows, and Lab code invariants.
 ```
 
-한국어 (installation guide / SoT 본문):
+Korean (installation guide / SoT body):
 
 ```text
-현재 game_data dump는 miner/extension/throughput을 단일 전용 정규화 테이블로 제공하지 않는다.
-증거는 building geometry, toolbar placement, simulation/reflection row, Lab code invariant에 분산되어 있다.
+Current game_data dump does not provide miner/extension/throughput in a single dedicated normalized table.
+Evidence is scattered across building geometry, toolbar placement, simulation/reflection rows, and Lab code invariants.
 ```
 
 **Naming guard:** `BuildingSnapshot` / `TransportRegistryEntry` are **consumer DTOs** (`AsteroidGameDataSnapshot`), not Django ORM model names. In `03_db_cross_reference.md`, use dump/ORM table names (`buildingvariant`, `buildingfootprinttile`, …) in `normalized_db_evidence`; cite DTOs only under `code_invariant` or adapter notes.
@@ -76,7 +76,7 @@ Used in `01_rule_reconciliation.md` and `03_db_cross_reference.md`. Do **not** c
 | **D** | `test_evidence` | pytest paths, `replay_enums` wire values, UI payload contracts | High for behavior lock |
 | **E** | `manual_gameplay_evidence` | Player-facing rules when A–D insufficient | Low — explicit only |
 
-**Throughput rule:** Absence of a dedicated rate table is **not** a verdict. Route through B (simulation paths) + C (allowlist) + [`game_rules` CANON](../../../documents/game_rules/shapez2_asteroid_space_transport_throughput.md) + D tests. Never end a row with “DB에 없음 → BLOCKED”.
+**Throughput rule:** Absence of a dedicated rate table is **not** a verdict. Route through B (simulation paths) + C (allowlist) + [`game_rules` CANON](../../../documents/game_rules/shapez2_asteroid_space_transport_throughput.md) + D tests. Never end a row with “not in DB → BLOCKED”.
 
 ---
 
@@ -140,19 +140,19 @@ Mirror summary stays in **this** spec; long tables live under `documents/Algorit
 
 **File:** `04_installation_guide.md`
 
-1. 인게임 규칙 — miner, extension chain, facing, output belt/pipe, throughput (link game_rules CANON)  
-2. Lab 입력 — paste, cleanup, strip miners/extensions, reconstruction  
-3. 후보 생성 — PatternLibrary / GeneTemplate, bundle 0–3 ext, output_stub, route probe (**not installed**)  
-4. 선택 — pool, genome/fitness  
-5. 확정 설치 — `Gene.commit_order`, commit-time reprobe, reservation, domain rebuild, confirmed / rolled_back  
+1. In-game rules — miner, extension chain, facing, output belt/pipe, throughput (link game_rules CANON)  
+2. Lab input — paste, cleanup, strip miners/extensions, reconstruction  
+3. Candidate creation — PatternLibrary / GeneTemplate, bundle 0–3 ext, output_stub, route probe (**not installed**)  
+4. Selection — pool, genome/fitness  
+5. Confirmed installation — `Gene.commit_order`, commit-time reprobe, reservation, domain rebuild, confirmed / rolled_back  
 6. Replay — event types aligned with `django_apps/asteroid_lab/replay/replay_enums.py`
 
 **Required callout box (Korean body, English title optional):**
 
 ```text
-Lab에서 miner/extension은 candidate 생성 시점에 설치되지 않는다.
-route feasibility 통과 → selection → commit-time reprobe + reservation 통과 후
-confirmed placement가 된다.
+In Lab, miner/extension is not installed at candidate creation time.
+After route feasibility → selection → commit-time reprobe + reservation pass,
+placement becomes confirmed.
 ```
 
 ---

@@ -1,16 +1,16 @@
 # Asteroid Lab Optimization — Overview
 
-> **문서 베이스라인 (2026-05-18):** 코드 기준 **Decode → Reconstruction**까지를 완료로 본다. 아래 Phase 문서·[`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md)의 체크리스트는 동일 날짜에 **미착수(`[ ]`)로 재설정**했다. 본문의 `django_apps.shapez_asteroid`·삭제된 테스트 트리 인용은 **역사적**이며 현재 트리와 다를 수 있다. 상위 안내: [`README.md`](README.md) · [`documents/refactor_audit/00_global_summary.md`](../refactor_audit/00_global_summary.md).
+> **Document baseline (2026-05-18):** Code treats **Decode → Reconstruction** as complete. Phase documents below and the checklist in [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) were **reset to not started (`[ ]`)** on the same date. References to `django_apps.shapez_asteroid` and removed test trees in the body are **historical** and may differ from the current tree. Parent guidance: [`README.md`](README.md) · [`documents/refactor_audit/00_global_summary.md`](../refactor_audit/00_global_summary.md).
 
 ## Role
 
 Hybrid Optimization System Architect
 
-## 목적
+## Purpose
 
-완성된 asteroid reconstruction 결과 위에서 extractor / extension / belt / pipe 배치를 최적화한다.
+Optimizes extractor / extension / belt / pipe placement on top of a completed asteroid reconstruction result.
 
-이 시스템은 단순 배치기가 아니라:
+This system is not a simple placer; it is an optimization layer with this structure:
 
 ```text
 Asteroid topology
@@ -23,21 +23,19 @@ Asteroid topology
 → Replay/debug artifact
 ```
 
-구조를 가진 optimization layer다.
+## Document and checklist sync
 
-## 문서·체크리스트 동기
+Checkboxes in Phase contract documents `asteroid_lab_01`~`09` and sequence document `asteroid_lab_10` are **for future implementation tracking**. The canonical source for implementation and verification is **current code** and project `CANON` documents. pytest paths and listings were not updated in this folder cleanup (they may be archival citations).
 
-Phase 계약 문서 `asteroid_lab_01`~`09`와 시퀀스 문서 `asteroid_lab_10`의 체크박스는 **향후 구현 추적용**이다. 구현·검증의 정본은 **현재 코드**와 프로젝트 `CANON` 문서를 우선한다. pytest·경로 나열은 이 폴더 정리 범위에서 갱신하지 않았다(보관용 인용일 수 있음).
-
-## 핵심 원칙
+## Core principles
 
 ```text
 Everything is provisional until connected to exterior trunk.
 ```
 
-즉, extractor / extension bundle은 외부 trunk 연결 가능성이 확인되기 전까지 확정 배치가 아니다.
+That is, extractor / extension bundles are not confirmed placements until exterior trunk connectivity is verified.
 
-## 좌표 공간 (정본 — PR-F migration)
+## Coordinate space (canonical — PR-F migration)
 
 ```text
 Copy JSON X/Y = island-local (paste truth).
@@ -45,15 +43,15 @@ Lab RTTP OptimizationInput.coord_frame default = ISLAND_RAW → Coord = island (
 4-neighbor = grid_contract.neighbors4 on that integer grid.
 ```
 
-**PR-F (2026-05, 완료):** dense server `(server_x, server_y)`·`server_coords.py` 브리지·replay dense projection·persist attach **삭제**. 정본: island-local `x`/`y` only. 상세: [`docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md`](../superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md).
+**PR-F (2026-05, complete):** dense server `(server_x, server_y)`, `server_coords.py` bridge, replay dense projection, and persist attach **removed**. Canonical: island-local `x`/`y` only. Details: [`docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md`](../superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md).
 
-**금지:** `server_*` 좌표 토큰·`server_coords` import (`test_coordinate_frame_ast_gate`); metrics/replay를 algorithm 입력으로 사용.
+**Forbidden:** `server_*` coordinate tokens, `server_coords` import (`test_coordinate_frame_ast_gate`); using metrics/replay as algorithm input.
 
-## 금지 사항
+## Prohibitions
 
-### 1. Replay-driven algorithm 금지
+### 1. Replay-driven algorithm forbidden
 
-다음 데이터는 알고리즘 입력으로 사용하지 않는다.
+The following must not be used as algorithm input:
 
 ```text
 NDJSON
@@ -62,56 +60,56 @@ solver_summary
 debug artifact
 ```
 
-이들은 output/debug 전용이다.
+These are output/debug only.
 
-### 2. Cell-level GA 금지
+### 2. Cell-level GA forbidden
 
-잘못된 genome:
+Wrong genome:
 
 ```text
 gene = cell state
 ```
 
-권장 genome:
+Recommended genome:
 
 ```text
 gene = placement bundle candidate
 ```
 
-### 3. Routing-later pipeline 금지
+### 3. Routing-later pipeline forbidden
 
-나쁜 구조:
+Bad structure:
 
 ```text
 placement first
 routing later
 ```
 
-권장 구조:
+Recommended structure:
 
 ```text
-candidate pool 생성
+candidate pool generation
 + immediate route feasibility probe
 ```
 
-### 4. Outer-rim greedy extractor 설치 금지
+### 4. Outer-rim greedy extractor placement forbidden
 
-다음은 **pass1류 재발**에 해당하므로 금지한다.
+The following is forbidden as a **pass1-style recurrence**:
 
 ```text
 for rim_cell in rim_cells:
     if can_place_extractor:
-        layout에 extractor 즉시 확정 설치
+        immediately commit extractor to layout
 ```
 
-허용되는 것은 **후보만** 생성·probe·풀 적재다. **선택**은 Evolutionary Search가 하고, **확정**은 Incremental Commit이 한다.
+Only **candidates** may be generated, probed, and loaded into the pool. **Selection** is done by Evolutionary Search; **commit** is done by Incremental Commit.
 
 ```text
-Rim cells = extractor 앵커 후보를 둘 위치의 제한(search-space pruning)
-Rim cells ≠ 설치 순서·즉시 commit 근거
+Rim cells = search-space pruning for extractor anchor candidate locations
+Rim cells ≠ install order or immediate commit rationale
 ```
 
-## 최종 아키텍처
+## Final architecture
 
 ```text
 OptimizationInput
@@ -133,23 +131,23 @@ Validation
 ReplayDebugArtifact
 ```
 
-## v0 범위
+## v0 scope
 
-v0는 다음만 처리한다.
+v0 handles only the following:
 
 ```text
-rim-only extractor candidate generation (앵커 ∈ rim_cells; 즉시 설치·greedy pass 없음)
+rim-only extractor candidate generation (anchor ∈ rim_cells; no immediate install or greedy pass)
 linear extension pattern
 shape/fluid transport kind separation
-bounded uniform-cost route probe (Dijkstra-lite; traversal_cost=1 fixture에서는 BFS와 동일)
+bounded uniform-cost route probe (Dijkstra-lite; same as BFS when traversal_cost=1 in fixture)
 bundle-level genome
 mutation-only evolutionary search
 best genome replay
 ```
 
-**한 줄:** Rim은 후보 앵커 필터일 뿐, 설치 순서가 아니다.
+**One line:** Rim is only a candidate anchor filter, not install order.
 
-## v0에서 제외
+## Out of v0 scope
 
 ```text
 complex extension topology
@@ -161,53 +159,53 @@ multi-objective Pareto search
 global trunk balancing
 ```
 
-## v0 필드 정책
+## v0 field policy
 
-v0에서 corridor / trunk / future expansion 관련 동작은 **고급 치환·전역 밸런싱을 하지 않는다** (위 「v0에서 제외」와 동일).
+In v0, corridor / trunk / future expansion behavior does **not** perform advanced replacement or global balancing (same as 「Out of v0 scope」 above).
 
-다만 DTO·artifact·fitness breakdown에는 해당 필드를 **미리 둔다**. 값은 대부분 `0`·빈 집합·**보수적 휴리스틱**으로 채운다.
+However, DTOs, artifacts, and fitness breakdown **reserve those fields in advance**. Values are mostly filled with `0`, empty sets, or **conservative heuristics**.
 
-즉, v0는 advanced corridor replacement를 수행하지 않지만, **그 기능이 들어올 자리와 schema는 먼저 고정**한다. 구현자가 「필드는 있는데 왜 안 쓰지?」로 drift하지 않도록, 본 문서·Phase 1·5·7이 동일 정책을 전제한다.
+That is, v0 does not perform advanced corridor replacement, but **fixes the slot and schema where that capability will land**. This document and Phase 1·5·7 assume the same policy so implementers do not drift with 「the field exists but why isn't it used?」.
 
-## 계약 보강 (리뷰 반영, v0~v1 경계)
+## Contract reinforcement (review feedback, v0~v1 boundary)
 
-장기적으로 solver급 안정성을 위해 입력·라우팅 계층에 다음을 **문서·DTO 수준에서 선행**한다 (Phase 1·4·5·10 참조).
+For long-term solver-grade stability, the following are **documented and fixed at DTO level first** in the input and routing layers (see Phase 1·4·5·10):
 
 ```text
 RouteGoal (goal_kind·priority·existing_trunk·transport)
-RouteCellDomain + route_domain (allowed/preferred/blocked drift 방지)
-TopologyGraph (reconstruction 시 1회 생성, 중복 neighbor 탐색 방지; 무방향 계약)
+RouteCellDomain + route_domain (prevent allowed/preferred/blocked drift)
+TopologyGraph (built once at reconstruction; avoid duplicate neighbor search; undirected contract)
 existing transport (coord + TransportKind) / trunk coords / protected corridor
-incremental commit 후 route_domain·예약(reservation) 반영 (Phase 7, candidate probe와 drift 방지)
-fitness: corridor·narrow passage·future expansion·trunk sharing·route goal quality 필드
+route_domain and reservation reflection after incremental commit (Phase 7; prevent drift vs candidate probe)
+fitness: corridor·narrow passage·future expansion·trunk sharing·route goal quality fields
 ```
 
-**Greenfield 계약:** greenfield는 `existing_transport_cells`가 비어 있고 `existing_trunk_cells`·`protected_corridor_cells`도 공집합인 **특수 케이스**로만 취급한다. optimizer는 greenfield 전용 입력 경로·별도 DTO를 두지 않는다.
+**Greenfield contract:** greenfield is treated only as the **special case** where `existing_transport_cells` is empty and `existing_trunk_cells`·`protected_corridor_cells` are empty sets. The optimizer does not use a greenfield-only input path or separate DTO.
 
-동일 `OptimizationInput`·동일 빌더 체인을 타야 **나중에 레이아웃 통합 시 DTO를 다시 뜯는 일**을 막는다.
+The same `OptimizationInput` and builder chain must be used to **avoid reopening DTOs later during layout integration**.
 
-## 구현 생존성·아키텍처 리뷰 요약
+## Implementation survivability and architecture review summary
 
-아키텍처 방향(placement+routing 동시 평가, bundle-level genome, provisional→commit FSM, **replay·NDJSON은 output only**)은 기존 v1/v2류 drift 원인을 상당 부분 제거한다. 다만 **구현 단계**에서 아래를 문서·DTO로 고정하지 않으면 topology graph / `route_domain` / reservation / probe 간 **소유권·누적 상태 drift**와 후보 조합 폭발로 생존성이 떨어진다.
+The architecture direction (placement+routing co-evaluation, bundle-level genome, provisional→commit FSM, **replay·NDJSON output only**) removes much of the drift seen in earlier v1/v2-style work. However, if the following are not fixed in docs and DTOs during **implementation**, survivability drops due to **ownership and accumulated-state drift** between topology graph / `route_domain` / reservation / probe and candidate combinatorial explosion.
 
-**v0에서 문서·DTO로 선행할 보강(우선순위):**
+**Reinforcements to document and DTO ahead in v0 (priority):**
 
 ```text
-1) candidate canonical dedupe — CandidateEquivalenceKey 등 동치 키로 동일 기하·stub·처리량·topology_signature 후보 축소 (Phase 3)
-2) route_domain 단일 소유 — RouteDomainSnapshotBuilder만 스냅샷 생성; reservation·commit 반영은 전면 재빌드, 제자리 in-place mutation 금지 (Phase 1·4·7)
-3) probe 낙관성 대응 — candidate 시점 reachable ≠ commit 시 corridor starvation 동치; fitness에 route_fragility·shared corridor pressure 등 **predictive** 보수적 프록시 (`PenaltyMode.CONSERVATIVE`; Phase 4·5)
-4) Recovery budget — max_removed_candidates·max_carve_cells·max_reroute_attempts 등 thrashing 상한 (Phase 7)
-5) evolution diversity — GenomeDiversityMetrics(로그·replay metrics)·forced distant mutation(**seed-stable hash**; Phase 6)
-8) observed survivability — `CommitSurvivabilityMetrics`·replay summary는 **관측 전용**; solver·GA·fitness evaluator **입력 금지** (Phase 10B)
-6) domain 전이 기록 — 예약으로 domain이 바뀔 때 coord별 before/after route_class 등 최소 전이 DTO (Phase 7; frozenset[Coord]만으로는 디버그 복구 불충분)
-7) validation 확장 — corridor 잔여·trunk 중복·격리 위험은 v0 최소 검증 유지, 심화는 v1+ (Phase 8)
+1) candidate canonical dedupe — reduce identical geometry·stub·throughput·topology_signature candidates via equivalence keys such as CandidateEquivalenceKey (Phase 3)
+2) route_domain single ownership — RouteDomainSnapshotBuilder only creates snapshots; reservation·commit reflection via full rebuild, no in-place mutation (Phase 1·4·7)
+3) probe optimism handling — candidate-time reachable ≠ commit-time corridor starvation; fitness uses **predictive** conservative proxies such as route_fragility·shared corridor pressure (`PenaltyMode.CONSERVATIVE`; Phase 4·5)
+4) Recovery budget — thrashing caps such as max_removed_candidates·max_carve_cells·max_reroute_attempts (Phase 7)
+5) evolution diversity — GenomeDiversityMetrics (log·replay metrics)·forced distant mutation (**seed-stable hash**; Phase 6)
+8) observed survivability — `CommitSurvivabilityMetrics`·replay summary are **observation only**; solver·GA·fitness evaluator **must not read them** (Phase 10B)
+6) domain transition record — minimal per-coord before/after route_class transition DTO when reservation changes domain (Phase 7; frozenset[Coord] alone is insufficient for debug recovery)
+7) validation expansion — v0 keeps minimal checks for corridor remainder·trunk duplication·isolation risk; deeper checks in v1+ (Phase 8)
 ```
 
-### v0 스케일·Replay 정책
+### v0 scale and replay policy
 
-**전제:** asteroid / mining 관련 **활성 좌표(셀) 수가 대략 50 이하**인 v0에서는 프레임당 **full cell 스냅샷** replay로 충분하다. 이 전제에서 **delta frame 압축·셀 참조 테이블·불변 스냅샷 공유**는 **필수 아님**(v1+ 스케일업 시 선택).
+**Assumption:** For v0 with roughly **≤50 active coordinates (cells)** on asteroid / mining layouts, **full cell snapshot** replay per frame is sufficient. Under this assumption, **delta frame compression·cell reference tables·immutable snapshot sharing** are **not required** (optional at v1+ scale-up).
 
-대신 artifact·메모리 폭주를 막기 위해 **하드 캡**만 둔다 (Phase 9).
+Instead, only **hard caps** are applied to prevent artifact and memory blow-up (Phase 9).
 
 ```text
 MAX_OPTIMIZATION_REPLAY_CELLS_PER_FRAME = 128
@@ -216,13 +214,14 @@ MAX_LAB_REPLAY_TIMELINE_CELLS_PER_FRAME = 2000
 MAX_LAB_REPLAY_TIMELINE_FRAMES = 500
 ```
 
-정본 모듈: `django_apps/asteroid_lab/replay/replay_limits.py`.
+Canonical module: `django_apps/asteroid_lab/replay/replay_limits.py`.
 
-초과 시 이후 프레임 생략 또는 트렁케이트 후 `metrics`에 `replay_truncated: true` 등을 기록한다.
+When exceeded, omit or truncate subsequent frames and record `replay_truncated: true` etc. in `metrics`.
 
-## Trunk vs existing transport (정본)
+## Trunk vs existing transport (canonical)
 
-`existing_transport_cells`(coord + `TransportKind`)와 `existing_trunk_cells`(coord 집합)를 **함께** 둔다. **trunk 멤버십의 정본은 `existing_trunk_cells`** 이다. `ExistingTransportCell`에는 trunk 플래그를 두지 않는다 (중복 표현 제거). adapter는 `existing_trunk_cells ⊆ coords(existing_transport_cells)` invariant를 강제한다.
+Keep `existing_transport_cells` (coord + `TransportKind`) and `existing_trunk_cells` (coord set) **together**. **Canonical trunk membership is `existing_trunk_cells`**. Do not put a trunk flag on `ExistingTransportCell` (avoid duplicate representation). The adapter enforces `existing_trunk_cells ⊆ coords(existing_transport_cells)`.
+
 ## GameData snapshot (ADR-004)
 
 Asteroid Lab consumes normalized building and transport data via a **revision-pinned snapshot**, not live ORM in the solver path.
@@ -236,11 +235,11 @@ Asteroid Lab consumes normalized building and transport data via a **revision-pi
 
 **v0 rule:** snapshot meta in `SolverRun.config_json` is provenance only until PatternLibrary / solver-input ADR approves algorithm use.
 
-## Sequence 12L 좌표 경계 보강 (2026-05-17)
+## Sequence 12L coordinate boundary reinforcement (2026-05-17)
 
-- Critical invariant: decode/import normalization이 Server X/Y를 만든 뒤에는 알고리즘 코드에서 raw 좌표가 불법이다.
-- `OptimizationInput` 이후 알고리즘 계층의 정본 좌표는 Server X/Y dense grid이다.
+- Critical invariant: after decode/import normalization produces Server X/Y, raw coordinates are illegal in algorithm code.
+- After `OptimizationInput`, the canonical algorithm-layer coordinates are Server X/Y dense grid.
 - **Island-local:** copy JSON `X==0` valid; lab world map has no `x==0` column — do not mix frames.
-- `build_optimization_input` 및 post-inspection evolution은 **island `Coord`만** 소비; raw↔dense server 재변환 **금지**.
-- **Hardening:** `tests/unit/asteroid_lab/test_coordinate_frame_ast_gate.py` (금지 토큰 `server_x`/`server_coords`/…); `tests/unit/shapez_asteroid/test_import_boundaries.py`; POST `test_post_json_optimization_input_does_not_raw_convert_server_coords` (legacy name — asserts no raw bridge at optimization boundary).
-- 12L에서 UI/overlay projection 변경은 범위 밖이다. projection boundary 문제가 발견되면 별도 UI/export boundary 작업으로 분리한다.
+- `build_optimization_input` and post-inspection evolution consume **island `Coord` only**; raw↔dense server re-conversion **forbidden**.
+- **Hardening:** `tests/unit/asteroid_lab/test_coordinate_frame_ast_gate.py` (forbidden tokens `server_x`/`server_coords`/…); `tests/unit/shapez_asteroid/test_import_boundaries.py`; POST `test_post_json_optimization_input_does_not_raw_convert_server_coords` (legacy name — asserts no raw bridge at optimization boundary).
+- UI/overlay projection changes are out of scope for 12L. If a projection boundary issue is found, split it into a separate UI/export boundary task.

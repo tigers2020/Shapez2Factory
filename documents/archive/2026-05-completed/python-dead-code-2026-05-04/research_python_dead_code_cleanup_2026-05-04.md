@@ -1,50 +1,50 @@
-# Python 죽은·중복·레거시 코드 정리 — 조사 요약 (2026-05-04)
+# Python dead, duplicate, and legacy code cleanup — research summary (2026-05-04)
 
-## 범위
+## Scope
 
-- `django_apps/shapez_core/`, `django_apps/shapez_solver/`, `django_apps/web/`, `tests/`, `config/` 등 런타임·테스트 Python.
-- 비범위: `frontend/recipe_graph_editor/`, `django_apps/web/static/web/js/recipe_graph_editor/` (플랜 비범위).
+- Runtime/test Python under `django_apps/shapez_core/`, `django_apps/shapez_solver/`, `django_apps/web/`, `tests/`, `config/`.
+- Out of scope: `frontend/recipe_graph_editor/`, `django_apps/web/static/web/js/recipe_graph_editor/` (per plan).
 
-## 정적 분석: Ruff
+## Static analysis: Ruff
 
-실행: `python -m ruff check .` (프로젝트 루트).
+Run: `python -m ruff check .` (project root).
 
-### 선택 규칙 `F401`, `F821`, `F841`
+### Selected rules `F401`, `F821`, `F841`
 
-- **통과** — 미사용 import·정의되지 않은 이름·미사용 지역 변수 후보 없음.
+- **Pass** — no unused import, undefined name, or unused local variable candidates.
 
-### 전체 규칙에서 발견했던 항목 (1차 구현에서 처리됨)
+### Items found under full rules (handled in first implementation)
 
-| 규칙 | 파일 | 조치 |
+| Rule | File | Action |
 |------|------|------|
 | I001 | `django_apps/shapez_solver/migrations/0004_patternfamily_graph_draft.py` | `ruff check --fix` |
 | I001 | `tests/integration/web/test_macro_pattern_staff.py` | `ruff check --fix` |
-| E501 | `tests/integration/web/test_macro_pattern_staff.py` | import 괄호 줄바꿈(Ruff 자동) |
-| E501 | `tests/unit/shapez_solver/test_recipe_graph_react_flow_adapter.py` | dict 리터럴 다줄 |
-| E501 | `tests/unit/shapez_solver/test_recipe_graph_topology.py` | dict 리터럴 다줄 |
+| E501 | `tests/integration/web/test_macro_pattern_staff.py` | import paren line break (Ruff auto) |
+| E501 | `tests/unit/shapez_solver/test_recipe_graph_react_flow_adapter.py` | multiline dict literal |
+| E501 | `tests/unit/shapez_solver/test_recipe_graph_topology.py` | multiline dict literal |
 
-구현 후: `python -m ruff check .` 전체 통과.
+After implementation: full `python -m ruff check .` pass.
 
-### Mypy (검증 보강)
+### Mypy (verification reinforcement)
 
-- 초기 조사 시 `django_apps/web`의 allauth 연동·`context_processors`·일부 단위 테스트에서 오류가 있었음.
-- 후속: `context_processors.django_debug`에 요청·반환 타입 추가, `test_macro_recipe_staff_catalog`의 `empty_doc`에 `dict[str, object]`, `pyproject.toml`의 mypy override에 `django_apps.web.social_adapter`·`django_apps.web.socialaccount_forms` 추가 → `python -m mypy .` 통과.
+- Initial research had errors in `django_apps/web` allauth integration, `context_processors`, some unit tests.
+- Follow-up: added request/return types to `context_processors.django_debug`, `dict[str, object]` for `empty_doc` in `test_macro_recipe_staff_catalog`, mypy overrides in `pyproject.toml` for `django_apps.web.social_adapter` and `django_apps.web.socialaccount_forms` → `python -m mypy .` pass.
 
 ## Vulture
 
-- 실행: `python -m vulture django_apps tests config --min-confidence 80`
-- **결과**: 로컬 환경에 `vulture` 패키지 미설치로 실행 불가. 고신뢰도 미사용 심볼 목록은 이번 조사에 포함하지 않음.
+- Run: `python -m vulture django_apps tests config --min-confidence 80`
+- **Result**: `vulture` package not installed locally; high-confidence unused symbol list not included in this research.
 
-## 참조 추적(샘플)
+## Reference tracing (sample)
 
-- `shapez_solver/services/` 내 `recipe_graph_*`, `graph_document_primitive_chain`, `macro_recipe_staff_catalog` 등은 `django_apps/web/views.py`, URL, 통합·단위 테스트에서 import·호출 확인.
-- `shapez_core` 모듈 트리(예: `shape_pattern.py`)는 서비스·테스트에서 참조됨.
-- **전체 `services/*.py` 파일을 orphan으로 단정하지 않음** — Django 문자열 참조·동적 로딩 오탐 가능성은 플랜의 리스크 절과 동일.
+- `recipe_graph_*`, `graph_document_primitive_chain`, `macro_recipe_staff_catalog` under `shapez_solver/services/` confirmed imported/called from `django_apps/web/views.py`, URLs, integration/unit tests.
+- `shapez_core` module tree (e.g. `shape_pattern.py`) referenced from services/tests.
+- **Do not label entire `services/*.py` files orphan** — Django string references and dynamic loading false positives match plan risk section.
 
-## 레거시 명칭 (플랜 인용)
+## Legacy naming (plan citation)
 
-- `tests/unit/shapez_solver/test_legacy_planner_characterization.py`는 **회귀·스펙 고정** 목적로 유지. 삭제 대상 아님.
+- `tests/unit/shapez_solver/test_legacy_planner_characterization.py` kept for **regression/spec lock**. Not a deletion target.
 
-## 메모
+## Notes
 
-- 루트 `.gitignore`에 `documents/`가 있어 Git 추적 여부는 별도 정책에 따름. 워크스페이스에는 본 문서 경로로 기록함.
+- Root `.gitignore` includes `documents/`; Git tracking follows separate policy. Recorded at this workspace path.

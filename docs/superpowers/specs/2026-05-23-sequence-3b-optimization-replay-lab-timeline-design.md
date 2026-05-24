@@ -5,7 +5,7 @@
 **Predecessors (merged):** PR-A/B RTTP v0.2 replay parity · H1 track isolation · H2 docs/test contract · UI frame counter 1-based display  
 **Related:** [`2026-05-23-rttp-v0.2-replay-parity-design.md`](2026-05-23-rttp-v0.2-replay-parity-design.md) · [`asteroid_lab_09_replay_timeline.md`](../../../documents/Algorithm/asteroid_lab_09_replay_timeline.md) · [`asteroid_lab_12_runtime_replay_wiring.md`](../../../documents/Algorithm/asteroid_lab_12_runtime_replay_wiring.md) · H1 integration `test_run_solver_lab_json_uses_inspection_not_rttp_optimization_track`
 
-> **Naming:** `asteroid_lab_10` “Sequence 3B — Replay 최소 골격” is an **older** development-sequence label. **This document** is the **RTTP roadmap Sequence 3B** after v0.2: expose DB `{run_key}:rttp` milestone frames in Lab UI without breaking map replay.
+> **Naming:** `asteroid_lab_10` “Sequence 3B — Replay minimal skeleton” is an **older** development-sequence label. **This document** is the **RTTP roadmap Sequence 3B** after v0.2: expose DB `{run_key}:rttp` milestone frames in Lab UI without breaking map replay.
 
 ---
 

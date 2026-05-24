@@ -1,9 +1,9 @@
-# 문서 Inventory
+# Document Inventory
 
-기준일: 2026-05-24  
-범위: `documents/`의 주요 설계·계획·조사·보고·보관 문서. 전체 파일 목록이 아니라 AI context 선택을 위한 authority 지도다.
+As of: 2026-05-24  
+Scope: Major design · plan · research · report · archive documents under `documents/`. Not a full file listing — an authority map for AI context selection.
 
-상태 enum은 [`document_lifecycle.md`](document_lifecycle.md)를 따른다.
+Status enum follows [`document_lifecycle.md`](document_lifecycle.md).
 
 ## Hot path (Asteroid Lab / RTTP)
 
@@ -16,32 +16,32 @@
 
 There is no separate `authority_index.md`; this file is the sole authority map.
 
-## 정본 문서
+## Canonical Documents
 
-| 문서 | 상태 | 종류 | 정본 여부 | 비고 |
+| Document | Status | Kind | Canonical | Notes |
 |------|------|------|-----------|------|
-| [`AGENTS.md`](../../AGENTS.md) | `CANON` | workflow spec | YES | 라우팅·문서 권위·승인 금지 |
-| [`.cursor/rules/shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc) | `CANON` | rule | YES | Cursor 단일 alwaysApply (Caveman·게이트·검증) |
-| [`documents/ai/START_HERE.md`](../ai/START_HERE.md) | `CANON` | context entrypoint | YES | AI context 선택 시작점 |
-| [`documents/ai/manuals/`](../ai/manuals/) | `CANON` | workflow manuals | YES | 작업 유형별 온디맨드 매뉴얼 |
-| [`documents/ai/contamination_policy.md`](../ai/contamination_policy.md) | `CANON` | governance policy | YES | 오염 패턴·legacy 토큰·PR playbook |
-| [`documents/index/document_lifecycle.md`](document_lifecycle.md) | `CANON` | document governance | YES | 문서 상태 enum과 읽기 우선순위 |
-| [`documents/index/document_inventory.md`](document_inventory.md) | `CANON` | document governance | YES | 현재 문서 authority 지도 |
-| [`documents/adr/`](../adr/) | `CANON` | architecture decisions | YES | 정본 spec의 결정 이유 |
-| [`documents/game_rules/`](../game_rules/) | `CANON` | domain spec | YES | shapez 2 규칙과 solver domain abstraction |
-| [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md) | `CANON` | domain throughput | YES | Asteroid Miner/Pump·Space Belt/Pipe 절대 L/min·shapes/min |
+| [`AGENTS.md`](../../AGENTS.md) | `CANON` | workflow spec | YES | Routing · document authority · approval prohibitions |
+| [`.cursor/rules/shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc) | `CANON` | rule | YES | Cursor single alwaysApply (Caveman · gates · verification) |
+| [`documents/ai/START_HERE.md`](../ai/START_HERE.md) | `CANON` | context entrypoint | YES | AI context selection entry point |
+| [`documents/ai/manuals/`](../ai/manuals/) | `CANON` | workflow manuals | YES | On-demand manuals by work type |
+| [`documents/ai/contamination_policy.md`](../ai/contamination_policy.md) | `CANON` | governance policy | YES | Contamination patterns · legacy tokens · PR playbook |
+| [`documents/index/document_lifecycle.md`](document_lifecycle.md) | `CANON` | document governance | YES | Document status enum and reading priority |
+| [`documents/index/document_inventory.md`](document_inventory.md) | `CANON` | document governance | YES | Current document authority map |
+| [`documents/adr/`](../adr/) | `CANON` | architecture decisions | YES | Rationale for canonical spec decisions |
+| [`documents/game_rules/`](../game_rules/) | `CANON` | domain spec | YES | shapez 2 rules and solver domain abstraction |
+| [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md) | `CANON` | domain throughput | YES | Asteroid Miner/Pump · Space Belt/Pipe absolute L/min · shapes/min |
 | [`documents/research/research_blueprint_grid_coordinates_2026-05-10.md`](../research/research_blueprint_grid_coordinates_2026-05-10.md) | `CANON` | domain invariant | YES | blueprint grid coordinate invariant |
 
-## Active 작업·백로그
+## Active Work · Backlog
 
-| 문서 | 상태 | 종류 | 정본 여부 | 비고 |
+| Document | Status | Kind | Canonical | Notes |
 |------|------|------|-----------|------|
-| [`documents/ai/current_plan.md`](../ai/current_plan.md) | `ACTIVE` | work queue | NO | 현재 작업 흐름 |
-| [`documents/ai/checklist.md`](../ai/checklist.md) | `ACTIVE` | checklist | NO | 진행 상태와 검증 게이트 |
-| [`documents/plans/`](../plans/) | `ACTIVE` | plans/backlog | NO | 완료 근거 미확정 계획. **예외:** `plans/asteroid_lab_optimization/` = **QUARANTINE** — § Asteroid Lab authority by topic 참조 |
-| [`documents/ai/plans/`](../ai/plans/) | `ACTIVE` | scoped plans | NO | 범위 한정 플랜 |
-| [`documents/Algorithm/solver_runtime/`](../Algorithm/solver_runtime/) | `HISTORICAL` | solver button pipeline | NO | Phase A–M 오케스트레이션 아카이브. **RTTP runtime ≠ 본 시리즈** — [`current_plan.md`](../ai/current_plan.md) 정본 |
-| [`documents/Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md`](../Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md) | `ACTIVE` | post-v0 roadmap | NO | 2026-05-18 스펙·체크리스트 미착수 베이스라인; v0 완료와 **대조 금지** — [`current_plan.md`](../ai/current_plan.md) 우선 |
+| [`documents/ai/current_plan.md`](../ai/current_plan.md) | `ACTIVE` | work queue | NO | Current work flow |
+| [`documents/ai/checklist.md`](../ai/checklist.md) | `ACTIVE` | checklist | NO | Progress state and verification gates |
+| [`documents/plans/`](../plans/) | `ACTIVE` | plans/backlog | NO | Plans with unconfirmed completion evidence. **Exception:** `plans/asteroid_lab_optimization/` = **QUARANTINE** — see § Asteroid Lab authority by topic |
+| [`documents/ai/plans/`](../ai/plans/) | `ACTIVE` | scoped plans | NO | Scope-limited plans |
+| [`documents/Algorithm/solver_runtime/`](../Algorithm/solver_runtime/) | `HISTORICAL` | solver button pipeline | NO | Phase A–M orchestration archive. **RTTP runtime ≠ this series** — [`current_plan.md`](../ai/current_plan.md) is canonical |
+| [`documents/Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md`](../Algorithm/asteroid_lab_11_future_execution_plan_post_sequence.md) | `ACTIVE` | post-v0 roadmap | NO | 2026-05-18 spec · checklist not started baseline; **do not compare** against v0 completion — [`current_plan.md`](../ai/current_plan.md) takes precedence |
 
 ## Asteroid Lab authority by topic
 
@@ -67,36 +67,36 @@ When two documents disagree on Asteroid Lab / RTTP implementation, resolve by th
 
 **Operational label QUARANTINE:** Maps to lifecycle enum `ARCHIVED` or `SUPERSEDED` plus `do_not_use_as_authority: true` in front matter (see [`document_lifecycle.md`](document_lifecycle.md)).
 
-## Research·Report
+## Research · Report
 
-| 문서 | 상태 | 종류 | 정본 여부 | 비고 |
+| Document | Status | Kind | Canonical | Notes |
 |------|------|------|-----------|------|
-| [`project_harness_research.md`](../../project_harness_research.md) | `RESEARCH` | harness design | NO | Cursor 하니스·에이전트 운영 설계 보고서 (루트 위치, 2026-05-19) |
-| [`documents/research/`](../research/) | `RESEARCH` | research | NO | 조사·근거. 개별 문서만 정본 승격 가능 |
+| [`project_harness_research.md`](../../project_harness_research.md) | `RESEARCH` | harness design | NO | Cursor harness · agent operations design report (root location, 2026-05-19) |
+| [`documents/research/`](../research/) | `RESEARCH` | research | NO | Investigation · evidence. Individual docs may be promoted to canonical |
 | [`documents/research/research_shapez2_space_transport_throughput_2026-05-18.md`](../research/research_shapez2_space_transport_throughput_2026-05-18.md) | `SUPERSEDED` | game throughput | NO | → [`game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md) |
-| [`documents/reports/README.md`](../reports/README.md) | `REPORT` | report index | NO | report 묶음 라우팅. 정본 계약 아님 |
-| [`documents/debug/`](../debug/) | `REPORT` | debug report | NO | 로그/복사본 분석 |
-| [`documents/notes/`](../notes/) | `REPORT` | notes | NO | 장기 메모. 정본 아님 |
-| [`documents/Algorithm/README.md`](../Algorithm/README.md) | `RESEARCH` | algorithm memos index | NO | Asteroid Lab optimization 시리즈·초안(`drafts/`). 진입점 README. 구현 정본은 코드·CANON 우선 |
+| [`documents/reports/README.md`](../reports/README.md) | `REPORT` | report index | NO | Report bundle routing. Not a canonical contract |
+| [`documents/debug/`](../debug/) | `REPORT` | debug report | NO | Log/copy analysis |
+| [`documents/notes/`](../notes/) | `REPORT` | notes | NO | Long-term memos. Not canonical |
+| [`documents/Algorithm/README.md`](../Algorithm/README.md) | `RESEARCH` | algorithm memos index | NO | Asteroid Lab optimization series · drafts (`drafts/`). Entry README. Implementation canonical is code · CANON first |
 
-## Archive·완료 문서
+## Archive · Completed Documents
 
-| 문서 | 상태 | 종류 | 정본 여부 | 비고 |
+| Document | Status | Kind | Canonical | Notes |
 |------|------|------|-----------|------|
-| [`documents/archive/README.md`](../archive/README.md) | `CANON` | archive index | YES | archive bucket 지도 |
-| [`documents/archive/2026-05-completed/README.md`](../archive/2026-05-completed/README.md) | `COMPLETED` | completed index | NO | 2026-05 완료 묶음 |
-| [`documents/archive/completed-implementation/README.md`](../archive/completed-implementation/README.md) | `COMPLETED` | completed plan/research pairs | NO | 구현 완료 stem별 pair |
-| [`documents/archive/obsolete-src-shapez2-solver-plans-2026-05-01/`](../archive/obsolete-src-shapez2-solver-plans-2026-05-01/) | `ARCHIVED` | obsolete plan set | NO | Django-first 전환 전 계획 |
-| [`documents/refactory/README.md`](../refactory/README.md) | `ARCHIVED` | redirect | NO | v1-era 트리 제거됨. 과거 본문은 git 기록 참고 |
+| [`documents/archive/README.md`](../archive/README.md) | `CANON` | archive index | YES | Archive bucket map |
+| [`documents/archive/2026-05-completed/README.md`](../archive/2026-05-completed/README.md) | `COMPLETED` | completed index | NO | 2026-05 completed bundle |
+| [`documents/archive/completed-implementation/README.md`](../archive/completed-implementation/README.md) | `COMPLETED` | completed plan/research pairs | NO | Per-stem pairs for completed implementation |
+| [`documents/archive/obsolete-src-shapez2-solver-plans-2026-05-01/`](../archive/obsolete-src-shapez2-solver-plans-2026-05-01/) | `ARCHIVED` | obsolete plan set | NO | Pre-Django-first transition plans |
+| [`documents/refactory/README.md`](../refactory/README.md) | `ARCHIVED` | redirect | NO | v1-era tree removed. Past body text in git history |
 
-## 다음 정리 후보
+## Next Cleanup Candidates
 
-| 항목 | 현재 상태 | 조치 |
+| Item | Current Status | Action |
 |------|----------|------|
-| 루트 `v2_behavior_artifact_*.json` | generated artifact | 실행 산출물 정리 대상으로 별도 판단 |
+| Root `v2_behavior_artifact_*.json` | generated artifact | Separate decision on execution output cleanup |
 
-## 구조 반영
+## Structure Notes
 
-- `django_apps.shapez_asteroid` 및 `tests/unit/shapez_asteroid*`는 제거되었다.
-- 채굴 레이아웃 솔버 canonical step 스펙(`documents/Algorithm/mining_solver_cursor_sessions/`) 및 관련 archive/plan 대량 정리는 **git 기록**으로만 남는다.
-- `documents/plans/asteroid_lab_optimization/` 트리는 strip-solver 이전 plan 스냅샷. **QUARANTINE** — 구현 정본 아님. RTTP runtime은 `django_apps/asteroid_lab/optimization/` + [`current_plan.md`](../ai/current_plan.md).
+- `django_apps.shapez_asteroid` and `tests/unit/shapez_asteroid*` have been removed.
+- Mining layout solver canonical step spec (`documents/Algorithm/mining_solver_cursor_sessions/`) and related archive/plan bulk cleanup remain in **git history** only.
+- `documents/plans/asteroid_lab_optimization/` tree is a pre-strip-solver plan snapshot. **QUARANTINE** — not implementation canonical. RTTP runtime is `django_apps/asteroid_lab/optimization/` + [`current_plan.md`](../ai/current_plan.md).

@@ -11,13 +11,13 @@ related_docs:
   - documents/Algorithm/asteroid_lab_03_candidate_generator.md
 ---
 
-# Phase H ??Candidate Pool Build / Dedupe / Truncate
+# Phase H ? Candidate Pool Build / Dedupe / Truncate
 
-## ëª©ì 
+## Purpose
 
-geometry + route probeë¥??µê³¼??attemptë§?**normal candidate**ë¡?ë§Œë“ ??
+Turn attempts that pass geometry + route probe into **normal candidates**.
 
-## ?…ë ¥
+## Input
 
 ```text
 GeometryValidationResult (pass)
@@ -25,15 +25,15 @@ RouteProbeResult (reachable)
 ProjectedGenePlacement
 ```
 
-## ?°ì¶œë¬?
+## Output
 
 ```text
 CandidatePool (normal + rejected)
 ```
 
-## ?‘ì—…
+## Tasks
 
-### Normal candidate ì¡°ê±´
+### Normal candidate conditions
 
 ```text
 geometry valid
@@ -69,12 +69,12 @@ topology_signature
 
 ### Dedupe
 
-?™ì¼ `CandidateEquivalenceKey`??**route_probe ?´ì „**??`candidate_id` ìµœì†Ÿê°??¹ìë§?probe?œë‹¤.  
-probe ??`dedupe_gene_candidates`??truncate ??**2ì°??ˆì „ë§?*?´ë‹¤.
+For same `CandidateEquivalenceKey`, **before route_probe** keep smallest `candidate_id` lexicographically.  
+After probe, `dedupe_gene_candidates` runs **again before** truncate.
 
 ### Truncate
 
-`max_candidates`ê°€ ?ˆìœ¼ë©?dedupe ??
+When `max_candidates` is set, after dedupe:
 
 ```text
 base_score desc
@@ -82,19 +82,19 @@ route_probe_result.cost asc
 candidate_id asc
 ```
 
-## ê¸ˆì?
+## Forbidden
 
 - placement commit
-- unreachable??normal pool???¬í•¨ ([Â§0.4](00_core_principles.md))
-- server coord ?´ì™¸ ì¢Œí‘œ
+- unreachable in normal pool ([§0.4](00_core_principles.md))
+- coordinates outside server coord
 
-## ?„ë£Œ ì¡°ê±´
+## Completion criteria
 
-- [x] normal/rejected ë¶„ë¦¬ deterministic
-- [x] dedupe ??truncate ?œì„œ ê³ ì •
-- [x] generatorê°€ layout??ë³€ê²½í•˜ì§€ ?ŠìŒ
+- [x] normal/rejected split deterministic
+- [x] dedupe then truncate order fixed
+- [x] generator does not modify layout
 
-## ?„ìˆ˜ ?ŒìŠ¤??
+## Required tests
 
 ```text
 test_candidate_generator_reachable_only_enters_normal_pool
@@ -107,12 +107,12 @@ test_dedupe_skips_duplicate_route_probe
 test_candidate_generator_exposes_timing
 ```
 
-## ê´€??ì½”ë“œÂ·ë¬¸ì„œ
+## Related code?documents
 
-- êµ¬í˜„: `candidate_dtos.py` (`GeneCandidate`), `candidate_equivalence.py`, `candidate_generator.py`
-- ?ˆê±°??RESEARCH??`BundleCandidate` ëª…ì¹­?€ ?¬ìš©?˜ì? ?ŠìŒ
+- Implementation: `candidate_dtos.py` (`GeneCandidate`), `candidate_equivalence.py`, `candidate_generator.py`
+- Legacy RESEARCH `BundleCandidate` naming not used
 - [`asteroid_lab_03_candidate_generator.md`](../asteroid_lab_03_candidate_generator.md)
 
-## ?¤ìŒ Phase
+## Next Phase
 
-??[`phase_i_candidate_selection.md`](phase_i_candidate_selection.md)
+? [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md)

@@ -1,19 +1,19 @@
-# `documents/game_data/` JSON 구조 (타입 정본)
+# `documents/game_data/` JSON structure (type canonical reference)
 
-**분류:** 문서 변경  
-**덤프 버전:** `manifest.json` → `dump_schema_version` `1.0.0`, `game_version` `unknown+1.0.3-rc3`  
-**연관:** [game_data_coverage.md](game_data_coverage.md) · [ADR-004](../adr/ADR-004-game-data-snapshot-boundary.md) · import 순서 `django_apps/game_data/importers/registry.py`
+**Classification:** Documentation change  
+**Dump version:** `manifest.json` → `dump_schema_version` `1.0.0`, `game_version` `unknown+1.0.3-rc3`  
+**Related:** [game_data_coverage.md](game_data_coverage.md) · [ADR-004](../adr/ADR-004-game-data-snapshot-boundary.md) · import order `django_apps/game_data/importers/registry.py`
 
-**구조 분석 목표:** 값 제외 타입 기록；**중복 여부 무관 17파일 전부**；깊이 우선 → §1–12 개요 + **부록 A 전 경로**.
+**Structure analysis goal:** Record types excluding values; **all 17 files regardless of duplication**; depth-first → §1–12 overview + **Appendix A full paths**.
 
-이 문서는 **값(example) 없이 JSON 필드의 타입·역할**을 기술한다.  
-**§1–12 = 개념·importer 매핑**；**필드 단위 전량 = [부록 A](game_data_json_deep/README.md)**（17파일 각각 `*.paths.tsv` + `*.schema.txt` + `*.md`）.
+This document describes **JSON field types and roles without values (examples)**.  
+**§1–12 = concepts and importer mapping**; **field-level full catalog = [Appendix A](game_data_json_deep/README.md)** (each of 17 files: `*.paths.tsv` + `*.schema.txt` + `*.md`).
 
 ---
 
-## 부록 A — 17파일 전량 구조（정본）
+## Appendix A — Full structure for all 17 files (canonical reference)
 
-중복·동형 여부와 **무관하게 파일마다 별도 부록**. 재생성: `python scripts/analyze_game_data_json_deep.py`.
+Separate appendix per file **regardless of duplication or structural similarity**. Regenerate: `python scripts/analyze_game_data_json_deep.py`.
 
 | file | rows | paths | detail |
 | ---- | ---: | ----: | ------ |
@@ -35,65 +35,65 @@
 | `translations.json` | 0 | 0 | [translations.md](game_data_json_deep/translations.md) |
 | `raw_type_index.json` | 6497 | 8 | [raw_type_index.md](game_data_json_deep/raw_type_index.md) |
 
-각 detail 페이지 → merged `*.schema.txt` + `*.paths.tsv`.  
-`simulation_systems` 추가 aggregate: [simulation_systems_paths_agg.tsv](game_data_json_deep/simulation_systems_paths_agg.tsv).
+Each detail page → merged `*.schema.txt` + `*.paths.tsv`.  
+Additional `simulation_systems` aggregate: [simulation_systems_paths_agg.tsv](game_data_json_deep/simulation_systems_paths_agg.tsv).
 
-**Pruning（경로 폭발 방지）:** `$cycle` 미하향；`DeclaredMembers` 등 CLR reflection subtree는 스키마/경로 노드만 기록；pivot map 키 → `{dynamic_key}`.
+**Pruning (prevent path explosion):** Do not descend into `$cycle`; record schema/path nodes only for CLR reflection subtrees such as `DeclaredMembers`; pivot map keys → `{dynamic_key}`.
 
 ---
 
-## 1. 표기법 (Notation)
+## 1. Notation
 
-| 표기 | 의미 |
+| Notation | Meaning |
 | ---- | ---- |
 | `string` / `integer` / `boolean` / `number` / `null` | JSON primitive |
-| `object { "k": T; }` | 고정 키를 가진 객체 |
-| `array<T>` | 동형 배열 (비어 있으면 `array<empty>`) |
-| `T \| U` | 샘플 병합 시 관측된 union |
-| `required` | **전 행** envelope 표에서 rate = 1.0（부록 `*.md`） |
-| `optional` | 일부 행만 존재 |
-| `CLR type name` | Newtonsoft 직렬화 시 `"$type": "Fully.Qualified.Name"` |
+| `object { "k": T; }` | Object with fixed keys |
+| `array<T>` | Homogeneous array (`array<empty>` when empty) |
+| `T \| U` | Union observed when merging samples |
+| `required` | rate = 1.0 in **all-row** envelope table (appendix `*.md`) |
+| `optional` | Present in only some rows |
+| `CLR type name` | `"$type": "Fully.Qualified.Name"` when Newtonsoft-serialized |
 
-**Unity / C# reflection 덤프 관례**
+**Unity / C# reflection dump conventions**
 
-- `"$type"`: 런타임 CLR 타입 (importer·coverage가 경로 분류에 사용).
-- `"$unity": "TypeName"`: UnityEngine `Object` 참조 (`name`, `instance_id` 동반).
-- `"<Field>k__BackingField"`: auto-property backing field (공개 프로퍼티와 쌍으로 자주 등장).
-- `"$cycle"`: 순환 참조 placeholder (그래프 재구성용; 도메인 정규화 시 해소·무시 대상).
-- `TileVector` / `LocalTilePivot` 키: 문자열화된 좌표·방향 튜플 (예: `"(TileVector(0, 0, 0);East)"`).
+- `"$type"`: Runtime CLR type (used by importer/coverage for path classification).
+- `"$unity": "TypeName"`: UnityEngine `Object` reference (accompanied by `name`, `instance_id`).
+- `"<Field>k__BackingField"`: Auto-property backing field (often paired with public property).
+- `"$cycle"`: Circular reference placeholder (for graph reconstruction; resolved or ignored during domain normalization).
+- `TileVector` / `LocalTilePivot` keys: Stringified coordinate/direction tuples (e.g. `"(TileVector(0, 0, 0);East)"`).
 
 ---
 
-## 2. 공통 행 봉투 (Source row envelope)
+## 2. Common row envelope (Source row envelope)
 
-대부분의 아티팩트 파일은 **루트가 `array<object>`** 이고, 각 요소가 아래 **공통 provenance 필드**를 공유한다.
+Most artifact files have **root `array<object>`**, and each element shares the **common provenance fields** below.
 
 ```typescript
 interface SourceRowEnvelope {
-  stable_id: string;           // sha256 hex, 행·객체 식별 (UK 조합에 사용)
-  source_type_name: string;    // 덤프 시 관측 CLR/Unity 타입 라벨
-  source_guid: string;         // Unity GUID 또는 타입명 (종종 빈 문자열)
-  source_path: string;         // 에셋/논리 경로 (빈 문자열 가능)
-  display_name_key: string;    // UI/트리 경로·표시 키 (toolbar는 tree path)
-  definition_snapshot?: object;  // 직렬화된 정의 본문 (파일별 스키마 상이)
-  simulation_parameters?: object;// 시뮬 런타임 캡처 (building/simulation/toolbar 일부)
-  manager_snapshot?: object;     // research 등 매니저 단일 행
-  // 파일별 확장 필드 — §3 표 참조
+  stable_id: string;           // sha256 hex, row/object identity (used in UK combinations)
+  source_type_name: string;    // CLR/Unity type label observed at dump time
+  source_guid: string;         // Unity GUID or type name (often empty string)
+  source_path: string;         // Asset/logical path (may be empty string)
+  display_name_key: string;    // UI/tree path/display key (toolbar uses tree path)
+  definition_snapshot?: object;  // Serialized definition body (schema varies by file)
+  simulation_parameters?: object;// Simulation runtime capture (some building/simulation/toolbar)
+  manager_snapshot?: object;     // Single-row manager (research, etc.)
+  // File-specific extension fields — see §3 table
 }
 ```
 
-`stable_id`는 파일 내 **유일하지 않을 수 있음** (동일 스냅샷이 여러 행으로 펼쳐짐, 예: `items.json` ShapeItem). Importer는 `(import_batch, source_file, source_row_index)`로 행 단위 provenance를 유지한다.
+`stable_id` may **not be unique within a file** (same snapshot spread across multiple rows, e.g. `items.json` ShapeItem). Importer maintains row-level provenance via `(import_batch, source_file, source_row_index)`.
 
 ---
 
 ---
 
-## 부록 A — 전량 경로·병합 스키마 (필수)
+## Appendix A — Full paths and merged schema (required)
 
-**원칙:** `buildings.json` vs `building_groups.json` 등 **내용이 겹쳐도 각각 별도 부록**.
-모든 행을 병합했으며, 리스트 원소는 파일당 최대 64개까지 타입 병합(경로 카탈로그는 컨테이너·샘플 원소 모두 순회).
+**Principle:** Separate appendix for each file even when content overlaps, e.g. `buildings.json` vs `building_groups.json`.  
+All rows merged; list elements type-merged up to 64 per file (path catalog traverses both containers and sample elements).
 
-인덱스: [`game_data_json_deep/README.md`](game_data_json_deep/README.md)
+Index: [`game_data_json_deep/README.md`](game_data_json_deep/README.md)
 
 | file | paths | deep schema |
 | ---- | ----: | ----------- |
@@ -116,31 +116,31 @@ interface SourceRowEnvelope {
 | `translations.json` | 0 | [schema](game_data_json_deep/translations.schema.txt) · [paths](game_data_json_deep/translations.paths.tsv) |
 
 
-## 3. 파일 카탈로그
+## 3. File catalog
 
-| 파일 | 루트 | 행 수 | 크기(약) | Import | 비고 |
+| File | Root | Row count | Size (approx.) | Import | Notes |
 | ---- | ---- | ----- | -------- | ------ | ---- |
-| `manifest.json` | `object` | — | 24 KB | 배치·체크섬 | 유일한 비배열 루트 |
+| `manifest.json` | `object` | — | 24 KB | batch/checksum | Only non-array root |
 | `fluids.json` | `array` | 9 | 3 KB | `FluidColor` | |
 | `materials.json` | `array` | 4 | 1 KB | `GameContentAsset` | |
 | `sprites.json` | `array` | 61 | 15 KB | `GameContentAsset` | |
 | `prefabs.json` | `array` | 764 | 225 KB | `GameContentAsset` | |
-| `asset_references.json` | `array` | 829 | 307 KB | meta→content 링크 | |
+| `asset_references.json` | `array` | 829 | 307 KB | meta→content link | |
 | `items.json` | `array` | 70 | 83 KB | `ShapeRecipe` (ITEMS) | |
 | `shapes.json` | `array` | 1170 | 1.7 MB | `ShapeRecipe` (FULL) | |
 | `building_variants.json` | `array` | 131 | 3.8 MB | `BuildingVariant` | |
-| `buildings.json` | `array` | 67 | 13 MB | building plain | `BuildingDefinitionGroup` 행 |
-| `building_groups.json` | `array` | 67 | 13 MB | `BuildingGroup` | `description_key` 추가 |
+| `buildings.json` | `array` | 67 | 13 MB | building plain | `BuildingDefinitionGroup` rows |
+| `building_groups.json` | `array` | 67 | 13 MB | `BuildingGroup` | adds `description_key` |
 | `belts_pipes_transport.json` | `array` | 9 | 366 KB | transport registry | |
 | `research_unlocks.json` | `array` | 436 | 1.7 MB | research ORM | |
-| `simulation_systems.json` | `array` | 180 | **38 MB** | simulation C-lite | 가장 깊은 그래프 |
+| `simulation_systems.json` | `array` | 180 | **38 MB** | simulation C-lite | Deepest graph |
 | `toolbar_entries.json` | `array` | 204 | 5.7 MB | toolbar tree | `display_name_key` = tree path |
 | `translations.json` | `array` | **0** | 2 B | status only | `incomplete_sections` |
 | `raw_type_index.json` | `array` | 6497 | 1.9 MB | CLR type index | |
 
-전량 경로·스키마: **§부록 A** 또는 [`game_data_json_deep/README.md`](game_data_json_deep/README.md).
+Full paths and schema: **§Appendix A** or [`game_data_json_deep/README.md`](game_data_json_deep/README.md).
 
-Import 순서: `registry.py` `IMPORT_ORDER` (manifest 선행).
+Import order: `registry.py` `IMPORT_ORDER` (manifest first).
 
 ---
 
@@ -163,11 +163,11 @@ interface Manifest {
 
 ---
 
-## 5. 단순 자산 행 (snapshot 없음 또는 얕음)
+## 5. Simple asset rows (no snapshot or shallow)
 
 ### 5.1 `fluids.json`
 
-- **Envelope:** 공통 + `definition_snapshot` (required).
+- **Envelope:** common + `definition_snapshot` (required).
 - **`definition_snapshot`:**
 
 ```typescript
@@ -187,7 +187,7 @@ interface UnityRefMetaShapeColor {
 ```typescript
 interface MaterialRow extends SourceRowEnvelope {
   material_path: string;  // required
-  // definition_snapshot 없음
+  // no definition_snapshot
 }
 ```
 
@@ -206,36 +206,36 @@ interface PrefabRow extends SourceRowEnvelope {
 
 ```typescript
 interface AssetReferenceRow extends SourceRowEnvelope {
-  asset_type: string;      // 관측: "asset.meta"
-  ref_stable_id: string;   // 연결 대상 content stable_id
+  asset_type: string;      // observed: "asset.meta"
+  ref_stable_id: string;   // linked content stable_id
 }
 ```
 
 ### 5.5 `raw_type_index.json`
 
-CLR 리플렉션 인덱스 (게임 로직 타입 목록). **Envelope 확장:**
+CLR reflection index (game logic type list). **Envelope extension:**
 
 ```typescript
 interface RawTypeIndexRow extends SourceRowEnvelope {
-  type_name: string;       // required — CLR 이름
+  type_name: string;       // required — CLR name
   assembly_name: string;   // required
 }
 ```
 
-`source_type_name`은 6497종 이상 (게임·컴파일러 생성 타입 혼재). Importer는 `SimulationClrProvenance` 등에 연결.
+`source_type_name` has 6497+ variants (mix of game and compiler-generated types). Importer links to `SimulationClrProvenance`, etc.
 
 ### 5.6 `translations.json`
 
-- **루트:** `array<empty>` — 덤프 실패/미포함 (`manifest.incomplete_sections`).
+- **Root:** `array<empty>` — dump failed/not included (`manifest.incomplete_sections`).
 
 ---
 
-## 6. Shape 계열
+## 6. Shape family
 
-### 6.1 `items.json` — `ShapeItem` 래퍼
+### 6.1 `items.json` — `ShapeItem` wrapper
 
-- `source_type_name`: `"ShapeItem"` (70행).
-- **`definition_snapshot`:** 래퍼 + 내부 `Definition`.
+- `source_type_name`: `"ShapeItem"` (70 rows).
+- **`definition_snapshot`:** wrapper + inner `Definition`.
 
 ```typescript
 interface ShapeItemSnapshot {
@@ -244,29 +244,29 @@ interface ShapeItemSnapshot {
 }
 ```
 
-### 6.2 `shapes.json` — 평탄 `ShapeDefinition`
+### 6.2 `shapes.json` — flat `ShapeDefinition`
 
-- `source_type_name`: `"ShapeDefinition"` (1170행).
-- **`definition_snapshot`:** 래퍼 없이 **본문이 곧** `ShapeDefinition` (`$type` 키는 존재).
+- `source_type_name`: `"ShapeDefinition"` (1170 rows).
+- **`definition_snapshot`:** **body is directly** `ShapeDefinition` without wrapper (`$type` key present).
 
-### 6.3 `ShapeDefinitionBody` (공통 geometry)
+### 6.3 `ShapeDefinitionBody` (common geometry)
 
-Importer (`shape_recipes._shape_definition`)가 읽는 필드:
+Fields read by importer (`shape_recipes._shape_definition`):
 
 ```typescript
 interface ShapeDefinitionBody {
   $type?: "ShapeDefinition";
   UniqueOperationId: integer;
-  PartCount: integer;              // 관측 4
-  Hash: string;                    // quadrant 압축 해시 (예: "CuWuSuRu")
+  PartCount: integer;              // observed 4
+  Hash: string;                    // quadrant compression hash (e.g. "CuWuSuRu")
   Id: { Uid: integer } | { Name?: string };
   Layers: ShapeLayer[];
 }
 interface ShapeLayer {
-  Parts: ShapePart[];              // 길이 = PartCount
+  Parts: ShapePart[];              // length = PartCount
 }
 interface ShapePart {
-  Shape: UnityRefMetaShapeSubPart | string;  // 빈 문자열 = empty slot
+  Shape: UnityRefMetaShapeSubPart | string;  // empty string = empty slot
   Color: UnityRefMetaShapeColor | string;
 }
 interface UnityRefMetaShapeSubPart {
@@ -276,32 +276,32 @@ interface UnityRefMetaShapeSubPart {
 }
 ```
 
-- `simulation_parameters`: `shapes.json` 행에 **optional 아님(required)** — shape 덤프에 부가 파라미터 동봉.
+- `simulation_parameters`: **not optional (required)** on `shapes.json` rows — additional parameters bundled with shape dump.
 
 ---
 
-## 7. Building 계열
+## 7. Building family
 
-### 7.1 `buildings.json` vs `building_groups.json`（별도 부록 — 중복 무시）
+### 7.1 `buildings.json` vs `building_groups.json` (separate appendix — ignore duplication)
 
 | | `buildings.json` | `building_groups.json` |
 | --- | --- | --- |
 | Deep doc | [buildings.md](game_data_json_deep/buildings.md) | [building_groups.md](game_data_json_deep/building_groups.md) |
 | Norm paths | 2285 | 2286 |
 | Path diff | — | **+1** envelope: `description_key` |
-| `definition_snapshot` paths | 동일（병합 스키마·TSV 기준） | 동일 |
+| `definition_snapshot` paths | identical (merged schema/TSV basis) | identical |
 
-동일 행 수(67)·동일 `source_type_name` `"BuildingDefinitionGroup"`. 스냅샷 트리는 사실상 동형；파일 차이는 **행 봉투 `description_key`** 뿐（groups 전용）.
+Same row count (67), same `source_type_name` `"BuildingDefinitionGroup"`. Snapshot trees are effectively isomorphic; file difference is **row envelope `description_key` only** (groups-only).
 
-### 7.2 `BuildingDefinitionGroup` snapshot (요약)
+### 7.2 `BuildingDefinitionGroup` snapshot (summary)
 
-`definition_snapshot` 최상위에 그룹 메타 + `Definitions[]` 배열.
+Group meta + `Definitions[]` array at top of `definition_snapshot`.
 
-| 경로 (개념) | 타입 | Importer 사용 |
+| Path (concept) | Type | Importer use |
 | ----------- | ---- | ------------- |
 | `Id` / `Id.Name` | string \| object | internal name |
 | `Title` / `Description` | lazy localized + `PlaceholderResolver` | localization keys |
-| `Definitions[]` | `BuildingDefinition[]` | 멤버 building |
+| `Definitions[]` | `BuildingDefinition[]` | member building |
 | `Definitions[].ConnectorData` | connector graph | footprint, IO |
 | `Definitions[].ConnectorData.TileDimensions` | `{x,y,z: integer}` | |
 | `Definitions[].ConnectorData.AllBuildingConnectors[]` | connector | |
@@ -311,7 +311,7 @@ interface UnityRefMetaShapeSubPart {
 | `DefaultPreferredPlacementMode` | string | |
 | `simulation_parameters` | object | optional keys → simulation settings |
 
-**ConnectorData** (building / transport 공통 패턴):
+**ConnectorData** (common pattern for building / transport):
 
 ```typescript
 interface ConnectorData {
@@ -334,14 +334,14 @@ interface BuildingConnector {
 }
 ```
 
-`PlacementIndicatorTypes[]` 등에 **CLR reflection 메타** (`Module.Assembly`, `DeclaredMembers`)가 깊게 중첩 — coverage manifest에서 `promoted` / `ignore_audit` 분류.
+**CLR reflection meta** (`Module.Assembly`, `DeclaredMembers`) deeply nested under `PlacementIndicatorTypes[]`, etc. — classified as `promoted` / `ignore_audit` in coverage manifest.
 
 ### 7.3 `building_variants.json`
 
 ```typescript
 interface BuildingVariantRow extends SourceRowEnvelope {
-  building_stable_id: string;  // required — 부모 building 행 stable_id
-  definition_snapshot: BuildingDefinition;  // 단일 정의 스냅샷
+  building_stable_id: string;  // required — parent building row stable_id
+  definition_snapshot: BuildingDefinition;  // single definition snapshot
 }
 ```
 
@@ -356,39 +356,39 @@ interface TransportRow extends SourceRowEnvelope {
 }
 ```
 
-9행, 벨트·파이프·와이어 등 transport building 정의.
+9 rows; transport building definitions for belts, pipes, wires, etc.
 
 ---
 
 ## 8. `research_unlocks.json`
 
-- **436행**, `source_type_name` 분포 (상위):
+- **436 rows**, `source_type_name` distribution (top):
   - `ResearchSideQuest` (188)
   - `Game.Core.Research.ResearchUpgradeId` (168)
   - `ResearchSideUpgrade` (51)
   - `ResearchLevel` (13)
-  - 매니저/설정 단일 행: `ResearchUnlockManager`, `ResearchConfig`, `ResearchProgression`, …
+  - Single-row manager/config: `ResearchUnlockManager`, `ResearchConfig`, `ResearchProgression`, …
 
-**Envelope 확장 (optional):**
+**Envelope extensions (optional):**
 
-| 필드 | 출현률(샘플) | 용도 |
+| Field | Occurrence (sample) | Purpose |
 | ---- | ------------- | ---- |
-| `definition_snapshot` | 98% | 퀘스트/레벨/보상 그래프 |
-| `manager_snapshot` | 2% | 진행 매니저 |
-| `progression_layout` | 2% | 레이아웃 |
-| `research_config` | 2% | 설정 |
-| `simulation_parameters` | 32% | 부가 시뮬 캡처 |
+| `definition_snapshot` | 98% | quest/level/reward graph |
+| `manager_snapshot` | 2% | progression manager |
+| `progression_layout` | 2% | layout |
+| `research_config` | 2% | configuration |
+| `simulation_parameters` | 32% | additional simulation capture |
 
-**전형적 nested `$type` 경로:** `Lines[].Costs[]`, `Rewards[]`, `Title`/`Description.PlaceholderResolver`, `Levels[].Lines[]`.
+**Typical nested `$type` paths:** `Lines[].Costs[]`, `Rewards[]`, `Title`/`Description.PlaceholderResolver`, `Levels[].Lines[]`.
 
 ---
 
-## 9. `simulation_systems.json` (Phase 2 핵심)
+## 9. `simulation_systems.json` (Phase 2 core)
 
-- **180행**, **~38 MB** — 행당 `definition_snapshot` + 거의 항상 `simulation_parameters`.
-- `source_type_name`: 제네릭 시뮬 시스템 CLR 이름 (예: `AtomicStatefulIslandSimulationSystem\`2[...]`).
+- **180 rows**, **~38 MB** — per row `definition_snapshot` + almost always `simulation_parameters`.
+- `source_type_name`: generic simulation system CLR name (e.g. `AtomicStatefulIslandSimulationSystem\`2[...]`).
 
-### 9.1 행 구조
+### 9.1 Row structure
 
 ```typescript
 interface SimulationSystemRow extends SourceRowEnvelope {
@@ -397,17 +397,17 @@ interface SimulationSystemRow extends SourceRowEnvelope {
 }
 ```
 
-### 9.2 `simulation_parameters` (런타임 캡처, importer 주 경로)
+### 9.2 `simulation_parameters` (runtime capture, primary importer path)
 
-샘플 최상위 키: `ConnectableSimulations`, `BeltSpeed` (행별 상이).
+Sample top-level keys: `ConnectableSimulations`, `BeltSpeed` (varies by row).
 
-| 영역 | 대표 `$type` / 키 | Importer 프로필 |
+| Area | Representative `$type` / key | Importer profile |
 | ---- | ----------------- | ---------------- |
 | `SimulationFactory` | BeltSpeed, ConveyorSpeed, Configuration | `belt_policy`, factory |
 | `ConnectableSimulations[]` | `Simulation`, `_Lanes[]`, `Connectors[]` | `connectable_graph` |
-| Converter/building state | 제네릭 `AtomicStateful*` | `converter_runtime` |
+| Converter/building state | generic `AtomicStateful*` | `converter_runtime` |
 
-**Connectable 그래프 (개념):**
+**Connectable graph (concept):**
 
 ```typescript
 interface ConnectableSimulationEntry {
@@ -425,24 +425,24 @@ interface LaneDefinition {
 
 ### 9.3 `definition_snapshot`
 
-행마다 시스템 타입과 동일한 `$type`이거나 `SimulationFactory` 하위 트리.  
-`nested_$type` 상위 경로: `ConnectableSimulations[].Simulation._Lanes[]`, `SimulationFactory.Configuration.BeltSpeed`.
+Per row, same `$type` as system type or `SimulationFactory` subtree.  
+Top `nested_$type` paths: `ConnectableSimulations[].Simulation._Lanes[]`, `SimulationFactory.Configuration.BeltSpeed`.
 
 **Deep (47,104 norm paths):** [simulation_systems.md](game_data_json_deep/simulation_systems.md) · [simulation_systems.schema.txt](game_data_json_deep/simulation_systems.schema.txt) · [simulation_systems.paths.tsv](game_data_json_deep/simulation_systems.paths.tsv)  
-**Aggregate hits:** [simulation_systems_paths_agg.tsv](game_data_json_deep/simulation_systems_paths_agg.tsv)（5,358 paths, `--normalized` 전 행）  
+**Aggregate hits:** [simulation_systems_paths_agg.tsv](game_data_json_deep/simulation_systems_paths_agg.tsv) (5,358 paths, `--normalized` all rows)  
 Legacy: `documents/game_data_analysis/simulation_systems/_nested_path_audit*.tsv`
 
 ---
 
 ## 10. `toolbar_entries.json`
 
-- **204행**, `display_name_key` = **트리 경로** (예: `Root/.../Children[3]`).
-- `source_type_name` 분포:
+- **204 rows**, `display_name_key` = **tree path** (e.g. `Root/.../Children[3]`).
+- `source_type_name` distribution:
   - `BuildingBasedPlacementToolbarElementData` (78)
   - `IslandBasedPlacementToolbarElementData` (63)
   - `GroupToolbarElementData` (33)
   - `ToolbarSlotSeparator` (21)
-  - 기타 카테고리/루트 (7)
+  - Other category/root (7)
 
 ```typescript
 interface ToolbarRow extends SourceRowEnvelope {
@@ -451,20 +451,20 @@ interface ToolbarRow extends SourceRowEnvelope {
 }
 ```
 
-**스냅샷 패턴 (종류별):**
+**Snapshot patterns (by kind):**
 
-| Element kind | snapshot 핵심 |
+| Element kind | snapshot core |
 | ------------ | ------------- |
 | Island | `IslandGroup.Id.Name`, `IPlacementToolbarElementData.PlacerId` |
 | Building | `BuildingDefinition` (+ `Definitions[]`, ConnectorData) |
-| Group | `Children[]` (중첩 toolbar 노드) |
-| Separator | 최소 필드 |
+| Group | `Children[]` (nested toolbar nodes) |
+| Separator | minimal fields |
 
-Importer: `toolbar_tree.import_toolbar_tree` — 4-pass, `tree_path` → `ToolbarTreeNode` 계층.
+Importer: `toolbar_tree.import_toolbar_tree` — 4-pass, `tree_path` → `ToolbarTreeNode` hierarchy.
 
 ---
 
-## 11. 부록 재생성（전량）
+## 11. Appendix regeneration (full catalog)
 
 ```bash
 python scripts/analyze_game_data_json_deep.py
@@ -474,17 +474,17 @@ python scripts/audit_simulation_nested_paths.py --normalized \
   > docs/domain/game_data_json_deep/simulation_systems_paths_agg.tsv
 ```
 
-| 산출물 | 내용 |
+| Output | Content |
 | ------ | ---- |
-| `game_data_json_deep/*.paths.tsv` | **전 행** 순회 정규화 경로（47k+ for simulation） |
-| `game_data_json_deep/*.schema.txt` | **전 행 병합** 중첩 타입 트리 |
-| `simulation_systems_paths_agg.tsv` | simulation 전용 path×hits×max_list_len |
+| `game_data_json_deep/*.paths.tsv` | Normalized paths traversing **all rows** (47k+ for simulation) |
+| `game_data_json_deep/*.schema.txt` | Nested type tree **merged across all rows** |
+| `simulation_systems_paths_agg.tsv` | Simulation-only path×hits×max_list_len |
 
 ---
 
-## 12. Importer 매핑 요약
+## 12. Importer mapping summary
 
-| JSON | Django 정규화 (요약) |
+| JSON | Django normalization (summary) |
 | ---- | -------------------- |
 | `manifest.json` | `ImportBatch`, `ArtifactChecksum`, `ExportWarning` |
 | `fluids.json` | `FluidColor` |
@@ -492,20 +492,20 @@ python scripts/audit_simulation_nested_paths.py --normalized \
 | `building_*` | `BuildingGroup`, `BuildingVariant`, connectors, footprints, … |
 | `prefabs` / `sprites` / `materials` | `GameContentAsset` |
 | `asset_references.json` | `AssetMetaReference` |
-| `research_unlocks.json` | Research* 모델군 |
+| `research_unlocks.json` | Research* model family |
 | `simulation_systems.json` | `SimulationSystem`, `ConnectableSimulation`, lanes, connectors, audit |
 | `toolbar_entries.json` | `ToolbarTreeNode`, `ToolbarElement`, placements |
 | `belts_pipes_transport.json` | `TransportBuildingRegistry` |
 | `raw_type_index.json` | CLR provenance |
 | `translations.json` | `LocalizationExportStatus` (empty → incomplete) |
 
-원시 `definition_snapshot` 전체는 ORM `JSONField`에 저장하지 않음 ([ADR-004](../adr/ADR-004-game-data-snapshot-boundary.md)).
+Raw full `definition_snapshot` is **not** stored in ORM `JSONField` ([ADR-004](../adr/ADR-004-game-data-snapshot-boundary.md)).
 
 ---
 
-## 13. 변경 이력
+## 13. Change history
 
-| 날짜 | 내용 |
+| Date | Content |
 | ---- | ---- |
-| 2026-05-22 | 초판 — 17개 JSON 타입 구조·통계·importer 매핑 |
-| 2026-05-22 | 심층 부록 A — 전 행 path/schema（`game_data_json_deep/`） |
+| 2026-05-22 | Initial edition — structure, statistics, and importer mapping for 17 JSON types |
+| 2026-05-22 | Deep Appendix A — all-row path/schema (`game_data_json_deep/`) |

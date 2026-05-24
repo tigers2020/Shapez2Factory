@@ -5,69 +5,69 @@
 
 Role: Asteroid Lab Runtime Replay Wiring Architect
 
-**문서 상태:** ACTIVE. §12 **Sequence 12F·12G·12H**는 구현 완료(2026-05-17). **Sequence 12I**는 §12에 **HUD 어휘 경화(vocabulary hardening)** 초안만 두고, 구현은 별도 PR에서 진행한다. **Sequence 12J**(POST `optimization_replay_attach` 전용 HUD 줄)는 Lab 템플릿·`asteroid_miner_layout_lab.js`·테스트·§12J 문서로 구현 완료(2026-05-17). **Sequence 12K**(POST attach `diagnostic` 스칼라·`evolution_failed` 단계 관측)는 §12K·코드·테스트로 구현 완료(2026-05-17). **Sequence 12L** (optimization 경계 AST) 2026-05-17. **PR-F:** island-local replay; `server_coords` bridge **deleted**. 그 외 시퀀스는 설계·경계 고정용이다.  
-**범위:** Lab persistence·UI 읽기 경로에 optimization replay를 안전하게 연결하는 방법만 다룬다.  
-**금지:** 본 문서만으로는 **솔버·리플레이 이벤트 의미·DTO·테스트 전용 fixture 파서 동작**을 바꾸지 않는다. 실제 배선 구현은 별도 PR·승인 후 진행한다.
+**Document status:** ACTIVE. §12 **Sequence 12F·12G·12H** are implemented (2026-05-17). **Sequence 12I** has only a **HUD vocabulary hardening** draft in §12; implementation proceeds in a separate PR. **Sequence 12J** (POST `optimization_replay_attach` dedicated HUD line) is implemented via Lab template, `asteroid_miner_layout_lab.js`, tests, and §12J documentation (2026-05-17). **Sequence 12K** (POST attach `diagnostic` scalar and `evolution_failed` stage observation) is implemented via §12K, code, and tests (2026-05-17). **Sequence 12L** (optimization boundary AST) 2026-05-17. **PR-F:** island-local replay; `server_coords` bridge **deleted**. Other sequences are for design and boundary fixation only.  
+**Scope:** Covers only how to safely wire optimization replay into Lab persistence and UI read paths.  
+**Prohibited:** This document alone does **not** change **solver, replay event semantics, DTO, or test-only fixture parser behavior**. Actual wiring implementation proceeds after separate PR and approval.
 
-> **FIXTURE ENVELOPE SCHEMA ≠ RUNTIME PERSISTENCE SCHEMA** — 골든 최상위 `truncation_reason`은 회귀 전용; 런타임은 프레임 `metrics` → 트랙 `metrics` ([`asteroid_lab_12_runtime_replay_wiring.md`](../../Algorithm/asteroid_lab_12_runtime_replay_wiring.md) Algorithm 정본 §6.1).
+> **FIXTURE ENVELOPE SCHEMA ≠ RUNTIME PERSISTENCE SCHEMA** — golden top-level `truncation_reason` is regression-only; runtime uses frame `metrics` → track `metrics` ([`asteroid_lab_12_runtime_replay_wiring.md`](../../Algorithm/asteroid_lab_12_runtime_replay_wiring.md) Algorithm canonical §6.1).
 
 ---
 
-## 1. Purpose (목적)
+## 1. Purpose
 
-지금까지 고정된 것은 **출력 계약**이다. 다음 런타임 작업은 기존 optimization replay **출력**을 persistence·UI 읽기 경로로 노출하는 것이며, 그 과정에서 replay가 **솔버 입력**으로 새지 않도록 경계를 고정한다.
+What is fixed so far is the **output contract**. The next runtime work is to expose existing optimization replay **output** through persistence and UI read paths, while fixing boundaries so replay does not leak as **solver input**.
 
-본 문서의 목적:
+Purpose of this document:
 
 ```text
-- 무엇을 어디에 저장할지
-- UI는 무엇을 어떻게 읽을지
-- 무엇이 영원히 output-only인지
-- Lab replay 트랙과 Optimization replay 트랙을 암묵적으로 합치지 않을지
+- What to store where
+- What the UI reads and how
+- What remains output-only forever
+- Whether to implicitly merge Lab replay track and Optimization replay track
 ```
 
-를 구현 전에 문서로 고정한다.
+Fixed in documentation before implementation.
 
 ---
 
-## 2. Current contracts (현재 계약)
+## 2. Current contracts
 
-다음은 **이미 구현·테스트로 고정된** 계약이다.
+The following are **already fixed by implementation and tests**.
 
-| 계약 | 위치·수단 (요약) |
+| Contract | Location / means (summary) |
 |------|------------------|
 | Optimization JSON golden v0 | `tests/fixtures/shapez_asteroid/optimization/` |
 | Optimization fixture JSON parser | `tests/unit/shapez_asteroid/fixtures/optimization_json.py` |
 | Replay-track JSON golden v0 | `tests/fixtures/shapez_asteroid/replay/` |
-| Replay JSON parser (fixture 봉투) | `tests/unit/shapez_asteroid/fixtures/replay_json.py` |
+| Replay JSON parser (fixture envelope) | `tests/unit/shapez_asteroid/fixtures/replay_json.py` |
 | Long replay stitching JSON v0 | `tests/fixtures/shapez_asteroid/replay_long/` |
-| `replay_truncated` / `truncation_reason` (fixture 봉투 짝) | 골든 + `replay_json` 계약 |
-| `commit.survivability_summary` 리플레이 프레임 | 도메인 이벤트·회귀 테스트와 정합 |
-| Lab / Optimization **dual-track** replay 정책 | Lab map 트랙 vs optimization 관측 트랙 분리 |
+| `replay_truncated` / `truncation_reason` (fixture envelope pair) | golden + `replay_json` contract |
+| `commit.survivability_summary` replay frame | aligned with domain events and regression tests |
+| Lab / Optimization **dual-track** replay policy | Lab map track vs optimization observation track separation |
 
-**중요:** 위 fixture 파서·골든 JSON은 **계약·회귀용**이다. 프로덕션에서 동일 파서/봉투를 솔버 입력 경로에 붙이지 않는다.
+**Important:** The above fixture parsers and golden JSON are **contract and regression only**. Do not attach the same parser/envelope to solver input paths in production.
 
-### 2.1 런타임에 이미 존재하는 조각 (코드 기준, 2026-05-21)
+### 2.1 Pieces already present at runtime (code baseline, 2026-05-21)
 
-- **합성:** `lab_replay_timeline_payload.build_lab_replay_frames_for_project`
+- **Composition:** `lab_replay_timeline_payload.build_lab_replay_frames_for_project`
 - **UI:** `updateReplayTruncationHud` — track `metrics.replay_truncated` / `truncation_reason`
 - **Deprecated:** `build_optimization_replay_track_payload`, `renderOptimizationReplayHud`
 
-### 2.2 Fixture 봉투 vs 런타임 persist 형상
+### 2.2 Fixture envelope vs runtime persist shape
 
-| 항목 | 골든 long replay (`replay_long/`) | 현재 persist + UI |
+| Item | Golden long replay (`replay_long/`) | Current persist + UI |
 |------|-----------------------------------|---------------------|
-| `schema_version` | 봉투 최상위 | persist에는 **없음** (프레임 리스트만) |
-| `replay_summary` / `replay_event_sequence` | 봉투에 명시 | UI에서 `build_optimization_replay_track_payload`가 **재계산** |
-| `truncation_reason` | 봉투 최상위 (짝 계약) | **12F v0 이후:** 프레임 `metrics` → 트랙 `metrics.truncation_reason` 집계 (아래 §6.1) |
+| `schema_version` | envelope top-level | **absent** from persist (frame list only) |
+| `replay_summary` / `replay_event_sequence` | explicit in envelope | UI **recomputes** via `build_optimization_replay_track_payload` |
+| `truncation_reason` | envelope top-level (pair contract) | **After 12F v0:** frame `metrics` → track `metrics.truncation_reason` aggregation (see §6.1 below) |
 
-이 표로 **테스트 봉투 ≠ 런타임 persist**를 분리해, fixture 파서를 production parser처럼 가져오는 실수를 방지한다.
+This table separates **test envelope ≠ runtime persist** to prevent mistakenly treating fixture parsers as production parsers.
 
 ---
 
-## 3. Runtime boundary (런타임 경계)
+## 3. Runtime boundary
 
-다음을 **명시적으로** 고정한다.
+Fix the following **explicitly**.
 
 ```text
 Optimization replay is output-only.
@@ -75,117 +75,116 @@ Persisted replay must never be used by solver, candidate generation, route probe
 evolutionary search, incremental commit, or validation.
 ```
 
-### 3.1 단방향 데이터 흐름
+### 3.1 One-way data flow
 
 ```text
-Optimization 실행 / post-inspection
-  → (메모리) OptimizationReplayFrame 시퀀스
-  → (저장) SolverRun.config_json["optimization_replay_frames"]  # 출력만
-  → (읽기) deserialize → build track → Lab context["optimization_replay"]
-  → (표시) 메타데이터·오버레이 관측용 UI
+Optimization run / post-inspection
+  → (memory) OptimizationReplayFrame sequence
+  → (persist) SolverRun.config_json["optimization_replay_frames"]  # output only
+  → (read) deserialize → build track → Lab context["optimization_replay"]
+  → (display) metadata and overlay observation UI
 ```
 
-### 3.2 레이어 책임
+### 3.2 Layer responsibilities
 
-| 레이어 | 책임 |
+| Layer | Responsibility |
 |--------|------|
-| `shapez_asteroid.optimization` | 이벤트·프레임 DTO·직렬화 dict (비즈니스 규칙) |
-| `asteroid_lab` | `SolverRun`에 출력 병합 저장, import 경계 |
-| `web` (page context) | 읽기 전용 어댑터: 역직렬화 실패 시 빈 트랙 + `metrics.optimization_replay_diagnostic_reason`(12G, 메타데이터만) |
-| 테스트 fixture 파서 | 회귀 정본만; 프로덕션 의존 **비권장** |
+| `shapez_asteroid.optimization` | events, frame DTO, serialization dict (business rules) |
+| `asteroid_lab` | merge and persist output on `SolverRun`, import boundary |
+| `web` (page context) | read-only adapter: on deserialize failure, empty track + `metrics.optimization_replay_diagnostic_reason` (12G, metadata only) |
+| test fixture parser | regression canonical only; production dependency **not recommended** |
 
 ### 3.3 Sequence 12L — Island-local coord boundary
 
 ```text
-OptimizationInput 이후는 `CoordFrame.ISLAND_RAW` island `(x, y)` only (PR-F).
-raw blueprint X/Y·dense 변환은 decode/import·cleanup/reconstruction 경계에서만 수행한다.
-django_apps.shapez_asteroid.optimization 패키지와 asteroid_lab_post_inspection_evolution.py는
+After OptimizationInput, only `CoordFrame.ISLAND_RAW` island `(x, y)` (PR-F).
+raw blueprint X/Y and dense conversion run only at decode/import, cleanup, and reconstruction boundaries.
+django_apps.shapez_asteroid.optimization package and asteroid_lab_post_inspection_evolution.py:
 Dense coord bridge module **deleted** (PR-F). AST: `test_coordinate_frame_ast_gate.py`.
-copy JSON ``X==0``은 island-local에서 유효; lab world map ``x==0`` 열 없음 — 프레임 혼동 금지.
+copy JSON ``X==0`` is valid in island-local; lab world map has no ``x==0`` column — do not mix frame contexts.
 ```
 
 ---
 
-## 4. Persistence target (저장 대상)
+## 4. Persistence target
 
-### 4.1 키 이름 (코드 정본과 일치)
+### 4.1 Key names (aligned with code canonical)
 
-**현재 구현이 사용하는 키(이름 변경 없음):**
+**Keys used by current implementation (names unchanged):**
 
 ```text
 SolverRun.config_json["optimization_replay_frames"]
 ```
 
-상수: `django_apps.shapez_asteroid.optimization.optimization_ui_payload.SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY` (`"optimization_replay_frames"`).
+Constant: `django_apps.shapez_asteroid.optimization.optimization_ui_payload.SOLVER_RUN_CONFIG_OPTIMIZATION_REPLAY_FRAMES_KEY` (`"optimization_replay_frames"`).
 
-**12F v0에서 추가하지 않는 것:** 별도 봉투를 도입하지 않는 한, 아래 sibling 키는 **추가하지 않는다** (구현자가 임의로 넣지 않음).
+**Not added in 12F v0:** unless a separate envelope is introduced, do **not** add the sibling keys below (implementers must not add arbitrarily).
 
 ```text
-optimization_replay_schema_version   # v0에서 도입 안 함
-optimization_replay_truncated       # v0에서 sibling으로 도입 안 함
-optimization_replay_truncation_reason # v0에서 sibling으로 도입 안 함
+optimization_replay_schema_version   # not introduced in v0
+optimization_replay_truncated       # not introduced as sibling in v0
+optimization_replay_truncation_reason # not introduced as sibling in v0
 ```
 
-절단·스키마는 §6·§7의 **프레임 리스트 + 트랙 metrics** 모델로만 다룬다. 봉투·schema sibling·추가 키는 **별도 migration / compatibility PR**에서만 검토한다.
+Truncation and schema are handled only via **frame list + track metrics** model in §6·§7. Envelope, schema sibling, and additional keys are reviewed only in a **separate migration / compatibility PR**.
 
-### 4.2 **12F v0 결정 (schema_version)**
+### 4.2 **12F v0 decision (schema_version)**
 
-별도 봉투를 도입하지 않는 한 `optimization_replay_schema_version` sibling key는 **추가하지 않는다.** v0 runtime guard는 기존 `optimization_replay_frames` 리스트를 `deserialize_optimization_replay_frames_from_json`으로 검증하는 방식이다. 봉투 또는 schema sibling 도입은 **별도 migration/compatibility PR**에서만 다룬다.
+Unless a separate envelope is introduced, do **not** add `optimization_replay_schema_version` sibling key. v0 runtime guard validates the existing `optimization_replay_frames` list via `deserialize_optimization_replay_frames_from_json`. Envelope or schema sibling introduction is handled only in a **separate migration/compatibility PR**.
 
 ---
 
-## 5. Write path (쓰기 경로)
+## 5. Write path
 
 ```text
-Run / Lab inspection 흐름
-→ inspection·Lab replay 성공 (기존 파이프라인)
-→ bounded optimization 실행
-→ optimization replay frames 생산 (메모리)
-→ JSON-safe 직렬화·12F v0 가드 통과 시에만
-→ config_json["optimization_replay_frames"]에 출력 페이로드만 attach
+Run / Lab inspection flow
+→ inspection and Lab replay success (existing pipeline)
+→ bounded optimization run
+→ produce optimization replay frames (memory)
+→ JSON-safe serialization and attach to config_json["optimization_replay_frames"] only when 12F v0 guard passes
 ```
 
-리플레이 데이터는 **솔버 쪽으로 되돌아가지 않는다.**
+Replay data does **not** flow back to the solver.
 
 ---
 
-## 6. Read path (읽기 경로)
+## 6. Read path
 
 ```text
 page context / UI payload builder
-→ config_json에서 optimization_replay_frames 읽기
-→ deserialize + (12F 이후) 추가 shape/짝 검증
-→ optimization_replay 트랙을 템플릿·json_script에 노출
-→ UI는 dual-track 정책에 따라 metadata/overlay만 표시
+→ read optimization_replay_frames from config_json
+→ deserialize + (after 12F) additional shape/pair validation
+→ expose optimization_replay track to template and json_script
+→ UI displays metadata/overlay only per dual-track policy
 ```
 
-### 6.1 `replay_truncated` 및 `truncation_reason` (**12F v0 결정**)
+### 6.1 `replay_truncated` and `truncation_reason` (**12F v0 decision**)
 
-**`truncation_reason`은 `SolverRun.config_json` sibling으로 저장하지 않는다.**
+**Do not store `truncation_reason` as a `SolverRun.config_json` sibling.**
 
-- **발행:** 잘림을 나타내는 프레임의 `metrics`에 `replay_truncated: true`와 `truncation_reason: <non-empty string>`을 **함께** 둔다.
-- **집계:** `_track_metrics_from_serialized_frames`가 **`metrics.truncation_reason`**을 올린다. `replay_truncated == true`일 때 reason은 **마지막 프레임** `metrics` 정본 (Algorithm §6.1).
-- **v1 대안:** `config_json` sibling은 설계상 보류이며, 필요 시 별도 문서/PR에서만 재검토한다.
+- **Emit:** on frames indicating truncation, put `replay_truncated: true` and `truncation_reason: <non-empty string>` together in `metrics`.
+- **Aggregate:** `_track_metrics_from_serialized_frames` lifts **`metrics.truncation_reason`**. When `replay_truncated == true`, reason is canonical from **last frame** `metrics` (Algorithm §6.1).
+- **v1 alternative:** `config_json` sibling is reserved in design; revisit only in separate documentation/PR if needed.
 
-**트랙 `metrics` 짝 계약 (UI·가드의 공통 기준):**
+**Track `metrics` pair contract (common baseline for UI and guards):**
 
 ```text
-track.metrics.replay_truncated == false  →  track.metrics.truncation_reason 부재
-track.metrics.replay_truncated == true   →  track.metrics.truncation_reason 은 non-empty string
+track.metrics.replay_truncated == false  →  track.metrics.truncation_reason absent
+track.metrics.replay_truncated == true   →  track.metrics.truncation_reason is non-empty string
 ```
 
-UI는 잘림 배지에 `replay_truncated`, 상세·툴팁에 `truncation_reason`만 사용하고 **리플레이 이벤트 의미를 바꾸지 않는다.**
+UI uses `replay_truncated` for truncation badge and `truncation_reason` for detail/tooltip only; **does not change replay event semantics.**
 
-### 6.2 Fixture 봉투 짝과의 관계
+### 6.2 Relationship to fixture envelope pair
 
-- **테스트 골든:** `replay_summary.replay_truncated` + 최상위 `truncation_reason` (회귀).
-- **런타임:** persist는 프레임 리스트만; 짝은 **프레임 `metrics` → 트랙 `metrics`**로 맞춘다.
+- **Test golden:** `replay_summary.replay_truncated` + top-level `truncation_reason` (regression).
+- **Runtime:** persist is frame list only; pair is aligned via **frame `metrics` → track `metrics`**.
 
 ---
 
-## 7. Malformed payload policy (깨진 페이로드 정책)
+## 7. Malformed payload policy
 
-필수 동작:
+Required behavior:
 
 ```text
 Malformed optimization replay payload must not crash Lab page.
@@ -194,36 +193,36 @@ A diagnostic reason should be exposed for UI/debug.
 Solver result must remain unchanged.
 ```
 
-### 7.1 진단 reason 코드 (**12G v0 구현값**)
+### 7.1 Diagnostic reason codes (**12G v0 implementation values**)
 
-읽기 전용·메타데이터 전용. 상수 키: `django_apps.shapez_asteroid.optimization.optimization_ui_payload.OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY` → 트랙 `metrics` 필드명 **`optimization_replay_diagnostic_reason`**.
+Read-only, metadata-only. Constant key: `django_apps.shapez_asteroid.optimization.optimization_ui_payload.OPTIMIZATION_REPLAY_DIAGNOSTIC_REASON_METRIC_KEY` → track `metrics` field name **`optimization_replay_diagnostic_reason`**.
 
 ```text
-missing_optimization_replay          # 어떤 SolverRun.config_json에도 optimization_replay_frames 키가 없음
-empty_optimization_replay_frames     # 키는 있으나 리스트가 비어 있음 ([])
-invalid_optimization_replay_payload  # 리스트가 아님·프레임 dict/shape·좌표·연속 frame_index 등 (알 수 없는 event_type 제외)
-invalid_truncation_contract          # replay_truncated 인데 truncation_reason 짝이 깨짐
-unsupported_or_unknown_event_type    # 알려지지 않은 event_type 문자열
+missing_optimization_replay          # no optimization_replay_frames key in any SolverRun.config_json
+empty_optimization_replay_frames     # key exists but list is empty ([])
+invalid_optimization_replay_payload  # not a list, broken frame dict/shape, coords, non-contiguous frame_index, etc. (unknown event_type excluded)
+invalid_truncation_contract          # replay_truncated set but truncation_reason pair broken
+unsupported_or_unknown_event_type    # unknown event_type string
 ```
 
-정상 역직렬화 시 이 필드는 **부재**한다. 솔버·리플레이 의미·정렬·집계에는 관여하지 않는다.
+On successful deserialize this field is **absent**. It does not participate in solver, replay semantics, ordering, or aggregation.
 
-### 7.2 UI 노출 (12G / 12H)
+### 7.2 UI exposure (12G / 12H)
 
-- **12G:** 빈 트랙으로 떨어질 때에만 §7.1 문자열을 `metrics.optimization_replay_diagnostic_reason`에 둔다. **리플레이 시맨틱·프레임 순서에는 관여하지 않는다.**
-- **12H:** Lab 템플릿·`asteroid_miner_layout_lab.js`가 `replay_truncated` / `truncation_reason` / `optimization_replay_diagnostic_reason`을 **표시 전용 HUD**로 노출한다(`#lab-optimization-replay-status` 등). 동기화·재시도·페이로드 변조 없음; Run Solver JSON 갱신 시에는 클라이언트 `replaceOptimizationReplayPayload`가 HUD를 다시 그린다.
-
----
-
-## 8. Truncation contract (절단 계약)
-
-- **Fixture:** `replay_json` — `replay_summary.replay_truncated` + 최상위 `truncation_reason`.
-- **런타임 트랙:** §6.1의 `track.metrics` 짝.
-- **의미 변경 금지:** HUD는 관측만; commit/route/evolution 시맨틱은 변경하지 않는다.
+- **12G:** only when falling back to empty track, put §7.1 string in `metrics.optimization_replay_diagnostic_reason`. **Does not participate in replay semantics or frame order.**
+- **12H:** Lab template and `asteroid_miner_layout_lab.js` expose `replay_truncated` / `truncation_reason` / `optimization_replay_diagnostic_reason` as **display-only HUD** (`#lab-optimization-replay-status`, etc.). No sync, retry, or payload mutation; on Run Solver JSON refresh, client `replaceOptimizationReplayPayload` redraws HUD.
 
 ---
 
-## 9. Dual-track UI policy (듀얼 트랙)
+## 8. Truncation contract
+
+- **Fixture:** `replay_json` — `replay_summary.replay_truncated` + top-level `truncation_reason`.
+- **Runtime track:** `track.metrics` pair from §6.1.
+- **No semantic change:** HUD is observation only; does not change commit/route/evolution semantics.
+
+---
+
+## 9. Dual-track UI policy
 
 ```text
 Lab replay owns map rendering.
@@ -236,25 +235,25 @@ unless an explicit sync mode is introduced later (out of scope for v0).
 
 ---
 
-## 10. Schema policy (스키마 정책)
+## 10. Schema policy
 
-**문서상 v0 (persist):**
+**Documented v0 (persist):**
 
 ```text
-별도 optimization_replay_schema_version 키 없음.
-deserialize_optimization_replay_frames_from_json + 12F v0 shape/truncation 가드가 구조 검증의 중심.
+No separate optimization_replay_schema_version key.
+deserialize_optimization_replay_frames_from_json + 12F v0 shape/truncation guards are the structural validation center.
 ```
 
-**향후 봉투 도입 시(별도 PR):**
+**When envelope is introduced later (separate PR):**
 
 ```text
-optimization_replay_schema_version = 1  # 예시
-unknown version → empty payload + diagnostic; silent coercion 금지
+optimization_replay_schema_version = 1  # example
+unknown version → empty payload + diagnostic; silent coercion forbidden
 ```
 
 ---
 
-## 11. Explicit non-goals (명시적 비목표)
+## 11. Explicit non-goals
 
 ```text
 - No production solver input from replay
@@ -264,37 +263,37 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - No database migration unless existing config_json is insufficient
 - No JSON fixture parser reuse as production parser unless explicitly reviewed
 - No route/commit/evolution algorithm changes
-- 12F-v0에서 schema envelope / schema sibling / byte-size cap 미도입(12H에서 **절단·진단 HUD**만 추가; 시맨틱·동기화 비변경)
+- 12F-v0 does not introduce schema envelope / schema sibling / byte-size cap (12H adds **truncation and diagnostic HUD** only; semantics and sync unchanged)
 ```
 
 ---
 
-## 12. Implementation sequence (구현 순서)
+## 12. Implementation sequence
 
 ### Sequence 12F — Persist frame-list guard v0
 
-**구현 상태 (v0, 2026-05-17): 완료**
+**Implementation status (v0, 2026-05-17): complete**
 
-- **가드·역직렬화:** `django_apps.shapez_asteroid.optimization.optimization_ui_payload`에 `validate_optimization_replay_frame_list_payload` 및 `deserialize_optimization_replay_frames_from_json` 내 프레임 `metrics` 절단 짝 검증(`replay_truncated == true` → 동일 `metrics`에 non-empty `truncation_reason`).
-- **트랙 집계:** `build_optimization_replay_track_payload`가 `replay_truncated == true`일 때만 `metrics.truncation_reason`을 넣으며, 값은 프레임 순서 기준 **첫** non-empty reason(없으면 in-memory 비정합 시 `"unknown"` — persist 경로는 역직렬화에서 걸러짐).
-- **쓰기:** `persist_optimization_replay_frames_to_solver_run`는 직렬화 후 가드 실패 시 저장 생략. `attach_optimization_replay_frames_after_successful_replay_build`는 `invalid_replay_payload` reason으로 스킵.
-- **Recorder:** `OptimizationReplayRecorder`가 셀·프레임 상한 절단 시 `truncation_reason`을 함께 기록(`max_replay_cells_per_frame`, `max_replay_frames`).
-- **범위 유지:** `optimization_replay_schema_version` / `optimization_replay_truncated` / `optimization_replay_truncation_reason` **sibling 미도입**, 봉투·byte cap·migration **미도입**; **12H**에서 표시 전용 HUD만 추가(§11·§12와 정합).
-- **12G 예고:** 읽기 실패 시 `optimization_replay_diagnostic_reason` 등 단일 진단 문자열은 12G; 12F는 shape·절단 짝·트랙 reason 집계만.
+- **Guard and deserialize:** `validate_optimization_replay_frame_list_payload` and frame `metrics` truncation pair validation in `deserialize_optimization_replay_frames_from_json` (`replay_truncated == true` → non-empty `truncation_reason` in same `metrics`) in `django_apps.shapez_asteroid.optimization.optimization_ui_payload`.
+- **Track aggregation:** `build_optimization_replay_track_payload` puts `metrics.truncation_reason` only when `replay_truncated == true`; value is **first** non-empty reason in frame order (or `"unknown"` on in-memory inconsistency — persist path filtered at deserialize).
+- **Write:** `persist_optimization_replay_frames_to_solver_run` skips save on guard failure after serialization. `attach_optimization_replay_frames_after_successful_replay_build` skips with `invalid_replay_payload` reason.
+- **Recorder:** `OptimizationReplayRecorder` records `truncation_reason` together on cell and frame limit truncation (`max_replay_cells_per_frame`, `max_replay_frames`).
+- **Scope maintained:** **no** `optimization_replay_schema_version` / `optimization_replay_truncated` / `optimization_replay_truncation_reason` **sibling**; **no** envelope, byte cap, or migration; **12H** adds display-only HUD only (aligned with §11·§12).
+- **12G preview:** single diagnostic string such as `optimization_replay_diagnostic_reason` on read failure is 12G; 12F covers shape, truncation pair, and track reason aggregation only.
 
-**테스트 (추가·갱신):** `tests/unit/shapez_asteroid/test_optimization_ui_payload.py`(가드·집계·역직렬화), `tests/unit/shapez_asteroid/test_solver_optimization_replay_import_boundary.py`(솔버 패키지 문자열 비참조), `tests/unit/asteroid_lab/test_optimization_replay_persist.py`(persist/attach/page 빈 트랙), Recorder 단언 보강 `test_optimization_replay.py`·`test_optimization_replay_skeleton.py`.
+**Tests (added/updated):** `tests/unit/shapez_asteroid/test_optimization_ui_payload.py` (guard, aggregation, deserialize), `tests/unit/shapez_asteroid/test_solver_optimization_replay_import_boundary.py` (solver package string non-reference), `tests/unit/asteroid_lab/test_optimization_replay_persist.py` (persist/attach/page empty track), Recorder assertions in `test_optimization_replay.py` and `test_optimization_replay_skeleton.py`.
 
 **Scope:**
 
-- `optimization_replay_frames`만 optimization replay persist 키로 유지한다.
-- attach/read 전 **리스트 형태** 검증.
-- 깨진 프레임 dict 거부.
-- `frame_index` **연속**(0..n-1) 요구.
-- `event_type`은 알려진 `OptimizationReplayEventType` 값만 허용.
-- **프레임 `metrics` 절단 짝:** `metrics.replay_truncated == true`인 프레임은 **같은 프레임**의 `metrics`에 non-empty `truncation_reason`이 있어야 한다. 집계 후 `track.metrics`가 §6.1 짝을 만족하지 않으면 **persist 거부** 또는 **읽기 시 empty 트랙** 중 하나로 고정한다(구현 PR에서 택일·테스트로 박는다).
-- 읽기 경로에서 malformed이면 **empty optimization replay payload**로 노출.
+- Keep `optimization_replay_frames` as the only optimization replay persist key.
+- **List shape** validation before attach/read.
+- Reject broken frame dicts.
+- Require **contiguous** `frame_index` (0..n-1).
+- Allow only known `OptimizationReplayEventType` values for `event_type`.
+- **Frame `metrics` truncation pair:** frames with `metrics.replay_truncated == true` must have non-empty `truncation_reason` in **same frame** `metrics`. If aggregated `track.metrics` does not satisfy §6.1 pair, fix to either **persist rejection** or **empty track on read** (implementation PR chooses one and locks with tests).
+- On read path, malformed payload exposes **empty optimization replay payload**.
 
-**Out of scope (12F-v0에서 하지 않음):**
+**Out of scope (not done in 12F-v0):**
 
 ```text
 - schema envelope
@@ -302,194 +301,194 @@ unknown version → empty payload + diagnostic; silent coercion 금지
 - config_json truncation sibling keys
 - DB migration
 - payload byte-size cap
-- dict 전역 키 화이트리스트의 과도한 확장(필요 시 후속 PR)
+- excessive global dict key whitelist expansion (follow-up PR if needed)
 ```
 
-(표시 전용 **절단·진단 HUD**는 **12H**에서 `asteroid_miner_layout_solver.html` / `asteroid_miner_layout_lab.js`로 도입; 리플레이 시맨틱·Lab 동기화 없음.)
+(Display-only **truncation and diagnostic HUD** introduced in **12H** via `asteroid_miner_layout_solver.html` / `asteroid_miner_layout_lab.js`; no replay semantics or Lab sync.)
 
 ### Sequence 12G — UI payload read adapter
 
-**구현 상태 (v0, 2026-05-17): 완료**
+**Implementation status (v0, 2026-05-17): complete**
 
-- page context가 persist된 프레임을 읽는다(12F에서 shape·절단 짝은 `deserialize`/`validate`로 이미 고정).
-- 실패 시 empty payload + §7.2 진단 문자열(`optimization_replay_diagnostic_reason` 등 — **12G 구현 범위**).
-- `metrics.truncation_reason` 노출은 §6.1에 따른다(12F에서 트랙 집계 완료).
+- page context reads persisted frames (12F fixes shape and truncation pair via `deserialize`/`validate`).
+- On failure, empty payload + §7.2 diagnostic string (`optimization_replay_diagnostic_reason`, etc. — **12G implementation scope**).
+- `metrics.truncation_reason` exposure follows §6.1 (12F track aggregation complete).
 
 ### Sequence 12H — Truncation / diagnostic metadata HUD
 
-**구현 상태 (v0, 2026-05-17): 완료**
+**Implementation status (v0, 2026-05-17): complete**
 
-- **템플릿 SSR:** `asteroid_miner_layout_solver.html` — `lab-optimization-replay-status` / `lab-optimization-replay-truncation` / `lab-optimization-replay-diagnostic` / `lab-optimization-replay-attach`(12J, 기본 `Attach: —`; 표시 전용; Lab 리플레이 인덱스·프레임 순서 비변경).
-- **클라이언트:** `renderOptimizationReplayHud(track)` — `normalizeOptimizationReplayTrack`가 `truncation_reason`·`optimization_replay_diagnostic_reason`을 metrics에 전달; `replaceOptimizationReplayPayload` 경로에서 HUD 재렌더.
-- **금지(유지):** Lab ↔ optimization 암묵적 프레임 동기화, 메타데이터 상호작용(재시도·수리), 솔버·리플레이 의미 변경 없음.
+- **Template SSR:** `asteroid_miner_layout_solver.html` — `lab-optimization-replay-status` / `lab-optimization-replay-truncation` / `lab-optimization-replay-diagnostic` / `lab-optimization-replay-attach` (12J, default `Attach: —`; display-only; Lab replay index and frame order unchanged).
+- **Client:** `renderOptimizationReplayHud(track)` — `normalizeOptimizationReplayTrack` passes `truncation_reason` and `optimization_replay_diagnostic_reason` to metrics; HUD re-renders on `replaceOptimizationReplayPayload` path.
+- **Prohibited (maintained):** Lab ↔ optimization implicit frame sync, metadata interaction (retry/repair), no solver or replay semantic changes.
 
-### Sequence 12I — Optimization replay HUD vocabulary hardening (초안)
+### Sequence 12I — Optimization replay HUD vocabulary hardening (draft)
 
-**목표:** optimization replay HUD에 오르는 **표시용 문자열·코드**를 `status` / `reason` / `diagnostic` **3축**으로 분리해, SSR·클라이언트 재주입(`replaceOptimizationReplayPayload`)·Python 진단 계약이 서로 섞이지 않도록 어휘를 고정한다. **구현은 본 시퀀스 범위에 포함하지 않는다** — 이 절은 문서 정본만 확정한다.
+**Goal:** Separate **display strings and codes** on the optimization replay HUD into **status / reason / diagnostic** **3 axes** so SSR, client re-injection (`replaceOptimizationReplayPayload`), and Python diagnostic contracts do not mix. **Implementation is not included in this sequence scope** — this section fixes documentation canonical only.
 
-**비목표(12I에서 금지):** Lab map 리플레이와 optimization 오버레이의 **동기화 모드 도입**, `renderOptimizationReplayHud`·오버레이 파이프라인의 **렌더/소유권(ownership) 변경**, 관측용 오버레이를 “완전 표시”하기 위한 **프레임 인덱스·이벤트 순서 강결합**. 오버레이 **완전성(completeness)** 은 구현 후 **관측·메트릭·수동 QA**로만 기록하고, 본 시퀀스는 그 결과를 **문서·테스트 기대값**에 반영하지 않는다(동기화/렌더 책임 변경 없음).
+**Non-goals (prohibited in 12I):** **sync mode** between Lab map replay and optimization overlay, **render/ownership changes** to `renderOptimizationReplayHud` and overlay pipeline, **frame index and event order tight coupling** to make observation overlay "fully displayed". Overlay **completeness** is recorded only via **observation, metrics, and manual QA** after implementation; this sequence does **not** reflect those results in **documentation or test expectations** (no sync/render responsibility change).
 
-#### 12I.1 3축 정의 (status / reason / diagnostic)
+#### 12I.1 3-axis definition (status / reason / diagnostic)
 
-| 축 | 의미(표시·계약) | 소스(개략) | 비고 |
+| Axis | Meaning (display and contract) | Source (summary) | Notes |
 |----|------------------|------------|------|
-| **status** | “지금 트랙이 정상 로드됐는지 / 비어 있는지 / 잘렸는지” 등 **사용자 대면 요약** | 트랙 `metrics`의 `frame_count`, `replay_truncated`, empty vs non-empty payload 등에서 **파생** | **솔버·리플레이 시맨틱과 1:1 대응하지 않는다.** HUD 라벨 전용. |
-| **reason** | 잘림·절단의 **도메인 이유** (예: `truncation_reason`, recorder 상한) | 프레임 `metrics` → 트랙 `metrics` 집계(§6.1) | §6.1 짝 계약 위반 시 **읽기 경로는 empty + diagnostic** (§7). |
-| **diagnostic** | 역직렬화·형상·지원 외 `event_type` 등 **읽기 어댑터 실패 코드** | `metrics.optimization_replay_diagnostic_reason` 및 **쓰기 스킵** 시 attach reason (아래 12I.3) | **메타데이터 전용**; 프레임 순서·이벤트 해석에 관여하지 않음(§7.1·12G와 정합). |
+| **status** | User-facing summary such as "track loaded normally / empty / truncated" | **Derived** from track `metrics` `frame_count`, `replay_truncated`, empty vs non-empty payload, etc. | **Does not 1:1 map to solver or replay semantics.** HUD label only. |
+| **reason** | **Domain reason** for truncation (e.g. `truncation_reason`, recorder limits) | frame `metrics` → track `metrics` aggregation (§6.1) | On §6.1 pair violation, **read path is empty + diagnostic** (§7). |
+| **diagnostic** | **Read adapter failure codes** for deserialize, shape, unsupported `event_type`, etc. | `metrics.optimization_replay_diagnostic_reason` and attach reason on **write skip** (12I.3 below) | **Metadata only**; does not participate in frame order or event interpretation (aligned with §7.1·12G). |
 
-세 축은 **서로 대체 불가**. UI는 한 축의 문자열을 다른 축 라벨에 재사용하지 않도록 **명명 규칙**을 JS·SSR·Python에서 동일하게 맞춘다.
+The three axes are **not interchangeable**. UI must align **naming rules** across JS, SSR, and Python so one axis string is not reused as another axis label.
 
-#### 12I.2 JS `enum`/const 매핑 (초안)
+#### 12I.2 JS `enum`/const mapping (draft)
 
-- **원칙:** `asteroid_miner_layout_lab.js`(및 Lab 전용 번들)에 **표시용 상수 테이블**을 둔다. 문자열 리터럴을 템플릿·HUD 분기 곳곳에 흩뿌리지 않는다.
-- **최소 구성:** (1) **diagnostic 코드** — §7.1과 동일 문자열 집합을 `OPTIMIZATION_REPLAY_DIAGNOSTIC_*` 또는 단일 객체 맵으로 고정. (2) **truncation / status 배지** — `replay_truncated`·`truncation_reason` 표시용 라벨·툴팁 키를 const로 묶는다.
-- **i18n:** v0는 한국어/영문 고정 문자열이어도 되나, 키는 **코드 값(diagnostic)** 과 **표시 문자열**을 분리해 후속 i18n PR이 맵만 갈아끼우게 한다.
-- **금지:** diagnostic 문자열을 Lab 리플레이 인덱스나 map 스텝과 연동하는 분기(암묵 동기, §9·12H 비목표와 충돌).
+- **Principle:** put **display constant tables** in `asteroid_miner_layout_lab.js` (and Lab-only bundle). Do not scatter string literals across template and HUD branches.
+- **Minimum structure:** (1) **diagnostic codes** — fix same string set as §7.1 as `OPTIMIZATION_REPLAY_DIAGNOSTIC_*` or single object map. (2) **truncation / status badges** — bundle `replay_truncated` and `truncation_reason` display labels and tooltip keys as const.
+- **i18n:** v0 may use fixed Korean/English strings, but separate **code values (diagnostic)** from **display strings** so follow-up i18n PR can swap maps only.
+- **Prohibited:** branches that tie diagnostic strings to Lab replay index or map step (implicit sync; conflicts with §9·12H non-goals).
 
-#### 12I.3 `optimization_replay_attach.reason` 매핑 (초안)
+#### 12I.3 `optimization_replay_attach.reason` mapping (draft)
 
-- **범위:** `attach_optimization_replay_frames_after_successful_replay_build` 등 **persist/attach 쓰기 경로**에서 가드 실패·스킵 시 남기는 **내부 이유 코드**(문서·로그·선택적 메타)와, **페이지에 노출되는** `optimization_replay_diagnostic_reason`을 **표로 대응**시킨다.
-- **원칙:** attach reason은 **운영·디버그·회귀 테스트** 우선이며, 반드시 HUD에 그대로 노출할 필요는 없다. 노출 시에는 §7.1에 이미 있는 코드만 사용하거나, **신규 코드는 §7.1 표에 먼저 추가**한 뒤 JS const와 함께 고정한다(문자열 표류 방지).
-- **문서 산출물(구현 PR 전):** “attach reason → (optional) diagnostic → HUD 표시 여부” **매핑 표**를 본 절 하위에 두는 것을 권장한다(구현 시 복붙 가능한 한 표).
+- **Scope:** map **internal reason codes** left on persist/attach **write path** when guard fails or skip occurs (e.g. `attach_optimization_replay_frames_after_successful_replay_build`) and **page-exposed** `optimization_replay_diagnostic_reason` in a **table**.
+- **Principle:** attach reason is **operations, debug, and regression test** first; need not be exposed verbatim on HUD. When exposed, use only codes already in §7.1, or **add new codes to §7.1 table first** then fix with JS const (prevent string drift).
+- **Documentation deliverable (before implementation PR):** recommended to put "attach reason → (optional) diagnostic → HUD display yes/no" **mapping table** under this section (one copy-paste-ready table for implementation).
 
-#### 12I.4 Malformed payload matrix (초안)
+#### 12I.4 Malformed payload matrix (draft)
 
-아래는 **읽기 경로** 기준 행렬이다. 열: 입력 조건 / 기대 트랙 / `optimization_replay_diagnostic_reason` / `replay_truncated`·`truncation_reason` / 페이지 비파괴. 구현 PR은 각 행에 **단위 테스트 이름**을 한 줄씩 붙인다.
+Below is a **read path** matrix. Columns: input condition / expected track / `optimization_replay_diagnostic_reason` / `replay_truncated`·`truncation_reason` / page non-crash. Implementation PR attaches **one unit test name per row**.
 
-| # | 입력 조건 (config_json `optimization_replay_frames`) | 기대 트랙 | diagnostic (있을 때) | truncation 축 | 비고 |
+| # | Input condition (config_json `optimization_replay_frames`) | Expected track | diagnostic (when present) | truncation axis | Notes |
 |---|--------------------------------------------------------|-----------|------------------------|-----------------|------|
-| M1 | 키 없음 | empty | `missing_optimization_replay` | 짝 §6.1에 맞는 기본 false/부재 | §7.1 |
-| M2 | `[]` | empty | `empty_optimization_replay_frames` | 동상 | |
-| M3 | 리스트가 아님·프레임 dict 깨짐·`frame_index` 불연속 등 | empty | `invalid_optimization_replay_payload` | 동상 | |
-| M4 | `replay_truncated`와 `truncation_reason` 짝 깨짐 | empty | `invalid_truncation_contract` | 집계 전에 차단 | |
-| M5 | 알 수 없는 `event_type` | empty | `unsupported_or_unknown_event_type` | 동상 | |
-| M6 | (후속) 봉투·`optimization_replay_schema_version` 불일치 | empty | 별도 코드(§10) | 별도 PR에서 §7.1 확장 | 12I는 **행만 예약**; 코드 문자열은 봉투 PR과 동시 고정 |
-| M7 | (후속) 바이트 상한 초과 | empty 또는 정책 택일 | 후속 | 후속 | §14 open decision과 연계 |
+| M1 | key absent | empty | `missing_optimization_replay` | pair §6.1 default false/absent | §7.1 |
+| M2 | `[]` | empty | `empty_optimization_replay_frames` | same | |
+| M3 | not a list, broken frame dict, non-contiguous `frame_index`, etc. | empty | `invalid_optimization_replay_payload` | same | |
+| M4 | `replay_truncated` and `truncation_reason` pair broken | empty | `invalid_truncation_contract` | blocked before aggregation | |
+| M5 | unknown `event_type` | empty | `unsupported_or_unknown_event_type` | same | |
+| M6 | (follow-up) envelope / `optimization_replay_schema_version` mismatch | empty | separate code (§10) | separate PR extends §7.1 | 12I **reserves row only**; code strings fixed with envelope PR |
+| M7 | (follow-up) byte limit exceeded | empty or policy choice | follow-up | follow-up | linked to §14 open decision |
 
-**주의:** M1–M5 코드 문자열은 **§7.1 구현값과 동일**해야 한다. 행렬은 **계약 표**이며, 구현 변경 시 §7·§12I·테스트 세 곳을 한 번에 갱신한다.
+**Note:** M1–M5 code strings must match **§7.1 implementation values**. Matrix is a **contract table**; on implementation change, update §7·§12I·tests together.
 
-#### 12I.5 검증 체인: persist → deserialize → `replaceOptimizationReplayPayload` → HUD 보존 (초안)
+#### 12I.5 Verification chain: persist → deserialize → `replaceOptimizationReplayPayload` → HUD preservation (draft)
 
-- **의도:** 저장 직후 한 번 읽어도, **Run Solver JSON 갱신**으로 클라이언트가 `replaceOptimizationReplayPayload`를 탈 때도, **동일 diagnostic·truncation·status 표시**가 유지되는지 회귀한다.
-- **권장 테스트 계층:**
-  1. **Python:** persist fixture 또는 `SolverRun.config_json` 주입 → `deserialize_optimization_replay_frames_from_json` + `build_optimization_replay_track_payload` → 기대 `metrics` 스냅샷.
-  2. **Django page context:** 기존 `test_page_context_malformed_optimization_replay_does_not_crash` 계열 확장 — HTML에 **진단·절단 placeholder**가 기대 문자열을 포함하는지(SSR).
-  3. **JS(선택·최소):** `replaceOptimizationReplayPayload` 호출 후 DOM에 HUD 노드가 사라지지 않고, 동일 normalize 경로를 타는지 — **프론트 빌드 정책**에 맞춰 단위 또는 통합 한 건.
-- **보존 정의:** “보존”은 **표시 문자열·가시성**이며, **프레임 수·이벤트 내용**이 JSON 갱신으로 바뀌는 것과 혼동하지 않는다. optimization 트랙이 **의도적으로 비워지면** HUD는 empty 상태로 맞추는 것이 정상이다.
+- **Intent:** regression that **same diagnostic, truncation, and status display** holds both right after persist read and when client runs `replaceOptimizationReplayPayload` on Run Solver JSON refresh.
+- **Recommended test layers:**
+  1. **Python:** persist fixture or inject `SolverRun.config_json` → `deserialize_optimization_replay_frames_from_json` + `build_optimization_replay_track_payload` → expected `metrics` snapshot.
+  2. **Django page context:** extend existing `test_page_context_malformed_optimization_replay_does_not_crash` — HTML contains expected strings in **diagnostic and truncation placeholders** (SSR).
+  3. **JS (optional, minimal):** after `replaceOptimizationReplayPayload`, HUD nodes remain and same normalize path runs — one unit or integration case per **frontend build policy**.
+- **Preservation definition:** "preservation" is **display strings and visibility**, not confused with frame count or event content changing on JSON refresh. When optimization track is **intentionally emptied**, HUD matching empty state is correct.
 
-#### 12I.6 오버레이 완전성·동기화 (관측만)
+#### 12I.6 Overlay completeness and sync (observation only)
 
-- **완전성:** “모든 셀/모든 이벤트가 오버레이에 그려졌는가”는 **관측 지표**(로그, 스크린샷, 수동 체크리스트)로만 기록한다. 12I는 이를 **PASS/FAIL 게이트**로 문서화하지 않는다.
-- **금지 재확인:** 프레임 인덱스 동기화, Lab `currentFrameIndex`와 optimization 스텝 맞추기, 오버레이 레이어 소유권 이동, `renderOptimizationReplayHud` 책임 확대 — **전부 비범위**. 문제가 보이면 **버그 리포트·별도 시퀀스**로 분리한다.
+- **Completeness:** "whether all cells/all events are drawn on overlay" is recorded only as **observation metrics** (log, screenshot, manual checklist). 12I does **not** document this as a **PASS/FAIL gate**.
+- **Prohibited reconfirmation:** frame index sync, aligning Lab `currentFrameIndex` with optimization step, overlay layer ownership transfer, expanding `renderOptimizationReplayHud` responsibility — **all out of scope**. If issues appear, split to **bug report or separate sequence**.
 
-**구현 시 스코프 요약:** 3축 어휘·JS const·attach↔diagnostic 매핑 표·M1–M7 행렬·체인 테스트를 **한 PR 또는 12I 전용 소PR 연속**으로 묶되, 각 PR은 §3 output-only·§9 dual-track·§11 비목표를 위반하지 않는다.
+**Implementation scope summary:** bundle 3-axis vocabulary, JS const, attach↔diagnostic mapping table, M1–M7 matrix, and chain tests in **one PR or consecutive 12I sub-PRs**; each PR must not violate §3 output-only, §9 dual-track, §11 non-goals.
 
-### Sequence 12J — Optimization replay attach HUD (POST write channel, 별도 줄)
+### Sequence 12J — Optimization replay attach HUD (POST write channel, separate line)
 
-**구현 상태 (2026-05-17): 완료**
+**Implementation status (2026-05-17): complete**
 
-- **목표:** `Accept: application/json` POST 응답의 `optimization_replay_attach` `{ attached, reason }`를 **읽기 진단(`metrics.optimization_replay_diagnostic_reason`)과 섞지 않고**, Optimization Replay 패널에 **`#lab-optimization-replay-attach`** 한 줄로만 노출한다.
-- **표시 규칙 (클라이언트):** `formatOptimizationReplayAttachHudLine` — `attached === true` 이고 `reason === "attached"` 이면 `Attach: attached`; `attached === false` 이면 `Attach: skipped (<reason>)` (`reason` 없으면 `unknown`); 메타 없음·비객체·`attached` 비불리언이면 `Attach: —`.
-- **렌더:** `renderOptimizationReplayHud(track)`가 status / truncation / diagnostic을 **기존과 동일**으로 갱신한 뒤, 캐시된 POST 값(`optimizationReplayAttachHudRaw`)으로 attach 줄을 갱신한다. `replaceOptimizationReplayPayload`만 호출될 때는 attach 캐시를 바꾸지 않으므로 **마지막 POST의 attach 표시가 유지**된다(읽기 트랙 교체와 쓰기 관측 축 분리).
-- **`renderOptimizationReplayAttachHud(raw)`:** POST 처리 경로에서만 호출; 캐시를 갱신한 뒤 `renderOptimizationReplayHud(optimizationReplayTrack)`로 HUD 전체를 다시 그린다.
-- **비범위(유지):** 솔버·GA·`optimization_replay_persist` 동작 변경 없음; read diagnostic 의미 변경 없음; `optimization_replay_diagnostic_reason`에 attach reason을 **합치지 않음**; 페이로드 압축·Lab/Optimization 암묵 동기·오버레이 수명 변경 없음.
-- **12I.6과의 관계:** 12I.6의 “`renderOptimizationReplayHud` 책임 확대” 비범위는 **오버레이·Lab 인덱스 동기·렌더 소유권 이동**을 가리킨다. 12J는 **POST attach 메타 한 줄(쓰기 관측)** 만 추가한다.
+- **Goal:** expose POST response `optimization_replay_attach` `{ attached, reason }` on **`#lab-optimization-replay-attach`** one line in Optimization Replay panel only, **without mixing with read diagnostic** (`metrics.optimization_replay_diagnostic_reason`).
+- **Display rules (client):** `formatOptimizationReplayAttachHudLine` — `attached === true` and `reason === "attached"` → `Attach: attached`; `attached === false` → `Attach: skipped (<reason>)` (`unknown` if no `reason`); missing meta, non-object, or non-boolean `attached` → `Attach: —`.
+- **Render:** `renderOptimizationReplayHud(track)` updates status / truncation / diagnostic **as before**, then updates attach line from cached POST value (`optimizationReplayAttachHudRaw`). When only `replaceOptimizationReplayPayload` is called, attach cache is unchanged so **last POST attach display is preserved** (read track replacement and write observation axes separated).
+- **`renderOptimizationReplayAttachHud(raw)`:** called only on POST handling path; updates cache then redraws full HUD via `renderOptimizationReplayHud(optimizationReplayTrack)`.
+- **Out of scope (maintained):** no solver, GA, or `optimization_replay_persist` behavior change; no read diagnostic semantic change; do **not merge** attach reason into `optimization_replay_diagnostic_reason`; no payload compression, Lab/Optimization implicit sync, or overlay lifecycle change.
+- **Relation to 12I.6:** 12I.6 "expanding `renderOptimizationReplayHud` responsibility" out of scope refers to **overlay, Lab index sync, and render ownership transfer**. 12J adds **POST attach meta one line (write observation)** only.
 
 ### Sequence 12K — POST attach scalar diagnostics (`evolution_failed` stage)
 
-**구현 상태 (2026-05-17): 완료**
+**Implementation status (2026-05-17): complete**
 
-- **목표:** `optimization_replay_attach.reason`은 **기존 어휘를 유지**한 채(특히 `evolution_failed`·`empty_candidate_pool` 등), 실패 원인을 **스칼라 `optimization_replay_attach.diagnostic`** 으로만 구분한다. **읽기 축** `metrics.optimization_replay_diagnostic_reason`(persist 스캔·역직렬화)과 **쓰기 축** attach 진단은 **계속 분리**한다(12J 불변).
-- **필드:** `stage`, 후보·리코더 카운트,`best_genome_present`, `evolution_convergence_reason`, (예약) commit/validation 스칼라, `error_type` / 짧은 `error_message` — **프레임 배열·경로·전체 traceback·대형 맵 없음**. 허용 `stage` 값은 코드 상수 `OPTIMIZATION_REPLAY_ATTACH_DIAGNOSTIC_STAGES`로 고정.
-- **경로:** `django_apps/web/services/asteroid_lab_post_inspection_evolution.py`에서 단계 변수로 예외 매핑; `optimization_replay_persist.attach_optimization_replay_frames_after_successful_replay_build`는 attach 실패 시 `replay_serialization` / `attach_persist` 등 단계를 병합. `public_pages` JSON·INFO 로그에 `diagnostic.stage`를 노출(추가 HUD 줄 **비목표**).
-- **비범위(유지):** 솔버·GA·후보 생성·incremental commit·검증 **의미 변경 없음**; Lab/optimization 리플레이 동기·오버레이·페이로드 압축 없음.
-- **테스트(회귀):** `tests/unit/asteroid_lab/test_optimization_replay_persist.py`의 12K 전용 케이스(`evolution_search` 예외는 후보 풀을 테스트 헬퍼로 고정), `tests/integration/web/test_asteroid_miner_layout_solver.py`의 `test_post_json_attach_diagnostic_does_not_overwrite_read_diagnostic` 등.
+- **Goal:** keep `optimization_replay_attach.reason` **existing vocabulary** (especially `evolution_failed`, `empty_candidate_pool`, etc.) while distinguishing failure cause only via scalar **`optimization_replay_attach.diagnostic`**. **Read axis** `metrics.optimization_replay_diagnostic_reason` (persist scan, deserialize) and **write axis** attach diagnostic remain **separated** (12J invariant).
+- **Fields:** `stage`, candidate and recorder counts, `best_genome_present`, `evolution_convergence_reason`, (reserved) commit/validation scalars, `error_type` / short `error_message` — **no frame arrays, paths, full traceback, or large maps**. Allowed `stage` values fixed by code constant `OPTIMIZATION_REPLAY_ATTACH_DIAGNOSTIC_STAGES`.
+- **Path:** exception mapping via stage variables in `django_apps/web/services/asteroid_lab_post_inspection_evolution.py`; on attach failure `optimization_replay_persist.attach_optimization_replay_frames_after_successful_replay_build` merges stages such as `replay_serialization` / `attach_persist`. Expose `diagnostic.stage` in `public_pages` JSON and INFO log (additional HUD line **not a goal**).
+- **Out of scope (maintained):** no solver, GA, candidate generation, incremental commit, or validation **semantic change**; no Lab/optimization replay sync, overlay, or payload compression.
+- **Tests (regression):** 12K-specific cases in `tests/unit/asteroid_lab/test_optimization_replay_persist.py` (`evolution_search` exception with candidate pool fixed via test helper), `tests/integration/web/test_asteroid_miner_layout_solver.py` `test_post_json_attach_diagnostic_does_not_overwrite_read_diagnostic`, etc.
 
 ---
 
-## 13. Test plan (테스트 계획) — 12F 구현 PR 수용 기준
+## 13. Test plan — 12F implementation PR acceptance criteria
 
-아래 이름은 **구현 PR에서 추가·이름 맞출 것**을 권장한다.
+Names below are **recommended for addition and alignment in implementation PR**.
 
-**Persist / schema (봉투 도입 시 확장):**
+**Persist / schema (extend when envelope introduced):**
 
-- `test_persisted_optimization_replay_schema_version_required` (봉투 PR 시)
+- `test_persisted_optimization_replay_schema_version_required` (envelope PR)
 - `test_persisted_optimization_replay_rejects_unsupported_schema`
 
 **Shape / read:**
 
 - `test_persisted_optimization_replay_invalid_shape_falls_back_empty`
-- `test_persisted_optimization_replay_truncation_contract` (프레임 metrics + 트랙 metrics 짝)
+- `test_persisted_optimization_replay_truncation_contract` (frame metrics + track metrics pair)
 
 **Page context:**
 
 - `test_page_context_reads_persisted_optimization_replay`
 - `test_page_context_malformed_optimization_replay_does_not_crash`
 
-**경계:**
+**Boundary:**
 
 - `test_ui_payload_preserves_dual_track_no_sync`
-- `test_solver_does_not_read_persisted_replay` (정적 검색 또는 아키텍처 테스트로 “역방향 import/호출 없음” 고정)
+- `test_solver_does_not_read_persisted_replay` (fix "no reverse import/call" via static search or architecture test)
 
-**회귀:** `test_optimization_replay_persist.py`, `test_replay_fixture_json_contract.py`, `test_long_replay_fixture_contract.py` 유지.
-
----
-
-## 14. Remaining open decisions (남은 결정)
-
-1. **Payload byte-size cap:** 12F-v0 **범위 밖**; 도입 시점·상한 값은 후속.
-2. **다중 SolverRun:** “최신만 표시” 외 UI에서 이전 run 선택 필요 여부.
-3. **봉투·`optimization_replay_schema_version`:** 별도 migration/compatibility PR에서만.
-
-~~`truncation_reason` sibling vs metrics~~ → **v0는 metrics 집계로 확정(§6.1).**
+**Regression:** maintain `test_optimization_replay_persist.py`, `test_replay_fixture_json_contract.py`, `test_long_replay_fixture_contract.py`.
 
 ---
 
-## 15. Acceptance criteria (문서 자체)
+## 14. Remaining open decisions
 
-- 본 문서가 존재하고 §3 경계·§11 비목표가 명시된다.
-- 12F-v0 범위·비범위가 §12에 고정된다.
-- output-only 불변식이 §3·§11에서 반복된다.
-- **코드 동작 변경은 본 문서 작업에 포함하지 않는다.**
-- 이후 구현은 **작은 PR**로 12F→12G→12H→12I 순 진행 가능해야 한다.
+1. **Payload byte-size cap:** **out of 12F-v0 scope**; timing and limit value are follow-up.
+2. **Multiple SolverRun:** whether UI needs run selection beyond "show latest only".
+3. **Envelope and `optimization_replay_schema_version`:** only in separate migration/compatibility PR.
 
----
-
-## 16. 검증 (본 문서 작업)
-
-- Markdown만 변경한다.
-- 문서 전용 lint 스크립트는 별도로 두지 않은 것으로 보아 **실행하지 않음**.
+~~`truncation_reason` sibling vs metrics~~ → **v0 fixed on metrics aggregation (§6.1).**
 
 ---
 
-## 17. 교차 참조
+## 15. Acceptance criteria (this document itself)
+
+- This document exists and §3 boundary and §11 non-goals are explicit.
+- 12F-v0 scope and out-of-scope fixed in §12.
+- output-only invariant repeated in §3·§11.
+- **Code behavior changes are not included in this document work.**
+- Subsequent implementation must proceed in **small PRs** in order 12F→12G→12H→12I.
+
+---
+
+## 16. Verification (this document work)
+
+- Markdown-only changes.
+- No document-only lint script observed; **not run**.
+
+---
+
+## 17. Cross references
 
 - `asteroid_lab_10_development_sequence.md`
 - `asteroid_lab_11_future_execution_plan_post_sequence.md`
 - `asteroid_lab_09_replay_debug.md`
-- 코드: `optimization_ui_payload.py`, `optimization_replay_persist.py`, `asteroid_lab_page_context.py`
+- Code: `optimization_ui_payload.py`, `optimization_replay_persist.py`, `asteroid_lab_page_context.py`
 
 ---
 
-## 18. 요약
+## 18. Summary
 
-| 항목 | 결론 |
+| Item | Conclusion |
 |------|------|
-| Persist | `config_json["optimization_replay_frames"]`만 (키 이름 유지) |
-| schema_version | v0 sibling **미도입**; deserialize + 12F shape 가드 |
-| truncation_reason | **프레임 metrics → `build` → track.metrics**; 첫 reason 정본; sibling **없음** |
-| Malformed | 빈 트랙 + 진단 문자열(12G); Lab 페이지 비파괴 |
-| Dual-track | Lab map 권한 vs optimization 관측; 암묵 동기 없음 |
-| 12F-v0 | 프레임 리스트 가드만; 봉투·HUD·cap·migration **제외** |
-| 12I (초안, 미구현) | §12I: HUD **status / reason / diagnostic** 3축·JS const·`optimization_replay_attach.reason`↔diagnostic 매핑·malformed 행렬(M1–M7)·persist→deserialize→`replaceOptimizationReplayPayload`→HUD **표시 보존** 테스트; 오버레이 완전성·동기화/렌더 ownership 변경 **비범위(관측만)** |
-| 12J (구현 완료) | §12J: POST **`optimization_replay_attach` 전용 HUD 줄** (`Attach: …`); read **`optimization_replay_diagnostic_reason` 불변**; 솔버/attach/persist **비변경** |
-| 12K (구현 완료) | §12K: attach **`reason` 어휘 유지** + **`diagnostic` 스칼라**(`stage`·카운트·짧은 오류); read 진단과 분리; 솔버 의미·동기화 **비변경** |
-## Sequence 12L 좌표 경계 보강 (2026-05-17)
+| Persist | `config_json["optimization_replay_frames"]` only (key name unchanged) |
+| schema_version | v0 sibling **not introduced**; deserialize + 12F shape guard |
+| truncation_reason | **frame metrics → `build` → track.metrics**; first reason canonical; **no** sibling |
+| Malformed | empty track + diagnostic string (12G); Lab page non-crash |
+| Dual-track | Lab map authority vs optimization observation; no implicit sync |
+| 12F-v0 | frame list guard only; envelope, HUD, cap, migration **excluded** |
+| 12I (draft, not implemented) | §12I: HUD **status / reason / diagnostic** 3 axes, JS const, `optimization_replay_attach.reason`↔diagnostic mapping, malformed matrix (M1–M7), persist→deserialize→`replaceOptimizationReplayPayload`→HUD **display preservation** tests; overlay completeness and sync/render ownership change **out of scope (observation only)** |
+| 12J (implemented) | §12J: POST **`optimization_replay_attach` dedicated HUD line** (`Attach: …`); read **`optimization_replay_diagnostic_reason` unchanged**; solver/attach/persist **unchanged** |
+| 12K (implemented) | §12K: attach **`reason` vocabulary maintained** + **`diagnostic` scalar** (`stage`, counts, short errors); separated from read diagnostic; solver semantics and sync **unchanged** |
+## Sequence 12L coordinate boundary hardening (2026-05-17)
 
-- Critical invariant: after decode/normalize to island grid, 알고리즘 코드에서 raw 좌표가 불법이다.
-- optimization replay write path는 solver output 관측 계층이며, input uses island-local coords only.
-- post-inspection evolution은 `build_optimization_input` 이후 raw 좌표 변환기를 호출하지 않는다.
-- copy JSON `X`/`Y`; forbidden re-conversion: dense bridge (removed PR-F) 계열 변환은 import/decode 및 최종 display/export projection 경계에서만 허용한다.
-- copy JSON `X==0`은 replay/route/evolution 진단에서 유효 좌표로 유지한다.
+- Critical invariant: after decode/normalize to island grid, raw coordinates are illegal in algorithm code.
+- optimization replay write path is solver output observation layer; input uses island-local coords only.
+- post-inspection evolution does not call raw coordinate converters after `build_optimization_input`.
+- copy JSON `X`/`Y`; forbidden re-conversion: dense bridge (removed PR-F) class conversions allowed only at import/decode and final display/export projection boundaries.
+- copy JSON `X==0` remains valid coordinate in replay/route/evolution diagnostics.
 - **12L-hardening:** `test_import_boundaries`, `test_coordinate_frame_ast_gate`; POST `test_post_json_optimization_input_does_not_raw_convert_server_coords` (legacy name).
-- 12L에서 UI/overlay projection 변경은 범위 밖이다. projection boundary 문제가 발견되면 별도 UI/export boundary 작업으로 분리한다.
+- UI/overlay projection changes are out of scope in 12L. If projection boundary issues are found, split to separate UI/export boundary work.

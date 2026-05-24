@@ -1,5 +1,5 @@
 ---
-description: "Django runtime ownership — Denny persona, thin views, game_data contracts (glob 작업 시 MUST)"
+description: "Django runtime ownership — Denny persona, thin views, game_data contracts (MUST when editing matched globs)"
 globs:
   - django_apps/**
   - config/**
@@ -9,36 +9,36 @@ alwaysApply: false
 
 # Django apps (MUST)
 
-페르소나: [denny.md](mdc:persona/denny.md). 매뉴얼: [django.md](mdc:documents/ai/manuals/django.md). 마이그레이션·모델: [database.md](mdc:documents/ai/manuals/database.md).
+Persona: [denny.md](mdc:persona/denny.md). Manual: [django.md](mdc:documents/ai/manuals/django.md). Migrations & models: [database.md](mdc:documents/ai/manuals/database.md).
 
-**외부 참고 (레포 정본 우선):** [DEV — Cursor Rules for Django](https://dev.to/olivia_craft/cursor-rules-for-django-the-complete-guide-to-ai-assisted-django-development-3je5) · [django-rules — Using rules with Django](https://github.com/dfunckt/django-rules#using-rules-with-django) — 상세 매핑은 [django.md § 참조](mdc:documents/ai/manuals/django.md).
+**External references (repo canonical docs take precedence):** [DEV — Cursor Rules for Django](https://dev.to/olivia_craft/cursor-rules-for-django-the-complete-guide-to-ai-assisted-django-development-3je5) · [django-rules — Using rules with Django](https://github.com/dfunckt/django-rules#using-rules-with-django) — detailed mapping in [django.md § References](mdc:documents/ai/manuals/django.md).
 
-`django_apps/**`·`config/**` 변경은 **데니** 소유. hexagonal `src/shapez2_factory/` 는 도미닉·유리·아다·지나.
+Changes under `django_apps/**` and `config/**` are owned by **Denny**. Hexagonal `src/shapez2_factory/` is Dominic · Yuri · Ada · Gina.
 
-## 편집 전 MUST
+## MUST before editing
 
 1. `@persona/denny.md`, `@documents/ai/manuals/django.md`
-2. models/migrations 시 `@documents/ai/manuals/database.md`
-3. `game_data` 시 `@django_apps/game_data/services/validators.py`, `tests/unit/game_data/`
+2. For models/migrations: `@documents/ai/manuals/database.md`
+3. For `game_data`: `@django_apps/game_data/services/validators.py`, `tests/unit/game_data/`
 
 ## Forbidden shortcuts
 
-- domain 모델에 `JSONField`, `raw_json`, `audit_blob`, `payload`, `data`, `source_dump` — `ALLOWED_JSON_MODELS`·플랜 승인 없이 금지 ([validators.py](mdc:django_apps/game_data/services/validators.py))
-- 계약 변경 전 플랜·승인 없이 구현
-- `game_data`·browse·admin·importer 터치 시 `test_no_raw_json_domain_storage`, `test_admin_browse` 생략 금지
-- [django.md](mdc:documents/ai/manuals/django.md) import 행렬 위반 cross-app import
+- `JSONField`, `raw_json`, `audit_blob`, `payload`, `data`, `source_dump` on domain models — forbidden without `ALLOWED_JSON_MODELS` and plan approval ([validators.py](mdc:django_apps/game_data/services/validators.py))
+- Implementing contract changes without plan and approval
+- Do not skip `test_no_raw_json_domain_storage`, `test_admin_browse` when touching `game_data`, browse, admin, or importer
+- Cross-app imports that violate the [django.md](mdc:documents/ai/manuals/django.md) import matrix
 
 ## Thin view
 
-- HTTP·URL은 동작 소유 앱에 둔다 (`game_data.browse` → `config/urls.py` include).
-- 뷰는 서비스/importer/registry에 위임; 템플릿은 표시만.
+- HTTP and URLs belong to the app that owns the behavior (`game_data.browse` → `config/urls.py` include).
+- Views delegate to services/importers/registry; templates display only.
 
-## 검증 (렉스)
+## Verification
 
 ```bash
-python -m pytest tests/unit/<app>/   # narrow; -q / --quiet / --tb=no 금지
+python -m pytest tests/unit/<app>/   # narrow scope; do not use -q / --quiet / --tb=no
 python -m ruff check <paths>
 python -m mypy django_apps config src
 ```
 
-마감: [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc) Caveman 6절.
+Closing: [shapez2-core.mdc](mdc:.cursor/rules/shapez2-core.mdc) Caveman six sections.

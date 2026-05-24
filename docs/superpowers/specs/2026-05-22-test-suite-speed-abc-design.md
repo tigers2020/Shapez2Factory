@@ -1,6 +1,6 @@
 ﻿# Test Suite Speed (A+B+C) — Design Spec
 
-> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
+> **pytest output:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden**.
 
 **Status:** Approved 2026-05-22  
 **Supersedes:** Extends [`2026-05-21-test-suite-speed`](../plans/2026-05-21-test-suite-speed.md) (Phase 1 largely done)
@@ -31,7 +31,7 @@ Developers need three speed wins:
 - `scripts/test_fast.ps1` — `unit and not slow`, parallel
 - `scripts/test_slow.ps1` — `-m slow`, parallel
 - `scripts/test_full.ps1` — full suite, parallel
-- `documents/ai/manuals/testing.md` — “로컬 기본 = test_fast”
+- `documents/ai/manuals/testing.md` — “local default = test_fast”
 - Optional: `AGENTS.md` one-line pointer
 
 ### B — Fast slice reduction

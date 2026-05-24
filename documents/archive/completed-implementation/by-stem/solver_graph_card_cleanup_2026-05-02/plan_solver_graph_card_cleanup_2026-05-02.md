@@ -1,38 +1,38 @@
 # Plan: solver graph card cleanup and straight edge routing (2026-05-02)
 
-관련 리서치: [documents/research_solver_graph_card_cleanup_2026-05-02.md](./research_solver_graph_card_cleanup_2026-05-02.md)
+Related research: [documents/research_solver_graph_card_cleanup_2026-05-02.md](./research_solver_graph_card_cleanup_2026-05-02.md)
 
-원본 요청 요약: solver graph 에서 preview card 내부 스크롤을 없애고, 다중 input 라인을 더 읽기 쉽게 분리하며, 곡선 edge 를 elbow 직선으로 바꾼다.
+Original request summary: remove preview card internal scroll in solver graph, separate multi-input lines for readability, change curved edges to elbow straight segments.
 
-## 목표
+## Goals
 
-- shape preview card 는 내부 스크롤바 없이 고정 카드처럼 보인다.
-- operation 카드의 `Input A/B` 같은 다중 입력은 서로 다른 도착 lane 을 사용한다.
-- edge path 는 cubic bezier 대신 `M/L` 기반 elbow polyline 으로 렌더링된다.
-- solver graph payload 와 backend graph 생성 로직은 변경하지 않는다.
+- Shape preview cards look like fixed cards without internal scrollbars.
+- Operation card multi-inputs like `Input A/B` use distinct arrival lanes.
+- Edge paths render as elbow polylines with `M/L` instead of cubic bezier.
+- Do not change solver graph payload or backend graph generation.
 
-## 구현 접근
+## Implementation approach
 
-1. `graph_markup.js` 에서 shape card 루트 overflow 와 내부 spacing 을 줄이고 preview 높이를 고정한다.
-2. edge geometry helper 를 분리해서 source/destination anchor 와 lane offset 을 계산한다.
-3. operation input/output 에 대해 slot label 기반 lane index 를 적용한다.
-4. edge label 위치를 destination-side horizontal segment 근처로 옮긴다.
-5. graph markup 전용 unit test 를 추가하고 smoke test marker 를 보강한다.
+1. In `graph_markup.js`, reduce shape card root overflow and internal spacing; fix preview height.
+2. Split edge geometry helper to compute source/destination anchors and lane offsets.
+3. Apply slot-label-based lane index for operation input/output.
+4. Move edge labels near destination-side horizontal segment.
+5. Add graph markup unit tests and strengthen smoke test markers.
 
-## 변경 대상
+## Change targets
 
 - `django_apps/web/static/web/js/solver_timeline/graph_markup.js`
 - `tests/unit/web/test_solver_graph_markup.py`
 - `tests/integration/web/test_web_smoke.py`
 
-## 검증
+## Verification
 
 - `pytest`
 - `ruff check .`
 - `mypy .`
 - `black .`
 
-## 메모
+## Notes
 
-- `solver_graph_layout.js` 의 노드 높이는 우선 유지하고, 카드 압축만으로 해결되는지 본다.
-- 필요하다면 이후 별도 작업으로 shape/output fanout lane 분리를 확장할 수 있다.
+- Keep `solver_graph_layout.js` node height for now; review whether card compression alone suffices.
+- Can extend shape/output fanout lane separation in follow-up if needed.

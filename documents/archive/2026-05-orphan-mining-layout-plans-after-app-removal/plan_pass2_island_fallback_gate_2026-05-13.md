@@ -1,41 +1,36 @@
-# Pass2 island fallback gate 축소 플랜 (2026-05-13)
+# Pass2 island fallback gate reduction plan (2026-05-13)
 
-## 배경
+## Background
 
-`latest.ndjson` 기준 STEP4 telemetry alias 문제는 해소되었고, 남은 실패는 `fluid_pipe`
-Pass2 placement가 STEP4에서 기존 same-kind trunk goal에 도달하지 못해 rollback되는 문제다.
+Per `latest.ndjson`, STEP4 telemetry alias issues are resolved; remaining failures are Pass2 `fluid_pipe` placement rollbacks when STEP4 cannot reach an existing same-kind trunk goal.
 
-관측된 핵심 패턴:
+Observed core pattern:
 
-- Pass2 probe: `transport_cells_before_island_fallback`으로 `final_goal_count`가 생김.
-- STEP4 실패: `existing_trunk_goal_count > 0`, `reachable_existing_trunk_count == 0`.
+- Pass2 probe: `transport_cells_before_island_fallback` produces `final_goal_count`.
+- STEP4 failure: `existing_trunk_goal_count > 0`, `reachable_existing_trunk_count == 0`.
 - `exterior_margin_cell_count == 0`, `trunk_seed_candidate_count == 0`.
-- 같은 9개 placement가 STEP4 재진입 때문에 두 번 기록됨.
+- Same nine placements recorded twice due to STEP4 re-entry.
 
-## 범위
+## Scope
 
-1. `existing_layout_analysis`가 있는 Pass2 probe에서 canonical STEP4 goal이 비어 있고
-   `transport_cells_before_island_fallback`만 목표를 만든 경우 placement commit을 거부한다.
-2. 기존 telemetry key 이름은 변경하지 않는다.
-3. STEP4 재진입 해석을 위해 `step4_reentry_index`만 추가한다.
-4. Dijkstra 동작과 STEP4 route cost는 변경하지 않는다.
+1. When Pass2 probe has `existing_layout_analysis` and canonical STEP4 goal is empty but only `transport_cells_before_island_fallback` created goals, reject placement commit.
+2. Do not rename existing telemetry keys.
+3. Add only `step4_reentry_index` for STEP4 re-entry interpretation.
+4. Do not change Dijkstra behavior or STEP4 route cost.
 
-## 최소 구현
+## Minimal implementation
 
 - `pass12_bundle_commit.py`
-  - Pass2 probe 직후 `goal_trace`를 검사한다.
-  - `fallback_goal_source == "transport_cells_before_island_fallback"`이고,
-    `raw_goal_count == 0`, `trunk_reaching_probe_count == 0`,
-    `exterior_margin_cell_count == 0`, `existing_layout_analysis`가 있으면 reject한다.
-- `solver_pipeline/recovery_orchestrator.py`, `solver_pipeline/step4.py`,
-  `step4/step4_merge_routing.py`
-  - 첫 STEP4는 `step4_reentry_index=0`, recovery 재진입은 `1`로 전달한다.
-  - `step4_completed`와 `step4_route_failure_detail`에 같은 값을 싣는다.
+  - Inspect `goal_trace` immediately after Pass2 probe.
+  - Reject when `fallback_goal_source == "transport_cells_before_island_fallback"`, `raw_goal_count == 0`, `trunk_reaching_probe_count == 0`, `exterior_margin_cell_count == 0`, and `existing_layout_analysis` is present.
+- `solver_pipeline/recovery_orchestrator.py`, `solver_pipeline/step4.py`, `step4/step4_merge_routing.py`
+  - First STEP4 passes `step4_reentry_index=0`, recovery re-entry passes `1`.
+  - Attach same value to `step4_completed` and `step4_route_failure_detail`.
 
-## 테스트
+## Tests
 
-- Pass2 fluid fixture형 단위 테스트:
-  - `existing_layout_analysis=None`인 기존 fallback 허용 케이스는 유지한다.
-  - `existing_layout_analysis`가 있고 canonical goal 없이 fallback만 있는 경우 reject한다.
-- STEP4 telemetry 단위 테스트:
-  - 강제 실패 경로에서 failure detail에 `step4_reentry_index`가 노출되는지 확인한다.
+- Pass2 fluid fixture unit test:
+  - Preserve existing fallback-allowed case with `existing_layout_analysis=None`.
+  - Reject when `existing_layout_analysis` present and only fallback goals without canonical goal.
+- STEP4 telemetry unit test:
+  - Confirm forced failure path exposes `step4_reentry_index` in failure detail.

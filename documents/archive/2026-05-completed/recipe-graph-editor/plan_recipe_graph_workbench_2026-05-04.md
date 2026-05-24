@@ -1,74 +1,74 @@
-# Recipe Graph Workbench — 실행 계획 (2026-05-04)
+# Recipe Graph Workbench — Execution Plan (2026-05-04)
 
-본 문서는 스태프 매크로 **그래프 편집기**를 첨부 목업 수준으로 **레이아웃 전면 리디자인**하고, 연결 규칙·COLOR_MIXER·검증 UX를 단계적으로 반영하기 위한 계획이다.  
-(`graph_document` 스키마·도메인 경계는 기존 [AGENTS.md](../../../../AGENTS.md)·[`architecture.mdc`](../../../../.cursor/rules/architecture.mdc)를 따른다.)
+This document staff The plan is to **completely redesign the layout** of the macro **graph editor** to the attached mockup level and gradually reflect the connection rules, COLOR_MIXER, and verification UX.
+(The `graph_document` schema·domain boundary follows the existing [AGENTS.md](../../../../AGENTS.md)·[`architecture.mdc`](../../../../.cursor/rules/architecture.mdc).)
 
 ---
 
-## 1. 목표 요약
+## 1. Summary of goals
 
-| 축 | 내용 |
+| axis | Content |
 |----|------|
-| **UI** | 아래 **§2 목업 레이아웃**에 맞춘 전면 리디자인(헤더·팔레트·캔버스·하단 인스펙터·풋터). |
-| **도메인** | `shape → operation → intermediate(shape) → … → target` 토폴로지 강제; `operation → operation` 등 금지. |
-| **팔레트** | 엔진이 지원하는 연산만 노출(SHAPE / ROTATE / CUT / FLOW / COLOR). 목업의 LOGIC·UTILITY 등은 **노출하지 않음**(설계 전). |
-| **색** | 기존 채널 문자 혼합에 `ColorMode` 확장 여지; 테이블 기반 검증. |
+| **UI** | Full redesign (header, palette, canvas, bottom inspector, footer) tailored to the **§2 mockup layout** below. |
+| **Domain** | `shape → operation → intermediate(shape) → … → force target` topology; `operation → operation`, etc. is prohibited. |
+| **Palette** | Only operations supported by the engine are exposed (SHAPE / ROTATE / CUT / FLOW / COLOR). The LOGIC·UTILITY of the mock-up is **not exposed** (before design). |
+| **Color** | Room for `ColorMode` extension to mix existing channel characters; Table-based validation. |
 
 ---
 
-## 2. 레이아웃 목업과의 정렬 (첨부 이미지 기준)
+## 2. Alignment with layout mockup (based on attached image)
 
-전면 리디자인 시 **다음 구역을 1차 목표**로 한다. (픽셀 단위 복제가 아니라 **구역·역할·정보 계층** 동일.)
+When completely redesigning, **the following area is the primary target**. (Not pixel-by-pixel replication, but **area, role, and information layer** are the same.)
 
-### 2.1 헤더 (상단 바)
+### 2.1 Header (top bar)
 
-- 앱/페이지 타이틀(예: Staff · Graph editor), 레시피 코드·이름 등 메타 한 줄.
-- 우측 액션: **Catalog**, **Edit metadata**(기존 URL 유지).
+- One line of meta, such as app/page title (e.g. Staff · Graph editor), recipe code · name, etc.
+- Right actions: **Catalog**, **Edit metadata** (maintain existing URL).
 
-### 2.2 메인 중단 — 2열 (좌 팔레트 | 우 캔버스)
+### 2.2 Main break — 2 rows (left palette | right canvas)
 
-**좌: Operations / Node 팔레트**
+**Left: Operations / Node palette**
 
-- 상단 **검색** 입력(라벨·연산 키 필터).
-- 카테고리별 접기/제목: 실제 데이터는 **§4 팔레트 범위**만 표시. (목업의 BASIC/TRANSFORM/LOGIC 등 이름은 참고만 하고, 구현은 SHAPE·ROTATE·CUT·FLOW·COLOR 고정.)
-- 각 항목: **아이콘 + 라벨** 가로 카드, 드래그 가능.
-- (선택) 하단 Quick access / 즐겨찾기 영역.
+- Enter **Search** at the top (label/operation key filter).
+- Collapse/Title by Category: Actual data only shows **§4 palette range**. (The names of the mock-up, such as BASIC/TRANSFORM/LOGIC, are for reference only, and the implementation is SHAPE·ROTATE·CUT·FLOW·COLOR fixed.)
+- Each item: **Icon + Label** Horizontal card, draggable.
+- (Optional) Bottom Quick access / Favorites area.
 
-**우: 캔버스 워크스페이스**
+**Right: Canvas Workspace**
 
-- **배경 그리드** 및 기존 pan/zoom 동작 유지.
-- 캔버스 **상단 툴바**: Grid 토글, (가능 시) Snap, Zoom % / ± / **Fit to screen** 등 — 기존 `graph_viewport`와 연동해 단계 도입.
-- **미니맵**: 캔버스 우상단 오버레이(작은 전체 맵); 구현 난이도상 **Phase 후순위**로 두되, 레이아웃에는 **자리(플레이스홀더)** 확보 가능.
+- Retains **background grid** and existing pan/zoom behavior.
+- Canvas **top toolbar**: Grid toggle, (if available) Snap, Zoom % / ± / **Fit to screen**, etc. — Steps introduced in conjunction with existing `graph_viewport`.
+- **Minimap**: Overlay on top right of canvas (small overall map); Due to the difficulty of implementation, it is placed as **Phase lower priority**, but **place (placeholder)** can be secured in the layout.
 
-### 2.3 하단 — 인스펙터 / 상태 패널 (전폭)
+### 2.3 Bottom — Inspector/Status Panel (full width)
 
-목업과 같이 **한 줄 또는 접을 수 있는 스트립**으로 다음 블록을 배치한다.
+Place the following blocks in a **line or collapsible strip** as shown in the mockup.
 
-| 블록 | 역할 |
+| block | Role |
 |------|------|
-| Node Info | 선택 노드 이름·종류·짧은 설명·프리뷰(가능 시). |
-| Properties | 노드별 편집(드롭다운·숫자 등) — 기존 편집 모달 내용을 단계적으로 이전. |
-| Validation | 재계산/검증 메시지, 성공·경고·오류. |
-| Stats | 노드 수, 엣지 수, (선택) 경고/오류 개수 등. |
-| Notes | 사용자 메모(선택, 레시피 필드와 연동 여부는 별도 결정). |
+| Node Info | Select node name, type, short description, and preview (if available). |
+| Properties | Editing by node (dropdown, number, etc.) — Migrate existing editing modal contents step by step. |
+| Validation | Recalculation/verification messages, success, warning, error. |
+| Stats | Number of nodes, number of edges, (optional) number of warnings/errors, etc. |
+| Notes | User memo (optional, whether to link with recipe field to be determined separately). |
 
-### 2.4 최하단 — 액션 바
+### 2.4 Bottom — Action Bar
 
 - **Recompute (dry-run)**, **Recompute & save graph**.
-- 상태 한 줄: 마지막 재계산 시간·유효 여부 등.
-- **Add node / Add operation / Delete selected** 등 — 기존 CRUD 툴바와 통합.
+- One line of status: last recalculation time, validity, etc.
+- **Add node / Add operation / Delete selected**, etc. — Integration with existing CRUD toolbar.
 
-### 2.5 구현 시 파일 (예상)
+### 2.5 Implementation Files (Expected)
 
-- 템플릿: [`django_apps/web/templates/web/macro_pattern_graph.html`](../../../../django_apps/web/templates/web/macro_pattern_graph.html) — 그리드 셸·영역 id.
-- 스크립트: [`django_apps/web/static/web/js/macro_pattern_graph_editor.js`](../../../../django_apps/web/static/web/js/macro_pattern_graph_editor.js) — 거대 `innerHTML`을 섹션별 빌더로 분해.
-- 스타일: Tailwind 유지; 필요 시 `web/static/web/css` 소량 보조 또는 템플릿 내 scoped 블록.
+- Template: [`django_apps/web/templates/web/macro_pattern_graph.html`](../../../../django_apps/web/templates/web/macro_pattern_graph.html) — Grid shell/area id.
+- Script: [`django_apps/web/static/web/js/macro_pattern_graph_editor.js`](../../../../django_apps/web/static/web/js/macro_pattern_graph_editor.js) — Break down the huge `innerHTML` into section-by-section builders.
+- Style: Maintain Tailwind; Small auxiliary or scoped blocks within `web/static/web/css` templates when needed.
 
 ---
 
-## 4. 팔레트에 노출할 연산 (엔진 일치)
+## 4. Operations to be exposed to palette (engine matching)
 
-목업에 그려진 Logic·Utility 등은 **이번 단계에서 제외**.
+Logic·Utility, etc. drawn in the mock-up are **excluded at this stage**.
 
 - **SHAPE**: Base shape  
 - **ROTATE**: `rotate_cw`, `rotate_ccw`, `rotate_180`  
@@ -76,44 +76,44 @@
 - **FLOW**: `stacker`, `swapper`, `pin_pusher`  
 - **COLOR**: `painter`, `color_mixer`  
 
-아이콘은 기존 [`catalog_operations_payload`](../../../../django_apps/shapez_solver/services/macro_recipe_staff_catalog.py)의 정적 URL 사용.
+The icon uses a static URL from the existing [`catalog_operations_payload`](../../../../django_apps/shapez_solver/services/macro_recipe_staff_catalog.py).
 
 ---
 
-## 5. 도메인 · 검증 (Phase 1)
+## 5. Domain/Verification (Phase 1)
 
-- 서버: `validate_graph_document` 이후 **토폴로지 검증** 추가(출력 엣지의 `to`가 intermediate shape인지, 입력이 shape에서만 오는지 등).
-- 클라이언트: `recipeWireConnect`에서 동일 규칙으로 **연결 거부** + 메시지.
-- 단위 테스트: 허용/거부 케이스.
+- Server: Add **topology verification** after `validate_graph_document` (whether `to` of output edge is intermediate shape, input comes only from shape, etc.).
+- Client: **Connection refused** + message with same rule in `recipeWireConnect`.
+- Unit tests: allow/deny cases.
 
 ---
 
 ## 6. Color Mixer (Phase 3)
 
-- [`color_mix_semantics.py`](../../../../django_apps/shapez_solver/services/color_mix_semantics.py) 확장 및 `ColorMode` placeholder.
-- 인스펙터 Properties에 허용 조합 반영(드롭다운/경고).
+- [`color_mix_semantics.py`](../../../../django_apps/shapez_solver/services/color_mix_semantics.py) extension and `ColorMode` placeholder.
+- Allowed combinations reflected in Inspector Properties (dropdown/warning).
 
 ---
 
-## 7. 캔버스 고급 UX (Phase 4)
+## 7. Canvas Advanced UX (Phase 4)
 
-- 노드 role별 시각 차별화([`graph_markup.js`](../../../../django_apps/web/static/web/js/solver_timeline/graph_markup.js)).
-- 위반 엣지 스타일(점선/색) — 서버 검증 결과 또는 클라이언트 추정.
-- 미니맵·와이어 색 단계 — 우선순위별.
-
----
-
-## 8. 문서·승인·검증
-
-- 본 계획은 `documents/` 한국어 본문 규칙을 따른다.
-- 구현 전 승인 게이트는 프로젝트 [protocols/README.md](../../../../protocols/README.md)에 따른다.
-- 검증: `pytest`(unit·integration), 변경 구간 린트.
+- Visual differentiation by node role ([`graph_markup.js`](../../../../django_apps/web/static/web/js/solver_timeline/graph_markup.js)).
+- Violation edge style (dotted/colored) — Server verification result or client estimate.
+- Minimap/wire color level — by priority.
 
 ---
 
-## 9. 이 계획에서의 우선순위
+## 8. Documentation/Approval/Verification
 
-1. **레이아웃 전면 리디자인(§2)** — 사용자 요청 반영, 목업과 동일한 구역 분리.  
-2. **토폴로지 검증(§5)** — 잘못된 그래프 방지.  
-3. Color Mixer·인스펙터 상세.  
-4. 미니맵·Fit·Notes 영구 저장 등 부가 기능.
+- This plan follows the Korean text rules of `documents/`.
+- Approval gate before implementation follows project [protocols/README.md](../../../../protocols/README.md).
+- Verification: `pytest`(unit·integration), change section lint.
+
+---
+
+## 9. Priorities in this plan
+
+1. **Full layout redesign (§2)** — Reflecting user requests, separating the same areas as the mock-up.
+2. **Topology Verification (§5)** — Avoiding bad graphs.
+3. Color Mixer·Inspector details.
+4. Additional features such as permanent storage of minimap, Fit, and Notes.

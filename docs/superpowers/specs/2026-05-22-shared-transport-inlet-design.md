@@ -36,15 +36,15 @@ The solver must treat route sharing and inlet blocking as **different layers**, 
 ### Game intuition mapping
 
 ```text
-OK:   Miner L and Miner R ??routes merge on shared belt/pipe cells downstream
+OK:   Miner L and Miner R â€” routes merge on shared belt/pipe cells downstream
 BAD:  Miner C sets fixed_output_transport on a cell already used as transport
-      ??blocks ?œinward??injection for existing feeders (ìµœì•…????
+      ï¿½ blocks "inward" injection for existing feeders (worst case)
 ```
 
 ## Current code gap
 
 - [`commit_best_candidates.py`](../../../django_apps/asteroid_lab/optimization/commit_best_candidates.py) `_equipment_transport_overlap` rejects broad `equipment & committed_route_cells`, which conflates inlet blocking with other touches.
-- [`phase_j_incremental_commit.md`](../../../documents/Algorithm/solver_runtime/phase_j_incremental_commit.md) Route sharing bullet ?œsame cell sharing ê¸ˆì???**contradicts** this spec ??**update doc** to match v0.
+- [`phase_j_incremental_commit.md`](../../../documents/Algorithm/solver_runtime/phase_j_incremental_commit.md) Route sharing bullet â€” same cell sharing forbidden â€” **contradicts** this spec â€” **update doc** to match v0.
 - Phase I footprint filter does not yet apply inlet rule against **accumulated route cells** (only `occupied_cells`).
 
 ## Target behavior
@@ -57,7 +57,7 @@ When greedy-selecting, exclude candidate `c` if:
 c.fixed_output_transport ??selected_route_cells
 ```
 
-where `selected_route_cells` is the union of **planned** route cells for already-ordered candidates. v0 pragmatic source: use each candidate?™s **candidate-phase** `route_probe_result.path` ??`reserved_cells` proxy (document exact field in implementation plan). If proxy unavailable at selection time, **commit-only** enforcement is minimum; selection mirror is preferred to reduce commit skips.
+where `selected_route_cells` is the union of **planned** route cells for already-ordered candidates. v0 pragmatic source: use each candidate?ï¿½s **candidate-phase** `route_probe_result.path` ??`reserved_cells` proxy (document exact field in implementation plan). If proxy unavailable at selection time, **commit-only** enforcement is minimum; selection mirror is preferred to reduce commit skips.
 
 ### Phase J ??commit (required)
 

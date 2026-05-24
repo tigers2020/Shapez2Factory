@@ -1,22 +1,22 @@
-# 솔버 수량(quantity): 노드만이 아니라 엣지·플랜에도
+# Solver Quantity: Needed on Edges and Plans, Not Just Nodes
 
-## 흔한 불일치 증상
+## Common Mismatch Symptom
 
 ```text
-요약(demand summary)은 1:1:2인데 그래프는 1:1:1
+Demand summary says 1:1:2 but graph shows 1:1:1
 ```
 
-## 대표 원인
+## Typical Causes
 
-1. 소스 노드 수량만 바꾸고 **엣지 수요**를 갱신하지 않음
-2. 연산 출력 **다중성(multiplicity)** 이 그래프에 반영되지 않음
-3. `target_count` 등이 **물질화 그래프 생성 단계**에서 1로 리셋됨
-4. **shape identity** 집계와 **수량 집계**가 분리되지 않음
+1. Source node quantity changed but **edge demand** not updated
+2. Operation output **multiplicity** not reflected in graph
+3. `target_count` etc. reset to 1 during **materialized graph generation**
+4. **Shape identity** aggregation and **quantity aggregation** not separated
 
-## 권장 모델 스케치
+## Recommended Model Sketch
 
 ```python
-# 개념 예시 — 실제 필드명은 프로젝트 DTO에 맞출 것
+# Conceptual example — align field names with project DTOs
 Node:
     shape_code
     node_type
@@ -24,11 +24,11 @@ Node:
 
 Edge:
     quantity
-    throughput   # 또는 시간당 처리량 등
-    role: input | output | top | bottom | east | west   # 빌딩·포트 의미
+    throughput   # or per-time throughput, etc.
+    role: input | output | top | bottom | east | west   # building/port semantics
 ```
 
-## 관련
+## Related
 
-- 그래프 UI와 요약 수치 혼동 방지: [documents/ai/manuals/graph_ui.md](../ai/manuals/graph_ui.md)
+- Avoid confusing graph UI with summary numbers: [documents/ai/manuals/graph_ui.md](../ai/manuals/graph_ui.md)
 - [solver_graph_dag.md](solver_graph_dag.md)

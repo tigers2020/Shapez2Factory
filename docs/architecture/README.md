@@ -1,73 +1,73 @@
 # Architecture
 
-이 문서는 `.cursor/rules/architecture.mdc`의 사람 친화 버전이다. 레이어 책임과 의존 방향을 규범적으로 기술한다.
+This document is the human-friendly version of `.cursor/rules/architecture.mdc`. It normatively describes layer responsibilities and dependency direction.
 
-## 레이어 구조
+## Layer structure
 
 ```
 src/{{package_name}}/
-├── domain/          # 순수 비즈니스 규칙, 값 객체, 정책 (I/O 없음)
+├── domain/          # Pure business rules, value objects, policies (no I/O)
 ├── application/
-│   ├── ports/       # port 추상화 (Protocol / ABC)
-│   └── use_cases/   # use case 오케스트레이션
-├── adapters/        # port 구현체, 외부 시스템 연동, DTO 변환
-├── interfaces/      # UI 화면, 사용자 상태, 위젯 조합
-└── bootstrap/       # 의존성 조립 (DI wiring)
+│   ├── ports/       # Port abstractions (Protocol / ABC)
+│   └── use_cases/   # Use case orchestration
+├── adapters/        # Port implementations, external system integration, DTO mapping
+├── interfaces/      # UI screens, user state, widget composition
+└── bootstrap/       # Dependency assembly (DI wiring)
 ```
 
-## 의존 방향
+## Dependency direction
 
 ```
 interfaces ──► application (use_cases, ports)
 adapters   ──► application (ports)
 application──► domain
 bootstrap  ──► adapters, interfaces, application
-domain     ──► (없음 — 외부 의존 금지)
+domain     ──► (none — no external dependencies)
 ```
 
-## 레이어별 책임
+## Responsibilities by layer
 
 ### domain
 
-- 엔티티, 값 객체, 도메인 이벤트, 정책
-- I/O, UI, DB, 외부 API 호출 절대 금지
-- 담당: 도미닉
+- Entities, value objects, domain events, policies
+- Absolutely no I/O, UI, DB, or external API calls
+- Owner: Dominic
 
 ### application
 
-- use case = 입력 수신 → domain 호출 → 출력 반환
-- port(Protocol/ABC)로 외부 의존을 추상화
-- 구체 adapter 구현 직접 import 금지
-- 담당: 유리
+- Use case = receive input → call domain → return output
+- Abstract external dependencies via ports (Protocol/ABC)
+- Do not import concrete adapter implementations directly
+- Owner: Yuri
 
 ### adapters
 
-- port 계약 구현
-- 외부 응답을 application DTO로 변환
-- 비즈니스 정책 포함 금지
-- 담당: 아다
+- Implement port contracts
+- Map external responses to application DTOs
+- Must not contain business policy
+- Owner: Ada
 
 ### interfaces
 
-- UI 화면, 사용자 상태 관리
-- use case 또는 application DTO에만 의존
-- adapter 구현 직접 알지 않음
-- 담당: 지나
+- UI screens, user state management
+- Depend only on use cases or application DTOs
+- Do not know concrete adapter implementations directly
+- Owner: Gina
 
 ### bootstrap
 
-- 구체 adapter와 UI/use case를 조립
-- 프레임워크 초기화, 설정 로딩
-- 담당: 시몬
+- Wire concrete adapters with UI/use cases
+- Framework initialization, configuration loading
+- Owner: Simon
 
-## Port 설계 지침
+## Port design guidelines
 
-1. `application/ports/` 아래에 Protocol 또는 ABC로 정의한다.
-2. use case는 port 타입에만 의존한다 (구체 클래스 X).
-3. adapter는 port 계약을 만족하는 구체 구현을 제공한다.
-4. 테스트에서는 port를 fake(stub/mock) 구현으로 교체한다.
+1. Define in `application/ports/` as Protocol or ABC.
+2. Use cases depend only on port types (not concrete classes).
+3. Adapters provide concrete implementations that satisfy port contracts.
+4. In tests, replace ports with fake (stub/mock) implementations.
 
-## 참조
+## References
 
 - [Domain Manual](../domain/README.md)
 - [ADR](../adr/README.md)

@@ -1,12 +1,12 @@
 # game_data Phase 3 — Domain Coverage Gap Fill Implementation Plan
 
-> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
+> **pytest output:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden**.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `building_variants.json`의 ConveyorSpeed·유체 rate, `buildings.json`의 DLC/리서치 보상 플래그, `fluids.json`의 display_name_key를 ORM으로 승격하고 coverage manifest를 갱신한다.
+**Goal:** Promote ConveyorSpeed and fluid rates from `building_variants.json`, DLC/research reward flags from `buildings.json`, and display_name_key from `fluids.json` to ORM and update coverage manifest.
 
-**Architecture:** `BuildingVariantRateConfig` 정규화 테이블(신규)로 CustomData.All[] polymorphic 설정을 인터페이스 키 + param 키 scalar 행으로 저장. 기존 `BuildingGroup`, `FluidColor`에는 필드만 추가. 전용 `custom_data_extractor.py` 모듈이 파싱 로직을 담당한다.
+**Architecture:** Store CustomData.All[] polymorphic settings as interface key + param key scalar rows in new normalized `BuildingVariantRateConfig` table. Add fields only to existing `BuildingGroup`, `FluidColor`. Dedicated `custom_data_extractor.py` module owns parsing logic.
 
 **Tech Stack:** Django ORM, pytest, ruff, mypy, black
 
@@ -14,32 +14,32 @@
 
 ## File Map
 
-| 파일 | 작업 |
+| File | Work |
 |---|---|
-| `django_apps/game_data/coverage/reason_codes.py` | 수정 — 5개 신규 reason code 추가 |
-| `django_apps/game_data/models/shapes.py` | 수정 — `FluidColor.display_name_key` 추가 |
-| `django_apps/game_data/models/buildings.py` | 수정 — `BuildingGroup` 2필드, `BuildingVariantRateConfig` 신규 클래스 |
-| `django_apps/game_data/models/__init__.py` | 수정 — `BuildingVariantRateConfig` export |
-| `django_apps/game_data/services/identifiers.py` | 수정 — `canonical_variant_rate_config` 추가 |
-| `django_apps/game_data/importers/custom_data_extractor.py` | 신규 — CustomData.All[] 파서 |
-| `django_apps/game_data/importers/importer.py` | 수정 — 3개 임포터 함수 갱신 |
-| `django_apps/game_data/coverage/manifest.py` | 수정 — Phase 3 promoted/ignore_audit 등록 |
-| `django_apps/game_data/migrations/0025_phase3_coverage_gap_fill.py` | 신규 — migration |
-| `tests/unit/game_data/test_building_variant_rate_config.py` | 신규 |
-| `tests/unit/game_data/test_building_group_flags.py` | 신규 |
-| `tests/unit/game_data/test_fluid_color_display_name.py` | 신규 |
-| `tests/unit/game_data/test_domain_coverage_manifest.py` | 수정 — Phase 3 manifest 키 검증 추가 |
+| `django_apps/game_data/coverage/reason_codes.py` | modify — add 5 new reason codes |
+| `django_apps/game_data/models/shapes.py` | modify — add `FluidColor.display_name_key` |
+| `django_apps/game_data/models/buildings.py` | modify — `BuildingGroup` 2 fields, new `BuildingVariantRateConfig` class |
+| `django_apps/game_data/models/__init__.py` | modify — export `BuildingVariantRateConfig` |
+| `django_apps/game_data/services/identifiers.py` | modify — add `canonical_variant_rate_config` |
+| `django_apps/game_data/importers/custom_data_extractor.py` | new — CustomData.All[] parser |
+| `django_apps/game_data/importers/importer.py` | modify — update 3 importer functions |
+| `django_apps/game_data/coverage/manifest.py` | modify — register Phase 3 promoted/ignore_audit |
+| `django_apps/game_data/migrations/0025_phase3_coverage_gap_fill.py` | new — migration |
+| `tests/unit/game_data/test_building_variant_rate_config.py` | new |
+| `tests/unit/game_data/test_building_group_flags.py` | new |
+| `tests/unit/game_data/test_fluid_color_display_name.py` | new |
+| `tests/unit/game_data/test_domain_coverage_manifest.py` | modify — add Phase 3 manifest key verification |
 
 ---
 
-## Task 1: reason_codes.py — 신규 코드 5개 추가
+## Task 1: reason_codes.py — add 5 new codes
 
 **Files:**
 - Modify: `django_apps/game_data/coverage/reason_codes.py`
 
-- [ ] **Step 1: 파일 끝에 5개 코드 추가**
+- [ ] **Step 1: Add 5 codes at end of file**
 
-현재 파일 (`django_apps/game_data/coverage/reason_codes.py`):
+Current file (`django_apps/game_data/coverage/reason_codes.py`):
 ```python
 """Reason codes for UnknownProperty and coverage ignore_audit entries."""
 
@@ -50,7 +50,7 @@ RUNTIME_UNITY_METADATA = "RUNTIME_UNITY_METADATA"
 UNMAPPED_DOMAIN_CANDIDATE = "UNMAPPED_DOMAIN_CANDIDATE"
 ```
 
-추가 후:
+After addition:
 ```python
 """Reason codes for UnknownProperty and coverage ignore_audit entries."""
 
@@ -61,11 +61,11 @@ RUNTIME_UNITY_METADATA = "RUNTIME_UNITY_METADATA"
 UNMAPPED_DOMAIN_CANDIDATE = "UNMAPPED_DOMAIN_CANDIDATE"
 
 # Phase 3 — building_variants.json CustomData ignore paths
-LAYOUT_METADATA = "LAYOUT_METADATA"       # ConnectorData TileBounds — 배치 렌더링 전용
-LEGACY_FIELD = "LEGACY_FIELD"             # _IOType 등 하위호환 레거시 필드
-RENDER_METADATA = "RENDER_METADATA"       # CustomDrawData — 렌더링 전용
-NESTED_ENTITY_DEF = "NESTED_ENTITY_DEF"  # CustomData.All[].Definitions[] 재귀 엔티티
-REFLECTION_CACHE = "REFLECTION_CACHE"     # DataPerTypeCache CLR 반영 캐시
+LAYOUT_METADATA = "LAYOUT_METADATA"       # ConnectorData TileBounds — placement rendering only
+LEGACY_FIELD = "LEGACY_FIELD"             # _IOType etc. — backward-compat legacy fields
+RENDER_METADATA = "RENDER_METADATA"       # CustomDrawData — rendering only
+NESTED_ENTITY_DEF = "NESTED_ENTITY_DEF"  # CustomData.All[].Definitions[] recursive entities
+REFLECTION_CACHE = "REFLECTION_CACHE"     # DataPerTypeCache — CLR reflection cache
 ```
 
 - [ ] **Step 2: ruff check**
@@ -84,16 +84,16 @@ git commit -m "feat(game_data): add Phase 3 reason codes for CustomData ignore p
 
 ---
 
-## Task 2: FluidColor.display_name_key 필드 추가
+## Task 2: Add FluidColor.display_name_key field
 
 **Files:**
 - Modify: `django_apps/game_data/models/shapes.py`
 - Modify: `django_apps/game_data/importers/importer.py`
 - Test: `tests/unit/game_data/test_fluid_color_display_name.py`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [ ] **Step 1: Write failing test**
 
-`tests/unit/game_data/test_fluid_color_display_name.py` 신규 생성:
+Create `tests/unit/game_data/test_fluid_color_display_name.py`:
 
 ```python
 """FluidColor.display_name_key import coverage."""
@@ -141,16 +141,16 @@ def test_fluid_color_display_name_key_default_empty(db: None) -> None:
     assert fc.display_name_key == ""
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [ ] **Step 2: Confirm test failure**
 
 ```bash
 python -m pytest tests/unit/game_data/test_fluid_color_display_name.py -v
 ```
 Expected: FAIL — `FluidColor` has no field `display_name_key`
 
-- [ ] **Step 3: FluidColor에 필드 추가**
+- [ ] **Step 3: Add field to FluidColor**
 
-`django_apps/game_data/models/shapes.py`의 `FluidColor` 클래스:
+`FluidColor` class in `django_apps/game_data/models/shapes.py`:
 
 ```python
 class FluidColor(models.Model):
@@ -165,9 +165,9 @@ class FluidColor(models.Model):
     source_row_index = models.PositiveIntegerField()
 ```
 
-- [ ] **Step 4: importer 갱신 — display_name_key 저장**
+- [ ] **Step 4: Update importer — store display_name_key**
 
-`django_apps/game_data/importers/importer.py`의 `_import_fluids` 메서드:
+`_import_fluids` method in `django_apps/game_data/importers/importer.py`:
 
 ```python
 def _import_fluids(self) -> None:
@@ -191,9 +191,9 @@ def _import_fluids(self) -> None:
         self.ctx.bump("fluid_color")
 ```
 
-- [ ] **Step 5: migration 생성 (이 단계는 Task 4 마이그레이션과 합쳐서 처리 — 여기선 스킵, Task 4 완료 후 일괄 생성)**
+- [ ] **Step 5: Create migration (combine with Task 4 migration — skip here, batch after Task 4)**
 
-- [ ] **Step 6: 테스트 통과 확인 (migration 생성 후)**
+- [ ] **Step 6: Confirm tests pass (after migration)**
 
 ```bash
 python -m pytest tests/unit/game_data/test_fluid_color_display_name.py -v
@@ -202,16 +202,16 @@ Expected: PASS
 
 ---
 
-## Task 3: BuildingGroup 필드 2개 추가
+## Task 3: Add 2 BuildingGroup fields
 
 **Files:**
 - Modify: `django_apps/game_data/models/buildings.py`
 - Modify: `django_apps/game_data/importers/importer.py`
 - Test: `tests/unit/game_data/test_building_group_flags.py`
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [ ] **Step 1: Write failing test**
 
-`tests/unit/game_data/test_building_group_flags.py` 신규 생성:
+Create `tests/unit/game_data/test_building_group_flags.py`:
 
 ```python
 """BuildingGroup DLC/reward flags import coverage."""
@@ -285,16 +285,16 @@ def test_building_group_show_as_research_reward_default_false(db: None) -> None:
     assert bg.show_as_research_reward is False
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [ ] **Step 2: Confirm test failure**
 
 ```bash
 python -m pytest tests/unit/game_data/test_building_group_flags.py -v
 ```
 Expected: FAIL — `BuildingGroup` has no field `required_store_content_id`
 
-- [ ] **Step 3: BuildingGroup 모델에 필드 추가**
+- [ ] **Step 3: Add fields to BuildingGroup model**
 
-`django_apps/game_data/models/buildings.py`의 `BuildingGroup` 클래스에 2개 필드 추가:
+Add 2 fields to `BuildingGroup` class in `django_apps/game_data/models/buildings.py`:
 
 ```python
 class BuildingGroup(models.Model):
@@ -328,9 +328,9 @@ class BuildingGroup(models.Model):
     )
 ```
 
-- [ ] **Step 4: importer의 `_upsert_building_group` 갱신**
+- [ ] **Step 4: Update importer `_upsert_building_group`**
 
-`django_apps/game_data/importers/importer.py`의 `_upsert_building_group` 내 `BuildingGroup.objects.update_or_create` defaults에 2개 키 추가:
+Add 2 keys to `BuildingGroup.objects.update_or_create` defaults in `_upsert_building_group` in `django_apps/game_data/importers/importer.py`:
 
 ```python
 group, _ = BuildingGroup.objects.update_or_create(
@@ -347,7 +347,7 @@ group, _ = BuildingGroup.objects.update_or_create(
         "selectable": bool(dig(snap, "Selectable", default=True)),
         "removable": bool(dig(snap, "Removable", default=True)),
         "auto_connect": bool(dig(snap, "AutoConnect", default=False)),
-        # Phase 3: backing field 우선, fallback 없음 (빈 문자열 = 제한 없음)
+        # Phase 3: backing field first, no fallback (empty string = no restriction)
         "required_store_content_id": str(
             dig(snap, "RequiredStoreContentId", "Id", default="")
             or dig(snap, "<RequiredStoreContentId>k__BackingField", "Id", default="")
@@ -364,11 +364,11 @@ group, _ = BuildingGroup.objects.update_or_create(
 )
 ```
 
-- [ ] **Step 5: migration은 Task 4 완료 후 일괄 생성 — 여기선 스킵**
+- [ ] **Step 5: Batch migration after Task 4 — skip here**
 
 ---
 
-## Task 4: BuildingVariantRateConfig 모델 + identifier 추가
+## Task 4: Add BuildingVariantRateConfig model + identifier
 
 **Files:**
 - Modify: `django_apps/game_data/models/buildings.py`
@@ -376,9 +376,9 @@ group, _ = BuildingGroup.objects.update_or_create(
 - Modify: `django_apps/game_data/services/identifiers.py`
 - Create: `django_apps/game_data/migrations/0025_phase3_coverage_gap_fill.py`
 
-- [ ] **Step 1: `BuildingVariantRateConfig` 모델 추가**
+- [ ] **Step 1: Add `BuildingVariantRateConfig` model**
 
-`django_apps/game_data/models/buildings.py` 끝 부분(기존 `TransportBuildingRegistry` 뒤)에 추가:
+Add at end of `django_apps/game_data/models/buildings.py` (after existing `TransportBuildingRegistry`):
 
 ```python
 class BuildingVariantRateConfig(models.Model):
@@ -420,12 +420,12 @@ class BuildingVariantRateConfig(models.Model):
         return f"{self.variant.internal_name} / {self.interface_key}.{self.param_key}"
 ```
 
-- [ ] **Step 2: `__init__.py` export 추가**
+- [ ] **Step 2: Add `__init__.py` export**
 
-`django_apps/game_data/models/__init__.py`의 import 블록과 `__all__` 리스트에 추가:
+Add to import block and `__all__` list in `django_apps/game_data/models/__init__.py`:
 
 ```python
-# import 블록 (buildings import 줄 수정):
+# import block (modify buildings import line):
 from django_apps.game_data.models.buildings import (
     BuildingConnector,
     BuildingFootprintTile,
@@ -439,13 +439,13 @@ from django_apps.game_data.models.buildings import (
     TransportBuildingRegistry,
 )
 
-# __all__ 리스트에 추가 (알파벳순):
+# add to __all__ list (alphabetical):
 "BuildingVariantRateConfig",
 ```
 
-- [ ] **Step 3: identifiers.py에 canonical 함수 추가**
+- [ ] **Step 3: Add canonical function to identifiers.py**
 
-`django_apps/game_data/services/identifiers.py`에서 `canonical_footprint_tile` 뒤에 추가:
+Add after `canonical_footprint_tile` in `django_apps/game_data/services/identifiers.py`:
 
 ```python
 def canonical_variant_rate_config(
@@ -454,7 +454,7 @@ def canonical_variant_rate_config(
     return _slug(variant_cid, "rate", interface_key, param_key)
 ```
 
-- [ ] **Step 4: migration 일괄 생성 (Task 2·3·4 변경 전체)**
+- [ ] **Step 4: Batch create migration (all Task 2·3·4 changes)**
 
 ```bash
 python manage.py makemigrations game_data --name phase3_coverage_gap_fill
@@ -470,7 +470,7 @@ Migrations for 'game_data':
     - Create model BuildingVariantRateConfig
 ```
 
-- [ ] **Step 5: migration 적용**
+- [ ] **Step 5: Apply migration**
 
 ```bash
 $env:DJANGO_USE_SQLITE = "1"
@@ -479,7 +479,7 @@ python manage.py migrate game_data
 
 Expected: `OK`
 
-- [ ] **Step 6: Task 2·3 테스트 통과 확인**
+- [ ] **Step 6: Confirm Task 2·3 tests pass**
 
 ```bash
 python -m pytest tests/unit/game_data/test_fluid_color_display_name.py tests/unit/game_data/test_building_group_flags.py -v
@@ -503,15 +503,15 @@ git commit -m "feat(game_data): add BuildingVariantRateConfig model and Building
 
 ---
 
-## Task 5: CustomData 추출기 모듈 신규 작성
+## Task 5: Create new CustomData extractor module
 
 **Files:**
 - Create: `django_apps/game_data/importers/custom_data_extractor.py`
-- Test: `tests/unit/game_data/test_building_variant_rate_config.py` (일부)
+- Test: `tests/unit/game_data/test_building_variant_rate_config.py` (partial)
 
-- [ ] **Step 1: 실패하는 단위 테스트 작성 (추출 로직만)**
+- [ ] **Step 1: Write failing unit test (extraction logic only)**
 
-`tests/unit/game_data/test_building_variant_rate_config.py` 신규 생성:
+Create `tests/unit/game_data/test_building_variant_rate_config.py`:
 
 ```python
 """BuildingVariantRateConfig extraction and import tests."""
@@ -678,16 +678,16 @@ def test_extract_multiple_interfaces_in_one_variant() -> None:
     assert "IFluidPortReceiverConfiguration" in ikeys
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [ ] **Step 2: Confirm test failure**
 
 ```bash
 python -m pytest tests/unit/game_data/test_building_variant_rate_config.py -v
 ```
 Expected: FAIL — `ModuleNotFoundError: custom_data_extractor`
 
-- [ ] **Step 3: custom_data_extractor.py 구현**
+- [ ] **Step 3: Implement custom_data_extractor.py**
 
-`django_apps/game_data/importers/custom_data_extractor.py` 신규 생성:
+Create `django_apps/game_data/importers/custom_data_extractor.py`:
 
 ```python
 """Extract physics/rate parameters from building_variants.json CustomData.All[].
@@ -895,7 +895,7 @@ def extract_rate_params(definition_snapshot: dict[str, Any]) -> list[RateParam]:
     return results
 ```
 
-- [ ] **Step 4: 단위 테스트 통과 확인 (DB 불필요)**
+- [ ] **Step 4: Confirm unit tests pass (no DB)
 
 ```bash
 python -m pytest tests/unit/game_data/test_building_variant_rate_config.py -v -k "not django_db"
@@ -919,15 +919,15 @@ git commit -m "feat(game_data): add CustomData.All[] rate param extractor with u
 
 ---
 
-## Task 6: Importer 연결 — BuildingVariantRateConfig 저장
+## Task 6: Wire importer — store BuildingVariantRateConfig
 
 **Files:**
 - Modify: `django_apps/game_data/importers/importer.py`
-- Test: `tests/unit/game_data/test_building_variant_rate_config.py` (DB 테스트 추가)
+- Test: `tests/unit/game_data/test_building_variant_rate_config.py` (add DB tests)
 
-- [ ] **Step 1: DB 테스트 추가 (importer 연결 검증)**
+- [ ] **Step 1: Add DB test (verify importer wiring)
 
-`tests/unit/game_data/test_building_variant_rate_config.py` 끝에 추가:
+Add at end of `tests/unit/game_data/test_building_variant_rate_config.py`:
 
 ```python
 # ---------------------------------------------------------------------------
@@ -1024,20 +1024,20 @@ def test_rate_config_empty_for_variant_without_custom_data(db: None) -> None:
     assert BuildingVariantRateConfig.objects.filter(variant=variant).count() == 0
 ```
 
-- [ ] **Step 2: 테스트 실패 확인 (importer 아직 연결 안 됨)**
+- [ ] **Step 2: Confirm test failure (importer not wired yet)**
 
 ```bash
 python -m pytest tests/unit/game_data/test_building_variant_rate_config.py::test_rate_config_created_for_conveyor_variant -v
 ```
-Expected: 이 테스트는 직접 wiring하므로 PASS할 수 있음 — importer 연결 테스트는 다음 Step에서
+Expected: this test may PASS via direct wiring — importer connection test in next Step
 
-- [ ] **Step 3: importer.py — `BuildingVariantRateConfig` import 추가**
+- [ ] **Step 3: importer.py — add `BuildingVariantRateConfig` import**
 
-`django_apps/game_data/importers/importer.py` 상단 import에 추가:
+Add at top of `django_apps/game_data/importers/importer.py` imports:
 
 ```python
 from django_apps.game_data.importers.custom_data_extractor import extract_rate_params
-# ... 기존 모델 imports에 추가:
+# ... add to existing model imports:
 from django_apps.game_data.models import (
     ...
     BuildingVariantRateConfig,   # NEW
@@ -1045,9 +1045,9 @@ from django_apps.game_data.models import (
 )
 ```
 
-- [ ] **Step 4: importer.py — `_import_building_variants` 끝에 rate config 저장 로직 추가**
+- [ ] **Step 4: importer.py — add rate config storage at end of `_import_building_variants`**
 
-`_import_building_variants` 메서드에서 `self.ctx.bump("building_variant")` 바로 앞에 추가:
+Add just before `self.ctx.bump("building_variant")` in `_import_building_variants` method:
 
 ```python
 # Phase 3: CustomData.All[] rate params
@@ -1074,7 +1074,7 @@ if rate_count:
     self.ctx.bump("building_variant_rate_config", rate_count)
 ```
 
-전체 `_import_building_variants` 메서드 (변경 후):
+Full `_import_building_variants` method (after change):
 
 ```python
 def _import_building_variants(self) -> None:
@@ -1161,7 +1161,7 @@ def _import_building_variants(self) -> None:
         self.ctx.bump("building_variant")
 ```
 
-- [ ] **Step 5: 전체 테스트 통과 확인**
+- [ ] **Step 5: Confirm all tests pass**
 
 ```bash
 python -m pytest tests/unit/game_data/test_building_variant_rate_config.py -v
@@ -1185,15 +1185,15 @@ git commit -m "feat(game_data): wire CustomData rate extractor into building var
 
 ---
 
-## Task 7: Coverage Manifest 등록
+## Task 7: Coverage Manifest registration
 
 **Files:**
 - Modify: `django_apps/game_data/coverage/manifest.py`
 - Modify: `tests/unit/game_data/test_domain_coverage_manifest.py`
 
-- [ ] **Step 1: manifest.py에 Phase 3 항목 추가**
+- [ ] **Step 1: Add Phase 3 entries to manifest.py**
 
-`django_apps/game_data/coverage/manifest.py` 전체 (업데이트 후):
+Full `django_apps/game_data/coverage/manifest.py` (after update):
 
 ```python
 """Static path disposition registry (A1 coverage manifest)."""
@@ -1304,16 +1304,16 @@ MANIFEST: dict[str, tuple[Disposition, str]] = {
 MANIFEST.update(manifest_entries_from_rules())
 ```
 
-- [ ] **Step 2: 기존 manifest 테스트 통과 확인 (regression)**
+- [ ] **Step 2: Confirm existing manifest tests pass (regression)
 
 ```bash
 python -m pytest tests/unit/game_data/test_domain_coverage_manifest.py -v
 ```
-Expected: PASS (기존 2 tests)
+Expected: PASS (2 existing tests)
 
-- [ ] **Step 3: Phase 3 manifest 키 검증 테스트 추가**
+- [ ] **Step 3: Add Phase 3 manifest key verification test**
 
-`tests/unit/game_data/test_domain_coverage_manifest.py` 끝에 추가:
+Add at end of `tests/unit/game_data/test_domain_coverage_manifest.py`:
 
 ```python
 import pytest
@@ -1357,12 +1357,12 @@ def test_phase3_ignore_audit_key_in_manifest(key: str) -> None:
     assert note.strip()
 ```
 
-- [ ] **Step 4: 신규 테스트 포함 전체 manifest 테스트 통과**
+- [ ] **Step 4: All manifest tests pass including new tests
 
 ```bash
 python -m pytest tests/unit/game_data/test_domain_coverage_manifest.py -v
 ```
-Expected: PASS (기존 2 + 신규 13 = 15 tests)
+Expected: PASS (2 existing + 13 new = 15 tests)
 
 - [ ] **Step 5: commit**
 
@@ -1373,14 +1373,14 @@ git commit -m "feat(game_data): register Phase 3 promoted/ignore_audit paths in 
 
 ---
 
-## Task 8: Regression 검증 + reimport
+## Task 8: Regression verification + reimport
 
-- [ ] **Step 1: 전체 pytest**
+- [ ] **Step 1: Full pytest**
 
 ```bash
 python -m pytest tests/ -v --tb=short
 ```
-Expected: 기존 테스트 전부 PASS + 신규 테스트 PASS
+Expected: all existing tests PASS + new tests PASS
 
 - [ ] **Step 2: ruff + mypy + black**
 
@@ -1391,7 +1391,7 @@ python -m black --check .
 ```
 Expected: no errors
 
-- [ ] **Step 3: SQLite reimport + dumpdata 갱신**
+- [ ] **Step 3: SQLite reimport + update dumpdata
 
 ```bash
 $env:DJANGO_USE_SQLITE = "1"
@@ -1401,7 +1401,7 @@ python manage.py import_game_data --source documents/game_data
 python manage.py dumpdata game_data --indent 2 -o game_data_backup/game_data_dump.json
 ```
 
-Expected: import 완료, `building_variant_rate_config` 카운트 > 0 출력
+Expected: import complete, `building_variant_rate_config` count > 0 output
 
 - [ ] **Step 4: verify import**
 
@@ -1410,7 +1410,7 @@ python manage.py import_game_data --verify
 ```
 Expected: no errors
 
-- [ ] **Step 5: 최종 commit**
+- [ ] **Step 5: Final commit**
 
 ```bash
 git add game_data_backup/game_data_dump.json
@@ -1421,26 +1421,26 @@ git commit -m "chore(game_data): regenerate dumpdata after Phase 3 gap fill migr
 
 ## Self-Review Checklist
 
-| Spec 요구사항 | 구현 Task |
+| Spec requirement | Implementation Task |
 |---|---|
-| `BuildingVariantRateConfig` 신규 모델 (JSONField 없음) | Task 4 |
+| `BuildingVariantRateConfig` new model (no JSONField) | Task 4 |
 | `BuildingGroup.required_store_content_id` | Task 3 |
 | `BuildingGroup.show_as_research_reward` | Task 3 |
 | `FluidColor.display_name_key` | Task 2 |
-| 5개 신규 reason_codes | Task 1 |
-| manifest 6개 PROMOTED + 5개 IGNORE_AUDIT 등록 | Task 7 |
-| conveyor steps_per_tick 추출 | Task 5 |
-| conveyor base_speed 추출 | Task 5 |
-| conveyor research_scale_id 추출 | Task 5 |
-| fluid receiver provide_rate 추출 | Task 5 |
-| fluid sender consume_rate 추출 | Task 5 |
-| crystal generator consume_rate 추출 | Task 5 |
-| fluid storage provide/consume rate 추출 | Task 5 |
-| pipe gate provide/consume rate 추출 | Task 5 |
-| `ctx.record_unknown` — 파싱 실패 기록 | (extract_rate_params가 조용히 skip, 추가 필요시 Task 6에서 확장) |
+| 5 new reason_codes | Task 1 |
+| manifest 6 PROMOTED + 5 IGNORE_AUDIT registrations | Task 7 |
+| conveyor steps_per_tick extraction | Task 5 |
+| conveyor base_speed extraction | Task 5 |
+| conveyor research_scale_id extraction | Task 5 |
+| fluid receiver provide_rate extraction | Task 5 |
+| fluid sender consume_rate extraction | Task 5 |
+| crystal generator consume_rate extraction | Task 5 |
+| fluid storage provide/consume rate extraction | Task 5 |
+| pipe gate provide/consume rate extraction | Task 5 |
+| `ctx.record_unknown` — parse failure record | (extract_rate_params skips silently; extend in Task 6 if needed) |
 | migration + dumpdata | Task 4 + Task 8 |
 | regression: `test_simulation_path_coverage.py` | Task 8 |
 
-**Placeholder 점검:** TBD/TODO 없음. 모든 코드 블록 완성됨.
+**Placeholder check:** No TBD/TODO. All code blocks complete.
 
-**타입 일관성:** `RateParam` 정의는 Task 5에서, 사용은 Task 6에서. `int_value`, `float_value`, `text_value`, `research_scale_id` 필드명 일관됨.
+**Type consistency:** `RateParam` defined in Task 5, used in Task 6. Field names `int_value`, `float_value`, `text_value`, `research_scale_id` consistent.

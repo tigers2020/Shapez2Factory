@@ -2,23 +2,23 @@
 
 ## 2026-04-17
 
-- 영상 기반 다단계 개발 파이프라인 문서 정합화 작업에서 `documents/` 폴더를 실제 운영 산출물 저장소로 생성했다.
-- 현재 정본은 `protocols/README.md`이고, `AGENTS.md` / `.cursor/rules/*` / `persona/*`는 이를 요약·참조한다.
-- Persona Dialogue 3단계는 파이프라인 6번(구현)에서만 적용한다.
-- 리뷰어(7) / QA(8) / 하네스(9)는 반드시 분리해서 다룬다.
+- Created the `documents/` folder as the live artifact store during video-based multi-stage pipeline documentation alignment.
+- Current canonical source is `protocols/README.md`; `AGENTS.md` / `.cursor/rules/*` / `persona/*` summarize and reference it.
+- Persona Dialogue 3-stage applies only at pipeline stage 6 (implementation).
+- Reviewer (7) / QA (8) / harness (9) must always be handled separately.
 
 ## 2026-05-03
 
-- 반복 패턴은 `prebuilt_pattern_registry`에서 패턴 정의와 템플릿 정의를 분리하되, 솔버 결과는 기존 `SolvedRecipe` 내부 노드로 확장한다.
+- For repeated patterns, separate pattern definitions from template definitions in `prebuilt_pattern_registry`, but extend solver results as nodes inside existing `SolvedRecipe`.
 
 ## 2026-05-06
 
-- Cursor 토큰·컨텍스트 매뉴얼(`documents/ai/manuals/cursor_usage.md`) 추가 및 `AGENTS.md` 라우팅·`cursor-usage.mdc` 참조 연결.
+- Added Cursor token/context manual (`documents/ai/manuals/cursor_usage.md`) and linked routing in `AGENTS.md` and `cursor-usage.mdc`.
 
 ## 2026-05-18
 
-- Context trim: alwaysApply를 [`shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc) 단일 파일로 통합. `AGENTS.md`는 라우팅 허브만. `root.mdc`·`cursor-usage.mdc`·`karpathy-guidelines.mdc` 삭제. `persona-dialogue`·`mcp`·`caveman-output`은 온디맨드/stub. Cloud VM은 `cursor_usage.md` §Cloud VM.
+- Context trim: consolidated alwaysApply into a single [`shapez2-core.mdc`](../../.cursor/rules/shapez2-core.mdc). `AGENTS.md` is routing hub only. Removed `root.mdc`, `cursor-usage.mdc`, `karpathy-guidelines.mdc`. `persona-dialogue`, `mcp`, `caveman-output` are on-demand/stub. Cloud VM: `cursor_usage.md` §Cloud VM.
 
 ## 2026-05-19
 
-- Harness slim 2차: `AGENTS.md` ~246줄 → ~90줄 라우팅 허브. `caveman-output.mdc`·`cursor-usage.mdc`·`mcp.mdc` stub 3개 삭제. 스킬 16개 → 활성 5개(`bug-fix`, `write-tests`, `doc-update`, `shapez2-workflow`, `git-workflow`) + `_archive/`. `shapez2-workflow`가 `shapez2-harness`+`cursor-shapez2-harness` 통합. `cursor_slim_setup.md` + `mcp.json.example` 신설. `shapez2-core.mdc`에 페르소나 5단계-only 정책 추가.
+- Harness slim pass 2: `AGENTS.md` ~246 lines → ~90-line routing hub. Removed stub files `caveman-output.mdc`, `cursor-usage.mdc`, `mcp.mdc`. Skills 16 → 5 active (`bug-fix`, `write-tests`, `doc-update`, `shapez2-workflow`, `git-workflow`) + `_archive/`. `shapez2-workflow` merges `shapez2-harness` + `cursor-shapez2-harness`. Added `cursor_slim_setup.md` + `mcp.json.example`. Added persona stage-5-only policy to `shapez2-core.mdc`.

@@ -1,96 +1,96 @@
-# Lab map: 렌더링·방향 계약 (구현 메모)
+# Lab map: rendering · direction contract (implementation notes)
 
-CANON 아님. [`django_apps/web/static/web/js/asteroid_miner_layout_lab.js`](../../django_apps/web/static/web/js/asteroid_miner_layout_lab.js) 구현과 동기화한다.
+Not CANON. Keep in sync with [`django_apps/web/static/web/js/asteroid_miner_layout_lab.js`](../../django_apps/web/static/web/js/asteroid_miner_layout_lab.js).
 
-## Canonical 방향
+## Canonical direction
 
-- 정수 `0–3`: **0 = East, 1 = South, 2 = West, 3 = North**
-- quarter-turn은 **clockwise** (화면에서 `rotate(90deg)`와 동일한 부호 감각).
-- 서버/도메인 `cell.rotation` 값은 **표시·저장 모두 변경하지 않는다.** Lab 스프라이트는 East 기준 에셋에 **도메인 R만** CSS `rotate`로 반영한다.
+- Integer `0–3`: **0 = East, 1 = South, 2 = West, 3 = North**
+- Quarter-turn is **clockwise** (same sign sense as `rotate(90deg)` on screen).
+- Server/domain `cell.rotation` values are **unchanged for display and storage.** Lab sprites apply domain R only via CSS `rotate` on East-facing assets.
 
-## Domain rotation contract (요약)
+## Domain rotation contract (summary)
 
-- **R = 0 → East**, R는 **시계방향** quarter-turn 증가.
-- **파일별 회전 보정(offset 레지스트리)은 사용하지 않는다.** `<img>`에 `normalizeQuarterTurns(cell.rotation)` → `rotate(90deg × R)`만 적용한다.
-- 도메인 `R`에 `+1` 등 임의 변형을 넣지 않는다.
+- **R = 0 → East**, R increases by **clockwise** quarter-turn.
+- **No per-file rotation offset registry.** Apply only `normalizeQuarterTurns(cell.rotation)` → `rotate(90deg × R)` on `<img>`.
+- Do not add arbitrary transforms like `+1` to domain `R`.
 
-## 검증 절차 (회전 이슈)
+## Verification procedure (rotation issues)
 
-- `#lab-root`에 `data-lab-debug-rotation="1"`로 R 오버레이.
-- 소수 셀에 대해 `tile_type` / 스프라이트 파일 / 서버 `R` / 기대 방향을 적어 **도메인 R과 화면 방향**이 일치하는지 확인한다.
+- R overlay via `data-lab-debug-rotation="1"` on `#lab-root`.
+- For a few cells, record `tile_type` / sprite file / server `R` / expected direction and confirm **domain R matches screen direction**.
 
-## 스프라이트
+## Sprites
 
-### 스프라이트 키 정책
+### Sprite key policy
 
-| 필드 | 책임 | 예시 |
-|------|------|------|
-| `cell_kind` / `kind` | 도메인 의미 (`space_belt`, `space_pipe`, 등) | **Identifier와 통일 금지** |
-| `tile_type` | **Canonical 스프라이트 키** = blueprint `T` = `ShapezGameIdentifier.value` | `SpaceBelt_Forward`, `SpacePipe_LeftTurn` |
-| `sprite_identifier` | `tile_type`의 **alias** (wire JSON에 동시 출력) | 항상 `tile_type`과 동일 값 |
-| `transport_kind` / `transport` | 도메인 채널 (`shape_belt`, `fluid_pipe`) | 스프라이트 lookup에 **직접 사용하지 않는다** |
-| `rotation` | quarter-turn (0–3) | 별도 변환 없이 CSS `rotate(90deg × R)` |
+| Field | Responsibility | Example |
+|------|----------------|---------|
+| `cell_kind` / `kind` | Domain meaning (`space_belt`, `space_pipe`, etc.) | **Do not unify with Identifier** |
+| `tile_type` | **Canonical sprite key** = blueprint `T` = `ShapezGameIdentifier.value` | `SpaceBelt_Forward`, `SpacePipe_LeftTurn` |
+| `sprite_identifier` | **alias** of `tile_type` (both emitted in wire JSON) | always same as `tile_type` |
+| `transport_kind` / `transport` | Domain channel (`shape_belt`, `fluid_pipe`) | **not used directly** for sprite lookup |
+| `rotation` | quarter-turn (0–3) | CSS `rotate(90deg × R)` with no extra transform |
 
-**transport(belt/pipe) 스프라이트는 `tile_type`(= `sprite_identifier`) 필수다.** `cell_kind = space_belt`만으로는 variant(`Forward` / `LeftTurn` / `TripleSplitter` 등)를 구분할 수 없으므로 스프라이트를 선택하지 않는다. materializer `pick_tile_type`이 정본 T 값을 생성한다.
+**Transport (belt/pipe) sprites require `tile_type` (= `sprite_identifier`).** `cell_kind = space_belt` alone cannot distinguish variants (`Forward` / `LeftTurn` / `TripleSplitter`, etc.), so no sprite is chosen. Materializer `pick_tile_type` produces canonical T values.
 
-### JS 스프라이트 resolution 순서
+### JS sprite resolution order
 
-1. `cell.sprite_identifier || cell.tile_type` → `labIdentifierSpriteRelpaths[t]` (DB 경로).
-2. 없으면 prefix fallback: `SpaceBelt_*` → `SpaceBelt/<T>.svg`, `SpacePipe_*` → `SpacePipe/<T>.svg`, `Layout_*` → `Miner/<T>.svg` (`LAB_SPRITE_TILE_TYPE_ALIASES`로 `Layout_ProMiner` → `Layout_ShapeMiner` 등).
-3. 없으면 `cell_kind` → `LAB_SPRITE_CELL_KIND_TO_IDENTIFIER` (miner/extension 전용).
-4. 최후 fallback: `inferTransportSpriteIdentifier(cell)` — `Forward` variant만 반환 (turn·splitter는 `tile_type` 없으면 스프라이트 포기).
+1. `cell.sprite_identifier || cell.tile_type` → `labIdentifierSpriteRelpaths[t]` (DB path).
+2. Else prefix fallback: `SpaceBelt_*` → `SpaceBelt/<T>.svg`, `SpacePipe_*` → `SpacePipe/<T>.svg`, `Layout_*` → `Miner/<T>.svg` (`LAB_SPRITE_TILE_TYPE_ALIASES` maps `Layout_ProMiner` → `Layout_ShapeMiner`, etc.).
+3. Else `cell_kind` → `LAB_SPRITE_CELL_KIND_TO_IDENTIFIER` (miner/extension only).
+4. Last fallback: `inferTransportSpriteIdentifier(cell)` — returns `Forward` variant only (turn/splitter skipped without `tile_type`).
 
-### Wire JSON 계약
+### Wire JSON contract
 
-`timeline_serialization.replay_map_view_to_json_dict`가 `full_cells` / `overlay_cells` / `cell_delta` 각 셀에 아래 두 필드를 **항상** 함께 출력한다:
+`timeline_serialization.replay_map_view_to_json_dict` always emits both fields on each cell in `full_cells` / `overlay_cells` / `cell_delta`:
 
 ```json
 { "tile_type": "SpaceBelt_Forward", "sprite_identifier": "SpaceBelt_Forward" }
 ```
 
-`sprite_identifier`는 추가 처리 없이 `tile_type`과 동일한 값이다. 소비자(JS / 서드파티)는 둘 중 어느 쪽을 읽어도 무방하다.
+`sprite_identifier` is identical to `tile_type` with no extra processing. Consumers (JS / third party) may read either.
 
-### LAB_SPRITE_KNOWN (구 이름, 현재 없음)
+### LAB_SPRITE_KNOWN (legacy name, absent now)
 
-이전 문서에서 언급된 `LAB_SPRITE_KNOWN` 화이트리스트 및 `labSpriteFilenameForCell`은 현재 JS 구현에 존재하지 않는다. 위 resolution 순서와 `labIdentifierSpriteRelpaths` (DB 경로 맵)이 정본이다.
+Prior docs mentioned `LAB_SPRITE_KNOWN` whitelist and `labSpriteFilenameForCell`; current JS has neither. Resolution order above and `labIdentifierSpriteRelpaths` (DB path map) are canon.
 
-- Django Admin 유전자 샘플 미니맵은 `django_apps/asteroid_lab/admin_lab_sprites.py`의 `lab_sprite_resolve(tile_type, cell_kind, rotation)`으로 **T·kind→파일**, **R→표시 quarter**를 묶는다(파일 선택에 R 오프셋은 두지 않음).
+- Django Admin genetic sample minimap uses `lab_sprite_resolve(tile_type, cell_kind, rotation)` in `django_apps/asteroid_lab/admin_lab_sprites.py` to bind **T·kind→file** and **R→display quarter** (no R offset in file selection).
 
-## Admin 미니맵 vs Lab 리플레이 (격자)
+## Admin minimap vs Lab replay (grid)
 
-- **Admin 유전자 미니맵**: `decoded_json`의 server bbox **tight** 격자만 그린다. 셀 래퍼에 `data-server-x` / `data-server-y` / `data-grid-row` / `data-grid-col` / `data-linear-index` / `data-sprite` / `data-rotation-deg` 계약 속성을 둔다(`django_apps/asteroid_lab/genetic_sample_mini_map.py`, 좌표 계산은 `django_apps/asteroid_lab/lab_screen_grid.py`의 `mini_map_grid_coord`와 동일).
-- **Lab 리플레이**: 동일한 dense/raw **상대 이웃** 규칙(`visualCol` + raw `y`)에 더해 **대칭 패딩**이 있을 수 있어, Admin과 **절대** 셀 인덱스를 직접 비교하지 않는다.
-- **리플레이 격자 bbox** (`computeReplayGridLayout`): 모든 프레임을 훑을 때 `map_view.full_cells`뿐 아니라 **`map_view.overlay_cells`**·**`map_view.cell_delta`** 좌표도 spatial target에 포함한다.
-- **Reconstruction trace** (Wall Projection, Flood Seed 등): Lab unified adapter가 `frame_payload.diff.added` 중 `_replay_trace` 마커를 **`map_view.overlay_cells`**로 승격하고, wire JSON top-level **`diff`**도 유지한다(JS `renderDiffOverlays` 보조). optimization `validation.completed` 등에서 miner/belt가 overlay에만 있으면 bbox 밖으로 빠져 `resolveCellIndex`가 조용히 skip되지 않도록 한다 (`collectFrameSpatialTargets` ↔ `renderReplayFrame`의 overlay paint와 동일 좌표 집합).
-- **회전 quarter**는 좌표 보정과 독립이다. 가로·세로가 “화면에서 어느 쪽이 오른쪽/아래인지” 같은 문장은 **테스트·`data-*`로 증명되는 범위**에서만 단정한다(선언만으로 고정하지 않음).
-- 화면 quarter-turn은 `normalizeQuarterTurns(serverRotation)`만 사용한다.
-- 스프라이트는 **`background-image`가 아니라 `<img class="lab-cell-sprite">`** 로만 그린다. 회전은 **`img`에만** `transform`을 적용한다. 벡터 SVG 확대 시 **`image-rendering: auto`** 를 둔다(`crisp-edges`는 `<img>` 벡터에서 흐림·픽셀화를 유발할 수 있음).
-- 베이스 URL은 `#lab-root`의 `data-lab-sprite-base`(Django `{% static 'web/assets/sprites/' %}`)에서 읽는다.
+- **Admin genetic minimap**: draws only **tight** server bbox grid from `decoded_json`. Cell wrappers have contract attrs `data-server-x` / `data-server-y` / `data-grid-row` / `data-grid-col` / `data-linear-index` / `data-sprite` / `data-rotation-deg` (`django_apps/asteroid_lab/genetic_sample_mini_map.py`; coords same as `mini_map_grid_coord` in `django_apps/asteroid_lab/lab_screen_grid.py`).
+- **Lab replay**: same dense/raw **relative neighbor** rules (`visualCol` + raw `y`) but may have **symmetric padding**; do **not** compare absolute cell indices directly with Admin.
+- **Replay grid bbox** (`computeReplayGridLayout`): when scanning all frames, include **`map_view.overlay_cells`** and **`map_view.cell_delta`** coords in spatial targets, not only `map_view.full_cells`.
+- **Reconstruction trace** (Wall Projection, Flood Seed, etc.): Lab unified adapter promotes `_replay_trace` markers in `frame_payload.diff.added` to **`map_view.overlay_cells`** and keeps wire JSON top-level **`diff`** (JS `renderDiffOverlays` assist). When miner/belt exist only on overlay in optimization `validation.completed`, etc., bbox must not drop them so `resolveCellIndex` silently skips (`collectFrameSpatialTargets` ↔ same coord set as overlay paint in `renderReplayFrame`).
+- **Rotation quarter** is independent of coord correction. Statements about which screen direction is right/down are **only asserted where tests · `data-*` prove them** (do not fix by declaration alone).
+- Screen quarter-turn uses `normalizeQuarterTurns(serverRotation)` only.
+- Sprites render **only via `<img class="lab-cell-sprite">`**, not `background-image`. Rotation **`transform` on `img` only.** For vector SVG zoom use **`image-rendering: auto`** (`crisp-edges` on `<img>` vectors can blur/pixelate).
+- Base URL from `#lab-root` `data-lab-sprite-base` (Django `{% static 'web/assets/sprites/' %}`).
 
-## 셀 모양·크기
+## Cell shape · size
 
-- Lab 리플레이 격자 셀(`.lab-cell`, `.lab-cell-sprite-layer`)은 **둥근 사각형**이다. `#lab-replay-grid`의 `--lab-cell-radius`를 쓴다(기본 4px; JS가 `applyLabGridLayoutForZoom`에서 갱신).
-- 계산: `round(cellPx × 0.14)`, clamp **`[2, 7]`** px. 데모 SSR 기본 셀은 `h-7 w-7`(28px); 리플레이 fit 상한 `maxCell` 36px.
-- Admin 유전자 미니맵(`genetic_sample_mini_map`)은 동일 비율을 인라인 `border-radius`로 적용한다(`_mini_map_cell_radius_px`; 기본 `cell_px` 52).
+- Lab replay grid cells (`.lab-cell`, `.lab-cell-sprite-layer`) are **rounded rectangles**. Use `#lab-replay-grid` `--lab-cell-radius` (default 4px; JS updates in `applyLabGridLayoutForZoom`).
+- Formula: `round(cellPx × 0.14)`, clamp **`[2, 7]`** px. Demo SSR default cell is `h-7 w-7` (28px); replay fit cap `maxCell` 36px.
+- Admin genetic minimap (`genetic_sample_mini_map`) applies same ratio as inline `border-radius` (`_mini_map_cell_radius_px`; default `cell_px` 52).
 
-## 번들 브리지
+## Bundle bridge
 
-- Unified 타임라인 JSON(`lab_replay_frames_json`)은 **`cell_overlay_json.equipment_bundles`** 를 포함한다(있을 때만). Lab JS `cellOverlayJsonFromFrame` → `applyEquipmentBundleGroupVisualsFromOverlay`가 외곽(`bundle_edges`)·연결선(`bundle_links`)을 그린다. Optimization 프레임은 `map_view` 셀에서 서버가 번들을 재계산한다.
-- `bundle_links` 문자열의 `e` / `s` / `w` / `n`은 `LINK_KEY_TO_DIR` → `DIR_TO_BRIDGE_SUFFIX`를 거쳐 `lab-bundle-bridge-*` 클래스로만 붙인다 (CSS 기하는 [`assets/css/input.css`](../../assets/css/input.css)의 `#lab-replay-grid --lab-cell-gap`과 정합).
+- Unified timeline JSON (`lab_replay_frames_json`) includes **`cell_overlay_json.equipment_bundles`** when present. Lab JS `cellOverlayJsonFromFrame` → `applyEquipmentBundleGroupVisualsFromOverlay` draws outline (`bundle_edges`) and links (`bundle_links`). Optimization frames recompute bundles on server from `map_view` cells.
+- `bundle_links` string `e` / `s` / `w` / `n` go through `LINK_KEY_TO_DIR` → `DIR_TO_BRIDGE_SUFFIX` to `lab-bundle-bridge-*` classes only (geometry aligned with [`assets/css/input.css`](../../assets/css/input.css) `#lab-replay-grid --lab-cell-gap`).
 
-## 뷰포트
+## Viewport
 
-- `#lab-replay-grid-viewport`는 **16:9** 고정 비율(`aspect-video` 등)로 두고, **레이아웃 크기·클리핑 창**으로만 쓴다. `overflow: hidden`, `contain: layout paint`, `touch-action: none` 등으로 브라우저 제스처·선택과 겹침을 줄인다. **viewport에 `transform`·줌에 따른 `width`/`height` 인라인 변경을 두지 않는다.**
-- `#lab-replay-grid-stage`는 `position: absolute; left: 0; top: 0; transform-origin: 0 0`이며, **팬·줌의 유일한 CSS transform 소유자**다. JS에서 `transform: translate(tx, ty) scale(zoom)` 한 번에 적용한다. `translate`의 `tx`/`ty`는 **device pixel**에 맞게 스냅한다(`snapToDevicePixel`). `zoom` 값은 그대로 `scale`에 넣는다. stage에 불필요한 `will-change: transform`은 두지 않는다(합성 레이어가 언스케일 크기로 래스터된 뒤 `scale`로 확대되면 스프라이트가 흐릿해질 수 있음).
-- `#lab-replay-grid`의 `grid-template-columns` / `rows`는 **줌과 무관한 월드 셀 한 변(px)** 만 사용한다(서버 리플레이: `replayFitBasePx`, 데모: `demoBaseCellPxAtZoom1`). 셀 크기에 `zoom`을 곱하지 않는다.
-- `#lab-optimization-overlay-layer`는 stage **안**에서 `#lab-replay-grid`와 형제로 두고, stage와 동일 transform을 공유한다(오버레이가 viewport transform을 소유하지 않음).
-- 포인터 히트 테스트·HUD는 뷰포트 패딩을 보정한 뒤 `(viewportLocal - translate) / zoom`으로 **월드 좌표**로 역변환해 셀 인덱스를 구한다.
+- `#lab-replay-grid-viewport` stays **16:9** fixed ratio (`aspect-video`, etc.) as **layout size · clipping window** only. `overflow: hidden`, `contain: layout paint`, `touch-action: none`, etc. reduce browser gesture/selection overlap. **Do not put `transform` or zoom-driven inline `width`/`height` on viewport.**
+- `#lab-replay-grid-stage` is `position: absolute; left: 0; top: 0; transform-origin: 0 0` and is the **sole CSS transform owner** for pan/zoom. JS applies `transform: translate(tx, ty) scale(zoom)` once. Snap `tx`/`ty` to **device pixels** (`snapToDevicePixel`). Pass `zoom` unchanged to `scale`. Avoid unnecessary `will-change: transform` on stage (compositing layer rasterized at unscaled size then scaled can blur sprites).
+- `#lab-replay-grid` `grid-template-columns` / `rows` use **world cell edge (px) independent of zoom** (server replay: `replayFitBasePx`, demo: `demoBaseCellPxAtZoom1`). Do not multiply cell size by `zoom`.
+- `#lab-optimization-overlay-layer` sits **inside** stage as sibling of `#lab-replay-grid`, sharing stage transform (overlay does not own viewport transform).
+- Pointer hit test · HUD: after viewport padding correction, inverse `(viewportLocal - translate) / zoom` to **world coords** for cell index.
 
-## 디버그
+## Debug
 
-- `#lab-root`에 `data-lab-debug-rotation="1"`이 있거나 JS 상수 `LAB_DEBUG_ROTATION`이 true이면 `#lab-replay-grid`에 `lab-debug-rotation` 클래스가 붙고, 스프라이트가 있는 셀에 `data-r`이 채워질 때 R 오버레이가 보인다.
+- When `#lab-root` has `data-lab-debug-rotation="1"` or JS constant `LAB_DEBUG_ROTATION` is true, `#lab-replay-grid` gets `lab-debug-rotation` class and R overlay shows when `data-r` is set on cells with sprites.
 
-## SVG 자산
+## SVG assets
 
-- 신규 Lab용 layout 스프라이트는 **East-facing** 기준으로 작성한다.
-- `viewBox="0 0 100 100"` 권장; 기존 96 좌표계는 스케일 래핑으로 맞출 수 있다.
+- New Lab layout sprites should be authored **East-facing**.
+- Prefer `viewBox="0 0 100 100"`; existing 96 coordinate system can be wrapped with scale.

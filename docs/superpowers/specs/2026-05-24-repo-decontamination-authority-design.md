@@ -18,7 +18,7 @@ The repository already has document governance (`document_inventory.md`, `docume
 | **A — Opposite authority** | `documents/plans/asteroid_lab_optimization/README.md` states optimization/solver was removed; `documents/ai/current_plan.md` states `django_apps/asteroid_lab/optimization/` is active RTTP | Agents strip or ignore live runtime; resurrect strip-solver-only world |
 | **B — Archived snapshots as canon** | `documents/plans/asteroid_lab_optimization/asteroid_lab_*.md` copied from pre-RTTP era | Wrong package paths, DTOs, sequences |
 | **C — Removed package paths in prompts** | `django_apps.shapez_asteroid`, `tests/unit/shapez_asteroid` appear in old docs/drafts | Dead namespace revival, broken import gates |
-| **D — Stale START_HERE pointer** | References inventory table **"채굴 레이아웃 솔버 정본 후보"** which no longer exists | Broken read order for every new session |
+| **D — Stale START_HERE pointer** | References inventory table **"mining layout solver canonical candidate"** which no longer exists | Broken read order for every new session |
 | **E — Historical solver_runtime series** | Front matter `ARCHIVED` with body implying optimization absent globally | Conflicts with RTTP Hybrid C on `master` |
 | **F — Replay/artifact leakage (future)** | Not fixed in PR-A; needs PR-B/C gates | `solver_summary`, replay frames used as algorithm input |
 
@@ -158,7 +158,7 @@ New file: `documents/ai/contamination_policy.md`.
 
 ```powershell
 # From repo root
-rg "채굴 레이아웃 솔버 정본 후보" documents/
+rg "mining layout solver canonical candidate" documents/
 # Expected: 0 matches
 
 rg "do_not_use_as_authority" documents/ai/contamination_policy.md documents/index/document_inventory.md

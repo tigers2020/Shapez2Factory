@@ -1,6 +1,6 @@
 ﻿# Test Suite Speed Implementation Plan
 
-> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**. (베이스라인 측정 기록에 `-q`가 남아 있으면 **당시** 명령이며, 재실행 시 제거.)
+> **pytest output:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden**. (If `-q` remains in baseline measurement records, that was the command at the time; remove it on re-run.)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -125,15 +125,15 @@ After existing markers, add:
     slow: full game_data import, exhaustive gene generation, or >2s typical (see testing.md)
 ```
 
-- [ ] **Step 2: Extend testing.md “구간 실행” table**
+- [ ] **Step 2: Extend testing.md “section run” table**
 
 Add rows:
 
-| 방식 | 예 |
+| Method | Example |
 |------|-----|
-| 병렬 전체 | `python -m pytest -n auto --dist loadscope` |
-| 빠른 unit | `python -m pytest -m "unit and not slow"` |
-| slow만 | `python -m pytest -m slow` |
+| Parallel full | `python -m pytest -n auto --dist loadscope` |
+| Fast unit | `python -m pytest -m "unit and not slow"` |
+| Slow only | `python -m pytest -m slow` |
 
 Under PR full gate, note: CI may use `-n auto --dist loadscope`; local iteration should prefer narrow path or `unit and not slow`.
 

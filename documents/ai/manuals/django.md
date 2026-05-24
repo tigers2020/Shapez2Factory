@@ -1,95 +1,95 @@
-# 매뉴얼: Django · 백엔드
+# Manual: Django · Backend
 
-작업 전 [`AGENTS.md`](../../../AGENTS.md) Core Rules를 확인한다.
+Before starting work, review [`AGENTS.md`](../../../AGENTS.md) Core Rules.
 
-## 소유
+## Ownership
 
-| 앱 | 경로 | 책임 |
+| App | Path | Responsibility |
 |----|------|------|
-| shapez_core | `django_apps/shapez_core/` | 도형 규칙·파싱·정규화 |
-| shapez_solver | `django_apps/shapez_solver/` | 솔버 유스케이스·서비스 |
-| asteroid_lab | `django_apps/asteroid_lab/` | 소행성 실험실(ORM·디코드·리플레이; 레시피 솔버와 별도) |
-| web | `django_apps/web/` | 템플릿·정적 자산·얇은 뷰 |
-| game_data | `django_apps/game_data/` | 게임 덤프 ORM·importer·admin·browse |
+| shapez_core | `django_apps/shapez_core/` | Shape rules · parsing · normalization |
+| shapez_solver | `django_apps/shapez_solver/` | Solver use cases · services |
+| asteroid_lab | `django_apps/asteroid_lab/` | Asteroid Lab (ORM · decode · replay; separate from recipe solver) |
+| web | `django_apps/web/` | Templates · static assets · thin views |
+| game_data | `django_apps/game_data/` | Game dump ORM · importer · admin · browse |
 
-페르소나: [`persona/denny.md`](../../../persona/denny.md). 경로 glob 규칙: [`.cursor/rules/django-apps.mdc`](../../../.cursor/rules/django-apps.mdc).
+Persona: [`persona/denny.md`](../../../persona/denny.md). Path glob rules: [`.cursor/rules/django-apps.mdc`](../../../.cursor/rules/django-apps.mdc).
 
-### `game_data` 레이아웃
+### `game_data` layout
 
-| 경로 | 책임 |
+| Path | Responsibility |
 |------|------|
-| `models/` | 구체 필드·FK/OneToOne·`Meta.constraints` (도메인 모델) |
-| `importers/` | JSON → ORM 결정적 import |
-| `services/` | 분류·검증·`validators.assert_no_domain_json_fields` |
-| `browse/` | taxonomy → admin 대시보드 (thin view) |
-| `admin.py` | aggregate root `ModelAdmin`·inlines |
+| `models/` | Concrete fields · FK/OneToOne · `Meta.constraints` (domain models) |
+| `importers/` | Deterministic JSON → ORM import |
+| `services/` | Classification · validation · `validators.assert_no_domain_json_fields` |
+| `browse/` | Taxonomy → admin dashboard (thin view) |
+| `admin.py` | Aggregate root `ModelAdmin` · inlines |
 | `management/commands/import_game_data.py` | CLI import + post-import guards |
 
 Browse URL: `config/urls.py` → `path("admin/game-data/", include("django_apps.game_data.browse.urls"))`.
 
 **Domain-complete coverage** (A vs B, manifest, shape provenance, Phase 2 audit pending): [`docs/domain/game_data_coverage.md`](../../../docs/domain/game_data_coverage.md).
 
-## domain JSON 금지 (`game_data`)
+## No domain JSON (`game_data`)
 
-- 도메인 모델에 **`JSONField` 금지** (스키마 없는 덤프 방지).
-- 필드명 `raw_json`, `payload`, `data`, `source_dump`, `audit_blob` **금지**.
-- 예외: `ALLOWED_JSON_MODELS`에 모델명을 명시하고 **플랜·ADR 승인** 후에만 ([`validators.py`](../../../django_apps/game_data/services/validators.py), [`test_no_raw_json_domain_storage.py`](../../../tests/unit/game_data/test_no_raw_json_domain_storage.py)).
-- `audit_blob` 등 레거시는 **마이그레이션으로 concrete 테이블**로 이전; 런타임 모델에 남기지 않는다.
+- **No `JSONField`** on domain models (prevents schema-less dumps).
+- Field names `raw_json`, `payload`, `data`, `source_dump`, `audit_blob` are **forbidden**.
+- Exception: model name must be listed in `ALLOWED_JSON_MODELS` and only after **plan · ADR approval** ([`validators.py`](../../../django_apps/game_data/services/validators.py), [`test_no_raw_json_domain_storage.py`](../../../tests/unit/game_data/test_no_raw_json_domain_storage.py)).
+- Legacy fields such as `audit_blob` must be **migrated to concrete tables**; do not leave them on runtime models.
 
-## 블루프린트 격자 좌표 (공통)
+## Blueprint grid coordinates (shared)
 
-블루프린트 복사 격자는 **`X == 0`인 열이 없다**(`1`과 `-1`이 동서로 인접; `0` 비경유). 서버 코드 `(x, y)`에서도 **`x == 0` 불가**. 상세·근거: [`research_blueprint_grid_coordinates_2026-05-10.md`](../../research/research_blueprint_grid_coordinates_2026-05-10.md).
+Blueprint copy grids have **no column where `X == 0`** (`1` and `-1` are adjacent east–west; `0` is non-transit). Server code `(x, y)` also **cannot have `x == 0`**. Details · rationale: [`research_blueprint_grid_coordinates_2026-05-10.md`](../../research/research_blueprint_grid_coordinates_2026-05-10.md).
 
-## 의존 방향 (금지 위반 금지)
+## Dependency direction (do not violate)
 
-- `shapez_core` → `web`, `shapez_solver`, `asteroid_lab` **import 금지**
-- `shapez_solver` → `shapez_core` 만 허용 · `web`·`asteroid_lab` import **금지**
-- `asteroid_lab` → `shapez_core` 만 허용(향후)·스켈레톤에서는 미사용 가능 · `web`·`shapez_solver` import **금지**
-- `web` → `shapez_core`, `shapez_solver`, `asteroid_lab`, `game_data` 허용
-- `game_data` → `web`, `shapez_solver`, `asteroid_lab` **import 금지** (`shapez_core`만 허용, 향후)
-- `shapez_core`·`shapez_solver`·`asteroid_lab` → `game_data` **import 금지**
+- `shapez_core` → **no import** of `web`, `shapez_solver`, `asteroid_lab`
+- `shapez_solver` → only `shapez_core` allowed · **no import** of `web` · `asteroid_lab`
+- `asteroid_lab` → only `shapez_core` allowed (future) · may be unused in skeleton · **no import** of `web` · `shapez_solver`
+- `web` → `shapez_core`, `shapez_solver`, `asteroid_lab`, `game_data` allowed
+- `game_data` → **no import** of `web`, `shapez_solver`, `asteroid_lab` (only `shapez_core` allowed, future)
+- `shapez_core` · `shapez_solver` · `asteroid_lab` → **no import** of `game_data`
 
-기계 검증: [`tests/unit/architecture/test_django_app_import_boundaries.py`](../../../tests/unit/architecture/test_django_app_import_boundaries.py).
+Mechanical verification: [`tests/unit/architecture/test_django_app_import_boundaries.py`](../../../tests/unit/architecture/test_django_app_import_boundaries.py).
 
-정본: [`.cursor/rules/architecture.mdc`](../../../.cursor/rules/architecture.mdc).
+Canonical source: [`.cursor/rules/architecture.mdc`](../../../.cursor/rules/architecture.mdc).
 
-## 뷰·엔드포인트
+## Views · endpoints
 
-- HTTP 엔드포인트는 **동작을 소유한 앱**에 둔다.
-- 뷰는 얇게: 도메인·솔버 규칙은 `services/`·`importers/`·use case로 ([데니](../../../persona/denny.md) · 아래 참조 Rule 1).
+- HTTP endpoints belong in the **app that owns the behavior**.
+- Keep views thin: domain · solver rules go in `services/` · `importers/` · use cases ([Denny](../../../persona/denny.md) · Rule 1 below).
 
-## 참조 (외부 — Django 작업 시)
+## References (external — for Django work)
 
-이 레포 정본은 [`.cursor/rules/django-apps.mdc`](../../../.cursor/rules/django-apps.mdc) + 본 매뉴얼이다. 아래는 **보조 참고**이며, 충돌 시 레포 규칙·import 행렬·`game_data` JSON 금지가 우선한다.
+The canonical sources for this repo are [`.cursor/rules/django-apps.mdc`](../../../.cursor/rules/django-apps.mdc) + this manual. The following are **supplementary**; on conflict, repo rules · import matrix · `game_data` JSON ban take precedence.
 
-| 주제 | 링크 | 이 레포에서의 쓰임 |
+| Topic | Link | Use in this repo |
 |------|------|-------------------|
-| Cursor modular rules · thin views · query/migration/testing 습관 | [Cursor Rules for Django (DEV)](https://dev.to/olivia_craft/cursor-rules-for-django-the-complete-guide-to-ai-assisted-django-development-3je5) | `.cursor/rules/*.mdc` 분리 방식과 동일; 뷰 30줄 smell·`select_related`·서비스 레이어는 데니 체크리스트와 정합 |
-| 객체 단위 권한 · predicate · `ObjectPermissionBackend` | [django-rules — Using rules with Django](https://github.com/dfunckt/django-rules#using-rules-with-django) | **신규** staff/API object permission 도입 시: `rules` 앱·backend 설정·`rules.add_perm` / `Model` `Meta.rules_permissions` 패턴을 이 문서 기준으로 맞춘다. 현재 레포는 django-allauth + `LoginRequiredMixin` / `@staff_member_required` 위주 |
+| Cursor modular rules · thin views · query/migration/testing habits | [Cursor Rules for Django (DEV)](https://dev.to/olivia_craft/cursor-rules-for-django-the-complete-guide-to-ai-assisted-django-development-3je5) | Same split as `.cursor/rules/*.mdc`; 30-line view smell · `select_related` · service layer align with Denny checklist |
+| Object-level permissions · predicate · `ObjectPermissionBackend` | [django-rules — Using rules with Django](https://github.com/dfunckt/django-rules#using-rules-with-django) | When introducing **new** staff/API object permissions: align `rules` app · backend config · `rules.add_perm` / `Model` `Meta.rules_permissions` patterns to this doc. Current repo is django-allauth + `LoginRequiredMixin` / `@staff_member_required` focused |
 
-**DEV 가이드 ↔ 레포 매핑 (요약)**
+**DEV guide ↔ repo mapping (summary)**
 
-- Rule 1 (fat models / thin views) → [django-apps.mdc](../../../.cursor/rules/django-apps.mdc) Thin view 절
-- Rule 2 (query discipline) → list/admin/browse queryset에 `select_related` / `prefetch_related` 검토
+- Rule 1 (fat models / thin views) → [django-apps.mdc](../../../.cursor/rules/django-apps.mdc) Thin view section
+- Rule 2 (query discipline) → review `select_related` / `prefetch_related` on list/admin/browse querysets
 - Rule 3–4 (migrations, settings) → [`database.md`](database.md), [`environment.md`](environment.md)
 - Rule 5 (testing) → [`testing.md`](testing.md), `tests/unit/<app>/`
-- Modular rules → `django-apps.mdc` + [`asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc) (앱별 glob)
+- Modular rules → `django-apps.mdc` + [`asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc) (per-app glob)
 
-## 실행
+## Run
 
 ```bash
 python manage.py runserver
 ```
 
-설치: 루트에서 `pip install -e ".[dev]"`.
+Install: from repo root, `pip install -e ".[dev]"`.
 
-환경 변수 분류·`.env` / `.env.debug` 계층: [`environment.md`](environment.md).
+Environment variable classification · `.env` / `.env.debug` layering: [`environment.md`](environment.md).
 
-## 인증
+## Authentication
 
-`django-allauth`, `accounts/` URL. OAuth 클라이언트는 코드가 아니라 환경·`SocialApp` 등으로 등록.
+`django-allauth`, `accounts/` URLs. OAuth clients are registered via environment · `SocialApp`, not in code.
 
-## 다음에 읽을 것
+## Read next
 
-- 모델·마이그레이션: [`database.md`](database.md)
-- 솔버 로직: [`solver.md`](solver.md)
+- Models · migrations: [`database.md`](database.md)
+- Solver logic: [`solver.md`](solver.md)

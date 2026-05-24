@@ -12,60 +12,60 @@ related_docs:
   - .cursor/rules/asteroid-lab-invariants.mdc
 ---
 
-# ?µì‹¬ ?ì¹™ (Â§0)
+# Core Principles (§0)
 
-Solver Runtime ??Phase??ê³µí†µ?¼ë¡œ ?ìš©?œë‹¤.
+These apply to all Solver Runtime Phases.
 
-## 0.1 ?¤ì¹˜?˜ë©´???ìƒ‰?˜ì? ?ŠëŠ”??
+## 0.1 Do not install actual equipment during search
 
-**ê¸ˆì?:**
-
-```text
-server x/y ?œì„œ?€ë¡??¤ì œ extractor / extension / belt / pipe ?¤ì¹˜
-```
-
-**?ˆìš©:**
+**Forbidden:**
 
 ```text
-server x/y ?œì„œ?€ë¡?deterministic candidate enumeration
+server x/y coordinates used to install actual extractor / extension / belt / pipe
 ```
 
-ì¢Œí‘œ ?œì„œ??**?„ë³´ ?ì„± ?œì„œ**??ë¿?**commit ?œì„œê°€ ?„ë‹ˆ??**
-
-**CONFIRMED ?´í›„ ?ˆìš©:** [`phase_k2_placement_materialization.md`](phase_k2_placement_materialization.md) ??commit ?±ê³µ placement + route reservation??`MaterializedLayoutCells`ë¡??¹ê²© (replayÂ·validation ì¶œë ¥). enumerationÂ·probe ?¨ê³„??ì¦‰ì‹œ ?¤ì¹˜?€ êµ¬ë¶„?œë‹¤.
-
-## 0.2 ?¸ê³½ void???¤ì œ ëª©í‘œ belt/pipeë¥?ë¨¼ì? ?¤ì¹˜?˜ì? ?ŠëŠ”??
-
-**ê¸ˆì?:**
+**Allowed:**
 
 ```text
-void???„ì˜ belt/pipeë¥?ë¨¼ì? ?¤ì¹˜?˜ê³  ê±°ê¸°ë¡?ëª¨ë‘ ?°ê²°
+server x/y coordinates used for deterministic candidate enumeration
 ```
 
-**?ˆìš©:**
+Coordinate order is **candidate generation order**, not **commit order**.
+
+**Allowed after CONFIRMED:** [`phase_k2_placement_materialization.md`](phase_k2_placement_materialization.md) ? commit-success placement + route reservation is materialized into `MaterializedLayoutCells` (replay·validation output). Immediate install during enumeration·probe stages is forbidden.
+
+## 0.2 Do not install actual target belt/pipe in outer void first?
+
+**Forbidden:**
 
 ```text
-external void / margin / existing trunkë¥?RouteGoalë¡??ì„±
+install belt/pipe in void first and connect everything afterward
 ```
 
-?¤ì œ transport materialization?€ **commit ?´í›„** route network ?´ì„ ?¨ê³„?ì„œ ?˜í–‰?œë‹¤. ([`phase_k_route_materialization.md`](phase_k_route_materialization.md))
+**Allowed:**
 
-## 0.3 Reconstruction map ë¡œë“œ ì§í›„ extension kindë¥?fieldë¡??•ê·œ??
+```text
+create RouteGoals from external void / margin / existing trunk
+```
 
-DB reconstruction map?€ miner extension kindë¥??ë³¸ ê·¸ë?ë¡?ë³´ì¡´?????ˆë‹¤. Solver runtime 1ì°?ê³µì •?€ optimization??**field kind**ë¡?ë³€?˜í•œ??
+Actual transport materialization happens in the **post-commit** route network materialization phase. ([`phase_k_route_materialization.md`](phase_k_route_materialization.md))
+
+## 0.3 Reconstruction map loads extension kind as field after normalization
+
+The DB reconstruction map preserves miner extension kinds as raw kinds. The first Solver runtime normalization is converting optimization to **field kind**:
 
 ```text
 shapeMinerExtension / Layout_ShapeMinerExtension
-??asteroid_shape_field
+? asteroid_shape_field
 
 fluidMinerExtension / Layout_FluidMinerExtension
-??asteroid_fluid_field
+? asteroid_fluid_field
 ```
 
-- ë³€?˜ì? **DB ?ë³¸???˜ì •?˜ì? ?ŠëŠ”??**
-- ê²½ê³„: `LoadedReconstructionSnapshot ??OptimizationInput` **adapter**?ì„œë§??˜í–‰.
+- Normalization **does not modify the DB original.**
+- Boundary: performed only in the `LoadedReconstructionSnapshot ? OptimizationInput` **adapter**.
 
-Optimizer??ë³€???´í›„ ?¤ìŒ ì§‘í•©???•ë³¸?¼ë¡œ ?¬ìš©?œë‹¤.
+The optimizer uses the following sets as canonical after normalization:
 
 ```text
 OptimizationInput.asteroid_cells
@@ -76,73 +76,73 @@ OptimizationInput.route_goals
 OptimizationInput.route_domain
 ```
 
-ê·œì¹™:
+Rules:
 
 ```text
-asteroid_shape_field ??asteroid_cells + mineable_cells
-asteroid_fluid_field ??asteroid_cells + mineable_cells
+asteroid_shape_field ? asteroid_cells + mineable_cells
+asteroid_fluid_field ? asteroid_cells + mineable_cells
 ```
 
-extension ?ë³¸ kind??resource/evidence ?©ë„ë¡?**ë³´ì¡´ ê°€??*.
+Extension raw kinds are **preserved** for resource/evidence purposes.
 
-**ê¸ˆì? (optimizer ?´ë?):**
+**Forbidden (optimizer interior):**
 
 ```python
-# candidate_geometry / route_probe ?´ë??ì„œ ì§ì ‘ kind ?ì • ê¸ˆì?
+# Direct kind comparison forbidden in candidate_geometry / route_probe interior
 cell.kind == "shapeMinerExtension"
 cell.kind == "fluidMinerExtension"
 cell.kind == "asteroid_fluid_field"
 cell.kind == "asteroid_shape_field"
 ```
 
-kind ?ì •?€ adapter 1ì°??•ê·œ??ì±…ì„?´ë©°, optimizer ?´ë???`asteroid_cells` / `mineable_cells` ì§‘í•©ë§?ë³¸ë‹¤.
+Kind assignment is adapter 1st-normalization responsibility; optimizer interior uses only `asteroid_cells` / `mineable_cells` sets.
 
-## 0.4 ëª¨ë“  candidate??route probeë¥??µê³¼?´ì•¼ normal pool???¤ì–´ê°„ë‹¤
+## 0.4 All candidates must pass route probe to enter normal pool
 
 ```text
 projected gene
-??geometry validation
-??route probe
-??reachable=True only normal_candidates
+? geometry validation
+? route probe
+? reachable=True only normal_candidates
 ```
 
-unreachable candidate??diagnostic / rejected candidateë¡œë§Œ ?¨ê¸´??
+Unreachable candidates go only to diagnostic / rejected candidate pools.
 
-## 0.5 Candidate phase reachable?€ commit successê°€ ?„ë‹ˆ??
+## 0.5 Candidate phase reachable ? commit success
 
-commit ?œì ?ëŠ” ??ƒ **ìµœì‹  route domain**?¼ë¡œ ?¤ì‹œ probe?œë‹¤.
+At commit time, reprobe with the **latest route domain**.
 
 ```text
-candidate probe success ??final commit success
+candidate probe success ? final commit success
 ```
 
-?ì„¸: [`phase_j_incremental_commit.md`](phase_j_incremental_commit.md).
+Details: [`phase_j_incremental_commit.md`](phase_j_incremental_commit.md).
 
-## 0.6 ì¢Œí‘œ ?©ì–´ (Runtime ?•ë³¸, alias ê¸ˆì?)
+## 0.6 Coordinate terms (Runtime canonical, alias forbidden)
 
-| ?´ë¦„ | ?˜ë? |
+| Name | Meaning |
+|------|---------|
+| `fixed_output_transport` | **First belt/pipe cell** immediately after extractor output (canonical E offset `(1,0)`) |
+| `route_probe_start` | Route search **start** cell (offset `(2,0)`; **must not be in occupied_offsets**) |
+| `output_stub` | **Legacy** ? **forbidden** in new DTO·function·document field names |
+
+`CandidateRejectReason.output_stub_*` enum member names are **legacy compatibility**; semantics map to `route_probe_start`.
+
+## 0.7 New test·document naming (reject / geometry)
+
+| Scope | Rule |
 |------|------|
-| `fixed_output_transport` | extractor ì§í›„ **ì²?belt/pipe** ?€ (canonical E?ì„œ offset `(1,0)`) |
-| `route_probe_start` | route search **?œì‘** ?€ (offset `(2,0)`; `occupied_offsets`??**?¬í•¨ ê¸ˆì?**) |
-| `output_stub` | **?ˆê±°??* ??? ê·œ DTOÂ·?¨ìˆ˜Â·ë¬¸ì„œ ?„ë“œëª…ìœ¼ë¡?**?¬ìš© ê¸ˆì?** |
+| **New pytest function names** | `route_probe_start_*` · `fixed_output_transport_*` ? **`output_stub_*` forbidden** |
+| **New document body·headings** | `route_probe_start` canonical ([§0.6](#06-coordinate-terms-runtime-canonical-alias-forbidden)) |
+| **Existing enum values** | `output_stub_inside_occupied` etc. ? **rename forbidden** (backward compatibility); assert via enum value·semantic mapping |
 
-`CandidateRejectReason.output_stub_*` enum ë©¤ë²„ ?´ë¦„?€ **ê¸°ì¡´ enum ?¸í™˜??*?´ë©° ?˜ë???`route_probe_start`?´ë‹¤.
+Example: `test_geometry_rejects_route_probe_start_inside_occupied` (OK) · `test_geometry_rejects_output_stub_inside_occupied` (new naming forbidden).
 
-## 0.7 ? ê·œ ?ŒìŠ¤?¸Â·ë¬¸??ëª…ëª… (reject / geometry)
+Details: [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) §4 · [`open_decisions.md`](open_decisions.md) OD-1.
 
-| ë²”ìœ„ | ê·œì¹™ |
-|------|------|
-| **? ê·œ pytest ?¨ìˆ˜ëª?* | `route_probe_start_*` Â· `fixed_output_transport_*` ??`output_stub_*` **?¬ìš© ê¸ˆì?** |
-| **? ê·œ ë¬¸ì„œ ë³¸ë¬¸Â·ì£¼ì„** | `route_probe_start` ?•ë³¸ ([Â§0.6](#06-ì¢Œí‘œ-?©ì–´-runtime-?•ë³¸-alias-ê¸ˆì?)) |
-| **ê¸°ì¡´ enum ê°?* | `output_stub_inside_occupied` ??**rename ê¸ˆì?** (?˜ìœ„ ?¸í™˜); assert??enum ê°’Â·ì˜ë¯?ë§¤í•‘?¼ë¡œ ê²€ì¦?|
+## Coordinates·replay (cross-reference)
 
-?? `test_geometry_rejects_route_probe_start_inside_occupied` (O) Â· `test_geometry_rejects_output_stub_inside_occupied` (? ê·œ ì¶”ê? X).
+- After OptimizationInput, all `Coord` = **Server X/Y** only. raw?server conversion forbidden in optimization interior.
+- Replay·NDJSON·metrics are **algorithm input forbidden**.
 
-?ì„¸: [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) Â§4 Â· [`open_decisions.md`](open_decisions.md) OD-1.
-
-## ì¢Œí‘œÂ·replay (êµì°¨ ì°¸ì¡°)
-
-- OptimizationInput ?´í›„ ëª¨ë“  `Coord` = **Server X/Y** only. raw?”server ?¬ë??˜ì? optimization ?´ë? ê¸ˆì?.
-- ReplayÂ·NDJSONÂ·metrics??**algorithm input ê¸ˆì?**.
-
-[`asteroid_lab_00_overview.md`](../asteroid_lab_00_overview.md) Â· [`.cursor/rules/asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc)
+[`asteroid_lab_00_overview.md`](../asteroid_lab_00_overview.md) · [`.cursor/rules/asteroid-lab-invariants.mdc`](../../../.cursor/rules/asteroid-lab-invariants.mdc)

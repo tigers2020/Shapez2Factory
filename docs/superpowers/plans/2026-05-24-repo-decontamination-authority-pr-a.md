@@ -175,7 +175,7 @@ git commit -m "docs: add contamination policy for authority repair"
 
 - [ ] **Step 1: Update header and add hot path**
 
-At top after the scope paragraph, set `기준일: 2026-05-24` and add section:
+At top after the scope paragraph, set `Reference date: 2026-05-24` and add section:
 
 ```markdown
 ## Hot path (Asteroid Lab / RTTP)
@@ -196,7 +196,7 @@ Insert section **「Asteroid Lab authority by topic」** with the full table fro
 
 - [ ] **Step 3: Fix existing rows**
 
-In **Active 작업·백로그** table:
+In **Active work · backlog** table:
 
 - Change `documents/Algorithm/solver_runtime/` status note to **HISTORICAL** — RTTP runtime is `current_plan` + `optimization/`, not Phase A–M series.
 - Add row for `documents/ai/contamination_policy.md` — `CANON`, governance.
@@ -233,7 +233,7 @@ git commit -m "docs: extend inventory with RTTP topic authority table"
 
 - [ ] **Step 1: Extend recommended header template**
 
-In § 권장 문서 헤더 YAML example, add:
+In § recommended document header YAML example, add:
 
 ```yaml
 do_not_use_as_authority: false
@@ -241,7 +241,7 @@ do_not_use_as_authority: false
 
 - [ ] **Step 2: Add operational QUARANTINE note**
 
-After § 상태 enum table, add:
+After § status enum table, add:
 
 ```markdown
 ### Operational label: QUARANTINE
@@ -261,14 +261,14 @@ git commit -m "docs: document QUARANTINE label and do_not_use_as_authority"
 ### Task 4: Patch `current_plan.md`
 
 **Files:**
-- Modify: `documents/ai/current_plan.md` (after **Runtime (코드 정본):** block)
+- Modify: `documents/ai/current_plan.md` (after **Runtime (code canonical reference):** block)
 
 - [ ] **Step 1: Insert Authority precedence section**
 
 ```markdown
 ## Authority precedence
 
-문서 충돌 시 Algorithm vs superpowers **전역 우선 규칙 없음** — [`document_inventory.md`](../index/document_inventory.md) **§ Asteroid Lab authority by topic** 행을 따른다.
+On document conflict between Algorithm and superpowers there is **no global precedence rule** — follow the [`document_inventory.md`](../index/document_inventory.md) **§ Asteroid Lab authority by topic** row.
 
 1. Code + tests: `django_apps/asteroid_lab/{reconstruction,optimization,contracts}/`, `tests/unit/asteroid_lab/`
 2. This file — active queue and runtime pointer
@@ -279,7 +279,7 @@ git commit -m "docs: document QUARANTINE label and do_not_use_as_authority"
 7. `documents/Algorithm/solver_runtime/` — historical Phase A–M unless this file promotes a subsection
 8. `REPORT`, `documents/debug/`, `documents/archive/` — observation only
 
-운영 규칙: [`contamination_policy.md`](contamination_policy.md). 설계: [`docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md`](../../docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md).
+Operational rules: [`contamination_policy.md`](contamination_policy.md). Design: [`docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md`](../../docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md).
 ```
 
 - [ ] **Step 2: Commit**
@@ -304,12 +304,12 @@ After item 3 (`document_inventory.md`), insert:
 3.5. [`contamination_policy.md`](contamination_policy.md) — forbidden patterns (on conflict, inventory topic row wins)
 ```
 
-- [ ] **Step 2: Replace § Solver 작업 기본 canon**
+- [ ] **Step 2: Replace § Solver work default canon**
 
-Delete lines referencing **채굴 레이아웃 솔버 정본 후보**. Replace entire section with:
+Delete lines referencing **mining layout solver canonical candidate**. Replace entire section with:
 
 ```markdown
-## Asteroid Lab / RTTP 작업
+## Asteroid Lab / RTTP work
 
 1. [`current_plan.md`](current_plan.md) — active runtime paths and queue
 2. [`../index/document_inventory.md`](../index/document_inventory.md) — **§ Asteroid Lab authority by topic**
@@ -317,15 +317,15 @@ Delete lines referencing **채굴 레이아웃 솔버 정본 후보**. Replace e
 4. Topic authority from inventory row (`docs/superpowers/specs/` or `documents/Algorithm/asteroid_lab_*.md`)
 5. Code: `django_apps/asteroid_lab/` + `tests/unit/asteroid_lab/`
 
-다음 계약은 오래된 plan/report보다 우선한다 (topic row가 더 구체적이면 **row wins**):
+The following contracts take precedence over older plans/reports (if the topic row is more specific, **row wins**):
 
 - Placement ≠ Commit; route probe at candidate creation
 - validation read-only; replay/artifacts output-only
 - single `RouteDomainSnapshotBuilder` owner
 
-**금지:** `documents/plans/asteroid_lab_optimization/` 를 구현 정본으로 사용하지 않는다.
+**Forbidden:** Do not use `documents/plans/asteroid_lab_optimization/` as implementation authority.
 
-**금지:** `django_apps.shapez_asteroid`, `tests/unit/shapez_asteroid` 를 현재 작업 경로로 사용하지 않는다.
+**Forbidden:** Do not use `django_apps.shapez_asteroid`, `tests/unit/shapez_asteroid` as current work paths.
 ```
 
 - [ ] **Step 3: Grep — no stale pointer**
@@ -333,7 +333,7 @@ Delete lines referencing **채굴 레이아웃 솔버 정본 후보**. Replace e
 Run:
 
 ```powershell
-rg "채굴 레이아웃 솔버 정본 후보" documents/
+rg "mining layout solver canonical candidate" documents/
 ```
 
 Expected: **0 matches**
@@ -524,7 +524,7 @@ Skip commit if YAGNI — not required for PR-A acceptance.
 
 ```powershell
 cd f:\Python_Projects\shapez2Factory
-rg "채굴 레이아웃 솔버 정본 후보" documents/
+rg "mining layout solver canonical candidate" documents/
 rg "do_not_use_as_authority" documents/ai/contamination_policy.md documents/index/document_inventory.md
 rg "output-only" documents/ai/contamination_policy.md
 rg "read-only" documents/ai/contamination_policy.md

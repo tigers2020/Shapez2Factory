@@ -7,8 +7,8 @@
 
 ## Diff vs `buildings.json`
 
-`definition_snapshot` / `simulation_parameters` 하위 **2285 paths 동일**.  
-이 파일만의 추가 envelope 경로: **`description_key`** (string, 67/67).
+**2285 paths identical** under `definition_snapshot` / `simulation_parameters`.  
+Additional envelope path unique to this file: **`description_key`** (string, 67/67).
 
 ## Row envelope (all rows)
 

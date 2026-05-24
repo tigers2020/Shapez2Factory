@@ -1,31 +1,31 @@
 # Cursor Usage
 
-## 계획 먼저
+## Plan first
 
-- 복잡한 작업은 구현 전 `[시몬]` 브리핑에서 범위와 담당자를 나눈다.
-- 사용자가 "플랜만" 요청하면 코드를 수정하지 않고 계획만 제시한다.
-- 스펙이 필요한 큰 변경은 `documents/`에 리서치/플랜 문서를 먼저 남긴다.
-- 구현 전 최소 순서는 리서치 문서 → 플랜 MD → 사람 승인 → 구현이다. 전체 10단계 정본은 [protocols/README.md](mdc:protocols/README.md)를 본다.
+- For complex work, divide scope and owners in a `[Simon]` briefing before implementation.
+- When the user asks for "plan only", do not modify code; present the plan only.
+- For large changes that need a spec, leave research/plan documents in `documents/` first.
+- Minimum order before implementation: research doc → plan MD → human approval → implementation. See the canonical 10-stage pipeline in [protocols/README.md](mdc:protocols/README.md).
 
-## @참조
+## @ References
 
-- 캐릭터 역할은 `@persona/README.md`와 각 카드에서 확인한다.
-- UI 작업은 `@persona/gina-gui.md`를 함께 본다.
-- 아키텍처 판단은 `@.cursor/rules/architecture.mdc`를 우선한다.
+- Check character roles in `@persona/README.md` and each card.
+- For UI work, also read `@persona/gina-gui.md`.
+- For architecture decisions, prioritize `@.cursor/rules/architecture.mdc`.
 
-## 메모
+## Memo
 
-- 반복 실수, 프로젝트 결정, 다음 할 일은 사용자가 요청할 때 `documents/CURSOR_MEMO.md`에 반영한다.
-- 메모를 업데이트할 때는 날짜와 짧은 이유를 남긴다.
+- Reflect recurring mistakes, project decisions, and next tasks in `documents/CURSOR_MEMO.md` when the user requests it.
+- When updating the memo, leave a date and a short reason.
 
-## 다중 채팅
+## Multiple chats
 
-- 영역별로 대화가 분리된 경우에도 레이어 경계를 유지한다.
-- 다른 채팅의 결론을 적용할 때는 파일 기준으로 재확인한다.
+- Maintain layer boundaries even when conversations are split by area.
+- When applying conclusions from another chat, re-verify against the files.
 
-## 완료 보고
+## Completion report
 
-- 변경 파일, 검증 명령, 미실행 사유를 짧게 보고한다.
-- 검증 실패가 있으면 실패 명령, 이유, 다음 담당 캐릭터를 명확히 남긴다.
-- 검증을 못 돌렸으면 실행 못 한 명령, 이유, 남은 위험을 남긴다.
-- `black .`이 파일을 바꾸면 검증 통과 여부와 별도로 포맷 변경 발생을 적는다.
+- Briefly report changed files, validation commands, and reasons for anything not run.
+- If validation fails, clearly note the failing command, reason, and next responsible character.
+- If validation could not be run, note commands not executed, reason, and remaining risk.
+- If `black .` changes files, note format changes separately from whether validation passed.

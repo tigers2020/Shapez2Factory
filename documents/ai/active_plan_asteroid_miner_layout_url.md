@@ -7,38 +7,38 @@ superseded_by:
 related_epics: []
 ---
 
-# Asteroid Mining Lab: URL에서 copy string 제거
+# Asteroid Mining Lab: remove copy string from URL
 
-## 목표
+## Goal
 
-- 거대한 Shapez2 blueprint copy string을 **GET 쿼리 `?code=`**에서 제거한다.
-- **POST**로 제출 후 **PRG(302)**로 `AsteroidProject.slug` 기반 짧은 URL로 이동한다.
-- 동일 내용 재제출 시 **`AsteroidMapInput.content_sha256`**로 기존 프로젝트를 찾아 dedupe한다.
+- Remove huge Shapez2 blueprint copy string from **GET query `?code=`**.
+- **POST** submit then **PRG (302)** to short URL based on `AsteroidProject.slug`.
+- On resubmit of same content, dedupe via **`AsteroidMapInput.content_sha256`**.
 
-## URL 계약
+## URL contract
 
-| 메서드 | 경로 | 동작 |
-|--------|------|------|
-| GET | `/asteroid-miner-layout/` | 빈 랩(쿼리 `code` 무시) |
-| POST | `/asteroid-miner-layout/projects/` | `copy_code` 저장·dedupe 후 `/asteroid-miner-layout/p/<slug>/`로 리다이렉트 |
-| GET | `/asteroid-miner-layout/p/<slug>/` | 해당 프로젝트 최신 `AsteroidMapInput.copy_code`로 랩 렌더 |
+| Method | Path | Behavior |
+|--------|------|----------|
+| GET | `/asteroid-miner-layout/` | Empty lab (ignore query `code`) |
+| POST | `/asteroid-miner-layout/projects/` | Save `copy_code`, dedupe, redirect to `/asteroid-miner-layout/p/<slug>/` |
+| GET | `/asteroid-miner-layout/p/<slug>/` | Render lab with latest `AsteroidMapInput.copy_code` for project |
 
 ## Dedupe
 
-- 해시: UTF-8 바이트 기준 `sha256` — `django_apps.asteroid_lab.services.input_service.content_sha256_for_copy_code`와 `create_copy_code_map_input`이 동일 규칙 사용.
-- 제출 전 **앞뒤 공백 strip** 후 해시·저장(빈 문자열이면 베이스 URL로 리다이렉트).
+- Hash: `sha256` on UTF-8 bytes — same rule in `django_apps.asteroid_lab.services.input_service.content_sha256_for_copy_code` and `create_copy_code_map_input`.
+- **Strip leading/trailing whitespace** before hash · persist (empty string → redirect to base URL).
 
-## GET `?code=` 호환
+## GET `?code=` compatibility
 
-- **브레이킹**: 대형 payload 북마크는 URL 한계로 원래 복구 불가. 베이스 GET의 `code`는 읽지 않음.
+- **Breaking**: large payload bookmarks cannot be recovered due to URL limits. Base GET does not read `code`.
 
-## 테스트 범위
+## Test scope
 
-- 통합: POST → 302 Location → GET 본문에 `copy_code` 반영.
-- 단위: 동일 문자열 두 번 제출 시 프로젝트 수 증가 없음·동일 slug.
+- Integration: POST → 302 Location → GET body reflects `copy_code`.
+- Unit: two submits of same string → no project count increase · same slug.
 
-## 구현 참조
+## Implementation references
 
-- 뷰: `django_apps/web/views/public_pages.py`
-- URL: `django_apps/web/urls.py`
-- 서비스: `django_apps/asteroid_lab/services/project_service.py`
+- Views: `django_apps/web/views/public_pages.py`
+- URLs: `django_apps/web/urls.py`
+- Service: `django_apps/asteroid_lab/services/project_service.py`

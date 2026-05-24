@@ -73,7 +73,7 @@ After regenerate, **every non-empty `game_data` table** in SQLite must match `ga
 
 Taxonomy rows are **non-empty** when `seed_game_data_taxonomy` ran before `dumpdata`.
 
-**pytest:** `-q` / `--quiet` / `--tb=no` **금지** ([`documents/ai/manuals/testing.md`](../../documents/ai/manuals/testing.md)). 긴 `game_data` 스위트는 `-v` 또는 기본 출력으로 실패·진행을 보이게 한다 (~300 tests, ~70s).
+**pytest:** `-q` / `--quiet` / `--tb=no` **forbidden** ([`documents/ai/manuals/testing.md`](../../documents/ai/manuals/testing.md)). For long `game_data` suites, use `-v` or default output so failures and progress remain visible (~300 tests, ~70s).
 
 ## Coverage manifest disposition
 

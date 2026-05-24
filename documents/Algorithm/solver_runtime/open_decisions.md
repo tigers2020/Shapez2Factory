@@ -12,36 +12,36 @@ related_docs:
 
 # Open Decisions (OD)
 
-Íµ¨ÌòÑ v0?êÏÑú ?ïÏ†ï?òÏ? ?äÏïòÍ±∞ÎÇò v1Î°?ÎØ∏Î£¨ ??™©.
+Items not finalized in v0 implementation or deferred to v1.
 
 ## OD-1: route_probe_start policy
 
-**?ÑÏû¨ Í≥ÑÏïΩ:**
+**Current contract:**
 
 ```text
 fixed_output_transport = mandatory first belt/pipe cell
 route_probe_start = next route search start
 ```
 
-Route probe??`route_probe_start`?êÏÑú ?úÏûë?úÎã§.
+Route probe starts from `route_probe_start`.
 
-**?•ÌõÑ Í≤Ä??**
+**Future review:**
 
 ```text
 whether materialized route path should include fixed_output_transport automatically
 ```
 
-**Í∂åÏû• (v0):**
+**Recommendation (v0):**
 
 ```text
 yes, materialization should prepend fixed_output_transport before reservation path
 ```
 
-??[`phase_k_route_materialization.md`](phase_k_route_materialization.md)
+See [`phase_k_route_materialization.md`](phase_k_route_materialization.md)
 
 ## OD-2: platform footprint + packing efficiency
 
-v0 Í∂åÏû•:
+v0 recommendation:
 
 ```text
 PLATFORM_FOOTPRINT_CELLS = 5   # gene pattern max footprint (not a game rule)
@@ -49,17 +49,17 @@ DEFAULT_MINEABLE_PACKING_EFFICIENCY = 0.75
 estimated_extractor_groups = floor(mineable * packing_efficiency / 5)
 ```
 
-`mineable / 5` ?®ÎèÖ?Ä Í±∞Î?. ?©Îüâ Ï∂îÏ†ï?Ä **geometry ?¥Î¶¨?§Ìã±**??Îø?placement Î≥¥Ïû•???ÑÎãà?? ??[`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md)
+`mineable / 5` alone is coarse. Capacity estimation is **geometry heuristic** only; placement guarantee is separate. See [`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md)
 
 ## OD-3: capacity enforcement level
 
-**v0 (?ÑÎ£å):**
+**v0 (complete):**
 
 ```text
 goal load penalty / edge sharing penalty
 ```
 
-**v1 selector (2026-05-19, ?ÑÎ£å):**
+**v1 selector (2026-05-19, complete):**
 
 ```text
 hard trunk capacity in select_gene_candidates_greedy
@@ -67,11 +67,11 @@ skip overflow when alternate GoalLoadKey exists (trunk split)
 fallback to penalty-only pool when all remaining would overflow
 ```
 
-Íµ¨ÌòÑ: `would_exceed_trunk_capacity`, `trunk_platform_capacity` in `candidate_score.py`.
+Implementation: `would_exceed_trunk_capacity`, `trunk_platform_capacity` in `candidate_score.py`.
 
-**2026-05-20 ?òÏ†ï:** trunk load??**platform count** (`assigned + 1 > capacity`). ?¥Ï†Ñ `base_throughput` ?©ÏÇ∞?Ä Î¨∏ÏÑú?Ä Î∂àÏùºÏπòÌñà?ºÎ©∞, √ó16 bundle??goal??1Í∞úÎ°úÎß??†ÌÉù?òÎäî ?åÍ? ?êÏù∏?¥Ïóà??
+**2026-05-20 correction:** trunk load is **platform count** (`assigned + 1 > capacity`). Previous `base_throughput` multiplication was inconsistent with docs; ◊16 bundle counted as 1 platform per goal was the bug.
 
-**v1.1 (ÎØ∏Ï∞©??:**
+**v1.1 (not adopted):**
 
 ```text
 commit-time reroute / trunk split in incremental commit
@@ -79,24 +79,24 @@ commit-time reroute / trunk split in incremental commit
 
 ## OD-4: selector before GA
 
-**Í≤∞Ï†ï (Runtime v0):**
+**Decision (Runtime v0):**
 
 ```text
-A. capacity-aware greedy selector only ??Solver Button v0 ?ïÎ≥∏
-B. existing evolution engine ??v1 ?êÎäî legacy reference only
+A. capacity-aware greedy selector only ? Solver Button v0 canonical
+B. existing evolution engine ? v1 or legacy reference only
 ```
 
-**?¥Ïú†:**
+**Rationale:**
 
 ```text
 route/probe/commit correctness should stabilize before GA expands search complexity
 ```
 
-??[`phase_i_candidate_selection.md`](phase_i_candidate_selection.md) ¬∑ [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) ¬ß3
+See [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md) ∑ [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) ß3
 
 ## OD-5: route domain outer void padding
 
-**v0 (?ÑÎ£å):**
+**v0 (complete):**
 
 ```text
 OUTER_VOID_PADDING = 10  # fixed in input_contracts / reconstruction_adapter
@@ -105,7 +105,7 @@ MAX_GOAL_DISTANCE_FROM_MINEABLE = 5
 asteroid_bbox vs route_domain_bbox split on OptimizationInput
 ```
 
-**v1 (ÎØ∏Ï∞©??:**
+**v1 (not adopted):**
 
 ```text
 solver config overrides for padding and goal distance band

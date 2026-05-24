@@ -70,7 +70,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** Maintain reconstruction replay/topology narrow gate; **Axis B B-CS3** validation gate audit next. **Axis A D+ PR-1..PR-3 CLOSED**; **B-CS2 CLOSED** (2026-05-24). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** Maintain reconstruction replay/topology narrow gate; **Axis B B-CS4** replay contract narrow gate (ongoing). **Axis A D+ PR-1..PR-3 CLOSED**; **B-CS2 CLOSED** (2026-05-24); **B-CS3 CLOSED** (2026-05-24). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Maintain reconstruction replay·topology regression (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -190,6 +190,14 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Spec: [`docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md)
   - Ops smoke E5: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 54)
   - Evidence: `normal_count` 127; `unmapped_candidate_count` 0; `validation_passed` true; `catalog_placement_ref` on all normal candidates; `lin_*` test-only
+
+- B-CS3 — Validation gate boundary audit
+  - Status: **CLOSED**
+  - Spec: [`docs/superpowers/specs/2026-05-24-b-cs3-validation-gate-audit-design.md`](../../docs/superpowers/specs/2026-05-24-b-cs3-validation-gate-audit-design.md)
+  - Plan: [`docs/superpowers/plans/2026-05-24-b-cs3-validation-gate-audit.md`](../../docs/superpowers/plans/2026-05-24-b-cs3-validation-gate-audit.md)
+  - Evidence: `python -m pytest tests/unit/asteroid_lab/test_b_cs3_validation_gate_boundary.py` — 11 PASS; B-CS1 + `test_validation_readonly_guards` + narrow RTTP (`-k "rttp and not macro_real_map"`) PASS
+  - PR-C: validation/replay contamination portion absorbed (B-CS3-9); broader PR-B/D/E not closed here
+  - No production solver code changes
 
 - B-CS2 — Trunk-connected commit ops smoke (real slug)
   - Status: **CLOSED**

@@ -70,7 +70,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** Maintain reconstruction replay/topology narrow gate; **Axis B B-CS2** real-slug trunk ops smoke next. **Axis A D+ PR-1..PR-3 CLOSED** on `master` (2026-05-24). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** Maintain reconstruction replay/topology narrow gate; **Axis B B-CS3** validation gate audit next. **Axis A D+ PR-1..PR-3 CLOSED**; **B-CS2 CLOSED** (2026-05-24). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Maintain reconstruction replay·topology regression (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -190,3 +190,14 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Spec: [`docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md)
   - Ops smoke E5: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 54)
   - Evidence: `normal_count` 127; `unmapped_candidate_count` 0; `validation_passed` true; `catalog_placement_ref` on all normal candidates; `lin_*` test-only
+
+- B-CS2 — Trunk-connected commit ops smoke (real slug)
+  - Status: **CLOSED**
+  - Slug: `copy-import-495e552c`
+  - Spec: [`docs/superpowers/specs/2026-05-24-b-cs2-trunk-ops-smoke-design.md`](../../docs/superpowers/specs/2026-05-24-b-cs2-trunk-ops-smoke-design.md)
+  - Plan: [`docs/superpowers/plans/2026-05-24-b-cs2-trunk-ops-smoke.md`](../../docs/superpowers/plans/2026-05-24-b-cs2-trunk-ops-smoke.md)
+  - Evidence: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 55, `run_key` `rttp-3afe34cb62c4`)
+  - `confirmed_count` 1; `commit_order` length 1; `rttp.commit` passed with non-empty `committed_ids`; `conflict_count` 0
+  - `rttp.route_domain`: `skeleton_id` `e2af30c1ea51d853`; `mismatched_existing_transport_count` 0
+  - `validation_passed` / `run_success` true; `issue_codes` `[]`; B-CS2-17 step order verified (catalog_slice → route_domain → … → commit → catalog_placement_validation)
+  - Prerequisite: B-CS1 `test_rttp_commit_survivability.py`; not a substitute for E5

@@ -53,7 +53,7 @@ Axis A — Catalog input canon (game_data → RTTP consumption)
 [████████████████████████]  ✅     (D+ PR-1 ✅; PR-2 ✅; PR-3 ✅)
 
 Axis B — RTTP core closure (route-feasible commit end-to-end)
-[████████████████░░░░░░]  ~75%   (B-CS1 ✅; B-CS2–4 ⬜)
+[████████████████████░░░░]  ~80%   (B-CS1 ✅; B-CS2 ✅; B-CS3–4 open)
 
 Parallel — MacroBundle T3
 [██████████████████████]  ✅ CLOSED · ⏸ PAUSE (not core 11-step)
@@ -62,7 +62,7 @@ Parallel — MacroBundle T3
 | Axis | Open next | Blocks |
 |------|-----------|--------|
 | **A** | — (D+ PR-1..PR-3 closed) | — |
-| **B** | B-CS2 real-slug trunk ops smoke | Operational proof of commit reprobe |
+| **B** | B-CS3 validation gate audit | No repair in validation |
 | **Parallel** | None (paused) | — |
 
 ---
@@ -123,7 +123,7 @@ Parallel — MacroBundle T3
 | ID | Milestone | Status | Evidence |
 |----|-----------|--------|----------|
 | B-CS1 | Commit survivability regression pack | ✅ | `tests/unit/asteroid_lab/test_rttp_commit_survivability.py` |
-| B-CS2 | Ops smoke — trunk-connected commit on real slug | ⬜ | — |
+| B-CS2 | Ops smoke — trunk-connected commit on real slug | ✅ | `solver_run_id` 55; `run_key` `rttp-3afe34cb62c4`; spec [`2026-05-24-b-cs2-trunk-ops-smoke-design.md`](specs/2026-05-24-b-cs2-trunk-ops-smoke-design.md) |
 | B-CS3 | Validation gate audit (no repair in validation) | ⬜ | — |
 | B-CS4 | Replay contract narrow gate stays green | ✅ ongoing | `scripts/test_reconstruction_narrow.ps1` |
 
@@ -249,7 +249,7 @@ Catalog-native geometry → route feasibility inputs → (later) commit survivab
 | **E3** | **A5 D+ placement audit (observe_only)** | **✅ CLOSED** | `solver_run_id` 49 |
 | **E4** | **A6 D+ mapped fail-closed** | **✅ CLOSED** | `solver_run_id` 51; `mapped_fail_closed`; warning-only `issue_codes` `[]` |
 | **E5** | **A7 D+ catalog-native generator** | **✅ CLOSED** | `solver_run_id` 54; `normal_count` 127; `unmapped_candidate_count` 0 |
-| (future) | B-CS2 trunk commit | ⬜ |
+| **B-CS2** | **Axis B trunk-connected commit (real slug)** | **✅ CLOSED** | `solver_run_id` 55; `confirmed_count` 1; `skeleton_id` present; `mismatched_existing_transport_count` 0 |
 
 ---
 

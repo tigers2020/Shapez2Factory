@@ -1,18 +1,18 @@
 # Current plan
 
-**Status (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)** + **Track D** + **PR-A** doc authority repair on `master` (`cd364b84`). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
+**Status (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)**, **Track D**, and **PR-A** doc authority repair on `master` (plan close `c20fc1e5`; PR-A merge `cd364b84`). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
 
-**Runtime (코드 정본):**
+**Runtime (code authority):**
 
-- `ASTEROID_LAB_RTTP_ENABLED=True` (기본) → `solver_runtime_entry`가 `run_rttp_pipeline` + replay sink를 실행한다.
-- `ASTEROID_LAB_RTTP_ENABLED=False` → HTTP `Run Solver`는 **200** + `SOLVER_NOT_AVAILABLE` (reconstruction만 안내). 이것이 유일한 stub 경로다.
-- “optimization 삭제·항상 stub”은 **아님** — strip-solver로 제거된 것은 **구 monolith/shadow/RD** 이며, RTTP Hybrid C는 별도 패키지로 복구·배선됨.
+- `ASTEROID_LAB_RTTP_ENABLED=True` (default) → `solver_runtime_entry` runs `run_rttp_pipeline` + replay sink.
+- `ASTEROID_LAB_RTTP_ENABLED=False` → HTTP `Run Solver` returns **200** + `SOLVER_NOT_AVAILABLE` (reconstruction guidance only). This is the only stub path.
+- "optimization removed · always stub" is **not** the case — strip-solver removed the **legacy monolith/shadow/RD**; RTTP Hybrid C was restored and wired as a separate package.
 
-**Surgery (역사):** [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md) · 실행 기록: [`docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md`](../../docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md)
+**Surgery (history):** [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md) · execution record: [`docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md`](../../docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md)
 
 ## Authority precedence
 
-문서 충돌 시 Algorithm vs superpowers **전역 우선 규칙 없음** — [`document_inventory.md`](../index/document_inventory.md) **§ Asteroid Lab authority by topic** 행을 따른다.
+No global precedence rule between Algorithm vs superpowers on document conflicts — follow [`document_inventory.md`](../index/document_inventory.md) **§ Asteroid Lab authority by topic** rows.
 
 1. Code + tests: `django_apps/asteroid_lab/{reconstruction,optimization,contracts}/`, `tests/unit/asteroid_lab/`
 2. This file — active queue and runtime pointer
@@ -23,9 +23,9 @@
 7. `documents/Algorithm/solver_runtime/` — historical Phase A–M unless this file promotes a subsection
 8. `REPORT`, `documents/debug/`, `documents/archive/` — observation only
 
-운영 규칙: [`contamination_policy.md`](contamination_policy.md). 설계: [`docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md`](../../docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md).
+Operational rules: [`contamination_policy.md`](contamination_policy.md). Design: [`docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md`](../../docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md).
 
-## ACTIVE 코드 경로
+## ACTIVE code paths
 
 ```text
 django_apps/asteroid_lab/reconstruction/     ← topology, confidence, complete
@@ -36,13 +36,13 @@ django_apps/asteroid_lab/services/solver_runtime_entry.py  ← RTTP runtime entr
 django_apps/asteroid_lab/services/lab_rttp_snapshot_compose.py  ← 3B-S product timeline projection
 ```
 
-## ARCHIVED (문서·역사)
+## ARCHIVED (documents · history)
 
-- strip-solver 이전 monolith optimization / shadow·RD gate — **CANCELLED**
+- Pre strip-solver monolith optimization / shadow·RD gate — **CANCELLED**
 - `solver_runtime/` Phase A–M — [`documents/Algorithm/solver_runtime/README.md`](../Algorithm/solver_runtime/README.md)
-- `docs/superpowers/specs/2026-05-22-*commit*`, `*shadow*` — **CANCELLED** (strip spec으로 대체)
+- `docs/superpowers/specs/2026-05-22-*commit*`, `*shadow*` — **CANCELLED** (replaced by strip spec)
 
-## 검증 (narrow)
+## Verification (narrow)
 
 **RTTP (paused macro track):**
 
@@ -51,37 +51,37 @@ python -m pytest tests/unit/asteroid_lab/ -k rttp
 python -m ruff check django_apps/asteroid_lab/optimization django_apps/asteroid_lab/services/lab_rttp_snapshot_compose.py django_apps/asteroid_lab/services/solver_runtime_entry.py
 ```
 
-**Reconstruction replay · topology · island_bbox (별도 트랙):**
+**Reconstruction replay · topology · island_bbox (separate track):**
 
 ```powershell
 powershell -File scripts/test_reconstruction_narrow.ps1
 ```
 
-또는 동일 pytest만:
+Or pytest only:
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_reconstruction_fixture_contract.py tests/unit/asteroid_lab/test_reconstruction_persist_full_map_bbox.py tests/unit/asteroid_lab/test_reconstruction_replay_merge.py tests/unit/asteroid_lab/test_island_bbox.py tests/unit/asteroid_lab/test_persistence_does_not_read_replay_frames.py tests/unit/asteroid_lab/test_replay_snapshot_contract.py
 python -m ruff check django_apps/asteroid_lab/reconstruction django_apps/asteroid_lab/replay django_apps/asteroid_lab/snapshots/island_bbox.py django_apps/asteroid_lab/services/reconstructed_map_persist_builder.py
 ```
 
-커버: fixture topology·export, replay `reconstruction_final` merge + `step4_10` parity, persist bbox vs replay complete, `full_map_island_bbox` read-compat (meta·BP·legacy server ignore), persist 경로 replay ORM 미참조, initial replay full_map contract.
+Coverage: fixture topology·export, replay `reconstruction_final` merge + `step4_10` parity, persist bbox vs replay complete, `full_map_island_bbox` read-compat (meta·BP·legacy server ignore), persist path does not reference replay ORM, initial replay full_map contract.
 
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
-## 다음 초점
+## Next focus
 
 **Priority:** Maintain reconstruction replay/topology narrow gate; **Track D+** (catalog placement validation) is future work — brainstorm before implementation. **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: macro rework · selection/fitness changes · validation relaxation · using replay as solver input.
 
-- Reconstruction replay·topology 회귀 유지 (narrow gate below)
-- **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat 제거 — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
+- Maintain reconstruction replay·topology regression (narrow gate below)
+- **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
 - **CLOSED (2026-05-23):** RTTP v1 MacroBundleT3 **PR-A..J** on `master` — plan: [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md)
 - **CLOSED (2026-05-23):** PR-K web `run-solver` POST → `run_solver_runtime_for_project(config=...)` (`macro_only_mode`, `rttp_record_replay`; invalid JSON → 400).
 - **CLOSED (2026-05-23):** PR-L Lab UI macro-only checkbox + `fetch` body (`5b06d705`); OPS trial: checkbox + macro commit on real slug.
 - **CLOSED (2026-05-23):** GitHub Actions `rttp-lab-macro-smoke` on `master` push/PR.
 - **CLOSED (2026-05-23):** HUD `macro_commit_summary` (`#lab-macro-commit-hud`; output-only).
-- **CLOSED (2026-05-23):** `manage.py run_solver --slug` + `scripts/run_solver.ps1` (HTTP 동일 runtime path).
-- **CLOSED (2026-05-24):** 실맵 macro E2E — `tests/fixtures/asteroid_lab/macro_e2e_copy.code` + `test_rttp_macro_real_map_e2e.py` (no monkeypatch).
-- **PAUSE (2026-05-24):** macro track — 추가 solver/macro/E2E 작업 없음. 로컬 `app.css` / `solver_runtime/*.md` / `migration 0012_*` 커밋 금지(별도 의도 확인 전).
+- **CLOSED (2026-05-23):** `manage.py run_solver --slug` + `scripts/run_solver.ps1` (same runtime path as HTTP).
+- **CLOSED (2026-05-24):** Real-map macro E2E — `tests/fixtures/asteroid_lab/macro_e2e_copy.code` + `test_rttp_macro_real_map_e2e.py` (no monkeypatch).
+- **PAUSE (2026-05-24):** macro track — no additional solver/macro/E2E work. Do not commit local `app.css` / `solver_runtime/*.md` / `migration 0012_*` without separate intent confirmation.
 - **CLOSED (2026-05-24):** reconstruction replay·topology narrow gate — `scripts/test_reconstruction_narrow.ps1` + tightened `test_island_bbox` / `test_reconstruction_replay_merge`.
 - **CLOSED (2026-05-24):** Ops smoke A — real lab slug `copy-import-495e552c`
   - `python manage.py run_solver --slug copy-import-495e552c` exit 0
@@ -98,9 +98,9 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 - **CLOSED (2026-05-24):** Ops smoke C — B2-T3 mixed transport partition gate
   - `python -m pytest tests/unit/asteroid_lab/test_rttp_transport_kind_route_domain.py tests/unit/asteroid_lab/test_optimization_input_adapter.py::test_mixed_existing_transport_partitions_for_shape_run` — pass
   - Proves wrong-kind existing transport excluded from trunk + `mismatched_existing_transport_*` metrics (`fluid_pipe` mismatch path)
-  - Note: OPS slug `copy-import-495e552c` has `transport_component_count` 0 pre-reconstruction; topology strips top-level transport before adapter — mixed-kind **실맵 `run_solver` 관측은 현재 맵 클래스에서 불가**. 실맵 회귀는 smoke B + narrow RTTP tests.
+  - Note: OPS slug `copy-import-495e552c` has `transport_component_count` 0 pre-reconstruction; topology strips top-level transport before adapter — mixed-kind **real-map `run_solver` observation is not possible with the current map class**. Real-map regression is smoke B + narrow RTTP tests.
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
-- ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절
+- ~~`asteroid_lab_10` Sequence 2–7 checkboxes~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync section
 
 ## Closed
 

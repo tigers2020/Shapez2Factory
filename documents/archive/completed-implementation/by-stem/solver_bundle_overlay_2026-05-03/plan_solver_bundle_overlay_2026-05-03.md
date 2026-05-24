@@ -5,18 +5,18 @@ Related research: [research_solver_bundle_overlay_2026-05-03.md](./research_solv
 
 ## Goal
 
-- materialized graph의 원자 node/edge는 그대로 preserved.
-- `quad_stage`, `checker_stage`, `swap_stage`를 별도 `bundle_overlay` annotation으로 표현한다.
-- 기존 `groups`는 operation 중심 layout projection으로 유지하고, bundle은 의미 단위 macro cover로 분리한다.
+- Atomic nodes/edges of the materialized graph are preserved as is.
+- `quad_stage`, `checker_stage`, and `swap_stage` are expressed as separate `bundle_overlay` annotations.
+- The existing `groups` are maintained as an operation-oriented layout projection, and the bundle is separated into a semantic unit macro cover.
 
 ## Data Model
 
-후속 구현에서 새 DTO 모듈을 added.
+A new DTO module was added in a subsequent implementation.
 
 ```python
 @dataclass(frozen=True, slots=True)
 class GraphBundle:
-    """solver graph 위에 표시할 의미 단위 macro 묶음."""
+"""A bundle of semantic unit macros to be displayed on the solver graph."""
 
     id: str
     macro_type: str
@@ -31,19 +31,19 @@ class GraphBundle:
 
 @dataclass(frozen=True, slots=True)
 class BundleOverlay:
-    """원본 graph를 변경하지 않는 bundle annotation 결과."""
+"""Bundle annotation result that does not change the original graph."""
 
     bundles: tuple[GraphBundle, ...]
     node_to_bundle_ids: dict[str, frozenset[str]]
     visible_node_to_bundle_id: dict[str, str]
 ```
 
-- edge에는 현재 id가 없으므로 serializer에서는 stable edge ref를 `"{from_id}->{to_id}:{kind}:{slot}"` 형태로 만들거나, 후속 구현에서 `SolverGraphEdge.id` 추가 여부를 별도 승인받는다.
-- 이번 구현안의 기본값은 DTO signature 변경을 줄이기 위해 serializer/helper 내부 stable edge ref를 사용한다.
+- Since the edge currently does not have an id, the serializer creates a stable edge ref in the form of `"{from_id}->{to_id}:{kind}:{slot}"` or receives separate approval whether to add `SolverGraphEdge.id` in subsequent implementations.
+- The default value in this implementation uses a stable edge ref inside the serializer/helper to reduce DTO signature changes.
 
 ## Detection Pipeline
 
-`MaterializedGraphBuilder`와 `RecipeGraphBuilder`가 graph를 만든 뒤 다음 pass를 붙인다.
+After `MaterializedGraphBuilder` and `RecipeGraphBuilder` create a graph, the next pass is added.
 
 ```text
 SolverGraph
@@ -55,23 +55,23 @@ SolverGraph
 Implementation candidates:
 
 - `BundlePatternDetector` protocol: `macro_type`, `detect(graph) -> list[GraphBundle]`
-- `QuadStageDetector`: source/base에서 시작해 cut, rotate, stacker, painter 계열을 따라 quad-ready shape까지 묶는다.
-- `CheckerStageDetector`: checker output shape를 만드는 anchor operation에서 backward collect한다.
-- `SwapStageDetector`: `operation_type == "swapper"` 또는 permutation-only output을 anchor로 backward collect한다.
+- `QuadStageDetector`: Starting from source/base, it follows the cut, rotate, stacker, and painter series to group quad-ready shapes.
+- `CheckerStageDetector`: Collect backwards from the anchor operation that creates the checker output shape.
+- `SwapStageDetector`: Collects `operation_type == "swapper"` or permutation-only output backwards as an anchor.
 
-초기 detector는 보수적으로 동작한다.
+Early detectors operate conservatively.
 
-- 명확히 판정 가능한 bundle만 생성한다.
-- 판정 불가 shape는 bundle을 만들지 않는다.
-- TODO 주석으로 checker 휴리스틱 고도화 지점을 표시한다.
+- Only bundles that can be clearly determined are created.
+- Undeterminable shapes do not create bundles.
+- Mark the checker heuristic advancement point with a TODO comment.
 
 ## Resolver Rules
 
-- bundle은 partition이 아니라 cover다. 한 node는 여러 bundle에 속할 수 있다.
-- `node_to_bundle_ids`에는 모든 membership을 보존한다.
-- UI collapse용 대표 bundle은 resolver가 선택한다.
+- A bundle is a cover, not a partition. One node can belong to multiple bundles.
+- All memberships are preserved in `node_to_bundle_ids`.
+- The representative bundle for UI collapse is selected by the resolver.
 
-우선순위:
+Priority:
 
 ```text
 swap_stage > checker_stage > quad_stage
@@ -83,11 +83,11 @@ selection key:
 (macroPriority[macro_type], score, len(member_node_ids))
 ```
 
-동점이면 `bundle.id` 사전순으로 고정해 deterministic output을 보장한다.
+If there is a tie, `bundle.id` is fixed in alphabetical order to ensure deterministic output.
 
 ## JSON Contract
 
-기존 `nodes`, `edges`, `groups`는 do not change.
+Existing `nodes`, `edges`, and `groups` do not change.
 
 ```json
 {
@@ -126,37 +126,37 @@ selection key:
 
 ## UI Follow-up
 
-Phase 1은 JSON overlay만 제공한다.
+Phase 1 only provides JSON overlay.
 
-Phase 2에서 collapsed graph를 만든다.
+Create a collapsed graph in Phase 2.
 
-- bundle id별 super-node를 생성한다.
-- bundle 내부 edge는 숨긴다.
-- boundary edge만 외부에 노출한다.
-- click/detail panel에서는 bundle summary와 member atomic nodes를 보여준다.
-- expanded mode에서는 기존 atomic graph renderer를 그대로 사용한다.
+- Create a super-node for each bundle ID.
+- Hide the edges inside the bundle.
+- Only the boundary edge is exposed to the outside.
+- The click/detail panel shows bundle summary and member atomic nodes.
+- In expanded mode, the existing atomic graph renderer is used as is.
 
 ## Test Plan
 
-- DTO 단위 테스트: `GraphBundle`, `BundleOverlay` 생성과 immutability 확인
-- detector synthetic graph 테스트:
+- DTO unit test: create `GraphBundle`, `BundleOverlay` and check immutability
+- detector synthetic graph test:
   - source -> cutter -> rotate -> stacker -> quad-ready shape
   - two branches -> stacker/checker output
   - checker output -> swapper -> target
-- resolver 테스트:
-  - 같은 node가 quad/checker/swap에 모두 속할 때 `swap_stage` 선택
-  - score와 member count tie-break deterministic 확인
-- serializer/API 테스트:
-  - 기존 `groups`가 유지된다.
-  - 새 `bundle_overlay`가 추가된다.
-  - node payload에 `bundle_ids`, `visible_bundle_id`가 포함된다.
-- UI 후속 테스트:
-  - collapsed mode에서 super-node와 boundary edge만 렌더링
-  - expanded mode에서 원자 node/edge가 보존됨
+- resolver test:
+- Select `swap_stage` when the same node all belongs to quad/checker/swap
+- Check score and member count tie-break deterministic
+- serializer/API testing:
+- Existing `groups` are maintained.
+- A new `bundle_overlay` is added.
+- The node payload includes `bundle_ids` and `visible_bundle_id`.
+- UI follow-up testing:
+- Only super-nodes and boundary edges are rendered in collapsed mode
+- Atomic nodes/edges are preserved in expanded mode
 
 ## Validation Commands
 
-후속 구현 done 후 렉스가 아래 순서로 검증한다.
+After subsequent implementation is done, Rex verifies it in the following order.
 
 ```text
 pytest
@@ -165,20 +165,20 @@ mypy .
 black .
 ```
 
-CI에서는 파일 변경이 없는 `black --check .`를 사용한다.
+In CI, use `black --check .` with no file changes.
 
 ## Migration
 
-- DB model 변경이 없으므로 migration은 필요 없다.
-- 예상 변경은 DTO, service pass, serializer, frontend renderer/test에 한정된다.
+- Since there is no DB model change, migration is not necessary.
+- Expected changes are limited to DTO, service pass, serializer, and frontend renderer/test.
 
 ## CURSOR_MEMO Update
 
-- `documents/CURSOR_MEMO.md`가 존재하므로, 이번 결정은 짧게 added.
-- 기록 내용은 "bundle은 graph 병합이 아니라 overlay이며, 기존 groups와 분리한다"로 제한한다.
+- Since `documents/CURSOR_MEMO.md` exists, this decision was added briefly.
+- Record contents are limited to “bundle is not a graph merge, but an overlay, and is separated from existing groups.”
 
 ## Assumptions
 
-- checker 판정은 초기 구현에서 shape parser 기반 휴리스틱으로 start with.
-- 정확한 shapez 2 checker rule 고도화와 config 파일화는 Phase 3로 분리한다.
-- 후속 구현 전 사람 승인을 다시 받는다.
+- The checker decision starts with a shape parser-based heuristic in the initial implementation.
+- Accurate shapez 2 checker rule advancement and config file creation are separated into Phase 3.
+- Obtain human approval again before subsequent implementation.

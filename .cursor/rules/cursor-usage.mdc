@@ -23,6 +23,10 @@
 - Maintain layer boundaries even when conversations are split by area.
 - When applying conclusions from another chat, re-verify against the files.
 
+## Bugbot
+
+- Follow [bugbot-policy.mdc](mdc:.cursor/rules/bugbot-policy.mdc): not on every PR — only when high-risk, large diff, user asks, or similar; no default checklist item.
+
 ## Completion report
 
 - Briefly report changed files, validation commands, and reasons for anything not run.

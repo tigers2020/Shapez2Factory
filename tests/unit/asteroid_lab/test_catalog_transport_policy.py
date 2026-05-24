@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
-    CatalogTransportErrorCode,
     CatalogTransportUnresolvedError,
     resolve_default_asteroid_transport_kind,
 )

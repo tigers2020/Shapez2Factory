@@ -27,8 +27,8 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
 )
 from django_apps.asteroid_lab.services.solver_runtime_entry import entry_result_to_json_dict
-from tests.unit.asteroid_lab._runtime_game_data import run_solver_runtime_with_pinned_game_data
 from tests.support.macro_triple_greenfield_fixture import build_macro_triple_greenfield_input
+from tests.unit.asteroid_lab._runtime_game_data import run_solver_runtime_with_pinned_game_data
 
 pytestmark = [pytest.mark.django_db, pytest.mark.integration]
 
@@ -108,8 +108,9 @@ def test_run_solver_runtime_passes_macro_only_pipeline_config(
         _recon: object,
         *,
         coord_frame: object = None,
+        catalog_slice: object = None,
     ) -> OptimizationInput:
-        del _recon, coord_frame
+        del _recon, coord_frame, catalog_slice
         return macro_inp
 
     monkeypatch.setattr(
@@ -145,8 +146,9 @@ def test_run_solver_runtime_macro_only_db_and_milestone_readback(
         _recon: object,
         *,
         coord_frame: object = None,
+        catalog_slice: object = None,
     ) -> OptimizationInput:
-        del _recon, coord_frame
+        del _recon, coord_frame, catalog_slice
         return macro_inp
 
     monkeypatch.setattr(
@@ -219,11 +221,15 @@ def test_run_solver_runtime_macro_only_db_and_milestone_readback(
     algo_steps = result.solver_summary.get("algorithm_steps") or []
     assert len(algo_steps) >= 5
     cand_step = next(
-        row for row in algo_steps if row.get("event_type") == et.EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT
+        row
+        for row in algo_steps
+        if row.get("event_type") == et.EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT
     )
     assert cand_step["metrics"].get("macro_normal_count", 0) >= 1
     commit_step = next(
-        row for row in algo_steps if row.get("event_type") == et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT
+        row
+        for row in algo_steps
+        if row.get("event_type") == et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT
     )
     assert commit_step["metrics"].get("committed_macro_ids")
     assert result.solver_summary.get("macro_only_mode") is True
@@ -252,8 +258,9 @@ def test_run_solver_runtime_default_config_stays_v01_non_macro(
         _recon: object,
         *,
         coord_frame: object = None,
+        catalog_slice: object = None,
     ) -> OptimizationInput:
-        del _recon, coord_frame
+        del _recon, coord_frame, catalog_slice
         return greenfield_inp
 
     monkeypatch.setattr(

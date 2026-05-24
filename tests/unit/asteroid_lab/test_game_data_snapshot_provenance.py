@@ -47,9 +47,7 @@ def _minimal_snapshot(*, content_hash: str = "a" * 64) -> AsteroidGameDataSnapsh
                 connectors=(),
             ),
         ),
-        transport_registry=(
-            TransportRegistryEntry("space_belt", "belt", "bv:test"),
-        ),
+        transport_registry=(TransportRegistryEntry("space_belt", "belt", "bv:test"),),
     )
 
 
@@ -69,9 +67,7 @@ def _provenance_for_snapshot(
 def test_provenance_from_snapshot_maps_all_fields() -> None:
     snap = _minimal_snapshot()
     catalog_slice = catalog_slice_from_snapshot(snap)
-    prov = provenance_from_snapshot(
-        snap, import_batch_id=99, catalog_slice=catalog_slice
-    )
+    prov = provenance_from_snapshot(snap, import_batch_id=99, catalog_slice=catalog_slice)
     assert prov.snapshot_schema_version == SCHEMA_VERSION
     assert prov.rule_version == RULE_VERSION
     assert prov.data_revision == "rev-hash-001"

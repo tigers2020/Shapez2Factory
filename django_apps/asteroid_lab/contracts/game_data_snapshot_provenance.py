@@ -213,9 +213,7 @@ def _parse_provenance_payload(
             "import_batch_id must be int-like string",
         ) from exc
     catalog_version = (
-        str(payload["catalog_slice_version"])
-        if "catalog_slice_version" in required_keys
-        else ""
+        str(payload["catalog_slice_version"]) if "catalog_slice_version" in required_keys else ""
     )
     catalog_hash = (
         str(payload["catalog_slice_hash"]) if "catalog_slice_hash" in required_keys else ""

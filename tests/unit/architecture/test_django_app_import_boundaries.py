@@ -43,6 +43,15 @@ _FORBIDDEN_IMPORTS: dict[str, frozenset[str]] = {
     ),
 }
 
+# ADR-004: CLI mirrors HTTP — sole snapshot build via web assembler (Track A).
+_IMPORT_MATRIX_SKIP: dict[str, frozenset[str]] = {
+    "asteroid_lab": frozenset(
+        {
+            "django_apps/asteroid_lab/management/commands/run_solver.py",
+        }
+    ),
+}
+
 
 def _app_py_files(app_name: str) -> list[Path]:
     root = _DJANGO_APPS / app_name
@@ -73,6 +82,8 @@ def _violations_for_file(path: Path, app_name: str) -> list[str]:
     if not forbidden:
         return []
     rel = path.relative_to(_REPO_ROOT)
+    if rel.as_posix() in _IMPORT_MATRIX_SKIP.get(app_name, frozenset()):
+        return []
     try:
         tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
     except SyntaxError as exc:

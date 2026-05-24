@@ -83,6 +83,7 @@ SOLVER_NOT_AVAILABLE_MESSAGE = (
     "Solver runtime entry is not wired to RTTP yet; reconstruction is still available."
 )
 
+
 class SolverRuntimeEntryErrorCode(StrEnum):
     """Structured failure codes for solver runtime entry (no free-form strings)."""
 

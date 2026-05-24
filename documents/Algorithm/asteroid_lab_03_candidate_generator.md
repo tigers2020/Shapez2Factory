@@ -78,6 +78,13 @@ Then keep only the first `max_candidates`.
 
 When `allow_diagnostic_unreachable=True`, unreachable candidates may remain in `rejected_candidates` or a separate diagnostic list, **not in normal pool**.
 
+## Catalog-native generation (Track D+ PR-3)
+
+Production `generate_candidates` enumerates `CatalogPlacementSpec` values from
+`OptimizationInput.catalog_slice` via `build_catalog_placement_specs`. Every normal
+`BundleCandidate` sets `catalog_placement_ref` at generation time.
+`build_pattern_library()` / `lin_*` patterns are **test-only** (`synthetic_lin_patterns` marker).
+
 ## Candidate equivalence / dedupe (combinatorial explosion mitigation)
 
 `rim_cell × pattern × rotation × transport_kind × goal matching` etc. can inflate candidate count. **Before passing to evolution**, collapse equivalent candidates to one.

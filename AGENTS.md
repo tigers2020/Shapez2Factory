@@ -63,7 +63,36 @@
 3. 구현은 가장 작은 단위로 수행한다.
 4. 변경 후 반드시 아래 검증 4단계를 실행한다.
 5. 동작/설계가 바뀌면 `docs/` 와 plan 을 갱신한다.
-6. 최종 응답에는 Output contract 형식으로 요약한다.
+6. 범위가 닫히고 narrow 검증이 green이면 [PR finish and closing](#pr-finish-and-closing-agent-owned)을 사용자 재요청 없이 수행한다.
+7. 최종 응답에는 Caveman 6절([`shapez2-core.mdc`](.cursor/rules/shapez2-core.mdc) §17)과 Output contract 형식으로 요약한다.
+
+## PR finish and closing (agent-owned)
+
+구현·narrow 검증이 끝나 범위가 닫혔으면, 사용자가 「PR 올려」「마무리해」「크로징」이라고 말하지 않아도 에이전트가 아래를 **끝까지** 수행한다. 마지막 턴은 PR URL·검증 결과·`CLOSED` 반영 여부를 보고한다.
+
+### 전제 (진행 금지)
+
+- 프로토콜 4단계(승인)가 필요한 대형 변경은 승인 전 push/PR 금지 ([`protocols/README.md`](protocols/README.md)).
+- Full gate 실패, `BLOCKED:`, 고위험 변경 대기, 사용자가 WIP/draft로 남기라고 명시한 경우.
+
+### 체크리스트 (순서 고정)
+
+1. **Full gate** — `powershell -File scripts/test_full.ps1` → `ruff check .` → `mypy django_apps config src` → `black --check .` (전부 green).
+2. **Commit** — 요청 범위만 스테이징; Conventional Commits 스타일; `.env`·secrets·`var/`·`.pytest_cache`/`.ruff_cache` 등 산출물·캐시 제외.
+3. **Push** — feature branch: `git push -u origin HEAD`. `main`/`master` 직접 push·`--force`·`--no-verify` 금지.
+4. **PR** — `gh`로 생성 또는 기존 PR 갱신(Summary + Test plan). [`documents/ai/manuals/cursor_usage.md`](documents/ai/manuals/cursor_usage.md)의 PR 본문 형식 준수.
+5. **CI** — 실패 시 원인 수정 후 재push; 반복 triage는 babysit·[`testing.md`](documents/ai/manuals/testing.md) dual gate 기준.
+6. **Closing** — [`documents/ai/current_plan.md`](documents/ai/current_plan.md) 등 해당 plan 항목 `CLOSED`·날짜 반영; 관련 스펙/런타임 문서와 코드 불일치 없음 확인.
+
+### Merge·승인
+
+- **기본**: PR 개설·CI green·closing 문서까지가 에이전트 책임.
+- **squash merge / main 병합**: 사용자 또는 리뷰어가 명시 요청한 경우에만 `gh pr merge` 등 실행.
+
+### 사용자 확인이 필요할 때만 멈춤
+
+- `main`/`master` force push, 대규모 `pyproject.toml`/CI·배포 설정 변경, 보안·권한 파일.
+- 플랜 미승인 대형 기능, 의도적 draft PR 유지 지시.
 
 ## Validation commands
 
@@ -100,6 +129,10 @@ PR/병합 full gate: `powershell -File scripts/test_full.ps1` → `ruff check .`
 
 - 기본 권한: 읽기, 검색, 계획 수립
 - 허용된 쓰기: workspace 내부의 소스 / 테스트 / 문서
+- **PR finish and closing** 시 추가 허용(전제·체크리스트 충족 시, 별도 재요청 불필요):
+  - feature branch `git commit` / `git push`
+  - `gh pr create` · PR 본문 갱신 · CI 상태 확인
+  - plan·`documents/ai/current_plan.md` 등 closing 메타데이터 갱신
 - 사용자 승인 필요:
   - 환경설정 파일 (`.env`, `pyproject.toml` 대형 변경)
   - CI/배포 설정
@@ -174,9 +207,11 @@ BLOCKED:
 ## Definition of done
 
 - 요청 범위를 벗어나지 않았다.
-- 테스트/빌드/검증 결과가 제시되었다.
-- 실패한 검증이 남아 있으면 명시되었다.
+- narrow 검증 + (PR 대상이면) full gate 결과가 제시되었다.
+- 실패한 검증이 남아 있으면 명시되었다; green이면 [PR finish and closing](#pr-finish-and-closing-agent-owned) 체크리스트 완료 또는 `BLOCKED:` 사유.
 - 문서와 코드가 서로 모순되지 않는다.
+- PR이 해당되면 URL·브랜치·CI 상태(또는 merge 보류 사유)가 최종 응답에 포함된다.
+- 해당 plan 항목이 `CLOSED`로 반영되었거나, 크로징 불가 시 그 이유가 명시되었다.
 
 ## References
 

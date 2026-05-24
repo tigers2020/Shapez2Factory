@@ -7,8 +7,8 @@ from django_apps.asteroid_lab.adapters.catalog_footprint_policy import (
     summarize_footprint_catalog,
 )
 from django_apps.asteroid_lab.contracts.building_catalog_slice import (
-    BuildingCatalogSlice,
     SLICE_VERSION,
+    BuildingCatalogSlice,
     VariantGeometryCatalog,
     VariantIdentity,
 )

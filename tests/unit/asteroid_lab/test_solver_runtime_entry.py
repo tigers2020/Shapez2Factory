@@ -113,7 +113,9 @@ def test_solver_runtime_entry_rttp_emits_catalog_footprint_metrics() -> None:
     assert result.solver_run_id is not None
     steps = (result.solver_summary or {}).get("algorithm_steps") or []
     catalog_steps = [
-        step for step in steps if isinstance(step, dict) and step.get("step_id") == "rttp.catalog_slice"
+        step
+        for step in steps
+        if isinstance(step, dict) and step.get("step_id") == "rttp.catalog_slice"
     ]
     assert len(catalog_steps) == 1
     metrics = catalog_steps[0].get("metrics") or {}

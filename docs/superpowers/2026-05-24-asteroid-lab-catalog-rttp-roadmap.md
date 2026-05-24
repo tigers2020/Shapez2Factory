@@ -63,7 +63,7 @@ Parallel — MacroBundle T3
 |------|-----------|--------|
 | **A** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination | — |
-| **Decontamination** | PR-D quarantine → PR-E dead-code | PR-B ✅ master [`e56ff048`](https://github.com/tigers2020/Shapez2Factory/commit/e56ff048) PR #69 |
+| **Decontamination** | **PR-D ACTIVE** → PR-E dead-code | PR-B ✅ [`e56ff048`](https://github.com/tigers2020/Shapez2Factory/commit/e56ff048) · spec [`2026-05-24-decontamination-pr-d-quarantine-design.md`](specs/2026-05-24-decontamination-pr-d-quarantine-design.md) |
 | **Parallel** | None (paused) | — |
 
 ### Decontamination — PR-B (optimization import canon) — master CLOSED

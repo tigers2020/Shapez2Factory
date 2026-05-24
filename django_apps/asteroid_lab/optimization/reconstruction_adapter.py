@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
-    CatalogTransportUnresolvedError,
     resolve_cell_transport_kind,
     resolve_default_asteroid_transport_kind,
     transport_kind_lookup_from_slice,
@@ -70,17 +69,12 @@ def _existing_transport(
         if not _is_reconstruction_transport_cell(cell):
             continue
         if catalog_slice is not None:
-            try:
-                kind = resolve_cell_transport_kind(
-                    cell.transport_kind,
-                    catalog_slice=catalog_slice,
-                    lookup=lookup,
-                )
-            except CatalogTransportUnresolvedError as exc:
-                raise CatalogTransportUnresolvedError(
-                    exc.code,
-                    f"cannot resolve transport_kind at coord={coord!r}: {cell.transport_kind!r}",
-                ) from exc
+            kind = resolve_cell_transport_kind(
+                cell.transport_kind,
+                catalog_slice=catalog_slice,
+                lookup=lookup,
+                coord=coord,
+            )
         else:
             kind = _parse_transport_kind(cell.transport_kind)
             if kind is None:

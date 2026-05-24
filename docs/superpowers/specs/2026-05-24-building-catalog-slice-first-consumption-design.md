@@ -20,7 +20,6 @@ No footprint, connector, throughput, route-domain, macro, or candidate geometry 
 
 ## Non-goals (this track)
 
-- T2: per-cell `transport_kind` string resolution via registry (next PR)
 - T3: footprint / macro / candidate validation from catalog (deferred → Track D)
 - Snapshot body as full algorithm input
 - `SolverRun` DB columns for catalog fields
@@ -157,6 +156,18 @@ class CatalogTransportErrorCode(StrEnum):
 **RTTP path:** `optimization_input_from_reconstruction(..., catalog_slice=...)` when `existing_transport` is empty MUST call `resolve_default_asteroid_transport_kind(catalog_slice)` — **no** `_default_transport_kind` heuristic.
 
 **Non-RTTP / unit tests:** When `catalog_slice is None`, legacy heuristic remains (documented test-only path); RTTP entry MUST NOT call adapter without slice.
+
+## T2 — `resolve_cell_transport_kind`
+
+**Plan:** [`2026-05-24-b2-t2-per-cell-transport-resolution.md`](../plans/2026-05-24-b2-t2-per-cell-transport-resolution.md)
+
+Per reconstruction transport cell when `catalog_slice` is set:
+
+1. Domain enum passthrough (`shape_belt`, `fluid_pipe`).
+2. Else registry key lookup via `transport_kind_lookup_from_slice` (`TransportRegistryEntry.transport_kind` → category → `TransportKind`).
+3. Else fail-closed `CatalogTransportUnresolvedError`; `reconstruction_adapter` re-raises with **coord + raw wire** in the message.
+
+When `catalog_slice is None`, unresolved wires are skipped (legacy unit-test path). T1 greenfield default and `_default_transport_kind` for non-empty maps are unchanged.
 
 ## `OptimizationInput` extension
 

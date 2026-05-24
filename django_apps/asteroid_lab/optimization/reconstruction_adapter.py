@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
+    CatalogTransportUnresolvedError,
+    resolve_cell_transport_kind,
     resolve_default_asteroid_transport_kind,
+    transport_kind_lookup_from_slice,
 )
 from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
 from django_apps.asteroid_lab.optimization.coords import Coord
@@ -54,14 +57,34 @@ def _is_reconstruction_transport_cell(cell: DecodedCellDTO) -> bool:
 
 def _existing_transport(
     by_coord: dict[Coord, DecodedCellDTO],
+    *,
+    catalog_slice: BuildingCatalogSlice | None = None,
 ) -> frozenset[ExistingTransportCell]:
+    lookup = (
+        transport_kind_lookup_from_slice(catalog_slice)
+        if catalog_slice is not None
+        else None
+    )
     transport: list[ExistingTransportCell] = []
     for coord, cell in by_coord.items():
         if not _is_reconstruction_transport_cell(cell):
             continue
-        kind = _parse_transport_kind(cell.transport_kind)
-        if kind is None:
-            continue
+        if catalog_slice is not None:
+            try:
+                kind = resolve_cell_transport_kind(
+                    cell.transport_kind,
+                    catalog_slice=catalog_slice,
+                    lookup=lookup,
+                )
+            except CatalogTransportUnresolvedError as exc:
+                raise CatalogTransportUnresolvedError(
+                    exc.code,
+                    f"cannot resolve transport_kind at coord={coord!r}: {cell.transport_kind!r}",
+                ) from exc
+        else:
+            kind = _parse_transport_kind(cell.transport_kind)
+            if kind is None:
+                continue
         transport.append(ExistingTransportCell(coord=coord, transport_kind=kind))
     return frozenset(transport)
 
@@ -126,7 +149,7 @@ def optimization_input_from_reconstruction(
     external_void = topo.external_void_cells
     rim = _rim_cells(mineable)
     inner = mineable - rim
-    existing_transport = _existing_transport(by_coord)
+    existing_transport = _existing_transport(by_coord, catalog_slice=catalog_slice)
     if not existing_transport and catalog_slice is not None:
         transport_kind = resolve_default_asteroid_transport_kind(catalog_slice)
     else:

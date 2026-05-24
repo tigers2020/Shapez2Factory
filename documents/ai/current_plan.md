@@ -1,6 +1,6 @@
 # Current plan
 
-**Status (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)** on `master` — T1 `1c4baecd`, T3 PR #61 `38042eed`, T2 PR #62 `94027496`. **Track D** catalog footprint/connector — **CLOSED** on `master` (PR #63, `f781d7df`). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
+**Status (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)** + **Track D** + **PR-A** doc authority repair on `master` (`cd364b84`). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
 
 **Runtime (코드 정본):**
 
@@ -162,3 +162,11 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Status: CLOSED
   - Slug: `copy-import-495e552c`
   - Evidence: see Track D entry above
+
+- PR-A — Repo decontamination authority repair
+  - Status: CLOSED
+  - Merged into master: `cd364b84`
+  - PR: #64
+  - Plan: [`docs/superpowers/plans/2026-05-24-repo-decontamination-authority-pr-a.md`](../../docs/superpowers/plans/2026-05-24-repo-decontamination-authority-pr-a.md)
+  - Spec: [`docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md`](../../docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md)
+  - Gate: grep acceptance + `tests/unit/architecture/` (docs-only; no runtime change)

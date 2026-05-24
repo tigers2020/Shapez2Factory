@@ -1,6 +1,6 @@
 # Deferred Commit Retry — PR-4 Real-Map Ops Smoke (Design)
 
-**Status:** CLOSED 2026-05-24 — ops smoke PASS (`solver_run_id` 57); plumbing PR pending merge  
+**Status:** CLOSED 2026-05-24 — merged `64473a87` (PR #76); ops `solver_run_id` 57  
 **Owner:** asteroid-lab / RTTP deferred commit retry  
 **Track:** RTTP core — deferred commit retry slice **4 of 4** (Axis B)  
 **Prerequisite:** PR-3 CLOSED `d3de9645` (PR #75) — bounded execution on `master`  

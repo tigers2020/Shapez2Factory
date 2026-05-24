@@ -88,7 +88,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** **Deferred commit retry slice 1–4 CLOSED** (PR-4 ops smoke pending merge). **PR-4** on branch `feat/deferred-commit-retry-pr4-ops-smoke`. **PR-3 bounded execution CLOSED** (`d3de9645`, PR #75). **PR-2 policy wiring CLOSED** (`a5cfca87`, PR #73). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **Deferred commit retry slice 1–4 CLOSED** on `master`. **PR-4 ops smoke CLOSED** (`64473a87`, PR #76). **PR-3 bounded execution CLOSED** (`d3de9645`, PR #75). **PR-2 policy wiring CLOSED** (`a5cfca87`, PR #73). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -283,8 +283,9 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - LNS receives merged `CommitResult` when execution runs; PR-2 shadow envelope unchanged
 
 - Deferred commit retry PR-4 — Real-map ops smoke (`--deferred-retry-execute`)
-  - Status: **CLOSED** (pending merge to `master`)
-  - Branch: `feat/deferred-commit-retry-pr4-ops-smoke`
+  - Status: **CLOSED** (master)
+  - Merged into master: `64473a87`
+  - PR: #76
   - Spec: [`docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr4-ops-smoke-design.md`](../../docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr4-ops-smoke-design.md)
   - Plan: [`docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr4-ops-smoke.md`](../../docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr4-ops-smoke.md)
   - Ops evidence: `python manage.py run_solver --slug copy-import-495e552c --deferred-retry-execute` exit 0 (`solver_run_id` 57, `run_key` `rttp-c49cc31fa973`)

@@ -1,6 +1,6 @@
 # Deferred Commit Retry PR-4 Ops Smoke Implementation Plan
 
-**Status:** CLOSED 2026-05-24 — ops smoke PASS (`solver_run_id` 57); PR pending merge
+**Status:** CLOSED 2026-05-24 — merged `64473a87` (PR #76); ops `solver_run_id` 57
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

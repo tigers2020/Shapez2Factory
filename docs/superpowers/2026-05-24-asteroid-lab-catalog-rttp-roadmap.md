@@ -106,7 +106,7 @@ Parallel — MacroBundle T3
 | Pure builder + pipeline step `rttp.deferred_commit_retry_shadow` | ✅ | [`1e021f20`](https://github.com/tigers2020/Shapez2Factory/commit/1e021f20) PR #72 |
 | PR-2 policy DTO wiring / no-op | ✅ | [`a5cfca87`](https://github.com/tigers2020/Shapez2Factory/commit/a5cfca87) PR #73 |
 | PR-3 bounded execution | ✅ | [`d3de9645`](https://github.com/tigers2020/Shapez2Factory/commit/d3de9645) PR #75 |
-| PR-4 ops smoke | 🔄 | branch `feat/deferred-commit-retry-pr4-ops-smoke`; ops `solver_run_id` 57 |
+| PR-4 ops smoke | ✅ | [`64473a87`](https://github.com/tigers2020/Shapez2Factory/commit/64473a87) PR #76; ops `solver_run_id` 57 |
 
 ---
 

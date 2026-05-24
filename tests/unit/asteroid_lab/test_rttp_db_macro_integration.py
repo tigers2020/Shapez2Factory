@@ -17,6 +17,7 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
     replay_frame_to_optimization_milestone_json,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
+    SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,
     SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY,
 )
@@ -56,14 +57,17 @@ def test_run_config_maps_macro_only_to_pipeline_config() -> None:
         {
             SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY: True,
             SOLVER_RUN_CONFIG_RTTP_MAX_MACRO_CANDIDATES_KEY: 32,
+            SOLVER_RUN_CONFIG_RTTP_DEFERRED_RETRY_SHADOW_KEY: {"enabled": False},
         }
     )
     assert cfg.macro_only_mode is True
     assert cfg.max_macro_candidates == 32
+    assert cfg.deferred_retry_shadow.enabled is False
 
     default_cfg = _rttp_pipeline_config_from_run_config({})
     assert default_cfg.macro_only_mode is False
     assert default_cfg.max_macro_candidates == 64
+    assert default_cfg.deferred_retry_shadow.enabled is True
 
 
 def test_db_persist_macro_candidate_pool_and_commit_metrics(

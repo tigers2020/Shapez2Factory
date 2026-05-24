@@ -104,7 +104,7 @@ Parallel — MacroBundle T3
 | Spec | ✅ | [`2026-05-24-deferred-commit-retry-shadow-pr1-design.md`](specs/2026-05-24-deferred-commit-retry-shadow-pr1-design.md) |
 | Plan | ✅ | [`2026-05-24-deferred-commit-retry-shadow-pr1.md`](plans/2026-05-24-deferred-commit-retry-shadow-pr1.md) |
 | Pure builder + pipeline step `rttp.deferred_commit_retry_shadow` | ✅ | [`1e021f20`](https://github.com/tigers2020/Shapez2Factory/commit/1e021f20) PR #72 |
-| PR-2 policy DTO wiring / no-op | 🔄 | **open next** |
+| PR-2 policy DTO wiring / no-op | 🔄 | branch `feat/deferred-commit-retry-pr2-policy` (pre-PR) |
 | PR-3 bounded execution / PR-4 ops | ⏸ | after PR-2 |
 
 ---

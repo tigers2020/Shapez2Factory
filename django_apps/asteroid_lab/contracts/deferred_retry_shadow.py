@@ -13,7 +13,7 @@ PRIMARY_INCREMENTAL_COMMIT_PHASE: Literal["primary_incremental_commit"] = (
 
 @dataclass(frozen=True, slots=True)
 class DeferredRetryShadowConfig:
-    """PR-1 defaults; PR-2 may wire from RttpPipelineConfig."""
+    """Runtime shadow policy; wired from SolverRun.config_json in PR-2."""
 
     enabled: bool = True
     observe_only: bool = True

@@ -106,7 +106,20 @@ Frozen contract: `django_apps/asteroid_lab/contracts/game_data_snapshot_provenan
 
 **Writer ownership:** Only `web/services/asteroid_game_data_snapshot.py` builds snapshot+provenance (single `pin_latest_import_batch` per build). `solver_runtime_entry` persists and validates; optimization code must not import `game_data`.
 
-**Reproducibility key:** `(import_batch_id, snapshot_schema_version, content_hash)`.
+**Reproducibility key (Track A / v1):** `reproducibility_key_v1()` → `(import_batch_id, snapshot_schema_version, content_hash)`.
+
+### Provenance v2 + `BuildingCatalogSlice` (Track B2)
+
+| Field | Role |
+|-------|------|
+| `catalog_slice_version` | `building_catalog_slice_v1` |
+| `catalog_slice_hash` | SHA-256 over slice JSON including `slice_version` |
+
+**Parser:** `parse_provenance_config` = strict 10-key v2 (RTTP). `parse_provenance_config_v1` = historical 8-key read-only.
+
+**Reproducibility key (B2):** `reproducibility_key()` → 5-tuple adds `catalog_slice_version`, `catalog_slice_hash`.
+
+**Slice:** `BuildingCatalogSlice` — `transport_registry` + `variants` only; built via `catalog_slice_from_snapshot`. RTTP T1: empty-map default `TransportKind` from belt channel in registry (`resolve_default_asteroid_transport_kind`).
 
 ## Collection policy — `tuple` only
 

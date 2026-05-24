@@ -88,7 +88,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** **Decontamination PR-D ACTIVE** — quarantine registry + stale path isolation ([`2026-05-24-decontamination-pr-d-quarantine-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-d-quarantine-design.md)). **PR-B master CLOSED** (`e56ff048`). **PR-E** after PR-D. Entry baseline: RTTP narrow 127 passed on `master` @ `9e70d169` (2026-05-24). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. After PR-D/E: deferred commit retry (RTTP core extension). Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **Decontamination PR-E** — dead-code deletion (candidates from PR-D registry). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. After PR-E: deferred commit retry (RTTP core extension). Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -244,4 +244,13 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md)
   - Evidence: `test_optimization_contamination_gates.py` 3 PASS; milestone import boundary test removed; standing `scripts/test_optimization_contamination.ps1`
   - Entry Gate A (2026-05-24): master @ `28c7261e` pre-merge; post-merge PR-B standing gate green on `e56ff048`
+  - No production solver behaviour change
+
+- Decontamination PR-D — Quarantine & stale path isolation
+  - Status: **CLOSED** (master)
+  - Merged into master: `08320666`
+  - PR: #70
+  - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-d-quarantine-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-d-quarantine-design.md)
+  - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-d-quarantine.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-d-quarantine.md)
+  - Evidence: `test_quarantined_paths_do_not_leak.py` 5 PASS; standing `scripts/test_quarantine_registry.ps1`; plans snapshot front matter; `PR_E_DELETE_CANDIDATES` declared (no deletion in PR-D)
   - No production solver behaviour change

@@ -1,6 +1,6 @@
 # Decontamination PR-D — Quarantine & Stale Path Isolation (Design)
 
-**Status:** APPROVED (design)  
+**Status:** CLOSED (merged to `master` `08320666`, PR #70, 2026-05-24)  
 **Date:** 2026-05-24  
 **Owner:** Release / Solver Architecture Lead  
 **Track:** Decontamination PR-D (repo health; not RTTP algorithm)  

@@ -63,7 +63,7 @@ Parallel — MacroBundle T3
 |------|-----------|--------|
 | **A** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination | — |
-| **Decontamination** | **PR-D ACTIVE** → PR-E dead-code | PR-B ✅ [`e56ff048`](https://github.com/tigers2020/Shapez2Factory/commit/e56ff048) · spec [`2026-05-24-decontamination-pr-d-quarantine-design.md`](specs/2026-05-24-decontamination-pr-d-quarantine-design.md) |
+| **Decontamination** | **PR-E** dead-code deletion | PR-D ✅ [`08320666`](https://github.com/tigers2020/Shapez2Factory/commit/08320666) PR #70 · PR-B ✅ `e56ff048` |
 | **Parallel** | None (paused) | — |
 
 ### Decontamination — PR-B (optimization import canon) — master CLOSED
@@ -75,7 +75,17 @@ Parallel — MacroBundle T3
 | Standing gate | ✅ | `scripts/test_optimization_contamination.ps1` |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-b-optimization-gates-design.md`](specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md) |
 
-**Open next (decontamination):** PR-D quarantine → PR-E dead-code → then deferred commit retry.
+### Decontamination — PR-D (quarantine / stale path isolation) — master CLOSED
+
+| Step | Status | Evidence |
+|------|--------|----------|
+| Two-tier registry + bounded active-root gate | ✅ | [`08320666`](https://github.com/tigers2020/Shapez2Factory/commit/08320666) PR #70 |
+| Plans snapshot `do_not_use_as_authority` | ✅ | `documents/plans/asteroid_lab_optimization/` |
+| PR-E candidates declared (not deleted) | ✅ | `PR_E_DELETE_CANDIDATES` in `quarantine_registry.py` |
+| Standing gate | ✅ | `scripts/test_quarantine_registry.ps1` |
+| Spec | ✅ | [`2026-05-24-decontamination-pr-d-quarantine-design.md`](specs/2026-05-24-decontamination-pr-d-quarantine-design.md) |
+
+**Open next (decontamination):** PR-E dead-code deletion → then deferred commit retry.
 
 ---
 

@@ -1,3 +1,12 @@
+---
+status: ARCHIVED
+do_not_use_as_authority: true
+archived_reason: pre-RTTP plan snapshot; see documents/Algorithm/ and docs/superpowers/specs/
+superseded_by:
+  - documents/ai/current_plan.md
+  - docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md
+---
+
 # Rollback Baseline — Lab Replay Timeline Refactor Agent Boundary
 
 

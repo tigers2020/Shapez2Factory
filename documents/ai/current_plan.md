@@ -82,11 +82,13 @@ Coverage: fixture topology·export, replay `reconstruction_final` merge + `step4
   - Or: `python -m pytest tests/unit/architecture/test_optimization_contamination_gates.py tests/unit/architecture/test_catalog_consumption_boundaries.py -v --tb=short` + `ruff check django_apps/asteroid_lab/optimization tests/unit/architecture`
   - **Not** included in `test_reconstruction_narrow.ps1` (reconstruction-only)
 
+- **PR-D quarantine registry gate owner:** `powershell -File scripts/test_quarantine_registry.ps1`
+
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** **Decontamination PR-D/E** (quarantine moves → dead-code removal) after **PR-B master CLOSED** (`e56ff048`, PR #69). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. After PR-D/E: deferred commit retry (RTTP core extension). Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **Decontamination PR-D ACTIVE** — quarantine registry + stale path isolation ([`2026-05-24-decontamination-pr-d-quarantine-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-d-quarantine-design.md)). **PR-B master CLOSED** (`e56ff048`). **PR-E** after PR-D. Entry baseline: RTTP narrow 127 passed on `master` @ `9e70d169` (2026-05-24). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. After PR-D/E: deferred commit retry (RTTP core extension). Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).

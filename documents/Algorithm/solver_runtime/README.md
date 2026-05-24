@@ -1,5 +1,6 @@
 ---
 status: ARCHIVED
+do_not_use_as_authority: true
 owner: solver-runtime-pipeline
 last_reviewed: 2026-05-22
 archived_reason: Solver optimization pipeline removed; reconstruction-only (see docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md)

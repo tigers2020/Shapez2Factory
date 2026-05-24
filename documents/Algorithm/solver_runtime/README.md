@@ -107,17 +107,30 @@ Candidate generation explores possibilities.
 Only incremental commit creates confirmed layout.
 ```
 
-## 코드 패키지 (2026-05-22 이후)
+## 코드 패키지 — 2026-05-22 strip 직후 (HISTORICAL)
+
+> **HISTORICAL:** 아래 다이어그램은 strip-solver 직후 상태다. **현재 정본**은 [`documents/ai/current_plan.md`](../../ai/current_plan.md) — `optimization/` 는 RTTP Hybrid C로 **복구**되었다.
 
 ```text
 django_apps/asteroid_lab/reconstruction/   ← ACTIVE (topology, complete)
 django_apps/asteroid_lab/contracts/        ← game_data snapshot DTOs
 django_apps/asteroid_lab/genetic_sample/     ← admin gene templates
-django_apps/asteroid_lab/services/solver_runtime_entry.py  ← SOLVER_NOT_AVAILABLE stub
-django_apps/asteroid_lab/optimization/       ← REMOVED
+django_apps/asteroid_lab/services/solver_runtime_entry.py  ← (2026-05-22) SOLVER_NOT_AVAILABLE stub
+django_apps/asteroid_lab/optimization/       ← (2026-05-22) REMOVED
 ```
 
-HTTP `POST …/run-solver/` 는 유지하나 optimization body는 반환하지 않음 ([`01_entry_point.md`](01_entry_point.md)).
+### 코드 패키지 — 2026-05-24 현재 (RTTP)
+
+```text
+django_apps/asteroid_lab/reconstruction/                       ← ACTIVE
+django_apps/asteroid_lab/contracts/                            ← game_data snapshot DTOs
+django_apps/asteroid_lab/genetic_sample/                       ← admin gene templates (non-runtime)
+django_apps/asteroid_lab/services/solver_runtime_entry.py      ← RTTP runtime entry (config-gated)
+django_apps/asteroid_lab/services/lab_rttp_snapshot_compose.py ← 3B-S product timeline projection
+django_apps/asteroid_lab/optimization/                         ← RTTP Hybrid C (ACTIVE)
+```
+
+HTTP `POST …/run-solver/` 는 유지하나 strip 직후 본문은 stub이었다. 현재는 RTTP runtime 응답을 반환한다 ([`01_entry_point.md`](01_entry_point.md), [`current_plan.md`](../../ai/current_plan.md)).
 
 ---
 

@@ -39,6 +39,8 @@ Full stack: [`current_plan.md`](current_plan.md) § Authority precedence.
 7. `documents/Algorithm/solver_runtime/` — historical unless `current_plan` promotes a subsection
 8. Reports and archives — observation only
 
+**Per-file marker:** Quarantine docs use YAML `do_not_use_as_authority: true` in their front matter. See [`document_lifecycle.md`](../index/document_lifecycle.md) § Operational label: QUARANTINE for the recommended header template.
+
 ---
 
 ## Stable invariants (never violate)

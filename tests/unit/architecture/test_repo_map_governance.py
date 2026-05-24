@@ -81,12 +81,12 @@ def test_structure_md_lists_every_django_app_on_disk() -> None:
     structure = _read(_STRUCTURE_MD)
     on_disk = _django_apps_on_disk()
     in_doc = _django_apps_in_structure(structure)
-    assert on_disk <= in_doc, (
-        f"django_apps on disk missing from structure.md: {sorted(on_disk - in_doc)}"
-    )
-    assert in_doc <= on_disk, (
-        f"structure.md references unknown django_apps: {sorted(in_doc - on_disk)}"
-    )
+    assert (
+        on_disk <= in_doc
+    ), f"django_apps on disk missing from structure.md: {sorted(on_disk - in_doc)}"
+    assert (
+        in_doc <= on_disk
+    ), f"structure.md references unknown django_apps: {sorted(in_doc - on_disk)}"
 
 
 @pytest.mark.unit

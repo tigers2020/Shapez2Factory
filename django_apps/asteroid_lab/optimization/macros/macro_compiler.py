@@ -139,9 +139,7 @@ def compile_macros(
     for triple in combinations(sorted_pool, 3):
         children = triple
         if len(macro_normal) >= compile_config.max_macro_candidates:
-            macro_rejected.append(
-                _reject(children, MacroRejectReason.EXCEEDS_MAX_MACRO_CANDIDATES)
-            )
+            macro_rejected.append(_reject(children, MacroRejectReason.EXCEEDS_MAX_MACRO_CANDIDATES))
             continue
 
         if child_occupancy_overlaps(children):

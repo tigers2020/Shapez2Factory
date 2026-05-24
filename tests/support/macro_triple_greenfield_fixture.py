@@ -119,9 +119,9 @@ def build_valid_macro_triple_candidates() -> tuple[
     )
 
 
-def build_overlapping_macro_triple_candidates() -> tuple[
-    BundleCandidate, BundleCandidate, BundleCandidate
-]:
+def build_overlapping_macro_triple_candidates() -> (
+    tuple[BundleCandidate, BundleCandidate, BundleCandidate]
+):
     """Three candidates sharing occupied cell (5, 6)."""
 
     return (

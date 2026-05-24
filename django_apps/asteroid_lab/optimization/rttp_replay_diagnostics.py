@@ -281,9 +281,7 @@ def build_macro_commit_replay_payload(
                 kind="macro.shared_lift",
             )
         )
-    conflict_lines = [
-        f"- {c.candidate_id}: {c.reason.value}" for c in macro_commit.conflicts[:8]
-    ]
+    conflict_lines = [f"- {c.candidate_id}: {c.reason.value}" for c in macro_commit.conflicts[:8]]
     description = "\n".join(
         [
             "RTTP macro commit domain snapshot.",

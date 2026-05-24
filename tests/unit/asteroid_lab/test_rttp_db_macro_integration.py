@@ -149,9 +149,7 @@ def test_milestone_payload_reads_persisted_macro_metrics(
         replay_sink=sink,
     )
 
-    commit = _frames_by_event_type(replay_track.id)[
-        et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT
-    ]
+    commit = _frames_by_event_type(replay_track.id)[et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT]
     milestone = replay_frame_to_optimization_milestone_json(commit)
     assert milestone is not None
     metrics = milestone["metrics"]

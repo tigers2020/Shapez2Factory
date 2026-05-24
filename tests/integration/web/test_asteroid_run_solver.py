@@ -11,10 +11,10 @@ from django.test import Client, override_settings
 from django.urls import reverse
 
 from django_apps.asteroid_lab import models as m
-from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
 from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
     parse_provenance_config,
 )
+from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY,
     SOLVER_RUN_CONFIG_RTTP_MACRO_ONLY_MODE_KEY,

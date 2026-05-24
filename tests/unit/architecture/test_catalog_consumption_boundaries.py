@@ -5,8 +5,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
-
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _OPTIMIZATION_ROOT = _REPO_ROOT / "django_apps" / "asteroid_lab" / "optimization"
 

@@ -28,7 +28,6 @@ from django_apps.asteroid_lab.services.lab_rttp_snapshot_compose import (
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
 )
-from django_apps.asteroid_lab.services.solver_runtime_entry import run_solver_runtime_for_project
 
 
 def _minimal_valid_copy() -> str:

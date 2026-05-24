@@ -11,6 +11,9 @@ import pytest
 from django.test import override_settings
 
 from django_apps.asteroid_lab import models as m
+from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
+    parse_provenance_config,
+)
 from django_apps.asteroid_lab.optimization import pipeline as rttp_pipeline
 from django_apps.asteroid_lab.services.input_service import create_copy_code_map_input
 from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import (
@@ -18,9 +21,6 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
 )
 from django_apps.asteroid_lab.services.replay_pipeline_service import (
     build_initial_replay_for_map_input,
-)
-from django_apps.asteroid_lab.contracts.game_data_snapshot_provenance import (
-    parse_provenance_config,
 )
 from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_GAME_DATA_SNAPSHOT_PROVENANCE_KEY,

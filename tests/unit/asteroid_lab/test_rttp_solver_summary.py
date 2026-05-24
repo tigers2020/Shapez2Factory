@@ -25,12 +25,14 @@ from django_apps.asteroid_lab.services.input_service import create_copy_code_map
 from django_apps.asteroid_lab.services.reconstructed_asteroid_service import (
     run_reconstruction_for_map_input,
 )
+
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture(scope="module", autouse=True)
 def _require_game_data_import_batch(imported_game_data_batch_module: object) -> object:
     return imported_game_data_batch_module
+
 
 _RTTP_STEP_IDS = (
     RttpAlgorithmStepId.RTTP_ROUTE_DOMAIN,

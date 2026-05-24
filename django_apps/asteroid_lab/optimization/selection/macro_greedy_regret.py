@@ -87,8 +87,7 @@ def _base_macro_score(
         1000.0 * float(macro_row.macro.macro_throughput_factor)
         + config.rim_port_alignment_weight * _macro_rim_alignment(macro_row, skeleton)
         - 30.0 * float(probe_cost)
-        - config.fragmentation_weight
-        * _macro_fragmentation(macro_row, inp, committed_occupied)
+        - config.fragmentation_weight * _macro_fragmentation(macro_row, inp, committed_occupied)
     )
 
 

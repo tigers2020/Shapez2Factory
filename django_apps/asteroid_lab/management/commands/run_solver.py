@@ -67,9 +67,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             raise CommandError(f"Unknown project slug: {slug!r}")
 
         inp = (
-            m.AsteroidMapInput.objects.filter(project_id=project.pk)
-            .order_by("-created_at")
-            .first()
+            m.AsteroidMapInput.objects.filter(project_id=project.pk).order_by("-created_at").first()
         )
         if inp is None:
             raise CommandError(f"Project {slug!r} has no map input.")
@@ -102,9 +100,7 @@ class Command(BaseCommand):  # type: ignore[misc]
             self._print_human_summary(slug=slug, body=body)
 
         if result.error_code == SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE:
-            raise CommandError(
-                SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE.value
-            )
+            raise CommandError(SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE.value)
         if result.error_code in (
             SolverRuntimeEntryErrorCode.PROJECT_NOT_FOUND,
             SolverRuntimeEntryErrorCode.NO_MAP_INPUT,
@@ -114,9 +110,7 @@ class Command(BaseCommand):  # type: ignore[misc]
         if not result.ok:
             if result.solver_run_id is not None:
                 self.stderr.write(
-                    self.style.WARNING(
-                        result.message or str(result.error_code or "run_failed")
-                    )
+                    self.style.WARNING(result.message or str(result.error_code or "run_failed"))
                     + "\n"
                 )
                 sys.exit(1)

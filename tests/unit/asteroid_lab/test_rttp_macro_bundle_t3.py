@@ -74,9 +74,7 @@ def test_macro_compiler_rejects_overlap() -> None:
 
     assert result.macro_normal == ()
     assert len(result.macro_rejected) == 1
-    assert (
-        result.macro_rejected[0].rejection_reason is MacroRejectReason.CHILD_OCCUPANCY_OVERLAP
-    )
+    assert result.macro_rejected[0].rejection_reason is MacroRejectReason.CHILD_OCCUPANCY_OVERLAP
 
 
 def test_macro_probe_rejects_unreachable_shared_trunk() -> None:
@@ -97,9 +95,7 @@ def test_macro_probe_rejects_unreachable_shared_trunk() -> None:
     result = compile_macros(fixture.valid_triple, broken_skeleton, fixture.inp)
     assert result.macro_normal == ()
     assert len(result.macro_rejected) == 1
-    assert (
-        result.macro_rejected[0].rejection_reason is MacroRejectReason.SHARED_LIFT_UNREACHABLE
-    )
+    assert result.macro_rejected[0].rejection_reason is MacroRejectReason.SHARED_LIFT_UNREACHABLE
 
 
 def test_macro_compiler_rejects_existing_shared_lift_when_probe_unreachable() -> None:
@@ -330,8 +326,7 @@ def test_macro_compiler_caps_enumeration_at_max_macro_candidates() -> None:
     assert result.macro_normal == ()
     assert len(result.macro_rejected) == 1
     assert (
-        result.macro_rejected[0].rejection_reason
-        is MacroRejectReason.EXCEEDS_MAX_MACRO_CANDIDATES
+        result.macro_rejected[0].rejection_reason is MacroRejectReason.EXCEEDS_MAX_MACRO_CANDIDATES
     )
 
 

@@ -33,4 +33,5 @@ jobs:
             tests/unit/asteroid_lab/test_rttp_pipeline_macro_greenfield.py \
             tests/unit/asteroid_lab/test_macro_commit_hud.py \
             tests/unit/asteroid_lab/test_run_solver_management_command.py \
+            tests/integration/asteroid_lab/test_rttp_macro_real_map_e2e.py \
             tests/integration/web/test_asteroid_run_solver.py -k "macro"

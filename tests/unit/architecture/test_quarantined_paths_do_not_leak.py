@@ -1,6 +1,7 @@
-"""PR-D — quarantine registry gates (stale path isolation).
+"""PR-D / PR-E — quarantine registry gates (stale path isolation).
 
 Spec: docs/superpowers/specs/2026-05-24-decontamination-pr-d-quarantine-design.md
+PR-E: docs/superpowers/specs/2026-05-24-decontamination-pr-e-dead-code-design.md
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from tests.unit.architecture.quarantine_registry import (
     _INTERNAL_IMPORT_PREFIX,
     ACTIVE_RUNTIME_ROOTS,
     MAX_TRANSITIVE_IMPORT_DEPTH,
+    PR_E_APPLIED_DELETIONS,
     PR_E_DELETE_CANDIDATES,
     QUARANTINED_DOC_PATHS,
     QUARANTINED_MODULE_PREFIXES,
@@ -82,6 +84,27 @@ def _matches_quarantined_prefix(module: str, prefix: str) -> bool:
     return module == prefix or module.startswith(prefix + ".")
 
 
+def _split_pytest_nodeid(nodeid: str) -> tuple[str, str]:
+    if "::" not in nodeid:
+        raise ValueError(f"expected pytest nodeid, got: {nodeid!r}")
+    file_part, func_part = nodeid.split("::", 1)
+    return file_part, func_part
+
+
+def _function_defined_in_module(module_rel: str, func_name: str) -> bool:
+    path = _repo_path(module_rel)
+    assert path.is_file(), f"missing module for node check: {module_rel}"
+    tree = _parse(path)
+    return any(isinstance(node, ast.FunctionDef) and node.name == func_name for node in tree.body)
+
+
+def _replacement_exists(replacement: str) -> bool:
+    if "::" in replacement:
+        module_rel, func_name = _split_pytest_nodeid(replacement)
+        return _function_defined_in_module(module_rel, func_name)
+    return _repo_path(replacement).is_file()
+
+
 def test_quarantined_modules_are_declared_in_registry() -> None:
     prefix_ids = [e.id for e in QUARANTINED_MODULE_PREFIXES]
     doc_ids = [e.id for e in QUARANTINED_DOC_PATHS]
@@ -133,13 +156,49 @@ def test_quarantined_doc_paths_have_disposition() -> None:
     )
 
 
-def test_quarantine_registry_has_pr_e_disposition() -> None:
-    assert PR_E_DELETE_CANDIDATES
-    for rel in PR_E_DELETE_CANDIDATES:
-        path = _repo_path(rel)
-        assert path.is_file(), f"PR-E candidate must exist until PR-E deletes: {rel}"
-    for rel in PR_E_DELETE_CANDIDATES:
-        assert rel not in ACTIVE_RUNTIME_ROOTS
+def test_pr_e_delete_candidates_empty() -> None:
+    assert PR_E_DELETE_CANDIDATES == ()
+
+
+def test_pr_e_applied_deletions_recorded() -> None:
+    assert len(PR_E_APPLIED_DELETIONS) == 3
+    paths = [entry.path for entry in PR_E_APPLIED_DELETIONS]
+    assert len(paths) == len(set(paths))
+    for entry in PR_E_APPLIED_DELETIONS:
+        assert entry.kind in ("file", "pytest_node")
+        assert entry.reason.strip()
+        assert entry.evidence.strip()
+        assert isinstance(entry.replacements, tuple)
+
+
+def test_pr_e_applied_files_absent() -> None:
+    missing: list[str] = []
+    for entry in PR_E_APPLIED_DELETIONS:
+        if entry.kind != "file":
+            continue
+        if _repo_path(entry.path).is_file():
+            missing.append(entry.path)
+    assert missing == [], f"deleted files still on disk: {missing}"
+
+
+def test_pr_e_applied_pytest_nodes_absent() -> None:
+    missing: list[str] = []
+    for entry in PR_E_APPLIED_DELETIONS:
+        if entry.kind != "pytest_node":
+            continue
+        module_rel, func_name = _split_pytest_nodeid(entry.path)
+        if _function_defined_in_module(module_rel, func_name):
+            missing.append(entry.path)
+    assert missing == [], f"deleted pytest nodes still defined: {missing}"
+
+
+def test_pr_e_replacement_targets_exist() -> None:
+    missing: list[str] = []
+    for entry in PR_E_APPLIED_DELETIONS:
+        for replacement in entry.replacements:
+            if not _replacement_exists(replacement):
+                missing.append(f"{entry.path} -> {replacement}")
+    assert missing == [], f"missing replacements: {missing}"
 
 
 def test_quarantine_gate_does_not_overlap_pr_b_scope() -> None:

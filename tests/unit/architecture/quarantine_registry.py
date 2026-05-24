@@ -1,6 +1,7 @@
-"""PR-D quarantine registry — machine-readable stale path isolation.
+"""PR-D/PR-E quarantine registry — machine-readable stale path isolation.
 
 Spec: docs/superpowers/specs/2026-05-24-decontamination-pr-d-quarantine-design.md
+PR-E: docs/superpowers/specs/2026-05-24-decontamination-pr-e-dead-code-design.md
 """
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 OwnerNextStep = Literal["PR-E", "maintain", "none"]
+PrEKind = Literal["file", "pytest_node"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +32,15 @@ class QuarantineDocPath:
     owner_next_step: OwnerNextStep = "maintain"
     # all_md: every *.md under path; readme_only: series index only (legacy encodings elsewhere)
     front_matter_scope: Literal["all_md", "readme_only"] = "all_md"
+
+
+@dataclass(frozen=True, slots=True)
+class PrEDeleteCandidate:
+    path: str
+    kind: PrEKind
+    reason: str
+    evidence: str
+    replacements: tuple[str, ...]
 
 
 # AST import graph checks (active runtime roots — see test_quarantined_paths_do_not_leak).
@@ -81,9 +92,41 @@ QUARANTINED_DOC_PATHS: tuple[QuarantineDocPath, ...] = (
     ),
 )
 
-# PR-E may delete these paths; PR-D must not remove them.
-PR_E_DELETE_CANDIDATES: tuple[str, ...] = (
-    "tests/unit/asteroid_lab/test_service_import_boundaries.py",
+PR_E_DELETE_CANDIDATES: tuple[PrEDeleteCandidate, ...] = ()
+
+PR_E_APPLIED_DELETIONS: tuple[PrEDeleteCandidate, ...] = (
+    PrEDeleteCandidate(
+        path="tests/unit/asteroid_lab/test_service_import_boundaries.py",
+        kind="file",
+        reason="zero_byte_test_file",
+        evidence="0-byte file; collects zero tests",
+        replacements=(
+            "tests/unit/architecture/test_django_app_import_boundaries.py",
+            "tests/unit/architecture/test_optimization_contamination_gates.py",
+        ),
+    ),
+    PrEDeleteCandidate(
+        path="tests/test_smoke.py",
+        kind="file",
+        reason="meaningless_placeholder",
+        evidence=(
+            "sole test is assert True; CI and pytest collection already cover test discovery"
+        ),
+        replacements=("tests/integration/api/test_health.py",),
+    ),
+    PrEDeleteCandidate(
+        path=(
+            "tests/unit/asteroid_lab/test_replay_event_coverage_matrix.py"
+            "::test_lab_adapter_members_are_valid_replay_event_types"
+        ),
+        kind="pytest_node",
+        reason="duplicate_coverage",
+        evidence=("loops SUPPORTED_BY_9B_LAB_ADAPTER with member in ReplayEventType only"),
+        replacements=(
+            "tests/unit/asteroid_lab/test_replay_event_coverage_matrix.py"
+            "::test_unified_replay_event_type_adapter_coverage_matrix_is_explicit",
+        ),
+    ),
 )
 
 # Closed set — extend only via spec amendment.

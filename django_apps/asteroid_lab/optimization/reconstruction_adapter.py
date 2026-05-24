@@ -60,11 +60,7 @@ def _existing_transport(
     *,
     catalog_slice: BuildingCatalogSlice | None = None,
 ) -> frozenset[ExistingTransportCell]:
-    lookup = (
-        transport_kind_lookup_from_slice(catalog_slice)
-        if catalog_slice is not None
-        else None
-    )
+    lookup = transport_kind_lookup_from_slice(catalog_slice) if catalog_slice is not None else None
     transport: list[ExistingTransportCell] = []
     for coord, cell in by_coord.items():
         if not _is_reconstruction_transport_cell(cell):
@@ -89,12 +85,36 @@ def _existing_transport(
     return frozenset(transport)
 
 
-def _existing_trunk_cells(
+def partition_existing_transport(
     existing_transport: frozenset[ExistingTransportCell],
-) -> frozenset[Coord]:
-    """P1 map class: reconstruction transport coords seed skeleton trunk mask."""
+    active_kind: TransportKind,
+) -> tuple[frozenset[Coord], frozenset[Coord], dict[str, int]]:
+    """Same-kind trunk coords, wrong-kind blocked coords, mismatch counts by kind."""
 
-    return frozenset(cell.coord for cell in existing_transport)
+    trunk: set[Coord] = set()
+    blocked: set[Coord] = set()
+    by_kind: dict[str, int] = {}
+    for cell in existing_transport:
+        if cell.transport_kind == active_kind:
+            trunk.add(cell.coord)
+        else:
+            blocked.add(cell.coord)
+            key = cell.transport_kind.value
+            by_kind[key] = by_kind.get(key, 0) + 1
+    return frozenset(trunk), frozenset(blocked), by_kind
+
+
+def mismatched_existing_transport_metrics(
+    blocked_incompatible: frozenset[Coord],
+    *,
+    by_kind: dict[str, int],
+) -> dict[str, int | dict[str, int]]:
+    """Output-only metrics for ``RTTP_ROUTE_DOMAIN`` (never solver input)."""
+
+    return {
+        "mismatched_existing_transport_count": len(blocked_incompatible),
+        "mismatched_existing_transport_by_kind": dict(by_kind),
+    }
 
 
 def _default_transport_kind(
@@ -154,7 +174,9 @@ def optimization_input_from_reconstruction(
         transport_kind = resolve_default_asteroid_transport_kind(catalog_slice)
     else:
         transport_kind = _default_transport_kind(existing_transport)
-    existing_trunk = _existing_trunk_cells(existing_transport)
+    existing_trunk, blocked_incompatible, _mismatch_by_kind = partition_existing_transport(
+        existing_transport, transport_kind
+    )
     route_goals = _external_margin_route_goals(rim, external_void, transport_kind)
 
     return OptimizationInput(
@@ -167,9 +189,14 @@ def optimization_input_from_reconstruction(
         transport_kind=transport_kind,
         route_goals=route_goals,
         existing_transport_cells=existing_transport,
+        blocked_incompatible_transport_cells=blocked_incompatible,
         coord_frame=coord_frame,
         catalog_slice=catalog_slice,
     )
 
 
-__all__ = ["optimization_input_from_reconstruction"]
+__all__ = [
+    "mismatched_existing_transport_metrics",
+    "optimization_input_from_reconstruction",
+    "partition_existing_transport",
+]

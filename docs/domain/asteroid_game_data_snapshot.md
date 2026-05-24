@@ -123,6 +123,8 @@ Frozen contract: `django_apps/asteroid_lab/contracts/game_data_snapshot_provenan
 
 **T2 (RTTP):** Per transport cell, `resolve_cell_transport_kind` maps reconstruction `transport_kind` wire strings through `transport_registry` (`transport_kind` key → `transport_category` → `TransportKind`). Domain enum values (`shape_belt`, `fluid_pipe`) pass through. Unresolved transport tiles with a catalog slice fail closed (`catalog_transport_unresolved`; adapter message includes coord + raw wire).
 
+**B2-T3 (RTTP):** Wrong-kind existing transport is excluded from trunk seeding (including ring overlap) and unioned into route-domain `blocked_cells`; incompatible coords are removed from `traversable_cells` even when they overlap lift coords. Metrics on `rttp.route_domain`: `mismatched_existing_transport_count`, `mismatched_existing_transport_by_kind`. Spec: `docs/superpowers/specs/2026-05-24-b2-t3-transport-aware-route-domain-design.md`.
+
 ## Collection policy — `tuple` only
 
 | Allowed | Forbidden on consumer DTO path |

@@ -30,6 +30,10 @@ from django_apps.asteroid_lab.optimization.macros.macro_compiler import (
     MacroCompileConfig,
     compile_macros,
 )
+from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
+    mismatched_existing_transport_metrics,
+    partition_existing_transport,
+)
 from django_apps.asteroid_lab.optimization.replay_sink import (
     RttpReplaySink,
     resolve_replay_sink,
@@ -137,6 +141,15 @@ def _record_pipeline_step(
     )
 
 
+def _transport_mismatch_metrics(inp: OptimizationInput) -> dict[str, int | dict[str, int]]:
+    _trunk, _blocked, by_kind = partition_existing_transport(
+        inp.existing_transport_cells, inp.transport_kind
+    )
+    return mismatched_existing_transport_metrics(
+        inp.blocked_incompatible_transport_cells, by_kind=by_kind
+    )
+
+
 def _macro_commit_as_bundle_result(macro_commit: MacroCommitResult) -> CommitResult:
     return CommitResult(
         committed_ids=macro_commit.committed_child_ids,
@@ -154,6 +167,7 @@ def _run_v01_rttp_pipeline(
 ) -> PipelineResult:
     steps: list[dict[str, Any]] = []
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+    transport_mismatch_metrics = _transport_mismatch_metrics(inp)
     start_payload = build_pipeline_start_replay_payload(skeleton)
     _record_pipeline_step(
         sink,
@@ -164,7 +178,10 @@ def _run_v01_rttp_pipeline(
         phase="rttp_pipeline",
         title="RTTP pipeline started",
         description=start_payload.description,
-        metrics_json={"skeleton_id": skeleton.skeleton_id},
+        metrics_json={
+            "skeleton_id": skeleton.skeleton_id,
+            **transport_mismatch_metrics,
+        },
         cell_overlay_json=start_payload.cell_overlay_json,
         passed=True,
     )
@@ -278,6 +295,7 @@ def _run_macro_rttp_pipeline(
 ) -> PipelineResult:
     steps: list[dict[str, Any]] = []
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+    transport_mismatch_metrics = _transport_mismatch_metrics(inp)
     start_payload = build_pipeline_start_replay_payload(skeleton)
     _record_pipeline_step(
         sink,
@@ -288,7 +306,11 @@ def _run_macro_rttp_pipeline(
         phase="rttp_pipeline",
         title="RTTP macro pipeline started",
         description=start_payload.description,
-        metrics_json={"skeleton_id": skeleton.skeleton_id, "macro_only_mode": True},
+        metrics_json={
+            "skeleton_id": skeleton.skeleton_id,
+            "macro_only_mode": True,
+            **transport_mismatch_metrics,
+        },
         cell_overlay_json=start_payload.cell_overlay_json,
         passed=True,
     )

@@ -1,6 +1,6 @@
 # Deferred Commit Retry — PR-3 Bounded Execution Design
 
-**Status:** APPROVED 2026-05-24 — pending implementation  
+**Status:** CLOSED 2026-05-24 — merged `d3de9645` (PR #75)  
 **Owner:** asteroid-lab / RTTP deferred commit retry  
 **Track:** RTTP core — deferred commit retry slice 3 of 4  
 **Prerequisite:** PR-2 CLOSED `a5cfca87` (PR #73) — runtime policy wiring  

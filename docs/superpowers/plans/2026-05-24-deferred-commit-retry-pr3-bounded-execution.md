@@ -1,6 +1,6 @@
 # Deferred Commit Retry PR-3 Bounded Execution Implementation Plan
 
-**Status:** OPEN — spec approved 2026-05-24
+**Status:** CLOSED 2026-05-24 — merged `d3de9645` (PR #75)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

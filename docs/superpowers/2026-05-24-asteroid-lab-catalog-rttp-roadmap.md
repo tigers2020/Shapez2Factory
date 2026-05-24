@@ -95,7 +95,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** **deferred commit retry PR-3** (bounded execution). Decontamination PR-A..E complete on `master`.
+**Open next:** **deferred commit retry PR-4** (real-map ops smoke — design). Decontamination PR-A..E complete on `master`.
 
 ### Deferred commit retry — PR-1 shadow (observe-only) — master CLOSED
 
@@ -105,8 +105,8 @@ Parallel — MacroBundle T3
 | Plan | ✅ | [`2026-05-24-deferred-commit-retry-shadow-pr1.md`](plans/2026-05-24-deferred-commit-retry-shadow-pr1.md) |
 | Pure builder + pipeline step `rttp.deferred_commit_retry_shadow` | ✅ | [`1e021f20`](https://github.com/tigers2020/Shapez2Factory/commit/1e021f20) PR #72 |
 | PR-2 policy DTO wiring / no-op | ✅ | [`a5cfca87`](https://github.com/tigers2020/Shapez2Factory/commit/a5cfca87) PR #73 |
-| PR-3 bounded execution | 🔄 | in progress on `feat/deferred-commit-retry-pr3-bounded-execution` |
-| PR-4 ops smoke | ⏳ | after PR-3 |
+| PR-3 bounded execution | ✅ | [`d3de9645`](https://github.com/tigers2020/Shapez2Factory/commit/d3de9645) PR #75 |
+| PR-4 ops smoke | ⏳ | design next (after PR-3 CLOSED) |
 
 ---
 

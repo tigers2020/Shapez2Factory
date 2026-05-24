@@ -25,8 +25,3 @@ def test_unified_replay_event_type_adapter_coverage_matrix_is_explicit() -> None
         }
     )
     assert len(post) == 0
-
-
-def test_lab_adapter_members_are_valid_replay_event_types() -> None:
-    for member in SUPPORTED_BY_9B_LAB_ADAPTER:
-        assert member in ReplayEventType

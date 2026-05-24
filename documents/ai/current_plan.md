@@ -235,7 +235,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Prerequisite: B-CS1 `test_rttp_commit_survivability.py`; not a substitute for E5
 
 - Decontamination PR-B — Optimization contamination gates
-  - Status: **CLOSED** (branch `feat/decontamination-pr-b-optimization-gates` @ `590c387c`; merge to `master` pending)
+  - Status: **CLOSED (branch-local)** on `feat/decontamination-pr-b-optimization-gates` @ `590c387c`; **master CLOSED** only after PR merge
   - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md)
   - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md)
   - Evidence: `test_optimization_contamination_gates.py` 3 PASS; `test_optimization_milestone_import_boundary.py` absorbed and removed; standing `scripts/test_optimization_contamination.ps1`

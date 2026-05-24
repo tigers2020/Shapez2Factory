@@ -88,7 +88,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** **Deferred commit retry slice 1–4 CLOSED** on `master`. **PR-4 ops smoke CLOSED** (`64473a87`, PR #76). **PR-3 bounded execution CLOSED** (`d3de9645`, PR #75). **PR-2 policy wiring CLOSED** (`a5cfca87`, PR #73). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **v0.1 next track selection** (GA / macro unpause / capacity — new spec each). **Commit survivability arc CLOSED** (v0.1 deferred retry scope). **Deferred commit retry slice 1–4 CLOSED** on `master`. **PR-4 ops smoke CLOSED** (`64473a87`, PR #76). **PR-3 bounded execution CLOSED** (`d3de9645`, PR #75). **PR-2 policy wiring CLOSED** (`a5cfca87`, PR #73). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -294,6 +294,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Execute metrics (informational): `deferred_retry_recovered_count` 0, `deferred_retry_eligible_count` 0, `deferred_retry_rounds_executed` 0
   - `validation_passed` / `run_success` true; `issue_codes` `[]`
   - PR-4-15 note: final `rttp.commit` step is post-LNS snapshot (not before shadow)
+- **CLOSED (2026-05-24):** Commit survivability arc (v0.1) — PR-1 shadow + PR-2 policy + PR-3 bounded execute + PR-4 real-map ops; B-CS1 pytest + B-CS2 ops; full GA / macro / capacity / multi-round retry **out of scope**
 
 - Decontamination PR-E — Dead code deletion
   - Status: **CLOSED** (master)

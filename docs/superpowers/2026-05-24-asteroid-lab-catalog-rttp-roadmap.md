@@ -95,7 +95,7 @@ Parallel — MacroBundle T3
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next:** — (deferred commit retry slice 1–4 CLOSED after PR-4 merge). Decontamination PR-A..E complete on `master`.
+**Open next:** v0.1 **next track selection** (GA / macro unpause / capacity C-GATE — each needs new spec + board section). Deferred commit retry + commit survivability arc **CLOSED**. Decontamination PR-A..E complete on `master`.
 
 ### Deferred commit retry — PR-1 shadow (observe-only) — master CLOSED
 
@@ -107,6 +107,10 @@ Parallel — MacroBundle T3
 | PR-2 policy DTO wiring / no-op | ✅ | [`a5cfca87`](https://github.com/tigers2020/Shapez2Factory/commit/a5cfca87) PR #73 |
 | PR-3 bounded execution | ✅ | [`d3de9645`](https://github.com/tigers2020/Shapez2Factory/commit/d3de9645) PR #75 |
 | PR-4 ops smoke | ✅ | [`64473a87`](https://github.com/tigers2020/Shapez2Factory/commit/64473a87) PR #76; ops `solver_run_id` 57 |
+
+**Deferred commit retry slice 1–4:** **CLOSED** on `master` (2026-05-24).
+
+**Commit survivability arc (v0.1 scope):** **CLOSED** — primary commit + observe-only shadow + runtime policy + bounded execute + real-map ops smoke are all on `master`. Full GA, macro unpause, capacity C-GATE, and multi-round retry remain **future governance tracks** (not implicit).
 
 ---
 

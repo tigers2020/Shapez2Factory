@@ -49,6 +49,9 @@ from django_apps.asteroid_lab.optimization.rttp_solver_summary import (
     catalog_slice_step_from_slice,
     reconstruction_step_from_result,
 )
+from django_apps.asteroid_lab.optimization.validation.catalog_layout_validation import (
+    catalog_error_issue_codes_from_algorithm_steps,
+)
 from django_apps.asteroid_lab.services.experiment_service import (
     create_or_replace_solver_run,
     create_solver_run,
@@ -411,6 +414,9 @@ def _run_rttp_solver_for_map_input(
     )
 
     committed = pipeline_result.commit_result.committed_ids
+    catalog_error_issue_codes = catalog_error_issue_codes_from_algorithm_steps(
+        pipeline_result.algorithm_steps
+    )
     summary = build_rttp_solver_summary(
         pipeline_ok=pipeline_result.validation_passed,
         committed_count=len(committed),
@@ -420,6 +426,7 @@ def _run_rttp_solver_for_map_input(
         macro_only_mode=pipeline_config.macro_only_mode,
         reconstruction_step=reconstruction_step_from_result(recon),
         catalog_slice_step=catalog_slice_step_from_slice(catalog_slice),
+        catalog_error_issue_codes=catalog_error_issue_codes,
     )
     _persist_solver_run_outcome(
         run_id,

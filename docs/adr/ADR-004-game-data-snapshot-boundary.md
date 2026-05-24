@@ -35,8 +35,15 @@ Asteroid Lab must consume normalized building and transport data from the `game_
 
 ### Catalog placement audit (Track D+ PR-1, observe-only)
 
-13. RTTP MAY run a **read-only catalog placement audit** on committed candidates using `BuildingCatalogSlice` geometry and optional `CatalogPlacementRef`. PR-1 audit is **output-only** (`rttp.catalog_placement_validation` algorithm step) and MUST NOT change `validation_passed`, `run_success`, selection, fitness, macro, route probing, or replay milestone semantics.
-14. **Fail-closed catalog placement validation** for explicitly mapped committed candidates is deferred to Track D+ PR-2.
+13. RTTP MAY run a **read-only catalog placement audit** on committed candidates using `BuildingCatalogSlice` geometry and optional `CatalogPlacementRef`. PR-1 audit is **output-only** when `catalog_placement_validation_mode == "observe_only"` and MUST NOT change `validation_passed`, `run_success`, selection, fitness, macro, route probing, or replay milestone semantics.
+
+### Catalog placement validation (Track D+ PR-2, mapped fail-closed)
+
+14. Default RTTP pipeline mode is **`mapped_fail_closed`**: `validation_passed` is the AND of read-only final layout validation and `CatalogValidationResult.passed` from `validate_catalog_placements`.
+15. **Mapped-only fail-closed:** only committed candidates with `catalog_placement_ref` may emit **ERROR** severity and fail validation. **Unmapped** synthetic candidates (`catalog_placement_ref is None`) emit **WARNING** only until PR-3 catalog-native generation.
+16. **`catalog_slice` missing** emits WARNING (`CATALOG_SLICE_MISSING`) and step metrics; it does not silently pass without observability.
+17. **`solver_summary.issue_codes`** (output-only): top-level entries are **ERROR** catalog codes that failed validation; WARNING/INFO catalog codes stay in `algorithm_steps[].metrics` only. `solver_summary` is never algorithm input.
+18. PR-2 is **not** catalog-native candidate generation; PR-3 owns required `catalog_placement_ref` on production candidates.
 
 ## Consequences
 

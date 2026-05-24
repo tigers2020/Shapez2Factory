@@ -29,8 +29,7 @@ def test_catalog_geometry_transform_matches_pattern_library_east_rotation() -> N
     patterns = build_pattern_library()
     pat = next(p for p in patterns if p.pattern_id == "lin_e_len2")
     cells = tuple(
-        BuildingFootprintCell(x, y, i)
-        for i, (x, y) in enumerate(sorted(pat.occupied_offsets))
+        BuildingFootprintCell(x, y, i) for i, (x, y) in enumerate(sorted(pat.occupied_offsets))
     )
     expected = expected_footprint_coords(
         cells,

@@ -1,4 +1,4 @@
-"""Observe-only catalog placement audit (Track D+ PR-1)."""
+"""Observe-only catalog placement audit (Track D+ PR-1) + shared classification (PR-2)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,8 @@ from django_apps.asteroid_lab.contracts.building_catalog_slice import (
 from django_apps.asteroid_lab.contracts.catalog_placement import (
     CatalogPlacementAudit,
     CatalogPlacementIssueCode,
-    CatalogPlacementRef,
+    CatalogPlacementIssueRow,
+    CatalogValidationMode,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import BundleCandidate
 
@@ -30,57 +31,50 @@ def _variant_geometry(
     return None
 
 
-def audit_catalog_placements(
+def classify_committed_catalog_placements(
     committed_ids: tuple[str, ...],
     candidates_by_id: dict[str, BundleCandidate],
     catalog_slice: BuildingCatalogSlice | None,
-    *,
-    catalog_slice_hash: str | None = None,
-    catalog_slice_version: str | None = None,
-) -> CatalogPlacementAudit:
-    """Classify committed candidates against catalog geometry (observe-only)."""
-
-    del catalog_slice_hash, catalog_slice_version  # reserved for step metrics wiring
-
-    issue_code_set: set[str] = set()
-    matched = 0
-    mismatch = 0
-    unmapped = 0
-    not_in_slice = 0
-    transform_error = 0
-
+) -> tuple[CatalogPlacementIssueRow, ...]:
     if catalog_slice is None:
-        return CatalogPlacementAudit(
-            catalog_validation_mode="observe_only",
-            checked_candidate_count=0,
-            matched_candidate_count=0,
-            mismatch_candidate_count=0,
-            unmapped_candidate_count=0,
-            not_in_slice_count=0,
-            transform_error_count=0,
-            issue_codes=(),
+        if not committed_ids:
+            return ()
+        return (
+            CatalogPlacementIssueRow(
+                candidate_id="",
+                issue_code=CatalogPlacementIssueCode.CATALOG_SLICE_MISSING,
+                had_ref=False,
+                message="catalog slice missing; classification skipped",
+            ),
         )
 
+    rows: list[CatalogPlacementIssueRow] = []
     for candidate_id in committed_ids:
         candidate = candidates_by_id.get(candidate_id)
         if candidate is None:
             continue
-        ref: CatalogPlacementRef | None = candidate.catalog_placement_ref
+        ref = candidate.catalog_placement_ref
         if ref is None:
-            unmapped += 1
-            issue_code_set.add(
-                CatalogPlacementIssueCode.CATALOG_VARIANT_MAPPING_MISSING.value
+            rows.append(
+                CatalogPlacementIssueRow(
+                    candidate_id=candidate_id,
+                    issue_code=CatalogPlacementIssueCode.CATALOG_VARIANT_MAPPING_MISSING,
+                    had_ref=False,
+                    message="no catalog_placement_ref",
+                )
             )
             continue
-
         geometry = _variant_geometry(ref.canonical_id, catalog_slice)
         if geometry is None:
-            not_in_slice += 1
-            issue_code_set.add(
-                CatalogPlacementIssueCode.CATALOG_VARIANT_NOT_IN_SLICE.value
+            rows.append(
+                CatalogPlacementIssueRow(
+                    candidate_id=candidate_id,
+                    issue_code=CatalogPlacementIssueCode.CATALOG_VARIANT_NOT_IN_SLICE,
+                    had_ref=True,
+                    message="variant not in slice",
+                )
             )
             continue
-
         try:
             expected = expected_footprint_coords(
                 geometry.footprint_cells,
@@ -88,23 +82,76 @@ def audit_catalog_placements(
                 rotation=ref.rotation,
             )
         except CatalogTransformError:
-            transform_error += 1
-            issue_code_set.add(
-                CatalogPlacementIssueCode.CATALOG_ANCHOR_TRANSFORM_ERROR.value
+            rows.append(
+                CatalogPlacementIssueRow(
+                    candidate_id=candidate_id,
+                    issue_code=CatalogPlacementIssueCode.CATALOG_ANCHOR_TRANSFORM_ERROR,
+                    had_ref=True,
+                    message="transform error",
+                )
             )
             continue
-
         if expected == candidate.occupied_cells:
-            matched += 1
-        else:
-            mismatch += 1
-            issue_code_set.add(
-                CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value
+            continue
+        rows.append(
+            CatalogPlacementIssueRow(
+                candidate_id=candidate_id,
+                issue_code=CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH,
+                had_ref=True,
+                message="footprint mismatch",
             )
+        )
+    return tuple(rows)
 
-    checked = matched + mismatch + unmapped + not_in_slice + transform_error
+
+def _audit_counts_from_rows(
+    rows: tuple[CatalogPlacementIssueRow, ...],
+    committed_ids: tuple[str, ...],
+    candidates_by_id: dict[str, BundleCandidate],
+    *,
+    mode: CatalogValidationMode,
+) -> CatalogPlacementAudit:
+    issue_code_set = {row.issue_code.value for row in rows}
+    mismatch = sum(
+        1 for row in rows if row.issue_code is CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH
+    )
+    unmapped = sum(
+        1
+        for row in rows
+        if row.issue_code is CatalogPlacementIssueCode.CATALOG_VARIANT_MAPPING_MISSING
+    )
+    not_in_slice = sum(
+        1
+        for row in rows
+        if row.issue_code is CatalogPlacementIssueCode.CATALOG_VARIANT_NOT_IN_SLICE
+    )
+    transform_error = sum(
+        1
+        for row in rows
+        if row.issue_code is CatalogPlacementIssueCode.CATALOG_ANCHOR_TRANSFORM_ERROR
+    )
+    if any(row.issue_code is CatalogPlacementIssueCode.CATALOG_SLICE_MISSING for row in rows):
+        return CatalogPlacementAudit(
+            catalog_validation_mode=mode,
+            checked_candidate_count=0,
+            matched_candidate_count=0,
+            mismatch_candidate_count=0,
+            unmapped_candidate_count=0,
+            not_in_slice_count=0,
+            transform_error_count=0,
+            issue_codes=tuple(sorted(issue_code_set)),
+        )
+
+    present_ids = [
+        candidate_id
+        for candidate_id in committed_ids
+        if candidates_by_id.get(candidate_id) is not None
+    ]
+    classified_ids = {row.candidate_id for row in rows if row.candidate_id}
+    matched = len(present_ids) - len(classified_ids)
+    checked = len(present_ids)
     return CatalogPlacementAudit(
-        catalog_validation_mode="observe_only",
+        catalog_validation_mode=mode,
         checked_candidate_count=checked,
         matched_candidate_count=matched,
         mismatch_candidate_count=mismatch,
@@ -113,6 +160,23 @@ def audit_catalog_placements(
         transform_error_count=transform_error,
         issue_codes=tuple(sorted(issue_code_set)),
     )
+
+
+def audit_catalog_placements(
+    committed_ids: tuple[str, ...],
+    candidates_by_id: dict[str, BundleCandidate],
+    catalog_slice: BuildingCatalogSlice | None,
+    *,
+    catalog_slice_hash: str | None = None,
+    catalog_slice_version: str | None = None,
+    mode: CatalogValidationMode = "observe_only",
+) -> CatalogPlacementAudit:
+    """Classify committed candidates against catalog geometry (observe-only by default)."""
+
+    del catalog_slice_hash, catalog_slice_version  # reserved for step metrics wiring
+
+    rows = classify_committed_catalog_placements(committed_ids, candidates_by_id, catalog_slice)
+    return _audit_counts_from_rows(rows, committed_ids, candidates_by_id, mode=mode)
 
 
 def catalog_placement_audit_metrics(
@@ -141,4 +205,5 @@ def catalog_placement_audit_metrics(
 __all__ = [
     "audit_catalog_placements",
     "catalog_placement_audit_metrics",
+    "classify_committed_catalog_placements",
 ]

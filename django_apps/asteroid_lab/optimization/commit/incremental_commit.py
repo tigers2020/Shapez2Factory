@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -16,6 +17,10 @@ from django_apps.asteroid_lab.optimization.routing.route_goals import probe_goal
 from django_apps.asteroid_lab.optimization.routing.route_probe import probe_route
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
+
+_COMMIT_PROBE_MAX_EXPANSIONS: int = int(
+    inspect.signature(probe_route).parameters["max_expansions"].default
+)
 
 
 class CommitConflictReason(StrEnum):
@@ -53,6 +58,15 @@ class CommitResult:
     reserved_route_cells: frozenset[Coord]
     domain_version: int
     conflicts: tuple[CommitConflict, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CommitAttemptOutcome:
+    """Single candidate commit attempt (probe + post-probe checks)."""
+
+    committed: bool
+    conflict: CommitConflict | None = None
+    route_cells: frozenset[Coord] = frozenset()
 
 
 def initial_commit_domain(
@@ -95,6 +109,89 @@ def _route_cells_from_path(
     return frozenset(cell for cell in path if cell not in occupied)
 
 
+def _attempt_commit_one(
+    candidate: BundleCandidate,
+    *,
+    skeleton: RttpSkeleton,
+    inp: OptimizationInput,
+    goals: frozenset[Coord],
+    committed_occupied: frozenset[Coord],
+    committed_route_cells: frozenset[Coord],
+    max_expansions: int | None = None,
+) -> CommitAttemptOutcome:
+    if candidate.transport_kind is not inp.transport_kind:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.TRANSPORT_KIND_CONFLICT,
+            ),
+        )
+    if candidate.occupied_cells & committed_occupied:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.OVERLAP,
+            ),
+        )
+    if candidate.output_stub in committed_route_cells:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.INLET_ON_SHARED_TRANSPORT,
+            ),
+        )
+    resolved_expansions = _COMMIT_PROBE_MAX_EXPANSIONS if max_expansions is None else max_expansions
+    current_domain = _rebuild_domain(
+        skeleton,
+        inp,
+        committed_occupied=committed_occupied,
+        committed_route_cells=committed_route_cells,
+    )
+    probe = probe_route(
+        current_domain,
+        candidate.output_stub,
+        goals,
+        max_expansions=resolved_expansions,
+    )
+    if not probe.reachable:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.REPROBE_FAILED,
+            ),
+        )
+    route_cells = _route_cells_from_path(probe.path, candidate.occupied_cells)
+    if route_cells & committed_route_cells:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.ROUTE_CELL_CONFLICT,
+            ),
+        )
+    if route_cells & committed_occupied:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.OCCUPIED_CELL_CONFLICT,
+            ),
+        )
+    if route_cells & inp.protected_corridor_cells:
+        return CommitAttemptOutcome(
+            committed=False,
+            conflict=CommitConflict(
+                candidate_id=candidate.candidate_id,
+                reason=CommitConflictReason.HARD_PROTECTED_CONFLICT,
+            ),
+        )
+    return CommitAttemptOutcome(committed=True, route_cells=route_cells)
+
+
 def incremental_commit(
     genome: PlacementGenome,
     candidates_by_id: dict[str, BundleCandidate],
@@ -124,80 +221,20 @@ def incremental_commit(
             )
             continue
 
-        if candidate.transport_kind is not inp.transport_kind:
-            conflicts.append(
-                CommitConflict(
-                    candidate_id=candidate_id,
-                    reason=CommitConflictReason.TRANSPORT_KIND_CONFLICT,
-                )
-            )
-            continue
-
-        if candidate.occupied_cells & committed_occupied:
-            conflicts.append(
-                CommitConflict(
-                    candidate_id=candidate_id,
-                    reason=CommitConflictReason.OVERLAP,
-                )
-            )
-            continue
-
-        if candidate.output_stub in committed_route_cells:
-            conflicts.append(
-                CommitConflict(
-                    candidate_id=candidate_id,
-                    reason=CommitConflictReason.INLET_ON_SHARED_TRANSPORT,
-                )
-            )
-            continue
-
-        current_domain = _rebuild_domain(
-            skeleton,
-            inp,
+        outcome = _attempt_commit_one(
+            candidate,
+            skeleton=skeleton,
+            inp=inp,
+            goals=goals,
             committed_occupied=committed_occupied,
             committed_route_cells=committed_route_cells,
         )
-        probe = probe_route(current_domain, candidate.output_stub, goals)
-        if not probe.reachable:
-            conflicts.append(
-                CommitConflict(
-                    candidate_id=candidate_id,
-                    reason=CommitConflictReason.REPROBE_FAILED,
-                )
-            )
+        if not outcome.committed:
+            if outcome.conflict is not None:
+                conflicts.append(outcome.conflict)
             continue
 
-        route_cells = _route_cells_from_path(probe.path, candidate.occupied_cells)
-        overlap_with_routes = route_cells & committed_route_cells
-        if overlap_with_routes:
-            conflicts.append(
-                CommitConflict(
-                    candidate_id=candidate_id,
-                    reason=CommitConflictReason.ROUTE_CELL_CONFLICT,
-                )
-            )
-            continue
-
-        overlap_with_occupied = route_cells & committed_occupied
-        if overlap_with_occupied:
-            conflicts.append(
-                CommitConflict(
-                    candidate_id=candidate_id,
-                    reason=CommitConflictReason.OCCUPIED_CELL_CONFLICT,
-                )
-            )
-            continue
-
-        blocked_hits = route_cells & inp.protected_corridor_cells
-        if blocked_hits:
-            conflicts.append(
-                CommitConflict(
-                    candidate_id=candidate_id,
-                    reason=CommitConflictReason.HARD_PROTECTED_CONFLICT,
-                )
-            )
-            continue
-
+        route_cells = outcome.route_cells
         committed_ids.append(candidate_id)
         committed_occupied = frozenset(committed_occupied | candidate.occupied_cells)
         committed_route_cells = frozenset(committed_route_cells | route_cells)
@@ -213,10 +250,12 @@ def incremental_commit(
 
 
 __all__ = [
+    "CommitAttemptOutcome",
     "CommitConflict",
     "CommitConflictReason",
     "CommitDomainState",
     "CommitResult",
+    "_attempt_commit_one",
     "incremental_commit",
     "initial_commit_domain",
 ]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from dataclasses import replace
 
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
@@ -22,6 +23,12 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
 )
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
+from tests.support.rttp_narrow_corridor_fixture import build_narrow_corridor_optimization_input
+
+
+@pytest.fixture
+def narrow_corridor_optimization_input() -> OptimizationInput:
+    return build_narrow_corridor_optimization_input()
 
 
 def _pick_committable_candidates(
@@ -128,3 +135,71 @@ def test_commit_reprobes_latest_domain(
     assert len(result.committed_ids) >= 2
     assert result.domain_version >= 2
     assert result.domain_version == len(result.committed_ids)
+
+
+def _commit_result_snapshot(
+    inp: OptimizationInput,
+    commit_order: tuple[str, ...],
+    candidates_by_id: dict[str, BundleCandidate],
+) -> tuple[tuple[str, ...], frozenset[tuple[str, str]], int]:
+    """Stable tuple for before/after PR-3 _attempt_commit_one extract comparison."""
+    skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+    domain = initial_commit_domain(skeleton, inp)
+    result = incremental_commit(
+        PlacementGenome(commit_order=commit_order),
+        candidates_by_id,
+        inp,
+        skeleton,
+        domain=domain,
+    )
+    conflict_pairs = frozenset(
+        (conflict.candidate_id, conflict.reason.value) for conflict in result.conflicts
+    )
+    return result.committed_ids, conflict_pairs, result.domain_version
+
+
+def test_incremental_commit_primary_behavior_unchanged_after_attempt_primitive_extract(
+    greenfield_optimization_input: OptimizationInput,
+) -> None:
+    """PR-3 gate: greenfield single-candidate commit snapshot (before/after extract)."""
+    inp = greenfield_optimization_input
+    skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+    generation = generate_candidates(
+        inp,
+        skeleton,
+        policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
+    )
+    assert generation.normal_candidates
+    candidate = generation.normal_candidates[0]
+    pool = {candidate.candidate_id: candidate}
+    order = (candidate.candidate_id,)
+    before = _commit_result_snapshot(inp, order, pool)
+    after = _commit_result_snapshot(inp, order, pool)
+    assert after == before
+    assert before[0] == order
+
+
+def test_incremental_commit_narrow_corridor_snapshot_before_extract(
+    narrow_corridor_optimization_input: OptimizationInput,
+) -> None:
+    """PR-3 gate: B-CS1 two-candidate primary pass snapshot (pre-extract baseline)."""
+    from tests.support.rttp_narrow_corridor_fixture import (
+        NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID,
+        NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID,
+        candidate_by_id,
+    )
+
+    inp = narrow_corridor_optimization_input
+    skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
+    generation = generate_candidates(
+        inp,
+        skeleton,
+        policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
+    )
+    first = candidate_by_id(generation, NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID)
+    second = candidate_by_id(generation, NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID)
+    order = (first.candidate_id, second.candidate_id)
+    pool = {first.candidate_id: first, second.candidate_id: second}
+    committed, conflicts, _version = _commit_result_snapshot(inp, order, pool)
+    assert committed == (first.candidate_id,)
+    assert (second.candidate_id, CommitConflictReason.REPROBE_FAILED.value) in conflicts

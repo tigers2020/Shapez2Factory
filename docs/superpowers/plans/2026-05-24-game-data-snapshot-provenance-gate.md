@@ -877,6 +877,6 @@ python -m mypy django_apps config src
 
 ## Execution handoff
 
-**Track A narrow implementation: CLOSED (2026-05-24).** PR: pending `feature/game-data-snapshot-provenance-gate`. Full gate (Task 7C) deferred to merge CI / explicit run.
+**Track A narrow implementation: CLOSED (2026-05-24).** PR: [#57](https://github.com/tigers2020/Shapez2Factory/pull/57) (`feature/game-data-snapshot-provenance-gate`). Full gate (Task 7C) deferred to merge CI / explicit run.
 
 **Validation record:** narrow pytest + ruff touched paths green; **full gate not run** (document in PR body).

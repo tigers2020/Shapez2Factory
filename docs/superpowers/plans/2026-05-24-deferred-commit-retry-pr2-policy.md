@@ -1,5 +1,7 @@
 # Deferred Commit Retry PR-2 Runtime Policy Implementation Plan
 
+**Status:** CLOSED 2026-05-24 — merged `a5cfca87` (PR #73); head `1f50fc3c`; CI `ci` + `rttp-lab-macro-smoke` success.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Wire `SolverRun.config_json["deferred_retry_shadow"]` into `RttpPipelineConfig.deferred_retry_shadow` with strict observe-only guards and stable disabled shadow metrics — no retry execution.

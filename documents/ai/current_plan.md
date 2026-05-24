@@ -88,7 +88,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** **Deferred commit retry PR-2** (policy DTO + no-op wiring). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **Deferred commit retry PR-3** (bounded execution). **PR-2 policy wiring CLOSED** (`a5cfca87`, PR #73). **PR-1 shadow observe-only CLOSED** (`1e021f20`, PR #72). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -262,6 +262,15 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Spec: [`docs/superpowers/specs/2026-05-24-deferred-commit-retry-shadow-pr1-design.md`](../../docs/superpowers/specs/2026-05-24-deferred-commit-retry-shadow-pr1-design.md)
   - Plan: [`docs/superpowers/plans/2026-05-24-deferred-commit-retry-shadow-pr1.md`](../../docs/superpowers/plans/2026-05-24-deferred-commit-retry-shadow-pr1.md)
   - Evidence: `test_deferred_commit_retry_shadow.py` 9 PASS; step `rttp.deferred_commit_retry_shadow`; standing gates green on master (2026-05-24)
+  - No retry execution; no commit/LNS/validation behaviour change
+
+- Deferred commit retry PR-2 — Runtime policy wiring (`config_json` → pipeline config)
+  - Status: **CLOSED** (master)
+  - Merged into master: `a5cfca87`
+  - PR: #73 (head `1f50fc3c`)
+  - Spec: [`docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr2-policy-design.md`](../../docs/superpowers/specs/2026-05-24-deferred-commit-retry-pr2-policy-design.md)
+  - Plan: [`docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr2-policy.md`](../../docs/superpowers/plans/2026-05-24-deferred-commit-retry-pr2-policy.md)
+  - Evidence: `test_deferred_commit_retry_pr2_policy.py` 11 PASS; fail-closed mapper; disabled → shadow step `candidate_count=0`; CI `ci` + `rttp-lab-macro-smoke` success (2026-05-24)
   - No retry execution; no commit/LNS/validation behaviour change
 
 - Decontamination PR-E — Dead code deletion

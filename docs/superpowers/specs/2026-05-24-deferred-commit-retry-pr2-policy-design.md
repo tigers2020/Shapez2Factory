@@ -1,10 +1,9 @@
 # Deferred Commit Retry — PR-2 Runtime Policy Wiring Design
 
-**Status:** Approved 2026-05-24 (RTTP Runtime Policy Architect)  
+**Status:** CLOSED 2026-05-24 — merged `a5cfca87` (PR #73)  
 **Owner:** asteroid-lab / RTTP deferred commit retry  
 **Track:** RTTP core — deferred commit retry slice 2 of 4  
 **Prerequisite:** PR-1 CLOSED `1e021f20` (PR #72) — observe-only shadow  
-**Branch:** `feat/deferred-commit-retry-pr2-policy`  
 **Related:** [`2026-05-24-deferred-commit-retry-shadow-pr1-design.md`](2026-05-24-deferred-commit-retry-shadow-pr1-design.md)
 
 ---

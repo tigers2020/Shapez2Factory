@@ -1,6 +1,6 @@
 ﻿# Validation Plan — `asset_references.json`
 
-> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
+> **pytest:** [documents/ai/manuals/testing.md](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden**.
 
 Pytest-focused tests for import pipeline and schema invariants. Tests should run against **fixture slices** (3 sampled rows + minimal prefab/sprite/material targets) and **full bundle integration** (optional, marked slow).
 

@@ -1,40 +1,40 @@
-# 목표: 파이프라인·Recovery 제어 흐름과 §4.3 정렬
+# Goal: Pipeline·Recovery Control Flow Aligned with §4.3
 
-## 배경
+## Background
 
-- 정본: `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` §4.1–§4.3, `11_step8_recovery.md` §13.2.
-- 구현: `recovery_orchestrator.run_solver_timeline_pipeline`이 STEP4 이후 **고정 `routing_snapshot` 기준**으로 Pass3→P4→finalize를 반복하고, 실패 시 주로 `validation_recovery` 루프로 처리한다.
+- Canonical: `documents/Algorithm/mining_solver_cursor_sessions/02_pipeline_control_flow.md` §4.1–§4.3, `11_step8_recovery.md` §13.2.
+- Implementation: `recovery_orchestrator.run_solver_timeline_pipeline` repeats Pass3→P4→finalize on a **fixed `routing_snapshot`** after STEP4; on failure mainly loops through `validation_recovery`.
 
-## Mini-audit 산출물 (구현 전)
+## Mini-Audit Deliverable (Pre-Implementation)
 
-- **1차 표·정본 인용:** [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) §5 (GitHub `master` §4.3 표 전문 + 구현 매핑 + PR 리뷰 A/B/Info).
+- **First-pass table and canonical citations:** [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) §5 (full GitHub `master` §4.3 table + implementation mapping + PR review A/B/Info).
 
-## 현재 상태
+## Current State
 
-- 트리거별 복귀(예: `pass3_connectivity_break` → Pass3 rollback 후 **STEP 6 Reclaim** 등)가 문서 표와 **1:1 대응**하지 않을 수 있다.
-- 오케스트레이터 독스트링은 “bounded Pass3→P4→finalize”로 요약되어 있다.
+- Per-trigger recovery (e.g. `pass3_connectivity_break` → Pass3 rollback then **STEP 6 Reclaim**, etc.) may **not map 1:1** to the document table.
+- Orchestrator docstring summarizes as "bounded Pass3→P4→finalize".
 
-## 목표 상태
+## Target State
 
-- 다음 중 하나를 **명시적으로 선택**하고 문서 또는 코드에 반영한다.
-  - **A)** 구현을 정본 표에 맞춘다(복귀 지점·rollback 순서·재진입 조건).
-  - **B)** 현 구현을 “MVP 단순화”로 정본에 **공식 예외**로 한 절 기술한다(표 옆에 “구현 매핑” 열).
+- **Explicitly choose** one of the following and reflect in docs or code:
+  - **A)** Align implementation to canonical table (recovery point, rollback order, re-entry conditions).
+  - **B)** Document current implementation as "MVP simplification" as **official exception** in canonical (add "implementation mapping" column beside table).
 
-## 작업 항목
+## Work Items
 
-1. 트리거별 **현 코드 경로** 표: [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) **§5.3**(정본 §5.2 인용과 함께). PR 리뷰 **A/B/Info**는 **§5.4**에 확정.
-2. 차이가 큰 항목부터: §4.3.1 Reclaim 복귀 vs 현 루프 — 의도 확인 후 A 또는 B.
-3. `recovery_contract_phases` / replay에 “문서 표 행 ID”를 남길지 결정한다.
+1. Per-trigger **current code path** table: [epic_a_control_flow_mini_audit.md](./epic_a_control_flow_mini_audit.md) **§5.3** (with canonical §5.2 citation). PR review **A/B/Info** finalized in **§5.4**.
+2. Largest gaps first: §4.3.1 Reclaim recovery vs current loop — confirm intent then A or B.
+3. Decide whether to record "document table row ID" in `recovery_contract_phases` / replay.
 
-## 검증
+## Verification
 
-- 단위 테스트: 최소 1개 트리거에 대해 “복귀 후 실행되는 스테이지 순서”를 고정 스냅샷으로 검증.
+- Unit test: for at least one trigger, fix "stage order after recovery" as snapshot assertion.
 
-## 위험
+## Risk
 
-- 제어 흐름 변경은 Pass3·P4·finalize 상호 의존이 크므로 **회귀 테스트·NDJSON 계약**을 함께 갱신해야 한다.
+- Control flow changes have heavy Pass3·P4·finalize interdependence — update **regression tests and NDJSON contract** together.
 
-## 참고 코드
+## Reference Code
 
 - `django_apps/shapez_asteroid/services/asteroid_mining_layout/solver_pipeline/recovery_orchestrator.py`
 - `solver_pipeline/pass3.py`, `p4_reclaim.py`, `finalize.py`

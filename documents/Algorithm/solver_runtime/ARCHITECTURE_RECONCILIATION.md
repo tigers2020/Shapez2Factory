@@ -10,171 +10,171 @@ related_docs:
   - documents/Algorithm/asteroid_lab_12_runtime_replay_wiring.md
 ---
 
-> **2026-05-22:** `django_apps/asteroid_lab/optimization/` 및 A→M orchestration **삭제됨**. 아래 인벤토리·「PR 완료」 표는 **역사 스냅샷**이다.
+> **2026-05-22:** `django_apps/asteroid_lab/optimization/` and A→M orchestration **deleted**. The inventory·「PR complete」 tables below are **historical snapshots**.
 
-# Architecture Reconciliation — Runtime vs 레거시 문서
+# Architecture Reconciliation — Runtime vs Legacy Documents
 
-**역할:** Solver Runtime Architecture Reviewer  
-**목적:** Runtime 시리즈와 `asteroid_lab_*`·삭제된 `shapez_asteroid` 인용 간 충돌을 한곳에서 해소한다.
+**Role:** Solver Runtime Architecture Reviewer  
+**Purpose:** Resolve conflicts between the Runtime series and `asteroid_lab_*`·deleted `shapez_asteroid` references in one place.
 
-## 1. 본 시리즈의 정체 (충돌 #1)
+## 1. Identity of this series (conflict #1)
 
-### 판정
+### Verdict
 
-Runtime 문서는 **「Solver 버튼 E2E 파이프라인 v0」의 계약·PR 체크리스트**이다.  
-**「저장소 전체 optimization이 미착수」** 뜻이 **아니다.**
+Runtime documents are the **「Solver Button E2E Pipeline v0」 contract·PR checklist**.  
+They do **not** mean **「optimization not started anywhere in the repository」**.
 
-### 두 축을 분리한다
+### Separate the two axes
 
-| 축 | 의미 | 정본 |
+| Axis | Meaning | Canonical |
 |----|------|------|
-| **Runtime execution order** | 버튼 1회 클릭 시 A→M **실행 순서** | Phase 문서·README 파이프라인 |
-| **Implementation order (PR)** | 개발·리뷰·merge **단위** | [`implementation_sequence.md`](implementation_sequence.md) |
-| **Code inventory** | 이미 `django_apps/asteroid_lab/optimization/` 에 있는 모듈 | 아래 §5 표 |
-| **Legacy narrative** | GA·`BundlePattern`·`shapez_asteroid` pytest 경로 | [`asteroid_lab_*`](../) — **역사·설계 참고**, Runtime PR 완료 증명 아님 |
+| **Runtime execution order** | A→M **execution order** on one button click | Phase docs·README pipeline |
+| **Implementation order (PR)** | Development·review·merge **unit** | [`implementation_sequence.md`](implementation_sequence.md) |
+| **Code inventory** | Modules already in `django_apps/asteroid_lab/optimization/` | §5 table below |
+| **Legacy narrative** | GA·`BundlePattern`·`shapez_asteroid` pytest paths | [`asteroid_lab_*`](../) — **historical·design reference**, not Runtime PR completion proof |
 
-### `asteroid_lab_10` 과의 관계
+### Relationship to `asteroid_lab_10`
 
-- [`asteroid_lab_10_development_sequence.md`](../asteroid_lab_10_development_sequence.md) 상단 베이스라인(2026-05-18): optimization 체크리스트를 **`[ ]` 미착수로 재설정**한 것은 **문서 추적용**이며, 코드 삭제를 뜻하지 않는다.
-- [`asteroid_lab_12_runtime_replay_wiring.md`](../asteroid_lab_12_runtime_replay_wiring.md) 의 12F–12L 등 **「구현 완료」** 는 **Lab replay persist/read/HUD 경계**에 한정된다. Solver Runtime Phase C–K와 **동일 PR이 아니다.**
+- [`asteroid_lab_10_development_sequence.md`](../asteroid_lab_10_development_sequence.md) top baseline (2026-05-18): resetting optimization checklist to **`[ ]` not started** is **for document tracking** only; it does not mean code deletion.
+- **「Implementation complete」** in [`asteroid_lab_12_runtime_replay_wiring.md`](../asteroid_lab_12_runtime_replay_wiring.md) 12F–12L etc. is **limited to Lab replay persist/read/HUD boundaries**. Not the same PR as Solver Runtime Phase C–K.
 
-**Runtime PR 표의 「미착수」** = **해당 PR의 Solver-button 계약·테스트가 아직 green이 아님** (또는 orchestration 미연결).  
-**≠** 레거시 문서에 적힌 개념이 코드에 없음.
+**「Not started」 in Runtime PR table** = **Solver-button contract·tests for that PR not yet green** (or orchestration not wired).  
+**≠** concept in legacy doc absent from code.
 
 ---
 
-## 2. 패키지 경계 (충돌 #2)
+## 2. Package boundaries (conflict #2)
 
-### 판정 (저장소 2026-05-19)
+### Verdict (repository 2026-05-19)
 
 ```text
-django_apps/shapez_asteroid/  — 저장소에서 제거됨 (git 기록만)
-django_apps/asteroid_lab/optimization/  — 유일한 optimization 구현 패키지
+django_apps/shapez_asteroid/  — removed from repository (git history only)
+django_apps/asteroid_lab/optimization/  — sole optimization implementation package
 ```
 
-### 정본
+### Canonical
 
-| 역할 | 경로 |
+| Role | Path |
 |------|------|
-| **신규 Runtime PR (PR1–7)** | `django_apps/asteroid_lab/optimization/` |
-| **Lab ORM·decode·reconstruction·Lab replay** | `django_apps/asteroid_lab/` (optimization 밖) |
-| **레거시 인용** | `tests/unit/shapez_asteroid/`, `django_apps.shapez_asteroid` — **금지·역사**; 새 import 추가 금지 |
+| **New Runtime PR (PR1–7)** | `django_apps/asteroid_lab/optimization/` |
+| **Lab ORM·decode·reconstruction·Lab replay** | `django_apps/asteroid_lab/` (outside optimization) |
+| **Legacy references** | `tests/unit/shapez_asteroid/`, `django_apps.shapez_asteroid` — **forbidden·historical**; no new imports |
 
-**금지:** Runtime 문서·코드에 `shapez_asteroid.optimization` 을 “현재 패키지”로 서술하거나 import.
+**Forbidden:** Describing or importing `shapez_asteroid.optimization` as "current package" in Runtime docs·code.
 
 ---
 
-## 3. v0 선택기: greedy vs GA (충돌 #3)
+## 3. v0 selector: greedy vs GA (conflict #3)
 
-### 판정
+### Verdict
 
-**Solver Button v0 정본 = A: capacity-aware greedy selector only** ([`phase_i_candidate_selection.md`](phase_i_candidate_selection.md), [OD-4](open_decisions.md)).
+**Solver Button v0 canonical = A: capacity-aware greedy selector only** ([`phase_i_candidate_selection.md`](phase_i_candidate_selection.md), [OD-4](open_decisions.md)).
 
-| 항목 | Runtime v0 | 레거시 (`asteroid_lab_05`/`06`, `asteroid_lab_10` Seq 4–5) |
+| Item | Runtime v0 | Legacy (`asteroid_lab_05`/`06`, `asteroid_lab_10` Seq 4–5) |
 |------|------------|--------------------------------------------------------------|
-| 선택 | PR4 greedy | Evolution Search v0·`Genome`·`Gene.commit_order` |
-| 용도 | **참고·향후 v1** | Solver 버튼 v0 **필수 경로 아님** |
+| Selection | PR4 greedy | Evolution Search v0·`Genome`·`Gene.commit_order` |
+| Purpose | **reference·future v1** | **Not required path** for Solver button v0 |
 
-DTO에 `EvolutionConfig`·`EvolutionConvergenceReason` 등이 있어도 **Solver orchestration v0는 GA를 호출하지 않는다** (필드는 schema 자리).
+Even if DTO has `EvolutionConfig`·`EvolutionConvergenceReason` etc., **Solver orchestration v0 does not call GA** (fields are schema placeholders).
 
 ---
 
-## 4. 좌표 용어 (충돌 #4)
+## 4. Coordinate terminology (conflict #4)
 
-### 정본 (alias 금지)
+### Canonical (alias forbidden)
 
-| 이름 | 의미 |
+| Name | Meaning |
 |------|------|
-| `fixed_output_transport` | extractor 출력 직후 **첫 belt/pipe 예약 셀** (offset `(1,0)` from extractor, canonical E) |
-| `route_probe_start` | route search **시작 셀** (offset `(2,0)`; **occupied 아님**) |
-| `output_stub` | **레거시** — Runtime·신규 코드·DTO 필드명 **사용 금지** |
+| `fixed_output_transport` | **First belt/pipe reservation cell** immediately after extractor output (offset `(1,0)` from extractor, canonical E) |
+| `route_probe_start` | Route search **start cell** (offset `(2,0)`; **not occupied**) |
+| `output_stub` | **Legacy** — **forbidden** in Runtime·new code·DTO field names |
 
-레거시 [`asteroid_lab_04`](../asteroid_lab_04_route_probe.md) 의 `output_stub` 는 읽을 때 **`route_probe_start`로 mentally 치환**한다.
+Legacy [`asteroid_lab_04`](../asteroid_lab_04_route_probe.md) `output_stub` should be mentally replaced with **`route_probe_start`** when reading.
 
-`CandidateRejectReason.output_stub_*` enum 값은 **레거시 이름 유지** 가능하나, 의미는 `route_probe_start` ([`phase_f_geometry_validation.md`](phase_f_geometry_validation.md)).
+`CandidateRejectReason.output_stub_*` enum values may **retain legacy names**; semantics are `route_probe_start` ([`phase_f_geometry_validation.md`](phase_f_geometry_validation.md)).
 
-Materialization: [OD-1](open_decisions.md) — reservation path **앞에** `fixed_output_transport` prepend 권장.
+Materialization: [OD-1](open_decisions.md) — recommend prepending `fixed_output_transport` **before** reservation path.
 
 ---
 
-## 5. 코드 인벤토리 vs Runtime PR (상태 분리)
+## 5. Code inventory vs Runtime PR (status separation)
 
-**코드에 존재** ≠ **Runtime PR 완료** (통합 테스트·§0.3·orchestration·이벤트 계약 포함).
+**Exists in code** ≠ **Runtime PR complete** (includes integration tests·§0.3·orchestration·event contract).
 
-| 모듈·계약 | 코드 | Runtime PR | 비고 |
+| Module·contract | Code | Runtime PR | Notes |
 |-----------|------|------------|------|
-| DTO·enum·`RouteDomainSnapshotBuilder` | 있음 | 1A (레거시 Seq) | PR 표에는 PR1B와 함께 소비 |
-| `optimization_input_from_reconstruction` | 있음 | **PR1B 완료** | `LoadedReconstructionSnapshot`·`mineable_field_kind` (§0.3 adapter) |
-| `GeneTemplate`·projection | 있음 | **PR1 완료** | |
-| `candidate_geometry`·`route_probe` | 있음 | **PR2 완료** | `provisional_blocked_cells` |
-| capacity·route goal planner | 있음 | **PR2.5 완료** | |
-| candidate pool (`GeneCandidate`, dedupe, truncate) | 있음 | **PR3 완료** | |
-| candidate selection (score, greedy, `SelectedCandidatePlan`) | 있음 | **PR4 완료** | |
-| incremental commit (`commit_selected_candidates`, reservation overlay) | 있음 | **PR5 완료** | |
-| route network materialization (`materialize_route_network`) | 있음 | **PR6 완료** | |
-| `validate_final_layout` (read-only) | 있음 | **PR7 완료** | |
-| Solver A→M orchestration (`run_solver_runtime_pipeline`) | 있음 | **PR7 완료** | |
-| HTTP entry (`solver_runtime_entry`·POST run-solver) | 있음 | **PR8 완료** | |
-| optimization replay persist v0 (`optimization_replay_persist`·`optimization_ui_payload`) | 있음 | **PR7 완료** | Lab `ReplayFrame` ORM 미사용; §6 |
-| Lab optimization replay read (12G page context) | 있음 | **PR8 완료** | `optimization_replay_read` |
-| Lab optimization replay HUD + Run Solver JS (12H) | 있음 | **PR9 완료** | `asteroid_miner_layout_lab.js` |
+| DTO·enum·`RouteDomainSnapshotBuilder` | exists | 1A (legacy Seq) | Consumed with PR1B in PR table |
+| `optimization_input_from_reconstruction` | exists | **PR1B complete** | `LoadedReconstructionSnapshot`·`mineable_field_kind` (§0.3 adapter) |
+| `GeneTemplate`·projection | exists | **PR1 complete** | |
+| `candidate_geometry`·`route_probe` | exists | **PR2 complete** | `provisional_blocked_cells` |
+| capacity·route goal planner | exists | **PR2.5 complete** | |
+| candidate pool (`GeneCandidate`, dedupe, truncate) | exists | **PR3 complete** | |
+| candidate selection (score, greedy, `SelectedCandidatePlan`) | exists | **PR4 complete** | |
+| incremental commit (`commit_selected_candidates`, reservation overlay) | exists | **PR5 complete** | |
+| route network materialization (`materialize_route_network`) | exists | **PR6 complete** | |
+| `validate_final_layout` (read-only) | exists | **PR7 complete** | |
+| Solver A→M orchestration (`run_solver_runtime_pipeline`) | exists | **PR7 complete** | |
+| HTTP entry (`solver_runtime_entry`·POST run-solver) | exists | **PR8 complete** | |
+| optimization replay persist v0 (`optimization_replay_persist`·`optimization_ui_payload`) | exists | **PR7 complete** | Lab `ReplayFrame` ORM unused; §6 |
+| Lab optimization replay read (12G page context) | exists | **PR8 complete** | `optimization_replay_read` |
+| Lab optimization replay HUD + Run Solver JS (12H) | exists | **PR9 complete** | `asteroid_miner_layout_lab.js` |
 
 ---
 
-## 6. Replay persist (충돌 #6)
+## 6. Replay persist (conflict #6)
 
-### 판정
+### Verdict
 
-PR7 Phase M은 **새 persist 스택을 처음부터 만들지 않는다.**
+PR7 Phase M does **not** build a new persist stack from scratch.
 
-### 정본
+### Canonical
 
 ```text
-기존: SolverRun.config_json · optimization replay frame list · read validation · HUD diagnostic
-      (asteroid_lab_12, web Lab JS, replay pipeline — 구현·테스트 이미 존재할 수 있음)
-신규: Solver Runtime이보내는 event_type 집합을 기존 writer/reader에 thin adapter로 연결
-금지: 12F–12L semantics 재구현, Lab↔Optimization 암묵 동기화
+Existing: SolverRun.config_json · optimization replay frame list · read validation · HUD diagnostic
+      (asteroid_lab_12, web Lab JS, replay pipeline — implementation·tests may already exist)
+New: thin adapter connecting event_type set emitted by Solver Runtime to existing writer/reader
+Forbidden: reimplement 12F–12L semantics, implicit Lab↔Optimization sync
 ```
 
-상세: [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md).
+Details: [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md).
 
 ---
 
-## 7. 권장 구현 순서 (PR) vs 실행 순서 (Phase)
+## 7. Recommended implementation order (PR) vs execution order (Phase)
 
-### Runtime execution order (버튼 1회)
+### Runtime execution order (one button click)
 
 ```text
 A → B → C → D → E → F → G → H → I → J → K → L → M
 ```
 
-### Implementation order (merge 단위)
+### Implementation order (merge unit)
 
 ```text
-PR1 (완료) → PR1B (부분) → PR2.5 → PR2 → PR3 → PR4 → PR5 → PR6 → PR7
+PR1 (complete) → PR1B (partial) → PR2.5 → PR2 → PR3 → PR4 → PR5 → PR6 → PR7
 ```
 
-PR1이 Phase D를 먼저 끝낸 것은 **유전자 계약 고정** 목적이며, 런타임 실행 시에는 D는 C 이후·E 이전에 호출된다.
+PR1 finishing Phase D first is for **fixing gene contract**; at runtime execution D is called after C and before E.
 
 ---
 
-## 8. 리뷰 결론 체크리스트
+## 8. Review conclusion checklist
 
-- [x] 정본 패키지: `django_apps/asteroid_lab/optimization/`
-- [x] v0 선택기: greedy only; GA = legacy reference
-- [x] 용어: `route_probe_start` / `fixed_output_transport`; `output_stub` legacy
-- [x] PR 표 vs 코드 인벤토리 분리
-- [x] PR7 replay: thin adapter·기존 wiring 재사용
+- [x] Canonical package: `django_apps/asteroid_lab/optimization/`
+- [x] v0 selector: greedy only; GA = legacy reference
+- [x] Terminology: `route_probe_start` / `fixed_output_transport`; `output_stub` legacy
+- [x] PR table vs code inventory separated
+- [x] PR7 replay: thin adapter·reuse existing wiring
 
-변경 시 본 문서와 [`README.md`](README.md) PR 표를 **함께** 갱신한다.
+When changing, update this document and [`README.md`](README.md) PR table **together**.
 
 ---
 
-## 9. 구현자 오해 방지 (2차 리뷰, 2026-05-19)
+## 9. Preventing implementer misunderstanding (2nd review, 2026-05-19)
 
-| 항목 | 정본 |
+| Item | Canonical |
 |------|------|
-| **PR2.5 선행** | PR1B → **PR2.5** → PR2. `route_probe`는 planned `RouteGoal` 필요. README PR 표 하단 1줄 참고. |
-| **`route_goals`** | Phase B: seed/empty only. Phase C: planned 정본. |
-| **Candidate route domain** | `provisional_blocked_cells=` 권장; `committed_occupied_cells=`는 과도기·commit과 혼동 금지 ([`phase_g_route_probe.md`](phase_g_route_probe.md)). |
-| **신규 테스트명** | `route_probe_start_*`; enum `output_stub_*` 값은 유지·rename 금지 ([`00_core_principles.md`](00_core_principles.md) §0.7). |
+| **PR2.5 prerequisite** | PR1B → **PR2.5** → PR2. `route_probe` needs planned `RouteGoal`. See README PR table bottom line. |
+| **`route_goals`** | Phase B: seed/empty only. Phase C: planned canonical. |
+| **Candidate route domain** | `provisional_blocked_cells=` recommended; `committed_occupied_cells=` is transitional·do not confuse with commit ([`phase_g_route_probe.md`](phase_g_route_probe.md)). |
+| **New test names** | `route_probe_start_*`; enum `output_stub_*` values retained·rename forbidden ([`00_core_principles.md`](00_core_principles.md) §0.7). |

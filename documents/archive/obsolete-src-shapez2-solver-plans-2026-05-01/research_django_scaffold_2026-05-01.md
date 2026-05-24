@@ -4,7 +4,7 @@
 
 - Date: 2026-05-01
 - Scope: initial Django scaffold for the shapez2 factory planner.
-- Source: 과거 `documents/meta/chat.md`(2026-05-16 체크아웃에서 제거됨; 필요 시 git 기록)과 승인된 Cursor 플랜 `django_scaffold_structure_2566eb51`.
+- Source: former `documents/meta/chat.md` (removed in 2026-05-16 checkout; see git history if needed) and approved Cursor plan `django_scaffold_structure_2566eb51`.
 
 ## Findings
 

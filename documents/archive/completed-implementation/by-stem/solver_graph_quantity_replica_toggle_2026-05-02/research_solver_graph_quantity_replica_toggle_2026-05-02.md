@@ -2,11 +2,11 @@
 
 날짜: 2026-05-02
 
-## 요청 요약
+## Request summary
 
 solver graph 에 버튼을 추가해서, 켰을 때 `quantity` 만큼 base/source 와 target node 를 실제로 복제해서 보이게 만든다.
 
-## 현재 구조 요약
+## Current structure 요약
 
 현재 graph 생성과 표시 책임은 아래처럼 나뉜다.
 
@@ -173,7 +173,7 @@ toggle 이 켜져 있으면:
 
 정도로 보일 수 있다.
 
-## 테스트 영향
+## Tests 영향
 
 ### integration web
 

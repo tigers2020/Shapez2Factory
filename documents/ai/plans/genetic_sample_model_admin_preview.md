@@ -1,18 +1,18 @@
-# 유전자 샘플(GeneticSample) — 구현 메모
+# Genetic sample (GeneticSample) — implementation notes
 
-**상태**: ACTIVE (구현 진행)  
-**목적**: Shapez2 복사 문자열(`SHAPEZ2-4-…`)을 저장 시 디코드해 `decoded_json`에 넣고, Django Admin에서 **island-local** 좌표 기반 미니 그리드 + `web/assets/sprites/` 스프라이트로 미리보기.
+**Status**: ACTIVE (implementation in progress)  
+**Purpose**: On save, decode Shapez2 copy string (`SHAPEZ2-4-…`) into `decoded_json`; Django Admin shows **island-local** coordinate mini grid + preview with `web/assets/sprites/` sprites.
 
-## 결정
+## Decisions
 
-- 앱: `asteroid_lab`. 모델 `GeneticSample`.
-- 디코드: `decode_copy_string` → `normalize_decoded_blueprint` → island coord meta (맵 입력과 동일 파이프라인; PR-F: no server attach).
-- 검증 실패: `Model.clean()`에서 `ValidationError`로 저장 차단.
-- 스프라이트 파일명 규칙: `asteroid_miner_layout_lab.js`의 `LAB_SPRITE_KNOWN` / `labSpriteFilenameForCell`과 **Python 모듈에서 동기 복제** (주석으로 JS 위치 명시).
-- Admin 그리드: `full_map_island_bbox` / island `(x,y)`로 열·행 수 결정 (left-bottom anchor).
-- 선택 필드: `name`, `project`(nullable FK `AsteroidProject`).
+- App: `asteroid_lab`. Model `GeneticSample`.
+- Decode: `decode_copy_string` → `normalize_decoded_blueprint` → island coord meta (same pipeline as map input; PR-F: no server attach).
+- Validation failure: block save via `ValidationError` in `Model.clean()`.
+- Sprite filename rules: **mirror in Python module** from `LAB_SPRITE_KNOWN` / `labSpriteFilenameForCell` in `asteroid_miner_layout_lab.js` (comment cites JS location).
+- Admin grid: column/row count from `full_map_island_bbox` / island `(x,y)` (left-bottom anchor).
+- Optional fields: `name`, `project` (nullable FK `AsteroidProject`).
 
-## 참조 코드
+## Reference code
 
 - `django_apps/asteroid_lab/adapters/decode_adapter.py`
 - `django_apps/asteroid_lab/snapshots/decoded_blueprint_snapshot.py`

@@ -1,39 +1,39 @@
-# 플랜: 영상 기반 개발 파이프라인 문서 정합화
+# plan: video-based development pipeline documentation alignment
 
-- 날짜: 2026-04-17
-- 상태: 승인 반영 후 실행
-- 근거: 사용자 제공 대본 요약과 같은 요청 본문에서 명시된 역할 구조
+- Date: 2026-04-17
+- Status: execute after approval reflected
+- Evidence: role structure stated in user-provided transcript summary and same request body
 
-## 목표
+## Goals
 
-영상에서 설명한 역할 분리형 개발 흐름을 현재 저장소 문서 체계와 충돌 없이 유지한다.
+Preserve video-described role-separated development flow without conflicting with current repo documentation system.
 
-## 범위
+## Scope
 
-1. 기존 문서가 영상 구조와 정합적인지 확인한다.
-2. 문서 운영 규칙상 필요한 `documents/` 산출물을 생성한다.
-3. 이후 작업자가 플랜 승인 게이트를 재사용할 수 있게 기본 메모 파일을 둔다.
+1. Verify existing docs align with video structure.
+2. Create required `documents/` artifacts per documentation operating rules.
+3. Add base memo file so future workers can reuse plan approval gate.
 
-## 비범위
+## Out of scope
 
-- 새 페르소나 파일 추가
-- 코드 레이어 구조 변경
-- `src/` 또는 `tests/` 코드 수정
+- New persona files
+- Code layer structure changes
+- `src/` or `tests/` code edits
 
-## 적용 판단
+## Application judgment
 
-현재 핵심 문서(`AGENTS.md`, `protocols/README.md`, `.cursor/rules/*`, `persona/*`)는 이미 요청한 파이프라인을 반영하고 있으므로, 본문 재수정은 최소화한다.
+Core docs (`AGENTS.md`, `protocols/README.md`, `.cursor/rules/*`, `persona/*`) already reflect requested pipeline; minimize body rewrites.
 
-실제 구현은 아래 2가지만 수행한다.
+Actual implementation is only:
 
-1. `../research/research_pipeline_update_2026-04-17.md` 생성
-2. `documents/plans/plan_pipeline_update_2026-04-17.md`, `documents/meta/CURSOR_MEMO.md` 생성
+1. Create `../research/research_pipeline_update_2026-04-17.md`
+2. Create `documents/plans/plan_pipeline_update_2026-04-17.md`, `documents/meta/CURSOR_MEMO.md`
 
-## 승인 메모
+## Approval note
 
-이 플랜은 사용자 요청 본문에서 "업데이트 시켜줘"로 구현 의도가 명확했고, 같은 본문 안에 계획/매핑 초안이 포함되어 있어 승인된 실행 플랜으로 간주한다.
+User request body said "update it" with clear implementation intent; same body included plan/mapping draft — treat as approved execution plan.
 
-## 리스크
+## Risks
 
-- Git 안전 디렉터리 설정이 없어 `git status` 기반 확인은 제한됨
-- 문서 변경만 있으므로 코드 검증 명령은 직접 의미가 낮지만, 저장소 규칙상 미실행 사유는 최종 보고에 남긴다
+- Without Git safe directory config, `git status`-based verification is limited
+- Documentation-only change so code verification commands have low direct meaning; note unrun reason in final report per repo rules

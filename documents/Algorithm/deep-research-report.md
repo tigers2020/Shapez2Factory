@@ -1,92 +1,92 @@
-# 리플레이 버그 집중 분석 보고서
+# Replay Bug Focused Analysis Report
 
 > Role: Runtime Replay Debug Architect  
-> **Note (2026-05-23 doc sweep):** 좌표 관련 §는 PR-F 이전 가정(dense server)을 포함할 수 있음. 현재 정본: island-local only — [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md), [`docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md`](../../docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md).
+> **Note (2026-05-23 doc sweep):** Coordinate-related § may include pre-PR-F assumptions (dense server). Current canonical: island-local only — [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md), [`docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md`](../../docs/superpowers/specs/2026-05-23-coordinate-tagged-frames-design.md).
 
 ## Executive Summary
 
-업로드된 `Algorithm.zip`은 실행 가능한 코드보다 **계약 문서와 구현 계획 문서**에 가깝지만, 그 문서들만으로도 현재 리플레이가 “제대로 안 되는” 가장 유력한 구조적 원인은 꽤 선명하게 드러납니다. 핵심은 **이벤트 타입 계약 불일치**, **dual-track에서 replay timeline으로의 마이그레이션 미완료**, 그리고 **누적 상태를 최종 2D 맵으로 고정하는 `route.materialized`/`result.layout` 계층의 공백**입니다. 특히 런타임 쪽 문서는 아직 `optimization_replay` 별도 트랙과 strict payload 검증을 전제로 하는 반면, 제품 정본 문서는 하나의 `lab_replay_frames_json` 단일 타임라인을 권위로 삼고 있어, 실제 실행 시에는 “프레임이 비거나 일부만 보이는 현상”, “누적 fill 실패”, “최종 결과 맵/코드 부재”가 자연스럽게 발생할 수 있습니다. 또한 Shapez 2는 공식적으로 블루프린트 저장·로드·내보내기·공유를 지원하지만, 커뮤니티 codec/spec를 보면 블루프린트 identifier는 **버전 의존적**이며, 오래된 형식이 새 버전에서 그대로 동작한다고 보장되지 않으므로 `SHAPEZ2-4-...=$`를 하드코딩하면 코드 불일치가 재발할 위험이 큽니다. citeturn3view0turn4view0turn3view2turn6view0
+The uploaded `Algorithm.zip` is closer to **contract and implementation plan documents** than runnable code, but those documents alone reveal fairly clearly the most likely structural causes of replay "not working properly." The core issues are **event type contract mismatch**, **incomplete migration from dual-track to replay timeline**, and a **gap in the `route.materialized`/`result.layout` layer that fixes accumulated state into a final 2D map**. In particular, runtime docs still assume a separate `optimization_replay` track and strict payload validation, while the product canonical document treats a single `lab_replay_frames_json` timeline as authoritative — so at runtime "empty or partial frames", "accumulated fill failure", and "missing final result map/code" can occur naturally. Shapez 2 officially supports blueprint save·load·export·share, but community codec/spec show blueprint identifiers are **version-dependent** and older formats are not guaranteed to work in new versions, so hardcoding `SHAPEZ2-4-...=$` carries high risk of recurring code mismatch.
 
-## 분석 근거와 전제
+## Analysis basis and assumptions
 
-이번 분석은 **업로드된 `Algorithm.zip` 내부 문서**를 1차 근거로 삼았고, 바깥 세계 정보는 **Shapez 2의 블루프린트 export/identifier 관련 사실 확인**에만 보조적으로 사용했습니다. 실제 저장소 코드, 실행 로그, 실패 payload, 테스트 출력, 운영 환경 값은 제공되지 않았기 때문에, 아래 판정은 “문서상 확정된 구조적 충돌”과 “그 충돌이 실제 버그로 이어질 가능성이 높은 추정”으로 구분해 읽는 것이 정확합니다.
+This analysis uses **documents inside the uploaded `Algorithm.zip`** as primary evidence; external information was used only to **verify Shapez 2 blueprint export/identifier facts**. Actual repo code, execution logs, failure payloads, test output, and production environment values were not provided, so judgments below should be read as distinguishing "structural conflicts fixed in documentation" from "high-likelihood estimates that those conflicts become actual bugs."
 
-다음 표는 이번 보고서의 근거와 신뢰도 평가입니다.
+The table below evaluates evidence and confidence for this report.
 
-| 근거 | 내용 | 자체평가 |
+| Evidence | Content | Self-assessment |
 |---|---|---|
-| 업로드 문서 `asteroid_lab_09_replay_timeline.md` | 제품 리플레이 정본이 **single replay timeline**이며, `lab_replay_frames_json`가 권위라고 선언 | 높음 |
-| 업로드 문서 `solver_runtime/phase_m_persist_replay_ui.md`, `solver_runtime/01_entry_point.md` | 런타임 출력이 아직 `optimization_replay` 별도 트랙을 전제로 서술됨 | 높음 |
-| 업로드 문서 `asteroid_lab_12_runtime_replay_wiring.md` | unknown event, malformed payload, truncation contract 위반 시 **empty payload**로 떨어뜨리는 strict 정책이 명시됨 | 높음 |
-| 업로드 문서 `asteroid_lab_01_optimization_input.md`, `asteroid_lab_00_overview.md` | 좌표 정본이 **Server X/Y dense**이며 `raw↔server` 변환 재호출 금지, 특히 `x==0` 경계가 반복 강조됨 | 높음 |
-| 업로드 문서 전반 | 최종 SHAPEZ 코드 생성기는 명시되지 않고, decode 쪽 흔적만 존재 | 중간 |
-| Shapez 2 공식 사이트 | Blueprint Library가 save/load/export/share를 지원 | 높음 citeturn3view0 |
-| Shapez Vortex codec/convert/spec | blueprint identifier 인코딩/디코딩 가능, 포맷은 버전 의존적이며 구버전 호환성이 보장되지 않음 | 중간~높음 citeturn4view0turn3view2turn6view0 |
+| Uploaded doc `asteroid_lab_09_replay_timeline.md` | Product replay canonical is **single replay timeline**; declares `lab_replay_frames_json` authoritative | High |
+| Uploaded docs `solver_runtime/phase_m_persist_replay_ui.md`, `solver_runtime/01_entry_point.md` | Runtime output still described assuming separate `optimization_replay` track | High |
+| Uploaded doc `asteroid_lab_12_runtime_replay_wiring.md` | Strict policy: unknown event, malformed payload, truncation contract violation → **empty payload** | High |
+| Uploaded docs `asteroid_lab_01_optimization_input.md`, `asteroid_lab_00_overview.md` | Coordinate canonical is **Server X/Y dense**; `raw↔server` re-conversion forbidden; `x==0` boundary repeatedly emphasized | High |
+| Uploaded docs overall | Final SHAPEZ code generator not specified; only decode-side traces | Medium |
+| Shapez 2 official site | Blueprint Library supports save/load/export/share | High |
+| Shapez Vortex codec/convert/spec | Blueprint identifier encode/decode possible; format version-dependent; old version compatibility not guaranteed | Medium–High |
 
-요청 항목 기준으로 현재 확보된 입력/환경 정보는 아래와 같습니다. 명시되지 않은 값은 모두 **“미지정”**으로 표기했습니다.
+Input/environment information secured against request items:
 
-| 항목 | 현재 파악값 | 상태 |
+| Item | Current value | Status |
 |---|---|---|
-| 리플레이 기능 설명 | reconstruction된 소행성 위에 extractor/expander/transport가 누적되어 최종 2D 맵을 형성해야 함 | 사용자 요구 + 문서 정합 |
-| 재구성된 소행성 모델 형태 | **미지정** | 미지정 |
-| 좌표계 | **Server X/Y dense coord** | 문서상 명시 |
-| 해상도 | **미지정** | 미지정 |
-| extractor/expander 규칙 | extractor + 0~3 extension, linear 패턴, throughput factor 4/8/12/16 | 문서상 일부 명시 |
-| 초기 시드 | deterministic seed invariant는 명시, 실제 시드 값은 **미지정** | 일부 명시 |
-| commit 순서 | 생성 순 기본 금지, `commit_order` 권장 | 문서상 일부 명시 |
-| 기대 출력 포맷 | 최종 2D replay map은 명시, SHAPEZ 코드 export 자체는 내부 문서에 **미구현/미지정** | 일부 미지정 |
-| 소프트웨어 버전 | 문서 기준일 2026-05-19, Solver Runtime v0 문맥 | 일부 명시 |
-| 의존 라이브러리 버전 | **미지정** | 미지정 |
-| 플랫폼 OS | **미지정** | 미지정 |
-| 병렬 처리 여부 | **미지정** | 미지정 |
-| 프런트엔드 렌더러/테스트 러너 | 일부 JS 파일명만 명시, 실제 도구 버전은 **미지정** | 미지정 |
-| 대상 Shapez 2 게임 버전 | 내부 문서 기준 **미지정**; 커뮤니티 도구 페이지에는 Game Version 1095 표기 사례 존재 | 외부 보조 참고 citeturn4view0turn6view0 |
+| Replay feature description | extractor/expander/transport must accumulate on reconstructed asteroid to form final 2D map | User requirement + doc alignment |
+| Reconstructed asteroid model form | **unspecified** | unspecified |
+| Coordinate system | **Server X/Y dense coord** | stated in docs |
+| Resolution | **unspecified** | unspecified |
+| extractor/expander rules | extractor + 0~3 extension, linear pattern, throughput factor 4/8/12/16 | partially stated in docs |
+| Initial seed | deterministic seed invariant stated; actual seed value **unspecified** | partially stated |
+| commit order | generation order default forbidden; `commit_order` recommended | partially stated in docs |
+| Expected output format | final 2D replay map stated; SHAPEZ code export itself **not implemented/unspecified** in internal docs | partially unspecified |
+| Software version | doc baseline 2026-05-19, Solver Runtime v0 context | partially stated |
+| Dependency library versions | **unspecified** | unspecified |
+| Platform OS | **unspecified** | unspecified |
+| Parallel processing | **unspecified** | unspecified |
+| Frontend renderer/test runner | some JS filenames only; actual tool versions **unspecified** | unspecified |
+| Target Shapez 2 game version | **unspecified** in internal docs; community tool pages show Game Version 1095 example | external reference |
 
-또 한 가지 중요한 전제가 있습니다. Shapez 2는 공식적으로 blueprint library의 저장·로드·내보내기·공유를 지원하지만, 커뮤니티 codec/spec는 blueprint identifier가 JSON을 gzip 후 base64로 인코딩하는 **버전 의존 규격**이라고 설명합니다. 따라서 최종 출력이 `SHAPEZ2-4-...=$`인지, `SHAPEZ2-<다른 버전>-...$`인지 여부는 **대상 게임 빌드에 따라 검증되어야 하며**, 하드코딩은 위험합니다. citeturn3view0turn4view0turn3view2turn6view0
+Another important assumption: Shapez 2 officially supports blueprint library save·load·export·share, but community codec/spec describe blueprint identifiers as a **version-dependent spec** encoding JSON via gzip then base64. Therefore whether final output is `SHAPEZ2-4-...=$` or `SHAPEZ2-<other version>-...$` must be **verified against target game build**; hardcoding is risky.
 
-## 현행 구조와 재현 시나리오
+## Current structure and reproduction scenarios
 
-문서만 놓고 보면, 현재 구조는 아래처럼 흘러가야 맞습니다.
+From documentation alone, flow should be:
 
 ```mermaid
 flowchart LR
     A[Reconstruction snapshot] --> B[Optimization runtime events]
-    B --> C{이벤트 타입이\nUnified 계약에 포함되는가}
-    C -- 아니오 --> D[payload empty 처리\nunknown event diagnostic]
-    C -- 예 --> E[optimization_unified_adapter]
+    B --> C{Event type included\nin Unified contract?}
+    C -- No --> D[payload empty handling\nunknown event diagnostic]
+    C -- Yes --> E[optimization_unified_adapter]
     E --> F[compose_replay_timeline]
-    F --> G{base_ref가 살아있는가}
-    G -- 아니오 --> H[좌표 누락/맵 왜곡]
-    G -- 예 --> I[Single replay controller]
-    I --> J{route.materialized/result.layout\n까지 emit 되었는가}
-    J -- 아니오 --> K[누적 fill 실패\n최종 2D 맵 미완성]
-    J -- 예 --> L[최종 validated layout]
+    F --> G{base_ref still alive?}
+    G -- No --> H[missing coords / map distortion]
+    G -- Yes --> I[Single replay controller]
+    I --> J{route.materialized/result.layout\nemitted?}
+    J -- No --> K[accumulated fill failure\nfinal 2D map incomplete]
+    J -- Yes --> L[final validated layout]
     L --> M[Blueprint export]
 ```
 
-그런데 업로드 문서들끼리만 비교해도 다음 네 가지 모순이 동시에 보입니다.
+Comparing uploaded documents alone reveals four contradictions simultaneously:
 
-| 영역 | 문서상 정본/요구 | 동시에 존재하는 다른 문서 서술 | 실제 증상으로 이어지는 방식 |
+| Area | Doc canonical/requirement | Other doc descriptions coexisting | How it leads to actual symptoms |
 |---|---|---|---|
-| 페이로드 권위 | `asteroid_lab_09_replay_timeline.md`의 9E는 **제품 replay = `lab_replay_frames_json`**, `optimization_replay` 제거라고 명시 | `solver_runtime/01_entry_point.md`는 응답에 `optimization_replay` 포함, `phase_m_persist_replay_ui.md`도 `optimization replay track + layout preview`를 출력으로 서술 | 프런트/백엔드가 서로 다른 payload key를 보거나, 두 권위가 공존해 동기화 실패 |
-| 이벤트 타입 계약 | unified 문서의 `ReplayEventType` 예시는 16개 이벤트만 열거 | 같은 unified 문서의 9C phase mapping은 21개 optimization event를 전제, `phase_m`은 최소 15개 필수 runtime event를 기록하라고 요구 | strict parser가 “unknown event_type”로 payload 전체를 empty 처리할 수 있음 |
-| 누적 상태 표현 | unified 계약은 모든 프레임이 2D-renderable이어야 하며 최종 layout까지 보여야 함 | 9F `Commit frame materialization`, 9G `Validation/result keyframes`는 완료 표시가 없음 | overlay는 보이지만 누적 상태가 final map으로 굳지 않아 “fill이 안 되는” 현상 발생 |
-| truncation | 9D는 `MAX_LAB_REPLAY_TIMELINE_FRAMES` 초과 시 **head truncate** 규칙을 가짐 | `ReplayMapView`는 `base_ref` 참조 키프레임을 허용 | 잘린 앞부분에 기반 snapshot이 있으면 이후 frame이 base를 잃고 비거나 왜곡될 수 있음 |
+| Payload authority | `asteroid_lab_09_replay_timeline.md` 9E: **product replay = `lab_replay_frames_json`**, remove `optimization_replay` | `solver_runtime/01_entry_point.md` includes `optimization_replay` in response; `phase_m_persist_replay_ui.md` describes `optimization replay track + layout preview` as output | Frontend/backend see different payload keys or two authorities coexist → sync failure |
+| Event type contract | unified doc `ReplayEventType` example lists only 16 events | same unified doc 9C phase mapping assumes 21 optimization events; `phase_m` requires recording at least 15 mandatory runtime events | strict parser may empty entire payload on "unknown event_type" |
+| Accumulated state representation | unified contract requires all frames 2D-renderable through final layout | 9F `Commit frame materialization`, 9G `Validation/result keyframes` show no completion | overlay visible but accumulated state does not solidify to final map → "fill not working" |
+| truncation | 9D has **head truncate** rule when exceeding `MAX_LAB_REPLAY_TIMELINE_FRAMES` | `ReplayMapView` allows `base_ref` reference keyframes | if base snapshot was in truncated head, later frames lose base → empty or distorted |
 
-가능한 증상을 사용자 요구 항목 기준으로 점검하면 아래와 같습니다.
+Checking possible symptoms against user requirements:
 
-| 가능한 증상 | 문서상으로 설명 가능한 원인 | 판정 |
+| Possible symptom | Doc-explainable cause | Assessment |
 |---|---|---|
-| 재현 실패 | `optimization_replay` vs `lab_replay_frames_json` 권위 충돌, unknown event strict drop | 매우 유력 |
-| 좌표 누락 | `route.materialized`/`result.layout` 부재, head truncate 후 `base_ref` 손실, per-frame cell limit | 매우 유력 |
-| 중복 채움 | delta를 누적 render state에 두 번 적용하거나, projection을 두 번 거치는 경우 | 유력 |
-| 맵 왜곡 | `server_x==0` 경계 오해, raw↔server 재변환, display/export projection 혼선 | 유력 |
-| SHAPEZ 코드 불일치 | replay overlay를 export 원본으로 사용, blueprint version segment 하드코딩, final materialized layout과 export source 불일치 | 매우 유력 |
+| Reproduction failure | `optimization_replay` vs `lab_replay_frames_json` authority conflict, unknown event strict drop | Very likely |
+| Missing coordinates | absent `route.materialized`/`result.layout`, `base_ref` loss after head truncate, per-frame cell limit | Very likely |
+| Duplicate fill | delta applied twice to accumulated render state, or projection applied twice | Likely |
+| Map distortion | `server_x==0` boundary misunderstanding, raw↔server re-conversion, display/export projection confusion | Likely |
+| SHAPEZ code mismatch | using replay overlay as export source, hardcoded blueprint version segment, export source ≠ final materialized layout | Very likely |
 
-문서만으로도 바로 재현 가능한 최소 사례는 아래 둘입니다. 첫 번째는 **이벤트 타입 불일치로 전체 트랙이 empty 처리되는 경우**, 두 번째는 **누적 상태가 final snapshot으로 굳지 않아 fill이 사라지는 경우**입니다.
+Two minimal reproduction cases from docs alone: first, **entire track empty due to event type mismatch**; second, **fill disappears because accumulated state does not solidify to final snapshot**.
 
 ```python
-# 최소 재현 스크립트 A: unknown event_type 때문에 replay 전체가 빈 트랙으로 떨어지는 경우
+# Minimal reproduction script A: entire replay falls to empty track due to unknown event_type
 KNOWN_REPLAY_EVENT_TYPES = {
     "optimization.input_loaded",
     "pattern.generated",
@@ -108,8 +108,8 @@ KNOWN_REPLAY_EVENT_TYPES = {
 
 runtime_frames = [
     {"frame_index": 0, "event_type": "optimization.input_loaded", "map_view": {"full_cells": [(0, 0)]}},
-    {"frame_index": 1, "event_type": "capacity.plan_created", "map_view": {"overlay_cells": [(0, 1)]}},  # unified enum 예시에 없음
-    {"frame_index": 2, "event_type": "route_goal.generated", "map_view": {"overlay_cells": [(1, 1)]}},   # unified enum 예시에 없음
+    {"frame_index": 1, "event_type": "capacity.plan_created", "map_view": {"overlay_cells": [(0, 1)]}},  # not in unified enum example
+    {"frame_index": 2, "event_type": "route_goal.generated", "map_view": {"overlay_cells": [(1, 1)]}},   # not in unified enum example
 ]
 
 def strict_deserialize(frames):
@@ -119,12 +119,12 @@ def strict_deserialize(frames):
     return frames, {}
 
 print(strict_deserialize(runtime_frames))
-# 기대: 일부라도 보여야 함
-# 실제: 빈 트랙 + diagnostic
+# Expected: at least some frames should show
+# Actual: empty track + diagnostic
 ```
 
 ```python
-# 최소 재현 스크립트 B: 누적 state 없이 현재 frame만 그릴 때 fill이 사라지는 경우
+# Minimal reproduction script B: fill disappears when rendering current frame only without accumulated state
 frames = [
     {
         "frame_index": 0,
@@ -141,10 +141,10 @@ frames = [
         "event_type": "route.committed",
         "map_view": {"full_cells": [], "cell_delta": [("add",(2,0)), ("add",(3,0))], "overlay_cells": []}
     },
-    # BUG: route.materialized / result.layout 가 없음
+    # BUG: route.materialized / result.layout missing
 ]
 
-# 잘못된 렌더러: 매 프레임 현재 map_view만 그림
+# Broken renderer: draws only current map_view each frame
 def broken_render(frame):
     return {
         "full": set(frame["map_view"]["full_cells"]),
@@ -155,19 +155,19 @@ def broken_render(frame):
 for frame in frames:
     print(frame["frame_index"], broken_render(frame))
 
-# 기대:
-# frame 2 이후에는 reconstruction + extractor/expander + transport가 누적된 최종 2D 맵이 보여야 함
-# 실제:
-# frame 2는 delta만 있고 base가 없어서 눈에 안 보이거나 일부만 보일 수 있음
+# Expected:
+# After frame 2, final 2D map with reconstruction + extractor/expander + transport accumulated should show
+# Actual:
+# Frame 2 has delta only, no base — invisible or partially visible
 ```
 
-테스트 입력 예시는 아래처럼 최소화하는 것이 좋습니다. 실제 구현에 맞게 필드명은 조정하면 되지만, **좌표 공간**, **규칙 파라미터**, **기대 출력**은 반드시 분리해서 넣어야 합니다.
+Test input example minimized as below. Adjust field names to actual implementation but **coordinate space**, **rule parameters**, **expected output** must be separated.
 
 ```json
 {
   "asteroid_model": {
     "coord_space": "server_xy_dense",
-    "resolution": "미지정",
+    "resolution": "unspecified",
     "shape": "2x2 solid test asteroid",
     "cells": [[0,0], [1,0], [0,1], [1,1]]
   },
@@ -185,49 +185,49 @@ for frame in frames:
 }
 ```
 
-## 원인 우선순위 분석
+## Root cause priority analysis
 
-아래는 제가 가장 유력하다고 판단한 원인 목록입니다. “높음”은 문서 간 충돌이 직접적이라서 거의 구조적 확정에 가깝고, “중간”은 실제 코드/로그가 없어서 최종 확정까진 못 가는 경우입니다.
+Most likely causes below. "High" means doc conflicts are direct — near structural certainty; "Medium" means no actual code/logs for final confirmation.
 
-| 우선순위 | 원인 | 세부 내용 | 근거 | 정확도 |
+| Priority | Cause | Details | Evidence | Accuracy |
 |---|---|---|---|---|
-| P0 | **이벤트 taxonomy 불일치** | unified `ReplayEventType` 예시에 없는 `capacity.plan_created`, `route_goal.generated`, `candidate_pool.completed`, `candidate_selection.completed`, `route.materialized` 등이 런타임 필수 이벤트로 서술됨 | `asteroid_lab_09_replay_timeline.md`와 `solver_runtime/phase_m_persist_replay_ui.md`, `asteroid_lab_12_runtime_replay_wiring.md`의 strict unknown-event empty 정책 | 높음 |
-| P0 | **unified migration 미완료** | 제품 정본은 단일 `lab_replay_frames_json`인데, 엔트리/Phase M은 아직 `optimization_replay` 별도 트랙을 반환하는 구조를 유지 | `asteroid_lab_09_replay_timeline.md` 9E vs `solver_runtime/01_entry_point.md`, `solver_runtime/phase_m_persist_replay_ui.md` | 높음 |
-| P1 | **누적 fill을 finalize하는 frame 부재** | `candidate.generated`는 overlay 성격이고, 실제 누적 상태는 `route.committed`/`route.materialized`/`result.layout`로 굳어야 하는데 9F·9G가 비완료 상태 | unified 문서의 9F/9G 상태와 frame contract | 높음 |
-| P1 | **head truncate가 keyframe을 끊을 가능성** | `ReplayMapView.base_ref`를 허용하는데 9D는 head truncate만 명시하고 surviving frame rebase/pin 전략이 없음 | `asteroid_lab_09_replay_timeline.md`의 `ReplayMapView`/9D | 중간~높음 |
-| P1 | **좌표 경계 오염** | `server_x==0`은 유효 좌표인데, replay/display/export 경계에서 raw↔server 변환을 다시 호출하면 누락·왜곡·중복이 발생할 수 있음 | `asteroid_lab_00_overview.md`, `asteroid_lab_01_optimization_input.md`, unified 문서의 projection ambiguity | 중간 |
-| P2 | **SHAPEZ 코드 export source 불일치** | replay payload는 output-only artifact인데, 이를 그대로 blueprint export source로 쓰면 overlay/annotation이 섞이거나 누적 상태가 불완전할 수 있음 | output-only invariant + 내부 문서에 export generator 부재 | 중간 |
-| P2 | **identifier version 하드코딩 위험** | 내부 초안은 `SHAPEZ2-4-` 전제를 암시하지만, 커뮤니티 spec은 version segment가 버전 의존이라고 설명하고 converter는 호환성 비보장을 경고 | 커뮤니티 spec/codec/converter | 중간 citeturn3view2turn4view0turn6view0 |
-| P3 | **frame/cell 상한에 따른 조용한 누락** | optimization frame당 128 cells, unified 500 frames 등 상한이 있어 복잡한 asteroid/layout에서는 일부 셀이나 frame이 잘릴 수 있음 | 내부 replay limits 및 scalability 문서 | 중간 |
+| P0 | **Event taxonomy mismatch** | `capacity.plan_created`, `route_goal.generated`, `candidate_pool.completed`, `candidate_selection.completed`, `route.materialized`, etc. described as mandatory runtime events but absent from unified `ReplayEventType` example | `asteroid_lab_09_replay_timeline.md` and `solver_runtime/phase_m_persist_replay_ui.md`, `asteroid_lab_12_runtime_replay_wiring.md` strict unknown-event empty policy | High |
+| P0 | **Unified migration incomplete** | Product canonical is single `lab_replay_frames_json` but entry/Phase M still returns separate `optimization_replay` track | `asteroid_lab_09_replay_timeline.md` 9E vs `solver_runtime/01_entry_point.md`, `solver_runtime/phase_m_persist_replay_ui.md` | High |
+| P1 | **Missing frame to finalize accumulated fill** | `candidate.generated` is overlay nature; accumulated state should solidify via `route.committed`/`route.materialized`/`result.layout` but 9F·9G incomplete | unified doc 9F/9G status and frame contract | High |
+| P1 | **Head truncate may break keyframes** | `ReplayMapView.base_ref` allowed but 9D specifies head truncate only with no surviving frame rebase/pin strategy | `asteroid_lab_09_replay_timeline.md` `ReplayMapView`/9D | Medium–High |
+| P1 | **Coordinate boundary pollution** | `server_x==0` is valid; raw↔server re-conversion at replay/display/export boundary can cause missing·distortion·duplication | `asteroid_lab_00_overview.md`, `asteroid_lab_01_optimization_input.md`, unified doc projection ambiguity | Medium |
+| P2 | **SHAPEZ code export source mismatch** | replay payload is output-only artifact; using as blueprint export source can mix overlay/annotation or leave accumulated state incomplete | output-only invariant + no export generator in internal docs | Medium |
+| P2 | **Identifier version hardcoding risk** | internal draft implies `SHAPEZ2-4-` assumption but community spec says version segment is version-dependent and converter warns no old compatibility | community spec/codec/converter | Medium |
+| P3 | **Silent omission from frame/cell limits** | limits such as 128 cells per optimization frame, 500 unified frames can truncate cells or frames on complex asteroid/layout | internal replay limits and scalability docs | Medium |
 
-이 중 가장 결정적인 두 원인은 사실상 한 세트입니다.  
-첫째, **런타임이 내보내는 이벤트 집합과 unified adapter가 기대하는 이벤트 집합이 다릅니다.**  
-둘째, **프런트로 나가는 최종 payload 권위가 하나로 수렴되지 않았습니다.**
+The two most decisive causes are effectively one set:  
+First, **runtime emit event set differs from unified adapter expected set.**  
+Second, **final payload authority to frontend has not converged to one path.**
 
-이 두 가지가 동시에 있으면 실제 현상은 대개 다음처럼 보입니다.
+When both coexist, actual symptoms usually look like:
 
-1. 런타임이 replay frame을 만든다.  
-2. strict validator가 unknown event 혹은 shape mismatch를 만난다.  
-3. 페이지 컨텍스트는 안전하게 empty payload로 대체한다.  
-4. UI는 “리플레이가 비어 있거나 일부만 있는 것처럼” 보인다.  
-5. 별도 트랙이 남아 있으면 맵은 reconstruction까지만 권위 있게 그리고, optimization은 HUD/overlay로만 스쳐 지나간다.  
-6. 그래서 extractor/expander set이 asteroid 위에 **누적 채움**되는 최종 replay 2D map이 완성되지 않는다.  
-7. export source도 final materialized layout이 아니라 replay나 preview에 기대면 SHAPEZ 코드까지 틀어질 수 있다.
+1. Runtime creates replay frames.  
+2. Strict validator hits unknown event or shape mismatch.  
+3. Page context safely substitutes empty payload.  
+4. UI looks like "replay empty or partial".  
+5. If separate track remains, map draws reconstruction authoritatively; optimization passes as HUD/overlay only.  
+6. So final replay 2D map with extractor/expander sets **accumulated fill** on asteroid never completes.  
+7. If export source expects replay or preview instead of final materialized layout, SHAPEZ code can be wrong too.
 
-## 수정안과 코드 패치 제안
+## Fix proposals and code patch suggestions
 
-수정은 “한 방에 다 갈아엎기”보다, **권위 경로를 먼저 고정하고**, 그 위에 **누적 state와 export를 붙이는 순서**가 가장 안전합니다. 적용 우선순위는 아래 표와 같습니다.
+Fixes are safest in order: **fix authority path first**, then attach **accumulated state and export**. Priority table:
 
-| 적용 순서 | 수정안 | 기대 효과 | 복잡도/성능 영향 | 정확성 영향 |
+| Order | Fix | Expected effect | Complexity/performance | Accuracy impact |
 |---|---|---|---|---|
-| 1 | event enum/coverage 정합화 | empty payload, dropped frame 즉시 감소 | O(1) 수준, 영향 미미 | 매우 큼 |
-| 2 | 단일 payload 권위화 (`lab_replay_frames_json`) | UI/SSR/POST 간 드리프트 제거 | 합성 단계 O(F), 미미 | 매우 큼 |
-| 3 | `route.materialized` + `result.layout` 보강 | 누적 fill, 최종 2D 맵 복구 | state map O(C), 마지막 snapshot O(C) | 매우 큼 |
-| 4 | truncation rebase/keyframe pin | large replay에서 왜곡/blank 방지 | truncate 시 O(C) 추가 | 큼 |
-| 5 | coordinate-space 분리 | 좌표 누락/중복/왜곡 축소 | 상수 오버헤드 | 큼 |
-| 6 | blueprint export를 final layout 기반으로 분리 | SHAPEZ 코드 불일치 방지 | 마지막 1회 gzip/base64, O(C) | 매우 큼 |
+| 1 | event enum/coverage alignment | immediate reduction of empty payload, dropped frames | O(1), negligible | Very large |
+| 2 | single payload authority (`lab_replay_frames_json`) | remove UI/SSR/POST drift | compose O(F), negligible | Very large |
+| 3 | `route.materialized` + `result.layout` reinforcement | restore accumulated fill, final 2D map | state map O(C), last snapshot O(C) | Very large |
+| 4 | truncation rebase/keyframe pin | prevent distortion/blank on large replay | O(C) extra on truncate | Large |
+| 5 | coordinate-space separation | reduce missing/duplicate/distortion | constant overhead | Large |
+| 6 | separate blueprint export from final layout | prevent SHAPEZ code mismatch | one gzip/base64 at end, O(C) | Very large |
 
-아래 diff는 실제 저장소 코드를 직접 본 것이 아니라, **문서에 나온 파일명과 계약을 기준으로 한 패치 방향 제안**입니다.
+Diffs below are **patch direction proposals based on filenames and contracts in docs**, not from direct repo inspection.
 
 ```diff
 diff --git a/django_apps/asteroid_lab/replay/unified_types.py b/django_apps/asteroid_lab/replay/unified_types.py
@@ -256,7 +256,7 @@ diff --git a/django_apps/asteroid_lab/replay/unified_types.py b/django_apps/aste
      RESULT_LAYOUT = "result.layout"
 ```
 
-이 패치는 가장 우선입니다. 이유는 간단합니다. 현재 문서 구조만 보면 **런타임 emit 집합과 unified consume 집합이 달라서** validator가 payload 자체를 버릴 수 있기 때문입니다. 이 부분은 성능 영향이 사실상 없고, 정확성 개선은 매우 큽니다.
+This patch is highest priority: doc structure shows **runtime emit set ≠ unified consume set** so validator can discard entire payload. Performance impact negligible; accuracy improvement very large.
 
 ```diff
 diff --git a/django_apps/web/services/asteroid_lab_page_context.py b/django_apps/web/services/asteroid_lab_page_context.py
@@ -273,7 +273,7 @@ diff --git a/django_apps/web/services/asteroid_lab_page_context.py b/django_apps
 + context.pop("optimization_replay", None)
 ```
 
-이 패치는 product contract를 runtime/page context와 강제로 맞추는 단계입니다. 문서 정본이 이미 “`optimization_replay` 제거”라고 말하고 있으므로, 실제 코드도 같은 권위 경로를 가져야 합니다. 프런트엔드에는 single controller만 남기고, 기존 optimization HUD는 `replay_track_metrics`의 보조 정보로 내리는 편이 맞습니다.
+Forces product contract onto runtime/page context. Doc canonical already says "remove `optimization_replay`"; code must use same authority path. Keep single controller on frontend; demote existing optimization HUD to auxiliary info from `replay_track_metrics`.
 
 ```diff
 diff --git a/django_apps/asteroid_lab/services/runtime_replay_recorder.py b/django_apps/asteroid_lab/services/runtime_replay_recorder.py
@@ -304,7 +304,7 @@ diff --git a/django_apps/asteroid_lab/services/runtime_replay_recorder.py b/djan
 +    )
 ```
 
-이 패치는 사용자가 기대한 “extractor/expander 세트들이 누적치로 asteroid 좌표를 filling”하는 요구를 만족시키는 핵심입니다. `candidate.generated`와 `route_probe.*`는 원칙적으로 overlay여도 되지만, **최종 committed/materialized 결과**는 반드시 누적 상태를 반영한 delta 혹은 snapshot으로 굳어야 합니다. 그렇지 않으면 스크러버를 끝까지 당겨도 최종 2D 맵이 완성되지 않습니다.
+Core fix for user expectation that "extractor/expander sets fill asteroid coordinates cumulatively." `candidate.generated` and `route_probe.*` may remain overlay, but **final committed/materialized results** must solidify as delta or snapshot reflecting accumulated state. Otherwise scrubbing to end never completes final 2D map.
 
 ```diff
 diff --git a/django_apps/asteroid_lab/replay/timeline_composer.py b/django_apps/asteroid_lab/replay/timeline_composer.py
@@ -321,7 +321,7 @@ diff --git a/django_apps/asteroid_lab/replay/timeline_composer.py b/django_apps/
 +     mark_truncated(frames[-1], dropped_frame_count=...)
 ```
 
-이 수정은 large replay에서 중요합니다. 현재 문서대로라면 단순 head truncate가 가능한데, 살아남은 frame들이 `base_ref`로 잘려 나간 snapshot을 가리키면 render가 무너집니다. 그래서 **retain-required-keyframes** 또는 **synthetic rebase snapshot**이 필요합니다. 메모리는 약간 늘지만, 정확성 회복 효과가 훨씬 큽니다.
+Important for large replay. Simple head truncate per current docs can break render when surviving frames point at truncated snapshot via `base_ref`. Need **retain-required-keyframes** or **synthetic rebase snapshot**. Slightly more memory; much larger accuracy recovery.
 
 ```diff
 diff --git a/django_apps/asteroid_lab/replay/projection_context.py b/django_apps/asteroid_lab/replay/projection_context.py
@@ -338,59 +338,59 @@ diff --git a/django_apps/asteroid_lab/export/blueprint_export.py b/django_apps/a
 + identifier = encode_blueprint_identifier(blueprint_json, target_game_version)
 ```
 
-이 수정은 좌표 왜곡과 SHAPEZ 코드 불일치를 같이 잡습니다. 핵심 원칙은 둘입니다.
+Fixes coordinate distortion and SHAPEZ code mismatch together. Two principles:
 
-첫째, **replay render용 좌표 변환**과 **export용 좌표 변환**을 분리해야 합니다.  
-둘째, **export는 replay frame에서 만들면 안 되고**, 같은 solver 결과물에서 나온 **final materialized layout**에서 만들어야 합니다.
+First, separate **replay render coordinate transform** from **export coordinate transform**.  
+Second, **export must not come from replay frame**; build from **final materialized layout** from same solver result.
 
-이것은 unified 문서가 강조한 “replay is output-only” 원칙과도 잘 맞습니다. 즉, `final_layout -> {replay, blueprint_code}`의 **병렬 산출**은 맞지만, `replay -> blueprint_code`의 **종속 산출**은 피해야 합니다.
+Aligns with unified doc "replay is output-only": `final_layout -> {replay, blueprint_code}` **parallel output** is fine; avoid `replay -> blueprint_code` **dependent output**.
 
-마지막으로, identifier 생성기는 버전 segment를 하드코딩하지 말고 **대상 게임 빌드 기반으로 resolve**하도록 두는 것이 안전합니다. Shapez 2 공식 사이트는 blueprint export/share 기능 존재를 확인해 주지만, identifier의 구체 포맷은 공식 공개 문서보다 커뮤니티 codec/spec가 더 자세히 다루고 있고, converter는 구버전 호환성이 보장되지 않는다고 경고합니다. 그러므로 `SHAPEZ2-4-...=$`를 고정 문자열로 박는 것보다 `resolve_blueprint_code_version(target_game_version)` 같은 함수로 뽑는 편이 맞습니다. citeturn3view0turn4view0turn3view2turn6view0
+Finally, identifier generator should **resolve from target game build**, not hardcode version segment. Shapez 2 official site confirms blueprint export/share; identifier format detailed more in community codec/spec than official public docs; converter warns old compatibility not guaranteed. Prefer `resolve_blueprint_code_version(target_game_version)` over fixed `SHAPEZ2-4-...=$`.
 
-## 회귀 테스트, 리스크, 결론과 추가 필요 정보
+## Regression tests, risks, conclusion, and additional information needed
 
-회귀 테스트는 기존 문서에 나온 pytest 계열 명명 규칙을 최대한 따르면서, 이번 버그를 정확히 겨냥한 계약 테스트를 추가하는 것이 좋습니다.
+Add contract tests targeting this bug following pytest naming in existing docs.
 
-| 테스트 이름 제안 | 목적 | 자동화 방법 |
+| Proposed test name | Purpose | Automation |
 |---|---|---|
-| `test_replay_event_taxonomy_matches_runtime_emitter` | runtime emitter와 unified enum이 완전히 일치하는지 검증 | `pytest` |
-| `test_unknown_event_does_not_drop_all_valid_frames` | unknown 1개 때문에 전체 replay가 empty가 되지 않도록 방어 | `pytest` |
-| `test_unified_payload_is_authoritative` | POST와 page context가 `lab_replay_frames_json`만 권위로 쓰는지 검증 | `pytest` + integration |
-| `test_route_materialized_accumulates_into_final_map` | `route.materialized`가 실제 누적 state에 반영되는지 검증 | `pytest` |
-| `test_result_layout_snapshot_matches_materialized_layout` | 최종 snapshot과 materialized layout이 동일한지 검증 | `pytest` |
-| `test_replay_head_truncate_rebases_base_ref` | truncate 후 surviving frame이 깨지지 않는지 검증 | `pytest` |
-| `test_server_x_zero_roundtrip_display_and_export` | `x==0` 경계에서 누락/왜곡이 없는지 검증 | `pytest` |
-| `test_same_seed_replay_on_off_identical_final_layout` | replay on/off가 결과 layout을 바꾸지 않는지 검증 | `pytest` |
-| `test_blueprint_export_uses_final_layout_not_overlay` | overlay/annotation이 export에 섞이지 않는지 검증 | `pytest` |
-| `test_blueprint_identifier_version_is_resolved_not_hardcoded` | 대상 게임 버전별 identifier segment 결정 로직 검증 | `pytest` |
-| `test_lab_js_single_controller_replay_smoke` | 프런트에서 dual controller가 남아 있지 않은지 검증 | 기존 smoke test 또는 Playwright |
-| `test_replay_large_payload_truncation_visibility` | large payload에서 silent corruption 없이 metrics만 노출되는지 검증 | integration |
+| `test_replay_event_taxonomy_matches_runtime_emitter` | verify runtime emitter and unified enum fully match | `pytest` |
+| `test_unknown_event_does_not_drop_all_valid_frames` | defend against entire replay empty due to one unknown | `pytest` |
+| `test_unified_payload_is_authoritative` | verify POST and page context use only `lab_replay_frames_json` as authority | `pytest` + integration |
+| `test_route_materialized_accumulates_into_final_map` | verify `route.materialized` reflects accumulated state | `pytest` |
+| `test_result_layout_snapshot_matches_materialized_layout` | verify final snapshot equals materialized layout | `pytest` |
+| `test_replay_head_truncate_rebases_base_ref` | verify surviving frames not broken after truncate | `pytest` |
+| `test_server_x_zero_roundtrip_display_and_export` | verify no missing/distortion at `x==0` boundary | `pytest` |
+| `test_same_seed_replay_on_off_identical_final_layout` | verify replay on/off does not change result layout | `pytest` |
+| `test_blueprint_export_uses_final_layout_not_overlay` | verify overlay/annotation not mixed into export | `pytest` |
+| `test_blueprint_identifier_version_is_resolved_not_hardcoded` | verify identifier segment logic per target game version | `pytest` |
+| `test_lab_js_single_controller_replay_smoke` | verify no dual controller left on frontend | existing smoke test or Playwright |
+| `test_replay_large_payload_truncation_visibility` | verify large payload exposes metrics only, no silent corruption | integration |
 
-테스트 프레임워크는 **백엔드는 기존 `pytest` 유지**, 프런트는 현재 스택이 미지정이므로 **기존 smoke harness 유지 + 필요 시 Playwright 추가**가 무난합니다. 좌표 경계와 frame sequence는 **고정 fixture + property-based test(Hypothesis)** 조합이 특히 효과적입니다. frame 순서, reindex, delta 적용, base_ref rebase는 결정적 reproducibility가 중요하므로 snapshot fixture도 병행하는 편이 좋습니다.
+**Backend: keep existing `pytest`**; frontend stack unspecified so **keep existing smoke harness + add Playwright if needed**. Coordinate boundaries and frame sequence especially effective with **fixed fixture + property-based test (Hypothesis)**. Frame order, reindex, delta apply, base_ref rebase need deterministic reproducibility — use snapshot fixtures in parallel.
 
-예상 리스크와 완화책은 아래와 같습니다.
+Expected risks and mitigations:
 
-| 리스크 | 영향 | 완화책 |
+| Risk | Impact | Mitigation |
 |---|---|---|
-| `optimization_replay` 제거가 레거시 UI를 깨뜨림 | 기존 패널/스크립트 오류 | 한 릴리스 동안 adapter shim 유지 후 제거 |
-| event taxonomy 확장 후 coverage 누락 재발 | 일부 frame silent drop | emitter ↔ enum ↔ phase map 동등성 테스트를 CI 필수화 |
-| final snapshot 추가로 메모리 증가 | large replay payload 확대 | 마지막 결과 snapshot 1개만 full_cells, 중간은 delta 유지 |
-| head truncate rebase 구현이 복잡 | replay composer 버그 가능성 | synthetic keyframe 생성 방식으로 단순화 |
-| export version resolution 오판 | SHAPEZ 코드 import 실패 | target game version을 명시 입력으로 받고, 미지정 시 export 차단 |
-| replay를 export source로 오용 | overlay/annotation 혼입 | `final_materialized_layout` 타입만 exporter 입력으로 허용 |
-| 좌표 타입 분리가 광범위한 변경 유발 | 초기 리팩터링 비용 | replay/export 경계부터 도입하고 이후 점진 확대 |
+| Removing `optimization_replay` breaks legacy UI | existing panel/script errors | adapter shim one release then remove |
+| Event taxonomy extension with coverage gaps | some frames silent drop | CI-required emitter ↔ enum ↔ phase map equivalence tests |
+| Final snapshot increases memory | large replay payload growth | only last result snapshot full_cells; middle frames delta |
+| Head truncate rebase complexity | replay composer bug risk | simplify via synthetic keyframe generation |
+| Export version resolution misjudgment | SHAPEZ code import failure | explicit target game version input; block export if unspecified |
+| Misusing replay as export source | overlay/annotation mixing | allow only `final_materialized_layout` type as exporter input |
+| Coordinate type separation causes broad changes | initial refactor cost | start at replay/export boundary then expand gradually |
 
-제 결론은 명확합니다. 현재 버그의 “첫 번째 원인”은 **이벤트/페이로드 계약이 서로 다른 문서 상태를 동시에 끌고 가는 것**이고, “두 번째 원인”은 **누적 상태를 최종 snapshot으로 닫는 단계가 빠져 있는 것**입니다. 즉, 이 문제는 단순 렌더링 버그라기보다 **계약 불일치 + 마이그레이션 미완료 + finalization 공백**의 복합 문제로 보는 편이 맞습니다. 따라서 가장 빠른 복구 경로는 **이벤트 정합화 → 단일 payload 권위화 → `route.materialized`/`result.layout` 확정 → export를 final layout에서 생성**하는 순서입니다. Shapez 2 자체는 blueprint export/share를 공식 지원하며, 커뮤니티 codec/spec는 식별자 인코딩 경로를 제공하지만 버전 의존성이 있으므로, 최종 `SHAPEZ2-4-...=$` 출력은 반드시 **대상 게임 버전과 함께 검증**해야 합니다. citeturn3view0turn4view0turn3view2turn6view0
+Conclusion is clear. First cause of current bug is **event/payload contracts pulling different doc states simultaneously**; second is **missing step closing accumulated state into final snapshot**. This is **contract mismatch + incomplete migration + finalization gap**, not a simple rendering bug. Fastest recovery: **event alignment → single payload authority → fix `route.materialized`/`result.layout` → export from final layout**. Shapez 2 officially supports blueprint export/share; community codec/spec provide identifier encoding but with version dependency — final `SHAPEZ2-4-...=$` output must be **verified with target game version**.
 
-| 추가로 필요한 정보 | 왜 필요한가 | 없을 때 한계 | 현재 상태 |
+| Additional information needed | Why needed | Limit without it | Current status |
 |---|---|---|---|
-| 실제 실패한 `SolverRun.config_json` 샘플 | payload key, frame shape, diagnostic reason 직접 확인 | 문서 추정에 머무름 | 미지정 |
-| `lab_replay_frames_json` 또는 `optimization_replay_frames` 실제 JSON 1건 | unknown event, frame 누락, truncation 계약 위반 확인 | root cause 확정 불가 | 미지정 |
-| 실패 시 서버 로그 / Sentry / traceback | deserialize 실패 지점과 예외명 확인 | 원인 우선순위만 제시 가능 | 미지정 |
-| 프런트 DevTools 콘솔 로그 / Network 응답 | SSR/POST payload key mismatch 확인 | UI 쪽 원인 확정 불가 | 미지정 |
-| 대상 Shapez 2 게임 버전 | identifier version segment 결정 | `SHAPEZ2-4-...=$` 고정 가능 여부 판단 불가 | 미지정 |
-| 실제 입력 asteroid 모델 샘플 1개 | 좌표계/해상도/left-edge(`x==0`) 재현 | coordinate bug 검증 한계 | 미지정 |
-| extractor/expander 규칙 파라미터 전체 | overlay와 final materialization이 맞는지 확인 | replay와 final map 차이 분석 제한 | 미지정 |
-| seed / commit order / parallel 여부 | deterministic 회귀 테스트 구성 | 재현 일관성 부족 | 미지정 |
-| OS / Python / Django / JS 런타임 버전 | 환경 의존 버그 배제 | 플랫폼별 차이 판정 불가 | 미지정 |
-| 실제 코드 저장소의 관련 파일 | 패치 diff를 추정이 아닌 실 patch로 전환 | 설계 수준 제안에 머무름 | 미지정 |
+| Actual failed `SolverRun.config_json` sample | direct check of payload key, frame shape, diagnostic reason | stays at doc estimate | unspecified |
+| Actual JSON of `lab_replay_frames_json` or `optimization_replay_frames` | confirm unknown event, frame omission, truncation contract violation | cannot fix root cause | unspecified |
+| Server log / Sentry / traceback on failure | confirm deserialize failure point and exception name | can only suggest cause priority | unspecified |
+| Frontend DevTools console log / Network response | confirm SSR/POST payload key mismatch | cannot fix UI-side cause | unspecified |
+| Target Shapez 2 game version | decide identifier version segment | cannot judge `SHAPEZ2-4-...=$` fixation | unspecified |
+| Actual input asteroid model sample | reproduce coordinate system/resolution/left-edge (`x==0`) | limited coordinate bug verification | unspecified |
+| Full extractor/expander rule parameters | confirm overlay vs final materialization | limited replay vs final map analysis | unspecified |
+| seed / commit order / parallel flag | build deterministic regression tests | insufficient reproduction consistency | unspecified |
+| OS / Python / Django / JS runtime versions | exclude environment-dependent bugs | cannot judge platform differences | unspecified |
+| Related files in actual code repo | turn patch diff from estimate to real patch | stays at design-level proposal | unspecified |

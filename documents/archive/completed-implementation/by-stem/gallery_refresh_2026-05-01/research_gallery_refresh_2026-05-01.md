@@ -10,7 +10,7 @@
 - `django_apps/web/templates/web/gallery.html` duplicates the same featured-plus-grid markup twice, once per section.
 - The current modal viewer only opens and closes a single image. It does not keep per-section state, support previous/next navigation, or expose image context inside the dialog.
 - The page has visual clutter that does not help an image-only browsing flow: a large explanatory hero, sticky jump nav, and a notes accordion.
-- Several UI strings in the web templates still contain mojibake-like separators (`??`, `쨌`) and both the nav and footer include dead `href="#"` GitHub links.
+- Several UI strings in the web templates still contain mojibake-like separators (`??`, corrupted middle dots) and both the nav and footer include dead `href="#"` GitHub links.
 
 ## Implementation Notes
 

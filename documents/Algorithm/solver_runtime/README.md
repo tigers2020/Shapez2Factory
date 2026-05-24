@@ -5,26 +5,28 @@ last_reviewed: 2026-05-22
 archived_reason: Solver optimization pipeline removed; reconstruction-only (see docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md)
 ---
 
-# Solver Runtime — Solver 버튼 파이프라인
+# Solver Runtime — Solver Button Pipeline
 
-**역할:** Solver Runtime Pipeline Architect  
-**목적:** UI `Solver` / `Run Solver` 버튼 클릭 시 실행되는 **E2E 파이프라인 v0** 계약·PR 체크리스트를 고정한다.
+> **Runtime authority (2026-05-24):** Active solver is **RTTP Hybrid C** in `django_apps/asteroid_lab/optimization/` when `ASTEROID_LAB_RTTP_ENABLED=True` — see [`documents/ai/current_plan.md`](../../ai/current_plan.md). This directory documents the **historical Solver-button Phase A–M** orchestration series, not the RTTP implementation contract.
 
-> **문서 정체:** **「Solver 버튼 v0 재구현·오케스트레이션 계획」** — 저장소 전체 optimization 미존재를 뜻하지 않는다.  
-> **충돌 해소:** [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) (패키지·GA·용어·PR vs 코드·replay).  
-> **구현 정본:** 코드·`CANON` 우선. 본 시리즈는 `ACTIVE` / `RESEARCH` 성격.  
-> **레거시:** [`asteroid_lab_*`](../) — GA·`BundlePattern`·`shapez_asteroid` 경로는 **참고**; Solver 버튼 merge 순서는 [`implementation_sequence.md`](implementation_sequence.md). [`asteroid_lab_10`](../asteroid_lab_10_development_sequence.md) 을 대체하지 않음.
+**Role:** Solver Runtime Pipeline Architect  
+**Purpose:** Fix the **E2E pipeline v0** contract·PR checklist executed when the UI `Solver` / `Run Solver` button is clicked.
 
-## 실행 순서 vs 구현(PR) 순서
+> **Document identity:** **「Solver Button v0 reimplementation·orchestration plan」** — does not mean optimization is absent from the entire repository.  
+> **Conflict resolution:** [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) (package·GA·terminology·PR vs code·replay).  
+> **Implementation canonical:** code·`CANON` take priority. This series is `ACTIVE` / `RESEARCH` in nature.  
+> **Legacy:** [`asteroid_lab_*`](../) — GA·`BundlePattern`·`shapez_asteroid` paths are **reference**; Solver button merge order is [`implementation_sequence.md`](implementation_sequence.md). Does **not** replace [`asteroid_lab_10`](../asteroid_lab_10_development_sequence.md).
 
-| 구분 | 순서 | 용도 |
+## Execution order vs implementation (PR) order
+
+| Category | Order | Purpose |
 |------|------|------|
-| **Runtime execution** | A→B→C→D→E→F→G→H→I→J→K→L→M | 버튼 1회 호출 시 orchestration |
-| **Implementation (PR)** | PR1→PR1B→PR2.5→PR2→…→PR7 | merge·리뷰 단위 ([`implementation_sequence.md`](implementation_sequence.md)) |
+| **Runtime execution** | A→B→C→D→E→F→G→H→I→J→K→L→M | Orchestration on one button click |
+| **Implementation (PR)** | PR1→PR1B→PR2.5→PR2→…→PR7 | Merge·review unit ([`implementation_sequence.md`](implementation_sequence.md)) |
 
-PR1이 Phase **D**를 먼저 완료한 것은 유전자 계약 고정용이며, 실행 시 D는 C 다음·E 이전이다.
+PR1 completing Phase **D** first is for fixing the gene contract; at execution time D comes after C and before E.
 
-## 파이프라인 요약
+## Pipeline summary
 
 ```text
 DB reconstruction map
@@ -41,46 +43,46 @@ DB reconstruction map
 → replay / UI payload
 ```
 
-**핵심 불변식:** 후보 생성은 탐색일 뿐이며, **증분 커밋만** 확정 배치를 만든다. 상세: [`00_core_principles.md`](00_core_principles.md).
+**Core invariant:** Candidate generation is search only; **incremental commit alone** creates confirmed layout. Details: [`00_core_principles.md`](00_core_principles.md).
 
-## 읽기 순서
+## Reading order
 
-1. [`00_core_principles.md`](00_core_principles.md) — 금지·허용·adapter 필드 정규화  
-2. [`01_entry_point.md`](01_entry_point.md) — 트리거·입출력  
+1. [`00_core_principles.md`](00_core_principles.md) — forbidden·allowed·adapter field normalization  
+2. [`01_entry_point.md`](01_entry_point.md) — trigger·input/output  
 3. [`phase_a_load_reconstruction.md`](phase_a_load_reconstruction.md) ~ [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md) — Phase A–M  
-4. [`implementation_sequence.md`](implementation_sequence.md) — PR1–7 체크리스트·필수 테스트  
+4. [`implementation_sequence.md`](implementation_sequence.md) — PR1–7 checklist·required tests  
 5. [`open_decisions.md`](open_decisions.md)  
-6. [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) — 레거시·코드·PR 상태 충돌 해소 — OD-1–4
+6. [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) — legacy·code·PR status conflict resolution — OD-1–4
 
-## PR ↔ Phase 표 (역사 — 2026-05-22 제거)
+## PR ↔ Phase table (historical — removed 2026-05-22)
 
-2026-05-22 strip surgery로 **PR1–7 코드·`optimization/` 패키지 삭제**. Phase 문서는 `ARCHIVED` 보관.
+2026-05-22 strip surgery **deleted PR1–7 code·entire `optimization/` package**. Phase documents are `ARCHIVED` archive.
 
-| PR | Phase | 문서 |
+| PR | Phase | Document |
 |----|-------|------|
 | PR1–7 | A–M | `phase_*.md` — [`strip-solver spec`](../../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md) |
 
-**유지:** reconstruction (`phase_a` load 개념은 `reconstruction/`로 이전), Lab replay ([`asteroid_lab_09_replay_timeline.md`](../asteroid_lab_09_replay_timeline.md)), genetic sample admin.
+**Retained:** reconstruction (`phase_a` load concept moved to `reconstruction/`), Lab replay ([`asteroid_lab_09_replay_timeline.md`](../asteroid_lab_09_replay_timeline.md)), genetic sample admin.
 
-## 레거시 시리즈와의 관계
+## Relationship to legacy series
 
-| 주제 | Runtime 정본 | 레거시 참고 |
+| Topic | Runtime canonical | Legacy reference |
 |------|--------------|-------------|
 | OptimizationInput·route_domain | phase_b, §0.3 | [`asteroid_lab_01`](../asteroid_lab_01_optimization_input.md) |
-| 패턴/유전자 | phase_d (`GeneTemplate`) | [`asteroid_lab_02`](../asteroid_lab_02_pattern_library.md) (`BundlePattern`) |
+| Pattern/gene | phase_d (`GeneTemplate`) | [`asteroid_lab_02`](../asteroid_lab_02_pattern_library.md) (`BundlePattern`) |
 | Route probe | phase_g | [`asteroid_lab_04`](../asteroid_lab_04_route_probe.md) |
 | Commit / validation / replay | phase_j, l, m | [`asteroid_lab_07`](../asteroid_lab_07_incremental_commit.md) ~ [`09`](../asteroid_lab_09_replay_debug.md), [`12`](../asteroid_lab_12_runtime_replay_wiring.md) |
-| GA·evolution | **v0 미사용** (greedy만) | [`asteroid_lab_05`](../asteroid_lab_05_genome_fitness.md), [`06`](../asteroid_lab_06_evolutionary_search.md) — legacy reference |
+| GA·evolution | **v0 unused** (greedy only) | [`asteroid_lab_05`](../asteroid_lab_05_genome_fitness.md), [`06`](../asteroid_lab_06_evolutionary_search.md) — legacy reference |
 
-## 처리량 CANON
+## Throughput CANON
 
-포화·목표 수 계산: [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../../game_rules/shapez2_asteroid_space_transport_throughput.md).
+Saturation·goal count calculation: [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../../game_rules/shapez2_asteroid_space_transport_throughput.md).
 
-## Final Runtime Contract (15단계) — REMOVED 2026-05-22
+## Final Runtime Contract (15 steps) — REMOVED 2026-05-22
 
-> 아래 단계는 **삭제된** optimization 파이프라인 역사 계약이다. 현재 `Run Solver` → `SOLVER_NOT_AVAILABLE` only.
+> The steps below are the **deleted** optimization pipeline historical contract. Current `Run Solver` → `SOLVER_NOT_AVAILABLE` only.
 
-Solver 버튼을 눌렀을 때 (역사):
+When Solver button was pressed (historical):
 
 ```text
 1. Load DB reconstruction map.
@@ -105,23 +107,36 @@ Candidate generation explores possibilities.
 Only incremental commit creates confirmed layout.
 ```
 
-## 코드 패키지 (2026-05-22 이후)
+## Code packages — immediately after 2026-05-22 strip (HISTORICAL)
+
+> **HISTORICAL:** The diagram below is the state immediately after strip-solver. **Current canonical** is [`documents/ai/current_plan.md`](../../ai/current_plan.md) — `optimization/` was **restored** as RTTP Hybrid C.
 
 ```text
 django_apps/asteroid_lab/reconstruction/   ← ACTIVE (topology, complete)
 django_apps/asteroid_lab/contracts/        ← game_data snapshot DTOs
 django_apps/asteroid_lab/genetic_sample/     ← admin gene templates
-django_apps/asteroid_lab/services/solver_runtime_entry.py  ← SOLVER_NOT_AVAILABLE stub
-django_apps/asteroid_lab/optimization/       ← REMOVED
+django_apps/asteroid_lab/services/solver_runtime_entry.py  ← (2026-05-22) SOLVER_NOT_AVAILABLE stub
+django_apps/asteroid_lab/optimization/       ← (2026-05-22) REMOVED
 ```
 
-HTTP `POST …/run-solver/` 는 유지하나 optimization body는 반환하지 않음 ([`01_entry_point.md`](01_entry_point.md)).
+### Code packages — current 2026-05-24 (RTTP)
+
+```text
+django_apps/asteroid_lab/reconstruction/                       ← ACTIVE
+django_apps/asteroid_lab/contracts/                            ← game_data snapshot DTOs
+django_apps/asteroid_lab/genetic_sample/                       ← admin gene templates (non-runtime)
+django_apps/asteroid_lab/services/solver_runtime_entry.py      ← RTTP runtime entry (config-gated)
+django_apps/asteroid_lab/services/lab_rttp_snapshot_compose.py ← 3B-S product timeline projection
+django_apps/asteroid_lab/optimization/                         ← RTTP Hybrid C (ACTIVE)
+```
+
+HTTP `POST …/run-solver/` is retained; immediately after strip the body was a stub. Currently returns RTTP runtime response ([`01_entry_point.md`](01_entry_point.md), [`current_plan.md`](../../ai/current_plan.md)).
 
 ---
 
 ## RTTP pipeline status (2026-05-24)
 
-> **Note:** Frontmatter `ARCHIVED` above is **historical** (2026-05-22 strip surgery). Current `master` runs **RTTP Hybrid C** when `ASTEROID_LAB_RTTP_ENABLED=True`. Code 정본: [`documents/ai/current_plan.md`](../../ai/current_plan.md).
+> **Note:** Frontmatter `ARCHIVED` above is **historical** (2026-05-22 strip surgery). Current `master` runs **RTTP Hybrid C** when `ASTEROID_LAB_RTTP_ENABLED=True`. Code canonical: [`documents/ai/current_plan.md`](../../ai/current_plan.md).
 
 ### Track B2-T2: Per-Cell Transport Resolution (CLOSED — PR #62)
 
@@ -141,6 +156,6 @@ HTTP `POST …/run-solver/` 는 유지하나 optimization body는 반환하지 �
 
 - [x] **Task 1–4** — `partition_existing_transport`, adapter `blocked_incompatible_transport_cells`, skeleton/route-domain trunk subtract + blocked union, pipeline metrics
 - [x] **Task 5** — domain doc + `current_plan` (see repo `documents/ai/current_plan.md`)
-- [x] **Ops smoke C** — `test_rttp_transport_kind_route_domain.py` + mixed adapter partition test (mixed-kind 실맵 `run_solver`는 OPS `copy-import` 클래스에서 transport 0 — topology strips transport pre-adapter)
+- [x] **Ops smoke C** — `test_rttp_transport_kind_route_domain.py` + mixed adapter partition test (mixed-kind real-map `run_solver` is OPS `copy-import` class where transport is 0 — topology strips transport pre-adapter)
 
 **Next track:** Track D catalog footprint/connector — [`building-catalog-slice-first-consumption-design.md`](../../../docs/superpowers/specs/2026-05-24-building-catalog-slice-first-consumption-design.md) (brainstorming / plan TBD).

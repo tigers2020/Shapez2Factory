@@ -1,97 +1,97 @@
 # Asteroid Lab Optimization — Development Sequence
 
-> **문서 베이스라인 (2026-05-18):** 코드 기준 **Decode → Reconstruction** 완료 이후 optimization 시퀀스는 문서상 **미착수**다. 아래 `[ ]` 체크리스트는 재설정된 상태이며, pytest·통과 수·fixture 목록은 **갱신하지 않음**(역사 인용 보관). Lab 앱: `django_apps/asteroid_lab/` · 상위 [`README.md`](README.md).
+> **Document baseline (2026-05-18):** After **Decode → Reconstruction** in code, the optimization sequence is **not started** in documentation. The `[ ]` checklists below are reset; pytest pass counts and fixture lists are **not updated** (historical citation preserved). Lab app: `django_apps/asteroid_lab/` · parent [`README.md`](README.md).
 >
-> **Solver 버튼 v0:** merge·실행 계약·PR 상태는 [`solver_runtime/`](solver_runtime/) 이 정본이다. 본 문서 체크박스와 **상태가 다를 수 있음** — [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md).
+> **Solver button v0:** Merge, execution contract, and PR status are canonical in [`solver_runtime/`](solver_runtime/). **Status may differ** from this document's checkboxes — [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md).
 >
-> **RTTP Hybrid C v0.1 gate sync (2026-05-23):** `django_apps/asteroid_lab/optimization/` + `tests/unit/asteroid_lab/test_rttp_*.py` 기준으로 **Sequence 2·3·3B·6·7(부분)** 체크박스를 갱신했다. **Sequence 4·5(GA/evolution)** 는 v0.1 범위 밖(greedy-regret `PlacementGenome` 사용). 정본 설계: [`docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md). Narrow gate: `python -m pytest tests/unit/asteroid_lab/ -k rttp`.
+> **RTTP Hybrid C v0.1 gate sync (2026-05-23):** Checkboxes for **Sequence 2·3·3B·6·7 (partial)** updated per `django_apps/asteroid_lab/optimization/` + `tests/unit/asteroid_lab/test_rttp_*.py`. **Sequence 4·5 (GA/evolution)** are out of v0.1 scope (uses greedy-regret `PlacementGenome`). Canonical design: [`docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md). Narrow gate: `python -m pytest tests/unit/asteroid_lab/ -k rttp`.
 >
 > **RTTP v1 MacroBundleT3 gates (2026-05-23):** PR-A..H merged on `master` — `optimization/macros/`, `selection/macro_greedy_regret.py`, `commit/incremental_macro_commit.py`, `macro_only_mode` pipeline branch. Gates **RTTP-G9..G16** in `test_rttp_macro_bundle_t3.py`, `test_rttp_pipeline_macro_greenfield.py`, `test_rttp_replay_parity.py` (`test_macro_pipeline_replay_parity`). Spec: [`2026-05-23-rttp-v1-macrobundle-t3-design.md`](../../docs/superpowers/specs/2026-05-23-rttp-v1-macrobundle-t3-design.md).
 
-## 목적
+## Purpose
 
-GA + local pattern compiler + route feasibility 기반 optimization layer를 안전한 순서로 구현한다.
+Implement the GA + local pattern compiler + route feasibility optimization layer in a safe order.
 
-**필수:** `candidate 생성 → 즉시 route probe → normal pool` 은 분리된 “나중에 붙이기” 시퀀스로 두지 않는다. Phase 3 문서와 동일하게 Sequence 3 한 블록에서 완료한다.
+**Required:** Do not split `candidate generation → immediate route probe → normal pool` into a separate "attach later" sequence. Complete it in one block as Sequence 3, same as Phase 3 documentation.
 
-### 구현·검증 메모 (보관)
+### Implementation and verification notes (archived)
 
-- **앱 경계(의도):** Lab 디코드·리플레이·ORM은 `django_apps/asteroid_lab/` 쪽에 둔다. optimization DTO·GA 등은 별도 패키지로 두는 설계였으나, 문서에 남은 `django_apps/shapez_asteroid/optimization/` 인용은 **역사적**이다(저장소에서 해당 앱은 제거됨).
-- **테스트·픽스처 나열:** 이 절에 있던 pytest 경로·통과 수·JSON 픽스처 목록은 **문서 보관용**이며, 2026-05-18 폴더 정리에서 내용을 갱신하지 않았다. 실제 검증은 코드와 CI를 본다.
+- **App boundary (intent):** Lab decode, replay, and ORM live in `django_apps/asteroid_lab/`. Optimization DTOs, GA, etc. were designed as a separate package; references to `django_apps/shapez_asteroid/optimization/` in docs are **historical** (that app was removed from the repo).
+- **Test and fixture listings:** pytest paths, pass counts, and JSON fixture lists in this section are **documentation archive only**; not updated in the 2026-05-18 folder cleanup. Actual verification follows code and CI.
 
 ---
 
 ## Sequence 1A — Domain DTO contracts
 
-DTO·좌표 계약만 먼저 고정해 PR을 작게 유지한다. **hole asteroid fixture·adapter 검증은 1B로 분리**한다.
+Fix DTO and coordinate contracts first to keep PRs small. **Hole asteroid fixture and adapter verification are split to 1B.**
 
-### 작업
+### Work
 
 ```text
 [ ] RouteGoal / RouteGoalKind
-[ ] TopologyNode / TopologyEdge / TopologyGraph (무방향 계약)
+[ ] TopologyNode / TopologyEdge / TopologyGraph (undirected contract)
 [ ] OptimizationInput DTO (route_goals·topology_graph·existing_transport_cells·trunk·protected)
 [ ] RouteProbeFailureReason / CandidateRejectReason / ValidationIssueCode / ValidationSeverity
 [ ] EvolutionConvergenceReason / CommitConflictReason / OptimizationReplayEventType / ReservationState
-[ ] RouteDomainSnapshotBuilder 시그니처(단일 route_domain 스냅샷 생성 진입점)
-[ ] RouteDomainCellTransition / RecoveryBudget DTO (Phase 7과 동기)
-[ ] GenomeDiversityMetrics / EvolutionConfig.forced_distant_mutation_period (Phase 6과 동기)
+[ ] RouteDomainSnapshotBuilder signature (single route_domain snapshot entry point)
+[ ] RouteDomainCellTransition / RecoveryBudget DTO (sync with Phase 7)
+[ ] GenomeDiversityMetrics / EvolutionConfig.forced_distant_mutation_period (sync with Phase 6)
 ```
 
-### 테스트
+### Tests
 
 ```text
-pytest tests/unit/shapez_asteroid/test_optimization_input.py (DTO·좌표·빈 transport greenfield)
+pytest tests/unit/shapez_asteroid/test_optimization_input.py (DTO·coordinates·empty transport greenfield)
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
-[ ] 관련 DTO·enum import 가능 (순환 없음)
-[ ] enum 멤버 이름·값이 Phase 문서와 동기화됨
-[ ] OptimizationInput·그래프·goal의 모든 Coord가 Server X/Y 정본
-[ ] `neighbors4` island 4방 이웃 단위 테스트 (copy `X==0` 포함 케이스)
-[ ] route_goals가 kind·priority 계약을 만족하는 최소 factory 가능
-[ ] greenfield = existing_transport_cells 비어 있음 ∧ trunk·protected 공집합 (별도 코드 경로 없음)
+[ ] Related DTOs and enums importable (no cycles)
+[ ] Enum member names and values synced with Phase docs
+[ ] All Coords in OptimizationInput, graph, and goals use Server X/Y canonical form
+[ ] `neighbors4` island 4-neighbor unit test (includes copy `X==0` case)
+[ ] Minimal factory satisfying route_goals kind·priority contract
+[ ] greenfield = existing_transport_cells empty ∧ trunk·protected empty (no separate code path)
 ```
 
 ---
 
 ## Sequence 1B — Reconstruction adapter + RouteCellDomain seed builder
 
-입력을 실제 reconstruction 출력과 연결하고, Phase 4가 소비할 domain 초안을 만든다.
+Connect input to actual reconstruction output and build the domain draft consumed by Phase 4.
 
-### 작업
+### Work
 
 ```text
 [ ] Reconstruction → OptimizationInput adapter
-[ ] rim / interior / route_goals 추출
-[ ] RouteCellDomain 빌더 초안 (**RouteDomainSnapshotBuilder**; existing_transport_cells → transport_mask, trunk·protected·blocked 반영)
-[ ] topology_graph 이웃이 `neighbors4`와 모순 없음 (그래프 빌더 테스트)
+[ ] rim / interior / route_goals extraction
+[ ] RouteCellDomain builder draft (**RouteDomainSnapshotBuilder**; existing_transport_cells → transport_mask, trunk·protected·blocked)
+[ ] topology_graph neighbors consistent with `neighbors4` (graph builder test)
 ```
 
-### 테스트
+### Tests
 
 ```text
-pytest tests/unit/shapez_asteroid/test_optimization_input.py (adapter·builder 구간)
-pytest tests/unit/shapez_asteroid/test_route_cell_domain_builder.py (파일명은 구현에 맞게)
+pytest tests/unit/shapez_asteroid/test_optimization_input.py (adapter·builder section)
+pytest tests/unit/shapez_asteroid/test_route_cell_domain_builder.py (filename per implementation)
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
-[ ] hole asteroid fixture에서 interior fill이 mineable로 유지됨
-[ ] adapter가 greenfield·비-greenfield 동일 경로로 OptimizationInput을 생산
-[ ] 빌더 출력이 blocked/hard_blocked와 모순 없음
+[ ] hole asteroid fixture keeps interior fill as mineable
+[ ] adapter produces OptimizationInput via same path for greenfield and non-greenfield
+[ ] builder output consistent with blocked/hard_blocked
 ```
 
 ---
 
 ## Sequence 2 — Pattern Library
 
-> **RTTP v0.1 (merged):** `optimization/candidates/pattern_library.py` — dedicated `test_pattern_library.py` 없음; `test_rttp_candidate_generator.py`·`test_rttp_greedy_regret.py`가 소비 계약을 gate.
+> **RTTP v0.1 (merged):** `optimization/candidates/pattern_library.py` — no dedicated `test_pattern_library.py`; `test_rttp_candidate_generator.py`·`test_rttp_greedy_regret.py` gate consumption contract.
 
-### 작업
+### Work
 
 ```text
 [x] BundlePattern DTO (attachments·throughput_factor)
@@ -100,34 +100,34 @@ pytest tests/unit/shapez_asteroid/test_route_cell_domain_builder.py (파일명�
 [x] deterministic pattern id
 ```
 
-### 테스트
+### Tests
 
 ```text
 python -m pytest tests/unit/asteroid_lab/test_rttp_candidate_generator.py tests/unit/asteroid_lab/test_rttp_greedy_regret.py -v
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
 [x] throughput_factor 4/8/12/16 · canonical E rotation (`build_pattern_library`)
-[x] extractor + 0~3 extension linear pattern 생성
-[x] output_stub 별도 occupied 셀 (generator/probe 경로)
+[x] extractor + 0~3 extension linear pattern generation
+[x] output_stub separate occupied cell (generator/probe path)
 ```
 
 ---
 
-## Sequence 3 — Candidate Generator + Route Probe (통합)
+## Sequence 3 — Candidate Generator + Route Probe (integrated)
 
-후보가 normal pool에 들어가기 전 **반드시** probe를 통과한다.
+Candidates **must** pass probe before entering the normal pool.
 
 > **RTTP v0.1 (merged):** `candidate_generator.py` + `routing/route_probe.py` + `lift_lane_domain` / `route_goals`.
 
-### 작업
+### Work
 
 ```text
-[x] BundleCandidate DTO (topology_signature·probe 스냅샷)
+[x] BundleCandidate DTO (topology_signature·probe snapshot)
 [x] CandidateGenerationResult (normal vs rejected)
-[x] CandidateEquivalenceKey + dedupe (`selection/equivalence.py`; selection 단계)
+[x] CandidateEquivalenceKey + dedupe (`selection/equivalence.py`; selection stage)
 [x] INTERIOR_AND_RIM anchor ∈ rim ∪ inner (v0.1 default policy)
 [x] extension mineable validation (generator)
 [x] reject reason tracking (`CandidateRejectReason` StrEnum)
@@ -135,13 +135,13 @@ python -m pytest tests/unit/asteroid_lab/test_rttp_candidate_generator.py tests/
 [x] reachable → normal pool / unreachable → rejected
 ```
 
-### 테스트
+### Tests
 
 ```text
 python -m pytest tests/unit/asteroid_lab/test_rttp_candidate_generator.py tests/unit/asteroid_lab/test_rttp_lift_lane_domain.py tests/unit/asteroid_lab/test_rttp_route_goals.py -v
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
 [x] unreachable → rejected (`test_interior_and_rim_unreachable_goes_to_rejected`)
@@ -149,19 +149,19 @@ python -m pytest tests/unit/asteroid_lab/test_rttp_candidate_generator.py tests/
 [x] reachable in normal pool (`test_reachable_candidate_in_normal_pool`)
 [x] lift edge + trunk mask (`test_lift_edge_connects_stub_to_trunk_mask`)
 [x] ring ports in probe goals (`test_probe_goal_coords_include_ring_ports`)
-[ ] topology_graph·goal_priority_weight (legacy Phase 문서; v0.1 미구현)
-[ ] budget exceeded failure reason 전용 테스트 (미추가)
+[ ] topology_graph·goal_priority_weight (legacy Phase doc; not implemented in v0.1)
+[ ] dedicated budget exceeded failure reason test (not added)
 ```
 
 ---
 
-## Sequence 3B — Replay 최소 골격 (권장, 조기)
+## Sequence 3B — Replay minimal skeleton (recommended, early)
 
-candidate/probe 디버깅을 **Sequence 8까지 미루지 않으면** 구현 난이도가 급증한다. UI timeline 전체는 Sequence 8이 담당하고, 여기서는 **기록 파이프라인만** 최소로 연다.
+Deferring candidate/probe debugging **until Sequence 8** sharply increases implementation difficulty. Sequence 8 owns the full UI timeline; here only the **recording pipeline** is opened minimally.
 
-> **RTTP v0.2 + 3B-S (merged, 2026-05-23):** 네 milestone on **`{run_key}:rttp`**; Lab **`lab_replay_frames_json`** = inspection/reconstruction + **interleaved full-snapshot RTTP** (`lab_rttp_snapshot_compose`). Contracts: [`2026-05-23-rttp-v0.2-replay-parity-design.md`](../../docs/superpowers/specs/2026-05-23-rttp-v0.2-replay-parity-design.md), [`2026-05-23-sequence-3b-s-rttp-full-snapshot-replay-design.md`](../../docs/superpowers/specs/2026-05-23-sequence-3b-s-rttp-full-snapshot-replay-design.md).
+> **RTTP v0.2 + 3B-S (merged, 2026-05-23):** Four milestones on **`{run_key}:rttp`**; Lab **`lab_replay_frames_json`** = inspection/reconstruction + **interleaved full-snapshot RTTP** (`lab_rttp_snapshot_compose`). Contracts: [`2026-05-23-rttp-v0.2-replay-parity-design.md`](../../docs/superpowers/specs/2026-05-23-rttp-v0.2-replay-parity-design.md), [`2026-05-23-sequence-3b-s-rttp-full-snapshot-replay-design.md`](../../docs/superpowers/specs/2026-05-23-sequence-3b-s-rttp-full-snapshot-replay-design.md).
 
-### 작업
+### Work
 
 ```text
 [x] canonical `rttp.*` milestone event types (four snapshots)
@@ -172,27 +172,27 @@ candidate/probe 디버깅을 **Sequence 8까지 미루지 않으면** 구현 난
 [x] Lab product timeline interleave (3B-S; no inherited_snapshot)
 ```
 
-### 테스트
+### Tests
 
 ```text
 python -m pytest tests/unit/asteroid_lab/test_rttp_replay_parity.py tests/unit/asteroid_lab/test_rttp_replay_sink.py tests/unit/asteroid_lab/test_rttp_db_replay_sink.py tests/unit/asteroid_lab/test_lab_rttp_snapshot_compose.py -v
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
-[x] replay on/off 동일 candidate/commit ids (`test_rttp_replay_on_off_parity`)
+[x] replay on/off same candidate/commit ids (`test_rttp_replay_on_off_parity`)
 [x] four milestone events + descriptions/overlays
-[ ] full Phase 9 event matrix (candidate.rejected per-frame 등) — v0.1 부분만
+[ ] full Phase 9 event matrix (candidate.rejected per-frame, etc.) — v0.1 partial only
 ```
 
 ---
 
 ## Sequence 4 — Genome / Fitness
 
-> **RTTP v0.1: 범위 밖.** Hybrid C Layer 3는 **greedy-regret `PlacementGenome`** (`test_rttp_greedy_regret.py`). GA `Gene`/`FitnessBreakdown` 시퀀스는 v1 또는 별도 evolution track.
+> **RTTP v0.1: out of scope.** Hybrid C Layer 3 uses **greedy-regret `PlacementGenome`** (`test_rttp_greedy_regret.py`). GA `Gene`/`FitnessBreakdown` sequence is v1 or a separate evolution track.
 
-### 작업
+### Work
 
 ```text
 [ ] Gene / Genome DTO (Gene.commit_order) — legacy GA track
@@ -200,51 +200,51 @@ python -m pytest tests/unit/asteroid_lab/test_rttp_replay_parity.py tests/unit/a
 [ ] overlap penalty
 [ ] unreachable penalty
 [ ] route cost penalty
-[ ] route_fragility_penalty / shared_corridor_pressure_penalty 필드 (v0는 0 허용)
+[ ] route_fragility_penalty / shared_corridor_pressure_penalty fields (0 allowed in v0)
 ```
 
-### 테스트
+### Tests
 
 ```text
-# v0.1 대체 gate:
+# v0.1 alternate gate:
 python -m pytest tests/unit/asteroid_lab/test_rttp_greedy_regret.py -v
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
 [x] explicit commit_order ≠ rim scan (`test_commit_order_is_explicit_not_rim_scan`) — RTTP v0.1
 [x] regret/scarcity ordering (`test_regret_prefers_high_scarcity_candidate`) — RTTP v0.1
-[ ] GA fitness 동일 seed deterministic — 미착수
+[ ] GA fitness same seed deterministic — not started
 ```
 
 ---
 
 ## Sequence 5 — Evolution Search v0
 
-> **RTTP v0.1: 범위 밖** (MacroBundle / dense interior / GA evolution — [`rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md) § v1).
+> **RTTP v0.1: out of scope** (MacroBundle / dense interior / GA evolution — [`rttp-hybrid-c-layout-design.md`](../../docs/superpowers/specs/2026-05-22-rttp-hybrid-c-layout-design.md) § v1).
 
-### 작업
+### Work
 
 ```text
 [ ] initial population
 [ ] mutation
 [ ] repair
 [ ] elitism
-[ ] forced_distant_mutation_period (None 허용) + GenomeDiversityMetrics 자리(0 허용)
+[ ] forced_distant_mutation_period (None allowed) + GenomeDiversityMetrics placeholder (0 allowed)
 [ ] EvolutionConvergenceReason enum + EvolutionResult
 ```
 
-### 테스트
+### Tests
 
 ```text
-# (미착수 — v0.1은 single-pass greedy-regret + LNS only)
+# (not started — v0.1 is single-pass greedy-regret + LNS only)
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
-[ ] (미착수)
+[ ] (not started)
 ```
 
 ---
@@ -253,23 +253,23 @@ python -m pytest tests/unit/asteroid_lab/test_rttp_greedy_regret.py -v
 
 > **RTTP v0.1 (merged):** `commit/incremental_commit.py` + bounded `local_lns.py`. Regression: `test_rttp_narrow_corridor.py` (probe≠commit, protected bridge).
 
-### 작업
+### Work
 
 ```text
 [x] PlacementGenome commit_order (greedy-regret; explicit order)
-[x] route probe 재실행 at commit (`domain.version` increments)
+[x] route probe re-run at commit (`domain.version` increments)
 [x] CommitConflictReason StrEnum (incl. INLET_ON_SHARED_TRANSPORT, REPROBE_FAILED, HARD_PROTECTED_CONFLICT)
 [x] incremental commit + reservation merge into trunk mask
 [x] local LNS after commit failure only
 ```
 
-### 테스트
+### Tests
 
 ```text
 python -m pytest tests/unit/asteroid_lab/test_rttp_commit.py tests/unit/asteroid_lab/test_rttp_lns.py tests/unit/asteroid_lab/test_rttp_narrow_corridor.py tests/unit/asteroid_lab/test_rttp_greedy_regret.py -v
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
 [x] inlet on shared transport rejects (`test_commit_rejects_inlet_on_shared_transport`)
@@ -277,16 +277,16 @@ python -m pytest tests/unit/asteroid_lab/test_rttp_commit.py tests/unit/asteroid
 [x] probe reachable ≠ commit success (`test_narrow_corridor_probe_vs_commit_regression`)
 [x] protected corridor → HARD_PROTECTED_CONFLICT (`test_narrow_corridor_protected_bridge_regression`)
 [x] commit_order explicit (`test_commit_order_is_explicit_not_rim_scan`)
-[ ] RouteReservation DTO (legacy Phase 7 필드 전부) — v0.1 단순화
+[ ] RouteReservation DTO (all legacy Phase 7 fields) — v0.1 simplified
 ```
 
 ---
 
 ## Sequence 7 — Validation
 
-> **RTTP v0.1 (부분):** `validation/final_validation.py` read-only asserts; pipeline `validation_passed`. Full `ValidationIssue` matrix는 미구현.
+> **RTTP v0.1 (partial):** `validation/final_validation.py` read-only asserts; pipeline `validation_passed`. Full `ValidationIssue` matrix not implemented.
 
-### 작업
+### Work
 
 ```text
 [x] final validation read-only (`validate_final_layout`)
@@ -295,13 +295,13 @@ python -m pytest tests/unit/asteroid_lab/test_rttp_commit.py tests/unit/asteroid
 [ ] orphan transport / full connectivity matrix
 ```
 
-### 테스트
+### Tests
 
 ```text
 python -m pytest tests/unit/asteroid_lab/test_rttp_pipeline_greenfield.py tests/unit/asteroid_lab/test_rttp_reconstruction_fixture_e2e.py tests/unit/asteroid_lab/test_rttp_existing_trunk.py -v
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
 [x] validation read-only (no repair imports in validation module)
@@ -309,15 +309,15 @@ python -m pytest tests/unit/asteroid_lab/test_rttp_pipeline_greenfield.py tests/
 [ ] Validation must not invent routes / mutate placement — module-level; no dedicated negative suite
 ```
 
-(정본 서술: `documents/plans/asteroid_lab_optimization/asteroid_lab_08_validation.md` — 계약(금지))
+(Canonical description: `documents/plans/asteroid_lab_optimization/asteroid_lab_08_validation.md` — contract (forbidden))
 
 ---
 
-## Sequence 8 — Replay Debug (전체 timeline·UI)
+## Sequence 8 — Replay Debug (full timeline·UI)
 
-Sequence 3B에서 연 **최소 골격**을 확장해 전 이벤트·오버레이·컨트롤러를 완성한다.
+Extend the **minimal skeleton** opened in Sequence 3B to complete all events, overlays, and controllers.
 
-### 작업
+### Work
 
 ```text
 [ ] optimization replay event (OptimizationReplayEventType)
@@ -327,63 +327,63 @@ Sequence 3B에서 연 **최소 골격**을 확장해 전 이벤트·오버레이
 [ ] validation frame
 ```
 
-### 테스트
+### Tests
 
 ```text
 pytest tests/unit/shapez_asteroid/test_optimization_replay.py
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
-[ ] optimization 과정을 timeline으로 확인 가능
-[ ] replay artifact는 algorithm input으로 사용되지 않음
+[ ] optimization process viewable as timeline
+[ ] replay artifact is not used as algorithm input
 ```
 
 ---
 
 ## Sequence 9 — UI Integration
 
-### 작업
+### Work
 
 ```text
-[ ] replay controller에 optimization track 추가
+[ ] add optimization track to replay controller
 [ ] candidate overlay
 [ ] route probe overlay
 [ ] best genome overlay
 [ ] validation issue overlay
 ```
 
-### 테스트
+### Tests
 
 ```text
 pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
-[ ] UI에서 candidate/probe/commit/validation frame 확인 가능
+[ ] candidate/probe/commit/validation frames visible in UI
 ```
 
 ---
 
 ## Sequence 10 — Regression Fixtures
 
-> **상태 (2026-05-18 재설정):** 아래 체크리스트는 **미착수**다. 과거에 “완료·반영됨”으로 읽히던 문장은 보관용이며, pytest·픽스처 경로는 갱신하지 않았다. Lab UI `10A–10F` 번호와 본 `Sequence 10`은 **다른 계층**이다.
+> **Status (2026-05-18 reset):** Checklists below are **not started**. Sentences that read as "complete·reflected" are archive-only; pytest and fixture paths were not updated. Lab UI `10A–10F` numbering and this `Sequence 10` are **different layers**.
 
-### 작업
+### Work
 
 ```text
 [ ] simple asteroid fixture
 [ ] hole asteroid fixture
-[ ] narrow corridor asteroid fixture — test helper 기반 narrow bridge
+[ ] narrow corridor asteroid fixture — test helper based narrow bridge
 [ ] shape/fluid mixed fixture
 [ ] unreachable output fixture
-[ ] existing trunk / protected corridor 스텁 fixture
+[ ] existing trunk / protected corridor stub fixture
 ```
 
-### 10A 참고 목록 (보관)
+### 10A reference list (archived)
 
 ```text
 [ ] 3-cell narrow bridge OptimizationInput builder
@@ -397,54 +397,54 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 [ ] targeted pytest / ruff / mypy green
 ```
 
-### 남은 범위
+### Remaining scope
 
 ```text
 [ ] JSON fixture under tests/fixtures/shapez_asteroid/optimization/ (narrow corridor asymmetric + symmetric rim competition v0)
 [ ] same seed → same best genome on full narrow evolution run
 ```
 
-### Sequence 10B — Commit Survivability Metrics v0 (Regression Fixtures 하위; Lab UI 10B 아님)
+### Sequence 10B — Commit Survivability Metrics v0 (under Regression Fixtures; not Lab UI 10B)
 
-> **상태:** 계약·관측 목표만 문서화됨. 구현·fixture는 **미착수**로 본다(체크리스트 재설정).
+> **Status:** Contract and observability goals documented only. Implementation and fixtures are **not started** (checklist reset).
 
-**스펙 초안 (v0):**
+**Spec draft (v0):**
 
 - `PenaltyMode.OFF` / `PenaltyMode.CONSERVATIVE`
-- `CommitSurvivabilityMetrics` 계약 및 `summarize_incremental_commit`
+- `CommitSurvivabilityMetrics` contract and `summarize_incremental_commit`
 - JSON-safe replay metrics adapter
-- `COMMIT_SURVIVABILITY_SUMMARY` 리플레이 프레임
-- 보수 모드에서 `route_fragility` / `shared_corridor_pressure` 최소 휴리스틱(`route_domain` 유무에 따른 이중 경로 포함)
-- narrow bridge 기준 penalty off/on 비교·타깃 pytest / ruff / scoped mypy green
+- `COMMIT_SURVIVABILITY_SUMMARY` replay frame
+- Conservative mode minimum heuristics for `route_fragility` / `shared_corridor_pressure` (includes dual-path logic based on `route_domain` presence)
+- narrow bridge penalty off/on comparison · targeted pytest / ruff / scoped mypy green
 
-**남은 범위 (expansion):**
+**Remaining scope (expansion):**
 
 - reservation accumulation fixture
 - corridor starvation replay fixture
 - late-generation unreachable fixture
-- evolution fitness 스냅샷과 commit summary 프레임의 penalty 스티칭
-- 전역 quality gates (`## Sequence 11` 참고)
+- penalty stitching between evolution fitness snapshot and commit summary frame
+- global quality gates (see `## Sequence 11`)
 
-#### 메트릭 계약
+#### Metrics contract
 
-- **Post-commit(관측 전용):** `CommitSurvivabilityMetrics` — `commit_attempt_count`, `commit_confirmed_count`, `commit_rolled_back_count`, `commit_success_ratio`, `rollback_reason_counts`(enum 값 키), `route_probe_failed_count`, `transport_kind_conflict_count`. 진화 탐색 입력 **금지**.
-- **Pre-commit(fitness):** `PenaltyMode.OFF` / `PenaltyMode.CONSERVATIVE`. 보수 모드는 `route_fragility_penalty`·`shared_corridor_pressure_penalty`에만 결정적 휴리스틱을 부여; 나머지 breakdown 슬롯은 v0와 동일하게 0 유지 가능.
-- **CONSERVATIVE:** 결정적 **국소** 휴리스틱이며 **전역 commit 성공 예측기가 아님**.
+- **Post-commit (observation only):** `CommitSurvivabilityMetrics` — `commit_attempt_count`, `commit_confirmed_count`, `commit_rolled_back_count`, `commit_success_ratio`, `rollback_reason_counts` (enum value keys), `route_probe_failed_count`, `transport_kind_conflict_count`. **Forbidden** as evolution search input.
+- **Pre-commit (fitness):** `PenaltyMode.OFF` / `PenaltyMode.CONSERVATIVE`. Conservative mode applies deterministic heuristics only to `route_fragility_penalty`·`shared_corridor_pressure_penalty`; other breakdown slots may remain 0 as in v0.
+- **CONSERVATIVE:** Deterministic **local** heuristic; **not** a global commit success predictor.
 
-#### 리플레이
+#### Replay
 
-- `OptimizationReplayEventType.COMMIT_SURVIVABILITY_SUMMARY` — 스칼라·JSON-safe `rollback_reason_counts`; **solver/GA 입력 금지**.
-- **commit-only** summary 프레임에서 `route_fragility_penalty` / `shared_corridor_pressure_penalty`는 **0.0 플레이스홀더** — “패널티가 없다”가 아니라 **이 프레임이 fitness breakdown을 소유하지 않는다**는 뜻이다. 값은 evolution+commit 스티치 시에만 채워질 여지가 있다.
+- `OptimizationReplayEventType.COMMIT_SURVIVABILITY_SUMMARY` — scalar·JSON-safe `rollback_reason_counts`; **forbidden** as solver/GA input.
+- In **commit-only** summary frames, `route_fragility_penalty` / `shared_corridor_pressure_penalty` are **0.0 placeholders** — meaning **this frame does not own the fitness breakdown**, not "no penalty". Values may be filled only when evolution+commit stitching exists.
 
-#### 테스트
+#### Tests
 
-- 경로·케이스 이름은 **문서 보관용**이다. 실제 테스트 트리·검증은 코드와 CI를 본다.
+- Paths and case names are **documentation archive only**. Actual test tree and verification follow code and CI.
 
 ---
 
 ## Sequence 11 — Quality Gates
 
-### 작업
+### Work
 
 ```text
 [ ] ruff check .
@@ -454,107 +454,107 @@ pytest tests/integration/shapez_asteroid/test_optimization_ui_payload.py
 [ ] integration pytest
 ```
 
-### 완료 기준
+### Completion criteria
 
 ```text
-[ ] all gates pass (ruff / black / mypy / pytest — 구체 통과 수는 문서 갱신 범위 밖)
+[ ] all gates pass (ruff / black / mypy / pytest — specific pass counts out of doc update scope)
 ```
 
-> **참고:** 과거 로컬에서 green을 확인했다는 기록은 **보관용**이다. 2026-05-18 폴더 정리에서는 pytest·통과 수·경로를 갱신하지 않았다.
+> **Note:** Records of past local green runs are **archive only**. The 2026-05-18 folder cleanup did not update pytest·pass counts·paths.
 
-> **참고 (12E 이후):** POST·persist 관련 경로는 코드와 CI를 본다. 전 저장소 게이트는 아래 `### 알려진 부채 (전역 게이트)`로 추적한다.
+> **Note (after 12E):** POST·persist paths follow code and CI. Full-repo gates are tracked under `### Known debt (global gates)` below.
 
 ---
 
-## Asteroid Lab — Run Solver POST · optimization replay 영속 (시퀀스 12C–12H)
+## Asteroid Lab — Run Solver POST · optimization replay persistence (sequences 12C–12H)
 
-Lab **검사(디코드) 리플레이**가 성공한 뒤 같은 요청 안에서 **POST 동기** bounded GA를 돌리고, optimization replay 프레임을 `SolverRun.config_json`에 합친다. Lab 응답 JSON에 inspection 번들을 넣기 **전**에 attach를 실행해야 동일 응답에 optimization 트랙이 포함된다 (`django_apps/web/views/public_pages.py`, `django_apps/web/services/asteroid_lab_post_inspection_evolution.py`). `replay_pipeline_service`는 `shapez_asteroid`를 import하지 않는 경계를 유지한다.
+After Lab **inspection (decode) replay** succeeds, run **POST synchronous** bounded GA in the same request and merge optimization replay frames into `SolverRun.config_json`. Attach must run **before** placing the inspection bundle in the Lab response JSON so the same response includes the optimization track (`django_apps/web/views/public_pages.py`, `django_apps/web/services/asteroid_lab_post_inspection_evolution.py`). `replay_pipeline_service` maintains the boundary of not importing `shapez_asteroid`.
 
-### 진행 표 (12C–12H)
+### Progress table (12C–12H)
 
-| 시퀀스 | 상태 | 요약 |
+| Sequence | Status | Summary |
 |--------|------|------|
-| 12C | 미착수 | `optimization_replay_persist` — 성공한 inspection replay 빌드 이후에만 `SolverRun.config_json`에 프레임 기록 (output-only) |
-| 12D | 미착수 | 검사 replay `ok` 직후 post-inspection evolution + attach로 UI optimization 트랙 동기 반영 |
-| 12E | 미착수 | POST 전용 하드캡(`max_candidates`, `route_probe_max_expansions`, `time_budget_ms`, `population_size` 등), `empty_candidate_pool` / `evolution_failed` 분리, JSON `optimization_replay_attach` `{attached, reason}`, `_finalize_attach` INFO 로그, `event_type`·접두사 스모크 및 attach 계약 통합 테스트 |
-| 12F | 미착수 | persist 프레임 리스트 가드: `validate_optimization_replay_frame_list_payload` + 역직렬화 시 절단 짝·연속 `frame_index`·알려진 `event_type`; malformed 시 읽기 빈 트랙·쓰기 스킵(`invalid_replay_payload`); `build_optimization_replay_track_payload`가 잘림 시 첫 `truncation_reason` 집계; schema/truncation **sibling·봉투·cap·migration** 비범위 유지(정본: `asteroid_lab_12_runtime_replay_wiring.md`) |
-| 12G | 미착수 | 읽기 실패 시 빈 트랙 + `metrics.optimization_replay_diagnostic_reason`만 추가 (`optimization_ui_payload` 분류 + `optimization_replay_payload_for_project`); 정상 페이로드에서는 키 부재; 솔버·리플레이 의미·schema/truncation sibling 비변경(정본: `asteroid_lab_12_runtime_replay_wiring.md` §7) |
-| 12H | 미착수 | Optimization replay 패널 HUD: `replay_truncated` / `truncation_reason` / `optimization_replay_diagnostic_reason` 표시 전용(`asteroid_miner_layout_solver.html` SSR + `asteroid_miner_layout_lab.js`); 리플레이 시맨틱·Lab 타임라인 제어·암묵적 동기화 없음 |
+| 12C | Not started | `optimization_replay_persist` — record frames to `SolverRun.config_json` only after successful inspection replay build (output-only) |
+| 12D | Not started | Post-inspection evolution + attach immediately after inspection replay `ok` for synchronous UI optimization track |
+| 12E | Not started | POST-only hard caps (`max_candidates`, `route_probe_max_expansions`, `time_budget_ms`, `population_size`, etc.), `empty_candidate_pool` / `evolution_failed` separation, JSON `optimization_replay_attach` `{attached, reason}`, `_finalize_attach` INFO log, `event_type`·prefix smoke and attach contract integration tests |
+| 12F | Not started | Persist frame list guard: `validate_optimization_replay_frame_list_payload` + truncation pair·continuous `frame_index`·known `event_type` on deserialize; malformed → read empty track·write skip (`invalid_replay_payload`); `build_optimization_replay_track_payload` aggregates first `truncation_reason` on truncation; schema/truncation **sibling·envelope·cap·migration** out of scope (canonical: `asteroid_lab_12_runtime_replay_wiring.md`) |
+| 12G | Not started | Read failure → empty track + `metrics.optimization_replay_diagnostic_reason` only (`optimization_ui_payload` classification + `optimization_replay_payload_for_project`); key absent on normal payload; solver·replay semantics·schema/truncation sibling unchanged (canonical: `asteroid_lab_12_runtime_replay_wiring.md` §7) |
+| 12H | Not started | Optimization replay panel HUD: display-only `replay_truncated` / `truncation_reason` / `optimization_replay_diagnostic_reason` (`asteroid_miner_layout_solver.html` SSR + `asteroid_miner_layout_lab.js`); no replay semantics·Lab timeline control·implicit sync |
 
-### 12E 구현 요약
+### 12E implementation summary
 
-- **응답 지연:** POST 인라인 GA에 동기 상한을 둔다 (v0는 응답 안정성 우선).
-- **관측성:** 스킵·실패 시에도 `optimization_replay_attach.reason`으로 UI·테스트·로그가 동일 어휘를 공유한다. (의미상 `empty_candidate_pool`은 orchestration 결과에 가깝고 `empty_frames`는 attach 결과에 가깝다; v1에서 타입 분리 여지는 있으나 12E 범위에서는 단일 `OptimizationReplayAttachReason`에 포함해 둔다.)
-- **검증:** 코드·CI 기준(문서에 pytest 구간을 열거하지 않음).
+- **Response latency:** Synchronous upper bound on POST inline GA (v0 prioritizes response stability).
+- **Observability:** On skip/failure, UI·tests·logs share the same vocabulary via `optimization_replay_attach.reason`. (Semantically `empty_candidate_pool` is closer to orchestration result and `empty_frames` to attach result; v1 may split types but 12E keeps both in single `OptimizationReplayAttachReason`.)
+- **Verification:** Per code·CI (pytest sections not listed in doc).
 
-### 알려진 부채 (전역 게이트)
+### Known debt (global gates)
 
-전 저장소 린트·타입·테스트 게이트는 환경·드리프트에 따라 달라질 수 있다. 이 절은 **추적용**이며, 2026-05-18 문서 정리에서는 통과 수·날짜를 갱신하지 않았다.
+Full-repo lint·type·test gates may vary with environment and drift. This section is **for tracking**; pass counts and dates were not updated in the 2026-05-18 doc cleanup.
 
 ---
 
-## Sequence 13 — Replay payload scalability (로드맵, 구현 게이트)
+## Sequence 13 — Replay payload scalability (roadmap, implementation gate)
 
-**정본:** [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md)  
-계측·13A·13B 역사: [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md) · **제품 replay:** [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) (단일 replay timeline; dual-track **폐기**). 13A·13B의 Lab/optimization **귀속(attribution)** 명칭은 계측 시점의 historical 라벨이다.
+**Canonical:** [`asteroid_lab_13_replay_payload_scalability.md`](asteroid_lab_13_replay_payload_scalability.md)  
+Instrumentation·13A·13B history: [`asteroid_lab_09_replay_debug.md`](asteroid_lab_09_replay_debug.md) · **Product replay:** [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) (single replay timeline; dual-track **deprecated**). Lab/optimization **attribution** names in 13A·13B are historical labels from instrumentation time.
 
-| 하위 | 상태 | 요약 |
+| Sub | Status | Summary |
 |------|------|------|
-| 13A | 미착수 | 최상위 JSON 섹션 계측, optimization replay 하드 캡 회귀, HAR 근거 |
-| 13B | 미착수 | Lab replay 귀속·`largest_lab_frames`·redundancy, Lab 미캡 갭 문서화 |
-| 13C | **승인 대기** | Full Lab replay **lazy-load 엔드포인트**(선호 1차 구현); 인라인과 시맨틱 동등 |
-| 13D | 로드맵 | UI lazy-load·로딩/오류·소유권 유지·인라인 폴백 허용 |
-| 13E | 로드맵 | Delta prototype — lazy-load 불충분 시, 재구성 동등성 테스트 필수 |
-| 13F | 로드맵 | Cell interning — redundancy 근거 후, 렌더·조회 동등성 |
-| 13G | 로드맵 | gzip/Brotli 등 전송 — 시맨틱 작업 대체 금지 |
+| 13A | Not started | Top-level JSON section instrumentation, optimization replay hard cap regression, HAR evidence |
+| 13B | Not started | Lab replay attribution·`largest_lab_frames`·redundancy, Lab uncapped gap documentation |
+| 13C | **Awaiting approval** | Full Lab replay **lazy-load endpoint** (preferred first implementation); semantic equivalence with inline |
+| 13D | Roadmap | UI lazy-load·loading/error·ownership preservation·inline fallback allowed |
+| 13E | Roadmap | Delta prototype — when lazy-load insufficient, reconstruction equivalence tests required |
+| 13F | Roadmap | Cell interning — after redundancy evidence, render·lookup equivalence |
+| 13G | Roadmap | gzip/Brotli transport — must not replace semantic work |
 
-**금지(문서 단계):** 응답 계약·JS 로딩·delta 본구현·solver semantics 선제 변경. 13C 구현은 **명시 승인 후**.
+**Forbidden (doc stage):** Response contract·JS loading·delta full implementation·solver semantics preemptive changes. 13C implementation **after explicit approval**.
 
 ---
 
-## Asteroid Lab — Optimization replay UI (시퀀스 10A–10F) — **마이그레이션 대상**
+## Asteroid Lab — Optimization replay UI (sequences 10A–10F) — **migration target**
 
-> **2026-05-19:** 제품 정본은 [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md). 아래 10A–10F·11A–11B(dual-track·별도 optimization controller·HUD-only)는 **obsolete**이다. 신규 작업은 **Phase 9 시퀀스 9A–9H**를 따른다. **9E**(제품 replay = `lab_replay_frames_json` 단일 타임라인, feature flag·Optimization Replay 패널 제거)는 2026-05-19 구현 완료.
+> **2026-05-19:** Product canonical is [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md). 10A–10F·11A–11B below (dual-track·separate optimization controller·HUD-only) are **obsolete**. New work follows **Phase 9 sequences 9A–9H**. **9E** (product replay = `lab_replay_frames_json` single timeline, feature flag·Optimization Replay panel removal) completed 2026-05-19.
 
-**번호 주의:** 아래 `10A–10F`는 Lab 페이지 **optimization 리플레이 UI** 전용 진행 번호(역사)이다. 본 문서 상단의 `## Sequence 10 — Regression Fixtures`(회귀 fixture)와 **같은 “10” 계층이 아니다.**
+**Numbering note:** `10A–10F` below are Lab page **optimization replay UI** progress numbers (historical). Not the same "10" layer as `## Sequence 10 — Regression Fixtures` at the top of this document.
 
 <details>
-<summary>Deprecated historical: 시퀀스 10A–11B (dual-track·별도 optimization controller) — 펼치기</summary>
+<summary>Deprecated historical: sequences 10A–11B (dual-track·separate optimization controller) — expand</summary>
 
-### 진행 표 (10A–10F)
+### Progress table (10A–10F)
 
-| 시퀀스 | 상태 | 요약 |
+| Sequence | Status | Summary |
 |--------|------|------|
-| 10A | 미착수 | parse-only — optimization 리플레이 JSON 파싱만 |
-| 10B | 미착수 | metadata summary — 요약 메타데이터 표시 |
-| 10C | 미착수 | summary panel — 요약 패널 UI |
-| 10D | 미착수 | selected frame metadata — 선택 프레임 메타데이터 |
-| 10E | 미착수 | independent metadata navigation — `optimizationReplayFrameIndex`만 clamp·갱신, Lab replay 타임라인 비침해 |
-| 10F | 미착수 | dual-track sync policy document — `asteroid_lab_09_replay_debug.md`에 이중 트랙·비동기화 계약 문서화 |
+| 10A | Not started | parse-only — optimization replay JSON parsing only |
+| 10B | Not started | metadata summary — summary metadata display |
+| 10C | Not started | summary panel — summary panel UI |
+| 10D | Not started | selected frame metadata — selected frame metadata |
+| 10E | Not started | independent metadata navigation — clamp·update `optimizationReplayFrameIndex` only, Lab replay timeline untouched |
+| 10F | Not started | dual-track sync policy document — dual-track·desync contract documented in `asteroid_lab_09_replay_debug.md` |
 
-### 향후 (오버레이·동기화)
+### Future (overlay·sync)
 
-| 시퀀스 | 상태 | 요약 |
+| Sequence | Status | Summary |
 |--------|------|------|
-| 11A | 미착수 | readonly overlay projection — `projectOptimizationReplayFrameToLabOverlay(frame)` → `{ cells, diagnostics }`; Lab/optimization 인덱스·Lab 페이로드 미변경; bbox는 `metrics`에서만 |
-| 11B | 미착수 | overlay rendering — **env 플래그 없음**(미구현); 11A projection + 별도 `#lab-optimization-overlay-layer`; Lab 셀 DOM·페이로드 비변형·인덱스 비동기화 유지. 구현 시 [`environment.md`](../ai/manuals/environment.md)에 canonical 이름 등록 |
-| 11C | 미착수 | frame sync policy — **필요할 때만** 명시적 동기화 정책 검토 (기본은 비동기화, `09` 정본 참조) |
+| 11A | Not started | readonly overlay projection — `projectOptimizationReplayFrameToLabOverlay(frame)` → `{ cells, diagnostics }`; Lab/optimization index·Lab payload unchanged; bbox from `metrics` only |
+| 11B | Not started | overlay rendering — **no env flag** (not implemented); 11A projection + separate `#lab-optimization-overlay-layer`; Lab cell DOM·payload immutable·index desync preserved. Register canonical name in [`environment.md`](../ai/manuals/environment.md) on implementation |
+| 11C | Not started | frame sync policy — review explicit sync policy **only when needed** (default desync, see `09` canonical) |
 
-#### 11B 완료 기준 (요약)
+#### 11B completion criteria (summary)
 
 ```text
-[ ] asteroid_lab_09에 Sequence 11B 정책(플래그·별도 레이어·금지) 문서화
-[ ] 템플릿에 lab-optimization-overlay-layer / lab-optimization-overlay-diagnostics
-[ ] asteroid_miner_layout_lab.js: 플래그, clear/render, Lab 그리드와 동기 grid 스타일, 패널·applyFrame·줌 훅
-[ ] test_asteroid_lab_page_context.py 11B 정적 계약 테스트
+[ ] Document Sequence 11B policy (flag·separate layer·forbidden) in asteroid_lab_09
+[ ] Template: lab-optimization-overlay-layer / lab-optimization-overlay-diagnostics
+[ ] asteroid_miner_layout_lab.js: flag, clear/render, grid style synced with Lab grid, panel·applyFrame·zoom hooks
+[ ] test_asteroid_lab_page_context.py 11B static contract test
 ```
 
-#### 11A 완료 기준 (요약)
+#### 11A completion criteria (summary)
 
 ```text
-[ ] asteroid_lab_09에 Sequence 11A 계약(입출력·금지·bbox·drop) 문서화
-[ ] asteroid_miner_layout_lab.js에 projectOptimizationReplayFrameToLabOverlay 구현 (렌더/DOM/인덱스 sync 없음)
-[ ] test_asteroid_lab_page_context.py에 11A 정적 계약 테스트
+[ ] Document Sequence 11A contract (I/O·forbidden·bbox·drop) in asteroid_lab_09
+[ ] Implement projectOptimizationReplayFrameToLabOverlay in asteroid_miner_layout_lab.js (no render/DOM/index sync)
+[ ] 11A static contract test in test_asteroid_lab_page_context.py
 ```
 
 </details>

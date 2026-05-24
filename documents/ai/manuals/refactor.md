@@ -1,27 +1,27 @@
-# 매뉴얼: Refactor · 정리
+# Manual: Refactor · Cleanup
 
-## 목표
+## Goal
 
-동작을 바꾸지 않거나, 요청된 동작만 바꾼다.
+Change no behavior, or change only the behavior requested.
 
-## 원칙 ([`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc))
+## Principles ([`.cursor/rules/shapez2-core.mdc`](../../../.cursor/rules/shapez2-core.mdc))
 
-- 요청과 무관한 파일은 건드리지 않는다.
-- 본인 변경으로 생긴 미사용 import·변수만 제거한다. **기존 dead code는 요청 없이 삭제하지 않는다.**
-- 추측·요청 밖 추상화·「불가능 시나리오」 방어 코드를 추가하지 않는다.
+- Do not touch files unrelated to the request.
+- Remove unused imports · variables only from your own changes. **Do not delete existing dead code without a request.**
+- Do not add speculation · out-of-scope abstractions · “impossible scenario” defensive code.
 
-## 넓은 재작성
+## Broad rewrites
 
-명시 요청·플랜·승인 없이 넓은 재작성을 하지 않는다 ([`AGENTS.md`](../../../AGENTS.md)).
+Do not perform broad rewrites without explicit request · plan · approval ([`AGENTS.md`](../../../AGENTS.md)).
 
-## 삭제
+## Deletion
 
-미사용 증명 없이 레거시 모듈을 삭제하지 않는다.
+Do not delete legacy modules without proof they are unused.
 
-## 검증
+## Verification
 
-[`testing.md`](testing.md) Contract-first TDD·dual gate를 통과시키거나 미실행 사유를 남긴다. 동작 동일 리팩터는 신규 테스트 강제 없음.
+Pass [`testing.md`](testing.md) Contract-first TDD · dual gate, or document why not run. Behavior-preserving refactors do not require new tests.
 
-## 관련
+## Related
 
-- PR·범위 단위 **종합 리뷰**(아키텍처·보안·성능·스타일 병렬 감사 후 통합 리포트): [`.cursor/skills/code-review-harness/SKILL.md`](../../../.cursor/skills/code-review-harness/SKILL.md) (`@code-review-harness`)
+- PR · scope-level **comprehensive review** (architecture · security · performance · style parallel audit, then integrated report): [`.cursor/skills/code-review-harness/SKILL.md`](../../../.cursor/skills/code-review-harness/SKILL.md) (`@code-review-harness`)

@@ -1,13 +1,13 @@
-# Algorithm 문서
+# Algorithm Documentation
 
-알고리즘·Lab 계약 메모를 모아 둔다. **구현 정본**은 코드·[`documents/index/document_inventory.md`](../index/document_inventory.md)의 `CANON`·[`documents/ai/START_HERE.md`](../ai/START_HERE.md)를 우선한다.
+Collects algorithm and Lab contract notes. **Implementation authority** takes precedence: code, `CANON` in [`documents/index/document_inventory.md`](../index/document_inventory.md), and [`documents/ai/START_HERE.md`](../ai/START_HERE.md).
 
-## 구현 베이스라인 (2026-05-22)
+## Implementation baseline (2026-05-22)
 
-| 레이어 | 상태 | 코드 |
+| Layer | Status | Code |
 |--------|------|------|
 | **Reconstruction** | **ACTIVE** | `django_apps/asteroid_lab/reconstruction/`, `cleanup/`, Lab persist·replay |
-| **Optimization / Solver runtime** | **REMOVED** | `django_apps/asteroid_lab/optimization/` 삭제; `solver_runtime_entry`는 `SOLVER_NOT_AVAILABLE` 스텁만 |
+| **Optimization / Solver runtime** | **REMOVED** | `django_apps/asteroid_lab/optimization/` deleted; `solver_runtime_entry` is `SOLVER_NOT_AVAILABLE` stub only |
 | **Genetic sample (admin)** | **ACTIVE** | `django_apps/asteroid_lab/genetic_sample/` |
 | **Game data snapshot** | **ACTIVE** | `django_apps/asteroid_lab/contracts/game_data_snapshot.py` |
 
@@ -15,47 +15,47 @@
 
 ## Solver Runtime (ARCHIVED)
 
-**상태:** 2026-05-22 제거. Phase C–M·PR3–7 계약은 역사 보관.
+**Status:** Removed 2026-05-22. Phase C–M and PR3–7 contracts are historical archive.
 
-- **인덱스:** [`solver_runtime/README.md`](solver_runtime/README.md) (`status: ARCHIVED`)
-- **충돌 해소 (역사):** [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md)
-- **HTTP 진입 (스텁):** [`solver_runtime/01_entry_point.md`](solver_runtime/01_entry_point.md) → `run_solver_runtime_for_project` → `SOLVER_NOT_AVAILABLE`
+- **Index:** [`solver_runtime/README.md`](solver_runtime/README.md) (`status: ARCHIVED`)
+- **Reconciliation (historical):** [`solver_runtime/ARCHITECTURE_RECONCILIATION.md`](solver_runtime/ARCHITECTURE_RECONCILIATION.md)
+- **HTTP entry (stub):** [`solver_runtime/01_entry_point.md`](solver_runtime/01_entry_point.md) → `run_solver_runtime_for_project` → `SOLVER_NOT_AVAILABLE`
 
-## 읽기 순서 (reconstruction-first)
+## Reading order (reconstruction-first)
 
-1. [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md) — 개요·좌표·금지 사항
-2. Reconstruction·cleanup·topology — `reconstruction/` 코드 + [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) (Lab replay **ACTIVE**)
-3. **Legacy optimization 시리즈** `asteroid_lab_01`–`08` — `RESEARCH` / 역사 참고만 (구현 삭제됨)
-4. [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) — 시퀀스 체크리스트 (미갱신 항목 다수)
-5. **삭제된 solver 버튼:** `solver_runtime/phase_*` — 모두 `ARCHIVED`
-6. **채굴기·확장기 (정본 재정렬):** [`asteroid_lab_mining_installation/README.md`](asteroid_lab_mining_installation/README.md) → `00` → `01` → `02` → `03` (DB 교차 참조); `04` (설치 가이드)
+1. [`asteroid_lab_00_overview.md`](asteroid_lab_00_overview.md) — overview, coordinates, prohibitions
+2. Reconstruction·cleanup·topology — `reconstruction/` code + [`asteroid_lab_09_replay_timeline.md`](asteroid_lab_09_replay_timeline.md) (Lab replay **ACTIVE**)
+3. **Legacy optimization series** `asteroid_lab_01`–`08` — `RESEARCH` / historical reference only (implementation deleted)
+4. [`asteroid_lab_10_development_sequence.md`](asteroid_lab_10_development_sequence.md) — sequence checklist (many items not yet updated)
+5. **Deleted solver button:** `solver_runtime/phase_*` — all `ARCHIVED`
+6. **Miner·extension (authority realignment):** [`asteroid_lab_mining_installation/README.md`](asteroid_lab_mining_installation/README.md) → `00` → `01` → `02` → `03` (DB cross-reference); `04` (installation guide)
 
-## 파일 목록
+## File list
 
-| 파일 | 상태 | 설명 |
+| File | Status | Description |
 |------|------|------|
-| `asteroid_lab_00_overview.md` | `RESEARCH` | Lab·좌표 원칙 |
-| `asteroid_lab_01`–`08` | `ARCHIVED` | Optimization layer (코드 없음) |
+| `asteroid_lab_00_overview.md` | `RESEARCH` | Lab·coordinate principles |
+| `asteroid_lab_01`–`08` | `ARCHIVED` | Optimization layer (no code) |
 | `asteroid_lab_09_replay_timeline.md` | `ACTIVE` | Lab Step Replay Timeline |
-| `asteroid_lab_09_replay_debug.md` | `ARCHIVED` | dual-track 역사 |
-| `asteroid_lab_10`–`13` | `RESEARCH` | 로드맵·배선 |
-| [`solver_runtime/`](solver_runtime/) | `ARCHIVED` | Solver 버튼 Phase A–M (2026-05-22 제거) |
-| [`plans/asteroid_lab_optimization/`](plans/asteroid_lab_optimization/README.md) | `ARCHIVED` | 2026-05 이전 optimization 플랜 복사본 |
-| [`asteroid_lab_mining_installation/`](asteroid_lab_mining_installation/) | `AUDIT` | 채굴기·확장기 정본·모순 표·drift·설치 가이드 (D2) |
+| `asteroid_lab_09_replay_debug.md` | `ARCHIVED` | dual-track history |
+| `asteroid_lab_10`–`13` | `RESEARCH` | roadmap·wiring |
+| [`solver_runtime/`](solver_runtime/) | `ARCHIVED` | Solver button Phase A–M (removed 2026-05-22) |
+| [`plans/asteroid_lab_optimization/`](plans/asteroid_lab_optimization/README.md) | `ARCHIVED` | Pre-2026-05 optimization plan copies |
+| [`asteroid_lab_mining_installation/`](asteroid_lab_mining_installation/) | `AUDIT` | Miner·extension authority·contradiction table·drift·installation guide (D2) |
 
-## 초안 (`drafts/`)
+## Drafts (`drafts/`)
 
-| 파일 | 상태 | 설명 |
+| File | Status | Description |
 |------|------|------|
-| [`drafts/Asteroid Mining Page Rebuild.txt`](drafts/Asteroid%20Mining%20Page%20Rebuild.txt) | `DRAFT` | 페이지 리빌드 설계 초안 |
-| [`drafts/Asteroid Lab 개발 계획.txt`](drafts/Asteroid%20Lab%20개발%20계획.txt) | `DRAFT` | Start-to-end 개발 계획 초안 |
+| [`drafts/Asteroid Mining Page Rebuild.txt`](drafts/Asteroid%20Mining%20Page%20Rebuild.txt) | `DRAFT` | Page rebuild design draft |
+| [`drafts/asteroid_lab_development_plan.txt`](drafts/asteroid_lab_development_plan.txt) | `DRAFT` | Start-to-end development plan draft |
 
-> **참고:** 예전에 `브랜치 · Asteroid Mining Page Rebuild.txt` 이름으로 **UI 디버그 메모**(modal JSX 등)가 있었다면 동일 성격의 메모는 `drafts/`에 두거나 별도 이슈로 옮긴다.
+> **Note:** If a memo with the former name `Branch · Asteroid Mining Page Rebuild.txt` (UI debug notes, modal JSX, etc.) existed, place similar memos under `drafts/` or move them to a separate issue.
 
-## 경로·패키지 주의
+## Path·package notes
 
-- **`django_apps/shapez_asteroid`** · **`asteroid_lab/optimization/`** — 저장소에서 제거됨. 문서 인용은 역사적.
+- **`django_apps/shapez_asteroid`** · **`asteroid_lab/optimization/`** — removed from repository. Document references are historical.
 - Gene template·coord: **`genetic_sample/`** · grid: **`snapshots/grid_contract.py`**
-- 교차 확인: [`documents/refactor_audit/00_global_summary.md`](../refactor_audit/00_global_summary.md)
+- Cross-check: [`documents/refactor_audit/00_global_summary.md`](../refactor_audit/00_global_summary.md)
 
-새 알고리즘 정본은 `documents/ai/` 플랜·`document_inventory.md` 갱신 후 추가한다.
+Add new algorithm authority after updating `documents/ai/` plans and `document_inventory.md`.

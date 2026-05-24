@@ -11,13 +11,13 @@ related_docs:
   - documents/Algorithm/solver_runtime/open_decisions.md
 ---
 
-# Phase G ??Route Probe
+# Phase G ? Route Probe
 
-## ëª©ì 
+## Purpose
 
-candidate??`route_probe_start`?ì„œ `RouteGoal`ê¹Œì? ?°ê²° ê°€?¥í•œì§€ ë¹ ë¥´ê²??‰ê??œë‹¤. ?„ì—­ ìµœì  routing???„ë‹ˆ??**feasibility**??
+Quickly check whether candidate can connect from `route_probe_start` to `RouteGoal`. **Feasibility only**, not global optimal routing.
 
-## ?…ë ¥
+## Input
 
 ```python
 RouteProbeInput(
@@ -31,9 +31,9 @@ RouteProbeInput(
 )
 ```
 
-**?ˆê±°??ì°¨ì´:** [`asteroid_lab_04`](../asteroid_lab_04_route_probe.md)??`output_stub` = **ê¸ˆì? alias**; RuntimeÂ·? ê·œ ì½”ë“œ??**`route_probe_start`** ë§?([Â§0.6](00_core_principles.md), [OD-1](open_decisions.md)).
+**Legacy difference:** [`asteroid_lab_04`](../asteroid_lab_04_route_probe.md) `output_stub` = **forbidden alias**; Runtime?new code uses **`route_probe_start`** only ([§0.6](00_core_principles.md), [OD-1](open_decisions.md)).
 
-## ?°ì¶œë¬?
+## Output
 
 ```python
 RouteProbeResult(
@@ -47,13 +47,13 @@ RouteProbeResult(
 )
 ```
 
-## ?‘ì—…
+## Tasks
 
 ### Route domain (candidate phase)
 
-candidate ?¨ê³„ `projected.occupied_cells`??**?•ì •(commit) ?ìœ ê°€ ?„ë‹˜** ??probe??**provisional blocker**ë§?ë°˜ì˜?œë‹¤.
+At candidate stage, `projected.occupied_cells` are **not yet confirmed (commit) ownership** ? probe reflects them as **provisional blockers** only.
 
-**ê¶Œì¥ API (PR2):** `RouteDomainSnapshotBuilder.build_snapshot`??candidate ?„ìš© ?¸ì ì¶”ê?.
+**Recommended API (PR2):** `RouteDomainSnapshotBuilder.build_snapshot` adds candidate-phase occupancy factor.
 
 ```python
 def build_route_domain_for_projected_gene_probe(builder, inp, projected):
@@ -63,15 +63,15 @@ def build_route_domain_for_projected_gene_probe(builder, inp, projected):
     )
 ```
 
-**êµ¬í˜„:** `build_route_domain_for_projected_gene_probe` ??`build_snapshot(..., provisional_blocked_cells=...)`. `committed_occupied_cells`??provisional???£ì? ?ŠëŠ”??
+**Implementation:** `build_route_domain_for_projected_gene_probe` ? `build_snapshot(..., provisional_blocked_cells=...)`. Do not use `committed_occupied_cells` for provisional.
 
-wrapperÂ·call site **?„ìˆ˜ ì£¼ì„:**
+Wrapper?call site **function docstring:**
 
 ```text
 Candidate-phase provisional occupancy only. This does not commit placement.
 ```
 
-`RouteDomainSnapshotBuilder` **?¨ì¼** ì§„ì… ??in-place mutation ê¸ˆì?.
+`RouteDomainSnapshotBuilder` **single** entry point ? in-place mutation forbidden.
 
 ### Search
 
@@ -98,18 +98,18 @@ goal.coord lexicographic
 goal_kind fixed order
 ```
 
-## ê¸ˆì?
+## Forbidden
 
-- candidate probe ?±ê³µ??commit ì¦ëª…?¼ë¡œ ?¬ìš© ([Â§0.5](00_core_principles.md))
-- probeê°€ layout??belt/pipe materialize
+- Using candidate probe success as commit proof ([§0.5](00_core_principles.md))
+- Probe materializing belt/pipe in layout
 
-## ?„ë£Œ ì¡°ê±´
+## Completion criteria
 
-- [ ] reachable ??`reached_goal` non-null
-- [ ] blockedÂ·maskÂ·budget exceededê°€ enum `failure_reason`?¼ë¡œ ê¸°ë¡
-- [ ] `route_probe_start`?ì„œë§??ìƒ‰ ?œì‘ (fixed_output_transport ?€?€ start ?´ì „)
+- [ ] reachable ? `reached_goal` non-null
+- [ ] blocked?mask?budget exceeded recorded as enum `failure_reason`
+- [ ] search starts only from `route_probe_start` (not fixed_output_transport as start)
 
-## ?„ìˆ˜ ?ŒìŠ¤??
+## Prerequisite phase
 
 ```text
 test_route_probe_reaches_goal_on_open_domain
@@ -123,11 +123,11 @@ test_route_probe_bfs_matches_uniform_cost_on_unit_cost_domain
 test_seed_domain_cache_reuses_seed_and_overlay_is_independent
 ```
 
-## ê´€??ì½”ë“œÂ·ë¬¸ì„œ
+## Related code?documents
 
-- ?ˆì •: `django_apps/asteroid_lab/optimization/route_probe.py`
+- Implementation: `django_apps/asteroid_lab/optimization/route_probe.py`
 - [`asteroid_lab_04_route_probe.md`](../asteroid_lab_04_route_probe.md)
 
-## ?¤ìŒ Phase
+## Next Phase
 
-??[`phase_h_candidate_pool.md`](phase_h_candidate_pool.md)
+? [`phase_h_candidate_pool.md`](phase_h_candidate_pool.md)

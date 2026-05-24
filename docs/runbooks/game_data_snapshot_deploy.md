@@ -1,6 +1,6 @@
 ﻿# game_data snapshot deploy runbook
 
-> **pytest:** [`documents/ai/manuals/testing.md`](../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
+> **pytest:** [`documents/ai/manuals/testing.md`](../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden**.
 
 **Scope:** Asteroid Lab `game_data` snapshot boundary (ADR-004, v0).  
 **Owner:** django (`game_data`) + `web` assembler + `asteroid_lab` adapter.

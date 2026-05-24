@@ -11,13 +11,13 @@ related_docs:
   - documents/Algorithm/asteroid_lab_07_incremental_commit.md
 ---
 
-# Phase K2 ??Confirmed Placement Materialization
+# Phase K2 ? Confirmed Placement Materialization
 
-## ëª©ì 
+## Purpose
 
-Incremental Commit??**CONFIRMED** ??extractorÂ·extension ?ìœ ë¥?Phase K transport materializationê³?**?™ì¼??* `MaterializedLayoutCells` ?°ì¶œë¬¼ì— ?¹ê²©?œë‹¤.
+Materialize **CONFIRMED** extractor?extension occupancy from Incremental Commit into the same `MaterializedLayoutCells` output as Phase K transport materialization.
 
-## ?…ë ¥
+## Input
 
 ```text
 IncrementalCommitResult.confirmed
@@ -25,31 +25,31 @@ Mapping[candidate_id, GeneCandidate]
 Mapping[gene_id, GeneTemplate]  # extension_attachments for R
 ```
 
-## ?°ì¶œë¬?
+## Output
 
-`MaterializedLayoutCells.equipment_cells` ??`shape_miner` / `fluid_miner` / `*_extension` + `tile_type` (`Layout_*`).
+`MaterializedLayoutCells.equipment_cells` ? `shape_miner` / `fluid_miner` / `*_extension` + `tile_type` (`Layout_*`).
 
-## ?Œì´?„ë¼???œì„œ
+## Pipeline sequence
 
 ```text
 materialize_route_network
-??materialize_confirmed_placements
-??merge_materialized_layout  # transport wins on shared trunk coord overlap
+? materialize_confirmed_placements
+? merge_materialized_layout  # transport wins on shared trunk coord overlap
 ```
 
-## ê¸ˆì?
+## Forbidden
 
-- candidate generation / route probe ?¨ê³„ layout commit ([Â§0.1](00_core_principles.md) ??enumeration ì¤??¤ì¹˜)
-- `fixed_output_transport` ?€??miner ë°°ì¹˜ (occupied_offsets??transport ?†ìŒ)
+- layout commit during candidate generation / route probe stage ([§0.1](00_core_principles.md) ? no install during enumeration)
+- Placing miner on `fixed_output_transport` cell (occupied_offsets has no transport)
 
-## ?„ë£Œ ì¡°ê±´
+## Completion criteria
 
-- [x] CONFIRMEDë§ˆë‹¤ extractor + extensionsê°€ equipment_cells???¬í•¨
-- [x] extension R?€ `GeneTemplate.extension_attachments` + server 4-neighbor ports
-- [x] replay `cell_delta`??equipment + transport ?™ì‹œ ê¸°ë¡
-- [x] `validate_final_layout` ??`placement_not_materialized` unless extension coord is materialized transport (shared trunk)
+- [x] Each CONFIRMED has extractor + extensions in equipment_cells
+- [x] extension R uses `GeneTemplate.extension_attachments` + server 4-neighbor ports
+- [x] replay `cell_delta` records equipment + transport together
+- [x] `validate_final_layout` ? `placement_not_materialized` unless extension coord is materialized transport (shared trunk)
 
-## ê´€??ì½”ë“œ
+## Related code
 
 - `placement_network_materializer.py`
 - `solver_runtime_pipeline.py`

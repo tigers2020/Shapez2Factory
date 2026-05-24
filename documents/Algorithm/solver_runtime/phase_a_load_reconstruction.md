@@ -11,13 +11,13 @@ related_docs:
   - documents/Algorithm/solver_runtime/00_core_principles.md
 ---
 
-# Phase A ??Load Reconstruction Map
+# Phase A ? Load Reconstruction Map
 
-## ëª©ì 
+## Purpose
 
-DB???€?¥ëœ reconstruction ê²°ê³¼ë¥?solver ?…ë ¥?¼ë¡œ ë¡œë“œ?œë‹¤.
+Load the reconstruction result stored in the DB as solver input.
 
-## ?…ë ¥
+## Input
 
 ```text
 Reconstruction map full_map
@@ -27,40 +27,40 @@ existing layout metadata
 resource kind metadata
 ```
 
-## ?°ì¶œë¬?
+## Output
 
 ```text
 LoadedReconstructionSnapshot
 ```
 
-## ?‘ì—…
+## Tasks
 
-1. project??ìµœì‹  reconstruction map ì¡°íšŒ
-2. `full_map` / `bbox` / cell kind ë¡œë“œ
-3. ê¸°ì¡´ extractor / extension / belt / pipe ì¢Œí‘œ ë¶„ë¦¬
-4. raw blueprint ì¢Œí‘œê°€ ?¨ì•„ ?ˆìœ¼ë©?**adapter boundary?ì„œë§?* server coordë¡??•ê·œ??
+1. Query the project's latest reconstruction map
+2. Load `full_map` / `bbox` / cell kind
+3. Separate existing extractor / extension / belt / pipe coordinates
+4. If raw blueprint coordinates are missing, normalize to server coord **only at adapter boundary**
 
-## ê¸ˆì?
+## Forbidden
 
-- optimization ?´ë??ì„œ raw X/Y ë³€???¸ì¶œ
-- DB ?ë³¸ cell kind ì§ì ‘ ?˜ì •
-- server x/y ?œì„œ?€ë¡??¤ì œ ?¤ë¹„ ?¤ì¹˜ ([`00_core_principles.md`](00_core_principles.md) Â§0.1)
+- raw X/Y conversion inside optimization interior
+- Direct modification of DB original cell kind
+- Installing actual equipment using server x/y coordinates ([`00_core_principles.md`](00_core_principles.md) §0.1)
 
-## ?„ë£Œ ì¡°ê±´
+## Completion criteria
 
-- [ ] `LoadedReconstructionSnapshot`??bboxÂ·?€ ?‰Â·ë©”?€?°ì´?°ë? ë³´ì¡´
-- [ ] extractor/extension/transport ì¢Œí‘œê°€ adapterë¡??˜ê¸¸ ???ˆê²Œ ë¶„ë¦¬??
-- [ ] raw?’server ë³€?˜ì´ adapter ë°–ì—??ë°œìƒ?˜ì? ?ŠìŒ
+- [ ] `LoadedReconstructionSnapshot` preserves bbox·width·height·metadata
+- [ ] extractor/extension/transport coordinates separated so they do not pass through adapter incorrectly
+- [ ] raw?server conversion does not occur outside adapter
 
-## ?„ìˆ˜ ?ŒìŠ¤??
+## Prerequisite phase
 
-PR1B ??adapterÂ·OptimizationInput ?µí•© ?ŒìŠ¤?¸ëŠ” [`implementation_sequence.md`](implementation_sequence.md) Â§ PR1B ë°?[`phase_b_optimization_input.md`](phase_b_optimization_input.md) ì°¸ì¡°.
+PR1B adapter·OptimizationInput integration phase ? see [`implementation_sequence.md`](implementation_sequence.md) § PR1B and [`phase_b_optimization_input.md`](phase_b_optimization_input.md).
 
-## ê´€??ì½”ë“œÂ·ë¬¸ì„œ
+## Related code·documents
 
 - `django_apps/asteroid_lab/adapters/` (decode/reconstruction adapter)
-- [`asteroid_lab_01_optimization_input.md`](../asteroid_lab_01_optimization_input.md) ??Sequence 1B
+- [`asteroid_lab_01_optimization_input.md`](../asteroid_lab_01_optimization_input.md) ? Sequence 1B
 
-## ?¤ìŒ Phase
+## Next Phase
 
-??[`phase_b_optimization_input.md`](phase_b_optimization_input.md)
+? [`phase_b_optimization_input.md`](phase_b_optimization_input.md)

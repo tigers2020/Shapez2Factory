@@ -8,24 +8,24 @@
 
 ## live status
 
-`django_apps/asteroid_lab`에는 canonical 의미의 recovery, rollback lifecycle, final validation assertion gate가 없다. 현재 closest concept는:
+`django_apps/asteroid_lab` has no recovery, rollback lifecycle, or final validation assertion gate in the canonical sense. Closest concepts today:
 
-- `snapshots/existing_layout_inspection.py`의 issue detection
-- `replay_pipeline_service.py`의 rebuild / retry
-- `public_pages.py`의 `"force=True"` 기반 재시도
+- issue detection in `snapshots/existing_layout_inspection.py`
+- rebuild / retry in `replay_pipeline_service.py`
+- `"force=True"` retry in `public_pages.py`
 
-이들은 canonical recovery/validation을 대체하지 못한다.
+These do not substitute for canonical recovery/validation.
 
 ## drift matrix
 
 | File / area | Drift | Why it matters | Canonical refs | Severity | Confidence | Action |
 |---|---|---|---|---|---|---|
-| `django_apps/asteroid_lab/services/replay_pipeline_service.py` | 실패를 typed recovery가 아니라 `status/error_message` 문자열로 표현 | retry/rollback lifecycle를 구조적으로 다룰 수 없음 | `11_step8_recovery.md`, `13_step9_validation.md` | `P1` | High | `rewrite` |
-| `django_apps/web/views/public_pages.py` | web view가 force rebuild를 직접 판단 | validation/recovery authority가 UI request path로 샘 | `13_step9_validation.md` | `P1` | High | `isolate` |
-| `django_apps/asteroid_lab/snapshots/existing_layout_inspection.py` | issue rows가 validation report 역할까지 겸하는 방향으로 확장될 위험 | decode-time inspection과 final validation은 시점이 다름 | `13_step9_validation.md` §15.5 | `P1` | High | `freeze` |
-| `django_apps/asteroid_lab/services/dto.py` | reason namespace, FSM type, rollback DTO 부재 | 추후 recovery를 붙일 때 string soup로 흘러갈 위험 | `03_data_schema_dto.md` §B | `P1` | High | `migrate` |
+| `django_apps/asteroid_lab/services/replay_pipeline_service.py` | failures expressed as `status/error_message` strings, not typed recovery | cannot handle retry/rollback lifecycle structurally | `11_step8_recovery.md`, `13_step9_validation.md` | `P1` | High | `rewrite` |
+| `django_apps/web/views/public_pages.py` | web view directly decides force rebuild | validation/recovery authority leaks into UI request path | `13_step9_validation.md` | `P1` | High | `isolate` |
+| `django_apps/asteroid_lab/snapshots/existing_layout_inspection.py` | risk of issue rows expanding toward validation report role | decode-time inspection and final validation differ in timing | `13_step9_validation.md` §15.5 | `P1` | High | `freeze` |
+| `django_apps/asteroid_lab/services/dto.py` | missing reason namespace, FSM type, rollback DTO | risk of string soup when recovery is added later | `03_data_schema_dto.md` §B | `P1` | High | `migrate` |
 
-## 명시적 부재 목록
+## Explicit absence list
 
 - `PlacementCommitState`
 - `RecoveryTrigger`
@@ -35,8 +35,8 @@
 - `QUARANTINED_UNROUTED` / `ROUTED_CONFIRMED` lifecycle
 - assertion-only `FinalValidationReport`
 
-## 권장 방침
+## Recommended policy
 
-1. 현재 `asteroid_lab`에서는 canonical recovery/validation을 "미구현"으로 선언한다.
-2. inspection issues를 final validation namespace로 승격하지 않는다.
-3. replay rebuild failure는 typed result enum으로 바꾸고, 문자열 기반 분기 제거 전까지 freeze한다.
+1. Declare canonical recovery/validation as “not implemented” in current `asteroid_lab`.
+2. Do not promote inspection issues into final validation namespace.
+3. Replace replay rebuild failure with typed result enum; freeze until string-based branching is removed.

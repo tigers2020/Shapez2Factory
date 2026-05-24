@@ -1,10 +1,10 @@
 # game_data JSON — deep structure appendix
 
-목표: **데이터 구조 분석** — 중복·importer 편의와 무관하게 모든 아티팩트를 **전 행·전 경로**로 기록.
+Goal: **data structure analysis** — record every artifact **across all rows and all paths**, regardless of duplication or importer convenience.
 
-생성: `python scripts/analyze_game_data_json_deep.py`
+Generate: `python scripts/analyze_game_data_json_deep.py`
 
-`*.paths.tsv`는 용량(최대 ~860MB) 때문에 Git에 올리지 않는다. 클론 후 위 스크립트로 로컬 생성.
+`*.paths.tsv` files are not committed to Git due to size (up to ~860MB). Generate locally with the script above after cloning.
 
 | file | root | rows | paths | schema |
 | ---- | ---- | ---: | ----: | ------ |
@@ -28,7 +28,7 @@
 
 ## Path TSV columns
 
-- `norm_path` — `[]` 인덱스 정규화
-- `row_hits` — 해당 경로 prefix를 가진 **행** 수 (리스트 원소별 아님)
-- `value_types` — 관측 JSON 값 종류
-- `$type_top` / `$unity_top` — CLR/Unity 태그 빈도
+- `norm_path` — `[]` index normalization
+- `row_hits` — number of **rows** with that path prefix (not per list element)
+- `value_types` — observed JSON value kinds
+- `$type_top` / `$unity_top` — CLR/Unity tag frequency

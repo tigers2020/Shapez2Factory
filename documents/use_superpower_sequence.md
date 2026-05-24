@@ -1,63 +1,63 @@
 Role: Workflow Architect
 
-맞습니다. **`/superpowers:brainstorm`, `/superpowers:write-plan`, `/superpowers:execute-plan` 식 설명은 이 커밋 기준으로는 outdated**입니다.
-지정한 `b7a8f769...` 트리 기준으로 보면 `commands/`에는 3개만 있고, 셋 다 **Deprecated** 처리되어 있습니다. 각각 새 방식으로 `superpowers:brainstorming`, `superpowers:writing-plans`, `superpowers:executing-plans` skill을 쓰라고 되어 있습니다. ([GitHub][1])
+Correct. **`/superpowers:brainstorm`, `/superpowers:write-plan`, `/superpowers:execute-plan` style descriptions are outdated as of this commit.**
+Looking at the specified `b7a8f769...` tree, `commands/` has only three entries, and all three are marked **Deprecated**. Each directs you to use the new approach via the `superpowers:brainstorming`, `superpowers:writing-plans`, `superpowers:executing-plans` skills. ([GitHub][1])
 
-## 1. Cursor 설치
+## 1. Cursor Installation
 
-Cursor Agent chat에서:
+In Cursor Agent chat:
 
 ```text
 /add-plugin superpowers
 ```
 
-README 기준 Cursor 설치 명령은 이게 맞습니다. Marketplace에서 `superpowers` 검색도 가능하다고 되어 있습니다. ([GitHub][2])
+Per the README, this is the correct Cursor install command. You can also search for `superpowers` in the Marketplace. ([GitHub][2])
 
 ---
 
-## 2. 현재 방식의 핵심
+## 2. Core of the Current Approach
 
-이 커밋 기준 Superpowers는 “명령어를 직접 치는 도구”라기보다:
+As of this commit, Superpowers is less "a tool where you type commands directly" and more:
 
 ```text
-설치된 plugin이 skills / agents / commands / hooks를 제공
+Installed plugin provides skills / agents / commands / hooks
 ↓
-agent가 상황에 맞는 skill을 호출
+Agent invokes the appropriate skill for the situation
 ↓
-필요하면 사용자가 특정 skill 사용을 명시
+User may explicitly request a specific skill when needed
 ```
 
-구조입니다. Cursor plugin manifest에도 `skills`, `agents`, `commands`, `hooks` 경로가 등록되어 있습니다. ([GitHub][3])
+The Cursor plugin manifest also registers `skills`, `agents`, `commands`, and `hooks` paths. ([GitHub][3])
 
-그리고 README도 “skills trigger automatically”라서 특별한 일을 하지 않아도 된다고 설명합니다. 설치 확인도 `help me plan this feature` 또는 `let's debug this issue`처럼 말해서 관련 skill이 자동 호출되는지 보면 됩니다. ([GitHub][2])
+The README also says "skills trigger automatically" — you do not need to do anything special. To verify installation, say something like `help me plan this feature` or `let's debug this issue` and check whether the relevant skill is invoked automatically. ([GitHub][2])
 
 ---
 
-## 3. 실제 사용 문장
+## 3. Actual Usage Phrases
 
-### 새 기능 / 큰 수정
+### New Feature / Large Change
 
 ```text
 Use the superpowers:brainstorming skill.
 
-I want to build [기능 설명].
+I want to build [feature description].
 Do not write code yet.
 Start by understanding the goal, asking questions, and proposing design options.
 ```
 
-그 다음 설계 승인 후:
+After design approval:
 
 ```text
 Use the superpowers:writing-plans skill to create an implementation plan from the approved design.
 ```
 
-계획 승인 후:
+After plan approval:
 
 ```text
 Use the superpowers:executing-plans skill to execute this plan task by task.
 ```
 
-### 버그 수정
+### Bug Fix
 
 ```text
 Use the superpowers:systematic-debugging skill.
@@ -66,7 +66,7 @@ Investigate this bug without jumping straight to a fix.
 Find the root cause first, then propose the fix and verification.
 ```
 
-### 구현 완료 전 검증
+### Verification Before Declaring Complete
 
 ```text
 Use the superpowers:verification-before-completion skill.
@@ -74,7 +74,7 @@ Use the superpowers:verification-before-completion skill.
 Verify this is actually fixed before saying the task is complete.
 ```
 
-### 브랜치 마무리
+### Branch Wrap-Up
 
 ```text
 Use the superpowers:finishing-a-development-branch skill.
@@ -84,36 +84,36 @@ Run the required verification, then present merge / PR / keep / discard options.
 
 ---
 
-## 4. 일반 사용 순서
+## 4. Typical Usage Sequence
 
-README의 Basic Workflow 기준 순서는 다음입니다. ([GitHub][2])
+Per the README Basic Workflow, the order is: ([GitHub][2])
 
 ```text
 1. superpowers:brainstorming
 2. superpowers:using-git-worktrees
 3. superpowers:writing-plans
 4. superpowers:subagent-driven-development
-   또는 superpowers:executing-plans
+   or superpowers:executing-plans
 5. superpowers:test-driven-development
 6. superpowers:requesting-code-review
 7. superpowers:finishing-a-development-branch
 ```
 
-실제로는 이렇게 씁니다:
+In practice, use it like this:
 
 ```text
 "Use superpowers:brainstorming for this feature."
 ↓
-설계 승인
+Design approval
 ↓
 "Use superpowers:writing-plans."
 ↓
-계획 승인
+Plan approval
 ↓
 "Use superpowers:subagent-driven-development to implement it."
 ```
 
-서브에이전트가 없거나 Cursor 환경에서 제한이 있으면:
+If subagents are unavailable or limited in your Cursor environment:
 
 ```text
 "Use superpowers:executing-plans instead."
@@ -121,32 +121,32 @@ README의 Basic Workflow 기준 순서는 다음입니다. ([GitHub][2])
 
 ---
 
-## 5. 현재 skill 목록
+## 5. Current Skill List
 
-지정한 커밋의 `skills/` 디렉터리 기준 목록입니다. ([GitHub][4])
+List from the `skills/` directory at the specified commit. ([GitHub][4])
 
-| Skill                            | 용도                        |
+| Skill                            | Purpose                        |
 | -------------------------------- | ------------------------- |
-| `using-superpowers`              | skill 시스템 사용 규칙           |
-| `brainstorming`                  | 구현 전 요구사항/설계 확정           |
-| `writing-plans`                  | 승인된 설계를 구현 계획으로 변환        |
-| `executing-plans`                | 계획을 순서대로 실행               |
-| `subagent-driven-development`    | task별 subagent 실행 + 리뷰    |
-| `test-driven-development`        | RED-GREEN-REFACTOR 강제     |
-| `systematic-debugging`           | 원인 분석 기반 디버깅              |
-| `verification-before-completion` | 완료 선언 전 검증                |
-| `requesting-code-review`         | 코드 리뷰 요청 전 체크             |
-| `receiving-code-review`          | 리뷰 피드백 반영                 |
-| `using-git-worktrees`            | 독립 worktree/branch 작업     |
-| `dispatching-parallel-agents`    | 병렬 subagent 작업            |
-| `finishing-a-development-branch` | merge/PR/keep/discard 마무리 |
-| `writing-skills`                 | 새 skill 작성                |
+| `using-superpowers`              | Skill system usage rules           |
+| `brainstorming`                  | Requirements/design before implementation           |
+| `writing-plans`                  | Convert approved design into implementation plan        |
+| `executing-plans`                | Execute plan in order               |
+| `subagent-driven-development`    | Per-task subagent execution + review    |
+| `test-driven-development`        | Enforce RED-GREEN-REFACTOR     |
+| `systematic-debugging`           | Root-cause-driven debugging              |
+| `verification-before-completion` | Verify before declaring complete                |
+| `requesting-code-review`         | Pre-review checklist             |
+| `receiving-code-review`          | Apply review feedback                 |
+| `using-git-worktrees`            | Isolated worktree/branch work     |
+| `dispatching-parallel-agents`    | Parallel subagent work            |
+| `finishing-a-development-branch` | merge/PR/keep/discard wrap-up |
+| `writing-skills`                 | Author new skills                |
 
 ---
 
-## 6. 중요한 정정
+## 6. Important Correction
 
-### 예전식
+### Old Style
 
 ```text
 /superpowers:brainstorm
@@ -154,7 +154,7 @@ README의 Basic Workflow 기준 순서는 다음입니다. ([GitHub][2])
 /superpowers:execute-plan
 ```
 
-### 현재 커밋 기준 권장식
+### Recommended (Current Commit)
 
 ```text
 Use superpowers:brainstorming.
@@ -162,15 +162,15 @@ Use superpowers:writing-plans.
 Use superpowers:executing-plans.
 ```
 
-`commands/brainstorm.md`, `commands/write-plan.md`, `commands/execute-plan.md`는 모두 “deprecated”이며 다음 major release에서 제거될 예정이라고 되어 있습니다. ([GitHub][5])
+`commands/brainstorm.md`, `commands/write-plan.md`, and `commands/execute-plan.md` are all marked "deprecated" and scheduled for removal in the next major release. ([GitHub][5])
 
 ---
 
-## 결론
+## Conclusion
 
-현재 기준으로는 **slash command를 외워 쓰는 방식이 아니라, skill 이름을 직접 지시하거나 자동 트리거되게 하는 방식**이 맞습니다.
+As of the current baseline, the correct approach is **not memorizing slash commands, but directly instructing skill names or letting them auto-trigger**.
 
-최소로 외울 것은 이 5개입니다:
+Minimum set to remember — these 5:
 
 ```text
 superpowers:brainstorming
@@ -180,7 +180,7 @@ superpowers:systematic-debugging
 superpowers:verification-before-completion
 ```
 
-그리고 오래된 3개는 쓰지 않는 게 맞습니다:
+And do not use these 3 outdated ones:
 
 ```text
 /superpowers:brainstorm

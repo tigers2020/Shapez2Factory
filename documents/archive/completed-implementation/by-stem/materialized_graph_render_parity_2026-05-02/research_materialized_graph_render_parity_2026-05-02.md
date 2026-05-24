@@ -1,39 +1,40 @@
-# materialized graph render parity 리서치
-날짜: 2026-05-02
+# materialized graph render parity research
 
-## 증상
+Date: 2026-05-02
 
-사용자 확인 기준:
+## Symptoms
 
-- solver 페이지 본문 문구는 최신으로 보인다.
-- 하지만 materialized graph 토글에서는 예전 곡선 edge 와 카드 스크롤이 그대로 보인다.
+Per user confirmation:
 
-## 코드 기준 사실
+- Solver page body copy looks up to date.
+- Materialized graph toggle still shows old curved edges and card scroll.
 
-- raw graph 와 materialized graph 는 모두 `timeline_request.js -> mountGraph() -> renderSolverGraph()` 동일 렌더 경로를 탄다.
-- 별도의 materialized 전용 graph renderer 는 없다.
-- 따라서 코드만 놓고 보면 raw/materialized 표시 차이가 발생할 구조는 아니다.
+## Code facts
 
-## 가능한 원인
+- Raw and materialized graphs both use `timeline_request.js -> mountGraph() -> renderSolverGraph()` same render path.
+- No separate materialized-only graph renderer exists.
+- By code alone, raw/materialized display difference should not occur.
 
-1. **브라우저 모듈 캐시**
-   - 템플릿 HTML 은 갱신되지만 `solver_timeline.js` 와 그 하위 module import 가 같은 URL 이라 브라우저가 이전 JS 를 계속 사용할 수 있다.
-   - 이 경우 "문구는 최신, 그래프만 예전" 증상과 정확히 맞는다.
+## Possible causes
 
-2. **materialized payload 렌더 회귀**
-   - generic graph sample 은 새 마크업을 통과해도, 실제 `materialized_graph` 구조에서는 예외 경로가 있을 수 있다.
-   - 이를 막으려면 실제 API payload 를 가져와 `renderSolverGraph(materialized_graph)` 로 검증하는 테스트가 필요하다.
+1. **Browser module cache**
+   - Template HTML updates but `solver_timeline.js` and nested module imports share same URL so browser may keep old JS.
+   - Matches "copy fresh, graph stale" symptom exactly.
 
-## 대응 방향
+2. **Materialized payload render regression**
+   - Generic graph sample may pass new markup while real `materialized_graph` structure hits exception path.
+   - Requires test fetching actual API payload and validating via `renderSolverGraph(materialized_graph)`.
 
-- 그래프 엔트리 script 와 graph 관련 nested module import 에 version query 를 붙여 브라우저 캐시를 확실히 분리한다.
-- materialized graph API payload 를 실제로 `renderSolverGraph()` 에 넣어 current markup 이 적용되는지 테스트를 추가한다.
+## Response direction
 
-## 결론
+- Append version query to graph entry script and nested graph module imports for reliable cache busting.
+- Add test putting materialized graph API payload through `renderSolverGraph()` to confirm current markup applies.
 
-이번 보강은 backend graph semantics 변경이 아니라:
+## Conclusion
+
+This reinforcement is not backend graph semantics change but:
 
 - graph UI module cache busting
-- materialized graph rendering parity test 추가
+- materialized graph rendering parity test addition
 
-두 가지로 정리하는 것이 가장 안전하다.
+Those two items are the safest framing.

@@ -1,44 +1,44 @@
-# 매뉴얼: Solver · 레시피 그래프 로직
+# Manual: Solver · Recipe Graph Logic
 
-작업 전 [`AGENTS.md`](../../../AGENTS.md)와 solver/graph 혼동 방지 규칙을 확인한다.
+Before starting work, review [`AGENTS.md`](../../../AGENTS.md) and solver/graph confusion-prevention rules.
 
-## 위치
+## Location
 
-- 도형 도메인·파싱: `django_apps/shapez_core/`
-- 솔버·플래너·레시피 그래프 재계산 등: `django_apps/shapez_solver/services/` 등
+- Shape domain · parsing: `django_apps/shapez_core/`
+- Solver · planner · recipe graph recalculation, etc.: `django_apps/shapez_solver/services/` and related paths
 
-## 의존
+## Dependencies
 
-`shapez_solver`는 `shapez_core`만 import. **Django web 앱을 solver에서 import하지 않는다.**
+`shapez_solver` imports only `shapez_core`. **Do not import Django web apps from the solver.**
 
-## 개념 분리 (필수)
+## Concept separation (required)
 
-아래를 **서로 다른 것**으로 취급한다.
+Treat the following as **distinct**:
 
 - demand summary
 - source quantity / target output count
-- materialized graph nodes (물리 노드)
+- materialized graph nodes (physical nodes)
 - visual labels
 - operation / intermediate node structure
 
-**요약 수치가 맞아도 그래프 연결·노드 구조가 자동으로 맞는 것은 아니다.**
+**Matching summary numbers does not automatically mean graph connections · node structure are correct.**
 
-**연산 출력 → 다른 연산 입력**으로 직접 붙이지 않는다. **중간 도형(shape) 노드**를 경유한다.
+Do **not** connect **operation output → another operation input** directly. Route through **intermediate shape nodes**.
 
-## 테스트
+## Tests
 
 ```bash
-python -m pytest tests/unit/shapez_solver/   # -q / --quiet / --tb=no 금지
+python -m pytest tests/unit/shapez_solver/   # -q / --quiet / --tb=no forbidden
 ```
 
-`recipe_graph_input_carrier`와 프론트 `recipeConnection`/`operationArity`의 정합은 **`tests/fixtures/recipe_connection_rule_scenarios.json`**과 `tests/unit/shapez_solver/test_recipe_connection_rule_fixture_alignment.py`로 고정한다. 프론트 측 동일 픽스처 검증은 `npm --prefix frontend/recipe_graph_editor test`를 실행한다.
+Alignment between `recipe_graph_input_carrier` and frontend `recipeConnection`/`operationArity` is fixed by **`tests/fixtures/recipe_connection_rule_scenarios.json`** and `tests/unit/shapez_solver/test_recipe_connection_rule_fixture_alignment.py`. Frontend-side fixture verification runs `npm --prefix frontend/recipe_graph_editor test`.
 
-상세: [`testing.md`](testing.md).
+Details: [`testing.md`](testing.md).
 
-## 참고 연구
+## Reference research
 
-[`documents/research/research_shapez2_game_systems_2026-05-01.md`](../../../research/research_shapez2_game_systems_2026-05-01.md) — 핀·레이어 상한·열 단위 중력 등 **도형 물리**는 해당 문서의 「도형 레이어·핀(Pin) 메커닉」 절을 정본으로 삼는다.
+[`documents/research/research_shapez2_game_systems_2026-05-01.md`](../../../research/research_shapez2_game_systems_2026-05-01.md) — for **shape physics** such as pins · layer caps · column gravity, treat the "Shape layers · Pin mechanics" section of that document as canonical.
 
-## 관련 매뉴얼
+## Related manuals
 
-- UI·에디터: [`graph_ui.md`](graph_ui.md)
+- UI · editor: [`graph_ui.md`](graph_ui.md)

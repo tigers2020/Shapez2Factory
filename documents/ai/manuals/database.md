@@ -1,19 +1,19 @@
-# 매뉴얼: Database · 마이그레이션
+# Manual: Database · Migrations
 
-## 전제
+## Prerequisites
 
-스키마 변경·데이터 마이그레이션은 [`AGENTS.md`](../../../AGENTS.md)의 **명시적 승인 없이 하지 말 것**에 해당할 수 있다. 프로젝트 플랜·승인 게이트를 먼저 확인한다.
+Schema changes · data migrations may fall under **do not proceed without explicit approval** in [`AGENTS.md`](../../../AGENTS.md). Check the project plan · approval gates first.
 
-## Django 모델
+## Django models
 
-앱별 `models.py` 및 마이그레이션은 각 Django 앱 디렉터리 규칙을 따른다. 레이어 위반 import를 두지 않는다 ([`architecture.mdc`](../../../.cursor/rules/architecture.mdc)).
+Per-app `models.py` and migrations follow each Django app directory convention. Do not introduce layer-violating imports ([`architecture.mdc`](../../../.cursor/rules/architecture.mdc)).
 
-## 작업 후
+## After changes
 
-- 마이그레이션 파일 생성이 포함되면 **검토 대상**임을 전제로 한다.
-- 통합/스테이징 시드·데이터 이슈를 [`documents/ai/context_notes.md`](../../context_notes.md)에 남긴다.
+- If migration file generation is included, assume it is **subject to review**.
+- Record integration/staging seed · data issues in [`documents/ai/context_notes.md`](../../context_notes.md).
 
-## 관련
+## Related
 
-- Django 앱 구조: [`django.md`](django.md)
-- 스키마·ETL·데이터 검증·모니터링을 **계층적으로** 나누는 에이전트 절차: [`.cursor/skills/data-pipeline-harness/SKILL.md`](../../../.cursor/skills/data-pipeline-harness/SKILL.md) (`@data-pipeline-harness`)
+- Django app structure: [`django.md`](django.md)
+- Agent procedure for **layered** schema · ETL · data validation · monitoring: [`.cursor/skills/data-pipeline-harness/SKILL.md`](../../../.cursor/skills/data-pipeline-harness/SKILL.md) (`@data-pipeline-harness`)

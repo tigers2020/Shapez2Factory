@@ -34,7 +34,7 @@ Date: 2026-05-03
 - `view_graph_serialization.py`는 `nodes`, `edges`, `layout`, 선택적으로 `groups`를 내려보낸다.
 - 프런트 graph renderer는 `solver_timeline/graph_markup.js`와 `solver_graph_layout.js`에서 `groups`를 읽어 group background와 boundary ref indicator를 그린다.
 - detail panel은 선택 node id로 원본 `graph.nodes`와 `graph.edges`를 직접 조회한다.
-- 따라서 bundle collapsed UI를 만들더라도 원본 graph는 보존하고, UI 전용 파생 graph 또는 overlay 렌더링 경로가 필요하다.
+- 따라서 bundle collapsed UI를 만들더라도 원본 graph는 보존하고, UI 전용 파생 graph 또는 overlay 렌더링 경로가 is required.
 
 ## Why Bundle Must Be Overlay
 

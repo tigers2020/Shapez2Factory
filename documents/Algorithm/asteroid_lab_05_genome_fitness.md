@@ -2,45 +2,45 @@
 
 ## Fitness input contract
 
-| 역할 | 데이터 소스 | 금지 |
+| Role | Data source | Forbidden |
 |------|-------------|------|
-| **Predictive fitness** | candidate 시점 `route_probe_result` + provisional `route_domain` | commit 재-probe 결과를 fitness 입력으로 쓰지 않음 |
-| **Commit proof** | Phase 7 최신 `RouteDomainSnapshotBuilder.build_snapshot` 재-probe | fitness total이 commit 성공의 논리적 함의가 아님 |
+| **Predictive fitness** | candidate-phase `route_probe_result` + provisional `route_domain` | do not use commit re-probe results as fitness input |
+| **Commit proof** | Phase 7 latest `RouteDomainSnapshotBuilder.build_snapshot` re-probe | fitness total is not a logical implication of commit success |
 
-`route_fragility_penalty` / `shared_corridor_pressure_penalty`는 **predictive estimate**이다. **Observed** `CommitSurvivabilityMetrics`는 replay·post-commit 전용([`asteroid_lab_10`](asteroid_lab_10_development_sequence.md) §10B) — **solver/GA 입력 금지**. replay `commit.survivability_summary` 프레임의 `0.0` placeholder는 “패널티 없음”이 아니라 **해당 프레임이 fitness breakdown을 소유하지 않음**을 뜻한다.
+`route_fragility_penalty` / `shared_corridor_pressure_penalty` are **predictive estimates**. **Observed** `CommitSurvivabilityMetrics` are replay·post-commit only ([`asteroid_lab_10`](asteroid_lab_10_development_sequence.md) §10B) — **forbidden as solver/GA input**. `0.0` placeholder in replay `commit.survivability_summary` frame means **that frame does not own fitness breakdown**, not “no penalty”.
 
-`PenaltyMode.CONSERVATIVE` 최소 휴리스틱 (구현: `compute_conservative_fragility_penalties`):
+`PenaltyMode.CONSERVATIVE` minimum heuristic (implementation: `compute_conservative_fragility_penalties`):
 
 ```text
 shared_corridor_pressure_penalty = α * |path_cells ∩ other_candidate_path_cells|
 route_fragility_penalty = β * narrow_route_class_segment_count
 ```
 
-`PenaltyMode.OFF` → 두 항목 0.
+`PenaltyMode.OFF` → both terms 0.
 
-## 목적
+## Purpose
 
-Candidate pool에서 어떤 bundle 조합을 선택할지 평가하는 genome 구조와 fitness 함수를 정의한다.
+Define genome structure and fitness function to evaluate which bundle combinations to select from the candidate pool.
 
-## 금지
+## Forbidden
 
-Cell-level genome 금지.
+Cell-level genome forbidden.
 
-나쁜 구조:
+Bad structure:
 
 ```python
 dict[Coord, CellState]
 ```
 
-권장 구조:
+Recommended structure:
 
 ```python
 tuple[CandidateId, ...]
 ```
 
-## 확장성 주의
+## Scalability note
 
-`Gene = candidate_id`만으로 장기 운용 시 mutation 공간이 부족해질 수 있다. v1+에서는 `topology_signature`·routing preference를 genome 측에서 참조할지 검토한다. v0는 후보 ID 조합으로 충분하다고 가정한다.
+Long-term, `Gene = candidate_id` alone may leave mutation space insufficient. v1+ reviews referencing `topology_signature`·routing preference on genome side. v0 assumes candidate ID combinations suffice.
 
 ## DTO
 
@@ -52,7 +52,7 @@ class Gene:
     commit_order: int
 ```
 
-`commit_order`는 genome 내 **확정·재배치 순서** 등에 쓰인다. `RouteGoal.priority`와 이름이 충돌하지 않게 `priority`라는 필드명은 쓰지 않는다.
+`commit_order` is used for **commit·reorder sequence** within genome. Do not use field name `priority` to avoid collision with `RouteGoal.priority`.
 
 ```python
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ class FitnessMetrics:
     narrow_passage_occupied_count: int
 ```
 
-`unreachable_count`는 **candidate generation 단계에서 normal pool에 걸러진 수**가 아니라, **현재 fitness 평가 시점**에 선택된 gene·후보를 대상으로 재평가(또는 diagnostic 규칙)했을 때 unreachable로 간주된 수다.
+`unreachable_count` is not the count filtered from normal pool at candidate generation; it is the count deemed unreachable when re-evaluating selected genes·candidates at **current fitness evaluation time** (or per diagnostic rules).
 
 ```python
 @dataclass(frozen=True)
@@ -101,25 +101,25 @@ class FitnessBreakdown:
     metrics: FitnessMetrics
 ```
 
-`route_goal_quality_score` / `route_goal_priority_penalty`는 **같은 reachable이라도** trunk 부착·soft corridor·margin·carve 필요 여부를 구분한다. 입력은 candidate에 저장된 `route_probe_result.reached_goal`·`goal_priority`를 사용한다.
+`route_goal_quality_score` / `route_goal_priority_penalty` distinguish trunk attachment·soft corridor·margin·carve requirement **even when equally reachable**. Input uses `route_probe_result.reached_goal`·`goal_priority` stored on candidate.
 
-`route_fragility_penalty` / `shared_corridor_pressure_penalty`는 **candidate 시점 reachable이 commit에서 깨질 위험**을 줄이기 위한 보수적 항목이다. **`PenaltyMode.OFF`에서만 0**; `CONSERVATIVE`에서는 위 휴리스틱이 non-zero일 수 있다. **필드는 breakdown에 고정** (Phase 4 feasibility vs commitability 절 참조).
+`route_fragility_penalty` / `shared_corridor_pressure_penalty` are conservative terms to reduce risk that candidate-phase reachable breaks at commit. **0 only in `PenaltyMode.OFF`**; in `CONSERVATIVE` heuristics above may be non-zero. **Fields fixed in breakdown** (see Phase 4 feasibility vs commitability section).
 
-### `unreachable_penalty`가 필요한 이유
+### Why `unreachable_penalty` is needed
 
-Phase 3에서 unreachable 후보는 **normal pool에 들어가지 않는다**. 그럼에도 fitness에 `unreachable_penalty`를 두는 이유:
+Phase 3 excludes unreachable candidates from **normal pool**. Reasons to keep `unreachable_penalty` in fitness:
 
 ```text
-1. diagnostic / 실험 모드에서 genome이 비정상 후보를 참조할 수 있음
-2. genome 조합·commit sequence 이후 route_domain / reservation 충돌로 재평가 시 unreachable이 되는 경우
-3. stale probe 스냅샷 방어 (재-probe 전 단계)
+1. diagnostic / experiment mode may reference abnormal candidates in genome
+2. genome combination·commit sequence later makes re-evaluation unreachable due to route_domain / reservation conflict
+3. stale probe snapshot defense (pre re-probe stage)
 ```
 
-구현자가 “candidate 단계에서 걸렀는데 왜 penalty?”로 제거하지 않도록 본 절을 유지한다.
+Keep this section so implementers do not remove it asking “filtered at candidate stage, why penalty?”
 
 ## Fitness v0
 
-기본식(가중치는 튜닝 대상):
+Basic formula (weights tunable):
 
 ```text
 fitness =
@@ -142,43 +142,43 @@ fitness =
     - shared_corridor_pressure_penalty
 ```
 
-### Route goal 품질 (정성)
+### Route goal quality (qualitative)
 
-예시 가중치는 튜닝 대상이다.
+Example weights are tunable.
 
 ```text
-existing_trunk 연결: priority penalty 낮음 / quality 높음
-soft_corridor: 소량 penalty
-external_margin: 중간 penalty
-asteroid_carve 필요: 높은 penalty (또는 carve_allowed False면 unreachable과 동급 처리)
+existing_trunk connection: low priority penalty / high quality
+soft_corridor: small penalty
+external_margin: medium penalty
+asteroid_carve required: high penalty (or treat like unreachable if carve_allowed False)
 ```
 
-### 평면(flat) 점수의 위험
+### Risk of flat scoring
 
-좁은 corridor를 고처리량 후보가 전부 점유하면 **pass2 blockage·이후 unreachable**이 재발할 수 있다.
+If high-throughput candidates occupy all narrow corridors, **pass2 blockage·later unreachable** may recur.
 
-위 penalty 항목은 v0에서 **0 또는 보수적 휴리스틱**으로 시작해도 되지만, **필드는 미리 노출**해 구현 drift를 막는다.
+Above penalty terms may start at **0 or conservative heuristic** in v0, but **expose fields early** to prevent implementation drift.
 
-권장 지배 관계(정성):
+Recommended dominance (qualitative):
 
 ```text
 narrow_passage / corridor_block / future_expansion
-> 단순 throughput 증가분 (특히 단일 corridor 붕괴 시나리오)
+> simple throughput gain (especially single-corridor collapse scenarios)
 ```
 
-## Overlap 처리
+## Overlap handling
 
-두 candidate가 같은 occupied cell을 사용하면 conflict다.
+Two candidates using the same occupied cell is conflict.
 
-v0에서는 conflict genome을 허용하되 큰 penalty를 준다.
+In v0, allow conflict genomes but apply large penalty.
 
-repair 단계에서 제거한다.
+Remove in repair stage.
 
 ## Route Cost
 
-각 후보의 비용은 **`route_probe_result.cost`**(Phase 3 스냅샷)에서 읽는다.
+Each candidate's cost is read from **`route_probe_result.cost`** (Phase 3 snapshot).
 
-단, 최종 commit 단계에서는 다시 probe해야 한다.
+Must probe again in final commit stage.
 
 ## Invariant
 
@@ -187,12 +187,12 @@ repair 단계에서 제거한다.
 [ ] fitness must be deterministic for same input
 [ ] overlap penalty dominates throughput gain
 [ ] unreachable penalty dominates extractor gain
-[ ] all score components are exposed in breakdown (v0에서 0이어도 합산식에 포함)
-[ ] route_goal_quality_score·route_goal_priority_penalty가 probe 스냅샷과 결정적으로 연결된다
-[ ] FitnessMetrics가 카운트·합 등 집계 값을 보존한다 (replay·디버그)
+[ ] all score components are exposed in breakdown (include in sum even if 0 in v0)
+[ ] route_goal_quality_score·route_goal_priority_penalty linked deterministically to probe snapshot
+[ ] FitnessMetrics preserves aggregate values such as counts·sums (replay·debug)
 ```
 
-## 테스트
+## Tests
 
 ```text
 test_genome_uses_candidate_ids
@@ -206,12 +206,12 @@ test_fitness_route_goal_quality_prefers_trunk_over_margin_when_reachable_both
 test_fitness_narrow_corridor_dominates_high_throughput_greed
 ```
 
-## 완료 조건
+## Completion criteria
 
 ```text
-[ ] Gene/Genome DTO 구현
-[ ] FitnessBreakdown + FitnessMetrics 구현
-[ ] deterministic evaluator 구현
-[ ] route_fragility_penalty·shared_corridor_pressure_penalty가 breakdown에 존재 (v0는 0 허용)
-[ ] overlap/unreachable penalty 테스트 통과
+[ ] Gene/Genome DTO implementation
+[ ] FitnessBreakdown + FitnessMetrics implementation
+[ ] deterministic evaluator implementation
+[ ] route_fragility_penalty·shared_corridor_pressure_penalty present in breakdown (0 allowed in v0)
+[ ] overlap/unreachable penalty tests pass
 ```

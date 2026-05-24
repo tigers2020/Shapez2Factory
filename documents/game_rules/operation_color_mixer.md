@@ -1,8 +1,8 @@
-# 연산: Color Mixer (액체 혼합)
+# Operation: Color Mixer (Liquid Mixing)
 
-## 일반 규칙(개념)
+## General Rules (Conceptual)
 
-색상 액체를 조합해 새 색을 만든다. 예:
+Combines color liquids to produce new colors. Examples:
 
 ```text
 red + green = yellow
@@ -11,15 +11,15 @@ green + blue = cyan
 red + green + blue = white
 ```
 
-## 솔버 설계 권장
+## Solver Design Recommendation
 
-도형의 레이어·분면 연산과 섞지 말고 **paint resource dependency** 로 분리하는 편이 단순하다.
+Do not mix with layer/quadrant shape operations; prefer separating as **paint resource dependency**:
 
-- 도형 변환 함수: `Shape -> Shape`
-- 색 액체 파이프: **어떤 기본 색·중간 색이 몇 단위 필요한지** 별도 그래프/수량 모델
+- Shape transform function: `Shape -> Shape`
+- Color liquid pipes: separate graph/quantity model for **which base/intermediate colors and how many units**
 
-이렇게 나누면 “형태 솔버”와 “잉크 공급 솔버”의 경계가 명확해진다.
+This keeps boundaries clear between "shape solver" and "ink supply solver".
 
-## 근거·신뢰도
+## Sources and Trust
 
-- 색 혼합 표는 커뮤니티·가이드에서 흔히 인용되지만, **정확한 게임 내 레시피**는 플레이·데이터 추출로 검증하는 것이 안전하다.
+- Color mix tables are commonly cited in community guides, but **exact in-game recipes** should be verified by play or data extraction.

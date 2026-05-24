@@ -10,6 +10,21 @@
 
 **Surgery (역사):** [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md) · 실행 기록: [`docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md`](../../docs/superpowers/plans/2026-05-22-strip-solver-keep-recon-complete.md)
 
+## Authority precedence
+
+문서 충돌 시 Algorithm vs superpowers **전역 우선 규칙 없음** — [`document_inventory.md`](../index/document_inventory.md) **§ Asteroid Lab authority by topic** 행을 따른다.
+
+1. Code + tests: `django_apps/asteroid_lab/{reconstruction,optimization,contracts}/`, `tests/unit/asteroid_lab/`
+2. This file — active queue and runtime pointer
+3. `docs/superpowers/specs/` — merged RTTP/B2 specs (per topic row)
+4. `documents/Algorithm/asteroid_lab_*.md` — stable DTO / route / validation / replay semantics
+5. `document_inventory.md` — doc status and topic routing
+6. `documents/plans/asteroid_lab_optimization/` — **QUARANTINE** (historical snapshots only; `do_not_use_as_authority`)
+7. `documents/Algorithm/solver_runtime/` — historical Phase A–M unless this file promotes a subsection
+8. `REPORT`, `documents/debug/`, `documents/archive/` — observation only
+
+운영 규칙: [`contamination_policy.md`](contamination_policy.md). 설계: [`docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md`](../../docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md).
+
 ## ACTIVE 코드 경로
 
 ```text

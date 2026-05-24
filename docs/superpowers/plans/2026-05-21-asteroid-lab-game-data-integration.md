@@ -1,6 +1,6 @@
 ﻿# Asteroid Lab ↔ game_data DB Integration Implementation Plan
 
-> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
+> **pytest output:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden**.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
@@ -377,19 +377,19 @@ def _snapshot_meta_for_config(snap: AsteroidGameDataSnapshot) -> dict[str, str]:
 
 ---
 
-## Caveman 6절
+## Caveman 6 sections
 
 ## Summary
-- **분류:** 문서 변경 — plan을 **99개 × 2~5분** micro-task로 재분해.
+- **Classification:** documentation change — re-split plan into **99 × 2–5 min** micro-tasks.
 - `/write-plan` deprecated → **writing-plans** skill.
-- **T001–T059** 대부분 master WIP 완료; **T060+** 미착수.
+- **T001–T059** mostly master WIP complete; **T060+** not started.
 
 ## Files
-- `docs/superpowers/plans/2026-05-21-asteroid-lab-game-data-integration.md` — 본 문서 갱신
+- `docs/superpowers/plans/2026-05-21-asteroid-lab-game-data-integration.md` — this document updated
 
 ## Contracts
-- Micro-task 규칙 + progress dashboard + appendix 코드 참조
-- 변경 없음 (구현 계약 동일)
+- Micro-task rules + progress dashboard + appendix code references
+- No changes (implementation contract unchanged)
 
 ## Tests
 - master WIP: `8 passed` (contracts + selectors + builder) · ~130s

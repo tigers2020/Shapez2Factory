@@ -1,27 +1,27 @@
 # {{PROJECT_NAME}} Root
 
-이 파일은 {{PROJECT_NAME}}의 사전 지시서다. 더 구체적인 glob rule이 있으면 함께 적용하되, 충돌 시 이 파일과 [AGENTS.md](mdc:AGENTS.md)의 우선순위를 따른다.
+This file is the standing directive for {{PROJECT_NAME}}. Apply it together with more specific glob rules when present; on conflict, follow the priority order in this file and [AGENTS.md](mdc:AGENTS.md).
 
-## 최상위 운영 규칙
+## Top-level operating rules
 
-1. `[시몬]`이 요청을 요약하고 책임 소제를 나눈다.
-2. 담당 캐릭터가 한두 문장으로 접근 방식을 브리핑한다.
-3. 그 뒤에만 코드 작성·수정을 진행한다.
-4. 의미 있는 변경은 구현 전 리서치 문서와 플랜 MD를 `documents/`에 남긴다.
-5. 사람이 플랜을 승인하기 전에는 구현으로 넘어가지 않는다.
-6. 구현 후 `[테스]` 테스트, `[렉스]` 검증 순서로 마무리한다.
-7. 거시 10단계(리서치·기획 합의·디렉터 검수·승인·구현·리뷰·QA·하네스·최종·위키)는 [protocols/README.md](mdc:protocols/README.md)를 따른다. 3단계 Persona Dialogue는 **6번(구현)**에서만 적용한다.
+1. `[Simon]` summarizes the request and divides responsibility subsections.
+2. The responsible persona briefly explains the approach in one or two sentences.
+3. Only after that proceed with code writing and editing.
+4. Meaningful changes leave research docs and plan MD under `documents/` before implementation.
+5. Do not proceed to implementation before a human approves the plan.
+6. After implementation, finish in order: `[Tess]` tests, then `[Rex]` verification.
+7. The macro 10-stage pipeline (research · planning agreement · director review · approval · implementation · review · QA · harness · final · wiki) follows [protocols/README.md](mdc:protocols/README.md). Stage 3 Persona Dialogue applies **only at stage 6 (implementation)**.
 
-## 자기 검증 4단계
+## Self-verification (4 steps)
 
-1. 범위 확인: 요청이 프로젝트 워크플로우의 어느 단계인지 식별한다.
-2. 경계 확인: domain/application/adapters/interfaces 중 어느 레이어를 바꾸는지 확인한다.
-3. 영향 확인: 테스트, DTO/port, 테마, DB migration, 문서 승인 게이트 영향 여부를 확인한다.
-4. 검증 확인: `pytest` → `ruff check .` → `mypy django_apps config src` → `black .` 실행 가능 여부를 보고한다.
+1. Scope check: identify which stage of the project workflow the request belongs to.
+2. Boundary check: confirm which layer among domain/application/adapters/interfaces will change.
+3. Impact check: assess effects on tests, DTO/port, theme, DB migration, and document approval gates.
+4. Verification check: report whether `pytest` → `ruff check .` → `mypy django_apps config src` → `black .` can be run.
 
-## 도메인 용어
+## Domain terminology
 
-> 프로젝트에 맞게 아래를 수정하세요.
+> Modify the items below to fit the project.
 
 - {{TERM_1}}: {{TERM_1_DESC}}
 - {{TERM_2}}: {{TERM_2_DESC}}
@@ -29,22 +29,22 @@
 
 ## DO
 
-- Python 3.12, src layout, line length 100을 전제로 한다.
-- 새 규칙이나 버그 수정에는 가능한 한 테스트를 함께 추가한다.
-- API 키와 비밀값은 `.env` 또는 설정 경계로만 다루고 코드에 하드코딩하지 않는다.
-- 검증 미실행 시 실행 못 한 명령, 이유, 남은 위험을 함께 보고한다.
-- `black .`이 파일을 바꾸면 검증 결과와 함께 포맷 변경 발생 사실을 보고한다.
+- Assume Python 3.12, src layout, and line length 100.
+- Add tests alongside new rules or bug fixes whenever possible.
+- Handle API keys and secrets only via `.env` or configuration boundaries; never hardcode them in code.
+- When verification was not run, report the commands that could not be executed, the reason, and remaining risk.
+- If `black .` modifies files, report that formatting changes occurred along with verification results.
 
 ## DON'T
 
-- domain에 I/O, UI, DB, 외부 API 호출을 넣지 않는다.
-- application이 구체 adapter 구현을 import하지 않게 한다.
-- adapters에 비즈니스 정책을 넣지 않는다.
-- 검증하지 못한 명령을 통과했다고 보고하지 않는다.
-- 플랜 미승인 상태에서 구현으로 넘어가지 않는다.
-- `func`↔`_func`처럼 **선행 underscore만** 다른 rename으로 diff를 키우지 않는다 ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc) Forbidden Shortcuts).
+- Do not put I/O, UI, DB, or external API calls in domain.
+- Do not let application import concrete adapter implementations.
+- Do not put business policy in adapters.
+- Do not report commands as passed when they were not verified.
+- Do not proceed to implementation while the plan is unapproved.
+- Do not inflate diffs with renames that differ only by a leading underscore, such as `func`↔`_func` ([`shapez2-core.mdc`](mdc:.cursor/rules/shapez2-core.mdc) Forbidden Shortcuts).
 
-## 참조
+## References
 
 - [AGENTS.md](mdc:AGENTS.md)
 - [Persona index](mdc:persona/README.md)

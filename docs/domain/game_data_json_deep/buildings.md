@@ -7,7 +7,7 @@
 
 ## Diff vs `building_groups.json`
 
-스냅샷·시뮬 하위 경로는 groups와 **동일(2285 paths)**. 이 파일에는 `description_key` 없음 → [building_groups.md](building_groups.md) 참고.
+Snapshot and simulation sub-paths are **identical to groups (2285 paths)**. This file has no `description_key` → see [building_groups.md](building_groups.md).
 
 ## Row envelope (all rows)
 

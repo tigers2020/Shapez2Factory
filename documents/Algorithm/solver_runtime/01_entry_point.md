@@ -12,40 +12,40 @@ related_docs:
 
 # Solver Button Entry Point (stub)
 
-## 현재 동작 (2026-05-22)
+## Current behavior (2026-05-22)
 
-`Run Solver` / `Solver` 버튼은 **HTTP 200** + JSON `ok: false`, `error_code: "SOLVER_NOT_AVAILABLE"` 를 반환한다. **500 금지.**
+The `Run Solver` / `Solver` button returns **HTTP 200** + JSON `ok: false`, `error_code: "SOLVER_NOT_AVAILABLE"`. **500 forbidden.**
 
 ```text
 POST /asteroid-miner-layout/p/<slug>/run-solver/
 ```
 
 - URL name: `web:asteroid-miner-layout-project-run-solver`
-- 뷰: `asteroid_miner_layout_project_run_solver` ([`public_pages.py`](../../../django_apps/web/views/public_pages.py))
-- 서비스: `run_solver_runtime_for_project` ([`solver_runtime_entry.py`](../../../django_apps/asteroid_lab/services/solver_runtime_entry.py))
-- Lab replay frames: 프로젝트에 저장된 reconstruction 타임라인만 (`build_lab_replay_frames_for_project`)
+- View: `asteroid_miner_layout_project_run_solver` ([`public_pages.py`](../../../django_apps/web/views/public_pages.py))
+- Service: `run_solver_runtime_for_project` ([`solver_runtime_entry.py`](../../../django_apps/asteroid_lab/services/solver_runtime_entry.py))
+- Lab replay frames: reconstruction timeline stored on the project only (`build_lab_replay_frames_for_project`)
 
-## 제거됨
+## Removed
 
 - `solver_runtime_pipeline` (A→M orchestration)
 - `manage.py run_solver`, `scripts/run_solver.ps1`
-- `optimization/` 패키지 전체
-- Optimization replay persist·12H optimization HUD 입력
+- Entire `optimization/` package
+- Optimization replay persist·12H optimization HUD input
 
 ## Reconstruction (ACTIVE)
 
-맵 디코드·재구성·persist·Lab replay는 Solver 버튼과 **독립** 경로로 유지한다. [`asteroid_lab_09_replay_timeline.md`](../asteroid_lab_09_replay_timeline.md).
+Map decode·reconstruction·persist·Lab replay remain on paths **independent** of the Solver button. [`asteroid_lab_09_replay_timeline.md`](../asteroid_lab_09_replay_timeline.md).
 
-## 금지 (불변)
+## Forbidden (invariants)
 
-- replay artifact를 algorithm **입력**으로 사용
-- 진입점에서 layout commit·belt/pipe 선설치
+- Using replay artifact as algorithm **input**
+- Layout commit·belt/pipe pre-install at entry point
 
-## 테스트
+## Tests
 
 - `tests/integration/web/test_asteroid_run_solver.py` — POST → `SOLVER_NOT_AVAILABLE`
 - `tests/unit/asteroid_lab/test_solver_runtime_entry.py`
 
-## 역사
+## History
 
-Phase A–M 계약: `phase_*.md` (모두 `ARCHIVED`). strip spec: [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md).
+Phase A–M contracts: `phase_*.md` (all `ARCHIVED`). Strip spec: [`docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md`](../../../docs/superpowers/specs/2026-05-22-strip-solver-keep-recon-complete-design.md).

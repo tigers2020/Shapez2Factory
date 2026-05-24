@@ -3,42 +3,42 @@
 
 > **Plans snapshot:** Not mirrored in `documents/Algorithm/`. For live contracts see [`documents/Algorithm/`](../../Algorithm/). **PR-F (2026-05):** dense server coords removed from product code.
 
-## 목적
+## Purpose
 
-이 문서는 **통합 Lab 리플레이 리팩터** 작업 시 에이전트·인간 모두가 따를 **경계(정본)** 를 고정한다.
+This document fixes the **boundary (authority)** that agents and humans must follow during **unified Lab replay refactor** work.
 
-별도 Optimization 리플레이 **프론트/런타임 트랙**이 들어가기 전 상태로 의도적으로 롤백한 뒤, 최적화 단계 리플레이는 **기존 Lab 리플레이 타임라인에 프레임을 덧붙이는 방식**으로만 재구축한다.
+After intentionally rolling back to the state before a separate Optimization replay **front/runtime track** was introduced, optimization-stage replay is rebuilt **only by appending frames to the existing Lab replay timeline**.
 
 **Sequence 3B-R (unified RTTP append):** [`docs/superpowers/plans/2026-05-23-sequence-3b-r-unified-rttp-replay.md`](../../docs/superpowers/plans/2026-05-23-sequence-3b-r-unified-rttp-replay.md)
 
-## 기준선(Baseline)
+## Baseline
 
-권위 있는 기준 커밋(롤백 직전 한 커밋의 부모):
+Authoritative baseline commit (parent of the commit immediately before rollback):
 
 ```text
 10b3b966081496c3d67394d87780dc17e801c512^
 ```
 
-이 기준선에 맞춘 **현재 로컬 checkout**이 구현 정본이다. 원격의 최신 `HEAD`나 이후 커밋의 파일 내용은 정본이 아니다.
+The **current local checkout** aligned to this baseline is the implementation authority. Remote latest `HEAD` or file content from later commits is not authority.
 
-## 에이전트 경계(필수)
+## Agent boundary (required)
 
-에이전트는 **오직 현재 로컬 checkout**만을 기준으로 작업한다.
+Agents work **only against the current local checkout**.
 
-금지:
+Forbidden:
 
 ```text
-- GitHub 원격 HEAD를 열어 구현 세부를 참고하는 행위
-- 최적화 리플레이 코드를 찾기 위해 더 새 커밋을 검색하는 행위
-- 10b3b966081496c3d67394d87780dc17e801c512 이후 커밋에서 파일·함수를 복사하는 행위
-- 이전 separate Optimization 리플레이 구현을 기억·추론으로 재생성하는 행위
+- Opening GitHub remote HEAD to reference implementation details
+- Searching newer commits to find optimization replay code
+- Copying files/functions from commits after 10b3b966081496c3d67394d87780dc17e801c512
+- Recreating prior separate Optimization replay implementation from memory/inference
 ```
 
-이 checkout에 존재하지 않는 파일·함수·클래스·테스트·문서는 **더 이후 커밋을 보고 재현하지 않는다.**
+Files·functions·classes·tests·docs that do not exist in this checkout must **not be reproduced by looking at later commits.**
 
-## 금지: 분리형 Optimization 리플레이 심볼
+## Forbidden: separate Optimization replay symbols
 
-아래는 제거된 **듀얼 트랙** 구현으로의 회귀 신호다. 런타임·프론트 리플레이 경로에 나타나면 중단하고 제거한다(역사적 문서 전용으로 명시적으로 남기는 경우만 예외 검토).
+The following are regression signals toward removed **dual-track** implementation. Stop and remove if they appear in runtime/front replay paths (exception: explicitly kept for historical documentation only).
 
 ```text
 optimization_replay_frames
@@ -53,20 +53,20 @@ dual-track optimization replay
 no implicit sync policy
 ```
 
-### 예외(시각 전용): 통합 타임라인 위 optimization 오버레이
+### Exception (visual only): optimization overlay on unified timeline
 
-다음은 **듀얼 트랙이 아니라**, 단일 `lab_replay_frames_json`·단일 `currentFrameIndex` 안에서 Lab 베이스 그리드 위에만 쌓는 **출력 전용 시각 레이어**로 허용한다.
+The following are allowed as **output-only visual layers** stacked only on the Lab base grid inside a single `lab_replay_frames_json`·single `currentFrameIndex` — **not dual-track**.
 
 ```text
-projectOptimizationReplayFrameToLabOverlay   # 단일 타임라인 프레임 → 오버레이 지시
-lab-optimization-overlay-layer               # #lab-replay-grid 위 DOM 레이어
+projectOptimizationReplayFrameToLabOverlay   # single timeline frame → overlay instruction
+lab-optimization-overlay-layer               # DOM layer above #lab-replay-grid
 ```
 
-금지는 그대로다: 별도 optimization 리플레이 JSON 스크립트, `optimizationReplayFrameIndex` 같은 **둘째 인덱스**, 두 타임라인 동기화, `optimization_replay_attach`로 별 페이로드 노출.
+Prohibitions remain: separate optimization replay JSON script, a **second index** like `optimizationReplayFrameIndex`, two-timeline sync, exposing separate payload via `optimization_replay_attach`.
 
-## 목표 아키텍처
+## Target architecture
 
-리플레이는 **하나의 타임라인**만 존재한다.
+Only **one timeline** exists for replay.
 
 ```text
 ReplayTrack / ReplayFrame
@@ -75,41 +75,41 @@ currentFrameIndex
 #lab-replay-grid
 ```
 
-최적화 단계 이벤트는 기존 Lab 리플레이 프레임 시퀀스 **끝에 append** 한다.
+Optimization-stage events are **appended at the end** of the existing Lab replay frame sequence.
 
-다음은 허용하지 않는다: 두 번째 optimization 리플레이 페이로드, 두 번째 리플레이 인덱스, 두 타임라인 간 동기화 레이어.
+Not allowed: second optimization replay payload, second replay index, sync layer between two timelines.
 
-## 필수 동작(수용 예시)
+## Required behavior (acceptance example)
 
-검사/재구성 리플레이가 67프레임이고, 최적화가 15개의 리플레이 이벤트를 내면:
-
-```text
-최종 lab_replay_frames_json 프레임 수 = 82
-append된 frame_index = 67..81 (0부터 연속 유지)
-```
-
-append된 최적화 프레임은 **기존 Lab 스크러버·그리드 경로**로만 선택·렌더링된다.
-
-## 구현 규칙
-
-**이전 separate Optimization 리플레이 구현을 구제(salvage)하지 않는다.**
-
-통합 리플레이 확장은 **롤백 기준선 위에서만** 설계·구현한다.
-
-허용:
+If inspection/reconstruction replay has 67 frames and optimization emits 15 replay events:
 
 ```text
-최적화 알고리즘이 내부 디버그/이벤트 객체를 emit하는 것
-그 객체를 즉시 Lab ReplayFrame 호환 프레임으로 적응시키는 것
+final lab_replay_frames_json frame count = 82
+appended frame_index = 67..81 (continuous from 0)
 ```
 
-금지:
+Appended optimization frames are selected·rendered **only via the existing Lab scrubber·grid path**.
+
+## Implementation rules
+
+**Do not salvage the prior separate Optimization replay implementation.**
+
+Unified replay extension is designed·implemented **only on top of the rollback baseline**.
+
+Allowed:
 
 ```text
-최적화 리플레이를 별도 UI/런타임 트랙으로 저장·노출하는 것
+Optimization algorithm emits internal debug/event objects
+Those objects are immediately adapted to Lab ReplayFrame-compatible frames
 ```
 
-## 사전 점검(Preflight)
+Forbidden:
+
+```text
+Storing/exposing optimization replay as a separate UI/runtime track
+```
+
+## Preflight
 
 ### Bash
 
@@ -120,9 +120,9 @@ git status --short
 git grep -n "optimization_replay\|optimization-replay-json\|optimizationReplayTrack\|optimizationReplayFrameIndex" || true
 ```
 
-`git merge-base --is-ancestor` 가 0이 아니면(실패): 현재 `HEAD`가 기준선을 조상으로 포함하지 않는다.
+If `git merge-base --is-ancestor` is non-zero (fails): current `HEAD` does not include the baseline as ancestor.
 
-`git grep` 종료 코드 `1`은 매칭 없음으로 **정상**이다. `2` 이상은 오류로 본다.
+Exit code `1` from `git grep` (no matches) is **normal**. `2` or above is treated as error.
 
 ### PowerShell
 
@@ -137,21 +137,21 @@ git grep -n "optimization_replay\|optimization-replay-json\|optimizationReplayTr
 if ($LASTEXITCODE -gt 1) { throw "git grep failed" }
 ```
 
-`git grep` 종료 코드 `1`(매칭 없음)은 허용. `0`은 매칭 있음(별도 정책에 따라 중단·조사).
+Exit code `1` from `git grep` (no matches) is allowed. `0` means matches exist (stop/investigate per policy).
 
-## 수용 테스트(검증 관점)
+## Acceptance tests (verification perspective)
 
 ```text
-- Run Solver JSON 응답에 lab_replay_frames_json 타임라인이 하나만 노출된다.
-- 최적화 단계 프레임이 동일 리스트에 append된다.
-- frame_index는 0부터 final_count - 1까지 연속이다.
-- 렌더된 프로젝트 HTML에 `optimization-replay-json` / `optimizationReplayTrack` / `optimizationReplayFrameIndex` 문자열이 없다.
-- (예외) `#lab-optimization-overlay-layer` 및 `data-lab-optimization-overlay-enabled` 는 **단일 타임라인 시각 레이어**로 허용된다.
-- 기존 Lab 스크러버로 append된 최적화 프레임을 선택할 수 있다.
-- 리플레이는 출력 전용이며 솔버 입력으로 쓰이지 않는다.
+- Run Solver JSON response exposes only one lab_replay_frames_json timeline.
+- Optimization-stage frames are appended to the same list.
+- frame_index is continuous from 0 through final_count - 1.
+- Rendered project HTML contains no `optimization-replay-json` / `optimizationReplayTrack` / `optimizationReplayFrameIndex` strings.
+- (Exception) `#lab-optimization-overlay-layer` and `data-lab-optimization-overlay-enabled` are allowed as **single-timeline visual layer**.
+- Existing Lab scrubber can select appended optimization frames.
+- Replay is output-only and not used as solver input.
 ```
 
-## 검증 명령
+## Verification commands
 
 ```bash
 python -m pytest
@@ -160,43 +160,43 @@ python -m mypy .
 python -m black --check .
 ```
 
-단일 디렉터리로 빠르게 볼 때(예시):
+Quick single-directory view (example):
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/
 python -m pytest tests/integration/web/test_asteroid_miner_layout_solver.py
 ```
 
-## 다음 진행 순서(권장)
+## Recommended next steps
 
-1. 이 문서를 저장·승인 계열에 포함한다.
-2. working tree를 정리(stash·커밋·폐기 정책 합의)한다.
-3. 기준선에서 새 브랜치를 만든다:
+1. Include this document in save/approval workflow.
+2. Clean working tree (stash·commit·discard policy agreed).
+3. Create new branch from baseline:
 
 ```bash
 git checkout -b refactor/unified-lab-replay-from-baseline 10b3b966081496c3d67394d87780dc17e801c512^
 ```
 
-4. 에이전트 세션 프롬프트 첫머리에 다음을 둔다:
+4. Put the following at the start of agent session prompts:
 
 ```text
 Read and obey documents/plans/asteroid_lab_optimization/rollback_baseline_lab_replay_timeline.md before editing code.
 ```
 
-## 관련 플랜 문서(구 서술 정렬)
+## Related plan documents (legacy narrative alignment)
 
-아래 파일이 **아직 없거나** 과거 초안에 **Lab / Optimization dual-track·독립 `optimizationReplayFrameIndex`** 를 불변으로 두었다면, 구현·문서 정본은 **본 rollback 문서 + `asteroid_lab_00_overview.md` §1b·1c** 를 따른다. Phase 9·10 플랜 본문 상단에 *Unified Lab Replay Timeline* superseded 메모를 두었다.
+If the files below **do not yet exist** or past drafts treated **Lab / Optimization dual-track·independent `optimizationReplayFrameIndex`** as invariant, implementation·doc authority follows **this rollback doc + `asteroid_lab_00_overview.md` §1b·1c**. Phase 9·10 plan bodies have *Unified Lab Replay Timeline* superseded notes at top.
 
 ```text
 documents/plans/asteroid_lab_optimization/asteroid_lab_09_replay_debug.md
 documents/plans/asteroid_lab_optimization/asteroid_lab_10_development_sequence.md
-(작성 예정) asteroid_lab_12_runtime_replay_wiring.md
-(작성 예정) asteroid_lab_13_replay_payload_scalability.md
+(planned) asteroid_lab_12_runtime_replay_wiring.md
+(planned) asteroid_lab_13_replay_payload_scalability.md
 ```
 
-## Git의 역할에 대한 메모
+## Note on Git's role
 
 ```text
-1. Git은 작업 기준을 고정하는 장치일 뿐이다.
-2. 에이전트의 기억·검색·최신 패턴 재생성은 이 문서·프롬프트·grep 게이트로 막는다.
+1. Git is only a device to fix the work baseline.
+2. Agent memory·search·latest-pattern regeneration is blocked by this doc·prompt·grep gates.
 ```

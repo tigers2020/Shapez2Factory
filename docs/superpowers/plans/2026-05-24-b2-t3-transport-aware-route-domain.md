@@ -430,7 +430,7 @@ git commit -m "test(rttp): regression for transport-aware trunk and diagnostics"
 Replace B2-T2 ACTIVE line with:
 
 ```markdown
-**우선순위:** **B2-T3** transport-aware route domain — `feature/b2-t3-transport-aware-route-domain`. Plan: [`2026-05-24-b2-t3-transport-aware-route-domain.md`](../../docs/superpowers/plans/2026-05-24-b2-t3-transport-aware-route-domain.md). **CLOSED:** B2-T2 per-cell transport (PR #60).
+**Priority:** **B2-T3** transport-aware route domain — `feature/b2-t3-transport-aware-route-domain`. Plan: [`2026-05-24-b2-t3-transport-aware-route-domain.md`](../../docs/superpowers/plans/2026-05-24-b2-t3-transport-aware-route-domain.md). **CLOSED:** B2-T2 per-cell transport (PR #60).
 ```
 
 - [ ] **Step 3: Narrow gate**

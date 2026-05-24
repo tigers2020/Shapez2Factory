@@ -1,40 +1,51 @@
+---
+status: ARCHIVED
+do_not_use_as_authority: true
+archived_reason: plans/asteroid_lab_optimization snapshot — use documents/Algorithm/asteroid_lab_04_route_probe.md
+authority_for_implementation: documents/Algorithm/asteroid_lab_04_route_probe.md
+superseded_by:
+  - documents/index/document_inventory.md
+  - documents/ai/current_plan.md
+last_reviewed: 2026-05-24
+---
+
 # Phase 4 — Fast Route Feasibility Probe
 
 
 > **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_04_route_probe.md`](../../Algorithm/asteroid_lab_04_route_probe.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.
 
-## 목적
+## Purpose
 
-BundleCandidate의 output_stub가 **RouteGoal** 집합까지 연결 가능한지 빠르게 평가한다.
+Quickly evaluate whether a BundleCandidate's output_stub can connect to the **RouteGoal** set.
 
-이 단계는 최적 routing이 아니다.
+This stage is not optimal routing.
 
 ```text
 goal = feasibility
 not global optimal route
 ```
 
-## `TopologyGraph`와의 관계
+## Relationship to `TopologyGraph`
 
-`RouteProbeInput`은 **`route_domain`**(셀별 통과 규칙·비용)과 **`goals`**로 탐색을 제한한다.
+`RouteProbeInput` limits search with **`route_domain`** (per-cell pass rules·cost) and **`goals`**.
 
-**인접성 소스 (v0 계약):**
+**Adjacency source (v0 contract):**
 
-- 기본: `topology_graph`의 **무방향** 인접을 사용해 이웃을 enumerates한다 (Phase 1). `traversal_cost`는 엣지·노드 정책과 합치되게 domain과 조합한다.
-- `route_domain`에 키가 없는 coord는 아래 **도메인 경계 정책**을 따른다.
-- `topology_graph`가 비어 있거나 stub 구현이면 **fallback**: `grid_contract.neighbors4(coord, frame)`로 이웃을 만들되, Phase 1 테스트와 **동일 인접(밀집 4방)** 을 보장해야 한다.
+- Default: enumerate neighbors using **undirected** adjacency from `topology_graph` (Phase 1). Combine `traversal_cost` with edge·node policy and domain.
+- Coords without key in `route_domain` follow **domain boundary policy** below.
+- If `topology_graph` empty or stub implementation, **fallback**: build neighbors with `grid_contract.neighbors4(coord, frame)`, guaranteeing **same adjacency (dense 4-way)** as Phase 1 tests.
 
-즉 “topology만 보고 domain을 무시” 또는 “domain만 보고 graph를 무시”가 되면 안 된다. **확장 후보 이웃은 graph 규칙, 셀 통과·비용·mask는 `RouteCellDomain`** 이다.
+Neither “topology only ignoring domain” nor “domain only ignoring graph” is allowed. **Candidate expansion neighbors follow graph rules; cell pass·cost·mask are `RouteCellDomain`.**
 
-## 알고리즘
+## Algorithm
 
-v0 기본 구현은 **bounded uniform-cost search (Dijkstra-lite)** 이다. `RouteCellDomain.traversal_cost`(및 엣지 가중)에 따라 **가중 비용 최단**을 찾는다. 모든 `traversal_cost == 1`인 fixture에서는 **BFS와 동일한 동작**을 한다.
+v0 default is **bounded uniform-cost search (Dijkstra-lite)**. Finds **weighted minimum cost** per `RouteCellDomain.traversal_cost` (and edge weights). When all `traversal_cost == 1` in fixture, **same behavior as BFS**.
 
-추후 A* heuristic을 추가할 수 있다.
+A* heuristic may be added later.
 
 ## `TransportMask`
 
-`RouteCellDomain.transport_mask`의 정본 타입이다 (자유 dict 금지).
+Authority type for `RouteCellDomain.transport_mask` (free dict forbidden).
 
 ```python
 class TransportMask(IntFlag):
@@ -44,7 +55,7 @@ class TransportMask(IntFlag):
     BOTH = SHAPE_BELT | FLUID_PIPE
 ```
 
-또는 동등하게:
+Or equivalently:
 
 ```python
 @dataclass(frozen=True)
@@ -53,13 +64,13 @@ class TransportMaskStruct:
     allow_fluid_pipe: bool
 ```
 
-프로젝트는 **하나**를 채택한다. probe의 `transport_kind`와 불일치하면 해당 셀로는 확장하지 않는다.
+Project adopts **one**. If probe `transport_kind` mismatches, do not expand into that cell.
 
-## Route cell domain (allowed / preferred / blocked 대체)
+## Route cell domain (replacing allowed / preferred / blocked)
 
-`allowed_cells` + `preferred_cells` + `blocked_cells` 3분할만 두면 구현이 진행될수록 **route permission drift**가 나기 쉽다.
+Using only `allowed_cells` + `preferred_cells` + `blocked_cells` tri-split tends to cause **route permission drift** as implementation progresses.
 
-셀별 의미는 **`RouteCellDomain`** 으로 고정한다.
+Per-cell meaning is fixed as **`RouteCellDomain`**.
 
 ```python
 @dataclass(frozen=True)
@@ -76,24 +87,24 @@ class RouteCellDomain:
 route_domain: Mapping[Coord, RouteCellDomain]
 ```
 
-v0에서는 `OptimizationInput`과 점유 셀·transport kind로부터 domain 빌더가 **축소된 domain**을 만들어도 된다. v1에서 carve·reclaim·reserved path·혼잡을 넣을 때 **DTO를 갈아엎지 않도록** 이 계약을 유지한다.
+v0 may let domain builder produce **reduced domain** from `OptimizationInput` and occupied cells·transport kind. Keep this contract so v1 carve·reclaim·reserved path·congestion does not **replace DTO wholesale**.
 
-**빌더 소유권:** `route_domain` 스냅샷 생성의 정본 진입점은 Phase 1 **`RouteDomainSnapshotBuilder`** 와 동일하다 (이름만 다른 래퍼 금지·단일 책임). probe·evolution이 셀 단위로 domain을 **제자리 수정**하지 않는다.
+**Builder ownership:** authority entry for `route_domain` snapshot creation is same as Phase 1 **`RouteDomainSnapshotBuilder`** (no differently named wrapper·single responsibility). probe·evolution do not **in-place modify** domain per cell.
 
-### 도메인 경계·goal 필터 (v0 정책)
+### Domain boundary·goal filter (v0 policy)
 
-아래를 **`RouteProbeFailureReason`·탐색 스킵 규칙**과 맞춘다.
+Align below with **`RouteProbeFailureReason`·search skip rules**.
 
 ```text
-start not in route_domain -> invalid_route_domain (또는 start_blocked와 택일하되 문서·테스트로 하나만 고정)
-neighbor coord not in route_domain -> 확장 스킵 (failure로 기록하지 않음)
-goal.coord not in route_domain -> 해당 RouteGoal 제외 (goals 필터 단계)
-필터 후 goals 비어 있음 -> no_goal_cells
+start not in route_domain -> invalid_route_domain (or pick start_blocked; fix one in docs·tests)
+neighbor coord not in route_domain -> skip expansion (do not record as failure)
+goal.coord not in route_domain -> exclude that RouteGoal (goals filter stage)
+after filter goals empty -> no_goal_cells
 ```
 
-`invalid_route_domain`과 `start_blocked`를 둘 다 쓸 경우: **start가 domain 밖이면 `invalid_route_domain`**, start는 domain 안이나 `hard_blocked`/mask로 막힌 경우 **`start_blocked`** 로 구분한다.
+If using both `invalid_route_domain` and `start_blocked`: **start outside domain → `invalid_route_domain`**, start inside domain but blocked by `hard_blocked`/mask → **`start_blocked`**.
 
-## 입력 DTO
+## Input DTO
 
 ```python
 @dataclass(frozen=True)
@@ -107,36 +118,36 @@ class RouteProbeInput:
     goal_priority_weight: int
 ```
 
-`goal_priority_weight`는 `route_selection_score`에 쓰인다. v0 기본값 `10`을 권장한다 (`CandidateGenerationConfig`에서 주입해도 된다).
+`goal_priority_weight` used in `route_selection_score`. v0 default `10` recommended (may inject from `CandidateGenerationConfig`).
 
-`goals`는 `RouteGoal.transport_kind`가 probe의 `transport_kind`와 맞는 것만 사용한다 (미지정 goal은 정책으로 허용 여부를 문서화).
+`goals` uses only those where `RouteGoal.transport_kind` matches probe `transport_kind` (document policy for unspecified goals).
 
-탐색은 `hard_blocked` 이거나 `transport_mask`가 현재 transport를 허용하지 않는 셀로는 확장하지 않는다.
+Search does not expand into cells that are `hard_blocked` or where `transport_mask` disallows current transport.
 
-## Goal 선택·`reached_goal` (비용 vs priority)
+## Goal selection·`reached_goal` (cost vs priority)
 
-`RouteGoal.priority`는 **작을수록 선호**(Phase 1). 경로 탐색은 **비용 최소**를 먼저 최적화한다. 둘이 충돌할 때의 정본 규칙(v0):
+`RouteGoal.priority`: **smaller is preferred** (Phase 1). Path search optimizes **minimum cost** first. Authority when they conflict (v0):
 
-### Probe selection score (가중 점수, v0 정본)
+### Probe selection score (weighted score, v0 authority)
 
 ```text
 route_selection_score(path, goal) = path_cost + goal_priority_weight * goal.priority
 ```
 
-- `path_cost`: 도메인 `traversal_cost` 합(및 엣지 가중이 있으면 동일 규칙 합산).
-- `goal_priority_weight`: `RouteProbeInput.goal_priority_weight` (비음수 정수). v0 기본 예: `10` (튜닝 가능).
+- `path_cost`: sum of domain `traversal_cost` (and edge weights if present, same rule).
+- `goal_priority_weight`: `RouteProbeInput.goal_priority_weight` (non-negative int). v0 example default: `10` (tunable).
 
-**선택 규칙:** 도달 가능한 (path, goal) 후보 중 **`route_selection_score` 최소**를 선택한다.
+**Selection rule:** among reachable (path, goal) candidates, pick **minimum `route_selection_score`**.
 
-**동점 tie-break (결정성 필수):** (1) `path_cost` 오름차순 (2) `goal.priority` 오름차순 (3) `goal.coord` lexicographic (4) `goal_kind` 고정 순서 — 구현은 하나의 전역 순서로 고정한다.
+**Tie-break (determinism required):** (1) `path_cost` ascending (2) `goal.priority` ascending (3) `goal.coord` lexicographic (4) fixed `goal_kind` order — implementation fixes one global order.
 
-이 스코어가 `reached_goal`·`RouteProbeResult.cost`·fitness의 route penalty와 **모순 없이** 연결되도록 한다 (Phase 5).
+Connect this score to `reached_goal`·`RouteProbeResult.cost`·fitness route penalty **without contradiction** (Phase 5).
 
-## 실패 사유 타입
+## Failure reason type
 
-구현에서 `failure_reason`은 **`RouteProbeFailureReason | None`** 이다. 아래 텍스트 목록은 enum 멤버 이름과 동일하게 유지한다.
+In implementation `failure_reason` is **`RouteProbeFailureReason | None`**. Text list below matches enum member names.
 
-## 출력 DTO
+## Output DTO
 
 ```python
 @dataclass(frozen=True)
@@ -150,15 +161,15 @@ class RouteProbeResult:
     failure_reason: RouteProbeFailureReason | None
 ```
 
-`reachable=True`이면 `reached_goal`은 위 **selection score·tie-break**로 선택된 `RouteGoal`이다.
+When `reachable=True`, `reached_goal` is `RouteGoal` selected by **selection score·tie-break** above.
 
-`goal_priority`는 `reached_goal.priority`의 복사로, **작을수록 선호**인 `RouteGoal.priority` 규칙(Phase 1)과 동일하다. fitness·validation에서 trunk 부착 vs margin 스크래치 구분에 쓴다.
+`goal_priority` is copy of `reached_goal.priority`, same **smaller-is-preferred** rule as `RouteGoal.priority` (Phase 1). Used in fitness·validation to distinguish trunk attachment vs margin scratch.
 
-`reachable=False`이면 `reached_goal`·`goal_priority`는 `None`, `failure_reason`은 필수.
+When `reachable=False`, `reached_goal`·`goal_priority` are `None`, `failure_reason` required.
 
 ## Cost Model v0
 
-도메인의 `traversal_cost`가 1차 값이다. 의미 예시:
+Domain `traversal_cost` is primary. Example semantics:
 
 ```text
 existing trunk cell = low cost
@@ -166,7 +177,7 @@ external void corridor = normal cost
 asteroid carve = high cost or forbidden (carve_allowed)
 occupied bundle cell = hard_blocked
 hard protected = hard_blocked
-wrong transport kind = transport_mask 불일치
+wrong transport kind = transport_mask mismatch
 ```
 
 ## Failure Reason (`RouteProbeFailureReason`)
@@ -181,53 +192,54 @@ invalid_transport_kind
 invalid_route_domain
 ```
 
-### `blocked_by_occupied` 사용 시점
+### When to use `blocked_by_occupied`
 
-일반 확장에서 이웃이 `hard_blocked`/mask 불일치면 **스킵**할 뿐 `blocked_by_occupied`로 올리지 않는다. `blocked_by_occupied`는 다음에만 사용한다.
-
-```text
-start는 route_domain에 있으나 start 셀 자체가 occupied-derived hard_blocked이거나,
-start의 모든 유효 이웃이 occupied-derived hard_blocked이라 한 건도 확장할 수 없을 때
-```
-
-그 외 탐색 소진은 `exhausted`.
-
-### Budget·`expanded_nodes` 정의
-
-- **`expanded_nodes`**: frontier에서 **pop되어 확정 처리된 coord** 수(동일 coord 재확정은 카운트하지 않음; 구현·테스트로 한 가지로 고정).
-- **`max_expansions`**: 위 카운트가 `max_expansions`를 **초과**하면 탐색을 중단하고 `budget_exceeded`를 반환한다(유효 goal 미도달 시).
-
-## Incremental commit과의 연결 (예고)
-
-commit 성공 후 **reserved path**는 다음 probe를 위해 `RouteDomainSnapshotBuilder`가 만든 `route_domain` 스냅샷에 반영된다 (Phase 1·7). candidate 단계 probe는 “당시 스냅샷”이며, commit 후 재-probe 없이 drift하면 안 된다.
-
-## Feasibility vs commitability (낙관성 경계)
-
-`reachable=True`는 **해당 `RouteProbeInput.route_domain` 스냅샷**에서의 feasibility다. incremental commit 루프에서 **reservation 누적·corridor starvation·다른 transport mask**가 바뀌면 동일 후보가 실패할 수 있다.
-
-따라서:
+Normal expansion: neighbor `hard_blocked`/mask mismatch is **skipped**, not raised as `blocked_by_occupied`. Use `blocked_by_occupied` only when:
 
 ```text
-candidate probe 성공 ≠ 최종 commit 성공의 논리적 함의
+start is in route_domain but start cell itself is occupied-derived hard_blocked, or
+all valid neighbors of start are occupied-derived hard_blocked so no expansion is possible
 ```
 
-대응은 **Phase 7에서 항상 최신 domain으로 재-probe**, **Phase 5 fitness**에 route_fragility·shared corridor pressure 등 **보수적 프록시**(`PenaltyMode.CONSERVATIVE`; `OFF`에서만 0), **Phase 8 validation**으로 분산한다.
+Otherwise search exhaustion is `exhausted`.
+
+### Budget·`expanded_nodes` definition
+
+- **`expanded_nodes`**: count of coords **popped from frontier and finalized** (do not count same coord re-finalized; fix one rule in implementation·tests).
+- **`max_expansions`**: when above count **exceeds** `max_expansions`, stop search and return `budget_exceeded` (when valid goal not reached).
+
+## Connection to incremental commit (preview)
+
+After successful commit, **reserved path** is reflected in `route_domain` snapshot from `RouteDomainSnapshotBuilder` for next probe (Phase 1·7). Candidate-phase probe is “snapshot at that time”; must not drift without re-probe after commit.
+
+## Feasibility vs commitability (optimism boundary)
+
+`reachable=True` is feasibility in **that `RouteProbeInput.route_domain` snapshot**. In incremental commit loop, **reservation accumulation·corridor starvation·different transport mask** may fail the same candidate.
+
+Therefore:
+
+```text
+candidate probe success ≠ logical implication of final commit success
+```
+
+Mitigation: **Phase 7 always re-probe with latest domain**, **Phase 5 fitness** conservative proxies route_fragility·shared corridor pressure etc. (`PenaltyMode.CONSERVATIVE`; 0 only when `OFF`), **Phase 8 validation** distributes checks.
 
 ## Invariant
 
 ```text
-[ ] uniform-cost 탐색은 hard_blocked 셀로 확장하지 않는다
-[ ] 이웃 나열은 topology_graph 무방향 계약과 모순 없음 (fallback 시 grid_contract.neighbors4와 동일)
+[ ] uniform-cost search does not expand into hard_blocked cells
+[ ] neighbor listing consistent with topology_graph undirected contract (fallback: same as grid_contract.neighbors4)
 [ ] shape belt and fluid pipe route domains are separated
 [ ] reachable=True requires path length > 0 unless start is goal
-[ ] reachable=True 이면 reached_goal·goal_priority가 계약에 맞게 채워진다
-[ ] reachable=False 이면 failure_reason은 RouteProbeFailureReason (필수)
-[ ] goal_kind·priority는 “아무 외부 좌표 도달”이 아니라 계약된 목표만 매칭한다
-[ ] reached_goal 선택은 route_selection_score·tie-break로 결정된다
-[ ] expanded_nodes·max_expansions 정의가 구현·테스트와 일치한다
-[ ] blocked_by_occupied는 문서화된 좁은 조건에서만 사용된다
+[ ] when reachable=True, reached_goal·goal_priority filled per contract
+[ ] when reachable=False, failure_reason is RouteProbeFailureReason (required)
+[ ] goal_kind·priority match contracted goals, not “any external coord reached”
+[ ] reached_goal selection determined by route_selection_score·tie-break
+[ ] expanded_nodes·max_expansions definitions match implementation·tests
+[ ] blocked_by_occupied used only under documented narrow conditions
+```
 
-## 테스트
+## Tests
 
 ```text
 test_route_probe_reaches_prioritized_route_goal
@@ -243,13 +255,13 @@ test_route_probe_expanded_nodes_matches_definition
 test_route_probe_blocked_by_occupied_only_at_start_trap
 ```
 
-## 완료 조건
+## Completion criteria
 
 ```text
-[ ] bounded uniform-cost search (Dijkstra-lite) 구현
-[ ] RouteProbeInput / RouteProbeResult (route_domain·RouteGoal·topology_graph) 구현
-[ ] TransportMask 타입 정의
-[ ] RouteProbeFailureReason enum + RouteProbeResult (reached_goal·goal_priority) 구현
-[ ] route_selection_score·tie-break 문서화 및 테스트
-[ ] candidate_generator에서 호출 가능
+[ ] bounded uniform-cost search (Dijkstra-lite) implemented
+[ ] RouteProbeInput / RouteProbeResult (route_domain·RouteGoal·topology_graph) implemented
+[ ] TransportMask type defined
+[ ] RouteProbeFailureReason enum + RouteProbeResult (reached_goal·goal_priority) implemented
+[ ] route_selection_score·tie-break documented and tested
+[ ] callable from candidate_generator
 ```

@@ -1,76 +1,76 @@
-# shapez2 basedata IVVD — Django 정본 영속화 (플랜)
+# shapez2 basedata IVVD — Django canonical persistence (plan)
 
-**상태**: ACTIVE (구현 진행)  
-**범위**: [`documents/shapez_2_data/basedata-v1137`](../../shapez_2_data/basedata-v1137)만 (세이브·블루프린트 제외).
+**Status**: ACTIVE (implementation in progress)  
+**Scope**: [`documents/shapez_2_data/basedata-v1137`](../../shapez_2_data/basedata-v1137) only (excludes saves · blueprints).
 
-## 목적
+## Purpose
 
-`shapez_core`를 **canonical immutable verified dataset** 레이어로 두고, 게임 basedata를 **결정적·검증 가능한** 형태로 SQLite/Postgres에 적재한다. `reverse_engineering` 등 tooling 앱은 **이 레이어를 import**하며, solver/replay는 **core만** 참조한다.
+Treat `shapez_core` as **canonical immutable verified dataset** layer; load game basedata into SQLite/Postgres in a **deterministic · verifiable** form. Tooling apps like `reverse_engineering` **import this layer**; solver/replay reference **core only**.
 
-## 앱 경계
+## App boundary
 
-- **정본 DB·모델**: `django_apps.shapez_core`만.
-- **추출·런타임 스캔·Explorer UI**: 별도 앱(예: `reverse_engineering`). solver/replay가 해당 앱을 import하지 않는다.
+- **Canonical DB · models**: `django_apps.shapez_core` only.
+- **Extraction · runtime scan · Explorer UI**: separate app (e.g. `reverse_engineering`). solver/replay must not import that app.
 
-## 데이터 철학
+## Data philosophy
 
-| 단계 | 의미 |
-|------|------|
-| Imported | 원문 바이트 읽기, `raw_text`/`payload`, `sha256`, `byte_size` |
-| Schema | `jsonschema` (해당 문서에 스키마가 매핑될 때만) |
-| Cross-ref | `identifiers.json` ↔ `buildings.json` 등 ID 집합 일치 |
-| Semantic | `domain/` 순수 규칙(추가 시); 현재는 최소 스텁 |
-| Sealed | `shapez-ivvd-seal-v1` payload로 `release_integrity_hash` 확정 |
+| Stage | Meaning |
+|-------|---------|
+| Imported | Read raw bytes, `raw_text`/`payload`, `sha256`, `byte_size` |
+| Schema | `jsonschema` (only when schema maps to that document) |
+| Cross-ref | ID set consistency e.g. `identifiers.json` ↔ `buildings.json` |
+| Semantic | Pure rules in `domain/` (when added); minimal stub for now |
+| Sealed | `release_integrity_hash` fixed via `shapez-ivvd-seal-v1` payload |
 
-**IMPORT 성공 ≠ 검증 성공**: 구조 검증 실패 시에도 **raw/payload는 저장**하고, `ShapezIntegrityIssue`·`schema_valid` 등으로 표시.
+**IMPORT success ≠ validation success**: on structural validation failure still **persist raw/payload** and mark via `ShapezIntegrityIssue` · `schema_valid`, etc.
 
-## 원문(raw) 정책
+## Raw policy
 
-- **기본**: full `raw_text`(또는 동등) 보존 — 역공학·증거 추적.
-- **선택**: `compressed_raw_blob` + `raw_compression_codec` — 압축 해제 바이트의 `sha256`은 미압축과 동일해야 함.
-- **예외 모드**: `hash_only_external`은 운영상 필요 시만 문서화(초기 구현에서는 생략 가능).
+- **Default**: preserve full `raw_text` (or equivalent) — reverse engineering · audit trail.
+- **Optional**: `compressed_raw_blob` + `raw_compression_codec` — decompressed `sha256` must match uncompressed.
+- **Exception mode**: `hash_only_external` only when operationally needed and documented (may omit in initial impl).
 
-## Append-only·Sealed
+## Append-only · Sealed
 
-- Sealed 이후 **document/identifier 행 rewrite 금지**(운영 원칙).
-- 재검증: 새 `ShapezValidationRun`, 새 `ShapezIntegrityIssue`.
-- **논리 대체**: `ShapezIntegrityIssue.is_superseded`, `superseded_by_run`으로 동일 phase의 이전 이슈를 폐기 표시(행 삭제 없음).
+- After Sealed, **no rewrite of document/identifier rows** (operational principle).
+- Re-validation: new `ShapezValidationRun`, new `ShapezIntegrityIssue`.
+- **Logical replacement**: mark prior issues in same phase superseded via `ShapezIntegrityIssue.is_superseded`, `superseded_by_run` (no row delete).
 
-### Supersession 배치 규칙 (구현 기본)
+### Supersession batch rule (default impl)
 
-동일 `release`·동일 `validation_phase`에 대해 새 `ShapezValidationRun`이 **성공 종료**되면, 그 phase의 **이전 run**에서 생성된 이슈 중 `is_superseded=False`인 것에 대해 `is_superseded=True`, `superseded_by_run=새 run`을 설정한다.
+When a new `ShapezValidationRun` for same `release` · same `validation_phase` **ends successfully**, set `is_superseded=True`, `superseded_by_run=new run` on issues from **previous run** of that phase where `is_superseded=False`.
 
 ## Seal — `shapez-ivvd-seal-v1`
 
-- 상수: `SEAL_ALGORITHM = "shapez-ivvd-seal-v1"`.
-- Payload(개념): `algorithm_version`, `game_version`, `document_count`, `documents`(각 `source_relative_path`, `sha256`, `byte_size` — **`source_relative_path` 오름차순 정렬**, 경로 중복 없음).
-- 직렬화: UTF-8, JSON `sort_keys=True`, `separators=(",", ":")`, `ensure_ascii=False`.
-- `release_integrity_hash` = 위 캐논 문자열의 SHA-256(hex).
-- `ShapezBasedataRelease.seal_input_canonical_json`에 캐논 문자열 저장(재계산·디버깅).
+- Constant: `SEAL_ALGORITHM = "shapez-ivvd-seal-v1"`.
+- Payload (concept): `algorithm_version`, `game_version`, `document_count`, `documents` (each `source_relative_path`, `sha256`, `byte_size` — **`source_relative_path` ascending sort**, no duplicate paths).
+- Serialization: UTF-8, JSON `sort_keys=True`, `separators=(",", ":")`, `ensure_ascii=False`.
+- `release_integrity_hash` = SHA-256(hex) of canonical string above.
+- Store canonical string in `ShapezBasedataRelease.seal_input_canonical_json` (recompute · debug).
 
-## 좌표 도메인
+## Coordinate domain
 
-- [`django_apps/shapez_core/domain/coordinates/`](../../django_apps/shapez_core/domain/coordinates/): `raw`/`server` 축, `x==0` 부재 규칙, 인접 정규화 등 — replay·reconstruction·topology의 **단일 출처**로 확장 예정. 초기에는 모듈 스텁·문서 문자열만 둔다.
+- [`django_apps/shapez_core/domain/coordinates/`](../../django_apps/shapez_core/domain/coordinates/): `raw`/`server` axes, no `x==0` rule, adjacent normalization, etc. — **single source** to extend for replay · reconstruction · topology. Initially module stub · doc strings only.
 
-## 파생 계열(lineage)
+## Derived lineage
 
-- `ShapezCanonicalArtifact`: `source_document`, `derivation_step`, `parent_artifact`로 raw → graph → topology … 추적 예정. 초기 스키마만.
+- `ShapezCanonicalArtifact`: track raw → graph → topology … via `source_document`, `derivation_step`, `parent_artifact`. Initial schema only.
 
-## 관리 명령
+## Management command
 
 - `python manage.py import_shapez_basedata --root <path> [--replace] [--strict-seal]`
-- `--replace`: 동일 `game_version` 릴리스가 있으면 삭제 후 재적재.
-- `--strict-seal`: seal 전에 error긴 이슈가 있으면 비0 종료(옵션).
+- `--replace`: if same `game_version` release exists, delete and reload.
+- `--strict-seal`: non-zero exit if error-level issues before seal (optional).
 
-## 설정
+## Settings
 
-- `SHAPEZ_BASEDATA_ROOT`: 없으면 `BASE_DIR / "documents/shapez_2_data/basedata-v1137"`.
+- `SHAPEZ_BASEDATA_ROOT`: default `BASE_DIR / "documents/shapez_2_data/basedata-v1137"`.
 
-## 외부 개념 참고
+## External references
 
 - [Zuplo — JSON Schema validation](https://zuplo.com/blog/verify-json-schema/)
 - [W3C VC JSON Schema](https://www.w3.org/TR/vc-json-schema/)
 
-## 승인
+## Approval
 
-본 문서는 구현 정렬용 ACTIVE 플랜이다. CANON 승격 시 `documents/index/document_inventory.md` 갱신한다.
+This document is an ACTIVE plan for implementation alignment. On CANON promotion, update `documents/index/document_inventory.md`.

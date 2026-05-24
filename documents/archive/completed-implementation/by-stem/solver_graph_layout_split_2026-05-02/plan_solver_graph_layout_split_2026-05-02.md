@@ -1,25 +1,25 @@
-# solver_graph_layout.js 리팩토링 플랜
+# solver_graph_layout.js refactoring plan
 
-날짜: 2026-05-02
+Date: 2026-05-02
 
-## 목표
+## Goals
 
-- `solver_graph_layout.js`의 레이아웃 계산 단계를 helper로 분리해 메인 흐름을 단순화한다.
-- 출력 좌표와 bounds 계약은 유지한다.
+- Split layout calculation steps in `solver_graph_layout.js` into helpers to simplify main flow.
+- Preserve output coordinates and bounds contract.
 
-## 변경 범위
+## Change scope
 
 - `django_apps/web/static/web/js/solver_graph_layout.js`
 
-## 접근
+## Approach
 
-1. empty graph fallback을 helper로 뺀다.
-2. ordered column, adjacency, sorted depth를 묶는 layout state helper를 만든다.
-3. vertical top position sweep를 별도 helper로 분리한다.
-4. final positions와 bounds 계산을 helper로 분리한다.
-5. smoke 테스트로 그래프 페이지 회귀를 확인한다.
+1. Extract empty graph fallback helper.
+2. Add layout state helper bundling ordered column, adjacency, sorted depth.
+3. Separate vertical top position sweep helper.
+4. Separate final positions and bounds calculation helpers.
+5. Verify graph page regression via smoke tests.
 
-## 기대 효과
+## Expected benefits
 
-- 메인 layout 함수가 “준비 → 세로 배치 → 가로 배치 → bounds 산출” 순서로 읽힌다.
-- 추후 레이아웃 알고리즘 조정 시 수정 지점이 더 작아진다.
+- Main layout function reads as “prepare → vertical placement → horizontal placement → bounds”.
+- Smaller edit surface when tuning layout algorithm later.

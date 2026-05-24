@@ -37,7 +37,8 @@ metadata:
 3. 코드와 문서가 충돌하는 문장을 우선 수정한다.
 4. 필요한 경우 ADR 또는 runbook을 추가한다 (`docs/adr/ADR-0000-template.md` 참조).
 5. 더 이상 유효하지 않은 예시는 제거한다.
-6. `AGENTS.md`의 Repository map과 Definition of done이 여전히 유효한지 확인한다.
+6. 저장소 경로·앱·테스트 트리 변경 시 [`structure.md`](../../../structure.md) (Repository map SoT)를 먼저 갱신한다.
+7. `AGENTS.md`의 **Repository routing**(SoT 링크·work-type 표)과 Definition of done이 여전히 유효한지 확인한다. AGENTS에 전체 path 표를 중복 추가하지 않는다.
 
 ## Output
 

@@ -1,7 +1,7 @@
 # Refactor audit (pre mining-solver tree removal)
 
-**상태**: `ARCHIVED`
+**Status**: `ARCHIVED`
 
-`mining_solver_cursor_sessions/` 정본을 전제로 한 감사 보고서 묶음이다. 해당 트리는 2026-05-15 전후로 저장소에서 제거되었으며, 본 폴더는 **역사·맥락 확인용**으로만 읽는다.
+Audit report bundle predicated on the `mining_solver_cursor_sessions/` canon. That tree was removed from the repository around 2026-05-15; read this folder **for history and context only**.
 
-- 진입: [`00_global_summary.md`](00_global_summary.md)
+- Entry point: [`00_global_summary.md`](00_global_summary.md)

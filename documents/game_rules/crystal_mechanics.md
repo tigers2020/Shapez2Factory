@@ -1,145 +1,145 @@
-# Crystal 시스템 (메커니즘 요약)
+# Crystal System (Mechanics Summary)
 
-문서 목적: 솔버·UI에서 **Crystal을 일반 색칠 파트와 분리**하고, 생성·클러스터·파괴 전파를 동일 언어로 맞춘다. 게임과 1:1일 필요는 없으며, 규칙 세부는 패치·실측으로 교차 검증한다.
+Purpose: align **Crystal as separate from normal painted parts** and generation, clusters, and shatter propagation in solver and UI. Need not match game 1:1; cross-verify rule details by patch and measurement.
 
-## 근거 신뢰도
+## Source Trust
 
-| 근거 | 내용 | 신뢰도 |
+| Source | Content | Trust |
 | --- | --- | --- |
-| Shapez 2 Wiki 검색 | Crystal Generator는 gap·pin에 crystal 생성, highest used layer까지 적용 | 높음(위키, 교차 검증 권장) |
-| Shapez 2 Shapes Wiki 검색 | Crystal 연결 구조가 깨지면 연결된 crystal 전체가 함께 깨짐 | 높음(위키) |
-| Steam 커뮤니티 | floating crystal, pin/gap, cluster breaking 논의 | 중간(유저 실험) |
+| Shapez 2 Wiki search | Crystal Generator fills gaps and pins with crystal up to highest used layer | High (wiki; cross-verify) |
+| Shapez 2 Shapes Wiki search | Breaking crystal connectivity shatters entire connected crystal cluster | High (wiki) |
+| Steam community | floating crystal, pin/gap, cluster breaking discussion | Medium (user experiments) |
 
 ---
 
-## 핵심 정의
+## Core Definition
 
-Crystal은 일반 Circle/Rectangle 등과 **다른 특수 fill material**이다. 솔버 관점:
+Crystal is a **special fill material** distinct from Circle/Rectangle, etc. Solver view:
 
 ```text
-Crystal = 빈 칸(gap) 또는 pin 칸을 특정 색의 결정(kind=c, color=색코드)으로 채운 파트
+Crystal = part filling empty (gap) or pin cell with crystal (kind=c, color=color code)
 ```
 
-코드 인코딩: 한 칸은 두 글자 토큰. Crystal은 `c` + 색 한 글자(예: cyan → `cc`). 일반 원 빨강은 `Cr` 등과 **구분**해야 한다.
+Code encoding: one cell is a two-char token. Crystal is `c` + one color char (e.g. cyan → `cc`). Distinguish from normal red circle `Cr`, etc.
 
 ---
 
-## 1. Crystal Generator (생성)
+## 1. Crystal Generator (Generation)
 
-입력: 가공 대상 **shape** + **색(color fluid의 색 코드)**.
+Inputs: target **shape** + **color (color fluid color code)**.
 
-### 레시피 그래프(와이어 타입)
+### Recipe Graph (Wire Types)
 
-그래프 검증에서 **material / fluid** 는 게임의 “크리스털 재료”가 아니라 **와이어 캐리어**다.
+In graph validation **material / fluid** are **wire carriers**, not "crystal material" in the game sense.
 
-- **material**: 일반 **도형** 노드에서 오는 연결(`shape_code` 기하 흐름).
-- **fluid**: `source_carrier=fluid` 인 **순색 유체** 노드에서 오는 연결.
+- **material**: connection from normal **shape** node (`shape_code` geometry flow).
+- **fluid**: connection from **pure-color fluid** node with `source_carrier=fluid`.
 
-Crystal Generator 노드는 다음 둘 중 하나다.
+Crystal Generator node is one of:
 
-1. **`crystal_color`가 비어 있지 않음** → 입력 **1개**(도형 한 줄, material만). 색은 노드 필드.
-2. **`crystal_color` 없음(또는 공백)** → **페인터와 동일**: 상단 `in-1`(슬롯 `1`)에 **fluid**, 하단 `in`에 가공 대상 **도형(material)**. 유체에서 색을 읽는다([`pure_fluid_color`](../../django_apps/shapez_solver/services/fluid_semantics.py)).
+1. **`crystal_color` non-empty** → **1 input** (one shape line, material only). Color from node field.
+2. **`crystal_color` empty (or whitespace)** → **same as Painter**: top `in-1` (slot `1`) **fluid**, bottom `in` target **shape (material)**. Color read from fluid ([`pure_fluid_color`](../../django_apps/shapez_solver/services/fluid_semantics.py)).
 
-도메인 연산 시그니처는 여전히 “도형 + 확정 색 한 글자”이며, 2와선 경우 그래프가 유체·도형 두 와이어를 정렬해 [`apply_operation` … CRYSTAL_GENERATOR](../../django_apps/shapez_solver/services/operation_semantics.py)에 넘긴다.
+Domain operation signature remains "shape + one confirmed color char"; with 2 wires the graph aligns fluid and shape wires before [`apply_operation` … CRYSTAL_GENERATOR](../../django_apps/shapez_solver/services/operation_semantics.py).
 
-동작(이 레포 구현, [`crystal_fill_gaps_and_pins`](../../django_apps/shapez_core/domain/crystal_geometry.py)):
+Behavior (this repo, [`crystal_fill_gaps_and_pins`](../../django_apps/shapez_core/domain/crystal_geometry.py)):
 
-1. `highest_used_layer_index(shape)`까지의 각 레이어를 대상으로 한다. 그 위에 **새 빈 레이어를 만들지 않는다**.
-2. 각 분면이 **empty(`--`)이거나 pin(`P-`)** 이면 해당 색의 crystal 파트로 바꾼다.
-3. 일반 도형 파트가 있는 칸은 유지한다.
+1. Target layers up to `highest_used_layer_index(shape)`. Does **not** create new empty layers above that.
+2. Each quadrant that is **empty (`--`) or pin (`P-`)** becomes crystal part of that color.
+3. Normal shape parts are preserved.
 
-예(레이어 문자열은 [shape_encoding.md](shape_encoding.md) 순서):
+Example (layer string order per [shape_encoding.md](shape_encoding.md)):
 
 ```text
-입력 Layer 0: `Ru--Ru--` (SW=Ru, NW=--, NE=Ru, SE=--)에 cyan(`c`) 적용 시 토큰은 `RuccRucc`.
-색: cyan → 색 코드 `c`, crystal 토큰 `cc`
+Input Layer 0: `Ru--Ru--` (SW=Ru, NW=--, NE=Ru, SE=--) with cyan (`c`) → tokens `RuccRucc`.
+Color: cyan → color code `c`, crystal token `cc`
 ```
 
-주의:
+Note:
 
 ```text
-“사용 중인 최고 레이어”까지만 채운다 ≠ 빈 레이어를 위로 새로 쌓는다.
+"Fill up to highest used layer" ≠ stack new empty layers on top.
 ```
 
-중간에 완전 빈 레이어가 끼어 있는 형태는 스택 모델에서 가능할 수 있다. 해당 레이어의 모든 `--`도 crystal 후보가 된다.
+Fully empty layers sandwiched in the stack model may exist; all `--` on that layer are crystal candidates.
 
 ---
 
-## 2. Gap filler 성격
+## 2. Gap Filler Nature
 
-Crystal은 소스에서 직접 채굴된 파트가 아니라, **기존 gap/pin을 채워** 만들어진다. 따라서 목표가 `RuccRucc`라면, 그 전 단계에 **gap/pin을 포함한 베이스 shape + 유체 색**이 선행되어야 한다.
-
----
-
-## 3. Pin과 Crystal
-
-Generator는 **pin도 crystal로 바꿀 수 있다.** 최종적으로 pin을 유지해야 한다면:
-
-- Crystal Generator **이후**에 Pin Pusher 등으로 pin을 다시 만들거나,
-- pin이 crystal로 바뀌어도 되는 **중간 단계**에서만 crystalize 한다.
+Crystal is not mined directly from source but **fills existing gap/pin**. Target `RuccRucc` requires a prior step with **base shape including gap/pin + fluid color**.
 
 ---
 
-## 4. Crystal cluster와 Shattering
+## 3. Pin and Crystal
 
-위키·커뮤니티 요지: **한 crystal이 구조적으로 깨지면, 연결된 crystal 클러스터 전체가 함께 깨진다.**
+Generator can **turn pins into crystal**. To keep pins in the final result:
 
-이 레포의 **근사 모델** ([`crystal_geometry`](../../django_apps/shapez_core/domain/crystal_geometry.py)):
-
-- **같은 레이어**: 한 레이어에서 분면은 링으로 인접(SW–NW–NE–SE 둘레).
-- **수직**: 같은 분면 인덱스의 위·아래 레이어.
-
-이 인접 그래프에서 crystal만 통과하는 BFS로 `connected_crystal_cluster`를 구하고, `shatter_crystal_cluster`는 클러스터 전체를 `--`로 바꾼다.
-
-정확한 인접·파괴 트리거(절단선이 어디를 “건드렸는지”)는 **게임 확정 전 근사**다. Cut/Swap/Stack 직후 전역 shatter 연결은 향후 `OperationEngine` 정책 단계에서 붙인다.
+- Re-create pins with Pin Pusher **after** Crystal Generator, or
+- Crystalize only at **intermediate stages** where pin→crystal is acceptable.
 
 ---
 
-## 5. Floating crystal
+## 4. Crystal Cluster and Shattering
 
-위층 crystal이 아래층 gap 위에만 얹힌 형태 등은 **생성·유지가 매우 제한적**일 수 있다. 솔버에서는 기본적으로 **도달 후보에서 제외하거나** 고비용·별도 탐색 레이어로 두는 편이 안전하다.
+Wiki/community gist: **when one crystal breaks structurally, the entire connected crystal cluster shatters together.**
+
+This repo's **approximation model** ([`crystal_geometry`](../../django_apps/shapez_core/domain/crystal_geometry.py)):
+
+- **Same layer**: quadrants adjacent in ring (SW–NW–NE–SE perimeter).
+- **Vertical**: same quadrant index on layer above/below.
+
+BFS through crystal-only adjacency yields `connected_crystal_cluster`; `shatter_crystal_cluster` sets entire cluster to `--`.
+
+Exact adjacency and shatter triggers (where cut line "touches") are **approximation before game confirmation**. Global shatter after Cut/Swap/Stack is future `OperationEngine` policy.
 
 ---
 
-## 6. 연산별 메모 (설계)
+## 5. Floating Crystal
 
-| 연산 | Crystal 관련 |
+Forms like upper-layer crystal resting only on lower-layer gap may be **very restricted** to create/maintain. Solver should **exclude from reach candidates by default** or treat as high-cost separate search layer.
+
+---
+
+## 6. Per-Operation Notes (Design)
+
+| Operation | Crystal Notes |
 | --- | --- |
-| Cutter | 절단이 클러스터를 나누면 shatter 가능 — 구현 시 규칙 확정 필요 |
-| Swapper | 반쪽 교환으로 클러스터 분리·충돌 시 위험 — 후보 pruning 권장 |
-| Stacker | crystal·지지 구조 충돌 시 깨짐 가능 — 스택 후 검증·가지치기 |
-| Pin Pusher | crystalize 순서와 조합 시 핀 보존 전략 필요 |
+| Cutter | Cut may split cluster → shatter possible — rule TBD at implementation |
+| Swapper | Half exchange risks cluster split/collision — prune candidates |
+| Stacker | Crystal/support collision may shatter — validate/prune after stack |
+| Pin Pusher | Pin preservation strategy needed when combined with crystalize order |
 
-현재 **연산 엔진**은 Generator fill과 클러스터·shatter **순수 함수**를 제공하며, Cut/Swap/Stack에 자동 shatter를 붙이지는 않았다.
-
----
-
-## 7. 그래프·매칭
-
-미리보기·타깃 매칭에서 normal part / pin / crystal / gap을 **시각·식별자 모두 구분**한다. `gap == pin`은 항상 성립하지 않는다.
+Current **operation engine** provides Generator fill and cluster/shatter **pure functions**; no automatic shatter on Cut/Swap/Stack yet.
 
 ---
 
-## 8. 구현 파일 맵 (이 레포)
+## 7. Graph and Matching
 
-| 구분 | 경로 |
+Preview and target matching must **visually and by identifier** distinguish normal part / pin / crystal / gap. `gap == pin` does not always hold.
+
+---
+
+## 8. Implementation File Map (This Repo)
+
+| Area | Path |
 | --- | --- |
-| 생성·클러스터·shatter | [`django_apps/shapez_core/domain/crystal_geometry.py`](../../django_apps/shapez_core/domain/crystal_geometry.py) |
-| Generator 연산 | [`OperationEngine`](../../django_apps/shapez_solver/services/operation_engine.py), [`apply_operation` … CRYSTAL_GENERATOR](../../django_apps/shapez_solver/services/operation_semantics.py) — 색은 노드 `crystal_color` 또는 **2와선 시 상단 유체(`pure_fluid_color`)** |
-| 레시피 그래프 재계산 | [`recipe_graph_recompute`](../../django_apps/shapez_solver/services/recipe_graph_recompute.py) — `crystal_generator`는 `crystal_color` 유무에 따라 **1입력 또는 2입력**(2입력은 fluid+material, 페인터와 동일 핸들 규칙) |
-| 파트 타입 | [`ShapePart.is_crystal`](../../django_apps/shapez_core/domain/shape.py), [`SHAPE_KINDS["c"]`](../../django_apps/shapez_core/domain/shape_catalog.py) |
+| Generation, cluster, shatter | [`django_apps/shapez_core/domain/crystal_geometry.py`](../../django_apps/shapez_core/domain/crystal_geometry.py) |
+| Generator operation | [`OperationEngine`](../../django_apps/shapez_solver/services/operation_engine.py), [`apply_operation` … CRYSTAL_GENERATOR](../../django_apps/shapez_solver/services/operation_semantics.py) — color from node `crystal_color` or **2-wire top fluid (`pure_fluid_color`)** |
+| Recipe graph recompute | [`recipe_graph_recompute`](../../django_apps/shapez_solver/services/recipe_graph_recompute.py) — `crystal_generator` is **1 or 2 input** by `crystal_color` (2-input fluid+material, same handle rules as Painter) |
+| Part type | [`ShapePart.is_crystal`](../../django_apps/shapez_core/domain/shape.py), [`SHAPE_KINDS["c"]`](../../django_apps/shapez_core/domain/shape_catalog.py) |
 
 ---
 
-## 9. 요약 네 줄
+## 9. Four-Line Summary
 
-1. Crystal Generator는 highest used layer까지 **gap/pin**을 지정 색 crystal로 채운다.
-2. Crystal은 일반 도형 파트가 아니라 **fill material**이다.
-3. 깨짐 시 **연결 crystal 클러스터**가 함께 제거되는 규칙을 쓰려면 cluster 그래프가 필요하다.
-4. Pin·gap·floating 조합은 난이도가 높아 **단계별 솔버**로 나누는 것이 안전하다.
+1. Crystal Generator fills **gap/pin** with specified-color crystal up to highest used layer.
+2. Crystal is **fill material**, not a normal shape part.
+3. Shatter rules needing **connected crystal cluster** removal require a cluster graph.
+4. Pin·gap·floating combinations are hard — **staged solver** is safer.
 
-## 관련 문서
+## Related Documents
 
-- [shapez2_crystal.md](shapez2_crystal.md) — 위키 참고·링크
+- [shapez2_crystal.md](shapez2_crystal.md) — wiki reference and links
 - [shapez2_pin_support.md](shapez2_pin_support.md)
 - [solver_operation_interface.md](solver_operation_interface.md)

@@ -612,4 +612,4 @@ Per task: implement ??narrow pytest ??ruff on touched paths ??parent review befo
 
 Plan: [`docs/superpowers/plans/2026-05-22-reprobe-drift-shadow-domain.md`](2026-05-22-reprobe-drift-shadow-domain.md)
 
-To start implementation in this session, reply **?ŒTask 1 ?œìž‘??* (or spawn subagent with Task 1 prompt from this file).
+To start implementation in this session, reply **"Start Task 1"** (or spawn subagent with Task 1 prompt from this file).

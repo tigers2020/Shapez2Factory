@@ -8,18 +8,18 @@ related_docs:
   - documents/Algorithm/solver_runtime/README.md
 ---
 
-# Implementation Sequence (PR1??)
+# Implementation Sequence (PR1?9)
 
-Solver ë²„íŠ¼ **mergeÂ·?ŒìŠ¤??* ?œì„œ?€ ?„ìˆ˜ ?ŒìŠ¤?? **Runtime ?¤í–‰ ?œì„œ(A?’M)?€ ?¤ë¦„** ??[`README.md`](README.md), [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md).
+Solver button **merge?test** order and required tests. **Differs from Runtime execution order (A?M)** ? see [`README.md`](README.md), [`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md).
 
-**?íƒœ ë²”ë?:** `?„ë£Œ` = Runtime PR ê³„ì•½Â·?ŒìŠ¤??green Â· `ë¶€ë¶? = ì½”ë“œ ?ˆìœ¼??Runtime ì²´í¬ë¦¬ìŠ¤???”ì—¬ Â· `ë¯¸ì°©?? = ëª¨ë“ˆ/orchestration ?†ìŒ.
+**Status scope:** `complete` = Runtime PR contract?tests green ? `partial` = code exists but Runtime checklist incomplete ? `not started` = module/orchestration absent.
 
-## PR 1 ??GeneTemplate (?„ë£Œ)
+## PR 1 ? GeneTemplate (complete)
 
 **Phase:** D  
-**ë¬¸ì„œ:** [`phase_d_gene_templates.md`](phase_d_gene_templates.md)
+**Document:** [`phase_d_gene_templates.md`](phase_d_gene_templates.md)
 
-### ?‘ì—…
+### Tasks
 
 - [x] `GeneTemplate` DTO
 - [x] `GeneTemplateLoader`
@@ -28,7 +28,7 @@ Solver ë²„íŠ¼ **mergeÂ·?ŒìŠ¤??* ?œì„œ?€ ?„ìˆ˜ ?ŒìŠ¤?? **Runtime ?¤í–‰ ?œì„œ(A?’M
 - [x] fixture json
 - [x] tests
 
-### ëª¨ë“ˆ
+### Modules
 
 ```text
 django_apps/asteroid_lab/optimization/gene_template.py
@@ -42,46 +42,46 @@ tests/unit/asteroid_lab/test_gene_projection.py
 
 ---
 
-## PR 1B ??Reconstruction ??OptimizationInput (?„ë£Œ)
+## PR 1B ? Reconstruction ? OptimizationInput (complete)
 
 **Phase:** A, B  
-**ë¬¸ì„œ:** [`phase_a_load_reconstruction.md`](phase_a_load_reconstruction.md), [`phase_b_optimization_input.md`](phase_b_optimization_input.md)  
-**ì½”ë“œ:** `reconstruction_adapter.py`, `input_contracts.py`, `route_domain.py`, `tests/unit/asteroid_lab/test_optimization_input.py`
+**Document:** [`phase_a_load_reconstruction.md`](phase_a_load_reconstruction.md), [`phase_b_optimization_input.md`](phase_b_optimization_input.md)  
+**Code:** `reconstruction_adapter.py`, `input_contracts.py`, `route_domain.py`, `tests/unit/asteroid_lab/test_optimization_input.py`
 
-### ?‘ì—…
+### Tasks
 
-- [x] `OptimizationInput` DTOÂ·enum (1A, `asteroid_lab/optimization/`)
-- [x] `optimization_input_from_reconstruction` Â· `build_topology_graph`
-- [x] `RouteDomainSnapshotBuilder` ?œë“œ
-- [x] `LoadedReconstructionSnapshot` ëª…ì‹œ DTO
-- [x] Â§0.3 extension kind ?•ê·œ??**adapter ê³„ì•½ ?ŒìŠ¤??* (`mineable_field_kind`, evidence helpers)
-- [x] `optimization_input_from_loaded_snapshot` + ?Œê? ?ŒìŠ¤??
+- [x] `OptimizationInput` DTO?enum (1A, `asteroid_lab/optimization/`)
+- [x] `optimization_input_from_reconstruction` ? `build_topology_graph`
+- [x] `RouteDomainSnapshotBuilder` seed
+- [x] `LoadedReconstructionSnapshot` explicit DTO
+- [x] §0.3 extension kind normalization **adapter contract tests** (`mineable_field_kind`, evidence helpers)
+- [x] `optimization_input_from_loaded_snapshot` + integration tests
 
-### ?„ë£Œ ê¸°ì? (Runtime PR1B)
+### Completion criteria (Runtime PR1B)
 
-- [x] hole asteroid fixture?ì„œ mineable ? ì?
-- [x] ëª¨ë“  coord Server X/Y
-- [x] optimizer ?´ë? kind ?ì • ?†ìŒ (legacy camelCase extension ë¬¸ì??ê¸ˆì?)
-- [x] **Runtime PR ?œì—???Œì™„ë£Œã€ë¡œ ?¹ê²©** ([`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) Â§5)
+- [x] mineable preserved in hole asteroid fixture
+- [x] all coords Server X/Y
+- [x] no direct kind comparison in optimizer interior (legacy camelCase extension strings forbidden)
+- [x] **Strictly ?complete? only at Runtime PR level** ([`ARCHITECTURE_RECONCILIATION.md`](ARCHITECTURE_RECONCILIATION.md) §5)
 
 ---
 
-## PR 2 ??Geometry + Route Probe (?„ë£Œ)
+## PR 2 ? Geometry + Route Probe (complete)
 
-**Phase:** E, F, G (??PR??ë¬¶ìŒ)  
-**? í–‰:** **PR2.5** (`planned route_goals` ??Phase C)  
-**ë¬¸ì„œ:** [`phase_e_gene_projection.md`](phase_e_gene_projection.md), [`phase_f_geometry_validation.md`](phase_f_geometry_validation.md), [`phase_g_route_probe.md`](phase_g_route_probe.md)
+**Phase:** E, F, G (bundled in this PR)  
+**Prerequisite:** **PR2.5** (`planned route_goals` from Phase C)  
+**Document:** [`phase_e_gene_projection.md`](phase_e_gene_projection.md), [`phase_f_geometry_validation.md`](phase_f_geometry_validation.md), [`phase_g_route_probe.md`](phase_g_route_probe.md)
 
-### ?‘ì—…
+### Tasks
 
 - [x] `candidate_geometry.py`
 - [x] `route_probe.py`
 - [x] route_domain `provisional_blocked_cells=` + `build_route_domain_for_projected_gene_probe`
 - [x] `test_candidate_geometry.py`
 - [x] `test_route_probe.py`
-- [x] ? ê·œ ?ŒìŠ¤?¸ëª…: `route_probe_start_*` ([`00_core_principles.md`](00_core_principles.md) Â§0.7)
+- [x] new test names: `route_probe_start_*` ([`00_core_principles.md`](00_core_principles.md) §0.7)
 
-### ?„ìˆ˜ ?ŒìŠ¤??(PR2)
+### Required tests (PR2)
 
 ```text
 test_geometry_accepts_valid_projected_gene
@@ -102,19 +102,19 @@ test_route_probe_uses_route_probe_start_not_fixed_output_transport
 
 ---
 
-## PR 2.5 ??Capacity / RouteGoal Planner (?„ë£Œ)
+## PR 2.5 ? Capacity / RouteGoal Planner (complete)
 
 **Phase:** C  
-**ë¬¸ì„œ:** [`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md)
+**Document:** [`phase_c_capacity_route_goals.md`](phase_c_capacity_route_goals.md)
 
-### ?‘ì—…
+### Tasks
 
 - [x] `capacity_planner.py`
 - [x] `route_goal_planner.py`
 - [x] `capacity_plan` DTO
 - [x] shape/fluid trunk count (12 / 72)
 
-### ?„ìˆ˜ ?ŒìŠ¤??(PR2.5)
+### Required tests (PR2.5)
 
 ```text
 test_capacity_planner_estimates_shape_goal_count_by_12
@@ -126,12 +126,12 @@ test_route_goal_planner_distributes_goals_by_quadrant
 
 ---
 
-## PR 3 ??Candidate Pool
+## PR 3 ? Candidate Pool
 
 **Phase:** H  
-**ë¬¸ì„œ:** [`phase_h_candidate_pool.md`](phase_h_candidate_pool.md)
+**Document:** [`phase_h_candidate_pool.md`](phase_h_candidate_pool.md)
 
-### ?‘ì—…
+### Tasks
 
 - [x] `candidate_dtos.py` (`GeneCandidate`, factory)
 - [x] `candidate_equivalence.py`
@@ -139,7 +139,7 @@ test_route_goal_planner_distributes_goals_by_quadrant
 - [x] normal/rejected split
 - [x] dedupe/truncate
 
-### ?„ìˆ˜ ?ŒìŠ¤??(PR3)
+### Required tests (PR3)
 
 ```text
 test_candidate_generator_reachable_only_enters_normal_pool
@@ -152,18 +152,18 @@ test_candidate_id_is_deterministic
 
 ---
 
-## PR 4 ??Candidate Selection v0
+## PR 4 ? Candidate Selection v0
 
 **Phase:** I  
-**ë¬¸ì„œ:** [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md)
+**Document:** [`phase_i_candidate_selection.md`](phase_i_candidate_selection.md)
 
-### ?‘ì—…
+### Tasks
 
 - [x] `candidate_score.py`
 - [x] capacity-aware greedy selector (`candidate_selector.py`)
 - [x] `SelectedCandidatePlan`
 
-### ?„ìˆ˜ ?ŒìŠ¤??(PR4)
+### Required tests (PR4)
 
 ```text
 test_candidate_selector_prefers_high_throughput_low_cost
@@ -173,12 +173,12 @@ test_candidate_selector_is_deterministic
 
 ---
 
-## PR 5 ??Incremental Commit
+## PR 5 ? Incremental Commit
 
 **Phase:** J  
-**ë¬¸ì„œ:** [`phase_j_incremental_commit.md`](phase_j_incremental_commit.md)
+**Document:** [`phase_j_incremental_commit.md`](phase_j_incremental_commit.md)
 
-### ?‘ì—…
+### Tasks
 
 - [x] `commit_best_candidates.py`
 - [x] commit-time reprobe
@@ -186,7 +186,7 @@ test_candidate_selector_is_deterministic
 - [x] rollback / skip
 - [x] trunk load update
 
-### ?„ìˆ˜ ?ŒìŠ¤??(PR5)
+### Required tests (PR5)
 
 ```text
 test_incremental_commit_reprobes_latest_domain
@@ -198,20 +198,20 @@ test_incremental_commit_separates_shape_and_fluid_domains
 
 ---
 
-## PR 6 ??Route Materialization
+## PR 6 ? Route Materialization
 
 **Phase:** K  
-**ë¬¸ì„œ:** [`phase_k_route_materialization.md`](phase_k_route_materialization.md)
+**Document:** [`phase_k_route_materialization.md`](phase_k_route_materialization.md)
 
-### ?‘ì—…
+### Tasks
 
 - [x] `route_network_materializer.py`
 - [x] path graph aggregation
 - [x] belt/pipe sprite kind selection
 - [x] merger/splitter/triple conversion
-- [x] K2 `placement_network_materializer.py` ??CONFIRMED equipment + `merge_materialized_layout`
+- [x] K2 `placement_network_materializer.py` ? CONFIRMED equipment + `merge_materialized_layout`
 
-### ?„ìˆ˜ ?ŒìŠ¤??(PR6)
+### Required tests (PR6)
 
 ```text
 test_route_materializer_creates_straight_and_turns
@@ -228,22 +228,22 @@ tests/unit/asteroid_lab/test_placement_materializer.py
 
 ---
 
-## PR 7 ??Final Validation + Persist + Replay + Button Pipeline
+## PR 7 ? Final Validation + Persist + Replay + Button Pipeline
 
 **Phase:** L, M, Entry  
-**ë¬¸ì„œ:** [`phase_l_final_validation.md`](phase_l_final_validation.md), [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md), [`01_entry_point.md`](01_entry_point.md)
+**Document:** [`phase_l_final_validation.md`](phase_l_final_validation.md), [`phase_m_persist_replay_ui.md`](phase_m_persist_replay_ui.md), [`01_entry_point.md`](01_entry_point.md)
 
-**?¬êµ¬??ê¸ˆì?:** Lab optimization replay persist/read/HUD ([`asteroid_lab_12`](../asteroid_lab_12_runtime_replay_wiring.md) 12F??2L ??. **thin adapter** + ? ê·œ `event_type`ë§?
+**Reuse forbidden:** Lab optimization replay persist/read/HUD ([`asteroid_lab_12`](../asteroid_lab_12_runtime_replay_wiring.md) 12F?12L etc.). **thin adapter** + new `event_type` only.
 
-### ?‘ì—…
+### Tasks
 
-- [x] validation extension (read-only) ??`final_validation.py`
-- [x] `solver_summary` ??`SolverRun.config_json["solver_summary"]`
-- [x] Runtime replay thin adapter ??`runtime_replay_recorder.py` + `optimization_replay_persist.py` + `optimization_ui_payload.py` (12F v0, `asteroid_lab` ?•ë³¸)
-- [x] UI payload attach (`asteroid_lab_page_context` ?½ê¸°) ??PR8 `optimization_replay_read.py`
-- [x] A?’M orchestration ??`solver_runtime_pipeline.run_solver_runtime_pipeline`
+- [x] validation extension (read-only) ? `final_validation.py`
+- [x] `solver_summary` ? `SolverRun.config_json["solver_summary"]`
+- [x] Runtime replay thin adapter ? `runtime_replay_recorder.py` + `optimization_replay_persist.py` + `optimization_ui_payload.py` (12F v0, `asteroid_lab` original)
+- [x] UI payload attach (`asteroid_lab_page_context` read) ? PR8 `optimization_replay_read.py`
+- [x] A?M orchestration ? `solver_runtime_pipeline.run_solver_runtime_pipeline`
 
-### ëª¨ë“ˆ
+### Modules
 
 ```text
 django_apps/asteroid_lab/optimization/final_validation.py
@@ -260,7 +260,7 @@ tests/unit/asteroid_lab/test_solver_runtime_pipeline.py
 tests/integration/asteroid_lab/test_solver_button_pipeline.py
 ```
 
-### ?„ìˆ˜ ?ŒìŠ¤??(PR7)
+### Required tests (PR7)
 
 ```text
 test_solver_button_pipeline_persists_result
@@ -271,20 +271,20 @@ test_solver_button_pipeline_no_implicit_lab_optimization_sync
 
 ---
 
-## PR 8 ??HTTP Entry + Optimization Page Context (ë°±ì—”??
+## PR 8 ? HTTP Entry + Optimization Page Context (backend)
 
 **Phase:** Entry, M (read)  
-**ë¬¸ì„œ:** [`01_entry_point.md`](01_entry_point.md)
+**Document:** [`01_entry_point.md`](01_entry_point.md)
 
-### ?‘ì—…
+### Tasks
 
-- [x] `POST /asteroid-miner-layout/p/<slug>/run-solver/` ??`asteroid_miner_layout_project_run_solver`
+- [x] `POST /asteroid-miner-layout/p/<slug>/run-solver/` ? `asteroid_miner_layout_project_run_solver`
 - [x] `solver_runtime_entry.run_solver_runtime_for_project`
 - [x] `optimization_replay_payload_for_project` + `lab_page_context` `optimization_replay`
 - [x] SSR `lab-optimization-replay-data` json_script
-- [x] Lab JS `Run Solver` fetchÂ·HUD (PR9)
+- [x] Lab JS `Run Solver` fetch?HUD (PR9)
 
-### ëª¨ë“ˆ
+### Modules
 
 ```text
 django_apps/asteroid_lab/services/solver_runtime_entry.py
@@ -297,7 +297,7 @@ tests/unit/asteroid_lab/test_solver_runtime_entry.py
 tests/integration/web/test_asteroid_run_solver.py
 ```
 
-### ?„ìˆ˜ ?ŒìŠ¤??(PR8)
+### Required tests (PR8)
 
 ```text
 test_lab_page_context_includes_empty_optimization_replay_when_no_solver_run
@@ -315,29 +315,29 @@ test_get_project_page_includes_optimization_replay_after_run
 
 ---
 
-## PR 9 ??Lab Run Solver JS + Optimization Replay HUD (12H)
+## PR 9 ? Lab Run Solver JS + Optimization Replay HUD (12H)
 
 **Phase:** M (UI read)  
-**ë¬¸ì„œ:** [`asteroid_lab_12_runtime_replay_wiring.md`](../asteroid_lab_12_runtime_replay_wiring.md) Â§12H
+**Document:** [`asteroid_lab_12_runtime_replay_wiring.md`](../asteroid_lab_12_runtime_replay_wiring.md) §12H
 
-### ?‘ì—…
+### Tasks
 
-- [x] `#lab-optimization-replay-*` HUD ?¸ë“œ (SSR)
+- [x] `#lab-optimization-replay-*` HUD nodes (SSR)
 - [x] `data-lab-run-solver-url` on `#lab-root`
-- [x] `normalizeOptimizationReplayTrack` Â· `renderOptimizationReplayHud` Â· `replaceOptimizationReplayPayload`
-- [x] `#lab-header-run` ??POST run-solver (Lab timeline play??`#lab-timeline-play`ë§?
+- [x] `normalizeOptimizationReplayTrack` ? `renderOptimizationReplayHud` ? `replaceOptimizationReplayPayload`
+- [x] `#lab-header-run` ? POST run-solver (Lab timeline play is `#lab-timeline-play`)
 
-### ëª¨ë“ˆ
+### Modules
 
 ```text
 django_apps/web/templates/web/asteroid_miner_layout_solver.html
 django_apps/web/static/web/js/asteroid_miner_layout_lab.js
-tests/unit/web/test_asteroid_lab_page_context.py  # JS smoke ?•ì¥
+tests/unit/web/test_asteroid_lab_page_context.py  # JS smoke extension
 tests/integration/web/test_asteroid_run_solver.py
 tests/integration/web/test_asteroid_lab_optimization_replay_hud.py
 ```
 
-### ?„ìˆ˜ ?ŒìŠ¤??(PR9)
+### Required tests (PR9)
 
 ```text
 test_lab_template_includes_optimization_replay_hud_nodes
@@ -348,10 +348,10 @@ test_run_solver_response_does_not_include_lab_replay_frames
 
 ---
 
-## ê¶Œì¥ êµ¬í˜„ ?œì„œ (?˜ì¡´??
+## Recommended implementation order (dependency)
 
 ```text
-PR1 (?„ë£Œ) ??????PR8 ??PR9
+PR1 (complete) ? ? ? PR8 ? PR9
 ```
 
-PR2.5??PR2Â·PR3 ?´ì „??`route_goals`ê°€ ?„ìš”?˜ë?ë¡?**PR1B ì§í›„** ê¶Œì¥.
+PR2.5 needs `route_goals` before PR2?PR3 ? **recommended immediately after PR1B**.

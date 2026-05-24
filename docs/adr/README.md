@@ -1,45 +1,45 @@
 # Architecture Decision Records (ADR)
 
-이 디렉터리는 프로젝트의 중요한 아키텍처 결정을 기록한다.
+This directory records important architectural decisions for the project.
 
-## 목적
+## Purpose
 
-- 왜 이 결정을 내렸는지 미래의 팀에게 설명한다.
-- 되돌릴 수 없거나 비용이 높은 결정을 추적한다.
-- 대안을 검토한 흔적을 남긴다.
+- Explain to future team members why a decision was made.
+- Track decisions that are irreversible or costly to reverse.
+- Leave a record of alternatives considered.
 
-## 작성 기준
+## When to write an ADR
 
-다음 중 하나 이상에 해당하면 ADR을 작성한다.
+Write an ADR when one or more of the following apply:
 
-- 레이어 경계 또는 의존 방향이 바뀌는 결정
-- 외부 라이브러리/프레임워크 도입 또는 교체
-- 데이터 저장 방식, 직렬화 형식 변경
-- 테스트 전략 또는 검증 방식의 구조적 변경
-- 성능/안정성 트레이드오프가 있는 결정
+- A decision changes layer boundaries or dependency direction
+- Introducing or replacing an external library/framework
+- Changing data storage or serialization format
+- Structural changes to testing strategy or validation approach
+- Decisions with performance/stability trade-offs
 
-## 파일 명명
+## File naming
 
 ```
-ADR-NNNN-<짧은-제목>.md
+ADR-NNNN-<short-title>.md
 ```
 
-예: `ADR-0001-port-protocol-over-abc.md`
+Example: `ADR-0001-port-protocol-over-abc.md`
 
-## 상태 목록
+## Status list
 
-| 번호 | 제목 | 상태 |
+| Number | Title | Status |
 |---|---|---|
 | 0000 | Template | — |
 
-## 상태 값
+## Status values
 
-- `proposed` — 검토 중
-- `accepted` — 채택됨
-- `deprecated` — 더 이상 유효하지 않음
-- `superseded` — 다른 ADR로 대체됨
+- `proposed` — Under review
+- `accepted` — Adopted
+- `deprecated` — No longer valid
+- `superseded` — Replaced by another ADR
 
-## 참조
+## References
 
 - [ADR template](ADR-0000-template.md)
 - [Architecture](../architecture/README.md)

@@ -1,22 +1,22 @@
 # Phase 2 — Pattern Library / Local DP Compiler
 
-## 목적
+## Purpose
 
-Extractor + extension의 작은 로컬 패턴을 deterministic하게 생성한다.
+Deterministically generate small local patterns for extractor + extension.
 
-이 단계의 DP/로컬 탐색은 전체 맵 최적화가 아니다.
+DP/local search in this phase is not full-map optimization.
 
 ```text
 DP = local pattern compiler
 ```
 
-## RouteGoal / probe와의 연결
+## Connection to RouteGoal / probe
 
-패턴은 **offsets·`output_dir`·`output_stub_offset`** 로 기하를 고정한다. 오프셋·투영 후 절대 셀은 **Server X/Y** (`Coord`)이다. `RouteProbeInput.start`는 배치 후 `**output_stub` 절대 좌표**로 투영된다 (Phase 3). `RouteGoal` 집합·`RouteCellDomain`은 `OptimizationInput`에서 오며 패턴 DTO에 중복 저장하지 않는다.
+Patterns fix geometry via **offsets·`output_dir`·`output_stub_offset`**. Offsets·projected absolute cells are **Server X/Y** (`Coord`). `RouteProbeInput.start` is projected to the **`output_stub` absolute coordinate** after placement (Phase 3). `RouteGoal` set·`RouteCellDomain` come from `OptimizationInput` and are not duplicated on pattern DTOs.
 
-확장기 부착 규칙(추출기·이전 확장기·R 방향 등)은 **v0 linear**에서는 암시적으로 복원 가능하지만, v1 분기·회전 후 facing 혼동을 막기 위해 **부착 그래프를 명시**한다.
+Extension attachment rules (extractor·previous extension·R direction, etc.) are implicitly recoverable in **v0 linear**, but **attachment graph is made explicit** to prevent facing confusion after v1 branching·rotation.
 
-## v0 패턴 범위
+## v0 pattern scope
 
 ```text
 extractor only
@@ -33,8 +33,8 @@ nonlinear compact pattern
 cross-resource pattern
 ```
 
-**extractor 출구 방향 앞에는 항상 pipe/blet 가 붙는다.**  
-*최대 크기 = pipe + extractor + 3 extension = 5*
+**A pipe/belt always attaches in front of the extractor output direction.**  
+*Max size = pipe + extractor + 3 extension = 5*
 
 ## DTO
 
@@ -46,9 +46,9 @@ class ExtensionAttachment:
     required_facing: Direction
 ```
 
-`v0 linear`: extractor가 parent이고, 각 extension은 직전 체인 셀을 parent로 둔다.
+`v0 linear`: extractor is parent; each extension has the previous chain cell as parent.
 
-`required_facing`은 **extension 모듈 자신의 부착·출력 기준 방향**으로, **parent_offset 쪽을 바라보도록** 고정한다. 검증 시 `cardinal_unit_toward(extension_offset, parent_offset)`(또는 동일 의미의 `direction_from(extension → parent)`)와 **일치**해야 한다. Shapez2 게임 규칙이 반대 부호를 요구하면 구현은 그에 맞추되, **문서·테스트에 “어느 셀이 주체인지”**를 동일하게 고정한다.
+`required_facing` is **the extension module's own attachment·output reference direction**, fixed to **face toward `parent_offset`**. On validation it must **match** `cardinal_unit_toward(extension_offset, parent_offset)` (or equivalent `direction_from(extension → parent)`). If Shapez2 game rules require opposite sign, implementation follows that, but **docs·tests fix “which cell is the subject”** identically.
 
 ```python
 @dataclass(frozen=True)
@@ -65,21 +65,21 @@ class BundlePattern:
     topology_kind: str
 ```
 
-### `throughput_factor` 의미 (고정)
+### `throughput_factor` semantics (fixed)
 
-게임 규칙: extractor base **×4**, extension당 **+×4**, 최대 extension 3 → 최대 **×16**.
+Game rules: extractor base **×4**, **+×4** per extension, max extension 3 → max **×16**.
 
-`throughput_factor`는 **그 배수 정수**로만 취급한다: `4`, `8`, `12`, `16` (extractor-only=4, +1=8, …).
+`throughput_factor` is treated **only as that multiplier integer**: `4`, `8`, `12`, `16` (extractor-only=4, +1=8, …).
 
-구현에서 `extension_count + 1` 등으로 **잘못 스케일링하지 않도록** 이름을 `throughput_multiplier`(모호) 대신 `throughput_factor`로 고정한다.
+The name is fixed as `throughput_factor` rather than `throughput_multiplier` (ambiguous) so implementation does not **mis-scale** with `extension_count + 1`, etc.
 
-## Canonical 방향·회전
+## Canonical direction·rotation
 
-**Canonical 패턴:** 문서·라이브러리 기본 생성은 `**output_dir = E`(동쪽 출력)** 기준 오프셋을 만든다.
+**Canonical pattern:** doc·library default generation builds offsets with **`output_dir = E` (east output)** as baseline.
 
-**회전:** canonical E 패턴을 `N/E/S/W`의 목표 `output_dir`로 변환한다 (좌표·`output_stub_offset`·`attachments.required_facing`·`occupied_offsets`를 동일 규칙으로 회전). 스프라이트·에디터 회전과 맞출 때도 이 기준을 따른다.
+**Rotation:** transform canonical E pattern to target `output_dir` of `N/E/S/W` (rotate coordinates·`output_stub_offset`·`attachments.required_facing`·`occupied_offsets` by the same rule). Follow this baseline when aligning with sprite·editor rotation.
 
-모든 패턴은 4방향 회전을 지원한다.
+All patterns support 4-direction rotation.
 
 ```text
 N
@@ -88,11 +88,11 @@ S
 W
 ```
 
-## Throughput 모델
+## Throughput model
 
-게임 처리량 **절대값 정본** (30 shapes/min, 300 L/min, Space Belt 480×12, Space Pipe 28.8kL/m×12, 포화 12/72): [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md).
+Game throughput **absolute canonical values** (30 shapes/min, 300 L/min, Space Belt 480×12, Space Pipe 28.8kL/m×12, saturation 12/72): [`documents/game_rules/shapez2_asteroid_space_transport_throughput.md`](../game_rules/shapez2_asteroid_space_transport_throughput.md).
 
-기본 모델:
+Basic model:
 
 ```text
 extractor base = x4
@@ -101,7 +101,7 @@ max extension = 3
 max total = x16
 ```
 
-즉:
+That is:
 
 ```text
 extractor only = x4
@@ -118,12 +118,12 @@ extractor only = x4
 [ ] extractor_offset exactly one
 [ ] extension_count <= 3
 [ ] occupied_offsets contains extractor + extensions only
-[ ] attachments 길이 == extension_count (v0 linear)
-[ ] 회전 후 오프셋·투영이 Server 정수 격자에서 결정적
+[ ] attachments length == extension_count (v0 linear)
+[ ] post-rotation offsets·projection deterministic on Server integer grid
 [ ] throughput_factor in {4, 8, 12, 16} and matches extension_count
 ```
 
-## 테스트
+## Tests
 
 ```text
 test_pattern_library_generates_linear_0_to_3_extensions
@@ -134,13 +134,12 @@ test_pattern_library_throughput_factor_matches_extension_count
 test_pattern_library_attachments_linear_chain
 ```
 
-## 완료 조건
+## Completion criteria
 
 ```text
-[ ] linear pattern 0~3 extension 생성
-[ ] 4방향 회전 지원
-[ ] deterministic order 보장
-[ ] output_stub 계산 완료
-[ ] ExtensionAttachment·throughput_factor·canonical E 계약 반영
+[ ] linear pattern 0~3 extension generation
+[ ] 4-direction rotation support
+[ ] deterministic order guarantee
+[ ] output_stub computation complete
+[ ] ExtensionAttachment·throughput_factor·canonical E contract reflected
 ```
-

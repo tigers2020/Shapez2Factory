@@ -1,22 +1,22 @@
-# 연산: Painter
+# Operation: Painter
 
-## 역할
+## Role
 
-도형의 **shape type(형태)** 은 유지하고 **color만** 변경한다.
+Keeps **shape type (geometry)** and changes **color only**.
 
-## 예시
+## Example
 
 ```text
 RuCuSuWu + red -> RrCrSrWr
 ```
 
-(표기는 예시이며, 실제 색 인코딩은 프로젝트의 색 문자 규칙을 따른다.)
+(Notation is illustrative; actual color encoding follows project color character rules.)
 
-## 솔버 메모
+## Solver Notes
 
-- 초반 퍼즐은 형태 처리, 후반은 색 추출·혼합이 중심이 된다는 **공식 소개 문맥**과도 맞물린다.
-- Painter는 “형태 연산”이라기보다 **색 프로젝션**에 가깝다.
+- Aligns with official intro context: early puzzles focus on shape processing; later on color extraction and mixing.
+- Painter is closer to **color projection** than "shape operation".
 
-## 관련
+## Related
 
-- 액체 색 혼합은 [operation_color_mixer.md](operation_color_mixer.md)
+- Liquid color mixing: [operation_color_mixer.md](operation_color_mixer.md)

@@ -1,39 +1,46 @@
 # AI Context Start Here
 
-이 파일은 새 AI 세션·서브에이전트·Cursor 작업이 문서 context를 잡을 때 가장 먼저 읽는 진입점이다.
+This file is the entry point that new AI sessions, subagents, and Cursor work read first when establishing document context.
 
-## 읽기 순서
+## Reading order
 
 1. [`../../AGENTS.md`](../../AGENTS.md)
 2. [`../index/document_lifecycle.md`](../index/document_lifecycle.md)
 3. [`../index/document_inventory.md`](../index/document_inventory.md)
-4. 작업 유형별 [`manuals/`](manuals/) 문서
-5. 현재 작업의 [`current_plan.md`](current_plan.md)와 [`checklist.md`](checklist.md)
-6. 필요한 `CANON` 문서
+3.5. [`contamination_policy.md`](contamination_policy.md) — forbidden patterns (on conflict, inventory topic row wins)
+4. Task-type-specific [`manuals/`](manuals/) documents
+5. The current task's [`current_plan.md`](current_plan.md) and [`checklist.md`](checklist.md)
+6. Required `CANON` documents
 
-## Authority 규칙
+## Authority rules
 
-- `CANON`만 현재 시스템 계약이다.
-- `ACTIVE`는 진행 중 플랜이며, 완료 전까지 정본이 아니다.
-- `RESEARCH`는 근거·실험이며, 구현 계약이 아니다.
-- `REPORT`는 관측·로그 분석이며, 설계 정본이 아니다.
-- `ARCHIVED`와 `SUPERSEDED`는 역사 확인용이다. 구현 판단에 쓰지 않는다.
+- Only `CANON` is the current system contract.
+- `ACTIVE` is an in-progress plan; it is not authoritative until complete.
+- `RESEARCH` is evidence and experiments; it is not an implementation contract.
+- `REPORT` is observation and log analysis; it is not design authority.
+- `ARCHIVED` and `SUPERSEDED` are for historical reference only. Do not use them for implementation decisions.
 
-## Solver 작업 기본 canon
+## Asteroid Lab / RTTP work
 
-채굴 레이아웃 솔버 작업은 먼저 [`../index/document_inventory.md`](../index/document_inventory.md)의 "채굴 레이아웃 솔버 정본 후보" 표를 확인한다.
+1. [`current_plan.md`](current_plan.md) — active runtime paths and queue
+2. [`../index/document_inventory.md`](../index/document_inventory.md) — **§ Asteroid Lab authority by topic**
+3. [`contamination_policy.md`](contamination_policy.md) — forbidden patterns and PR playbook
+4. Topic authority from inventory row (`docs/superpowers/specs/` or `documents/Algorithm/asteroid_lab_*.md`)
+5. Code: `django_apps/asteroid_lab/` + `tests/unit/asteroid_lab/`
 
-특히 다음 계약은 오래된 plan/report보다 우선한다.
+The following contracts take precedence over older plans/reports (when the topic row is more specific, **row wins**):
 
-- pipeline/recovery control flow
-- protected corridor lifecycle
-- reclaim/recovery boundary
-- final validation assertion gate
-- replay timeline/cycle contract
+- Placement ≠ Commit; route probe at candidate creation
+- validation read-only; replay/artifacts output-only
+- single `RouteDomainSnapshotBuilder` owner
 
-## 금지
+**Forbidden:** Do not use `documents/plans/asteroid_lab_optimization/` as implementation authority.
 
-- `documents/archive/`의 내용을 현재 구현 근거로 사용하지 않는다.
-- `documents/debug/`와 진행 보고서를 spec으로 승격하지 않는다.
-- competing spec을 발견하면 바로 구현하지 말고 `SUPERSEDED` 후보로 표시하거나 inventory 정리 항목에 남긴다.
-- canon을 키우기 위해 실험·TODO·로그 분석을 넣지 않는다. canon은 stable invariant와 contract만 담는다.
+**Forbidden:** Do not use `django_apps.shapez_asteroid`, `tests/unit/shapez_asteroid` as current work paths.
+
+## Forbidden
+
+- Do not use content from `documents/archive/` as current implementation authority.
+- Do not promote `documents/debug/` or progress reports to spec status.
+- When you find competing specs, do not implement immediately; mark as `SUPERSEDED` candidates or leave an inventory cleanup item.
+- Do not add experiments, TODOs, or log analysis to grow canon. Canon holds only stable invariants and contracts.

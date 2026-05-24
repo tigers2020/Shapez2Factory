@@ -1,45 +1,45 @@
 # Domain Manual
 
-**소유**: 도미닉 (`persona/dominic.md`)
+**Owner**: Dominic (`persona/dominic.md`)
 
-이 디렉터리는 프로젝트의 핵심 도메인 지식을 보관한다. AI와 사람이 함께 읽는 "진실의 단일 출처"다.
+This directory holds the project's core domain knowledge. It is the "single source of truth" for both AI and humans.
 
-## 역할
+## Role
 
-- 도메인 용어, 불변식, 정책을 명문화한다.
-- `src/{{package_name}}/domain/`의 코드가 이 문서를 따른다.
-- 코드와 문서가 충돌하면 이 문서를 먼저 수정하고 코드를 뒤따르게 한다.
+- Formalizes domain terminology, invariants, and policies.
+- Code in `src/{{package_name}}/domain/` follows this documentation.
+- When code and docs conflict, update this documentation first, then align the code.
 
-## 도메인 용어 (placeholder — 프로젝트 시작 시 채울 것)
+## Domain terminology (placeholder — fill in at project start)
 
-| 용어 | 설명 | 참고 |
+| Term | Description | Reference |
 |---|---|---|
 | {{TERM_1}} | {{TERM_1_DESC}} | — |
 | {{TERM_2}} | {{TERM_2_DESC}} | — |
 | {{TERM_3}} | {{TERM_3_DESC}} | — |
 
-## 불변식 (placeholder)
+## Invariants (placeholder)
 
-> 시스템이 항상 만족해야 하는 조건을 여기에 기록한다.
+> Record conditions the system must always satisfy here.
 
-- INV-1: (설명)
-- INV-2: (설명)
+- INV-1: (description)
+- INV-2: (description)
 
-## 목차
+## Table of contents
 
-| 문서 | 개념 |
+| Document | Concept |
 |------|------|
 | [`asteroid_game_data_snapshot.md`](asteroid_game_data_snapshot.md) | Asteroid Lab `game_data` consumer snapshot — ordering, `SnapshotMeta`, `content_hash`, fail-fast |
 | [`asteroid_coord_transform_spec.md`](asteroid_coord_transform_spec.md) | Canonical E → server rotation — `rotate_offset`, anchor placement, footprint adapter rule |
 | [`game_data_coverage.md`](game_data_coverage.md) | Domain-complete import — A vs B, manifest dispositions, provenance, Phase 2 audit pending |
 
-## 파일 구성 규칙
+## File organization rules
 
-- 파일 하나는 하나의 개념(엔티티/값 객체/정책)만 다룬다.
-- 파일명은 `<개념명>.md` 형식으로 한다.
-- 새 파일 추가 시 이 README의 목차를 갱신한다.
+- One file covers one concept (entity / value object / policy) only.
+- File names use the format `<concept_name>.md`.
+- When adding a new file, update the table of contents in this README.
 
-## 참조
+## References
 
 - [Architecture](../architecture/README.md)
 - [ADR](../adr/README.md)

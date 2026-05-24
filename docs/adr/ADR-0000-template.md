@@ -1,33 +1,33 @@
-# ADR-0000: [제목]
+# ADR-0000: [Title]
 
-- **상태**: proposed | accepted | deprecated | superseded
-- **날짜**: YYYY-MM-DD
-- **담당**: [페르소나 이름]
-- **대체**: (해당 없음)
+- **Status**: proposed | accepted | deprecated | superseded
+- **Date**: YYYY-MM-DD
+- **Owner**: [Persona name]
+- **Supersedes**: (not applicable)
 
-## 맥락
+## Context
 
-이 결정을 내리게 된 배경과 문제 상황을 설명한다.
+Describe the background and problem situation that led to this decision.
 
-## 결정
+## Decision
 
-내린 결정과 그 이유를 명확하게 기술한다.
+Clearly state the decision made and the reasons for it.
 
-## 고려한 대안
+## Alternatives considered
 
-| 대안 | 장점 | 단점 | 선택하지 않은 이유 |
+| Alternative | Pros | Cons | Reason not chosen |
 |---|---|---|---|
-| 대안 A | — | — | — |
-| 대안 B | — | — | — |
+| Alternative A | — | — | — |
+| Alternative B | — | — | — |
 
-## 결과
+## Consequences
 
-이 결정이 시스템에 미치는 영향(긍정/부정)을 기술한다.
+Describe the impact (positive/negative) of this decision on the system.
 
-- 긍정: —
-- 부정: —
-- 트레이드오프: —
+- Positive: —
+- Negative: —
+- Trade-offs: —
 
-## 참조
+## References
 
-- [관련 문서 링크]
+- [Related document links]

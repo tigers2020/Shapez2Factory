@@ -1,6 +1,6 @@
 ﻿# Pytest Slim & Optimization (Phase D) — Design Spec
 
-> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지**.
+> **pytest output:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden**.
 
 **Status:** Approved 2026-05-23  
 **Extends:** [`2026-05-22-test-suite-speed-abc-design.md`](2026-05-22-test-suite-speed-abc-design.md) (A+B+C largely landed)  

@@ -2,27 +2,26 @@
 
 **Date:** 2026-05-22  
 **Status:** Draft — awaiting implementation plan  
-**Scope:** 구현 변경 + 계약 변경  
+**Scope:** implementation change + contract change  
 **Predecessor:** Phase 2 simulation path audit (2026-05-22)  
 **Coverage doc:** [`docs/domain/game_data_coverage.md`](../../domain/game_data_coverage.md)  
 **JSON structure:** [`docs/domain/game_data_json_deep/`](../../domain/game_data_json_deep/)
 
 ---
 
-## 1. 목표
+## 1. Goals
 
-Phase 2까지 `ignore_audit` 처리된 경로 중 **플래너 기능에 실질적으로 필요한** 경로를 
-`promoted`로 승격하여 ORM으로 저장한다.
+Among paths handled as `ignore_audit` through Phase 2, promote **paths practically required for planner functionality** to `promoted` and store them in the ORM.
 
-### 분석 기준
+### Analysis criteria
 
-- "기능적 completeness" 기준 — solver/planner에 필요한 데이터 우선  
-- JSONField 금지 — 모든 값은 scalar 정규화 컬럼으로  
-- Phase 방식 유지 — 추가 경로는 반드시 manifest 등록 후 import
+- "Functional completeness" criterion — prioritize data required by solver/planner  
+- No JSONField — all values in scalar normalized columns  
+- Keep Phase approach — additional paths must be manifest-registered before import
 
-### 분석 결과 요약 (발견된 갭)
+### Analysis summary (gaps found)
 
-| 분류 | 파일 | 경로 | 판정 |
+| Category | File | Path | Verdict |
 |---|---|---|---|
 | 🔴 HIGH | `building_variants.json` | `IEntityDefinition.CustomData.All[].IConveyorConfiguration.ConveyorSpeed` | **PROMOTE** |
 | 🔴 HIGH | `building_variants.json` | `IEntityDefinition.CustomData.All[].IFluidPort*Configuration.*.Rate.Value` | **PROMOTE** |
@@ -38,12 +37,12 @@ Phase 2까지 `ignore_audit` 처리된 경로 중 **플래너 기능에 실질�
 
 ---
 
-## 2. 아키텍처
+## 2. Architecture
 
-### 2-A. `BuildingVariantRateConfig` (신규 모델)
+### 2-A. `BuildingVariantRateConfig` (new model)
 
-`building_variants.json`의 `IEntityDefinition.CustomData.All[]`은 polymorphic 인터페이스 목록이다.
-각 항목이 가진 인터페이스 키(예: `IConveyorConfiguration`)와 파라미터를 정규화 행으로 저장한다.
+`building_variants.json` `IEntityDefinition.CustomData.All[]` is a polymorphic interface list.
+Store each item's interface key (e.g. `IConveyorConfiguration`) and parameters as normalized rows.
 
 ```python
 class BuildingVariantRateConfig(models.Model):
@@ -72,7 +71,7 @@ class BuildingVariantRateConfig(models.Model):
         verbose_name_plural = "④ Buildings · Variant rate configs"
 ```
 
-**저장 예시:**
+**Storage example:**
 
 | variant | interface_key | param_key | int_value | float_value | text_value |
 |---|---|---|---|---|---|
@@ -81,9 +80,9 @@ class BuildingVariantRateConfig(models.Model):
 | FluidPump | `IFluidPortReceiverConfiguration` | `fluid_provide_rate` | null | 0.5 | |
 | FluidPump | `IFluidPortSenderConfiguration` | `fluid_consume_rate` | null | 0.5 | |
 
-**추출 인터페이스 → param_key 매핑:**
+**Extract interface → param_key mapping:**
 
-| CustomData 인터페이스 | 추출 경로 | param_key | 타입 |
+| CustomData interface | Extract path | param_key | Type |
 |---|---|---|---|
 | `IConveyorConfiguration` | `ConveyorSpeed.StepsPerTick.Value` | `steps_per_tick` | int |
 | `IConveyorConfiguration` | `ConveyorSpeed.BaseSpeed` | `base_speed` | float |
@@ -96,44 +95,44 @@ class BuildingVariantRateConfig(models.Model):
 | `IPipeGateConfiguration` | `ContainerConfig.IProvidingFluidContainerConfiguration.ProvidingRate.Value` | `pipe_gate_provide_rate` | float |
 | `IPipeGateConfiguration` | `ContainerConfig.IConsumingFluidContainerConfiguration.ConsumingRate.Value` | `pipe_gate_consume_rate` | float |
 
-추출 로직: `CustomData.All[]` 리스트에서 각 항목이 가진 최상위 key를 인터페이스 키로 사용.
-동일 인터페이스가 복수 등장하면 첫 번째 항목만 사용(추후 감사용 warning 추가).
+Extraction logic: use each item's top-level key in `CustomData.All[]` as the interface key.
+If the same interface appears multiple times, use only the first item (add audit warning later).
 
-### 2-B. `BuildingGroup` 필드 추가
+### 2-B. `BuildingGroup` field additions
 
 ```python
-# buildings.json / building_groups.json definition_snapshot에서 추출
+# extracted from buildings.json / building_groups.json definition_snapshot
 required_store_content_id = models.CharField(max_length=128, blank=True, default="")
 show_as_research_reward = models.BooleanField(default=False)
 ```
 
-추출 경로:
-- `RequiredStoreContentId.Id` (non-backing field 우선; fallback `<RequiredStoreContentId>k__BackingField.Id`)
+Extraction paths:
+- `RequiredStoreContentId.Id` (non-backing field first; fallback `<RequiredStoreContentId>k__BackingField.Id`)
 - `ShowAsResearchReward` (boolean; fallback `<ShowAsResearchReward>k__BackingField`)
 
-### 2-C. `FluidColor.display_name_key` 추가
+### 2-C. `FluidColor.display_name_key` addition
 
 ```python
 display_name_key = models.CharField(max_length=512, blank=True, default="")
 ```
 
-Row-level 필드 `display_name_key` 직접 읽기 (이미 importer에서 `row.get("display_name_key")` 가능).
+Read row-level `display_name_key` directly (already available via `row.get("display_name_key")` in importer).
 
 ---
 
-## 3. Manifest 등록
+## 3. Manifest registration
 
-**신규 reason_codes** (`django_apps/game_data/coverage/reason_codes.py` 추가):
+**New reason_codes** (add to `django_apps/game_data/coverage/reason_codes.py`):
 
 ```python
-LAYOUT_METADATA = "LAYOUT_METADATA"       # ConnectorData TileBounds 등 배치 렌더링 전용
-LEGACY_FIELD = "LEGACY_FIELD"             # _IOType 등 하위호환 레거시 필드
-RENDER_METADATA = "RENDER_METADATA"       # CustomDrawData 등 렌더링 전용
-NESTED_ENTITY_DEF = "NESTED_ENTITY_DEF"  # CustomData.All[].Definitions[] 재귀 엔티티
-REFLECTION_CACHE = "REFLECTION_CACHE"     # DataPerTypeCache 등 CLR 반영 캐시
+LAYOUT_METADATA = "LAYOUT_METADATA"       # ConnectorData TileBounds etc. — placement rendering only
+LEGACY_FIELD = "LEGACY_FIELD"             # _IOType etc. — backward-compat legacy fields
+RENDER_METADATA = "RENDER_METADATA"       # CustomDrawData etc. — rendering only
+NESTED_ENTITY_DEF = "NESTED_ENTITY_DEF"  # CustomData.All[].Definitions[] recursive entities
+REFLECTION_CACHE = "REFLECTION_CACHE"     # DataPerTypeCache etc. — CLR reflection cache
 ```
 
-`django_apps/game_data/coverage/manifest.py` 추가:
+Add to `django_apps/game_data/coverage/manifest.py`:
 
 ```python
 # Phase 3 PROMOTED
@@ -156,85 +155,85 @@ REFLECTION_CACHE = "REFLECTION_CACHE"     # DataPerTypeCache 등 CLR 반영 캐�
 
 ---
 
-## 4. 불변식 (Invariants)
+## 4. Invariants
 
 ```text
-1. BuildingVariantRateConfig에 JSONField 없음.
-2. 동일 (variant, interface_key, param_key) 조합은 유일.
-3. CustomData.All[] 파싱 실패 시 해당 variant rate config를 건너뛰고 ctx.record_unknown으로 기록.
-4. BuildingGroup.required_store_content_id == "" 이면 DLC 제한 없음.
-5. FluidColor.display_name_key 추가는 기존 FK/UK 변경 없음.
-6. 모든 새 경로는 manifest에 등록 후에만 import 가능.
+1. No JSONField on BuildingVariantRateConfig.
+2. (variant, interface_key, param_key) combination is unique.
+3. On CustomData.All[] parse failure, skip that variant rate config and record via ctx.record_unknown.
+4. BuildingGroup.required_store_content_id == "" means no DLC restriction.
+5. FluidColor.display_name_key addition does not change existing FK/UK.
+6. All new paths may be imported only after manifest registration.
 ```
 
 ---
 
-## 5. 데이터 흐름
+## 5. Data flow
 
 ```
 building_variants.json
   └── _import_building_variants()  (importer.py)
-        ├── BuildingVariant (기존)
-        ├── BuildingConnector (기존)
-        ├── BuildingFootprintTile (기존)
-        └── BuildingVariantRateConfig (NEW) ← CustomData.All[] 파싱
+        ├── BuildingVariant (existing)
+        ├── BuildingConnector (existing)
+        ├── BuildingFootprintTile (existing)
+        └── BuildingVariantRateConfig (NEW) ← CustomData.All[] parsing
 
 buildings.json / building_groups.json
   └── _upsert_building_group()  (importer.py)
-        └── BuildingGroup (required_store_content_id, show_as_research_reward 추가)
+        └── BuildingGroup (add required_store_content_id, show_as_research_reward)
 
 fluids.json
   └── _import_fluids()  (importer.py)
-        └── FluidColor (display_name_key 추가)
+        └── FluidColor (add display_name_key)
 ```
 
 ---
 
-## 6. 테스트 계획
+## 6. Test plan
 
-| 테스트 파일 | 검증 내용 |
+| Test file | Verification |
 |---|---|
-| `tests/unit/game_data/test_building_variant_rate_config.py` | ConveyorSpeed 추출, fluid rate 추출, interface_key 정확성, 복수 인터페이스 처리 |
-| `tests/unit/game_data/test_building_group_flags.py` | required_store_content_id, show_as_research_reward 올바른 추출 |
-| `tests/unit/game_data/test_fluid_color_display_name.py` | display_name_key 저장 확인 |
-| `tests/unit/game_data/test_domain_coverage_manifest.py` | 신규 manifest 경로 등록 확인 (기존 파일 확장) |
-| 기존 regression | `test_simulation_path_coverage.py` — 변경 없이 green 확인 |
+| `tests/unit/game_data/test_building_variant_rate_config.py` | ConveyorSpeed extraction, fluid rate extraction, interface_key accuracy, multiple interface handling |
+| `tests/unit/game_data/test_building_group_flags.py` | correct extraction of required_store_content_id, show_as_research_reward |
+| `tests/unit/game_data/test_fluid_color_display_name.py` | verify display_name_key storage |
+| `tests/unit/game_data/test_domain_coverage_manifest.py` | verify new manifest path registration (extend existing file) |
+| Existing regression | `test_simulation_path_coverage.py` — unchanged green |
 
-**테스트 데이터:** 실제 `documents/game_data/` JSON에서 belt/fluid variant 1개씩 fixture 추출.
+**Test data:** Extract one belt/fluid variant fixture each from actual `documents/game_data/` JSON.
 
 ---
 
-## 7. 마이그레이션 전략
+## 7. Migration strategy
 
-1. `BuildingVariantRateConfig` 신규 테이블 — migration 생성
-2. `BuildingGroup.required_store_content_id`, `show_as_research_reward` — migration (nullable 아님, default 있음)
+1. `BuildingVariantRateConfig` new table — create migration
+2. `BuildingGroup.required_store_content_id`, `show_as_research_reward` — migration (not nullable, has default)
 3. `FluidColor.display_name_key` — migration (default `""`)
-4. 마이그레이션 후 `import_game_data --source documents/game_data` 재실행
-5. `dumpdata game_data` 재생성 → `game_data_backup/game_data_dump.json` 갱신
+4. After migration, re-run `import_game_data --source documents/game_data`
+5. Regenerate `dumpdata game_data` → update `game_data_backup/game_data_dump.json`
 
 ---
 
-## 8. 리스크
+## 8. Risks
 
-| 리스크 | 수준 | 대응 |
+| Risk | Level | Response |
 |---|---|---|
-| `CustomData.All[]` 구조가 버전에 따라 변화 | MEDIUM | 파싱 실패는 `record_unknown`으로 기록, not crash |
-| 동일 interface_key 복수 등장 시 첫 번째만 사용 | LOW | warning 기록, 추후 감사 가능 |
-| 새 manifest 경로가 기존 coverage test와 충돌 | LOW | manifest 등록 후 test 갱신 동시 진행 |
-| `k__BackingField` vs 비-backing field 양측 값 존재 | LOW | 비-backing 우선 read, backing field fallback |
+| `CustomData.All[]` structure varies by version | MEDIUM | parse failure recorded via `record_unknown`, not crash |
+| Only first used when same interface_key appears multiple times | LOW | record warning, auditable later |
+| New manifest paths conflict with existing coverage tests | LOW | update tests alongside manifest registration |
+| Both `k__BackingField` and non-backing field values exist | LOW | read non-backing first, backing field fallback |
 
 ---
 
-## 9. 범위 외 (Out of Scope)
+## 9. Out of Scope
 
-- `research_unlocks.json` Rewards 모델화 — 별도 Phase
-- `building_variants.json ConnectorData.TileBounds` 정규화 — `ignore_audit` 등록만
-- `simulation_systems.json` 추가 경로 — Phase 2에서 완료
-- 기존 `ignore_audit` 경로(Assembly reflection, Runtime delegate 등) — 변경 없음
+- `research_unlocks.json` Rewards modeling — separate Phase
+- `building_variants.json ConnectorData.TileBounds` normalization — `ignore_audit` registration only
+- `simulation_systems.json` additional paths — completed in Phase 2
+- Existing `ignore_audit` paths (Assembly reflection, Runtime delegate, etc.) — no change
 
 ---
 
-## 10. 참조
+## 10. References
 
 - Phase 1-2 spec: [`docs/superpowers/specs/2026-05-22-game-data-domain-complete-coverage-design.md`](2026-05-22-game-data-domain-complete-coverage-design.md)
 - JSON deep docs: [`docs/domain/game_data_json_deep/`](../../domain/game_data_json_deep/)

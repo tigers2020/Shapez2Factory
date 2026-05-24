@@ -1,49 +1,49 @@
-# 회원가입 및 로그인 기능 플랜 (2026-05-03)
+# Sign-up and login feature plan (2026-05-03)
 
-## 목표
+## Goals
 
-`django-allauth`를 사용해 웹 앱에 일반 회원가입, 로그인, 로그아웃, 기본 소셜 회원가입·로그인 흐름을 추가한다. 별도 사용자 모델이나 도메인 레이어 변경 없이 설정과 `web` 인터페이스 레이어 변경으로 제한한다.
+Add standard sign-up, login, logout, and basic social sign-up/login flows to the web app using `django-allauth`. Limit changes to configuration and the `web` interface layer without a custom user model or domain layer changes.
 
-## 변경 대상
+## Change targets
 
 - `config/settings.py`
-  - `django-allauth` 앱, 인증 백엔드, `SITE_ID`, 로그인/로그아웃 리다이렉트 설정 추가
-  - Google/GitHub 제공자 앱 추가
+  - Add `django-allauth` apps, auth backends, `SITE_ID`, login/logout redirect settings
+  - Add Google/GitHub provider apps
 - `pyproject.toml`
-  - `django-allauth` 의존성 추가
+  - Add `django-allauth` dependency
 - `config/urls.py`
-  - `accounts/`에 `allauth.urls` 연결
+  - Mount `allauth.urls` under `accounts/`
 - `django_apps/web/urls.py`
-  - 필요 시 기존 네임스페이스에서 `sign-up`, `log-in`, `log-out` 별칭을 allauth URL로 리다이렉트
+  - Redirect `sign-up`, `log-in`, `log-out` aliases from existing namespace to allauth URLs if needed
 - `django_apps/web/templates/account/login.html`
-  - 일반 로그인 폼과 소셜 로그인 버튼을 포함한 템플릿 추가
+  - Login template with standard form and social login buttons
 - `django_apps/web/templates/account/signup.html`
-  - 일반 회원가입 폼과 소셜 회원가입 버튼을 포함한 템플릿 추가
+  - Sign-up template with standard form and social sign-up buttons
 - `django_apps/web/templates/account/logout.html`
-  - 로그아웃 확인 템플릿 추가
+  - Logout confirmation template
 - `django_apps/web/templates/web/partials/site_nav.html`
-  - 로그인 상태에 따라 로그인/회원가입 또는 사용자명/로그아웃 표시
+  - Show login/sign-up or username/logout based on auth state
 - `tests/integration/web/test_auth.py`
-  - 일반 회원가입, 로그인, 로그아웃, 네비게이션, 소셜 버튼 렌더링 테스트 추가
+  - Tests for sign-up, login, logout, navigation, social button rendering
 
-## 구현 방식
+## Implementation method
 
-1. `django-allauth`를 의존성에 추가하고 `allauth.account`, `allauth.socialaccount`, `allauth.socialaccount.providers.google`, `allauth.socialaccount.providers.github`를 설정한다.
-2. `django.contrib.sites`와 `allauth.account.middleware.AccountMiddleware`를 설정한다.
-3. `AUTHENTICATION_BACKENDS`에 Django 기본 백엔드와 allauth 백엔드를 함께 둔다.
-4. `config/urls.py`에 `path("accounts/", include("allauth.urls"))`를 추가한다.
-5. 네비게이션의 로그인/회원가입 링크는 allauth URL 이름인 `account_login`, `account_signup`, `account_logout`을 사용한다.
-6. 로그인·회원가입 템플릿은 `github_login`, `google_login` URL 이름을 사용해 Google/GitHub 소셜 로그인 링크를 노출한다. `SocialApp` 등록 전에도 화면 렌더링이 실패하지 않게 하기 위함이다.
-7. 실제 OAuth secret은 코드에 넣지 않고 admin `SocialApp` 등록 또는 환경 설정으로 연결한다.
+1. Add `django-allauth` dependency and configure `allauth.account`, `allauth.socialaccount`, `allauth.socialaccount.providers.google`, `allauth.socialaccount.providers.github`.
+2. Configure `django.contrib.sites` and `allauth.account.middleware.AccountMiddleware`.
+3. Set `AUTHENTICATION_BACKENDS` to Django default plus allauth backend.
+4. Add `path("accounts/", include("allauth.urls"))` to `config/urls.py`.
+5. Navigation login/sign-up links use allauth URL names `account_login`, `account_signup`, `account_logout`.
+6. Login/sign-up templates expose Google/GitHub via `github_login`, `google_login` URL names so rendering does not fail before `SocialApp` registration.
+7. Do not embed OAuth secrets in code; connect via admin `SocialApp` or environment configuration.
 
-## 승인 전 확인할 결정
+## Decisions to confirm before approval
 
-- TODO: 일반 회원가입 후 allauth 기본 흐름에 따른 로그인 정책을 따른다.
-- TODO: 이메일 필드는 이번 범위에서 필수화하지 않는다.
-- TODO: Google/GitHub를 기본 소셜 제공자로 포함하되, 실제 클라이언트 ID와 secret은 사람이 운영 환경에서 등록한다.
-- TODO: 인증이 필요한 페이지 제한은 이번 범위에 포함하지 않는다. 현재 요청은 가입/로그인 기능 추가로 한정한다.
+- TODO: follow allauth default post–sign-up login policy.
+- TODO: do not require email field in this scope.
+- TODO: include Google/GitHub as default social providers; human registers client ID and secret in production.
+- TODO: page-level auth requirements out of scope; this request is sign-up/login only.
 
-## 검증
+## Verification
 
 - `pytest tests/integration/web/test_auth.py`
 - `pytest`
@@ -51,6 +51,6 @@
 - `mypy .`
 - `black --check .`
 
-## 마이그레이션
+## Migration
 
-프로젝트 앱의 새 마이그레이션 파일은 만들지 않는다. 다만 `django-allauth`와 `django.contrib.sites`가 제공하는 외부 앱 마이그레이션은 `python manage.py migrate`로 적용해야 한다.
+Do not create new migrations for project apps. Apply external app migrations from `django-allauth` and `django.contrib.sites` via `python manage.py migrate`.

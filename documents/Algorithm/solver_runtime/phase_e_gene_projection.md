@@ -11,13 +11,13 @@ related_docs:
   - documents/Algorithm/solver_runtime/phase_f_geometry_validation.md
 ---
 
-# Phase E ??Project Genes to Candidate Attempts
+# Phase E ? Project Genes to Candidate Attempts
 
-## ëª©ì 
+## Purpose
 
-`GeneTemplate`??rim anchor???Œì „ ?¬ì˜?˜ì—¬ **?œë„(attempt)** ë§??ì„±?œë‹¤. layout commit???„ë‹ˆ??
+Project `GeneTemplate` to rim anchors?rotations to create **attempts**. Not layout commit.
 
-## ?…ë ¥
+## Input
 
 ```text
 OptimizationInput
@@ -25,13 +25,13 @@ tuple[GeneTemplate, ...]
 CandidateGenerationConfig
 ```
 
-## ?°ì¶œë¬?
+## Output
 
 ```text
 ProjectedGenePlacement attempts
 ```
 
-## ?‘ì—…
+## Tasks
 
 ```python
 for anchor in sorted(inp.rim_cells):
@@ -45,32 +45,32 @@ for anchor in sorted(inp.rim_cells):
                 )
 ```
 
-- `project_gene_placement` ??`django_apps/asteroid_lab/optimization/gene_projection.py` (PR1)
-- ?¬ì˜ ê²°ê³¼: `occupied_cells`, `route_probe_start`, `fixed_output_transport`, `output_dir`, `transport_kind` ??
+- `project_gene_placement` ? `django_apps/asteroid_lab/optimization/gene_projection.py` (PR1)
+- Projection result: `occupied_cells`, `route_probe_start`, `fixed_output_transport`, `output_dir`, `transport_kind` etc.
 
-## ê¸ˆì?
+## Forbidden
 
 - layout commit
-- commit_orderë¡??¬ìš©?˜ëŠ” enumeration
-- rim ?œíšŒ?˜ë©° extractor ì¦‰ì‹œ ?¤ì¹˜ ([Â§0.1](00_core_principles.md))
+- Using commit_order for enumeration
+- Installing extractor immediately while iterating rim ([§0.1](00_core_principles.md))
 
-**ì¤‘ìš”:** ??ë£¨í”„??**deterministic enumeration**?´ë‹¤.
+**Important:** This loop is **deterministic enumeration**.
 
-## ?„ë£Œ ì¡°ê±´
+## Completion criteria
 
-- [ ] ?™ì¼ ?…ë ¥Â·?¤ì •?ì„œ ?¬ì˜ ?œì„œÂ·ê²°ê³¼ê°€ deterministic
-- [ ] `ProjectedGenePlacement`ê°€ server coordë§??¬ìš©
-- [ ] transport_kindê°€ config?€ ?¼ì¹˜
+- [ ] Same input?config produces deterministic projection order?results
+- [ ] `ProjectedGenePlacement` uses server coords only
+- [ ] transport_kind matches config
 
-## ?„ìˆ˜ ?ŒìŠ¤??
+## Prerequisite phase
 
-PR2 geometry/route ?ŒìŠ¤???„ì œ ??[`phase_f_geometry_validation.md`](phase_f_geometry_validation.md), [`implementation_sequence.md`](implementation_sequence.md) Â§ PR2.
+PR2 geometry/route phase ? see [`phase_f_geometry_validation.md`](phase_f_geometry_validation.md), [`implementation_sequence.md`](implementation_sequence.md) § PR2.
 
-## ê´€??ì½”ë“œÂ·ë¬¸ì„œ
+## Related code?documents
 
 - `gene_projection.py`
-- [`asteroid_lab_03_candidate_generator.md`](../asteroid_lab_03_candidate_generator.md) ??rim-only ?„ë³´ ì² í•™
+- [`asteroid_lab_03_candidate_generator.md`](../asteroid_lab_03_candidate_generator.md) ? rim-only candidate philosophy
 
-## ?¤ìŒ Phase
+## Next Phase
 
-??[`phase_f_geometry_validation.md`](phase_f_geometry_validation.md)
+? [`phase_f_geometry_validation.md`](phase_f_geometry_validation.md)

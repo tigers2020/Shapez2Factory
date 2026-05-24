@@ -1,30 +1,30 @@
-# 연산: Rotater (회전)
+# Operation: Rotater (Rotation)
 
-## 역할
+## Role
 
-도형의 **4분면 구성**을 회전에 따라 재배열한다. 솔버에서는 보통 **단순 permutation**으로 표현한다.
+Rearranges the shape's **4-quadrant layout** under rotation. In the solver this is usually a **simple permutation**.
 
-## 이 프로젝트 분면 순서
+## This Project's Quadrant Order
 
-한 레이어의 `quadrants` 인덱스는 **[SW, NW, NE, SE]** (= `[0]` … `[3]`). 공식 viewer 문자열 순서와 다를 수 있음 → [shape_encoding.md](shape_encoding.md).
+One layer's `quadrants` indices are **[SW, NW, NE, SE]** (= `[0]` … `[3]`). May differ from official viewer string order → [shape_encoding.md](shape_encoding.md).
 
-구현 정본은 [`django_apps/shapez_core/domain/shape_operations.py`](../../django_apps/shapez_core/domain/shape_operations.py) 의 `rotate_cw` / `rotate_ccw` / `rotate_180` 와 단위 테스트다.
+Implementation canonical: `rotate_cw` / `rotate_ccw` / `rotate_180` in [`django_apps/shapez_core/domain/shape_operations.py`](../../django_apps/shapez_core/domain/shape_operations.py) and unit tests.
 
-## 치환 (인덱스 0~3에 대한 재배열)
+## Permutation (reindex 0~3)
 
-`new[i]` 가 오래된 어느 인덱스에서 오는지:
+Which old index feeds `new[i]`:
 
-| 연산 | `new[0]` (SW) | `new[1]` (NW) | `new[2]` (NE) | `new[3]` (SE) |
+| Operation | `new[0]` (SW) | `new[1]` (NW) | `new[2]` (NE) | `new[3]` (SE) |
 | --- | --- | --- | --- | --- |
 | CW | old[3] | old[0] | old[1] | old[2] |
 | CCW | old[1] | old[2] | old[3] | old[0] |
 | 180° | old[2] | old[3] | old[0] | old[1] |
 
-## 예시(개념)
+## Example (Conceptual)
 
-다른 좌표 순서를 쓰는 문서의 문자열 예시와 **바이트 단위로는 일치하지 않을 수 있다.** 회전 검증은 프로젝트 shape 코드로 한다 (예: `RuSuCuWu` → CW 시 `WuRuSuCu`).
+String examples in documents using other coordinate orders may **not match byte-for-byte**. Verify rotation with project shape codes (e.g. `RuSuCuWu` → CW gives `WuRuSuCu`).
 
-## 메모
+## Notes
 
-- 다층 도형이면 **층마다 동일한 permutation**을 적용한다.
-- 회전과 절단 순서는 생산 라인 최적화에서 핵심이다 ([operation_cutter.md](operation_cutter.md)).
+- Multi-layer shapes: apply the **same permutation to every layer**.
+- Rotation and cut order are central to production-line optimization ([operation_cutter.md](operation_cutter.md)).

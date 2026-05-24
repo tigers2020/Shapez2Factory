@@ -2,7 +2,7 @@
 
 **Branch:** `feature/rttp-hybrid-c` (merged `master` @ `3216a50d` seam baseline)  
 **Worktree:** `F:\Python_Projects\shapez2Factory\.worktrees\rttp-hybrid-c`  
-**Base:** `37975015` (`fix(asteroid_lab): raw X=0과 양수 X가 admin 미니맵에서 겹치지 않도록 서버 좌표 보정`)  
+**Base:** `37975015` (`fix(asteroid_lab): correct server coordinates so raw X=0 and positive X do not overlap on admin minimap`)  
 **Recorded:** 2026-05-22 (initial known-red on branch fork)  
 **Updated:** 2026-05-22 (baseline cleanup merged from `master`; RTTP PR-1..6 on branch tip)
 
@@ -21,7 +21,7 @@ powershell -File scripts/test_fast.ps1
 ~25s (pytest-xdist 16 workers)
 ```
 
-**Classification:** baseline cleanup (회귀 수정) — not RTTP feature code.
+**Classification:** baseline cleanup (regression fix) — not RTTP feature code.
 
 ## What was fixed
 

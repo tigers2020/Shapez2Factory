@@ -1,6 +1,6 @@
 ﻿# Test Suite Speed (A+B+C) Implementation Plan
 
-> **pytest 출력:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **금지** (본 문서 예시·스크립트·CI와 동일).
+> **pytest output:** [`AGENTS.md`](../../../AGENTS.md) · [`documents/ai/manuals/testing.md`](../../../documents/ai/manuals/testing.md) — `-q` / `--quiet` / `--tb=no` **forbidden** (same as examples, scripts, and CI in this document).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -111,27 +111,27 @@ git commit -m "chore: add test_slow and test_full pytest scripts"
 ### Task 3: Document local defaults
 
 **Files:**
-- Modify: `documents/ai/manuals/testing.md` (§ 구간 실행 table or new § 로컬 속도)
+- Modify: `documents/ai/manuals/testing.md` (§ section-run table or new § local speed)
 - Modify: `AGENTS.md` (Validation commands subsection)
 
-- [ ] **Step 1: Add to testing.md after 구간 실행 table**
+- [ ] **Step 1: Add to testing.md after section-run table**
 
 ```markdown
-### 로컬 스크립트 (권장)
+### Local scripts (recommended)
 
-| 스크립트 | 용도 |
+| Script | Purpose |
 |----------|------|
-| `powershell -File scripts/test_fast.ps1` | **일상 TDD** — `unit and not slow`, 병렬 |
-| `powershell -File scripts/test_slow.ps1` | 느린 계약·import·exhaustive |
-| `powershell -File scripts/test_full.ps1` | PR 직전 — 전체 pytest |
+| `powershell -File scripts/test_fast.ps1` | **Daily TDD** — `unit and not slow`, parallel |
+| `powershell -File scripts/test_slow.ps1` | Slow contract · import · exhaustive |
+| `powershell -File scripts/test_full.ps1` | Before PR — full pytest |
 
-에이전트 반복 검증 기본: changed narrow path → `test_fast.ps1`. PR/CI: full gate.
+Agent iteration default: changed narrow path → `test_fast.ps1`. PR/CI: full gate.
 ```
 
 - [ ] **Step 2: Add to AGENTS.md under Validation commands**
 
 ```markdown
-로컬 pytest 기본: `powershell -File scripts/test_fast.ps1` (상세: documents/ai/manuals/testing.md).
+Local pytest default: `powershell -File scripts/test_fast.ps1` (details: documents/ai/manuals/testing.md).
 ```
 
 - [ ] **Step 3: Commit**
@@ -535,10 +535,10 @@ Expected: all three pass.
 
 - [ ] **Step 2: Document CI in testing.md**
 
-Add under 로컬 스크립트:
+Add under local scripts:
 
 ```markdown
-CI는 동일 세 shard를 병렬 job으로 실행: `test-fast`, `test-slow`, `test-integration`.
+CI runs the same three shards as parallel jobs: `test-fast`, `test-slow`, `test-integration`.
 ```
 
 - [ ] **Step 3: Commit docs**
@@ -570,11 +570,11 @@ git commit -m "docs: document CI pytest shards"
 **Plan saved:** `docs/superpowers/plans/2026-05-22-test-suite-speed-abc.md`  
 **Spec saved:** `docs/superpowers/specs/2026-05-22-test-suite-speed-abc-design.md`
 
-`/write-plan` 커맨드는 deprecated — 앞으로는 채팅에서 **「superpowers writing-plans로 실행해줘」** 또는 **「PR1부터 executing-plans로 진행」**처럼 요청하세요.
+The `/write-plan` command is deprecated — request in chat with **"run superpowers writing-plans"** or **"proceed with executing-plans from PR1"** instead.
 
 **Two execution options:**
 
-1. **Subagent-Driven (recommended)** — task마다 fresh subagent + 단계 리뷰  
-2. **Inline Execution** — 이 세션에서 `executing-plans`로 PR1→PR2→PR3 순차 진행
+1. **Subagent-Driven (recommended)** — fresh subagent per task + step review  
+2. **Inline Execution** — sequential PR1→PR2→PR3 in this session via `executing-plans`
 
-어느 쪽으로 진행할까요?
+Which approach should we take?

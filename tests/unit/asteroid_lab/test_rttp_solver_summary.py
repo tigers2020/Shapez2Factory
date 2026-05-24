@@ -118,9 +118,7 @@ def test_rttp_pipeline_algorithm_steps_match_milestone_event_types(
         }
     )
     milestone_rows = [
-        row
-        for row in result.algorithm_steps
-        if row["step_id"] not in _NON_MILESTONE_STEP_IDS
+        row for row in result.algorithm_steps if row["step_id"] not in _NON_MILESTONE_STEP_IDS
     ]
     event_types = {row["event_type"] for row in milestone_rows}
     assert event_types == set(RTTP_MILESTONE_EVENT_TYPES)

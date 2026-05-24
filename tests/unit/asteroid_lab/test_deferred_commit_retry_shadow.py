@@ -199,9 +199,7 @@ def test_deferred_shadow_does_not_call_route_probe() -> None:
         committed_ids=(),
         reserved_route_cells=frozenset(),
         domain_version=0,
-        conflicts=(
-            CommitConflict("x", CommitConflictReason.REPROBE_FAILED),
-        ),
+        conflicts=(CommitConflict("x", CommitConflictReason.REPROBE_FAILED),),
     )
     with patch(
         "django_apps.asteroid_lab.optimization.routing.route_probe.probe_route",
@@ -220,9 +218,7 @@ def test_deferred_shadow_does_not_call_route_probe() -> None:
 def test_deferred_shadow_module_has_no_forbidden_imports() -> None:
     tree = ast.parse(_SHADOW_MODULE.read_text(encoding="utf-8-sig"))
     modules = [
-        node.module
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom) and node.module
+        node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module
     ]
     assert not any("replay" in module for module in modules)
     assert not any("solver_summary" in module for module in modules)

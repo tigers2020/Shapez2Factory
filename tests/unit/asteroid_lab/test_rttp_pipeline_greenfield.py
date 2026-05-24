@@ -43,16 +43,13 @@ def test_pipeline_includes_deferred_retry_shadow_step_after_primary_commit(
     )
     step_ids = [row["step_id"] for row in result.algorithm_steps]
     assert RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW.value in step_ids
-    shadow_idx = step_ids.index(
-        RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW.value
-    )
+    shadow_idx = step_ids.index(RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW.value)
     commit_idx = step_ids.index(RttpAlgorithmStepId.RTTP_COMMIT.value)
     assert shadow_idx < commit_idx
     shadow_row = next(
         row
         for row in result.algorithm_steps
-        if row["step_id"]
-        == RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW.value
+        if row["step_id"] == RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW.value
     )
     assert shadow_row["passed"] is True
     assert shadow_row["metrics"]["source_phase"] == "primary_incremental_commit"

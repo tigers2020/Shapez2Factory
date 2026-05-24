@@ -187,9 +187,7 @@ def _append_deferred_retry_shadow_step(
                 "phase": "incremental_commit",
                 "event_type": "rttp.deferred_commit_retry_shadow",
                 "title": "Deferred commit retry shadow (observe-only)",
-                "summary": (
-                    "Primary-pass deferred retry queue shadow; no retry executed."
-                ),
+                "summary": ("Primary-pass deferred retry queue shadow; no retry executed."),
                 "metrics": metrics,
                 "passed": True,
             }

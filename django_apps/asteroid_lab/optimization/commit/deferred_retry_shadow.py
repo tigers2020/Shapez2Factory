@@ -39,9 +39,7 @@ def _eligible_conflicts(
     conflicts: tuple[CommitConflict, ...],
 ) -> tuple[CommitConflict, ...]:
     return tuple(
-        conflict
-        for conflict in conflicts
-        if conflict.reason is CommitConflictReason.REPROBE_FAILED
+        conflict for conflict in conflicts if conflict.reason is CommitConflictReason.REPROBE_FAILED
     )
 
 

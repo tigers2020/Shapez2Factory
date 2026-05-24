@@ -57,6 +57,33 @@ def test_lookup_maps_registry_transport_kind_to_domain_kind() -> None:
     assert lk["space_belt"] is TransportKind.SHAPE_BELT
 
 
+def test_duplicate_registry_key_same_kind_last_wins() -> None:
+    sl = BuildingCatalogSlice(
+        SLICE_VERSION,
+        (
+            TransportRegistryEntry("dup", "belt", "bv:1"),
+            TransportRegistryEntry("dup", "belt", "bv:2"),
+        ),
+        (),
+    )
+    lk = transport_kind_lookup_from_slice(sl)
+    assert lk["dup"] is TransportKind.SHAPE_BELT
+
+
+def test_duplicate_registry_key_conflicting_kind_raises() -> None:
+    sl = BuildingCatalogSlice(
+        SLICE_VERSION,
+        (
+            TransportRegistryEntry("dup", "belt", "bv:1"),
+            TransportRegistryEntry("dup", "pipe", "bv:2"),
+        ),
+        (),
+    )
+    with pytest.raises(CatalogTransportUnresolvedError) as exc_info:
+        transport_kind_lookup_from_slice(sl)
+    assert "dup" in str(exc_info.value)
+
+
 def test_resolve_cell_prefers_domain_enum_over_registry() -> None:
     sl = BuildingCatalogSlice(
         SLICE_VERSION,
@@ -81,5 +108,11 @@ def test_resolve_cell_without_catalog_returns_none_for_unknown() -> None:
 
 def test_resolve_cell_with_catalog_raises_when_unresolved() -> None:
     sl = BuildingCatalogSlice(SLICE_VERSION, (), ())
-    with pytest.raises(CatalogTransportUnresolvedError):
-        resolve_cell_transport_kind("unknown_wire", catalog_slice=sl)
+    with pytest.raises(CatalogTransportUnresolvedError) as exc_info:
+        resolve_cell_transport_kind(
+            "unknown_wire",
+            catalog_slice=sl,
+            coord=(4, 5),
+        )
+    assert "(4, 5)" in str(exc_info.value)
+    assert "unknown_wire" in str(exc_info.value)

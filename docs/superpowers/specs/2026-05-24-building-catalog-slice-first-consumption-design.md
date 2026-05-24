@@ -157,17 +157,15 @@ class CatalogTransportErrorCode(StrEnum):
 
 **Non-RTTP / unit tests:** When `catalog_slice is None`, legacy heuristic remains (documented test-only path); RTTP entry MUST NOT call adapter without slice.
 
-## T2 — `resolve_cell_transport_kind`
+## T2 — Per-cell transport resolution
 
-**Plan:** [`2026-05-24-b2-t2-per-cell-transport-resolution.md`](../plans/2026-05-24-b2-t2-per-cell-transport-resolution.md)
+RTTP resolves each reconstruction transport cell through `catalog_transport_policy.resolve_cell_transport_kind` (registry wire → `TransportKind`; domain enums pass through; fail-closed when unresolved). Duplicate registry keys with conflicting resolved kinds fail closed at lookup build; same-kind duplicates use deterministic last-wins. Policy API accepts optional `coord` for error messages (no adapter try/except re-wrap).
 
-Per reconstruction transport cell when `catalog_slice` is set:
+**Normative spec:** [`2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](2026-05-24-b2-t2-per-cell-transport-resolution-design.md)
 
-1. Domain enum passthrough (`shape_belt`, `fluid_pipe`).
-2. Else registry key lookup via `transport_kind_lookup_from_slice` (`TransportRegistryEntry.transport_kind` → category → `TransportKind`).
-3. Else fail-closed `CatalogTransportUnresolvedError`; `reconstruction_adapter` re-raises with **coord + raw wire** in the message.
+**Implementation plan:** [`2026-05-24-b2-t2-per-cell-transport-resolution.md`](../plans/2026-05-24-b2-t2-per-cell-transport-resolution.md)
 
-When `catalog_slice is None`, unresolved wires are skipped (legacy unit-test path). T1 greenfield default and `_default_transport_kind` for non-empty maps are unchanged.
+**Next track:** [B2-T3 transport-aware route domain](2026-05-24-b2-t3-transport-aware-route-domain-design.md) — on `master` (distinct from footprint / Track D geometry).
 
 ## `OptimizationInput` extension
 

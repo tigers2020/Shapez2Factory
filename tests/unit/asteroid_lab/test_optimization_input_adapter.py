@@ -194,3 +194,28 @@ def test_unresolved_transport_cell_fails_when_catalog_slice_present() -> None:
     message = str(exc_info.value)
     assert "(4, 5)" in message
     assert "space_pipe" in message
+
+
+def test_domain_enum_transport_kind_precedence_over_registry() -> None:
+    """Classifier domain enum beats registry mapping for the same wire string."""
+
+    cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
+    cells = cells + (_belt_cell(4, 5),)
+    catalog_slice = BuildingCatalogSlice(
+        SLICE_VERSION,
+        (
+            TransportRegistryEntry(
+                "shape_belt",
+                "pipe",
+                "bv:wrong",
+            ),
+        ),
+        (),
+    )
+    inp = optimization_input_from_reconstruction(
+        ReconstructionResult(cells=cells),
+        catalog_slice=catalog_slice,
+    )
+    assert inp.existing_transport_cells == frozenset(
+        {ExistingTransportCell(coord=(4, 5), transport_kind=TransportKind.SHAPE_BELT)}
+    )

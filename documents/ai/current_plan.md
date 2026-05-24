@@ -239,5 +239,6 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md)
   - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md)
   - Evidence: `test_optimization_contamination_gates.py` 3 PASS; `test_optimization_milestone_import_boundary.py` absorbed and removed; standing `scripts/test_optimization_contamination.ps1`
-  - Entry Gate A (2026-05-24): reconstruction narrow 55 PASS; RTTP narrow 127 PASS on integration branch (pre-`master` B-CS3/4 merge)
+  - Entry Gate A (2026-05-24): master @ `28c7261e` — reconstruction narrow 55 PASS; RTTP narrow 127 PASS (post B-CS3/4 PR #68)
+  - PR: #69 (branch-local CLOSED until merge)
   - No production solver behaviour change

@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
+from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
+    CatalogTransportUnresolvedError,
+)
 from django_apps.asteroid_lab.contracts.building_catalog_slice import (
     SLICE_VERSION,
     BuildingCatalogSlice,
@@ -48,6 +53,22 @@ def _belt_cell(x: int, y: int) -> DecodedCellDTO:
         nested_entry_count=0,
         nested_type_counts_json={},
         raw_entry_json={"X": x, "Y": y, "T": "SpaceBelt_Forward"},
+    )
+
+
+def _pipe_cell_registry_key(x: int, y: int) -> DecodedCellDTO:
+    return DecodedCellDTO(
+        x=x,
+        y=y,
+        layer=None,
+        rotation=0,
+        tile_type="SpacePipe_Forward",
+        cell_kind="space_pipe",
+        transport_kind="space_pipe",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={"X": x, "Y": y, "T": "SpacePipe_Forward"},
     )
 
 
@@ -115,3 +136,34 @@ def test_greenfield_without_catalog_slice_uses_legacy_heuristic() -> None:
     cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
     inp = optimization_input_from_reconstruction(ReconstructionResult(cells=cells))
     assert inp.transport_kind is TransportKind.SHAPE_BELT
+
+
+def test_existing_transport_resolves_registry_key_via_catalog_slice() -> None:
+    cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
+    cells = cells + (_pipe_cell_registry_key(4, 5),)
+    catalog_slice = BuildingCatalogSlice(
+        SLICE_VERSION,
+        (TransportRegistryEntry("space_pipe", "pipe", "bv:1"),),
+        (),
+    )
+    inp = optimization_input_from_reconstruction(
+        ReconstructionResult(cells=cells),
+        catalog_slice=catalog_slice,
+    )
+    assert inp.existing_transport_cells == frozenset(
+        {ExistingTransportCell(coord=(4, 5), transport_kind=TransportKind.FLUID_PIPE)}
+    )
+
+
+def test_unresolved_transport_cell_fails_when_catalog_slice_present() -> None:
+    cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
+    cells = cells + (_pipe_cell_registry_key(4, 5),)
+    catalog_slice = BuildingCatalogSlice(SLICE_VERSION, (), ())
+    with pytest.raises(CatalogTransportUnresolvedError) as exc_info:
+        optimization_input_from_reconstruction(
+            ReconstructionResult(cells=cells),
+            catalog_slice=catalog_slice,
+        )
+    message = str(exc_info.value)
+    assert "(4, 5)" in message
+    assert "space_pipe" in message

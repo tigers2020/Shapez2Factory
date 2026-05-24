@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     ExtractorPlacementPolicy,
 )
@@ -20,6 +22,7 @@ from django_apps.asteroid_lab.optimization.reconstruction_adapter import (
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
+from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
 
 
 def _field_cell(sx: int, sy: int) -> DecodedCellDTO:
@@ -63,7 +66,10 @@ def _existing_trunk_reconstruction_result() -> ReconstructionResult:
 
 
 def _existing_trunk_optimization_input() -> OptimizationInput:
-    return optimization_input_from_reconstruction(_existing_trunk_reconstruction_result())
+    inp = optimization_input_from_reconstruction(_existing_trunk_reconstruction_result())
+    if inp.catalog_slice is None:
+        inp = replace(inp, catalog_slice=build_minimal_test_catalog_slice())
+    return inp
 
 
 def test_skeleton_includes_existing_trunk_cells() -> None:

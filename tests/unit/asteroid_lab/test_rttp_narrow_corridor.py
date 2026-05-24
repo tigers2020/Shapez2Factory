@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
-    CandidateGenerationResult,
     ExtractorPlacementPolicy,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
@@ -24,28 +23,17 @@ from django_apps.asteroid_lab.optimization.pipeline import run_rttp_pipeline
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
 from tests.support.rttp_narrow_corridor_fixture import (
+    NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID,
+    NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID,
+    NARROW_CORRIDOR_PROTECTED_CANDIDATE_ID,
     build_narrow_corridor_optimization_input,
+    candidate_by_id,
 )
-
-_PROBE_REACHABLE_FIRST_ID = "5,5:lin_e_len3:shape_belt"
-_PROBE_REACHABLE_SECOND_ID = "5,6:lin_n_len0:shape_belt"
-_PROTECTED_CORRIDOR_CANDIDATE_ID = "5,5:lin_e_len0:shape_belt"
 
 
 @pytest.fixture
 def narrow_corridor_optimization_input() -> OptimizationInput:
     return build_narrow_corridor_optimization_input()
-
-
-def _candidate_by_id(
-    generation: CandidateGenerationResult,
-    candidate_id: str,
-):
-    for candidate in generation.normal_candidates:
-        if candidate.candidate_id == candidate_id:
-            return candidate
-    msg = f"candidate not found: {candidate_id}"
-    raise AssertionError(msg)
 
 
 def test_narrow_corridor_probe_vs_commit_regression(
@@ -61,8 +49,8 @@ def test_narrow_corridor_probe_vs_commit_regression(
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
     )
 
-    first = _candidate_by_id(generation, _PROBE_REACHABLE_FIRST_ID)
-    second = _candidate_by_id(generation, _PROBE_REACHABLE_SECOND_ID)
+    first = candidate_by_id(generation, NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID)
+    second = candidate_by_id(generation, NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID)
     assert first.reachable is True
     assert second.reachable is True
     assert not (first.occupied_cells & second.occupied_cells)
@@ -102,7 +90,7 @@ def test_narrow_corridor_protected_bridge_regression(
         skeleton,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
     )
-    candidate = _candidate_by_id(generation, _PROTECTED_CORRIDOR_CANDIDATE_ID)
+    candidate = candidate_by_id(generation, NARROW_CORRIDOR_PROTECTED_CANDIDATE_ID)
     domain = initial_commit_domain(skeleton, inp)
 
     result = incremental_commit(

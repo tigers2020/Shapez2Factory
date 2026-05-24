@@ -6,6 +6,7 @@ import pytest
 
 from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
     CatalogTransportUnresolvedError,
+    canonical_ids_for_transport_kind,
     resolve_cell_transport_kind,
     resolve_default_asteroid_transport_kind,
     transport_kind_lookup_from_slice,
@@ -13,6 +14,7 @@ from django_apps.asteroid_lab.adapters.catalog_transport_policy import (
 from django_apps.asteroid_lab.contracts.building_catalog_slice import (
     SLICE_VERSION,
     BuildingCatalogSlice,
+    VariantIdentity,
 )
 from django_apps.asteroid_lab.contracts.game_data_snapshot import TransportRegistryEntry
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
@@ -111,6 +113,25 @@ def test_resolve_cell_uses_registry_key_when_not_domain_enum() -> None:
 
 def test_resolve_cell_without_catalog_returns_none_for_unknown() -> None:
     assert resolve_cell_transport_kind("space_belt", catalog_slice=None) is None
+
+
+def test_canonical_ids_for_transport_kind_filters_by_category() -> None:
+    sl = BuildingCatalogSlice(
+        SLICE_VERSION,
+        (
+            TransportRegistryEntry("space_belt", "belt", "bv:shape"),
+            TransportRegistryEntry("fluid_pipe", "pipe", "bv:fluid"),
+        ),
+        (
+            VariantIdentity("bv:shape", "shape"),
+            VariantIdentity("bv:fluid", "fluid"),
+        ),
+        (),
+    )
+    shape_ids = canonical_ids_for_transport_kind(sl, TransportKind.SHAPE_BELT)
+    assert shape_ids == frozenset({"bv:shape"})
+    fluid_ids = canonical_ids_for_transport_kind(sl, TransportKind.FLUID_PIPE)
+    assert fluid_ids == frozenset({"bv:fluid"})
 
 
 def test_resolve_cell_with_catalog_raises_when_unresolved() -> None:

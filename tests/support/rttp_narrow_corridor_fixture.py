@@ -9,6 +9,12 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     RouteGoalKind,
     TransportKind,
 )
+from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
+
+# Stable catalog-native candidate IDs for B-CS1 / Sequence 10A (``bv:1`` minimal slice).
+NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID = "5,6:cat_bv_1_E:shape_belt"
+NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID = "5,8:cat_bv_1_N:shape_belt"
+NARROW_CORRIDOR_PROTECTED_CANDIDATE_ID = "5,5:cat_bv_1_E:shape_belt"
 
 _NEIGHBORS4: tuple[tuple[int, int], ...] = ((0, 1), (0, -1), (1, 0), (-1, 0))
 
@@ -76,7 +82,31 @@ def build_narrow_corridor_optimization_input() -> OptimizationInput:
         transport_kind=TransportKind.SHAPE_BELT,
         route_goals=_external_margin_goals(rim, external_void),
         existing_transport_cells=frozenset(),
+        catalog_slice=build_minimal_test_catalog_slice(),
     )
 
 
-__all__ = ["build_narrow_corridor_optimization_input"]
+def candidate_by_id(generation, candidate_id: str):
+    """Return a normal-pool candidate by stable catalog-native ``candidate_id``."""
+
+    from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
+        CandidateGenerationResult,
+    )
+
+    if not isinstance(generation, CandidateGenerationResult):
+        msg = "generation must be CandidateGenerationResult"
+        raise TypeError(msg)
+    for candidate in generation.normal_candidates:
+        if candidate.candidate_id == candidate_id:
+            return candidate
+    msg = f"candidate not found: {candidate_id}"
+    raise AssertionError(msg)
+
+
+__all__ = [
+    "NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID",
+    "NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID",
+    "NARROW_CORRIDOR_PROTECTED_CANDIDATE_ID",
+    "build_narrow_corridor_optimization_input",
+    "candidate_by_id",
+]

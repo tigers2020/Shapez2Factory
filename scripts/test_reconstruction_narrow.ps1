@@ -9,7 +9,8 @@ $pytestPaths = @(
     "tests/unit/asteroid_lab/test_reconstruction_replay_merge.py",
     "tests/unit/asteroid_lab/test_island_bbox.py",
     "tests/unit/asteroid_lab/test_persistence_does_not_read_replay_frames.py",
-    "tests/unit/asteroid_lab/test_replay_snapshot_contract.py"
+    "tests/unit/asteroid_lab/test_replay_snapshot_contract.py",
+    "tests/unit/asteroid_lab/test_b_cs4_reconstruction_replay_boundary.py"
 )
 
 python -m pytest @pytestPaths -v --tb=short @args

@@ -152,6 +152,14 @@ def test_deferred_retry_narrow_corridor_second_still_fails_after_retry() -> None
     assert execute.deferred_retry_still_failed_count == 1
     assert execute.recovered_candidate_ids == ()
     assert execute.deferred_retry_failed_reason_counts == {"reprobe_failed": 1}
+    merged = execute.merged_commit_result
+    reprobe_rows_for_second = [
+        conflict
+        for conflict in merged.conflicts
+        if conflict.candidate_id == second.candidate_id
+        and conflict.reason is CommitConflictReason.REPROBE_FAILED
+    ]
+    assert len(reprobe_rows_for_second) == 1
 
 
 def test_deferred_retry_does_not_retry_inlet_or_overlap() -> None:

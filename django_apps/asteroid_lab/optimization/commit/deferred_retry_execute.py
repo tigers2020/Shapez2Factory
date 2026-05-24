@@ -101,13 +101,17 @@ def _merge_conflicts(
     recovered_candidate_ids: frozenset[str],
     retry_failures: tuple[CommitConflict, ...],
 ) -> tuple[CommitConflict, ...]:
-    recovered = recovered_candidate_ids
+    """Drop superseded eligible REPROBE_FAILED rows; append deferred failure rows."""
+    retry_failed_ids = frozenset(
+        conflict.candidate_id for conflict in retry_failures
+    )
+    superseded_reprobe_ids = recovered_candidate_ids | retry_failed_ids
     kept_primary = tuple(
         conflict
         for conflict in primary_commit_result.conflicts
         if not (
             conflict.reason is CommitConflictReason.REPROBE_FAILED
-            and conflict.candidate_id in recovered
+            and conflict.candidate_id in superseded_reprobe_ids
         )
     )
     return kept_primary + retry_failures

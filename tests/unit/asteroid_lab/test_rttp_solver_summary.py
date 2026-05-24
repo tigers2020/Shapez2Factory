@@ -39,6 +39,7 @@ _RTTP_PIPELINE_STEP_IDS = (
     RttpAlgorithmStepId.RTTP_CANDIDATE_POOL,
     RttpAlgorithmStepId.RTTP_GENOME_SELECTION,
     RttpAlgorithmStepId.RTTP_COMMIT,
+    RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION,
 )
 
 _RTTP_RUNTIME_STEP_IDS_AFTER_RECON = (
@@ -109,9 +110,21 @@ def test_rttp_pipeline_algorithm_steps_match_milestone_event_types(
     )
     step_ids = [row["step_id"] for row in result.algorithm_steps]
     assert step_ids == [sid.value for sid in _RTTP_PIPELINE_STEP_IDS]
-    event_types = {row["event_type"] for row in result.algorithm_steps}
+    milestone_rows = [
+        row
+        for row in result.algorithm_steps
+        if row["step_id"] != RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION.value
+    ]
+    event_types = {row["event_type"] for row in milestone_rows}
     assert event_types == set(RTTP_MILESTONE_EVENT_TYPES)
-    commit_row = result.algorithm_steps[-1]
+    commit_row = next(
+        row
+        for row in result.algorithm_steps
+        if row["step_id"] == RttpAlgorithmStepId.RTTP_COMMIT.value
+    )
+    audit_row = result.algorithm_steps[-1]
+    assert audit_row["step_id"] == RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION.value
+    assert audit_row["passed"] is True
     assert commit_row["metrics"]["validation_passed"] == result.validation_passed
     assert commit_row["passed"] is result.validation_passed
     assert commit_row["summary"]
@@ -144,4 +157,7 @@ def test_runtime_solver_summary_exposes_full_algorithm_steps() -> None:
     step_ids = [row["step_id"] for row in steps]
     assert step_ids[0] == RttpAlgorithmStepId.RECONSTRUCTION.value
     assert step_ids[1:] == [sid.value for sid in _RTTP_RUNTIME_STEP_IDS_AFTER_RECON]
-    assert result.solver_summary.get("commit_order") == steps[-1]["metrics"].get("commit_order")
+    commit_step = next(
+        row for row in steps if row["step_id"] == RttpAlgorithmStepId.RTTP_COMMIT.value
+    )
+    assert result.solver_summary.get("commit_order") == commit_step["metrics"].get("commit_order")

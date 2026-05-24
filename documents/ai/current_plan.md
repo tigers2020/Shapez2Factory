@@ -70,7 +70,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** Maintain reconstruction replay/topology narrow gate; **Track D+** (catalog placement validation) is future work — brainstorm before implementation. **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: macro rework · selection/fitness changes · validation relaxation · using replay as solver input.
+**Priority:** Maintain reconstruction replay/topology narrow gate; **Track D+ PR-1** (observe-only catalog placement audit) in progress — spec [`2026-05-24-track-d-plus-catalog-placement-validation-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md), plan [`2026-05-24-track-d-plus-pr1-catalog-placement-audit.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr1-catalog-placement-audit.md). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: macro rework · selection/fitness changes · validation relaxation · using replay as solver input.
 
 - Maintain reconstruction replay·topology regression (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).

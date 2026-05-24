@@ -5,7 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from django_apps.asteroid_lab.adapters.catalog_placement_audit import (
+    audit_catalog_placements,
+    catalog_placement_audit_metrics,
+)
+from django_apps.asteroid_lab.contracts.building_catalog_slice_hash import catalog_slice_hash
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
+    BundleCandidate,
     ExtractorPlacementPolicy,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
@@ -138,6 +144,44 @@ def _record_pipeline_step(
         description=description,
         metrics_json=metrics_json,
         cell_overlay_json=cell_overlay_json,
+    )
+
+
+def _append_catalog_placement_audit_step(
+    inp: OptimizationInput,
+    committed_ids: tuple[str, ...],
+    candidates_by_id: dict[str, BundleCandidate],
+    steps: list[dict[str, Any]],
+) -> None:
+    """Record observe-only catalog placement audit in algorithm_steps only."""
+
+    catalog_slice = inp.catalog_slice
+    slice_hash = catalog_slice_hash(catalog_slice) if catalog_slice is not None else None
+    slice_version = catalog_slice.slice_version if catalog_slice is not None else None
+    audit = audit_catalog_placements(
+        committed_ids,
+        candidates_by_id,
+        catalog_slice,
+        catalog_slice_hash=slice_hash,
+        catalog_slice_version=slice_version,
+    )
+    metrics = catalog_placement_audit_metrics(
+        audit,
+        catalog_slice_hash=slice_hash,
+        catalog_slice_version=slice_version,
+    )
+    steps.append(
+        algorithm_step_summary_to_json(
+            {
+                "step_id": RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION.value,
+                "phase": "catalog",
+                "event_type": "rttp.catalog_placement_validation",
+                "title": "Catalog placement validation (observe-only)",
+                "summary": "Committed layout vs catalog footprint audit (output-only).",
+                "metrics": metrics,
+                "passed": True,
+            }
+        )
     )
 
 
@@ -275,6 +319,12 @@ def _run_v01_rttp_pipeline(
         },
         cell_overlay_json=commit_payload.cell_overlay_json,
         passed=validation_passed,
+    )
+    _append_catalog_placement_audit_step(
+        inp,
+        commit_result.committed_ids,
+        candidates_by_id,
+        steps,
     )
 
     return PipelineResult(
@@ -427,6 +477,12 @@ def _run_macro_rttp_pipeline(
         },
         cell_overlay_json=commit_payload.cell_overlay_json,
         passed=validation_passed,
+    )
+    _append_catalog_placement_audit_step(
+        inp,
+        macro_commit.committed_child_ids,
+        candidates_by_id,
+        steps,
     )
 
     return PipelineResult(

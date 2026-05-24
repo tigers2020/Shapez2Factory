@@ -26,6 +26,7 @@ class RttpAlgorithmStepId(StrEnum):
     RTTP_GENOME_SELECTION = "rttp.genome_selection"
     RTTP_COMMIT = "rttp.commit"
     RTTP_CATALOG_SLICE = "rttp.catalog_slice"
+    RTTP_CATALOG_PLACEMENT_VALIDATION = "rttp.catalog_placement_validation"
 
 
 def algorithm_step_summary_to_json(step: Mapping[str, Any]) -> dict[str, Any]:

@@ -33,6 +33,11 @@ Asteroid Lab must consume normalized building and transport data from the `game_
 11. New RTTP runs MUST persist provenance **v2** (10 wire keys including required `catalog_slice_version` and `catalog_slice_hash`). Historical v1 (8 keys) is parse-only via `parse_provenance_config_v1`.
 12. **`reproducibility_key_v1()`** remains the Track A 3-tuple. **`reproducibility_key()`** is the B2 5-tuple including catalog fields.
 
+### Catalog placement audit (Track D+ PR-1, observe-only)
+
+13. RTTP MAY run a **read-only catalog placement audit** on committed candidates using `BuildingCatalogSlice` geometry and optional `CatalogPlacementRef`. PR-1 audit is **output-only** (`rttp.catalog_placement_validation` algorithm step) and MUST NOT change `validation_passed`, `run_success`, selection, fitness, macro, route probing, or replay milestone semantics.
+14. **Fail-closed catalog placement validation** for explicitly mapped committed candidates is deferred to Track D+ PR-2.
+
 ## Consequences
 
 ### Positive

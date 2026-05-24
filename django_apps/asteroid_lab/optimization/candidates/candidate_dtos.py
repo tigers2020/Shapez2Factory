@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from django_apps.asteroid_lab.contracts.catalog_placement import CatalogPlacementRef
 from django_apps.asteroid_lab.optimization.candidates.pattern_library import BundlePattern
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.optimization.input_contracts import TransportKind
@@ -33,6 +34,7 @@ class BundleCandidate:
     throughput_factor: int
     route_probe_cost: int
     reachable: bool
+    catalog_placement_ref: CatalogPlacementRef | None = None
 
 
 @dataclass(frozen=True, slots=True)

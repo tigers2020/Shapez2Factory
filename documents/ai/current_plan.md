@@ -39,7 +39,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## 다음 초점
 
-**우선순위 (2026-05-24, Release lead):** macro track **닫힘** (관측성 + 실맵 E2E). 다음은 pause 또는 reconstruction/island_bbox hygiene — 알고리즘 확장·selection/validation 완화·LNS·replay lazy-load 13C 금지.
+**우선순위 (2026-05-24, Release lead):** **RTTP macro track PAUSE** — 기능·E2E·CI smoke 마감 (`3c9fae42` 실맵 E2E, `8c98de84` island HUD). 다음 세션만 reconstruction replay/topology narrow gate (별도 트랙). 금지: 알고리즘 확장·selection/validation 완화·LNS·replay lazy-load 13C·macro 재작업.
 
 - Reconstruction replay·topology 회귀 유지 (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat 제거 — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -50,6 +50,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 - **CLOSED (2026-05-23):** HUD `macro_commit_summary` (`#lab-macro-commit-hud`; output-only).
 - **CLOSED (2026-05-23):** `manage.py run_solver --slug` + `scripts/run_solver.ps1` (HTTP 동일 runtime path).
 - **CLOSED (2026-05-24):** 실맵 macro E2E — `tests/fixtures/asteroid_lab/macro_e2e_copy.code` + `test_rttp_macro_real_map_e2e.py` (no monkeypatch).
-- **NEXT:** pause 또는 reconstruction replay·topology 회귀만.
+- **PAUSE (2026-05-24):** macro track — 추가 solver/macro/E2E 작업 없음. 로컬 `app.css` / `solver_runtime/*.md` / `migration 0012_*` 커밋 금지(별도 의도 확인 전).
+- **NEXT (별도 트랙):** reconstruction replay·topology narrow gate만.
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
 - ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.contracts.building_catalog_slice import (
-    BuildingCatalogSlice,
     SLICE_VERSION,
+    BuildingCatalogSlice,
     VariantIdentity,
     catalog_slice_from_snapshot,
 )

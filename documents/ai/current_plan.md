@@ -86,7 +86,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** **Decontamination PR-B** optimization contamination gates (AST import canon). **Entry Gate A:** Gate 1–2 green on branch with B-CS3/4 before PR-B merge to `master`. **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Next after PR-B: PR-D/E or RTTP core (deferred commit retry). Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **Decontamination PR-D/E** (quarantine moves → dead-code removal) after **PR-B master CLOSED** (`e56ff048`, PR #69). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. After PR-D/E: deferred commit retry (RTTP core extension). Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -235,10 +235,11 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Prerequisite: B-CS1 `test_rttp_commit_survivability.py`; not a substitute for E5
 
 - Decontamination PR-B — Optimization contamination gates
-  - Status: **CLOSED (branch-local)** on `feat/decontamination-pr-b-optimization-gates` @ `590c387c`; **master CLOSED** only after PR merge
+  - Status: **CLOSED** (master)
+  - Merged into master: `e56ff048`
+  - PR: #69
   - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md)
   - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md)
-  - Evidence: `test_optimization_contamination_gates.py` 3 PASS; `test_optimization_milestone_import_boundary.py` absorbed and removed; standing `scripts/test_optimization_contamination.ps1`
-  - Entry Gate A (2026-05-24): master @ `28c7261e` — reconstruction narrow 55 PASS; RTTP narrow 127 PASS (post B-CS3/4 PR #68)
-  - PR: #69 (branch-local CLOSED until merge)
+  - Evidence: `test_optimization_contamination_gates.py` 3 PASS; milestone import boundary test removed; standing `scripts/test_optimization_contamination.ps1`
+  - Entry Gate A (2026-05-24): master @ `28c7261e` pre-merge; post-merge PR-B standing gate green on `e56ff048`
   - No production solver behaviour change

@@ -63,17 +63,19 @@ Parallel — MacroBundle T3
 |------|-----------|--------|
 | **A** | — (D+ PR-1..PR-3 closed) | — |
 | **B** | Standing gates: reconstruction narrow + PR-B optimization contamination | — |
-| **Decontamination** | PR-B ✅ → PR-D/E quarantine·dead-code | PR-B gates green |
+| **Decontamination** | PR-D quarantine → PR-E dead-code | PR-B ✅ master [`e56ff048`](https://github.com/tigers2020/Shapez2Factory/commit/e56ff048) PR #69 |
 | **Parallel** | None (paused) | — |
 
-### Decontamination — PR-B (optimization import canon)
+### Decontamination — PR-B (optimization import canon) — master CLOSED
 
 | Step | Status | Evidence |
 |------|--------|----------|
-| PR-B AST import + token gates | ✅ | `tests/unit/architecture/test_optimization_contamination_gates.py` |
+| PR-B AST import + token gates | ✅ | [`e56ff048`](https://github.com/tigers2020/Shapez2Factory/commit/e56ff048) PR #69 |
 | Milestone substring test absorbed | ✅ | removed `test_optimization_milestone_import_boundary.py` |
 | Standing gate | ✅ | `scripts/test_optimization_contamination.ps1` |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-b-optimization-gates-design.md`](specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md) |
+
+**Open next (decontamination):** PR-D quarantine → PR-E dead-code → then deferred commit retry.
 
 ---
 

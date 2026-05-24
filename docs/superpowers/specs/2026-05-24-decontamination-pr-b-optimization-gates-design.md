@@ -1,6 +1,6 @@
 # Decontamination PR-B — Optimization Contamination Gates (Design)
 
-**Status:** CLOSED (implemented 2026-05-24 on `feat/decontamination-pr-b-optimization-gates`; merge SHA pending)  
+**Status:** CLOSED (merged to `master` `e56ff048`, PR #69, 2026-05-24)  
 **Date:** 2026-05-24  
 **Owner:** Release / Solver Architecture Lead  
 **Track:** Decontamination PR-B (Axis: repo health; not Axis A/B algorithm feature)  

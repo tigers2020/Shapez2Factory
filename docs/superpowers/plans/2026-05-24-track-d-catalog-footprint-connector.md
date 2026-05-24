@@ -63,7 +63,7 @@ python -m ruff check django_apps/asteroid_lab/contracts django_apps/asteroid_lab
 - Modify: `django_apps/asteroid_lab/contracts/building_catalog_slice_hash.py`
 - Modify: `tests/unit/asteroid_lab/test_building_catalog_slice.py`
 
-- [ ] **Step 1: Write failing test (geometry on slice)**
+- [x] **Step 1: Write failing test (geometry on slice)**
 
 Replace `test_catalog_slice_excludes_footprint_and_connectors` with:
 
@@ -107,7 +107,7 @@ def test_catalog_slice_v2_includes_variant_geometries() -> None:
     )
 ```
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_building_catalog_slice.py::test_catalog_slice_v2_includes_variant_geometries -v
@@ -115,7 +115,7 @@ python -m pytest tests/unit/asteroid_lab/test_building_catalog_slice.py::test_ca
 
 Expected: FAIL (`variant_geometries` missing or wrong version)
 
-- [ ] **Step 3: Implement v2 slice + hash**
+- [x] **Step 3: Implement v2 slice + hash**
 
 In `building_catalog_slice.py`:
 
@@ -130,7 +130,7 @@ In `building_catalog_slice_hash.py`:
 
 Update all `BuildingCatalogSlice(...)` constructors in tests repo-wide that omit `variant_geometries` (grep `BuildingCatalogSlice(`).
 
-- [ ] **Step 4: Run slice tests**
+- [x] **Step 4: Run slice tests**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_building_catalog_slice.py tests/unit/asteroid_lab/test_game_data_snapshot_provenance.py -v
@@ -138,7 +138,7 @@ python -m pytest tests/unit/asteroid_lab/test_building_catalog_slice.py tests/un
 
 Expected: PASS (fix provenance tests expecting v1 string)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add django_apps/asteroid_lab/contracts/building_catalog_slice.py django_apps/asteroid_lab/contracts/building_catalog_slice_hash.py tests/unit/asteroid_lab/test_building_catalog_slice.py tests/unit/asteroid_lab/test_game_data_snapshot_provenance.py
@@ -153,7 +153,7 @@ git commit -m "feat(catalog): BuildingCatalogSlice v2 with variant geometries"
 - Create: `django_apps/asteroid_lab/adapters/catalog_footprint_policy.py`
 - Create: `tests/unit/asteroid_lab/test_catalog_footprint_policy.py`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 ```python
 """Track D — catalog footprint policy."""
@@ -210,13 +210,13 @@ def test_footprint_cells_for_variant_missing_returns_empty() -> None:
     assert footprint_cells_for_variant("missing", catalog_slice=_slice_with_one_footprint()) == ()
 ```
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_catalog_footprint_policy.py -v
 ```
 
-- [ ] **Step 3: Implement policy**
+- [x] **Step 3: Implement policy**
 
 ```python
 def summarize_footprint_catalog(slice: BuildingCatalogSlice) -> dict[str, int]:
@@ -239,14 +239,14 @@ def footprint_cells_for_variant(
     return ()
 ```
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_catalog_footprint_policy.py -v
 python -m ruff check django_apps/asteroid_lab/adapters/catalog_footprint_policy.py
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add django_apps/asteroid_lab/adapters/catalog_footprint_policy.py tests/unit/asteroid_lab/test_catalog_footprint_policy.py
@@ -261,7 +261,7 @@ git commit -m "feat(catalog): footprint policy summarize and lookup"
 - Modify: `django_apps/asteroid_lab/optimization/pipeline.py` (preferred) or `solver_runtime_entry.py`
 - Modify: `tests/unit/asteroid_lab/test_solver_runtime_entry.py`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 In `test_solver_runtime_entry.py`, extend existing RTTP test with pinned game data:
 
@@ -279,13 +279,13 @@ def test_solver_runtime_entry_rttp_emits_catalog_footprint_metrics() -> None:
     assert "catalog_footprint_cell_count" in metrics
 ```
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_solver_runtime_entry.py::test_solver_runtime_entry_rttp_emits_catalog_footprint_metrics -v
 ```
 
-- [ ] **Step 3: Wire metrics**
+- [x] **Step 3: Wire metrics**
 
 After `OptimizationInput` is built in `solver_runtime_entry` (or at start of `run_rttp_pipeline` when `inp.catalog_slice` is set — pass slice on `OptimizationInput` if already present, else thread `catalog_slice` kwarg into pipeline):
 
@@ -298,13 +298,13 @@ metrics = summarize_footprint_catalog(catalog_slice)
 
 Do **not** add fields to `OptimizationInput` unless already `catalog_slice` exists from B2 wiring — use the same `catalog_slice` object from entry.
 
-- [ ] **Step 4: Run RTTP entry + narrow rttp tests**
+- [x] **Step 4: Run RTTP entry + narrow rttp tests**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_solver_runtime_entry.py::test_solver_runtime_entry_rttp_emits_catalog_footprint_metrics tests/unit/asteroid_lab/test_solver_runtime_entry.py::test_solver_runtime_entry_rttp_returns_solver_run_id -v
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add django_apps/asteroid_lab/optimization/pipeline.py django_apps/asteroid_lab/services/solver_runtime_entry.py tests/unit/asteroid_lab/test_solver_runtime_entry.py
@@ -319,17 +319,17 @@ git commit -m "feat(rttp): emit catalog footprint metrics on solver summary"
 - Modify: `docs/domain/asteroid_game_data_snapshot.md`
 - Modify: `documents/ai/current_plan.md`
 
-- [ ] **Step 1: Add domain doc paragraph (Track D)**
+- [x] **Step 1: Add domain doc paragraph (Track D)**
 
 **Track D (RTTP):** `BuildingCatalogSlice` v2 includes `variant_geometries` (footprint cells + connectors per variant). `catalog_footprint_policy` provides read-only summaries for solver metrics; placement validation from catalog is future work. Spec: `docs/superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md`.
 
-- [ ] **Step 2: Narrow gate**
+- [x] **Step 2: Narrow gate**
 
 ```bash
 python -m pytest tests/unit/asteroid_lab/test_building_catalog_slice.py tests/unit/asteroid_lab/test_catalog_footprint_policy.py tests/unit/asteroid_lab/test_catalog_transport_policy.py tests/unit/architecture/test_catalog_consumption_boundaries.py -v
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/domain/asteroid_game_data_snapshot.md documents/ai/current_plan.md

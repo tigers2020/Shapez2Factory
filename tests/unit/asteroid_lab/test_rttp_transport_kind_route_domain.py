@@ -33,9 +33,7 @@ def test_partition_existing_transport_shape_active() -> None:
     pipe = ExistingTransportCell(coord=(4, 6), transport_kind=TransportKind.FLUID_PIPE)
     existing = frozenset({belt, pipe})
 
-    trunk, blocked, by_kind = partition_existing_transport(
-        existing, TransportKind.SHAPE_BELT
-    )
+    trunk, blocked, by_kind = partition_existing_transport(existing, TransportKind.SHAPE_BELT)
 
     assert trunk == frozenset({(4, 5)})
     assert blocked == frozenset({(4, 6)})

@@ -71,9 +71,7 @@ def _score_option(
     lift_columns = _lift_columns(inp.rim_cells, option.ring_cells)
     # P1 map class: merge ring spine with same-kind existing trunk; strip incompatible (B2-T3).
     incompatible = inp.blocked_incompatible_transport_cells
-    trunk_mask_cells = frozenset(
-        (option.ring_cells | inp.existing_trunk_cells) - incompatible
-    )
+    trunk_mask_cells = frozenset((option.ring_cells | inp.existing_trunk_cells) - incompatible)
     capacity_goals = _capacity_goals(inp)
     skeleton_id = _skeleton_id(
         option.variant,

@@ -63,10 +63,7 @@ def test_resolve_cell_prefers_domain_enum_over_registry() -> None:
         (TransportRegistryEntry("shape_belt", "belt", "bv:1"),),
         (),
     )
-    assert (
-        resolve_cell_transport_kind("shape_belt", catalog_slice=sl)
-        is TransportKind.SHAPE_BELT
-    )
+    assert resolve_cell_transport_kind("shape_belt", catalog_slice=sl) is TransportKind.SHAPE_BELT
 
 
 def test_resolve_cell_uses_registry_key_when_not_domain_enum() -> None:
@@ -75,10 +72,7 @@ def test_resolve_cell_uses_registry_key_when_not_domain_enum() -> None:
         (TransportRegistryEntry("space_belt", "belt", "bv:1"),),
         (),
     )
-    assert (
-        resolve_cell_transport_kind("space_belt", catalog_slice=sl)
-        is TransportKind.SHAPE_BELT
-    )
+    assert resolve_cell_transport_kind("space_belt", catalog_slice=sl) is TransportKind.SHAPE_BELT
 
 
 def test_resolve_cell_without_catalog_returns_none_for_unknown() -> None:

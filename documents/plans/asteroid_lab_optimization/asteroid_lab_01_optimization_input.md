@@ -1,3 +1,14 @@
+---
+status: ARCHIVED
+do_not_use_as_authority: true
+archived_reason: plans/asteroid_lab_optimization snapshot — use documents/Algorithm/asteroid_lab_01_optimization_input.md
+authority_for_implementation: documents/Algorithm/asteroid_lab_01_optimization_input.md
+superseded_by:
+  - documents/index/document_inventory.md
+  - documents/ai/current_plan.md
+last_reviewed: 2026-05-24
+---
+
 # Phase 1 — Optimization Input Contract
 
 > **Plans snapshot (ARCHIVED):** Prefer [`documents/Algorithm/asteroid_lab_01_optimization_input.md`](../../Algorithm/asteroid_lab_01_optimization_input.md). **PR-F (2026-05):** dense server coords removed; island-local only. Do not treat server X/Y / `neighbors4_server` checklists below as current contract.

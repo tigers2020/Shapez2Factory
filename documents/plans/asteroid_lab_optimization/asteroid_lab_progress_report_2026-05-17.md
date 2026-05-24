@@ -1,10 +1,13 @@
 ---
 status: REPORT
 owner: solver-architecture
-last_reviewed: 2026-05-17
+last_reviewed: 2026-05-24
+do_not_use_as_authority: true
 branch_baseline: quality/repository-gate-cleanup
 supersedes: []
 superseded_by:
+  - documents/ai/current_plan.md
+  - documents/index/document_inventory.md
 related_epics:
   - asteroid_lab_optimization
 ---

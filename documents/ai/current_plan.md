@@ -1,6 +1,6 @@
 # Current plan
 
-**Status (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)** on `master` — T1 `1c4baecd`, T3 PR #61 `38042eed`, T2 PR #62 `94027496`. **Track D** catalog footprint/connector — **implementation complete** on `feature/track-d-catalog-footprint` (`72bfc2dc`, `226ba2df`); open PR to `master`. Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
+**Status (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track B2 transport (T1–T3)** on `master` — T1 `1c4baecd`, T3 PR #61 `38042eed`, T2 PR #62 `94027496`. **Track D** catalog footprint/connector — **CLOSED** on `master` (PR #63, `f781d7df`). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
 
 **Runtime (코드 정본):**
 
@@ -55,7 +55,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## 다음 초점
 
-**Priority:** Merge **Track D** PR (`feature/track-d-catalog-footprint` → `master`). **CLOSED on branch:** `BuildingCatalogSlice` v2 + `catalog_footprint_policy` + `rttp.catalog_slice` output-only metrics. Parent spec: [`building-catalog-slice-first-consumption-design.md`](../../docs/superpowers/specs/2026-05-24-building-catalog-slice-first-consumption-design.md); Track D: [`2026-05-24-track-d-catalog-footprint-connector-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md). **RTTP macro track PAUSE** — no additional macro/E2E work. Maintain reconstruction replay/topology narrow gate. Forbidden: macro rework · selection/fitness changes · validation relaxation · using replay as solver input.
+**Priority:** Maintain reconstruction replay/topology narrow gate; **Track D+** (catalog placement validation) is future work — brainstorm before implementation. **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: macro rework · selection/fitness changes · validation relaxation · using replay as solver input.
 
 - Reconstruction replay·topology 회귀 유지 (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat 제거 — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -132,8 +132,18 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Evidence: pytest pass; `mismatched_existing_transport_by_kind` includes `fluid_pipe` on shape-active runs
 
 - Track D — Catalog footprint & connector slice (v2)
-  - Status: CLOSED (branch `feature/track-d-catalog-footprint`, pending merge to `master`)
-  - Commits: `72bfc2dc` (slice v2 + hash), `226ba2df` (footprint policy + RTTP metrics)
+  - Status: CLOSED
+  - Merged into master: `f781d7df`
+  - PR: #63
   - Plan: [`docs/superpowers/plans/2026-05-24-track-d-catalog-footprint-connector.md`](../../docs/superpowers/plans/2026-05-24-track-d-catalog-footprint-connector.md)
   - Spec: [`docs/superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md)
-  - Gate: catalog slice/footprint/provenance tests + `test_solver_runtime_entry_rttp_emits_catalog_footprint_metrics` + `test_catalog_consumption_boundaries`
+  - Ops smoke D: CLOSED (`copy-import-495e552c`, 2026-05-24)
+    - `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 47)
+    - `catalog_slice_version`: `building_catalog_slice_v2`; provenance 10 keys
+    - `rttp.catalog_slice` metrics: variant_geometry_count 131, footprint_cell_count 362, connector_count 314
+    - `ok: true`, `validation_passed: true`, `issue_codes: []`
+
+- Ops smoke D — Track D catalog v2 on real slug
+  - Status: CLOSED
+  - Slug: `copy-import-495e552c`
+  - Evidence: see Track D entry above

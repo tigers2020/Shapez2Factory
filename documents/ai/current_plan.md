@@ -76,13 +76,17 @@ Coverage: fixture topology·export, replay `reconstruction_final` merge + `step4
 
 - **Replay contract narrow gate owner:** `powershell -File scripts/test_reconstruction_narrow.ps1`
   - Includes `test_b_cs4_reconstruction_replay_boundary.py`; **excludes** `test_rttp_replay_*`
-  - Failure after B-CS4 CLOSED = regression bug track (do not re-open B-CS4 ⬜ without contract change)
+  - Failure after B-CS4 CLOSED = maintenance regression track (reopen B-CS3/B-CS4 only if original closure evidence was invalid)
+
+- **PR-B optimization contamination gate owner:** `powershell -File scripts/test_optimization_contamination.ps1`
+  - Or: `python -m pytest tests/unit/architecture/test_optimization_contamination_gates.py tests/unit/architecture/test_catalog_consumption_boundaries.py -v --tb=short` + `ruff check django_apps/asteroid_lab/optimization tests/unit/architecture`
+  - **Not** included in `test_reconstruction_narrow.ps1` (reconstruction-only)
 
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** **Axis B B-CS1–B-CS4 formal milestones CLOSED** (2026-05-24). Maintain **standing gate** `scripts/test_reconstruction_narrow.ps1` (excludes `test_rttp_replay_*`). **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro track PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **Decontamination PR-B** optimization contamination gates (AST import canon). **Entry Gate A:** Gate 1–2 green on branch with B-CS3/4 before PR-B merge to `master`. **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Next after PR-B: PR-D/E or RTTP core (deferred commit retry). Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -229,3 +233,11 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - `rttp.route_domain`: `skeleton_id` `e2af30c1ea51d853`; `mismatched_existing_transport_count` 0
   - `validation_passed` / `run_success` true; `issue_codes` `[]`; B-CS2-17 step order verified (catalog_slice → route_domain → … → commit → catalog_placement_validation)
   - Prerequisite: B-CS1 `test_rttp_commit_survivability.py`; not a substitute for E5
+
+- Decontamination PR-B — Optimization contamination gates
+  - Status: **CLOSED** (branch `feat/decontamination-pr-b-optimization-gates`; merge SHA pending)
+  - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-b-optimization-gates-design.md)
+  - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-b-optimization-gates.md)
+  - Evidence: `test_optimization_contamination_gates.py` 3 PASS; `test_optimization_milestone_import_boundary.py` absorbed and removed; standing `scripts/test_optimization_contamination.ps1`
+  - Entry Gate A (2026-05-24): reconstruction narrow 55 PASS; RTTP narrow 127 PASS on integration branch (pre-`master` B-CS3/4 merge)
+  - No production solver behaviour change

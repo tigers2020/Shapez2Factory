@@ -102,9 +102,7 @@ def _merge_conflicts(
     retry_failures: tuple[CommitConflict, ...],
 ) -> tuple[CommitConflict, ...]:
     """Drop superseded eligible REPROBE_FAILED rows; append deferred failure rows."""
-    retry_failed_ids = frozenset(
-        conflict.candidate_id for conflict in retry_failures
-    )
+    retry_failed_ids = frozenset(conflict.candidate_id for conflict in retry_failures)
     superseded_reprobe_ids = recovered_candidate_ids | retry_failed_ids
     kept_primary = tuple(
         conflict

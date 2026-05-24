@@ -112,14 +112,16 @@ Frozen contract: `django_apps/asteroid_lab/contracts/game_data_snapshot_provenan
 
 | Field | Role |
 |-------|------|
-| `catalog_slice_version` | `building_catalog_slice_v1` |
+| `catalog_slice_version` | `building_catalog_slice_v2` |
 | `catalog_slice_hash` | SHA-256 over slice JSON including `slice_version` |
 
 **Parser:** `parse_provenance_config` = strict 10-key v2 (RTTP). `parse_provenance_config_v1` = historical 8-key read-only.
 
 **Reproducibility key (B2):** `reproducibility_key()` → 5-tuple adds `catalog_slice_version`, `catalog_slice_hash`.
 
-**Slice:** `BuildingCatalogSlice` — `transport_registry` + `variants` only; built via `catalog_slice_from_snapshot`. RTTP T1: empty-map default `TransportKind` from belt channel in registry (`resolve_default_asteroid_transport_kind`).
+**Slice:** `BuildingCatalogSlice` v2 — `transport_registry`, `variants`, and `variant_geometries` (per-variant `footprint_cells` + `connectors`); built via `catalog_slice_from_snapshot` (sole extractor of geometry from full snapshot). RTTP T1: empty-map default `TransportKind` from belt channel in registry (`resolve_default_asteroid_transport_kind`).
+
+**Track D (RTTP):** `catalog_footprint_policy.summarize_footprint_catalog` drives output-only metrics on `rttp.catalog_slice` (`catalog_variant_geometry_count`, `catalog_footprint_cell_count`, `catalog_connector_count`). Placement validation from catalog geometry is future work. Spec: [`2026-05-24-track-d-catalog-footprint-connector-design.md`](../superpowers/specs/2026-05-24-track-d-catalog-footprint-connector-design.md).
 
 **T2 (RTTP):** Per transport cell, `resolve_cell_transport_kind` maps reconstruction `transport_kind` wire strings through `transport_registry` (`transport_kind` key → `transport_category` → `TransportKind`). Domain enum values (`shape_belt`, `fluid_pipe`) pass through. Unresolved transport tiles with a catalog slice fail closed (`catalog_transport_unresolved`; policy message includes optional coord + raw wire). Duplicate registry keys with the same resolved `TransportKind` use deterministic last-wins; conflicting kinds fail closed at lookup build. Spec: [`2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](../superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md).
 

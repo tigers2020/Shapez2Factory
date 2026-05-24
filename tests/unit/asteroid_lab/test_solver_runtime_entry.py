@@ -105,6 +105,22 @@ def test_solver_runtime_entry_rttp_returns_solver_run_id() -> None:
     assert result.error_code != SolverRuntimeEntryErrorCode.SOLVER_NOT_AVAILABLE
 
 
+@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
+def test_solver_runtime_entry_rttp_emits_catalog_footprint_metrics() -> None:
+    proj = m.AsteroidProject.objects.create(name="FootprintMetrics", slug="entry-fp-metrics")
+    create_copy_code_map_input(proj, _minimal_valid_copy())
+    result = run_solver_runtime_with_pinned_game_data(int(proj.pk))
+    assert result.solver_run_id is not None
+    steps = (result.solver_summary or {}).get("algorithm_steps") or []
+    catalog_steps = [
+        step for step in steps if isinstance(step, dict) and step.get("step_id") == "rttp.catalog_slice"
+    ]
+    assert len(catalog_steps) == 1
+    metrics = catalog_steps[0].get("metrics") or {}
+    assert metrics.get("catalog_variant_geometry_count", 0) >= 0
+    assert "catalog_footprint_cell_count" in metrics
+
+
 _SUMMARY_COMPARE_KEYS = (
     "algorithm",
     "macro_only_mode",

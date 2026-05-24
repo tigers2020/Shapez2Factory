@@ -40,9 +40,7 @@ def _catalog_validation_step(
 def test_runtime_extracts_catalog_error_issue_codes_from_algorithm_steps() -> None:
     steps = (
         _catalog_validation_step(
-            catalog_error_issue_codes=[
-                CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value
-            ],
+            catalog_error_issue_codes=[CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value],
         ),
     )
     assert catalog_error_issue_codes_from_algorithm_steps(steps) == (
@@ -53,9 +51,7 @@ def test_runtime_extracts_catalog_error_issue_codes_from_algorithm_steps() -> No
 def test_runtime_summary_exposes_catalog_error_codes_when_pipeline_fails() -> None:
     steps = (
         _catalog_validation_step(
-            catalog_error_issue_codes=[
-                CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value
-            ],
+            catalog_error_issue_codes=[CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value],
         ),
     )
     catalog_error_issue_codes = catalog_error_issue_codes_from_algorithm_steps(steps)
@@ -67,18 +63,14 @@ def test_runtime_summary_exposes_catalog_error_codes_when_pipeline_fails() -> No
         algorithm_steps=steps,
         catalog_error_issue_codes=catalog_error_issue_codes,
     )
-    assert summary["issue_codes"] == [
-        CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value
-    ]
+    assert summary["issue_codes"] == [CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value]
 
 
 def test_runtime_summary_warning_only_does_not_enter_top_level_issue_codes() -> None:
     steps = (
         _catalog_validation_step(
             catalog_error_issue_codes=[],
-            catalog_warning_codes=[
-                CatalogPlacementIssueCode.CATALOG_VARIANT_MAPPING_MISSING.value
-            ],
+            catalog_warning_codes=[CatalogPlacementIssueCode.CATALOG_VARIANT_MAPPING_MISSING.value],
             passed=True,
         ),
     )

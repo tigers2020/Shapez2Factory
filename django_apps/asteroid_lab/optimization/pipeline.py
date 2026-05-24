@@ -184,9 +184,7 @@ def _append_catalog_placement_audit_step(
     )
     metrics["catalog_validation_mode"] = mode
     if catalog_result is not None:
-        metrics["catalog_issue_codes"] = [
-            issue.issue_code.value for issue in catalog_result.issues
-        ]
+        metrics["catalog_issue_codes"] = [issue.issue_code.value for issue in catalog_result.issues]
         metrics["catalog_warning_codes"] = [
             issue.issue_code.value
             for issue in catalog_result.issues

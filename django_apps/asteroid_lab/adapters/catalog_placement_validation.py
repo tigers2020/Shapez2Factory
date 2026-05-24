@@ -54,9 +54,7 @@ def validate_catalog_placements(
     candidates_by_id: dict[str, BundleCandidate],
     catalog_slice: BuildingCatalogSlice | None,
 ) -> CatalogValidationResult:
-    rows = classify_committed_catalog_placements(
-        committed_ids, candidates_by_id, catalog_slice
-    )
+    rows = classify_committed_catalog_placements(committed_ids, candidates_by_id, catalog_slice)
     issues = tuple(_row_to_issue(row) for row in rows)
     passed = not any(issue.severity is ValidationSeverity.ERROR for issue in issues)
     return CatalogValidationResult(passed=passed, issues=issues)

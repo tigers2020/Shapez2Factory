@@ -148,9 +148,7 @@ def test_incremental_commit_invokes_probe_route_per_candidate(
     candidate = generation.normal_candidates[0]
     domain = initial_commit_domain(skeleton, inp)
 
-    patch_target = (
-        "django_apps.asteroid_lab.optimization.commit.incremental_commit.probe_route"
-    )
+    patch_target = "django_apps.asteroid_lab.optimization.commit.incremental_commit.probe_route"
     with patch(patch_target, wraps=probe_route) as spy:
         incremental_commit(
             PlacementGenome(commit_order=(candidate.candidate_id,)),

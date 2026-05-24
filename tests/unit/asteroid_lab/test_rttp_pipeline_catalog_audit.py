@@ -144,9 +144,10 @@ def test_pipeline_validation_passed_false_when_catalog_validation_fails(
     )
     assert audit_row["passed"] is False
     assert audit_row["metrics"]["catalog_validation_mode"] == "mapped_fail_closed"
-    assert CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value in audit_row["metrics"][
-        "catalog_error_issue_codes"
-    ]
+    assert (
+        CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value
+        in audit_row["metrics"]["catalog_error_issue_codes"]
+    )
     summary = build_rttp_solver_summary(
         pipeline_ok=result.validation_passed,
         committed_count=len(result.commit_result.committed_ids),
@@ -157,9 +158,7 @@ def test_pipeline_validation_passed_false_when_catalog_validation_fails(
             result.algorithm_steps
         ),
     )
-    assert summary["issue_codes"] == [
-        CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value
-    ]
+    assert summary["issue_codes"] == [CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH.value]
 
 
 def test_pipeline_warning_only_catalog_does_not_fail_validation_or_top_level_issue_codes(
@@ -195,9 +194,10 @@ def test_pipeline_warning_only_catalog_does_not_fail_validation_or_top_level_iss
         if row["step_id"] == RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION.value
     )
     assert audit_row["passed"] is True
-    assert CatalogPlacementIssueCode.CATALOG_VARIANT_MAPPING_MISSING.value in audit_row[
-        "metrics"
-    ]["catalog_warning_codes"]
+    assert (
+        CatalogPlacementIssueCode.CATALOG_VARIANT_MAPPING_MISSING.value
+        in audit_row["metrics"]["catalog_warning_codes"]
+    )
     assert audit_row["metrics"]["catalog_error_issue_codes"] == []
     summary = build_rttp_solver_summary(
         pipeline_ok=result.validation_passed,
@@ -210,19 +210,22 @@ def test_pipeline_warning_only_catalog_does_not_fail_validation_or_top_level_iss
         ),
     )
     assert summary["issue_codes"] == []
-    assert catalog_error_issue_codes_for_summary(
-        CatalogValidationResult(
-            passed=True,
-            issues=(
-                CatalogValidationIssue(
-                    issue_code=CatalogPlacementIssueCode.CATALOG_VARIANT_MAPPING_MISSING,
-                    severity=ValidationSeverity.WARNING,
-                    candidate_id="c-warn",
-                    message="warn",
+    assert (
+        catalog_error_issue_codes_for_summary(
+            CatalogValidationResult(
+                passed=True,
+                issues=(
+                    CatalogValidationIssue(
+                        issue_code=CatalogPlacementIssueCode.CATALOG_VARIANT_MAPPING_MISSING,
+                        severity=ValidationSeverity.WARNING,
+                        candidate_id="c-warn",
+                        message="warn",
+                    ),
                 ),
-            ),
+            )
         )
-    ) == ()
+        == ()
+    )
 
 
 def test_pipeline_observe_only_mode_unchanged_when_catalog_validation_would_fail(

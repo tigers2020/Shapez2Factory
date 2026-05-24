@@ -113,9 +113,7 @@ def _audit_counts_from_rows(
 ) -> CatalogPlacementAudit:
     issue_code_set = {row.issue_code.value for row in rows}
     mismatch = sum(
-        1
-        for row in rows
-        if row.issue_code is CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH
+        1 for row in rows if row.issue_code is CatalogPlacementIssueCode.CATALOG_FOOTPRINT_MISMATCH
     )
     unmapped = sum(
         1
@@ -132,9 +130,7 @@ def _audit_counts_from_rows(
         for row in rows
         if row.issue_code is CatalogPlacementIssueCode.CATALOG_ANCHOR_TRANSFORM_ERROR
     )
-    if any(
-        row.issue_code is CatalogPlacementIssueCode.CATALOG_SLICE_MISSING for row in rows
-    ):
+    if any(row.issue_code is CatalogPlacementIssueCode.CATALOG_SLICE_MISSING for row in rows):
         return CatalogPlacementAudit(
             catalog_validation_mode=mode,
             checked_candidate_count=0,
@@ -179,12 +175,8 @@ def audit_catalog_placements(
 
     del catalog_slice_hash, catalog_slice_version  # reserved for step metrics wiring
 
-    rows = classify_committed_catalog_placements(
-        committed_ids, candidates_by_id, catalog_slice
-    )
-    return _audit_counts_from_rows(
-        rows, committed_ids, candidates_by_id, mode=mode
-    )
+    rows = classify_committed_catalog_placements(committed_ids, candidates_by_id, catalog_slice)
+    return _audit_counts_from_rows(rows, committed_ids, candidates_by_id, mode=mode)
 
 
 def catalog_placement_audit_metrics(

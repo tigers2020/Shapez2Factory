@@ -59,11 +59,7 @@ def _existing_transport(
     *,
     catalog_slice: BuildingCatalogSlice | None = None,
 ) -> frozenset[ExistingTransportCell]:
-    lookup = (
-        transport_kind_lookup_from_slice(catalog_slice)
-        if catalog_slice is not None
-        else None
-    )
+    lookup = transport_kind_lookup_from_slice(catalog_slice) if catalog_slice is not None else None
     transport: list[ExistingTransportCell] = []
     for coord, cell in by_coord.items():
         if not _is_reconstruction_transport_cell(cell):
@@ -75,6 +71,8 @@ def _existing_transport(
                 lookup=lookup,
                 coord=coord,
             )
+            if kind is None:
+                continue
         else:
             kind = _parse_transport_kind(cell.transport_kind)
             if kind is None:

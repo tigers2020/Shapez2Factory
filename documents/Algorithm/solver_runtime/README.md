@@ -116,3 +116,22 @@ django_apps/asteroid_lab/optimization/       ← REMOVED
 ```
 
 HTTP `POST …/run-solver/` 는 유지하나 optimization body는 반환하지 않음 ([`01_entry_point.md`](01_entry_point.md)).
+
+---
+
+## RTTP pipeline status (2026-05-24)
+
+> **Note:** Frontmatter `ARCHIVED` above is **historical** (2026-05-22 strip surgery). Current `feature/b2-t2-per-cell-transport` runs **RTTP Hybrid C** when `ASTEROID_LAB_RTTP_ENABLED=True`. Code 정본: [`documents/ai/current_plan.md`](../../ai/current_plan.md).
+
+### Track B2-T2: Per-Cell Transport Resolution
+
+> **Plan:** [`2026-05-24-b2-t2-per-cell-transport-resolution.md`](../../../docs/superpowers/plans/2026-05-24-b2-t2-per-cell-transport-resolution.md)  
+> **Spec:** [`2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](../../../docs/superpowers/specs/2026-05-24-b2-t2-per-cell-transport-resolution-design.md)
+
+- [x] **Task 1** — `catalog_transport_policy`: lookup + `resolve_cell_transport_kind` (duplicate same-kind last-wins; conflicting kinds fail-closed)
+- [x] **Task 2** — `reconstruction_adapter._existing_transport` T2 wire (`lookup` once; `coord=` on policy API)
+- [x] **Task 3** — `docs/domain/asteroid_game_data_snapshot.md` T2 paragraph + parent B2 spec cross-link
+- [x] **Task 4** — `test_catalog_consumption_boundaries`, catalog/entry transport tests, reconstruction narrow gate, ruff (B2-T2 paths)
+- [x] **Task 5** — PR-ready branch verification (see final report; Ops smoke B post-merge)
+
+**Next track:** B2-T3 transport-aware route domain — after T2 merges to `master` ([spec](../../../docs/superpowers/specs/2026-05-24-b2-t3-transport-aware-route-domain-design.md)).

@@ -680,16 +680,16 @@ No TBD placeholders in task steps above.
 
 | Task | Status |
 |------|--------|
-| Task 1 — Slice contract | [ ] |
-| Task 2 — catalog_slice_hash | [ ] |
-| Task 3 — Provenance v2 | [ ] |
-| Task 4 — ADR + domain | [ ] |
-| Task 5 — T1 policy | [ ] |
-| Task 6 — Adapter T1 | [ ] |
-| Task 7 — Web builder | [ ] |
-| Task 8 — Runtime entry | [ ] |
-| Task 9 — Arch guard | [ ] |
-| Task 10 — Narrow gate | [ ] |
+| Task 1 — Slice contract | [x] |
+| Task 2 — catalog_slice_hash | [x] |
+| Task 3 — Provenance v2 | [x] |
+| Task 4 — ADR + domain | [x] |
+| Task 5 — T1 policy | [x] |
+| Task 6 — Adapter T1 | [x] |
+| Task 7 — Web builder | [x] |
+| Task 8 — Runtime entry | [x] |
+| Task 9 — Arch guard | [x] |
+| Task 10 — Narrow gate | [x] |
 
 ---
 

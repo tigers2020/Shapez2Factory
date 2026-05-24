@@ -235,9 +235,10 @@ def test_optimization_allowlist_files_are_closed_set() -> None:
         rel = _rel(path)
         if _imports_external_boundary_modules(_parse(path)) and rel not in _ALLOWLIST_EXTRA:
             offenders.append(rel)
-    assert offenders == [], (
-        "Add file to _ALLOWLIST_EXTRA in spec §2.4 or remove forbidden import: "
-        + ", ".join(offenders)
+    assert (
+        offenders == []
+    ), "Add file to _ALLOWLIST_EXTRA in spec §2.4 or remove forbidden import: " + ", ".join(
+        offenders
     )
 
 

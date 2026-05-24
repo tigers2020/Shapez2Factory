@@ -27,6 +27,7 @@ class RttpAlgorithmStepId(StrEnum):
     RTTP_COMMIT = "rttp.commit"
     RTTP_CATALOG_SLICE = "rttp.catalog_slice"
     RTTP_CATALOG_PLACEMENT_VALIDATION = "rttp.catalog_placement_validation"
+    RTTP_DEFERRED_COMMIT_RETRY_SHADOW = "rttp.deferred_commit_retry_shadow"
 
 
 def algorithm_step_summary_to_json(step: Mapping[str, Any]) -> dict[str, Any]:

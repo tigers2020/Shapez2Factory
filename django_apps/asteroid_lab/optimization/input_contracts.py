@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
 from django_apps.asteroid_lab.contracts.catalog_placement import CatalogValidationMode
+from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
 from django_apps.asteroid_lab.optimization.coords import Coord
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
 
@@ -81,6 +82,9 @@ class RttpPipelineConfig:
     allow_singleton_genome_slots: bool = False
     max_macro_candidates: int = 64
     catalog_placement_validation_mode: CatalogValidationMode = "mapped_fail_closed"
+    deferred_retry_shadow: DeferredRetryShadowConfig = field(
+        default_factory=DeferredRetryShadowConfig
+    )
 
 
 __all__ = [

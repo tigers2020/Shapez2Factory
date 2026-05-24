@@ -38,6 +38,7 @@ _RTTP_PIPELINE_STEP_IDS = (
     RttpAlgorithmStepId.RTTP_ROUTE_DOMAIN,
     RttpAlgorithmStepId.RTTP_CANDIDATE_POOL,
     RttpAlgorithmStepId.RTTP_GENOME_SELECTION,
+    RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW,
     RttpAlgorithmStepId.RTTP_COMMIT,
     RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION,
 )
@@ -110,10 +111,14 @@ def test_rttp_pipeline_algorithm_steps_match_milestone_event_types(
     )
     step_ids = [row["step_id"] for row in result.algorithm_steps]
     assert step_ids == [sid.value for sid in _RTTP_PIPELINE_STEP_IDS]
+    _NON_MILESTONE_STEP_IDS = frozenset(
+        {
+            RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION.value,
+            RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW.value,
+        }
+    )
     milestone_rows = [
-        row
-        for row in result.algorithm_steps
-        if row["step_id"] != RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION.value
+        row for row in result.algorithm_steps if row["step_id"] not in _NON_MILESTONE_STEP_IDS
     ]
     event_types = {row["event_type"] for row in milestone_rows}
     assert event_types == set(RTTP_MILESTONE_EVENT_TYPES)

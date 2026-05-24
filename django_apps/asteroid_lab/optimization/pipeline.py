@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,12 +19,17 @@ from django_apps.asteroid_lab.contracts.catalog_placement import (
     CatalogValidationMode,
 )
 from django_apps.asteroid_lab.contracts.catalog_validation import CatalogValidationResult
+from django_apps.asteroid_lab.contracts.deferred_retry_shadow import DeferredRetryShadowConfig
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
     ExtractorPlacementPolicy,
 )
 from django_apps.asteroid_lab.optimization.candidates.candidate_generator import (
     generate_candidates,
+)
+from django_apps.asteroid_lab.optimization.commit.deferred_retry_shadow import (
+    build_deferred_retry_shadow_summary,
+    deferred_retry_shadow_metrics,
 )
 from django_apps.asteroid_lab.optimization.commit.incremental_commit import (
     CommitResult,
@@ -152,6 +158,40 @@ def _record_pipeline_step(
         description=description,
         metrics_json=metrics_json,
         cell_overlay_json=cell_overlay_json,
+    )
+
+
+def _append_deferred_retry_shadow_step(
+    steps: list[dict[str, Any]],
+    *,
+    shadow_config: DeferredRetryShadowConfig,
+    primary_commit_result: CommitResult,
+    commit_order: Sequence[str],
+    candidates_by_id: dict[str, BundleCandidate],
+    inp: OptimizationInput,
+) -> None:
+    """Record primary-pass deferred retry shadow (observe-only; before LNS)."""
+
+    summary = build_deferred_retry_shadow_summary(
+        primary_commit_result=primary_commit_result,
+        commit_order=commit_order,
+        candidates_by_id=candidates_by_id,
+        inp=inp,
+        config=shadow_config,
+    )
+    metrics = deferred_retry_shadow_metrics(summary)
+    steps.append(
+        algorithm_step_summary_to_json(
+            {
+                "step_id": RttpAlgorithmStepId.RTTP_DEFERRED_COMMIT_RETRY_SHADOW.value,
+                "phase": "incremental_commit",
+                "event_type": "rttp.deferred_commit_retry_shadow",
+                "title": "Deferred commit retry shadow (observe-only)",
+                "summary": ("Primary-pass deferred retry queue shadow; no retry executed."),
+                "metrics": metrics,
+                "passed": True,
+            }
+        )
     )
 
 
@@ -306,21 +346,29 @@ def _run_v01_rttp_pipeline(
         candidate.candidate_id: candidate for candidate in generation.normal_candidates
     }
     domain = initial_commit_domain(skeleton, inp)
-    commit_result = incremental_commit(
+    primary_commit_result = incremental_commit(
         genome,
         candidates_by_id,
         inp,
         skeleton,
         domain=domain,
     )
-
-    if commit_result.conflicts:
+    _append_deferred_retry_shadow_step(
+        steps,
+        shadow_config=config.deferred_retry_shadow,
+        primary_commit_result=primary_commit_result,
+        commit_order=genome.commit_order,
+        candidates_by_id=candidates_by_id,
+        inp=inp,
+    )
+    commit_result = primary_commit_result
+    if primary_commit_result.conflicts:
         genome, commit_result = run_local_lns(
             inp,
             skeleton,
             genome,
             candidates_by_id,
-            commit_result,
+            primary_commit_result,
             policy=policy,
         )
 

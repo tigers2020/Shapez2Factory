@@ -1,6 +1,6 @@
 # Current plan
 
-**상태 (2026-05-23)**: **RTTP Hybrid C v0.1** (`django_apps/asteroid_lab/optimization/`) + **3B-S** Lab replay compose. **PR-F** island-local 좌표 병합 완료([#49](https://github.com/tigers2020/Shapez2Factory/pull/49)). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
+**상태 (2026-05-24)**: **RTTP Hybrid C v0.1** + **3B-S** Lab replay compose. **Track A/B2** game_data provenance + `BuildingCatalogSlice` T1 on `master` (`1c4baecd`, CI green). 다음 우선: **Ops smoke** (Run Solver + provenance v2 + catalog slice 실맵). Reconstruction → RTTP pipeline → persist → Lab interleaved replay.
 
 **Runtime (코드 정본):**
 
@@ -55,7 +55,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## 다음 초점
 
-**우선순위 (2026-05-24, Release lead):** **RTTP macro track PAUSE** — 기능·E2E·CI smoke 마감 (`3c9fae42` 실맵 E2E, `8c98de84` island HUD). 다음 세션만 reconstruction replay/topology narrow gate (별도 트랙). 금지: 알고리즘 확장·selection/validation 완화·LNS·replay lazy-load 13C·macro 재작업.
+**우선순위 (2026-05-24, Release lead):** **Ops smoke (A)** — Run Solver + provenance v2 + catalog slice on a real lab slug (`manage.py run_solver` / Lab POST; stack log `var/log/solver_summary_stack/`). **B2-T2 (B)** per-cell transport — 별도 PR, smoke green 후. **RTTP macro track PAUSE** — 추가 macro/E2E 없음. reconstruction replay/topology narrow gate 유지. 금지: 알고리즘 확장·selection/validation 완화·LNS·replay lazy-load 13C·macro 재작업.
 
 - Reconstruction replay·topology 회귀 유지 (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat 제거 — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -70,3 +70,16 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 - **CLOSED (2026-05-24):** reconstruction replay·topology narrow gate — `scripts/test_reconstruction_narrow.ps1` + tightened `test_island_bbox` / `test_reconstruction_replay_merge`.
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
 - ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절
+
+## Closed
+
+- Track A — GameDataSnapshotProvenance gate
+  - Status: CLOSED
+  - Merged into master: `1c4baecd`
+  - PR: #57 / integration via B2 master fast-forward
+
+- Track B2 — BuildingCatalogSlice first consumption
+  - Status: CLOSED
+  - Merged into master: `1c4baecd`
+  - Plan: [`docs/superpowers/plans/2026-05-24-building-catalog-slice-first-consumption.md`](../../docs/superpowers/plans/2026-05-24-building-catalog-slice-first-consumption.md)
+  - Deferred: B2-T2 per-cell transport resolution

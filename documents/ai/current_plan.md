@@ -39,15 +39,16 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## 다음 초점
 
-**우선순위 (2026-05-23, Release lead):** 회귀·관측성·재현성 — `CI macro smoke → HUD macro summary → CLI smoke` (알고리즘 확장·selection/validation 완화·LNS·replay lazy-load 13C 금지).
+**우선순위 (2026-05-23, Release lead):** macro track **관측성 닫힘** (`CI + HUD + CLI`). 다음은 pause 또는 실맵 macro E2E fixture — 알고리즘 확장·selection/validation 완화·LNS·replay lazy-load 13C 금지.
 
 - Reconstruction replay·topology 회귀 유지 (narrow gate below)
 - Persisted `full_map_server_bbox` → `full_map_island_bbox` read-compat (one release; `island_bbox.py`)
 - **CLOSED (2026-05-23):** RTTP v1 MacroBundleT3 **PR-A..J** on `master` — plan: [`2026-05-23-rttp-v1-macrobundle-t3.md`](../../docs/superpowers/plans/2026-05-23-rttp-v1-macrobundle-t3.md)
 - **CLOSED (2026-05-23):** PR-K web `run-solver` POST → `run_solver_runtime_for_project(config=...)` (`macro_only_mode`, `rttp_record_replay`; invalid JSON → 400).
 - **CLOSED (2026-05-23):** PR-L Lab UI macro-only checkbox + `fetch` body (`5b06d705`); OPS trial: checkbox + macro commit on real slug.
-- **NEXT:** GitHub Actions `rttp-lab-macro-smoke` (page context + macro integration + `macro_only_mode` pipeline + web POST forward).
-- **THEN:** HUD macro commit summary (output-only; never solver input).
-- **THEN:** `manage.py run_solver` / `scripts/run_solver.ps1` CLI smoke (HTTP/CI/HUD 이후).
+- **CLOSED (2026-05-23):** GitHub Actions `rttp-lab-macro-smoke` on `master` push/PR.
+- **CLOSED (2026-05-23):** HUD `macro_commit_summary` (`#lab-macro-commit-hud`; output-only).
+- **CLOSED (2026-05-23):** `manage.py run_solver --slug` + `scripts/run_solver.ps1` (HTTP 동일 runtime path).
+- **NEXT:** 실맵 macro E2E fixture (`copy-import-*` class slug) 또는 pause.
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
 - ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절

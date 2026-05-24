@@ -92,12 +92,14 @@ def test_solver_runtime_entry_rttp_returns_solver_run_id() -> None:
 
 _SUMMARY_COMPARE_KEYS = (
     "algorithm",
+    "macro_only_mode",
     "validation_passed",
     "run_success",
     "confirmed_count",
     "target_miner_bundle_count",
     "commit_order",
     "normal_candidate_count",
+    "algorithm_steps",
 )
 
 

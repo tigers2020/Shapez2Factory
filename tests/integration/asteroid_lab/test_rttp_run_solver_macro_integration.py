@@ -213,6 +213,29 @@ def test_run_solver_runtime_macro_only_db_and_milestone_readback(
     assert summary_order
     assert all(len(slot_id) == 64 for slot_id in summary_order)
 
+    algo_steps = result.solver_summary.get("algorithm_steps") or []
+    assert len(algo_steps) >= 5
+    cand_step = next(
+        row for row in algo_steps if row.get("event_type") == et.EVENT_TYPE_RTTP_CANDIDATE_POOL_SNAPSHOT
+    )
+    assert cand_step["metrics"].get("macro_normal_count", 0) >= 1
+    commit_step = next(
+        row for row in algo_steps if row.get("event_type") == et.EVENT_TYPE_RTTP_COMMIT_DOMAIN_SNAPSHOT
+    )
+    assert commit_step["metrics"].get("committed_macro_ids")
+    assert result.solver_summary.get("macro_only_mode") is True
+    hud = result.solver_summary.get("macro_commit_summary")
+    assert hud is not None
+    assert hud["macro_only_mode"] is True
+    assert hud["committed_macro_ids"]
+    assert len(hud["committed_child_ids"]) == 3
+    assert hud["domain_version"] is not None
+    assert hud["validation_passed"] is True
+    assert hud["conflict_count"] == 0
+    run_summary = body.get("run_summary")
+    assert run_summary is not None
+    assert run_summary["macro_commit_summary"] == hud
+
 
 @override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
 def test_run_solver_runtime_default_config_stays_v01_non_macro(
@@ -270,3 +293,7 @@ def test_run_solver_runtime_default_config_stays_v01_non_macro(
     order = result.solver_summary.get("commit_order") or []
     assert order
     assert all(len(slot_id) != 64 for slot_id in order)
+    assert "macro_commit_summary" not in result.solver_summary
+    run_summary = body.get("run_summary")
+    assert run_summary is not None
+    assert "macro_commit_summary" not in run_summary

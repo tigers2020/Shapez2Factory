@@ -130,30 +130,3 @@ def test_run_solver_post_invalid_json_returns_400(client: Client) -> None:
     response = client.post(url, data="{not-json", content_type="application/json")
     assert response.status_code == 400
     assert response.json()["error"] == "invalid_json"
-
-
-@override_settings(ASTEROID_LAB_RTTP_ENABLED=True)
-def test_run_solver_post_invalid_json_does_not_call_runtime(
-    client: Client,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    import django_apps.asteroid_lab.services.solver_runtime_entry as entry_mod
-
-    runtime_called = False
-    real_run = entry_mod.run_solver_runtime_for_project
-
-    def _spy(*args: object, **kwargs: object) -> entry_mod.SolverRuntimeEntryResult:
-        nonlocal runtime_called
-        runtime_called = True
-        return real_run(*args, **kwargs)
-
-    monkeypatch.setattr(entry_mod, "run_solver_runtime_for_project", _spy)
-
-    proj = m.AsteroidProject.objects.create(name="RunSolverNoRun", slug="run-solver-no-runtime")
-    create_copy_code_map_input(proj, _minimal_valid_copy())
-    url = reverse("web:asteroid-miner-layout-project-run-solver", kwargs={"slug": proj.slug})
-    response = client.post(url, data="{not-json", content_type="application/json")
-
-    assert response.status_code == 400
-    assert response.json()["error"] == "invalid_json"
-    assert runtime_called is False

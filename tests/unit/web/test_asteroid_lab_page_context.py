@@ -417,6 +417,9 @@ def test_lab_js_replay_wiring_smoke() -> None:
     assert "Optimization Replay" not in tpl
     assert "data-lab-run-solver-url" in tpl
     assert 'id="lab-macro-only-mode"' in tpl
+    assert 'id="lab-macro-commit-hud"' in tpl
+    assert "formatMacroCommitHudLine" in js
+    assert "renderMacroCommitHud" in js
     assert "function renderReplayRunStatus" in js
     assert "lab-replay-track-metrics-data" in js
     assert "function replaceOptimizationReplayPayload" not in js

@@ -34,9 +34,14 @@ def lab_run_summary_from_solver_summary(
     confirmed_throughput = solver_summary.get("confirmed_throughput", _PLACEHOLDER)
     capacity_deficit_count = solver_summary.get("capacity_deficit_count", _PLACEHOLDER)
     throughput_deficit_count = solver_summary.get("throughput_deficit_count", _PLACEHOLDER)
-    return {
+    algorithm_steps = list(solver_summary.get("algorithm_steps") or [])
+    macro_only_mode = solver_summary.get("macro_only_mode")
+    macro_commit_summary = solver_summary.get("macro_commit_summary")
+    row: dict[str, Any] = {
         "id": str(run_id),
         "status": status,
+        "algorithm_steps": algorithm_steps,
+        "macro_only_mode": macro_only_mode,
         "validation_passed": validation_passed,
         "capacity_satisfied": capacity_satisfied,
         "run_success": run_success,
@@ -60,6 +65,9 @@ def lab_run_summary_from_solver_summary(
         "pipes": _PLACEHOLDER,
         "extension_cap": _PLACEHOLDER,
     }
+    if isinstance(macro_commit_summary, dict) and macro_commit_summary:
+        row["macro_commit_summary"] = dict(macro_commit_summary)
+    return row
 
 
 def lab_run_summary_from_orm(run: m.SolverRun) -> dict[str, Any]:

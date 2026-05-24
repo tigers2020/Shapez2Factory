@@ -26,6 +26,11 @@ from django_apps.asteroid_lab.optimization.replay_sink import (
     NullRttpReplaySink,
 )
 from django_apps.asteroid_lab.optimization.replay_track_keys import rttp_optimization_track_key
+from django_apps.asteroid_lab.optimization.rttp_solver_summary import (
+    RTTP_ALGORITHM_LABEL,
+    build_rttp_solver_summary,
+    reconstruction_step_from_result,
+)
 from django_apps.asteroid_lab.services.experiment_service import (
     create_or_replace_solver_run,
     create_solver_run,
@@ -50,6 +55,9 @@ from django_apps.asteroid_lab.services.solver_run_config_keys import (
     SOLVER_RUN_CONFIG_RTTP_RECORD_REPLAY_KEY,
     SOLVER_RUN_CONFIG_SOLVER_SUMMARY_KEY,
 )
+from django_apps.asteroid_lab.services.solver_run_lab_summary import (
+    lab_run_summary_from_solver_summary,
+)
 from django_apps.asteroid_lab.snapshots.coord_proof_policy import (
     lab_solver_optimization_coord_frame,
 )
@@ -57,9 +65,6 @@ from django_apps.asteroid_lab.snapshots.coord_proof_policy import (
 SOLVER_NOT_AVAILABLE_MESSAGE = (
     "Solver runtime entry is not wired to RTTP yet; reconstruction is still available."
 )
-
-RTTP_ALGORITHM_LABEL = "rttp_v0.1"
-
 
 class SolverRuntimeEntryErrorCode(StrEnum):
     """Structured failure codes for solver runtime entry (no free-form strings)."""
@@ -213,30 +218,6 @@ def _ensure_map_input_decoded(
     return None
 
 
-def _rttp_solver_summary(
-    *,
-    pipeline_ok: bool,
-    committed_count: int,
-    normal_count: int,
-    commit_order: tuple[str, ...],
-) -> dict[str, Any]:
-    return {
-        "algorithm": RTTP_ALGORITHM_LABEL,
-        "validation_passed": pipeline_ok,
-        "run_success": pipeline_ok,
-        "capacity_satisfied": pipeline_ok,
-        "placement_capacity_satisfied": pipeline_ok,
-        "throughput_budget_satisfied": pipeline_ok,
-        "confirmed_count": committed_count,
-        "target_miner_bundle_count": len(commit_order),
-        "target_placement_count": len(commit_order),
-        "normal_candidate_count": normal_count,
-        "commit_order": list(commit_order),
-        "issue_codes": [] if pipeline_ok else ["rttp_validation_failed"],
-        "issue_details": [] if pipeline_ok else [],
-    }
-
-
 @transaction.atomic  # type: ignore[untyped-decorator]
 def _run_rttp_solver_for_map_input(
     project_id: int,
@@ -292,11 +273,12 @@ def _run_rttp_solver_for_map_input(
             title="RTTP optimization replay",
         )
         replay_sink = DbRttpReplaySink(int(rttp_track.track_id))
+    pipeline_config = _rttp_pipeline_config_from_run_config(run_config)
     pipeline_result = run_rttp_pipeline(
         opt_inp,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
         replay_sink=replay_sink,
-        pipeline_config=_rttp_pipeline_config_from_run_config(run_config),
+        pipeline_config=pipeline_config,
     )
 
     persist_reconstructed_asteroid_map(
@@ -308,11 +290,14 @@ def _run_rttp_solver_for_map_input(
     )
 
     committed = pipeline_result.commit_result.committed_ids
-    summary = _rttp_solver_summary(
+    summary = build_rttp_solver_summary(
         pipeline_ok=pipeline_result.validation_passed,
         committed_count=len(committed),
         normal_count=pipeline_result.normal_count,
         commit_order=pipeline_result.genome.commit_order,
+        algorithm_steps=pipeline_result.algorithm_steps,
+        macro_only_mode=pipeline_config.macro_only_mode,
+        reconstruction_step=reconstruction_step_from_result(recon),
     )
     _persist_solver_run_outcome(
         run_id,
@@ -436,6 +421,13 @@ def entry_result_to_json_dict(result: SolverRuntimeEntryResult) -> dict[str, Any
         body["error_code"] = result.error_code.value
     if result.message is not None:
         body["message"] = result.message
+    if result.solver_run_id is not None and result.solver_summary:
+        ui_status = "completed" if result.ok else "failed"
+        body["run_summary"] = lab_run_summary_from_solver_summary(
+            run_id=int(result.solver_run_id),
+            status=ui_status,
+            solver_summary=result.solver_summary,
+        )
     return body
 
 

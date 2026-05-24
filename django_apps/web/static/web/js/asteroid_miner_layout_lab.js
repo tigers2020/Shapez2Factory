@@ -325,12 +325,56 @@
     return text;
   }
 
+  function formatMacroCommitHudLine(summary) {
+    if (!summary || typeof summary !== "object") {
+      return "";
+    }
+    const hud = summary.macro_commit_summary;
+    if (!hud || typeof hud !== "object") {
+      return "";
+    }
+    const macroIds = Array.isArray(hud.committed_macro_ids) ? hud.committed_macro_ids.length : 0;
+    const childIds = Array.isArray(hud.committed_child_ids) ? hud.committed_child_ids.length : 0;
+    const domainVersion =
+      hud.domain_version != null && hud.domain_version !== "" ? String(hud.domain_version) : "—";
+    const validation =
+      hud.validation_passed === true ? "true" : hud.validation_passed === false ? "false" : "—";
+    const conflicts =
+      hud.conflict_count != null && hud.conflict_count !== "" ? String(hud.conflict_count) : "0";
+    return (
+      "macro: on | macros: " +
+      String(macroIds) +
+      " | children: " +
+      String(childIds) +
+      " | domain_v: " +
+      domainVersion +
+      " | validation: " +
+      validation +
+      " | conflicts: " +
+      conflicts
+    );
+  }
+
+  function renderMacroCommitHud(summary) {
+    const hudEl = document.getElementById("lab-macro-commit-hud");
+    if (!hudEl) return;
+    const line = formatMacroCommitHudLine(summary);
+    if (!line) {
+      hudEl.textContent = "—";
+      hudEl.classList.add("hidden");
+      return;
+    }
+    hudEl.textContent = line;
+    hudEl.classList.remove("hidden");
+  }
+
   function renderReplayRunStatus(feedback) {
     const runEl = document.getElementById("lab-replay-run-status");
     if (!runEl) return;
     const dash = "—";
     if (!feedback || typeof feedback !== "object") {
       runEl.textContent = dash;
+      renderMacroCommitHud(null);
       return;
     }
     if (feedback.running === true) {
@@ -353,8 +397,10 @@
         statusText += " genes:" + String(feedback.gene_template_source.gene_count);
       }
       runEl.textContent = statusText;
+      renderMacroCommitHud(rs || feedback.run_summary || null);
     } else {
       runEl.textContent = dash;
+      renderMacroCommitHud(null);
     }
   }
 

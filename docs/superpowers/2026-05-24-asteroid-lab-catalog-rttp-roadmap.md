@@ -85,17 +85,17 @@ Parallel — MacroBundle T3
 | Standing gate | ✅ | `scripts/test_quarantine_registry.ps1` |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-d-quarantine-design.md`](specs/2026-05-24-decontamination-pr-d-quarantine-design.md) |
 
-### Decontamination — PR-E (dead code deletion) — branch CLOSED (merge pending)
+### Decontamination — PR-E (dead code deletion) — master CLOSED
 
 | Step | Status | Evidence |
 |------|--------|----------|
-| Applied-only registry (`PrEDeleteCandidate`, `replacements` tuple) | ✅ | `quarantine_registry.py` |
+| Applied-only registry (`PrEDeleteCandidate`, `replacements` tuple) | ✅ | [`64a8fee9`](https://github.com/tigers2020/Shapez2Factory/commit/64a8fee9) PR #71 |
 | E-1/E-2 file deletion + E-3 pytest node removal | ✅ | 3 `PR_E_APPLIED_DELETIONS` records |
 | Quarantine gate applied-only (9 tests) | ✅ | `scripts/test_quarantine_registry.ps1` |
 | Collection delta documented | ✅ | 1493→1495 (deletions −2, gate +4; report) |
 | Spec | ✅ | [`2026-05-24-decontamination-pr-e-dead-code-design.md`](specs/2026-05-24-decontamination-pr-e-dead-code-design.md) |
 
-**Open next (decontamination):** merge PR-E → **deferred commit retry** (RTTP core).
+**Open next:** **deferred commit retry** (RTTP core). Decontamination PR-A..E complete on `master`.
 
 ---
 

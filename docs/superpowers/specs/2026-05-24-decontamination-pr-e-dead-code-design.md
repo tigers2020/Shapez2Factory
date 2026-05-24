@@ -1,6 +1,6 @@
 # Decontamination PR-E — Dead Code Deletion (Design)
 
-**Status:** branch-local CLOSED (implementation on `feat/decontamination-pr-e-dead-code`; merge pending)  
+**Status:** CLOSED (merged to `master` `64a8fee9`, PR #71, 2026-05-24)  
 **Date:** 2026-05-24  
 **Owner:** Release / Solver Architecture Lead  
 **Track:** Decontamination PR-E (repo health; not RTTP algorithm)  

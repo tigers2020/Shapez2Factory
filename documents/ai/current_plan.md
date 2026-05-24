@@ -88,7 +88,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** **Deferred commit retry** (RTTP core extension) after **Decontamination PR-E** branch merge. **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** **Deferred commit retry** (RTTP core extension). **Decontamination PR-E master CLOSED** (`64a8fee9`, PR #71). **PR-D master CLOSED** (`08320666`, PR #70). **PR-B master CLOSED** (`e56ff048`). **Axis B B-CS1–B-CS4 CLOSED**. **Axis A D+ PR-1..PR-3 CLOSED**. **RTTP macro PAUSE**. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Standing owner: reconstruction replay·topology + B-CS4 boundary (`test_b_cs4_reconstruction_replay_boundary.py` in narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -256,8 +256,10 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - No production solver behaviour change
 
 - Decontamination PR-E — Dead code deletion
-  - Status: **branch-local CLOSED** (`feat/decontamination-pr-e-dead-code`; merge pending)
+  - Status: **CLOSED** (master)
+  - Merged into master: `64a8fee9`
+  - PR: #71
   - Spec: [`docs/superpowers/specs/2026-05-24-decontamination-pr-e-dead-code-design.md`](../../docs/superpowers/specs/2026-05-24-decontamination-pr-e-dead-code-design.md)
   - Plan: [`docs/superpowers/plans/2026-05-24-decontamination-pr-e-dead-code.md`](../../docs/superpowers/plans/2026-05-24-decontamination-pr-e-dead-code.md)
-  - Evidence: `PR_E_DELETE_CANDIDATES` empty; `PR_E_APPLIED_DELETIONS` (3); quarantine gate 9 PASS; collect 1493→1495 (deletions −2, applied-only gate tests +4); [`docs/superpowers/reports/2026-05-24-test-cleanup-audit.md`](../../docs/superpowers/reports/2026-05-24-test-cleanup-audit.md) (evidence-only)
+  - Evidence: `PR_E_DELETE_CANDIDATES` empty; `PR_E_APPLIED_DELETIONS` (3); quarantine gate 9 PASS on master; collect 1493→1495 (deletions −2, applied-only gate tests +4); [`docs/superpowers/reports/2026-05-24-test-cleanup-audit.md`](../../docs/superpowers/reports/2026-05-24-test-cleanup-audit.md) (evidence-only)
   - No production solver behaviour change

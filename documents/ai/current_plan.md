@@ -29,11 +29,27 @@ django_apps/asteroid_lab/services/lab_rttp_snapshot_compose.py  ← 3B-S product
 
 ## 검증 (narrow)
 
+**RTTP (paused macro track):**
+
 ```bash
 python -m pytest tests/unit/asteroid_lab/ -k rttp
-python -m pytest tests/unit/asteroid_lab/test_reconstruction_fixture_contract.py tests/integration/web/test_asteroid_run_solver.py
 python -m ruff check django_apps/asteroid_lab/optimization django_apps/asteroid_lab/services/lab_rttp_snapshot_compose.py django_apps/asteroid_lab/services/solver_runtime_entry.py
 ```
+
+**Reconstruction replay · topology · island_bbox (별도 트랙):**
+
+```powershell
+powershell -File scripts/test_reconstruction_narrow.ps1
+```
+
+또는 동일 pytest만:
+
+```bash
+python -m pytest tests/unit/asteroid_lab/test_reconstruction_fixture_contract.py tests/unit/asteroid_lab/test_reconstruction_persist_full_map_bbox.py tests/unit/asteroid_lab/test_reconstruction_replay_merge.py tests/unit/asteroid_lab/test_island_bbox.py tests/unit/asteroid_lab/test_persistence_does_not_read_replay_frames.py tests/unit/asteroid_lab/test_replay_snapshot_contract.py
+python -m ruff check django_apps/asteroid_lab/reconstruction django_apps/asteroid_lab/replay django_apps/asteroid_lab/snapshots/island_bbox.py django_apps/asteroid_lab/services/reconstructed_map_persist_builder.py
+```
+
+커버: fixture topology·export, replay `reconstruction_final` merge + `step4_10` parity, persist bbox vs replay complete, `full_map_island_bbox` read-compat (meta·BP·legacy server ignore), persist 경로 replay ORM 미참조, initial replay full_map contract.
 
 Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
@@ -51,6 +67,6 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 - **CLOSED (2026-05-23):** `manage.py run_solver --slug` + `scripts/run_solver.ps1` (HTTP 동일 runtime path).
 - **CLOSED (2026-05-24):** 실맵 macro E2E — `tests/fixtures/asteroid_lab/macro_e2e_copy.code` + `test_rttp_macro_real_map_e2e.py` (no monkeypatch).
 - **PAUSE (2026-05-24):** macro track — 추가 solver/macro/E2E 작업 없음. 로컬 `app.css` / `solver_runtime/*.md` / `migration 0012_*` 커밋 금지(별도 의도 확인 전).
-- **NEXT (별도 트랙):** reconstruction replay·topology narrow gate만.
+- **CLOSED (2026-05-24):** reconstruction replay·topology narrow gate — `scripts/test_reconstruction_narrow.ps1` + tightened `test_island_bbox` / `test_reconstruction_replay_merge`.
 - RTTP regression fixtures: `test_rttp_narrow_corridor.py` (10A), `test_rttp_reconstruction_fixture_e2e.py` (copy-code lines 0–2)
 - ~~`asteroid_lab_10` Sequence 2–7 체크박스~~ → **done (2026-05-23)** [`asteroid_lab_10_development_sequence.md`](../Algorithm/asteroid_lab_10_development_sequence.md) RTTP gate sync 절

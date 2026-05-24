@@ -91,6 +91,27 @@ def test_full_map_island_bbox_prefers_island_over_legacy_server_meta() -> None:
     assert full_map_island_bbox_from_decoded_json(decoded_json) == island_only
 
 
+def test_full_map_island_bbox_computes_from_bp_entries_without_meta() -> None:
+    """Read-compat: legacy rows without ``full_map_island_bbox`` meta still get extent from X/Y."""
+
+    decoded_json = {
+        "BP": {
+            "Entries": [
+                {"X": 2, "Y": 3, "T": "UnknownTile_A"},
+                {"X": 5, "Y": 7, "T": "UnknownTile_B"},
+            ],
+        },
+    }
+    assert full_map_island_bbox_from_decoded_json(decoded_json) == {
+        "min_x": 2,
+        "max_x": 5,
+        "min_y": 3,
+        "max_y": 7,
+        "width": 4,
+        "height": 5,
+    }
+
+
 def test_reconstructed_export_writes_full_map_island_bbox_not_server_on_entries() -> None:
     from django_apps.asteroid_lab.adapters.reconstruction_blueprint_export import (
         build_reconstructed_blueprint_root,

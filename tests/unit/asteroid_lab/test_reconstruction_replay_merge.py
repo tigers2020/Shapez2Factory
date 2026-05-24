@@ -171,3 +171,39 @@ def test_reconstruction_final_full_map_merges_overlay_not_replace() -> None:
     for xy in ((1, 1), (2, 1), (3, 1), (1, 2), (3, 2), (1, 3), (2, 3), (3, 3)):
         wall = next(r for r in fm if int(r["x"]) == xy[0] and int(r["y"]) == xy[1])
         assert wall.get("cell_kind") == "unknown"
+
+
+def test_asteroid_map_complete_frame_matches_reconstruction_final() -> None:
+    """Synthetic ``step4_10`` must repeat ``reconstruction_final`` full_map and diff."""
+
+    cells = (
+        _cell(1, 0, cell_kind="fluid_miner"),
+        _cell(2, 0, cell_kind="space_pipe", transport_kind="fluid_pipe"),
+        _cell(1, 1, tile_type="UnknownTile_A"),
+        _cell(2, 1, tile_type="UnknownTile_B"),
+        _cell(1, 2, tile_type="UnknownTile_C"),
+        _cell(2, 2, tile_type="UnknownTile_D"),
+    )
+    snap = _snapshot(cells)
+    _, _, _, row_extension, _, _ = build_cleanup_and_reconstruction_rows(snap)
+    cleanup = deconstruct_snapshot(snap)
+    collector = ReconstructionTraceCollector()
+    recon = run_topology_reconstruction(cleanup, trace_collector=collector)
+    recon_summary = snapshot_summary_from_rows(list(row_extension))
+    recon_summary.update({**dict(cleanup.summary_json), **dict(recon.summary_json)})
+
+    events = build_reconstruction_replay_events(
+        structural_rows=list(row_extension),
+        cleanup=cleanup,
+        recon=recon,
+        trace_events=collector.events,
+        recon_summary=dict(recon_summary),
+        hints={},
+    )
+    final_ev = next(e for e in events if e.event_key == "step4_09_reconstruction_final")
+    complete_ev = next(e for e in events if e.event_key == "step4_10_asteroid_map_complete")
+    assert complete_ev.full_map == final_ev.full_map
+    assert complete_ev.diff == final_ev.diff
+    assert complete_ev.summary == final_ev.summary
+    assert complete_ev.is_decision_point is False
+    assert final_ev.is_decision_point is True

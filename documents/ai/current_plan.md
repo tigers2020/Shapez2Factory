@@ -55,7 +55,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## 다음 초점
 
-**우선순위 (2026-05-24, Release lead):** **B2-T2** per-cell transport resolution — 별도 PR, narrow scope (`writing-plans` first). **RTTP macro track PAUSE** — 추가 macro/E2E 없음. reconstruction replay/topology narrow gate 유지. 금지: macro 재작업·selection/fitness 변경·validation 완화·footprint/connector full geometry·replay를 solver input으로 사용.
+**우선순위:** **B2-T3** transport-aware route domain — branch `feature/b2-t3-transport-aware-route-domain`; plan [`2026-05-24-b2-t3-transport-aware-route-domain.md`](../../docs/superpowers/plans/2026-05-24-b2-t3-transport-aware-route-domain.md). **CLOSED:** B2-T2 per-cell transport (PR #60). **RTTP macro track PAUSE** — 추가 macro/E2E 없음. reconstruction replay/topology narrow gate 유지. 금지: macro 재작업·selection/fitness 변경·validation 완화·footprint/connector full geometry·replay를 solver input으로 사용.
 
 - Reconstruction replay·topology 회귀 유지 (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat 제거 — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).

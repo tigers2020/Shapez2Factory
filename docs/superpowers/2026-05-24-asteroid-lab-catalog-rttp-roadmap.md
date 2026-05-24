@@ -50,7 +50,7 @@ RTTP is a **route-feasible placement optimizer**, not a “place many miners” 
 
 ```text
 Axis A — Catalog input canon (game_data → RTTP consumption)
-[██████████████████████░]  ~98%   (D+ PR-1 ✅; PR-2 ✅ worktree; PR-3 ⬜)
+[████████████████████████]  ✅     (D+ PR-1 ✅; PR-2 ✅; PR-3 ✅)
 
 Axis B — RTTP core closure (route-feasible commit end-to-end)
 [████████████████░░░░░░]  ~75%   (B-CS1 ✅; B-CS2–4 ⬜)
@@ -61,8 +61,8 @@ Parallel — MacroBundle T3
 
 | Axis | Open next | Blocks |
 |------|-----------|--------|
-| **A** | **D+ PR-3** catalog-native generator | Production `catalog_placement_ref` |
-| **B** | B-CS2 real-slug trunk ops smoke (after PR-2 or parallel if slug ready) | Operational proof of commit reprobe |
+| **A** | — (D+ PR-1..PR-3 closed) | — |
+| **B** | B-CS2 real-slug trunk ops smoke | Operational proof of commit reprobe |
 | **Parallel** | None (paused) | — |
 
 ---
@@ -212,7 +212,7 @@ Catalog-native geometry → route feasibility inputs → (later) commit survivab
 
 ### A6 — Track D+ PR-2: Fail-closed (mapped candidates)
 
-**Plan:** [`2026-05-24-track-d-plus-pr2-catalog-placement-validation.md`](plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md) — **CLOSED** (worktree 2026-05-24; merge pending)
+**Plan:** [`2026-05-24-track-d-plus-pr2-catalog-placement-validation.md`](plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md) — **CLOSED** (merged `d676286f`, PR #65)
 
 | Step | Status | Evidence |
 |------|--------|----------|
@@ -225,13 +225,16 @@ Catalog-native geometry → route feasibility inputs → (later) commit survivab
 
 ### A7 — Track D+ PR-3: Catalog-native generator
 
-| Step | Status | Commit |
-|------|--------|--------|
-| Production `catalog_placement_ref` required | ⬜ | — |
-| Reject patterns without catalog geometry | ⬜ | — |
-| `lin_*` test-only | ⬜ | — |
+**Plan:** [`2026-05-24-track-d-plus-pr3-catalog-native-generator.md`](plans/2026-05-24-track-d-plus-pr3-catalog-native-generator.md) — **CLOSED** (merged `dfbda7b8`, PR #66)
 
-**Axis A “closed” when:** A5 Ops E3 + A6 + A7 done.
+| Step | Status | Evidence |
+|------|--------|----------|
+| Production `catalog_placement_ref` on all normal candidates | ✅ | `candidate_generator.py` + unit/arch tests |
+| `build_catalog_placement_specs` from slice | ✅ | adapters + placements tests |
+| `lin_*` / `build_pattern_library` test-only | ✅ | `pattern_library` docstring + `synthetic_lin_patterns` marker |
+| Ops smoke E5 (real slug) | ✅ | `solver_run_id` 54; `normal_count` 127; `unmapped_candidate_count` 0 |
+
+**Axis A:** **CLOSED** (A5 Ops E3 + A6 + A7 done, 2026-05-24).
 
 ---
 
@@ -245,6 +248,7 @@ Catalog-native geometry → route feasibility inputs → (later) commit survivab
 | D | A3 Track D `rttp.catalog_slice` | ✅ |
 | **E3** | **A5 D+ placement audit (observe_only)** | **✅ CLOSED** | `solver_run_id` 49 |
 | **E4** | **A6 D+ mapped fail-closed** | **✅ CLOSED** | `solver_run_id` 51; `mapped_fail_closed`; warning-only `issue_codes` `[]` |
+| **E5** | **A7 D+ catalog-native generator** | **✅ CLOSED** | `solver_run_id` 54; `normal_count` 127; `unmapped_candidate_count` 0 |
 | (future) | B-CS2 trunk commit | ⬜ |
 
 ---

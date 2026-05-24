@@ -70,7 +70,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** Maintain reconstruction replay/topology narrow gate; **Axis A D+ PR-3** (catalog-native generator) is next after PR-2 merge. **CLOSED (worktree 2026-05-24):** D+ PR-2 mapped fail-closed validation — plan [`2026-05-24-track-d-plus-pr2-catalog-placement-validation.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
+**Priority:** Maintain reconstruction replay/topology narrow gate; **Axis B B-CS2** real-slug trunk ops smoke next. **Axis A D+ PR-1..PR-3 CLOSED** on `master` (2026-05-24). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Maintain reconstruction replay·topology regression (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -172,10 +172,21 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Gate: grep acceptance + `tests/unit/architecture/` (docs-only; no runtime change)
 
 - Track D+ PR-2 — Mapped fail-closed catalog placement validation
-  - Status: **CLOSED** (feature worktree `feature/track-d-plus-pr2-mapped-fail-closed`, 2026-05-24; pending merge)
+  - Status: **CLOSED**
+  - Merged into master: `d676286f`
+  - PR: #65
   - Plan: [`docs/superpowers/plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md)
   - Spec: [`docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md)
   - Ops smoke E4: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 51, `run_key` `rttp-71d2b0725d54`)
   - Evidence: `catalog_validation_mode` `mapped_fail_closed`; `validation_passed` / `run_success` true; `issue_codes` `[]`; one `rttp.catalog_placement_validation` step; `catalog_warning_codes` `['catalog_variant_mapping_missing']` (unmapped synthetic, non-failing); `catalog_error_issue_codes` `[]`
   - Includes B-CS1 regression pack restored: `tests/unit/asteroid_lab/test_rttp_commit_survivability.py` (prerequisite gate; not on `master` at PR-1 base)
   - Forbidden preserved: no validation repair; unmapped fail-closed; read-only validation; `final_validation.py` untouched
+
+- Track D+ PR-3 — Catalog-native candidate generation
+  - Status: **CLOSED**
+  - Merged into master: `dfbda7b8`
+  - PR: #66
+  - Plan: [`docs/superpowers/plans/2026-05-24-track-d-plus-pr3-catalog-native-generator.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr3-catalog-native-generator.md)
+  - Spec: [`docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-pr3-catalog-native-generator-design.md)
+  - Ops smoke E5: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 54)
+  - Evidence: `normal_count` 127; `unmapped_candidate_count` 0; `validation_passed` true; `catalog_placement_ref` on all normal candidates; `lin_*` test-only

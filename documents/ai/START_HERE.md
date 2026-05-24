@@ -7,6 +7,7 @@
 1. [`../../AGENTS.md`](../../AGENTS.md)
 2. [`../index/document_lifecycle.md`](../index/document_lifecycle.md)
 3. [`../index/document_inventory.md`](../index/document_inventory.md)
+3.5. [`contamination_policy.md`](contamination_policy.md) — forbidden patterns (on conflict, inventory topic row wins)
 4. 작업 유형별 [`manuals/`](manuals/) 문서
 5. 현재 작업의 [`current_plan.md`](current_plan.md)와 [`checklist.md`](checklist.md)
 6. 필요한 `CANON` 문서
@@ -19,17 +20,23 @@
 - `REPORT`는 관측·로그 분석이며, 설계 정본이 아니다.
 - `ARCHIVED`와 `SUPERSEDED`는 역사 확인용이다. 구현 판단에 쓰지 않는다.
 
-## Solver 작업 기본 canon
+## Asteroid Lab / RTTP 작업
 
-채굴 레이아웃 솔버 작업은 먼저 [`../index/document_inventory.md`](../index/document_inventory.md)의 "채굴 레이아웃 솔버 정본 후보" 표를 확인한다.
+1. [`current_plan.md`](current_plan.md) — active runtime paths and queue
+2. [`../index/document_inventory.md`](../index/document_inventory.md) — **§ Asteroid Lab authority by topic**
+3. [`contamination_policy.md`](contamination_policy.md) — forbidden patterns and PR playbook
+4. Topic authority from inventory row (`docs/superpowers/specs/` or `documents/Algorithm/asteroid_lab_*.md`)
+5. Code: `django_apps/asteroid_lab/` + `tests/unit/asteroid_lab/`
 
-특히 다음 계약은 오래된 plan/report보다 우선한다.
+다음 계약은 오래된 plan/report보다 우선한다 (topic row가 더 구체적이면 **row wins**):
 
-- pipeline/recovery control flow
-- protected corridor lifecycle
-- reclaim/recovery boundary
-- final validation assertion gate
-- replay timeline/cycle contract
+- Placement ≠ Commit; route probe at candidate creation
+- validation read-only; replay/artifacts output-only
+- single `RouteDomainSnapshotBuilder` owner
+
+**금지:** `documents/plans/asteroid_lab_optimization/` 를 구현 정본으로 사용하지 않는다.
+
+**금지:** `django_apps.shapez_asteroid`, `tests/unit/shapez_asteroid` 를 현재 작업 경로로 사용하지 않는다.
 
 ## 금지
 

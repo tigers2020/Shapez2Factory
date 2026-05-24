@@ -9,7 +9,15 @@ from django_apps.asteroid_lab.adapters.catalog_placement_audit import (
     audit_catalog_placements,
     catalog_placement_audit_metrics,
 )
+from django_apps.asteroid_lab.adapters.catalog_placement_validation import (
+    validate_catalog_placements,
+)
 from django_apps.asteroid_lab.contracts.building_catalog_slice_hash import catalog_slice_hash
+from django_apps.asteroid_lab.contracts.catalog_placement import (
+    CatalogPlacementIssueCode,
+    CatalogValidationMode,
+)
+from django_apps.asteroid_lab.contracts.catalog_validation import CatalogValidationResult
 from django_apps.asteroid_lab.optimization.candidates.candidate_dtos import (
     BundleCandidate,
     ExtractorPlacementPolicy,
@@ -65,10 +73,10 @@ from django_apps.asteroid_lab.optimization.selection.macro_greedy_regret import 
     select_macro_genome,
 )
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
-from django_apps.asteroid_lab.optimization.validation.final_validation import (
-    validate_final_layout,
-    validate_macro_layout,
+from django_apps.asteroid_lab.optimization.validation.catalog_layout_validation import (
+    validate_pipeline_layout,
 )
+from django_apps.asteroid_lab.optimization.validation.final_validation import validate_macro_layout
 from django_apps.asteroid_lab.replay import event_types as et
 from django_apps.asteroid_lab.services.dto import SnapshotEventDTO
 
@@ -152,8 +160,11 @@ def _append_catalog_placement_audit_step(
     committed_ids: tuple[str, ...],
     candidates_by_id: dict[str, BundleCandidate],
     steps: list[dict[str, Any]],
+    *,
+    catalog_result: CatalogValidationResult | None,
+    mode: CatalogValidationMode,
 ) -> None:
-    """Record observe-only catalog placement audit in algorithm_steps only."""
+    """Record catalog placement audit/validation in algorithm_steps (output-only)."""
 
     catalog_slice = inp.catalog_slice
     slice_hash = catalog_slice_hash(catalog_slice) if catalog_slice is not None else None
@@ -164,11 +175,37 @@ def _append_catalog_placement_audit_step(
         catalog_slice,
         catalog_slice_hash=slice_hash,
         catalog_slice_version=slice_version,
+        mode=mode,
     )
     metrics = catalog_placement_audit_metrics(
         audit,
         catalog_slice_hash=slice_hash,
         catalog_slice_version=slice_version,
+    )
+    metrics["catalog_validation_mode"] = mode
+    if catalog_result is not None:
+        metrics["catalog_issue_codes"] = [
+            issue.issue_code.value for issue in catalog_result.issues
+        ]
+        metrics["catalog_warning_codes"] = [
+            issue.issue_code.value
+            for issue in catalog_result.issues
+            if issue.severity.value in ("warning", "info")
+        ]
+        metrics["catalog_slice_missing"] = any(
+            issue.issue_code is CatalogPlacementIssueCode.CATALOG_SLICE_MISSING
+            for issue in catalog_result.issues
+        )
+        metrics["catalog_error_issue_codes"] = [
+            issue.issue_code.value
+            for issue in catalog_result.issues
+            if issue.severity.value == "error"
+        ]
+    step_passed = catalog_result.passed if catalog_result is not None else True
+    title = (
+        "Catalog placement validation (observe-only)"
+        if mode == "observe_only"
+        else "Catalog placement validation (mapped fail-closed)"
     )
     steps.append(
         algorithm_step_summary_to_json(
@@ -176,10 +213,10 @@ def _append_catalog_placement_audit_step(
                 "step_id": RttpAlgorithmStepId.RTTP_CATALOG_PLACEMENT_VALIDATION.value,
                 "phase": "catalog",
                 "event_type": "rttp.catalog_placement_validation",
-                "title": "Catalog placement validation (observe-only)",
+                "title": title,
                 "summary": "Committed layout vs catalog footprint audit (output-only).",
                 "metrics": metrics,
-                "passed": True,
+                "passed": step_passed,
             }
         )
     )
@@ -208,6 +245,7 @@ def _run_v01_rttp_pipeline(
     *,
     policy: ExtractorPlacementPolicy,
     sink: RttpReplaySink,
+    config: RttpPipelineConfig,
 ) -> PipelineResult:
     steps: list[dict[str, Any]] = []
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
@@ -288,11 +326,13 @@ def _run_v01_rttp_pipeline(
             policy=policy,
         )
 
-    validation_passed = validate_final_layout(
-        commit_result.committed_ids,
-        commit_result.reserved_route_cells,
-        candidates_by_id,
-        inp,
+    catalog_mode = config.catalog_placement_validation_mode
+    validation_passed, catalog_result = validate_pipeline_layout(
+        committed_ids=commit_result.committed_ids,
+        reserved_route_cells=commit_result.reserved_route_cells,
+        candidates_by_id=candidates_by_id,
+        inp=inp,
+        catalog_mode=catalog_mode,
     )
 
     commit_payload = build_commit_replay_payload(
@@ -325,6 +365,8 @@ def _run_v01_rttp_pipeline(
         commit_result.committed_ids,
         candidates_by_id,
         steps,
+        catalog_result=catalog_result,
+        mode=catalog_mode,
     )
 
     return PipelineResult(
@@ -439,7 +481,8 @@ def _run_macro_rttp_pipeline(
     )
     commit_result = _macro_commit_as_bundle_result(macro_commit)
 
-    validation_passed = validate_macro_layout(
+    catalog_mode = config.catalog_placement_validation_mode
+    macro_ok = validate_macro_layout(
         macro_commit.committed_macro_ids,
         macro_commit.committed_child_ids,
         macro_commit.reserved_route_cells,
@@ -447,6 +490,17 @@ def _run_macro_rttp_pipeline(
         candidates_by_id,
         inp,
     )
+    catalog_result: CatalogValidationResult | None
+    if catalog_mode == "observe_only":
+        validation_passed = macro_ok
+        catalog_result = None
+    else:
+        catalog_result = validate_catalog_placements(
+            macro_commit.committed_child_ids,
+            candidates_by_id,
+            inp.catalog_slice,
+        )
+        validation_passed = macro_ok and catalog_result.passed
 
     commit_payload = build_macro_commit_replay_payload(
         macro_commit,
@@ -483,6 +537,8 @@ def _run_macro_rttp_pipeline(
         macro_commit.committed_child_ids,
         candidates_by_id,
         steps,
+        catalog_result=catalog_result,
+        mode=catalog_mode,
     )
 
     return PipelineResult(
@@ -512,7 +568,7 @@ def run_rttp_pipeline(
             sink=sink,
             config=resolved_config,
         )
-    return _run_v01_rttp_pipeline(inp, policy=policy, sink=sink)
+    return _run_v01_rttp_pipeline(inp, policy=policy, sink=sink, config=resolved_config)
 
 
 __all__ = ["PipelineResult", "run_rttp_pipeline"]

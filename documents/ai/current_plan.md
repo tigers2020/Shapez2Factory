@@ -70,7 +70,7 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
-**Priority:** Maintain reconstruction replay/topology narrow gate; **Track D+ PR-1** (observe-only catalog placement audit) in progress — spec [`2026-05-24-track-d-plus-catalog-placement-validation-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md), plan [`2026-05-24-track-d-plus-pr1-catalog-placement-audit.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr1-catalog-placement-audit.md). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: macro rework · selection/fitness changes · validation relaxation · using replay as solver input.
+**Priority:** Maintain reconstruction replay/topology narrow gate; **Axis A D+ PR-3** (catalog-native generator) is next after PR-2 merge. **CLOSED (worktree 2026-05-24):** D+ PR-2 mapped fail-closed validation — plan [`2026-05-24-track-d-plus-pr2-catalog-placement-validation.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md). **RTTP macro track PAUSE** — no additional macro/E2E work. Forbidden: validation repair · unmapped synthetic fail-closed · replay/NDJSON/solver_summary as algorithm input.
 
 - Maintain reconstruction replay·topology regression (narrow gate below)
 - **CLOSED (2026-05-23):** `full_map_server_bbox` read-compat removed — `full_map_island_bbox` only (`island_bbox.py`); Lab HUD `xy` only (no server line).
@@ -170,3 +170,12 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
   - Plan: [`docs/superpowers/plans/2026-05-24-repo-decontamination-authority-pr-a.md`](../../docs/superpowers/plans/2026-05-24-repo-decontamination-authority-pr-a.md)
   - Spec: [`docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md`](../../docs/superpowers/specs/2026-05-24-repo-decontamination-authority-design.md)
   - Gate: grep acceptance + `tests/unit/architecture/` (docs-only; no runtime change)
+
+- Track D+ PR-2 — Mapped fail-closed catalog placement validation
+  - Status: **CLOSED** (feature worktree `feature/track-d-plus-pr2-mapped-fail-closed`, 2026-05-24; pending merge)
+  - Plan: [`docs/superpowers/plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md`](../../docs/superpowers/plans/2026-05-24-track-d-plus-pr2-catalog-placement-validation.md)
+  - Spec: [`docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md`](../../docs/superpowers/specs/2026-05-24-track-d-plus-catalog-placement-validation-design.md)
+  - Ops smoke E4: `python manage.py run_solver --slug copy-import-495e552c` exit 0 (`solver_run_id` 51, `run_key` `rttp-71d2b0725d54`)
+  - Evidence: `catalog_validation_mode` `mapped_fail_closed`; `validation_passed` / `run_success` true; `issue_codes` `[]`; one `rttp.catalog_placement_validation` step; `catalog_warning_codes` `['catalog_variant_mapping_missing']` (unmapped synthetic, non-failing); `catalog_error_issue_codes` `[]`
+  - Includes B-CS1 regression pack restored: `tests/unit/asteroid_lab/test_rttp_commit_survivability.py` (prerequisite gate; not on `master` at PR-1 base)
+  - Forbidden preserved: no validation repair; unmapped fail-closed; read-only validation; `final_validation.py` untouched

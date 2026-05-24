@@ -113,10 +113,46 @@ test_validate_coord_contract_safe_sort_malformed_cell_no_raise
 test_validation_fails_committed_candidate_missing_from_pool
 ```
 
+## Track D+ catalog placement validation (PR-2, 2026-05-24)
+
+**Not catalog-native generation.** PR-2 adds **mapped-only fail-closed** checks on committed candidates that already carry `catalog_placement_ref`. PR-3 will require catalog-native production candidates.
+
+**DTOs (catalog-specific — do not confuse with Phase 8 `ValidationIssue` above):**
+
+- `django_apps/asteroid_lab/contracts/catalog_validation.py` — `CatalogValidationIssue`, `CatalogValidationResult`, `ValidationSeverity`
+- `CatalogPlacementIssueCode` — includes `catalog_slice_missing` (WARNING when slice absent; does not fail validation)
+
+**Semantics:**
+
+```text
+had catalog_placement_ref + mapped catalog ERROR (mismatch / not_in_slice / transform_error)
+  → validation_passed=false (mapped_fail_closed mode)
+
+no catalog_placement_ref (unmapped synthetic lin_*)
+  → WARNING only; validation_passed unchanged until PR-3
+
+catalog_slice missing
+  → WARNING + catalog_slice_missing metric; validation_passed unchanged
+
+observe_only mode (PR-1 regression / emergency)
+  → catalog step metrics only; validation_passed unchanged
+```
+
+**Read-only (same as Phase 8):** `validate_catalog_placements` and `classify_committed_catalog_placements` must not import `probe_route`, `incremental_commit`, or candidate-generation mutation paths. See `tests/unit/asteroid_lab/test_validation_readonly_guards.py`.
+
+**`solver_summary.issue_codes` (output-only, not algorithm input):**
+
+- Top-level `issue_codes` lists **ERROR** catalog codes only when they caused `validation_passed=false`.
+- WARNING/INFO catalog codes appear in `algorithm_steps[].metrics` (`catalog_warning_codes`, `catalog_issue_codes`, `catalog_slice_missing`).
+- Successful runs with warning-only catalog findings keep `issue_codes == []` (E3/E4 compatible).
+
+**Pipeline default:** `RttpPipelineConfig.catalog_placement_validation_mode = "mapped_fail_closed"`.
+
 ## Completion criteria
 
 ```text
 [ ] ValidationResult DTO implementation
 [ ] final assert gate implementation
 [ ] validation read-only tests pass
+[x] Track D+ PR-2 catalog placement validation (mapped fail-closed; see section above)
 ```

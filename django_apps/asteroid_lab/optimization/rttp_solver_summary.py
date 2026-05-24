@@ -130,6 +130,7 @@ def build_rttp_solver_summary(
     macro_only_mode: bool = False,
     reconstruction_step: Mapping[str, Any] | None = None,
     catalog_slice_step: Mapping[str, Any] | None = None,
+    catalog_error_issue_codes: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     """Aggregate RTTP scalars and per-step summaries for ``SolverRun.config_json``."""
 
@@ -152,7 +153,15 @@ def build_rttp_solver_summary(
         "target_placement_count": len(commit_order),
         "normal_candidate_count": normal_count,
         "commit_order": list(commit_order),
-        "issue_codes": [] if pipeline_ok else ["rttp_validation_failed"],
+        "issue_codes": (
+            []
+            if pipeline_ok
+            else (
+                list(catalog_error_issue_codes)
+                if catalog_error_issue_codes
+                else ["rttp_validation_failed"]
+            )
+        ),
         "issue_details": [] if pipeline_ok else [],
         "algorithm_steps": steps_json,
     }

@@ -25,6 +25,18 @@ class CatalogPlacementIssueCode(StrEnum):
     CATALOG_CONNECTOR_MISMATCH = "catalog_connector_mismatch"
     CATALOG_ANCHOR_TRANSFORM_ERROR = "catalog_anchor_transform_error"
     CATALOG_ROTATION_UNSUPPORTED = "catalog_rotation_unsupported"
+    CATALOG_SLICE_MISSING = "catalog_slice_missing"
+
+
+CatalogValidationMode = Literal["observe_only", "mapped_fail_closed"]
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogPlacementIssueRow:
+    candidate_id: str
+    issue_code: CatalogPlacementIssueCode
+    had_ref: bool
+    message: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +48,7 @@ class CatalogPlacementRef:
 
 @dataclass(frozen=True, slots=True)
 class CatalogPlacementAudit:
-    catalog_validation_mode: Literal["observe_only"]
+    catalog_validation_mode: CatalogValidationMode
     checked_candidate_count: int
     matched_candidate_count: int
     mismatch_candidate_count: int
@@ -50,5 +62,7 @@ __all__ = [
     "CardinalDirection",
     "CatalogPlacementAudit",
     "CatalogPlacementIssueCode",
+    "CatalogPlacementIssueRow",
     "CatalogPlacementRef",
+    "CatalogValidationMode",
 ]

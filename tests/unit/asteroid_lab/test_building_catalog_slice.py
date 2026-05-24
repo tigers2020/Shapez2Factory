@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from django_apps.asteroid_lab.contracts.building_catalog_slice import (
+    BuildingCatalogSlice,
     SLICE_VERSION,
     VariantIdentity,
     catalog_slice_from_snapshot,
+)
+from django_apps.asteroid_lab.contracts.building_catalog_slice_hash import (
+    catalog_slice_hash,
 )
 from django_apps.asteroid_lab.contracts.game_data_snapshot import (
     AsteroidGameDataSnapshot,
@@ -27,7 +31,7 @@ def _meta() -> object:
     )
 
 
-def test_catalog_slice_excludes_footprint_and_connectors() -> None:
+def test_catalog_slice_v2_includes_variant_geometries() -> None:
     snap = AsteroidGameDataSnapshot(
         meta=_meta(),  # type: ignore[arg-type]
         buildings=(
@@ -62,6 +66,18 @@ def test_catalog_slice_excludes_footprint_and_connectors() -> None:
     assert sl.variants == (
         VariantIdentity("bv:a", "a"),
         VariantIdentity("bv:z", "z"),
+    )
+    assert len(sl.variant_geometries) == 2
+    z = next(g for g in sl.variant_geometries if g.canonical_id == "bv:z")
+    assert z.footprint_cells == (BuildingFootprintCell(1, 2, 0),)
+    assert len(z.connectors) == 1
+    assert catalog_slice_hash(sl) != catalog_slice_hash(
+        BuildingCatalogSlice(
+            slice_version=sl.slice_version,
+            transport_registry=sl.transport_registry,
+            variants=sl.variants,
+            variant_geometries=(),
+        )
     )
 
 

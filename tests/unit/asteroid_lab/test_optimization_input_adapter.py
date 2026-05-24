@@ -151,6 +151,7 @@ def test_greenfield_default_transport_uses_catalog_slice_t1() -> None:
         SLICE_VERSION,
         (TransportRegistryEntry("space_belt", "belt", "bv:1"),),
         (),
+        (),
     )
     inp = optimization_input_from_reconstruction(
         ReconstructionResult(cells=cells),
@@ -172,6 +173,7 @@ def test_existing_transport_resolves_registry_key_via_catalog_slice() -> None:
         SLICE_VERSION,
         (TransportRegistryEntry("space_pipe", "pipe", "bv:1"),),
         (),
+        (),
     )
     inp = optimization_input_from_reconstruction(
         ReconstructionResult(cells=cells),
@@ -185,7 +187,7 @@ def test_existing_transport_resolves_registry_key_via_catalog_slice() -> None:
 def test_unresolved_transport_cell_fails_when_catalog_slice_present() -> None:
     cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
     cells = cells + (_pipe_cell_registry_key(4, 5),)
-    catalog_slice = BuildingCatalogSlice(SLICE_VERSION, (), ())
+    catalog_slice = BuildingCatalogSlice(SLICE_VERSION, (), (), ())
     with pytest.raises(CatalogTransportUnresolvedError) as exc_info:
         optimization_input_from_reconstruction(
             ReconstructionResult(cells=cells),
@@ -210,6 +212,7 @@ def test_domain_enum_transport_kind_precedence_over_registry() -> None:
                 "bv:wrong",
             ),
         ),
+        (),
         (),
     )
     inp = optimization_input_from_reconstruction(

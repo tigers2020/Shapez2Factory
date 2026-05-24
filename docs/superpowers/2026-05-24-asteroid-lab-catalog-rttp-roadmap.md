@@ -53,7 +53,7 @@ Axis A — Catalog input canon (game_data → RTTP consumption)
 [████████████████████████]  ✅     (D+ PR-1 ✅; PR-2 ✅; PR-3 ✅)
 
 Axis B — RTTP core closure (route-feasible commit end-to-end)
-[██████████████████████░░]  ~85%   (B-CS1 ✅; B-CS2 ✅; B-CS3 ✅; B-CS4 ongoing)
+[████████████████████████]  ✅     (B-CS1–B-CS4 formal milestones CLOSED; standing narrow gate)
 
 Parallel — MacroBundle T3
 [██████████████████████]  ✅ CLOSED · ⏸ PAUSE (not core 11-step)
@@ -62,7 +62,7 @@ Parallel — MacroBundle T3
 | Axis | Open next | Blocks |
 |------|-----------|--------|
 | **A** | — (D+ PR-1..PR-3 closed) | — |
-| **B** | B-CS4 replay contract narrow gate (ongoing) | — |
+| **B** | Standing gate: `scripts/test_reconstruction_narrow.ps1` (incl. B-CS4; excl. `test_rttp_replay_*`) | — |
 | **Parallel** | None (paused) | — |
 
 ---
@@ -125,7 +125,7 @@ Parallel — MacroBundle T3
 | B-CS1 | Commit survivability regression pack | ✅ | `tests/unit/asteroid_lab/test_rttp_commit_survivability.py` |
 | B-CS2 | Ops smoke — trunk-connected commit on real slug | ✅ | `solver_run_id` 55; `run_key` `rttp-3afe34cb62c4`; spec [`2026-05-24-b-cs2-trunk-ops-smoke-design.md`](specs/2026-05-24-b-cs2-trunk-ops-smoke-design.md) |
 | B-CS3 | Validation gate audit (no repair in validation) | ✅ | `test_b_cs3_validation_gate_boundary.py`; spec [`2026-05-24-b-cs3-validation-gate-audit-design.md`](specs/2026-05-24-b-cs3-validation-gate-audit-design.md) |
-| B-CS4 | Replay contract narrow gate stays green | ✅ ongoing | `scripts/test_reconstruction_narrow.ps1` |
+| B-CS4 | Reconstruction / Lab replay boundary audit | ✅ | `test_b_cs4_reconstruction_replay_boundary.py`; spec [`2026-05-24-b-cs4-reconstruction-replay-boundary-design.md`](specs/2026-05-24-b-cs4-reconstruction-replay-boundary-design.md); standing owner: `scripts/test_reconstruction_narrow.ps1` |
 
 ---
 

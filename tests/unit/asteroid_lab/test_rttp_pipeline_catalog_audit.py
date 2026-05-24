@@ -78,14 +78,13 @@ def _greenfield_with_catalog_slice(base: OptimizationInput) -> OptimizationInput
     )
 
 
-def test_synthetic_unmapped_audit_observe_only_does_not_force_validation_failure(
+def test_catalog_native_committed_mapped_in_observe_only_mode(
     greenfield_optimization_input: OptimizationInput,
 ) -> None:
-    """Synthetic candidates without catalog_placement_ref are unmapped but non-failing."""
+    """PR-3: committed catalog-native candidates carry refs and audit as matched."""
 
-    inp = _greenfield_with_catalog_slice(greenfield_optimization_input)
     result = run_rttp_pipeline(
-        inp,
+        greenfield_optimization_input,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
         pipeline_config=RttpPipelineConfig(catalog_placement_validation_mode="observe_only"),
     )
@@ -99,7 +98,8 @@ def test_synthetic_unmapped_audit_observe_only_does_not_force_validation_failure
     metrics = audit_row["metrics"]
     assert metrics["catalog_validation_mode"] == "observe_only"
     assert metrics["checked_candidate_count"] == len(result.commit_result.committed_ids)
-    assert metrics["unmapped_candidate_count"] == metrics["checked_candidate_count"]
+    assert metrics["unmapped_candidate_count"] == 0
+    assert metrics["matched_candidate_count"] == metrics["checked_candidate_count"]
     assert metrics.get("catalog_slice_version") == SLICE_VERSION
     commit_row = next(
         row

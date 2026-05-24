@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
+from django_apps.asteroid_lab.contracts.building_catalog_slice import BuildingCatalogSlice
 from django_apps.asteroid_lab.genetic_sample.exhaustive_generator import (
     ExhaustiveGenerationStats,
     GeneratedSampleGene,
@@ -142,7 +145,9 @@ def _external_margin_goals(
 
 
 @pytest.fixture
-def greenfield_optimization_input() -> OptimizationInput:
+def greenfield_optimization_input(
+    catalog_slice_minimal: BuildingCatalogSlice,
+) -> OptimizationInput:
     """Minimal greenfield map: 4×4 mineable block (16 cells), empty trunk/protected."""
 
     mineable = frozenset((x, y) for x in range(5, 9) for y in range(5, 9))
@@ -159,4 +164,23 @@ def greenfield_optimization_input() -> OptimizationInput:
         transport_kind=TransportKind.SHAPE_BELT,
         route_goals=_external_margin_goals(rim, external_void),
         existing_transport_cells=frozenset(),
+        catalog_slice=catalog_slice_minimal,
+    )
+
+
+@pytest.fixture
+def catalog_slice_minimal() -> BuildingCatalogSlice:
+    from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
+
+    return build_minimal_test_catalog_slice()
+
+
+@pytest.fixture
+def greenfield_with_catalog(
+    greenfield_optimization_input: OptimizationInput,
+    catalog_slice_minimal: BuildingCatalogSlice,
+) -> OptimizationInput:
+    return replace(
+        greenfield_optimization_input,
+        catalog_slice=catalog_slice_minimal,
     )

@@ -67,3 +67,6 @@ python_version = "3.12"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "synthetic_lin_patterns: uses build_pattern_library lin_* (not production path)",
+]

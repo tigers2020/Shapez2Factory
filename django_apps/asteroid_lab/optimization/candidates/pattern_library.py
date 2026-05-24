@@ -1,27 +1,17 @@
-"""Deterministic linear bundle pattern library (RTTP Layer 2, PR-3)."""
+"""SYNTHETIC TEST-ONLY linear bundle patterns (lin_*).
+
+Production RTTP uses ``adapters.catalog_candidate_placements.build_catalog_placement_specs``.
+Do not call ``build_pattern_library()`` from ``candidate_generator`` or pipeline code.
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
+from django_apps.asteroid_lab.optimization.candidates.bundle_pattern import BundlePattern
 from django_apps.asteroid_lab.optimization.coords import Coord
 
 _DIRECTIONS: tuple[str, ...] = ("N", "E", "S", "W")
 _DIR_LETTER: dict[str, str] = {"N": "n", "E": "e", "S": "s", "W": "w"}
 _THROUGHPUT_BY_EXT: tuple[int, ...] = (4, 8, 12, 16)
-
-
-@dataclass(frozen=True, slots=True)
-class BundlePattern:
-    pattern_id: str
-    extension_count: int
-    occupied_offsets: frozenset[Coord]
-    extractor_offset: Coord
-    extension_offsets: tuple[Coord, ...]
-    output_dir: str
-    output_stub_offset: Coord
-    throughput_factor: int
-    topology_kind: str
 
 
 def _rotation_matrix(direction: str) -> tuple[tuple[int, int], tuple[int, int]]:

@@ -30,24 +30,16 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
 from django_apps.asteroid_lab.optimization.selection.greedy_regret import PlacementGenome
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
 from tests.support.rttp_narrow_corridor_fixture import (
+    NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID,
+    NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID,
     build_narrow_corridor_optimization_input,
+    candidate_by_id,
 )
-
-_PROBE_FIRST = "5,5:lin_e_len3:shape_belt"
-_PROBE_SECOND = "5,6:lin_n_len0:shape_belt"
 
 
 @pytest.fixture
 def narrow_corridor_optimization_input() -> OptimizationInput:
     return build_narrow_corridor_optimization_input()
-
-
-def _candidate_by_id(generation, candidate_id: str):
-    for candidate in generation.normal_candidates:
-        if candidate.candidate_id == candidate_id:
-            return candidate
-    msg = f"candidate not found: {candidate_id}"
-    raise AssertionError(msg)
 
 
 def test_b_cs1_module_imports() -> None:
@@ -67,8 +59,8 @@ def test_normal_pool_reachable_is_not_commit_proof(
         skeleton,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
     )
-    first = _candidate_by_id(generation, _PROBE_FIRST)
-    second = _candidate_by_id(generation, _PROBE_SECOND)
+    first = candidate_by_id(generation, NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID)
+    second = candidate_by_id(generation, NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID)
 
     assert first.reachable is True
     assert second.reachable is True
@@ -103,8 +95,8 @@ def test_commit_ignores_stale_generation_reachable_flag(
         skeleton,
         policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM,
     )
-    first = _candidate_by_id(generation, _PROBE_FIRST)
-    second = _candidate_by_id(generation, _PROBE_SECOND)
+    first = candidate_by_id(generation, NARROW_CORRIDOR_PROBE_FIRST_CANDIDATE_ID)
+    second = candidate_by_id(generation, NARROW_CORRIDOR_PROBE_SECOND_CANDIDATE_ID)
 
     stale_second = replace(
         second,
@@ -133,11 +125,11 @@ def test_commit_ignores_stale_generation_reachable_flag(
 
 
 def test_incremental_commit_invokes_probe_route_per_candidate(
-    greenfield_optimization_input: OptimizationInput,
+    greenfield_with_catalog: OptimizationInput,
 ) -> None:
     """B-CS1: commit loop must call probe_route (latest domain), not only read DTO."""
 
-    inp = greenfield_optimization_input
+    inp = greenfield_with_catalog
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
     generation = generate_candidates(
         inp,

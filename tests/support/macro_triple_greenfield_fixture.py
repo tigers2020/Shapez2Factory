@@ -16,6 +16,7 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
 )
 from django_apps.asteroid_lab.optimization.skeleton.rttp_skeleton import RttpSkeleton
 from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import RttpSkeletonBuilder
+from tests.support.catalog_test_fixtures import build_minimal_test_catalog_slice
 
 _NEIGHBORS4: tuple[tuple[int, int], ...] = ((0, 1), (0, -1), (1, 0), (-1, 0))
 
@@ -79,6 +80,7 @@ def build_macro_triple_greenfield_input() -> OptimizationInput:
         transport_kind=TransportKind.SHAPE_BELT,
         route_goals=_external_margin_goals(rim, external_void),
         existing_transport_cells=frozenset(),
+        catalog_slice=build_minimal_test_catalog_slice(),
     )
 
 

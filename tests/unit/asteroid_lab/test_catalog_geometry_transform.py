@@ -25,6 +25,7 @@ def test_expected_footprint_east_identity_at_anchor() -> None:
     assert got == frozenset({(5, 7), (6, 7)})
 
 
+@pytest.mark.synthetic_lin_patterns
 def test_catalog_geometry_transform_matches_pattern_library_east_rotation() -> None:
     patterns = build_pattern_library()
     pat = next(p for p in patterns if p.pattern_id == "lin_e_len2")

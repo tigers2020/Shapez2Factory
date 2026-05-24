@@ -19,9 +19,9 @@ from django_apps.asteroid_lab.optimization.skeleton.skeleton_builder import Rttp
 
 
 def test_candidate_generator_does_not_commit(
-    greenfield_optimization_input: OptimizationInput,
+    greenfield_with_catalog: OptimizationInput,
 ) -> None:
-    inp = greenfield_optimization_input
+    inp = greenfield_with_catalog
     before = replace(inp)
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
     skeleton_before = replace(skeleton)
@@ -33,11 +33,10 @@ def test_candidate_generator_does_not_commit(
 
 
 def test_interior_and_rim_unreachable_goes_to_rejected(
-    greenfield_optimization_input: OptimizationInput,
+    greenfield_with_catalog: OptimizationInput,
 ) -> None:
-    inp = replace(greenfield_optimization_input, route_goals=())
+    inp = replace(greenfield_with_catalog, route_goals=())
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
-    # No adapter goals and no ring ports → probe has no targets (v0.1 probe_goal_coords).
     skeleton = replace(
         skeleton,
         ring_ports=(),
@@ -55,9 +54,9 @@ def test_interior_and_rim_unreachable_goes_to_rejected(
 
 
 def test_reachable_candidate_in_normal_pool(
-    greenfield_optimization_input: OptimizationInput,
+    greenfield_with_catalog: OptimizationInput,
 ) -> None:
-    inp = greenfield_optimization_input
+    inp = greenfield_with_catalog
     skeleton = RttpSkeletonBuilder.build(inp, config=RttpSkeletonConfig())
     result = generate_candidates(inp, skeleton, policy=ExtractorPlacementPolicy.INTERIOR_AND_RIM)
 

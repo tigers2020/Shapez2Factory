@@ -99,9 +99,23 @@ def resolve_cell_transport_kind(
     )
 
 
+def canonical_ids_for_transport_kind(
+    catalog_slice: BuildingCatalogSlice,
+    transport_kind: TransportKind,
+) -> frozenset[str]:
+    out: set[str] = set()
+    for entry in catalog_slice.transport_registry:
+        category = entry.transport_category.strip().lower()
+        mapped = _TRANSPORT_CATEGORY_TO_KIND.get(category)
+        if mapped is transport_kind:
+            out.add(entry.building_variant_canonical_id)
+    return frozenset(out)
+
+
 __all__ = [
     "CatalogTransportErrorCode",
     "CatalogTransportUnresolvedError",
+    "canonical_ids_for_transport_kind",
     "resolve_cell_transport_kind",
     "resolve_default_asteroid_transport_kind",
     "transport_kind_lookup_from_slice",

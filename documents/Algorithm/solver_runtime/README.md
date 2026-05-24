@@ -7,6 +7,8 @@ archived_reason: Solver optimization pipeline removed; reconstruction-only (see 
 
 # Solver Runtime — Solver 버튼 파이프라인
 
+> **Runtime authority (2026-05-24):** Active solver is **RTTP Hybrid C** in `django_apps/asteroid_lab/optimization/` when `ASTEROID_LAB_RTTP_ENABLED=True` — see [`documents/ai/current_plan.md`](../../ai/current_plan.md). This directory documents the **historical Solver-button Phase A–M** orchestration series, not the RTTP implementation contract.
+
 **역할:** Solver Runtime Pipeline Architect  
 **목적:** UI `Solver` / `Run Solver` 버튼 클릭 시 실행되는 **E2E 파이프라인 v0** 계약·PR 체크리스트를 고정한다.
 

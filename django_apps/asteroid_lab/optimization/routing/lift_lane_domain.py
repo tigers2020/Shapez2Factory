@@ -45,7 +45,8 @@ def build_route_domain_from_skeleton(
     )
     platform_cells = frozenset(edge.platform_coord for edge in lift_edges)
     lift_coords = frozenset(edge.lift_coord for edge in lift_edges)
-    trunk_mask = frozenset(skeleton.trunk_mask_cells)
+    incompatible = inp.blocked_incompatible_transport_cells
+    trunk_mask = frozenset(skeleton.trunk_mask_cells - incompatible)
     goal_coords = probe_goal_coords(inp, skeleton)
 
     blocked = frozenset(
@@ -55,7 +56,8 @@ def build_route_domain_from_skeleton(
         - lift_coords
         - goal_coords
     )
-    traversable = trunk_mask | lift_coords | goal_coords
+    blocked = frozenset(blocked | incompatible)
+    traversable = frozenset((trunk_mask | lift_coords | goal_coords) - incompatible)
 
     return RouteCellDomain(
         blocked_cells=blocked,

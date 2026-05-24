@@ -47,6 +47,7 @@ class OptimizationInput:
     transport_kind: TransportKind
     route_goals: tuple[RouteGoal, ...]
     existing_transport_cells: frozenset[ExistingTransportCell]
+    blocked_incompatible_transport_cells: frozenset[Coord] = frozenset()
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW
     catalog_slice: BuildingCatalogSlice | None = None
 

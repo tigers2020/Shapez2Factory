@@ -56,6 +56,22 @@ def _belt_cell(x: int, y: int) -> DecodedCellDTO:
     )
 
 
+def _pipe_cell(x: int, y: int) -> DecodedCellDTO:
+    return DecodedCellDTO(
+        x=x,
+        y=y,
+        layer=None,
+        rotation=0,
+        tile_type="SpacePipe_Forward",
+        cell_kind="space_pipe",
+        transport_kind="fluid_pipe",
+        has_nested_blueprint=False,
+        nested_entry_count=0,
+        nested_type_counts_json={},
+        raw_entry_json={"X": x, "Y": y, "T": "SpacePipe_Forward"},
+    )
+
+
 def _pipe_cell_registry_key(x: int, y: int) -> DecodedCellDTO:
     return DecodedCellDTO(
         x=x,
@@ -93,6 +109,17 @@ def _assert_optimization_input_raw_coords(inp) -> None:
     for goal in inp.route_goals:
         assert isinstance(goal, RouteGoal)
         _assert_coord_pair(goal.coord, "route_goals.coord")
+
+
+def test_mixed_existing_transport_partitions_for_shape_run() -> None:
+    cells = tuple(_field_cell(x, y) for x in range(5, 9) for y in range(5, 9))
+    cells = cells + (_belt_cell(4, 5), _pipe_cell(4, 6))
+    inp = optimization_input_from_reconstruction(ReconstructionResult(cells=cells))
+
+    assert inp.transport_kind is TransportKind.SHAPE_BELT
+    assert len(inp.existing_transport_cells) == 2
+    assert inp.existing_trunk_cells == frozenset({(4, 5)})
+    assert inp.blocked_incompatible_transport_cells == frozenset({(4, 6)})
 
 
 def test_optimization_input_adapter_existing_trunk_uses_raw_coords() -> None:

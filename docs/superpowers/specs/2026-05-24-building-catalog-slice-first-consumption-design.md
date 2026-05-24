@@ -159,13 +159,13 @@ class CatalogTransportErrorCode(StrEnum):
 
 ## T2 — Per-cell transport resolution
 
-RTTP resolves each reconstruction transport cell through `catalog_transport_policy.resolve_cell_transport_kind` (registry wire → `TransportKind`; domain enums pass through; fail-closed when unresolved). Duplicate registry keys with conflicting resolved kinds fail closed at lookup build; same-kind duplicates use deterministic last-wins.
+RTTP resolves each reconstruction transport cell through `catalog_transport_policy.resolve_cell_transport_kind` (registry wire → `TransportKind`; domain enums pass through; fail-closed when unresolved). Duplicate registry keys with conflicting resolved kinds fail closed at lookup build; same-kind duplicates use deterministic last-wins. Policy API accepts optional `coord` for error messages (no adapter try/except re-wrap).
 
 **Normative spec:** [`2026-05-24-b2-t2-per-cell-transport-resolution-design.md`](2026-05-24-b2-t2-per-cell-transport-resolution-design.md)
 
 **Implementation plan:** [`2026-05-24-b2-t2-per-cell-transport-resolution.md`](../plans/2026-05-24-b2-t2-per-cell-transport-resolution.md)
 
-**Next track:** [B2-T3 transport-aware route domain](2026-05-24-b2-t3-transport-aware-route-domain-design.md) — after T2 is on `master` (distinct from footprint / Track D geometry).
+**Next track:** [B2-T3 transport-aware route domain](2026-05-24-b2-t3-transport-aware-route-domain-design.md) — on `master` (distinct from footprint / Track D geometry).
 
 ## `OptimizationInput` extension
 

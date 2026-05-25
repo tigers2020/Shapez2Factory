@@ -41,8 +41,7 @@ def _domain_after_single_commit(
 ) -> CommitDomainState:
     committed_occupied = frozenset(domain.committed_occupied | candidate.occupied_cells)
     committed_fixed_output_transport_cells = frozenset(
-        domain.committed_fixed_output_transport_cells
-        | {fixed_output_transport_cell(candidate)}
+        domain.committed_fixed_output_transport_cells | {fixed_output_transport_cell(candidate)}
     )
     committed_route_cells = result.reserved_route_cells
     return CommitDomainState(

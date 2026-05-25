@@ -130,3 +130,15 @@ def test_commit_order_is_explicit_not_rim_scan(
     rim_prefix = tuple(rim_scan[index] for index in range(len(selected_anchors)))
 
     assert selected_anchors != rim_prefix
+
+
+def test_goal_count_selects_up_to_thirteen_non_overlapping(
+    greenfield_optimization_input: OptimizationInput,
+) -> None:
+    inp = greenfield_optimization_input
+    skeleton = _skeleton_with_goals(inp, capacity_goals=1)
+    candidates = tuple(
+        _bundle_candidate((i * 4, 0), throughput_factor=4, route_probe_cost=5) for i in range(15)
+    )
+    genome = select_genome(candidates, skeleton, inp, goal_count=13)
+    assert len(genome.commit_order) == 13

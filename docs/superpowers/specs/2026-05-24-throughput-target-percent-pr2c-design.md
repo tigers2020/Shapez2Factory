@@ -3,7 +3,7 @@
 **Date:** 2026-05-24  
 **Status:** Approved for implementation planning  
 **Depends on:** PR-1 `MiningExtractionRule` · PR-2a `reconstruction_capacity` · **PR-2b** `actual_committed_output_per_min`  
-**Follow-up:** PR-2d RTTP selection scoring toward target shortfall (separate spec/plan)  
+**Follow-up:** PR-2d placement goals — [`2026-05-24-throughput-target-selection-pr2d-design.md`](2026-05-24-throughput-target-selection-pr2d-design.md)  
 **Parent:** [`2026-05-24-reconstruction-max-throughput-pr2a-design.md`](2026-05-24-reconstruction-max-throughput-pr2a-design.md) · [`2026-05-24-mining-extraction-rule-design.md`](2026-05-24-mining-extraction-rule-design.md)
 
 ---

@@ -52,6 +52,7 @@ from django_apps.asteroid_lab.optimization.input_contracts import (
     OptimizationInput,
     RttpPipelineConfig,
     RttpSkeletonConfig,
+    TransportKind,
 )
 from django_apps.asteroid_lab.optimization.macros.macro_compiler import (
     MacroCompileConfig,
@@ -95,6 +96,10 @@ from django_apps.asteroid_lab.services.committed_throughput_summary import (
     collect_committed_throughput_factors,
 )
 from django_apps.asteroid_lab.services.dto import SnapshotEventDTO
+from django_apps.asteroid_lab.services.placement_goal import (
+    PlacementGoalPlan,
+    build_placement_goal_plan,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +110,26 @@ class PipelineResult:
     validation_passed: bool
     algorithm_steps: tuple[dict[str, Any], ...] = ()
     committed_throughput_factors: tuple[int, ...] = ()
+    placement_goal_plan: PlacementGoalPlan | None = None
+
+
+def _selection_goal_for_pipeline(
+    *,
+    config: RttpPipelineConfig,
+    skeleton_capacity_goals: int,
+    normal_candidates: Sequence[BundleCandidate],
+    transport_kind: TransportKind,
+) -> tuple[int, PlacementGoalPlan | None]:
+    if config.target_throughput_per_min is None:
+        return max(0, skeleton_capacity_goals), None
+    plan = build_placement_goal_plan(
+        normal_candidates=normal_candidates,
+        transport_kind=transport_kind,
+        target_throughput_per_min=config.target_throughput_per_min,
+        skeleton_capacity_goals=skeleton_capacity_goals,
+        configured_max_placement_goal=config.max_placement_goal_count,
+    )
+    return plan.placement_goal_count, plan
 
 
 def _record_replay(
@@ -360,8 +385,26 @@ def _run_v01_rttp_pipeline(
         passed=normal_count > 0,
     )
 
-    genome = select_genome(generation.normal_candidates, skeleton, inp)
+    selection_goal, placement_plan = _selection_goal_for_pipeline(
+        config=config,
+        skeleton_capacity_goals=skeleton.capacity_goals,
+        normal_candidates=generation.normal_candidates,
+        transport_kind=inp.transport_kind,
+    )
+    genome = select_genome(
+        generation.normal_candidates,
+        skeleton,
+        inp,
+        goal_count=selection_goal,
+    )
     selection_payload = build_selection_replay_payload(genome, generation.normal_candidates)
+    selection_metrics: dict[str, Any] = {
+        "commit_order": list(genome.commit_order),
+        "selected_count": len(genome.commit_order),
+        "placement_goal_count": selection_goal,
+    }
+    if placement_plan is not None:
+        selection_metrics.update(placement_plan.to_summary_dict())
     _record_pipeline_step(
         sink,
         steps,
@@ -371,7 +414,7 @@ def _run_v01_rttp_pipeline(
         phase="genome_fitness",
         title="RTTP selection complete",
         description=selection_payload.description,
-        metrics_json={"commit_order": list(genome.commit_order)},
+        metrics_json=selection_metrics,
         cell_overlay_json=selection_payload.cell_overlay_json,
         passed=len(genome.commit_order) > 0,
     )
@@ -473,6 +516,7 @@ def _run_v01_rttp_pipeline(
         validation_passed=validation_passed,
         algorithm_steps=tuple(steps),
         committed_throughput_factors=throughput_factors,
+        placement_goal_plan=placement_plan,
     )
 
 
@@ -540,13 +584,28 @@ def _run_macro_rttp_pipeline(
         passed=macro_normal_count > 0,
     )
 
+    selection_goal, placement_plan = _selection_goal_for_pipeline(
+        config=config,
+        skeleton_capacity_goals=skeleton.capacity_goals,
+        normal_candidates=generation.normal_candidates,
+        transport_kind=inp.transport_kind,
+    )
     genome = select_macro_genome(
         macro_normal,
         skeleton,
         inp,
         pipeline_config=config,
+        goal_count=selection_goal,
     )
     selection_payload = build_macro_selection_replay_payload(genome, macro_normal)
+    macro_selection_metrics: dict[str, Any] = {
+        "commit_order": list(genome.commit_order),
+        "macro_count_selected": len(genome.commit_order),
+        "selected_count": len(genome.commit_order),
+        "placement_goal_count": selection_goal,
+    }
+    if placement_plan is not None:
+        macro_selection_metrics.update(placement_plan.to_summary_dict())
     _record_pipeline_step(
         sink,
         steps,
@@ -556,10 +615,7 @@ def _run_macro_rttp_pipeline(
         phase="genome_fitness",
         title="RTTP macro selection complete",
         description=selection_payload.description,
-        metrics_json={
-            "commit_order": list(genome.commit_order),
-            "macro_count_selected": len(genome.commit_order),
-        },
+        metrics_json=macro_selection_metrics,
         cell_overlay_json=selection_payload.cell_overlay_json,
         passed=len(genome.commit_order) > 0,
     )
@@ -650,6 +706,7 @@ def _run_macro_rttp_pipeline(
         validation_passed=validation_passed,
         algorithm_steps=tuple(steps),
         committed_throughput_factors=throughput_factors,
+        placement_goal_plan=placement_plan,
     )
 
 

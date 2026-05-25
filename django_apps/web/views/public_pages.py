@@ -37,6 +37,7 @@ from django_apps.asteroid_lab.services.lab_optimization_milestone_payload import
 from django_apps.asteroid_lab.services.lab_replay_timeline_payload import (
     build_lab_replay_frames_for_project,
 )
+from django_apps.asteroid_lab.services.placement_goal import parse_max_placement_goal_count
 from django_apps.asteroid_lab.services.project_service import (
     resolve_or_create_project_slug_for_copy_code,
 )
@@ -296,6 +297,19 @@ def _validate_throughput_target_percent(config: dict[str, Any]) -> JsonResponse 
     return None
 
 
+def _validate_max_placement_goal_count(config: dict[str, Any]) -> JsonResponse | None:
+    if "max_placement_goal_count" not in config:
+        return None
+    try:
+        parse_max_placement_goal_count(config)
+    except ValueError:
+        return JsonResponse(
+            {"ok": False, "error": "invalid_max_placement_goal_count"},
+            status=400,
+        )
+    return None
+
+
 def _run_solver_request_config(request: HttpRequest) -> tuple[dict[str, Any], JsonResponse | None]:
     """Parse optional JSON POST body into runtime ``config`` (PR-K)."""
 
@@ -316,6 +330,9 @@ def _run_solver_request_config(request: HttpRequest) -> tuple[dict[str, Any], Js
     percent_err = _validate_throughput_target_percent(config)
     if percent_err is not None:
         return {}, percent_err
+    max_goal_err = _validate_max_placement_goal_count(config)
+    if max_goal_err is not None:
+        return {}, max_goal_err
     return config, None
 
 

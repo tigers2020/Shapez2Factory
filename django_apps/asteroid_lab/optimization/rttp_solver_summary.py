@@ -100,6 +100,20 @@ def catalog_slice_step_from_slice(catalog_slice: BuildingCatalogSlice) -> dict[s
     )
 
 
+def _placement_capacity_dev_metric(
+    *,
+    committed_count: int,
+    throughput_goal: Mapping[str, Any] | None,
+) -> bool:
+    if throughput_goal is None:
+        return False
+    goal = int(throughput_goal.get("placement_goal_count") or 0)
+    needed = int(throughput_goal.get("bundles_needed_for_target") or 0)
+    if goal <= 0:
+        return False
+    return committed_count >= min(goal, needed)
+
+
 def extract_macro_commit_summary(
     algorithm_steps: Sequence[Mapping[str, Any]],
     *,
@@ -139,6 +153,8 @@ def build_rttp_solver_summary(
     reconstruction_observability: Mapping[str, Any] | None = None,
     actual_committed_output_per_min: str | None = None,
     throughput_budget_fields: Mapping[str, Any] | None = None,
+    throughput_goal: Mapping[str, Any] | None = None,
+    throughput_shortfall_reason: str | None = None,
 ) -> dict[str, Any]:
     """Aggregate RTTP scalars and per-step summaries for ``SolverRun.config_json``."""
 
@@ -148,14 +164,21 @@ def build_rttp_solver_summary(
     if catalog_slice_step is not None:
         steps_json.append(algorithm_step_summary_to_json(catalog_slice_step))
     steps_json.extend(algorithm_step_summary_to_json(step) for step in algorithm_steps)
+    budget_ok = pipeline_ok
+    if throughput_budget_fields is not None:
+        budget_ok = bool(throughput_budget_fields.get("throughput_budget_satisfied"))
+    deprecated_capacity_ok = budget_ok if throughput_budget_fields is not None else pipeline_ok
     summary: dict[str, Any] = {
         "algorithm": RTTP_ALGORITHM_LABEL,
         "macro_only_mode": bool(macro_only_mode),
         "validation_passed": pipeline_ok,
         "run_success": pipeline_ok,
-        "capacity_satisfied": pipeline_ok,
-        "placement_capacity_satisfied": pipeline_ok,
-        "throughput_budget_satisfied": pipeline_ok,
+        "capacity_satisfied": deprecated_capacity_ok,
+        "placement_capacity_satisfied": _placement_capacity_dev_metric(
+            committed_count=committed_count,
+            throughput_goal=throughput_goal,
+        ),
+        "throughput_budget_satisfied": budget_ok,
         "confirmed_count": committed_count,
         "target_miner_bundle_count": len(commit_order),
         "target_placement_count": len(commit_order),
@@ -195,6 +218,18 @@ def build_rttp_solver_summary(
             if THROUGHPUT_TARGET_SHORTFALL_ISSUE_CODE not in codes:
                 codes.append(THROUGHPUT_TARGET_SHORTFALL_ISSUE_CODE)
             summary["issue_codes"] = codes
+    if throughput_goal is not None:
+        summary["throughput_goal"] = dict(throughput_goal)
+    if throughput_shortfall_reason and throughput_budget_fields is not None:
+        if not throughput_budget_fields.get("throughput_budget_satisfied"):
+            details = list(summary.get("issue_details") or [])
+            details.append(
+                {
+                    "code": THROUGHPUT_TARGET_SHORTFALL_ISSUE_CODE,
+                    "throughput_shortfall_reason": throughput_shortfall_reason,
+                }
+            )
+            summary["issue_details"] = details
     return summary
 
 

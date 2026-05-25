@@ -292,7 +292,16 @@
 
   function runCapacityFailed(run) {
     if (!run || typeof run !== "object") return false;
-    if (run.run_success === true || run.capacity_satisfied === true) return false;
+    if (run.run_success === true) return false;
+    if (
+      run.throughput_target &&
+      typeof run.throughput_target === "object" &&
+      run.throughput_budget_satisfied === false
+    ) {
+      return true;
+    }
+    if (run.throughput_budget_satisfied === true) return false;
+    if (run.capacity_satisfied === true) return false;
     if (run.status === "partial") return true;
     return run.validation_passed === true && run.capacity_satisfied === false;
   }

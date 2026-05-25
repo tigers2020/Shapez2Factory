@@ -30,6 +30,35 @@ def test_lab_js_maps_throughput_target_shortfall_to_gettext_msgid() -> None:
     assert 'throughput_target_shortfall: "throughput target shortfall"' in js
 
 
+def test_lab_footprint_subtitle_documents_field_cells() -> None:
+    text = TEMPLATE.read_text(encoding="utf-8") + STAT_PARTIAL.read_text(encoding="utf-8")
+    assert "field cells / map cells" in text
+
+
+def test_lab_detail_panel_uses_asteroid_field_terminology() -> None:
+    detail = (
+        REPO
+        / "django_apps"
+        / "web"
+        / "templates"
+        / "web"
+        / "partials"
+        / "lab_run_detail_panels.html"
+    ).read_text(encoding="utf-8")
+    assert "Asteroid field cells" in detail
+    assert "lab-detail-rec-field-total" in detail
+    assert "Mineable cells" not in detail
+    assert "Confirmed total" not in detail
+
+
+def test_lab_replay_description_has_fixed_scroll_viewport() -> None:
+    template = TEMPLATE.read_text(encoding="utf-8")
+    idx = template.index('id="lab-replay-description"')
+    chunk = template[idx : idx + 280]
+    assert "overflow-y-auto" in chunk
+    assert "h-64" in chunk
+
+
 def test_throughput_target_slider_in_extractor_constraints_not_header() -> None:
     template = TEMPLATE.read_text(encoding="utf-8")
     assert 'id="lab-throughput-target-percent"' in template

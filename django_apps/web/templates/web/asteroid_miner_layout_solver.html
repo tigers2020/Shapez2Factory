@@ -1,4 +1,4 @@
-﻿{% extends "web/base.html" %}
+{% extends "web/base.html" %}
 {% load i18n static %}
 
 {% block title %}shapez2 planner | Asteroid Mining Lab{% endblock %}
@@ -296,7 +296,10 @@
                   <p id="lab-replay-phase" class="text-sm text-slate-500">{{ initial_replay_phase }}</p>
                   <p id="lab-replay-event-type" class="mt-1 text-xs text-violet-300">—</p>
                   <p id="lab-replay-title" class="mt-1 text-sm text-slate-200">—</p>
-                  <p id="lab-replay-description" class="mt-1 text-xs leading-relaxed text-slate-500">—</p>
+                  <p
+                    id="lab-replay-description"
+                    class="mt-1 h-64 overflow-y-auto break-words text-xs leading-relaxed text-slate-500 whitespace-pre-wrap"
+                  >—</p>
                   <p id="lab-replay-truncation-hud" class="mt-2 font-mono text-xs text-amber-300/90">—</p>
                   <p id="lab-replay-run-status" class="mt-1 font-mono text-xs text-cyan-300/90">—</p>
                   <p id="lab-macro-commit-hud" class="mt-1 hidden font-mono text-xs text-emerald-300/90">—</p>

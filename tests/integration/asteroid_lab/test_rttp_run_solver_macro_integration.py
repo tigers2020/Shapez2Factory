@@ -107,10 +107,12 @@ def test_run_solver_runtime_passes_macro_only_pipeline_config(
     def _macro_optimization_input(
         _recon: object,
         *,
+        cleanup: object = None,
         coord_frame: object = None,
         catalog_slice: object = None,
+        complete_map: object = None,
     ) -> OptimizationInput:
-        del _recon, coord_frame, catalog_slice
+        del _recon, cleanup, coord_frame, catalog_slice, complete_map
         return macro_inp
 
     monkeypatch.setattr(
@@ -145,10 +147,12 @@ def test_run_solver_runtime_macro_only_db_and_milestone_readback(
     def _macro_optimization_input(
         _recon: object,
         *,
+        cleanup: object = None,
         coord_frame: object = None,
         catalog_slice: object = None,
+        complete_map: object = None,
     ) -> OptimizationInput:
-        del _recon, coord_frame, catalog_slice
+        del _recon, cleanup, coord_frame, catalog_slice, complete_map
         return macro_inp
 
     monkeypatch.setattr(
@@ -257,10 +261,12 @@ def test_run_solver_runtime_default_config_stays_v01_non_macro(
     def _greenfield_optimization_input(
         _recon: object,
         *,
+        cleanup: object = None,
         coord_frame: object = None,
         catalog_slice: object = None,
+        complete_map: object = None,
     ) -> OptimizationInput:
-        del _recon, coord_frame, catalog_slice
+        del _recon, cleanup, coord_frame, catalog_slice, complete_map
         return greenfield_inp
 
     monkeypatch.setattr(

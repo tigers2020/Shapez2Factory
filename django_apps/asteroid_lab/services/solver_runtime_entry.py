@@ -447,11 +447,23 @@ def _run_rttp_solver_for_map_input(
         int(inp.pk),
         boundary_run_id=rk,
     )
+    from django_apps.asteroid_lab.reconstruction.complete_map import (
+        build_reconstruction_complete_map,
+    )
+
+    opt_coord_frame = lab_solver_optimization_coord_frame(run_config)
+    complete_map = build_reconstruction_complete_map(
+        cleanup=cleanup,
+        recon=recon,
+        coord_frame=opt_coord_frame,
+    )
     try:
         opt_inp = optimization_input_from_reconstruction(
             recon,
-            coord_frame=lab_solver_optimization_coord_frame(run_config),
+            cleanup=cleanup,
+            coord_frame=opt_coord_frame,
             catalog_slice=catalog_slice,
+            complete_map=complete_map,
         )
     except CatalogTransportUnresolvedError as exc:
         return _failure_result(
@@ -513,7 +525,7 @@ def _run_rttp_solver_for_map_input(
             title="RTTP optimization replay",
         )
         replay_sink = DbRttpReplaySink(int(rttp_track.track_id))
-    capacity_env = build_reconstruction_capacity_envelope(recon=recon)
+    capacity_env = build_reconstruction_capacity_envelope(complete_map=complete_map)
     target_throughput = compute_target_throughput_per_min(
         reconstruction_max=primary_reconstruction_max_per_min(capacity_env),
         percent=throughput_percent,
@@ -587,7 +599,7 @@ def _run_rttp_solver_for_map_input(
         reconstruction_capacity=capacity_env,
         reconstruction_observability=build_reconstruction_observability(
             recon=recon,
-            cleanup=cleanup,
+            complete_map=complete_map,
         ),
         actual_committed_output_per_min=actual_str,
         throughput_budget_fields=budget_fields,

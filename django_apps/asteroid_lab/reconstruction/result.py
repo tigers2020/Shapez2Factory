@@ -12,9 +12,13 @@ from django_apps.asteroid_lab.snapshots.grid_contract import Coord
 
 @dataclass(frozen=True, slots=True)
 class ReconstructionResult:
-    """Output of :func:`reconstruct_snapshot`."""
+    """Output of reconstruction pipeline.
 
-    cells: tuple[DecodedCellDTO, ...]
+    ``cells`` is the reconstruction **overlay** (sparse replaces), not the complete map.
+    Use :func:`build_reconstruction_complete_map` for terrain / capacity / mineable SoT.
+    """
+
+    cells: tuple[DecodedCellDTO, ...]  # overlay only
     summary_json: dict[str, Any] = field(default_factory=dict)
     outer_rim_coords: tuple[tuple[int, int], ...] = ()
     coord_frame: CoordFrame = CoordFrame.ISLAND_RAW

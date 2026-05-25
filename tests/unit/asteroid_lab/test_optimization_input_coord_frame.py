@@ -12,6 +12,9 @@ from django_apps.asteroid_lab.reconstruction.acceptance_topology import (
 from django_apps.asteroid_lab.reconstruction.result import ReconstructionResult
 from django_apps.asteroid_lab.services.dto import DecodedCellDTO
 from django_apps.asteroid_lab.snapshots.coord_frames import CoordFrame
+from tests.support.reconstruction_complete_map_fixtures import (
+    minimal_cleanup_and_recon_from_cells,
+)
 
 
 def test_optimization_input_defaults_to_island_raw_frame(
@@ -55,9 +58,11 @@ def test_optimization_input_from_reconstruction_island_raw_frame() -> None:
         nested_type_counts_json={},
         raw_entry_json={},
     )
-    result = ReconstructionResult(
-        cells=(cell,),
+    cleanup, result = minimal_cleanup_and_recon_from_cells(cell)
+    inp = optimization_input_from_reconstruction(
+        result,
+        cleanup=cleanup,
+        coord_frame=CoordFrame.ISLAND_RAW,
     )
-    inp = optimization_input_from_reconstruction(result, coord_frame=CoordFrame.ISLAND_RAW)
     assert inp.coord_frame == CoordFrame.ISLAND_RAW
     assert (0, 1) in inp.mineable_cells

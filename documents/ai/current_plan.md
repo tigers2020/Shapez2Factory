@@ -88,6 +88,8 @@ Full gate: [`AGENTS.md`](../../AGENTS.md) · `scripts/test_full.ps1`
 
 ## Next focus
 
+**CLOSED (2026-05-25):** PR-2d throughput-aware placement goals + shortfall attribution — PR [#81](https://github.com/tigers2020/Shapez2Factory/pull/81) squash-merged to `master` (`75dd5e8b`). Ops: `copy-import-495e552c` @ 10% → 13 commits, 1560/min ≥ 1536 target (`solver_run_id` 76). Spec: [`docs/superpowers/specs/2026-05-24-throughput-target-selection-pr2d-design.md`](../../docs/superpowers/specs/2026-05-24-throughput-target-selection-pr2d-design.md).
+
 **CLOSED (2026-05-25):** PR-2c throughput target % (10–80) + Lab budget UI — merged to `master` locally (`36c36bbf`); PR [#80](https://github.com/tigers2020/Shapez2Factory/pull/80). Spec: [`docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md`](../../docs/superpowers/specs/2026-05-24-throughput-target-percent-pr2c-design.md).
 
 **CLOSED (2026-05-25):** PR-2a+2b reconstruction max + actual committed throughput — PR [#79](https://github.com/tigers2020/Shapez2Factory/pull/79) squash-merged to `master` (`58214a01`).

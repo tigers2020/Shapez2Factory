@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Set
-from typing import TYPE_CHECKING
 
+from django_apps.asteroid_lab.cleanup.result import CleanupResult
 from django_apps.asteroid_lab.observability.boundary_jsonl import (
     emit_boundary_jsonl,
     summarize_cell_kind_transitions,
@@ -50,14 +50,12 @@ from django_apps.asteroid_lab.snapshots.transport_components import (
     sort_key_xy_layer,
 )
 
-if TYPE_CHECKING:
-    from django_apps.asteroid_lab.cleanup.result import CleanupResult
-
 
 def _finalize_reconstruction_result(
     cells: tuple[DecodedCellDTO, ...],
     summary: dict[str, object],
     *,
+    cleanup: CleanupResult,
     wall_coords: set[Coord],
     shell_raw_coords: frozenset[Coord],
 ) -> ReconstructionResult:
@@ -76,6 +74,7 @@ def _finalize_reconstruction_result(
         base,
         wall_coords=wall_coords,
         interior_patch_coords=topo.interior_patch_cells,
+        cleanup=cleanup,
     )
 
 
@@ -164,6 +163,14 @@ def reconstruct_after_cleanup(
     shell_raw_coords: frozenset[Coord] = frozenset(
         (c.x, c.y) for c in original_cells if is_asteroid_evidence(c)
     )
+    cleanup_for_finalize = CleanupResult(
+        cleaned_cells=cleaned_cells,
+        removed_building_cells=removed_building_cells,
+        ignored_transport_cells=(),
+        wall_coords=frozenset(walls_xy),
+        bbox_bounds=bbox_bounds,
+        original_cells=original_cells,
+    )
     stripped = list(cleaned_cells)
     stripped_by_key: dict[tuple[int, int, int | None], DecodedCellDTO] = {
         (c.x, c.y, c.layer): c for c in stripped
@@ -233,6 +240,7 @@ def reconstruct_after_cleanup(
         return _finalize_reconstruction_result(
             stamped,
             summary,
+            cleanup=cleanup_for_finalize,
             wall_coords=walls_xy,
             shell_raw_coords=shell_raw_coords,
         )
@@ -656,6 +664,7 @@ def reconstruct_after_cleanup(
     return _finalize_reconstruction_result(
         out_cells,
         summary,
+        cleanup=cleanup_for_finalize,
         wall_coords=walls_xy,
         shell_raw_coords=shell_raw_coords,
     )

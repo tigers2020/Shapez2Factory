@@ -122,8 +122,12 @@ def test_reconstruction_canon_line_confidence_calibration() -> None:
     _snap_req, _snap_sol, _cleanup, _recon, _merged, actual, _expected = _run_line(1)
     overlap = len(actual.mineable_cells & solved_mineable)
     assert overlap >= int(len(solved_mineable) * 0.95)
-    field_overlap = len(recon.confirmed_cells & solved_mineable)
-    assert (
-        field_overlap >= int(len(recon.confirmed_cells) * 0.95) if recon.confirmed_cells else True
+    from django_apps.asteroid_lab.reconstruction.complete_map import (
+        build_reconstruction_complete_map,
     )
+
+    complete = build_reconstruction_complete_map(cleanup=_cleanup, recon=recon)
+    field_cells = complete.field_cells
+    field_overlap = len(field_cells & solved_mineable)
+    assert field_overlap >= int(len(field_cells) * 0.95) if field_cells else True
     assert len(recon.ambiguous_cells & solved_mineable) <= int(len(solved_mineable) * 0.05)

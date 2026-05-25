@@ -1,7 +1,7 @@
 {% load i18n %}
 <p id="lab-capacity-disclaimer" class="mb-3 text-xs text-slate-500">
-  {% trans "Theoretical max = reconstructed terrain upper bound" %} ·
-  {% trans "Committed = route-confirmed solver result" %}
+  {% trans "Theoretical field capacity: all reconstructed asteroid field cells × base extractor unit (×4)" %} ·
+  {% trans "Committed throughput: route-confirmed extractor bundles only" %}
 </p>
 <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
   <div id="lab-card-theoretical-max" class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
@@ -20,9 +20,9 @@
   </div>
   <div id="lab-card-footprint" class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">
     <div class="p-4">
-      <div class="text-xs uppercase tracking-wide text-slate-500">{% trans "Mineable Footprint" %}</div>
+      <div class="text-xs uppercase tracking-wide text-slate-500">{% trans "Asteroid field footprint" %}</div>
       <div id="lab-card-footprint-value" class="mt-1 text-2xl font-semibold text-slate-100">—</div>
-      <div id="lab-card-footprint-sub" class="mt-1 text-xs text-slate-400">{% trans "confirmed / map cells" %}</div>
+      <div id="lab-card-footprint-sub" class="mt-1 text-xs text-slate-400">{% trans "field cells / map cells" %}</div>
     </div>
   </div>
   <div id="lab-card-reconstruction-quality" class="rounded-2xl border border-slate-800 bg-slate-950/70 shadow-sm">

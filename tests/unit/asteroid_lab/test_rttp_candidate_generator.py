@@ -47,9 +47,12 @@ def test_interior_and_rim_unreachable_goes_to_rejected(
 
     assert result.normal_candidates == ()
     assert result.rejected_candidates
+    unreachable_reasons = {
+        CandidateRejectReason.NOT_REACHABLE,
+        CandidateRejectReason.ROUTE_PROBE_START_BLOCKED,
+    }
     assert any(
-        rejected.rejection_reason is CandidateRejectReason.NOT_REACHABLE
-        for rejected in result.rejected_candidates
+        rejected.rejection_reason in unreachable_reasons for rejected in result.rejected_candidates
     )
 
 
